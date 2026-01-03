@@ -1,0 +1,559 @@
+package com.lawfirm.application.finance.service;
+
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.lawfirm.application.finance.command.AllocateCostCommand;
+import com.lawfirm.application.finance.command.ApproveExpenseCommand;
+import com.lawfirm.application.finance.command.CreateExpenseCommand;
+import com.lawfirm.application.finance.dto.CostAllocationDTO;
+import com.lawfirm.application.finance.dto.ExpenseDTO;
+import com.lawfirm.application.finance.dto.ExpenseQueryDTO;
+import com.lawfirm.application.workbench.service.ApprovalService;
+import com.lawfirm.application.workbench.service.ApproverService;
+import com.lawfirm.common.exception.BusinessException;
+import com.lawfirm.common.result.PageResult;
+import com.lawfirm.common.util.SecurityUtils;
+import com.lawfirm.domain.finance.entity.CostAllocation;
+import com.lawfirm.domain.finance.entity.Expense;
+import com.lawfirm.domain.finance.entity.CostSplit;
+import com.lawfirm.domain.finance.repository.CostAllocationRepository;
+import com.lawfirm.domain.finance.repository.CostSplitRepository;
+import com.lawfirm.domain.finance.repository.ExpenseRepository;
+import com.lawfirm.domain.matter.repository.MatterRepository;
+import com.lawfirm.application.finance.command.SplitCostCommand;
+import com.lawfirm.domain.system.entity.User;
+import com.lawfirm.domain.system.repository.UserRepository;
+import com.lawfirm.infrastructure.persistence.mapper.CostAllocationMapper;
+import com.lawfirm.infrastructure.persistence.mapper.ExpenseMapper;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.BeanUtils;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+/**
+ * 费用报销应用服务
+ */
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class ExpenseAppService {
+
+    private final ExpenseRepository expenseRepository;
+    private final ExpenseMapper expenseMapper;
+    private final CostAllocationRepository costAllocationRepository;
+    private final CostAllocationMapper costAllocationMapper;
+    private final CostSplitRepository costSplitRepository;
+    private final MatterRepository matterRepository;
+    private final UserRepository userRepository;
+    private final ApprovalService approvalService;
+    private final ApproverService approverService;
+    private final ObjectMapper objectMapper;
+
+    /**
+     * 分页查询费用报销列表
+     */
+    public PageResult<ExpenseDTO> listExpenses(ExpenseQueryDTO query) {
+        List<Expense> expenses = expenseMapper.selectExpensePage(
+                query.getExpenseNo(),
+                query.getMatterId(),
+                query.getApplicantId(),
+                query.getStatus(),
+                query.getExpenseType(),
+                query.getExpenseCategory()
+        );
+
+        // 手动分页
+        int offset = query.getOffset();
+        int limit = query.getPageSize();
+        int total = expenses.size();
+        List<Expense> pagedExpenses = expenses.stream()
+                .skip(offset)
+                .limit(limit)
+                .collect(Collectors.toList());
+
+        List<ExpenseDTO> records = pagedExpenses.stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
+
+        return PageResult.of(records, total, query.getPageNum(), query.getPageSize());
+    }
+
+    /**
+     * 获取费用报销详情
+     */
+    public ExpenseDTO getExpense(Long id) {
+        Expense expense = expenseRepository.findById(id);
+        if (expense == null) {
+            throw new BusinessException("费用报销记录不存在");
+        }
+        return toDTO(expense);
+    }
+
+    /**
+     * 创建费用报销申请
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public ExpenseDTO createExpense(CreateExpenseCommand command) {
+        // 验证项目是否存在（如果提供了项目ID）
+        if (command.getMatterId() != null) {
+            if (matterRepository.findById(command.getMatterId()) == null) {
+                throw new BusinessException("项目不存在");
+            }
+        }
+
+        // 生成报销单号
+        String expenseNo = generateExpenseNo();
+
+        Expense expense = Expense.builder()
+                .expenseNo(expenseNo)
+                .matterId(command.getMatterId())
+                .applicantId(SecurityUtils.getUserId())
+                .expenseType(command.getExpenseType())
+                .expenseCategory(command.getExpenseCategory())
+                .expenseDate(command.getExpenseDate())
+                .amount(command.getAmount())
+                .currency(command.getCurrency() != null ? command.getCurrency() : "CNY")
+                .description(command.getDescription())
+                .vendorName(command.getVendorName())
+                .invoiceNo(command.getInvoiceNo())
+                .invoiceUrl(command.getInvoiceUrl())
+                .status("PENDING")
+                .isCostAllocation(false)
+                .remark(command.getRemark())
+                .createdBy(SecurityUtils.getUserId())
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        expenseRepository.getBaseMapper().insert(expense);
+
+        // 创建审批记录
+        try {
+            Long approverId = approverService.findDefaultApprover();
+            String businessSnapshot = objectMapper.writeValueAsString(expense);
+            approvalService.createApproval(
+                    "EXPENSE",
+                    expense.getId(),
+                    expenseNo,
+                    "费用报销申请：" + command.getDescription(),
+                    approverId,
+                    "NORMAL",
+                    "NORMAL",
+                    businessSnapshot
+            );
+        } catch (Exception e) {
+            log.error("创建审批记录失败", e);
+            // 不阻断主流程，仅记录日志
+        }
+
+        log.info("创建费用报销申请: expenseNo={}, amount={}", expenseNo, command.getAmount());
+
+        return toDTO(expense);
+    }
+
+    /**
+     * 审批费用报销
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public ExpenseDTO approveExpense(ApproveExpenseCommand command) {
+        Expense expense = expenseRepository.findById(command.getExpenseId());
+        if (expense == null) {
+            throw new BusinessException("费用报销记录不存在");
+        }
+
+        if (!"PENDING".equals(expense.getStatus())) {
+            throw new BusinessException("只能审批待审批状态的报销单");
+        }
+
+        if ("APPROVE".equals(command.getAction())) {
+            expense.setStatus("APPROVED");
+        } else if ("REJECT".equals(command.getAction())) {
+            expense.setStatus("REJECTED");
+        } else {
+            throw new BusinessException("无效的审批操作");
+        }
+
+        expense.setApproverId(SecurityUtils.getUserId());
+        expense.setApprovedAt(LocalDateTime.now());
+        expense.setApprovalComment(command.getComment());
+        expense.setUpdatedAt(LocalDateTime.now());
+        expense.setUpdatedBy(SecurityUtils.getUserId());
+
+        expenseRepository.getBaseMapper().updateById(expense);
+
+        log.info("审批费用报销: expenseId={}, action={}", command.getExpenseId(), command.getAction());
+
+        return toDTO(expense);
+    }
+
+    /**
+     * 确认支付
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public ExpenseDTO confirmPayment(Long id, String paymentMethod) {
+        Expense expense = expenseRepository.findById(id);
+        if (expense == null) {
+            throw new BusinessException("费用报销记录不存在");
+        }
+
+        if (!"APPROVED".equals(expense.getStatus())) {
+            throw new BusinessException("只能支付已审批的报销单");
+        }
+
+        expense.setStatus("PAID");
+        expense.setPaidAt(LocalDateTime.now());
+        expense.setPaidBy(SecurityUtils.getUserId());
+        expense.setPaymentMethod(paymentMethod);
+        expense.setUpdatedAt(LocalDateTime.now());
+        expense.setUpdatedBy(SecurityUtils.getUserId());
+
+        expenseRepository.getBaseMapper().updateById(expense);
+
+        log.info("确认费用支付: expenseId={}, paymentMethod={}", id, paymentMethod);
+
+        return toDTO(expense);
+    }
+
+    /**
+     * 成本归集
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void allocateCost(AllocateCostCommand command) {
+        // 验证项目是否存在
+        if (matterRepository.findById(command.getMatterId()) == null) {
+            throw new BusinessException("项目不存在");
+        }
+
+        for (Long expenseId : command.getExpenseIds()) {
+            Expense expense = expenseRepository.findById(expenseId);
+            if (expense == null) {
+                throw new BusinessException("费用报销记录不存在: " + expenseId);
+            }
+
+            if (!"PAID".equals(expense.getStatus())) {
+                throw new BusinessException("只能归集已支付的费用: " + expense.getExpenseNo());
+            }
+
+            // 创建成本归集记录
+            CostAllocation allocation = CostAllocation.builder()
+                    .matterId(command.getMatterId())
+                    .expenseId(expenseId)
+                    .allocatedAmount(expense.getAmount())
+                    .allocationDate(LocalDate.now())
+                    .allocatedBy(SecurityUtils.getUserId())
+                    .createdAt(LocalDateTime.now())
+                    .createdBy(SecurityUtils.getUserId())
+                    .build();
+
+            costAllocationRepository.getBaseMapper().insert(allocation);
+
+            // 更新费用记录
+            expense.setIsCostAllocation(true);
+            expense.setAllocatedToMatterId(command.getMatterId());
+            expense.setUpdatedAt(LocalDateTime.now());
+            expense.setUpdatedBy(SecurityUtils.getUserId());
+            expenseRepository.getBaseMapper().updateById(expense);
+        }
+
+        log.info("成本归集完成: matterId={}, expenseCount={}", 
+                command.getMatterId(), command.getExpenseIds().size());
+    }
+
+    /**
+     * 查询项目的成本归集记录
+     */
+    public List<CostAllocationDTO> listCostAllocations(Long matterId) {
+        List<CostAllocation> allocations = costAllocationMapper.selectByMatterId(matterId);
+        return allocations.stream()
+                .map(this::toCostAllocationDTO)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 获取项目总成本（包括归集成本和分摊成本）
+     */
+    public BigDecimal getTotalCost(Long matterId) {
+        BigDecimal allocatedCost = expenseMapper.selectTotalCostByMatterId(matterId);
+        BigDecimal splitCost = costSplitRepository.getBaseMapper()
+                .selectTotalSplitCostByMatterId(matterId);
+        if (splitCost == null) {
+            splitCost = BigDecimal.ZERO;
+        }
+        return allocatedCost.add(splitCost);
+    }
+
+    /**
+     * 成本分摊（M4-043）：将公共成本分摊到多个项目
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void splitCost(SplitCostCommand command) {
+        // 验证费用存在且是公共费用（matterId为空）
+        Expense expense = expenseRepository.findById(command.getExpenseId());
+        if (expense == null) {
+            throw new BusinessException("费用报销记录不存在");
+        }
+
+        if (expense.getMatterId() != null) {
+            throw new BusinessException("该费用已关联项目，不能进行分摊");
+        }
+
+        if (!"PAID".equals(expense.getStatus())) {
+            throw new BusinessException("只能分摊已支付的费用");
+        }
+
+        // 验证所有项目存在
+        for (Long matterId : command.getMatterIds()) {
+            if (matterRepository.findById(matterId) == null) {
+                throw new BusinessException("项目不存在: " + matterId);
+            }
+        }
+
+        BigDecimal totalAmount = expense.getAmount();
+        List<CostSplit> splits = new java.util.ArrayList<>();
+
+        // 根据分摊方式计算分摊金额
+        if ("EQUAL".equals(command.getSplitMethod())) {
+            // 平均分摊
+            BigDecimal splitAmount = totalAmount.divide(
+                    BigDecimal.valueOf(command.getMatterIds().size()),
+                    2,
+                    java.math.RoundingMode.HALF_UP);
+            BigDecimal splitRatio = BigDecimal.ONE
+                    .divide(BigDecimal.valueOf(command.getMatterIds().size()),
+                            4, java.math.RoundingMode.HALF_UP);
+
+            for (Long matterId : command.getMatterIds()) {
+                CostSplit split = CostSplit.builder()
+                        .expenseId(command.getExpenseId())
+                        .matterId(matterId)
+                        .splitAmount(splitAmount)
+                        .splitRatio(splitRatio)
+                        .splitMethod("EQUAL")
+                        .splitDate(LocalDate.now())
+                        .splitBy(SecurityUtils.getUserId())
+                        .remark(command.getRemark())
+                        .createdAt(LocalDateTime.now())
+                        .createdBy(SecurityUtils.getUserId())
+                        .build();
+                splits.add(split);
+            }
+        } else if ("RATIO".equals(command.getSplitMethod())) {
+            // 按比例分摊
+            if (command.getRatios() == null || command.getRatios().isEmpty()) {
+                throw new BusinessException("按比例分摊需要提供分摊比例");
+            }
+
+            BigDecimal totalRatio = command.getRatios().values().stream()
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            if (totalRatio.compareTo(BigDecimal.ONE) != 0) {
+                throw new BusinessException("分摊比例总和必须等于1（100%）");
+            }
+
+            for (Long matterId : command.getMatterIds()) {
+                BigDecimal ratio = command.getRatios().get(matterId);
+                if (ratio == null) {
+                    throw new BusinessException("项目 " + matterId + " 缺少分摊比例");
+                }
+                BigDecimal splitAmount = totalAmount.multiply(ratio)
+                        .setScale(2, java.math.RoundingMode.HALF_UP);
+
+                CostSplit split = CostSplit.builder()
+                        .expenseId(command.getExpenseId())
+                        .matterId(matterId)
+                        .splitAmount(splitAmount)
+                        .splitRatio(ratio)
+                        .splitMethod("RATIO")
+                        .splitDate(LocalDate.now())
+                        .splitBy(SecurityUtils.getUserId())
+                        .remark(command.getRemark())
+                        .createdAt(LocalDateTime.now())
+                        .createdBy(SecurityUtils.getUserId())
+                        .build();
+                splits.add(split);
+            }
+        } else if ("MANUAL".equals(command.getSplitMethod())) {
+            // 手动指定分摊金额
+            if (command.getManualAmounts() == null || command.getManualAmounts().isEmpty()) {
+                throw new BusinessException("手动分摊需要提供分摊金额");
+            }
+
+            BigDecimal totalSplitAmount = command.getManualAmounts().values().stream()
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            if (totalSplitAmount.compareTo(totalAmount) != 0) {
+                throw new BusinessException("分摊金额总和必须等于费用总额");
+            }
+
+            for (Long matterId : command.getMatterIds()) {
+                BigDecimal splitAmount = command.getManualAmounts().get(matterId);
+                if (splitAmount == null) {
+                    throw new BusinessException("项目 " + matterId + " 缺少分摊金额");
+                }
+                BigDecimal ratio = splitAmount.divide(totalAmount, 4, java.math.RoundingMode.HALF_UP);
+
+                CostSplit split = CostSplit.builder()
+                        .expenseId(command.getExpenseId())
+                        .matterId(matterId)
+                        .splitAmount(splitAmount)
+                        .splitRatio(ratio)
+                        .splitMethod("MANUAL")
+                        .splitDate(LocalDate.now())
+                        .splitBy(SecurityUtils.getUserId())
+                        .remark(command.getRemark())
+                        .createdAt(LocalDateTime.now())
+                        .createdBy(SecurityUtils.getUserId())
+                        .build();
+                splits.add(split);
+            }
+        } else {
+            throw new BusinessException("不支持的分摊方式: " + command.getSplitMethod());
+        }
+
+        // 保存所有分摊记录
+        for (CostSplit split : splits) {
+            costSplitRepository.getBaseMapper().insert(split);
+        }
+
+        log.info("成本分摊完成: expenseId={}, matterCount={}, totalAmount={}",
+                command.getExpenseId(), command.getMatterIds().size(), totalAmount);
+    }
+
+    /**
+     * 查询项目的成本分摊记录
+     */
+    public List<com.lawfirm.application.finance.dto.CostSplitDTO> listCostSplits(Long matterId) {
+        List<CostSplit> splits = costSplitRepository.findByMatterId(matterId);
+        return splits.stream()
+                .map(this::toCostSplitDTO)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 删除费用报销（仅未审批状态可删除）
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteExpense(Long id) {
+        Expense expense = expenseRepository.findById(id);
+        if (expense == null) {
+            throw new BusinessException("费用报销记录不存在");
+        }
+
+        if (!"PENDING".equals(expense.getStatus())) {
+            throw new BusinessException("只能删除待审批状态的报销单");
+        }
+
+        expenseRepository.softDelete(id);
+    }
+
+    // ========== 工具方法 ==========
+
+    /**
+     * 生成报销单号
+     */
+    private String generateExpenseNo() {
+        String prefix = "EXP";
+        String date = LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd"));
+        String random = UUID.randomUUID().toString().substring(0, 6).toUpperCase();
+        return prefix + date + random;
+    }
+
+    /**
+     * 转换为DTO
+     */
+    private ExpenseDTO toDTO(Expense expense) {
+        ExpenseDTO dto = new ExpenseDTO();
+        BeanUtils.copyProperties(expense, dto);
+
+        // 查询关联信息
+        if (expense.getApplicantId() != null) {
+            User applicant = userRepository.findById(expense.getApplicantId());
+            if (applicant != null) {
+                dto.setApplicantName(applicant.getRealName());
+            }
+        }
+
+        if (expense.getApproverId() != null) {
+            User approver = userRepository.findById(expense.getApproverId());
+            if (approver != null) {
+                dto.setApproverName(approver.getRealName());
+            }
+        }
+
+        if (expense.getPaidBy() != null) {
+            User paidBy = userRepository.findById(expense.getPaidBy());
+            if (paidBy != null) {
+                dto.setPaidByName(paidBy.getRealName());
+            }
+        }
+
+        // TODO: 查询项目名称
+
+        return dto;
+    }
+
+    /**
+     * 转换为成本归集DTO
+     */
+    private CostAllocationDTO toCostAllocationDTO(CostAllocation allocation) {
+        CostAllocationDTO dto = new CostAllocationDTO();
+        BeanUtils.copyProperties(allocation, dto);
+
+        // 查询费用信息
+        Expense expense = expenseRepository.findById(allocation.getExpenseId());
+        if (expense != null) {
+            dto.setExpenseNo(expense.getExpenseNo());
+            dto.setExpenseDescription(expense.getDescription());
+            dto.setExpenseType(expense.getExpenseType());
+            dto.setExpenseDate(expense.getExpenseDate());
+        }
+
+        // 查询操作人
+        if (allocation.getAllocatedBy() != null) {
+            User user = userRepository.findById(allocation.getAllocatedBy());
+            if (user != null) {
+                dto.setAllocatedByName(user.getRealName());
+            }
+        }
+
+        // TODO: 查询项目名称
+
+        return dto;
+    }
+
+    /**
+     * 转换为成本分摊DTO
+     */
+    private com.lawfirm.application.finance.dto.CostSplitDTO toCostSplitDTO(CostSplit split) {
+        com.lawfirm.application.finance.dto.CostSplitDTO dto = new com.lawfirm.application.finance.dto.CostSplitDTO();
+        BeanUtils.copyProperties(split, dto);
+
+        // 查询费用信息
+        Expense expense = expenseRepository.findById(split.getExpenseId());
+        if (expense != null) {
+            dto.setExpenseNo(expense.getExpenseNo());
+            dto.setExpenseDescription(expense.getDescription());
+            dto.setExpenseType(expense.getExpenseType());
+            dto.setExpenseDate(expense.getExpenseDate());
+        }
+
+        // 查询操作人
+        if (split.getSplitBy() != null) {
+            User user = userRepository.findById(split.getSplitBy());
+            if (user != null) {
+                dto.setSplitByName(user.getRealName());
+            }
+        }
+
+        // TODO: 查询项目名称
+
+        return dto;
+    }
+}
+

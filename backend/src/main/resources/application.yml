@@ -1,0 +1,131 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+
+spring:
+  application:
+    name: law-firm-management
+  profiles:
+    active: dev
+
+  # 数据源配置
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://localhost:5432/law_firm_dev
+    username: law_admin
+    password: ${DB_PASSWORD:dev_password_123}
+    hikari:
+      minimum-idle: 5
+      maximum-pool-size: 20
+      idle-timeout: 300000
+      max-lifetime: 1800000
+      connection-timeout: 30000
+
+  # Redis配置
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: ${REDIS_PASSWORD:}
+      database: 0
+      timeout: 10s
+      lettuce:
+        pool:
+          min-idle: 0
+          max-idle: 8
+          max-active: 8
+          max-wait: -1ms
+
+  # 文件上传
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 100MB
+
+  # Jackson配置
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+    default-property-inclusion: non_null
+
+# MyBatis-Plus配置
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  type-aliases-package: com.lawfirm.domain
+  type-handlers-package: com.lawfirm.infrastructure.persistence.typehandler
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: true
+      logic-not-delete-value: false
+  configuration:
+    map-underscore-to-camel-case: true
+    cache-enabled: false
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+
+# JWT配置
+jwt:
+  secret: ${JWT_SECRET:your-256-bit-secret-key-here-change-in-production}
+  expiration: 86400000  # 24小时
+  refresh-expiration: 604800000  # 7天
+  header: Authorization
+  prefix: Bearer
+
+# MinIO配置
+minio:
+  endpoint: http://localhost:9000
+  access-key: ${MINIO_ACCESS_KEY:minioadmin}
+  secret-key: ${MINIO_SECRET_KEY:minioadmin}
+  bucket-name: law-firm
+
+# OCR服务配置
+ocr:
+  service-url: http://localhost:8000
+  timeout: 30000
+
+# 日志配置
+logging:
+  level:
+    com.lawfirm: debug
+    org.springframework.security: info
+    org.mybatis: debug
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# API文档配置
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+  info:
+    title: 智慧律所管理系统API
+    description: Law Firm Management System RESTful API
+    version: 1.0.0
+    contact:
+      name: 技术支持
+      email: support@lawfirm.com
+
+# 业务配置
+law-firm:
+  # 提成配置
+  commission:
+    default-firm-retention-rate: 0.30  # 默认律所留存比例30%
+    default-originator-rate: 0.20      # 默认案源提成比例20%
+    salaried-originator-commission: false  # 授薪律师是否获得案源提成
+  # 审批配置
+  approval:
+    conflict-check-approvers: PARTNER,DIRECTOR  # 利冲审批角色
+    contract-amount-threshold: 100000  # 合同金额审批阈值
+  # 文件配置
+  file:
+    allowed-types: pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,gif,txt,zip,rar
+    max-size-mb: 100
+  # 备份配置
+  backup:
+    path: ./backups  # 备份文件存储路径
+
