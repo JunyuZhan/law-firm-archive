@@ -39,10 +39,8 @@ public interface ClientMapper extends BaseMapper<Client> {
      */
     @Select("""
         <script>
-        SELECT c.*, u.real_name as originator_name, l.real_name as responsible_lawyer_name
+        SELECT c.*
         FROM crm_client c
-        LEFT JOIN sys_user u ON c.originator_id = u.id
-        LEFT JOIN sys_user l ON c.responsible_lawyer_id = l.id
         WHERE c.deleted = false
         <if test="name != null and name != ''">
             AND c.name LIKE CONCAT('%', #{name}, '%')

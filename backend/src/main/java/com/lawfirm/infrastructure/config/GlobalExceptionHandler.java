@@ -24,9 +24,23 @@ public class GlobalExceptionHandler {
      * 业务异常
      */
     @ExceptionHandler(BusinessException.class)
-    @ResponseStatus(HttpStatus.OK)
-    public Result<Void> handleBusinessException(BusinessException e) {
+    public Result<Void> handleBusinessException(BusinessException e, jakarta.servlet.http.HttpServletResponse response) {
         log.warn("业务异常: {}", e.getMessage());
+        
+        // 根据错误码设置对应的HTTP状态码
+        String code = e.getCode();
+        if ("401".equals(code)) {
+            response.setStatus(HttpStatus.UNAUTHORIZED.value());
+        } else if ("403".equals(code)) {
+            response.setStatus(HttpStatus.FORBIDDEN.value());
+        } else if ("404".equals(code)) {
+            response.setStatus(HttpStatus.NOT_FOUND.value());
+        } else if ("400".equals(code)) {
+            response.setStatus(HttpStatus.BAD_REQUEST.value());
+        } else {
+            response.setStatus(HttpStatus.OK.value());
+        }
+        
         return Result.error(e.getCode(), e.getMessage());
     }
 

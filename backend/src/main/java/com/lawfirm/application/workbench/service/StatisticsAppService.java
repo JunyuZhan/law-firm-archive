@@ -29,6 +29,8 @@ public class StatisticsAppService {
     private final ClientRepository clientRepository;
     private final UserRepository userRepository;
     private final StatisticsMapper statisticsMapper;
+    private final com.lawfirm.domain.matter.repository.TimesheetRepository timesheetRepository;
+    private final com.lawfirm.domain.matter.repository.TaskRepository taskRepository;
 
     /**
      * 获取收入统计
@@ -166,6 +168,48 @@ public class StatisticsAppService {
         
         log.info("获取律师业绩排行: count={}", result.size());
         return result;
+    }
+
+    /**
+     * 获取工作台统计数据（用于仪表盘）
+     */
+    public WorkbenchStatsDTO getWorkbenchStats() {
+        Long userId = com.lawfirm.common.util.SecurityUtils.getUserId();
+        
+        WorkbenchStatsDTO stats = new WorkbenchStatsDTO();
+        
+        // 我的项目数（我参与的项目）
+        Long matterCount = statisticsMapper.countMyMatters(userId);
+        stats.setMatterCount(matterCount != null ? matterCount : 0L);
+        
+        // 我的客户数（我负责的客户）
+        Long clientCount = statisticsMapper.countMyClients(userId);
+        stats.setClientCount(clientCount != null ? clientCount : 0L);
+        
+        // 本月工时
+        java.time.LocalDate now = java.time.LocalDate.now();
+        BigDecimal monthlyHours = timesheetRepository.sumHoursByUserAndMonth(userId, now.getYear(), now.getMonthValue());
+        stats.setTimesheetHours(monthlyHours != null ? monthlyHours.doubleValue() : 0.0);
+        
+        // 待办任务数
+        int taskCount = taskRepository.countPendingByAssigneeId(userId);
+        stats.setTaskCount((long) taskCount);
+        
+        log.info("获取工作台统计: userId={}, matterCount={}, clientCount={}, hours={}, taskCount={}", 
+                userId, matterCount, clientCount, monthlyHours, taskCount);
+        
+        return stats;
+    }
+
+    /**
+     * 工作台统计数据DTO
+     */
+    @lombok.Data
+    public static class WorkbenchStatsDTO {
+        private Long matterCount;      // 我的项目数
+        private Long clientCount;      // 我的客户数
+        private Double timesheetHours;  // 本月工时
+        private Long taskCount;        // 待办任务数
     }
 
     /**

@@ -11,7 +11,6 @@ import com.lawfirm.common.result.PageResult;
 import com.lawfirm.common.util.SecurityUtils;
 import com.lawfirm.domain.matter.entity.Task;
 import com.lawfirm.domain.matter.repository.TaskRepository;
-import com.lawfirm.infrastructure.persistence.mapper.TaskMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -33,26 +32,72 @@ import java.util.stream.Collectors;
 public class TaskAppService {
 
     private final TaskRepository taskRepository;
-    private final TaskMapper taskMapper;
 
     /**
      * 分页查询任务
      */
     public PageResult<TaskDTO> listTasks(TaskQueryDTO query) {
-        IPage<Task> page = taskMapper.selectTaskPage(
+        LambdaQueryWrapper<Task> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Task::getDeleted, false);
+        
+        if (query.getMatterId() != null) {
+            wrapper.eq(Task::getMatterId, query.getMatterId());
+        }
+        if (query.getAssigneeId() != null) {
+            wrapper.eq(Task::getAssigneeId, query.getAssigneeId());
+        }
+        if (StringUtils.hasText(query.getStatus())) {
+            wrapper.eq(Task::getStatus, query.getStatus());
+        }
+        if (StringUtils.hasText(query.getPriority())) {
+            wrapper.eq(Task::getPriority, query.getPriority());
+        }
+        if (StringUtils.hasText(query.getTitle())) {
+            wrapper.like(Task::getTitle, query.getTitle());
+        }
+        
+        // 排序：截止日期 -> 创建时间（优先级排序在应用层处理）
+        wrapper.orderByAsc(Task::getDueDate);
+        wrapper.orderByDesc(Task::getCreatedAt);
+
+        IPage<Task> page = taskRepository.page(
                 new Page<>(query.getPageNum(), query.getPageSize()),
-                query.getMatterId(),
-                query.getAssigneeId(),
-                query.getStatus(),
-                query.getPriority(),
-                query.getTitle()
+                wrapper
         );
 
         List<TaskDTO> records = page.getRecords().stream()
                 .map(this::toDTO)
+                .sorted((a, b) -> {
+                    // 按优先级排序
+                    int priorityOrderA = getPriorityOrder(a.getPriority());
+                    int priorityOrderB = getPriorityOrder(b.getPriority());
+                    if (priorityOrderA != priorityOrderB) {
+                        return Integer.compare(priorityOrderA, priorityOrderB);
+                    }
+                    // 优先级相同，按截止日期排序
+                    if (a.getDueDate() != null && b.getDueDate() != null) {
+                        return a.getDueDate().compareTo(b.getDueDate());
+                    }
+                    if (a.getDueDate() != null) return -1;
+                    if (b.getDueDate() != null) return 1;
+                    return 0;
+                })
                 .collect(Collectors.toList());
 
         return PageResult.of(records, page.getTotal(), query.getPageNum(), query.getPageSize());
+    }
+    
+    /**
+     * 获取优先级排序值
+     */
+    private int getPriorityOrder(String priority) {
+        if (priority == null) return 4;
+        return switch (priority) {
+            case "HIGH" -> 1;
+            case "MEDIUM" -> 2;
+            case "LOW" -> 3;
+            default -> 4;
+        };
     }
 
     /**

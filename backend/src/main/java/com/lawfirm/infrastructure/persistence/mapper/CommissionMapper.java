@@ -27,22 +27,24 @@ public interface CommissionMapper extends BaseMapper<Commission> {
     List<Commission> selectByMatterId(@Param("matterId") Long matterId);
 
     /**
-     * 根据用户ID查询提成记录
+     * 根据用户ID查询提成记录（通过 commission_detail 表关联）
      */
     @Select("""
-        SELECT * FROM finance_commission
-        WHERE user_id = #{userId} AND deleted = false
-        ORDER BY created_at DESC
+        SELECT DISTINCT c.* FROM finance_commission c
+        INNER JOIN finance_commission_detail cd ON c.id = cd.commission_id
+        WHERE cd.user_id = #{userId} AND c.deleted = false AND cd.deleted = false
+        ORDER BY c.created_at DESC
         LIMIT #{limit} OFFSET #{offset}
         """)
     List<Commission> selectByUserId(@Param("userId") Long userId, @Param("offset") int offset, @Param("limit") int limit);
 
     /**
-     * 统计用户提成总额
+     * 统计用户提成总额（通过 commission_detail 表关联）
      */
     @Select("""
-        SELECT COALESCE(SUM(commission_amount), 0) FROM finance_commission
-        WHERE user_id = #{userId} AND status = 'PAID' AND deleted = false
+        SELECT COALESCE(SUM(cd.commission_amount), 0) FROM finance_commission_detail cd
+        INNER JOIN finance_commission c ON cd.commission_id = c.id
+        WHERE cd.user_id = #{userId} AND c.status = 'PAID' AND c.deleted = false AND cd.deleted = false
         """)
     java.math.BigDecimal sumCommissionByUserId(@Param("userId") Long userId);
 
@@ -100,26 +102,27 @@ public interface CommissionMapper extends BaseMapper<Commission> {
     Long countCommissions(@Param("startDate") String startDate, @Param("endDate") String endDate);
 
     /**
-     * 按用户汇总提成
+     * 按用户汇总提成（通过 commission_detail 表关联）
      */
     @Select("""
         <script>
         SELECT 
-            user_id,
+            cd.user_id,
             u.real_name as user_name,
-            COUNT(*) as commission_count,
-            COALESCE(SUM(commission_amount), 0) as total_commission,
-            COALESCE(SUM(CASE WHEN status = 'PAID' THEN commission_amount ELSE 0 END), 0) as paid_commission
-        FROM finance_commission c
-        LEFT JOIN sys_user u ON c.user_id = u.id
-        WHERE c.deleted = false
+            COUNT(DISTINCT c.id) as commission_count,
+            COALESCE(SUM(cd.commission_amount), 0) as total_commission,
+            COALESCE(SUM(CASE WHEN c.status = 'PAID' THEN cd.commission_amount ELSE 0 END), 0) as paid_commission
+        FROM finance_commission_detail cd
+        INNER JOIN finance_commission c ON cd.commission_id = c.id
+        LEFT JOIN sys_user u ON cd.user_id = u.id
+        WHERE c.deleted = false AND cd.deleted = false
         <if test="startDate != null and startDate != ''">
             AND c.created_at >= #{startDate}::date
         </if>
         <if test="endDate != null and endDate != ''">
             AND c.created_at &lt;= #{endDate}::date
         </if>
-        GROUP BY user_id, u.real_name
+        GROUP BY cd.user_id, u.real_name
         ORDER BY total_commission DESC
         </script>
         """)
@@ -127,7 +130,7 @@ public interface CommissionMapper extends BaseMapper<Commission> {
                                                               @Param("endDate") String endDate);
 
     /**
-     * 查询提成报表数据
+     * 查询提成报表数据（通过 commission_detail 表关联）
      */
     @Select("""
         <script>
@@ -135,17 +138,18 @@ public interface CommissionMapper extends BaseMapper<Commission> {
             c.id,
             c.matter_id,
             m.name as matter_name,
-            c.user_id,
+            cd.user_id,
             u.real_name as user_name,
-            c.commission_amount,
+            cd.commission_amount,
             c.status,
             c.created_at,
             c.approved_at,
             c.paid_at
-        FROM finance_commission c
+        FROM finance_commission_detail cd
+        INNER JOIN finance_commission c ON cd.commission_id = c.id
         LEFT JOIN matter m ON c.matter_id = m.id
-        LEFT JOIN sys_user u ON c.user_id = u.id
-        WHERE c.deleted = false
+        LEFT JOIN sys_user u ON cd.user_id = u.id
+        WHERE c.deleted = false AND cd.deleted = false
         <if test="startDate != null and startDate != ''">
             AND c.created_at >= #{startDate}::date
         </if>
@@ -153,7 +157,7 @@ public interface CommissionMapper extends BaseMapper<Commission> {
             AND c.created_at &lt;= #{endDate}::date
         </if>
         <if test="userId != null">
-            AND c.user_id = #{userId}
+            AND cd.user_id = #{userId}
         </if>
         ORDER BY c.created_at DESC
         </script>

@@ -24,8 +24,14 @@ echo "1. 停止后端服务（如果正在运行）..."
 echo "   请确保后端服务已停止"
 echo ""
 
-echo "2. 删除并重建数据库..."
+echo "2. 断开所有连接并删除数据库..."
+# 先终止所有连接到目标数据库的会话
+docker exec -i law-postgres psql -U law_admin -d postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'law_firm_dev' AND pid <> pg_backend_pid();" 2>/dev/null || true
+# 等待一下确保连接已断开
+sleep 1
+# 删除数据库
 docker exec -i law-postgres psql -U law_admin -d postgres -c "DROP DATABASE IF EXISTS law_firm_dev;"
+# 创建新数据库
 docker exec -i law-postgres psql -U law_admin -d postgres -c "CREATE DATABASE law_firm_dev;"
 
 echo "3. 执行初始化脚本..."

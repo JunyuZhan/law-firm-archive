@@ -26,7 +26,7 @@ public interface TaskMapper extends BaseMapper<Task> {
             "<if test='assigneeId != null'> AND assignee_id = #{assigneeId} </if>" +
             "<if test='status != null and status != \"\"'> AND status = #{status} </if>" +
             "<if test='priority != null and priority != \"\"'> AND priority = #{priority} </if>" +
-            "<if test='title != null and title != \"\"'> AND title LIKE CONCAT('%', #{title}, '%') </if>" +
+            "<if test='title != null and title != \"\"'> AND title LIKE '%' || #{title} || '%' </if>" +
             "ORDER BY " +
             "CASE priority WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 WHEN 'LOW' THEN 3 END, " +
             "due_date ASC NULLS LAST, created_at DESC" +

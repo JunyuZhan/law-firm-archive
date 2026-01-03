@@ -16,17 +16,27 @@ import java.util.List;
  */
 @Tag(name = "统计中心", description = "统计数据相关接口")
 @RestController
-@RequestMapping("/workbench/statistics")
+@RequestMapping("/workbench")
 @RequiredArgsConstructor
 public class StatisticsController {
 
     private final StatisticsAppService statisticsAppService;
 
     /**
+     * 获取工作台统计数据（用于仪表盘）
+     */
+    @GetMapping("/stats")
+    @Operation(summary = "获取工作台统计数据", description = "返回仪表盘需要的基础统计数据")
+    public Result<StatisticsAppService.WorkbenchStatsDTO> getStats() {
+        StatisticsAppService.WorkbenchStatsDTO stats = statisticsAppService.getWorkbenchStats();
+        return Result.success(stats);
+    }
+
+    /**
      * 获取收入统计
      */
     @Operation()
-    @GetMapping("/revenue")
+    @GetMapping("/statistics/revenue")
     @RequirePermission("statistics:view")
     public Result<StatisticsDTO.RevenueStats> getRevenueStats() {
         StatisticsDTO.RevenueStats stats = statisticsAppService.getRevenueStats();
@@ -37,7 +47,7 @@ public class StatisticsController {
      * 获取项目统计
      */
     @Operation()
-    @GetMapping("/matter")
+    @GetMapping("/statistics/matter")
     @RequirePermission("statistics:view")
     public Result<StatisticsDTO.MatterStats> getMatterStats() {
         StatisticsDTO.MatterStats stats = statisticsAppService.getMatterStats();
@@ -48,7 +58,7 @@ public class StatisticsController {
      * 获取客户统计
      */
     @Operation()
-    @GetMapping("/client")
+    @GetMapping("/statistics/client")
     @RequirePermission("statistics:view")
     public Result<StatisticsDTO.ClientStats> getClientStats() {
         StatisticsDTO.ClientStats stats = statisticsAppService.getClientStats();
@@ -59,7 +69,7 @@ public class StatisticsController {
      * 获取律师业绩排行
      */
     @Operation()
-    @GetMapping("/lawyer-performance")
+    @GetMapping("/statistics/lawyer-performance")
     @RequirePermission("statistics:view")
     public Result<List<StatisticsDTO.LawyerPerformance>> getLawyerPerformanceRanking(
             @RequestParam(defaultValue = "10") Integer limit) {

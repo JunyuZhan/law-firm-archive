@@ -11,6 +11,7 @@ import com.lawfirm.common.result.PageResult;
 import com.lawfirm.common.util.SecurityUtils;
 import com.lawfirm.domain.client.entity.Client;
 import com.lawfirm.domain.client.repository.ClientRepository;
+import com.lawfirm.domain.system.repository.UserRepository;
 import com.lawfirm.infrastructure.external.excel.ExcelImportExportService;
 import com.lawfirm.infrastructure.persistence.mapper.ClientMapper;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +38,7 @@ public class ClientAppService {
     private final ClientRepository clientRepository;
     private final ClientMapper clientMapper;
     private final ExcelImportExportService excelImportExportService;
+    private final UserRepository userRepository;
 
     /**
      * 分页查询客户
@@ -317,6 +319,21 @@ public class ClientAppService {
         dto.setRemark(client.getRemark());
         dto.setCreatedAt(client.getCreatedAt());
         dto.setUpdatedAt(client.getUpdatedAt());
+        
+        // 查询关联数据
+        if (client.getOriginatorId() != null) {
+            var user = userRepository.findById(client.getOriginatorId());
+            if (user != null) {
+                dto.setOriginatorName(user.getRealName());
+            }
+        }
+        if (client.getResponsibleLawyerId() != null) {
+            var user = userRepository.findById(client.getResponsibleLawyerId());
+            if (user != null) {
+                dto.setResponsibleLawyerName(user.getRealName());
+            }
+        }
+        
         return dto;
     }
 

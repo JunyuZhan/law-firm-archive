@@ -792,5 +792,20 @@ public interface StatisticsMapper {
                                                               @Param("clientId") Long clientId,
                                                               @Param("startDate") String startDate,
                                                               @Param("endDate") String endDate);
+
+    /**
+     * 统计我的项目数（我参与的项目）
+     */
+    @Select("SELECT COUNT(DISTINCT mp.matter_id) FROM matter_participant mp " +
+            "LEFT JOIN matter m ON mp.matter_id = m.id " +
+            "WHERE mp.user_id = #{userId} AND mp.deleted = false AND m.deleted = false")
+    Long countMyMatters(@Param("userId") Long userId);
+
+    /**
+     * 统计我的客户数（我负责的客户）
+     */
+    @Select("SELECT COUNT(*) FROM crm_client " +
+            "WHERE responsible_lawyer_id = #{userId} AND deleted = false")
+    Long countMyClients(@Param("userId") Long userId);
 }
 

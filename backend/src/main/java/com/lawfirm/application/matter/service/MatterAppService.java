@@ -19,6 +19,8 @@ import com.lawfirm.domain.client.repository.ClientRepository;
 import com.lawfirm.domain.matter.entity.Matter;
 import com.lawfirm.domain.matter.entity.MatterParticipant;
 import com.lawfirm.domain.matter.repository.MatterRepository;
+import com.lawfirm.domain.system.repository.DepartmentRepository;
+import com.lawfirm.domain.system.repository.UserRepository;
 import com.lawfirm.infrastructure.persistence.mapper.MatterMapper;
 import com.lawfirm.infrastructure.persistence.mapper.MatterParticipantMapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -45,6 +47,8 @@ public class MatterAppService {
     private final MatterMapper matterMapper;
     private final MatterParticipantMapper participantMapper;
     private final ClientRepository clientRepository;
+    private final UserRepository userRepository;
+    private final DepartmentRepository departmentRepository;
     private final ApprovalService approvalService;
     private final ApproverService approverService;
     private final ArchiveAppService archiveAppService;
@@ -445,6 +449,33 @@ public class MatterAppService {
         dto.setConflictStatus(matter.getConflictStatus());
         dto.setCreatedAt(matter.getCreatedAt());
         dto.setUpdatedAt(matter.getUpdatedAt());
+        
+        // 查询关联数据
+        if (matter.getClientId() != null) {
+            var client = clientRepository.findById(matter.getClientId());
+            if (client != null) {
+                dto.setClientName(client.getName());
+            }
+        }
+        if (matter.getOriginatorId() != null) {
+            var user = userRepository.findById(matter.getOriginatorId());
+            if (user != null) {
+                dto.setOriginatorName(user.getRealName());
+            }
+        }
+        if (matter.getLeadLawyerId() != null) {
+            var user = userRepository.findById(matter.getLeadLawyerId());
+            if (user != null) {
+                dto.setLeadLawyerName(user.getRealName());
+            }
+        }
+        if (matter.getDepartmentId() != null) {
+            var dept = departmentRepository.findById(matter.getDepartmentId());
+            if (dept != null) {
+                dto.setDepartmentName(dept.getName());
+            }
+        }
+        
         return dto;
     }
 

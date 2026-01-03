@@ -30,11 +30,6 @@ public class Commission extends BaseEntity {
     private Long matterId;
 
     /**
-     * 用户ID（律师ID）
-     */
-    private Long userId;
-
-    /**
      * 规则ID
      */
     private Long ruleId;

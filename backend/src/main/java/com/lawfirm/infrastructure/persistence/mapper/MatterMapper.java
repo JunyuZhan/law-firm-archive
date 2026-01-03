@@ -25,11 +25,8 @@ public interface MatterMapper extends BaseMapper<Matter> {
      */
     @Select("""
         <script>
-        SELECT m.*, c.name as client_name, u.real_name as lead_lawyer_name, d.name as department_name
+        SELECT m.*
         FROM matter m
-        LEFT JOIN crm_client c ON m.client_id = c.id
-        LEFT JOIN sys_user u ON m.lead_lawyer_id = u.id
-        LEFT JOIN sys_department d ON m.department_id = d.id
         WHERE m.deleted = false
         <if test="name != null and name != ''">
             AND m.name LIKE CONCAT('%', #{name}, '%')

@@ -105,6 +105,17 @@ public class TaskController {
     }
 
     /**
+     * 获取我的任务（支持分页和状态过滤）
+     */
+    @GetMapping("/my")
+    @RequirePermission("task:view")
+    public Result<PageResult<TaskDTO>> getMyTasks(TaskQueryDTO query) {
+        // 设置当前用户为执行人
+        query.setAssigneeId(com.lawfirm.common.util.SecurityUtils.getUserId());
+        return Result.success(taskAppService.listTasks(query));
+    }
+
+    /**
      * 获取我的待办任务
      */
     @GetMapping("/my/todo")
