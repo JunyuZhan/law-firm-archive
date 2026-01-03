@@ -133,16 +133,9 @@ INSERT INTO sys_menu (id, parent_id, name, path, component, permission, icon, me
 SELECT setval('sys_menu_id_seq', (SELECT MAX(id) FROM sys_menu));
 
 -- ============================================
--- 五、初始化提成规则
+-- 五、初始化提成规则（将在15-commission-schema.sql之后执行）
 -- ============================================
-
-INSERT INTO finance_commission_rule (rule_code, rule_name, firm_retention_rate, originator_rate, tax_rate, management_fee_rate, rate_tiers, is_default, active) VALUES
-('DEFAULT', '默认提成规则', 0.30, 0.20, 0.0672, 0.15, 
-'[{"minAmount": 0, "maxAmount": 100000, "rate": 0.30},
-  {"minAmount": 100000, "maxAmount": 500000, "rate": 0.35},
-  {"minAmount": 500000, "maxAmount": 1000000, "rate": 0.40},
-  {"minAmount": 1000000, "maxAmount": null, "rate": 0.45}]'::jsonb,
-TRUE, TRUE);
+-- 注意：提成规则数据插入已移至30-commission-init-data.sql
 
 -- ============================================
 -- 六、角色权限分配（管理员拥有所有权限）
