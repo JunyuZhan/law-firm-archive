@@ -23,7 +23,7 @@ public class OperationLogController {
     private final OperationLogAppService operationLogAppService;
 
     @Operation(summary = "分页查询操作日志")
-    @GetMapping
+    @GetMapping("/list")
     @RequirePermission("sys:log:list")
     public Result<PageResult<OperationLogDTO>> listLogs(OperationLogQueryDTO query) {
         return Result.success(operationLogAppService.listLogs(query));

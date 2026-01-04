@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.*;
  */
 @Tag(name = "定时报表", description = "定时报表任务管理接口")
 @RestController
-@RequestMapping("/api/scheduled-reports")
+@RequestMapping("/workbench/scheduled-report")
 @RequiredArgsConstructor
 public class ScheduledReportController {
 

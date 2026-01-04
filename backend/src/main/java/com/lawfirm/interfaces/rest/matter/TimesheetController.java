@@ -22,7 +22,7 @@ import java.util.List;
  * 工时管理接口
  */
 @RestController
-@RequestMapping("/api/timesheets")
+@RequestMapping("/timesheets")
 @RequiredArgsConstructor
 public class TimesheetController {
 

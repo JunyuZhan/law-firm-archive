@@ -26,7 +26,7 @@ import java.util.List;
  */
 @Tag(name = "晋升管理", description = "职级通道与晋升申请管理接口")
 @RestController
-@RequestMapping("/api/hr/promotion")
+@RequestMapping("/hr/promotion")
 @RequiredArgsConstructor
 public class PromotionController {
 

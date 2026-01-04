@@ -2,6 +2,7 @@ package com.lawfirm.interfaces.rest.document;
 
 import com.lawfirm.application.document.command.BatchGenerateDocumentCommand;
 import com.lawfirm.application.document.command.CreateDocumentTemplateCommand;
+import com.lawfirm.application.document.command.UpdateDocumentTemplateCommand;
 import com.lawfirm.application.document.command.GenerateDocumentCommand;
 import com.lawfirm.application.document.command.PreviewTemplateCommand;
 import com.lawfirm.application.document.dto.DocumentDTO;
@@ -26,7 +27,7 @@ import java.util.Map;
  */
 @Tag(name = "文档模板", description = "文档模板管理相关接口")
 @RestController
-@RequestMapping("/api/document-templates")
+@RequestMapping("/document/template")
 @RequiredArgsConstructor
 public class DocumentTemplateController {
 
@@ -67,12 +68,8 @@ public class DocumentTemplateController {
     @RequirePermission("doc:template:manage")
     @OperationLog(module = "文档模板", action = "更新模板")
     public Result<DocumentTemplateDTO> update(@PathVariable Long id,
-                                              @RequestParam(required = false) String name,
-                                              @RequestParam(required = false) Long categoryId,
-                                              @RequestParam(required = false) String templateType,
-                                              @RequestParam(required = false) String description,
-                                              @RequestParam(required = false) String status) {
-        return Result.success(templateAppService.updateTemplate(id, name, categoryId, templateType, description, status));
+                                              @Valid @RequestBody UpdateDocumentTemplateCommand command) {
+        return Result.success(templateAppService.updateTemplate(id, command));
     }
 
     /**

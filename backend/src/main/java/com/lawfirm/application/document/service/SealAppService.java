@@ -3,6 +3,7 @@ package com.lawfirm.application.document.service;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lawfirm.application.document.command.CreateSealCommand;
+import com.lawfirm.application.document.command.UpdateSealCommand;
 import com.lawfirm.application.document.dto.SealDTO;
 import com.lawfirm.application.document.dto.SealQueryDTO;
 import com.lawfirm.common.exception.BusinessException;
@@ -90,24 +91,23 @@ public class SealAppService {
      * 更新印章
      */
     @Transactional
-    public SealDTO updateSeal(Long id, String name, Long keeperId, String keeperName, 
-                              String imageUrl, String description) {
+    public SealDTO updateSeal(Long id, UpdateSealCommand command) {
         Seal seal = sealRepository.getByIdOrThrow(id, "印章不存在");
 
-        if (StringUtils.hasText(name)) {
-            seal.setName(name);
+        if (StringUtils.hasText(command.getName())) {
+            seal.setName(command.getName());
         }
-        if (keeperId != null) {
-            seal.setKeeperId(keeperId);
+        if (command.getKeeperId() != null) {
+            seal.setKeeperId(command.getKeeperId());
         }
-        if (keeperName != null) {
-            seal.setKeeperName(keeperName);
+        if (command.getKeeperName() != null) {
+            seal.setKeeperName(command.getKeeperName());
         }
-        if (imageUrl != null) {
-            seal.setImageUrl(imageUrl);
+        if (command.getImageUrl() != null) {
+            seal.setImageUrl(command.getImageUrl());
         }
-        if (description != null) {
-            seal.setDescription(description);
+        if (command.getDescription() != null) {
+            seal.setDescription(command.getDescription());
         }
 
         sealRepository.updateById(seal);

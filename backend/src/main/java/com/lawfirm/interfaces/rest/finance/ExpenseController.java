@@ -26,7 +26,7 @@ import java.util.List;
  * 费用报销控制器
  */
 @RestController
-@RequestMapping("/api/v1/expenses")
+@RequestMapping("/finance/expense")
 @RequiredArgsConstructor
 @Tag(name = "费用报销管理", description = "费用报销申请、审批、成本归集")
 public class ExpenseController {

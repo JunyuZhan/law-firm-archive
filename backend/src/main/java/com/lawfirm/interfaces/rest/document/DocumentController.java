@@ -29,7 +29,7 @@ import java.util.Map;
  */
 @Tag(name = "文档管理", description = "文档管理相关接口")
 @RestController
-@RequestMapping("/api/documents")
+@RequestMapping("/document")
 @RequiredArgsConstructor
 public class DocumentController {
 

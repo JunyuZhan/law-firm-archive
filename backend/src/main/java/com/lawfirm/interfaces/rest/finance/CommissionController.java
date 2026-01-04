@@ -24,7 +24,7 @@ import java.util.Map;
  * 提成管理控制器
  */
 @RestController
-@RequestMapping("/api/v1/commissions")
+@RequestMapping("/finance/commission")
 @RequiredArgsConstructor
 @Tag(name = "提成管理", description = "提成规则配置和提成计算")
 public class CommissionController {

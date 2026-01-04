@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.*;
  */
 @Tag(name = "发展规划", description = "个人发展规划管理接口")
 @RestController
-@RequestMapping("/api/hr/development-plans")
+@RequestMapping("/hr/development-plan")
 @RequiredArgsConstructor
 public class DevelopmentPlanController {
 

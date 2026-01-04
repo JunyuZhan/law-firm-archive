@@ -22,7 +22,7 @@ import java.util.List;
  * 案源管理控制器
  */
 @RestController
-@RequestMapping("/api/v1/leads")
+@RequestMapping("/client/lead")
 @RequiredArgsConstructor
 @Tag(name = "案源管理", description = "案源线索登记、跟进和转化")
 public class LeadController {

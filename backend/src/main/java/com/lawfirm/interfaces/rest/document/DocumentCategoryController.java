@@ -14,7 +14,7 @@ import java.util.List;
  * 文档分类接口
  */
 @RestController
-@RequestMapping("/api/document-categories")
+@RequestMapping("/document/category")
 @RequiredArgsConstructor
 public class DocumentCategoryController {
 

@@ -23,7 +23,7 @@ import java.util.Map;
  */
 @Tag(name = "自定义报表模板", description = "报表模板管理接口")
 @RestController
-@RequestMapping("/api/report-templates")
+@RequestMapping("/workbench/report-template")
 @RequiredArgsConstructor
 public class ReportTemplateController {
 

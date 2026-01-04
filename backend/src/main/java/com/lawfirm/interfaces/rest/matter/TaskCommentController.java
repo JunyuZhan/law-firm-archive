@@ -19,7 +19,7 @@ import java.util.List;
  */
 @Tag(name = "任务协作", description = "任务评论、附件、@提醒等协作功能")
 @RestController
-@RequestMapping("/api/tasks/{taskId}/comments")
+@RequestMapping("/tasks/{taskId}/comments")
 @RequiredArgsConstructor
 public class TaskCommentController {
 

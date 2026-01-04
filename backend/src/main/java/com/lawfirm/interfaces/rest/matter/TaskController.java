@@ -21,7 +21,7 @@ import java.util.List;
  * 任务管理接口
  */
 @RestController
-@RequestMapping("/api/tasks")
+@RequestMapping("/tasks")
 @RequiredArgsConstructor
 public class TaskController {
 

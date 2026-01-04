@@ -114,14 +114,21 @@ INSERT INTO sys_menu (id, parent_id, name, path, component, permission, icon, me
 (92, 9, '请假管理', '/admin/leave', 'admin/leave/index', 'admin:leave:list', 'CalendarOutlined', 'MENU', 2),
 (93, 9, '会议室预约', '/admin/meeting-room', 'admin/meeting-room/index', 'admin:meeting:list', 'ScheduleOutlined', 'MENU', 3),
 (94, 9, '资产管理', '/admin/asset', 'admin/asset/index', 'admin:asset:list', 'ShopOutlined', 'MENU', 4),
-(95, 9, '采购管理', '/admin/purchase', 'admin/purchase/index', 'admin:purchase:list', 'ShoppingCartOutlined', 'MENU', 5);
+(95, 9, '采购管理', '/admin/purchase', 'admin/purchase/index', 'admin:purchase:list', 'ShoppingCartOutlined', 'MENU', 5),
+(96, 9, '供应商管理', '/admin/supplier', 'admin/supplier/index', 'admin:supplier:list', 'ShopOutlined', 'MENU', 6),
+(97, 9, '加班管理', '/admin/overtime', 'admin/overtime/index', 'admin:overtime:list', 'ClockCircleOutlined', 'MENU', 7),
+(98, 9, '资产盘点', '/admin/asset-inventory', 'admin/asset-inventory/index', 'admin:asset-inventory:list', 'FileSearchOutlined', 'MENU', 8),
+(99, 9, '外出管理', '/admin/go-out', 'admin/go-out/index', 'admin:go-out:list', 'ExportOutlined', 'MENU', 9),
+(100, 9, '会议记录', '/admin/meeting-record', 'admin/meeting-record/index', 'admin:meeting-record:list', 'FileTextOutlined', 'MENU', 10);
 
 -- 人力资源子菜单 (parent_id = 10)
 INSERT INTO sys_menu (id, parent_id, name, path, component, permission, icon, menu_type, sort_order) VALUES
 (101, 10, '培训管理', '/hr/training', 'hr/training/index', 'hr:training:list', 'ReadOutlined', 'MENU', 1),
 (102, 10, '绩效考核', '/hr/performance', 'hr/performance/index', 'hr:performance:list', 'TrophyOutlined', 'MENU', 2),
 (103, 10, '晋升管理', '/hr/promotion', 'hr/promotion/index', 'hr:promotion:list', 'RiseOutlined', 'MENU', 3),
-(104, 10, '发展计划', '/hr/development', 'hr/development/index', 'hr:development:list', 'AimOutlined', 'MENU', 4);
+(104, 10, '发展计划', '/hr/development', 'hr/development/index', 'hr:development:list', 'AimOutlined', 'MENU', 4),
+(105, 10, '转正管理', '/hr/regularization', 'hr/regularization/index', 'hr:regularization:list', 'CheckSquareOutlined', 'MENU', 5),
+(106, 10, '离职管理', '/hr/resignation', 'hr/resignation/index', 'hr:resignation:list', 'ExportOutlined', 'MENU', 6);
 
 -- 知识库子菜单 (parent_id = 11)
 INSERT INTO sys_menu (id, parent_id, name, path, component, permission, icon, menu_type, sort_order) VALUES

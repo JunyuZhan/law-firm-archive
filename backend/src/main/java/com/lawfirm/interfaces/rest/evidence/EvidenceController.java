@@ -2,6 +2,7 @@ package com.lawfirm.interfaces.rest.evidence;
 
 import com.lawfirm.application.evidence.command.CreateCrossExamCommand;
 import com.lawfirm.application.evidence.command.CreateEvidenceCommand;
+import com.lawfirm.application.evidence.command.UpdateEvidenceCommand;
 import com.lawfirm.application.evidence.dto.EvidenceCrossExamDTO;
 import com.lawfirm.application.evidence.dto.EvidenceDTO;
 import com.lawfirm.application.evidence.dto.EvidenceQueryDTO;
@@ -20,7 +21,7 @@ import java.util.List;
  * 证据管理接口
  */
 @RestController
-@RequestMapping("/api/evidences")
+@RequestMapping("/evidence")
 @RequiredArgsConstructor
 public class EvidenceController {
 
@@ -61,19 +62,8 @@ public class EvidenceController {
     @RequirePermission("evidence:edit")
     @OperationLog(module = "证据管理", action = "更新证据")
     public Result<EvidenceDTO> update(@PathVariable Long id,
-                                      @RequestParam(required = false) String name,
-                                      @RequestParam(required = false) String evidenceType,
-                                      @RequestParam(required = false) String source,
-                                      @RequestParam(required = false) String groupName,
-                                      @RequestParam(required = false) String provePurpose,
-                                      @RequestParam(required = false) String description,
-                                      @RequestParam(required = false) Boolean isOriginal,
-                                      @RequestParam(required = false) Integer originalCount,
-                                      @RequestParam(required = false) Integer copyCount,
-                                      @RequestParam(required = false) Integer pageStart,
-                                      @RequestParam(required = false) Integer pageEnd) {
-        return Result.success(evidenceAppService.updateEvidence(id, name, evidenceType, source,
-                groupName, provePurpose, description, isOriginal, originalCount, copyCount, pageStart, pageEnd));
+                                      @Valid @RequestBody UpdateEvidenceCommand command) {
+        return Result.success(evidenceAppService.updateEvidence(id, command));
     }
 
     /**

@@ -1,6 +1,7 @@
 package com.lawfirm.interfaces.rest.document;
 
 import com.lawfirm.application.document.command.CreateSealCommand;
+import com.lawfirm.application.document.command.UpdateSealCommand;
 import com.lawfirm.application.document.dto.SealDTO;
 import com.lawfirm.application.document.dto.SealQueryDTO;
 import com.lawfirm.application.document.service.SealAppService;
@@ -16,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
  * 印章管理接口
  */
 @RestController
-@RequestMapping("/api/seals")
+@RequestMapping("/document/seal")
 @RequiredArgsConstructor
 public class SealController {
 
@@ -57,12 +58,8 @@ public class SealController {
     @RequirePermission("seal:manage")
     @OperationLog(module = "印章管理", action = "更新印章")
     public Result<SealDTO> update(@PathVariable Long id,
-                                  @RequestParam(required = false) String name,
-                                  @RequestParam(required = false) Long keeperId,
-                                  @RequestParam(required = false) String keeperName,
-                                  @RequestParam(required = false) String imageUrl,
-                                  @RequestParam(required = false) String description) {
-        return Result.success(sealAppService.updateSeal(id, name, keeperId, keeperName, imageUrl, description));
+                                  @Valid @RequestBody UpdateSealCommand command) {
+        return Result.success(sealAppService.updateSeal(id, command));
     }
 
     /**

@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lawfirm.application.evidence.command.CreateCrossExamCommand;
 import com.lawfirm.application.evidence.command.CreateEvidenceCommand;
+import com.lawfirm.application.evidence.command.UpdateEvidenceCommand;
 import com.lawfirm.application.evidence.dto.EvidenceCrossExamDTO;
 import com.lawfirm.application.evidence.dto.EvidenceDTO;
 import com.lawfirm.application.evidence.dto.EvidenceQueryDTO;
@@ -115,23 +116,20 @@ public class EvidenceAppService {
      * 更新证据
      */
     @Transactional
-    public EvidenceDTO updateEvidence(Long id, String name, String evidenceType, String source,
-                                      String groupName, String provePurpose, String description,
-                                      Boolean isOriginal, Integer originalCount, Integer copyCount,
-                                      Integer pageStart, Integer pageEnd) {
+    public EvidenceDTO updateEvidence(Long id, UpdateEvidenceCommand command) {
         Evidence evidence = evidenceRepository.getByIdOrThrow(id, "证据不存在");
 
-        if (StringUtils.hasText(name)) evidence.setName(name);
-        if (StringUtils.hasText(evidenceType)) evidence.setEvidenceType(evidenceType);
-        if (source != null) evidence.setSource(source);
-        if (groupName != null) evidence.setGroupName(groupName);
-        if (provePurpose != null) evidence.setProvePurpose(provePurpose);
-        if (description != null) evidence.setDescription(description);
-        if (isOriginal != null) evidence.setIsOriginal(isOriginal);
-        if (originalCount != null) evidence.setOriginalCount(originalCount);
-        if (copyCount != null) evidence.setCopyCount(copyCount);
-        if (pageStart != null) evidence.setPageStart(pageStart);
-        if (pageEnd != null) evidence.setPageEnd(pageEnd);
+        if (StringUtils.hasText(command.getName())) evidence.setName(command.getName());
+        if (StringUtils.hasText(command.getEvidenceType())) evidence.setEvidenceType(command.getEvidenceType());
+        if (command.getSource() != null) evidence.setSource(command.getSource());
+        if (command.getGroupName() != null) evidence.setGroupName(command.getGroupName());
+        if (command.getProvePurpose() != null) evidence.setProvePurpose(command.getProvePurpose());
+        if (command.getDescription() != null) evidence.setDescription(command.getDescription());
+        if (command.getIsOriginal() != null) evidence.setIsOriginal(command.getIsOriginal());
+        if (command.getOriginalCount() != null) evidence.setOriginalCount(command.getOriginalCount());
+        if (command.getCopyCount() != null) evidence.setCopyCount(command.getCopyCount());
+        if (command.getPageStart() != null) evidence.setPageStart(command.getPageStart());
+        if (command.getPageEnd() != null) evidence.setPageEnd(command.getPageEnd());
 
         evidenceRepository.updateById(evidence);
         log.info("证据更新成功: {}", evidence.getName());

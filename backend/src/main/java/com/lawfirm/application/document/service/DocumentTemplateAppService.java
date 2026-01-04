@@ -3,6 +3,7 @@ package com.lawfirm.application.document.service;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lawfirm.application.document.command.CreateDocumentTemplateCommand;
+import com.lawfirm.application.document.command.UpdateDocumentTemplateCommand;
 import com.lawfirm.application.document.dto.DocumentTemplateDTO;
 import com.lawfirm.application.document.dto.DocumentTemplateQueryDTO;
 import com.lawfirm.common.exception.BusinessException;
@@ -107,24 +108,23 @@ public class DocumentTemplateAppService {
      * 更新模板
      */
     @Transactional
-    public DocumentTemplateDTO updateTemplate(Long id, String name, Long categoryId, String templateType,
-                                              String description, String status) {
+    public DocumentTemplateDTO updateTemplate(Long id, UpdateDocumentTemplateCommand command) {
         DocumentTemplate template = templateRepository.getByIdOrThrow(id, "模板不存在");
 
-        if (StringUtils.hasText(name)) {
-            template.setName(name);
+        if (StringUtils.hasText(command.getName())) {
+            template.setName(command.getName());
         }
-        if (categoryId != null) {
-            template.setCategoryId(categoryId);
+        if (command.getCategoryId() != null) {
+            template.setCategoryId(command.getCategoryId());
         }
-        if (StringUtils.hasText(templateType)) {
-            template.setTemplateType(templateType);
+        if (StringUtils.hasText(command.getTemplateType())) {
+            template.setTemplateType(command.getTemplateType());
         }
-        if (description != null) {
-            template.setDescription(description);
+        if (command.getDescription() != null) {
+            template.setDescription(command.getDescription());
         }
-        if (StringUtils.hasText(status)) {
-            template.setStatus(status);
+        if (StringUtils.hasText(command.getStatus())) {
+            template.setStatus(command.getStatus());
         }
 
         templateRepository.updateById(template);

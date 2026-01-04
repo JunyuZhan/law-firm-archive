@@ -18,7 +18,7 @@ import java.util.List;
  * 用印申请接口
  */
 @RestController
-@RequestMapping("/api/seal-applications")
+@RequestMapping("/document/seal-application")
 @RequiredArgsConstructor
 public class SealApplicationController {
 

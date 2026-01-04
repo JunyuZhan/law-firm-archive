@@ -19,7 +19,7 @@ import java.util.List;
  * 日程管理接口
  */
 @RestController
-@RequestMapping("/api/schedules")
+@RequestMapping("/schedules")
 @RequiredArgsConstructor
 public class ScheduleController {
 

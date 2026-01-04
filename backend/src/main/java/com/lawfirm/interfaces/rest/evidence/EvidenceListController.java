@@ -21,7 +21,7 @@ import java.util.Map;
  */
 @Tag(name = "证据清单")
 @RestController
-@RequestMapping("/api/evidence-lists")
+@RequestMapping("/evidence/list")
 @RequiredArgsConstructor
 public class EvidenceListController {
 

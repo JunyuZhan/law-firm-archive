@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
  */
 @Tag(name = "在线计时器", description = "在线计时器工具，用于记录工时")
 @RestController
-@RequestMapping("/api/timer")
+@RequestMapping("/timer")
 @RequiredArgsConstructor
 public class TimerController {
 

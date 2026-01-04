@@ -18,7 +18,7 @@ import java.util.List;
  * 登录日志控制器
  */
 @RestController
-@RequestMapping("/api/v1/login-logs")
+@RequestMapping("/system/login-log")
 @RequiredArgsConstructor
 @Tag(name = "登录日志", description = "登录日志查询和管理")
 public class LoginLogController {
