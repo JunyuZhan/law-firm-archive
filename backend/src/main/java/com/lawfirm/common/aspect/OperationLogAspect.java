@@ -3,6 +3,7 @@ package com.lawfirm.common.aspect;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lawfirm.common.annotation.OperationLog;
 import com.lawfirm.common.util.SecurityUtils;
+import com.lawfirm.domain.system.repository.OperationLogRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -10,12 +11,12 @@ import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.lang.reflect.Method;
-import java.time.LocalDateTime;
 
 /**
  * 操作日志切面
@@ -27,6 +28,7 @@ import java.time.LocalDateTime;
 public class OperationLogAspect {
 
     private final ObjectMapper objectMapper;
+    private final OperationLogRepository operationLogRepository;
 
     @Around("@annotation(com.lawfirm.common.annotation.OperationLog)")
     public Object logOperation(ProceedingJoinPoint joinPoint) throws Throwable {
@@ -94,8 +96,11 @@ public class OperationLogAspect {
                     errorMsg
             );
 
-            // TODO: 保存到数据库
-            // operationLogRepository.save(...)
+            // 7. 异步保存到数据库
+            if (userId != null) {
+                String methodName = signature.getDeclaringTypeName() + "." + signature.getMethod().getName();
+                saveLogAsync(annotation, userId, username, requestUri, requestMethod, ip, params, methodName, costTime, success, errorMsg);
+            }
         }
 
         return result;
@@ -118,6 +123,38 @@ public class OperationLogAspect {
             ip = ip.split(",")[0].trim();
         }
         return ip;
+    }
+
+    /**
+     * 异步保存操作日志
+     */
+    @Async
+    private void saveLogAsync(OperationLog annotation, Long userId, String username,
+                              String requestUri, String requestMethod, String ip,
+                              String params, String methodName, long costTime, boolean success, String errorMsg) {
+        try {
+            com.lawfirm.domain.system.entity.OperationLog logEntity = 
+                com.lawfirm.domain.system.entity.OperationLog.builder()
+                    .userId(userId)
+                    .userName(username)
+                    .module(annotation.module())
+                    .operationType(annotation.action())
+                    .description(annotation.module() + " - " + annotation.action())
+                    .method(methodName)
+                    .requestUrl(requestUri)
+                    .requestMethod(requestMethod)
+                    .requestParams(params)
+                    .ipAddress(ip)
+                    .executionTime(costTime)
+                    .status(success ? com.lawfirm.domain.system.entity.OperationLog.STATUS_SUCCESS 
+                                    : com.lawfirm.domain.system.entity.OperationLog.STATUS_FAIL)
+                    .errorMessage(errorMsg)
+                    .build();
+
+            operationLogRepository.save(logEntity);
+        } catch (Exception e) {
+            log.error("保存操作日志失败", e);
+        }
     }
 }
 

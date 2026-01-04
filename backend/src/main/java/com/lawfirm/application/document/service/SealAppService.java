@@ -140,7 +140,10 @@ public class SealAppService {
         Seal seal = sealRepository.getByIdOrThrow(id, "印章不存在");
         
         // 检查是否有待处理的用印申请
-        // TODO: 添加检查逻辑
+        int pendingCount = applicationRepository.countPendingBySealId(id);
+        if (pendingCount > 0) {
+            throw new BusinessException("该印章存在待处理或已批准的用印申请，无法删除");
+        }
 
         sealRepository.removeById(id);
         log.info("印章删除成功: {}", seal.getName());

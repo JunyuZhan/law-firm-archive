@@ -4,7 +4,6 @@ import com.lawfirm.application.workbench.dto.WorkbenchDTO;
 import com.lawfirm.application.workbench.dto.WorkbenchDTO.*;
 import com.lawfirm.common.util.SecurityUtils;
 import com.lawfirm.domain.matter.entity.Schedule;
-import com.lawfirm.domain.matter.entity.Task;
 import com.lawfirm.domain.matter.repository.ScheduleRepository;
 import com.lawfirm.domain.matter.repository.TaskRepository;
 import com.lawfirm.domain.workbench.repository.ApprovalRepository;
@@ -16,7 +15,6 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -35,42 +33,67 @@ public class WorkbenchAppService {
     private final ScheduleRepository scheduleRepository;
     private final MatterMapper matterMapper;
     private final TimesheetMapper timesheetMapper;
+    private final com.lawfirm.infrastructure.persistence.mapper.NotificationMapper notificationMapper;
 
     /**
      * 获取工作台数据
      */
     public WorkbenchDTO getWorkbenchData() {
-        Long userId = SecurityUtils.getCurrentUserId();
-        
-        return WorkbenchDTO.builder()
-                .todoSummary(getTodoSummary(userId))
-                .projectSummary(getProjectSummary(userId))
-                .timesheetSummary(getTimesheetSummary(userId))
-                .todoItems(getTodoItems(userId))
-                .todaySchedules(getTodaySchedules(userId))
-                .recentProjects(getRecentProjects(userId))
-                .build();
+        try {
+            Long userId = SecurityUtils.getCurrentUserId();
+            
+            return WorkbenchDTO.builder()
+                    .todoSummary(getTodoSummary(userId))
+                    .projectSummary(getProjectSummary(userId))
+                    .timesheetSummary(getTimesheetSummary(userId))
+                    .todoItems(getTodoItems(userId))
+                    .todaySchedules(getTodaySchedules(userId))
+                    .recentProjects(getRecentProjects(userId))
+                    .build();
+        } catch (Exception e) {
+            log.error("获取工作台数据失败", e);
+            // 返回空数据，避免500错误
+            return WorkbenchDTO.builder()
+                    .todoSummary(TodoSummary.builder().pendingApproval(0).pendingTask(0).overdueTask(0).total(0).build())
+                    .projectSummary(ProjectSummary.builder().inProgress(0).pendingApproval(0).closed(0).total(0).build())
+                    .timesheetSummary(TimesheetSummary.builder().totalHours(BigDecimal.ZERO).billableHours(BigDecimal.ZERO).recordCount(0).build())
+                    .todoItems(new ArrayList<>())
+                    .todaySchedules(new ArrayList<>())
+                    .recentProjects(new ArrayList<>())
+                    .build();
+        }
     }
 
     /**
      * 获取待办事项统计
      */
     public TodoSummary getTodoSummary(Long userId) {
-        // 待审批数量
-        int pendingApproval = approvalRepository.countPendingByApproverId(userId);
-        
-        // 待办任务数量
-        int pendingTask = taskRepository.countPendingByAssigneeId(userId);
-        
-        // 逾期任务数量
-        int overdueTask = taskRepository.countOverdueByAssigneeId(userId);
-        
-        return TodoSummary.builder()
-                .pendingApproval(pendingApproval)
-                .pendingTask(pendingTask)
-                .overdueTask(overdueTask)
-                .total(pendingApproval + pendingTask)
-                .build();
+        try {
+            // 待审批数量
+            int pendingApproval = approvalRepository.countPendingByApproverId(userId);
+            
+            // 待办任务数量
+            int pendingTask = taskRepository.countPendingByAssigneeId(userId);
+            
+            // 逾期任务数量
+            int overdueTask = taskRepository.countOverdueByAssigneeId(userId);
+            
+            return TodoSummary.builder()
+                    .pendingApproval(pendingApproval)
+                    .pendingTask(pendingTask)
+                    .overdueTask(overdueTask)
+                    .total(pendingApproval + pendingTask)
+                    .build();
+        } catch (Exception e) {
+            log.error("获取待办事项统计失败: userId={}", userId, e);
+            // 返回空统计，避免500错误
+            return TodoSummary.builder()
+                    .pendingApproval(0)
+                    .pendingTask(0)
+                    .overdueTask(0)
+                    .total(0)
+                    .build();
+        }
     }
 
     /**
@@ -195,7 +218,11 @@ public class WorkbenchAppService {
      * 获取消息通知数量
      */
     public int getUnreadNotificationCount(Long userId) {
-        // TODO: 实现消息通知统计
-        return 0;
+        try {
+            return notificationMapper.countUnread(userId);
+        } catch (Exception e) {
+            log.error("查询未读消息数量失败", e);
+            return 0;
+        }
     }
 }

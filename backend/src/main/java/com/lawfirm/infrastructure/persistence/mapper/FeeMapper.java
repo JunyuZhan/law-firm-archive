@@ -32,5 +32,12 @@ public interface FeeMapper extends BaseMapper<Fee> {
      */
     @Select("SELECT COALESCE(SUM(paid_amount), 0) FROM finance_fee WHERE contract_id = #{contractId} AND deleted = false")
     BigDecimal sumPaidAmountByContractId(@Param("contractId") Long contractId);
+
+    /**
+     * 查询所有待收款记录（用于智能匹配）
+     * 状态为PENDING或PARTIAL的记录
+     */
+    @Select("SELECT * FROM finance_fee WHERE status IN ('PENDING', 'PARTIAL') AND deleted = false ORDER BY planned_date ASC NULLS LAST")
+    List<Fee> selectPendingFees();
 }
 

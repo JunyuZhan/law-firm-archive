@@ -50,12 +50,18 @@ public interface UserMapper extends BaseMapper<User> {
         </script>
         """)
     IPage<User> selectUserPage(Page<User> page,
-                                @Param("username") String username,
-                                @Param("realName") String realName,
-                                @Param("phone") String phone,
-                                @Param("departmentId") Long departmentId,
-                                @Param("status") String status,
-                                @Param("compensationType") String compensationType);
+                               @Param("username") String username,
+                               @Param("realName") String realName,
+                               @Param("phone") String phone,
+                               @Param("departmentId") Long departmentId,
+                               @Param("status") String status,
+                               @Param("compensationType") String compensationType);
+
+    /**
+     * 统计部门下的用户数量
+     */
+    @Select("SELECT COUNT(*) FROM sys_user WHERE department_id = #{departmentId} AND deleted = false")
+    int countByDepartmentId(@Param("departmentId") Long departmentId);
 
     /**
      * 查询用户的角色编码列表
@@ -114,4 +120,15 @@ public interface UserMapper extends BaseMapper<User> {
         LIMIT 1
         """)
     List<Long> selectUserIdsByRoleCode(@Param("roleCode") String roleCode);
+
+    /**
+     * 查询行政人员（角色为ADMIN的用户）
+     */
+    @Select("""
+        SELECT DISTINCT u.* FROM sys_user u
+        INNER JOIN sys_user_role ur ON u.id = ur.user_id
+        INNER JOIN sys_role r ON ur.role_id = r.id
+        WHERE r.role_code = 'ADMIN' AND u.deleted = false AND r.deleted = false AND u.status = 'ACTIVE'
+        """)
+    List<User> selectAdminUsers();
 }

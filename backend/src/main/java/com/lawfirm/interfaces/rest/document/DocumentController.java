@@ -121,6 +121,17 @@ public class DocumentController {
     }
 
     /**
+     * 回退到指定版本
+     */
+    @PostMapping("/{id}/versions/{version}/rollback")
+    @RequirePermission("doc:edit")
+    @OperationLog(module = "文档管理", action = "版本回退")
+    @Operation(summary = "回退到指定版本", description = "将文档回退到指定的历史版本，会创建一个新版本")
+    public Result<DocumentDTO> rollbackToVersion(@PathVariable Long id, @PathVariable Integer version) {
+        return Result.success(documentAppService.rollbackToVersion(id, version));
+    }
+
+    /**
      * 删除文档
      */
     @DeleteMapping("/{id}")

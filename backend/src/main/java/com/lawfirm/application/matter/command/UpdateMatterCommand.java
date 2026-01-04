@@ -17,6 +17,8 @@ public class UpdateMatterCommand {
 
     private String name;
     private String matterType;
+    private String caseType;
+    private String causeOfAction;
     private String businessType;
     private Long clientId;
     private String opposingParty;

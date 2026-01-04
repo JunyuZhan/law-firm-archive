@@ -39,6 +39,7 @@ public class ClientAppService {
     private final ClientMapper clientMapper;
     private final ExcelImportExportService excelImportExportService;
     private final UserRepository userRepository;
+    private final com.lawfirm.infrastructure.persistence.mapper.MatterMapper matterMapper;
 
     /**
      * 分页查询客户
@@ -196,7 +197,11 @@ public class ClientAppService {
     public void deleteClient(Long id) {
         Client client = clientRepository.getByIdOrThrow(id, "客户不存在");
         
-        // TODO: 检查是否有关联案件
+        // 检查是否有关联案件
+        int matterCount = matterMapper.countByClientId(id);
+        if (matterCount > 0) {
+            throw new BusinessException("该客户存在关联案件，无法删除");
+        }
         
         clientMapper.deleteById(id);
         log.info("客户删除成功: {}", client.getName());

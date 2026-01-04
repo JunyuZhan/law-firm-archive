@@ -1,5 +1,6 @@
 package com.lawfirm.domain.workbench.entity;
 
+import com.baomidou.mybatisplus.annotation.TableName;
 import com.lawfirm.common.base.BaseEntity;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
@@ -13,6 +14,7 @@ import lombok.experimental.SuperBuilder;
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode(callSuper = true)
+@TableName("workbench_approval")
 public class Approval extends BaseEntity {
 
     /**

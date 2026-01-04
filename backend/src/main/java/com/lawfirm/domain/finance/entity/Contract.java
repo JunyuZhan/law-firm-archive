@@ -32,6 +32,11 @@ public class Contract extends BaseEntity {
     private String name;
 
     /**
+     * 使用的模板ID
+     */
+    private Long templateId;
+
+    /**
      * 客户ID
      */
     private Long clientId;
@@ -97,6 +102,11 @@ public class Contract extends BaseEntity {
     private Long departmentId;
 
     /**
+     * 合同内容（基于模板生成）
+     */
+    private String content;
+
+    /**
      * 合同文件URL
      */
     private String fileUrl;
@@ -110,4 +120,61 @@ public class Contract extends BaseEntity {
      * 备注
      */
     private String remark;
+
+    // ========== 扩展字段（合同模块完善）==========
+
+    /**
+     * 案件类型：CIVIL-民事, CRIMINAL-刑事, ADMINISTRATIVE-行政, BANKRUPTCY-破产, IP-知识产权, ARBITRATION-仲裁, ENFORCEMENT-执行, LEGAL_COUNSEL-法律顾问, SPECIAL_SERVICE-专项服务
+     */
+    private String caseType;
+
+    /**
+     * 案由代码（对应前端案由常量的code）
+     */
+    private String causeOfAction;
+
+    /**
+     * 审理阶段：FIRST_INSTANCE-一审, SECOND_INSTANCE-二审, RETRIAL-再审, EXECUTION-执行, NON_LITIGATION-非诉
+     */
+    private String trialStage;
+
+    /**
+     * 标的金额
+     */
+    private BigDecimal claimAmount;
+
+    /**
+     * 管辖法院
+     */
+    private String jurisdictionCourt;
+
+    /**
+     * 对方当事人
+     */
+    private String opposingParty;
+
+    /**
+     * 利冲审查状态：PENDING-待审查, PASSED-已通过, FAILED-未通过, NOT_REQUIRED-无需审查
+     */
+    private String conflictCheckStatus;
+
+    /**
+     * 归档状态：NOT_ARCHIVED-未归档, ARCHIVED-已归档, DESTROYED-已销毁
+     */
+    private String archiveStatus;
+
+    /**
+     * 预支差旅费
+     */
+    private BigDecimal advanceTravelFee;
+
+    /**
+     * 风险代理比例（0-100）
+     */
+    private BigDecimal riskRatio;
+
+    /**
+     * 印章使用记录（JSON格式）
+     */
+    private String sealRecord;
 }

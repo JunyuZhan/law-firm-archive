@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.DbType;
 import com.baomidou.mybatisplus.core.handlers.MetaObjectHandler;
 import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor;
+import com.lawfirm.common.util.SecurityUtils;
 import org.apache.ibatis.reflection.MetaObject;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -35,17 +36,31 @@ public class MybatisPlusConfig {
             @Override
             public void insertFill(MetaObject metaObject) {
                 this.strictInsertFill(metaObject, "createdAt", LocalDateTime.class, LocalDateTime.now());
-                this.strictInsertFill(metaObject, "updatedAt", LocalDateTime.class, LocalDateTime.now());
+                this.strictUpdateFill(metaObject, "updatedAt", LocalDateTime.class, LocalDateTime.now());
                 this.strictInsertFill(metaObject, "deleted", Boolean.class, false);
-                // TODO: 从SecurityContext获取当前用户ID
-                // this.strictInsertFill(metaObject, "createdBy", Long.class, getCurrentUserId());
+                // 从SecurityContext获取当前用户ID
+                try {
+                    Long userId = SecurityUtils.getUserId();
+                    if (userId != null && metaObject.hasSetter("createdBy")) {
+                        this.strictInsertFill(metaObject, "createdBy", Long.class, userId);
+                    }
+                } catch (Exception e) {
+                    // 忽略异常，允许在没有认证上下文的情况下创建记录
+                }
             }
 
             @Override
             public void updateFill(MetaObject metaObject) {
                 this.strictUpdateFill(metaObject, "updatedAt", LocalDateTime.class, LocalDateTime.now());
-                // TODO: 从SecurityContext获取当前用户ID
-                // this.strictUpdateFill(metaObject, "updatedBy", Long.class, getCurrentUserId());
+                // 从SecurityContext获取当前用户ID
+                try {
+                    Long userId = SecurityUtils.getUserId();
+                    if (userId != null && metaObject.hasSetter("updatedBy")) {
+                        this.strictUpdateFill(metaObject, "updatedBy", Long.class, userId);
+                    }
+                } catch (Exception e) {
+                    // 忽略异常，允许在没有认证上下文的情况下更新记录
+                }
             }
         };
     }

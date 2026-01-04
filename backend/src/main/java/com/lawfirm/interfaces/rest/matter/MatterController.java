@@ -8,8 +8,10 @@ import com.lawfirm.application.matter.dto.MatterQueryDTO;
 import com.lawfirm.application.matter.dto.MatterTimelineDTO;
 import com.lawfirm.application.matter.service.MatterAppService;
 import com.lawfirm.application.matter.service.MatterTimelineAppService;
+
 import com.lawfirm.common.annotation.OperationLog;
 import com.lawfirm.common.annotation.RequirePermission;
+import com.lawfirm.common.exception.BusinessException;
 import com.lawfirm.common.result.PageResult;
 import com.lawfirm.common.result.Result;
 import io.swagger.v3.oas.annotations.Operation;
@@ -87,14 +89,15 @@ public class MatterController {
     }
 
     /**
-     * 删除案件
+     * 删除案件（已禁用 - 项目不能删除，只能编辑和归档）
+     * @deprecated 项目不能删除，只能通过状态改为 ARCHIVED 来归档
      */
+    @Deprecated
     @DeleteMapping("/{id}")
     @RequirePermission("matter:delete")
     @OperationLog(module = "案件管理", action = "删除案件")
     public Result<Void> deleteMatter(@PathVariable Long id) {
-        matterAppService.deleteMatter(id);
-        return Result.success();
+        throw new BusinessException("项目不能删除，只能编辑和归档。请将项目状态改为归档(ARCHIVED)");
     }
 
     /**
@@ -178,6 +181,20 @@ public class MatterController {
     public Result<List<MatterTimelineDTO>> getMatterTimeline(@PathVariable Long id) {
         List<MatterTimelineDTO> timeline = matterTimelineAppService.getMatterTimeline(id);
         return Result.success(timeline);
+    }
+
+    /**
+     * 基于合同创建项目
+     * 从已审批的合同自动填充项目信息
+     */
+    @PostMapping("/from-contract/{contractId}")
+    @RequirePermission("matter:create")
+    @OperationLog(module = "案件管理", action = "基于合同创建项目")
+    @Operation(summary = "基于合同创建项目", description = "从已审批的合同自动填充项目信息并创建项目")
+    public Result<MatterDTO> createMatterFromContract(@PathVariable Long contractId,
+                                                       @RequestBody @Valid CreateMatterCommand command) {
+        MatterDTO matter = matterAppService.createMatterFromContract(contractId, command);
+        return Result.success(matter);
     }
 
     // ========== Request DTOs ==========

@@ -105,8 +105,9 @@ public class ArchiveAppService {
         // 验证案件存在
         Matter matter = matterRepository.getByIdOrThrow(command.getMatterId(), "案件不存在");
         
-        if (!"CLOSED".equals(matter.getStatus())) {
-            throw new BusinessException("只有已结案的案件才能创建档案");
+        // 允许从 CLOSED 或 ARCHIVED 状态的项目创建档案
+        if (!"CLOSED".equals(matter.getStatus()) && !"ARCHIVED".equals(matter.getStatus())) {
+            throw new BusinessException("只有已结案或已归档的案件才能创建档案");
         }
 
         // 检查是否已存在档案
@@ -205,6 +206,77 @@ public class ArchiveAppService {
      */
     public List<Object> getPendingMatters() {
         return archiveMapper.selectPendingArchives();
+    }
+
+    /**
+     * 根据项目ID查询档案（如果存在）
+     */
+    public ArchiveDTO getArchiveByMatterId(Long matterId) {
+        Archive archive = archiveRepository.lambdaQuery()
+                .eq(Archive::getMatterId, matterId)
+                .last("LIMIT 1")
+                .one();
+        return archive != null ? toDTO(archive) : null;
+    }
+
+    /**
+     * 从项目创建档案（用于项目归档时自动创建）
+     */
+    @Transactional
+    public ArchiveDTO createArchiveFromMatter(CreateArchiveCommand command) {
+        // 验证案件存在
+        Matter matter = matterRepository.getByIdOrThrow(command.getMatterId(), "案件不存在");
+        
+        // 允许从 CLOSED 或 ARCHIVED 状态的项目创建档案
+        if (!"CLOSED".equals(matter.getStatus()) && !"ARCHIVED".equals(matter.getStatus())) {
+            throw new BusinessException("只有已结案或已归档的案件才能创建档案");
+        }
+
+        // 检查是否已存在档案
+        if (archiveRepository.count(
+                new LambdaQueryWrapper<Archive>()
+                        .eq(Archive::getMatterId, command.getMatterId())) > 0) {
+            throw new BusinessException("该案件已存在档案记录");
+        }
+
+        // 生成档案号
+        String archiveNo = generateArchiveNo(command.getArchiveType() != null ? command.getArchiveType() : matter.getMatterType());
+
+        // 确定保管期限（默认10年）
+        String retentionPeriod = command.getRetentionPeriod() != null 
+                ? command.getRetentionPeriod() : "10_YEARS";
+
+        // 确定结案日期
+        LocalDate caseCloseDate = matter.getActualClosingDate() != null 
+                ? matter.getActualClosingDate() : LocalDate.now();
+
+        // 创建档案
+        Archive archive = Archive.builder()
+                .archiveNo(archiveNo)
+                .matterId(command.getMatterId())
+                .archiveName(command.getArchiveName() != null ? command.getArchiveName() : matter.getName() + " - 档案")
+                .archiveType(command.getArchiveType() != null ? command.getArchiveType() : matter.getMatterType())
+                .matterNo(matter.getMatterNo())
+                .matterName(matter.getName())
+                .caseCloseDate(caseCloseDate)
+                .volumeCount(command.getVolumeCount() != null ? command.getVolumeCount() : 1)
+                .pageCount(command.getPageCount())
+                .catalog(command.getCatalog())
+                .retentionPeriod(retentionPeriod)
+                .retentionExpireDate(calculateRetentionExpireDate(caseCloseDate, retentionPeriod))
+                .hasElectronic(command.getHasElectronic() != null ? command.getHasElectronic() : false)
+                .electronicUrl(command.getElectronicUrl())
+                .status("PENDING")
+                .remarks(command.getRemarks())
+                .build();
+
+        archiveRepository.save(archive);
+
+        // 记录操作日志
+        logOperation(archive.getId(), "CREATE", "创建档案", SecurityUtils.getUserId());
+
+        log.info("档案创建成功: {} ({})", archive.getArchiveName(), archive.getArchiveNo());
+        return toDTO(archive);
     }
 
     /**

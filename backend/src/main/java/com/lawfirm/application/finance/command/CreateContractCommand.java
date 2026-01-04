@@ -39,5 +39,52 @@ public class CreateContractCommand {
     private String paymentTerms;
     private String fileUrl;
     private String remark;
+    
+    // ========== 扩展字段（合同模块完善）==========
+    
+    /**
+     * 案件类型：CIVIL-民事, CRIMINAL-刑事, ADMINISTRATIVE-行政等
+     */
+    private String caseType;
+    
+    /**
+     * 案由代码
+     */
+    private String causeOfAction;
+    
+    /**
+     * 审理阶段
+     */
+    private String trialStage;
+    
+    /**
+     * 标的金额
+     */
+    private BigDecimal claimAmount;
+    
+    /**
+     * 管辖法院
+     */
+    private String jurisdictionCourt;
+    
+    /**
+     * 对方当事人
+     */
+    private String opposingParty;
+    
+    /**
+     * 利冲审查状态
+     */
+    private String conflictCheckStatus;
+    
+    /**
+     * 预支差旅费
+     */
+    private BigDecimal advanceTravelFee;
+    
+    /**
+     * 风险代理比例（0-100）
+     */
+    private BigDecimal riskRatio;
 }
 

@@ -28,21 +28,30 @@ public class ApproverService {
 
     /**
      * 查找合同审批人
-     * 规则：根据合同金额和配置的审批角色
+     * 规则：
+     * - 金额 ≥ 阈值（默认10万）：由主任审批（最高级别）
+     * - 金额 < 阈值：由合伙人审批
+     * - 如果找不到对应角色，降级查找
      */
     public Long findContractApprover(java.math.BigDecimal contractAmount) {
-        // 如果合同金额超过阈值，需要合伙人审批
+        // 如果合同金额超过阈值，需要主任审批（最高级别）
         if (contractAmount != null && contractAmount.compareTo(contractAmountThreshold) >= 0) {
+            Long director = findApproverByRole("DIRECTOR");
+            if (director != null) {
+                return director;
+            }
+            // 如果没有主任，降级到合伙人
             return findApproverByRole("PARTNER");
         }
         
-        // 否则由主任或合伙人审批
-        Long director = findApproverByRole("DIRECTOR");
-        if (director != null) {
-            return director;
+        // 普通金额由合伙人审批
+        Long partner = findApproverByRole("PARTNER");
+        if (partner != null) {
+            return partner;
         }
         
-        return findApproverByRole("PARTNER");
+        // 如果没有合伙人，升级到主任
+        return findApproverByRole("DIRECTOR");
     }
 
     /**
@@ -60,15 +69,16 @@ public class ApproverService {
 
     /**
      * 查找利冲检查审批人
-     * 规则：由合伙人或主任审批
+     * 规则：由主任审批（利冲是重要事项）
+     * 如果没有主任，降级到合伙人
      */
     public Long findConflictCheckApprover() {
-        Long partner = findApproverByRole("PARTNER");
-        if (partner != null) {
-            return partner;
+        Long director = findApproverByRole("DIRECTOR");
+        if (director != null) {
+            return director;
         }
         
-        return findApproverByRole("DIRECTOR");
+        return findApproverByRole("PARTNER");
     }
 
     /**

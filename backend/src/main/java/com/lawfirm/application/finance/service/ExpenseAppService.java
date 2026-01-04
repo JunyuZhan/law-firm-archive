@@ -493,7 +493,19 @@ public class ExpenseAppService {
             }
         }
 
-        // TODO: 查询项目名称
+        // 查询项目名称
+        if (expense.getMatterId() != null) {
+            com.lawfirm.domain.matter.entity.Matter matter = matterRepository.findById(expense.getMatterId());
+            if (matter != null) {
+                dto.setMatterName(matter.getName());
+            }
+        }
+        if (expense.getAllocatedToMatterId() != null) {
+            com.lawfirm.domain.matter.entity.Matter matter = matterRepository.findById(expense.getAllocatedToMatterId());
+            if (matter != null) {
+                dto.setMatterName(matter.getName());
+            }
+        }
 
         return dto;
     }
@@ -522,7 +534,13 @@ public class ExpenseAppService {
             }
         }
 
-        // TODO: 查询项目名称
+        // 查询项目名称
+        if (allocation.getMatterId() != null) {
+            com.lawfirm.domain.matter.entity.Matter matter = matterRepository.findById(allocation.getMatterId());
+            if (matter != null) {
+                dto.setMatterName(matter.getName());
+            }
+        }
 
         return dto;
     }
@@ -551,7 +569,13 @@ public class ExpenseAppService {
             }
         }
 
-        // TODO: 查询项目名称
+        // 查询项目名称
+        if (split.getMatterId() != null) {
+            com.lawfirm.domain.matter.entity.Matter matter = matterRepository.findById(split.getMatterId());
+            if (matter != null) {
+                dto.setMatterName(matter.getName());
+            }
+        }
 
         return dto;
     }

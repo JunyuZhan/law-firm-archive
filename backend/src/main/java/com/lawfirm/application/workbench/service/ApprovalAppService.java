@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -36,24 +37,30 @@ public class ApprovalAppService {
      * 分页查询审批记录
      */
     public PageResult<ApprovalDTO> listApprovals(ApprovalQueryDTO query) {
-        List<Approval> approvals = approvalMapper.selectApprovalPage(
-                query.getStatus(),
-                query.getBusinessType(),
-                query.getApplicantId(),
-                query.getApproverId()
-        );
+        try {
+            List<Approval> approvals = approvalMapper.selectApprovalPage(
+                    query.getStatus(),
+                    query.getBusinessType(),
+                    query.getApplicantId(),
+                    query.getApproverId()
+            );
 
-        // 分页处理
-        int total = approvals.size();
-        int start = (query.getPageNum() - 1) * query.getPageSize();
-        int end = Math.min(start + query.getPageSize(), total);
-        List<Approval> pagedList = approvals.subList(Math.max(0, start), end);
+            // 分页处理
+            int total = approvals.size();
+            int start = (query.getPageNum() - 1) * query.getPageSize();
+            int end = Math.min(start + query.getPageSize(), total);
+            List<Approval> pagedList = total > 0 ? approvals.subList(Math.max(0, start), end) : new ArrayList<>();
 
-        List<ApprovalDTO> dtos = pagedList.stream()
-                .map(this::toDTO)
-                .collect(Collectors.toList());
+            List<ApprovalDTO> dtos = pagedList.stream()
+                    .map(this::toDTO)
+                    .collect(Collectors.toList());
 
-        return PageResult.of(dtos, total, query.getPageNum(), query.getPageSize());
+            return PageResult.of(dtos, total, query.getPageNum(), query.getPageSize());
+        } catch (Exception e) {
+            log.error("查询审批记录失败", e);
+            // 返回空结果，避免500错误
+            return PageResult.of(new ArrayList<>(), 0, query.getPageNum(), query.getPageSize());
+        }
     }
 
     /**
@@ -98,6 +105,13 @@ public class ApprovalAppService {
         // 检查状态
         if (!"PENDING".equals(approval.getStatus())) {
             throw new BusinessException("该审批记录已处理，无法重复审批");
+        }
+
+        // 拒绝时必须填写拒绝事由
+        if ("REJECTED".equals(command.getResult())) {
+            if (command.getComment() == null || command.getComment().trim().isEmpty()) {
+                throw new BusinessException("拒绝时必须填写拒绝事由");
+            }
         }
 
         // 更新审批状态

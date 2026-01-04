@@ -26,4 +26,11 @@ public class SealApplicationRepository extends AbstractRepository<SealApplicatio
     public int countUsageBySealId(Long sealId) {
         return baseMapper.countUsageBySeaId(sealId);
     }
+
+    /**
+     * 统计印章待处理的申请数量
+     */
+    public int countPendingBySealId(Long sealId) {
+        return baseMapper.countPendingBySealId(sealId);
+    }
 }

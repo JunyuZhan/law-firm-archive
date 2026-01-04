@@ -42,6 +42,7 @@ public class FeeAppService {
     private final PaymentRepository paymentRepository;
     private final ContractRepository contractRepository;
     private final ClientRepository clientRepository;
+    private final CommissionAppService commissionAppService;
 
     /**
      * 分页查询收费记录
@@ -172,6 +173,7 @@ public class FeeAppService {
 
     /**
      * 确认收款
+     * 收款确认后自动触发提成计算（M4-035）
      */
     @Transactional
     public void confirmPayment(Long paymentId) {
@@ -205,6 +207,18 @@ public class FeeAppService {
         }
 
         log.info("收款确认成功: {}", payment.getPaymentNo());
+
+        // 【M4-035】自动触发提成计算
+        if (fee.getMatterId() != null) {
+            try {
+                commissionAppService.calculateCommission(paymentId);
+                log.info("收款确认后自动计算提成成功: paymentId={}, matterId={}", paymentId, fee.getMatterId());
+            } catch (Exception e) {
+                // 提成计算失败不阻断收款确认流程，但记录错误日志
+                log.error("收款确认后自动计算提成失败: paymentId={}, error={}", paymentId, e.getMessage(), e);
+                // 可以考虑发送通知给财务人员手动处理
+            }
+        }
     }
 
     /**

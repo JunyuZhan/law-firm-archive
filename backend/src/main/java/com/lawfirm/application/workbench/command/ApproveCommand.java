@@ -23,6 +23,7 @@ public class ApproveCommand {
 
     /**
      * 审批意见
+     * 拒绝时必填
      */
     private String comment;
 }

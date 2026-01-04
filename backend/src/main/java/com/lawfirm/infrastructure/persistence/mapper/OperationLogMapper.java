@@ -34,4 +34,16 @@ public interface OperationLogMapper extends BaseMapper<OperationLog> {
                                        @Param("status") String status,
                                        @Param("startTime") LocalDateTime startTime,
                                        @Param("endTime") LocalDateTime endTime);
+
+    /**
+     * 删除指定日期之前的日志（软删除）
+     */
+    @org.apache.ibatis.annotations.Update("UPDATE sys_operation_log SET deleted = true, updated_at = CURRENT_TIMESTAMP WHERE created_at < #{beforeDate} AND deleted = false")
+    int deleteLogsBeforeDate(@Param("beforeDate") LocalDateTime beforeDate);
+
+    /**
+     * 统计指定日期之前的日志数量
+     */
+    @Select("SELECT COUNT(*) FROM sys_operation_log WHERE created_at < #{beforeDate} AND deleted = false")
+    long countLogsBeforeDate(@Param("beforeDate") LocalDateTime beforeDate);
 }

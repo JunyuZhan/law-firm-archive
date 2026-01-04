@@ -108,6 +108,38 @@ public class Client extends BaseEntity {
      */
     private LocalDate firstCooperationDate;
 
+    // ========== 开票信息 ==========
+    
+    /**
+     * 发票抬头
+     */
+    private String invoiceTitle;
+
+    /**
+     * 纳税人识别号
+     */
+    private String invoiceTaxNo;
+
+    /**
+     * 开票地址
+     */
+    private String invoiceAddress;
+
+    /**
+     * 开票电话
+     */
+    private String invoicePhone;
+
+    /**
+     * 开户银行
+     */
+    private String invoiceBankName;
+
+    /**
+     * 银行账号
+     */
+    private String invoiceBankAccount;
+
     /**
      * 备注
      */

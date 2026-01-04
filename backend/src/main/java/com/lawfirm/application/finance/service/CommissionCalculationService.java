@@ -1,5 +1,7 @@
 package com.lawfirm.application.finance.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lawfirm.common.exception.BusinessException;
 import com.lawfirm.domain.finance.entity.Commission;
 import com.lawfirm.domain.finance.entity.CommissionRule;
@@ -13,6 +15,7 @@ import com.lawfirm.domain.matter.repository.MatterParticipantRepository;
 import com.lawfirm.domain.matter.repository.MatterRepository;
 import com.lawfirm.domain.system.entity.User;
 import com.lawfirm.domain.system.repository.UserRepository;
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -44,6 +47,7 @@ public class CommissionCalculationService {
     private final CommissionRuleRepository commissionRuleRepository;
     private final CommissionRepository commissionRepository;
     private final UserRepository userRepository;
+    private final ObjectMapper objectMapper;
 
     /**
      * 计算提成（收款核销后自动触发）
@@ -231,9 +235,8 @@ public class CommissionCalculationService {
         BigDecimal cost = costAmount.multiply(distributionRatio)
                 .setScale(2, RoundingMode.HALF_UP);
 
-        // 计算提成比例（根据阶梯规则，这里简化处理，使用固定比例）
-        // TODO: 实现阶梯提成比例计算
-        BigDecimal commissionRate = BigDecimal.valueOf(1.0); // 默认100%
+        // 计算提成比例（根据阶梯规则）
+        BigDecimal commissionRate = calculateTieredCommissionRate(rule, netAmount);
 
         // 提成金额 = 净收入 × 提成比例
         BigDecimal commissionAmount = netAmount.multiply(commissionRate)
@@ -343,6 +346,72 @@ public class CommissionCalculationService {
             return participant.getCommissionRate().divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP);
         }
         return BigDecimal.ZERO;
+    }
+
+    /**
+     * 计算阶梯提成比例
+     * 
+     * @param rule 提成规则
+     * @param netAmount 净收入
+     * @return 提成比例（小数，如0.30表示30%）
+     */
+    private BigDecimal calculateTieredCommissionRate(CommissionRule rule, BigDecimal netAmount) {
+        // 如果没有配置阶梯费率，使用默认100%
+        if (rule.getRateTiers() == null || rule.getRateTiers().trim().isEmpty()) {
+            return BigDecimal.valueOf(1.0);
+        }
+
+        try {
+            // 解析JSON格式的阶梯费率
+            List<RateTier> tiers = objectMapper.readValue(
+                    rule.getRateTiers(),
+                    new TypeReference<List<RateTier>>() {}
+            );
+
+            if (tiers == null || tiers.isEmpty()) {
+                log.warn("阶梯费率配置为空，使用默认比例100%");
+                return BigDecimal.valueOf(1.0);
+            }
+
+            // 找到netAmount所在的阶梯
+            for (RateTier tier : tiers) {
+                BigDecimal minAmount = tier.getMinAmount() != null ? tier.getMinAmount() : BigDecimal.ZERO;
+                BigDecimal maxAmount = tier.getMaxAmount();
+                
+                // 检查是否在当前阶梯范围内
+                boolean inRange = netAmount.compareTo(minAmount) >= 0;
+                if (maxAmount != null) {
+                    inRange = inRange && netAmount.compareTo(maxAmount) < 0;
+                }
+                
+                if (inRange) {
+                    BigDecimal rate = tier.getRate() != null ? tier.getRate() : BigDecimal.valueOf(1.0);
+                    log.debug("找到阶梯费率: netAmount={}, minAmount={}, maxAmount={}, rate={}", 
+                            netAmount, minAmount, maxAmount, rate);
+                    return rate;
+                }
+            }
+
+            // 如果没有找到匹配的阶梯，使用最后一个阶梯的费率（通常是最高阶梯）
+            RateTier lastTier = tiers.get(tiers.size() - 1);
+            BigDecimal rate = lastTier.getRate() != null ? lastTier.getRate() : BigDecimal.valueOf(1.0);
+            log.warn("未找到匹配的阶梯费率，使用最后一个阶梯: netAmount={}, rate={}", netAmount, rate);
+            return rate;
+
+        } catch (Exception e) {
+            log.error("解析阶梯费率失败，使用默认比例100%: {}", e.getMessage(), e);
+            return BigDecimal.valueOf(1.0);
+        }
+    }
+
+    /**
+     * 阶梯费率内部类
+     */
+    @Data
+    private static class RateTier {
+        private BigDecimal minAmount;
+        private BigDecimal maxAmount;
+        private BigDecimal rate;
     }
 
     /**

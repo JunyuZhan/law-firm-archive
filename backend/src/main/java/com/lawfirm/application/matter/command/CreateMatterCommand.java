@@ -20,6 +20,16 @@ public class CreateMatterCommand {
     @NotBlank(message = "案件类型不能为空")
     private String matterType;
 
+    /**
+     * 案件类型：CIVIL-民事, CRIMINAL-刑事, ADMINISTRATIVE-行政等
+     */
+    private String caseType;
+
+    /**
+     * 案由代码
+     */
+    private String causeOfAction;
+
     private String businessType;
 
     @NotNull(message = "客户不能为空")

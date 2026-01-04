@@ -5,14 +5,20 @@ import com.lawfirm.application.finance.command.CreatePaymentCommand;
 import com.lawfirm.application.finance.dto.FeeDTO;
 import com.lawfirm.application.finance.dto.FeeQueryDTO;
 import com.lawfirm.application.finance.dto.PaymentDTO;
+import com.lawfirm.application.finance.dto.ReconciliationResultDTO;
 import com.lawfirm.application.finance.service.FeeAppService;
+import com.lawfirm.application.finance.service.PaymentReconciliationService;
 import com.lawfirm.common.annotation.OperationLog;
 import com.lawfirm.common.annotation.RequirePermission;
 import com.lawfirm.common.result.PageResult;
 import com.lawfirm.common.result.Result;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
 
 /**
  * 收费管理 Controller
@@ -23,6 +29,7 @@ import org.springframework.web.bind.annotation.*;
 public class FeeController {
 
     private final FeeAppService feeAppService;
+    private final PaymentReconciliationService reconciliationService;
 
     /**
      * 分页查询收费记录
@@ -86,6 +93,22 @@ public class FeeController {
     public Result<Void> cancelPayment(@PathVariable Long id) {
         feeAppService.cancelPayment(id);
         return Result.success();
+    }
+
+    /**
+     * 智能匹配收款
+     * 根据收款金额、付款方名称等信息智能匹配待收款记录
+     */
+    @GetMapping("/reconciliation/match")
+    @RequirePermission("fee:payment")
+    public Result<ReconciliationResultDTO> intelligentMatch(
+            @RequestParam BigDecimal amount,
+            @RequestParam(required = false) String payerName,
+            @RequestParam(required = false) String transactionNo,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate paymentDate) {
+        ReconciliationResultDTO result = reconciliationService.intelligentMatch(
+                amount, payerName, transactionNo, paymentDate);
+        return Result.success(result);
     }
 }
 

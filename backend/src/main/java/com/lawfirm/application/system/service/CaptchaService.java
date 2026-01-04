@@ -35,30 +35,44 @@ public class CaptchaService {
      * @return 验证码ID和Base64图片
      */
     public CaptchaResult generateCaptcha() {
-        // 生成算术验证码（加减法）
-        ArithmeticCaptcha captcha = new ArithmeticCaptcha(CAPTCHA_WIDTH, CAPTCHA_HEIGHT);
-        captcha.setLen(2); // 2位运算
-        captcha.setFont(new Font("Arial", Font.BOLD, 25));
-        
-        // 生成验证码ID
-        String captchaId = UUID.randomUUID().toString().replace("-", "");
-        
-        // 获取验证码答案（计算结果）
-        String answer = captcha.text();
-        
-        // 存储到Redis，5分钟过期
-        String cacheKey = CAPTCHA_PREFIX + captchaId;
-        redisTemplate.opsForValue().set(cacheKey, answer.toLowerCase(), CAPTCHA_EXPIRE_MINUTES, TimeUnit.MINUTES);
-        
-        // 转换为Base64图片
-        String base64Image = captchaToBase64(captcha);
-        
-        log.debug("生成验证码: captchaId={}, answer={}", captchaId, answer);
-        
-        return CaptchaResult.builder()
-                .captchaId(captchaId)
-                .captchaUrl("data:image/png;base64," + base64Image)
-                .build();
+        try {
+            // 生成算术验证码（加减法）
+            ArithmeticCaptcha captcha = new ArithmeticCaptcha(CAPTCHA_WIDTH, CAPTCHA_HEIGHT);
+            captcha.setLen(2); // 2位运算
+            
+            // 使用系统默认字体，避免在无头环境中字体不可用的问题
+            try {
+                // 尝试使用SansSerif字体（系统默认）
+                Font font = new Font(Font.SANS_SERIF, Font.BOLD, 25);
+                captcha.setFont(font);
+            } catch (Exception e) {
+                // 如果设置字体失败，使用默认字体
+                log.warn("设置验证码字体失败，使用默认字体", e);
+            }
+            
+            // 生成验证码ID
+            String captchaId = UUID.randomUUID().toString().replace("-", "");
+            
+            // 获取验证码答案（计算结果）
+            String answer = captcha.text();
+            
+            // 存储到Redis，5分钟过期
+            String cacheKey = CAPTCHA_PREFIX + captchaId;
+            redisTemplate.opsForValue().set(cacheKey, answer.toLowerCase(), CAPTCHA_EXPIRE_MINUTES, TimeUnit.MINUTES);
+            
+            // 转换为Base64图片
+            String base64Image = captchaToBase64(captcha);
+            
+            log.debug("生成验证码: captchaId={}, answer={}", captchaId, answer);
+            
+            return CaptchaResult.builder()
+                    .captchaId(captchaId)
+                    .captchaUrl("data:image/png;base64," + base64Image)
+                    .build();
+        } catch (Exception e) {
+            log.error("生成验证码失败", e);
+            throw new BusinessException("验证码生成失败，请稍后重试");
+        }
     }
 
     /**

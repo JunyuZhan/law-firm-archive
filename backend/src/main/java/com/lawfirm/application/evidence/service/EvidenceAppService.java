@@ -258,6 +258,44 @@ public class EvidenceAppService {
     }
 
     /**
+     * 获取文件类型
+     */
+    private String getFileType(String fileName) {
+        if (fileName == null) {
+            return "unknown";
+        }
+        String lowerName = fileName.toLowerCase();
+        if (lowerName.endsWith(".jpg") || lowerName.endsWith(".jpeg") || lowerName.endsWith(".png") 
+            || lowerName.endsWith(".gif") || lowerName.endsWith(".bmp") || lowerName.endsWith(".webp")) {
+            return "image";
+        } else if (lowerName.endsWith(".pdf")) {
+            return "pdf";
+        } else if (lowerName.endsWith(".doc") || lowerName.endsWith(".docx")) {
+            return "word";
+        } else if (lowerName.endsWith(".xls") || lowerName.endsWith(".xlsx")) {
+            return "excel";
+        } else if (lowerName.endsWith(".mp4") || lowerName.endsWith(".avi") || lowerName.endsWith(".mov")) {
+            return "video";
+        } else if (lowerName.endsWith(".mp3") || lowerName.endsWith(".wav") || lowerName.endsWith(".m4a")) {
+            return "audio";
+        } else {
+            return "other";
+        }
+    }
+
+    /**
+     * 判断是否为图片文件
+     */
+    private boolean isImageFile(String fileName) {
+        if (fileName == null) {
+            return false;
+        }
+        String lowerName = fileName.toLowerCase();
+        return lowerName.endsWith(".jpg") || lowerName.endsWith(".jpeg") || lowerName.endsWith(".png") 
+            || lowerName.endsWith(".gif") || lowerName.endsWith(".bmp") || lowerName.endsWith(".webp");
+    }
+
+    /**
      * 获取证据类型名称
      */
     private String getEvidenceTypeName(String type) {
@@ -341,6 +379,14 @@ public class EvidenceAppService {
         dto.setFileName(evidence.getFileName());
         dto.setFileSize(evidence.getFileSize());
         dto.setFileSizeDisplay(formatFileSize(evidence.getFileSize()));
+        // 设置文件类型（前端直接使用fileUrl显示预览图，不需要后端生成缩略图）
+        if (evidence.getFileName() != null) {
+            dto.setFileType(getFileType(evidence.getFileName()));
+            // thumbnailUrl 保留用于兼容，但前端已改为直接使用 fileUrl
+            if (isImageFile(evidence.getFileName()) && evidence.getFileUrl() != null) {
+                dto.setThumbnailUrl(evidence.getFileUrl());
+            }
+        }
         dto.setCrossExamStatus(evidence.getCrossExamStatus());
         dto.setCrossExamStatusName(getCrossExamStatusName(evidence.getCrossExamStatus()));
         dto.setStatus(evidence.getStatus());

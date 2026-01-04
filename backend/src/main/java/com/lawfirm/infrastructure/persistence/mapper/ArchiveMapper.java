@@ -20,13 +20,13 @@ public interface ArchiveMapper extends BaseMapper<Archive> {
     @Select("""
         SELECT m.id, m.matter_no, m.name as matter_name, m.client_id, 
                c.name as client_name, m.lead_lawyer_id, u.real_name as main_lawyer_name,
-               m.actual_closing_date as case_close_date
+               m.actual_end_date as case_close_date
         FROM matter m
         LEFT JOIN crm_client c ON m.client_id = c.id
         LEFT JOIN sys_user u ON m.lead_lawyer_id = u.id
         LEFT JOIN archive a ON m.id = a.matter_id
         WHERE m.status = 'CLOSED' AND a.id IS NULL
-        ORDER BY m.actual_closing_date DESC
+        ORDER BY m.actual_end_date DESC
         """)
     List<Object> selectPendingArchives();
 

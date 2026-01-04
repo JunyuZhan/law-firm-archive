@@ -10,12 +10,17 @@ import com.lawfirm.application.matter.dto.MatterQueryDTO;
 import com.lawfirm.application.archive.service.ArchiveAppService;
 import com.lawfirm.application.matter.command.CloseMatterCommand;
 import com.lawfirm.application.matter.service.DeadlineAppService;
+import com.lawfirm.application.system.service.NotificationAppService;
 import com.lawfirm.application.workbench.service.ApprovalService;
 import com.lawfirm.application.workbench.service.ApproverService;
 import com.lawfirm.common.exception.BusinessException;
 import com.lawfirm.common.result.PageResult;
 import com.lawfirm.common.util.SecurityUtils;
 import com.lawfirm.domain.client.repository.ClientRepository;
+import com.lawfirm.domain.finance.entity.Contract;
+import com.lawfirm.domain.finance.entity.ContractParticipant;
+import com.lawfirm.domain.finance.repository.ContractRepository;
+import com.lawfirm.domain.finance.repository.ContractParticipantRepository;
 import com.lawfirm.domain.matter.entity.Matter;
 import com.lawfirm.domain.matter.entity.MatterParticipant;
 import com.lawfirm.domain.matter.repository.MatterRepository;
@@ -48,11 +53,14 @@ public class MatterAppService {
     private final MatterParticipantMapper participantMapper;
     private final ClientRepository clientRepository;
     private final UserRepository userRepository;
+    private final ContractRepository contractRepository;
+    private final ContractParticipantRepository contractParticipantRepository;
     private final DepartmentRepository departmentRepository;
     private final ApprovalService approvalService;
     private final ApproverService approverService;
     private final ArchiveAppService archiveAppService;
     private final DeadlineAppService deadlineAppService;
+    private final NotificationAppService notificationAppService;
     private final ObjectMapper objectMapper;
 
     /**
@@ -96,14 +104,34 @@ public class MatterAppService {
         // 1. 验证客户存在
         clientRepository.getByIdOrThrow(command.getClientId(), "客户不存在");
 
-        // 2. 生成案件编号
+        // 2. 验证合同（项目必须关联已审批通过的合同）
+        if (command.getContractId() == null) {
+            throw new BusinessException("创建项目必须关联合同，请先创建并审批合同");
+        }
+        Contract contract = contractRepository.getByIdOrThrow(command.getContractId(), "合同不存在");
+        if (!"ACTIVE".equals(contract.getStatus())) {
+            throw new BusinessException("只能基于已审批通过的合同创建项目，当前合同状态：" + contract.getStatus());
+        }
+        // 验证合同是否已关联其他项目
+        if (contract.getMatterId() != null) {
+            throw new BusinessException("该合同已关联其他项目，不能重复使用");
+        }
+        // 验证客户一致性
+        if (!contract.getClientId().equals(command.getClientId())) {
+            throw new BusinessException("项目客户必须与合同客户一致");
+        }
+
+        // 3. 生成案件编号
         String matterNo = generateMatterNo(command.getMatterType());
 
         // 3. 创建案件实体
+        // 由于项目是基于已审批通过的合同创建的，直接设为进行中状态
         Matter matter = Matter.builder()
                 .matterNo(matterNo)
                 .name(command.getName())
                 .matterType(command.getMatterType())
+                .caseType(command.getCaseType())
+                .causeOfAction(command.getCauseOfAction())
                 .businessType(command.getBusinessType())
                 .clientId(command.getClientId())
                 .opposingParty(command.getOpposingParty())
@@ -113,7 +141,7 @@ public class MatterAppService {
                 .opposingLawyerPhone(command.getOpposingLawyerPhone())
                 .opposingLawyerEmail(command.getOpposingLawyerEmail())
                 .description(command.getDescription())
-                .status("DRAFT")
+                .status("ACTIVE")  // 基于已审批合同创建，直接进行中
                 .originatorId(command.getOriginatorId() != null ? command.getOriginatorId() : SecurityUtils.getUserId())
                 .leadLawyerId(command.getLeadLawyerId())
                 .departmentId(command.getDepartmentId() != null ? command.getDepartmentId() : SecurityUtils.getDepartmentId())
@@ -130,11 +158,21 @@ public class MatterAppService {
         // 4. 保存案件
         matterRepository.save(matter);
 
+        // 4.1 关联合同到项目
+        contract.setMatterId(matter.getId());
+        contractRepository.updateById(contract);
+        
+        // 4.2 从合同复制参与人到项目（如果合同有参与人）
+        copyContractParticipantsToMatter(contract.getId(), matter.getId());
+
         // 5. 添加团队成员
         if (command.getParticipants() != null && !command.getParticipants().isEmpty()) {
             for (CreateMatterCommand.ParticipantCommand pc : command.getParticipants()) {
-                addParticipant(matter.getId(), pc.getUserId(), pc.getRole(), 
-                        pc.getCommissionRate(), pc.getIsOriginator());
+                // 检查是否已从合同复制过来
+                if (participantMapper.countByMatterIdAndUserId(matter.getId(), pc.getUserId()) == 0) {
+                    addParticipant(matter.getId(), pc.getUserId(), pc.getRole(), 
+                            pc.getCommissionRate(), pc.getIsOriginator());
+                }
             }
         }
 
@@ -144,8 +182,17 @@ public class MatterAppService {
                 addParticipant(matter.getId(), command.getLeadLawyerId(), "LEAD", null, false);
             }
         }
+        
+        // 7. 自动将创建者添加为团队成员（如果还没有添加）
+        Long creatorId = SecurityUtils.getUserId();
+        if (creatorId != null && participantMapper.countByMatterIdAndUserId(matter.getId(), creatorId) == 0) {
+            // 如果创建者就是主办律师，不再重复添加
+            if (!creatorId.equals(command.getLeadLawyerId())) {
+                addParticipant(matter.getId(), creatorId, "CO_COUNSEL", null, false);
+            }
+        }
 
-        // 7. 如果是诉讼类项目且有立案日期，自动创建期限提醒
+        // 8. 如果是诉讼类项目且有立案日期，自动创建期限提醒
         if ("LITIGATION".equals(matter.getMatterType()) && matter.getFilingDate() != null) {
             try {
                 deadlineAppService.autoCreateDeadlines(matter.getId());
@@ -159,11 +206,44 @@ public class MatterAppService {
     }
 
     /**
+     * 基于合同创建项目
+     * 从已审批的合同自动填充项目信息
+     */
+    @Transactional
+    public MatterDTO createMatterFromContract(Long contractId, CreateMatterCommand command) {
+        // 验证合同存在
+        Contract contract = contractRepository.getByIdOrThrow(contractId, "合同不存在");
+
+        // 从合同自动填充项目信息
+        command.setContractId(contractId);
+        if (command.getClientId() == null) {
+            command.setClientId(contract.getClientId());
+        }
+        if (command.getFeeType() == null) {
+            command.setFeeType(contract.getFeeType());
+        }
+        if (command.getEstimatedFee() == null && contract.getTotalAmount() != null) {
+            command.setEstimatedFee(contract.getTotalAmount());
+        }
+        if (command.getDepartmentId() == null) {
+            command.setDepartmentId(contract.getDepartmentId());
+        }
+
+        // 创建项目（createMatter会验证合同状态并自动关联）
+        return createMatter(command);
+    }
+
+    /**
      * 更新案件
      */
     @Transactional
     public MatterDTO updateMatter(UpdateMatterCommand command) {
         Matter matter = matterRepository.getByIdOrThrow(command.getId(), "案件不存在");
+        
+        // 归档的项目不能编辑
+        if ("ARCHIVED".equals(matter.getStatus())) {
+            throw new BusinessException("已归档的项目不能编辑");
+        }
 
         // 更新字段
         if (StringUtils.hasText(command.getName())) {
@@ -171,6 +251,12 @@ public class MatterAppService {
         }
         if (StringUtils.hasText(command.getMatterType())) {
             matter.setMatterType(command.getMatterType());
+        }
+        if (command.getCaseType() != null) {
+            matter.setCaseType(command.getCaseType());
+        }
+        if (command.getCauseOfAction() != null) {
+            matter.setCauseOfAction(command.getCauseOfAction());
         }
         if (command.getBusinessType() != null) {
             matter.setBusinessType(command.getBusinessType());
@@ -296,6 +382,31 @@ public class MatterAppService {
         
         matterRepository.updateById(matter);
         log.info("案件状态修改成功: {} -> {}", matter.getName(), status);
+        
+        // 如果状态改为 ARCHIVED，自动创建档案记录
+        if ("ARCHIVED".equals(status)) {
+            try {
+                // 检查是否已存在档案
+                if (archiveAppService.getArchiveByMatterId(id) == null) {
+                    com.lawfirm.application.archive.command.CreateArchiveCommand archiveCmd = 
+                            new com.lawfirm.application.archive.command.CreateArchiveCommand();
+                    archiveCmd.setMatterId(id);
+                    archiveCmd.setArchiveName(matter.getName() + " - 档案");
+                    // 根据项目类型设置档案类型
+                    if ("LITIGATION".equals(matter.getMatterType())) {
+                        archiveCmd.setArchiveType("LITIGATION");
+                    } else {
+                        archiveCmd.setArchiveType("NON_LITIGATION");
+                    }
+                    archiveCmd.setRetentionPeriod("10_YEARS"); // 默认10年
+                    archiveAppService.createArchiveFromMatter(archiveCmd);
+                    log.info("项目归档后自动创建档案: matterId={}", id);
+                }
+            } catch (Exception e) {
+                log.error("项目归档后自动创建档案失败", e);
+                // 不抛出异常，避免影响状态变更
+            }
+        }
     }
 
     /**
@@ -361,8 +472,30 @@ public class MatterAppService {
     private String getMatterTypeName(String type) {
         if (type == null) return null;
         return switch (type) {
-            case "LITIGATION" -> "诉讼";
-            case "NON_LITIGATION" -> "非诉";
+            case "LITIGATION" -> "诉讼案件";
+            case "NON_LITIGATION" -> "非诉项目";
+            default -> type;
+        };
+    }
+
+    /**
+     * 获取案件细分类型名称
+     */
+    private String getCaseTypeName(String type) {
+        if (type == null) return null;
+        return switch (type) {
+            case "CIVIL" -> "民事案件";
+            case "CRIMINAL" -> "刑事案件";
+            case "ADMINISTRATIVE" -> "行政案件";
+            case "BANKRUPTCY" -> "破产案件";
+            case "IP" -> "知识产权案件";
+            case "ARBITRATION" -> "仲裁案件";
+            case "ENFORCEMENT" -> "执行案件";
+            case "LEGAL_COUNSEL" -> "法律顾问";
+            case "SPECIAL_SERVICE" -> "专项服务";
+            case "DUE_DILIGENCE" -> "尽职调查";
+            case "CONTRACT_REVIEW" -> "合同审查";
+            case "LEGAL_OPINION" -> "法律意见";
             default -> type;
         };
     }
@@ -421,6 +554,10 @@ public class MatterAppService {
         dto.setName(matter.getName());
         dto.setMatterType(matter.getMatterType());
         dto.setMatterTypeName(getMatterTypeName(matter.getMatterType()));
+        dto.setCaseType(matter.getCaseType());
+        dto.setCaseTypeName(getCaseTypeName(matter.getCaseType()));
+        dto.setCauseOfAction(matter.getCauseOfAction());
+        // 案由名称由前端根据code查找，后端只存储code
         dto.setBusinessType(matter.getBusinessType());
         dto.setClientId(matter.getClientId());
         dto.setOpposingParty(matter.getOpposingParty());
@@ -570,17 +707,8 @@ public class MatterAppService {
             matter.setUpdatedBy(SecurityUtils.getUserId());
             matterRepository.getBaseMapper().updateById(matter);
 
-            // 触发归档流程
-            try {
-                com.lawfirm.application.archive.command.CreateArchiveCommand archiveCmd = 
-                        new com.lawfirm.application.archive.command.CreateArchiveCommand();
-                archiveCmd.setMatterId(matterId);
-                archiveAppService.createArchive(archiveCmd);
-                log.info("项目结案后自动创建档案: matterId={}", matterId);
-            } catch (Exception e) {
-                log.error("创建档案失败", e);
-                // 不阻断结案流程，仅记录日志
-            }
+            // 触发归档流程（带重试机制）
+            triggerArchiveWithRetry(matterId, matter, 3);
 
             log.info("项目结案审批通过: matterId={}, matterNo={}", matterId, matter.getMatterNo());
         } else {
@@ -628,6 +756,141 @@ public class MatterAppService {
         report.append("\n备注: ").append(matter.getRemark() != null ? matter.getRemark() : "无").append("\n");
 
         return report.toString();
+    }
+
+    /**
+     * 触发归档流程（带重试机制）
+     * @param matterId 项目ID
+     * @param matter 项目实体
+     * @param maxRetries 最大重试次数
+     */
+    private void triggerArchiveWithRetry(Long matterId, Matter matter, int maxRetries) {
+        Exception lastException = null;
+        
+        for (int attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                com.lawfirm.application.archive.command.CreateArchiveCommand archiveCmd = 
+                        new com.lawfirm.application.archive.command.CreateArchiveCommand();
+                archiveCmd.setMatterId(matterId);
+                archiveAppService.createArchive(archiveCmd);
+                log.info("项目结案后自动创建档案成功: matterId={}, attempt={}", matterId, attempt);
+                return; // 成功则直接返回
+            } catch (Exception e) {
+                lastException = e;
+                log.warn("创建档案失败，尝试次数: {}/{}, matterId={}, error={}", 
+                        attempt, maxRetries, matterId, e.getMessage());
+                
+                if (attempt < maxRetries) {
+                    try {
+                        // 等待一段时间后重试（指数退避）
+                        Thread.sleep(1000L * attempt);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                }
+            }
+        }
+        
+        // 所有重试都失败，发送通知给主办律师和系统管理员
+        log.error("创建档案失败，已达最大重试次数: matterId={}", matterId, lastException);
+        sendArchiveFailureNotification(matter, lastException);
+    }
+
+    /**
+     * 发送归档失败通知
+     */
+    private void sendArchiveFailureNotification(Matter matter, Exception e) {
+        String errorMessage = e != null ? e.getMessage() : "未知错误";
+        String content = String.format("项目【%s】（%s）结案后自动归档失败，请手动处理。\n错误信息：%s",
+                matter.getName(), matter.getMatterNo(), errorMessage);
+        
+        try {
+            // 通知主办律师
+            if (matter.getLeadLawyerId() != null) {
+                notificationAppService.sendSystemNotification(
+                        matter.getLeadLawyerId(),
+                        "归档失败提醒",
+                        content,
+                        "ARCHIVE",
+                        matter.getId()
+                );
+            }
+            
+            // 通知案源人
+            if (matter.getOriginatorId() != null && !matter.getOriginatorId().equals(matter.getLeadLawyerId())) {
+                notificationAppService.sendSystemNotification(
+                        matter.getOriginatorId(),
+                        "归档失败提醒",
+                        content,
+                        "ARCHIVE",
+                        matter.getId()
+                );
+            }
+            
+            log.info("已发送归档失败通知: matterId={}", matter.getId());
+        } catch (Exception notifyError) {
+            log.error("发送归档失败通知时出错: matterId={}", matter.getId(), notifyError);
+        }
+    }
+
+    /**
+     * 从合同复制参与人到项目
+     * 当基于合同创建项目时，自动将合同参与人复制为项目参与人
+     */
+    private void copyContractParticipantsToMatter(Long contractId, Long matterId) {
+        List<ContractParticipant> contractParticipants = contractParticipantRepository.findByContractId(contractId);
+        
+        if (contractParticipants == null || contractParticipants.isEmpty()) {
+            log.debug("合同无参与人，跳过复制: contractId={}", contractId);
+            return;
+        }
+        
+        for (ContractParticipant cp : contractParticipants) {
+            // 检查是否已存在
+            if (participantMapper.countByMatterIdAndUserId(matterId, cp.getUserId()) > 0) {
+                log.debug("参与人已存在，跳过: matterId={}, userId={}", matterId, cp.getUserId());
+                continue;
+            }
+            
+            // 映射合同参与人角色到项目参与人角色
+            String matterRole = mapContractRoleToMatterRole(cp.getRole());
+            boolean isOriginator = "ORIGINATOR".equals(cp.getRole());
+            
+            MatterParticipant mp = MatterParticipant.builder()
+                    .matterId(matterId)
+                    .userId(cp.getUserId())
+                    .role(matterRole)
+                    .commissionRate(cp.getCommissionRate())
+                    .isOriginator(isOriginator)
+                    .joinDate(LocalDate.now())
+                    .status("ACTIVE")
+                    .remark("从合同自动复制")
+                    .build();
+            
+            participantMapper.insert(mp);
+            log.debug("复制合同参与人到项目: contractId={}, matterId={}, userId={}, role={}", 
+                    contractId, matterId, cp.getUserId(), matterRole);
+        }
+        
+        log.info("从合同复制参与人到项目完成: contractId={}, matterId={}, count={}", 
+                contractId, matterId, contractParticipants.size());
+    }
+
+    /**
+     * 映射合同参与人角色到项目参与人角色
+     */
+    private String mapContractRoleToMatterRole(String contractRole) {
+        if (contractRole == null) {
+            return "CO_COUNSEL";
+        }
+        return switch (contractRole) {
+            case "LEAD" -> "LEAD";           // 承办律师 -> 主办律师
+            case "CO_COUNSEL" -> "CO_COUNSEL"; // 协办律师 -> 协办律师
+            case "ORIGINATOR" -> "CO_COUNSEL"; // 案源人 -> 协办律师（isOriginator标记为true）
+            case "PARALEGAL" -> "PARALEGAL";   // 律师助理 -> 律师助理
+            default -> "CO_COUNSEL";
+        };
     }
 }
 

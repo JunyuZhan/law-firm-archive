@@ -85,4 +85,14 @@ public interface TaskMapper extends BaseMapper<Task> {
      */
     @Select("SELECT * FROM task WHERE assignee_id = #{userId} AND status IN ('TODO', 'IN_PROGRESS') AND deleted = false ORDER BY due_date ASC NULLS LAST LIMIT #{limit}")
     List<Task> selectPendingByAssigneeId(@Param("userId") Long userId, @Param("limit") int limit);
+
+    /**
+     * 查询需要发送自定义提醒的任务
+     * 条件：reminder_date在指定时间范围内，且未发送过提醒，任务未完成
+     */
+    @Select("SELECT * FROM task WHERE reminder_date BETWEEN #{startTime} AND #{endTime} " +
+            "AND (reminder_sent IS NULL OR reminder_sent = false) " +
+            "AND status IN ('TODO', 'IN_PROGRESS') AND deleted = false")
+    List<Task> selectTasksNeedReminder(@Param("startTime") java.time.LocalDateTime startTime, 
+                                        @Param("endTime") java.time.LocalDateTime endTime);
 }

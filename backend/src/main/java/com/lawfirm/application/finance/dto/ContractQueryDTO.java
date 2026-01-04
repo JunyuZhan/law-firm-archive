@@ -4,6 +4,7 @@ import com.lawfirm.common.base.PageQuery;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 /**
@@ -57,5 +58,70 @@ public class ContractQueryDTO extends PageQuery {
      * 签约人ID
      */
     private Long signerId;
+    
+    /**
+     * 收费方式
+     */
+    private String feeType;
+    
+    /**
+     * 部门ID
+     */
+    private Long departmentId;
+    
+    /**
+     * 生效日期开始
+     */
+    private LocalDate effectiveDateFrom;
+    
+    /**
+     * 生效日期结束
+     */
+    private LocalDate effectiveDateTo;
+    
+    /**
+     * 到期日期开始
+     */
+    private LocalDate expiryDateFrom;
+    
+    /**
+     * 到期日期结束
+     */
+    private LocalDate expiryDateTo;
+    
+    /**
+     * 合同金额最小值
+     */
+    private BigDecimal amountMin;
+    
+    /**
+     * 合同金额最大值
+     */
+    private BigDecimal amountMax;
+    
+    /**
+     * 标的金额最小值
+     */
+    private BigDecimal claimAmountMin;
+    
+    /**
+     * 标的金额最大值
+     */
+    private BigDecimal claimAmountMax;
+    
+    /**
+     * 审理阶段
+     */
+    private String trialStage;
+    
+    /**
+     * 利冲审查状态
+     */
+    private String conflictCheckStatus;
+    
+    /**
+     * 归档状态
+     */
+    private String archiveStatus;
 }
 

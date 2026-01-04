@@ -41,6 +41,8 @@ public class EvidenceDTO extends BaseDTO {
     private String fileName;
     private Long fileSize;
     private String fileSizeDisplay;
+    private String fileType;  // 文件类型：image, pdf, word, excel, video, audio, other
+    private String thumbnailUrl;  // 缩略图URL（仅图片文件）
     
     private String crossExamStatus;
     private String crossExamStatusName;

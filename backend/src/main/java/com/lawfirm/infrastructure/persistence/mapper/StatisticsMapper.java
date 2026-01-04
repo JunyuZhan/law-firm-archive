@@ -29,6 +29,14 @@ public interface StatisticsMapper {
     BigDecimal sumMonthlyRevenue();
 
     /**
+     * 统计上月收入
+     */
+    @Select("SELECT COALESCE(SUM(amount), 0) FROM finance_payment " +
+            "WHERE status = 'CONFIRMED' AND deleted = false " +
+            "AND DATE_TRUNC('month', payment_date) = DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 month')")
+    BigDecimal sumLastMonthRevenue();
+
+    /**
      * 统计本年收入
      */
     @Select("SELECT COALESCE(SUM(amount), 0) FROM finance_payment " +
@@ -796,7 +804,10 @@ public interface StatisticsMapper {
     /**
      * 统计我的项目数（我参与的项目）
      */
-    @Select("SELECT COUNT(DISTINCT mp.matter_id) FROM matter_participant mp " +
+    /**
+     * 统计我的项目数（我参与的项目）
+     */
+    @Select("SELECT COALESCE(COUNT(DISTINCT mp.matter_id), 0) FROM matter_participant mp " +
             "LEFT JOIN matter m ON mp.matter_id = m.id " +
             "WHERE mp.user_id = #{userId} AND mp.deleted = false AND m.deleted = false")
     Long countMyMatters(@Param("userId") Long userId);
@@ -804,7 +815,7 @@ public interface StatisticsMapper {
     /**
      * 统计我的客户数（我负责的客户）
      */
-    @Select("SELECT COUNT(*) FROM crm_client " +
+    @Select("SELECT COALESCE(COUNT(*), 0) FROM crm_client " +
             "WHERE responsible_lawyer_id = #{userId} AND deleted = false")
     Long countMyClients(@Param("userId") Long userId);
 }

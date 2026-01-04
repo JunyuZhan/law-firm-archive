@@ -42,4 +42,10 @@ public interface SealApplicationMapper extends BaseMapper<SealApplication> {
      */
     @Select("SELECT COUNT(*) FROM seal_application WHERE seal_id = #{sealId} AND status = 'USED' AND deleted = false")
     int countUsageBySeaId(@Param("sealId") Long sealId);
+
+    /**
+     * 统计印章待处理的申请数量
+     */
+    @Select("SELECT COUNT(*) FROM seal_application WHERE seal_id = #{sealId} AND status IN ('PENDING', 'APPROVED') AND deleted = false")
+    int countPendingBySealId(@Param("sealId") Long sealId);
 }

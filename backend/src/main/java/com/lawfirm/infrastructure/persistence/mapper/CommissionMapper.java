@@ -165,5 +165,16 @@ public interface CommissionMapper extends BaseMapper<Commission> {
     List<java.util.Map<String, Object>> queryCommissionReportData(@Param("startDate") String startDate,
                                                                     @Param("endDate") String endDate,
                                                                     @Param("userId") Long userId);
+
+    /**
+     * 检查用户是否有权限查看提成记录（通过 commission_detail 表检查）
+     */
+    @Select("""
+        SELECT COUNT(*) FROM finance_commission_detail cd
+        WHERE cd.commission_id = #{commissionId} 
+        AND cd.user_id = #{userId} 
+        AND cd.deleted = false
+        """)
+    int countByCommissionIdAndUserId(@Param("commissionId") Long commissionId, @Param("userId") Long userId);
 }
 

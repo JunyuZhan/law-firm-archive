@@ -93,5 +93,11 @@ public interface MatterMapper extends BaseMapper<Matter> {
         LIMIT #{limit}
         """)
     java.util.List<Matter> selectRecentByUserId(@Param("userId") Long userId, @Param("limit") int limit);
+
+    /**
+     * 统计客户关联的案件数量
+     */
+    @Select("SELECT COUNT(*) FROM matter WHERE client_id = #{clientId} AND deleted = false")
+    int countByClientId(@Param("clientId") Long clientId);
 }
 

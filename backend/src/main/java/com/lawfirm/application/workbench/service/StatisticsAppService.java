@@ -31,6 +31,8 @@ public class StatisticsAppService {
     private final StatisticsMapper statisticsMapper;
     private final com.lawfirm.domain.matter.repository.TimesheetRepository timesheetRepository;
     private final com.lawfirm.domain.matter.repository.TaskRepository taskRepository;
+    private final com.lawfirm.domain.finance.repository.CommissionRepository commissionRepository;
+    private final com.lawfirm.domain.matter.repository.MatterParticipantRepository matterParticipantRepository;
 
     /**
      * 获取收入统计
@@ -155,13 +157,21 @@ public class StatisticsAppService {
         List<StatisticsDTO.LawyerPerformance> result = new ArrayList<>();
         int rank = 1;
         for (Map<String, Object> item : rankings) {
+            Long lawyerId = ((Number) item.get("lawyer_id")).longValue();
             StatisticsDTO.LawyerPerformance performance = new StatisticsDTO.LawyerPerformance();
-            performance.setLawyerId(((Number) item.get("lawyer_id")).longValue());
+            performance.setLawyerId(lawyerId);
             performance.setLawyerName((String) item.get("lawyer_name"));
             performance.setMatterCount(((Number) item.get("matter_count")).longValue());
             performance.setRevenue((BigDecimal) item.get("revenue"));
-            performance.setCommission(BigDecimal.ZERO); // TODO: 计算提成
-            performance.setHours(0.0); // TODO: 从工时表统计
+            
+            // 计算提成
+            BigDecimal commission = commissionRepository.sumCommissionByUserId(lawyerId);
+            performance.setCommission(commission != null ? commission : BigDecimal.ZERO);
+            
+            // 从工时表统计工时（已审批的工时）
+            BigDecimal totalHours = (BigDecimal) item.get("total_hours");
+            performance.setHours(totalHours != null ? totalHours.doubleValue() : 0.0);
+            
             performance.setRank(rank++);
             result.add(performance);
         }
@@ -178,13 +188,37 @@ public class StatisticsAppService {
         
         WorkbenchStatsDTO stats = new WorkbenchStatsDTO();
         
-        // 我的项目数（我参与的项目）
-        Long matterCount = statisticsMapper.countMyMatters(userId);
-        stats.setMatterCount(matterCount != null ? matterCount : 0L);
+        // 我的项目数（我参与的项目）- 直接使用MyBatis-Plus查询
+        // 先查询参与者列表，然后去重统计
+        var participantList = matterParticipantRepository.lambdaQuery()
+                .select(com.lawfirm.domain.matter.entity.MatterParticipant::getMatterId)
+                .eq(com.lawfirm.domain.matter.entity.MatterParticipant::getUserId, userId)
+                .list();
         
-        // 我的客户数（我负责的客户）
-        Long clientCount = statisticsMapper.countMyClients(userId);
-        stats.setClientCount(clientCount != null ? clientCount : 0L);
+        long matterCountLong = participantList.stream()
+                .map(com.lawfirm.domain.matter.entity.MatterParticipant::getMatterId)
+                .distinct()
+                .filter(matterId -> {
+                    // 检查项目是否存在且未删除
+                    try {
+                        var matter = matterRepository.getById(matterId);
+                        return matter != null && !matter.getDeleted();
+                    } catch (Exception e) {
+                        return false;
+                    }
+                })
+                .count();
+        Long matterCount = Long.valueOf(matterCountLong);
+        log.info("我的项目数查询结果: userId={}, matterCount={}, type={}", userId, matterCount, matterCount.getClass().getName());
+        stats.setMatterCount(matterCount);
+        
+        // 我的客户数（我负责的客户）- 直接使用MyBatis-Plus查询
+        long clientCountLong = clientRepository.lambdaQuery()
+                .eq(com.lawfirm.domain.client.entity.Client::getResponsibleLawyerId, userId)
+                .count();
+        Long clientCount = Long.valueOf(clientCountLong);
+        log.info("我的客户数查询结果: userId={}, clientCount={}, type={}", userId, clientCount, clientCount.getClass().getName());
+        stats.setClientCount(clientCount);
         
         // 本月工时
         java.time.LocalDate now = java.time.LocalDate.now();
@@ -192,11 +226,14 @@ public class StatisticsAppService {
         stats.setTimesheetHours(monthlyHours != null ? monthlyHours.doubleValue() : 0.0);
         
         // 待办任务数
-        int taskCount = taskRepository.countPendingByAssigneeId(userId);
-        stats.setTaskCount((long) taskCount);
+        int taskCountInt = taskRepository.countPendingByAssigneeId(userId);
+        Long taskCount = Long.valueOf(taskCountInt);
+        stats.setTaskCount(taskCount);
         
         log.info("获取工作台统计: userId={}, matterCount={}, clientCount={}, hours={}, taskCount={}", 
                 userId, matterCount, clientCount, monthlyHours, taskCount);
+        log.info("WorkbenchStatsDTO最终值: matterCount={}, clientCount={}, timesheetHours={}, taskCount={}", 
+                stats.getMatterCount(), stats.getClientCount(), stats.getTimesheetHours(), stats.getTaskCount());
         
         return stats;
     }
@@ -216,9 +253,26 @@ public class StatisticsAppService {
      * 计算增长率（与上月对比）
      */
     private BigDecimal calculateGrowthRate(BigDecimal currentMonth) {
-        // TODO: 查询上月收入并计算增长率
-        // 这里先返回0，后续完善
-        return BigDecimal.ZERO;
+        if (currentMonth == null || currentMonth.compareTo(BigDecimal.ZERO) == 0) {
+            return BigDecimal.ZERO;
+        }
+        
+        // 查询上月收入
+        BigDecimal lastMonthRevenue = statisticsMapper.sumLastMonthRevenue();
+        if (lastMonthRevenue == null || lastMonthRevenue.compareTo(BigDecimal.ZERO) == 0) {
+            // 如果上月收入为0，本月有收入则增长率为100%
+            if (currentMonth.compareTo(BigDecimal.ZERO) > 0) {
+                return BigDecimal.valueOf(100);
+            }
+            return BigDecimal.ZERO;
+        }
+        
+        // 计算增长率：(本月收入 - 上月收入) / 上月收入 * 100
+        BigDecimal difference = currentMonth.subtract(lastMonthRevenue);
+        BigDecimal growthRate = difference.divide(lastMonthRevenue, 4, java.math.RoundingMode.HALF_UP)
+                .multiply(BigDecimal.valueOf(100));
+        
+        return growthRate;
     }
 }
 

@@ -29,6 +29,9 @@ INSERT INTO sys_menu (id, parent_id, name, path, component, permission, icon, me
 SELECT 100, 9, '会议记录', '/admin/meeting-record', 'admin/meeting-record/index', 'admin:meeting-record:list', 'FileTextOutlined', 'MENU', 10, TRUE, 'ENABLED'
 WHERE NOT EXISTS (SELECT 1 FROM sys_menu WHERE path = '/admin/meeting-record');
 
+-- 出函管理（已融合到02-init-data.sql，ID=120）
+-- INSERT INTO sys_menu ... 已移除
+
 -- 检查并添加人力资源新菜单
 -- 转正管理
 INSERT INTO sys_menu (id, parent_id, name, path, component, permission, icon, menu_type, sort_order, visible, status)

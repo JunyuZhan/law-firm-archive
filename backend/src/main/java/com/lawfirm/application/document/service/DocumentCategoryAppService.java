@@ -4,6 +4,7 @@ import com.lawfirm.application.document.dto.DocumentCategoryDTO;
 import com.lawfirm.common.exception.BusinessException;
 import com.lawfirm.domain.document.entity.DocumentCategory;
 import com.lawfirm.domain.document.repository.DocumentCategoryRepository;
+import com.lawfirm.infrastructure.persistence.mapper.DocumentMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -24,6 +25,7 @@ import java.util.stream.Collectors;
 public class DocumentCategoryAppService {
 
     private final DocumentCategoryRepository categoryRepository;
+    private final DocumentMapper documentMapper;
 
     /**
      * 获取分类树
@@ -101,7 +103,11 @@ public class DocumentCategoryAppService {
             throw new BusinessException("该分类下有子分类，无法删除");
         }
 
-        // TODO: 检查是否有关联文档
+        // 检查是否有关联文档
+        int documentCount = documentMapper.countByCategoryId(id);
+        if (documentCount > 0) {
+            throw new BusinessException("该分类下存在文档，无法删除");
+        }
 
         categoryRepository.removeById(id);
         log.info("文档分类删除成功: {}", category.getName());

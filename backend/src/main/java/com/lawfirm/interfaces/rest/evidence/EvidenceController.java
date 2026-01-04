@@ -11,21 +11,30 @@ import com.lawfirm.common.annotation.OperationLog;
 import com.lawfirm.common.annotation.RequirePermission;
 import com.lawfirm.common.result.PageResult;
 import com.lawfirm.common.result.Result;
+import com.lawfirm.infrastructure.external.minio.MinioService;
+import com.lawfirm.infrastructure.external.document.DocumentContentExtractor;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 证据管理接口
  */
+@Slf4j
 @RestController
 @RequestMapping("/evidence")
 @RequiredArgsConstructor
 public class EvidenceController {
 
     private final EvidenceAppService evidenceAppService;
+    private final MinioService minioService;
+    private final DocumentContentExtractor documentContentExtractor;
 
     /**
      * 分页查询证据
@@ -137,5 +146,161 @@ public class EvidenceController {
     @RequirePermission("evidence:view")
     public Result<List<String>> getGroups(@PathVariable Long matterId) {
         return Result.success(evidenceAppService.getEvidenceGroups(matterId));
+    }
+
+    /**
+     * 上传证据文件
+     */
+    @PostMapping("/upload")
+    @RequirePermission("evidence:create")
+    @OperationLog(module = "证据管理", action = "上传证据文件")
+    public Result<Map<String, Object>> uploadFile(@RequestParam("file") MultipartFile file) {
+        try {
+            String fileUrl = minioService.uploadFile(file, "evidence/");
+            Map<String, Object> result = new HashMap<>();
+            result.put("fileUrl", fileUrl);
+            result.put("fileName", file.getOriginalFilename());
+            result.put("fileSize", file.getSize());
+            return Result.success(result);
+        } catch (Exception e) {
+            throw new com.lawfirm.common.exception.BusinessException("文件上传失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 获取文件预览URL
+     */
+    @GetMapping("/{id}/preview")
+    @RequirePermission("evidence:view")
+    public Result<Map<String, Object>> getPreviewUrl(@PathVariable Long id) {
+        EvidenceDTO evidence = evidenceAppService.getEvidenceById(id);
+        if (evidence.getFileUrl() == null) {
+            throw new com.lawfirm.common.exception.BusinessException("该证据没有关联文件");
+        }
+        
+        Map<String, Object> result = new HashMap<>();
+        result.put("fileUrl", evidence.getFileUrl());
+        result.put("fileName", evidence.getFileName());
+        result.put("fileType", getFileType(evidence.getFileName()));
+        result.put("canPreview", canPreview(evidence.getFileName()));
+        return Result.success(result);
+    }
+
+    /**
+     * 获取文件缩略图URL
+     */
+    @GetMapping("/{id}/thumbnail")
+    @RequirePermission("evidence:view")
+    public Result<Map<String, Object>> getThumbnailUrl(@PathVariable Long id) {
+        EvidenceDTO evidence = evidenceAppService.getEvidenceById(id);
+        if (evidence.getFileUrl() == null) {
+            throw new com.lawfirm.common.exception.BusinessException("该证据没有关联文件");
+        }
+        
+        Map<String, Object> result = new HashMap<>();
+        String fileName = evidence.getFileName();
+        if (isImageFile(fileName)) {
+            // 图片文件直接返回原文件URL作为缩略图
+            result.put("thumbnailUrl", evidence.getFileUrl());
+        } else {
+            // 非图片文件返回null，前端显示默认图标
+            result.put("thumbnailUrl", null);
+        }
+        result.put("fileType", getFileType(fileName));
+        return Result.success(result);
+    }
+
+    /**
+     * 判断文件类型
+     */
+    private String getFileType(String fileName) {
+        if (fileName == null) {
+            return "unknown";
+        }
+        String lowerName = fileName.toLowerCase();
+        if (lowerName.endsWith(".jpg") || lowerName.endsWith(".jpeg") || lowerName.endsWith(".png") 
+            || lowerName.endsWith(".gif") || lowerName.endsWith(".bmp") || lowerName.endsWith(".webp")) {
+            return "image";
+        } else if (lowerName.endsWith(".pdf")) {
+            return "pdf";
+        } else if (lowerName.endsWith(".doc") || lowerName.endsWith(".docx")) {
+            return "word";
+        } else if (lowerName.endsWith(".xls") || lowerName.endsWith(".xlsx")) {
+            return "excel";
+        } else if (lowerName.endsWith(".mp4") || lowerName.endsWith(".avi") || lowerName.endsWith(".mov")) {
+            return "video";
+        } else if (lowerName.endsWith(".mp3") || lowerName.endsWith(".wav") || lowerName.endsWith(".m4a")) {
+            return "audio";
+        } else {
+            return "other";
+        }
+    }
+
+    /**
+     * 判断是否为图片文件
+     */
+    private boolean isImageFile(String fileName) {
+        if (fileName == null) {
+            return false;
+        }
+        String lowerName = fileName.toLowerCase();
+        return lowerName.endsWith(".jpg") || lowerName.endsWith(".jpeg") || lowerName.endsWith(".png") 
+            || lowerName.endsWith(".gif") || lowerName.endsWith(".bmp") || lowerName.endsWith(".webp");
+    }
+
+    /**
+     * 判断是否可以预览
+     */
+    private boolean canPreview(String fileName) {
+        String fileType = getFileType(fileName);
+        return "image".equals(fileType) || "pdf".equals(fileType);
+    }
+
+    /**
+     * 获取文件文本内容（用于Word/Excel等文档预览）
+     */
+    @GetMapping("/{id}/content")
+    @RequirePermission("evidence:view")
+    @OperationLog(module = "证据管理", action = "获取文件内容")
+    public Result<Map<String, Object>> getFileContent(@PathVariable Long id) {
+        EvidenceDTO evidence = evidenceAppService.getEvidenceById(id);
+        if (evidence.getFileUrl() == null) {
+            throw new com.lawfirm.common.exception.BusinessException("该证据没有关联文件");
+        }
+        
+        Map<String, Object> result = new HashMap<>();
+        String fileType = getFileType(evidence.getFileName());
+        
+        try {
+            // Word/Excel文档：使用Apache POI提取文本内容
+            if ("word".equals(fileType) || "excel".equals(fileType)) {
+                // 从MinIO下载文件
+                String objectName = minioService.extractObjectName(evidence.getFileUrl());
+                if (objectName == null) {
+                    result.put("content", "无法解析文件URL");
+                    result.put("supported", false);
+                    return Result.success(result);
+                }
+                
+                byte[] fileBytes = minioService.downloadFileAsBytes(objectName);
+                String content = documentContentExtractor.extractText(fileBytes, evidence.getFileName());
+                
+                result.put("content", content);
+                result.put("supported", true);
+            } else if ("pdf".equals(fileType)) {
+                // PDF文本提取可以通过OCR服务实现，暂时返回提示
+                result.put("content", "PDF文本提取功能需要OCR服务支持，当前版本暂不支持。");
+                result.put("supported", false);
+            } else {
+                result.put("content", "");
+                result.put("supported", false);
+            }
+        } catch (Exception e) {
+            log.error("提取文件内容失败", e);
+            result.put("content", "文档内容提取失败: " + e.getMessage());
+            result.put("supported", false);
+        }
+        
+        return Result.success(result);
     }
 }

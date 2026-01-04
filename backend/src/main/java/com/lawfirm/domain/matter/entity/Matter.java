@@ -1,5 +1,6 @@
 package com.lawfirm.domain.matter.entity;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lawfirm.common.base.BaseEntity;
 import lombok.*;
@@ -30,12 +31,22 @@ public class Matter extends BaseEntity {
     private String name;
 
     /**
-     * 案件类型：LITIGATION-诉讼, NON_LITIGATION-非诉
+     * 案件大类：LITIGATION-诉讼案件, NON_LITIGATION-非诉项目
      */
     private String matterType;
 
     /**
-     * 业务类型
+     * 案件类型：CIVIL-民事, CRIMINAL-刑事, ADMINISTRATIVE-行政, BANKRUPTCY-破产, IP-知识产权, ARBITRATION-仲裁, ENFORCEMENT-执行, LEGAL_COUNSEL-法律顾问, SPECIAL_SERVICE-专项服务
+     */
+    private String caseType;
+
+    /**
+     * 案由代码（对应前端案由常量的code）
+     */
+    private String causeOfAction;
+
+    /**
+     * 业务类型（细分业务领域）
      */
     private String businessType;
 
@@ -122,11 +133,13 @@ public class Matter extends BaseEntity {
     /**
      * 预计结案日期
      */
+    @TableField("expected_end_date")
     private LocalDate expectedClosingDate;
 
     /**
      * 实际结案日期
      */
+    @TableField("actual_end_date")
     private LocalDate actualClosingDate;
 
     /**

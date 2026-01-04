@@ -28,6 +28,7 @@ import java.util.stream.Collectors;
 public class DepartmentAppService {
 
     private final DepartmentRepository departmentRepository;
+    private final com.lawfirm.infrastructure.persistence.mapper.UserMapper userMapper;
     private final UserRepository userRepository;
 
     /**
@@ -145,7 +146,10 @@ public class DepartmentAppService {
         }
         
         // 检查是否有用户
-        // TODO: 检查部门下是否有用户
+        int userCount = userMapper.countByDepartmentId(id);
+        if (userCount > 0) {
+            throw new BusinessException("该部门下存在用户，无法删除");
+        }
         
         departmentRepository.removeById(id);
         

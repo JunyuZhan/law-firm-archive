@@ -268,8 +268,10 @@ public class CommissionAppService {
         List<String> roleCodes = userRepository.findRoleCodesByUserId(currentUserId);
         if (!roleCodes.contains("admin") && !roleCodes.contains("director") && !roleCodes.contains("partner")) {
             // 检查 commission_detail 表中是否有该用户的记录
-            // 这里暂时跳过检查，后续可以通过 commission_detail 表实现
-            // TODO: 实现通过 commission_detail 表检查用户权限
+            int count = commissionRepository.getBaseMapper().countByCommissionIdAndUserId(id, currentUserId);
+            if (count == 0) {
+                throw new BusinessException("无权查看该提成记录");
+            }
         }
         
         return toCommissionDTO(commission);

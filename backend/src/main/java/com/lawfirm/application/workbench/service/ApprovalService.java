@@ -1,6 +1,8 @@
 package com.lawfirm.application.workbench.service;
 
+import com.lawfirm.common.exception.BusinessException;
 import com.lawfirm.common.util.SecurityUtils;
+import com.lawfirm.domain.system.entity.User;
 import com.lawfirm.domain.system.repository.UserRepository;
 import com.lawfirm.domain.workbench.entity.Approval;
 import com.lawfirm.domain.workbench.repository.ApprovalRepository;
@@ -9,7 +11,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
@@ -45,7 +46,11 @@ public class ApprovalService {
         String applicantName = SecurityUtils.getRealName();
         
         // 获取审批人姓名
-        String approverName = userRepository.getById(approverId).getRealName();
+        User approver = userRepository.getById(approverId);
+        if (approver == null) {
+            throw new BusinessException("审批人不存在");
+        }
+        String approverName = approver.getRealName();
         
         Approval approval = Approval.builder()
                 .approvalNo(generateApprovalNo())

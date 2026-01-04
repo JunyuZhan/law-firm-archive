@@ -20,6 +20,22 @@ public class MatterDTO extends BaseDTO {
     private String matterType;
     private String matterTypeName;
     private String businessType;
+    
+    /**
+     * 案件类型：CIVIL-民事, CRIMINAL-刑事, ADMINISTRATIVE-行政
+     */
+    private String caseType;
+    private String caseTypeName;
+    
+    /**
+     * 案由代码
+     */
+    private String causeOfAction;
+    
+    /**
+     * 案由名称
+     */
+    private String causeOfActionName;
     private Long clientId;
     private String clientName;
     private String opposingParty;

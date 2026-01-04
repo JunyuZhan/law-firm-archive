@@ -41,4 +41,10 @@ public interface DocumentMapper extends BaseMapper<Document> {
      */
     @Select("SELECT * FROM doc_document WHERE (id = #{docId} OR parent_doc_id = #{docId}) AND deleted = false ORDER BY version DESC")
     java.util.List<Document> selectAllVersions(@Param("docId") Long docId);
+
+    /**
+     * 统计分类关联的文档数量
+     */
+    @Select("SELECT COUNT(*) FROM doc_document WHERE category_id = #{categoryId} AND deleted = false AND is_latest = true")
+    int countByCategoryId(@Param("categoryId") Long categoryId);
 }

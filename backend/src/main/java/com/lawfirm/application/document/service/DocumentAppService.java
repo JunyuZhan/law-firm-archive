@@ -193,6 +193,69 @@ public class DocumentAppService {
     }
 
     /**
+     * 回退到指定版本
+     * @param documentId 当前文档ID
+     * @param targetVersion 目标版本号
+     */
+    @Transactional
+    public DocumentDTO rollbackToVersion(Long documentId, Integer targetVersion) {
+        Document currentDoc = documentRepository.getByIdOrThrow(documentId, "文档不存在");
+        
+        // 获取根文档ID
+        Long rootId = currentDoc.getParentDocId() != null ? currentDoc.getParentDocId() : currentDoc.getId();
+        
+        // 查找目标版本
+        List<Document> allVersions = documentRepository.findAllVersions(rootId);
+        Document targetDoc = allVersions.stream()
+                .filter(d -> d.getVersion().equals(targetVersion))
+                .findFirst()
+                .orElseThrow(() -> new BusinessException("目标版本不存在: v" + targetVersion));
+        
+        if (targetDoc.getVersion() >= currentDoc.getVersion()) {
+            throw new BusinessException("只能回退到更早的版本");
+        }
+        
+        // 将当前最新版本标记为非最新
+        Document latestDoc = allVersions.stream()
+                .filter(Document::getIsLatest)
+                .findFirst()
+                .orElse(currentDoc);
+        latestDoc.setIsLatest(false);
+        documentRepository.updateById(latestDoc);
+        
+        // 创建新版本（基于目标版本的内容）
+        int newVersion = latestDoc.getVersion() + 1;
+        Document rollbackDoc = Document.builder()
+                .docNo(targetDoc.getDocNo())
+                .title(targetDoc.getTitle())
+                .categoryId(targetDoc.getCategoryId())
+                .matterId(targetDoc.getMatterId())
+                .fileName(targetDoc.getFileName())
+                .filePath(targetDoc.getFilePath())
+                .fileSize(targetDoc.getFileSize())
+                .fileType(targetDoc.getFileType())
+                .mimeType(targetDoc.getMimeType())
+                .version(newVersion)
+                .isLatest(true)
+                .parentDocId(rootId)
+                .securityLevel(targetDoc.getSecurityLevel())
+                .stage(targetDoc.getStage())
+                .tags(targetDoc.getTags())
+                .description(targetDoc.getDescription())
+                .status("ACTIVE")
+                .build();
+        
+        documentRepository.save(rollbackDoc);
+        
+        // 记录版本历史
+        saveVersion(rollbackDoc, "回退到版本 v" + targetVersion);
+        
+        log.info("文档版本回退成功: {} v{} -> v{} (新版本号: v{})", 
+                rollbackDoc.getTitle(), latestDoc.getVersion(), targetVersion, newVersion);
+        return toDTO(rollbackDoc);
+    }
+
+    /**
      * 删除文档
      */
     @Transactional

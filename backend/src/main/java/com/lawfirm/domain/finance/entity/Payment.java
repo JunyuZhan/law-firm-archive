@@ -1,5 +1,6 @@
 package com.lawfirm.domain.finance.entity;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lawfirm.common.base.BaseEntity;
 import lombok.*;
@@ -67,11 +68,13 @@ public class Payment extends BaseEntity {
     /**
      * 收款账户
      */
+    @TableField("payment_account")
     private String bankAccount;
 
     /**
      * 交易流水号
      */
+    @TableField("receipt_no")
     private String transactionNo;
 
     /**
@@ -82,6 +85,7 @@ public class Payment extends BaseEntity {
     /**
      * 确认人ID
      */
+    @TableField("confirmed_by")
     private Long confirmerId;
 
     /**
