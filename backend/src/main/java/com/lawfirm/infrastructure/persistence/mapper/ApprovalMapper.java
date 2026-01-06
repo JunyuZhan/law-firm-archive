@@ -75,5 +75,15 @@ public interface ApprovalMapper extends BaseMapper<Approval> {
      */
     @Select("SELECT * FROM workbench_approval WHERE approver_id = #{approverId} AND status = 'PENDING' AND deleted = false ORDER BY created_at DESC LIMIT #{limit}")
     List<Approval> selectPendingByApproverId(@Param("approverId") Long approverId, @Param("limit") int limit);
+
+    /**
+     * 查询我审批过的记录（已通过或已拒绝）
+     */
+    @Select("SELECT * FROM workbench_approval " +
+            "WHERE deleted = false " +
+            "AND approver_id = #{approverId} " +
+            "AND status IN ('APPROVED', 'REJECTED') " +
+            "ORDER BY approved_at DESC")
+    List<Approval> selectMyApprovedHistory(@Param("approverId") Long approverId);
 }
 

@@ -82,6 +82,15 @@ public class ApprovalAppService {
     }
 
     /**
+     * 获取我审批过的记录（审批历史）
+     */
+    public List<ApprovalDTO> getMyApprovedHistory() {
+        Long currentUserId = SecurityUtils.getUserId();
+        List<Approval> approvals = approvalMapper.selectMyApprovedHistory(currentUserId);
+        return approvals.stream().map(this::toDTO).collect(Collectors.toList());
+    }
+
+    /**
      * 获取审批详情
      */
     public ApprovalDTO getApprovalById(Long id) {

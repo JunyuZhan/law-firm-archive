@@ -62,6 +62,17 @@ public class ApprovalController {
     }
 
     /**
+     * 获取我审批过的记录（审批历史）
+     */
+    @Operation(summary = "审批历史", description = "获取当前用户已处理的审批记录")
+    @GetMapping("/my-history")
+    @RequirePermission("approval:list")
+    public Result<List<ApprovalDTO>> getMyApprovedHistory() {
+        List<ApprovalDTO> approvals = approvalAppService.getMyApprovedHistory();
+        return Result.success(approvals);
+    }
+
+    /**
      * 获取审批详情
      */
     @Operation()
