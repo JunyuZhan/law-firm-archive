@@ -126,7 +126,7 @@ public interface ApprovalMapper extends BaseMapper<Approval> {
     /**
      * 查询直接子部门ID
      */
-    @Select("SELECT id FROM sys_dept WHERE parent_id = #{parentId} AND deleted = false")
+    @Select("SELECT id FROM sys_department WHERE parent_id = #{parentId} AND deleted = false")
     List<Long> selectChildDeptIds(@Param("parentId") Long parentId);
 }
 
