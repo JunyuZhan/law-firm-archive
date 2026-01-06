@@ -82,12 +82,73 @@ public class ApprovalAppService {
     }
 
     /**
-     * 获取我审批过的记录（审批历史）
+     * 获取审批历史（根据数据权限范围）
+     * ALL: 可查看所有已完成审批
+     * DEPT_AND_CHILD: 可查看本部门及下级部门的已完成审批
+     * DEPT: 可查看本部门的已完成审批
+     * SELF: 只能查看自己发起或审批的记录
      */
     public List<ApprovalDTO> getMyApprovedHistory() {
         Long currentUserId = SecurityUtils.getUserId();
-        List<Approval> approvals = approvalMapper.selectMyApprovedHistory(currentUserId);
+        String dataScope = SecurityUtils.getDataScope();
+        Long deptId = SecurityUtils.getDepartmentId();
+        
+        List<Approval> approvals;
+        
+        switch (dataScope) {
+            case "ALL":
+                // 可查看所有已完成审批
+                approvals = approvalMapper.selectAllApprovalHistory();
+                break;
+            case "DEPT_AND_CHILD":
+                // 可查看本部门及下级部门的已完成审批
+                if (deptId != null) {
+                    List<Long> deptIds = getAllChildDepartmentIds(deptId);
+                    deptIds.add(deptId);
+                    approvals = approvalMapper.selectApprovalHistoryByDeptIds(deptIds);
+                } else {
+                    // 没有部门，只能看自己相关的
+                    approvals = approvalMapper.selectSelfApprovalHistory(currentUserId);
+                }
+                break;
+            case "DEPT":
+                // 可查看本部门的已完成审批
+                if (deptId != null) {
+                    approvals = approvalMapper.selectApprovalHistoryByDeptIds(List.of(deptId));
+                } else {
+                    approvals = approvalMapper.selectSelfApprovalHistory(currentUserId);
+                }
+                break;
+            default: // SELF
+                // 只能查看自己发起或审批的记录
+                approvals = approvalMapper.selectSelfApprovalHistory(currentUserId);
+                break;
+        }
+        
         return approvals.stream().map(this::toDTO).collect(Collectors.toList());
+    }
+    
+    /**
+     * 获取部门及所有下级部门ID
+     */
+    private List<Long> getAllChildDepartmentIds(Long parentId) {
+        List<Long> result = new java.util.ArrayList<>();
+        collectChildDeptIds(parentId, result);
+        return result;
+    }
+    
+    private void collectChildDeptIds(Long parentId, List<Long> result) {
+        try {
+            List<Long> childIds = approvalMapper.selectChildDeptIds(parentId);
+            if (childIds != null && !childIds.isEmpty()) {
+                result.addAll(childIds);
+                for (Long childId : childIds) {
+                    collectChildDeptIds(childId, result);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("查询子部门失败: parentId={}", parentId, e);
+        }
     }
 
     /**

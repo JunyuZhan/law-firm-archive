@@ -85,5 +85,48 @@ public interface ApprovalMapper extends BaseMapper<Approval> {
             "AND status IN ('APPROVED', 'REJECTED') " +
             "ORDER BY approved_at DESC")
     List<Approval> selectMyApprovedHistory(@Param("approverId") Long approverId);
+
+    /**
+     * 根据数据范围查询审批历史（已完成的审批）
+     * ALL: 查看所有已完成审批
+     */
+    @Select("SELECT * FROM workbench_approval " +
+            "WHERE deleted = false " +
+            "AND status IN ('APPROVED', 'REJECTED') " +
+            "ORDER BY approved_at DESC")
+    List<Approval> selectAllApprovalHistory();
+
+    /**
+     * 根据部门ID列表查询审批历史
+     * 通过申请人的部门进行过滤
+     */
+    @Select("<script>" +
+            "SELECT a.* FROM workbench_approval a " +
+            "INNER JOIN sys_user u ON a.applicant_id = u.id " +
+            "WHERE a.deleted = false " +
+            "AND a.status IN ('APPROVED', 'REJECTED') " +
+            "AND u.department_id IN " +
+            "<foreach collection='deptIds' item='deptId' open='(' separator=',' close=')'>" +
+            "#{deptId}" +
+            "</foreach> " +
+            "ORDER BY a.approved_at DESC" +
+            "</script>")
+    List<Approval> selectApprovalHistoryByDeptIds(@Param("deptIds") List<Long> deptIds);
+
+    /**
+     * 查询自己相关的审批历史（自己发起或自己审批的）
+     */
+    @Select("SELECT * FROM workbench_approval " +
+            "WHERE deleted = false " +
+            "AND status IN ('APPROVED', 'REJECTED') " +
+            "AND (applicant_id = #{userId} OR approver_id = #{userId}) " +
+            "ORDER BY approved_at DESC")
+    List<Approval> selectSelfApprovalHistory(@Param("userId") Long userId);
+
+    /**
+     * 查询直接子部门ID
+     */
+    @Select("SELECT id FROM sys_dept WHERE parent_id = #{parentId} AND deleted = false")
+    List<Long> selectChildDeptIds(@Param("parentId") Long parentId);
 }
 
