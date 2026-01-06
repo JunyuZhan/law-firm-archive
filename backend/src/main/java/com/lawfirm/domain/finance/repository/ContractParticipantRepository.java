@@ -55,4 +55,29 @@ public class ContractParticipantRepository extends AbstractRepository<ContractPa
     public void deleteByContractIdAndUserId(Long contractId, Long userId) {
         baseMapper.deleteByContractIdAndUserId(contractId, userId);
     }
+
+    /**
+     * 根据用户ID和角色查询合同ID列表
+     * 
+     * Requirements: 5.4 - 按承办律师筛选
+     */
+    public List<Long> findContractIdsByUserIdAndRole(Long userId, String role) {
+        return baseMapper.selectContractIdsByUserIdAndRole(userId, role);
+    }
+
+    /**
+     * 根据用户ID查询所有参与的合同ID列表
+     * 
+     * Requirements: 8.1 - 律师只能访问自己参与的合同
+     */
+    public List<Long> findContractIdsByUserId(Long userId) {
+        return baseMapper.selectContractIdsByUserId(userId);
+    }
+
+    /**
+     * 根据用户ID查询所有参与记录
+     */
+    public List<ContractParticipant> findByUserId(Long userId) {
+        return baseMapper.selectByUserId(userId);
+    }
 }

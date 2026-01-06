@@ -255,7 +255,12 @@ public class ApprovalAppService {
             case "CONTRACT" -> "合同审批";
             case "SEAL_APPLICATION" -> "用印申请";
             case "CONFLICT_CHECK" -> "利冲检查";
+            case "CONFLICT_EXEMPTION" -> "利冲豁免";
             case "EXPENSE" -> "费用报销";
+            case "PAYMENT_AMENDMENT" -> "收款变更";
+            case "MATTER_CLOSE" -> "项目结案";
+            case "REGULARIZATION" -> "转正申请";
+            case "RESIGNATION" -> "离职申请";
             default -> type;
         };
     }

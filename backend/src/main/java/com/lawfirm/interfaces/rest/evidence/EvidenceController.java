@@ -13,7 +13,10 @@ import com.lawfirm.common.result.PageResult;
 import com.lawfirm.common.result.Result;
 import com.lawfirm.infrastructure.external.minio.MinioService;
 import com.lawfirm.infrastructure.external.document.DocumentContentExtractor;
+import com.lawfirm.infrastructure.external.file.FileTypeService;
+import com.lawfirm.infrastructure.external.file.ThumbnailService;
 import jakarta.validation.Valid;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
@@ -35,6 +38,8 @@ public class EvidenceController {
     private final EvidenceAppService evidenceAppService;
     private final MinioService minioService;
     private final DocumentContentExtractor documentContentExtractor;
+    private final FileTypeService fileTypeService;
+    private final ThumbnailService thumbnailService;
 
     /**
      * 分页查询证据
@@ -156,19 +161,42 @@ public class EvidenceController {
     @OperationLog(module = "证据管理", action = "上传证据文件")
     public Result<Map<String, Object>> uploadFile(@RequestParam("file") MultipartFile file) {
         try {
+            // 验证文件
+            String validationError = fileTypeService.validateFile(file);
+            if (validationError != null) {
+                throw new com.lawfirm.common.exception.BusinessException(validationError);
+            }
+
+            // 上传原始文件
             String fileUrl = minioService.uploadFile(file, "evidence/");
+            
+            // 获取文件类型信息
+            String fileName = file.getOriginalFilename();
+            FileTypeService.FileTypeInfo typeInfo = fileTypeService.getFileTypeInfo(fileName);
+            
+            // 生成缩略图（仅图片文件）
+            String thumbnailUrl = null;
+            if (typeInfo.isCanGenerateThumbnail()) {
+                thumbnailUrl = thumbnailService.generateThumbnail(file, fileUrl);
+            }
+
             Map<String, Object> result = new HashMap<>();
             result.put("fileUrl", fileUrl);
-            result.put("fileName", file.getOriginalFilename());
+            result.put("fileName", fileName);
             result.put("fileSize", file.getSize());
+            result.put("fileType", typeInfo.getType());
+            result.put("thumbnailUrl", thumbnailUrl);
+            result.put("canPreview", typeInfo.isCanPreview());
             return Result.success(result);
+        } catch (com.lawfirm.common.exception.BusinessException e) {
+            throw e;
         } catch (Exception e) {
             throw new com.lawfirm.common.exception.BusinessException("文件上传失败: " + e.getMessage());
         }
     }
 
     /**
-     * 获取文件预览URL
+     * 获取文件预览URL（预签名URL，有效期1小时）
      */
     @GetMapping("/{id}/preview")
     @RequirePermission("evidence:view")
@@ -178,12 +206,129 @@ public class EvidenceController {
             throw new com.lawfirm.common.exception.BusinessException("该证据没有关联文件");
         }
         
+        FileTypeService.FileTypeInfo typeInfo = fileTypeService.getFileTypeInfo(evidence.getFileName());
+        
         Map<String, Object> result = new HashMap<>();
-        result.put("fileUrl", evidence.getFileUrl());
+        try {
+            // 从 fileUrl 提取 objectName 并生成预签名 URL
+            String objectName = minioService.extractObjectName(evidence.getFileUrl());
+            if (objectName != null) {
+                // 生成1小时有效的预签名URL
+                String presignedUrl = minioService.getPresignedUrl(objectName, 3600);
+                result.put("fileUrl", presignedUrl);
+            } else {
+                result.put("fileUrl", evidence.getFileUrl());
+            }
+        } catch (Exception e) {
+            log.warn("生成预签名URL失败，使用原始URL: {}", e.getMessage());
+            result.put("fileUrl", evidence.getFileUrl());
+        }
         result.put("fileName", evidence.getFileName());
-        result.put("fileType", getFileType(evidence.getFileName()));
-        result.put("canPreview", canPreview(evidence.getFileName()));
+        result.put("fileType", typeInfo.getType());
+        result.put("canPreview", typeInfo.isCanPreview());
+        result.put("icon", typeInfo.getIcon());
         return Result.success(result);
+    }
+
+    /**
+     * 获取文件下载URL（预签名URL，有效期1小时）
+     */
+    @GetMapping("/{id}/download-url")
+    @RequirePermission("evidence:view")
+    public Result<Map<String, String>> getDownloadUrl(@PathVariable Long id) {
+        EvidenceDTO evidence = evidenceAppService.getEvidenceById(id);
+        if (evidence.getFileUrl() == null) {
+            throw new com.lawfirm.common.exception.BusinessException("该证据没有关联文件");
+        }
+        
+        Map<String, String> result = new HashMap<>();
+        try {
+            String objectName = minioService.extractObjectName(evidence.getFileUrl());
+            if (objectName != null) {
+                String presignedUrl = minioService.getPresignedUrl(objectName, 3600);
+                result.put("downloadUrl", presignedUrl);
+            } else {
+                result.put("downloadUrl", evidence.getFileUrl());
+            }
+        } catch (Exception e) {
+            log.warn("生成下载URL失败: {}", e.getMessage());
+            result.put("downloadUrl", evidence.getFileUrl());
+        }
+        result.put("fileName", evidence.getFileName());
+        return Result.success(result);
+    }
+
+    /**
+     * 获取 OnlyOffice 预览URL（Docker 容器可访问的预签名URL）
+     */
+    @GetMapping("/{id}/onlyoffice-url")
+    @RequirePermission("evidence:view")
+    public Result<Map<String, Object>> getOnlyOfficeUrl(@PathVariable Long id) {
+        EvidenceDTO evidence = evidenceAppService.getEvidenceById(id);
+        if (evidence.getFileUrl() == null) {
+            throw new com.lawfirm.common.exception.BusinessException("该证据没有关联文件");
+        }
+        
+        FileTypeService.FileTypeInfo typeInfo = fileTypeService.getFileTypeInfo(evidence.getFileName());
+        
+        Map<String, Object> result = new HashMap<>();
+        // 使用后端代理 URL，OnlyOffice 通过后端下载文件
+        // 后端运行在宿主机，OnlyOffice 通过 host.docker.internal 访问
+        String proxyUrl = "http://host.docker.internal:8080/evidence/" + id + "/file-proxy";
+        result.put("fileUrl", proxyUrl);
+        result.put("fileName", evidence.getFileName());
+        result.put("fileType", typeInfo.getType());
+        return Result.success(result);
+    }
+
+    /**
+     * 文件代理接口（供 OnlyOffice 容器下载文件）
+     */
+    @GetMapping("/{id}/file-proxy")
+    public void fileProxy(@PathVariable Long id, HttpServletResponse response) {
+        try {
+            EvidenceDTO evidence = evidenceAppService.getEvidenceById(id);
+            if (evidence.getFileUrl() == null) {
+                response.sendError(404, "文件不存在");
+                return;
+            }
+            
+            String objectName = minioService.extractObjectName(evidence.getFileUrl());
+            if (objectName == null) {
+                response.sendError(404, "文件路径无效");
+                return;
+            }
+            
+            byte[] fileBytes = minioService.downloadFileAsBytes(objectName);
+            
+            // 设置响应头
+            String contentType = getContentType(evidence.getFileName());
+            response.setContentType(contentType);
+            response.setContentLength(fileBytes.length);
+            response.setHeader("Content-Disposition", "inline; filename=\"" + evidence.getFileName() + "\"");
+            
+            // 写入文件内容
+            response.getOutputStream().write(fileBytes);
+            response.getOutputStream().flush();
+        } catch (Exception e) {
+            log.error("文件代理失败", e);
+            try {
+                response.sendError(500, "文件下载失败");
+            } catch (Exception ignored) {}
+        }
+    }
+
+    private String getContentType(String fileName) {
+        if (fileName == null) return "application/octet-stream";
+        String ext = fileName.toLowerCase();
+        if (ext.endsWith(".docx")) return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+        if (ext.endsWith(".doc")) return "application/msword";
+        if (ext.endsWith(".xlsx")) return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+        if (ext.endsWith(".xls")) return "application/vnd.ms-excel";
+        if (ext.endsWith(".pptx")) return "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+        if (ext.endsWith(".ppt")) return "application/vnd.ms-powerpoint";
+        if (ext.endsWith(".pdf")) return "application/pdf";
+        return "application/octet-stream";
     }
 
     /**
@@ -197,63 +342,41 @@ public class EvidenceController {
             throw new com.lawfirm.common.exception.BusinessException("该证据没有关联文件");
         }
         
+        FileTypeService.FileTypeInfo typeInfo = fileTypeService.getFileTypeInfo(evidence.getFileName());
+        
         Map<String, Object> result = new HashMap<>();
-        String fileName = evidence.getFileName();
-        if (isImageFile(fileName)) {
-            // 图片文件直接返回原文件URL作为缩略图
-            result.put("thumbnailUrl", evidence.getFileUrl());
+        if (fileTypeService.isImageFile(evidence.getFileName())) {
+            // 图片文件：返回缩略图URL或原文件URL
+            result.put("thumbnailUrl", evidence.getThumbnailUrl() != null ? 
+                    evidence.getThumbnailUrl() : evidence.getFileUrl());
         } else {
             // 非图片文件返回null，前端显示默认图标
             result.put("thumbnailUrl", null);
         }
-        result.put("fileType", getFileType(fileName));
+        result.put("fileType", typeInfo.getType());
+        result.put("icon", typeInfo.getIcon());
         return Result.success(result);
     }
 
     /**
-     * 判断文件类型
+     * 判断文件类型（保留用于兼容）
      */
     private String getFileType(String fileName) {
-        if (fileName == null) {
-            return "unknown";
-        }
-        String lowerName = fileName.toLowerCase();
-        if (lowerName.endsWith(".jpg") || lowerName.endsWith(".jpeg") || lowerName.endsWith(".png") 
-            || lowerName.endsWith(".gif") || lowerName.endsWith(".bmp") || lowerName.endsWith(".webp")) {
-            return "image";
-        } else if (lowerName.endsWith(".pdf")) {
-            return "pdf";
-        } else if (lowerName.endsWith(".doc") || lowerName.endsWith(".docx")) {
-            return "word";
-        } else if (lowerName.endsWith(".xls") || lowerName.endsWith(".xlsx")) {
-            return "excel";
-        } else if (lowerName.endsWith(".mp4") || lowerName.endsWith(".avi") || lowerName.endsWith(".mov")) {
-            return "video";
-        } else if (lowerName.endsWith(".mp3") || lowerName.endsWith(".wav") || lowerName.endsWith(".m4a")) {
-            return "audio";
-        } else {
-            return "other";
-        }
+        return fileTypeService.getFileTypeInfo(fileName).getType();
     }
 
     /**
-     * 判断是否为图片文件
+     * 判断是否为图片文件（保留用于兼容）
      */
     private boolean isImageFile(String fileName) {
-        if (fileName == null) {
-            return false;
-        }
-        String lowerName = fileName.toLowerCase();
-        return lowerName.endsWith(".jpg") || lowerName.endsWith(".jpeg") || lowerName.endsWith(".png") 
-            || lowerName.endsWith(".gif") || lowerName.endsWith(".bmp") || lowerName.endsWith(".webp");
+        return fileTypeService.isImageFile(fileName);
     }
 
     /**
-     * 判断是否可以预览
+     * 判断是否可以预览（保留用于兼容）
      */
     private boolean canPreview(String fileName) {
-        String fileType = getFileType(fileName);
-        return "image".equals(fileType) || "pdf".equals(fileType);
+        return fileTypeService.getFileTypeInfo(fileName).isCanPreview();
     }
 
     /**

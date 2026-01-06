@@ -25,7 +25,7 @@ public class ContractController {
      * 分页查询合同列表（财务模块：只读）
      */
     @GetMapping("/list")
-    @RequirePermission("contract:view")
+    @RequirePermission("finance:contract:view")
     public Result<PageResult<ContractDTO>> listContracts(ContractQueryDTO query) {
         PageResult<ContractDTO> result = contractAppService.listContracts(query);
         return Result.success(result);
@@ -35,7 +35,7 @@ public class ContractController {
      * 获取合同详情（财务模块：只读）
      */
     @GetMapping("/{id}")
-    @RequirePermission("contract:view")
+    @RequirePermission("finance:contract:view")
     public Result<ContractDTO> getContract(@PathVariable Long id) {
         ContractDTO contract = contractAppService.getContractById(id);
         return Result.success(contract);

@@ -51,4 +51,24 @@ public interface ContractParticipantMapper extends BaseMapper<ContractParticipan
      */
     @Update("UPDATE contract_participant SET deleted = true WHERE contract_id = #{contractId} AND user_id = #{userId}")
     void deleteByContractIdAndUserId(@Param("contractId") Long contractId, @Param("userId") Long userId);
+
+    /**
+     * 根据用户ID和角色查询合同ID列表
+     * 用于行政模块按承办律师筛选合同
+     */
+    @Select("SELECT contract_id FROM contract_participant WHERE user_id = #{userId} AND role = #{role} AND deleted = false")
+    List<Long> selectContractIdsByUserIdAndRole(@Param("userId") Long userId, @Param("role") String role);
+
+    /**
+     * 根据用户ID查询所有参与的合同ID列表
+     * 用于数据权限控制
+     */
+    @Select("SELECT DISTINCT contract_id FROM contract_participant WHERE user_id = #{userId} AND deleted = false")
+    List<Long> selectContractIdsByUserId(@Param("userId") Long userId);
+
+    /**
+     * 根据用户ID查询所有参与记录
+     */
+    @Select("SELECT * FROM contract_participant WHERE user_id = #{userId} AND deleted = false ORDER BY created_at DESC")
+    List<ContractParticipant> selectByUserId(@Param("userId") Long userId);
 }

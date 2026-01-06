@@ -36,8 +36,14 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         // 3. 查询角色和权限
         List<String> roles = userRepository.findRoleCodesByUserId(user.getId());
         List<String> permissions = userRepository.findPermissionsByUserId(user.getId());
+        
+        // 4. 获取最高数据范围权限
+        String dataScope = userRepository.findHighestDataScopeByUserId(user.getId());
+        if (dataScope == null) {
+            dataScope = "SELF";
+        }
 
-        // 4. 构建LoginUser
+        // 5. 构建LoginUser
         return LoginUser.builder()
                 .userId(user.getId())
                 .username(user.getUsername())
@@ -47,6 +53,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
                 .compensationType(user.getCompensationType())
                 .roles(new HashSet<>(roles))
                 .permissions(new HashSet<>(permissions))
+                .dataScope(dataScope)
                 .enabled(true)
                 .build();
     }

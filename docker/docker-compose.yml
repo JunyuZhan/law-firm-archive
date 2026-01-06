@@ -61,6 +61,23 @@ services:
     networks:
       - law-firm-network
 
+  # MinIO 初始化（创建 bucket）
+  minio-init:
+    image: minio/mc:latest
+    container_name: law-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 minioadmin minioadmin;
+      mc mb local/law-firm --ignore-existing;
+      echo 'MinIO bucket law-firm 创建完成';
+      exit 0;
+      "
+    networks:
+      - law-firm-network
+
   # PaddleOCR服务
   paddle-ocr:
     build:
@@ -81,6 +98,28 @@ services:
       - law-firm-network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # OnlyOffice 文档预览服务
+  onlyoffice:
+    image: onlyoffice/documentserver:latest
+    container_name: law-onlyoffice
+    restart: unless-stopped
+    environment:
+      - JWT_ENABLED=false
+    ports:
+      - "8088:80"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - onlyoffice_data:/var/www/onlyoffice/Data
+      - onlyoffice_logs:/var/log/onlyoffice
+    networks:
+      - law-firm-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/healthcheck"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -110,6 +149,10 @@ volumes:
   ocr_models:
     driver: local
   ocr_cache:
+    driver: local
+  onlyoffice_data:
+    driver: local
+  onlyoffice_logs:
     driver: local
   # elasticsearch_data:
   #   driver: local

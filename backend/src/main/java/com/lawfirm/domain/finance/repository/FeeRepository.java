@@ -34,5 +34,12 @@ public class FeeRepository extends AbstractRepository<FeeMapper, Fee> {
     public BigDecimal sumPaidAmountByContractId(Long contractId) {
         return baseMapper.sumPaidAmountByContractId(contractId);
     }
+
+    /**
+     * 查询合同最近一笔收款
+     */
+    public Fee findLastByContractId(Long contractId) {
+        return baseMapper.selectLastByContractId(contractId);
+    }
 }
 

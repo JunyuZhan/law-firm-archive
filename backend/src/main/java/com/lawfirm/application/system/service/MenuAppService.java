@@ -39,10 +39,15 @@ public class MenuAppService {
 
     /**
      * 获取用户菜单树
+     * 只返回 MENU 和 DIRECTORY 类型，不返回 BUTTON 类型（按钮权限）
      */
     public List<MenuDTO> getUserMenuTree(Long userId) {
         List<Menu> userMenus = menuMapper.selectByUserId(userId);
-        return buildTree(userMenus, 0L);
+        // 过滤掉 BUTTON 类型的菜单，只保留 MENU 和 DIRECTORY
+        List<Menu> filteredMenus = userMenus.stream()
+                .filter(menu -> !"BUTTON".equals(menu.getMenuType()))
+                .collect(Collectors.toList());
+        return buildTree(filteredMenus, 0L);
     }
 
     /**

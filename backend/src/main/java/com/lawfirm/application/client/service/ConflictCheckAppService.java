@@ -21,6 +21,8 @@ import com.lawfirm.domain.matter.entity.Matter;
 import com.lawfirm.domain.matter.repository.MatterRepository;
 import com.lawfirm.infrastructure.persistence.mapper.ConflictCheckItemMapper;
 import com.lawfirm.infrastructure.persistence.mapper.ConflictCheckMapper;
+import com.lawfirm.infrastructure.persistence.mapper.UserMapper;
+import com.lawfirm.domain.system.entity.User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -48,6 +50,7 @@ public class ConflictCheckAppService {
     private final MatterRepository matterRepository;
     private final ApprovalService approvalService;
     private final ApproverService approverService;
+    private final UserMapper userMapper;
 
     /**
      * 分页查询利冲检查
@@ -172,6 +175,216 @@ public class ConflictCheckAppService {
         ConflictCheckDTO dto = toDTO(check);
         dto.setItems(items.stream().map(this::toItemDTO).collect(Collectors.toList()));
         return dto;
+    }
+
+    /**
+     * 快速利冲检索（不创建记录，仅检查是否存在冲突）
+     * 用于新增客户时的实时检查
+     * 
+     * @param clientName 客户名称
+     * @param opposingParty 对方当事人
+     * @return 检查结果
+     */
+    public QuickConflictCheckResult quickConflictCheck(String clientName, String opposingParty) {
+        // 核心逻辑：检查对方当事人是否是我们的现有客户
+        List<Client> conflictClients = clientRepository.list(
+                new LambdaQueryWrapper<Client>()
+                        .like(Client::getName, opposingParty)
+        );
+        
+        if (!conflictClients.isEmpty()) {
+            Client conflictClient = conflictClients.get(0);
+            String detail = String.format(
+                    "对方当事人【%s】是本所现有客户（客户编号：%s）。根据律师执业规范，不能同时代理利益冲突双方。",
+                    opposingParty, conflictClient.getClientNo()
+            );
+            return new QuickConflictCheckResult(true, detail);
+        }
+        
+        return new QuickConflictCheckResult(false, null);
+    }
+
+    /**
+     * 快速利冲检查结果
+     */
+    public record QuickConflictCheckResult(boolean hasConflict, String conflictDetail) {}
+
+    /**
+     * 手动申请利冲审查（简化版，不需要关联案件）
+     */
+    @Transactional
+    public ConflictCheckDTO applyConflictCheck(String clientName, String opposingParty, 
+            String matterName, String checkType, String remark) {
+        // 1. 生成检查编号
+        String checkNo = generateCheckNo();
+
+        // 2. 创建检查记录
+        ConflictCheck check = ConflictCheck.builder()
+                .checkNo(checkNo)
+                .checkType(checkType != null ? checkType : "MANUAL")
+                .clientName(clientName)
+                .opposingParty(opposingParty)
+                .status("PENDING")
+                .applicantId(SecurityUtils.getUserId())
+                .remark(remark)
+                .build();
+
+        conflictCheckRepository.save(check);
+
+        // 3. 创建检查项
+        List<ConflictCheckItem> items = new ArrayList<>();
+        boolean hasConflict = false;
+
+        // ===== 核心利冲逻辑 =====
+        // 规则1：检查【对方当事人】是否是我们的现有客户（最重要！）
+        //        如果对方当事人是我们客户，则存在利益冲突
+        ConflictCheckItem opposingItem = ConflictCheckItem.builder()
+                .checkId(check.getId())
+                .partyName(opposingParty)
+                .partyType("OPPOSING")
+                .hasConflict(false)
+                .build();
+        ConflictResult opposingResult = checkOpposingPartyConflict(opposingParty);
+        if (opposingResult.hasConflict) {
+            opposingItem.setHasConflict(true);
+            opposingItem.setConflictDetail(opposingResult.detail);
+            opposingItem.setRelatedMatterId(opposingResult.relatedMatterId);
+            opposingItem.setRelatedClientId(opposingResult.relatedClientId);
+            hasConflict = true;
+        }
+        conflictCheckItemMapper.insert(opposingItem);
+        items.add(opposingItem);
+
+        // 规则2：检查【客户】是否曾作为其他案件的对方当事人
+        //        如果我们之前代理别人告过这个客户，可能存在冲突
+        ConflictCheckItem clientItem = ConflictCheckItem.builder()
+                .checkId(check.getId())
+                .partyName(clientName)
+                .partyType("CLIENT")
+                .hasConflict(false)
+                .build();
+        ConflictResult clientResult = checkClientConflict(clientName);
+        if (clientResult.hasConflict) {
+            clientItem.setHasConflict(true);
+            clientItem.setConflictDetail(clientResult.detail);
+            clientItem.setRelatedMatterId(clientResult.relatedMatterId);
+            clientItem.setRelatedClientId(clientResult.relatedClientId);
+            hasConflict = true;
+        }
+        conflictCheckItemMapper.insert(clientItem);
+        items.add(clientItem);
+
+        // 4. 更新检查状态
+        check.setStatus(hasConflict ? "CONFLICT" : "PASSED");
+        conflictCheckRepository.updateById(check);
+
+        // 5. 如果检测到冲突，创建审批记录
+        if (hasConflict) {
+            Long approverId = approverService.findConflictCheckApprover();
+            if (approverId == null) {
+                approverId = approverService.findDefaultApprover();
+            }
+            
+            approvalService.createApproval(
+                    "CONFLICT_CHECK",
+                    check.getId(),
+                    check.getCheckNo(),
+                    "利冲检查：" + check.getClientName() + " vs " + opposingParty,
+                    approverId,
+                    "HIGH",
+                    "URGENT",
+                    null
+            );
+            
+            log.info("利冲检查发现冲突，已创建审批记录: {} (审批人: {})", check.getCheckNo(), approverId);
+        }
+
+        log.info("利冲检查完成: {} ({}), 结果: {}", check.getCheckNo(), 
+                hasConflict ? "存在冲突" : "无冲突");
+        
+        ConflictCheckDTO dto = toDTO(check);
+        dto.setItems(items.stream().map(this::toItemDTO).collect(Collectors.toList()));
+        return dto;
+    }
+
+    /**
+     * 【核心利冲规则1】检查对方当事人是否是我们的现有客户
+     * 
+     * 如果对方当事人是我们的客户，则存在利益冲突！
+     * 例如：张三委托我们告李四，但李四也是我们的客户 → 冲突
+     */
+    private ConflictResult checkOpposingPartyConflict(String opposingParty) {
+        ConflictResult result = new ConflictResult();
+        
+        // 核心检查：对方当事人是否是我们的现有客户？
+        List<Client> clients = clientRepository.list(
+                new LambdaQueryWrapper<Client>()
+                        .like(Client::getName, opposingParty)
+        );
+        
+        if (!clients.isEmpty()) {
+            Client client = clients.get(0);
+            result.hasConflict = true;
+            result.detail = "【利益冲突】对方当事人「" + opposingParty + "」是本所现有客户，不能同时代理双方";
+            result.relatedClientId = client.getId();
+            return result;
+        }
+        
+        // 次要检查：对方当事人是否曾作为我方客户出现在其他案件中
+        List<Matter> mattersAsClient = matterRepository.list(
+                new LambdaQueryWrapper<Matter>()
+                        .exists("SELECT 1 FROM crm_client c WHERE c.name LIKE '%" + opposingParty + "%' AND c.id = matter.client_id")
+        );
+        // 简化：直接通过客户名称检查
+        
+        return result;
+    }
+
+    /**
+     * 【核心利冲规则2】检查客户是否曾作为其他案件的对方当事人
+     * 
+     * 如果我们之前代理别人告过这个客户，可能存在冲突
+     * 例如：我们之前代理王五告过张三，现在张三要委托我们 → 潜在冲突
+     */
+    private ConflictResult checkClientConflict(String clientName) {
+        ConflictResult result = new ConflictResult();
+        
+        // 检查客户名称是否曾作为其他案件的对方当事人
+        List<Matter> mattersAsOpposing = matterRepository.list(
+                new LambdaQueryWrapper<Matter>()
+                        .like(Matter::getOpposingParty, clientName)
+        );
+        
+        if (!mattersAsOpposing.isEmpty()) {
+            Matter matter = mattersAsOpposing.get(0);
+            result.hasConflict = true;
+            result.detail = "【潜在冲突】客户「" + clientName + "」曾在案件「" + matter.getName() + "」中作为对方当事人";
+            result.relatedMatterId = matter.getId();
+        }
+        
+        return result;
+    }
+
+    /**
+     * 简化版冲突检查（保留兼容性，供其他地方调用）
+     */
+    private ConflictResult checkConflictSimple(String partyName, String idNumber) {
+        ConflictResult result = new ConflictResult();
+        
+        // 检查是否为现有客户
+        List<Client> clients = clientRepository.list(
+                new LambdaQueryWrapper<Client>()
+                        .like(Client::getName, partyName)
+        );
+        
+        if (!clients.isEmpty()) {
+            Client client = clients.get(0);
+            result.hasConflict = true;
+            result.detail = "该当事人为现有客户";
+            result.relatedClientId = client.getId();
+        }
+
+        return result;
     }
 
     /**
@@ -468,17 +681,44 @@ public class ConflictCheckAppService {
         dto.setMatterId(check.getMatterId());
         dto.setClientId(check.getClientId());
         dto.setClientName(check.getClientName());
+        dto.setOpposingParty(check.getOpposingParty());
         dto.setCheckType(check.getCheckType());
         dto.setCheckTypeName(getCheckTypeName(check.getCheckType()));
         dto.setStatus(check.getStatus());
         dto.setStatusName(getStatusName(check.getStatus()));
         dto.setApplicantId(check.getApplicantId());
+        dto.setApplyTime(check.getCreatedAt()); // 申请时间 = 创建时间
         dto.setReviewerId(check.getReviewerId());
         dto.setReviewTime(check.getReviewedAt());
         dto.setReviewComment(check.getReviewComment());
         dto.setRemark(check.getRemark());
         dto.setCreatedAt(check.getCreatedAt());
         dto.setUpdatedAt(check.getUpdatedAt());
+        
+        // 查询申请人姓名
+        if (check.getApplicantId() != null) {
+            User applicant = userMapper.selectById(check.getApplicantId());
+            if (applicant != null) {
+                dto.setApplicantName(applicant.getRealName());
+            }
+        }
+        
+        // 查询审核人姓名
+        if (check.getReviewerId() != null) {
+            User reviewer = userMapper.selectById(check.getReviewerId());
+            if (reviewer != null) {
+                dto.setReviewerName(reviewer.getRealName());
+            }
+        }
+        
+        // 查询项目名称
+        if (check.getMatterId() != null) {
+            Matter matter = matterRepository.findById(check.getMatterId());
+            if (matter != null) {
+                dto.setMatterName(matter.getName());
+            }
+        }
+        
         return dto;
     }
 

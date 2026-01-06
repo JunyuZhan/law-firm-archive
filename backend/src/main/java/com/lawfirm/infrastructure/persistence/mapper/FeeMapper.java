@@ -39,5 +39,11 @@ public interface FeeMapper extends BaseMapper<Fee> {
      */
     @Select("SELECT * FROM finance_fee WHERE status IN ('PENDING', 'PARTIAL') AND deleted = false ORDER BY planned_date ASC NULLS LAST")
     List<Fee> selectPendingFees();
+
+    /**
+     * 查询合同最近一笔收款
+     */
+    @Select("SELECT * FROM finance_fee WHERE contract_id = #{contractId} AND actual_date IS NOT NULL AND deleted = false ORDER BY actual_date DESC LIMIT 1")
+    Fee selectLastByContractId(@Param("contractId") Long contractId);
 }
 

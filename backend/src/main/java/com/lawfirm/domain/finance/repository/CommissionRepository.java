@@ -36,6 +36,20 @@ public class CommissionRepository extends AbstractRepository<CommissionMapper, C
     }
 
     /**
+     * 根据用户ID查询所有提成记录（不分页）
+     */
+    public List<Commission> findByUserId(Long userId) {
+        return baseMapper.selectAllByUserId(userId);
+    }
+
+    /**
+     * 根据用户ID和状态查询提成记录
+     */
+    public List<Commission> findByUserIdAndStatus(Long userId, String status) {
+        return baseMapper.selectByUserIdAndStatus(userId, status);
+    }
+
+    /**
      * 统计用户提成总额
      */
     public BigDecimal sumCommissionByUserId(Long userId) {

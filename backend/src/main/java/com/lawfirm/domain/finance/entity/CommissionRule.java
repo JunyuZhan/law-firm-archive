@@ -6,10 +6,10 @@ import lombok.*;
 import lombok.experimental.SuperBuilder;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 
 /**
  * 提成规则实体
+ * 定义案件收入在律所、主办律师、协办律师、辅助人员之间的分配比例
  */
 @Data
 @SuperBuilder
@@ -30,44 +30,44 @@ public class CommissionRule extends BaseEntity {
     private String ruleName;
 
     /**
-     * 规则类型
+     * 规则类型（保留字段）
      */
     private String ruleType;
 
     /**
-     * 律所留存比例
+     * 律所比例（%）
      */
-    private BigDecimal firmRetentionRate;
+    private BigDecimal firmRate;
 
     /**
-     * 案源提成比例
+     * 主办律师比例（%）
+     */
+    private BigDecimal leadLawyerRate;
+
+    /**
+     * 协办律师比例（%）
+     */
+    private BigDecimal assistLawyerRate;
+
+    /**
+     * 辅助人员比例（%）
+     */
+    private BigDecimal supportStaffRate;
+
+    /**
+     * 案源人比例（%）
      */
     private BigDecimal originatorRate;
 
     /**
-     * 税费率
+     * 律师创建合同时是否允许修改比例
      */
-    private BigDecimal taxRate;
+    private Boolean allowModify;
 
     /**
-     * 管理费率
+     * 方案说明
      */
-    private BigDecimal managementFeeRate;
-
-    /**
-     * 阶梯费率（JSON格式）
-     */
-    private String rateTiers;
-
-    /**
-     * 生效日期
-     */
-    private LocalDate effectiveDate;
-
-    /**
-     * 失效日期
-     */
-    private LocalDate expiryDate;
+    private String description;
 
     /**
      * 是否默认规则
@@ -79,4 +79,3 @@ public class CommissionRule extends BaseEntity {
      */
     private Boolean active;
 }
-

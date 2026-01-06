@@ -183,6 +183,17 @@ public class MinioService {
     }
 
     /**
+     * 生成 Docker 容器可访问的预签名URL
+     * 将 localhost:9000 替换为 minio:9000（Docker 内部网络）
+     */
+    public String getPresignedUrlForDocker(String objectName, int expirySeconds) throws Exception {
+        String presignedUrl = getPresignedUrl(objectName, expirySeconds);
+        // 替换为 Docker 内部网络地址
+        return presignedUrl.replace("localhost:9000", "minio:9000")
+                          .replace("127.0.0.1:9000", "minio:9000");
+    }
+
+    /**
      * 下载文件为字节数组
      */
     public byte[] downloadFileAsBytes(String objectName) throws Exception {

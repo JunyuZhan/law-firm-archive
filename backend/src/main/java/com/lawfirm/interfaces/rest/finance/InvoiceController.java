@@ -31,7 +31,7 @@ public class InvoiceController {
      * 分页查询发票
      */
     @GetMapping("/list")
-    @RequirePermission("invoice:list")
+    @RequirePermission("finance:invoice:manage")
     public Result<PageResult<InvoiceDTO>> listInvoices(PageQuery query,
                                                        @RequestParam(required = false) Long clientId,
                                                        @RequestParam(required = false) String status) {
@@ -43,7 +43,7 @@ public class InvoiceController {
      * 获取发票详情
      */
     @GetMapping("/{id}")
-    @RequirePermission("invoice:list")
+    @RequirePermission("finance:invoice:manage")
     public Result<InvoiceDTO> getInvoice(@PathVariable Long id) {
         InvoiceDTO invoice = invoiceAppService.getInvoiceById(id);
         return Result.success(invoice);
@@ -53,7 +53,7 @@ public class InvoiceController {
      * 申请开票
      */
     @PostMapping("/apply")
-    @RequirePermission("invoice:apply")
+    @RequirePermission("finance:invoice:manage")
     @OperationLog(module = "发票管理", action = "申请开票")
     public Result<InvoiceDTO> applyInvoice(@RequestBody @Valid CreateInvoiceCommand command) {
         InvoiceDTO invoice = invoiceAppService.applyInvoice(command);
@@ -64,7 +64,7 @@ public class InvoiceController {
      * 开票（确认开票）
      */
     @PostMapping("/{id}/issue")
-    @RequirePermission("invoice:issue")
+    @RequirePermission("finance:invoice:manage")
     @OperationLog(module = "发票管理", action = "开具发票")
     public Result<Void> issueInvoice(@PathVariable Long id, @RequestBody IssueRequest request) {
         invoiceAppService.issueInvoice(id, request.getInvoiceNo());
@@ -75,7 +75,7 @@ public class InvoiceController {
      * 作废发票
      */
     @PostMapping("/{id}/cancel")
-    @RequirePermission("invoice:cancel")
+    @RequirePermission("finance:invoice:manage")
     @OperationLog(module = "发票管理", action = "作废发票")
     public Result<Void> cancelInvoice(@PathVariable Long id, @RequestBody CancelRequest request) {
         invoiceAppService.cancelInvoice(id, request.getReason());
@@ -86,7 +86,7 @@ public class InvoiceController {
      * 获取发票统计（M4-034）
      */
     @GetMapping("/statistics")
-    @RequirePermission("invoice:view")
+    @RequirePermission("finance:invoice:manage")
     @Operation(summary = "获取发票统计", description = "统计开票金额，包括按客户、类型、状态、时间等维度")
     public Result<InvoiceStatisticsDTO> getInvoiceStatistics() {
         return Result.success(invoiceAppService.getInvoiceStatistics());

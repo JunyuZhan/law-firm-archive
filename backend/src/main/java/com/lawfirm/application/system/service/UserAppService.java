@@ -179,7 +179,7 @@ public class UserAppService {
     }
 
     /**
-     * 重置密码
+     * 重置密码（管理员）
      */
     @Transactional
     public void resetPassword(Long id, String newPassword) {
@@ -187,6 +187,45 @@ public class UserAppService {
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.updateById(user);
         log.info("用户密码重置成功: {}", user.getUsername());
+    }
+
+    /**
+     * 修改自己的密码
+     */
+    @Transactional
+    public void changePassword(Long userId, String oldPassword, String newPassword) {
+        User user = userRepository.getByIdOrThrow(userId, "用户不存在");
+        
+        // 验证旧密码
+        if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
+            throw new BusinessException("旧密码不正确");
+        }
+        
+        // 设置新密码
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.updateById(user);
+        log.info("用户修改密码成功: {}", user.getUsername());
+    }
+
+    /**
+     * 更新个人信息（用户自己）
+     * 注意：姓名和用户名不允许修改
+     */
+    @Transactional
+    public UserDTO updateProfile(Long userId, String email, String phone, String introduction) {
+        User user = userRepository.getByIdOrThrow(userId, "用户不存在");
+        
+        if (StringUtils.hasText(email)) {
+            user.setEmail(email);
+        }
+        if (StringUtils.hasText(phone)) {
+            user.setPhone(phone);
+        }
+        // introduction 字段需要在User实体中添加，暂时忽略
+        
+        userRepository.updateById(user);
+        log.info("用户更新个人信息成功: {}", user.getUsername());
+        return toDTO(user);
     }
 
     /**

@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lawfirm.application.matter.command.CreateMatterCommand;
 import com.lawfirm.application.matter.command.UpdateMatterCommand;
 import com.lawfirm.application.matter.dto.MatterDTO;
+import com.lawfirm.application.matter.dto.MatterClientDTO;
 import com.lawfirm.application.matter.dto.MatterParticipantDTO;
 import com.lawfirm.application.matter.dto.MatterQueryDTO;
 import com.lawfirm.application.archive.service.ArchiveAppService;
@@ -22,8 +23,10 @@ import com.lawfirm.domain.finance.entity.ContractParticipant;
 import com.lawfirm.domain.finance.repository.ContractRepository;
 import com.lawfirm.domain.finance.repository.ContractParticipantRepository;
 import com.lawfirm.domain.matter.entity.Matter;
+import com.lawfirm.domain.matter.entity.MatterClient;
 import com.lawfirm.domain.matter.entity.MatterParticipant;
 import com.lawfirm.domain.matter.repository.MatterRepository;
+import com.lawfirm.domain.matter.repository.MatterClientRepository;
 import com.lawfirm.domain.system.repository.DepartmentRepository;
 import com.lawfirm.domain.system.repository.UserRepository;
 import com.lawfirm.infrastructure.persistence.mapper.MatterMapper;
@@ -49,6 +52,7 @@ import java.util.stream.Collectors;
 public class MatterAppService {
 
     private final MatterRepository matterRepository;
+    private final MatterClientRepository matterClientRepository;
     private final MatterMapper matterMapper;
     private final MatterParticipantMapper participantMapper;
     private final ClientRepository clientRepository;
@@ -112,13 +116,11 @@ public class MatterAppService {
         if (!"ACTIVE".equals(contract.getStatus())) {
             throw new BusinessException("只能基于已审批通过的合同创建项目，当前合同状态：" + contract.getStatus());
         }
-        // 验证合同是否已关联其他项目
-        if (contract.getMatterId() != null) {
-            throw new BusinessException("该合同已关联其他项目，不能重复使用");
-        }
-        // 验证客户一致性
+        // 注意：一个合同可以创建多个项目（比如常年法顾合同下有多个具体项目）
+        // 所以不再检查 contract.getMatterId() != null
+        // 验证客户一致性（主要客户必须与合同客户一致）
         if (!contract.getClientId().equals(command.getClientId())) {
-            throw new BusinessException("项目客户必须与合同客户一致");
+            throw new BusinessException("项目主要客户必须与合同客户一致");
         }
 
         // 3. 生成案件编号
@@ -162,7 +164,10 @@ public class MatterAppService {
         contract.setMatterId(matter.getId());
         contractRepository.updateById(contract);
         
-        // 4.2 从合同复制参与人到项目（如果合同有参与人）
+        // 4.2 保存客户关联（多客户支持）
+        saveMatterClients(matter.getId(), command);
+        
+        // 4.3 从合同复制参与人到项目（如果合同有参与人）
         copyContractParticipantsToMatter(contract.getId(), matter.getId());
 
         // 5. 添加团队成员
@@ -594,6 +599,13 @@ public class MatterAppService {
                 dto.setClientName(client.getName());
             }
         }
+        
+        // 加载多客户列表
+        List<MatterClient> matterClients = matterClientRepository.findByMatterId(matter.getId());
+        if (matterClients != null && !matterClients.isEmpty()) {
+            dto.setClients(matterClients.stream().map(this::toMatterClientDTO).collect(Collectors.toList()));
+        }
+        
         if (matter.getOriginatorId() != null) {
             var user = userRepository.findById(matter.getOriginatorId());
             if (user != null) {
@@ -633,6 +645,72 @@ public class MatterAppService {
         dto.setStatus(p.getStatus());
         dto.setRemark(p.getRemark());
         return dto;
+    }
+
+    /**
+     * MatterClient Entity 转 DTO
+     */
+    private MatterClientDTO toMatterClientDTO(MatterClient mc) {
+        MatterClientDTO dto = new MatterClientDTO();
+        dto.setId(mc.getId());
+        dto.setMatterId(mc.getMatterId());
+        dto.setClientId(mc.getClientId());
+        dto.setClientRole(mc.getClientRole());
+        dto.setClientRoleName(MatterClientDTO.getClientRoleName(mc.getClientRole()));
+        dto.setIsPrimary(mc.getIsPrimary());
+        
+        // 查询客户信息
+        if (mc.getClientId() != null) {
+            var client = clientRepository.findById(mc.getClientId());
+            if (client != null) {
+                dto.setClientName(client.getName());
+                dto.setClientType(client.getClientType());
+            }
+        }
+        
+        return dto;
+    }
+
+    /**
+     * 保存项目的多客户关联
+     */
+    private void saveMatterClients(Long matterId, CreateMatterCommand command) {
+        // 如果有显式的客户列表，使用列表
+        if (command.getClients() != null && !command.getClients().isEmpty()) {
+            boolean hasPrimary = false;
+            for (CreateMatterCommand.ClientCommand cc : command.getClients()) {
+                MatterClient mc = MatterClient.builder()
+                        .matterId(matterId)
+                        .clientId(cc.getClientId())
+                        .clientRole(cc.getClientRole() != null ? cc.getClientRole() : "PLAINTIFF")
+                        .isPrimary(Boolean.TRUE.equals(cc.getIsPrimary()))
+                        .build();
+                matterClientRepository.save(mc);
+                if (Boolean.TRUE.equals(cc.getIsPrimary())) {
+                    hasPrimary = true;
+                }
+            }
+            // 如果没有指定主要客户，将第一个设为主要客户
+            if (!hasPrimary) {
+                List<MatterClient> clients = matterClientRepository.findByMatterId(matterId);
+                if (!clients.isEmpty()) {
+                    MatterClient first = clients.get(0);
+                    first.setIsPrimary(true);
+                    matterClientRepository.updateById(first);
+                }
+            }
+        } else {
+            // 向后兼容：如果只有单个clientId，创建一条记录
+            if (command.getClientId() != null) {
+                MatterClient mc = MatterClient.builder()
+                        .matterId(matterId)
+                        .clientId(command.getClientId())
+                        .clientRole("PLAINTIFF")
+                        .isPrimary(true)
+                        .build();
+                matterClientRepository.save(mc);
+            }
+        }
     }
 
     /**

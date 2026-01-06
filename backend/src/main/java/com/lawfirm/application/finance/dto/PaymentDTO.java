@@ -18,6 +18,7 @@ public class PaymentDTO extends BaseDTO {
     private Long feeId;
     private Long contractId;
     private Long matterId;
+    private String matterName;
     private Long clientId;
     private String clientName;
     private BigDecimal amount;

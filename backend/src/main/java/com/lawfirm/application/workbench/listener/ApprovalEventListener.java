@@ -7,13 +7,15 @@ import com.lawfirm.application.workbench.event.ApprovalCompletedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 审批事件监听器
  * 处理审批完成后的业务逻辑
+ * 
+ * 注意：不使用 @Async，确保审批状态更新在同一事务中完成
+ * 如果需要异步处理，应该在事务提交后使用 @TransactionalEventListener
  */
 @Slf4j
 @Component
@@ -26,8 +28,8 @@ public class ApprovalEventListener {
 
     /**
      * 监听审批完成事件
+     * 同步处理，确保业务状态更新与审批状态更新在同一事务中
      */
-    @Async
     @EventListener
     @Transactional
     public void handleApprovalCompleted(ApprovalCompletedEvent event) {

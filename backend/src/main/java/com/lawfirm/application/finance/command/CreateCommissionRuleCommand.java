@@ -3,9 +3,7 @@ package com.lawfirm.application.finance.command;
 import lombok.Data;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
-import java.time.LocalDate;
 
 /**
  * 创建提成规则命令
@@ -21,24 +19,27 @@ public class CreateCommissionRuleCommand {
 
     private String ruleType;
 
-    @NotNull(message = "律所留存比例不能为空")
-    private BigDecimal firmRetentionRate;
+    /** 律所比例(%)，0表示不参与分配 */
+    private BigDecimal firmRate;
 
-    @NotNull(message = "案源提成比例不能为空")
+    /** 主办律师比例(%)，0表示不参与分配 */
+    private BigDecimal leadLawyerRate;
+
+    /** 协办律师比例(%)，0表示无协办或不参与分配 */
+    private BigDecimal assistLawyerRate;
+
+    /** 辅助人员比例(%)，0表示无辅助或不参与分配 */
+    private BigDecimal supportStaffRate;
+
+    /** 案源人比例(%)，0表示不参与分配 */
     private BigDecimal originatorRate;
 
-    private BigDecimal taxRate;
+    /** 律师创建合同时是否允许修改比例 */
+    private Boolean allowModify;
 
-    private BigDecimal managementFeeRate;
-
-    private String rateTiers;
-
-    private LocalDate effectiveDate;
-
-    private LocalDate expiryDate;
+    private String description;
 
     private Boolean isDefault;
 
     private Boolean active;
 }
-

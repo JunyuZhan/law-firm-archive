@@ -6,6 +6,7 @@ import com.lawfirm.infrastructure.persistence.mapper.FinanceContractMapper;
 import org.apache.ibatis.type.Alias;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.util.Optional;
 
 /**
@@ -34,5 +35,19 @@ public class ContractRepository extends AbstractRepository<FinanceContractMapper
      */
     public Optional<Contract> findByMatterId(Long matterId) {
         return Optional.ofNullable(baseMapper.selectByMatterId(matterId));
+    }
+
+    /**
+     * 统计指定日期创建的合同数量
+     */
+    public long countByCreatedDate(LocalDate date) {
+        return baseMapper.countByCreatedDate(date);
+    }
+
+    /**
+     * 统计指定年份创建的合同数量
+     */
+    public long countByCreatedYear(int year) {
+        return baseMapper.countByCreatedYear(year);
     }
 }

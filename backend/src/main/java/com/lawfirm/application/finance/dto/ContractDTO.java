@@ -39,6 +39,7 @@ public class ContractDTO extends BaseDTO {
     private String signerName;
     private Long departmentId;
     private String departmentName;
+    private Long createdBy;  // 创建人ID，用于前端判断操作权限
     private String paymentTerms;
     private String fileUrl;
     private String remark;
@@ -128,5 +129,42 @@ public class ContractDTO extends BaseDTO {
      * 当前待审批的审批单（如果有）
      */
     private ApprovalDTO currentApproval;
+    
+    // ========== 提成分配方案 ==========
+    
+    /**
+     * 提成规则ID
+     */
+    private Long commissionRuleId;
+    
+    /**
+     * 律所比例(%)
+     */
+    private BigDecimal firmRate;
+    
+    /**
+     * 主办律师比例(%)
+     */
+    private BigDecimal leadLawyerRate;
+    
+    /**
+     * 协办律师比例(%)
+     */
+    private BigDecimal assistLawyerRate;
+    
+    /**
+     * 辅助人员比例(%)
+     */
+    private BigDecimal supportStaffRate;
+    
+    /**
+     * 案源人比例(%)
+     */
+    private BigDecimal originatorRate;
+
+    /**
+     * 案情摘要（用于审批表）
+     */
+    private String caseSummary;
 }
 

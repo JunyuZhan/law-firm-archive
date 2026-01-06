@@ -32,10 +32,25 @@ public class CreateMatterCommand {
 
     private String businessType;
 
+    /**
+     * 主要客户ID（向后兼容）
+     */
     @NotNull(message = "客户不能为空")
     private Long clientId;
 
+    /**
+     * 客户列表（支持多客户）
+     */
+    private List<ClientCommand> clients;
+
     private String opposingParty;
+    
+    @Data
+    public static class ClientCommand {
+        private Long clientId;
+        private String clientRole;  // PLAINTIFF-原告, DEFENDANT-被告, THIRD_PARTY-第三人, APPLICANT-申请人, RESPONDENT-被申请人
+        private Boolean isPrimary;
+    }
     
     /**
      * 对方律师信息

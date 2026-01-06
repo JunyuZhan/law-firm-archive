@@ -8,9 +8,12 @@ import lombok.experimental.SuperBuilder;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 /**
  * 收款记录实体
+ * 
+ * Requirements: 3.2 - 收款登记后数据锁定
  */
 @Data
 @SuperBuilder
@@ -92,5 +95,21 @@ public class Payment extends BaseEntity {
      * 备注
      */
     private String remark;
+
+    /**
+     * 是否锁定（登记后自动锁定）
+     * Requirements: 3.2
+     */
+    private Boolean locked;
+
+    /**
+     * 锁定时间
+     */
+    private LocalDateTime lockedAt;
+
+    /**
+     * 锁定人ID
+     */
+    private Long lockedBy;
 }
 

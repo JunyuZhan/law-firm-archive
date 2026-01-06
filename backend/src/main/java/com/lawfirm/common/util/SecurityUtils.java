@@ -116,5 +116,37 @@ public class SecurityUtils {
         String type = getCompensationType();
         return "COMMISSION".equals(type) || "HYBRID".equals(type);
     }
+
+    /**
+     * 获取当前用户数据范围
+     * @return ALL, DEPT_AND_CHILD, DEPT, SELF
+     */
+    public static String getDataScope() {
+        String dataScope = getLoginUser().getDataScope();
+        return dataScope != null ? dataScope : "SELF";
+    }
+
+    /**
+     * 判断是否有全所数据权限
+     */
+    public static boolean hasAllDataScope() {
+        return "ALL".equals(getDataScope());
+    }
+
+    /**
+     * 判断是否有部门及下级数据权限
+     */
+    public static boolean hasDeptAndChildDataScope() {
+        String scope = getDataScope();
+        return "ALL".equals(scope) || "DEPT_AND_CHILD".equals(scope);
+    }
+
+    /**
+     * 判断是否有部门数据权限
+     */
+    public static boolean hasDeptDataScope() {
+        String scope = getDataScope();
+        return "ALL".equals(scope) || "DEPT_AND_CHILD".equals(scope) || "DEPT".equals(scope);
+    }
 }
 

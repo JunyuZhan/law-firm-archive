@@ -1,88 +1,853 @@
--- =====================================================
--- 资产管理模块数据库表结构
--- 模块：M8 行政后勤 - 资产管理
--- 功能：M8-030~034 资产登记、领用、归还、盘点、报废
--- =====================================================
+--
+-- PostgreSQL database dump
+--
 
--- 资产表
-CREATE TABLE IF NOT EXISTS admin_asset (
-    id BIGSERIAL PRIMARY KEY,
-    asset_no VARCHAR(50) NOT NULL UNIQUE,           -- 资产编号
-    name VARCHAR(200) NOT NULL,                     -- 资产名称
-    category VARCHAR(50) NOT NULL,                  -- 资产类别：OFFICE-办公设备, IT-IT设备, FURNITURE-家具, VEHICLE-车辆, OTHER-其他
-    brand VARCHAR(100),                             -- 品牌
-    model VARCHAR(100),                             -- 型号
-    specification VARCHAR(500),                     -- 规格参数
-    serial_number VARCHAR(100),                     -- 序列号/出厂编号
-    purchase_date DATE,                             -- 购置日期
-    purchase_price DECIMAL(12,2),                   -- 购置价格
-    supplier VARCHAR(200),                          -- 供应商
-    warranty_expire_date DATE,                      -- 保修到期日
-    useful_life INTEGER,                            -- 使用年限（月）
-    location VARCHAR(200),                          -- 存放位置
-    current_user_id BIGINT,                         -- 当前使用人ID
-    department_id BIGINT,                           -- 所属部门ID
-    status VARCHAR(20) NOT NULL DEFAULT 'IDLE',     -- 状态：IDLE-闲置, IN_USE-使用中, MAINTENANCE-维修中, SCRAPPED-已报废
-    image_url VARCHAR(500),                         -- 资产图片URL
-    remarks TEXT,                                   -- 备注
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by BIGINT,
-    updated_by BIGINT,
-    deleted BOOLEAN DEFAULT FALSE
+\restrict hB7cMMVxcOsE3W30gw9LWf0IkDMToT4ARrM2Tk2VOVjycPyFY7cxSf3xqlmoHIp
+
+-- Dumped from database version 15.15
+-- Dumped by pg_dump version 15.15
+
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+SET default_tablespace = '';
+
+SET default_table_access_method = heap;
+
+--
+-- Name: admin_asset; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.admin_asset (
+    id bigint NOT NULL,
+    asset_no character varying(50) NOT NULL,
+    name character varying(200) NOT NULL,
+    category character varying(50) NOT NULL,
+    brand character varying(100),
+    model character varying(100),
+    specification character varying(500),
+    serial_number character varying(100),
+    purchase_date date,
+    purchase_price numeric(12,2),
+    supplier character varying(200),
+    warranty_expire_date date,
+    useful_life integer,
+    location character varying(200),
+    current_user_id bigint,
+    department_id bigint,
+    status character varying(20) DEFAULT 'IDLE'::character varying NOT NULL,
+    image_url character varying(500),
+    remarks text,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    created_by bigint,
+    updated_by bigint,
+    deleted boolean DEFAULT false
 );
 
--- 资产操作记录表
-CREATE TABLE IF NOT EXISTS admin_asset_record (
-    id BIGSERIAL PRIMARY KEY,
-    asset_id BIGINT NOT NULL,                       -- 资产ID
-    record_type VARCHAR(20) NOT NULL,               -- 记录类型：RECEIVE-领用, RETURN-归还, TRANSFER-转移, MAINTENANCE-维修, SCRAP-报废
-    operator_id BIGINT NOT NULL,                    -- 操作人ID
-    from_user_id BIGINT,                            -- 原使用人ID（转移/归还时）
-    to_user_id BIGINT,                              -- 新使用人ID（领用/转移时）
-    operate_date DATE NOT NULL,                     -- 操作日期
-    expected_return_date DATE,                      -- 预计归还日期（领用时）
-    actual_return_date DATE,                        -- 实际归还日期
-    reason TEXT,                                    -- 原因说明
-    maintenance_cost DECIMAL(10,2),                 -- 维修费用（维修时）
-    approval_status VARCHAR(20) DEFAULT 'PENDING', -- 审批状态：PENDING-待审批, APPROVED-已批准, REJECTED-已拒绝
-    approver_id BIGINT,                             -- 审批人ID
-    approval_comment TEXT,                          -- 审批意见
-    remarks TEXT,                                   -- 备注
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by BIGINT,
-    updated_by BIGINT,
-    deleted BOOLEAN DEFAULT FALSE,
-    CONSTRAINT fk_asset_record_asset FOREIGN KEY (asset_id) REFERENCES admin_asset(id)
+
+--
+-- Name: TABLE admin_asset; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.admin_asset IS '资产信息表';
+
+
+--
+-- Name: COLUMN admin_asset.asset_no; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.admin_asset.asset_no IS '资产编号';
+
+
+--
+-- Name: COLUMN admin_asset.name; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.admin_asset.name IS '资产名称';
+
+
+--
+-- Name: COLUMN admin_asset.category; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.admin_asset.category IS '资产类别：OFFICE-办公设备, IT-IT设备, FURNITURE-家具, VEHICLE-车辆, OTHER-其他';
+
+
+--
+-- Name: COLUMN admin_asset.status; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.admin_asset.status IS '状态：IDLE-闲置, IN_USE-使用中, MAINTENANCE-维修中, SCRAPPED-已报废';
+
+
+--
+-- Name: admin_asset_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.admin_asset_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: admin_asset_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.admin_asset_id_seq OWNED BY public.admin_asset.id;
+
+
+--
+-- Name: admin_asset_record; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.admin_asset_record (
+    id bigint NOT NULL,
+    asset_id bigint NOT NULL,
+    record_type character varying(20) NOT NULL,
+    operator_id bigint NOT NULL,
+    from_user_id bigint,
+    to_user_id bigint,
+    operate_date date NOT NULL,
+    expected_return_date date,
+    actual_return_date date,
+    reason text,
+    maintenance_cost numeric(10,2),
+    approval_status character varying(20) DEFAULT 'PENDING'::character varying,
+    approver_id bigint,
+    approval_comment text,
+    remarks text,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    created_by bigint,
+    updated_by bigint,
+    deleted boolean DEFAULT false
 );
 
--- 创建索引
-CREATE INDEX IF NOT EXISTS idx_asset_no ON admin_asset(asset_no);
-CREATE INDEX IF NOT EXISTS idx_asset_category ON admin_asset(category);
-CREATE INDEX IF NOT EXISTS idx_asset_status ON admin_asset(status);
-CREATE INDEX IF NOT EXISTS idx_asset_department ON admin_asset(department_id);
-CREATE INDEX IF NOT EXISTS idx_asset_current_user ON admin_asset(current_user_id);
-CREATE INDEX IF NOT EXISTS idx_asset_record_asset ON admin_asset_record(asset_id);
-CREATE INDEX IF NOT EXISTS idx_asset_record_type ON admin_asset_record(record_type);
-CREATE INDEX IF NOT EXISTS idx_asset_record_operator ON admin_asset_record(operator_id);
 
--- 添加表注释
-COMMENT ON TABLE admin_asset IS '资产信息表';
-COMMENT ON TABLE admin_asset_record IS '资产操作记录表';
+--
+-- Name: TABLE admin_asset_record; Type: COMMENT; Schema: public; Owner: -
+--
 
--- 添加字段注释
-COMMENT ON COLUMN admin_asset.asset_no IS '资产编号';
-COMMENT ON COLUMN admin_asset.name IS '资产名称';
-COMMENT ON COLUMN admin_asset.category IS '资产类别：OFFICE-办公设备, IT-IT设备, FURNITURE-家具, VEHICLE-车辆, OTHER-其他';
-COMMENT ON COLUMN admin_asset.status IS '状态：IDLE-闲置, IN_USE-使用中, MAINTENANCE-维修中, SCRAPPED-已报废';
-COMMENT ON COLUMN admin_asset_record.record_type IS '记录类型：RECEIVE-领用, RETURN-归还, TRANSFER-转移, MAINTENANCE-维修, SCRAP-报废';
-COMMENT ON COLUMN admin_asset_record.approval_status IS '审批状态：PENDING-待审批, APPROVED-已批准, REJECTED-已拒绝';
+COMMENT ON TABLE public.admin_asset_record IS '资产操作记录表';
 
--- 插入示例数据
-INSERT INTO admin_asset (asset_no, name, category, brand, model, purchase_date, purchase_price, location, status, remarks)
-VALUES 
-    ('IT202601001', 'MacBook Pro 14寸', 'IT', 'Apple', 'MacBook Pro 14 M3', '2026-01-01', 16999.00, '办公区A-01', 'IDLE', '新购置笔记本电脑'),
-    ('IT202601002', 'Dell显示器27寸', 'IT', 'Dell', 'U2723QE', '2026-01-01', 4599.00, '办公区A-01', 'IDLE', '4K显示器'),
-    ('OF202601001', '办公桌', 'FURNITURE', '震旦', 'ZD-1800', '2026-01-01', 2800.00, '办公区B-03', 'IDLE', '1.8米办公桌'),
-    ('OF202601002', '办公椅', 'FURNITURE', '西昊', 'M57', '2026-01-01', 1299.00, '办公区B-03', 'IDLE', '人体工学椅');
+
+--
+-- Name: COLUMN admin_asset_record.record_type; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.admin_asset_record.record_type IS '记录类型：RECEIVE-领用, RETURN-归还, TRANSFER-转移, MAINTENANCE-维修, SCRAP-报废';
+
+
+--
+-- Name: COLUMN admin_asset_record.approval_status; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.admin_asset_record.approval_status IS '审批状态：PENDING-待审批, APPROVED-已批准, REJECTED-已拒绝';
+
+
+--
+-- Name: admin_asset_record_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.admin_asset_record_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: admin_asset_record_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.admin_asset_record_id_seq OWNED BY public.admin_asset_record.id;
+
+
+--
+-- Name: admin_purchase_item; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.admin_purchase_item (
+    id bigint NOT NULL,
+    request_id bigint NOT NULL,
+    item_name character varying(200) NOT NULL,
+    specification character varying(500),
+    unit character varying(20),
+    quantity integer DEFAULT 1 NOT NULL,
+    estimated_price numeric(10,2),
+    actual_price numeric(10,2),
+    estimated_amount numeric(12,2),
+    actual_amount numeric(12,2),
+    received_quantity integer DEFAULT 0,
+    remarks text,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    created_by bigint,
+    updated_by bigint,
+    deleted boolean DEFAULT false
+);
+
+
+--
+-- Name: TABLE admin_purchase_item; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.admin_purchase_item IS '采购明细表';
+
+
+--
+-- Name: admin_purchase_item_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.admin_purchase_item_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: admin_purchase_item_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.admin_purchase_item_id_seq OWNED BY public.admin_purchase_item.id;
+
+
+--
+-- Name: admin_purchase_receive; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.admin_purchase_receive (
+    id bigint NOT NULL,
+    receive_no character varying(50) NOT NULL,
+    request_id bigint NOT NULL,
+    item_id bigint NOT NULL,
+    quantity integer NOT NULL,
+    receive_date date NOT NULL,
+    receiver_id bigint NOT NULL,
+    location character varying(200),
+    convert_to_asset boolean DEFAULT false,
+    asset_id bigint,
+    remarks text,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    created_by bigint,
+    updated_by bigint,
+    deleted boolean DEFAULT false
+);
+
+
+--
+-- Name: TABLE admin_purchase_receive; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.admin_purchase_receive IS '采购入库记录表';
+
+
+--
+-- Name: admin_purchase_receive_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.admin_purchase_receive_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: admin_purchase_receive_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.admin_purchase_receive_id_seq OWNED BY public.admin_purchase_receive.id;
+
+
+--
+-- Name: admin_purchase_request; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.admin_purchase_request (
+    id bigint NOT NULL,
+    request_no character varying(50) NOT NULL,
+    title character varying(200) NOT NULL,
+    applicant_id bigint NOT NULL,
+    department_id bigint,
+    purchase_type character varying(20) NOT NULL,
+    estimated_amount numeric(12,2),
+    actual_amount numeric(12,2),
+    expected_date date,
+    reason text,
+    status character varying(20) DEFAULT 'DRAFT'::character varying,
+    approver_id bigint,
+    approval_date date,
+    approval_comment text,
+    supplier_id bigint,
+    remarks text,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    created_by bigint,
+    updated_by bigint,
+    deleted boolean DEFAULT false
+);
+
+
+--
+-- Name: TABLE admin_purchase_request; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.admin_purchase_request IS '采购申请表';
+
+
+--
+-- Name: admin_purchase_request_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.admin_purchase_request_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: admin_purchase_request_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.admin_purchase_request_id_seq OWNED BY public.admin_purchase_request.id;
+
+
+--
+-- Name: admin_supplier; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.admin_supplier (
+    id bigint NOT NULL,
+    supplier_no character varying(50) NOT NULL,
+    name character varying(200) NOT NULL,
+    supplier_type character varying(20) NOT NULL,
+    contact_person character varying(50),
+    contact_phone character varying(20),
+    contact_email character varying(100),
+    address character varying(500),
+    credit_code character varying(50),
+    bank_name character varying(100),
+    bank_account character varying(50),
+    supply_scope text,
+    rating character varying(10) DEFAULT 'B'::character varying,
+    status character varying(20) DEFAULT 'ACTIVE'::character varying,
+    remarks text,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    created_by bigint,
+    updated_by bigint,
+    deleted boolean DEFAULT false
+);
+
+
+--
+-- Name: TABLE admin_supplier; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.admin_supplier IS '供应商信息表';
+
+
+--
+-- Name: admin_supplier_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.admin_supplier_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: admin_supplier_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.admin_supplier_id_seq OWNED BY public.admin_supplier.id;
+
+
+--
+-- Name: asset_inventory; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.asset_inventory (
+    id bigint NOT NULL,
+    inventory_no character varying(50) NOT NULL,
+    inventory_date date NOT NULL,
+    inventory_type character varying(20) NOT NULL,
+    department_id bigint,
+    location character varying(200),
+    status character varying(20) DEFAULT 'IN_PROGRESS'::character varying,
+    total_count integer DEFAULT 0,
+    actual_count integer DEFAULT 0,
+    surplus_count integer DEFAULT 0,
+    shortage_count integer DEFAULT 0,
+    remark character varying(500),
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    created_by bigint,
+    updated_by bigint,
+    deleted boolean DEFAULT false
+);
+
+
+--
+-- Name: TABLE asset_inventory; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.asset_inventory IS '资产盘点表';
+
+
+--
+-- Name: COLUMN asset_inventory.inventory_type; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.asset_inventory.inventory_type IS '盘点类型: FULL全盘/PARTIAL抽盘';
+
+
+--
+-- Name: COLUMN asset_inventory.status; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.asset_inventory.status IS '状态: IN_PROGRESS进行中/COMPLETED已完成';
+
+
+--
+-- Name: asset_inventory_detail; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.asset_inventory_detail (
+    id bigint NOT NULL,
+    inventory_id bigint NOT NULL,
+    asset_id bigint NOT NULL,
+    expected_status character varying(20),
+    actual_status character varying(20),
+    expected_location character varying(200),
+    actual_location character varying(200),
+    expected_user_id bigint,
+    actual_user_id bigint,
+    discrepancy_type character varying(20),
+    discrepancy_desc character varying(500),
+    remark character varying(500),
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+
+--
+-- Name: TABLE asset_inventory_detail; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.asset_inventory_detail IS '资产盘点明细表';
+
+
+--
+-- Name: COLUMN asset_inventory_detail.discrepancy_type; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.asset_inventory_detail.discrepancy_type IS '差异类型: NORMAL正常/SURPLUS盘盈/SHORTAGE盘亏/LOCATION位置不符/STATUS状态不符';
+
+
+--
+-- Name: asset_inventory_detail_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.asset_inventory_detail_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: asset_inventory_detail_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.asset_inventory_detail_id_seq OWNED BY public.asset_inventory_detail.id;
+
+
+--
+-- Name: asset_inventory_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.asset_inventory_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: asset_inventory_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.asset_inventory_id_seq OWNED BY public.asset_inventory.id;
+
+
+--
+-- Name: admin_asset id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_asset ALTER COLUMN id SET DEFAULT nextval('public.admin_asset_id_seq'::regclass);
+
+
+--
+-- Name: admin_asset_record id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_asset_record ALTER COLUMN id SET DEFAULT nextval('public.admin_asset_record_id_seq'::regclass);
+
+
+--
+-- Name: admin_purchase_item id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_purchase_item ALTER COLUMN id SET DEFAULT nextval('public.admin_purchase_item_id_seq'::regclass);
+
+
+--
+-- Name: admin_purchase_receive id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_purchase_receive ALTER COLUMN id SET DEFAULT nextval('public.admin_purchase_receive_id_seq'::regclass);
+
+
+--
+-- Name: admin_purchase_request id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_purchase_request ALTER COLUMN id SET DEFAULT nextval('public.admin_purchase_request_id_seq'::regclass);
+
+
+--
+-- Name: admin_supplier id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_supplier ALTER COLUMN id SET DEFAULT nextval('public.admin_supplier_id_seq'::regclass);
+
+
+--
+-- Name: asset_inventory id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.asset_inventory ALTER COLUMN id SET DEFAULT nextval('public.asset_inventory_id_seq'::regclass);
+
+
+--
+-- Name: asset_inventory_detail id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.asset_inventory_detail ALTER COLUMN id SET DEFAULT nextval('public.asset_inventory_detail_id_seq'::regclass);
+
+
+--
+-- Name: admin_asset admin_asset_asset_no_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_asset
+    ADD CONSTRAINT admin_asset_asset_no_key UNIQUE (asset_no);
+
+
+--
+-- Name: admin_asset admin_asset_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_asset
+    ADD CONSTRAINT admin_asset_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: admin_asset_record admin_asset_record_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_asset_record
+    ADD CONSTRAINT admin_asset_record_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: admin_purchase_item admin_purchase_item_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_purchase_item
+    ADD CONSTRAINT admin_purchase_item_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: admin_purchase_receive admin_purchase_receive_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_purchase_receive
+    ADD CONSTRAINT admin_purchase_receive_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: admin_purchase_receive admin_purchase_receive_receive_no_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_purchase_receive
+    ADD CONSTRAINT admin_purchase_receive_receive_no_key UNIQUE (receive_no);
+
+
+--
+-- Name: admin_purchase_request admin_purchase_request_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_purchase_request
+    ADD CONSTRAINT admin_purchase_request_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: admin_purchase_request admin_purchase_request_request_no_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_purchase_request
+    ADD CONSTRAINT admin_purchase_request_request_no_key UNIQUE (request_no);
+
+
+--
+-- Name: admin_supplier admin_supplier_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_supplier
+    ADD CONSTRAINT admin_supplier_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: admin_supplier admin_supplier_supplier_no_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_supplier
+    ADD CONSTRAINT admin_supplier_supplier_no_key UNIQUE (supplier_no);
+
+
+--
+-- Name: asset_inventory_detail asset_inventory_detail_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.asset_inventory_detail
+    ADD CONSTRAINT asset_inventory_detail_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: asset_inventory asset_inventory_inventory_no_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.asset_inventory
+    ADD CONSTRAINT asset_inventory_inventory_no_key UNIQUE (inventory_no);
+
+
+--
+-- Name: asset_inventory asset_inventory_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.asset_inventory
+    ADD CONSTRAINT asset_inventory_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: idx_asset_category; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_asset_category ON public.admin_asset USING btree (category);
+
+
+--
+-- Name: idx_asset_current_user; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_asset_current_user ON public.admin_asset USING btree (current_user_id);
+
+
+--
+-- Name: idx_asset_department; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_asset_department ON public.admin_asset USING btree (department_id);
+
+
+--
+-- Name: idx_asset_inventory_date; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_asset_inventory_date ON public.asset_inventory USING btree (inventory_date);
+
+
+--
+-- Name: idx_asset_inventory_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_asset_inventory_status ON public.asset_inventory USING btree (status);
+
+
+--
+-- Name: idx_asset_no; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_asset_no ON public.admin_asset USING btree (asset_no);
+
+
+--
+-- Name: idx_asset_record_asset; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_asset_record_asset ON public.admin_asset_record USING btree (asset_id);
+
+
+--
+-- Name: idx_asset_record_operator; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_asset_record_operator ON public.admin_asset_record USING btree (operator_id);
+
+
+--
+-- Name: idx_asset_record_type; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_asset_record_type ON public.admin_asset_record USING btree (record_type);
+
+
+--
+-- Name: idx_asset_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_asset_status ON public.admin_asset USING btree (status);
+
+
+--
+-- Name: idx_inventory_detail_asset; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_inventory_detail_asset ON public.asset_inventory_detail USING btree (asset_id);
+
+
+--
+-- Name: idx_inventory_detail_inventory; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_inventory_detail_inventory ON public.asset_inventory_detail USING btree (inventory_id);
+
+
+--
+-- Name: idx_purchase_item_request; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_purchase_item_request ON public.admin_purchase_item USING btree (request_id);
+
+
+--
+-- Name: idx_purchase_receive_item; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_purchase_receive_item ON public.admin_purchase_receive USING btree (item_id);
+
+
+--
+-- Name: idx_purchase_receive_request; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_purchase_receive_request ON public.admin_purchase_receive USING btree (request_id);
+
+
+--
+-- Name: idx_purchase_request_applicant; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_purchase_request_applicant ON public.admin_purchase_request USING btree (applicant_id);
+
+
+--
+-- Name: idx_purchase_request_no; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_purchase_request_no ON public.admin_purchase_request USING btree (request_no);
+
+
+--
+-- Name: idx_purchase_request_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_purchase_request_status ON public.admin_purchase_request USING btree (status);
+
+
+--
+-- Name: idx_supplier_no; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_supplier_no ON public.admin_supplier USING btree (supplier_no);
+
+
+--
+-- Name: idx_supplier_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_supplier_status ON public.admin_supplier USING btree (status);
+
+
+--
+-- Name: idx_supplier_type; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_supplier_type ON public.admin_supplier USING btree (supplier_type);
+
+
+--
+-- Name: admin_asset_record fk_asset_record_asset; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_asset_record
+    ADD CONSTRAINT fk_asset_record_asset FOREIGN KEY (asset_id) REFERENCES public.admin_asset(id);
+
+
+--
+-- Name: admin_purchase_item fk_purchase_item_request; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_purchase_item
+    ADD CONSTRAINT fk_purchase_item_request FOREIGN KEY (request_id) REFERENCES public.admin_purchase_request(id);
+
+
+--
+-- Name: admin_purchase_receive fk_purchase_receive_item; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_purchase_receive
+    ADD CONSTRAINT fk_purchase_receive_item FOREIGN KEY (item_id) REFERENCES public.admin_purchase_item(id);
+
+
+--
+-- Name: admin_purchase_receive fk_purchase_receive_request; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_purchase_receive
+    ADD CONSTRAINT fk_purchase_receive_request FOREIGN KEY (request_id) REFERENCES public.admin_purchase_request(id);
+
+
+--
+-- PostgreSQL database dump complete
+--
+
+\unrestrict hB7cMMVxcOsE3W30gw9LWf0IkDMToT4ARrM2Tk2VOVjycPyFY7cxSf3xqlmoHIp
+

@@ -11,8 +11,13 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
@@ -80,6 +85,40 @@ public class EvidenceListController {
     public Result<String> generate(@PathVariable Long id,
                                    @RequestParam(defaultValue = "docx") String format) {
         return Result.success(listAppService.generateListFile(id, format));
+    }
+
+    @Operation(summary = "导出证据清单为Word格式")
+    @GetMapping("/{id}/export/word")
+    @RequirePermission("evidence:view")
+    @OperationLog(module = "证据清单", action = "导出证据清单Word")
+    public ResponseEntity<byte[]> exportToWord(@PathVariable Long id) {
+        EvidenceListDTO list = listAppService.getListById(id);
+        byte[] document = listAppService.exportToWord(id);
+        
+        String fileName = (list.getName() != null ? list.getName() : "证据清单") + ".docx";
+        String encodedFileName = URLEncoder.encode(fileName, StandardCharsets.UTF_8).replace("+", "%20");
+        
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + encodedFileName)
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.wordprocessingml.document"))
+                .body(document);
+    }
+
+    @Operation(summary = "导出证据清单为PDF格式")
+    @GetMapping("/{id}/export/pdf")
+    @RequirePermission("evidence:view")
+    @OperationLog(module = "证据清单", action = "导出证据清单PDF")
+    public ResponseEntity<byte[]> exportToPdf(@PathVariable Long id) {
+        EvidenceListDTO list = listAppService.getListById(id);
+        byte[] document = listAppService.exportToPdf(id);
+        
+        String fileName = (list.getName() != null ? list.getName() : "证据清单") + ".pdf";
+        String encodedFileName = URLEncoder.encode(fileName, StandardCharsets.UTF_8).replace("+", "%20");
+        
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + encodedFileName)
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(document);
     }
 
     @Operation(summary = "按案件获取清单列表")

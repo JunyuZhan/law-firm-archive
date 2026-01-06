@@ -49,5 +49,20 @@ public class CommissionRuleRepository extends AbstractRepository<CommissionRuleM
         );
         return Optional.ofNullable(rule);
     }
+
+    /**
+     * 清除所有规则的默认状态
+     */
+    public void clearDefault() {
+        baseMapper.clearDefault();
+    }
+
+    /**
+     * 设置某规则为默认
+     */
+    public void setDefault(Long id) {
+        baseMapper.clearDefault();
+        baseMapper.setDefault(id);
+    }
 }
 

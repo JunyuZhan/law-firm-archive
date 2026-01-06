@@ -6,6 +6,8 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
+import java.time.LocalDate;
+
 /**
  * 委托合同 Mapper（财务模块）
  */
@@ -23,4 +25,16 @@ public interface FinanceContractMapper extends BaseMapper<Contract> {
      */
     @Select("SELECT * FROM finance_contract WHERE matter_id = #{matterId} AND deleted = false LIMIT 1")
     Contract selectByMatterId(@Param("matterId") Long matterId);
+
+    /**
+     * 统计指定日期创建的合同数量
+     */
+    @Select("SELECT COUNT(*) FROM finance_contract WHERE DATE(created_at) = #{date} AND deleted = false")
+    long countByCreatedDate(@Param("date") LocalDate date);
+
+    /**
+     * 统计指定年份创建的合同数量
+     */
+    @Select("SELECT COUNT(*) FROM finance_contract WHERE EXTRACT(YEAR FROM created_at) = #{year} AND deleted = false")
+    long countByCreatedYear(@Param("year") int year);
 }

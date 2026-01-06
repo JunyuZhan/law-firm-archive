@@ -304,6 +304,13 @@ public class DocumentAppService {
      * 保存版本历史
      */
     private void saveVersion(Document document, String changeNote) {
+        Long userId = null;
+        try {
+            userId = SecurityUtils.getUserId();
+        } catch (Exception e) {
+            log.warn("获取当前用户ID失败，使用null: {}", e.getMessage());
+        }
+        
         DocumentVersion version = DocumentVersion.builder()
                 .documentId(document.getId())
                 .version(document.getVersion())
@@ -311,7 +318,7 @@ public class DocumentAppService {
                 .filePath(document.getFilePath())
                 .fileSize(document.getFileSize())
                 .changeNote(changeNote)
-                .createdBy(SecurityUtils.getUserId())
+                .createdBy(userId)
                 .createdAt(LocalDateTime.now())
                 .build();
         versionMapper.insert(version);

@@ -3,7 +3,6 @@ package com.lawfirm.application.finance.dto;
 import lombok.Data;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 
 /**
  * 提成规则 DTO
@@ -15,14 +14,13 @@ public class CommissionRuleDTO {
     private String ruleCode;
     private String ruleName;
     private String ruleType;
-    private BigDecimal firmRetentionRate;
+    private BigDecimal firmRate;
+    private BigDecimal leadLawyerRate;
+    private BigDecimal assistLawyerRate;
+    private BigDecimal supportStaffRate;
     private BigDecimal originatorRate;
-    private BigDecimal taxRate;
-    private BigDecimal managementFeeRate;
-    private String rateTiers;
-    private LocalDate effectiveDate;
-    private LocalDate expiryDate;
+    private Boolean allowModify;
+    private String description;
     private Boolean isDefault;
     private Boolean active;
 }
-

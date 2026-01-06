@@ -50,13 +50,21 @@ CREATE TABLE IF NOT EXISTS finance_commission (
     client_id BIGINT,
     rule_id BIGINT,
     rule_code VARCHAR(50),
-    -- 金额信息
-    payment_amount DECIMAL(15,2) NOT NULL,
-    firm_retention DECIMAL(15,2) NOT NULL,
-    commission_base DECIMAL(15,2) NOT NULL,
+    -- 金额信息（原有字段）
+    payment_amount DECIMAL(15,2),
+    firm_retention DECIMAL(15,2),
+    commission_base DECIMAL(15,2),
     tax_amount DECIMAL(15,2),
     management_fee DECIMAL(15,2),
-    net_commission DECIMAL(15,2) NOT NULL,
+    net_commission DECIMAL(15,2),
+    -- 金额信息（新增字段，用于三层分配模型）
+    gross_amount DECIMAL(15,2),
+    cost_amount DECIMAL(15,2),
+    net_amount DECIMAL(15,2),
+    distribution_ratio DECIMAL(5,4),
+    commission_rate DECIMAL(5,4),
+    commission_amount DECIMAL(15,2),
+    compensation_type VARCHAR(20),
     -- 分配信息
     originator_id BIGINT,
     originator_commission DECIMAL(15,2),

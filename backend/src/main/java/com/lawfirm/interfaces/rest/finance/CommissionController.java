@@ -1,10 +1,12 @@
 package com.lawfirm.interfaces.rest.finance;
 
 import com.lawfirm.application.finance.command.CreateCommissionRuleCommand;
+import com.lawfirm.application.finance.command.ManualCalculateCommissionCommand;
 import com.lawfirm.application.finance.command.UpdateCommissionRuleCommand;
 import com.lawfirm.application.finance.dto.CommissionDTO;
 import com.lawfirm.application.finance.dto.CommissionQueryDTO;
 import com.lawfirm.application.finance.dto.CommissionRuleDTO;
+import com.lawfirm.application.finance.dto.PaymentDTO;
 import com.lawfirm.application.finance.service.CommissionAppService;
 import com.lawfirm.common.annotation.OperationLog;
 import com.lawfirm.common.annotation.RequirePermission;
@@ -78,6 +80,24 @@ public class CommissionController {
         return Result.success(rules);
     }
 
+    @PutMapping("/rules/{id}/set-default")
+    @RequirePermission("finance:commission:rule:update")
+    @Operation(summary = "设为默认规则", description = "仅系统管理员和主任可以操作")
+    @OperationLog(module = "提成管理", action = "设为默认规则")
+    public Result<Void> setDefaultRule(@PathVariable Long id) {
+        commissionAppService.setDefaultRule(id);
+        return Result.success();
+    }
+
+    @PutMapping("/rules/{id}/toggle")
+    @RequirePermission("finance:commission:rule:update")
+    @Operation(summary = "切换规则状态", description = "启用/停用规则")
+    @OperationLog(module = "提成管理", action = "切换规则状态")
+    public Result<Void> toggleRule(@PathVariable Long id) {
+        commissionAppService.toggleRule(id);
+        return Result.success();
+    }
+
     // ========== 提成计算 ==========
 
     @PostMapping("/calculate/{paymentId}")
@@ -89,18 +109,27 @@ public class CommissionController {
         return Result.success(commissions);
     }
 
+    @PostMapping("/manual-calculate")
+    @RequirePermission("finance:commission:calculate")
+    @Operation(summary = "手动计算提成", description = "财务用户手动计算提成，可修改提成比例和金额")
+    @OperationLog(module = "提成管理", action = "手动计算提成")
+    public Result<List<CommissionDTO>> manualCalculateCommission(@RequestBody @Valid ManualCalculateCommissionCommand command) {
+        List<CommissionDTO> commissions = commissionAppService.manualCalculateCommission(command);
+        return Result.success(commissions);
+    }
+
     // ========== 提成查询 ==========
 
     @GetMapping
-    @RequirePermission("finance:commission:list")
+    @RequirePermission("finance:commission:manage")
     @Operation(summary = "查询提成记录列表")
     public Result<PageResult<CommissionDTO>> listCommissions(CommissionQueryDTO query) {
         PageResult<CommissionDTO> result = commissionAppService.listCommissions(query);
         return Result.success(result);
     }
 
-    @GetMapping("/{id}")
-    @RequirePermission("finance:commission:view")
+    @GetMapping("/detail/{id}")
+    @RequirePermission("finance:commission:manage")
     @Operation(summary = "获取提成记录详情")
     public Result<CommissionDTO> getCommission(@PathVariable Long id) {
         CommissionDTO commission = commissionAppService.getCommission(id);
@@ -108,17 +137,25 @@ public class CommissionController {
     }
 
     @GetMapping("/users/{userId}/total")
-    @RequirePermission("finance:commission:view")
+    @RequirePermission("finance:commission:manage")
     @Operation(summary = "查询用户提成总额")
     public Result<BigDecimal> getUserTotalCommission(@PathVariable Long userId) {
         BigDecimal total = commissionAppService.getUserTotalCommission(userId);
         return Result.success(total);
     }
 
+    @GetMapping("/pending-payments")
+    @RequirePermission("finance:commission:manage")
+    @Operation(summary = "获取待计算提成的收款记录列表", description = "返回所有已确认但还没有生成提成记录的收款记录")
+    public Result<List<PaymentDTO>> getPendingCommissionPayments() {
+        List<PaymentDTO> payments = commissionAppService.getPendingCommissionPayments();
+        return Result.success(payments);
+    }
+
     // ========== 提成汇总查看（M4-037，P1） ==========
 
     @GetMapping("/summary")
-    @RequirePermission("finance:commission:summary")
+    @RequirePermission("finance:commission:manage")
     @Operation(summary = "获取全所提成汇总", description = "仅管理层可以查看")
     public Result<Map<String, Object>> getCommissionSummary(
             @RequestParam(required = false) String startDate,
@@ -130,7 +167,7 @@ public class CommissionController {
     // ========== 提成审批（M4-038，P1） ==========
 
     @PostMapping("/{id}/approve")
-    @RequirePermission("finance:commission:approve")
+    @RequirePermission("finance:commission:manage")
     @Operation(summary = "审批提成", description = "仅主任可以审批")
     @OperationLog(module = "提成管理", action = "审批提成")
     public Result<CommissionDTO> approveCommission(
@@ -142,7 +179,7 @@ public class CommissionController {
     }
 
     @PostMapping("/batch-approve")
-    @RequirePermission("finance:commission:approve")
+    @RequirePermission("finance:commission:manage")
     @Operation(summary = "批量审批提成", description = "仅主任可以审批")
     @OperationLog(module = "提成管理", action = "批量审批提成")
     public Result<Void> batchApproveCommissions(
@@ -156,7 +193,7 @@ public class CommissionController {
     // ========== 提成发放（M4-039，P1） ==========
 
     @PostMapping("/{id}/issue")
-    @RequirePermission("finance:commission:issue")
+    @RequirePermission("finance:commission:manage")
     @Operation(summary = "确认提成已发放", description = "仅财务人员可以确认")
     @OperationLog(module = "提成管理", action = "确认提成发放")
     public Result<CommissionDTO> issueCommission(@PathVariable Long id) {
@@ -165,7 +202,7 @@ public class CommissionController {
     }
 
     @PostMapping("/batch-issue")
-    @RequirePermission("finance:commission:issue")
+    @RequirePermission("finance:commission:manage")
     @Operation(summary = "批量确认提成发放", description = "仅财务人员可以确认")
     @OperationLog(module = "提成管理", action = "批量确认提成发放")
     public Result<Void> batchIssueCommissions(@RequestBody List<Long> ids) {
@@ -176,7 +213,7 @@ public class CommissionController {
     // ========== 提成报表（M4-040，P1） ==========
 
     @GetMapping("/report")
-    @RequirePermission("finance:commission:report")
+    @RequirePermission("finance:commission:manage")
     @Operation(summary = "生成提成报表", description = "财务和管理层可以查看")
     public Result<List<Map<String, Object>>> getCommissionReport(
             @RequestParam(required = false) String startDate,

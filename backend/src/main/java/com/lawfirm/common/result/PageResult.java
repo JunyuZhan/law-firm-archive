@@ -55,5 +55,12 @@ public class PageResult<T> {
         result.pages = (int) Math.ceil((double) total / pageSize);
         return result;
     }
+
+    /**
+     * 返回空的分页结果
+     */
+    public static <T> PageResult<T> empty() {
+        return of(java.util.Collections.emptyList(), 0, 1, 10);
+    }
 }
 

@@ -26,12 +26,15 @@ import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
  * 收费管理应用服务
+ * 
+ * Requirements: 3.1, 3.2, 3.3 - 收款登记与数据锁定
  */
 @Slf4j
 @Service
@@ -174,6 +177,8 @@ public class FeeAppService {
     /**
      * 确认收款
      * 收款确认后自动触发提成计算（M4-035）
+     * 
+     * Requirements: 3.1, 3.2, 3.3 - 收款登记后数据锁定
      */
     @Transactional
     public void confirmPayment(Long paymentId) {
@@ -185,6 +190,12 @@ public class FeeAppService {
 
         payment.setStatus("CONFIRMED");
         payment.setConfirmerId(SecurityUtils.getUserId());
+        
+        // Requirements: 3.2 - 收款登记后自动锁定
+        payment.setLocked(true);
+        payment.setLockedAt(LocalDateTime.now());
+        payment.setLockedBy(SecurityUtils.getUserId());
+        
         paymentRepository.updateById(payment);
 
         // 更新收费记录的已收金额
@@ -201,24 +212,48 @@ public class FeeAppService {
         }
         feeRepository.updateById(fee);
 
-        // 更新合同已收金额
+        // Requirements: 3.3 - 更新合同已收金额
         if (fee.getContractId() != null) {
             updateContractPaidAmount(fee.getContractId());
         }
 
-        log.info("收款确认成功: {}", payment.getPaymentNo());
+        log.info("收款确认成功并已锁定: {}", payment.getPaymentNo());
+        
+        // 提成计算改为财务手动计算，不再自动触发
+    }
 
-        // 【M4-035】自动触发提成计算
-        if (fee.getMatterId() != null) {
-            try {
-                commissionAppService.calculateCommission(paymentId);
-                log.info("收款确认后自动计算提成成功: paymentId={}, matterId={}", paymentId, fee.getMatterId());
-            } catch (Exception e) {
-                // 提成计算失败不阻断收款确认流程，但记录错误日志
-                log.error("收款确认后自动计算提成失败: paymentId={}, error={}", paymentId, e.getMessage(), e);
-                // 可以考虑发送通知给财务人员手动处理
-            }
+    /**
+     * 检查收款记录是否已锁定
+     * 
+     * Requirements: 3.2
+     */
+    public boolean isPaymentLocked(Long paymentId) {
+        Payment payment = paymentRepository.getByIdOrThrow(paymentId, "收款记录不存在");
+        return Boolean.TRUE.equals(payment.getLocked());
+    }
+
+    /**
+     * 更新收款金额（仅限未锁定记录）
+     * 
+     * Requirements: 3.2 - 已锁定记录禁止直接修改
+     */
+    @Transactional
+    public void updatePaymentAmount(Long paymentId, BigDecimal newAmount) {
+        Payment payment = paymentRepository.getByIdOrThrow(paymentId, "收款记录不存在");
+        
+        // 检查是否已锁定
+        if (Boolean.TRUE.equals(payment.getLocked())) {
+            throw new BusinessException("收款记录已锁定，不能直接修改。如需修改，请提交变更申请");
         }
+        
+        // 检查状态
+        if (!"PENDING".equals(payment.getStatus())) {
+            throw new BusinessException("只有待确认状态的收款记录可以修改");
+        }
+        
+        payment.setAmount(newAmount);
+        paymentRepository.updateById(payment);
+        log.info("收款金额更新成功: paymentId={}, newAmount={}", paymentId, newAmount);
     }
 
     /**

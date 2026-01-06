@@ -49,6 +49,16 @@ public class ContractController {
     }
 
     /**
+     * 获取我的合同（仅自己创建或签约的合同）
+     */
+    @GetMapping("/my")
+    @RequirePermission("matter:contract:view")
+    public Result<PageResult<ContractDTO>> getMyContracts(ContractQueryDTO query) {
+        PageResult<ContractDTO> result = contractAppService.getMyContracts(query);
+        return Result.success(result);
+    }
+
+    /**
      * 获取合同详情
      */
     @GetMapping("/{id}")
@@ -65,6 +75,15 @@ public class ContractController {
     @RequirePermission("matter:contract:create")
     @OperationLog(module = "合同管理", action = "创建合同")
     public Result<ContractDTO> createContract(@RequestBody CreateContractCommand command) {
+        // 调试日志：打印接收到的提成方案数据
+        System.out.println("=== 后端接收到的提成方案数据 ===");
+        System.out.println("commissionRuleId: " + command.getCommissionRuleId());
+        System.out.println("firmRate: " + command.getFirmRate());
+        System.out.println("leadLawyerRate: " + command.getLeadLawyerRate());
+        System.out.println("assistLawyerRate: " + command.getAssistLawyerRate());
+        System.out.println("supportStaffRate: " + command.getSupportStaffRate());
+        System.out.println("================================");
+        
         ContractDTO contract = contractAppService.createContract(command);
         return Result.success(contract);
     }
@@ -319,6 +338,16 @@ public class ContractController {
     public Result<ContractDTO> createFromTemplate(
             @PathVariable Long templateId,
             @RequestBody CreateContractCommand command) {
+        // 调试日志：打印接收到的提成方案数据
+        System.out.println("=== 后端接收到的提成方案数据（基于模板创建） ===");
+        System.out.println("templateId: " + templateId);
+        System.out.println("commissionRuleId: " + command.getCommissionRuleId());
+        System.out.println("firmRate: " + command.getFirmRate());
+        System.out.println("leadLawyerRate: " + command.getLeadLawyerRate());
+        System.out.println("assistLawyerRate: " + command.getAssistLawyerRate());
+        System.out.println("supportStaffRate: " + command.getSupportStaffRate());
+        System.out.println("================================================");
+        
         ContractDTO contract = contractAppService.createFromTemplate(templateId, command);
         return Result.success(contract);
     }
@@ -333,5 +362,15 @@ public class ContractController {
             @RequestBody CreateContractCommand command) {
         String content = contractAppService.previewTemplateContent(templateId, command);
         return Result.success(content);
+    }
+    
+    /**
+     * 获取合同打印数据
+     * 用于打印合同和收案审批表
+     */
+    @GetMapping("/{id}/print-data")
+    @RequirePermission("matter:contract:view")
+    public Result<com.lawfirm.application.finance.dto.ContractPrintDTO> getContractPrintData(@PathVariable Long id) {
+        return Result.success(contractAppService.getContractPrintData(id));
     }
 }

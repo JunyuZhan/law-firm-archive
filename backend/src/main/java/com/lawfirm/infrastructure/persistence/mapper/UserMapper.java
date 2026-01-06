@@ -131,4 +131,23 @@ public interface UserMapper extends BaseMapper<User> {
         WHERE r.role_code = 'ADMIN' AND u.deleted = false AND r.deleted = false AND u.status = 'ACTIVE'
         """)
     List<User> selectAdminUsers();
+
+    /**
+     * 获取用户最高数据范围权限
+     * 优先级: ALL > DEPT_AND_CHILD > DEPT > SELF
+     */
+    @Select("""
+        SELECT r.data_scope FROM sys_role r
+        INNER JOIN sys_user_role ur ON r.id = ur.role_id
+        WHERE ur.user_id = #{userId} AND r.deleted = false
+        ORDER BY 
+            CASE r.data_scope 
+                WHEN 'ALL' THEN 1 
+                WHEN 'DEPT_AND_CHILD' THEN 2 
+                WHEN 'DEPT' THEN 3 
+                ELSE 4 
+            END
+        LIMIT 1
+        """)
+    String selectHighestDataScopeByUserId(@Param("userId") Long userId);
 }

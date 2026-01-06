@@ -14,6 +14,9 @@ import com.lawfirm.common.util.SecurityUtils;
 import com.lawfirm.domain.evidence.entity.Evidence;
 import com.lawfirm.domain.evidence.entity.EvidenceCrossExam;
 import com.lawfirm.domain.evidence.repository.EvidenceRepository;
+import com.lawfirm.domain.matter.entity.Matter;
+import com.lawfirm.domain.matter.repository.MatterRepository;
+import com.lawfirm.infrastructure.external.file.FileTypeService;
 import com.lawfirm.infrastructure.persistence.mapper.EvidenceCrossExamMapper;
 import com.lawfirm.infrastructure.persistence.mapper.EvidenceMapper;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +28,7 @@ import org.springframework.util.StringUtils;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -39,6 +43,11 @@ public class EvidenceAppService {
     private final EvidenceRepository evidenceRepository;
     private final EvidenceMapper evidenceMapper;
     private final EvidenceCrossExamMapper crossExamMapper;
+    private final FileTypeService fileTypeService;
+    private final MatterRepository matterRepository;
+
+    // 不可编辑证据的项目状态
+    private static final Set<String> READONLY_MATTER_STATUSES = Set.of("ARCHIVED", "CLOSED");
 
     /**
      * 分页查询证据
@@ -65,6 +74,9 @@ public class EvidenceAppService {
      */
     @Transactional
     public EvidenceDTO createEvidence(CreateEvidenceCommand command) {
+        // 检查项目状态权限
+        checkMatterEditPermission(command.getMatterId());
+        
         String evidenceNo = generateEvidenceNo();
 
         // 获取排序号
@@ -89,6 +101,8 @@ public class EvidenceAppService {
                 .fileUrl(command.getFileUrl())
                 .fileName(command.getFileName())
                 .fileSize(command.getFileSize())
+                .fileType(command.getFileType())
+                .thumbnailUrl(command.getThumbnailUrl())
                 .crossExamStatus("PENDING")
                 .status("ACTIVE")
                 .build();
@@ -118,6 +132,9 @@ public class EvidenceAppService {
     @Transactional
     public EvidenceDTO updateEvidence(Long id, UpdateEvidenceCommand command) {
         Evidence evidence = evidenceRepository.getByIdOrThrow(id, "证据不存在");
+        
+        // 检查项目状态权限
+        checkMatterEditPermission(evidence.getMatterId());
 
         if (StringUtils.hasText(command.getName())) evidence.setName(command.getName());
         if (StringUtils.hasText(command.getEvidenceType())) evidence.setEvidenceType(command.getEvidenceType());
@@ -142,6 +159,10 @@ public class EvidenceAppService {
     @Transactional
     public void deleteEvidence(Long id) {
         Evidence evidence = evidenceRepository.getByIdOrThrow(id, "证据不存在");
+        
+        // 检查项目状态权限
+        checkMatterEditPermission(evidence.getMatterId());
+        
         evidenceRepository.removeById(id);
         log.info("证据删除成功: {}", evidence.getName());
     }
@@ -152,6 +173,10 @@ public class EvidenceAppService {
     @Transactional
     public void updateSortOrder(Long id, Integer sortOrder) {
         Evidence evidence = evidenceRepository.getByIdOrThrow(id, "证据不存在");
+        
+        // 检查项目状态权限
+        checkMatterEditPermission(evidence.getMatterId());
+        
         evidence.setSortOrder(sortOrder);
         evidenceRepository.updateById(evidence);
     }
@@ -164,6 +189,9 @@ public class EvidenceAppService {
         for (Long id : ids) {
             Evidence evidence = evidenceRepository.findById(id);
             if (evidence != null) {
+                // 检查项目状态权限
+                checkMatterEditPermission(evidence.getMatterId());
+                
                 evidence.setGroupName(groupName);
                 evidenceRepository.updateById(evidence);
             }
@@ -248,6 +276,32 @@ public class EvidenceAppService {
     }
 
     /**
+     * 检查项目编辑权限
+     * 已归档或已结案的项目不允许编辑证据
+     */
+    private void checkMatterEditPermission(Long matterId) {
+        if (matterId == null) {
+            return;
+        }
+        Matter matter = matterRepository.findById(matterId);
+        if (matter != null && READONLY_MATTER_STATUSES.contains(matter.getStatus())) {
+            String statusName = "ARCHIVED".equals(matter.getStatus()) ? "已归档" : "已结案";
+            throw new BusinessException("该项目" + statusName + "，无法编辑证据");
+        }
+    }
+
+    /**
+     * 检查项目是否可编辑
+     */
+    public boolean canEditEvidence(Long matterId) {
+        if (matterId == null) {
+            return true;
+        }
+        Matter matter = matterRepository.findById(matterId);
+        return matter == null || !READONLY_MATTER_STATUSES.contains(matter.getStatus());
+    }
+
+    /**
      * 格式化文件大小
      */
     private String formatFileSize(Long size) {
@@ -261,38 +315,14 @@ public class EvidenceAppService {
      * 获取文件类型
      */
     private String getFileType(String fileName) {
-        if (fileName == null) {
-            return "unknown";
-        }
-        String lowerName = fileName.toLowerCase();
-        if (lowerName.endsWith(".jpg") || lowerName.endsWith(".jpeg") || lowerName.endsWith(".png") 
-            || lowerName.endsWith(".gif") || lowerName.endsWith(".bmp") || lowerName.endsWith(".webp")) {
-            return "image";
-        } else if (lowerName.endsWith(".pdf")) {
-            return "pdf";
-        } else if (lowerName.endsWith(".doc") || lowerName.endsWith(".docx")) {
-            return "word";
-        } else if (lowerName.endsWith(".xls") || lowerName.endsWith(".xlsx")) {
-            return "excel";
-        } else if (lowerName.endsWith(".mp4") || lowerName.endsWith(".avi") || lowerName.endsWith(".mov")) {
-            return "video";
-        } else if (lowerName.endsWith(".mp3") || lowerName.endsWith(".wav") || lowerName.endsWith(".m4a")) {
-            return "audio";
-        } else {
-            return "other";
-        }
+        return fileTypeService.getFileTypeInfo(fileName).getType();
     }
 
     /**
      * 判断是否为图片文件
      */
     private boolean isImageFile(String fileName) {
-        if (fileName == null) {
-            return false;
-        }
-        String lowerName = fileName.toLowerCase();
-        return lowerName.endsWith(".jpg") || lowerName.endsWith(".jpeg") || lowerName.endsWith(".png") 
-            || lowerName.endsWith(".gif") || lowerName.endsWith(".bmp") || lowerName.endsWith(".webp");
+        return fileTypeService.isImageFile(fileName);
     }
 
     /**
@@ -379,13 +409,17 @@ public class EvidenceAppService {
         dto.setFileName(evidence.getFileName());
         dto.setFileSize(evidence.getFileSize());
         dto.setFileSizeDisplay(formatFileSize(evidence.getFileSize()));
-        // 设置文件类型（前端直接使用fileUrl显示预览图，不需要后端生成缩略图）
-        if (evidence.getFileName() != null) {
+        // 设置文件类型（优先使用存储的值，否则根据文件名判断）
+        if (evidence.getFileType() != null) {
+            dto.setFileType(evidence.getFileType());
+        } else if (evidence.getFileName() != null) {
             dto.setFileType(getFileType(evidence.getFileName()));
-            // thumbnailUrl 保留用于兼容，但前端已改为直接使用 fileUrl
-            if (isImageFile(evidence.getFileName()) && evidence.getFileUrl() != null) {
-                dto.setThumbnailUrl(evidence.getFileUrl());
-            }
+        }
+        // 设置缩略图URL（优先使用存储的值，否则对图片使用原文件URL）
+        if (evidence.getThumbnailUrl() != null) {
+            dto.setThumbnailUrl(evidence.getThumbnailUrl());
+        } else if (isImageFile(evidence.getFileName()) && evidence.getFileUrl() != null) {
+            dto.setThumbnailUrl(evidence.getFileUrl());
         }
         dto.setCrossExamStatus(evidence.getCrossExamStatus());
         dto.setCrossExamStatusName(getCrossExamStatusName(evidence.getCrossExamStatus()));

@@ -39,6 +39,28 @@ public interface CommissionMapper extends BaseMapper<Commission> {
     List<Commission> selectByUserId(@Param("userId") Long userId, @Param("offset") int offset, @Param("limit") int limit);
 
     /**
+     * 根据用户ID查询所有提成记录（不分页，通过 commission_detail 表关联）
+     */
+    @Select("""
+        SELECT DISTINCT c.* FROM finance_commission c
+        INNER JOIN finance_commission_detail cd ON c.id = cd.commission_id
+        WHERE cd.user_id = #{userId} AND c.deleted = false AND cd.deleted = false
+        ORDER BY c.created_at DESC
+        """)
+    List<Commission> selectAllByUserId(@Param("userId") Long userId);
+
+    /**
+     * 根据用户ID和状态查询提成记录（通过 commission_detail 表关联）
+     */
+    @Select("""
+        SELECT DISTINCT c.* FROM finance_commission c
+        INNER JOIN finance_commission_detail cd ON c.id = cd.commission_id
+        WHERE cd.user_id = #{userId} AND c.status = #{status} AND c.deleted = false AND cd.deleted = false
+        ORDER BY c.created_at DESC
+        """)
+    List<Commission> selectByUserIdAndStatus(@Param("userId") Long userId, @Param("status") String status);
+
+    /**
      * 统计用户提成总额（通过 commission_detail 表关联）
      */
     @Select("""

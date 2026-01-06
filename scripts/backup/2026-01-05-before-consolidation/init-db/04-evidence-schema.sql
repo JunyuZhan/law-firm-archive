@@ -34,6 +34,8 @@ CREATE TABLE IF NOT EXISTS evidence (
     file_url VARCHAR(1000),
     file_name VARCHAR(500),
     file_size BIGINT,
+    file_type VARCHAR(50),
+    thumbnail_url VARCHAR(1000),
     
     -- 质证状态
     cross_exam_status VARCHAR(20) DEFAULT 'PENDING',
@@ -51,6 +53,8 @@ CREATE TABLE IF NOT EXISTS evidence (
 COMMENT ON TABLE evidence IS '证据表';
 COMMENT ON COLUMN evidence.evidence_type IS '证据类型: DOCUMENTARY-书证, PHYSICAL-物证, AUDIO_VISUAL-视听资料, ELECTRONIC-电子数据, WITNESS-证人证言, EXPERT-鉴定意见, INSPECTION-勘验笔录';
 COMMENT ON COLUMN evidence.cross_exam_status IS '质证状态: PENDING-待质证, IN_PROGRESS-质证中, COMPLETED-已质证';
+COMMENT ON COLUMN evidence.file_type IS '文件类型分类: image, pdf, word, excel, ppt, audio, video, other';
+COMMENT ON COLUMN evidence.thumbnail_url IS '缩略图URL（仅图片文件）';
 
 -- 质证记录表
 CREATE TABLE IF NOT EXISTS evidence_cross_exam (

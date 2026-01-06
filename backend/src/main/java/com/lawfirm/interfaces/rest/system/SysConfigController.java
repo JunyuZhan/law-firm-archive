@@ -1,5 +1,6 @@
 package com.lawfirm.interfaces.rest.system;
 
+import com.lawfirm.application.finance.service.ContractNumberGenerator;
 import com.lawfirm.application.system.command.UpdateConfigCommand;
 import com.lawfirm.application.system.dto.SysConfigDTO;
 import com.lawfirm.application.system.service.SysConfigAppService;
@@ -24,6 +25,7 @@ import java.util.Map;
 public class SysConfigController {
 
     private final SysConfigAppService configAppService;
+    private final ContractNumberGenerator contractNumberGenerator;
 
     @Operation(summary = "获取所有配置")
     @GetMapping
@@ -78,5 +80,41 @@ public class SysConfigController {
     public Result<Void> deleteConfig(@PathVariable Long id) {
         configAppService.deleteConfig(id);
         return Result.success();
+    }
+
+    // ============ 合同编号配置相关接口 ============
+
+    @Operation(summary = "预览合同编号规则")
+    @PostMapping("/contract-number/preview")
+    @RequirePermission("sys:config:list")
+    public Result<List<Map<String, String>>> previewContractNumber(@RequestBody Map<String, Object> params) {
+        String pattern = (String) params.get("pattern");
+        String prefix = (String) params.get("prefix");
+        Integer sequenceLength = params.get("sequenceLength") != null 
+                ? Integer.valueOf(params.get("sequenceLength").toString()) : null;
+        String caseType = (String) params.get("caseType");
+        String feeType = (String) params.get("feeType");
+        
+        List<Map<String, String>> previews = contractNumberGenerator.previewPattern(
+                pattern, prefix, sequenceLength, caseType, feeType);
+        return Result.success(previews);
+    }
+
+    @Operation(summary = "获取合同编号支持的变量")
+    @GetMapping("/contract-number/variables")
+    public Result<List<Map<String, String>>> getContractNumberVariables() {
+        return Result.success(contractNumberGenerator.getSupportedVariables());
+    }
+
+    @Operation(summary = "获取推荐的合同编号规则模板")
+    @GetMapping("/contract-number/patterns")
+    public Result<List<Map<String, String>>> getRecommendedPatterns() {
+        return Result.success(contractNumberGenerator.getRecommendedPatterns());
+    }
+
+    @Operation(summary = "获取案件类型选项")
+    @GetMapping("/contract-number/case-types")
+    public Result<List<Map<String, String>>> getCaseTypeOptions() {
+        return Result.success(contractNumberGenerator.getCaseTypeOptions());
     }
 }

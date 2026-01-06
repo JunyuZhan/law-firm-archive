@@ -87,4 +87,14 @@ public class CreateEvidenceCommand {
      * 文件大小
      */
     private Long fileSize;
+
+    /**
+     * 文件类型分类（image/pdf/word/excel/ppt/audio/video/other）
+     */
+    private String fileType;
+
+    /**
+     * 缩略图URL（仅图片文件）
+     */
+    private String thumbnailUrl;
 }

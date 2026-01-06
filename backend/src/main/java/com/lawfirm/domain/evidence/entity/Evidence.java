@@ -106,6 +106,16 @@ public class Evidence extends BaseEntity {
     private Long fileSize;
 
     /**
+     * 文件类型分类（image/pdf/word/excel/ppt/audio/video/other）
+     */
+    private String fileType;
+
+    /**
+     * 缩略图URL（仅图片文件）
+     */
+    private String thumbnailUrl;
+
+    /**
      * 质证状态
      */
     @lombok.Builder.Default

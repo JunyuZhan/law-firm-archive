@@ -14,12 +14,17 @@ import com.lawfirm.domain.evidence.entity.Evidence;
 import com.lawfirm.domain.evidence.entity.EvidenceList;
 import com.lawfirm.domain.evidence.repository.EvidenceListRepository;
 import com.lawfirm.domain.evidence.repository.EvidenceRepository;
+import com.lawfirm.domain.matter.entity.Matter;
+import com.lawfirm.domain.matter.repository.MatterRepository;
+import com.lawfirm.infrastructure.external.document.EvidenceListDocumentGenerator;
+import com.lawfirm.infrastructure.external.minio.MinioService;
 import com.lawfirm.infrastructure.persistence.mapper.EvidenceListMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.ByteArrayInputStream;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -36,6 +41,9 @@ public class EvidenceListAppService {
     private final EvidenceListMapper listMapper;
     private final EvidenceRepository evidenceRepository;
     private final ObjectMapper objectMapper;
+    private final MatterRepository matterRepository;
+    private final EvidenceListDocumentGenerator documentGenerator;
+    private final MinioService minioService;
 
     /**
      * 分页查询证据清单
@@ -116,7 +124,6 @@ public class EvidenceListAppService {
 
     /**
      * 生成证据清单文件（返回下载URL）
-     * 实际生成逻辑需要集成POI或iText
      */
     @Transactional
     public String generateListFile(Long id, String format) {
@@ -127,11 +134,54 @@ public class EvidenceListAppService {
             throw new BusinessException("清单中没有证据");
         }
 
-        // TODO: 实际生成Word/PDF文件并上传到MinIO
-        // 这里返回模拟URL
-        String fileName = list.getName() + "_" + System.currentTimeMillis() + "." + format.toLowerCase();
-        String fileUrl = "/files/evidence-list/" + fileName;
+        // 获取证据详情
+        List<EvidenceDTO> evidences = evidenceIds.stream()
+                .map(evidenceRepository::findById)
+                .filter(Objects::nonNull)
+                .map(this::toEvidenceDTO)
+                .collect(Collectors.toList());
 
+        // 获取案件信息
+        Matter matter = null;
+        if (list.getMatterId() != null) {
+            matter = matterRepository.findById(list.getMatterId());
+        }
+
+        // 生成文档
+        byte[] documentBytes;
+        String contentType;
+        String fileExtension;
+        
+        if ("pdf".equalsIgnoreCase(format)) {
+            // PDF格式暂时使用Word转换（需要额外库支持）
+            // 这里先生成Word，后续可以添加PDF转换
+            documentBytes = documentGenerator.generateWordDocument(toDTO(list), matter, evidences);
+            contentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+            fileExtension = "docx";
+            log.warn("PDF格式暂不支持，已生成Word格式");
+        } else {
+            // 默认生成Word
+            documentBytes = documentGenerator.generateWordDocument(toDTO(list), matter, evidences);
+            contentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+            fileExtension = "docx";
+        }
+
+        // 上传到MinIO
+        String fileName = list.getName() + "_" + System.currentTimeMillis() + "." + fileExtension;
+        String fileUrl;
+        try {
+            fileUrl = minioService.uploadFile(
+                    new ByteArrayInputStream(documentBytes),
+                    fileName,
+                    "evidence-list/",
+                    contentType
+            );
+        } catch (Exception e) {
+            log.error("上传证据清单文件失败", e);
+            throw new BusinessException("上传文件失败: " + e.getMessage());
+        }
+
+        // 更新清单状态
         list.setFileName(fileName);
         list.setFileUrl(fileUrl);
         list.setStatus(EvidenceList.STATUS_GENERATED);
@@ -139,6 +189,60 @@ public class EvidenceListAppService {
 
         log.info("证据清单文件生成成功: {}", fileName);
         return fileUrl;
+    }
+
+    /**
+     * 导出证据清单为Word格式
+     */
+    public byte[] exportToWord(Long id) {
+        EvidenceList list = listRepository.getByIdOrThrow(id, "证据清单不存在");
+        List<Long> evidenceIds = parseEvidenceIds(list.getEvidenceIds());
+        
+        if (evidenceIds.isEmpty()) {
+            throw new BusinessException("清单中没有证据");
+        }
+
+        // 获取证据详情
+        List<EvidenceDTO> evidences = evidenceIds.stream()
+                .map(evidenceRepository::findById)
+                .filter(Objects::nonNull)
+                .map(this::toEvidenceDTO)
+                .collect(Collectors.toList());
+
+        // 获取案件信息
+        Matter matter = null;
+        if (list.getMatterId() != null) {
+            matter = matterRepository.findById(list.getMatterId());
+        }
+
+        return documentGenerator.generateWordDocument(toDTO(list), matter, evidences);
+    }
+
+    /**
+     * 导出证据清单为PDF格式
+     */
+    public byte[] exportToPdf(Long id) {
+        EvidenceList list = listRepository.getByIdOrThrow(id, "证据清单不存在");
+        List<Long> evidenceIds = parseEvidenceIds(list.getEvidenceIds());
+        
+        if (evidenceIds.isEmpty()) {
+            throw new BusinessException("清单中没有证据");
+        }
+
+        // 获取证据详情
+        List<EvidenceDTO> evidences = evidenceIds.stream()
+                .map(evidenceRepository::findById)
+                .filter(Objects::nonNull)
+                .map(this::toEvidenceDTO)
+                .collect(Collectors.toList());
+
+        // 获取案件信息
+        Matter matter = null;
+        if (list.getMatterId() != null) {
+            matter = matterRepository.findById(list.getMatterId());
+        }
+
+        return documentGenerator.generatePdfDocument(toDTO(list), matter, evidences);
     }
 
     /**

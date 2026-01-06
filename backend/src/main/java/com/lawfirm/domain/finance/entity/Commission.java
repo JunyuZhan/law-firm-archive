@@ -20,9 +20,19 @@ import java.time.LocalDateTime;
 public class Commission extends BaseEntity {
 
     /**
+     * 提成编号
+     */
+    private String commissionNo;
+
+    /**
      * 收款ID
      */
     private Long paymentId;
+
+    /**
+     * 合同ID
+     */
+    private Long contractId;
 
     /**
      * 案件ID

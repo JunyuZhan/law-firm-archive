@@ -41,4 +41,12 @@ public class UserRepository extends AbstractRepository<UserMapper, User> {
     public List<String> findPermissionsByUserId(Long userId) {
         return baseMapper.selectPermissionsByUserId(userId);
     }
+
+    /**
+     * 获取用户最高数据范围权限
+     * 优先级: ALL > DEPT_AND_CHILD > DEPT > SELF
+     */
+    public String findHighestDataScopeByUserId(Long userId) {
+        return baseMapper.selectHighestDataScopeByUserId(userId);
+    }
 }

@@ -13,7 +13,7 @@ import java.time.LocalDate;
 @Data
 public class CreateContractCommand {
 
-    @NotBlank(message = "合同名称不能为空")
+    /** 合同名称（可选，为空时自动生成） */
     private String name;
 
     @NotBlank(message = "合同类型不能为空")
@@ -86,5 +86,124 @@ public class CreateContractCommand {
      * 风险代理比例（0-100）
      */
     private BigDecimal riskRatio;
+
+    // ========== 提成分配方案 ==========
+
+    /**
+     * 提成规则ID（选择的预设方案）
+     */
+    private Long commissionRuleId;
+
+    /**
+     * 律所比例（%）
+     */
+    private BigDecimal firmRate;
+
+    /**
+     * 主办律师比例（%）
+     */
+    private BigDecimal leadLawyerRate;
+
+    /**
+     * 协办律师比例（%）
+     */
+    private BigDecimal assistLawyerRate;
+
+    /**
+     * 辅助人员比例（%）
+     */
+    private BigDecimal supportStaffRate;
+    
+    /**
+     * 案源人比例（%）
+     */
+    private BigDecimal originatorRate;
+
+    /**
+     * 案情摘要（用于审批表）
+     */
+    private String caseSummary;
+    
+    // ========== 模板变量字段（用于生成合同文本）==========
+    
+    /**
+     * 主办律师姓名（多人用顿号分隔）
+     */
+    private String lawyerNames;
+    
+    /**
+     * 律师助理姓名
+     */
+    private String assistantNames;
+    
+    /**
+     * 代理权限类型：一般代理/特别代理
+     */
+    private String authorizationType;
+    
+    /**
+     * 付款期限描述
+     */
+    private String paymentDeadline;
+    
+    /**
+     * 争议解决方式：1-法院管辖，2-仲裁
+     */
+    private String disputeResolution;
+    
+    /**
+     * 仲裁委员会名称
+     */
+    private String arbitrationCommittee;
+    
+    /**
+     * 特别约定
+     */
+    private String specialTerms;
+    
+    /**
+     * 被告人/犯罪嫌疑人姓名（刑事案件）
+     */
+    private String defendantName;
+    
+    /**
+     * 涉嫌罪名（刑事案件）
+     */
+    private String criminalCharge;
+    
+    /**
+     * 辩护阶段（刑事案件）
+     */
+    private String defenseStage;
+    
+    /**
+     * 合伙人收费标准（计时收费）
+     */
+    private BigDecimal partnerRate;
+    
+    /**
+     * 资深律师收费标准（计时收费）
+     */
+    private BigDecimal seniorRate;
+    
+    /**
+     * 助理收费标准（计时收费）
+     */
+    private BigDecimal assistantRate;
+    
+    /**
+     * 服务小时数（顾问合同）
+     */
+    private Integer serviceHours;
+    
+    /**
+     * 合同金额大写（前端传入或后端自动计算）
+     */
+    private String totalAmountCN;
+    
+    /**
+     * 标的金额大写（前端传入或后端自动计算）
+     */
+    private String claimAmountChinese;
 }
 

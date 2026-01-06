@@ -514,12 +514,14 @@ CREATE TABLE IF NOT EXISTS finance_fee (
     matter_id BIGINT,
     client_id BIGINT NOT NULL,
     fee_type VARCHAR(20) NOT NULL,
+    fee_name VARCHAR(200),                    -- 收费项目名称
     amount DECIMAL(15,2) NOT NULL,
     paid_amount DECIMAL(15,2) DEFAULT 0,
     currency VARCHAR(10) DEFAULT 'CNY',
     planned_date DATE NOT NULL,
     actual_date DATE,
     status VARCHAR(20) DEFAULT 'PENDING',
+    responsible_id BIGINT,                    -- 负责人ID
     remark TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

@@ -36,8 +36,22 @@ public class MatterDTO extends BaseDTO {
      * 案由名称
      */
     private String causeOfActionName;
+    
+    /**
+     * 主要客户ID（向后兼容）
+     */
     private Long clientId;
+    
+    /**
+     * 主要客户名称
+     */
     private String clientName;
+    
+    /**
+     * 客户列表（多客户支持）
+     */
+    private List<MatterClientDTO> clients;
+    
     private String opposingParty;
     
     /**

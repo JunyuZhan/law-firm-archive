@@ -63,6 +63,11 @@ public class LoginUser implements UserDetails {
     private Set<String> permissions;
 
     /**
+     * 数据范围：ALL, DEPT_AND_CHILD, DEPT, SELF
+     */
+    private String dataScope;
+
+    /**
      * 账号是否启用
      */
     @lombok.Builder.Default

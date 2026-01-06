@@ -63,4 +63,11 @@ public class Result<T> implements Serializable {
     public static <T> Result<T> notFound(String message) {
         return error("404", message);
     }
+
+    /**
+     * 返回失败结果（fail 是 error 的别名）
+     */
+    public static <T> Result<T> fail(String message) {
+        return error("500", message);
+    }
 }

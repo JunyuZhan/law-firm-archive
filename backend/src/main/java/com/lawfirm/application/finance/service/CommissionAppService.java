@@ -3,15 +3,30 @@ package com.lawfirm.application.finance.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lawfirm.application.finance.command.CreateCommissionRuleCommand;
+import com.lawfirm.application.finance.command.ManualCalculateCommissionCommand;
 import com.lawfirm.application.finance.command.UpdateCommissionRuleCommand;
 import com.lawfirm.application.finance.dto.*;
 import com.lawfirm.common.result.PageResult;
 import com.lawfirm.common.exception.BusinessException;
 import com.lawfirm.common.util.SecurityUtils;
 import com.lawfirm.domain.finance.entity.Commission;
+import com.lawfirm.domain.finance.entity.CommissionDetail;
 import com.lawfirm.domain.finance.entity.CommissionRule;
+import com.lawfirm.infrastructure.persistence.mapper.CommissionDetailMapper;
+import com.lawfirm.domain.finance.entity.Contract;
+import com.lawfirm.domain.finance.entity.ContractParticipant;
+import com.lawfirm.domain.finance.entity.Fee;
+import com.lawfirm.domain.finance.entity.Payment;
 import com.lawfirm.domain.finance.repository.CommissionRepository;
 import com.lawfirm.domain.finance.repository.CommissionRuleRepository;
+import com.lawfirm.domain.finance.repository.ContractParticipantRepository;
+import com.lawfirm.domain.finance.repository.ContractRepository;
+import com.lawfirm.domain.finance.repository.FeeRepository;
+import com.lawfirm.domain.finance.repository.PaymentRepository;
+import com.lawfirm.domain.client.repository.ClientRepository;
+import com.lawfirm.domain.client.entity.Client;
+import com.lawfirm.domain.matter.repository.MatterRepository;
+import com.lawfirm.domain.matter.entity.Matter;
 import com.lawfirm.domain.system.entity.User;
 import com.lawfirm.domain.system.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -37,8 +52,14 @@ public class CommissionAppService {
 
     private final CommissionRuleRepository commissionRuleRepository;
     private final CommissionRepository commissionRepository;
-    private final CommissionCalculationService commissionCalculationService;
+    private final CommissionDetailMapper commissionDetailMapper;
     private final UserRepository userRepository;
+    private final PaymentRepository paymentRepository;
+    private final FeeRepository feeRepository;
+    private final ContractRepository contractRepository;
+    private final ContractParticipantRepository contractParticipantRepository;
+    private final ClientRepository clientRepository;
+    private final MatterRepository matterRepository;
 
     // ========== 提成规则管理 ==========
 
@@ -55,23 +76,27 @@ public class CommissionAppService {
             throw new BusinessException("规则编码已存在");
         }
 
+        // 比例允许为0（表示不参与分配），不强制总和=100%
         CommissionRule rule = CommissionRule.builder()
                 .ruleCode(command.getRuleCode())
                 .ruleName(command.getRuleName())
                 .ruleType(command.getRuleType())
-                .firmRetentionRate(command.getFirmRetentionRate())
-                .originatorRate(command.getOriginatorRate())
-                .taxRate(command.getTaxRate() != null ? command.getTaxRate() : 
-                        java.math.BigDecimal.valueOf(0.0672))
-                .managementFeeRate(command.getManagementFeeRate() != null ? 
-                        command.getManagementFeeRate() : java.math.BigDecimal.valueOf(0.15))
-                .rateTiers(command.getRateTiers())
-                .effectiveDate(command.getEffectiveDate())
-                .expiryDate(command.getExpiryDate())
+                .firmRate(command.getFirmRate() != null ? command.getFirmRate() : BigDecimal.ZERO)
+                .leadLawyerRate(command.getLeadLawyerRate() != null ? command.getLeadLawyerRate() : BigDecimal.ZERO)
+                .assistLawyerRate(command.getAssistLawyerRate() != null ? command.getAssistLawyerRate() : BigDecimal.ZERO)
+                .supportStaffRate(command.getSupportStaffRate() != null ? command.getSupportStaffRate() : BigDecimal.ZERO)
+                .originatorRate(command.getOriginatorRate() != null ? command.getOriginatorRate() : BigDecimal.ZERO)
+                .allowModify(command.getAllowModify() != null ? command.getAllowModify() : true)
+                .description(command.getDescription())
                 .isDefault(command.getIsDefault() != null ? command.getIsDefault() : false)
                 .active(command.getActive() != null ? command.getActive() : true)
                 .createdBy(SecurityUtils.getUserId())
                 .build();
+
+        // 如果设为默认，取消其他规则的默认状态
+        if (Boolean.TRUE.equals(rule.getIsDefault())) {
+            commissionRuleRepository.clearDefault();
+        }
 
         commissionRuleRepository.getBaseMapper().insert(rule);
 
@@ -96,33 +121,39 @@ public class CommissionAppService {
         if (command.getRuleType() != null) {
             rule.setRuleType(command.getRuleType());
         }
-        if (command.getFirmRetentionRate() != null) {
-            rule.setFirmRetentionRate(command.getFirmRetentionRate());
+        if (command.getFirmRate() != null) {
+            rule.setFirmRate(command.getFirmRate());
+        }
+        if (command.getLeadLawyerRate() != null) {
+            rule.setLeadLawyerRate(command.getLeadLawyerRate());
+        }
+        if (command.getAssistLawyerRate() != null) {
+            rule.setAssistLawyerRate(command.getAssistLawyerRate());
+        }
+        if (command.getSupportStaffRate() != null) {
+            rule.setSupportStaffRate(command.getSupportStaffRate());
         }
         if (command.getOriginatorRate() != null) {
             rule.setOriginatorRate(command.getOriginatorRate());
         }
-        if (command.getTaxRate() != null) {
-            rule.setTaxRate(command.getTaxRate());
+        if (command.getAllowModify() != null) {
+            rule.setAllowModify(command.getAllowModify());
         }
-        if (command.getManagementFeeRate() != null) {
-            rule.setManagementFeeRate(command.getManagementFeeRate());
-        }
-        if (command.getRateTiers() != null) {
-            rule.setRateTiers(command.getRateTiers());
-        }
-        if (command.getEffectiveDate() != null) {
-            rule.setEffectiveDate(command.getEffectiveDate());
-        }
-        if (command.getExpiryDate() != null) {
-            rule.setExpiryDate(command.getExpiryDate());
+        if (command.getDescription() != null) {
+            rule.setDescription(command.getDescription());
         }
         if (command.getIsDefault() != null) {
+            // 如果设为默认，取消其他规则的默认状态
+            if (Boolean.TRUE.equals(command.getIsDefault()) && !Boolean.TRUE.equals(rule.getIsDefault())) {
+                commissionRuleRepository.clearDefault();
+            }
             rule.setIsDefault(command.getIsDefault());
         }
         if (command.getActive() != null) {
             rule.setActive(command.getActive());
         }
+
+        // 比例允许为0，不强制总和=100%
 
         rule.setUpdatedBy(SecurityUtils.getUserId());
         commissionRuleRepository.getBaseMapper().updateById(rule);
@@ -150,6 +181,44 @@ public class CommissionAppService {
     }
 
     /**
+     * 设为默认规则
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void setDefaultRule(Long id) {
+        checkRulePermission();
+
+        CommissionRule rule = commissionRuleRepository.findById(id);
+        if (rule == null) {
+            throw new BusinessException("提成规则不存在");
+        }
+
+        commissionRuleRepository.setDefault(id);
+        log.info("设置默认提成规则: id={}", id);
+    }
+
+    /**
+     * 切换规则启用状态
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void toggleRule(Long id) {
+        checkRulePermission();
+
+        CommissionRule rule = commissionRuleRepository.findById(id);
+        if (rule == null) {
+            throw new BusinessException("提成规则不存在");
+        }
+
+        if (Boolean.TRUE.equals(rule.getIsDefault()) && Boolean.TRUE.equals(rule.getActive())) {
+            throw new BusinessException("不能停用默认规则");
+        }
+
+        rule.setActive(!Boolean.TRUE.equals(rule.getActive()));
+        rule.setUpdatedBy(SecurityUtils.getUserId());
+        commissionRuleRepository.getBaseMapper().updateById(rule);
+        log.info("切换规则状态: id={}, active={}", id, rule.getActive());
+    }
+
+    /**
      * 获取提成规则详情
      */
     public CommissionRuleDTO getCommissionRule(Long id) {
@@ -172,11 +241,119 @@ public class CommissionAppService {
 
     /**
      * 计算提成（收款核销后自动触发）
+     * TODO: 根据新的提成规则结构重新实现提成计算逻辑
      */
     @Transactional(rollbackFor = Exception.class)
     public List<CommissionDTO> calculateCommission(Long paymentId) {
-        List<Commission> commissions = commissionCalculationService.calculateCommission(paymentId);
-        return commissions.stream().map(this::toCommissionDTO).collect(Collectors.toList());
+        // 暂未实现，待根据新的提成规则结构重新开发
+        log.warn("提成计算功能待实现，paymentId={}", paymentId);
+        return List.of();
+    }
+
+    /**
+     * 手动计算提成（财务用户手动计算）
+     * 根据合同参与人的提成比例，财务可以手动修改提成金额
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public List<CommissionDTO> manualCalculateCommission(ManualCalculateCommissionCommand command) {
+        // 获取收款记录
+        Payment payment = paymentRepository.getByIdOrThrow(command.getPaymentId(), "收款记录不存在");
+        if (!"CONFIRMED".equals(payment.getStatus())) {
+            throw new BusinessException("只有已确认的收款才能计算提成");
+        }
+
+        // 获取收费记录
+        Fee fee = feeRepository.getByIdOrThrow(payment.getFeeId(), "收费记录不存在");
+        
+        // 获取合同
+        Contract contract = null;
+        if (fee.getContractId() != null) {
+            contract = contractRepository.findById(fee.getContractId());
+        }
+        
+        if (contract == null) {
+            throw new BusinessException("该收款记录没有关联合同，无法计算提成");
+        }
+
+        // 检查是否已有提成记录
+        List<Commission> existingCommissions = commissionRepository.findByPaymentId(payment.getId());
+        if (!existingCommissions.isEmpty()) {
+            throw new BusinessException("该收款记录已存在提成记录，请先删除后再重新计算");
+        }
+
+        // 创建提成记录
+        List<CommissionDTO> result = new java.util.ArrayList<>();
+        BigDecimal paymentAmount = payment.getAmount();
+        
+        for (ManualCalculateCommissionCommand.ParticipantCommission pc : command.getParticipants()) {
+            // 获取参与人信息
+            ContractParticipant participant = contractParticipantRepository.getByIdOrThrow(pc.getParticipantId(), "参与人不存在");
+            
+            if (!participant.getContractId().equals(contract.getId())) {
+                throw new BusinessException("参与人不属于该合同");
+            }
+
+            // 计算提成金额（如果未指定，则根据比例计算）
+            BigDecimal commissionAmount = pc.getCommissionAmount();
+            if (commissionAmount == null) {
+                BigDecimal rate = pc.getCommissionRate() != null ? pc.getCommissionRate() : participant.getCommissionRate();
+                if (rate == null || rate.compareTo(BigDecimal.ZERO) == 0) {
+                    log.warn("参与人提成比例为0，跳过: participantId={}", pc.getParticipantId());
+                    continue;
+                }
+                commissionAmount = paymentAmount.multiply(rate).divide(new BigDecimal("100"), 2, java.math.RoundingMode.HALF_UP);
+            }
+
+            // 创建提成记录
+            Commission commission = Commission.builder()
+                    .commissionNo(generateCommissionNo())
+                    .paymentId(payment.getId())
+                    .contractId(contract.getId())
+                    .matterId(fee.getMatterId())
+                    .ruleId(contract.getCommissionRuleId())
+                    .grossAmount(paymentAmount)
+                    .netAmount(paymentAmount) // 净收入暂时等于毛收入，财务后续可调整
+                    .distributionRatio(pc.getCommissionRate() != null ? pc.getCommissionRate() : participant.getCommissionRate())
+                    .commissionRate(pc.getCommissionRate() != null ? pc.getCommissionRate() : participant.getCommissionRate())
+                    .commissionAmount(commissionAmount)
+                    .status("CALCULATED") // 已计算，待审批
+                    .remark(pc.getRemark())
+                    .createdBy(SecurityUtils.getUserId())
+                    .build();
+
+            commissionRepository.getBaseMapper().insert(commission);
+            
+            // 创建提成明细记录（关联到具体用户）
+            String userName = participant.getUserId() != null ? 
+                    userRepository.findById(participant.getUserId()) != null ? 
+                            userRepository.findById(participant.getUserId()).getRealName() : "未知" : "未知";
+            
+            CommissionDetail detail = CommissionDetail.builder()
+                    .commissionId(commission.getId())
+                    .userId(participant.getUserId())
+                    .userName(userName)
+                    .roleInMatter(participant.getRole())
+                    .allocationRate(pc.getCommissionRate() != null ? pc.getCommissionRate() : participant.getCommissionRate())
+                    .commissionAmount(commissionAmount)
+                    .netAmount(commissionAmount) // 净提成暂时等于提成金额
+                    .build();
+            
+            commissionDetailMapper.insert(detail);
+            
+            result.add(toCommissionDTO(commission));
+            
+            log.info("手动计算提成成功: paymentId={}, participantId={}, userId={}, commissionAmount={}", 
+                    payment.getId(), pc.getParticipantId(), participant.getUserId(), commissionAmount);
+        }
+
+        return result;
+    }
+
+    /**
+     * 生成提成编号
+     */
+    private String generateCommissionNo() {
+        return "COM" + System.currentTimeMillis();
     }
 
     // ========== 提成查询 ==========
@@ -490,6 +667,76 @@ public class CommissionAppService {
         CommissionRuleDTO dto = new CommissionRuleDTO();
         BeanUtils.copyProperties(rule, dto);
         return dto;
+    }
+
+    /**
+     * 获取待计算提成的收款记录列表
+     * 返回所有已确认但还没有生成提成记录的收款记录
+     */
+    public List<PaymentDTO> getPendingCommissionPayments() {
+        // 查询所有已确认的收款记录
+        LambdaQueryWrapper<Payment> paymentWrapper = new LambdaQueryWrapper<>();
+        paymentWrapper.eq(Payment::getStatus, "CONFIRMED")
+                .eq(Payment::getDeleted, false)
+                .isNotNull(Payment::getContractId) // 必须有合同才能计算提成
+                .orderByDesc(Payment::getPaymentDate);
+        List<Payment> confirmedPayments = paymentRepository.list(paymentWrapper);
+        
+        // 查询所有已有提成记录的 paymentId
+        LambdaQueryWrapper<Commission> commissionWrapper = new LambdaQueryWrapper<>();
+        commissionWrapper.eq(Commission::getDeleted, false)
+                .select(Commission::getPaymentId);
+        List<Long> paymentIdsWithCommission = commissionRepository.list(commissionWrapper)
+                .stream()
+                .map(Commission::getPaymentId)
+                .distinct()
+                .collect(Collectors.toList());
+        
+        // 过滤掉已有提成记录的收款
+        List<Payment> pendingPayments = confirmedPayments.stream()
+                .filter(p -> !paymentIdsWithCommission.contains(p.getId()))
+                .collect(Collectors.toList());
+        
+        // 转换为DTO并填充关联信息
+        return pendingPayments.stream().map(payment -> {
+            PaymentDTO dto = new PaymentDTO();
+            BeanUtils.copyProperties(payment, dto);
+            
+            // 填充客户信息
+            if (payment.getClientId() != null) {
+                Client client = clientRepository.findById(payment.getClientId());
+                if (client != null) {
+                    dto.setClientId(client.getId());
+                    dto.setClientName(client.getName());
+                }
+            }
+            
+            // 填充项目信息
+            if (payment.getMatterId() != null) {
+                Matter matter = matterRepository.findById(payment.getMatterId());
+                if (matter != null) {
+                    dto.setMatterId(matter.getId());
+                    dto.setMatterName(matter.getName());
+                }
+            } else if (payment.getFeeId() != null) {
+                // 如果收款记录没有项目ID，尝试从收费记录获取
+                Fee fee = feeRepository.findById(payment.getFeeId());
+                if (fee != null && fee.getMatterId() != null) {
+                    Matter matter = matterRepository.findById(fee.getMatterId());
+                    if (matter != null) {
+                        dto.setMatterId(matter.getId());
+                        dto.setMatterName(matter.getName());
+                    }
+                }
+            }
+            
+            // 设置状态名称
+            if ("CONFIRMED".equals(payment.getStatus())) {
+                dto.setStatusName("已确认");
+            }
+            
+            return dto;
+        }).collect(Collectors.toList());
     }
 
     private CommissionDTO toCommissionDTO(Commission commission) {

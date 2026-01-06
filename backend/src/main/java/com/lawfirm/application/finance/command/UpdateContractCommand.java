@@ -87,5 +87,42 @@ public class UpdateContractCommand {
      * 印章使用记录
      */
     private String sealRecord;
+
+    // ========== 提成分配方案 ==========
+
+    /**
+     * 提成规则ID（选择的预设方案）
+     */
+    private Long commissionRuleId;
+
+    /**
+     * 律所比例（%）
+     */
+    private BigDecimal firmRate;
+
+    /**
+     * 主办律师比例（%）
+     */
+    private BigDecimal leadLawyerRate;
+
+    /**
+     * 协办律师比例（%）
+     */
+    private BigDecimal assistLawyerRate;
+
+    /**
+     * 辅助人员比例（%）
+     */
+    private BigDecimal supportStaffRate;
+
+    /**
+     * 案源人比例（%）
+     */
+    private BigDecimal originatorRate;
+
+    /**
+     * 案情摘要（用于审批表）
+     */
+    private String caseSummary;
 }
 

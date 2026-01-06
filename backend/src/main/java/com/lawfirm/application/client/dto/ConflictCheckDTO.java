@@ -19,6 +19,7 @@ public class ConflictCheckDTO extends BaseDTO {
     private String matterName;
     private Long clientId;
     private String clientName;
+    private String opposingParty;
     private String checkType;
     private String checkTypeName;
     private String status;

@@ -27,5 +27,19 @@ public class PaymentRepository extends AbstractRepository<PaymentMapper, Payment
     public BigDecimal sumConfirmedAmountByFeeId(Long feeId) {
         return baseMapper.sumConfirmedAmountByFeeId(feeId);
     }
+
+    /**
+     * 根据合同ID和状态查询收款记录
+     */
+    public List<Payment> findByContractIdAndStatus(Long contractId, String status) {
+        return baseMapper.selectByContractIdAndStatus(contractId, status);
+    }
+
+    /**
+     * 根据合同ID查询所有收款记录
+     */
+    public List<Payment> findByContractId(Long contractId) {
+        return baseMapper.selectByContractId(contractId);
+    }
 }
 
