@@ -100,15 +100,6 @@ public class CommissionController {
 
     // ========== 提成计算 ==========
 
-    @PostMapping("/calculate/{paymentId}")
-    @RequirePermission("finance:commission:calculate")
-    @Operation(summary = "计算提成", description = "收款核销后自动触发，也可手动触发")
-    @OperationLog(module = "提成管理", action = "计算提成")
-    public Result<List<CommissionDTO>> calculateCommission(@PathVariable Long paymentId) {
-        List<CommissionDTO> commissions = commissionAppService.calculateCommission(paymentId);
-        return Result.success(commissions);
-    }
-
     @PostMapping("/manual-calculate")
     @RequirePermission("finance:commission:calculate")
     @Operation(summary = "手动计算提成", description = "财务用户手动计算提成，可修改提成比例和金额")

@@ -240,17 +240,6 @@ public class CommissionAppService {
     // ========== 提成计算 ==========
 
     /**
-     * 计算提成（收款核销后自动触发）
-     * TODO: 根据新的提成规则结构重新实现提成计算逻辑
-     */
-    @Transactional(rollbackFor = Exception.class)
-    public List<CommissionDTO> calculateCommission(Long paymentId) {
-        // 暂未实现，待根据新的提成规则结构重新开发
-        log.warn("提成计算功能待实现，paymentId={}", paymentId);
-        return List.of();
-    }
-
-    /**
      * 手动计算提成（财务用户手动计算）
      * 根据合同参与人的提成比例，财务可以手动修改提成金额
      */
