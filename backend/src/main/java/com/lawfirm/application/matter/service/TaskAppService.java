@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lawfirm.application.matter.command.CreateTaskCommand;
 import com.lawfirm.application.matter.dto.TaskDTO;
 import com.lawfirm.application.matter.dto.TaskQueryDTO;
+import com.lawfirm.application.system.service.NotificationAppService;
 import com.lawfirm.common.exception.BusinessException;
 import com.lawfirm.common.result.PageResult;
 import com.lawfirm.common.util.SecurityUtils;
@@ -32,6 +33,7 @@ import java.util.stream.Collectors;
 public class TaskAppService {
 
     private final TaskRepository taskRepository;
+    private final NotificationAppService notificationAppService;
 
     /**
      * 分页查询任务
@@ -125,7 +127,57 @@ public class TaskAppService {
 
         taskRepository.save(task);
         log.info("任务创建成功: {} ({})", task.getTitle(), task.getTaskNo());
+        
+        // 发送任务分配通知
+        sendTaskAssignNotification(task);
+        
         return toDTO(task);
+    }
+    
+    /**
+     * 发送任务分配通知
+     */
+    private void sendTaskAssignNotification(Task task) {
+        try {
+            if (task.getAssigneeId() == null) return;
+            
+            Long currentUserId = SecurityUtils.getUserId();
+            // 如果任务分配给自己，不发通知
+            if (task.getAssigneeId().equals(currentUserId)) return;
+            
+            String currentUserName = SecurityUtils.getRealName();
+            String priorityText = getPriorityText(task.getPriority());
+            String title = "您有新任务";
+            String content = String.format("%s 给您分配了任务【%s】", currentUserName, task.getTitle());
+            if (task.getDueDate() != null) {
+                content += String.format("，截止日期：%s", task.getDueDate());
+            }
+            if (!"MEDIUM".equals(task.getPriority())) {
+                content += String.format("（%s）", priorityText);
+            }
+            
+            notificationAppService.sendSystemNotification(
+                    task.getAssigneeId(),
+                    title,
+                    content,
+                    "TASK",
+                    task.getId()
+            );
+            log.info("任务分配通知已发送: taskId={}, assigneeId={}", task.getId(), task.getAssigneeId());
+        } catch (Exception e) {
+            log.warn("发送任务分配通知失败: taskId={}", task.getId(), e);
+        }
+    }
+    
+    private String getPriorityText(String priority) {
+        if (priority == null) return "普通";
+        return switch (priority) {
+            case "URGENT" -> "紧急";
+            case "HIGH" -> "高优先级";
+            case "MEDIUM" -> "普通";
+            case "LOW" -> "低优先级";
+            default -> priority;
+        };
     }
 
     /**
@@ -185,6 +237,7 @@ public class TaskAppService {
     @Transactional
     public TaskDTO updateStatus(Long id, String status) {
         Task task = taskRepository.getByIdOrThrow(id, "任务不存在");
+        String oldStatus = task.getStatus();
         task.setStatus(status);
 
         if ("COMPLETED".equals(status)) {
@@ -197,7 +250,67 @@ public class TaskAppService {
 
         taskRepository.updateById(task);
         log.info("任务状态更新: {} -> {}", task.getTitle(), status);
+        
+        // 发送任务状态变更通知
+        sendTaskStatusNotification(task, oldStatus, status);
+        
         return toDTO(task);
+    }
+    
+    /**
+     * 发送任务状态变更通知
+     */
+    private void sendTaskStatusNotification(Task task, String oldStatus, String newStatus) {
+        try {
+            Long currentUserId = SecurityUtils.getUserId();
+            String currentUserName = SecurityUtils.getRealName();
+            
+            // 只对有意义的状态变更发送通知
+            if (oldStatus != null && oldStatus.equals(newStatus)) return;
+            
+            String statusName = getStatusName(newStatus);
+            String title = String.format("任务【%s】状态变更", task.getTitle());
+            String content = String.format("%s 将任务【%s】状态修改为：%s", 
+                    currentUserName, task.getTitle(), statusName);
+            
+            // 通知任务负责人（如果不是自己操作的）
+            if (task.getAssigneeId() != null && !task.getAssigneeId().equals(currentUserId)) {
+                notificationAppService.sendSystemNotification(
+                        task.getAssigneeId(),
+                        title,
+                        content,
+                        "TASK",
+                        task.getId()
+                );
+            }
+            
+            // 如果任务完成，通知任务创建者（如果不是自己且不是任务负责人）
+            if ("COMPLETED".equals(newStatus) && task.getCreatedBy() != null) {
+                if (!task.getCreatedBy().equals(currentUserId) && 
+                    !task.getCreatedBy().equals(task.getAssigneeId())) {
+                    notificationAppService.sendSystemNotification(
+                            task.getCreatedBy(),
+                            "任务已完成",
+                            String.format("%s 完成了任务【%s】", task.getAssigneeName(), task.getTitle()),
+                            "TASK",
+                            task.getId()
+                    );
+                }
+            }
+        } catch (Exception e) {
+            log.warn("发送任务状态变更通知失败: taskId={}", task.getId(), e);
+        }
+    }
+    
+    private String getStatusName(String status) {
+        if (status == null) return "未知";
+        return switch (status) {
+            case "TODO" -> "待处理";
+            case "IN_PROGRESS" -> "进行中";
+            case "COMPLETED" -> "已完成";
+            case "CANCELLED" -> "已取消";
+            default -> status;
+        };
     }
 
     /**

@@ -376,9 +376,10 @@ public class MatterAppService {
     @Transactional
     public void changeStatus(Long id, String status) {
         Matter matter = matterRepository.getByIdOrThrow(id, "案件不存在");
+        String oldStatus = matter.getStatus();
         
         // 状态流转验证
-        validateStatusTransition(matter.getStatus(), status);
+        validateStatusTransition(oldStatus, status);
         
         matter.setStatus(status);
         if ("CLOSED".equals(status) && matter.getActualClosingDate() == null) {
@@ -387,6 +388,9 @@ public class MatterAppService {
         
         matterRepository.updateById(matter);
         log.info("案件状态修改成功: {} -> {}", matter.getName(), status);
+        
+        // 发送状态变更通知给项目参与人
+        sendMatterStatusNotification(matter, oldStatus, status);
         
         // 如果状态改为 ARCHIVED，自动创建档案记录
         if ("ARCHIVED".equals(status)) {
@@ -413,6 +417,56 @@ public class MatterAppService {
             }
         }
     }
+    
+    /**
+     * 发送项目状态变更通知给所有参与人
+     */
+    private void sendMatterStatusNotification(Matter matter, String oldStatus, String newStatus) {
+        try {
+            Long currentUserId = SecurityUtils.getUserId();
+            String currentUserName = SecurityUtils.getRealName();
+            
+            // 获取项目参与人
+            List<MatterParticipant> participants = participantMapper.selectByMatterId(matter.getId());
+            
+            String statusName = getMatterStatusName(newStatus);
+            String title = String.format("项目【%s】状态变更", matter.getName());
+            String content = String.format("%s 将项目【%s】状态修改为：%s", 
+                    currentUserName, matter.getName(), statusName);
+            
+            // 给所有参与人发送通知（排除操作人自己）
+            for (MatterParticipant p : participants) {
+                if (!p.getUserId().equals(currentUserId)) {
+                    notificationAppService.sendSystemNotification(
+                            p.getUserId(),
+                            title,
+                            content,
+                            "MATTER",
+                            matter.getId()
+                    );
+                }
+            }
+            
+            log.info("项目状态变更通知已发送: matterId={}, status={}, 通知人数={}", 
+                    matter.getId(), newStatus, participants.size());
+        } catch (Exception e) {
+            log.warn("发送项目状态变更通知失败: matterId={}", matter.getId(), e);
+        }
+    }
+    
+    /**
+     * 获取状态名称
+     */
+    private String getMatterStatusName(String status) {
+        if (status == null) return "未知";
+        return switch (status) {
+            case "ACTIVE" -> "进行中";
+            case "SUSPENDED" -> "暂停";
+            case "CLOSED" -> "已结案";
+            case "ARCHIVED" -> "已归档";
+            default -> status;
+        };
+    }
 
     /**
      * 添加团队成员
@@ -437,6 +491,40 @@ public class MatterAppService {
 
         participantMapper.insert(participant);
         log.info("添加案件团队成员: matterId={}, userId={}, role={}", matterId, userId, role);
+        
+        // 发送通知给被添加的成员
+        try {
+            Matter matter = matterRepository.findById(matterId);
+            if (matter != null) {
+                String currentUserName = SecurityUtils.getRealName();
+                String roleName = getRoleName(role);
+                String title = "您已被添加到项目";
+                String content = String.format("%s 将您添加到项目【%s】，您的角色是：%s", 
+                        currentUserName, matter.getName(), roleName);
+                notificationAppService.sendSystemNotification(
+                        userId,
+                        title,
+                        content,
+                        "MATTER",
+                        matterId
+                );
+            }
+        } catch (Exception e) {
+            log.warn("发送团队成员添加通知失败: matterId={}, userId={}", matterId, userId, e);
+        }
+    }
+    
+    /**
+     * 获取角色名称
+     */
+    private String getRoleName(String role) {
+        if (role == null) return "成员";
+        return switch (role) {
+            case "LEAD_LAWYER" -> "主办律师";
+            case "ASSISTANT" -> "协办律师";
+            case "PARALEGAL" -> "律师助理";
+            default -> role;
+        };
     }
 
     /**

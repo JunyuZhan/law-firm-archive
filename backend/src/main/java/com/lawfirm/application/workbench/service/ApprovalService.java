@@ -1,5 +1,6 @@
 package com.lawfirm.application.workbench.service;
 
+import com.lawfirm.application.system.service.NotificationAppService;
 import com.lawfirm.common.exception.BusinessException;
 import com.lawfirm.common.util.SecurityUtils;
 import com.lawfirm.domain.system.entity.User;
@@ -24,6 +25,7 @@ public class ApprovalService {
 
     private final ApprovalRepository approvalRepository;
     private final UserRepository userRepository;
+    private final NotificationAppService notificationAppService;
 
     /**
      * 创建审批记录
@@ -72,7 +74,45 @@ public class ApprovalService {
         log.info("创建审批记录: approvalNo={}, businessType={}, businessId={}, approver={}", 
                 approval.getApprovalNo(), businessType, businessId, approverId);
         
+        // 发送通知给审批人
+        try {
+            String businessTypeName = getBusinessTypeName(businessType);
+            String title = "您有新的" + businessTypeName + "待审批";
+            String content = String.format("%s 提交了【%s】，请您审批。", 
+                    applicantName, 
+                    businessTitle != null ? businessTitle : businessTypeName);
+            notificationAppService.sendSystemNotification(
+                    approverId,
+                    title,
+                    content,
+                    "APPROVAL",
+                    approval.getId()
+            );
+            log.info("已发送审批通知给: {}", approverName);
+        } catch (Exception e) {
+            log.warn("发送审批通知失败: approverId={}", approverId, e);
+        }
+        
         return approval.getId();
+    }
+    
+    /**
+     * 获取业务类型名称
+     */
+    private String getBusinessTypeName(String businessType) {
+        if (businessType == null) return "审批";
+        return switch (businessType) {
+            case "CONTRACT" -> "合同";
+            case "SEAL_APPLICATION" -> "用印申请";
+            case "CONFLICT_CHECK" -> "利冲检查";
+            case "CONFLICT_EXEMPTION" -> "利冲豁免";
+            case "EXPENSE" -> "费用报销";
+            case "PAYMENT_AMENDMENT" -> "收款变更";
+            case "MATTER_CLOSE" -> "项目结案";
+            case "REGULARIZATION" -> "转正申请";
+            case "RESIGNATION" -> "离职申请";
+            default -> "审批";
+        };
     }
 
     /**
