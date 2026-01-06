@@ -28,7 +28,7 @@ public class SealApplicationController {
      * 分页查询用印申请
      */
     @GetMapping
-    @RequirePermission("seal:apply:list")
+    @RequirePermission("doc:seal:apply")
     public Result<PageResult<SealApplicationDTO>> list(SealApplicationQueryDTO query) {
         return Result.success(applicationAppService.listApplications(query));
     }
@@ -37,7 +37,7 @@ public class SealApplicationController {
      * 获取申请详情
      */
     @GetMapping("/{id}")
-    @RequirePermission("seal:apply:detail")
+    @RequirePermission("doc:seal:apply")
     public Result<SealApplicationDTO> getById(@PathVariable Long id) {
         return Result.success(applicationAppService.getApplicationById(id));
     }
@@ -46,7 +46,7 @@ public class SealApplicationController {
      * 创建用印申请
      */
     @PostMapping
-    @RequirePermission("seal:apply")
+    @RequirePermission("doc:seal:apply")
     @OperationLog(module = "用印申请", action = "提交申请")
     public Result<SealApplicationDTO> create(@Valid @RequestBody CreateSealApplicationCommand command) {
         return Result.success(applicationAppService.createApplication(command));
@@ -56,7 +56,7 @@ public class SealApplicationController {
      * 审批通过
      */
     @PostMapping("/{id}/approve")
-    @RequirePermission("seal:approve")
+    @RequirePermission("doc:seal:apply")
     @OperationLog(module = "用印申请", action = "审批通过")
     public Result<SealApplicationDTO> approve(@PathVariable Long id,
                                               @RequestParam(required = false) String comment) {
@@ -67,7 +67,7 @@ public class SealApplicationController {
      * 审批拒绝
      */
     @PostMapping("/{id}/reject")
-    @RequirePermission("seal:approve")
+    @RequirePermission("doc:seal:apply")
     @OperationLog(module = "用印申请", action = "审批拒绝")
     public Result<SealApplicationDTO> reject(@PathVariable Long id,
                                              @RequestParam(required = false) String comment) {
@@ -78,7 +78,7 @@ public class SealApplicationController {
      * 登记用印
      */
     @PostMapping("/{id}/use")
-    @RequirePermission("seal:use")
+    @RequirePermission("doc:seal:apply")
     @OperationLog(module = "用印申请", action = "登记用印")
     public Result<SealApplicationDTO> registerUsage(@PathVariable Long id,
                                                     @RequestParam(required = false) String remark) {
@@ -89,7 +89,7 @@ public class SealApplicationController {
      * 取消申请
      */
     @PostMapping("/{id}/cancel")
-    @RequirePermission("seal:apply")
+    @RequirePermission("doc:seal:apply")
     @OperationLog(module = "用印申请", action = "取消申请")
     public Result<Void> cancel(@PathVariable Long id) {
         applicationAppService.cancelApplication(id);
@@ -100,7 +100,7 @@ public class SealApplicationController {
      * 获取待审批列表
      */
     @GetMapping("/pending")
-    @RequirePermission("seal:approve")
+    @RequirePermission("doc:seal:apply")
     public Result<List<SealApplicationDTO>> getPending() {
         return Result.success(applicationAppService.getPendingApplications());
     }

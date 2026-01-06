@@ -27,7 +27,7 @@ public class SealController {
      * 分页查询印章
      */
     @GetMapping
-    @RequirePermission("seal:list")
+    @RequirePermission("doc:seal:list")
     public Result<PageResult<SealDTO>> list(SealQueryDTO query) {
         return Result.success(sealAppService.listSeals(query));
     }
@@ -36,7 +36,7 @@ public class SealController {
      * 获取印章详情
      */
     @GetMapping("/{id}")
-    @RequirePermission("seal:detail")
+    @RequirePermission("doc:seal:list")
     public Result<SealDTO> getById(@PathVariable Long id) {
         return Result.success(sealAppService.getSealById(id));
     }
@@ -45,7 +45,7 @@ public class SealController {
      * 创建印章
      */
     @PostMapping
-    @RequirePermission("seal:manage")
+    @RequirePermission("doc:seal:list")
     @OperationLog(module = "印章管理", action = "创建印章")
     public Result<SealDTO> create(@Valid @RequestBody CreateSealCommand command) {
         return Result.success(sealAppService.createSeal(command));
@@ -55,7 +55,7 @@ public class SealController {
      * 更新印章
      */
     @PutMapping("/{id}")
-    @RequirePermission("seal:manage")
+    @RequirePermission("doc:seal:list")
     @OperationLog(module = "印章管理", action = "更新印章")
     public Result<SealDTO> update(@PathVariable Long id,
                                   @Valid @RequestBody UpdateSealCommand command) {
@@ -66,7 +66,7 @@ public class SealController {
      * 变更印章状态
      */
     @PutMapping("/{id}/status")
-    @RequirePermission("seal:manage")
+    @RequirePermission("doc:seal:list")
     @OperationLog(module = "印章管理", action = "变更印章状态")
     public Result<Void> changeStatus(@PathVariable Long id, @RequestParam String status) {
         sealAppService.changeSealStatus(id, status);
@@ -77,7 +77,7 @@ public class SealController {
      * 删除印章
      */
     @DeleteMapping("/{id}")
-    @RequirePermission("seal:manage")
+    @RequirePermission("doc:seal:list")
     @OperationLog(module = "印章管理", action = "删除印章")
     public Result<Void> delete(@PathVariable Long id) {
         sealAppService.deleteSeal(id);
