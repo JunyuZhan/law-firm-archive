@@ -1,0 +1,456 @@
+/**
+ * 系统管理模块类型定义
+ */
+
+// ========== 用户管理 ==========
+export interface UserDTO {
+  id: number;
+  username: string;
+  realName: string;
+  email?: string;
+  phone?: string;
+  avatarUrl?: string;
+  departmentId?: number;
+  departmentName?: string;
+  position?: string;
+  employeeNo?: string;
+  lawyerLicenseNo?: string;
+  joinDate?: string;
+  compensationType?: string;
+  compensationTypeName?: string;
+  canBeOriginator?: boolean;
+  status: string;
+  roleIds?: number[];
+  roleCodes?: string[];
+  permissions?: string[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface UserQuery {
+  username?: string;
+  realName?: string;
+  phone?: string;
+  departmentId?: number;
+  status?: string;
+  pageNum?: number;
+  pageSize?: number;
+}
+
+export interface CreateUserCommand {
+  username: string;
+  password: string;
+  realName: string;
+  email?: string;
+  phone?: string;
+  departmentId?: number;
+  position?: string;
+  employeeNo?: string;
+  lawyerLicenseNo?: string;
+  joinDate?: string;
+  compensationType?: string;
+  canBeOriginator?: boolean;
+  roleIds?: number[];
+}
+
+export interface UpdateUserCommand extends Partial<CreateUserCommand> {
+  id: number;
+}
+
+// ========== 角色管理 ==========
+export interface RoleDTO {
+  id: number;
+  roleCode: string;
+  roleName: string;
+  description?: string;
+  dataScope?: string;
+  status?: string;
+  sortOrder?: number;
+  menuIds?: number[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface RoleQuery {
+  roleCode?: string;
+  roleName?: string;
+  status?: string;
+  pageNum?: number;
+  pageSize?: number;
+}
+
+export interface CreateRoleCommand {
+  roleCode: string;
+  roleName: string;
+  description?: string;
+  dataScope?: string;
+  sortOrder?: number;
+  menuIds?: number[];
+}
+
+export interface UpdateRoleCommand extends Partial<CreateRoleCommand> {
+  id: number;
+}
+
+// ========== 部门管理 ==========
+export interface DepartmentDTO {
+  id: number;
+  name: string;
+  parentId?: number;
+  parentName?: string;
+  sortOrder?: number;
+  leaderId?: number;
+  leaderName?: string;
+  status?: string;
+  children?: DepartmentDTO[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateDepartmentCommand {
+  name: string;
+  parentId?: number;
+  sortOrder?: number;
+  leaderId?: number;
+}
+
+export interface UpdateDepartmentCommand extends Partial<CreateDepartmentCommand> {
+  id: number;
+}
+
+// ========== 菜单管理 ==========
+export interface MenuDTO {
+  id: number;
+  parentId: number;
+  name: string;
+  path: string;
+  component?: string;
+  redirect?: string;
+  icon?: string;
+  menuType: string;
+  menuTypeName?: string;
+  permission?: string;
+  sortOrder: number;
+  visible: boolean;
+  status?: string;
+  isExternal?: boolean;
+  isCache?: boolean;
+  children?: MenuDTO[];
+}
+
+export interface CreateMenuCommand {
+  parentId: number;
+  name: string;
+  path: string;
+  component?: string;
+  redirect?: string;
+  icon?: string;
+  menuType: string;
+  permission?: string;
+  sortOrder?: number;
+  visible?: boolean;
+  isExternal?: boolean;
+  isCache?: boolean;
+}
+
+export interface UpdateMenuCommand extends Partial<CreateMenuCommand> {
+  id: number;
+}
+
+// ========== 字典管理 ==========
+export interface DictTypeDTO {
+  id: number;
+  dictCode: string;
+  dictName: string;
+  description?: string;
+  status?: string;
+  createdAt?: string;
+}
+
+export interface DictDataDTO {
+  id: number;
+  dictTypeId: number;
+  dictCode: string;
+  label: string;
+  value: string;
+  sortOrder?: number;
+  status?: string;
+  remark?: string;
+}
+
+// ========== 系统配置 ==========
+export interface SysConfigDTO {
+  id: number;
+  configKey: string;
+  configValue: string;
+  configName: string;
+  configType?: string;
+  description?: string;
+}
+
+// ============ 合同编号配置相关 ============
+
+export interface ContractNumberPreview {
+  caseType: string;
+  caseTypeName: string;
+  preview: string;
+}
+
+export interface ContractNumberVariable {
+  name: string;
+  label: string;
+  description: string;
+}
+
+export interface ContractNumberPattern {
+  name: string;
+  pattern: string;
+  example: string;
+  description: string;
+}
+
+export interface CaseTypeOption {
+  value: string;
+  label: string;
+  shortName: string;
+  code: string;
+}
+
+// ========== 操作日志 ==========
+export interface OperationLogDTO {
+  id: number;
+  module: string;
+  action: string;
+  method: string;
+  requestUrl: string;
+  requestMethod: string;
+  requestParams?: string;
+  responseResult?: string;
+  operatorId: number;
+  operatorName: string;
+  operatorIp?: string;
+  operationTime: string;
+  duration?: number;
+  status: string;
+  errorMsg?: string;
+}
+
+export interface LogQuery {
+  module?: string;
+  action?: string;
+  operatorName?: string;
+  status?: string;
+  startTime?: string;
+  endTime?: string;
+  pageNum?: number;
+  pageSize?: number;
+}
+
+// ========== 权限矩阵管理 ==========
+
+/** 权限DTO */
+export interface PermissionDTO {
+  permissionCode: string;
+  permissionName: string;
+  menuType: string;
+  module?: string;
+}
+
+/** 权限矩阵单元格 */
+export interface PermissionMatrixCellDTO {
+  permissionCode: string;
+  permissionName: string;
+  menuType: string;
+  hasPermission: boolean;
+}
+
+/** 权限矩阵行 */
+export interface PermissionMatrixRowDTO {
+  roleId: number;
+  roleCode: string;
+  roleName: string;
+  dataScope: string;
+  permissions: PermissionMatrixCellDTO[];
+}
+
+/** 权限矩阵 */
+export interface PermissionMatrixDTO {
+  roles: RoleDTO[];
+  permissions: PermissionDTO[];
+  matrix: PermissionMatrixRowDTO[];
+}
+
+/** 角色权限详情 */
+export interface RolePermissionDTO {
+  roleId: number;
+  roleCode: string;
+  roleName: string;
+  dataScope: string;
+  permissions: Array<{
+    permissionCode: string;
+    permissionName: string;
+    menuType: string;
+    hasPermission: boolean;
+  }>;
+}
+
+/** 权限对比行 */
+export interface PermissionCompareRowDTO {
+  permissionCode: string;
+  permissionName: string;
+  menuType: string;
+  module?: string;
+  roleHasPermission?: Record<number, boolean>;
+}
+
+/** 权限对比结果 */
+export interface PermissionCompareDTO {
+  roleIds: number[];
+  roles: RoleDTO[];
+  permissions: PermissionCompareRowDTO[];
+}
+
+// ========== 数据交接管理 ==========
+
+/** 数据交接记录DTO */
+export interface DataHandoverDTO {
+  id: number;
+  handoverNo: string;
+  fromUserId: number;
+  fromUsername: string;
+  toUserId: number;
+  toUsername: string;
+  handoverType: string;
+  handoverTypeName?: string;
+  handoverReason?: string;
+  status: string;
+  statusName?: string;
+  matterCount: number;
+  clientCount: number;
+  leadCount: number;
+  taskCount: number;
+  submittedBy?: number;
+  submittedByName?: string;
+  submittedAt?: string;
+  confirmedBy?: number;
+  confirmedByName?: string;
+  confirmedAt?: string;
+  remark?: string;
+  createdAt?: string;
+  details?: DataHandoverDetailDTO[];
+}
+
+/** 数据交接明细DTO */
+export interface DataHandoverDetailDTO {
+  id: number;
+  handoverId: number;
+  dataType: string;
+  dataTypeName?: string;
+  dataId: number;
+  dataNo?: string;
+  dataName?: string;
+  fieldName: string;
+  fieldDisplayName?: string;
+  oldValue?: string;
+  oldUserName?: string;
+  newValue?: string;
+  newUserName?: string;
+  status: string;
+  statusName?: string;
+  errorMessage?: string;
+  executedAt?: string;
+  createdAt?: string;
+}
+
+/** 数据交接预览DTO */
+export interface DataHandoverPreviewDTO {
+  userId: number;
+  userName: string;
+  leadMatterCount: number;
+  leadMatters?: Array<{ id: number; matterNo: string; name: string; status: string }>;
+  participantMatterCount: number;
+  participantMatters?: Array<{ id: number; matterId: number; role: string }>;
+  originatorMatterCount: number;
+  clientCount: number;
+  clients?: Array<{ id: number; clientNo: string; name: string }>;
+  leadCount: number;
+  leads?: Array<{ id: number; leadNo: string; leadName: string; status: string }>;
+  taskCount: number;
+  tasks?: Array<{ id: number; taskNo: string; title: string; status: string }>;
+  contractParticipantCount: number;
+  totalCount: number;
+}
+
+/** 数据交接查询条件 */
+export interface DataHandoverQuery {
+  fromUserId?: number;
+  toUserId?: number;
+  handoverType?: string;
+  status?: string;
+  pageNum?: number;
+  pageSize?: number;
+}
+
+/** 创建交接命令 */
+export interface CreateHandoverCommand {
+  fromUserId: number;
+  toUserId: number;
+  handoverType?: string;
+  reason?: string;
+  matterIds?: number[];
+  clientIds?: number[];
+  leadIds?: number[];
+  taskIds?: number[];
+  includeOriginator?: boolean;
+  remark?: string;
+}
+
+// ========== 外部系统集成 ==========
+
+/** 外部系统集成DTO */
+export interface ExternalIntegrationDTO {
+  id: number;
+  integrationCode: string;
+  integrationName: string;
+  integrationType: string;
+  description?: string;
+  apiUrl?: string;
+  apiKey?: string;
+  hasApiSecret: boolean;
+  authType: string;
+  extraConfig?: Record<string, any>;
+  enabled: boolean;
+  lastTestTime?: string;
+  lastTestResult?: string;
+  lastTestMessage?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/** 外部系统集成查询条件 */
+export interface ExternalIntegrationQuery {
+  keyword?: string;
+  integrationType?: string;
+  enabled?: boolean;
+  pageNum?: number;
+  pageSize?: number;
+}
+
+/** 更新外部系统集成命令 */
+export interface UpdateExternalIntegrationCommand {
+  id: number;
+  apiUrl?: string;
+  apiKey?: string;
+  apiSecret?: string;
+  authType?: string;
+  extraConfig?: Record<string, any>;
+  description?: string;
+}
+
+// ========== 通用分页结果 ==========
+export interface PageResult<T> {
+  list: T[];
+  total: number;
+  pageNum: number;
+  pageSize: number;
+}
