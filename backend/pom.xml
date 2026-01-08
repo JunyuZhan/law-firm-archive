@@ -115,6 +115,12 @@
             <artifactId>poi-scratchpad</artifactId>
             <version>${poi.version}</version>
         </dependency>
+        <!-- commons-compress 用于 POI Excel 导出，需要与 POI 5.2.5 兼容 -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-compress</artifactId>
+            <version>1.25.0</version>
+        </dependency>
 
         <!-- iText for PDF -->
         <dependency>
@@ -243,5 +249,25 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <!-- 开发环境 -->
+        <profile>
+            <id>dev</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <properties>
+                <spring.profiles.active>dev</spring.profiles.active>
+            </properties>
+        </profile>
+        <!-- 生产环境 -->
+        <profile>
+            <id>prod</id>
+            <properties>
+                <spring.profiles.active>prod</spring.profiles.active>
+            </properties>
+        </profile>
+    </profiles>
 </project>
 

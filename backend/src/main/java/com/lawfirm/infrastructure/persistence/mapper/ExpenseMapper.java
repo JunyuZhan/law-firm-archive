@@ -44,6 +44,12 @@ public interface ExpenseMapper extends BaseMapper<Expense> {
         <if test="expenseCategory != null and expenseCategory != ''">
             AND e.expense_category = #{expenseCategory}
         </if>
+        <if test="matterIds != null and matterIds.size() > 0">
+            AND e.matter_id IN
+            <foreach collection="matterIds" item="id" open="(" separator="," close=")">
+                #{id}
+            </foreach>
+        </if>
         ORDER BY e.created_at DESC
         </script>
         """)
@@ -53,7 +59,8 @@ public interface ExpenseMapper extends BaseMapper<Expense> {
             @Param("applicantId") Long applicantId,
             @Param("status") String status,
             @Param("expenseType") String expenseType,
-            @Param("expenseCategory") String expenseCategory
+            @Param("expenseCategory") String expenseCategory,
+            @Param("matterIds") java.util.List<Long> matterIds
     );
 
     /**

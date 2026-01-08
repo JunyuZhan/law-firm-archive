@@ -60,6 +60,11 @@ public class CreateLetterApplicationCommand {
     private LocalDate expectedDate;
     
     /**
+     * 审批人ID
+     */
+    private Long approverId;
+    
+    /**
      * 备注
      */
     private String remark;

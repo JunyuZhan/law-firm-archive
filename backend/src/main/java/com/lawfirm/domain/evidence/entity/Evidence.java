@@ -126,4 +126,10 @@ public class Evidence extends BaseEntity {
      */
     @lombok.Builder.Default
     private String status = "ACTIVE";
+
+    /**
+     * 关联卷宗文件ID，引用 doc_document.id
+     * 当设置此字段时，文件信息从 doc_document 获取
+     */
+    private Long documentId;
 }

@@ -49,4 +49,11 @@ public class DocumentDTO extends BaseDTO {
     private String createdByName;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    
+    /** 卷宗目录项ID */
+    private Long dossierItemId;
+    /** 文件夹路径 */
+    private String folderPath;
+    /** 显示排序顺序 */
+    private Integer displayOrder;
 }

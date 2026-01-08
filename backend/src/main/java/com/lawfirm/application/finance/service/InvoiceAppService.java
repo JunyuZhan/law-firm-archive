@@ -45,6 +45,15 @@ public class InvoiceAppService {
     public PageResult<InvoiceDTO> listInvoices(PageQuery query, Long clientId, String status) {
         LambdaQueryWrapper<Invoice> wrapper = new LambdaQueryWrapper<>();
         
+        // 数据权限过滤
+        String dataScope = SecurityUtils.getDataScope();
+        Long currentUserId = SecurityUtils.getUserId();
+        if ("SELF".equals(dataScope)) {
+            // SELF 权限只能看自己申请的发票
+            wrapper.eq(Invoice::getApplicantId, currentUserId);
+        }
+        // ALL/DEPT_AND_CHILD/DEPT: 财务和管理层可以查看所有发票
+        
         if (clientId != null) {
             wrapper.eq(Invoice::getClientId, clientId);
         }

@@ -1,24 +1,26 @@
-# 智慧律所管理系统 - 文档中心 (Documentation)
+# 开发者文档
 
-> [!IMPORTANT]
-> **单一事实来源 (Single Source of Truth)**
->
-> 所有的业务逻辑、技术规范和开发指南已深度整合至核心全书中。**开发者应优先阅读此文档**，它实现了内容而非形式的真正统一。
->
-> 📘 **[智慧律所管理系统 - 开发者核心全书](./DEVELOPER_GUIDE.md)**
+本目录存放开发者参考文档，供代码开发和维护人员使用。
 
----
+## 文档索引
 
-## 📂 辅助参考资料 (Supplementary Materials)
-以下文档包含部分特定场景的参考，但请始终以“开发者核心全书”及“当代项目代码”为最终准则：
+| 文档 | 说明 |
+|------|------|
+| [DEVELOPER_GUIDE.md](./DEVELOPER_GUIDE.md) | 项目架构与开发百科全书 |
+| [BACKEND_IMPLEMENTATION_GUIDE.md](./BACKEND_IMPLEMENTATION_GUIDE.md) | 后端实现指南 |
+| [frontend-component-guide.md](./frontend-component-guide.md) | 前端组件使用指南 |
 
-- **业务知识库**: [[NEW] 统一知识手册](UNIFIED_KNOWLEDGE_BASE.md)
-- **代码实装指南**: [后端代码实装生存指南 (其他工程师必读)](BACKEND_IMPLEMENTATION_GUIDE.md)
-- **法律业务标准**: [民事案由](民事案由规定.md) | [罪名规则](罪名.md) | [行政案由](行政诉讼案由.md)
-- **合同/文书模板**: [刑事合同](刑事案件委托代理合同.md) | [民事行政合同](民事和行政委托代理合同.md)
-- **历史存档 (Legacy)**: [00-11 系列原档目录](./) (仅供历史回溯)
+## 用户手册
 
----
+用户操作手册位于 `frontend/docs/`，是一个独立的 VitePress 文档站点：
 
-## 🔍 代码与文档一致性
-> **重要声明**：旧文档中提及的 `Sa-Token` 和 `Flowable` 等组件在当前生产代码中已由 `Spring Security` 和 `内置状态机` 替代。
+```bash
+cd frontend/docs
+pnpm install
+pnpm run dev
+```
+
+包含：
+- 用户操作指南（各模块使用说明）
+- API 接口文档
+- 运维部署文档

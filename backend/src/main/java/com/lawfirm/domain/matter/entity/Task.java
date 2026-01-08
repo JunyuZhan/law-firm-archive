@@ -97,4 +97,24 @@ public class Task extends BaseEntity {
      */
     @lombok.Builder.Default
     private Boolean reminderSent = false;
+
+    /**
+     * 验收状态：PENDING_REVIEW-待验收, APPROVED-已通过, REJECTED-已退回
+     */
+    private String reviewStatus;
+
+    /**
+     * 验收意见（退回时填写）
+     */
+    private String reviewComment;
+
+    /**
+     * 验收时间
+     */
+    private LocalDateTime reviewedAt;
+
+    /**
+     * 验收人ID
+     */
+    private Long reviewedBy;
 }

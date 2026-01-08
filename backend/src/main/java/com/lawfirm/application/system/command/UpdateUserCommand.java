@@ -43,6 +43,11 @@ public class UpdateUserCommand {
      */
     private List<Long> roleIds;
 
+    /**
+     * 角色变更原因（可选）
+     */
+    private String roleChangeReason;
+
     // Getters
     public Long getId() { return id; }
     public String getRealName() { return realName; }
@@ -56,6 +61,7 @@ public class UpdateUserCommand {
     public String getCompensationType() { return compensationType; }
     public Boolean getCanBeOriginator() { return canBeOriginator; }
     public List<Long> getRoleIds() { return roleIds; }
+    public String getRoleChangeReason() { return roleChangeReason; }
 
     // Setters
     public void setId(Long id) { this.id = id; }
@@ -70,4 +76,5 @@ public class UpdateUserCommand {
     public void setCompensationType(String compensationType) { this.compensationType = compensationType; }
     public void setCanBeOriginator(Boolean canBeOriginator) { this.canBeOriginator = canBeOriginator; }
     public void setRoleIds(List<Long> roleIds) { this.roleIds = roleIds; }
+    public void setRoleChangeReason(String roleChangeReason) { this.roleChangeReason = roleChangeReason; }
 }

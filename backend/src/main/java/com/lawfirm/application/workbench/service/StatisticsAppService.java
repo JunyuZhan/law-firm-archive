@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.HashMap;
 
 /**
  * 统计应用服务
@@ -35,25 +36,33 @@ public class StatisticsAppService {
     private final com.lawfirm.domain.matter.repository.MatterParticipantRepository matterParticipantRepository;
 
     /**
-     * 获取收入统计
+     * 获取收入统计（根据权限过滤）
      */
     public StatisticsDTO.RevenueStats getRevenueStats() {
         StatisticsDTO.RevenueStats stats = new StatisticsDTO.RevenueStats();
 
+        // 根据用户权限过滤数据
+        String dataScope = com.lawfirm.common.util.SecurityUtils.getDataScope();
+        Long currentUserId = com.lawfirm.common.util.SecurityUtils.getUserId();
+        Long deptId = com.lawfirm.common.util.SecurityUtils.getDepartmentId();
+
+        // 获取可访问的项目ID列表（用于过滤收入数据）
+        List<Long> accessibleMatterIds = getAccessibleMatterIds(dataScope, currentUserId, deptId);
+
         // 查询总收入
-        BigDecimal totalRevenue = statisticsMapper.sumTotalRevenue();
+        BigDecimal totalRevenue = statisticsMapper.sumTotalRevenue(accessibleMatterIds);
         stats.setTotalRevenue(totalRevenue != null ? totalRevenue : BigDecimal.ZERO);
 
         // 查询本月收入
-        BigDecimal monthlyRevenue = statisticsMapper.sumMonthlyRevenue();
+        BigDecimal monthlyRevenue = statisticsMapper.sumMonthlyRevenue(accessibleMatterIds);
         stats.setMonthlyRevenue(monthlyRevenue != null ? monthlyRevenue : BigDecimal.ZERO);
 
         // 查询本年收入
-        BigDecimal yearlyRevenue = statisticsMapper.sumYearlyRevenue();
+        BigDecimal yearlyRevenue = statisticsMapper.sumYearlyRevenue(accessibleMatterIds);
         stats.setYearlyRevenue(yearlyRevenue != null ? yearlyRevenue : BigDecimal.ZERO);
 
         // 查询待收金额
-        BigDecimal pendingRevenue = statisticsMapper.sumPendingRevenue();
+        BigDecimal pendingRevenue = statisticsMapper.sumPendingRevenue(accessibleMatterIds);
         stats.setPendingRevenue(pendingRevenue != null ? pendingRevenue : BigDecimal.ZERO);
 
         // 计算增长率（与上月对比）
@@ -61,7 +70,7 @@ public class StatisticsAppService {
         stats.setGrowthRate(growthRate);
 
         // 查询收入趋势
-        List<StatisticsDTO.RevenueTrend> trends = statisticsMapper.getRevenueTrends().stream()
+        List<StatisticsDTO.RevenueTrend> trends = statisticsMapper.getRevenueTrends(accessibleMatterIds).stream()
                 .map(item -> {
                     StatisticsDTO.RevenueTrend trend = new StatisticsDTO.RevenueTrend();
                     trend.setPeriod((String) item.get("period"));
@@ -71,88 +80,173 @@ public class StatisticsAppService {
                 .collect(Collectors.toList());
         stats.setTrends(trends);
 
-        log.info("获取收入统计: total={}, monthly={}, yearly={}", totalRevenue, monthlyRevenue, yearlyRevenue);
+        log.info("获取收入统计: total={}, monthly={}, yearly={}, dataScope={}", totalRevenue, monthlyRevenue, yearlyRevenue, dataScope);
         return stats;
     }
 
     /**
-     * 获取项目统计
+     * 获取项目统计（根据权限过滤）
      */
     public StatisticsDTO.MatterStats getMatterStats() {
         StatisticsDTO.MatterStats stats = new StatisticsDTO.MatterStats();
+        
+        // 根据用户权限过滤数据
+        String dataScope = com.lawfirm.common.util.SecurityUtils.getDataScope();
+        Long currentUserId = com.lawfirm.common.util.SecurityUtils.getUserId();
+        Long deptId = com.lawfirm.common.util.SecurityUtils.getDepartmentId();
 
-        // 总案件数
-        long totalMatters = matterRepository.count();
-        stats.setTotalMatters(totalMatters);
+        try {
+            // 总案件数 - 根据权限过滤
+            long totalMatters;
+            if ("ALL".equals(dataScope)) {
+                // ALL权限：查看所有案件
+                totalMatters = matterRepository.lambdaQuery()
+                        .eq(com.lawfirm.domain.matter.entity.Matter::getDeleted, false)
+                        .count();
+            } else if ("DEPT_AND_CHILD".equals(dataScope) && deptId != null) {
+                // 部门及下级部门
+                // TODO: 需要实现部门递归查询
+                totalMatters = matterRepository.lambdaQuery()
+                        .eq(com.lawfirm.domain.matter.entity.Matter::getDeleted, false)
+                        .eq(com.lawfirm.domain.matter.entity.Matter::getDepartmentId, deptId)
+                        .count();
+            } else if ("DEPT".equals(dataScope) && deptId != null) {
+                // 本部门
+                totalMatters = matterRepository.lambdaQuery()
+                        .eq(com.lawfirm.domain.matter.entity.Matter::getDeleted, false)
+                        .eq(com.lawfirm.domain.matter.entity.Matter::getDepartmentId, deptId)
+                        .count();
+            } else {
+                // SELF：只查看自己负责的项目
+                totalMatters = matterRepository.lambdaQuery()
+                        .eq(com.lawfirm.domain.matter.entity.Matter::getDeleted, false)
+                        .eq(com.lawfirm.domain.matter.entity.Matter::getLeadLawyerId, currentUserId)
+                        .count();
+            }
+            stats.setTotalMatters(totalMatters);
 
-        // 进行中案件数
-        Long activeMatters = statisticsMapper.countActiveMatters();
-        stats.setActiveMatters(activeMatters != null ? activeMatters : 0L);
+            // 获取可访问的项目ID列表
+            List<Long> accessibleMatterIds = getAccessibleMatterIds(dataScope, currentUserId, deptId);
 
-        // 已完成案件数
-        Long completedMatters = statisticsMapper.countCompletedMatters();
-        stats.setCompletedMatters(completedMatters != null ? completedMatters : 0L);
+            // 进行中案件数 - 使用Mapper查询（应用权限过滤）
+            Long activeMatters = statisticsMapper.countActiveMatters(accessibleMatterIds);
+            stats.setActiveMatters(activeMatters != null ? activeMatters : 0L);
 
-        // 各状态案件数
-        Map<String, Long> statusCount = statisticsMapper.countMattersByStatus().stream()
-                .collect(Collectors.toMap(
-                        item -> (String) item.get("status"),
-                        item -> ((Number) item.get("count")).longValue()
-                ));
-        stats.setStatusCount(statusCount);
+            // 已完成案件数
+            Long completedMatters = statisticsMapper.countCompletedMatters(accessibleMatterIds);
+            stats.setCompletedMatters(completedMatters != null ? completedMatters : 0L);
 
-        // 各类型案件数
-        Map<String, Long> typeCount = statisticsMapper.countMattersByType().stream()
-                .collect(Collectors.toMap(
-                        item -> (String) item.get("business_type"),
-                        item -> ((Number) item.get("count")).longValue()
-                ));
-        stats.setTypeCount(typeCount);
+            // 各状态案件数
+            List<Map<String, Object>> statusCountList = statisticsMapper.countMattersByStatus(accessibleMatterIds);
+            Map<String, Long> statusCount = new HashMap<>();
+            if (statusCountList != null) {
+                for (Map<String, Object> item : statusCountList) {
+                    Object statusObj = item.get("status");
+                    Object countObj = item.get("count");
+                    if (statusObj != null && countObj != null) {
+                        statusCount.put(statusObj.toString(), ((Number) countObj).longValue());
+                    }
+                }
+            }
+            stats.setStatusCount(statusCount);
 
-        log.info("获取项目统计: total={}, active={}, completed={}", totalMatters, activeMatters, completedMatters);
+            // 各类型案件数
+            List<Map<String, Object>> typeCountList = statisticsMapper.countMattersByType(accessibleMatterIds);
+            Map<String, Long> typeCount = new HashMap<>();
+            if (typeCountList != null) {
+                for (Map<String, Object> item : typeCountList) {
+                    Object typeObj = item.get("business_type");
+                    Object countObj = item.get("count");
+                    if (typeObj != null && countObj != null) {
+                        typeCount.put(typeObj.toString(), ((Number) countObj).longValue());
+                    }
+                }
+            }
+            stats.setTypeCount(typeCount);
+
+            log.info("获取项目统计: total={}, active={}, completed={}", totalMatters, activeMatters, completedMatters);
+        } catch (Exception e) {
+            log.error("获取项目统计失败", e);
+            // 返回空统计，避免500错误
+            stats.setTotalMatters(0L);
+            stats.setActiveMatters(0L);
+            stats.setCompletedMatters(0L);
+            stats.setStatusCount(new HashMap<>());
+            stats.setTypeCount(new HashMap<>());
+        }
+        
         return stats;
     }
 
     /**
-     * 获取客户统计
+     * 获取客户统计（根据权限过滤）
      */
     public StatisticsDTO.ClientStats getClientStats() {
         StatisticsDTO.ClientStats stats = new StatisticsDTO.ClientStats();
 
+        // 根据用户权限过滤数据
+        String dataScope = com.lawfirm.common.util.SecurityUtils.getDataScope();
+        Long currentUserId = com.lawfirm.common.util.SecurityUtils.getUserId();
+        Long deptId = com.lawfirm.common.util.SecurityUtils.getDepartmentId();
+
+        // 获取可访问的客户ID列表
+        List<Long> accessibleClientIds = getAccessibleClientIds(dataScope, currentUserId, deptId);
+
         // 总客户数
-        long totalClients = clientRepository.count();
+        long totalClients;
+        if (accessibleClientIds == null) {
+            totalClients = clientRepository.count();
+        } else {
+            totalClients = clientRepository.lambdaQuery()
+                    .in(com.lawfirm.domain.client.entity.Client::getId, accessibleClientIds)
+                    .count();
+        }
         stats.setTotalClients(totalClients);
 
         // 正式客户数
-        Long formalClients = statisticsMapper.countFormalClients();
+        Long formalClients = statisticsMapper.countFormalClients(accessibleClientIds);
         stats.setFormalClients(formalClients != null ? formalClients : 0L);
 
         // 潜在客户数
-        Long potentialClients = statisticsMapper.countPotentialClients();
+        Long potentialClients = statisticsMapper.countPotentialClients(accessibleClientIds);
         stats.setPotentialClients(potentialClients != null ? potentialClients : 0L);
 
         // 本月新增客户数
-        Long newClientsThisMonth = statisticsMapper.countNewClientsThisMonth();
+        Long newClientsThisMonth = statisticsMapper.countNewClientsThisMonth(accessibleClientIds);
         stats.setNewClientsThisMonth(newClientsThisMonth != null ? newClientsThisMonth : 0L);
 
         // 各类型客户数
-        Map<String, Long> typeCount = statisticsMapper.countClientsByType().stream()
-                .collect(Collectors.toMap(
-                        item -> (String) item.get("client_type"),
-                        item -> ((Number) item.get("count")).longValue()
-                ));
+        List<Map<String, Object>> typeCountList = statisticsMapper.countClientsByType(accessibleClientIds);
+        Map<String, Long> typeCount = new HashMap<>();
+        if (typeCountList != null) {
+            for (Map<String, Object> item : typeCountList) {
+                Object typeObj = item.get("client_type");
+                Object countObj = item.get("count");
+                if (typeObj != null && countObj != null) {
+                    typeCount.put(typeObj.toString(), ((Number) countObj).longValue());
+                }
+            }
+        }
         stats.setTypeCount(typeCount);
 
-        log.info("获取客户统计: total={}, formal={}, potential={}, newThisMonth={}", 
-                totalClients, formalClients, potentialClients, newClientsThisMonth);
+        log.info("获取客户统计: total={}, formal={}, potential={}, newThisMonth={}, dataScope={}", 
+                totalClients, formalClients, potentialClients, newClientsThisMonth, dataScope);
         return stats;
     }
 
     /**
-     * 获取律师业绩排行
+     * 获取律师业绩排行（根据权限过滤）
      */
     public List<StatisticsDTO.LawyerPerformance> getLawyerPerformanceRanking(Integer limit) {
-        List<Map<String, Object>> rankings = statisticsMapper.getLawyerPerformanceRanking(limit);
+        // 根据用户权限过滤数据
+        String dataScope = com.lawfirm.common.util.SecurityUtils.getDataScope();
+        Long currentUserId = com.lawfirm.common.util.SecurityUtils.getUserId();
+        Long deptId = com.lawfirm.common.util.SecurityUtils.getDepartmentId();
+
+        // 获取可访问的项目ID列表
+        List<Long> accessibleMatterIds = getAccessibleMatterIds(dataScope, currentUserId, deptId);
+
+        List<Map<String, Object>> rankings = statisticsMapper.getLawyerPerformanceRanking(limit, accessibleMatterIds);
         
         List<StatisticsDTO.LawyerPerformance> result = new ArrayList<>();
         int rank = 1;
@@ -164,7 +258,7 @@ public class StatisticsAppService {
             performance.setMatterCount(((Number) item.get("matter_count")).longValue());
             performance.setRevenue((BigDecimal) item.get("revenue"));
             
-            // 计算提成
+            // 计算提成（根据权限过滤）
             BigDecimal commission = commissionRepository.sumCommissionByUserId(lawyerId);
             performance.setCommission(commission != null ? commission : BigDecimal.ZERO);
             
@@ -176,7 +270,7 @@ public class StatisticsAppService {
             result.add(performance);
         }
         
-        log.info("获取律师业绩排行: count={}", result.size());
+        log.info("获取律师业绩排行: count={}, dataScope={}", result.size(), dataScope);
         return result;
     }
 
@@ -257,8 +351,14 @@ public class StatisticsAppService {
             return BigDecimal.ZERO;
         }
         
+        // 获取可访问的项目ID列表（用于查询上月收入）
+        String dataScope = com.lawfirm.common.util.SecurityUtils.getDataScope();
+        Long currentUserId = com.lawfirm.common.util.SecurityUtils.getUserId();
+        Long deptId = com.lawfirm.common.util.SecurityUtils.getDepartmentId();
+        List<Long> accessibleMatterIds = getAccessibleMatterIds(dataScope, currentUserId, deptId);
+        
         // 查询上月收入
-        BigDecimal lastMonthRevenue = statisticsMapper.sumLastMonthRevenue();
+        BigDecimal lastMonthRevenue = statisticsMapper.sumLastMonthRevenue(accessibleMatterIds);
         if (lastMonthRevenue == null || lastMonthRevenue.compareTo(BigDecimal.ZERO) == 0) {
             // 如果上月收入为0，本月有收入则增长率为100%
             if (currentMonth.compareTo(BigDecimal.ZERO) > 0) {
@@ -273,6 +373,143 @@ public class StatisticsAppService {
                 .multiply(BigDecimal.valueOf(100));
         
         return growthRate;
+    }
+
+    /**
+     * 获取可访问的项目ID列表（根据数据权限）
+     * @return null表示可以访问所有项目，否则返回可访问的项目ID列表
+     */
+    private List<Long> getAccessibleMatterIds(String dataScope, Long currentUserId, Long deptId) {
+        if ("ALL".equals(dataScope)) {
+            return null; // null表示可以访问所有项目
+        }
+        
+        List<Long> matterIds = new ArrayList<>();
+        
+        if ("DEPT_AND_CHILD".equals(dataScope) && deptId != null) {
+            // 部门及下级部门：查询本部门及下级部门的项目
+            // TODO: 需要实现部门递归查询
+            matterIds = matterRepository.lambdaQuery()
+                    .select(com.lawfirm.domain.matter.entity.Matter::getId)
+                    .eq(com.lawfirm.domain.matter.entity.Matter::getDeleted, false)
+                    .eq(com.lawfirm.domain.matter.entity.Matter::getDepartmentId, deptId)
+                    .list()
+                    .stream()
+                    .map(com.lawfirm.domain.matter.entity.Matter::getId)
+                    .collect(Collectors.toList());
+        } else if ("DEPT".equals(dataScope) && deptId != null) {
+            // 本部门：查询本部门的项目
+            matterIds = matterRepository.lambdaQuery()
+                    .select(com.lawfirm.domain.matter.entity.Matter::getId)
+                    .eq(com.lawfirm.domain.matter.entity.Matter::getDeleted, false)
+                    .eq(com.lawfirm.domain.matter.entity.Matter::getDepartmentId, deptId)
+                    .list()
+                    .stream()
+                    .map(com.lawfirm.domain.matter.entity.Matter::getId)
+                    .collect(Collectors.toList());
+        } else {
+            // SELF：只查看自己负责的项目或参与的项目
+            // 查询自己负责的项目
+            List<Long> leadMatterIds = matterRepository.lambdaQuery()
+                    .select(com.lawfirm.domain.matter.entity.Matter::getId)
+                    .eq(com.lawfirm.domain.matter.entity.Matter::getDeleted, false)
+                    .eq(com.lawfirm.domain.matter.entity.Matter::getLeadLawyerId, currentUserId)
+                    .list()
+                    .stream()
+                    .map(com.lawfirm.domain.matter.entity.Matter::getId)
+                    .collect(Collectors.toList());
+            
+            // 查询自己参与的项目
+            var participantList = matterParticipantRepository.lambdaQuery()
+                    .select(com.lawfirm.domain.matter.entity.MatterParticipant::getMatterId)
+                    .eq(com.lawfirm.domain.matter.entity.MatterParticipant::getUserId, currentUserId)
+                    .eq(com.lawfirm.domain.matter.entity.MatterParticipant::getDeleted, false)
+                    .list();
+            
+            List<Long> participantMatterIds = participantList.stream()
+                    .map(com.lawfirm.domain.matter.entity.MatterParticipant::getMatterId)
+                    .distinct()
+                    .collect(Collectors.toList());
+            
+            // 合并去重
+            matterIds.addAll(leadMatterIds);
+            matterIds.addAll(participantMatterIds);
+            matterIds = matterIds.stream().distinct().collect(Collectors.toList());
+        }
+        
+        return matterIds.isEmpty() ? Collections.emptyList() : matterIds;
+    }
+
+    /**
+     * 获取可访问的客户ID列表（根据数据权限）
+     * @return null表示可以访问所有客户，否则返回可访问的客户ID列表
+     */
+    private List<Long> getAccessibleClientIds(String dataScope, Long currentUserId, Long deptId) {
+        if ("ALL".equals(dataScope)) {
+            return null; // null表示可以访问所有客户
+        }
+        
+        List<Long> clientIds = new ArrayList<>();
+        
+        if ("DEPT_AND_CHILD".equals(dataScope) && deptId != null) {
+            // 部门及下级部门：查询本部门及下级部门负责的客户
+            // 客户没有部门字段，通过负责律师的部门来过滤
+            // TODO: 需要实现部门递归查询
+            // 先查询该部门的用户，再查询这些用户负责的客户
+            var users = userRepository.lambdaQuery()
+                    .select(com.lawfirm.domain.system.entity.User::getId)
+                    .eq(com.lawfirm.domain.system.entity.User::getDepartmentId, deptId)
+                    .eq(com.lawfirm.domain.system.entity.User::getDeleted, false)
+                    .list();
+            List<Long> userIds = users.stream()
+                    .map(com.lawfirm.domain.system.entity.User::getId)
+                    .collect(Collectors.toList());
+            
+            if (!userIds.isEmpty()) {
+                clientIds = clientRepository.lambdaQuery()
+                        .select(com.lawfirm.domain.client.entity.Client::getId)
+                        .eq(com.lawfirm.domain.client.entity.Client::getDeleted, false)
+                        .in(com.lawfirm.domain.client.entity.Client::getResponsibleLawyerId, userIds)
+                        .list()
+                        .stream()
+                        .map(com.lawfirm.domain.client.entity.Client::getId)
+                        .collect(Collectors.toList());
+            }
+        } else if ("DEPT".equals(dataScope) && deptId != null) {
+            // 本部门：查询本部门负责的客户
+            // 客户没有部门字段，通过负责律师的部门来过滤
+            var users = userRepository.lambdaQuery()
+                    .select(com.lawfirm.domain.system.entity.User::getId)
+                    .eq(com.lawfirm.domain.system.entity.User::getDepartmentId, deptId)
+                    .eq(com.lawfirm.domain.system.entity.User::getDeleted, false)
+                    .list();
+            List<Long> userIds = users.stream()
+                    .map(com.lawfirm.domain.system.entity.User::getId)
+                    .collect(Collectors.toList());
+            
+            if (!userIds.isEmpty()) {
+                clientIds = clientRepository.lambdaQuery()
+                        .select(com.lawfirm.domain.client.entity.Client::getId)
+                        .eq(com.lawfirm.domain.client.entity.Client::getDeleted, false)
+                        .in(com.lawfirm.domain.client.entity.Client::getResponsibleLawyerId, userIds)
+                        .list()
+                        .stream()
+                        .map(com.lawfirm.domain.client.entity.Client::getId)
+                        .collect(Collectors.toList());
+            }
+        } else {
+            // SELF：只查看自己负责的客户
+            clientIds = clientRepository.lambdaQuery()
+                    .select(com.lawfirm.domain.client.entity.Client::getId)
+                    .eq(com.lawfirm.domain.client.entity.Client::getDeleted, false)
+                    .eq(com.lawfirm.domain.client.entity.Client::getResponsibleLawyerId, currentUserId)
+                    .list()
+                    .stream()
+                    .map(com.lawfirm.domain.client.entity.Client::getId)
+                    .collect(Collectors.toList());
+        }
+        
+        return clientIds.isEmpty() ? Collections.emptyList() : clientIds;
     }
 }
 

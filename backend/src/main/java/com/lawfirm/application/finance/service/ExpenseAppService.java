@@ -1,7 +1,5 @@
 package com.lawfirm.application.finance.service;
 
-import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lawfirm.application.finance.command.AllocateCostCommand;
 import com.lawfirm.application.finance.command.ApproveExpenseCommand;
 import com.lawfirm.application.finance.command.CreateExpenseCommand;
@@ -20,6 +18,7 @@ import com.lawfirm.domain.finance.repository.CostAllocationRepository;
 import com.lawfirm.domain.finance.repository.CostSplitRepository;
 import com.lawfirm.domain.finance.repository.ExpenseRepository;
 import com.lawfirm.domain.matter.repository.MatterRepository;
+import com.lawfirm.application.matter.service.MatterAppService;
 import com.lawfirm.application.finance.command.SplitCostCommand;
 import com.lawfirm.domain.system.entity.User;
 import com.lawfirm.domain.system.repository.UserRepository;
@@ -29,6 +28,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,6 +36,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Collections;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -57,18 +58,59 @@ public class ExpenseAppService {
     private final ApprovalService approvalService;
     private final ApproverService approverService;
     private final ObjectMapper objectMapper;
+    private MatterAppService matterAppService;
+    
+    @org.springframework.beans.factory.annotation.Autowired
+    @Lazy
+    public void setMatterAppService(MatterAppService matterAppService) {
+        this.matterAppService = matterAppService;
+    }
 
     /**
      * 分页查询费用报销列表
      */
     public PageResult<ExpenseDTO> listExpenses(ExpenseQueryDTO query) {
+        // 根据用户权限过滤数据
+        String dataScope = SecurityUtils.getDataScope();
+        Long currentUserId = SecurityUtils.getUserId();
+        Long deptId = SecurityUtils.getDepartmentId();
+        
+        // 获取可访问的项目ID列表
+        List<Long> accessibleMatterIds = matterAppService.getAccessibleMatterIds(dataScope, currentUserId, deptId);
+        
+        // 如果返回空列表，表示没有权限，返回空结果
+        if (accessibleMatterIds != null && accessibleMatterIds.isEmpty()) {
+            return PageResult.of(Collections.emptyList(), 0, query.getPageNum(), query.getPageSize());
+        }
+        
+        // 如果query中指定了matterId，需要验证是否有权限访问该项目
+        if (query.getMatterId() != null && accessibleMatterIds != null) {
+            if (!accessibleMatterIds.contains(query.getMatterId())) {
+                // 没有权限访问指定的项目，返回空结果
+                return PageResult.of(Collections.emptyList(), 0, query.getPageNum(), query.getPageSize());
+            }
+        }
+        
+        // SELF权限时，只能查看自己申请的费用
+        if ("SELF".equals(dataScope) && query.getApplicantId() != null && !query.getApplicantId().equals(currentUserId)) {
+            // 查询指定了其他申请人，但当前用户只有SELF权限，返回空结果
+            return PageResult.of(Collections.emptyList(), 0, query.getPageNum(), query.getPageSize());
+        }
+        
+        // 如果SELF权限且未指定申请人，自动过滤为当前用户
+        Long applicantId = query.getApplicantId();
+        if ("SELF".equals(dataScope) && applicantId == null) {
+            applicantId = currentUserId;
+        }
+        
         List<Expense> expenses = expenseMapper.selectExpensePage(
                 query.getExpenseNo(),
                 query.getMatterId(),
-                query.getApplicantId(),
+                applicantId,
                 query.getStatus(),
                 query.getExpenseType(),
-                query.getExpenseCategory()
+                query.getExpenseCategory(),
+                accessibleMatterIds  // null表示可以访问所有项目的费用（ALL权限）
         );
 
         // 手动分页
@@ -164,6 +206,9 @@ public class ExpenseAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public ExpenseDTO approveExpense(ApproveExpenseCommand command) {
+        // 权限检查：只有管理层和财务可以审批
+        checkApprovalPermission();
+        
         Expense expense = expenseRepository.findById(command.getExpenseId());
         if (expense == null) {
             throw new BusinessException("费用报销记录不存在");
@@ -199,6 +244,9 @@ public class ExpenseAppService {
      */
     @Transactional(rollbackFor = Exception.class)
     public ExpenseDTO confirmPayment(Long id, String paymentMethod) {
+        // 权限检查：只有财务可以确认支付
+        checkFinancePermission();
+        
         Expense expense = expenseRepository.findById(id);
         if (expense == null) {
             throw new BusinessException("费用报销记录不存在");
@@ -436,7 +484,7 @@ public class ExpenseAppService {
     }
 
     /**
-     * 删除费用报销（仅未审批状态可删除）
+     * 删除费用报销（仅未审批状态可删除，且只能删除自己的）
      */
     @Transactional(rollbackFor = Exception.class)
     public void deleteExpense(Long id) {
@@ -444,12 +492,48 @@ public class ExpenseAppService {
         if (expense == null) {
             throw new BusinessException("费用报销记录不存在");
         }
+        
+        // 权限检查：只有申请人或管理员可以删除
+        Long currentUserId = SecurityUtils.getUserId();
+        if (!SecurityUtils.isAdmin() && !currentUserId.equals(expense.getApplicantId())) {
+            throw new BusinessException("只能删除自己申请的报销单");
+        }
 
         if (!"PENDING".equals(expense.getStatus())) {
             throw new BusinessException("只能删除待审批状态的报销单");
         }
 
         expenseRepository.softDelete(id);
+    }
+
+    // ========== 权限检查方法 ==========
+    
+    /**
+     * 检查是否有审批权限（ADMIN/DIRECTOR/TEAM_LEADER/FINANCE）
+     */
+    private void checkApprovalPermission() {
+        if (SecurityUtils.isAdmin()) {
+            return;
+        }
+        Long userId = SecurityUtils.getUserId();
+        List<String> roleCodes = userRepository.findRoleCodesByUserId(userId);
+        if (!roleCodes.contains("DIRECTOR") && !roleCodes.contains("TEAM_LEADER") && !roleCodes.contains("FINANCE")) {
+            throw new BusinessException("只有管理层和财务人员可以审批费用报销");
+        }
+    }
+    
+    /**
+     * 检查是否有财务权限（ADMIN/FINANCE）
+     */
+    private void checkFinancePermission() {
+        if (SecurityUtils.isAdmin()) {
+            return;
+        }
+        Long userId = SecurityUtils.getUserId();
+        List<String> roleCodes = userRepository.findRoleCodesByUserId(userId);
+        if (!roleCodes.contains("FINANCE")) {
+            throw new BusinessException("只有财务人员可以确认支付");
+        }
     }
 
     // ========== 工具方法 ==========

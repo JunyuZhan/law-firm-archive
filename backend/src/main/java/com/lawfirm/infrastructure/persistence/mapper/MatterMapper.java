@@ -49,7 +49,19 @@ public interface MatterMapper extends BaseMapper<Matter> {
         <if test="status != null and status != ''">
             AND m.status = #{status}
         </if>
-        ORDER BY m.id DESC
+        <if test="matterIds != null and matterIds.size() > 0">
+            AND m.id IN
+            <foreach collection="matterIds" item="id" open="(" separator="," close=")">
+                #{id}
+            </foreach>
+        </if>
+        <if test="createdAtFrom != null">
+            AND m.created_at &gt;= #{createdAtFrom}
+        </if>
+        <if test="createdAtTo != null">
+            AND m.created_at &lt;= #{createdAtTo}
+        </if>
+        ORDER BY m.created_at DESC
         </script>
         """)
     IPage<Matter> selectMatterPage(Page<Matter> page,
@@ -59,18 +71,40 @@ public interface MatterMapper extends BaseMapper<Matter> {
                                     @Param("leadLawyerId") Long leadLawyerId,
                                     @Param("departmentId") Long departmentId,
                                     @Param("matterType") String matterType,
-                                    @Param("status") String status);
+                                    @Param("status") String status,
+                                    @Param("matterIds") java.util.List<Long> matterIds,
+                                    @Param("createdAtFrom") java.time.LocalDateTime createdAtFrom,
+                                    @Param("createdAtTo") java.time.LocalDateTime createdAtTo);
 
     /**
-     * 查询律师参与的案件
+     * 查询律师参与的案件（支持时间筛选）
      */
     @Select("""
+        <script>
         SELECT m.* FROM matter m
         INNER JOIN matter_participant mp ON m.id = mp.matter_id
         WHERE mp.user_id = #{userId} AND mp.status = 'ACTIVE' AND m.deleted = false
-        ORDER BY m.id DESC
+        <if test="name != null and name != ''">
+            AND m.name LIKE CONCAT('%', #{name}, '%')
+        </if>
+        <if test="status != null and status != ''">
+            AND m.status = #{status}
+        </if>
+        <if test="createdAtFrom != null">
+            AND m.created_at &gt;= #{createdAtFrom}
+        </if>
+        <if test="createdAtTo != null">
+            AND m.created_at &lt;= #{createdAtTo}
+        </if>
+        ORDER BY m.created_at DESC
+        </script>
         """)
-    IPage<Matter> selectByParticipantUserId(Page<Matter> page, @Param("userId") Long userId);
+    IPage<Matter> selectByParticipantUserId(Page<Matter> page, 
+                                            @Param("userId") Long userId,
+                                            @Param("name") String name,
+                                            @Param("status") String status,
+                                            @Param("createdAtFrom") java.time.LocalDateTime createdAtFrom,
+                                            @Param("createdAtTo") java.time.LocalDateTime createdAtTo);
 
     /**
      * 统计用户参与的项目数量（按状态）
@@ -99,5 +133,19 @@ public interface MatterMapper extends BaseMapper<Matter> {
      */
     @Select("SELECT COUNT(*) FROM matter WHERE client_id = #{clientId} AND deleted = false")
     int countByClientId(@Param("clientId") Long clientId);
+
+    /**
+     * 查询指定前缀的最大编号（用于生成新编号）
+     * 例如：前缀为 "2026张三MS-"，查询所有以该前缀开头的编号，返回最大的序号部分
+     * 编号格式：前缀 + 4位序号，如 "2026张三MS-0001"
+     */
+    @Select("""
+        SELECT MAX(CAST(SUBSTRING(matter_no, #{prefixLength} + 1, 4) AS UNSIGNED)) as maxSeq
+        FROM matter
+        WHERE matter_no LIKE CONCAT(#{prefix}, '%')
+        AND LENGTH(matter_no) = #{prefixLength} + 4
+        AND deleted = false
+        """)
+    Integer selectMaxSequenceByPrefix(@Param("prefix") String prefix, @Param("prefixLength") int prefixLength);
 }
 

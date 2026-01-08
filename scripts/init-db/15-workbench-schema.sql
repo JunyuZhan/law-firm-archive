@@ -1,27 +1,61 @@
+-- =====================================================
+-- 律师事务所管理系统 - 工作台模块
+-- =====================================================
+-- 版本: 1.0.0
+-- 日期: 2026-01-08
+-- 描述: 审批、日程、定时报表等工作台相关表
+-- =====================================================
+
 --
--- PostgreSQL database dump
+-- Name: schedule; Type: TABLE; Schema: public; Owner: -
 --
 
-\restrict ADhr8lYo4Ttha3So4y1A8AQev1XngIsc83sSGanosHko1EydPbnwS3n7AC6Pj2Q
+CREATE TABLE public.schedule (
+    id bigint NOT NULL,
+    matter_id bigint,
+    user_id bigint NOT NULL,
+    title character varying(500) NOT NULL,
+    description text,
+    location character varying(500),
+    schedule_type character varying(50) NOT NULL,
+    start_time timestamp without time zone NOT NULL,
+    end_time timestamp without time zone NOT NULL,
+    all_day boolean DEFAULT false,
+    reminder_minutes integer,
+    reminder_sent boolean DEFAULT false,
+    recurrence_rule character varying(200),
+    status character varying(20) DEFAULT 'ACTIVE'::character varying,
+    created_by bigint,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_by bigint,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    deleted boolean DEFAULT false
+);
+--
+-- Name: TABLE schedule; Type: COMMENT; Schema: public; Owner: -
+--
 
--- Dumped from database version 15.15
--- Dumped by pg_dump version 15.15
+COMMENT ON TABLE public.schedule IS '日程表';
+--
+-- Name: COLUMN schedule.schedule_type; Type: COMMENT; Schema: public; Owner: -
+--
 
-SET statement_timeout = 0;
-SET lock_timeout = 0;
-SET idle_in_transaction_session_timeout = 0;
-SET client_encoding = 'UTF8';
-SET standard_conforming_strings = on;
-SELECT pg_catalog.set_config('search_path', '', false);
-SET check_function_bodies = false;
-SET xmloption = content;
-SET client_min_messages = warning;
-SET row_security = off;
+COMMENT ON COLUMN public.schedule.schedule_type IS '日程类型: COURT-开庭, MEETING-会议, DEADLINE-期限, APPOINTMENT-约见, OTHER-其他';
+--
+-- Name: schedule_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
 
-SET default_tablespace = '';
+CREATE SEQUENCE public.schedule_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+--
+-- Name: schedule_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
 
-SET default_table_access_method = heap;
-
+ALTER SEQUENCE public.schedule_id_seq OWNED BY public.schedule.id;
 --
 -- Name: workbench_approval; Type: TABLE; Schema: public; Owner: -
 --
@@ -49,120 +83,86 @@ CREATE TABLE public.workbench_approval (
     updated_by bigint,
     deleted boolean DEFAULT false
 );
-
-
 --
 -- Name: TABLE workbench_approval; Type: COMMENT; Schema: public; Owner: -
 --
 
 COMMENT ON TABLE public.workbench_approval IS '审批记录表';
-
-
 --
 -- Name: COLUMN workbench_approval.approval_no; Type: COMMENT; Schema: public; Owner: -
 --
 
 COMMENT ON COLUMN public.workbench_approval.approval_no IS '审批编号';
-
-
 --
 -- Name: COLUMN workbench_approval.business_type; Type: COMMENT; Schema: public; Owner: -
 --
 
 COMMENT ON COLUMN public.workbench_approval.business_type IS '业务类型：CONTRACT-合同, SEAL_APPLICATION-用印申请, CONFLICT_CHECK-利冲检查, EXPENSE-费用报销, etc.';
-
-
 --
 -- Name: COLUMN workbench_approval.business_id; Type: COMMENT; Schema: public; Owner: -
 --
 
 COMMENT ON COLUMN public.workbench_approval.business_id IS '业务ID（关联具体业务表的主键）';
-
-
 --
 -- Name: COLUMN workbench_approval.business_no; Type: COMMENT; Schema: public; Owner: -
 --
 
 COMMENT ON COLUMN public.workbench_approval.business_no IS '业务编号（如合同编号、用印申请编号等）';
-
-
 --
 -- Name: COLUMN workbench_approval.business_title; Type: COMMENT; Schema: public; Owner: -
 --
 
 COMMENT ON COLUMN public.workbench_approval.business_title IS '业务标题';
-
-
 --
 -- Name: COLUMN workbench_approval.applicant_id; Type: COMMENT; Schema: public; Owner: -
 --
 
 COMMENT ON COLUMN public.workbench_approval.applicant_id IS '发起人ID';
-
-
 --
 -- Name: COLUMN workbench_approval.applicant_name; Type: COMMENT; Schema: public; Owner: -
 --
 
 COMMENT ON COLUMN public.workbench_approval.applicant_name IS '发起人姓名';
-
-
 --
 -- Name: COLUMN workbench_approval.approver_id; Type: COMMENT; Schema: public; Owner: -
 --
 
 COMMENT ON COLUMN public.workbench_approval.approver_id IS '审批人ID';
-
-
 --
 -- Name: COLUMN workbench_approval.approver_name; Type: COMMENT; Schema: public; Owner: -
 --
 
 COMMENT ON COLUMN public.workbench_approval.approver_name IS '审批人姓名';
-
-
 --
 -- Name: COLUMN workbench_approval.status; Type: COMMENT; Schema: public; Owner: -
 --
 
 COMMENT ON COLUMN public.workbench_approval.status IS '审批状态：PENDING-待审批, APPROVED-已通过, REJECTED-已拒绝, CANCELLED-已取消';
-
-
 --
 -- Name: COLUMN workbench_approval.comment; Type: COMMENT; Schema: public; Owner: -
 --
 
 COMMENT ON COLUMN public.workbench_approval.comment IS '审批意见';
-
-
 --
 -- Name: COLUMN workbench_approval.approved_at; Type: COMMENT; Schema: public; Owner: -
 --
 
 COMMENT ON COLUMN public.workbench_approval.approved_at IS '审批时间';
-
-
 --
 -- Name: COLUMN workbench_approval.priority; Type: COMMENT; Schema: public; Owner: -
 --
 
 COMMENT ON COLUMN public.workbench_approval.priority IS '优先级：HIGH-高, MEDIUM-中, LOW-低';
-
-
 --
 -- Name: COLUMN workbench_approval.urgency; Type: COMMENT; Schema: public; Owner: -
 --
 
 COMMENT ON COLUMN public.workbench_approval.urgency IS '紧急程度：URGENT-紧急, NORMAL-普通';
-
-
 --
 -- Name: COLUMN workbench_approval.business_snapshot; Type: COMMENT; Schema: public; Owner: -
 --
 
 COMMENT ON COLUMN public.workbench_approval.business_snapshot IS '业务数据快照（JSON格式，保存审批时的业务数据）';
-
-
 --
 -- Name: workbench_approval_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
@@ -173,15 +173,11 @@ CREATE SEQUENCE public.workbench_approval_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-
-
 --
 -- Name: workbench_approval_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
 ALTER SEQUENCE public.workbench_approval_id_seq OWNED BY public.workbench_approval.id;
-
-
 --
 -- Name: workbench_report_template; Type: TABLE; Schema: public; Owner: -
 --
@@ -205,15 +201,11 @@ CREATE TABLE public.workbench_report_template (
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     deleted boolean DEFAULT false
 );
-
-
 --
 -- Name: TABLE workbench_report_template; Type: COMMENT; Schema: public; Owner: -
 --
 
 COMMENT ON TABLE public.workbench_report_template IS '自定义报表模板表';
-
-
 --
 -- Name: workbench_report_template_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
@@ -224,15 +216,11 @@ CREATE SEQUENCE public.workbench_report_template_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-
-
 --
 -- Name: workbench_report_template_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
 ALTER SEQUENCE public.workbench_report_template_id_seq OWNED BY public.workbench_report_template.id;
-
-
 --
 -- Name: workbench_scheduled_report; Type: TABLE; Schema: public; Owner: -
 --
@@ -266,15 +254,11 @@ CREATE TABLE public.workbench_scheduled_report (
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     deleted boolean DEFAULT false
 );
-
-
 --
 -- Name: TABLE workbench_scheduled_report; Type: COMMENT; Schema: public; Owner: -
 --
 
 COMMENT ON TABLE public.workbench_scheduled_report IS '定时报表任务表';
-
-
 --
 -- Name: workbench_scheduled_report_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
@@ -285,15 +269,11 @@ CREATE SEQUENCE public.workbench_scheduled_report_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-
-
 --
 -- Name: workbench_scheduled_report_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
 ALTER SEQUENCE public.workbench_scheduled_report_id_seq OWNED BY public.workbench_scheduled_report.id;
-
-
 --
 -- Name: workbench_scheduled_report_log; Type: TABLE; Schema: public; Owner: -
 --
@@ -313,15 +293,11 @@ CREATE TABLE public.workbench_scheduled_report_log (
     notify_result text,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
-
-
 --
 -- Name: TABLE workbench_scheduled_report_log; Type: COMMENT; Schema: public; Owner: -
 --
 
 COMMENT ON TABLE public.workbench_scheduled_report_log IS '定时报表执行记录表';
-
-
 --
 -- Name: workbench_scheduled_report_log_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
@@ -332,216 +308,178 @@ CREATE SEQUENCE public.workbench_scheduled_report_log_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-
-
 --
 -- Name: workbench_scheduled_report_log_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
 ALTER SEQUENCE public.workbench_scheduled_report_log_id_seq OWNED BY public.workbench_scheduled_report_log.id;
+--
+-- Name: schedule id; Type: DEFAULT; Schema: public; Owner: -
+--
 
-
+ALTER TABLE ONLY public.schedule ALTER COLUMN id SET DEFAULT nextval('public.schedule_id_seq'::regclass);
 --
 -- Name: workbench_approval id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.workbench_approval ALTER COLUMN id SET DEFAULT nextval('public.workbench_approval_id_seq'::regclass);
-
-
 --
 -- Name: workbench_report_template id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.workbench_report_template ALTER COLUMN id SET DEFAULT nextval('public.workbench_report_template_id_seq'::regclass);
-
-
 --
 -- Name: workbench_scheduled_report id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.workbench_scheduled_report ALTER COLUMN id SET DEFAULT nextval('public.workbench_scheduled_report_id_seq'::regclass);
-
-
 --
 -- Name: workbench_scheduled_report_log id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.workbench_scheduled_report_log ALTER COLUMN id SET DEFAULT nextval('public.workbench_scheduled_report_log_id_seq'::regclass);
+--
+-- Name: schedule schedule_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
 
-
+ALTER TABLE ONLY public.schedule
+    ADD CONSTRAINT schedule_pkey PRIMARY KEY (id);
 --
 -- Name: workbench_approval workbench_approval_approval_no_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.workbench_approval
     ADD CONSTRAINT workbench_approval_approval_no_key UNIQUE (approval_no);
-
-
 --
 -- Name: workbench_approval workbench_approval_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.workbench_approval
     ADD CONSTRAINT workbench_approval_pkey PRIMARY KEY (id);
-
-
 --
 -- Name: workbench_report_template workbench_report_template_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.workbench_report_template
     ADD CONSTRAINT workbench_report_template_pkey PRIMARY KEY (id);
-
-
 --
 -- Name: workbench_report_template workbench_report_template_template_no_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.workbench_report_template
     ADD CONSTRAINT workbench_report_template_template_no_key UNIQUE (template_no);
-
-
 --
 -- Name: workbench_scheduled_report_log workbench_scheduled_report_log_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.workbench_scheduled_report_log
     ADD CONSTRAINT workbench_scheduled_report_log_pkey PRIMARY KEY (id);
-
-
 --
 -- Name: workbench_scheduled_report workbench_scheduled_report_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.workbench_scheduled_report
     ADD CONSTRAINT workbench_scheduled_report_pkey PRIMARY KEY (id);
-
-
 --
 -- Name: workbench_scheduled_report workbench_scheduled_report_task_no_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.workbench_scheduled_report
     ADD CONSTRAINT workbench_scheduled_report_task_no_key UNIQUE (task_no);
-
-
 --
 -- Name: idx_report_template_created_by; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX idx_report_template_created_by ON public.workbench_report_template USING btree (created_by);
-
-
 --
 -- Name: idx_report_template_data_source; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX idx_report_template_data_source ON public.workbench_report_template USING btree (data_source);
-
-
 --
 -- Name: idx_report_template_status; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX idx_report_template_status ON public.workbench_report_template USING btree (status);
+--
+-- Name: idx_schedule_matter; Type: INDEX; Schema: public; Owner: -
+--
 
+CREATE INDEX idx_schedule_matter ON public.schedule USING btree (matter_id);
+--
+-- Name: idx_schedule_time; Type: INDEX; Schema: public; Owner: -
+--
 
+CREATE INDEX idx_schedule_time ON public.schedule USING btree (start_time, end_time);
+--
+-- Name: idx_schedule_user; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_schedule_user ON public.schedule USING btree (user_id);
 --
 -- Name: idx_scheduled_log_execute_time; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX idx_scheduled_log_execute_time ON public.workbench_scheduled_report_log USING btree (execute_time);
-
-
 --
 -- Name: idx_scheduled_log_status; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX idx_scheduled_log_status ON public.workbench_scheduled_report_log USING btree (status);
-
-
 --
 -- Name: idx_scheduled_log_task; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX idx_scheduled_log_task ON public.workbench_scheduled_report_log USING btree (task_id);
-
-
 --
 -- Name: idx_scheduled_report_next_execute; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX idx_scheduled_report_next_execute ON public.workbench_scheduled_report USING btree (next_execute_time);
-
-
 --
 -- Name: idx_scheduled_report_status; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX idx_scheduled_report_status ON public.workbench_scheduled_report USING btree (status);
-
-
 --
 -- Name: idx_scheduled_report_template; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX idx_scheduled_report_template ON public.workbench_scheduled_report USING btree (template_id);
-
-
 --
 -- Name: idx_workbench_approval_applicant; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX idx_workbench_approval_applicant ON public.workbench_approval USING btree (applicant_id);
-
-
 --
 -- Name: idx_workbench_approval_approver; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX idx_workbench_approval_approver ON public.workbench_approval USING btree (approver_id, status);
-
-
 --
 -- Name: idx_workbench_approval_business; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX idx_workbench_approval_business ON public.workbench_approval USING btree (business_type, business_id);
-
-
 --
 -- Name: idx_workbench_approval_created_at; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX idx_workbench_approval_created_at ON public.workbench_approval USING btree (created_at DESC);
-
-
 --
 -- Name: idx_workbench_approval_status; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX idx_workbench_approval_status ON public.workbench_approval USING btree (status);
-
-
 --
 -- Name: workbench_scheduled_report_log fk_scheduled_log_task; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.workbench_scheduled_report_log
     ADD CONSTRAINT fk_scheduled_log_task FOREIGN KEY (task_id) REFERENCES public.workbench_scheduled_report(id);
-
-
 --
 -- Name: workbench_scheduled_report fk_scheduled_report_template; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.workbench_scheduled_report
     ADD CONSTRAINT fk_scheduled_report_template FOREIGN KEY (template_id) REFERENCES public.workbench_report_template(id);
-
-
---
--- PostgreSQL database dump complete
---
-
-\unrestrict ADhr8lYo4Ttha3So4y1A8AQev1XngIsc83sSGanosHko1EydPbnwS3n7AC6Pj2Q
-

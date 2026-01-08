@@ -10,8 +10,11 @@ import com.lawfirm.application.system.service.NotificationAppService;
 import com.lawfirm.common.exception.BusinessException;
 import com.lawfirm.common.result.PageResult;
 import com.lawfirm.common.util.SecurityUtils;
+import com.lawfirm.domain.matter.entity.Matter;
 import com.lawfirm.domain.matter.entity.Task;
+import com.lawfirm.domain.matter.repository.MatterRepository;
 import com.lawfirm.domain.matter.repository.TaskRepository;
+import com.lawfirm.domain.system.repository.DepartmentRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -20,6 +23,7 @@ import org.springframework.util.StringUtils;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -33,6 +37,8 @@ import java.util.stream.Collectors;
 public class TaskAppService {
 
     private final TaskRepository taskRepository;
+    private final MatterRepository matterRepository;
+    private final DepartmentRepository departmentRepository;
     private final NotificationAppService notificationAppService;
 
     /**
@@ -57,6 +63,9 @@ public class TaskAppService {
         if (StringUtils.hasText(query.getTitle())) {
             wrapper.like(Task::getTitle, query.getTitle());
         }
+        
+        // 应用数据权限过滤
+        applyDataScopeFilter(wrapper);
         
         // 排序：截止日期 -> 创建时间（优先级排序在应用层处理）
         wrapper.orderByAsc(Task::getDueDate);
@@ -196,6 +205,9 @@ public class TaskAppService {
                               Long assigneeId, String assigneeName, LocalDate startDate,
                               LocalDate dueDate, LocalDateTime reminderDate) {
         Task task = taskRepository.getByIdOrThrow(id, "任务不存在");
+        
+        // 验证操作权限：只有任务创建者或负责人可以编辑
+        validateTaskOperationPermission(task);
 
         if (StringUtils.hasText(title)) task.setTitle(title);
         if (description != null) task.setDescription(description);
@@ -219,6 +231,9 @@ public class TaskAppService {
     @Transactional
     public void deleteTask(Long id) {
         Task task = taskRepository.getByIdOrThrow(id, "任务不存在");
+        
+        // 验证操作权限：只有任务创建者或负责人可以删除
+        validateTaskOperationPermission(task);
 
         // 检查是否有子任务
         long subTaskCount = taskRepository.count(
@@ -237,24 +252,141 @@ public class TaskAppService {
     @Transactional
     public TaskDTO updateStatus(Long id, String status) {
         Task task = taskRepository.getByIdOrThrow(id, "任务不存在");
+        
+        // 验证操作权限：只有任务创建者或负责人可以更新状态
+        validateTaskOperationPermission(task);
+        
         String oldStatus = task.getStatus();
-        task.setStatus(status);
-
+        
+        // 如果负责人点击"完成"，状态变为"待验收"而不是"已完成"
         if ("COMPLETED".equals(status)) {
+            task.setStatus("PENDING_REVIEW");
             task.setCompletedAt(LocalDateTime.now());
             task.setProgress(100);
-        } else if ("TODO".equals(status)) {
-            task.setCompletedAt(null);
-            task.setProgress(0);
+            task.setReviewStatus("PENDING_REVIEW");
+        } else {
+            task.setStatus(status);
+            if ("TODO".equals(status)) {
+                task.setCompletedAt(null);
+                task.setProgress(0);
+                task.setReviewStatus(null);
+            }
         }
 
         taskRepository.updateById(task);
-        log.info("任务状态更新: {} -> {}", task.getTitle(), status);
+        log.info("任务状态更新: {} -> {}", task.getTitle(), task.getStatus());
         
         // 发送任务状态变更通知
-        sendTaskStatusNotification(task, oldStatus, status);
+        sendTaskStatusNotification(task, oldStatus, task.getStatus());
         
         return toDTO(task);
+    }
+    
+    /**
+     * 验收任务（通过）
+     */
+    @Transactional
+    public TaskDTO approveTask(Long id) {
+        Task task = taskRepository.getByIdOrThrow(id, "任务不存在");
+        
+        // 验证任务状态为待验收
+        if (!"PENDING_REVIEW".equals(task.getStatus())) {
+            throw new BusinessException("只有待验收状态的任务才能进行验收");
+        }
+        
+        // 验证只有任务创建者才能验收
+        Long currentUserId = SecurityUtils.getUserId();
+        if (!currentUserId.equals(task.getCreatedBy())) {
+            throw new BusinessException("只有任务创建者才能进行验收");
+        }
+        
+        task.setStatus("COMPLETED");
+        task.setReviewStatus("APPROVED");
+        task.setReviewedAt(LocalDateTime.now());
+        task.setReviewedBy(currentUserId);
+        
+        taskRepository.updateById(task);
+        log.info("任务验收通过: taskId={}, reviewedBy={}", id, currentUserId);
+        
+        // 通知任务负责人验收通过
+        sendTaskReviewNotification(task, "APPROVED", null);
+        
+        return toDTO(task);
+    }
+    
+    /**
+     * 验收任务（退回）
+     */
+    @Transactional
+    public TaskDTO rejectTask(Long id, String comment) {
+        Task task = taskRepository.getByIdOrThrow(id, "任务不存在");
+        
+        // 验证任务状态为待验收
+        if (!"PENDING_REVIEW".equals(task.getStatus())) {
+            throw new BusinessException("只有待验收状态的任务才能进行验收");
+        }
+        
+        // 验证只有任务创建者才能验收
+        Long currentUserId = SecurityUtils.getUserId();
+        if (!currentUserId.equals(task.getCreatedBy())) {
+            throw new BusinessException("只有任务创建者才能进行验收");
+        }
+        
+        if (!StringUtils.hasText(comment)) {
+            throw new BusinessException("退回时必须填写验收意见");
+        }
+        
+        task.setStatus("IN_PROGRESS");
+        task.setReviewStatus("REJECTED");
+        task.setReviewComment(comment);
+        task.setReviewedAt(LocalDateTime.now());
+        task.setReviewedBy(currentUserId);
+        task.setCompletedAt(null);
+        task.setProgress(0);
+        
+        taskRepository.updateById(task);
+        log.info("任务验收退回: taskId={}, reviewedBy={}, comment={}", id, currentUserId, comment);
+        
+        // 通知任务负责人验收退回
+        sendTaskReviewNotification(task, "REJECTED", comment);
+        
+        return toDTO(task);
+    }
+    
+    /**
+     * 发送任务验收通知
+     */
+    private void sendTaskReviewNotification(Task task, String reviewResult, String comment) {
+        try {
+            if (task.getAssigneeId() == null) return;
+            
+            String currentUserName = SecurityUtils.getRealName();
+            String title;
+            String content;
+            
+            if ("APPROVED".equals(reviewResult)) {
+                title = "任务验收通过";
+                content = String.format("%s 已验收通过任务【%s】", currentUserName, task.getTitle());
+            } else {
+                title = "任务验收退回";
+                content = String.format("%s 退回任务【%s】", currentUserName, task.getTitle());
+                if (StringUtils.hasText(comment)) {
+                    content += String.format("，退回意见：%s", comment);
+                }
+            }
+            
+            notificationAppService.sendSystemNotification(
+                    task.getAssigneeId(),
+                    title,
+                    content,
+                    "TASK",
+                    task.getId()
+            );
+            log.info("任务验收通知已发送: taskId={}, assigneeId={}, result={}", 
+                    task.getId(), task.getAssigneeId(), reviewResult);
+        } catch (Exception e) {
+            log.warn("发送任务验收通知失败: taskId={}", task.getId(), e);
+        }
     }
     
     /**
@@ -284,14 +416,13 @@ public class TaskAppService {
                 );
             }
             
-            // 如果任务完成，通知任务创建者（如果不是自己且不是任务负责人）
-            if ("COMPLETED".equals(newStatus) && task.getCreatedBy() != null) {
-                if (!task.getCreatedBy().equals(currentUserId) && 
-                    !task.getCreatedBy().equals(task.getAssigneeId())) {
+            // 如果任务提交验收，通知任务创建者需要验收
+            if ("PENDING_REVIEW".equals(newStatus) && task.getCreatedBy() != null) {
+                if (!task.getCreatedBy().equals(currentUserId)) {
                     notificationAppService.sendSystemNotification(
                             task.getCreatedBy(),
-                            "任务已完成",
-                            String.format("%s 完成了任务【%s】", task.getAssigneeName(), task.getTitle()),
+                            "待验收任务",
+                            String.format("%s 已完成任务【%s】，等待您的验收", task.getAssigneeName(), task.getTitle()),
                             "TASK",
                             task.getId()
                     );
@@ -307,6 +438,7 @@ public class TaskAppService {
         return switch (status) {
             case "TODO" -> "待处理";
             case "IN_PROGRESS" -> "进行中";
+            case "PENDING_REVIEW" -> "待验收";
             case "COMPLETED" -> "已完成";
             case "CANCELLED" -> "已取消";
             default -> status;
@@ -326,10 +458,13 @@ public class TaskAppService {
 
         task.setProgress(progress);
         if (progress == 100) {
-            task.setStatus("COMPLETED");
+            // 进度100%时，状态变为待验收
+            task.setStatus("PENDING_REVIEW");
             task.setCompletedAt(LocalDateTime.now());
+            task.setReviewStatus("PENDING_REVIEW");
         } else if (progress > 0) {
             task.setStatus("IN_PROGRESS");
+            task.setReviewStatus(null);
         }
 
         taskRepository.updateById(task);
@@ -396,20 +531,6 @@ public class TaskAppService {
     }
 
     /**
-     * 获取状态名称
-     */
-    private String getStatusName(String status) {
-        if (status == null) return null;
-        return switch (status) {
-            case "TODO" -> "待办";
-            case "IN_PROGRESS" -> "进行中";
-            case "COMPLETED" -> "已完成";
-            case "CANCELLED" -> "已取消";
-            default -> status;
-        };
-    }
-
-    /**
      * Entity 转 DTO
      */
     private TaskDTO toDTO(Task task) {
@@ -435,15 +556,158 @@ public class TaskAppService {
         dto.setCreatedBy(task.getCreatedBy());
         dto.setCreatedAt(task.getCreatedAt());
         dto.setUpdatedAt(task.getUpdatedAt());
+        
+        // 验收相关字段
+        dto.setReviewStatus(task.getReviewStatus());
+        dto.setReviewComment(task.getReviewComment());
+        dto.setReviewedAt(task.getReviewedAt());
+        dto.setReviewedBy(task.getReviewedBy());
 
-        // 判断是否逾期
+        // 判断是否逾期（排除已完成、已取消、待验收状态）
         if (task.getDueDate() != null && !"COMPLETED".equals(task.getStatus())
-                && !"CANCELLED".equals(task.getStatus())) {
+                && !"CANCELLED".equals(task.getStatus())
+                && !"PENDING_REVIEW".equals(task.getStatus())) {
             dto.setOverdue(task.getDueDate().isBefore(LocalDate.now()));
         } else {
             dto.setOverdue(false);
         }
 
         return dto;
+    }
+    
+    /**
+     * 验证任务操作权限
+     * 只有以下用户可以操作任务：
+     * 1. 系统管理员
+     * 2. 任务创建者
+     * 3. 任务负责人（被分配人）
+     */
+    private void validateTaskOperationPermission(Task task) {
+        // 管理员拥有所有权限
+        if (SecurityUtils.isAdmin()) {
+            return;
+        }
+        
+        Long currentUserId = SecurityUtils.getUserId();
+        
+        // 检查是否是任务创建者
+        if (currentUserId.equals(task.getCreatedBy())) {
+            return;
+        }
+        
+        // 检查是否是任务负责人
+        if (currentUserId.equals(task.getAssigneeId())) {
+            return;
+        }
+        
+        throw new BusinessException("只有任务创建者或负责人才能执行此操作");
+    }
+    
+    /**
+     * 应用数据范围过滤
+     * ALL: 可看全部任务
+     * DEPT_AND_CHILD: 可看本部门及下级部门的项目任务，或自己创建/负责的任务
+     * DEPT: 可看本部门的项目任务，或自己创建/负责的任务
+     * SELF: 只能看自己创建或分配给自己的任务
+     */
+    private void applyDataScopeFilter(LambdaQueryWrapper<Task> wrapper) {
+        String dataScope = SecurityUtils.getDataScope();
+        Long currentUserId = SecurityUtils.getUserId();
+        Long deptId = SecurityUtils.getDepartmentId();
+        
+        switch (dataScope) {
+            case "ALL":
+                // 可看全部任务，不加过滤条件
+                break;
+            case "DEPT_AND_CHILD":
+                // 可看本部门及下级部门的项目任务，或自己创建/负责的任务
+                if (deptId != null) {
+                    List<Long> deptIds = getAllChildDepartmentIds(deptId);
+                    deptIds.add(deptId);
+                    // 查询符合条件的项目ID列表（使用SQL查询优化性能）
+                    List<Long> matterIds = matterRepository.getBaseMapper().selectList(
+                            new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Matter>()
+                                    .select(Matter::getId)
+                                    .in(Matter::getDepartmentId, deptIds)
+                                    .eq(Matter::getDeleted, false)
+                    ).stream().map(Matter::getId).collect(Collectors.toList());
+                    
+                    wrapper.and(w -> {
+                        if (!matterIds.isEmpty()) {
+                            w.in(Task::getMatterId, matterIds)
+                             .or()
+                             .eq(Task::getCreatedBy, currentUserId)
+                             .or()
+                             .eq(Task::getAssigneeId, currentUserId);
+                        } else {
+                            w.eq(Task::getCreatedBy, currentUserId)
+                             .or()
+                             .eq(Task::getAssigneeId, currentUserId);
+                        }
+                    });
+                } else {
+                    // 没有部门，只能看自己创建或负责的任务
+                    wrapper.and(w -> w
+                        .eq(Task::getCreatedBy, currentUserId)
+                        .or()
+                        .eq(Task::getAssigneeId, currentUserId)
+                    );
+                }
+                break;
+            case "DEPT":
+                // 仅本部门的项目任务，或自己创建/负责的任务
+                if (deptId != null) {
+                    // 查询本部门的项目ID列表（使用SQL查询优化性能）
+                    List<Long> matterIds = matterRepository.getBaseMapper().selectList(
+                            new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Matter>()
+                                    .select(Matter::getId)
+                                    .eq(Matter::getDepartmentId, deptId)
+                                    .eq(Matter::getDeleted, false)
+                    ).stream().map(Matter::getId).collect(Collectors.toList());
+                    
+                    wrapper.and(w -> {
+                        if (!matterIds.isEmpty()) {
+                            w.in(Task::getMatterId, matterIds)
+                             .or()
+                             .eq(Task::getCreatedBy, currentUserId)
+                             .or()
+                             .eq(Task::getAssigneeId, currentUserId);
+                        } else {
+                            w.eq(Task::getCreatedBy, currentUserId)
+                             .or()
+                             .eq(Task::getAssigneeId, currentUserId);
+                        }
+                    });
+                } else {
+                    // 没有部门，只能看自己创建或负责的任务
+                    wrapper.and(w -> w
+                        .eq(Task::getCreatedBy, currentUserId)
+                        .or()
+                        .eq(Task::getAssigneeId, currentUserId)
+                    );
+                }
+                break;
+            default: // SELF
+                // 只能看自己创建或分配给自己的任务
+                wrapper.and(w -> w
+                    .eq(Task::getCreatedBy, currentUserId)
+                    .or()
+                    .eq(Task::getAssigneeId, currentUserId)
+                );
+                break;
+        }
+    }
+    
+    /**
+     * 获取所有下级部门ID
+     */
+    private List<Long> getAllChildDepartmentIds(Long parentId) {
+        List<Long> result = new ArrayList<>();
+        var children = departmentRepository.findByParentId(parentId);
+        for (var child : children) {
+            result.add(child.getId());
+            result.addAll(getAllChildDepartmentIds(child.getId()));
+        }
+        return result;
     }
 }

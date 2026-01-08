@@ -19,8 +19,10 @@ import com.lawfirm.domain.matter.repository.MatterRepository;
 import com.lawfirm.infrastructure.external.file.FileTypeService;
 import com.lawfirm.infrastructure.persistence.mapper.EvidenceCrossExamMapper;
 import com.lawfirm.infrastructure.persistence.mapper.EvidenceMapper;
+import com.lawfirm.application.matter.service.MatterAppService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -28,6 +30,7 @@ import org.springframework.util.StringUtils;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Collections;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -45,6 +48,13 @@ public class EvidenceAppService {
     private final EvidenceCrossExamMapper crossExamMapper;
     private final FileTypeService fileTypeService;
     private final MatterRepository matterRepository;
+    private MatterAppService matterAppService;
+    
+    @org.springframework.beans.factory.annotation.Autowired
+    @Lazy
+    public void setMatterAppService(MatterAppService matterAppService) {
+        this.matterAppService = matterAppService;
+    }
 
     // 不可编辑证据的项目状态
     private static final Set<String> READONLY_MATTER_STATUSES = Set.of("ARCHIVED", "CLOSED");
@@ -53,13 +63,35 @@ public class EvidenceAppService {
      * 分页查询证据
      */
     public PageResult<EvidenceDTO> listEvidence(EvidenceQueryDTO query) {
+        // 根据用户权限过滤数据
+        String dataScope = SecurityUtils.getDataScope();
+        Long currentUserId = SecurityUtils.getUserId();
+        Long deptId = SecurityUtils.getDepartmentId();
+        
+        // 获取可访问的项目ID列表
+        List<Long> accessibleMatterIds = matterAppService.getAccessibleMatterIds(dataScope, currentUserId, deptId);
+        
+        // 如果返回空列表，表示没有权限，返回空结果
+        if (accessibleMatterIds != null && accessibleMatterIds.isEmpty()) {
+            return PageResult.of(Collections.emptyList(), 0, query.getPageNum(), query.getPageSize());
+        }
+        
+        // 如果query中指定了matterId，需要验证是否有权限访问该项目
+        if (query.getMatterId() != null && accessibleMatterIds != null) {
+            if (!accessibleMatterIds.contains(query.getMatterId())) {
+                // 没有权限访问指定的项目，返回空结果
+                return PageResult.of(Collections.emptyList(), 0, query.getPageNum(), query.getPageSize());
+            }
+        }
+        
         IPage<Evidence> page = evidenceMapper.selectEvidencePage(
                 new Page<>(query.getPageNum(), query.getPageSize()),
                 query.getMatterId(),
                 query.getName(),
                 query.getEvidenceType(),
                 query.getGroupName(),
-                query.getCrossExamStatus()
+                query.getCrossExamStatus(),
+                accessibleMatterIds  // null表示可以访问所有项目的证据（ALL权限）
         );
 
         List<EvidenceDTO> records = page.getRecords().stream()
@@ -103,6 +135,7 @@ public class EvidenceAppService {
                 .fileSize(command.getFileSize())
                 .fileType(command.getFileType())
                 .thumbnailUrl(command.getThumbnailUrl())
+                .documentId(command.getDocumentId())  // 卷宗文件引用
                 .crossExamStatus("PENDING")
                 .status("ACTIVE")
                 .build();
@@ -283,6 +316,10 @@ public class EvidenceAppService {
         if (matterId == null) {
             return;
         }
+        
+        // 验证用户是否是项目负责人或参与者（只有项目成员才能编辑证据）
+        matterAppService.validateMatterOwnership(matterId);
+        
         Matter matter = matterRepository.findById(matterId);
         if (matter != null && READONLY_MATTER_STATUSES.contains(matter.getStatus())) {
             String statusName = "ARCHIVED".equals(matter.getStatus()) ? "已归档" : "已结案";

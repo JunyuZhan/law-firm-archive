@@ -157,6 +157,13 @@ public class ContractAppService {
         if (StringUtils.hasText(query.getArchiveStatus())) {
             wrapper.eq(Contract::getArchiveStatus, query.getArchiveStatus());
         }
+        // 创建时间筛选
+        if (query.getCreatedAtFrom() != null) {
+            wrapper.ge(Contract::getCreatedAt, query.getCreatedAtFrom());
+        }
+        if (query.getCreatedAtTo() != null) {
+            wrapper.le(Contract::getCreatedAt, query.getCreatedAtTo());
+        }
         
         // 数据范围过滤
         applyDataScopeFilter(wrapper);
@@ -216,6 +223,13 @@ public class ContractAppService {
         }
         if (query.getSignDateTo() != null) {
             wrapper.le(Contract::getSignDate, query.getSignDateTo());
+        }
+        // 创建时间筛选
+        if (query.getCreatedAtFrom() != null) {
+            wrapper.ge(Contract::getCreatedAt, query.getCreatedAtFrom());
+        }
+        if (query.getCreatedAtTo() != null) {
+            wrapper.le(Contract::getCreatedAt, query.getCreatedAtTo());
         }
         
         wrapper.orderByDesc(Contract::getCreatedAt);
@@ -365,6 +379,9 @@ public class ContractAppService {
     public ContractDTO updateContract(UpdateContractCommand command) {
         Contract contract = contractRepository.getByIdOrThrow(command.getId(), "合同不存在");
 
+        // 验证用户是否是合同创建者、签约人或参与人（只有所有者才能编辑）
+        validateContractOwnership(contract);
+
         // 只有草稿和被拒绝状态可以修改，待审批状态不允许修改（需要先取消审批）
         if (!"DRAFT".equals(contract.getStatus()) && !"REJECTED".equals(contract.getStatus())) {
             throw new BusinessException("只有草稿状态或被拒绝状态的合同可以直接修改。已审批通过的合同如需修改，请使用变更申请功能");
@@ -488,13 +505,18 @@ public class ContractAppService {
 
     /**
      * 删除合同
+     * 只有草稿状态的合同可以删除，已审批通过的合同任何人都不能删除
      */
     @Transactional
     public void deleteContract(Long id) {
         Contract contract = contractRepository.getByIdOrThrow(id, "合同不存在");
         
+        // 验证用户是否是合同创建者、签约人或参与人（只有所有者才能删除）
+        validateContractOwnership(contract);
+        
+        // 只有草稿状态可以删除（已审批通过的合同任何人都不能删除）
         if (!"DRAFT".equals(contract.getStatus())) {
-            throw new BusinessException("只有草稿状态的合同可以删除");
+            throw new BusinessException("只有草稿状态的合同可以删除，已审批通过的合同不能删除");
         }
 
         contractMapper.deleteById(id);
@@ -590,7 +612,7 @@ public class ContractAppService {
 
     /**
      * 获取可选审批人列表（当前用户架构垂直线上的领导）
-     * 包括：当前部门负责人、上级部门负责人、主任、合伙人
+     * 包括：当前部门负责人、上级部门负责人、主任、团队负责人
      */
     public List<Map<String, Object>> getAvailableApprovers() {
         Long currentUserId = SecurityUtils.getUserId();
@@ -624,8 +646,8 @@ public class ContractAppService {
             }
         }
         
-        // 2. 添加所有合伙人（PARTNER角色）
-        List<Long> partnerIds = userMapper.selectUserIdsByRoleCode("PARTNER");
+        // 2. 添加所有团队负责人（TEAM_LEADER角色）
+        List<Long> partnerIds = userMapper.selectUserIdsByRoleCode("TEAM_LEADER");
         if (partnerIds != null) {
             for (Long partnerId : partnerIds) {
                 if (!partnerId.equals(currentUserId) && !addedUserIds.contains(partnerId)) {
@@ -635,7 +657,7 @@ public class ContractAppService {
                         approver.put("id", partner.getId());
                         approver.put("realName", partner.getRealName());
                         approver.put("departmentName", getDepartmentName(partner.getDepartmentId()));
-                        approver.put("position", "合伙人");
+                        approver.put("position", "团队负责人");
                         approvers.add(approver);
                         addedUserIds.add(partner.getId());
                     }
@@ -881,6 +903,9 @@ public class ContractAppService {
     @Transactional
     public void applyContractChange(ContractChangeCommand command) {
         Contract contract = contractRepository.getByIdOrThrow(command.getContractId(), "合同不存在");
+        
+        // 验证用户是否是合同创建者、签约人或参与人（只有所有者才能申请变更）
+        validateContractOwnership(contract);
         
         // 只有已审批通过的合同可以申请变更
         if (!"ACTIVE".equals(contract.getStatus())) {
@@ -1168,6 +1193,39 @@ public class ContractAppService {
      */
     private List<Long> getParticipatingContractIds(Long userId) {
         return participantRepository.findContractIdsByUserId(userId);
+    }
+
+    /**
+     * 验证用户是否是合同的创建者、签约人或参与人（用于编辑/删除/变更操作）
+     * 只有合同的创建者、签约人或参与人才能编辑合同，管理员除外
+     * @param contract 合同
+     * @throws BusinessException 如果用户不是合同所有者
+     */
+    private void validateContractOwnership(Contract contract) {
+        // 管理员可以操作所有合同
+        if (SecurityUtils.isAdmin()) {
+            return;
+        }
+        
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        
+        // 检查是否是合同创建者
+        if (currentUserId.equals(contract.getCreatedBy())) {
+            return;
+        }
+        
+        // 检查是否是合同签约人
+        if (currentUserId.equals(contract.getSignerId())) {
+            return;
+        }
+        
+        // 检查是否是合同参与人
+        List<Long> participatingContractIds = getParticipatingContractIds(currentUserId);
+        if (participatingContractIds.contains(contract.getId())) {
+            return;
+        }
+        
+        throw new BusinessException("只有合同的创建者、签约人或参与人才能执行此操作");
     }
 
     /**

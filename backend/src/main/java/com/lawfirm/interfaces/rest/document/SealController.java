@@ -25,18 +25,20 @@ public class SealController {
 
     /**
      * 分页查询印章
+     * 允许有印章管理权限(doc:seal:list)或用印申请权限(doc:seal:apply)的用户查看
      */
     @GetMapping
-    @RequirePermission("doc:seal:list")
+    @RequirePermission(value = {"doc:seal:list", "doc:seal:apply"}, logical = RequirePermission.Logical.OR)
     public Result<PageResult<SealDTO>> list(SealQueryDTO query) {
         return Result.success(sealAppService.listSeals(query));
     }
 
     /**
      * 获取印章详情
+     * 允许有印章管理权限(doc:seal:list)或用印申请权限(doc:seal:apply)的用户查看
      */
     @GetMapping("/{id}")
-    @RequirePermission("doc:seal:list")
+    @RequirePermission(value = {"doc:seal:list", "doc:seal:apply"}, logical = RequirePermission.Logical.OR)
     public Result<SealDTO> getById(@PathVariable Long id) {
         return Result.success(sealAppService.getSealById(id));
     }

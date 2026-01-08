@@ -6,6 +6,7 @@ import lombok.EqualsAndHashCode;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 /**
  * 合同查询条件
@@ -123,5 +124,15 @@ public class ContractQueryDTO extends PageQuery {
      * 归档状态
      */
     private String archiveStatus;
+    
+    /**
+     * 创建时间开始
+     */
+    private LocalDateTime createdAtFrom;
+    
+    /**
+     * 创建时间结束
+     */
+    private LocalDateTime createdAtTo;
 }
 

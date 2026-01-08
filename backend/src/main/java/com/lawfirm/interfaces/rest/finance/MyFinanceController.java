@@ -56,4 +56,21 @@ public class MyFinanceController {
             return Result.error("获取提成记录失败: " + e.getMessage());
         }
     }
+
+    /**
+     * 获取我的费用报销记录
+     */
+    @GetMapping("/expenses")
+    @RequirePermission("finance:expense:apply")
+    public Result<List<Map<String, Object>>> getMyExpenses() {
+        try {
+            log.info("获取我的费用报销记录");
+            List<Map<String, Object>> result = myFinanceService.getMyExpenses();
+            log.info("获取我的费用报销记录成功，数量: {}", result != null ? result.size() : 0);
+            return Result.success(result);
+        } catch (Exception e) {
+            log.error("获取我的费用报销记录失败", e);
+            return Result.error("获取费用报销记录失败: " + e.getMessage());
+        }
+    }
 }

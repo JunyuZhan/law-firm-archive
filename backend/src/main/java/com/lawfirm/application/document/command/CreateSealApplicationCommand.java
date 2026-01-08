@@ -48,4 +48,10 @@ public class CreateSealApplicationCommand {
      * 预计用印日期
      */
     private LocalDate expectedUseDate;
+
+    /**
+     * 审批人ID（必填，由申请人选择）
+     */
+    @NotNull(message = "审批人不能为空")
+    private Long approverId;
 }

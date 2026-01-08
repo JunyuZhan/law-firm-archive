@@ -45,14 +45,14 @@ public class OvertimeController {
 
     @Operation(summary = "查询我的加班申请")
     @GetMapping("/my")
-    @RequirePermission("admin:overtime:view")
+    @RequirePermission("admin:overtime:list")
     public Result<List<OvertimeApplicationDTO>> getMyApplications() {
         return Result.success(overtimeAppService.getMyApplications());
     }
 
     @Operation(summary = "查询指定日期范围的加班申请")
     @GetMapping("/range")
-    @RequirePermission("admin:overtime:view")
+    @RequirePermission("admin:overtime:list")
     public Result<List<OvertimeApplicationDTO>> getApplicationsByDateRange(
             @RequestParam LocalDate startDate,
             @RequestParam LocalDate endDate) {

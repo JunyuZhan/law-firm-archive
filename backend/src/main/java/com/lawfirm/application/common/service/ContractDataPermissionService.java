@@ -23,7 +23,7 @@ public class ContractDataPermissionService {
 
     // 角色常量
     private static final String ROLE_ADMIN = "ADMIN";
-    private static final String ROLE_PARTNER = "PARTNER";
+    private static final String ROLE_TEAM_LEADER = "TEAM_LEADER";
     private static final String ROLE_DIRECTOR = "DIRECTOR";
     private static final String ROLE_FINANCE = "FINANCE";
     private static final String ROLE_ADMIN_STAFF = "ADMIN_STAFF";
@@ -38,7 +38,7 @@ public class ContractDataPermissionService {
         Set<String> roles = SecurityUtils.getRoles();
         
         // 管理员、合伙人、主任可以访问所有合同
-        if (roles.contains(ROLE_ADMIN) || roles.contains(ROLE_PARTNER) || roles.contains(ROLE_DIRECTOR)) {
+        if (roles.contains(ROLE_ADMIN) || roles.contains(ROLE_TEAM_LEADER) || roles.contains(ROLE_DIRECTOR)) {
             return true;
         }
         
@@ -80,7 +80,7 @@ public class ContractDataPermissionService {
      */
     public boolean isSeniorManagement() {
         Set<String> roles = SecurityUtils.getRoles();
-        return roles.contains(ROLE_ADMIN) || roles.contains(ROLE_PARTNER) || roles.contains(ROLE_DIRECTOR);
+        return roles.contains(ROLE_ADMIN) || roles.contains(ROLE_TEAM_LEADER) || roles.contains(ROLE_DIRECTOR);
     }
 
     /**
@@ -123,7 +123,7 @@ public class ContractDataPermissionService {
         Set<String> roles = SecurityUtils.getRoles();
         
         // 管理员、合伙人、主任、财务可以修改财务信息
-        if (roles.contains(ROLE_ADMIN) || roles.contains(ROLE_PARTNER) || 
+        if (roles.contains(ROLE_ADMIN) || roles.contains(ROLE_TEAM_LEADER) || 
             roles.contains(ROLE_DIRECTOR) || roles.contains(ROLE_FINANCE)) {
             return true;
         }
@@ -141,7 +141,7 @@ public class ContractDataPermissionService {
         
         // 行政只能只读访问
         if (roles.contains(ROLE_ADMIN_STAFF) && !roles.contains(ROLE_ADMIN) && 
-            !roles.contains(ROLE_PARTNER) && !roles.contains(ROLE_DIRECTOR)) {
+            !roles.contains(ROLE_TEAM_LEADER) && !roles.contains(ROLE_DIRECTOR)) {
             return true;
         }
         
@@ -156,7 +156,7 @@ public class ContractDataPermissionService {
     public String getDataAccessLevel() {
         Set<String> roles = SecurityUtils.getRoles();
         
-        if (roles.contains(ROLE_ADMIN) || roles.contains(ROLE_PARTNER) || roles.contains(ROLE_DIRECTOR)) {
+        if (roles.contains(ROLE_ADMIN) || roles.contains(ROLE_TEAM_LEADER) || roles.contains(ROLE_DIRECTOR)) {
             return "ALL";
         }
         

@@ -150,4 +150,24 @@ public class TaskController {
     public Result<int[]> getMatterStats(@PathVariable Long matterId) {
         return Result.success(taskAppService.getMatterTaskStats(matterId));
     }
+
+    /**
+     * 验收任务（通过）
+     */
+    @PostMapping("/{id}/review/approve")
+    @RequirePermission("task:manage")
+    @OperationLog(module = "任务管理", action = "验收任务通过")
+    public Result<TaskDTO> approveTask(@PathVariable Long id) {
+        return Result.success(taskAppService.approveTask(id));
+    }
+
+    /**
+     * 验收任务（退回）
+     */
+    @PostMapping("/{id}/review/reject")
+    @RequirePermission("task:manage")
+    @OperationLog(module = "任务管理", action = "验收任务退回")
+    public Result<TaskDTO> rejectTask(@PathVariable Long id, @RequestParam String comment) {
+        return Result.success(taskAppService.rejectTask(id, comment));
+    }
 }

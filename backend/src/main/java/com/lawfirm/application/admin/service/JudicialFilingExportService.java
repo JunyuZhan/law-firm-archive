@@ -65,6 +65,151 @@ public class JudicialFilingExportService {
     }
 
     /**
+     * 导出合同列表（根据查询条件）
+     * 用于导出当前查询结果到Excel
+     */
+    public ByteArrayInputStream exportContractList(List<AdminContractViewDTO> contracts, Long operatorId) throws IOException {
+        ByteArrayInputStream result = generateContractListExcel(contracts);
+
+        // 记录导出日志
+        ExportLog exportLog = new ExportLog();
+        exportLog.setExportType("CONTRACT_LIST");
+        exportLog.setFileName("合同列表导出");
+        exportLog.setRecordCount(contracts.size());
+        exportLog.setExportedBy(operatorId);
+        exportLog.setExportedAt(LocalDateTime.now());
+        exportLogRepository.save(exportLog);
+
+        log.info("合同列表导出完成: 共 {} 条记录, 操作人: {}", contracts.size(), operatorId);
+        return result;
+    }
+
+    /**
+     * 生成合同列表Excel文件
+     */
+    private ByteArrayInputStream generateContractListExcel(List<AdminContractViewDTO> contracts)
+            throws IOException {
+        Workbook workbook = new XSSFWorkbook();
+        Sheet sheet = workbook.createSheet("合同列表");
+
+        // 创建样式
+        CellStyle headerStyle = createHeaderStyle(workbook);
+        CellStyle dataStyle = createDataStyle(workbook);
+        CellStyle numberStyle = createNumberStyle(workbook);
+        CellStyle dateStyle = createDateStyle(workbook);
+
+        int rowNum = 0;
+
+        // 表头
+        Row headerRow = sheet.createRow(rowNum++);
+        String[] headers = new String[] {
+                "序号", "合同编号", "合同名称", "委托人", "对方当事人", "案件类型", "案由",
+                "承办律师", "律师费金额", "签约日期", "管辖法院", "审理阶段", "状态"
+        };
+        for (int i = 0; i < headers.length; i++) {
+            Cell cell = headerRow.createCell(i);
+            cell.setCellValue(headers[i]);
+            cell.setCellStyle(headerStyle);
+        }
+
+        // 数据行
+        int seq = 1;
+        for (AdminContractViewDTO contract : contracts) {
+            Row dataRow = sheet.createRow(rowNum++);
+            int colNum = 0;
+
+            // 序号
+            Cell seqCell = dataRow.createCell(colNum++);
+            seqCell.setCellValue(seq++);
+            seqCell.setCellStyle(dataStyle);
+
+            // 合同编号
+            Cell contractNoCell = dataRow.createCell(colNum++);
+            contractNoCell.setCellValue(nullSafe(contract.getContractNo()));
+            contractNoCell.setCellStyle(dataStyle);
+
+            // 合同名称
+            Cell nameCell = dataRow.createCell(colNum++);
+            nameCell.setCellValue(nullSafe(contract.getName()));
+            nameCell.setCellStyle(dataStyle);
+
+            // 委托人
+            Cell clientCell = dataRow.createCell(colNum++);
+            clientCell.setCellValue(nullSafe(contract.getClientName()));
+            clientCell.setCellStyle(dataStyle);
+
+            // 对方当事人
+            Cell opposingCell = dataRow.createCell(colNum++);
+            opposingCell.setCellValue(nullSafe(contract.getOpposingParty()));
+            opposingCell.setCellStyle(dataStyle);
+
+            // 案件类型
+            Cell caseTypeCell = dataRow.createCell(colNum++);
+            caseTypeCell.setCellValue(nullSafe(contract.getCaseTypeName()));
+            caseTypeCell.setCellStyle(dataStyle);
+
+            // 案由
+            Cell causeCell = dataRow.createCell(colNum++);
+            causeCell.setCellValue(nullSafe(contract.getCauseOfAction()));
+            causeCell.setCellStyle(dataStyle);
+
+            // 承办律师
+            Cell lawyerCell = dataRow.createCell(colNum++);
+            lawyerCell.setCellValue(nullSafe(contract.getLeadLawyerName()));
+            lawyerCell.setCellStyle(dataStyle);
+
+            // 律师费金额
+            Cell amountCell = dataRow.createCell(colNum++);
+            if (contract.getTotalAmount() != null) {
+                amountCell.setCellValue(contract.getTotalAmount().doubleValue());
+                amountCell.setCellStyle(numberStyle);
+            } else {
+                amountCell.setCellStyle(dataStyle);
+            }
+
+            // 签约日期
+            Cell signDateCell = dataRow.createCell(colNum++);
+            if (contract.getSignDate() != null) {
+                signDateCell.setCellValue(contract.getSignDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+            }
+            signDateCell.setCellStyle(dateStyle);
+
+            // 管辖法院
+            Cell courtCell = dataRow.createCell(colNum++);
+            courtCell.setCellValue(nullSafe(contract.getJurisdictionCourt()));
+            courtCell.setCellStyle(dataStyle);
+
+            // 审理阶段
+            Cell stageCell = dataRow.createCell(colNum++);
+            stageCell.setCellValue(nullSafe(contract.getTrialStageName()));
+            stageCell.setCellStyle(dataStyle);
+
+            // 状态
+            Cell statusCell = dataRow.createCell(colNum++);
+            statusCell.setCellValue(getContractStatusName(contract.getStatus()));
+            statusCell.setCellStyle(dataStyle);
+        }
+
+        // 自动调整列宽
+        for (int i = 0; i < headers.length; i++) {
+            try {
+                sheet.autoSizeColumn(i);
+                int width = sheet.getColumnWidth(i);
+                sheet.setColumnWidth(i, Math.min(width + 1000, 15000));
+            } catch (Exception e) {
+                log.warn("无法自动调整第 {} 列的宽度: {}", i, e.getMessage());
+                sheet.setColumnWidth(i, 5000);
+            }
+        }
+
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        workbook.write(outputStream);
+        workbook.close();
+
+        return new ByteArrayInputStream(outputStream.toByteArray());
+    }
+
+    /**
      * 生成Excel文件
      */
     private ByteArrayInputStream generateExcel(List<AdminContractViewDTO> contracts, Set<String> customFields)
@@ -274,6 +419,22 @@ public class JudicialFilingExportService {
 
     private String nullSafe(String value) {
         return value != null ? value : "";
+    }
+
+    /**
+     * 获取合同状态名称
+     */
+    private String getContractStatusName(String status) {
+        if (status == null) return "";
+        return switch (status) {
+            case "DRAFT" -> "草稿";
+            case "PENDING" -> "待审批";
+            case "ACTIVE" -> "生效中";
+            case "EXPIRED" -> "已过期";
+            case "TERMINATED" -> "已终止";
+            case "COMPLETED" -> "已完成";
+            default -> status;
+        };
     }
 
     private CellStyle createTitleStyle(Workbook workbook) {

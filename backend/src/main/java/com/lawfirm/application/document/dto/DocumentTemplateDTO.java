@@ -30,7 +30,7 @@ public class DocumentTemplateDTO extends BaseDTO {
     private Long fileSize;
     private String fileSizeDisplay;
     
-    private List<Map<String, Object>> variables;
+    private List<String> variables;
     private String description;
     
     private String status;

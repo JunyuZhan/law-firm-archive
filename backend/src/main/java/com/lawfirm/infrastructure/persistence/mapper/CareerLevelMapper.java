@@ -7,6 +7,7 @@ import com.lawfirm.domain.hr.entity.CareerLevel;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 
 import java.util.List;
 
@@ -61,4 +62,10 @@ public interface CareerLevelMapper extends BaseMapper<CareerLevel> {
      */
     @Select("SELECT * FROM hr_career_level WHERE level_code = #{levelCode} AND deleted = false LIMIT 1")
     CareerLevel selectByLevelCode(@Param("levelCode") String levelCode);
+
+    /**
+     * 更新状态
+     */
+    @Update("UPDATE hr_career_level SET status = #{status}, updated_at = NOW() WHERE id = #{id}")
+    int updateStatus(@Param("id") Long id, @Param("status") String status);
 }

@@ -1,8 +1,10 @@
 package com.lawfirm.application.workbench.listener;
 
+import com.lawfirm.application.admin.service.LetterAppService;
 import com.lawfirm.application.finance.service.ContractAppService;
 import com.lawfirm.application.document.service.SealApplicationAppService;
 import com.lawfirm.application.client.service.ConflictCheckAppService;
+import com.lawfirm.application.system.service.DataHandoverService;
 import com.lawfirm.application.system.service.NotificationAppService;
 import com.lawfirm.application.workbench.event.ApprovalCompletedEvent;
 import com.lawfirm.domain.workbench.entity.Approval;
@@ -28,8 +30,10 @@ public class ApprovalEventListener {
     private final ContractAppService contractAppService;
     private final SealApplicationAppService sealApplicationAppService;
     private final ConflictCheckAppService conflictCheckAppService;
+    private final DataHandoverService dataHandoverService;
     private final NotificationAppService notificationAppService;
     private final ApprovalRepository approvalRepository;
+    private final LetterAppService letterAppService;
 
     /**
      * 监听审批完成事件
@@ -63,6 +67,12 @@ public class ApprovalEventListener {
                     break;
                 case "CONFLICT_EXEMPTION":
                     handleConflictExemptionApproval(businessId, result, comment);
+                    break;
+                case "DATA_HANDOVER":
+                    handleDataHandoverApproval(businessId, result, comment);
+                    break;
+                case "LETTER_APPLICATION":
+                    handleLetterApplicationApproval(businessId, result, comment);
                     break;
                 default:
                     log.warn("未知的业务类型: {}", businessType);
@@ -121,8 +131,21 @@ public class ApprovalEventListener {
             case "EXPENSE" -> "费用报销";
             case "PAYMENT_AMENDMENT" -> "收款变更";
             case "MATTER_CLOSE" -> "项目结案";
+            case "DATA_HANDOVER" -> "数据交接";
+            case "LETTER_APPLICATION" -> "出函申请";
             default -> "审批";
         };
+    }
+
+    /**
+     * 处理出函申请审批
+     */
+    private void handleLetterApplicationApproval(Long applicationId, String result, String comment) {
+        if ("APPROVED".equals(result)) {
+            letterAppService.onApprovalApproved(applicationId, comment);
+        } else if ("REJECTED".equals(result)) {
+            letterAppService.onApprovalRejected(applicationId, comment);
+        }
     }
 
     /**
@@ -166,6 +189,17 @@ public class ApprovalEventListener {
             conflictCheckAppService.approveExemption(checkId, comment);
         } else if ("REJECTED".equals(result)) {
             conflictCheckAppService.rejectExemption(checkId, comment);
+        }
+    }
+
+    /**
+     * 处理数据交接审批
+     */
+    private void handleDataHandoverApproval(Long handoverId, String result, String comment) {
+        if ("APPROVED".equals(result)) {
+            dataHandoverService.onApprovalApproved(handoverId);
+        } else if ("REJECTED".equals(result)) {
+            dataHandoverService.onApprovalRejected(handoverId, comment);
         }
     }
 }

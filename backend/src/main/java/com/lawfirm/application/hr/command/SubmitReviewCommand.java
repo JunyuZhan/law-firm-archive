@@ -17,7 +17,7 @@ public class SubmitReviewCommand {
     private Long applicationId;
     
     /**
-     * 评审人角色：DIRECT_MANAGER-直属上级, HR-人力资源, PARTNER-合伙人, COMMITTEE-评审委员会
+     * 评审人角色：DIRECT_MANAGER-直属上级, HR-人力资源, TEAM_LEADER-团队负责人, COMMITTEE-评审委员会
      */
     @NotBlank(message = "评审人角色不能为空")
     private String reviewerRole;

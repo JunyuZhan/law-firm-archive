@@ -41,31 +41,35 @@ public class PermissionAspect {
 
             // 3. 获取当前用户权限
             Set<String> userPermissions = SecurityUtils.getPermissions();
+            if (userPermissions == null) {
+                log.error("用户权限列表为空: 用户[{}]", SecurityUtils.getUsername());
+                throw new BusinessException("500", "用户权限信息异常");
+            }
 
-        // 4. 校验权限
-        String[] requiredPermissions = annotation.value();
-        RequirePermission.Logical logical = annotation.logical();
+            // 4. 校验权限
+            String[] requiredPermissions = annotation.value();
+            RequirePermission.Logical logical = annotation.logical();
 
-        boolean hasPermission;
-        if (logical == RequirePermission.Logical.AND) {
-            // AND逻辑：需要拥有所有权限
-            hasPermission = true;
-            for (String permission : requiredPermissions) {
-                if (!userPermissions.contains(permission)) {
-                    hasPermission = false;
-                    break;
+            boolean hasPermission;
+            if (logical == RequirePermission.Logical.AND) {
+                // AND逻辑：需要拥有所有权限
+                hasPermission = true;
+                for (String permission : requiredPermissions) {
+                    if (!userPermissions.contains(permission)) {
+                        hasPermission = false;
+                        break;
+                    }
+                }
+            } else {
+                // OR逻辑：只需拥有任一权限
+                hasPermission = false;
+                for (String permission : requiredPermissions) {
+                    if (userPermissions.contains(permission)) {
+                        hasPermission = true;
+                        break;
+                    }
                 }
             }
-        } else {
-            // OR逻辑：只需拥有任一权限
-            hasPermission = false;
-            for (String permission : requiredPermissions) {
-                if (userPermissions.contains(permission)) {
-                    hasPermission = true;
-                    break;
-                }
-            }
-        }
 
         if (!hasPermission) {
             log.warn("权限不足: 用户[{}]缺少权限{}", SecurityUtils.getUsername(), String.join(",", requiredPermissions));

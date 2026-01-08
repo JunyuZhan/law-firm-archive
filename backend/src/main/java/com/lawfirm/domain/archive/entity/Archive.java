@@ -125,17 +125,17 @@ public class Archive extends BaseEntity {
     private LocalDateTime storedAt;
 
     /**
-     * 销毁日期
+     * 销毁日期（兼容旧数据）
      */
     private LocalDate destroyDate;
 
     /**
-     * 销毁原因
+     * 销毁原因（兼容旧数据）
      */
     private String destroyReason;
 
     /**
-     * 销毁审批人ID
+     * 销毁审批人ID（兼容旧数据）
      */
     private Long destroyApproverId;
 
@@ -143,5 +143,43 @@ public class Archive extends BaseEntity {
      * 备注
      */
     private String remarks;
+
+    // ========== 新增字段：档案迁移相关 ==========
+
+    /**
+     * 迁移日期
+     */
+    private LocalDate migrateDate;
+
+    /**
+     * 迁移原因
+     */
+    private String migrateReason;
+
+    /**
+     * 迁移审批人ID
+     */
+    private Long migrateApproverId;
+
+    /**
+     * 迁移目标（档案馆名称/系统名称）
+     */
+    private String migrateTarget;
+
+    /**
+     * 文件是否已删除
+     */
+    @lombok.Builder.Default
+    private Boolean filesDeleted = false;
+
+    /**
+     * 归档数据快照（JSON格式，存储归档时收集的所有项目相关数据）
+     */
+    private String archiveSnapshot;
+
+    /**
+     * 电子档案包路径（打包后的ZIP文件路径）
+     */
+    private String electronicPackagePath;
 }
 

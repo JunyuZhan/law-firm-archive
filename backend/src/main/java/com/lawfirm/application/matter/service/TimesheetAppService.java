@@ -14,6 +14,10 @@ import com.lawfirm.domain.matter.entity.Timesheet;
 import com.lawfirm.domain.matter.repository.HourlyRateRepository;
 import com.lawfirm.domain.matter.repository.TimesheetRepository;
 import com.lawfirm.infrastructure.persistence.mapper.TimesheetMapper;
+import com.lawfirm.domain.matter.repository.MatterParticipantRepository;
+import com.lawfirm.domain.matter.entity.MatterParticipant;
+import com.lawfirm.domain.matter.repository.MatterRepository;
+import com.lawfirm.domain.matter.entity.Matter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -24,6 +28,8 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -38,11 +44,43 @@ public class TimesheetAppService {
     private final TimesheetRepository timesheetRepository;
     private final HourlyRateRepository hourlyRateRepository;
     private final TimesheetMapper timesheetMapper;
+    private final MatterRepository matterRepository;
+    private final MatterParticipantRepository matterParticipantRepository;
 
     /**
      * 分页查询工时
      */
     public PageResult<TimesheetDTO> listTimesheets(TimesheetQueryDTO query) {
+        // 根据用户权限过滤数据
+        String dataScope = SecurityUtils.getDataScope();
+        Long currentUserId = SecurityUtils.getUserId();
+        Long deptId = SecurityUtils.getDepartmentId();
+        
+        // 获取可访问的项目ID列表
+        List<Long> accessibleMatterIds = getAccessibleMatterIds(dataScope, currentUserId, deptId);
+        
+        // 如果返回空列表，表示没有权限，返回空结果
+        if (accessibleMatterIds != null && accessibleMatterIds.isEmpty()) {
+            return PageResult.of(Collections.emptyList(), 0, query.getPageNum(), query.getPageSize());
+        }
+        
+        // 如果query中指定了matterId，需要验证是否有权限访问该项目
+        if (query.getMatterId() != null && accessibleMatterIds != null) {
+            if (!accessibleMatterIds.contains(query.getMatterId())) {
+                // 没有权限访问指定的项目，返回空结果
+                return PageResult.of(Collections.emptyList(), 0, query.getPageNum(), query.getPageSize());
+            }
+        }
+        
+        // 如果query中指定了userId，需要验证权限
+        // SELF权限时，只能查看自己的工时
+        if (query.getUserId() != null && "SELF".equals(dataScope)) {
+            if (!query.getUserId().equals(currentUserId)) {
+                // 没有权限查看他人的工时，返回空结果
+                return PageResult.of(Collections.emptyList(), 0, query.getPageNum(), query.getPageSize());
+            }
+        }
+        
         IPage<Timesheet> page = timesheetMapper.selectTimesheetPage(
                 new Page<>(query.getPageNum(), query.getPageSize()),
                 query.getMatterId(),
@@ -51,7 +89,8 @@ public class TimesheetAppService {
                 query.getStatus(),
                 query.getStartDate(),
                 query.getEndDate(),
-                query.getBillable()
+                query.getBillable(),
+                accessibleMatterIds  // null表示可以访问所有项目的工时（ALL权限）
         );
 
         List<TimesheetDTO> records = page.getRecords().stream()
@@ -215,6 +254,9 @@ public class TimesheetAppService {
         if (!"SUBMITTED".equals(timesheet.getStatus())) {
             throw new BusinessException("只能审批已提交的工时记录");
         }
+        
+        // 验证审批权限
+        validateApprovalPermission(timesheet);
 
         timesheet.setStatus("APPROVED");
         timesheet.setApprovedBy(SecurityUtils.getUserId());
@@ -236,6 +278,9 @@ public class TimesheetAppService {
         if (!"SUBMITTED".equals(timesheet.getStatus())) {
             throw new BusinessException("只能审批已提交的工时记录");
         }
+        
+        // 验证审批权限
+        validateApprovalPermission(timesheet);
 
         timesheet.setStatus("REJECTED");
         timesheet.setApprovedBy(SecurityUtils.getUserId());
@@ -332,8 +377,117 @@ public class TimesheetAppService {
     }
 
     /**
+     * 验证用户是否有审批工时的权限
+     * 可以审批的人员：
+     * 1. 管理员 - 可以审批所有工时
+     * 2. 主任(dataScope=ALL) - 可以审批所有工时
+     * 3. 团队负责人(dataScope=DEPT_AND_CHILD) - 可以审批本团队项目的工时
+     * 4. 项目负责人 - 可以审批该项目成员的工时
+     */
+    private void validateApprovalPermission(Timesheet timesheet) {
+        // 管理员可以审批所有工时
+        if (SecurityUtils.isAdmin()) {
+            return;
+        }
+        
+        Long currentUserId = SecurityUtils.getUserId();
+        String dataScope = SecurityUtils.getDataScope();
+        Long deptId = SecurityUtils.getDepartmentId();
+        
+        // 主任（ALL权限）可以审批所有工时
+        if ("ALL".equals(dataScope)) {
+            return;
+        }
+        
+        // 获取工时对应的项目
+        Matter matter = matterRepository.findById(timesheet.getMatterId());
+        if (matter == null) {
+            throw new BusinessException("工时对应的项目不存在");
+        }
+        
+        // 项目负责人可以审批项目成员的工时
+        if (currentUserId.equals(matter.getLeadLawyerId())) {
+            return;
+        }
+        
+        // 团队负责人可以审批本团队项目的工时
+        if ("DEPT_AND_CHILD".equals(dataScope) && deptId != null) {
+            if (deptId.equals(matter.getDepartmentId())) {
+                return;
+            }
+        }
+        
+        throw new BusinessException("您没有审批此工时的权限，只有管理员、主任、团队负责人或项目负责人可以审批");
+    }
+
+    /**
      * Entity 转 DTO
      */
+    /**
+     * 获取可访问的项目ID列表（根据数据权限）
+     * @return null表示可以访问所有项目，否则返回可访问的项目ID列表
+     */
+    private List<Long> getAccessibleMatterIds(String dataScope, Long currentUserId, Long deptId) {
+        if ("ALL".equals(dataScope)) {
+            return null; // null表示可以访问所有项目
+        }
+        
+        List<Long> matterIds = new ArrayList<>();
+        
+        if ("DEPT_AND_CHILD".equals(dataScope) && deptId != null) {
+            // 部门及下级部门：查询本部门及下级部门的项目
+            // TODO: 需要实现部门递归查询
+            matterIds = matterRepository.lambdaQuery()
+                    .select(Matter::getId)
+                    .eq(Matter::getDeleted, false)
+                    .eq(Matter::getDepartmentId, deptId)
+                    .list()
+                    .stream()
+                    .map(Matter::getId)
+                    .collect(Collectors.toList());
+        } else if ("DEPT".equals(dataScope) && deptId != null) {
+            // 本部门：查询本部门的项目
+            matterIds = matterRepository.lambdaQuery()
+                    .select(Matter::getId)
+                    .eq(Matter::getDeleted, false)
+                    .eq(Matter::getDepartmentId, deptId)
+                    .list()
+                    .stream()
+                    .map(Matter::getId)
+                    .collect(Collectors.toList());
+        } else {
+            // SELF：只查看自己负责的项目或参与的项目
+            // 查询自己负责的项目
+            List<Long> leadMatterIds = matterRepository.lambdaQuery()
+                    .select(Matter::getId)
+                    .eq(Matter::getDeleted, false)
+                    .eq(Matter::getLeadLawyerId, currentUserId)
+                    .list()
+                    .stream()
+                    .map(Matter::getId)
+                    .collect(Collectors.toList());
+            
+            // 查询自己参与的项目
+            var participantList = matterParticipantRepository.lambdaQuery()
+                    .select(MatterParticipant::getMatterId)
+                    .eq(MatterParticipant::getUserId, currentUserId)
+                    .eq(MatterParticipant::getDeleted, false)
+                    .list();
+            
+            List<Long> participantMatterIds = participantList.stream()
+                    .map(MatterParticipant::getMatterId)
+                    .distinct()
+                    .collect(Collectors.toList());
+            
+            // 合并去重
+            matterIds.addAll(leadMatterIds);
+            matterIds.addAll(participantMatterIds);
+            matterIds = matterIds.stream().distinct().collect(Collectors.toList());
+        }
+        
+        return matterIds.isEmpty() ? Collections.emptyList() : matterIds;
+    }
+
     private TimesheetDTO toDTO(Timesheet timesheet) {
         TimesheetDTO dto = new TimesheetDTO();
         dto.setId(timesheet.getId());

@@ -4,7 +4,7 @@ services:
   # PostgreSQL 数据库
   postgres:
     image: postgres:15-alpine
-    container_name: law-postgres
+    container_name: law-firm-postgres
     environment:
       POSTGRES_DB: law_firm_dev
       POSTGRES_USER: law_admin
@@ -26,7 +26,7 @@ services:
   # Redis 缓存
   redis:
     image: redis:7-alpine
-    container_name: law-redis
+    container_name: law-firm-redis
     command: redis-server --appendonly yes
     ports:
       - "6379:6379"
@@ -43,7 +43,7 @@ services:
   # MinIO 对象存储
   minio:
     image: minio/minio:latest
-    container_name: law-minio
+    container_name: law-firm-minio
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: minioadmin
@@ -64,7 +64,7 @@ services:
   # MinIO 初始化（创建 bucket）
   minio-init:
     image: minio/mc:latest
-    container_name: law-minio-init
+    container_name: law-firm-minio-init
     depends_on:
       minio:
         condition: service_healthy
@@ -83,7 +83,7 @@ services:
     build:
       context: ./ocr
       dockerfile: Dockerfile
-    container_name: law-paddle-ocr
+    container_name: law-firm-ocr
     restart: unless-stopped
     environment:
       OCR_LANG: "ch"
@@ -102,13 +102,19 @@ services:
       timeout: 10s
       retries: 3
 
-  # OnlyOffice 文档预览服务
+  # OnlyOffice 文档预览服务（自定义镜像，包含中文字体）
   onlyoffice:
-    image: onlyoffice/documentserver:latest
-    container_name: law-onlyoffice
+    build:
+      context: ./onlyoffice
+      dockerfile: Dockerfile
+    image: law-onlyoffice:latest
+    container_name: law-firm-onlyoffice
     restart: unless-stopped
     environment:
       - JWT_ENABLED=false
+      # 允许访问私有 IP 地址（用于从后端代理获取文件）
+      - ALLOW_PRIVATE_IP_ADDRESS=true
+      - ALLOW_META_IP_ADDRESS=true
     ports:
       - "8088:80"
     extra_hosts:

@@ -40,6 +40,7 @@ public class UserAppService {
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
     private final ExcelImportExportService excelImportExportService;
+    private final UserRoleChangeService userRoleChangeService;
 
     /**
      * 分页查询用户
@@ -142,11 +143,24 @@ public class UserAppService {
 
         userRepository.updateById(user);
 
-        // 更新角色
+        // 更新角色（如果角色发生变化，使用角色变更服务处理）
         if (command.getRoleIds() != null) {
-            userMapper.deleteUserRoles(user.getId());
-            if (!command.getRoleIds().isEmpty()) {
-                userMapper.insertUserRoles(user.getId(), command.getRoleIds());
+            List<Long> oldRoleIds = userMapper.selectRoleIdsByUserId(user.getId());
+            List<Long> newRoleIds = command.getRoleIds();
+            
+            // 检查角色是否发生变化
+            if (!oldRoleIds.equals(newRoleIds)) {
+                // 使用角色变更服务处理角色变更
+                String changeReason = command.getRoleChangeReason() != null 
+                    ? command.getRoleChangeReason() 
+                    : "用户角色更新";
+                userRoleChangeService.changeUserRole(user.getId(), newRoleIds, changeReason);
+            } else {
+                // 角色未变化，直接更新（兼容旧逻辑）
+                userMapper.deleteUserRoles(user.getId());
+                if (!newRoleIds.isEmpty()) {
+                    userMapper.insertUserRoles(user.getId(), newRoleIds);
+                }
             }
         }
 

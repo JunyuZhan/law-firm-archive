@@ -35,6 +35,11 @@ public class ApprovalAppService {
 
     /**
      * 分页查询审批记录
+     * 数据权限过滤：
+     * - ALL: 可查看所有审批
+     * - DEPT_AND_CHILD: 可查看本部门及下级部门的审批
+     * - DEPT: 可查看本部门的审批
+     * - SELF: 只能查看自己发起或需要自己审批的记录
      */
     public PageResult<ApprovalDTO> listApprovals(ApprovalQueryDTO query) {
         try {
@@ -44,6 +49,9 @@ public class ApprovalAppService {
                     query.getApplicantId(),
                     query.getApproverId()
             );
+
+            // 应用数据权限过滤
+            approvals = applyDataScopeFilter(approvals);
 
             // 分页处理
             int total = approvals.size();
@@ -61,6 +69,37 @@ public class ApprovalAppService {
             // 返回空结果，避免500错误
             return PageResult.of(new ArrayList<>(), 0, query.getPageNum(), query.getPageSize());
         }
+    }
+    
+    /**
+     * 应用数据权限过滤
+     * 审批中心的数据权限逻辑：
+     * - 管理员/主任：可查看全部审批记录（用于统计和管理）
+     * - 其他角色（包括财务）：只能看到自己发起的 + 需要自己审批的
+     * 
+     * 注意：财务虽然有 ALL 数据权限（用于财务数据），但审批中心只展示与自己相关的审批
+     */
+    private List<Approval> applyDataScopeFilter(List<Approval> approvals) {
+        Long currentUserId = SecurityUtils.getUserId();
+        
+        // 只有管理员和主任可以看全部审批（真正的管理层）
+        if (isAdminOrDirector()) {
+            return approvals;
+        }
+        
+        // 其他角色（包括财务、团队负责人、律师等）：只能看到自己相关的审批
+        return approvals.stream()
+                .filter(a -> currentUserId.equals(a.getApplicantId()) || 
+                            currentUserId.equals(a.getApproverId()))
+                .collect(Collectors.toList());
+    }
+    
+    /**
+     * 判断当前用户是否为管理员或主任
+     */
+    private boolean isAdminOrDirector() {
+        java.util.Set<String> roles = SecurityUtils.getRoles();
+        return roles != null && (roles.contains("ADMIN") || roles.contains("DIRECTOR"));
     }
 
     /**
@@ -82,47 +121,22 @@ public class ApprovalAppService {
     }
 
     /**
-     * 获取审批历史（根据数据权限范围）
-     * ALL: 可查看所有已完成审批
-     * DEPT_AND_CHILD: 可查看本部门及下级部门的已完成审批
-     * DEPT: 可查看本部门的已完成审批
-     * SELF: 只能查看自己发起或审批的记录
+     * 获取审批历史（我处理过的审批记录）
+     * 审批中心的数据权限逻辑：
+     * - 管理员/主任：可查看全部已完成审批（用于管理和统计）
+     * - 其他角色（包括财务）：只能查看自己发起或自己审批过的记录
      */
     public List<ApprovalDTO> getMyApprovedHistory() {
         Long currentUserId = SecurityUtils.getUserId();
-        String dataScope = SecurityUtils.getDataScope();
-        Long deptId = SecurityUtils.getDepartmentId();
         
         List<Approval> approvals;
         
-        switch (dataScope) {
-            case "ALL":
-                // 可查看所有已完成审批
-                approvals = approvalMapper.selectAllApprovalHistory();
-                break;
-            case "DEPT_AND_CHILD":
-                // 可查看本部门及下级部门的已完成审批
-                if (deptId != null) {
-                    List<Long> deptIds = getAllChildDepartmentIds(deptId);
-                    deptIds.add(deptId);
-                    approvals = approvalMapper.selectApprovalHistoryByDeptIds(deptIds);
-                } else {
-                    // 没有部门，只能看自己相关的
-                    approvals = approvalMapper.selectSelfApprovalHistory(currentUserId);
-                }
-                break;
-            case "DEPT":
-                // 可查看本部门的已完成审批
-                if (deptId != null) {
-                    approvals = approvalMapper.selectApprovalHistoryByDeptIds(List.of(deptId));
-                } else {
-                    approvals = approvalMapper.selectSelfApprovalHistory(currentUserId);
-                }
-                break;
-            default: // SELF
-                // 只能查看自己发起或审批的记录
-                approvals = approvalMapper.selectSelfApprovalHistory(currentUserId);
-                break;
+        if (isAdminOrDirector()) {
+            // 管理员/主任可查看所有已完成审批
+            approvals = approvalMapper.selectAllApprovalHistory();
+        } else {
+            // 其他角色：只能查看自己发起或自己审批过的记录
+            approvals = approvalMapper.selectSelfApprovalHistory(currentUserId);
         }
         
         return approvals.stream().map(this::toDTO).collect(Collectors.toList());
@@ -153,10 +167,26 @@ public class ApprovalAppService {
 
     /**
      * 获取审批详情
+     * 权限检查：只有申请人、审批人、或管理员/主任可以查看
      */
     public ApprovalDTO getApprovalById(Long id) {
         Approval approval = approvalRepository.getByIdOrThrow(id, "审批记录不存在");
-        return toDTO(approval);
+        
+        // 数据权限检查
+        Long currentUserId = SecurityUtils.getUserId();
+        
+        // 管理员/主任可查看所有
+        if (isAdminOrDirector()) {
+            return toDTO(approval);
+        }
+        
+        // 申请人或审批人可查看（审批中心的核心逻辑）
+        if (currentUserId.equals(approval.getApplicantId()) || 
+            currentUserId.equals(approval.getApproverId())) {
+            return toDTO(approval);
+        }
+        
+        throw new BusinessException("无权查看此审批记录");
     }
 
     /**
@@ -316,6 +346,7 @@ public class ApprovalAppService {
         dto.setUrgencyName(getUrgencyName(approval.getUrgency()));
         dto.setCreatedAt(approval.getCreatedAt());
         dto.setUpdatedAt(approval.getUpdatedAt());
+        dto.setBusinessSnapshot(approval.getBusinessSnapshot());
         return dto;
     }
 
@@ -331,6 +362,7 @@ public class ApprovalAppService {
             case "MATTER_CLOSE" -> "项目结案";
             case "REGULARIZATION" -> "转正申请";
             case "RESIGNATION" -> "离职申请";
+            case "LETTER_APPLICATION" -> "出函申请";
             default -> type;
         };
     }

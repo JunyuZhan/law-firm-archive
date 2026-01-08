@@ -185,10 +185,18 @@ public class PaymentAmendmentService {
 
     /**
      * 查询变更申请列表
+     * 数据范围：ADMIN/DIRECTOR/FINANCE 可看全部，其他人只能看自己申请的
      */
     public PageResult<PaymentAmendmentDTO> listAmendments(int pageNum, int pageSize, String status) {
         LambdaQueryWrapper<PaymentAmendment> wrapper = new LambdaQueryWrapper<>();
         // @TableLogic 会自动处理 deleted 条件，无需手动添加
+        
+        // 数据范围过滤
+        Long currentUserId = SecurityUtils.getUserId();
+        if (!canViewAllAmendments()) {
+            // 非管理层/财务只能看自己申请的
+            wrapper.eq(PaymentAmendment::getRequestedBy, currentUserId);
+        }
         
         if (status != null && !status.isEmpty()) {
             wrapper.eq(PaymentAmendment::getStatus, status);
@@ -204,6 +212,18 @@ public class PaymentAmendmentService {
             .collect(Collectors.toList());
         
         return PageResult.of(records, page.getTotal(), pageNum, pageSize);
+    }
+    
+    /**
+     * 检查是否可以查看所有变更申请（ADMIN/DIRECTOR/FINANCE）
+     */
+    private boolean canViewAllAmendments() {
+        if (SecurityUtils.isAdmin()) {
+            return true;
+        }
+        Long userId = SecurityUtils.getUserId();
+        List<String> roleCodes = userRepository.findRoleCodesByUserId(userId);
+        return roleCodes.contains("DIRECTOR") || roleCodes.contains("FINANCE");
     }
 
     /**

@@ -44,6 +44,13 @@ public class DeadlineAppService {
     private final MatterRepository matterRepository;
     private final UserRepository userRepository;
     private final NotificationAppService notificationAppService;
+    private MatterAppService matterAppService;
+    
+    @org.springframework.beans.factory.annotation.Autowired
+    @org.springframework.context.annotation.Lazy
+    public void setMatterAppService(MatterAppService matterAppService) {
+        this.matterAppService = matterAppService;
+    }
 
     /**
      * 分页查询期限提醒
@@ -86,6 +93,9 @@ public class DeadlineAppService {
     @Transactional
     public DeadlineDTO createDeadline(CreateDeadlineCommand command) {
         Matter matter = matterRepository.getByIdOrThrow(command.getMatterId(), "项目不存在");
+        
+        // 验证用户是否是项目负责人或参与者（只有项目成员才能创建期限提醒）
+        matterAppService.validateMatterOwnership(command.getMatterId());
 
         // 验证期限日期不能早于基准日期
         if (command.getDeadlineDate().isBefore(command.getBaseDate())) {
@@ -175,6 +185,9 @@ public class DeadlineAppService {
     @Transactional
     public DeadlineDTO updateDeadline(UpdateDeadlineCommand command) {
         Deadline deadline = deadlineRepository.getByIdOrThrow(command.getId(), "期限提醒不存在");
+        
+        // 验证用户是否是项目负责人或参与者（只有项目成员才能更新期限提醒）
+        matterAppService.validateMatterOwnership(deadline.getMatterId());
 
         if (!"ACTIVE".equals(deadline.getStatus())) {
             throw new BusinessException("只有有效状态的期限才能更新");
@@ -211,6 +224,9 @@ public class DeadlineAppService {
     @Transactional
     public DeadlineDTO completeDeadline(Long id) {
         Deadline deadline = deadlineRepository.getByIdOrThrow(id, "期限提醒不存在");
+        
+        // 验证用户是否是项目负责人或参与者（只有项目成员才能完成期限）
+        matterAppService.validateMatterOwnership(deadline.getMatterId());
 
         if (!"ACTIVE".equals(deadline.getStatus())) {
             throw new BusinessException("只有有效状态的期限才能标记为完成");
@@ -231,6 +247,10 @@ public class DeadlineAppService {
     @Transactional
     public void deleteDeadline(Long id) {
         Deadline deadline = deadlineRepository.getByIdOrThrow(id, "期限提醒不存在");
+        
+        // 验证用户是否是项目负责人或参与者（只有项目成员才能删除期限提醒）
+        matterAppService.validateMatterOwnership(deadline.getMatterId());
+        
         deadlineRepository.softDelete(id);
         log.info("删除期限提醒成功: id={}", id);
     }

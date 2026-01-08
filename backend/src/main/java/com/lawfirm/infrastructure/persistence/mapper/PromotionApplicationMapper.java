@@ -7,6 +7,9 @@ import com.lawfirm.domain.hr.entity.PromotionApplication;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
+
+import java.time.LocalDate;
 
 /**
  * 晋升申请 Mapper
@@ -53,4 +56,48 @@ public interface PromotionApplicationMapper extends BaseMapper<PromotionApplicat
      */
     @Select("SELECT COUNT(*) FROM hr_promotion_application WHERE deleted = false AND status IN ('PENDING', 'REVIEWING')")
     int countPending();
+
+    /**
+     * 更新状态
+     */
+    @Update("UPDATE hr_promotion_application SET status = #{status}, updated_at = NOW() WHERE id = #{id}")
+    int updateStatus(@Param("id") Long id, @Param("status") String status);
+
+    /**
+     * 审批通过
+     */
+    @Update("""
+        UPDATE hr_promotion_application SET 
+            status = 'APPROVED',
+            approved_by = #{approvedBy},
+            approved_by_name = #{approvedByName},
+            approved_at = NOW(),
+            approval_comment = #{comment},
+            effective_date = #{effectiveDate},
+            updated_at = NOW()
+        WHERE id = #{id}
+        """)
+    int approve(@Param("id") Long id, 
+                @Param("approvedBy") Long approvedBy, 
+                @Param("approvedByName") String approvedByName,
+                @Param("comment") String comment,
+                @Param("effectiveDate") LocalDate effectiveDate);
+
+    /**
+     * 审批拒绝
+     */
+    @Update("""
+        UPDATE hr_promotion_application SET 
+            status = 'REJECTED',
+            approved_by = #{approvedBy},
+            approved_by_name = #{approvedByName},
+            approved_at = NOW(),
+            approval_comment = #{comment},
+            updated_at = NOW()
+        WHERE id = #{id}
+        """)
+    int reject(@Param("id") Long id, 
+               @Param("approvedBy") Long approvedBy, 
+               @Param("approvedByName") String approvedByName,
+               @Param("comment") String comment);
 }

@@ -40,6 +40,18 @@ public interface LeadMapper extends BaseMapper<Lead> {
         <if test="sourceChannel != null and sourceChannel != ''">
             AND l.source_channel = #{sourceChannel}
         </if>
+        <if test="responsibleUserIds != null and responsibleUserIds.size() > 0">
+            AND l.responsible_user_id IN
+            <foreach collection="responsibleUserIds" item="id" open="(" separator="," close=")">
+                #{id}
+            </foreach>
+        </if>
+        <if test="originatorIds != null and originatorIds.size() > 0">
+            AND l.originator_id IN
+            <foreach collection="originatorIds" item="id" open="(" separator="," close=")">
+                #{id}
+            </foreach>
+        </if>
         ORDER BY l.created_at DESC
         </script>
         """)
@@ -48,7 +60,9 @@ public interface LeadMapper extends BaseMapper<Lead> {
             @Param("status") String status,
             @Param("originatorId") Long originatorId,
             @Param("responsibleUserId") Long responsibleUserId,
-            @Param("sourceChannel") String sourceChannel
+            @Param("sourceChannel") String sourceChannel,
+            @Param("responsibleUserIds") java.util.List<Long> responsibleUserIds,
+            @Param("originatorIds") java.util.List<Long> originatorIds
     );
 
     /**

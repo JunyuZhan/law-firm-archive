@@ -30,6 +30,11 @@ public interface TimesheetMapper extends BaseMapper<Timesheet> {
             "<if test='startDate != null'> AND work_date &gt;= #{startDate} </if>" +
             "<if test='endDate != null'> AND work_date &lt;= #{endDate} </if>" +
             "<if test='billable != null'> AND billable = #{billable} </if>" +
+            "<if test='matterIds != null and matterIds.size() > 0'> AND matter_id IN " +
+            "<foreach collection='matterIds' item='id' open='(' separator=',' close=')'>" +
+            "#{id}" +
+            "</foreach>" +
+            "</if>" +
             "ORDER BY work_date DESC, created_at DESC" +
             "</script>")
     IPage<Timesheet> selectTimesheetPage(Page<Timesheet> page,
@@ -39,7 +44,8 @@ public interface TimesheetMapper extends BaseMapper<Timesheet> {
                                          @Param("status") String status,
                                          @Param("startDate") LocalDate startDate,
                                          @Param("endDate") LocalDate endDate,
-                                         @Param("billable") Boolean billable);
+                                         @Param("billable") Boolean billable,
+                                         @Param("matterIds") java.util.List<Long> matterIds);
 
     /**
      * 按用户和日期范围查询

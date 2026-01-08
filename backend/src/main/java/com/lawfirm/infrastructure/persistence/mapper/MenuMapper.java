@@ -50,8 +50,9 @@ public interface MenuMapper extends BaseMapper<Menu> {
     int deleteRoleMenus(@Param("roleId") Long roleId);
 
     /**
-     * 插入角色菜单关联
+     * 插入角色菜单关联（如果已存在则忽略）
      */
-    @Insert("INSERT INTO sys_role_menu (role_id, menu_id) VALUES (#{roleId}, #{menuId})")
+    @Insert("INSERT INTO sys_role_menu (role_id, menu_id) VALUES (#{roleId}, #{menuId}) " +
+            "ON CONFLICT (role_id, menu_id) DO NOTHING")
     int insertRoleMenu(@Param("roleId") Long roleId, @Param("menuId") Long menuId);
 }

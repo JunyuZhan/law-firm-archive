@@ -30,4 +30,9 @@ public class SealApplicationQueryDTO extends PageQuery {
      * 状态
      */
     private String status;
+
+    /**
+     * 保管人ID（用于查询保管人相关的申请）
+     */
+    private Long keeperId;
 }

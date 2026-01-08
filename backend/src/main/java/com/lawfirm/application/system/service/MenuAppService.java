@@ -64,15 +64,30 @@ public class MenuAppService {
      */
     @Transactional
     public void assignRoleMenus(Long roleId, List<Long> menuIds) {
-        // 先删除原有关联
-        menuMapper.deleteRoleMenus(roleId);
-        // 再插入新关联
-        if (menuIds != null && !menuIds.isEmpty()) {
-            for (Long menuId : menuIds) {
-                menuMapper.insertRoleMenu(roleId, menuId);
+        try {
+            // 验证角色是否存在
+            if (roleId == null) {
+                throw new BusinessException("角色ID不能为空");
             }
+            
+            // 先删除原有关联
+            menuMapper.deleteRoleMenus(roleId);
+            
+            // 再插入新关联
+            if (menuIds != null && !menuIds.isEmpty()) {
+                // 去重
+                List<Long> uniqueMenuIds = menuIds.stream().distinct().collect(Collectors.toList());
+                for (Long menuId : uniqueMenuIds) {
+                    if (menuId != null) {
+                        menuMapper.insertRoleMenu(roleId, menuId);
+                    }
+                }
+            }
+            log.info("角色菜单分配成功: roleId={}, menuCount={}", roleId, menuIds != null ? menuIds.size() : 0);
+        } catch (Exception e) {
+            log.error("分配角色菜单失败: roleId={}, menuIds={}", roleId, menuIds, e);
+            throw new BusinessException("分配角色菜单失败: " + e.getMessage());
         }
-        log.info("角色菜单分配成功: roleId={}, menuCount={}", roleId, menuIds != null ? menuIds.size() : 0);
     }
 
     /**

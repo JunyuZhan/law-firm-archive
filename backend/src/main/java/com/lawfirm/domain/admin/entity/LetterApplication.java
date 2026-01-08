@@ -118,7 +118,17 @@ public class LetterApplication extends BaseEntity {
     private String status = "PENDING";
 
     /**
-     * 审批人ID
+     * 指定审批人ID（申请时选择）
+     */
+    private Long assignedApproverId;
+
+    /**
+     * 审批中心审批记录ID（关联 workbench_approval 表）
+     */
+    private Long approvalId;
+
+    /**
+     * 审批人ID（实际审批人）
      */
     private Long approvedBy;
 

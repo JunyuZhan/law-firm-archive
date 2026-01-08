@@ -33,13 +33,17 @@ public class ScheduleAppService {
 
     /**
      * 查询日程
+     * 数据权限：仅限用户自己创建的日程，与角色无关
      */
     public List<ScheduleDTO> listSchedules(Long userId, Long matterId, String scheduleType,
                                            LocalDateTime startTime, LocalDateTime endTime,
                                            int pageNum, int pageSize) {
+        // 日程管理仅限用户自己的数据，忽略传入的userId参数
+        Long currentUserId = SecurityUtils.getUserId();
+        
         IPage<Schedule> page = scheduleMapper.selectSchedulePage(
                 new Page<>(pageNum, pageSize),
-                userId, matterId, scheduleType, startTime, endTime
+                currentUserId, matterId, scheduleType, startTime, endTime
         );
         return page.getRecords().stream().map(this::toDTO).collect(Collectors.toList());
     }
@@ -77,20 +81,34 @@ public class ScheduleAppService {
 
     /**
      * 获取日程详情
+     * 仅能查看自己创建的日程
      */
     public ScheduleDTO getScheduleById(Long id) {
         Schedule schedule = scheduleRepository.getByIdOrThrow(id, "日程不存在");
+        checkScheduleOwnership(schedule);
         return toDTO(schedule);
+    }
+    
+    /**
+     * 检查日程所有权
+     */
+    private void checkScheduleOwnership(Schedule schedule) {
+        Long currentUserId = SecurityUtils.getUserId();
+        if (!schedule.getUserId().equals(currentUserId)) {
+            throw new BusinessException("无权操作此日程");
+        }
     }
 
     /**
      * 更新日程
+     * 仅能更新自己创建的日程
      */
     @Transactional
     public ScheduleDTO updateSchedule(Long id, String title, String description, String location,
                                       LocalDateTime startTime, LocalDateTime endTime,
                                       Integer reminderMinutes) {
         Schedule schedule = scheduleRepository.getByIdOrThrow(id, "日程不存在");
+        checkScheduleOwnership(schedule);
 
         if (StringUtils.hasText(title)) schedule.setTitle(title);
         if (description != null) schedule.setDescription(description);
@@ -106,20 +124,24 @@ public class ScheduleAppService {
 
     /**
      * 删除日程
+     * 仅能删除自己创建的日程
      */
     @Transactional
     public void deleteSchedule(Long id) {
         Schedule schedule = scheduleRepository.getByIdOrThrow(id, "日程不存在");
+        checkScheduleOwnership(schedule);
         scheduleRepository.removeById(id);
         log.info("日程删除成功: {}", schedule.getTitle());
     }
 
     /**
      * 取消日程
+     * 仅能取消自己创建的日程
      */
     @Transactional
     public void cancelSchedule(Long id) {
         Schedule schedule = scheduleRepository.getByIdOrThrow(id, "日程不存在");
+        checkScheduleOwnership(schedule);
         schedule.setStatus("CANCELLED");
         scheduleRepository.updateById(schedule);
         log.info("日程已取消: {}", schedule.getTitle());
@@ -139,6 +161,16 @@ public class ScheduleAppService {
     public List<ScheduleDTO> getMyTodaySchedules() {
         Long userId = SecurityUtils.getUserId();
         return getSchedulesByDate(userId, LocalDate.now());
+    }
+
+    /**
+     * 获取我近期的日程（未来N天）
+     */
+    public List<ScheduleDTO> getMyUpcomingSchedules(int days, int limit) {
+        Long userId = SecurityUtils.getUserId();
+        LocalDateTime endTime = LocalDateTime.now().plusDays(days);
+        List<Schedule> schedules = scheduleMapper.selectUpcomingSchedules(userId, endTime, limit);
+        return schedules.stream().map(this::toDTO).collect(Collectors.toList());
     }
 
     /**

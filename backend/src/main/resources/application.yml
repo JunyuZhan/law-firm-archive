@@ -76,6 +76,8 @@ jwt:
 # MinIO配置
 minio:
   endpoint: http://localhost:9000
+  # 外部访问地址（Docker 容器如 OnlyOffice 访问 MinIO 时使用）
+  external-endpoint: http://host.docker.internal:9000
   access-key: ${MINIO_ACCESS_KEY:minioadmin}
   secret-key: ${MINIO_SECRET_KEY:minioadmin}
   bucket-name: law-firm
@@ -84,6 +86,19 @@ minio:
 ocr:
   service-url: http://localhost:8000
   timeout: 30000
+
+# OnlyOffice 文档服务配置
+onlyoffice:
+  # OnlyOffice Document Server 地址（Docker 部署）
+  document-server-url: ${ONLYOFFICE_URL:http://localhost:8088}
+  # 后端服务地址（OnlyOffice 回调时使用，需要 OnlyOffice 容器能访问）
+  callback-url: ${ONLYOFFICE_CALLBACK_URL:http://host.docker.internal:8080/api}
+  # 文件服务地址（OnlyOffice 获取文件时使用）
+  file-server-url: ${FILE_SERVER_URL:http://host.docker.internal:9000}
+  # JWT 密钥（如果 OnlyOffice 启用了 JWT）
+  jwt-secret: ${ONLYOFFICE_JWT_SECRET:}
+  # 是否启用 JWT
+  jwt-enabled: false
 
 # 日志配置
 logging:
@@ -119,7 +134,7 @@ law-firm:
     salaried-originator-commission: false  # 授薪律师是否获得案源提成
   # 审批配置
   approval:
-    conflict-check-approvers: PARTNER,DIRECTOR  # 利冲审批角色
+    conflict-check-approvers: TEAM_LEADER,DIRECTOR  # 利冲审批角色
     contract-amount-threshold: 100000  # 合同金额审批阈值
   # 文件配置
   file:

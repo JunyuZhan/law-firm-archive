@@ -4,6 +4,8 @@ import com.lawfirm.common.base.PageQuery;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
+import java.time.LocalDateTime;
+
 /**
  * 案件查询条件
  */
@@ -50,5 +52,15 @@ public class MatterQueryDTO extends PageQuery {
      * 我参与的案件（当前用户）
      */
     private Boolean myMatters;
+    
+    /**
+     * 创建时间开始
+     */
+    private LocalDateTime createdAtFrom;
+    
+    /**
+     * 创建时间结束
+     */
+    private LocalDateTime createdAtTo;
 }
 

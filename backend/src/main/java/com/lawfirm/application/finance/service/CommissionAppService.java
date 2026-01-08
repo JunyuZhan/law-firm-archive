@@ -349,12 +349,12 @@ public class CommissionAppService {
 
     /**
      * 查询提成记录列表
+     * 数据权限：ADMIN/DIRECTOR/TEAM_LEADER/FINANCE 可看全部，其他人只能看自己的
      */
     public PageResult<CommissionDTO> listCommissions(CommissionQueryDTO query) {
         // 数据权限：普通律师只能看自己的提成（通过 commission_detail 表关联）
         Long currentUserId = SecurityUtils.getUserId();
-        List<String> roleCodes = userRepository.findRoleCodesByUserId(currentUserId);
-        if (!roleCodes.contains("admin") && !roleCodes.contains("director") && !roleCodes.contains("partner")) {
+        if (!canViewAllCommissions()) {
             // 如果查询指定了 userId，且不是当前用户，则无权限
             if (query.getUserId() != null && !query.getUserId().equals(currentUserId)) {
                 throw new BusinessException("无权查看他人的提成记录");
@@ -432,7 +432,7 @@ public class CommissionAppService {
         // 权限检查：普通律师只能查看自己的提成（通过 commission_detail 表检查）
         Long currentUserId = SecurityUtils.getUserId();
         List<String> roleCodes = userRepository.findRoleCodesByUserId(currentUserId);
-        if (!roleCodes.contains("admin") && !roleCodes.contains("director") && !roleCodes.contains("partner")) {
+        if (!roleCodes.contains("ADMIN") && !roleCodes.contains("DIRECTOR") && !roleCodes.contains("TEAM_LEADER")) {
             // 检查 commission_detail 表中是否有该用户的记录
             int count = commissionRepository.getBaseMapper().countByCommissionIdAndUserId(id, currentUserId);
             if (count == 0) {
@@ -450,7 +450,7 @@ public class CommissionAppService {
         // 权限检查：普通律师只能查看自己的提成总额
         Long currentUserId = SecurityUtils.getUserId();
         List<String> roleCodes = userRepository.findRoleCodesByUserId(currentUserId);
-        if (!roleCodes.contains("admin") && !roleCodes.contains("director") && !roleCodes.contains("partner")) {
+        if (!roleCodes.contains("ADMIN") && !roleCodes.contains("DIRECTOR") && !roleCodes.contains("TEAM_LEADER")) {
             if (!userId.equals(currentUserId)) {
                 throw new BusinessException("无权查看他人的提成总额");
             }
@@ -590,7 +590,8 @@ public class CommissionAppService {
         // 权限检查
         Long currentUserId = SecurityUtils.getUserId();
         List<String> roleCodes = userRepository.findRoleCodesByUserId(currentUserId);
-        if (!roleCodes.contains("admin") && !roleCodes.contains("director") && !roleCodes.contains("partner") && !roleCodes.contains("finance")) {
+        if (!roleCodes.contains("ADMIN") && !roleCodes.contains("DIRECTOR") && !roleCodes.contains("TEAM_LEADER") 
+                && !roleCodes.contains("FINANCE")) {
             if (userId == null || !userId.equals(currentUserId)) {
                 throw new BusinessException("无权查看提成报表");
             }
@@ -602,7 +603,7 @@ public class CommissionAppService {
     // ========== 权限检查 ==========
 
     /**
-     * 检查是否有规则管理权限（仅admin/director）
+     * 检查是否有规则管理权限（仅ADMIN/DIRECTOR）
      */
     private void checkRulePermission() {
         Long userId = SecurityUtils.getUserId();
@@ -612,42 +613,60 @@ public class CommissionAppService {
         }
         
         List<String> roleCodes = userRepository.findRoleCodesByUserId(userId);
-        if (!roleCodes.contains("admin") && !roleCodes.contains("director")) {
+        if (!roleCodes.contains("ADMIN") && !roleCodes.contains("DIRECTOR")) {
             throw new BusinessException("只有系统管理员和主任可以管理提成规则");
         }
     }
 
     /**
-     * 检查是否有管理层权限（admin/director/partner）
+     * 检查是否有管理层权限（ADMIN/DIRECTOR/TEAM_LEADER）
      */
     private void checkManagementPermission() {
         Long userId = SecurityUtils.getUserId();
         List<String> roleCodes = userRepository.findRoleCodesByUserId(userId);
-        if (!roleCodes.contains("admin") && !roleCodes.contains("director") && !roleCodes.contains("partner")) {
+        if (!roleCodes.contains("ADMIN") && !roleCodes.contains("DIRECTOR") && !roleCodes.contains("TEAM_LEADER")) {
             throw new BusinessException("只有管理层可以查看提成汇总");
         }
     }
 
     /**
-     * 检查是否有主任权限（仅director）
+     * 检查是否有提成审批权限（ADMIN/DIRECTOR）
      */
     private void checkDirectorPermission() {
+        if (SecurityUtils.isAdmin()) {
+            return;
+        }
         Long userId = SecurityUtils.getUserId();
         List<String> roleCodes = userRepository.findRoleCodesByUserId(userId);
-        if (!roleCodes.contains("admin") && !roleCodes.contains("director")) {
-            throw new BusinessException("只有主任可以审批提成");
+        if (!roleCodes.contains("DIRECTOR")) {
+            throw new BusinessException("只有管理员和主任可以审批提成");
         }
     }
 
     /**
-     * 检查是否有财务权限（finance角色）
+     * 检查是否有财务权限（ADMIN/FINANCE角色）
      */
     private void checkFinancePermission() {
+        if (SecurityUtils.isAdmin()) {
+            return;
+        }
         Long userId = SecurityUtils.getUserId();
         List<String> roleCodes = userRepository.findRoleCodesByUserId(userId);
-        if (!roleCodes.contains("admin") && !roleCodes.contains("finance")) {
+        if (!roleCodes.contains("FINANCE")) {
             throw new BusinessException("只有财务人员可以确认提成发放");
         }
+    }
+    
+    /**
+     * 检查是否可以查看所有提成记录（ADMIN/DIRECTOR/TEAM_LEADER/FINANCE）
+     */
+    private boolean canViewAllCommissions() {
+        if (SecurityUtils.isAdmin()) {
+            return true;
+        }
+        Long userId = SecurityUtils.getUserId();
+        List<String> roleCodes = userRepository.findRoleCodesByUserId(userId);
+        return roleCodes.contains("DIRECTOR") || roleCodes.contains("TEAM_LEADER") || roleCodes.contains("FINANCE");
     }
 
     // ========== DTO转换 ==========

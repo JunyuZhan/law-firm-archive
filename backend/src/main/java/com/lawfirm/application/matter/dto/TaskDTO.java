@@ -56,4 +56,24 @@ public class TaskDTO extends BaseDTO {
     private String createdByName;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    
+    /**
+     * 验收状态：PENDING_REVIEW-待验收, APPROVED-已通过, REJECTED-已退回
+     */
+    private String reviewStatus;
+    
+    /**
+     * 验收意见
+     */
+    private String reviewComment;
+    
+    /**
+     * 验收时间
+     */
+    private LocalDateTime reviewedAt;
+    
+    /**
+     * 验收人ID
+     */
+    private Long reviewedBy;
 }

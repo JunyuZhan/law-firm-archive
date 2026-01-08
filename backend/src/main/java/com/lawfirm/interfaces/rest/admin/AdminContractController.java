@@ -4,7 +4,6 @@ import com.lawfirm.application.admin.dto.AdminContractQueryDTO;
 import com.lawfirm.application.admin.dto.AdminContractViewDTO;
 import com.lawfirm.application.admin.service.AdminContractQueryService;
 import com.lawfirm.application.admin.service.JudicialFilingExportService;
-import com.lawfirm.common.annotation.OperationLog;
 import com.lawfirm.common.annotation.RequirePermission;
 import com.lawfirm.common.result.PageResult;
 import com.lawfirm.common.result.Result;
@@ -18,6 +17,8 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.Set;
 
 /**
@@ -67,7 +68,6 @@ public class AdminContractController {
      */
     @GetMapping("/export/judicial-filing")
     @RequirePermission("admin:contract:export")
-    @OperationLog(module = "行政管理", action = "导出司法局报备")
     public void exportJudicialFiling(
             @RequestParam int year,
             @RequestParam int month,
@@ -84,6 +84,39 @@ public class AdminContractController {
         }
         
         String fileName = String.format("收案清单_%d年%d月.xlsx", year, month);
+        String encodedFileName = URLEncoder.encode(fileName, StandardCharsets.UTF_8);
+        
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setHeader("Content-Disposition", "attachment; filename*=UTF-8''" + encodedFileName);
+        
+        try (OutputStream out = response.getOutputStream()) {
+            byte[] buffer = new byte[4096];
+            int bytesRead;
+            while ((bytesRead = excelStream.read(buffer)) != -1) {
+                out.write(buffer, 0, bytesRead);
+            }
+            out.flush();
+        }
+    }
+
+    /**
+     * 导出合同列表（根据查询条件）
+     * 导出当前查询结果到Excel
+     */
+    @GetMapping("/export/list")
+    @RequirePermission("admin:contract:export")
+    public void exportContractList(AdminContractQueryDTO query, HttpServletResponse response) throws IOException {
+        Long operatorId = SecurityUtils.getCurrentUserId();
+        
+        // 获取所有符合条件的合同（不分页）
+        query.setPageNum(1);
+        query.setPageSize(Integer.MAX_VALUE);
+        PageResult<AdminContractViewDTO> result = contractQueryService.listApprovedContracts(query);
+        
+        ByteArrayInputStream excelStream = exportService.exportContractList(result.getRecords(), operatorId);
+        
+        String fileName = String.format("合同列表_%s.xlsx", 
+                LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd")));
         String encodedFileName = URLEncoder.encode(fileName, StandardCharsets.UTF_8);
         
         response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");

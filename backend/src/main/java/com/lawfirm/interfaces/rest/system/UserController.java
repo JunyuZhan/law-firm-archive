@@ -5,6 +5,7 @@ import com.lawfirm.application.system.command.UpdateUserCommand;
 import com.lawfirm.application.system.dto.UserDTO;
 import com.lawfirm.application.system.dto.UserQueryDTO;
 import com.lawfirm.application.system.service.UserAppService;
+import com.lawfirm.application.system.service.UserRoleChangeService;
 import com.lawfirm.common.annotation.OperationLog;
 import com.lawfirm.common.annotation.RequirePermission;
 import com.lawfirm.common.result.PageResult;
@@ -35,6 +36,7 @@ import java.util.Map;
 public class UserController {
 
     private final UserAppService userAppService;
+    private final UserRoleChangeService userRoleChangeService;
 
     /**
      * 分页查询用户列表
@@ -153,6 +155,45 @@ public class UserController {
         return Result.success(result);
     }
 
+    /**
+     * 检查用户角色变更前的待处理事项
+     */
+    @GetMapping("/{userId}/role-change-check")
+    @RequirePermission("sys:user:list")
+    @Operation(summary = "检查角色变更", description = "检查用户角色变更前的待处理业务")
+    public Result<UserRoleChangeService.RoleChangeCheckResult> checkRoleChange(
+            @PathVariable Long userId,
+            @RequestParam List<Long> newRoleIds) {
+        UserRoleChangeService.RoleChangeCheckResult result = userRoleChangeService.checkRoleChange(userId, newRoleIds);
+        return Result.success(result);
+    }
+
+    /**
+     * 执行角色变更
+     */
+    @PostMapping("/{userId}/change-role")
+    @RequirePermission("sys:user:list")
+    @Operation(summary = "变更用户角色", description = "执行用户角色变更，记录变更历史并清除权限缓存")
+    @OperationLog(module = "用户管理", action = "变更用户角色")
+    public Result<Void> changeUserRole(
+            @PathVariable Long userId,
+            @RequestBody @Valid ChangeRoleRequest request) {
+        userRoleChangeService.changeUserRole(userId, request.getRoleIds(), request.getReason());
+        return Result.success();
+    }
+
+    /**
+     * 清除用户权限缓存
+     */
+    @PostMapping("/{userId}/clear-cache")
+    @RequirePermission("sys:user:list")
+    @Operation(summary = "清除权限缓存", description = "清除用户的Token和权限缓存，强制用户重新登录")
+    @OperationLog(module = "用户管理", action = "清除权限缓存")
+    public Result<Void> clearUserPermissionCache(@PathVariable Long userId) {
+        userRoleChangeService.clearUserPermissionCache(userId);
+        return Result.success();
+    }
+
     // ========== Request DTOs ==========
 
     @Data
@@ -171,5 +212,13 @@ public class UserController {
     public static class ChangeStatusRequest {
         @NotBlank(message = "状态不能为空")
         private String status;
+    }
+
+    @Data
+    public static class ChangeRoleRequest {
+        @NotEmpty(message = "角色ID列表不能为空")
+        private List<Long> roleIds;
+        
+        private String reason;
     }
 }

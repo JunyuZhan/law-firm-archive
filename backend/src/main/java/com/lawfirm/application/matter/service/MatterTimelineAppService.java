@@ -1,15 +1,25 @@
 package com.lawfirm.application.matter.service;
 
 import com.lawfirm.application.matter.dto.MatterTimelineDTO;
+import com.lawfirm.common.exception.BusinessException;
+import com.lawfirm.common.util.SecurityUtils;
+import com.lawfirm.domain.admin.entity.LetterApplication;
+import com.lawfirm.domain.evidence.entity.Evidence;
 import com.lawfirm.domain.finance.entity.Contract;
 import com.lawfirm.domain.finance.entity.Payment;
+import com.lawfirm.domain.matter.entity.Deadline;
 import com.lawfirm.domain.matter.entity.Matter;
+import com.lawfirm.domain.matter.entity.Schedule;
 import com.lawfirm.domain.matter.entity.Task;
 import com.lawfirm.domain.matter.entity.Timesheet;
 import com.lawfirm.domain.matter.repository.MatterRepository;
 import com.lawfirm.domain.system.repository.UserRepository;
+import com.lawfirm.infrastructure.persistence.mapper.DeadlineMapper;
+import com.lawfirm.infrastructure.persistence.mapper.EvidenceMapper;
 import com.lawfirm.infrastructure.persistence.mapper.FinanceContractMapper;
+import com.lawfirm.infrastructure.persistence.mapper.LetterApplicationMapper;
 import com.lawfirm.infrastructure.persistence.mapper.PaymentMapper;
+import com.lawfirm.infrastructure.persistence.mapper.ScheduleMapper;
 import com.lawfirm.infrastructure.persistence.mapper.TaskMapper;
 import com.lawfirm.infrastructure.persistence.mapper.TimesheetMapper;
 import lombok.RequiredArgsConstructor;
@@ -31,10 +41,15 @@ import java.util.stream.Collectors;
 public class MatterTimelineAppService {
 
     private final MatterRepository matterRepository;
+    private final MatterAppService matterAppService;
     private final TaskMapper taskMapper;
     private final TimesheetMapper timesheetMapper;
     private final FinanceContractMapper financeContractMapper;
     private final PaymentMapper paymentMapper;
+    private final ScheduleMapper scheduleMapper;
+    private final DeadlineMapper deadlineMapper;
+    private final EvidenceMapper evidenceMapper;
+    private final LetterApplicationMapper letterApplicationMapper;
     private final UserRepository userRepository;
 
     /**
@@ -43,6 +58,19 @@ public class MatterTimelineAppService {
     public List<MatterTimelineDTO> getMatterTimeline(Long matterId) {
         // 验证项目存在
         Matter matter = matterRepository.getByIdOrThrow(matterId, "项目不存在");
+        
+        // 验证用户是否有权限访问该项目（通过MatterAppService的辅助方法）
+        // 注意：这里需要调用MatterAppService的私有方法，但由于是私有方法，我们需要通过公共方法来实现
+        String dataScope = SecurityUtils.getDataScope();
+        Long currentUserId = SecurityUtils.getUserId();
+        Long deptId = SecurityUtils.getDepartmentId();
+        List<Long> accessibleMatterIds = matterAppService.getAccessibleMatterIds(dataScope, currentUserId, deptId);
+        
+        // 如果返回null，表示可以访问所有项目（ALL权限）
+        // 否则检查项目ID是否在可访问列表中
+        if (accessibleMatterIds != null && !accessibleMatterIds.contains(matterId)) {
+            throw new BusinessException("无权访问该项目");
+        }
 
         List<MatterTimelineDTO> timeline = new ArrayList<>();
 
@@ -164,6 +192,119 @@ public class MatterTimelineAppService {
             timeline.add(statusEvent);
         }
 
+        // 7. 日程事件
+        List<Schedule> schedules = scheduleMapper.selectList(
+                com.baomidou.mybatisplus.core.toolkit.Wrappers.<Schedule>lambdaQuery()
+                        .eq(Schedule::getMatterId, matterId)
+                        .eq(Schedule::getDeleted, false)
+        );
+        for (Schedule schedule : schedules) {
+            if (schedule.getStartTime() != null) {
+                MatterTimelineDTO scheduleEvent = createTimelineEvent(
+                        "SCHEDULE_" + schedule.getScheduleType(),
+                        getScheduleTypeName(schedule.getScheduleType()),
+                        schedule.getStartTime(),
+                        String.format("%s：%s", getScheduleTypeName(schedule.getScheduleType()), schedule.getTitle()),
+                        schedule.getUserId(),
+                        schedule.getId(),
+                        "SCHEDULE"
+                );
+                timeline.add(scheduleEvent);
+            }
+        }
+
+        // 8. 期限提醒事件
+        List<Deadline> deadlines = deadlineMapper.selectList(
+                com.baomidou.mybatisplus.core.toolkit.Wrappers.<Deadline>lambdaQuery()
+                        .eq(Deadline::getMatterId, matterId)
+                        .eq(Deadline::getDeleted, false)
+        );
+        for (Deadline deadline : deadlines) {
+            // 期限创建事件
+            if (deadline.getCreatedAt() != null) {
+                MatterTimelineDTO deadlineCreatedEvent = createTimelineEvent(
+                        "DEADLINE_CREATED",
+                        "期限设置",
+                        deadline.getCreatedAt(),
+                        String.format("设置期限：%s（%s）", deadline.getDeadlineName(), 
+                                deadline.getDeadlineDate() != null ? deadline.getDeadlineDate().toString() : ""),
+                        deadline.getCreatedBy(),
+                        deadline.getId(),
+                        "DEADLINE"
+                );
+                timeline.add(deadlineCreatedEvent);
+            }
+            // 期限完成事件
+            if ("COMPLETED".equals(deadline.getStatus()) && deadline.getCompletedAt() != null) {
+                MatterTimelineDTO deadlineCompletedEvent = createTimelineEvent(
+                        "DEADLINE_COMPLETED",
+                        "期限完成",
+                        deadline.getCompletedAt(),
+                        String.format("期限已完成：%s", deadline.getDeadlineName()),
+                        deadline.getCompletedBy(),
+                        deadline.getId(),
+                        "DEADLINE"
+                );
+                timeline.add(deadlineCompletedEvent);
+            }
+        }
+
+        // 9. 证据上传事件
+        List<Evidence> evidences = evidenceMapper.selectList(
+                com.baomidou.mybatisplus.core.toolkit.Wrappers.<Evidence>lambdaQuery()
+                        .eq(Evidence::getMatterId, matterId)
+                        .eq(Evidence::getDeleted, false)
+        );
+        for (Evidence evidence : evidences) {
+            if (evidence.getCreatedAt() != null) {
+                MatterTimelineDTO evidenceEvent = createTimelineEvent(
+                        "EVIDENCE_UPLOADED",
+                        "证据上传",
+                        evidence.getCreatedAt(),
+                        String.format("上传证据：%s", evidence.getName()),
+                        evidence.getCreatedBy(),
+                        evidence.getId(),
+                        "EVIDENCE"
+                );
+                timeline.add(evidenceEvent);
+            }
+        }
+
+        // 10. 出函记录事件
+        List<LetterApplication> letterApps = letterApplicationMapper.selectList(
+                com.baomidou.mybatisplus.core.toolkit.Wrappers.<LetterApplication>lambdaQuery()
+                        .eq(LetterApplication::getMatterId, matterId)
+                        .eq(LetterApplication::getDeleted, false)
+        );
+        for (LetterApplication app : letterApps) {
+            // 出函申请事件
+            if (app.getCreatedAt() != null) {
+                MatterTimelineDTO letterApplyEvent = createTimelineEvent(
+                        "LETTER_APPLIED",
+                        "出函申请",
+                        app.getCreatedAt(),
+                        String.format("申请出函：%s", app.getTargetUnit()),
+                        app.getCreatedBy(),
+                        app.getId(),
+                        "LETTER"
+                );
+                timeline.add(letterApplyEvent);
+            }
+            // 出函审批通过事件
+            if ("APPROVED".equals(app.getStatus()) && app.getApprovedAt() != null) {
+                MatterTimelineDTO letterApprovedEvent = createTimelineEvent(
+                        "LETTER_APPROVED",
+                        "出函审批",
+                        app.getApprovedAt(),
+                        String.format("出函审批通过：%s", app.getTargetUnit()),
+                        app.getApprovedBy(),
+                        app.getId(),
+                        "LETTER"
+                );
+                timeline.add(letterApprovedEvent);
+            }
+        }
+
         // 按时间倒序排序
         timeline.sort(Comparator.comparing(MatterTimelineDTO::getEventTime).reversed());
 
@@ -218,6 +359,21 @@ public class MatterTimelineAppService {
             case "CLOSED" -> "结案";
             case "ARCHIVED" -> "归档";
             default -> status;
+        };
+    }
+
+    /**
+     * 获取日程类型名称
+     */
+    private String getScheduleTypeName(String scheduleType) {
+        if (scheduleType == null) return "日程";
+        return switch (scheduleType) {
+            case "COURT" -> "开庭";
+            case "MEETING" -> "会议";
+            case "DEADLINE" -> "期限";
+            case "APPOINTMENT" -> "约见";
+            case "OTHER" -> "其他日程";
+            default -> scheduleType;
         };
     }
 }

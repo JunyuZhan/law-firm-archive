@@ -1,0 +1,1179 @@
+--
+-- PostgreSQL database dump
+--
+
+\restrict zfSazfVoubL5nP9VwQfOeF5z0FOroDaYwwqhnzTxLkf1NH65LR5iS3qunPbP2V8
+
+-- Dumped from database version 15.15
+-- Dumped by pg_dump version 15.15
+
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+--
+-- Data for Name: sys_department; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+INSERT INTO public.sys_department (id, name, parent_id, sort_order, leader_id, status, created_at, updated_at, created_by, updated_by, deleted) VALUES (1, '律师事务所', 0, 1, NULL, 'ACTIVE', '2026-01-04 16:14:15.893589', '2026-01-04 16:14:15.893589', NULL, NULL, false);
+INSERT INTO public.sys_department (id, name, parent_id, sort_order, leader_id, status, created_at, updated_at, created_by, updated_by, deleted) VALUES (2, '诉讼业务部', 1, 1, NULL, 'ACTIVE', '2026-01-04 16:14:15.893589', '2026-01-04 16:14:15.893589', NULL, NULL, false);
+INSERT INTO public.sys_department (id, name, parent_id, sort_order, leader_id, status, created_at, updated_at, created_by, updated_by, deleted) VALUES (3, '非诉业务部', 1, 2, NULL, 'ACTIVE', '2026-01-04 16:14:15.893589', '2026-01-04 16:14:15.893589', NULL, NULL, false);
+INSERT INTO public.sys_department (id, name, parent_id, sort_order, leader_id, status, created_at, updated_at, created_by, updated_by, deleted) VALUES (4, '知识产权部', 1, 3, NULL, 'ACTIVE', '2026-01-04 16:14:15.893589', '2026-01-04 16:14:15.893589', NULL, NULL, false);
+INSERT INTO public.sys_department (id, name, parent_id, sort_order, leader_id, status, created_at, updated_at, created_by, updated_by, deleted) VALUES (5, '财务部', 1, 4, NULL, 'ACTIVE', '2026-01-04 16:14:15.893589', '2026-01-04 16:14:15.893589', NULL, NULL, false);
+INSERT INTO public.sys_department (id, name, parent_id, sort_order, leader_id, status, created_at, updated_at, created_by, updated_by, deleted) VALUES (6, '行政部', 1, 5, NULL, 'ACTIVE', '2026-01-04 16:14:15.893589', '2026-01-04 16:14:15.893589', NULL, NULL, false);
+
+
+--
+-- Data for Name: sys_menu; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (1, 0, '工作台', '/dashboard/workspace', 'dashboard/workspace/index', NULL, 'DashboardOutlined', 'MENU', NULL, 1, true, 'ENABLED', false, true, '2026-01-04 16:14:15.895648', '2026-01-04 16:14:15.895648', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (2, 0, '系统管理', '/system', 'LAYOUT', NULL, 'SettingOutlined', 'DIRECTORY', NULL, 2, true, 'ENABLED', false, true, '2026-01-04 16:14:15.895648', '2026-01-04 16:14:15.895648', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (3, 0, '客户管理', '/crm', 'LAYOUT', NULL, 'TeamOutlined', 'DIRECTORY', NULL, 3, true, 'ENABLED', false, true, '2026-01-04 16:14:15.895648', '2026-01-04 16:14:15.895648', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (4, 0, '项目管理', '/matter', 'LAYOUT', NULL, 'FolderOutlined', 'DIRECTORY', NULL, 4, true, 'ENABLED', false, true, '2026-01-04 16:14:15.895648', '2026-01-04 16:14:15.895648', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (5, 0, '财务管理', '/finance', 'LAYOUT', NULL, 'MoneyCollectOutlined', 'DIRECTORY', NULL, 5, true, 'ENABLED', false, true, '2026-01-04 16:14:15.895648', '2026-01-04 16:14:15.895648', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (6, 0, '文书管理', '/document', 'LAYOUT', NULL, 'FileTextOutlined', 'DIRECTORY', NULL, 6, true, 'ENABLED', false, true, '2026-01-04 16:14:15.895648', '2026-01-04 16:14:15.895648', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (8, 0, '档案管理', '/archive', 'LAYOUT', NULL, 'DatabaseOutlined', 'DIRECTORY', NULL, 7, true, 'ENABLED', false, true, '2026-01-04 16:14:15.895648', '2026-01-04 16:14:15.895648', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (9, 0, '行政管理', '/admin', 'LAYOUT', NULL, 'BankOutlined', 'DIRECTORY', NULL, 8, true, 'ENABLED', false, true, '2026-01-04 16:14:15.895648', '2026-01-04 16:14:15.895648', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (10, 0, '人力资源', '/hr', 'LAYOUT', NULL, 'IdcardOutlined', 'DIRECTORY', NULL, 9, true, 'ENABLED', false, true, '2026-01-04 16:14:15.895648', '2026-01-04 16:14:15.895648', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (11, 0, '知识库', '/knowledge', 'LAYOUT', NULL, 'BookOutlined', 'DIRECTORY', NULL, 10, true, 'ENABLED', false, true, '2026-01-04 16:14:15.895648', '2026-01-04 16:14:15.895648', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (21, 2, '用户管理', '/system/user', 'system/user/index', NULL, 'UserOutlined', 'MENU', 'sys:user:list', 1, true, 'ENABLED', false, true, '2026-01-04 16:14:15.896441', '2026-01-04 16:14:15.896441', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (22, 2, '角色管理', '/system/role', 'system/role/index', NULL, 'SafetyCertificateOutlined', 'MENU', 'sys:role:list', 2, true, 'ENABLED', false, true, '2026-01-04 16:14:15.896441', '2026-01-04 16:14:15.896441', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (23, 2, '部门管理', '/system/dept', 'system/dept/index', NULL, 'ApartmentOutlined', 'MENU', 'sys:dept:list', 3, true, 'ENABLED', false, true, '2026-01-04 16:14:15.896441', '2026-01-04 16:14:15.896441', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (24, 2, '菜单管理', '/system/menu', 'system/menu/index', NULL, 'MenuOutlined', 'MENU', 'sys:menu:list', 4, true, 'ENABLED', false, true, '2026-01-04 16:14:15.896441', '2026-01-04 16:14:15.896441', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (25, 2, '系统配置', '/system/config', 'system/config/index', NULL, 'ToolOutlined', 'MENU', 'sys:config:list', 5, true, 'ENABLED', false, true, '2026-01-04 16:14:15.896441', '2026-01-04 16:14:15.896441', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (26, 2, '操作日志', '/system/log', 'system/log/index', NULL, 'FileSearchOutlined', 'MENU', 'sys:log:list', 6, true, 'ENABLED', false, true, '2026-01-04 16:14:15.896441', '2026-01-04 16:14:15.896441', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (27, 2, '出函模板', '/system/letter-template', 'system/letter-template/index', NULL, 'MailOutlined', 'MENU', 'sys:letter-template:list', 7, true, 'ENABLED', false, true, '2026-01-04 16:14:15.896441', '2026-01-04 16:14:15.896441', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (28, 2, '合同模板', '/system/contract-template', 'system/contract-template/index', NULL, 'FileProtectOutlined', 'MENU', 'sys:contract-template:list', 8, true, 'ENABLED', false, true, '2026-01-04 16:14:15.896441', '2026-01-04 16:14:15.896441', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (31, 3, '客户列表', '/crm/client', 'crm/client/index', NULL, 'ContactsOutlined', 'MENU', 'client:list', 1, true, 'ENABLED', false, true, '2026-01-04 16:14:15.896673', '2026-01-04 16:14:15.896673', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (32, 3, '利冲审查', '/crm/conflict', 'crm/conflict/index', NULL, 'SecurityScanOutlined', 'MENU', 'conflict:apply', 2, true, 'ENABLED', false, true, '2026-01-04 16:14:15.896673', '2026-01-04 16:14:15.896673', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (33, 3, '案源管理', '/crm/lead', 'crm/lead/index', NULL, 'FunnelPlotOutlined', 'MENU', 'lead:list', 3, true, 'ENABLED', false, true, '2026-01-04 16:14:15.896673', '2026-01-04 16:14:15.896673', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (41, 4, '项目列表', '/matter/list', 'matter/list/index', NULL, 'ProjectOutlined', 'MENU', 'matter:list', 1, true, 'ENABLED', false, true, '2026-01-04 16:14:15.896878', '2026-01-04 16:14:15.896878', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (42, 4, '我的项目', '/matter/my', 'matter/my/index', NULL, 'SolutionOutlined', 'MENU', 'matter:list', 2, true, 'ENABLED', false, true, '2026-01-04 16:14:15.896878', '2026-01-04 16:14:15.896878', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (45, 4, '合同管理', '/matter/contract', 'matter/contract/index', NULL, 'FileProtectOutlined', 'MENU', 'matter:contract:list', 3, true, 'ENABLED', false, true, '2026-01-04 16:14:15.896878', '2026-01-04 16:14:15.896878', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (148, 4, '我的合同', '/matter/my-contract', 'matter/my-contract/index', NULL, 'FileTextOutlined', 'MENU', 'matter:contract:view', 4, true, 'ENABLED', false, true, '2026-01-06 09:30:00', '2026-01-06 09:30:00', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (43, 4, '工时管理', '/matter/timesheet', 'matter/timesheet/index', NULL, 'ClockCircleOutlined', 'MENU', 'timesheet:record', 5, true, 'ENABLED', false, true, '2026-01-04 16:14:15.896878', '2026-01-04 16:14:15.896878', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (44, 4, '任务管理', '/matter/task', 'matter/task/index', NULL, 'CheckSquareOutlined', 'MENU', 'task:manage', 5, true, 'ENABLED', false, true, '2026-01-04 16:14:15.896878', '2026-01-04 16:14:15.896878', NULL, NULL, false);
+-- 律师可见的财务菜单（排序靠前）
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (57, 5, '我的收款', '/finance/my-payment', 'finance/my-payment/index', NULL, 'WalletOutlined', 'MENU', 'finance:my:payment', 1, true, 'ENABLED', false, true, '2026-01-05 16:00:00', '2026-01-05 16:00:00', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (58, 5, '我的提成', '/finance/my-commission', 'finance/my-commission/index', NULL, 'DollarOutlined', 'MENU', 'finance:my:commission', 2, true, 'ENABLED', false, true, '2026-01-05 16:00:00', '2026-01-05 16:00:00', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (59, 5, '费用报销', '/finance/expense', 'finance/expense/index', NULL, 'AccountBookOutlined', 'MENU', 'finance:expense:apply', 3, true, 'ENABLED', false, true, '2026-01-05 16:00:00', '2026-01-05 16:00:00', NULL, NULL, false);
+-- 财务人员可见的菜单（排序靠后）
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (51, 5, '合同收款概览', '/finance/contract', 'finance/contract/index', NULL, 'FileProtectOutlined', 'MENU', 'finance:contract:view', 10, true, 'ENABLED', false, true, '2026-01-04 16:14:15.897126', '2026-01-04 16:14:15.897126', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (52, 5, '收款管理', '/finance/payment', 'finance/payment/index', NULL, 'PayCircleOutlined', 'MENU', 'finance:payment:manage', 11, true, 'ENABLED', false, true, '2026-01-04 16:14:15.897126', '2026-01-04 16:14:15.897126', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (53, 5, '提成管理', '/finance/commission', 'finance/commission/index', NULL, 'PercentageOutlined', 'MENU', 'finance:commission:manage', 12, true, 'ENABLED', false, true, '2026-01-04 16:14:15.897126', '2026-01-04 16:14:15.897126', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (54, 5, '发票管理', '/finance/invoice', 'finance/invoice/index', NULL, 'ProfileOutlined', 'MENU', 'finance:invoice:manage', 13, true, 'ENABLED', false, true, '2026-01-04 16:14:15.897126', '2026-01-04 16:14:15.897126', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (55, 5, '财务报表', '/finance/report', 'finance/report/index', NULL, 'BarChartOutlined', 'MENU', 'finance:report:view', 14, true, 'ENABLED', false, true, '2026-01-04 16:14:15.897126', '2026-01-04 16:14:15.897126', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (61, 6, '卷宗列表', '/document/list', 'document/list/index', NULL, 'FileOutlined', 'MENU', 'doc:list', 1, true, 'ENABLED', false, true, '2026-01-04 16:14:15.89735', '2026-01-04 16:14:15.89735', NULL, NULL, false);
+-- 2026-01-08 重构：文书模板 → 文书制作 + 模板管理，详见 migrations/049-refactor-document-template-menu.sql
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (62, 6, '文书制作', '/document/compose', 'document/compose/index', NULL, 'EditOutlined', 'MENU', 'doc:compose', 2, true, 'ENABLED', false, true, '2026-01-04 16:14:15.89735', '2026-01-08 00:00:00', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (713, 6, '模板管理', '/document/template', 'document/template/index', NULL, 'SettingOutlined', 'MENU', 'doc:template:manage', 3, true, 'ENABLED', false, true, '2026-01-08 00:00:00', '2026-01-08 00:00:00', NULL, NULL, false);
+-- 印章管理和用印申请已移至行政管理模块（parent_id=9），见 migrations/036-move-seal-menu-to-admin.sql
+-- INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (63, 6, '印章管理', '/document/seal', 'document/seal/index', NULL, 'SafetyOutlined', 'MENU', 'doc:seal:list', 3, true, 'ENABLED', false, true, '2026-01-04 16:14:15.89735', '2026-01-04 16:14:15.89735', NULL, NULL, false);
+-- INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (64, 6, '用印申请', '/document/seal-apply', 'document/seal-apply/index', NULL, 'FormOutlined', 'MENU', 'doc:seal:apply', 4, true, 'ENABLED', false, true, '2026-01-04 16:14:15.89735', '2026-01-04 16:14:15.89735', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (63, 9, '印章管理', '/document/seal', 'document/seal/index', NULL, 'SafetyOutlined', 'MENU', 'doc:seal:list', 13, true, 'ENABLED', false, true, '2026-01-04 16:14:15.89735', '2026-01-07 16:30:00', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (64, 9, '用印申请', '/document/seal-apply', 'document/seal-apply/index', NULL, 'FormOutlined', 'MENU', 'doc:seal:apply', 14, true, 'ENABLED', false, true, '2026-01-04 16:14:15.89735', '2026-01-07 16:30:00', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (81, 8, '档案列表', '/archive/list', 'archive/list/index', NULL, 'FolderOpenOutlined', 'MENU', 'archive:list', 1, true, 'ENABLED', false, true, '2026-01-04 16:14:15.89755', '2026-01-04 16:14:15.89755', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (82, 8, '档案借阅', '/archive/borrow', 'archive/borrow/index', NULL, 'ExportOutlined', 'MENU', 'archive:borrow', 2, true, 'ENABLED', false, true, '2026-01-04 16:14:15.89755', '2026-01-04 16:14:15.89755', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (83, 8, '档案销毁', '/archive/destroy', 'archive/destroy/index', NULL, 'DeleteOutlined', 'MENU', 'archive:destroy', 3, true, 'ENABLED', false, true, '2026-01-04 16:14:15.89755', '2026-01-04 16:14:15.89755', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (91, 9, '考勤管理', '/admin/attendance', 'admin/attendance/index', NULL, 'ClockCircleOutlined', 'MENU', 'admin:attendance:list', 1, true, 'ENABLED', false, true, '2026-01-04 16:14:15.89774', '2026-01-04 16:14:15.89774', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (92, 9, '请假管理', '/admin/leave', 'admin/leave/index', NULL, 'CalendarOutlined', 'MENU', 'admin:leave:list', 2, true, 'ENABLED', false, true, '2026-01-04 16:14:15.89774', '2026-01-04 16:14:15.89774', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (93, 9, '会议室预约', '/admin/meeting-room', 'admin/meeting-room/index', NULL, 'ScheduleOutlined', 'MENU', 'admin:meeting:list', 3, true, 'ENABLED', false, true, '2026-01-04 16:14:15.89774', '2026-01-04 16:14:15.89774', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (94, 9, '资产管理', '/admin/asset', 'admin/asset/index', NULL, 'ShopOutlined', 'MENU', 'admin:asset:list', 4, true, 'ENABLED', false, true, '2026-01-04 16:14:15.89774', '2026-01-04 16:14:15.89774', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (95, 9, '采购管理', '/admin/purchase', 'admin/purchase/index', NULL, 'ShoppingCartOutlined', 'MENU', 'admin:purchase:list', 5, true, 'ENABLED', false, true, '2026-01-04 16:14:15.89774', '2026-01-04 16:14:15.89774', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (96, 9, '供应商管理', '/admin/supplier', 'admin/supplier/index', NULL, 'ShopOutlined', 'MENU', 'admin:supplier:list', 6, true, 'ENABLED', false, true, '2026-01-04 16:14:15.89774', '2026-01-04 16:14:15.89774', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (97, 9, '加班管理', '/admin/overtime', 'admin/overtime/index', NULL, 'ClockCircleOutlined', 'MENU', 'admin:overtime:list', 7, true, 'ENABLED', false, true, '2026-01-04 16:14:15.89774', '2026-01-04 16:14:15.89774', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (98, 9, '资产盘点', '/admin/asset-inventory', 'admin/asset-inventory/index', NULL, 'FileSearchOutlined', 'MENU', 'admin:asset-inventory:list', 8, true, 'ENABLED', false, true, '2026-01-04 16:14:15.89774', '2026-01-04 16:14:15.89774', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (99, 9, '外出管理', '/admin/go-out', 'admin/go-out/index', NULL, 'ExportOutlined', 'MENU', 'admin:go-out:list', 9, true, 'ENABLED', false, true, '2026-01-04 16:14:15.89774', '2026-01-04 16:14:15.89774', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (100, 9, '会议记录', '/admin/meeting-record', 'admin/meeting-record/index', NULL, 'FileTextOutlined', 'MENU', 'admin:meeting-record:list', 10, true, 'ENABLED', false, true, '2026-01-04 16:14:15.89774', '2026-01-04 16:14:15.89774', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (120, 9, '出函管理', '/admin/letter', 'admin/letter/index', NULL, 'MailOutlined', 'MENU', 'admin:letter:list', 11, true, 'ENABLED', false, true, '2026-01-04 16:14:15.89774', '2026-01-04 16:14:15.89774', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (101, 10, '培训管理', '/hr/training', 'hr/training/index', NULL, 'ReadOutlined', 'MENU', 'hr:training:list', 1, true, 'ENABLED', false, true, '2026-01-04 16:14:15.898121', '2026-01-04 16:14:15.898121', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (102, 10, '绩效考核', '/hr/performance', 'hr/performance/index', NULL, 'TrophyOutlined', 'MENU', 'hr:performance:list', 2, true, 'ENABLED', false, true, '2026-01-04 16:14:15.898121', '2026-01-04 16:14:15.898121', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (103, 10, '晋升管理', '/hr/promotion', 'hr/promotion/index', NULL, 'RiseOutlined', 'MENU', 'hr:promotion:list', 3, true, 'ENABLED', false, true, '2026-01-04 16:14:15.898121', '2026-01-04 16:14:15.898121', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (104, 10, '发展计划', '/hr/development', 'hr/development/index', NULL, 'AimOutlined', 'MENU', 'hr:development:list', 4, true, 'ENABLED', false, true, '2026-01-04 16:14:15.898121', '2026-01-04 16:14:15.898121', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (105, 10, '转正管理', '/hr/regularization', 'hr/regularization/index', NULL, 'CheckSquareOutlined', 'MENU', 'hr:regularization:list', 5, true, 'ENABLED', false, true, '2026-01-04 16:14:15.898121', '2026-01-04 16:14:15.898121', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (106, 10, '离职管理', '/hr/resignation', 'hr/resignation/index', NULL, 'ExportOutlined', 'MENU', 'hr:resignation:list', 6, true, 'ENABLED', false, true, '2026-01-04 16:14:15.898121', '2026-01-04 16:14:15.898121', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (107, 5, '工资管理', '/hr/payroll', 'hr/payroll/index', NULL, 'DollarOutlined', 'MENU', 'payroll:list', 12, true, 'ENABLED', false, true, '2026-01-06 10:00:00', '2026-01-06 10:00:00', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (108, 5, '我的工资', '/hr/payroll/my', 'hr/payroll/my/index', NULL, 'WalletOutlined', 'MENU', 'payroll:my:view', 13, true, 'ENABLED', false, true, '2026-01-06 10:00:00', '2026-01-06 10:00:00', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (109, 10, '员工档案', '/hr/employee', 'hr/employee/index', NULL, 'UserOutlined', 'MENU', 'hr:employee:list', 0, true, 'ENABLED', false, true, '2026-01-06 10:00:00', '2026-01-06 10:00:00', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (111, 11, '知识文章', '/knowledge/article', 'knowledge/article/index', NULL, 'FileTextOutlined', 'MENU', 'knowledge:article:list', 1, true, 'ENABLED', false, true, '2026-01-04 16:14:15.898559', '2026-01-04 16:14:15.898559', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (112, 11, '案例库', '/knowledge/case', 'knowledge/case/index', NULL, 'ContainerOutlined', 'MENU', 'knowledge:case:list', 2, true, 'ENABLED', false, true, '2026-01-04 16:14:15.898559', '2026-01-04 16:14:15.898559', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (113, 11, '法规库', '/knowledge/law', 'knowledge/law/index', NULL, 'BookOutlined', 'MENU', 'knowledge:law:list', 3, true, 'ENABLED', false, true, '2026-01-04 16:14:15.898559', '2026-01-04 16:14:15.898559', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (56, 5, '收款变更审批', '/finance/payment-amendment', 'finance/payment-amendment/index', NULL, 'AuditOutlined', 'MENU', 'fee:amendment:list', 6, true, 'ENABLED', false, true, '2026-01-05 02:19:31.876174', '2026-01-05 02:19:31.876174', NULL, NULL, false);
+-- 审批中心权限菜单
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (130, 1, '审批列表', NULL, NULL, NULL, NULL, 'BUTTON', 'approval:list', 1, true, 'ENABLED', false, true, '2026-01-05 10:00:00', '2026-01-05 10:00:00', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (131, 1, '审批操作', NULL, NULL, NULL, NULL, 'BUTTON', 'approval:approve', 2, true, 'ENABLED', false, true, '2026-01-05 10:00:00', '2026-01-05 10:00:00', NULL, NULL, false);
+-- 合同审批权限
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (132, 45, '合同审批', NULL, NULL, NULL, NULL, 'BUTTON', 'contract:approve', 1, true, 'ENABLED', false, true, '2026-01-05 10:00:00', '2026-01-05 10:00:00', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (121, 9, '合同查询', '/admin/contract', 'admin/contract/index', NULL, 'FileSearchOutlined', 'MENU', 'admin:contract:list', 12, true, 'ENABLED', false, true, '2026-01-05 02:19:57.79315', '2026-01-05 02:19:57.79315', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (123, 5, '合同变更处理', '/finance/contract-amendment', '/finance/contract-amendment/index', NULL, 'ant-design:diff-outlined', 'MENU', 'finance:contract:amendment:view', 60, true, 'ENABLED', false, true, '2026-01-05 03:55:33.410601', '2026-01-05 03:55:33.410601', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (124, 123, '同步变更', NULL, NULL, NULL, NULL, 'BUTTON', 'finance:contract:amendment:sync', 1, true, 'ENABLED', false, true, '2026-01-05 03:55:33.410601', '2026-01-05 03:55:33.410601', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (125, 123, '忽略变更', NULL, NULL, NULL, NULL, 'BUTTON', 'finance:contract:amendment:ignore', 2, true, 'ENABLED', false, true, '2026-01-05 03:55:33.410601', '2026-01-05 03:55:33.410601', NULL, NULL, false);
+-- 提成规则配置（系统管理模块，仅admin/director）
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (140, 2, '提成规则配置', '/system/commission-config', 'system/commission-config/index', NULL, 'ant-design:percentage-outlined', 'MENU', 'system:config:list', 50, true, 'ENABLED', false, true, '2026-01-05 18:00:00', '2026-01-05 18:00:00', NULL, NULL, false);
+-- 提成查看和操作权限（财务角色可用）
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (145, 53, '查看提成', NULL, NULL, NULL, NULL, 'BUTTON', 'finance:commission:view', 5, true, 'ENABLED', false, true, '2026-01-05 18:00:00', '2026-01-05 18:00:00', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (146, 53, '提成审批', NULL, NULL, NULL, NULL, 'BUTTON', 'finance:commission:approve', 6, true, 'ENABLED', false, true, '2026-01-05 18:00:00', '2026-01-05 18:00:00', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (147, 53, '提成发放', NULL, NULL, NULL, NULL, 'BUTTON', 'finance:commission:issue', 7, true, 'ENABLED', false, true, '2026-01-05 18:00:00', '2026-01-05 18:00:00', NULL, NULL, false);
+
+-- 日程管理菜单和权限
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (149, 0, '日程管理', '/workbench/schedule', 'workbench/schedule/index', NULL, 'CalendarOutlined', 'MENU', 'schedule:list', 2, true, 'ENABLED', false, true, '2026-01-06 12:00:00', '2026-01-06 12:00:00', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (150, 149, '日程查看', NULL, NULL, NULL, NULL, 'BUTTON', 'schedule:view', 1, true, 'ENABLED', false, true, '2026-01-06 12:00:00', '2026-01-06 12:00:00', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (151, 149, '日程管理', NULL, NULL, NULL, NULL, 'BUTTON', 'schedule:manage', 2, true, 'ENABLED', false, true, '2026-01-06 12:00:00', '2026-01-06 12:00:00', NULL, NULL, false);
+
+-- 工资管理权限按钮
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (210, 107, '创建工资表', NULL, NULL, NULL, NULL, 'BUTTON', 'payroll:create', 1, true, 'ENABLED', false, true, '2026-01-06 15:00:00', '2026-01-06 15:00:00', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (211, 107, '查看工资表', NULL, NULL, NULL, NULL, 'BUTTON', 'payroll:view', 2, true, 'ENABLED', false, true, '2026-01-06 15:00:00', '2026-01-06 15:00:00', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (212, 107, '编辑工资表', NULL, NULL, NULL, NULL, 'BUTTON', 'payroll:edit', 3, true, 'ENABLED', false, true, '2026-01-06 15:00:00', '2026-01-06 15:00:00', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (213, 107, '提交工资表', NULL, NULL, NULL, NULL, 'BUTTON', 'payroll:submit', 4, true, 'ENABLED', false, true, '2026-01-06 15:00:00', '2026-01-06 15:00:00', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (214, 107, '财务确认', NULL, NULL, NULL, NULL, 'BUTTON', 'payroll:finance:confirm', 5, true, 'ENABLED', false, true, '2026-01-06 15:00:00', '2026-01-06 15:00:00', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (215, 107, '发放工资', NULL, NULL, NULL, NULL, 'BUTTON', 'payroll:issue', 6, true, 'ENABLED', false, true, '2026-01-06 15:00:00', '2026-01-06 15:00:00', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (216, 108, '确认工资', NULL, NULL, NULL, NULL, 'BUTTON', 'payroll:confirm', 1, true, 'ENABLED', false, true, '2026-01-06 15:00:00', '2026-01-06 15:00:00', NULL, NULL, false);
+-- 报表中心菜单和权限
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (200, 0, '报表中心', '/workbench/report', 'workbench/report/index', NULL, 'BarChartOutlined', 'MENU', 'report:list', 3, true, 'ENABLED', false, true, '2026-01-06 14:00:00', '2026-01-06 14:00:00', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (201, 200, '报表查看', NULL, NULL, NULL, NULL, 'BUTTON', 'report:list', 1, true, 'ENABLED', false, true, '2026-01-06 14:00:00', '2026-01-06 14:00:00', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (202, 200, '报表详情', NULL, NULL, NULL, NULL, 'BUTTON', 'report:detail', 2, true, 'ENABLED', false, true, '2026-01-06 14:00:00', '2026-01-06 14:00:00', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (203, 200, '生成报表', NULL, NULL, NULL, NULL, 'BUTTON', 'report:generate', 3, true, 'ENABLED', false, true, '2026-01-06 14:00:00', '2026-01-06 14:00:00', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (204, 200, '下载报表', NULL, NULL, NULL, NULL, 'BUTTON', 'report:download', 4, true, 'ENABLED', false, true, '2026-01-06 14:00:00', '2026-01-06 14:00:00', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (205, 200, '删除报表', NULL, NULL, NULL, NULL, 'BUTTON', 'report:delete', 5, true, 'ENABLED', false, true, '2026-01-06 14:00:00', '2026-01-06 14:00:00', NULL, NULL, false);
+
+-- 期限提醒权限
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (152, 2, '期限列表', NULL, NULL, NULL, NULL, 'BUTTON', 'deadline:list', 10, true, 'ENABLED', false, true, '2026-01-06 12:00:00', '2026-01-06 12:00:00', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (153, 2, '期限查看', NULL, NULL, NULL, NULL, 'BUTTON', 'deadline:view', 11, true, 'ENABLED', false, true, '2026-01-06 12:00:00', '2026-01-06 12:00:00', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (154, 2, '期限创建', NULL, NULL, NULL, NULL, 'BUTTON', 'deadline:create', 12, true, 'ENABLED', false, true, '2026-01-06 12:00:00', '2026-01-06 12:00:00', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (155, 2, '期限编辑', NULL, NULL, NULL, NULL, 'BUTTON', 'deadline:edit', 13, true, 'ENABLED', false, true, '2026-01-06 12:00:00', '2026-01-06 12:00:00', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (156, 2, '期限删除', NULL, NULL, NULL, NULL, 'BUTTON', 'deadline:delete', 14, true, 'ENABLED', false, true, '2026-01-06 12:00:00', '2026-01-06 12:00:00', NULL, NULL, false);
+
+-- 任务管理权限
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (161, 44, '任务列表', NULL, NULL, NULL, NULL, 'BUTTON', 'task:list', 1, true, 'ENABLED', false, true, '2026-01-06 12:00:00', '2026-01-06 12:00:00', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (162, 44, '任务查看', NULL, NULL, NULL, NULL, 'BUTTON', 'task:view', 2, true, 'ENABLED', false, true, '2026-01-06 12:00:00', '2026-01-06 12:00:00', NULL, NULL, false);
+
+-- 工时管理权限
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (163, 43, '工时列表', NULL, NULL, NULL, NULL, 'BUTTON', 'timesheet:list', 1, true, 'ENABLED', false, true, '2026-01-06 12:00:00', '2026-01-06 12:00:00', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (164, 43, '工时查看', NULL, NULL, NULL, NULL, 'BUTTON', 'timesheet:view', 3, true, 'ENABLED', false, true, '2026-01-06 12:00:00', '2026-01-06 12:00:00', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (165, 43, '工时审批', NULL, NULL, NULL, NULL, 'BUTTON', 'timesheet:approve', 4, true, 'ENABLED', false, true, '2026-01-06 12:00:00', '2026-01-06 12:00:00', NULL, NULL, false);
+
+-- 行政管理模块权限
+-- 外出管理权限
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (168, 99, '外出查看', NULL, NULL, NULL, NULL, 'BUTTON', 'admin:goout:view', 1, true, 'ENABLED', false, false, '2026-01-06 14:00:00', '2026-01-06 14:00:00', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (169, 99, '外出登记', NULL, NULL, NULL, NULL, 'BUTTON', 'admin:goout:register', 2, true, 'ENABLED', false, false, '2026-01-06 14:00:00', '2026-01-06 14:00:00', NULL, NULL, false);
+-- 会议记录权限
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (170, 100, '会议记录查看', NULL, NULL, NULL, NULL, 'BUTTON', 'admin:meeting:view', 1, true, 'ENABLED', false, false, '2026-01-06 14:00:00', '2026-01-06 14:00:00', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (171, 100, '会议记录管理', NULL, NULL, NULL, NULL, 'BUTTON', 'admin:meeting:record', 2, true, 'ENABLED', false, false, '2026-01-06 14:00:00', '2026-01-06 14:00:00', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (172, 100, '会议通知', NULL, NULL, NULL, NULL, 'BUTTON', 'admin:meeting:notice', 3, true, 'ENABLED', false, false, '2026-01-06 14:00:00', '2026-01-06 14:00:00', NULL, NULL, false);
+-- 资产盘点权限
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (173, 98, '资产盘点操作', NULL, NULL, NULL, NULL, 'BUTTON', 'admin:asset:inventory', 1, true, 'ENABLED', false, false, '2026-01-06 14:00:00', '2026-01-06 14:00:00', NULL, NULL, false);
+-- 会议室管理权限
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (174, 93, '会议室管理', NULL, NULL, NULL, NULL, 'BUTTON', 'admin:meeting:manage', 1, true, 'ENABLED', false, false, '2026-01-06 14:00:00', '2026-01-06 14:00:00', NULL, NULL, false);
+-- 加班管理权限
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (175, 97, '加班查看', NULL, NULL, NULL, NULL, 'BUTTON', 'admin:overtime:view', 1, true, 'ENABLED', false, false, '2026-01-06 14:00:00', '2026-01-06 14:00:00', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (176, 97, '加班申请', NULL, NULL, NULL, NULL, 'BUTTON', 'admin:overtime:apply', 2, true, 'ENABLED', false, false, '2026-01-06 14:00:00', '2026-01-06 14:00:00', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (177, 97, '加班审批', NULL, NULL, NULL, NULL, 'BUTTON', 'admin:overtime:approve', 3, true, 'ENABLED', false, false, '2026-01-06 14:00:00', '2026-01-06 14:00:00', NULL, NULL, false);
+-- 请假管理权限
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (178, 92, '请假审批', NULL, NULL, NULL, NULL, 'BUTTON', 'admin:leave:approve', 1, true, 'ENABLED', false, false, '2026-01-06 14:00:00', '2026-01-06 14:00:00', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (179, 92, '假期管理', NULL, NULL, NULL, NULL, 'BUTTON', 'admin:leave:manage', 2, true, 'ENABLED', false, false, '2026-01-06 14:00:00', '2026-01-06 14:00:00', NULL, NULL, false);
+-- 资产管理权限
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (180, 94, '资产详情', NULL, NULL, NULL, NULL, 'BUTTON', 'admin:asset:detail', 1, true, 'ENABLED', false, false, '2026-01-06 14:00:00', '2026-01-06 14:00:00', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (181, 94, '资产创建', NULL, NULL, NULL, NULL, 'BUTTON', 'admin:asset:create', 2, true, 'ENABLED', false, false, '2026-01-06 14:00:00', '2026-01-06 14:00:00', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (182, 94, '资产编辑', NULL, NULL, NULL, NULL, 'BUTTON', 'admin:asset:edit', 3, true, 'ENABLED', false, false, '2026-01-06 14:00:00', '2026-01-06 14:00:00', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (183, 94, '资产删除', NULL, NULL, NULL, NULL, 'BUTTON', 'admin:asset:delete', 4, true, 'ENABLED', false, false, '2026-01-06 14:00:00', '2026-01-06 14:00:00', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (184, 94, '资产领用', NULL, NULL, NULL, NULL, 'BUTTON', 'admin:asset:receive', 5, true, 'ENABLED', false, false, '2026-01-06 14:00:00', '2026-01-06 14:00:00', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (185, 94, '资产归还', NULL, NULL, NULL, NULL, 'BUTTON', 'admin:asset:return', 6, true, 'ENABLED', false, false, '2026-01-06 14:00:00', '2026-01-06 14:00:00', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (186, 94, '资产报废', NULL, NULL, NULL, NULL, 'BUTTON', 'admin:asset:scrap', 7, true, 'ENABLED', false, false, '2026-01-06 14:00:00', '2026-01-06 14:00:00', NULL, NULL, false);
+-- 采购管理权限
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (187, 95, '采购详情', NULL, NULL, NULL, NULL, 'BUTTON', 'admin:purchase:detail', 1, true, 'ENABLED', false, false, '2026-01-06 14:00:00', '2026-01-06 14:00:00', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (188, 95, '采购创建', NULL, NULL, NULL, NULL, 'BUTTON', 'admin:purchase:create', 2, true, 'ENABLED', false, false, '2026-01-06 14:00:00', '2026-01-06 14:00:00', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (189, 95, '采购编辑', NULL, NULL, NULL, NULL, 'BUTTON', 'admin:purchase:edit', 3, true, 'ENABLED', false, false, '2026-01-06 14:00:00', '2026-01-06 14:00:00', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (190, 95, '采购审批', NULL, NULL, NULL, NULL, 'BUTTON', 'admin:purchase:approve', 4, true, 'ENABLED', false, false, '2026-01-06 14:00:00', '2026-01-06 14:00:00', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (191, 95, '采购入库', NULL, NULL, NULL, NULL, 'BUTTON', 'admin:purchase:receive', 5, true, 'ENABLED', false, false, '2026-01-06 14:00:00', '2026-01-06 14:00:00', NULL, NULL, false);
+-- 供应商管理权限
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (192, 96, '供应商详情', NULL, NULL, NULL, NULL, 'BUTTON', 'admin:supplier:detail', 1, true, 'ENABLED', false, false, '2026-01-06 14:00:00', '2026-01-06 14:00:00', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (193, 96, '供应商创建', NULL, NULL, NULL, NULL, 'BUTTON', 'admin:supplier:create', 2, true, 'ENABLED', false, false, '2026-01-06 14:00:00', '2026-01-06 14:00:00', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (194, 96, '供应商编辑', NULL, NULL, NULL, NULL, 'BUTTON', 'admin:supplier:edit', 3, true, 'ENABLED', false, false, '2026-01-06 14:00:00', '2026-01-06 14:00:00', NULL, NULL, false);
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (195, 96, '供应商删除', NULL, NULL, NULL, NULL, 'BUTTON', 'admin:supplier:delete', 4, true, 'ENABLED', false, false, '2026-01-06 14:00:00', '2026-01-06 14:00:00', NULL, NULL, false);
+-- 合同导出权限
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted) VALUES (196, 121, '合同导出', NULL, NULL, NULL, NULL, 'BUTTON', 'admin:contract:export', 1, true, 'ENABLED', false, false, '2026-01-06 14:00:00', '2026-01-06 14:00:00', NULL, NULL, false);
+
+
+--
+-- Data for Name: sys_role; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+-- 简化后的7个角色（2026-01-07）
+INSERT INTO public.sys_role (id, role_code, role_name, description, data_scope, status, sort_order, created_at, updated_at, created_by, updated_by, deleted) VALUES (1, 'ADMIN', '管理员', '系统最高权限，可管理所有功能和数据', 'ALL', 'ACTIVE', 1, '2026-01-04 16:14:15.892579', '2026-01-04 16:14:15.892579', NULL, NULL, false);
+INSERT INTO public.sys_role (id, role_code, role_name, description, data_scope, status, sort_order, created_at, updated_at, created_by, updated_by, deleted) VALUES (2, 'DIRECTOR', '律所主任', '律所管理层，可查看全所数据，审批重要事项', 'ALL', 'ACTIVE', 2, '2026-01-04 16:14:15.892579', '2026-01-04 16:14:15.892579', NULL, NULL, false);
+INSERT INTO public.sys_role (id, role_code, role_name, description, data_scope, status, sort_order, created_at, updated_at, created_by, updated_by, deleted) VALUES (3, 'TEAM_LEADER', '团队负责人', '团队负责人，可查看本团队数据，负责团队业务管理', 'DEPT_AND_CHILD', 'ACTIVE', 3, '2026-01-04 16:14:15.892579', '2026-01-04 16:14:15.892579', NULL, NULL, false);
+INSERT INTO public.sys_role (id, role_code, role_name, description, data_scope, status, sort_order, created_at, updated_at, created_by, updated_by, deleted) VALUES (5, 'FINANCE', '财务', '财务人员，管理律所财务工作', 'ALL', 'ACTIVE', 4, '2026-01-04 16:14:15.892579', '2026-01-04 16:14:15.892579', NULL, NULL, false);
+INSERT INTO public.sys_role (id, role_code, role_name, description, data_scope, status, sort_order, created_at, updated_at, created_by, updated_by, deleted) VALUES (6, 'LAWYER', '律师', '执业律师，处理案件的主要人员', 'SELF', 'ACTIVE', 5, '2026-01-04 16:14:15.892579', '2026-01-04 16:14:15.892579', NULL, NULL, false);
+INSERT INTO public.sys_role (id, role_code, role_name, description, data_scope, status, sort_order, created_at, updated_at, created_by, updated_by, deleted) VALUES (8, 'ADMIN_STAFF', '行政', '行政后勤人员，管理行政事务', 'DEPT', 'ACTIVE', 6, '2026-01-04 16:14:15.892579', '2026-01-04 16:14:15.892579', NULL, NULL, false);
+INSERT INTO public.sys_role (id, role_code, role_name, description, data_scope, status, sort_order, created_at, updated_at, created_by, updated_by, deleted) VALUES (9, 'TRAINEE', '实习律师', '实习人员，有限权限', 'SELF', 'ACTIVE', 7, '2026-01-04 16:14:15.892579', '2026-01-04 16:14:15.892579', NULL, NULL, false);
+
+
+--
+-- Data for Name: sys_role_menu; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1, 1, 1, '2026-01-04 16:14:15.8992');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (2, 1, 2, '2026-01-04 16:14:15.8992');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (3, 1, 3, '2026-01-04 16:14:15.8992');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (4, 1, 4, '2026-01-04 16:14:15.8992');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (5, 1, 5, '2026-01-04 16:14:15.8992');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (6, 1, 6, '2026-01-04 16:14:15.8992');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (7, 1, 8, '2026-01-04 16:14:15.8992');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (8, 1, 9, '2026-01-04 16:14:15.8992');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (9, 1, 10, '2026-01-04 16:14:15.8992');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (10, 1, 11, '2026-01-04 16:14:15.8992');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (11, 1, 21, '2026-01-04 16:14:15.8992');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (12, 1, 22, '2026-01-04 16:14:15.8992');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (13, 1, 23, '2026-01-04 16:14:15.8992');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (14, 1, 24, '2026-01-04 16:14:15.8992');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (15, 1, 25, '2026-01-04 16:14:15.8992');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (16, 1, 26, '2026-01-04 16:14:15.8992');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (17, 1, 27, '2026-01-04 16:14:15.8992');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (18, 1, 28, '2026-01-04 16:14:15.8992');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (19, 1, 31, '2026-01-04 16:14:15.8992');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (20, 1, 32, '2026-01-04 16:14:15.8992');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (21, 1, 33, '2026-01-04 16:14:15.8992');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (22, 1, 41, '2026-01-04 16:14:15.8992');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (23, 1, 42, '2026-01-04 16:14:15.8992');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (24, 1, 45, '2026-01-04 16:14:15.8992');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (25, 1, 43, '2026-01-04 16:14:15.8992');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (26, 1, 44, '2026-01-04 16:14:15.8992');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (27, 1, 51, '2026-01-04 16:14:15.8992');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (28, 1, 52, '2026-01-04 16:14:15.8992');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (29, 1, 53, '2026-01-04 16:14:15.8992');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (30, 1, 54, '2026-01-04 16:14:15.8992');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (31, 1, 55, '2026-01-04 16:14:15.8992');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (32, 1, 61, '2026-01-04 16:14:15.8992');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (33, 1, 62, '2026-01-04 16:14:15.8992');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (34, 1, 63, '2026-01-04 16:14:15.8992');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (35, 1, 64, '2026-01-04 16:14:15.8992');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (36, 1, 81, '2026-01-04 16:14:15.8992');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (37, 1, 82, '2026-01-04 16:14:15.8992');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (38, 1, 83, '2026-01-04 16:14:15.8992');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (39, 1, 91, '2026-01-04 16:14:15.8992');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (40, 1, 92, '2026-01-04 16:14:15.8992');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (41, 1, 93, '2026-01-04 16:14:15.8992');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (42, 1, 94, '2026-01-04 16:14:15.8992');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (43, 1, 95, '2026-01-04 16:14:15.8992');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (44, 1, 96, '2026-01-04 16:14:15.8992');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (45, 1, 97, '2026-01-04 16:14:15.8992');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (46, 1, 98, '2026-01-04 16:14:15.8992');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (47, 1, 99, '2026-01-04 16:14:15.8992');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (48, 1, 100, '2026-01-04 16:14:15.8992');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (49, 1, 120, '2026-01-04 16:14:15.8992');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (50, 1, 101, '2026-01-04 16:14:15.8992');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (51, 1, 102, '2026-01-04 16:14:15.8992');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (52, 1, 103, '2026-01-04 16:14:15.8992');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (53, 1, 104, '2026-01-04 16:14:15.8992');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (54, 1, 105, '2026-01-04 16:14:15.8992');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (55, 1, 106, '2026-01-04 16:14:15.8992');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (56, 1, 111, '2026-01-04 16:14:15.8992');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (57, 1, 112, '2026-01-04 16:14:15.8992');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (58, 1, 113, '2026-01-04 16:14:15.8992');
+-- 为ADMIN补充缺失的权限（工资管理、审批权限）
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1109, 1, 107, '2026-01-07 10:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1110, 1, 108, '2026-01-07 10:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1111, 1, 130, '2026-01-07 10:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1112, 1, 131, '2026-01-07 10:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1113, 1, 132, '2026-01-07 10:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (59, 2, 1, '2026-01-04 16:14:15.900075');
+-- DIRECTOR不需要系统管理目录，只需要查看用户和部门
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (61, 2, 3, '2026-01-04 16:14:15.900075');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (62, 2, 4, '2026-01-04 16:14:15.900075');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (63, 2, 5, '2026-01-04 16:14:15.900075');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (64, 2, 6, '2026-01-04 16:14:15.900075');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (65, 2, 8, '2026-01-04 16:14:15.900075');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (66, 2, 9, '2026-01-04 16:14:15.900075');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (67, 2, 10, '2026-01-04 16:14:15.900075');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (68, 2, 11, '2026-01-04 16:14:15.900075');
+-- DIRECTOR保留用户查看和部门查看（只读），移除角色管理(22)、菜单管理(24)、系统配置(25)
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (69, 2, 21, '2026-01-04 16:14:15.900075');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (71, 2, 23, '2026-01-04 16:14:15.900075');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (74, 2, 26, '2026-01-04 16:14:15.900075');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (75, 2, 27, '2026-01-04 16:14:15.900075');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (76, 2, 28, '2026-01-04 16:14:15.900075');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (77, 2, 31, '2026-01-04 16:14:15.900075');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (78, 2, 32, '2026-01-04 16:14:15.900075');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (79, 2, 33, '2026-01-04 16:14:15.900075');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (80, 2, 41, '2026-01-04 16:14:15.900075');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (81, 2, 42, '2026-01-04 16:14:15.900075');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (82, 2, 45, '2026-01-04 16:14:15.900075');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (83, 2, 43, '2026-01-04 16:14:15.900075');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (84, 2, 44, '2026-01-04 16:14:15.900075');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (85, 2, 51, '2026-01-04 16:14:15.900075');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (86, 2, 52, '2026-01-04 16:14:15.900075');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (87, 2, 53, '2026-01-04 16:14:15.900075');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (88, 2, 54, '2026-01-04 16:14:15.900075');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (89, 2, 55, '2026-01-04 16:14:15.900075');
+-- DIRECTOR需要文书管理
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (316, 2, 61, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (317, 2, 62, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (318, 2, 63, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (319, 2, 64, '2026-01-05 17:00:00');
+-- DIRECTOR需要档案管理
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (320, 2, 81, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (321, 2, 82, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (322, 2, 83, '2026-01-05 17:00:00');
+-- DIRECTOR需要行政管理全部
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (323, 2, 91, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (324, 2, 92, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (325, 2, 93, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (326, 2, 94, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (327, 2, 95, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (328, 2, 96, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (329, 2, 97, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (330, 2, 98, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (331, 2, 99, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (332, 2, 100, '2026-01-05 17:00:00');
+-- DIRECTOR需要人力资源全部
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (333, 2, 101, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (334, 2, 102, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (335, 2, 103, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (336, 2, 104, '2026-01-05 17:00:00');
+-- DIRECTOR需要知识库
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (337, 2, 111, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (338, 2, 112, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (339, 2, 113, '2026-01-05 17:00:00');
+-- DIRECTOR需要合同变更处理
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (340, 2, 123, '2026-01-05 17:00:00');
+-- 修复：DIRECTOR需要系统管理目录（否则子菜单无法显示）
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1114, 2, 2, '2026-01-07 10:00:00');
+-- 修复：DIRECTOR需要合同变更操作权限
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1115, 2, 124, '2026-01-07 10:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1116, 2, 125, '2026-01-07 10:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (90, 3, 1, '2026-01-04 16:14:15.900502');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (91, 3, 3, '2026-01-04 16:14:15.900502');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (92, 3, 4, '2026-01-04 16:14:15.900502');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (93, 3, 5, '2026-01-04 16:14:15.900502');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (94, 3, 31, '2026-01-04 16:14:15.900502');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (95, 3, 32, '2026-01-04 16:14:15.900502');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (96, 3, 33, '2026-01-04 16:14:15.900502');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (97, 3, 41, '2026-01-04 16:14:15.900502');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (98, 3, 42, '2026-01-04 16:14:15.900502');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (99, 3, 45, '2026-01-04 16:14:15.900502');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (100, 3, 43, '2026-01-04 16:14:15.900502');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (101, 3, 44, '2026-01-04 16:14:15.900502');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (102, 3, 51, '2026-01-04 16:14:15.900502');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (103, 3, 52, '2026-01-04 16:14:15.900502');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (104, 3, 53, '2026-01-04 16:14:15.900502');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (105, 3, 54, '2026-01-04 16:14:15.900502');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (106, 3, 55, '2026-01-04 16:14:15.900502');
+-- 已删除 role_id=4 的权限（role_id=4 在 sys_role 表中不存在，为孤儿数据）
+-- 见迁移脚本: migrations/046-cleanup-orphan-role4-permissions.sql
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (114, 6, 1, '2026-01-04 16:14:15.901047');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (115, 6, 3, '2026-01-04 16:14:15.901047');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (116, 6, 4, '2026-01-04 16:14:15.901047');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (117, 6, 6, '2026-01-04 16:14:15.901047');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (118, 6, 8, '2026-01-04 16:14:15.901047');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (119, 6, 11, '2026-01-04 16:14:15.901047');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (120, 6, 31, '2026-01-04 16:14:15.901047');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (121, 6, 32, '2026-01-04 16:14:15.901047');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (122, 6, 33, '2026-01-04 16:14:15.901047');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (123, 6, 41, '2026-01-04 16:14:15.901047');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (124, 6, 42, '2026-01-04 16:14:15.901047');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (125, 6, 45, '2026-01-04 16:14:15.901047');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (126, 6, 43, '2026-01-04 16:14:15.901047');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (127, 6, 44, '2026-01-04 16:14:15.901047');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (128, 6, 61, '2026-01-04 16:14:15.901047');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (129, 6, 62, '2026-01-04 16:14:15.901047');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (130, 6, 63, '2026-01-04 16:14:15.901047');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (131, 6, 64, '2026-01-04 16:14:15.901047');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (132, 6, 81, '2026-01-04 16:14:15.901047');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (133, 6, 82, '2026-01-04 16:14:15.901047');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (134, 6, 83, '2026-01-04 16:14:15.901047');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (135, 6, 111, '2026-01-04 16:14:15.901047');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (136, 6, 112, '2026-01-04 16:14:15.901047');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (137, 6, 113, '2026-01-04 16:14:15.901047');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (138, 8, 1, '2026-01-04 16:14:15.902804');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (139, 8, 9, '2026-01-04 16:14:15.902804');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (140, 8, 91, '2026-01-04 16:14:15.902804');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (141, 8, 92, '2026-01-04 16:14:15.902804');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (142, 8, 93, '2026-01-04 16:14:15.902804');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (143, 8, 94, '2026-01-04 16:14:15.902804');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (144, 8, 95, '2026-01-04 16:14:15.902804');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (145, 8, 96, '2026-01-04 16:14:15.902804');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (146, 8, 97, '2026-01-04 16:14:15.902804');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (147, 8, 98, '2026-01-04 16:14:15.902804');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (148, 8, 99, '2026-01-04 16:14:15.902804');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (149, 8, 100, '2026-01-04 16:14:15.902804');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (150, 8, 120, '2026-01-04 16:14:15.902804');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (151, 2, 105, '2026-01-04 16:14:18.541755');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (152, 2, 106, '2026-01-04 16:14:18.541755');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1002, 2, 107, '2026-01-06 10:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1003, 2, 108, '2026-01-06 10:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (153, 3, 105, '2026-01-04 16:14:18.541755');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (154, 3, 106, '2026-01-04 16:14:18.541755');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1004, 3, 108, '2026-01-06 10:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (155, 1, 56, '2026-01-05 02:19:31.879342');
+-- INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (156, 4, 56, '2026-01-05 02:19:31.880239'); -- role_id=4 不存在
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (157, 2, 120, '2026-01-05 02:19:31.880543');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (158, 2, 56, '2026-01-05 02:19:31.880861');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (159, 3, 120, '2026-01-05 02:19:31.881299');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (160, 3, 56, '2026-01-05 02:19:31.881604');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (161, 1, 121, '2026-01-05 02:19:57.796406');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (162, 8, 121, '2026-01-05 02:19:57.797797');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (163, 2, 121, '2026-01-05 02:19:57.79819');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (164, 3, 121, '2026-01-05 02:19:57.798474');
+-- 审批权限分配
+-- 管理层角色有完整审批权限(approval:list + approval:approve)
+-- 普通角色只有查看权限(approval:list)，用于查看自己发起的审批状态
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (168, 2, 130, '2026-01-05 10:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (169, 2, 131, '2026-01-05 10:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (170, 2, 132, '2026-01-05 10:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (171, 3, 130, '2026-01-05 10:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (172, 3, 131, '2026-01-05 10:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (173, 3, 132, '2026-01-05 10:00:00');
+-- FINANCE(5) 需要审批费用报销，有完整审批权限
+INSERT INTO public.sys_role_menu (role_id, menu_id, created_at) VALUES (5, 130, '2026-01-08 10:00:00') ON CONFLICT (role_id, menu_id) DO NOTHING;
+INSERT INTO public.sys_role_menu (role_id, menu_id, created_at) VALUES (5, 131, '2026-01-08 10:00:00') ON CONFLICT (role_id, menu_id) DO NOTHING;
+-- LAWYER(6), ADMIN_STAFF(8), TRAINEE(9) 只有查看权限
+INSERT INTO public.sys_role_menu (role_id, menu_id, created_at) VALUES (6, 130, '2026-01-08 10:00:00') ON CONFLICT (role_id, menu_id) DO NOTHING;
+INSERT INTO public.sys_role_menu (role_id, menu_id, created_at) VALUES (8, 130, '2026-01-08 10:00:00') ON CONFLICT (role_id, menu_id) DO NOTHING;
+INSERT INTO public.sys_role_menu (role_id, menu_id, created_at) VALUES (9, 130, '2026-01-08 10:00:00') ON CONFLICT (role_id, menu_id) DO NOTHING;
+-- 律师财务菜单权限分配（我的收款、我的提成、费用报销）
+-- LEAD_LAWYER(6), ASSOCIATE(7), TRAINEE(9) 可以看到律师视角的财务菜单
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (174, 6, 5, '2026-01-05 16:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (175, 6, 57, '2026-01-05 16:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (176, 6, 58, '2026-01-05 16:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (177, 6, 59, '2026-01-05 16:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (178, 7, 5, '2026-01-05 16:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (179, 7, 57, '2026-01-05 16:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (180, 7, 58, '2026-01-05 16:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (181, 7, 59, '2026-01-05 16:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (182, 9, 5, '2026-01-05 16:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (183, 9, 57, '2026-01-05 16:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (184, 9, 58, '2026-01-05 16:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (185, 9, 59, '2026-01-05 16:00:00');
+-- 财务人员(5)也可以看到律师视角菜单（方便查看）
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (186, 5, 1, '2026-01-05 16:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (187, 5, 5, '2026-01-05 16:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (188, 5, 51, '2026-01-05 16:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (189, 5, 52, '2026-01-05 16:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (190, 5, 53, '2026-01-05 16:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (191, 5, 54, '2026-01-05 16:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (192, 5, 55, '2026-01-05 16:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (193, 5, 56, '2026-01-05 16:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (194, 5, 123, '2026-01-05 16:00:00');
+-- 财务人员(5)需要基础业务模块权限（客户、项目、合同、文书、档案、知识库）
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (246, 5, 3, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (247, 5, 4, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (248, 5, 6, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (249, 5, 8, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (250, 5, 11, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (251, 5, 31, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (252, 5, 32, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (253, 5, 33, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (254, 5, 41, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (255, 5, 42, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (256, 5, 45, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (257, 5, 43, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (258, 5, 44, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (259, 5, 61, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (260, 5, 62, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (261, 5, 63, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (262, 5, 64, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (263, 5, 81, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (264, 5, 82, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (265, 5, 111, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (266, 5, 112, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (267, 5, 113, '2026-01-05 17:00:00');
+-- 财务人员(5)需要工资管理权限（包括创建、编辑、提交、财务确认、发放）
+-- 工资管理已移到财务管理模块，财务角色已有财务管理父菜单权限，无需再添加人力资源权限
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1005, 5, 107, '2026-01-06 10:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1006, 5, 108, '2026-01-06 10:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1010, 5, 210, '2026-01-06 15:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1011, 5, 211, '2026-01-06 15:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1012, 5, 212, '2026-01-06 15:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1013, 5, 213, '2026-01-06 15:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1014, 5, 214, '2026-01-06 15:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1015, 5, 215, '2026-01-06 15:00:00');
+-- 财务主管(4)也需要工资管理权限
+-- 已删除 role_id=4 的工资管理权限（role_id=4 在 sys_role 表中不存在）
+-- 管理员(1)、主任(2)也可以创建工资表（管理权限）
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1024, 1, 210, '2026-01-06 15:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1025, 2, 210, '2026-01-06 15:00:00');
+-- 管理员(1)、主任(2)也可以查看工资表（管理权限）
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1028, 1, 211, '2026-01-06 15:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1029, 2, 211, '2026-01-06 15:00:00');
+-- 管理员(1)、主任(2)也可以编辑工资表（管理权限）
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1030, 1, 212, '2026-01-06 15:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1031, 2, 212, '2026-01-06 15:00:00');
+-- 管理员(1)、主任(2)也可以提交工资表（管理权限）
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1032, 1, 213, '2026-01-06 15:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1033, 2, 213, '2026-01-06 15:00:00');
+-- 管理员(1)、主任(2)也可以财务确认工资表（管理权限）
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1034, 1, 214, '2026-01-06 15:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1035, 2, 214, '2026-01-06 15:00:00');
+-- 管理员(1)、主任(2)也可以发放工资（管理权限）
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1036, 1, 215, '2026-01-06 15:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1037, 2, 215, '2026-01-06 15:00:00');
+-- 所有角色都可以查看和确认自己的工资
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1026, 1, 216, '2026-01-06 15:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1027, 2, 216, '2026-01-06 15:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1028, 3, 216, '2026-01-06 15:00:00');
+-- INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1029, 4, 216, '2026-01-06 15:00:00'); -- role_id=4 不存在
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1030, 5, 216, '2026-01-06 15:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1031, 6, 216, '2026-01-06 15:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1032, 7, 216, '2026-01-06 15:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1033, 8, 216, '2026-01-06 15:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1034, 9, 216, '2026-01-06 15:00:00');
+-- 管理员(1)、主任(2)、合伙人(3)需要员工档案权限
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1007, 1, 109, '2026-01-06 10:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1008, 2, 109, '2026-01-06 10:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1009, 3, 109, '2026-01-06 10:00:00');
+-- 行政人员(8)需要基础业务模块权限（客户、项目、合同、文书、档案、知识库、财务-律师视角）
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (268, 8, 3, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (269, 8, 4, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (270, 8, 5, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (271, 8, 6, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (272, 8, 8, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (273, 8, 11, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (274, 8, 31, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (275, 8, 32, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (276, 8, 33, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (277, 8, 41, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (278, 8, 42, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (279, 8, 45, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (280, 8, 43, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (281, 8, 44, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (282, 8, 57, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (283, 8, 58, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (284, 8, 59, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (285, 8, 61, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (286, 8, 62, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (287, 8, 63, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (288, 8, 64, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (289, 8, 81, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (290, 8, 82, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (291, 8, 111, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (292, 8, 112, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (293, 8, 113, '2026-01-05 17:00:00');
+-- 财务主管(4)也需要基础业务模块权限
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (294, 4, 3, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (295, 4, 4, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (296, 4, 6, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (297, 4, 8, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (298, 4, 11, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (299, 4, 31, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (300, 4, 32, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (301, 4, 33, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (302, 4, 41, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (303, 4, 42, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (304, 4, 45, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (305, 4, 43, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (306, 4, 44, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (307, 4, 61, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (308, 4, 62, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (309, 4, 63, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (310, 4, 64, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (311, 4, 81, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (312, 4, 82, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (313, 4, 111, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (314, 4, 112, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (315, 4, 113, '2026-01-05 17:00:00');
+-- ADMIN(1)也需要新菜单权限
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (195, 1, 57, '2026-01-05 16:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (196, 1, 58, '2026-01-05 16:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (197, 1, 59, '2026-01-05 16:00:00');
+-- DIRECTOR(2), TEAM_LEADER(3) 也需要新菜单权限
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (198, 2, 57, '2026-01-05 16:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (199, 2, 58, '2026-01-05 16:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (200, 2, 59, '2026-01-05 16:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (201, 3, 57, '2026-01-05 16:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (202, 3, 58, '2026-01-05 16:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (203, 3, 59, '2026-01-05 16:00:00');
+-- 财务主管(4)也需要新菜单权限
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (204, 4, 57, '2026-01-05 16:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (205, 4, 58, '2026-01-05 16:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (206, 4, 59, '2026-01-05 16:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (207, 4, 123, '2026-01-05 16:00:00');
+-- ASSOCIATE(7) 协办律师基本菜单权限
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (208, 7, 1, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (209, 7, 3, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (210, 7, 4, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (211, 7, 6, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (212, 7, 8, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (213, 7, 11, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (214, 7, 31, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (215, 7, 32, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (216, 7, 33, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (217, 7, 41, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (218, 7, 42, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (219, 7, 45, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (220, 7, 43, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (221, 7, 44, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (222, 7, 61, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (223, 7, 62, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (224, 7, 63, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (225, 7, 64, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (226, 7, 81, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (227, 7, 82, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (228, 7, 111, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (229, 7, 112, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (230, 7, 113, '2026-01-05 17:00:00');
+-- TRAINEE(9) 实习律师基本菜单权限（与协办律师类似，但权限更少）
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (231, 9, 1, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (232, 9, 3, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (233, 9, 4, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (234, 9, 6, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (235, 9, 11, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (236, 9, 31, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (237, 9, 32, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (238, 9, 42, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (239, 9, 43, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (240, 9, 44, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (241, 9, 61, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (242, 9, 62, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (243, 9, 111, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (244, 9, 112, '2026-01-05 17:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (245, 9, 113, '2026-01-05 17:00:00');
+-- 提成规则配置权限分配（仅ADMIN和DIRECTOR）
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (341, 1, 140, '2026-01-05 18:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (346, 1, 145, '2026-01-05 18:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (347, 1, 146, '2026-01-05 18:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (348, 1, 147, '2026-01-05 18:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (349, 2, 140, '2026-01-05 18:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (354, 2, 145, '2026-01-05 18:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (355, 2, 146, '2026-01-05 18:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (356, 2, 147, '2026-01-05 18:00:00');
+-- 提成查看权限分配给其他财务角色
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (357, 3, 145, '2026-01-05 18:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (358, 4, 145, '2026-01-05 18:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (359, 4, 147, '2026-01-05 18:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (360, 5, 145, '2026-01-05 18:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (361, 5, 147, '2026-01-05 18:00:00');
+-- 合同变更处理权限分配给ADMIN（role_id=1）
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (362, 1, 123, '2026-01-06 00:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (363, 1, 124, '2026-01-06 00:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (364, 1, 125, '2026-01-06 00:00:00');
+-- 我的合同菜单权限分配
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (365, 1, 148, '2026-01-06 09:30:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (366, 2, 148, '2026-01-06 09:30:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (367, 3, 148, '2026-01-06 09:30:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (368, 4, 148, '2026-01-06 09:30:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (369, 5, 148, '2026-01-06 09:30:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (370, 6, 148, '2026-01-06 09:30:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (371, 7, 148, '2026-01-06 09:30:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (372, 8, 148, '2026-01-06 09:30:00');
+
+-- 日程管理权限分配
+-- ADMIN (1)
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (373, 1, 149, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (374, 1, 150, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (375, 1, 151, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (376, 1, 152, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (377, 1, 153, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (378, 1, 154, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (379, 1, 155, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (380, 1, 156, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (381, 1, 161, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (382, 1, 162, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (383, 1, 163, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (384, 1, 164, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (385, 1, 165, '2026-01-06 12:00:00');
+
+-- DIRECTOR (2)
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (386, 2, 149, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (387, 2, 150, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (388, 2, 151, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (389, 2, 152, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (390, 2, 153, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (391, 2, 154, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (392, 2, 155, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (393, 2, 156, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (394, 2, 161, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (395, 2, 162, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (396, 2, 163, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (397, 2, 164, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (398, 2, 165, '2026-01-06 12:00:00');
+
+-- TEAM_LEADER (3)
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (399, 3, 149, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (400, 3, 150, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (401, 3, 151, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (402, 3, 152, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (403, 3, 153, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (404, 3, 154, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (405, 3, 155, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (406, 3, 156, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (407, 3, 161, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (408, 3, 162, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (409, 3, 163, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (410, 3, 164, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (411, 3, 165, '2026-01-06 12:00:00');
+
+-- LAWYER (4)
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (412, 4, 149, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (413, 4, 150, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (414, 4, 151, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (415, 4, 152, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (416, 4, 153, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (417, 4, 154, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (418, 4, 155, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (419, 4, 156, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (420, 4, 161, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (421, 4, 162, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (422, 4, 163, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (423, 4, 164, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (424, 4, 165, '2026-01-06 12:00:00');
+
+-- PARALEGAL (5)
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (425, 5, 149, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (426, 5, 150, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (427, 5, 151, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (428, 5, 152, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (429, 5, 153, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (430, 5, 154, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (431, 5, 155, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (432, 5, 156, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (433, 5, 161, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (434, 5, 162, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (435, 5, 163, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (436, 5, 164, '2026-01-06 12:00:00');
+
+-- INTERN (6)
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (437, 6, 149, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (438, 6, 150, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (439, 6, 152, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (440, 6, 153, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (441, 6, 161, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (442, 6, 162, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (443, 6, 163, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (444, 6, 164, '2026-01-06 12:00:00');
+
+-- FINANCE (7)
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (445, 7, 149, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (446, 7, 150, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (447, 7, 151, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (448, 7, 163, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (449, 7, 164, '2026-01-06 12:00:00');
+
+-- HR (8)
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (450, 8, 149, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (451, 8, 150, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (452, 8, 151, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (453, 8, 161, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (454, 8, 162, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (455, 8, 163, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (456, 8, 164, '2026-01-06 12:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (457, 8, 165, '2026-01-06 12:00:00');
+
+-- 行政管理模块权限分配
+-- ADMIN(1) - 全部行政权限
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (461, 1, 168, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (462, 1, 169, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (463, 1, 170, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (464, 1, 171, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (465, 1, 172, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (466, 1, 173, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (467, 1, 174, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (468, 1, 175, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (469, 1, 176, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (470, 1, 177, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (471, 1, 178, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (472, 1, 179, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (473, 1, 180, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (474, 1, 181, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (475, 1, 182, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (476, 1, 183, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (477, 1, 184, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (478, 1, 185, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (479, 1, 186, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (480, 1, 187, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (481, 1, 188, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (482, 1, 189, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (483, 1, 190, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (484, 1, 191, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (485, 1, 192, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (486, 1, 193, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (487, 1, 194, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (488, 1, 195, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (489, 1, 196, '2026-01-06 14:00:00');
+-- DIRECTOR(2) - 全部行政权限
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (491, 2, 168, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (492, 2, 169, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (493, 2, 170, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (494, 2, 171, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (495, 2, 172, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (496, 2, 173, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (497, 2, 174, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (498, 2, 175, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (499, 2, 176, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (500, 2, 177, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (501, 2, 178, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (502, 2, 179, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (503, 2, 180, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (504, 2, 181, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (505, 2, 182, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (506, 2, 183, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (507, 2, 184, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (508, 2, 185, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (509, 2, 186, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (510, 2, 187, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (511, 2, 188, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (512, 2, 189, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (513, 2, 190, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (514, 2, 191, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (515, 2, 192, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (516, 2, 193, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (517, 2, 194, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (518, 2, 195, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (519, 2, 196, '2026-01-06 14:00:00');
+-- TEAM_LEADER(3) - 大部分行政权限
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (521, 3, 168, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (522, 3, 169, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (523, 3, 170, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (524, 3, 171, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (525, 3, 172, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (526, 3, 173, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (527, 3, 175, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (528, 3, 176, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (529, 3, 177, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (530, 3, 178, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (531, 3, 180, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (532, 3, 181, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (533, 3, 182, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (534, 3, 184, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (535, 3, 185, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (536, 3, 186, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (537, 3, 187, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (538, 3, 188, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (539, 3, 189, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (540, 3, 190, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (541, 3, 191, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (542, 3, 192, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (543, 3, 193, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (544, 3, 194, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (545, 3, 196, '2026-01-06 14:00:00');
+-- LEAD_LAWYER(6) - 基本行政操作权限
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (551, 6, 168, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (552, 6, 169, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (553, 6, 170, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (554, 6, 175, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (555, 6, 176, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (556, 6, 180, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (557, 6, 184, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (558, 6, 185, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (559, 6, 187, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (560, 6, 188, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (561, 6, 192, '2026-01-06 14:00:00');
+-- ASSOCIATE(7) - 基本行政操作权限
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (571, 7, 168, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (572, 7, 169, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (573, 7, 170, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (574, 7, 175, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (575, 7, 176, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (576, 7, 180, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (577, 7, 184, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (578, 7, 185, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (579, 7, 187, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (580, 7, 188, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (581, 7, 192, '2026-01-06 14:00:00');
+-- TRAINEE(9) - 查看权限
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (591, 9, 168, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (592, 9, 170, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (593, 9, 175, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (594, 9, 180, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (595, 9, 187, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (596, 9, 192, '2026-01-06 14:00:00');
+-- 报表中心权限分配
+-- ADMIN(1) - 全部报表权限
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (651, 1, 160, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (652, 1, 161, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (653, 1, 162, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (654, 1, 163, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (655, 1, 164, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (656, 1, 165, '2026-01-06 14:00:00');
+-- DIRECTOR(2) - 全部报表权限（可查看所有业务数据统计）
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (657, 2, 160, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (658, 2, 161, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (659, 2, 162, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (660, 2, 163, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (661, 2, 164, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (662, 2, 165, '2026-01-06 14:00:00');
+-- FINANCE(4) - 全部报表权限（可查看所有财务数据统计）
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (663, 4, 160, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (664, 4, 161, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (665, 4, 162, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (666, 4, 163, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (667, 4, 164, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (668, 4, 165, '2026-01-06 14:00:00');
+-- FINANCE(5) - 财务相关行政权限
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (601, 5, 168, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (602, 5, 170, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (603, 5, 173, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (604, 5, 175, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (605, 5, 180, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (606, 5, 181, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (607, 5, 182, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (608, 5, 183, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (609, 5, 184, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (610, 5, 185, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (611, 5, 186, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (612, 5, 187, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (613, 5, 188, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (614, 5, 189, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (615, 5, 190, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (616, 5, 191, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (617, 5, 192, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (618, 5, 193, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (619, 5, 194, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (620, 5, 195, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (621, 5, 196, '2026-01-06 14:00:00');
+-- ADMIN_STAFF(8) - 人事相关行政权限
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (631, 8, 168, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (632, 8, 169, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (633, 8, 170, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (634, 8, 171, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (635, 8, 172, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (636, 8, 173, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (637, 8, 174, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (638, 8, 175, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (639, 8, 176, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (640, 8, 177, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (641, 8, 178, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (642, 8, 179, '2026-01-06 14:00:00');
+
+
+--
+-- Data for Name: sys_user; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+INSERT INTO public.sys_user (id, username, password, real_name, email, phone, avatar_url, department_id, "position", employee_no, lawyer_license_no, join_date, compensation_type, can_be_originator, status, last_login_at, last_login_ip, created_at, updated_at, created_by, updated_by, deleted) VALUES (2, 'lawyer1', '$2a$10$fABtTPpIs5pNRgbd.LxXqeuW3BO5gWblCJHye4pW7A3CkvaGS178S', '张律师', 'lawyer1@lawfirm.com', '13800138001', NULL, 2, '律师', 'EMP002', 'L20240001', NULL, 'COMMISSION', true, 'ACTIVE', NULL, NULL, '2026-01-05 03:13:37.697736', '2026-01-05 03:13:37.697736', NULL, NULL, false);
+INSERT INTO public.sys_user (id, username, password, real_name, email, phone, avatar_url, department_id, "position", employee_no, lawyer_license_no, join_date, compensation_type, can_be_originator, status, last_login_at, last_login_ip, created_at, updated_at, created_by, updated_by, deleted) VALUES (1, 'admin', '$2a$10$fABtTPpIs5pNRgbd.LxXqeuW3BO5gWblCJHye4pW7A3CkvaGS178S', '系统管理员', 'admin@lawfirm.com', '13800138000', NULL, 1, '系统管理员', NULL, NULL, NULL, 'HYBRID', true, 'ACTIVE', '2026-01-05 02:57:04.449217', '0:0:0:0:0:0:0:1', '2026-01-04 16:14:15.893998', '2026-01-04 16:14:15.893998', NULL, NULL, false);
+-- 添加主任用户（用于审批）
+INSERT INTO public.sys_user (id, username, password, real_name, email, phone, avatar_url, department_id, "position", employee_no, lawyer_license_no, join_date, compensation_type, can_be_originator, status, last_login_at, last_login_ip, created_at, updated_at, created_by, updated_by, deleted) VALUES (3, 'director', '$2a$10$fABtTPpIs5pNRgbd.LxXqeuW3BO5gWblCJHye4pW7A3CkvaGS178S', '李主任', 'director@lawfirm.com', '13800138002', NULL, 1, '主任', 'EMP003', 'L20240002', NULL, 'SALARIED', true, 'ACTIVE', NULL, NULL, '2026-01-05 10:00:00', '2026-01-05 10:00:00', NULL, NULL, false);
+-- 添加合伙人用户（用于审批）
+INSERT INTO public.sys_user (id, username, password, real_name, email, phone, avatar_url, department_id, "position", employee_no, lawyer_license_no, join_date, compensation_type, can_be_originator, status, last_login_at, last_login_ip, created_at, updated_at, created_by, updated_by, deleted) VALUES (4, 'partner', '$2a$10$fABtTPpIs5pNRgbd.LxXqeuW3BO5gWblCJHye4pW7A3CkvaGS178S', '王合伙人', 'partner@lawfirm.com', '13800138003', NULL, 2, '合伙人', 'EMP004', 'L20240003', NULL, 'HYBRID', true, 'ACTIVE', NULL, NULL, '2026-01-05 10:00:00', '2026-01-05 10:00:00', NULL, NULL, false);
+-- 添加财务人员用户
+INSERT INTO public.sys_user (id, username, password, real_name, email, phone, avatar_url, department_id, "position", employee_no, lawyer_license_no, join_date, compensation_type, can_be_originator, status, last_login_at, last_login_ip, created_at, updated_at, created_by, updated_by, deleted) VALUES (5, 'finance', '$2a$10$fABtTPpIs5pNRgbd.LxXqeuW3BO5gWblCJHye4pW7A3CkvaGS178S', '赵财务', 'finance@lawfirm.com', '13800138004', NULL, 5, '财务', 'EMP005', NULL, NULL, 'SALARIED', false, 'ACTIVE', NULL, NULL, '2026-01-05 16:00:00', '2026-01-05 16:00:00', NULL, NULL, false);
+-- 添加财务主管用户
+INSERT INTO public.sys_user (id, username, password, real_name, email, phone, avatar_url, department_id, "position", employee_no, lawyer_license_no, join_date, compensation_type, can_be_originator, status, last_login_at, last_login_ip, created_at, updated_at, created_by, updated_by, deleted) VALUES (6, 'finmgr', '$2a$10$fABtTPpIs5pNRgbd.LxXqeuW3BO5gWblCJHye4pW7A3CkvaGS178S', '钱财务主管', 'finmgr@lawfirm.com', '13800138005', NULL, 5, '财务主管', 'EMP006', NULL, NULL, 'SALARIED', false, 'ACTIVE', NULL, NULL, '2026-01-05 17:00:00', '2026-01-05 17:00:00', NULL, NULL, false);
+-- 添加协办律师用户
+INSERT INTO public.sys_user (id, username, password, real_name, email, phone, avatar_url, department_id, "position", employee_no, lawyer_license_no, join_date, compensation_type, can_be_originator, status, last_login_at, last_login_ip, created_at, updated_at, created_by, updated_by, deleted) VALUES (7, 'associate', '$2a$10$fABtTPpIs5pNRgbd.LxXqeuW3BO5gWblCJHye4pW7A3CkvaGS178S', '孙协办', 'associate@lawfirm.com', '13800138006', NULL, 2, '协办律师', 'EMP007', 'L20240004', NULL, 'COMMISSION', false, 'ACTIVE', NULL, NULL, '2026-01-05 17:00:00', '2026-01-05 17:00:00', NULL, NULL, false);
+-- 添加行政人员用户
+INSERT INTO public.sys_user (id, username, password, real_name, email, phone, avatar_url, department_id, "position", employee_no, lawyer_license_no, join_date, compensation_type, can_be_originator, status, last_login_at, last_login_ip, created_at, updated_at, created_by, updated_by, deleted) VALUES (8, 'staff', '$2a$10$fABtTPpIs5pNRgbd.LxXqeuW3BO5gWblCJHye4pW7A3CkvaGS178S', '周行政', 'staff@lawfirm.com', '13800138007', NULL, 6, '行政专员', 'EMP008', NULL, NULL, 'SALARIED', false, 'ACTIVE', NULL, NULL, '2026-01-05 17:00:00', '2026-01-05 17:00:00', NULL, NULL, false);
+-- 添加实习律师用户
+INSERT INTO public.sys_user (id, username, password, real_name, email, phone, avatar_url, department_id, "position", employee_no, lawyer_license_no, join_date, compensation_type, can_be_originator, status, last_login_at, last_login_ip, created_at, updated_at, created_by, updated_by, deleted) VALUES (9, 'trainee', '$2a$10$fABtTPpIs5pNRgbd.LxXqeuW3BO5gWblCJHye4pW7A3CkvaGS178S', '吴实习', 'trainee@lawfirm.com', '13800138008', NULL, 2, '实习律师', 'EMP009', NULL, NULL, 'SALARIED', false, 'ACTIVE', NULL, NULL, '2026-01-05 17:00:00', '2026-01-05 17:00:00', NULL, NULL, false);
+
+
+--
+-- Data for Name: sys_user_role; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+INSERT INTO public.sys_user_role (id, user_id, role_id, created_at) VALUES (1, 1, 1, '2026-01-04 16:14:15.894473');
+INSERT INTO public.sys_user_role (id, user_id, role_id, created_at) VALUES (2, 2, 6, '2026-01-05 03:13:59.896251');
+-- 主任用户分配 DIRECTOR 角色
+INSERT INTO public.sys_user_role (id, user_id, role_id, created_at) VALUES (3, 3, 2, '2026-01-05 10:00:00');
+-- 团队负责人用户分配 TEAM_LEADER 角色
+INSERT INTO public.sys_user_role (id, user_id, role_id, created_at) VALUES (4, 4, 3, '2026-01-05 10:00:00');
+-- 财务人员分配 FINANCE 角色
+INSERT INTO public.sys_user_role (id, user_id, role_id, created_at) VALUES (5, 5, 5, '2026-01-05 16:00:00');
+-- 财务主管分配 FINANCE_MANAGER 角色
+INSERT INTO public.sys_user_role (id, user_id, role_id, created_at) VALUES (6, 6, 4, '2026-01-05 17:00:00');
+-- 协办律师分配 ASSOCIATE 角色
+INSERT INTO public.sys_user_role (id, user_id, role_id, created_at) VALUES (7, 7, 7, '2026-01-05 17:00:00');
+-- 行政人员分配 ADMIN_STAFF 角色
+INSERT INTO public.sys_user_role (id, user_id, role_id, created_at) VALUES (8, 8, 8, '2026-01-05 17:00:00');
+-- 实习律师分配 TRAINEE 角色
+INSERT INTO public.sys_user_role (id, user_id, role_id, created_at) VALUES (9, 9, 9, '2026-01-05 17:00:00');
+
+
+--
+-- Name: sys_department_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.sys_department_id_seq', 6, true);
+
+
+--
+-- Name: sys_menu_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.sys_menu_id_seq', 200, true);
+
+
+--
+-- Name: sys_role_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.sys_role_id_seq', 9, true);
+
+
+--
+-- Name: sys_role_menu_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+-- 报表中心权限分配
+-- ADMIN(1) - 全部报表权限
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (701, 1, 200, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (702, 1, 201, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (703, 1, 202, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (704, 1, 203, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (705, 1, 204, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (706, 1, 205, '2026-01-06 14:00:00');
+-- DIRECTOR(2) - 全部报表权限（可查看所有业务数据统计）
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (707, 2, 200, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (708, 2, 201, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (709, 2, 202, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (710, 2, 203, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (711, 2, 204, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (712, 2, 205, '2026-01-06 14:00:00');
+-- FINANCE(4) - 全部报表权限（可查看所有财务数据统计）
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (713, 4, 200, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (714, 4, 201, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (715, 4, 202, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (716, 4, 203, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (717, 4, 204, '2026-01-06 14:00:00');
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (718, 4, 205, '2026-01-06 14:00:00');
+
+SELECT pg_catalog.setval('public.sys_menu_id_seq', 216, true);
+SELECT pg_catalog.setval('public.sys_role_menu_id_seq', 1034, true);
+-- 更新序列以支持工资管理和员工档案权限
+SELECT pg_catalog.setval('public.sys_role_menu_id_seq', 1100, true);
+
+-- 印章管理和用印申请权限说明：
+-- 1. 用印申请（menu_id=64）：所有角色都可以看到和使用（所有人都需要申请用章）
+-- 2. 印章管理（menu_id=63）：只有管理员、律所主任、行政人员可以管理
+--    权限角色：ADMIN(1), DIRECTOR(2), ADMIN_STAFF(8)
+--    注意：其他角色的印章管理权限会在迁移脚本中被删除，见 migrations/039-adjust-seal-permissions.sql
+
+-- 为团队负责人（TEAM_LEADER，role_id=3）添加用印申请权限（不添加印章管理权限）
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1101, 3, 64, '2026-01-07 16:35:00') ON CONFLICT (role_id, menu_id) DO NOTHING;
+-- 为实习律师（TRAINEE，role_id=9）添加用印申请权限（不添加印章管理权限）
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1102, 9, 64, '2026-01-07 16:35:00') ON CONFLICT (role_id, menu_id) DO NOTHING;
+
+-- 为律师角色添加行政管理模块父菜单权限（否则看不到子菜单）
+-- 团队负责人（TEAM_LEADER，role_id=3）
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1105, 3, 9, '2026-01-07 16:40:00') ON CONFLICT (role_id, menu_id) DO NOTHING;
+-- 主办律师（LEAD_LAWYER，role_id=6）
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1106, 6, 9, '2026-01-07 16:40:00') ON CONFLICT (role_id, menu_id) DO NOTHING;
+-- 协办律师（ASSOCIATE，role_id=7）
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1107, 7, 9, '2026-01-07 16:40:00') ON CONFLICT (role_id, menu_id) DO NOTHING;
+-- 实习律师（TRAINEE，role_id=9）
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1108, 9, 9, '2026-01-07 16:40:00') ON CONFLICT (role_id, menu_id) DO NOTHING;
+
+-- 权限调整说明：
+-- 印章管理权限会在迁移脚本中被调整，确保只有管理员、律所主任、行政人员有印章管理权限
+-- 用印申请权限对所有角色开放
+-- 见 migrations/039-adjust-seal-permissions.sql
+
+-- 为团队负责人（TEAM_LEADER，role_id=3）添加业务模块权限
+-- 文书管理模块（不含印章管理，用印申请已有）
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1117, 3, 6, '2026-01-07 20:00:00') ON CONFLICT (role_id, menu_id) DO NOTHING;
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1118, 3, 61, '2026-01-07 20:00:00') ON CONFLICT (role_id, menu_id) DO NOTHING;
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1119, 3, 62, '2026-01-07 20:00:00') ON CONFLICT (role_id, menu_id) DO NOTHING;
+-- 档案管理模块
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1120, 3, 8, '2026-01-07 20:00:00') ON CONFLICT (role_id, menu_id) DO NOTHING;
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1121, 3, 81, '2026-01-07 20:00:00') ON CONFLICT (role_id, menu_id) DO NOTHING;
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1122, 3, 82, '2026-01-07 20:00:00') ON CONFLICT (role_id, menu_id) DO NOTHING;
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1123, 3, 83, '2026-01-07 20:00:00') ON CONFLICT (role_id, menu_id) DO NOTHING;
+-- 知识库模块
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1124, 3, 11, '2026-01-07 20:00:00') ON CONFLICT (role_id, menu_id) DO NOTHING;
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1125, 3, 111, '2026-01-07 20:00:00') ON CONFLICT (role_id, menu_id) DO NOTHING;
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1126, 3, 112, '2026-01-07 20:00:00') ON CONFLICT (role_id, menu_id) DO NOTHING;
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1127, 3, 113, '2026-01-07 20:00:00') ON CONFLICT (role_id, menu_id) DO NOTHING;
+-- 报表中心模块
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1128, 3, 200, '2026-01-07 20:00:00') ON CONFLICT (role_id, menu_id) DO NOTHING;
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1129, 3, 201, '2026-01-07 20:00:00') ON CONFLICT (role_id, menu_id) DO NOTHING;
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1130, 3, 202, '2026-01-07 20:00:00') ON CONFLICT (role_id, menu_id) DO NOTHING;
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1131, 3, 203, '2026-01-07 20:00:00') ON CONFLICT (role_id, menu_id) DO NOTHING;
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1132, 3, 204, '2026-01-07 20:00:00') ON CONFLICT (role_id, menu_id) DO NOTHING;
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1133, 3, 205, '2026-01-07 20:00:00') ON CONFLICT (role_id, menu_id) DO NOTHING;
+
+-- 为律师角色添加报表中心权限（查看自己的业务统计）
+-- 主办律师（LEAD_LAWYER，role_id=6）
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1134, 6, 200, '2026-01-07 21:00:00') ON CONFLICT (role_id, menu_id) DO NOTHING;
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1135, 6, 201, '2026-01-07 21:00:00') ON CONFLICT (role_id, menu_id) DO NOTHING;
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1136, 6, 202, '2026-01-07 21:00:00') ON CONFLICT (role_id, menu_id) DO NOTHING;
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1137, 6, 203, '2026-01-07 21:00:00') ON CONFLICT (role_id, menu_id) DO NOTHING;
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1138, 6, 204, '2026-01-07 21:00:00') ON CONFLICT (role_id, menu_id) DO NOTHING;
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1139, 6, 205, '2026-01-07 21:00:00') ON CONFLICT (role_id, menu_id) DO NOTHING;
+-- 协办律师（ASSOCIATE，role_id=7）
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1140, 7, 200, '2026-01-07 21:00:00') ON CONFLICT (role_id, menu_id) DO NOTHING;
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1141, 7, 201, '2026-01-07 21:00:00') ON CONFLICT (role_id, menu_id) DO NOTHING;
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1142, 7, 202, '2026-01-07 21:00:00') ON CONFLICT (role_id, menu_id) DO NOTHING;
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1143, 7, 203, '2026-01-07 21:00:00') ON CONFLICT (role_id, menu_id) DO NOTHING;
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1144, 7, 204, '2026-01-07 21:00:00') ON CONFLICT (role_id, menu_id) DO NOTHING;
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1145, 7, 205, '2026-01-07 21:00:00') ON CONFLICT (role_id, menu_id) DO NOTHING;
+-- 实习律师（TRAINEE，role_id=9）
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1146, 9, 200, '2026-01-07 21:00:00') ON CONFLICT (role_id, menu_id) DO NOTHING;
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1147, 9, 201, '2026-01-07 21:00:00') ON CONFLICT (role_id, menu_id) DO NOTHING;
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1148, 9, 202, '2026-01-07 21:00:00') ON CONFLICT (role_id, menu_id) DO NOTHING;
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1149, 9, 203, '2026-01-07 21:00:00') ON CONFLICT (role_id, menu_id) DO NOTHING;
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1150, 9, 204, '2026-01-07 21:00:00') ON CONFLICT (role_id, menu_id) DO NOTHING;
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1151, 9, 205, '2026-01-07 21:00:00') ON CONFLICT (role_id, menu_id) DO NOTHING;
+
+-- 财务人员（FINANCE，role_id=5）添加报表中心权限
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1152, 5, 200, '2026-01-07 21:00:00') ON CONFLICT (role_id, menu_id) DO NOTHING;
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1153, 5, 201, '2026-01-07 21:00:00') ON CONFLICT (role_id, menu_id) DO NOTHING;
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1154, 5, 202, '2026-01-07 21:00:00') ON CONFLICT (role_id, menu_id) DO NOTHING;
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1155, 5, 203, '2026-01-07 21:00:00') ON CONFLICT (role_id, menu_id) DO NOTHING;
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1156, 5, 204, '2026-01-07 21:00:00') ON CONFLICT (role_id, menu_id) DO NOTHING;
+INSERT INTO public.sys_role_menu (id, role_id, menu_id, created_at) VALUES (1157, 5, 205, '2026-01-07 21:00:00') ON CONFLICT (role_id, menu_id) DO NOTHING;
+
+-- 更新序列
+SELECT pg_catalog.setval('public.sys_role_menu_id_seq', 1157, true);
+
+
+--
+-- Name: sys_user_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.sys_user_id_seq', 9, true);
+
+
+--
+-- Name: sys_user_role_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.sys_user_role_id_seq', 9, true);
+
+
+--
+-- Data for Name: sys_config; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+-- 合同编号配置
+-- 支持的变量：
+-- {PREFIX}      - 前缀（配置值）
+-- {YEAR}        - 年份(YYYY)，如 2026
+-- {YEAR_SHORT}  - 年份(YY)，如 26
+-- {MONTH}       - 月份(MM)
+-- {DAY}         - 日期(DD)
+-- {DATE}        - 日期(YYMMDD)
+-- {DATE_FULL}   - 完整日期(YYYYMMDD)
+-- {CASE_TYPE}   - 案件类型中文简称（民/刑/行/知/仲/执/顾/非/破）
+-- {CASE_TYPE_CODE} - 案件类型代码（MS/XS/XZ/ZS/ZC/ZX/GW/ZX/PC）
+-- {FEE_TYPE}    - 收费类型（固/时/风/混）
+-- {SEQUENCE}    - 日序号（当日第N份合同）
+-- {SEQUENCE_YEAR} - 年度序号（本年度第N份合同）
+-- {RANDOM}      - 随机字符
+-- {RANDOM_NUM}  - 随机数字
+--
+-- 示例规则：
+-- {YEAR}{CASE_TYPE}代字第{SEQUENCE_YEAR}号  -> 2026民代字第0001号
+-- {PREFIX}{DATE}{RANDOM}                     -> HT260105ABCD
+-- {YEAR}{CASE_TYPE_CODE}-{SEQUENCE_YEAR}    -> 2026MS-0001
+
+INSERT INTO public.sys_config (id, config_key, config_value, config_name, config_type, description, is_system, created_at, updated_at, created_by, updated_by, deleted) VALUES 
+(nextval('public.sys_config_id_seq'), 'contract.number.prefix', 'HT', '合同编号前缀', 'STRING', '合同编号的前缀，用于 {PREFIX} 变量', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL, NULL, false),
+(nextval('public.sys_config_id_seq'), 'contract.number.pattern', '{YEAR}{CASE_TYPE}代字第{SEQUENCE_YEAR}号', '合同编号规则', 'STRING', '合同编号生成规则，支持多种变量组合。示例：2026民代字第0001号', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL, NULL, false),
+(nextval('public.sys_config_id_seq'), 'contract.number.sequence.length', '4', '序号长度', 'STRING', '序号部分的长度(1-10)，不足位数前面补0', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL, NULL, false);
+
+
+
+--
+-- PostgreSQL database dump complete
+--
+
+\unrestrict zfSazfVoubL5nP9VwQfOeF5z0FOroDaYwwqhnzTxLkf1NH65LR5iS3qunPbP2V8
+

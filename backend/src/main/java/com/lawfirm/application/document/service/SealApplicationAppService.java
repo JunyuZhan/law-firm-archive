@@ -23,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -49,7 +50,8 @@ public class SealApplicationAppService {
                 query.getApplicantId(),
                 query.getSealId(),
                 query.getMatterId(),
-                query.getStatus()
+                query.getStatus(),
+                query.getKeeperId()
         );
 
         List<SealApplicationDTO> records = page.getRecords().stream()
@@ -90,12 +92,21 @@ public class SealApplicationAppService {
 
         applicationRepository.save(application);
         
-        // 创建审批记录
-        Long approverId = approverService.findSealApplicationApprover();
+        // 验证审批人是否存在且有审批权限
+        Long approverId = command.getApproverId();
         if (approverId == null) {
-            approverId = approverService.findDefaultApprover();
+            throw new BusinessException("审批人不能为空");
         }
         
+        // 验证审批人是否在可选审批人列表中（确保审批人有效）
+        List<Map<String, Object>> availableApprovers = approverService.getSealApplicationAvailableApprovers(userId);
+        boolean isValidApprover = availableApprovers.stream()
+                .anyMatch(approver -> approverId.equals(approver.get("id")));
+        if (!isValidApprover) {
+            throw new BusinessException("选择的审批人无效，请从可选审批人列表中选择");
+        }
+        
+        // 创建审批记录（使用用户选择的审批人）
         approvalService.createApproval(
                 "SEAL_APPLICATION",
                 application.getId(),
@@ -162,7 +173,7 @@ public class SealApplicationAppService {
     }
 
     /**
-     * 登记用印
+     * 登记用印（仅保管人可以操作）
      */
     @Transactional
     public SealApplicationDTO registerUsage(Long id, String remark) {
@@ -172,6 +183,9 @@ public class SealApplicationAppService {
             throw new BusinessException("只能对已批准的申请登记用印");
         }
 
+        // 验证当前用户是否是印章保管人
+        validateKeeperPermission(id);
+
         application.setStatus("USED");
         application.setUsedBy(SecurityUtils.getUserId());
         application.setUsedAt(LocalDateTime.now());
@@ -179,7 +193,7 @@ public class SealApplicationAppService {
         application.setUseRemark(remark);
 
         applicationRepository.updateById(application);
-        log.info("用印登记成功: {}", application.getApplicationNo());
+        log.info("用印登记成功: {} (保管人: {})", application.getApplicationNo(), SecurityUtils.getUserId());
         return toDTO(application);
     }
 
@@ -210,6 +224,57 @@ public class SealApplicationAppService {
     public List<SealApplicationDTO> getPendingApplications() {
         List<SealApplication> applications = applicationRepository.findPendingApplications();
         return applications.stream().map(this::toDTO).collect(Collectors.toList());
+    }
+
+    /**
+     * 获取保管人待办理的申请（审批通过且印章的保管人是当前用户）
+     */
+    public List<SealApplicationDTO> getPendingForKeeper(Long keeperId) {
+        List<SealApplication> applications = applicationMapper.selectPendingForKeeper(keeperId);
+        return applications.stream().map(this::toDTO).collect(Collectors.toList());
+    }
+
+    /**
+     * 获取保管人已办理的申请（已用印且印章的保管人是当前用户）
+     */
+    public List<SealApplicationDTO> getProcessedByKeeper(Long keeperId) {
+        List<SealApplication> applications = applicationMapper.selectProcessedByKeeper(keeperId);
+        return applications.stream().map(this::toDTO).collect(Collectors.toList());
+    }
+
+    /**
+     * 检查当前用户是否是某个印章的保管人
+     */
+    public boolean isKeeperOfSeal(Long sealId) {
+        Long userId = SecurityUtils.getUserId();
+        Seal seal = sealRepository.getById(sealId);
+        return seal != null && userId.equals(seal.getKeeperId());
+    }
+
+    /**
+     * 检查当前用户是否是任何印章的保管人
+     */
+    public boolean isAnySealKeeper() {
+        Long userId = SecurityUtils.getUserId();
+        // 查询是否有印章的保管人是当前用户
+        com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Seal> wrapper = 
+            new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<>();
+        wrapper.eq(Seal::getKeeperId, userId)
+               .eq(Seal::getDeleted, false);
+        return sealRepository.count(wrapper) > 0;
+    }
+
+    /**
+     * 验证当前用户是否是申请中印章的保管人
+     */
+    public void validateKeeperPermission(Long applicationId) {
+        SealApplication application = applicationRepository.getByIdOrThrow(applicationId, "申请不存在");
+        Seal seal = sealRepository.getByIdOrThrow(application.getSealId(), "印章不存在");
+        Long userId = SecurityUtils.getUserId();
+        
+        if (!userId.equals(seal.getKeeperId())) {
+            throw new BusinessException("您不是该印章的保管人，无权操作");
+        }
     }
 
     /**

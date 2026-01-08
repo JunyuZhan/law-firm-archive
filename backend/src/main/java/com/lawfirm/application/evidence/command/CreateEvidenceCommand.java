@@ -97,4 +97,10 @@ public class CreateEvidenceCommand {
      * 缩略图URL（仅图片文件）
      */
     private String thumbnailUrl;
+
+    /**
+     * 关联卷宗文件ID，引用 doc_document.id
+     * 当设置此字段时，文件信息从卷宗文件获取
+     */
+    private Long documentId;
 }

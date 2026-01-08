@@ -2,6 +2,7 @@ package com.lawfirm.interfaces.rest.matter;
 
 import com.lawfirm.application.finance.command.CreateContractCommand;
 import com.lawfirm.application.finance.command.UpdateContractCommand;
+import com.lawfirm.application.finance.command.ContractChangeCommand;
 import com.lawfirm.application.finance.command.CreatePaymentScheduleCommand;
 import com.lawfirm.application.finance.command.UpdatePaymentScheduleCommand;
 import com.lawfirm.application.finance.command.CreateParticipantCommand;
@@ -15,7 +16,6 @@ import com.lawfirm.common.annotation.OperationLog;
 import com.lawfirm.common.annotation.RequirePermission;
 import com.lawfirm.common.result.PageResult;
 import com.lawfirm.common.result.Result;
-import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -35,6 +35,7 @@ import java.util.HashMap;
 public class ContractController {
 
     private final ContractAppService contractAppService;
+    private final com.lawfirm.domain.finance.repository.PaymentRepository paymentRepository;
 
     // ========== 合同基础操作 ==========
 
@@ -302,15 +303,31 @@ public class ContractController {
                 .map(ContractDTO::getTotalAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         
-        BigDecimal paidAmount = contracts.stream()
-                .filter(c -> c.getPaidAmount() != null)
-                .map(ContractDTO::getPaidAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        // 基于实际收款记录计算已收款金额（更准确）
+        List<Long> contractIds = contracts.stream()
+                .map(ContractDTO::getId)
+                .filter(id -> id != null)
+                .collect(java.util.stream.Collectors.toList());
         
-        BigDecimal unpaidAmount = totalAmount.subtract(paidAmount);
+        BigDecimal receivedAmount = BigDecimal.ZERO;
+        if (!contractIds.isEmpty()) {
+            // 查询这些合同的已确认收款总额
+            receivedAmount = paymentRepository.lambdaQuery()
+                    .in(com.lawfirm.domain.finance.entity.Payment::getContractId, contractIds)
+                    .eq(com.lawfirm.domain.finance.entity.Payment::getStatus, "CONFIRMED")
+                    .eq(com.lawfirm.domain.finance.entity.Payment::getDeleted, false)
+                    .list()
+                    .stream()
+                    .map(com.lawfirm.domain.finance.entity.Payment::getAmount)
+                    .filter(amount -> amount != null)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+        }
+        
+        BigDecimal unpaidAmount = totalAmount.subtract(receivedAmount);
         
         statistics.put("totalAmount", totalAmount);
-        statistics.put("paidAmount", paidAmount);
+        statistics.put("paidAmount", receivedAmount); // 保持向后兼容
+        statistics.put("receivedAmount", receivedAmount); // 前端期望的字段名
         statistics.put("unpaidAmount", unpaidAmount);
         
         // 按收费方式统计
@@ -372,5 +389,17 @@ public class ContractController {
     @RequirePermission("matter:contract:view")
     public Result<com.lawfirm.application.finance.dto.ContractPrintDTO> getContractPrintData(@PathVariable Long id) {
         return Result.success(contractAppService.getContractPrintData(id));
+    }
+
+    /**
+     * 申请合同变更
+     * 用于已审批通过的合同申请变更，需要重新审批
+     */
+    @PostMapping("/change")
+    @RequirePermission("matter:contract:edit")
+    @OperationLog(module = "合同管理", action = "申请合同变更")
+    public Result<Void> applyContractChange(@RequestBody ContractChangeCommand command) {
+        contractAppService.applyContractChange(command);
+        return Result.success();
     }
 }

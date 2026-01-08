@@ -36,7 +36,7 @@ public class PromotionReview implements Serializable {
     private String reviewerName;
 
     /**
-     * 评审人角色：DIRECT_MANAGER-直属上级, HR-人力资源, PARTNER-合伙人, COMMITTEE-评审委员会
+     * 评审人角色：DIRECT_MANAGER-直属上级, HR-人力资源, TEAM_LEADER-团队负责人, COMMITTEE-评审委员会
      */
     private String reviewerRole;
 

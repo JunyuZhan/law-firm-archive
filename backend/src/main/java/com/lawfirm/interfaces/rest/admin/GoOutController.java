@@ -44,14 +44,14 @@ public class GoOutController {
 
     @Operation(summary = "查询我的外出记录")
     @GetMapping("/my")
-    @RequirePermission("admin:goout:view")
+    @RequirePermission("admin:goout:list")
     public Result<List<GoOutRecordDTO>> getMyRecords() {
         return Result.success(goOutAppService.getMyRecords());
     }
 
     @Operation(summary = "查询指定日期范围的外出记录")
     @GetMapping("/range")
-    @RequirePermission("admin:goout:view")
+    @RequirePermission("admin:goout:list")
     public Result<List<GoOutRecordDTO>> getRecordsByDateRange(
             @RequestParam LocalDate startDate,
             @RequestParam LocalDate endDate) {
@@ -60,7 +60,7 @@ public class GoOutController {
 
     @Operation(summary = "查询当前外出的记录")
     @GetMapping("/current")
-    @RequirePermission("admin:goout:view")
+    @RequirePermission("admin:goout:list")
     public Result<List<GoOutRecordDTO>> getCurrentOut() {
         return Result.success(goOutAppService.getCurrentOut());
     }

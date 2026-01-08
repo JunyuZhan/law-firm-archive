@@ -30,5 +30,9 @@ public class ApprovalDTO {
     private String urgencyName;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    /**
+     * 业务数据快照（JSON格式，保存审批时的业务数据）
+     */
+    private String businessSnapshot;
 }
 

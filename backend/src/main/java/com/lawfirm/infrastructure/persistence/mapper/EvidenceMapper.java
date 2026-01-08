@@ -26,6 +26,11 @@ public interface EvidenceMapper extends BaseMapper<Evidence> {
             "<if test='evidenceType != null and evidenceType != \"\"'> AND evidence_type = #{evidenceType} </if>" +
             "<if test='groupName != null and groupName != \"\"'> AND group_name = #{groupName} </if>" +
             "<if test='crossExamStatus != null and crossExamStatus != \"\"'> AND cross_exam_status = #{crossExamStatus} </if>" +
+            "<if test='matterIds != null and matterIds.size() > 0'> AND matter_id IN " +
+            "<foreach collection='matterIds' item='id' open='(' separator=',' close=')'>" +
+            "#{id}" +
+            "</foreach>" +
+            "</if>" +
             "ORDER BY group_name, sort_order, created_at" +
             "</script>")
     IPage<Evidence> selectEvidencePage(Page<Evidence> page,
@@ -33,7 +38,8 @@ public interface EvidenceMapper extends BaseMapper<Evidence> {
                                        @Param("name") String name,
                                        @Param("evidenceType") String evidenceType,
                                        @Param("groupName") String groupName,
-                                       @Param("crossExamStatus") String crossExamStatus);
+                                       @Param("crossExamStatus") String crossExamStatus,
+                                       @Param("matterIds") java.util.List<Long> matterIds);
 
     /**
      * 按案件查询证据列表

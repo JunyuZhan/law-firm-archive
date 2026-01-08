@@ -5,8 +5,10 @@ import com.lawfirm.application.evidence.command.CreateEvidenceCommand;
 import com.lawfirm.application.evidence.command.UpdateEvidenceCommand;
 import com.lawfirm.application.evidence.dto.EvidenceCrossExamDTO;
 import com.lawfirm.application.evidence.dto.EvidenceDTO;
+import com.lawfirm.application.evidence.dto.EvidenceExportItemDTO;
 import com.lawfirm.application.evidence.dto.EvidenceQueryDTO;
 import com.lawfirm.application.evidence.service.EvidenceAppService;
+import com.lawfirm.application.evidence.service.EvidenceExportService;
 import com.lawfirm.common.annotation.OperationLog;
 import com.lawfirm.common.annotation.RequirePermission;
 import com.lawfirm.common.result.PageResult;
@@ -36,6 +38,7 @@ import java.util.Map;
 public class EvidenceController {
 
     private final EvidenceAppService evidenceAppService;
+    private final EvidenceExportService evidenceExportService;
     private final MinioService minioService;
     private final DocumentContentExtractor documentContentExtractor;
     private final FileTypeService fileTypeService;
@@ -425,5 +428,58 @@ public class EvidenceController {
         }
         
         return Result.success(result);
+    }
+
+    /**
+     * 导出证据清单为 Word 文档
+     */
+    @PostMapping("/matter/{matterId}/export")
+    @RequirePermission("evidence:view")
+    @OperationLog(module = "证据管理", action = "导出证据清单")
+    public void exportEvidenceList(
+            @PathVariable Long matterId,
+            @RequestParam(defaultValue = "word") String format,
+            @RequestBody(required = false) List<EvidenceExportItemDTO> items,
+            HttpServletResponse response) {
+        try {
+            byte[] content;
+            String contentType;
+            String extension;
+
+            if ("word".equalsIgnoreCase(format) || "docx".equalsIgnoreCase(format)) {
+                content = evidenceExportService.exportToWord(matterId, items);
+                contentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+                extension = "docx";
+            } else {
+                throw new com.lawfirm.common.exception.BusinessException("暂不支持的导出格式: " + format);
+            }
+
+            String fileName = evidenceExportService.getExportFileName(matterId, extension);
+            
+            response.setContentType(contentType);
+            response.setHeader("Content-Disposition", "attachment; filename=\"" + 
+                    java.net.URLEncoder.encode(fileName, "UTF-8") + "\"");
+            response.setContentLength(content.length);
+            response.getOutputStream().write(content);
+            response.getOutputStream().flush();
+        } catch (Exception e) {
+            log.error("导出证据清单失败", e);
+            try {
+                response.sendError(500, "导出失败: " + e.getMessage());
+            } catch (Exception ignored) {}
+        }
+    }
+
+    /**
+     * 导出证据清单（GET方式，导出全部）
+     */
+    @GetMapping("/matter/{matterId}/export")
+    @RequirePermission("evidence:view")
+    @OperationLog(module = "证据管理", action = "导出证据清单")
+    public void exportEvidenceListGet(
+            @PathVariable Long matterId,
+            @RequestParam(defaultValue = "word") String format,
+            HttpServletResponse response) {
+        exportEvidenceList(matterId, format, null, response);
     }
 }

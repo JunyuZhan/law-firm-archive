@@ -171,22 +171,34 @@ public class DocumentTemplateAppService {
             variables.putAll(command.getExtraVariables());
         }
 
-        // 读取模板文件
-        byte[] templateBytes;
+        // 获取模板内容：优先使用数据库中的 content 字段，其次尝试从文件读取
+        String generatedContent = null;
+        
+        // 1. 优先使用数据库中存储的模板内容
+        if (template.getContent() != null && !template.getContent().isEmpty()) {
+            generatedContent = templateVariableService.replaceVariables(template.getContent(), variables);
+        } else {
+            // 2. 尝试从文件读取模板内容
         try {
             String objectName = minioService.extractObjectName(template.getFilePath());
             if (objectName == null) {
                 objectName = template.getFilePath();
             }
-            templateBytes = minioService.downloadFileAsBytes(objectName);
+                byte[] templateBytes = minioService.downloadFileAsBytes(objectName);
+                if (templateBytes != null) {
+                    String templateContent = new String(templateBytes);
+                    generatedContent = templateVariableService.replaceVariables(templateContent, variables);
+                }
         } catch (Exception e) {
-            log.error("读取模板文件失败: {}", template.getFilePath(), e);
-            throw new BusinessException("模板文件读取失败: " + e.getMessage());
+                log.warn("读取模板文件失败: {}", template.getFilePath());
+            }
+        }
+        
+        // 3. 如果都没有内容，抛出异常
+        if (generatedContent == null || generatedContent.isEmpty()) {
+            throw new BusinessException("模板内容为空，请先编辑模板内容");
         }
 
-        // 替换变量（简化版：仅处理文本替换，实际应该使用Apache POI处理Word文档）
-        String templateContent = new String(templateBytes);
-        String generatedContent = templateVariableService.replaceVariables(templateContent, variables);
         byte[] generatedBytes = generatedContent.getBytes();
 
         // 生成文档名称
@@ -305,7 +317,14 @@ public class DocumentTemplateAppService {
 
         result.put("variableValues", variableValues);
 
-        // 如果模板文件存在，可以读取并预览替换后的内容（简化版）
+        // 获取模板内容：优先使用数据库中的 content 字段，其次尝试从文件读取
+        String previewContent = null;
+        
+        // 1. 优先使用数据库中存储的模板内容
+        if (template.getContent() != null && !template.getContent().isEmpty()) {
+            previewContent = templateVariableService.replaceVariables(template.getContent(), variableValues);
+        } else {
+            // 2. 尝试从文件读取模板内容
         try {
             String objectName = minioService.extractObjectName(template.getFilePath());
             if (objectName == null) {
@@ -314,13 +333,19 @@ public class DocumentTemplateAppService {
             byte[] templateBytes = minioService.downloadFileAsBytes(objectName);
             if (templateBytes != null) {
                 String templateContent = new String(templateBytes);
-                String previewContent = templateVariableService.replaceVariables(templateContent, variableValues);
-                result.put("previewContent", previewContent);
+                    previewContent = templateVariableService.replaceVariables(templateContent, variableValues);
             }
         } catch (Exception e) {
-            log.warn("读取模板文件失败: {}", template.getFilePath(), e);
+                log.warn("读取模板文件失败: {}", template.getFilePath());
+            }
         }
 
+        // 3. 如果都没有，返回提示信息
+        if (previewContent == null) {
+            previewContent = "【" + template.getName() + "】\n\n模板内容为空，请在模板管理中编辑模板内容。";
+        }
+
+        result.put("previewContent", previewContent);
         return result;
     }
 

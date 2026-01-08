@@ -57,10 +57,15 @@ public class DocumentTemplate extends BaseEntity {
     private Long fileSize;
 
     /**
-     * 变量定义
+     * 变量定义（变量名列表）
      */
     @TableField(typeHandler = JacksonTypeHandler.class)
-    private List<Map<String, Object>> variables;
+    private List<String> variables;
+
+    /**
+     * 模板内容（文本格式，包含变量占位符）
+     */
+    private String content;
 
     /**
      * 描述

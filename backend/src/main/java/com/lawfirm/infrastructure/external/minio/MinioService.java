@@ -38,8 +38,12 @@ public class MinioService {
 
     @Value("${minio.bucket-name}")
     private String bucketName;
+    
+    @Value("${minio.external-endpoint:#{null}}")
+    private String externalEndpoint;
 
     private MinioClient minioClient;
+    private MinioClient externalMinioClient;
 
     /**
      * 获取MinIO客户端（懒加载）
@@ -127,6 +131,35 @@ public class MinioService {
     }
 
     /**
+     * 上传文件（使用完整的 objectName）
+     * 
+     * @param inputStream 输入流
+     * @param objectName 完整的对象路径名称
+     * @param contentType 内容类型
+     * @return 文件URL
+     */
+    public String uploadFile(InputStream inputStream, String objectName, String contentType) throws Exception {
+        // 获取文件大小（如果可能）
+        long fileSize = inputStream.available();
+        if (fileSize <= 0) {
+            fileSize = -1; // 未知大小
+        }
+        
+        getMinioClient().putObject(
+                PutObjectArgs.builder()
+                        .bucket(bucketName)
+                        .object(objectName)
+                        .stream(inputStream, fileSize, -1)
+                        .contentType(contentType != null ? contentType : "application/octet-stream")
+                        .build()
+        );
+        
+        String fileUrl = endpoint + "/" + bucketName + "/" + objectName;
+        log.info("文件上传成功: {}", fileUrl);
+        return fileUrl;
+    }
+
+    /**
      * 下载文件
      * 
      * @param objectName 对象名称（完整路径）
@@ -168,6 +201,20 @@ public class MinioService {
     }
 
     /**
+     * 获取外部访问的 MinioClient（用于 Docker 容器等外部服务访问）
+     */
+    private MinioClient getExternalMinioClient() {
+        if (externalMinioClient == null) {
+            String extEndpoint = externalEndpoint != null ? externalEndpoint : endpoint;
+            externalMinioClient = MinioClient.builder()
+                    .endpoint(extEndpoint)
+                    .credentials(accessKey, secretKey)
+                    .build();
+        }
+        return externalMinioClient;
+    }
+
+    /**
      * 生成预签名URL（用于临时访问）
      */
     public String getPresignedUrl(String objectName, int expirySeconds) throws Exception {
@@ -184,13 +231,24 @@ public class MinioService {
 
     /**
      * 生成 Docker 容器可访问的预签名URL
-     * 将 localhost:9000 替换为 minio:9000（Docker 内部网络）
+     * 先生成标准预签名 URL，然后替换 host 为 Docker 可访问的地址
+     * 注意：需要在 OnlyOffice 中设置 ALLOW_PRIVATE_IP_ADDRESS=true
      */
     public String getPresignedUrlForDocker(String objectName, int expirySeconds) throws Exception {
+        // 生成标准预签名 URL
         String presignedUrl = getPresignedUrl(objectName, expirySeconds);
-        // 替换为 Docker 内部网络地址
-        return presignedUrl.replace("localhost:9000", "minio:9000")
-                          .replace("127.0.0.1:9000", "minio:9000");
+        
+        // 替换为 Docker 可访问的地址
+        // 由于签名包含 host 信息，简单替换可能导致签名验证失败
+        // 但 MinIO 在某些配置下会忽略 host 检查
+        if (externalEndpoint != null && !externalEndpoint.isEmpty()) {
+            // 提取原始 endpoint 的 host:port
+            String originalHost = endpoint.replace("http://", "").replace("https://", "");
+            String externalHost = externalEndpoint.replace("http://", "").replace("https://", "");
+            presignedUrl = presignedUrl.replace(originalHost, externalHost);
+        }
+        
+        return presignedUrl;
     }
 
     /**

@@ -8,10 +8,15 @@ import com.lawfirm.application.system.dto.RoleDTO;
 import com.lawfirm.common.base.PageQuery;
 import com.lawfirm.common.exception.BusinessException;
 import com.lawfirm.common.result.PageResult;
+import com.lawfirm.common.util.SecurityUtils;
+import com.lawfirm.domain.system.entity.Menu;
+import com.lawfirm.domain.system.entity.PermissionChangeLog;
 import com.lawfirm.domain.system.entity.Role;
 import com.lawfirm.domain.system.entity.RoleMenu;
+import com.lawfirm.domain.system.repository.PermissionChangeLogRepository;
 import com.lawfirm.domain.system.repository.RoleRepository;
 import com.lawfirm.domain.system.repository.UserRoleRepository;
+import com.lawfirm.infrastructure.persistence.mapper.MenuMapper;
 import com.lawfirm.infrastructure.persistence.mapper.RoleMenuMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,7 +24,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -33,6 +41,8 @@ public class RoleAppService {
     private final RoleRepository roleRepository;
     private final UserRoleRepository userRoleRepository;
     private final RoleMenuMapper roleMenuMapper;
+    private final MenuMapper menuMapper;
+    private final PermissionChangeLogRepository permissionChangeLogRepository;
 
     /**
      * 分页查询角色列表
@@ -203,6 +213,18 @@ public class RoleAppService {
             throw new BusinessException("角色不存在");
         }
         
+        // 获取原有菜单ID列表
+        List<Long> oldMenuIds = roleMenuMapper.selectMenuIdsByRoleId(roleId);
+        Set<Long> oldMenuIdSet = new HashSet<>(oldMenuIds);
+        Set<Long> newMenuIdSet = menuIds != null ? new HashSet<>(menuIds) : new HashSet<>();
+        
+        // 计算新增和移除的权限
+        Set<Long> addedMenuIds = new HashSet<>(newMenuIdSet);
+        addedMenuIds.removeAll(oldMenuIdSet);
+        
+        Set<Long> removedMenuIds = new HashSet<>(oldMenuIdSet);
+        removedMenuIds.removeAll(newMenuIdSet);
+        
         // 删除原有关联
         roleMenuMapper.deleteByRoleId(roleId);
         
@@ -211,7 +233,46 @@ public class RoleAppService {
             saveRoleMenus(roleId, menuIds);
         }
         
-        log.info("分配角色菜单成功: roleId={}, menuCount={}", roleId, menuIds != null ? menuIds.size() : 0);
+        // 记录权限变更历史
+        Long changedBy = SecurityUtils.getUserId();
+        LocalDateTime changedAt = LocalDateTime.now();
+        
+        // 记录新增的权限
+        for (Long menuId : addedMenuIds) {
+            Menu menu = menuMapper.selectById(menuId);
+            if (menu != null && menu.getPermission() != null && !menu.getPermission().isEmpty()) {
+                PermissionChangeLog changeLog = PermissionChangeLog.builder()
+                        .roleId(roleId)
+                        .roleCode(role.getRoleCode())
+                        .changeType("ADD")
+                        .permissionCode(menu.getPermission())
+                        .permissionName(menu.getName())
+                        .changedBy(changedBy)
+                        .changedAt(changedAt)
+                        .build();
+                permissionChangeLogRepository.save(changeLog);
+            }
+        }
+        
+        // 记录移除的权限
+        for (Long menuId : removedMenuIds) {
+            Menu menu = menuMapper.selectById(menuId);
+            if (menu != null && menu.getPermission() != null && !menu.getPermission().isEmpty()) {
+                PermissionChangeLog changeLog = PermissionChangeLog.builder()
+                        .roleId(roleId)
+                        .roleCode(role.getRoleCode())
+                        .changeType("REMOVE")
+                        .permissionCode(menu.getPermission())
+                        .permissionName(menu.getName())
+                        .changedBy(changedBy)
+                        .changedAt(changedAt)
+                        .build();
+                permissionChangeLogRepository.save(changeLog);
+            }
+        }
+        
+        log.info("分配角色菜单成功: roleId={}, menuCount={}, added={}, removed={}", 
+                roleId, menuIds != null ? menuIds.size() : 0, addedMenuIds.size(), removedMenuIds.size());
     }
 
     /**

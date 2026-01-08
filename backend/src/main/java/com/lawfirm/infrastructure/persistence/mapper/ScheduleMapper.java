@@ -49,4 +49,15 @@ public interface ScheduleMapper extends BaseMapper<Schedule> {
             "AND start_time - (reminder_minutes || ' minutes')::interval <= NOW() " +
             "AND start_time > NOW() AND deleted = false")
     List<Schedule> selectNeedReminder();
+
+    /**
+     * 查询用户未来几天的日程
+     */
+    @Select("SELECT * FROM schedule WHERE user_id = #{userId} " +
+            "AND start_time >= NOW() AND start_time <= #{endTime} " +
+            "AND status != 'CANCELLED' AND deleted = false " +
+            "ORDER BY start_time ASC LIMIT #{limit}")
+    List<Schedule> selectUpcomingSchedules(@Param("userId") Long userId, 
+                                           @Param("endTime") LocalDateTime endTime,
+                                           @Param("limit") int limit);
 }

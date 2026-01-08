@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.Collections;
 
 /**
  * 客户应用服务
@@ -43,14 +44,26 @@ public class ClientAppService {
 
     /**
      * 分页查询客户
+     * 数据权限：只能查看自己的客户（我是负责律师 OR 我是案源人）
      */
     public PageResult<ClientDTO> listClients(ClientQueryDTO query) {
+        Long currentUserId = SecurityUtils.getUserId();
+        
+        // 获取自己的客户ID列表（负责律师或案源人）
+        List<Long> myClientIds = getMyClientIds(currentUserId);
+        
+        // 如果没有自己的客户，返回空结果
+        if (myClientIds.isEmpty()) {
+            return PageResult.of(Collections.emptyList(), 0, query.getPageNum(), query.getPageSize());
+        }
+        
         IPage<Client> page = clientMapper.selectClientPage(
                 new Page<>(query.getPageNum(), query.getPageSize()),
                 query.getName(),
                 query.getClientType(),
                 query.getStatus(),
-                query.getResponsibleLawyerId()
+                query.getResponsibleLawyerId(),
+                myClientIds
         );
 
         List<ClientDTO> records = page.getRecords().stream()
@@ -58,6 +71,42 @@ public class ClientAppService {
                 .collect(Collectors.toList());
 
         return PageResult.of(records, page.getTotal(), query.getPageNum(), query.getPageSize());
+    }
+    
+    /**
+     * 获取自己的客户ID列表（我是负责律师 OR 我是案源人）
+     */
+    private List<Long> getMyClientIds(Long userId) {
+        return clientRepository.lambdaQuery()
+                .select(Client::getId)
+                .eq(Client::getDeleted, false)
+                .and(wrapper -> wrapper
+                        .eq(Client::getResponsibleLawyerId, userId)
+                        .or()
+                        .eq(Client::getOriginatorId, userId))
+                .list()
+                .stream()
+                .map(Client::getId)
+                .collect(Collectors.toList());
+    }
+    
+    /**
+     * 利冲审查 - 搜索全所客户（用于对方当事人字段）
+     * 所有人都可以搜索全所客户用于利冲审查
+     */
+    public List<ClientDTO> searchClientsForConflictCheck(String keyword, int limit) {
+        if (!StringUtils.hasText(keyword) || keyword.length() < 2) {
+            return Collections.emptyList();
+        }
+        
+        // 全所客户搜索，不限制权限
+        List<Client> clients = clientRepository.lambdaQuery()
+                .eq(Client::getDeleted, false)
+                .like(Client::getName, keyword)
+                .last("LIMIT " + limit)
+                .list();
+        
+        return clients.stream().map(this::toDTO).collect(Collectors.toList());
     }
 
     /**
@@ -359,15 +408,20 @@ public class ClientAppService {
 
     /**
      * 导出客户信息为Excel
+     * 数据权限：只能导出自己的客户
      */
     public ByteArrayInputStream exportClients(ClientQueryDTO query) throws IOException {
+        Long currentUserId = SecurityUtils.getUserId();
+        List<Long> myClientIds = getMyClientIds(currentUserId);
+        
         // 查询所有符合条件的客户（不分页）
         IPage<Client> page = clientMapper.selectClientPage(
                 new Page<>(1, 10000), // 最大导出10000条
                 query.getName(),
                 query.getClientType(),
                 query.getStatus(),
-                query.getResponsibleLawyerId()
+                query.getResponsibleLawyerId(),
+                myClientIds
         );
 
         List<Client> clients = page.getRecords();

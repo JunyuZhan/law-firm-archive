@@ -111,6 +111,7 @@ public class ApprovalService {
             case "MATTER_CLOSE" -> "项目结案";
             case "REGULARIZATION" -> "转正申请";
             case "RESIGNATION" -> "离职申请";
+            case "LETTER_APPLICATION" -> "出函申请";
             default -> "审批";
         };
     }
@@ -141,6 +142,28 @@ public class ApprovalService {
         // 这里先记录日志，后续完善
         log.info("审批完成回调: approvalId={}, businessType={}, businessId={}, result={}", 
                 approvalId, businessType, businessId, result);
+    }
+
+    /**
+     * 取消审批记录
+     */
+    @Transactional
+    public void cancelApproval(Long approvalId) {
+        Approval approval = approvalRepository.findById(approvalId);
+        if (approval == null) {
+            log.warn("取消审批：审批记录不存在, id={}", approvalId);
+            return;
+        }
+        
+        if (!"PENDING".equals(approval.getStatus())) {
+            log.warn("取消审批：审批状态不是待审批, id={}, status={}", approvalId, approval.getStatus());
+            return;
+        }
+        
+        approval.setStatus("CANCELLED");
+        approvalRepository.updateById(approval);
+        
+        log.info("审批记录已取消: approvalId={}, approvalNo={}", approvalId, approval.getApprovalNo());
     }
 
     /**

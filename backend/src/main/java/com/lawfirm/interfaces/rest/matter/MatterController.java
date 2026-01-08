@@ -8,6 +8,7 @@ import com.lawfirm.application.matter.dto.MatterQueryDTO;
 import com.lawfirm.application.matter.dto.MatterTimelineDTO;
 import com.lawfirm.application.matter.service.MatterAppService;
 import com.lawfirm.application.matter.service.MatterTimelineAppService;
+import com.lawfirm.application.workbench.service.ApproverService;
 
 import com.lawfirm.common.annotation.OperationLog;
 import com.lawfirm.common.annotation.RequirePermission;
@@ -24,6 +25,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 案件管理 Controller
@@ -35,6 +37,7 @@ public class MatterController {
 
     private final MatterAppService matterAppService;
     private final MatterTimelineAppService matterTimelineAppService;
+    private final ApproverService approverService;
 
     /**
      * 分页查询案件列表
@@ -134,6 +137,18 @@ public class MatterController {
     public Result<Void> removeParticipant(@PathVariable Long id, @PathVariable Long userId) {
         matterAppService.removeParticipant(id, userId);
         return Result.success();
+    }
+
+    /**
+     * 获取结案可选审批人列表
+     * 规则：优先显示团队负责人（TEAM_LEADER），其次是主任（DIRECTOR）
+     */
+    @GetMapping("/close/approvers")
+    @RequirePermission("matter:close")
+    @Operation(summary = "获取结案审批人列表", description = "获取可选的结案审批人，优先推荐团队负责人")
+    public Result<List<Map<String, Object>>> getCloseApprovers() {
+        List<Map<String, Object>> approvers = approverService.getMatterCloseAvailableApprovers();
+        return Result.success(approvers);
     }
 
     /**

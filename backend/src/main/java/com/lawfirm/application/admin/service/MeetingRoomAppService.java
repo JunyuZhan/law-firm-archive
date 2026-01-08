@@ -71,14 +71,20 @@ public class MeetingRoomAppService {
      */
     @Transactional
     public MeetingRoomDTO createRoom(CreateMeetingRoomCommand command) {
+        // 如果没有提供编码，自动生成
+        String code = command.getCode();
+        if (!StringUtils.hasText(code)) {
+            code = "ROOM-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        }
+        
         // 检查编码唯一性
-        if (meetingRoomMapper.selectByCode(command.getCode()) != null) {
+        if (meetingRoomMapper.selectByCode(code) != null) {
             throw new BusinessException("会议室编码已存在");
         }
 
         MeetingRoom room = MeetingRoom.builder()
                 .name(command.getName())
-                .code(command.getCode())
+                .code(code)
                 .location(command.getLocation())
                 .capacity(command.getCapacity())
                 .equipment(command.getEquipment())
@@ -100,17 +106,17 @@ public class MeetingRoomAppService {
     public MeetingRoomDTO updateRoom(Long id, CreateMeetingRoomCommand command) {
         MeetingRoom room = meetingRoomRepository.getByIdOrThrow(id, "会议室不存在");
 
-        // 检查编码唯一性
-        MeetingRoom existing = meetingRoomMapper.selectByCode(command.getCode());
-        if (existing != null && !existing.getId().equals(id)) {
-            throw new BusinessException("会议室编码已存在");
+        // 检查编码唯一性（仅当提供了新编码时）
+        if (StringUtils.hasText(command.getCode())) {
+            MeetingRoom existing = meetingRoomMapper.selectByCode(command.getCode());
+            if (existing != null && !existing.getId().equals(id)) {
+                throw new BusinessException("会议室编码已存在");
+            }
+            room.setCode(command.getCode());
         }
 
         if (StringUtils.hasText(command.getName())) {
             room.setName(command.getName());
-        }
-        if (StringUtils.hasText(command.getCode())) {
-            room.setCode(command.getCode());
         }
         if (command.getLocation() != null) {
             room.setLocation(command.getLocation());
@@ -167,13 +173,17 @@ public class MeetingRoomAppService {
      * 分页查询会议预约
      */
     public PageResult<MeetingBookingDTO> listBookings(MeetingBookingQueryDTO query) {
+        // 将 LocalDate 转换为 LocalDateTime
+        LocalDateTime startDateTime = query.getStartTime() != null ? query.getStartTime().atStartOfDay() : null;
+        LocalDateTime endDateTime = query.getEndTime() != null ? query.getEndTime().plusDays(1).atStartOfDay() : null;
+        
         IPage<MeetingBooking> page = meetingBookingMapper.selectBookingPage(
                 new Page<>(query.getPageNum(), query.getPageSize()),
                 query.getRoomId(),
                 query.getOrganizerId(),
                 query.getStatus(),
-                query.getStartTime(),
-                query.getEndTime()
+                startDateTime,
+                endDateTime
         );
 
         List<MeetingBookingDTO> records = page.getRecords().stream()

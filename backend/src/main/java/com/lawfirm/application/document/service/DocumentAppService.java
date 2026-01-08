@@ -18,15 +18,22 @@ import com.lawfirm.domain.document.repository.DocumentCategoryRepository;
 import com.lawfirm.domain.document.repository.DocumentRepository;
 import com.lawfirm.infrastructure.persistence.mapper.DocumentMapper;
 import com.lawfirm.infrastructure.persistence.mapper.DocumentVersionMapper;
+import com.lawfirm.infrastructure.external.minio.MinioService;
+import com.lawfirm.application.matter.service.MatterAppService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import org.springframework.web.multipart.MultipartFile;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Collections;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -42,11 +49,40 @@ public class DocumentAppService {
     private final DocumentCategoryRepository categoryRepository;
     private final DocumentMapper documentMapper;
     private final DocumentVersionMapper versionMapper;
+    private final MinioService minioService;
+    private MatterAppService matterAppService;
+    
+    @org.springframework.beans.factory.annotation.Autowired
+    @Lazy
+    public void setMatterAppService(MatterAppService matterAppService) {
+        this.matterAppService = matterAppService;
+    }
 
     /**
      * 分页查询文档
      */
     public PageResult<DocumentDTO> listDocuments(DocumentQueryDTO query) {
+        // 根据用户权限过滤数据
+        String dataScope = SecurityUtils.getDataScope();
+        Long currentUserId = SecurityUtils.getUserId();
+        Long deptId = SecurityUtils.getDepartmentId();
+        
+        // 获取可访问的项目ID列表
+        List<Long> accessibleMatterIds = matterAppService.getAccessibleMatterIds(dataScope, currentUserId, deptId);
+        
+        // 如果返回空列表，表示没有权限，返回空结果
+        if (accessibleMatterIds != null && accessibleMatterIds.isEmpty()) {
+            return PageResult.of(Collections.emptyList(), 0, query.getPageNum(), query.getPageSize());
+        }
+        
+        // 如果query中指定了matterId，需要验证是否有权限访问该项目
+        if (query.getMatterId() != null && accessibleMatterIds != null) {
+            if (!accessibleMatterIds.contains(query.getMatterId())) {
+                // 没有权限访问指定的项目，返回空结果
+                return PageResult.of(Collections.emptyList(), 0, query.getPageNum(), query.getPageSize());
+            }
+        }
+        
         IPage<Document> page = documentMapper.selectDocumentPage(
                 new Page<>(query.getPageNum(), query.getPageSize()),
                 query.getTitle(),
@@ -54,7 +90,9 @@ public class DocumentAppService {
                 query.getMatterId(),
                 query.getSecurityLevel(),
                 query.getStatus(),
-                query.getFileType()
+                query.getFileType(),
+                query.getCreatedBy(),
+                accessibleMatterIds  // null表示可以访问所有项目的文档（ALL权限）
         );
 
         List<DocumentDTO> records = page.getRecords().stream()
@@ -69,6 +107,11 @@ public class DocumentAppService {
      */
     @Transactional
     public DocumentDTO createDocument(CreateDocumentCommand command) {
+        // 验证用户是否是项目负责人或参与者（只有项目成员才能上传文档）
+        if (command.getMatterId() != null) {
+            matterAppService.validateMatterOwnership(command.getMatterId());
+        }
+        
         // 生成文档编号
         String docNo = generateDocNo();
 
@@ -106,6 +149,11 @@ public class DocumentAppService {
     @Transactional
     public DocumentDTO updateDocument(UpdateDocumentCommand command) {
         Document document = documentRepository.getByIdOrThrow(command.getId(), "文档不存在");
+        
+        // 验证用户是否是项目负责人或参与者（只有项目成员才能编辑文档）
+        if (document.getMatterId() != null) {
+            matterAppService.validateMatterOwnership(document.getMatterId());
+        }
 
         if (StringUtils.hasText(command.getTitle())) {
             document.setTitle(command.getTitle());
@@ -137,6 +185,11 @@ public class DocumentAppService {
     @Transactional
     public DocumentDTO uploadNewVersion(UploadNewVersionCommand command) {
         Document oldDoc = documentRepository.getByIdOrThrow(command.getDocumentId(), "文档不存在");
+        
+        // 验证用户是否是项目负责人或参与者（只有项目成员才能上传新版本）
+        if (oldDoc.getMatterId() != null) {
+            matterAppService.validateMatterOwnership(oldDoc.getMatterId());
+        }
 
         // 将旧版本标记为非最新
         oldDoc.setIsLatest(false);
@@ -256,14 +309,17 @@ public class DocumentAppService {
     }
 
     /**
-     * 删除文档
+     * 删除文档（软删除）
+     * 使用 MyBatis-Plus 的 removeById 来正确处理 @TableLogic 注解
      */
     @Transactional
     public void deleteDocument(Long id) {
         Document document = documentRepository.getByIdOrThrow(id, "文档不存在");
-        document.setStatus("DELETED");
-        documentRepository.updateById(document);
-        log.info("文档删除成功: {}", document.getTitle());
+        String title = document.getTitle();
+        // 使用 softDelete 方法，它会调用 MyBatis-Plus 的 removeById
+        // 这会自动将 deleted 字段设置为 true
+        documentRepository.softDelete(id);
+        log.info("文档删除成功: id={}, title={}", id, title);
     }
 
     /**
@@ -279,8 +335,21 @@ public class DocumentAppService {
 
     /**
      * 按案件查询文档
+     * 
+     * 权限：继承项目的查看权限
      */
     public List<DocumentDTO> getDocumentsByMatter(Long matterId) {
+        // 验证用户是否有权访问该项目
+        String dataScope = SecurityUtils.getDataScope();
+        Long currentUserId = SecurityUtils.getUserId();
+        Long deptId = SecurityUtils.getDepartmentId();
+        List<Long> accessibleMatterIds = matterAppService.getAccessibleMatterIds(dataScope, currentUserId, deptId);
+        
+        // null 表示可以访问所有项目（ALL权限）
+        if (accessibleMatterIds != null && !accessibleMatterIds.contains(matterId)) {
+            throw new BusinessException("无权访问该项目的文档");
+        }
+        
         List<Document> documents = documentRepository.list(
                 new LambdaQueryWrapper<Document>()
                         .eq(Document::getMatterId, matterId)
@@ -289,6 +358,112 @@ public class DocumentAppService {
                         .orderByDesc(Document::getCreatedAt)
         );
         return documents.stream().map(this::toDTO).collect(Collectors.toList());
+    }
+
+    /**
+     * 上传单个文件
+     */
+    @Transactional
+    public DocumentDTO uploadFile(MultipartFile file, Long matterId, String folder, String description, Long dossierItemId) {
+        if (file == null || file.isEmpty()) {
+            throw new BusinessException("请选择要上传的文件");
+        }
+        
+        try {
+            // 构建存储路径
+            String storagePath = buildStoragePath(matterId, folder);
+            
+            // 上传文件到 MinIO
+            String fileUrl = minioService.uploadFile(file, storagePath);
+            
+            // 获取文件信息
+            String originalFilename = file.getOriginalFilename();
+            String fileType = getFileExtension(originalFilename);
+            String mimeType = file.getContentType();
+            long fileSize = file.getSize();
+            
+            // 创建文档记录
+            Document document = Document.builder()
+                    .docNo(generateDocNo())
+                    .title(originalFilename)
+                    .matterId(matterId)
+                    .fileName(originalFilename)
+                    .filePath(fileUrl)
+                    .fileSize(fileSize)
+                    .fileType(fileType)
+                    .mimeType(mimeType)
+                    .version(1)
+                    .isLatest(true)
+                    .securityLevel("INTERNAL")
+                    .status("ACTIVE")
+                    .description(description)
+                    .dossierItemId(dossierItemId)
+                    .folderPath(folder)
+                    .createdBy(SecurityUtils.getUserId())
+                    .build();
+            
+            documentRepository.save(document);
+            
+            // 保存版本历史
+            saveVersion(document, "初始版本");
+            
+            log.info("文件上传成功: {}, path={}", originalFilename, fileUrl);
+            return toDTO(document);
+            
+        } catch (Exception e) {
+            log.error("文件上传失败", e);
+            throw new BusinessException("文件上传失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 批量上传文件
+     */
+    @Transactional
+    public List<DocumentDTO> uploadFiles(MultipartFile[] files, Long matterId, String folder, String description, Long dossierItemId) {
+        if (files == null || files.length == 0) {
+            throw new BusinessException("请选择要上传的文件");
+        }
+        
+        List<DocumentDTO> results = new ArrayList<>();
+        for (MultipartFile file : files) {
+            if (!file.isEmpty()) {
+                DocumentDTO dto = uploadFile(file, matterId, folder, description, dossierItemId);
+                results.add(dto);
+            }
+        }
+        
+        log.info("批量上传完成: {} 个文件", results.size());
+        return results;
+    }
+
+    /**
+     * 构建存储路径
+     */
+    private String buildStoragePath(Long matterId, String folder) {
+        StringBuilder path = new StringBuilder();
+        
+        if (matterId != null) {
+            path.append("matters/").append(matterId).append("/");
+        } else {
+            path.append("personal/").append(SecurityUtils.getUserId()).append("/");
+        }
+        
+        if (folder != null && !folder.isEmpty() && !"root".equals(folder)) {
+            path.append(folder).append("/");
+        }
+        
+        return path.toString();
+    }
+
+    /**
+     * 获取文件扩展名
+     */
+    private String getFileExtension(String filename) {
+        if (filename == null || !filename.contains(".")) {
+            return "";
+        }
+        return filename.substring(filename.lastIndexOf(".") + 1).toLowerCase();
     }
 
     /**
@@ -336,6 +511,77 @@ public class DocumentAppService {
     }
 
     /**
+     * 移动文件到指定目录
+     * @param documentId 文档ID
+     * @param targetDossierItemId 目标卷宗目录项ID
+     * @return 更新后的文档DTO
+     */
+    @Transactional
+    public DocumentDTO moveDocument(Long documentId, Long targetDossierItemId) {
+        Document document = documentRepository.getById(documentId);
+        if (document == null) {
+            throw new BusinessException("文档不存在");
+        }
+        
+        // 验证用户权限
+        if (document.getMatterId() != null) {
+            matterAppService.validateMatterOwnership(document.getMatterId());
+        }
+        
+        // 更新文档的目录关联
+        Long oldDossierItemId = document.getDossierItemId();
+        document.setDossierItemId(targetDossierItemId);
+        documentRepository.updateById(document);
+        
+        // 更新原目录的文件计数
+        if (oldDossierItemId != null) {
+            updateDossierItemCount(oldDossierItemId, -1);
+        }
+        
+        // 更新目标目录的文件计数
+        if (targetDossierItemId != null) {
+            updateDossierItemCount(targetDossierItemId, 1);
+        }
+        
+        log.info("文档移动成功: docId={}, from={}, to={}", documentId, oldDossierItemId, targetDossierItemId);
+        return toDTO(document);
+    }
+    
+    /**
+     * 更新卷宗目录项的文件计数
+     */
+    private void updateDossierItemCount(Long dossierItemId, int delta) {
+        // 通过原生SQL更新计数，避免循环依赖
+        try {
+            documentMapper.updateDossierItemDocCount(dossierItemId, delta);
+        } catch (Exception e) {
+            log.warn("更新目录文件计数失败: itemId={}, delta={}, error={}", dossierItemId, delta, e.getMessage());
+        }
+    }
+
+    /**
+     * 重新排序文档
+     * @param documentIds 按顺序排列的文档ID列表
+     */
+    @Transactional
+    public void reorderDocuments(List<Long> documentIds) {
+        if (documentIds == null || documentIds.isEmpty()) {
+            return;
+        }
+        
+        for (int i = 0; i < documentIds.size(); i++) {
+            Long docId = documentIds.get(i);
+            Document doc = documentRepository.getById(docId);
+            if (doc != null) {
+                doc.setDisplayOrder(i + 1);
+                documentRepository.updateById(doc);
+            }
+        }
+        
+        log.info("文档排序更新成功: count={}", documentIds.size());
+    }
+
+    /**
      * 获取安全级别名称
      */
     private String getSecurityLevelName(String level) {
@@ -360,6 +606,67 @@ public class DocumentAppService {
             case "DELETED" -> "已删除";
             default -> status;
         };
+    }
+
+    /**
+     * 从 OnlyOffice 保存编辑后的文档
+     * OnlyOffice 在用户完成编辑后会调用回调接口，提供编辑后文档的下载URL
+     *
+     * @param documentId  文档ID
+     * @param downloadUrl OnlyOffice 提供的编辑后文档下载URL
+     */
+    @Transactional
+    public void saveFromOnlyOffice(Long documentId, String downloadUrl) {
+        Document document = documentRepository.getById(documentId);
+        if (document == null) {
+            throw new BusinessException("文档不存在: " + documentId);
+        }
+        
+        try {
+            // 1. 从 OnlyOffice 下载编辑后的文档
+            java.net.URL url = new java.net.URL(downloadUrl);
+            java.io.InputStream inputStream = url.openStream();
+            
+            // 2. 计算文件大小（需要先读取到 ByteArrayOutputStream）
+            java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+            byte[] buffer = new byte[8192];
+            int bytesRead;
+            while ((bytesRead = inputStream.read(buffer)) != -1) {
+                baos.write(buffer, 0, bytesRead);
+            }
+            inputStream.close();
+            byte[] fileContent = baos.toByteArray();
+            long newFileSize = fileContent.length;
+            
+            // 3. 构建新的存储路径（保持原来的路径结构）
+            String storagePath = buildStoragePath(document.getMatterId(), document.getFolderPath());
+            String newFileName = document.getFileName();
+            String objectName = storagePath + System.currentTimeMillis() + "_" + newFileName;
+            
+            // 4. 上传新文件到 MinIO
+            java.io.ByteArrayInputStream uploadStream = new java.io.ByteArrayInputStream(fileContent);
+            String newFileUrl = minioService.uploadFile(uploadStream, objectName, document.getMimeType());
+            
+            // 5. 更新文档记录（创建新版本）
+            int newVersion = document.getVersion() != null ? document.getVersion() + 1 : 2;
+            String oldFilePath = document.getFilePath();
+            
+            document.setFilePath(newFileUrl);
+            document.setFileSize(newFileSize);
+            document.setVersion(newVersion);
+            document.setUpdatedAt(LocalDateTime.now());
+            documentRepository.updateById(document);
+            
+            // 6. 保存版本历史
+            saveVersion(document, "OnlyOffice 在线编辑保存");
+            
+            log.info("OnlyOffice 文档保存成功: id={}, version={}, newPath={}", 
+                    documentId, newVersion, newFileUrl);
+            
+        } catch (Exception e) {
+            log.error("从 OnlyOffice 保存文档失败: documentId={}, url={}", documentId, downloadUrl, e);
+            throw new BusinessException("保存文档失败: " + e.getMessage());
+        }
     }
 
     /**
@@ -397,6 +704,9 @@ public class DocumentAppService {
         dto.setCreatedBy(doc.getCreatedBy());
         dto.setCreatedAt(doc.getCreatedAt());
         dto.setUpdatedAt(doc.getUpdatedAt());
+        dto.setDossierItemId(doc.getDossierItemId());
+        dto.setFolderPath(doc.getFolderPath());
+        dto.setDisplayOrder(doc.getDisplayOrder());
         return dto;
     }
 }

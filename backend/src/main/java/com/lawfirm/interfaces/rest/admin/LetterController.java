@@ -4,6 +4,7 @@ import com.lawfirm.application.admin.command.CreateLetterApplicationCommand;
 import com.lawfirm.application.admin.dto.LetterApplicationDTO;
 import com.lawfirm.application.admin.dto.LetterTemplateDTO;
 import com.lawfirm.application.admin.service.LetterAppService;
+import com.lawfirm.common.annotation.RequirePermission;
 import com.lawfirm.common.result.Result;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -27,12 +28,14 @@ public class LetterController {
 
     @Operation(summary = "获取启用的模板列表")
     @GetMapping("/template/list")
+    @RequirePermission("admin:letter:list")
     public Result<List<LetterTemplateDTO>> listTemplates() {
         return Result.success(letterAppService.listActiveTemplates());
     }
 
     @Operation(summary = "创建模板")
     @PostMapping("/template")
+    @RequirePermission("admin:letter:manage")
     public Result<LetterTemplateDTO> createTemplate(
             @RequestParam String name,
             @RequestParam String letterType,
@@ -43,6 +46,7 @@ public class LetterController {
 
     @Operation(summary = "更新模板")
     @PutMapping("/template/{id}")
+    @RequirePermission("admin:letter:manage")
     public Result<LetterTemplateDTO> updateTemplate(
             @PathVariable Long id,
             @RequestParam(required = false) String name,
@@ -54,6 +58,7 @@ public class LetterController {
 
     @Operation(summary = "启用/停用模板")
     @PostMapping("/template/{id}/toggle")
+    @RequirePermission("admin:letter:manage")
     public Result<Void> toggleTemplateStatus(@PathVariable Long id) {
         letterAppService.toggleTemplateStatus(id);
         return Result.success();
@@ -61,6 +66,7 @@ public class LetterController {
 
     @Operation(summary = "获取所有模板（管理员）")
     @GetMapping("/template/all")
+    @RequirePermission("admin:letter:manage")
     public Result<List<LetterTemplateDTO>> listAllTemplates() {
         return Result.success(letterAppService.listAllTemplates());
     }
@@ -75,6 +81,7 @@ public class LetterController {
 
     @Operation(summary = "创建出函申请")
     @PostMapping("/application")
+    @RequirePermission("admin:letter:list")
     public Result<LetterApplicationDTO> createApplication(@RequestBody CreateLetterApplicationCommand command) {
         return Result.success(letterAppService.createApplication(command));
     }
@@ -106,12 +113,14 @@ public class LetterController {
 
     @Operation(summary = "待审批列表")
     @GetMapping("/application/pending-approval")
+    @RequirePermission("admin:letter:approve")
     public Result<List<LetterApplicationDTO>> listPendingApproval() {
         return Result.success(letterAppService.listPendingApproval());
     }
 
     @Operation(summary = "审批通过")
     @PostMapping("/application/{id}/approve")
+    @RequirePermission("admin:letter:approve")
     public Result<Void> approve(@PathVariable Long id, @RequestParam(required = false) String comment) {
         letterAppService.approve(id, comment);
         return Result.success();
@@ -119,6 +128,7 @@ public class LetterController {
 
     @Operation(summary = "审批拒绝")
     @PostMapping("/application/{id}/reject")
+    @RequirePermission("admin:letter:approve")
     public Result<Void> reject(@PathVariable Long id, @RequestParam String comment) {
         letterAppService.reject(id, comment);
         return Result.success();
@@ -126,6 +136,7 @@ public class LetterController {
 
     @Operation(summary = "退回修改")
     @PostMapping("/application/{id}/return")
+    @RequirePermission("admin:letter:approve")
     public Result<Void> returnForRevision(@PathVariable Long id, @RequestParam String comment) {
         letterAppService.returnForRevision(id, comment);
         return Result.success();
@@ -158,6 +169,7 @@ public class LetterController {
 
     @Operation(summary = "获取全部申请列表（行政管理）")
     @GetMapping("/application/all")
+    @RequirePermission("admin:letter:manage")
     public Result<List<LetterApplicationDTO>> listAllApplications(
             @RequestParam(required = false) String applicationNo,
             @RequestParam(required = false) String matterName,
@@ -169,12 +181,14 @@ public class LetterController {
 
     @Operation(summary = "获取待打印列表")
     @GetMapping("/application/pending-print")
+    @RequirePermission("admin:letter:print")
     public Result<List<LetterApplicationDTO>> listPendingPrint() {
         return Result.success(letterAppService.listPendingPrint());
     }
 
     @Operation(summary = "确认打印")
     @PostMapping("/application/{id}/print")
+    @RequirePermission("admin:letter:print")
     public Result<Void> confirmPrint(@PathVariable Long id) {
         letterAppService.confirmPrint(id);
         return Result.success();
@@ -182,8 +196,18 @@ public class LetterController {
 
     @Operation(summary = "确认领取")
     @PostMapping("/application/{id}/receive")
+    @RequirePermission("admin:letter:print")
     public Result<Void> confirmReceive(@PathVariable Long id) {
         letterAppService.confirmReceive(id);
         return Result.success();
+    }
+
+    @Operation(summary = "更新函件内容（行政人员）")
+    @PutMapping("/application/{id}/content")
+    @RequirePermission("admin:letter:manage")
+    public Result<LetterApplicationDTO> updateContent(
+            @PathVariable Long id,
+            @RequestParam String content) {
+        return Result.success(letterAppService.updateContent(id, content));
     }
 }

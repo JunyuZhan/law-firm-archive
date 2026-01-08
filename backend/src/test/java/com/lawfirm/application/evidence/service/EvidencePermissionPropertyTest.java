@@ -84,6 +84,7 @@ class EvidencePermissionPropertyTest {
         
         EvidenceAppService service = new EvidenceAppService(
                 evidenceRepository, evidenceMapper, crossExamMapper, fileTypeService, matterRepository);
+        service.setMatterAppService(mock(com.lawfirm.application.matter.service.MatterAppService.class));
         
         CreateEvidenceCommand command = new CreateEvidenceCommand();
         command.setMatterId(1L);
@@ -134,6 +135,7 @@ class EvidencePermissionPropertyTest {
         
         EvidenceAppService service = new EvidenceAppService(
                 evidenceRepository, evidenceMapper, crossExamMapper, fileTypeService, matterRepository);
+        service.setMatterAppService(mock(com.lawfirm.application.matter.service.MatterAppService.class));
         
         UpdateEvidenceCommand command = new UpdateEvidenceCommand();
         command.setName(newName);
@@ -173,6 +175,7 @@ class EvidencePermissionPropertyTest {
         
         EvidenceAppService service = new EvidenceAppService(
                 evidenceRepository, evidenceMapper, crossExamMapper, fileTypeService, matterRepository);
+        service.setMatterAppService(mock(com.lawfirm.application.matter.service.MatterAppService.class));
         
         // Verify that deleting evidence throws BusinessException
         assertThatThrownBy(() -> service.deleteEvidence(1L))
@@ -201,6 +204,7 @@ class EvidencePermissionPropertyTest {
                 mock(EvidenceCrossExamMapper.class), 
                 new FileTypeService(), 
                 matterRepository);
+        service.setMatterAppService(mock(com.lawfirm.application.matter.service.MatterAppService.class));
         
         boolean canEdit = service.canEditEvidence(1L);
         
@@ -242,6 +246,7 @@ class EvidencePermissionPropertyTest {
                 mock(EvidenceCrossExamMapper.class), 
                 new FileTypeService(), 
                 matterRepository);
+        service.setMatterAppService(mock(com.lawfirm.application.matter.service.MatterAppService.class));
         
         // Verify that batch update throws BusinessException
         assertThatThrownBy(() -> service.batchUpdateGroup(List.of(1L), groupName))
@@ -263,8 +268,10 @@ class EvidencePermissionPropertyTest {
         matter.setStatus(status);
         when(matterRepository.findById(matterId)).thenReturn(matter);
         
-        return new EvidenceAppService(
+        EvidenceAppService service = new EvidenceAppService(
                 evidenceRepository, evidenceMapper, crossExamMapper, fileTypeService, matterRepository);
+        service.setMatterAppService(mock(com.lawfirm.application.matter.service.MatterAppService.class));
+        return service;
     }
 
     // ========== Providers ==========

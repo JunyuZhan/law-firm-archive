@@ -27,7 +27,7 @@ public class DevelopmentPlanController {
 
     @Operation(summary = "分页查询发展规划")
     @GetMapping
-    @RequirePermission("hr:plan:list")
+    @RequirePermission("hr:development:list")
     public Result<PageResult<DevelopmentPlanDTO>> list(
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") int pageNum,
             @Parameter(description = "每页数量") @RequestParam(defaultValue = "10") int pageSize,
@@ -42,7 +42,7 @@ public class DevelopmentPlanController {
 
     @Operation(summary = "获取规划详情")
     @GetMapping("/{id}")
-    @RequirePermission("hr:plan:view")
+    @RequirePermission("hr:development:view")
     public Result<DevelopmentPlanDTO> getById(@PathVariable Long id) {
         DevelopmentPlanDTO plan = developmentPlanAppService.getPlanById(id);
         return Result.success(plan);
@@ -57,7 +57,7 @@ public class DevelopmentPlanController {
 
     @Operation(summary = "创建发展规划")
     @PostMapping
-    @RequirePermission("hr:plan:create")
+    @RequirePermission("hr:development:create")
     @OperationLog(module = "发展规划", action = "创建规划")
     public Result<DevelopmentPlanDTO> create(@RequestBody @Valid CreateDevelopmentPlanCommand command) {
         DevelopmentPlanDTO plan = developmentPlanAppService.createPlan(command);
@@ -66,7 +66,7 @@ public class DevelopmentPlanController {
 
     @Operation(summary = "更新发展规划")
     @PutMapping("/{id}")
-    @RequirePermission("hr:plan:edit")
+    @RequirePermission("hr:development:edit")
     @OperationLog(module = "发展规划", action = "更新规划")
     public Result<DevelopmentPlanDTO> update(@PathVariable Long id,
                                               @RequestBody @Valid CreateDevelopmentPlanCommand command) {
@@ -76,7 +76,7 @@ public class DevelopmentPlanController {
 
     @Operation(summary = "删除发展规划")
     @DeleteMapping("/{id}")
-    @RequirePermission("hr:plan:delete")
+    @RequirePermission("hr:development:delete")
     @OperationLog(module = "发展规划", action = "删除规划")
     public Result<Void> delete(@PathVariable Long id) {
         developmentPlanAppService.deletePlan(id);
@@ -85,7 +85,7 @@ public class DevelopmentPlanController {
 
     @Operation(summary = "提交规划")
     @PostMapping("/{id}/submit")
-    @RequirePermission("hr:plan:edit")
+    @RequirePermission("hr:development:edit")
     @OperationLog(module = "发展规划", action = "提交规划")
     public Result<Void> submit(@PathVariable Long id) {
         developmentPlanAppService.submitPlan(id);
@@ -94,7 +94,7 @@ public class DevelopmentPlanController {
 
     @Operation(summary = "审核规划")
     @PostMapping("/{id}/review")
-    @RequirePermission("hr:plan:review")
+    @RequirePermission("hr:development:review")
     @OperationLog(module = "发展规划", action = "审核规划")
     public Result<Void> review(@PathVariable Long id,
                                 @RequestParam(required = false) String comment) {
@@ -104,7 +104,7 @@ public class DevelopmentPlanController {
 
     @Operation(summary = "更新里程碑状态")
     @PostMapping("/milestones/{milestoneId}/status")
-    @RequirePermission("hr:plan:edit")
+    @RequirePermission("hr:development:edit")
     @OperationLog(module = "发展规划", action = "更新里程碑")
     public Result<Void> updateMilestoneStatus(
             @PathVariable Long milestoneId,

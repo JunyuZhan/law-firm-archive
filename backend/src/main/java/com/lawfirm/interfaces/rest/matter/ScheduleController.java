@@ -117,4 +117,15 @@ public class ScheduleController {
     public Result<List<ScheduleDTO>> getMyToday() {
         return Result.success(scheduleAppService.getMyTodaySchedules());
     }
+
+    /**
+     * 获取我近期的日程（用于工作台展示）
+     */
+    @GetMapping("/my/upcoming")
+    @RequirePermission("schedule:view")
+    public Result<List<ScheduleDTO>> getMyUpcoming(
+            @RequestParam(defaultValue = "7") int days,
+            @RequestParam(defaultValue = "10") int limit) {
+        return Result.success(scheduleAppService.getMyUpcomingSchedules(days, limit));
+    }
 }

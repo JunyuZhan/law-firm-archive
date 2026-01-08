@@ -27,6 +27,8 @@ import com.lawfirm.domain.matter.entity.MatterClient;
 import com.lawfirm.domain.matter.entity.MatterParticipant;
 import com.lawfirm.domain.matter.repository.MatterRepository;
 import com.lawfirm.domain.matter.repository.MatterClientRepository;
+import com.lawfirm.domain.matter.repository.MatterParticipantRepository;
+import com.lawfirm.domain.system.entity.User;
 import com.lawfirm.domain.system.repository.DepartmentRepository;
 import com.lawfirm.domain.system.repository.UserRepository;
 import com.lawfirm.infrastructure.persistence.mapper.MatterMapper;
@@ -40,7 +42,8 @@ import org.springframework.util.StringUtils;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.UUID;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.stream.Collectors;
 
 /**
@@ -55,6 +58,7 @@ public class MatterAppService {
     private final MatterClientRepository matterClientRepository;
     private final MatterMapper matterMapper;
     private final MatterParticipantMapper participantMapper;
+    private final MatterParticipantRepository matterParticipantRepository;
     private final ClientRepository clientRepository;
     private final UserRepository userRepository;
     private final ContractRepository contractRepository;
@@ -74,13 +78,35 @@ public class MatterAppService {
         IPage<Matter> page;
         
         if (Boolean.TRUE.equals(query.getMyMatters())) {
-            // 查询我参与的案件
+            // 查询我参与的案件（已经按用户过滤，不需要额外权限过滤）
             Long userId = SecurityUtils.getUserId();
             page = matterMapper.selectByParticipantUserId(
                     new Page<>(query.getPageNum(), query.getPageSize()),
-                    userId
+                    userId,
+                    query.getName(),
+                    query.getStatus(),
+                    query.getCreatedAtFrom(),
+                    query.getCreatedAtTo()
             );
         } else {
+            // 根据用户权限过滤数据
+            String dataScope = SecurityUtils.getDataScope();
+            Long currentUserId = SecurityUtils.getUserId();
+            Long deptId = SecurityUtils.getDepartmentId();
+            
+            log.debug("查询项目列表 - 用户ID: {}, 数据权限: {}, 部门ID: {}", currentUserId, dataScope, deptId);
+            
+            // 获取可访问的项目ID列表
+            List<Long> accessibleMatterIds = getAccessibleMatterIds(dataScope, currentUserId, deptId);
+            
+            log.debug("可访问的项目ID列表: {}", accessibleMatterIds);
+            
+            // 如果返回空列表，表示没有权限，返回空结果
+            if (accessibleMatterIds != null && accessibleMatterIds.isEmpty()) {
+                log.debug("用户{}没有可访问的项目，返回空结果", currentUserId);
+                return PageResult.of(Collections.emptyList(), 0, query.getPageNum(), query.getPageSize());
+            }
+            
             page = matterMapper.selectMatterPage(
                     new Page<>(query.getPageNum(), query.getPageSize()),
                     query.getName(),
@@ -89,8 +115,13 @@ public class MatterAppService {
                     query.getLeadLawyerId(),
                     query.getDepartmentId(),
                     query.getMatterType(),
-                    query.getStatus()
+                    query.getStatus(),
+                    accessibleMatterIds,  // null表示可以访问所有项目（ALL权限）
+                    query.getCreatedAtFrom(),
+                    query.getCreatedAtTo()
             );
+            
+            log.debug("查询结果 - 总数: {}, 当前页记录数: {}", page.getTotal(), page.getRecords().size());
         }
 
         List<MatterDTO> records = page.getRecords().stream()
@@ -124,7 +155,8 @@ public class MatterAppService {
         }
 
         // 3. 生成案件编号
-        String matterNo = generateMatterNo(command.getMatterType());
+        Long originatorId = command.getOriginatorId() != null ? command.getOriginatorId() : SecurityUtils.getUserId();
+        String matterNo = generateMatterNo(originatorId, command.getCaseType());
 
         // 3. 创建案件实体
         // 由于项目是基于已审批通过的合同创建的，直接设为进行中状态
@@ -245,6 +277,12 @@ public class MatterAppService {
     public MatterDTO updateMatter(UpdateMatterCommand command) {
         Matter matter = matterRepository.getByIdOrThrow(command.getId(), "案件不存在");
         
+        // 验证用户是否有权限访问该项目
+        validateMatterAccess(command.getId());
+        
+        // 验证用户是否是项目负责人或参与者（只有项目成员才能编辑）
+        validateMatterOwnership(command.getId());
+        
         // 归档的项目不能编辑
         if ("ARCHIVED".equals(matter.getStatus())) {
             throw new BusinessException("已归档的项目不能编辑");
@@ -343,6 +381,9 @@ public class MatterAppService {
     public void deleteMatter(Long id) {
         Matter matter = matterRepository.getByIdOrThrow(id, "案件不存在");
         
+        // 验证用户是否有权限访问该项目
+        validateMatterAccess(id);
+        
         if (!"DRAFT".equals(matter.getStatus())) {
             throw new BusinessException("只有草稿状态的案件可以删除");
         }
@@ -359,6 +400,10 @@ public class MatterAppService {
      */
     public MatterDTO getMatterById(Long id) {
         Matter matter = matterRepository.getByIdOrThrow(id, "案件不存在");
+        
+        // 验证用户是否有权限访问该项目
+        validateMatterAccess(id);
+        
         MatterDTO dto = toDTO(matter);
         
         // 加载团队成员
@@ -376,6 +421,13 @@ public class MatterAppService {
     @Transactional
     public void changeStatus(Long id, String status) {
         Matter matter = matterRepository.getByIdOrThrow(id, "案件不存在");
+        
+        // 验证用户是否有权限访问该项目
+        validateMatterAccess(id);
+        
+        // 验证用户是否是项目负责人或参与者（只有项目成员才能修改状态）
+        validateMatterOwnership(id);
+        
         String oldStatus = matter.getStatus();
         
         // 状态流转验证
@@ -474,6 +526,12 @@ public class MatterAppService {
     @Transactional
     public void addParticipant(Long matterId, Long userId, String role, 
                                 java.math.BigDecimal commissionRate, Boolean isOriginator) {
+        // 验证用户是否有权限访问该项目
+        validateMatterAccess(matterId);
+        
+        // 验证用户是否是项目负责人或参与者（只有项目成员才能管理团队）
+        validateMatterOwnership(matterId);
+        
         // 检查是否已在团队中
         if (participantMapper.countByMatterIdAndUserId(matterId, userId) > 0) {
             throw new BusinessException("该成员已在案件团队中");
@@ -520,9 +578,10 @@ public class MatterAppService {
     private String getRoleName(String role) {
         if (role == null) return "成员";
         return switch (role) {
-            case "LEAD_LAWYER" -> "主办律师";
-            case "ASSISTANT" -> "协办律师";
+            case "LEAD_LAWYER", "LEAD" -> "主办律师";
+            case "ASSISTANT", "CO_COUNSEL" -> "协办律师";
             case "PARALEGAL" -> "律师助理";
+            case "TRAINEE" -> "实习律师";
             default -> role;
         };
     }
@@ -532,6 +591,12 @@ public class MatterAppService {
      */
     @Transactional
     public void removeParticipant(Long matterId, Long userId) {
+        // 验证用户是否有权限访问该项目
+        validateMatterAccess(matterId);
+        
+        // 验证用户是否是项目负责人或参与者（只有项目成员才能管理团队）
+        validateMatterOwnership(matterId);
+        
         participantMapper.delete(
                 new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<MatterParticipant>()
                         .eq(MatterParticipant::getMatterId, matterId)
@@ -542,12 +607,59 @@ public class MatterAppService {
 
     /**
      * 生成案件编号
+     * 格式：年份 + 创建人标识 + 类型码 + 顺序号
+     * 例如：2026张三MS-0001, 2026ZS001XS-0001
+     * 
+     * @param originatorId 创建人ID
+     * @param caseType 案件类型（CIVIL, CRIMINAL, ADMINISTRATIVE等）
+     * @return 案件编号
      */
-    private String generateMatterNo(String type) {
-        String prefix = "LITIGATION".equals(type) ? "L" : "N";
-        String datePart = LocalDate.now().toString().replace("-", "").substring(2);
-        String random = UUID.randomUUID().toString().substring(0, 4).toUpperCase();
-        return prefix + datePart + random;
+    private String generateMatterNo(Long originatorId, String caseType) {
+        // 1. 获取年份（4位）
+        String year = String.valueOf(LocalDate.now().getYear());
+        
+        // 2. 获取创建人标识（优先使用工号，否则使用姓名）
+        User originator = userRepository.getByIdOrThrow(originatorId, "创建人不存在");
+        String creatorIdentifier;
+        if (StringUtils.hasText(originator.getEmployeeNo())) {
+            creatorIdentifier = originator.getEmployeeNo(); // 工号，如：ZS001
+        } else {
+            creatorIdentifier = originator.getRealName(); // 姓名，如：张三
+        }
+        
+        // 3. 根据案件类型生成类型码
+        String typeCode = getCaseTypeCode(caseType);
+        
+        // 4. 构建前缀：年份 + 创建人标识 + 类型码 + "-"
+        String prefix = year + creatorIdentifier + typeCode + "-";
+        
+        // 5. 查询该前缀下的最大序号
+        Integer maxSeq = matterRepository.getBaseMapper().selectMaxSequenceByPrefix(prefix, prefix.length());
+        int nextSeq = (maxSeq == null ? 0 : maxSeq) + 1;
+        
+        // 6. 生成完整编号（序号4位，不足补0）
+        return prefix + String.format("%04d", nextSeq);
+    }
+    
+    /**
+     * 根据案件类型获取类型码
+     */
+    private String getCaseTypeCode(String caseType) {
+        if (caseType == null) {
+            return "QT"; // 其他
+        }
+        return switch (caseType) {
+            case "CIVIL" -> "MS";      // 民事
+            case "CRIMINAL" -> "XS";   // 刑事
+            case "ADMINISTRATIVE" -> "XZ"; // 行政
+            case "ARBITRATION" -> "ZC"; // 仲裁
+            case "BANKRUPTCY" -> "PC";  // 破产
+            case "IP" -> "ZS";          // 知识产权
+            case "ENFORCEMENT" -> "ZX"; // 执行
+            case "LEGAL_COUNSEL" -> "GW"; // 法律顾问
+            case "SPECIAL_SERVICE" -> "ZX"; // 专项服务
+            default -> "QT";            // 其他
+        };
     }
 
     /**
@@ -603,8 +715,9 @@ public class MatterAppService {
             case "PENDING" -> "待审批";
             case "ACTIVE" -> "进行中";
             case "SUSPENDED" -> "暂停";
-            case "CLOSED" -> "结案";
-            case "ARCHIVED" -> "归档";
+            case "PENDING_CLOSE" -> "待审批结案";
+            case "CLOSED" -> "已结案";
+            case "ARCHIVED" -> "已归档";
             default -> status;
         };
     }
@@ -624,22 +737,134 @@ public class MatterAppService {
     }
 
     /**
-     * 获取角色名称
+     * Matter Entity 转 DTO
      */
-    private String getRoleName(String role) {
-        if (role == null) return null;
-        return switch (role) {
-            case "LEAD" -> "主办律师";
-            case "CO_COUNSEL" -> "协办律师";
-            case "PARALEGAL" -> "律师助理";
-            case "TRAINEE" -> "实习律师";
-            default -> role;
-        };
+    /**
+     * 验证用户是否有权限访问指定的项目（用于查看）
+     * @param matterId 项目ID
+     * @throws BusinessException 如果用户无权访问该项目
+     */
+    private void validateMatterAccess(Long matterId) {
+        String dataScope = SecurityUtils.getDataScope();
+        Long currentUserId = SecurityUtils.getUserId();
+        Long deptId = SecurityUtils.getDepartmentId();
+        List<Long> accessibleMatterIds = getAccessibleMatterIds(dataScope, currentUserId, deptId);
+        
+        // 如果返回null，表示可以访问所有项目（ALL权限）
+        // 否则检查项目ID是否在可访问列表中
+        if (accessibleMatterIds != null && !accessibleMatterIds.contains(matterId)) {
+            throw new BusinessException("无权访问该项目");
+        }
+    }
+    
+    /**
+     * 验证用户是否是项目的负责人或参与者（用于编辑/归档等操作）
+     * 只有项目负责人和参与者才能编辑项目，管理员除外
+     * @param matterId 项目ID
+     * @throws BusinessException 如果用户不是项目成员
+     */
+    public void validateMatterOwnership(Long matterId) {
+        // 管理员可以操作所有项目
+        if (SecurityUtils.isAdmin()) {
+            return;
+        }
+        
+        Long currentUserId = SecurityUtils.getUserId();
+        Matter matter = matterRepository.findById(matterId);
+        if (matter == null) {
+            throw new BusinessException("项目不存在");
+        }
+        
+        // 检查是否是项目负责人
+        if (currentUserId.equals(matter.getLeadLawyerId())) {
+            return;
+        }
+        
+        // 检查是否是项目参与者
+        boolean isParticipant = matterParticipantRepository.lambdaQuery()
+                .eq(MatterParticipant::getMatterId, matterId)
+                .eq(MatterParticipant::getUserId, currentUserId)
+                .eq(MatterParticipant::getStatus, "ACTIVE")
+                .eq(MatterParticipant::getDeleted, false)
+                .exists();
+        
+        if (!isParticipant) {
+            throw new BusinessException("只有项目负责人和参与者才能执行此操作");
+        }
     }
 
     /**
-     * Matter Entity 转 DTO
+     * 获取可访问的项目ID列表（根据数据权限）
+     * @return null表示可以访问所有项目，否则返回可访问的项目ID列表
      */
+    public List<Long> getAccessibleMatterIds(String dataScope, Long currentUserId, Long deptId) {
+        if ("ALL".equals(dataScope)) {
+            return null; // null表示可以访问所有项目
+        }
+        
+        List<Long> matterIds = new ArrayList<>();
+        
+        if ("DEPT_AND_CHILD".equals(dataScope) && deptId != null) {
+            // 部门及下级部门：查询本部门及下级部门的项目
+            // TODO: 需要实现部门递归查询
+            matterIds = matterRepository.lambdaQuery()
+                    .select(Matter::getId)
+                    .eq(Matter::getDeleted, false)
+                    .eq(Matter::getDepartmentId, deptId)
+                    .list()
+                    .stream()
+                    .map(Matter::getId)
+                    .collect(Collectors.toList());
+        } else if ("DEPT".equals(dataScope) && deptId != null) {
+            // 本部门：查询本部门的项目
+            matterIds = matterRepository.lambdaQuery()
+                    .select(Matter::getId)
+                    .eq(Matter::getDeleted, false)
+                    .eq(Matter::getDepartmentId, deptId)
+                    .list()
+                    .stream()
+                    .map(Matter::getId)
+                    .collect(Collectors.toList());
+        } else {
+            // SELF：只查看自己负责的项目或参与的项目
+            // 查询自己负责的项目
+            List<Long> leadMatterIds = matterRepository.lambdaQuery()
+                    .select(Matter::getId)
+                    .eq(Matter::getDeleted, false)
+                    .eq(Matter::getLeadLawyerId, currentUserId)
+                    .list()
+                    .stream()
+                    .map(Matter::getId)
+                    .collect(Collectors.toList());
+            
+            log.debug("SELF权限 - 用户{}负责的项目ID列表: {}", currentUserId, leadMatterIds);
+            
+            // 查询自己参与的项目（只查询状态为ACTIVE的参与关系）
+            var participantList = matterParticipantRepository.lambdaQuery()
+                    .select(MatterParticipant::getMatterId)
+                    .eq(MatterParticipant::getUserId, currentUserId)
+                    .eq(MatterParticipant::getStatus, "ACTIVE")
+                    .eq(MatterParticipant::getDeleted, false)
+                    .list();
+            
+            List<Long> participantMatterIds = participantList.stream()
+                    .map(MatterParticipant::getMatterId)
+                    .distinct()
+                    .collect(Collectors.toList());
+            
+            log.debug("SELF权限 - 用户{}参与的项目ID列表（ACTIVE）: {}", currentUserId, participantMatterIds);
+            
+            // 合并去重
+            matterIds.addAll(leadMatterIds);
+            matterIds.addAll(participantMatterIds);
+            matterIds = matterIds.stream().distinct().collect(Collectors.toList());
+            
+            log.debug("SELF权限 - 用户{}最终可访问的项目ID列表: {}", currentUserId, matterIds);
+        }
+        
+        return matterIds.isEmpty() ? Collections.emptyList() : matterIds;
+    }
+
     private MatterDTO toDTO(Matter matter) {
         MatterDTO dto = new MatterDTO();
         dto.setId(matter.getId());
@@ -732,6 +957,16 @@ public class MatterAppService {
         dto.setExitDate(p.getExitDate());
         dto.setStatus(p.getStatus());
         dto.setRemark(p.getRemark());
+        
+        // 查询用户信息
+        if (p.getUserId() != null) {
+            User user = userRepository.findById(p.getUserId());
+            if (user != null) {
+                dto.setUserName(user.getRealName());
+                dto.setUserPosition(user.getPosition());
+            }
+        }
+        
         return dto;
     }
 
@@ -810,6 +1045,12 @@ public class MatterAppService {
         if (matter == null) {
             throw new BusinessException("项目不存在");
         }
+        
+        // 验证用户是否有权限访问该项目
+        validateMatterAccess(command.getMatterId());
+        
+        // 验证用户是否是项目负责人或参与者（只有项目成员才能申请结案）
+        validateMatterOwnership(command.getMatterId());
 
         if (!"ACTIVE".equals(matter.getStatus()) && !"SUSPENDED".equals(matter.getStatus())) {
             throw new BusinessException("只有进行中或暂停状态的项目才能申请结案");
@@ -830,7 +1071,9 @@ public class MatterAppService {
 
         // 创建结案审批记录
         try {
-            Long approverId = approverService.findDefaultApprover();
+            // 使用指定的审批人，如果没有指定则使用默认审批人
+            Long approverId = command.getApproverId() != null ? 
+                    command.getApproverId() : approverService.findDefaultApprover();
             String businessSnapshot = objectMapper.writeValueAsString(matter);
             approvalService.createApproval(
                     "MATTER_CLOSE",
@@ -861,6 +1104,9 @@ public class MatterAppService {
         if (matter == null) {
             throw new BusinessException("项目不存在");
         }
+        
+        // 验证用户是否有权限访问该项目
+        validateMatterAccess(matterId);
 
         if (!"PENDING_CLOSE".equals(matter.getStatus())) {
             throw new BusinessException("项目不在待审批结案状态");
@@ -903,6 +1149,9 @@ public class MatterAppService {
         if (matter == null) {
             throw new BusinessException("项目不存在");
         }
+        
+        // 验证用户是否有权限访问该项目
+        validateMatterAccess(matterId);
 
         if (!"CLOSED".equals(matter.getStatus())) {
             throw new BusinessException("只有已结案的项目才能生成结案报告");

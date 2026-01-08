@@ -18,6 +18,7 @@ import com.lawfirm.infrastructure.external.report.ExcelReportGenerator;
 import com.lawfirm.infrastructure.external.report.PdfReportGenerator;
 import com.lawfirm.infrastructure.persistence.mapper.ReportMapper;
 import com.lawfirm.infrastructure.persistence.mapper.StatisticsMapper;
+import com.lawfirm.infrastructure.persistence.mapper.ApprovalMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -47,6 +48,8 @@ public class ReportAppService {
     private final StatisticsMapper statisticsMapper;
     private final ReportRepository reportRepository;
     private final ReportMapper reportMapper;
+    private final ApprovalMapper approvalMapper;
+    private final com.lawfirm.domain.matter.repository.MatterRepository matterRepository;
     
     // ObjectMapper由Spring Boot自动配置
     private final ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
@@ -380,18 +383,19 @@ public class ReportAppService {
     }
 
     /**
-     * 查询报表数据
+     * 查询报表数据（根据权限过滤）
      */
     private List<Map<String, Object>> queryReportData(GenerateReportCommand command) {
         String reportType = command.getReportType();
         Map<String, Object> parameters = command.getParameters() != null ? command.getParameters() : new HashMap<>();
         
+        // 根据用户权限添加过滤条件
+        applyDataScopeFilter(parameters, reportType);
+        
         List<Map<String, Object>> data = new ArrayList<>();
         
         switch (reportType) {
             case "REVENUE" -> {
-                // 查询收入数据（简化版，实际应该根据参数查询）
-                // TODO: 根据parameters中的时间范围、客户等条件查询
                 data = queryRevenueData(parameters);
             }
             case "MATTER" -> {
@@ -439,6 +443,127 @@ public class ReportAppService {
     }
 
     /**
+     * 根据用户数据权限范围应用过滤条件
+     * ALL: 不添加过滤条件（可查看所有数据）
+     * DEPT_AND_CHILD: 过滤本部门及下级部门的数据
+     * DEPT: 过滤本部门的数据
+     * SELF: 只查看自己相关的数据
+     */
+    private void applyDataScopeFilter(Map<String, Object> parameters, String reportType) {
+        String dataScope = SecurityUtils.getDataScope();
+        Long currentUserId = SecurityUtils.getUserId();
+        Long deptId = SecurityUtils.getDepartmentId();
+        
+        // ALL权限：主任和财务可以看到所有数据，不添加过滤
+        if ("ALL".equals(dataScope)) {
+            log.debug("用户拥有ALL权限，可查看所有数据");
+            return;
+        }
+        
+        // 根据报表类型应用不同的权限过滤
+        switch (reportType) {
+            case "REVENUE", "RECEIVABLE", "AGING_ANALYSIS", "PROFIT_ANALYSIS", "COST_ANALYSIS" -> {
+                // 财务相关报表：财务角色（ALL权限）可查看所有，其他角色只能查看自己相关的
+                if (!"ALL".equals(dataScope)) {
+                    // 对于非ALL权限，可以添加客户过滤（如果用户只负责特定客户）
+                    // 这里简化处理，如果用户不是财务角色，可能需要根据实际业务逻辑调整
+                    log.debug("财务报表权限过滤: dataScope={}, userId={}", dataScope, currentUserId);
+                }
+            }
+            case "MATTER", "MATTER_PROGRESS", "MATTER_TIMESHEET", "MATTER_TASK", "MATTER_STAGE", "MATTER_TREND" -> {
+                // 项目相关报表：根据数据范围过滤
+                if ("DEPT_AND_CHILD".equals(dataScope) && deptId != null) {
+                    List<Long> deptIds = getAllChildDepartmentIds(deptId);
+                    deptIds.add(deptId);
+                    parameters.put("departmentIds", deptIds);
+                    log.debug("项目报表权限过滤: 部门及下级部门, deptIds={}", deptIds);
+                } else if ("DEPT".equals(dataScope) && deptId != null) {
+                    parameters.put("departmentId", deptId);
+                    log.debug("项目报表权限过滤: 本部门, deptId={}", deptId);
+                } else if ("SELF".equals(dataScope)) {
+                    parameters.put("leadLawyerId", currentUserId);
+                    log.debug("项目报表权限过滤: 自己负责的项目, userId={}", currentUserId);
+                }
+            }
+            case "CLIENT" -> {
+                // 客户报表：根据数据范围过滤
+                if ("SELF".equals(dataScope)) {
+                    parameters.put("responsibleLawyerId", currentUserId);
+                    log.debug("客户报表权限过滤: 自己负责的客户, userId={}", currentUserId);
+                }
+                // DEPT和DEPT_AND_CHILD可能需要根据客户关联的项目部门来过滤，这里简化处理
+            }
+            case "LAWYER_PERFORMANCE" -> {
+                // 律师业绩报表：根据数据范围过滤项目
+                if ("DEPT_AND_CHILD".equals(dataScope) && deptId != null) {
+                    List<Long> deptIds = getAllChildDepartmentIds(deptId);
+                    deptIds.add(deptId);
+                    // 查询符合条件的项目ID列表
+                    List<Long> matterIds = matterRepository.lambdaQuery()
+                            .select(com.lawfirm.domain.matter.entity.Matter::getId)
+                            .in(com.lawfirm.domain.matter.entity.Matter::getDepartmentId, deptIds)
+                            .eq(com.lawfirm.domain.matter.entity.Matter::getDeleted, false)
+                            .list()
+                            .stream()
+                            .map(com.lawfirm.domain.matter.entity.Matter::getId)
+                            .collect(Collectors.toList());
+                    parameters.put("matterIds", matterIds);
+                    log.debug("律师业绩报表权限过滤: 部门及下级部门, matterIds={}", matterIds);
+                } else if ("DEPT".equals(dataScope) && deptId != null) {
+                    List<Long> matterIds = matterRepository.lambdaQuery()
+                            .select(com.lawfirm.domain.matter.entity.Matter::getId)
+                            .eq(com.lawfirm.domain.matter.entity.Matter::getDepartmentId, deptId)
+                            .eq(com.lawfirm.domain.matter.entity.Matter::getDeleted, false)
+                            .list()
+                            .stream()
+                            .map(com.lawfirm.domain.matter.entity.Matter::getId)
+                            .collect(Collectors.toList());
+                    parameters.put("matterIds", matterIds);
+                    log.debug("律师业绩报表权限过滤: 本部门, matterIds={}", matterIds);
+                } else if ("SELF".equals(dataScope)) {
+                    // 查询自己负责或参与的项目
+                    List<Long> leadMatterIds = matterRepository.lambdaQuery()
+                            .select(com.lawfirm.domain.matter.entity.Matter::getId)
+                            .eq(com.lawfirm.domain.matter.entity.Matter::getDeleted, false)
+                            .eq(com.lawfirm.domain.matter.entity.Matter::getLeadLawyerId, currentUserId)
+                            .list()
+                            .stream()
+                            .map(com.lawfirm.domain.matter.entity.Matter::getId)
+                            .collect(Collectors.toList());
+                    parameters.put("matterIds", leadMatterIds);
+                    log.debug("律师业绩报表权限过滤: 自己负责的项目, matterIds={}", leadMatterIds);
+                }
+            }
+            default -> {
+                log.debug("报表类型 {} 暂不支持权限过滤", reportType);
+            }
+        }
+    }
+
+    /**
+     * 获取部门及所有下级部门ID
+     */
+    private List<Long> getAllChildDepartmentIds(Long parentId) {
+        List<Long> result = new ArrayList<>();
+        collectChildDeptIds(parentId, result);
+        return result;
+    }
+    
+    private void collectChildDeptIds(Long parentId, List<Long> result) {
+        try {
+            List<Long> childIds = approvalMapper.selectChildDeptIds(parentId);
+            if (childIds != null && !childIds.isEmpty()) {
+                result.addAll(childIds);
+                for (Long childId : childIds) {
+                    collectChildDeptIds(childId, result);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("查询子部门失败: parentId={}", parentId, e);
+        }
+    }
+
+    /**
      * 查询收入数据
      */
     private List<Map<String, Object>> queryRevenueData(Map<String, Object> parameters) {
@@ -476,7 +601,10 @@ public class ReportAppService {
     private List<Map<String, Object>> queryLawyerPerformanceData(Map<String, Object> parameters) {
         Integer limit = parameters.get("limit") != null ? 
                 Integer.parseInt(parameters.get("limit").toString()) : 10;
-        return statisticsMapper.getLawyerPerformanceRanking(limit);
+        // 从参数中获取可访问的项目ID列表（如果已设置）
+        @SuppressWarnings("unchecked")
+        List<Long> matterIds = (List<Long>) parameters.get("matterIds");
+        return statisticsMapper.getLawyerPerformanceRanking(limit, matterIds);
     }
 
     /**

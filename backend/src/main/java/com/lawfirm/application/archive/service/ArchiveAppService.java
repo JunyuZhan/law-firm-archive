@@ -7,6 +7,8 @@ import com.lawfirm.application.archive.command.CreateArchiveCommand;
 import com.lawfirm.application.archive.command.StoreArchiveCommand;
 import com.lawfirm.application.archive.dto.ArchiveDTO;
 import com.lawfirm.application.archive.dto.ArchiveQueryDTO;
+import com.lawfirm.application.archive.service.ArchiveDataCollectorService.ArchiveCheckResult;
+import com.lawfirm.application.archive.service.ArchiveDataCollectorService.ArchiveDataSnapshot;
 import com.lawfirm.common.exception.BusinessException;
 import com.lawfirm.common.result.PageResult;
 import com.lawfirm.common.util.SecurityUtils;
@@ -21,14 +23,16 @@ import com.lawfirm.domain.matter.repository.MatterRepository;
 import com.lawfirm.infrastructure.persistence.mapper.ArchiveMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
+import java.util.Collections;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -45,11 +49,32 @@ public class ArchiveAppService {
     private final ArchiveLocationRepository locationRepository;
     private final ArchiveOperationLogRepository operationLogRepository;
     private final MatterRepository matterRepository;
+    private final ArchiveDataCollectorService dataCollectorService;
+    private com.lawfirm.application.matter.service.MatterAppService matterAppService;
+    
+    @org.springframework.beans.factory.annotation.Autowired
+    @Lazy
+    public void setMatterAppService(com.lawfirm.application.matter.service.MatterAppService matterAppService) {
+        this.matterAppService = matterAppService;
+    }
 
     /**
      * 分页查询档案
      */
     public PageResult<ArchiveDTO> listArchives(ArchiveQueryDTO query) {
+        // 根据用户权限过滤数据
+        String dataScope = SecurityUtils.getDataScope();
+        Long currentUserId = SecurityUtils.getUserId();
+        Long deptId = SecurityUtils.getDepartmentId();
+        
+        // 获取可访问的项目ID列表
+        List<Long> accessibleMatterIds = matterAppService.getAccessibleMatterIds(dataScope, currentUserId, deptId);
+        
+        // 如果返回空列表，表示没有权限，返回空结果
+        if (accessibleMatterIds != null && accessibleMatterIds.isEmpty()) {
+            return PageResult.of(Collections.emptyList(), 0, query.getPageNum(), query.getPageSize());
+        }
+        
         LambdaQueryWrapper<Archive> wrapper = new LambdaQueryWrapper<>();
         
         if (StringUtils.hasText(query.getArchiveNo())) {
@@ -83,6 +108,12 @@ public class ArchiveAppService {
             wrapper.le(Archive::getCaseCloseDate, query.getCaseCloseDateTo());
         }
         
+        // 应用数据权限过滤：只查询可访问项目的档案
+        if (accessibleMatterIds != null) {
+            wrapper.in(Archive::getMatterId, accessibleMatterIds);
+        }
+        // accessibleMatterIds == null 表示可以访问所有项目的档案（ALL权限）
+        
         wrapper.orderByDesc(Archive::getCreatedAt);
 
         IPage<Archive> page = archiveRepository.page(
@@ -99,6 +130,7 @@ public class ArchiveAppService {
 
     /**
      * 创建档案（从案件）
+     * 自动收集项目所有相关数据
      */
     @Transactional
     public ArchiveDTO createArchive(CreateArchiveCommand command) {
@@ -117,12 +149,22 @@ public class ArchiveAppService {
             throw new BusinessException("该案件已存在档案记录");
         }
 
+        // 收集项目所有相关数据
+        ArchiveDataSnapshot snapshot = dataCollectorService.collectMatterData(command.getMatterId());
+        String snapshotJson = dataCollectorService.snapshotToJson(snapshot);
+
         // 生成档案号
         String archiveNo = generateArchiveNo(command.getArchiveType());
 
         // 确定保管期限（默认10年）
         String retentionPeriod = command.getRetentionPeriod() != null 
                 ? command.getRetentionPeriod() : "10_YEARS";
+
+        // 从快照中获取统计信息生成目录
+        String catalog = command.getCatalog();
+        if (catalog == null || catalog.isEmpty()) {
+            catalog = generateCatalogFromSnapshot(snapshot);
+        }
 
         // 创建档案
         Archive archive = Archive.builder()
@@ -135,22 +177,51 @@ public class ArchiveAppService {
                 .caseCloseDate(matter.getActualClosingDate())
                 .volumeCount(command.getVolumeCount() != null ? command.getVolumeCount() : 1)
                 .pageCount(command.getPageCount())
-                .catalog(command.getCatalog())
+                .catalog(catalog)
                 .retentionPeriod(retentionPeriod)
                 .retentionExpireDate(calculateRetentionExpireDate(matter.getActualClosingDate(), retentionPeriod))
-                .hasElectronic(command.getHasElectronic() != null ? command.getHasElectronic() : false)
+                .hasElectronic(command.getHasElectronic() != null ? command.getHasElectronic() : true)
                 .electronicUrl(command.getElectronicUrl())
                 .status("PENDING")
                 .remarks(command.getRemarks())
+                .archiveSnapshot(snapshotJson)
+                .filesDeleted(false)
                 .build();
 
         archiveRepository.save(archive);
 
         // 记录操作日志
-        logOperation(archive.getId(), "CREATE", "创建档案", SecurityUtils.getUserId());
+        logOperation(archive.getId(), "CREATE", "创建档案，数据统计：" + snapshot.getStatistics(), SecurityUtils.getUserId());
 
-        log.info("档案创建成功: {} ({})", archive.getArchiveName(), archive.getArchiveNo());
+        log.info("档案创建成功: {} ({}), 数据统计: {}", archive.getArchiveName(), archive.getArchiveNo(), snapshot.getStatistics());
         return toDTO(archive);
+    }
+
+    /**
+     * 从数据快照生成档案目录
+     */
+    private String generateCatalogFromSnapshot(ArchiveDataSnapshot snapshot) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("档案目录\n");
+        sb.append("========\n\n");
+        
+        // 根据卷宗目录生成
+        if (snapshot.getDossierItems() != null && !snapshot.getDossierItems().isEmpty()) {
+            for (Map<String, Object> item : snapshot.getDossierItems()) {
+                String name = (String) item.get("name");
+                Integer docCount = (Integer) item.get("document_count");
+                sb.append(String.format("- %s (%d 个文件)\n", name, docCount != null ? docCount : 0));
+            }
+        }
+        
+        sb.append("\n数据统计\n");
+        sb.append("========\n");
+        Map<String, Integer> stats = snapshot.getStatistics();
+        for (Map.Entry<String, Integer> entry : stats.entrySet()) {
+            sb.append(String.format("- %s: %d\n", entry.getKey(), entry.getValue()));
+        }
+        
+        return sb.toString();
     }
 
     /**
@@ -280,45 +351,108 @@ public class ArchiveAppService {
     }
 
     /**
-     * 申请销毁档案
+     * 归档预检查
+     * 检查项目是否满足归档条件
      */
-    @Transactional
-    public void applyDestroy(Long id, String reason) {
-        Archive archive = archiveRepository.getByIdOrThrow(id, "档案不存在");
-        
-        if (!"STORED".equals(archive.getStatus())) {
-            throw new BusinessException("只有已入库的档案才能申请销毁");
-        }
-
-        // 检查是否到期
-        if (archive.getRetentionExpireDate() != null 
-                && archive.getRetentionExpireDate().isAfter(LocalDate.now())) {
-            throw new BusinessException("档案保管期限未到，不能销毁");
-        }
-
-        archive.setStatus("PENDING_DESTROY");
-        archive.setDestroyReason(reason);
-        archiveRepository.updateById(archive);
-
-        logOperation(archive.getId(), "APPLY_DESTROY", "申请销毁档案：" + reason, SecurityUtils.getUserId());
-        log.info("档案销毁申请已提交: {}", archive.getArchiveNo());
+    public ArchiveCheckResult checkArchiveRequirements(Long matterId) {
+        return dataCollectorService.checkArchiveRequirements(matterId);
     }
 
     /**
-     * 审批销毁档案
+     * 获取项目归档数据预览
+     * 用于前端展示可归档的数据
+     */
+    public ArchiveDataSnapshot previewArchiveData(Long matterId) {
+        return dataCollectorService.collectMatterData(matterId);
+    }
+
+    /**
+     * 获取可用的归档数据源配置
+     */
+    public List<Map<String, Object>> getAvailableDataSources() {
+        return dataCollectorService.getAvailableDataSources();
+    }
+
+    /**
+     * 提交入库审批
      */
     @Transactional
-    public void approveDestroy(Long id, boolean approved, String comment) {
-        Archive archive = archiveRepository.getByIdOrThrow(id, "档案不存在");
+    public void submitStoreApproval(Long archiveId) {
+        Archive archive = archiveRepository.getByIdOrThrow(archiveId, "档案不存在");
         
-        if (!"PENDING_DESTROY".equals(archive.getStatus())) {
-            throw new BusinessException("档案不在待销毁审批状态");
+        if (!"PENDING".equals(archive.getStatus())) {
+            throw new BusinessException("只有待入库的档案才能提交入库审批");
+        }
+
+        archive.setStatus("PENDING_STORE");
+        archiveRepository.updateById(archive);
+
+        // TODO: 创建审批记录，通知主任审批
+        logOperation(archive.getId(), "SUBMIT_STORE", "提交入库审批", SecurityUtils.getUserId());
+        log.info("档案入库审批已提交: {}", archive.getArchiveNo());
+    }
+
+    /**
+     * 审批入库
+     */
+    @Transactional
+    public void approveStore(Long archiveId, boolean approved, String comment) {
+        Archive archive = archiveRepository.getByIdOrThrow(archiveId, "档案不存在");
+        
+        if (!"PENDING_STORE".equals(archive.getStatus())) {
+            throw new BusinessException("档案不在待入库审批状态");
         }
 
         if (approved) {
-            archive.setStatus("DESTROYED");
-            archive.setDestroyDate(LocalDate.now());
-            archive.setDestroyApproverId(SecurityUtils.getUserId());
+            // 审批通过后，档案状态变为待入库（等待行政人员实际入库操作）
+            archive.setStatus("PENDING");
+            logOperation(archive.getId(), "APPROVE_STORE", "入库审批通过：" + comment, SecurityUtils.getUserId());
+            log.info("档案入库审批通过: {}", archive.getArchiveNo());
+        } else {
+            // 审批拒绝，退回待入库状态
+            archive.setStatus("PENDING");
+            logOperation(archive.getId(), "REJECT_STORE", "入库审批拒绝：" + comment, SecurityUtils.getUserId());
+            log.info("档案入库审批拒绝: {}", archive.getArchiveNo());
+        }
+        
+        archiveRepository.updateById(archive);
+    }
+
+    /**
+     * 申请迁移档案（原销毁功能改为迁移）
+     */
+    @Transactional
+    public void applyMigrate(Long id, String reason, String migrateTarget) {
+        Archive archive = archiveRepository.getByIdOrThrow(id, "档案不存在");
+        
+        if (!"STORED".equals(archive.getStatus())) {
+            throw new BusinessException("只有已入库的档案才能申请迁移");
+        }
+
+        archive.setStatus("PENDING_MIGRATE");
+        archive.setMigrateReason(reason);
+        archive.setMigrateTarget(migrateTarget);
+        archiveRepository.updateById(archive);
+
+        logOperation(archive.getId(), "APPLY_MIGRATE", "申请迁移档案：" + reason + "，目标：" + migrateTarget, SecurityUtils.getUserId());
+        log.info("档案迁移申请已提交: {}", archive.getArchiveNo());
+    }
+
+    /**
+     * 审批迁移档案
+     */
+    @Transactional
+    public void approveMigrate(Long id, boolean approved, String comment, boolean deleteFiles) {
+        Archive archive = archiveRepository.getByIdOrThrow(id, "档案不存在");
+        
+        if (!"PENDING_MIGRATE".equals(archive.getStatus())) {
+            throw new BusinessException("档案不在待迁移审批状态");
+        }
+
+        if (approved) {
+            archive.setStatus("MIGRATED");
+            archive.setMigrateDate(LocalDate.now());
+            archive.setMigrateApproverId(SecurityUtils.getUserId());
             
             // 释放库位
             if (archive.getLocationId() != null) {
@@ -329,16 +463,44 @@ public class ArchiveAppService {
                 }
             }
             
-            logOperation(archive.getId(), "DESTROY", "档案已销毁：" + comment, SecurityUtils.getUserId());
-            log.info("档案已销毁: {}", archive.getArchiveNo());
+            // 如果选择删除文件
+            if (deleteFiles) {
+                archive.setFilesDeleted(true);
+                // TODO: 实际删除 MinIO 中的文件
+                logOperation(archive.getId(), "DELETE_FILES", "档案文件已删除", SecurityUtils.getUserId());
+            }
+            
+            logOperation(archive.getId(), "MIGRATE", "档案已迁移：" + comment, SecurityUtils.getUserId());
+            log.info("档案已迁移: {}, 目标: {}", archive.getArchiveNo(), archive.getMigrateTarget());
         } else {
             archive.setStatus("STORED");
-            archive.setDestroyReason(null);
-            logOperation(archive.getId(), "REJECT_DESTROY", "销毁申请被拒绝：" + comment, SecurityUtils.getUserId());
-            log.info("档案销毁申请被拒绝: {}", archive.getArchiveNo());
+            archive.setMigrateReason(null);
+            archive.setMigrateTarget(null);
+            logOperation(archive.getId(), "REJECT_MIGRATE", "迁移申请被拒绝：" + comment, SecurityUtils.getUserId());
+            log.info("档案迁移申请被拒绝: {}", archive.getArchiveNo());
         }
         
         archiveRepository.updateById(archive);
+    }
+
+    /**
+     * 申请销毁档案（保留原接口，内部调用迁移）
+     * @deprecated 请使用 applyMigrate
+     */
+    @Transactional
+    @Deprecated
+    public void applyDestroy(Long id, String reason) {
+        applyMigrate(id, reason, "档案销毁");
+    }
+
+    /**
+     * 审批销毁档案（保留原接口，内部调用迁移审批）
+     * @deprecated 请使用 approveMigrate
+     */
+    @Transactional
+    @Deprecated
+    public void approveDestroy(Long id, boolean approved, String comment) {
+        approveMigrate(id, approved, comment, true);
     }
 
     /**
@@ -461,9 +623,12 @@ public class ArchiveAppService {
         if (status == null) return null;
         return switch (status) {
             case "PENDING" -> "待入库";
+            case "PENDING_STORE" -> "待入库审批";
             case "STORED" -> "已入库";
             case "BORROWED" -> "借出";
-            case "DESTROYED" -> "已销毁";
+            case "PENDING_MIGRATE" -> "待迁移审批";
+            case "MIGRATED" -> "已迁移";
+            case "DESTROYED" -> "已销毁"; // 兼容旧数据
             default -> status;
         };
     }

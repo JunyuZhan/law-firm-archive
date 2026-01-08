@@ -1,7 +1,5 @@
 package com.lawfirm.application.client.service;
 
-import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lawfirm.application.client.command.ConvertLeadCommand;
 import com.lawfirm.application.client.command.CreateFollowUpCommand;
 import com.lawfirm.application.client.command.CreateLeadCommand;
@@ -33,6 +31,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -54,14 +54,22 @@ public class LeadAppService {
 
     /**
      * 分页查询案源列表
+     * 数据权限：只能查看自己的案源（我创建的案源）
      */
     public PageResult<LeadDTO> listLeads(LeadQueryDTO query) {
+        Long currentUserId = SecurityUtils.getUserId();
+        
+        // 只查询当前用户创建的案源
+        List<Long> myUserIds = Collections.singletonList(currentUserId);
+        
         List<Lead> leads = leadMapper.selectLeadPage(
                 query.getLeadName(),
                 query.getStatus(),
                 query.getOriginatorId(),
                 query.getResponsibleUserId(),
-                query.getSourceChannel()
+                query.getSourceChannel(),
+                myUserIds,  // 过滤：我是负责用户
+                myUserIds   // 过滤：我是案源人
         );
 
         // 手动分页

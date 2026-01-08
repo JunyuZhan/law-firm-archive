@@ -165,6 +165,20 @@ public class ClientController {
         return Result.success(result);
     }
 
+    /**
+     * 利冲审查 - 搜索全所客户（用于对方当事人字段）
+     * 数据权限：所有人都可以搜索全所客户用于利冲审查
+     */
+    @GetMapping("/search-for-conflict")
+    @RequirePermission("conflict:check")
+    @Operation(summary = "利冲审查客户搜索", description = "利冲审查时搜索全所客户，用于对方当事人字段")
+    public Result<List<ClientDTO>> searchClientsForConflictCheck(
+            @RequestParam String keyword,
+            @RequestParam(defaultValue = "20") int limit) {
+        List<ClientDTO> clients = clientAppService.searchClientsForConflictCheck(keyword, limit);
+        return Result.success(clients);
+    }
+
     // ========== Request DTOs ==========
 
     @Data

@@ -73,7 +73,9 @@ public class SecurityConfig {
                     "/swagger-ui.html",
                     "/v3/api-docs/**",
                     "/actuator/health",
-                    "/error"
+                    "/error",
+                    "/document/*/callback",  // OnlyOffice 回调接口（无需认证）
+                    "/document/*/content"    // OnlyOffice 文件代理接口（通过 token 验证）
                 ).permitAll()
                 // 其他请求需要认证
                 .anyRequest().authenticated()

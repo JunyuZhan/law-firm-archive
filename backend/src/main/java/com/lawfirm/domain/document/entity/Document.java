@@ -109,4 +109,34 @@ public class Document extends BaseEntity {
      */
     @lombok.Builder.Default
     private String status = "ACTIVE";
+
+    /**
+     * 文件分类: EVIDENCE-证据材料, PLEADING-诉讼文书, CONTRACT-合同文件, 
+     * CORRESPONDENCE-往来函件, MEETING-会见记录, JUDGMENT-裁判文书, 
+     * WORKLOG-工作日志, OTHER-其他
+     */
+    @lombok.Builder.Default
+    private String fileCategory = "OTHER";
+
+    /**
+     * 卷宗目录路径，如: /证据材料/
+     */
+    private String folderPath;
+
+    /**
+     * 关联卷宗目录项ID
+     */
+    private Long dossierItemId;
+
+    /**
+     * 显示排序顺序（同一目录内的排序）
+     */
+    @lombok.Builder.Default
+    private Integer displayOrder = 0;
+
+    /**
+     * 是否由 AI 生成
+     */
+    @lombok.Builder.Default
+    private Boolean aiGenerated = false;
 }

@@ -40,4 +40,9 @@ public class DocumentQueryDTO extends PageQuery {
      * 文件类型
      */
     private String fileType;
+
+    /**
+     * 创建人ID（用于"我的文书"查询）
+     */
+    private Long createdBy;
 }

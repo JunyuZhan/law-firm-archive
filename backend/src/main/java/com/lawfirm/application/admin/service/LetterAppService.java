@@ -1,22 +1,27 @@
 package com.lawfirm.application.admin.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lawfirm.application.admin.command.CreateLetterApplicationCommand;
 import com.lawfirm.application.admin.dto.LetterApplicationDTO;
 import com.lawfirm.application.admin.dto.LetterTemplateDTO;
 import com.lawfirm.application.system.service.NotificationAppService;
+import com.lawfirm.application.workbench.service.ApprovalService;
 import com.lawfirm.common.exception.BusinessException;
-import com.lawfirm.common.result.PageResult;
 import com.lawfirm.common.util.SecurityUtils;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lawfirm.domain.admin.entity.LetterApplication;
 import com.lawfirm.domain.admin.entity.LetterTemplate;
 import com.lawfirm.domain.admin.repository.LetterApplicationRepository;
 import com.lawfirm.domain.admin.repository.LetterTemplateRepository;
 import com.lawfirm.domain.matter.entity.Matter;
 import com.lawfirm.domain.matter.repository.MatterRepository;
+import com.lawfirm.domain.matter.repository.MatterClientRepository;
+import com.lawfirm.domain.finance.entity.Contract;
+import com.lawfirm.domain.finance.repository.ContractRepository;
+import com.lawfirm.domain.client.entity.Client;
+import com.lawfirm.domain.client.repository.ClientRepository;
 import com.lawfirm.domain.system.entity.User;
+import com.lawfirm.application.system.service.SysConfigAppService;
 import com.lawfirm.infrastructure.persistence.mapper.LetterApplicationMapper;
 import com.lawfirm.infrastructure.persistence.mapper.UserMapper;
 import lombok.RequiredArgsConstructor;
@@ -42,8 +47,21 @@ public class LetterAppService {
     private final LetterApplicationRepository applicationRepository;
     private final LetterApplicationMapper applicationMapper;
     private final MatterRepository matterRepository;
+    private final MatterClientRepository matterClientRepository;
+    private final ContractRepository contractRepository;
+    private final ClientRepository clientRepository;
     private final UserMapper userMapper;
     private final NotificationAppService notificationAppService;
+    private final SysConfigAppService sysConfigAppService;
+    private final ApprovalService approvalService;
+    private final ObjectMapper objectMapper;
+    private com.lawfirm.application.matter.service.MatterAppService matterAppService;
+    
+    @org.springframework.beans.factory.annotation.Autowired
+    @org.springframework.context.annotation.Lazy
+    public void setMatterAppService(com.lawfirm.application.matter.service.MatterAppService matterAppService) {
+        this.matterAppService = matterAppService;
+    }
 
     // ==================== 模板管理 ====================
 
@@ -140,6 +158,9 @@ public class LetterAppService {
         if (!"ACTIVE".equals(matter.getStatus())) {
             throw new BusinessException("只能为进行中的项目申请出函");
         }
+        
+        // 验证用户是否是项目负责人或参与者（只有项目成员才能申请出函）
+        matterAppService.validateMatterOwnership(cmd.getMatterId());
 
         // 生成申请编号
         String applicationNo = "LA" + LocalDate.now().toString().replace("-", "").substring(2) 
@@ -159,7 +180,8 @@ public class LetterAppService {
         }
 
         // 生成函件内容（替换模板变量）
-        String content = generateContent(template.getContent(), matter, cmd.getTargetUnit(), lawyerNames);
+        String content = generateContent(template.getContent(), matter, applicationNo, 
+                cmd.getTargetUnit(), cmd.getTargetAddress(), cmd.getLawyerIds(), lawyerNames);
 
         LetterApplication application = LetterApplication.builder()
                 .applicationNo(applicationNo)
@@ -181,16 +203,54 @@ public class LetterAppService {
                 .copies(cmd.getCopies() != null ? cmd.getCopies() : 1)
                 .expectedDate(cmd.getExpectedDate())
                 .status("PENDING")
+                .assignedApproverId(cmd.getApproverId())
                 .remark(cmd.getRemark())
                 .build();
 
         applicationRepository.save(application);
         log.info("创建出函申请: {} -> {}", applicationNo, cmd.getTargetUnit());
         
-        // 发送通知给行政人员（角色为ADMIN的用户）
-        notifyAdminStaff("新出函申请", 
-                String.format("收到新的出函申请 [%s]，申请人：%s，请及时审批", applicationNo, SecurityUtils.getRealName()),
-                "LETTER", application.getId());
+        // 如果指定了审批人，创建审批中心的审批记录
+        if (cmd.getApproverId() != null) {
+            try {
+                // 构建业务数据快照
+                String businessSnapshot = buildBusinessSnapshot(application, matter, template);
+                
+                // 创建审批中心记录
+                String businessTitle = String.format("出函申请-%s-%s", 
+                        matter.getName() != null ? matter.getName() : "", 
+                        cmd.getTargetUnit() != null ? cmd.getTargetUnit() : "");
+                
+                Long approvalId = approvalService.createApproval(
+                        "LETTER_APPLICATION",
+                        application.getId(),
+                        applicationNo,
+                        businessTitle,
+                        cmd.getApproverId(),
+                        "MEDIUM",
+                        "NORMAL",
+                        businessSnapshot
+                );
+                
+                // 保存审批记录ID到出函申请，用于后续关联
+                application.setApprovalId(approvalId);
+                applicationRepository.updateById(application);
+                
+                log.info("已创建审批中心记录: approvalId={}, applicationId={}", approvalId, application.getId());
+            } catch (Exception e) {
+                log.error("创建审批中心记录失败，但出函申请已创建: applicationId={}", application.getId(), e);
+                // 降级处理：发送传统通知
+                String notifyTitle = "新出函申请";
+                String notifyContent = String.format("收到新的出函申请 [%s]，申请人：%s，请及时审批", applicationNo, SecurityUtils.getRealName());
+                notificationAppService.sendSystemNotification(
+                        cmd.getApproverId(), notifyTitle, notifyContent, "LETTER", application.getId());
+            }
+        } else {
+            // 未指定审批人时，通知所有行政人员
+            String notifyTitle = "新出函申请";
+            String notifyContent = String.format("收到新的出函申请 [%s]，申请人：%s，请及时审批", applicationNo, SecurityUtils.getRealName());
+            notifyAdminStaff(notifyTitle, notifyContent, "LETTER", application.getId());
+        }
         
         return toApplicationDTO(application);
     }
@@ -307,7 +367,8 @@ public class LetterAppService {
         }
 
         // 重新生成函件内容
-        String content = generateContent(template.getContent(), matter, cmd.getTargetUnit(), lawyerNames);
+        String content = generateContent(template.getContent(), matter, app.getApplicationNo(), 
+                cmd.getTargetUnit(), cmd.getTargetAddress(), cmd.getLawyerIds(), lawyerNames);
 
         // 更新申请信息
         app.setTemplateId(cmd.getTemplateId());
@@ -373,7 +434,8 @@ public class LetterAppService {
         }
 
         // 重新生成函件内容
-        String content = generateContent(template.getContent(), matter, cmd.getTargetUnit(), lawyerNames);
+        String content = generateContent(template.getContent(), matter, app.getApplicationNo(), 
+                cmd.getTargetUnit(), cmd.getTargetAddress(), cmd.getLawyerIds(), lawyerNames);
 
         // 更新申请信息（保持状态不变）
         app.setTemplateId(cmd.getTemplateId());
@@ -547,15 +609,234 @@ public class LetterAppService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * 更新函件内容（行政人员用，可以编辑任何申请的函件内容）
+     */
+    @Transactional
+    public LetterApplicationDTO updateContent(Long id, String content) {
+        LetterApplication app = applicationRepository.getByIdOrThrow(id, "申请不存在");
+        
+        // 行政人员可以编辑任何状态的函件内容（通常在审批通过后、打印前进行格式调整）
+        app.setContent(content);
+        applicationRepository.updateById(app);
+        log.info("行政人员更新函件内容: {}", app.getApplicationNo());
+        return toApplicationDTO(app);
+    }
+
+    // ==================== 审批中心回调方法 ====================
+
+    /**
+     * 审批通过回调（供审批中心事件监听器调用）
+     * 此方法不做权限检查，由审批中心保证权限
+     */
+    @Transactional
+    public void onApprovalApproved(Long applicationId, String comment) {
+        LetterApplication app = applicationRepository.findById(applicationId);
+        if (app == null) {
+            log.warn("审批中心回调：出函申请不存在, id={}", applicationId);
+            return;
+        }
+        if (!"PENDING".equals(app.getStatus())) {
+            log.warn("审批中心回调：出函申请状态不是待审批, id={}, status={}", applicationId, app.getStatus());
+            return;
+        }
+        app.setStatus("APPROVED");
+        app.setApprovedAt(LocalDateTime.now());
+        app.setApprovalComment(comment);
+        applicationRepository.updateById(app);
+        log.info("审批中心回调-出函申请审批通过: {}", app.getApplicationNo());
+        
+        // 发送通知给申请人
+        notificationAppService.sendSystemNotification(
+                app.getApplicantId(),
+                "出函申请已审批通过",
+                String.format("您的出函申请 [%s] 已审批通过，请等待打印", app.getApplicationNo()),
+                "LETTER", app.getId());
+    }
+
+    /**
+     * 审批拒绝回调（供审批中心事件监听器调用）
+     * 此方法不做权限检查，由审批中心保证权限
+     */
+    @Transactional
+    public void onApprovalRejected(Long applicationId, String comment) {
+        LetterApplication app = applicationRepository.findById(applicationId);
+        if (app == null) {
+            log.warn("审批中心回调：出函申请不存在, id={}", applicationId);
+            return;
+        }
+        if (!"PENDING".equals(app.getStatus())) {
+            log.warn("审批中心回调：出函申请状态不是待审批, id={}, status={}", applicationId, app.getStatus());
+            return;
+        }
+        app.setStatus("REJECTED");
+        app.setApprovedAt(LocalDateTime.now());
+        app.setApprovalComment(comment);
+        applicationRepository.updateById(app);
+        log.info("审批中心回调-出函申请被拒绝: {}", app.getApplicationNo());
+        
+        // 发送通知给申请人
+        notificationAppService.sendSystemNotification(
+                app.getApplicantId(),
+                "出函申请被拒绝",
+                String.format("您的出函申请 [%s] 被拒绝，原因：%s", app.getApplicationNo(), comment),
+                "LETTER", app.getId());
+    }
+
     // ==================== 私有方法 ====================
 
-    private String generateContent(String template, Matter matter, String targetUnit, String lawyerNames) {
-        return template
-                .replace("${matterName}", matter.getName() != null ? matter.getName() : "")
-                .replace("${matterNo}", matter.getMatterNo() != null ? matter.getMatterNo() : "")
-                .replace("${targetUnit}", targetUnit != null ? targetUnit : "")
-                .replace("${lawyerNames}", lawyerNames != null ? lawyerNames : "")
-                .replace("${date}", LocalDate.now().toString());
+    /**
+     * 构建业务数据快照（JSON格式）
+     */
+    private String buildBusinessSnapshot(LetterApplication application, Matter matter, LetterTemplate template) {
+        try {
+            java.util.Map<String, Object> snapshot = new java.util.HashMap<>();
+            snapshot.put("applicationNo", application.getApplicationNo());
+            snapshot.put("letterType", application.getLetterType());
+            snapshot.put("letterTypeName", getLetterTypeName(application.getLetterType()));
+            snapshot.put("targetUnit", application.getTargetUnit());
+            snapshot.put("targetContact", application.getTargetContact());
+            snapshot.put("targetAddress", application.getTargetAddress());
+            snapshot.put("purpose", application.getPurpose());
+            snapshot.put("lawyerNames", application.getLawyerNames());
+            snapshot.put("copies", application.getCopies());
+            snapshot.put("expectedDate", application.getExpectedDate() != null ? application.getExpectedDate().toString() : null);
+            snapshot.put("applicantName", application.getApplicantName());
+            
+            // 项目信息
+            if (matter != null) {
+                snapshot.put("matterName", matter.getName());
+                snapshot.put("matterNo", matter.getMatterNo());
+            }
+            
+            // 模板信息
+            if (template != null) {
+                snapshot.put("templateName", template.getName());
+            }
+            
+            return objectMapper.writeValueAsString(snapshot);
+        } catch (Exception e) {
+            log.warn("构建业务数据快照失败", e);
+            return "{}";
+        }
+    }
+
+    /**
+     * 生成函件内容（替换模板变量）
+     * 支持模板中定义的所有变量，根据项目实际信息进行替换
+     */
+    private String generateContent(String template, Matter matter, String applicationNo,
+            String targetUnit, String targetAddress, List<Long> lawyerIds, String lawyerNames) {
+        if (template == null || template.isEmpty()) {
+            return "";
+        }
+        
+        String result = template;
+        
+        // ========== 项目信息 ==========
+        result = result.replace("${matterName}", matter.getName() != null ? matter.getName() : "");
+        result = result.replace("${matterNo}", matter.getMatterNo() != null ? matter.getMatterNo() : "");
+        result = result.replace("${causeOfAction}", matter.getCauseOfAction() != null ? matter.getCauseOfAction() : "");
+        
+        // ========== 合同信息 ==========
+        String contractNo = "";
+        if (matter.getContractId() != null) {
+            try {
+                Contract contract = contractRepository.getById(matter.getContractId());
+                if (contract != null && contract.getContractNo() != null) {
+                    contractNo = contract.getContractNo();
+                }
+            } catch (Exception e) {
+                log.warn("获取项目合同编号失败: matterId={}, contractId={}", matter.getId(), matter.getContractId(), e);
+            }
+        }
+        result = result.replace("${contractNo}", contractNo);
+        
+        // ========== 客户信息 ==========
+        String clientName = "";
+        String clientIdNumber = "";
+        if (matter.getClientId() != null) {
+            try {
+                // 优先从项目的主要客户获取
+                var primaryClient = matterClientRepository.findPrimaryClient(matter.getId());
+                Long clientId = primaryClient.map(com.lawfirm.domain.matter.entity.MatterClient::getClientId)
+                        .orElse(matter.getClientId());
+                
+                Client client = clientRepository.getById(clientId);
+                if (client != null) {
+                    clientName = client.getName() != null ? client.getName() : "";
+                    // 根据客户类型获取身份证号或统一社会信用代码
+                    if ("INDIVIDUAL".equals(client.getClientType())) {
+                        clientIdNumber = client.getIdCard() != null ? client.getIdCard() : "";
+                    } else {
+                        clientIdNumber = client.getCreditCode() != null ? client.getCreditCode() : "";
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("获取客户信息失败: matterId={}, clientId={}", matter.getId(), matter.getClientId(), e);
+            }
+        }
+        result = result.replace("${clientName}", clientName);
+        result = result.replace("${clientIdNumber}", clientIdNumber);
+        
+        // ========== 对方当事人信息 ==========
+        String opposingParty = matter.getOpposingParty() != null ? matter.getOpposingParty() : "";
+        result = result.replace("${opposingParty}", opposingParty);
+        
+        // ========== 律师信息 ==========
+        result = result.replace("${lawyerNames}", lawyerNames != null ? lawyerNames : "");
+        
+        // 获取律师执业证号（多个律师用逗号分隔）
+        String lawyerLicenseNos = "";
+        if (lawyerIds != null && !lawyerIds.isEmpty()) {
+            lawyerLicenseNos = lawyerIds.stream()
+                    .map(id -> {
+                        try {
+                            User user = userMapper.selectById(id);
+                            return user != null && user.getLawyerLicenseNo() != null ? user.getLawyerLicenseNo() : "";
+                        } catch (Exception e) {
+                            log.warn("获取律师执业证号失败: lawyerId={}", id, e);
+                            return "";
+                        }
+                    })
+                    .filter(no -> !no.isEmpty())
+                    .collect(Collectors.joining(","));
+        }
+        result = result.replace("${lawyerLicenseNo}", lawyerLicenseNos);
+        
+        // ========== 接收单位信息 ==========
+        result = result.replace("${targetUnit}", targetUnit != null ? targetUnit : "");
+        result = result.replace("${targetAddress}", targetAddress != null ? targetAddress : "");
+        
+        // ========== 律所信息（从系统配置获取）==========
+        String firmName = "";
+        String firmAddress = "";
+        String firmPhone = "";
+        try {
+            firmName = sysConfigAppService.getConfigValue("firm.name");
+            if (firmName == null) firmName = "";
+            
+            firmAddress = sysConfigAppService.getConfigValue("firm.address");
+            if (firmAddress == null) firmAddress = "";
+            
+            firmPhone = sysConfigAppService.getConfigValue("firm.phone");
+            if (firmPhone == null) firmPhone = "";
+        } catch (Exception e) {
+            log.warn("获取律所信息失败", e);
+        }
+        result = result.replace("${firmName}", firmName);
+        result = result.replace("${firmAddress}", firmAddress);
+        result = result.replace("${firmPhone}", firmPhone);
+        
+        // ========== 函件信息 ==========
+        result = result.replace("${letterNo}", applicationNo != null ? applicationNo : "");
+        
+        // ========== 日期信息 ==========
+        LocalDate now = LocalDate.now();
+        result = result.replace("${date}", now.toString());
+        result = result.replace("${currentYear}", String.valueOf(now.getYear()));
+        
+        return result;
     }
 
     /**

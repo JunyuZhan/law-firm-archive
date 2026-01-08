@@ -18,8 +18,10 @@ import com.lawfirm.domain.finance.entity.Payment;
 import com.lawfirm.domain.finance.repository.ContractRepository;
 import com.lawfirm.domain.finance.repository.FeeRepository;
 import com.lawfirm.domain.finance.repository.PaymentRepository;
+import com.lawfirm.application.matter.service.MatterAppService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -28,6 +30,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Collections;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -46,11 +49,31 @@ public class FeeAppService {
     private final ContractRepository contractRepository;
     private final ClientRepository clientRepository;
     private final CommissionAppService commissionAppService;
+    private MatterAppService matterAppService;
+    
+    @org.springframework.beans.factory.annotation.Autowired
+    @Lazy
+    public void setMatterAppService(MatterAppService matterAppService) {
+        this.matterAppService = matterAppService;
+    }
 
     /**
      * 分页查询收费记录
      */
     public PageResult<FeeDTO> listFees(FeeQueryDTO query) {
+        // 根据用户权限过滤数据
+        String dataScope = SecurityUtils.getDataScope();
+        Long currentUserId = SecurityUtils.getUserId();
+        Long deptId = SecurityUtils.getDepartmentId();
+        
+        // 获取可访问的项目ID列表
+        List<Long> accessibleMatterIds = matterAppService.getAccessibleMatterIds(dataScope, currentUserId, deptId);
+        
+        // 如果返回空列表，表示没有权限，返回空结果
+        if (accessibleMatterIds != null && accessibleMatterIds.isEmpty()) {
+            return PageResult.of(Collections.emptyList(), 0, query.getPageNum(), query.getPageSize());
+        }
+        
         LambdaQueryWrapper<Fee> wrapper = new LambdaQueryWrapper<>();
         
         if (StringUtils.hasText(query.getFeeNo())) {
@@ -61,6 +84,11 @@ public class FeeAppService {
         }
         if (query.getMatterId() != null) {
             wrapper.eq(Fee::getMatterId, query.getMatterId());
+            // 如果指定了matterId，需要验证是否有权限访问该项目
+            if (accessibleMatterIds != null && !accessibleMatterIds.contains(query.getMatterId())) {
+                // 没有权限访问指定的项目，返回空结果
+                return PageResult.of(Collections.emptyList(), 0, query.getPageNum(), query.getPageSize());
+            }
         }
         if (query.getClientId() != null) {
             wrapper.eq(Fee::getClientId, query.getClientId());
@@ -77,6 +105,12 @@ public class FeeAppService {
         if (query.getPlannedDateTo() != null) {
             wrapper.le(Fee::getPlannedDate, query.getPlannedDateTo());
         }
+        
+        // 应用数据权限过滤：只查询可访问项目的收费记录
+        if (accessibleMatterIds != null) {
+            wrapper.in(Fee::getMatterId, accessibleMatterIds);
+        }
+        // accessibleMatterIds == null 表示可以访问所有项目的收费记录（ALL权限）
         
         wrapper.orderByDesc(Fee::getCreatedAt);
 

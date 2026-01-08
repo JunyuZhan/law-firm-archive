@@ -46,9 +46,9 @@ public class CreateDocumentTemplateCommand {
     private Long fileSize;
 
     /**
-     * 变量定义
+     * 变量定义（变量名列表）
      */
-    private List<Map<String, Object>> variables;
+    private List<String> variables;
 
     /**
      * 描述

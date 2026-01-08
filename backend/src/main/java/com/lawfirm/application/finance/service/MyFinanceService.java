@@ -7,10 +7,14 @@ import com.lawfirm.domain.finance.entity.Commission;
 import com.lawfirm.domain.finance.entity.Contract;
 import com.lawfirm.domain.finance.entity.ContractParticipant;
 import com.lawfirm.domain.finance.entity.Fee;
+import com.lawfirm.domain.finance.entity.Expense;
 import com.lawfirm.domain.finance.repository.CommissionRepository;
 import com.lawfirm.domain.finance.repository.ContractParticipantRepository;
 import com.lawfirm.domain.finance.repository.ContractRepository;
+import com.lawfirm.domain.finance.repository.ExpenseRepository;
 import com.lawfirm.domain.finance.repository.FeeRepository;
+import com.lawfirm.domain.matter.entity.Matter;
+import com.lawfirm.domain.matter.repository.MatterRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -36,6 +40,8 @@ public class MyFinanceService {
     private final FeeRepository feeRepository;
     private final CommissionRepository commissionRepository;
     private final ClientRepository clientRepository;
+    private final ExpenseRepository expenseRepository;
+    private final MatterRepository matterRepository;
 
     /**
      * 获取当前用户参与的合同收款情况
@@ -255,6 +261,91 @@ public class MyFinanceService {
         return switch (status) {
             case "PENDING" -> "待发放";
             case "PAID" -> "已发放";
+            case "CANCELLED" -> "已取消";
+            default -> status;
+        };
+    }
+
+    /**
+     * 获取当前用户的费用报销记录
+     */
+    public List<Map<String, Object>> getMyExpenses() {
+        try {
+            Long currentUserId = SecurityUtils.getUserId();
+            if (currentUserId == null) {
+                log.warn("无法获取当前用户ID");
+                return new ArrayList<>();
+            }
+            
+            List<Expense> expenses = expenseRepository.findByApplicantId(currentUserId);
+            if (expenses == null || expenses.isEmpty()) {
+                return new ArrayList<>();
+            }
+            
+            List<Map<String, Object>> result = new ArrayList<>();
+            
+            for (Expense expense : expenses) {
+                try {
+                    if (expense == null || (expense.getDeleted() != null && expense.getDeleted())) {
+                        continue;
+                    }
+                    
+                    Map<String, Object> item = new HashMap<>();
+                    item.put("id", expense.getId());
+                    item.put("expenseNo", expense.getExpenseNo() != null ? expense.getExpenseNo() : "-");
+                    item.put("expenseType", expense.getExpenseType());
+                    item.put("expenseCategory", expense.getExpenseCategory());
+                    item.put("amount", expense.getAmount() != null ? expense.getAmount() : BigDecimal.ZERO);
+                    item.put("currency", expense.getCurrency() != null ? expense.getCurrency() : "CNY");
+                    item.put("expenseDate", expense.getExpenseDate());
+                    item.put("description", expense.getDescription());
+                    item.put("status", expense.getStatus());
+                    item.put("statusName", getExpenseStatusName(expense.getStatus()));
+                    item.put("matterId", expense.getMatterId());
+                    item.put("createdAt", expense.getCreatedAt());
+                    item.put("updatedAt", expense.getUpdatedAt());
+                    
+                    // 项目名称
+                    if (expense.getMatterId() != null) {
+                        try {
+                            Matter matter = matterRepository.findById(expense.getMatterId());
+                            if (matter != null && (matter.getDeleted() == null || !matter.getDeleted())) {
+                                item.put("matterName", matter.getName() != null ? matter.getName() : "-");
+                            } else {
+                                item.put("matterName", "-");
+                            }
+                        } catch (Exception e) {
+                            log.warn("获取项目信息失败, matterId: {}", expense.getMatterId(), e);
+                            item.put("matterName", "-");
+                        }
+                    } else {
+                        item.put("matterName", "-");
+                    }
+                    
+                    result.add(item);
+                } catch (Exception e) {
+                    log.error("处理费用报销记录失败, expenseId: {}", expense != null ? expense.getId() : "null", e);
+                    // 继续处理下一条记录
+                }
+            }
+            
+            return result;
+        } catch (Exception e) {
+            log.error("获取我的费用报销记录失败", e);
+            return new ArrayList<>();
+        }
+    }
+    
+    /**
+     * 获取费用报销状态名称
+     */
+    private String getExpenseStatusName(String status) {
+        if (status == null) return "-";
+        return switch (status) {
+            case "PENDING" -> "待审批";
+            case "APPROVED" -> "已通过";
+            case "REJECTED" -> "已拒绝";
+            case "PAID" -> "已支付";
             case "CANCELLED" -> "已取消";
             default -> status;
         };

@@ -54,6 +54,12 @@ public interface ClientMapper extends BaseMapper<Client> {
         <if test="responsibleLawyerId != null">
             AND c.responsible_lawyer_id = #{responsibleLawyerId}
         </if>
+        <if test="clientIds != null and clientIds.size() > 0">
+            AND c.id IN
+            <foreach collection="clientIds" item="id" open="(" separator="," close=")">
+                #{id}
+            </foreach>
+        </if>
         ORDER BY c.id DESC
         </script>
         """)
@@ -61,6 +67,7 @@ public interface ClientMapper extends BaseMapper<Client> {
                                     @Param("name") String name,
                                     @Param("clientType") String clientType,
                                     @Param("status") String status,
-                                    @Param("responsibleLawyerId") Long responsibleLawyerId);
+                                    @Param("responsibleLawyerId") Long responsibleLawyerId,
+                                    @Param("clientIds") java.util.List<Long> clientIds);
 }
 
