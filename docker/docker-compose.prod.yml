@@ -139,7 +139,10 @@ services:
   #   restart: unless-stopped
 
   onlyoffice:
-    image: onlyoffice/documentserver:latest
+    build:
+      context: ./onlyoffice
+      dockerfile: Dockerfile
+    image: law-firm-onlyoffice:latest
     container_name: law-firm-onlyoffice
     environment:
       - JWT_ENABLED=false
