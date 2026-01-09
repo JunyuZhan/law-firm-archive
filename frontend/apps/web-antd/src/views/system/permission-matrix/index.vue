@@ -357,8 +357,8 @@ onMounted(() => {
     <Card>
       <!-- 筛选栏 -->
       <div style="margin-bottom: 16px">
-        <Row :gutter="16">
-          <Col :span="6">
+        <Row :gutter="[16, 16]">
+          <Col :xs="24" :sm="12" :md="6" :lg="5">
             <Select
               v-model:value="filterParams.module"
               placeholder="模块筛选"
@@ -367,7 +367,7 @@ onMounted(() => {
               :options="moduleOptions"
             />
           </Col>
-          <Col :span="6">
+          <Col :xs="24" :sm="12" :md="6" :lg="5">
             <Select
               v-model:value="filterParams.permissionType"
               placeholder="权限类型"
@@ -376,8 +376,8 @@ onMounted(() => {
               :options="permissionTypeOptions"
             />
           </Col>
-          <Col :span="12">
-            <Space>
+          <Col :xs="24" :sm="24" :md="12" :lg="14">
+            <Space wrap>
               <Button type="primary" @click="handleSearch">查询</Button>
               <Button @click="handleReset">重置</Button>
               <Button :type="isEditMode ? 'default' : 'primary'" @click="toggleEditMode">
