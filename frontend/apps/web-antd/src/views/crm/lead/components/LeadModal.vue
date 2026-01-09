@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue';
-import { message } from 'ant-design-vue';
+import { message, Upload, Spin, Tooltip } from 'ant-design-vue';
 import {
   Modal,
   Form,
@@ -9,8 +9,13 @@ import {
   Select,
   InputNumber,
   Textarea,
+  Space,
+  Button,
+  Divider,
 } from 'ant-design-vue';
+import { IconifyIcon } from '@vben/icons';
 import { createLead, updateLead } from '#/api/client';
+import { recognizeBusinessCard, type OcrResultDTO } from '#/api/ocr';
 import type { LeadDTO, CreateLeadCommand } from '#/api/client/types';
 import { UserTreeSelect } from '#/components/UserTreeSelect';
 
@@ -22,6 +27,7 @@ const visible = ref(false);
 const modalTitle = ref('新增案源');
 const formRef = ref();
 const loading = ref(false);
+const ocrLoading = ref(false);
 
 const formData = reactive<Partial<CreateLeadCommand> & { id?: number }>({
   id: undefined,
@@ -96,6 +102,42 @@ async function handleSave() {
   }
 }
 
+// OCR名片识别
+async function handleBusinessCardOcr(info: any) {
+  const file = info.file.originFileObj || info.file;
+  if (!file) return;
+  
+  ocrLoading.value = true;
+  try {
+    const result = await recognizeBusinessCard(file);
+    if (result.success) {
+      // 自动填充表单
+      // 公司名称填充到客户名称
+      if (result.cardCompany) {
+        formData.clientName = result.cardCompany;
+      }
+      // 联系人姓名
+      if (result.name) {
+        formData.contactPerson = result.name;
+      }
+      // 联系电话（优先使用手机号）
+      if (result.mobile) {
+        formData.contactPhone = result.mobile;
+      } else if (result.phone) {
+        formData.contactPhone = result.phone;
+      }
+      
+      message.success(`名片识别成功！已自动填充联系人信息`);
+    } else {
+      message.error(result.errorMessage || '名片识别失败');
+    }
+  } catch (e: any) {
+    message.error(e?.message || '名片识别失败');
+  } finally {
+    ocrLoading.value = false;
+  }
+}
+
 defineExpose({ open });
 </script>
 
@@ -113,6 +155,30 @@ defineExpose({ open });
       :label-col="{ span: 6 }"
       :wrapper-col="{ span: 18 }"
     >
+      <!-- OCR智能识别区域 -->
+      <div v-if="!formData.id" class="mb-4 p-3 bg-blue-50 rounded border border-blue-200">
+        <div class="flex items-center mb-2">
+          <IconifyIcon icon="ant-design:scan-outlined" class="text-blue-500 mr-2" />
+          <span class="font-medium text-blue-700">智能填充</span>
+          <span class="text-gray-500 text-xs ml-2">上传名片自动识别</span>
+        </div>
+        <Spin :spinning="ocrLoading" size="small">
+          <Upload
+            :show-upload-list="false"
+            :before-upload="() => false"
+            accept="image/*"
+            @change="handleBusinessCardOcr"
+          >
+            <Tooltip title="拍照或上传名片，自动识别姓名、电话等信息">
+              <Button :loading="ocrLoading" :disabled="ocrLoading" size="small">
+                <template #icon><IconifyIcon icon="ant-design:idcard-outlined" /></template>
+                名片识别
+              </Button>
+            </Tooltip>
+          </Upload>
+        </Spin>
+      </div>
+
       <FormItem label="客户名称" name="clientName" :rules="[{ required: true, message: '请输入客户名称' }]">
         <Input v-model:value="formData.clientName" placeholder="请输入客户名称" />
       </FormItem>

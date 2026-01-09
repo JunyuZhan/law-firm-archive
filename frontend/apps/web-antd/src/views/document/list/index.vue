@@ -60,6 +60,7 @@ import {
   type MatterDossierItem 
 } from '#/api/document/dossier';
 import { getMatterList } from '#/api/matter';
+import { recognizeGeneral, type OcrResultDTO } from '#/api/ocr';
 import type { DocumentDTO, DocumentQuery, CreateDocumentCommand, UpdateDocumentCommand } from '#/api/document/types';
 import type { MatterDTO } from '#/api/matter/types';
 
@@ -83,6 +84,9 @@ const editModalVisible = ref(false);
 const previewModalVisible = ref(false);
 const shareModalVisible = ref(false);
 const versionModalVisible = ref(false);
+const ocrModalVisible = ref(false);
+const ocrLoading = ref(false);
+const ocrResult = ref('');
 
 // 当前操作的文档
 const currentDocument = ref<DocumentDTO | null>(null);
@@ -967,6 +971,52 @@ async function handleDownload(record: DocumentDTO) {
   }
 }
 
+// OCR提取文字（仅用于图片文件）
+async function handleOcrExtract(record: DocumentDTO) {
+  if (!isImageFile(record.fileType || '')) {
+    message.warning('仅支持对图片文件进行OCR识别');
+    return;
+  }
+  
+  ocrLoading.value = true;
+  ocrModalVisible.value = true;
+  ocrResult.value = '';
+  currentDocument.value = record;
+  
+  try {
+    // 先获取图片的预签名URL
+    const { previewUrl } = await getDocumentPreviewUrl(record.id);
+    
+    // 下载图片并转换为File对象
+    const response = await fetch(previewUrl);
+    const blob = await response.blob();
+    const file = new File([blob], record.fileName || 'image.jpg', { type: blob.type });
+    
+    // 调用OCR识别
+    const result: OcrResultDTO = await recognizeGeneral(file);
+    if (result.success) {
+      ocrResult.value = result.rawText || result.recognizedText || '未识别到文字内容';
+      message.success('OCR识别完成');
+    } else {
+      ocrResult.value = result.errorMessage || 'OCR识别失败';
+      message.error(result.errorMessage || 'OCR识别失败');
+    }
+  } catch (e: any) {
+    ocrResult.value = e?.message || 'OCR识别失败';
+    message.error(e?.message || 'OCR识别失败');
+  } finally {
+    ocrLoading.value = false;
+  }
+}
+
+// 复制OCR结果到剪贴板
+function handleCopyOcrResult() {
+  if (ocrResult.value) {
+    navigator.clipboard.writeText(ocrResult.value);
+    message.success('已复制到剪贴板');
+  }
+}
+
 // 编辑文档（重命名）
 function handleEdit(record: DocumentDTO) {
   editFormData.id = record.id;
@@ -1506,6 +1556,10 @@ onMounted(() => {
                               <span style="margin-right: 8px;">📁</span>
                               移动
                             </MenuItem>
+                            <MenuItem v-if="isImageFile(record.fileType)" key="ocr" @click="handleOcrExtract(record)">
+                              <span style="margin-right: 8px;">🔍</span>
+                              提取文字(OCR)
+                            </MenuItem>
                             <Divider style="margin: 6px 0" />
                             <MenuItem key="delete" @click="handleDelete(record)" style="color: #ff4d4f">
                               <Trash :size="14" style="margin-right: 8px;" />
@@ -1700,6 +1754,34 @@ onMounted(() => {
           </template>
         </template>
       </Table>
+    </Modal>
+
+    <!-- OCR识别结果弹窗 -->
+    <Modal
+      v-model:open="ocrModalVisible"
+      :title="`OCR识别结果 - ${currentDocument?.fileName || currentDocument?.name || ''}`"
+      width="700px"
+    >
+      <div v-if="ocrLoading" style="text-align: center; padding: 40px;">
+        <div style="font-size: 16px; color: #1890ff;">正在识别中...</div>
+        <div style="color: #999; margin-top: 8px;">请稍候，OCR正在分析图片内容</div>
+      </div>
+      <div v-else>
+        <div style="background: #f9f9f9; padding: 16px; border-radius: 8px; min-height: 200px; max-height: 400px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; font-family: monospace; line-height: 1.8;">
+          {{ ocrResult || '未识别到文字内容' }}
+        </div>
+        <div style="margin-top: 12px; color: #999; font-size: 12px;">
+          提示：识别结果仅供参考，可能存在误差。如需精确内容，请人工校对。
+        </div>
+      </div>
+      <template #footer>
+        <Space>
+          <Button @click="ocrModalVisible = false">关闭</Button>
+          <Button type="primary" :disabled="!ocrResult" @click="handleCopyOcrResult">
+            复制文字
+          </Button>
+        </Space>
+      </template>
     </Modal>
   </Page>
 </template>

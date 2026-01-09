@@ -2,13 +2,16 @@
 import { ref } from 'vue';
 import { useVbenModal } from '@vben/common-ui';
 import { useVbenForm } from '#/adapter/form';
-import { message } from 'ant-design-vue';
+import { message, Upload, Spin, Alert, Tooltip, Space } from 'ant-design-vue';
+import { IconifyIcon } from '@vben/icons';
 import { createArticle, updateArticle } from '#/api/knowledge';
+import { recognizeGeneral, type OcrResultDTO } from '#/api/ocr';
 import type { KnowledgeArticleDTO } from '#/api/knowledge/types';
 
 const emit = defineEmits<{ success: [] }>();
 
 const editingId = ref<number>();
+const ocrLoading = ref(false);
 
 const categoryOptions = [
   { label: '法律法规', value: 'LAW' },
@@ -81,11 +84,58 @@ function open(record?: KnowledgeArticleDTO) {
   modalApi.open();
 }
 
+// OCR识别文章图片
+async function handleOcrArticle(file: File) {
+  ocrLoading.value = true;
+  try {
+    const result: OcrResultDTO = await recognizeGeneral(file);
+    if (result.success && result.rawText) {
+      // 获取当前内容并追加
+      const currentContent = (await formApi.getValues()).content || '';
+      const separator = currentContent ? '\n\n--- OCR识别内容 ---\n' : '';
+      formApi.setValues({ content: currentContent + separator + result.rawText });
+      message.success('OCR识别成功，内容已添加');
+    } else {
+      message.error(result.errorMessage || 'OCR识别失败');
+    }
+  } catch (e: any) {
+    message.error(e?.message || 'OCR识别失败');
+  } finally {
+    ocrLoading.value = false;
+  }
+  return false;
+}
+
 defineExpose({ open });
 </script>
 
 <template>
   <Modal :title="editingId ? '编辑文章' : '新增文章'" class="w-[800px]">
+    <Spin :spinning="ocrLoading" tip="正在识别图片内容...">
+      <!-- OCR识别区域 -->
+      <Alert type="info" style="margin-bottom: 16px" show-icon>
+        <template #message>
+          <span class="font-medium text-blue-700">智能识别图片内容</span>
+          <span class="text-gray-500 text-xs ml-2">上传文章截图自动提取文字</span>
+        </template>
+        <template #description>
+          <div class="mt-2">
+            <Upload
+              :show-upload-list="false"
+              :before-upload="handleOcrArticle"
+              accept="image/*"
+            >
+              <Tooltip title="上传文章截图，自动识别文字内容">
+                <a class="text-blue-600 hover:text-blue-800 font-medium">
+                  <IconifyIcon icon="ant-design:scan-outlined" class="mr-1" />识别图片内容
+                </a>
+              </Tooltip>
+            </Upload>
+          </div>
+        </template>
+      </Alert>
+      
     <Form />
+    </Spin>
   </Modal>
 </template>

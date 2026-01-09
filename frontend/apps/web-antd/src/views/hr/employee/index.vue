@@ -24,7 +24,11 @@ import {
   Tabs,
   Row,
   Col,
+  Upload,
+  Spin,
+  Tooltip,
 } from 'ant-design-vue';
+import { IconifyIcon } from '@vben/icons';
 import dayjs from 'dayjs';
 
 import {
@@ -34,6 +38,7 @@ import {
   updateEmployee,
   deleteEmployee,
 } from '#/api/hr/employee';
+import { recognizeIdCard, type OcrResultDTO } from '#/api/ocr';
 import type {
   EmployeeDTO,
   EmployeeQuery,
@@ -147,6 +152,7 @@ const departmentTree = ref<DepartmentDTO[]>([]);
 const modalVisible = ref(false);
 const modalLoading = ref(false);
 const editingId = ref<number | null>(null);
+const ocrLoading = ref(false);
 const employeeForm = reactive<CreateEmployeeCommand>({
   userId: undefined as number | undefined,
   employeeNo: '',
@@ -453,6 +459,41 @@ async function handleDelete(id: number) {
   }
 }
 
+// 身份证OCR识别
+async function handleIdCardOcr(info: any) {
+  const file = info.file.originFileObj || info.file;
+  if (!file) return;
+  
+  ocrLoading.value = true;
+  try {
+    const result = await recognizeIdCard(file, true); // 识别正面
+    
+    if (result.success) {
+      // 自动填充表单
+      if (result.idNumber) employeeForm.idCard = result.idNumber;
+      if (result.name && !employeeForm.realName) {
+        employeeForm.realName = result.name;
+      }
+      if (result.ethnicity) employeeForm.nationality = result.ethnicity;
+      // 注意：身份证地址是住址，不是籍贯，这里不自动填充籍贯
+      if (result.gender) {
+        employeeForm.gender = result.gender === '男' ? 'MALE' : 'FEMALE';
+      }
+      if (result.birthDate) {
+        employeeForm.birthDate = dayjs(result.birthDate) as any;
+      }
+      
+      message.success(`身份证识别成功！置信度: ${Math.round((result.confidence || 0) * 100)}%`);
+    } else {
+      message.error(result.errorMessage || '身份证识别失败');
+    }
+  } catch (e: any) {
+    message.error(e?.message || '身份证识别失败');
+  } finally {
+    ocrLoading.value = false;
+  }
+}
+
 async function handleSave() {
   if (!employeeForm.userId && !editingId.value) {
     message.warning('请选择用户');
@@ -754,6 +795,31 @@ onMounted(() => {
         <FormItem label="员工编号">
           <Input v-model:value="employeeForm.employeeNo" placeholder="请输入员工编号" />
         </FormItem>
+
+        <!-- OCR智能识别区域 -->
+        <div class="mb-4 p-3 bg-blue-50 rounded border border-blue-200">
+          <div class="flex items-center mb-2">
+            <IconifyIcon icon="ant-design:scan-outlined" class="text-blue-500 mr-2" />
+            <span class="font-medium text-blue-700">身份证智能识别</span>
+            <span class="text-gray-500 text-xs ml-2">上传身份证正面自动填充</span>
+          </div>
+          <Spin :spinning="ocrLoading" size="small">
+            <Upload
+              :show-upload-list="false"
+              :before-upload="() => false"
+              accept="image/*"
+              @change="handleIdCardOcr"
+            >
+              <Tooltip title="上传身份证正面照片，自动识别姓名、身份证号、出生日期等">
+                <Button :loading="ocrLoading" :disabled="ocrLoading" size="small">
+                  <template #icon><IconifyIcon icon="ant-design:idcard-outlined" /></template>
+                  识别身份证
+                </Button>
+              </Tooltip>
+            </Upload>
+          </Spin>
+        </div>
+
         <Row :gutter="16">
           <Col :span="12">
             <FormItem label="性别">

@@ -46,4 +46,24 @@ public interface OcrService {
      * 营业执照识别（通过URL）
      */
     OcrResult recognizeBusinessLicense(String imageUrl);
+
+    /**
+     * 名片识别
+     */
+    OcrResult recognizeBusinessCard(MultipartFile file);
+
+    /**
+     * 名片识别（通过URL）
+     */
+    OcrResult recognizeBusinessCard(String imageUrl);
+
+    /**
+     * 发票/票据识别
+     */
+    OcrResult recognizeInvoice(MultipartFile file);
+
+    /**
+     * 发票/票据识别（通过URL）
+     */
+    OcrResult recognizeInvoice(String imageUrl);
 }

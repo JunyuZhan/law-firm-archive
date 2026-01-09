@@ -58,4 +58,25 @@ public class OcrResultDTO {
     private String businessTerm;
     private String businessScope;
     private String registeredAddress;
+
+    // 名片
+    private String cardCompany;
+    private String title;
+    private String mobile;
+    private String phone;
+    private String email;
+    private String website;
+
+    // 发票
+    private String invoiceType;
+    private String invoiceCode;
+    private String invoiceNo;
+    private LocalDate invoiceDate;
+    private String sellerName;
+    private String sellerTaxNo;
+    private String buyerName;
+    private String buyerTaxNo;
+    private BigDecimal invoiceAmount;
+    private BigDecimal taxAmount;
+    private BigDecimal totalAmount;
 }

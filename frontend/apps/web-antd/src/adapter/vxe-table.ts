@@ -35,6 +35,9 @@ setupVbenVxeTable({
         round: true,
         showOverflow: true,
         size: 'small',
+        rowConfig: {
+          keyField: 'id', // 默认使用 id 作为行唯一标识
+        },
       } as VxeTableGridOptions,
     });
 

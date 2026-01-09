@@ -10,9 +10,11 @@ import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
+import jakarta.annotation.PostConstruct;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -33,12 +35,25 @@ public class PaddleOcrService implements OcrService {
     @Value("${ocr.paddle.url:http://localhost:8001}")
     private String paddleOcrUrl;
 
-    private final RestTemplate restTemplate;
+    @Value("${ocr.timeout:120000}")
+    private int timeout;
+
+    private RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
 
     public PaddleOcrService() {
-        this.restTemplate = new RestTemplate();
         this.objectMapper = new ObjectMapper();
+    }
+
+    @PostConstruct
+    public void init() {
+        // 配置RestTemplate超时时间
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(10000); // 连接超时10秒
+        factory.setReadTimeout(timeout); // 读取超时（OCR识别可能需要较长时间，默认120秒）
+        
+        this.restTemplate = new RestTemplate(factory);
+        log.info("PaddleOCR服务初始化完成，超时时间: {}ms", timeout);
     }
 
     @Override
@@ -298,6 +313,13 @@ public class PaddleOcrService implements OcrService {
         
         Map<String, Object> resultData = new HashMap<>();
         
+        // 提取原始文本
+        String rawText = data.path("raw_text").asText("");
+        if (rawText.isEmpty()) {
+            // 如果没有raw_text字段，尝试从result中提取
+            rawText = root.path("raw_text").asText("");
+        }
+        
         if (isFront) {
             String name = data.path("name").asText("");
             String gender = data.path("gender").asText("");
@@ -312,10 +334,12 @@ public class PaddleOcrService implements OcrService {
             resultData.put("birthDate", birthDateStr);
             resultData.put("address", address);
             resultData.put("idNumber", idNumber);
+            resultData.put("rawText", rawText);
 
             return OcrResult.builder()
                     .success(true)
                     .type("ID_CARD_FRONT")
+                    .rawText(rawText)
                     .data(resultData)
                     .confidence(data.path("confidence").asDouble(0.95))
                     .name(name)
@@ -355,6 +379,12 @@ public class PaddleOcrService implements OcrService {
         
         Map<String, Object> resultData = new HashMap<>();
         
+        // 提取原始文本
+        String rawText = data.path("raw_text").asText("");
+        if (rawText.isEmpty()) {
+            rawText = root.path("raw_text").asText("");
+        }
+        
         String companyName = data.path("company_name").asText("");
         String creditCode = data.path("credit_code").asText("");
         String companyType = data.path("company_type").asText("");
@@ -374,10 +404,12 @@ public class PaddleOcrService implements OcrService {
         resultData.put("businessTerm", businessTerm);
         resultData.put("businessScope", businessScope);
         resultData.put("registeredAddress", registeredAddress);
+        resultData.put("rawText", rawText);
 
         return OcrResult.builder()
                 .success(true)
                 .type("BUSINESS_LICENSE")
+                .rawText(rawText)
                 .data(resultData)
                 .confidence(data.path("confidence").asDouble(0.9))
                 .companyName(companyName)
@@ -426,5 +458,158 @@ public class PaddleOcrService implements OcrService {
             }
         }
         return null;
+    }
+
+    @Override
+    public OcrResult recognizeBusinessCard(MultipartFile file) {
+        try {
+            String result = callPaddleOcr(file, "/ocr/business_card");
+            return parseBusinessCardResult(result);
+        } catch (Exception e) {
+            log.error("名片识别失败", e);
+            return OcrResult.builder()
+                    .success(false)
+                    .errorMessage("识别失败: " + e.getMessage())
+                    .build();
+        }
+    }
+
+    @Override
+    public OcrResult recognizeBusinessCard(String imageUrl) {
+        try {
+            String result = callPaddleOcrByUrl(imageUrl, "/ocr/business_card");
+            return parseBusinessCardResult(result);
+        } catch (Exception e) {
+            log.error("名片识别失败(URL)", e);
+            return OcrResult.builder()
+                    .success(false)
+                    .errorMessage("识别失败: " + e.getMessage())
+                    .build();
+        }
+    }
+
+    @Override
+    public OcrResult recognizeInvoice(MultipartFile file) {
+        try {
+            String result = callPaddleOcr(file, "/ocr/invoice");
+            return parseInvoiceResult(result);
+        } catch (Exception e) {
+            log.error("发票识别失败", e);
+            return OcrResult.builder()
+                    .success(false)
+                    .errorMessage("识别失败: " + e.getMessage())
+                    .build();
+        }
+    }
+
+    @Override
+    public OcrResult recognizeInvoice(String imageUrl) {
+        try {
+            String result = callPaddleOcrByUrl(imageUrl, "/ocr/invoice");
+            return parseInvoiceResult(result);
+        } catch (Exception e) {
+            log.error("发票识别失败(URL)", e);
+            return OcrResult.builder()
+                    .success(false)
+                    .errorMessage("识别失败: " + e.getMessage())
+                    .build();
+        }
+    }
+
+    /**
+     * 解析名片识别结果
+     */
+    private OcrResult parseBusinessCardResult(String jsonResult) throws Exception {
+        JsonNode root = objectMapper.readTree(jsonResult);
+        JsonNode data = root.path("result");
+        
+        Map<String, Object> resultData = new HashMap<>();
+        
+        String name = data.path("name").asText("");
+        String company = data.path("company").asText("");
+        String title = data.path("title").asText("");
+        String mobile = data.path("mobile").asText("");
+        String phone = data.path("phone").asText("");
+        String email = data.path("email").asText("");
+        String address = data.path("address").asText("");
+        String website = data.path("website").asText("");
+        
+        resultData.put("name", name);
+        resultData.put("company", company);
+        resultData.put("title", title);
+        resultData.put("mobile", mobile);
+        resultData.put("phone", phone);
+        resultData.put("email", email);
+        resultData.put("address", address);
+        resultData.put("website", website);
+
+        return OcrResult.builder()
+                .success(true)
+                .type("BUSINESS_CARD")
+                .data(resultData)
+                .rawText(data.path("raw_text").asText(""))
+                .confidence(data.path("confidence").asDouble(0.9))
+                .name(name)
+                .cardCompany(company)
+                .title(title)
+                .mobile(mobile)
+                .phone(phone)
+                .email(email)
+                .address(address)
+                .website(website)
+                .build();
+    }
+
+    /**
+     * 解析发票识别结果
+     */
+    private OcrResult parseInvoiceResult(String jsonResult) throws Exception {
+        JsonNode root = objectMapper.readTree(jsonResult);
+        JsonNode data = root.path("result");
+        
+        Map<String, Object> resultData = new HashMap<>();
+        
+        String invoiceType = data.path("invoice_type").asText("");
+        String invoiceCode = data.path("invoice_code").asText("");
+        String invoiceNo = data.path("invoice_no").asText("");
+        String invoiceDateStr = data.path("invoice_date").asText("");
+        String sellerName = data.path("seller_name").asText("");
+        String sellerTaxNo = data.path("seller_tax_no").asText("");
+        String buyerName = data.path("buyer_name").asText("");
+        String buyerTaxNo = data.path("buyer_tax_no").asText("");
+        String amountStr = data.path("amount").asText("0");
+        String taxAmountStr = data.path("tax_amount").asText("0");
+        String totalAmountStr = data.path("total_amount").asText("0");
+        
+        resultData.put("invoiceType", invoiceType);
+        resultData.put("invoiceCode", invoiceCode);
+        resultData.put("invoiceNo", invoiceNo);
+        resultData.put("invoiceDate", invoiceDateStr);
+        resultData.put("sellerName", sellerName);
+        resultData.put("sellerTaxNo", sellerTaxNo);
+        resultData.put("buyerName", buyerName);
+        resultData.put("buyerTaxNo", buyerTaxNo);
+        resultData.put("amount", amountStr);
+        resultData.put("taxAmount", taxAmountStr);
+        resultData.put("totalAmount", totalAmountStr);
+
+        return OcrResult.builder()
+                .success(true)
+                .type("INVOICE")
+                .data(resultData)
+                .rawText(data.path("raw_text").asText(""))
+                .confidence(data.path("confidence").asDouble(0.9))
+                .invoiceType(invoiceType)
+                .invoiceCode(invoiceCode)
+                .invoiceNo(invoiceNo)
+                .invoiceDate(parseDate(invoiceDateStr))
+                .sellerName(sellerName)
+                .sellerTaxNo(sellerTaxNo)
+                .buyerName(buyerName)
+                .buyerTaxNo(buyerTaxNo)
+                .invoiceAmount(parseAmount(amountStr))
+                .taxAmount(parseAmount(taxAmountStr))
+                .totalAmount(parseAmount(totalAmountStr))
+                .build();
     }
 }

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue';
-import { message } from 'ant-design-vue';
+import { message, Upload } from 'ant-design-vue';
 import { Page } from '@vben/common-ui';
 import {
   Card,
@@ -19,7 +19,15 @@ import {
   Col,
   Statistic,
   Modal,
+  Alert,
+  Spin,
+  Progress,
+  List,
+  ListItem,
+  ListItemMeta,
+  Divider,
 } from 'ant-design-vue';
+import { IconifyIcon } from '@vben/icons';
 import type { VxeGridProps } from '#/adapter/vxe-table';
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
@@ -29,8 +37,10 @@ import {
   confirmPayment,
 } from '#/api/finance';
 import { getClientList } from '#/api/client';
+import { recognizeBankReceipt, matchPayment, type OcrResultDTO, type MatchCandidateDTO, type ReconciliationResultDTO } from '#/api/ocr';
 import type { FeeDTO, FeeQuery, CreatePaymentCommand, PaymentDTO } from '#/api/finance/types';
 import type { ClientDTO } from '#/api/client/types';
+import dayjs from 'dayjs';
 
 defineOptions({ name: 'FinancePayment' });
 
@@ -55,6 +65,14 @@ const yearOptions = [
   })),
 ];
 const selectedYear = ref<number>(currentYear);
+
+// ==================== OCR智能识别状态 ====================
+const ocrModalVisible = ref(false);
+const ocrLoading = ref(false);
+const ocrResult = ref<OcrResultDTO | null>(null);
+const matchResult = ref<ReconciliationResultDTO | null>(null);
+const matchLoading = ref(false);
+const ocrStep = ref<'upload' | 'result' | 'match'>('upload');
 
 const queryParams = ref<FeeQuery>({
   pageNum: 1,
@@ -246,6 +264,94 @@ function getStatusColor(status: string) {
   return colorMap[status] || 'default';
 }
 
+// ==================== OCR智能识别操作 ====================
+
+function openOcrModal() {
+  ocrModalVisible.value = true;
+  ocrStep.value = 'upload';
+  ocrResult.value = null;
+  matchResult.value = null;
+}
+
+async function handleOcrUpload(info: any) {
+  const file = info.file.originFileObj || info.file;
+  if (!file) return;
+  
+  ocrLoading.value = true;
+  ocrStep.value = 'result';
+  
+  try {
+    const result = await recognizeBankReceipt(file);
+    ocrResult.value = result;
+    
+    if (result.success && result.amount) {
+      // 自动进行智能匹配
+      matchLoading.value = true;
+      ocrStep.value = 'match';
+      
+      const matchRes = await matchPayment({
+        amount: result.amount,
+        payerName: result.payerName,
+        transactionDate: result.transactionDate,
+        transactionNo: result.transactionNo,
+      });
+      matchResult.value = matchRes;
+    }
+  } catch (e: any) {
+    message.error(e?.message || 'OCR识别失败');
+    ocrStep.value = 'upload';
+  } finally {
+    ocrLoading.value = false;
+    matchLoading.value = false;
+  }
+}
+
+function handleSelectMatch(candidate: MatchCandidateDTO) {
+  // 选择匹配的收费项目，自动填充收款表单
+  const fee: FeeDTO = {
+    id: candidate.feeId,
+    feeNo: candidate.feeNo,
+    feeName: candidate.feeName || '',
+    matterId: candidate.matterId,
+    matterName: candidate.matterName,
+    matterNo: candidate.matterNo,
+    clientId: candidate.clientId,
+    clientName: candidate.clientName,
+    amount: candidate.expectedAmount,
+    paidAmount: candidate.expectedAmount - candidate.unpaidAmount,
+    status: 'PENDING',
+    statusName: '待收款',
+  } as FeeDTO;
+  
+  selectedFee.value = fee;
+  
+  // 填充表单数据
+  Object.assign(formData, {
+    feeId: candidate.feeId,
+    amount: ocrResult.value?.amount || candidate.unpaidAmount,
+    currency: 'CNY',
+    paymentMethod: 'BANK_TRANSFER',
+    paymentDate: ocrResult.value?.transactionDate || '',
+    bankAccount: ocrResult.value?.payeeAccount || '',
+    transactionNo: ocrResult.value?.transactionNo || '',
+    remark: ocrResult.value?.remark || `银行: ${ocrResult.value?.bankName || ''}, 付款方: ${ocrResult.value?.payerName || ''}`,
+  });
+  
+  ocrModalVisible.value = false;
+  modalVisible.value = true;
+  message.success('已自动填充收款信息，请核对后确认');
+}
+
+function formatMatchScore(score: number) {
+  return Math.round(score * 100);
+}
+
+function getScoreColor(score: number) {
+  if (score >= 0.85) return 'green';
+  if (score >= 0.5) return 'orange';
+  return 'red';
+}
+
 onMounted(() => {
   loadOptions();
 });
@@ -313,6 +419,10 @@ onMounted(() => {
           <Space>
             <Button type="primary" @click="handleSearch">查询</Button>
             <Button @click="handleReset">重置</Button>
+            <Button type="primary" ghost @click="openOcrModal">
+              <template #icon><IconifyIcon icon="ant-design:scan-outlined" /></template>
+              OCR智能识别
+            </Button>
           </Space>
         </Col>
       </Row>
@@ -390,6 +500,144 @@ onMounted(() => {
           <Textarea v-model:value="formData.remark" :rows="3" placeholder="请输入" />
         </FormItem>
       </Form>
+    </Modal>
+
+    <!-- OCR智能识别弹窗 -->
+    <Modal
+      v-model:open="ocrModalVisible"
+      title="银行回单智能识别"
+      width="800px"
+      :footer="null"
+    >
+      <!-- 步骤1: 上传图片 -->
+      <div v-if="ocrStep === 'upload'" class="text-center py-8">
+        <Upload.Dragger
+          :show-upload-list="false"
+          :before-upload="() => false"
+          accept="image/*"
+          @change="handleOcrUpload"
+        >
+          <p class="ant-upload-drag-icon">
+            <IconifyIcon icon="ant-design:scan-outlined" style="font-size: 48px; color: #1890ff" />
+          </p>
+          <p class="ant-upload-text">点击或拖拽银行回单图片到此处</p>
+          <p class="ant-upload-hint">支持 JPG、PNG、GIF 格式图片，自动识别回单信息并智能匹配待收款项目</p>
+        </Upload.Dragger>
+      </div>
+
+      <!-- 步骤2: 识别结果 -->
+      <div v-if="ocrStep === 'result' || ocrStep === 'match'">
+        <Spin :spinning="ocrLoading" tip="正在识别银行回单...">
+          <div v-if="ocrResult">
+            <Alert
+              v-if="ocrResult.success"
+              type="success"
+              show-icon
+              :message="`识别成功 (置信度: ${Math.round((ocrResult.confidence || 0) * 100)}%)`"
+              class="mb-4"
+            />
+            <Alert
+              v-else
+              type="error"
+              show-icon
+              :message="ocrResult.errorMessage || '识别失败'"
+              class="mb-4"
+            />
+
+            <Card title="识别结果" size="small" class="mb-4">
+              <Row :gutter="16">
+                <Col :span="12">
+                  <div class="mb-2"><strong>银行名称：</strong>{{ ocrResult.bankName || '-' }}</div>
+                  <div class="mb-2"><strong>交易金额：</strong><span class="text-red-500 text-lg font-bold">¥{{ ocrResult.amount?.toLocaleString() || '-' }}</span></div>
+                  <div class="mb-2"><strong>交易日期：</strong>{{ ocrResult.transactionDate || '-' }}</div>
+                  <div class="mb-2"><strong>交易流水号：</strong>{{ ocrResult.transactionNo || '-' }}</div>
+                </Col>
+                <Col :span="12">
+                  <div class="mb-2"><strong>付款方：</strong>{{ ocrResult.payerName || '-' }}</div>
+                  <div class="mb-2"><strong>付款账号：</strong>{{ ocrResult.payerAccount || '-' }}</div>
+                  <div class="mb-2"><strong>收款方：</strong>{{ ocrResult.payeeName || '-' }}</div>
+                  <div class="mb-2"><strong>收款账号：</strong>{{ ocrResult.payeeAccount || '-' }}</div>
+                </Col>
+              </Row>
+              <div v-if="ocrResult.remark" class="mt-2">
+                <strong>摘要/备注：</strong>{{ ocrResult.remark }}
+              </div>
+            </Card>
+          </div>
+        </Spin>
+
+        <!-- 步骤3: 智能匹配结果 -->
+        <Spin :spinning="matchLoading" tip="正在智能匹配待收款项目...">
+          <div v-if="matchResult && ocrStep === 'match'">
+            <Divider>智能匹配结果</Divider>
+            
+            <Alert
+              v-if="matchResult.hasRecommended && matchResult.canAutoReconcile"
+              type="success"
+              show-icon
+              message="找到高匹配度项目，建议自动核销"
+              class="mb-4"
+            />
+            <Alert
+              v-else-if="matchResult.hasRecommended"
+              type="info"
+              show-icon
+              message="找到相似项目，请确认后核销"
+              class="mb-4"
+            />
+            <Alert
+              v-else-if="matchResult.candidates.length === 0"
+              type="warning"
+              show-icon
+              message="未找到匹配的待收款项目，请手动选择"
+              class="mb-4"
+            />
+
+            <List
+              v-if="matchResult.candidates.length > 0"
+              :data-source="matchResult.candidates"
+              item-layout="horizontal"
+              size="small"
+            >
+              <template #renderItem="{ item }">
+                <ListItem>
+                  <template #actions>
+                    <Button type="primary" size="small" @click="handleSelectMatch(item)">
+                      选择并填充
+                    </Button>
+                  </template>
+                  <ListItemMeta>
+                    <template #title>
+                      <Space>
+                        <Tag :color="getScoreColor(item.score)">
+                          匹配度 {{ formatMatchScore(item.score) }}%
+                        </Tag>
+                        <span>{{ item.feeName }}</span>
+                        <span class="text-gray-400">{{ item.feeNo }}</span>
+                      </Space>
+                    </template>
+                    <template #description>
+                      <div>
+                        <span class="mr-4">项目: {{ item.matterName || '-' }}</span>
+                        <span class="mr-4">客户: {{ item.clientName || '-' }}</span>
+                        <span class="mr-4">待收: <strong class="text-orange-500">¥{{ item.unpaidAmount?.toLocaleString() }}</strong></span>
+                      </div>
+                      <div v-if="item.matchReasons?.length" class="text-green-600 text-xs mt-1">
+                        <IconifyIcon icon="ant-design:check-circle-outlined" class="mr-1" />
+                        {{ item.matchReasons.join('、') }}
+                      </div>
+                    </template>
+                  </ListItemMeta>
+                </ListItem>
+              </template>
+            </List>
+
+            <div class="text-center mt-4">
+              <Button @click="ocrStep = 'upload'">重新上传</Button>
+            </div>
+          </div>
+        </Spin>
+      </div>
     </Modal>
 
     <!-- 收款明细弹窗 -->

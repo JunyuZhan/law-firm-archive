@@ -1,5 +1,5 @@
-# paddlepaddle 在 Dockerfile 中单独安装
-paddleocr>=2.7.0
+# paddlepaddle 和 paddleocr 在 Dockerfile 中单独安装（ARM架构兼容性）
+# paddleocr>=2.7.0
 fastapi>=0.109.0
 uvicorn>=0.27.0
 python-multipart>=0.0.6

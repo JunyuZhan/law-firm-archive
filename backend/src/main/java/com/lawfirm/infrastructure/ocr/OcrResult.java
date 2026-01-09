@@ -188,4 +188,93 @@ public class OcrResult {
      * 注册地址
      */
     private String registeredAddress;
+
+    // ==================== 名片专用字段 ====================
+
+    /**
+     * 公司名称（名片）
+     */
+    private String cardCompany;
+
+    /**
+     * 职位/头衔
+     */
+    private String title;
+
+    /**
+     * 手机号
+     */
+    private String mobile;
+
+    /**
+     * 固定电话
+     */
+    private String phone;
+
+    /**
+     * 邮箱
+     */
+    private String email;
+
+    /**
+     * 网站
+     */
+    private String website;
+
+    // ==================== 发票/票据专用字段 ====================
+
+    /**
+     * 发票类型
+     */
+    private String invoiceType;
+
+    /**
+     * 发票代码
+     */
+    private String invoiceCode;
+
+    /**
+     * 发票号码
+     */
+    private String invoiceNo;
+
+    /**
+     * 开票日期
+     */
+    private LocalDate invoiceDate;
+
+    /**
+     * 销售方名称
+     */
+    private String sellerName;
+
+    /**
+     * 销售方税号
+     */
+    private String sellerTaxNo;
+
+    /**
+     * 购买方名称
+     */
+    private String buyerName;
+
+    /**
+     * 购买方税号
+     */
+    private String buyerTaxNo;
+
+    /**
+     * 不含税金额
+     */
+    private BigDecimal invoiceAmount;
+
+    /**
+     * 税额
+     */
+    private BigDecimal taxAmount;
+
+    /**
+     * 价税合计
+     */
+    private BigDecimal totalAmount;
 }

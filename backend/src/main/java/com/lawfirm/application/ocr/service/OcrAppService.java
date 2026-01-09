@@ -90,6 +90,42 @@ public class OcrAppService {
         return toDTO(result);
     }
 
+    /**
+     * 名片识别
+     */
+    public OcrResultDTO recognizeBusinessCard(MultipartFile file) {
+        log.info("名片识别: {}", file.getOriginalFilename());
+        OcrResult result = ocrService.recognizeBusinessCard(file);
+        return toDTO(result);
+    }
+
+    /**
+     * 名片识别（URL）
+     */
+    public OcrResultDTO recognizeBusinessCardByUrl(String imageUrl) {
+        log.info("名片识别(URL): {}", imageUrl);
+        OcrResult result = ocrService.recognizeBusinessCard(imageUrl);
+        return toDTO(result);
+    }
+
+    /**
+     * 发票识别
+     */
+    public OcrResultDTO recognizeInvoice(MultipartFile file) {
+        log.info("发票识别: {}", file.getOriginalFilename());
+        OcrResult result = ocrService.recognizeInvoice(file);
+        return toDTO(result);
+    }
+
+    /**
+     * 发票识别（URL）
+     */
+    public OcrResultDTO recognizeInvoiceByUrl(String imageUrl) {
+        log.info("发票识别(URL): {}", imageUrl);
+        OcrResult result = ocrService.recognizeInvoice(imageUrl);
+        return toDTO(result);
+    }
+
     private OcrResultDTO toDTO(OcrResult result) {
         return OcrResultDTO.builder()
                 .success(result.isSuccess())
@@ -129,6 +165,25 @@ public class OcrAppService {
                 .businessTerm(result.getBusinessTerm())
                 .businessScope(result.getBusinessScope())
                 .registeredAddress(result.getRegisteredAddress())
+                // 名片
+                .cardCompany(result.getCardCompany())
+                .title(result.getTitle())
+                .mobile(result.getMobile())
+                .phone(result.getPhone())
+                .email(result.getEmail())
+                .website(result.getWebsite())
+                // 发票
+                .invoiceType(result.getInvoiceType())
+                .invoiceCode(result.getInvoiceCode())
+                .invoiceNo(result.getInvoiceNo())
+                .invoiceDate(result.getInvoiceDate())
+                .sellerName(result.getSellerName())
+                .sellerTaxNo(result.getSellerTaxNo())
+                .buyerName(result.getBuyerName())
+                .buyerTaxNo(result.getBuyerTaxNo())
+                .invoiceAmount(result.getInvoiceAmount())
+                .taxAmount(result.getTaxAmount())
+                .totalAmount(result.getTotalAmount())
                 .build();
     }
 
@@ -140,6 +195,8 @@ public class OcrAppService {
             case "ID_CARD_FRONT" -> "身份证正面";
             case "ID_CARD_BACK" -> "身份证背面";
             case "BUSINESS_LICENSE" -> "营业执照";
+            case "BUSINESS_CARD" -> "名片";
+            case "INVOICE" -> "发票/票据";
             default -> type;
         };
     }

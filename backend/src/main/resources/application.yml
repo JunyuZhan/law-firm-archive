@@ -84,8 +84,11 @@ minio:
 
 # OCR服务配置
 ocr:
-  service-url: http://localhost:8000
-  timeout: 30000
+  # provider: mock (默认关闭OCR，使用模拟返回) | paddle (启用真实OCR)
+  provider: ${OCR_PROVIDER:mock}
+  paddle:
+    url: ${OCR_SERVICE_URL:http://localhost:8001}
+  timeout: 120000  # OCR识别超时时间（毫秒），默认120秒（首次识别或大图片可能需要更长时间）
 
 # OnlyOffice 文档服务配置
 onlyoffice:

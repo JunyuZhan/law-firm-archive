@@ -27,7 +27,8 @@ ocr_lang = os.getenv("OCR_LANG", "ch")
 use_gpu = os.getenv("OCR_USE_GPU", "false").lower() == "true"
 
 logger.info(f"初始化PaddleOCR: lang={ocr_lang}, use_gpu={use_gpu}")
-ocr = PaddleOCR(use_angle_cls=True, lang=ocr_lang, use_gpu=use_gpu, show_log=False)
+# 新版本PaddleOCR API已变更，移除不支持的参数
+ocr = PaddleOCR(use_textline_orientation=True, lang=ocr_lang)
 
 
 class UrlRequest(BaseModel):
@@ -45,7 +46,7 @@ async def recognize_general(file: UploadFile = File(...)):
     """通用文字识别"""
     try:
         image = await load_image(file)
-        result = ocr.ocr(image, cls=True)
+        result = ocr.ocr(image)
         
         texts = []
         for line in result[0] if result[0] else []:
@@ -64,7 +65,7 @@ async def recognize_bank_receipt(file: UploadFile = File(...)):
     """银行回单识别"""
     try:
         image = await load_image(file)
-        result = ocr.ocr(image, cls=True)
+        result = ocr.ocr(image)
         
         # 提取所有文本
         all_text = []
@@ -89,19 +90,45 @@ async def recognize_idcard_front(file: UploadFile = File(...)):
     """身份证正面识别"""
     try:
         image = await load_image(file)
-        result = ocr.ocr(image, cls=True)
+        logger.info(f"图片尺寸: {image.shape if hasattr(image, 'shape') else 'unknown'}")
+        
+        result = ocr.ocr(image)
+        
+        # 检查OCR结果
+        if not result or not result[0]:
+            logger.warning("OCR识别结果为空")
+            return {
+                "success": True,
+                "result": {
+                    "name": "",
+                    "gender": "",
+                    "ethnicity": "",
+                    "birth_date": "",
+                    "address": "",
+                    "id_number": "",
+                    "raw_text": "",
+                    "confidence": 0.0
+                }
+            }
         
         all_text = []
-        for line in result[0] if result[0] else []:
-            all_text.append(line[1][0])
+        for line in result[0]:
+            if line and len(line) > 1:
+                text = line[1][0] if isinstance(line[1], (list, tuple)) else str(line[1])
+                all_text.append(text)
         
         full_text = "\n".join(all_text)
+        logger.info(f"身份证OCR原始文本 (前500字符): {full_text[:500]}")  # 记录前500字符用于调试
+        logger.info(f"身份证OCR识别行数: {len(result[0])}")
+        
         parsed = parse_idcard_front(full_text)
+        parsed["raw_text"] = full_text  # 添加原始文本
         parsed["confidence"] = 0.95
         
+        logger.info(f"身份证OCR解析结果: {parsed}")  # 记录解析结果
         return {"success": True, "result": parsed}
     except Exception as e:
-        logger.error(f"身份证正面识别失败: {e}")
+        logger.error(f"身份证正面识别失败: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -110,7 +137,7 @@ async def recognize_idcard_back(file: UploadFile = File(...)):
     """身份证背面识别"""
     try:
         image = await load_image(file)
-        result = ocr.ocr(image, cls=True)
+        result = ocr.ocr(image)
         
         all_text = []
         for line in result[0] if result[0] else []:
@@ -131,7 +158,7 @@ async def recognize_business_license(file: UploadFile = File(...)):
     """营业执照识别"""
     try:
         image = await load_image(file)
-        result = ocr.ocr(image, cls=True)
+        result = ocr.ocr(image)
         
         all_text = []
         for line in result[0] if result[0] else []:
@@ -151,6 +178,9 @@ async def load_image(file: UploadFile) -> np.ndarray:
     """加载图片"""
     contents = await file.read()
     image = Image.open(io.BytesIO(contents))
+    # 转换为RGB格式（PIL默认可能是RGBA或其他格式）
+    if image.mode != 'RGB':
+        image = image.convert('RGB')
     return np.array(image)
 
 
@@ -280,36 +310,84 @@ def parse_idcard_front(text: str) -> dict:
         "id_number": ""
     }
     
-    # 姓名
-    name_match = re.search(r"姓名\s*(.+?)(?:\n|性别)", text)
+    # 姓名 - 多种模式匹配
+    name_patterns = [
+        r"姓名\s*[:：]?\s*([^\n性别]+?)(?:\n|性别|$)",
+        r"姓名\s+([^\n]+)",
+        r"姓\s*名\s*[:：]?\s*([^\n]+)",
+    ]
+    for pattern in name_patterns:
+        name_match = re.search(pattern, text)
     if name_match:
-        result["name"] = name_match.group(1).strip()
+            name = name_match.group(1).strip()
+            # 清理可能的标签文字
+            name = re.sub(r'[姓名：:]\s*', '', name).strip()
+            if name and len(name) <= 10:  # 姓名通常不超过10个字符
+                result["name"] = name
+                break
+    
+    # 如果还没找到，尝试从第一行提取（可能是姓名）
+    if not result["name"]:
+        lines = text.split('\n')
+        for line in lines[:3]:  # 检查前3行
+            line = line.strip()
+            # 如果这一行看起来像姓名（2-4个中文字符，不包含数字和特殊符号）
+            if re.match(r'^[\u4e00-\u9fa5]{2,4}$', line):
+                result["name"] = line
+                break
     
     # 性别
-    if "男" in text:
+    if "男" in text or "M" in text.upper():
         result["gender"] = "男"
-    elif "女" in text:
+    elif "女" in text or "F" in text.upper():
         result["gender"] = "女"
     
     # 民族
-    ethnicity_match = re.search(r"民族\s*(\S+)", text)
+    ethnicity_patterns = [
+        r"民族\s*[:：]?\s*([^\n]+)",
+        r"民\s*族\s*[:：]?\s*([^\n]+)",
+    ]
+    for pattern in ethnicity_patterns:
+        ethnicity_match = re.search(pattern, text)
     if ethnicity_match:
         result["ethnicity"] = ethnicity_match.group(1).strip()
+            break
     
-    # 出生日期
-    birth_match = re.search(r"(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日", text)
+    # 出生日期 - 多种格式
+    birth_patterns = [
+        r"(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日",
+        r"(\d{4})[/-](\d{1,2})[/-](\d{1,2})",
+        r"(\d{4})(\d{2})(\d{2})",
+    ]
+    for pattern in birth_patterns:
+        birth_match = re.search(pattern, text)
     if birth_match:
-        result["birth_date"] = f"{birth_match.group(1)}-{birth_match.group(2).zfill(2)}-{birth_match.group(3).zfill(2)}"
+            year, month, day = birth_match.groups()
+            result["birth_date"] = f"{year}-{month.zfill(2)}-{day.zfill(2)}"
+            break
     
     # 住址
-    addr_match = re.search(r"住址\s*(.+?)(?:公民身份号码|$)", text, re.DOTALL)
+    addr_patterns = [
+        r"住址\s*[:：]?\s*(.+?)(?:公民身份号码|身份证号|$)",
+        r"住\s*址\s*[:：]?\s*(.+?)(?:公民身份号码|身份证号|$)",
+    ]
+    for pattern in addr_patterns:
+        addr_match = re.search(pattern, text, re.DOTALL)
     if addr_match:
-        result["address"] = addr_match.group(1).replace("\n", "").strip()
+            result["address"] = addr_match.group(1).replace("\n", " ").strip()
+            break
     
-    # 身份证号
-    id_match = re.search(r"(\d{17}[\dXx])", text)
+    # 身份证号 - 更严格的匹配
+    id_patterns = [
+        r"(\d{17}[\dXx])",
+        r"身份证号\s*[:：]?\s*(\d{17}[\dXx])",
+        r"公民身份号码\s*[:：]?\s*(\d{17}[\dXx])",
+    ]
+    for pattern in id_patterns:
+        id_match = re.search(pattern, text)
     if id_match:
         result["id_number"] = id_match.group(1).upper()
+            break
     
     return result
 
@@ -397,6 +475,204 @@ def parse_business_license(text: str) -> dict:
     addr_match = re.search(r"住\s*所[：:]\s*(.+?)(?:\n|法定代表人)", text)
     if addr_match:
         result["registered_address"] = addr_match.group(1).strip()
+    
+    return result
+
+
+@app.post("/ocr/business_card")
+async def recognize_business_card(file: UploadFile = File(...)):
+    """名片识别"""
+    try:
+        image = await load_image(file)
+        result = ocr.ocr(image)
+        
+        all_text = []
+        for line in result[0] if result[0] else []:
+            all_text.append(line[1][0])
+        
+        full_text = "\n".join(all_text)
+        parsed = parse_business_card(full_text)
+        parsed["raw_text"] = full_text
+        parsed["confidence"] = 0.9
+        
+        return {"success": True, "result": parsed}
+    except Exception as e:
+        logger.error(f"名片识别失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/ocr/invoice")
+async def recognize_invoice(file: UploadFile = File(...)):
+    """发票/票据识别"""
+    try:
+        image = await load_image(file)
+        result = ocr.ocr(image)
+        
+        all_text = []
+        for line in result[0] if result[0] else []:
+            all_text.append(line[1][0])
+        
+        full_text = "\n".join(all_text)
+        parsed = parse_invoice(full_text)
+        parsed["raw_text"] = full_text
+        parsed["confidence"] = 0.9
+        
+        return {"success": True, "result": parsed}
+    except Exception as e:
+        logger.error(f"发票识别失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+def parse_business_card(text: str) -> dict:
+    """解析名片"""
+    result = {
+        "name": "",
+        "company": "",
+        "title": "",
+        "phone": "",
+        "mobile": "",
+        "email": "",
+        "address": "",
+        "website": ""
+    }
+    
+    lines = text.split('\n')
+    
+    # 手机号 (11位)
+    mobile_match = re.search(r'1[3-9]\d{9}', text)
+    if mobile_match:
+        result["mobile"] = mobile_match.group()
+    
+    # 固定电话
+    phone_match = re.search(r'(\d{3,4}[-\s]?\d{7,8})', text)
+    if phone_match:
+        result["phone"] = phone_match.group(1)
+    
+    # 邮箱
+    email_match = re.search(r'[\w\.-]+@[\w\.-]+\.\w+', text)
+    if email_match:
+        result["email"] = email_match.group()
+    
+    # 网站
+    website_match = re.search(r'(www\.[\w\.-]+\.\w+|https?://[\w\.-]+)', text, re.IGNORECASE)
+    if website_match:
+        result["website"] = website_match.group()
+    
+    # 地址 (包含省市区关键词的行)
+    for line in lines:
+        if any(kw in line for kw in ['省', '市', '区', '县', '路', '街', '号', '大厦', '广场']):
+            result["address"] = line.strip()
+            break
+    
+    # 公司名称 (包含公司/有限/集团等关键词)
+    for line in lines:
+        if any(kw in line for kw in ['公司', '有限', '集团', '律师事务所', '律所', '股份']):
+            result["company"] = line.strip()
+            break
+    
+    # 职位 (包含职位关键词)
+    for line in lines:
+        if any(kw in line for kw in ['总', '经理', '主任', '律师', '合伙人', '顾问', '助理', '秘书', '总监', 'CEO', 'CTO', 'CFO']):
+            if not result["company"] or line != result["company"]:
+                result["title"] = line.strip()
+                break
+    
+    # 姓名 (通常是较短的2-4个汉字，不含数字和符号)
+    for line in lines:
+        line = line.strip()
+        if 2 <= len(line) <= 4 and re.match(r'^[\u4e00-\u9fa5]+$', line):
+            if line != result.get("company") and line != result.get("title"):
+                result["name"] = line
+                break
+    
+    return result
+
+
+def parse_invoice(text: str) -> dict:
+    """解析发票/票据"""
+    result = {
+        "invoice_type": "",
+        "invoice_code": "",
+        "invoice_no": "",
+        "invoice_date": "",
+        "seller_name": "",
+        "seller_tax_no": "",
+        "buyer_name": "",
+        "buyer_tax_no": "",
+        "amount": "",
+        "tax_amount": "",
+        "total_amount": "",
+        "items": []
+    }
+    
+    # 发票类型
+    if "增值税专用发票" in text:
+        result["invoice_type"] = "增值税专用发票"
+    elif "增值税普通发票" in text:
+        result["invoice_type"] = "增值税普通发票"
+    elif "电子发票" in text:
+        result["invoice_type"] = "电子发票"
+    elif "收据" in text:
+        result["invoice_type"] = "收据"
+    
+    # 发票代码
+    code_match = re.search(r'发票代码[：:]\s*(\d{10,12})', text)
+    if code_match:
+        result["invoice_code"] = code_match.group(1)
+    
+    # 发票号码
+    no_match = re.search(r'发票号码[：:]\s*(\d{8})', text)
+    if no_match:
+        result["invoice_no"] = no_match.group(1)
+    
+    # 开票日期
+    date_patterns = [
+        r'开票日期[：:]\s*(\d{4}年\d{1,2}月\d{1,2}日)',
+        r'(\d{4}[-/]\d{1,2}[-/]\d{1,2})',
+    ]
+    for pattern in date_patterns:
+        match = re.search(pattern, text)
+        if match:
+            result["invoice_date"] = match.group(1)
+            break
+    
+    # 金额
+    amount_patterns = [
+        r'合计金额[：:]*\s*[¥￥]?([\d,]+\.?\d*)',
+        r'金额合计[：:]*\s*[¥￥]?([\d,]+\.?\d*)',
+        r'小写[：:]*\s*[¥￥]?([\d,]+\.?\d*)',
+    ]
+    for pattern in amount_patterns:
+        match = re.search(pattern, text)
+        if match:
+            result["total_amount"] = match.group(1).replace(",", "")
+            break
+    
+    # 税额
+    tax_match = re.search(r'税额[：:]*\s*[¥￥]?([\d,]+\.?\d*)', text)
+    if tax_match:
+        result["tax_amount"] = tax_match.group(1).replace(",", "")
+    
+    # 销售方名称
+    seller_match = re.search(r'销售方[：:]\s*(.+?)(?:\n|$)', text)
+    if not seller_match:
+        seller_match = re.search(r'名\s*称[：:]\s*(.+?)(?:\n|税号)', text)
+    if seller_match:
+        result["seller_name"] = seller_match.group(1).strip()
+    
+    # 购买方名称
+    buyer_match = re.search(r'购买方[：:]\s*(.+?)(?:\n|$)', text)
+    if buyer_match:
+        result["buyer_name"] = buyer_match.group(1).strip()
+    
+    # 纳税人识别号
+    tax_no_pattern = r'纳税人识别号[：:]\s*(\w{15,20})'
+    tax_nos = re.findall(tax_no_pattern, text)
+    if len(tax_nos) >= 2:
+        result["buyer_tax_no"] = tax_nos[0]
+        result["seller_tax_no"] = tax_nos[1]
+    elif len(tax_nos) == 1:
+        result["seller_tax_no"] = tax_nos[0]
     
     return result
 

@@ -124,6 +124,7 @@ services:
     networks:
       - law-firm-network
 
+  # paddle-ocr 服务已停用，如需启用请取消注释
   # paddle-ocr:
   #   build:
   #     context: ./ocr
@@ -132,11 +133,18 @@ services:
   #   environment:
   #     OCR_LANG: "ch"
   #     OCR_USE_GPU: "false"
+  #     OCR_MAX_WORKERS: "4"
   #   volumes:
   #     - ocr_models:/app/models
+  #     - ocr_cache:/app/cache
   #   networks:
   #     - law-firm-network
   #   restart: unless-stopped
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
 
   onlyoffice:
     build:
@@ -156,7 +164,8 @@ volumes:
   postgres_data:
   redis_data:
   minio_data:
-  # ocr_models:
+  ocr_models:
+  ocr_cache:
   onlyoffice_data:
 
 networks:

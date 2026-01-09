@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue';
-import { message, Modal } from 'ant-design-vue';
+import { message, Modal, Upload, Spin, Tooltip } from 'ant-design-vue';
 import { Page } from '@vben/common-ui';
 import {
   Card,
@@ -16,11 +16,15 @@ import {
   Select,
   DatePicker,
   Empty,
+  Space,
+  Divider,
 } from 'ant-design-vue';
-import { Plus } from '@vben/icons';
+import { Plus, IconifyIcon } from '@vben/icons';
 import type { VxeGridProps } from '#/adapter/vxe-table';
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import { requestClient } from '#/api/request';
+import { recognizeInvoice, type OcrResultDTO } from '#/api/ocr';
+import dayjs from 'dayjs';
 
 defineOptions({ name: 'ExpenseReimbursement' });
 
@@ -47,6 +51,8 @@ interface ExpenseRecord {
 const expenses = ref<ExpenseRecord[]>([]);
 const modalVisible = ref(false);
 const formRef = ref();
+const ocrLoading = ref(false);
+const ocrResult = ref<OcrResultDTO | null>(null);
 
 const formData = reactive({
   expenseType: 'TRAVEL',
@@ -111,6 +117,61 @@ const [Grid, gridApi] = useVbenVxeGrid({
   },
 });
 
+// ==================== OCR识别操作 ====================
+
+async function handleInvoiceOcr(info: any) {
+  const file = info.file.originFileObj || info.file;
+  if (!file) return;
+  
+  ocrLoading.value = true;
+  try {
+    const result = await recognizeInvoice(file);
+    ocrResult.value = result;
+    
+    if (result.success) {
+      // 自动填充表单
+      if (result.totalAmount) {
+        formData.amount = result.totalAmount;
+      } else if (result.invoiceAmount) {
+        formData.amount = result.invoiceAmount;
+      }
+      
+      if (result.invoiceDate) {
+        formData.expenseDate = dayjs(result.invoiceDate);
+      }
+      
+      // 根据发票内容自动推断费用类型
+      const rawText = (result.rawText || result.data?.raw_text || '').toLowerCase();
+      if (rawText.includes('餐') || rawText.includes('饮') || rawText.includes('食')) {
+        formData.expenseType = 'MEAL';
+      } else if (rawText.includes('住宿') || rawText.includes('酒店') || rawText.includes('宾馆')) {
+        formData.expenseType = 'ACCOMMODATION';
+      } else if (rawText.includes('交通') || rawText.includes('出租') || rawText.includes('打车')) {
+        formData.expenseType = 'TRANSPORT';
+      } else if (rawText.includes('机票') || rawText.includes('火车') || rawText.includes('高铁')) {
+        formData.expenseType = 'TRAVEL';
+      }
+      
+      // 填充描述
+      const parts = [];
+      if (result.invoiceType) parts.push(result.invoiceType);
+      if (result.sellerName) parts.push(`销售方: ${result.sellerName}`);
+      if (result.invoiceNo) parts.push(`发票号: ${result.invoiceNo}`);
+      if (parts.length > 0) {
+        formData.description = parts.join(' | ');
+      }
+      
+      message.success(`发票识别成功！已自动填充报销信息`);
+    } else {
+      message.error(result.errorMessage || '发票识别失败');
+    }
+  } catch (e: any) {
+    message.error(e?.message || '发票识别失败');
+  } finally {
+    ocrLoading.value = false;
+  }
+}
+
 // ==================== CRUD 操作 ====================
 
 function handleAdd() {
@@ -121,6 +182,7 @@ function handleAdd() {
     expenseDate: undefined,
     description: '',
   });
+  ocrResult.value = null;
   modalVisible.value = true;
 }
 
@@ -255,6 +317,34 @@ onMounted(() => {
         :label-col="{ span: 6 }"
         :wrapper-col="{ span: 16 }"
       >
+        <!-- OCR智能识别区域 -->
+        <div class="mb-4 p-3 bg-green-50 rounded border border-green-200">
+          <div class="flex items-center mb-2">
+            <IconifyIcon icon="ant-design:scan-outlined" class="text-green-600 mr-2" />
+            <span class="font-medium text-green-700">发票智能识别</span>
+            <span class="text-gray-500 text-xs ml-2">上传发票自动填充</span>
+          </div>
+          <Spin :spinning="ocrLoading" size="small">
+            <Upload
+              :show-upload-list="false"
+              :before-upload="() => false"
+              accept="image/*"
+              @change="handleInvoiceOcr"
+            >
+              <Tooltip title="上传发票/票据照片，自动识别金额、日期等信息">
+                <Button :loading="ocrLoading" :disabled="ocrLoading" size="small" type="primary" ghost>
+                  <template #icon><IconifyIcon icon="ant-design:file-text-outlined" /></template>
+                  拍照识别发票
+                </Button>
+              </Tooltip>
+            </Upload>
+          </Spin>
+          <div v-if="ocrResult?.success" class="mt-2 text-xs text-green-600">
+            ✓ 已识别: {{ ocrResult.invoiceType || '票据' }} 
+            <span v-if="ocrResult.totalAmount">¥{{ ocrResult.totalAmount }}</span>
+          </div>
+        </div>
+
         <FormItem label="费用类型" name="expenseType" :rules="[{ required: true, message: '请选择费用类型' }]">
           <Select v-model:value="formData.expenseType" :options="expenseTypeOptions" />
         </FormItem>

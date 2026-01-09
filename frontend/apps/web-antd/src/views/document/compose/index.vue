@@ -40,7 +40,10 @@ import {
   Collapse,
   CollapsePanel,
   Tooltip,
+  Upload,
 } from 'ant-design-vue';
+import { IconifyIcon } from '@vben/icons';
+import { recognizeGeneral, type OcrResultDTO } from '#/api/ocr';
 import { getTemplateList, generateDocument, previewTemplate } from '#/api/document/template';
 import { 
   checkAiStatus, 
@@ -117,6 +120,7 @@ const aiFormData = reactive({
 const aiGeneratedContent = ref('');
 const aiGenerating = ref(false);
 const aiSaving = ref(false);
+const ocrLoading = ref(false);
 
 // ========== 项目上下文收集相关状态 ==========
 const matterContext = ref<MatterContextDTO | null>(null);
@@ -740,6 +744,28 @@ function handleAiPrev() {
   aiStep.value--;
 }
 
+// OCR识别参考材料
+async function handleOcrReference(file: File) {
+  ocrLoading.value = true;
+  try {
+    const result: OcrResultDTO = await recognizeGeneral(file);
+    if (result.success && result.rawText) {
+      // 将识别结果追加到补充信息中
+      const existingText = aiFormData.additionalContext || '';
+      const separator = existingText ? '\n\n---OCR识别内容---\n' : '';
+      aiFormData.additionalContext = existingText + separator + result.rawText;
+      message.success('OCR识别成功，已添加到补充信息中');
+    } else {
+      message.error(result.errorMessage || 'OCR识别失败');
+    }
+  } catch (e: any) {
+    message.error(e?.message || 'OCR识别失败');
+  } finally {
+    ocrLoading.value = false;
+  }
+  return false; // 阻止自动上传
+}
+
 async function handleAiGenerate() {
   if (!aiStatus.value.available) {
     message.error('AI 服务不可用');
@@ -1225,11 +1251,29 @@ onMounted(() => {
               </FormItem>
 
               <FormItem label="补充信息（可选）">
+                <div style="margin-bottom: 8px;">
+                  <Space>
+                    <Upload
+                      :show-upload-list="false"
+                      :before-upload="handleOcrReference"
+                      accept="image/*"
+                      :disabled="ocrLoading"
+                    >
+                      <Tooltip title="上传参考材料图片，自动识别文字内容添加到补充信息中">
+                        <Button size="small" :loading="ocrLoading">
+                          <IconifyIcon icon="ant-design:scan-outlined" />
+                          OCR识别材料
+                        </Button>
+                      </Tooltip>
+                    </Upload>
+                    <span style="color: #999; font-size: 12px;">支持上传图片，自动提取文字作为参考</span>
+                  </Space>
+                </div>
                 <Textarea
                   v-model:value="aiFormData.additionalContext"
-                  placeholder="提供更多背景信息，如：&#10;- 相关法律条文&#10;- 证据情况&#10;- 对方情况等"
+                  placeholder="提供更多背景信息，如：&#10;- 相关法律条文&#10;- 证据情况&#10;- 对方情况等&#10;&#10;可点击上方按钮上传图片自动识别文字"
                   :rows="4"
-                  :maxlength="1000"
+                  :maxlength="2000"
                 />
               </FormItem>
 

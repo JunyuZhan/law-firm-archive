@@ -4,7 +4,7 @@
 # ============================================
 # 阶段1：构建
 # ============================================
-FROM maven:3.9-eclipse-temurin-17-alpine AS builder
+FROM maven:3.9-eclipse-temurin-21-alpine AS builder
 
 WORKDIR /app
 
@@ -21,7 +21,7 @@ RUN echo "Build Success 🎉"
 # ============================================
 # 阶段2：运行
 # ============================================
-FROM eclipse-temurin:17-jre-alpine
+FROM eclipse-temurin:21-jre-alpine
 
 LABEL maintainer="lawfirm"
 LABEL description="智慧律所管理系统后端服务"
@@ -53,4 +53,3 @@ HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
 
 # 启动命令
 ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
-

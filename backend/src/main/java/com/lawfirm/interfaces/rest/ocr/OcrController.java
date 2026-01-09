@@ -87,4 +87,36 @@ public class OcrController {
             @Parameter(description = "图片URL") @RequestParam String imageUrl) {
         return Result.success(ocrAppService.recognizeBusinessLicenseByUrl(imageUrl));
     }
+
+    @Operation(summary = "名片识别")
+    @PostMapping("/business-card")
+    @OperationLog(module = "OCR识别", action = "名片识别")
+    public Result<OcrResultDTO> recognizeBusinessCard(
+            @Parameter(description = "名片图片") @RequestParam("file") MultipartFile file) {
+        return Result.success(ocrAppService.recognizeBusinessCard(file));
+    }
+
+    @Operation(summary = "名片识别（URL）")
+    @PostMapping("/business-card/url")
+    @OperationLog(module = "OCR识别", action = "名片识别(URL)")
+    public Result<OcrResultDTO> recognizeBusinessCardByUrl(
+            @Parameter(description = "图片URL") @RequestParam String imageUrl) {
+        return Result.success(ocrAppService.recognizeBusinessCardByUrl(imageUrl));
+    }
+
+    @Operation(summary = "发票/票据识别")
+    @PostMapping("/invoice")
+    @OperationLog(module = "OCR识别", action = "发票识别")
+    public Result<OcrResultDTO> recognizeInvoice(
+            @Parameter(description = "发票图片") @RequestParam("file") MultipartFile file) {
+        return Result.success(ocrAppService.recognizeInvoice(file));
+    }
+
+    @Operation(summary = "发票/票据识别（URL）")
+    @PostMapping("/invoice/url")
+    @OperationLog(module = "OCR识别", action = "发票识别(URL)")
+    public Result<OcrResultDTO> recognizeInvoiceByUrl(
+            @Parameter(description = "图片URL") @RequestParam String imageUrl) {
+        return Result.success(ocrAppService.recognizeInvoiceByUrl(imageUrl));
+    }
 }

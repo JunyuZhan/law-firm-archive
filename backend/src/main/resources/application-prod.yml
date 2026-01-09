@@ -42,7 +42,10 @@ minio:
 
 # OCR服务配置
 ocr:
-  service-url: ${OCR_SERVICE_URL:http://localhost:8000}
+  # 生产环境使用PaddleOCR服务
+  provider: paddle
+  paddle:
+    url: ${OCR_SERVICE_URL:http://paddle-ocr:8000}
   timeout: 30000
 
 # 日志配置 - 生产环境降低日志级别

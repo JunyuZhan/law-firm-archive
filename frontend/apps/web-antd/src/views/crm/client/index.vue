@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed } from 'vue';
-import { message, Modal, Alert } from 'ant-design-vue';
+import { message, Modal, Alert, Upload, Spin } from 'ant-design-vue';
 import { useRouter, useRoute } from 'vue-router';
 import { Page } from '@vben/common-ui';
 import {
@@ -17,8 +17,9 @@ import {
   Col,
   Popconfirm,
   Divider,
+  Tooltip,
 } from 'ant-design-vue';
-import { Plus } from '@vben/icons';
+import { Plus, IconifyIcon } from '@vben/icons';
 import type { VxeGridProps } from '#/adapter/vxe-table';
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
@@ -30,6 +31,7 @@ import {
   batchDeleteClients,
   quickConflictCheck,
 } from '#/api/client';
+import { recognizeIdCard, recognizeBusinessLicense, type OcrResultDTO } from '#/api/ocr';
 import type { ClientDTO, ClientQuery, CreateClientCommand, UpdateClientCommand } from '#/api/client/types';
 import { UserTreeSelect } from '#/components/UserTreeSelect';
 
@@ -66,6 +68,10 @@ const conflictCheckResult = ref<{
   conflictDetail?: string;
   canProceed: boolean;
 } | null>(null);
+
+// OCR识别相关状态
+const ocrLoading = ref(false);
+const ocrType = ref<'idcard' | 'license' | null>(null);
 
 const queryParams = ref<ClientQuery>({
   pageNum: 1,
@@ -420,6 +426,193 @@ const canSave = computed(() => {
   return true;
 });
 
+// ==================== OCR识别操作 ====================
+
+async function handleIdCardOcr(info: any) {
+  const file = info.file.originFileObj || info.file;
+  if (!file) return;
+  
+  ocrLoading.value = true;
+  ocrType.value = 'idcard';
+  
+  try {
+    const result = await recognizeIdCard(file, true); // 识别正面
+    
+    console.log('身份证OCR识别结果:', result); // 调试日志
+    console.log('result.name:', result?.name); // 调试日志
+    console.log('result.idNumber:', result?.idNumber); // 调试日志
+    console.log('result.data:', result?.data); // 调试日志
+    
+    if (result && result.success) {
+      // 自动填充表单（处理空字符串的情况）
+      // 优先从顶层字段读取，如果没有则从data字段读取
+      let name = result.name || result.data?.name || '';
+      let idNumber = result.idNumber || result.data?.idNumber || '';
+      
+      // 如果字段为空，尝试从原始文本中提取
+      const rawText = result.rawText || result.data?.rawText || '';
+      console.log('OCR原始文本:', rawText); // 调试日志
+      console.log('OCR原始文本长度:', rawText.length); // 调试日志
+      
+      // 检查OCR识别质量：如果原始文本太短或看起来不像身份证内容，给出提示
+      const isLowQuality = rawText.length < 20 || !/[\u4e00-\u9fa5]/.test(rawText);
+      
+      if ((!name || !name.trim()) && rawText && !isLowQuality) {
+        // 尝试从原始文本中提取姓名（2-4个中文字符）
+        const nameMatch = rawText.match(/[\u4e00-\u9fa5]{2,4}/);
+        if (nameMatch) {
+          name = nameMatch[0];
+          console.log('从原始文本提取的name:', name);
+        }
+      }
+      
+      if ((!idNumber || !idNumber.trim()) && rawText && !isLowQuality) {
+        // 尝试从原始文本中提取身份证号（18位数字，最后一位可能是X）
+        const idMatch = rawText.match(/\d{17}[\dXx]/);
+        if (idMatch) {
+          idNumber = idMatch[0].toUpperCase();
+          console.log('从原始文本提取的idNumber:', idNumber);
+        }
+      }
+      
+      console.log('提取的name:', name); // 调试日志
+      console.log('提取的idNumber:', idNumber); // 调试日志
+      
+      if (name && name.trim()) {
+        formData.name = name.trim();
+        console.log('已设置formData.name:', formData.name); // 调试日志
+      }
+      if (idNumber && idNumber.trim()) {
+        formData.idCard = idNumber.trim();
+        console.log('已设置formData.idCard:', formData.idCard); // 调试日志
+      }
+      // 身份证识别时，如果是个人客户，联系人就是本人
+      if (name && name.trim() && !formData.contactPerson) {
+        formData.contactPerson = name.trim();
+      }
+      // 设置客户类型为个人
+      formData.clientType = 'INDIVIDUAL';
+      
+      console.log('最终formData:', JSON.parse(JSON.stringify(formData))); // 调试日志
+      
+      // 如果关键字段仍然为空，显示原始文本提示
+      if ((!name || !name.trim()) && (!idNumber || !idNumber.trim())) {
+        const isLowQuality = rawText.length < 20 || !/[\u4e00-\u9fa5]/.test(rawText);
+        const qualityTip = isLowQuality 
+          ? '\n\n⚠️ OCR识别质量较低，可能是图片质量问题或图片不是身份证。请检查图片是否清晰、完整。'
+          : '\n\n请手动从原始文本中提取信息并填写表单。';
+        
+        Modal.info({
+          title: 'OCR识别结果',
+          content: `识别成功，但未能自动提取字段。${qualityTip}\n\n原始文本：\n\n${rawText || '无原始文本'}\n\n请手动填写表单。`,
+          width: 600,
+        });
+      } else {
+        message.success(`身份证识别成功！置信度: ${Math.round((result.confidence || 0) * 100)}%`);
+      }
+    } else {
+      message.error(result?.errorMessage || '身份证识别失败');
+    }
+  } catch (e: any) {
+    console.error('身份证OCR识别错误:', e); // 调试日志
+    message.error(e?.message || '身份证识别失败');
+  } finally {
+    ocrLoading.value = false;
+    ocrType.value = null;
+  }
+}
+
+async function handleBusinessLicenseOcr(info: any) {
+  const file = info.file.originFileObj || info.file;
+  if (!file) return;
+  
+  ocrLoading.value = true;
+  ocrType.value = 'license';
+  
+  try {
+    const result = await recognizeBusinessLicense(file);
+    
+    console.log('营业执照OCR识别结果:', result); // 调试日志
+    console.log('result.companyName:', result?.companyName); // 调试日志
+    console.log('result.creditCode:', result?.creditCode); // 调试日志
+    console.log('result.data:', result?.data); // 调试日志
+    
+    if (result && result.success) {
+      // 自动填充表单（处理空字符串的情况）
+      // 优先从顶层字段读取，如果没有则从data字段读取
+      let companyName = result.companyName || result.data?.companyName || '';
+      let creditCode = result.creditCode || result.data?.creditCode || '';
+      let legalRepresentative = result.legalRepresentative || result.data?.legalRepresentative || '';
+      
+      // 如果字段为空，尝试从原始文本中提取
+      const rawText = result.rawText || result.data?.rawText || '';
+      console.log('OCR原始文本:', rawText); // 调试日志
+      
+      if ((!companyName || !companyName.trim()) && rawText) {
+        // 尝试从原始文本中提取公司名称（通常在"名称"或"公司名称"后面）
+        const nameMatch = rawText.match(/(?:名称|公司名称|企业名称)[：:]\s*([^\n]+)/);
+        if (nameMatch) {
+          companyName = nameMatch[1].trim();
+          console.log('从原始文本提取的companyName:', companyName);
+        }
+      }
+      
+      if ((!creditCode || !creditCode.trim()) && rawText) {
+        // 尝试从原始文本中提取统一社会信用代码（18位）
+        const codeMatch = rawText.match(/(?:统一社会信用代码|信用代码|注册号)[：:]\s*([A-Z0-9]{18})/);
+        if (codeMatch) {
+          creditCode = codeMatch[1];
+          console.log('从原始文本提取的creditCode:', creditCode);
+        }
+      }
+      
+      console.log('提取的companyName:', companyName); // 调试日志
+      console.log('提取的creditCode:', creditCode); // 调试日志
+      console.log('提取的legalRepresentative:', legalRepresentative); // 调试日志
+      
+      if (companyName && companyName.trim()) {
+        formData.name = companyName.trim();
+        console.log('已设置formData.name:', formData.name); // 调试日志
+      }
+      if (creditCode && creditCode.trim()) {
+        formData.creditCode = creditCode.trim();
+        console.log('已设置formData.creditCode:', formData.creditCode); // 调试日志
+      }
+      if (legalRepresentative && legalRepresentative.trim()) {
+        formData.legalRepresentative = legalRepresentative.trim();
+        // 如果没有联系人，法人代表可以作为联系人
+        if (!formData.contactPerson) {
+          formData.contactPerson = legalRepresentative.trim();
+        }
+        console.log('已设置formData.legalRepresentative:', formData.legalRepresentative); // 调试日志
+      }
+      // 设置客户类型为企业
+      formData.clientType = 'ENTERPRISE';
+      
+      console.log('最终formData:', JSON.parse(JSON.stringify(formData))); // 调试日志
+      
+      // 如果关键字段仍然为空，显示原始文本提示
+      if ((!companyName || !companyName.trim()) && (!creditCode || !creditCode.trim())) {
+        Modal.info({
+          title: 'OCR识别结果',
+          content: `识别成功，但未能自动提取字段。原始文本：\n\n${rawText || '无原始文本'}\n\n请手动填写表单。`,
+          width: 600,
+        });
+      } else {
+        message.success(`营业执照识别成功！置信度: ${Math.round((result.confidence || 0) * 100)}%`);
+      }
+    } else {
+      message.error(result?.errorMessage || '营业执照识别失败');
+    }
+  } catch (e: any) {
+    console.error('营业执照OCR识别错误:', e); // 调试日志
+    message.error(e?.message || '营业执照识别失败');
+  } finally {
+    ocrLoading.value = false;
+    ocrType.value = null;
+  }
+}
+
 // ==================== 辅助方法 ====================
 
 function getStatusColor(status: string) {
@@ -549,6 +742,47 @@ onMounted(async () => {
         :label-col="{ span: 6 }"
         :wrapper-col="{ span: 18 }"
       >
+        <!-- OCR智能识别区域 -->
+        <div v-if="!formData.id" class="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+          <div class="flex items-center mb-2">
+            <IconifyIcon icon="ant-design:scan-outlined" class="text-blue-500 mr-2" />
+            <span class="font-medium text-blue-700">智能识别填充</span>
+            <span class="text-gray-500 text-sm ml-2">上传证件照片，自动识别并填充表单</span>
+          </div>
+          <Space>
+            <Spin :spinning="ocrLoading && ocrType === 'license'" size="small">
+              <Upload
+                :show-upload-list="false"
+                :before-upload="() => false"
+                accept="image/*"
+                @change="handleBusinessLicenseOcr"
+              >
+                <Tooltip title="上传营业执照图片，自动识别企业信息">
+                  <Button :loading="ocrLoading && ocrType === 'license'" :disabled="ocrLoading">
+                    <template #icon><IconifyIcon icon="ant-design:audit-outlined" /></template>
+                    营业执照识别
+                  </Button>
+                </Tooltip>
+              </Upload>
+            </Spin>
+            <Spin :spinning="ocrLoading && ocrType === 'idcard'" size="small">
+              <Upload
+                :show-upload-list="false"
+                :before-upload="() => false"
+                accept="image/*"
+                @change="handleIdCardOcr"
+              >
+                <Tooltip title="上传身份证正面图片，自动识别个人信息">
+                  <Button :loading="ocrLoading && ocrType === 'idcard'" :disabled="ocrLoading">
+                    <template #icon><IconifyIcon icon="ant-design:idcard-outlined" /></template>
+                    身份证识别
+                  </Button>
+                </Tooltip>
+              </Upload>
+            </Spin>
+          </Space>
+        </div>
+
         <Row :gutter="16">
           <Col :span="12">
             <FormItem label="客户名称" name="name" :rules="[{ required: true, message: '请输入客户名称' }]">

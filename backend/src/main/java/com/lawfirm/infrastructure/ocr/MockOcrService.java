@@ -16,7 +16,7 @@ import java.util.Map;
  */
 @Slf4j
 @Service
-@ConditionalOnProperty(name = "ocr.provider", havingValue = "mock", matchIfMissing = true)
+@ConditionalOnProperty(name = "ocr.provider", havingValue = "mock", matchIfMissing = false)
 public class MockOcrService implements OcrService {
 
     @Override
@@ -160,5 +160,83 @@ public class MockOcrService implements OcrService {
     public OcrResult recognizeBusinessLicense(String imageUrl) {
         log.info("模拟OCR - 营业执照识别(URL): {}", imageUrl);
         return recognizeBusinessLicense((MultipartFile) null);
+    }
+
+    @Override
+    public OcrResult recognizeBusinessCard(MultipartFile file) {
+        log.info("模拟OCR - 名片识别: {}", file != null ? file.getOriginalFilename() : "null");
+        
+        Map<String, Object> data = new HashMap<>();
+        data.put("name", "张律师");
+        data.put("company", "北京智慧律师事务所");
+        data.put("title", "高级合伙人");
+        data.put("mobile", "13800138000");
+        data.put("phone", "010-88888888");
+        data.put("email", "zhangls@lawfirm.com");
+        data.put("address", "北京市朝阳区建国门外大街1号国贸大厦A座1801");
+        data.put("website", "www.lawfirm.com");
+
+        return OcrResult.builder()
+                .success(true)
+                .type("BUSINESS_CARD")
+                .data(data)
+                .confidence(0.92)
+                .name("张律师")
+                .cardCompany("北京智慧律师事务所")
+                .title("高级合伙人")
+                .mobile("13800138000")
+                .phone("010-88888888")
+                .email("zhangls@lawfirm.com")
+                .address("北京市朝阳区建国门外大街1号国贸大厦A座1801")
+                .website("www.lawfirm.com")
+                .build();
+    }
+
+    @Override
+    public OcrResult recognizeBusinessCard(String imageUrl) {
+        log.info("模拟OCR - 名片识别(URL): {}", imageUrl);
+        return recognizeBusinessCard((MultipartFile) null);
+    }
+
+    @Override
+    public OcrResult recognizeInvoice(MultipartFile file) {
+        log.info("模拟OCR - 发票识别: {}", file != null ? file.getOriginalFilename() : "null");
+        
+        Map<String, Object> data = new HashMap<>();
+        data.put("invoiceType", "增值税普通发票");
+        data.put("invoiceCode", "011001900211");
+        data.put("invoiceNo", "12345678");
+        data.put("invoiceDate", "2026-01-05");
+        data.put("sellerName", "北京某某餐饮有限公司");
+        data.put("sellerTaxNo", "91110105MA01ABCD12");
+        data.put("buyerName", "北京智慧律师事务所");
+        data.put("buyerTaxNo", "91110105MA01EFGH34");
+        data.put("amount", "188.68");
+        data.put("taxAmount", "11.32");
+        data.put("totalAmount", "200.00");
+
+        return OcrResult.builder()
+                .success(true)
+                .type("INVOICE")
+                .data(data)
+                .confidence(0.93)
+                .invoiceType("增值税普通发票")
+                .invoiceCode("011001900211")
+                .invoiceNo("12345678")
+                .invoiceDate(LocalDate.of(2026, 1, 5))
+                .sellerName("北京某某餐饮有限公司")
+                .sellerTaxNo("91110105MA01ABCD12")
+                .buyerName("北京智慧律师事务所")
+                .buyerTaxNo("91110105MA01EFGH34")
+                .invoiceAmount(new BigDecimal("188.68"))
+                .taxAmount(new BigDecimal("11.32"))
+                .totalAmount(new BigDecimal("200.00"))
+                .build();
+    }
+
+    @Override
+    public OcrResult recognizeInvoice(String imageUrl) {
+        log.info("模拟OCR - 发票识别(URL): {}", imageUrl);
+        return recognizeInvoice((MultipartFile) null);
     }
 }

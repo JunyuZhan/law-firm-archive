@@ -10,3 +10,6 @@ export * from './admin';
 
 // 工作台模块
 export * from './workbench';
+
+// OCR识别模块
+export * from './ocr';

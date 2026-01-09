@@ -14,7 +14,12 @@ import {
   Row,
   Col,
   Tag,
+  Upload,
+  Spin,
+  Alert,
+  Tooltip,
 } from 'ant-design-vue';
+import { IconifyIcon } from '@vben/icons';
 import { Plus } from '@vben/icons';
 import type { VxeGridProps } from '#/adapter/vxe-table';
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
@@ -27,6 +32,7 @@ import {
   approveExemption,
   rejectExemption,
 } from '#/api/client';
+import { recognizeIdCard, recognizeBusinessLicense, type OcrResultDTO } from '#/api/ocr';
 import type { ConflictCheckDTO, ConflictCheckQuery, ApplyConflictCheckCommand } from '#/api/client/types';
 
 defineOptions({ name: 'CrmConflict' });
@@ -35,6 +41,7 @@ defineOptions({ name: 'CrmConflict' });
 
 const modalVisible = ref(false);
 const formRef = ref();
+const ocrLoading = ref(false);
 const queryParams = ref<ConflictCheckQuery>({
   pageNum: 1,
   pageSize: 10,
@@ -134,6 +141,44 @@ async function handleSave() {
     if (error?.errorFields) return;
     message.error(error.message || '申请失败');
   }
+}
+
+// OCR识别对方当事人身份证
+async function handleOcrIdCard(file: File) {
+  ocrLoading.value = true;
+  try {
+    const result: OcrResultDTO = await recognizeIdCard(file);
+    if (result.success && result.name) {
+      formData.opposingParty = result.name;
+      message.success(`身份证识别成功！对方当事人: ${result.name}`);
+    } else {
+      message.error(result.errorMessage || '身份证识别失败');
+    }
+  } catch (e: any) {
+    message.error(e?.message || '身份证识别失败');
+  } finally {
+    ocrLoading.value = false;
+  }
+  return false;
+}
+
+// OCR识别对方当事人营业执照
+async function handleOcrLicense(file: File) {
+  ocrLoading.value = true;
+  try {
+    const result: OcrResultDTO = await recognizeBusinessLicense(file);
+    if (result.success && result.companyName) {
+      formData.opposingParty = result.companyName;
+      message.success(`营业执照识别成功！对方当事人: ${result.companyName}`);
+    } else {
+      message.error(result.errorMessage || '营业执照识别失败');
+    }
+  } catch (e: any) {
+    message.error(e?.message || '营业执照识别失败');
+  } finally {
+    ocrLoading.value = false;
+  }
+  return false;
 }
 
 // ==================== 审核操作 ====================
@@ -340,9 +385,46 @@ function getResultColor(result: string) {
     <Modal
       v-model:open="modalVisible"
       title="申请利冲审查"
-      width="600px"
+      width="650px"
       @ok="handleSave"
     >
+      <Spin :spinning="ocrLoading" tip="正在识别证件...">
+        <!-- OCR识别区域 -->
+        <Alert type="info" style="margin-bottom: 16px" show-icon>
+          <template #message>
+            <span class="font-medium text-blue-700">智能识别对方当事人</span>
+            <span class="text-gray-500 text-xs ml-2">上传证件自动填充</span>
+          </template>
+          <template #description>
+            <div class="mt-2">
+              <Space>
+                <Upload
+                  :show-upload-list="false"
+                  :before-upload="handleOcrIdCard"
+                  accept="image/*"
+                >
+                  <Tooltip title="上传对方身份证，自动识别姓名">
+                    <a class="text-blue-600 hover:text-blue-800 font-medium">
+                      <IconifyIcon icon="ant-design:scan-outlined" class="mr-1" />识别身份证
+                    </a>
+                  </Tooltip>
+                </Upload>
+                <Upload
+                  :show-upload-list="false"
+                  :before-upload="handleOcrLicense"
+                  accept="image/*"
+                >
+                  <Tooltip title="上传对方营业执照，自动识别企业名称">
+                    <a class="text-green-600 hover:text-green-800 font-medium">
+                      <IconifyIcon icon="ant-design:scan-outlined" class="mr-1" />识别营业执照
+                    </a>
+                  </Tooltip>
+                </Upload>
+              </Space>
+            </div>
+          </template>
+        </Alert>
+
       <Form
         ref="formRef"
         :model="formData"
@@ -356,7 +438,7 @@ function getResultColor(result: string) {
           <Input v-model:value="formData.clientName" placeholder="请输入客户名称" />
         </FormItem>
         <FormItem label="对方当事人" name="opposingParty" :rules="[{ required: true, message: '请输入对方当事人' }]">
-          <Input v-model:value="formData.opposingParty" placeholder="请输入对方当事人" />
+            <Input v-model:value="formData.opposingParty" placeholder="请输入对方当事人（可OCR识别）" />
         </FormItem>
         <FormItem label="项目名称" name="matterName">
           <Input v-model:value="formData.matterName" placeholder="请输入项目名称（可选）" />
@@ -365,6 +447,7 @@ function getResultColor(result: string) {
           <Textarea v-model:value="formData.remark" :rows="3" placeholder="请输入备注" />
         </FormItem>
       </Form>
+      </Spin>
     </Modal>
   </Page>
 </template>

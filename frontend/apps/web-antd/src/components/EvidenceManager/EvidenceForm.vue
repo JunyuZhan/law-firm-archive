@@ -4,13 +4,15 @@
  * 支持直接上传文件或从卷宗管理中选择文件
  */
 import { ref, watch, computed } from 'vue';
-import { Modal, Form, FormItem, Input, Select, Textarea, InputNumber, message, Radio, Space, Tag, Button } from 'ant-design-vue';
+import { Modal, Form, FormItem, Input, Select, Textarea, InputNumber, message, Radio, Space, Tag, Button, Upload, Tooltip, Spin, Alert } from 'ant-design-vue';
+import { IconifyIcon } from '@vben/icons';
 import EvidenceUploader from './EvidenceUploader.vue';
 import DossierFileSelector from './DossierFileSelector.vue';
 import type { UploadResult } from './EvidenceUploader.vue';
 import type { EvidenceItem } from './types';
 import { EVIDENCE_TYPE_OPTIONS } from './types';
 import { createEvidence, updateEvidence, type CreateEvidenceCommand, type UpdateEvidenceCommand } from '#/api/evidence';
+import { recognizeGeneral, type OcrResultDTO } from '#/api/ocr';
 import type { DocumentDTO } from '#/api/document';
 
 const props = defineProps<{
@@ -27,6 +29,8 @@ const emit = defineEmits<{
 
 const formRef = ref();
 const loading = ref(false);
+const ocrLoading = ref(false);
+const ocrResult = ref('');
 
 const isEdit = computed(() => !!props.evidence?.id);
 const title = computed(() => isEdit.value ? '编辑证据' : '添加证据');
@@ -160,6 +164,33 @@ function handleUploadSuccess(result: UploadResult) {
     const nameWithoutExt = result.fileName.replace(/\.[^/.]+$/, '');
     formData.value.name = nameWithoutExt;
   }
+}
+
+// OCR识别证据图片内容
+async function handleOcrEvidence(file: File) {
+  ocrLoading.value = true;
+  try {
+    const result: OcrResultDTO = await recognizeGeneral(file);
+    if (result.success && result.rawText) {
+      ocrResult.value = result.rawText;
+      // 如果描述为空，自动填充OCR结果的前300字
+      if (!formData.value.description) {
+        formData.value.description = result.rawText.substring(0, 300);
+      }
+      // 如果证明目的为空，尝试提取
+      if (!formData.value.provePurpose && result.rawText.length > 50) {
+        formData.value.provePurpose = result.rawText.substring(0, 100);
+      }
+      message.success('OCR识别成功，已自动填充描述');
+    } else {
+      message.error(result.errorMessage || 'OCR识别失败');
+    }
+  } catch (e: any) {
+    message.error(e?.message || 'OCR识别失败');
+  } finally {
+    ocrLoading.value = false;
+  }
+  return false;
 }
 
 async function handleSubmit() {
@@ -318,8 +349,28 @@ function handleCancel() {
         <EvidenceUploader v-model="formData.fileInfo" @success="handleUploadSuccess" />
       </FormItem>
 
+      <!-- OCR识别区域 -->
+      <FormItem label="智能识别">
+        <Space>
+          <Upload
+            :show-upload-list="false"
+            :before-upload="handleOcrEvidence"
+            accept="image/*"
+            :disabled="ocrLoading"
+          >
+            <Tooltip title="上传证据图片，自动识别内容填充到描述中">
+              <Button size="small" :loading="ocrLoading">
+                <IconifyIcon icon="ant-design:scan-outlined" />
+                OCR识别图片内容
+              </Button>
+            </Tooltip>
+          </Upload>
+          <span style="color: #999; font-size: 12px;">上传图片自动提取文字到描述</span>
+        </Space>
+      </FormItem>
+
       <FormItem label="描述" name="description">
-        <Textarea v-model:value="formData.description" :rows="2" placeholder="请输入描述信息" />
+        <Textarea v-model:value="formData.description" :rows="3" placeholder="请输入描述信息（可通过OCR自动提取）" />
       </FormItem>
     </Form>
 

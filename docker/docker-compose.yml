@@ -78,29 +78,29 @@ services:
     networks:
       - law-firm-network
 
-  # PaddleOCR服务
-  paddle-ocr:
-    build:
-      context: ./ocr
-      dockerfile: Dockerfile
-    container_name: law-firm-ocr
-    restart: unless-stopped
-    environment:
-      OCR_LANG: "ch"
-      OCR_USE_GPU: "false"
-      OCR_MAX_WORKERS: "4"
-    ports:
-      - "8001:8000"
-    volumes:
-      - ocr_models:/app/models
-      - ocr_cache:/app/cache
-    networks:
-      - law-firm-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+  # PaddleOCR服务（已停用，如需启用请取消注释）
+  # paddle-ocr:
+  #   build:
+  #     context: ./ocr
+  #     dockerfile: Dockerfile
+  #   container_name: law-firm-ocr
+  #   restart: unless-stopped
+  #   environment:
+  #     OCR_LANG: "ch"
+  #     OCR_USE_GPU: "false"
+  #     OCR_MAX_WORKERS: "4"
+  #   ports:
+  #     - "8001:8000"
+  #   volumes:
+  #     - ocr_models:/app/models
+  #     - ocr_cache:/app/cache
+  #   networks:
+  #     - law-firm-network
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
 
   # OnlyOffice 文档预览服务（自定义镜像，包含中文字体）
   onlyoffice:
