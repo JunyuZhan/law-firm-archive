@@ -1,22 +1,33 @@
 <script lang="ts" setup>
 import type {
-  WorkbenchProjectItem,
   WorkbenchQuickNavItem,
   WorkbenchTodoItem,
   WorkbenchTrendItem,
 } from '@vben/common-ui';
 
-import { ref, onMounted, onActivated } from 'vue';
+import { ref, computed, onMounted, onActivated } from 'vue';
 import { useRouter } from 'vue-router';
 import dayjs from 'dayjs';
 
 import {
   WorkbenchHeader,
-  WorkbenchProject,
   WorkbenchQuickNav,
   WorkbenchTodo,
-  WorkbenchTrends,
 } from '@vben/common-ui';
+import {
+  Card,
+  Row,
+  Col,
+  Statistic,
+  Timeline,
+  TimelineItem,
+  List,
+  ListItem,
+  ListItemMeta,
+  Avatar,
+  Tag,
+  Empty,
+} from 'ant-design-vue';
 import { preferences } from '@vben/preferences';
 import { useUserStore } from '@vben/stores';
 import { openWindow } from '@vben/utils';
@@ -28,8 +39,8 @@ import {
   getMyInitiatedApprovals,
   getRecentProjects,
 } from '#/api/workbench';
-import { getMyMatters, getMyUpcomingSchedules, getMyTodoTasks } from '#/api/matter';
-import type { MatterDTO, TaskDTO } from '#/api/matter/types';
+import { getMyUpcomingSchedules, getMyTodoTasks } from '#/api/matter';
+import type { TaskDTO } from '#/api/matter/types';
 import type { ScheduleDTO } from '#/api/matter/schedule';
 import type { ApprovalDTO } from '#/api/workbench';
 
@@ -51,8 +62,6 @@ const pendingApprovals = ref<ApprovalDTO[]>([]);
 // 近期日程
 const upcomingSchedules = ref<ScheduleDTO[]>([]);
 
-// 我的项目列表
-const projectItems = ref<WorkbenchProjectItem[]>([]);
 
 // 待办任务列表
 const todoItems = ref<WorkbenchTodoItem[]>([]);
@@ -112,24 +121,6 @@ async function loadStats() {
     };
   } catch (error) {
     console.error('加载统计数据失败:', error);
-  }
-}
-
-// 加载我的项目
-async function loadMyMatters() {
-  try {
-    const res = await getMyMatters({ pageNum: 1, pageSize: 6 });
-    projectItems.value = res.list.map((matter: MatterDTO) => ({
-      color: getMatterColor(matter.status),
-      content: matter.description || '暂无描述',
-      date: matter.createdAt || '',
-      group: matter.matterTypeName || '项目',
-      icon: 'ion:briefcase-outline',
-      title: matter.name,
-      url: `/matter/detail/${matter.id}`,
-    }));
-  } catch (error) {
-    console.error('加载我的项目失败:', error);
   }
 }
 
@@ -202,20 +193,46 @@ function getScheduleTypeColor(type: string) {
   return colorMap[type] || '#1890ff';
 }
 
+// 周视图数据
+const weekDays = computed(() => {
+  const days = [];
+  const today = dayjs().startOf('day');
+  const weekLabels = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+  
+  for (let i = 0; i < 7; i++) {
+    const date = today.add(i, 'day');
+    const dateStr = date.format('YYYY-MM-DD');
+    
+    // 筛选这一天的日程
+    const daySchedules = upcomingSchedules.value.filter(s => {
+      const scheduleDate = dayjs(s.startTime).format('YYYY-MM-DD');
+      return scheduleDate === dateStr;
+    });
+    
+    days.push({
+      date: dateStr,
+      dateNum: date.format('D'),
+      label: i === 0 ? '今天' : weekLabels[date.day()],
+      isToday: i === 0,
+      schedules: daySchedules,
+    });
+  }
+  
+  return days;
+});
+
+// 今日日程
+const todaySchedules = computed(() => {
+  const today = dayjs().format('YYYY-MM-DD');
+  return upcomingSchedules.value.filter(s => {
+    const scheduleDate = dayjs(s.startTime).format('YYYY-MM-DD');
+    return scheduleDate === today;
+  });
+});
+
 // 跳转到审批中心
 function goToApproval() {
   router.push('/dashboard/approval');
-}
-
-// 获取项目状态颜色
-function getMatterColor(status: string) {
-  const colorMap: Record<string, string> = {
-    PENDING: '#e18525',
-    IN_PROGRESS: '#3fb27f',
-    CLOSED: '#bf0c2c',
-    SUSPENDED: '#999',
-  };
-  return colorMap[status] || '#1fdaca';
 }
 
 // 格式化相对时间
@@ -336,8 +353,8 @@ async function loadTrends() {
     // 按时间戳排序（最新的在前）
     trends.sort((a, b) => b.timestamp - a.timestamp);
 
-    // 取前10条，移除 timestamp 字段
-    trendItems.value = trends.slice(0, 10).map(({ timestamp, ...item }) => item);
+    // 取前5条，移除 timestamp 字段（限制显示数量，避免过长）
+    trendItems.value = trends.slice(0, 5).map(({ timestamp, ...item }) => item);
 
     // 如果没有数据，显示提示
     if (trendItems.value.length === 0) {
@@ -389,7 +406,6 @@ function navTo(nav: WorkbenchProjectItem | WorkbenchQuickNavItem) {
 
 onMounted(() => {
   loadStats();
-  loadMyMatters();
   loadTodoTasks();
   loadPendingApprovals();
   loadUpcomingSchedules();
@@ -399,7 +415,6 @@ onMounted(() => {
 // 页面激活时刷新数据（用于 keep-alive 场景）
 onActivated(() => {
   loadStats();
-  loadMyMatters();
   loadTodoTasks();
   loadPendingApprovals();
   loadUpcomingSchedules();
@@ -444,68 +459,131 @@ onActivated(() => {
       <div class="text-orange-500 text-2xl">→</div>
     </div>
 
-    <!-- 近期日程提醒 -->
-    <div 
-      v-if="upcomingSchedules.length > 0" 
-      class="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg"
-    >
-      <div class="flex items-center justify-between mb-3">
-        <div class="flex items-center">
-          <span class="text-xl mr-2">📅</span>
-          <span class="font-medium text-blue-800">近期日程</span>
-        </div>
-        <span 
-          class="text-sm text-blue-600 cursor-pointer hover:underline"
-          @click="router.push('/workbench/schedule')"
-        >
-          查看全部 →
-        </span>
-      </div>
-      <div class="space-y-2">
-        <div 
-          v-for="schedule in upcomingSchedules" 
-          :key="schedule.id"
-          class="flex items-center p-2 bg-white rounded hover:bg-blue-100 cursor-pointer transition-colors"
-          @click="router.push('/workbench/schedule')"
-        >
-          <div 
-            class="w-2 h-2 rounded-full mr-3"
-            :style="{ backgroundColor: getScheduleTypeColor(schedule.scheduleType) }"
-          ></div>
-          <span class="text-sm font-medium text-gray-600 w-20">
-            {{ formatScheduleTime(schedule) }}
-          </span>
-          <span 
-            class="text-xs px-2 py-0.5 rounded mr-2"
-            :style="{ 
-              backgroundColor: getScheduleTypeColor(schedule.scheduleType) + '20',
-              color: getScheduleTypeColor(schedule.scheduleType)
-            }"
-          >
-            {{ schedule.scheduleTypeName }}
-          </span>
-          <span class="text-sm text-gray-800 flex-1 truncate">{{ schedule.title }}</span>
-          <span v-if="schedule.location" class="text-xs text-gray-500 ml-2">
-            📍 {{ schedule.location }}
-          </span>
-        </div>
-      </div>
-    </div>
+    <!-- 统计卡片 -->
+    <Row :gutter="[16, 16]" class="mt-4">
+      <Col :xs="12" :sm="12" :md="6">
+        <Card :bordered="false" hoverable class="stat-card stat-card-blue" @click="router.push('/matter/my')">
+          <Statistic title="我的项目" :value="stats.matterCount" :valueStyle="{ color: '#1890ff' }" />
+        </Card>
+      </Col>
+      <Col :xs="12" :sm="12" :md="6">
+        <Card :bordered="false" hoverable class="stat-card stat-card-green" @click="router.push('/crm/client')">
+          <Statistic title="我的客户" :value="stats.clientCount" :valueStyle="{ color: '#52c41a' }" />
+        </Card>
+      </Col>
+      <Col :xs="12" :sm="12" :md="6">
+        <Card :bordered="false" hoverable class="stat-card stat-card-orange" @click="router.push('/matter/timesheet')">
+          <Statistic title="本月工时" :value="stats.timesheetHours" :precision="1" suffix="h" :valueStyle="{ color: '#fa8c16' }" />
+        </Card>
+      </Col>
+      <Col :xs="12" :sm="12" :md="6">
+        <Card :bordered="false" hoverable class="stat-card stat-card-purple" @click="router.push('/matter/task')">
+          <Statistic title="待办任务" :value="stats.taskCount" :valueStyle="{ color: '#722ed1' }" />
+        </Card>
+      </Col>
+    </Row>
 
-    <div class="mt-5 flex flex-col lg:flex-row">
-      <div class="mr-4 w-full lg:w-3/5">
-        <WorkbenchProject :items="projectItems" title="我的项目" @click="navTo" />
-        <WorkbenchTrends :items="trendItems" class="mt-5" title="最新动态" />
-      </div>
-      <div class="w-full lg:w-2/5">
+    <Row :gutter="[16, 16]" class="mt-4">
+      <!-- 左侧：最近日程 + 待办事项 -->
+      <Col :xs="24" :lg="14">
+        <!-- 最近日程 - 使用 Timeline 组件 -->
+        <Card :bordered="false" class="mb-4">
+          <template #title>
+            <div class="flex items-center justify-between">
+              <span>📅 最近日程</span>
+              <a @click="router.push('/workbench/schedule')">查看全部 →</a>
+            </div>
+          </template>
+          <Timeline v-if="upcomingSchedules.length > 0">
+            <TimelineItem 
+              v-for="schedule in upcomingSchedules.slice(0, 5)" 
+              :key="schedule.id"
+              :color="getScheduleTypeColor(schedule.scheduleType)"
+            >
+              <div class="cursor-pointer hover:bg-gray-50 p-2 -m-2 rounded" @click="router.push('/workbench/schedule')">
+                <div class="flex items-center gap-2 mb-1">
+                  <Tag :color="getScheduleTypeColor(schedule.scheduleType)" size="small">
+                    {{ schedule.scheduleTypeName }}
+                  </Tag>
+                  <span class="text-gray-500 text-xs">{{ formatScheduleTime(schedule) }}</span>
+                </div>
+                <div class="font-medium">{{ schedule.title }}</div>
+                <div v-if="schedule.location" class="text-gray-500 text-xs mt-1">
+                  📍 {{ schedule.location }}
+                </div>
+              </div>
+            </TimelineItem>
+          </Timeline>
+          <Empty v-else description="暂无近期日程" :image="Empty.PRESENTED_IMAGE_SIMPLE" />
+        </Card>
+
+        <!-- 待办事项 -->
+        <WorkbenchTodo :items="todoItems" title="待办事项" />
+      </Col>
+
+      <!-- 右侧：快捷导航 + 最新动态 -->
+      <Col :xs="24" :lg="10">
         <WorkbenchQuickNav
           :items="quickNavItems"
-          class="mt-5 lg:mt-0"
           title="快捷导航"
           @click="navTo"
         />
-        <WorkbenchTodo :items="todoItems" class="mt-5" title="待办事项" />
-      </div>
-    </div>
+        
+        <!-- 最新动态 - 使用 List 组件 -->
+        <Card :bordered="false" class="mt-4">
+          <template #title>
+            <div class="flex items-center justify-between">
+              <span>📰 最新动态</span>
+              <a @click="router.push('/workbench/approval')">更多 →</a>
+            </div>
+          </template>
+          <List v-if="trendItems.length > 0" :dataSource="trendItems" size="small">
+            <template #renderItem="{ item }">
+              <ListItem>
+                <ListItemMeta :description="item.date">
+                  <template #avatar>
+                    <Avatar :src="item.avatar" />
+                  </template>
+                  <template #title>{{ item.title }}</template>
+                  <template #description>
+                    <div class="text-xs" v-html="item.content"></div>
+                    <div class="text-gray-400 text-xs mt-1">{{ item.date }}</div>
+                  </template>
+                </ListItemMeta>
+              </ListItem>
+            </template>
+          </List>
+          <Empty v-else description="暂无最新动态" :image="Empty.PRESENTED_IMAGE_SIMPLE" />
+        </Card>
+      </Col>
+    </Row>
   </div>
 </template>
+
+<style scoped>
+.stat-card {
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.stat-card-blue {
+  border-left: 3px solid #1890ff;
+}
+
+.stat-card-green {
+  border-left: 3px solid #52c41a;
+}
+
+.stat-card-orange {
+  border-left: 3px solid #fa8c16;
+}
+
+.stat-card-purple {
+  border-left: 3px solid #722ed1;
+}
+</style>
