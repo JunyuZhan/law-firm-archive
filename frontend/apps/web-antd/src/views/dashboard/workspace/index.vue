@@ -47,6 +47,10 @@ import type { ApprovalDTO } from '#/api/workbench';
 const userStore = useUserStore();
 const router = useRouter();
 
+// 最新动态展开状态
+const trendsExpanded = ref(false);
+const allTrendItems = ref<WorkbenchTrendItem[]>([]);
+
 // 统计数据
 const stats = ref({
   matterCount: 0,
@@ -193,43 +197,6 @@ function getScheduleTypeColor(type: string) {
   return colorMap[type] || '#1890ff';
 }
 
-// 周视图数据
-const weekDays = computed(() => {
-  const days = [];
-  const today = dayjs().startOf('day');
-  const weekLabels = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
-  
-  for (let i = 0; i < 7; i++) {
-    const date = today.add(i, 'day');
-    const dateStr = date.format('YYYY-MM-DD');
-    
-    // 筛选这一天的日程
-    const daySchedules = upcomingSchedules.value.filter(s => {
-      const scheduleDate = dayjs(s.startTime).format('YYYY-MM-DD');
-      return scheduleDate === dateStr;
-    });
-    
-    days.push({
-      date: dateStr,
-      dateNum: date.format('D'),
-      label: i === 0 ? '今天' : weekLabels[date.day()],
-      isToday: i === 0,
-      schedules: daySchedules,
-    });
-  }
-  
-  return days;
-});
-
-// 今日日程
-const todaySchedules = computed(() => {
-  const today = dayjs().format('YYYY-MM-DD');
-  return upcomingSchedules.value.filter(s => {
-    const scheduleDate = dayjs(s.startTime).format('YYYY-MM-DD');
-    return scheduleDate === today;
-  });
-});
-
 // 跳转到审批中心
 function goToApproval() {
   router.push('/dashboard/approval');
@@ -353,12 +320,15 @@ async function loadTrends() {
     // 按时间戳排序（最新的在前）
     trends.sort((a, b) => b.timestamp - a.timestamp);
 
-    // 取前5条，移除 timestamp 字段（限制显示数量，避免过长）
-    trendItems.value = trends.slice(0, 5).map(({ timestamp, ...item }) => item);
+    // 保存所有动态（移除 timestamp 字段）
+    allTrendItems.value = trends.map(({ timestamp, ...item }) => item);
+    
+    // 默认显示前5条
+    trendItems.value = allTrendItems.value.slice(0, 5);
 
     // 如果没有数据，显示提示
-    if (trendItems.value.length === 0) {
-      trendItems.value = [
+    if (allTrendItems.value.length === 0) {
+      allTrendItems.value = [
         {
           avatar: preferences.app.defaultAvatar,
           content: '暂无最新动态',
@@ -366,12 +336,27 @@ async function loadTrends() {
           title: '系统',
         },
       ];
+      trendItems.value = allTrendItems.value;
     }
   } catch (error) {
     console.error('加载最新动态失败:', error);
     trendItems.value = [];
+    allTrendItems.value = [];
   }
 }
+
+// 展开/收起动态
+function toggleTrends() {
+  trendsExpanded.value = !trendsExpanded.value;
+  if (trendsExpanded.value) {
+    trendItems.value = allTrendItems.value;
+  } else {
+    trendItems.value = allTrendItems.value.slice(0, 5);
+  }
+}
+
+// 是否有更多动态可展开
+const hasMoreTrends = computed(() => allTrendItems.value.length > 5);
 
 // 获取问候语（根据时间动态显示）
 function getGreeting(): { greeting: string; action: string } {
@@ -390,7 +375,7 @@ function getGreeting(): { greeting: string; action: string } {
 }
 
 // 导航方法
-function navTo(nav: WorkbenchProjectItem | WorkbenchQuickNavItem) {
+function navTo(nav: WorkbenchQuickNavItem) {
   if (nav.url?.startsWith('http')) {
     openWindow(nav.url);
     return;
@@ -532,10 +517,7 @@ onActivated(() => {
         <!-- 最新动态 - 使用 List 组件 -->
         <Card :bordered="false" class="mt-4">
           <template #title>
-            <div class="flex items-center justify-between">
-              <span>📰 最新动态</span>
-              <a @click="router.push('/workbench/approval')">更多 →</a>
-            </div>
+            <span>📰 最新动态</span>
           </template>
           <List v-if="trendItems.length > 0" :dataSource="trendItems" size="small">
             <template #renderItem="{ item }">
@@ -554,6 +536,12 @@ onActivated(() => {
             </template>
           </List>
           <Empty v-else description="暂无最新动态" :image="Empty.PRESENTED_IMAGE_SIMPLE" />
+          <!-- 展开/收起按钮 -->
+          <div v-if="hasMoreTrends" class="text-center mt-3 pt-3 border-t border-gray-100">
+            <a class="text-primary text-sm" @click="toggleTrends">
+              {{ trendsExpanded ? '收起 ↑' : `展开更多 (${allTrendItems.length - 5}条) ↓` }}
+            </a>
+          </div>
         </Card>
       </Col>
     </Row>
