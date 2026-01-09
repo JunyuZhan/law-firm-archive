@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, h } from 'vue';
 import { message, Modal } from 'ant-design-vue';
 import { Page } from '@vben/common-ui';
 import { Card, Tabs, TabPane, Badge, Button, Space, Tag, Input, Select, Textarea } from 'ant-design-vue';
@@ -163,18 +163,17 @@ function handleReject(row: ApprovalDTO) {
   
   Modal.confirm({
     title: '拒绝审批',
-    content: () => (
-      <div>
-        <p style="margin-bottom: 8px;">请填写拒绝原因（必填）：</p>
-        <Textarea
-          v-model:value={rejectReason.value}
-          placeholder="请输入拒绝原因"
-          rows={3}
-          maxlength={500}
-          showCount
-        />
-      </div>
-    ),
+    content: () => h('div', {}, [
+      h('p', { style: 'margin-bottom: 8px;' }, '请填写拒绝原因（必填）：'),
+      h(Textarea, {
+        value: rejectReason.value,
+        'onUpdate:value': (val: string) => { rejectReason.value = val; },
+        placeholder: '请输入拒绝原因',
+        rows: 3,
+        maxlength: 500,
+        showCount: true,
+      }),
+    ]),
     okText: '拒绝',
     okType: 'danger',
     cancelText: '取消',
@@ -242,19 +241,18 @@ async function handleBatchReject() {
   
   Modal.confirm({
     title: '批量拒绝',
-    content: () => (
-      <div>
-        <p style="margin-bottom: 8px;">确定要批量拒绝选中的 {records.length} 条审批吗？</p>
-        <p style="margin-bottom: 8px;">请填写拒绝原因（必填）：</p>
-        <Textarea
-          v-model:value={rejectReason.value}
-          placeholder="请输入拒绝原因"
-          rows={3}
-          maxlength={500}
-          showCount
-        />
-      </div>
-    ),
+    content: () => h('div', {}, [
+      h('p', { style: 'margin-bottom: 8px;' }, `确定要批量拒绝选中的 ${records.length} 条审批吗？`),
+      h('p', { style: 'margin-bottom: 8px;' }, '请填写拒绝原因（必填）：'),
+      h(Textarea, {
+        value: rejectReason.value,
+        'onUpdate:value': (val: string) => { rejectReason.value = val; },
+        placeholder: '请输入拒绝原因',
+        rows: 3,
+        maxlength: 500,
+        showCount: true,
+      }),
+    ]),
     okText: '拒绝',
     okType: 'danger',
     cancelText: '取消',

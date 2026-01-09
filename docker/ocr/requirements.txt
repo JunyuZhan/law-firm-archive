@@ -1,9 +1,9 @@
-paddlepaddle==2.5.2
-paddleocr==2.7.0.3
-fastapi==0.109.0
-uvicorn==0.27.0
-python-multipart==0.0.6
-pillow==10.2.0
-numpy==1.26.3
-opencv-python-headless==4.9.0.80
-httpx==0.26.0
+# paddlepaddle 在 Dockerfile 中单独安装
+paddleocr>=2.7.0
+fastapi>=0.109.0
+uvicorn>=0.27.0
+python-multipart>=0.0.6
+pillow>=10.0.0
+numpy>=1.24.0,<2.0.0
+opencv-python-headless>=4.8.0
+httpx>=0.26.0

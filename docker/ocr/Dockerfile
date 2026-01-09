@@ -1,4 +1,4 @@
-FROM python:3.10-slim
+FROM python:3.10-slim-bookworm
 
 WORKDIR /app
 
@@ -14,7 +14,9 @@ RUN apt-get update && apt-get install -y \
 
 # 安装Python依赖
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+# PaddlePaddle 需要从官方源安装
+RUN pip install --no-cache-dir paddlepaddle -i https://pypi.org/simple && \
+    pip install --no-cache-dir -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 # 复制应用代码
 COPY app.py .

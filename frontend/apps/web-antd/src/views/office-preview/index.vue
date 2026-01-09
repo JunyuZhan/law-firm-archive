@@ -10,7 +10,6 @@
 import { onMounted, onUnmounted, ref, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { Button, Space, Spin, Alert } from 'ant-design-vue';
-import { ArrowLeft, Edit, Eye } from 'lucide-vue-next';
 import { getDocumentPreviewConfig, getDocumentEditConfig, type OnlyOfficeConfig } from '#/api/document';
 
 const route = useRoute();
@@ -284,8 +283,7 @@ function goBack() {
     <div class="toolbar">
       <Space>
         <Button @click="goBack">
-          <template #icon><ArrowLeft :size="16" /></template>
-          关闭
+          ← 关闭
         </Button>
         <span class="document-title">{{ documentTitle }}</span>
       </Space>
@@ -295,11 +293,7 @@ function goBack() {
           :type="currentMode === 'edit' ? 'primary' : 'default'"
           @click="toggleMode"
         >
-          <template #icon>
-            <Edit v-if="currentMode === 'view'" :size="16" />
-            <Eye v-else :size="16" />
-          </template>
-          {{ currentMode === 'view' ? '进入编辑' : '切换预览' }}
+          {{ currentMode === 'view' ? '✏️ 进入编辑' : '👁️ 切换预览' }}
         </Button>
       </Space>
     </div>

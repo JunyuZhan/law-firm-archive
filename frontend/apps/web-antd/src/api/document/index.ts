@@ -156,6 +156,23 @@ export function shareDocument(id: number) {
   return requestClient.post<string>(`/document/${id}/share`);
 }
 
+/** 预览文档（获取预览URL并返回） */
+export async function previewDocument(id: number): Promise<string | null> {
+  try {
+    const result = await requestClient.get<{
+      documentId: number;
+      fileName: string;
+      fileType: string;
+      mimeType: string;
+      previewUrl: string;
+      expires: number;
+    }>(`/document/${id}/preview-url`);
+    return result.previewUrl || null;
+  } catch {
+    return null;
+  }
+}
+
 /** OnlyOffice 配置类型 */
 export interface OnlyOfficeConfig {
   supported: boolean;
