@@ -515,8 +515,8 @@ onMounted(() => {
 
           <!-- 提成记录的搜索栏 -->
           <div style="margin-bottom: 16px">
-            <Row :gutter="16">
-              <Col :span="6">
+            <Row :gutter="[16, 16]">
+              <Col :xs="24" :sm="12" :md="6">
                 <Select
                   v-model:value="queryParams.status"
                   placeholder="提成状态"
@@ -525,7 +525,7 @@ onMounted(() => {
                   :options="statusOptions"
                 />
               </Col>
-              <Col :span="6">
+              <Col :xs="24" :sm="12" :md="6">
                 <Select
                   v-model:value="queryParams.clientId"
                   placeholder="客户"
@@ -536,7 +536,7 @@ onMounted(() => {
                   :options="clients.map(c => ({ label: c.clientNo ? `[${c.clientNo}] ${c.name}` : c.name, value: c.id }))"
                 />
               </Col>
-              <Col :span="6">
+              <Col :xs="24" :sm="12" :md="6">
                 <Select
                   v-model:value="queryParams.matterId"
                   placeholder="项目"
@@ -547,8 +547,8 @@ onMounted(() => {
                   :options="matters.map(m => ({ label: `[${m.matterNo}] ${m.name}`, value: m.id }))"
                 />
               </Col>
-              <Col :span="6">
-                <Space>
+              <Col :xs="24" :sm="12" :md="6">
+                <Space wrap>
                   <Button type="primary" @click="handleSearch">查询</Button>
                   <Button @click="handleReset">重置</Button>
                   <Button
@@ -622,8 +622,8 @@ onMounted(() => {
         <TabPane key="pending" tab="待计算提成">
           <!-- 待计算提成的搜索栏 -->
           <div style="margin-bottom: 16px">
-            <Row :gutter="16">
-              <Col :span="6">
+            <Row :gutter="[16, 16]">
+              <Col :xs="24" :sm="12" :md="6">
                 <Select
                   placeholder="客户"
                   allowClear
@@ -633,7 +633,7 @@ onMounted(() => {
                   :options="clients.map(c => ({ label: c.clientNo ? `[${c.clientNo}] ${c.name}` : c.name, value: c.id }))"
                 />
               </Col>
-              <Col :span="6">
+              <Col :xs="24" :sm="12" :md="6">
                 <Select
                   placeholder="项目"
                   allowClear
@@ -643,8 +643,8 @@ onMounted(() => {
                   :options="matters.map(m => ({ label: `[${m.matterNo}] ${m.name}`, value: m.id }))"
                 />
               </Col>
-              <Col :span="6">
-                <Space>
+              <Col :xs="24" :sm="12" :md="6">
+                <Space wrap>
                   <Button type="primary">查询</Button>
                   <Button>重置</Button>
                 </Space>
