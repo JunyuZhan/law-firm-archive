@@ -62,13 +62,13 @@ const recommendedPatterns = ref<ContractNumberPattern[]>([]);
 const caseTypeOptions = ref<CaseTypeOption[]>([]);
 const selectedCaseType = ref('');
 
-// 表格列
+// 表格列 - 移除固定宽度，让列自适应
 const columns = [
-  { title: '配置名称', dataIndex: 'configName', key: 'configName', width: 200 },
-  { title: '配置键', dataIndex: 'configKey', key: 'configKey', width: 250 },
+  { title: '配置名称', dataIndex: 'configName', key: 'configName', ellipsis: true },
+  { title: '配置键', dataIndex: 'configKey', key: 'configKey', ellipsis: true },
   { title: '配置值', dataIndex: 'configValue', key: 'configValue', ellipsis: true },
-  { title: '备注', dataIndex: 'description', key: 'description', ellipsis: true, width: 200 },
-  { title: '操作', key: 'action', width: 100 },
+  { title: '备注', dataIndex: 'description', key: 'description', ellipsis: true },
+  { title: '操作', key: 'action', width: 80, fixed: 'right' as const },
 ];
 
 // 过滤出非合同编号的配置
@@ -209,8 +209,8 @@ onMounted(async () => {
       <!-- 合同编号配置 -->
       <TabPane key="contract" tab="合同编号配置">
         <Card title="编号规则设置" :bordered="false">
-          <Row :gutter="24">
-            <Col :span="16">
+          <Row :gutter="[24, 16]">
+            <Col :xs="24" :lg="16">
               <Form layout="vertical">
                 <FormItem label="编号前缀">
                   <Input 
@@ -260,7 +260,7 @@ onMounted(async () => {
               </Form>
             </Col>
             
-            <Col :span="8">
+            <Col :xs="24" :lg="8">
               <Card title="编号预览" size="small" :loading="previewLoading">
                 <div v-if="previewResults.length">
                   <div v-for="item in previewResults" :key="item.caseType" style="margin-bottom: 12px;">
@@ -292,8 +292,8 @@ onMounted(async () => {
           </Row>
         </Card>
         
-        <Row :gutter="16" style="margin-top: 16px;">
-          <Col :span="12">
+        <Row :gutter="[16, 16]" style="margin-top: 16px;">
+          <Col :xs="24" :lg="12">
             <Card title="推荐规则模板" size="small" :bordered="false">
               <div style="max-height: 360px; overflow-y: auto;">
                 <div 
@@ -318,7 +318,7 @@ onMounted(async () => {
             </Card>
           </Col>
           
-          <Col :span="12">
+          <Col :xs="24" :lg="12">
             <Card title="支持的变量" size="small" :bordered="false">
               <div style="max-height: 360px; overflow-y: auto;">
                 <div 
