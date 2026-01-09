@@ -185,11 +185,13 @@ function generateMonthlyData() {
   const startMonth = startDate.format('YYYY-MM');
   const endMonth = endDate.format('YYYY-MM');
   const filteredTrends = revenueTrends.value.filter((trend: any) => {
+    if (!trend) return false;
     const month = trend.period;
     return month >= startMonth && month <= endMonth;
   });
   
   filteredTrends.forEach((trend: any) => {
+    if (!trend) return;
     const monthKey = trend.period;
     if (monthStats.has(monthKey)) {
       const stats = monthStats.get(monthKey)!;
@@ -202,7 +204,7 @@ function generateMonthlyData() {
   
   // 统计提成数据
   commissionReport.value.forEach((item: any) => {
-    if (item.createdAt) {
+    if (item && item.createdAt) {
       const commDate = dayjs(item.createdAt);
       const monthKey = commDate.format('YYYY-MM');
       if (monthStats.has(monthKey)) {
