@@ -95,7 +95,8 @@ defineExpose({
   <Modal
     v-model:open="visible"
     :title="`预览 - ${previewTitle}`"
-    width="800px"
+    :width="800"
+    :style="{ maxWidth: '95vw' }"
     :footer="null"
     :body-style="{ padding: '0' }"
   >

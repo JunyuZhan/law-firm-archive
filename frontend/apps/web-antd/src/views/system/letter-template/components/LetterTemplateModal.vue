@@ -227,20 +227,21 @@ defineExpose({
   <Modal
     v-model:open="visible"
     :title="modalTitle()"
-    width="1000px"
+    :width="960"
+    :style="{ maxWidth: '95vw' }"
     :footer="null"
-    :body-style="{ padding: '16px', maxHeight: '80vh', overflowY: 'auto' }"
+    :body-style="{ padding: '16px', maxHeight: '75vh', overflowY: 'auto' }"
   >
     <Form :label-col="{ span: 4 }" :wrapper-col="{ span: 19 }">
-      <Row :gutter="16">
-        <Col :span="12">
+      <Row :gutter="[16, 8]">
+        <Col :xs="24" :md="12">
           <FormItem label="模板名称" required :label-col="{ span: 8 }" :wrapper-col="{ span: 16 }">
             <Input v-model:value="formData.name" placeholder="如：律师介绍信" />
           </FormItem>
         </Col>
-        <Col :span="12">
-          <FormItem label="函件类型" required :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">
-            <Select v-model:value="formData.letterType" :options="letterTypeOptions" style="width: 200px" />
+        <Col :xs="24" :md="12">
+          <FormItem label="函件类型" required :label-col="{ span: 8 }" :wrapper-col="{ span: 16 }">
+            <Select v-model:value="formData.letterType" :options="letterTypeOptions" style="width: 100%" />
           </FormItem>
         </Col>
       </Row>
