@@ -6,7 +6,8 @@ import { requestClient } from '#/api/request';
 
 // 全局开关：关闭 OCR 功能
 const OCR_DISABLED = true;
-const ocrDisabledPromise = <T>() =>
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const ocrDisabledPromise = <_T>(): Promise<never> =>
   Promise.reject(new Error('OCR 功能已下线，已禁用调用。'));
 
 // ========== 类型定义 ==========
@@ -116,6 +117,12 @@ export function recognizeText(file: File) {
     timeout: 120000, // OCR识别超时时间120秒
   });
 }
+
+/**
+ * 通用文字识别（别名，兼容旧代码）
+ * @param file 图片文件
+ */
+export const recognizeGeneral = recognizeText;
 
 /**
  * 通用文字识别（通过URL）

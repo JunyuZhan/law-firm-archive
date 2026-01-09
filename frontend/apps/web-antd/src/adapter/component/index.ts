@@ -84,6 +84,11 @@ const PreviewGroup = defineAsyncComponent(() =>
   import('ant-design-vue/es/image').then((res) => res.ImagePreviewGroup),
 );
 
+// 自定义业务组件
+const UserTreeSelect = defineAsyncComponent(
+  () => import('#/components/UserTreeSelect/index.vue'),
+);
+
 const withDefaultPlaceholder = <T extends Component>(
   component: T,
   type: 'input' | 'select',
@@ -368,6 +373,7 @@ export type ComponentType =
   | 'TimePicker'
   | 'TreeSelect'
   | 'Upload'
+  | 'UserTreeSelect'
   | BaseFormComponentType;
 
 async function initComponentAdapter() {
@@ -444,6 +450,7 @@ async function initComponentAdapter() {
     TimePicker,
     TreeSelect: withDefaultPlaceholder(TreeSelect, 'select'),
     Upload: withPreviewUpload(),
+    UserTreeSelect: withDefaultPlaceholder(UserTreeSelect, 'select'),
   };
 
   // 将组件注册到全局共享状态中
