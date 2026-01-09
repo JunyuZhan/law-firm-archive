@@ -201,7 +201,7 @@ defineExpose({
     :allow-clear="allowClear"
     :disabled="disabled"
     :loading="loading"
-    :style="style"
+    :style="{ width: '100%', ...( typeof style === 'object' ? style : {}) }"
     show-search
     tree-default-expand-all
     :filter-tree-node="filterTreeNode"
