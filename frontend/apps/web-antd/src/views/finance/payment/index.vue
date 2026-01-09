@@ -415,13 +415,13 @@ onMounted(() => {
         <Col :xs="24" :sm="12" :md="4">
           <Select v-model:value="queryParams.status" placeholder="状态" allowClear style="width: 100%" :options="statusOptions" />
         </Col>
-        <Col :xs="24" :sm="24" :md="6">
-          <Space>
+        <Col :xs="24" :sm="24" :md="10">
+          <Space wrap>
             <Button type="primary" @click="handleSearch">查询</Button>
             <Button @click="handleReset">重置</Button>
             <Button type="primary" ghost @click="openOcrModal">
               <template #icon><IconifyIcon icon="ant-design:scan-outlined" /></template>
-              OCR智能识别
+              OCR识别
             </Button>
           </Space>
         </Col>

@@ -13,8 +13,10 @@ import java.util.Map;
 /**
  * PostgreSQL JSONB 类型处理器
  * 用于处理 PostgreSQL 的 JSONB 类型与 Java Map 的转换
+ * 
+ * 注意：移除了 @MappedTypes(Map.class) 注解，避免所有 Map 类型的结果都被此 TypeHandler 处理
+ * 只有在显式指定 typeHandler 时才会使用此处理器
  */
-@MappedTypes(Map.class)
 @MappedJdbcTypes(JdbcType.OTHER)
 public class PostgresJsonTypeHandler extends BaseTypeHandler<Map<String, Object>> {
 
@@ -51,10 +53,18 @@ public class PostgresJsonTypeHandler extends BaseTypeHandler<Map<String, Object>
         if (json == null || json.isEmpty()) {
             return null;
         }
+        // 检查是否是有效的 JSON 对象格式（以 { 开头）
+        String trimmed = json.trim();
+        if (!trimmed.startsWith("{")) {
+            // 不是 JSON 对象，返回 null 而不是抛出异常
+            // 这样可以避免将普通字段值误解析为 JSON
+            return null;
+        }
         try {
             return OBJECT_MAPPER.readValue(json, Map.class);
         } catch (JsonProcessingException e) {
-            throw new SQLException("Error parsing JSON to Map", e);
+            // JSON 解析失败，可能不是有效的 JSON，返回 null
+            return null;
         }
     }
 }
