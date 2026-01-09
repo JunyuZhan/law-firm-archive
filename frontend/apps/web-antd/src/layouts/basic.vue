@@ -331,7 +331,6 @@ async function loadNotifications(isInitial = false) {
       
       // 如果有新的未读通知且不是初始加载，播放提示音
       if (!isInitial && currentUnreadCount > previousUnreadCount) {
-        const newUnreadCount = currentUnreadCount - previousUnreadCount;
         playNotificationSound();
         
         // 获取最新的未读通知并显示浏览器通知
@@ -342,8 +341,6 @@ async function loadNotifications(isInitial = false) {
             latestUnread.message || '您有新的通知'
           );
         }
-        
-        console.log(`收到 ${newUnreadCount} 条新通知`);
       }
       
       previousUnreadCount = currentUnreadCount;
@@ -493,8 +490,7 @@ watch(
         :avatar
         :menus
         :text="userStore.userInfo?.realName"
-        description="ann.vben@gmail.com"
-        tag-text="Pro"
+        :description="userStore.userInfo?.email || ''"
         @logout="handleLogout"
       />
     </template>

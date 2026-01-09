@@ -66,6 +66,8 @@ class PreferenceManager {
     // 初始化存储管理器
     this.cache = new StorageManager({ prefix: namespace });
     // 合并初始偏好设置
+    // defu 的行为：前面的参数优先，后面的参数作为默认值
+    // 所以 overrides 在前，defaultPreferences 在后
     this.initialPreferences = merge({}, overrides, defaultPreferences);
 
     // 加载并合并当前存储的偏好设置

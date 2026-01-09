@@ -11,6 +11,7 @@ import { notification } from 'ant-design-vue';
 import { defineStore } from 'pinia';
 
 import { getAccessCodesApi, getUserInfoApi, loginApi, logoutApi } from '#/api';
+import { getProfileInfo } from '#/api/core/profile';
 import { getPendingApprovals, getMyInitiatedApprovals } from '#/api/workbench';
 import { $t } from '#/locales';
 
@@ -61,6 +62,7 @@ export const useAuthStore = defineStore('auth', () => {
           roles: roles ? Array.from(roles) : [],
           avatar: '',
           homePath: '/dashboard',
+          email: undefined, // 将在fetchUserInfo中补充
         };
 
         // 存储用户信息
@@ -127,6 +129,19 @@ export const useAuthStore = defineStore('auth', () => {
   async function fetchUserInfo() {
     let userInfo: null | UserInfo = null;
     userInfo = await getUserInfoApi();
+    
+    // 补充email信息（从/profile/info获取）
+    if (userInfo && !userInfo.email) {
+      try {
+        const profileInfo = await getProfileInfo();
+        if (profileInfo?.email) {
+          userInfo.email = profileInfo.email;
+        }
+      } catch {
+        // 静默失败，不影响主流程
+      }
+    }
+    
     userStore.setUserInfo(userInfo);
     return userInfo;
   }

@@ -1,27 +1,22 @@
 {
-  "name": "vben-admin-monorepo",
-  "version": "5.5.9",
+  "name": "law-firm-frontend",
+  "version": "1.0.0",
   "private": true,
   "keywords": [
-    "monorepo",
-    "turbo",
-    "vben",
-    "vben admin",
-    "vben pro",
-    "vue",
-    "vue admin",
-    "vue vben admin",
-    "vue vben admin pro",
-    "vue3"
+    "law-firm",
+    "law-office",
+    "management-system",
+    "vue3",
+    "typescript",
+    "ant-design-vue"
   ],
-  "homepage": "https://github.com/vbenjs/vue-vben-admin",
-  "bugs": "https://github.com/vbenjs/vue-vben-admin/issues",
-  "repository": "vbenjs/vue-vben-admin.git",
+  "homepage": "https://github.com/junyuzhan/law-firm",
+  "bugs": "https://github.com/junyuzhan/law-firm/issues",
+  "repository": "junyuzhan/law-firm.git",
   "license": "MIT",
   "author": {
-    "name": "vben",
-    "email": "ann.vben@gmail.com",
-    "url": "https://github.com/anncwb"
+    "name": "Law Firm Team",
+    "url": "https://github.com/junyuzhan/law-firm"
   },
   "type": "module",
   "scripts": {

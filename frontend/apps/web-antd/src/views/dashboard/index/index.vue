@@ -80,7 +80,7 @@ async function loadPendingTasks() {
     const res = await requestClient.get('/tasks/my', { params: { status: 'PENDING', pageSize: 5 } });
     pendingTasks.value = res.list || [];
   } catch (e) {
-    // 接口可能未实现
+    console.error('加载待办任务失败:', e);
   }
 }
 
@@ -90,7 +90,7 @@ async function loadRecentMatters() {
     const res = await requestClient.get('/matter/my', { params: { pageSize: 5 } });
     recentMatters.value = res.list || [];
   } catch (e) {
-    // 接口可能未实现
+    console.error('加载最近项目失败:', e);
   }
 }
 

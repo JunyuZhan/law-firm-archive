@@ -84,3 +84,15 @@ export function getBusinessApprovals(businessType: string, businessId: number) {
 export function getWorkbenchStats() {
   return requestClient.get<import('./types').WorkbenchStatsDTO>('/workbench/stats');
 }
+
+/** 获取最近项目 */
+export function getRecentProjects() {
+  return requestClient.get<Array<{
+    id: number;
+    matterNo: string;
+    matterName: string;
+    clientName?: string;
+    status: string;
+    lastUpdateTime?: string;
+  }>>('/workbench/project/recent');
+}

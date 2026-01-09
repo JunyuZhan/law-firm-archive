@@ -21,7 +21,13 @@ import { preferences } from '@vben/preferences';
 import { useUserStore } from '@vben/stores';
 import { openWindow } from '@vben/utils';
 
-import { getWorkbenchStats, getPendingApprovals } from '#/api/workbench';
+import {
+  getWorkbenchStats,
+  getPendingApprovals,
+  getMyApprovedHistory,
+  getMyInitiatedApprovals,
+  getRecentProjects,
+} from '#/api/workbench';
 import { getMyMatters, getMyUpcomingSchedules, getMyTodoTasks } from '#/api/matter';
 import type { MatterDTO, TaskDTO } from '#/api/matter/types';
 import type { ScheduleDTO } from '#/api/matter/schedule';
@@ -91,28 +97,19 @@ const quickNavItems: WorkbenchQuickNavItem[] = [
   },
 ];
 
-// 最新动态（暂时使用示例数据）
-const trendItems: WorkbenchTrendItem[] = [
-  {
-    avatar: 'svg:avatar-1',
-    content: `创建了新项目`,
-    date: '刚刚',
-    title: userStore.userInfo?.realName || '用户',
-  },
-];
+// 最新动态
+const trendItems = ref<WorkbenchTrendItem[]>([]);
 
 // 加载统计数据
 async function loadStats() {
   try {
     const data = await getWorkbenchStats();
-    console.log('工作台统计数据:', data);
     stats.value = {
       matterCount: data.matterCount || 0,
       clientCount: data.clientCount || 0,
       timesheetHours: data.timesheetHours || 0,
       taskCount: data.taskCount || 0,
     };
-    console.log('更新后的统计数据:', stats.value);
   } catch (error) {
     console.error('加载统计数据失败:', error);
   }
@@ -221,6 +218,160 @@ function getMatterColor(status: string) {
   return colorMap[status] || '#1fdaca';
 }
 
+// 格式化相对时间
+function formatRelativeTime(dateStr?: string): string {
+  if (!dateStr) return '未知时间';
+
+  const date = dayjs(dateStr);
+  const now = dayjs();
+  const diffMinutes = now.diff(date, 'minute');
+  const diffHours = now.diff(date, 'hour');
+  const diffDays = now.diff(date, 'day');
+
+  if (diffMinutes < 1) return '刚刚';
+  if (diffMinutes < 60) return `${diffMinutes}分钟前`;
+  if (diffHours < 24) return `${diffHours}小时前`;
+  if (diffDays < 7) return `${diffDays}天前`;
+
+  return date.format('MM/DD HH:mm');
+}
+
+// 加载最新动态
+async function loadTrends() {
+  try {
+    // 使用扩展类型，包含原始时间戳用于排序
+    interface TrendItemWithTimestamp extends WorkbenchTrendItem {
+      timestamp: number;
+    }
+    const trends: TrendItemWithTimestamp[] = [];
+
+    // 1. 获取最近项目（取前5条）
+    try {
+      const recentProjects = await getRecentProjects();
+      recentProjects.slice(0, 5).forEach((project) => {
+        const timestamp = project.lastUpdateTime
+          ? dayjs(project.lastUpdateTime).valueOf()
+          : Date.now();
+        trends.push({
+          avatar: userStore.userInfo?.avatar || preferences.app.defaultAvatar,
+          content: `创建了新项目 <span class="text-primary">${project.matterName}</span>`,
+          date: formatRelativeTime(project.lastUpdateTime),
+          title: userStore.userInfo?.realName || '我',
+          timestamp,
+        });
+      });
+    } catch (error) {
+      console.error('加载最近项目失败:', error);
+    }
+
+    // 2. 获取审批历史（取前5条）
+    try {
+      const approvedHistory = await getMyApprovedHistory();
+      approvedHistory.slice(0, 5).forEach((approval) => {
+        const statusText = approval.status === 'APPROVED' ? '审批通过了' : '拒绝了';
+
+        // 权限安全：显示审批人信息（如果是管理员看到其他用户的审批）
+        // 如果审批人是当前用户，显示"我"；否则显示审批人姓名
+        const isCurrentUserApprover =
+          String(approval.approverId) === String(userStore.userInfo?.userId);
+        const approverName = isCurrentUserApprover
+          ? userStore.userInfo?.realName || '我'
+          : approval.approverName || '用户';
+        // ApprovalDTO 中没有 approverAvatar 字段，使用默认头像
+        const approverAvatar = isCurrentUserApprover
+          ? userStore.userInfo?.avatar || preferences.app.defaultAvatar
+          : preferences.app.defaultAvatar;
+
+        // 动态内容：明确显示审批人和申请人的关系
+        const businessTitle =
+          approval.businessTitle || approval.businessTypeName || '审批事项';
+        const applicantName = approval.applicantName || '用户';
+
+        const timestamp = approval.approvedAt
+          ? dayjs(approval.approvedAt).valueOf()
+          : approval.updatedAt
+            ? dayjs(approval.updatedAt).valueOf()
+            : Date.now();
+
+        trends.push({
+          avatar: approverAvatar,
+          content: `${statusText} <span class="text-primary">${applicantName}</span> 发起的 <span class="text-primary">${businessTitle}</span>`,
+          date: formatRelativeTime(approval.approvedAt || approval.updatedAt),
+          title: approverName,
+          timestamp,
+        });
+      });
+    } catch (error) {
+      console.error('加载审批历史失败:', error);
+    }
+
+    // 3. 获取我发起的审批（取前5条，状态为已通过或已拒绝）
+    try {
+      const myInitiated = await getMyInitiatedApprovals();
+      myInitiated
+        .filter((a) => a.status === 'APPROVED' || a.status === 'REJECTED')
+        .slice(0, 5)
+        .forEach((approval) => {
+          const statusText = approval.status === 'APPROVED' ? '已通过' : '已拒绝';
+          const approverName = approval.approverName || '审批人';
+
+          const timestamp = approval.approvedAt
+            ? dayjs(approval.approvedAt).valueOf()
+            : approval.updatedAt
+              ? dayjs(approval.updatedAt).valueOf()
+              : Date.now();
+
+          trends.push({
+            avatar: userStore.userInfo?.avatar || preferences.app.defaultAvatar,
+            content: `我发起的 <span class="text-primary">${approval.businessTitle || approval.businessTypeName}</span> 被 <span class="text-primary">${approverName}</span> ${statusText}`,
+            date: formatRelativeTime(approval.approvedAt || approval.updatedAt),
+            title: userStore.userInfo?.realName || '我',
+            timestamp,
+          });
+        });
+    } catch (error) {
+      console.error('加载我发起的审批失败:', error);
+    }
+
+    // 按时间戳排序（最新的在前）
+    trends.sort((a, b) => b.timestamp - a.timestamp);
+
+    // 取前10条，移除 timestamp 字段
+    trendItems.value = trends.slice(0, 10).map(({ timestamp, ...item }) => item);
+
+    // 如果没有数据，显示提示
+    if (trendItems.value.length === 0) {
+      trendItems.value = [
+        {
+          avatar: preferences.app.defaultAvatar,
+          content: '暂无最新动态',
+          date: '刚刚',
+          title: '系统',
+        },
+      ];
+    }
+  } catch (error) {
+    console.error('加载最新动态失败:', error);
+    trendItems.value = [];
+  }
+}
+
+// 获取问候语（根据时间动态显示）
+function getGreeting(): { greeting: string; action: string } {
+  const hour = dayjs().hour();
+  if (hour >= 5 && hour < 12) {
+    return { greeting: '早安', action: '开始您一天的工作吧！' };
+  } else if (hour >= 12 && hour < 14) {
+    return { greeting: '午安', action: '继续您的工作吧！' };
+  } else if (hour >= 14 && hour < 18) {
+    return { greeting: '下午好', action: '继续您的工作吧！' };
+  } else if (hour >= 18 && hour < 22) {
+    return { greeting: '晚上好', action: '辛苦了，继续加油！' };
+  } else {
+    return { greeting: '夜深了', action: '注意休息，保重身体！' };
+  }
+}
+
 // 导航方法
 function navTo(nav: WorkbenchProjectItem | WorkbenchQuickNavItem) {
   if (nav.url?.startsWith('http')) {
@@ -242,6 +393,7 @@ onMounted(() => {
   loadTodoTasks();
   loadPendingApprovals();
   loadUpcomingSchedules();
+  loadTrends();
 });
 
 // 页面激活时刷新数据（用于 keep-alive 场景）
@@ -251,6 +403,7 @@ onActivated(() => {
   loadTodoTasks();
   loadPendingApprovals();
   loadUpcomingSchedules();
+  loadTrends();
 });
 </script>
 
@@ -263,7 +416,7 @@ onActivated(() => {
       :task-count="stats.taskCount"
     >
       <template #title>
-        早安, {{ userStore.userInfo?.realName }}, 开始您一天的工作吧！
+        {{ getGreeting().greeting }}, {{ userStore.userInfo?.realName }}, {{ getGreeting().action }}
       </template>
       <template #description>
         您有 {{ stats.taskCount }} 个待办任务，本月工时 {{ stats.timesheetHours.toFixed(1) }} 小时

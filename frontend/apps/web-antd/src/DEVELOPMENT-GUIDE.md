@@ -1,5 +1,7 @@
 # 智慧律所管理系统 - 前端模块对接指南
 
+**项目仓库**: [https://github.com/junyuzhan/law-firm](https://github.com/junyuzhan/law-firm)
+
 ## 一、项目架构概述
 
 本项目基于 **Vben Admin 5.x** (monorepo 结构)，主应用位于 `frontend/apps/web-antd`。
@@ -18,10 +20,10 @@
 src/locales/langs/
 ├── zh-CN/
 │   ├── page.json      # 页面相关翻译
-│   └── demos.json     # 示例翻译
+│   └── demos.json     # 演示翻译（可选）
 └── en-US/
     ├── page.json
-    └── demos.json
+    └── demos.json     # 演示翻译（可选）
 ```
 
 ### 2.2 添加新模块翻译
@@ -417,17 +419,19 @@ onMounted(fetchData);
 
 | 模块 | 路由前缀 | API前缀 | 状态 |
 |------|---------|---------|------|
-| 工作台 | /dashboard | /workbench | 待开发 |
-| 系统管理 | /system | /system | 待开发 |
-| 客户管理 | /crm | /crm | 待开发 |
-| 项目管理 | /matter | /matter | 待开发 |
-| 财务管理 | /finance | /finance | 待开发 |
-| 文书管理 | /document | /document | 待开发 |
-| 证据管理 | /evidence | /evidence | 待开发 |
-| 档案管理 | /archive | /archive | 待开发 |
-| 行政管理 | /admin | /admin | 部分完成 |
-| 人力资源 | /hr | /hr | 待开发 |
-| 知识库 | /knowledge | /knowledge | 待开发 |
+| 工作台 | /dashboard | /workbench | ✅ 已完成 |
+| 系统管理 | /system | /system | ✅ 已完成 |
+| 客户管理 | /crm | /crm | ✅ 已完成 |
+| 项目管理 | /matter | /matter | ✅ 已完成 |
+| 财务管理 | /finance | /finance | ✅ 已完成 |
+| 文书管理 | /document | /document | ✅ 已完成 |
+| 证据管理 | /evidence | /evidence | ✅ 已完成 |
+| 档案管理 | /archive | /archive | ✅ 已完成 |
+| 行政管理 | /admin | /admin | ✅ 已完成 |
+| 人力资源 | /hr | /hr | ✅ 已完成 |
+| 知识库 | /knowledge | /knowledge | ✅ 已完成 |
+
+> **注意**: 模块状态请根据实际开发进度更新此表格。
 
 ---
 

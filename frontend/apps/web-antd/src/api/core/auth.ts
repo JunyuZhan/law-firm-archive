@@ -31,6 +31,7 @@ export namespace AuthApi {
     userId: number;
     username: string;
     realName: string;
+    email?: string;
     departmentId?: number;
     compensationType?: string;
     roles: string[];

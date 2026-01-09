@@ -108,7 +108,7 @@ async function loadFromBackend(documentId: number, mode: 'view' | 'edit') {
  */
 async function loadDirectUrl(url: string, filename: string, type: string, ext: string) {
   try {
-    const ONLYOFFICE_URL = 'http://localhost:8088';
+    const ONLYOFFICE_URL = import.meta.env.VITE_ONLYOFFICE_URL || 'http://localhost:8088';
     documentTitle.value = filename;
 
     await loadOnlyOfficeApi(`${ONLYOFFICE_URL}/web-apps/apps/api/documents/api.js`);
