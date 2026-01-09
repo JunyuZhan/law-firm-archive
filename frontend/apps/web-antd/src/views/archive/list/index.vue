@@ -420,22 +420,22 @@ onMounted(async () => {
     <Card>
       <!-- 搜索栏 -->
       <div style="margin-bottom: 16px">
-        <Row :gutter="16">
-          <Col :span="5">
+        <Row :gutter="[16, 16]">
+          <Col :xs="24" :sm="12" :md="6" :lg="5">
             <Input
               v-model:value="queryParams.archiveName"
               placeholder="档案名称"
               allowClear
             />
           </Col>
-          <Col :span="5">
+          <Col :xs="24" :sm="12" :md="6" :lg="5">
             <Input
               v-model:value="queryParams.matterNo"
               placeholder="项目编号"
               allowClear
             />
           </Col>
-          <Col :span="4">
+          <Col :xs="24" :sm="12" :md="6" :lg="4">
             <Select
               v-model:value="queryParams.archiveType"
               placeholder="档案类型"
@@ -444,7 +444,7 @@ onMounted(async () => {
               :options="archiveTypeOptions"
             />
           </Col>
-          <Col :span="4">
+          <Col :xs="24" :sm="12" :md="6" :lg="4">
             <Select
               v-model:value="queryParams.status"
               placeholder="状态"
@@ -453,8 +453,8 @@ onMounted(async () => {
               :options="statusOptions"
             />
           </Col>
-          <Col :span="6">
-            <Space>
+          <Col :xs="24" :sm="24" :md="24" :lg="6">
+            <Space wrap>
               <Button type="primary" @click="handleSearch">查询</Button>
               <Button @click="handleReset">重置</Button>
               <Button type="primary" @click="handleOpenArchiveWizard">创建档案</Button>

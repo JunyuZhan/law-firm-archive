@@ -273,8 +273,8 @@ onMounted(() => {
 
       <!-- 搜索栏 -->
       <div style="margin-bottom: 16px">
-        <Row :gutter="16">
-          <Col :span="6">
+        <Row :gutter="[16, 16]">
+          <Col :xs="24" :sm="12" :md="8" :lg="6">
             <Select
               v-model:value="queryParams.archiveId"
               placeholder="选择档案"
@@ -285,8 +285,8 @@ onMounted(() => {
               :options="archives.map(a => ({ label: a.name, value: a.id }))"
             />
           </Col>
-          <Col :span="18">
-            <Space>
+          <Col :xs="24" :sm="12" :md="16" :lg="18">
+            <Space wrap>
               <Button type="primary" @click="handleSearch">查询</Button>
               <Button @click="handleReset">重置</Button>
               <Button type="primary" @click="handleAdd">申请借阅</Button>
