@@ -141,6 +141,7 @@ public class StatisticsAppService {
             Map<String, Long> statusCount = new HashMap<>();
             if (statusCountList != null) {
                 for (Map<String, Object> item : statusCountList) {
+                    if (item == null) continue;
                     Object statusObj = item.get("status");
                     Object countObj = item.get("count");
                     if (statusObj != null && countObj != null) {
@@ -155,6 +156,7 @@ public class StatisticsAppService {
             Map<String, Long> typeCount = new HashMap<>();
             if (typeCountList != null) {
                 for (Map<String, Object> item : typeCountList) {
+                    if (item == null) continue;
                     Object typeObj = item.get("business_type");
                     Object countObj = item.get("count");
                     if (typeObj != null && countObj != null) {
@@ -220,6 +222,7 @@ public class StatisticsAppService {
         Map<String, Long> typeCount = new HashMap<>();
         if (typeCountList != null) {
             for (Map<String, Object> item : typeCountList) {
+                if (item == null) continue;
                 Object typeObj = item.get("client_type");
                 Object countObj = item.get("count");
                 if (typeObj != null && countObj != null) {
@@ -251,12 +254,17 @@ public class StatisticsAppService {
         List<StatisticsDTO.LawyerPerformance> result = new ArrayList<>();
         int rank = 1;
         for (Map<String, Object> item : rankings) {
-            Long lawyerId = ((Number) item.get("lawyer_id")).longValue();
+            if (item == null) continue;
+            Object lawyerIdObj = item.get("lawyer_id");
+            if (lawyerIdObj == null) continue;
+            Long lawyerId = ((Number) lawyerIdObj).longValue();
             StatisticsDTO.LawyerPerformance performance = new StatisticsDTO.LawyerPerformance();
             performance.setLawyerId(lawyerId);
             performance.setLawyerName((String) item.get("lawyer_name"));
-            performance.setMatterCount(((Number) item.get("matter_count")).longValue());
-            performance.setRevenue((BigDecimal) item.get("revenue"));
+            Object matterCountObj = item.get("matter_count");
+            performance.setMatterCount(matterCountObj != null ? ((Number) matterCountObj).longValue() : 0L);
+            Object revenueObj = item.get("total_revenue");
+            performance.setRevenue(revenueObj != null ? new BigDecimal(revenueObj.toString()) : BigDecimal.ZERO);
             
             // 计算提成（根据权限过滤）
             BigDecimal commission = commissionRepository.sumCommissionByUserId(lawyerId);
