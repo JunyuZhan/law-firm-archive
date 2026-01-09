@@ -1,42 +1,69 @@
 #!/bin/bash
-# OnlyOffice 中文字体安装脚本
-# 在 OnlyOffice 容器中执行此脚本来安装中文字体
+# OnlyOffice 中文字体安装/更新脚本
+# 用于在运行中的 OnlyOffice 容器中安装或更新中文字体
+
+set -e
+
+CONTAINER_NAME="law-firm-onlyoffice"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+FONTS_DIR="$SCRIPT_DIR/onlyoffice/fonts"
 
 echo "=========================================="
-echo "  OnlyOffice 中文字体安装"
+echo "  OnlyOffice 中文字体安装/更新"
 echo "=========================================="
 
-# 进入容器执行安装
-docker exec -it law-onlyoffice bash -c '
-    echo "1. 更新软件源..."
+# 检查容器是否运行
+if ! docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
+    echo "❌ 错误: 容器 ${CONTAINER_NAME} 未运行"
+    echo "请先启动 OnlyOffice 容器: docker-compose up -d onlyoffice"
+    exit 1
+fi
+
+echo "1. 复制自定义字体到容器..."
+for font in "$FONTS_DIR"/*.TTF "$FONTS_DIR"/*.ttf; do
+    if [ -f "$font" ]; then
+        filename=$(basename "$font")
+        echo "   复制: $filename"
+        docker cp "$font" "${CONTAINER_NAME}:/usr/share/fonts/truetype/custom/"
+    fi
+done
+
+echo ""
+echo "2. 在容器中安装字体并生成字体列表..."
+docker exec -i "$CONTAINER_NAME" bash -c '
+    # 确保目录存在
+    mkdir -p /usr/share/fonts/truetype/custom
+    
+    echo "   安装中文字体包..."
     apt-get update -qq
-
-    echo "2. 安装中文字体包..."
     apt-get install -y --no-install-recommends \
         fonts-wqy-zenhei \
         fonts-wqy-microhei \
         fonts-noto-cjk \
-        fonts-noto-cjk-extra \
         fontconfig \
-        2>/dev/null
+        2>/dev/null || true
 
-    echo "3. 刷新字体缓存..."
+    echo "   刷新字体缓存..."
     fc-cache -fv
 
-    echo "4. 生成 OnlyOffice 字体列表..."
+    echo "   生成 OnlyOffice 字体列表..."
     cd /var/www/onlyoffice/documentserver/server/tools
     ./allfontsgen
 
-    echo "5. 验证安装的中文字体..."
-    fc-list :lang=zh | head -10 || echo "中文字体列表..."
-
     echo ""
-    echo "✅ 中文字体安装完成！"
-    echo "请刷新浏览器页面重新打开文档。"
+    echo "   已安装的中文字体:"
+    fc-list :lang=zh | head -20 || echo "   (字体列表获取中...)"
 '
 
 echo ""
 echo "=========================================="
-echo "  安装完成！"
+echo "  ✅ 安装完成！"
 echo "=========================================="
-
+echo ""
+echo "提示: 请刷新浏览器页面，新字体将在文档编辑器中可用。"
+echo ""
+echo "已安装的自定义字体:"
+echo "  - 仿宋_GB2312 (法律文书常用)"
+echo "  - 楷体_GB2312 (法律文书常用)"
+echo "  - 方正小标宋简 (公文标题常用)"
+echo ""

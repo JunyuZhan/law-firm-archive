@@ -4,10 +4,11 @@ FROM onlyoffice/documentserver:latest
 LABEL maintainer="Law Firm Management System"
 LABEL description="OnlyOffice Document Server with Chinese fonts"
 
-# 复制自定义字体文件（如仿宋、楷体等）
-COPY fonts/ /usr/share/fonts/truetype/custom/
+# 复制自定义字体文件（仿宋、楷体、小标宋等法律文档常用字体）
+COPY fonts/*.TTF /usr/share/fonts/truetype/custom/
+COPY fonts/*.ttf /usr/share/fonts/truetype/custom/
 
-# 安装中文字体
+# 安装中文字体包
 RUN apt-get update -qq && \
     apt-get install -y --no-install-recommends \
         fonts-wqy-zenhei \
@@ -20,8 +21,13 @@ RUN apt-get update -qq && \
     # 刷新字体缓存
     fc-cache -fv
 
-# 生成 OnlyOffice 字体列表（在容器启动时会自动执行，这里预生成加速启动）
-# 注意：这一步在构建时可能会失败，因为服务还没启动，所以用 || true 忽略错误
+# 生成 OnlyOffice 字体列表
+# 注意：这一步在构建时可能会失败，因为服务还没启动，用 || true 忽略错误
+# 实际字体生成会在容器首次启动时自动完成
 RUN cd /var/www/onlyoffice/documentserver/server/tools && \
     ./allfontsgen || true
 
+# 包含的自定义字体:
+# - 仿宋_GB2312.TTF  (法律文书常用)
+# - 楷体_GB2312.TTF  (法律文书常用)
+# - 方正小标宋简.TTF (公文标题常用)
