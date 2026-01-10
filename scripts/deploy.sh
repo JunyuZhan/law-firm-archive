@@ -45,83 +45,96 @@ generate_password() {
 ENV_FILE="docker/.env"
 ENV_EXAMPLE="docker/env.example"
 
+# 标记是否是首次创建
+FIRST_TIME=false
+
 if [ ! -f "$ENV_FILE" ]; then
     echo -e "${YELLOW}⚠️  未找到 .env 文件，正在自动创建...${NC}"
     cp "$ENV_EXAMPLE" "$ENV_FILE"
+    FIRST_TIME=true
 fi
 
 # 读取当前配置
 source "$ENV_FILE"
 
-# 标记是否有更新
-UPDATED=false
-
 # =====================================================
-# 自动生成 JWT_SECRET
+# 只在首次创建时自动生成所有密钥
 # =====================================================
-if [ -z "$JWT_SECRET" ] || [ "$JWT_SECRET" = "your_very_long_and_secure_jwt_secret_key_here_at_least_64_characters" ]; then
+if [ "$FIRST_TIME" = true ]; then
+    echo -e "${GREEN}🔐 首次部署，自动生成安全密钥...${NC}"
+    
+    # 生成 JWT_SECRET
     NEW_JWT_SECRET=$(generate_secret)
     if [[ "$OSTYPE" == "darwin"* ]]; then
         sed -i '' "s|JWT_SECRET=.*|JWT_SECRET=$NEW_JWT_SECRET|" "$ENV_FILE"
     else
         sed -i "s|JWT_SECRET=.*|JWT_SECRET=$NEW_JWT_SECRET|" "$ENV_FILE"
     fi
-    echo -e "${GREEN}✅ 已自动生成 JWT_SECRET${NC}"
-    UPDATED=true
-fi
-
-# =====================================================
-# 自动生成 DB_PASSWORD
-# =====================================================
-if [ -z "$DB_PASSWORD" ] || [ "$DB_PASSWORD" = "your_secure_db_password_here" ]; then
+    echo -e "${GREEN}   ✅ JWT_SECRET${NC}"
+    
+    # 生成 DB_PASSWORD
     NEW_DB_PASSWORD=$(generate_password)
     if [[ "$OSTYPE" == "darwin"* ]]; then
         sed -i '' "s|DB_PASSWORD=.*|DB_PASSWORD=$NEW_DB_PASSWORD|" "$ENV_FILE"
     else
         sed -i "s|DB_PASSWORD=.*|DB_PASSWORD=$NEW_DB_PASSWORD|" "$ENV_FILE"
     fi
-    echo -e "${GREEN}✅ 已自动生成 DB_PASSWORD${NC}"
-    UPDATED=true
-fi
-
-# =====================================================
-# 自动生成 MINIO_ACCESS_KEY（如果是默认值 minioadmin）
-# =====================================================
-if [ -z "$MINIO_ACCESS_KEY" ] || [ "$MINIO_ACCESS_KEY" = "minioadmin" ]; then
+    echo -e "${GREEN}   ✅ DB_PASSWORD${NC}"
+    
+    # 生成 MINIO_ACCESS_KEY
     NEW_MINIO_ACCESS="lawfirm_minio_$(openssl rand -hex 4 2>/dev/null || head -c 4 /dev/urandom | xxd -p)"
     if [[ "$OSTYPE" == "darwin"* ]]; then
         sed -i '' "s|MINIO_ACCESS_KEY=.*|MINIO_ACCESS_KEY=$NEW_MINIO_ACCESS|" "$ENV_FILE"
     else
         sed -i "s|MINIO_ACCESS_KEY=.*|MINIO_ACCESS_KEY=$NEW_MINIO_ACCESS|" "$ENV_FILE"
     fi
-    echo -e "${GREEN}✅ 已自动生成 MINIO_ACCESS_KEY${NC}"
-    UPDATED=true
-fi
-
-# =====================================================
-# 自动生成 MINIO_SECRET_KEY
-# =====================================================
-if [ -z "$MINIO_SECRET_KEY" ] || [ "$MINIO_SECRET_KEY" = "your_secure_minio_password_here" ] || [ "$MINIO_SECRET_KEY" = "minioadmin" ]; then
+    echo -e "${GREEN}   ✅ MINIO_ACCESS_KEY${NC}"
+    
+    # 生成 MINIO_SECRET_KEY
     NEW_MINIO_SECRET=$(generate_password)
     if [[ "$OSTYPE" == "darwin"* ]]; then
         sed -i '' "s|MINIO_SECRET_KEY=.*|MINIO_SECRET_KEY=$NEW_MINIO_SECRET|" "$ENV_FILE"
     else
         sed -i "s|MINIO_SECRET_KEY=.*|MINIO_SECRET_KEY=$NEW_MINIO_SECRET|" "$ENV_FILE"
     fi
-    echo -e "${GREEN}✅ 已自动生成 MINIO_SECRET_KEY${NC}"
-    UPDATED=true
-fi
-
-# =====================================================
-# 显示生成的密钥（首次部署时）
-# =====================================================
-if [ "$UPDATED" = true ]; then
+    echo -e "${GREEN}   ✅ MINIO_SECRET_KEY${NC}"
+    
     echo ""
-    echo -e "${YELLOW}📝 已自动生成安全密钥，配置已保存到 docker/.env${NC}"
-    echo -e "${YELLOW}   请妥善保管此文件，密钥仅生成一次！${NC}"
+    echo -e "${YELLOW}📝 安全密钥已保存到 docker/.env${NC}"
+    echo -e "${YELLOW}   请妥善保管此文件！${NC}"
     echo ""
+    
     # 重新读取配置
     source "$ENV_FILE"
+else
+    # =====================================================
+    # 非首次部署：只检查是否有危险的默认值，警告但不修改
+    # =====================================================
+    HAS_UNSAFE=false
+    
+    if [ "$MINIO_ACCESS_KEY" = "minioadmin" ] || [ "$MINIO_SECRET_KEY" = "minioadmin" ]; then
+        echo -e "${RED}⚠️  警告：MinIO 使用了不安全的默认密钥 minioadmin${NC}"
+        HAS_UNSAFE=true
+    fi
+    
+    if [ "$DB_PASSWORD" = "your_secure_db_password_here" ] || [ -z "$DB_PASSWORD" ]; then
+        echo -e "${RED}⚠️  警告：数据库密码未正确配置${NC}"
+        HAS_UNSAFE=true
+    fi
+    
+    if [ "$HAS_UNSAFE" = true ]; then
+        echo ""
+        echo -e "${YELLOW}请手动编辑 docker/.env 文件修改不安全的配置${NC}"
+        echo -e "${YELLOW}修改后需要重建相关服务的数据卷${NC}"
+        echo ""
+        read -p "是否继续部署？(y/N) " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            exit 1
+        fi
+    else
+        echo -e "${GREEN}✅ 使用现有的 .env 配置${NC}"
+    fi
 fi
 
 # =====================================================
