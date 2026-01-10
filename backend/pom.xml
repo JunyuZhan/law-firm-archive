@@ -311,6 +311,9 @@
                     <generateGitPropertiesFile>true</generateGitPropertiesFile>
                     <generateGitPropertiesFilename>${project.build.outputDirectory}/git.properties</generateGitPropertiesFilename>
                     <format>json</format>
+                    <!-- Docker 构建时可能没有 .git 目录，不要失败 -->
+                    <failOnNoGitDirectory>false</failOnNoGitDirectory>
+                    <failOnUnableToExtractRepoInfo>false</failOnUnableToExtractRepoInfo>
                     <gitDescribe>
                         <skip>false</skip>
                         <always>false</always>
