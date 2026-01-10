@@ -17,34 +17,34 @@
 ## ✅ 已实施的安全措施
 
 ### 1. SQL注入防护
-- 使用 MyBatis 参数化查询（`#{}`）
-- 所有 SQL 查询都使用 `@Param` 注解绑定参数
-- 未发现字符串拼接 SQL 的情况
+  - 使用 MyBatis 参数化查询（`#{}`）
+  - 所有 SQL 查询都使用 `@Param` 注解绑定参数
+  - 未发现字符串拼接 SQL 的情况
 
 ### 2. 密码安全
-- 使用 BCrypt 密码加密算法
-- 密码存储前进行哈希处理
-- 支持密码修改时的旧密码验证
+  - 使用 BCrypt 密码加密算法
+  - 密码存储前进行哈希处理
+  - 支持密码修改时的旧密码验证
 
 ### 3. 文件上传安全
-- 文件类型白名单验证（`FileTypeService`）
-- 文件大小限制（100MB）
-- 文件扩展名检查
+  - 文件类型白名单验证（`FileTypeService`）
+  - 文件大小限制（100MB）
+  - 文件扩展名检查
 
 ### 4. 权限验证机制
-- 基于 JWT 的认证机制
-- 使用 `@RequirePermission` 注解进行权限控制
-- 管理员权限检查（`SecurityUtils.isAdmin()`）
-- 数据权限范围控制（ALL、DEPT_AND_CHILD、DEPT、SELF）
+  - 基于 JWT 的认证机制
+  - 使用 `@RequirePermission` 注解进行权限控制
+  - 管理员权限检查（`SecurityUtils.isAdmin()`）
+  - 数据权限范围控制（ALL、DEPT_AND_CHILD、DEPT、SELF）
 
 ### 5. 输入验证
 - 使用 Jakarta Bean Validation
-- 全局异常处理器统一处理验证错误
-- 参数校验失败时返回友好的错误信息
+  - 全局异常处理器统一处理验证错误
+  - 参数校验失败时返回友好的错误信息
 
 ### 6. 路径遍历防护
-- 使用 `Paths.get().toAbsolutePath().normalize()` 规范化路径
-- 防止 `../` 等路径遍历攻击
+  - 使用 `Paths.get().toAbsolutePath().normalize()` 规范化路径
+  - 防止 `../` 等路径遍历攻击
 
 ### 7. XSS 防护
 - `XssFilter` 过滤器自动清理请求中的 XSS 脚本

@@ -1119,17 +1119,16 @@ ON CONFLICT (role_id, menu_id) DO NOTHING;
 -- =====================================================
 -- 默认用户数据
 -- =====================================================
--- 密码说明:
--- admin123 的 BCrypt 哈希: $2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKj1gMGi
--- lawyer123 的 BCrypt 哈希: $2a$10$eUJL8V0X6yLz7NdRqQ5Tx.YbZmVQK7zyHCqJz9P1E7eF5Z6tJvNXe
+-- 默认密码: admin123
+-- BCrypt 哈希 (cost=12): $2a$12$VwbtDL2dik9LtPNlLf7qqu64ZSlS67cedlG/eQXm0mGK7sONamcLO
 -- =====================================================
 
 -- 插入默认用户
 INSERT INTO public.sys_user (id, username, password, real_name, email, phone, status, deleted, create_time, update_time, version)
 VALUES 
-(1, 'admin', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKj1gMGi', '系统管理员', 'admin@lawfirm.com', '13800000001', 'ACTIVE', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0),
-(2, 'director', '$2a$10$eUJL8V0X6yLz7NdRqQ5Tx.YbZmVQK7zyHCqJz9P1E7eF5Z6tJvNXe', '律所主任', 'director@lawfirm.com', '13800000002', 'ACTIVE', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0),
-(3, 'lawyer1', '$2a$10$eUJL8V0X6yLz7NdRqQ5Tx.YbZmVQK7zyHCqJz9P1E7eF5Z6tJvNXe', '张律师', 'lawyer1@lawfirm.com', '13800000003', 'ACTIVE', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0)
+(1, 'admin', '$2a$12$VwbtDL2dik9LtPNlLf7qqu64ZSlS67cedlG/eQXm0mGK7sONamcLO', '系统管理员', 'admin@lawfirm.com', '13800000001', 'ACTIVE', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0),
+(2, 'director', '$2a$12$VwbtDL2dik9LtPNlLf7qqu64ZSlS67cedlG/eQXm0mGK7sONamcLO', '律所主任', 'director@lawfirm.com', '13800000002', 'ACTIVE', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0),
+(3, 'lawyer1', '$2a$12$VwbtDL2dik9LtPNlLf7qqu64ZSlS67cedlG/eQXm0mGK7sONamcLO', '张律师', 'lawyer1@lawfirm.com', '13800000003', 'ACTIVE', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0)
 ON CONFLICT (id) DO NOTHING;
 
 -- 设置用户ID序列

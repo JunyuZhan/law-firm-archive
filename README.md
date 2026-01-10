@@ -102,8 +102,8 @@ pnpm dev
 | 用户名 | 密码 | 角色 |
 |--------|------|------|
 | admin | admin123 | 管理员 |
-| director | lawyer123 | 律所主任 |
-| lawyer1 | lawyer123 | 律师 |
+| director | admin123 | 律所主任 |
+| lawyer1 | admin123 | 律师 |
 
 ## 功能模块
 
