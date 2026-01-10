@@ -1,4 +1,5 @@
-version: '3.8'
+# 开发环境配置
+name: law-firm-dev
 
 services:
   # PostgreSQL 数据库
