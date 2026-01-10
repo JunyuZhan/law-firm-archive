@@ -15,6 +15,25 @@ import { getProfileInfo } from '#/api/core/profile';
 import { getPendingApprovals, getMyInitiatedApprovals } from '#/api/workbench';
 import { $t } from '#/locales';
 
+// 已通知的审批进度记录（避免重复弹窗）
+const NOTIFIED_APPROVAL_KEY = 'lawfirm_notified_approval_progress';
+
+function getLastNotifiedTime(): number {
+  try {
+    return Number(localStorage.getItem(NOTIFIED_APPROVAL_KEY)) || 0;
+  } catch {
+    return 0;
+  }
+}
+
+function setLastNotifiedTime(time: number) {
+  try {
+    localStorage.setItem(NOTIFIED_APPROVAL_KEY, String(time));
+  } catch {
+    // ignore
+  }
+}
+
 export const useAuthStore = defineStore('auth', () => {
   const accessStore = useAccessStore();
   const userStore = useUserStore();
@@ -174,15 +193,17 @@ export const useAuthStore = defineStore('auth', () => {
         });
       }
       
-      // 获取我发起的审批中已处理的（最近24小时内）
+      // 获取我发起的审批中已处理的（只通知上次登录后新处理的）
       const initiatedList = await getMyInitiatedApprovals();
+      const lastNotifiedTime = getLastNotifiedTime();
+      const now = Date.now();
+      
       const recentlyProcessed = (initiatedList || []).filter(item => {
         if (item.status === 'PENDING') return false;
         if (!item.approvedAt) return false;
         const approvedTime = new Date(item.approvedAt).getTime();
-        const now = Date.now();
-        const oneDayAgo = now - 24 * 60 * 60 * 1000;
-        return approvedTime > oneDayAgo;
+        // 只通知上次通知时间之后处理的审批
+        return approvedTime > lastNotifiedTime;
       });
       
       if (recentlyProcessed.length > 0) {
@@ -207,6 +228,9 @@ export const useAuthStore = defineStore('auth', () => {
           style: { cursor: 'pointer' },
         });
       }
+      
+      // 更新最后通知时间
+      setLastNotifiedTime(now);
     } catch (error) {
       // 静默处理错误，不影响登录流程
       console.warn('获取审批通知失败:', error);

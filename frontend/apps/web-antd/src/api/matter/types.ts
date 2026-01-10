@@ -53,6 +53,8 @@ export interface MatterDTO {
   claimAmount?: number;
   outcome?: string;
   contractId?: number;
+  contractNo?: string;
+  contractAmount?: number;
   remark?: string;
   conflictStatus?: string;
   participants?: MatterParticipantDTO[];

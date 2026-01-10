@@ -126,6 +126,8 @@ SCRIPTS=(
     "16-contract-template-schema.sql"
     "20-system-init-data.sql"
     "21-template-init-data.sql"
+    "26-add-dict-menu.sql"
+    "27-dict-init-data.sql"
 )
 
 # 执行脚本

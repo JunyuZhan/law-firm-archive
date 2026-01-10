@@ -10,6 +10,7 @@ import com.lawfirm.common.annotation.RequirePermission;
 import com.lawfirm.common.result.PageResult;
 import com.lawfirm.common.result.Result;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +19,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * 系统备份 Controller
@@ -107,6 +109,21 @@ public class BackupController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, 
                         "attachment; filename=\"" + filename + "\"")
                 .body(resource);
+    }
+
+    /**
+     * 导入外部备份文件
+     */
+    @PostMapping("/import")
+    @RequirePermission("system:backup:create")
+    @OperationLog(module = "系统备份", action = "导入备份")
+    @Operation(summary = "导入外部备份文件", description = "上传外部备份文件（.sql 或 pg_dump 自定义格式），导入后可用于恢复")
+    public Result<BackupDTO> importBackup(
+            @Parameter(description = "备份文件") @RequestParam("file") MultipartFile file,
+            @Parameter(description = "备份类型") @RequestParam(defaultValue = "DATABASE") String backupType,
+            @Parameter(description = "备份说明") @RequestParam(required = false) String description) {
+        BackupDTO backup = backupAppService.importBackup(file, backupType, description);
+        return Result.success(backup);
     }
 }
 

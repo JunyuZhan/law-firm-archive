@@ -1,0 +1,363 @@
+package com.lawfirm.infrastructure.persistence.interceptor;
+
+import com.baomidou.mybatisplus.core.plugins.InterceptorIgnoreHelper;
+import com.baomidou.mybatisplus.core.toolkit.PluginUtils;
+import com.baomidou.mybatisplus.extension.plugins.inner.InnerInterceptor;
+import com.lawfirm.common.annotation.DataScope;
+import com.lawfirm.common.util.SecurityUtils;
+import com.lawfirm.domain.system.repository.DepartmentRepository;
+import lombok.extern.slf4j.Slf4j;
+import net.sf.jsqlparser.expression.Expression;
+import net.sf.jsqlparser.expression.LongValue;
+import net.sf.jsqlparser.expression.Parenthesis;
+import net.sf.jsqlparser.expression.operators.conditional.AndExpression;
+import net.sf.jsqlparser.expression.operators.relational.EqualsTo;
+import net.sf.jsqlparser.expression.operators.relational.InExpression;
+import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
+import net.sf.jsqlparser.parser.CCJSqlParserUtil;
+import net.sf.jsqlparser.schema.Column;
+import net.sf.jsqlparser.statement.select.PlainSelect;
+import net.sf.jsqlparser.statement.select.Select;
+import org.apache.ibatis.executor.Executor;
+import org.apache.ibatis.mapping.BoundSql;
+import org.apache.ibatis.mapping.MappedStatement;
+import org.apache.ibatis.session.ResultHandler;
+import org.apache.ibatis.session.RowBounds;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
+
+import java.lang.reflect.Method;
+import java.sql.SQLException;
+import java.util.*;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
+
+/**
+ * 数据权限SQL拦截器
+ * 
+ * 自动在SQL查询中添加数据权限过滤条件：
+ * - ALL: 不添加条件（全部数据）
+ * - DEPT_AND_CHILD: AND dept_id IN (当前部门及下级部门ID列表)
+ * - DEPT: AND dept_id = 当前部门ID
+ * - SELF: AND created_by = 当前用户ID
+ * 
+ * 使用方式：
+ * 1. 在Mapper方法上添加 @DataScope 注解
+ * 2. 配置 deptAlias 和 userAlias 指定表别名
+ */
+@Slf4j
+@Component
+public class DataScopeInterceptor implements InnerInterceptor {
+    
+    // 使用 @Lazy 延迟加载，避免循环依赖
+    private DepartmentRepository departmentRepository;
+    
+    @Autowired
+    @Lazy
+    public void setDepartmentRepository(DepartmentRepository departmentRepository) {
+        this.departmentRepository = departmentRepository;
+    }
+    
+    /**
+     * 缓存方法上的 @DataScope 注解
+     */
+    private final Map<String, DataScope> dataScopeCache = new ConcurrentHashMap<>();
+    
+    /**
+     * 记录已检查但没有 @DataScope 注解的方法（避免重复反射查找）
+     */
+    private final Set<String> noDataScopeMethods = ConcurrentHashMap.newKeySet();
+    
+    /**
+     * 缓存部门及下级部门ID（避免频繁查询）
+     * key: 部门ID, value: 部门及下级部门ID列表
+     */
+    private final Map<Long, List<Long>> deptChildrenCache = new ConcurrentHashMap<>();
+    
+    @Override
+    public void beforeQuery(Executor executor, MappedStatement ms, Object parameter, 
+                           RowBounds rowBounds, ResultHandler resultHandler, BoundSql boundSql) throws SQLException {
+        // 检查是否需要忽略
+        if (InterceptorIgnoreHelper.willIgnoreDataPermission(ms.getId())) {
+            return;
+        }
+        
+        // 获取 @DataScope 注解
+        DataScope dataScope = getDataScopeAnnotation(ms);
+        if (dataScope == null || !dataScope.enabled()) {
+            return;
+        }
+        
+        // 获取当前用户数据权限范围
+        String scopeType;
+        Long userId;
+        Long deptId;
+        
+        try {
+            scopeType = SecurityUtils.getDataScope();
+            userId = SecurityUtils.getUserId();
+            deptId = SecurityUtils.getDepartmentId();
+        } catch (Exception e) {
+            // 未登录或获取用户信息失败，跳过数据权限过滤
+            log.debug("获取用户信息失败，跳过数据权限过滤: {}", e.getMessage());
+            return;
+        }
+        
+        // ALL 权限不需要过滤
+        if ("ALL".equals(scopeType)) {
+            log.debug("用户拥有ALL权限，跳过数据权限过滤");
+            return;
+        }
+        
+        // 构建数据权限SQL条件
+        String dataScopeSql = buildDataScopeSql(dataScope, scopeType, userId, deptId);
+        if (!StringUtils.hasText(dataScopeSql)) {
+            return;
+        }
+        
+        // 修改原SQL
+        String originalSql = boundSql.getSql();
+        String newSql = appendDataScopeCondition(originalSql, dataScopeSql);
+        
+        if (newSql != null && !newSql.equals(originalSql)) {
+            // 使用反射修改 BoundSql 中的 SQL
+            PluginUtils.mpBoundSql(boundSql).sql(newSql);
+            log.debug("数据权限SQL拦截 - 原SQL: {}", originalSql);
+            log.debug("数据权限SQL拦截 - 新SQL: {}", newSql);
+        }
+    }
+    
+    /**
+     * 获取方法上的 @DataScope 注解
+     */
+    private DataScope getDataScopeAnnotation(MappedStatement ms) {
+        String id = ms.getId();
+        
+        // 从缓存获取
+        if (dataScopeCache.containsKey(id)) {
+            return dataScopeCache.get(id);
+        }
+        
+        // 检查是否已确认没有注解
+        if (noDataScopeMethods.contains(id)) {
+            return null;
+        }
+        
+        DataScope dataScope = null;
+        try {
+            // 解析 Mapper 类和方法
+            String className = id.substring(0, id.lastIndexOf("."));
+            String methodName = id.substring(id.lastIndexOf(".") + 1);
+            
+            Class<?> mapperClass = Class.forName(className);
+            
+            // 先检查类上的注解
+            dataScope = mapperClass.getAnnotation(DataScope.class);
+            
+            // 再检查方法上的注解（方法注解优先级更高）
+            for (Method method : mapperClass.getMethods()) {
+                if (method.getName().equals(methodName)) {
+                    DataScope methodAnnotation = method.getAnnotation(DataScope.class);
+                    if (methodAnnotation != null) {
+                        dataScope = methodAnnotation;
+                        break;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.debug("获取DataScope注解失败: {}", e.getMessage());
+        }
+        
+        // 缓存结果：ConcurrentHashMap不允许null值，所以需要分开处理
+        if (dataScope != null) {
+            dataScopeCache.put(id, dataScope);
+        } else {
+            noDataScopeMethods.add(id);
+        }
+        return dataScope;
+    }
+    
+    /**
+     * 构建数据权限SQL条件
+     */
+    private String buildDataScopeSql(DataScope dataScope, String scopeType, Long userId, Long deptId) {
+        StringBuilder sql = new StringBuilder();
+        
+        switch (scopeType) {
+            case "DEPT_AND_CHILD":
+                // 部门及下级部门
+                if (deptId != null && StringUtils.hasText(dataScope.deptAlias())) {
+                    List<Long> deptIds = getDeptAndChildrenIds(deptId);
+                    if (!deptIds.isEmpty()) {
+                        String alias = dataScope.deptAlias();
+                        String field = dataScope.deptField();
+                        String column = StringUtils.hasText(alias) ? alias + "." + field : field;
+                        sql.append(column).append(" IN (")
+                           .append(deptIds.stream().map(String::valueOf).collect(Collectors.joining(",")))
+                           .append(")");
+                    }
+                }
+                break;
+                
+            case "DEPT":
+                // 本部门
+                if (deptId != null && StringUtils.hasText(dataScope.deptAlias())) {
+                    String alias = dataScope.deptAlias();
+                    String field = dataScope.deptField();
+                    String column = StringUtils.hasText(alias) ? alias + "." + field : field;
+                    sql.append(column).append(" = ").append(deptId);
+                }
+                break;
+                
+            case "SELF":
+            default:
+                // 仅本人
+                if (userId != null && StringUtils.hasText(dataScope.userAlias())) {
+                    String alias = dataScope.userAlias();
+                    String field = dataScope.userField();
+                    String column = StringUtils.hasText(alias) ? alias + "." + field : field;
+                    sql.append(column).append(" = ").append(userId);
+                }
+                break;
+        }
+        
+        return sql.toString();
+    }
+    
+    /**
+     * 获取部门及下级部门ID列表
+     */
+    private List<Long> getDeptAndChildrenIds(Long deptId) {
+        // 从缓存获取
+        List<Long> cached = deptChildrenCache.get(deptId);
+        if (cached != null) {
+            return cached;
+        }
+        
+        // 查询部门及下级部门
+        List<Long> deptIds = new ArrayList<>();
+        deptIds.add(deptId);
+        
+        try {
+            // 递归查询下级部门
+            collectChildDeptIds(deptId, deptIds);
+        } catch (Exception e) {
+            log.warn("查询下级部门失败: {}", e.getMessage());
+        }
+        
+        // 缓存结果（5分钟后过期，这里简化处理不设过期）
+        deptChildrenCache.put(deptId, deptIds);
+        return deptIds;
+    }
+    
+    /**
+     * 递归收集下级部门ID
+     */
+    private void collectChildDeptIds(Long parentId, List<Long> result) {
+        try {
+            List<Long> childIds = departmentRepository.lambdaQuery()
+                    .select(com.lawfirm.domain.system.entity.Department::getId)
+                    .eq(com.lawfirm.domain.system.entity.Department::getParentId, parentId)
+                    .eq(com.lawfirm.domain.system.entity.Department::getDeleted, false)
+                    .list()
+                    .stream()
+                    .map(com.lawfirm.domain.system.entity.Department::getId)
+                    .collect(Collectors.toList());
+            
+            for (Long childId : childIds) {
+                if (!result.contains(childId)) {
+                    result.add(childId);
+                    collectChildDeptIds(childId, result);
+                }
+            }
+        } catch (Exception e) {
+            log.debug("递归查询下级部门失败: {}", e.getMessage());
+        }
+    }
+    
+    /**
+     * 在原SQL中追加数据权限条件
+     */
+    private String appendDataScopeCondition(String originalSql, String dataScopeSql) {
+        if (!StringUtils.hasText(dataScopeSql)) {
+            return originalSql;
+        }
+        
+        try {
+            // 使用 JSqlParser 解析SQL
+            Select select = (Select) CCJSqlParserUtil.parse(originalSql);
+            PlainSelect plainSelect = (PlainSelect) select.getSelectBody();
+            
+            // 构建新的WHERE条件
+            Expression where = plainSelect.getWhere();
+            Expression dataScopeExpression = CCJSqlParserUtil.parseCondExpression(dataScopeSql);
+            
+            if (where == null) {
+                plainSelect.setWhere(dataScopeExpression);
+            } else {
+                // 将原条件和数据权限条件用 AND 连接
+                AndExpression andExpression = new AndExpression(where, new Parenthesis(dataScopeExpression));
+                plainSelect.setWhere(andExpression);
+            }
+            
+            return select.toString();
+        } catch (Exception e) {
+            log.warn("解析SQL失败，使用字符串拼接方式: {}", e.getMessage());
+            // 降级方案：字符串拼接
+            return appendConditionByString(originalSql, dataScopeSql);
+        }
+    }
+    
+    /**
+     * 字符串拼接方式追加条件（降级方案）
+     */
+    private String appendConditionByString(String originalSql, String dataScopeSql) {
+        String upperSql = originalSql.toUpperCase();
+        
+        // 查找 WHERE 关键字位置
+        int whereIndex = upperSql.lastIndexOf(" WHERE ");
+        int orderByIndex = upperSql.lastIndexOf(" ORDER BY ");
+        int groupByIndex = upperSql.lastIndexOf(" GROUP BY ");
+        int limitIndex = upperSql.lastIndexOf(" LIMIT ");
+        
+        // 找到插入位置
+        int insertIndex = originalSql.length();
+        if (orderByIndex > 0) insertIndex = Math.min(insertIndex, orderByIndex);
+        if (groupByIndex > 0) insertIndex = Math.min(insertIndex, groupByIndex);
+        if (limitIndex > 0) insertIndex = Math.min(insertIndex, limitIndex);
+        
+        StringBuilder newSql = new StringBuilder();
+        if (whereIndex > 0) {
+            // 已有 WHERE，追加 AND 条件
+            newSql.append(originalSql, 0, insertIndex);
+            newSql.append(" AND (").append(dataScopeSql).append(")");
+            newSql.append(originalSql.substring(insertIndex));
+        } else {
+            // 没有 WHERE，添加 WHERE 条件
+            newSql.append(originalSql, 0, insertIndex);
+            newSql.append(" WHERE ").append(dataScopeSql);
+            newSql.append(originalSql.substring(insertIndex));
+        }
+        
+        return newSql.toString();
+    }
+    
+    /**
+     * 清除部门缓存（部门变更时调用）
+     */
+    public void clearDeptCache() {
+        deptChildrenCache.clear();
+        log.info("数据权限部门缓存已清除");
+    }
+    
+    /**
+     * 清除指定部门的缓存
+     */
+    public void clearDeptCache(Long deptId) {
+        deptChildrenCache.remove(deptId);
+        log.debug("数据权限部门缓存已清除: deptId={}", deptId);
+    }
+}

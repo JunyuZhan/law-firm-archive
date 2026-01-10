@@ -7,6 +7,7 @@ import com.lawfirm.application.system.dto.AnnouncementDTO;
 import com.lawfirm.common.base.PageQuery;
 import com.lawfirm.common.exception.BusinessException;
 import com.lawfirm.common.result.PageResult;
+import com.lawfirm.common.util.SecurityUtils;
 import com.lawfirm.domain.system.entity.Announcement;
 import com.lawfirm.domain.system.repository.AnnouncementRepository;
 import com.lawfirm.infrastructure.persistence.mapper.AnnouncementMapper;
@@ -53,9 +54,15 @@ public class AnnouncementAppService {
 
     /**
      * 获取有效公告
+     * 问题499修复：验证limit参数最大值
      */
+    private static final int MAX_ANNOUNCEMENT_LIMIT = 100;
+    
     public List<AnnouncementDTO> getValidAnnouncements(int limit) {
-        return announcementMapper.selectValidAnnouncements(limit).stream()
+        // 问题499修复：验证并限制最大值
+        int safeLimit = Math.min(Math.max(limit, 1), MAX_ANNOUNCEMENT_LIMIT);
+        
+        return announcementMapper.selectValidAnnouncements(safeLimit).stream()
                 .map(this::toDTO)
                 .collect(Collectors.toList());
     }
@@ -70,11 +77,18 @@ public class AnnouncementAppService {
 
     /**
      * 创建公告
+     * 问题503修复：验证过期时间不能在当前时间之前
      */
     @Transactional
     public AnnouncementDTO createAnnouncement(CreateAnnouncementCommand command) {
         if (!StringUtils.hasText(command.getTitle())) {
             throw new BusinessException("公告标题不能为空");
+        }
+
+        // 问题503修复：验证过期时间
+        LocalDateTime expireTime = command.getExpireTime();
+        if (expireTime != null && expireTime.isBefore(LocalDateTime.now())) {
+            throw new BusinessException("公告过期时间不能早于当前时间");
         }
 
         Announcement announcement = Announcement.builder()
@@ -83,7 +97,7 @@ public class AnnouncementAppService {
                 .type(command.getType() != null ? command.getType() : Announcement.TYPE_NOTICE)
                 .priority(command.getPriority() != null ? command.getPriority() : 0)
                 .status(Announcement.STATUS_DRAFT)
-                .expireTime(command.getExpireTime())
+                .expireTime(expireTime)
                 .isTop(command.getIsTop() != null ? command.getIsTop() : false)
                 .build();
 
@@ -94,28 +108,49 @@ public class AnnouncementAppService {
 
     /**
      * 更新公告
+     * 问题500修复：限制已发布公告修改
      */
     @Transactional
     public AnnouncementDTO updateAnnouncement(Long id, CreateAnnouncementCommand command) {
         Announcement announcement = announcementRepository.getByIdOrThrow(id, "公告不存在");
 
-        if (StringUtils.hasText(command.getTitle())) {
-            announcement.setTitle(command.getTitle());
-        }
-        if (command.getContent() != null) {
-            announcement.setContent(command.getContent());
-        }
-        if (command.getType() != null) {
-            announcement.setType(command.getType());
-        }
-        if (command.getPriority() != null) {
-            announcement.setPriority(command.getPriority());
-        }
-        if (command.getExpireTime() != null) {
-            announcement.setExpireTime(command.getExpireTime());
-        }
-        if (command.getIsTop() != null) {
-            announcement.setIsTop(command.getIsTop());
+        // 问题500修复：已发布的公告只允许修改过期时间和置顶状态
+        if (Announcement.STATUS_PUBLISHED.equals(announcement.getStatus())) {
+            if (command.getExpireTime() != null) {
+                // 问题503修复：验证过期时间
+                if (command.getExpireTime().isBefore(LocalDateTime.now())) {
+                    throw new BusinessException("公告过期时间不能早于当前时间");
+                }
+                announcement.setExpireTime(command.getExpireTime());
+            }
+            if (command.getIsTop() != null) {
+                announcement.setIsTop(command.getIsTop());
+            }
+            log.warn("修改已发布公告: id={}, 仅允许修改过期时间和置顶状态", id);
+        } else {
+            // 草稿状态可以修改所有字段
+            if (StringUtils.hasText(command.getTitle())) {
+                announcement.setTitle(command.getTitle());
+            }
+            if (command.getContent() != null) {
+                announcement.setContent(command.getContent());
+            }
+            if (command.getType() != null) {
+                announcement.setType(command.getType());
+            }
+            if (command.getPriority() != null) {
+                announcement.setPriority(command.getPriority());
+            }
+            if (command.getExpireTime() != null) {
+                // 问题503修复：验证过期时间
+                if (command.getExpireTime().isBefore(LocalDateTime.now())) {
+                    throw new BusinessException("公告过期时间不能早于当前时间");
+                }
+                announcement.setExpireTime(command.getExpireTime());
+            }
+            if (command.getIsTop() != null) {
+                announcement.setIsTop(command.getIsTop());
+            }
         }
 
         announcementRepository.updateById(announcement);
@@ -125,41 +160,74 @@ public class AnnouncementAppService {
 
     /**
      * 发布公告
+     * 问题492修复：添加权限验证和过期时间检查
      */
     @Transactional
     public AnnouncementDTO publishAnnouncement(Long id) {
+        // 问题492修复：验证权限
+        if (!SecurityUtils.hasRole("ADMIN") && !SecurityUtils.hasRole("ANNOUNCEMENT_MANAGER")) {
+            throw new BusinessException("权限不足：只有管理员才能发布公告");
+        }
+
         Announcement announcement = announcementRepository.getByIdOrThrow(id, "公告不存在");
         
         if (Announcement.STATUS_PUBLISHED.equals(announcement.getStatus())) {
             throw new BusinessException("公告已发布");
         }
 
+        // 问题492修复：验证过期时间
+        if (announcement.getExpireTime() != null &&
+            announcement.getExpireTime().isBefore(LocalDateTime.now())) {
+            throw new BusinessException("公告已过期，无法发布");
+        }
+
         announcement.setStatus(Announcement.STATUS_PUBLISHED);
         announcement.setPublishTime(LocalDateTime.now());
         announcementRepository.updateById(announcement);
-        log.info("公告发布成功: {}", announcement.getTitle());
+        
+        log.info("公告发布成功: id={}, title={}, publisher={}",
+                id, announcement.getTitle(), SecurityUtils.getUserId());
         return toDTO(announcement);
     }
 
     /**
      * 撤回公告
+     * 问题493修复：添加权限验证
      */
     @Transactional
     public void withdrawAnnouncement(Long id) {
+        // 问题493修复：验证权限
+        if (!SecurityUtils.hasRole("ADMIN") && !SecurityUtils.hasRole("ANNOUNCEMENT_MANAGER")) {
+            throw new BusinessException("权限不足：只有管理员才能撤回公告");
+        }
+
         Announcement announcement = announcementRepository.getByIdOrThrow(id, "公告不存在");
         announcement.setStatus(Announcement.STATUS_DRAFT);
         announcementRepository.updateById(announcement);
-        log.info("公告撤回成功: {}", announcement.getTitle());
+        
+        log.info("公告撤回成功: id={}, title={}, operator={}",
+                id, announcement.getTitle(), SecurityUtils.getUserId());
     }
 
     /**
      * 删除公告
+     * 问题494修复：使用软删除替代物理删除
      */
     @Transactional
     public void deleteAnnouncement(Long id) {
+        // 问题494修复：验证权限
+        if (!SecurityUtils.hasRole("ADMIN")) {
+            throw new BusinessException("权限不足：只有管理员才能删除公告");
+        }
+
         Announcement announcement = announcementRepository.getByIdOrThrow(id, "公告不存在");
-        announcementMapper.deleteById(id);
-        log.info("公告删除成功: {}", announcement.getTitle());
+
+        // 问题494修复：软删除（改为过期状态）
+        announcement.setStatus(Announcement.STATUS_EXPIRED);
+        announcementRepository.updateById(announcement);
+
+        log.info("公告已归档: id={}, title={}, operator={}",
+                id, announcement.getTitle(), SecurityUtils.getUserId());
     }
 
     private String getTypeName(String type) {

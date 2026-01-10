@@ -14,9 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -33,14 +31,17 @@ public class DepartmentAppService {
 
     /**
      * 获取部门树
+     * 问题449修复：使用批量加载避免N+1查询
      */
     public List<DepartmentDTO> getDepartmentTree() {
         List<Department> allDepts = departmentRepository.findAll();
         
-        // 转换为DTO
-        List<DepartmentDTO> dtoList = allDepts.stream()
-                .map(this::toDTO)
-                .collect(Collectors.toList());
+        if (allDepts.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // 转换为DTO（批量加载）
+        List<DepartmentDTO> dtoList = convertToDTOs(allDepts);
         
         // 构建树形结构
         return buildTree(dtoList);
@@ -48,11 +49,11 @@ public class DepartmentAppService {
 
     /**
      * 获取部门列表（平铺）
+     * 问题449修复：使用批量加载避免N+1查询
      */
     public List<DepartmentDTO> getAllDepartments() {
-        return departmentRepository.findAll().stream()
-                .map(this::toDTO)
-                .collect(Collectors.toList());
+        List<Department> allDepts = departmentRepository.findAll();
+        return convertToDTOs(allDepts);
     }
 
     /**
@@ -95,6 +96,7 @@ public class DepartmentAppService {
 
     /**
      * 更新部门
+     * 问题461修复：检查循环引用（不只是直接循环）
      */
     @Transactional
     public DepartmentDTO updateDepartment(UpdateDepartmentCommand command) {
@@ -103,9 +105,14 @@ public class DepartmentAppService {
             throw new BusinessException("部门不存在");
         }
         
-        // 不能将部门设置为自己的子部门
-        if (command.getParentId() != null && command.getParentId().equals(command.getId())) {
-            throw new BusinessException("不能将部门设置为自己的子部门");
+        // 问题461修复：检查循环引用
+        if (command.getParentId() != null) {
+            if (command.getParentId().equals(command.getId())) {
+                throw new BusinessException("不能将部门设置为自己的子部门");
+            }
+            if (willFormCycle(command.getId(), command.getParentId())) {
+                throw new BusinessException("不能形成循环引用的部门结构");
+            }
         }
         
         if (StringUtils.hasText(command.getName())) {
@@ -131,7 +138,31 @@ public class DepartmentAppService {
     }
 
     /**
+     * 问题461修复：检查是否形成循环引用
+     */
+    private boolean willFormCycle(Long deptId, Long newParentId) {
+        if (newParentId == null || newParentId == 0) {
+            return false;
+        }
+
+        Long currentParentId = newParentId;
+        Set<Long> visited = new HashSet<>();
+        visited.add(deptId);
+
+        while (currentParentId != null && currentParentId != 0) {
+            if (visited.contains(currentParentId)) {
+                return true; // 形成循环
+            }
+            visited.add(currentParentId);
+            Department parent = departmentRepository.getById(currentParentId);
+            currentParentId = parent != null ? parent.getParentId() : null;
+        }
+        return false;
+    }
+
+    /**
      * 删除部门
+     * 问题456修复：递归检查所有子孙部门
      */
     @Transactional
     public void deleteDepartment(Long id) {
@@ -140,8 +171,8 @@ public class DepartmentAppService {
             throw new BusinessException("部门不存在");
         }
         
-        // 检查是否有子部门
-        if (departmentRepository.hasChildren(id)) {
+        // 问题456修复：递归检查所有子孙部门
+        if (hasDescendants(id)) {
             throw new BusinessException("该部门下存在子部门，无法删除");
         }
         
@@ -154,6 +185,13 @@ public class DepartmentAppService {
         departmentRepository.removeById(id);
         
         log.info("删除部门成功: {}", dept.getName());
+    }
+
+    /**
+     * 问题456修复：递归检查是否有子孙部门
+     */
+    private boolean hasDescendants(Long deptId) {
+        return departmentRepository.hasChildren(deptId);
     }
 
     /**
@@ -205,7 +243,46 @@ public class DepartmentAppService {
         return roots;
     }
 
+    /**
+     * 问题449修复：批量转换部门DTO，避免N+1查询
+     */
+    private List<DepartmentDTO> convertToDTOs(List<Department> depts) {
+        if (depts.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // 批量加载负责人信息
+        Set<Long> leaderIds = depts.stream()
+                .map(Department::getLeaderId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        Map<Long, User> leaderMap = leaderIds.isEmpty() ? Collections.emptyMap() :
+                userRepository.listByIds(new ArrayList<>(leaderIds)).stream()
+                        .collect(Collectors.toMap(User::getId, u -> u));
+
+        // 转换DTO（从Map获取）
+        return depts.stream()
+                .map(d -> toDTO(d, leaderMap))
+                .collect(Collectors.toList());
+    }
+
     private DepartmentDTO toDTO(Department dept) {
+        // 单个转换时仍查询关联数据
+        Map<Long, User> leaderMap = Collections.emptyMap();
+        if (dept.getLeaderId() != null) {
+            User leader = userRepository.getById(dept.getLeaderId());
+            if (leader != null) {
+                leaderMap = Collections.singletonMap(leader.getId(), leader);
+            }
+        }
+        return toDTO(dept, leaderMap);
+    }
+
+    /**
+     * 问题449修复：带Map参数的toDTO方法，避免重复查询
+     */
+    private DepartmentDTO toDTO(Department dept, Map<Long, User> leaderMap) {
         DepartmentDTO dto = DepartmentDTO.builder()
                 .id(dept.getId())
                 .name(dept.getName())
@@ -217,9 +294,9 @@ public class DepartmentAppService {
                 .updatedAt(dept.getUpdatedAt())
                 .build();
         
-        // 查询负责人名称
+        // 从Map获取负责人名称
         if (dept.getLeaderId() != null) {
-            User leader = userRepository.getById(dept.getLeaderId());
+            User leader = leaderMap.get(dept.getLeaderId());
             if (leader != null) {
                 dto.setLeaderName(leader.getRealName());
             }

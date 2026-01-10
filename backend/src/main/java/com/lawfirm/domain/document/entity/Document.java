@@ -139,4 +139,9 @@ public class Document extends BaseEntity {
      */
     @lombok.Builder.Default
     private Boolean aiGenerated = false;
+
+    /**
+     * 缩略图URL（图片和PDF文件）
+     */
+    private String thumbnailUrl;
 }

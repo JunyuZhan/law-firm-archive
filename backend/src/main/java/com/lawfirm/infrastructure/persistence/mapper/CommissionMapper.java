@@ -198,5 +198,27 @@ public interface CommissionMapper extends BaseMapper<Commission> {
         AND cd.deleted = false
         """)
     int countByCommissionIdAndUserId(@Param("commissionId") Long commissionId, @Param("userId") Long userId);
+
+    /**
+     * ✅ 修复问题553: 批量查询多个用户的提成总额（避免N+1查询）
+     */
+    @Select("""
+        <script>
+        SELECT 
+            cd.user_id,
+            COALESCE(SUM(cd.commission_amount), 0) as total_commission
+        FROM finance_commission_detail cd
+        INNER JOIN finance_commission c ON cd.commission_id = c.id
+        WHERE c.status = 'PAID' 
+        AND c.deleted = false 
+        AND cd.deleted = false
+        AND cd.user_id IN 
+        <foreach collection="userIds" item="userId" open="(" separator="," close=")">
+            #{userId}
+        </foreach>
+        GROUP BY cd.user_id
+        </script>
+        """)
+    List<java.util.Map<String, Object>> sumCommissionGroupByUserId(@Param("userIds") List<Long> userIds);
 }
 

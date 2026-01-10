@@ -16,15 +16,16 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.lawfirm.application.admin.dto.MonthlyAttendanceStatisticsDTO;
+import org.springframework.dao.DuplicateKeyException;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -64,6 +65,8 @@ public class AttendanceAppService {
 
     /**
      * 签到
+     * ✅ 修复：使用数据库唯一约束+重试机制处理并发
+     * 需要在数据库添加唯一索引: UNIQUE(user_id, attendance_date)
      */
     @Transactional
     public AttendanceDTO checkIn(CheckInCommand command) {
@@ -71,30 +74,15 @@ public class AttendanceAppService {
         LocalDate today = LocalDate.now();
         LocalDateTime now = LocalDateTime.now();
 
-        // 检查今日是否已签到
-        Attendance existing = attendanceMapper.selectByUserAndDate(userId, today);
-        if (existing != null && existing.getCheckInTime() != null) {
-            throw new BusinessException("今日已签到");
-        }
-
         // 判断是否迟到
         String status = Attendance.STATUS_NORMAL;
         if (now.toLocalTime().isAfter(WORK_START_TIME)) {
             status = Attendance.STATUS_LATE;
         }
 
-        Attendance attendance;
-        if (existing != null) {
-            // 更新签到信息
-            existing.setCheckInTime(now);
-            existing.setCheckInLocation(command.getLocation());
-            existing.setCheckInDevice(command.getDevice());
-            existing.setStatus(status);
-            attendanceRepository.updateById(existing);
-            attendance = existing;
-        } else {
-            // 创建新记录
-            attendance = Attendance.builder()
+        try {
+            // ✅ 先尝试直接创建新记录，依赖数据库唯一约束防止重复
+            Attendance attendance = Attendance.builder()
                     .userId(userId)
                     .attendanceDate(today)
                     .checkInTime(now)
@@ -104,10 +92,26 @@ public class AttendanceAppService {
                     .overtimeHours(BigDecimal.ZERO)
                     .build();
             attendanceRepository.save(attendance);
+            log.info("用户签到成功: userId={}, time={}, status={}", userId, now, status);
+            return toDTO(attendance);
+        } catch (DuplicateKeyException e) {
+            // ✅ 唯一约束冲突，说明已有记录，查询并处理
+            Attendance existing = attendanceMapper.selectByUserAndDate(userId, today);
+            if (existing != null && existing.getCheckInTime() != null) {
+                throw new BusinessException("今日已签到");
+            }
+            // 如果记录存在但没有签到时间（预创建的记录），允许更新
+            if (existing != null) {
+                existing.setCheckInTime(now);
+                existing.setCheckInLocation(command.getLocation());
+                existing.setCheckInDevice(command.getDevice());
+                existing.setStatus(status);
+                attendanceRepository.updateById(existing);
+                log.info("用户签到成功(更新): userId={}, time={}, status={}", userId, now, status);
+                return toDTO(existing);
+            }
+            throw new BusinessException("签到失败，请重试");
         }
-
-        log.info("用户签到成功: userId={}, time={}, status={}", userId, now, status);
-        return toDTO(attendance);
     }
 
     /**
@@ -148,9 +152,10 @@ public class AttendanceAppService {
             }
         }
 
-        // 计算加班时长
-        if (now.toLocalTime().isAfter(WORK_END_TIME)) {
-            Duration overtime = Duration.between(WORK_END_TIME, now.toLocalTime());
+        // ✅ 修复：计算加班时长（使用完整DateTime，支持跨天加班）
+        LocalDateTime workEndDateTime = LocalDateTime.of(attendance.getAttendanceDate(), WORK_END_TIME);
+        if (now.isAfter(workEndDateTime)) {
+            Duration overtime = Duration.between(workEndDateTime, now);
             BigDecimal overtimeHours = BigDecimal.valueOf(overtime.toMinutes())
                     .divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
             attendance.setOvertimeHours(overtimeHours);
@@ -173,38 +178,40 @@ public class AttendanceAppService {
 
     /**
      * 获取月度考勤统计
+     * ✅ 修复：使用类型安全的DTO替代Map返回
      */
-    public Map<String, Object> getMonthlyStatistics(Long userId, Integer year, Integer month) {
+    public MonthlyAttendanceStatisticsDTO getMonthlyStatistics(Long userId, Integer year, Integer month) {
         if (userId == null) {
             userId = SecurityUtils.getUserId();
         }
         LocalDate startDate = LocalDate.of(year, month, 1);
         LocalDate endDate = startDate.plusMonths(1).minusDays(1);
 
-        Map<String, Object> result = new HashMap<>();
-        result.put("userId", userId);
-        result.put("year", year);
-        result.put("month", month);
-        result.put("normalDays", 0);
-        result.put("lateDays", 0);
-        result.put("earlyDays", 0);
-        result.put("absentDays", 0);
-        result.put("leaveDays", 0);
+        MonthlyAttendanceStatisticsDTO.MonthlyAttendanceStatisticsDTOBuilder builder =
+                MonthlyAttendanceStatisticsDTO.builder()
+                        .userId(userId)
+                        .year(year)
+                        .month(month)
+                        .normalDays(0)
+                        .lateDays(0)
+                        .earlyDays(0)
+                        .absentDays(0)
+                        .leaveDays(0);
 
         List<Object[]> stats = attendanceMapper.countMonthlyAttendance(userId, startDate, endDate);
         for (Object[] stat : stats) {
             String status = (String) stat[0];
             Long count = (Long) stat[1];
             switch (status) {
-                case Attendance.STATUS_NORMAL -> result.put("normalDays", count.intValue());
-                case Attendance.STATUS_LATE -> result.put("lateDays", count.intValue());
-                case Attendance.STATUS_EARLY -> result.put("earlyDays", count.intValue());
-                case Attendance.STATUS_ABSENT -> result.put("absentDays", count.intValue());
-                case Attendance.STATUS_LEAVE -> result.put("leaveDays", count.intValue());
+                case Attendance.STATUS_NORMAL -> builder.normalDays(count.intValue());
+                case Attendance.STATUS_LATE -> builder.lateDays(count.intValue());
+                case Attendance.STATUS_EARLY -> builder.earlyDays(count.intValue());
+                case Attendance.STATUS_ABSENT -> builder.absentDays(count.intValue());
+                case Attendance.STATUS_LEAVE -> builder.leaveDays(count.intValue());
             }
         }
 
-        return result;
+        return builder.build();
     }
 
     /**

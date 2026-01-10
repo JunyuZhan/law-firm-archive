@@ -34,6 +34,18 @@ public class StatisticsAppService {
     private final com.lawfirm.domain.matter.repository.TaskRepository taskRepository;
     private final com.lawfirm.domain.finance.repository.CommissionRepository commissionRepository;
     private final com.lawfirm.domain.matter.repository.MatterParticipantRepository matterParticipantRepository;
+    
+    // ✅ 修复问题554: 使用ThreadLocal缓存（同一请求内复用）
+    private static final ThreadLocal<Map<String, List<Long>>> MATTER_IDS_CACHE = new ThreadLocal<>();
+    private static final ThreadLocal<Map<String, List<Long>>> CLIENT_IDS_CACHE = new ThreadLocal<>();
+    
+    /**
+     * 清理缓存（请求结束后调用，可在Filter或Interceptor中调用）
+     */
+    public static void clearCache() {
+        MATTER_IDS_CACHE.remove();
+        CLIENT_IDS_CACHE.remove();
+    }
 
     /**
      * 获取收入统计（根据权限过滤）
@@ -239,6 +251,7 @@ public class StatisticsAppService {
 
     /**
      * 获取律师业绩排行（根据权限过滤）
+     * ✅ 修复问题553: 使用批量查询避免N+1查询
      */
     public List<StatisticsDTO.LawyerPerformance> getLawyerPerformanceRanking(Integer limit) {
         // 根据用户权限过滤数据
@@ -250,7 +263,22 @@ public class StatisticsAppService {
         List<Long> accessibleMatterIds = getAccessibleMatterIds(dataScope, currentUserId, deptId);
 
         List<Map<String, Object>> rankings = statisticsMapper.getLawyerPerformanceRanking(limit, accessibleMatterIds);
-        
+
+        if (rankings.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        // ✅ 批量加载所有律师的提成数据（避免N+1查询）
+        Set<Long> lawyerIds = rankings.stream()
+                .map(item -> item.get("lawyer_id"))
+                .filter(Objects::nonNull)
+                .map(id -> ((Number) id).longValue())
+                .collect(Collectors.toSet());
+
+        Map<Long, BigDecimal> commissionMap = lawyerIds.isEmpty() ? Collections.emptyMap() :
+                commissionRepository.sumCommissionByUserIds(new ArrayList<>(lawyerIds));
+
+        // 转换DTO（从Map获取提成，避免查询）
         List<StatisticsDTO.LawyerPerformance> result = new ArrayList<>();
         int rank = 1;
         for (Map<String, Object> item : rankings) {
@@ -265,53 +293,53 @@ public class StatisticsAppService {
             performance.setMatterCount(matterCountObj != null ? ((Number) matterCountObj).longValue() : 0L);
             Object revenueObj = item.get("total_revenue");
             performance.setRevenue(revenueObj != null ? new BigDecimal(revenueObj.toString()) : BigDecimal.ZERO);
-            
-            // 计算提成（根据权限过滤）
-            BigDecimal commission = commissionRepository.sumCommissionByUserId(lawyerId);
+
+            // ✅ 从Map获取提成，避免N+1查询
+            BigDecimal commission = commissionMap.get(lawyerId);
             performance.setCommission(commission != null ? commission : BigDecimal.ZERO);
-            
+
             // 从工时表统计工时（已审批的工时）
             BigDecimal totalHours = (BigDecimal) item.get("total_hours");
             performance.setHours(totalHours != null ? totalHours.doubleValue() : 0.0);
-            
+
             performance.setRank(rank++);
             result.add(performance);
         }
-        
+
         log.info("获取律师业绩排行: count={}, dataScope={}", result.size(), dataScope);
         return result;
     }
 
     /**
      * 获取工作台统计数据（用于仪表盘）
+     * 修复：使用批量查询替代N+1查询，性能优化
      */
     public WorkbenchStatsDTO getWorkbenchStats() {
         Long userId = com.lawfirm.common.util.SecurityUtils.getUserId();
         
         WorkbenchStatsDTO stats = new WorkbenchStatsDTO();
         
-        // 我的项目数（我参与的项目）- 直接使用MyBatis-Plus查询
-        // 先查询参与者列表，然后去重统计
+        // 我的项目数（我参与的项目）- 使用批量查询优化，避免N+1
+        // 先获取所有参与的项目ID
         var participantList = matterParticipantRepository.lambdaQuery()
                 .select(com.lawfirm.domain.matter.entity.MatterParticipant::getMatterId)
                 .eq(com.lawfirm.domain.matter.entity.MatterParticipant::getUserId, userId)
                 .list();
         
-        long matterCountLong = participantList.stream()
+        java.util.List<Long> matterIds = participantList.stream()
                 .map(com.lawfirm.domain.matter.entity.MatterParticipant::getMatterId)
                 .distinct()
-                .filter(matterId -> {
-                    // 检查项目是否存在且未删除
-                    try {
-                        var matter = matterRepository.getById(matterId);
-                        return matter != null && !matter.getDeleted();
-                    } catch (Exception e) {
-                        return false;
-                    }
-                })
-                .count();
+                .collect(java.util.stream.Collectors.toList());
+        
+        long matterCountLong = 0;
+        if (!matterIds.isEmpty()) {
+            // 使用单次批量查询统计有效项目数，避免N+1
+            matterCountLong = matterRepository.lambdaQuery()
+                    .in(com.lawfirm.domain.matter.entity.Matter::getId, matterIds)
+                    .eq(com.lawfirm.domain.matter.entity.Matter::getDeleted, false)
+                    .count();
+        }
         Long matterCount = Long.valueOf(matterCountLong);
-        log.info("我的项目数查询结果: userId={}, matterCount={}, type={}", userId, matterCount, matterCount.getClass().getName());
         stats.setMatterCount(matterCount);
         
         // 我的客户数（我负责的客户）- 直接使用MyBatis-Plus查询
@@ -319,7 +347,6 @@ public class StatisticsAppService {
                 .eq(com.lawfirm.domain.client.entity.Client::getResponsibleLawyerId, userId)
                 .count();
         Long clientCount = Long.valueOf(clientCountLong);
-        log.info("我的客户数查询结果: userId={}, clientCount={}, type={}", userId, clientCount, clientCount.getClass().getName());
         stats.setClientCount(clientCount);
         
         // 本月工时
@@ -334,8 +361,6 @@ public class StatisticsAppService {
         
         log.info("获取工作台统计: userId={}, matterCount={}, clientCount={}, hours={}, taskCount={}", 
                 userId, matterCount, clientCount, monthlyHours, taskCount);
-        log.info("WorkbenchStatsDTO最终值: matterCount={}, clientCount={}, timesheetHours={}, taskCount={}", 
-                stats.getMatterCount(), stats.getClientCount(), stats.getTimesheetHours(), stats.getTaskCount());
         
         return stats;
     }
@@ -385,6 +410,7 @@ public class StatisticsAppService {
 
     /**
      * 获取可访问的项目ID列表（根据数据权限）
+     * ✅ 修复问题554: 使用ThreadLocal缓存避免同一请求内重复查询
      * @return null表示可以访问所有项目，否则返回可访问的项目ID列表
      */
     private List<Long> getAccessibleMatterIds(String dataScope, Long currentUserId, Long deptId) {
@@ -392,6 +418,29 @@ public class StatisticsAppService {
             return null; // null表示可以访问所有项目
         }
         
+        // ✅ 检查缓存
+        String cacheKey = dataScope + "_" + currentUserId + "_" + deptId;
+        Map<String, List<Long>> cache = MATTER_IDS_CACHE.get();
+        if (cache != null && cache.containsKey(cacheKey)) {
+            return cache.get(cacheKey);
+        }
+        
+        List<Long> matterIds = calculateAccessibleMatterIds(dataScope, currentUserId, deptId);
+        
+        // ✅ 放入缓存
+        if (cache == null) {
+            cache = new HashMap<>();
+            MATTER_IDS_CACHE.set(cache);
+        }
+        cache.put(cacheKey, matterIds);
+        
+        return matterIds;
+    }
+    
+    /**
+     * 计算可访问的项目ID列表（实际查询）
+     */
+    private List<Long> calculateAccessibleMatterIds(String dataScope, Long currentUserId, Long deptId) {
         List<Long> matterIds = new ArrayList<>();
         
         if ("DEPT_AND_CHILD".equals(dataScope) && deptId != null) {
@@ -450,6 +499,7 @@ public class StatisticsAppService {
 
     /**
      * 获取可访问的客户ID列表（根据数据权限）
+     * ✅ 修复问题558: 使用ThreadLocal缓存避免同一请求内重复查询
      * @return null表示可以访问所有客户，否则返回可访问的客户ID列表
      */
     private List<Long> getAccessibleClientIds(String dataScope, Long currentUserId, Long deptId) {
@@ -457,6 +507,29 @@ public class StatisticsAppService {
             return null; // null表示可以访问所有客户
         }
         
+        // ✅ 检查缓存
+        String cacheKey = dataScope + "_" + currentUserId + "_" + deptId;
+        Map<String, List<Long>> cache = CLIENT_IDS_CACHE.get();
+        if (cache != null && cache.containsKey(cacheKey)) {
+            return cache.get(cacheKey);
+        }
+        
+        List<Long> clientIds = calculateAccessibleClientIds(dataScope, currentUserId, deptId);
+        
+        // ✅ 放入缓存
+        if (cache == null) {
+            cache = new HashMap<>();
+            CLIENT_IDS_CACHE.set(cache);
+        }
+        cache.put(cacheKey, clientIds);
+        
+        return clientIds;
+    }
+    
+    /**
+     * 计算可访问的客户ID列表（实际查询）
+     */
+    private List<Long> calculateAccessibleClientIds(String dataScope, Long currentUserId, Long deptId) {
         List<Long> clientIds = new ArrayList<>();
         
         if ("DEPT_AND_CHILD".equals(dataScope) && deptId != null) {

@@ -6,11 +6,13 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 /**
  * 合同数据权限服务
+ * ✅ 修复问题603-604: 添加ThreadLocal缓存减少数据库查询
  * 
  * Requirements: 8.1, 8.2, 8.3, 8.5
  */
@@ -28,6 +30,13 @@ public class ContractDataPermissionService {
     private static final String ROLE_FINANCE = "FINANCE";
     private static final String ROLE_ADMIN_STAFF = "ADMIN_STAFF";
     private static final String ROLE_LAWYER = "LAWYER";
+
+    /**
+     * ✅ ThreadLocal缓存：在同一请求中缓存可访问的合同ID
+     * 避免同一请求中多次查询数据库
+     */
+    private static final ThreadLocal<Set<Long>> ACCESSIBLE_CONTRACT_IDS_CACHE = new ThreadLocal<>();
+    private static final ThreadLocal<Long> CACHED_USER_ID = new ThreadLocal<>();
 
     /**
      * 检查当前用户是否可以访问所有合同
@@ -86,6 +95,7 @@ public class ContractDataPermissionService {
     /**
      * 获取当前用户可访问的合同ID列表
      * 如果用户可以访问所有合同，返回null表示不需要过滤
+     * ✅ 修复问题603: 使用ThreadLocal缓存减少重复查询
      * 
      * Requirements: 8.1
      */
@@ -96,11 +106,20 @@ public class ContractDataPermissionService {
         
         // 律师只能访问自己参与的合同
         Long userId = SecurityUtils.getCurrentUserId();
-        return participantRepository.findContractIdsByUserId(userId);
+        List<Long> contractIds = participantRepository.findContractIdsByUserId(userId);
+        
+        // ✅ 缓存到ThreadLocal供canAccessContract使用
+        if (contractIds != null && !contractIds.isEmpty()) {
+            ACCESSIBLE_CONTRACT_IDS_CACHE.set(new HashSet<>(contractIds));
+            CACHED_USER_ID.set(userId);
+        }
+        
+        return contractIds;
     }
 
     /**
      * 检查当前用户是否可以访问指定合同
+     * ✅ 修复问题604: 使用ThreadLocal缓存减少数据库查询
      * 
      * Requirements: 8.1
      */
@@ -109,9 +128,39 @@ public class ContractDataPermissionService {
             return true;
         }
         
-        // 检查用户是否是合同参与人
         Long userId = SecurityUtils.getCurrentUserId();
-        return participantRepository.existsByContractIdAndUserId(contractId, userId);
+        
+        // ✅ 优先使用缓存（同一请求中）
+        Set<Long> cachedIds = ACCESSIBLE_CONTRACT_IDS_CACHE.get();
+        Long cachedUserId = CACHED_USER_ID.get();
+        
+        if (cachedIds != null && userId.equals(cachedUserId)) {
+            return cachedIds.contains(contractId);
+        }
+        
+        // 缓存未命中，查询数据库
+        boolean hasAccess = participantRepository.existsByContractIdAndUserId(contractId, userId);
+        
+        // 如果有权限，将合同ID加入缓存
+        if (hasAccess) {
+            if (cachedIds == null) {
+                cachedIds = new HashSet<>();
+                CACHED_USER_ID.set(userId);
+            }
+            cachedIds.add(contractId);
+            ACCESSIBLE_CONTRACT_IDS_CACHE.set(cachedIds);
+        }
+        
+        return hasAccess;
+    }
+    
+    /**
+     * 清除ThreadLocal缓存（在请求结束时调用）
+     * 建议在Filter或Interceptor中调用
+     */
+    public static void clearCache() {
+        ACCESSIBLE_CONTRACT_IDS_CACHE.remove();
+        CACHED_USER_ID.remove();
     }
 
     /**

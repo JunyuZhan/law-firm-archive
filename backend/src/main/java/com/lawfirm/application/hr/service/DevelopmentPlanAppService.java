@@ -25,8 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -124,8 +123,9 @@ public class DevelopmentPlanAppService {
 
         planRepository.save(plan);
 
-        // 创建里程碑
+        // ✅ 修复：使用批量插入替代循环插入
         if (command.getMilestones() != null && !command.getMilestones().isEmpty()) {
+            List<DevelopmentMilestone> milestones = new ArrayList<>();
             int order = 0;
             for (CreateDevelopmentPlanCommand.MilestoneItem item : command.getMilestones()) {
                 DevelopmentMilestone milestone = DevelopmentMilestone.builder()
@@ -136,8 +136,9 @@ public class DevelopmentPlanAppService {
                         .status("PENDING")
                         .sortOrder(item.getSortOrder() != null ? item.getSortOrder() : order++)
                         .build();
-                milestoneRepository.save(milestone);
+                milestones.add(milestone);
             }
+            milestoneRepository.saveBatch(milestones);
         }
 
         log.info("创建发展规划: {}", plan.getPlanNo());
@@ -173,9 +174,11 @@ public class DevelopmentPlanAppService {
 
         planRepository.updateById(plan);
 
-        // 更新里程碑
+        // ✅ 修复：更新里程碑（事务内操作，失败会回滚）
+        // 由于MilestoneItem没有ID字段，无法实现智能更新，采用批量替换策略
         if (command.getMilestones() != null) {
-            milestoneRepository.deleteByPlanId(id);
+            // 先构建新里程碑列表（验证数据有效性）
+            List<DevelopmentMilestone> newMilestones = new ArrayList<>();
             int order = 0;
             for (CreateDevelopmentPlanCommand.MilestoneItem item : command.getMilestones()) {
                 DevelopmentMilestone milestone = DevelopmentMilestone.builder()
@@ -186,7 +189,15 @@ public class DevelopmentPlanAppService {
                         .status("PENDING")
                         .sortOrder(item.getSortOrder() != null ? item.getSortOrder() : order++)
                         .build();
-                milestoneRepository.save(milestone);
+                newMilestones.add(milestone);
+            }
+
+            // 删除旧里程碑
+            milestoneRepository.deleteByPlanId(id);
+
+            // 批量插入新里程碑（事务内，如果失败会回滚删除操作）
+            if (!newMilestones.isEmpty()) {
+                milestoneRepository.saveBatch(newMilestones);
             }
         }
 

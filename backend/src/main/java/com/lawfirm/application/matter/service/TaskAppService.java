@@ -28,6 +28,9 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import com.lawfirm.common.constant.TaskStatus;
+import com.lawfirm.common.constant.ApprovalStatus;
+
 /**
  * 任务应用服务
  */
@@ -67,50 +70,29 @@ public class TaskAppService {
         // 应用数据权限过滤
         applyDataScopeFilter(wrapper);
         
-        // 排序：截止日期 -> 创建时间（优先级排序在应用层处理）
-        wrapper.orderByAsc(Task::getDueDate);
-        wrapper.orderByDesc(Task::getCreatedAt);
+        // 排序：在数据库层面完成，避免内存排序破坏分页逻辑
+        // 使用CASE WHEN实现优先级排序：HIGH(1) > MEDIUM(2) > LOW(3) > 其他(4)
+        wrapper.last("ORDER BY CASE priority " +
+                "WHEN 'HIGH' THEN 1 " +
+                "WHEN 'MEDIUM' THEN 2 " +
+                "WHEN 'LOW' THEN 3 " +
+                "ELSE 4 END ASC, " +
+                "due_date ASC NULLS LAST, " +
+                "created_at DESC");
 
         IPage<Task> page = taskRepository.page(
                 new Page<>(query.getPageNum(), query.getPageSize()),
                 wrapper
         );
 
+        // 直接转换DTO，不在内存中排序
         List<TaskDTO> records = page.getRecords().stream()
                 .map(this::toDTO)
-                .sorted((a, b) -> {
-                    // 按优先级排序
-                    int priorityOrderA = getPriorityOrder(a.getPriority());
-                    int priorityOrderB = getPriorityOrder(b.getPriority());
-                    if (priorityOrderA != priorityOrderB) {
-                        return Integer.compare(priorityOrderA, priorityOrderB);
-                    }
-                    // 优先级相同，按截止日期排序
-                    if (a.getDueDate() != null && b.getDueDate() != null) {
-                        return a.getDueDate().compareTo(b.getDueDate());
-                    }
-                    if (a.getDueDate() != null) return -1;
-                    if (b.getDueDate() != null) return 1;
-                    return 0;
-                })
                 .collect(Collectors.toList());
 
         return PageResult.of(records, page.getTotal(), query.getPageNum(), query.getPageSize());
     }
     
-    /**
-     * 获取优先级排序值
-     */
-    private int getPriorityOrder(String priority) {
-        if (priority == null) return 4;
-        return switch (priority) {
-            case "HIGH" -> 1;
-            case "MEDIUM" -> 2;
-            case "LOW" -> 3;
-            default -> 4;
-        };
-    }
-
     /**
      * 创建任务
      */
@@ -259,7 +241,7 @@ public class TaskAppService {
         String oldStatus = task.getStatus();
         
         // 如果负责人点击"完成"，状态变为"待验收"而不是"已完成"
-        if ("COMPLETED".equals(status)) {
+        if (TaskStatus.COMPLETED.equals(status)) {
             task.setStatus("PENDING_REVIEW");
             task.setCompletedAt(LocalDateTime.now());
             task.setProgress(100);
@@ -300,8 +282,8 @@ public class TaskAppService {
             throw new BusinessException("只有任务创建者才能进行验收");
         }
         
-        task.setStatus("COMPLETED");
-        task.setReviewStatus("APPROVED");
+        task.setStatus(TaskStatus.COMPLETED);
+        task.setReviewStatus(ApprovalStatus.APPROVED);
         task.setReviewedAt(LocalDateTime.now());
         task.setReviewedBy(currentUserId);
         
@@ -309,13 +291,14 @@ public class TaskAppService {
         log.info("任务验收通过: taskId={}, reviewedBy={}", id, currentUserId);
         
         // 通知任务负责人验收通过
-        sendTaskReviewNotification(task, "APPROVED", null);
+        sendTaskReviewNotification(task, ApprovalStatus.APPROVED, null);
         
         return toDTO(task);
     }
     
     /**
      * 验收任务（退回）
+     * 修复：保持原进度（或降到95%），而不是清零
      */
     @Transactional
     public TaskDTO rejectTask(Long id, String comment) {
@@ -336,16 +319,23 @@ public class TaskAppService {
             throw new BusinessException("退回时必须填写验收意见");
         }
         
-        task.setStatus("IN_PROGRESS");
-        task.setReviewStatus("REJECTED");
+        task.setStatus(TaskStatus.IN_PROGRESS);
+        task.setReviewStatus(ApprovalStatus.REJECTED);
         task.setReviewComment(comment);
         task.setReviewedAt(LocalDateTime.now());
         task.setReviewedBy(currentUserId);
         task.setCompletedAt(null);
-        task.setProgress(0);
+        
+        // 保持合理进度，不清零（任务可能只需要微调）
+        // 如果进度是100%，降到95%表示接近完成但需修改
+        if (task.getProgress() != null && task.getProgress() == 100) {
+            task.setProgress(95);
+        }
+        // 其他情况保持原进度，由负责人自行调整
         
         taskRepository.updateById(task);
-        log.info("任务验收退回: taskId={}, reviewedBy={}, comment={}", id, currentUserId, comment);
+        log.info("任务验收退回: taskId={}, reviewedBy={}, comment={}, progress={}%", 
+                id, currentUserId, comment, task.getProgress());
         
         // 通知任务负责人验收退回
         sendTaskReviewNotification(task, "REJECTED", comment);
@@ -364,7 +354,7 @@ public class TaskAppService {
             String title;
             String content;
             
-            if ("APPROVED".equals(reviewResult)) {
+            if (ApprovalStatus.APPROVED.equals(reviewResult)) {
                 title = "任务验收通过";
                 content = String.format("%s 已验收通过任务【%s】", currentUserName, task.getTitle());
             } else {
@@ -435,18 +425,12 @@ public class TaskAppService {
     
     private String getStatusName(String status) {
         if (status == null) return "未知";
-        return switch (status) {
-            case "TODO" -> "待处理";
-            case "IN_PROGRESS" -> "进行中";
-            case "PENDING_REVIEW" -> "待验收";
-            case "COMPLETED" -> "已完成";
-            case "CANCELLED" -> "已取消";
-            default -> status;
-        };
+        return TaskStatus.getStatusName(status);
     }
 
     /**
      * 更新任务进度
+     * 修复：添加状态验证，防止已取消/已完成的任务被更新
      */
     @Transactional
     public TaskDTO updateProgress(Long id, Integer progress) {
@@ -454,6 +438,21 @@ public class TaskAppService {
 
         if (progress < 0 || progress > 100) {
             throw new BusinessException("进度必须在0-100之间");
+        }
+        
+        // 验证任务状态，只有TODO和IN_PROGRESS状态可以更新进度
+        String currentStatus = task.getStatus();
+        if (TaskStatus.CANCELLED.equals(currentStatus)) {
+            throw new BusinessException("已取消的任务不能更新进度");
+        }
+        if (TaskStatus.COMPLETED.equals(currentStatus)) {
+            throw new BusinessException("已完成的任务不能更新进度");
+        }
+        if ("PENDING_REVIEW".equals(currentStatus)) {
+            throw new BusinessException("待验收的任务不能更新进度，请等待验收或验收退回后再更新");
+        }
+        if (!TaskStatus.PENDING.equals(currentStatus) && !TaskStatus.IN_PROGRESS.equals(currentStatus)) {
+            throw new BusinessException("当前状态不允许更新进度: " + currentStatus);
         }
 
         task.setProgress(progress);
@@ -463,12 +462,17 @@ public class TaskAppService {
             task.setCompletedAt(LocalDateTime.now());
             task.setReviewStatus("PENDING_REVIEW");
         } else if (progress > 0) {
-            task.setStatus("IN_PROGRESS");
+            task.setStatus(TaskStatus.IN_PROGRESS);
+            task.setReviewStatus(null);
+        } else {
+            // 进度为0，保持或设置为TODO状态
+            task.setStatus("TODO");
             task.setReviewStatus(null);
         }
 
         taskRepository.updateById(task);
-        log.info("任务进度更新: {} -> {}%", task.getTitle(), progress);
+        log.info("任务进度更新: taskId={}, title={}, progress={}%, status={}", 
+                id, task.getTitle(), progress, task.getStatus());
         return toDTO(task);
     }
 
@@ -564,8 +568,8 @@ public class TaskAppService {
         dto.setReviewedBy(task.getReviewedBy());
 
         // 判断是否逾期（排除已完成、已取消、待验收状态）
-        if (task.getDueDate() != null && !"COMPLETED".equals(task.getStatus())
-                && !"CANCELLED".equals(task.getStatus())
+        if (task.getDueDate() != null && !TaskStatus.COMPLETED.equals(task.getStatus())
+                && !TaskStatus.CANCELLED.equals(task.getStatus())
                 && !"PENDING_REVIEW".equals(task.getStatus())) {
             dto.setOverdue(task.getDueDate().isBefore(LocalDate.now()));
         } else {

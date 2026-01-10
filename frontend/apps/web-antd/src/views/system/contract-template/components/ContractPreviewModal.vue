@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref } from 'vue';
-import { message } from 'ant-design-vue';
-import { Modal, Button, Space, Tag } from 'ant-design-vue';
-import { sampleData } from './contract-templates';
+import { ref, onMounted } from 'vue';
+import { useVbenModal } from '@vben/common-ui';
+import { message, Button, Space, Tag } from 'ant-design-vue';
+import { getConfigValue } from '#/api/system';
+import { createContractSampleData } from '../constants/sample-data';
 
 interface ContractTemplateDTO {
   id: number;
@@ -10,32 +11,85 @@ interface ContractTemplateDTO {
   content: string;
 }
 
-// 状态
-const visible = ref(false);
 const previewContent = ref('');
 const previewTitle = ref('');
 
+// 预览示例数据（动态加载律所信息）
+const sampleData = ref<Record<string, string>>(createContractSampleData());
+
+// 加载律所信息（从系统配置获取）
+async function loadFirmInfo() {
+  try {
+    const [
+      firmNameConfig,
+      firmAddressConfig,
+      firmPhoneConfig,
+      firmPostcodeConfig,
+      firmLegalRepConfig,
+    ] = await Promise.all([
+      getConfigValue('firm.name').catch(() => null),
+      getConfigValue('firm.address').catch(() => null),
+      getConfigValue('firm.phone').catch(() => null),
+      getConfigValue('firm.postcode').catch(() => null),
+      getConfigValue('firm.legal.rep').catch(() => null),
+    ]);
+    
+    if (firmNameConfig?.configValue) {
+      sampleData.value.firmName = firmNameConfig.configValue;
+    }
+    if (firmAddressConfig?.configValue) {
+      sampleData.value.firmAddress = firmAddressConfig.configValue;
+    }
+    if (firmPhoneConfig?.configValue) {
+      sampleData.value.firmPhone = firmPhoneConfig.configValue;
+    }
+    if (firmPostcodeConfig?.configValue) {
+      sampleData.value.firmPostcode = firmPostcodeConfig.configValue;
+    }
+    if (firmLegalRepConfig?.configValue) {
+      sampleData.value.firmLegalPerson = firmLegalRepConfig.configValue;
+    }
+  } catch (error) {
+    console.warn('加载律所信息失败，使用默认值', error);
+  }
+}
+
+const [Modal, modalApi] = useVbenModal({
+  footer: false,
+});
+
 // 打开预览
-function open(record: ContractTemplateDTO) {
+async function open(record: ContractTemplateDTO) {
   previewTitle.value = record.name;
   let content = record.content || '';
   
+  // 确保律所信息已加载
+  if (!sampleData.value.firmAddress && !sampleData.value.firmPhone) {
+    await loadFirmInfo();
+  }
+  
   // 替换变量为示例值
-  Object.entries(sampleData).forEach(([key, value]) => {
+  Object.entries(sampleData.value).forEach(([key, value]) => {
+    const displayValue = value || `[${key}]`;
     content = content.replace(
       new RegExp(`\\$\\{${key}\\}`, 'g'), 
-      `<span class="preview-var">${value}</span>`
+      `<span class="preview-var">${displayValue}</span>`
     );
-    // 替换带data-variable属性的标签内容
     content = content.replace(
       new RegExp(`<span[^>]*data-variable="${key}"[^>]*>[^<]*</span>`, 'g'),
-      `<span class="preview-var">${value}</span>`
+      `<span class="preview-var">${displayValue}</span>`
     );
   });
   
   previewContent.value = content;
-  visible.value = true;
+  modalApi.setState({ title: `预览 - ${record.name}` });
+  modalApi.open();
 }
+
+// 组件挂载时加载律所信息
+onMounted(() => {
+  loadFirmInfo();
+});
 
 // 打印预览
 function handlePrint() {
@@ -58,6 +112,9 @@ function handlePrint() {
           line-height: 2;
           color: #000;
         }
+        * {
+          font-family: "SimSun", "宋体", serif;
+        }
         .preview-var { color: #000; font-weight: 500; }
         h1, h2, h3 { text-align: center; }
         h2 { font-size: 18pt; }
@@ -76,19 +133,11 @@ function handlePrint() {
   printWindow.print();
 }
 
-defineExpose({
-  open,
-});
+defineExpose({ open });
 </script>
 
 <template>
-  <Modal
-    v-model:open="visible"
-    :title="`预览 - ${previewTitle}`"
-    width="900px"
-    :footer="null"
-    :body-style="{ padding: '0' }"
-  >
+  <Modal class="w-[900px]">
     <div class="preview-toolbar">
       <Space>
         <Button type="primary" @click="handlePrint">打印 / 导出PDF</Button>
@@ -109,18 +158,19 @@ defineExpose({
 
 <style scoped>
 .preview-toolbar {
-  padding: 12px 16px;
-  background: #fafafa;
-  border-bottom: 1px solid #e8e8e8;
+  padding: 12px 0;
   display: flex;
   justify-content: flex-end;
+  border-bottom: 1px solid #e8e8e8;
+  margin-bottom: 16px;
 }
 
 .preview-container {
   padding: 24px;
   background: #e8e8e8;
-  max-height: 70vh;
+  max-height: 60vh;
   overflow-y: auto;
+  border-radius: 4px;
 }
 
 .preview-paper {
@@ -134,7 +184,7 @@ defineExpose({
 
 .preview-content {
   font-family: "SimSun", "宋体", serif;
-  font-size: 14px;
+  font-size: 14pt;
   line-height: 2;
   color: #000;
 }
@@ -181,11 +231,10 @@ defineExpose({
 }
 
 .preview-footer {
-  padding: 12px 16px;
-  background: #fafafa;
+  padding: 12px 0;
   border-top: 1px solid #e8e8e8;
+  margin-top: 16px;
   color: #666;
   font-size: 12px;
 }
 </style>
-

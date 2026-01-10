@@ -3,6 +3,7 @@ package com.lawfirm.interfaces.rest.admin;
 import com.lawfirm.application.admin.command.CheckInCommand;
 import com.lawfirm.application.admin.dto.AttendanceDTO;
 import com.lawfirm.application.admin.dto.AttendanceQueryDTO;
+import com.lawfirm.application.admin.dto.MonthlyAttendanceStatisticsDTO;
 import com.lawfirm.application.admin.service.AttendanceAppService;
 import com.lawfirm.common.annotation.OperationLog;
 import com.lawfirm.common.annotation.RequirePermission;
@@ -12,8 +13,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.Map;
 
 /**
  * 考勤管理接口
@@ -55,7 +54,7 @@ public class AttendanceController {
 
     @Operation(summary = "获取月度考勤统计")
     @GetMapping("/statistics/monthly")
-    public Result<Map<String, Object>> getMonthlyStatistics(
+    public Result<MonthlyAttendanceStatisticsDTO> getMonthlyStatistics(
             @RequestParam(required = false) Long userId,
             @RequestParam Integer year,
             @RequestParam Integer month) {

@@ -773,6 +773,54 @@ CREATE SEQUENCE public.crm_lead_follow_up_id_seq
 
 ALTER SEQUENCE public.crm_lead_follow_up_id_seq OWNED BY public.crm_lead_follow_up.id;
 --
+-- Name: crm_contact; Type: TABLE; Schema: public; Owner: -
+--
+CREATE TABLE public.crm_contact (
+    id bigint NOT NULL,
+    client_id bigint NOT NULL,
+    contact_name character varying(100) NOT NULL,
+    position character varying(50),
+    department character varying(100),
+    mobile_phone character varying(20),
+    office_phone character varying(20),
+    email character varying(100),
+    wechat character varying(50),
+    is_primary boolean DEFAULT false,
+    relationship_note text,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    created_by bigint,
+    updated_by bigint,
+    deleted boolean DEFAULT false
+);
+--
+-- Name: TABLE crm_contact; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON TABLE public.crm_contact IS '客户联系人表';
+COMMENT ON COLUMN public.crm_contact.client_id IS '客户ID';
+COMMENT ON COLUMN public.crm_contact.contact_name IS '联系人姓名';
+COMMENT ON COLUMN public.crm_contact.position IS '职位';
+COMMENT ON COLUMN public.crm_contact.department IS '部门';
+COMMENT ON COLUMN public.crm_contact.mobile_phone IS '手机号';
+COMMENT ON COLUMN public.crm_contact.office_phone IS '办公电话';
+COMMENT ON COLUMN public.crm_contact.email IS '邮箱';
+COMMENT ON COLUMN public.crm_contact.wechat IS '微信号';
+COMMENT ON COLUMN public.crm_contact.is_primary IS '是否主要联系人';
+COMMENT ON COLUMN public.crm_contact.relationship_note IS '关系备注';
+--
+-- Name: crm_contact_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+CREATE SEQUENCE public.crm_contact_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+--
+-- Name: crm_contact_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+ALTER SEQUENCE public.crm_contact_id_seq OWNED BY public.crm_contact.id;
+--
 -- Name: crm_lead_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
@@ -842,6 +890,10 @@ ALTER TABLE ONLY public.crm_lead ALTER COLUMN id SET DEFAULT nextval('public.crm
 --
 
 ALTER TABLE ONLY public.crm_lead_follow_up ALTER COLUMN id SET DEFAULT nextval('public.crm_lead_follow_up_id_seq'::regclass);
+--
+-- Name: crm_contact id; Type: DEFAULT; Schema: public; Owner: -
+--
+ALTER TABLE ONLY public.crm_contact ALTER COLUMN id SET DEFAULT nextval('public.crm_contact_id_seq'::regclass);
 --
 -- Name: crm_client_change_history crm_client_change_history_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
@@ -926,6 +978,11 @@ ALTER TABLE ONLY public.crm_conflict_check
 
 ALTER TABLE ONLY public.crm_lead_follow_up
     ADD CONSTRAINT crm_lead_follow_up_pkey PRIMARY KEY (id);
+--
+-- Name: crm_contact crm_contact_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+ALTER TABLE ONLY public.crm_contact
+    ADD CONSTRAINT crm_contact_pkey PRIMARY KEY (id);
 --
 -- Name: crm_lead crm_lead_lead_no_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
@@ -1118,3 +1175,10 @@ CREATE INDEX idx_crm_lead_responsible_user_id ON public.crm_lead USING btree (re
 --
 
 CREATE INDEX idx_crm_lead_status ON public.crm_lead USING btree (status);
+CREATE INDEX idx_crm_contact_client_id ON public.crm_contact USING btree (client_id);
+CREATE INDEX idx_crm_contact_is_primary ON public.crm_contact USING btree (is_primary);
+--
+-- Name: crm_contact fk_contact_client; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+ALTER TABLE ONLY public.crm_contact
+    ADD CONSTRAINT fk_contact_client FOREIGN KEY (client_id) REFERENCES public.crm_client(id);

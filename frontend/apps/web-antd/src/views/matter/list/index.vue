@@ -289,15 +289,15 @@ const formSchema: VbenFormSchema[] = [
 // ==================== 表格配置 ====================
 
 const gridColumns = [
-  { title: '项目编号', field: 'matterNo', width: 130 },
-  { title: '项目名称', field: 'name', width: 200, showOverflow: true },
   { title: '类型', field: 'matterTypeName', width: 100 },
   { title: '案件类型', field: 'caseTypeName', width: 100 },
+  { title: '合同编号', field: 'contractNo', width: 130 },
   { title: '客户', field: 'clientName', width: 150 },
+  { title: '项目编号', field: 'matterNo', width: 130 },
   { title: '主办律师', field: 'leadLawyerName', width: 100 },
-  { title: '状态', field: 'status', width: 100, slots: { default: 'status' } },
-  { title: '预估费用', field: 'estimatedFee', width: 120, slots: { default: 'estimatedFee' } },
+  { title: '合同金额', field: 'contractAmount', width: 120, slots: { default: 'contractAmount' } },
   { title: '创建时间', field: 'createdAt', width: 160 },
+  { title: '状态', field: 'status', width: 100, slots: { default: 'status' } },
   { title: '操作', field: 'action', width: 200, fixed: 'right' as const, slots: { default: 'action' } },
 ];
 
@@ -901,9 +901,9 @@ onMounted(async () => {
         </Tag>
       </template>
 
-      <!-- 预估费用列 -->
-      <template #estimatedFee="{ row }">
-        {{ formatMoney(row.estimatedFee) }}
+      <!-- 合同金额列 -->
+      <template #contractAmount="{ row }">
+        {{ formatMoney(row.contractAmount) }}
       </template>
 
       <!-- 操作列 -->

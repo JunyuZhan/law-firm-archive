@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed } from 'vue';
-import { message, Modal } from 'ant-design-vue';
+import { message } from 'ant-design-vue';
 import { Page } from '@vben/common-ui';
 import {
   Card,
@@ -15,6 +15,8 @@ import {
   Col,
   Statistic,
   InputNumber,
+  Modal,
+  Descriptions,
 } from 'ant-design-vue';
 import {
   getAdminContractList,
@@ -34,6 +36,8 @@ const exportLoading = ref(false);
 const exportListLoading = ref(false);
 const contracts = ref<AdminContractViewDTO[]>([]);
 const total = ref(0);
+const modalVisible = ref(false);
+const contractDetail = ref<AdminContractViewDTO | null>(null);
 
 // 查询参数
 const queryParams = reactive<AdminContractQueryDTO>({
@@ -157,30 +161,8 @@ function getCauseOfActionName(code: string | undefined): string {
 async function handleView(record: AdminContractViewDTO) {
   try {
     const detail = await getAdminContractDetail(record.id);
-    const causeName = getCauseOfActionName(detail.causeOfAction);
-    const stageName = getTrialStageName(detail.trialStage);
-    
-    Modal.info({
-      title: '合同详情',
-      width: 700,
-      content: `
-        <div style="padding: 16px;">
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
-            <div><strong>合同编号：</strong>${detail.contractNo}</div>
-            <div><strong>合同名称：</strong>${detail.name}</div>
-            <div><strong>委托人：</strong>${detail.clientName || '-'}</div>
-            <div><strong>对方当事人：</strong>${detail.opposingParty || '-'}</div>
-            <div><strong>案件类型：</strong>${detail.caseTypeName || '-'}</div>
-            <div><strong>案由：</strong>${causeName}</div>
-            <div><strong>承办律师：</strong>${detail.leadLawyerName || '-'}</div>
-            <div><strong>律师费：</strong>¥${detail.totalAmount?.toLocaleString() || '0'}</div>
-            <div><strong>签约日期：</strong>${detail.signDate || '-'}</div>
-            <div><strong>管辖法院：</strong>${detail.jurisdictionCourt || '-'}</div>
-            <div><strong>审理阶段：</strong>${stageName}</div>
-          </div>
-        </div>
-      `,
-    });
+    contractDetail.value = detail;
+    modalVisible.value = true;
   } catch (error: any) {
     message.error(error.message || '获取详情失败');
   }
@@ -376,6 +358,54 @@ onMounted(() => {
         </template>
       </Table>
     </Card>
+
+    <!-- 查看详情弹窗 -->
+    <Modal
+      v-model:open="modalVisible"
+      title="合同详情"
+      width="800px"
+      :footer="null"
+    >
+      <Descriptions
+        v-if="contractDetail"
+        :column="2"
+        bordered
+      >
+        <Descriptions.Item label="合同编号" :span="1">
+          {{ contractDetail.contractNo || '-' }}
+        </Descriptions.Item>
+        <Descriptions.Item label="合同名称" :span="1">
+          {{ contractDetail.name || '-' }}
+        </Descriptions.Item>
+        <Descriptions.Item label="委托人" :span="1">
+          {{ contractDetail.clientName || '-' }}
+        </Descriptions.Item>
+        <Descriptions.Item label="对方当事人" :span="1">
+          {{ contractDetail.opposingParty || '-' }}
+        </Descriptions.Item>
+        <Descriptions.Item label="案件类型" :span="1">
+          {{ contractDetail.caseTypeName || '-' }}
+        </Descriptions.Item>
+        <Descriptions.Item label="案由" :span="1">
+          {{ getCauseOfActionName(contractDetail.causeOfAction) }}
+        </Descriptions.Item>
+        <Descriptions.Item label="承办律师" :span="1">
+          {{ contractDetail.leadLawyerName || '-' }}
+        </Descriptions.Item>
+        <Descriptions.Item label="律师费" :span="1">
+          {{ formatAmount(contractDetail.totalAmount) }}
+        </Descriptions.Item>
+        <Descriptions.Item label="签约日期" :span="1">
+          {{ contractDetail.signDate || '-' }}
+        </Descriptions.Item>
+        <Descriptions.Item label="管辖法院" :span="1">
+          {{ contractDetail.jurisdictionCourt || '-' }}
+        </Descriptions.Item>
+        <Descriptions.Item label="审理阶段" :span="1">
+          {{ getTrialStageName(contractDetail.trialStage) }}
+        </Descriptions.Item>
+      </Descriptions>
+    </Modal>
   </Page>
 </template>
 

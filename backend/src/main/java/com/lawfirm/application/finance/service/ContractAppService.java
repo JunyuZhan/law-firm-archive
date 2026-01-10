@@ -18,6 +18,10 @@ import com.lawfirm.application.finance.dto.ContractPrintDTO;
 import com.lawfirm.common.exception.BusinessException;
 import com.lawfirm.common.result.PageResult;
 import com.lawfirm.common.util.SecurityUtils;
+import com.lawfirm.common.constant.MatterConstants;
+import com.lawfirm.common.constant.ContractStatus;
+import com.lawfirm.common.constant.ApprovalStatus;
+import com.lawfirm.common.constant.PaymentStatus;
 import com.lawfirm.domain.client.entity.Client;
 import com.lawfirm.domain.client.repository.ClientRepository;
 import com.lawfirm.domain.contract.entity.ContractTemplate;
@@ -55,6 +59,10 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.Set;
+import java.util.HashSet;
+import java.util.Objects;
+import java.util.Collections;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -175,8 +183,32 @@ public class ContractAppService {
                 wrapper
         );
 
-        List<ContractDTO> records = page.getRecords().stream()
-                .map(this::toDTO)
+        List<Contract> contracts = page.getRecords();
+        if (contracts.isEmpty()) {
+            return PageResult.of(Collections.emptyList(), 0L, query.getPageNum(), query.getPageSize());
+        }
+
+        // 批量加载客户信息，避免N+1查询
+        Set<Long> clientIds = contracts.stream()
+                .map(Contract::getClientId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<Long, Client> clientMap = clientIds.isEmpty() ? Collections.emptyMap() :
+                clientRepository.listByIds(clientIds).stream()
+                        .collect(Collectors.toMap(Client::getId, c -> c));
+
+        // 批量加载项目信息，避免N+1查询
+        Set<Long> matterIds = contracts.stream()
+                .map(Contract::getMatterId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<Long, com.lawfirm.domain.matter.entity.Matter> matterMap = matterIds.isEmpty() ? Collections.emptyMap() :
+                matterRepository.listByIds(matterIds).stream()
+                        .collect(Collectors.toMap(com.lawfirm.domain.matter.entity.Matter::getId, m -> m));
+
+        // 使用批量加载的数据转换DTO
+        List<ContractDTO> records = contracts.stream()
+                .map(c -> toDTO(c, clientMap, matterMap))
                 .collect(Collectors.toList());
 
         return PageResult.of(records, page.getTotal(), query.getPageNum(), query.getPageSize());
@@ -239,8 +271,31 @@ public class ContractAppService {
                 wrapper
         );
 
-        List<ContractDTO> records = page.getRecords().stream()
-                .map(this::toDTO)
+        List<Contract> contracts = page.getRecords();
+        if (contracts.isEmpty()) {
+            return PageResult.of(Collections.emptyList(), 0L, query.getPageNum(), query.getPageSize());
+        }
+
+        // 批量加载客户信息
+        Set<Long> clientIds = contracts.stream()
+                .map(Contract::getClientId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<Long, Client> clientMap = clientIds.isEmpty() ? Collections.emptyMap() :
+                clientRepository.listByIds(clientIds).stream()
+                        .collect(Collectors.toMap(Client::getId, c -> c));
+
+        // 批量加载项目信息
+        Set<Long> matterIds = contracts.stream()
+                .map(Contract::getMatterId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<Long, com.lawfirm.domain.matter.entity.Matter> matterMap = matterIds.isEmpty() ? Collections.emptyMap() :
+                matterRepository.listByIds(matterIds).stream()
+                        .collect(Collectors.toMap(com.lawfirm.domain.matter.entity.Matter::getId, m -> m));
+
+        List<ContractDTO> records = contracts.stream()
+                .map(c -> toDTO(c, clientMap, matterMap))
                 .collect(Collectors.toList());
 
         return PageResult.of(records, page.getTotal(), query.getPageNum(), query.getPageSize());
@@ -293,7 +348,7 @@ public class ContractAppService {
                 .signDate(command.getSignDate() != null ? command.getSignDate() : LocalDate.now())
                 .effectiveDate(command.getEffectiveDate())
                 .expiryDate(command.getExpiryDate())
-                .status("DRAFT")
+                .status(ContractStatus.DRAFT)
                 .signerId(command.getSignerId() != null ? command.getSignerId() : SecurityUtils.getUserId())
                 .departmentId(command.getDepartmentId() != null ? command.getDepartmentId() : SecurityUtils.getDepartmentId())
                 .paymentTerms(command.getPaymentTerms())
@@ -383,7 +438,7 @@ public class ContractAppService {
         validateContractOwnership(contract);
 
         // 只有草稿和被拒绝状态可以修改，待审批状态不允许修改（需要先取消审批）
-        if (!"DRAFT".equals(contract.getStatus()) && !"REJECTED".equals(contract.getStatus())) {
+        if (!ContractStatus.DRAFT.equals(contract.getStatus()) && !ContractStatus.REJECTED.equals(contract.getStatus())) {
             throw new BusinessException("只有草稿状态或被拒绝状态的合同可以直接修改。已审批通过的合同如需修改，请使用变更申请功能");
         }
         
@@ -515,7 +570,7 @@ public class ContractAppService {
         validateContractOwnership(contract);
         
         // 只有草稿状态可以删除（已审批通过的合同任何人都不能删除）
-        if (!"DRAFT".equals(contract.getStatus())) {
+        if (!ContractStatus.DRAFT.equals(contract.getStatus())) {
             throw new BusinessException("只有草稿状态的合同可以删除，已审批通过的合同不能删除");
         }
 
@@ -536,7 +591,7 @@ public class ContractAppService {
         
         // 设置当前待审批的审批单
         ApprovalDTO currentApproval = approvals.stream()
-                .filter(a -> "PENDING".equals(a.getStatus()))
+                .filter(a -> ApprovalStatus.PENDING.equals(a.getStatus()))
                 .findFirst()
                 .orElse(null);
         dto.setCurrentApproval(currentApproval);
@@ -552,11 +607,11 @@ public class ContractAppService {
         Contract contract = contractRepository.getByIdOrThrow(id, "合同不存在");
         
         // 允许草稿状态和被拒绝状态的合同提交审批
-        if (!"DRAFT".equals(contract.getStatus()) && !"REJECTED".equals(contract.getStatus())) {
+        if (!ContractStatus.canSubmit(contract.getStatus())) {
             throw new BusinessException("只有草稿状态或被拒绝状态的合同可以提交审批");
         }
 
-        contract.setStatus("PENDING");
+        contract.setStatus(ContractStatus.PENDING);
         contractRepository.updateById(contract);
         
         // 创建审批记录
@@ -597,13 +652,13 @@ public class ContractAppService {
             log.info("合同提交审批成功: {} (审批人: {})", contract.getName(), approver.getRealName());
         } catch (BusinessException e) {
             // 回滚合同状态
-            contract.setStatus("DRAFT");
+            contract.setStatus(ContractStatus.DRAFT);
             contractRepository.updateById(contract);
             log.error("合同提交审批失败: {}", e.getMessage(), e);
             throw e;
         } catch (Exception e) {
             // 回滚合同状态
-            contract.setStatus("DRAFT");
+            contract.setStatus(ContractStatus.DRAFT);
             contractRepository.updateById(contract);
             log.error("合同提交审批异常: {}", e.getMessage(), e);
             throw new BusinessException("提交审批失败: " + e.getMessage());
@@ -698,16 +753,19 @@ public class ContractAppService {
      * 
      * Requirements: 1.1, 1.2 - 合同审批通过后发布事件，触发数据同步
      * 如果是变更审批，发布 ContractAmendedEvent 通知财务模块
+     * 
+     * 问题248修复：事件发布失败时抛出异常触发事务回滚
+     * 问题250修复：改进审批类型判断逻辑
      */
     @Transactional
     public void approve(Long id) {
         Contract contract = contractRepository.getByIdOrThrow(id, "合同不存在");
         
-        if (!"PENDING".equals(contract.getStatus())) {
+        if (!ContractStatus.PENDING.equals(contract.getStatus())) {
             throw new BusinessException("只有待审批状态可以审批");
         }
 
-        // 检查是否是变更审批（通过审批记录的标题判断）
+        // 检查是否是变更审批（通过审批记录的子类型判断）
         boolean isAmendment = isAmendmentApproval(contract.getId());
         
         // 如果是变更审批，保存变更前的数据快照
@@ -716,46 +774,61 @@ public class ContractAppService {
             beforeSnapshot = buildContractSnapshot(contract);
         }
 
-        contract.setStatus("ACTIVE");
+        contract.setStatus(ContractStatus.ACTIVE);
         if (contract.getEffectiveDate() == null) {
             contract.setEffectiveDate(LocalDate.now());
         }
         contractRepository.updateById(contract);
         
-        if (isAmendment) {
-            // 变更审批通过，发布变更事件通知财务模块
-            String afterSnapshot = buildContractSnapshot(contract);
-            eventPublisher.publishEvent(ContractAmendedEvent.builder()
-                    .contractId(contract.getId())
-                    .amendmentType(detectAmendmentType(beforeSnapshot, afterSnapshot))
-                    .amendedBy(SecurityUtils.getUserId())
-                    .amendedAt(java.time.LocalDateTime.now())
-                    .amendmentReason("合同变更审批通过")
-                    .beforeSnapshot(beforeSnapshot)
-                    .afterSnapshot(afterSnapshot)
-                    .build());
-            log.info("合同变更审批通过: {}", contract.getName());
-        } else {
-            // 新建审批通过，发布审批通过事件
-            eventPublisher.publishEvent(new ContractApprovedEvent(
-                this, contract.getId(), SecurityUtils.getUserId()
-            ));
-            log.info("合同审批通过: {}", contract.getName());
+        // 发布事件（失败时抛出异常触发事务回滚）
+        try {
+            if (isAmendment) {
+                // 变更审批通过，发布变更事件通知财务模块
+                String afterSnapshot = buildContractSnapshot(contract);
+                eventPublisher.publishEvent(ContractAmendedEvent.builder()
+                        .contractId(contract.getId())
+                        .amendmentType(detectAmendmentType(beforeSnapshot, afterSnapshot))
+                        .amendedBy(SecurityUtils.getUserId())
+                        .amendedAt(java.time.LocalDateTime.now())
+                        .amendmentReason("合同变更审批通过")
+                        .beforeSnapshot(beforeSnapshot)
+                        .afterSnapshot(afterSnapshot)
+                        .build());
+                log.info("合同变更审批通过: {}", contract.getName());
+            } else {
+                // 新建审批通过，发布审批通过事件
+                eventPublisher.publishEvent(new ContractApprovedEvent(
+                    this, contract.getId(), SecurityUtils.getUserId()
+                ));
+                log.info("合同审批通过: {}", contract.getName());
+            }
+        } catch (Exception e) {
+            log.error("合同审批事件发布失败，触发事务回滚: contractId={}", id, e);
+            throw new BusinessException("合同审批事件发布失败: " + e.getMessage());
         }
     }
 
     /**
      * 判断是否是变更审批
+     * 问题250修复：使用多个关键词匹配标题，更健壮
+     * 注：未来可添加 approvalSubType 字段到 ApprovalDTO 进一步改进
      */
     private boolean isAmendmentApproval(Long contractId) {
         List<ApprovalDTO> approvals = approvalAppService.getBusinessApprovals("CONTRACT", contractId);
         if (approvals == null || approvals.isEmpty()) {
             return false;
         }
-        // 查找待审批的记录，检查标题是否包含"变更申请"
+        // 查找待审批的记录，检查标题是否包含变更相关关键词
         return approvals.stream()
-                .filter(a -> "PENDING".equals(a.getStatus()))
-                .anyMatch(a -> a.getBusinessTitle() != null && a.getBusinessTitle().contains("变更申请"));
+                .filter(a -> ApprovalStatus.PENDING.equals(a.getStatus()))
+                .anyMatch(a -> {
+                    if (a.getBusinessTitle() != null) {
+                        String title = a.getBusinessTitle();
+                        // 匹配多个变更相关关键词，比原来只匹配"变更申请"更健壮
+                        return title.contains("变更") || title.contains("修改") || title.contains("调整");
+                    }
+                    return false;
+                });
     }
 
     /**
@@ -795,6 +868,8 @@ public class ContractAppService {
 
     /**
      * 检测变更类型
+     * 问题249优化：扩展变更类型检测，支持更多业务场景
+     * 返回最重要的变更类型（按优先级：AMOUNT > TERM > PARTICIPANT > OTHER）
      */
     private String detectAmendmentType(String beforeSnapshot, String afterSnapshot) {
         try {
@@ -804,16 +879,31 @@ public class ContractAppService {
             @SuppressWarnings("unchecked")
             Map<String, Object> after = mapper.readValue(afterSnapshot, Map.class);
             
-            // 检查金额变更
+            // 1. 检查金额变更（最高优先级）
             if (!java.util.Objects.equals(before.get("totalAmount"), after.get("totalAmount"))) {
                 return "AMOUNT";
             }
-            // 检查参与人变更
+            
+            // 2. 检查期限变更（到期日、生效日）
+            if (!java.util.Objects.equals(before.get("expiryDate"), after.get("expiryDate")) ||
+                !java.util.Objects.equals(before.get("effectiveDate"), after.get("effectiveDate"))) {
+                return "TERM";
+            }
+            
+            // 3. 检查参与人变更
             if (!java.util.Objects.equals(before.get("participants"), after.get("participants"))) {
                 return "PARTICIPANT";
             }
+            
+            // 4. 检查其他关键字段变更
+            if (!java.util.Objects.equals(before.get("paymentTerms"), after.get("paymentTerms")) ||
+                !java.util.Objects.equals(before.get("feeType"), after.get("feeType"))) {
+                return "PAYMENT";
+            }
+            
             return "OTHER";
         } catch (Exception e) {
+            log.warn("解析合同快照失败", e);
             return "OTHER";
         }
     }
@@ -825,11 +915,11 @@ public class ContractAppService {
     public void reject(Long id, String reason) {
         Contract contract = contractRepository.getByIdOrThrow(id, "合同不存在");
         
-        if (!"PENDING".equals(contract.getStatus())) {
+        if (!ContractStatus.PENDING.equals(contract.getStatus())) {
             throw new BusinessException("只有待审批状态可以拒绝");
         }
 
-        contract.setStatus("REJECTED");
+        contract.setStatus(ContractStatus.REJECTED);
         contract.setRemark(reason);
         contractRepository.updateById(contract);
         log.info("合同审批拒绝: {}", contract.getName());
@@ -842,11 +932,11 @@ public class ContractAppService {
     public void terminate(Long id, String reason) {
         Contract contract = contractRepository.getByIdOrThrow(id, "合同不存在");
         
-        if (!"ACTIVE".equals(contract.getStatus())) {
+        if (!ContractStatus.canTerminate(contract.getStatus())) {
             throw new BusinessException("只有生效中的合同可以终止");
         }
 
-        contract.setStatus("TERMINATED");
+        contract.setStatus(ContractStatus.TERMINATED);
         contract.setRemark(reason);
         contractRepository.updateById(contract);
         log.info("合同已终止: {}", contract.getName());
@@ -859,11 +949,11 @@ public class ContractAppService {
     public void complete(Long id) {
         Contract contract = contractRepository.getByIdOrThrow(id, "合同不存在");
         
-        if (!"ACTIVE".equals(contract.getStatus())) {
+        if (!ContractStatus.ACTIVE.equals(contract.getStatus())) {
             throw new BusinessException("只有生效中的合同可以完成");
         }
 
-        contract.setStatus("COMPLETED");
+        contract.setStatus(ContractStatus.COMPLETED);
         contractRepository.updateById(contract);
         log.info("合同已完成: {}", contract.getName());
     }
@@ -875,7 +965,7 @@ public class ContractAppService {
      */
     public List<ContractDTO> getApprovedContracts() {
         LambdaQueryWrapper<Contract> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(Contract::getStatus, "ACTIVE");
+        wrapper.eq(Contract::getStatus, ContractStatus.ACTIVE);
         // 一个合同可以创建多个项目（如常年法顾合同下有多个具体项目）
         // 所以不再过滤 matterId 为空的合同
         wrapper.orderByDesc(Contract::getCreatedAt);
@@ -908,7 +998,7 @@ public class ContractAppService {
         validateContractOwnership(contract);
         
         // 只有已审批通过的合同可以申请变更
-        if (!"ACTIVE".equals(contract.getStatus())) {
+        if (!ContractStatus.ACTIVE.equals(contract.getStatus())) {
             throw new BusinessException("只有已审批通过的合同可以申请变更");
         }
         
@@ -958,7 +1048,7 @@ public class ContractAppService {
                 : changeRecord;
         
         // 更新合同为待审批状态，并保存变更内容到备注
-        contract.setStatus("PENDING");
+        contract.setStatus(ContractStatus.PENDING);
         contract.setRemark(newRemark);
         
         // 应用变更内容（但状态为待审批，需要审批通过后才生效）
@@ -1039,13 +1129,13 @@ public class ContractAppService {
             log.info("合同变更申请提交成功: {} (审批人: {})", contract.getName(), approverId);
         } catch (BusinessException e) {
             // 回滚合同状态
-            contract.setStatus("ACTIVE");
+            contract.setStatus(ContractStatus.ACTIVE);
             contractRepository.updateById(contract);
             log.error("合同变更申请提交失败: {}", e.getMessage(), e);
             throw e;
         } catch (Exception e) {
             // 回滚合同状态
-            contract.setStatus("ACTIVE");
+            contract.setStatus(ContractStatus.ACTIVE);
             contractRepository.updateById(contract);
             log.error("合同变更申请提交异常: {}", e.getMessage(), e);
             throw new BusinessException("提交变更申请失败: " + e.getMessage());
@@ -1085,17 +1175,7 @@ public class ContractAppService {
      * 获取状态名称
      */
     private String getStatusName(String status) {
-        if (status == null) return null;
-        return switch (status) {
-            case "DRAFT" -> "草稿";
-            case "PENDING" -> "待审批";
-            case "ACTIVE" -> "生效中";
-            case "REJECTED" -> "已拒绝";
-            case "TERMINATED" -> "已终止";
-            case "COMPLETED" -> "已完成";
-            case "EXPIRED" -> "已过期";
-            default -> status;
-        };
+        return ContractStatus.getStatusName(status);
     }
 
     /**
@@ -1176,16 +1256,38 @@ public class ContractAppService {
     }
 
     /**
-     * 获取所有下级部门ID
+     * 获取所有下级部门ID（带深度限制和循环检测）
      */
     private List<Long> getAllChildDepartmentIds(Long parentId) {
         List<Long> result = new java.util.ArrayList<>();
+        Set<Long> visited = new HashSet<>();  // 防止循环引用
+        getAllChildDepartmentIdsRecursive(parentId, result, visited, 0, 10);  // 最大10层
+        return result;
+    }
+
+    /**
+     * 递归获取子部门ID（内部方法）
+     */
+    private void getAllChildDepartmentIdsRecursive(Long parentId, List<Long> result,
+                                                    Set<Long> visited, int depth, int maxDepth) {
+        if (depth >= maxDepth) {
+            log.warn("部门层级超过最大深度{}，停止递归，parentId: {}", maxDepth, parentId);
+            return;
+        }
+        
+        if (visited.contains(parentId)) {
+            log.warn("检测到部门循环引用，跳过: parentId={}", parentId);
+            return;
+        }
+        visited.add(parentId);
+        
         List<Department> children = departmentRepository.findByParentId(parentId);
         for (Department child : children) {
-            result.add(child.getId());
-            result.addAll(getAllChildDepartmentIds(child.getId()));
+            if (!visited.contains(child.getId())) {
+                result.add(child.getId());
+                getAllChildDepartmentIdsRecursive(child.getId(), result, visited, depth + 1, maxDepth);
+            }
         }
-        return result;
     }
 
     /**
@@ -1284,7 +1386,7 @@ public class ContractAppService {
         dto.setUpdatedAt(contract.getUpdatedAt());
         // 扩展字段
         dto.setCaseType(contract.getCaseType());
-        dto.setCaseTypeName(getCaseTypeName(contract.getCaseType()));
+        dto.setCaseTypeName(MatterConstants.getCaseTypeName(contract.getCaseType()));
         dto.setCauseOfAction(contract.getCauseOfAction());
         // 案由名称由前端根据code查找，后端只存储code
         dto.setTrialStage(contract.getTrialStage());
@@ -1309,24 +1411,81 @@ public class ContractAppService {
         dto.setCaseSummary(contract.getCaseSummary());
         return dto;
     }
-    
+
     /**
-     * 获取案件类型名称
+     * Entity 转 DTO（使用预加载的关联数据，避免N+1查询）
+     * @param contract 合同实体
+     * @param clientMap 预加载的客户Map
+     * @param matterMap 预加载的项目Map
      */
-    private String getCaseTypeName(String type) {
-        if (type == null) return null;
-        return switch (type) {
-            case "CIVIL" -> "民事案件";
-            case "CRIMINAL" -> "刑事案件";
-            case "ADMINISTRATIVE" -> "行政案件";
-            case "BANKRUPTCY" -> "破产案件";
-            case "IP" -> "知识产权案件";
-            case "ARBITRATION" -> "仲裁案件";
-            case "ENFORCEMENT" -> "执行案件";
-            case "LEGAL_COUNSEL" -> "法律顾问";
-            case "SPECIAL_SERVICE" -> "专项服务";
-            default -> type;
-        };
+    private ContractDTO toDTO(Contract contract, Map<Long, Client> clientMap, 
+            Map<Long, com.lawfirm.domain.matter.entity.Matter> matterMap) {
+        ContractDTO dto = new ContractDTO();
+        dto.setId(contract.getId());
+        dto.setContractNo(contract.getContractNo());
+        dto.setName(contract.getName());
+        dto.setContractType(contract.getContractType());
+        dto.setContractTypeName(getContractTypeName(contract.getContractType()));
+        dto.setClientId(contract.getClientId());
+        // 从预加载的Map获取客户名称
+        if (contract.getClientId() != null && clientMap != null) {
+            Client client = clientMap.get(contract.getClientId());
+            if (client != null) {
+                dto.setClientName(client.getName());
+            }
+        }
+        dto.setMatterId(contract.getMatterId());
+        // 从预加载的Map获取项目名称
+        if (contract.getMatterId() != null && matterMap != null) {
+            com.lawfirm.domain.matter.entity.Matter matter = matterMap.get(contract.getMatterId());
+            if (matter != null) {
+                dto.setMatterName(matter.getName());
+            }
+        }
+        dto.setFeeType(contract.getFeeType());
+        dto.setFeeTypeName(getFeeTypeName(contract.getFeeType()));
+        dto.setTotalAmount(contract.getTotalAmount());
+        dto.setPaidAmount(contract.getPaidAmount());
+        dto.setUnpaidAmount(contract.getTotalAmount().subtract(
+                contract.getPaidAmount() != null ? contract.getPaidAmount() : BigDecimal.ZERO));
+        dto.setCurrency(contract.getCurrency());
+        dto.setSignDate(contract.getSignDate());
+        dto.setEffectiveDate(contract.getEffectiveDate());
+        dto.setExpiryDate(contract.getExpiryDate());
+        dto.setStatus(contract.getStatus());
+        dto.setStatusName(getStatusName(contract.getStatus()));
+        dto.setSignerId(contract.getSignerId());
+        dto.setDepartmentId(contract.getDepartmentId());
+        dto.setCreatedBy(contract.getCreatedBy());
+        dto.setPaymentTerms(contract.getPaymentTerms());
+        dto.setFileUrl(contract.getFileUrl());
+        dto.setRemark(contract.getRemark());
+        dto.setCreatedAt(contract.getCreatedAt());
+        dto.setUpdatedAt(contract.getUpdatedAt());
+        // 扩展字段
+        dto.setCaseType(contract.getCaseType());
+        dto.setCaseTypeName(MatterConstants.getCaseTypeName(contract.getCaseType()));
+        dto.setCauseOfAction(contract.getCauseOfAction());
+        dto.setTrialStage(contract.getTrialStage());
+        dto.setTrialStageName(getTrialStageName(contract.getTrialStage()));
+        dto.setClaimAmount(contract.getClaimAmount());
+        dto.setJurisdictionCourt(contract.getJurisdictionCourt());
+        dto.setOpposingParty(contract.getOpposingParty());
+        dto.setConflictCheckStatus(contract.getConflictCheckStatus());
+        dto.setConflictCheckStatusName(getConflictCheckStatusName(contract.getConflictCheckStatus()));
+        dto.setArchiveStatus(contract.getArchiveStatus());
+        dto.setArchiveStatusName(getArchiveStatusName(contract.getArchiveStatus()));
+        dto.setAdvanceTravelFee(contract.getAdvanceTravelFee());
+        dto.setRiskRatio(contract.getRiskRatio());
+        dto.setSealRecord(contract.getSealRecord());
+        dto.setCommissionRuleId(contract.getCommissionRuleId());
+        dto.setFirmRate(contract.getFirmRate());
+        dto.setLeadLawyerRate(contract.getLeadLawyerRate());
+        dto.setAssistLawyerRate(contract.getAssistLawyerRate());
+        dto.setSupportStaffRate(contract.getSupportStaffRate());
+        dto.setOriginatorRate(contract.getOriginatorRate());
+        dto.setCaseSummary(contract.getCaseSummary());
+        return dto;
     }
     
     /**
@@ -1440,7 +1599,7 @@ public class ContractAppService {
                 .amount(command.getAmount())
                 .percentage(command.getPercentage())
                 .plannedDate(command.getPlannedDate())
-                .status("PENDING")
+                .status(PaymentStatus.PENDING)
                 .remark(command.getRemark())
                 .build();
         
@@ -1521,22 +1680,43 @@ public class ContractAppService {
     public List<ContractParticipantDTO> getParticipants(Long contractId) {
         contractRepository.getByIdOrThrow(contractId, "合同不存在");
         List<ContractParticipant> participants = participantRepository.findByContractId(contractId);
-        return participants.stream().map(this::toParticipantDTO).collect(Collectors.toList());
+        
+        if (participants.isEmpty()) {
+            return Collections.emptyList();
+        }
+        
+        // 批量加载用户信息，避免N+1查询
+        Set<Long> userIds = participants.stream()
+                .map(ContractParticipant::getUserId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<Long, User> userMap = userIds.isEmpty() ? Collections.emptyMap() :
+                userRepository.listByIds(userIds).stream()
+                        .collect(Collectors.toMap(User::getId, u -> u));
+        
+        return participants.stream()
+                .map(p -> toParticipantDTO(p, userMap))
+                .collect(Collectors.toList());
     }
     
     /**
      * 创建参与人
+     * 使用悲观锁（SELECT FOR UPDATE）确保提成比例验证的并发安全
      */
     @Transactional
     public ContractParticipantDTO createParticipant(CreateParticipantCommand command) {
-        Contract contract = contractRepository.getByIdOrThrow(command.getContractId(), "合同不存在");
+        // 使用悲观锁锁定合同记录，防止并发添加参与人时提成比例超过100%
+        Contract contract = contractRepository.selectByIdForUpdate(command.getContractId());
+        if (contract == null) {
+            throw new BusinessException("合同不存在");
+        }
         
         // 检查用户是否已是参与人
         if (participantRepository.existsByContractIdAndUserId(command.getContractId(), command.getUserId())) {
             throw new BusinessException("该用户已是合同参与人");
         }
         
-        // 验证提成比例
+        // 验证提成比例（在锁保护下进行，确保并发安全）
         if (command.getCommissionRate() != null) {
             BigDecimal currentTotal = participantRepository.sumCommissionRateByContractId(command.getContractId());
             BigDecimal newTotal = currentTotal.add(command.getCommissionRate());
@@ -1647,6 +1827,30 @@ public class ContractAppService {
         dto.setUpdatedAt(participant.getUpdatedAt());
         return dto;
     }
+
+    /**
+     * 参与人 Entity 转 DTO（使用预加载的用户数据，避免N+1查询）
+     */
+    private ContractParticipantDTO toParticipantDTO(ContractParticipant participant, Map<Long, User> userMap) {
+        ContractParticipantDTO dto = new ContractParticipantDTO();
+        dto.setId(participant.getId());
+        dto.setContractId(participant.getContractId());
+        dto.setUserId(participant.getUserId());
+        // 从预加载的Map获取用户名称
+        if (participant.getUserId() != null && userMap != null) {
+            User user = userMap.get(participant.getUserId());
+            if (user != null) {
+                dto.setUserName(user.getRealName());
+            }
+        }
+        dto.setRole(participant.getRole());
+        dto.setRoleName(getParticipantRoleName(participant.getRole()));
+        dto.setCommissionRate(participant.getCommissionRate());
+        dto.setRemark(participant.getRemark());
+        dto.setCreatedAt(participant.getCreatedAt());
+        dto.setUpdatedAt(participant.getUpdatedAt());
+        return dto;
+    }
     
     // ========== 合同模板功能 ==========
     
@@ -1659,7 +1863,7 @@ public class ContractAppService {
         // 获取模板
         ContractTemplate template = contractTemplateRepository.getByIdOrThrow(templateId, "模板不存在");
         
-        if (!"ACTIVE".equals(template.getStatus())) {
+        if (!ContractStatus.ACTIVE.equals(template.getStatus())) {
             throw new BusinessException("模板已停用，无法使用");
         }
         
@@ -1716,7 +1920,7 @@ public class ContractAppService {
         // ========== 律所信息（从系统配置获取）==========
         try {
             String firmName = sysConfigAppService.getConfigValue("firm.name");
-            variables.put("firmName", firmName != null ? firmName : "北京市XXX律师事务所");
+            variables.put("firmName", firmName != null ? firmName : "");
             
             String firmAddress = sysConfigAppService.getConfigValue("firm.address");
             variables.put("firmAddress", firmAddress != null ? firmAddress : "");
@@ -1964,12 +2168,12 @@ public class ContractAppService {
             printDTO.setFirmLegalRep(sysConfigAppService.getConfigValue("firm.legal.rep"));
         } catch (Exception e) {
             log.warn("获取律所信息失败", e);
-            printDTO.setFirmName("XXX律师事务所");
+            printDTO.setFirmName("");
         }
         
         // 案件信息
         printDTO.setCaseType(contract.getCaseType());
-        printDTO.setCaseTypeName(getCaseTypeName(contract.getCaseType()));
+        printDTO.setCaseTypeName(MatterConstants.getCaseTypeName(contract.getCaseType()));
         printDTO.setCauseOfAction(contract.getCauseOfAction());
         // 案由名称直接使用案由代码（前端传入的可能已经是名称）
         printDTO.setCauseOfActionName(contract.getCauseOfAction());
@@ -1999,22 +2203,33 @@ public class ContractAppService {
             }
         }
         
-        // 获取参与人
+        // 获取参与人（问题244修复：使用批量加载避免N+1查询）
         List<ContractParticipant> participants = participantRepository.findByContractId(contractId);
         String leadLawyerName = null;
         StringBuilder assistLawyerNames = new StringBuilder();
         String originatorName = null;
         
-        for (ContractParticipant p : participants) {
-            User user = userRepository.findById(p.getUserId());
-            if (user != null) {
-                if ("LEAD".equals(p.getRole())) {
-                    leadLawyerName = user.getRealName();
-                } else if ("CO_COUNSEL".equals(p.getRole())) {
-                    if (assistLawyerNames.length() > 0) assistLawyerNames.append("、");
-                    assistLawyerNames.append(user.getRealName());
-                } else if ("ORIGINATOR".equals(p.getRole())) {
-                    originatorName = user.getRealName();
+        if (!participants.isEmpty()) {
+            // 批量加载参与人的用户信息
+            Set<Long> participantUserIds = participants.stream()
+                    .map(ContractParticipant::getUserId)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+            Map<Long, User> participantUserMap = participantUserIds.isEmpty() ? Collections.emptyMap() :
+                    userRepository.listByIds(participantUserIds).stream()
+                            .collect(Collectors.toMap(User::getId, u -> u));
+            
+            for (ContractParticipant p : participants) {
+                User user = participantUserMap.get(p.getUserId());
+                if (user != null) {
+                    if ("LEAD".equals(p.getRole())) {
+                        leadLawyerName = user.getRealName();
+                    } else if ("CO_COUNSEL".equals(p.getRole())) {
+                        if (assistLawyerNames.length() > 0) assistLawyerNames.append("、");
+                        assistLawyerNames.append(user.getRealName());
+                    } else if ("ORIGINATOR".equals(p.getRole())) {
+                        originatorName = user.getRealName();
+                    }
                 }
             }
         }

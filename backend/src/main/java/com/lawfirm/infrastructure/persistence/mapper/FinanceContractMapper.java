@@ -7,6 +7,7 @@ import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
 import java.time.LocalDate;
+import java.util.List;
 
 /**
  * 委托合同 Mapper（财务模块）
@@ -37,4 +38,39 @@ public interface FinanceContractMapper extends BaseMapper<Contract> {
      */
     @Select("SELECT COUNT(*) FROM finance_contract WHERE EXTRACT(YEAR FROM created_at) = #{year} AND deleted = false")
     long countByCreatedYear(@Param("year") int year);
+
+    /**
+     * 根据ID查询合同并加行锁（用于并发控制）
+     * 使用 SELECT ... FOR UPDATE 实现悲观锁
+     */
+    @Select("SELECT * FROM finance_contract WHERE id = #{id} AND deleted = false FOR UPDATE")
+    Contract selectByIdForUpdate(@Param("id") Long id);
+
+    /**
+     * 查询即将到期的合同（问题255：合同到期提醒功能）
+     * @param startDate 开始日期
+     * @param endDate 结束日期
+     * @return 在指定日期范围内到期的有效合同列表
+     */
+    @Select("SELECT * FROM finance_contract WHERE status = 'ACTIVE' AND deleted = false " +
+            "AND expiry_date >= #{startDate} AND expiry_date <= #{endDate} " +
+            "ORDER BY expiry_date ASC")
+    List<Contract> selectExpiringContracts(@Param("startDate") LocalDate startDate, 
+                                            @Param("endDate") LocalDate endDate);
+
+    /**
+     * 查询已过期的合同
+     * @param date 当前日期
+     * @return 已过期但状态仍为ACTIVE的合同列表
+     */
+    @Select("SELECT * FROM finance_contract WHERE status = 'ACTIVE' AND deleted = false " +
+            "AND expiry_date < #{date} ORDER BY expiry_date ASC")
+    List<Contract> selectExpiredContracts(@Param("date") LocalDate date);
+
+    /**
+     * 统计使用指定模板的合同数量
+     * ✅ 修复问题585/586: 支持检查模板使用情况
+     */
+    @Select("SELECT COUNT(*) FROM finance_contract WHERE template_id = #{templateId} AND deleted = false")
+    long countByTemplateId(@Param("templateId") Long templateId);
 }

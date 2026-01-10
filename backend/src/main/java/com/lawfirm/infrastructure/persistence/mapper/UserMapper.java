@@ -150,4 +150,18 @@ public interface UserMapper extends BaseMapper<User> {
         LIMIT 1
         """)
     String selectHighestDataScopeByUserId(@Param("userId") Long userId);
+
+    /**
+     * 批量删除用户角色关联
+     * 问题452修复：支持批量操作
+     */
+    @Delete("""
+        <script>
+        DELETE FROM sys_user_role WHERE user_id IN
+        <foreach collection="userIds" item="userId" open="(" separator="," close=")">
+            #{userId}
+        </foreach>
+        </script>
+        """)
+    void batchDeleteUserRoles(@Param("userIds") List<Long> userIds);
 }

@@ -229,3 +229,24 @@ export function updateLetterContent(id: number, content: string) {
     params: { content },
   });
 }
+
+// ==================== 二维码相关 ====================
+
+/** 获取函件验证二维码（Base64） */
+export function getLetterQrCode(id: number, size?: number) {
+  return requestClient.get<{
+    qrCodeBase64: string;
+    verificationUrl: string;
+    applicationNo: string;
+  }>(`/admin/letter/application/${id}/qrcode`, {
+    params: { size: size || 200 },
+  });
+}
+
+/** 下载函件验证二维码图片 */
+export function downloadLetterQrCodeImage(id: number, size?: number) {
+  return requestClient.get<Blob>(`/admin/letter/application/${id}/qrcode/image`, {
+    params: { size: size || 200 },
+    responseType: 'blob',
+  });
+}

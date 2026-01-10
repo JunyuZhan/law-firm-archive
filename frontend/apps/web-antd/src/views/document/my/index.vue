@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { message, Modal } from 'ant-design-vue';
 import { Page } from '@vben/common-ui';
@@ -27,19 +26,13 @@ import {
   downloadDocument,
   previewDocument,
 } from '#/api/document';
-import { getMatterList } from '#/api/matter';
 import type { DocumentDTO } from '#/api/document';
-import type { MatterDTO } from '#/api/matter/types';
 import { useUserStore } from '@vben/stores';
 
 defineOptions({ name: 'MyDocuments' });
 
 const router = useRouter();
 const userStore = useUserStore();
-
-// ==================== 状态定义 ====================
-
-const matters = ref<MatterDTO[]>([]);
 
 // ==================== 常量选项 ====================
 
@@ -58,11 +51,11 @@ const fileTypeMap: Record<string, { color: string; text: string }> = {
   png: { color: 'purple', text: '图片' },
 };
 
-// 项目选项（包含特殊选项）
-const matterOptions = computed(() => [
-  { label: '非项目文书', value: -1 },
-  ...matters.value.map(m => ({ label: m.name, value: m.id })),
-]);
+// 文档范围选项
+const docScopeOptions = [
+  { label: '仅个人文书', value: 'personal' },
+  { label: '全部文书', value: 'all' },
+];
 
 // ==================== 搜索表单配置 ====================
 
@@ -77,26 +70,26 @@ const formSchema: VbenFormSchema[] = [
     },
   },
   {
-    fieldName: 'matterId',
-    label: '关联项目',
+    fieldName: 'docScope',
+    label: '文档范围',
     component: 'Select',
     componentProps: {
-      placeholder: '选择项目',
-      allowClear: true,
-      options: matterOptions,
+      placeholder: '选择范围',
+      options: docScopeOptions,
     },
+    defaultValue: 'personal',  // 默认只显示个人文书
   },
 ];
 
 // ==================== 表格配置 ====================
 
 const gridColumns = [
-  { title: '文档名称', field: 'title', width: 280, showOverflow: true, slots: { default: 'title' } },
+  { title: '文档名称', field: 'title', width: 300, showOverflow: true, slots: { default: 'title' } },
   { title: '类型', field: 'fileType', width: 80, slots: { default: 'fileType' } },
-  { title: '关联项目', field: 'matterName', width: 180, showOverflow: true, slots: { default: 'matterName' } },
+  { title: '来源', field: 'matterName', width: 150, showOverflow: true, slots: { default: 'source' } },
   { title: '大小', field: 'fileSize', width: 100, slots: { default: 'fileSize' } },
   { title: '创建时间', field: 'createdAt', width: 160, slots: { default: 'createdAt' } },
-  { title: '操作', field: 'action', width: 180, fixed: 'right' as const, slots: { default: 'action' } },
+  { title: '操作', field: 'action', width: 150, fixed: 'right' as const, slots: { default: 'action' } },
 ];
 
 // 加载数据
@@ -113,22 +106,21 @@ async function loadData(params: { page: number; pageSize: number } & Record<stri
     createdBy: userId,  // 使用 createdBy 查询当前用户创建的文档
   };
   
-  // 处理项目筛选
-  if (params.matterId && params.matterId !== -1) {
-    queryParams.matterId = params.matterId;
-  }
-  
   const res = await getDocumentList(queryParams);
   let list = res.list || [];
+  let total = res.total || 0;
   
-  // 前端过滤非项目文书
-  if (params.matterId === -1) {
+  // 根据文档范围过滤
+  // 默认或选择 'personal' 时，只显示个人文书（不关联项目的）
+  const docScope = params.docScope || 'personal';
+  if (docScope === 'personal') {
     list = list.filter(doc => !doc.matterId);
+    total = list.length;  // 前端过滤后需要重新计算总数
   }
   
   return {
     items: list,
-    total: res.total || 0,
+    total,
   };
 }
 
@@ -161,17 +153,6 @@ const [Grid, gridApi] = useVbenVxeGrid({
     },
   },
 });
-
-// ==================== 数据加载 ====================
-
-async function loadMatters() {
-  try {
-    const res = await getMatterList({ pageNum: 1, pageSize: 100 });
-    matters.value = res.list || [];
-  } catch (error) {
-    console.error('加载项目列表失败:', error);
-  }
-}
 
 // ==================== 辅助方法 ====================
 
@@ -244,15 +225,10 @@ function goToCompose() {
   router.push('/document/compose');
 }
 
-// ==================== 生命周期 ====================
-
-onMounted(() => {
-  loadMatters();
-});
 </script>
 
 <template>
-  <Page title="我的文书" description="查看和管理您创建的所有文书" auto-content-height>
+  <Page title="我的文书" description="查看和管理您的个人文书（不关联项目的文书），项目文书请到对应项目卷宗中查看" auto-content-height>
     <Grid>
       <!-- 工具栏按钮 -->
       <template #toolbar-buttons>
@@ -279,8 +255,8 @@ onMounted(() => {
         </Tag>
       </template>
 
-      <!-- 关联项目列 -->
-      <template #matterName="{ row }">
+      <!-- 来源列 -->
+      <template #source="{ row }">
         <template v-if="row.matterId">
           <a style="display: inline-flex; align-items: center; gap: 4px; color: #1890ff" @click="goToMatterDossier(row)">
             <Inbox style="width: 14px; height: 14px" />
@@ -288,7 +264,7 @@ onMounted(() => {
           </a>
         </template>
         <template v-else>
-          <span style="color: #999; font-style: italic">个人文书</span>
+          <Tag color="blue">个人文书</Tag>
         </template>
       </template>
 

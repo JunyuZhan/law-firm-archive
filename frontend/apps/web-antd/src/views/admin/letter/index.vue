@@ -11,9 +11,6 @@ import {
   Tag,
   Input,
   Select,
-  Form,
-  FormItem,
-  DatePicker,
   Row,
   Col,
   Tabs,
@@ -24,7 +21,6 @@ import {
 } from 'ant-design-vue';
 import {
   getAllApplications,
-  getPendingPrintList,
   approveApplication,
   rejectApplication,
   returnApplication,
@@ -33,7 +29,10 @@ import {
   updateLetterContent,
   type LetterApplicationDTO,
 } from '#/api/admin';
+import { getConfigValue } from '#/api/system';
 import RichTextEditor from '#/components/RichTextEditor/index.vue';
+import { printLetter, type LetterPrintData } from '@vben/utils';
+import { getLetterQrCode } from '#/api/admin/letter';
 
 defineOptions({ name: 'AdminLetter' });
 
@@ -43,6 +42,7 @@ const activeTab = ref('all');
 const allApplications = ref<LetterApplicationDTO[]>([]);
 const pendingList = ref<LetterApplicationDTO[]>([]);
 const completedList = ref<LetterApplicationDTO[]>([]);
+const firmName = ref('');
 
 // 详情弹框
 const detailVisible = ref(false);
@@ -81,6 +81,18 @@ const columns = [
   { title: '申请时间', dataIndex: 'createdAt', key: 'createdAt', width: 160 },
   { title: '操作', key: 'action', width: 220, fixed: 'right' as const },
 ];
+
+// 加载律所名称
+async function loadFirmName() {
+  try {
+    const config = await getConfigValue('firm.name');
+    if (config && config.configValue) {
+      firmName.value = config.configValue;
+    }
+  } catch (error) {
+    console.warn('获取律所名称失败，使用默认值', error);
+  }
+}
 
 // 加载全部数据
 async function fetchAllData() {
@@ -210,7 +222,7 @@ function handleReturn(record: LetterApplicationDTO) {
     },
     okText: '确认退回',
     cancelText: '取消',
-    okButtonProps: { style: { backgroundColor: '#faad14', borderColor: '#faad14' } },
+    okButtonProps: { danger: false },
     onOk: async () => {
       if (!returnReasonRef.value?.trim()) {
         message.error('请输入退回原因');
@@ -302,71 +314,40 @@ function handlePrintFromDetail() {
   }
 }
 
-// 生成函件HTML内容
-function generateLetterHtml(record: LetterApplicationDTO) {
-  return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="UTF-8">
-      <title>${record.letterTypeName} - ${record.applicationNo}</title>
-      <style>
-        body { font-family: SimSun, serif; padding: 60px 80px; line-height: 2; font-size: 16px; }
-        .header { text-align: center; margin-bottom: 40px; }
-        .title { font-size: 26px; font-weight: bold; letter-spacing: 4px; }
-        .letter-no { margin-top: 15px; font-size: 14px; color: #666; }
-        .recipient { margin-bottom: 20px; font-size: 16px; }
-        .content { text-indent: 2em; text-align: justify; }
-        .content p { margin: 0.5em 0; }
-        .content span[data-variable] { color: #000; background: transparent; padding: 0; }
-        .footer { margin-top: 60px; text-align: right; padding-right: 60px; }
-        .footer-item { margin-bottom: 10px; }
-        .seal-area { margin-top: 30px; font-size: 14px; color: #999; }
-        @media print { 
-          body { padding: 40px 60px; } 
-          @page { margin: 2cm; }
-        }
-      </style>
-    </head>
-    <body>
-      <div class="header">
-        <div class="title">${record.letterTypeName || '介绍信'}</div>
-        <div class="letter-no">编号：${record.applicationNo}</div>
-      </div>
-      <div class="recipient"><strong>${record.targetUnit}：</strong></div>
-      <div class="content">${record.content || record.purpose || ''}</div>
-      <div class="footer">
-        <div class="footer-item">出函律师：${record.lawyerNames || '-'}</div>
-        <div class="footer-item" style="margin-top: 40px;">北京XX律师事务所</div>
-        <div class="footer-item">${dayjs().format('YYYY年MM月DD日')}</div>
-        <div class="seal-area">（盖章处）</div>
-      </div>
-    </body>
-    </html>
-  `;
-}
-
-// 打印函件内容（真实打印弹窗）
-function handlePrintContent(record: LetterApplicationDTO) {
-  const printWindow = window.open('', '_blank');
-  if (printWindow) {
-    printWindow.document.write(generateLetterHtml(record));
-    printWindow.document.close();
-    // 等待内容加载完成后触发打印
-    printWindow.onload = () => {
-      printWindow.print();
+// 打印函件内容（使用标准公文格式）
+async function handlePrintContent(record: LetterApplicationDTO) {
+  try {
+    // 获取验证二维码
+    let qrCodeBase64: string | undefined;
+    try {
+      const qrCodeRes = await getLetterQrCode(record.id, 120); // 120px适合打印（约70pt）
+      qrCodeBase64 = qrCodeRes.qrCodeBase64;
+    } catch (qrError: any) {
+      console.warn('获取二维码失败，将不显示二维码:', qrError.message);
+      // 二维码获取失败不影响打印，继续执行
+    }
+    
+    const printData: LetterPrintData = {
+      letterTypeName: record.letterTypeName || '介绍信',
+      applicationNo: record.applicationNo,
+      targetUnit: record.targetUnit,
+      targetContact: record.targetContact,
+      targetPhone: record.targetPhone,
+      targetAddress: record.targetAddress,
+      content: record.content || record.purpose || '',
+      lawyerNames: record.lawyerNames,
+      firmName: firmName.value,
+      date: dayjs().format('YYYY年MM月DD日'),
+      qrCodeBase64, // 添加二维码
     };
-    // 兼容处理
-    setTimeout(() => {
-      printWindow.print();
-    }, 500);
+    printLetter(printData);
+  } catch (error: any) {
+    message.error(error.message || '打印失败');
   }
 }
 
 // 下载为Word文档
 function handleDownloadWord(record: LetterApplicationDTO) {
-  const htmlContent = generateLetterHtml(record);
-  
   // 创建Word文档的HTML格式
   const wordContent = `
     <html xmlns:o="urn:schemas-microsoft-com:office:office" 
@@ -384,15 +365,60 @@ function handleDownloadWord(record: LetterApplicationDTO) {
       </xml>
       <![endif]-->
       <style>
-        body { font-family: SimSun, serif; line-height: 2; font-size: 16px; }
-        .header { text-align: center; margin-bottom: 40px; }
-        .title { font-size: 26px; font-weight: bold; letter-spacing: 4px; }
-        .letter-no { margin-top: 15px; font-size: 14px; color: #666; }
-        .recipient { margin-bottom: 20px; font-size: 16px; }
-        .content { white-space: pre-wrap; text-indent: 2em; text-align: justify; }
-        .footer { margin-top: 60px; text-align: right; padding-right: 60px; }
-        .footer-item { margin-bottom: 10px; }
-        .seal-area { margin-top: 30px; font-size: 14px; color: #999; }
+        body { 
+          font-family: "FangSong", "仿宋_GB2312", "仿宋", serif; 
+          line-height: 28pt; 
+          font-size: 16pt; 
+        }
+        * { font-family: "FangSong", "仿宋_GB2312", "仿宋", serif; }
+        .header { 
+          text-align: center; 
+          margin-bottom: 30pt; 
+          font-family: "FangSong", "仿宋_GB2312", "仿宋", serif; 
+        }
+        .title { 
+          font-size: 18pt; 
+          font-weight: bold; 
+          font-family: "SimHei", "黑体", sans-serif;
+          letter-spacing: 2pt; 
+        }
+        .letter-no { 
+          margin-top: 10pt; 
+          font-size: 16pt; 
+          font-family: "FangSong", "仿宋_GB2312", "仿宋", serif; 
+        }
+        .recipient { 
+          margin-bottom: 20pt; 
+          font-size: 16pt; 
+          font-family: "FangSong", "仿宋_GB2312", "仿宋", serif; 
+          line-height: 28pt;
+        }
+        .content { 
+          white-space: pre-wrap; 
+          text-indent: 2em; 
+          text-align: justify; 
+          font-family: "FangSong", "仿宋_GB2312", "仿宋", serif; 
+          font-size: 16pt; 
+          line-height: 28pt;
+        }
+        .footer { 
+          margin-top: 40pt; 
+          text-align: right; 
+          padding-right: 0; 
+          font-family: "FangSong", "仿宋_GB2312", "仿宋", serif; 
+        }
+        .footer-item { 
+          margin-bottom: 8pt; 
+          font-family: "FangSong", "仿宋_GB2312", "仿宋", serif; 
+          font-size: 16pt; 
+          line-height: 28pt;
+        }
+        .seal-area { 
+          margin-top: 20pt; 
+          font-size: 16pt; 
+          color: #666; 
+          font-family: "FangSong", "仿宋_GB2312", "仿宋", serif; 
+        }
       </style>
     </head>
     <body>
@@ -400,11 +426,11 @@ function handleDownloadWord(record: LetterApplicationDTO) {
         <div class="title">${record.letterTypeName || '介绍信'}</div>
         <div class="letter-no">编号：${record.applicationNo}</div>
       </div>
-      <div class="recipient"><strong>${record.targetUnit}：</strong></div>
+      <div class="recipient">${record.targetUnit}：</div>
       <div class="content">${record.content || record.purpose}</div>
       <div class="footer">
         <div class="footer-item">出函律师：${record.lawyerNames || '-'}</div>
-        <div class="footer-item" style="margin-top: 40px;">北京XX律师事务所</div>
+        <div class="footer-item" style="margin-top: 20pt;">${firmName.value}</div>
         <div class="footer-item">${dayjs().format('YYYY年MM月DD日')}</div>
         <div class="seal-area">（盖章处）</div>
       </div>
@@ -452,6 +478,7 @@ const statusOptions = [
 ];
 
 onMounted(() => {
+  loadFirmName();
   fetchAllData();
 });
 </script>

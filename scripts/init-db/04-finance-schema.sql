@@ -1201,6 +1201,98 @@ CREATE SEQUENCE public.hourly_rate_id_seq
 
 ALTER SEQUENCE public.hourly_rate_id_seq OWNED BY public.hourly_rate.id;
 --
+-- Name: finance_prepayment; Type: TABLE; Schema: public; Owner: -
+--
+CREATE TABLE public.finance_prepayment (
+    id bigint NOT NULL,
+    prepayment_no character varying(32) NOT NULL,
+    client_id bigint NOT NULL,
+    contract_id bigint,
+    matter_id bigint,
+    amount numeric(18,2) NOT NULL,
+    used_amount numeric(18,2) DEFAULT 0,
+    remaining_amount numeric(18,2) NOT NULL,
+    currency character varying(10) DEFAULT 'CNY'::character varying,
+    receipt_date date NOT NULL,
+    payment_method character varying(20),
+    bank_account character varying(100),
+    transaction_no character varying(100),
+    status character varying(20) NOT NULL DEFAULT 'PENDING'::character varying,
+    confirmer_id bigint,
+    confirmed_at timestamp without time zone,
+    purpose character varying(500),
+    remark character varying(500),
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    created_by bigint,
+    updated_by bigint,
+    deleted boolean DEFAULT false
+);
+--
+-- Name: TABLE finance_prepayment; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON TABLE public.finance_prepayment IS '预收款表';
+COMMENT ON COLUMN public.finance_prepayment.prepayment_no IS '预收款编号';
+COMMENT ON COLUMN public.finance_prepayment.client_id IS '客户ID';
+COMMENT ON COLUMN public.finance_prepayment.contract_id IS '合同ID';
+COMMENT ON COLUMN public.finance_prepayment.matter_id IS '项目ID';
+COMMENT ON COLUMN public.finance_prepayment.amount IS '预收款金额';
+COMMENT ON COLUMN public.finance_prepayment.used_amount IS '已核销金额';
+COMMENT ON COLUMN public.finance_prepayment.remaining_amount IS '剩余金额';
+COMMENT ON COLUMN public.finance_prepayment.status IS '状态：PENDING-待确认, ACTIVE-有效, USED-已用完, REFUNDED-已退款, CANCELLED-已取消';
+--
+-- Name: finance_prepayment_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+CREATE SEQUENCE public.finance_prepayment_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+--
+-- Name: finance_prepayment_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+ALTER SEQUENCE public.finance_prepayment_id_seq OWNED BY public.finance_prepayment.id;
+--
+-- Name: finance_prepayment_usage; Type: TABLE; Schema: public; Owner: -
+--
+CREATE TABLE public.finance_prepayment_usage (
+    id bigint NOT NULL,
+    prepayment_id bigint NOT NULL,
+    fee_id bigint NOT NULL,
+    matter_id bigint,
+    amount numeric(18,2) NOT NULL,
+    usage_time timestamp without time zone NOT NULL,
+    operator_id bigint,
+    remark character varying(500),
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    created_by bigint,
+    updated_by bigint,
+    deleted boolean DEFAULT false
+);
+--
+-- Name: TABLE finance_prepayment_usage; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON TABLE public.finance_prepayment_usage IS '预收款核销记录表';
+COMMENT ON COLUMN public.finance_prepayment_usage.prepayment_id IS '预收款ID';
+COMMENT ON COLUMN public.finance_prepayment_usage.fee_id IS '收费记录ID';
+COMMENT ON COLUMN public.finance_prepayment_usage.amount IS '核销金额';
+COMMENT ON COLUMN public.finance_prepayment_usage.usage_time IS '核销时间';
+--
+-- Name: finance_prepayment_usage_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+CREATE SEQUENCE public.finance_prepayment_usage_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+--
+-- Name: finance_prepayment_usage_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+ALTER SEQUENCE public.finance_prepayment_usage_id_seq OWNED BY public.finance_prepayment_usage.id;
+--
 -- Name: fin_payment_amendment id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -1265,6 +1357,14 @@ ALTER TABLE ONLY public.finance_payment ALTER COLUMN id SET DEFAULT nextval('pub
 --
 
 ALTER TABLE ONLY public.hourly_rate ALTER COLUMN id SET DEFAULT nextval('public.hourly_rate_id_seq'::regclass);
+--
+-- Name: finance_prepayment id; Type: DEFAULT; Schema: public; Owner: -
+--
+ALTER TABLE ONLY public.finance_prepayment ALTER COLUMN id SET DEFAULT nextval('public.finance_prepayment_id_seq'::regclass);
+--
+-- Name: finance_prepayment_usage id; Type: DEFAULT; Schema: public; Owner: -
+--
+ALTER TABLE ONLY public.finance_prepayment_usage ALTER COLUMN id SET DEFAULT nextval('public.finance_prepayment_usage_id_seq'::regclass);
 --
 -- Name: fin_payment_amendment fin_payment_amendment_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
@@ -1391,6 +1491,21 @@ ALTER TABLE ONLY public.finance_payment
 
 ALTER TABLE ONLY public.hourly_rate
     ADD CONSTRAINT hourly_rate_pkey PRIMARY KEY (id);
+--
+-- Name: finance_prepayment finance_prepayment_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+ALTER TABLE ONLY public.finance_prepayment
+    ADD CONSTRAINT finance_prepayment_pkey PRIMARY KEY (id);
+--
+-- Name: finance_prepayment finance_prepayment_prepayment_no_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+ALTER TABLE ONLY public.finance_prepayment
+    ADD CONSTRAINT finance_prepayment_prepayment_no_key UNIQUE (prepayment_no);
+--
+-- Name: finance_prepayment_usage finance_prepayment_usage_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+ALTER TABLE ONLY public.finance_prepayment_usage
+    ADD CONSTRAINT finance_prepayment_usage_pkey PRIMARY KEY (id);
 --
 -- Name: idx_commission_client; Type: INDEX; Schema: public; Owner: -
 --
@@ -1651,6 +1766,12 @@ CREATE INDEX idx_finance_payment_status ON public.finance_payment USING btree (s
 --
 
 CREATE INDEX idx_hourly_rate_user ON public.hourly_rate USING btree (user_id);
+CREATE INDEX idx_prepayment_client_id ON public.finance_prepayment USING btree (client_id);
+CREATE INDEX idx_prepayment_contract_id ON public.finance_prepayment USING btree (contract_id);
+CREATE INDEX idx_prepayment_matter_id ON public.finance_prepayment USING btree (matter_id);
+CREATE INDEX idx_prepayment_status ON public.finance_prepayment USING btree (status);
+CREATE INDEX idx_prepayment_usage_prepayment_id ON public.finance_prepayment_usage USING btree (prepayment_id);
+CREATE INDEX idx_prepayment_usage_fee_id ON public.finance_prepayment_usage USING btree (fee_id);
 --
 -- Name: idx_payment_amendment_payment_id; Type: INDEX; Schema: public; Owner: -
 --
@@ -1707,3 +1828,28 @@ ALTER TABLE ONLY public.finance_commission_detail
 
 ALTER TABLE ONLY public.finance_payment
     ADD CONSTRAINT fk_payment_locked_by FOREIGN KEY (locked_by) REFERENCES public.sys_user(id);
+--
+-- Name: finance_prepayment fk_prepayment_client; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+ALTER TABLE ONLY public.finance_prepayment
+    ADD CONSTRAINT fk_prepayment_client FOREIGN KEY (client_id) REFERENCES public.crm_client(id);
+--
+-- Name: finance_prepayment fk_prepayment_contract; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+ALTER TABLE ONLY public.finance_prepayment
+    ADD CONSTRAINT fk_prepayment_contract FOREIGN KEY (contract_id) REFERENCES public.finance_contract(id);
+--
+-- Name: finance_prepayment fk_prepayment_matter; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+ALTER TABLE ONLY public.finance_prepayment
+    ADD CONSTRAINT fk_prepayment_matter FOREIGN KEY (matter_id) REFERENCES public.matter(id);
+--
+-- Name: finance_prepayment_usage fk_prepayment_usage_prepayment; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+ALTER TABLE ONLY public.finance_prepayment_usage
+    ADD CONSTRAINT fk_prepayment_usage_prepayment FOREIGN KEY (prepayment_id) REFERENCES public.finance_prepayment(id);
+--
+-- Name: finance_prepayment_usage fk_prepayment_usage_fee; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+ALTER TABLE ONLY public.finance_prepayment_usage
+    ADD CONSTRAINT fk_prepayment_usage_fee FOREIGN KEY (fee_id) REFERENCES public.finance_fee(id);

@@ -21,7 +21,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.List;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 /**
@@ -36,9 +38,13 @@ public class ContractAppService {
     private final ContractMapper contractMapper;
     private final EmployeeRepository employeeRepository;
     private final UserRepository userRepository;
+    
+    // 问题343修复：合同编号生成序列号，避免并发冲突
+    private final AtomicLong contractSequence = new AtomicLong(0);
 
     /**
      * 分页查询劳动合同
+     * 问题340修复：使用批量加载避免N+1查询
      */
     public PageResult<ContractDTO> listContracts(ContractQueryDTO query) {
         IPage<Contract> page = contractMapper.selectContractPage(
@@ -47,13 +53,38 @@ public class ContractAppService {
                 query.getContractNo(),
                 query.getStatus()
         );
+        List<Contract> contracts = page.getRecords();
 
-        return PageResult.of(
-                page.getRecords().stream().map(this::toDTO).collect(Collectors.toList()),
-                page.getTotal(),
-                query.getPageNum(),
-                query.getPageSize()
-        );
+        if (contracts.isEmpty()) {
+            return PageResult.of(Collections.emptyList(), 0L, query.getPageNum(), query.getPageSize());
+        }
+
+        // 批量加载员工信息
+        Set<Long> employeeIds = contracts.stream()
+                .map(Contract::getEmployeeId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        Map<Long, Employee> employeeMap = employeeIds.isEmpty() ? Collections.emptyMap() :
+                employeeRepository.listByIds(new ArrayList<>(employeeIds)).stream()
+                        .collect(Collectors.toMap(Employee::getId, e -> e));
+
+        // 批量加载用户信息
+        Set<Long> userIds = employeeMap.values().stream()
+                .map(Employee::getUserId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        Map<Long, User> userMap = userIds.isEmpty() ? Collections.emptyMap() :
+                userRepository.listByIds(new ArrayList<>(userIds)).stream()
+                        .collect(Collectors.toMap(User::getId, u -> u));
+
+        // 转换DTO（从Map获取，避免N+1）
+        List<ContractDTO> dtos = contracts.stream()
+                .map(c -> toDTO(c, employeeMap, userMap))
+                .collect(Collectors.toList());
+
+        return PageResult.of(dtos, page.getTotal(), query.getPageNum(), query.getPageSize());
     }
 
     /**
@@ -214,9 +245,17 @@ public class ContractAppService {
     }
 
     /**
-     * 转换为DTO
+     * 转换为DTO（单个合同，会查询员工和用户）
      */
     private ContractDTO toDTO(Contract contract) {
+        return toDTO(contract, null, null);
+    }
+
+    /**
+     * 转换为DTO（批量优化版本，从Map获取员工和用户信息）
+     * 问题340修复：支持批量加载
+     */
+    private ContractDTO toDTO(Contract contract, Map<Long, Employee> employeeMap, Map<Long, User> userMap) {
         ContractDTO dto = new ContractDTO();
         dto.setId(contract.getId());
         dto.setEmployeeId(contract.getEmployeeId());
@@ -238,12 +277,14 @@ public class ContractAppService {
         dto.setCreatedAt(contract.getCreatedAt());
         dto.setUpdatedAt(contract.getUpdatedAt());
 
-        // 加载员工和用户信息
+        // 加载员工和用户信息（从Map获取或单独查询）
         if (contract.getEmployeeId() != null) {
-            Employee employee = employeeRepository.findById(contract.getEmployeeId());
+            Employee employee = (employeeMap != null) ? employeeMap.get(contract.getEmployeeId())
+                                                      : employeeRepository.findById(contract.getEmployeeId());
             if (employee != null && employee.getUserId() != null) {
                 dto.setUserId(employee.getUserId());
-                User user = userRepository.findById(employee.getUserId());
+                User user = (userMap != null) ? userMap.get(employee.getUserId())
+                                              : userRepository.findById(employee.getUserId());
                 if (user != null) {
                     dto.setEmployeeName(user.getRealName());
                 }
@@ -267,6 +308,7 @@ public class ContractAppService {
                 case "ACTIVE" -> dto.setStatusName("生效中");
                 case "EXPIRED" -> dto.setStatusName("已到期");
                 case "TERMINATED" -> dto.setStatusName("已终止");
+                case "RENEWED" -> dto.setStatusName("已续签");
                 default -> dto.setStatusName(dto.getStatus());
             }
         }
@@ -276,11 +318,14 @@ public class ContractAppService {
 
     /**
      * 生成合同编号
+     * 问题343修复：使用日期+序列号+随机数避免并发冲突
      */
     private String generateContractNo() {
-        String prefix = "CONTRACT";
-        String timestamp = String.valueOf(System.currentTimeMillis()).substring(7);
-        return prefix + timestamp;
+        String prefix = "HC";
+        String date = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        long seq = contractSequence.incrementAndGet() % 1000;
+        String random = UUID.randomUUID().toString().substring(0, 4).toUpperCase();
+        return String.format("%s%s%03d%s", prefix, date, seq, random);
     }
 }
 

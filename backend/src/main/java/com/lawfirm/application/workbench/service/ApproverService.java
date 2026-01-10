@@ -14,6 +14,8 @@ import org.springframework.stereotype.Service;
 
 import java.util.*;
 
+import com.lawfirm.common.constant.EmployeeStatus;
+
 /**
  * 审批人查找服务
  * 根据业务类型和规则查找合适的审批人
@@ -87,7 +89,7 @@ public class ApproverService {
             Department dept = departmentRepository.getById(deptId);
             if (dept != null && dept.getLeaderId() != null && !dept.getLeaderId().equals(applicantId)) {
                 User leader = userRepository.getById(dept.getLeaderId());
-                if (leader != null && "ACTIVE".equals(leader.getStatus())) {
+                if (leader != null && EmployeeStatus.ACTIVE.equals(leader.getStatus())) {
                     // 返回第一个找到的部门负责人（通常部门负责人都有审批权限）
                     log.info("找到用印申请审批人（部门负责人）: userId={}, deptId={}, deptName={}", 
                             leader.getId(), deptId, dept.getName());
@@ -107,7 +109,7 @@ public class ApproverService {
             for (Long partnerId : partnerIds) {
                 if (!partnerId.equals(applicantId)) {
                     User partner = userRepository.getById(partnerId);
-                    if (partner != null && "ACTIVE".equals(partner.getStatus())) {
+                    if (partner != null && EmployeeStatus.ACTIVE.equals(partner.getStatus())) {
                         log.info("找到用印申请审批人（团队负责人）: userId={}", partnerId);
                         return partnerId;
                     }
@@ -121,7 +123,7 @@ public class ApproverService {
             for (Long directorId : directorIds) {
                 if (!directorId.equals(applicantId)) {
                     User director = userRepository.getById(directorId);
-                    if (director != null && "ACTIVE".equals(director.getStatus())) {
+                    if (director != null && EmployeeStatus.ACTIVE.equals(director.getStatus())) {
                         log.info("找到用印申请审批人（主任）: userId={}", directorId);
                         return directorId;
                     }
@@ -169,7 +171,7 @@ public class ApproverService {
             if (dept != null && dept.getLeaderId() != null && !dept.getLeaderId().equals(applicantId)) {
                 if (!addedUserIds.contains(dept.getLeaderId())) {
                     User leader = userRepository.getById(dept.getLeaderId());
-                    if (leader != null && "ACTIVE".equals(leader.getStatus())) {
+                    if (leader != null && EmployeeStatus.ACTIVE.equals(leader.getStatus())) {
                         Map<String, Object> approver = new HashMap<>();
                         approver.put("id", leader.getId());
                         approver.put("realName", leader.getRealName());
@@ -193,7 +195,7 @@ public class ApproverService {
             for (Long partnerId : partnerIds) {
                 if (!partnerId.equals(applicantId) && !addedUserIds.contains(partnerId)) {
                     User partner = userRepository.getById(partnerId);
-                    if (partner != null && "ACTIVE".equals(partner.getStatus())) {
+                    if (partner != null && EmployeeStatus.ACTIVE.equals(partner.getStatus())) {
                         Map<String, Object> approver = new HashMap<>();
                         approver.put("id", partner.getId());
                         approver.put("realName", partner.getRealName());
@@ -212,7 +214,7 @@ public class ApproverService {
             for (Long directorId : directorIds) {
                 if (!directorId.equals(applicantId) && !addedUserIds.contains(directorId)) {
                     User director = userRepository.getById(directorId);
-                    if (director != null && "ACTIVE".equals(director.getStatus())) {
+                    if (director != null && EmployeeStatus.ACTIVE.equals(director.getStatus())) {
                         Map<String, Object> approver = new HashMap<>();
                         approver.put("id", director.getId());
                         approver.put("realName", director.getRealName());
@@ -358,7 +360,7 @@ public class ApproverService {
             for (Long leaderId : teamLeaderIds) {
                 if (!leaderId.equals(currentUserId) && !addedUserIds.contains(leaderId)) {
                     User leader = userRepository.getById(leaderId);
-                    if (leader != null && "ACTIVE".equals(leader.getStatus())) {
+                    if (leader != null && EmployeeStatus.ACTIVE.equals(leader.getStatus())) {
                         Map<String, Object> approver = new HashMap<>();
                         approver.put("id", leader.getId());
                         approver.put("realName", leader.getRealName());
@@ -378,7 +380,7 @@ public class ApproverService {
             for (Long directorId : directorIds) {
                 if (!directorId.equals(currentUserId) && !addedUserIds.contains(directorId)) {
                     User director = userRepository.getById(directorId);
-                    if (director != null && "ACTIVE".equals(director.getStatus())) {
+                    if (director != null && EmployeeStatus.ACTIVE.equals(director.getStatus())) {
                         Map<String, Object> approver = new HashMap<>();
                         approver.put("id", director.getId());
                         approver.put("realName", director.getRealName());
@@ -433,7 +435,7 @@ public class ApproverService {
             for (Long directorId : directorIds) {
                 if (!directorId.equals(currentUserId) && !addedUserIds.contains(directorId)) {
                     User director = userRepository.getById(directorId);
-                    if (director != null && "ACTIVE".equals(director.getStatus())) {
+                    if (director != null && EmployeeStatus.ACTIVE.equals(director.getStatus())) {
                         Map<String, Object> approver = new HashMap<>();
                         approver.put("id", director.getId());
                         approver.put("realName", director.getRealName());
@@ -453,7 +455,7 @@ public class ApproverService {
             for (Long leaderId : teamLeaderIds) {
                 if (!leaderId.equals(currentUserId) && !addedUserIds.contains(leaderId)) {
                     User leader = userRepository.getById(leaderId);
-                    if (leader != null && "ACTIVE".equals(leader.getStatus())) {
+                    if (leader != null && EmployeeStatus.ACTIVE.equals(leader.getStatus())) {
                         Map<String, Object> approver = new HashMap<>();
                         approver.put("id", leader.getId());
                         approver.put("realName", leader.getRealName());

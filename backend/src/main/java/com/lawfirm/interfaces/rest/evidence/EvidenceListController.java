@@ -1,6 +1,7 @@
 package com.lawfirm.interfaces.rest.evidence;
 
 import com.lawfirm.application.evidence.command.CreateEvidenceListCommand;
+import com.lawfirm.application.evidence.dto.EvidenceListCompareResult;
 import com.lawfirm.application.evidence.dto.EvidenceListDTO;
 import com.lawfirm.application.evidence.service.EvidenceListAppService;
 import com.lawfirm.common.annotation.OperationLog;
@@ -19,7 +20,6 @@ import org.springframework.web.bind.annotation.*;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.Map;
 
 /**
  * 证据清单接口
@@ -144,7 +144,7 @@ public class EvidenceListController {
     @Operation(summary = "对比清单差异", description = "对比两个证据清单的差异，显示新增、删除、保留的证据")
     @GetMapping("/compare")
     @RequirePermission("evidence:view")
-    public Result<Map<String, Object>> compareLists(
+    public Result<EvidenceListCompareResult> compareLists(
             @RequestParam Long listId1,
             @RequestParam Long listId2) {
         return Result.success(listAppService.compareLists(listId1, listId2));

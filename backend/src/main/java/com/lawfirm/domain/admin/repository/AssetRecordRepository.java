@@ -40,4 +40,12 @@ public class AssetRecordRepository extends AbstractRepository<AssetRecordMapper,
     public List<AssetRecord> findUnreturnedRecords() {
         return baseMapper.selectUnreturnedRecords();
     }
+
+    /**
+     * 统计资产的操作记录数量
+     * 问题294修复：用于删除前检查历史记录
+     */
+    public long countByAssetId(Long assetId) {
+        return baseMapper.countByAssetId(assetId);
+    }
 }

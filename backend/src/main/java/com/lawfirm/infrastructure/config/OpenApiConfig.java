@@ -9,11 +9,14 @@ import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 
 /**
  * OpenAPI 配置
+ * 仅在开发/测试环境启用，生产环境应禁用
  */
 @Configuration
+@Profile({"dev", "test"})
 public class OpenApiConfig {
 
     @Bean

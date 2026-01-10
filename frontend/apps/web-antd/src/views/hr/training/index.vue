@@ -1,230 +1,294 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue';
+import { ref, reactive, computed, nextTick } from 'vue';
 import { message, Modal } from 'ant-design-vue';
 import { Page } from '@vben/common-ui';
 import {
-  Card,
-  Button,
-  Space,
-  Tag,
-  Input,
-  Select,
-  Form,
-  FormItem,
-  Row,
-  Col,
-  Tabs,
-  InputNumber,
-  DatePicker,
-  Textarea,
+  Card, Button, Space, Tag, Input, Form, FormItem,
+  Tabs, Upload, List,
 } from 'ant-design-vue';
-import { Plus } from '@vben/icons';
-import type { VxeGridProps } from '#/adapter/vxe-table';
+import { Plus, UploadOutlined, FileOutlined, DownloadOutlined, CheckCircleOutlined, EyeOutlined } from '@vben/icons';
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
-import {
-  getTrainingList,
-  createTraining,
-  publishTraining,
-  cancelTraining,
-  enrollTraining,
-  cancelEnrollment,
-  getMyTotalCredits,
-} from '#/api/hr/training';
-import type { TrainingDTO, TrainingQuery, CreateTrainingCommand } from '#/api/hr/training';
-import { UserTreeSelect } from '#/components/UserTreeSelect';
+import { useUserStore } from '@vben/stores';
+import { requestClient } from '#/api/request';
+import { uploadFile } from '#/api/document';
 
 defineOptions({ name: 'HrTraining' });
 
+const userStore = useUserStore();
+const isAdmin = computed(() => {
+  const roles = userStore.userInfo?.roles ?? [];
+  // 管理员(ADMIN)、律所主任(DIRECTOR)、行政(ADMIN_STAFF) 可以发布和管理培训通知
+  return roles.some(role => 
+    ['ADMIN', 'DIRECTOR', 'ADMIN_STAFF'].includes(String(role).toUpperCase())
+  );
+});
+
+// ==================== 类型定义 ====================
+
+interface TrainingNoticeDTO {
+  id: number;
+  title: string;
+  content?: string;
+  attachments?: { fileName: string; fileUrl: string }[];
+  status: string;
+  statusName?: string;
+  publishedAt?: string;
+  createdAt?: string;
+  // 完成情况
+  completedCount?: number;
+  totalCount?: number;
+  myCompleted?: boolean;
+  myCertificateUrl?: string;
+}
+
 // ==================== 状态定义 ====================
 
+const activeTab = ref('notices');
 const modalVisible = ref(false);
-const formRef = ref();
-const activeTab = ref('upcoming');
-const myCredits = ref(0);
+const detailVisible = ref(false);
+const uploadVisible = ref(false);
+const currentRecord = ref<TrainingNoticeDTO | null>(null);
+const uploading = ref(false);
 
-const queryParams = ref<TrainingQuery>({
-  pageNum: 1,
-  pageSize: 10,
-  keyword: undefined,
-  status: undefined,
+const formData = reactive({
+  title: '',
+  content: '',
+  attachments: [] as { fileName: string; fileUrl: string }[],
 });
 
-const formData = reactive<CreateTrainingCommand & { id?: number }>({
-  id: undefined,
-  name: '',
-  trainingType: '',
-  trainerId: undefined,
-  trainingTime: '',
-  location: '',
-  description: '',
-  credits: undefined,
-  maxParticipants: undefined,
+// 待上传的附件文件（先缓存，发布时才上传）
+const pendingFiles = ref<File[]>([]);
+const publishing = ref(false);
+
+const uploadForm = reactive({
+  certificateUrl: '',
+  certificateName: '',
 });
 
-// ==================== 常量选项 ====================
+// 待上传的合格证文件（先缓存，点击确定时才上传）
+const pendingCertificateFile = ref<File | null>(null);
 
-const trainingTypeOptions = [
-  { label: '内部培训', value: 'INTERNAL' },
-  { label: '外部培训', value: 'EXTERNAL' },
-  { label: '在线培训', value: 'ONLINE' },
+// ==================== 表格配置 - 培训通知列表 ====================
+
+const noticeColumns = [
+  { title: '培训通知标题', field: 'title', minWidth: 250 },
+  { title: '发布时间', field: 'publishedAt', width: 160 },
+  { title: '完成情况', field: 'progress', width: 120, slots: { default: 'progress' } },
+  { title: '我的状态', field: 'myStatus', width: 100, slots: { default: 'myStatus' } },
+  { title: '操作', field: 'action', width: 150, fixed: 'right' as const, slots: { default: 'action' } },
 ];
 
-const statusOptions = [
-  { label: '全部', value: undefined },
-  { label: '草稿', value: 'DRAFT' },
-  { label: '已发布', value: 'PUBLISHED' },
-  { label: '进行中', value: 'ONGOING' },
-  { label: '已完成', value: 'COMPLETED' },
-  { label: '已取消', value: 'CANCELLED' },
-];
-
-// ==================== 表格配置 ====================
-
-const gridColumns: VxeGridProps['gridOptions']['columns'] = [
-  { title: '培训名称', field: 'name', minWidth: 200 },
-  { title: '培训类型', field: 'trainingTypeName', width: 120 },
-  { title: '讲师', field: 'trainer', width: 100 },
-  { title: '培训时间', field: 'trainingTime', width: 160 },
-  { title: '培训地点', field: 'location', width: 150 },
-  { title: '学分', field: 'credits', width: 80 },
-  { title: '参与人数', field: 'currentParticipants', width: 100 },
-  { title: '状态', field: 'statusName', width: 100, slots: { default: 'status' } },
-  { title: '操作', field: 'action', width: 180, fixed: 'right', slots: { default: 'action' } },
-];
-
-async function loadData({ page }: { page: { currentPage: number; pageSize: number } }) {
-  // 根据tab设置状态筛选
-  let status = queryParams.value.status;
-  if (activeTab.value === 'upcoming') {
-    status = 'PUBLISHED';
-  } else if (activeTab.value === 'ongoing') {
-    status = 'ONGOING';
-  } else if (activeTab.value === 'completed') {
-    status = 'COMPLETED';
-  }
-  
-  const params = { ...queryParams.value, status, pageNum: page.currentPage, pageSize: page.pageSize };
-  const res = await getTrainingList(params);
+async function loadNotices({ page }: { page: { currentPage: number; pageSize: number } }) {
+  const res = await requestClient.get<any>('/hr/training-notice', {
+    params: { pageNum: page.currentPage, pageSize: page.pageSize },
+  });
   return { items: res.list || [], total: res.total || 0 };
 }
 
-const [Grid, gridApi] = useVbenVxeGrid({
+const [NoticeGrid, noticeGridApi] = useVbenVxeGrid({
   gridOptions: {
-    columns: gridColumns,
+    columns: noticeColumns,
     height: 'auto',
     pagerConfig: {},
-    proxyConfig: { ajax: { query: loadData } },
+    proxyConfig: { ajax: { query: loadNotices } },
   },
 });
 
-// ==================== 数据加载 ====================
+// ==================== 表格配置 - 完成情况列表（管理员） ====================
 
-async function loadMyCredits() {
-  try {
-    const credits = await getMyTotalCredits();
-    myCredits.value = credits;
-  } catch (error: any) {
-    console.error('加载学分失败:', error);
-  }
+const completionColumns = [
+  { title: '培训通知', field: 'noticeTitle', minWidth: 200 },
+  { title: '律师姓名', field: 'employeeName', width: 100 },
+  { title: '部门', field: 'departmentName', width: 120 },
+  { title: '上传时间', field: 'uploadedAt', width: 160 },
+  { title: '合格证', field: 'certificate', width: 100, slots: { default: 'certificate' } },
+];
+
+async function loadCompletions({ page }: { page: { currentPage: number; pageSize: number } }) {
+  const res = await requestClient.get<any>('/hr/training-notice/completions', {
+    params: { pageNum: page.currentPage, pageSize: page.pageSize },
+  });
+  return { items: res.list || [], total: res.total || 0 };
 }
 
-// ==================== 搜索操作 ====================
+const [CompletionGrid, completionGridApi] = useVbenVxeGrid({
+  gridOptions: {
+    columns: completionColumns,
+    height: 'auto',
+    pagerConfig: {},
+    proxyConfig: { ajax: { query: loadCompletions } },
+  },
+});
 
-function handleSearch() {
-  gridApi.reload();
-}
-
-function handleReset() {
-  queryParams.value = { pageNum: 1, pageSize: 10, keyword: undefined, status: undefined };
-  gridApi.reload();
-}
+// ==================== Tab切换 ====================
 
 function handleTabChange(key: string | number) {
   activeTab.value = String(key);
-  gridApi.reload();
+  // 延迟执行，确保表格已挂载
+  nextTick(() => {
+    if (key === 'notices' && noticeGridApi.grid?.commitProxy) {
+      noticeGridApi.grid.commitProxy('query');
+    } else if (key === 'completions' && completionGridApi.grid?.commitProxy) {
+      completionGridApi.grid.commitProxy('query');
+    }
+  });
 }
 
-// ==================== CRUD 操作 ====================
+// ==================== 发布培训通知 ====================
 
 function handleAdd() {
   Object.assign(formData, {
-    id: undefined,
-    name: '',
-    trainingType: '',
-    trainerId: undefined,
-    trainingTime: '',
-    location: '',
-    description: '',
-    credits: undefined,
-    maxParticipants: undefined,
+    title: '',
+    content: '',
+    attachments: [],
   });
+  pendingFiles.value = [];
   modalVisible.value = true;
 }
 
-async function handleSave() {
-  try {
-    await formRef.value?.validate();
-    await createTraining(formData);
-    message.success('创建成功');
-    modalVisible.value = false;
-    gridApi.reload();
-  } catch (error: any) {
-    if (error?.errorFields) return;
-    message.error(error.message || '操作失败');
-  }
-}
-
-async function handlePublish(row: TrainingDTO) {
-  try {
-    await publishTraining(row.id);
-    message.success('发布成功');
-    gridApi.reload();
-  } catch (error: any) {
-    message.error(error.message || '发布失败');
-  }
-}
-
-function handleCancel(row: TrainingDTO) {
-  Modal.confirm({
-    title: '确认取消',
-    content: `确定要取消培训 "${row.name}" 吗？`,
-    okText: '确认',
-    cancelText: '取消',
-    onOk: async () => {
-      try {
-        await cancelTraining(row.id);
-        message.success('取消成功');
-        gridApi.reload();
-      } catch (error: any) {
-        message.error(error.message || '取消失败');
-      }
-    },
+function handleAttachmentUpload(info: any) {
+  const file = info.file.originFileObj || info.file;
+  // 只缓存文件，不立即上传
+  pendingFiles.value.push(file);
+  // 添加到显示列表（暂时用本地预览）
+  formData.attachments.push({
+    fileName: file.name,
+    fileUrl: '', // 发布时才有真正的URL
   });
 }
 
-async function handleEnroll(row: TrainingDTO) {
+function removeAttachment(index: number) {
+  formData.attachments.splice(index, 1);
+  pendingFiles.value.splice(index, 1);
+}
+
+async function handlePublish() {
+  if (!formData.title.trim()) {
+    message.error('请输入通知标题');
+    return;
+  }
+
   try {
-    await enrollTraining(row.id);
-    message.success('报名成功');
-    gridApi.reload();
+    publishing.value = true;
+    
+    // 先上传所有待上传的附件
+    const uploadedAttachments: { fileName: string; fileUrl: string }[] = [];
+    for (const file of pendingFiles.value) {
+      try {
+        const res = await uploadFile(file);
+        uploadedAttachments.push({
+          fileName: file.name,
+          fileUrl: res.filePath || '',
+        });
+      } catch (error) {
+        message.error(`附件"${file.name}"上传失败`);
+        publishing.value = false;
+        return;
+      }
+    }
+    
+    // 发布通知
+    await requestClient.post('/hr/training-notice', {
+      title: formData.title,
+      content: formData.content,
+      attachments: uploadedAttachments,
+    });
+    
+    message.success('发布成功');
+    modalVisible.value = false;
+    pendingFiles.value = [];
+    if (noticeGridApi.grid?.commitProxy) {
+      noticeGridApi.grid.commitProxy('query');
+    }
   } catch (error: any) {
-    message.error(error.message || '报名失败');
+    message.error(error.message || '发布失败');
+  } finally {
+    publishing.value = false;
   }
 }
 
-function handleCancelEnrollment(row: TrainingDTO) {
+// ==================== 查看详情 ====================
+
+async function handleView(row: TrainingNoticeDTO) {
+  try {
+    const detail = await requestClient.get<TrainingNoticeDTO>(`/hr/training-notice/${row.id}`);
+    currentRecord.value = detail;
+    detailVisible.value = true;
+  } catch (error: any) {
+    message.error('加载详情失败');
+  }
+}
+
+// ==================== 上传合格证 ====================
+
+function handleOpenUpload(row: TrainingNoticeDTO) {
+  currentRecord.value = row;
+  Object.assign(uploadForm, {
+    certificateUrl: '',
+    certificateName: '',
+  });
+  pendingCertificateFile.value = null;
+  uploadVisible.value = true;
+}
+
+function handleCertificateUpload(info: any) {
+  const file = info.file.originFileObj || info.file;
+  // 只缓存文件，不立即上传
+  pendingCertificateFile.value = file;
+  uploadForm.certificateName = file.name;
+  uploadForm.certificateUrl = ''; // 确定时才有真正的URL
+}
+
+async function handleSubmitCertificate() {
+  if (!pendingCertificateFile.value) {
+    message.error('请选择合格证文件');
+    return;
+  }
+
+  try {
+    uploading.value = true;
+    
+    // 先上传文件
+    const res = await uploadFile(pendingCertificateFile.value);
+    const certificateUrl = res.filePath || '';
+    
+    // 然后提交完成记录
+    await requestClient.post(`/hr/training-notice/${currentRecord.value?.id}/complete`, {
+      certificateUrl,
+      certificateName: uploadForm.certificateName,
+    });
+    
+    message.success('上传成功');
+    uploadVisible.value = false;
+    pendingCertificateFile.value = null;
+    if (noticeGridApi.grid?.commitProxy) {
+      noticeGridApi.grid.commitProxy('query');
+    }
+  } catch (error: any) {
+    message.error(error.message || '上传失败');
+  } finally {
+    uploading.value = false;
+  }
+}
+
+// ==================== 删除通知 ====================
+
+function handleDelete(row: TrainingNoticeDTO) {
   Modal.confirm({
-    title: '确认取消报名',
-    content: `确定要取消报名培训 "${row.name}" 吗？`,
+    title: '确认删除',
+    content: `确定要删除"${row.title}"吗？`,
     okText: '确认',
+    okType: 'danger',
     cancelText: '取消',
     onOk: async () => {
       try {
-        await cancelEnrollment(row.id);
-        message.success('取消报名成功');
-        gridApi.reload();
+        await requestClient.delete(`/hr/training-notice/${row.id}`);
+        message.success('删除成功');
+        if (noticeGridApi.grid?.commitProxy) {
+          noticeGridApi.grid.commitProxy('query');
+        }
       } catch (error: any) {
-        message.error(error.message || '取消报名失败');
+        message.error(error.message || '删除失败');
       }
     },
   });
@@ -232,141 +296,172 @@ function handleCancelEnrollment(row: TrainingDTO) {
 
 // ==================== 辅助方法 ====================
 
-function getStatusColor(status: string) {
-  const colorMap: Record<string, string> = {
-    DRAFT: 'default',
-    PUBLISHED: 'blue',
-    ONGOING: 'green',
-    COMPLETED: 'success',
-    CANCELLED: 'red',
-  };
-  return colorMap[status] || 'default';
+async function downloadFile(url?: string, fileName?: string) {
+  if (!url) return;
+  
+  try {
+    // 先获取预签名 URL
+    const res = await requestClient.get<{ downloadUrl: string; fileName?: string }>('/hr/training-notice/download-url', {
+      params: { fileUrl: url, fileName },
+    });
+    
+    const downloadUrl = res.downloadUrl || url;
+    const downloadFileName = res.fileName || fileName || url.split('/').pop() || 'download';
+    
+    // 使用预签名 URL 直接下载
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = downloadFileName;
+    link.target = '_blank';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } catch (error: any) {
+    console.error('下载文件失败:', error);
+    message.error('文件下载失败: ' + (error.message || '未知错误'));
+  }
 }
-
-onMounted(() => {
-  loadMyCredits();
-});
 </script>
 
 <template>
-  <Page title="培训管理" description="管理员工培训计划">
+  <Page title="培训管理" description="发布培训通知，查看律师完成情况">
     <Card>
-      <!-- 我的学分 -->
-      <div style="margin-bottom: 16px; padding: 12px; background: #f0f2f5; border-radius: 4px;">
-        <Space>
-          <span style="font-weight: bold;">我的总学分：</span>
-          <span style="font-size: 20px; color: #1890ff;">{{ myCredits }}</span>
-        </Space>
-      </div>
-
-      <!-- Tab切换 -->
       <Tabs v-model:activeKey="activeTab" @change="handleTabChange">
-        <Tabs.TabPane key="upcoming" tab="即将开始" />
-        <Tabs.TabPane key="ongoing" tab="进行中" />
-        <Tabs.TabPane key="completed" tab="已完成" />
-        <Tabs.TabPane key="all" tab="全部" />
+        <Tabs.TabPane key="notices" tab="培训通知" />
+        <Tabs.TabPane v-if="isAdmin" key="completions" tab="完成情况" />
       </Tabs>
 
-      <!-- 搜索栏 -->
-      <div style="margin-bottom: 16px">
-        <Row :gutter="16">
-          <Col :xs="24" :sm="12" :md="6">
-            <Input
-              v-model:value="queryParams.keyword"
-              placeholder="搜索培训名称"
-              allowClear
-              @pressEnter="handleSearch"
-            />
-          </Col>
-          <Col :xs="24" :sm="12" :md="6">
-            <Select
-              v-model:value="queryParams.status"
-              placeholder="状态"
-              allowClear
-              style="width: 100%"
-              :options="statusOptions"
-            />
-          </Col>
-          <Col :xs="24" :sm="24" :md="12">
-            <Space>
-              <Button type="primary" @click="handleSearch">查询</Button>
-              <Button @click="handleReset">重置</Button>
-              <Button type="primary" @click="handleAdd">
-                <Plus class="size-4" />新建培训
-              </Button>
-            </Space>
-          </Col>
-        </Row>
-      </div>
+      <!-- 培训通知列表 -->
+      <template v-if="activeTab === 'notices'">
+        <div v-if="isAdmin" style="margin-bottom: 16px;">
+          <Button type="primary" @click="handleAdd">
+            <Plus class="size-4" />发布培训通知
+          </Button>
+        </div>
 
-      <Grid>
-        <template #status="{ row }">
-          <Tag :color="getStatusColor(row.status)">{{ row.statusName }}</Tag>
-        </template>
-        <template #action="{ row }">
-          <Space>
-            <a v-if="row.status === 'DRAFT'" @click="handlePublish(row)">发布</a>
-            <template v-if="row.status === 'PUBLISHED'">
-              <a @click="handleEnroll(row)">报名</a>
-              <a @click="handleCancel(row)">取消</a>
-            </template>
-            <a v-if="row.status === 'ONGOING'" @click="handleCancelEnrollment(row)">取消报名</a>
-          </Space>
-        </template>
-      </Grid>
+        <NoticeGrid>
+          <template #progress="{ row }">
+            <span>{{ row.completedCount || 0 }}/{{ row.totalCount || 0 }}</span>
+          </template>
+          <template #myStatus="{ row }">
+            <Tag v-if="row.myCompleted" color="success">
+              <CheckCircleOutlined /> 已完成
+            </Tag>
+            <Tag v-else color="default">未完成</Tag>
+          </template>
+          <template #action="{ row }">
+            <Space>
+              <a @click="handleView(row)">查看</a>
+              <a v-if="!row.myCompleted" @click="handleOpenUpload(row)">上传合格证</a>
+              <a v-if="isAdmin" style="color: #ff4d4f" @click="handleDelete(row)">删除</a>
+            </Space>
+          </template>
+        </NoticeGrid>
+      </template>
+
+      <!-- 完成情况列表（管理员） -->
+      <template v-if="activeTab === 'completions'">
+        <CompletionGrid>
+          <template #certificate="{ row }">
+            <a v-if="row.certificateUrl" @click="downloadFile(row.certificateUrl, row.certificateName)">
+              <Space size="small">
+                <EyeOutlined />
+                <span>查看</span>
+              </Space>
+            </a>
+            <span v-else>-</span>
+          </template>
+        </CompletionGrid>
+      </template>
     </Card>
 
-    <!-- 新增弹窗 -->
+    <!-- 发布培训通知弹窗 -->
     <Modal
       v-model:open="modalVisible"
-      title="新建培训"
+      title="发布培训通知"
       width="700px"
-      @ok="handleSave"
+      :confirmLoading="publishing"
+      okText="发布"
+      @ok="handlePublish"
     >
-      <Form
-        ref="formRef"
-        :model="formData"
-        :label-col="{ span: 6 }"
-        :wrapper-col="{ span: 18 }"
-      >
-        <FormItem label="培训名称" name="name" :rules="[{ required: true, message: '请输入培训名称' }]">
-          <Input v-model:value="formData.name" placeholder="请输入培训名称" />
+      <Form :label-col="{ span: 4 }" :wrapper-col="{ span: 19 }">
+        <FormItem label="通知标题" required>
+          <Input v-model:value="formData.title" placeholder="如：2026年度律师继续教育培训通知" />
         </FormItem>
-        <FormItem label="培训类型" name="trainingType">
-          <Select v-model:value="formData.trainingType" :options="trainingTypeOptions" placeholder="请选择培训类型" />
+        <FormItem label="通知内容">
+          <Input.TextArea v-model:value="formData.content" :rows="8" placeholder="培训要求、培训网站、注意事项等..." />
         </FormItem>
-        <FormItem label="讲师" name="trainerId">
-          <UserTreeSelect
-            v-model:value="formData.trainerId"
-            placeholder="选择讲师（按部门筛选）"
-          />
+        <FormItem label="附件">
+          <Upload
+            :before-upload="() => false"
+            :show-upload-list="false"
+            @change="handleAttachmentUpload"
+          >
+            <Button><UploadOutlined />上传附件</Button>
+          </Upload>
+          <List v-if="formData.attachments.length > 0" size="small" style="margin-top: 8px;">
+            <List.Item v-for="(att, idx) in formData.attachments" :key="idx">
+              <span><FileOutlined /> {{ att.fileName }}</span>
+              <template #actions>
+                <a style="color: #ff4d4f" @click="removeAttachment(idx)">删除</a>
+              </template>
+            </List.Item>
+          </List>
         </FormItem>
-        <FormItem label="培训时间" name="trainingTime">
-          <DatePicker
-            v-model:value="formData.trainingTime"
-            placeholder="请选择培训时间"
-            style="width: 100%"
-            show-time
-            value-format="YYYY-MM-DD HH:mm:ss"
-          />
+      </Form>
+    </Modal>
+
+    <!-- 查看详情弹窗 -->
+    <Modal
+      v-model:open="detailVisible"
+      :title="currentRecord?.title"
+      width="700px"
+      :footer="null"
+    >
+      <div v-if="currentRecord">
+        <div style="color: rgba(0,0,0,0.45); margin-bottom: 16px;">
+          发布时间：{{ currentRecord.publishedAt }}
+        </div>
+        <div style="white-space: pre-wrap; line-height: 1.8;">{{ currentRecord.content || '暂无内容' }}</div>
+        
+        <div v-if="currentRecord.attachments?.length" style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #f0f0f0;">
+          <div style="font-weight: 500; margin-bottom: 8px;">附件：</div>
+          <Space direction="vertical">
+            <a v-for="(att, idx) in currentRecord.attachments" :key="idx" @click="downloadFile(att.fileUrl, att.fileName)">
+              <DownloadOutlined /> {{ att.fileName }}
+            </a>
+          </Space>
+        </div>
+      </div>
+    </Modal>
+
+    <!-- 上传合格证弹窗 -->
+    <Modal
+      v-model:open="uploadVisible"
+      title="上传培训合格证"
+      width="500px"
+      @ok="handleSubmitCertificate"
+      :confirmLoading="uploading"
+    >
+      <Form :label-col="{ span: 5 }" :wrapper-col="{ span: 18 }">
+        <FormItem label="培训通知">
+          <span>{{ currentRecord?.title }}</span>
         </FormItem>
-        <FormItem label="培训地点" name="location">
-          <Input v-model:value="formData.location" placeholder="请输入培训地点" />
-        </FormItem>
-        <Row :gutter="16">
-          <Col :span="12">
-            <FormItem label="学分" name="credits">
-              <InputNumber v-model:value="formData.credits" :min="0" style="width: 100%" />
-            </FormItem>
-          </Col>
-          <Col :span="12">
-            <FormItem label="最大参与人数" name="maxParticipants">
-              <InputNumber v-model:value="formData.maxParticipants" :min="1" style="width: 100%" />
-            </FormItem>
-          </Col>
-        </Row>
-        <FormItem label="培训描述" name="description">
-          <Textarea v-model:value="formData.description" :rows="4" placeholder="请输入培训描述" />
+        <FormItem label="合格证文件" required>
+          <Upload
+            :before-upload="() => false"
+            :max-count="1"
+            accept=".pdf,.jpg,.jpeg,.png"
+            @change="handleCertificateUpload"
+          >
+            <Button :loading="uploading">
+              <UploadOutlined />
+              {{ uploadForm.certificateName || '选择文件（PDF/图片）' }}
+            </Button>
+          </Upload>
+          <div v-if="uploadForm.certificateName" style="margin-top: 8px; color: #52c41a;">
+            <FileOutlined /> {{ uploadForm.certificateName }}
+          </div>
         </FormItem>
       </Form>
     </Modal>

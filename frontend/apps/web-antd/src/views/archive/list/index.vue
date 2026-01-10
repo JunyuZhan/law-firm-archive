@@ -5,7 +5,6 @@ import { useRoute, useRouter } from 'vue-router';
 import { Page } from '@vben/common-ui';
 import {
   Card,
-  Table,
   Button,
   Space,
   Input,
@@ -20,13 +19,16 @@ import {
   DescriptionsItem,
   Alert,
   Statistic,
-  Collapse,
-  CollapsePanel,
   Checkbox,
   Spin,
   Steps,
   Step,
+  Dropdown,
+  Menu,
+  MenuItem,
+  Pagination,
 } from 'ant-design-vue';
+import { FileOutlined, DownloadOutlined, RotateCw } from '@vben/icons';
 import {
   getArchiveList,
   createArchive,
@@ -36,10 +38,13 @@ import {
   checkArchiveRequirements,
   previewArchiveData,
   getArchiveDataSources,
+  downloadArchiveCover,
+  regenerateArchiveCover,
 } from '#/api/archive';
-import { getMatterList, changeMatterStatus } from '#/api/matter';
+import { getMatterList, changeMatterStatus, getMatterDetail } from '#/api/matter';
 import type { ArchiveDTO, ArchiveQuery, CreateArchiveCommand, StoreArchiveCommand, ArchiveCheckResult, ArchiveDataSnapshot, ArchiveDataSource } from '#/api/archive/types';
 import type { MatterDTO } from '#/api/matter/types';
+import { CASE_CATEGORY_OPTIONS } from '#/constants/causes/utils';
 
 defineOptions({ name: 'ArchiveList' });
 
@@ -50,13 +55,11 @@ const router = useRouter();
 const loading = ref(false);
 const dataSource = ref<ArchiveDTO[]>([]);
 const total = ref(0);
-const modalVisible = ref(false);
-const modalTitle = ref('新建档案');
-const formRef = ref();
 const storeModalVisible = ref(false);
 const approveModalVisible = ref(false);
 const currentArchive = ref<ArchiveDTO | null>(null);
 const matters = ref<MatterDTO[]>([]);
+const matterDetailsMap = ref<Map<number, MatterDTO>>(new Map());
 
 // 归档向导状态
 const archiveWizardVisible = ref(false);
@@ -79,16 +82,6 @@ const queryParams = reactive<ArchiveQuery>({
   status: undefined,
 });
 
-// 表单数据
-const formData = reactive<Partial<CreateArchiveCommand> & { id?: number }>({
-  id: undefined,
-  archiveName: '',
-  matterId: undefined,
-  archiveType: 'LITIGATION',
-  retentionPeriod: '10_YEARS',
-  remarks: '',
-});
-
 // 入库表单数据
 const storeFormData = reactive<StoreArchiveCommand & { boxNo?: string }>({
   archiveId: 0,
@@ -102,34 +95,11 @@ const approveFormData = reactive({
   comment: '',
 });
 
-// 表格列
-const columns = [
-  { title: '档案编号', dataIndex: 'archiveNo', key: 'archiveNo', width: 130 },
-  { title: '档案名称', dataIndex: 'archiveName', key: 'archiveName', width: 200 },
-  { title: '项目编号', dataIndex: 'matterNo', key: 'matterNo', width: 130 },
-  { title: '项目名称', dataIndex: 'matterName', key: 'matterName', width: 150 },
-  { title: '客户', dataIndex: 'clientName', key: 'clientName', width: 120 },
-  { title: '主办律师', dataIndex: 'mainLawyerName', key: 'mainLawyerName', width: 100 },
-  { title: '结案日期', dataIndex: 'caseCloseDate', key: 'caseCloseDate', width: 110 },
-  { title: '保管期限', dataIndex: 'retentionPeriodName', key: 'retentionPeriodName', width: 100 },
-  { title: '状态', dataIndex: 'statusName', key: 'statusName', width: 100 },
-  { title: '操作', key: 'action', width: 200, fixed: 'right' as const },
-];
-
 // 档案类型选项
 const archiveTypeOptions = [
   { label: '诉讼', value: 'LITIGATION' },
   { label: '非诉', value: 'NON_LITIGATION' },
   { label: '咨询', value: 'CONSULTATION' },
-];
-
-// 保管期限选项
-const retentionPeriodOptions = [
-  { label: '永久', value: 'PERMANENT' },
-  { label: '30年', value: '30_YEARS' },
-  { label: '15年', value: '15_YEARS' },
-  { label: '10年', value: '10_YEARS' },
-  { label: '5年', value: '5_YEARS' },
 ];
 
 // 状态选项
@@ -155,10 +125,31 @@ async function fetchData() {
     const res = await getArchiveList(queryParams);
     dataSource.value = res.list;
     total.value = res.total;
+    // 加载项目详情（用于显示封面信息）
+    await loadMatterDetails(res.list);
   } catch (error: any) {
     message.error(error.message || '加载档案列表失败');
   } finally {
     loading.value = false;
+  }
+}
+
+// 加载项目详情
+async function loadMatterDetails(archives: ArchiveDTO[]) {
+  const matterIds = archives
+    .filter(a => a.matterId)
+    .map(a => a.matterId!)
+    .filter((id, index, arr) => arr.indexOf(id) === index); // 去重
+  
+  for (const matterId of matterIds) {
+    if (!matterDetailsMap.value.has(matterId)) {
+      try {
+        const matter = await getMatterDetail(matterId);
+        matterDetailsMap.value.set(matterId, matter);
+      } catch (error: any) {
+        console.error(`加载项目详情失败: matterId=${matterId}`, error);
+      }
+    }
   }
 }
 
@@ -320,13 +311,42 @@ async function handleApproveStoreSave() {
   }
 }
 
-// 入库操作
-function handleStore(record: ArchiveDTO) {
-  currentArchive.value = record;
-  storeFormData.archiveId = record.id;
-  storeFormData.locationId = 0;
-  storeFormData.boxNo = '';
-  storeModalVisible.value = true;
+// 下载卷宗封面
+async function handleDownloadCover(record: ArchiveDTO) {
+  try {
+    const response = await downloadArchiveCover(record.id);
+    // 创建下载链接
+    const blob = new Blob([response as any], { type: 'application/pdf' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    const fileName = (record.archiveName || record.matterName || '档案') + '_卷宗封面.pdf';
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+    message.success('封面下载成功');
+  } catch (error: any) {
+    message.error(error.message || '下载封面失败');
+  }
+}
+
+// 重新生成卷宗封面
+async function handleRegenerateCover(record: ArchiveDTO) {
+  Modal.confirm({
+    title: '重新生成卷宗封面',
+    content: `确定要重新生成档案 "${record.archiveName}" 的卷宗封面吗？`,
+    onOk: async () => {
+      try {
+        await regenerateArchiveCover(record.id);
+        message.success('封面重新生成成功');
+        fetchData();
+      } catch (error: any) {
+        message.error(error.message || '重新生成封面失败');
+      }
+    },
+  });
 }
 
 // 保存入库
@@ -357,6 +377,65 @@ function getStatusColor(status: string) {
     DESTROYED: 'red',
   };
   return colorMap[status] || 'default';
+}
+
+// 获取项目封面主题（根据项目类型）
+function getArchiveCoverTheme(archive: ArchiveDTO) {
+  const matter = archive.matterId ? matterDetailsMap.value.get(archive.matterId) : null;
+  const matterType = matter?.matterType || archive.archiveType || 'LITIGATION';
+  const caseType = matter?.caseType || '';
+  
+  // 根据项目大类设置主题
+  if (matterType === 'LITIGATION') {
+    const caseTypeOption = CASE_CATEGORY_OPTIONS.find(opt => opt.value === caseType);
+    const label = caseTypeOption?.label || '诉讼案件';
+    
+    switch (caseType) {
+      case 'CRIMINAL':
+        return { label, color: '#d32f2f' };
+      case 'CIVIL':
+        return { label, color: '#1976d2' };
+      case 'ADMINISTRATIVE':
+        return { label, color: '#388e3c' };
+      case 'BANKRUPTCY':
+        return { label, color: '#f57c00' };
+      case 'IP':
+        return { label, color: '#7b1fa2' };
+      case 'ARBITRATION':
+      case 'COMMERCIAL_ARBITRATION':
+      case 'LABOR_ARBITRATION':
+        return { label, color: '#0288d1' };
+      case 'ENFORCEMENT':
+        return { label, color: '#5d4037' };
+      default:
+        return { label, color: '#616161' };
+    }
+  } else if (matterType === 'NON_LITIGATION') {
+    const caseTypeOption = CASE_CATEGORY_OPTIONS.find(opt => opt.value === caseType);
+    const label = caseTypeOption?.label || '非诉项目';
+    
+    switch (caseType) {
+      case 'LEGAL_COUNSEL':
+        return { label, color: '#00796b' };
+      case 'SPECIAL_SERVICE':
+        return { label, color: '#e64a19' };
+      default:
+        return { label, color: '#455a64' };
+    }
+  }
+  
+  return { label: '业务档案卷宗', color: '#757575' };
+}
+
+// 格式化日期
+function formatDate(dateStr: string | undefined): string {
+  if (!dateStr) return '-';
+  return dateStr.substring(0, 10);
+}
+
+// 获取项目信息
+function getMatterInfo(archive: ArchiveDTO) {
+  return archive.matterId ? matterDetailsMap.value.get(archive.matterId) : null;
 }
 
 // 获取统计标签
@@ -463,50 +542,139 @@ onMounted(async () => {
         </Row>
       </div>
 
-      <!-- 表格 -->
-      <Table
-        :columns="columns"
-        :data-source="dataSource"
-        :loading="loading"
-        :pagination="{
-          current: queryParams.pageNum,
-          pageSize: queryParams.pageSize,
-          total: total,
-          showSizeChanger: true,
-          showTotal: (total) => `共 ${total} 条`,
-          onChange: (page, size) => {
-            queryParams.pageNum = page;
-            queryParams.pageSize = size;
-            fetchData();
-          },
-        }"
-        row-key="id"
-        :scroll="{ x: 1500 }"
-      >
-        <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'statusName'">
-            <Tag :color="getStatusColor((record as ArchiveDTO).status || '')">
-              {{ (record as ArchiveDTO).statusName }}
-            </Tag>
-          </template>
-          <template v-if="column.key === 'action'">
-            <Space>
-              <!-- 待入库：可提交入库审批 -->
-              <template v-if="(record as ArchiveDTO).status === 'PENDING'">
-                <a @click="handleSubmitStoreApproval(record as ArchiveDTO)">提交审批</a>
-              </template>
-              <!-- 待入库审批：可审批 -->
-              <template v-if="(record as ArchiveDTO).status === 'PENDING_STORE'">
-                <a @click="handleApproveStore(record as ArchiveDTO)">审批</a>
-              </template>
-              <!-- 审批通过后：可入库 -->
-              <template v-if="(record as ArchiveDTO).status === 'PENDING' && false">
-                <a @click="handleStore(record as ArchiveDTO)">入库</a>
-              </template>
-            </Space>
-          </template>
-        </template>
-      </Table>
+      <!-- 卡片列表 -->
+      <Spin :spinning="loading">
+        <div v-if="dataSource.length === 0" style="text-align: center; padding: 60px; color: #999">
+          暂无档案数据
+        </div>
+        <Row v-else :gutter="[16, 16]">
+          <Col
+            v-for="archive in dataSource"
+            :key="archive.id"
+            :xs="24"
+            :sm="12"
+            :md="8"
+            :lg="6"
+            :xl="4"
+          >
+            <div class="archive-cover-card" @click.stop>
+              <!-- 牛皮纸封面 -->
+              <div 
+                class="cover-paper"
+                :style="{
+                  borderColor: getArchiveCoverTheme(archive).color,
+                  borderWidth: '3px',
+                }"
+              >
+                <!-- 颜色标识条 -->
+                <div 
+                  class="cover-color-bar"
+                  :style="{ backgroundColor: getArchiveCoverTheme(archive).color }"
+                ></div>
+                
+                <!-- 封面标题区域 -->
+                <div class="cover-header">
+                  <div class="cover-title-main">业务档案卷宗</div>
+                  <div class="cover-title-sub">{{ getArchiveCoverTheme(archive).label }}</div>
+                </div>
+                
+                <!-- 封面信息区域 -->
+                <div class="cover-info">
+                  <div class="cover-info-row">
+                    <span class="cover-info-label">项目名称</span>
+                    <span class="cover-info-value">{{ archive.matterName || archive.archiveName || '-' }}</span>
+                  </div>
+                  <div class="cover-info-row">
+                    <span class="cover-info-label">项目编号</span>
+                    <span class="cover-info-value">{{ archive.matterNo || '-' }}</span>
+                  </div>
+                  <div class="cover-info-row">
+                    <span class="cover-info-label">档案编号</span>
+                    <span class="cover-info-value">{{ archive.archiveNo || '-' }}</span>
+                  </div>
+                  <div class="cover-info-row" v-if="getMatterInfo(archive)">
+                    <span class="cover-info-label">案件类型</span>
+                    <span class="cover-info-value">{{ getMatterInfo(archive)?.caseTypeName || '-' }}</span>
+                  </div>
+                  <div class="cover-info-row">
+                    <span class="cover-info-label">客户</span>
+                    <span class="cover-info-value">{{ archive.clientName || '-' }}</span>
+                  </div>
+                  <div class="cover-info-row">
+                    <span class="cover-info-label">主办律师</span>
+                    <span class="cover-info-value">{{ archive.mainLawyerName || '-' }}</span>
+                  </div>
+                  <div class="cover-info-row">
+                    <span class="cover-info-label">结案日期</span>
+                    <span class="cover-info-value">{{ formatDate(archive.caseCloseDate) }}</span>
+                  </div>
+                  <div class="cover-info-row">
+                    <span class="cover-info-label">归档日期</span>
+                    <span class="cover-info-value">{{ formatDate(archive.archiveDate) }}</span>
+                  </div>
+                </div>
+                
+                <!-- 封面底部 -->
+                <div class="cover-footer">
+                  <Tag :color="getStatusColor(archive.status || '')" style="margin: 0">
+                    {{ archive.statusName || '-' }}
+                  </Tag>
+                </div>
+              </div>
+              
+              <!-- 卡片操作栏 -->
+              <div class="cover-actions">
+                <Space>
+                  <Dropdown>
+                    <template #overlay>
+                      <Menu>
+                        <MenuItem key="download" @click="handleDownloadCover(archive)">
+                      <DownloadOutlined style="margin-right: 8px;" />
+                      下载封面
+                    </MenuItem>
+                        <MenuItem key="regenerate" @click="handleRegenerateCover(archive)">
+                      <RotateCw :size="14" style="margin-right: 8px;" />
+                      重新生成
+                    </MenuItem>
+                      </Menu>
+                    </template>
+                    <Button type="link" size="small">
+                      <FileOutlined style="margin-right: 4px;" />
+                      封面
+                    </Button>
+                  </Dropdown>
+                  <template v-if="archive.status === 'PENDING'">
+                    <Button type="link" size="small" @click="handleSubmitStoreApproval(archive)">
+                      提交审批
+                    </Button>
+                  </template>
+                  <template v-if="archive.status === 'PENDING_STORE'">
+                    <Button type="link" size="small" @click="handleApproveStore(archive)">
+                      审批
+                    </Button>
+                  </template>
+                </Space>
+              </div>
+            </div>
+          </Col>
+        </Row>
+        
+        <!-- 分页 -->
+        <div style="margin-top: 24px; text-align: right">
+          <Pagination
+            v-model:current="queryParams.pageNum"
+            v-model:page-size="queryParams.pageSize"
+            :total="total"
+            :show-size-changer="true"
+            :show-total="(total) => `共 ${total} 条`"
+            @change="(page, size) => {
+              queryParams.pageNum = page;
+              queryParams.pageSize = size;
+              fetchData();
+            }"
+          />
+        </div>
+      </Spin>
     </Card>
 
     <!-- 归档向导弹窗 -->
@@ -535,7 +703,7 @@ onMounted(async () => {
           />
           <FormItem label="选择项目">
           <Select
-              v-model:value="selectedMatterId"
+              v-model:value="selectedMatterId as any"
               placeholder="请选择已结案的项目"
             showSearch
             style="width: 100%"
@@ -714,7 +882,7 @@ onMounted(async () => {
           <Input :value="currentArchive?.matterName" disabled />
         </FormItem>
         <FormItem label="审批结果">
-          <Select v-model:value="approveFormData.approved" style="width: 100%">
+          <Select v-model:value="approveFormData.approved as any" style="width: 100%">
             <Select.Option :value="true">通过</Select.Option>
             <Select.Option :value="false">拒绝</Select.Option>
           </Select>
@@ -726,3 +894,138 @@ onMounted(async () => {
     </Modal>
   </Page>
 </template>
+
+<style scoped>
+/* 档案封面卡片容器 */
+.archive-cover-card {
+  margin-bottom: 16px;
+}
+
+/* 牛皮纸封面 */
+.cover-paper {
+  /* A4比例：宽高比约1:1.414 */
+  aspect-ratio: 1 / 1.414;
+  width: 100%;
+  min-height: 400px;
+  background-color: #deb887; /* 牛皮纸颜色 RGB(222, 184, 135) */
+  border: 3px solid; /* 边框颜色由内联样式动态设置 */
+  border-radius: 4px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+/* 颜色标识条 */
+.cover-color-bar {
+  height: 6px;
+  width: 100%;
+  flex-shrink: 0;
+}
+
+.cover-paper:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* 封面标题区域 */
+.cover-header {
+  text-align: center;
+  margin-bottom: 30px;
+  padding: 20px 20px 20px 20px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid #8b5a2b;
+}
+
+.cover-title-main {
+  font-size: 28px;
+  font-weight: bold;
+  color: #654321; /* 深棕色文字 RGB(101, 67, 33) */
+  margin-bottom: 10px;
+  letter-spacing: 2px;
+}
+
+.cover-title-sub {
+  font-size: 18px;
+  color: #654321; /* 深棕色文字 RGB(101, 67, 33) */
+  letter-spacing: 1px;
+}
+
+/* 封面信息区域 */
+.cover-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0 20px;
+}
+
+.cover-info-row {
+  display: flex;
+  align-items: flex-start;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(139, 90, 43, 0.2);
+}
+
+.cover-info-label {
+  flex: 0 0 80px;
+  font-size: 13px;
+  font-weight: bold;
+  color: #654321;
+  text-align: right;
+  padding-right: 12px;
+}
+
+.cover-info-value {
+  flex: 1;
+  font-size: 13px;
+  color: #654321;
+  word-break: break-all;
+}
+
+/* 封面底部 */
+.cover-footer {
+  margin-top: 20px;
+  padding: 15px 20px 20px 20px;
+  border-top: 2px solid #8b5a2b;
+  text-align: center;
+}
+
+/* 卡片操作栏 */
+.cover-actions {
+  margin-top: 12px;
+  padding: 8px;
+  background-color: #f5f5f5;
+  border-radius: 4px;
+  text-align: center;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .cover-paper {
+    min-height: 300px;
+    padding: 15px;
+  }
+  
+  .cover-title-main {
+    font-size: 22px;
+  }
+  
+  .cover-title-sub {
+    font-size: 16px;
+  }
+  
+  .cover-info-label {
+    flex: 0 0 70px;
+    font-size: 12px;
+  }
+  
+  .cover-info-value {
+    font-size: 12px;
+  }
+}
+</style>

@@ -14,43 +14,10 @@ export const feeTypeOptions = [
   { label: '混合收费', value: 'MIXED' },
 ];
 
-// 预览时的示例数据
-export const sampleData: Record<string, string> = {
-  clientName: '张三',
-  clientIdNumber: '520000199001011234',
-  clientAddress: '贵州省贵阳市云岩区XX路XX号',
-  clientPhone: '13800138000',
-  clientPostcode: '550001',
-  firmName: '贵州威迪律师事务所',
-  firmAddress: '贵州省毕节市七星关区开行路联邦金座10楼',
-  firmPhone: '0857-8228444',
-  firmPostcode: '551700',
-  firmLegalPerson: '孟天明',
-  firmBankName: '中国工商银行毕节分行清毕支行',
-  firmBankAccount: '240 607 0209 2000 18990',
-  lawyerName: '李律师',
-  lawyerLicenseNo: '15200201912345678',
-  matterName: '张三与李四民间借贷纠纷案',
-  causeOfAction: '民间借贷纠纷',
-  procedureStage: '一审',
-  authorityScope: '特别授权',
-  totalAmount: '50000',
-  totalAmountChinese: '伍万元整',
-  totalAmountFormatted: '50,000.00',
-  claimAmount: '100000',
-  claimAmountChinese: '壹拾万元整',
-  claimAmountFormatted: '100,000.00',
-  signDate: '2026年1月5日',
-  effectiveDate: '2026年1月5日',
-  expiryDate: '2027年1月4日',
-  paymentTerms: '签订合同时一次性支付',
-  contractNo: '2026民代字第0001号',
-  currentYear: '2026',
-  currentDate: '2026年1月5日',
-  opposingParty: '李四',
-  defendant: '李四',
-  relatedParty: '王五（证人）',
-};
+// 注意：此文件中的 sampleData 已废弃，请使用 constants/sample-data.ts 中的 createContractSampleData()
+// 保留此导出仅用于向后兼容，新代码请使用 createContractSampleData()
+// @deprecated 请使用 createContractSampleData() 替代
+export const sampleData: Record<string, string> = {};
 
 // 模板列表
 export const templateList = [

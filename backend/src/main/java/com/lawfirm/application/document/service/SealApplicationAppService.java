@@ -27,6 +27,8 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import com.lawfirm.common.constant.SealApplicationStatus;
+
 /**
  * 用印申请应用服务
  */
@@ -68,8 +70,30 @@ public class SealApplicationAppService {
     public SealApplicationDTO createApplication(CreateSealApplicationCommand command) {
         // 验证印章
         Seal seal = sealRepository.getByIdOrThrow(command.getSealId(), "印章不存在");
-        if (!"ACTIVE".equals(seal.getStatus())) {
+        if (!SealApplicationStatus.SEAL_ACTIVE.equals(seal.getStatus())) {
             throw new BusinessException("印章不可用");
+        }
+
+        // 验证用印份数
+        Integer copies = command.getCopies() != null ? command.getCopies() : 1;
+        if (copies <= 0) {
+            throw new BusinessException("用印份数必须大于0");
+        }
+        if (copies > 100) {
+            throw new BusinessException("单次用印份数不能超过100份，如有特殊需求请分多次申请");
+        }
+
+        // 可选: 检查该印章的使用频率 (防止滥用)
+        com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<SealApplication> wrapper = 
+            new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<>();
+        wrapper.eq(SealApplication::getSealId, command.getSealId())
+               .ge(SealApplication::getCreatedAt, LocalDateTime.now().toLocalDate().atStartOfDay())
+               .ne(SealApplication::getStatus, SealApplicationStatus.CANCELLED)
+               .eq(SealApplication::getDeleted, false);
+        long todayUsageCount = applicationRepository.count(wrapper);
+
+        if (todayUsageCount >= 50) {
+            log.warn("印章{}今日使用次数过多: {}次", seal.getName(), todayUsageCount);
         }
 
         String applicationNo = generateApplicationNo();
@@ -84,10 +108,10 @@ public class SealApplicationAppService {
                 .matterId(command.getMatterId())
                 .documentName(command.getDocumentName())
                 .documentType(command.getDocumentType())
-                .copies(command.getCopies() != null ? command.getCopies() : 1)
+                .copies(copies)
                 .usePurpose(command.getUsePurpose())
                 .expectedUseDate(command.getExpectedUseDate())
-                .status("PENDING")
+                .status(SealApplicationStatus.PENDING)
                 .build();
 
         applicationRepository.save(application);
@@ -137,11 +161,11 @@ public class SealApplicationAppService {
     public SealApplicationDTO approve(Long id, String comment) {
         SealApplication application = applicationRepository.getByIdOrThrow(id, "申请不存在");
         
-        if (!"PENDING".equals(application.getStatus())) {
+        if (!SealApplicationStatus.PENDING.equals(application.getStatus())) {
             throw new BusinessException("只能审批待审批的申请");
         }
 
-        application.setStatus("APPROVED");
+        application.setStatus(SealApplicationStatus.APPROVED);
         application.setApprovedBy(SecurityUtils.getUserId());
         application.setApprovedAt(LocalDateTime.now());
         application.setApprovalComment(comment);
@@ -158,11 +182,11 @@ public class SealApplicationAppService {
     public SealApplicationDTO reject(Long id, String comment) {
         SealApplication application = applicationRepository.getByIdOrThrow(id, "申请不存在");
         
-        if (!"PENDING".equals(application.getStatus())) {
+        if (!SealApplicationStatus.PENDING.equals(application.getStatus())) {
             throw new BusinessException("只能审批待审批的申请");
         }
 
-        application.setStatus("REJECTED");
+        application.setStatus(SealApplicationStatus.REJECTED);
         application.setApprovedBy(SecurityUtils.getUserId());
         application.setApprovedAt(LocalDateTime.now());
         application.setApprovalComment(comment);
@@ -179,14 +203,19 @@ public class SealApplicationAppService {
     public SealApplicationDTO registerUsage(Long id, String remark) {
         SealApplication application = applicationRepository.getByIdOrThrow(id, "申请不存在");
         
-        if (!"APPROVED".equals(application.getStatus())) {
+        // 检查是否已经登记过用印，防止重复登记
+        if (SealApplicationStatus.USED.equals(application.getStatus())) {
+            throw new BusinessException("该申请已经登记过用印，不能重复登记");
+        }
+        
+        if (!SealApplicationStatus.APPROVED.equals(application.getStatus())) {
             throw new BusinessException("只能对已批准的申请登记用印");
         }
 
         // 验证当前用户是否是印章保管人
         validateKeeperPermission(id);
 
-        application.setStatus("USED");
+        application.setStatus(SealApplicationStatus.USED);
         application.setUsedBy(SecurityUtils.getUserId());
         application.setUsedAt(LocalDateTime.now());
         application.setActualUseDate(LocalDate.now());
@@ -204,7 +233,7 @@ public class SealApplicationAppService {
     public void cancelApplication(Long id) {
         SealApplication application = applicationRepository.getByIdOrThrow(id, "申请不存在");
         
-        if (!"PENDING".equals(application.getStatus())) {
+        if (!SealApplicationStatus.PENDING.equals(application.getStatus())) {
             throw new BusinessException("只能取消待审批的申请");
         }
 
@@ -213,7 +242,7 @@ public class SealApplicationAppService {
             throw new BusinessException("只能取消自己的申请");
         }
 
-        application.setStatus("CANCELLED");
+        application.setStatus(SealApplicationStatus.CANCELLED);
         applicationRepository.updateById(application);
         log.info("用印申请已取消: {}", application.getApplicationNo());
     }
@@ -290,15 +319,7 @@ public class SealApplicationAppService {
      * 获取状态名称
      */
     private String getStatusName(String status) {
-        if (status == null) return null;
-        return switch (status) {
-            case "PENDING" -> "待审批";
-            case "APPROVED" -> "已批准";
-            case "REJECTED" -> "已拒绝";
-            case "USED" -> "已用印";
-            case "CANCELLED" -> "已取消";
-            default -> status;
-        };
+        return SealApplicationStatus.getStatusName(status);
     }
 
     /**

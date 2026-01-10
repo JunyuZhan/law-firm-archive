@@ -6,6 +6,7 @@ import com.lawfirm.infrastructure.security.jwt.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -17,6 +18,8 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+
+import java.util.Arrays;
 
 /**
  * Spring Security 配置
@@ -30,6 +33,7 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final AuthenticationEntryPointImpl authenticationEntryPoint;
     private final AccessDeniedHandlerImpl accessDeniedHandler;
+    private final Environment environment;
 
     /**
      * 密码编码器
@@ -63,10 +67,16 @@ public class SecurityConfig {
                 .accessDeniedHandler(accessDeniedHandler)
             )
             // 请求授权配置
-            .authorizeHttpRequests(auth -> auth
-                // 公开接口
-                .requestMatchers(
+            .authorizeHttpRequests(auth -> {
+                // Swagger UI 仅在开发/测试环境开放
+                boolean isDevOrTest = Arrays.asList(environment.getActiveProfiles()).contains("dev") 
+                    || Arrays.asList(environment.getActiveProfiles()).contains("test");
+                
+                if (isDevOrTest) {
+                    // 开发/测试环境：包含 Swagger UI
+                    auth.requestMatchers(
                     "/auth/login",
+                    "/auth/logout",           // 登出接口允许未认证访问（token 可能已过期）
                     "/auth/refresh",
                     "/auth/captcha",
                     "/swagger-ui/**",
@@ -75,11 +85,27 @@ public class SecurityConfig {
                     "/actuator/health",
                     "/error",
                     "/document/*/callback",  // OnlyOffice 回调接口（无需认证）
-                    "/document/*/content"    // OnlyOffice 文件代理接口（通过 token 验证）
-                ).permitAll()
+                    "/document/*/content",   // OnlyOffice 文件代理接口（通过 token 验证）
+                    "/open/verify/**"        // 公开验证接口（函件、合同等真伪验证）
+                    ).permitAll();
+                } else {
+                    // 生产环境：不包含 Swagger UI
+                    auth.requestMatchers(
+                        "/auth/login",
+                        "/auth/logout",           // 登出接口允许未认证访问（token 可能已过期）
+                        "/auth/refresh",
+                        "/auth/captcha",
+                        "/actuator/health",
+                        "/error",
+                        "/document/*/callback",  // OnlyOffice 回调接口（无需认证）
+                        "/document/*/content",   // OnlyOffice 文件代理接口（通过 token 验证）
+                        "/open/verify/**"        // 公开验证接口（函件、合同等真伪验证）
+                    ).permitAll();
+                }
+                
                 // 其他请求需要认证
-                .anyRequest().authenticated()
-            )
+                auth.anyRequest().authenticated();
+            })
             // 添加JWT过滤器
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 

@@ -13,6 +13,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import jakarta.annotation.PostConstruct;
+
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -21,6 +23,8 @@ import java.util.UUID;
 
 /**
  * MinIO 文件服务
+ * 
+ * 线程安全：使用 @PostConstruct 在启动时初始化客户端，避免并发初始化问题
  */
 @Slf4j
 @Service
@@ -46,31 +50,69 @@ public class MinioService {
     private MinioClient externalMinioClient;
 
     /**
-     * 获取MinIO客户端（懒加载）
+     * 初始化 MinIO 客户端（启动时执行，线程安全）
      */
-    private MinioClient getMinioClient() {
-        if (minioClient == null) {
+    @PostConstruct
+    public void init() {
+        log.info("初始化 MinIO 客户端: endpoint={}", endpoint);
+        
+        try {
+            // 创建客户端
             minioClient = MinioClient.builder()
                     .endpoint(endpoint)
                     .credentials(accessKey, secretKey)
                     .build();
             
             // 确保bucket存在
-            try {
-                boolean found = minioClient.bucketExists(BucketExistsArgs.builder()
+            initializeBucket();
+            
+            log.info("MinIO 客户端初始化成功");
+        } catch (Exception e) {
+            log.error("MinIO 客户端初始化失败", e);
+            // 不抛出异常，允许系统启动（MinIO 可能是可选服务）
+            // 后续调用时会检查 minioClient 是否为 null
+        }
+    }
+
+    /**
+     * 初始化 bucket（只在启动时调用一次）
+     */
+    private void initializeBucket() {
+        try {
+            boolean found = minioClient.bucketExists(BucketExistsArgs.builder()
+                    .bucket(bucketName)
+                    .build());
+            if (!found) {
+                minioClient.makeBucket(MakeBucketArgs.builder()
                         .bucket(bucketName)
                         .build());
-                if (!found) {
-                    minioClient.makeBucket(MakeBucketArgs.builder()
-                            .bucket(bucketName)
-                            .build());
-                    log.info("创建MinIO bucket: {}", bucketName);
-                }
-            } catch (Exception e) {
-                log.error("MinIO bucket检查/创建失败", e);
+                log.info("创建 MinIO bucket: {}", bucketName);
             }
+        } catch (Exception e) {
+            log.error("MinIO bucket 检查/创建失败", e);
+        }
+    }
+
+    /**
+     * 获取 MinIO 客户端
+     * 如果客户端未初始化，抛出友好的业务异常而不是返回null导致NPE
+     * @return MinioClient 实例
+     * @throws RuntimeException 如果文件服务不可用
+     */
+    private MinioClient getMinioClient() {
+        if (minioClient == null) {
+            log.error("MinIO 客户端未初始化，文件操作无法执行");
+            throw new RuntimeException("文件服务暂时不可用，请联系管理员检查MinIO服务状态");
         }
         return minioClient;
+    }
+
+    /**
+     * 检查文件服务是否可用
+     * @return true 如果服务可用
+     */
+    public boolean isAvailable() {
+        return minioClient != null;
     }
 
     /**

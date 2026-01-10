@@ -2,6 +2,7 @@ package com.lawfirm.application.finance.service;
 
 import com.lawfirm.application.system.service.SysConfigAppService;
 import com.lawfirm.common.exception.BusinessException;
+import com.lawfirm.common.constant.MatterConstants;
 import com.lawfirm.domain.finance.repository.ContractRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -165,7 +166,7 @@ public class ContractNumberGenerator {
                 String preview = buildContractNumber(pattern, prefix, sequenceLength, caseType, feeType, true);
                 Map<String, String> item = new LinkedHashMap<>();
                 item.put("caseType", caseType);
-                item.put("caseTypeName", getCaseTypeName(caseType));
+                item.put("caseTypeName", MatterConstants.getCaseTypeName(caseType));
                 item.put("preview", preview);
                 previews.add(item);
             } else {
@@ -175,7 +176,7 @@ public class ContractNumberGenerator {
                     String preview = buildContractNumber(pattern, prefix, sequenceLength, type, feeType, true);
                     Map<String, String> item = new LinkedHashMap<>();
                     item.put("caseType", type);
-                    item.put("caseTypeName", getCaseTypeName(type));
+                    item.put("caseTypeName", MatterConstants.getCaseTypeName(type));
                     item.put("preview", preview);
                     previews.add(item);
                 }
@@ -251,7 +252,7 @@ public class ContractNumberGenerator {
         for (Map.Entry<String, String> entry : CASE_TYPE_CN_MAP.entrySet()) {
             Map<String, String> option = new LinkedHashMap<>();
             option.put("value", entry.getKey());
-            option.put("label", getCaseTypeName(entry.getKey()));
+            option.put("label", MatterConstants.getCaseTypeName(entry.getKey()));
             option.put("shortName", entry.getValue());
             option.put("code", CASE_TYPE_CODE_MAP.get(entry.getKey()));
             options.add(option);
@@ -362,20 +363,6 @@ public class ContractNumberGenerator {
         }
     }
 
-    private String getCaseTypeName(String caseType) {
-        return switch (caseType) {
-            case "CIVIL" -> "民事案件";
-            case "CRIMINAL" -> "刑事案件";
-            case "ADMINISTRATIVE" -> "行政案件";
-            case "IP" -> "知识产权";
-            case "ARBITRATION" -> "仲裁案件";
-            case "ENFORCEMENT" -> "执行案件";
-            case "LEGAL_COUNSEL" -> "法律顾问";
-            case "SPECIAL_SERVICE" -> "专项服务";
-            case "BANKRUPTCY" -> "破产案件";
-            default -> "其他";
-        };
-    }
 
     private void addVariable(List<Map<String, String>> list, String name, String label, String description) {
         Map<String, String> item = new LinkedHashMap<>();

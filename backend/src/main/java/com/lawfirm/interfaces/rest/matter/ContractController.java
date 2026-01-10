@@ -13,6 +13,7 @@ import com.lawfirm.application.finance.dto.ContractPaymentScheduleDTO;
 import com.lawfirm.application.finance.dto.ContractParticipantDTO;
 import com.lawfirm.application.finance.service.ContractAppService;
 import com.lawfirm.common.annotation.OperationLog;
+import com.lawfirm.common.annotation.RepeatSubmit;
 import com.lawfirm.common.annotation.RequirePermission;
 import com.lawfirm.common.result.PageResult;
 import com.lawfirm.common.result.Result;
@@ -75,6 +76,7 @@ public class ContractController {
     @PostMapping
     @RequirePermission("matter:contract:create")
     @OperationLog(module = "合同管理", action = "创建合同")
+    @RepeatSubmit(interval = 5000, message = "请勿重复提交合同信息")
     public Result<ContractDTO> createContract(@RequestBody CreateContractCommand command) {
         // 调试日志：打印接收到的提成方案数据
         System.out.println("=== 后端接收到的提成方案数据 ===");

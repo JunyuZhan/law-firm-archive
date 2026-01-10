@@ -35,6 +35,9 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import com.lawfirm.common.constant.LetterStatus;
+import com.lawfirm.common.constant.MatterConstants;
+
 /**
  * 出函管理应用服务
  */
@@ -70,7 +73,7 @@ public class LetterAppService {
      */
     public List<LetterTemplateDTO> listActiveTemplates() {
         LambdaQueryWrapper<LetterTemplate> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(LetterTemplate::getStatus, "ACTIVE")
+        wrapper.eq(LetterTemplate::getStatus, LetterStatus.TEMPLATE_ACTIVE)
                .orderByAsc(LetterTemplate::getSortOrder);
         return templateRepository.list(wrapper).stream()
                 .map(this::toTemplateDTO)
@@ -91,7 +94,7 @@ public class LetterAppService {
                 .letterType(letterType)
                 .content(content)
                 .description(description)
-                .status("ACTIVE")
+                .status(LetterStatus.TEMPLATE_ACTIVE)
                 .build();
         templateRepository.save(template);
         log.info("创建出函模板: {}", name);
@@ -119,7 +122,7 @@ public class LetterAppService {
     @Transactional
     public void toggleTemplateStatus(Long id) {
         LetterTemplate template = templateRepository.getByIdOrThrow(id, "模板不存在");
-        template.setStatus("ACTIVE".equals(template.getStatus()) ? "DISABLED" : "ACTIVE");
+        template.setStatus(LetterStatus.TEMPLATE_ACTIVE.equals(template.getStatus()) ? LetterStatus.TEMPLATE_DISABLED : LetterStatus.TEMPLATE_ACTIVE);
         templateRepository.updateById(template);
         log.info("模板状态变更: {} -> {}", template.getName(), template.getStatus());
     }
@@ -155,16 +158,15 @@ public class LetterAppService {
         
         // 验证项目
         Matter matter = matterRepository.getByIdOrThrow(cmd.getMatterId(), "项目不存在");
-        if (!"ACTIVE".equals(matter.getStatus())) {
+        if (!MatterConstants.STATUS_ACTIVE.equals(matter.getStatus())) {
             throw new BusinessException("只能为进行中的项目申请出函");
         }
         
         // 验证用户是否是项目负责人或参与者（只有项目成员才能申请出函）
         matterAppService.validateMatterOwnership(cmd.getMatterId());
 
-        // 生成申请编号
-        String applicationNo = "LA" + LocalDate.now().toString().replace("-", "").substring(2) 
-                + UUID.randomUUID().toString().substring(0, 4).toUpperCase();
+        // 生成申请编号：合同编号 + "-" + 序号（第一次-1，第二次-2，以此类推）
+        String applicationNo = generateApplicationNo(matter);
 
         // 获取律师姓名
         String lawyerNames = "";
@@ -202,7 +204,7 @@ public class LetterAppService {
                 .content(content)
                 .copies(cmd.getCopies() != null ? cmd.getCopies() : 1)
                 .expectedDate(cmd.getExpectedDate())
-                .status("PENDING")
+                .status(LetterStatus.PENDING)
                 .assignedApproverId(cmd.getApproverId())
                 .remark(cmd.getRemark())
                 .build();
@@ -261,10 +263,10 @@ public class LetterAppService {
     @Transactional
     public void approve(Long id, String comment) {
         LetterApplication app = applicationRepository.getByIdOrThrow(id, "申请不存在");
-        if (!"PENDING".equals(app.getStatus())) {
+        if (!LetterStatus.canApprove(app.getStatus())) {
             throw new BusinessException("只能审批待审批状态的申请");
         }
-        app.setStatus("APPROVED");
+        app.setStatus(LetterStatus.APPROVED);
         app.setApprovedBy(SecurityUtils.getUserId());
         app.setApprovedAt(LocalDateTime.now());
         app.setApprovalComment(comment);
@@ -285,10 +287,10 @@ public class LetterAppService {
     @Transactional
     public void reject(Long id, String comment) {
         LetterApplication app = applicationRepository.getByIdOrThrow(id, "申请不存在");
-        if (!"PENDING".equals(app.getStatus())) {
+        if (!LetterStatus.canApprove(app.getStatus())) {
             throw new BusinessException("只能审批待审批状态的申请");
         }
-        app.setStatus("REJECTED");
+        app.setStatus(LetterStatus.REJECTED);
         app.setApprovedBy(SecurityUtils.getUserId());
         app.setApprovedAt(LocalDateTime.now());
         app.setApprovalComment(comment);
@@ -309,10 +311,10 @@ public class LetterAppService {
     @Transactional
     public void returnForRevision(Long id, String comment) {
         LetterApplication app = applicationRepository.getByIdOrThrow(id, "申请不存在");
-        if (!"PENDING".equals(app.getStatus())) {
+        if (!LetterStatus.canApprove(app.getStatus())) {
             throw new BusinessException("只能退回待审批状态的申请");
         }
-        app.setStatus("RETURNED");
+        app.setStatus(LetterStatus.RETURNED);
         app.setApprovedBy(SecurityUtils.getUserId());
         app.setApprovedAt(LocalDateTime.now());
         app.setApprovalComment(comment);
@@ -340,7 +342,7 @@ public class LetterAppService {
         }
         
         // 只能重新提交被退回或被拒绝的申请
-        if (!"RETURNED".equals(app.getStatus()) && !"REJECTED".equals(app.getStatus())) {
+        if (!LetterStatus.canResubmit(app.getStatus())) {
             throw new BusinessException("只能重新提交被退回或被拒绝的申请");
         }
 
@@ -349,7 +351,7 @@ public class LetterAppService {
         
         // 验证项目
         Matter matter = matterRepository.getByIdOrThrow(cmd.getMatterId(), "项目不存在");
-        if (!"ACTIVE".equals(matter.getStatus())) {
+        if (!MatterConstants.STATUS_ACTIVE.equals(matter.getStatus())) {
             throw new BusinessException("只能为进行中的项目申请出函");
         }
 
@@ -385,7 +387,7 @@ public class LetterAppService {
         app.setContent(content);
         app.setCopies(cmd.getCopies() != null ? cmd.getCopies() : 1);
         app.setExpectedDate(cmd.getExpectedDate());
-        app.setStatus("PENDING");
+        app.setStatus(LetterStatus.PENDING);
         app.setRemark(cmd.getRemark());
         // 清除之前的审批信息
         app.setApprovedBy(null);
@@ -410,7 +412,7 @@ public class LetterAppService {
         }
         
         // 只能修改被退回或被拒绝的申请
-        if (!"RETURNED".equals(app.getStatus()) && !"REJECTED".equals(app.getStatus())) {
+        if (!LetterStatus.canResubmit(app.getStatus())) {
             throw new BusinessException("只能修改被退回或被拒绝的申请");
         }
 
@@ -472,11 +474,11 @@ public class LetterAppService {
         }
         
         // 只能提交被退回或被拒绝的申请
-        if (!"RETURNED".equals(app.getStatus()) && !"REJECTED".equals(app.getStatus())) {
+        if (!LetterStatus.canResubmit(app.getStatus())) {
             throw new BusinessException("只能提交被退回或被拒绝的申请");
         }
 
-        app.setStatus("PENDING");
+        app.setStatus(LetterStatus.PENDING);
         // 清除之前的审批信息
         app.setApprovedBy(null);
         app.setApprovedAt(null);
@@ -512,10 +514,10 @@ public class LetterAppService {
     @Transactional
     public void confirmPrint(Long id) {
         LetterApplication app = applicationRepository.getByIdOrThrow(id, "申请不存在");
-        if (!"APPROVED".equals(app.getStatus())) {
+        if (!LetterStatus.APPROVED.equals(app.getStatus())) {
             throw new BusinessException("只能打印已审批通过的申请");
         }
-        app.setStatus("PRINTED");
+        app.setStatus(LetterStatus.PRINTED);
         app.setPrintedBy(SecurityUtils.getUserId());
         app.setPrintedAt(LocalDateTime.now());
         applicationRepository.updateById(app);
@@ -588,11 +590,11 @@ public class LetterAppService {
         }
         
         // 只能取消待审批状态的申请
-        if (!"PENDING".equals(app.getStatus())) {
+        if (!LetterStatus.canApprove(app.getStatus())) {
             throw new BusinessException("只能取消待审批状态的申请");
         }
         
-        app.setStatus("CANCELLED");
+        app.setStatus(LetterStatus.CANCELLED);
         applicationRepository.updateById(app);
         log.info("出函申请已取消: {}", app.getApplicationNo());
     }
@@ -602,7 +604,7 @@ public class LetterAppService {
      */
     public List<LetterApplicationDTO> listPendingApproval() {
         LambdaQueryWrapper<LetterApplication> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(LetterApplication::getStatus, "PENDING")
+        wrapper.eq(LetterApplication::getStatus, LetterStatus.PENDING)
                .orderByAsc(LetterApplication::getCreatedAt);
         return applicationRepository.list(wrapper).stream()
                 .map(this::toApplicationDTO)
@@ -628,23 +630,27 @@ public class LetterAppService {
     /**
      * 审批通过回调（供审批中心事件监听器调用）
      * 此方法不做权限检查，由审批中心保证权限
+     * @param applicationId 申请ID
+     * @param approverId 审批人ID（从审批中心传入）
+     * @param comment 审批意见
      */
     @Transactional
-    public void onApprovalApproved(Long applicationId, String comment) {
+    public void onApprovalApproved(Long applicationId, Long approverId, String comment) {
         LetterApplication app = applicationRepository.findById(applicationId);
         if (app == null) {
             log.warn("审批中心回调：出函申请不存在, id={}", applicationId);
             return;
         }
-        if (!"PENDING".equals(app.getStatus())) {
+        if (!LetterStatus.canApprove(app.getStatus())) {
             log.warn("审批中心回调：出函申请状态不是待审批, id={}, status={}", applicationId, app.getStatus());
             return;
         }
-        app.setStatus("APPROVED");
+        app.setStatus(LetterStatus.APPROVED);
+        app.setApprovedBy(approverId); // 设置审批人ID
         app.setApprovedAt(LocalDateTime.now());
         app.setApprovalComment(comment);
         applicationRepository.updateById(app);
-        log.info("审批中心回调-出函申请审批通过: {}", app.getApplicationNo());
+        log.info("审批中心回调-出函申请审批通过: {}, 审批人: {}", app.getApplicationNo(), approverId);
         
         // 发送通知给申请人
         notificationAppService.sendSystemNotification(
@@ -653,27 +659,39 @@ public class LetterAppService {
                 String.format("您的出函申请 [%s] 已审批通过，请等待打印", app.getApplicationNo()),
                 "LETTER", app.getId());
     }
+    
+    /**
+     * 审批通过回调（兼容旧版本，从当前用户获取审批人）
+     */
+    @Transactional
+    public void onApprovalApproved(Long applicationId, String comment) {
+        onApprovalApproved(applicationId, SecurityUtils.getUserId(), comment);
+    }
 
     /**
      * 审批拒绝回调（供审批中心事件监听器调用）
      * 此方法不做权限检查，由审批中心保证权限
+     * @param applicationId 申请ID
+     * @param approverId 审批人ID（从审批中心传入）
+     * @param comment 审批意见
      */
     @Transactional
-    public void onApprovalRejected(Long applicationId, String comment) {
+    public void onApprovalRejected(Long applicationId, Long approverId, String comment) {
         LetterApplication app = applicationRepository.findById(applicationId);
         if (app == null) {
             log.warn("审批中心回调：出函申请不存在, id={}", applicationId);
             return;
         }
-        if (!"PENDING".equals(app.getStatus())) {
+        if (!LetterStatus.canApprove(app.getStatus())) {
             log.warn("审批中心回调：出函申请状态不是待审批, id={}, status={}", applicationId, app.getStatus());
             return;
         }
-        app.setStatus("REJECTED");
+        app.setStatus(LetterStatus.REJECTED);
+        app.setApprovedBy(approverId); // 设置审批人ID
         app.setApprovedAt(LocalDateTime.now());
         app.setApprovalComment(comment);
         applicationRepository.updateById(app);
-        log.info("审批中心回调-出函申请被拒绝: {}", app.getApplicationNo());
+        log.info("审批中心回调-出函申请被拒绝: {}, 审批人: {}", app.getApplicationNo(), approverId);
         
         // 发送通知给申请人
         notificationAppService.sendSystemNotification(
@@ -681,6 +699,14 @@ public class LetterAppService {
                 "出函申请被拒绝",
                 String.format("您的出函申请 [%s] 被拒绝，原因：%s", app.getApplicationNo(), comment),
                 "LETTER", app.getId());
+    }
+    
+    /**
+     * 审批拒绝回调（兼容旧版本，从当前用户获取审批人）
+     */
+    @Transactional
+    public void onApprovalRejected(Long applicationId, String comment) {
+        onApprovalRejected(applicationId, SecurityUtils.getUserId(), comment);
     }
 
     // ==================== 私有方法 ====================
@@ -722,6 +748,59 @@ public class LetterAppService {
     }
 
     /**
+     * 生成出函申请编号（并发安全）
+     * 格式：合同编号 + "-" + 序号（第一次-1，第二次-2，以此类推）
+     * 如果没有合同，则使用项目编号
+     * 
+     * 并发安全策略：
+     * 1. 使用 MAX(序号) + 1 而非 COUNT(*) + 1，避免删除记录导致的编号冲突
+     * 2. 数据库需添加唯一约束：ALTER TABLE letter_application ADD UNIQUE INDEX uk_application_no (application_no);
+     * 3. 调用方在遇到唯一约束冲突时应重试
+     * 
+     * @param matter 项目信息
+     * @return 申请编号
+     */
+    private String generateApplicationNo(Matter matter) {
+        // 1. 获取合同编号（优先）或项目编号
+        String baseNo = getBaseNoForMatter(matter);
+        
+        // 2. 使用 synchronized 和数据库查询最大序号，确保并发安全
+        // 查询该项目已有的出函申请的最大序号
+        int nextSequence;
+        synchronized (this) {
+            Integer maxSequence = applicationMapper.selectMaxSequenceByMatterId(matter.getId());
+            nextSequence = (maxSequence != null ? maxSequence : 0) + 1;
+        }
+        
+        // 3. 生成编号：合同编号 + "-" + 序号
+        String applicationNo = baseNo + "-" + nextSequence;
+        
+        log.debug("生成出函申请编号: matterId={}, applicationNo={}", matter.getId(), applicationNo);
+        return applicationNo;
+    }
+    
+    /**
+     * 获取项目的基础编号（合同号或项目号）
+     */
+    private String getBaseNoForMatter(Matter matter) {
+        if (matter.getContractId() != null) {
+            try {
+                Contract contract = contractRepository.getById(matter.getContractId());
+                if (contract != null && contract.getContractNo() != null && !contract.getContractNo().isEmpty()) {
+                    return contract.getContractNo();
+                }
+            } catch (Exception e) {
+                log.warn("获取合同编号失败，使用项目编号: matterId={}, contractId={}", 
+                        matter.getId(), matter.getContractId(), e);
+            }
+        }
+        // 没有合同或获取失败，使用项目编号
+        return matter.getMatterNo() != null && !matter.getMatterNo().isEmpty() 
+                ? matter.getMatterNo() 
+                : "M" + matter.getId();
+    }
+
+    /**
      * 生成函件内容（替换模板变量）
      * 支持模板中定义的所有变量，根据项目实际信息进行替换
      */
@@ -740,17 +819,27 @@ public class LetterAppService {
         
         // ========== 合同信息 ==========
         String contractNo = "";
+        String trialStage = "";
         if (matter.getContractId() != null) {
             try {
                 Contract contract = contractRepository.getById(matter.getContractId());
-                if (contract != null && contract.getContractNo() != null) {
-                    contractNo = contract.getContractNo();
+                if (contract != null) {
+                    if (contract.getContractNo() != null) {
+                        contractNo = contract.getContractNo();
+                    }
+                    // 获取案件阶段（从合同获取）
+                    if (contract.getTrialStage() != null && !contract.getTrialStage().isEmpty()) {
+                        trialStage = getTrialStageName(contract.getTrialStage());
+                    }
                 }
             } catch (Exception e) {
-                log.warn("获取项目合同编号失败: matterId={}, contractId={}", matter.getId(), matter.getContractId(), e);
+                log.warn("获取项目合同信息失败: matterId={}, contractId={}", matter.getId(), matter.getContractId(), e);
             }
         }
         result = result.replace("${contractNo}", contractNo);
+        // 案件阶段变量（支持两个名称：trialStage 和 procedureStage）
+        result = result.replace("${trialStage}", trialStage);
+        result = result.replace("${procedureStage}", trialStage);
         
         // ========== 客户信息 ==========
         String clientName = "";
@@ -812,6 +901,7 @@ public class LetterAppService {
         String firmName = "";
         String firmAddress = "";
         String firmPhone = "";
+        String firmLicense = "";
         try {
             firmName = sysConfigAppService.getConfigValue("firm.name");
             if (firmName == null) firmName = "";
@@ -821,12 +911,16 @@ public class LetterAppService {
             
             firmPhone = sysConfigAppService.getConfigValue("firm.phone");
             if (firmPhone == null) firmPhone = "";
+            
+            firmLicense = sysConfigAppService.getConfigValue("firm.license");
+            if (firmLicense == null) firmLicense = "";
         } catch (Exception e) {
             log.warn("获取律所信息失败", e);
         }
         result = result.replace("${firmName}", firmName);
         result = result.replace("${firmAddress}", firmAddress);
         result = result.replace("${firmPhone}", firmPhone);
+        result = result.replace("${firmLicense}", firmLicense);
         
         // ========== 函件信息 ==========
         result = result.replace("${letterNo}", applicationNo != null ? applicationNo : "");
@@ -867,18 +961,37 @@ public class LetterAppService {
         };
     }
 
+    /**
+     * 获取审理阶段名称（支持多选，逗号分隔）
+     */
+    private String getTrialStageName(String stage) {
+        if (stage == null || stage.isEmpty()) return "";
+        // 支持多选：逗号分隔的多个值
+        return java.util.Arrays.stream(stage.split(","))
+                .map(s -> switch (s.trim()) {
+                    // 通用阶段
+                    case "FIRST_INSTANCE" -> "一审";
+                    case "SECOND_INSTANCE" -> "二审";
+                    case "RETRIAL" -> "再审";
+                    case "EXECUTION" -> "执行";
+                    case "NON_LITIGATION" -> "非诉服务";
+                    case "ARBITRATION" -> "仲裁阶段";
+                    // 刑事案件阶段
+                    case "INVESTIGATION" -> "侦查阶段";
+                    case "PROSECUTION_REVIEW" -> "审查起诉";
+                    case "DEATH_PENALTY_REVIEW" -> "死刑复核";
+                    // 行政案件阶段
+                    case "ADMINISTRATIVE_RECONSIDERATION" -> "行政复议";
+                    // 执行案件阶段
+                    case "EXECUTION_OBJECTION" -> "执行异议";
+                    case "EXECUTION_REVIEW" -> "执行复议";
+                    default -> s;
+                })
+                .collect(java.util.stream.Collectors.joining("、"));
+    }
+
     private String getStatusName(String status) {
-        if (status == null) return null;
-        return switch (status) {
-            case "PENDING" -> "待审批";
-            case "APPROVED" -> "已批准";
-            case "REJECTED" -> "已拒绝";
-            case "RETURNED" -> "已退回";
-            case "PRINTED" -> "已打印";
-            case "RECEIVED" -> "已领取";
-            case "CANCELLED" -> "已取消";
-            default -> status;
-        };
+        return LetterStatus.getStatusName(status);
     }
 
     private LetterTemplateDTO toTemplateDTO(LetterTemplate t) {

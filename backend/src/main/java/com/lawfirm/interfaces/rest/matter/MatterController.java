@@ -11,6 +11,7 @@ import com.lawfirm.application.matter.service.MatterTimelineAppService;
 import com.lawfirm.application.workbench.service.ApproverService;
 
 import com.lawfirm.common.annotation.OperationLog;
+import com.lawfirm.common.annotation.RepeatSubmit;
 import com.lawfirm.common.annotation.RequirePermission;
 import com.lawfirm.common.exception.BusinessException;
 import com.lawfirm.common.result.PageResult;
@@ -75,6 +76,7 @@ public class MatterController {
     @PostMapping
     @RequirePermission("matter:create")
     @OperationLog(module = "案件管理", action = "创建案件")
+    @RepeatSubmit(interval = 5000, message = "请勿重复提交案件信息")
     public Result<MatterDTO> createMatter(@RequestBody @Valid CreateMatterCommand command) {
         MatterDTO matter = matterAppService.createMatter(command);
         return Result.success(matter);

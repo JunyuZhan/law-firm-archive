@@ -1,31 +1,15 @@
 <script setup lang="ts">
 import { ref, reactive, computed } from 'vue';
-import { message } from 'ant-design-vue';
-import {
-  Modal,
-  Form,
-  FormItem,
-  Input,
-  InputNumber,
-  Button,
-  Space,
-  Divider,
-  Textarea,
-  Row,
-  Col,
-  Tooltip,
-  Switch,
-} from 'ant-design-vue';
+import { useVbenModal } from '@vben/common-ui';
+import { message, Form, FormItem, Input, InputNumber, Button, Space, Divider, Textarea, Row, Col, Tooltip, Switch } from 'ant-design-vue';
 import { commissionRuleApi, type CommissionRule } from '#/api/finance/commission-rule';
 
 const emit = defineEmits<{
   success: [];
 }>();
 
-// 状态
-const visible = ref(false);
+const editingId = ref<number>();
 const saving = ref(false);
-const editingId = ref<number | null>(null);
 
 const formData = reactive<CommissionRule>({
   ruleCode: '',
@@ -46,11 +30,18 @@ const totalRate = computed(() => {
   return formData.firmRate + formData.leadLawyerRate + formData.assistLawyerRate + formData.supportStaffRate + formData.originatorRate;
 });
 
-// 计算属性
-const modalTitle = () => (editingId.value ? '编辑提成方案' : '新增提成方案');
+const [Modal, modalApi] = useVbenModal({
+  footer: false,
+  onOpenChange(isOpen) {
+    if (!isOpen) {
+      resetForm();
+    }
+  },
+});
 
 // 重置表单
 function resetForm() {
+  editingId.value = undefined;
   Object.assign(formData, {
     ruleCode: '',
     ruleName: '',
@@ -68,16 +59,17 @@ function resetForm() {
 
 // 打开新增弹窗
 function openCreate() {
-  editingId.value = null;
   resetForm();
-  visible.value = true;
+  modalApi.setState({ title: '新增提成方案' });
+  modalApi.open();
 }
 
 // 打开编辑弹窗
 function openEdit(record: CommissionRule) {
-  editingId.value = record.id || null;
+  editingId.value = record.id;
   Object.assign(formData, record);
-  visible.value = true;
+  modalApi.setState({ title: '编辑提成方案' });
+  modalApi.open();
 }
 
 // 保存
@@ -100,7 +92,7 @@ async function handleSave() {
       await commissionRuleApi.create(formData as CommissionRule);
       message.success('创建成功');
     }
-    visible.value = false;
+    modalApi.close();
     emit('success');
   } catch (error: unknown) {
     const err = error as { message?: string };
@@ -117,12 +109,7 @@ defineExpose({
 </script>
 
 <template>
-  <Modal
-    v-model:open="visible"
-    :title="modalTitle()"
-    width="600px"
-    :footer="null"
-  >
+  <Modal class="w-[600px]">
     <Form layout="vertical">
       <Row :gutter="16">
         <Col :span="12">
@@ -250,7 +237,7 @@ defineExpose({
 
       <div style="text-align: right;">
         <Space>
-          <Button @click="visible = false">取消</Button>
+          <Button @click="modalApi.close()">取消</Button>
           <Button type="primary" :loading="saving" @click="handleSave">
             保存
           </Button>
@@ -259,4 +246,3 @@ defineExpose({
     </Form>
   </Modal>
 </template>
-

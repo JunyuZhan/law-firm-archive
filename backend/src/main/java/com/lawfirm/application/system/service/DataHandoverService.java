@@ -35,6 +35,8 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import com.lawfirm.common.constant.DataHandoverStatus;
+
 /**
  * 数据交接服务
  */
@@ -170,7 +172,7 @@ public class DataHandoverService {
                 .toUsername(toUser.getRealName())
                 .handoverType("RESIGNATION")
                 .handoverReason(command.getReason())
-                .status("PENDING_APPROVAL")
+                .status(DataHandoverStatus.PENDING_APPROVAL)
                 .submittedBy(SecurityUtils.getUserId())
                 .submittedAt(LocalDateTime.now())
                 .remark(command.getRemark())
@@ -240,7 +242,7 @@ public class DataHandoverService {
                 .toUsername(toUser.getRealName())
                 .handoverType("PROJECT")
                 .handoverReason(command.getReason())
-                .status("PENDING_APPROVAL")
+                .status(DataHandoverStatus.PENDING_APPROVAL)
                 .submittedBy(SecurityUtils.getUserId())
                 .submittedAt(LocalDateTime.now())
                 .remark(command.getRemark())
@@ -312,7 +314,7 @@ public class DataHandoverService {
                 .toUsername(toUser.getRealName())
                 .handoverType("CLIENT")
                 .handoverReason(command.getReason())
-                .status("PENDING_APPROVAL")
+                .status(DataHandoverStatus.PENDING_APPROVAL)
                 .submittedBy(SecurityUtils.getUserId())
                 .submittedAt(LocalDateTime.now())
                 .remark(command.getRemark())
@@ -372,7 +374,7 @@ public class DataHandoverService {
         DataHandover handover = handoverRepository.getByIdOrThrow(handoverId, "交接单不存在");
         
         // 只有审批通过（APPROVED）状态才能确认执行
-        if (!"APPROVED".equals(handover.getStatus())) {
+        if (!DataHandoverStatus.APPROVED.equals(handover.getStatus())) {
             throw new BusinessException("交接单尚未通过审批，无法确认执行");
         }
         
@@ -391,11 +393,11 @@ public class DataHandoverService {
         for (DataHandoverDetail detail : details) {
             try {
                 executeHandover(detail);
-                detail.setStatus("DONE");
+                detail.setStatus(DataHandoverStatus.DETAIL_DONE);
                 detail.setExecutedAt(LocalDateTime.now());
                 successCount++;
             } catch (Exception e) {
-                detail.setStatus("FAILED");
+                detail.setStatus(DataHandoverStatus.DETAIL_FAILED);
                 detail.setErrorMessage(e.getMessage());
                 failCount++;
                 log.error("数据交接失败: {} - {} - {}", detail.getDataType(), detail.getDataId(), e.getMessage());
@@ -404,7 +406,7 @@ public class DataHandoverService {
         }
         
         // 更新交接单状态
-        handover.setStatus("CONFIRMED");
+        handover.setStatus(DataHandoverStatus.CONFIRMED);
         handover.setConfirmedBy(currentUserId);
         handover.setConfirmedAt(LocalDateTime.now());
         handoverRepository.updateById(handover);
@@ -424,12 +426,12 @@ public class DataHandoverService {
             return;
         }
         
-        if (!"PENDING_APPROVAL".equals(handover.getStatus())) {
+        if (!DataHandoverStatus.PENDING_APPROVAL.equals(handover.getStatus())) {
             log.warn("审批回调：交接单状态不是待审批, id={}, status={}", handoverId, handover.getStatus());
             return;
         }
         
-        handover.setStatus("APPROVED");
+        handover.setStatus(DataHandoverStatus.APPROVED);
         handoverRepository.updateById(handover);
         
         log.info("交接单审批通过: {}", handover.getHandoverNo());
@@ -447,7 +449,7 @@ public class DataHandoverService {
             return;
         }
         
-        handover.setStatus("REJECTED");
+        handover.setStatus(DataHandoverStatus.REJECTED);
         handover.setRemark(reason);
         handoverRepository.updateById(handover);
         
@@ -463,7 +465,7 @@ public class DataHandoverService {
         DataHandover handover = handoverRepository.getByIdOrThrow(handoverId, "交接单不存在");
         
         // 待审批或审批通过待执行的都可以取消
-        if (!"PENDING_APPROVAL".equals(handover.getStatus()) && !"APPROVED".equals(handover.getStatus())) {
+        if (!DataHandoverStatus.PENDING_APPROVAL.equals(handover.getStatus()) && !DataHandoverStatus.APPROVED.equals(handover.getStatus())) {
             throw new BusinessException("当前状态不允许取消");
         }
         
@@ -475,7 +477,7 @@ public class DataHandoverService {
             throw new BusinessException("只有移交人、接收人或管理员可以取消交接");
         }
         
-        handover.setStatus("CANCELLED");
+        handover.setStatus(DataHandoverStatus.CANCELLED);
         handover.setRemark(reason);
         handoverRepository.updateById(handover);
         
@@ -738,7 +740,7 @@ public class DataHandoverService {
                 .fieldName(fieldName)
                 .oldValue(oldValue)
                 .newValue(newValue)
-                .status("PENDING")
+                .status(DataHandoverStatus.DETAIL_PENDING)
                 .build();
         detailRepository.save(detail);
     }
@@ -836,26 +838,11 @@ public class DataHandoverService {
     }
 
     private String getHandoverTypeName(String type) {
-        if (type == null) return null;
-        return switch (type) {
-            case "RESIGNATION" -> "离职交接";
-            case "PROJECT" -> "项目移交";
-            case "CLIENT" -> "客户移交";
-            case "LEAD" -> "案源移交";
-            default -> type;
-        };
+        return DataHandoverStatus.getTypeName(type);
     }
 
     private String getStatusName(String status) {
-        if (status == null) return null;
-        return switch (status) {
-            case "PENDING_APPROVAL" -> "待审批";
-            case "APPROVED" -> "审批通过待执行";
-            case "REJECTED" -> "已拒绝";
-            case "CONFIRMED" -> "已确认";
-            case "CANCELLED" -> "已取消";
-            default -> status;
-        };
+        return DataHandoverStatus.getStatusName(status);
     }
 
     private String getDataTypeName(String dataType) {
@@ -885,13 +872,7 @@ public class DataHandoverService {
     }
 
     private String getDetailStatusName(String status) {
-        if (status == null) return null;
-        return switch (status) {
-            case "PENDING" -> "待处理";
-            case "DONE" -> "已完成";
-            case "FAILED" -> "失败";
-            default -> status;
-        };
+        return DataHandoverStatus.getDetailStatusName(status);
     }
 }
 

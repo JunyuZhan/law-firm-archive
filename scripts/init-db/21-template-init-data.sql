@@ -385,6 +385,22 @@ INSERT INTO public.finance_commission_rule VALUES (6, 'CUSTOM', '自定义方案
 -- Data for Name: hr_career_level; Type: TABLE DATA; Schema: public; Owner: -
 --
 
+INSERT INTO public.hr_career_level (level_code, level_name, level_order, category, description, min_work_years, min_matter_count, min_revenue, status, created_at, updated_at, deleted) VALUES
+-- 律师通道
+('L1', '实习律师', 1, 'LAWYER', '实习期律师，需在指导律师带领下工作', 0, NULL, NULL, 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('L2', '初级律师', 2, 'LAWYER', '独立执业律师，可独立处理简单案件', 1, 5, 100000, 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('L3', '中级律师', 3, 'LAWYER', '能独立处理复杂案件，可指导初级律师', 3, 20, 500000, 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('L4', '高级律师', 4, 'LAWYER', '业务骨干，可带领团队处理重大案件', 5, 50, 1500000, 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('L5', '资深律师', 5, 'LAWYER', '行业专家，具有较高知名度和影响力', 8, 100, 3000000, 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('L6', '合伙人', 6, 'LAWYER', '律所合伙人，参与律所管理决策', 10, 150, 5000000, 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+-- 行政通道
+('A1', '行政助理', 1, 'ADMIN', '行政基础岗位', 0, NULL, NULL, 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('A2', '行政专员', 2, 'ADMIN', '独立负责行政事务', 1, NULL, NULL, 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('A3', '行政主管', 3, 'ADMIN', '管理行政团队', 3, NULL, NULL, 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('A4', '行政经理', 4, 'ADMIN', '负责行政部门管理', 5, NULL, NULL, 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('A5', '行政总监', 5, 'ADMIN', '负责全所行政管理', 8, NULL, NULL, 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
+ON CONFLICT (level_code) DO NOTHING;
+
 --
 -- Data for Name: workbench_report_template; Type: TABLE DATA; Schema: public; Owner: -
 --

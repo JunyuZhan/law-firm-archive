@@ -1,6 +1,7 @@
 package com.lawfirm.application.ocr.service;
 
 import com.lawfirm.application.ocr.dto.OcrResultDTO;
+import com.lawfirm.common.util.UrlSecurityValidator;
 import com.lawfirm.infrastructure.ocr.OcrResult;
 import com.lawfirm.infrastructure.ocr.OcrService;
 import lombok.RequiredArgsConstructor;
@@ -10,6 +11,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 /**
  * OCR识别应用服务
+ * 
+ * 安全说明：所有URL接口都经过SSRF防护验证
  */
 @Slf4j
 @Service
@@ -17,6 +20,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class OcrAppService {
 
     private final OcrService ocrService;
+    private final UrlSecurityValidator urlSecurityValidator;
 
     /**
      * 通用文字识别
@@ -29,8 +33,10 @@ public class OcrAppService {
 
     /**
      * 通用文字识别（URL）
+     * 安全：已验证URL防止SSRF攻击
      */
     public OcrResultDTO recognizeTextByUrl(String imageUrl) {
+        urlSecurityValidator.validateImageUrl(imageUrl);  // SSRF防护
         log.info("通用文字识别(URL): {}", imageUrl);
         OcrResult result = ocrService.recognizeText(imageUrl);
         return toDTO(result);
@@ -47,8 +53,10 @@ public class OcrAppService {
 
     /**
      * 银行回单识别（URL）
+     * 安全：已验证URL防止SSRF攻击
      */
     public OcrResultDTO recognizeBankReceiptByUrl(String imageUrl) {
+        urlSecurityValidator.validateImageUrl(imageUrl);  // SSRF防护
         log.info("银行回单识别(URL): {}", imageUrl);
         OcrResult result = ocrService.recognizeBankReceipt(imageUrl);
         return toDTO(result);
@@ -65,8 +73,10 @@ public class OcrAppService {
 
     /**
      * 身份证识别（URL）
+     * 安全：已验证URL防止SSRF攻击
      */
     public OcrResultDTO recognizeIdCardByUrl(String imageUrl, boolean isFront) {
+        urlSecurityValidator.validateImageUrl(imageUrl);  // SSRF防护
         log.info("身份证识别(URL, {}): {}", isFront ? "正面" : "背面", imageUrl);
         OcrResult result = ocrService.recognizeIdCard(imageUrl, isFront);
         return toDTO(result);
@@ -83,8 +93,10 @@ public class OcrAppService {
 
     /**
      * 营业执照识别（URL）
+     * 安全：已验证URL防止SSRF攻击
      */
     public OcrResultDTO recognizeBusinessLicenseByUrl(String imageUrl) {
+        urlSecurityValidator.validateImageUrl(imageUrl);  // SSRF防护
         log.info("营业执照识别(URL): {}", imageUrl);
         OcrResult result = ocrService.recognizeBusinessLicense(imageUrl);
         return toDTO(result);
@@ -101,8 +113,10 @@ public class OcrAppService {
 
     /**
      * 名片识别（URL）
+     * 安全：已验证URL防止SSRF攻击
      */
     public OcrResultDTO recognizeBusinessCardByUrl(String imageUrl) {
+        urlSecurityValidator.validateImageUrl(imageUrl);  // SSRF防护
         log.info("名片识别(URL): {}", imageUrl);
         OcrResult result = ocrService.recognizeBusinessCard(imageUrl);
         return toDTO(result);
@@ -119,8 +133,10 @@ public class OcrAppService {
 
     /**
      * 发票识别（URL）
+     * 安全：已验证URL防止SSRF攻击
      */
     public OcrResultDTO recognizeInvoiceByUrl(String imageUrl) {
+        urlSecurityValidator.validateImageUrl(imageUrl);  // SSRF防护
         log.info("发票识别(URL): {}", imageUrl);
         OcrResult result = ocrService.recognizeInvoice(imageUrl);
         return toDTO(result);

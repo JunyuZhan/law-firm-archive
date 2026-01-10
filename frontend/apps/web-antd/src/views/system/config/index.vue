@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed, watch } from 'vue';
+import { ref, reactive, onMounted, computed, watch, nextTick } from 'vue';
 import { message } from 'ant-design-vue';
 import { Page } from '@vben/common-ui';
 import {
@@ -21,6 +21,7 @@ import {
   Row,
   Col,
   Tooltip,
+  Modal as AModal,
 } from 'ant-design-vue';
 import { Copy, Eye, CircleHelp } from '@vben/icons';
 import { 
@@ -30,6 +31,15 @@ import {
   getContractNumberVariables,
   getRecommendedPatterns,
   getCaseTypeOptions,
+  getMaintenanceStatus,
+  enableMaintenanceMode,
+  disableMaintenanceMode,
+  getVersionInfo,
+  testEmailConfig,
+  getEmailStatus,
+  sendTestAlert,
+  previewSystemReport,
+  sendSystemReport,
 } from '#/api/system';
 import type { 
   SysConfigDTO, 
@@ -48,6 +58,7 @@ const loading = ref(false);
 const dataSource = ref<SysConfigDTO[]>([]);
 const activeTab = ref('general');
 const configModalRef = ref<InstanceType<typeof ConfigModal>>();
+const tableKey = ref(0); // 用于强制 Table 重新渲染
 
 // 合同编号配置相关
 const contractNumberConfig = reactive({
@@ -62,6 +73,34 @@ const recommendedPatterns = ref<ContractNumberPattern[]>([]);
 const caseTypeOptions = ref<CaseTypeOption[]>([]);
 const selectedCaseType = ref('');
 
+// 维护模式相关
+const maintenanceStatus = ref({ enabled: false, message: '' });
+const maintenanceLoading = ref(false);
+const maintenanceMessage = ref('');
+
+// 版本信息相关
+const versionInfo = ref<{
+  version: string; // 显示版本号（优先数据库配置，支持简单格式如 0.4）
+  buildVersion?: string; // 构建版本号（如 1.0.0-SNAPSHOT）
+  buildTime: string;
+  gitCommit: string;
+  profile: string;
+  javaVersion: string;
+  javaVendor: string;
+  osName: string;
+  osVersion: string;
+  serverTime: string;
+} | null>(null);
+const versionLoading = ref(false);
+
+// 邮件通知相关
+const emailStatus = ref({ enabled: false });
+const emailTestLoading = ref(false);
+const testEmailAddress = ref('');
+const reportPreviewLoading = ref(false);
+const reportPreviewHtml = ref('');
+const reportPreviewVisible = ref(false);
+
 // 表格列 - 移除固定宽度，让列自适应
 const columns = [
   { title: '配置名称', dataIndex: 'configName', key: 'configName', ellipsis: true },
@@ -71,9 +110,92 @@ const columns = [
   { title: '操作', key: 'action', width: 80, fixed: 'right' as const },
 ];
 
-// 过滤出非合同编号的配置
+// 配置分组优先级（数字越小越靠前）
+const configGroupOrder: Record<string, number> = {
+  // 1. 系统基础信息
+  'sys.name': 1,
+  'sys.version': 2,
+  'sys.copyright': 3,
+  
+  // 2. 登录安全配置
+  'sys.login.captcha': 10,
+  'sys.login.maxAttempts': 11,
+  'sys.login.lockDuration': 12,
+  
+  // 3. 密码配置
+  'sys.password.minLength': 20,
+  'sys.password.complexity': 21,
+  
+  // 4. 会话配置
+  'sys.session.timeout': 30,
+  
+  // 5. 维护模式
+  'sys.maintenance.enabled': 40,
+  'sys.maintenance.message': 41,
+  
+  // 6. 上传配置
+  'sys.upload.maxSize': 50,
+  'sys.upload.allowTypes': 51,
+  
+  // 7. 邮件通知配置
+  'notification.email.enabled': 60,
+  'notification.email.smtp.host': 61,
+  'notification.email.smtp.port': 62,
+  'notification.email.smtp.username': 63,
+  'notification.email.smtp.password': 64,
+  'notification.email.admin.recipients': 65,
+  
+  // 8. 告警配置
+  'notification.alert.login.failure': 70,
+  'notification.alert.account.locked': 71,
+  'notification.alert.system.error': 72,
+  'notification.alert.disk.space': 73,
+  'notification.alert.backup.failure': 74,
+  
+  // 9. 定时报告配置
+  'notification.report.daily.enabled': 80,
+  'notification.report.weekly.enabled': 81,
+};
+
+// 获取配置项的排序权重
+function getConfigSortWeight(key: string): number {
+  // 精确匹配
+  if (configGroupOrder[key] !== undefined) {
+    return configGroupOrder[key];
+  }
+  // 按前缀分组
+  if (key.startsWith('sys.')) return 100;
+  if (key.startsWith('notification.')) return 150;
+  if (key.startsWith('ai.')) return 200;
+  if (key.startsWith('ocr.')) return 300;
+  if (key.startsWith('backup.')) return 400;
+  if (key.startsWith('work.')) return 500;
+  if (key.startsWith('approval.')) return 600;
+  if (key.startsWith('finance.')) return 700;
+  // 其他配置
+  return 1000;
+}
+
+// 过滤出非合同编号的配置，并按功能模块分组排序
 const generalConfigs = computed(() => {
-  return dataSource.value.filter(item => !item.configKey?.startsWith('contract.number.'));
+  const filtered = dataSource.value.filter(item => !item.configKey?.startsWith('contract.number.'));
+  
+  // 按分组排序
+  return filtered.sort((a, b) => {
+    const keyA = a.configKey || '';
+    const keyB = b.configKey || '';
+    
+    const weightA = getConfigSortWeight(keyA);
+    const weightB = getConfigSortWeight(keyB);
+    
+    // 先按权重排序
+    if (weightA !== weightB) {
+      return weightA - weightB;
+    }
+    
+    // 同一组内按字母顺序
+    return keyA.localeCompare(keyB);
+  });
 });
 
 // ==================== 数据加载 ====================
@@ -81,7 +203,13 @@ const generalConfigs = computed(() => {
 async function fetchData() {
   loading.value = true;
   try {
-    dataSource.value = await getSysConfigList();
+    const newData = await getSysConfigList();
+    // 直接替换数组引用，确保响应式更新
+    dataSource.value = [...newData];
+    // 更新 tableKey 强制 Table 重新渲染
+    await nextTick();
+    tableKey.value = Date.now();
+    await nextTick();
     initContractNumberConfig();
   } catch (error: unknown) {
     const err = error as { message?: string };
@@ -115,6 +243,82 @@ async function loadContractNumberData() {
     caseTypeOptions.value = caseTypes;
   } catch (error: unknown) {
     console.error('加载合同编号配置数据失败', error);
+  }
+}
+
+// 加载版本信息
+async function loadVersionInfo() {
+  versionLoading.value = true;
+  try {
+    versionInfo.value = await getVersionInfo();
+  } catch (error: unknown) {
+    console.error('加载版本信息失败', error);
+    message.error('加载版本信息失败');
+  } finally {
+    versionLoading.value = false;
+  }
+}
+
+// 加载邮件服务状态
+async function loadEmailStatus() {
+  try {
+    emailStatus.value = await getEmailStatus();
+  } catch (error: unknown) {
+    console.error('加载邮件服务状态失败', error);
+  }
+}
+
+// 测试邮件配置
+async function handleTestEmail() {
+  if (!testEmailAddress.value) {
+    message.warning('请输入测试邮箱地址');
+    return;
+  }
+  emailTestLoading.value = true;
+  try {
+    const result = await testEmailConfig(testEmailAddress.value);
+    message.success(result || '测试邮件已发送');
+  } catch (error: unknown) {
+    const err = error as { message?: string };
+    message.error(err.message || '发送测试邮件失败');
+  } finally {
+    emailTestLoading.value = false;
+  }
+}
+
+// 发送测试告警
+async function handleSendTestAlert(type: string) {
+  try {
+    await sendTestAlert(type);
+    message.success('测试告警已发送');
+  } catch (error: unknown) {
+    const err = error as { message?: string };
+    message.error(err.message || '发送测试告警失败');
+  }
+}
+
+// 预览系统报告
+async function handlePreviewReport(type: 'daily' | 'weekly') {
+  reportPreviewLoading.value = true;
+  try {
+    reportPreviewHtml.value = await previewSystemReport(type);
+    reportPreviewVisible.value = true;
+  } catch (error: unknown) {
+    const err = error as { message?: string };
+    message.error(err.message || '生成报告预览失败');
+  } finally {
+    reportPreviewLoading.value = false;
+  }
+}
+
+// 立即发送系统报告
+async function handleSendReport(type: 'daily' | 'weekly') {
+  try {
+    await sendSystemReport(type);
+    message.success('系统报告已发送');
+  } catch (error: unknown) {
+    const err = error as { message?: string };
+    message.error(err.message || '发送系统报告失败');
   }
 }
 
@@ -180,15 +384,32 @@ async function saveContractNumberConfig() {
 
 // ==================== 通用配置操作 ====================
 
+function handleCreate() {
+  configModalRef.value?.openCreate();
+}
+
 function handleEdit(record: SysConfigDTO) {
   configModalRef.value?.openEdit(record);
 }
 
-function handleModalSuccess() {
-  fetchData();
+async function handleModalSuccess() {
+  // 强制刷新列表数据
+  await fetchData();
+  // 等待 DOM 更新完成
+  await nextTick();
+  // 再次更新 tableKey 确保表格重新渲染
+  tableKey.value = Date.now();
+  await nextTick();
 }
 
 // ==================== 生命周期 ====================
+
+// 监听 dataSource 变化，强制更新表格
+watch(() => dataSource.value, () => {
+  nextTick(() => {
+    tableKey.value = Date.now();
+  });
+}, { deep: true, flush: 'post' });
 
 watch(() => contractNumberConfig.pattern, () => {
   if (contractNumberConfig.pattern) {
@@ -196,10 +417,66 @@ watch(() => contractNumberConfig.pattern, () => {
   }
 }, { debounce: 500 } as any);
 
+// 加载维护模式状态
+async function loadMaintenanceStatus() {
+  try {
+    const res = await getMaintenanceStatus();
+    maintenanceStatus.value = res;
+    maintenanceMessage.value = res.message || '系统正在维护中，请稍后再试';
+  } catch (err: any) {
+    console.error('加载维护模式状态失败', err);
+  }
+}
+
+// 开启维护模式
+async function handleEnableMaintenance() {
+  if (!maintenanceMessage.value.trim()) {
+    message.warning('请输入维护提示信息');
+    return;
+  }
+  maintenanceLoading.value = true;
+  try {
+    await enableMaintenanceMode(maintenanceMessage.value);
+    message.success('维护模式已开启');
+    await loadMaintenanceStatus();
+  } catch (err: any) {
+    message.error(err.message || '开启维护模式失败');
+  } finally {
+    maintenanceLoading.value = false;
+  }
+}
+
+// 关闭维护模式
+async function handleDisableMaintenance() {
+  maintenanceLoading.value = true;
+  try {
+    await disableMaintenanceMode();
+    message.success('维护模式已关闭');
+    await loadMaintenanceStatus();
+  } catch (err: any) {
+    message.error(err.message || '关闭维护模式失败');
+  } finally {
+    maintenanceLoading.value = false;
+  }
+}
+
 onMounted(async () => {
   await fetchData();
   await loadContractNumberData();
   handlePreview();
+  await loadMaintenanceStatus();
+  await loadVersionInfo();
+  await loadEmailStatus();
+});
+
+// 监听标签页切换，切换到版本信息时刷新
+watch(activeTab, (newTab) => {
+  if (newTab === 'version') {
+    loadVersionInfo();
+  }
+  if (newTab === 'notification') {
+    loadEmailStatus();
+  }
 });
 </script>
 
@@ -351,10 +628,280 @@ onMounted(async () => {
         </Row>
       </TabPane>
       
+      <!-- 维护模式配置 -->
+      <TabPane key="maintenance" tab="维护模式">
+        <Card title="系统维护模式" :bordered="false">
+          <Alert
+            v-if="maintenanceStatus.enabled"
+            type="warning"
+            show-icon
+            message="系统当前处于维护模式"
+            :description="maintenanceStatus.message"
+            style="margin-bottom: 24px;"
+          />
+          <Alert
+            v-else
+            type="info"
+            show-icon
+            message="系统正常运行"
+            description="维护模式关闭时，所有用户均可正常访问系统"
+            style="margin-bottom: 24px;"
+          />
+          
+          <Form layout="vertical" style="max-width: 600px;">
+            <FormItem label="维护提示信息">
+              <Textarea
+                v-model:value="maintenanceMessage"
+                :rows="4"
+                placeholder="请输入维护提示信息，例如：系统正在维护中，预计维护时间：30分钟，请稍后再试"
+                :disabled="maintenanceStatus.enabled"
+              />
+            </FormItem>
+            
+            <FormItem>
+              <Space>
+                <Button
+                  v-if="!maintenanceStatus.enabled"
+                  type="primary"
+                  danger
+                  :loading="maintenanceLoading"
+                  @click="handleEnableMaintenance"
+                >
+                  开启维护模式
+                </Button>
+                <Button
+                  v-else
+                  type="primary"
+                  :loading="maintenanceLoading"
+                  @click="handleDisableMaintenance"
+                >
+                  关闭维护模式
+                </Button>
+              </Space>
+            </FormItem>
+          </Form>
+          
+          <Divider />
+          
+          <Alert
+            type="warning"
+            :show-icon="false"
+            style="margin-top: 16px;"
+          >
+            <div style="font-weight: 500; margin-bottom: 8px;">注意事项：</div>
+            <ul style="margin: 0; padding-left: 20px; color: #666;">
+              <li>开启维护模式后，只有管理员账户可以访问系统</li>
+              <li>普通用户访问时将看到维护提示信息</li>
+              <li>维护模式下，登录接口仍然可用，允许管理员登录</li>
+              <li>请确保在维护完成后及时关闭维护模式</li>
+            </ul>
+          </Alert>
+        </Card>
+      </TabPane>
+      
+      <!-- 版本信息 -->
+      <TabPane key="version" tab="版本信息">
+        <Card title="系统版本信息" :bordered="false">
+          <div v-if="versionLoading" style="text-align: center; padding: 40px;">
+            <span>加载中...</span>
+          </div>
+          <div v-else-if="versionInfo" style="max-width: 800px;">
+            <Row :gutter="[16, 16]">
+              <Col :span="12">
+                <Card size="small" title="应用版本">
+                  <div style="font-size: 24px; font-weight: bold; color: #1890ff;">
+                    {{ versionInfo.version }}
+                  </div>
+                  <div v-if="versionInfo.buildVersion && versionInfo.buildVersion !== versionInfo.version" 
+                       style="font-size: 12px; color: #999; margin-top: 4px;">
+                    构建版本: {{ versionInfo.buildVersion }}
+                  </div>
+                </Card>
+              </Col>
+              <Col :span="12">
+                <Card size="small" title="构建时间">
+                  <div style="font-size: 14px; color: #666;">
+                    {{ versionInfo.buildTime }}
+                  </div>
+                </Card>
+              </Col>
+              <Col :span="12">
+                <Card size="small" title="Git 提交">
+                  <div style="font-size: 14px; font-family: monospace; color: #666;">
+                    {{ versionInfo.gitCommit }}
+                  </div>
+                </Card>
+              </Col>
+              <Col :span="12">
+                <Card size="small" title="运行环境">
+                  <Tag color="blue">{{ versionInfo.profile }}</Tag>
+                </Card>
+              </Col>
+              <Col :span="24">
+                <Card size="small" title="系统信息">
+                  <Row :gutter="[16, 8]">
+                    <Col :span="8">
+                      <div><strong>Java 版本:</strong> {{ versionInfo.javaVersion }}</div>
+                    </Col>
+                    <Col :span="8">
+                      <div><strong>Java 供应商:</strong> {{ versionInfo.javaVendor }}</div>
+                    </Col>
+                    <Col :span="8">
+                      <div><strong>操作系统:</strong> {{ versionInfo.osName }} {{ versionInfo.osVersion }}</div>
+                    </Col>
+                    <Col :span="24">
+                      <div><strong>服务器时间:</strong> {{ versionInfo.serverTime }}</div>
+                    </Col>
+                  </Row>
+                </Card>
+              </Col>
+            </Row>
+            <Divider />
+            <Alert
+              type="info"
+              :show-icon="false"
+              style="margin-top: 16px;"
+            >
+              <div style="font-weight: 500; margin-bottom: 8px;">版本信息说明：</div>
+              <ul style="margin: 0; padding-left: 20px; color: #666;">
+                <li><strong>版本号</strong>：当前系统版本，优先从数据库配置（sys.version）读取，支持简单格式如 0.4、1.2 等</li>
+                <li><strong>构建版本</strong>：Maven 构建时的版本号（如 1.0.0-SNAPSHOT），仅在版本号与构建版本不同时显示</li>
+                <li><strong>构建时间</strong>：应用打包构建的时间</li>
+                <li><strong>Git 提交</strong>：构建时对应的 Git 提交 ID（短格式）</li>
+                <li><strong>运行环境</strong>：当前 Spring Profile（dev/test/prod）</li>
+                <li style="margin-top: 8px; color: #1890ff;">
+                  💡 <strong>提示</strong>：可以在"通用配置"中修改 sys.version 来设置简单的版本号格式（如 0.4）
+                </li>
+              </ul>
+            </Alert>
+          </div>
+          <div v-else style="text-align: center; padding: 40px; color: #999;">
+            无法加载版本信息
+          </div>
+        </Card>
+      </TabPane>
+      
+      <!-- 邮件通知配置 -->
+      <TabPane key="notification" tab="邮件通知">
+        <Card title="邮件服务配置" :bordered="false">
+          <Alert
+            v-if="emailStatus.enabled"
+            type="success"
+            show-icon
+            message="邮件服务已启用"
+            description="系统将通过邮件发送告警通知和运行报告"
+            style="margin-bottom: 24px;"
+          />
+          <Alert
+            v-else
+            type="warning"
+            show-icon
+            message="邮件服务未启用"
+            description="请在下方的通用配置中配置 SMTP 信息并启用邮件通知"
+            style="margin-bottom: 24px;"
+          />
+          
+          <Divider orientation="left">测试邮件配置</Divider>
+          <Form layout="inline" style="margin-bottom: 24px;">
+            <FormItem label="测试邮箱">
+              <Input 
+                v-model:value="testEmailAddress" 
+                placeholder="请输入接收测试邮件的邮箱地址"
+                style="width: 300px;"
+              />
+            </FormItem>
+            <FormItem>
+              <Button 
+                type="primary" 
+                :loading="emailTestLoading"
+                :disabled="!emailStatus.enabled"
+                @click="handleTestEmail"
+              >
+                发送测试邮件
+              </Button>
+            </FormItem>
+          </Form>
+          
+          <Divider orientation="left">测试告警功能</Divider>
+          <Space style="margin-bottom: 24px;">
+            <Button @click="handleSendTestAlert('login')">
+              测试登录失败告警
+            </Button>
+            <Button @click="handleSendTestAlert('locked')">
+              测试账户锁定告警
+            </Button>
+            <Button @click="handleSendTestAlert('disk')">
+              测试磁盘空间告警
+            </Button>
+            <Button @click="handleSendTestAlert('backup')">
+              测试备份失败告警
+            </Button>
+          </Space>
+          
+          <Divider orientation="left">系统运行报告</Divider>
+          <Space style="margin-bottom: 24px;">
+            <Button 
+              :loading="reportPreviewLoading"
+              @click="handlePreviewReport('daily')"
+            >
+              预览日报
+            </Button>
+            <Button 
+              :loading="reportPreviewLoading"
+              @click="handlePreviewReport('weekly')"
+            >
+              预览周报
+            </Button>
+            <Button 
+              type="primary"
+              :disabled="!emailStatus.enabled"
+              @click="handleSendReport('daily')"
+            >
+              立即发送日报
+            </Button>
+            <Button 
+              type="primary"
+              :disabled="!emailStatus.enabled"
+              @click="handleSendReport('weekly')"
+            >
+              立即发送周报
+            </Button>
+          </Space>
+          
+          <Divider />
+          <Alert
+            type="info"
+            :show-icon="false"
+            style="margin-top: 16px;"
+          >
+            <div style="font-weight: 500; margin-bottom: 8px;">配置说明：</div>
+            <ul style="margin: 0; padding-left: 20px; color: #666;">
+              <li><strong>邮件通知开关</strong>：在"通用配置"中设置 notification.email.enabled 为 true 启用</li>
+              <li><strong>SMTP 配置</strong>：需配置 SMTP 服务器、端口、用户名（发件邮箱）、密码（授权码）</li>
+              <li><strong>告警接收邮箱</strong>：设置 notification.email.admin.recipients，多个邮箱用逗号分隔</li>
+              <li><strong>定时报告</strong>：启用 notification.report.daily.enabled 每天早上8点发送日报</li>
+              <li><strong>每周报告</strong>：启用 notification.report.weekly.enabled 每周一早上9点发送周报</li>
+              <li style="margin-top: 8px;">
+                💡 <strong>常用 SMTP 配置</strong>：
+                <ul style="margin-top: 4px;">
+                  <li>QQ邮箱：smtp.qq.com，端口 465 (SSL)，密码使用授权码</li>
+                  <li>163邮箱：smtp.163.com，端口 465 (SSL)，密码使用授权码</li>
+                  <li>Gmail：smtp.gmail.com，端口 587 (TLS)，需开启两步验证</li>
+                </ul>
+              </li>
+            </ul>
+          </Alert>
+        </Card>
+      </TabPane>
+      
       <!-- 通用配置 -->
       <TabPane key="general" tab="通用配置">
         <Card :bordered="false">
+          <template #extra>
+            <Button type="primary" @click="handleCreate">新增配置</Button>
+          </template>
           <Table
+            :key="tableKey"
             :columns="columns"
             :data-source="generalConfigs"
             :loading="loading"
@@ -362,7 +909,10 @@ onMounted(async () => {
             row-key="id"
           >
             <template #bodyCell="{ column, record: rawRecord }">
-              <template v-if="column.key === 'action'">
+              <template v-if="column.key === 'configValue'">
+                <span>{{ rawRecord.configValue || '-' }}</span>
+              </template>
+              <template v-else-if="column.key === 'action'">
                 <a @click="handleEdit(rawRecord as SysConfigDTO)">编辑</a>
               </template>
             </template>
@@ -370,6 +920,16 @@ onMounted(async () => {
         </Card>
       </TabPane>
     </Tabs>
+    
+    <!-- 报告预览弹窗 -->
+    <AModal
+      v-model:open="reportPreviewVisible"
+      title="系统运行报告预览"
+      :width="800"
+      :footer="null"
+    >
+      <div v-html="reportPreviewHtml" style="max-height: 600px; overflow: auto;" />
+    </AModal>
 
     <!-- 配置弹窗 -->
     <ConfigModal ref="configModalRef" @success="handleModalSuccess" />

@@ -268,6 +268,7 @@ onMounted(() => {
                     <div class="project-content">
                       <div class="project-title">{{ item.name }}</div>
                       <div class="project-meta">
+                        <span class="project-no" v-if="item.matterNo">{{ item.matterNo }}</span>
                         <span class="project-client">{{ item.clientName || '未关联客户' }}</span>
                         <Tag :color="getStatusColor(item.status)" size="small">
                     {{ item.statusName || item.status }}
@@ -644,6 +645,16 @@ onMounted(() => {
   align-items: center;
   gap: 8px;
   margin-top: 4px;
+  flex-wrap: wrap;
+}
+
+.project-no {
+  font-size: 12px;
+  color: #8c8c8c;
+  font-family: 'Courier New', monospace;
+  background: #f0f0f0;
+  padding: 2px 6px;
+  border-radius: 4px;
 }
 
 .project-client {

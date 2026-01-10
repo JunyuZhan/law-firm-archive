@@ -26,15 +26,37 @@ import {
   markAsRead as apiMarkAsRead,
   markAllAsRead as apiMarkAllAsRead,
   deleteNotification as apiDeleteNotification,
+  deleteReadNotifications as apiDeleteReadNotifications,
   type NotificationDTO,
 } from '#/api/system/notification';
-import { getApplicationDetail } from '#/api/admin/letter';
-import { getApprovalDetail } from '#/api/workbench';
-import { getSealApplicationDetail } from '#/api/document/seal';
 
 const notifications = ref<NotificationItem[]>([]);
 let pollingTimer: ReturnType<typeof setInterval> | null = null;
 let previousUnreadCount = 0;
+
+// 已弹窗提醒过的通知ID集合（存储在localStorage，避免重复弹窗）
+const NOTIFIED_IDS_KEY = 'lawfirm_notified_notification_ids';
+
+function getNotifiedIds(): Set<string> {
+  try {
+    const stored = localStorage.getItem(NOTIFIED_IDS_KEY);
+    return stored ? new Set(JSON.parse(stored)) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+function addNotifiedId(id: string | number) {
+  const ids = getNotifiedIds();
+  ids.add(String(id));
+  // 只保留最近100个，避免localStorage过大
+  const arr = Array.from(ids).slice(-100);
+  localStorage.setItem(NOTIFIED_IDS_KEY, JSON.stringify(arr));
+}
+
+function hasBeenNotified(id: string | number): boolean {
+  return getNotifiedIds().has(String(id));
+}
 
 // 通知音效 - 使用 Web Audio API
 let audioContext: AudioContext | null = null;
@@ -141,158 +163,51 @@ function getBusinessLink(notification: NotificationDTO): string | undefined {
   return linkGenerator(notification.businessId);
 }
 
-// 处理通知点击（特殊处理LETTER和APPROVAL类型）
-async function handleNotificationClick(item: NotificationItem) {
-  const notification = item.rawData as NotificationDTO;
-  const currentUserId = userStore.userInfo?.id;
-  
-  // 如果是LETTER类型，需要先获取申请详情，然后跳转到项目详情页
-  if (notification.businessType === 'LETTER' && notification.businessId) {
-    try {
-      // 获取出函申请详情
-      const application = await getApplicationDetail(notification.businessId);
-      if (application && application.matterId) {
-        // 跳转到项目详情页（申请人查看自己申请的状态）
-        await router.push(`/matter/detail/${application.matterId}`);
-      } else {
-        message.warning('无法获取出函申请信息');
-      }
-    } catch (error: any) {
-      console.error('获取出函申请详情失败:', error);
-      message.error('获取出函申请信息失败，请稍后重试');
-    }
-    return;
-  }
-  
-  // 如果是APPROVAL类型（审批通知），需要区分申请人和审批人
-  if (notification.businessType === 'APPROVAL' && notification.businessId) {
-    try {
-      // 获取审批记录详情
-      const approval = await getApprovalDetail(notification.businessId);
-      
-      if (!approval) {
-        message.warning('无法获取审批记录信息');
-        return;
-      }
-      
-      // 判断当前用户是申请人还是审批人
-      const isApplicant = currentUserId === approval.applicantId;
-      const isApprover = currentUserId === approval.approverId;
-      
-      if (isApplicant) {
-        // 申请人收到审批结果通知，跳转到业务详情页
-        // 根据业务类型决定跳转页面
-        if (approval.businessType === 'SEAL_APPLICATION' && approval.businessId) {
-          // 用印申请：获取申请详情，跳转到项目详情页
-          try {
-            const sealApplication = await getSealApplicationDetail(approval.businessId);
-            if (sealApplication && sealApplication.matterId) {
-              await router.push(`/matter/detail/${sealApplication.matterId}`);
-            } else {
-              // 如果没有关联项目，跳转到用印申请列表页
-              await router.push('/document/seal-apply');
-            }
-          } catch (error: any) {
-            console.error('获取用印申请详情失败:', error);
-            // 降级：跳转到用印申请列表页
-            await router.push('/document/seal-apply');
-          }
-        } else if (approval.businessType === 'CONTRACT' && approval.businessId) {
-          // 合同审批：跳转到合同详情页
-          await router.push(`/matter/contract?id=${approval.businessId}`);
-        } else {
-          // 其他类型：跳转到审批中心查看详情
-          await router.push(`/workbench/approval`);
-        }
-      } else if (isApprover && approval.status === 'PENDING') {
-        // 审批人收到待审批通知，跳转到审批中心
-        await router.push('/workbench/approval');
-      } else {
-        // 其他情况：跳转到审批中心
-        await router.push('/workbench/approval');
-      }
-    } catch (error: any) {
-      console.error('获取审批记录详情失败:', error);
-      message.error('获取审批记录信息失败，请稍后重试');
-    }
-    return;
-  }
-  
-  // 其他类型由通知组件默认处理（通过link属性）
-}
-
-// 检查路由是否存在
-function checkRouteExists(path: string): boolean {
-  try {
-    const route = router.resolve(path);
-    // 如果路由解析后是404页面，说明路由不存在
-    return route.name !== 'FallbackNotFound';
-  } catch {
-    return false;
+// 处理通知点击 - 简化逻辑，只标记为已读，不跳转
+async function handleNotificationClick(item: NotificationItem & { rawData?: NotificationDTO }) {
+  // 点击通知时，只标记为已读，不进行跳转
+  // 如果需要查看详情，用户可以从相应的菜单入口进入
+  if (!item.isRead && item.id) {
+    await markRead(item.id);
   }
 }
 
-// 检查用户是否有权限访问路由
-function checkRoutePermission(path: string): boolean {
-  // 获取路由对应的权限码
-  const permissionMap: Record<string, string[]> = {
-    '/admin/letter': ['admin:letter:list'],
-    '/matter/contract': ['matter:contract:list'],
-    '/workbench/approval': ['workbench:approval:list'],
-    '/hr/payroll': ['hr:payroll:list'],
-  };
-  
-  // 对于动态路由（如 /matter/detail/:id），不需要权限检查，因为已经在路由守卫中处理
-  if (path.startsWith('/matter/detail/')) {
-    return true;
-  }
-  
-  const requiredPermissions = permissionMap[path.split('?')[0]]; // 移除查询参数
-  if (!requiredPermissions || requiredPermissions.length === 0) {
-    return true; // 如果没有配置权限要求，默认允许访问
-  }
-  
-  // 检查用户是否有任一权限
-  return requiredPermissions.some(permission => 
-    accessStore.accessCodes.includes(permission)
-  );
-}
 
-// 安全跳转
-async function safeNavigate(link: string | undefined) {
-  if (!link) {
-    message.warning('该通知暂不支持跳转');
-    return;
-  }
-  
-  // 移除查询参数检查路由
-  const pathWithoutQuery = link.split('?')[0];
-  
-  // 检查路由是否存在
-  if (!checkRouteExists(pathWithoutQuery)) {
-    message.warning('无法跳转到该页面，页面不存在或未配置');
-    return;
-  }
-  
-  // 检查权限
-  if (!checkRoutePermission(pathWithoutQuery)) {
-    message.warning('您没有权限访问该页面');
-    return;
-  }
-  
-  // 执行跳转
-  try {
-    await router.push(link);
-  } catch (error: any) {
-    console.error('路由跳转失败:', error);
-    // 如果跳转失败，尝试跳转到404页面或显示错误提示
-    if (error.name === 'NavigationFailure' || error.message?.includes('404')) {
-      message.warning('无法跳转到该页面，可能没有权限或页面不存在');
-    } else {
-      message.error('跳转失败，请稍后重试');
-    }
-  }
-}
+// 安全跳转（已废弃，使用 handleNotificationClick 处理特殊类型）
+// async function safeNavigate(link: string | undefined) {
+//   if (!link) {
+//     message.warning('该通知暂不支持跳转');
+//     return;
+//   }
+//   
+//   // 移除查询参数检查路由
+//   const pathWithoutQuery = link.split('?')[0] || link;
+//   
+//   // 检查路由是否存在
+//   if (!checkRouteExists(pathWithoutQuery)) {
+//     message.warning('无法跳转到该页面，页面不存在或未配置');
+//     return;
+//   }
+//   
+//   // 检查权限
+//   if (!checkRoutePermission(pathWithoutQuery)) {
+//     message.warning('您没有权限访问该页面');
+//     return;
+//   }
+//   
+//   // 执行跳转
+//   try {
+//     await router.push(link);
+//   } catch (error: any) {
+//     console.error('路由跳转失败:', error);
+//     // 如果跳转失败，尝试跳转到404页面或显示错误提示
+//     if (error.name === 'NavigationFailure' || error.message?.includes('404')) {
+//       message.warning('无法跳转到该页面，可能没有权限或页面不存在');
+//     } else {
+//       message.error('跳转失败，请稍后重试');
+//     }
+//   }
+// }
 
 // 格式化时间
 function formatDate(dateStr: string): string {
@@ -310,10 +225,16 @@ function formatDate(dateStr: string): string {
   return date.toLocaleDateString('zh-CN');
 }
 
-// 加载通知
+// 加载通知 - 只加载未读消息
 async function loadNotifications(isInitial = false) {
   try {
-    const res = await getMyNotifications({ pageNum: 1, pageSize: 20 });
+    // 只加载未读消息，避免已读消息重复出现
+    const res = await getMyNotifications({ 
+      pageNum: 1, 
+      pageSize: 20,
+      isRead: false  // 只加载未读消息
+    });
+    
     if (res && res.records) {
       const newNotifications = res.records.map((n: NotificationDTO) => ({
         id: n.id,
@@ -326,24 +247,27 @@ async function loadNotifications(isInitial = false) {
         rawData: n,
       }));
       
-      // 计算未读数量
-      const currentUnreadCount = newNotifications.filter((n: NotificationItem) => !n.isRead).length;
+      // 找出真正的"新"通知：未读且未弹窗提醒过的
+      const trulyNewNotifications = newNotifications.filter(
+        (n: NotificationItem) => !n.isRead && !hasBeenNotified(n.id)
+      );
       
-      // 如果有新的未读通知且不是初始加载，播放提示音
-      if (!isInitial && currentUnreadCount > previousUnreadCount) {
+      // 只对真正的新通知播放提示音和弹窗
+      if (trulyNewNotifications.length > 0) {
         playNotificationSound();
         
-        // 获取最新的未读通知并显示浏览器通知
-        const latestUnread = newNotifications.find((n: NotificationItem) => !n.isRead);
-        if (latestUnread) {
+        // 显示浏览器通知
+        const latestNew = trulyNewNotifications[0];
+        if (latestNew) {
           showBrowserNotification(
-            latestUnread.title || '新通知',
-            latestUnread.message || '您有新的通知'
+            latestNew.title || '新通知',
+            latestNew.message || '您有新的通知'
           );
+          // 标记为已弹窗提醒
+          addNotifiedId(latestNew.id);
         }
       }
       
-      previousUnreadCount = currentUnreadCount;
       notifications.value = newNotifications;
     }
   } catch (error) {
@@ -428,8 +352,56 @@ async function handleLogout() {
 }
 
 async function handleNoticeClear() {
-  // 清空本地列表
-  notifications.value = [];
+  // 清除所有当前显示的消息（包括已读和未读）
+  if (notifications.value.length === 0) {
+    message.info('没有消息需要清除');
+    return;
+  }
+  
+  const totalCount = notifications.value.length;
+  
+  try {
+    // 先批量删除已读消息
+    const readNotifications = notifications.value.filter((item) => item.isRead);
+    if (readNotifications.length > 0) {
+      try {
+        await apiDeleteReadNotifications();
+      } catch (error) {
+        console.warn('批量删除已读通知失败，尝试逐个删除:', error);
+        // 如果批量删除失败，尝试逐个删除已读消息
+        await Promise.all(
+          readNotifications.map((item) => 
+            apiDeleteNotification(Number(item.id)).catch((err) => {
+              console.warn(`删除已读通知失败 (id: ${item.id}):`, err);
+            })
+          )
+        );
+      }
+    }
+    
+    // 删除未读消息（逐个删除）
+    const unreadNotifications = notifications.value.filter((item) => !item.isRead);
+    if (unreadNotifications.length > 0) {
+      await Promise.all(
+        unreadNotifications.map((item) => 
+          apiDeleteNotification(Number(item.id)).catch((err) => {
+            console.warn(`删除未读通知失败 (id: ${item.id}):`, err);
+          })
+        )
+      );
+    }
+    
+    // 清空本地列表
+    notifications.value = [];
+    
+    message.success(`已清除 ${totalCount} 条消息`);
+    
+    // 重新加载通知列表，确保数据同步
+    await loadNotifications(false);
+  } catch (error) {
+    console.error('清除消息失败:', error);
+    message.error('清除消息失败，请稍后重试');
+  }
 }
 
 async function markRead(id: number | string) {

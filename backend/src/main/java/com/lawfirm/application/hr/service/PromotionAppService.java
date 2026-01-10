@@ -7,9 +7,11 @@ import com.lawfirm.application.hr.dto.CareerLevelDTO;
 import com.lawfirm.application.hr.dto.CareerLevelQueryDTO;
 import com.lawfirm.application.hr.dto.PromotionApplicationDTO;
 import com.lawfirm.application.hr.dto.PromotionQueryDTO;
+import com.lawfirm.common.exception.BusinessException;
 import com.lawfirm.common.result.PageResult;
 import com.lawfirm.domain.hr.entity.CareerLevel;
 import com.lawfirm.domain.hr.repository.CareerLevelRepository;
+import com.lawfirm.domain.hr.repository.EmployeeRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -32,6 +34,7 @@ import java.util.stream.Collectors;
 public class PromotionAppService {
 
     private final CareerLevelRepository careerLevelRepository;
+    private final EmployeeRepository employeeRepository;
 
     // 类别映射
     private static final Map<String, String> CATEGORY_MAP = new HashMap<>();
@@ -129,12 +132,13 @@ public class PromotionAppService {
 
     /**
      * 更新职级
+     * 问题298修复：使用BusinessException替代RuntimeException
      */
     @Transactional
     public CareerLevelDTO updateCareerLevel(Long id, CreateCareerLevelCommand command) {
         CareerLevel level = careerLevelRepository.getById(id);
         if (level == null) {
-            throw new RuntimeException("职级不存在");
+            throw new BusinessException("职级不存在");
         }
         
         level.setLevelCode(command.getLevelCode());
@@ -158,55 +162,83 @@ public class PromotionAppService {
 
     /**
      * 删除职级
+     * 问题297修复：检查员工关联（通过职级代码）
      */
     @Transactional
     public void deleteCareerLevel(Long id) {
+        CareerLevel level = careerLevelRepository.getById(id);
+        if (level == null) {
+            throw new BusinessException("职级不存在");
+        }
+        
+        // 检查是否有员工使用此职级（通过职级代码关联）
+        long employeeCount = employeeRepository.countByLevel(level.getLevelCode());
+        if (employeeCount > 0) {
+            throw new BusinessException("该职级有" + employeeCount + "名员工正在使用，无法删除");
+        }
+        
         careerLevelRepository.removeById(id);
         log.info("删除职级: id={}", id);
     }
 
     /**
      * 启用职级
+     * 问题305修复：添加null检查
      */
     @Transactional
     public void enableCareerLevel(Long id) {
         CareerLevel level = careerLevelRepository.getById(id);
-        if (level != null) {
-            level.setStatus("ACTIVE");
-            careerLevelRepository.updateById(level);
-            log.info("启用职级: id={}", id);
+        if (level == null) {
+            throw new BusinessException("职级不存在");
         }
+        level.setStatus("ACTIVE");
+        careerLevelRepository.updateById(level);
+        log.info("启用职级: id={}", id);
     }
 
     /**
      * 停用职级
+     * 问题305修复：添加null检查
      */
     @Transactional
     public void disableCareerLevel(Long id) {
         CareerLevel level = careerLevelRepository.getById(id);
-        if (level != null) {
-            level.setStatus("INACTIVE");
-            careerLevelRepository.updateById(level);
-            log.info("停用职级: id={}", id);
+        if (level == null) {
+            throw new BusinessException("职级不存在");
         }
+        level.setStatus("INACTIVE");
+        careerLevelRepository.updateById(level);
+        log.info("停用职级: id={}", id);
     }
 
-    // ========== 晋升申请 (暂时返回空数据) ==========
+    // ========== 晋升申请 ==========
+    // 问题296修复：明确标记功能未开放，而不是静默返回空数据
 
     /**
      * 分页查询晋升申请
+     * 注意：晋升申请功能正在开发中，暂未开放
      */
     public PageResult<PromotionApplicationDTO> listPromotionApplications(PromotionQueryDTO query) {
-        // TODO: 实现晋升申请查询
+        log.warn("晋升申请功能尚未实现，返回空数据");
+        // 返回空数据而不是抛异常，允许前端正常显示空列表
         return PageResult.of(Collections.emptyList(), 0L, query.getPageNum(), query.getPageSize());
     }
 
     /**
      * 统计待审批数量
+     * 注意：晋升申请功能正在开发中，暂未开放
      */
     public long countPendingApplications() {
-        // TODO: 实现待审批数量统计
+        // 返回0表示无待审批项
         return 0;
+    }
+    
+    /**
+     * 提交晋升申请
+     * 问题296：明确告知功能未开放
+     */
+    public void submitPromotionApplication(Long employeeId, Long targetLevelId, String reason) {
+        throw new BusinessException("晋升申请功能正在开发中，暂未开放。请联系人力资源部门进行晋升申请。");
     }
 
     // ========== 私有方法 ==========

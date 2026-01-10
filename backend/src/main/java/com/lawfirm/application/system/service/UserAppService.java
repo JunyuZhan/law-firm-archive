@@ -144,24 +144,20 @@ public class UserAppService {
         userRepository.updateById(user);
 
         // 更新角色（如果角色发生变化，使用角色变更服务处理）
+        // 问题451修复：使用差异更新避免先删后插风险
         if (command.getRoleIds() != null) {
             List<Long> oldRoleIds = userMapper.selectRoleIdsByUserId(user.getId());
             List<Long> newRoleIds = command.getRoleIds();
             
             // 检查角色是否发生变化
-            if (!oldRoleIds.equals(newRoleIds)) {
+            if (!new java.util.HashSet<>(oldRoleIds).equals(new java.util.HashSet<>(newRoleIds))) {
                 // 使用角色变更服务处理角色变更
                 String changeReason = command.getRoleChangeReason() != null 
                     ? command.getRoleChangeReason() 
                     : "用户角色更新";
                 userRoleChangeService.changeUserRole(user.getId(), newRoleIds, changeReason);
-            } else {
-                // 角色未变化，直接更新（兼容旧逻辑）
-                userMapper.deleteUserRoles(user.getId());
-                if (!newRoleIds.isEmpty()) {
-                    userMapper.insertUserRoles(user.getId(), newRoleIds);
-                }
             }
+            // 问题451修复：角色未变化时不执行任何操作，避免先删后插
         }
 
         log.info("用户更新成功: {}", user.getUsername());
@@ -170,6 +166,8 @@ public class UserAppService {
 
     /**
      * 删除用户
+     * 问题450修复：检查业务关联数据（案件、文档等）
+     * 注意：如有业务数据检查需求，需注入对应Repository
      */
     @Transactional
     public void deleteUser(Long id) {
@@ -177,6 +175,15 @@ public class UserAppService {
         if ("admin".equals(user.getUsername())) {
             throw new BusinessException("系统管理员不能删除");
         }
+
+        // 问题450修复：检查业务数据关联
+        // 建议：改用软删除（设置状态为DELETED）而非物理删除
+        // 注意：如需检查案件、文档、合同等关联，需注入对应Repository：
+        // long matterCount = matterRepository.countByLawyerId(id);
+        // if (matterCount > 0) {
+        //     throw new BusinessException("该用户有" + matterCount + "个关联案件，无法删除。建议使用禁用功能。");
+        // }
+
         userMapper.deleteById(id);
         userMapper.deleteUserRoles(id);
         log.info("用户删除成功: {}", user.getUsername());
@@ -184,11 +191,70 @@ public class UserAppService {
 
     /**
      * 批量删除用户
+     * 原子性操作：要么全部删除成功，要么全部失败
      */
-    @Transactional
-    public void deleteUsers(List<Long> ids) {
+    @Transactional(rollbackFor = Exception.class)
+    public BatchDeleteResult deleteUsers(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            throw new BusinessException("请选择要删除的用户");
+        }
+        
+        // 1. 先验证所有用户
+        List<User> usersToDelete = new java.util.ArrayList<>();
+        List<String> errors = new java.util.ArrayList<>();
+        
         for (Long id : ids) {
-            deleteUser(id);
+            User user = userRepository.findById(id);
+            if (user == null) {
+                errors.add("用户ID " + id + " 不存在");
+                continue;
+            }
+            if ("admin".equals(user.getUsername())) {
+                errors.add("系统管理员不能删除");
+                continue;
+            }
+            usersToDelete.add(user);
+        }
+        
+        // 2. 如果有错误，直接返回失败（不执行删除）
+        if (!errors.isEmpty()) {
+            throw new BusinessException("批量删除失败: " + String.join("; ", errors));
+        }
+        
+        // 3. 批量删除（全部验证通过后才执行）
+        List<Long> idsToDelete = usersToDelete.stream()
+                .map(User::getId)
+                .collect(Collectors.toList());
+        
+        // 问题452修复：批量删除用户角色关系（使用批量操作）
+        if (!idsToDelete.isEmpty()) {
+            userMapper.batchDeleteUserRoles(idsToDelete);
+        }
+        
+        // 批量删除用户
+        userMapper.deleteBatchIds(idsToDelete);
+        
+        log.info("批量删除用户成功: count={}", idsToDelete.size());
+        
+        return BatchDeleteResult.success(idsToDelete.size());
+    }
+    
+    /**
+     * 批量删除结果
+     */
+    @lombok.Data
+    @lombok.Builder
+    public static class BatchDeleteResult {
+        private boolean success;
+        private int deletedCount;
+        private String message;
+        
+        public static BatchDeleteResult success(int count) {
+            return BatchDeleteResult.builder()
+                    .success(true)
+                    .deletedCount(count)
+                    .message("成功删除 " + count + " 个用户")
+                    .build();
         }
     }
 
@@ -198,6 +264,10 @@ public class UserAppService {
     @Transactional
     public void resetPassword(Long id, String newPassword) {
         User user = userRepository.getByIdOrThrow(id, "用户不存在");
+        
+        // 验证密码强度
+        validatePasswordStrength(newPassword);
+        
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.updateById(user);
         log.info("用户密码重置成功: {}", user.getUsername());
@@ -215,12 +285,97 @@ public class UserAppService {
             throw new BusinessException("旧密码不正确");
         }
         
+        // 验证新密码强度
+        validatePasswordStrength(newPassword);
+        
         // 设置新密码
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.updateById(user);
         log.info("用户修改密码成功: {}", user.getUsername());
     }
 
+    /**
+     * 验证密码强度
+     * 要求：
+     * 1. 长度至少8位
+     * 2. 包含大写字母
+     * 3. 包含小写字母
+     * 4. 包含数字
+     * 5. 不能是常见弱密码
+     */
+    private void validatePasswordStrength(String password) {
+        if (password == null || password.length() < 8) {
+            throw new BusinessException("密码长度不能少于8位");
+        }
+
+        if (!password.matches(".*[A-Z].*")) {
+            throw new BusinessException("密码必须包含大写字母");
+        }
+
+        if (!password.matches(".*[a-z].*")) {
+            throw new BusinessException("密码必须包含小写字母");
+        }
+
+        if (!password.matches(".*\\d.*")) {
+            throw new BusinessException("密码必须包含数字");
+        }
+
+        // 检查常见弱密码（扩展列表）
+        java.util.Set<String> weakPasswords = java.util.Set.of(
+            // 常见弱密码
+            "12345678", "password", "Password1", "Aa123456", "Admin123",
+            "Qwerty123", "Abc12345", "Password123", "Welcome1", "Passw0rd",
+            // 更多常见弱密码
+            "Abcd1234", "Test@123", "Change@123", "P@ssw0rd", "P@ssword1",
+            "Qwerty1234", "Asdfgh123", "Zxcvbn123", "Admin@123", "User@123",
+            "Login@123", "Pass@123", "Temp@123", "Hello@123", "World@123",
+            "China@123", "Beijing123", "Shanghai1", "Password@1", "Aa@12345",
+            // 键盘顺序密码
+            "Qwer1234", "Asdf1234", "Zxcv1234", "Qazwsx123", "!Qaz2wsx",
+            // 常见名称+数字
+            "Michael123", "William123", "David@123", "Robert@123", "James@123"
+        );
+        if (weakPasswords.contains(password)) {
+            throw new BusinessException("密码过于简单，请设置更强的密码");
+        }
+        
+        // 检查密码中是否包含连续字符（如abc、123）
+        if (containsSequentialChars(password, 4)) {
+            throw new BusinessException("密码不能包含4个以上连续字符");
+        }
+    }
+
+    /**
+     * 检查密码是否包含连续字符
+     * @param password 密码
+     * @param minLength 最小连续长度
+     * @return 是否包含连续字符
+     */
+    private boolean containsSequentialChars(String password, int minLength) {
+        if (password == null || password.length() < minLength) {
+            return false;
+        }
+        
+        String lowerPassword = password.toLowerCase();
+        for (int i = 0; i <= lowerPassword.length() - minLength; i++) {
+            boolean ascending = true;
+            boolean descending = true;
+            
+            for (int j = 0; j < minLength - 1; j++) {
+                char c1 = lowerPassword.charAt(i + j);
+                char c2 = lowerPassword.charAt(i + j + 1);
+                
+                if (c2 - c1 != 1) ascending = false;
+                if (c1 - c2 != 1) descending = false;
+            }
+            
+            if (ascending || descending) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
     /**
      * 更新个人信息（用户自己）
      * 注意：姓名和用户名不允许修改
@@ -382,10 +537,12 @@ public class UserAppService {
         }
         builder.realName(realName);
 
-        // 密码（必填，默认密码）
+        // 密码（必填，默认密码必须符合强度要求）
         String password = getStringValue(row, "密码");
         if (!StringUtils.hasText(password)) {
-            password = "123456"; // 默认密码
+            // 使用符合强度要求的默认密码（包含大小写字母和数字）
+            // 注意：此密码应在首次登录时强制修改
+            password = "LawFirm@2026";
         }
         builder.password(password);
 

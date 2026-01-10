@@ -4,11 +4,14 @@
  */
 import { requestClient } from '#/api/request';
 
-// 全局开关：关闭 OCR 功能
-const OCR_DISABLED = true;
+// 全局开关：开启 OCR 功能
+// OCR功能暂时禁用，本地PaddleOCR识别较慢(>5秒)，后续版本优化
+export const OCR_DISABLED = true;
+export const OCR_DISABLED_MESSAGE = 'OCR功能暂时禁用，本地识别服务优化中，后续版本将重新开放';
+
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const ocrDisabledPromise = <_T>(): Promise<never> =>
-  Promise.reject(new Error('OCR 功能已下线，已禁用调用。'));
+  Promise.reject(new Error(OCR_DISABLED_MESSAGE));
 
 // ========== 类型定义 ==========
 

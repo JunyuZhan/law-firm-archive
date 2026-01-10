@@ -1034,9 +1034,10 @@ async function handlePreviewApprovalForm() {
         <meta charset="utf-8">
         <title>收案审批表预览 - ${printData.contractNo}</title>
         <style>
-          body { font-family: SimSun, serif; padding: 20px; }
+          body { font-family: "SimSun", "宋体", serif; padding: 20px; font-size: 14pt; }
+          * { font-family: "SimSun", "宋体", serif; }
           @media print {
-            body { padding: 0; }
+            body { padding: 0; font-size: 14pt; }
             .no-print { display: none; }
           }
         </style>
@@ -1067,11 +1068,11 @@ function generateApprovalFormHtml(data: ContractPrintDTO): string {
     : (data.causeOfActionName || data.caseTypeName || '');
   
   return `
-    <div style="max-width: 800px; margin: 0 auto; font-size: 14px;">
-      <h2 style="text-align: center; margin-bottom: 5px;">${data.firmName || '律师事务所'}</h2>
-      <h2 style="text-align: center; margin-bottom: 20px; letter-spacing: 8px;">收案审批表</h2>
+    <div style="max-width: 800px; margin: 0 auto; font-family: 'SimSun', '宋体', serif; font-size: 14pt;">
+      <h2 style="text-align: center; margin-bottom: 5px; font-family: 'SimSun', '宋体', serif; font-size: 18pt;">${data.firmName || ''}</h2>
+      <h2 style="text-align: center; margin-bottom: 20px; letter-spacing: 8px; font-family: 'SimSun', '宋体', serif; font-size: 18pt;">收案审批表</h2>
       
-      <table border="1" cellpadding="10" cellspacing="0" style="width: 100%; border-collapse: collapse;">
+      <table border="1" cellpadding="10" cellspacing="0" style="width: 100%; border-collapse: collapse; font-family: 'SimSun', '宋体', serif; font-size: 14pt;">
         <tr>
           <th style="width: 15%; background: #f5f5f5;">委托人</th>
           <td colspan="3">${data.clientName || ''}</td>
@@ -1107,7 +1108,7 @@ function generateApprovalFormHtml(data: ContractPrintDTO): string {
           <td colspan="3">${data.jurisdictionCourt || ''}</td>
         </tr>
         <tr>
-          <th style="background: #f5f5f5;">案情摘要<br/><span style="font-weight: normal; font-size: 12px;">（附接待笔录）</span></th>
+          <th style="background: #f5f5f5; font-family: 'SimSun', '宋体', serif; font-size: 14pt;">案情摘要<br/><span style="font-weight: normal; font-size: 12pt; font-family: 'SimSun', '宋体', serif;">（附接待笔录）</span></th>
           <td colspan="3" style="height: 200px; vertical-align: top;">${data.description || '<span style="color: #999;">暂无案情摘要，请在合同中填写</span>'}</td>
         </tr>
         <tr>
@@ -1149,9 +1150,10 @@ async function executePrint() {
   
   // 公共样式
   const commonStyles = `
-    body { font-family: "SimSun", "宋体", serif; padding: 40px; line-height: 1.8; }
-    h1 { text-align: center; font-size: 22px; margin-bottom: 10px; }
-    h2 { text-align: center; font-size: 18px; margin-bottom: 20px; }
+    body { font-family: "SimSun", "宋体", serif; padding: 40px; line-height: 1.8; font-size: 14pt; }
+    * { font-family: "SimSun", "宋体", serif; }
+    h1 { text-align: center; font-size: 22pt; margin-bottom: 10px; font-family: "SimSun", "宋体", serif; }
+    h2 { text-align: center; font-size: 18pt; margin-bottom: 20px; font-family: "SimSun", "宋体", serif; }
     .page-break { page-break-after: always; }
     table { width: 100%; border-collapse: collapse; margin: 20px 0; }
     td, th { border: 1px solid #333; padding: 10px; vertical-align: top; }
@@ -1164,7 +1166,8 @@ async function executePrint() {
     .no-border { border: none !important; }
     .text-center { text-align: center; }
     .text-right { text-align: right; }
-    .header-info { text-align: right; color: #666; margin-bottom: 20px; font-size: 14px; }
+    .header-info { text-align: right; color: #666; margin-bottom: 20px; font-size: 14pt; font-family: "SimSun", "宋体", serif; }
+    p, div, span, td, th { font-family: "SimSun", "宋体", serif; font-size: 14pt; }
     @media print { 
       body { padding: 20px; } 
       @page { margin: 2cm; }
@@ -1178,7 +1181,7 @@ async function executePrint() {
       // 如果没有模板内容，生成基本合同信息
       contractContent = `
         <div class="info"><strong>委托人（甲方）：</strong>${data.clientName || ''}</div>
-        <div class="info"><strong>受托人（乙方）：</strong>${data.firmName || 'XXX律师事务所'}</div>
+        <div class="info"><strong>受托人（乙方）：</strong>${data.firmName || ''}</div>
         <div class="info"><strong>合同类型：</strong>${data.contractTypeName || ''}</div>
         <div class="info"><strong>收费方式：</strong>${data.feeTypeName || ''}</div>
         <div class="info"><strong>合同金额：</strong>¥${data.totalAmount?.toLocaleString() || ''}</div>
@@ -1190,9 +1193,9 @@ async function executePrint() {
     }
     
     htmlContent += `
-      <div class="contract-page">
+      <div class="contract-page" style="font-family: 'SimSun', '宋体', serif; font-size: 14pt;">
         <div class="header-info">合同编号：${data.contractNo}</div>
-        ${contractContent}
+        <div style="font-family: 'SimSun', '宋体', serif; font-size: 14pt;">${contractContent}</div>
         <div class="signature">
           <div class="signature-box">
             <p><strong>甲方（委托人）：</strong></p>
@@ -1236,16 +1239,16 @@ async function executePrint() {
     // 接待律师意见（申请人）
     approvalRows += `
       <tr>
-        <th rowspan="3" style="width: 100px;">接待律师意见</th>
-        <td colspan="3" style="height: 80px;">拟接受委托</td>
+        <th rowspan="3" style="width: 100px; font-family: 'SimSun', '宋体', serif; font-size: 14pt;">接待律师意见</th>
+        <td colspan="3" style="height: 80px; font-family: 'SimSun', '宋体', serif; font-size: 14pt;">拟接受委托</td>
       </tr>
       <tr>
-        <td class="no-border text-right" colspan="2">签名：</td>
-        <td class="no-border" style="width: 150px;">${receptionLawyerName}</td>
+        <td class="no-border text-right" colspan="2" style="font-family: 'SimSun', '宋体', serif; font-size: 14pt;">签名：</td>
+        <td class="no-border" style="width: 150px; font-family: 'SimSun', '宋体', serif; font-size: 14pt;">${receptionLawyerName}</td>
       </tr>
       <tr>
-        <td class="no-border text-right" colspan="2">日期：</td>
-        <td class="no-border">${signDateStr}</td>
+        <td class="no-border text-right" colspan="2" style="font-family: 'SimSun', '宋体', serif; font-size: 14pt;">日期：</td>
+        <td class="no-border" style="font-family: 'SimSun', '宋体', serif; font-size: 14pt;">${signDateStr}</td>
       </tr>
     `;
     
@@ -1256,41 +1259,41 @@ async function executePrint() {
       
       approvalRows += `
         <tr>
-          <th rowspan="3">律所领导意见</th>
-          <td colspan="3" style="height: 80px;">${leaderApproval?.comment || ''}</td>
+          <th rowspan="3" style="font-family: 'SimSun', '宋体', serif; font-size: 14pt;">律所领导意见</th>
+          <td colspan="3" style="height: 80px; font-family: 'SimSun', '宋体', serif; font-size: 14pt;">${leaderApproval?.comment || ''}</td>
         </tr>
         <tr>
-          <td class="no-border text-right" colspan="2">签名：</td>
-          <td class="no-border">${leaderApproval?.approverName || ''}</td>
+          <td class="no-border text-right" colspan="2" style="font-family: 'SimSun', '宋体', serif; font-size: 14pt;">签名：</td>
+          <td class="no-border" style="font-family: 'SimSun', '宋体', serif; font-size: 14pt;">${leaderApproval?.approverName || ''}</td>
         </tr>
         <tr>
-          <td class="no-border text-right" colspan="2">日期：</td>
-          <td class="no-border">${leaderDate}</td>
+          <td class="no-border text-right" colspan="2" style="font-family: 'SimSun', '宋体', serif; font-size: 14pt;">日期：</td>
+          <td class="no-border" style="font-family: 'SimSun', '宋体', serif; font-size: 14pt;">${leaderDate}</td>
         </tr>
       `;
     } else {
       // 预留律所领导签字区域
       approvalRows += `
         <tr>
-          <th rowspan="3">律所领导意见</th>
-          <td colspan="3" style="height: 80px;"></td>
+          <th rowspan="3" style="font-family: 'SimSun', '宋体', serif; font-size: 14pt;">律所领导意见</th>
+          <td colspan="3" style="height: 80px; font-family: 'SimSun', '宋体', serif; font-size: 14pt;"></td>
         </tr>
         <tr>
-          <td class="no-border text-right" colspan="2">签名：</td>
-          <td class="no-border"></td>
+          <td class="no-border text-right" colspan="2" style="font-family: 'SimSun', '宋体', serif; font-size: 14pt;">签名：</td>
+          <td class="no-border" style="font-family: 'SimSun', '宋体', serif; font-size: 14pt;"></td>
         </tr>
         <tr>
-          <td class="no-border text-right" colspan="2">日期：</td>
-          <td class="no-border">____年____月____日</td>
+          <td class="no-border text-right" colspan="2" style="font-family: 'SimSun', '宋体', serif; font-size: 14pt;">日期：</td>
+          <td class="no-border" style="font-family: 'SimSun', '宋体', serif; font-size: 14pt;">____年____月____日</td>
         </tr>
       `;
     }
     
     htmlContent += `
-      <div class="approval-form-page">
-        <h1>${data.firmName || 'XXX律师事务所'}</h1>
-        <h2>收案审批表</h2>
-        <table>
+      <div class="approval-form-page" style="font-family: 'SimSun', '宋体', serif; font-size: 14pt;">
+        <h1 style="font-family: 'SimSun', '宋体', serif; font-size: 18pt;">${data.firmName || ''}</h1>
+        <h2 style="font-family: 'SimSun', '宋体', serif; font-size: 18pt;">收案审批表</h2>
+        <table style="font-family: 'SimSun', '宋体', serif; font-size: 14pt;">
           <tr>
             <th>委托人</th>
             <td colspan="3">${data.clientName || ''}</td>
@@ -1324,14 +1327,14 @@ async function executePrint() {
             <td>${data.jurisdictionCourt || ''}</td>
           </tr>
           <tr>
-            <th>案情摘要<br/><span style="font-weight: normal; font-size: 12px;">（附接待笔录）</span></th>
-            <td colspan="3" style="height: 200px; vertical-align: top;">${data.description || ''}</td>
+            <th style="font-family: 'SimSun', '宋体', serif; font-size: 14pt;">案情摘要<br/><span style="font-weight: normal; font-size: 12pt; font-family: 'SimSun', '宋体', serif;">（附接待笔录）</span></th>
+            <td colspan="3" style="height: 200px; vertical-align: top; font-family: 'SimSun', '宋体', serif; font-size: 14pt;">${data.description || ''}</td>
           </tr>
         </table>
         
-        <div class="approval-section">
-          <h3 style="text-align: center; margin-bottom: 10px;">审 查 意 见</h3>
-          <table>
+        <div class="approval-section" style="font-family: 'SimSun', '宋体', serif; font-size: 14pt;">
+          <h3 style="text-align: center; margin-bottom: 10px; font-family: 'SimSun', '宋体', serif; font-size: 16pt;">审 查 意 见</h3>
+          <table style="font-family: 'SimSun', '宋体', serif; font-size: 14pt;">
             ${approvalRows}
           </table>
         </div>
@@ -3166,8 +3169,8 @@ onMounted(async () => {
   border-radius: 4px;
   padding: 32px 40px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-  font-family: 'SimSun', 'Songti SC', serif;
-  font-size: 14px;
+  font-family: 'SimSun', '宋体', serif;
+  font-size: 14pt;
   line-height: 2;
   color: #333;
 }

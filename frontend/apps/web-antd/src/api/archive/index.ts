@@ -121,6 +121,18 @@ export function registerDestroyArchive(id: number, data: { destroyMethod: string
   return requestClient.post<ArchiveDTO>(`/archive/${id}/register-destroy`, data);
 }
 
+/** 下载卷宗封面 */
+export function downloadArchiveCover(id: number) {
+  return requestClient.get(`/archive/${id}/cover`, {
+    responseType: 'blob',
+  });
+}
+
+/** 重新生成卷宗封面 */
+export function regenerateArchiveCover(id: number) {
+  return requestClient.post<ArchiveDTO>(`/archive/${id}/regenerate-cover`);
+}
+
 // 导出类型
 export type * from './types';
 

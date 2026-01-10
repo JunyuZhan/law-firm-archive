@@ -43,4 +43,12 @@ public interface LetterApplicationMapper extends BaseMapper<LetterApplication> {
      */
     @Select("SELECT * FROM letter_application WHERE matter_id = #{matterId} AND deleted = false ORDER BY created_at DESC")
     List<LetterApplication> selectByMatterId(@Param("matterId") Long matterId);
+    
+    /**
+     * 查询某项目的出函申请最大序号（从application_no中提取）
+     * 用于生成新的申请编号，避免并发冲突
+     */
+    @Select("SELECT MAX(CAST(SUBSTRING(application_no FROM '[0-9]+$') AS INTEGER)) " +
+            "FROM letter_application WHERE matter_id = #{matterId} AND deleted = false")
+    Integer selectMaxSequenceByMatterId(@Param("matterId") Long matterId);
 }

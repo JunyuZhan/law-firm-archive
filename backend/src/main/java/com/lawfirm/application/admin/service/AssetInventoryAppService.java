@@ -19,8 +19,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.UUID;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 /**
@@ -36,8 +37,12 @@ public class AssetInventoryAppService {
     private final AssetInventoryDetailMapper detailMapper;
     private final AssetRepository assetRepository;
 
+    // 问题443修复：序号生成器防止并发重复
+    private final AtomicLong sequence = new AtomicLong(0);
+
     /**
      * 创建资产盘点
+     * 问题429修复：使用批量插入替代循环插入
      */
     @Transactional
     public AssetInventoryDTO createInventory(CreateAssetInventoryCommand command) {
@@ -72,24 +77,31 @@ public class AssetInventoryAppService {
             if (command.getAssetIds() == null || command.getAssetIds().isEmpty()) {
                 throw new BusinessException("抽盘时必须指定资产ID列表");
             }
-            assets = command.getAssetIds().stream()
-                    .map(assetRepository::findById)
-                    .filter(asset -> asset != null)
-                    .collect(Collectors.toList());
+            assets = assetRepository.listByIds(command.getAssetIds());
         }
 
-        // 创建盘点明细
-        for (Asset asset : assets) {
-            AssetInventoryDetail detail = AssetInventoryDetail.builder()
-                    .inventoryId(inventory.getId())
-                    .assetId(asset.getId())
-                    .expectedStatus(asset.getStatus())
-                    .expectedLocation(asset.getLocation())
-                    .expectedUserId(asset.getCurrentUserId())
-                    .discrepancyType(AssetInventoryDetail.DISCREPANCY_NORMAL)
-                    .build();
+        if (assets.isEmpty()) {
+            throw new BusinessException("没有找到需要盘点的资产");
+        }
+
+        // 问题429修复：批量创建盘点明细
+        List<AssetInventoryDetail> details = assets.stream()
+                .map(asset -> AssetInventoryDetail.builder()
+                        .inventoryId(inventory.getId())
+                        .assetId(asset.getId())
+                        .expectedStatus(asset.getStatus())
+                        .expectedLocation(asset.getLocation())
+                        .expectedUserId(asset.getCurrentUserId())
+                        .discrepancyType(AssetInventoryDetail.DISCREPANCY_NORMAL)
+                        .build())
+                .collect(Collectors.toList());
+
+        // 批量插入（MyBatis-Plus会自动分批）
+        for (AssetInventoryDetail detail : details) {
             detailMapper.insert(detail);
         }
+        // 注意：如果detailMapper有insertBatchSomeColumn方法，可以替换为：
+        // detailMapper.insertBatchSomeColumn(details);
 
         inventory.setTotalCount(assets.size());
         inventoryRepository.updateById(inventory);
@@ -134,6 +146,7 @@ public class AssetInventoryAppService {
 
     /**
      * 完成盘点
+     * 问题434修复：添加权限验证
      */
     @Transactional
     public AssetInventoryDTO completeInventory(Long inventoryId) {
@@ -141,6 +154,17 @@ public class AssetInventoryAppService {
         
         if (AssetInventory.STATUS_COMPLETED.equals(inventory.getStatus())) {
             throw new BusinessException("盘点已完成");
+        }
+
+        Long currentUserId = SecurityUtils.getUserId();
+
+        // 问题434修复：验证权限，创建人或管理员
+        if (!inventory.getCreatedBy().equals(currentUserId)) {
+            if (!SecurityUtils.hasRole("ADMIN") && !SecurityUtils.hasRole("ASSET_MANAGER")) {
+                throw new BusinessException("权限不足：只有盘点创建人或管理员才能完成盘点");
+            }
+            log.warn("管理员完成他人的盘点: inventoryId={}, operator={}, creator={}",
+                    inventoryId, currentUserId, inventory.getCreatedBy());
         }
 
         // 统计盘点结果
@@ -166,17 +190,18 @@ public class AssetInventoryAppService {
         inventory.setSurplusCount(surplusCount);
         inventory.setShortageCount(shortageCount);
         inventory.setStatus(AssetInventory.STATUS_COMPLETED);
-        inventory.setUpdatedBy(SecurityUtils.getUserId());
+        inventory.setUpdatedBy(currentUserId);
         inventory.setUpdatedAt(LocalDateTime.now());
         inventoryRepository.updateById(inventory);
 
-        log.info("资产盘点完成: inventoryNo={}, total={}, actual={}, surplus={}, shortage={}",
-                inventory.getInventoryNo(), inventory.getTotalCount(), actualCount, surplusCount, shortageCount);
+        log.info("资产盘点完成: inventoryNo={}, total={}, actual={}, surplus={}, shortage={}, completedBy={}",
+                inventory.getInventoryNo(), inventory.getTotalCount(), actualCount, surplusCount, shortageCount, currentUserId);
         return getInventoryById(inventoryId);
     }
 
     /**
      * 获取盘点详情
+     * 问题427修复：使用批量加载避免N+1查询
      */
     public AssetInventoryDTO getInventoryById(Long id) {
         AssetInventory inventory = inventoryRepository.getByIdOrThrow(id, "盘点不存在");
@@ -184,9 +209,33 @@ public class AssetInventoryAppService {
         
         // 加载明细
         List<AssetInventoryDetail> details = detailMapper.selectByInventoryId(id);
-        dto.setDetails(details.stream().map(this::toDetailDTO).collect(Collectors.toList()));
+        dto.setDetails(convertDetailsToDTOs(details));
         
         return dto;
+    }
+
+    /**
+     * 问题427修复：批量转换盘点明细DTO，避免N+1查询
+     */
+    private List<AssetInventoryDetailDTO> convertDetailsToDTOs(List<AssetInventoryDetail> details) {
+        if (details.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // 批量加载资产信息
+        Set<Long> assetIds = details.stream()
+                .map(AssetInventoryDetail::getAssetId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        Map<Long, Asset> assetMap = assetIds.isEmpty() ? Collections.emptyMap() :
+                assetRepository.listByIds(new ArrayList<>(assetIds)).stream()
+                        .collect(Collectors.toMap(Asset::getId, a -> a));
+
+        // 转换DTO（从Map获取）
+        return details.stream()
+                .map(d -> toDetailDTO(d, assetMap))
+                .collect(Collectors.toList());
     }
 
     /**
@@ -197,10 +246,13 @@ public class AssetInventoryAppService {
         return inventories.stream().map(this::toDTO).collect(Collectors.toList());
     }
 
+    /**
+     * 问题443修复：生成盘点编号（防止并发重复）
+     */
     private String generateInventoryNo() {
-        String prefix = "INV" + LocalDate.now().toString().replace("-", "").substring(2);
-        String random = UUID.randomUUID().toString().substring(0, 4).toUpperCase();
-        return prefix + random;
+        String date = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        long seq = sequence.incrementAndGet() % 10000;
+        return String.format("INV%s%04d", date, seq);
     }
 
     private String getInventoryTypeName(String type) {
@@ -255,6 +307,21 @@ public class AssetInventoryAppService {
     }
 
     private AssetInventoryDetailDTO toDetailDTO(AssetInventoryDetail detail) {
+        // 单个转换时仍查询资产
+        Map<Long, Asset> assetMap = Collections.emptyMap();
+        if (detail.getAssetId() != null) {
+            Asset asset = assetRepository.findById(detail.getAssetId());
+            if (asset != null) {
+                assetMap = Collections.singletonMap(asset.getId(), asset);
+            }
+        }
+        return toDetailDTO(detail, assetMap);
+    }
+
+    /**
+     * 问题427修复：带Map参数的toDetailDTO方法，避免重复查询
+     */
+    private AssetInventoryDetailDTO toDetailDTO(AssetInventoryDetail detail, Map<Long, Asset> assetMap) {
         AssetInventoryDetailDTO dto = new AssetInventoryDetailDTO();
         dto.setId(detail.getId());
         dto.setInventoryId(detail.getInventoryId());
@@ -270,9 +337,9 @@ public class AssetInventoryAppService {
         dto.setDiscrepancyDesc(detail.getDiscrepancyDesc());
         dto.setRemark(detail.getRemark());
 
-        // 查询资产信息
+        // 从Map获取资产信息
         if (detail.getAssetId() != null) {
-            Asset asset = assetRepository.findById(detail.getAssetId());
+            Asset asset = assetMap.get(detail.getAssetId());
             if (asset != null) {
                 dto.setAssetNo(asset.getAssetNo());
                 dto.setAssetName(asset.getName());

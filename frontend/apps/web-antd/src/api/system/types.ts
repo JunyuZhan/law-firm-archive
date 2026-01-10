@@ -160,22 +160,42 @@ export interface UpdateMenuCommand extends Partial<CreateMenuCommand> {
 // ========== 字典管理 ==========
 export interface DictTypeDTO {
   id: number;
-  dictCode: string;
-  dictName: string;
+  name: string;
+  code: string;
   description?: string;
   status?: string;
+  isSystem?: boolean;
+  items?: DictDataDTO[];
   createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface DictDataDTO {
   id: number;
   dictTypeId: number;
-  dictCode: string;
   label: string;
   value: string;
+  description?: string;
   sortOrder?: number;
   status?: string;
-  remark?: string;
+  cssClass?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateDictTypeCommand {
+  name: string;
+  code: string;
+  description?: string;
+}
+
+export interface CreateDictItemCommand {
+  dictTypeId: number;
+  label: string;
+  value: string;
+  description?: string;
+  sortOrder?: number;
+  cssClass?: string;
 }
 
 // ========== 系统配置 ==========
@@ -214,6 +234,24 @@ export interface CaseTypeOption {
   label: string;
   shortName: string;
   code: string;
+}
+
+// ========== 数据库迁移 ==========
+export interface MigrationDTO {
+  id?: number;
+  migrationNo: string;
+  version: string;
+  scriptName: string;
+  scriptPath: string;
+  description?: string;
+  status: 'PENDING' | 'SUCCESS' | 'FAILED' | 'ROLLED_BACK';
+  executedAt?: string;
+  executionTimeMs?: number;
+  errorMessage?: string;
+  executedBy?: number;
+  executedByName?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 // ========== 操作日志 ==========
@@ -444,6 +482,47 @@ export interface UpdateExternalIntegrationCommand {
   apiSecret?: string;
   authType?: string;
   extraConfig?: Record<string, any>;
+  description?: string;
+}
+
+// ========== 数据库备份 ==========
+
+/** 备份DTO */
+export interface BackupDTO {
+  id: number;
+  backupNo: string;
+  backupType: string;
+  backupName: string;
+  backupPath: string;
+  fileSize: number;
+  status: string;
+  backupTime?: string;
+  restoreTime?: string;
+  description?: string;
+  createdBy?: number;
+  createdByName?: string;
+  createdAt?: string;
+}
+
+/** 备份查询条件 */
+export interface BackupQuery {
+  backupType?: string;
+  status?: string;
+  startTime?: string;
+  endTime?: string;
+  pageNum?: number;
+  pageSize?: number;
+}
+
+/** 创建备份命令 */
+export interface CreateBackupCommand {
+  backupType: string; // FULL, INCREMENTAL, DATABASE, FILE
+  description?: string;
+}
+
+/** 恢复备份命令 */
+export interface RestoreBackupCommand {
+  backupId: number;
   description?: string;
 }
 

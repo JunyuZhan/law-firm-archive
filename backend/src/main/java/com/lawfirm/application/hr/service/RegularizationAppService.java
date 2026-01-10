@@ -24,8 +24,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 /**
@@ -45,6 +45,7 @@ public class RegularizationAppService {
 
     /**
      * 分页查询转正申请
+     * ✅ 优化：使用批量加载避免N+1查询
      */
     public PageResult<RegularizationDTO> listRegularizations(RegularizationQueryDTO query) {
         IPage<Regularization> page = regularizationMapper.selectRegularizationPage(
@@ -53,12 +54,61 @@ public class RegularizationAppService {
                 query.getStatus()
         );
 
+        List<Regularization> regularizations = page.getRecords();
+        if (regularizations.isEmpty()) {
+            return PageResult.of(Collections.emptyList(), 0L, query.getPageNum(), query.getPageSize());
+        }
+
+        // 批量加载关联数据
+        Map<Long, Employee> employeeMap = batchLoadEmployees(regularizations);
+        Map<Long, User> userMap = batchLoadUsers(regularizations, employeeMap);
+
         return PageResult.of(
-                page.getRecords().stream().map(this::toDTO).collect(Collectors.toList()),
+                regularizations.stream()
+                        .map(r -> toDTO(r, employeeMap, userMap))
+                        .collect(Collectors.toList()),
                 page.getTotal(),
                 query.getPageNum(),
                 query.getPageSize()
         );
+    }
+
+    /**
+     * 批量加载员工信息
+     */
+    private Map<Long, Employee> batchLoadEmployees(List<Regularization> regularizations) {
+        Set<Long> employeeIds = regularizations.stream()
+                .map(Regularization::getEmployeeId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        if (employeeIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return employeeRepository.listByIds(new ArrayList<>(employeeIds)).stream()
+                .collect(Collectors.toMap(Employee::getId, e -> e));
+    }
+
+    /**
+     * 批量加载用户信息（员工对应的用户和审批人）
+     */
+    private Map<Long, User> batchLoadUsers(List<Regularization> regularizations, Map<Long, Employee> employeeMap) {
+        Set<Long> userIds = new HashSet<>();
+        // 收集员工对应的用户ID
+        employeeMap.values().stream()
+                .map(Employee::getUserId)
+                .filter(Objects::nonNull)
+                .forEach(userIds::add);
+        // 收集审批人ID
+        regularizations.stream()
+                .map(Regularization::getApproverId)
+                .filter(Objects::nonNull)
+                .forEach(userIds::add);
+
+        if (userIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return userRepository.listByIds(new ArrayList<>(userIds)).stream()
+                .collect(Collectors.toMap(User::getId, u -> u));
     }
 
     /**
@@ -191,9 +241,41 @@ public class RegularizationAppService {
     }
 
     /**
-     * 转换为DTO
+     * 转换为DTO（单条记录查询使用，会触发数据库查询）
      */
     private RegularizationDTO toDTO(Regularization regularization) {
+        // 单条查询时构建临时Map
+        Map<Long, Employee> employeeMap = new HashMap<>();
+        Map<Long, User> userMap = new HashMap<>();
+
+        if (regularization.getEmployeeId() != null) {
+            Employee employee = employeeRepository.findById(regularization.getEmployeeId());
+            if (employee != null) {
+                employeeMap.put(employee.getId(), employee);
+                if (employee.getUserId() != null) {
+                    User user = userRepository.findById(employee.getUserId());
+                    if (user != null) {
+                        userMap.put(user.getId(), user);
+                    }
+                }
+            }
+        }
+        if (regularization.getApproverId() != null) {
+            User approver = userRepository.findById(regularization.getApproverId());
+            if (approver != null) {
+                userMap.put(approver.getId(), approver);
+            }
+        }
+
+        return toDTO(regularization, employeeMap, userMap);
+    }
+
+    /**
+     * 转换为DTO（批量查询使用，从预加载的Map获取数据，避免N+1）
+     */
+    private RegularizationDTO toDTO(Regularization regularization,
+                                     Map<Long, Employee> employeeMap,
+                                     Map<Long, User> userMap) {
         RegularizationDTO dto = new RegularizationDTO();
         dto.setId(regularization.getId());
         dto.setEmployeeId(regularization.getEmployeeId());
@@ -212,21 +294,21 @@ public class RegularizationAppService {
         dto.setCreatedAt(regularization.getCreatedAt());
         dto.setUpdatedAt(regularization.getUpdatedAt());
 
-        // 加载员工和用户信息
+        // 从Map获取员工和用户信息（避免N+1）
         if (regularization.getEmployeeId() != null) {
-            Employee employee = employeeRepository.findById(regularization.getEmployeeId());
+            Employee employee = employeeMap.get(regularization.getEmployeeId());
             if (employee != null && employee.getUserId() != null) {
                 dto.setUserId(employee.getUserId());
-                User user = userRepository.findById(employee.getUserId());
+                User user = userMap.get(employee.getUserId());
                 if (user != null) {
                     dto.setEmployeeName(user.getRealName());
                 }
             }
         }
 
-        // 加载审批人信息
+        // 从Map获取审批人信息
         if (regularization.getApproverId() != null) {
-            User approver = userRepository.findById(regularization.getApproverId());
+            User approver = userMap.get(regularization.getApproverId());
             if (approver != null) {
                 dto.setApproverName(approver.getRealName());
             }
@@ -246,12 +328,19 @@ public class RegularizationAppService {
     }
 
     /**
+     * 编号生成序列号（线程安全）
+     */
+    private static final AtomicLong SEQUENCE = new AtomicLong(0);
+
+    /**
      * 生成申请编号
+     * ✅ 修复：使用完整时间戳+序列号，避免并发重复
      */
     private String generateApplicationNo() {
         String prefix = "REG";
-        String timestamp = String.valueOf(System.currentTimeMillis()).substring(7);
-        return prefix + timestamp;
+        String timestamp = String.valueOf(System.currentTimeMillis());
+        long seq = SEQUENCE.incrementAndGet() % 1000;
+        return String.format("%s%s%03d", prefix, timestamp, seq);
     }
 }
 

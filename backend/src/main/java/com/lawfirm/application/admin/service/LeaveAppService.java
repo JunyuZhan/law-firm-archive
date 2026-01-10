@@ -25,8 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -55,6 +54,7 @@ public class LeaveAppService {
 
     /**
      * 分页查询请假申请
+     * ✅ 优化：使用批量加载避免N+1查询
      */
     public PageResult<LeaveApplicationDTO> listApplications(LeaveApplicationQueryDTO query) {
         IPage<LeaveApplication> page = leaveApplicationMapper.selectApplicationPage(
@@ -66,11 +66,34 @@ public class LeaveAppService {
                 query.getEndTime()
         );
 
-        List<LeaveApplicationDTO> records = page.getRecords().stream()
-                .map(this::toApplicationDTO)
+        List<LeaveApplication> applications = page.getRecords();
+        if (applications.isEmpty()) {
+            return PageResult.of(Collections.emptyList(), 0L, query.getPageNum(), query.getPageSize());
+        }
+
+        // 批量加载请假类型
+        Map<Long, LeaveType> typeMap = batchLoadLeaveTypes(applications);
+
+        List<LeaveApplicationDTO> records = applications.stream()
+                .map(app -> toApplicationDTO(app, typeMap))
                 .collect(Collectors.toList());
 
         return PageResult.of(records, page.getTotal(), query.getPageNum(), query.getPageSize());
+    }
+
+    /**
+     * 批量加载请假类型
+     */
+    private Map<Long, LeaveType> batchLoadLeaveTypes(List<LeaveApplication> applications) {
+        Set<Long> typeIds = applications.stream()
+                .map(LeaveApplication::getLeaveTypeId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        if (typeIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return leaveTypeRepository.listByIds(new ArrayList<>(typeIds)).stream()
+                .collect(Collectors.toMap(LeaveType::getId, t -> t));
     }
 
     /**
@@ -135,6 +158,7 @@ public class LeaveAppService {
 
     /**
      * 审批请假申请
+     * ✅ 修复：先扣减余额再更新申请状态，避免并发问题
      */
     @Transactional
     public LeaveApplicationDTO approveLeave(ApproveLeaveCommand command) {
@@ -147,14 +171,8 @@ public class LeaveAppService {
             throw new BusinessException("该申请已处理");
         }
 
-        application.setApproverId(approverId);
-        application.setApprovedAt(LocalDateTime.now());
-        application.setApprovalComment(command.getComment());
-
+        // ✅ 先扣减余额，再更新申请状态
         if (command.getApproved()) {
-            application.setStatus(LeaveApplication.STATUS_APPROVED);
-
-            // 扣减假期余额
             LeaveType leaveType = leaveTypeRepository.getById(application.getLeaveTypeId());
             if (leaveType != null && leaveType.getAnnualLimit() != null) {
                 int year = application.getStartTime().getYear();
@@ -169,14 +187,27 @@ public class LeaveAppService {
                 }
             }
 
+            // 余额扣减成功后，才更新申请状态
+            application.setStatus(LeaveApplication.STATUS_APPROVED);
             log.info("请假申请已批准: {}", application.getApplicationNo());
         } else {
             application.setStatus(LeaveApplication.STATUS_REJECTED);
             log.info("请假申请已拒绝: {}", application.getApplicationNo());
         }
 
+        application.setApproverId(approverId);
+        application.setApprovedAt(LocalDateTime.now());
+        application.setApprovalComment(command.getComment());
+
         leaveApplicationRepository.updateById(application);
-        return toApplicationDTO(application);
+
+        // 使用批量加载方式获取类型信息
+        Map<Long, LeaveType> typeMap = new HashMap<>();
+        LeaveType type = leaveTypeRepository.getById(application.getLeaveTypeId());
+        if (type != null) {
+            typeMap.put(type.getId(), type);
+        }
+        return toApplicationDTO(application, typeMap);
     }
 
     /**
@@ -202,6 +233,7 @@ public class LeaveAppService {
 
     /**
      * 获取用户假期余额
+     * ✅ 优化：使用批量加载避免N+1查询
      */
     public List<LeaveBalanceDTO> getUserBalance(Long userId, Integer year) {
         if (userId == null) {
@@ -211,42 +243,84 @@ public class LeaveAppService {
             year = LocalDate.now().getYear();
         }
 
-        return leaveBalanceMapper.selectByUserAndYear(userId, year).stream()
-                .map(this::toBalanceDTO)
+        List<LeaveBalance> balances = leaveBalanceMapper.selectByUserAndYear(userId, year);
+        if (balances.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // 批量加载请假类型
+        Map<Long, LeaveType> typeMap = batchLoadLeaveTypesForBalances(balances);
+
+        return balances.stream()
+                .map(balance -> toBalanceDTO(balance, typeMap))
                 .collect(Collectors.toList());
     }
 
     /**
+     * 批量加载请假类型（用于余额查询）
+     */
+    private Map<Long, LeaveType> batchLoadLeaveTypesForBalances(List<LeaveBalance> balances) {
+        Set<Long> typeIds = balances.stream()
+                .map(LeaveBalance::getLeaveTypeId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        if (typeIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return leaveTypeRepository.listByIds(new ArrayList<>(typeIds)).stream()
+                .collect(Collectors.toMap(LeaveType::getId, t -> t));
+    }
+
+    /**
      * 初始化用户年度假期余额
+     * ✅ 优化：使用批量插入替代循环插入
      */
     @Transactional
     public void initUserBalance(Long userId, Integer year) {
         List<LeaveType> types = leaveTypeMapper.selectEnabledTypes();
+
+        // 批量查询已有余额
+        List<LeaveBalance> existingBalances = leaveBalanceMapper.selectByUserAndYear(userId, year);
+        Set<Long> existingTypeIds = existingBalances.stream()
+                .map(LeaveBalance::getLeaveTypeId)
+                .collect(Collectors.toSet());
+
+        // 收集需要创建的余额
+        List<LeaveBalance> toCreate = new ArrayList<>();
         for (LeaveType type : types) {
-            if (type.getAnnualLimit() != null) {
-                LeaveBalance existing = leaveBalanceMapper.selectByUserTypeYear(userId, type.getId(), year);
-                if (existing == null) {
-                    LeaveBalance balance = LeaveBalance.builder()
-                            .userId(userId)
-                            .leaveTypeId(type.getId())
-                            .year(year)
-                            .totalDays(type.getAnnualLimit())
-                            .usedDays(BigDecimal.ZERO)
-                            .remainingDays(type.getAnnualLimit())
-                            .build();
-                    leaveBalanceRepository.save(balance);
-                }
+            if (type.getAnnualLimit() != null && !existingTypeIds.contains(type.getId())) {
+                LeaveBalance balance = LeaveBalance.builder()
+                        .userId(userId)
+                        .leaveTypeId(type.getId())
+                        .year(year)
+                        .totalDays(type.getAnnualLimit())
+                        .usedDays(BigDecimal.ZERO)
+                        .remainingDays(type.getAnnualLimit())
+                        .build();
+                toCreate.add(balance);
             }
         }
-        log.info("用户假期余额初始化完成: userId={}, year={}", userId, year);
+
+        // 批量插入
+        if (!toCreate.isEmpty()) {
+            leaveBalanceRepository.saveBatch(toCreate);
+        }
+
+        log.info("用户假期余额初始化完成: userId={}, year={}, created={}", userId, year, toCreate.size());
     }
 
     /**
      * 获取待审批列表
+     * ✅ 优化：使用批量加载
      */
     public List<LeaveApplicationDTO> getPendingApplications() {
-        return leaveApplicationMapper.selectPendingApplications().stream()
-                .map(this::toApplicationDTO)
+        List<LeaveApplication> applications = leaveApplicationMapper.selectPendingApplications();
+        if (applications.isEmpty()) {
+            return Collections.emptyList();
+        }
+        Map<Long, LeaveType> typeMap = batchLoadLeaveTypes(applications);
+        return applications.stream()
+                .map(app -> toApplicationDTO(app, typeMap))
                 .collect(Collectors.toList());
     }
 
@@ -287,7 +361,24 @@ public class LeaveAppService {
         return dto;
     }
 
+    /**
+     * 转换为DTO（单条查询使用，会触发数据库查询）
+     */
     private LeaveApplicationDTO toApplicationDTO(LeaveApplication app) {
+        Map<Long, LeaveType> typeMap = new HashMap<>();
+        if (app.getLeaveTypeId() != null) {
+            LeaveType type = leaveTypeRepository.getById(app.getLeaveTypeId());
+            if (type != null) {
+                typeMap.put(type.getId(), type);
+            }
+        }
+        return toApplicationDTO(app, typeMap);
+    }
+
+    /**
+     * 转换为DTO（批量查询使用，从预加载的Map获取数据，避免N+1）
+     */
+    private LeaveApplicationDTO toApplicationDTO(LeaveApplication app, Map<Long, LeaveType> typeMap) {
         LeaveApplicationDTO dto = new LeaveApplicationDTO();
         dto.setId(app.getId());
         dto.setApplicationNo(app.getApplicationNo());
@@ -305,16 +396,35 @@ public class LeaveAppService {
         dto.setApprovalComment(app.getApprovalComment());
         dto.setCreatedAt(app.getCreatedAt());
 
-        // 获取请假类型名称
-        LeaveType type = leaveTypeRepository.getById(app.getLeaveTypeId());
-        if (type != null) {
-            dto.setLeaveTypeName(type.getName());
+        // 从Map获取请假类型名称（避免N+1）
+        if (app.getLeaveTypeId() != null) {
+            LeaveType type = typeMap.get(app.getLeaveTypeId());
+            if (type != null) {
+                dto.setLeaveTypeName(type.getName());
+            }
         }
 
         return dto;
     }
 
+    /**
+     * 转换为DTO（单条查询使用，会触发数据库查询）
+     */
     private LeaveBalanceDTO toBalanceDTO(LeaveBalance balance) {
+        Map<Long, LeaveType> typeMap = new HashMap<>();
+        if (balance.getLeaveTypeId() != null) {
+            LeaveType type = leaveTypeRepository.getById(balance.getLeaveTypeId());
+            if (type != null) {
+                typeMap.put(type.getId(), type);
+            }
+        }
+        return toBalanceDTO(balance, typeMap);
+    }
+
+    /**
+     * 转换为DTO（批量查询使用，从预加载的Map获取数据，避免N+1）
+     */
+    private LeaveBalanceDTO toBalanceDTO(LeaveBalance balance, Map<Long, LeaveType> typeMap) {
         LeaveBalanceDTO dto = new LeaveBalanceDTO();
         dto.setId(balance.getId());
         dto.setUserId(balance.getUserId());
@@ -324,10 +434,12 @@ public class LeaveAppService {
         dto.setUsedDays(balance.getUsedDays());
         dto.setRemainingDays(balance.getRemainingDays());
 
-        // 获取请假类型名称
-        LeaveType type = leaveTypeRepository.getById(balance.getLeaveTypeId());
-        if (type != null) {
-            dto.setLeaveTypeName(type.getName());
+        // 从Map获取请假类型名称（避免N+1）
+        if (balance.getLeaveTypeId() != null) {
+            LeaveType type = typeMap.get(balance.getLeaveTypeId());
+            if (type != null) {
+                dto.setLeaveTypeName(type.getName());
+            }
         }
 
         return dto;

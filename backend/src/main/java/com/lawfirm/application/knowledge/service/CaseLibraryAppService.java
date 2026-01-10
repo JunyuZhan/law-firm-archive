@@ -42,7 +42,7 @@ public class CaseLibraryAppService {
     }
 
     /**
-     * 分页查询案例
+     * 分页查询案例（优化N+1查询）
      */
     public PageResult<CaseLibraryDTO> listCases(CaseLibraryQueryDTO query) {
         IPage<CaseLibrary> page = caseLibraryMapper.selectCasePage(
@@ -53,9 +53,46 @@ public class CaseLibraryAppService {
                 query.getKeyword()
         );
 
+        List<CaseLibrary> cases = page.getRecords();
+        if (cases.isEmpty()) {
+            return PageResult.of(java.util.Collections.emptyList(), 0, query.getPageNum(), query.getPageSize());
+        }
+        
         Long userId = SecurityUtils.getUserId();
-        List<CaseLibraryDTO> records = page.getRecords().stream()
-                .map(c -> toCaseDTO(c, userId))
+        
+        // 批量加载分类信息（避免N+1）
+        java.util.Set<Long> categoryIds = cases.stream()
+                .map(CaseLibrary::getCategoryId)
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toSet());
+        java.util.Map<Long, CaseCategory> categoryMap = categoryIds.isEmpty() ? 
+                java.util.Collections.emptyMap() :
+                caseCategoryRepository.listByIds(categoryIds).stream()
+                        .collect(Collectors.toMap(CaseCategory::getId, c -> c, (a, b) -> a));
+        
+        // 批量加载收藏状态（避免N+1）
+        java.util.Map<Long, Boolean> collectedMap = new java.util.HashMap<>();
+        if (userId != null) {
+            java.util.List<Long> caseIds = cases.stream()
+                    .map(CaseLibrary::getId)
+                    .collect(Collectors.toList());
+            
+            // 批量查询用户收藏的案例
+            java.util.List<KnowledgeCollection> collections = knowledgeCollectionMapper.selectBatchByUserAndTargets(
+                    userId, KnowledgeCollection.TYPE_CASE, caseIds);
+            
+            java.util.Set<Long> collectedCaseIds = collections.stream()
+                    .map(KnowledgeCollection::getTargetId)
+                    .collect(Collectors.toSet());
+            
+            for (Long caseId : caseIds) {
+                collectedMap.put(caseId, collectedCaseIds.contains(caseId));
+            }
+        }
+        
+        // 使用预加载的Map转换DTO（避免N+1）
+        List<CaseLibraryDTO> records = cases.stream()
+                .map(c -> toCaseDTO(c, userId, categoryMap, collectedMap))
                 .collect(Collectors.toList());
 
         return PageResult.of(records, page.getTotal(), query.getPageNum(), query.getPageSize());
@@ -180,25 +217,28 @@ public class CaseLibraryAppService {
 
     /**
      * 收藏案例
+     * 并发安全：使用数据库唯一约束 + DuplicateKeyException 处理
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void collectCase(Long caseId) {
         Long userId = SecurityUtils.getUserId();
         caseLibraryRepository.getByIdOrThrow(caseId, "案例不存在");
 
-        int count = knowledgeCollectionMapper.countByUserAndTarget(userId, KnowledgeCollection.TYPE_CASE, caseId);
-        if (count > 0) {
+        try {
+            // 直接插入，依赖数据库唯一约束（user_id + target_type + target_id）处理并发
+            KnowledgeCollection collection = KnowledgeCollection.builder()
+                    .userId(userId)
+                    .targetType(KnowledgeCollection.TYPE_CASE)
+                    .targetId(caseId)
+                    .build();
+            knowledgeCollectionMapper.insert(collection);
+            caseLibraryMapper.incrementCollectCount(caseId);
+            log.info("案例收藏成功: userId={}, caseId={}", userId, caseId);
+            
+        } catch (org.springframework.dao.DuplicateKeyException e) {
+            // 唯一约束冲突 = 已收藏
             throw new BusinessException("已收藏该案例");
         }
-
-        KnowledgeCollection collection = KnowledgeCollection.builder()
-                .userId(userId)
-                .targetType(KnowledgeCollection.TYPE_CASE)
-                .targetId(caseId)
-                .build();
-        knowledgeCollectionMapper.insert(collection);
-        caseLibraryMapper.incrementCollectCount(caseId);
-        log.info("案例收藏成功: userId={}, caseId={}", userId, caseId);
     }
 
     /**
@@ -261,7 +301,12 @@ public class CaseLibraryAppService {
         return dto;
     }
 
-    private CaseLibraryDTO toCaseDTO(CaseLibrary caseLib, Long userId) {
+    /**
+     * Entity转DTO（带预加载数据，避免N+1查询）
+     */
+    private CaseLibraryDTO toCaseDTO(CaseLibrary caseLib, Long userId, 
+                                      java.util.Map<Long, CaseCategory> categoryMap,
+                                      java.util.Map<Long, Boolean> collectedMap) {
         CaseLibraryDTO dto = new CaseLibraryDTO();
         dto.setId(caseLib.getId());
         dto.setTitle(caseLib.getTitle());
@@ -287,18 +332,42 @@ public class CaseLibraryAppService {
         dto.setCollectCount(caseLib.getCollectCount());
         dto.setCreatedAt(caseLib.getCreatedAt());
 
-        // 获取分类名称
-        CaseCategory category = caseCategoryRepository.getById(caseLib.getCategoryId());
-        if (category != null) {
-            dto.setCategoryName(category.getName());
+        // 从预加载Map获取分类名称（避免N+1）
+        if (caseLib.getCategoryId() != null) {
+            CaseCategory category = categoryMap.get(caseLib.getCategoryId());
+            if (category != null) {
+                dto.setCategoryName(category.getName());
+            }
         }
 
-        // 检查是否已收藏
+        // 从预加载Map获取收藏状态（避免N+1）
         if (userId != null) {
-            int count = knowledgeCollectionMapper.countByUserAndTarget(userId, KnowledgeCollection.TYPE_CASE, caseLib.getId());
-            dto.setCollected(count > 0);
+            dto.setCollected(collectedMap.getOrDefault(caseLib.getId(), false));
         }
 
         return dto;
+    }
+    
+    /**
+     * Entity转DTO（单条查询用，会触发额外查询）
+     */
+    private CaseLibraryDTO toCaseDTO(CaseLibrary caseLib, Long userId) {
+        // 单条查询时构建Map
+        java.util.Map<Long, CaseCategory> categoryMap = new java.util.HashMap<>();
+        java.util.Map<Long, Boolean> collectedMap = new java.util.HashMap<>();
+        
+        if (caseLib.getCategoryId() != null) {
+            CaseCategory category = caseCategoryRepository.getById(caseLib.getCategoryId());
+            if (category != null) {
+                categoryMap.put(category.getId(), category);
+            }
+        }
+        
+        if (userId != null) {
+            int count = knowledgeCollectionMapper.countByUserAndTarget(userId, KnowledgeCollection.TYPE_CASE, caseLib.getId());
+            collectedMap.put(caseLib.getId(), count > 0);
+        }
+        
+        return toCaseDTO(caseLib, userId, categoryMap, collectedMap);
     }
 }

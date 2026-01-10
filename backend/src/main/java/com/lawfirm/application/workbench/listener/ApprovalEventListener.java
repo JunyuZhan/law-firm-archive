@@ -7,6 +7,7 @@ import com.lawfirm.application.client.service.ConflictCheckAppService;
 import com.lawfirm.application.system.service.DataHandoverService;
 import com.lawfirm.application.system.service.NotificationAppService;
 import com.lawfirm.application.workbench.event.ApprovalCompletedEvent;
+import com.lawfirm.common.exception.BusinessException;
 import com.lawfirm.domain.workbench.entity.Approval;
 import com.lawfirm.domain.workbench.repository.ApprovalRepository;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +15,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+
+import com.lawfirm.common.constant.ApprovalStatus;
 
 /**
  * 审批事件监听器
@@ -74,6 +77,12 @@ public class ApprovalEventListener {
                 case "LETTER_APPLICATION":
                     handleLetterApplicationApproval(businessId, result, comment);
                     break;
+                case "MATTER_CLOSE":
+                    // 项目结案审批已经在 MatterAppService.approveCloseMatter 中处理
+                    // 这里不需要重复处理，避免状态冲突
+                    log.info("项目结案审批已完成，状态已在审批方法中更新: matterId={}, result={}", 
+                            businessId, result);
+                    break;
                 default:
                     log.warn("未知的业务类型: {}", businessType);
             }
@@ -94,7 +103,7 @@ public class ApprovalEventListener {
             }
             
             String businessTypeName = getBusinessTypeName(approval.getBusinessType());
-            String resultText = "APPROVED".equals(result) ? "已通过" : "已拒绝";
+            String resultText = ApprovalStatus.APPROVED.equals(result) ? "已通过" : "已拒绝";
             String title = businessTypeName + "审批" + resultText;
             String content = String.format("您提交的【%s】%s。", 
                     approval.getBusinessTitle() != null ? approval.getBusinessTitle() : businessTypeName,
@@ -141,9 +150,9 @@ public class ApprovalEventListener {
      * 处理出函申请审批
      */
     private void handleLetterApplicationApproval(Long applicationId, String result, String comment) {
-        if ("APPROVED".equals(result)) {
+        if (ApprovalStatus.APPROVED.equals(result)) {
             letterAppService.onApprovalApproved(applicationId, comment);
-        } else if ("REJECTED".equals(result)) {
+        } else if (ApprovalStatus.REJECTED.equals(result)) {
             letterAppService.onApprovalRejected(applicationId, comment);
         }
     }
@@ -152,10 +161,17 @@ public class ApprovalEventListener {
      * 处理合同审批
      */
     private void handleContractApproval(Long contractId, String result, String comment) {
-        if ("APPROVED".equals(result)) {
-            contractAppService.approve(contractId);
-        } else if ("REJECTED".equals(result)) {
-            contractAppService.reject(contractId, comment);
+        try {
+            if (ApprovalStatus.APPROVED.equals(result)) {
+                contractAppService.approve(contractId);
+            } else if (ApprovalStatus.REJECTED.equals(result)) {
+                contractAppService.reject(contractId, comment);
+            }
+        } catch (BusinessException e) {
+            // 如果状态检查失败（如状态不是PENDING），记录警告但不抛出异常
+            // 这可能是因为合同已经从其他地方审批了
+            log.warn("合同审批业务状态更新失败（可能已从其他地方审批）: contractId={}, result={}, error={}", 
+                    contractId, result, e.getMessage());
         }
     }
 
@@ -163,10 +179,16 @@ public class ApprovalEventListener {
      * 处理用印申请审批
      */
     private void handleSealApplicationApproval(Long applicationId, String result, String comment) {
-        if ("APPROVED".equals(result)) {
-            sealApplicationAppService.approve(applicationId, comment);
-        } else if ("REJECTED".equals(result)) {
-            sealApplicationAppService.reject(applicationId, comment);
+        try {
+            if (ApprovalStatus.APPROVED.equals(result)) {
+                sealApplicationAppService.approve(applicationId, comment);
+            } else if (ApprovalStatus.REJECTED.equals(result)) {
+                sealApplicationAppService.reject(applicationId, comment);
+            }
+        } catch (BusinessException e) {
+            // 如果状态检查失败（如状态不是PENDING），记录警告但不抛出异常
+            log.warn("用印申请审批业务状态更新失败（可能已从其他地方审批）: applicationId={}, result={}, error={}", 
+                    applicationId, result, e.getMessage());
         }
     }
 
@@ -174,10 +196,16 @@ public class ApprovalEventListener {
      * 处理利冲检查审批
      */
     private void handleConflictCheckApproval(Long checkId, String result, String comment) {
-        if ("APPROVED".equals(result)) {
-            conflictCheckAppService.approve(checkId, comment);
-        } else if ("REJECTED".equals(result)) {
-            conflictCheckAppService.reject(checkId, comment);
+        try {
+            if (ApprovalStatus.APPROVED.equals(result)) {
+                conflictCheckAppService.approve(checkId, comment);
+            } else if (ApprovalStatus.REJECTED.equals(result)) {
+                conflictCheckAppService.reject(checkId, comment);
+            }
+        } catch (BusinessException e) {
+            // 如果状态检查失败，记录警告但不抛出异常
+            log.warn("利冲检查审批业务状态更新失败（可能已从其他地方审批）: checkId={}, result={}, error={}", 
+                    checkId, result, e.getMessage());
         }
     }
 
@@ -185,10 +213,16 @@ public class ApprovalEventListener {
      * 处理利益冲突豁免审批
      */
     private void handleConflictExemptionApproval(Long checkId, String result, String comment) {
-        if ("APPROVED".equals(result)) {
-            conflictCheckAppService.approveExemption(checkId, comment);
-        } else if ("REJECTED".equals(result)) {
-            conflictCheckAppService.rejectExemption(checkId, comment);
+        try {
+            if (ApprovalStatus.APPROVED.equals(result)) {
+                conflictCheckAppService.approveExemption(checkId, comment);
+            } else if (ApprovalStatus.REJECTED.equals(result)) {
+                conflictCheckAppService.rejectExemption(checkId, comment);
+            }
+        } catch (BusinessException e) {
+            // 如果状态检查失败，记录警告但不抛出异常
+            log.warn("利冲豁免审批业务状态更新失败（可能已从其他地方审批）: checkId={}, result={}, error={}", 
+                    checkId, result, e.getMessage());
         }
     }
 
@@ -196,9 +230,9 @@ public class ApprovalEventListener {
      * 处理数据交接审批
      */
     private void handleDataHandoverApproval(Long handoverId, String result, String comment) {
-        if ("APPROVED".equals(result)) {
+        if (ApprovalStatus.APPROVED.equals(result)) {
             dataHandoverService.onApprovalApproved(handoverId);
-        } else if ("REJECTED".equals(result)) {
+        } else if (ApprovalStatus.REJECTED.equals(result)) {
             dataHandoverService.onApprovalRejected(handoverId, comment);
         }
     }

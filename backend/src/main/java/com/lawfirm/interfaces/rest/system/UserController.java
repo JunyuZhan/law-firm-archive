@@ -10,6 +10,7 @@ import com.lawfirm.common.annotation.OperationLog;
 import com.lawfirm.common.annotation.RequirePermission;
 import com.lawfirm.common.result.PageResult;
 import com.lawfirm.common.result.Result;
+import com.lawfirm.common.util.FileValidator;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -151,6 +152,11 @@ public class UserController {
     @Operation(summary = "批量导入用户", description = "从Excel文件批量导入用户信息")
     @OperationLog(module = "用户管理", action = "批量导入用户")
     public Result<Map<String, Object>> importUsers(@RequestParam("file") MultipartFile file) throws IOException {
+        // ✅ 安全验证：验证上传的Excel文件
+        FileValidator.ValidationResult validationResult = FileValidator.validate(file);
+        if (!validationResult.isValid()) {
+            return Result.error(validationResult.getErrorMessage());
+        }
         Map<String, Object> result = userAppService.importUsers(file);
         return Result.success(result);
     }

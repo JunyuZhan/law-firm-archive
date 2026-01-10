@@ -5,6 +5,11 @@ server:
   port: 8080
   servlet:
     context-path: /api
+  # Tomcat连接超时配置（支持大文件下载和长时间操作）
+  tomcat:
+    connection-timeout: 600000  # 连接超时10分钟（600秒）
+    keep-alive-timeout: 600000  # Keep-Alive超时10分钟
+    max-keep-alive-requests: 1000  # 最大Keep-Alive请求数
 
 spring:
   # 数据源配置 - 必须通过环境变量配置

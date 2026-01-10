@@ -48,5 +48,12 @@ public class UserSessionRepository extends AbstractRepository<UserSessionMapper,
     public void markOtherSessionsAsNotCurrent(Long userId, Long excludeId) {
         baseMapper.markOtherSessionsAsNotCurrent(userId, excludeId);
     }
+
+    /**
+     * 根据Token更新最后访问时间（避免先查询再更新）
+     */
+    public int updateLastAccessTimeByToken(String token, java.time.LocalDateTime lastAccessTime) {
+        return baseMapper.updateLastAccessTimeByToken(token, lastAccessTime);
+    }
 }
 

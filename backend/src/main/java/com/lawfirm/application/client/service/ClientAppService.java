@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.lawfirm.domain.system.entity.User;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.time.LocalDate;
@@ -45,6 +46,7 @@ public class ClientAppService {
     /**
      * 分页查询客户
      * 数据权限：只能查看自己的客户（我是负责律师 OR 我是案源人）
+     * 优化：使用批量查询避免N+1问题
      */
     public PageResult<ClientDTO> listClients(ClientQueryDTO query) {
         Long currentUserId = SecurityUtils.getUserId();
@@ -66,11 +68,42 @@ public class ClientAppService {
                 myClientIds
         );
 
-        List<ClientDTO> records = page.getRecords().stream()
-                .map(this::toDTO)
+        List<Client> clients = page.getRecords();
+        if (clients.isEmpty()) {
+            return PageResult.of(Collections.emptyList(), 0, query.getPageNum(), query.getPageSize());
+        }
+        
+        // 批量加载用户信息（案源人和负责律师），避免N+1查询
+        Map<Long, User> userMap = batchLoadUsers(clients);
+
+        List<ClientDTO> records = clients.stream()
+                .map(client -> toDTO(client, userMap))
                 .collect(Collectors.toList());
 
         return PageResult.of(records, page.getTotal(), query.getPageNum(), query.getPageSize());
+    }
+    
+    /**
+     * 批量加载用户信息（案源人和负责律师）
+     * 避免N+1查询问题
+     */
+    private Map<Long, User> batchLoadUsers(List<Client> clients) {
+        Set<Long> userIds = new HashSet<>();
+        for (Client c : clients) {
+            if (c.getOriginatorId() != null) {
+                userIds.add(c.getOriginatorId());
+            }
+            if (c.getResponsibleLawyerId() != null) {
+                userIds.add(c.getResponsibleLawyerId());
+            }
+        }
+        
+        if (userIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        
+        return userRepository.listByIds(new ArrayList<>(userIds)).stream()
+                .collect(Collectors.toMap(User::getId, u -> u, (a, b) -> a));
     }
     
     /**
@@ -99,14 +132,20 @@ public class ClientAppService {
             return Collections.emptyList();
         }
         
+        // 限制最大查询数量，防止参数被恶意利用
+        int safeLimit = Math.min(Math.max(1, limit), 100);
+        
         // 全所客户搜索，不限制权限
         List<Client> clients = clientRepository.lambdaQuery()
                 .eq(Client::getDeleted, false)
                 .like(Client::getName, keyword)
-                .last("LIMIT " + limit)
+                .last("LIMIT " + safeLimit)
                 .list();
         
-        return clients.stream().map(this::toDTO).collect(Collectors.toList());
+        // 批量加载用户信息
+        Map<Long, User> userMap = batchLoadUsers(clients);
+        
+        return clients.stream().map(c -> toDTO(c, userMap)).collect(Collectors.toList());
     }
 
     /**
@@ -343,9 +382,30 @@ public class ClientAppService {
     }
 
     /**
-     * Entity 转 DTO
+     * Entity 转 DTO（单个查询时使用，会产生N+1查询）
      */
     private ClientDTO toDTO(Client client) {
+        // 单个客户查询时，直接查询用户信息
+        Map<Long, User> userMap = new HashMap<>();
+        if (client.getOriginatorId() != null) {
+            User user = userRepository.findById(client.getOriginatorId());
+            if (user != null) {
+                userMap.put(user.getId(), user);
+            }
+        }
+        if (client.getResponsibleLawyerId() != null && !userMap.containsKey(client.getResponsibleLawyerId())) {
+            User user = userRepository.findById(client.getResponsibleLawyerId());
+            if (user != null) {
+                userMap.put(user.getId(), user);
+            }
+        }
+        return toDTO(client, userMap);
+    }
+    
+    /**
+     * Entity 转 DTO（批量查询优化版本，从预加载的Map获取用户信息）
+     */
+    private ClientDTO toDTO(Client client, Map<Long, User> userMap) {
         ClientDTO dto = new ClientDTO();
         dto.setId(client.getId());
         dto.setClientNo(client.getClientNo());
@@ -374,15 +434,15 @@ public class ClientAppService {
         dto.setCreatedAt(client.getCreatedAt());
         dto.setUpdatedAt(client.getUpdatedAt());
         
-        // 查询关联数据
+        // 从Map获取用户名称，避免N+1查询
         if (client.getOriginatorId() != null) {
-            var user = userRepository.findById(client.getOriginatorId());
+            User user = userMap.get(client.getOriginatorId());
             if (user != null) {
                 dto.setOriginatorName(user.getRealName());
             }
         }
         if (client.getResponsibleLawyerId() != null) {
-            var user = userRepository.findById(client.getResponsibleLawyerId());
+            User user = userMap.get(client.getResponsibleLawyerId());
             if (user != null) {
                 dto.setResponsibleLawyerName(user.getRealName());
             }
@@ -409,6 +469,7 @@ public class ClientAppService {
     /**
      * 导出客户信息为Excel
      * 数据权限：只能导出自己的客户
+     * 优化：批量加载用户信息，显示姓名而非ID
      */
     public ByteArrayInputStream exportClients(ClientQueryDTO query) throws IOException {
         Long currentUserId = SecurityUtils.getUserId();
@@ -425,6 +486,9 @@ public class ClientAppService {
         );
 
         List<Client> clients = page.getRecords();
+        
+        // 批量加载用户信息（案源人和负责律师）
+        Map<Long, User> userMap = batchLoadUsers(clients);
         
         // 准备表头
         List<String> headers = Arrays.asList(
@@ -454,9 +518,18 @@ public class ClientAppService {
             row.add(getCategoryName(client.getCategory()));
             row.add(getStatusName(client.getStatus()));
             
-            // 案源人和负责律师名称需要查询，这里简化处理
-            row.add(client.getOriginatorId() != null ? client.getOriginatorId().toString() : "");
-            row.add(client.getResponsibleLawyerId() != null ? client.getResponsibleLawyerId().toString() : "");
+            // 从Map获取用户姓名
+            String originatorName = "";
+            if (client.getOriginatorId() != null && userMap.containsKey(client.getOriginatorId())) {
+                originatorName = userMap.get(client.getOriginatorId()).getRealName();
+            }
+            row.add(originatorName);
+            
+            String responsibleLawyerName = "";
+            if (client.getResponsibleLawyerId() != null && userMap.containsKey(client.getResponsibleLawyerId())) {
+                responsibleLawyerName = userMap.get(client.getResponsibleLawyerId()).getRealName();
+            }
+            row.add(responsibleLawyerName);
             
             row.add(client.getFirstCooperationDate());
             row.add(client.getRemark());

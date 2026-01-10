@@ -8,15 +8,19 @@ import com.lawfirm.common.base.PageQuery;
 import com.lawfirm.common.exception.BusinessException;
 import com.lawfirm.common.result.PageResult;
 import com.lawfirm.domain.admin.entity.Supplier;
+import com.lawfirm.domain.admin.repository.PurchaseRequestRepository;
 import com.lawfirm.domain.admin.repository.SupplierRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 /**
@@ -28,6 +32,10 @@ import java.util.stream.Collectors;
 public class SupplierAppService {
 
     private final SupplierRepository supplierRepository;
+    private final PurchaseRequestRepository purchaseRequestRepository;
+
+    // 问题430修复：序号生成器防止并发重复
+    private final AtomicLong sequence = new AtomicLong(0);
 
     /**
      * 分页查询供应商
@@ -57,10 +65,11 @@ public class SupplierAppService {
 
     /**
      * 创建供应商
+     * 问题430修复：使用安全的编号生成
      */
     @Transactional
     public SupplierDTO createSupplier(CreateSupplierCommand command) {
-        String supplierNo = "SUP" + System.currentTimeMillis();
+        String supplierNo = generateSupplierNo();
         
         Supplier supplier = Supplier.builder()
                 .supplierNo(supplierNo)
@@ -82,6 +91,15 @@ public class SupplierAppService {
         supplierRepository.save(supplier);
         log.info("创建供应商: {}", supplier.getName());
         return toDTO(supplier);
+    }
+
+    /**
+     * 问题430修复：生成供应商编号（防止并发重复）
+     */
+    private String generateSupplierNo() {
+        String date = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        long seq = sequence.incrementAndGet() % 10000;
+        return String.format("SUP%s%04d", date, seq);
     }
 
 
@@ -115,6 +133,7 @@ public class SupplierAppService {
 
     /**
      * 删除供应商
+     * 问题432修复：检查是否有采购记录，使用软删除
      */
     @Transactional
     public void deleteSupplier(Long id) {
@@ -122,8 +141,17 @@ public class SupplierAppService {
         if (supplier == null) {
             throw new BusinessException("供应商不存在");
         }
-        supplierRepository.removeById(id);
-        log.info("删除供应商: {}", supplier.getName());
+        
+        // 问题432修复：检查是否有采购记录
+        long purchaseCount = purchaseRequestRepository.countBySupplierId(id);
+        if (purchaseCount > 0) {
+            throw new BusinessException("该供应商有" + purchaseCount + "条采购记录，无法删除。建议使用停用功能。");
+        }
+        
+        // 使用软删除（改为停用状态）
+        supplier.setStatus("INACTIVE");
+        supplierRepository.updateById(supplier);
+        log.info("供应商已停用: {}", supplier.getName());
     }
 
     /**

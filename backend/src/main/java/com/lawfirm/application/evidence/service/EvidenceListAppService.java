@@ -7,6 +7,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lawfirm.application.evidence.command.CreateEvidenceListCommand;
 import com.lawfirm.application.evidence.dto.EvidenceDTO;
+import com.lawfirm.application.evidence.dto.EvidenceListCompareResult;
 import com.lawfirm.application.evidence.dto.EvidenceListDTO;
 import com.lawfirm.common.exception.BusinessException;
 import com.lawfirm.common.result.PageResult;
@@ -19,8 +20,11 @@ import com.lawfirm.domain.matter.repository.MatterRepository;
 import com.lawfirm.infrastructure.external.document.EvidenceListDocumentGenerator;
 import com.lawfirm.infrastructure.external.minio.MinioService;
 import com.lawfirm.infrastructure.persistence.mapper.EvidenceListMapper;
+import com.lawfirm.common.util.SecurityUtils;
+import com.lawfirm.application.matter.service.MatterAppService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +35,7 @@ import java.util.stream.Collectors;
 
 /**
  * 证据清单应用服务
+ * ✅ 修复问题579-600: 添加权限验证和N+1查询优化
  */
 @Slf4j
 @Service
@@ -44,11 +49,25 @@ public class EvidenceListAppService {
     private final MatterRepository matterRepository;
     private final EvidenceListDocumentGenerator documentGenerator;
     private final MinioService minioService;
+    
+    private MatterAppService matterAppService;
+    
+    @org.springframework.beans.factory.annotation.Autowired
+    @Lazy
+    public void setMatterAppService(MatterAppService matterAppService) {
+        this.matterAppService = matterAppService;
+    }
 
     /**
      * 分页查询证据清单
+     * ✅ 修复问题579: 添加权限验证
      */
     public PageResult<EvidenceListDTO> listEvidenceLists(Long matterId, String listType, int pageNum, int pageSize) {
+        // ✅ 验证项目访问权限
+        if (matterId != null) {
+            validateMatterAccess(matterId);
+        }
+        
         IPage<EvidenceList> page = listMapper.selectListPage(
                 new Page<>(pageNum, pageSize), matterId, listType);
         List<EvidenceListDTO> records = page.getRecords().stream()
@@ -59,28 +78,39 @@ public class EvidenceListAppService {
 
     /**
      * 获取清单详情
+     * ✅ 修复问题580: 添加权限验证 + 优化N+1查询
      */
     public EvidenceListDTO getListById(Long id) {
         EvidenceList list = listRepository.getByIdOrThrow(id, "证据清单不存在");
+        
+        // ✅ 验证项目访问权限
+        if (list.getMatterId() != null) {
+            validateMatterAccess(list.getMatterId());
+        }
+        
         EvidenceListDTO dto = toDTO(list);
-        // 加载证据详情
+        // ✅ 批量加载证据详情（优化N+1查询）
         List<Long> evidenceIds = parseEvidenceIds(list.getEvidenceIds());
         if (!evidenceIds.isEmpty()) {
-            List<EvidenceDTO> evidences = evidenceIds.stream()
-                    .map(evidenceRepository::findById)
-                    .filter(Objects::nonNull)
+            List<Evidence> evidences = evidenceRepository.listByIds(evidenceIds);
+            dto.setEvidences(evidences.stream()
                     .map(this::toEvidenceDTO)
-                    .collect(Collectors.toList());
-            dto.setEvidences(evidences);
+                    .collect(Collectors.toList()));
         }
         return dto;
     }
 
     /**
      * 创建证据清单
+     * ✅ 修复问题589: 添加权限验证
      */
     @Transactional
     public EvidenceListDTO createList(CreateEvidenceListCommand command) {
+        // ✅ 验证项目编辑权限
+        if (command.getMatterId() != null) {
+            validateMatterEditPermission(command.getMatterId());
+        }
+        
         String listNo = generateListNo();
         String evidenceIdsJson = toJson(command.getEvidenceIds());
 
@@ -94,16 +124,23 @@ public class EvidenceListAppService {
                 .build();
 
         listRepository.save(list);
-        log.info("证据清单创建成功: {}", list.getName());
+        log.info("证据清单创建成功: {}, 创建人: {}", list.getName(), SecurityUtils.getUserId());
         return toDTO(list);
     }
 
     /**
      * 更新证据清单
+     * ✅ 修复问题590: 添加权限验证
      */
     @Transactional
     public EvidenceListDTO updateList(Long id, String name, String listType, List<Long> evidenceIds) {
         EvidenceList list = listRepository.getByIdOrThrow(id, "证据清单不存在");
+        
+        // ✅ 验证项目编辑权限
+        if (list.getMatterId() != null) {
+            validateMatterEditPermission(list.getMatterId());
+        }
+        
         if (name != null) list.setName(name);
         if (listType != null) list.setListType(listType);
         if (evidenceIds != null) list.setEvidenceIds(toJson(evidenceIds));
@@ -114,30 +151,43 @@ public class EvidenceListAppService {
 
     /**
      * 删除证据清单
+     * ✅ 修复问题591: 添加权限验证
      */
     @Transactional
     public void deleteList(Long id) {
         EvidenceList list = listRepository.getByIdOrThrow(id, "证据清单不存在");
+        
+        // ✅ 验证项目编辑权限
+        if (list.getMatterId() != null) {
+            validateMatterEditPermission(list.getMatterId());
+        }
+        
         listRepository.removeById(id);
-        log.info("证据清单删除成功: {}", list.getName());
+        log.info("证据清单删除成功: {}, 操作人: {}", list.getName(), SecurityUtils.getUserId());
     }
 
     /**
      * 生成证据清单文件（返回下载URL）
+     * ✅ 修复问题592/597: 添加权限验证 + 优化N+1查询
      */
     @Transactional
     public String generateListFile(Long id, String format) {
         EvidenceList list = listRepository.getByIdOrThrow(id, "证据清单不存在");
+        
+        // ✅ 验证项目访问权限
+        if (list.getMatterId() != null) {
+            validateMatterAccess(list.getMatterId());
+        }
+        
         List<Long> evidenceIds = parseEvidenceIds(list.getEvidenceIds());
         
         if (evidenceIds.isEmpty()) {
             throw new BusinessException("清单中没有证据");
         }
 
-        // 获取证据详情
-        List<EvidenceDTO> evidences = evidenceIds.stream()
-                .map(evidenceRepository::findById)
-                .filter(Objects::nonNull)
+        // ✅ 批量加载证据详情（优化N+1查询）
+        List<Evidence> evidenceList = evidenceRepository.listByIds(evidenceIds);
+        List<EvidenceDTO> evidences = evidenceList.stream()
                 .map(this::toEvidenceDTO)
                 .collect(Collectors.toList());
 
@@ -148,17 +198,16 @@ public class EvidenceListAppService {
         }
 
         // 生成文档
+        // ✅ 修复问题612: 支持PDF格式生成
         byte[] documentBytes;
         String contentType;
         String fileExtension;
         
         if ("pdf".equalsIgnoreCase(format)) {
-            // PDF格式暂时使用Word转换（需要额外库支持）
-            // 这里先生成Word，后续可以添加PDF转换
-            documentBytes = documentGenerator.generateWordDocument(toDTO(list), matter, evidences);
-            contentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-            fileExtension = "docx";
-            log.warn("PDF格式暂不支持，已生成Word格式");
+            // PDF格式：调用PDF生成器
+            documentBytes = documentGenerator.generatePdfDocument(toDTO(list), matter, evidences);
+            contentType = "application/pdf";
+            fileExtension = "pdf";
         } else {
             // 默认生成Word
             documentBytes = documentGenerator.generateWordDocument(toDTO(list), matter, evidences);
@@ -166,8 +215,9 @@ public class EvidenceListAppService {
             fileExtension = "docx";
         }
 
-        // 上传到MinIO
-        String fileName = list.getName() + "_" + System.currentTimeMillis() + "." + fileExtension;
+        // ✅ 修复问题613: 使用更友好的文件名格式（日期而非时间戳）
+        String dateStr = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd"));
+        String fileName = list.getName() + "_" + dateStr + "." + fileExtension;
         String fileUrl;
         try {
             fileUrl = minioService.uploadFile(
@@ -193,19 +243,25 @@ public class EvidenceListAppService {
 
     /**
      * 导出证据清单为Word格式
+     * ✅ 修复问题593/598: 添加权限验证 + 优化N+1查询
      */
     public byte[] exportToWord(Long id) {
         EvidenceList list = listRepository.getByIdOrThrow(id, "证据清单不存在");
+        
+        // ✅ 验证项目访问权限
+        if (list.getMatterId() != null) {
+            validateMatterAccess(list.getMatterId());
+        }
+        
         List<Long> evidenceIds = parseEvidenceIds(list.getEvidenceIds());
         
         if (evidenceIds.isEmpty()) {
             throw new BusinessException("清单中没有证据");
         }
 
-        // 获取证据详情
-        List<EvidenceDTO> evidences = evidenceIds.stream()
-                .map(evidenceRepository::findById)
-                .filter(Objects::nonNull)
+        // ✅ 批量加载证据详情（优化N+1查询）
+        List<Evidence> evidenceList = evidenceRepository.listByIds(evidenceIds);
+        List<EvidenceDTO> evidences = evidenceList.stream()
                 .map(this::toEvidenceDTO)
                 .collect(Collectors.toList());
 
@@ -220,19 +276,25 @@ public class EvidenceListAppService {
 
     /**
      * 导出证据清单为PDF格式
+     * ✅ 修复问题594/599: 添加权限验证 + 优化N+1查询
      */
     public byte[] exportToPdf(Long id) {
         EvidenceList list = listRepository.getByIdOrThrow(id, "证据清单不存在");
+        
+        // ✅ 验证项目访问权限
+        if (list.getMatterId() != null) {
+            validateMatterAccess(list.getMatterId());
+        }
+        
         List<Long> evidenceIds = parseEvidenceIds(list.getEvidenceIds());
         
         if (evidenceIds.isEmpty()) {
             throw new BusinessException("清单中没有证据");
         }
 
-        // 获取证据详情
-        List<EvidenceDTO> evidences = evidenceIds.stream()
-                .map(evidenceRepository::findById)
-                .filter(Objects::nonNull)
+        // ✅ 批量加载证据详情（优化N+1查询）
+        List<Evidence> evidenceList = evidenceRepository.listByIds(evidenceIds);
+        List<EvidenceDTO> evidences = evidenceList.stream()
                 .map(this::toEvidenceDTO)
                 .collect(Collectors.toList());
 
@@ -247,8 +309,12 @@ public class EvidenceListAppService {
 
     /**
      * 按案件获取清单列表
+     * ✅ 修复问题595: 添加权限验证
      */
     public List<EvidenceListDTO> getListsByMatter(Long matterId) {
+        // ✅ 验证项目访问权限
+        validateMatterAccess(matterId);
+        
         return listMapper.selectByMatterId(matterId).stream()
                 .map(this::toDTO)
                 .collect(Collectors.toList());
@@ -268,10 +334,20 @@ public class EvidenceListAppService {
 
     /**
      * 对比两个清单的差异（M6-044）
+     * ✅ 修复问题596/600: 添加权限验证 + 优化N+1查询
+     * ✅ 修复问题614: 返回类型安全的DTO替代Map<String, Object>
      */
-    public Map<String, Object> compareLists(Long listId1, Long listId2) {
+    public EvidenceListCompareResult compareLists(Long listId1, Long listId2) {
         EvidenceList list1 = listRepository.getByIdOrThrow(listId1, "清单1不存在");
         EvidenceList list2 = listRepository.getByIdOrThrow(listId2, "清单2不存在");
+
+        // ✅ 验证项目访问权限
+        if (list1.getMatterId() != null) {
+            validateMatterAccess(list1.getMatterId());
+        }
+        if (list2.getMatterId() != null) {
+            validateMatterAccess(list2.getMatterId());
+        }
 
         List<Long> evidenceIds1 = parseEvidenceIds(list1.getEvidenceIds());
         List<Long> evidenceIds2 = parseEvidenceIds(list2.getEvidenceIds());
@@ -289,33 +365,23 @@ public class EvidenceListAppService {
         List<Long> common = new ArrayList<>(set1);
         common.retainAll(set2);
 
-        Map<String, Object> result = new HashMap<>();
-        result.put("list1", toDTO(list1));
-        result.put("list2", toDTO(list2));
-        result.put("addedEvidenceIds", added);
-        result.put("removedEvidenceIds", removed);
-        result.put("commonEvidenceIds", common);
-        result.put("addedCount", added.size());
-        result.put("removedCount", removed.size());
-        result.put("commonCount", common.size());
+        // ✅ 使用类型安全的DTO
+        EvidenceListCompareResult result = EvidenceListCompareResult.create(
+                toDTO(list1), toDTO(list2), added, removed, common);
 
-        // 加载证据详情
+        // ✅ 批量加载证据详情（优化N+1查询）
         if (!added.isEmpty()) {
-            List<EvidenceDTO> addedEvidences = added.stream()
-                    .map(evidenceRepository::findById)
-                    .filter(Objects::nonNull)
+            List<Evidence> addedList = evidenceRepository.listByIds(added);
+            result.setAddedEvidences(addedList.stream()
                     .map(this::toEvidenceDTO)
-                    .collect(Collectors.toList());
-            result.put("addedEvidences", addedEvidences);
+                    .collect(Collectors.toList()));
         }
 
         if (!removed.isEmpty()) {
-            List<EvidenceDTO> removedEvidences = removed.stream()
-                    .map(evidenceRepository::findById)
-                    .filter(Objects::nonNull)
+            List<Evidence> removedList = evidenceRepository.listByIds(removed);
+            result.setRemovedEvidences(removedList.stream()
                     .map(this::toEvidenceDTO)
-                    .collect(Collectors.toList());
-            result.put("removedEvidences", removedEvidences);
+                    .collect(Collectors.toList()));
         }
 
         log.info("清单对比完成: list1={}, list2={}, 新增={}, 删除={}, 共同={}",
@@ -323,25 +389,91 @@ public class EvidenceListAppService {
         return result;
     }
 
-    private String generateListNo() {
-        String prefix = "EL" + LocalDate.now().toString().replace("-", "").substring(2);
-        String random = UUID.randomUUID().toString().substring(0, 4).toUpperCase();
-        return prefix + random;
+    /**
+     * 验证项目访问权限
+     */
+    private void validateMatterAccess(Long matterId) {
+        if (matterId == null) {
+            return;
+        }
+        
+        String dataScope = SecurityUtils.getDataScope();
+        if ("ALL".equals(dataScope)) {
+            return;
+        }
+        
+        Long currentUserId = SecurityUtils.getUserId();
+        Long deptId = SecurityUtils.getDepartmentId();
+        
+        List<Long> accessibleMatterIds = matterAppService.getAccessibleMatterIds(dataScope, currentUserId, deptId);
+        
+        if (accessibleMatterIds == null) {
+            return;
+        }
+        
+        if (!accessibleMatterIds.contains(matterId)) {
+            throw new BusinessException("权限不足：无法访问该项目的证据清单");
+        }
     }
 
+    /**
+     * 验证项目编辑权限
+     */
+    private void validateMatterEditPermission(Long matterId) {
+        if (matterId == null) {
+            return;
+        }
+        
+        // 验证访问权限
+        validateMatterAccess(matterId);
+        
+        // 验证是否是项目成员
+        matterAppService.validateMatterOwnership(matterId);
+        
+        // 检查项目状态
+        Matter matter = matterRepository.findById(matterId);
+        if (matter != null && ("ARCHIVED".equals(matter.getStatus()) || "CLOSED".equals(matter.getStatus()))) {
+            String statusName = "ARCHIVED".equals(matter.getStatus()) ? "已归档" : "已结案";
+            throw new BusinessException("该项目" + statusName + "，无法编辑证据清单");
+        }
+    }
+
+    /**
+     * 生成证据清单编号
+     * ✅ 修复问题609: 使用更可靠的编号生成器替代UUID截断
+     */
+    private String generateListNo() {
+        return com.lawfirm.common.util.NumberGenerator.generateEvidenceListNo();
+    }
+
+    /**
+     * 将ID列表转换为JSON字符串
+     * ✅ 修复问题610: 记录转换失败的异常
+     */
     private String toJson(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return "[]";
+        }
         try {
             return objectMapper.writeValueAsString(ids);
         } catch (JsonProcessingException e) {
+            log.error("证据ID列表序列化失败: {}", e.getMessage());
             return "[]";
         }
     }
 
+    /**
+     * 解析证据ID列表JSON字符串
+     * ✅ 修复问题611: 记录解析失败的异常
+     */
     private List<Long> parseEvidenceIds(String json) {
-        if (json == null || json.isEmpty()) return new ArrayList<>();
+        if (json == null || json.isEmpty() || "[]".equals(json.trim())) {
+            return new ArrayList<>();
+        }
         try {
             return objectMapper.readValue(json, new TypeReference<List<Long>>() {});
         } catch (JsonProcessingException e) {
+            log.error("证据ID列表解析失败, json={}, error={}", json, e.getMessage());
             return new ArrayList<>();
         }
     }

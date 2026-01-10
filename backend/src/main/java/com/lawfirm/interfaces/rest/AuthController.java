@@ -3,8 +3,10 @@ package com.lawfirm.interfaces.rest;
 import com.lawfirm.application.system.service.AuthService;
 import com.lawfirm.application.system.service.CaptchaService;
 import com.lawfirm.common.annotation.OperationLog;
+import com.lawfirm.common.annotation.RateLimiter;
 import com.lawfirm.common.result.Result;
 import com.lawfirm.common.util.SecurityUtils;
+import com.lawfirm.common.util.IpUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -12,6 +14,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Set;
@@ -23,6 +26,7 @@ import java.util.Set;
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
+@Slf4j
 public class AuthController {
 
     private final AuthService authService;
@@ -33,6 +37,7 @@ public class AuthController {
      */
     @Operation(summary = "获取验证码")
     @GetMapping("/captcha")
+    @RateLimiter(key = "captcha", rate = 20, interval = 60, limitType = RateLimiter.LimitType.IP, message = "验证码请求过于频繁")
     public Result<CaptchaService.CaptchaResult> getCaptcha() {
         CaptchaService.CaptchaResult result = captchaService.generateCaptcha();
         return Result.success(result);
@@ -44,17 +49,22 @@ public class AuthController {
     @PostMapping("/login")
     @OperationLog(module = "认证", action = "用户登录", saveResult = false)
     @Operation(summary = "用户登录")
+    @RateLimiter(key = "login", rate = 10, interval = 60, limitType = RateLimiter.LimitType.IP, message = "登录尝试过于频繁，请稍后再试")
     public Result<LoginResponse> login(@RequestBody @Valid LoginRequest request,
                                         HttpServletRequest httpRequest) {
-        // 验证验证码
+        // ✅ 使用 IpUtils 获取真实IP
+        String ip = IpUtils.getIpAddr(httpRequest);
+        
+        // 验证码校验（可选）：如果前端传了验证码则验证，否则跳过
+        // 注：前端使用滑动验证，无需图形验证码
         if (request.getCaptchaId() != null && request.getCaptchaCode() != null) {
             boolean verified = captchaService.verifyCaptcha(request.getCaptchaId(), request.getCaptchaCode());
             if (!verified) {
-                return Result.error("验证码错误或已过期");
+                log.warn("验证码验证失败: username={}, ip={}", request.getUsername(), ip);
+                return Result.error("验证码错误或已过期，请刷新后重试");
             }
         }
 
-        String ip = getClientIp(httpRequest);
         String userAgent = httpRequest.getHeader("User-Agent");
         AuthService.LoginResult result = authService.login(
                 request.getUsername(),
@@ -128,27 +138,6 @@ public class AuthController {
         response.setDepartmentId(SecurityUtils.getDepartmentId());
         response.setCompensationType(SecurityUtils.getCompensationType());
         return Result.success(response);
-    }
-
-    /**
-     * 获取客户端IP
-     */
-    private String getClientIp(HttpServletRequest request) {
-        String ip = request.getHeader("X-Forwarded-For");
-        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getHeader("Proxy-Client-IP");
-        }
-        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getHeader("WL-Proxy-Client-IP");
-        }
-        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getRemoteAddr();
-        }
-        // 多个代理的情况，取第一个IP
-        if (ip != null && ip.contains(",")) {
-            ip = ip.split(",")[0].trim();
-        }
-        return ip;
     }
 
     // ========== Request/Response DTOs ==========

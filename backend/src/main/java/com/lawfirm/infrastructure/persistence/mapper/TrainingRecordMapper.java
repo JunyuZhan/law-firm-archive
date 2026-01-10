@@ -37,4 +37,16 @@ public interface TrainingRecordMapper extends BaseMapper<TrainingRecord> {
      */
     @Select("SELECT COALESCE(SUM(earned_credits), 0) FROM hr_training_record WHERE employee_id = #{employeeId} AND passed = true AND deleted = false")
     int sumCreditsByEmployeeId(@Param("employeeId") Long employeeId);
+
+    /**
+     * 统计培训的完成人数
+     */
+    @Select("SELECT COUNT(*) FROM hr_training_record WHERE training_id = #{trainingId} AND status = 'COMPLETED' AND certificate_url IS NOT NULL AND deleted = false")
+    int countCompletedByTrainingId(@Param("trainingId") Long trainingId);
+
+    /**
+     * 根据培训ID和员工ID查找记录
+     */
+    @Select("SELECT * FROM hr_training_record WHERE training_id = #{trainingId} AND employee_id = #{employeeId} AND deleted = false LIMIT 1")
+    TrainingRecord selectByTrainingIdAndEmployeeId(@Param("trainingId") Long trainingId, @Param("employeeId") Long employeeId);
 }

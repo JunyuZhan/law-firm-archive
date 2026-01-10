@@ -29,6 +29,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import com.lawfirm.common.constant.ApprovalStatus;
+import com.lawfirm.common.constant.PaymentStatus;
+
 /**
  * 收款变更申请服务
  * 用于已锁定收款记录的变更申请和审批流程
@@ -64,7 +67,7 @@ public class PaymentAmendmentService {
         // 检查是否有待审批的变更申请
         List<PaymentAmendment> pendingAmendments = amendmentRepository.findByPaymentId(command.getPaymentId());
         boolean hasPending = pendingAmendments.stream()
-            .anyMatch(a -> "PENDING".equals(a.getStatus()));
+            .anyMatch(a -> ApprovalStatus.PENDING.equals(a.getStatus()));
         if (hasPending) {
             throw new BusinessException("该收款记录已有待审批的变更申请");
         }
@@ -77,7 +80,7 @@ public class PaymentAmendmentService {
             .reason(command.getReason())
             .requestedBy(SecurityUtils.getUserId())
             .requestedAt(LocalDateTime.now())
-            .status("PENDING")
+            .status(ApprovalStatus.PENDING)
             .build();
         
         amendmentRepository.save(amendment);
@@ -113,7 +116,7 @@ public class PaymentAmendmentService {
     public PaymentAmendmentDTO approveAmendment(Long amendmentId, String comment) {
         PaymentAmendment amendment = amendmentRepository.getByIdOrThrow(amendmentId, "变更申请不存在");
         
-        if (!"PENDING".equals(amendment.getStatus())) {
+        if (!ApprovalStatus.PENDING.equals(amendment.getStatus())) {
             throw new BusinessException("变更申请状态不正确");
         }
         
@@ -132,11 +135,11 @@ public class PaymentAmendmentService {
                 
                 // 更新收费状态
                 if (newPaidAmount.compareTo(fee.getAmount()) >= 0) {
-                    fee.setStatus("PAID");
+                    fee.setStatus(PaymentStatus.PAID);
                 } else if (newPaidAmount.compareTo(BigDecimal.ZERO) > 0) {
-                    fee.setStatus("PARTIAL");
+                    fee.setStatus(PaymentStatus.PARTIAL);
                 } else {
-                    fee.setStatus("PENDING");
+                    fee.setStatus(PaymentStatus.PENDING);
                 }
                 feeRepository.updateById(fee);
             }
@@ -148,7 +151,7 @@ public class PaymentAmendmentService {
         }
         
         // 更新变更申请状态
-        amendment.setStatus("APPROVED");
+        amendment.setStatus(ApprovalStatus.APPROVED);
         amendment.setApprovedBy(SecurityUtils.getUserId());
         amendment.setApprovedAt(LocalDateTime.now());
         amendmentRepository.updateById(amendment);
@@ -168,11 +171,11 @@ public class PaymentAmendmentService {
     public PaymentAmendmentDTO rejectAmendment(Long amendmentId, String rejectReason) {
         PaymentAmendment amendment = amendmentRepository.getByIdOrThrow(amendmentId, "变更申请不存在");
         
-        if (!"PENDING".equals(amendment.getStatus())) {
+        if (!ApprovalStatus.PENDING.equals(amendment.getStatus())) {
             throw new BusinessException("变更申请状态不正确");
         }
         
-        amendment.setStatus("REJECTED");
+        amendment.setStatus(ApprovalStatus.REJECTED);
         amendment.setApprovedBy(SecurityUtils.getUserId());
         amendment.setApprovedAt(LocalDateTime.now());
         amendment.setRejectReason(rejectReason);
@@ -258,13 +261,7 @@ public class PaymentAmendmentService {
      * 获取状态名称
      */
     private String getStatusName(String status) {
-        if (status == null) return null;
-        return switch (status) {
-            case "PENDING" -> "待审批";
-            case "APPROVED" -> "已批准";
-            case "REJECTED" -> "已拒绝";
-            default -> status;
-        };
+        return ApprovalStatus.getStatusName(status);
     }
 
     /**

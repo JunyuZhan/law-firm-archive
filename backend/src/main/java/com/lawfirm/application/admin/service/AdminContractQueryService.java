@@ -7,6 +7,7 @@ import com.lawfirm.application.admin.dto.AdminContractQueryDTO;
 import com.lawfirm.application.admin.dto.AdminContractViewDTO;
 import com.lawfirm.application.common.service.ContractDataPermissionService;
 import com.lawfirm.common.result.PageResult;
+import com.lawfirm.common.constant.MatterConstants;
 import com.lawfirm.domain.client.entity.Client;
 import com.lawfirm.domain.client.repository.ClientRepository;
 import com.lawfirm.domain.finance.entity.Contract;
@@ -163,7 +164,7 @@ public class AdminContractQueryService {
         dto.setName(contract.getName());
         dto.setSignDate(contract.getSignDate());
         dto.setCaseType(contract.getCaseType());
-        dto.setCaseTypeName(getCaseTypeName(contract.getCaseType()));
+        dto.setCaseTypeName(MatterConstants.getCaseTypeName(contract.getCaseType()));
         dto.setCauseOfAction(contract.getCauseOfAction());
         dto.setCauseOfActionName(getCauseOfActionName(contract.getCauseOfAction()));
         dto.setOpposingParty(contract.getOpposingParty());
@@ -203,19 +204,6 @@ public class AdminContractQueryService {
         return dto;
     }
 
-    /**
-     * 获取案件类型名称
-     */
-    private String getCaseTypeName(String caseType) {
-        if (caseType == null) return null;
-        return switch (caseType) {
-            case "CIVIL" -> "民事";
-            case "CRIMINAL" -> "刑事";
-            case "ADMINISTRATIVE" -> "行政";
-            case "NON_LITIGATION" -> "非诉讼";
-            default -> caseType;
-        };
-    }
 
     /**
      * 获取审理阶段名称（支持多选，逗号分隔）

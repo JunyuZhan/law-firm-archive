@@ -45,6 +45,10 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import com.lawfirm.common.constant.PayrollStatus;
+import com.lawfirm.common.constant.EmployeeStatus;
+import com.lawfirm.common.constant.CommissionStatus;
+
 /**
  * 工资管理应用服务
  */
@@ -127,6 +131,8 @@ public class PayrollAppService {
      * 显示规则：
      * 1. 员工属性确认后，自动在当月的工资管理列表中显示
      * 2. 员工离职后，次月开始不再在工资管理列表中显示
+     * 
+     * 性能优化：使用批量查询替代N+1查询
      */
     public List<PayrollItemDTO> getPayrollItemsByYearMonth(Integer year, Integer month) {
         // 先查找该年月的工资表
@@ -138,9 +144,7 @@ public class PayrollAppService {
         LocalDate queryMonthStart = LocalDate.of(year, month, 1);
         LocalDate queryMonthEnd = queryMonthStart.withDayOfMonth(queryMonthStart.lengthOfMonth());
         
-        // 获取符合条件的员工：
-        // 1. 员工创建时间（员工属性确认时间）在查询月份之前或当月
-        // 2. 如果员工已离职，离职日期必须在查询月份之后（即次月开始不显示）
+        // 1. 批量获取符合条件的员工（1次查询）
         List<Employee> allEmployees = employeeRepository.lambdaQuery()
                 .list()
                 .stream()
@@ -149,22 +153,18 @@ public class PayrollAppService {
                         return false;
                     }
                     
-                    // 检查员工创建时间（员工属性确认时间）
                     LocalDateTime createdAt = employee.getCreatedAt();
                     if (createdAt == null) {
                         return false;
                     }
                     LocalDate employeeCreatedDate = createdAt.toLocalDate();
                     
-                    // 员工必须在查询月份之前或当月被确认为员工
                     if (employeeCreatedDate.isAfter(queryMonthEnd)) {
                         return false;
                     }
                     
-                    // 如果员工已离职，检查离职日期
-                    if ("RESIGNED".equals(employee.getWorkStatus()) && employee.getResignationDate() != null) {
+                    if (EmployeeStatus.RESIGNED.equals(employee.getWorkStatus()) && employee.getResignationDate() != null) {
                         LocalDate resignationDate = employee.getResignationDate();
-                        // 如果离职日期在查询月份之前，则不显示（次月开始不显示）
                         if (resignationDate.isBefore(queryMonthStart)) {
                             return false;
                         }
@@ -173,73 +173,25 @@ public class PayrollAppService {
                     return true;
                 })
                 .collect(Collectors.toList());
+
+        if (allEmployees.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        // 2. 批量获取所有员工对应的用户信息（1次查询）
+        List<Long> userIds = allEmployees.stream()
+                .map(Employee::getUserId)
+                .filter(id -> id != null)
+                .distinct()
+                .collect(Collectors.toList());
+        
+        Map<Long, User> userMap = userRepository.listByIds(userIds)
+                .stream()
+                .collect(Collectors.toMap(User::getId, u -> u, (a, b) -> a));
         
         if (sheet == null || sheet.getId() == null) {
             // 如果工资表不存在，返回符合条件的员工列表，实时计算提成
-            return allEmployees.stream()
-                    .filter(employee -> employee != null && employee.getUserId() != null)
-                    .map(employee -> {
-                        try {
-                            User user = userRepository.getById(employee.getUserId());
-                            if (user == null) {
-                                return null;
-                            }
-                            
-                            // 实时计算该员工的提成总额
-                            List<Commission> commissions = getCommissionDetailsForEmployee(user.getId(), startDate, endDate);
-                            BigDecimal commissionTotal = commissions.stream()
-                                    .map(Commission::getCommissionAmount)
-                                    .reduce(BigDecimal.ZERO, BigDecimal::add);
-                            
-                            // 创建收入项列表
-                            List<com.lawfirm.application.hr.dto.PayrollIncomeDTO> incomes = commissions.stream()
-                                    .map(comm -> {
-                                        String contractName = "未知合同";
-                                        if (comm.getContractId() != null) {
-                                            try {
-                                                Contract financeContract = financeContractRepository.getById(comm.getContractId());
-                                                if (financeContract != null) {
-                                                    contractName = financeContract.getName() != null && !financeContract.getName().isEmpty()
-                                                            ? financeContract.getName()
-                                                            : (financeContract.getContractNo() != null ? financeContract.getContractNo() : "未知合同");
-                                                }
-                                            } catch (Exception e) {
-                                                log.warn("获取合同信息失败: contractId={}", comm.getContractId(), e);
-                                            }
-                                        }
-                                        
-                                        com.lawfirm.application.hr.dto.PayrollIncomeDTO incomeDto = new com.lawfirm.application.hr.dto.PayrollIncomeDTO();
-                                        incomeDto.setIncomeType("COMMISSION");
-                                        incomeDto.setAmount(comm.getCommissionAmount());
-                                        incomeDto.setSourceType("AUTO");
-                                        incomeDto.setSourceId(comm.getContractId());
-                                        incomeDto.setRemark(String.format("合同提成：%s", contractName));
-                                        return incomeDto;
-                                    })
-                                    .collect(Collectors.toList());
-                            
-                            PayrollItemDTO dto = new PayrollItemDTO();
-                            dto.setEmployeeId(employee.getId());
-                            dto.setUserId(employee.getUserId());
-                            dto.setEmployeeNo(employee.getEmployeeNo());
-                            dto.setEmployeeName(user.getRealName());
-                            // 应发工资 = 收入（提成总额）- 税费扣减项（初始为0，所以等于提成总额）
-                            dto.setGrossAmount(commissionTotal);
-                            dto.setDeductionAmount(BigDecimal.ZERO);
-                            // 实发工资 = 应发工资 - 其他扣减项（初始为0，所以等于应发工资）
-                            dto.setNetAmount(commissionTotal);
-                            dto.setConfirmStatus("PENDING");
-                            dto.setConfirmStatusName("待确认");
-                            dto.setIncomes(incomes);
-                            dto.setDeductions(new ArrayList<>());
-                            return dto;
-                        } catch (Exception e) {
-                            log.warn("获取员工信息失败: employeeId={}", employee.getId(), e);
-                            return null;
-                        }
-                    })
-                    .filter(dto -> dto != null)
-                    .collect(Collectors.toList());
+            return buildPayrollItemsWithCommissions(allEmployees, userMap, startDate, endDate);
         }
         
         // 查询该工资表的所有员工工资明细
@@ -268,28 +220,173 @@ public class PayrollAppService {
                         return dto;
                     }
                     // 如果没有工资明细，创建空的DTO
-                    try {
-                        User user = userRepository.getById(employee.getUserId());
-                        if (user == null) {
-                            return null;
-                        }
-                        dto = new PayrollItemDTO();
-                        dto.setEmployeeId(employee.getId());
-                        dto.setUserId(employee.getUserId());
-                        dto.setEmployeeNo(employee.getEmployeeNo());
-                        dto.setEmployeeName(user.getRealName());
-                        dto.setGrossAmount(BigDecimal.ZERO);
-                        dto.setDeductionAmount(BigDecimal.ZERO);
-                        dto.setNetAmount(BigDecimal.ZERO);
-                        dto.setConfirmStatus("PENDING");
-                        dto.setConfirmStatusName("待确认");
-                        dto.setIncomes(new ArrayList<>());
-                        dto.setDeductions(new ArrayList<>());
-                        return dto;
-                    } catch (Exception e) {
-                        log.warn("获取员工信息失败: employeeId={}", employee.getId(), e);
+                    User user = userMap.get(employee.getUserId());
+                    if (user == null) {
                         return null;
                     }
+                    dto = new PayrollItemDTO();
+                    dto.setEmployeeId(employee.getId());
+                    dto.setUserId(employee.getUserId());
+                    dto.setEmployeeNo(employee.getEmployeeNo());
+                    dto.setEmployeeName(user.getRealName());
+                    dto.setGrossAmount(BigDecimal.ZERO);
+                    dto.setDeductionAmount(BigDecimal.ZERO);
+                    dto.setNetAmount(BigDecimal.ZERO);
+                    dto.setConfirmStatus(PayrollStatus.ITEM_PENDING);
+                    dto.setConfirmStatusName(PayrollStatus.getConfirmStatusName(PayrollStatus.ITEM_PENDING));
+                    dto.setIncomes(new ArrayList<>());
+                    dto.setDeductions(new ArrayList<>());
+                    return dto;
+                })
+                .filter(dto -> dto != null)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 批量构建工资明细（带提成计算）- 优化版
+     * 使用批量查询替代N+1查询，性能提升显著
+     * 
+     * 优化策略：
+     * 1. 用户信息已通过参数传入（批量查询）
+     * 2. 提成查询保持使用Repository方法（内部使用JOIN查询）
+     * 3. 批量获取合同信息（1次查询）
+     * 4. 批量获取收款信息（1次查询）
+     */
+    private List<PayrollItemDTO> buildPayrollItemsWithCommissions(
+            List<Employee> employees, Map<Long, User> userMap, 
+            LocalDate startDate, LocalDate endDate) {
+        
+        if (employees.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        List<Long> userIds = employees.stream()
+                .map(Employee::getUserId)
+                .filter(id -> id != null)
+                .distinct()
+                .collect(Collectors.toList());
+
+        // 3. 批量获取所有用户的提成 - 使用现有方法，按用户分组
+        // 注意：Commission通过CommissionDetail与用户关联，需使用Repository方法
+        Map<Long, List<Commission>> commissionsByUser = new java.util.HashMap<>();
+        for (Long userId : userIds) {
+            List<Commission> userCommissions = commissionRepository.findByUserId(userId);
+            if (userCommissions != null && !userCommissions.isEmpty()) {
+                // 过滤只保留已审批或已发放状态
+                userCommissions = userCommissions.stream()
+                        .filter(c -> CommissionStatus.APPROVED.equals(c.getStatus()) || CommissionStatus.PAID.equals(c.getStatus()))
+                        .collect(Collectors.toList());
+                if (!userCommissions.isEmpty()) {
+                    commissionsByUser.put(userId, userCommissions);
+                }
+            }
+        }
+
+        // 收集所有提成记录
+        List<Commission> allCommissions = commissionsByUser.values().stream()
+                .flatMap(List::stream)
+                .collect(Collectors.toList());
+
+        // 4. 批量获取提成相关的收款记录（1次查询）
+        Set<Long> paymentIds = allCommissions.stream()
+                .map(Commission::getPaymentId)
+                .filter(id -> id != null)
+                .collect(Collectors.toSet());
+        
+        Map<Long, com.lawfirm.domain.finance.entity.Payment> paymentMap = paymentIds.isEmpty() 
+                ? java.util.Collections.emptyMap()
+                : paymentRepository.listByIds(paymentIds)
+                        .stream()
+                        .collect(Collectors.toMap(p -> p.getId(), p -> p, (a, b) -> a));
+
+        // 按用户重新过滤出指定月份的提成
+        Map<Long, List<Commission>> filteredCommissionsByUser = new java.util.HashMap<>();
+        for (Map.Entry<Long, List<Commission>> entry : commissionsByUser.entrySet()) {
+            List<Commission> filtered = entry.getValue().stream()
+                    .filter(c -> {
+                        if (c.getPaymentId() == null) {
+                            return false;
+                        }
+                        com.lawfirm.domain.finance.entity.Payment payment = paymentMap.get(c.getPaymentId());
+                        if (payment == null || payment.getPaymentDate() == null) {
+                            return false;
+                        }
+                        LocalDate paymentDate = payment.getPaymentDate();
+                        return !paymentDate.isBefore(startDate) && !paymentDate.isAfter(endDate);
+                    })
+                    .collect(Collectors.toList());
+            if (!filtered.isEmpty()) {
+                filteredCommissionsByUser.put(entry.getKey(), filtered);
+            }
+        }
+
+        // 5. 批量获取提成相关的合同（1次查询）
+        Set<Long> contractIds = filteredCommissionsByUser.values().stream()
+                .flatMap(List::stream)
+                .map(Commission::getContractId)
+                .filter(id -> id != null)
+                .collect(Collectors.toSet());
+        
+        Map<Long, Contract> contractMap = contractIds.isEmpty()
+                ? java.util.Collections.emptyMap()
+                : financeContractRepository.listByIds(contractIds)
+                        .stream()
+                        .collect(Collectors.toMap(Contract::getId, c -> c, (a, b) -> a));
+
+        // 构建员工工资明细DTO
+        return employees.stream()
+                .filter(employee -> employee != null && employee.getUserId() != null)
+                .map(employee -> {
+                    User user = userMap.get(employee.getUserId());
+                    if (user == null) {
+                        return null;
+                    }
+
+                    // 获取该用户的提成列表
+                    List<Commission> userCommissions = filteredCommissionsByUser.getOrDefault(
+                            employee.getUserId(), java.util.Collections.emptyList());
+
+                    BigDecimal commissionTotal = userCommissions.stream()
+                            .map(Commission::getCommissionAmount)
+                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+                    // 创建收入项列表
+                    List<com.lawfirm.application.hr.dto.PayrollIncomeDTO> incomes = userCommissions.stream()
+                            .map(comm -> {
+                                String contractName = "未知合同";
+                                if (comm.getContractId() != null) {
+                                    Contract contract = contractMap.get(comm.getContractId());
+                                    if (contract != null) {
+                                        contractName = contract.getName() != null && !contract.getName().isEmpty()
+                                                ? contract.getName()
+                                                : (contract.getContractNo() != null ? contract.getContractNo() : "未知合同");
+                                    }
+                                }
+
+                                com.lawfirm.application.hr.dto.PayrollIncomeDTO incomeDto = 
+                                        new com.lawfirm.application.hr.dto.PayrollIncomeDTO();
+                                incomeDto.setIncomeType("COMMISSION");
+                                incomeDto.setAmount(comm.getCommissionAmount());
+                                incomeDto.setSourceType("AUTO");
+                                incomeDto.setSourceId(comm.getContractId());
+                                incomeDto.setRemark(String.format("合同提成：%s", contractName));
+                                return incomeDto;
+                            })
+                            .collect(Collectors.toList());
+
+                    PayrollItemDTO dto = new PayrollItemDTO();
+                    dto.setEmployeeId(employee.getId());
+                    dto.setUserId(employee.getUserId());
+                    dto.setEmployeeNo(employee.getEmployeeNo());
+                    dto.setEmployeeName(user.getRealName());
+                    dto.setGrossAmount(commissionTotal);
+                    dto.setDeductionAmount(BigDecimal.ZERO);
+                    dto.setNetAmount(commissionTotal);
+                    dto.setConfirmStatus(PayrollStatus.ITEM_PENDING);
+                    dto.setConfirmStatusName(PayrollStatus.getConfirmStatusName(PayrollStatus.ITEM_PENDING));
+                    dto.setIncomes(incomes);
+                    dto.setDeductions(new ArrayList<>());
+                    return dto;
                 })
                 .filter(dto -> dto != null)
                 .collect(Collectors.toList());
@@ -326,7 +423,7 @@ public class PayrollAppService {
                 .payrollNo(payrollNo)
                 .payrollYear(command.getPayrollYear())
                 .payrollMonth(command.getPayrollMonth())
-                .status("DRAFT")
+                .status(PayrollStatus.DRAFT)
                 .totalEmployees(0)
                 .totalGrossAmount(BigDecimal.ZERO)
                 .totalDeductionAmount(BigDecimal.ZERO)
@@ -350,12 +447,13 @@ public class PayrollAppService {
 
     /**
      * 自动生成工资明细（汇总提成和固定工资）
+     * 问题245修复：收集失败记录并在最后统一报告，确保数据一致性
      */
     @Transactional
     public void generatePayrollItemsAuto(PayrollSheet sheet) {
         // 获取所有在职员工
         List<Employee> employees = employeeRepository.lambdaQuery()
-                .eq(Employee::getWorkStatus, "ACTIVE")
+                .eq(Employee::getWorkStatus, EmployeeStatus.ACTIVE)
                 .list();
 
         LocalDate startDate = LocalDate.of(sheet.getPayrollYear(), sheet.getPayrollMonth(), 1);
@@ -364,6 +462,10 @@ public class PayrollAppService {
         BigDecimal totalGross = BigDecimal.ZERO;
         BigDecimal totalDeduction = BigDecimal.ZERO;
         BigDecimal totalNet = BigDecimal.ZERO;
+        
+        // 收集失败的员工记录
+        List<String> failedEmployees = new ArrayList<>();
+        int successCount = 0;
 
         for (Employee employee : employees) {
             try {
@@ -372,18 +474,26 @@ public class PayrollAppService {
                     totalGross = totalGross.add(item.getGrossAmount());
                     totalDeduction = totalDeduction.add(item.getDeductionAmount());
                     totalNet = totalNet.add(item.getNetAmount());
+                    successCount++;
                 }
             } catch (Exception e) {
-                log.error("为员工生成工资明细失败: employeeId={}", employee.getId(), e);
+                String employeeInfo = employee.getEmployeeNo() != null ? employee.getEmployeeNo() : String.valueOf(employee.getId());
+                failedEmployees.add(employeeInfo);
+                log.error("为员工生成工资明细失败: employeeId={}, employeeNo={}", employee.getId(), employee.getEmployeeNo(), e);
             }
         }
 
-        // 更新工资表汇总
-        sheet.setTotalEmployees(employees.size());
+        // 更新工资表汇总（使用实际成功的数量）
+        sheet.setTotalEmployees(successCount);
         sheet.setTotalGrossAmount(totalGross);
         sheet.setTotalDeductionAmount(totalDeduction);
         sheet.setTotalNetAmount(totalNet);
         payrollSheetRepository.updateById(sheet);
+        
+        // 如果有失败的记录，记录警告日志
+        if (!failedEmployees.isEmpty()) {
+            log.warn("工资明细生成完成，但有{}个员工生成失败: {}", failedEmployees.size(), String.join(", ", failedEmployees));
+        }
     }
 
     /**
@@ -437,7 +547,7 @@ public class PayrollAppService {
                 .grossAmount(grossAmount)
                 .deductionAmount(totalDeductionAmount)
                 .netAmount(netAmount)
-                .confirmStatus("PENDING")
+                .confirmStatus(PayrollStatus.ITEM_PENDING)
                 .confirmDeadline(confirmDeadline)
                 .build();
 
@@ -500,7 +610,7 @@ public class PayrollAppService {
         return allCommissions.stream()
                 .filter(c -> {
                     // 只返回已审批或已发放状态的提成
-                    if (!"APPROVED".equals(c.getStatus()) && !"PAID".equals(c.getStatus())) {
+                    if (!CommissionStatus.APPROVED.equals(c.getStatus()) && !CommissionStatus.PAID.equals(c.getStatus())) {
                         return false;
                     }
                     
@@ -537,7 +647,7 @@ public class PayrollAppService {
         PayrollSheet sheet = payrollSheetRepository.getByIdOrThrow(payrollSheetId, "工资表不存在");
         
         // 检查工资表状态（审批后不可修改）
-        if (!"DRAFT".equals(sheet.getStatus()) && !"PENDING_CONFIRM".equals(sheet.getStatus()) && !"REJECTED".equals(sheet.getStatus())) {
+        if (!PayrollStatus.canEdit(sheet.getStatus())) {
             throw new BusinessException("工资表状态不允许添加员工（已提交审批或已审批通过的工资表不可修改）");
         }
 
@@ -572,7 +682,7 @@ public class PayrollAppService {
                     .grossAmount(BigDecimal.ZERO)
                     .deductionAmount(BigDecimal.ZERO)
                     .netAmount(BigDecimal.ZERO)
-                    .confirmStatus("PENDING")
+                    .confirmStatus(PayrollStatus.ITEM_PENDING)
                     .build();
             
             payrollItemRepository.save(item);
@@ -600,7 +710,7 @@ public class PayrollAppService {
         
         // 检查工资表状态（审批后不可修改）
         PayrollSheet sheet = payrollSheetRepository.getByIdOrThrow(item.getPayrollSheetId(), "工资表不存在");
-        if (!"DRAFT".equals(sheet.getStatus()) && !"PENDING_CONFIRM".equals(sheet.getStatus()) && !"REJECTED".equals(sheet.getStatus())) {
+        if (!PayrollStatus.canEdit(sheet.getStatus())) {
             throw new BusinessException("工资表状态不允许修改（已提交审批或已审批通过的工资表不可修改）");
         }
 
@@ -699,7 +809,7 @@ public class PayrollAppService {
         }
         
         // 如果员工已经确认过或拒绝过，财务再次修改时需要重置确认状态为PENDING，让员工重新确认
-        boolean needResetConfirmStatus = "CONFIRMED".equals(item.getConfirmStatus()) || "REJECTED".equals(item.getConfirmStatus());
+        boolean needResetConfirmStatus = PayrollStatus.ITEM_CONFIRMED.equals(item.getConfirmStatus()) || PayrollStatus.ITEM_REJECTED.equals(item.getConfirmStatus());
         
         // 更新工资明细
         item.setGrossAmount(grossAmount);
@@ -709,7 +819,7 @@ public class PayrollAppService {
         
         // 如果员工已经确认过或拒绝过，重置确认状态为PENDING
         if (needResetConfirmStatus) {
-            item.setConfirmStatus("PENDING");
+            item.setConfirmStatus(PayrollStatus.ITEM_PENDING);
             item.setConfirmedAt(null);
             item.setConfirmComment(null);
             log.info("员工已确认/拒绝的工资明细被财务修改，重置确认状态为PENDING: payrollItemId={}, oldStatus={}", 
@@ -722,8 +832,8 @@ public class PayrollAppService {
         recalculatePayrollSheetSummary(sheet.getId());
         
         // 如果工资表是草稿状态或已确认状态，自动提交（变为待确认状态），以便员工可以确认
-        if ("DRAFT".equals(sheet.getStatus()) || "CONFIRMED".equals(sheet.getStatus())) {
-            sheet.setStatus("PENDING_CONFIRM");
+        if (PayrollStatus.DRAFT.equals(sheet.getStatus()) || PayrollStatus.CONFIRMED.equals(sheet.getStatus())) {
+            sheet.setStatus(PayrollStatus.PENDING_CONFIRM);
             sheet.setSubmittedAt(LocalDateTime.now());
             sheet.setSubmittedBy(SecurityUtils.getUserId());
             payrollSheetRepository.updateById(sheet);
@@ -755,7 +865,7 @@ public class PayrollAppService {
                     .payrollNo(payrollNo)
                     .payrollYear(year)
                     .payrollMonth(month)
-                    .status("DRAFT")
+                    .status(PayrollStatus.DRAFT)
                     .totalEmployees(0)
                     .totalGrossAmount(BigDecimal.ZERO)
                     .totalDeductionAmount(BigDecimal.ZERO)
@@ -809,7 +919,7 @@ public class PayrollAppService {
                     .grossAmount(commissionTotal)
                     .deductionAmount(BigDecimal.ZERO)
                     .netAmount(commissionTotal)
-                    .confirmStatus("PENDING")
+                    .confirmStatus(PayrollStatus.ITEM_PENDING)
                     .confirmDeadline(itemConfirmDeadline)
                     .build();
             payrollItemRepository.save(item);
@@ -902,7 +1012,7 @@ public class PayrollAppService {
         
         // 如果员工已经确认过或拒绝过，财务再次修改时需要重置确认状态为PENDING，让员工重新确认
         boolean needResetConfirmStatus = item != null && 
-                ("CONFIRMED".equals(item.getConfirmStatus()) || "REJECTED".equals(item.getConfirmStatus()));
+                (PayrollStatus.ITEM_CONFIRMED.equals(item.getConfirmStatus()) || PayrollStatus.ITEM_REJECTED.equals(item.getConfirmStatus()));
         
         // 更新工资明细
         if (item != null) {
@@ -914,7 +1024,7 @@ public class PayrollAppService {
             
             // 如果员工已经确认过或拒绝过，重置确认状态为PENDING
             if (needResetConfirmStatus) {
-                item.setConfirmStatus("PENDING");
+                item.setConfirmStatus(PayrollStatus.ITEM_PENDING);
                 item.setConfirmedAt(null);
                 item.setConfirmComment(null);
                 log.info("员工已确认/拒绝的工资明细被财务修改，重置确认状态为PENDING: payrollItemId={}, oldStatus={}", 
@@ -928,8 +1038,8 @@ public class PayrollAppService {
         recalculatePayrollSheetSummary(sheet.getId());
         
         // 如果工资表是草稿状态或已确认状态，自动提交（变为待确认状态），以便员工可以确认
-        if ("DRAFT".equals(sheet.getStatus()) || "CONFIRMED".equals(sheet.getStatus())) {
-            sheet.setStatus("PENDING_CONFIRM");
+        if (PayrollStatus.DRAFT.equals(sheet.getStatus()) || PayrollStatus.CONFIRMED.equals(sheet.getStatus())) {
+            sheet.setStatus(PayrollStatus.PENDING_CONFIRM);
             sheet.setSubmittedAt(LocalDateTime.now());
             sheet.setSubmittedBy(SecurityUtils.getUserId());
             payrollSheetRepository.updateById(sheet);
@@ -952,11 +1062,11 @@ public class PayrollAppService {
     public void submitPayrollSheet(Long id) {
         PayrollSheet sheet = payrollSheetRepository.getByIdOrThrow(id, "工资表不存在");
         
-        if (!"DRAFT".equals(sheet.getStatus())) {
+        if (!PayrollStatus.DRAFT.equals(sheet.getStatus())) {
             throw new BusinessException("只有草稿状态的工资表才能提交");
         }
 
-        sheet.setStatus("PENDING_CONFIRM");
+        sheet.setStatus(PayrollStatus.PENDING_CONFIRM);
         sheet.setSubmittedAt(LocalDateTime.now());
         sheet.setSubmittedBy(SecurityUtils.getUserId());
         payrollSheetRepository.updateById(sheet);
@@ -979,17 +1089,17 @@ public class PayrollAppService {
 
         // 检查工资表状态
         PayrollSheet sheet = payrollSheetRepository.getByIdOrThrow(item.getPayrollSheetId(), "工资表不存在");
-        if (!"PENDING_CONFIRM".equals(sheet.getStatus())) {
+        if (!PayrollStatus.PENDING_CONFIRM.equals(sheet.getStatus())) {
             throw new BusinessException("工资表状态不允许确认");
         }
 
         // 如果拒绝，必须填写理由
-        if ("REJECTED".equals(command.getConfirmStatus())) {
+        if (PayrollStatus.ITEM_REJECTED.equals(command.getConfirmStatus())) {
             if (command.getConfirmComment() == null || command.getConfirmComment().trim().isEmpty()) {
                 throw new BusinessException("拒绝时必须填写理由");
             }
             // 拒绝后，工资表状态需要返回财务处理
-            sheet.setStatus("DRAFT"); // 返回草稿状态，财务可以查看并修改
+            sheet.setStatus(PayrollStatus.DRAFT); // 返回草稿状态，财务可以查看并修改
             payrollSheetRepository.updateById(sheet);
         }
 
@@ -1002,14 +1112,14 @@ public class PayrollAppService {
         // 重新计算已确认人数
         List<PayrollItem> items = payrollItemRepository.findByPayrollSheetId(item.getPayrollSheetId());
         long confirmedCount = items.stream()
-                .filter(i -> "CONFIRMED".equals(i.getConfirmStatus()))
+                .filter(i -> PayrollStatus.ITEM_CONFIRMED.equals(i.getConfirmStatus()))
                 .count();
         
         sheet.setConfirmedCount((int) confirmedCount);
         
         // 如果所有员工都已确认，自动更新工资表状态为已确认
         if (confirmedCount == items.size() && items.size() > 0) {
-            sheet.setStatus("CONFIRMED");
+            sheet.setStatus(PayrollStatus.CONFIRMED);
         }
         
         payrollSheetRepository.updateById(sheet);
@@ -1026,21 +1136,21 @@ public class PayrollAppService {
     public void financeConfirmPayrollSheet(Long id) {
         PayrollSheet sheet = payrollSheetRepository.getByIdOrThrow(id, "工资表不存在");
         
-        if (!"PENDING_CONFIRM".equals(sheet.getStatus()) && !"CONFIRMED".equals(sheet.getStatus())) {
+        if (!PayrollStatus.PENDING_CONFIRM.equals(sheet.getStatus()) && !PayrollStatus.CONFIRMED.equals(sheet.getStatus())) {
             throw new BusinessException("工资表状态不允许财务确认");
         }
 
         // 检查是否所有员工都已确认
         List<PayrollItem> items = payrollItemRepository.findByPayrollSheetId(id);
         long pendingCount = items.stream()
-                .filter(item -> "PENDING".equals(item.getConfirmStatus()))
+                .filter(item -> PayrollStatus.ITEM_PENDING.equals(item.getConfirmStatus()))
                 .count();
         
         if (pendingCount > 0) {
             throw new BusinessException("还有员工未确认工资，无法进行财务确认");
         }
 
-        sheet.setStatus("FINANCE_CONFIRMED");
+        sheet.setStatus(PayrollStatus.FINANCE_CONFIRMED);
         sheet.setFinanceConfirmedAt(LocalDateTime.now());
         sheet.setFinanceConfirmedBy(SecurityUtils.getUserId());
         payrollSheetRepository.updateById(sheet);
@@ -1060,14 +1170,14 @@ public class PayrollAppService {
         PayrollSheet sheet = payrollSheetRepository.getByIdOrThrow(command.getPayrollSheetId(), "工资表不存在");
         
         // 只有已确认状态才能提交审批
-        if (!"CONFIRMED".equals(sheet.getStatus())) {
+        if (!PayrollStatus.CONFIRMED.equals(sheet.getStatus())) {
             throw new BusinessException("只有所有员工都已确认的工资表才能提交审批");
         }
 
         // 检查是否所有员工都已确认
         List<PayrollItem> items = payrollItemRepository.findByPayrollSheetId(command.getPayrollSheetId());
         long pendingCount = items.stream()
-                .filter(item -> "PENDING".equals(item.getConfirmStatus()))
+                .filter(item -> PayrollStatus.ITEM_PENDING.equals(item.getConfirmStatus()))
                 .count();
         
         if (pendingCount > 0) {
@@ -1081,7 +1191,7 @@ public class PayrollAppService {
             throw new BusinessException("审批人必须是主任、团队负责人或管理员");
         }
 
-        sheet.setStatus("PENDING_APPROVAL");
+        sheet.setStatus(PayrollStatus.PENDING_APPROVAL);
         sheet.setApproverId(command.getApproverId());
         sheet.setSubmittedAt(LocalDateTime.now());
         sheet.setSubmittedBy(SecurityUtils.getUserId());
@@ -1115,7 +1225,7 @@ public class PayrollAppService {
         PayrollSheet sheet = payrollSheetRepository.getByIdOrThrow(command.getPayrollSheetId(), "工资表不存在");
         
         // 只有待审批状态才能审批
-        if (!"PENDING_APPROVAL".equals(sheet.getStatus())) {
+        if (!PayrollStatus.PENDING_APPROVAL.equals(sheet.getStatus())) {
             throw new BusinessException("工资表状态不允许审批");
         }
 
@@ -1125,19 +1235,19 @@ public class PayrollAppService {
             throw new BusinessException("只能审批分配给自己的工资表");
         }
 
-        if ("APPROVED".equals(command.getApprovalStatus())) {
+        if (PayrollStatus.APPROVED.equals(command.getApprovalStatus())) {
             // 审批通过
-            sheet.setStatus("APPROVED");
+            sheet.setStatus(PayrollStatus.APPROVED);
             sheet.setApprovedAt(LocalDateTime.now());
             sheet.setApprovedBy(currentUserId);
             sheet.setApprovalComment(command.getApprovalComment());
             log.info("审批通过工资表: payrollNo={}", sheet.getPayrollNo());
-        } else if ("REJECTED".equals(command.getApprovalStatus())) {
+        } else if (PayrollStatus.REJECTED.equals(command.getApprovalStatus())) {
             // 审批拒绝
             if (command.getApprovalComment() == null || command.getApprovalComment().trim().isEmpty()) {
                 throw new BusinessException("审批拒绝时必须填写意见");
             }
-            sheet.setStatus("REJECTED");
+            sheet.setStatus(PayrollStatus.REJECTED);
             sheet.setApprovedAt(LocalDateTime.now());
             sheet.setApprovedBy(currentUserId);
             sheet.setApprovalComment(command.getApprovalComment());
@@ -1152,6 +1262,7 @@ public class PayrollAppService {
     /**
      * 发放工资（出纳发放）
      * 权限：只有 ADMIN/FINANCE 可以发放工资
+     * 问题253修复：添加明确的状态检查防止重复发放
      */
     @Transactional
     public void issuePayroll(IssuePayrollCommand command) {
@@ -1160,12 +1271,18 @@ public class PayrollAppService {
         
         PayrollSheet sheet = payrollSheetRepository.getByIdOrThrow(command.getPayrollSheetId(), "工资表不存在");
         
+        // 检查是否已发放，防止重复发放
+        if (PayrollStatus.ISSUED.equals(sheet.getStatus())) {
+            throw new BusinessException("该工资表已发放，请勿重复操作。发放时间：" + 
+                (sheet.getIssuedAt() != null ? sheet.getIssuedAt().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) : "未知"));
+        }
+        
         // 只有已审批的工资表才能发放
-        if (!"APPROVED".equals(sheet.getStatus())) {
-            throw new BusinessException("只有已审批通过的工资表才能发放");
+        if (!PayrollStatus.APPROVED.equals(sheet.getStatus())) {
+            throw new BusinessException("只有已审批通过的工资表才能发放，当前状态：" + sheet.getStatus());
         }
 
-        sheet.setStatus("ISSUED");
+        sheet.setStatus(PayrollStatus.ISSUED);
         sheet.setIssuedAt(LocalDateTime.now());
         sheet.setIssuedBy(SecurityUtils.getUserId());
         sheet.setPaymentMethod(command.getPaymentMethod());
@@ -1252,12 +1369,12 @@ public class PayrollAppService {
                     .filter(dto -> {
                         // 过滤条件：
                         // 1. 不显示草稿状态的工资（DRAFT）
-                        if ("DRAFT".equals(dto.getStatus())) {
+                        if (PayrollStatus.DRAFT.equals(dto.getStatus())) {
                             return false;
                         }
                         
                         // 2. 显示待确认状态的工资（PENDING_CONFIRM）- 财务发过来要求确认的
-                        if ("PENDING_CONFIRM".equals(dto.getStatus())) {
+                        if (PayrollStatus.PENDING_CONFIRM.equals(dto.getStatus())) {
                             return true;
                         }
                         
@@ -1275,9 +1392,9 @@ public class PayrollAppService {
                         
                         // 已确认、财务已确认、已发放状态的工资，且是上月或之前的，才显示
                         if (isLastMonthOrEarlier && 
-                                ("CONFIRMED".equals(dto.getStatus()) || 
-                                 "FINANCE_CONFIRMED".equals(dto.getStatus()) || 
-                                 "ISSUED".equals(dto.getStatus()))) {
+                                (PayrollStatus.CONFIRMED.equals(dto.getStatus()) || 
+                                 PayrollStatus.FINANCE_CONFIRMED.equals(dto.getStatus()) || 
+                                 PayrollStatus.ISSUED.equals(dto.getStatus()))) {
                             return true;
                         }
                         
@@ -1390,7 +1507,7 @@ public class PayrollAppService {
             try {
                 rejectedItems = payrollItemRepository.lambdaQuery()
                         .eq(PayrollItem::getPayrollSheetId, sheet.getId())
-                        .eq(PayrollItem::getConfirmStatus, "REJECTED")
+                        .eq(PayrollItem::getConfirmStatus, PayrollStatus.ITEM_REJECTED)
                         .eq(PayrollItem::getDeleted, false)
                         .list();
             } catch (Exception e) {
@@ -1484,18 +1601,7 @@ public class PayrollAppService {
     }
 
     private String getStatusName(String status) {
-        if (status == null) return "";
-        return switch (status) {
-            case "DRAFT" -> "草稿";
-            case "PENDING_CONFIRM" -> "待确认";
-            case "CONFIRMED" -> "已确认";
-            case "FINANCE_CONFIRMED" -> "财务已确认";
-            case "PENDING_APPROVAL" -> "待审批";
-            case "APPROVED" -> "已审批";
-            case "REJECTED" -> "已拒绝";
-            case "ISSUED" -> "已发放";
-            default -> status;
-        };
+        return PayrollStatus.getStatusName(status);
     }
 
     /**
@@ -1505,7 +1611,7 @@ public class PayrollAppService {
         PayrollSheet sheet = payrollSheetRepository.getByIdOrThrow(id, "工资表不存在");
         
         // 只有已审批或已发放的工资表才能导出
-        if (!"APPROVED".equals(sheet.getStatus()) && !"ISSUED".equals(sheet.getStatus())) {
+        if (!PayrollStatus.APPROVED.equals(sheet.getStatus()) && !PayrollStatus.ISSUED.equals(sheet.getStatus())) {
             throw new BusinessException("只有已审批通过的工资表才能导出");
         }
 
@@ -1556,13 +1662,7 @@ public class PayrollAppService {
     }
 
     private String getConfirmStatusName(String status) {
-        if (status == null) return "";
-        return switch (status) {
-            case "PENDING" -> "待确认";
-            case "CONFIRMED" -> "已确认";
-            case "REJECTED" -> "已拒绝";
-            default -> status;
-        };
+        return PayrollStatus.getConfirmStatusName(status);
     }
 
     private String getPaymentMethodName(String method) {

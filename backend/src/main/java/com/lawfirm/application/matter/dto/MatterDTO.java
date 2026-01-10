@@ -82,6 +82,8 @@ public class MatterDTO extends BaseDTO {
     private BigDecimal claimAmount;
     private String outcome;
     private Long contractId;
+    private String contractNo;
+    private BigDecimal contractAmount;
     private String remark;
     private String conflictStatus;
     

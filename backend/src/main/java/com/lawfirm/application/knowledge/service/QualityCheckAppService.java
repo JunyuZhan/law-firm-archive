@@ -17,10 +17,12 @@ import com.lawfirm.infrastructure.persistence.mapper.QualityCheckDetailMapper;
 import com.lawfirm.infrastructure.persistence.mapper.QualityCheckMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -38,6 +40,20 @@ public class QualityCheckAppService {
     private final QualityCheckDetailMapper detailMapper;
     private final MatterRepository matterRepository;
     private final UserRepository userRepository;
+
+    /**
+     * 质量检查合格阈值（百分比）
+     * 可通过配置文件 quality.check.pass-threshold 设置，默认80%
+     */
+    @Value("${quality.check.pass-threshold:80}")
+    private int passThreshold;
+
+    /**
+     * 是否要求所有项目都通过才算合格
+     * 可通过配置文件 quality.check.require-all-pass 设置，默认true
+     */
+    @Value("${quality.check.require-all-pass:true}")
+    private boolean requireAllPass;
 
     /**
      * 创建质量检查
@@ -89,7 +105,22 @@ public class QualityCheckAppService {
             }
 
             check.setTotalScore(totalScore);
-            check.setQualified(allPass && totalScore.compareTo(maxScore.multiply(BigDecimal.valueOf(0.8))) >= 0);
+            
+            // 计算是否合格（使用可配置的阈值）
+            boolean scoreQualified = false;
+            if (maxScore.compareTo(BigDecimal.ZERO) > 0) {
+                BigDecimal thresholdScore = maxScore.multiply(BigDecimal.valueOf(passThreshold))
+                        .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+                scoreQualified = totalScore.compareTo(thresholdScore) >= 0;
+            }
+            
+            // 根据配置决定是否要求所有项目都通过
+            boolean qualified = requireAllPass ? (allPass && scoreQualified) : scoreQualified;
+            check.setQualified(qualified);
+            
+            log.debug("质量检查结果: totalScore={}, maxScore={}, threshold={}%, allPass={}, qualified={}",
+                    totalScore, maxScore, passThreshold, allPass, qualified);
+            
             check.setCheckSummary(command.getCheckSummary());
             check.setStatus(QualityCheck.STATUS_COMPLETED);
             checkRepository.updateById(check);

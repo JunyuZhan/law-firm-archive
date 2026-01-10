@@ -32,4 +32,11 @@ public class PurchaseRequestRepository extends AbstractRepository<PurchaseReques
     public List<Map<String, Object>> sumAmountByType() {
         return baseMapper.sumAmountByType();
     }
+
+    /**
+     * 统计供应商的采购记录数
+     */
+    public long countBySupplierId(Long supplierId) {
+        return baseMapper.countBySupplierId(supplierId);
+    }
 }

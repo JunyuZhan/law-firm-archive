@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
-import { message, Card, Table, Button, Space, Tag, Input, Tabs, Modal, Form, FormItem, Select, Textarea, Popconfirm, Descriptions, DescriptionsItem, Timeline, InputNumber, DatePicker } from 'ant-design-vue';
+import { ref, onMounted } from 'vue';
+import { message, Card, Table, Button, Space, Tag, Input, Tabs, Modal, Form, FormItem, Select, Textarea, Popconfirm, Descriptions, DescriptionsItem, Timeline, DatePicker } from 'ant-design-vue';
 import { Page } from '@vben/common-ui';
 import { Plus } from '@vben/icons';
 import {
@@ -15,6 +15,7 @@ import {
   type PromotionApplicationQuery,
   type CareerLevelDTO,
 } from '#/api/hr/promotion';
+import UserTreeSelect from '#/components/UserTreeSelect';
 import dayjs from 'dayjs';
 
 defineOptions({ name: 'HrPromotion' });
@@ -46,10 +47,12 @@ const formData = ref({
   applyReason: '',
   achievements: '',
   selfEvaluation: '',
+  directManagerId: undefined as number | undefined,  // 直属上级
+  hrReviewerId: undefined as number | undefined,      // HR评审人
 });
 
 const approveForm = ref({
-  approved: true,
+  approved: 'approve' as string,  // 'approve' | 'reject'
   comment: '',
   effectiveDate: undefined as any,
 });
@@ -101,9 +104,10 @@ async function loadCareerLevels() {
 }
 
 // Tab切换
-function handleTabChange(key: string) {
-  activeTab.value = key;
-  queryParams.value.status = key === 'all' ? undefined : key;
+function handleTabChange(key: string | number) {
+  const keyStr = String(key);
+  activeTab.value = keyStr;
+  queryParams.value.status = keyStr === 'all' ? undefined : keyStr;
   queryParams.value.pageNum = 1;
   loadData();
 }
@@ -128,6 +132,8 @@ function handleAdd() {
     applyReason: '',
     achievements: '',
     selfEvaluation: '',
+    directManagerId: undefined,
+    hrReviewerId: undefined,
   };
   modalVisible.value = true;
 }
@@ -136,6 +142,14 @@ function handleAdd() {
 async function handleSubmit() {
   if (!formData.value.targetLevelId) {
     message.error('请选择目标职级');
+    return;
+  }
+  if (!formData.value.directManagerId) {
+    message.error('请选择直属上级（审批人）');
+    return;
+  }
+  if (!formData.value.applyReason) {
+    message.error('请填写申请理由');
     return;
   }
   try {
@@ -154,7 +168,7 @@ async function handleSubmit() {
 }
 
 // 查看详情
-async function handleView(record: PromotionApplicationDTO) {
+async function handleView(record: any) {
   try {
     const detail = await getPromotionApplicationDetail(record.id);
     currentRecord.value = detail;
@@ -176,10 +190,10 @@ async function handleCancel(id: number) {
 }
 
 // 打开审批弹窗
-function handleApprove(record: PromotionApplicationDTO) {
+function handleApprove(record: any) {
   currentRecord.value = record;
   approveForm.value = {
-    approved: true,
+    approved: 'approve',
     comment: '',
     effectiveDate: dayjs().add(1, 'month').startOf('month'),
   };
@@ -190,7 +204,7 @@ function handleApprove(record: PromotionApplicationDTO) {
 async function submitApproval() {
   if (!currentRecord.value) return;
   try {
-    if (approveForm.value.approved) {
+    if (approveForm.value.approved === 'approve') {
       await approvePromotionApplication(
         currentRecord.value.id,
         approveForm.value.comment,
@@ -288,16 +302,28 @@ onMounted(() => {
     </Card>
 
     <!-- 申请弹窗 -->
-    <Modal v-model:open="modalVisible" title="申请晋升" width="600px" @ok="handleSubmit">
+    <Modal v-model:open="modalVisible" title="申请晋升" width="650px" @ok="handleSubmit">
       <Form :labelCol="{ span: 5 }" :wrapperCol="{ span: 18 }">
         <FormItem label="目标职级" required>
           <Select
             v-model:value="formData.targetLevelId"
             placeholder="请选择目标职级"
-            :options="careerLevels.map(l => ({ label: l.levelName, value: l.id }))"
+            :options="careerLevels.map(l => ({ label: `${l.levelName} (${l.categoryName || l.category})`, value: l.id }))"
           />
         </FormItem>
-        <FormItem label="申请理由">
+        <FormItem label="直属上级" required>
+          <UserTreeSelect
+            v-model:value="formData.directManagerId"
+            placeholder="请从组织架构中选择直属上级（审批人）"
+          />
+        </FormItem>
+        <FormItem label="HR评审人">
+          <UserTreeSelect
+            v-model:value="formData.hrReviewerId"
+            placeholder="请从组织架构中选择HR评审人（可选）"
+          />
+        </FormItem>
+        <FormItem label="申请理由" required>
           <Textarea v-model:value="formData.applyReason" :rows="3" placeholder="请说明申请晋升的理由" />
         </FormItem>
         <FormItem label="工作业绩">
@@ -319,8 +345,8 @@ onMounted(() => {
         <DescriptionsItem label="目标职级">{{ currentRecord.targetLevelName }}</DescriptionsItem>
         <DescriptionsItem label="申请日期">{{ formatDate(currentRecord.applyDate) }}</DescriptionsItem>
         <DescriptionsItem label="状态">
-          <Tag :color="statusMap[currentRecord.status]?.color">
-            {{ currentRecord.statusName || statusMap[currentRecord.status]?.text }}
+          <Tag :color="currentRecord.status ? statusMap[currentRecord.status]?.color : 'default'">
+            {{ currentRecord.statusName || (currentRecord.status ? statusMap[currentRecord.status]?.text : '-') }}
           </Tag>
         </DescriptionsItem>
         <DescriptionsItem label="生效日期">{{ formatDate(currentRecord.effectiveDate) }}</DescriptionsItem>
@@ -350,11 +376,11 @@ onMounted(() => {
       <Form :labelCol="{ span: 5 }" :wrapperCol="{ span: 18 }">
         <FormItem label="审批结果">
           <Select v-model:value="approveForm.approved" :options="[
-            { label: '通过', value: true },
-            { label: '拒绝', value: false },
+            { label: '通过', value: 'approve' },
+            { label: '拒绝', value: 'reject' },
           ]" />
         </FormItem>
-        <FormItem v-if="approveForm.approved" label="生效日期">
+        <FormItem v-if="approveForm.approved === 'approve'" label="生效日期">
           <DatePicker v-model:value="approveForm.effectiveDate" style="width: 100%" />
         </FormItem>
         <FormItem label="审批意见">

@@ -31,5 +31,16 @@ public class EmployeeRepository extends AbstractRepository<EmployeeMapper, Emplo
                 .one();
         return Optional.ofNullable(employee);
     }
+
+    /**
+     * 统计指定职级的员工数量
+     * 问题297修复：用于删除职级前检查关联
+     */
+    public long countByLevel(String levelCode) {
+        return lambdaQuery()
+                .eq(Employee::getLevel, levelCode)
+                .eq(Employee::getDeleted, false)
+                .count();
+    }
 }
 

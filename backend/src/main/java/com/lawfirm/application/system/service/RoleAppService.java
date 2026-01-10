@@ -25,9 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -205,6 +203,8 @@ public class RoleAppService {
 
     /**
      * 分配角色菜单
+     * 问题454修复：批量查询菜单和批量插入日志
+     * 问题455修复：使用差异更新避免先删后插风险
      */
     @Transactional
     public void assignMenus(Long roleId, List<Long> menuIds) {
@@ -224,50 +224,69 @@ public class RoleAppService {
         
         Set<Long> removedMenuIds = new HashSet<>(oldMenuIdSet);
         removedMenuIds.removeAll(newMenuIdSet);
-        
-        // 删除原有关联
-        roleMenuMapper.deleteByRoleId(roleId);
-        
-        // 保存新关联
-        if (menuIds != null && !menuIds.isEmpty()) {
-            saveRoleMenus(roleId, menuIds);
+
+        // 问题455修复：使用差异更新
+        // 先添加新的菜单关联
+        if (!addedMenuIds.isEmpty()) {
+            saveRoleMenus(roleId, new ArrayList<>(addedMenuIds));
         }
         
-        // 记录权限变更历史
-        Long changedBy = SecurityUtils.getUserId();
-        LocalDateTime changedAt = LocalDateTime.now();
+        // 再删除旧的菜单关联
+        if (!removedMenuIds.isEmpty()) {
+            roleMenuMapper.deleteByRoleIdAndMenuIds(roleId, new ArrayList<>(removedMenuIds));
+        }
         
-        // 记录新增的权限
-        for (Long menuId : addedMenuIds) {
-            Menu menu = menuMapper.selectById(menuId);
-            if (menu != null && menu.getPermission() != null && !menu.getPermission().isEmpty()) {
-                PermissionChangeLog changeLog = PermissionChangeLog.builder()
-                        .roleId(roleId)
-                        .roleCode(role.getRoleCode())
-                        .changeType("ADD")
-                        .permissionCode(menu.getPermission())
-                        .permissionName(menu.getName())
-                        .changedBy(changedBy)
-                        .changedAt(changedAt)
-                        .build();
-                permissionChangeLogRepository.save(changeLog);
+        // 问题454修复：批量查询菜单信息
+        Set<Long> allMenuIds = new HashSet<>();
+        allMenuIds.addAll(addedMenuIds);
+        allMenuIds.addAll(removedMenuIds);
+
+        if (!allMenuIds.isEmpty()) {
+            Map<Long, Menu> menuMap = menuMapper.selectBatchIds(new ArrayList<>(allMenuIds)).stream()
+                    .collect(Collectors.toMap(Menu::getId, m -> m));
+
+            // 记录权限变更历史
+            Long changedBy = SecurityUtils.getUserId();
+            LocalDateTime changedAt = LocalDateTime.now();
+            List<PermissionChangeLog> changeLogs = new ArrayList<>();
+            
+            // 记录新增的权限
+            for (Long menuId : addedMenuIds) {
+                Menu menu = menuMap.get(menuId);
+                if (menu != null && menu.getPermission() != null && !menu.getPermission().isEmpty()) {
+                    PermissionChangeLog changeLog = PermissionChangeLog.builder()
+                            .roleId(roleId)
+                            .roleCode(role.getRoleCode())
+                            .changeType("ADD")
+                            .permissionCode(menu.getPermission())
+                            .permissionName(menu.getName())
+                            .changedBy(changedBy)
+                            .changedAt(changedAt)
+                            .build();
+                    changeLogs.add(changeLog);
+                }
             }
-        }
-        
-        // 记录移除的权限
-        for (Long menuId : removedMenuIds) {
-            Menu menu = menuMapper.selectById(menuId);
-            if (menu != null && menu.getPermission() != null && !menu.getPermission().isEmpty()) {
-                PermissionChangeLog changeLog = PermissionChangeLog.builder()
-                        .roleId(roleId)
-                        .roleCode(role.getRoleCode())
-                        .changeType("REMOVE")
-                        .permissionCode(menu.getPermission())
-                        .permissionName(menu.getName())
-                        .changedBy(changedBy)
-                        .changedAt(changedAt)
-                        .build();
-                permissionChangeLogRepository.save(changeLog);
+            
+            // 记录移除的权限
+            for (Long menuId : removedMenuIds) {
+                Menu menu = menuMap.get(menuId);
+                if (menu != null && menu.getPermission() != null && !menu.getPermission().isEmpty()) {
+                    PermissionChangeLog changeLog = PermissionChangeLog.builder()
+                            .roleId(roleId)
+                            .roleCode(role.getRoleCode())
+                            .changeType("REMOVE")
+                            .permissionCode(menu.getPermission())
+                            .permissionName(menu.getName())
+                            .changedBy(changedBy)
+                            .changedAt(changedAt)
+                            .build();
+                    changeLogs.add(changeLog);
+                }
+            }
+
+            // 问题454修复：批量插入日志
+            if (!changeLogs.isEmpty()) {
+                permissionChangeLogRepository.saveBatch(changeLogs);
             }
         }
         
@@ -282,7 +301,14 @@ public class RoleAppService {
         return roleMenuMapper.selectMenuIdsByRoleId(roleId);
     }
 
+    /**
+     * 问题453修复：使用批量插入替代循环插入
+     */
     private void saveRoleMenus(Long roleId, List<Long> menuIds) {
+        if (menuIds == null || menuIds.isEmpty()) {
+            return;
+        }
+
         List<RoleMenu> roleMenus = menuIds.stream()
                 .map(menuId -> RoleMenu.builder()
                         .roleId(roleId)
@@ -290,9 +316,8 @@ public class RoleAppService {
                         .build())
                 .collect(Collectors.toList());
         
-        for (RoleMenu rm : roleMenus) {
-            roleMenuMapper.insert(rm);
-        }
+        // 问题453修复：批量插入
+        roleMenuMapper.insertBatch(roleMenus);
     }
 
     private RoleDTO toDTO(Role role) {

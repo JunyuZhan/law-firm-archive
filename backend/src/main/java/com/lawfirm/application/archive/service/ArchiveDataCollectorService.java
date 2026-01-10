@@ -79,6 +79,19 @@ public class ArchiveDataCollectorService {
     }
 
     /**
+     * 将JSON字符串转换为快照对象
+     * 用于验证序列化/反序列化的完整性
+     */
+    public ArchiveDataSnapshot jsonToSnapshot(String json) {
+        try {
+            return objectMapper.readValue(json, ArchiveDataSnapshot.class);
+        } catch (Exception e) {
+            log.error("快照反序列化失败", e);
+            throw new BusinessException("数据反序列化失败: " + e.getMessage());
+        }
+    }
+
+    /**
      * 检查归档必填项是否完整
      * @param matterId 项目ID
      * @return 检查结果

@@ -30,6 +30,10 @@ export interface DocumentDTO {
   folderPath?: string;
   /** 关联的卷宗目录项ID */
   dossierItemId?: number;
+  /** 显示排序顺序 */
+  displayOrder?: number;
+  /** 缩略图URL（图片和PDF文件） */
+  thumbnailUrl?: string;
 }
 
 export interface DocumentQuery {
@@ -149,6 +153,18 @@ export function getDocumentPreviewUrl(id: number) {
     previewUrl: string;
     expires: number;
   }>(`/document/${id}/preview-url`);
+}
+
+/** 获取文档缩略图 URL */
+export function getDocumentThumbnailUrl(id: number) {
+  return requestClient.get<{
+    documentId: number;
+    fileName: string;
+    fileType: string;
+    thumbnailUrl?: string;
+    hasThumbnail: boolean;
+    message?: string;
+  }>(`/document/${id}/thumbnail`);
 }
 
 /** 分享文档 */
@@ -273,6 +289,27 @@ export function moveDocument(id: number, targetDossierItemId: number) {
 /** 重新排序文档 */
 export function reorderDocuments(documentIds: number[]) {
   return requestClient.put<void>('/document/reorder', documentIds);
+}
+
+/** 批量下载文档（打包为 ZIP） */
+export function batchDownloadDocuments(ids: number[]) {
+  return requestClient.post('/document/batch-download', ids, {
+    responseType: 'blob',
+  });
+}
+
+/** 批量下载并触发浏览器下载 */
+export async function downloadDocumentsAsZip(ids: number[], filename?: string) {
+  const response = await batchDownloadDocuments(ids);
+  const blob = new Blob([response as any], { type: 'application/zip' });
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename || `documents_${Date.now()}.zip`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.URL.revokeObjectURL(url);
 }
 
 // 导出类型

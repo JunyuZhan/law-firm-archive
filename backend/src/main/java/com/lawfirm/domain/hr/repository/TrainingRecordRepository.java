@@ -40,4 +40,18 @@ public class TrainingRecordRepository extends AbstractRepository<TrainingRecordM
     public int sumCreditsByEmployeeId(Long employeeId) {
         return baseMapper.sumCreditsByEmployeeId(employeeId);
     }
+
+    /**
+     * 统计培训的完成人数
+     */
+    public int countCompletedByTrainingId(Long trainingId) {
+        return baseMapper.countCompletedByTrainingId(trainingId);
+    }
+
+    /**
+     * 根据培训ID和员工ID查找记录
+     */
+    public TrainingRecord findByTrainingIdAndEmployeeId(Long trainingId, Long employeeId) {
+        return baseMapper.selectByTrainingIdAndEmployeeId(trainingId, employeeId);
+    }
 }

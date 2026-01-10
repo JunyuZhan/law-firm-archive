@@ -214,6 +214,27 @@ export async function exportEvidenceList(matterId: number, items: EvidenceExport
   window.URL.revokeObjectURL(url);
 }
 
+/** 批量下载证据文件（打包为 ZIP） */
+export function batchDownloadEvidence(ids: number[]) {
+  return requestClient.post('/evidence/batch-download', ids, {
+    responseType: 'blob',
+  });
+}
+
+/** 批量下载并触发浏览器下载 */
+export async function downloadEvidenceAsZip(ids: number[], filename?: string) {
+  const response = await batchDownloadEvidence(ids);
+  const blob = new Blob([response as any], { type: 'application/zip' });
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename || `evidence_${Date.now()}.zip`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.URL.revokeObjectURL(url);
+}
+
 // 导出类型
 export type * from './types';
 

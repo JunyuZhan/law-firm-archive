@@ -28,6 +28,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import com.lawfirm.common.constant.ArchiveBorrowStatus;
+
 /**
  * 档案借阅应用服务
  */
@@ -75,7 +77,7 @@ public class ArchiveBorrowAppService {
     public ArchiveBorrowDTO createBorrow(CreateBorrowCommand command) {
         Archive archive = archiveRepository.getByIdOrThrow(command.getArchiveId(), "档案不存在");
         
-        if (!"STORED".equals(archive.getStatus())) {
+        if (!ArchiveBorrowStatus.ARCHIVE_STORED.equals(archive.getStatus())) {
             throw new BusinessException("只有已入库的档案才能申请借阅");
         }
 
@@ -83,7 +85,7 @@ public class ArchiveBorrowAppService {
         if (borrowRepository.count(
                 new LambdaQueryWrapper<ArchiveBorrow>()
                         .eq(ArchiveBorrow::getArchiveId, command.getArchiveId())
-                        .in(ArchiveBorrow::getStatus, List.of("PENDING", "APPROVED", "BORROWED", "OVERDUE"))) > 0) {
+                        .in(ArchiveBorrow::getStatus, List.of(ArchiveBorrowStatus.PENDING, ArchiveBorrowStatus.APPROVED, ArchiveBorrowStatus.BORROWED, ArchiveBorrowStatus.OVERDUE))) > 0) {
             throw new BusinessException("该档案已有未归还的借阅记录");
         }
 
@@ -97,7 +99,7 @@ public class ArchiveBorrowAppService {
                 .borrowReason(command.getBorrowReason())
                 .borrowDate(command.getBorrowDate())
                 .expectedReturnDate(command.getExpectedReturnDate())
-                .status("PENDING")
+                .status(ArchiveBorrowStatus.PENDING)
                 .build();
 
         borrowRepository.save(borrow);
@@ -112,11 +114,11 @@ public class ArchiveBorrowAppService {
     public void approveBorrow(Long borrowId) {
         ArchiveBorrow borrow = borrowRepository.getByIdOrThrow(borrowId, "借阅申请不存在");
         
-        if (!"PENDING".equals(borrow.getStatus())) {
+        if (!ArchiveBorrowStatus.PENDING.equals(borrow.getStatus())) {
             throw new BusinessException("当前状态不允许审批");
         }
 
-        borrow.setStatus("APPROVED");
+        borrow.setStatus(ArchiveBorrowStatus.APPROVED);
         borrow.setApproverId(SecurityUtils.getUserId());
         borrow.setApprovedAt(LocalDateTime.now());
         borrowRepository.updateById(borrow);
@@ -131,11 +133,11 @@ public class ArchiveBorrowAppService {
     public void rejectBorrow(Long borrowId, String reason) {
         ArchiveBorrow borrow = borrowRepository.getByIdOrThrow(borrowId, "借阅申请不存在");
         
-        if (!"PENDING".equals(borrow.getStatus())) {
+        if (!ArchiveBorrowStatus.PENDING.equals(borrow.getStatus())) {
             throw new BusinessException("当前状态不允许拒绝");
         }
 
-        borrow.setStatus("REJECTED");
+        borrow.setStatus(ArchiveBorrowStatus.REJECTED);
         borrow.setApproverId(SecurityUtils.getUserId());
         borrow.setApprovedAt(LocalDateTime.now());
         borrow.setRejectionReason(reason);
@@ -151,16 +153,16 @@ public class ArchiveBorrowAppService {
     public void confirmBorrow(Long borrowId) {
         ArchiveBorrow borrow = borrowRepository.getByIdOrThrow(borrowId, "借阅申请不存在");
         
-        if (!"APPROVED".equals(borrow.getStatus())) {
+        if (!ArchiveBorrowStatus.APPROVED.equals(borrow.getStatus())) {
             throw new BusinessException("只有已批准的申请才能借出");
         }
 
         Archive archive = archiveRepository.getByIdOrThrow(borrow.getArchiveId(), "档案不存在");
         
-        borrow.setStatus("BORROWED");
+        borrow.setStatus(ArchiveBorrowStatus.BORROWED);
         borrowRepository.updateById(borrow);
 
-        archive.setStatus("BORROWED");
+        archive.setStatus(ArchiveBorrowStatus.ARCHIVE_BORROWED);
         archiveRepository.updateById(archive);
 
         // 记录操作日志
@@ -176,20 +178,20 @@ public class ArchiveBorrowAppService {
     public void returnArchive(ReturnArchiveCommand command) {
         ArchiveBorrow borrow = borrowRepository.getByIdOrThrow(command.getBorrowId(), "借阅记录不存在");
         
-        if (!"BORROWED".equals(borrow.getStatus()) && !"OVERDUE".equals(borrow.getStatus())) {
+        if (!ArchiveBorrowStatus.BORROWED.equals(borrow.getStatus()) && !ArchiveBorrowStatus.OVERDUE.equals(borrow.getStatus())) {
             throw new BusinessException("只有借出或逾期的档案才能归还");
         }
 
         Archive archive = archiveRepository.getByIdOrThrow(borrow.getArchiveId(), "档案不存在");
 
-        borrow.setStatus("RETURNED");
+        borrow.setStatus(ArchiveBorrowStatus.RETURNED);
         borrow.setActualReturnDate(LocalDate.now());
         borrow.setReturnHandlerId(SecurityUtils.getUserId());
         borrow.setReturnCondition(command.getReturnCondition());
         borrow.setReturnRemarks(command.getReturnRemarks());
         borrowRepository.updateById(borrow);
 
-        archive.setStatus("STORED");
+        archive.setStatus(ArchiveBorrowStatus.ARCHIVE_STORED);
         archiveRepository.updateById(archive);
 
         // 记录操作日志
@@ -233,29 +235,14 @@ public class ArchiveBorrowAppService {
      * 获取状态名称
      */
     private String getStatusName(String status) {
-        if (status == null) return null;
-        return switch (status) {
-            case "PENDING" -> "待审批";
-            case "APPROVED" -> "已批准";
-            case "REJECTED" -> "已拒绝";
-            case "BORROWED" -> "借出中";
-            case "RETURNED" -> "已归还";
-            case "OVERDUE" -> "逾期";
-            default -> status;
-        };
+        return ArchiveBorrowStatus.getStatusName(status);
     }
 
     /**
      * 获取归还状态名称
      */
     private String getReturnConditionName(String condition) {
-        if (condition == null) return null;
-        return switch (condition) {
-            case "GOOD" -> "完好";
-            case "DAMAGED" -> "损坏";
-            case "LOST" -> "遗失";
-            default -> condition;
-        };
+        return ArchiveBorrowStatus.getConditionName(condition);
     }
 
     /**
@@ -284,7 +271,7 @@ public class ArchiveBorrowAppService {
         dto.setReturnRemarks(borrow.getReturnRemarks());
         dto.setIsOverdue(borrow.getExpectedReturnDate() != null && 
                          LocalDate.now().isAfter(borrow.getExpectedReturnDate()) &&
-                         !"RETURNED".equals(borrow.getStatus()));
+                         !ArchiveBorrowStatus.RETURNED.equals(borrow.getStatus()));
         dto.setCreatedAt(borrow.getCreatedAt());
         dto.setUpdatedAt(borrow.getUpdatedAt());
         return dto;

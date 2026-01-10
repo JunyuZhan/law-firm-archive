@@ -3,8 +3,11 @@ package com.lawfirm.infrastructure.config;
 import com.baomidou.mybatisplus.annotation.DbType;
 import com.baomidou.mybatisplus.core.handlers.MetaObjectHandler;
 import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
+import com.baomidou.mybatisplus.extension.plugins.inner.OptimisticLockerInnerInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor;
 import com.lawfirm.common.util.SecurityUtils;
+import com.lawfirm.infrastructure.persistence.interceptor.DataScopeInterceptor;
+import lombok.RequiredArgsConstructor;
 import org.apache.ibatis.reflection.MetaObject;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -15,14 +18,26 @@ import java.time.LocalDateTime;
  * MyBatis-Plus 配置
  */
 @Configuration
+@RequiredArgsConstructor
 public class MybatisPlusConfig {
 
+    private final DataScopeInterceptor dataScopeInterceptor;
+
     /**
-     * 分页插件
+     * MyBatis-Plus 拦截器配置
+     * 注意：拦截器顺序很重要
+     * 1. 数据权限拦截器（先执行，修改SQL）
+     * 2. 乐观锁拦截器（处理并发控制）
+     * 3. 分页拦截器（后执行，处理分页）
      */
     @Bean
     public MybatisPlusInterceptor mybatisPlusInterceptor() {
         MybatisPlusInterceptor interceptor = new MybatisPlusInterceptor();
+        // 数据权限拦截器（需要在分页之前执行）
+        interceptor.addInnerInterceptor(dataScopeInterceptor);
+        // 乐观锁拦截器（防止并发数据覆盖）
+        interceptor.addInnerInterceptor(new OptimisticLockerInnerInterceptor());
+        // 分页插件
         interceptor.addInnerInterceptor(new PaginationInnerInterceptor(DbType.POSTGRE_SQL));
         return interceptor;
     }
@@ -38,6 +53,8 @@ public class MybatisPlusConfig {
                 this.strictInsertFill(metaObject, "createdAt", LocalDateTime.class, LocalDateTime.now());
                 this.strictUpdateFill(metaObject, "updatedAt", LocalDateTime.class, LocalDateTime.now());
                 this.strictInsertFill(metaObject, "deleted", Boolean.class, false);
+                // 乐观锁版本号初始值
+                this.strictInsertFill(metaObject, "version", Integer.class, 1);
                 // 从SecurityContext获取当前用户ID
                 try {
                     Long userId = SecurityUtils.getUserId();

@@ -21,6 +21,15 @@ public abstract class BaseEntity implements Serializable {
     @TableId(type = IdType.AUTO)
     private Long id;
 
+    /**
+     * 乐观锁版本号 - 用于并发控制，防止数据覆盖
+     * 每次更新时自动加1，如果版本不匹配则更新失败
+     */
+    @Version
+    @TableField(fill = FieldFill.INSERT)
+    @lombok.Builder.Default
+    private Integer version = 1;
+
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createdAt;
 

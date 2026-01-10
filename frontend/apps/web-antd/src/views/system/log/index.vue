@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
+import { message } from 'ant-design-vue';
 import { Page } from '@vben/common-ui';
-import { Tag } from 'ant-design-vue';
+import { Tag, Button, Space, Card, Statistic, Row, Col, Popconfirm } from 'ant-design-vue';
+import { DownloadOutlined, DeleteOutlined } from '@vben/icons';
 import type { VbenFormSchema } from '#/adapter/form';
-import type { VxeGridProps } from '#/adapter/vxe-table';
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
-import { getOperationLogList } from '#/api/system';
+import { getOperationLogList, exportOperationLog, getLogStatistics, cleanOldLogs } from '#/api/system';
 import type { OperationLogDTO } from '#/api/system/types';
 import LogDetailModal from './components/LogDetailModal.vue';
 
@@ -14,6 +15,11 @@ defineOptions({ name: 'SystemLog' });
 // ==================== 状态定义 ====================
 
 const logDetailModalRef = ref<InstanceType<typeof LogDetailModal>>();
+const statistics = ref<Record<string, any>>({});
+const statisticsLoading = ref(false);
+const exportLoading = ref(false);
+const cleanLoading = ref(false);
+const currentQueryParams = ref<Record<string, any>>({});
 
 // ==================== 搜索表单配置 ====================
 
@@ -77,7 +83,7 @@ const formSchema: VbenFormSchema[] = [
 
 // ==================== 表格配置 ====================
 
-const gridColumns: VxeGridProps['gridOptions']['columns'] = [
+const gridColumns: any[] = [
   { title: '模块', field: 'module', width: 120 },
   { title: '操作', field: 'action', width: 120 },
   { title: '操作人', field: 'operatorName', width: 100 },
@@ -90,14 +96,19 @@ const gridColumns: VxeGridProps['gridOptions']['columns'] = [
 
 // 加载数据
 async function loadData(params: { page: number; pageSize: number } & Record<string, any>) {
-  const res = await getOperationLogList({
-    pageNum: params.page,
-    pageSize: params.pageSize,
+  // 保存查询条件用于导出
+  currentQueryParams.value = {
     module: params.module,
     operatorName: params.operatorName,
     status: params.status,
     startTime: params.startTime,
     endTime: params.endTime,
+  };
+  
+  const res = await getOperationLogList({
+    pageNum: params.page,
+    pageSize: params.pageSize,
+    ...currentQueryParams.value,
   });
   return {
     items: res.list,
@@ -105,7 +116,7 @@ async function loadData(params: { page: number; pageSize: number } & Record<stri
   };
 }
 
-const [Grid] = useVbenVxeGrid({
+const [Grid, gridApi] = useVbenVxeGrid({
   formOptions: {
     schema: formSchema,
     showCollapseButton: true,
@@ -117,7 +128,7 @@ const [Grid] = useVbenVxeGrid({
     height: 'auto',
     proxyConfig: {
       ajax: {
-        query: async ({ page, form }) => {
+        query: async ({ page, form }: { page: any; form: any }) => {
           return await loadData({
             page: page.currentPage,
             pageSize: page.pageSize,
@@ -138,10 +149,139 @@ const [Grid] = useVbenVxeGrid({
 function handleDetail(row: OperationLogDTO) {
   logDetailModalRef.value?.open(row);
 }
+
+// 加载统计信息
+async function loadStatistics() {
+  statisticsLoading.value = true;
+  try {
+    const res = await getLogStatistics();
+    statistics.value = res;
+  } catch (err: any) {
+    console.error('加载统计信息失败', err);
+  } finally {
+    statisticsLoading.value = false;
+  }
+}
+
+// 导出日志
+async function handleExport() {
+  exportLoading.value = true;
+  try {
+    const res = await exportOperationLog(currentQueryParams.value);
+    
+    // 处理返回的 Blob
+    let blob: Blob;
+    if (res instanceof Blob) {
+      blob = res;
+    } else if (res?.data instanceof Blob) {
+      blob = res.data;
+    } else {
+      throw new Error('导出失败：未知响应格式');
+    }
+    
+    // 检查是否是错误响应（JSON格式）
+    if (blob.type === 'application/json') {
+      const text = await blob.text();
+      const errorData = JSON.parse(text);
+      throw new Error(errorData.message || '导出失败');
+    }
+    
+    // 创建下载链接
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `操作日志_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+    
+    message.success('导出成功');
+  } catch (err: any) {
+    console.error('导出失败:', err);
+    message.error(err?.message || '导出失败');
+  } finally {
+    exportLoading.value = false;
+  }
+}
+
+// 清理历史日志
+async function handleClean() {
+  cleanLoading.value = true;
+  try {
+    await cleanOldLogs(90);
+    message.success('清理成功');
+    gridApi.reload();
+    await loadStatistics();
+  } catch (err: any) {
+    message.error(err.message || '清理失败');
+  } finally {
+    cleanLoading.value = false;
+  }
+}
+
+onMounted(() => {
+  loadStatistics();
+});
 </script>
 
 <template>
   <Page title="操作日志" description="查看系统操作日志" auto-content-height>
+    <!-- 统计卡片 -->
+    <Card class="mb-4" :bordered="false">
+      <Row :gutter="16">
+        <Col :xs="24" :sm="12" :md="6">
+          <Statistic title="总日志数" :value="statistics.totalCount || 0" :loading="statisticsLoading" />
+        </Col>
+        <Col :xs="24" :sm="12" :md="6">
+          <Statistic 
+            title="成功" 
+            :value="statistics.successCount || 0" 
+            :value-style="{ color: '#3f8600' }"
+            :loading="statisticsLoading"
+          />
+        </Col>
+        <Col :xs="24" :sm="12" :md="6">
+          <Statistic 
+            title="失败" 
+            :value="statistics.failCount || 0" 
+            :value-style="{ color: '#cf1322' }"
+            :loading="statisticsLoading"
+          />
+        </Col>
+        <Col :xs="24" :sm="12" :md="6">
+          <Statistic 
+            title="平均耗时" 
+            :value="statistics.avgExecutionTime || 0" 
+            suffix="ms"
+            :loading="statisticsLoading"
+          />
+        </Col>
+      </Row>
+    </Card>
+
+    <!-- 操作栏 -->
+    <Card class="mb-4" :bordered="false">
+      <Space>
+        <Button type="primary" :loading="exportLoading" @click="handleExport">
+          <DownloadOutlined class="mr-1" /> 导出日志
+        </Button>
+        <Button :loading="statisticsLoading" @click="loadStatistics">
+          刷新统计
+        </Button>
+        <Popconfirm
+          title="确定要清理90天前的日志吗？"
+          ok-text="确定"
+          cancel-text="取消"
+          @confirm="handleClean"
+        >
+          <Button danger :loading="cleanLoading">
+            <DeleteOutlined class="mr-1" /> 清理历史日志
+          </Button>
+        </Popconfirm>
+      </Space>
+    </Card>
+
     <Grid>
       <!-- 状态列 -->
       <template #status="{ row }">

@@ -50,6 +50,8 @@ public class ArchiveAppService {
     private final ArchiveOperationLogRepository operationLogRepository;
     private final MatterRepository matterRepository;
     private final ArchiveDataCollectorService dataCollectorService;
+    private final com.lawfirm.infrastructure.external.document.DossierCoverGenerator coverGenerator;
+    private final com.lawfirm.infrastructure.external.minio.MinioService minioService;
     private com.lawfirm.application.matter.service.MatterAppService matterAppService;
     
     @org.springframework.beans.factory.annotation.Autowired
@@ -151,7 +153,36 @@ public class ArchiveAppService {
 
         // 收集项目所有相关数据
         ArchiveDataSnapshot snapshot = dataCollectorService.collectMatterData(command.getMatterId());
-        String snapshotJson = dataCollectorService.snapshotToJson(snapshot);
+
+        // 转JSON并验证数据完整性
+        String snapshotJson;
+        try {
+            snapshotJson = dataCollectorService.snapshotToJson(snapshot);
+
+            // 验证能否反序列化
+            ArchiveDataSnapshot verified = dataCollectorService.jsonToSnapshot(snapshotJson);
+
+            // 验证关键数据完整性
+            if (verified.getMatterId() == null || !snapshot.getMatterId().equals(verified.getMatterId())) {
+                throw new BusinessException("数据快照验证失败: 项目ID不一致");
+            }
+
+            if (snapshot.getStatistics() == null || snapshot.getStatistics().isEmpty()) {
+                log.warn("归档快照统计信息为空: matterId={}", command.getMatterId());
+            }
+
+            // 验证快照大小
+            if (snapshotJson.length() > 10 * 1024 * 1024) { // 10MB
+                log.warn("归档快照过大: {}KB, matterId={}",
+                        snapshotJson.length() / 1024, command.getMatterId());
+            }
+
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("归档数据快照生成失败: matterId={}", command.getMatterId(), e);
+            throw new BusinessException("归档数据快照生成失败，请检查项目数据完整性: " + e.getMessage());
+        }
 
         // 生成档案号
         String archiveNo = generateArchiveNo(command.getArchiveType());
@@ -189,6 +220,25 @@ public class ArchiveAppService {
                 .build();
 
         archiveRepository.save(archive);
+
+        // 生成卷宗封面
+        try {
+            byte[] coverPdf = coverGenerator.generateCover(matter, archiveNo);
+            String coverFileName = "archive_" + archive.getId() + "_cover.pdf";
+            String coverPath = "archives/" + archive.getId() + "/" + coverFileName;
+            String coverUrl = minioService.uploadBytes(coverPdf, coverPath, "application/pdf");
+            
+            // 将封面URL保存到electronicUrl字段（如果没有电子档案）
+            if (archive.getElectronicUrl() == null || archive.getElectronicUrl().isEmpty()) {
+                archive.setElectronicUrl(coverUrl);
+            }
+            archiveRepository.updateById(archive);
+            
+            log.info("卷宗封面生成成功: archiveId={}, coverUrl={}", archive.getId(), coverUrl);
+        } catch (Exception e) {
+            log.error("生成卷宗封面失败: archiveId={}", archive.getId(), e);
+            // 封面生成失败不影响归档流程，只记录日志
+        }
 
         // 记录操作日志
         logOperation(archive.getId(), "CREATE", "创建档案，数据统计：" + snapshot.getStatistics(), SecurityUtils.getUserId());
@@ -342,6 +392,25 @@ public class ArchiveAppService {
                 .build();
 
         archiveRepository.save(archive);
+
+        // 生成卷宗封面
+        try {
+            byte[] coverPdf = coverGenerator.generateCover(matter, archiveNo);
+            String coverFileName = "archive_" + archive.getId() + "_cover.pdf";
+            String coverPath = "archives/" + archive.getId() + "/" + coverFileName;
+            String coverUrl = minioService.uploadBytes(coverPdf, coverPath, "application/pdf");
+            
+            // 将封面URL保存到electronicUrl字段（如果没有电子档案）
+            if (archive.getElectronicUrl() == null || archive.getElectronicUrl().isEmpty()) {
+                archive.setElectronicUrl(coverUrl);
+            }
+            archiveRepository.updateById(archive);
+            
+            log.info("卷宗封面生成成功: archiveId={}, coverUrl={}", archive.getId(), coverUrl);
+        } catch (Exception e) {
+            log.error("生成卷宗封面失败: archiveId={}", archive.getId(), e);
+            // 封面生成失败不影响归档流程，只记录日志
+        }
 
         // 记录操作日志
         logOperation(archive.getId(), "CREATE", "创建档案", SecurityUtils.getUserId());
@@ -646,6 +715,34 @@ public class ArchiveAppService {
             case "5_YEARS" -> "5年";
             default -> period;
         };
+    }
+
+    /**
+     * 重新生成卷宗封面
+     */
+    @Transactional
+    public ArchiveDTO regenerateCover(Long archiveId) {
+        Archive archive = archiveRepository.getByIdOrThrow(archiveId, "档案不存在");
+        Matter matter = matterRepository.getByIdOrThrow(archive.getMatterId(), "项目不存在");
+        
+        try {
+            // 生成新的封面
+            byte[] coverPdf = coverGenerator.generateCover(matter, archive.getArchiveNo());
+            String coverFileName = "archive_" + archive.getId() + "_cover.pdf";
+            String coverPath = "archives/" + archive.getId() + "/" + coverFileName;
+            String coverUrl = minioService.uploadBytes(coverPdf, coverPath, "application/pdf");
+            
+            // 更新封面URL
+            archive.setElectronicUrl(coverUrl);
+            archiveRepository.updateById(archive);
+            
+            log.info("卷宗封面重新生成成功: archiveId={}, coverUrl={}", archive.getId(), coverUrl);
+        } catch (Exception e) {
+            log.error("重新生成卷宗封面失败: archiveId={}", archiveId, e);
+            throw new BusinessException("重新生成卷宗封面失败: " + e.getMessage());
+        }
+        
+        return toDTO(archive);
     }
 
     /**

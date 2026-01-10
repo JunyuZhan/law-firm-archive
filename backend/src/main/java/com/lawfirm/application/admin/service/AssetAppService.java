@@ -22,9 +22,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 /**
@@ -38,17 +38,36 @@ public class AssetAppService {
     private final AssetRepository assetRepository;
     private final AssetRecordRepository assetRecordRepository;
     private final UserRepository userRepository;
+    
+    // 问题292修复：资产编号生成序列号，避免并发冲突
+    private final AtomicLong assetSequence = new AtomicLong(0);
 
     /**
      * 分页查询资产
+     * 问题290修复：使用批量加载避免N+1查询
      */
     public PageResult<AssetDTO> listAssets(PageQuery query, String keyword, String category, 
                                             String status, Long departmentId) {
         Page<Asset> page = new Page<>(query.getPageNum(), query.getPageSize());
         IPage<Asset> result = assetRepository.findPage(page, keyword, category, status, departmentId, null);
+        List<Asset> assets = result.getRecords();
         
-        List<AssetDTO> items = result.getRecords().stream()
-                .map(this::toDTO)
+        if (assets.isEmpty()) {
+            return PageResult.of(Collections.emptyList(), 0L, query.getPageNum(), query.getPageSize());
+        }
+        
+        // 批量加载当前使用人信息，避免N+1查询
+        Set<Long> userIds = assets.stream()
+                .map(Asset::getCurrentUserId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        
+        Map<Long, User> userMap = userIds.isEmpty() ? Collections.emptyMap() :
+                userRepository.listByIds(new ArrayList<>(userIds)).stream()
+                        .collect(Collectors.toMap(User::getId, u -> u));
+        
+        List<AssetDTO> items = assets.stream()
+                .map(a -> toDTO(a, userMap))
                 .collect(Collectors.toList());
         
         return PageResult.of(items, result.getTotal(), query.getPageNum(), query.getPageSize());
@@ -131,6 +150,7 @@ public class AssetAppService {
 
     /**
      * 删除资产
+     * 问题294修复：检查历史记录，防止孤儿数据
      */
     @Transactional
     public void deleteAsset(Long id) {
@@ -142,12 +162,21 @@ public class AssetAppService {
             throw new BusinessException("使用中的资产无法删除");
         }
         
+        // 检查是否有历史记录
+        long recordCount = assetRecordRepository.countByAssetId(id);
+        if (recordCount > 0) {
+            throw new BusinessException("该资产有" + recordCount + "条历史记录，无法删除。建议使用报废功能。");
+        }
+        
         assetRepository.removeById(id);
         log.info("删除资产: {}", asset.getAssetNo());
     }
 
     /**
      * 资产领用
+     * 权限控制：
+     * - 普通用户只能为自己领用
+     * - 管理员/资产管理员可以代他人领用
      */
     @Transactional
     public void receiveAsset(AssetReceiveCommand command) {
@@ -159,14 +188,27 @@ public class AssetAppService {
             throw new BusinessException("该资产当前不可领用");
         }
         
-        Long userId = command.getUserId() != null ? command.getUserId() : SecurityUtils.getCurrentUserId();
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        Long targetUserId = command.getUserId();
+        
+        // 权限检查：只能为自己领用，除非是管理员/资产管理员
+        if (targetUserId != null && !targetUserId.equals(currentUserId)) {
+            // 检查是否有管理员权限
+            if (!SecurityUtils.hasRole("ADMIN") && !SecurityUtils.hasRole("ASSET_MANAGER")) {
+                throw new BusinessException("权限不足：只能为自己领用资产，无权代他人领用");
+            }
+            log.warn("管理员代领用资产: operator={}, targetUser={}, assetNo={}", 
+                     currentUserId, targetUserId, asset.getAssetNo());
+        } else {
+            targetUserId = currentUserId;
+        }
         
         // 创建领用记录
         AssetRecord record = AssetRecord.builder()
                 .assetId(asset.getId())
                 .recordType("RECEIVE")
-                .operatorId(SecurityUtils.getCurrentUserId())
-                .toUserId(userId)
+                .operatorId(currentUserId)
+                .toUserId(targetUserId)
                 .operateDate(LocalDate.now())
                 .expectedReturnDate(command.getExpectedReturnDate())
                 .reason(command.getReason())
@@ -178,14 +220,15 @@ public class AssetAppService {
         
         // 更新资产状态
         asset.setStatus("IN_USE");
-        asset.setCurrentUserId(userId);
+        asset.setCurrentUserId(targetUserId);
         assetRepository.updateById(asset);
         
-        log.info("资产领用: assetNo={}, userId={}", asset.getAssetNo(), userId);
+        log.info("资产领用: assetNo={}, userId={}, operator={}", asset.getAssetNo(), targetUserId, currentUserId);
     }
 
     /**
      * 资产归还
+     * 问题291修复：验证归还人权限，只能归还自己的资产或管理员代归还
      */
     @Transactional
     public void returnAsset(Long assetId, String remarks) {
@@ -198,6 +241,15 @@ public class AssetAppService {
         }
         
         Long currentUserId = SecurityUtils.getCurrentUserId();
+        
+        // 验证权限：只能归还自己的资产，除非是管理员/资产管理员
+        if (asset.getCurrentUserId() != null && !asset.getCurrentUserId().equals(currentUserId)) {
+            if (!SecurityUtils.hasRole("ADMIN") && !SecurityUtils.hasRole("ASSET_MANAGER")) {
+                throw new BusinessException("权限不足：只能归还自己领用的资产");
+            }
+            log.warn("管理员代归还资产: operator={}, currentUser={}, assetNo={}",
+                     currentUserId, asset.getCurrentUserId(), asset.getAssetNo());
+        }
         
         // 创建归还记录
         AssetRecord record = AssetRecord.builder()
@@ -218,11 +270,13 @@ public class AssetAppService {
         asset.setCurrentUserId(null);
         assetRepository.updateById(asset);
         
-        log.info("资产归还: assetNo={}", asset.getAssetNo());
+        log.info("资产归还: assetNo={}, operator={}, fromUser={}", 
+                 asset.getAssetNo(), currentUserId, asset.getCurrentUserId());
     }
 
     /**
-     * 资产报废
+     * 资产报废申请
+     * 问题300修复：使用中间状态PENDING_SCRAP，审批通过后才变为SCRAPPED
      */
     @Transactional
     public void scrapAsset(Long assetId, String reason) {
@@ -232,6 +286,12 @@ public class AssetAppService {
         }
         if ("IN_USE".equals(asset.getStatus())) {
             throw new BusinessException("使用中的资产需先归还后才能报废");
+        }
+        if ("SCRAPPED".equals(asset.getStatus())) {
+            throw new BusinessException("该资产已报废");
+        }
+        if ("PENDING_SCRAP".equals(asset.getStatus())) {
+            throw new BusinessException("该资产已提交报废申请，请等待审批");
         }
         
         // 创建报废记录
@@ -246,19 +306,54 @@ public class AssetAppService {
         
         assetRecordRepository.save(record);
         
-        // 更新资产状态
-        asset.setStatus("SCRAPPED");
+        // 更新资产状态为待报废，等审批通过后再变为已报废
+        asset.setStatus("PENDING_SCRAP");
         assetRepository.updateById(asset);
         
-        log.info("资产报废: assetNo={}", asset.getAssetNo());
+        log.info("资产报废申请: assetNo={}, 等待审批", asset.getAssetNo());
+    }
+    
+    /**
+     * 审批报废申请
+     * 问题300修复：新增审批回调方法
+     */
+    @Transactional
+    public void approveScrap(Long assetId, boolean approved, String comment) {
+        Asset asset = assetRepository.getById(assetId);
+        if (asset == null) {
+            throw new BusinessException("资产不存在");
+        }
+        if (!"PENDING_SCRAP".equals(asset.getStatus())) {
+            throw new BusinessException("该资产不在待报废状态");
+        }
+        
+        if (approved) {
+            asset.setStatus("SCRAPPED");
+            log.info("资产报废审批通过: {}", asset.getAssetNo());
+        } else {
+            asset.setStatus("IDLE");  // 恢复为闲置状态
+            log.info("资产报废审批拒绝: {}, 原因: {}", asset.getAssetNo(), comment);
+        }
+        
+        assetRepository.updateById(asset);
     }
 
     /**
      * 获取资产操作记录
+     * 问题293修复：优化N+1查询，只查询一次资产信息
      */
     public List<AssetRecordDTO> getAssetRecords(Long assetId) {
-        return assetRecordRepository.findByAssetId(assetId).stream()
-                .map(this::toRecordDTO)
+        List<AssetRecord> records = assetRecordRepository.findByAssetId(assetId);
+        
+        if (records.isEmpty()) {
+            return Collections.emptyList();
+        }
+        
+        // 只查询一次资产信息（所有记录都是同一个资产）
+        Asset asset = assetRepository.getById(assetId);
+        
+        return records.stream()
+                .map(r -> toRecordDTO(r, asset))
                 .collect(Collectors.toList());
     }
 
@@ -291,6 +386,10 @@ public class AssetAppService {
         return stats;
     }
 
+    /**
+     * 生成资产编号
+     * 问题292修复：使用日期+序列号+随机数避免并发冲突
+     */
     private String generateAssetNo(String category) {
         String prefix = switch (category) {
             case "OFFICE" -> "OF";
@@ -299,10 +398,24 @@ public class AssetAppService {
             case "VEHICLE" -> "VH";
             default -> "OT";
         };
-        return prefix + System.currentTimeMillis();
+        String date = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        long seq = assetSequence.incrementAndGet() % 1000;
+        String random = UUID.randomUUID().toString().substring(0, 4).toUpperCase();
+        return String.format("%s%s%03d%s", prefix, date, seq, random);
     }
 
+    /**
+     * 转换为DTO（单个资产，会查询用户）
+     */
     private AssetDTO toDTO(Asset asset) {
+        return toDTO(asset, null);
+    }
+    
+    /**
+     * 转换为DTO（批量优化版本，从Map获取用户信息）
+     * 问题290修复：支持批量加载
+     */
+    private AssetDTO toDTO(Asset asset, Map<Long, User> userMap) {
         AssetDTO dto = AssetDTO.builder()
                 .id(asset.getId())
                 .assetNo(asset.getAssetNo())
@@ -334,9 +447,10 @@ public class AssetAppService {
             dto.setInWarranty(!asset.getWarrantyExpireDate().isBefore(LocalDate.now()));
         }
         
-        // 查询当前使用人名称
+        // 查询当前使用人名称（从Map获取或单独查询）
         if (asset.getCurrentUserId() != null) {
-            User user = userRepository.getById(asset.getCurrentUserId());
+            User user = (userMap != null) ? userMap.get(asset.getCurrentUserId()) 
+                                          : userRepository.getById(asset.getCurrentUserId());
             if (user != null) {
                 dto.setCurrentUserName(user.getRealName());
             }
@@ -345,7 +459,11 @@ public class AssetAppService {
         return dto;
     }
 
-    private AssetRecordDTO toRecordDTO(AssetRecord record) {
+    /**
+     * 转换为记录DTO（优化版本，直接使用传入的Asset对象）
+     * 问题293修复：避免N+1查询
+     */
+    private AssetRecordDTO toRecordDTO(AssetRecord record, Asset asset) {
         AssetRecordDTO dto = AssetRecordDTO.builder()
                 .id(record.getId())
                 .assetId(record.getAssetId())
@@ -366,8 +484,7 @@ public class AssetAppService {
                 .createdAt(record.getCreatedAt())
                 .build();
         
-        // 查询资产信息
-        Asset asset = assetRepository.getById(record.getAssetId());
+        // 从参数获取资产信息，避免查询
         if (asset != null) {
             dto.setAssetNo(asset.getAssetNo());
             dto.setAssetName(asset.getName());

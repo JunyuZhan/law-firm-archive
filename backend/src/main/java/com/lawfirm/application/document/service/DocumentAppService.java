@@ -11,6 +11,7 @@ import com.lawfirm.application.document.dto.DocumentQueryDTO;
 import com.lawfirm.common.exception.BusinessException;
 import com.lawfirm.common.result.PageResult;
 import com.lawfirm.common.util.SecurityUtils;
+import com.lawfirm.common.util.FileValidator;
 import com.lawfirm.domain.document.entity.Document;
 import com.lawfirm.domain.document.entity.DocumentCategory;
 import com.lawfirm.domain.document.entity.DocumentVersion;
@@ -19,6 +20,7 @@ import com.lawfirm.domain.document.repository.DocumentRepository;
 import com.lawfirm.infrastructure.persistence.mapper.DocumentMapper;
 import com.lawfirm.infrastructure.persistence.mapper.DocumentVersionMapper;
 import com.lawfirm.infrastructure.external.minio.MinioService;
+import com.lawfirm.infrastructure.external.file.ThumbnailService;
 import com.lawfirm.application.matter.service.MatterAppService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -50,6 +52,7 @@ public class DocumentAppService {
     private final DocumentMapper documentMapper;
     private final DocumentVersionMapper versionMapper;
     private final MinioService minioService;
+    private final ThumbnailService thumbnailService;
     private MatterAppService matterAppService;
     
     @org.springframework.beans.factory.annotation.Autowired
@@ -369,6 +372,13 @@ public class DocumentAppService {
             throw new BusinessException("请选择要上传的文件");
         }
         
+        // ✅ 安全验证：使用 FileValidator 验证文件
+        FileValidator.ValidationResult validationResult = FileValidator.validate(file);
+        if (!validationResult.isValid()) {
+            log.warn("文件验证失败: {}, 原因: {}", file.getOriginalFilename(), validationResult.getErrorMessage());
+            throw new BusinessException(validationResult.getErrorMessage());
+        }
+        
         try {
             // 构建存储路径
             String storagePath = buildStoragePath(matterId, folder);
@@ -381,6 +391,12 @@ public class DocumentAppService {
             String fileType = getFileExtension(originalFilename);
             String mimeType = file.getContentType();
             long fileSize = file.getSize();
+            
+            // 生成缩略图（支持图片和PDF）
+            String thumbnailUrl = null;
+            if (thumbnailService.supportsThumbnail(originalFilename)) {
+                thumbnailUrl = thumbnailService.generateThumbnail(file, fileUrl);
+            }
             
             // 创建文档记录
             Document document = Document.builder()
@@ -399,6 +415,7 @@ public class DocumentAppService {
                     .description(description)
                     .dossierItemId(dossierItemId)
                     .folderPath(folder)
+                    .thumbnailUrl(thumbnailUrl)
                     .createdBy(SecurityUtils.getUserId())
                     .build();
             
@@ -407,7 +424,7 @@ public class DocumentAppService {
             // 保存版本历史
             saveVersion(document, "初始版本");
             
-            log.info("文件上传成功: {}, path={}", originalFilename, fileUrl);
+            log.info("文件上传成功: {}, path={}, thumbnail={}", originalFilename, fileUrl, thumbnailUrl != null);
             return toDTO(document);
             
         } catch (Exception e) {
@@ -417,24 +434,65 @@ public class DocumentAppService {
     }
 
     /**
-     * 批量上传文件
+     * 批量上传文件（带事务补偿）
+     * 
+     * 事务策略：
+     * 1. 先验证所有文件
+     * 2. 批量上传到MinIO，记录已上传的文件URL
+     * 3. 批量创建数据库记录
+     * 4. 如果任一步骤失败，清理已上传的MinIO文件
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public List<DocumentDTO> uploadFiles(MultipartFile[] files, Long matterId, String folder, String description, Long dossierItemId) {
         if (files == null || files.length == 0) {
             throw new BusinessException("请选择要上传的文件");
         }
         
-        List<DocumentDTO> results = new ArrayList<>();
+        // 收集有效文件
+        List<MultipartFile> validFiles = new ArrayList<>();
         for (MultipartFile file : files) {
             if (!file.isEmpty()) {
-                DocumentDTO dto = uploadFile(file, matterId, folder, description, dossierItemId);
-                results.add(dto);
+                validFiles.add(file);
             }
         }
         
-        log.info("批量上传完成: {} 个文件", results.size());
-        return results;
+        if (validFiles.isEmpty()) {
+            throw new BusinessException("没有有效的文件");
+        }
+        
+        // 记录已上传到MinIO的文件路径，用于失败时清理
+        List<String> uploadedFilePaths = new ArrayList<>();
+        List<DocumentDTO> results = new ArrayList<>();
+        
+        try {
+            // 逐个上传（上传时会自动创建数据库记录）
+            for (MultipartFile file : validFiles) {
+                DocumentDTO dto = uploadFile(file, matterId, folder, description, dossierItemId);
+                uploadedFilePaths.add(dto.getFilePath());
+                results.add(dto);
+            }
+            
+            log.info("批量上传完成: {} 个文件", results.size());
+            return results;
+            
+        } catch (Exception e) {
+            // 上传失败，清理已上传到MinIO的文件
+            log.error("批量上传失败，开始清理已上传的文件: {} 个", uploadedFilePaths.size(), e);
+            
+            for (String filePath : uploadedFilePaths) {
+                try {
+                    if (filePath != null && !filePath.isEmpty()) {
+                        minioService.deleteFile(filePath);
+                        log.info("清理失败上传的文件: {}", filePath);
+                    }
+                } catch (Exception cleanEx) {
+                    log.error("清理文件失败: {}", filePath, cleanEx);
+                }
+            }
+            
+            // 重新抛出异常，触发事务回滚
+            throw new BusinessException("批量上传失败: " + e.getMessage());
+        }
     }
 
     /**
@@ -582,6 +640,59 @@ public class DocumentAppService {
     }
 
     /**
+     * 为已存在的文档生成缩略图
+     * @param documentId 文档ID
+     * @return 缩略图URL，如果不支持或生成失败返回null
+     */
+    @Transactional
+    public String generateThumbnailForDocument(Long documentId) {
+        Document document = documentRepository.getByIdOrThrow(documentId, "文档不存在");
+        
+        // 如果已有缩略图，直接返回
+        if (document.getThumbnailUrl() != null && !document.getThumbnailUrl().isEmpty()) {
+            return document.getThumbnailUrl();
+        }
+        
+        // 检查是否支持生成缩略图
+        if (!thumbnailService.supportsThumbnail(document.getFileName())) {
+            log.debug("文件类型不支持缩略图: {}", document.getFileName());
+            return null;
+        }
+        
+        // 从MinIO获取文件并生成缩略图
+        String thumbnailUrl = thumbnailService.generateThumbnailFromUrl(
+                document.getFilePath(), 
+                document.getFileName()
+        );
+        
+        if (thumbnailUrl != null) {
+            document.setThumbnailUrl(thumbnailUrl);
+            documentRepository.updateById(document);
+            log.info("文档缩略图生成成功: docId={}, thumbnailUrl={}", documentId, thumbnailUrl);
+        }
+        
+        return thumbnailUrl;
+    }
+
+    /**
+     * 获取文档缩略图URL
+     * 如果缩略图不存在，尝试生成
+     * @param documentId 文档ID
+     * @return 缩略图URL
+     */
+    public String getThumbnailUrl(Long documentId) {
+        Document document = documentRepository.getByIdOrThrow(documentId, "文档不存在");
+        
+        // 如果已有缩略图，直接返回
+        if (document.getThumbnailUrl() != null && !document.getThumbnailUrl().isEmpty()) {
+            return document.getThumbnailUrl();
+        }
+        
+        // 尝试生成缩略图
+        return generateThumbnailForDocument(documentId);
+    }
+
+    /**
      * 获取安全级别名称
      */
     private String getSecurityLevelName(String level) {
@@ -624,18 +735,19 @@ public class DocumentAppService {
         
         try {
             // 1. 从 OnlyOffice 下载编辑后的文档
+            // ⚠️ 内存泄露修复：使用 try-with-resources 确保 InputStream 正确关闭
             java.net.URL url = new java.net.URL(downloadUrl);
-            java.io.InputStream inputStream = url.openStream();
-            
+            byte[] fileContent;
+            try (java.io.InputStream inputStream = url.openStream();
+                 java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream()) {
             // 2. 计算文件大小（需要先读取到 ByteArrayOutputStream）
-            java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
             byte[] buffer = new byte[8192];
             int bytesRead;
             while ((bytesRead = inputStream.read(buffer)) != -1) {
                 baos.write(buffer, 0, bytesRead);
             }
-            inputStream.close();
-            byte[] fileContent = baos.toByteArray();
+                fileContent = baos.toByteArray();
+            }
             long newFileSize = fileContent.length;
             
             // 3. 构建新的存储路径（保持原来的路径结构）
@@ -649,7 +761,6 @@ public class DocumentAppService {
             
             // 5. 更新文档记录（创建新版本）
             int newVersion = document.getVersion() != null ? document.getVersion() + 1 : 2;
-            String oldFilePath = document.getFilePath();
             
             document.setFilePath(newFileUrl);
             document.setFileSize(newFileSize);
@@ -707,6 +818,7 @@ public class DocumentAppService {
         dto.setDossierItemId(doc.getDossierItemId());
         dto.setFolderPath(doc.getFolderPath());
         dto.setDisplayOrder(doc.getDisplayOrder());
+        dto.setThumbnailUrl(doc.getThumbnailUrl());
         return dto;
     }
 }

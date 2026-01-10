@@ -56,7 +56,7 @@ const [Form, formApi] = useVbenForm({
     { fieldName: 'court', label: '审理法院', component: 'Input', componentProps: { placeholder: '如：北京市朝阳区人民法院' } },
     { fieldName: 'judgmentDate', label: '判决日期', component: 'DatePicker', componentProps: { class: 'w-full' } },
     { fieldName: 'result', label: '案件结果', component: 'Select', componentProps: { options: resultOptions }, defaultValue: 'WIN' },
-    { fieldName: 'lawyerId', label: '经办律师', component: 'ApiTreeSelect', componentProps: { api: () => import('#/api/system').then(m => m.getUserTree()), placeholder: '选择经办律师', fieldNames: { label: 'name', value: 'id', children: 'children' } } },
+    { fieldName: 'lawyerId', label: '经办律师', component: 'UserTreeSelect', componentProps: { placeholder: '选择经办律师', allowClear: true } },
     { fieldName: 'referenceValue', label: '参考价值', component: 'Select', componentProps: { options: referenceValueOptions }, defaultValue: 'MEDIUM' },
     { fieldName: 'summary', label: '案例摘要', component: 'Textarea', componentProps: { rows: 4, placeholder: '案例摘要、裁判要旨等' } },
   ],

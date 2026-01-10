@@ -25,7 +25,16 @@ public class NotificationController {
 
     @Operation(summary = "分页查询我的通知")
     @GetMapping
-    public Result<PageResult<NotificationDTO>> listMyNotifications(NotificationQueryDTO query) {
+    public Result<PageResult<NotificationDTO>> listMyNotifications(
+            @RequestParam(required = false) Integer pageNum,
+            @RequestParam(required = false) Integer pageSize,
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) Boolean isRead) {
+        NotificationQueryDTO query = new NotificationQueryDTO();
+        if (pageNum != null) query.setPageNum(pageNum);
+        if (pageSize != null) query.setPageSize(pageSize);
+        if (type != null) query.setType(type);
+        if (isRead != null) query.setIsRead(isRead);
         return Result.success(notificationAppService.listMyNotifications(query));
     }
 
@@ -61,6 +70,13 @@ public class NotificationController {
     @DeleteMapping("/{id}")
     public Result<Void> deleteNotification(@PathVariable Long id) {
         notificationAppService.deleteNotification(id);
+        return Result.success();
+    }
+
+    @Operation(summary = "批量删除已读通知")
+    @DeleteMapping("/read")
+    public Result<Void> deleteReadNotifications() {
+        notificationAppService.deleteReadNotifications();
         return Result.success();
     }
 }

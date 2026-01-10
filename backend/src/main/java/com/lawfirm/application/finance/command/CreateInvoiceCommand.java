@@ -32,6 +32,13 @@ public class CreateInvoiceCommand {
 
     private BigDecimal taxRate;
 
+    /**
+     * 金额是否含税
+     * true: amount 为含税价（价税合计）
+     * false: amount 为不含税价（默认）
+     */
+    private Boolean taxIncluded;
+
     private String content;
 
     private String remark;

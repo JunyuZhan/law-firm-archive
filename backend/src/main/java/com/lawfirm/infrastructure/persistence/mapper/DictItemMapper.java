@@ -28,4 +28,11 @@ public interface DictItemMapper extends BaseMapper<DictItem> {
             "WHERE t.code = #{typeCode} AND i.status = 'ENABLED' AND i.deleted = false AND t.deleted = false " +
             "ORDER BY i.sort_order")
     List<DictItem> selectByTypeCode(@Param("typeCode") String typeCode);
+
+    /**
+     * 统计字典类型下的字典项数量
+     * 问题489修复：用于删除前检查关联
+     */
+    @Select("SELECT COUNT(*) FROM sys_dict_item WHERE dict_type_id = #{typeId} AND deleted = false")
+    long countByTypeId(@Param("typeId") Long typeId);
 }

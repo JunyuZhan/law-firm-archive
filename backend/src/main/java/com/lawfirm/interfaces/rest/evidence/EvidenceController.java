@@ -13,10 +13,12 @@ import com.lawfirm.common.annotation.OperationLog;
 import com.lawfirm.common.annotation.RequirePermission;
 import com.lawfirm.common.result.PageResult;
 import com.lawfirm.common.result.Result;
+import com.lawfirm.common.util.FileValidator;
 import com.lawfirm.infrastructure.external.minio.MinioService;
 import com.lawfirm.infrastructure.external.document.DocumentContentExtractor;
 import com.lawfirm.infrastructure.external.file.FileTypeService;
 import com.lawfirm.infrastructure.external.file.ThumbnailService;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -164,7 +166,14 @@ public class EvidenceController {
     @OperationLog(module = "证据管理", action = "上传证据文件")
     public Result<Map<String, Object>> uploadFile(@RequestParam("file") MultipartFile file) {
         try {
-            // 验证文件
+            // ✅ 安全验证：使用 FileValidator 验证文件（防止恶意文件）
+            FileValidator.ValidationResult securityResult = FileValidator.validate(file);
+            if (!securityResult.isValid()) {
+                log.warn("证据文件安全验证失败: {}, 原因: {}", file.getOriginalFilename(), securityResult.getErrorMessage());
+                throw new com.lawfirm.common.exception.BusinessException(securityResult.getErrorMessage());
+            }
+            
+            // 业务验证（文件类型）
             String validationError = fileTypeService.validateFile(file);
             if (validationError != null) {
                 throw new com.lawfirm.common.exception.BusinessException(validationError);
@@ -259,6 +268,61 @@ public class EvidenceController {
         }
         result.put("fileName", evidence.getFileName());
         return Result.success(result);
+    }
+
+    /**
+     * 批量下载证据文件（打包为 ZIP）
+     */
+    @PostMapping("/batch-download")
+    @RequirePermission("evidence:download")
+    @OperationLog(module = "证据管理", action = "批量下载证据")
+    @Operation(summary = "批量下载证据", description = "将多个证据文件打包为 ZIP 文件下载")
+    public void batchDownload(
+            @RequestBody List<Long> ids,
+            HttpServletResponse response) {
+        if (ids == null || ids.isEmpty()) {
+            throw new com.lawfirm.common.exception.BusinessException("请选择要下载的证据");
+        }
+        if (ids.size() > 100) {
+            throw new com.lawfirm.common.exception.BusinessException("单次最多下载100个证据文件");
+        }
+        
+        try {
+            // 收集文件数据
+            Map<String, byte[]> filesMap = new java.util.LinkedHashMap<>();
+            for (Long id : ids) {
+                EvidenceDTO evidence = evidenceAppService.getEvidenceById(id);
+                if (evidence != null && evidence.getFileUrl() != null) {
+                    String objectName = minioService.extractObjectName(evidence.getFileUrl());
+                    if (objectName != null) {
+                        byte[] fileBytes = minioService.downloadFileAsBytes(objectName);
+                        // 使用"编号_文件名"格式避免重名
+                        String fileName = evidence.getEvidenceNo() + "_" + evidence.getFileName();
+                        filesMap.put(fileName, fileBytes);
+                    }
+                }
+            }
+            
+            if (filesMap.isEmpty()) {
+                throw new com.lawfirm.common.exception.BusinessException("没有找到可下载的证据文件");
+            }
+            
+            // 压缩并输出
+            byte[] zipData = com.lawfirm.common.util.CompressUtils.zipDataToBytes(filesMap);
+            
+            String zipFileName = "evidence_" + System.currentTimeMillis() + ".zip";
+            response.setContentType("application/zip");
+            response.setHeader("Content-Disposition", "attachment; filename=\"" + 
+                    java.net.URLEncoder.encode(zipFileName, java.nio.charset.StandardCharsets.UTF_8) + "\"");
+            response.setContentLength(zipData.length);
+            response.getOutputStream().write(zipData);
+            response.getOutputStream().flush();
+            
+            log.info("证据批量下载完成: {} 个文件, 大小: {} bytes", filesMap.size(), zipData.length);
+        } catch (Exception e) {
+            log.error("证据批量下载失败", e);
+            throw new com.lawfirm.common.exception.BusinessException("批量下载失败: " + e.getMessage());
+        }
     }
 
     /**
@@ -366,20 +430,6 @@ public class EvidenceController {
      */
     private String getFileType(String fileName) {
         return fileTypeService.getFileTypeInfo(fileName).getType();
-    }
-
-    /**
-     * 判断是否为图片文件（保留用于兼容）
-     */
-    private boolean isImageFile(String fileName) {
-        return fileTypeService.isImageFile(fileName);
-    }
-
-    /**
-     * 判断是否可以预览（保留用于兼容）
-     */
-    private boolean canPreview(String fileName) {
-        return fileTypeService.getFileTypeInfo(fileName).isCanPreview();
     }
 
     /**

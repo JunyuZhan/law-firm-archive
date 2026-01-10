@@ -58,3 +58,8 @@ export function markAllAsRead() {
 export function deleteNotification(id: number) {
   return requestClient.delete<void>(`/system/notification/${id}`);
 }
+
+/** 批量删除已读通知 */
+export function deleteReadNotifications() {
+  return requestClient.delete<void>('/system/notification/read');
+}

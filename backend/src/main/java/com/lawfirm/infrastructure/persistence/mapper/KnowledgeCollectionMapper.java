@@ -32,4 +32,19 @@ public interface KnowledgeCollectionMapper extends BaseMapper<KnowledgeCollectio
      */
     @Delete("DELETE FROM knowledge_collection WHERE user_id = #{userId} AND target_type = #{targetType} AND target_id = #{targetId}")
     int deleteByUserAndTarget(@Param("userId") Long userId, @Param("targetType") String targetType, @Param("targetId") Long targetId);
+    
+    /**
+     * 批量查询用户收藏（用于避免N+1查询）
+     */
+    @Select("<script>" +
+            "SELECT * FROM knowledge_collection WHERE user_id = #{userId} AND target_type = #{targetType} " +
+            "AND target_id IN " +
+            "<foreach collection='targetIds' item='id' open='(' separator=',' close=')'>" +
+            "#{id}" +
+            "</foreach>" +
+            " AND deleted = false" +
+            "</script>")
+    List<KnowledgeCollection> selectBatchByUserAndTargets(@Param("userId") Long userId, 
+                                                          @Param("targetType") String targetType, 
+                                                          @Param("targetIds") List<Long> targetIds);
 }

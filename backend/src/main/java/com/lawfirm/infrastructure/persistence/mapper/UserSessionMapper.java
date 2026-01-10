@@ -73,5 +73,11 @@ public interface UserSessionMapper extends BaseMapper<UserSession> {
      */
     @Update("UPDATE sys_user_session SET is_current = false WHERE user_id = #{userId} AND id != #{excludeId} AND deleted = false")
     void markOtherSessionsAsNotCurrent(@Param("userId") Long userId, @Param("excludeId") Long excludeId);
+
+    /**
+     * 根据Token更新最后访问时间（避免先查询再更新）
+     */
+    @Update("UPDATE sys_user_session SET last_access_time = #{lastAccessTime} WHERE token = #{token} AND deleted = false AND status = 'ACTIVE'")
+    int updateLastAccessTimeByToken(@Param("token") String token, @Param("lastAccessTime") LocalDateTime lastAccessTime);
 }
 

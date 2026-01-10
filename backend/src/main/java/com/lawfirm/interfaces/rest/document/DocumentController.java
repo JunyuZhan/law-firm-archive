@@ -13,6 +13,7 @@ import com.lawfirm.common.annotation.OperationLog;
 import com.lawfirm.common.annotation.RequirePermission;
 import com.lawfirm.common.result.PageResult;
 import com.lawfirm.common.result.Result;
+import com.lawfirm.common.util.FileValidator;
 import com.lawfirm.common.util.SecurityUtils;
 import com.lawfirm.domain.document.entity.DocAccessLog;
 import com.lawfirm.infrastructure.external.onlyoffice.OnlyOfficeService;
@@ -87,6 +88,61 @@ public class DocumentController {
     }
 
     /**
+     * 批量下载文档（打包为 ZIP）
+     */
+    @PostMapping("/batch-download")
+    @RequirePermission("doc:download")
+    @OperationLog(module = "文档管理", action = "批量下载文档")
+    @Operation(summary = "批量下载文档", description = "将多个文档打包为 ZIP 文件下载")
+    public void batchDownload(
+            @RequestBody List<Long> ids,
+            HttpServletRequest request,
+            HttpServletResponse response) {
+        if (ids == null || ids.isEmpty()) {
+            throw new com.lawfirm.common.exception.BusinessException("请选择要下载的文档");
+        }
+        if (ids.size() > 100) {
+            throw new com.lawfirm.common.exception.BusinessException("单次最多下载100个文档");
+        }
+        
+        try {
+            // 收集文件数据
+            Map<String, byte[]> filesMap = new java.util.LinkedHashMap<>();
+            for (Long id : ids) {
+                DocumentDTO doc = documentAppService.getDocumentById(id);
+                if (doc != null && doc.getFilePath() != null) {
+                    String objectName = minioService.extractObjectName(doc.getFilePath());
+                    try (InputStream is = minioService.downloadFile(objectName)) {
+                        filesMap.put(doc.getFileName(), is.readAllBytes());
+                        // 记录下载日志
+                        accessLogService.logAccess(id, DocAccessLog.ACTION_DOWNLOAD, request);
+                    }
+                }
+            }
+            
+            if (filesMap.isEmpty()) {
+                throw new com.lawfirm.common.exception.BusinessException("没有找到可下载的文档");
+            }
+            
+            // 压缩并输出
+            byte[] zipData = com.lawfirm.common.util.CompressUtils.zipDataToBytes(filesMap);
+            
+            String zipFileName = "documents_" + System.currentTimeMillis() + ".zip";
+            response.setContentType("application/zip");
+            response.setHeader("Content-Disposition", "attachment; filename=\"" + 
+                    URLEncoder.encode(zipFileName, StandardCharsets.UTF_8) + "\"");
+            response.setContentLength(zipData.length);
+            response.getOutputStream().write(zipData);
+            response.getOutputStream().flush();
+            
+            log.info("批量下载完成: {} 个文档, 大小: {} bytes", filesMap.size(), zipData.length);
+        } catch (Exception e) {
+            log.error("批量下载失败", e);
+            throw new com.lawfirm.common.exception.BusinessException("批量下载失败: " + e.getMessage());
+        }
+    }
+
+    /**
      * 获取文档访问日志
      */
     @GetMapping("/{id}/access-logs")
@@ -122,6 +178,11 @@ public class DocumentController {
             @RequestParam(value = "folder", required = false, defaultValue = "documents") String folder,
             @RequestParam(value = "description", required = false) String description,
             @RequestParam(value = "dossierItemId", required = false) Long dossierItemId) {
+        // ✅ 安全验证：使用 FileValidator 验证文件
+        FileValidator.ValidationResult validationResult = FileValidator.validate(file);
+        if (!validationResult.isValid()) {
+            return Result.error(validationResult.getErrorMessage());
+        }
         return Result.success(documentAppService.uploadFile(file, matterId, folder, description, dossierItemId));
     }
 
@@ -138,6 +199,13 @@ public class DocumentController {
             @RequestParam(value = "folder", required = false, defaultValue = "documents") String folder,
             @RequestParam(value = "description", required = false) String description,
             @RequestParam(value = "dossierItemId", required = false) Long dossierItemId) {
+        // ✅ 安全验证：批量验证所有文件
+        for (MultipartFile file : files) {
+            FileValidator.ValidationResult validationResult = FileValidator.validate(file);
+            if (!validationResult.isValid()) {
+                return Result.error("文件 " + file.getOriginalFilename() + " 验证失败: " + validationResult.getErrorMessage());
+            }
+        }
         return Result.success(documentAppService.uploadFiles(files, matterId, folder, description, dossierItemId));
     }
 
@@ -450,6 +518,36 @@ public class DocumentController {
         result.put("mimeType", doc.getMimeType());
         result.put("previewUrl", previewUrl);
         result.put("expires", expires);
+        
+        return Result.success(result);
+    }
+
+    /**
+     * 获取文档缩略图URL
+     */
+    @GetMapping("/{id}/thumbnail")
+    @RequirePermission("doc:detail")
+    @Operation(summary = "获取缩略图URL", description = "获取文档的缩略图URL，支持图片和PDF文件")
+    public Result<Map<String, Object>> getThumbnailUrl(@PathVariable Long id) {
+        DocumentDTO doc = documentAppService.getDocumentById(id);
+        if (doc == null) {
+            return Result.error("文档不存在");
+        }
+        
+        Map<String, Object> result = new HashMap<>();
+        result.put("documentId", id);
+        result.put("fileName", doc.getFileName());
+        result.put("fileType", doc.getFileType());
+        
+        // 获取或生成缩略图
+        String thumbnailUrl = documentAppService.getThumbnailUrl(id);
+        if (thumbnailUrl != null) {
+            result.put("thumbnailUrl", thumbnailUrl);
+            result.put("hasThumbnail", true);
+        } else {
+            result.put("hasThumbnail", false);
+            result.put("message", "该文件类型不支持缩略图");
+        }
         
         return Result.success(result);
     }

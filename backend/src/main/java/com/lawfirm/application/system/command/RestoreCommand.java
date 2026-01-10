@@ -11,6 +11,13 @@ public class RestoreCommand {
     @NotNull(message = "备份ID不能为空")
     private Long backupId;
 
+    /**
+     * 确认码（必须与 "RESTORE_" + 备份编号 匹配才能执行恢复）
+     * 用于防止误操作
+     */
+    @NotNull(message = "确认码不能为空")
+    private String confirmCode;
+
     private String description; // 恢复说明
 }
 

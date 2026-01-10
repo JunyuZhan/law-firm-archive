@@ -104,5 +104,32 @@ public class CommissionRepository extends AbstractRepository<CommissionMapper, C
     public List<java.util.Map<String, Object>> queryCommissionReportData(String startDate, String endDate, Long userId) {
         return baseMapper.queryCommissionReportData(startDate, endDate, userId);
     }
+
+    /**
+     * ✅ 修复问题553: 批量查询多个用户的提成总额（避免N+1查询）
+     * @param userIds 用户ID列表
+     * @return Map<用户ID, 提成总额>
+     */
+    public java.util.Map<Long, BigDecimal> sumCommissionByUserIds(List<Long> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return java.util.Collections.emptyMap();
+        }
+        
+        List<java.util.Map<String, Object>> results = baseMapper.sumCommissionGroupByUserId(userIds);
+        
+        java.util.Map<Long, BigDecimal> commissionMap = new java.util.HashMap<>();
+        for (java.util.Map<String, Object> item : results) {
+            if (item == null) continue;
+            Object userIdObj = item.get("user_id");
+            Object commissionObj = item.get("total_commission");
+            if (userIdObj != null && commissionObj != null) {
+                Long userId = ((Number) userIdObj).longValue();
+                BigDecimal commission = commissionObj instanceof BigDecimal ? 
+                        (BigDecimal) commissionObj : new BigDecimal(commissionObj.toString());
+                commissionMap.put(userId, commission);
+            }
+        }
+        return commissionMap;
+    }
 }
 

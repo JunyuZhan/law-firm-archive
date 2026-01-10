@@ -15,12 +15,13 @@ import com.lawfirm.infrastructure.persistence.mapper.UserSessionMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -35,6 +36,10 @@ public class SessionAppService {
     private final UserSessionMapper sessionMapper;
     private final UserRepository userRepository;
 
+    // ✅ 会话过期时间可配置（默认24小时）
+    @Value("${law-firm.security.session-expire-hours:24}")
+    private int sessionExpireHours;
+
     /**
      * 创建会话（登录时调用）
      */
@@ -43,10 +48,13 @@ public class SessionAppService {
                                      String ipAddress, String userAgent, String deviceType, String browser, String os, String location) {
         // 单点登录：将用户的其他活跃会话标记为已登出
         List<UserSession> activeSessions = sessionRepository.findActiveSessionsByUserId(userId);
-        for (UserSession session : activeSessions) {
-            session.setStatus("LOGGED_OUT");
-            session.setIsCurrent(false);
-            sessionRepository.updateById(session);
+        if (!activeSessions.isEmpty()) {
+            // ✅ 批量更新替代循环更新
+            for (UserSession s : activeSessions) {
+                s.setStatus("LOGGED_OUT");
+                s.setIsCurrent(false);
+            }
+            sessionRepository.updateBatchById(activeSessions);
         }
 
         // 创建新会话
@@ -63,7 +71,7 @@ public class SessionAppService {
                 .location(location)
                 .loginTime(LocalDateTime.now())
                 .lastAccessTime(LocalDateTime.now())
-                .expireTime(LocalDateTime.now().plusHours(24)) // 24小时过期
+                .expireTime(LocalDateTime.now().plusHours(sessionExpireHours)) // ✅ 可配置过期时间
                 .status("ACTIVE")
                 .isCurrent(true)
                 .build();
@@ -79,7 +87,7 @@ public class SessionAppService {
     public PageResult<UserSessionDTO> listSessions(UserSessionQueryDTO query) {
         // 数据权限：普通用户只能看自己的会话
         var roles = SecurityUtils.getRoles();
-        if (roles == null || (!roles.contains("admin") && !roles.contains("system"))) {
+        if (roles == null || (!roles.contains("admin") && !roles.contains("system") && !roles.contains("ADMIN"))) {
             query.setUserId(SecurityUtils.getUserId());
         }
 
@@ -88,8 +96,24 @@ public class SessionAppService {
                 query
         );
 
-        List<UserSessionDTO> records = page.getRecords().stream()
-                .map(this::toDTO)
+        List<UserSession> sessions = page.getRecords();
+        if (sessions.isEmpty()) {
+            return PageResult.of(Collections.emptyList(), 0L, query.getPageNum(), query.getPageSize());
+        }
+
+        // ✅ 批量加载用户信息，避免 N+1 查询
+        Set<Long> userIds = sessions.stream()
+                .map(UserSession::getUserId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        Map<Long, User> userMap = userIds.isEmpty() ? Collections.emptyMap() :
+                userRepository.listByIds(new ArrayList<>(userIds)).stream()
+                        .collect(Collectors.toMap(User::getId, u -> u));
+
+        // 转换DTO(从Map获取用户信息)
+        List<UserSessionDTO> records = sessions.stream()
+                .map(s -> toDTO(s, userMap))
                 .collect(Collectors.toList());
 
         return PageResult.of(records, page.getTotal(), query.getPageNum(), query.getPageSize());
@@ -144,13 +168,20 @@ public class SessionAppService {
      */
     @Transactional
     public void forceLogout(Long sessionId, String reason) {
+        // ✅ 权限验证：只有管理员才能强制下线
+        if (!SecurityUtils.hasAnyRole("ADMIN", "admin", "SECURITY_ADMIN", "system")) {
+            throw new BusinessException("权限不足：只有管理员才能强制下线");
+        }
+
         UserSession session = sessionRepository.getByIdOrThrow(sessionId, "会话不存在");
 
         session.setStatus("FORCED_LOGOUT");
         session.setIsCurrent(false);
         sessionRepository.updateById(session);
 
-        log.warn("强制下线会话: sessionId={}, userId={}, reason={}", sessionId, session.getUserId(), reason);
+        // ✅ 记录审计日志
+        log.warn("强制下线会话: sessionId={}, userId={}, reason={}, operator={}",
+                sessionId, session.getUserId(), reason, SecurityUtils.getUserId());
     }
 
     /**
@@ -158,13 +189,22 @@ public class SessionAppService {
      */
     @Transactional
     public void forceLogoutUser(Long userId, String reason) {
-        List<UserSession> sessions = sessionRepository.findActiveSessionsByUserId(userId);
-        for (UserSession session : sessions) {
-            session.setStatus("FORCED_LOGOUT");
-            session.setIsCurrent(false);
-            sessionRepository.updateById(session);
+        // ✅ 权限验证：只有管理员才能强制下线用户
+        if (!SecurityUtils.hasAnyRole("ADMIN", "admin", "SECURITY_ADMIN", "system")) {
+            throw new BusinessException("权限不足：只有管理员才能强制下线用户");
         }
-        log.warn("强制下线用户所有会话: userId={}, count={}, reason={}", userId, sessions.size(), reason);
+
+        List<UserSession> sessions = sessionRepository.findActiveSessionsByUserId(userId);
+        if (!sessions.isEmpty()) {
+            // ✅ 批量更新替代循环更新
+            for (UserSession session : sessions) {
+                session.setStatus("FORCED_LOGOUT");
+                session.setIsCurrent(false);
+            }
+            sessionRepository.updateBatchById(sessions);
+        }
+        log.warn("强制下线用户所有会话: userId={}, count={}, reason={}, operator={}",
+                userId, sessions.size(), reason, SecurityUtils.getUserId());
     }
 
     /**
@@ -182,10 +222,8 @@ public class SessionAppService {
      */
     @Transactional
     public void updateLastAccessTime(String token) {
-        sessionRepository.findByToken(token).ifPresent(session -> {
-            session.setLastAccessTime(LocalDateTime.now());
-            sessionRepository.updateLastAccessTime(session.getId(), LocalDateTime.now());
-        });
+        // ✅ 优化：直接通过token更新，避免先查询再更新
+        sessionRepository.updateLastAccessTimeByToken(token, LocalDateTime.now());
     }
 
     /**
@@ -203,13 +241,35 @@ public class SessionAppService {
     }
 
     /**
-     * UserSession Entity 转 DTO
+     * UserSession Entity 转 DTO（批量场景使用，从Map获取用户信息）
+     */
+    private UserSessionDTO toDTO(UserSession session, Map<Long, User> userMap) {
+        UserSessionDTO dto = new UserSessionDTO();
+        BeanUtils.copyProperties(session, dto);
+
+        // ✅ 从预加载的Map获取用户信息，避免N+1查询
+        if (session.getUserId() != null && userMap != null) {
+            User user = userMap.get(session.getUserId());
+            if (user != null) {
+                dto.setUserRealName(user.getRealName());
+            }
+        }
+
+        // 状态名称
+        dto.setStatusName(getStatusName(session.getStatus()));
+        dto.setDeviceTypeName(getDeviceTypeName(session.getDeviceType()));
+
+        return dto;
+    }
+
+    /**
+     * UserSession Entity 转 DTO（单条查询场景）
      */
     private UserSessionDTO toDTO(UserSession session) {
         UserSessionDTO dto = new UserSessionDTO();
         BeanUtils.copyProperties(session, dto);
 
-        // 用户信息
+        // 用户信息（单条查询场景，允许查询数据库）
         if (session.getUserId() != null) {
             User user = userRepository.findById(session.getUserId());
             if (user != null) {

@@ -477,26 +477,26 @@ onActivated(() => {
             <div class="flex items-center justify-between">
               <span>📅 最近日程</span>
               <a @click="router.push('/workbench/schedule')">查看全部 →</a>
-            </div>
+        </div>
           </template>
           <Timeline v-if="upcomingSchedules.length > 0">
             <TimelineItem 
               v-for="schedule in upcomingSchedules.slice(0, 5)" 
-              :key="schedule.id"
+          :key="schedule.id"
               :color="getScheduleTypeColor(schedule.scheduleType)"
             >
               <div class="cursor-pointer hover:bg-gray-50 p-2 -m-2 rounded" @click="router.push('/workbench/schedule')">
                 <div class="flex items-center gap-2 mb-1">
                   <Tag :color="getScheduleTypeColor(schedule.scheduleType)" size="small">
-                    {{ schedule.scheduleTypeName }}
+            {{ schedule.scheduleTypeName }}
                   </Tag>
                   <span class="text-gray-500 text-xs">{{ formatScheduleTime(schedule) }}</span>
                 </div>
                 <div class="font-medium">{{ schedule.title }}</div>
                 <div v-if="schedule.location" class="text-gray-500 text-xs mt-1">
-                  📍 {{ schedule.location }}
-                </div>
-              </div>
+            📍 {{ schedule.location }}
+        </div>
+      </div>
             </TimelineItem>
           </Timeline>
           <Empty v-else description="暂无近期日程" :image="Empty.PRESENTED_IMAGE_SIMPLE" />
@@ -541,7 +541,7 @@ onActivated(() => {
             <a class="text-primary text-sm" @click="toggleTrends">
               {{ trendsExpanded ? '收起 ↑' : `展开更多 (${allTrendItems.length - 5}条) ↓` }}
             </a>
-          </div>
+      </div>
         </Card>
       </Col>
     </Row>

@@ -43,6 +43,20 @@ if [ -z "$DB_PASSWORD" ] || [ "$DB_PASSWORD" = "your_secure_db_password_here" ];
     exit 1
 fi
 
+# 运行生产环境检查脚本（如果存在）
+if [ -f "scripts/check-production-ready.sh" ]; then
+    echo ""
+    echo "🔍 运行生产环境检查..."
+    echo ""
+    if ! bash scripts/check-production-ready.sh; then
+        echo ""
+        echo "❌ 生产环境检查未通过，请修复问题后再部署"
+        echo "   详细检查清单请参考: docs/PRODUCTION_DEPLOYMENT_CHECKLIST.md"
+        exit 1
+    fi
+    echo ""
+fi
+
 echo ""
 echo "🚀 开始部署..."
 echo ""

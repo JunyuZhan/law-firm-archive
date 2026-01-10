@@ -10,9 +10,117 @@
 -- Data for Name: sys_config; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-INSERT INTO public.sys_config VALUES (1, 'contract.number.prefix', 'HT', '合同编号前缀', 'STRING', '合同编号的前缀，用于 {PREFIX} 变量', false, '2026-01-05 09:22:48.098286', '2026-01-05 09:22:48.098286', NULL, NULL, false);
-INSERT INTO public.sys_config VALUES (2, 'contract.number.pattern', '{YEAR}{CASE_TYPE}代字第{SEQUENCE_YEAR}号', '合同编号规则', 'STRING', '合同编号生成规则，支持多种变量组合。示例：2026民代字第0001号', false, '2026-01-05 09:22:48.098286', '2026-01-05 09:22:48.098286', NULL, NULL, false);
-INSERT INTO public.sys_config VALUES (3, 'contract.number.sequence.length', '4', '序号长度', 'STRING', '序号部分的长度(1-10)，不足位数前面补0', false, '2026-01-05 09:22:48.098286', '2026-01-05 09:22:48.098286', NULL, NULL, false);
+-- 系统配置初始化（使用 ON CONFLICT 避免重复插入）
+INSERT INTO public.sys_config (config_key, config_value, config_name, config_type, description, is_system, created_at, updated_at, deleted)
+VALUES 
+-- 系统基础信息
+('sys.name', '智慧律所管理系统', '系统名称', 'STRING', '系统显示名称，用于页面标题等', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('sys.version', '1.0.0', '系统版本', 'STRING', '当前系统版本号', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('sys.copyright', '© 2026 智慧律所', '版权信息', 'STRING', '页面底部版权信息', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+
+-- 系统维护模式配置
+('sys.maintenance.enabled', 'false', '维护模式开关', 'BOOLEAN', '是否启用系统维护模式，启用后将阻止非管理员用户访问', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('sys.maintenance.message', '系统正在维护中，预计维护时间：30分钟，请稍后再试', '维护提示信息', 'STRING', '维护模式下显示给用户的提示信息', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+
+-- 登录安全配置
+('sys.login.captcha', 'true', '登录验证码', 'BOOLEAN', '是否启用登录验证码', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('sys.password.minLength', '8', '密码最小长度', 'NUMBER', '用户密码最小长度要求', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('sys.password.complexity', 'true', '密码复杂度要求', 'BOOLEAN', '是否要求密码包含大小写字母、数字和特殊字符', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('sys.session.timeout', '30', '会话超时时间', 'NUMBER', '会话超时时间(分钟)，超过此时间未操作需重新登录', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('sys.login.maxAttempts', '5', '最大登录尝试次数', 'NUMBER', '连续登录失败超过此次数将锁定账户', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('sys.login.lockDuration', '30', '账户锁定时长', 'NUMBER', '账户锁定后解锁时间(分钟)', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+
+-- 文件上传配置
+('sys.upload.maxSize', '100', '上传文件大小限制', 'NUMBER', '单个文件上传大小限制(MB)', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('sys.upload.allowTypes', 'doc,docx,pdf,xls,xlsx,jpg,jpeg,png,gif,zip,rar', '允许上传类型', 'STRING', '允许上传的文件类型，多个用逗号分隔', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('sys.upload.path', '/uploads', '文件上传路径', 'STRING', '文件上传存储路径', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+
+-- 合同编号配置
+('contract.number.prefix', 'HT', '合同编号前缀', 'STRING', '合同编号的前缀，用于 {PREFIX} 变量', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('contract.number.pattern', '{YEAR}{CASE_TYPE}代字第{SEQUENCE_YEAR}号', '合同编号规则', 'STRING', '合同编号生成规则，支持多种变量组合。示例：2026民代字第0001号', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('contract.number.sequence.length', '4', '序号长度', 'STRING', '序号部分的长度(1-10)，不足位数前面补0', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+
+-- 律所基本信息
+('firm.name', '', '律所名称', 'STRING', '律师事务所全称，用于合同、函件等文档', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('firm.address', '', '律所地址', 'STRING', '律师事务所详细地址', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('firm.phone', '', '联系电话', 'STRING', '律所联系电话', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('firm.email', '', '电子邮箱', 'STRING', '律所电子邮箱', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('firm.license', '', '执业许可证号', 'STRING', '律所执业许可证号', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('firm.legal.rep', '', '法定代表人', 'STRING', '律所法定代表人姓名', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('firm.fax', '', '传真号码', 'STRING', '律所传真号码', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('firm.website', '', '官方网站', 'STRING', '律所官方网站地址', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('firm.postcode', '', '邮政编码', 'STRING', '律所所在地邮政编码', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+
+-- 工作时间配置
+('work.startTime', '09:00', '上班时间', 'STRING', '标准上班时间，格式：HH:mm', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('work.endTime', '18:00', '下班时间', 'STRING', '标准下班时间，格式：HH:mm', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('work.workdays', '1,2,3,4,5', '工作日', 'STRING', '工作日设置，1-7表示周一到周日，多个用逗号分隔', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+
+-- 审批流程配置
+('approval.autoApprove', 'false', '自动审批', 'BOOLEAN', '是否启用自动审批（仅用于测试环境）', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('approval.reminder.enabled', 'true', '审批提醒', 'BOOLEAN', '是否启用审批提醒通知', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('approval.reminder.interval', '24', '提醒间隔', 'NUMBER', '审批提醒间隔时间(小时)', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('approval.timeout.days', '7', '审批超时天数', 'NUMBER', '审批超过此天数未处理将自动提醒', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+
+-- 邮件通知配置
+('notification.email.enabled', 'false', '邮件通知开关', 'BOOLEAN', '是否启用邮件通知功能', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('notification.email.smtp.host', '', 'SMTP服务器', 'STRING', '邮件服务器地址，如 smtp.qq.com、smtp.163.com', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('notification.email.smtp.port', '465', 'SMTP端口', 'NUMBER', '邮件服务器端口，SSL用465，TLS用587', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('notification.email.smtp.username', '', 'SMTP用户名', 'STRING', '发件人邮箱地址', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('notification.email.smtp.password', '', 'SMTP密码', 'STRING', '邮箱授权码（非登录密码）', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('notification.email.admin.recipients', '', '告警接收邮箱', 'STRING', '接收系统告警的管理员邮箱，多个用逗号分隔', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+
+-- 告警通知配置
+('notification.alert.login.failure', 'true', '登录失败告警', 'BOOLEAN', '登录失败次数过多时发送告警', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('notification.alert.account.locked', 'true', '账户锁定告警', 'BOOLEAN', '账户被锁定时发送告警', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('notification.alert.system.error', 'true', '系统错误告警', 'BOOLEAN', '系统发生错误时发送告警', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('notification.alert.disk.space', 'true', '磁盘空间告警', 'BOOLEAN', '磁盘空间不足时发送告警', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('notification.alert.backup.failure', 'true', '备份失败告警', 'BOOLEAN', '备份失败时发送告警', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+
+-- 定时报告配置
+('notification.report.daily.enabled', 'false', '每日报告', 'BOOLEAN', '是否启用每日系统运行报告（每天早上8点）', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('notification.report.weekly.enabled', 'false', '每周报告', 'BOOLEAN', '是否启用每周系统运行报告（每周一早上9点）', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+
+-- 短信通知配置（预留）
+('notification.sms.enabled', 'false', '短信通知', 'BOOLEAN', '是否启用短信通知（暂未实现）', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('notification.sms.provider', '', '短信服务商', 'STRING', '短信服务提供商', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+
+-- 财务配置
+('finance.invoice.prefix', 'FP', '发票编号前缀', 'STRING', '发票编号前缀', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('finance.invoice.taxRate', '6', '默认税率', 'NUMBER', '默认税率(%)，用于发票计算', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('finance.payment.reminder.days', '7', '付款提醒天数', 'NUMBER', '合同到期前多少天提醒付款', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('finance.commission.default', '30,50,15,5', '默认提成比例', 'STRING', '默认提成比例：律所,主办,协办,辅助，用逗号分隔', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+
+-- 文档配置
+('document.template.path', '/templates', '模板存储路径', 'STRING', '文档模板存储路径', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('document.autoSave', 'true', '自动保存', 'BOOLEAN', '是否启用文档自动保存', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('document.autoSave.interval', '300', '自动保存间隔', 'NUMBER', '自动保存间隔时间(秒)', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('document.version.keep', '10', '版本保留数量', 'NUMBER', '文档版本历史保留数量', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+
+-- 档案配置
+('archive.retention.years', '10', '档案保留年限', 'NUMBER', '档案保留年限(年)', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('archive.autoArchive', 'false', '自动归档', 'BOOLEAN', '项目结案后是否自动归档', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('archive.cover.autoGenerate', 'true', '自动生成封面', 'BOOLEAN', '归档时是否自动生成卷宗封面', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+
+-- 打印配置
+('print.defaultFont', 'SimSun', '默认字体', 'STRING', '打印文档默认字体', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('print.defaultFontSize', '14', '默认字号', 'NUMBER', '打印文档默认字号(磅)', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('print.margin.top', '3.7', '上边距', 'NUMBER', '打印文档上边距(厘米)', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('print.margin.bottom', '3.5', '下边距', 'NUMBER', '打印文档下边距(厘米)', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('print.margin.left', '2.8', '左边距', 'NUMBER', '打印文档左边距(厘米)', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('print.margin.right', '2.6', '右边距', 'NUMBER', '打印文档右边距(厘米)', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+
+-- 数据备份配置
+('backup.enabled', 'true', '启用备份', 'BOOLEAN', '是否启用数据自动备份', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('backup.interval', '24', '备份间隔', 'NUMBER', '数据备份间隔时间(小时)', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('backup.keep.days', '30', '备份保留天数', 'NUMBER', '备份文件保留天数', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('backup.path', '/backups', '备份路径', 'STRING', '数据备份存储路径', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+
+-- 日志配置
+('log.level', 'INFO', '日志级别', 'STRING', '系统日志级别：DEBUG/INFO/WARN/ERROR', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('log.keep.days', '90', '日志保留天数', 'NUMBER', '系统日志保留天数', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('log.operation.enabled', 'true', '操作日志', 'BOOLEAN', '是否启用操作日志记录', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
+ON CONFLICT (config_key) DO NOTHING;
 --
 -- Data for Name: sys_dict_item; Type: TABLE DATA; Schema: public; Owner: -
 --
@@ -134,7 +242,8 @@ INSERT INTO public.sys_menu VALUES (155, 2, '期限编辑', NULL, NULL, NULL, NU
 INSERT INTO public.sys_menu VALUES (200, 0, '报表中心', '/workbench/report', 'workbench/report/index', NULL, 'BarChartOutlined', 'MENU', 'report:list', 12, true, 'ENABLED', false, true, '2026-01-06 14:00:00', '2026-01-06 14:00:00', NULL, NULL, false);
 INSERT INTO public.sys_menu VALUES (23, 2, '部门管理', '/system/dept', 'system/dept/index', NULL, 'ApartmentOutlined', 'MENU', 'sys:dept:list', 3, true, 'ENABLED', false, true, '2026-01-04 16:14:15.896441', '2026-01-06 11:40:43.86229', NULL, NULL, false);
 INSERT INTO public.sys_menu VALUES (24, 2, '菜单管理', '/system/menu', 'system/menu/index', NULL, 'MenuOutlined', 'MENU', 'sys:menu:list', 4, true, 'ENABLED', false, true, '2026-01-04 16:14:15.896441', '2026-01-06 11:40:43.86229', NULL, NULL, false);
-INSERT INTO public.sys_menu VALUES (198, 2, '权限矩阵', '/system/permission-matrix', 'system/permission-matrix/index', NULL, 'TableOutlined', 'MENU', 'sys:role:list', 5, true, 'ENABLED', false, true, '2026-01-06 11:40:43.855721', '2026-01-06 11:40:43.855721', NULL, NULL, false);
+INSERT INTO public.sys_menu VALUES (30, 2, '字典管理', '/system/dict', 'system/dict/index', NULL, 'BookOutlined', 'MENU', 'sys:dict:list', 5, true, 'ENABLED', false, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL, NULL, false);
+INSERT INTO public.sys_menu VALUES (198, 2, '权限矩阵', '/system/permission-matrix', 'system/permission-matrix/index', NULL, 'TableOutlined', 'MENU', 'sys:role:list', 6, true, 'ENABLED', false, true, '2026-01-06 11:40:43.855721', '2026-01-06 11:40:43.855721', NULL, NULL, false);
 INSERT INTO public.sys_menu VALUES (156, 2, '期限删除', NULL, NULL, NULL, NULL, 'BUTTON', 'deadline:delete', 15, true, 'ENABLED', false, true, '2026-01-06 04:02:22.67069', '2026-01-06 11:40:43.86229', NULL, NULL, false);
 INSERT INTO public.sys_menu VALUES (703, 207, '查询交接', NULL, NULL, NULL, NULL, 'BUTTON', 'sys:handover:list', 0, true, 'ENABLED', false, true, '2026-01-06 12:36:38.137972', '2026-01-06 12:36:38.137972', NULL, NULL, false);
 INSERT INTO public.sys_menu VALUES (704, 207, '创建交接', NULL, NULL, NULL, NULL, 'BUTTON', 'sys:handover:create', 1, true, 'ENABLED', false, true, '2026-01-06 12:36:38.137972', '2026-01-06 12:36:38.137972', NULL, NULL, false);
@@ -162,8 +271,9 @@ INSERT INTO public.sys_menu VALUES (11, 0, '知识库', '/knowledge', 'LAYOUT', 
 INSERT INTO public.sys_menu VALUES (207, 0, '数据交接', '/data-handover', 'data-handover/index', NULL, 'ant-design:swap-outlined', 'MENU', NULL, 13, true, 'ENABLED', false, true, '2026-01-06 12:36:22.065598', '2026-01-06 12:36:22.065598', NULL, NULL, false);
 INSERT INTO public.sys_menu VALUES (2, 0, '系统管理', '/system', 'LAYOUT', NULL, 'SettingOutlined', 'DIRECTORY', NULL, 99, true, 'ENABLED', false, true, '2026-01-04 16:14:15.895648', '2026-01-04 16:14:15.895648', NULL, NULL, false);
 INSERT INTO public.sys_menu VALUES (21, 2, '用户管理', '/system/user', 'system/user/index', NULL, 'UserOutlined', 'MENU', 'sys:user:list', 1, true, 'ENABLED', false, true, '2026-01-04 16:14:15.896441', '2026-01-04 16:14:15.896441', NULL, NULL, false);
-INSERT INTO public.sys_menu VALUES (25, 2, '系统配置', '/system/config', 'system/config/index', NULL, 'ToolOutlined', 'MENU', 'sys:config:list', 6, true, 'ENABLED', false, true, '2026-01-04 16:14:15.896441', '2026-01-06 11:40:43.86229', NULL, NULL, false);
-INSERT INTO public.sys_menu VALUES (26, 2, '操作日志', '/system/log', 'system/log/index', NULL, 'FileSearchOutlined', 'MENU', 'sys:log:list', 7, true, 'ENABLED', false, true, '2026-01-04 16:14:15.896441', '2026-01-06 11:40:43.86229', NULL, NULL, false);
+INSERT INTO public.sys_menu VALUES (25, 2, '系统配置', '/system/config', 'system/config/index', NULL, 'ToolOutlined', 'MENU', 'sys:config:list', 7, true, 'ENABLED', false, true, '2026-01-04 16:14:15.896441', '2026-01-06 11:40:43.86229', NULL, NULL, false);
+INSERT INTO public.sys_menu VALUES (26, 2, '操作日志', '/system/log', 'system/log/index', NULL, 'FileSearchOutlined', 'MENU', 'sys:log:list', 8, true, 'ENABLED', false, true, '2026-01-04 16:14:15.896441', '2026-01-06 11:40:43.86229', NULL, NULL, false);
+INSERT INTO public.sys_menu VALUES (29, 2, '数据库备份', '/system/backup', 'system/backup/index', NULL, 'DatabaseOutlined', 'MENU', 'system:backup:list', 9, true, 'ENABLED', false, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL, NULL, false);
 INSERT INTO public.sys_menu VALUES (27, 2, '出函模板', '/system/letter-template', 'system/letter-template/index', NULL, 'MailOutlined', 'MENU', 'sys:letter-template:list', 10, true, 'ENABLED', false, true, '2026-01-04 16:14:15.896441', '2026-01-06 11:40:43.86229', NULL, NULL, false);
 INSERT INTO public.sys_menu VALUES (28, 2, '合同模板', '/system/contract-template', 'system/contract-template/index', NULL, 'FileProtectOutlined', 'MENU', 'sys:contract-template:list', 11, true, 'ENABLED', false, true, '2026-01-04 16:14:15.896441', '2026-01-06 11:40:43.86229', NULL, NULL, false);
 INSERT INTO public.sys_menu VALUES (140, 2, '提成规则配置', '/system/commission-config', 'system/commission-config/index', NULL, 'ant-design:percentage-outlined', 'MENU', 'system:config:list', 12, true, 'ENABLED', false, true, '2026-01-05 18:00:00', '2026-01-06 11:40:43.86229', NULL, NULL, false);
@@ -289,6 +399,7 @@ INSERT INTO public.sys_role_menu VALUES (66, 2, 9, '2026-01-04 16:14:15.900075')
 INSERT INTO public.sys_role_menu VALUES (67, 2, 10, '2026-01-04 16:14:15.900075');
 INSERT INTO public.sys_role_menu VALUES (68, 2, 11, '2026-01-04 16:14:15.900075');
 INSERT INTO public.sys_role_menu VALUES (71, 2, 23, '2026-01-04 16:14:15.900075');
+INSERT INTO public.sys_role_menu VALUES (72, 2, 30, CURRENT_TIMESTAMP);
 INSERT INTO public.sys_role_menu VALUES (75, 2, 27, '2026-01-04 16:14:15.900075');
 INSERT INTO public.sys_role_menu VALUES (76, 2, 28, '2026-01-04 16:14:15.900075');
 INSERT INTO public.sys_role_menu VALUES (77, 2, 31, '2026-01-04 16:14:15.900075');
@@ -925,6 +1036,58 @@ INSERT INTO public.sys_role_menu VALUES (1958, 6, 714, '2026-01-08 02:15:45.8746
 INSERT INTO public.sys_role_menu VALUES (1959, 8, 714, '2026-01-08 02:15:45.87506');
 INSERT INTO public.sys_role_menu VALUES (1960, 9, 714, '2026-01-08 02:15:45.87563');
 INSERT INTO public.sys_role_menu VALUES (1970, 8, 196, '2026-01-08 15:35:00');
+
+-- =====================================================
+-- HR模块菜单权限补充（2026-01-09）
+-- =====================================================
+
+-- 培训管理权限按钮（代码中实际使用）
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted)
+VALUES 
+(1011, 101, '发布培训通知', NULL, NULL, NULL, NULL, 'BUTTON', 'hr:training:create', 1, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL, NULL, false),
+(1012, 101, '删除培训通知', NULL, NULL, NULL, NULL, 'BUTTON', 'hr:training:delete', 2, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL, NULL, false),
+(1013, 101, '查看完成情况', NULL, NULL, NULL, NULL, 'BUTTON', 'hr:training:list', 3, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL, NULL, false)
+ON CONFLICT (id) DO UPDATE SET
+    name = EXCLUDED.name,
+    permission = EXCLUDED.permission,
+    updated_at = CURRENT_TIMESTAMP;
+
+-- 晋升管理权限按钮（代码中实际使用）
+INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, icon, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, created_by, updated_by, deleted)
+VALUES 
+(730, 103, '职级查看', NULL, NULL, NULL, NULL, 'BUTTON', 'hr:promotion:view', 1, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL, NULL, false),
+(731, 103, '职级创建', NULL, NULL, NULL, NULL, 'BUTTON', 'hr:promotion:create', 2, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL, NULL, false),
+(732, 103, '职级编辑', NULL, NULL, NULL, NULL, 'BUTTON', 'hr:promotion:edit', 3, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL, NULL, false),
+(733, 103, '职级删除', NULL, NULL, NULL, NULL, 'BUTTON', 'hr:promotion:delete', 4, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL, NULL, false),
+(734, 103, '晋升审批', NULL, NULL, NULL, NULL, 'BUTTON', 'hr:promotion:approve', 5, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL, NULL, false)
+ON CONFLICT (id) DO NOTHING;
+
+-- 为管理员角色分配培训管理和晋升管理权限
+INSERT INTO public.sys_role_menu (role_id, menu_id)
+SELECT 1, id FROM public.sys_menu WHERE id IN (101, 1011, 1012, 1013, 103, 730, 731, 732, 733, 734)
+ON CONFLICT DO NOTHING;
+
+-- 为律所主任角色分配培训管理和晋升管理权限
+INSERT INTO public.sys_role_menu (role_id, menu_id)
+SELECT 2, id FROM public.sys_menu WHERE id IN (101, 1011, 1012, 1013, 103, 730, 731, 732, 733, 734)
+ON CONFLICT DO NOTHING;
+
+-- 为行政角色分配培训管理权限
+INSERT INTO public.sys_role_menu (role_id, menu_id)
+SELECT 8, id FROM public.sys_menu WHERE id IN (101, 1011, 1012, 1013)
+ON CONFLICT DO NOTHING;
+
+-- 为其他角色（团队负责人、律师、实习律师）添加培训菜单查看权限
+INSERT INTO public.sys_role_menu (role_id, menu_id)
+SELECT r.id, 101 FROM public.sys_role r 
+WHERE r.id IN (3, 6, 9)
+AND NOT EXISTS (SELECT 1 FROM public.sys_role_menu WHERE role_id = r.id AND menu_id = 101);
+
+-- 为管理员角色分配数据库备份菜单权限
+INSERT INTO public.sys_role_menu (role_id, menu_id)
+SELECT 1, id FROM public.sys_menu WHERE id = 29
+ON CONFLICT (role_id, menu_id) DO NOTHING;
+
 --
 -- Name: sys_config_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --

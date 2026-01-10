@@ -9,6 +9,7 @@ import com.lawfirm.application.matter.dto.TimesheetSummaryDTO;
 import com.lawfirm.common.exception.BusinessException;
 import com.lawfirm.common.result.PageResult;
 import com.lawfirm.common.util.SecurityUtils;
+import com.lawfirm.common.constant.TimesheetStatus;
 import com.lawfirm.domain.matter.entity.HourlyRate;
 import com.lawfirm.domain.matter.entity.Timesheet;
 import com.lawfirm.domain.matter.repository.HourlyRateRepository;
@@ -130,7 +131,7 @@ public class TimesheetAppService {
                 .billable(billable)
                 .hourlyRate(hourlyRate)
                 .amount(amount)
-                .status("DRAFT")
+                .status(TimesheetStatus.DRAFT)
                 .build();
 
         timesheetRepository.save(timesheet);
@@ -155,7 +156,7 @@ public class TimesheetAppService {
         Timesheet timesheet = timesheetRepository.getByIdOrThrow(id, "工时记录不存在");
 
         // 只有草稿状态可以修改
-        if (!"DRAFT".equals(timesheet.getStatus())) {
+        if (!TimesheetStatus.canModify(timesheet.getStatus())) {
             throw new BusinessException("只有草稿状态的工时记录可以修改");
         }
 
@@ -195,7 +196,7 @@ public class TimesheetAppService {
     public void deleteTimesheet(Long id) {
         Timesheet timesheet = timesheetRepository.getByIdOrThrow(id, "工时记录不存在");
 
-        if (!"DRAFT".equals(timesheet.getStatus())) {
+        if (!TimesheetStatus.canModify(timesheet.getStatus())) {
             throw new BusinessException("只有草稿状态的工时记录可以删除");
         }
 
@@ -214,11 +215,11 @@ public class TimesheetAppService {
     public TimesheetDTO submitTimesheet(Long id) {
         Timesheet timesheet = timesheetRepository.getByIdOrThrow(id, "工时记录不存在");
 
-        if (!"DRAFT".equals(timesheet.getStatus())) {
+        if (!TimesheetStatus.canSubmit(timesheet.getStatus())) {
             throw new BusinessException("只有草稿状态的工时记录可以提交");
         }
 
-        timesheet.setStatus("SUBMITTED");
+        timesheet.setStatus(TimesheetStatus.SUBMITTED);
         timesheet.setSubmittedAt(LocalDateTime.now());
         timesheetRepository.updateById(timesheet);
 
@@ -227,21 +228,62 @@ public class TimesheetAppService {
     }
 
     /**
-     * 批量提交工时
+     * 批量提交工时（全部成功或全部失败）
+     * 修复：先验证所有记录，再批量更新，保证事务原子性
      */
-    @Transactional
-    public void batchSubmit(List<Long> ids) {
+    @Transactional(rollbackFor = Exception.class)
+    public BatchSubmitResult batchSubmit(List<Long> ids) {
         Long userId = SecurityUtils.getUserId();
+
+        if (ids == null || ids.isEmpty()) {
+            throw new BusinessException("请选择要提交的工时记录");
+        }
+
+        // 第1阶段：验证所有工时记录
+        List<Timesheet> timesheets = new ArrayList<>();
         for (Long id : ids) {
             Timesheet timesheet = timesheetRepository.findById(id);
-            if (timesheet != null && "DRAFT".equals(timesheet.getStatus())
-                    && timesheet.getUserId().equals(userId)) {
-                timesheet.setStatus("SUBMITTED");
-                timesheet.setSubmittedAt(LocalDateTime.now());
-                timesheetRepository.updateById(timesheet);
+            if (timesheet == null) {
+                throw new BusinessException(String.format("工时记录%d不存在", id));
             }
+            if (!TimesheetStatus.canSubmit(timesheet.getStatus())) {
+                throw new BusinessException(String.format("工时记录%d状态不是草稿，无法提交", id));
+            }
+            if (!timesheet.getUserId().equals(userId)) {
+                throw new BusinessException(String.format("工时记录%d不属于当前用户，无法提交", id));
+            }
+            timesheets.add(timesheet);
         }
-        log.info("批量提交工时成功，共{}条", ids.size());
+
+        // 第2阶段：批量更新（所有验证通过后）
+        List<Long> successIds = new ArrayList<>();
+        for (Timesheet timesheet : timesheets) {
+            timesheet.setStatus(TimesheetStatus.SUBMITTED);
+            timesheet.setSubmittedAt(LocalDateTime.now());
+            timesheetRepository.updateById(timesheet);
+            successIds.add(timesheet.getId());
+        }
+
+        log.info("批量提交工时完成: 成功{}条", successIds.size());
+
+        BatchSubmitResult result = new BatchSubmitResult();
+        result.setSuccessCount(successIds.size());
+        result.setSuccessIds(successIds);
+        result.setFailureCount(0);
+        result.setFailureReasons(java.util.Collections.emptyList());
+
+        return result;
+    }
+
+    /**
+     * 批量提交结果
+     */
+    @lombok.Data
+    public static class BatchSubmitResult {
+        private int successCount;
+        private List<Long> successIds;
+        private int failureCount;
+        private List<String> failureReasons;
     }
 
     /**
@@ -251,14 +293,14 @@ public class TimesheetAppService {
     public TimesheetDTO approveTimesheet(Long id, String comment) {
         Timesheet timesheet = timesheetRepository.getByIdOrThrow(id, "工时记录不存在");
 
-        if (!"SUBMITTED".equals(timesheet.getStatus())) {
+        if (!TimesheetStatus.canApprove(timesheet.getStatus())) {
             throw new BusinessException("只能审批已提交的工时记录");
         }
         
         // 验证审批权限
         validateApprovalPermission(timesheet);
 
-        timesheet.setStatus("APPROVED");
+        timesheet.setStatus(TimesheetStatus.APPROVED);
         timesheet.setApprovedBy(SecurityUtils.getUserId());
         timesheet.setApprovedAt(LocalDateTime.now());
         timesheet.setApprovalComment(comment);
@@ -275,14 +317,14 @@ public class TimesheetAppService {
     public TimesheetDTO rejectTimesheet(Long id, String comment) {
         Timesheet timesheet = timesheetRepository.getByIdOrThrow(id, "工时记录不存在");
 
-        if (!"SUBMITTED".equals(timesheet.getStatus())) {
+        if (!TimesheetStatus.canApprove(timesheet.getStatus())) {
             throw new BusinessException("只能审批已提交的工时记录");
         }
         
         // 验证审批权限
         validateApprovalPermission(timesheet);
 
-        timesheet.setStatus("REJECTED");
+        timesheet.setStatus(TimesheetStatus.REJECTED);
         timesheet.setApprovedBy(SecurityUtils.getUserId());
         timesheet.setApprovedAt(LocalDateTime.now());
         timesheet.setApprovalComment(comment);
@@ -366,14 +408,7 @@ public class TimesheetAppService {
      * 获取状态名称
      */
     private String getStatusName(String status) {
-        if (status == null) return null;
-        return switch (status) {
-            case "DRAFT" -> "草稿";
-            case "SUBMITTED" -> "已提交";
-            case "APPROVED" -> "已批准";
-            case "REJECTED" -> "已拒绝";
-            default -> status;
-        };
+        return TimesheetStatus.getStatusName(status);
     }
 
     /**

@@ -18,6 +18,7 @@ import {
   Popconfirm,
   Divider,
   Tooltip,
+  Table,
 } from 'ant-design-vue';
 import { Plus, IconifyIcon } from '@vben/icons';
 import type { VxeGridProps } from '#/adapter/vxe-table';
@@ -31,7 +32,7 @@ import {
   batchDeleteClients,
   quickConflictCheck,
 } from '#/api/client';
-import { recognizeIdCard, recognizeBusinessLicense, type OcrResultDTO } from '#/api/ocr';
+import { recognizeIdCard, recognizeBusinessLicense, type OcrResultDTO, OCR_DISABLED, OCR_DISABLED_MESSAGE } from '#/api/ocr';
 import type { ClientDTO, ClientQuery, CreateClientCommand, UpdateClientCommand } from '#/api/client/types';
 import { UserTreeSelect } from '#/components/UserTreeSelect';
 
@@ -67,6 +68,18 @@ const conflictCheckResult = ref<{
   hasConflict: boolean;
   conflictDetail?: string;
   canProceed: boolean;
+  candidates?: Array<{
+    clientId: number;
+    clientNo: string;
+    clientName: string;
+    clientType: string;
+    matchScore: number;
+    matchType: 'EXACT' | 'CONTAINS' | 'SIMILAR';
+    riskLevel: 'HIGH' | 'MEDIUM' | 'LOW';
+    riskReason: string;
+  }>;
+  riskLevel?: 'HIGH' | 'MEDIUM' | 'LOW' | 'NONE';
+  riskSummary?: string;
 } | null>(null);
 
 // OCR识别相关状态
@@ -392,12 +405,19 @@ async function handleConflictCheck() {
       hasConflict: result.hasConflict,
       conflictDetail: result.conflictDetail,
       canProceed: !result.hasConflict,
+      candidates: result.candidates || [],
+      riskLevel: result.riskLevel,
+      riskSummary: result.riskSummary,
     };
     
     if (result.hasConflict) {
-      message.warning('检测到利益冲突，请查看详情');
+      message.warning('发现可能存在利益冲突，请仔细核对');
+    } else if (result.riskLevel === 'MEDIUM') {
+      message.warning('发现相似客户，请确认是否为同一人/公司');
+    } else if (result.candidates && result.candidates.length > 0) {
+      message.info('发现相似名称的客户，请核对后继续');
     } else {
-      message.success('未检测到利益冲突，可以创建客户');
+      message.success('未发现冲突，可以创建客户');
     }
   } catch (error: any) {
     message.error(error.message || '利冲检索失败');
@@ -743,7 +763,7 @@ onMounted(async () => {
         :wrapper-col="{ span: 18 }"
       >
         <!-- OCR智能识别区域 -->
-        <div v-if="!formData.id" class="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+        <div v-if="!formData.id && !OCR_DISABLED" class="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
           <div class="flex items-center mb-2">
             <IconifyIcon icon="ant-design:scan-outlined" class="text-blue-500 mr-2" />
             <span class="font-medium text-blue-700">智能识别填充</span>
@@ -781,6 +801,15 @@ onMounted(async () => {
               </Upload>
             </Spin>
           </Space>
+        </div>
+        <!-- OCR禁用提示 -->
+        <div v-else-if="!formData.id && OCR_DISABLED" class="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+          <div class="flex items-center mb-2">
+            <IconifyIcon icon="ant-design:scan-outlined" class="text-gray-400 mr-2" />
+            <span class="font-medium text-gray-500">智能识别填充</span>
+            <Tag color="default" class="ml-2">暂不可用</Tag>
+          </div>
+          <div class="text-gray-400 text-sm">{{ OCR_DISABLED_MESSAGE }}</div>
         </div>
 
         <Row :gutter="16">
@@ -908,26 +937,63 @@ onMounted(async () => {
           <!-- 利冲检索结果显示 -->
           <Row v-if="conflictCheckResult?.checked" :gutter="16">
             <Col :span="24">
+              <!-- 无冲突 -->
               <Alert
-                v-if="!conflictCheckResult.hasConflict"
+                v-if="conflictCheckResult.riskLevel === 'NONE'"
                 type="success"
                 message="未检测到利益冲突"
                 description="对方当事人不是本所现有客户，可以正常创建客户关系。"
                 show-icon
               />
-              <Alert
-                v-else
-                type="error"
-                message="检测到利益冲突！"
-                :description="conflictCheckResult.conflictDetail"
-                show-icon
-              >
-                <template #action>
-                  <Button size="small" type="primary" danger @click="goToConflictApplication">
-                    申请利冲豁免
-                  </Button>
-                </template>
-              </Alert>
+              
+              <!-- 有候选匹配项 -->
+              <div v-else>
+                <!-- 风险摘要 -->
+                <Alert
+                  :type="conflictCheckResult.riskLevel === 'HIGH' ? 'error' : (conflictCheckResult.riskLevel === 'MEDIUM' ? 'warning' : 'info')"
+                  :message="conflictCheckResult.riskLevel === 'HIGH' ? '⚠️ 可能存在利益冲突' : (conflictCheckResult.riskLevel === 'MEDIUM' ? '发现相似客户，请核对' : '发现名称相近的客户')"
+                  :description="conflictCheckResult.riskSummary"
+                  show-icon
+                  class="mb-3"
+                >
+                  <template v-if="conflictCheckResult.hasConflict" #action>
+                    <Button size="small" type="primary" danger @click="goToConflictApplication">
+                      申请利冲豁免
+                    </Button>
+                  </template>
+                </Alert>
+                
+                <!-- 候选列表 -->
+                <div v-if="conflictCheckResult.candidates && conflictCheckResult.candidates.length > 0" class="conflict-candidates">
+                  <div class="text-sm text-gray-600 mb-2">匹配的现有客户：</div>
+                  <Table
+                    :dataSource="conflictCheckResult.candidates"
+                    :columns="[
+                      { title: '客户名称', dataIndex: 'clientName', key: 'clientName' },
+                      { title: '客户编号', dataIndex: 'clientNo', key: 'clientNo', width: 140 },
+                      { title: '匹配度', dataIndex: 'matchScore', key: 'matchScore', width: 80, align: 'center' },
+                      { title: '风险等级', dataIndex: 'riskLevel', key: 'riskLevel', width: 90, align: 'center' },
+                      { title: '匹配原因', dataIndex: 'riskReason', key: 'riskReason' },
+                    ]"
+                    :pagination="false"
+                    size="small"
+                    rowKey="clientId"
+                  >
+                    <template #bodyCell="{ column, record }">
+                      <template v-if="column.key === 'matchScore'">
+                        <span :class="record.matchScore >= 90 ? 'text-red-500 font-bold' : (record.matchScore >= 70 ? 'text-orange-500' : 'text-gray-500')">
+                          {{ record.matchScore }}%
+                        </span>
+                      </template>
+                      <template v-if="column.key === 'riskLevel'">
+                        <Tag :color="record.riskLevel === 'HIGH' ? 'red' : (record.riskLevel === 'MEDIUM' ? 'orange' : 'default')">
+                          {{ record.riskLevel === 'HIGH' ? '高' : (record.riskLevel === 'MEDIUM' ? '中' : '低') }}
+                        </Tag>
+                      </template>
+                    </template>
+                  </Table>
+                </div>
+              </div>
             </Col>
           </Row>
           

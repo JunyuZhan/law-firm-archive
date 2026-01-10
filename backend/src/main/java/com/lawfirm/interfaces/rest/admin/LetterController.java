@@ -4,11 +4,16 @@ import com.lawfirm.application.admin.command.CreateLetterApplicationCommand;
 import com.lawfirm.application.admin.dto.LetterApplicationDTO;
 import com.lawfirm.application.admin.dto.LetterTemplateDTO;
 import com.lawfirm.application.admin.service.LetterAppService;
+import com.lawfirm.application.admin.service.LetterVerificationService;
 import com.lawfirm.common.annotation.RequirePermission;
 import com.lawfirm.common.result.Result;
+import com.lawfirm.domain.admin.entity.LetterApplication;
+import com.lawfirm.domain.admin.repository.LetterApplicationRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -23,6 +28,8 @@ import java.util.List;
 public class LetterController {
 
     private final LetterAppService letterAppService;
+    private final LetterVerificationService letterVerificationService;
+    private final LetterApplicationRepository letterApplicationRepository;
 
     // ==================== 模板管理 ====================
 
@@ -209,5 +216,48 @@ public class LetterController {
             @PathVariable Long id,
             @RequestParam String content) {
         return Result.success(letterAppService.updateContent(id, content));
+    }
+
+    // ==================== 二维码相关 ====================
+
+    @Operation(summary = "获取函件验证二维码（Base64）")
+    @GetMapping("/application/{id}/qrcode")
+    @RequirePermission("admin:letter:list")
+    public Result<QrCodeResponse> getQrCode(
+            @PathVariable Long id,
+            @RequestParam(required = false, defaultValue = "200") Integer size) {
+        LetterApplication entity = letterApplicationRepository.getByIdOrThrow(id, "函件不存在");
+        
+        String qrCodeBase64 = letterVerificationService.generateQrCodeBase64(entity, size);
+        String verificationUrl = letterVerificationService.generateVerificationUrl(entity);
+        
+        QrCodeResponse response = new QrCodeResponse();
+        response.setQrCodeBase64(qrCodeBase64);
+        response.setVerificationUrl(verificationUrl);
+        response.setApplicationNo(entity.getApplicationNo());
+        
+        return Result.success(response);
+    }
+
+    @Operation(summary = "下载函件验证二维码图片")
+    @GetMapping(value = "/application/{id}/qrcode/image", produces = MediaType.IMAGE_PNG_VALUE)
+    @RequirePermission("admin:letter:list")
+    public byte[] getQrCodeImage(
+            @PathVariable Long id,
+            @RequestParam(required = false, defaultValue = "200") Integer size) {
+        LetterApplication entity = letterApplicationRepository.getByIdOrThrow(id, "函件不存在");
+        return letterVerificationService.generateQrCodeBytes(entity, size);
+    }
+
+    @Data
+    public static class QrCodeResponse {
+        /** Base64编码的二维码图片 */
+        private String qrCodeBase64;
+        
+        /** 验证URL */
+        private String verificationUrl;
+        
+        /** 申请编号 */
+        private String applicationNo;
     }
 }

@@ -128,5 +128,70 @@ public interface ApprovalMapper extends BaseMapper<Approval> {
      */
     @Select("SELECT id FROM sys_department WHERE parent_id = #{parentId} AND deleted = false")
     List<Long> selectChildDeptIds(@Param("parentId") Long parentId);
+
+    /**
+     * ✅ 修复问题556: 使用递归CTE一次性查询所有后代部门ID
+     * 避免递归Java调用导致的多次数据库查询
+     */
+    @Select("WITH RECURSIVE dept_tree AS (" +
+            "  SELECT id FROM sys_department WHERE parent_id = #{parentId} AND deleted = false" +
+            "  UNION ALL" +
+            "  SELECT d.id FROM sys_department d" +
+            "  INNER JOIN dept_tree dt ON d.parent_id = dt.id" +
+            "  WHERE d.deleted = false" +
+            ") SELECT id FROM dept_tree")
+    List<Long> selectAllDescendantDeptIds(@Param("parentId") Long parentId);
+
+    /**
+     * 分页查询审批记录（带权限过滤，在数据库层面分页）
+     * @param status 状态
+     * @param businessType 业务类型
+     * @param applicantId 申请人ID
+     * @param approverId 审批人ID
+     * @param currentUserId 当前用户ID（用于非管理员权限过滤）
+     * @param isAdmin 是否为管理员/主任（管理员可查看全部）
+     * @param offset 分页偏移量
+     * @param pageSize 每页大小
+     */
+    @Select("<script>" +
+            "SELECT * FROM workbench_approval " +
+            "WHERE deleted = false " +
+            "<if test='status != null and status != \"\"'> AND status = #{status} </if>" +
+            "<if test='businessType != null and businessType != \"\"'> AND business_type = #{businessType} </if>" +
+            "<if test='applicantId != null'> AND applicant_id = #{applicantId} </if>" +
+            "<if test='approverId != null'> AND approver_id = #{approverId} </if>" +
+            "<if test='!isAdmin'> AND (applicant_id = #{currentUserId} OR approver_id = #{currentUserId}) </if>" +
+            "ORDER BY created_at DESC " +
+            "LIMIT #{pageSize} OFFSET #{offset}" +
+            "</script>")
+    List<Approval> selectApprovalPageWithPermission(
+            @Param("status") String status,
+            @Param("businessType") String businessType,
+            @Param("applicantId") Long applicantId,
+            @Param("approverId") Long approverId,
+            @Param("currentUserId") Long currentUserId,
+            @Param("isAdmin") boolean isAdmin,
+            @Param("offset") int offset,
+            @Param("pageSize") int pageSize);
+
+    /**
+     * 统计审批记录总数（带权限过滤）
+     */
+    @Select("<script>" +
+            "SELECT COUNT(*) FROM workbench_approval " +
+            "WHERE deleted = false " +
+            "<if test='status != null and status != \"\"'> AND status = #{status} </if>" +
+            "<if test='businessType != null and businessType != \"\"'> AND business_type = #{businessType} </if>" +
+            "<if test='applicantId != null'> AND applicant_id = #{applicantId} </if>" +
+            "<if test='approverId != null'> AND approver_id = #{approverId} </if>" +
+            "<if test='!isAdmin'> AND (applicant_id = #{currentUserId} OR approver_id = #{currentUserId}) </if>" +
+            "</script>")
+    long countApprovalWithPermission(
+            @Param("status") String status,
+            @Param("businessType") String businessType,
+            @Param("applicantId") Long applicantId,
+            @Param("approverId") Long approverId,
+            @Param("currentUserId") Long currentUserId,
+            @Param("isAdmin") boolean isAdmin);
 }
 

@@ -9,16 +9,21 @@ import com.lawfirm.application.hr.dto.EmployeeQueryDTO;
 import com.lawfirm.common.exception.BusinessException;
 import com.lawfirm.common.result.PageResult;
 import com.lawfirm.domain.hr.entity.Employee;
+import com.lawfirm.domain.hr.entity.PayrollItem;
 import com.lawfirm.domain.hr.repository.EmployeeRepository;
+import com.lawfirm.domain.hr.repository.PayrollItemRepository;
+import com.lawfirm.domain.hr.repository.ContractRepository;
 import com.lawfirm.domain.system.entity.User;
 import com.lawfirm.domain.system.repository.UserRepository;
 import com.lawfirm.infrastructure.persistence.mapper.EmployeeMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -33,6 +38,9 @@ public class EmployeeAppService {
     private final EmployeeRepository employeeRepository;
     private final EmployeeMapper employeeMapper;
     private final UserRepository userRepository;
+    private final PayrollItemRepository payrollItemRepository;
+    @Qualifier("hrContractRepository")
+    private final ContractRepository hrContractRepository;
 
     /**
      * 分页查询员工档案
@@ -182,10 +190,26 @@ public class EmployeeAppService {
 
     /**
      * 删除员工档案（软删除）
+     * 问题246修复：删除前检查关联数据
      */
     @Transactional
     public void deleteEmployee(Long id) {
         Employee employee = employeeRepository.getByIdOrThrow(id, "员工档案不存在");
+        
+        // 检查是否有关联的工资记录
+        List<PayrollItem> payrollItems = payrollItemRepository.lambdaQuery()
+                .eq(PayrollItem::getEmployeeId, id)
+                .eq(PayrollItem::getDeleted, false)
+                .list();
+        if (payrollItems != null && !payrollItems.isEmpty()) {
+            throw new BusinessException("该员工存在工资记录，无法删除。如需删除请先处理相关工资数据。");
+        }
+        
+        // 检查是否有生效中的劳动合同
+        if (hrContractRepository.findActiveContractByEmployeeId(id).isPresent()) {
+            throw new BusinessException("该员工存在生效中的劳动合同，无法删除。请先终止劳动合同。");
+        }
+        
         employeeRepository.softDelete(id);
         log.info("删除员工档案: {}", id);
     }

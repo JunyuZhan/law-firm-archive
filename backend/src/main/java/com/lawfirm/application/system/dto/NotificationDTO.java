@@ -12,7 +12,6 @@ import java.time.LocalDateTime;
 @Data
 @EqualsAndHashCode(callSuper = true)
 public class NotificationDTO extends BaseDTO {
-    private Long id;
     private String title;
     private String content;
     private String type;
@@ -24,5 +23,4 @@ public class NotificationDTO extends BaseDTO {
     private LocalDateTime readAt;
     private String businessType;
     private Long businessId;
-    private LocalDateTime createdAt;
 }

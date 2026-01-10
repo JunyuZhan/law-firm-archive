@@ -55,4 +55,24 @@ public interface MenuMapper extends BaseMapper<Menu> {
     @Insert("INSERT INTO sys_role_menu (role_id, menu_id) VALUES (#{roleId}, #{menuId}) " +
             "ON CONFLICT (role_id, menu_id) DO NOTHING")
     int insertRoleMenu(@Param("roleId") Long roleId, @Param("menuId") Long menuId);
+    
+    /**
+     * 批量插入角色菜单关联（性能优化）
+     * 使用 INSERT ON CONFLICT 避免重复插入
+     */
+    @Insert("<script>" +
+            "INSERT INTO sys_role_menu (role_id, menu_id) VALUES " +
+            "<foreach collection='menuIds' item='menuId' separator=','>" +
+            "(#{roleId}, #{menuId})" +
+            "</foreach>" +
+            " ON CONFLICT (role_id, menu_id) DO NOTHING" +
+            "</script>")
+    int batchInsertRoleMenus(@Param("roleId") Long roleId, @Param("menuIds") List<Long> menuIds);
+
+    /**
+     * 统计菜单的角色关联数量
+     * 问题495修复：用于删除前检查关联
+     */
+    @Select("SELECT COUNT(*) FROM sys_role_menu WHERE menu_id = #{menuId}")
+    long countRoleMenus(@Param("menuId") Long menuId);
 }

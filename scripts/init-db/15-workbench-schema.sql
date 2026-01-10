@@ -314,6 +314,56 @@ CREATE SEQUENCE public.workbench_scheduled_report_log_id_seq
 
 ALTER SEQUENCE public.workbench_scheduled_report_log_id_seq OWNED BY public.workbench_scheduled_report_log.id;
 --
+-- Name: workbench_report; Type: TABLE; Schema: public; Owner: -
+--
+CREATE TABLE public.workbench_report (
+    id bigint NOT NULL,
+    report_no character varying(50) NOT NULL,
+    report_name character varying(200) NOT NULL,
+    report_type character varying(50) NOT NULL,
+    format character varying(20) NOT NULL,
+    status character varying(20) DEFAULT 'GENERATING'::character varying,
+    file_url character varying(500),
+    file_size bigint,
+    parameters text,
+    generated_at timestamp without time zone,
+    generated_by bigint,
+    generated_by_name character varying(100),
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    created_by bigint,
+    updated_by bigint,
+    deleted boolean DEFAULT false
+);
+--
+-- Name: TABLE workbench_report; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON TABLE public.workbench_report IS '报表记录表';
+COMMENT ON COLUMN public.workbench_report.report_no IS '报表编号';
+COMMENT ON COLUMN public.workbench_report.report_name IS '报表名称';
+COMMENT ON COLUMN public.workbench_report.report_type IS '报表类型：REVENUE-收入报表, MATTER-案件报表, CLIENT-客户报表, LAWYER_PERFORMANCE-律师业绩报表';
+COMMENT ON COLUMN public.workbench_report.format IS '报表格式：EXCEL, PDF';
+COMMENT ON COLUMN public.workbench_report.status IS '状态：GENERATING-生成中, COMPLETED-已完成, FAILED-失败';
+COMMENT ON COLUMN public.workbench_report.file_url IS '文件URL';
+COMMENT ON COLUMN public.workbench_report.file_size IS '文件大小（字节）';
+COMMENT ON COLUMN public.workbench_report.parameters IS '报表参数（JSON格式）';
+COMMENT ON COLUMN public.workbench_report.generated_at IS '生成时间';
+COMMENT ON COLUMN public.workbench_report.generated_by IS '生成人ID';
+COMMENT ON COLUMN public.workbench_report.generated_by_name IS '生成人姓名';
+--
+-- Name: workbench_report_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+CREATE SEQUENCE public.workbench_report_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+--
+-- Name: workbench_report_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+ALTER SEQUENCE public.workbench_report_id_seq OWNED BY public.workbench_report.id;
+--
 -- Name: schedule id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -338,6 +388,10 @@ ALTER TABLE ONLY public.workbench_scheduled_report ALTER COLUMN id SET DEFAULT n
 --
 
 ALTER TABLE ONLY public.workbench_scheduled_report_log ALTER COLUMN id SET DEFAULT nextval('public.workbench_scheduled_report_log_id_seq'::regclass);
+--
+-- Name: workbench_report id; Type: DEFAULT; Schema: public; Owner: -
+--
+ALTER TABLE ONLY public.workbench_report ALTER COLUMN id SET DEFAULT nextval('public.workbench_report_id_seq'::regclass);
 --
 -- Name: schedule schedule_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
@@ -386,6 +440,16 @@ ALTER TABLE ONLY public.workbench_scheduled_report
 
 ALTER TABLE ONLY public.workbench_scheduled_report
     ADD CONSTRAINT workbench_scheduled_report_task_no_key UNIQUE (task_no);
+--
+-- Name: workbench_report workbench_report_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+ALTER TABLE ONLY public.workbench_report
+    ADD CONSTRAINT workbench_report_pkey PRIMARY KEY (id);
+--
+-- Name: workbench_report workbench_report_report_no_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+ALTER TABLE ONLY public.workbench_report
+    ADD CONSTRAINT workbench_report_report_no_key UNIQUE (report_no);
 --
 -- Name: idx_report_template_created_by; Type: INDEX; Schema: public; Owner: -
 --
@@ -471,6 +535,10 @@ CREATE INDEX idx_workbench_approval_created_at ON public.workbench_approval USIN
 --
 
 CREATE INDEX idx_workbench_approval_status ON public.workbench_approval USING btree (status);
+CREATE INDEX idx_workbench_report_report_type ON public.workbench_report USING btree (report_type);
+CREATE INDEX idx_workbench_report_status ON public.workbench_report USING btree (status);
+CREATE INDEX idx_workbench_report_generated_by ON public.workbench_report USING btree (generated_by);
+CREATE INDEX idx_workbench_report_generated_at ON public.workbench_report USING btree (generated_at DESC);
 --
 -- Name: workbench_scheduled_report_log fk_scheduled_log_task; Type: FK CONSTRAINT; Schema: public; Owner: -
 --

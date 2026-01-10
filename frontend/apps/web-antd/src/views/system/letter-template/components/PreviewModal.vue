@@ -1,31 +1,44 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useVbenModal } from '@vben/common-ui';
 import { Button, Space, Tag } from 'ant-design-vue';
 import { message } from 'ant-design-vue';
 import type { LetterTemplateDTO } from '#/api/admin';
+import { getConfigValue } from '#/api/system';
+import { createLetterSampleData } from '../constants/sample-data';
 
 const previewContent = ref('');
 const previewTitle = ref('');
 
-// 预览示例数据
-const sampleData: Record<string, string> = {
-  matterName: '张三与李四民间借贷纠纷案',
-  causeOfAction: '民间借贷纠纷',
-  lawyerNames: '王律师、刘律师',
-  lawyerLicenseNo: '15200201912345678',
-  clientName: '张三',
-  clientIdNumber: '520000199001011234',
-  opposingParty: '李四',
-  targetUnit: '贵阳市中级人民法院',
-  targetAddress: '贵州省贵阳市云岩区XX路XX号',
-  firmName: '贵州威迪律师事务所',
-  firmAddress: '贵州省毕节市七星关区开行路联邦金座10楼',
-  firmPhone: '0857-8228444',
-  letterNo: 'WD-HJ-2026-001',
-  date: '2026年1月5日',
-  currentYear: '2026',
-};
+// 预览示例数据（动态加载律所信息）
+const sampleData = ref<Record<string, string>>(createLetterSampleData());
+
+// 加载律所信息（从系统配置获取）
+async function loadFirmInfo() {
+  try {
+    const [firmNameConfig, firmAddressConfig, firmPhoneConfig, firmLicenseConfig] = await Promise.all([
+      getConfigValue('firm.name').catch(() => null),
+      getConfigValue('firm.address').catch(() => null),
+      getConfigValue('firm.phone').catch(() => null),
+      getConfigValue('firm.license').catch(() => null),
+    ]);
+    
+    if (firmNameConfig?.configValue) {
+      sampleData.value.firmName = firmNameConfig.configValue;
+    }
+    if (firmAddressConfig?.configValue) {
+      sampleData.value.firmAddress = firmAddressConfig.configValue;
+    }
+    if (firmPhoneConfig?.configValue) {
+      sampleData.value.firmPhone = firmPhoneConfig.configValue;
+    }
+    if (firmLicenseConfig?.configValue) {
+      sampleData.value.firmLicense = firmLicenseConfig.configValue;
+    }
+  } catch (error) {
+    console.warn('加载律所信息失败，使用默认值', error);
+  }
+}
 
 const [Modal, modalApi] = useVbenModal({
   footer: false,
@@ -45,17 +58,48 @@ function handlePrint() {
     <head>
       <title>${previewTitle.value}</title>
       <style>
-        @page { margin: 2cm; size: A4; }
+        @page { 
+          size: A4;
+          margin-top: 3.7cm;
+          margin-bottom: 3.5cm;
+          margin-left: 2.8cm;
+          margin-right: 2.6cm;
+        }
         body { 
-          font-family: "SimSun", "宋体", serif; 
-          font-size: 14pt; 
-          line-height: 2;
+          font-family: "FangSong", "仿宋_GB2312", "仿宋", serif; 
+          font-size: 16pt; 
+          line-height: 28pt;
           color: #000;
+          padding: 0;
+          margin: 0;
+        }
+        * {
+          font-family: "FangSong", "仿宋_GB2312", "仿宋", serif;
         }
         .preview-var { color: #000; font-weight: 500; }
-        h1, h2, h3 { text-align: center; }
-        p { text-indent: 2em; margin: 0.5em 0; }
-        .signature { text-align: right; margin-top: 2em; }
+        h1, h2, h3 { 
+          text-align: center; 
+          font-family: "FZXiaoBiaoSong-B05S", "方正小标宋", "FZXBS", serif;
+          font-size: 22pt;
+          font-weight: normal;
+          letter-spacing: 2pt;
+          margin: 20pt 0 10pt;
+        }
+        p { 
+          text-indent: 2em; 
+          margin: 0; 
+          padding: 0;
+          font-family: "FangSong", "仿宋_GB2312", "仿宋", serif; 
+          font-size: 16pt;
+          line-height: 28pt;
+        }
+        .signature { 
+          text-align: right; 
+          margin-top: 40pt; 
+          font-family: "FangSong", "仿宋_GB2312", "仿宋", serif; 
+          font-size: 16pt;
+          line-height: 28pt;
+        }
       </style>
     </head>
     <body>
@@ -68,20 +112,26 @@ function handlePrint() {
 }
 
 // 打开预览弹窗
-function open(record: LetterTemplateDTO) {
+async function open(record: LetterTemplateDTO) {
   previewTitle.value = record.name;
   let content = record.content || '';
   
+  // 确保律所信息已加载
+  if (!sampleData.value.firmAddress && !sampleData.value.firmPhone) {
+    await loadFirmInfo();
+  }
+  
   // 替换变量为示例值
-  Object.entries(sampleData).forEach(([key, value]) => {
+  Object.entries(sampleData.value).forEach(([key, value]) => {
+    const displayValue = value || `[${key}]`; // 如果值为空，显示变量名
     content = content.replace(
       new RegExp(`\\$\\{${key}\\}`, 'g'), 
-      `<span class="preview-var">${value}</span>`
+      `<span class="preview-var">${displayValue}</span>`
     );
     // 替换带data-variable属性的标签内容
     content = content.replace(
       new RegExp(`<span[^>]*data-variable="${key}"[^>]*>[^<]*</span>`, 'g'),
-      `<span class="preview-var">${value}</span>`
+      `<span class="preview-var">${displayValue}</span>`
     );
   });
   
@@ -89,6 +139,11 @@ function open(record: LetterTemplateDTO) {
   modalApi.setState({ title: `预览 - ${record.name}` });
   modalApi.open();
 }
+
+// 组件挂载时加载律所信息
+onMounted(() => {
+  loadFirmInfo();
+});
 
 defineExpose({ open });
 </script>

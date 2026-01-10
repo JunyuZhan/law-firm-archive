@@ -63,13 +63,9 @@ function handleClear() {
 }
 
 function handleClick(item: NotificationItem) {
-  // 先触发自定义点击事件，让父组件处理
+  // 只触发自定义点击事件，让父组件处理（标记为已读）
+  // 不再执行自动跳转，避免跳转逻辑错误
   emit('click', item);
-  
-  // 如果通知项有链接且不是特殊标记，执行默认跳转
-  if (item.link && !item.link.startsWith('letter:') && !item.link.startsWith('approval:')) {
-    navigateTo(item.link, item.query, item.state);
-  }
 }
 
 function navigateTo(

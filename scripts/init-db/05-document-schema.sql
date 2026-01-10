@@ -121,7 +121,8 @@ CREATE TABLE public.doc_document (
     folder_path character varying(500),
     dossier_item_id bigint,
     ai_generated boolean DEFAULT false,
-    display_order integer DEFAULT 0
+    display_order integer DEFAULT 0,
+    thumbnail_url character varying(500)
 );
 --
 -- Name: TABLE doc_document; Type: COMMENT; Schema: public; Owner: -
@@ -163,6 +164,11 @@ COMMENT ON COLUMN public.doc_document.dossier_item_id IS '关联卷宗目录项I
 --
 
 COMMENT ON COLUMN public.doc_document.display_order IS '显示排序顺序（同一目录内的排序，数值越小越靠前）';
+--
+-- Name: COLUMN doc_document.thumbnail_url; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.doc_document.thumbnail_url IS '缩略图URL（图片和PDF文件）';
 --
 -- Name: doc_document_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --

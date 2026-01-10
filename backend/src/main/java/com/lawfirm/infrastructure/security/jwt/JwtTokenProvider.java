@@ -4,10 +4,13 @@ import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 
+import jakarta.annotation.PostConstruct;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.Date;
 
 /**
@@ -19,6 +22,40 @@ public class JwtTokenProvider {
 
     @Value("${jwt.secret}")
     private String secret;
+    
+    private final Environment environment;
+    
+    public JwtTokenProvider(Environment environment) {
+        this.environment = environment;
+    }
+    
+    /**
+     * 启动时验证JWT密钥安全性
+     */
+    @PostConstruct
+    public void validateSecretKey() {
+        // 默认弱密钥
+        String defaultWeakSecret = "your-256-bit-secret-key-here-change-in-production";
+        
+        // 检查是否为生产环境
+        boolean isProd = Arrays.asList(environment.getActiveProfiles()).contains("prod");
+        
+        // 如果使用默认密钥且是生产环境，记录严重警告
+        if (defaultWeakSecret.equals(secret) && isProd) {
+            log.error("================================================");
+            log.error("⚠️  严重安全警告：生产环境使用了默认JWT密钥！");
+            log.error("⚠️  请立即通过环境变量 JWT_SECRET 设置强随机密钥");
+            log.error("⚠️  生成密钥命令: openssl rand -base64 32");
+            log.error("================================================");
+        } else if (defaultWeakSecret.equals(secret)) {
+            log.warn("开发环境使用默认JWT密钥，生产环境请务必修改");
+        }
+        
+        // 验证密钥长度（至少32字节，256位）
+        if (secret.getBytes(StandardCharsets.UTF_8).length < 32) {
+            log.warn("JWT密钥长度不足32字节，建议使用更长的密钥以提高安全性");
+        }
+    }
 
     @Value("${jwt.expiration}")
     private long expiration;

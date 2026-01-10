@@ -119,6 +119,7 @@ function createRequestClient(baseURL: string, options?: RequestClientOptions) {
 
 export const requestClient = createRequestClient(apiURL, {
   responseReturn: 'data',
+  timeout: 600_000, // 默认10分钟超时（支持大文件下载和长时间操作）
 });
 
 export const baseRequestClient = new RequestClient({ baseURL: apiURL });

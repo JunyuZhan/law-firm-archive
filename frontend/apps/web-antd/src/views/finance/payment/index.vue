@@ -37,7 +37,7 @@ import {
   confirmPayment,
 } from '#/api/finance';
 import { getClientList } from '#/api/client';
-import { recognizeBankReceipt, matchPayment, type OcrResultDTO, type MatchCandidateDTO, type ReconciliationResultDTO } from '#/api/ocr';
+import { recognizeBankReceipt, matchPayment, type OcrResultDTO, type MatchCandidateDTO, type ReconciliationResultDTO, OCR_DISABLED, OCR_DISABLED_MESSAGE } from '#/api/ocr';
 import type { FeeDTO, FeeQuery, CreatePaymentCommand, PaymentDTO } from '#/api/finance/types';
 import type { ClientDTO } from '#/api/client/types';
 import dayjs from 'dayjs';
@@ -419,9 +419,23 @@ onMounted(() => {
           <Space wrap>
             <Button type="primary" @click="handleSearch">查询</Button>
             <Button @click="handleReset">重置</Button>
-            <Button type="primary" ghost @click="openOcrModal">
+            <Button 
+              v-if="!OCR_DISABLED"
+              type="primary" 
+              ghost 
+              @click="openOcrModal"
+            >
               <template #icon><IconifyIcon icon="ant-design:scan-outlined" /></template>
               OCR识别
+            </Button>
+            <Button 
+              v-else
+              type="default" 
+              disabled
+              :title="OCR_DISABLED_MESSAGE"
+            >
+              <template #icon><IconifyIcon icon="ant-design:scan-outlined" /></template>
+              OCR识别（暂不可用）
             </Button>
           </Space>
         </Col>

@@ -97,7 +97,7 @@ const pendingColumns = [
 ];
 
 async function loadPendingData() {
-  const data = await getPendingApprovals();
+    const data = await getPendingApprovals();
   allPendingData.value = data || [];
   
   // 根据分类过滤
@@ -283,7 +283,7 @@ function handleApprove(row: ApprovalDTO) {
 
 // 审批拒绝
 function handleReject(row: ApprovalDTO) {
-  const rejectReason = ref('');
+const rejectReason = ref('');
   
   Modal.confirm({
     title: '拒绝审批',
@@ -302,7 +302,7 @@ function handleReject(row: ApprovalDTO) {
     okType: 'danger',
     cancelText: '取消',
     onOk: async () => {
-      if (!rejectReason.value.trim()) {
+  if (!rejectReason.value.trim()) {
         message.warning('请填写拒绝原因');
         return Promise.reject();
       }
@@ -310,7 +310,7 @@ function handleReject(row: ApprovalDTO) {
         await approveApproval({
           approvalId: row.id,
           result: 'REJECTED',
-          comment: rejectReason.value.trim(),
+      comment: rejectReason.value.trim(),
         });
         message.success('已拒绝');
         pendingGridApi.reload();
@@ -410,7 +410,7 @@ function handleModalSuccess() {
     initiatedGridApi.reload();
   } else {
     historyGridApi.reload();
-  }
+}
 }
 
 // 获取当前统计数据
@@ -470,8 +470,8 @@ onMounted(async () => {
             <template v-if="activeTab === 'pending'">
               <Badge :count="cat.count" :offset="[8, 0]" :showZero="cat.key === 'all'" size="small">
                 <span>{{ cat.name }}</span>
-              </Badge>
-            </template>
+            </Badge>
+          </template>
             <span v-else>{{ cat.name }}</span>
           </template>
         </TabPane>
@@ -489,20 +489,20 @@ onMounted(async () => {
         <template #priority="{ row }">
           <Tag :color="priorityColorMap[row.priority] || 'default'">
             {{ row.priorityName || row.priority }}
-          </Tag>
-        </template>
+            </Tag>
+          </template>
 
         <template #urgency="{ row }">
           <Tag v-if="row.urgency === 'URGENT'" color="red">紧急</Tag>
           <span v-else>{{ row.urgencyName || '普通' }}</span>
-        </template>
+          </template>
 
         <template #action="{ row }">
-          <Space>
+            <Space>
             <a @click="handleViewDetail(row, true)">详情</a>
             <a style="color: #52c41a" @click="handleApprove(row)">通过</a>
             <a style="color: #ff4d4f" @click="handleReject(row)">拒绝</a>
-          </Space>
+            </Space>
         </template>
       </PendingGrid>
 
@@ -511,8 +511,8 @@ onMounted(async () => {
         <template #status="{ row }">
           <Tag :color="statusColorMap[row.status] || 'default'">
             {{ row.statusName || row.status }}
-          </Tag>
-        </template>
+            </Tag>
+          </template>
 
         <template #action="{ row }">
           <a @click="handleViewDetail(row, false)">查看</a>
@@ -524,8 +524,8 @@ onMounted(async () => {
         <template #status="{ row }">
           <Tag :color="statusColorMap[row.status] || 'default'">
             {{ row.statusName || row.status }}
-          </Tag>
-        </template>
+            </Tag>
+          </template>
 
         <template #action="{ row }">
           <a @click="handleViewDetail(row, false)">查看</a>

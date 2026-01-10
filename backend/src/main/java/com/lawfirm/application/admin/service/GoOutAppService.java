@@ -14,10 +14,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.dao.DuplicateKeyException;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -34,40 +35,48 @@ public class GoOutAppService {
 
     /**
      * 外出登记
+     * ✅ 修复：使用数据库约束+异常处理解决并发问题
+     * 需要在数据库添加条件唯一索引: UNIQUE(user_id) WHERE status = 'OUT'
      */
     @Transactional
     public GoOutRecordDTO registerGoOut(GoOutCommand command) {
         Long userId = SecurityUtils.getUserId();
 
-        // 检查是否有未返回的外出记录
-        List<GoOutRecord> currentOut = goOutMapper.selectCurrentOut(userId);
-        if (!currentOut.isEmpty()) {
-            throw new BusinessException("您还有未返回的外出记录，请先登记返回");
+        // ✅ 验证时间合理性
+        if (command.getExpectedReturnTime() != null && 
+            command.getOutTime().isAfter(command.getExpectedReturnTime())) {
+            throw new BusinessException("外出时间不能晚于预计返回时间");
         }
 
         // 生成登记编号
         String recordNo = generateRecordNo();
 
-        GoOutRecord record = GoOutRecord.builder()
-                .recordNo(recordNo)
-                .userId(userId)
-                .outTime(command.getOutTime())
-                .expectedReturnTime(command.getExpectedReturnTime())
-                .location(command.getLocation())
-                .reason(command.getReason())
-                .companions(command.getCompanions())
-                .status(GoOutRecord.STATUS_OUT)
-                .createdBy(userId)
-                .createdAt(LocalDateTime.now())
-                .build();
+        try {
+            GoOutRecord record = GoOutRecord.builder()
+                    .recordNo(recordNo)
+                    .userId(userId)
+                    .outTime(command.getOutTime())
+                    .expectedReturnTime(command.getExpectedReturnTime())
+                    .location(command.getLocation())
+                    .reason(command.getReason())
+                    .companions(command.getCompanions())
+                    .status(GoOutRecord.STATUS_OUT)
+                    .createdBy(userId)
+                    .createdAt(LocalDateTime.now())
+                    .build();
 
-        goOutRepository.save(record);
-        log.info("外出登记成功: recordNo={}, userId={}", recordNo, userId);
-        return toDTO(record);
+            goOutRepository.save(record);
+            log.info("外出登记成功: recordNo={}, userId={}", recordNo, userId);
+            return toDTO(record);
+        } catch (DuplicateKeyException e) {
+            // ✅ 并发时唯一约束冲突，说明已有外出记录
+            throw new BusinessException("您还有未返回的外出记录，请先登记返回");
+        }
     }
 
     /**
      * 登记返回
+     * ✅ 修复：添加权限验证，只能登记自己的返回
      */
     @Transactional
     public GoOutRecordDTO registerReturn(Long id) {
@@ -77,41 +86,79 @@ public class GoOutAppService {
             throw new BusinessException("该记录不是外出中状态");
         }
 
+        Long currentUserId = SecurityUtils.getUserId();
+
+        // ✅ 验证权限：只能登记自己的返回，除非是管理员
+        if (!record.getUserId().equals(currentUserId)) {
+            if (!SecurityUtils.hasAnyRole("ADMIN", "HR_MANAGER")) {
+                throw new BusinessException("权限不足：只能登记自己的返回");
+            }
+            log.warn("管理员代登记返回: recordNo={}, operator={}, user={}",
+                    record.getRecordNo(), currentUserId, record.getUserId());
+        }
+
         record.setActualReturnTime(LocalDateTime.now());
         record.setStatus(GoOutRecord.STATUS_RETURNED);
-        record.setUpdatedBy(SecurityUtils.getUserId());
+        record.setUpdatedBy(currentUserId);
         record.setUpdatedAt(LocalDateTime.now());
         goOutRepository.updateById(record);
 
-        log.info("外出返回登记成功: recordNo={}", record.getRecordNo());
+        log.info("外出返回登记成功: recordNo={}, user={}", record.getRecordNo(), record.getUserId());
         return toDTO(record);
     }
 
     /**
      * 查询我的外出记录
+     * ✅ 优化：使用批量加载避免N+1查询
      */
     public List<GoOutRecordDTO> getMyRecords() {
         Long userId = SecurityUtils.getUserId();
         List<GoOutRecord> records = goOutMapper.selectByUserId(userId);
-        return records.stream().map(this::toDTO).collect(Collectors.toList());
+        return convertToDTOs(records);
     }
 
     /**
      * 查询指定日期范围的外出记录
+     * ✅ 优化：使用批量加载避免N+1查询
      */
     public List<GoOutRecordDTO> getRecordsByDateRange(LocalDate startDate, LocalDate endDate) {
         Long userId = SecurityUtils.getUserId();
         List<GoOutRecord> records = goOutMapper.selectByDateRange(userId, startDate, endDate);
-        return records.stream().map(this::toDTO).collect(Collectors.toList());
+        return convertToDTOs(records);
     }
 
     /**
      * 查询当前外出的记录
+     * ✅ 优化：使用批量加载避免N+1查询
      */
     public List<GoOutRecordDTO> getCurrentOut() {
         Long userId = SecurityUtils.getUserId();
         List<GoOutRecord> records = goOutMapper.selectCurrentOut(userId);
-        return records.stream().map(this::toDTO).collect(Collectors.toList());
+        return convertToDTOs(records);
+    }
+
+    /**
+     * 批量转换DTO
+     */
+    private List<GoOutRecordDTO> convertToDTOs(List<GoOutRecord> records) {
+        if (records.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // 批量加载用户信息
+        Set<Long> userIds = records.stream()
+                .map(GoOutRecord::getUserId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        Map<Long, User> userMap = userIds.isEmpty() ? Collections.emptyMap() :
+                userRepository.listByIds(new ArrayList<>(userIds)).stream()
+                        .collect(Collectors.toMap(User::getId, u -> u));
+
+        // 转换DTO(从Map获取)
+        return records.stream()
+                .map(record -> toDTO(record, userMap))
+                .collect(Collectors.toList());
     }
 
     private String generateRecordNo() {
@@ -129,7 +176,22 @@ public class GoOutAppService {
         };
     }
 
+    /**
+     * 转换为DTO（单条查询使用，会触发数据库查询）
+     */
     private GoOutRecordDTO toDTO(GoOutRecord record) {
+        Map<Long, User> userMap = new HashMap<>();
+        if (record.getUserId() != null) {
+            User user = userRepository.findById(record.getUserId());
+            if (user != null) userMap.put(user.getId(), user);
+        }
+        return toDTO(record, userMap);
+    }
+
+    /**
+     * 转换为DTO（批量查询使用，从预加载的Map获取数据，避免N+1）
+     */
+    private GoOutRecordDTO toDTO(GoOutRecord record, Map<Long, User> userMap) {
         GoOutRecordDTO dto = new GoOutRecordDTO();
         dto.setId(record.getId());
         dto.setRecordNo(record.getRecordNo());
@@ -145,9 +207,9 @@ public class GoOutAppService {
         dto.setCreatedAt(record.getCreatedAt());
         dto.setUpdatedAt(record.getUpdatedAt());
 
-        // 查询用户名称
+        // 从Map获取用户名称（避免N+1）
         if (record.getUserId() != null) {
-            User user = userRepository.findById(record.getUserId());
+            User user = userMap.get(record.getUserId());
             if (user != null) {
                 dto.setUserName(user.getRealName());
             }

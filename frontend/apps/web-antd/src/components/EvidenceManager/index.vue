@@ -18,6 +18,7 @@ import {
   getEvidenceGroups,
   deleteEvidence,
   updateEvidenceSort,
+  downloadEvidenceAsZip,
   type EvidenceDTO,
 } from '#/api/evidence';
 
@@ -40,6 +41,11 @@ const viewMode = ref<ViewMode>('grid');
 const formVisible = ref(false);
 const editingEvidence = ref<EvidenceItem | null>(null);
 const dragEnabled = ref(false);
+
+// 批量选择状态
+const selectedEvidenceIds = ref<Set<number>>(new Set());
+const batchDownloading = ref(false);
+const selectMode = ref(false);
 
 // 分组树数据
 const groupTreeData = computed(() => {
@@ -248,6 +254,73 @@ async function handleDownload(evidence: EvidenceItem) {
   }
 }
 
+// 批量选择相关方法
+function toggleSelectMode() {
+  selectMode.value = !selectMode.value;
+  if (!selectMode.value) {
+    selectedEvidenceIds.value = new Set();
+  }
+}
+
+function toggleEvidenceSelection(evidenceId: number, event?: Event) {
+  event?.stopPropagation();
+  if (selectedEvidenceIds.value.has(evidenceId)) {
+    selectedEvidenceIds.value.delete(evidenceId);
+  } else {
+    selectedEvidenceIds.value.add(evidenceId);
+  }
+  selectedEvidenceIds.value = new Set(selectedEvidenceIds.value);
+}
+
+function isEvidenceSelected(evidenceId: number) {
+  return selectedEvidenceIds.value.has(evidenceId);
+}
+
+function isAllEvidenceSelected() {
+  return currentEvidences.value.length > 0 && 
+         currentEvidences.value.every(e => selectedEvidenceIds.value.has(e.id));
+}
+
+function toggleSelectAllEvidence() {
+  if (isAllEvidenceSelected()) {
+    currentEvidences.value.forEach(e => selectedEvidenceIds.value.delete(e.id));
+  } else {
+    currentEvidences.value.forEach(e => selectedEvidenceIds.value.add(e.id));
+  }
+  selectedEvidenceIds.value = new Set(selectedEvidenceIds.value);
+}
+
+function clearEvidenceSelection() {
+  selectedEvidenceIds.value = new Set();
+  selectMode.value = false;
+}
+
+// 批量下载证据
+async function handleBatchDownload() {
+  const ids = Array.from(selectedEvidenceIds.value);
+  if (ids.length === 0) {
+    message.warning('请先选择要下载的证据');
+    return;
+  }
+  
+  if (ids.length > 100) {
+    message.warning('单次最多下载100个证据文件');
+    return;
+  }
+  
+  batchDownloading.value = true;
+  try {
+    const fileName = `证据材料_${new Date().toISOString().slice(0, 10)}.zip`;
+    await downloadEvidenceAsZip(ids, fileName);
+    message.success(`成功下载 ${ids.length} 个证据文件`);
+    clearEvidenceSelection();
+  } catch (error: any) {
+    message.error('批量下载失败：' + (error.message || '未知错误'));
+  } finally {
+    batchDownloading.value = false;
+  }
+}
+
 // 拖拽排序结束
 async function handleDragEnd() {
   // 更新排序
@@ -321,6 +394,32 @@ defineExpose({
           </template>
           <template #extra>
             <Space>
+              <!-- 批量操作按钮 -->
+              <template v-if="selectMode">
+                <Button 
+                  v-if="selectedEvidenceIds.size > 0" 
+                  type="primary" 
+                  size="small"
+                  :loading="batchDownloading"
+                  @click="handleBatchDownload"
+                >
+                  批量下载 ({{ selectedEvidenceIds.size }})
+                </Button>
+                <Button size="small" @click="toggleSelectAllEvidence">
+                  {{ isAllEvidenceSelected() ? '取消全选' : '全选' }}
+                </Button>
+                <Button size="small" @click="clearEvidenceSelection">取消选择</Button>
+              </template>
+              <Tooltip :title="selectMode ? '退出选择' : '批量选择'">
+                <Button
+                  type="text"
+                  size="small"
+                  :class="{ 'select-active': selectMode }"
+                  @click="toggleSelectMode"
+                >
+                  ☑
+                </Button>
+              </Tooltip>
               <Tooltip title="刷新">
                 <Button type="text" size="small" @click="loadData">
                   <template #icon><RotateCw class="w-4 h-4" /></template>
@@ -363,13 +462,23 @@ defineExpose({
               @end="handleDragEnd"
             >
               <template #item="{ element }">
-                <EvidenceGridItem
-                  :evidence="element"
-                  :selected="selectedEvidence?.id === element.id"
-                  :draggable="dragEnabled && !readonly"
-                  @click="handleEvidenceClick"
-                  @dblclick="handleEvidenceDblClick"
-                />
+                <div class="grid-item-wrapper" :class="{ 'item-selected': isEvidenceSelected(element.id) }">
+                  <div v-if="selectMode" class="item-checkbox" @click.stop="toggleEvidenceSelection(element.id, $event)">
+                    <input 
+                      type="checkbox" 
+                      :checked="isEvidenceSelected(element.id)"
+                      @click.stop
+                      @change="toggleEvidenceSelection(element.id)"
+                    />
+                  </div>
+                  <EvidenceGridItem
+                    :evidence="element"
+                    :selected="selectedEvidence?.id === element.id"
+                    :draggable="dragEnabled && !readonly"
+                    @click="selectMode ? toggleEvidenceSelection(element.id) : handleEvidenceClick(element)"
+                    @dblclick="handleEvidenceDblClick"
+                  />
+                </div>
               </template>
             </draggable>
             <Empty v-else description="暂无证据" />
@@ -388,17 +497,27 @@ defineExpose({
               @end="handleDragEnd"
             >
               <template #item="{ element }">
-                <EvidenceListItem
-                  :evidence="element"
-                  :selected="selectedEvidence?.id === element.id"
-                  :draggable="dragEnabled && !readonly"
-                  :readonly="readonly"
-                  @click="handleEvidenceClick"
-                  @edit="handleEdit"
-                  @delete="handleDelete"
-                  @preview="handlePreview"
-                  @download="handleDownload"
-                />
+                <div class="list-item-wrapper" :class="{ 'item-selected': isEvidenceSelected(element.id) }">
+                  <div v-if="selectMode" class="item-checkbox" @click.stop="toggleEvidenceSelection(element.id, $event)">
+                    <input 
+                      type="checkbox" 
+                      :checked="isEvidenceSelected(element.id)"
+                      @click.stop
+                      @change="toggleEvidenceSelection(element.id)"
+                    />
+                  </div>
+                  <EvidenceListItem
+                    :evidence="element"
+                    :selected="selectedEvidence?.id === element.id"
+                    :draggable="dragEnabled && !readonly"
+                    :readonly="readonly"
+                    @click="selectMode ? toggleEvidenceSelection(element.id) : handleEvidenceClick(element)"
+                    @edit="handleEdit"
+                    @delete="handleDelete"
+                    @preview="handlePreview"
+                    @download="handleDownload"
+                  />
+                </div>
               </template>
             </draggable>
             <Empty v-else description="暂无证据" />
@@ -479,7 +598,8 @@ defineExpose({
       }
     }
 
-    .drag-active {
+    .drag-active,
+    .select-active {
       color: #1890ff;
       background: #e6f7ff;
     }
@@ -502,6 +622,46 @@ defineExpose({
     .ghost {
       opacity: 0.5;
       background: #e6f7ff;
+    }
+
+    // 批量选择样式
+    .grid-item-wrapper,
+    .list-item-wrapper {
+      position: relative;
+      
+      &.item-selected {
+        background-color: #e6f7ff;
+        border-radius: 4px;
+      }
+      
+      .item-checkbox {
+        position: absolute;
+        top: 4px;
+        left: 4px;
+        z-index: 10;
+        background: rgba(255, 255, 255, 0.9);
+        border-radius: 4px;
+        padding: 2px 4px;
+        
+        input[type="checkbox"] {
+          width: 16px;
+          height: 16px;
+          cursor: pointer;
+        }
+      }
+    }
+    
+    .list-item-wrapper {
+      display: flex;
+      align-items: center;
+      
+      .item-checkbox {
+        position: relative;
+        top: auto;
+        left: auto;
+        margin-right: 8px;
+        padding: 8px;
+      }
     }
   }
 

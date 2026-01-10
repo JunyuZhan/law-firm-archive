@@ -129,9 +129,30 @@ export function rejectExemption(id: number, comment?: string) {
   return requestClient.post(`/client/conflict-check/exemption/${id}/reject`, { comment });
 }
 
-/** 快速利冲检索（不创建记录，仅检查） */
+/** 冲突候选项 */
+export interface ConflictCandidate {
+  clientId: number;
+  clientNo: string;
+  clientName: string;
+  clientType: string;
+  matchScore: number;
+  matchType: 'EXACT' | 'CONTAINS' | 'SIMILAR';
+  riskLevel: 'HIGH' | 'MEDIUM' | 'LOW';
+  riskReason: string;
+}
+
+/** 快速利冲检索结果 */
+export interface QuickConflictCheckResult {
+  hasConflict: boolean;
+  conflictDetail?: string;
+  candidates: ConflictCandidate[];
+  riskLevel: 'HIGH' | 'MEDIUM' | 'LOW' | 'NONE';
+  riskSummary: string;
+}
+
+/** 快速利冲检索（增强版，返回候选列表和风险评估） */
 export function quickConflictCheck(data: { clientName: string; opposingParty: string }) {
-  return requestClient.post<{ hasConflict: boolean; conflictDetail?: string }>('/client/conflict-check/quick', data);
+  return requestClient.post<QuickConflictCheckResult>('/client/conflict-check/quick', data);
 }
 
 // ========== 案源管理 API ==========

@@ -2,26 +2,37 @@ package com.lawfirm.application.contract.service;
 
 import com.lawfirm.application.contract.command.CreateContractTemplateCommand;
 import com.lawfirm.application.contract.dto.ContractTemplateDTO;
+import com.lawfirm.common.exception.BusinessException;
+import com.lawfirm.common.util.SecurityUtils;
 import com.lawfirm.domain.contract.entity.ContractTemplate;
+import com.lawfirm.domain.finance.repository.ContractRepository;
 import com.lawfirm.domain.contract.repository.ContractTemplateRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
  * 合同模板应用服务
+ * ✅ 修复问题581-586: 添加权限验证
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ContractTemplateAppService {
 
     private final ContractTemplateRepository contractTemplateRepository;
+    private final ContractRepository contractRepository;
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    
+    // 管理角色常量
+    private static final Set<String> TEMPLATE_MANAGE_ROLES = Set.of("ADMIN", "TEAM_LEADER", "DIRECTOR");
 
     /**
      * 获取所有启用的模板
@@ -43,8 +54,14 @@ public class ContractTemplateAppService {
 
     /**
      * 按合同类型获取模板
+     * ✅ 修复问题605: 添加参数验证
      */
     public List<ContractTemplateDTO> getTemplatesByType(String contractType) {
+        // ✅ 参数验证
+        if (contractType == null || contractType.trim().isEmpty()) {
+            throw new BusinessException("合同类型不能为空");
+        }
+        
         return contractTemplateRepository.findByContractType(contractType).stream()
                 .map(this::toDTO)
                 .collect(Collectors.toList());
@@ -60,9 +77,13 @@ public class ContractTemplateAppService {
 
     /**
      * 创建模板
+     * ✅ 修复问题581: 添加权限验证
      */
     @Transactional
     public ContractTemplateDTO createTemplate(CreateContractTemplateCommand command) {
+        // ✅ 权限验证：只有管理员或合伙人才能创建模板
+        requireTemplateManagePermission();
+        
         ContractTemplate template = ContractTemplate.builder()
                 .templateNo(contractTemplateRepository.generateTemplateNo())
                 .name(command.getName())
@@ -76,15 +97,26 @@ public class ContractTemplateAppService {
                 .build();
 
         contractTemplateRepository.save(template);
+        log.info("合同模板创建成功: {}, 创建人: {}", template.getName(), SecurityUtils.getUserId());
         return toDTO(template);
     }
 
     /**
      * 更新模板
+     * ✅ 修复问题582/585: 添加权限验证 + 检查模板使用情况
      */
     @Transactional
     public ContractTemplateDTO updateTemplate(Long id, CreateContractTemplateCommand command) {
+        // ✅ 权限验证
+        requireTemplateManagePermission();
+        
         ContractTemplate template = contractTemplateRepository.getByIdOrThrow(id, "模板不存在");
+        
+        // ✅ 检查模板是否正在使用
+        long usageCount = contractRepository.countByTemplateId(id);
+        if (usageCount > 0) {
+            log.warn("模板正在被{}个合同使用，修改可能影响已有合同", usageCount);
+        }
         
         template.setName(command.getName());
         template.setContractType(command.getContractType());
@@ -94,27 +126,66 @@ public class ContractTemplateAppService {
         template.setDescription(command.getDescription());
 
         contractTemplateRepository.updateById(template);
+        log.info("合同模板更新成功: {}, 操作人: {}", template.getName(), SecurityUtils.getUserId());
         return toDTO(template);
     }
 
     /**
      * 切换模板状态
+     * ✅ 修复问题583/586: 添加权限验证 + 检查模板使用情况
      */
     @Transactional
     public void toggleStatus(Long id) {
+        // ✅ 权限验证
+        requireTemplateManagePermission();
+        
         ContractTemplate template = contractTemplateRepository.getByIdOrThrow(id, "模板不存在");
+        
+        // ✅ 禁用前检查是否正在使用
+        if ("ACTIVE".equals(template.getStatus())) {
+            long usageCount = contractRepository.countByTemplateId(id);
+            if (usageCount > 0) {
+                log.warn("模板正在被{}个合同使用，禁用后新合同将无法使用此模板", usageCount);
+            }
+        }
+        
         template.setStatus("ACTIVE".equals(template.getStatus()) ? "INACTIVE" : "ACTIVE");
         contractTemplateRepository.updateById(template);
+        log.info("合同模板状态切换: {} -> {}, 操作人: {}", 
+                template.getName(), template.getStatus(), SecurityUtils.getUserId());
     }
 
     /**
      * 删除模板
+     * ✅ 修复问题584: 添加权限验证
      */
     @Transactional
     public void deleteTemplate(Long id) {
+        // ✅ 权限验证
+        requireTemplateManagePermission();
+        
         ContractTemplate template = contractTemplateRepository.getByIdOrThrow(id, "模板不存在");
+        
+        // ✅ 检查模板是否正在使用
+        long usageCount = contractRepository.countByTemplateId(id);
+        if (usageCount > 0) {
+            throw new BusinessException("模板正在被" + usageCount + "个合同使用，无法删除");
+        }
+        
         template.setDeleted(true);
         contractTemplateRepository.updateById(template);
+        log.info("合同模板删除成功: {}, 操作人: {}", template.getName(), SecurityUtils.getUserId());
+    }
+    
+    /**
+     * 权限验证：只有管理员或合伙人才能管理模板
+     */
+    private void requireTemplateManagePermission() {
+        Set<String> roles = SecurityUtils.getRoles();
+        boolean hasPermission = roles.stream().anyMatch(TEMPLATE_MANAGE_ROLES::contains);
+        if (!hasPermission) {
+            throw new BusinessException("权限不足：只有管理员或合伙人才能管理合同模板");
+        }
     }
 
     private ContractTemplateDTO toDTO(ContractTemplate entity) {

@@ -103,6 +103,19 @@ public class SecurityUtils {
     }
 
     /**
+     * 判断是否有任一指定角色
+     */
+    public static boolean hasAnyRole(String... roles) {
+        Set<String> userRoles = getRoles();
+        for (String role : roles) {
+            if (userRoles.contains(role)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * 判断是否是管理员
      */
     public static boolean isAdmin() {

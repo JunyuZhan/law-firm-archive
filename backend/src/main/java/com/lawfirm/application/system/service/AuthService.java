@@ -33,6 +33,7 @@ public class AuthService {
     private final LoginLogService loginLogService;
     private final SessionAppService sessionAppService;
     private final com.lawfirm.application.system.util.UserAgentParser userAgentParser;
+    private final com.lawfirm.infrastructure.notification.AlertService alertService;
 
     private static final String TOKEN_CACHE_PREFIX = "token:";
     private static final long TOKEN_CACHE_HOURS = 24;
@@ -41,11 +42,56 @@ public class AuthService {
      * 用户登录
      */
     public LoginResult login(String username, String password, String ip, String userAgent) {
+        // ⚠️ 安全加固：登录前检查账户锁定状态和失败次数
+        // 1. 检查账户是否被锁定
+        User user = userRepository.findByUsername(username).orElse(null);
+        if (user != null && "LOCKED".equals(user.getStatus())) {
+            log.warn("尝试登录已锁定账户: username={}, ip={}", username, ip);
+            loginLogService.recordLoginFailure(username, ip, userAgent, "账户已被锁定");
+            throw new BusinessException("账户已被锁定，请联系管理员");
+        }
+        
+        // 2. 检查登录失败次数（防止撞库攻击）
+        if (loginLogService.shouldLockAccount(username)) {
+            // 自动锁定账户
+            if (user != null) {
+                user.setStatus("LOCKED");
+                userRepository.updateById(user);
+                log.warn("账户因连续登录失败被自动锁定: username={}, ip={}", username, ip);
+                // 发送账户锁定告警
+                try {
+                    alertService.sendAccountLockedAlert(username, ip, "连续登录失败次数过多");
+                } catch (Exception e) {
+                    log.warn("发送账户锁定告警失败", e);
+                }
+            }
+            loginLogService.recordLoginFailure(username, ip, userAgent, "连续登录失败次数过多，账户已锁定");
+            throw new BusinessException("连续登录失败次数过多，账户已被锁定，请30分钟后重试或联系管理员");
+        }
+        
+        // 3. IP级别的速率限制（防止同一IP频繁尝试）
+        String ipLimitKey = "login:ip:" + ip;
+        Integer ipAttempts = (Integer) redisTemplate.opsForValue().get(ipLimitKey);
+        if (ipAttempts != null && ipAttempts >= 10) {
+            log.warn("IP登录尝试次数过多: ip={}, attempts={}", ip, ipAttempts);
+            loginLogService.recordLoginFailure(username, ip, userAgent, "IP登录尝试次数过多");
+            // 发送异常IP告警
+            try {
+                alertService.sendSuspiciousIpAlert(ip, ipAttempts, "短时间内登录尝试次数过多，可能存在暴力破解行为");
+            } catch (Exception e) {
+                log.warn("发送异常IP告警失败", e);
+            }
+            throw new BusinessException("登录尝试次数过多，请15分钟后重试");
+        }
+        
         try {
-            // 1. 认证（Spring Security会调用UserDetailsService）
+            // 4. 认证（Spring Security会调用UserDetailsService）
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(username, password)
             );
+            
+            // 登录成功，清除IP限制计数
+            redisTemplate.delete(ipLimitKey);
 
             // 2. 获取认证后的用户信息
             LoginUser loginUser = (LoginUser) authentication.getPrincipal();
@@ -96,15 +142,60 @@ public class AuthService {
                     .build();
 
         } catch (BadCredentialsException e) {
-            log.warn("登录失败，用户名或密码错误: {}", username);
+            log.warn("登录失败，用户名或密码错误: username={}, ip={}", username, ip);
+            
+            // 增加IP尝试次数
+            String ipLimitKeyForBadCreds = "login:ip:" + ip;
+            Integer currentAttempts = (Integer) redisTemplate.opsForValue().get(ipLimitKeyForBadCreds);
+            if (currentAttempts == null) {
+                currentAttempts = 0;
+            }
+            redisTemplate.opsForValue().set(ipLimitKeyForBadCreds, currentAttempts + 1, 15, TimeUnit.MINUTES);
+            
             // 记录登录失败日志
             loginLogService.recordLoginFailure(username, ip, userAgent, "用户名或密码错误");
+            
+            // 检查是否需要锁定账户
+            if (loginLogService.shouldLockAccount(username)) {
+                User lockedUser = userRepository.findByUsername(username).orElse(null);
+                if (lockedUser != null) {
+                    lockedUser.setStatus("LOCKED");
+                    userRepository.updateById(lockedUser);
+                    log.warn("账户因连续登录失败被自动锁定: username={}", username);
+                    // 发送账户锁定告警
+                    try {
+                        alertService.sendAccountLockedAlert(username, ip, "连续登录失败次数过多");
+                    } catch (Exception alertEx) {
+                        log.warn("发送账户锁定告警失败", alertEx);
+                    }
+                }
+                throw new BusinessException("连续登录失败次数过多，账户已被锁定，请30分钟后重试或联系管理员");
+            }
+            
+            // 登录失败次数较多时发送告警（5次以上）
+            int failCount = loginLogService.getRecentFailureCount(username);
+            if (failCount >= 3) {
+                try {
+                    alertService.sendLoginFailureAlert(username, ip, failCount);
+                } catch (Exception alertEx) {
+                    log.warn("发送登录失败告警失败", alertEx);
+                }
+            }
+            
             throw new BusinessException("用户名或密码错误");
+        } catch (BusinessException e) {
+            // 业务异常（如账户锁定）直接抛出
+            throw e;
         } catch (Exception e) {
-            log.error("登录异常: {}", e.getMessage(), e);
-            // 记录登录失败日志
-            loginLogService.recordLoginFailure(username, ip, userAgent, "登录异常: " + e.getMessage());
-            throw new BusinessException("登录失败: " + e.getMessage());
+            log.error("登录异常: username={}, ip={}", username, ip, e);
+            
+            // ⚠️ 安全修复：系统异常不增加IP尝试次数，避免DoS攻击
+            // 攻击者可能故意发送畸形请求导致异常，从而快速锁定正常IP
+            // 只记录日志，不增加计数器
+            
+            // 记录登录失败日志（不泄露详细错误信息）
+            loginLogService.recordLoginFailure(username, ip, userAgent, "系统异常");
+            throw new BusinessException("登录失败，请稍后重试");
         }
     }
 

@@ -75,7 +75,7 @@ public class Timesheet extends BaseEntity {
      * 状态
      */
     @lombok.Builder.Default
-    private String status = "DRAFT";
+    private String status = "DRAFT"; // 使用 TimesheetStatus.DRAFT
 
     /**
      * 提交时间

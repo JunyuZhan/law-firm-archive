@@ -28,6 +28,8 @@ export interface DocumentDTO {
   dossierItemId?: number;
   /** 显示排序顺序 */
   displayOrder?: number;
+  /** 缩略图URL（图片和PDF文件） */
+  thumbnailUrl?: string;
 }
 
 export interface DocumentQuery {

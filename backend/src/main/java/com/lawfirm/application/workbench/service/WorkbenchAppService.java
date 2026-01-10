@@ -37,31 +37,62 @@ public class WorkbenchAppService {
 
     /**
      * 获取工作台数据
+     * ✅ 修复问题555: 分块异常处理，允许部分数据加载失败但保留其他数据
      */
     public WorkbenchDTO getWorkbenchData() {
+        Long userId = SecurityUtils.getCurrentUserId();
+        WorkbenchDTO.WorkbenchDTOBuilder builder = WorkbenchDTO.builder();
+
+        // ✅ 分块处理：每个模块独立异常处理，部分失败不影响其他模块
         try {
-            Long userId = SecurityUtils.getCurrentUserId();
-            
-            return WorkbenchDTO.builder()
-                    .todoSummary(getTodoSummary(userId))
-                    .projectSummary(getProjectSummary(userId))
-                    .timesheetSummary(getTimesheetSummary(userId))
-                    .todoItems(getTodoItems(userId))
-                    .todaySchedules(getTodaySchedules(userId))
-                    .recentProjects(getRecentProjects(userId))
-                    .build();
+            builder.todoSummary(getTodoSummary(userId));
         } catch (Exception e) {
-            log.error("获取工作台数据失败", e);
-            // 返回空数据，避免500错误
-            return WorkbenchDTO.builder()
-                    .todoSummary(TodoSummary.builder().pendingApproval(0).pendingTask(0).overdueTask(0).total(0).build())
-                    .projectSummary(ProjectSummary.builder().inProgress(0).pendingApproval(0).closed(0).total(0).build())
-                    .timesheetSummary(TimesheetSummary.builder().totalHours(BigDecimal.ZERO).billableHours(BigDecimal.ZERO).recordCount(0).build())
-                    .todoItems(new ArrayList<>())
-                    .todaySchedules(new ArrayList<>())
-                    .recentProjects(new ArrayList<>())
-                    .build();
+            log.error("获取待办事项统计失败", e);
+            builder.todoSummary(TodoSummary.builder()
+                    .pendingApproval(0).pendingTask(0).overdueTask(0).total(0)
+                    .build());
         }
+
+        try {
+            builder.projectSummary(getProjectSummary(userId));
+        } catch (Exception e) {
+            log.error("获取项目统计失败", e);
+            builder.projectSummary(ProjectSummary.builder()
+                    .inProgress(0).pendingApproval(0).closed(0).total(0)
+                    .build());
+        }
+
+        try {
+            builder.timesheetSummary(getTimesheetSummary(userId));
+        } catch (Exception e) {
+            log.error("获取工时统计失败", e);
+            builder.timesheetSummary(TimesheetSummary.builder()
+                    .totalHours(BigDecimal.ZERO).billableHours(BigDecimal.ZERO).recordCount(0)
+                    .build());
+        }
+
+        try {
+            builder.todoItems(getTodoItems(userId));
+        } catch (Exception e) {
+            log.error("获取待办事项列表失败", e);
+            builder.todoItems(new ArrayList<>());
+        }
+
+        try {
+            builder.todaySchedules(getTodaySchedules(userId));
+        } catch (Exception e) {
+            log.error("获取今日日程失败", e);
+            builder.todaySchedules(new ArrayList<>());
+        }
+
+        try {
+            builder.recentProjects(getRecentProjects(userId));
+        } catch (Exception e) {
+            log.error("获取最近项目失败", e);
+            builder.recentProjects(new ArrayList<>());
+        }
+
+        return builder.build();
     }
 
     /**

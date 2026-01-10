@@ -6,9 +6,11 @@ import com.lawfirm.application.client.dto.ClientDTO;
 import com.lawfirm.application.client.dto.ClientQueryDTO;
 import com.lawfirm.application.client.service.ClientAppService;
 import com.lawfirm.common.annotation.OperationLog;
+import com.lawfirm.common.annotation.RepeatSubmit;
 import com.lawfirm.common.annotation.RequirePermission;
 import com.lawfirm.common.result.PageResult;
 import com.lawfirm.common.result.Result;
+import com.lawfirm.common.util.FileValidator;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -70,6 +72,7 @@ public class ClientController {
     @PostMapping
     @RequirePermission("client:create")
     @OperationLog(module = "客户管理", action = "创建客户")
+    @RepeatSubmit(interval = 5000, message = "请勿重复提交客户信息")
     public Result<ClientDTO> createClient(@RequestBody @Valid CreateClientCommand command) {
         ClientDTO client = clientAppService.createClient(command);
         return Result.success(client);
@@ -161,6 +164,11 @@ public class ClientController {
     @Operation(summary = "批量导入客户", description = "从Excel文件批量导入客户信息")
     @OperationLog(module = "客户管理", action = "批量导入客户")
     public Result<Map<String, Object>> importClients(@RequestParam("file") MultipartFile file) throws IOException {
+        // ✅ 安全验证：验证上传的Excel文件
+        FileValidator.ValidationResult validationResult = FileValidator.validate(file);
+        if (!validationResult.isValid()) {
+            return Result.error(validationResult.getErrorMessage());
+        }
         Map<String, Object> result = clientAppService.importClients(file);
         return Result.success(result);
     }

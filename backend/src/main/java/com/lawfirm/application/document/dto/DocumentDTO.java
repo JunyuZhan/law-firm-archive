@@ -56,4 +56,6 @@ public class DocumentDTO extends BaseDTO {
     private String folderPath;
     /** 显示排序顺序 */
     private Integer displayOrder;
+    /** 缩略图URL */
+    private String thumbnailUrl;
 }

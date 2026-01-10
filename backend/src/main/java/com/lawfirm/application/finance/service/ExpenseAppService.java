@@ -11,6 +11,7 @@ import com.lawfirm.application.workbench.service.ApproverService;
 import com.lawfirm.common.exception.BusinessException;
 import com.lawfirm.common.result.PageResult;
 import com.lawfirm.common.util.SecurityUtils;
+import com.lawfirm.common.constant.ExpenseStatus;
 import com.lawfirm.domain.finance.entity.CostAllocation;
 import com.lawfirm.domain.finance.entity.Expense;
 import com.lawfirm.domain.finance.entity.CostSplit;
@@ -168,7 +169,7 @@ public class ExpenseAppService {
                 .vendorName(command.getVendorName())
                 .invoiceNo(command.getInvoiceNo())
                 .invoiceUrl(command.getInvoiceUrl())
-                .status("PENDING")
+                .status(ExpenseStatus.PENDING)
                 .isCostAllocation(false)
                 .remark(command.getRemark())
                 .createdBy(SecurityUtils.getUserId())
@@ -214,14 +215,14 @@ public class ExpenseAppService {
             throw new BusinessException("费用报销记录不存在");
         }
 
-        if (!"PENDING".equals(expense.getStatus())) {
+        if (!ExpenseStatus.canApprove(expense.getStatus())) {
             throw new BusinessException("只能审批待审批状态的报销单");
         }
 
         if ("APPROVE".equals(command.getAction())) {
-            expense.setStatus("APPROVED");
+            expense.setStatus(ExpenseStatus.APPROVED);
         } else if ("REJECT".equals(command.getAction())) {
-            expense.setStatus("REJECTED");
+            expense.setStatus(ExpenseStatus.REJECTED);
         } else {
             throw new BusinessException("无效的审批操作");
         }
@@ -241,6 +242,7 @@ public class ExpenseAppService {
 
     /**
      * 确认支付
+     * 使用乐观锁防止并发重复支付
      */
     @Transactional(rollbackFor = Exception.class)
     public ExpenseDTO confirmPayment(Long id, String paymentMethod) {
@@ -252,20 +254,33 @@ public class ExpenseAppService {
             throw new BusinessException("费用报销记录不存在");
         }
 
-        if (!"APPROVED".equals(expense.getStatus())) {
+        // 检查是否已支付，防止重复支付
+        if (ExpenseStatus.PAID.equals(expense.getStatus())) {
+            throw new BusinessException("该报销单已支付，请勿重复操作");
+        }
+
+        if (!ExpenseStatus.canPay(expense.getStatus())) {
             throw new BusinessException("只能支付已审批的报销单");
         }
 
-        expense.setStatus("PAID");
+        // 记录支付前状态（审计）
+        String previousStatus = expense.getStatus();
+
+        expense.setStatus(ExpenseStatus.PAID);
         expense.setPaidAt(LocalDateTime.now());
         expense.setPaidBy(SecurityUtils.getUserId());
         expense.setPaymentMethod(paymentMethod);
         expense.setUpdatedAt(LocalDateTime.now());
         expense.setUpdatedBy(SecurityUtils.getUserId());
 
-        expenseRepository.getBaseMapper().updateById(expense);
+        // 使用乐观锁更新，如果版本不匹配会抛出异常
+        int updatedRows = expenseRepository.getBaseMapper().updateById(expense);
+        if (updatedRows == 0) {
+            throw new BusinessException("支付失败：数据已被其他用户修改，请刷新后重试");
+        }
 
-        log.info("确认费用支付: expenseId={}, paymentMethod={}", id, paymentMethod);
+        log.info("确认费用支付: expenseId={}, paymentMethod={}, previousStatus={}", 
+                id, paymentMethod, previousStatus);
 
         return toDTO(expense);
     }
@@ -286,7 +301,7 @@ public class ExpenseAppService {
                 throw new BusinessException("费用报销记录不存在: " + expenseId);
             }
 
-            if (!"PAID".equals(expense.getStatus())) {
+            if (!ExpenseStatus.PAID.equals(expense.getStatus())) {
                 throw new BusinessException("只能归集已支付的费用: " + expense.getExpenseNo());
             }
 
@@ -353,7 +368,7 @@ public class ExpenseAppService {
             throw new BusinessException("该费用已关联项目，不能进行分摊");
         }
 
-        if (!"PAID".equals(expense.getStatus())) {
+        if (!ExpenseStatus.PAID.equals(expense.getStatus())) {
             throw new BusinessException("只能分摊已支付的费用");
         }
 
@@ -369,20 +384,34 @@ public class ExpenseAppService {
 
         // 根据分摊方式计算分摊金额
         if ("EQUAL".equals(command.getSplitMethod())) {
-            // 平均分摊
+            // 平均分摊 - 修复精度问题：最后一个项目承担差额
+            int count = command.getMatterIds().size();
             BigDecimal splitAmount = totalAmount.divide(
-                    BigDecimal.valueOf(command.getMatterIds().size()),
+                    BigDecimal.valueOf(count),
                     2,
                     java.math.RoundingMode.HALF_UP);
             BigDecimal splitRatio = BigDecimal.ONE
-                    .divide(BigDecimal.valueOf(command.getMatterIds().size()),
+                    .divide(BigDecimal.valueOf(count),
                             4, java.math.RoundingMode.HALF_UP);
 
-            for (Long matterId : command.getMatterIds()) {
+            BigDecimal allocatedTotal = BigDecimal.ZERO;
+
+            for (int i = 0; i < count; i++) {
+                Long matterId = command.getMatterIds().get(i);
+                BigDecimal amount;
+
+                // 最后一个项目承担差额，确保分摊总额精确等于原始总额
+                if (i == count - 1) {
+                    amount = totalAmount.subtract(allocatedTotal);
+                } else {
+                    amount = splitAmount;
+                    allocatedTotal = allocatedTotal.add(amount);
+                }
+
                 CostSplit split = CostSplit.builder()
                         .expenseId(command.getExpenseId())
                         .matterId(matterId)
-                        .splitAmount(splitAmount)
+                        .splitAmount(amount)
                         .splitRatio(splitRatio)
                         .splitMethod("EQUAL")
                         .splitDate(LocalDate.now())
@@ -394,7 +423,7 @@ public class ExpenseAppService {
                 splits.add(split);
             }
         } else if ("RATIO".equals(command.getSplitMethod())) {
-            // 按比例分摊
+            // 按比例分摊 - 修复精度问题：最后一个项目承担差额
             if (command.getRatios() == null || command.getRatios().isEmpty()) {
                 throw new BusinessException("按比例分摊需要提供分摊比例");
             }
@@ -405,13 +434,25 @@ public class ExpenseAppService {
                 throw new BusinessException("分摊比例总和必须等于1（100%）");
             }
 
-            for (Long matterId : command.getMatterIds()) {
+            BigDecimal allocatedTotal = BigDecimal.ZERO;
+            int count = command.getMatterIds().size();
+
+            for (int i = 0; i < count; i++) {
+                Long matterId = command.getMatterIds().get(i);
                 BigDecimal ratio = command.getRatios().get(matterId);
                 if (ratio == null) {
                     throw new BusinessException("项目 " + matterId + " 缺少分摊比例");
                 }
-                BigDecimal splitAmount = totalAmount.multiply(ratio)
-                        .setScale(2, java.math.RoundingMode.HALF_UP);
+
+                BigDecimal splitAmount;
+                // 最后一个项目承担差额，确保分摊总额精确等于原始总额
+                if (i == count - 1) {
+                    splitAmount = totalAmount.subtract(allocatedTotal);
+                } else {
+                    splitAmount = totalAmount.multiply(ratio)
+                            .setScale(2, java.math.RoundingMode.HALF_UP);
+                    allocatedTotal = allocatedTotal.add(splitAmount);
+                }
 
                 CostSplit split = CostSplit.builder()
                         .expenseId(command.getExpenseId())
@@ -464,13 +505,24 @@ public class ExpenseAppService {
             throw new BusinessException("不支持的分摊方式: " + command.getSplitMethod());
         }
 
+        // 验证分摊总额必须等于原始总额
+        BigDecimal splitTotal = splits.stream()
+                .map(CostSplit::getSplitAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        if (splitTotal.compareTo(totalAmount) != 0) {
+            throw new BusinessException(
+                    String.format("分摊金额总和(%s)与原始总额(%s)不一致，请检查分摊数据", 
+                            splitTotal, totalAmount));
+        }
+
         // 保存所有分摊记录
         for (CostSplit split : splits) {
             costSplitRepository.getBaseMapper().insert(split);
         }
 
-        log.info("成本分摊完成: expenseId={}, matterCount={}, totalAmount={}",
-                command.getExpenseId(), command.getMatterIds().size(), totalAmount);
+        log.info("成本分摊完成: expenseId={}, matterCount={}, totalAmount={}, splitTotal={}",
+                command.getExpenseId(), command.getMatterIds().size(), totalAmount, splitTotal);
     }
 
     /**
@@ -499,7 +551,7 @@ public class ExpenseAppService {
             throw new BusinessException("只能删除自己申请的报销单");
         }
 
-        if (!"PENDING".equals(expense.getStatus())) {
+        if (!ExpenseStatus.canDelete(expense.getStatus())) {
             throw new BusinessException("只能删除待审批状态的报销单");
         }
 

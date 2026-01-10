@@ -63,4 +63,10 @@ public interface PurchaseRequestMapper extends BaseMapper<PurchaseRequest> {
      */
     @Select("SELECT purchase_type, SUM(actual_amount) as total FROM admin_purchase_request WHERE deleted = false AND status = 'COMPLETED' GROUP BY purchase_type")
     List<Map<String, Object>> sumAmountByType();
+
+    /**
+     * 统计供应商的采购记录数
+     */
+    @Select("SELECT COUNT(*) FROM admin_purchase_request WHERE deleted = false AND supplier_id = #{supplierId}")
+    long countBySupplierId(@Param("supplierId") Long supplierId);
 }

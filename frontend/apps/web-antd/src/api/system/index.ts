@@ -4,6 +4,9 @@
 import { requestClient } from '#/api/request';
 
 import type {
+  BackupDTO,
+  BackupQuery,
+  CreateBackupCommand,
   CreateDepartmentCommand,
   CreateHandoverCommand,
   CreateMenuCommand,
@@ -23,6 +26,7 @@ import type {
   PageResult,
   PermissionCompareDTO,
   PermissionMatrixDTO,
+  RestoreBackupCommand,
   RoleDTO,
   RolePermissionDTO,
   RoleQuery,
@@ -181,19 +185,54 @@ export function getDictTypeList() {
   return requestClient.get<DictTypeDTO[]>('/system/dict/types');
 }
 
-/** 获取字典数据 */
+/** 获取字典类型详情（含字典项） */
+export function getDictTypeWithItems(id: number) {
+  return requestClient.get<DictTypeDTO>(`/system/dict/types/${id}`);
+}
+
+/** 根据编码获取字典项 */
 export function getDictDataByCode(dictCode: string) {
   return requestClient.get<DictDataDTO[]>(`/system/dict/items/code/${dictCode}`);
 }
 
-/** 创建字典类型 */
-export function createDictType(data: Partial<DictTypeDTO>) {
-  return requestClient.post<DictTypeDTO>('/system/dict/type', data);
+/** 根据类型ID获取字典项列表 */
+export function getDictItemsByTypeId(typeId: number) {
+  return requestClient.get<DictDataDTO[]>(`/system/dict/types/${typeId}/items`);
 }
 
-/** 创建字典数据 */
-export function createDictData(data: Partial<DictDataDTO>) {
-  return requestClient.post<DictDataDTO>('/system/dict/data', data);
+/** 创建字典类型 */
+export function createDictType(data: CreateDictTypeCommand) {
+  return requestClient.post<DictTypeDTO>('/system/dict/types', data);
+}
+
+/** 更新字典类型 */
+export function updateDictType(id: number, data: CreateDictTypeCommand) {
+  return requestClient.put<DictTypeDTO>(`/system/dict/types/${id}`, data);
+}
+
+/** 删除字典类型 */
+export function deleteDictType(id: number) {
+  return requestClient.delete(`/system/dict/types/${id}`);
+}
+
+/** 创建字典项 */
+export function createDictItem(data: CreateDictItemCommand) {
+  return requestClient.post<DictDataDTO>('/system/dict/items', data);
+}
+
+/** 更新字典项 */
+export function updateDictItem(id: number, data: CreateDictItemCommand) {
+  return requestClient.put<DictDataDTO>(`/system/dict/items/${id}`, data);
+}
+
+/** 删除字典项 */
+export function deleteDictItem(id: number) {
+  return requestClient.delete(`/system/dict/items/${id}`);
+}
+
+/** 启用/禁用字典项 */
+export function toggleDictItemStatus(id: number) {
+  return requestClient.post(`/system/dict/items/${id}/toggle`);
 }
 
 // ========== 系统配置 API ==========
@@ -208,9 +247,51 @@ export function getConfigValue(configKey: string) {
   return requestClient.get<SysConfigDTO>(`/system/config/key/${configKey}`);
 }
 
+/** 获取系统版本信息 */
+export function getVersionInfo() {
+  return requestClient.get<{
+    version: string; // 显示版本号（优先数据库配置，支持简单格式如 0.4）
+    buildVersion?: string; // 构建版本号（如 1.0.0-SNAPSHOT）
+    buildTime: string;
+    gitCommit: string;
+    profile: string;
+    javaVersion: string;
+    javaVendor: string;
+    osName: string;
+    osVersion: string;
+    serverTime: string;
+  }>('/system/config/version');
+}
+
+/** 创建配置 */
+export function createConfig(data: {
+  configKey: string;
+  configValue: string;
+  configName: string;
+  configType?: string;
+  description?: string;
+}) {
+  return requestClient.post<SysConfigDTO>('/system/config', data);
+}
+
 /** 更新配置 */
 export function updateConfig(id: number, data: { configValue: string; description?: string }) {
   return requestClient.put(`/system/config/${id}`, data);
+}
+
+/** 获取维护模式状态 */
+export function getMaintenanceStatus() {
+  return requestClient.get<{ enabled: boolean; message: string }>('/system/config/maintenance/status');
+}
+
+/** 开启维护模式 */
+export function enableMaintenanceMode(message?: string) {
+  return requestClient.post('/system/config/maintenance/enable', message ? { message } : {});
+}
+
+/** 关闭维护模式 */
+export function disableMaintenanceMode() {
+  return requestClient.post('/system/config/maintenance/disable');
 }
 
 // ============ 合同编号配置相关 ============
@@ -245,15 +326,26 @@ export function getCaseTypeOptions() {
 
 /** 获取操作日志列表 */
 export function getOperationLogList(params: LogQuery) {
-  return requestClient.get<PageResult<OperationLogDTO>>('/system/log/list', { params });
+  return requestClient.get<PageResult<OperationLogDTO>>('/admin/operation-logs', { params });
 }
 
 /** 导出操作日志 */
-export function exportOperationLog(params: LogQuery) {
-  return requestClient.get('/system/log/export', {
-    params,
+export function exportOperationLog(data: LogQuery) {
+  return requestClient.post('/admin/operation-logs/export', data, {
     responseType: 'blob',
+    responseReturn: 'body', // 直接返回响应体，不经过拦截器处理
+    timeout: 600_000, // 10分钟超时（支持大文件导出）
   });
+}
+
+/** 获取日志统计信息 */
+export function getLogStatistics(params?: { startTime?: string; endTime?: string }) {
+  return requestClient.get<Record<string, any>>('/admin/operation-logs/statistics', { params });
+}
+
+/** 清理历史日志 */
+export function cleanOldLogs(keepDays: number) {
+  return requestClient.delete('/admin/operation-logs/clean', { params: { keepDays } });
 }
 
 // ========== 权限矩阵管理 API ==========
@@ -283,6 +375,28 @@ export function previewHandover(userId: number) {
 /** 获取交接单列表 */
 export function getHandoverList(params: DataHandoverQuery) {
   return requestClient.get<PageResult<DataHandoverDTO>>('/system/data-handover', { params });
+}
+
+// ========== 数据库迁移管理 API ==========
+
+/** 扫描迁移脚本 */
+export function scanMigrationScripts() {
+  return requestClient.get<MigrationDTO[]>('/system/migration/scan');
+}
+
+/** 获取迁移记录列表 */
+export function getMigrationList(params: { pageNum?: number; pageSize?: number }) {
+  return requestClient.get<PageResult<MigrationDTO>>('/system/migration/list', { params });
+}
+
+/** 获取迁移详情 */
+export function getMigrationDetail(id: number) {
+  return requestClient.get<MigrationDTO>(`/system/migration/${id}`);
+}
+
+/** 执行迁移脚本 */
+export function executeMigration(version: string) {
+  return requestClient.post<MigrationDTO>(`/system/migration/execute/${version}`);
 }
 
 /** 获取交接单详情 */
@@ -355,6 +469,114 @@ export function disableExternalIntegration(id: number) {
 /** 测试外部系统连接 */
 export function testExternalIntegration(id: number) {
   return requestClient.post<ExternalIntegrationDTO>(`/system/integration/${id}/test`, {});
+}
+
+// ========== 数据库备份 API ==========
+
+/** 获取备份列表 */
+export function getBackupList(params: BackupQuery) {
+  return requestClient.get<PageResult<BackupDTO>>('/system/backup/list', { params });
+}
+
+/** 获取备份详情 */
+export function getBackupDetail(id: number) {
+  return requestClient.get<BackupDTO>(`/system/backup/${id}`);
+}
+
+/** 创建备份 */
+export function createBackup(data: CreateBackupCommand) {
+  return requestClient.post<BackupDTO>('/system/backup', data);
+}
+
+/** 恢复备份 */
+export function restoreBackup(data: RestoreBackupCommand) {
+  return requestClient.post<void>('/system/backup/restore', data);
+}
+
+/** 删除备份 */
+export function deleteBackup(id: number) {
+  return requestClient.delete<void>(`/system/backup/${id}`);
+}
+
+/** 下载备份文件 */
+export function downloadBackup(
+  id: number,
+  onProgress?: (progress: { loaded: number; total: number; percent: number }) => void,
+) {
+  return requestClient.get(`/system/backup/${id}/download`, {
+    responseType: 'blob',
+    responseReturn: 'body',
+    timeout: 600_000, // 10分钟超时
+    onDownloadProgress: (progressEvent) => {
+      if (onProgress && progressEvent.total) {
+        const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+        onProgress({
+          loaded: progressEvent.loaded,
+          total: progressEvent.total,
+          percent,
+        });
+      }
+    },
+  });
+}
+
+/** 导入外部备份文件 */
+export function importBackup(
+  file: File,
+  backupType: string = 'DATABASE',
+  description?: string,
+  onProgress?: (progress: { loaded: number; total: number; percent: number }) => void,
+) {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('backupType', backupType);
+  if (description) {
+    formData.append('description', description);
+  }
+  
+  return requestClient.post<BackupDTO>('/system/backup/import', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+    timeout: 600_000, // 10分钟超时（支持大文件）
+    onUploadProgress: (progressEvent) => {
+      if (onProgress && progressEvent.total) {
+        const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+        onProgress({
+          loaded: progressEvent.loaded,
+          total: progressEvent.total,
+          percent,
+        });
+      }
+    },
+  });
+}
+
+// ======================== 邮件通知 API ========================
+
+/** 测试邮件配置 */
+export function testEmailConfig(email: string) {
+  return requestClient.post<string>('/system/notification/test-email', { email });
+}
+
+/** 获取邮件服务状态 */
+export function getEmailStatus() {
+  return requestClient.get<{ enabled: boolean }>('/system/notification/email-status');
+}
+
+/** 发送测试告警 */
+export function sendTestAlert(type: string) {
+  return requestClient.post<string>('/system/notification/test-alert', { type });
+}
+
+/** 生成系统报告预览 */
+export function previewSystemReport(type: 'daily' | 'weekly' = 'daily') {
+  return requestClient.get<string>('/system/notification/report-preview', { params: { type } });
+}
+
+/** 立即发送系统报告 */
+export function sendSystemReport(type: 'daily' | 'weekly' = 'daily') {
+  return requestClient.post<string>('/system/notification/send-report', { type });
 }
 
 // 导出类型

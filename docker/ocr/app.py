@@ -1,12 +1,15 @@
 """
 PaddleOCR服务 - 智慧律所管理系统
 提供通用文字识别、银行回单识别、身份证识别、营业执照识别等功能
+优化配置：使用轻量级模型，禁用不必要的预处理，确保快速响应
 """
 import os
 import re
 import io
 import logging
+import time
 from typing import Optional
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
@@ -19,16 +22,56 @@ import httpx
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# 初始化FastAPI
-app = FastAPI(title="PaddleOCR Service", version="1.0.0")
+# 全局OCR实例
+ocr = None
 
-# 初始化PaddleOCR
+def init_ocr():
+    """初始化轻量级PaddleOCR - 优化速度"""
+    global ocr
 ocr_lang = os.getenv("OCR_LANG", "ch")
-use_gpu = os.getenv("OCR_USE_GPU", "false").lower() == "true"
+    
+    logger.info("🚀 初始化轻量级PaddleOCR...")
+    start = time.time()
+    
+    # 使用轻量级配置，大幅提升速度
+    ocr = PaddleOCR(
+        use_angle_cls=False,      # 禁用方向分类器（省约30%时间）
+        lang=ocr_lang,
+        use_gpu=False,
+        show_log=False,           # 禁用日志输出
+        # 使用移动端轻量模型
+        det_model_dir=None,       # 使用默认轻量检测模型
+        rec_model_dir=None,       # 使用默认轻量识别模型
+        det_db_thresh=0.3,        # 检测阈值
+        det_db_box_thresh=0.5,    # 框阈值
+        det_db_unclip_ratio=1.6,  # 扩展比例
+        rec_batch_num=6,          # 批处理数量
+        max_text_length=25,       # 最大文本长度
+        use_space_char=True,      # 使用空格字符
+    )
+    
+    # 预热模型 - 用一个小图片触发模型加载
+    logger.info("🔥 预热OCR模型...")
+    dummy_img = np.zeros((100, 100, 3), dtype=np.uint8)
+    dummy_img.fill(255)  # 白色背景
+    try:
+        ocr.ocr(dummy_img, cls=False)
+    except:
+        pass  # 忽略预热错误
+    
+    elapsed = time.time() - start
+    logger.info(f"✅ PaddleOCR初始化完成，耗时: {elapsed:.2f}秒")
+    return ocr
 
-logger.info(f"初始化PaddleOCR: lang={ocr_lang}, use_gpu={use_gpu}")
-# 新版本PaddleOCR API已变更，移除不支持的参数
-ocr = PaddleOCR(use_textline_orientation=True, lang=ocr_lang)
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """应用生命周期管理 - 启动时初始化OCR"""
+    init_ocr()
+    yield
+    logger.info("OCR服务关闭")
+
+# 初始化FastAPI（带生命周期管理）
+app = FastAPI(title="PaddleOCR Service", version="1.0.0", lifespan=lifespan)
 
 
 class UrlRequest(BaseModel):
@@ -46,7 +89,7 @@ async def recognize_general(file: UploadFile = File(...)):
     """通用文字识别"""
     try:
         image = await load_image(file)
-        result = ocr.ocr(image)
+        result = ocr.ocr(image, cls=False)  # cls=False 跳过方向分类，加速识别
         
         texts = []
         for line in result[0] if result[0] else []:
@@ -65,7 +108,7 @@ async def recognize_bank_receipt(file: UploadFile = File(...)):
     """银行回单识别"""
     try:
         image = await load_image(file)
-        result = ocr.ocr(image)
+        result = ocr.ocr(image, cls=False)  # cls=False 跳过方向分类，加速识别
         
         # 提取所有文本
         all_text = []
@@ -92,7 +135,7 @@ async def recognize_idcard_front(file: UploadFile = File(...)):
         image = await load_image(file)
         logger.info(f"图片尺寸: {image.shape if hasattr(image, 'shape') else 'unknown'}")
         
-        result = ocr.ocr(image)
+        result = ocr.ocr(image, cls=False)  # cls=False 跳过方向分类，加速识别
         
         # 检查OCR结果
         if not result or not result[0]:
@@ -137,7 +180,7 @@ async def recognize_idcard_back(file: UploadFile = File(...)):
     """身份证背面识别"""
     try:
         image = await load_image(file)
-        result = ocr.ocr(image)
+        result = ocr.ocr(image, cls=False)  # cls=False 跳过方向分类，加速识别
         
         all_text = []
         for line in result[0] if result[0] else []:
@@ -158,7 +201,7 @@ async def recognize_business_license(file: UploadFile = File(...)):
     """营业执照识别"""
     try:
         image = await load_image(file)
-        result = ocr.ocr(image)
+        result = ocr.ocr(image, cls=False)  # cls=False 跳过方向分类，加速识别
         
         all_text = []
         for line in result[0] if result[0] else []:
@@ -181,7 +224,12 @@ async def load_image(file: UploadFile) -> np.ndarray:
     # 转换为RGB格式（PIL默认可能是RGBA或其他格式）
     if image.mode != 'RGB':
         image = image.convert('RGB')
-    return np.array(image)
+    # 确保图片是3通道的numpy数组
+    img_array = np.array(image)
+    # 如果是灰度图（2D），转换为3通道
+    if len(img_array.shape) == 2:
+        img_array = np.stack([img_array] * 3, axis=-1)
+    return img_array
 
 
 async def load_image_from_url(url: str) -> np.ndarray:
@@ -190,7 +238,14 @@ async def load_image_from_url(url: str) -> np.ndarray:
         response = await client.get(url)
         response.raise_for_status()
         image = Image.open(io.BytesIO(response.content))
-        return np.array(image)
+        # 转换为RGB格式
+        if image.mode != 'RGB':
+            image = image.convert('RGB')
+        img_array = np.array(image)
+        # 如果是灰度图（2D），转换为3通道
+        if len(img_array.shape) == 2:
+            img_array = np.stack([img_array] * 3, axis=-1)
+        return img_array
 
 
 
@@ -484,7 +539,7 @@ async def recognize_business_card(file: UploadFile = File(...)):
     """名片识别"""
     try:
         image = await load_image(file)
-        result = ocr.ocr(image)
+        result = ocr.ocr(image, cls=False)  # cls=False 跳过方向分类，加速识别
         
         all_text = []
         for line in result[0] if result[0] else []:
@@ -506,7 +561,7 @@ async def recognize_invoice(file: UploadFile = File(...)):
     """发票/票据识别"""
     try:
         image = await load_image(file)
-        result = ocr.ocr(image)
+        result = ocr.ocr(image, cls=False)  # cls=False 跳过方向分类，加速识别
         
         all_text = []
         for line in result[0] if result[0] else []:

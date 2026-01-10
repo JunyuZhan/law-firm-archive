@@ -8,7 +8,9 @@ import com.lawfirm.application.finance.dto.PaymentDTO;
 import com.lawfirm.application.finance.dto.ReconciliationResultDTO;
 import com.lawfirm.application.finance.service.FeeAppService;
 import com.lawfirm.application.finance.service.PaymentReconciliationService;
+import com.lawfirm.common.annotation.Idempotent;
 import com.lawfirm.common.annotation.OperationLog;
+import com.lawfirm.common.annotation.RepeatSubmit;
 import com.lawfirm.common.annotation.RequirePermission;
 import com.lawfirm.common.result.PageResult;
 import com.lawfirm.common.result.Result;
@@ -57,6 +59,7 @@ public class FeeController {
     @PostMapping
     @RequirePermission("finance:payment:manage")
     @OperationLog(module = "收费管理", action = "创建收费记录")
+    @RepeatSubmit(interval = 5000, message = "请勿重复提交收费记录")
     public Result<FeeDTO> createFee(@RequestBody @Valid CreateFeeCommand command) {
         FeeDTO fee = feeAppService.createFee(command);
         return Result.success(fee);
@@ -68,6 +71,7 @@ public class FeeController {
     @PostMapping("/payment")
     @RequirePermission("finance:payment:manage")
     @OperationLog(module = "收费管理", action = "创建收款记录")
+    @RepeatSubmit(interval = 5000, message = "请勿重复提交收款记录")
     public Result<PaymentDTO> createPayment(@RequestBody @Valid CreatePaymentCommand command) {
         PaymentDTO payment = feeAppService.createPayment(command);
         return Result.success(payment);
@@ -79,6 +83,7 @@ public class FeeController {
     @PostMapping("/payment/{id}/confirm")
     @RequirePermission("finance:payment:manage")
     @OperationLog(module = "收费管理", action = "确认收款")
+    @Idempotent(key = "#id", expireSeconds = 3600, message = "该收款已确认，请勿重复操作")
     public Result<Void> confirmPayment(@PathVariable Long id) {
         feeAppService.confirmPayment(id);
         return Result.success();
@@ -90,6 +95,7 @@ public class FeeController {
     @PostMapping("/payment/{id}/cancel")
     @RequirePermission("finance:payment:manage")
     @OperationLog(module = "收费管理", action = "取消收款")
+    @Idempotent(key = "#id", expireSeconds = 3600, message = "该收款已取消，请勿重复操作")
     public Result<Void> cancelPayment(@PathVariable Long id) {
         feeAppService.cancelPayment(id);
         return Result.success();

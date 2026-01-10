@@ -77,14 +77,37 @@ public class InvoiceAppService {
 
     /**
      * 申请开票
+     * 支持含税/不含税两种金额输入方式
      */
     @Transactional
     public InvoiceDTO applyInvoice(CreateInvoiceCommand command) {
         clientRepository.getByIdOrThrow(command.getClientId(), "客户不存在");
 
-        // 计算税额
+        // 计算税额 - 修复含税/不含税处理
         BigDecimal taxRate = command.getTaxRate() != null ? command.getTaxRate() : new BigDecimal("0.06");
-        BigDecimal taxAmount = command.getAmount().multiply(taxRate).setScale(2, RoundingMode.HALF_UP);
+
+        BigDecimal amount;      // 不含税金额
+        BigDecimal taxAmount;   // 税额
+        BigDecimal totalAmount; // 价税合计
+
+        if (Boolean.TRUE.equals(command.getTaxIncluded())) {
+            // 含税价: amount 已经包含税
+            totalAmount = command.getAmount();
+            // 不含税价 = 含税价 / (1 + 税率)
+            amount = totalAmount.divide(
+                    BigDecimal.ONE.add(taxRate),
+                    2,
+                    RoundingMode.HALF_UP);
+            // 税额 = 含税价 - 不含税价
+            taxAmount = totalAmount.subtract(amount);
+        } else {
+            // 不含税价
+            amount = command.getAmount();
+            // 税额 = 不含税价 × 税率
+            taxAmount = amount.multiply(taxRate).setScale(2, RoundingMode.HALF_UP);
+            // 含税价 = 不含税价 + 税额
+            totalAmount = amount.add(taxAmount);
+        }
 
         Invoice invoice = Invoice.builder()
                 .feeId(command.getFeeId())
@@ -93,7 +116,7 @@ public class InvoiceAppService {
                 .invoiceType(command.getInvoiceType())
                 .title(command.getTitle())
                 .taxNo(command.getTaxNo())
-                .amount(command.getAmount())
+                .amount(amount)           // 存储不含税金额
                 .taxRate(taxRate)
                 .taxAmount(taxAmount)
                 .content(command.getContent())
@@ -103,7 +126,8 @@ public class InvoiceAppService {
                 .build();
 
         invoiceRepository.save(invoice);
-        log.info("发票申请成功: {}", invoice.getId());
+        log.info("发票申请成功: id={}, 不含税金额={}, 税额={}, 价税合计={}",
+                invoice.getId(), amount, taxAmount, totalAmount);
         return toDTO(invoice);
     }
 
@@ -210,8 +234,14 @@ public class InvoiceAppService {
 
     /**
      * 获取发票统计（M4-034）
+     * 问题252修复：添加权限检查，仅管理员和财务可以查看统计数据
      */
     public InvoiceStatisticsDTO getInvoiceStatistics() {
+        // 权限检查：仅管理员和财务可以查看发票统计
+        if (!SecurityUtils.isAdmin() && !SecurityUtils.getRoles().contains("FINANCE")) {
+            throw new BusinessException("仅管理员和财务人员可以查看发票统计");
+        }
+        
         InvoiceStatisticsDTO statistics = new InvoiceStatisticsDTO();
 
         // 总开票金额（已开票状态）

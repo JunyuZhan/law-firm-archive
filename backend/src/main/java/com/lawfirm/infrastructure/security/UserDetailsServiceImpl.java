@@ -29,6 +29,9 @@ public class UserDetailsServiceImpl implements UserDetailsService {
                 .orElseThrow(() -> new UsernameNotFoundException("用户不存在: " + username));
 
         // 2. 检查用户状态
+        if ("LOCKED".equals(user.getStatus())) {
+            throw new UsernameNotFoundException("账户已被锁定: " + username);
+        }
         if (!"ACTIVE".equals(user.getStatus())) {
             throw new UsernameNotFoundException("用户已被禁用: " + username);
         }

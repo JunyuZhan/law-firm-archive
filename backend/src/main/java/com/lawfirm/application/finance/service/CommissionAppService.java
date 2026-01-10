@@ -9,6 +9,8 @@ import com.lawfirm.application.finance.dto.*;
 import com.lawfirm.common.result.PageResult;
 import com.lawfirm.common.exception.BusinessException;
 import com.lawfirm.common.util.SecurityUtils;
+import com.lawfirm.common.constant.CommissionStatus;
+import com.lawfirm.common.constant.PaymentStatus;
 import com.lawfirm.domain.finance.entity.Commission;
 import com.lawfirm.domain.finance.entity.CommissionDetail;
 import com.lawfirm.domain.finance.entity.CommissionRule;
@@ -247,7 +249,7 @@ public class CommissionAppService {
     public List<CommissionDTO> manualCalculateCommission(ManualCalculateCommissionCommand command) {
         // 获取收款记录
         Payment payment = paymentRepository.getByIdOrThrow(command.getPaymentId(), "收款记录不存在");
-        if (!"CONFIRMED".equals(payment.getStatus())) {
+        if (!PaymentStatus.CONFIRMED.equals(payment.getStatus())) {
             throw new BusinessException("只有已确认的收款才能计算提成");
         }
 
@@ -305,7 +307,7 @@ public class CommissionAppService {
                     .distributionRatio(pc.getCommissionRate() != null ? pc.getCommissionRate() : participant.getCommissionRate())
                     .commissionRate(pc.getCommissionRate() != null ? pc.getCommissionRate() : participant.getCommissionRate())
                     .commissionAmount(commissionAmount)
-                    .status("CALCULATED") // 已计算，待审批
+                    .status(CommissionStatus.CALCULATED) // 已计算，待审批
                     .remark(pc.getRemark())
                     .createdBy(SecurityUtils.getUserId())
                     .build();
@@ -470,8 +472,8 @@ public class CommissionAppService {
         
         // 查询汇总数据
         BigDecimal totalCommission = commissionRepository.sumTotalCommission(startDate, endDate);
-        BigDecimal approvedCommission = commissionRepository.sumCommissionByStatus("APPROVED", startDate, endDate);
-        BigDecimal paidCommission = commissionRepository.sumCommissionByStatus("PAID", startDate, endDate);
+        BigDecimal approvedCommission = commissionRepository.sumCommissionByStatus(CommissionStatus.APPROVED, startDate, endDate);
+        BigDecimal paidCommission = commissionRepository.sumCommissionByStatus(CommissionStatus.PAID, startDate, endDate);
         Long totalCount = commissionRepository.countCommissions(startDate, endDate);
         
         Map<String, Object> summary = new HashMap<>();
@@ -503,12 +505,12 @@ public class CommissionAppService {
             throw new BusinessException("提成记录不存在");
         }
         
-        if (!"CALCULATED".equals(commission.getStatus())) {
+        if (!CommissionStatus.canApprove(commission.getStatus())) {
             throw new BusinessException("只有已计算的提成才能审批");
         }
         
         if (Boolean.TRUE.equals(approved)) {
-            commission.setStatus("APPROVED");
+            commission.setStatus(CommissionStatus.APPROVED);
             commission.setApprovedBy(SecurityUtils.getUserId());
             commission.setApprovedAt(LocalDateTime.now());
             if (comment != null) {
@@ -516,7 +518,7 @@ public class CommissionAppService {
                         "审批通过: " + comment);
             }
         } else {
-            commission.setStatus("CALCULATED");
+            commission.setStatus(CommissionStatus.CALCULATED);
             if (comment != null) {
                 commission.setRemark((commission.getRemark() != null ? commission.getRemark() + "\n" : "") + 
                         "审批驳回: " + comment);
@@ -556,11 +558,11 @@ public class CommissionAppService {
             throw new BusinessException("提成记录不存在");
         }
         
-        if (!"APPROVED".equals(commission.getStatus())) {
+        if (!CommissionStatus.canPay(commission.getStatus())) {
             throw new BusinessException("只有已审批的提成才能发放");
         }
         
-        commission.setStatus("PAID");
+        commission.setStatus(CommissionStatus.PAID);
         commission.setPaidAt(LocalDateTime.now());
         commissionRepository.getBaseMapper().updateById(commission);
         
@@ -684,7 +686,7 @@ public class CommissionAppService {
     public List<PaymentDTO> getPendingCommissionPayments() {
         // 查询所有已确认的收款记录
         LambdaQueryWrapper<Payment> paymentWrapper = new LambdaQueryWrapper<>();
-        paymentWrapper.eq(Payment::getStatus, "CONFIRMED")
+        paymentWrapper.eq(Payment::getStatus, PaymentStatus.CONFIRMED)
                 .eq(Payment::getDeleted, false)
                 .isNotNull(Payment::getContractId) // 必须有合同才能计算提成
                 .orderByDesc(Payment::getPaymentDate);
@@ -739,8 +741,8 @@ public class CommissionAppService {
             }
             
             // 设置状态名称
-            if ("CONFIRMED".equals(payment.getStatus())) {
-                dto.setStatusName("已确认");
+            if (PaymentStatus.CONFIRMED.equals(payment.getStatus())) {
+                dto.setStatusName(PaymentStatus.getStatusName(payment.getStatus()));
             }
             
             return dto;

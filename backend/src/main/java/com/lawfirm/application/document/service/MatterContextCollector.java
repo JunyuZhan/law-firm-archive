@@ -12,6 +12,7 @@ import com.lawfirm.domain.matter.repository.MatterParticipantRepository;
 import com.lawfirm.domain.matter.repository.MatterRepository;
 import com.lawfirm.domain.system.entity.User;
 import com.lawfirm.domain.system.repository.UserRepository;
+import com.lawfirm.common.constant.MatterConstants;
 import com.lawfirm.infrastructure.persistence.mapper.DocumentMapper;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
@@ -200,9 +201,9 @@ public class MatterContextCollector {
         info.setId(matter.getId());
         info.setMatterNo(matter.getMatterNo());
         info.setName(matter.getName());
-        info.setMatterType(getMatterTypeName(matter.getMatterType()));
-        info.setCaseType(getCaseTypeName(matter.getCaseType()));
-        info.setStatus(getStatusName(matter.getStatus()));
+        info.setMatterType(MatterConstants.getMatterTypeName(matter.getMatterType()));
+        info.setCaseType(MatterConstants.getCaseTypeName(matter.getCaseType()));
+        info.setStatus(MatterConstants.getMatterStatusName(matter.getStatus()));
         info.setDescription(matter.getDescription());
         info.setOpposingParty(matter.getOpposingParty());
         info.setClaimAmount(matter.getClaimAmount() != null ? matter.getClaimAmount().toString() + "元" : null);
@@ -303,44 +304,7 @@ public class MatterContextCollector {
     }
 
     // ========== 常量映射方法 ==========
-
-    private String getMatterTypeName(String type) {
-        if (type == null) return null;
-        return switch (type) {
-            case "LITIGATION" -> "诉讼案件";
-            case "NON_LITIGATION" -> "非诉项目";
-            default -> type;
-        };
-    }
-
-    private String getCaseTypeName(String type) {
-        if (type == null) return null;
-        return switch (type) {
-            case "CIVIL" -> "民事案件";
-            case "CRIMINAL" -> "刑事案件";
-            case "ADMINISTRATIVE" -> "行政案件";
-            case "BANKRUPTCY" -> "破产案件";
-            case "IP" -> "知识产权";
-            case "ARBITRATION" -> "仲裁案件";
-            case "ENFORCEMENT" -> "执行案件";
-            case "LEGAL_COUNSEL" -> "法律顾问";
-            case "SPECIAL_SERVICE" -> "专项服务";
-            default -> type;
-        };
-    }
-
-    private String getStatusName(String status) {
-        if (status == null) return null;
-        return switch (status) {
-            case "DRAFT" -> "草稿";
-            case "PENDING" -> "待审批";
-            case "ACTIVE" -> "进行中";
-            case "SUSPENDED" -> "暂停";
-            case "CLOSED" -> "结案";
-            case "ARCHIVED" -> "归档";
-            default -> status;
-        };
-    }
+    // 已迁移到 MatterConstants，此处保留注释以便追溯
 
     private String getClientRoleName(String role) {
         if (role == null) return "委托人";

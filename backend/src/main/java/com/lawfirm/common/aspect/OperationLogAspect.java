@@ -3,6 +3,7 @@ package com.lawfirm.common.aspect;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lawfirm.common.annotation.OperationLog;
 import com.lawfirm.common.util.SecurityUtils;
+import com.lawfirm.common.util.IpUtils;
 import com.lawfirm.domain.system.repository.OperationLogRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -43,7 +44,8 @@ public class OperationLogAspect {
         HttpServletRequest request = getRequest();
         String requestUri = request != null ? request.getRequestURI() : "";
         String requestMethod = request != null ? request.getMethod() : "";
-        String ip = request != null ? getClientIp(request) : "";
+        // ✅ 使用 IpUtils 获取真实IP
+        String ip = request != null ? IpUtils.getIpAddr(request) : "";
 
         // 3. 获取用户信息
         Long userId = null;
@@ -109,20 +111,6 @@ public class OperationLogAspect {
     private HttpServletRequest getRequest() {
         ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
         return attributes != null ? attributes.getRequest() : null;
-    }
-
-    private String getClientIp(HttpServletRequest request) {
-        String ip = request.getHeader("X-Forwarded-For");
-        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getHeader("Proxy-Client-IP");
-        }
-        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getRemoteAddr();
-        }
-        if (ip != null && ip.contains(",")) {
-            ip = ip.split(",")[0].trim();
-        }
-        return ip;
     }
 
     /**

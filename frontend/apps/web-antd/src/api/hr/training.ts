@@ -19,6 +19,19 @@ export interface TrainingDTO {
   status: string;
   statusName?: string;
   createdAt?: string;
+  // 新增字段
+  isRequired?: boolean;           // 是否必修
+  enrollmentType?: string;        // 报名类型: VOLUNTARY/MANDATORY/ASSIGNED
+  enrollmentTypeName?: string;
+  trainingPlanId?: number;        // 关联年度方案
+  attachments?: AttachmentDTO[];  // 附件列表
+}
+
+export interface AttachmentDTO {
+  fileName: string;
+  fileUrl: string;
+  fileSize?: number;
+  fileType?: string;
 }
 
 export interface TrainingRecordDTO {
@@ -49,6 +62,11 @@ export interface CreateTrainingCommand {
   description?: string;
   credits?: number;
   maxParticipants?: number;
+  // 新增字段
+  isRequired?: boolean;
+  enrollmentType?: string;
+  trainingPlanId?: number;
+  attachments?: AttachmentDTO[];
 }
 
 // ========== 培训管理 API ==========

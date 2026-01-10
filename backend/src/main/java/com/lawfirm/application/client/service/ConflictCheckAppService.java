@@ -10,6 +10,7 @@ import com.lawfirm.application.client.dto.ConflictCheckQueryDTO;
 import com.lawfirm.common.exception.BusinessException;
 import com.lawfirm.common.result.PageResult;
 import com.lawfirm.common.util.SecurityUtils;
+import com.lawfirm.common.constant.ConflictStatus;
 import com.lawfirm.domain.client.entity.Client;
 import com.lawfirm.domain.client.entity.ConflictCheck;
 import com.lawfirm.domain.client.entity.ConflictCheckItem;
@@ -32,6 +33,7 @@ import org.springframework.util.StringUtils;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -53,7 +55,7 @@ public class ConflictCheckAppService {
     private final UserMapper userMapper;
 
     /**
-     * 分页查询利冲检查
+     * 分页查询利冲检查（优化N+1查询）
      */
     public PageResult<ConflictCheckDTO> listConflictChecks(ConflictCheckQueryDTO query) {
         LambdaQueryWrapper<ConflictCheck> wrapper = new LambdaQueryWrapper<>();
@@ -81,8 +83,33 @@ public class ConflictCheckAppService {
                 wrapper
         );
 
-        List<ConflictCheckDTO> records = page.getRecords().stream()
-                .map(this::toDTO)
+        List<ConflictCheck> checks = page.getRecords();
+        if (checks.isEmpty()) {
+            return PageResult.of(java.util.Collections.emptyList(), 0, query.getPageNum(), query.getPageSize());
+        }
+        
+        // 批量加载用户信息（解决N+1查询）
+        java.util.Set<Long> userIds = new java.util.HashSet<>();
+        checks.forEach(check -> {
+            if (check.getApplicantId() != null) userIds.add(check.getApplicantId());
+            if (check.getReviewerId() != null) userIds.add(check.getReviewerId());
+        });
+        java.util.Map<Long, User> userMap = userIds.isEmpty() ? java.util.Collections.emptyMap() :
+                userMapper.selectBatchIds(userIds).stream()
+                        .collect(Collectors.toMap(User::getId, u -> u, (a, b) -> a));
+        
+        // 批量加载项目信息
+        java.util.Set<Long> matterIds = checks.stream()
+                .map(ConflictCheck::getMatterId)
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toSet());
+        java.util.Map<Long, Matter> matterMap = matterIds.isEmpty() ? java.util.Collections.emptyMap() :
+                matterRepository.listByIds(matterIds).stream()
+                        .collect(Collectors.toMap(Matter::getId, m -> m, (a, b) -> a));
+        
+        // 使用预加载的Map转换DTO（避免N+1）
+        List<ConflictCheckDTO> records = checks.stream()
+                .map(check -> toDTO(check, userMap, matterMap))
                 .collect(Collectors.toList());
 
         return PageResult.of(records, page.getTotal(), query.getPageNum(), query.getPageSize());
@@ -106,7 +133,7 @@ public class ConflictCheckAppService {
                 .matterId(command.getMatterId())
                 .clientId(command.getClientId() != null ? command.getClientId() : matter.getClientId())
                 .clientName(matter.getName())
-                .status("PENDING")
+                .status(ConflictStatus.PENDING)
                 .applicantId(SecurityUtils.getUserId())
                 .remark(command.getRemark())
                 .build();
@@ -141,11 +168,11 @@ public class ConflictCheckAppService {
         }
 
         // 5. 更新检查状态
-        check.setStatus(hasConflict ? "CONFLICT" : "PASSED");
+        check.setStatus(hasConflict ? ConflictStatus.CONFLICT : ConflictStatus.PASSED);
         conflictCheckRepository.updateById(check);
 
         // 6. 更新案件冲突状态
-        matter.setConflictStatus(hasConflict ? "CONFLICT" : "PASSED");
+        matter.setConflictStatus(hasConflict ? ConflictStatus.CONFLICT : ConflictStatus.PASSED);
         matterRepository.updateById(matter);
 
         // 7. 如果检测到冲突，创建审批记录
@@ -178,36 +205,338 @@ public class ConflictCheckAppService {
     }
 
     /**
-     * 快速利冲检索（不创建记录，仅检查是否存在冲突）
-     * 用于新增客户时的实时检查
+     * 快速利冲检索结果（增强版，包含候选列表和风险评估）
+     */
+    public record QuickConflictCheckResult(
+            boolean hasConflict,           // 是否存在高风险冲突
+            String conflictDetail,         // 冲突详情（兼容旧版）
+            List<ConflictCandidate> candidates,  // 候选冲突列表
+            String riskLevel,              // 整体风险等级: HIGH/MEDIUM/LOW/NONE
+            String riskSummary             // 风险摘要
+    ) {
+        // 兼容旧版构造函数
+        public QuickConflictCheckResult(boolean hasConflict, String conflictDetail) {
+            this(hasConflict, conflictDetail, new ArrayList<>(), 
+                 hasConflict ? "HIGH" : "NONE", conflictDetail);
+        }
+    }
+    
+    /**
+     * 冲突候选项
+     */
+    public record ConflictCandidate(
+            Long clientId,           // 客户ID
+            String clientNo,         // 客户编号
+            String clientName,       // 客户名称
+            String clientType,       // 客户类型: PERSONAL/ENTERPRISE
+            int matchScore,          // 匹配分数 0-100
+            String matchType,        // 匹配类型: EXACT/CONTAINS/SIMILAR
+            String riskLevel,        // 风险等级: HIGH/MEDIUM/LOW
+            String riskReason        // 风险原因
+    ) {}
+
+    /**
+     * 快速利冲检索（增强版）
+     * 返回候选列表和风险评估，支持模糊匹配和相似度计算
      * 
      * @param clientName 客户名称
      * @param opposingParty 对方当事人
-     * @return 检查结果
+     * @return 检查结果（包含候选列表和风险评估）
      */
     public QuickConflictCheckResult quickConflictCheck(String clientName, String opposingParty) {
-        // 核心逻辑：检查对方当事人是否是我们的现有客户
-        List<Client> conflictClients = clientRepository.list(
-                new LambdaQueryWrapper<Client>()
-                        .like(Client::getName, opposingParty)
-        );
-        
-        if (!conflictClients.isEmpty()) {
-            Client conflictClient = conflictClients.get(0);
-            String detail = String.format(
-                    "对方当事人【%s】是本所现有客户（客户编号：%s）。根据律师执业规范，不能同时代理利益冲突双方。",
-                    opposingParty, conflictClient.getClientNo()
-            );
-            return new QuickConflictCheckResult(true, detail);
+        // 名称太短时返回空结果
+        if (opposingParty == null || opposingParty.trim().length() < 2) {
+            return new QuickConflictCheckResult(false, null, new ArrayList<>(), "NONE", "输入名称过短，无法进行有效检索");
         }
         
-        return new QuickConflictCheckResult(false, null);
+        String searchName = opposingParty.trim();
+        List<ConflictCandidate> candidates = new ArrayList<>();
+        
+        // 1. 精确匹配查询
+        List<Client> exactMatches = clientRepository.list(
+                new LambdaQueryWrapper<Client>()
+                        .eq(Client::getName, searchName)
+        );
+        for (Client client : exactMatches) {
+            candidates.add(new ConflictCandidate(
+                    client.getId(),
+                    client.getClientNo(),
+                    client.getName(),
+                    client.getClientType(),
+                    100,  // 精确匹配100分
+                    "EXACT",
+                    "HIGH",
+                    "名称完全匹配，确认为同一主体"
+            ));
+        }
+        
+        // 2. 包含匹配查询（排除已精确匹配的）
+        List<Client> containsMatches = clientRepository.list(
+                new LambdaQueryWrapper<Client>()
+                        .like(Client::getName, searchName)
+                        .notIn(!exactMatches.isEmpty(), Client::getId, 
+                               exactMatches.stream().map(Client::getId).collect(Collectors.toList()))
+        );
+        for (Client client : containsMatches) {
+            int score = calculateContainsScore(searchName, client.getName());
+            String riskLevel = score >= 80 ? "HIGH" : (score >= 60 ? "MEDIUM" : "LOW");
+            candidates.add(new ConflictCandidate(
+                    client.getId(),
+                    client.getClientNo(),
+                    client.getName(),
+                    client.getClientType(),
+                    score,
+                    "CONTAINS",
+                    riskLevel,
+                    generateMatchReason(searchName, client.getName(), "CONTAINS")
+            ));
+        }
+        
+        // 3. 相似度匹配（针对可能的错别字、简称等情况）
+        // 只在没有精确匹配时进行，避免性能问题
+        if (exactMatches.isEmpty() && searchName.length() >= 2) {
+            List<ConflictCandidate> similarCandidates = findSimilarClients(searchName, candidates);
+            candidates.addAll(similarCandidates);
+        }
+        
+        // 4. 按匹配分数排序
+        candidates.sort((a, b) -> Integer.compare(b.matchScore(), a.matchScore()));
+        
+        // 5. 限制返回数量（最多10个）
+        if (candidates.size() > 10) {
+            candidates = new ArrayList<>(candidates.subList(0, 10));
+        }
+        
+        // 6. 计算整体风险等级
+        String overallRisk = calculateOverallRisk(candidates);
+        boolean hasHighRisk = candidates.stream().anyMatch(c -> "HIGH".equals(c.riskLevel()));
+        
+        // 7. 生成风险摘要
+        String riskSummary = generateRiskSummary(searchName, candidates, overallRisk);
+        
+        // 8. 兼容旧版：如果有高风险匹配，设置conflictDetail
+        String conflictDetail = null;
+        if (hasHighRisk && !candidates.isEmpty()) {
+            ConflictCandidate topMatch = candidates.get(0);
+            conflictDetail = String.format(
+                    "对方当事人【%s】与本所客户【%s】（编号：%s）高度匹配（相似度%d%%）。建议人工核实。",
+                    searchName, topMatch.clientName(), topMatch.clientNo(), topMatch.matchScore()
+            );
+        }
+        
+        return new QuickConflictCheckResult(hasHighRisk, conflictDetail, candidates, overallRisk, riskSummary);
     }
-
+    
     /**
-     * 快速利冲检查结果
+     * 计算包含匹配的分数
      */
-    public record QuickConflictCheckResult(boolean hasConflict, String conflictDetail) {}
+    private int calculateContainsScore(String searchName, String clientName) {
+        // 基础分数：搜索词占客户名称的比例
+        double ratio = (double) searchName.length() / clientName.length();
+        int baseScore = (int) (ratio * 100);
+        
+        // 加分项
+        // 1. 如果搜索词是客户名称的前缀（如"北京XX"匹配"北京XX有限公司"）
+        if (clientName.startsWith(searchName)) {
+            baseScore = Math.min(95, baseScore + 15);
+        }
+        // 2. 如果搜索词是客户名称的后缀
+        else if (clientName.endsWith(searchName)) {
+            baseScore = Math.min(90, baseScore + 10);
+        }
+        
+        // 企业名称特殊处理：去掉常见后缀后比较
+        String normalizedClient = normalizeCompanyName(clientName);
+        String normalizedSearch = normalizeCompanyName(searchName);
+        if (normalizedClient.equals(normalizedSearch)) {
+            baseScore = 95; // 去掉后缀后完全匹配
+        } else if (normalizedClient.contains(normalizedSearch) || normalizedSearch.contains(normalizedClient)) {
+            baseScore = Math.max(baseScore, 75);
+        }
+        
+        return Math.min(99, Math.max(30, baseScore)); // 包含匹配最高99分，最低30分
+    }
+    
+    /**
+     * 标准化公司名称（去掉常见后缀）
+     */
+    private String normalizeCompanyName(String name) {
+        if (name == null) return "";
+        return name.replaceAll("(有限公司|股份有限公司|有限责任公司|集团|公司|企业|厂|店|中心|事务所)$", "")
+                   .replaceAll("^(中国|北京|上海|广州|深圳|天津|重庆)", "")
+                   .trim();
+    }
+    
+    /**
+     * 查找相似客户（处理错别字、简称等）
+     */
+    private List<ConflictCandidate> findSimilarClients(String searchName, List<ConflictCandidate> existingCandidates) {
+        List<ConflictCandidate> similarCandidates = new ArrayList<>();
+        Set<Long> existingIds = existingCandidates.stream()
+                .map(ConflictCandidate::clientId)
+                .collect(Collectors.toSet());
+        
+        // 获取所有客户进行相似度比较（实际生产环境应该用搜索引擎或限制范围）
+        // 这里限制只查询最近的1000个客户，避免性能问题
+        List<Client> recentClients = clientRepository.list(
+                new LambdaQueryWrapper<Client>()
+                        .notIn(!existingIds.isEmpty(), Client::getId, existingIds)
+                        .orderByDesc(Client::getCreatedAt)
+                        .last("LIMIT 1000")
+        );
+        
+        for (Client client : recentClients) {
+            int similarity = calculateSimilarity(searchName, client.getName());
+            if (similarity >= 50) { // 相似度>=50%才考虑
+                String riskLevel = similarity >= 80 ? "MEDIUM" : "LOW";
+                similarCandidates.add(new ConflictCandidate(
+                        client.getId(),
+                        client.getClientNo(),
+                        client.getName(),
+                        client.getClientType(),
+                        similarity,
+                        "SIMILAR",
+                        riskLevel,
+                        generateMatchReason(searchName, client.getName(), "SIMILAR")
+                ));
+            }
+        }
+        
+        // 只返回相似度最高的5个
+        similarCandidates.sort((a, b) -> Integer.compare(b.matchScore(), a.matchScore()));
+        if (similarCandidates.size() > 5) {
+            similarCandidates = new ArrayList<>(similarCandidates.subList(0, 5));
+        }
+        
+        return similarCandidates;
+    }
+    
+    /**
+     * 计算字符串相似度（编辑距离算法）
+     */
+    private int calculateSimilarity(String s1, String s2) {
+        if (s1 == null || s2 == null) return 0;
+        if (s1.equals(s2)) return 100;
+        
+        // 标准化后比较
+        String n1 = normalizeCompanyName(s1);
+        String n2 = normalizeCompanyName(s2);
+        if (n1.equals(n2)) return 95;
+        
+        // 计算编辑距离
+        int distance = levenshteinDistance(s1, s2);
+        int maxLen = Math.max(s1.length(), s2.length());
+        if (maxLen == 0) return 100;
+        
+        // 转换为相似度百分比
+        int similarity = (int) ((1.0 - (double) distance / maxLen) * 100);
+        
+        // 额外检查：共同字符比例
+        int commonChars = countCommonChars(s1, s2);
+        int commonRatio = (int) ((double) commonChars / Math.min(s1.length(), s2.length()) * 100);
+        
+        // 取两种算法的较高值
+        return Math.max(similarity, commonRatio);
+    }
+    
+    /**
+     * 计算编辑距离（Levenshtein Distance）
+     */
+    private int levenshteinDistance(String s1, String s2) {
+        int m = s1.length();
+        int n = s2.length();
+        int[][] dp = new int[m + 1][n + 1];
+        
+        for (int i = 0; i <= m; i++) dp[i][0] = i;
+        for (int j = 0; j <= n; j++) dp[0][j] = j;
+        
+        for (int i = 1; i <= m; i++) {
+            for (int j = 1; j <= n; j++) {
+                if (s1.charAt(i - 1) == s2.charAt(j - 1)) {
+                    dp[i][j] = dp[i - 1][j - 1];
+                } else {
+                    dp[i][j] = 1 + Math.min(dp[i - 1][j - 1], 
+                                   Math.min(dp[i - 1][j], dp[i][j - 1]));
+                }
+            }
+        }
+        return dp[m][n];
+    }
+    
+    /**
+     * 计算共同字符数
+     */
+    private int countCommonChars(String s1, String s2) {
+        Set<Character> set1 = s1.chars().mapToObj(c -> (char) c).collect(Collectors.toSet());
+        return (int) s2.chars().mapToObj(c -> (char) c).filter(set1::contains).count();
+    }
+    
+    /**
+     * 生成匹配原因说明
+     */
+    private String generateMatchReason(String searchName, String clientName, String matchType) {
+        return switch (matchType) {
+            case "EXACT" -> "名称完全匹配";
+            case "CONTAINS" -> {
+                if (clientName.startsWith(searchName)) {
+                    yield "搜索词「" + searchName + "」是客户名称的前缀";
+                } else if (clientName.endsWith(searchName)) {
+                    yield "搜索词「" + searchName + "」是客户名称的后缀";
+                } else {
+                    yield "客户名称包含搜索词「" + searchName + "」";
+                }
+            }
+            case "SIMILAR" -> "名称相似，可能是简称、别名或存在错别字";
+            default -> "名称匹配";
+        };
+    }
+    
+    /**
+     * 计算整体风险等级
+     */
+    private String calculateOverallRisk(List<ConflictCandidate> candidates) {
+        if (candidates.isEmpty()) return "NONE";
+        
+        // 有精确匹配或高分匹配
+        boolean hasExact = candidates.stream().anyMatch(c -> "EXACT".equals(c.matchType()));
+        boolean hasHighScore = candidates.stream().anyMatch(c -> c.matchScore() >= 90);
+        boolean hasMediumScore = candidates.stream().anyMatch(c -> c.matchScore() >= 70);
+        
+        if (hasExact || hasHighScore) return "HIGH";
+        if (hasMediumScore) return "MEDIUM";
+        return "LOW";
+    }
+    
+    /**
+     * 生成风险摘要
+     */
+    private String generateRiskSummary(String searchName, List<ConflictCandidate> candidates, String riskLevel) {
+        if (candidates.isEmpty()) {
+            return "未发现与「" + searchName + "」名称相近的现有客户";
+        }
+        
+        int highCount = (int) candidates.stream().filter(c -> "HIGH".equals(c.riskLevel())).count();
+        int mediumCount = (int) candidates.stream().filter(c -> "MEDIUM".equals(c.riskLevel())).count();
+        int lowCount = (int) candidates.stream().filter(c -> "LOW".equals(c.riskLevel())).count();
+        
+        StringBuilder sb = new StringBuilder();
+        sb.append("发现 ").append(candidates.size()).append(" 个相似客户：");
+        
+        if (highCount > 0) sb.append("高度相似 ").append(highCount).append(" 个，");
+        if (mediumCount > 0) sb.append("部分相似 ").append(mediumCount).append(" 个，");
+        if (lowCount > 0) sb.append("名称相近 ").append(lowCount).append(" 个，");
+        
+        sb.setLength(sb.length() - 1); // 去掉最后的逗号
+        sb.append("。");
+        
+        if ("HIGH".equals(riskLevel)) {
+            sb.append("请仔细核对是否为同一客户。");
+        } else if ("MEDIUM".equals(riskLevel)) {
+            sb.append("请确认是否为同一人/公司。");
+        }
+        
+        return sb.toString();
+    }
 
     /**
      * 手动申请利冲审查（简化版，不需要关联案件）
@@ -224,7 +553,7 @@ public class ConflictCheckAppService {
                 .checkType(checkType != null ? checkType : "MANUAL")
                 .clientName(clientName)
                 .opposingParty(opposingParty)
-                .status("PENDING")
+                .status(ConflictStatus.PENDING)
                 .applicantId(SecurityUtils.getUserId())
                 .remark(remark)
                 .build();
@@ -275,7 +604,7 @@ public class ConflictCheckAppService {
         items.add(clientItem);
 
         // 4. 更新检查状态
-        check.setStatus(hasConflict ? "CONFLICT" : "PASSED");
+        check.setStatus(hasConflict ? ConflictStatus.CONFLICT : ConflictStatus.PASSED);
         conflictCheckRepository.updateById(check);
 
         // 5. 如果检测到冲突，创建审批记录
@@ -316,11 +645,28 @@ public class ConflictCheckAppService {
     private ConflictResult checkOpposingPartyConflict(String opposingParty) {
         ConflictResult result = new ConflictResult();
         
+        // 名称太短时不进行模糊匹配，避免误报
+        if (opposingParty == null || opposingParty.trim().length() < 2) {
+            return result;
+        }
+        
+        String trimmedName = opposingParty.trim();
+        
         // 核心检查：对方当事人是否是我们的现有客户？
-        List<Client> clients = clientRepository.list(
-                new LambdaQueryWrapper<Client>()
-                        .like(Client::getName, opposingParty)
-        );
+        // 使用精确匹配优先，模糊匹配仅用于较长名称（>=4字符）
+        List<Client> clients;
+        if (trimmedName.length() >= 4) {
+            clients = clientRepository.list(
+                    new LambdaQueryWrapper<Client>()
+                            .like(Client::getName, trimmedName)
+            );
+        } else {
+            // 短名称使用精确匹配
+            clients = clientRepository.list(
+                    new LambdaQueryWrapper<Client>()
+                            .eq(Client::getName, trimmedName)
+            );
+        }
         
         if (!clients.isEmpty()) {
             Client client = clients.get(0);
@@ -331,11 +677,32 @@ public class ConflictCheckAppService {
         }
         
         // 次要检查：对方当事人是否曾作为我方客户出现在其他案件中
-        List<Matter> mattersAsClient = matterRepository.list(
-                new LambdaQueryWrapper<Matter>()
-                        .exists("SELECT 1 FROM crm_client c WHERE c.name LIKE '%" + opposingParty + "%' AND c.id = matter.client_id")
-        );
-        // 简化：直接通过客户名称检查
+        // 安全实现：先查询匹配的客户ID，再查询关联的案件（避免SQL注入）
+        List<Long> matchingClientIds;
+        if (trimmedName.length() >= 4) {
+            matchingClientIds = clientRepository.list(
+                    new LambdaQueryWrapper<Client>()
+                            .like(Client::getName, trimmedName)
+            ).stream().map(Client::getId).collect(Collectors.toList());
+        } else {
+            matchingClientIds = clientRepository.list(
+                    new LambdaQueryWrapper<Client>()
+                            .eq(Client::getName, trimmedName)
+            ).stream().map(Client::getId).collect(Collectors.toList());
+        }
+        
+        if (!matchingClientIds.isEmpty()) {
+            List<Matter> mattersAsClient = matterRepository.list(
+                    new LambdaQueryWrapper<Matter>()
+                            .in(Matter::getClientId, matchingClientIds)
+            );
+            if (!mattersAsClient.isEmpty()) {
+                Matter relatedMatter = mattersAsClient.get(0);
+                result.hasConflict = true;
+                result.detail = "【潜在冲突】对方当事人「" + opposingParty + "」曾作为委托人出现在案件「" + relatedMatter.getName() + "」中";
+                result.relatedMatterId = relatedMatter.getId();
+            }
+        }
         
         return result;
     }
@@ -349,11 +716,28 @@ public class ConflictCheckAppService {
     private ConflictResult checkClientConflict(String clientName) {
         ConflictResult result = new ConflictResult();
         
+        // 名称太短时不进行模糊匹配，避免误报
+        if (clientName == null || clientName.trim().length() < 2) {
+            return result;
+        }
+        
+        String trimmedName = clientName.trim();
+        
         // 检查客户名称是否曾作为其他案件的对方当事人
-        List<Matter> mattersAsOpposing = matterRepository.list(
-                new LambdaQueryWrapper<Matter>()
-                        .like(Matter::getOpposingParty, clientName)
-        );
+        // 使用精确匹配优先，模糊匹配仅用于较长名称（>=4字符）
+        List<Matter> mattersAsOpposing;
+        if (trimmedName.length() >= 4) {
+            mattersAsOpposing = matterRepository.list(
+                    new LambdaQueryWrapper<Matter>()
+                            .like(Matter::getOpposingParty, trimmedName)
+            );
+        } else {
+            // 短名称使用精确匹配
+            mattersAsOpposing = matterRepository.list(
+                    new LambdaQueryWrapper<Matter>()
+                            .eq(Matter::getOpposingParty, trimmedName)
+            );
+        }
         
         if (!mattersAsOpposing.isEmpty()) {
             Matter matter = mattersAsOpposing.get(0);
@@ -408,11 +792,11 @@ public class ConflictCheckAppService {
     public void approve(Long id, String comment) {
         ConflictCheck check = conflictCheckRepository.getByIdOrThrow(id, "利冲检查不存在");
         
-        if (!"CONFLICT".equals(check.getStatus()) && !"PENDING".equals(check.getStatus())) {
+        if (!ConflictStatus.canApplyExemption(check.getStatus())) {
             throw new BusinessException("当前状态不允许审核");
         }
 
-        check.setStatus("WAIVED");
+        check.setStatus(ConflictStatus.WAIVED);
         check.setReviewerId(SecurityUtils.getUserId());
         check.setReviewedAt(LocalDateTime.now());
         check.setReviewComment(comment);
@@ -422,7 +806,7 @@ public class ConflictCheckAppService {
         if (check.getMatterId() != null) {
             Matter matter = matterRepository.findById(check.getMatterId());
             if (matter != null) {
-                matter.setConflictStatus("WAIVED");
+                matter.setConflictStatus(ConflictStatus.WAIVED);
                 matterRepository.updateById(matter);
             }
         }
@@ -438,12 +822,12 @@ public class ConflictCheckAppService {
         ConflictCheck check = conflictCheckRepository.getByIdOrThrow(command.getConflictCheckId(), "利冲检查不存在");
         
         // 只有发现冲突的检查才能申请豁免
-        if (!"CONFLICT".equals(check.getStatus())) {
+        if (!ConflictStatus.hasConflict(check.getStatus())) {
             throw new BusinessException("只有存在冲突的利冲检查才能申请豁免");
         }
 
         // 更新检查记录，添加豁免申请信息
-        check.setStatus("EXEMPTION_PENDING"); // 豁免待审批
+        check.setStatus(ConflictStatus.EXEMPTION_PENDING); // 豁免待审批
         check.setReviewComment(command.getExemptionReason());
         check.setRemark(command.getExemptionDescription());
         conflictCheckRepository.updateById(check);
@@ -482,11 +866,11 @@ public class ConflictCheckAppService {
     public void approveExemption(Long id, String comment) {
         ConflictCheck check = conflictCheckRepository.getByIdOrThrow(id, "利冲检查不存在");
         
-        if (!"EXEMPTION_PENDING".equals(check.getStatus())) {
+        if (!ConflictStatus.isExemptionPending(check.getStatus())) {
             throw new BusinessException("当前状态不允许审批豁免");
         }
 
-        check.setStatus("WAIVED");
+        check.setStatus(ConflictStatus.WAIVED);
         check.setReviewerId(SecurityUtils.getUserId());
         check.setReviewedAt(LocalDateTime.now());
         if (StringUtils.hasText(comment)) {
@@ -498,7 +882,7 @@ public class ConflictCheckAppService {
         if (check.getMatterId() != null) {
             Matter matter = matterRepository.findById(check.getMatterId());
             if (matter != null) {
-                matter.setConflictStatus("WAIVED");
+                matter.setConflictStatus(ConflictStatus.WAIVED);
                 matterRepository.updateById(matter);
             }
         }
@@ -513,12 +897,12 @@ public class ConflictCheckAppService {
     public void rejectExemption(Long id, String comment) {
         ConflictCheck check = conflictCheckRepository.getByIdOrThrow(id, "利冲检查不存在");
         
-        if (!"EXEMPTION_PENDING".equals(check.getStatus())) {
+        if (!ConflictStatus.isExemptionPending(check.getStatus())) {
             throw new BusinessException("当前状态不允许审批豁免");
         }
 
         // 拒绝后恢复为冲突状态
-        check.setStatus("CONFLICT");
+        check.setStatus(ConflictStatus.CONFLICT);
         check.setReviewerId(SecurityUtils.getUserId());
         check.setReviewedAt(LocalDateTime.now());
         if (StringUtils.hasText(comment)) {
@@ -530,7 +914,7 @@ public class ConflictCheckAppService {
         if (check.getMatterId() != null) {
             Matter matter = matterRepository.findById(check.getMatterId());
             if (matter != null) {
-                matter.setConflictStatus("CONFLICT");
+                matter.setConflictStatus(ConflictStatus.CONFLICT);
                 matterRepository.updateById(matter);
             }
         }
@@ -545,11 +929,11 @@ public class ConflictCheckAppService {
     public void reject(Long id, String comment) {
         ConflictCheck check = conflictCheckRepository.getByIdOrThrow(id, "利冲检查不存在");
         
-        if (!"CONFLICT".equals(check.getStatus()) && !"PENDING".equals(check.getStatus())) {
+        if (!ConflictStatus.canApplyExemption(check.getStatus())) {
             throw new BusinessException("当前状态不允许审核");
         }
 
-        check.setStatus("REJECTED");
+        check.setStatus(ConflictStatus.REJECTED);
         check.setReviewerId(SecurityUtils.getUserId());
         check.setReviewedAt(LocalDateTime.now());
         check.setReviewComment(comment);
@@ -559,7 +943,7 @@ public class ConflictCheckAppService {
         if (check.getMatterId() != null) {
             Matter matter = matterRepository.findById(check.getMatterId());
             if (matter != null) {
-                matter.setConflictStatus("REJECTED");
+                matter.setConflictStatus(ConflictStatus.REJECTED);
                 matterRepository.updateById(matter);
             }
         }
@@ -632,17 +1016,7 @@ public class ConflictCheckAppService {
      * 获取状态名称
      */
     private String getStatusName(String status) {
-        if (status == null) return null;
-        return switch (status) {
-            case "PENDING" -> "待检查";
-            case "CHECKING" -> "检查中";
-            case "PASSED" -> "已通过";
-            case "CONFLICT" -> "存在冲突";
-            case "WAIVED" -> "已豁免";
-            case "EXEMPTION_PENDING" -> "豁免待审批";
-            case "REJECTED" -> "已拒绝";
-            default -> status;
-        };
+        return ConflictStatus.getStatusName(status);
     }
 
     /**
@@ -672,9 +1046,9 @@ public class ConflictCheckAppService {
     }
 
     /**
-     * Entity 转 DTO
+     * Entity 转 DTO（带预加载数据，避免N+1查询）
      */
-    private ConflictCheckDTO toDTO(ConflictCheck check) {
+    private ConflictCheckDTO toDTO(ConflictCheck check, java.util.Map<Long, User> userMap, java.util.Map<Long, Matter> matterMap) {
         ConflictCheckDTO dto = new ConflictCheckDTO();
         dto.setId(check.getId());
         dto.setCheckNo(check.getCheckNo());
@@ -695,31 +1069,55 @@ public class ConflictCheckAppService {
         dto.setCreatedAt(check.getCreatedAt());
         dto.setUpdatedAt(check.getUpdatedAt());
         
-        // 查询申请人姓名
+        // 从预加载Map获取申请人姓名（避免N+1）
         if (check.getApplicantId() != null) {
-            User applicant = userMapper.selectById(check.getApplicantId());
+            User applicant = userMap.get(check.getApplicantId());
             if (applicant != null) {
                 dto.setApplicantName(applicant.getRealName());
             }
         }
         
-        // 查询审核人姓名
+        // 从预加载Map获取审核人姓名（避免N+1）
         if (check.getReviewerId() != null) {
-            User reviewer = userMapper.selectById(check.getReviewerId());
+            User reviewer = userMap.get(check.getReviewerId());
             if (reviewer != null) {
                 dto.setReviewerName(reviewer.getRealName());
             }
         }
         
-        // 查询项目名称
+        // 从预加载Map获取项目名称（避免N+1）
         if (check.getMatterId() != null) {
-            Matter matter = matterRepository.findById(check.getMatterId());
+            Matter matter = matterMap.get(check.getMatterId());
             if (matter != null) {
                 dto.setMatterName(matter.getName());
             }
         }
         
         return dto;
+    }
+    
+    /**
+     * Entity 转 DTO（单条查询用，会触发额外查询）
+     */
+    private ConflictCheckDTO toDTO(ConflictCheck check) {
+        // 单条查询时构建Map
+        java.util.Map<Long, User> userMap = new java.util.HashMap<>();
+        java.util.Map<Long, Matter> matterMap = new java.util.HashMap<>();
+        
+        if (check.getApplicantId() != null) {
+            User applicant = userMapper.selectById(check.getApplicantId());
+            if (applicant != null) userMap.put(applicant.getId(), applicant);
+        }
+        if (check.getReviewerId() != null) {
+            User reviewer = userMapper.selectById(check.getReviewerId());
+            if (reviewer != null) userMap.put(reviewer.getId(), reviewer);
+        }
+        if (check.getMatterId() != null) {
+            Matter matter = matterRepository.findById(check.getMatterId());
+            if (matter != null) matterMap.put(matter.getId(), matter);
+        }
+        
+        return toDTO(check, userMap, matterMap);
     }
 
     /**

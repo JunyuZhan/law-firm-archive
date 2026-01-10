@@ -593,6 +593,11 @@ CREATE INDEX idx_knowledge_collection_target ON public.knowledge_collection USIN
 
 CREATE INDEX idx_knowledge_collection_user ON public.knowledge_collection USING btree (user_id);
 --
+-- Name: idx_knowledge_collection_user_target; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_knowledge_collection_user_target ON public.knowledge_collection USING btree (user_id, target_type, target_id);
+--
 -- Name: idx_law_category_parent; Type: INDEX; Schema: public; Owner: -
 --
 

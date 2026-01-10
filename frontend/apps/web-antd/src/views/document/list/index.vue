@@ -49,6 +49,7 @@ import {
   checkDocumentEditSupport,
   getDocumentPreviewUrl,
   reorderDocuments,
+  downloadDocumentsAsZip,
 } from '#/api/document';
 import { 
   getMatterDossierItems, 
@@ -61,6 +62,7 @@ import {
 } from '#/api/document/dossier';
 import { getMatterList } from '#/api/matter';
 import { recognizeGeneral, type OcrResultDTO } from '#/api/ocr';
+import { findCauseNameInAll, CASE_CATEGORY_OPTIONS, MATTER_TYPE_OPTIONS } from '#/constants/causes';
 import type { DocumentDTO, DocumentQuery, CreateDocumentCommand, UpdateDocumentCommand } from '#/api/document/types';
 import type { MatterDTO } from '#/api/matter/types';
 
@@ -76,6 +78,10 @@ const documents = ref<DocumentDTO[]>([]);
 const matters = ref<MatterDTO[]>([]);
 const fileList = ref<any[]>([]);
 const dossierItems = ref<MatterDossierItem[]>([]);
+
+// 批量选择状态
+const selectedDocIds = ref<Set<number>>(new Set());
+const batchDownloading = ref(false);
 
 // 弹窗状态
 const uploadModalVisible = ref(false);
@@ -402,24 +408,14 @@ const yearOptions = computed(() => {
   return years;
 });
 
-// 项目大类（matter_type）
-const matterTypeOptions = [
-  { label: '诉讼案件', value: 'LITIGATION' },
-  { label: '非诉项目', value: 'NON_LITIGATION' },
-];
+// 项目大类（matter_type）- 使用统一常量
+const matterTypeOptions = MATTER_TYPE_OPTIONS;
 
-// 案件类型（case_type）- 更细的分类
-const caseTypeOptions = [
-  { label: '民事', value: 'CIVIL' },
-  { label: '刑事', value: 'CRIMINAL' },
-  { label: '行政', value: 'ADMINISTRATIVE' },
-  { label: '破产', value: 'BANKRUPTCY' },
-  { label: '知识产权', value: 'IP' },
-  { label: '仲裁', value: 'ARBITRATION' },
-  { label: '执行', value: 'ENFORCEMENT' },
-  { label: '法律顾问', value: 'LEGAL_COUNSEL' },
-  { label: '专项服务', value: 'SPECIAL_SERVICE' },
-];
+// 案件类型（case_type）- 使用常量确保完整
+const caseTypeOptions = CASE_CATEGORY_OPTIONS.map(opt => ({
+  label: opt.label,
+  value: opt.value
+}));
 
 // 根据项目大类获取显示名称
 function getMatterTypeName(type: string | undefined): string {
@@ -440,6 +436,132 @@ function getStatusName(status: string | undefined): string {
   if (!status) return '-';
   const option = statusOptions.find(opt => opt.value === status);
   return option?.label || status;
+}
+
+// 根据项目类型获取封面主题颜色
+function getMatterCoverTheme(matter: MatterDTO) {
+  // 根据案件类型设置主题色
+  const caseType = matter.caseType;
+  const matterType = matter.matterType;
+  
+  // 诉讼类案件
+  if (matterType === 'LITIGATION') {
+    switch (caseType) {
+      case 'CRIMINAL':
+        return {
+          primaryColor: '#d32f2f', // 红色 - 刑事
+          bgColor: '#fff5f5',
+          borderColor: '#ffcdd2',
+          label: '刑事诉讼类'
+        };
+      case 'CIVIL':
+        return {
+          primaryColor: '#1976d2', // 蓝色 - 民事
+          bgColor: '#e3f2fd',
+          borderColor: '#bbdefb',
+          label: '民事诉讼类'
+        };
+      case 'ADMINISTRATIVE':
+        return {
+          primaryColor: '#388e3c', // 绿色 - 行政
+          bgColor: '#f1f8e9',
+          borderColor: '#c5e1a5',
+          label: '行政诉讼类'
+        };
+      case 'BANKRUPTCY':
+        return {
+          primaryColor: '#f57c00', // 橙色 - 破产
+          bgColor: '#fff3e0',
+          borderColor: '#ffe0b2',
+          label: '破产案件类'
+        };
+      case 'IP':
+        return {
+          primaryColor: '#7b1fa2', // 紫色 - 知识产权
+          bgColor: '#f3e5f5',
+          borderColor: '#ce93d8',
+          label: '知识产权类'
+        };
+      case 'ARBITRATION':
+        return {
+          primaryColor: '#0288d1', // 青色 - 仲裁
+          bgColor: '#e0f7fa',
+          borderColor: '#b2ebf2',
+          label: '仲裁案件类'
+        };
+      case 'ENFORCEMENT':
+        return {
+          primaryColor: '#5d4037', // 棕色 - 执行
+          bgColor: '#efebe9',
+          borderColor: '#d7ccc8',
+          label: '执行案件类'
+        };
+      default:
+        return {
+          primaryColor: '#616161', // 灰色 - 其他诉讼
+          bgColor: '#fafafa',
+          borderColor: '#e0e0e0',
+          label: '诉讼案件类'
+        };
+    }
+  }
+  
+  // 非诉项目
+  if (matterType === 'NON_LITIGATION') {
+    switch (caseType) {
+      case 'LEGAL_COUNSEL':
+        return {
+          primaryColor: '#00796b', // 深青色 - 法律顾问
+          bgColor: '#e0f2f1',
+          borderColor: '#b2dfdb',
+          label: '法律顾问类'
+        };
+      case 'SPECIAL_SERVICE':
+        return {
+          primaryColor: '#e64a19', // 深橙色 - 专项服务
+          bgColor: '#fbe9e7',
+          borderColor: '#ffccbc',
+          label: '专项服务类'
+        };
+      default:
+        return {
+          primaryColor: '#455a64', // 蓝灰色 - 其他非诉
+          bgColor: '#eceff1',
+          borderColor: '#cfd8dc',
+          label: '非诉项目类'
+        };
+    }
+  }
+  
+  // 默认主题
+  return {
+    primaryColor: '#757575',
+    bgColor: '#fafafa',
+    borderColor: '#e0e0e0',
+    label: '业务档案卷宗'
+  };
+}
+
+// 格式化日期（只显示年月日）
+function formatDate(dateStr: string | undefined): string {
+  if (!dateStr) return '-';
+  return dateStr.substring(0, 10);
+}
+
+// 获取案由名称（将代码转换为名称）
+function getCauseOfActionName(matter: MatterDTO): string {
+  // 优先使用后端返回的名称
+  if (matter.causeOfActionName) {
+    return matter.causeOfActionName;
+  }
+  // 如果有代码，尝试从前端案由数据中查找名称
+  if (matter.causeOfAction) {
+    const name = findCauseNameInAll(matter.causeOfAction);
+    if (name) return name;
+    // 如果找不到，返回代码（可能是自定义案由）
+    return matter.causeOfAction;
+  }
+  return '-';
 }
 
 // 选择项目（从项目列表卡片点击）
@@ -465,10 +587,13 @@ function handleBackToList() {
 }
 
 const statusOptions = [
+  { label: '草稿', value: 'DRAFT' },
+  { label: '待审批', value: 'PENDING' },
   { label: '进行中', value: 'ACTIVE' },
-  { label: '已结案', value: 'CLOSED' },
   { label: '已暂停', value: 'SUSPENDED' },
-  { label: '已取消', value: 'CANCELLED' },
+  { label: '待审批结案', value: 'PENDING_CLOSE' },
+  { label: '已结案', value: 'CLOSED' },
+  { label: '已归档', value: 'ARCHIVED' },
 ];
 
 // 过滤后的项目列表（年份筛选已在后端完成，这里只做其他筛选）
@@ -971,6 +1096,68 @@ async function handleDownload(record: DocumentDTO) {
   }
 }
 
+// 批量选择相关方法
+function toggleDocSelection(docId: number) {
+  if (selectedDocIds.value.has(docId)) {
+    selectedDocIds.value.delete(docId);
+  } else {
+    selectedDocIds.value.add(docId);
+  }
+  // 触发响应式更新
+  selectedDocIds.value = new Set(selectedDocIds.value);
+}
+
+function isDocSelected(docId: number) {
+  return selectedDocIds.value.has(docId);
+}
+
+function isAllSelected() {
+  return currentDocuments.value.length > 0 && 
+         currentDocuments.value.every(doc => selectedDocIds.value.has(doc.id));
+}
+
+function toggleSelectAll() {
+  if (isAllSelected()) {
+    // 取消全选
+    currentDocuments.value.forEach(doc => selectedDocIds.value.delete(doc.id));
+  } else {
+    // 全选当前文件夹
+    currentDocuments.value.forEach(doc => selectedDocIds.value.add(doc.id));
+  }
+  selectedDocIds.value = new Set(selectedDocIds.value);
+}
+
+function clearSelection() {
+  selectedDocIds.value = new Set();
+}
+
+// 批量下载
+async function handleBatchDownload() {
+  const ids = Array.from(selectedDocIds.value);
+  if (ids.length === 0) {
+    message.warning('请先选择要下载的文档');
+    return;
+  }
+  
+  if (ids.length > 100) {
+    message.warning('单次最多下载100个文档');
+    return;
+  }
+  
+  batchDownloading.value = true;
+  try {
+    const matterName = selectedMatter.value?.name || '文档';
+    const fileName = `${matterName}_文档_${new Date().toISOString().slice(0, 10)}.zip`;
+    await downloadDocumentsAsZip(ids, fileName);
+    message.success(`成功下载 ${ids.length} 个文档`);
+    clearSelection();
+  } catch (error: any) {
+    message.error('批量下载失败：' + (error.message || '未知错误'));
+  } finally {
+    batchDownloading.value = false;
+  }
+}
+
 // OCR提取文字（仅用于图片文件）
 async function handleOcrExtract(record: DocumentDTO) {
   if (!isImageFile(record.fileType || '')) {
@@ -995,7 +1182,7 @@ async function handleOcrExtract(record: DocumentDTO) {
     // 调用OCR识别
     const result: OcrResultDTO = await recognizeGeneral(file);
     if (result.success) {
-      ocrResult.value = result.rawText || result.recognizedText || '未识别到文字内容';
+      ocrResult.value = result.rawText || '未识别到文字内容';
       message.success('OCR识别完成');
     } else {
       ocrResult.value = result.errorMessage || 'OCR识别失败';
@@ -1331,7 +1518,8 @@ onMounted(() => {
             hoverable 
             size="small" 
             @click="handleSelectMatter(matter)"
-            style="cursor: pointer"
+            class="matter-card"
+            :class="`matter-card-${matter.caseType || 'default'}`"
           >
             <template #title>
               <div style="font-size: 14px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
@@ -1344,14 +1532,37 @@ onMounted(() => {
               </Tag>
             </template>
             <div style="font-size: 12px; color: #666">
-              <div style="margin-bottom: 4px">
+              <div style="margin-bottom: 6px">
+                <span style="color: #999">项目编号：</span>
+                <span style="font-weight: 500; color: #1890ff">{{ matter.matterNo || '-' }}</span>
+              </div>
+              <div style="margin-bottom: 6px">
                 <span style="color: #999">客户：</span>{{ matter.clientName || '-' }}
               </div>
-              <div style="margin-bottom: 4px">
-                <span style="color: #999">类型：</span>{{ matter.caseTypeName || getCaseTypeName(matter.caseType) }}
+              <div style="margin-bottom: 6px" v-if="matter.causeOfActionName || matter.causeOfAction">
+                <span style="color: #999">案由：</span>
+                <span style="color: #333">{{ getCauseOfActionName(matter) }}</span>
               </div>
-              <div>
-                <span style="color: #999">创建：</span>{{ matter.createdAt?.substring(0, 10) || '-' }}
+              <div style="margin-bottom: 6px" v-if="matter.leadLawyerName">
+                <span style="color: #999">承办律师：</span>{{ matter.leadLawyerName }}
+              </div>
+              <div style="margin-bottom: 6px" v-if="matter.opposingParty">
+                <span style="color: #999">对方：</span>
+                <span style="color: #666">{{ matter.opposingParty }}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; margin-top: 8px; padding-top: 8px; border-top: 1px solid #f0f0f0">
+                <div>
+                  <span style="color: #999">类型：</span>
+                  <Tag 
+                    :color="getMatterCoverTheme(matter).primaryColor" 
+                    style="margin: 0; font-size: 10px; padding: 0 4px; border: none;"
+                  >
+                    {{ matter.caseTypeName || getCaseTypeName(matter.caseType) }}
+                  </Tag>
+                </div>
+                <div style="color: #999; font-size: 11px">
+                  {{ formatDate(matter.filingDate) || formatDate(matter.createdAt) || '-' }}
+                </div>
               </div>
             </div>
           </Card>
@@ -1455,11 +1666,35 @@ onMounted(() => {
               <Space>
                 <span>{{ currentPath.join(' / ') }}</span>
                 <Tag color="blue">{{ currentDocuments.length }} 个文档</Tag>
+                <Tag v-if="selectedDocIds.size > 0" color="green">已选 {{ selectedDocIds.size }} 个</Tag>
+              </Space>
+            </template>
+            <template #extra>
+              <Space v-if="selectedDocIds.size > 0">
+                <Button 
+                  type="primary" 
+                  size="small" 
+                  :loading="batchDownloading"
+                  @click="handleBatchDownload"
+                >
+                  <SvgDownloadIcon :size="14" style="margin-right: 4px" />
+                  批量下载 ({{ selectedDocIds.size }})
+                </Button>
+                <Button size="small" @click="clearSelection">取消选择</Button>
               </Space>
             </template>
 
             <!-- 文档列表头部 -->
             <div class="doc-list-header">
+              <div class="col-checkbox" style="width: 32px;">
+                <input 
+                  type="checkbox" 
+                  :checked="isAllSelected()" 
+                  @change="toggleSelectAll"
+                  style="cursor: pointer; width: 16px; height: 16px;"
+                  title="全选/取消全选"
+                />
+              </div>
               <div class="col-drag" style="width: 30px;"></div>
               <div class="col-name" style="flex: 1;">文档名称</div>
               <div class="col-type" style="width: 80px;">类型</div>
@@ -1482,7 +1717,18 @@ onMounted(() => {
               class="doc-list"
             >
               <template #item="{ element: record }">
-                <div class="doc-item">
+                <div class="doc-item" :class="{ 'doc-item-selected': isDocSelected(record.id) }">
+                  <!-- 复选框 -->
+                  <div class="col-checkbox" style="width: 32px;">
+                    <input 
+                      type="checkbox" 
+                      :checked="isDocSelected(record.id)" 
+                      @change="toggleDocSelection(record.id)"
+                      @click.stop
+                      style="cursor: pointer; width: 16px; height: 16px;"
+                    />
+                  </div>
+                  
                   <!-- 拖拽手柄 -->
                   <div class="col-drag drag-handle">
                     <GripVertical :size="16" style="color: #bbb; cursor: grab;" />
@@ -1490,7 +1736,17 @@ onMounted(() => {
                   
                   <!-- 文档名称 -->
                   <div class="col-name" style="flex: 1; display: flex; align-items: center; gap: 10px; min-width: 0;">
-                    <span style="font-size: 26px; line-height: 1; flex-shrink: 0;">{{ getFileTypeConfig(record.fileType).icon }}</span>
+                    <!-- 缩略图或文件类型图标 -->
+                    <div class="doc-thumbnail" style="flex-shrink: 0;">
+                      <img 
+                        v-if="record.thumbnailUrl" 
+                        :src="record.thumbnailUrl" 
+                        :alt="record.fileName"
+                        class="thumbnail-img"
+                        @error="(e: Event) => (e.target as HTMLImageElement).style.display = 'none'"
+                      />
+                      <span v-else style="font-size: 26px; line-height: 1;">{{ getFileTypeConfig(record.fileType).icon }}</span>
+                    </div>
                     <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0; overflow: hidden;">
                       <a 
                         @click="handlePreview(record)" 
@@ -1819,11 +2075,16 @@ onMounted(() => {
   background-color: #f8fafc;
 }
 
+.doc-item-selected {
+  background-color: #e6f7ff !important;
+}
+
 .doc-item:last-child {
   border-bottom: none;
 }
 
 /* 列宽度 */
+.col-checkbox { width: 32px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
 .col-drag { width: 30px; flex-shrink: 0; }
 .col-type { width: 80px; flex-shrink: 0; text-align: center; }
 .col-size { width: 80px; flex-shrink: 0; text-align: right; font-size: 12px; color: #888; }
@@ -1866,6 +2127,25 @@ onMounted(() => {
   white-space: nowrap;
 }
 
+/* 文档缩略图 */
+.doc-thumbnail {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #f5f5f5;
+}
+
+.thumbnail-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
 /* 操作按钮 */
 .action-btn {
   width: 28px !important;
@@ -1904,5 +2184,67 @@ onMounted(() => {
 .sortable-drag {
   background: white;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* 项目卡片样式增强 */
+.matter-card {
+  transition: all 0.3s ease;
+  border-left-width: 4px !important;
+}
+
+.matter-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+/* 根据案件类型设置不同的左侧边框颜色和背景色 */
+.matter-card-CRIMINAL {
+  border-left-color: #d32f2f !important;
+  background: linear-gradient(to right, rgba(211, 47, 47, 0.02), #fff);
+}
+
+.matter-card-CIVIL {
+  border-left-color: #1976d2 !important;
+  background: linear-gradient(to right, rgba(25, 118, 210, 0.02), #fff);
+}
+
+.matter-card-ADMINISTRATIVE {
+  border-left-color: #388e3c !important;
+  background: linear-gradient(to right, rgba(56, 142, 60, 0.02), #fff);
+}
+
+.matter-card-BANKRUPTCY {
+  border-left-color: #f57c00 !important;
+  background: linear-gradient(to right, rgba(245, 124, 0, 0.02), #fff);
+}
+
+.matter-card-IP {
+  border-left-color: #7b1fa2 !important;
+  background: linear-gradient(to right, rgba(123, 31, 162, 0.02), #fff);
+}
+
+.matter-card-ARBITRATION {
+  border-left-color: #0288d1 !important;
+  background: linear-gradient(to right, rgba(2, 136, 209, 0.02), #fff);
+}
+
+.matter-card-ENFORCEMENT {
+  border-left-color: #5d4037 !important;
+  background: linear-gradient(to right, rgba(93, 64, 55, 0.02), #fff);
+}
+
+.matter-card-LEGAL_COUNSEL {
+  border-left-color: #00796b !important;
+  background: linear-gradient(to right, rgba(0, 121, 107, 0.02), #fff);
+}
+
+.matter-card-SPECIAL_SERVICE {
+  border-left-color: #e64a19 !important;
+  background: linear-gradient(to right, rgba(230, 74, 25, 0.02), #fff);
+}
+
+.matter-card-default {
+  border-left-color: #757575 !important;
+  background: #fff;
 }
 </style>

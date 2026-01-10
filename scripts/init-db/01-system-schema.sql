@@ -55,7 +55,7 @@ CREATE TABLE public.sys_backup (
     backup_no character varying(50) NOT NULL,
     backup_type character varying(20) NOT NULL,
     backup_name character varying(200) NOT NULL,
-    backup_path character varying(500) NOT NULL,
+    backup_path character varying(500),
     file_size bigint,
     status character varying(20) DEFAULT 'PENDING'::character varying,
     backup_time timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
@@ -64,6 +64,7 @@ CREATE TABLE public.sys_backup (
     created_by bigint,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_by bigint,
     deleted boolean DEFAULT false
 );
 --
@@ -698,7 +699,8 @@ CREATE TABLE public.sys_login_log (
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     created_by bigint,
     updated_by bigint,
-    deleted boolean DEFAULT false
+    deleted boolean DEFAULT false,
+    version integer DEFAULT 0
 );
 --
 -- Name: TABLE sys_login_log; Type: COMMENT; Schema: public; Owner: -
@@ -790,6 +792,11 @@ COMMENT ON COLUMN public.sys_login_log.updated_by IS '更新人ID';
 --
 
 COMMENT ON COLUMN public.sys_login_log.deleted IS '是否删除';
+--
+-- Name: COLUMN sys_login_log.version; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.sys_login_log.version IS '乐观锁版本号';
 --
 -- Name: sys_login_log_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
@@ -906,6 +913,55 @@ CREATE SEQUENCE public.sys_notification_id_seq
 --
 
 ALTER SEQUENCE public.sys_notification_id_seq OWNED BY public.sys_notification.id;
+--
+-- Name: sys_migration; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.sys_migration (
+    id bigint NOT NULL,
+    migration_no character varying(50) NOT NULL,
+    version character varying(50) NOT NULL,
+    script_name character varying(200) NOT NULL,
+    script_path character varying(500) NOT NULL,
+    description text,
+    status character varying(20) DEFAULT 'PENDING'::character varying,
+    executed_at timestamp without time zone,
+    execution_time_ms bigint,
+    error_message text,
+    executed_by bigint,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    deleted boolean DEFAULT false
+);
+
+--
+-- Name: TABLE sys_migration; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.sys_migration IS '数据库迁移记录表';
+COMMENT ON COLUMN public.sys_migration.migration_no IS '迁移编号';
+COMMENT ON COLUMN public.sys_migration.version IS '版本号，如 V1.0.1';
+COMMENT ON COLUMN public.sys_migration.script_name IS '脚本文件名';
+COMMENT ON COLUMN public.sys_migration.script_path IS '脚本文件路径';
+COMMENT ON COLUMN public.sys_migration.status IS '状态: PENDING-待执行, SUCCESS-成功, FAILED-失败, ROLLED_BACK-已回滚';
+
+--
+-- Name: sys_migration_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.sys_migration_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+--
+-- Name: sys_migration_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.sys_migration_id_seq OWNED BY public.sys_migration.id;
+
 --
 -- Name: sys_operation_log; Type: TABLE; Schema: public; Owner: -
 --
@@ -1242,7 +1298,8 @@ CREATE TABLE public.sys_user (
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     created_by bigint,
     updated_by bigint,
-    deleted boolean DEFAULT false
+    deleted boolean DEFAULT false,
+    version integer DEFAULT 0
 );
 --
 -- Name: TABLE sys_user; Type: COMMENT; Schema: public; Owner: -
@@ -1279,6 +1336,11 @@ COMMENT ON COLUMN public.sys_user.can_be_originator IS '是否可作为案源人
 --
 
 COMMENT ON COLUMN public.sys_user.status IS '状态: ACTIVE, INACTIVE, LOCKED';
+--
+-- Name: COLUMN sys_user.version; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.sys_user.version IS '乐观锁版本号';
 --
 -- Name: sys_user_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
@@ -1359,7 +1421,8 @@ CREATE TABLE public.sys_user_session (
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     created_by bigint,
     updated_by bigint,
-    deleted boolean DEFAULT false
+    deleted boolean DEFAULT false,
+    version integer DEFAULT 0
 );
 --
 -- Name: TABLE sys_user_session; Type: COMMENT; Schema: public; Owner: -
@@ -1411,6 +1474,11 @@ COMMENT ON COLUMN public.sys_user_session.status IS '会话状态';
 --
 
 COMMENT ON COLUMN public.sys_user_session.is_current IS '是否为当前会话';
+--
+-- Name: COLUMN sys_user_session.version; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.sys_user_session.version IS '乐观锁版本号';
 --
 -- Name: sys_user_session_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
@@ -1500,6 +1568,10 @@ ALTER TABLE ONLY public.sys_notification ALTER COLUMN id SET DEFAULT nextval('pu
 -- Name: sys_operation_log id; Type: DEFAULT; Schema: public; Owner: -
 --
 
+ALTER TABLE ONLY public.sys_migration ALTER COLUMN id SET DEFAULT nextval('public.sys_migration_id_seq'::regclass);
+--
+-- Name: sys_operation_log id; Type: DEFAULT; Schema: public; Owner: -
+--
 ALTER TABLE ONLY public.sys_operation_log ALTER COLUMN id SET DEFAULT nextval('public.sys_operation_log_id_seq'::regclass);
 --
 -- Name: sys_permission_change_log id; Type: DEFAULT; Schema: public; Owner: -
@@ -1650,6 +1722,18 @@ ALTER TABLE ONLY public.sys_menu
 
 ALTER TABLE ONLY public.sys_notification
     ADD CONSTRAINT sys_notification_pkey PRIMARY KEY (id);
+--
+-- Name: sys_operation_log sys_operation_log_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sys_migration
+    ADD CONSTRAINT sys_migration_pkey PRIMARY KEY (id);
+--
+-- Name: sys_migration sys_migration_migration_no_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sys_migration
+    ADD CONSTRAINT sys_migration_migration_no_key UNIQUE (migration_no);
 --
 -- Name: sys_operation_log sys_operation_log_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
@@ -1928,6 +2012,21 @@ CREATE INDEX idx_sys_backup_backup_type ON public.sys_backup USING btree (backup
 --
 
 CREATE INDEX idx_sys_backup_status ON public.sys_backup USING btree (status);
+--
+-- Name: idx_sys_migration_version; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_sys_migration_version ON public.sys_migration USING btree (version);
+--
+-- Name: idx_sys_migration_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_sys_migration_status ON public.sys_migration USING btree (status);
+--
+-- Name: idx_sys_migration_executed_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_sys_migration_executed_at ON public.sys_migration USING btree (executed_at);
 --
 -- Name: idx_sys_login_log_login_time; Type: INDEX; Schema: public; Owner: -
 --

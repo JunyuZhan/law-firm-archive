@@ -1,25 +1,7 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue';
-import { message } from 'ant-design-vue';
-import {
-  Modal,
-  Form,
-  FormItem,
-  Input,
-  Select,
-  Textarea,
-  Tabs,
-  TabPane,
-  Divider,
-  Row,
-  Col,
-  Alert,
-  Button,
-  Space,
-  Dropdown,
-  Menu,
-  MenuItem,
-} from 'ant-design-vue';
+import { useVbenModal } from '@vben/common-ui';
+import { message, Form, FormItem, Input, Select, Textarea, Tabs, TabPane, Divider, Row, Col, Alert, Button, Space, Dropdown, Menu, MenuItem } from 'ant-design-vue';
 import { Plus } from '@vben/icons';
 import { requestClient } from '#/api/request';
 import RichTextEditor from '#/components/RichTextEditor/index.vue';
@@ -100,9 +82,7 @@ const emit = defineEmits<{
   success: [];
 }>();
 
-// 状态
-const visible = ref(false);
-const editingId = ref<number | null>(null);
+const editingId = ref<number>();
 const activeTab = ref('content');
 
 const formData = reactive({
@@ -116,11 +96,18 @@ const formData = reactive({
 // 标准条款列表
 const clausesList = ref<ClauseItem[]>([]);
 
-// 计算属性
-const modalTitle = () => (editingId.value ? '编辑合同模板' : '新增合同模板');
+const [Modal, modalApi] = useVbenModal({
+  footer: false,
+  onOpenChange(isOpen) {
+    if (!isOpen) {
+      resetForm();
+    }
+  },
+});
 
 // 重置表单
 function resetForm() {
+  editingId.value = undefined;
   Object.assign(formData, {
     name: '',
     contractType: 'SERVICE',
@@ -134,9 +121,9 @@ function resetForm() {
 
 // 打开新增弹窗
 function openCreate() {
-  editingId.value = null;
   resetForm();
-  visible.value = true;
+  modalApi.setState({ title: '新增合同模板' });
+  modalApi.open();
 }
 
 // 打开编辑弹窗
@@ -156,7 +143,8 @@ function openEdit(record: ContractTemplateDTO) {
     clausesList.value = [];
   }
   activeTab.value = 'content';
-  visible.value = true;
+  modalApi.setState({ title: '编辑合同模板' });
+  modalApi.open();
 }
 
 // 添加条款
@@ -192,7 +180,7 @@ async function handleSave() {
       await requestClient.post('/system/contract-template', submitData);
       message.success('模板创建成功');
     }
-    visible.value = false;
+    modalApi.close();
     emit('success');
   } catch (error: unknown) {
     const err = error as { message?: string };
@@ -220,13 +208,7 @@ defineExpose({
 </script>
 
 <template>
-  <Modal
-    v-model:open="visible"
-    :title="modalTitle()"
-    width="1100px"
-    :footer="null"
-    :body-style="{ padding: '16px', maxHeight: '80vh', overflowY: 'auto' }"
-  >
+  <Modal class="w-[1100px]">
     <Form :label-col="{ span: 4 }" :wrapper-col="{ span: 19 }">
       <Row :gutter="16">
         <Col :span="12">
@@ -325,10 +307,9 @@ defineExpose({
 
     <div style="margin-top: 16px; text-align: right; border-top: 1px solid #e8e8e8; padding-top: 16px;">
       <Space>
-        <Button @click="visible = false">取消</Button>
+        <Button @click="modalApi.close()">取消</Button>
         <Button type="primary" @click="handleSave">保存模板</Button>
       </Space>
     </div>
   </Modal>
 </template>
-

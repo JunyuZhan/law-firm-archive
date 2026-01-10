@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router';
-import { Space, Tag } from 'ant-design-vue';
+import { Space, Tag, Modal } from 'ant-design-vue';
 import { Page } from '@vben/common-ui';
 import type { VbenFormSchema } from '#/adapter/form';
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
@@ -69,14 +69,16 @@ const formSchema: VbenFormSchema[] = [
 // ==================== 表格配置 ====================
 
 const gridColumns = [
-  { title: '项目编号', field: 'matterNo', width: 130 },
-  { title: '项目名称', field: 'name', width: 200, showOverflow: true },
   { title: '类型', field: 'matterTypeName', width: 100 },
+  { title: '案件类型', field: 'caseTypeName', width: 100 },
+  { title: '合同编号', field: 'contractNo', width: 130 },
   { title: '客户', field: 'clientName', width: 150 },
-  { title: '状态', field: 'status', width: 80, slots: { default: 'status' } },
-  { title: '预估费用', field: 'estimatedFee', width: 120, slots: { default: 'estimatedFee' } },
-  { title: '创建时间', field: 'createdAt', width: 180 },
-  { title: '操作', field: 'action', width: 100, fixed: 'right' as const, slots: { default: 'action' } },
+  { title: '项目编号', field: 'matterNo', width: 130 },
+  { title: '主办律师', field: 'leadLawyerName', width: 100 },
+  { title: '合同金额', field: 'contractAmount', width: 120, slots: { default: 'contractAmount' } },
+  { title: '创建时间', field: 'createdAt', width: 160 },
+  { title: '状态', field: 'status', width: 100, slots: { default: 'status' } },
+  { title: '操作', field: 'action', width: 200, fixed: 'right' as const, slots: { default: 'action' } },
 ];
 
 // 加载数据
@@ -156,6 +158,44 @@ function formatMoney(value?: number) {
 function handleView(row: MatterDTO) {
   router.push(`/matter/detail/${row.id}`);
 }
+
+// 编辑（跳转到项目列表页面进行编辑）
+function handleEdit(row: MatterDTO) {
+  router.push({ path: '/matter/list', query: { id: row.id } });
+}
+
+// 归档项目
+async function handleArchive(row: MatterDTO) {
+  // 检查项目状态是否允许归档
+  if (row.status !== 'CLOSED' && row.status !== 'ARCHIVED') {
+    Modal.confirm({
+      title: '项目未结案',
+      content: `项目 "${row.name}" 尚未结案，是否先申请结案？只有已结案的项目才能创建档案。`,
+      okText: '前往结案',
+      cancelText: '取消',
+      onOk: () => {
+        // 跳转到项目详情页
+        router.push(`/matter/detail/${row.id}`);
+      },
+    });
+    return;
+  }
+  
+  // 已结案项目，跳转到档案列表页面并打开归档向导
+  Modal.confirm({
+    title: '创建档案',
+    content: `确定要为项目 "${row.name}" 创建档案吗？系统将收集项目所有相关数据（合同、文档、审批记录等）。`,
+    okText: '创建档案',
+    cancelText: '取消',
+    onOk: () => {
+      // 跳转到档案列表页面，传递项目ID
+      router.push({
+        path: '/archive/list',
+        query: { matterId: row.id },
+      });
+    },
+  });
+}
 </script>
 
 <template>
@@ -168,15 +208,23 @@ function handleView(row: MatterDTO) {
         </Tag>
       </template>
 
-      <!-- 预估费用列 -->
-      <template #estimatedFee="{ row }">
-        {{ formatMoney(row.estimatedFee) }}
+      <!-- 合同金额列 -->
+      <template #contractAmount="{ row }">
+        {{ formatMoney(row.contractAmount) }}
       </template>
 
       <!-- 操作列 -->
       <template #action="{ row }">
         <Space>
-          <a @click="handleView(row)">查看详情</a>
+          <a @click="handleView(row)">详情</a>
+          <a v-if="!['ARCHIVED', 'CLOSED', 'PENDING_CLOSE'].includes(row.status)" @click="handleEdit(row)">编辑</a>
+          <a 
+            v-if="row.status !== 'ARCHIVED' && row.status !== 'CLOSED'"
+            @click="handleArchive(row)"
+            style="color: #722ed1"
+          >
+            归档
+          </a>
         </Space>
       </template>
     </Grid>

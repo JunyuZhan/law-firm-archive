@@ -29,8 +29,9 @@ import org.springframework.util.StringUtils;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.List;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -147,9 +148,14 @@ public class EvidenceAppService {
 
     /**
      * 获取证据详情
+     * ✅ 修复问题577: 添加权限验证
      */
     public EvidenceDTO getEvidenceById(Long id) {
         Evidence evidence = evidenceRepository.getByIdOrThrow(id, "证据不存在");
+        
+        // ✅ 验证项目访问权限
+        validateEvidenceAccess(evidence);
+        
         EvidenceDTO dto = toDTO(evidence);
         
         // 加载质证记录
@@ -202,9 +208,18 @@ public class EvidenceAppService {
 
     /**
      * 调整证据排序
+     * ✅ 修复问题606: 添加sortOrder参数验证
      */
     @Transactional
     public void updateSortOrder(Long id, Integer sortOrder) {
+        // ✅ 参数验证
+        if (sortOrder == null || sortOrder < 0) {
+            throw new BusinessException("排序号不能为空且必须大于等于0");
+        }
+        if (sortOrder > 9999) {
+            throw new BusinessException("排序号不能超过9999");
+        }
+        
         Evidence evidence = evidenceRepository.getByIdOrThrow(id, "证据不存在");
         
         // 检查项目状态权限
@@ -216,28 +231,39 @@ public class EvidenceAppService {
 
     /**
      * 批量调整分组
+     * 问题295修复：先验证所有证据，再批量更新，确保原子操作
      */
     @Transactional
     public void batchUpdateGroup(List<Long> ids, String groupName) {
-        for (Long id : ids) {
-            Evidence evidence = evidenceRepository.findById(id);
-            if (evidence != null) {
-                // 检查项目状态权限
-                checkMatterEditPermission(evidence.getMatterId());
-                
-                evidence.setGroupName(groupName);
-                evidenceRepository.updateById(evidence);
-            }
+        if (ids == null || ids.isEmpty()) {
+            throw new BusinessException("请选择要分组的证据");
         }
+        
+        // 第1阶段：验证所有证据存在且有权限
+        List<Evidence> evidences = new ArrayList<>();
+        for (Long id : ids) {
+            Evidence evidence = evidenceRepository.getByIdOrThrow(id, "证据不存在: " + id);
+            checkMatterEditPermission(evidence.getMatterId());
+            evidences.add(evidence);
+        }
+        
+        // 第2阶段：批量更新（验证全部通过后）
+        evidences.forEach(e -> e.setGroupName(groupName));
+        evidenceRepository.updateBatchById(evidences);
+        
         log.info("批量调整证据分组成功，共{}条", ids.size());
     }
 
     /**
      * 添加质证记录
+     * ✅ 修复问题588: 添加项目状态检查
      */
     @Transactional
     public EvidenceCrossExamDTO addCrossExam(CreateCrossExamCommand command) {
         Evidence evidence = evidenceRepository.getByIdOrThrow(command.getEvidenceId(), "证据不存在");
+
+        // ✅ 检查项目状态权限（已归档或已结案的项目不允许添加质证）
+        checkMatterEditPermission(evidence.getMatterId());
 
         // 检查是否已有该方的质证记录
         EvidenceCrossExam existing = crossExamMapper.selectByEvidenceIdAndParty(
@@ -275,37 +301,49 @@ public class EvidenceAppService {
 
     /**
      * 完成质证
+     * ✅ 修复问题587: 添加权限验证
      */
     @Transactional
     public void completeCrossExam(Long evidenceId) {
         Evidence evidence = evidenceRepository.getByIdOrThrow(evidenceId, "证据不存在");
+        
+        // ✅ 验证项目编辑权限（只有项目成员才能完成质证）
+        checkMatterEditPermission(evidence.getMatterId());
+        
         evidence.setCrossExamStatus("COMPLETED");
         evidenceRepository.updateById(evidence);
-        log.info("证据质证完成: {}", evidence.getName());
+        log.info("证据质证完成: {}, 操作人: {}", evidence.getName(), SecurityUtils.getUserId());
     }
 
     /**
      * 按案件获取证据列表
+     * ✅ 修复问题578: 添加权限验证
      */
     public List<EvidenceDTO> getEvidenceByMatter(Long matterId) {
+        // ✅ 验证项目访问权限
+        validateMatterAccess(matterId);
+        
         List<Evidence> evidences = evidenceRepository.findByMatterId(matterId);
         return evidences.stream().map(this::toDTO).collect(Collectors.toList());
     }
 
     /**
      * 获取案件的证据分组
+     * ✅ 修复问题601: 添加权限验证
      */
     public List<String> getEvidenceGroups(Long matterId) {
+        // ✅ 验证项目访问权限
+        validateMatterAccess(matterId);
+        
         return evidenceRepository.findGroupsByMatterId(matterId);
     }
 
     /**
      * 生成证据编号
+     * ✅ 修复问题607: 使用更可靠的编号生成器替代UUID截断
      */
     private String generateEvidenceNo() {
-        String prefix = "EV" + LocalDate.now().toString().replace("-", "").substring(2);
-        String random = UUID.randomUUID().toString().substring(0, 4).toUpperCase();
-        return prefix + random;
+        return com.lawfirm.common.util.NumberGenerator.generateEvidenceNo();
     }
 
     /**
@@ -328,12 +366,63 @@ public class EvidenceAppService {
     }
 
     /**
+     * 验证证据访问权限
+     * ✅ 新增方法：统一的证据访问权限验证
+     */
+    private void validateEvidenceAccess(Evidence evidence) {
+        if (evidence == null || evidence.getMatterId() == null) {
+            return;
+        }
+        validateMatterAccess(evidence.getMatterId());
+    }
+
+    /**
+     * 验证项目访问权限
+     * ✅ 新增方法：检查用户是否有权访问指定项目
+     */
+    private void validateMatterAccess(Long matterId) {
+        if (matterId == null) {
+            return;
+        }
+        
+        String dataScope = SecurityUtils.getDataScope();
+        // ALL权限可以访问所有项目
+        if ("ALL".equals(dataScope)) {
+            return;
+        }
+        
+        Long currentUserId = SecurityUtils.getUserId();
+        Long deptId = SecurityUtils.getDepartmentId();
+        
+        List<Long> accessibleMatterIds = matterAppService.getAccessibleMatterIds(dataScope, currentUserId, deptId);
+        
+        // 如果返回null表示ALL权限，可以访问所有
+        if (accessibleMatterIds == null) {
+            return;
+        }
+        
+        // 检查是否有权限访问
+        if (!accessibleMatterIds.contains(matterId)) {
+            throw new BusinessException("权限不足：无法访问该项目的证据");
+        }
+    }
+
+    /**
      * 检查项目是否可编辑
+     * ✅ 修复问题602: 添加用户权限检查
      */
     public boolean canEditEvidence(Long matterId) {
         if (matterId == null) {
             return true;
         }
+        
+        // ✅ 检查用户是否有权限访问该项目
+        try {
+            validateMatterAccess(matterId);
+        } catch (BusinessException e) {
+            return false;  // 没有访问权限
+        }
+        
         Matter matter = matterRepository.findById(matterId);
         return matter == null || !READONLY_MATTER_STATUSES.contains(matter.getStatus());
     }

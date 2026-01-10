@@ -3,6 +3,7 @@ package com.lawfirm.infrastructure.config;
 import com.lawfirm.common.exception.BusinessException;
 import com.lawfirm.common.result.Result;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.env.Environment;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
@@ -11,14 +12,39 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import java.util.Arrays;
 import java.util.stream.Collectors;
 
 /**
  * 全局异常处理
+ * 生产环境不返回详细错误信息，避免泄露敏感信息
  */
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+    
+    private final Environment environment;
+    
+    public GlobalExceptionHandler(Environment environment) {
+        this.environment = environment;
+    }
+    
+    /**
+     * 判断是否为生产环境
+     */
+    private boolean isProduction() {
+        return Arrays.asList(environment.getActiveProfiles()).contains("prod");
+    }
+    
+    /**
+     * 获取安全的错误消息（生产环境不返回详细错误）
+     */
+    private String getSafeErrorMessage(String detailedMessage, String defaultMessage) {
+        if (isProduction()) {
+            return defaultMessage;
+        }
+        return detailedMessage;
+    }
 
     /**
      * 业务异常
@@ -72,12 +98,20 @@ public class GlobalExceptionHandler {
 
     /**
      * 其他异常
+     * 生产环境不返回详细错误信息，避免泄露系统内部结构
      */
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public Result<Void> handleException(Exception e) {
+        // 记录完整异常信息到日志（包含堆栈）
         log.error("系统异常: ", e);
-        return Result.error("系统繁忙，请稍后重试");
+        
+        // 生产环境返回通用错误信息，开发环境可以返回更详细的信息
+        String errorMessage = isProduction() 
+            ? "系统繁忙，请稍后重试" 
+            : getSafeErrorMessage(e.getMessage(), "系统异常: " + e.getClass().getSimpleName());
+        
+        return Result.error(errorMessage);
     }
 }
 

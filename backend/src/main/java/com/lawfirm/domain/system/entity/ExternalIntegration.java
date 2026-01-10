@@ -64,6 +64,8 @@ public class ExternalIntegration extends BaseEntity {
     // ===== 集成类型常量 =====
     public static final String TYPE_ARCHIVE = "ARCHIVE";
     public static final String TYPE_AI = "AI";
+    public static final String TYPE_OCR = "OCR";
+    public static final String TYPE_STORAGE = "STORAGE";
     public static final String TYPE_OTHER = "OTHER";
 
     // ===== 认证方式常量 =====

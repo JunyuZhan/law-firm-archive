@@ -3,6 +3,7 @@ package com.lawfirm.infrastructure.persistence.mapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.lawfirm.domain.system.entity.RoleMenu;
 import org.apache.ibatis.annotations.Delete;
+import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
@@ -43,4 +44,28 @@ public interface RoleMenuMapper extends BaseMapper<RoleMenu> {
             "</foreach>" +
             "</script>")
     List<Long> selectMenuIdsByRoleIds(@Param("roleIds") List<Long> roleIds);
+
+    /**
+     * 批量插入角色菜单关联
+     * 问题453修复：支持批量操作
+     */
+    @Insert("<script>" +
+            "INSERT INTO sys_role_menu (role_id, menu_id) VALUES " +
+            "<foreach collection='roleMenus' item='rm' separator=','>" +
+            "(#{rm.roleId}, #{rm.menuId})" +
+            "</foreach>" +
+            "</script>")
+    void insertBatch(@Param("roleMenus") List<RoleMenu> roleMenus);
+
+    /**
+     * 根据角色ID和菜单ID列表删除关联
+     * 问题455修复：支持差异更新
+     */
+    @Delete("<script>" +
+            "DELETE FROM sys_role_menu WHERE role_id = #{roleId} AND menu_id IN " +
+            "<foreach collection='menuIds' item='menuId' open='(' separator=',' close=')'>" +
+            "#{menuId}" +
+            "</foreach>" +
+            "</script>")
+    int deleteByRoleIdAndMenuIds(@Param("roleId") Long roleId, @Param("menuIds") List<Long> menuIds);
 }

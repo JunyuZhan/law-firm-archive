@@ -12,18 +12,23 @@ import com.lawfirm.common.annotation.OperationLog;
 import com.lawfirm.common.annotation.RequirePermission;
 import com.lawfirm.common.result.PageResult;
 import com.lawfirm.common.result.Result;
+import com.lawfirm.infrastructure.external.minio.MinioService;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
 /**
  * 档案管理 Controller
  */
+@Slf4j
 @RestController
 @RequestMapping("/archive")
 @RequiredArgsConstructor
@@ -31,6 +36,7 @@ public class ArchiveController {
 
     private final ArchiveAppService archiveAppService;
     private final ApproverService approverService;
+    private final MinioService minioService;
 
     /**
      * 分页查询档案列表
@@ -280,6 +286,59 @@ public class ArchiveController {
         private String destroyMethod;
         private String destroyLocation;
         private String witness;
+    }
+
+    /**
+     * 下载卷宗封面
+     */
+    @GetMapping("/{id}/cover")
+    @RequirePermission("archive:list")
+    @Operation(summary = "下载卷宗封面")
+    public void downloadCover(@PathVariable Long id, jakarta.servlet.http.HttpServletResponse response) {
+        try {
+            ArchiveDTO archive = archiveAppService.getArchiveById(id);
+            if (archive.getElectronicUrl() == null || archive.getElectronicUrl().isEmpty()) {
+                response.sendError(404, "封面不存在");
+                return;
+            }
+            
+            // 从MinIO下载封面文件
+            String objectName = minioService.extractObjectName(archive.getElectronicUrl());
+            if (objectName == null) {
+                response.sendError(404, "封面文件路径无效");
+                return;
+            }
+            
+            byte[] coverBytes = minioService.downloadFileAsBytes(objectName);
+            
+            // 设置响应头
+            response.setContentType("application/pdf");
+            response.setContentLength(coverBytes.length);
+            String fileName = (archive.getArchiveName() != null ? archive.getArchiveName() : "档案") + "_卷宗封面.pdf";
+            response.setHeader("Content-Disposition", 
+                    "attachment; filename=\"" + URLEncoder.encode(fileName, StandardCharsets.UTF_8) + "\"");
+            
+            // 写入文件内容
+            response.getOutputStream().write(coverBytes);
+            response.getOutputStream().flush();
+        } catch (Exception e) {
+            log.error("下载卷宗封面失败: archiveId={}", id, e);
+            try {
+                response.sendError(500, "下载封面失败: " + e.getMessage());
+            } catch (Exception ignored) {}
+        }
+    }
+
+    /**
+     * 重新生成卷宗封面
+     */
+    @PostMapping("/{id}/regenerate-cover")
+    @RequirePermission("archive:update")
+    @OperationLog(module = "档案管理", action = "重新生成卷宗封面")
+    @Operation(summary = "重新生成卷宗封面")
+    public Result<ArchiveDTO> regenerateCover(@PathVariable Long id) {
+        ArchiveDTO archive = archiveAppService.regenerateCover(id);
+        return Result.success(archive);
     }
 }
 

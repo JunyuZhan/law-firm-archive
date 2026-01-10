@@ -17,6 +17,8 @@ import com.lawfirm.application.workbench.service.ApproverService;
 import com.lawfirm.common.exception.BusinessException;
 import com.lawfirm.common.result.PageResult;
 import com.lawfirm.common.util.SecurityUtils;
+import com.lawfirm.common.constant.MatterConstants;
+import com.lawfirm.common.constant.ContractStatus;
 import com.lawfirm.domain.client.repository.ClientRepository;
 import com.lawfirm.domain.finance.entity.Contract;
 import com.lawfirm.domain.finance.entity.ContractParticipant;
@@ -144,7 +146,7 @@ public class MatterAppService {
             throw new BusinessException("创建项目必须关联合同，请先创建并审批合同");
         }
         Contract contract = contractRepository.getByIdOrThrow(command.getContractId(), "合同不存在");
-        if (!"ACTIVE".equals(contract.getStatus())) {
+        if (!ContractStatus.ACTIVE.equals(contract.getStatus())) {
             throw new BusinessException("只能基于已审批通过的合同创建项目，当前合同状态：" + contract.getStatus());
         }
         // 注意：一个合同可以创建多个项目（比如常年法顾合同下有多个具体项目）
@@ -175,7 +177,7 @@ public class MatterAppService {
                 .opposingLawyerPhone(command.getOpposingLawyerPhone())
                 .opposingLawyerEmail(command.getOpposingLawyerEmail())
                 .description(command.getDescription())
-                .status("ACTIVE")  // 基于已审批合同创建，直接进行中
+                .status(MatterConstants.STATUS_ACTIVE)  // 基于已审批合同创建，直接进行中
                 .originatorId(command.getOriginatorId() != null ? command.getOriginatorId() : SecurityUtils.getUserId())
                 .leadLawyerId(command.getLeadLawyerId())
                 .departmentId(command.getDepartmentId() != null ? command.getDepartmentId() : SecurityUtils.getDepartmentId())
@@ -186,7 +188,7 @@ public class MatterAppService {
                 .claimAmount(command.getClaimAmount())
                 .contractId(command.getContractId())
                 .remark(command.getRemark())
-                .conflictStatus("PENDING")
+                .conflictStatus(MatterConstants.STATUS_PENDING)
                 .build();
 
         // 4. 保存案件
@@ -284,7 +286,7 @@ public class MatterAppService {
         validateMatterOwnership(command.getId());
         
         // 归档的项目不能编辑
-        if ("ARCHIVED".equals(matter.getStatus())) {
+        if (MatterConstants.STATUS_ARCHIVED.equals(matter.getStatus())) {
             throw new BusinessException("已归档的项目不能编辑");
         }
 
@@ -384,7 +386,7 @@ public class MatterAppService {
         // 验证用户是否有权限访问该项目
         validateMatterAccess(id);
         
-        if (!"DRAFT".equals(matter.getStatus())) {
+        if (!MatterConstants.STATUS_DRAFT.equals(matter.getStatus())) {
             throw new BusinessException("只有草稿状态的案件可以删除");
         }
 
@@ -434,7 +436,7 @@ public class MatterAppService {
         validateStatusTransition(oldStatus, status);
         
         matter.setStatus(status);
-        if ("CLOSED".equals(status) && matter.getActualClosingDate() == null) {
+        if (MatterConstants.STATUS_CLOSED.equals(status) && matter.getActualClosingDate() == null) {
             matter.setActualClosingDate(LocalDate.now());
         }
         
@@ -445,7 +447,7 @@ public class MatterAppService {
         sendMatterStatusNotification(matter, oldStatus, status);
         
         // 如果状态改为 ARCHIVED，自动创建档案记录
-        if ("ARCHIVED".equals(status)) {
+        if (MatterConstants.STATUS_ARCHIVED.equals(status)) {
             try {
                 // 检查是否已存在档案
                 if (archiveAppService.getArchiveByMatterId(id) == null) {
@@ -481,7 +483,7 @@ public class MatterAppService {
             // 获取项目参与人
             List<MatterParticipant> participants = participantMapper.selectByMatterId(matter.getId());
             
-            String statusName = getMatterStatusName(newStatus);
+            String statusName = MatterConstants.getMatterStatusName(newStatus);
             String title = String.format("项目【%s】状态变更", matter.getName());
             String content = String.format("%s 将项目【%s】状态修改为：%s", 
                     currentUserName, matter.getName(), statusName);
@@ -506,19 +508,6 @@ public class MatterAppService {
         }
     }
     
-    /**
-     * 获取状态名称
-     */
-    private String getMatterStatusName(String status) {
-        if (status == null) return "未知";
-        return switch (status) {
-            case "ACTIVE" -> "进行中";
-            case "SUSPENDED" -> "暂停";
-            case "CLOSED" -> "已结案";
-            case "ARCHIVED" -> "已归档";
-            default -> status;
-        };
-    }
 
     /**
      * 添加团队成员
@@ -544,7 +533,7 @@ public class MatterAppService {
                 .commissionRate(commissionRate)
                 .isOriginator(isOriginator != null ? isOriginator : false)
                 .joinDate(LocalDate.now())
-                .status("ACTIVE")
+                .status(MatterConstants.STATUS_ACTIVE)
                 .build();
 
         participantMapper.insert(participant);
@@ -663,64 +652,63 @@ public class MatterAppService {
     }
 
     /**
-     * 验证状态流转
+     * 验证状态流转（严格状态机）
+     * 状态流转规则：
+     * - DRAFT (草稿) -> PENDING (待审批)
+     * - PENDING (待审批) -> ACTIVE (进行中) / DRAFT (退回草稿)
+     * - ACTIVE (进行中) -> SUSPENDED (暂停) / PENDING_CLOSE (待结案)
+     * - SUSPENDED (暂停) -> ACTIVE (恢复) / PENDING_CLOSE (待结案)
+     * - PENDING_CLOSE (待结案) -> CLOSED (已结案) / ACTIVE (退回进行中)
+     * - CLOSED (已结案) -> ARCHIVED (已归档)
+     * - ARCHIVED (已归档) -> 终态，不允许再变更
      */
     private void validateStatusTransition(String from, String to) {
-        // 简化的状态机验证
-        // DRAFT -> PENDING -> ACTIVE -> SUSPENDED/CLOSED -> ARCHIVED
-        // 实际项目中可以更复杂
-    }
+        if (from == null || to == null) {
+            throw new BusinessException("状态不能为空");
+        }
 
-    /**
-     * 获取案件类型名称
-     */
-    private String getMatterTypeName(String type) {
-        if (type == null) return null;
-        return switch (type) {
-            case "LITIGATION" -> "诉讼案件";
-            case "NON_LITIGATION" -> "非诉项目";
-            default -> type;
-        };
-    }
+        // 相同状态无需验证
+        if (from.equals(to)) {
+            return;
+        }
 
-    /**
-     * 获取案件细分类型名称
-     */
-    private String getCaseTypeName(String type) {
-        if (type == null) return null;
-        return switch (type) {
-            case "CIVIL" -> "民事案件";
-            case "CRIMINAL" -> "刑事案件";
-            case "ADMINISTRATIVE" -> "行政案件";
-            case "BANKRUPTCY" -> "破产案件";
-            case "IP" -> "知识产权案件";
-            case "ARBITRATION" -> "仲裁案件";
-            case "ENFORCEMENT" -> "执行案件";
-            case "LEGAL_COUNSEL" -> "法律顾问";
-            case "SPECIAL_SERVICE" -> "专项服务";
-            case "DUE_DILIGENCE" -> "尽职调查";
-            case "CONTRACT_REVIEW" -> "合同审查";
-            case "LEGAL_OPINION" -> "法律意见";
-            default -> type;
-        };
-    }
+        // 定义允许的状态流转关系
+        java.util.Map<String, List<String>> allowedTransitions = java.util.Map.of(
+            MatterConstants.STATUS_DRAFT, List.of(MatterConstants.STATUS_PENDING),                           // 草稿 -> 待审批
+            MatterConstants.STATUS_PENDING, List.of(MatterConstants.STATUS_ACTIVE, MatterConstants.STATUS_DRAFT),                 // 待审批 -> 进行中/草稿
+            MatterConstants.STATUS_ACTIVE, List.of(MatterConstants.STATUS_SUSPENDED, MatterConstants.STATUS_PENDING_CLOSE),       // 进行中 -> 暂停/待结案
+            MatterConstants.STATUS_SUSPENDED, List.of(MatterConstants.STATUS_ACTIVE, MatterConstants.STATUS_PENDING_CLOSE),       // 暂停 -> 进行中/待结案
+            MatterConstants.STATUS_PENDING_CLOSE, List.of(MatterConstants.STATUS_CLOSED, MatterConstants.STATUS_ACTIVE),          // 待结案 -> 已结案/进行中
+            MatterConstants.STATUS_CLOSED, List.of(MatterConstants.STATUS_ARCHIVED)                          // 已结案 -> 已归档
+            // ARCHIVED 是终态，不允许再变更
+        );
 
+        List<String> allowed = allowedTransitions.get(from);
+        if (allowed == null) {
+            // 终态或未知状态
+            throw new BusinessException(String.format("状态 [%s] 不允许变更", getStatusName(from)));
+        }
+        
+        if (!allowed.contains(to)) {
+            String allowedNames = allowed.stream()
+                    .map(this::getStatusName)
+                    .collect(java.util.stream.Collectors.joining("、"));
+            throw new BusinessException(String.format(
+                "不允许的状态流转: %s -> %s。当前状态只能变更为: %s",
+                getStatusName(from), getStatusName(to), allowedNames
+            ));
+        }
+
+        log.debug("状态流转验证通过: {} -> {}", from, to);
+    }
+    
     /**
-     * 获取状态名称
+     * 获取状态中文名称
      */
     private String getStatusName(String status) {
-        if (status == null) return null;
-        return switch (status) {
-            case "DRAFT" -> "草稿";
-            case "PENDING" -> "待审批";
-            case "ACTIVE" -> "进行中";
-            case "SUSPENDED" -> "暂停";
-            case "PENDING_CLOSE" -> "待审批结案";
-            case "CLOSED" -> "已结案";
-            case "ARCHIVED" -> "已归档";
-            default -> status;
-        };
+        return MatterConstants.getMatterStatusName(status);
     }
+
 
     /**
      * 获取收费方式名称
@@ -784,7 +772,7 @@ public class MatterAppService {
         boolean isParticipant = matterParticipantRepository.lambdaQuery()
                 .eq(MatterParticipant::getMatterId, matterId)
                 .eq(MatterParticipant::getUserId, currentUserId)
-                .eq(MatterParticipant::getStatus, "ACTIVE")
+                .eq(MatterParticipant::getStatus, MatterConstants.STATUS_ACTIVE)
                 .eq(MatterParticipant::getDeleted, false)
                 .exists();
         
@@ -843,7 +831,7 @@ public class MatterAppService {
             var participantList = matterParticipantRepository.lambdaQuery()
                     .select(MatterParticipant::getMatterId)
                     .eq(MatterParticipant::getUserId, currentUserId)
-                    .eq(MatterParticipant::getStatus, "ACTIVE")
+                    .eq(MatterParticipant::getStatus, MatterConstants.STATUS_ACTIVE)
                     .eq(MatterParticipant::getDeleted, false)
                     .list();
             
@@ -871,9 +859,9 @@ public class MatterAppService {
         dto.setMatterNo(matter.getMatterNo());
         dto.setName(matter.getName());
         dto.setMatterType(matter.getMatterType());
-        dto.setMatterTypeName(getMatterTypeName(matter.getMatterType()));
+        dto.setMatterTypeName(MatterConstants.getMatterTypeName(matter.getMatterType()));
         dto.setCaseType(matter.getCaseType());
-        dto.setCaseTypeName(getCaseTypeName(matter.getCaseType()));
+        dto.setCaseTypeName(MatterConstants.getCaseTypeName(matter.getCaseType()));
         dto.setCauseOfAction(matter.getCauseOfAction());
         // 案由名称由前端根据code查找，后端只存储code
         dto.setBusinessType(matter.getBusinessType());
@@ -886,7 +874,7 @@ public class MatterAppService {
         dto.setOpposingLawyerEmail(matter.getOpposingLawyerEmail());
         dto.setDescription(matter.getDescription());
         dto.setStatus(matter.getStatus());
-        dto.setStatusName(getStatusName(matter.getStatus()));
+        dto.setStatusName(MatterConstants.getMatterStatusName(matter.getStatus()));
         dto.setOriginatorId(matter.getOriginatorId());
         dto.setLeadLawyerId(matter.getLeadLawyerId());
         dto.setDepartmentId(matter.getDepartmentId());
@@ -910,6 +898,19 @@ public class MatterAppService {
             var client = clientRepository.findById(matter.getClientId());
             if (client != null) {
                 dto.setClientName(client.getName());
+            }
+        }
+        
+        // 查询合同编号和合同金额
+        if (matter.getContractId() != null) {
+            try {
+                var contract = contractRepository.findById(matter.getContractId());
+                if (contract != null) {
+                    dto.setContractNo(contract.getContractNo());
+                    dto.setContractAmount(contract.getTotalAmount());
+                }
+            } catch (Exception e) {
+                log.warn("获取合同信息失败: contractId={}", matter.getContractId(), e);
             }
         }
         
@@ -1052,7 +1053,7 @@ public class MatterAppService {
         // 验证用户是否是项目负责人或参与者（只有项目成员才能申请结案）
         validateMatterOwnership(command.getMatterId());
 
-        if (!"ACTIVE".equals(matter.getStatus()) && !"SUSPENDED".equals(matter.getStatus())) {
+        if (!MatterConstants.STATUS_ACTIVE.equals(matter.getStatus()) && !MatterConstants.STATUS_SUSPENDED.equals(matter.getStatus())) {
             throw new BusinessException("只有进行中或暂停状态的项目才能申请结案");
         }
 
@@ -1064,7 +1065,7 @@ public class MatterAppService {
                     "结案申请: " + command.getClosingReason() + 
                     (command.getSummary() != null ? "\n结案总结: " + command.getSummary() : ""));
         }
-        matter.setStatus("PENDING_CLOSE");  // 待审批结案状态
+        matter.setStatus(MatterConstants.STATUS_PENDING_CLOSE);  // 待审批结案状态
         matter.setUpdatedAt(java.time.LocalDateTime.now());
         matter.setUpdatedBy(SecurityUtils.getUserId());
         matterRepository.getBaseMapper().updateById(matter);
@@ -1108,13 +1109,13 @@ public class MatterAppService {
         // 验证用户是否有权限访问该项目
         validateMatterAccess(matterId);
 
-        if (!"PENDING_CLOSE".equals(matter.getStatus())) {
+        if (!MatterConstants.STATUS_PENDING_CLOSE.equals(matter.getStatus())) {
             throw new BusinessException("项目不在待审批结案状态");
         }
 
         if (Boolean.TRUE.equals(approved)) {
             // 批准结案
-            matter.setStatus("CLOSED");
+            matter.setStatus(MatterConstants.STATUS_CLOSED);
             matter.setUpdatedAt(java.time.LocalDateTime.now());
             matter.setUpdatedBy(SecurityUtils.getUserId());
             matterRepository.getBaseMapper().updateById(matter);
@@ -1125,7 +1126,7 @@ public class MatterAppService {
             log.info("项目结案审批通过: matterId={}, matterNo={}", matterId, matter.getMatterNo());
         } else {
             // 驳回结案申请
-            matter.setStatus("ACTIVE");  // 恢复为进行中状态
+            matter.setStatus(MatterConstants.STATUS_ACTIVE);  // 恢复为进行中状态
             matter.setUpdatedAt(java.time.LocalDateTime.now());
             matter.setUpdatedBy(SecurityUtils.getUserId());
             if (comment != null) {
@@ -1153,7 +1154,7 @@ public class MatterAppService {
         // 验证用户是否有权限访问该项目
         validateMatterAccess(matterId);
 
-        if (!"CLOSED".equals(matter.getStatus())) {
+        if (!MatterConstants.STATUS_CLOSED.equals(matter.getStatus())) {
             throw new BusinessException("只有已结案的项目才能生成结案报告");
         }
 
@@ -1163,7 +1164,7 @@ public class MatterAppService {
         report.append("==================\n\n");
         report.append("项目编号: ").append(matter.getMatterNo()).append("\n");
         report.append("项目名称: ").append(matter.getName()).append("\n");
-        report.append("项目类型: ").append(getMatterTypeName(matter.getMatterType())).append("\n");
+        report.append("项目类型: ").append(MatterConstants.getMatterTypeName(matter.getMatterType())).append("\n");
         report.append("立案日期: ").append(matter.getFilingDate()).append("\n");
         report.append("结案日期: ").append(matter.getActualClosingDate()).append("\n");
         report.append("判决/调解结果: ").append(matter.getOutcome() != null ? matter.getOutcome() : "无").append("\n");
@@ -1279,7 +1280,7 @@ public class MatterAppService {
                     .commissionRate(cp.getCommissionRate())
                     .isOriginator(isOriginator)
                     .joinDate(LocalDate.now())
-                    .status("ACTIVE")
+                    .status(MatterConstants.STATUS_ACTIVE)
                     .remark("从合同自动复制")
                     .build();
             

@@ -21,7 +21,7 @@ const [Form, formApi] = useVbenForm({
   schema: [
     { fieldName: 'name', label: '印章名称', component: 'Input', rules: 'required', componentProps: { placeholder: '请输入印章名称' } },
     { fieldName: 'sealType', label: '印章类型', component: 'Select', rules: 'required', componentProps: { options: sealTypeOptions } },
-    { fieldName: 'keeperId', label: '保管人', component: 'ApiTreeSelect', componentProps: { api: () => import('#/api/system').then(m => m.getUserTree()), placeholder: '选择保管人', fieldNames: { label: 'name', value: 'id', children: 'children' } } },
+    { fieldName: 'keeperId', label: '保管人', component: 'UserTreeSelect', componentProps: { placeholder: '选择保管人', allowClear: true } },
     { fieldName: 'imageUrl', label: '印章图片URL', component: 'Input', componentProps: { placeholder: '请输入印章图片URL' } },
     { fieldName: 'description', label: '描述', component: 'Textarea', componentProps: { rows: 3, placeholder: '请输入描述' } },
   ],

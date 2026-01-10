@@ -4,6 +4,13 @@ import com.lawfirm.application.workbench.command.ApproveCommand;
 import com.lawfirm.application.workbench.dto.ApprovalDTO;
 import com.lawfirm.application.workbench.dto.ApprovalQueryDTO;
 import com.lawfirm.application.workbench.event.ApprovalCompletedEvent;
+import com.lawfirm.application.matter.service.MatterAppService;
+import com.lawfirm.application.finance.service.ExpenseAppService;
+import com.lawfirm.application.finance.command.ApproveExpenseCommand;
+import com.lawfirm.application.hr.service.RegularizationAppService;
+import com.lawfirm.application.hr.command.ApproveRegularizationCommand;
+import com.lawfirm.application.hr.service.ResignationAppService;
+import com.lawfirm.application.hr.command.ApproveResignationCommand;
 import com.lawfirm.common.result.PageResult;
 import com.lawfirm.common.exception.BusinessException;
 import com.lawfirm.common.util.SecurityUtils;
@@ -21,6 +28,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import com.lawfirm.common.constant.ApprovalStatus;
+
 /**
  * 审批应用服务
  */
@@ -32,6 +41,10 @@ public class ApprovalAppService {
     private final ApprovalRepository approvalRepository;
     private final ApprovalMapper approvalMapper;
     private final ApplicationEventPublisher eventPublisher;
+    private final MatterAppService matterAppService;
+    private final ExpenseAppService expenseAppService;
+    private final RegularizationAppService regularizationAppService;
+    private final ResignationAppService resignationAppService;
 
     /**
      * 分页查询审批记录
@@ -43,23 +56,35 @@ public class ApprovalAppService {
      */
     public PageResult<ApprovalDTO> listApprovals(ApprovalQueryDTO query) {
         try {
-            List<Approval> approvals = approvalMapper.selectApprovalPage(
+            Long currentUserId = SecurityUtils.getUserId();
+            boolean isAdmin = isAdminOrDirector();
+            
+            // 计算分页偏移量
+            int offset = (query.getPageNum() - 1) * query.getPageSize();
+            
+            // 在数据库层面进行权限过滤和分页（避免内存分页性能问题）
+            List<Approval> approvals = approvalMapper.selectApprovalPageWithPermission(
                     query.getStatus(),
                     query.getBusinessType(),
                     query.getApplicantId(),
-                    query.getApproverId()
+                    query.getApproverId(),
+                    currentUserId,
+                    isAdmin,
+                    offset,
+                    query.getPageSize()
+            );
+            
+            // 查询总数（用于分页）
+            long total = approvalMapper.countApprovalWithPermission(
+                    query.getStatus(),
+                    query.getBusinessType(),
+                    query.getApplicantId(),
+                    query.getApproverId(),
+                    currentUserId,
+                    isAdmin
             );
 
-            // 应用数据权限过滤
-            approvals = applyDataScopeFilter(approvals);
-
-            // 分页处理
-            int total = approvals.size();
-            int start = (query.getPageNum() - 1) * query.getPageSize();
-            int end = Math.min(start + query.getPageSize(), total);
-            List<Approval> pagedList = total > 0 ? approvals.subList(Math.max(0, start), end) : new ArrayList<>();
-
-            List<ApprovalDTO> dtos = pagedList.stream()
+            List<ApprovalDTO> dtos = approvals.stream()
                     .map(this::toDTO)
                     .collect(Collectors.toList());
 
@@ -191,8 +216,9 @@ public class ApprovalAppService {
 
     /**
      * 审批操作（通过/拒绝）
+     * 修复：业务状态更新失败时回滚整个事务，保证数据一致性
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void approve(ApproveCommand command) {
         Approval approval = approvalRepository.getByIdOrThrow(command.getApprovalId(), "审批记录不存在");
 
@@ -203,19 +229,26 @@ public class ApprovalAppService {
         }
 
         // 检查状态
-        if (!"PENDING".equals(approval.getStatus())) {
+        if (!ApprovalStatus.canApprove(approval.getStatus())) {
             throw new BusinessException("该审批记录已处理，无法重复审批");
         }
 
         // 拒绝时必须填写拒绝事由
-        if ("REJECTED".equals(command.getResult())) {
+        if (ApprovalStatus.REJECTED.equals(command.getResult())) {
             if (command.getComment() == null || command.getComment().trim().isEmpty()) {
                 throw new BusinessException("拒绝时必须填写拒绝事由");
             }
         }
 
-        // 更新审批状态
-        approval.setStatus("APPROVED".equals(command.getResult()) ? "APPROVED" : "REJECTED");
+        String businessType = approval.getBusinessType();
+        Long businessId = approval.getBusinessId();
+        Boolean approved = ApprovalStatus.APPROVED.equals(command.getResult());
+        
+        // 先更新业务状态（失败则整个事务回滚）
+        updateBusinessStatus(businessType, businessId, approved, command.getComment());
+
+        // 业务状态更新成功后，更新审批状态
+        approval.setStatus(approved ? ApprovalStatus.APPROVED : ApprovalStatus.REJECTED);
         approval.setComment(command.getComment());
         approval.setApprovedAt(LocalDateTime.now());
         approvalRepository.updateById(approval);
@@ -223,7 +256,7 @@ public class ApprovalAppService {
         log.info("审批完成: approvalNo={}, result={}, approver={}", 
                 approval.getApprovalNo(), command.getResult(), currentUserId);
 
-        // 发布审批完成事件，通知业务模块更新状态
+        // 发布审批完成事件，通知其他业务模块
         eventPublisher.publishEvent(new ApprovalCompletedEvent(
                 this,
                 approval.getId(),
@@ -233,70 +266,108 @@ public class ApprovalAppService {
                 command.getComment()
         ));
     }
+    
+    /**
+     * 更新业务状态（独立方法，异常向上抛出以触发事务回滚）
+     */
+    private void updateBusinessStatus(String businessType, Long businessId, Boolean approved, String comment) {
+        switch (businessType) {
+            case "MATTER_CLOSE":
+                // 项目结案审批有特殊的业务逻辑（如触发归档流程）
+                matterAppService.approveCloseMatter(businessId, approved, comment);
+                log.info("项目结案审批业务状态已更新: matterId={}, approved={}", businessId, approved);
+                break;
+                
+            case "EXPENSE":
+                // 费用报销审批
+                ApproveExpenseCommand expenseCommand = new ApproveExpenseCommand();
+                expenseCommand.setExpenseId(businessId);
+                expenseCommand.setAction(approved ? "APPROVE" : "REJECT");
+                expenseCommand.setComment(comment);
+                expenseAppService.approveExpense(expenseCommand);
+                log.info("费用报销审批业务状态已更新: expenseId={}, approved={}", businessId, approved);
+                break;
+                
+            case "REGULARIZATION":
+                // 转正申请审批
+                ApproveRegularizationCommand regCommand = new ApproveRegularizationCommand();
+                regCommand.setApproved(approved);
+                regCommand.setComment(comment);
+                regularizationAppService.approveRegularization(businessId, regCommand);
+                log.info("转正申请审批业务状态已更新: regularizationId={}, approved={}", businessId, approved);
+                break;
+                
+            case "RESIGNATION":
+                // 离职申请审批
+                ApproveResignationCommand resCommand = new ApproveResignationCommand();
+                resCommand.setApproved(approved);
+                resCommand.setComment(comment);
+                resignationAppService.approveResignation(businessId, resCommand);
+                log.info("离职申请审批业务状态已更新: resignationId={}, approved={}", businessId, approved);
+                break;
+                
+            default:
+                // 其他审批类型由事件监听器处理，不需要在这里更新
+                log.debug("业务类型 {} 由事件监听器处理", businessType);
+                break;
+        }
+    }
 
     /**
-     * 批量审批
+     * 批量审批（全部成功或全部失败）
+     * 修复：先验证所有记录，再批量更新，保证事务原子性
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public BatchApproveResult batchApprove(List<Long> approvalIds, String result, String comment) {
         Long currentUserId = SecurityUtils.getUserId();
-        int successCount = 0;
-        int skipCount = 0;
-        List<String> errors = new java.util.ArrayList<>();
         
-        for (Long approvalId : approvalIds) {
-            try {
-                Approval approval = approvalRepository.findById(approvalId);
-                if (approval == null) {
-                    errors.add("审批记录不存在: " + approvalId);
-                    skipCount++;
-                    continue;
-                }
-                
-                if (!approval.getApproverId().equals(currentUserId)) {
-                    errors.add("无权审批此记录: " + approval.getApprovalNo());
-                    skipCount++;
-                    continue;
-                }
-                
-                if (!"PENDING".equals(approval.getStatus())) {
-                    errors.add("该审批记录已处理: " + approval.getApprovalNo());
-                    skipCount++;
-                    continue;
-                }
-                
-                // 更新审批状态
-                approval.setStatus("APPROVED".equals(result) ? "APPROVED" : "REJECTED");
-                approval.setComment(comment);
-                approval.setApprovedAt(LocalDateTime.now());
-                approvalRepository.updateById(approval);
-                
-                // 发布审批完成事件，通知业务模块更新状态
-                eventPublisher.publishEvent(new ApprovalCompletedEvent(
-                        this,
-                        approval.getId(),
-                        approval.getBusinessType(),
-                        approval.getBusinessId(),
-                        result,
-                        comment
-                ));
-                
-                successCount++;
-            } catch (Exception e) {
-                log.error("批量审批处理失败: approvalId={}", approvalId, e);
-                errors.add("处理失败: " + approvalId + " - " + e.getMessage());
-                skipCount++;
-            }
+        if (approvalIds == null || approvalIds.isEmpty()) {
+            throw new BusinessException("请选择要审批的记录");
         }
         
-        log.info("批量审批完成: 总数={}, 成功={}, 跳过={}, result={}", 
-                approvalIds.size(), successCount, skipCount, result);
+        // 第1阶段：验证所有审批记录
+        List<Approval> approvals = new java.util.ArrayList<>();
+        for (Long approvalId : approvalIds) {
+            Approval approval = approvalRepository.findById(approvalId);
+            if (approval == null) {
+                throw new BusinessException("审批记录不存在: " + approvalId);
+            }
+            if (!approval.getApproverId().equals(currentUserId)) {
+                throw new BusinessException("无权审批此记录: " + approval.getApprovalNo());
+            }
+            if (!ApprovalStatus.canApprove(approval.getStatus())) {
+                throw new BusinessException("该审批记录已处理: " + approval.getApprovalNo());
+            }
+            approvals.add(approval);
+        }
+        
+        // 第2阶段：批量更新（所有验证通过后）
+        Boolean approved = ApprovalStatus.APPROVED.equals(result);
+        for (Approval approval : approvals) {
+            approval.setStatus(approved ? ApprovalStatus.APPROVED : ApprovalStatus.REJECTED);
+            approval.setComment(comment);
+            approval.setApprovedAt(LocalDateTime.now());
+            approvalRepository.updateById(approval);
+            
+            // 发布审批完成事件
+            eventPublisher.publishEvent(new ApprovalCompletedEvent(
+                    this,
+                    approval.getId(),
+                    approval.getBusinessType(),
+                    approval.getBusinessId(),
+                    result,
+                    comment
+            ));
+        }
+        
+        log.info("批量审批完成: 总数={}, result={}, approver={}", 
+                approvalIds.size(), result, currentUserId);
         
         return BatchApproveResult.builder()
                 .total(approvalIds.size())
-                .successCount(successCount)
-                .skipCount(skipCount)
-                .errors(errors)
+                .successCount(approvalIds.size())
+                .skipCount(0)
+                .errors(java.util.Collections.emptyList())
                 .build();
     }
     
@@ -368,14 +439,7 @@ public class ApprovalAppService {
     }
 
     private String getStatusName(String status) {
-        if (status == null) return null;
-        return switch (status) {
-            case "PENDING" -> "待审批";
-            case "APPROVED" -> "已通过";
-            case "REJECTED" -> "已拒绝";
-            case "CANCELLED" -> "已取消";
-            default -> status;
-        };
+        return ApprovalStatus.getStatusName(status);
     }
 
     private String getPriorityName(String priority) {

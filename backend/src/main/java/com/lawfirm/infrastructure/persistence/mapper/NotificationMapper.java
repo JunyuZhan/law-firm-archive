@@ -46,4 +46,10 @@ public interface NotificationMapper extends BaseMapper<Notification> {
      */
     @Update("UPDATE sys_notification SET is_read = true, read_at = NOW() WHERE receiver_id = #{receiverId} AND is_read = false")
     int markAllAsRead(@Param("receiverId") Long receiverId);
+
+    /**
+     * 批量删除已读通知
+     */
+    @Update("UPDATE sys_notification SET deleted = true WHERE receiver_id = #{receiverId} AND is_read = true AND deleted = false")
+    int deleteReadNotifications(@Param("receiverId") Long receiverId);
 }

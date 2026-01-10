@@ -38,7 +38,7 @@ import {
   updateEmployee,
   deleteEmployee,
 } from '#/api/hr/employee';
-import { recognizeIdCard, type OcrResultDTO } from '#/api/ocr';
+import { recognizeIdCard, type OcrResultDTO, OCR_DISABLED, OCR_DISABLED_MESSAGE } from '#/api/ocr';
 import type {
   EmployeeDTO,
   EmployeeQuery,
@@ -797,7 +797,7 @@ onMounted(() => {
         </FormItem>
 
         <!-- OCR智能识别区域 -->
-        <div class="mb-4 p-3 bg-blue-50 rounded border border-blue-200">
+        <div v-if="!OCR_DISABLED" class="mb-4 p-3 bg-blue-50 rounded border border-blue-200">
           <div class="flex items-center mb-2">
             <IconifyIcon icon="ant-design:scan-outlined" class="text-blue-500 mr-2" />
             <span class="font-medium text-blue-700">身份证智能识别</span>
@@ -818,6 +818,15 @@ onMounted(() => {
               </Tooltip>
             </Upload>
           </Spin>
+        </div>
+        <!-- OCR禁用提示 -->
+        <div v-else class="mb-4 p-3 bg-gray-50 rounded border border-gray-200">
+          <div class="flex items-center">
+            <IconifyIcon icon="ant-design:scan-outlined" class="text-gray-400 mr-2" />
+            <span class="font-medium text-gray-500">身份证智能识别</span>
+            <Tag color="default" class="ml-2">暂不可用</Tag>
+          </div>
+          <div class="text-gray-400 text-xs mt-1">{{ OCR_DISABLED_MESSAGE }}</div>
         </div>
 
         <Row :gutter="16">

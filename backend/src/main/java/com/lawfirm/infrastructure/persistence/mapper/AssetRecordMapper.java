@@ -37,4 +37,11 @@ public interface AssetRecordMapper extends BaseMapper<AssetRecord> {
      */
     @Select("SELECT * FROM admin_asset_record WHERE record_type = 'RECEIVE' AND actual_return_date IS NULL AND deleted = false ORDER BY expected_return_date")
     List<AssetRecord> selectUnreturnedRecords();
+
+    /**
+     * 统计资产的操作记录数量
+     * 问题294修复：用于删除前检查历史记录
+     */
+    @Select("SELECT COUNT(*) FROM admin_asset_record WHERE asset_id = #{assetId} AND deleted = false")
+    long countByAssetId(@Param("assetId") Long assetId);
 }
