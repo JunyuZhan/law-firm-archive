@@ -1375,5 +1375,3 @@ CREATE INDEX idx_letter_application_status ON public.letter_application USING bt
 -- PostgreSQL database dump complete
 --
 
-\unrestrict gyfK09NgYV9x2rh1oYHtvJhzUUGAp75h0afkkik88YAGa8wJqoiaYlcJEZDX0d8
-

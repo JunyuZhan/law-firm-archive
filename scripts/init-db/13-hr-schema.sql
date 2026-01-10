@@ -2222,5 +2222,3 @@ CREATE INDEX idx_leave_balance_year ON public.leave_balance USING btree (year);
 -- PostgreSQL database dump complete
 --
 
-\unrestrict j3OenIunUjZkQQTtJ6YXfnJHgvlhN2o5ZV5ZJBqP7wTofx9VwIDoEzKrQI43nsJ
-
