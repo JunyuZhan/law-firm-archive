@@ -24,8 +24,7 @@
 
 | 文档 | 说明 |
 |------|------|
-| [SECURITY_AUDIT_REPORT.md](./SECURITY_AUDIT_REPORT.md) | 安全审计报告 |
-| [SECURITY_FIXES_SUMMARY.md](./SECURITY_FIXES_SUMMARY.md) | 安全修复总结 |
+| [SECURITY_AUDIT_REPORT.md](./SECURITY_AUDIT_REPORT.md) | 安全审计报告与部署检查清单 |
 
 ### 功能设计
 
