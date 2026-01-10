@@ -1124,7 +1124,7 @@ ON CONFLICT (role_id, menu_id) DO NOTHING;
 -- =====================================================
 
 -- 插入默认用户
-INSERT INTO public.sys_user (id, username, password, real_name, email, phone, status, deleted, create_time, update_time, version)
+INSERT INTO public.sys_user (id, username, password, real_name, email, phone, status, deleted, created_at, updated_at, version)
 VALUES 
 (1, 'admin', '$2a$12$VwbtDL2dik9LtPNlLf7qqu64ZSlS67cedlG/eQXm0mGK7sONamcLO', '系统管理员', 'admin@lawfirm.com', '13800000001', 'ACTIVE', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0),
 (2, 'director', '$2a$12$VwbtDL2dik9LtPNlLf7qqu64ZSlS67cedlG/eQXm0mGK7sONamcLO', '律所主任', 'director@lawfirm.com', '13800000002', 'ACTIVE', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0),
