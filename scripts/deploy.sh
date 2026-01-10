@@ -85,9 +85,23 @@ if [ -z "$DB_PASSWORD" ] || [ "$DB_PASSWORD" = "your_secure_db_password_here" ];
 fi
 
 # =====================================================
+# 自动生成 MINIO_ACCESS_KEY（如果是默认值 minioadmin）
+# =====================================================
+if [ -z "$MINIO_ACCESS_KEY" ] || [ "$MINIO_ACCESS_KEY" = "minioadmin" ]; then
+    NEW_MINIO_ACCESS="lawfirm_minio_$(openssl rand -hex 4 2>/dev/null || head -c 4 /dev/urandom | xxd -p)"
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        sed -i '' "s|MINIO_ACCESS_KEY=.*|MINIO_ACCESS_KEY=$NEW_MINIO_ACCESS|" "$ENV_FILE"
+    else
+        sed -i "s|MINIO_ACCESS_KEY=.*|MINIO_ACCESS_KEY=$NEW_MINIO_ACCESS|" "$ENV_FILE"
+    fi
+    echo -e "${GREEN}✅ 已自动生成 MINIO_ACCESS_KEY${NC}"
+    UPDATED=true
+fi
+
+# =====================================================
 # 自动生成 MINIO_SECRET_KEY
 # =====================================================
-if [ -z "$MINIO_SECRET_KEY" ] || [ "$MINIO_SECRET_KEY" = "your_secure_minio_password_here" ]; then
+if [ -z "$MINIO_SECRET_KEY" ] || [ "$MINIO_SECRET_KEY" = "your_secure_minio_password_here" ] || [ "$MINIO_SECRET_KEY" = "minioadmin" ]; then
     NEW_MINIO_SECRET=$(generate_password)
     if [[ "$OSTYPE" == "darwin"* ]]; then
         sed -i '' "s|MINIO_SECRET_KEY=.*|MINIO_SECRET_KEY=$NEW_MINIO_SECRET|" "$ENV_FILE"
@@ -125,7 +139,7 @@ if [ -f "scripts/check-production-ready.sh" ] && [ "${SKIP_CHECK:-}" != "true" ]
         read -p "是否继续部署？(y/N) " -n 1 -r
         echo
         if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-            exit 1
+        exit 1
         fi
     fi
     echo ""
