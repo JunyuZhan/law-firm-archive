@@ -1,6 +1,6 @@
 # 开发者文档
 
-本目录存放开发者参考文档，供代码开发和维护人员使用。
+本目录存放开发者参考文档。
 
 ## 文档索引
 
@@ -8,7 +8,7 @@
 
 | 文档 | 说明 |
 |------|------|
-| [BACKEND_IMPLEMENTATION_GUIDE.md](./BACKEND_IMPLEMENTATION_GUIDE.md) | 后端实现指南 |
+| [BACKEND_IMPLEMENTATION_GUIDE.md](./BACKEND_IMPLEMENTATION_GUIDE.md) | 后端架构和代码实现指南 |
 | [frontend-component-guide.md](./frontend-component-guide.md) | 前端组件使用指南 |
 | [UTILITIES_GUIDE.md](./UTILITIES_GUIDE.md) | 工具类使用指南 |
 
@@ -27,29 +27,30 @@
 | [SECURITY_AUDIT_REPORT.md](./SECURITY_AUDIT_REPORT.md) | 安全审计报告 |
 | [SECURITY_FIXES_SUMMARY.md](./SECURITY_FIXES_SUMMARY.md) | 安全修复总结 |
 
-### 版本管理
+### 功能设计
 
 | 文档 | 说明 |
 |------|------|
-| [VERSION_MANAGEMENT.md](./VERSION_MANAGEMENT.md) | 版本管理规范 |
-| [VERSION_FORMAT_GUIDE.md](./VERSION_FORMAT_GUIDE.md) | 版本格式说明 |
+| [QR_CODE_VERIFICATION_DESIGN.md](./QR_CODE_VERIFICATION_DESIGN.md) | 函件二维码防伪验证系统设计 |
+| [VERSION_MANAGEMENT.md](./VERSION_MANAGEMENT.md) | 版本号管理说明 |
 
-### 其他
+## Docker 部署文档
+
+Docker 相关部署文档位于 `docker/` 目录：
 
 | 文档 | 说明 |
 |------|------|
-| [BUSINESS_LOGIC_REVIEW_REPORT.md](./BUSINESS_LOGIC_REVIEW_REPORT.md) | 业务逻辑审查报告 |
-| [QR_CODE_VERIFICATION_DESIGN.md](./QR_CODE_VERIFICATION_DESIGN.md) | 二维码验证设计 |
-| [TEST_COVERAGE_PLAN.md](./TEST_COVERAGE_PLAN.md) | 测试覆盖计划 |
+| [DEPLOY.md](../docker/DEPLOY.md) | Docker 部署指南 |
+| [DEPLOY-SWARM.md](../docker/DEPLOY-SWARM.md) | Docker Swarm 集群部署 |
+| [DEPLOY-NAS.md](../docker/DEPLOY-NAS.md) | NAS 存储部署方案 |
+| [DATA-SECURITY.md](../docker/DATA-SECURITY.md) | 数据安全指南 |
 
 ## 用户手册
 
-用户操作手册位于 `frontend/docs/`，是一个独立的 VitePress 文档站点：
+用户操作手册位于 `frontend/docs/`，是 VitePress 文档站点：
 
 ```bash
 cd frontend/docs
 pnpm install
 pnpm run dev
 ```
-
-包含各模块的用户操作指南。

@@ -124,7 +124,7 @@ pnpm dev
 
 | 文档 | 说明 |
 |------|------|
-| [部署指南](./DEPLOY.md) | 生产环境部署说明 |
+| [Docker 部署指南](./docker/DEPLOY.md) | 生产环境部署说明 |
 | [开发文档](./docs/README.md) | 开发者参考文档 |
 | [用户手册](./frontend/docs/) | 用户操作手册（VitePress） |
 
