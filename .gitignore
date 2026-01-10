@@ -60,3 +60,4 @@ LOG_PATH_IS_UNDEFINED/
 *.pyc
 backend/logs/
 .cursor/rules/
+backend/backups/
