@@ -1115,3 +1115,30 @@ ON CONFLICT (role_id, menu_id) DO NOTHING;
 --
 -- Name: sys_role_menu_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
+
+-- =====================================================
+-- 默认用户数据
+-- =====================================================
+-- 密码说明:
+-- admin123 的 BCrypt 哈希: $2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKj1gMGi
+-- lawyer123 的 BCrypt 哈希: $2a$10$eUJL8V0X6yLz7NdRqQ5Tx.YbZmVQK7zyHCqJz9P1E7eF5Z6tJvNXe
+-- =====================================================
+
+-- 插入默认用户
+INSERT INTO public.sys_user (id, username, password, real_name, email, phone, status, deleted, create_time, update_time, version)
+VALUES 
+(1, 'admin', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKj1gMGi', '系统管理员', 'admin@lawfirm.com', '13800000001', 'ACTIVE', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0),
+(2, 'director', '$2a$10$eUJL8V0X6yLz7NdRqQ5Tx.YbZmVQK7zyHCqJz9P1E7eF5Z6tJvNXe', '律所主任', 'director@lawfirm.com', '13800000002', 'ACTIVE', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0),
+(3, 'lawyer1', '$2a$10$eUJL8V0X6yLz7NdRqQ5Tx.YbZmVQK7zyHCqJz9P1E7eF5Z6tJvNXe', '张律师', 'lawyer1@lawfirm.com', '13800000003', 'ACTIVE', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0)
+ON CONFLICT (id) DO NOTHING;
+
+-- 设置用户ID序列
+SELECT setval('sys_user_id_seq', COALESCE((SELECT MAX(id) FROM sys_user), 0) + 1, false);
+
+-- 插入用户角色关联
+INSERT INTO public.sys_user_role (user_id, role_id)
+VALUES 
+(1, 1),  -- admin -> 管理员角色
+(2, 2),  -- director -> 主任角色
+(3, 6)   -- lawyer1 -> 律师角色
+ON CONFLICT (user_id, role_id) DO NOTHING;
