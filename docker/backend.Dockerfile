@@ -16,6 +16,15 @@ RUN mvn dependency:go-offline -B
 COPY src ./src
 RUN mvn clean package -Pprod -DskipTests -B
 
+# 提取版本号并更新 version.properties
+RUN VERSION=$(grep -m1 '<version>' pom.xml | sed 's/.*<version>\(.*\)<\/version>.*/\1/') && \
+    BUILD_TIME=$(date '+%Y-%m-%d %H:%M:%S') && \
+    cd target/classes && \
+    sed -i "s/\${project.version}/$VERSION/g" version.properties && \
+    sed -i "s/\${maven.build.timestamp}/$BUILD_TIME/g" version.properties && \
+    sed -i "s/\${git.commit.id.abbrev:unknown}/docker-build/g" version.properties && \
+    jar uf ../law-firm-backend-*.jar version.properties
+
 RUN echo "Build Success 🎉"
 
 # ============================================
