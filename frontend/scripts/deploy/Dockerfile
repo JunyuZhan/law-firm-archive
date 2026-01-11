@@ -16,8 +16,12 @@ WORKDIR /app
 # copy package.json and pnpm-lock.yaml to workspace
 COPY . /app
 
-# 初始化空 git 仓库（文档 changelog 插件需要）
-RUN git init && git config user.email "build@docker" && git config user.name "Docker Build"
+# 初始化 git 仓库并创建初始提交（文档 changelog 插件需要）
+RUN git init && \
+    git config user.email "build@docker" && \
+    git config user.name "Docker Build" && \
+    git add -A && \
+    git commit -m "Docker build"
 
 # 安装依赖
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
