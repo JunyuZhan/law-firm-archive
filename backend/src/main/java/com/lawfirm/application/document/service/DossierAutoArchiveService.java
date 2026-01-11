@@ -64,9 +64,6 @@ public class DossierAutoArchiveService {
     private final PdfGeneratorService pdfGeneratorService;
     private final TemplateVariableService templateVariableService;
 
-    /** 模板类型常量 - 只有授权委托书需要模板定制 */
-    public static final String TEMPLATE_TYPE_POWER_OF_ATTORNEY = "POWER_OF_ATTORNEY";
-
     /** 文档来源类型常量 */
     public static final String SOURCE_TYPE_SYSTEM_GENERATED = "SYSTEM_GENERATED";
     public static final String SOURCE_TYPE_SYSTEM_LINKED = "SYSTEM_LINKED";
