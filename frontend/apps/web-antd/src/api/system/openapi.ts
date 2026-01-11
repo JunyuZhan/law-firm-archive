@@ -193,3 +193,17 @@ export function revokeToken(id: number, reason?: string) {
     params: { reason },
   });
 }
+
+/**
+ * 获取授权范围选项（别名，兼容旧代码）
+ */
+export function getScopeOptions() {
+  return getPushScopeOptions();
+}
+
+/**
+ * 获取指定客户的令牌列表
+ */
+export function getClientTokens(clientId: number) {
+  return getTokenList({ clientId });
+}
