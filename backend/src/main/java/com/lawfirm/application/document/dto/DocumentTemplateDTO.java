@@ -5,8 +5,6 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Map;
 
 /**
  * 文档模板DTO
@@ -30,7 +28,7 @@ public class DocumentTemplateDTO extends BaseDTO {
     private Long fileSize;
     private String fileSizeDisplay;
     
-    private List<String> variables;
+    private String variables;
     private String description;
     
     private String status;

@@ -59,10 +59,8 @@ public class DossierAutoArchiveService {
     private final PdfGeneratorService pdfGeneratorService;
     private final TemplateVariableService templateVariableService;
 
-    /** 模板类型常量 */
-    public static final String TEMPLATE_TYPE_APPROVAL_FORM = "APPROVAL_FORM";
+    /** 模板类型常量 - 只有授权委托书需要模板定制 */
     public static final String TEMPLATE_TYPE_POWER_OF_ATTORNEY = "POWER_OF_ATTORNEY";
-    public static final String TEMPLATE_TYPE_CONTRACT = "CONTRACT";
 
     /** 文档来源类型常量 */
     public static final String SOURCE_TYPE_SYSTEM_GENERATED = "SYSTEM_GENERATED";
@@ -197,7 +195,7 @@ public class DossierAutoArchiveService {
 
     /**
      * 归档收案审批表（内部方法，指定操作人）
-     * 优先使用模板系统生成，如果模板不存在则使用默认格式
+     * 直接使用审批记录数据生成 PDF（审批表在合同审批时已产生）
      */
     private void archiveApprovalFormInternal(Long matterId, Long contractId, Long operatorId) {
         if (contractId == null) {
@@ -237,28 +235,8 @@ public class DossierAutoArchiveService {
             Client client = contract != null && contract.getClientId() != null 
                 ? clientRepository.getById(contract.getClientId()) : null;
 
-            byte[] pdfContent;
-            
-            // 尝试使用模板生成
-            DocumentTemplate template = documentTemplateRepository.findFirstByTemplateType(TEMPLATE_TYPE_APPROVAL_FORM);
-            if (template != null && template.getContent() != null && !template.getContent().isEmpty()) {
-                log.debug("使用模板生成收案审批表: templateNo={}", template.getTemplateNo());
-                
-                // 收集变量并替换
-                Map<String, Object> variables = templateVariableService.collectVariablesWithContractAndApproval(
-                    matterId, contractId, approval);
-                String content = templateVariableService.replaceVariables(template.getContent(), variables);
-                
-                // 生成 PDF
-                pdfContent = pdfGeneratorService.generatePdfFromTemplateContent("收案审批表", content);
-                
-                // 增加模板使用次数
-                documentTemplateRepository.incrementUseCount(template.getId());
-            } else {
-                // 回退到默认格式
-                log.debug("未找到收案审批表模板，使用默认格式");
-                pdfContent = pdfGeneratorService.generateApprovalFormPdf(approval, contract, matter, client);
-            }
+            // 直接使用审批记录数据生成 PDF（不使用模板，因为审批表格式固定）
+            byte[] pdfContent = pdfGeneratorService.generateApprovalFormPdf(approval, contract, matter, client);
 
             // 上传到MinIO
             String fileName = "收案审批表_" + (contract != null ? contract.getContractNo() : matterId) + ".pdf";
@@ -300,7 +278,8 @@ public class DossierAutoArchiveService {
 
     /**
      * 归档委托合同（内部方法，指定操作人）
-     * 优先使用已有文件，其次使用合同内容，最后使用模板生成
+     * 优先使用已有文件，其次使用合同内容生成 PDF
+     * 注意：合同在创建时已从模板加载内容，这里只是生成快照
      */
     private void archiveContractInternal(Long matterId, Long contractId, Long operatorId) {
         if (contractId == null) {
@@ -341,7 +320,7 @@ public class DossierAutoArchiveService {
                 fileSize = 0; // 无法获取实际大小
                 sourceType = SOURCE_TYPE_SYSTEM_LINKED;
             } 
-            // 方案2: 如果合同有内容，生成PDF
+            // 方案2: 使用合同内容生成 PDF（合同内容已在创建时从模板填充）
             else if (contract.getContent() != null && !contract.getContent().isEmpty()) {
                 Matter matter = matterRepository.getById(matterId);
                 Client client = contract.getClientId() != null 
@@ -355,31 +334,19 @@ public class DossierAutoArchiveService {
                 fileSize = pdfContent.length;
                 sourceType = SOURCE_TYPE_SYSTEM_GENERATED;
             } 
-            // 方案3: 使用模板生成
+            // 方案3: 合同无内容，使用默认格式生成
             else {
-                DocumentTemplate template = documentTemplateRepository.findFirstByTemplateType(TEMPLATE_TYPE_CONTRACT);
-                if (template != null && template.getContent() != null && !template.getContent().isEmpty()) {
-                    log.debug("使用模板生成委托合同: templateNo={}", template.getTemplateNo());
-                    
-                    // 收集变量并替换
-                    Map<String, Object> variables = templateVariableService.collectVariables(matterId);
-                    String content = templateVariableService.replaceVariables(template.getContent(), variables);
-                    
-                    // 生成 PDF
-                    byte[] pdfContent = pdfGeneratorService.generatePdfFromTemplateContent("委托代理合同", content);
-                    
-                    fileName = "委托代理合同_" + contract.getContractNo() + ".pdf";
-                    String storagePath = "dossier/" + matterId + "/" + fileName;
-                    fileUrl = minioService.uploadBytes(pdfContent, storagePath, "application/pdf");
-                    fileSize = pdfContent.length;
-                    sourceType = SOURCE_TYPE_SYSTEM_GENERATED;
-                    
-                    // 增加模板使用次数
-                    documentTemplateRepository.incrementUseCount(template.getId());
-                } else {
-                    log.debug("合同无文件、内容和模板，跳过归档: contractId={}", contractId);
-                    return;
-                }
+                Matter matter = matterRepository.getById(matterId);
+                Client client = contract.getClientId() != null 
+                    ? clientRepository.getById(contract.getClientId()) : null;
+
+                byte[] pdfContent = pdfGeneratorService.generateContractPdf(contract, matter, client);
+                
+                fileName = "委托代理合同_" + contract.getContractNo() + ".pdf";
+                String storagePath = "dossier/" + matterId + "/" + fileName;
+                fileUrl = minioService.uploadBytes(pdfContent, storagePath, "application/pdf");
+                fileSize = pdfContent.length;
+                sourceType = SOURCE_TYPE_SYSTEM_GENERATED;
             }
 
             createArchivedDocument(

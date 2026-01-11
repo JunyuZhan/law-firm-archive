@@ -3,9 +3,6 @@ package com.lawfirm.application.document.command;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
-import java.util.List;
-import java.util.Map;
-
 /**
  * 创建文档模板命令
  */
@@ -46,9 +43,9 @@ public class CreateDocumentTemplateCommand {
     private Long fileSize;
 
     /**
-     * 变量定义（变量名列表）
+     * 变量定义（逗号分隔的变量名）
      */
-    private List<String> variables;
+    private String variables;
 
     /**
      * 描述

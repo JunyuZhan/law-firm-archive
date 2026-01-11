@@ -46,6 +46,7 @@ const templateTypeOptions = [
   { label: 'Excel表格', value: 'EXCEL' },
   { label: 'PDF文档', value: 'PDF' },
   { label: '富文本', value: 'HTML' },
+  { label: '授权委托书(自动归档)', value: 'POWER_OF_ATTORNEY' },
 ];
 
 // 业务类型选项（项目大类 + 通用）
@@ -55,62 +56,55 @@ const businessTypeOptions = [
   { label: '通用', value: 'GENERAL' },
 ];
 
-// 系统预设变量
+// 系统预设变量（与后端 TemplateVariableService 一致）
 const systemVariables = [
-  { label: '项目名称', value: 'matterName', description: '委托项目/案件名称' },
-  { label: '项目编号', value: 'matterNo', description: '案件编号' },
-  { label: '案由', value: 'causeOfAction', description: '案件案由' },
-  { label: '案件类型', value: 'caseType', description: '民事/刑事/行政等' },
-  {
-    label: '对方当事人',
-    value: 'opposingParty',
-    description: '对方当事人姓名',
-  },
-  { label: '标的金额', value: 'claimAmount', description: '诉讼标的金额' },
-  {
-    label: '管辖法院',
-    value: 'jurisdictionCourt',
-    description: '管辖法院名称',
-  },
-  {
-    label: '委托人姓名',
-    value: 'clientName',
-    description: '委托人/当事人姓名',
-  },
-  {
-    label: '委托人身份证号',
-    value: 'clientIdNumber',
-    description: '委托人身份证号码',
-  },
-  {
-    label: '委托人地址',
-    value: 'clientAddress',
-    description: '委托人联系地址',
-  },
-  { label: '委托人电话', value: 'clientPhone', description: '委托人联系电话' },
-  {
-    label: '法定代表人',
-    value: 'legalRepresentative',
-    description: '企业法定代表人',
-  },
-  { label: '承办律师', value: 'lawyerNames', description: '承办律师姓名' },
-  {
-    label: '律师执业证号',
-    value: 'lawyerLicenseNo',
-    description: '承办律师执业证号',
-  },
-  { label: '律所名称', value: 'firmName', description: '律师事务所全称' },
-  { label: '律所地址', value: 'firmAddress', description: '律师事务所地址' },
-  { label: '律所电话', value: 'firmPhone', description: '律师事务所电话' },
-  { label: '合同编号', value: 'contractNo', description: '合同编号' },
-  { label: '合同金额', value: 'totalAmount', description: '合同总金额' },
-  {
-    label: '大写金额',
-    value: 'totalAmountChinese',
-    description: '合同金额大写',
-  },
-  { label: '当前年份', value: 'currentYear', description: '当前年份' },
-  { label: '当前日期', value: 'currentDate', description: '当前完整日期' },
+  // 项目相关
+  { label: '项目名称', value: 'matter.name', description: '委托项目/案件名称' },
+  { label: '项目编号', value: 'matter.no', description: '案件编号' },
+  { label: '案件类型', value: 'matter.caseTypeName', description: '民事/刑事/行政等' },
+  { label: '项目类型', value: 'matter.matterTypeName', description: '诉讼/非诉等' },
+  { label: '案由', value: 'matter.causeOfAction', description: '案件案由' },
+  { label: '对方当事人', value: 'matter.opposingParty', description: '对方当事人姓名' },
+  { label: '案情简介', value: 'matter.description', description: '案情摘要' },
+  { label: '立案日期', value: 'matter.filingDate', description: '立案日期' },
+  // 客户相关
+  { label: '客户名称', value: 'client.name', description: '委托人/当事人姓名' },
+  { label: '客户类型', value: 'client.typeName', description: '企业/个人客户' },
+  { label: '身份标识', value: 'client.idLabel', description: '身份证号/统一社会信用代码' },
+  { label: '身份号码', value: 'client.idNumber', description: '身份证号或信用代码' },
+  { label: '客户电话', value: 'client.phone', description: '委托人联系电话' },
+  { label: '客户地址', value: 'client.address', description: '委托人联系地址' },
+  { label: '法定代表人', value: 'client.legalPerson', description: '企业法定代表人' },
+  // 律师相关
+  { label: '承办律师', value: 'lawyer.name', description: '承办律师姓名' },
+  { label: '律师执业证号', value: 'lawyer.licenseNo', description: '承办律师执业证号' },
+  { label: '律师电话', value: 'lawyer.phone', description: '律师联系电话' },
+  // 律所相关
+  { label: '律所名称', value: 'firm.name', description: '律师事务所全称' },
+  { label: '律所地址', value: 'firm.address', description: '律师事务所地址' },
+  { label: '律所电话', value: 'firm.phone', description: '律师事务所电话' },
+  // 合同相关
+  { label: '合同编号', value: 'contract.no', description: '合同编号' },
+  { label: '合同名称', value: 'contract.name', description: '合同名称' },
+  { label: '合同金额', value: 'contract.totalAmount', description: '合同总金额' },
+  { label: '大写金额', value: 'contract.totalAmountCN', description: '合同金额大写' },
+  { label: '收费方式', value: 'contract.feeTypeName', description: '固定/计时/风险代理等' },
+  { label: '付款条款', value: 'contract.paymentTerms', description: '付款约定' },
+  { label: '合同签署日期', value: 'contract.signDate', description: '合同签署日期' },
+  // 审批相关
+  { label: '审批状态', value: 'approval.statusName', description: '待审批/已通过/已驳回' },
+  { label: '审批人', value: 'approval.approverName', description: '审批人姓名' },
+  { label: '审批时间', value: 'approval.approvedAt', description: '审批完成时间' },
+  { label: '审批意见', value: 'approval.comment', description: '审批备注意见' },
+  // 代理相关
+  { label: '代理权限类型', value: 'authorizationType', description: '一般代理/特别代理' },
+  { label: '代理权限范围', value: 'authorizationScope', description: '代理权限详细描述' },
+  { label: '审理阶段', value: 'trialStage', description: '一审/二审/再审等' },
+  // 日期相关
+  { label: '当前日期', value: 'date.today', description: '当前完整日期' },
+  { label: '当前年份', value: 'date.year', description: '当前年份' },
+  { label: '当前月份', value: 'date.month', description: '当前月份' },
+  { label: '当前日', value: 'date.day', description: '当前日' },
 ];
 
 // 预设模板选项
@@ -119,6 +113,7 @@ const presetTemplates = [
   { label: '授权委托书', value: 'authorization' },
   { label: '法律意见书', value: 'legalOpinion' },
   { label: '起诉状', value: 'complaint' },
+  { label: '授权委托书(自动归档)', value: 'powerOfAttorney' },
 ];
 
 // 是否使用富文本编辑器
@@ -262,11 +257,64 @@ function getPresetContent(type: string): string {
     '</div>',
   ].join('\n');
 
+  // 自动归档 - 授权委托书模板（纯文本格式，用于PDF生成）
+  const powerOfAttorneyTpl = `                          授 权 委 托 书
+
+
+                          【委托人信息】
+
+委托人：\${client.name}
+\${client.idLabel}：\${client.idNumber}
+联系电话：\${client.phone}
+住所地址：\${client.address}
+
+
+                          【受托人信息】
+
+受托人：\${firm.name}
+承办律师：\${lawyer.name}
+执业证号：\${lawyer.licenseNo}
+律所地址：\${firm.address}
+
+
+                          【委托事项】
+
+    本人因 \${matter.name}（\${matter.caseTypeName}）一案，特委托上述受托人
+作为本人的诉讼代理人。
+
+代理阶段：\${trialStage}
+
+
+                          【代理权限】
+
+代理权限类型：\${authorizationType}
+
+\${authorizationScope}
+
+
+                          【委托期限】
+
+本委托书自签署之日起至本案\${trialStage}结案止。
+
+
+                          【签字确认】
+
+委托人（签章）：________________
+
+日    期：    年  月  日
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+生成日期：\${date.today}
+【本授权委托书由系统自动生成，以签字盖章版本为准】`;
+
   const map: Record<string, string> = {
     contract: contractTpl,
     authorization: authTpl,
     legalOpinion: opinionTpl,
     complaint: complaintTpl,
+    powerOfAttorney: powerOfAttorneyTpl,
   };
   return map[type] || '';
 }

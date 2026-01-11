@@ -73,7 +73,7 @@ public class SecurityConfig {
                     || Arrays.asList(environment.getActiveProfiles()).contains("test");
                 
                 if (isDevOrTest) {
-                    // 开发/测试环境：包含 Swagger UI
+                    // 开发/测试环境：包含 Swagger UI 和测试接口
                     auth.requestMatchers(
                     "/auth/login",
                     "/auth/logout",           // 登出接口允许未认证访问（token 可能已过期）
@@ -84,6 +84,7 @@ public class SecurityConfig {
                     "/v3/api-docs/**",
                     "/actuator/health",
                     "/error",
+                    "/test/**",              // 测试接口（仅开发/测试环境）
                     "/document/*/callback",  // OnlyOffice 回调接口（无需认证）
                     "/document/*/content",   // OnlyOffice 文件代理接口（通过 token 验证）
                     "/open/verify/**",       // 公开验证接口（函件、合同等真伪验证）

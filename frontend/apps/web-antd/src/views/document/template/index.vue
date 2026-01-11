@@ -55,6 +55,7 @@ const templateTypeOptions = [
   { label: 'Excel表格', value: 'EXCEL' },
   { label: 'PDF文档', value: 'PDF' },
   { label: '富文本', value: 'HTML' },
+  { label: '授权委托书(自动归档)', value: 'POWER_OF_ATTORNEY' },
 ];
 
 // 业务类型选项（用于模板筛选）
@@ -209,6 +210,7 @@ function getTemplateTypeColor(type: string) {
     EXCEL: 'green',
     PDF: 'red',
     HTML: 'purple',
+    POWER_OF_ATTORNEY: 'orange',
   };
   return colors[type] || 'default';
 }

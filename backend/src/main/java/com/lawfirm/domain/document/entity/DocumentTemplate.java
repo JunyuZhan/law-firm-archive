@@ -1,14 +1,9 @@
 package com.lawfirm.domain.document.entity;
 
-import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
-import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
 import com.lawfirm.common.base.BaseEntity;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
-
-import java.util.List;
-import java.util.Map;
 
 /**
  * 文档模板实体
@@ -57,10 +52,9 @@ public class DocumentTemplate extends BaseEntity {
     private Long fileSize;
 
     /**
-     * 变量定义（变量名列表）
+     * 变量定义（逗号分隔的变量名，如: 客户名称,项目名称,承办律师）
      */
-    @TableField(typeHandler = JacksonTypeHandler.class)
-    private List<String> variables;
+    private String variables;
 
     /**
      * 模板内容（文本格式，包含变量占位符）

@@ -389,9 +389,13 @@ public class DocumentTemplateAppService {
         return switch (type) {
             case "CONTRACT" -> "合同";
             case "LEGAL_OPINION" -> "法律意见书";
-            case "POWER_OF_ATTORNEY" -> "授权委托书";
+            case "POWER_OF_ATTORNEY" -> "授权委托书(自动归档)";
             case "COMPLAINT" -> "起诉状";
             case "DEFENSE" -> "答辩状";
+            case "WORD" -> "Word文档";
+            case "EXCEL" -> "Excel表格";
+            case "PDF" -> "PDF文档";
+            case "HTML" -> "富文本";
             case "OTHER" -> "其他";
             default -> type;
         };
