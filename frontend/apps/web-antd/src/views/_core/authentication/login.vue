@@ -102,13 +102,8 @@ async function handleLogin(values: Recordable<any>) {
     </div>
   </div>
 </template>
-
 <style scoped>
-/* display: contents 让容器"隐形"，不影响子元素布局 */
-.login-container {
-  display: contents;
-}
-
+/* 版本号固定在视口右下角，不影响文档流 */
 .version-info {
   position: fixed;
   bottom: 20px;
@@ -117,9 +112,12 @@ async function handleLogin(values: Recordable<any>) {
   color: rgba(0, 0, 0, 0.35);
   z-index: 10;
 }
+</style>
 
-/* 暗色模式下调整颜色 */
+<style>
+/* 暗色模式（全局样式） */
 .dark .version-info {
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.5) !important;
 }
 </style>
+

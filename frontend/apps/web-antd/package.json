@@ -15,7 +15,7 @@
   },
   "type": "module",
   "scripts": {
-    "prebuild": "node ../../../scripts/sync-version.mjs",
+    "prebuild": "node ../../../scripts/sync-version.mjs 2>/dev/null || echo 'Skip version sync in Docker'",
     "build": "pnpm vite build --mode production",
     "build:analyze": "pnpm vite build --mode analyze",
     "dev": "pnpm vite --mode development",
