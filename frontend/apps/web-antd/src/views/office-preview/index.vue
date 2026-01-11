@@ -334,27 +334,27 @@ function goBack() {
 
 <style scoped>
 .office-preview {
+  display: flex;
+  flex-direction: column;
   width: 100vw;
   height: 100vh;
   overflow: hidden;
-  display: flex;
-  flex-direction: column;
   background: #f0f2f5;
 }
 
 .toolbar {
   display: flex;
-  justify-content: space-between;
+  flex-shrink: 0;
   align-items: center;
+  justify-content: space-between;
   padding: 8px 16px;
   background: #fff;
   border-bottom: 1px solid #e8e8e8;
-  flex-shrink: 0;
 }
 
 .document-title {
-  font-weight: 500;
   margin-left: 16px;
+  font-weight: 500;
   color: #333;
 }
 
@@ -362,9 +362,9 @@ function goBack() {
   position: absolute;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%);
-  text-align: center;
   z-index: 10;
+  text-align: center;
+  transform: translate(-50%, -50%);
 }
 
 .loading-text {
@@ -376,9 +376,9 @@ function goBack() {
   position: absolute;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%);
-  max-width: 500px;
   z-index: 10;
+  max-width: 500px;
+  transform: translate(-50%, -50%);
 }
 
 .editor-container {

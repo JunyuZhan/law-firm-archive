@@ -342,15 +342,15 @@ defineExpose({
 }
 
 .hint-text {
-  color: #999;
   margin-top: 8px;
   font-size: 12px;
+  color: #999;
 }
 
 .search-hint {
-  color: #666;
   margin-top: 8px;
   font-size: 12px;
+  color: #666;
 }
 
 .section-title {
@@ -360,8 +360,8 @@ defineExpose({
 .matter-card {
   margin-top: 16px;
   background: linear-gradient(135deg, #f6ffed 0%, #e6f7ff 100%);
-  border-radius: 8px;
   border: 1px solid #b7eb8f;
+  border-radius: 8px;
 }
 
 .matter-card :deep(.ant-card-body) {
@@ -369,30 +369,30 @@ defineExpose({
 }
 
 .matter-name {
-  margin: 0 0 8px 0;
+  margin: 0 0 8px;
   font-size: 15px;
 }
 
 .matter-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
   margin: 0;
   font-size: 12px;
   color: #666;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
 }
 
 .load-more-hint {
   padding: 8px 12px;
   text-align: center;
-  border-top: 1px solid #f0f0f0;
   background: #fafafa;
+  border-top: 1px solid #f0f0f0;
 }
 
 .load-more-text {
-  color: #999;
   font-size: 12px;
+  color: #999;
 }
 </style>
 

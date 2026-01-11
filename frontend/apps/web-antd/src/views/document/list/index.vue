@@ -1504,11 +1504,11 @@ onMounted(() => {
         </Space>
       </template>
       
-      <div v-if="loading" style="text-align: center; padding: 40px">
+      <div v-if="loading" style=" padding: 40px;text-align: center">
         加载中...
       </div>
       
-      <div v-else-if="filteredMatters.length === 0" style="text-align: center; padding: 40px; color: #999">
+      <div v-else-if="filteredMatters.length === 0" style=" padding: 40px; color: #999;text-align: center">
         暂无符合条件的项目
       </div>
       
@@ -1522,7 +1522,7 @@ onMounted(() => {
             :class="`matter-card-${matter.caseType || 'default'}`"
           >
             <template #title>
-              <div style="font-size: 14px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+              <div style=" overflow: hidden; text-overflow: ellipsis;font-size: 14px; font-weight: 500; white-space: nowrap;">
                 {{ matter.name }}
               </div>
             </template>
@@ -1550,17 +1550,17 @@ onMounted(() => {
                 <span style="color: #999">对方：</span>
                 <span style="color: #666">{{ matter.opposingParty }}</span>
               </div>
-              <div style="display: flex; justify-content: space-between; margin-top: 8px; padding-top: 8px; border-top: 1px solid #f0f0f0">
+              <div style="display: flex; justify-content: space-between; padding-top: 8px; margin-top: 8px; border-top: 1px solid #f0f0f0">
                 <div>
                   <span style="color: #999">类型：</span>
                   <Tag 
                     :color="getMatterCoverTheme(matter).primaryColor" 
-                    style="margin: 0; font-size: 10px; padding: 0 4px; border: none;"
+                    style=" padding: 0 4px;margin: 0; font-size: 10px; border: none;"
                   >
                     {{ matter.caseTypeName || getCaseTypeName(matter.caseType) }}
                   </Tag>
                 </div>
-                <div style="color: #999; font-size: 11px">
+                <div style=" font-size: 11px;color: #999">
                   {{ formatDate(matter.filingDate) || formatDate(matter.createdAt) || '-' }}
                 </div>
               </div>
@@ -1691,7 +1691,7 @@ onMounted(() => {
                   type="checkbox" 
                   :checked="isAllSelected()" 
                   @change="toggleSelectAll"
-                  style="cursor: pointer; width: 16px; height: 16px;"
+                  style=" width: 16px; height: 16px;cursor: pointer;"
                   title="全选/取消全选"
                 />
               </div>
@@ -1704,8 +1704,8 @@ onMounted(() => {
             </div>
             
             <!-- 可拖拽文档列表 -->
-            <div v-if="loading" style="text-align: center; padding: 40px;">加载中...</div>
-            <div v-else-if="currentDocuments.length === 0" style="text-align: center; padding: 40px; color: #999;">
+            <div v-if="loading" style=" padding: 40px;text-align: center;">加载中...</div>
+            <div v-else-if="currentDocuments.length === 0" style=" padding: 40px; color: #999;text-align: center;">
               暂无文档
             </div>
             <draggable 
@@ -1725,7 +1725,7 @@ onMounted(() => {
                       :checked="isDocSelected(record.id)" 
                       @change="toggleDocSelection(record.id)"
                       @click.stop
-                      style="cursor: pointer; width: 16px; height: 16px;"
+                      style=" width: 16px; height: 16px;cursor: pointer;"
                     />
                   </div>
                   
@@ -1735,7 +1735,7 @@ onMounted(() => {
                   </div>
                   
                   <!-- 文档名称 -->
-                  <div class="col-name" style="flex: 1; display: flex; align-items: center; gap: 10px; min-width: 0;">
+                  <div class="col-name" style=" display: flex;flex: 1; gap: 10px; align-items: center; min-width: 0;">
                     <!-- 缩略图或文件类型图标 -->
                     <div class="doc-thumbnail" style="flex-shrink: 0;">
                       <img 
@@ -1763,7 +1763,7 @@ onMounted(() => {
                   <div class="col-type">
                     <Tag 
                       :color="getFileTypeConfig(record.fileType).color"
-                      style="margin: 0; font-size: 11px; padding: 1px 6px;"
+                      style=" padding: 1px 6px;margin: 0; font-size: 11px;"
                     >
                       {{ getFileTypeConfig(record.fileType).label }}
                     </Tag>
@@ -1857,7 +1857,7 @@ onMounted(() => {
               选择文件
             </Button>
           </Upload>
-          <div style="margin-top: 8px; color: #666; font-size: 12px">
+          <div style="margin-top: 8px; font-size: 12px; color: #666">
             支持多文件上传，单个文件不超过100MB
           </div>
         </FormItem>
@@ -1943,7 +1943,7 @@ onMounted(() => {
           :src="previewUrl"
           style="width: 100%; height: 100%; border: none"
         />
-        <div v-else style="text-align: center; padding: 50px">
+        <div v-else style=" padding: 50px;text-align: center">
           <div>暂不支持预览此类型文件</div>
           <Button type="primary" @click="handleDownload(currentDocument!)" style="margin-top: 16px">
             <SvgDownloadIcon />
@@ -2018,15 +2018,15 @@ onMounted(() => {
       :title="`OCR识别结果 - ${currentDocument?.fileName || currentDocument?.name || ''}`"
       width="700px"
     >
-      <div v-if="ocrLoading" style="text-align: center; padding: 40px;">
+      <div v-if="ocrLoading" style=" padding: 40px;text-align: center;">
         <div style="font-size: 16px; color: #1890ff;">正在识别中...</div>
-        <div style="color: #999; margin-top: 8px;">请稍候，OCR正在分析图片内容</div>
+        <div style=" margin-top: 8px;color: #999;">请稍候，OCR正在分析图片内容</div>
       </div>
       <div v-else>
-        <div style="background: #f9f9f9; padding: 16px; border-radius: 8px; min-height: 200px; max-height: 400px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; font-family: monospace; line-height: 1.8;">
+        <div style=" min-height: 200px; max-height: 400px; padding: 16px; overflow-y: auto; font-family: monospace; line-height: 1.8; word-break: break-all; white-space: pre-wrap;background: #f9f9f9; border-radius: 8px;">
           {{ ocrResult || '未识别到文字内容' }}
         </div>
-        <div style="margin-top: 12px; color: #999; font-size: 12px;">
+        <div style="margin-top: 12px; font-size: 12px; color: #999;">
           提示：识别结果仅供参考，可能存在误差。如需精确内容，请人工校对。
         </div>
       </div>
@@ -2046,14 +2046,14 @@ onMounted(() => {
 /* 文档列表头部 */
 .doc-list-header {
   display: flex;
+  gap: 12px;
   align-items: center;
   padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #666;
   background: #fafafa;
   border-bottom: 1px solid #f0f0f0;
-  font-weight: 500;
-  font-size: 13px;
-  color: #666;
-  gap: 12px;
 }
 
 /* 文档列表 */
@@ -2064,10 +2064,10 @@ onMounted(() => {
 /* 单个文档项 */
 .doc-item {
   display: flex;
+  gap: 12px;
   align-items: center;
   padding: 12px;
   border-bottom: 1px solid #f5f5f5;
-  gap: 12px;
   transition: background-color 0.2s;
 }
 
@@ -2084,19 +2084,24 @@ onMounted(() => {
 }
 
 /* 列宽度 */
-.col-checkbox { width: 32px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
-.col-drag { width: 30px; flex-shrink: 0; }
-.col-type { width: 80px; flex-shrink: 0; text-align: center; }
-.col-size { width: 80px; flex-shrink: 0; text-align: right; font-size: 12px; color: #888; }
-.col-time { width: 140px; flex-shrink: 0; text-align: right; font-size: 12px; color: #888; }
-.col-action { width: 160px; flex-shrink: 0; text-align: right; }
+.col-checkbox { display: flex; flex-shrink: 0; align-items: center; justify-content: center; width: 32px; }
+
+.col-drag { flex-shrink: 0; width: 30px; }
+
+.col-type { flex-shrink: 0; width: 80px; text-align: center; }
+
+.col-size { flex-shrink: 0; width: 80px; font-size: 12px; color: #888; text-align: right; }
+
+.col-time { flex-shrink: 0; width: 140px; font-size: 12px; color: #888; text-align: right; }
+
+.col-action { flex-shrink: 0; width: 160px; text-align: right; }
 
 /* 拖拽手柄 */
 .drag-handle {
-  cursor: grab;
   display: flex;
   align-items: center;
   justify-content: center;
+  cursor: grab;
 }
 
 .drag-handle:active {
@@ -2105,10 +2110,10 @@ onMounted(() => {
 
 /* 文档名称链接 */
 .doc-name-link {
-  font-weight: 500;
-  color: #1890ff;
   overflow: hidden;
   text-overflow: ellipsis;
+  font-weight: 500;
+  color: #1890ff;
   white-space: nowrap;
   cursor: pointer;
 }
@@ -2120,23 +2125,23 @@ onMounted(() => {
 
 /* 文档描述 */
 .doc-desc {
-  font-size: 11px;
-  color: #999;
   overflow: hidden;
   text-overflow: ellipsis;
+  font-size: 11px;
+  color: #999;
   white-space: nowrap;
 }
 
 /* 文档缩略图 */
 .doc-thumbnail {
-  width: 40px;
-  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
+  width: 40px;
+  height: 40px;
   overflow: hidden;
   background: #f5f5f5;
+  border-radius: 4px;
 }
 
 .thumbnail-img {
@@ -2148,12 +2153,12 @@ onMounted(() => {
 
 /* 操作按钮 */
 .action-btn {
-  width: 28px !important;
-  height: 28px !important;
-  padding: 0 !important;
   display: inline-flex !important;
   align-items: center;
   justify-content: center;
+  width: 28px !important;
+  height: 28px !important;
+  padding: 0 !important;
   color: #666;
   border-radius: 6px;
 }
@@ -2177,74 +2182,74 @@ onMounted(() => {
 
 /* 拖拽中状态 */
 .sortable-ghost {
-  opacity: 0.4;
   background: #e6f7ff;
+  opacity: 0.4;
 }
 
 .sortable-drag {
   background: white;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 15%);
 }
 
 /* 项目卡片样式增强 */
 .matter-card {
-  transition: all 0.3s ease;
   border-left-width: 4px !important;
+  transition: all 0.3s ease;
 }
 
 .matter-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 10%);
   transform: translateY(-2px);
 }
 
 /* 根据案件类型设置不同的左侧边框颜色和背景色 */
 .matter-card-CRIMINAL {
+  background: linear-gradient(to right, rgb(211 47 47 / 2%), #fff);
   border-left-color: #d32f2f !important;
-  background: linear-gradient(to right, rgba(211, 47, 47, 0.02), #fff);
 }
 
 .matter-card-CIVIL {
+  background: linear-gradient(to right, rgb(25 118 210 / 2%), #fff);
   border-left-color: #1976d2 !important;
-  background: linear-gradient(to right, rgba(25, 118, 210, 0.02), #fff);
 }
 
 .matter-card-ADMINISTRATIVE {
+  background: linear-gradient(to right, rgb(56 142 60 / 2%), #fff);
   border-left-color: #388e3c !important;
-  background: linear-gradient(to right, rgba(56, 142, 60, 0.02), #fff);
 }
 
 .matter-card-BANKRUPTCY {
+  background: linear-gradient(to right, rgb(245 124 0 / 2%), #fff);
   border-left-color: #f57c00 !important;
-  background: linear-gradient(to right, rgba(245, 124, 0, 0.02), #fff);
 }
 
 .matter-card-IP {
+  background: linear-gradient(to right, rgb(123 31 162 / 2%), #fff);
   border-left-color: #7b1fa2 !important;
-  background: linear-gradient(to right, rgba(123, 31, 162, 0.02), #fff);
 }
 
 .matter-card-ARBITRATION {
+  background: linear-gradient(to right, rgb(2 136 209 / 2%), #fff);
   border-left-color: #0288d1 !important;
-  background: linear-gradient(to right, rgba(2, 136, 209, 0.02), #fff);
 }
 
 .matter-card-ENFORCEMENT {
+  background: linear-gradient(to right, rgb(93 64 55 / 2%), #fff);
   border-left-color: #5d4037 !important;
-  background: linear-gradient(to right, rgba(93, 64, 55, 0.02), #fff);
 }
 
 .matter-card-LEGAL_COUNSEL {
+  background: linear-gradient(to right, rgb(0 121 107 / 2%), #fff);
   border-left-color: #00796b !important;
-  background: linear-gradient(to right, rgba(0, 121, 107, 0.02), #fff);
 }
 
 .matter-card-SPECIAL_SERVICE {
+  background: linear-gradient(to right, rgb(230 74 25 / 2%), #fff);
   border-left-color: #e64a19 !important;
-  background: linear-gradient(to right, rgba(230, 74, 25, 0.02), #fff);
 }
 
 .matter-card-default {
-  border-left-color: #757575 !important;
   background: #fff;
+  border-left-color: #757575 !important;
 }
 </style>

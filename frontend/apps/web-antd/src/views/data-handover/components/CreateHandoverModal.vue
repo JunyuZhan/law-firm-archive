@@ -181,7 +181,7 @@ defineExpose({ open });
     <div v-if="createStep === 0">
       <Form :label-col="{ span: 6 }" :wrapper-col="{ span: 16 }">
         <FormItem label="移交人">
-          <div style="padding: 4px 11px; background: #f5f5f5; border-radius: 6px; color: #333;">
+          <div style="padding: 4px 11px; color: #333; background: #f5f5f5; border-radius: 6px;">
             {{ currentUserName }} <Tag color="blue" style="margin-left: 8px">当前登录用户</Tag>
           </div>
         </FormItem>
@@ -196,7 +196,7 @@ defineExpose({ open });
           <Textarea v-model:value="formData.reason" placeholder="请输入交接原因" :rows="3" />
         </FormItem>
       </Form>
-      <div style="text-align: right; margin-top: 24px">
+      <div style=" margin-top: 24px;text-align: right">
         <Space>
           <Button @click="modalApi.close()">取消</Button>
           <Button type="primary" :loading="loading" @click="handleSelectFromUser">
@@ -261,7 +261,7 @@ defineExpose({ open });
         <Empty description="该用户暂无需要交接的数据" />
       </div>
 
-      <div style="text-align: right; margin-top: 24px">
+      <div style=" margin-top: 24px;text-align: right">
         <Space>
           <Button @click="createStep = 0">上一步</Button>
           <Button type="primary" @click="createStep = 2" :disabled="totalDataCount === 0">
@@ -298,7 +298,7 @@ defineExpose({ open });
         style="margin-top: 16px"
       />
 
-      <div style="text-align: right; margin-top: 24px">
+      <div style=" margin-top: 24px;text-align: right">
         <Space>
           <Button @click="createStep = 1">上一步</Button>
           <Button type="primary" :loading="loading" @click="handleSubmitCreate">

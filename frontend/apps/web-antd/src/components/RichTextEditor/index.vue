@@ -187,28 +187,28 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .rich-text-editor {
-  border: 1px solid #d9d9d9;
-  border-radius: 6px;
   overflow: hidden;
   background: #fff;
+  border: 1px solid #d9d9d9;
+  border-radius: 6px;
 }
 
 .variable-toolbar {
   display: flex;
-  align-items: flex-start;
   gap: 8px;
+  align-items: flex-start;
+  min-height: 44px;
   padding: 10px 12px;
   background: linear-gradient(to bottom, #f0f5ff, #e6f0ff);
   border-bottom: 1px solid #d6e4ff;
-  min-height: 44px;
 }
 
 .toolbar-label {
-  color: #1890ff;
+  flex-shrink: 0;
   font-size: 13px;
   font-weight: 500;
-  flex-shrink: 0;
   line-height: 22px;
+  color: #1890ff;
 }
 
 .variable-tag {
@@ -217,8 +217,8 @@ onBeforeUnmount(() => {
 }
 
 .variable-tag:hover {
+  box-shadow: 0 2px 4px rgb(24 144 255 / 30%);
   transform: scale(1.05);
-  box-shadow: 0 2px 4px rgba(24, 144, 255, 0.3);
 }
 
 .editor-toolbar {
@@ -240,17 +240,17 @@ onBeforeUnmount(() => {
 }
 
 :deep(.w-e-text-placeholder) {
-  color: #bbb !important;
   font-style: normal !important;
+  color: #bbb !important;
 }
 
 /* 确保变量标签样式正确 */
 :deep([data-variable]) {
+  display: inline-block !important;
+  padding: 0 4px !important;
+  margin: 0 2px !important;
   color: #1890ff !important;
   background: #e6f7ff !important;
-  padding: 0 4px !important;
   border-radius: 2px !important;
-  display: inline-block !important;
-  margin: 0 2px !important;
 }
 </style>

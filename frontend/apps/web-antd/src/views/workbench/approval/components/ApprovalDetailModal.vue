@@ -204,7 +204,7 @@ defineExpose({ open });
             />
           </FormItem>
         </Form>
-        <div style="display: flex; justify-content: flex-end; gap: 12px;">
+        <div style="display: flex; gap: 12px; justify-content: flex-end;">
           <Button @click="modalApi.close()">取消</Button>
           <Button danger :loading="approvalLoading" @click="handleReject">拒绝</Button>
           <Button type="primary" :loading="approvalLoading" @click="handleApprove">通过</Button>

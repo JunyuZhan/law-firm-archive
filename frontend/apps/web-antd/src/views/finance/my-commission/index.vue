@@ -164,7 +164,7 @@ onMounted(() => {
           {{ row.commissionRate }}%
         </template>
         <template #commissionAmount="{ row }">
-          <span style="color: #1890ff; font-weight: 500;">
+          <span style=" font-weight: 500;color: #1890ff;">
             {{ formatMoney(row.commissionAmount) }}
           </span>
         </template>

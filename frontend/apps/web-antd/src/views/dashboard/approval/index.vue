@@ -540,9 +540,9 @@ onMounted(async () => {
 
 <style scoped>
 :deep(.ant-badge-count) {
-  font-size: 12px;
   min-width: 18px;
   height: 18px;
+  font-size: 12px;
   line-height: 18px;
 }
 

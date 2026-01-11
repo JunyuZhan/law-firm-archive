@@ -299,7 +299,7 @@ onMounted(() => {
     </Row>
 
     <Card>
-      <div style="margin-bottom: 16px; display: flex; justify-content: space-between;">
+      <div style=" display: flex; justify-content: space-between;margin-bottom: 16px;">
         <Space>
           <Select v-model:value="queryParams.category" placeholder="资产类型" style="width: 120px" allowClear :options="categoryOptions" @change="handleSearch" />
           <Select v-model:value="queryParams.status" placeholder="状态" style="width: 100px" allowClear
@@ -373,7 +373,7 @@ onMounted(() => {
             <p><strong>{{ r.recordTypeName }}</strong> - {{ r.operatorName }}</p>
             <p v-if="r.toUserName">领用人: {{ r.toUserName }}</p>
             <p v-if="r.reason">原因: {{ r.reason }}</p>
-            <p style="color: #999; font-size: 12px">{{ formatDate(r.operateDate) }}</p>
+            <p style=" font-size: 12px;color: #999">{{ formatDate(r.operateDate) }}</p>
           </Timeline.Item>
         </Timeline>
       </div>

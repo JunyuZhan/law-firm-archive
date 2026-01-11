@@ -1108,6 +1108,66 @@ INSERT INTO public.sys_role_menu (role_id, menu_id)
 SELECT 1, id FROM public.sys_menu WHERE id = 29
 ON CONFLICT (role_id, menu_id) DO NOTHING;
 
+-- =====================================================
+-- 用户管理按钮权限
+-- =====================================================
+INSERT INTO public.sys_menu (id, parent_id, name, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, deleted) VALUES
+(1020, 21, '新增用户', 'BUTTON', 'user:create', 1, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+(1021, 21, '编辑用户', 'BUTTON', 'user:edit', 2, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+(1022, 21, '删除用户', 'BUTTON', 'user:delete', 3, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+(1023, 21, '重置密码', 'BUTTON', 'user:reset-password', 4, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
+ON CONFLICT (id) DO NOTHING;
+
+-- 为管理员和主任角色分配用户管理按钮权限
+INSERT INTO public.sys_role_menu (role_id, menu_id)
+SELECT r.id, m.id 
+FROM public.sys_role r, public.sys_menu m
+WHERE r.role_code IN ('ADMIN', 'DIRECTOR') 
+  AND m.id IN (1020, 1021, 1022, 1023)
+ON CONFLICT (role_id, menu_id) DO NOTHING;
+
+-- =====================================================
+-- 其他模块按钮权限（项目、客户、归档、收款）
+-- =====================================================
+INSERT INTO public.sys_menu (id, parent_id, name, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, deleted) VALUES
+(1024, 41, '项目编辑', 'BUTTON', 'matter:edit', 2, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+(1025, 31, '客户编辑', 'BUTTON', 'client:edit', 2, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+(1026, 71, '创建归档', 'BUTTON', 'archive:create', 1, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+(1027, 52, '登记收款', 'BUTTON', 'fee:payment', 1, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
+ON CONFLICT (id) DO NOTHING;
+
+-- 为管理员和主任分配这些按钮权限
+INSERT INTO public.sys_role_menu (role_id, menu_id)
+SELECT r.id, m.id 
+FROM public.sys_role r, public.sys_menu m
+WHERE r.role_code IN ('ADMIN', 'DIRECTOR') 
+  AND m.id IN (1024, 1025, 1026, 1027)
+ON CONFLICT (role_id, menu_id) DO NOTHING;
+
+-- 为律师角色分配项目编辑、客户编辑权限
+INSERT INTO public.sys_role_menu (role_id, menu_id)
+SELECT r.id, m.id 
+FROM public.sys_role r, public.sys_menu m
+WHERE r.role_code = 'LAWYER' 
+  AND m.id IN (1024, 1025)
+ON CONFLICT (role_id, menu_id) DO NOTHING;
+
+-- 为团队负责人分配项目、客户、归档权限
+INSERT INTO public.sys_role_menu (role_id, menu_id)
+SELECT r.id, m.id 
+FROM public.sys_role r, public.sys_menu m
+WHERE r.role_code = 'TEAM_LEADER' 
+  AND m.id IN (1024, 1025, 1026)
+ON CONFLICT (role_id, menu_id) DO NOTHING;
+
+-- 为财务角色分配收款权限
+INSERT INTO public.sys_role_menu (role_id, menu_id)
+SELECT r.id, m.id 
+FROM public.sys_role r, public.sys_menu m
+WHERE r.role_code = 'FINANCE' 
+  AND m.id = 1027
+ON CONFLICT (role_id, menu_id) DO NOTHING;
+
 --
 -- Name: sys_config_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --

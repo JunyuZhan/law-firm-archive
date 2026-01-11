@@ -770,7 +770,7 @@ const lastColumnKey = computed(() => {
 <template>
   <div class="evidence-table-editor">
     <!-- 工具栏 -->
-    <div class="toolbar" style="margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
+    <div class="toolbar" style=" display: flex; align-items: center; justify-content: space-between;margin-bottom: 16px;">
       <Space>
         <Button v-if="!readonly" type="primary" @click="handleAddRow">
           ➕ 添加行
@@ -799,7 +799,7 @@ const lastColumnKey = computed(() => {
     </div>
 
     <!-- 表格标题 -->
-    <div class="table-title" style="text-align: center; font-size: 18px; font-weight: bold; margin-bottom: 16px;">
+    <div class="table-title" style=" margin-bottom: 16px; font-size: 18px; font-weight: bold;text-align: center;">
       证据登记表
     </div>
 
@@ -821,7 +821,7 @@ const lastColumnKey = computed(() => {
 
         <!-- 可编辑列 -->
         <template v-else>
-          <div style="display: flex; align-items: center; gap: 4px;">
+          <div style="display: flex; gap: 4px; align-items: center;">
             <div style="flex: 1;">
               <template v-if="!readonly">
                 <!-- 下拉选择（组别列） -->
@@ -874,7 +874,7 @@ const lastColumnKey = computed(() => {
               @confirm="handleDeleteRow(index)"
             >
               <Tooltip title="删除">
-                <Button type="text" size="small" danger style="padding: 0 4px; flex-shrink: 0;">
+                <Button type="text" size="small" danger style=" flex-shrink: 0;padding: 0 4px;">
                   🗑️
                 </Button>
               </Tooltip>
@@ -902,7 +902,7 @@ const lastColumnKey = computed(() => {
     </div>
 
     <!-- 底部信息 -->
-    <div class="footer-info" style="margin-top: 16px; display: flex; justify-content: space-between; color: #666;">
+    <div class="footer-info" style=" display: flex; justify-content: space-between;margin-top: 16px; color: #666;">
       <span>提交人：_______________</span>
       <span>第 ___ 页 共 ___ 页</span>
     </div>
@@ -916,7 +916,7 @@ const lastColumnKey = computed(() => {
       <div style="display: flex; flex-direction: column; gap: 16px;">
         <!-- 可选列 -->
         <div>
-          <div style="font-weight: 500; margin-bottom: 8px;">可选列：</div>
+          <div style=" margin-bottom: 8px;font-weight: 500;">可选列：</div>
           <div style="display: flex; flex-wrap: wrap; gap: 8px;">
             <Checkbox
               v-for="opt in optionalColumns"
@@ -931,7 +931,7 @@ const lastColumnKey = computed(() => {
 
         <!-- 添加自定义列 -->
         <div>
-          <div style="font-weight: 500; margin-bottom: 8px;">添加自定义列：</div>
+          <div style=" margin-bottom: 8px;font-weight: 500;">添加自定义列：</div>
           <div style="display: flex; gap: 8px;">
             <Input v-model:value="newColumnTitle" placeholder="输入列标题" style="flex: 1;" />
             <Button type="primary" @click="handleAddCustomColumn">添加</Button>
@@ -940,19 +940,19 @@ const lastColumnKey = computed(() => {
 
         <!-- 当前列列表（可调整顺序） -->
         <div>
-          <div style="font-weight: 500; margin-bottom: 8px;">当前列顺序：</div>
+          <div style=" margin-bottom: 8px;font-weight: 500;">当前列顺序：</div>
           <div style="display: flex; flex-direction: column; gap: 8px;">
             <div 
               v-for="(col, index) in columns" 
               :key="col.key"
-              style="padding: 8px; background: #fafafa; border: 1px solid #e8e8e8; border-radius: 4px; display: flex; align-items: center; justify-content: space-between;"
+              style=" display: flex; align-items: center; justify-content: space-between;padding: 8px; background: #fafafa; border: 1px solid #e8e8e8; border-radius: 4px;"
             >
-              <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
-                <span style="color: #999; font-size: 12px; min-width: 30px;">{{ index + 1 }}</span>
-                <span style="font-weight: 500; min-width: 100px;">{{ col.title }}</span>
+              <div style="display: flex; flex: 1; gap: 8px; align-items: center;">
+                <span style=" min-width: 30px; font-size: 12px;color: #999;">{{ index + 1 }}</span>
+                <span style=" min-width: 100px;font-weight: 500;">{{ col.title }}</span>
                 <Tag v-if="col.isSystem" color="blue" size="small">系统</Tag>
                 <Tag v-if="col.required" color="red" size="small">必填</Tag>
-                <span style="color: #999; font-size: 12px; margin-left: 8px;">列宽：</span>
+                <span style=" margin-left: 8px; font-size: 12px;color: #999;">列宽：</span>
                 <InputNumber 
                   :value="col.width" 
                   :min="50" 
@@ -962,7 +962,7 @@ const lastColumnKey = computed(() => {
                   style="width: 80px;"
                   @change="(val) => handleUpdateColumnWidth(col.key, typeof val === 'number' ? val : 150)"
                 />
-                <span style="color: #999; font-size: 12px;">px</span>
+                <span style=" font-size: 12px;color: #999;">px</span>
               </div>
               <Space>
                 <Tooltip :title="index === 0 ? '已是第一列' : '上移'">
@@ -1011,15 +1011,15 @@ const lastColumnKey = computed(() => {
 .evidence-table-editor :deep(.ant-input),
 .evidence-table-editor :deep(.ant-input-textarea),
 .evidence-table-editor :deep(.ant-input-number) {
-  border: none;
   background: transparent;
+  border: none;
 }
 
 .evidence-table-editor :deep(.ant-input:focus),
 .evidence-table-editor :deep(.ant-input-textarea:focus),
 .evidence-table-editor :deep(.ant-input-number:focus) {
-  border: 1px solid #1890ff;
   background: #fff;
+  border: 1px solid #1890ff;
 }
 
 .evidence-table-editor :deep(.ant-input:hover),
@@ -1043,15 +1043,15 @@ const lastColumnKey = computed(() => {
 }
 
 .resizable-table :deep(.ant-table-thead > tr > th:not(.fixed-left):not(.fixed-right))::after {
-  content: '';
   position: absolute;
-  right: -2px;
   top: 0;
+  right: -2px;
   bottom: 0;
+  z-index: 10;
   width: 4px;
   cursor: col-resize;
+  content: '';
   background: transparent;
-  z-index: 10;
 }
 
 .resizable-table :deep(.ant-table-thead > tr > th:not(.fixed-left):not(.fixed-right)):hover::after {
@@ -1059,8 +1059,8 @@ const lastColumnKey = computed(() => {
 }
 
 .resizable-table :deep(.ant-table-thead > tr > th.resizing)::after {
-  background: #1890ff;
   width: 2px;
+  background: #1890ff;
 }
 
 .resizable-table :deep(.ant-table-thead > tr > th.fixed-left)::after,

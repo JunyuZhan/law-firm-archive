@@ -37,7 +37,7 @@ defineExpose({ open });
       <DescriptionsItem label="操作时间">{{ currentLog.operationTime }}</DescriptionsItem>
       <DescriptionsItem label="请求URL" :span="2">{{ currentLog.requestUrl }}</DescriptionsItem>
       <DescriptionsItem label="请求参数" :span="2">
-        <pre style="max-height: 200px; overflow: auto; margin: 0; white-space: pre-wrap; background: #f5f5f5; padding: 8px; border-radius: 4px;">{{ currentLog.requestParams }}</pre>
+        <pre style="max-height: 200px; padding: 8px; margin: 0; overflow: auto; white-space: pre-wrap; background: #f5f5f5; border-radius: 4px;">{{ currentLog.requestParams }}</pre>
       </DescriptionsItem>
       <DescriptionsItem v-if="currentLog.status === 'FAILED'" label="错误信息" :span="2">
         <span style="color: #ff4d4f">{{ currentLog.errorMsg }}</span>

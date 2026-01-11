@@ -304,7 +304,7 @@ onMounted(() => {
 <template>
   <Page title="发展计划" description="管理员工职业发展计划">
     <Card>
-      <div style="margin-bottom: 16px; display: flex; justify-content: space-between;">
+      <div style=" display: flex; justify-content: space-between;margin-bottom: 16px;">
         <Space>
           <Select
             v-model:value="queryParams.planYear"
@@ -432,7 +432,7 @@ onMounted(() => {
           <Textarea v-model:value="formData.requiredTraining" :rows="2" placeholder="需要参加的培训课程" />
         </FormItem>
         <FormItem label="里程碑">
-          <div v-for="(m, i) in formData.milestones" :key="i" style="margin-bottom: 8px; padding: 8px; background: #fafafa; border-radius: 4px;">
+          <div v-for="(m, i) in formData.milestones" :key="i" style=" padding: 8px;margin-bottom: 8px; background: #fafafa; border-radius: 4px;">
             <Space style="width: 100%">
               <Input v-model:value="m.milestoneName" placeholder="里程碑名称" style="width: 200px" />
               <DatePicker v-model:value="m.targetDate" placeholder="目标日期" />
@@ -483,11 +483,11 @@ onMounted(() => {
             :key="m.id"
             :color="m.status === 'COMPLETED' ? 'green' : 'blue'"
           >
-            <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
               <div>
                 <p><strong>{{ m.milestoneName }}</strong></p>
                 <p v-if="m.description" style="color: #666">{{ m.description }}</p>
-                <p style="color: #999; font-size: 12px">目标日期: {{ formatDate(m.targetDate) }}</p>
+                <p style=" font-size: 12px;color: #999">目标日期: {{ formatDate(m.targetDate) }}</p>
               </div>
               <div>
                 <Tag v-if="m.status === 'COMPLETED'" color="success">已完成</Tag>

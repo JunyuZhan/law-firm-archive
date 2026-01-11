@@ -93,7 +93,7 @@ defineExpose({ open });
           <DescriptionsItem label="创建人">{{ currentTemplate?.creatorName || '-' }}</DescriptionsItem>
           <DescriptionsItem label="创建时间">{{ currentTemplate?.createdAt || '-' }}</DescriptionsItem>
           <DescriptionsItem label="使用次数" :span="2">
-            <span style="color: #1890ff; font-weight: 500">{{ currentTemplate?.useCount || 0 }} 次</span>
+            <span style=" font-weight: 500;color: #1890ff">{{ currentTemplate?.useCount || 0 }} 次</span>
           </DescriptionsItem>
           <DescriptionsItem label="描述说明" :span="2">{{ currentTemplate?.description || '-' }}</DescriptionsItem>
         </Descriptions>
@@ -111,7 +111,7 @@ defineExpose({ open });
             ${ {{ v }} }
           </Tag>
         </div>
-        <div v-else style="color: #999; text-align: center; padding: 20px">
+        <div v-else style=" padding: 20px;color: #999; text-align: center">
           该模板未使用任何变量
         </div>
       </TabPane>
@@ -121,11 +121,11 @@ defineExpose({ open });
 
 <style scoped>
 .preview-container {
+  max-height: 500px;
+  overflow-y: auto;
   background: #fff;
   border: 1px solid #e8e8e8;
   border-radius: 6px;
-  max-height: 500px;
-  overflow-y: auto;
 }
 
 .html-preview {
@@ -140,24 +140,24 @@ defineExpose({ open });
 }
 
 .html-preview :deep(table) {
-  border-collapse: collapse;
   width: 100%;
+  border-collapse: collapse;
 }
 
 .html-preview :deep(td),
 .html-preview :deep(th) {
-  border: 1px solid #e8e8e8;
   padding: 8px;
+  border: 1px solid #e8e8e8;
 }
 
 .text-preview {
   padding: 16px;
   margin: 0;
-  white-space: pre-wrap;
-  word-wrap: break-word;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-size: 14px;
   line-height: 1.6;
+  word-wrap: break-word;
+  white-space: pre-wrap;
 }
 
 .variables-list {

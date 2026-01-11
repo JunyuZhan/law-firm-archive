@@ -207,7 +207,7 @@ defineExpose({
   <div class="dossier-manager">
     <Spin :spinning="loading">
       <!-- 工具栏 -->
-      <div class="toolbar" style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+      <div class="toolbar" style=" display: flex; align-items: center; justify-content: space-between;margin-bottom: 12px;">
         <Space>
           <Button v-if="!readonly" type="primary" size="small" @click="showAddModal(0)">
             <Plus class="w-4 h-4" />
@@ -227,7 +227,7 @@ defineExpose({
       </div>
 
       <!-- 目录树 -->
-      <div v-if="dossierItems.length > 0" class="tree-container" style="border: 1px solid #f0f0f0; border-radius: 6px; padding: 12px; min-height: 300px;">
+      <div v-if="dossierItems.length > 0" class="tree-container" style=" min-height: 300px; padding: 12px;border: 1px solid #f0f0f0; border-radius: 6px;">
         <Tree
           v-model:selectedKeys="selectedKeys"
           v-model:expandedKeys="expandedKeys"

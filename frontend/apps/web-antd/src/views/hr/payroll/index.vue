@@ -886,7 +886,7 @@ onMounted(() => {
           </template>
         </Table>
         <Button type="dashed" block class="mt-2" @click="addDeduction">添加扣减项</Button>
-        <div style="color: #999; font-size: 12px; margin-top: 8px;">
+        <div style=" margin-top: 8px; font-size: 12px;color: #999;">
           <div>• 税费类扣减项（个人所得税、社保、公积金等）用于计算应发工资</div>
           <div>• 其他扣减项（预支、欠款、办公室租金等）用于计算实发工资</div>
           <div>• 工资可以为负数（当扣减项大于收入时）</div>
@@ -902,7 +902,7 @@ onMounted(() => {
               placeholder="请选择确认截止时间（默认每月27日24时）"
               style="width: 300px"
             />
-            <div style="color: #999; font-size: 12px; margin-top: 4px;">
+            <div style=" margin-top: 4px; font-size: 12px;color: #999;">
               超过此时间未确认，系统将自动确认。默认：每月27日24时
             </div>
           </FormItem>

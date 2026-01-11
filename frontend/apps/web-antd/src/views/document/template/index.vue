@@ -197,14 +197,14 @@ function getTemplateTypeColor(type: string) {
         <template #name="{ row }">
           <div>
             <a @click="handlePreview(row)" style="font-weight: 500">{{ row.name }}</a>
-            <div v-if="row.description" style="font-size: 12px; color: #999; margin-top: 2px">{{ row.description }}</div>
+            <div v-if="row.description" style=" margin-top: 2px;font-size: 12px; color: #999">{{ row.description }}</div>
           </div>
         </template>
         <template #templateType="{ row }">
           <Tag :color="getTemplateTypeColor(row.templateType)">{{ row.templateTypeName || row.templateType }}</Tag>
         </template>
         <template #useCount="{ row }">
-          <span style="color: #1890ff; font-weight: 500">{{ row.useCount || 0 }}</span>
+          <span style=" font-weight: 500;color: #1890ff">{{ row.useCount || 0 }}</span>
         </template>
         <template #status="{ row }">
           <Tag :color="getStatusColor(row.status)">{{ row.statusName }}</Tag>

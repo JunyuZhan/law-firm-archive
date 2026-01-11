@@ -296,7 +296,7 @@ onMounted(() => {
       </div>
 
       <!-- 导出栏 -->
-      <div style="margin-bottom: 16px; padding: 12px; background: #fafafa; border-radius: 4px;">
+      <div style=" padding: 12px;margin-bottom: 16px; background: #fafafa; border-radius: 4px;">
         <Row :gutter="16" align="middle">
           <Col :span="2">
             <span style="font-weight: 500;">司法局报备导出：</span>

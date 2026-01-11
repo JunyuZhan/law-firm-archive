@@ -784,7 +784,7 @@ defineExpose({
             <div class="doc-summary">
               <p class="summary-label">📋 文书信息摘要</p>
               <p style="margin: 0;"><strong>类型：</strong>{{ aiFormData.documentType || '未选择' }}</p>
-              <p style="margin: 8px 0 0 0;"><strong>风格：</strong>{{ aiFormData.tone || '默认' }}</p>
+              <p style="margin: 8px 0 0;"><strong>风格：</strong>{{ aiFormData.tone || '默认' }}</p>
               <Divider style="margin: 12px 0;" />
               <p class="requirement-preview">
                 <strong>需求描述：</strong><br/>
@@ -1070,6 +1070,28 @@ defineExpose({
 </template>
 
 <style scoped>
+
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+@keyframes glow {
+  0%, 100% {
+    filter: drop-shadow(0 0 2px #722ed1);
+  }
+
+  50% {
+    filter: drop-shadow(0 0 8px #722ed1) drop-shadow(0 0 12px #b37feb);
+  }
+}
+
 .ai-mode {
   width: 100%;
 }
@@ -1091,8 +1113,8 @@ defineExpose({
 }
 
 .hint-text {
-  color: #666;
   font-size: 12px;
+  color: #666;
 }
 
 .model-hint {
@@ -1110,22 +1132,22 @@ defineExpose({
 .doc-summary {
   padding: 16px;
   background: linear-gradient(135deg, #f6ffed 0%, #e6f7ff 100%);
-  border-radius: 8px;
   border: 1px solid #b7eb8f;
+  border-radius: 8px;
 }
 
 .summary-label {
-  margin: 0 0 12px 0;
+  margin: 0 0 12px;
   font-size: 14px;
   font-weight: 500;
   color: #52c41a;
 }
 
 .requirement-preview {
-  margin: 8px 0 0 0;
+  margin: 8px 0 0;
   font-size: 13px;
-  color: #666;
   line-height: 1.6;
+  color: #666;
 }
 
 .save-location-alert {
@@ -1134,8 +1156,8 @@ defineExpose({
 
 .preview-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
   margin-bottom: 16px;
 }
 
@@ -1149,19 +1171,19 @@ defineExpose({
 }
 
 .preview-content {
-  white-space: pre-wrap;
   font-family: inherit;
   line-height: 1.8;
+  white-space: pre-wrap;
 }
 
 .model-info {
-  color: #999;
   font-size: 12px;
+  color: #999;
 }
 
 .context-status {
-  margin-top: 12px;
   padding: 8px;
+  margin-top: 12px;
   background: #f6ffed;
   border-radius: 4px;
 }
@@ -1203,8 +1225,8 @@ defineExpose({
 }
 
 .more-hint {
+  margin: 8px 0 0;
   color: #999;
-  margin: 8px 0 0 0;
 }
 
 .action-bar {
@@ -1212,9 +1234,9 @@ defineExpose({
 }
 
 .tone-hint {
-  color: #666;
+  margin: 4px 0 0;
   font-size: 12px;
-  margin: 4px 0 0 0;
+  color: #666;
 }
 
 .custom-tone-add {
@@ -1223,8 +1245,8 @@ defineExpose({
 
 .add-custom-tone {
   padding: 6px 12px;
-  cursor: pointer;
   color: #1890ff;
+  cursor: pointer;
   border-radius: 4px;
   transition: background 0.2s;
 }
@@ -1234,8 +1256,8 @@ defineExpose({
 }
 
 .add-custom-tone strong {
-  color: #52c41a;
   margin-left: 4px;
+  color: #52c41a;
 }
 
 /* 生成进度 */
@@ -1262,23 +1284,23 @@ defineExpose({
 }
 
 .progress-stage {
-  margin-top: 12px;
   padding: 8px 12px;
+  margin-top: 12px;
+  text-align: center;
   background: #fff;
   border-radius: 4px;
-  text-align: center;
 }
 
 .stage-text {
-  color: #1890ff;
   font-size: 14px;
   font-weight: 500;
+  color: #1890ff;
 }
 
 .progress-tips {
-  margin-top: 16px;
   padding: 12px;
-  background: rgba(255, 255, 255, 0.7);
+  margin-top: 16px;
+  background: rgb(255 255 255 / 70%);
   border-radius: 4px;
 }
 
@@ -1305,10 +1327,10 @@ defineExpose({
 }
 
 .revision-hint {
-  color: #666;
-  font-size: 13px;
-  margin: 8px 0 12px 0;
   padding: 8px 12px;
+  margin: 8px 0 12px;
+  font-size: 13px;
+  color: #666;
   background: #f5f5f5;
   border-radius: 4px;
 }
@@ -1323,43 +1345,25 @@ defineExpose({
 
 /* AI 图标样式 */
 .ai-icon {
-  font-size: 18px;
-  color: #722ed1;
-  vertical-align: middle;
   margin-right: 4px;
+  font-size: 18px;
+  vertical-align: middle;
+  color: #722ed1;
 }
 
 .ai-icon-flash {
-  font-size: 16px;
-  color: #faad14;
-  vertical-align: middle;
   margin-right: 4px;
+  font-size: 16px;
+  vertical-align: middle;
+  color: #faad14;
 }
 
 /* 进度图标动画 */
 .progress-icon {
+  margin-right: 12px;
   font-size: 32px;
   color: #722ed1;
-  margin-right: 12px;
   animation: pulse 1.5s ease-in-out infinite, glow 2s ease-in-out infinite;
-}
-
-@keyframes pulse {
-  0%, 100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.1);
-  }
-}
-
-@keyframes glow {
-  0%, 100% {
-    filter: drop-shadow(0 0 2px #722ed1);
-  }
-  50% {
-    filter: drop-shadow(0 0 8px #722ed1) drop-shadow(0 0 12px #b37feb);
-  }
 }
 </style>
 

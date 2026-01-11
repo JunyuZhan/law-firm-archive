@@ -752,8 +752,8 @@ onMounted(() => {
         </Row>
       </div>
 
-      <div style="margin-bottom: 16px; padding: 12px; background: #f5f5f5; border-radius: 4px;">
-        <div style="font-size: 12px; color: #666; margin-bottom: 8px;">说明：</div>
+      <div style=" padding: 12px;margin-bottom: 16px; background: #f5f5f5; border-radius: 4px;">
+        <div style=" margin-bottom: 8px;font-size: 12px; color: #666;">说明：</div>
         <div style="font-size: 12px; color: #666;">
           1. 提成比例已自动载入合同参与人设定的比例，财务可以修改<br/>
           2. 修改提成比例后，提成金额会自动计算（收款金额 × 提成比例）<br/>
@@ -776,7 +776,7 @@ onMounted(() => {
       >
         <template #bodyCell="{ column, record, index }">
           <template v-if="column.key === 'commissionRate'">
-            <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="display: flex; gap: 8px; align-items: center;">
               <InputNumber
                 v-model:value="record.commissionRate"
                 :min="0"

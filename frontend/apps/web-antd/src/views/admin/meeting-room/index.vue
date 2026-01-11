@@ -278,15 +278,15 @@ onMounted(() => {
                 }"
                 @click="room.status !== 'MAINTENANCE' && handleRoomSelect(room.id)"
               >
-                <div style="font-weight: 500; margin-bottom: 4px">{{ room.name }}</div>
-                <div style="font-size: 12px; color: #999; margin-bottom: 4px">
+                <div style=" margin-bottom: 4px;font-weight: 500">{{ room.name }}</div>
+                <div style=" margin-bottom: 4px;font-size: 12px; color: #999">
                   容纳 {{ room.capacity }} 人 | {{ room.location || '未设置位置' }}
                 </div>
                 <Tag :color="roomStatusMap[getRoomStatus(room)]?.color" size="small">
                   {{ roomStatusMap[getRoomStatus(room)]?.text }}
                 </Tag>
               </div>
-              <div v-if="roomList.length === 0" style="text-align: center; color: #999; padding: 20px;">
+              <div v-if="roomList.length === 0" style=" padding: 20px; color: #999;text-align: center;">
                 暂无会议室
               </div>
             </Card>

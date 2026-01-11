@@ -250,7 +250,7 @@ defineExpose({
     />
     
     <div style="margin-bottom: 12px;">
-      <span style="color: #666; font-size: 13px; margin-right: 12px;">快速加载模板：</span>
+      <span style=" margin-right: 12px; font-size: 13px;color: #666;">快速加载模板：</span>
       <Space>
         <Button size="small" @click="loadDefaultTemplate('introduction')">介绍信</Button>
         <Button size="small" @click="loadDefaultTemplate('meeting')">会见函</Button>
@@ -266,7 +266,7 @@ defineExpose({
       :variables="letterVariables"
     />
 
-    <div style="margin-top: 16px; text-align: right; border-top: 1px solid #e8e8e8; padding-top: 16px;">
+    <div style=" padding-top: 16px;margin-top: 16px; text-align: right; border-top: 1px solid #e8e8e8;">
       <Space>
         <Button @click="modalApi.close()">取消</Button>
         <Button type="primary" @click="handleSave">保存模板</Button>

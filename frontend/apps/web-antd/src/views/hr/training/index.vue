@@ -419,13 +419,13 @@ async function downloadFile(url?: string, fileName?: string) {
       :footer="null"
     >
       <div v-if="currentRecord">
-        <div style="color: rgba(0,0,0,0.45); margin-bottom: 16px;">
+        <div style=" margin-bottom: 16px;color: rgb(0 0 0 / 45%);">
           发布时间：{{ currentRecord.publishedAt }}
         </div>
-        <div style="white-space: pre-wrap; line-height: 1.8;">{{ currentRecord.content || '暂无内容' }}</div>
+        <div style=" line-height: 1.8;white-space: pre-wrap;">{{ currentRecord.content || '暂无内容' }}</div>
         
-        <div v-if="currentRecord.attachments?.length" style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #f0f0f0;">
-          <div style="font-weight: 500; margin-bottom: 8px;">附件：</div>
+        <div v-if="currentRecord.attachments?.length" style=" padding-top: 16px;margin-top: 24px; border-top: 1px solid #f0f0f0;">
+          <div style=" margin-bottom: 8px;font-weight: 500;">附件：</div>
           <Space direction="vertical">
             <a v-for="(att, idx) in currentRecord.attachments" :key="idx" @click="downloadFile(att.fileUrl, att.fileName)">
               <DownloadOutlined /> {{ att.fileName }}

@@ -542,15 +542,15 @@ watch(activeTab, (newTab) => {
                 <div v-if="previewResults.length">
                   <div v-for="item in previewResults" :key="item.caseType" style="margin-bottom: 12px;">
                     <Tag v-if="item.caseTypeName !== '通用'" color="blue">{{ item.caseTypeName }}</Tag>
-                    <div style="font-size: 16px; font-weight: 500; color: #1890ff; margin-top: 4px; font-family: monospace;">
+                    <div style=" margin-top: 4px; font-family: monospace;font-size: 16px; font-weight: 500; color: #1890ff;">
                       {{ item.preview }}
                     </div>
                   </div>
                 </div>
                 <div v-else style="color: #999;">暂无预览</div>
                 
-                <Divider style="margin: 16px 0 12px 0;" />
-                <div style="color: #999; font-size: 12px;">
+                <Divider style="margin: 16px 0 12px;" />
+                <div style=" font-size: 12px;color: #999;">
                   选择案件类型查看不同类型的编号效果
                 </div>
                 <Select 
@@ -576,18 +576,18 @@ watch(activeTab, (newTab) => {
                 <div 
                   v-for="pattern in recommendedPatterns" 
                   :key="pattern.name"
-                  style="padding: 12px; margin-bottom: 8px; background: #fafafa; border-radius: 6px; cursor: pointer; transition: all 0.2s;"
+                  style="padding: 12px; margin-bottom: 8px; cursor: pointer; background: #fafafa; border-radius: 6px; transition: all 0.2s;"
                   :style="{ background: contractNumberConfig.pattern === pattern.pattern ? '#e6f7ff' : '#fafafa' }"
                   @click="selectRecommendedPattern(pattern)"
                 >
-                  <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <div style="display: flex; align-items: center; justify-content: space-between;">
                     <span style="font-weight: 500;">{{ pattern.name }}</span>
                     <Tag color="green">{{ pattern.example }}</Tag>
                   </div>
-                  <div style="color: #666; font-size: 12px; margin-top: 4px; font-family: monospace;">
+                  <div style=" margin-top: 4px; font-family: monospace; font-size: 12px;color: #666;">
                     {{ pattern.pattern }}
                   </div>
-                  <div style="color: #999; font-size: 12px; margin-top: 4px;">
+                  <div style=" margin-top: 4px; font-size: 12px;color: #999;">
                     {{ pattern.description }}
                   </div>
                 </div>
@@ -608,7 +608,7 @@ watch(activeTab, (newTab) => {
                   </Tag>
                   <span style="flex: 1; margin-left: 8px;">
                     <span style="font-weight: 500;">{{ variable.label }}</span>
-                    <span style="color: #999; font-size: 12px; margin-left: 8px;">{{ variable.description }}</span>
+                    <span style=" margin-left: 8px; font-size: 12px;color: #999;">{{ variable.description }}</span>
                   </span>
                   <Tooltip title="复制变量">
                     <Button type="text" size="small" @click="copyVariable(variable)">
@@ -688,8 +688,8 @@ watch(activeTab, (newTab) => {
             :show-icon="false"
             style="margin-top: 16px;"
           >
-            <div style="font-weight: 500; margin-bottom: 8px;">注意事项：</div>
-            <ul style="margin: 0; padding-left: 20px; color: #666;">
+            <div style=" margin-bottom: 8px;font-weight: 500;">注意事项：</div>
+            <ul style=" padding-left: 20px;margin: 0; color: #666;">
               <li>开启维护模式后，只有管理员账户可以访问系统</li>
               <li>普通用户访问时将看到维护提示信息</li>
               <li>维护模式下，登录接口仍然可用，允许管理员登录</li>
@@ -702,7 +702,7 @@ watch(activeTab, (newTab) => {
       <!-- 版本信息 -->
       <TabPane key="version" tab="版本信息">
         <Card title="系统版本信息" :bordered="false">
-          <div v-if="versionLoading" style="text-align: center; padding: 40px;">
+          <div v-if="versionLoading" style=" padding: 40px;text-align: center;">
             <span>加载中...</span>
           </div>
           <div v-else-if="versionInfo" style="max-width: 800px;">
@@ -713,7 +713,7 @@ watch(activeTab, (newTab) => {
                     {{ versionInfo.version }}
                   </div>
                   <div v-if="versionInfo.buildVersion && versionInfo.buildVersion !== versionInfo.version" 
-                       style="font-size: 12px; color: #999; margin-top: 4px;">
+                       style=" margin-top: 4px;font-size: 12px; color: #999;">
                     构建版本: {{ versionInfo.buildVersion }}
                   </div>
                 </Card>
@@ -727,7 +727,7 @@ watch(activeTab, (newTab) => {
               </Col>
               <Col :span="12">
                 <Card size="small" title="Git 提交">
-                  <div style="font-size: 14px; font-family: monospace; color: #666;">
+                  <div style=" font-family: monospace;font-size: 14px; color: #666;">
                     {{ versionInfo.gitCommit }}
                   </div>
                 </Card>
@@ -762,8 +762,8 @@ watch(activeTab, (newTab) => {
               :show-icon="false"
               style="margin-top: 16px;"
             >
-              <div style="font-weight: 500; margin-bottom: 8px;">版本信息说明：</div>
-              <ul style="margin: 0; padding-left: 20px; color: #666;">
+              <div style=" margin-bottom: 8px;font-weight: 500;">版本信息说明：</div>
+              <ul style=" padding-left: 20px;margin: 0; color: #666;">
                 <li><strong>版本号</strong>：当前系统版本，优先从数据库配置（sys.version）读取，支持简单格式如 0.4、1.2 等</li>
                 <li><strong>构建版本</strong>：Maven 构建时的版本号（如 1.0.0-SNAPSHOT），仅在版本号与构建版本不同时显示</li>
                 <li><strong>构建时间</strong>：应用打包构建的时间</li>
@@ -775,7 +775,7 @@ watch(activeTab, (newTab) => {
               </ul>
             </Alert>
           </div>
-          <div v-else style="text-align: center; padding: 40px; color: #999;">
+          <div v-else style=" padding: 40px; color: #999;text-align: center;">
             无法加载版本信息
           </div>
         </Card>
@@ -874,8 +874,8 @@ watch(activeTab, (newTab) => {
             :show-icon="false"
             style="margin-top: 16px;"
           >
-            <div style="font-weight: 500; margin-bottom: 8px;">配置说明：</div>
-            <ul style="margin: 0; padding-left: 20px; color: #666;">
+            <div style=" margin-bottom: 8px;font-weight: 500;">配置说明：</div>
+            <ul style=" padding-left: 20px;margin: 0; color: #666;">
               <li><strong>邮件通知开关</strong>：在"通用配置"中设置 notification.email.enabled 为 true 启用</li>
               <li><strong>SMTP 配置</strong>：需配置 SMTP 服务器、端口、用户名（发件邮箱）、密码（授权码）</li>
               <li><strong>告警接收邮箱</strong>：设置 notification.email.admin.recipients，多个邮箱用逗号分隔</li>

@@ -812,21 +812,21 @@ function handlePrint() {
 }
 
 .toolbar {
-  margin-bottom: 16px;
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
 }
 
 .list-header {
-  text-align: center;
   margin-bottom: 24px;
+  text-align: center;
 }
 
 .list-header h2 {
+  margin-bottom: 8px;
   font-size: 22px;
   font-weight: bold;
-  margin-bottom: 8px;
   letter-spacing: 8px;
 }
 
@@ -837,49 +837,49 @@ function handlePrint() {
 }
 
 .group-item {
+  padding: 16px;
+  background: #fff;
   border: 2px solid #e8e8e8;
   border-radius: 8px;
-  background: #fff;
-  padding: 16px;
   transition: all 0.2s ease;
 }
 
 .group-item:hover {
   border-color: #1890ff;
-  box-shadow: 0 2px 12px rgba(24, 144, 255, 0.15);
+  box-shadow: 0 2px 12px rgb(24 144 255 / 15%);
 }
 
 .group-item.is-dirty {
-  border-color: #faad14;
   background: #fffbe6;
+  border-color: #faad14;
 }
 
 .group-item.is-new {
-  border-color: #52c41a;
   background: #f6ffed;
+  border-color: #52c41a;
 }
 
 .group-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
   margin-bottom: 12px;
 }
 
 .group-title {
   display: flex;
-  align-items: center;
   gap: 8px;
+  align-items: center;
 }
 
 .group-tag {
-  font-size: 14px;
   padding: 4px 12px;
+  font-size: 14px;
 }
 
 .evidence-count {
-  color: #666;
   font-size: 13px;
+  color: #666;
 }
 
 .group-actions {
@@ -903,41 +903,41 @@ function handlePrint() {
 }
 
 .field-item {
-  flex: 1;
   display: flex;
+  flex: 1;
   flex-direction: column;
   gap: 4px;
 }
 
 .field-label {
   font-size: 13px;
-  color: #666;
   font-weight: 500;
+  color: #666;
 }
 
 /* 证据列表表格样式 */
 .evidence-list {
+  padding: 8px;
   background: #fafafa;
   border-radius: 6px;
-  padding: 8px;
 }
 
 .evidence-list-header {
   display: flex;
-  align-items: center;
   gap: 8px;
+  align-items: center;
   padding: 8px 4px;
-  font-size: 12px;
-  color: #666;
-  font-weight: 600;
-  border-bottom: 1px solid #e8e8e8;
   margin-bottom: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #666;
+  border-bottom: 1px solid #e8e8e8;
 }
 
 .evidence-row {
   display: flex;
-  align-items: center;
   gap: 8px;
+  align-items: center;
   padding: 8px 4px;
   border-radius: 4px;
   transition: background 0.2s;
@@ -953,9 +953,9 @@ function handlePrint() {
 
 .col-index {
   width: 30px;
-  text-align: center;
-  color: #999;
   font-size: 12px;
+  color: #999;
+  text-align: center;
 }
 
 .col-name {
@@ -983,26 +983,26 @@ function handlePrint() {
 }
 
 .add-evidence-row {
-  margin-top: 8px;
   padding: 4px;
+  margin-top: 8px;
 }
 
 .footer-signature {
-  margin-top: 32px;
   padding-top: 16px;
+  margin-top: 32px;
   border-top: 1px solid #e8e8e8;
 }
 
 .signature-row {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
 }
 
 .signature-item {
   display: flex;
-  align-items: center;
   gap: 8px;
+  align-items: center;
 }
 
 .signature-label {

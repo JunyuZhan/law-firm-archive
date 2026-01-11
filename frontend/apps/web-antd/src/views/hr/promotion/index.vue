@@ -243,7 +243,7 @@ onMounted(() => {
         <Tabs.TabPane key="REJECTED" tab="已拒绝" />
       </Tabs>
       
-      <div style="margin-bottom: 16px; display: flex; justify-content: space-between;">
+      <div style=" display: flex; justify-content: space-between;margin-bottom: 16px;">
         <Space>
           <Input
             v-model:value="queryParams.keyword"
@@ -365,7 +365,7 @@ onMounted(() => {
             <p><strong>{{ review.reviewerName }}</strong> ({{ review.reviewerRoleName }})</p>
             <p>评审意见: {{ review.reviewOpinionName }} | 评分: {{ review.totalScore }}</p>
             <p v-if="review.reviewComment">评语: {{ review.reviewComment }}</p>
-            <p style="color: #999; font-size: 12px">{{ formatDate(review.reviewTime) }}</p>
+            <p style=" font-size: 12px;color: #999">{{ formatDate(review.reviewTime) }}</p>
           </Timeline.Item>
         </Timeline>
       </div>

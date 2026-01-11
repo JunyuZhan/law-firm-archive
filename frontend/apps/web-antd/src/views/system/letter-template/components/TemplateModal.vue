@@ -251,7 +251,7 @@ defineExpose({ openCreate, openEdit });
     />
     
     <div style="margin-bottom: 12px;">
-      <span style="color: #666; font-size: 13px; margin-right: 12px;">快速加载模板：</span>
+      <span style=" margin-right: 12px; font-size: 13px;color: #666;">快速加载模板：</span>
       <Space>
         <Button size="small" @click="loadDefaultTemplate('introduction')">介绍信</Button>
         <Button size="small" @click="loadDefaultTemplate('meeting')">会见函</Button>

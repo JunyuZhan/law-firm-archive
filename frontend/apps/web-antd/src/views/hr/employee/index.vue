@@ -765,7 +765,7 @@ onMounted(() => {
       @cancel="batchImportVisible = false"
     >
       <p>确定要为以下 {{ selectedUserIds.length }} 个用户创建员工档案吗？</p>
-      <p style="color: #999; font-size: 12px; margin-top: 8px">
+      <p style=" margin-top: 8px; font-size: 12px;color: #999">
         注意：已创建员工档案的用户将被自动跳过
       </p>
     </Modal>

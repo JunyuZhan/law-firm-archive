@@ -106,18 +106,18 @@ async function handleLogin(values: Recordable<any>) {
 /* 版本号固定在视口右下角，不影响文档流 */
 .version-info {
   position: fixed;
-  bottom: 20px;
   right: 24px;
-  font-size: 12px;
-  color: rgba(0, 0, 0, 0.35);
+  bottom: 20px;
   z-index: 10;
+  font-size: 12px;
+  color: rgb(0 0 0 / 35%);
 }
 </style>
 
 <style>
 /* 暗色模式（全局样式） */
 .dark .version-info {
-  color: rgba(255, 255, 255, 0.5) !important;
+  color: rgb(255 255 255 / 50%) !important;
 }
 </style>
 

@@ -158,32 +158,32 @@ defineExpose({ open });
 
 <style scoped>
 .preview-toolbar {
-  padding: 12px 0;
   display: flex;
   justify-content: flex-end;
-  border-bottom: 1px solid #e8e8e8;
+  padding: 12px 0;
   margin-bottom: 16px;
+  border-bottom: 1px solid #e8e8e8;
 }
 
 .preview-container {
-  padding: 24px;
-  background: #e8e8e8;
   max-height: 60vh;
+  padding: 24px;
   overflow-y: auto;
+  background: #e8e8e8;
   border-radius: 4px;
 }
 
 .preview-paper {
-  background: #fff;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
-  padding: 60px 80px;
-  min-height: 800px;
-  margin: 0 auto;
   max-width: 800px;
+  min-height: 800px;
+  padding: 60px 80px;
+  margin: 0 auto;
+  background: #fff;
+  box-shadow: 0 2px 12px rgb(0 0 0 / 15%);
 }
 
 .preview-content {
-  font-family: "SimSun", "宋体", serif;
+  font-family: SimSun, "宋体", serif;
   font-size: 14pt;
   line-height: 2;
   color: #000;
@@ -192,8 +192,8 @@ defineExpose({ open });
 .preview-content :deep(h1),
 .preview-content :deep(h2),
 .preview-content :deep(h3) {
-  text-align: center;
   margin: 1em 0;
+  text-align: center;
 }
 
 .preview-content :deep(h2) {
@@ -202,39 +202,39 @@ defineExpose({ open });
 }
 
 .preview-content :deep(h3) {
+  margin: 1.5em 0 0.5em;
   font-size: 16px;
   font-weight: bold;
   text-align: left;
-  margin: 1.5em 0 0.5em;
 }
 
 .preview-content :deep(p) {
-  text-indent: 2em;
   margin: 0.5em 0;
+  text-indent: 2em;
 }
 
 .preview-content :deep(.preview-var) {
-  color: #1890ff;
   font-weight: 500;
+  color: #1890ff;
 }
 
 .preview-content :deep(table) {
   width: 100%;
-  border-collapse: collapse;
   margin: 1em 0;
+  border-collapse: collapse;
 }
 
 .preview-content :deep(td),
 .preview-content :deep(th) {
-  border: 1px solid #000;
   padding: 8px 12px;
+  border: 1px solid #000;
 }
 
 .preview-footer {
   padding: 12px 0;
-  border-top: 1px solid #e8e8e8;
   margin-top: 16px;
-  color: #666;
   font-size: 12px;
+  color: #666;
+  border-top: 1px solid #e8e8e8;
 }
 </style>

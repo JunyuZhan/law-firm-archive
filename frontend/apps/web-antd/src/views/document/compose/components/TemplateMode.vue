@@ -417,34 +417,34 @@ defineExpose({
 }
 
 .template-desc {
-  color: #666;
+  min-height: 36px;
   margin-bottom: 8px;
   font-size: 12px;
-  min-height: 36px;
+  color: #666;
 }
 
 .selected-card {
   border-color: #1890ff;
-  box-shadow: 0 0 8px rgba(24, 144, 255, 0.3);
+  box-shadow: 0 0 8px rgb(24 144 255 / 30%);
 }
 
 .template-summary {
-  margin-top: 24px;
   padding: 16px;
+  margin-top: 24px;
   background: #e6f7ff;
   border-radius: 8px;
 }
 
 .summary-label {
-  margin: 0 0 8px 0;
+  margin: 0 0 8px;
   font-size: 12px;
   color: #666;
 }
 
 .preview-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
   margin-bottom: 16px;
 }
 
@@ -454,8 +454,8 @@ defineExpose({
 }
 
 .preview-content {
-  white-space: pre-wrap;
   font-family: inherit;
+  white-space: pre-wrap;
 }
 
 .info-title {

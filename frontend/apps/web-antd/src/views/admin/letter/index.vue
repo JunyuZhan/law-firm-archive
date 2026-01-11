@@ -632,7 +632,7 @@ onMounted(() => {
           <div style="margin-top: 12px;"><strong>出函事由：</strong>{{ detailRecord.purpose }}</div>
           <div v-if="detailRecord.approvalComment" style="margin-top: 12px;"><strong>审批意见：</strong>{{ detailRecord.approvalComment }}</div>
           <div v-if="detailRecord.remark" style="margin-top: 12px;"><strong>备注：</strong>{{ detailRecord.remark }}</div>
-          <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e8e8e8; color: #999; font-size: 12px;">
+          <div style=" padding-top: 12px;margin-top: 12px; font-size: 12px; color: #999; border-top: 1px solid #e8e8e8;">
             <div>申请时间：{{ detailRecord.createdAt }}</div>
             <div v-if="detailRecord.approvedAt">审批时间：{{ detailRecord.approvedAt }}（{{ detailRecord.approverName || '-' }}）</div>
             <div v-if="detailRecord.printedAt">打印时间：{{ detailRecord.printedAt }}（{{ detailRecord.printerName || '-' }}）</div>
@@ -651,7 +651,7 @@ onMounted(() => {
         </Card>
 
         <!-- 操作按钮 -->
-        <div style="margin-top: 16px; text-align: right; border-top: 1px solid #e8e8e8; padding-top: 16px;">
+        <div style=" padding-top: 16px;margin-top: 16px; text-align: right; border-top: 1px solid #e8e8e8;">
           <Space>
             <Button @click="detailVisible = false">关闭</Button>
             <Button type="primary" :loading="saving" @click="handleSaveContent">保存内容</Button>

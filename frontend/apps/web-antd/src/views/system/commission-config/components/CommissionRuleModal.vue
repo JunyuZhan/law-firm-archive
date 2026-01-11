@@ -206,10 +206,10 @@ defineExpose({
         </Col>
       </Row>
 
-      <div style="text-align: center; padding: 8px; background: #f5f5f5; border-radius: 4px; margin-bottom: 16px;">
+      <div style=" padding: 8px; margin-bottom: 16px;text-align: center; background: #f5f5f5; border-radius: 4px;">
         <span style="color: #666;">当前合计：</span>
         <strong :style="{ color: totalRate === 100 ? '#52c41a' : '#1890ff' }">{{ totalRate.toFixed(2) }}%</strong>
-        <span v-if="totalRate !== 100" style="color: #999; margin-left: 8px; font-size: 12px;">
+        <span v-if="totalRate !== 100" style=" margin-left: 8px; font-size: 12px;color: #999;">
           （比例之和不强制=100%）
         </span>
       </div>
@@ -222,13 +222,13 @@ defineExpose({
         <Col :span="12">
           <FormItem label="允许律师修改">
             <Switch v-model:checked="formData.allowModify" />
-            <span style="margin-left: 8px; color: #666; font-size: 12px;">创建合同时可自定义比例</span>
+            <span style="margin-left: 8px; font-size: 12px; color: #666;">创建合同时可自定义比例</span>
           </FormItem>
         </Col>
         <Col :span="12">
           <FormItem label="启用状态">
             <Switch v-model:checked="formData.active" />
-            <span style="margin-left: 8px; color: #666; font-size: 12px;">停用后不可选择</span>
+            <span style="margin-left: 8px; font-size: 12px; color: #666;">停用后不可选择</span>
           </FormItem>
         </Col>
       </Row>

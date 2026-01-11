@@ -269,7 +269,7 @@ onMounted(() => {
                     {{ formatTestResult((rawRecord as ExternalIntegrationDTO).lastTestResult).text }}
                   </Tag>
                   <Tooltip v-if="(rawRecord as ExternalIntegrationDTO).lastTestMessage" :title="(rawRecord as ExternalIntegrationDTO).lastTestMessage">
-                    <span style="color: #999; font-size: 12px; cursor: help;">详情</span>
+                    <span style=" font-size: 12px;color: #999; cursor: help;">详情</span>
                   </Tooltip>
                 </Space>
               </template>
@@ -325,7 +325,7 @@ onMounted(() => {
                     {{ formatTestResult((rawRecord as ExternalIntegrationDTO).lastTestResult).text }}
                   </Tag>
                   <Tooltip v-if="(rawRecord as ExternalIntegrationDTO).lastTestMessage" :title="(rawRecord as ExternalIntegrationDTO).lastTestMessage">
-                    <span style="color: #999; font-size: 12px; cursor: help;">详情</span>
+                    <span style=" font-size: 12px;color: #999; cursor: help;">详情</span>
                   </Tooltip>
                 </Space>
               </template>
@@ -394,7 +394,7 @@ onMounted(() => {
               </template>
             </template>
           </Table>
-          <div v-if="otherIntegrations.length === 0" style="text-align: center; padding: 40px; color: #999;">
+          <div v-if="otherIntegrations.length === 0" style=" padding: 40px; color: #999;text-align: center;">
             暂无其他系统集成配置
           </div>
         </Tabs.TabPane>
@@ -437,7 +437,7 @@ onMounted(() => {
             placeholder="留空表示不修改，输入新值则更新"
             autocomplete="off"
           />
-          <div style="color: #999; font-size: 12px; margin-top: 4px;">
+          <div style=" margin-top: 4px; font-size: 12px;color: #999;">
             用于 API_KEY 或 BEARER_TOKEN 认证方式
           </div>
         </FormItem>
@@ -496,7 +496,7 @@ onMounted(() => {
         </DescriptionsItem>
         <DescriptionsItem label="描述">{{ currentDetail.description || '-' }}</DescriptionsItem>
         <DescriptionsItem v-if="currentDetail.extraConfig && Object.keys(currentDetail.extraConfig).length > 0" label="额外配置">
-          <pre style="margin: 0; font-size: 12px; background: #f5f5f5; padding: 8px; border-radius: 4px;">{{ JSON.stringify(currentDetail.extraConfig, null, 2) }}</pre>
+          <pre style=" padding: 8px;margin: 0; font-size: 12px; background: #f5f5f5; border-radius: 4px;">{{ JSON.stringify(currentDetail.extraConfig, null, 2) }}</pre>
         </DescriptionsItem>
         <DescriptionsItem label="更新时间">{{ formatTime(currentDetail.updatedAt) }}</DescriptionsItem>
       </Descriptions>
@@ -515,7 +515,7 @@ onMounted(() => {
 }
 
 .opacity-50 {
-  opacity: 0.5;
   pointer-events: none;
+  opacity: 0.5;
 }
 </style>

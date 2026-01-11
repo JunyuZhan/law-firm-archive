@@ -937,7 +937,7 @@ onMounted(async () => {
         :wrapper-col="{ span: 18 }"
       >
         <!-- 合同选择（新增时必填） -->
-        <div v-if="!formData.id" style="margin-bottom: 16px; padding: 12px; background: #e6f7ff; border: 1px solid #91d5ff; border-radius: 4px">
+        <div v-if="!formData.id" style=" padding: 12px;margin-bottom: 16px; background: #e6f7ff; border: 1px solid #91d5ff; border-radius: 4px">
           <FormItem label="关联合同" name="contractId" :rules="[{ required: true, message: '请选择要关联的合同' }]" style="margin-bottom: 0">
             <Select
               v-model:value="selectedContractId"
@@ -948,7 +948,7 @@ onMounted(async () => {
               :options="approvedContracts.map(c => ({ label: `${c.contractNo} - ${c.clientName || ''} (${c.name})`, value: c.id }))"
               @change="(val: any) => val && handleContractSelect(val)"
             />
-            <div style="margin-top: 8px; color: #666; font-size: 12px">
+            <div style="margin-top: 8px; font-size: 12px; color: #666">
               📋 选择合同后将自动填充客户、收费方式等信息。一个合同可以创建多个项目。
             </div>
           </FormItem>

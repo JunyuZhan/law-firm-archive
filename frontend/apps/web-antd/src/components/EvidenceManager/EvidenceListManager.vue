@@ -132,7 +132,7 @@ defineExpose({
   <div class="evidence-list-manager">
     <Spin :spinning="loading">
       <!-- 模式切换 -->
-      <div class="mode-switcher" style="margin-bottom: 16px; display: flex; justify-content: center;">
+      <div class="mode-switcher" style=" display: flex; justify-content: center;margin-bottom: 16px;">
         <Segmented v-model:value="editMode" :options="modeOptions" />
       </div>
 

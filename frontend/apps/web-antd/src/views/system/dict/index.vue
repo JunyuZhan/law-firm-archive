@@ -438,9 +438,9 @@ onMounted(() => {
 }
 
 .dict-type-item {
-  cursor: pointer;
   padding: 8px 12px !important;
   margin-bottom: 4px;
+  cursor: pointer;
   border-radius: 6px;
   transition: all 0.2s;
 }
@@ -461,28 +461,28 @@ onMounted(() => {
 }
 
 .system-tag {
+  padding: 0 4px;
   margin-left: 4px;
   font-size: 10px;
   line-height: 16px;
-  padding: 0 4px;
 }
 
 .dict-type-code {
+  font-family: Monaco, Menlo, monospace;
   font-size: 12px;
   color: #999;
-  font-family: 'Monaco', 'Menlo', monospace;
 }
 
 .toolbar {
-  margin-bottom: 16px;
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
 }
 
 .toolbar-title {
-  font-weight: 500;
   font-size: 14px;
+  font-weight: 500;
 }
 
 .dict-item-grid {

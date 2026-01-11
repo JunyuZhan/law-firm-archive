@@ -193,7 +193,7 @@ onMounted(() => {
         <Tabs.TabPane key="all" tab="全部申请" />
       </Tabs>
       
-      <div style="margin-bottom: 16px; display: flex; justify-content: space-between;">
+      <div style=" display: flex; justify-content: space-between;margin-bottom: 16px;">
         <Space>
           <Input v-model:value="queryParams.keyword" placeholder="搜索申请人" style="width: 200px" allowClear @pressEnter="handleSearch" />
           <Select v-model:value="queryParams.status" placeholder="状态" style="width: 120px" allowClear

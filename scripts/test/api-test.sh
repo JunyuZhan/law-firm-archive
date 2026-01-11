@@ -767,16 +767,16 @@ test_hr_module() {
         print_result "员工列表查询" "SKIP" "可能未实现或需要权限"
     fi
     
-    # 培训列表
-    response=$(send_request "GET" "$BASE_URL/hr/training/list?pageNum=1&pageSize=10" "" "$auth_header")
+    # 培训通知列表
+    response=$(send_request "GET" "$BASE_URL/hr/training-notice?pageNum=1&pageSize=10" "" "$auth_header")
     http_code=$(echo "$response" | tail -1)
     body=$(echo "$response" | sed '$d')
     success=$(echo "$body" | grep -o '"success":[^,]*' | cut -d':' -f2)
     
     if [ "$success" = "true" ] && [ "$http_code" = "200" ]; then
-        print_result "培训列表查询" "PASS"
+        print_result "培训通知列表" "PASS"
     else
-        print_result "培训列表查询" "SKIP" "可能未实现"
+        print_result "培训通知列表" "SKIP" "可能未实现"
     fi
     
     # 绩效列表

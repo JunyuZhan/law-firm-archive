@@ -446,7 +446,7 @@ onMounted(() => {
             >
               <div style="display: flex; justify-content: space-between;">
                 <span>{{ asset.assetNo }} - {{ asset.name }}</span>
-                <span style="color: #999; font-size: 12px;">{{ asset.location || '未知位置' }}</span>
+                <span style=" font-size: 12px;color: #999;">{{ asset.location || '未知位置' }}</span>
               </div>
             </Select.Option>
           </Select>
@@ -457,10 +457,10 @@ onMounted(() => {
         </FormItem>
 
         <!-- 预计盘点信息 -->
-        <div style="background: #f5f5f5; padding: 12px; border-radius: 4px; margin-top: 8px;">
-          <div style="color: #666; font-size: 14px;">
+        <div style=" padding: 12px; margin-top: 8px;background: #f5f5f5; border-radius: 4px;">
+          <div style=" font-size: 14px;color: #666;">
             <span>预计盘点资产数量：</span>
-            <span style="color: #1890ff; font-weight: 500;">{{ expectedAssetCount }}</span>
+            <span style=" font-weight: 500;color: #1890ff;">{{ expectedAssetCount }}</span>
             <span> 件</span>
             <span v-if="inventoryForm.inventoryType === 'FULL' && (inventoryForm.departmentId || filterCategory || inventoryForm.location)" style="margin-left: 12px; color: #999;">
               （已按条件筛选）

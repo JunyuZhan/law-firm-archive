@@ -240,8 +240,8 @@ function goToCompose() {
 
       <!-- 文档名称列 -->
       <template #title="{ row }">
-        <div style="display: flex; align-items: center; gap: 8px">
-          <BookOpenText style="width: 16px; height: 16px; color: #1890ff; flex-shrink: 0" />
+        <div style="display: flex; gap: 8px; align-items: center">
+          <BookOpenText style=" flex-shrink: 0;width: 16px; height: 16px; color: #1890ff" />
           <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap">
             {{ row.title || row.fileName || '未命名文档' }}
           </span>
@@ -258,7 +258,7 @@ function goToCompose() {
       <!-- 来源列 -->
       <template #source="{ row }">
         <template v-if="row.matterId">
-          <a style="display: inline-flex; align-items: center; gap: 4px; color: #1890ff" @click="goToMatterDossier(row)">
+          <a style="display: inline-flex; gap: 4px; align-items: center; color: #1890ff" @click="goToMatterDossier(row)">
             <Inbox style="width: 14px; height: 14px" />
             {{ row.matterName || `项目#${row.matterId}` }}
           </a>

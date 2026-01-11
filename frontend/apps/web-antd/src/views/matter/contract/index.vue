@@ -2217,7 +2217,7 @@ onMounted(async () => {
 
     <Card>
       <!-- 操作栏 -->
-      <div style="margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center">
+      <div style=" display: flex; align-items: center; justify-content: space-between;margin-bottom: 16px">
         <Button type="primary" size="large" @click="handleAdd">
           <template #icon><Plus /></template>
           创建合同
@@ -2324,7 +2324,7 @@ onMounted(async () => {
         <Form ref="formRef" :model="formData" :label-col="{ span: 7 }" :wrapper-col="{ span: 17 }">
             <!-- 第一步：选择模板（仅新建时显示） -->
             <template v-if="!formData.id">
-              <div style="background: #e6f7ff; padding: 12px 16px; border-radius: 4px; margin-bottom: 16px; border: 1px solid #91d5ff;">
+              <div style=" padding: 12px 16px; margin-bottom: 16px;background: #e6f7ff; border: 1px solid #91d5ff; border-radius: 4px;">
                 <FormItem label="合同模板" style="margin-bottom: 0;">
                   <Select
                     v-model:value="selectedTemplateId"
@@ -2370,7 +2370,7 @@ onMounted(async () => {
               <Input 
                 :value="totalAmountChinese" 
                 disabled 
-                style="width: 100%; background: #fffbe6; color: #ad6800;" 
+                style="width: 100%; color: #ad6800; background: #fffbe6;" 
                 placeholder="大写金额自动生成"
               />
             </FormItem>
@@ -2472,7 +2472,7 @@ onMounted(async () => {
                   <Input 
                     :value="claimAmountChinese" 
                     disabled 
-                    style="width: 100%; background: #fffbe6; color: #ad6800;" 
+                    style="width: 100%; color: #ad6800; background: #fffbe6;" 
                     placeholder="大写金额自动生成"
                   />
                 </FormItem>
@@ -2697,7 +2697,7 @@ onMounted(async () => {
               />
             </FormItem>
             
-            <div v-if="selectedCommissionRule" style="background: #fafafa; padding: 12px; border-radius: 4px; margin-bottom: 16px;">
+            <div v-if="selectedCommissionRule" style=" padding: 12px; margin-bottom: 16px;background: #fafafa; border-radius: 4px;">
               <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
                 <span style="font-size: 12px; color: #666;">
                   <Tag v-if="selectedCommissionRule.allowModify" color="green" size="small">可调整</Tag>
@@ -2708,12 +2708,12 @@ onMounted(async () => {
                   合计: {{ ((commissionFormData.firmRate || 0) + (commissionFormData.leadLawyerRate || 0) + (commissionFormData.assistLawyerRate || 0) + (commissionFormData.supportStaffRate || 0)).toFixed(2) }}%
                 </span>
               </div>
-              <div style="font-size: 11px; color: #999; margin-bottom: 8px; padding: 4px 0;">
+              <div style=" padding: 4px 0; margin-bottom: 8px;font-size: 11px; color: #999;">
                 💡 提示：此比例将自动应用到下方参与人（根据角色匹配），可在参与人部分手动调整
               </div>
               <Row :gutter="8">
                 <Col :span="6">
-                  <div style="font-size: 11px; color: #999; margin-bottom: 4px;">律所</div>
+                  <div style=" margin-bottom: 4px;font-size: 11px; color: #999;">律所</div>
                   <InputNumber 
                     v-model:value="commissionFormData.firmRate" 
                     :min="0" :max="100" :precision="2"
@@ -2724,7 +2724,7 @@ onMounted(async () => {
                   />
                 </Col>
                 <Col :span="6">
-                  <div style="font-size: 11px; color: #999; margin-bottom: 4px;">主办律师</div>
+                  <div style=" margin-bottom: 4px;font-size: 11px; color: #999;">主办律师</div>
                   <InputNumber 
                     v-model:value="commissionFormData.leadLawyerRate" 
                     :min="0" :max="100" :precision="2"
@@ -2735,7 +2735,7 @@ onMounted(async () => {
                   />
                 </Col>
                 <Col :span="6">
-                  <div style="font-size: 11px; color: #999; margin-bottom: 4px;">协办律师</div>
+                  <div style=" margin-bottom: 4px;font-size: 11px; color: #999;">协办律师</div>
                   <InputNumber 
                     v-model:value="commissionFormData.assistLawyerRate" 
                     :min="0" :max="100" :precision="2"
@@ -2746,7 +2746,7 @@ onMounted(async () => {
                   />
                 </Col>
                 <Col :span="6">
-                  <div style="font-size: 11px; color: #999; margin-bottom: 4px;">辅助人员</div>
+                  <div style=" margin-bottom: 4px;font-size: 11px; color: #999;">辅助人员</div>
                   <InputNumber 
                     v-model:value="commissionFormData.supportStaffRate"
                     :min="0" :max="100" :precision="2"
@@ -2763,18 +2763,18 @@ onMounted(async () => {
             <Divider orientation="left" style="margin: 8px 0 16px; font-size: 13px; color: #1890ff;">参与人</Divider>
             
             <div style="margin-bottom: 16px;">
-              <div style="margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+              <div style=" display: flex; align-items: center; justify-content: space-between;margin-bottom: 8px;">
                 <span style="font-size: 12px; color: #666;">选择合同参与人（用于提成分配和"我的收款"显示）</span>
                 <Button type="link" size="small" @click="handleAddContractParticipant">
                   <Plus class="size-4" />添加参与人
                 </Button>
               </div>
               
-              <div v-if="contractParticipants.length === 0" style="padding: 12px; background: #fafafa; border-radius: 4px; text-align: center; color: #999; font-size: 12px;">
+              <div v-if="contractParticipants.length === 0" style="padding: 12px; font-size: 12px; color: #999; text-align: center; background: #fafafa; border-radius: 4px;">
                 未添加参与人，将自动添加签约人或当前用户为参与人
               </div>
               
-              <div v-for="(participant, index) in contractParticipants" :key="index" style="margin-bottom: 8px; padding: 12px; background: #fafafa; border-radius: 4px;">
+              <div v-for="(participant, index) in contractParticipants" :key="index" style=" padding: 12px;margin-bottom: 8px; background: #fafafa; border-radius: 4px;">
                 <Row :gutter="8" align="middle">
                   <Col :span="8">
                     <UserTreeSelect
@@ -2820,7 +2820,7 @@ onMounted(async () => {
     <!-- 合同详情弹窗 -->
     <Modal v-model:open="detailModalVisible" title="合同详情" width="1000px" :footer="null">
       <!-- 审批通过后显示打印按钮 -->
-      <div v-if="currentContract && currentContract.status === 'ACTIVE'" style="margin-bottom: 16px; padding: 12px; background: #f6ffed; border: 1px solid #b7eb8f; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">
+      <div v-if="currentContract && currentContract.status === 'ACTIVE'" style=" display: flex; align-items: center; justify-content: space-between; padding: 12px;margin-bottom: 16px; background: #f6ffed; border: 1px solid #b7eb8f; border-radius: 4px;">
         <span style="color: #52c41a;">✓ 合同已审批通过，可打印正式合同文本供双方签字</span>
         <Space>
           <Button @click="handlePreviewApprovalForm">📋 预览审批表</Button>
@@ -2858,13 +2858,13 @@ onMounted(async () => {
             <Divider />
             <div v-if="currentContract.caseSummary" style="margin-bottom: 12px">
               <strong>案情摘要：</strong>
-              <div style="margin-top: 8px; padding: 12px; background: #fafafa; border-radius: 4px; white-space: pre-wrap;">{{ currentContract.caseSummary }}</div>
+              <div style=" padding: 12px;margin-top: 8px; white-space: pre-wrap; background: #fafafa; border-radius: 4px;">{{ currentContract.caseSummary }}</div>
             </div>
             <div v-if="currentContract.remark"><strong>备注：</strong>{{ currentContract.remark }}</div>
           </div>
         </TabPane>
         <TabPane key="schedule" tab="付款计划">
-          <div style="margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center">
+          <div style=" display: flex; align-items: center; justify-content: space-between;margin-bottom: 16px">
             <div>
               <span>付款计划总额：<strong>{{ formatMoney(totalScheduleAmount) }}</strong></span>
               <span style="margin-left: 16px" v-if="currentContract">
@@ -2894,7 +2894,7 @@ onMounted(async () => {
         </TabPane>
         <TabPane key="participant" tab="参与人">
           
-          <div style="margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center">
+          <div style=" display: flex; align-items: center; justify-content: space-between;margin-bottom: 16px">
             <div>
               <span>提成比例总和：<strong>{{ totalCommissionRate }}%</strong></span>
               <Tag v-if="totalCommissionRate <= 100" color="green" style="margin-left: 8px">正常</Tag>
@@ -3023,7 +3023,7 @@ onMounted(async () => {
 
     <!-- 模板预览弹窗 -->
     <Modal v-model:open="templatePreviewVisible" title="模板内容预览" width="800px" :footer="null">
-      <div style="white-space: pre-wrap; max-height: 500px; overflow-y: auto; padding: 16px; background: #f5f5f5; border-radius: 4px;">
+      <div style=" max-height: 500px; padding: 16px; overflow-y: auto;white-space: pre-wrap; background: #f5f5f5; border-radius: 4px;">
         {{ templatePreviewContent || '暂无内容' }}
       </div>
     </Modal>
@@ -3049,21 +3049,21 @@ onMounted(async () => {
         <div style="display: flex; flex-direction: column; gap: 16px;">
           <Checkbox v-model:checked="printOptions.printContract">
             <span style="font-size: 15px; font-weight: 500;">📄 合同文本</span>
-            <div style="color: #666; font-size: 13px; margin-top: 4px;">
+            <div style=" margin-top: 4px; font-size: 13px;color: #666;">
               打印完整合同内容，包含双方签字盖章区域
             </div>
           </Checkbox>
           
           <Checkbox v-model:checked="printOptions.printApprovalForm">
             <span style="font-size: 15px; font-weight: 500;">📋 收案审批表</span>
-            <div style="color: #666; font-size: 13px; margin-top: 4px;">
+            <div style=" margin-top: 4px; font-size: 13px;color: #666;">
               打印律所内部收案审批表，包含委托人信息、案情摘要、审批意见等
             </div>
           </Checkbox>
         </div>
         
-        <div v-if="currentPrintData" style="margin-top: 20px; padding: 12px; background: #f5f5f5; border-radius: 8px;">
-          <div style="font-weight: 500; margin-bottom: 8px;">📌 合同信息</div>
+        <div v-if="currentPrintData" style=" padding: 12px;margin-top: 20px; background: #f5f5f5; border-radius: 8px;">
+          <div style=" margin-bottom: 8px;font-weight: 500;">📌 合同信息</div>
           <div style="font-size: 13px; color: #666;">
             <div>合同编号：{{ currentPrintData.contractNo }}</div>
             <div>合同名称：{{ currentPrintData.name }}</div>
@@ -3105,9 +3105,9 @@ onMounted(async () => {
           </FormItem>
         </Form>
         
-        <div style="margin-top: 16px; padding: 12px; background: #fffbe6; border: 1px solid #ffe58f; border-radius: 4px;">
-          <div style="color: #ad6800; font-weight: 500;">💡 提示</div>
-          <div style="color: #666; font-size: 13px; margin-top: 8px;">
+        <div style=" padding: 12px;margin-top: 16px; background: #fffbe6; border: 1px solid #ffe58f; border-radius: 4px;">
+          <div style=" font-weight: 500;color: #ad6800;">💡 提示</div>
+          <div style=" margin-top: 8px; font-size: 13px;color: #666;">
             案情摘要应包含以下要点：委托人身份信息、案件基本事实、争议焦点、代理目标等。
             保存后可在合同详情中查看，也可通过预览审批表查看最终效果。
           </div>
@@ -3139,9 +3139,9 @@ onMounted(async () => {
         >
           <template v-for="approver in approverOptions" :key="approver.id">
             <Select.Option :value="approver.id" :label="approver.realName">
-              <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div style="display: flex; align-items: center; justify-content: space-between;">
                 <span>{{ approver.realName }}</span>
-                <span style="color: #999; font-size: 12px;">{{ approver.position }} · {{ approver.departmentName }}</span>
+                <span style=" font-size: 12px;color: #999;">{{ approver.position }} · {{ approver.departmentName }}</span>
               </div>
             </Select.Option>
           </template>
@@ -3149,7 +3149,7 @@ onMounted(async () => {
       </template>
       
       <template v-else>
-        <div style="text-align: center; padding: 20px; color: #999;">
+        <div style=" padding: 20px; color: #999;text-align: center;">
           <p>暂无可选审批人</p>
           <p style="font-size: 12px;">系统将自动分配审批人，或请联系管理员配置合伙人/主任角色</p>
         </div>
@@ -3163,33 +3163,33 @@ onMounted(async () => {
 .contract-preview-content {
   flex: 1;
   max-height: 65vh;
-  overflow-y: auto;
-  background: #fff;
-  border: 1px solid #d9d9d9;
-  border-radius: 4px;
   padding: 32px 40px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-  font-family: 'SimSun', '宋体', serif;
+  overflow-y: auto;
+  font-family: SimSun, '宋体', serif;
   font-size: 14pt;
   line-height: 2;
   color: #333;
+  background: #fff;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  box-shadow: 0 2px 12px rgb(0 0 0 / 8%);
 }
 
 /* 模拟A4纸张效果 */
 .contract-preview-content::before {
-  content: '';
   display: block;
   height: 0;
+  content: '';
 }
 
 /* 富文本元素样式 */
 :deep(.contract-preview-content h1),
 :deep(.contract-preview-content h2),
 :deep(.contract-preview-content h3) {
-  text-align: center;
+  margin: 16px 0;
   font-weight: bold;
   color: #000;
-  margin: 16px 0;
+  text-align: center;
 }
 
 :deep(.contract-preview-content h1) {
@@ -3213,26 +3213,26 @@ onMounted(async () => {
 
 :deep(.contract-preview-content table) {
   width: 100%;
-  border-collapse: collapse;
   margin: 16px 0;
+  border-collapse: collapse;
 }
 
 :deep(.contract-preview-content table td),
 :deep(.contract-preview-content table th) {
-  border: 1px solid #333;
   padding: 8px 12px;
   text-align: left;
+  border: 1px solid #333;
 }
 
 :deep(.contract-preview-content table th) {
-  background: #f5f5f5;
   font-weight: bold;
+  background: #f5f5f5;
 }
 
 :deep(.contract-preview-content ul),
 :deep(.contract-preview-content ol) {
-  margin: 8px 0;
   padding-left: 2em;
+  margin: 8px 0;
 }
 
 :deep(.contract-preview-content li) {

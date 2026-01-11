@@ -257,7 +257,7 @@ onMounted(() => {
         <Tabs.TabPane key="completed" tab="已完成" />
       </Tabs>
       
-      <div style="margin-bottom: 16px; display: flex; justify-content: space-between;">
+      <div style=" display: flex; justify-content: space-between;margin-bottom: 16px;">
         <Space>
           <Select v-model:value="queryParams.purchaseType" placeholder="采购类型" style="width: 120px" allowClear :options="purchaseTypeOptions" @change="handleSearch" />
           <Input v-model:value="queryParams.keyword" placeholder="搜索采购" style="width: 200px" allowClear @pressEnter="handleSearch" />
@@ -295,7 +295,7 @@ onMounted(() => {
         <FormItem label="期望到货"><DatePicker v-model:value="formData.expectedDate" style="width: 100%" /></FormItem>
         <FormItem label="采购原因"><Textarea v-model:value="formData.reason" :rows="2" placeholder="采购原因说明" /></FormItem>
         <FormItem label="采购物品">
-          <div v-for="(item, index) in formData.items" :key="index" style="display: flex; gap: 8px; margin-bottom: 8px; align-items: center;">
+          <div v-for="(item, index) in formData.items" :key="index" style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px;">
             <Input v-model:value="item.itemName" placeholder="物品名称" style="width: 150px" />
             <Input v-model:value="item.specification" placeholder="规格" style="width: 100px" />
             <InputNumber v-model:value="item.quantity" :min="1" placeholder="数量" style="width: 80px" />
@@ -303,7 +303,7 @@ onMounted(() => {
             <Button v-if="formData.items.length > 1" type="text" danger @click="removeItem(index)">删除</Button>
           </div>
           <Button type="dashed" block @click="addItem">+ 添加物品</Button>
-          <div style="margin-top: 8px; text-align: right; color: #666;">预算总额: {{ formatMoney(totalEstimatedAmount) }}</div>
+          <div style="margin-top: 8px; color: #666; text-align: right;">预算总额: {{ formatMoney(totalEstimatedAmount) }}</div>
         </FormItem>
         <FormItem label="备注"><Textarea v-model:value="formData.remarks" :rows="2" /></FormItem>
       </Form>

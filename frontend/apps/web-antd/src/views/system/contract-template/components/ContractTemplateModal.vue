@@ -243,8 +243,8 @@ defineExpose({
           style="margin-bottom: 12px"
         />
         
-        <div style="margin-bottom: 12px; display: flex; align-items: center; flex-wrap: wrap; gap: 8px;">
-          <span style="color: #666; font-size: 13px;">快速加载模板：</span>
+        <div style=" display: flex; flex-wrap: wrap; gap: 8px; align-items: center;margin-bottom: 12px;">
+          <span style=" font-size: 13px;color: #666;">快速加载模板：</span>
           <Dropdown>
             <Button>选择模板 ▼</Button>
             <template #overlay>
@@ -259,7 +259,7 @@ defineExpose({
               </Menu>
             </template>
           </Dropdown>
-          <span style="color: #999; font-size: 12px; margin-left: 8px;">
+          <span style=" margin-left: 8px; font-size: 12px;color: #999;">
             选择后将加载标准模板内容，可在此基础上修改
           </span>
         </div>
@@ -284,7 +284,7 @@ defineExpose({
         <div 
           v-for="(clause, index) in clausesList" 
           :key="index" 
-          style="margin-bottom: 16px; padding: 12px; background: #fafafa; border-radius: 6px; border: 1px solid #e8e8e8;"
+          style=" padding: 12px;margin-bottom: 16px; background: #fafafa; border: 1px solid #e8e8e8; border-radius: 6px;"
         >
           <div style="display: flex; align-items: center; margin-bottom: 8px;">
             <span style="width: 80px; font-weight: 500;">条款标题：</span>
@@ -305,7 +305,7 @@ defineExpose({
       </TabPane>
     </Tabs>
 
-    <div style="margin-top: 16px; text-align: right; border-top: 1px solid #e8e8e8; padding-top: 16px;">
+    <div style=" padding-top: 16px;margin-top: 16px; text-align: right; border-top: 1px solid #e8e8e8;">
       <Space>
         <Button @click="modalApi.close()">取消</Button>
         <Button type="primary" @click="handleSave">保存模板</Button>

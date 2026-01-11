@@ -537,7 +537,7 @@ onMounted(async () => {
         <Button type="link" @click="goToApprovalCenter">
           前往审批中心统一处理 →
         </Button>
-        <span style="color: #999; margin-left: 8px">
+        <span style=" margin-left: 8px;color: #999">
           建议在审批中心统一处理所有待审批事项，支持批量审批
         </span>
       </div>
@@ -707,7 +707,7 @@ onMounted(async () => {
       okType="danger"
     >
       <div style="margin-bottom: 16px">
-        <p style="color: #999; margin-bottom: 8px;">请填写拒绝原因（必填）：</p>
+        <p style=" margin-bottom: 8px;color: #999;">请填写拒绝原因（必填）：</p>
         <Textarea
           v-model:value="rejectReason"
           :rows="4"

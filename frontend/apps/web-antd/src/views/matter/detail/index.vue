@@ -1014,12 +1014,12 @@ onMounted(() => {
               :value="approver.id"
               :label="approver.realName"
             >
-              <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div style="display: flex; align-items: center; justify-content: space-between;">
                 <span>
                   {{ approver.realName }}
                   <Tag v-if="approver.recommended" color="green" style="margin-left: 4px; font-size: 10px;">推荐</Tag>
                 </span>
-                <span style="color: #999; font-size: 12px;">{{ approver.position }} · {{ approver.departmentName }}</span>
+                <span style=" font-size: 12px;color: #999;">{{ approver.position }} · {{ approver.departmentName }}</span>
               </div>
             </Select.Option>
           </Select>
@@ -1224,9 +1224,9 @@ onMounted(() => {
           </DescriptionsItem>
         </Descriptions>
         <div v-if="letterDetailRecord.content" style="margin-top: 16px;">
-          <div style="font-weight: 500; margin-bottom: 8px;">函件内容：</div>
+          <div style=" margin-bottom: 8px;font-weight: 500;">函件内容：</div>
           <div 
-            style="background: #f5f5f5; padding: 12px; border-radius: 4px; max-height: 300px; overflow-y: auto;"
+            style=" max-height: 300px; padding: 12px; overflow-y: auto;background: #f5f5f5; border-radius: 4px;"
             v-html="letterDetailRecord.content"
           ></div>
         </div>

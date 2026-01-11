@@ -335,11 +335,11 @@ defineExpose({
               </template>
               <template #description>
                 <p style="margin: 4px 0;">提取的文档内容将发送给 AI 大模型进行分析。</p>
-                <ul style="margin: 4px 0 0 0; padding-left: 18px;">
+                <ul style=" padding-left: 18px;margin: 4px 0 0;">
                   <li><strong>启用脱敏</strong>：身份证号、手机号、银行卡号、邮箱等敏感信息将被替换为占位符</li>
                   <li><strong>未启用脱敏</strong>：文档原文将直接发送（仅建议本地部署的模型）</li>
                 </ul>
-                <p style="margin: 8px 0 0 0; color: #fa8c16;">
+                <p style="margin: 8px 0 0; color: #fa8c16;">
                   ⚠️ 请在下方开启"数据脱敏保护"来保护文档中的敏感信息！
                 </p>
               </template>
@@ -577,9 +577,9 @@ defineExpose({
 }
 
 .hint-text {
-  color: #666;
-  font-size: 12px;
   margin-bottom: 12px;
+  font-size: 12px;
+  color: #666;
 }
 
 .options-collapse {
@@ -591,21 +591,21 @@ defineExpose({
 }
 
 .options-label {
-  margin: 0 0 12px 0;
+  margin: 0 0 12px;
   font-weight: 500;
 }
 
 .extract-content-box {
-  margin-top: 16px;
   padding: 12px;
+  margin-top: 16px;
   background: #e6f7ff;
   border-radius: 8px;
 }
 
 .extract-hint {
-  color: #096dd9;
+  margin: 8px 0 0;
   font-size: 12px;
-  margin: 8px 0 0 0;
+  color: #096dd9;
 }
 
 .document-list {
@@ -614,17 +614,17 @@ defineExpose({
 
 .document-list-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
   margin-bottom: 8px;
 }
 
 .document-list-content {
   max-height: 200px;
+  padding: 8px;
   overflow-y: auto;
   border: 1px solid #d9d9d9;
   border-radius: 8px;
-  padding: 8px;
 }
 
 .document-item {
@@ -642,8 +642,8 @@ defineExpose({
 
 /* 脱敏控制区域 - 始终显示 */
 .masking-control-box {
-  margin: 16px 0;
   padding: 16px;
+  margin: 16px 0;
   border-radius: 8px;
   transition: all 0.3s ease;
 }
@@ -669,9 +669,9 @@ defineExpose({
 }
 
 .masking-subtitle {
-  color: #595959;
-  font-size: 13px;
   margin: 0;
+  font-size: 13px;
+  color: #595959;
 }
 
 .status-tag {
@@ -684,8 +684,8 @@ defineExpose({
 }
 
 .masking-scope-list {
-  margin: 8px 0;
   padding-left: 18px;
+  margin: 8px 0;
 }
 
 .masking-scope-list li {
@@ -698,28 +698,28 @@ defineExpose({
 }
 
 .doc-content-sublist {
-  margin: 4px 0 0 0;
   padding-left: 16px;
+  margin: 4px 0 0;
   font-size: 12px;
   color: #595959;
 }
 
 .masking-note {
-  margin: 12px 0 0 0;
   padding: 8px 12px;
+  margin: 12px 0 0;
+  font-size: 13px;
   background: #e6f7ff;
   border-radius: 4px;
-  font-size: 13px;
 }
 
 .masking-warning-list {
-  margin: 0;
   padding-left: 18px;
+  margin: 0;
 }
 
 .risk-list {
-  margin: 0;
   padding-left: 18px;
+  margin: 0;
 }
 
 .risk-list li {
@@ -727,23 +727,23 @@ defineExpose({
 }
 
 .final-warning {
-  margin: 12px 0 0 0;
   padding: 8px 12px;
+  margin: 12px 0 0;
+  color: #cf1322;
   background: #fff1f0;
   border-radius: 4px;
-  color: #cf1322;
 }
 
 .masking-hint {
-  color: #ad6800;
+  margin: 8px 0 0;
   font-size: 12px;
-  margin: 8px 0 0 0;
+  color: #ad6800;
 }
 
 .mapping-hint {
-  color: #52c41a;
+  margin: 4px 0 0;
   font-size: 12px;
-  margin: 4px 0 0 0;
+  color: #52c41a;
 }
 
 .context-preview {
@@ -752,8 +752,8 @@ defineExpose({
 
 .preview-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
   margin-bottom: 12px;
 }
 
@@ -764,11 +764,11 @@ defineExpose({
 }
 
 .preview-content {
-  white-space: pre-wrap;
-  font-size: 12px;
-  font-family: inherit;
   margin: 0;
+  font-family: inherit;
+  font-size: 12px;
   line-height: 1.6;
+  white-space: pre-wrap;
 }
 
 .masked-alert {
@@ -785,8 +785,8 @@ defineExpose({
 }
 
 .masking-details-card {
-  margin-top: 8px;
   max-height: 400px;
+  margin-top: 8px;
   overflow-y: auto;
 }
 
@@ -797,12 +797,12 @@ defineExpose({
 .masking-table-header {
   display: flex;
   padding: 8px 0;
-  border-bottom: 2px solid #f0f0f0;
+  padding: 12px;
+  margin: -12px -12px 8px;
   font-weight: 600;
   color: #262626;
   background: #fafafa;
-  margin: -12px -12px 8px -12px;
-  padding: 12px;
+  border-bottom: 2px solid #f0f0f0;
 }
 
 .masking-table-body {
@@ -812,9 +812,9 @@ defineExpose({
 
 .masking-table-row {
   display: flex;
+  align-items: center;
   padding: 6px 0;
   border-bottom: 1px solid #f5f5f5;
-  align-items: center;
 }
 
 .masking-table-row:hover {
@@ -831,36 +831,36 @@ defineExpose({
 
 .col-original {
   flex: 1;
-  color: #ff4d4f;
-  font-family: monospace;
   overflow: hidden;
   text-overflow: ellipsis;
+  font-family: monospace;
+  color: #ff4d4f;
   white-space: nowrap;
 }
 
 .col-arrow {
   flex: 0 0 30px;
-  text-align: center;
   color: #1890ff;
+  text-align: center;
 }
 
 .col-masked {
   flex: 1;
-  color: #52c41a;
-  font-family: monospace;
   overflow: hidden;
   text-overflow: ellipsis;
+  font-family: monospace;
+  color: #52c41a;
   white-space: nowrap;
 }
 
 .masking-stats {
-  margin-top: 16px;
   padding-top: 12px;
+  margin-top: 16px;
   border-top: 1px dashed #d9d9d9;
 }
 
 .masking-stats p {
-  margin: 0 0 8px 0;
+  margin: 0 0 8px;
   font-weight: 500;
 }
 </style>

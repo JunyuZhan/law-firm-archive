@@ -504,7 +504,7 @@ onMounted(() => {
             placeholder="如果退回，请填写退回意见"
           />
         </FormItem>
-        <div style="text-align: right; margin-top: 16px">
+        <div style=" margin-top: 16px;text-align: right">
           <Space>
             <Button @click="reviewModalVisible = false">取消</Button>
             <Button type="primary" danger @click="handleReject" :disabled="!reviewComment.trim()">

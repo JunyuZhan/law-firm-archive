@@ -544,7 +544,7 @@ onMounted(async () => {
 
       <!-- 卡片列表 -->
       <Spin :spinning="loading">
-        <div v-if="dataSource.length === 0" style="text-align: center; padding: 60px; color: #999">
+        <div v-if="dataSource.length === 0" style=" padding: 60px; color: #999;text-align: center">
           暂无档案数据
         </div>
         <Row v-else :gutter="[16, 16]">
@@ -711,7 +711,7 @@ onMounted(async () => {
               :options="archivableMatters.map(m => ({ label: `[${m.matterNo}] ${m.name}`, value: m.id }))"
           />
         </FormItem>
-          <div style="text-align: right; margin-top: 24px">
+          <div style=" margin-top: 24px;text-align: right">
             <Space>
               <Button @click="archiveWizardVisible = false">取消</Button>
               <Button type="primary" @click="handleSelectMatter" :disabled="!selectedMatterId">
@@ -758,7 +758,7 @@ onMounted(async () => {
             </ul>
           </div>
 
-          <div style="text-align: right; margin-top: 24px">
+          <div style=" margin-top: 24px;text-align: right">
             <Space>
               <Button @click="archiveWizardStep = 0">上一步</Button>
               <Button type="primary" @click="handlePreviewData">
@@ -796,7 +796,7 @@ onMounted(async () => {
             </Row>
           </Checkbox.Group>
 
-          <div style="text-align: right; margin-top: 24px">
+          <div style=" margin-top: 24px;text-align: right">
             <Space>
               <Button @click="archiveWizardStep = 1">上一步</Button>
               <Button type="primary" @click="archiveWizardStep = 3">
@@ -823,7 +823,7 @@ onMounted(async () => {
             <DescriptionsItem label="初始状态">待入库</DescriptionsItem>
           </Descriptions>
 
-          <div style="text-align: right; margin-top: 24px">
+          <div style=" margin-top: 24px;text-align: right">
             <Space>
               <Button @click="archiveWizardStep = 2">上一步</Button>
               <Button type="primary" @click="handleCreateArchive">
@@ -896,113 +896,7 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-/* 档案封面卡片容器 */
-.archive-cover-card {
-  margin-bottom: 16px;
-}
 
-/* 牛皮纸封面 */
-.cover-paper {
-  /* A4比例：宽高比约1:1.414 */
-  aspect-ratio: 1 / 1.414;
-  width: 100%;
-  min-height: 400px;
-  background-color: #deb887; /* 牛皮纸颜色 RGB(222, 184, 135) */
-  border: 3px solid; /* 边框颜色由内联样式动态设置 */
-  border-radius: 4px;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-  cursor: pointer;
-  overflow: hidden;
-}
-
-/* 颜色标识条 */
-.cover-color-bar {
-  height: 6px;
-  width: 100%;
-  flex-shrink: 0;
-}
-
-.cover-paper:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-}
-
-/* 封面标题区域 */
-.cover-header {
-  text-align: center;
-  margin-bottom: 30px;
-  padding: 20px 20px 20px 20px;
-  padding-bottom: 20px;
-  border-bottom: 2px solid #8b5a2b;
-}
-
-.cover-title-main {
-  font-size: 28px;
-  font-weight: bold;
-  color: #654321; /* 深棕色文字 RGB(101, 67, 33) */
-  margin-bottom: 10px;
-  letter-spacing: 2px;
-}
-
-.cover-title-sub {
-  font-size: 18px;
-  color: #654321; /* 深棕色文字 RGB(101, 67, 33) */
-  letter-spacing: 1px;
-}
-
-/* 封面信息区域 */
-.cover-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 0 20px;
-}
-
-.cover-info-row {
-  display: flex;
-  align-items: flex-start;
-  padding: 8px 0;
-  border-bottom: 1px solid rgba(139, 90, 43, 0.2);
-}
-
-.cover-info-label {
-  flex: 0 0 80px;
-  font-size: 13px;
-  font-weight: bold;
-  color: #654321;
-  text-align: right;
-  padding-right: 12px;
-}
-
-.cover-info-value {
-  flex: 1;
-  font-size: 13px;
-  color: #654321;
-  word-break: break-all;
-}
-
-/* 封面底部 */
-.cover-footer {
-  margin-top: 20px;
-  padding: 15px 20px 20px 20px;
-  border-top: 2px solid #8b5a2b;
-  text-align: center;
-}
-
-/* 卡片操作栏 */
-.cover-actions {
-  margin-top: 12px;
-  padding: 8px;
-  background-color: #f5f5f5;
-  border-radius: 4px;
-  text-align: center;
-}
 
 /* 响应式调整 */
 @media (max-width: 768px) {
@@ -1028,4 +922,114 @@ onMounted(async () => {
     font-size: 12px;
   }
 }
+
+.archive-cover-card {
+  margin-bottom: 16px;
+}
+
+/* 牛皮纸封面 */
+.cover-paper {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 400px;
+
+  /* A4比例：宽高比约1:1.414 */
+  aspect-ratio: 1 / 1.414;
+  padding: 0;
+  overflow: hidden;
+  cursor: pointer;
+  background-color: #deb887; /* 牛皮纸颜色 RGB(222, 184, 135) */
+  border: 3px solid; /* 边框颜色由内联样式动态设置 */
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 15%);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* 颜色标识条 */
+.cover-color-bar {
+  flex-shrink: 0;
+  width: 100%;
+  height: 6px;
+}
+
+.cover-paper:hover {
+  box-shadow: 0 4px 12px rgb(0 0 0 / 20%);
+  transform: translateY(-4px);
+}
+
+/* 封面标题区域 */
+.cover-header {
+  padding: 20px;
+  padding-bottom: 20px;
+  margin-bottom: 30px;
+  text-align: center;
+  border-bottom: 2px solid #8b5a2b;
+}
+
+.cover-title-main {
+  margin-bottom: 10px;
+  font-size: 28px;
+  font-weight: bold;
+  color: #654321; /* 深棕色文字 RGB(101, 67, 33) */
+  letter-spacing: 2px;
+}
+
+.cover-title-sub {
+  font-size: 18px;
+  color: #654321; /* 深棕色文字 RGB(101, 67, 33) */
+  letter-spacing: 1px;
+}
+
+/* 封面信息区域 */
+.cover-info {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0 20px;
+}
+
+.cover-info-row {
+  display: flex;
+  align-items: flex-start;
+  padding: 8px 0;
+  border-bottom: 1px solid rgb(139 90 43 / 20%);
+}
+
+.cover-info-label {
+  flex: 0 0 80px;
+  padding-right: 12px;
+  font-size: 13px;
+  font-weight: bold;
+  color: #654321;
+  text-align: right;
+}
+
+.cover-info-value {
+  flex: 1;
+  font-size: 13px;
+  color: #654321;
+  word-break: break-all;
+}
+
+/* 封面底部 */
+.cover-footer {
+  padding: 15px 20px 20px;
+  margin-top: 20px;
+  text-align: center;
+  border-top: 2px solid #8b5a2b;
+}
+
+/* 卡片操作栏 */
+.cover-actions {
+  padding: 8px;
+  margin-top: 12px;
+  text-align: center;
+  background-color: #f5f5f5;
+  border-radius: 4px;
+}
+
+/* 档案封面卡片容器 */
 </style>

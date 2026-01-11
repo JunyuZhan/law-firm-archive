@@ -537,8 +537,8 @@ onMounted(() => {
 }
 
 .permission-cell.editable {
-  transition: background-color 0.2s;
   border-radius: 4px;
+  transition: background-color 0.2s;
 }
 
 .permission-cell.editable:hover {

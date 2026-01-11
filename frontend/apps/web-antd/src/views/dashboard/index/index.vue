@@ -327,63 +327,77 @@ onMounted(() => {
 </template>
 
 <style scoped>
+
+
+@media (max-width: 992px) {
+  .quick-actions {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 576px) {
+  .quick-actions {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 .dashboard-container {
-  padding: 0;
   min-height: 100%;
+  padding: 0;
 }
 
 /* 欢迎区域 */
 .welcome-section {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 16px;
+  position: relative;
   padding: 32px;
   margin-bottom: 24px;
-  color: white;
-  position: relative;
   overflow: hidden;
+  color: white;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 16px;
 }
 
 .welcome-section::before {
-  content: '';
   position: absolute;
   top: -50%;
   right: -20%;
   width: 60%;
   height: 200%;
-  background: rgba(255, 255, 255, 0.1);
+  content: '';
+  background: rgb(255 255 255 / 10%);
   border-radius: 50%;
   transform: rotate(-15deg);
 }
 
 .welcome-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
   position: relative;
   z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .welcome-title {
+  margin: 0 0 8px;
   font-size: 28px;
   font-weight: 600;
-  margin: 0 0 8px 0;
   letter-spacing: 1px;
 }
 
 .welcome-date {
+  margin: 0;
   font-size: 14px;
   opacity: 0.9;
-  margin: 0;
 }
 
 .approval-btn {
+  display: flex;
+  gap: 8px;
+  align-items: center;
   height: 44px;
   font-size: 15px;
   border-radius: 22px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 15%);
 }
 
 .btn-icon {
@@ -396,53 +410,59 @@ onMounted(() => {
 }
 
 .stat-card {
+  position: relative;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  padding: 24px;
+  overflow: hidden;
+  cursor: pointer;
   background: white;
   border-radius: 16px;
-  padding: 24px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  cursor: pointer;
   transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
 }
 
 .stat-card:hover {
+  box-shadow: 0 12px 24px rgb(0 0 0 / 10%);
   transform: translateY(-4px);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
 }
 
 .stat-card::after {
-  content: '';
   position: absolute;
   top: 0;
   right: 0;
   width: 80px;
   height: 80px;
+  content: '';
   border-radius: 50%;
   opacity: 0.1;
   transform: translate(30%, -30%);
 }
 
 .stat-card-blue::after { background: #1890ff; }
+
 .stat-card-green::after { background: #52c41a; }
+
 .stat-card-orange::after { background: #faad14; }
+
 .stat-card-red::after { background: #ff4d4f; }
 
 .stat-icon {
-  font-size: 32px;
-  width: 56px;
-  height: 56px;
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 56px;
+  height: 56px;
+  font-size: 32px;
   border-radius: 12px;
 }
 
 .stat-card-blue .stat-icon { background: linear-gradient(135deg, #e6f4ff 0%, #bae0ff 100%); }
+
 .stat-card-green .stat-icon { background: linear-gradient(135deg, #f6ffed 0%, #b7eb8f 100%); }
+
 .stat-card-orange .stat-icon { background: linear-gradient(135deg, #fffbe6 0%, #ffe58f 100%); }
+
 .stat-card-red .stat-icon { background: linear-gradient(135deg, #fff2f0 0%, #ffccc7 100%); }
 
 .stat-info {
@@ -456,40 +476,43 @@ onMounted(() => {
 }
 
 .stat-card-blue .stat-value { color: #1890ff; }
+
 .stat-card-green .stat-value { color: #52c41a; }
+
 .stat-card-orange .stat-value { color: #faad14; }
+
 .stat-card-red .stat-value { color: #ff4d4f; }
 
 .stat-label {
+  margin-top: 4px;
   font-size: 14px;
   color: #8c8c8c;
-  margin-top: 4px;
 }
 
 .stat-trend {
+  padding: 4px 8px;
   font-size: 12px;
   color: #bfbfbf;
   background: #fafafa;
-  padding: 4px 8px;
   border-radius: 4px;
 }
 
 /* 待审批提醒 */
 .approval-alert {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  padding: 16px 24px;
+  margin-bottom: 24px;
+  cursor: pointer;
   background: linear-gradient(135deg, #fff7e6 0%, #ffe7ba 100%);
   border: 1px solid #ffd591;
   border-radius: 12px;
-  padding: 16px 24px;
-  margin-bottom: 24px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  cursor: pointer;
   transition: all 0.3s ease;
 }
 
 .approval-alert:hover {
-  box-shadow: 0 4px 12px rgba(250, 173, 20, 0.2);
+  box-shadow: 0 4px 12px rgb(250 173 20 / 20%);
   transform: translateX(4px);
 }
 
@@ -508,15 +531,15 @@ onMounted(() => {
 }
 
 .alert-title .highlight {
-  color: #fa541c;
-  font-weight: 700;
   font-size: 18px;
+  font-weight: 700;
+  color: #fa541c;
 }
 
 .alert-desc {
+  margin-top: 2px;
   font-size: 13px;
   color: #d48806;
-  margin-top: 2px;
 }
 
 .alert-arrow {
@@ -530,8 +553,8 @@ onMounted(() => {
 }
 
 .content-card {
-  border-radius: 16px;
   height: 100%;
+  border-radius: 16px;
 }
 
 .content-card :deep(.ant-card-head) {
@@ -540,8 +563,8 @@ onMounted(() => {
 
 .card-title {
   display: flex;
-  align-items: center;
   gap: 8px;
+  align-items: center;
   font-weight: 600;
 }
 
@@ -556,8 +579,8 @@ onMounted(() => {
 
 .task-item {
   display: flex;
-  align-items: center;
   gap: 12px;
+  align-items: center;
   padding: 12px;
   margin-bottom: 8px;
   background: #fafafa;
@@ -576,7 +599,9 @@ onMounted(() => {
 }
 
 .task-priority.high { background: #ff4d4f; }
+
 .task-priority.medium { background: #faad14; }
+
 .task-priority.low { background: #52c41a; }
 
 .task-content {
@@ -585,18 +610,18 @@ onMounted(() => {
 }
 
 .task-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-size: 14px;
   font-weight: 500;
   color: #262626;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .task-meta {
+  margin-top: 2px;
   font-size: 12px;
   color: #8c8c8c;
-  margin-top: 2px;
 }
 
 /* 项目列表 */
@@ -606,13 +631,13 @@ onMounted(() => {
 
 .project-item {
   display: flex;
-  align-items: center;
   gap: 12px;
+  align-items: center;
   padding: 12px;
   margin-bottom: 8px;
+  cursor: pointer;
   background: #fafafa;
   border-radius: 8px;
-  cursor: pointer;
   transition: all 0.2s ease;
 }
 
@@ -632,28 +657,28 @@ onMounted(() => {
 }
 
 .project-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-size: 14px;
   font-weight: 500;
   color: #262626;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .project-meta {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 4px;
   flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 4px;
 }
 
 .project-no {
+  padding: 2px 6px;
+  font-family: 'Courier New', monospace;
   font-size: 12px;
   color: #8c8c8c;
-  font-family: 'Courier New', monospace;
   background: #f0f0f0;
-  padding: 2px 6px;
   border-radius: 4px;
 }
 
@@ -673,27 +698,15 @@ onMounted(() => {
   gap: 16px;
 }
 
-@media (max-width: 992px) {
-  .quick-actions {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-
-@media (max-width: 576px) {
-  .quick-actions {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
 .quick-action-item {
   display: flex;
   flex-direction: column;
-  align-items: center;
   gap: 8px;
+  align-items: center;
   padding: 20px 12px;
+  cursor: pointer;
   background: #fafafa;
   border-radius: 12px;
-  cursor: pointer;
   transition: all 0.3s ease;
 }
 
@@ -703,25 +716,30 @@ onMounted(() => {
 }
 
 .action-icon {
-  width: 48px;
-  height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 48px;
+  height: 48px;
   font-size: 24px;
   border-radius: 12px;
 }
 
 .action-icon-blue { background: linear-gradient(135deg, #e6f4ff 0%, #bae0ff 100%); }
+
 .action-icon-green { background: linear-gradient(135deg, #f6ffed 0%, #b7eb8f 100%); }
+
 .action-icon-orange { background: linear-gradient(135deg, #fffbe6 0%, #ffe58f 100%); }
+
 .action-icon-purple { background: linear-gradient(135deg, #f9f0ff 0%, #d3adf7 100%); }
+
 .action-icon-cyan { background: linear-gradient(135deg, #e6fffb 0%, #87e8de 100%); }
+
 .action-icon-red { background: linear-gradient(135deg, #fff2f0 0%, #ffccc7 100%); }
 
 .action-text {
   font-size: 13px;
-  color: #595959;
   font-weight: 500;
+  color: #595959;
 }
 </style>

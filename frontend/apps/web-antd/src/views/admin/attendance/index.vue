@@ -147,7 +147,7 @@ onMounted(() => {
     <Card style="margin-bottom: 16px">
       <Row :gutter="16" align="middle">
         <Col :span="12">
-          <div style="font-size: 16px; font-weight: 500; margin-bottom: 8px;">今日考勤</div>
+          <div style=" margin-bottom: 8px;font-size: 16px; font-weight: 500;">今日考勤</div>
           <div v-if="todayRecord">
             <Space>
               <span>上班: {{ formatTime(todayRecord.checkInTime) }}</span>

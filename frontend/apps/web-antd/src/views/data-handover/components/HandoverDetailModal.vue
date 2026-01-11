@@ -153,13 +153,13 @@ defineExpose({ open });
         :scroll="{ y: 300 }"
       />
 
-      <div v-if="detailData.status === 'PENDING_APPROVAL'" style="text-align: right; margin-top: 24px">
+      <div v-if="detailData.status === 'PENDING_APPROVAL'" style=" margin-top: 24px;text-align: right">
         <Space>
           <Alert message="交接单正在等待审批，审批通过后可确认执行" type="info" show-icon style="margin-right: 16px" />
           <Button danger @click="handleCancel">取消交接</Button>
         </Space>
       </div>
-      <div v-else-if="detailData.status === 'APPROVED'" style="text-align: right; margin-top: 24px">
+      <div v-else-if="detailData.status === 'APPROVED'" style=" margin-top: 24px;text-align: right">
         <Space>
           <Alert message="审批已通过，请确认执行数据交接" type="success" show-icon style="margin-right: 16px" />
           <Button danger @click="handleCancel">取消交接</Button>

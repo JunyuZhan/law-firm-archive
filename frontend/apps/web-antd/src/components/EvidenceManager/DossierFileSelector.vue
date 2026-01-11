@@ -190,7 +190,7 @@ watch(() => props.open, (val) => {
       />
 
       <!-- 文件树 -->
-      <div v-if="treeData.length > 0 || filteredDocuments.length > 0" style="max-height: 400px; overflow-y: auto; border: 1px solid #f0f0f0; border-radius: 6px; padding: 12px;">
+      <div v-if="treeData.length > 0 || filteredDocuments.length > 0" style="max-height: 400px; padding: 12px; overflow-y: auto; border: 1px solid #f0f0f0; border-radius: 6px;">
         <Tree
           v-if="!searchKeyword"
           v-model:selectedKeys="selectedKeys"
@@ -215,7 +215,7 @@ watch(() => props.open, (val) => {
             :key="doc.id"
             class="file-item"
             :class="{ selected: selectedKeys.includes(`doc-${doc.id}`) }"
-            style="padding: 8px 12px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 8px;"
+            style=" display: flex; gap: 8px; align-items: center;padding: 8px 12px; cursor: pointer; border-radius: 4px;"
             @click="selectedKeys = [`doc-${doc.id}`]"
           >
             <span>{{ getFileIcon(doc.fileType) }}</span>
@@ -243,6 +243,7 @@ function formatFileSize(bytes?: number): string {
 .file-item:hover {
   background-color: #f5f5f5;
 }
+
 .file-item.selected {
   background-color: #e6f7ff;
   border: 1px solid #1890ff;

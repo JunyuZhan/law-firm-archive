@@ -280,7 +280,7 @@ defineExpose({ open });
     <Divider style="margin: 12px 0" />
 
     <div v-if="!editingId" style="margin-bottom: 12px;">
-      <span style="color: #666; font-size: 13px; margin-right: 12px;">快速加载预设模板：</span>
+      <span style=" margin-right: 12px; font-size: 13px;color: #666;">快速加载预设模板：</span>
       <Space>
         <Button v-for="preset in presetTemplates" :key="preset.value" size="small" @click="loadPresetTemplate(preset.value)">
           {{ preset.label }}
@@ -332,18 +332,18 @@ defineExpose({ open });
 
 <style scoped>
 .variable-panel {
+  padding: 12px;
+  margin-bottom: 12px;
   background: linear-gradient(to bottom, #f0f5ff, #e6f0ff);
   border: 1px solid #d6e4ff;
   border-radius: 6px;
-  padding: 12px;
-  margin-bottom: 12px;
 }
 
 .variable-title {
-  color: #1890ff;
+  margin-bottom: 8px;
   font-size: 13px;
   font-weight: 500;
-  margin-bottom: 8px;
+  color: #1890ff;
 }
 
 .variable-tag {
@@ -352,7 +352,7 @@ defineExpose({ open });
 }
 
 .variable-tag:hover {
+  box-shadow: 0 2px 4px rgb(24 144 255 / 30%);
   transform: scale(1.05);
-  box-shadow: 0 2px 4px rgba(24, 144, 255, 0.3);
 }
 </style>

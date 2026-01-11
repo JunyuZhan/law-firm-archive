@@ -316,7 +316,7 @@ function handleCancel() {
       </FormItem>
 
       <FormItem label="页码范围">
-        <div style="display: flex; align-items: center; gap: 8px">
+        <div style="display: flex; gap: 8px; align-items: center">
           <InputNumber v-model:value="formData.pageStart" :min="1" placeholder="起始" style="width: 100px" />
           <span>-</span>
           <InputNumber v-model:value="formData.pageEnd" :min="formData.pageStart || 1" placeholder="结束" style="width: 100px" />
@@ -332,9 +332,9 @@ function handleCancel() {
 
       <!-- 从卷宗选择 -->
       <FormItem v-if="!isEdit && formData.fileSource === 'dossier'" label="选择文件">
-        <div v-if="formData.documentInfo" style="display: flex; align-items: center; gap: 8px;">
+        <div v-if="formData.documentInfo" style="display: flex; gap: 8px; align-items: center;">
           <Tag color="blue">{{ formData.documentInfo.title || formData.documentInfo.fileName }}</Tag>
-          <span v-if="formData.documentInfo.fileSize" style="color: #999; font-size: 12px;">
+          <span v-if="formData.documentInfo.fileSize" style=" font-size: 12px;color: #999;">
             {{ formatFileSize(formData.documentInfo.fileSize) }}
           </span>
           <Button type="link" size="small" @click="clearDossierFile">移除</Button>
@@ -365,7 +365,7 @@ function handleCancel() {
               </Button>
             </Tooltip>
           </Upload>
-          <span style="color: #999; font-size: 12px;">上传图片自动提取文字到描述</span>
+          <span style=" font-size: 12px;color: #999;">上传图片自动提取文字到描述</span>
         </Space>
       </FormItem>
 
