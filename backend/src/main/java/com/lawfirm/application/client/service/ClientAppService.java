@@ -45,19 +45,28 @@ public class ClientAppService {
 
     /**
      * 分页查询客户
-     * 数据权限：只能查看自己的客户（我是负责律师 OR 我是案源人）
+     * 数据权限：
+     * - ALL: 可查看全部客户
+     * - DEPT/DEPT_AND_CHILD: 可查看部门内用户负责的客户
+     * - SELF: 只能查看自己的客户（我是负责律师 OR 我是案源人）
      * 优化：使用批量查询避免N+1问题
      */
     public PageResult<ClientDTO> listClients(ClientQueryDTO query) {
         Long currentUserId = SecurityUtils.getUserId();
+        String dataScope = SecurityUtils.getDataScope();
         
-        // 获取自己的客户ID列表（负责律师或案源人）
-        List<Long> myClientIds = getMyClientIds(currentUserId);
-        
-        // 如果没有自己的客户，返回空结果
-        if (myClientIds.isEmpty()) {
-            return PageResult.of(Collections.emptyList(), 0, query.getPageNum(), query.getPageSize());
+        // 根据数据权限范围决定过滤逻辑
+        List<Long> myClientIds = null;
+        if (!"ALL".equals(dataScope)) {
+            // 非 ALL 权限：获取自己的客户ID列表（负责律师或案源人）
+            myClientIds = getMyClientIds(currentUserId);
+            
+            // 如果没有自己的客户，返回空结果
+            if (myClientIds.isEmpty()) {
+                return PageResult.of(Collections.emptyList(), 0, query.getPageNum(), query.getPageSize());
+            }
         }
+        // ALL 权限：myClientIds 为 null，表示不过滤
         
         IPage<Client> page = clientMapper.selectClientPage(
                 new Page<>(query.getPageNum(), query.getPageSize()),
@@ -468,12 +477,18 @@ public class ClientAppService {
 
     /**
      * 导出客户信息为Excel
-     * 数据权限：只能导出自己的客户
+     * 数据权限：根据角色数据范围过滤
      * 优化：批量加载用户信息，显示姓名而非ID
      */
     public ByteArrayInputStream exportClients(ClientQueryDTO query) throws IOException {
         Long currentUserId = SecurityUtils.getUserId();
-        List<Long> myClientIds = getMyClientIds(currentUserId);
+        String dataScope = SecurityUtils.getDataScope();
+        
+        // 根据数据权限范围决定过滤逻辑
+        List<Long> myClientIds = null;
+        if (!"ALL".equals(dataScope)) {
+            myClientIds = getMyClientIds(currentUserId);
+        }
         
         // 查询所有符合条件的客户（不分页）
         IPage<Client> page = clientMapper.selectClientPage(

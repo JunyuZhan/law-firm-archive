@@ -106,8 +106,21 @@ if [ "$DROP_DB" = true ]; then
 fi
 
 # 定义脚本执行顺序
+# 注意：脚本之间存在依赖关系，必须按此顺序执行
+# 
+# 依赖关系说明：
+# - 00: PostgreSQL 扩展，必须最先执行
+# - 01-16: Schema 脚本，按编号顺序执行（04依赖02,03；16依赖04）
+# - 20-21: 初始化数据，依赖所有 schema 表
+# - 25: 乐观锁版本列，依赖所有表存在
+# - 26-29: 权限补丁，依赖 sys_menu, sys_role_menu 等表
+# - 30: 演示数据，依赖用户、客户、合同、项目等表
+#
 SCRIPTS=(
+    # === 阶段1: 数据库扩展 ===
     "00-extensions.sql"
+    
+    # === 阶段2: Schema 脚本（表结构） ===
     "01-system-schema.sql"
     "02-client-schema.sql"
     "03-matter-schema.sql"
@@ -124,12 +137,19 @@ SCRIPTS=(
     "14-quality-schema.sql"
     "15-workbench-schema.sql"
     "16-contract-template-schema.sql"
+    
+    # === 阶段3: 核心初始化数据 ===
     "20-system-init-data.sql"
     "21-template-init-data.sql"
+    
+    # === 阶段4: 补丁和增强脚本 ===
+    "25-add-version-column.sql"     # 乐观锁版本列（重要！）
     "26-add-dict-menu.sql"
     "27-dict-init-data.sql"
     "28-report-permission-refine.sql"
     "29-approval-permission-refine.sql"
+    
+    # === 阶段5: 演示数据（可选） ===
     "30-demo-data.sql"
 )
 

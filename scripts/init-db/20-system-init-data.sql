@@ -1191,3 +1191,12 @@ VALUES
 (6, 8),  -- staff -> 行政角色
 (7, 9)   -- trainee -> 实习律师角色
 ON CONFLICT (user_id, role_id) DO NOTHING;
+
+-- =====================================================
+-- 更新部门负责人（用户创建后）
+-- =====================================================
+UPDATE sys_department SET leader_id = 2 WHERE id = 1;  -- 诉讼部负责人: director
+UPDATE sys_department SET leader_id = 5 WHERE id = 2;  -- 财务部负责人: finance
+UPDATE sys_department SET leader_id = 6 WHERE id = 3;  -- 行政部负责人: staff
+UPDATE sys_department SET leader_id = 4 WHERE id = 4;  -- 第一组负责人: leader
+UPDATE sys_department SET leader_id = 3 WHERE id = 5;  -- 第二组负责人: lawyer1
