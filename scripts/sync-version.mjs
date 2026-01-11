@@ -8,9 +8,9 @@ import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-// 路径
-const pomPath = resolve(__dirname, '../../../../backend/pom.xml');
-const packagePath = resolve(__dirname, '../package.json');
+// 路径（脚本位于 scripts/ 目录）
+const pomPath = resolve(__dirname, '../backend/pom.xml');
+const packagePath = resolve(__dirname, '../frontend/apps/web-antd/package.json');
 
 try {
   // 读取 pom.xml
