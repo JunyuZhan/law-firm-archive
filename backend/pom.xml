@@ -13,7 +13,7 @@
 
     <groupId>com.lawfirm</groupId>
     <artifactId>law-firm-management</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>3.2.2</version>
     <packaging>jar</packaging>
 
     <name>智慧律所管理系统</name>
