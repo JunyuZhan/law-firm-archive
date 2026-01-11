@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { z } from 'zod';
-import { useVbenModal } from '@vben/common-ui';
+import { useVbenModal, z } from '@vben/common-ui';
 import { useVbenForm } from '#/adapter/form';
 import type { VbenFormSchema } from '#/adapter/form';
 import { message } from 'ant-design-vue';
