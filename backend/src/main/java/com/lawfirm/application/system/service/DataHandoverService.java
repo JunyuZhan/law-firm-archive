@@ -822,7 +822,9 @@ public class DataHandoverService {
                 if (oldUser != null) {
                     dto.setOldUserName(oldUser.getRealName());
                 }
-            } catch (NumberFormatException ignored) {}
+            } catch (NumberFormatException e) {
+                log.debug("解析旧用户ID失败: {}", detail.getOldValue());
+            }
         }
         
         if (detail.getNewValue() != null) {
@@ -831,7 +833,9 @@ public class DataHandoverService {
                 if (newUser != null) {
                     dto.setNewUserName(newUser.getRealName());
                 }
-            } catch (NumberFormatException ignored) {}
+            } catch (NumberFormatException e) {
+                log.debug("解析新用户ID失败: {}", detail.getNewValue());
+            }
         }
         
         return dto;

@@ -168,7 +168,6 @@ function loadOnlyOfficeApi(apiUrl: string): Promise<void> {
     const script = document.createElement('script');
     script.src = apiUrl;
     script.addEventListener('load', () => {
-      console.log('OnlyOffice API loaded');
       resolve();
     });
     script.onerror = (e) => {
@@ -204,17 +203,14 @@ function initEditorFromConfig(cfg: OnlyOfficeConfig) {
     },
     events: {
       onDocumentReady: () => {
-        console.log('Document ready');
         loading.value = false;
       },
       onError: (e: any) => {
-        console.error('OnlyOffice error:', e);
         error.value = `文档加载失败: ${e.data?.errorDescription || '未知错误'}`;
         loading.value = false;
       },
-      onDocumentStateChange: (e: any) => {
+      onDocumentStateChange: () => {
         // 文档状态变化（是否有未保存的修改）
-        console.log('Document state changed:', e.data);
       },
     },
     height: '100%',
@@ -236,13 +232,10 @@ function initEditor(editorConfig: any) {
     return;
   }
 
-  console.log('Initializing OnlyOffice editor with config:', editorConfig);
-
   try {
     // @ts-ignore
     editorInstance = new DocsAPI.DocEditor('onlyoffice-editor', editorConfig);
   } catch (error_: any) {
-    console.error('DocEditor creation error:', error_);
     error.value = `编辑器创建失败: ${error_.message}`;
     loading.value = false;
   }

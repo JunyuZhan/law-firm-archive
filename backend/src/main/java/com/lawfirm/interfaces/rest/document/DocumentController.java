@@ -615,7 +615,9 @@ public class DocumentController {
             log.error("获取文档内容失败: id={}", id, e);
             try {
                 response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "获取文件失败");
-            } catch (Exception ignored) {}
+            } catch (Exception sendError) {
+                log.debug("发送错误响应失败", sendError);
+            }
         }
     }
     

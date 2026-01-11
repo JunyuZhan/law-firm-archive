@@ -325,7 +325,9 @@ public class ArchiveController {
             log.error("下载卷宗封面失败: archiveId={}", id, e);
             try {
                 response.sendError(500, "下载封面失败: " + e.getMessage());
-            } catch (Exception ignored) {}
+            } catch (Exception sendError) {
+                log.debug("发送错误响应失败", sendError);
+            }
         }
     }
 

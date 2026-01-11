@@ -753,7 +753,6 @@ function getCommissionRateByRole(role: string): number | undefined {
 // 选择提成方案
 function handleCommissionRuleChange(value: any) {
   const ruleId = value as number | undefined;
-  console.log('选择提成方案:', ruleId);
   selectedCommissionRuleId.value = ruleId;
   if (!ruleId) {
     selectedCommissionRule.value = null;
@@ -768,13 +767,11 @@ function handleCommissionRuleChange(value: any) {
     contractParticipants.value.forEach((p) => {
       p.commissionRate = undefined;
     });
-    console.log('清空提成方案后参与人:', contractParticipants.value);
     return;
   }
 
   const rule = commissionRules.value.find((r) => r.id === ruleId);
   if (rule) {
-    console.log('找到提成方案:', rule);
     selectedCommissionRule.value = rule;
     Object.assign(commissionFormData, {
       firmRate: rule.firmRate,
@@ -840,20 +837,14 @@ function handleCommissionRuleChange(value: any) {
       const newParticipants: any[] = [];
 
       // 更新已有参与人的提成比例（根据角色）
-      console.log(
-        '更新已有参与人的比例，当前参与人:',
-        contractParticipants.value,
-      );
       contractParticipants.value.forEach((p) => {
         if (p.role) {
           const rate = getCommissionRateByRole(p.role);
-          console.log(`参与人角色 ${p.role} 对应比例:`, rate);
           if (rate !== undefined) {
             p.commissionRate = rate;
           }
         }
       });
-      console.log('更新后参与人:', contractParticipants.value);
 
       // 检查并补充缺失的角色（如果方案中有比例但参与人列表中还没有）
       // 主办律师
@@ -1658,13 +1649,11 @@ async function handleEdit(record: ContractDTO) {
 
     // 加载现有的参与人列表（编辑模式下需要）
     const participants = await getContractParticipants(record.id);
-    console.log('编辑合同时加载的参与人:', participants);
     contractParticipants.value = participants.map((p) => ({
       userId: p.userId,
       role: p.role,
       commissionRate: p.commissionRate,
     }));
-    console.log('设置到表单的参与人:', contractParticipants.value);
 
     modalTitle.value = '编辑合同';
     modalVisible.value = true;
@@ -1675,13 +1664,6 @@ async function handleEdit(record: ContractDTO) {
 
 // 保存
 async function handleSave() {
-  console.log('handleSave 被调用', {
-    hasId: !!formData.id,
-    templateId: selectedTemplateId.value,
-    clientId: formData.clientId,
-    totalAmount: formData.totalAmount,
-  });
-
   try {
     saving.value = true;
 
@@ -1703,9 +1685,8 @@ async function handleSave() {
       await formRef.value.validate();
     } catch (validateError: any) {
       // 表单验证失败
-      console.error('表单验证失败:', validateError);
       if (validateError?.errorFields && validateError.errorFields.length > 0) {
-        // Ant Design Vue 会自动显示验证错误，这里只记录日志
+        // Ant Design Vue 会自动显示验证错误
         saving.value = false;
         return;
       }
@@ -1813,21 +1794,6 @@ async function handleSave() {
           : selectedCommissionRule.value.originatorRate || 0;
     }
 
-    // 调试：打印提成方案数据
-    console.log('保存合同时的提成方案数据:', {
-      commissionRuleId: selectedCommissionRuleId.value,
-      selectedRule: selectedCommissionRule.value,
-      commissionFormData: { ...commissionFormData },
-      baseDataCommission: {
-        commissionRuleId: baseData.commissionRuleId,
-        firmRate: baseData.firmRate,
-        leadLawyerRate: baseData.leadLawyerRate,
-        assistLawyerRate: baseData.assistLawyerRate,
-        supportStaffRate: baseData.supportStaffRate,
-        originatorRate: baseData.originatorRate,
-      },
-    });
-
     let createdContractId: number | undefined;
 
     if (formData.id) {
@@ -1896,10 +1862,8 @@ async function handleSave() {
             }
           }
         }
-        console.log(`已处理 ${contractParticipants.value.length} 个参与人`);
-      } catch (error: any) {
-        console.error('处理参与人失败:', error);
-        // 参与人处理失败不影响合同保存，只记录日志
+      } catch {
+        // 参与人处理失败不影响合同保存
       }
     }
 

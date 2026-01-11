@@ -796,7 +796,6 @@ function formatDateTime(dateStr: string | undefined) {
 async function loadMatters() {
   loading.value = true;
   try {
-    console.log('开始加载项目列表...');
     // 处理年份筛选参数
     let createdAtFrom: string | undefined;
     let createdAtTo: string | undefined;
@@ -811,53 +810,15 @@ async function loadMatters() {
       createdAtFrom,
       createdAtTo,
     });
-    console.log('项目列表响应:', res);
 
     if (res && res.list) {
       matters.value = res.list;
-      console.log('成功加载项目数量:', matters.value.length);
     } else {
-      console.warn('项目列表响应格式异常:', res);
       matters.value = [];
     }
   } catch (error: any) {
-    console.error('加载项目列表失败:', error);
     message.error(`加载项目列表失败: ${error.message || '未知错误'}`);
-
-    // 如果 API 失败，使用测试数据
-    console.log('使用测试数据...');
-    matters.value = [
-      {
-        id: 1,
-        matterNo: 'M2024001',
-        name: '张三诉李四合同纠纷案',
-        matterType: 'CIVIL',
-        matterTypeName: '民事案件',
-        clientName: '张三',
-        status: 'ACTIVE',
-        statusName: '进行中',
-      },
-      {
-        id: 2,
-        matterNo: 'M2024002',
-        name: '王五刑事辩护案',
-        matterType: 'CRIMINAL',
-        matterTypeName: '刑事案件',
-        clientName: '王五',
-        status: 'ACTIVE',
-        statusName: '进行中',
-      },
-      {
-        id: 3,
-        matterNo: 'M2024003',
-        name: 'ABC公司法律顾问',
-        matterType: 'LEGAL_COUNSEL',
-        matterTypeName: '法律顾问',
-        clientName: 'ABC公司',
-        status: 'ACTIVE',
-        statusName: '进行中',
-      },
-    ];
+    matters.value = [];
   } finally {
     loading.value = false;
   }

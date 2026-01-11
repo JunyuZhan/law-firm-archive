@@ -39,13 +39,11 @@ function handleModeChange() {
 // 成功回调
 function handleSuccess() {
   // 可以在这里添加额外的成功处理逻辑
-  console.log('文书生成成功');
 }
 
 // 重置回调
 function handleReset() {
   // 可以在这里添加额外的重置处理逻辑
-  console.log('已重置');
 }
 </script>
 

@@ -508,11 +508,6 @@ async function handleIdCardOcr(info: any) {
   try {
     const result = await recognizeIdCard(file, true); // 识别正面
 
-    console.log('身份证OCR识别结果:', result); // 调试日志
-    console.log('result.name:', result?.name); // 调试日志
-    console.log('result.idNumber:', result?.idNumber); // 调试日志
-    console.log('result.data:', result?.data); // 调试日志
-
     if (result && result.success) {
       // 自动填充表单（处理空字符串的情况）
       // 优先从顶层字段读取，如果没有则从data字段读取
@@ -521,8 +516,6 @@ async function handleIdCardOcr(info: any) {
 
       // 如果字段为空，尝试从原始文本中提取
       const rawText = result.rawText || result.data?.rawText || '';
-      console.log('OCR原始文本:', rawText); // 调试日志
-      console.log('OCR原始文本长度:', rawText.length); // 调试日志
 
       // 检查OCR识别质量：如果原始文本太短或看起来不像身份证内容，给出提示
       const isLowQuality =
@@ -533,7 +526,6 @@ async function handleIdCardOcr(info: any) {
         const nameMatch = rawText.match(/[\u4E00-\u9FA5]{2,4}/);
         if (nameMatch) {
           name = nameMatch[0];
-          console.log('从原始文本提取的name:', name);
         }
       }
 
@@ -542,20 +534,14 @@ async function handleIdCardOcr(info: any) {
         const idMatch = rawText.match(/\d{17}[\dX]/i);
         if (idMatch) {
           idNumber = idMatch[0].toUpperCase();
-          console.log('从原始文本提取的idNumber:', idNumber);
         }
       }
 
-      console.log('提取的name:', name); // 调试日志
-      console.log('提取的idNumber:', idNumber); // 调试日志
-
       if (name && name.trim()) {
         formData.name = name.trim();
-        console.log('已设置formData.name:', formData.name); // 调试日志
       }
       if (idNumber && idNumber.trim()) {
         formData.idCard = idNumber.trim();
-        console.log('已设置formData.idCard:', formData.idCard); // 调试日志
       }
       // 身份证识别时，如果是个人客户，联系人就是本人
       if (name && name.trim() && !formData.contactPerson) {
@@ -563,8 +549,6 @@ async function handleIdCardOcr(info: any) {
       }
       // 设置客户类型为个人
       formData.clientType = 'INDIVIDUAL';
-
-      console.log('最终formData:', JSON.parse(JSON.stringify(formData))); // 调试日志
 
       // 如果关键字段仍然为空，显示原始文本提示
       if ((!name || !name.trim()) && (!idNumber || !idNumber.trim())) {
@@ -588,7 +572,6 @@ async function handleIdCardOcr(info: any) {
       message.error(result?.errorMessage || '身份证识别失败');
     }
   } catch (error: any) {
-    console.error('身份证OCR识别错误:', error); // 调试日志
     message.error(error?.message || '身份证识别失败');
   } finally {
     ocrLoading.value = false;
@@ -606,11 +589,6 @@ async function handleBusinessLicenseOcr(info: any) {
   try {
     const result = await recognizeBusinessLicense(file);
 
-    console.log('营业执照OCR识别结果:', result); // 调试日志
-    console.log('result.companyName:', result?.companyName); // 调试日志
-    console.log('result.creditCode:', result?.creditCode); // 调试日志
-    console.log('result.data:', result?.data); // 调试日志
-
     if (result && result.success) {
       // 自动填充表单（处理空字符串的情况）
       // 优先从顶层字段读取，如果没有则从data字段读取
@@ -621,7 +599,6 @@ async function handleBusinessLicenseOcr(info: any) {
 
       // 如果字段为空，尝试从原始文本中提取
       const rawText = result.rawText || result.data?.rawText || '';
-      console.log('OCR原始文本:', rawText); // 调试日志
 
       if ((!companyName || !companyName.trim()) && rawText) {
         // 尝试从原始文本中提取公司名称（通常在"名称"或"公司名称"后面）
@@ -630,7 +607,6 @@ async function handleBusinessLicenseOcr(info: any) {
         );
         if (nameMatch) {
           companyName = nameMatch[1].trim();
-          console.log('从原始文本提取的companyName:', companyName);
         }
       }
 
@@ -641,21 +617,14 @@ async function handleBusinessLicenseOcr(info: any) {
         );
         if (codeMatch) {
           creditCode = codeMatch[1];
-          console.log('从原始文本提取的creditCode:', creditCode);
         }
       }
 
-      console.log('提取的companyName:', companyName); // 调试日志
-      console.log('提取的creditCode:', creditCode); // 调试日志
-      console.log('提取的legalRepresentative:', legalRepresentative); // 调试日志
-
       if (companyName && companyName.trim()) {
         formData.name = companyName.trim();
-        console.log('已设置formData.name:', formData.name); // 调试日志
       }
       if (creditCode && creditCode.trim()) {
         formData.creditCode = creditCode.trim();
-        console.log('已设置formData.creditCode:', formData.creditCode); // 调试日志
       }
       if (legalRepresentative && legalRepresentative.trim()) {
         formData.legalRepresentative = legalRepresentative.trim();
@@ -663,15 +632,9 @@ async function handleBusinessLicenseOcr(info: any) {
         if (!formData.contactPerson) {
           formData.contactPerson = legalRepresentative.trim();
         }
-        console.log(
-          '已设置formData.legalRepresentative:',
-          formData.legalRepresentative,
-        ); // 调试日志
       }
       // 设置客户类型为企业
       formData.clientType = 'ENTERPRISE';
-
-      console.log('最终formData:', JSON.parse(JSON.stringify(formData))); // 调试日志
 
       // 如果关键字段仍然为空，显示原始文本提示
       if (
@@ -692,7 +655,6 @@ async function handleBusinessLicenseOcr(info: any) {
       message.error(result?.errorMessage || '营业执照识别失败');
     }
   } catch (error: any) {
-    console.error('营业执照OCR识别错误:', error); // 调试日志
     message.error(error?.message || '营业执照识别失败');
   } finally {
     ocrLoading.value = false;

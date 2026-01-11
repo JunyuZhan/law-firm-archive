@@ -381,7 +381,9 @@ public class EvidenceController {
             log.error("文件代理失败", e);
             try {
                 response.sendError(500, "文件下载失败");
-            } catch (Exception ignored) {}
+            } catch (Exception sendError) {
+                log.debug("发送错误响应失败", sendError);
+            }
         }
     }
 
@@ -516,7 +518,9 @@ public class EvidenceController {
             log.error("导出证据清单失败", e);
             try {
                 response.sendError(500, "导出失败: " + e.getMessage());
-            } catch (Exception ignored) {}
+            } catch (Exception sendError) {
+                log.debug("发送错误响应失败", sendError);
+            }
         }
     }
 

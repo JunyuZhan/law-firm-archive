@@ -198,7 +198,9 @@ public class OperationLogController {
             log.error("导出操作日志失败", e);
             try {
                 response.sendError(500, "导出失败: " + e.getMessage());
-            } catch (IOException ignored) {}
+            } catch (IOException sendError) {
+                log.debug("发送错误响应失败", sendError);
+            }
         }
     }
     
