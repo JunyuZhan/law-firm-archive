@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, h } from 'vue';
+import { ref, onMounted, h } from 'vue';
 import { message, Modal } from 'ant-design-vue';
 import { Page } from '@vben/common-ui';
-import { Card, Tabs, TabPane, Badge, Button, Space, Tag, Input, Select, Textarea } from 'ant-design-vue';
+import { Card, Tabs, TabPane, Badge, Button, Space, Tag, Textarea } from 'ant-design-vue';
 import type { VxeGridProps } from '#/adapter/vxe-table';
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
@@ -40,7 +40,7 @@ const priorityColorMap: Record<string, string> = {
 
 // ==================== 待审批表格配置 ====================
 
-const pendingColumns: VxeGridProps['gridOptions']['columns'] = [
+const pendingColumns: VxeGridProps['columns'] = [
   { type: 'checkbox', width: 50 },
   { title: '审批编号', field: 'approvalNo', width: 180 },
   { title: '业务类型', field: 'businessTypeName', width: 120 },
@@ -84,7 +84,7 @@ const [PendingGrid, pendingGridApi] = useVbenVxeGrid({
 
 // ==================== 我发起的审批表格配置 ====================
 
-const initiatedColumns: VxeGridProps['gridOptions']['columns'] = [
+const initiatedColumns: VxeGridProps['columns'] = [
   { title: '审批编号', field: 'approvalNo', width: 180 },
   { title: '业务类型', field: 'businessTypeName', width: 120 },
   { title: '业务标题', field: 'businessTitle', width: 200, showOverflow: true },
@@ -123,8 +123,8 @@ const [InitiatedGrid, initiatedGridApi] = useVbenVxeGrid({
 // ==================== 操作方法 ====================
 
 // Tab 切换
-function handleTabChange(key: string) {
-  activeTab.value = key as 'pending' | 'initiated';
+function handleTabChange(key: string | number) {
+  activeTab.value = String(key) as 'pending' | 'initiated';
 }
 
 // 查看详情

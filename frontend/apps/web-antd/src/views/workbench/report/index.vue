@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted, onBeforeUnmount, computed } from 'vue';
+import { ref, onMounted, onBeforeUnmount } from 'vue';
 import { message } from 'ant-design-vue';
 import { Page } from '@vben/common-ui';
 import {
@@ -11,7 +11,6 @@ import {
   Space,
   Tabs,
   TabPane,
-  Select,
   DatePicker,
   Spin,
 } from 'ant-design-vue';
@@ -29,7 +28,6 @@ import {
   type LawyerPerformance,
 } from '#/api/workbench/statistics';
 import {
-  getAvailableReports,
   generateReport,
   type GenerateReportCommand,
 } from '#/api/workbench/report';
@@ -328,10 +326,11 @@ function renderLawyerRankingChart() {
       formatter: (params: any) => {
         const param = params[0];
         const data = lawyerRanking.value[param.dataIndex];
+        if (!data) return '';
         return `${data.lawyerName}<br/>
-                收入: ¥${data.revenue.toLocaleString()}<br/>
-                案件数: ${data.matterCount}<br/>
-                工时: ${data.hours.toFixed(1)}小时`;
+                收入: ¥${data.revenue?.toLocaleString() ?? 0}<br/>
+                案件数: ${data.matterCount ?? 0}<br/>
+                工时: ${(data.hours ?? 0).toFixed(1)}小时`;
       },
     },
     xAxis: {
@@ -436,8 +435,8 @@ function getOrCreateChart(dom: HTMLElement | null): echarts.ECharts | null {
 }
 
 // Tab切换
-function handleTabChange(key: string) {
-  activeTab.value = key;
+function handleTabChange(key: string | number) {
+  activeTab.value = String(key);
   if (key === 'overview') {
     setTimeout(() => {
       loadAllStats();
@@ -487,29 +486,25 @@ onBeforeUnmount(() => {
               <Col :xs="24" :sm="12" :md="6">
                 <Statistic
                   title="总收入"
-                  :value="getNumberValue(revenueStats?.totalRevenue)"
-                  :formatter="(val: number) => formatCurrency(val)"
+                  :value="formatCurrency(getNumberValue(revenueStats?.totalRevenue))"
                 />
               </Col>
               <Col :xs="24" :sm="12" :md="6">
                 <Statistic
                   title="本月收入"
-                  :value="getNumberValue(revenueStats?.monthlyRevenue)"
-                  :formatter="(val: number) => formatCurrency(val)"
+                  :value="formatCurrency(getNumberValue(revenueStats?.monthlyRevenue))"
                 />
               </Col>
               <Col :xs="24" :sm="12" :md="6">
                 <Statistic
                   title="本年收入"
-                  :value="getNumberValue(revenueStats?.yearlyRevenue)"
-                  :formatter="(val: number) => formatCurrency(val)"
+                  :value="formatCurrency(getNumberValue(revenueStats?.yearlyRevenue))"
                 />
               </Col>
               <Col :xs="24" :sm="12" :md="6">
                 <Statistic
                   title="待收金额"
-                  :value="getNumberValue(revenueStats?.pendingRevenue)"
-                  :formatter="(val: number) => formatCurrency(val)"
+                  :value="formatCurrency(getNumberValue(revenueStats?.pendingRevenue))"
                 />
               </Col>
             </Row>
