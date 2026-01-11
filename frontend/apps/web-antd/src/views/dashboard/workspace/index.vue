@@ -38,6 +38,19 @@ import {
 import dayjs from 'dayjs';
 
 import { getMyTodoTasks, getMyUpcomingSchedules } from '#/api/matter';
+
+// HTML转义函数，防止XSS攻击
+function escapeHtml(text: string): string {
+  if (!text) return '';
+  const map: Record<string, string> = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;',
+  };
+  return text.replace(/[&<>"']/g, (m) => map[m] || m);
+}
 import {
   getMyApprovedHistory,
   getMyInitiatedApprovals,
@@ -124,8 +137,8 @@ async function loadStats() {
       timesheetHours: data.timesheetHours || 0,
       taskCount: data.taskCount || 0,
     };
-  } catch (error) {
-    console.error('加载统计数据失败:', error);
+  } catch {
+    // 静默处理
   }
 }
 
@@ -139,8 +152,8 @@ async function loadTodoTasks() {
       date: task.dueDate || task.createdAt || '',
       title: task.title,
     }));
-  } catch (error) {
-    console.error('加载待办任务失败:', error);
+  } catch {
+    // 静默处理
   }
 }
 
@@ -150,8 +163,8 @@ async function loadPendingApprovals() {
     const data = await getPendingApprovals();
     pendingApprovals.value = data || [];
     pendingApprovalCount.value = pendingApprovals.value.length;
-  } catch (error) {
-    console.error('加载待审批数据失败:', error);
+  } catch {
+    // 静默处理
   }
 }
 
@@ -160,8 +173,8 @@ async function loadUpcomingSchedules() {
   try {
     const data = await getMyUpcomingSchedules(7, 5);
     upcomingSchedules.value = data || [];
-  } catch (error) {
-    console.error('加载近期日程失败:', error);
+  } catch {
+    // 静默处理
   }
 }
 
@@ -239,14 +252,14 @@ async function loadTrends() {
           : Date.now();
         trends.push({
           avatar: userStore.userInfo?.avatar || preferences.app.defaultAvatar,
-          content: `创建了新项目 <span class="text-primary">${project.matterName}</span>`,
+          content: `创建了新项目 <span class="text-primary">${escapeHtml(project.matterName || '')}</span>`,
           date: formatRelativeTime(project.lastUpdateTime),
           title: userStore.userInfo?.realName || '我',
           timestamp,
         });
       });
-    } catch (error) {
-      console.error('加载最近项目失败:', error);
+    } catch {
+      // 加载最近项目失败，静默处理
     }
 
     // 2. 获取审批历史（取前5条）
@@ -281,14 +294,14 @@ async function loadTrends() {
 
         trends.push({
           avatar: approverAvatar,
-          content: `${statusText} <span class="text-primary">${applicantName}</span> 发起的 <span class="text-primary">${businessTitle}</span>`,
+          content: `${statusText} <span class="text-primary">${escapeHtml(applicantName)}</span> 发起的 <span class="text-primary">${escapeHtml(businessTitle)}</span>`,
           date: formatRelativeTime(approval.approvedAt || approval.updatedAt),
           title: approverName,
           timestamp,
         });
       });
-    } catch (error) {
-      console.error('加载审批历史失败:', error);
+    } catch {
+      // 加载审批历史失败，静默处理
     }
 
     // 3. 获取我发起的审批（取前5条，状态为已通过或已拒绝）
@@ -310,14 +323,14 @@ async function loadTrends() {
 
           trends.push({
             avatar: userStore.userInfo?.avatar || preferences.app.defaultAvatar,
-            content: `我发起的 <span class="text-primary">${approval.businessTitle || approval.businessTypeName}</span> 被 <span class="text-primary">${approverName}</span> ${statusText}`,
+            content: `我发起的 <span class="text-primary">${escapeHtml(approval.businessTitle || approval.businessTypeName || '')}</span> 被 <span class="text-primary">${escapeHtml(approverName)}</span> ${statusText}`,
             date: formatRelativeTime(approval.approvedAt || approval.updatedAt),
             title: userStore.userInfo?.realName || '我',
             timestamp,
           });
         });
-    } catch (error) {
-      console.error('加载我发起的审批失败:', error);
+    } catch {
+      // 加载我发起的审批失败，静默处理
     }
 
     // 按时间戳排序（最新的在前）
@@ -341,8 +354,7 @@ async function loadTrends() {
       ];
       trendItems.value = allTrendItems.value;
     }
-  } catch (error) {
-    console.error('加载最新动态失败:', error);
+  } catch {
     trendItems.value = [];
     allTrendItems.value = [];
   }
@@ -382,11 +394,9 @@ function navTo(nav: WorkbenchQuickNavItem) {
     return;
   }
   if (nav.url?.startsWith('/')) {
-    router.push(nav.url).catch((error) => {
-      console.error('Navigation failed:', error);
+    router.push(nav.url).catch(() => {
+      // 导航失败，静默处理
     });
-  } else {
-    console.warn(`Unknown URL for navigation item: ${nav.title} -> ${nav.url}`);
   }
 }
 
