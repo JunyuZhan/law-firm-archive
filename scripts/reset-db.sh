@@ -2,21 +2,59 @@
 # =====================================================
 # 律师事务所管理系统 - 数据库重置脚本
 # =====================================================
-# 版本: 1.0.0
-# 更新日期: 2026-01-08
-# 用法: ./reset-db.sh [--force]
+# 版本: 1.1.0
+# 更新日期: 2026-01-11
+# 用法: ./reset-db.sh [--force] [--dev|--prod]
+#   --force: 跳过确认提示
+#   --dev:   强制使用开发数据库 (law_firm_dev)
+#   --prod:  强制使用生产数据库 (law_firm)
 # =====================================================
 
 set -e
 
 CONTAINER_NAME="law-firm-postgres"
-DB_NAME="law_firm"
 DB_USER="law_admin"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INIT_DB_DIR="$SCRIPT_DIR/init-db"
 
+# 解析参数
+FORCE_FLAG=""
+ENV_FLAG=""
+for arg in "$@"; do
+    case $arg in
+        --force) FORCE_FLAG="true" ;;
+        --dev)   ENV_FLAG="dev" ;;
+        --prod)  ENV_FLAG="prod" ;;
+    esac
+done
+
+# 根据参数或自动检测确定数据库名
+if [ "$ENV_FLAG" == "prod" ]; then
+    DB_NAME="law_firm"
+    ENV_NAME="生产"
+elif [ "$ENV_FLAG" == "dev" ]; then
+    DB_NAME="law_firm_dev"
+    ENV_NAME="开发"
+else
+    # 自动检测：优先使用开发数据库
+    if docker exec $CONTAINER_NAME psql -U $DB_USER -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='law_firm_dev'" 2>/dev/null | grep -q 1; then
+        DB_NAME="law_firm_dev"
+        ENV_NAME="开发"
+    elif docker exec $CONTAINER_NAME psql -U $DB_USER -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='law_firm'" 2>/dev/null | grep -q 1; then
+        DB_NAME="law_firm"
+        ENV_NAME="生产"
+    else
+        # 默认使用开发环境数据库名
+        DB_NAME="law_firm_dev"
+        ENV_NAME="开发"
+    fi
+fi
+
 echo "=========================================="
 echo "律师事务所管理系统 - 数据库重置"
+echo "=========================================="
+echo "环境: $ENV_NAME"
+echo "数据库: $DB_NAME"
 echo "=========================================="
 
 # 检查容器是否运行
@@ -26,7 +64,7 @@ if ! docker ps | grep -q $CONTAINER_NAME; then
 fi
 
 # 确认操作（除非使用 --force）
-if [ "$1" != "--force" ]; then
+if [ "$FORCE_FLAG" != "true" ]; then
     read -p "警告: 此操作将删除所有数据并重新初始化数据库，是否继续? (y/N) " confirm
     if [ "$confirm" != "y" ] && [ "$confirm" != "Y" ]; then
         echo "操作已取消"
@@ -55,8 +93,12 @@ echo "=========================================="
 echo "数据库重置完成!"
 echo "=========================================="
 echo ""
-echo "默认账号:"
-echo "  用户名: admin    密码: admin123    角色: 管理员"
-echo "  用户名: director 密码: lawyer123   角色: 律所主任"
-echo "  用户名: lawyer1  密码: lawyer123   角色: 律师"
+echo "默认账号（密码统一为 admin123）:"
+echo "  用户名: admin    角色: 管理员"
+echo "  用户名: director 角色: 律所主任"
+echo "  用户名: lawyer1  角色: 律师"
+echo "  用户名: leader   角色: 团队负责人"
+echo "  用户名: finance  角色: 财务"
+echo "  用户名: staff    角色: 行政"
+echo "  用户名: trainee  角色: 实习律师"
 echo ""
