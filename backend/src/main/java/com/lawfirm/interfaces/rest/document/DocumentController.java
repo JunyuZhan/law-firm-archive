@@ -198,7 +198,8 @@ public class DocumentController {
             @RequestParam(value = "matterId", required = false) Long matterId,
             @RequestParam(value = "folder", required = false, defaultValue = "documents") String folder,
             @RequestParam(value = "description", required = false) String description,
-            @RequestParam(value = "dossierItemId", required = false) Long dossierItemId) {
+            @RequestParam(value = "dossierItemId", required = false) Long dossierItemId,
+            @RequestParam(value = "sourceType", required = false) String sourceType) {
         // ✅ 安全验证：批量验证所有文件
         for (MultipartFile file : files) {
             FileValidator.ValidationResult validationResult = FileValidator.validate(file);
@@ -206,7 +207,7 @@ public class DocumentController {
                 return Result.error("文件 " + file.getOriginalFilename() + " 验证失败: " + validationResult.getErrorMessage());
             }
         }
-        return Result.success(documentAppService.uploadFiles(files, matterId, folder, description, dossierItemId));
+        return Result.success(documentAppService.uploadFiles(files, matterId, folder, description, dossierItemId, sourceType));
     }
 
     /**

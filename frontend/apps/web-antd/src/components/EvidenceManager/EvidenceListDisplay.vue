@@ -40,7 +40,8 @@ import {
 import {
   createEvidence,
   deleteEvidence,
-  exportEvidenceList,
+  downloadEvidenceListDirect,
+  getAccessToken,
   updateEvidence,
 } from '#/api/evidence';
 
@@ -351,29 +352,34 @@ async function handleExport(format: 'pdf' | 'word') {
     return;
   }
 
-  try {
-    message.loading('正在导出...', 0);
+  const token = await getAccessToken();
+  if (!token) {
+    message.error('请先登录');
+    return;
+  }
 
-    // 转换为导出格式
-    const exportItems: EvidenceExportItem[] = [];
-    groupList.value.forEach((group) => {
-      group.evidences.forEach((evidence) => {
-        if (evidence.name.trim()) {
-          exportItems.push({
-            id: evidence.id,
-            name: evidence.name,
-            source: evidence.source || '',
-            provePurpose: group.proofPurpose || group.proofContent || '',
-            isOriginal: evidence.isOriginal,
-            pageStart: evidence.pageStart,
-            pageEnd: evidence.pageEnd,
-            listOrder: exportItems.length + 1,
-          });
-        }
-      });
+  // 转换为导出格式
+  const exportItems: EvidenceExportItem[] = [];
+  groupList.value.forEach((group) => {
+    group.evidences.forEach((evidence) => {
+      if (evidence.name.trim()) {
+        exportItems.push({
+          id: evidence.id,
+          name: evidence.name,
+          source: evidence.source || '',
+          provePurpose: group.proofPurpose || group.proofContent || '',
+          isOriginal: evidence.isOriginal,
+          pageStart: evidence.pageStart,
+          pageEnd: evidence.pageEnd,
+          listOrder: exportItems.length + 1,
+        });
+      }
     });
+  });
 
-    await exportEvidenceList(props.matterId, exportItems, format);
+  try {
+    message.loading('正在下载...', 0);
+    await downloadEvidenceListDirect(props.matterId, exportItems, format, token);
     message.destroy();
     message.success('导出成功');
   } catch (error: any) {
@@ -382,7 +388,7 @@ async function handleExport(format: 'pdf' | 'word') {
   }
 }
 
-// 打印
+// 打印 - 文档式格式（清单式特有的打印样式）
 function handlePrint() {
   if (groupList.value.length === 0) {
     message.warning('暂无证据可打印');
@@ -396,13 +402,13 @@ function handlePrint() {
     return;
   }
 
-  // 生成打印内容
+  // 生成打印内容 - 文档式格式
   let printContent = `
     <!DOCTYPE html>
     <html>
     <head>
       <meta charset="UTF-8">
-      <title>证据整理</title>
+      <title>证据清单</title>
       <style>
         @media print {
           @page {
@@ -413,13 +419,13 @@ function handlePrint() {
         body {
           font-family: "Microsoft YaHei", "SimSun", serif;
           font-size: 14px;
-          line-height: 1.6;
+          line-height: 1.8;
           color: #000;
           padding: 20px;
         }
         .print-header {
           text-align: center;
-          margin-bottom: 30px;
+          margin-bottom: 40px;
         }
         .print-header h1 {
           font-size: 24px;
@@ -428,64 +434,69 @@ function handlePrint() {
           margin: 0 0 20px 0;
         }
         .group-section {
-          margin-bottom: 30px;
+          margin-bottom: 35px;
           page-break-inside: avoid;
         }
         .group-title {
           font-size: 16px;
           font-weight: bold;
-          margin-bottom: 10px;
-          padding-bottom: 5px;
-          border-bottom: 2px solid #000;
-        }
-        .evidence-table {
-          width: 100%;
-          border-collapse: collapse;
           margin-bottom: 15px;
+          padding-bottom: 8px;
         }
-        .evidence-table th,
-        .evidence-table td {
-          border: 1px solid #000;
-          padding: 8px;
-          text-align: left;
+        .evidence-list {
+          padding-left: 0;
+          margin: 0;
         }
-        .evidence-table th {
-          background-color: #f0f0f0;
+        .evidence-item {
+          margin-bottom: 18px;
+          padding-left: 20px;
+        }
+        .evidence-name {
+          font-size: 15px;
           font-weight: bold;
+          margin-bottom: 6px;
+          color: #000;
         }
-        .evidence-table .col-index {
-          width: 40px;
-          text-align: center;
+        .evidence-details {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 20px;
+          font-size: 13px;
+          color: #333;
+          padding-left: 10px;
         }
-        .evidence-table .col-name {
-          width: 200px;
+        .evidence-detail-item {
+          display: inline-flex;
+          align-items: center;
         }
-        .evidence-table .col-source {
-          width: 120px;
+        .detail-label {
+          color: #666;
+          margin-right: 5px;
         }
-        .evidence-table .col-original {
-          width: 80px;
-          text-align: center;
-        }
-        .evidence-table .col-pages {
-          width: 120px;
+        .detail-value {
+          color: #000;
         }
         .proof-section {
           margin-top: 15px;
-          padding-top: 10px;
-          border-top: 1px dashed #666;
+          padding-left: 20px;
+        }
+        .proof-section .proof-item {
+          margin-bottom: 8px;
+        }
+        .proof-section .proof-item:last-child {
+          margin-bottom: 0;
         }
         .proof-section .label {
           font-weight: bold;
+          color: #333;
           margin-right: 10px;
         }
-        .proof-section .content {
-          margin-bottom: 8px;
+        .proof-section .value {
+          color: #000;
         }
         .footer-signature {
-          margin-top: 40px;
+          margin-top: 50px;
           padding-top: 20px;
-          border-top: 1px solid #000;
           display: flex;
           justify-content: space-between;
         }
@@ -498,49 +509,50 @@ function handlePrint() {
     </head>
     <body>
       <div class="print-header">
-        <h1>证 据 整 理</h1>
+        <h1>证 据 清 单</h1>
       </div>
   `;
 
-  // 添加分组内容
+  // 添加分组内容 - 文档式列表格式
   groupList.value.forEach((group) => {
     printContent += `
       <div class="group-section">
         <div class="group-title">${group.groupName}</div>
-        <table class="evidence-table">
-          <thead>
-            <tr>
-              <th class="col-index">序号</th>
-              <th class="col-name">证据名称</th>
-              <th class="col-source">来源</th>
-              <th class="col-original">原件</th>
-              <th class="col-pages">页码</th>
-            </tr>
-          </thead>
-          <tbody>
+        <div class="evidence-list">
     `;
 
-    group.evidences.forEach((evidence, index) => {
+    let evidenceIndex = 0;
+    group.evidences.forEach((evidence) => {
       if (evidence.name.trim()) {
+        evidenceIndex++;
         const pageRange =
           evidence.pageStart && evidence.pageEnd
             ? `第${evidence.pageStart}-${evidence.pageEnd}页`
-            : '';
+            : '—';
         printContent += `
-          <tr>
-            <td class="col-index">${index + 1}</td>
-            <td class="col-name">${evidence.name}</td>
-            <td class="col-source">${evidence.source || ''}</td>
-            <td class="col-original">${evidence.isOriginal ? '是' : '否'}</td>
-            <td class="col-pages">${pageRange}</td>
-          </tr>
+          <div class="evidence-item">
+            <div class="evidence-name">证据${evidenceIndex}：${evidence.name}</div>
+            <div class="evidence-details">
+              <span class="evidence-detail-item">
+                <span class="detail-label">来源：</span>
+                <span class="detail-value">${evidence.source || '—'}</span>
+              </span>
+              <span class="evidence-detail-item">
+                <span class="detail-label">形式：</span>
+                <span class="detail-value">${evidence.isOriginal ? '原件' : '复印件'}</span>
+              </span>
+              <span class="evidence-detail-item">
+                <span class="detail-label">页码：</span>
+                <span class="detail-value">${pageRange}</span>
+              </span>
+            </div>
+          </div>
         `;
       }
     });
 
     printContent += `
-          </tbody>
-        </table>
+        </div>
     `;
 
     // 添加证明内容和证明目的
@@ -550,17 +562,17 @@ function handlePrint() {
       `;
       if (group.proofContent) {
         printContent += `
-          <div class="content">
+          <div class="proof-item">
             <span class="label">证明内容：</span>
-            <span>${group.proofContent}</span>
+            <span class="value">${group.proofContent}</span>
           </div>
         `;
       }
       if (group.proofPurpose) {
         printContent += `
-          <div class="content">
+          <div class="proof-item">
             <span class="label">证明目的：</span>
-            <span>${group.proofPurpose}</span>
+            <span class="value">${group.proofPurpose}</span>
           </div>
         `;
       }
@@ -642,7 +654,7 @@ function handlePrint() {
 
     <!-- 清单标题 -->
     <div class="list-header">
-      <h2>证 据 整 理</h2>
+      <h2>证 据 清 单</h2>
     </div>
 
     <!-- 分组列表 -->

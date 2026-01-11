@@ -34,8 +34,12 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -69,11 +73,53 @@ public class PrepaymentAppService {
                 query.getPrepaymentNo()
         );
 
-        List<PrepaymentDTO> records = page.getRecords().stream()
-                .map(this::toDTO)
-                .collect(Collectors.toList());
+        List<PrepaymentDTO> records = batchConvertToDTO(page.getRecords());
 
         return PageResult.of(records, page.getTotal(), query.getPageNum(), query.getPageSize());
+    }
+    
+    /**
+     * 批量转换预收款DTO（优化N+1查询）
+     */
+    private List<PrepaymentDTO> batchConvertToDTO(List<Prepayment> prepayments) {
+        if (prepayments.isEmpty()) {
+            return List.of();
+        }
+        
+        // 收集所有需要查询的ID
+        Set<Long> clientIds = new HashSet<>();
+        Set<Long> contractIds = new HashSet<>();
+        Set<Long> matterIds = new HashSet<>();
+        Set<Long> confirmerIds = new HashSet<>();
+        
+        for (Prepayment p : prepayments) {
+            if (p.getClientId() != null) clientIds.add(p.getClientId());
+            if (p.getContractId() != null) contractIds.add(p.getContractId());
+            if (p.getMatterId() != null) matterIds.add(p.getMatterId());
+            if (p.getConfirmerId() != null) confirmerIds.add(p.getConfirmerId());
+        }
+        
+        // 批量加载关联数据
+        Map<Long, Client> clientMap = clientIds.isEmpty() ? Map.of() :
+                clientRepository.listByIds(clientIds).stream()
+                        .collect(Collectors.toMap(Client::getId, Function.identity()));
+        
+        Map<Long, Contract> contractMap = contractIds.isEmpty() ? Map.of() :
+                contractRepository.listByIds(contractIds).stream()
+                        .collect(Collectors.toMap(Contract::getId, Function.identity()));
+        
+        Map<Long, Matter> matterMap = matterIds.isEmpty() ? Map.of() :
+                matterRepository.listByIds(matterIds).stream()
+                        .collect(Collectors.toMap(Matter::getId, Function.identity()));
+        
+        Map<Long, User> userMap = confirmerIds.isEmpty() ? Map.of() :
+                userRepository.listByIds(confirmerIds).stream()
+                        .collect(Collectors.toMap(User::getId, Function.identity()));
+        
+        // 转换DTO
+        return prepayments.stream()
+                .map(p -> toDTOWithMaps(p, clientMap, contractMap, matterMap, userMap))
+                .collect(Collectors.toList());
     }
 
     /**
@@ -297,9 +343,20 @@ public class PrepaymentAppService {
     }
 
     /**
-     * Prepayment Entity 转 DTO
+     * Prepayment Entity 转 DTO（用于单条记录查询）
      */
     private PrepaymentDTO toDTO(Prepayment prepayment) {
+        return toDTOWithMaps(prepayment, null, null, null, null);
+    }
+    
+    /**
+     * Prepayment Entity 转 DTO（支持预加载的Map）
+     */
+    private PrepaymentDTO toDTOWithMaps(Prepayment prepayment, 
+                                        Map<Long, Client> clientMap,
+                                        Map<Long, Contract> contractMap,
+                                        Map<Long, Matter> matterMap,
+                                        Map<Long, User> userMap) {
         PrepaymentDTO dto = new PrepaymentDTO();
         dto.setId(prepayment.getId());
         dto.setPrepaymentNo(prepayment.getPrepaymentNo());
@@ -324,28 +381,32 @@ public class PrepaymentAppService {
         dto.setCreatedAt(prepayment.getCreatedAt());
         dto.setUpdatedAt(prepayment.getUpdatedAt());
 
-        // 关联信息
+        // 关联信息 - 优先从Map获取，否则单独查询
         if (prepayment.getClientId() != null) {
-            Client client = clientRepository.findById(prepayment.getClientId());
+            Client client = (clientMap != null) ? clientMap.get(prepayment.getClientId()) 
+                    : clientRepository.findById(prepayment.getClientId());
             if (client != null) {
                 dto.setClientName(client.getName());
             }
         }
         if (prepayment.getContractId() != null) {
-            Contract contract = contractRepository.findById(prepayment.getContractId());
+            Contract contract = (contractMap != null) ? contractMap.get(prepayment.getContractId()) 
+                    : contractRepository.findById(prepayment.getContractId());
             if (contract != null) {
                 dto.setContractNo(contract.getContractNo());
             }
         }
         if (prepayment.getMatterId() != null) {
-            Matter matter = matterRepository.findById(prepayment.getMatterId());
+            Matter matter = (matterMap != null) ? matterMap.get(prepayment.getMatterId()) 
+                    : matterRepository.findById(prepayment.getMatterId());
             if (matter != null) {
                 dto.setMatterNo(matter.getMatterNo());
                 dto.setMatterName(matter.getName());
             }
         }
         if (prepayment.getConfirmerId() != null) {
-            User user = userRepository.findById(prepayment.getConfirmerId());
+            User user = (userMap != null) ? userMap.get(prepayment.getConfirmerId()) 
+                    : userRepository.findById(prepayment.getConfirmerId());
             if (user != null) {
                 dto.setConfirmerName(user.getRealName());
             }

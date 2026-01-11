@@ -86,7 +86,8 @@ public class SecurityConfig {
                     "/error",
                     "/document/*/callback",  // OnlyOffice 回调接口（无需认证）
                     "/document/*/content",   // OnlyOffice 文件代理接口（通过 token 验证）
-                    "/open/verify/**"        // 公开验证接口（函件、合同等真伪验证）
+                    "/open/verify/**",       // 公开验证接口（函件、合同等真伪验证）
+                    "/open/portal/**"        // 客户门户接口（通过令牌验证）
                     ).permitAll();
                 } else {
                     // 生产环境：不包含 Swagger UI
@@ -99,7 +100,8 @@ public class SecurityConfig {
                         "/error",
                         "/document/*/callback",  // OnlyOffice 回调接口（无需认证）
                         "/document/*/content",   // OnlyOffice 文件代理接口（通过 token 验证）
-                        "/open/verify/**"        // 公开验证接口（函件、合同等真伪验证）
+                        "/open/verify/**",       // 公开验证接口（函件、合同等真伪验证）
+                        "/open/portal/**"        // 客户门户接口（通过令牌验证）
                     ).permitAll();
                 }
                 

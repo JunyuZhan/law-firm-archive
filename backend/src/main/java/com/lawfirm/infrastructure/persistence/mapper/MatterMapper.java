@@ -140,7 +140,7 @@ public interface MatterMapper extends BaseMapper<Matter> {
      * 编号格式：前缀 + 4位序号，如 "2026张三MS-0001"
      */
     @Select("""
-        SELECT MAX(CAST(SUBSTRING(matter_no, #{prefixLength} + 1, 4) AS UNSIGNED)) as maxSeq
+        SELECT MAX(CAST(SUBSTRING(matter_no, #{prefixLength} + 1, 4) AS INTEGER)) as maxSeq
         FROM matter
         WHERE matter_no LIKE CONCAT(#{prefix}, '%')
         AND LENGTH(matter_no) = #{prefixLength} + 4

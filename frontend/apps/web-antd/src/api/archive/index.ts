@@ -98,23 +98,6 @@ export function approveMigrateArchive(id: number, data: ApproveMigrateRequest) {
   return requestClient.post(`/archive/${id}/approve-migrate`, data);
 }
 
-/** 申请销毁档案（兼容旧接口，内部调用迁移） */
-export function applyDestroyArchive(id: number, reason: string) {
-  return requestClient.post(`/archive/${id}/apply-destroy`, { reason });
-}
-
-/** 审批销毁档案（兼容旧接口，内部调用迁移审批） */
-export function approveDestroyArchive(
-  id: number,
-  approved: boolean,
-  comment?: string,
-) {
-  return requestClient.post(`/archive/${id}/approve-destroy`, {
-    approved,
-    comment,
-  });
-}
-
 /** 获取即将到期的档案 */
 export function getExpiringArchives(days: number = 90) {
   return requestClient.get<ArchiveDTO[]>(`/archive/expiring`, {
@@ -132,17 +115,6 @@ export function setRetentionPeriod(id: number, retentionPeriod: string) {
   return requestClient.put<ArchiveDTO>(`/archive/${id}/retention-period`, {
     retentionPeriod,
   });
-}
-
-/** 销毁登记 */
-export function registerDestroyArchive(
-  id: number,
-  data: { destroyLocation: string; destroyMethod: string; witness: string },
-) {
-  return requestClient.post<ArchiveDTO>(
-    `/archive/${id}/register-destroy`,
-    data,
-  );
 }
 
 /** 下载卷宗封面 */

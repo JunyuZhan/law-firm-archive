@@ -1128,10 +1128,9 @@ public class PayrollAppService {
     }
 
     /**
-     * 财务确认工资表（已废弃，改为提交审批）
-     * @deprecated 使用 submitApproval 方法
+     * 财务确认工资表
+     * 确认所有员工都已确认后，更新工资表状态为财务已确认
      */
-    @Deprecated
     @Transactional
     public void financeConfirmPayrollSheet(Long id) {
         PayrollSheet sheet = payrollSheetRepository.getByIdOrThrow(id, "工资表不存在");

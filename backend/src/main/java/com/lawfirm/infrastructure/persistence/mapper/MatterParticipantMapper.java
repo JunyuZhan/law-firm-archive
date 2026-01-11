@@ -47,5 +47,12 @@ public interface MatterParticipantMapper extends BaseMapper<MatterParticipant> {
         WHERE matter_id = #{matterId} AND user_id = #{userId} AND status = 'ACTIVE' AND deleted = false
         """)
     int countByMatterIdAndUserId(@Param("matterId") Long matterId, @Param("userId") Long userId);
+
+    /**
+     * 判断用户是否是案件参与者
+     */
+    default boolean existsByMatterIdAndUserId(Long matterId, Long userId) {
+        return countByMatterIdAndUserId(matterId, userId) > 0;
+    }
 }
 

@@ -36,10 +36,16 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Collections;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+
+import com.lawfirm.domain.matter.entity.Matter;
 
 /**
  * 费用报销应用服务
@@ -123,11 +129,91 @@ public class ExpenseAppService {
                 .limit(limit)
                 .collect(Collectors.toList());
 
-        List<ExpenseDTO> records = pagedExpenses.stream()
-                .map(this::toDTO)
-                .collect(Collectors.toList());
+        // 批量转换DTO（避免N+1查询）
+        List<ExpenseDTO> records = batchConvertToDTO(pagedExpenses);
 
         return PageResult.of(records, total, query.getPageNum(), query.getPageSize());
+    }
+    
+    /**
+     * 批量转换费用列表为DTO（性能优化：避免N+1查询）
+     */
+    private List<ExpenseDTO> batchConvertToDTO(List<Expense> expenses) {
+        if (expenses == null || expenses.isEmpty()) {
+            return Collections.emptyList();
+        }
+        
+        // 1. 收集所有需要查询的ID
+        Set<Long> userIds = new HashSet<>();
+        Set<Long> matterIds = new HashSet<>();
+        
+        for (Expense e : expenses) {
+            if (e.getApplicantId() != null) userIds.add(e.getApplicantId());
+            if (e.getApproverId() != null) userIds.add(e.getApproverId());
+            if (e.getPaidBy() != null) userIds.add(e.getPaidBy());
+            if (e.getMatterId() != null) matterIds.add(e.getMatterId());
+            if (e.getAllocatedToMatterId() != null) matterIds.add(e.getAllocatedToMatterId());
+        }
+        
+        // 2. 批量加载关联数据
+        Map<Long, User> userMap = userIds.isEmpty() ? Collections.emptyMap() :
+                userRepository.listByIds(new ArrayList<>(userIds)).stream()
+                        .collect(Collectors.toMap(User::getId, u -> u, (a, b) -> a));
+        
+        Map<Long, Matter> matterMap = matterIds.isEmpty() ? Collections.emptyMap() :
+                matterRepository.listByIds(new ArrayList<>(matterIds)).stream()
+                        .collect(Collectors.toMap(Matter::getId, m -> m, (a, b) -> a));
+        
+        // 3. 使用预加载的数据转换DTO
+        return expenses.stream()
+                .map(e -> toDTOWithMaps(e, userMap, matterMap))
+                .collect(Collectors.toList());
+    }
+    
+    /**
+     * 使用预加载的Map转换单个费用DTO（避免N+1查询）
+     */
+    private ExpenseDTO toDTOWithMaps(Expense expense, Map<Long, User> userMap, Map<Long, Matter> matterMap) {
+        ExpenseDTO dto = new ExpenseDTO();
+        BeanUtils.copyProperties(expense, dto);
+
+        // 从预加载的Map获取关联数据（无额外数据库查询）
+        if (expense.getApplicantId() != null) {
+            User applicant = userMap.get(expense.getApplicantId());
+            if (applicant != null) {
+                dto.setApplicantName(applicant.getRealName());
+            }
+        }
+
+        if (expense.getApproverId() != null) {
+            User approver = userMap.get(expense.getApproverId());
+            if (approver != null) {
+                dto.setApproverName(approver.getRealName());
+            }
+        }
+
+        if (expense.getPaidBy() != null) {
+            User paidBy = userMap.get(expense.getPaidBy());
+            if (paidBy != null) {
+                dto.setPaidByName(paidBy.getRealName());
+            }
+        }
+
+        // 获取项目名称
+        if (expense.getMatterId() != null) {
+            Matter matter = matterMap.get(expense.getMatterId());
+            if (matter != null) {
+                dto.setMatterName(matter.getName());
+            }
+        }
+        if (expense.getAllocatedToMatterId() != null) {
+            Matter matter = matterMap.get(expense.getAllocatedToMatterId());
+            if (matter != null) {
+                dto.setMatterName(matter.getName());
+            }
+        }
+
+        return dto;
     }
 
     /**

@@ -19,6 +19,7 @@ import com.lawfirm.domain.matter.repository.MatterParticipantRepository;
 import com.lawfirm.domain.matter.entity.MatterParticipant;
 import com.lawfirm.domain.matter.repository.MatterRepository;
 import com.lawfirm.domain.matter.entity.Matter;
+import com.lawfirm.infrastructure.persistence.mapper.DepartmentMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -47,6 +48,7 @@ public class TimesheetAppService {
     private final TimesheetMapper timesheetMapper;
     private final MatterRepository matterRepository;
     private final MatterParticipantRepository matterParticipantRepository;
+    private final DepartmentMapper departmentMapper;
 
     /**
      * 分页查询工时
@@ -459,6 +461,28 @@ public class TimesheetAppService {
      * Entity 转 DTO
      */
     /**
+     * 获取部门及所有下级部门ID列表
+     * 使用递归CTE一次性查询
+     */
+    private List<Long> getAllDepartmentIds(Long deptId) {
+        if (deptId == null) {
+            return new ArrayList<>();
+        }
+        List<Long> result = new ArrayList<>();
+        result.add(deptId); // 包含自身
+        
+        try {
+            List<Long> descendantIds = departmentMapper.selectAllDescendantDeptIds(deptId);
+            if (descendantIds != null) {
+                result.addAll(descendantIds);
+            }
+        } catch (Exception e) {
+            log.warn("查询子部门失败: deptId={}, error={}", deptId, e.getMessage());
+        }
+        return result;
+    }
+
+    /**
      * 获取可访问的项目ID列表（根据数据权限）
      * @return null表示可以访问所有项目，否则返回可访问的项目ID列表
      */
@@ -470,12 +494,12 @@ public class TimesheetAppService {
         List<Long> matterIds = new ArrayList<>();
         
         if ("DEPT_AND_CHILD".equals(dataScope) && deptId != null) {
-            // 部门及下级部门：查询本部门及下级部门的项目
-            // TODO: 需要实现部门递归查询
+            // 部门及下级部门：使用递归CTE查询所有下级部门的项目
+            List<Long> allDeptIds = getAllDepartmentIds(deptId);
             matterIds = matterRepository.lambdaQuery()
                     .select(Matter::getId)
                     .eq(Matter::getDeleted, false)
-                    .eq(Matter::getDepartmentId, deptId)
+                    .in(Matter::getDepartmentId, allDeptIds)
                     .list()
                     .stream()
                     .map(Matter::getId)

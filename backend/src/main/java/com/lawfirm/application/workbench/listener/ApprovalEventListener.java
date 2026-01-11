@@ -1,6 +1,7 @@
 package com.lawfirm.application.workbench.listener;
 
 import com.lawfirm.application.admin.service.LetterAppService;
+import com.lawfirm.application.archive.service.ArchiveAppService;
 import com.lawfirm.application.finance.service.ContractAppService;
 import com.lawfirm.application.document.service.SealApplicationAppService;
 import com.lawfirm.application.client.service.ConflictCheckAppService;
@@ -12,6 +13,8 @@ import com.lawfirm.domain.workbench.entity.Approval;
 import com.lawfirm.domain.workbench.repository.ApprovalRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,6 +40,15 @@ public class ApprovalEventListener {
     private final NotificationAppService notificationAppService;
     private final ApprovalRepository approvalRepository;
     private final LetterAppService letterAppService;
+    
+    // 使用@Lazy避免循环依赖：ArchiveAppService -> ApprovalService -> EventListener -> ArchiveAppService
+    private ArchiveAppService archiveAppService;
+    
+    @Autowired
+    @Lazy
+    public void setArchiveAppService(ArchiveAppService archiveAppService) {
+        this.archiveAppService = archiveAppService;
+    }
 
     /**
      * 监听审批完成事件
@@ -82,6 +94,9 @@ public class ApprovalEventListener {
                     // 这里不需要重复处理，避免状态冲突
                     log.info("项目结案审批已完成，状态已在审批方法中更新: matterId={}, result={}", 
                             businessId, result);
+                    break;
+                case "ARCHIVE_STORE":
+                    handleArchiveStoreApproval(businessId, result, comment);
                     break;
                 default:
                     log.warn("未知的业务类型: {}", businessType);
@@ -142,6 +157,7 @@ public class ApprovalEventListener {
             case "MATTER_CLOSE" -> "项目结案";
             case "DATA_HANDOVER" -> "数据交接";
             case "LETTER_APPLICATION" -> "出函申请";
+            case "ARCHIVE_STORE" -> "档案入库";
             default -> "审批";
         };
     }
@@ -234,6 +250,22 @@ public class ApprovalEventListener {
             dataHandoverService.onApprovalApproved(handoverId);
         } else if (ApprovalStatus.REJECTED.equals(result)) {
             dataHandoverService.onApprovalRejected(handoverId, comment);
+        }
+    }
+
+    /**
+     * 处理档案入库审批
+     */
+    private void handleArchiveStoreApproval(Long archiveId, String result, String comment) {
+        try {
+            if (ApprovalStatus.APPROVED.equals(result)) {
+                archiveAppService.onStoreApprovalApproved(archiveId, comment);
+            } else if (ApprovalStatus.REJECTED.equals(result)) {
+                archiveAppService.onStoreApprovalRejected(archiveId, comment);
+            }
+        } catch (Exception e) {
+            log.warn("档案入库审批业务状态更新失败: archiveId={}, result={}, error={}", 
+                    archiveId, result, e.getMessage());
         }
     }
 }

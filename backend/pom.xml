@@ -64,6 +64,12 @@
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-pool2</artifactId>
         </dependency>
+        
+        <!-- Apache HttpClient 5 用于 AI API 调用（更好地处理长连接和大响应） -->
+        <dependency>
+            <groupId>org.apache.httpcomponents.client5</groupId>
+            <artifactId>httpclient5</artifactId>
+        </dependency>
         <!-- Micrometer 监控（用于 @Timed 注解和 Prometheus 导出） -->
         <dependency>
             <groupId>io.micrometer</groupId>

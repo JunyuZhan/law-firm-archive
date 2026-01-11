@@ -68,6 +68,7 @@ import {
   REMINDER_OPTIONS,
   SCHEDULE_TYPE_OPTIONS,
 } from '#/api/matter/schedule';
+import { ClientServicePanel } from '#/components/ClientServicePanel';
 import { DossierManager } from '#/components/DossierManager';
 import { EvidenceListManager } from '#/components/EvidenceManager';
 import { UserTreeSelect } from '#/components/UserTreeSelect';
@@ -1288,6 +1289,17 @@ onMounted(() => {
                 size="small"
               />
               <Empty v-else description="暂无团队成员" />
+            </TabPane>
+
+            <!-- 客户服务 -->
+            <TabPane key="clientService" tab="客户服务">
+              <ClientServicePanel
+                :client-id="matter.clientId"
+                :client-name="matter.clientName || ''"
+                :matter-id="matter.id"
+                :matter-name="matter.name"
+                :readonly="matter.status === 'ARCHIVED'"
+              />
             </TabPane>
           </Tabs>
         </Card>

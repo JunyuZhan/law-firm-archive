@@ -2,17 +2,25 @@ package com.lawfirm.application.system.command;
 
 import lombok.Data;
 
-import jakarta.validation.constraints.NotNull;
 import java.util.Map;
 
 /**
- * 更新外部系统集成配置命令
+ * 创建/更新外部系统集成配置命令
  */
 @Data
 public class UpdateExternalIntegrationCommand {
     
-    @NotNull(message = "ID不能为空")
+    /** ID（更新时必填，创建时为空） */
     private Long id;
+
+    /** 集成编码（创建时必填） */
+    private String integrationCode;
+
+    /** 集成名称（创建时必填） */
+    private String integrationName;
+
+    /** 集成类型：ARCHIVE/AI/CLIENT_SERVICE/OTHER（创建时必填） */
+    private String integrationType;
 
     /** API地址 */
     private String apiUrl;

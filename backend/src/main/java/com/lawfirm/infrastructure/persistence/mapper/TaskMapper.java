@@ -95,4 +95,10 @@ public interface TaskMapper extends BaseMapper<Task> {
             "AND status IN ('TODO', 'IN_PROGRESS') AND deleted = false")
     List<Task> selectTasksNeedReminder(@Param("startTime") java.time.LocalDateTime startTime, 
                                         @Param("endTime") java.time.LocalDateTime endTime);
+
+    /**
+     * 根据项目ID查询任务列表
+     */
+    @Select("SELECT * FROM task WHERE matter_id = #{matterId} AND deleted = false ORDER BY due_date ASC NULLS LAST")
+    List<Task> selectByMatterId(@Param("matterId") Long matterId);
 }

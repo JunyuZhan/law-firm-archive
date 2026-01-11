@@ -1,5 +1,7 @@
 package com.lawfirm.infrastructure.security;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -8,6 +10,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import java.io.Serial;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
@@ -15,12 +18,18 @@ import java.util.stream.Collectors;
 
 /**
  * 登录用户信息（Spring Security UserDetails实现）
+ * 
+ * 支持Redis缓存序列化（UserDetails已继承Serializable）
  */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class LoginUser implements UserDetails {
+    
+    @Serial
+    private static final long serialVersionUID = 1L;
 
     /**
      * 用户ID
@@ -74,6 +83,7 @@ public class LoginUser implements UserDetails {
     private boolean enabled = true;
 
     @Override
+    @JsonIgnore
     public Collection<? extends GrantedAuthority> getAuthorities() {
         // 将角色和权限转换为GrantedAuthority
         List<SimpleGrantedAuthority> authorities = permissions.stream()

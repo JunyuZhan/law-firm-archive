@@ -19,4 +19,11 @@ public class DocumentRepository extends AbstractRepository<DocumentMapper, Docum
     public List<Document> findAllVersions(Long docId) {
         return baseMapper.selectAllVersions(docId);
     }
+
+    /**
+     * 根据卷宗目录项ID查询文档
+     */
+    public List<Document> findByDossierItemId(Long dossierItemId) {
+        return baseMapper.selectByDossierItemId(dossierItemId);
+    }
 }

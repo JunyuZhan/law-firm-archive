@@ -64,6 +64,15 @@ public class ExternalIntegrationController {
         return Result.success(integrationAppService.getIntegrationByCode(code));
     }
 
+    @Operation(summary = "创建集成配置")
+    @PostMapping
+    @RequirePermission("system:integration:edit")
+    @OperationLog(module = "系统管理", action = "创建外部系统集成配置")
+    public Result<ExternalIntegrationDTO> create(
+            @RequestBody @Validated UpdateExternalIntegrationCommand command) {
+        return Result.success(integrationAppService.createIntegration(command));
+    }
+
     @Operation(summary = "更新集成配置")
     @PutMapping("/{id}")
     @RequirePermission("system:integration:edit")

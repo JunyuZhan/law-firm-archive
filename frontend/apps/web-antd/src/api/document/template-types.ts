@@ -45,6 +45,7 @@ export interface UpdateDocumentTemplateCommand {
   name?: string;
   categoryId?: number;
   templateType?: string;
+  content?: string;
   description?: string;
   status?: string;
 }

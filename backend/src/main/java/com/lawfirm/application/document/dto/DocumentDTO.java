@@ -58,4 +58,13 @@ public class DocumentDTO extends BaseDTO {
     private Integer displayOrder;
     /** 缩略图URL */
     private String thumbnailUrl;
+    
+    /** 文档来源类型: SYSTEM_GENERATED, SYSTEM_LINKED, USER_UPLOADED, SIGNED_VERSION */
+    private String sourceType;
+    /** 文档来源类型名称 */
+    private String sourceTypeName;
+    /** 来源数据ID */
+    private Long sourceId;
+    /** 来源模块 */
+    private String sourceModule;
 }

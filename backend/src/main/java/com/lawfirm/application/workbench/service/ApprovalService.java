@@ -7,8 +7,10 @@ import com.lawfirm.domain.system.entity.User;
 import com.lawfirm.domain.system.repository.UserRepository;
 import com.lawfirm.domain.workbench.entity.Approval;
 import com.lawfirm.domain.workbench.repository.ApprovalRepository;
+import com.lawfirm.application.workbench.event.ApprovalCompletedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +28,7 @@ public class ApprovalService {
     private final ApprovalRepository approvalRepository;
     private final UserRepository userRepository;
     private final NotificationAppService notificationAppService;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 创建审批记录
@@ -112,6 +115,7 @@ public class ApprovalService {
             case "REGULARIZATION" -> "转正申请";
             case "RESIGNATION" -> "离职申请";
             case "LETTER_APPLICATION" -> "出函申请";
+            case "ARCHIVE_STORE" -> "档案入库";
             default -> "审批";
         };
     }
@@ -128,20 +132,34 @@ public class ApprovalService {
 
     /**
      * 审批完成后，更新业务模块状态
-     * 此方法由业务模块在审批回调中调用
+     * 通过发布事件的方式通知业务模块更新状态
+     * 
+     * @param approvalId 审批记录ID
+     * @param result 审批结果（APPROVED 或 REJECTED）
+     * @param comment 审批意见
      */
     @Transactional
-    public void onApprovalCompleted(Long approvalId, String result) {
+    public void onApprovalCompleted(Long approvalId, String result, String comment) {
         Approval approval = approvalRepository.getByIdOrThrow(approvalId, "审批记录不存在");
         
-        // 根据业务类型，调用相应的业务模块服务更新状态
         String businessType = approval.getBusinessType();
         Long businessId = approval.getBusinessId();
         
-        // TODO: 通过事件机制或服务注入的方式，通知业务模块更新状态
-        // 这里先记录日志，后续完善
-        log.info("审批完成回调: approvalId={}, businessType={}, businessId={}, result={}", 
+        // 发布审批完成事件，由各业务模块的监听器处理
+        ApprovalCompletedEvent event = new ApprovalCompletedEvent(
+                this, approvalId, businessType, businessId, result, comment);
+        eventPublisher.publishEvent(event);
+        
+        log.info("审批完成事件已发布: approvalId={}, businessType={}, businessId={}, result={}", 
                 approvalId, businessType, businessId, result);
+    }
+    
+    /**
+     * 审批完成后，更新业务模块状态（兼容旧接口）
+     */
+    @Transactional
+    public void onApprovalCompleted(Long approvalId, String result) {
+        onApprovalCompleted(approvalId, result, null);
     }
 
     /**

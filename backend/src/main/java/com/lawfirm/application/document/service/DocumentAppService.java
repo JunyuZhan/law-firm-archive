@@ -34,8 +34,11 @@ import org.springframework.web.multipart.MultipartFile;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Collections;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -98,11 +101,77 @@ public class DocumentAppService {
                 accessibleMatterIds  // null表示可以访问所有项目的文档（ALL权限）
         );
 
-        List<DocumentDTO> records = page.getRecords().stream()
-                .map(this::toDTO)
-                .collect(Collectors.toList());
+        // 批量转换DTO（避免N+1查询）
+        List<DocumentDTO> records = batchConvertToDTO(page.getRecords());
 
         return PageResult.of(records, page.getTotal(), query.getPageNum(), query.getPageSize());
+    }
+    
+    /**
+     * 批量转换文档列表为DTO（性能优化：避免N+1查询）
+     */
+    private List<DocumentDTO> batchConvertToDTO(List<Document> documents) {
+        if (documents == null || documents.isEmpty()) {
+            return Collections.emptyList();
+        }
+        
+        // 收集所有需要查询的分类ID
+        Set<Long> categoryIds = documents.stream()
+                .map(Document::getCategoryId)
+                .filter(id -> id != null)
+                .collect(Collectors.toSet());
+        
+        // 批量加载分类信息
+        Map<Long, DocumentCategory> categoryMap = categoryIds.isEmpty() ? Collections.emptyMap() :
+                categoryRepository.listByIds(new ArrayList<>(categoryIds)).stream()
+                        .collect(Collectors.toMap(DocumentCategory::getId, c -> c, (a, b) -> a));
+        
+        // 使用预加载的数据转换DTO
+        return documents.stream()
+                .map(doc -> toDTOWithMap(doc, categoryMap))
+                .collect(Collectors.toList());
+    }
+    
+    /**
+     * 使用预加载的Map转换单个文档DTO（避免N+1查询）
+     */
+    private DocumentDTO toDTOWithMap(Document doc, Map<Long, DocumentCategory> categoryMap) {
+        DocumentDTO dto = new DocumentDTO();
+        dto.setId(doc.getId());
+        dto.setDocNo(doc.getDocNo());
+        dto.setTitle(doc.getTitle());
+        dto.setCategoryId(doc.getCategoryId());
+        if (doc.getCategoryId() != null) {
+            DocumentCategory category = categoryMap.get(doc.getCategoryId());
+            if (category != null) {
+                dto.setCategoryName(category.getName());
+            }
+        }
+        dto.setMatterId(doc.getMatterId());
+        dto.setFileName(doc.getFileName());
+        dto.setFilePath(doc.getFilePath());
+        dto.setFileSize(doc.getFileSize());
+        dto.setFileSizeDisplay(formatFileSize(doc.getFileSize()));
+        dto.setFileType(doc.getFileType());
+        dto.setMimeType(doc.getMimeType());
+        dto.setVersion(doc.getVersion());
+        dto.setIsLatest(doc.getIsLatest());
+        dto.setParentDocId(doc.getParentDocId());
+        dto.setSecurityLevel(doc.getSecurityLevel());
+        dto.setSecurityLevelName(getSecurityLevelName(doc.getSecurityLevel()));
+        dto.setStage(doc.getStage());
+        dto.setTags(doc.getTags());
+        dto.setDescription(doc.getDescription());
+        dto.setStatus(doc.getStatus());
+        dto.setStatusName(getStatusName(doc.getStatus()));
+        dto.setCreatedBy(doc.getCreatedBy());
+        dto.setCreatedAt(doc.getCreatedAt());
+        dto.setUpdatedAt(doc.getUpdatedAt());
+        dto.setDossierItemId(doc.getDossierItemId());
+        dto.setFolderPath(doc.getFolderPath());
+        dto.setDisplayOrder(doc.getDisplayOrder());
+        dto.setThumbnailUrl(doc.getThumbnailUrl());
+        return dto;
     }
 
     /**
@@ -368,6 +437,14 @@ public class DocumentAppService {
      */
     @Transactional
     public DocumentDTO uploadFile(MultipartFile file, Long matterId, String folder, String description, Long dossierItemId) {
+        return uploadFile(file, matterId, folder, description, dossierItemId, null);
+    }
+
+    /**
+     * 上传单个文件（支持指定来源类型）
+     */
+    @Transactional
+    public DocumentDTO uploadFile(MultipartFile file, Long matterId, String folder, String description, Long dossierItemId, String sourceType) {
         if (file == null || file.isEmpty()) {
             throw new BusinessException("请选择要上传的文件");
         }
@@ -398,6 +475,10 @@ public class DocumentAppService {
                 thumbnailUrl = thumbnailService.generateThumbnail(file, fileUrl);
             }
             
+            // 确定来源类型（默认为用户上传）
+            String actualSourceType = sourceType != null && !sourceType.isEmpty() 
+                ? sourceType : "USER_UPLOADED";
+            
             // 创建文档记录
             Document document = Document.builder()
                     .docNo(generateDocNo())
@@ -416,6 +497,7 @@ public class DocumentAppService {
                     .dossierItemId(dossierItemId)
                     .folderPath(folder)
                     .thumbnailUrl(thumbnailUrl)
+                    .sourceType(actualSourceType)
                     .createdBy(SecurityUtils.getUserId())
                     .build();
             
@@ -443,7 +525,7 @@ public class DocumentAppService {
      * 4. 如果任一步骤失败，清理已上传的MinIO文件
      */
     @Transactional(rollbackFor = Exception.class)
-    public List<DocumentDTO> uploadFiles(MultipartFile[] files, Long matterId, String folder, String description, Long dossierItemId) {
+    public List<DocumentDTO> uploadFiles(MultipartFile[] files, Long matterId, String folder, String description, Long dossierItemId, String sourceType) {
         if (files == null || files.length == 0) {
             throw new BusinessException("请选择要上传的文件");
         }
@@ -467,7 +549,7 @@ public class DocumentAppService {
         try {
             // 逐个上传（上传时会自动创建数据库记录）
             for (MultipartFile file : validFiles) {
-                DocumentDTO dto = uploadFile(file, matterId, folder, description, dossierItemId);
+                DocumentDTO dto = uploadFile(file, matterId, folder, description, dossierItemId, sourceType);
                 uploadedFilePaths.add(dto.getFilePath());
                 results.add(dto);
             }

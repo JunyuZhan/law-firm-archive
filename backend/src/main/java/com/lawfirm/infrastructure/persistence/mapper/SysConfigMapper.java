@@ -32,4 +32,10 @@ public interface SysConfigMapper extends BaseMapper<SysConfig> {
      */
     @Update("UPDATE sys_config SET config_value = #{value}, updated_at = NOW() WHERE config_key = #{key}")
     int updateValueByKey(@Param("key") String key, @Param("value") String value);
+
+    /**
+     * 根据键直接查询配置值
+     */
+    @Select("SELECT config_value FROM sys_config WHERE config_key = #{key} AND deleted = false")
+    String selectValueByKey(@Param("key") String key);
 }

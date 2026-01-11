@@ -267,6 +267,7 @@ export function uploadFiles(
     dossierItemId?: number;
     folder?: string;
     matterId?: number;
+    sourceType?: string; // 文档来源类型：USER_UPLOADED, SIGNED_VERSION 等
   } = {},
 ) {
   const formData = new FormData();
@@ -276,6 +277,7 @@ export function uploadFiles(
   if (options.description) formData.append('description', options.description);
   if (options.dossierItemId)
     formData.append('dossierItemId', String(options.dossierItemId));
+  if (options.sourceType) formData.append('sourceType', options.sourceType);
 
   return requestClient.post<DocumentDTO[]>('/document/upload/batch', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },

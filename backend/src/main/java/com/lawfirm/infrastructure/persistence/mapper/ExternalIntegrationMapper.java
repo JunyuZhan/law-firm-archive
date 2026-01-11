@@ -64,6 +64,13 @@ public interface ExternalIntegrationMapper extends BaseMapper<ExternalIntegratio
     List<ExternalIntegration> selectEnabledByType(@Param("type") String type);
 
     /**
+     * 根据类型查询集成配置（不限制启用状态）
+     */
+    @Select("SELECT * FROM sys_external_integration WHERE integration_type = #{type} AND deleted = false LIMIT 1")
+    @ResultMap("integrationResult")
+    ExternalIntegration selectByType(@Param("type") String type);
+
+    /**
      * 更新测试结果
      */
     @Update("UPDATE sys_external_integration SET " +

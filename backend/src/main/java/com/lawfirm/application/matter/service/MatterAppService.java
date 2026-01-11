@@ -9,8 +9,8 @@ import com.lawfirm.application.matter.dto.MatterClientDTO;
 import com.lawfirm.application.matter.dto.MatterParticipantDTO;
 import com.lawfirm.application.matter.dto.MatterQueryDTO;
 import com.lawfirm.application.archive.service.ArchiveAppService;
+import com.lawfirm.application.document.service.DossierAutoArchiveService;
 import com.lawfirm.application.matter.command.CloseMatterCommand;
-import com.lawfirm.application.matter.service.DeadlineAppService;
 import com.lawfirm.application.system.service.NotificationAppService;
 import com.lawfirm.application.workbench.service.ApprovalService;
 import com.lawfirm.application.workbench.service.ApproverService;
@@ -33,6 +33,7 @@ import com.lawfirm.domain.matter.repository.MatterParticipantRepository;
 import com.lawfirm.domain.system.entity.User;
 import com.lawfirm.domain.system.repository.DepartmentRepository;
 import com.lawfirm.domain.system.repository.UserRepository;
+import com.lawfirm.infrastructure.persistence.mapper.DepartmentMapper;
 import com.lawfirm.infrastructure.persistence.mapper.MatterMapper;
 import com.lawfirm.infrastructure.persistence.mapper.MatterParticipantMapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -46,7 +47,13 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
+
+import com.lawfirm.domain.client.entity.Client;
+import com.lawfirm.domain.system.entity.Department;
 
 /**
  * 案件应用服务
@@ -66,15 +73,18 @@ public class MatterAppService {
     private final ContractRepository contractRepository;
     private final ContractParticipantRepository contractParticipantRepository;
     private final DepartmentRepository departmentRepository;
+    private final DepartmentMapper departmentMapper;
     private final ApprovalService approvalService;
     private final ApproverService approverService;
     private final ArchiveAppService archiveAppService;
     private final DeadlineAppService deadlineAppService;
     private final NotificationAppService notificationAppService;
     private final ObjectMapper objectMapper;
+    private final DossierAutoArchiveService dossierAutoArchiveService;
 
     /**
      * 分页查询案件
+     * 优化：使用批量加载替代N+1查询，显著提升列表查询性能
      */
     public PageResult<MatterDTO> listMatters(MatterQueryDTO query) {
         IPage<Matter> page;
@@ -126,11 +136,176 @@ public class MatterAppService {
             log.debug("查询结果 - 总数: {}, 当前页记录数: {}", page.getTotal(), page.getRecords().size());
         }
 
-        List<MatterDTO> records = page.getRecords().stream()
-                .map(this::toDTO)
-                .collect(Collectors.toList());
+        List<Matter> matters = page.getRecords();
+        if (matters.isEmpty()) {
+            return PageResult.of(Collections.emptyList(), 0, query.getPageNum(), query.getPageSize());
+        }
+        
+        // 批量转换DTO（避免N+1查询）
+        List<MatterDTO> records = batchConvertToDTO(matters);
 
         return PageResult.of(records, page.getTotal(), query.getPageNum(), query.getPageSize());
+    }
+    
+    /**
+     * 批量转换项目列表为DTO（性能优化：避免N+1查询）
+     * 使用批量加载替代循环中的单次查询
+     */
+    private List<MatterDTO> batchConvertToDTO(List<Matter> matters) {
+        if (matters == null || matters.isEmpty()) {
+            return Collections.emptyList();
+        }
+        
+        // 1. 收集所有需要查询的ID
+        Set<Long> clientIds = new HashSet<>();
+        Set<Long> contractIds = new HashSet<>();
+        Set<Long> userIds = new HashSet<>();
+        Set<Long> deptIds = new HashSet<>();
+        Set<Long> matterIds = new HashSet<>();
+        
+        for (Matter m : matters) {
+            matterIds.add(m.getId());
+            if (m.getClientId() != null) clientIds.add(m.getClientId());
+            if (m.getContractId() != null) contractIds.add(m.getContractId());
+            if (m.getOriginatorId() != null) userIds.add(m.getOriginatorId());
+            if (m.getLeadLawyerId() != null) userIds.add(m.getLeadLawyerId());
+            if (m.getDepartmentId() != null) deptIds.add(m.getDepartmentId());
+        }
+        
+        // 2. 批量加载关联数据
+        Map<Long, Client> clientMap = clientIds.isEmpty() ? Collections.emptyMap() :
+                clientRepository.listByIds(new ArrayList<>(clientIds)).stream()
+                        .collect(Collectors.toMap(Client::getId, c -> c, (a, b) -> a));
+        
+        Map<Long, Contract> contractMap = contractIds.isEmpty() ? Collections.emptyMap() :
+                contractRepository.listByIds(new ArrayList<>(contractIds)).stream()
+                        .collect(Collectors.toMap(Contract::getId, c -> c, (a, b) -> a));
+        
+        Map<Long, User> userMap = userIds.isEmpty() ? Collections.emptyMap() :
+                userRepository.listByIds(new ArrayList<>(userIds)).stream()
+                        .collect(Collectors.toMap(User::getId, u -> u, (a, b) -> a));
+        
+        Map<Long, Department> deptMap = deptIds.isEmpty() ? Collections.emptyMap() :
+                departmentRepository.listByIds(new ArrayList<>(deptIds)).stream()
+                        .collect(Collectors.toMap(Department::getId, d -> d, (a, b) -> a));
+        
+        // 3. 批量加载多客户列表
+        Map<Long, List<MatterClient>> matterClientsMap = loadMatterClientsMap(matterIds);
+        
+        // 4. 使用预加载的数据转换DTO
+        return matters.stream()
+                .map(m -> toDTOWithMaps(m, clientMap, contractMap, userMap, deptMap, matterClientsMap))
+                .collect(Collectors.toList());
+    }
+    
+    /**
+     * 批量加载项目客户关联
+     */
+    private Map<Long, List<MatterClient>> loadMatterClientsMap(Set<Long> matterIds) {
+        if (matterIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        
+        List<MatterClient> allClients = matterClientRepository.lambdaQuery()
+                .in(MatterClient::getMatterId, matterIds)
+                .eq(MatterClient::getDeleted, false)
+                .list();
+        
+        return allClients.stream()
+                .collect(Collectors.groupingBy(MatterClient::getMatterId));
+    }
+    
+    /**
+     * 使用预加载的Map转换单个项目DTO（避免N+1查询）
+     */
+    private MatterDTO toDTOWithMaps(Matter matter, 
+                                     Map<Long, Client> clientMap,
+                                     Map<Long, Contract> contractMap,
+                                     Map<Long, User> userMap,
+                                     Map<Long, Department> deptMap,
+                                     Map<Long, List<MatterClient>> matterClientsMap) {
+        MatterDTO dto = new MatterDTO();
+        dto.setId(matter.getId());
+        dto.setMatterNo(matter.getMatterNo());
+        dto.setName(matter.getName());
+        dto.setMatterType(matter.getMatterType());
+        dto.setMatterTypeName(MatterConstants.getMatterTypeName(matter.getMatterType()));
+        dto.setCaseType(matter.getCaseType());
+        dto.setCaseTypeName(MatterConstants.getCaseTypeName(matter.getCaseType()));
+        dto.setCauseOfAction(matter.getCauseOfAction());
+        dto.setBusinessType(matter.getBusinessType());
+        dto.setClientId(matter.getClientId());
+        dto.setOpposingParty(matter.getOpposingParty());
+        dto.setOpposingLawyerName(matter.getOpposingLawyerName());
+        dto.setOpposingLawyerLicenseNo(matter.getOpposingLawyerLicenseNo());
+        dto.setOpposingLawyerFirm(matter.getOpposingLawyerFirm());
+        dto.setOpposingLawyerPhone(matter.getOpposingLawyerPhone());
+        dto.setOpposingLawyerEmail(matter.getOpposingLawyerEmail());
+        dto.setDescription(matter.getDescription());
+        dto.setStatus(matter.getStatus());
+        dto.setStatusName(MatterConstants.getMatterStatusName(matter.getStatus()));
+        dto.setOriginatorId(matter.getOriginatorId());
+        dto.setLeadLawyerId(matter.getLeadLawyerId());
+        dto.setDepartmentId(matter.getDepartmentId());
+        dto.setFeeType(matter.getFeeType());
+        dto.setFeeTypeName(getFeeTypeName(matter.getFeeType()));
+        dto.setEstimatedFee(matter.getEstimatedFee());
+        dto.setActualFee(matter.getActualFee());
+        dto.setFilingDate(matter.getFilingDate());
+        dto.setExpectedClosingDate(matter.getExpectedClosingDate());
+        dto.setActualClosingDate(matter.getActualClosingDate());
+        dto.setClaimAmount(matter.getClaimAmount());
+        dto.setOutcome(matter.getOutcome());
+        dto.setContractId(matter.getContractId());
+        dto.setRemark(matter.getRemark());
+        dto.setConflictStatus(matter.getConflictStatus());
+        dto.setCreatedAt(matter.getCreatedAt());
+        dto.setUpdatedAt(matter.getUpdatedAt());
+        
+        // 从预加载的Map获取关联数据（无额外数据库查询）
+        if (matter.getClientId() != null) {
+            Client client = clientMap.get(matter.getClientId());
+            if (client != null) {
+                dto.setClientName(client.getName());
+            }
+        }
+        
+        if (matter.getContractId() != null) {
+            Contract contract = contractMap.get(matter.getContractId());
+            if (contract != null) {
+                dto.setContractNo(contract.getContractNo());
+                dto.setContractAmount(contract.getTotalAmount());
+            }
+        }
+        
+        // 加载多客户列表
+        List<MatterClient> matterClients = matterClientsMap.get(matter.getId());
+        if (matterClients != null && !matterClients.isEmpty()) {
+            dto.setClients(matterClients.stream().map(this::toMatterClientDTO).collect(Collectors.toList()));
+        }
+        
+        if (matter.getOriginatorId() != null) {
+            User user = userMap.get(matter.getOriginatorId());
+            if (user != null) {
+                dto.setOriginatorName(user.getRealName());
+            }
+        }
+        
+        if (matter.getLeadLawyerId() != null) {
+            User user = userMap.get(matter.getLeadLawyerId());
+            if (user != null) {
+                dto.setLeadLawyerName(user.getRealName());
+            }
+        }
+        
+        if (matter.getDepartmentId() != null) {
+            Department dept = deptMap.get(matter.getDepartmentId());
+            if (dept != null) {
+                dto.setDepartmentName(dept.getName());
+            }
+        }
+        
+        return dto;
     }
 
     /**
@@ -238,6 +413,15 @@ public class MatterAppService {
             } catch (Exception e) {
                 log.warn("自动创建期限提醒失败: matterId={}", matter.getId(), e);
             }
+        }
+
+        // 9. 自动归档卷宗材料（异步执行，不影响主流程）
+        // 注意：使用异步方法并传递当前用户ID，因为异步线程无法获取SecurityContext
+        try {
+            Long currentUserId = SecurityUtils.getUserIdOrDefault(1L);
+            dossierAutoArchiveService.archiveMatterDocumentsAsync(matter.getId(), command.getContractId(), currentUserId);
+        } catch (Exception e) {
+            log.warn("自动归档卷宗材料失败: matterId={}", matter.getId(), e);
         }
 
         log.info("案件创建成功: {} ({})", matter.getName(), matter.getMatterNo());
@@ -782,6 +966,28 @@ public class MatterAppService {
     }
 
     /**
+     * 获取部门及所有下级部门ID列表
+     * 使用递归CTE一次性查询
+     */
+    private List<Long> getAllDepartmentIds(Long deptId) {
+        if (deptId == null) {
+            return new ArrayList<>();
+        }
+        List<Long> result = new ArrayList<>();
+        result.add(deptId); // 包含自身
+        
+        try {
+            List<Long> descendantIds = departmentMapper.selectAllDescendantDeptIds(deptId);
+            if (descendantIds != null) {
+                result.addAll(descendantIds);
+            }
+        } catch (Exception e) {
+            log.warn("查询子部门失败: deptId={}, error={}", deptId, e.getMessage());
+        }
+        return result;
+    }
+
+    /**
      * 获取可访问的项目ID列表（根据数据权限）
      * @return null表示可以访问所有项目，否则返回可访问的项目ID列表
      */
@@ -793,12 +999,12 @@ public class MatterAppService {
         List<Long> matterIds = new ArrayList<>();
         
         if ("DEPT_AND_CHILD".equals(dataScope) && deptId != null) {
-            // 部门及下级部门：查询本部门及下级部门的项目
-            // TODO: 需要实现部门递归查询
+            // 部门及下级部门：使用递归CTE查询所有下级部门的项目
+            List<Long> allDeptIds = getAllDepartmentIds(deptId);
             matterIds = matterRepository.lambdaQuery()
                     .select(Matter::getId)
                     .eq(Matter::getDeleted, false)
-                    .eq(Matter::getDepartmentId, deptId)
+                    .in(Matter::getDepartmentId, allDeptIds)
                     .list()
                     .stream()
                     .map(Matter::getId)

@@ -1,5 +1,6 @@
 package com.lawfirm.common.security;
 
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -10,6 +11,7 @@ import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.util.Arrays;
 import java.util.Base64;
 
 /**
@@ -20,8 +22,8 @@ import java.util.Base64;
  * 配置项（application.yml）：
  * lawfirm:
  *   security:
- *     aes-key: "your-32-char-key-here-12345678"  # 32字节密钥
- *     aes-iv: "your-16-char-iv!"                 # 16字节IV
+ *     aes-key: "your-32-char-key-here-12345678"  # 32字节密钥（任意长度会自动派生为32字节）
+ *     aes-iv: "your-16-char-iv!"                 # 16字节IV（任意长度会自动派生为16字节）
  *     sign-key: "your-sign-secret-key"           # 签名密钥
  * 
  * @author Kiro-1
@@ -34,12 +36,40 @@ public class AesEncryptionService implements EncryptionService {
     private static final String AES_ALGORITHM = "AES/CBC/PKCS5Padding";
     private static final String HMAC_ALGORITHM = "HmacSHA256";
     private static final String HASH_ALGORITHM = "SHA-256";
+    private static final int AES_KEY_SIZE = 32; // AES-256
+    private static final int AES_IV_SIZE = 16;
 
-    @Value("${lawfirm.security.aes-key:LawFirmSecretKey12345678901234}")
-    private String aesKey;
+    @Value("${lawfirm.security.aes-key:LawFirmSecretKey1234567890123456}")
+    private String aesKeyConfig;
 
     @Value("${lawfirm.security.aes-iv:LawFirmSecretIV!}")
-    private String aesIv;
+    private String aesIvConfig;
+
+    // 派生后的实际密钥
+    private byte[] derivedKey;
+    private byte[] derivedIv;
+
+    @PostConstruct
+    public void init() {
+        // 使用SHA-256派生密钥，确保长度正确
+        derivedKey = deriveKey(aesKeyConfig, AES_KEY_SIZE);
+        derivedIv = deriveKey(aesIvConfig, AES_IV_SIZE);
+        log.info("AES加密服务初始化完成，密钥长度: {}字节, IV长度: {}字节", derivedKey.length, derivedIv.length);
+    }
+
+    /**
+     * 使用SHA-256派生指定长度的密钥
+     */
+    private byte[] deriveKey(String input, int length) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance(HASH_ALGORITHM);
+            byte[] hash = digest.digest(input.getBytes(StandardCharsets.UTF_8));
+            return Arrays.copyOf(hash, length);
+        } catch (Exception e) {
+            log.error("密钥派生失败", e);
+            throw new SecurityException("密钥派生失败: " + e.getMessage());
+        }
+    }
 
     @Value("${lawfirm.security.sign-key:LawFirmSignatureSecretKey}")
     private String signKey;
@@ -50,10 +80,8 @@ public class AesEncryptionService implements EncryptionService {
             return plaintext;
         }
         try {
-            SecretKeySpec keySpec = new SecretKeySpec(
-                    aesKey.getBytes(StandardCharsets.UTF_8), "AES");
-            IvParameterSpec ivSpec = new IvParameterSpec(
-                    aesIv.getBytes(StandardCharsets.UTF_8));
+            SecretKeySpec keySpec = new SecretKeySpec(derivedKey, "AES");
+            IvParameterSpec ivSpec = new IvParameterSpec(derivedIv);
 
             Cipher cipher = Cipher.getInstance(AES_ALGORITHM);
             cipher.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec);
@@ -72,10 +100,8 @@ public class AesEncryptionService implements EncryptionService {
             return ciphertext;
         }
         try {
-            SecretKeySpec keySpec = new SecretKeySpec(
-                    aesKey.getBytes(StandardCharsets.UTF_8), "AES");
-            IvParameterSpec ivSpec = new IvParameterSpec(
-                    aesIv.getBytes(StandardCharsets.UTF_8));
+            SecretKeySpec keySpec = new SecretKeySpec(derivedKey, "AES");
+            IvParameterSpec ivSpec = new IvParameterSpec(derivedIv);
 
             Cipher cipher = Cipher.getInstance(AES_ALGORITHM);
             cipher.init(Cipher.DECRYPT_MODE, keySpec, ivSpec);

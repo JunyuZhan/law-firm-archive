@@ -77,7 +77,7 @@ SELECT setval('crm_client_id_seq', COALESCE((SELECT MAX(id) FROM crm_client), 1)
 -- =====================================================
 -- 3. 示例合同数据
 -- =====================================================
--- 合同状态：DRAFT-草稿, PENDING-待审批, APPROVED-已审批, SIGNED-已签署
+-- 合同状态：DRAFT-草稿, PENDING-待审批, ACTIVE-生效中, REJECTED-已拒绝, TERMINATED-已终止, COMPLETED-已完成, EXPIRED-已过期
 -- 收费类型：FIXED-固定收费, HOURLY-计时收费, CONTINGENCY-风险代理
 
 INSERT INTO finance_contract (id, contract_no, name, client_id, contract_type, fee_type, total_amount, currency,
@@ -86,32 +86,32 @@ INSERT INTO finance_contract (id, contract_no, name, client_id, contract_type, f
 VALUES
   -- 北京科技创新公司 - 常年法律顾问合同
   (101, '2025民代字第0001号', '常年法律顾问服务合同', 101, 'SERVICE', 'FIXED', 120000.00, 'CNY',
-   '2025-06-20', '2025-07-01', '2026-06-30', 'SIGNED', 3, 1,
+   '2025-06-20', '2025-07-01', '2026-06-30', 'ACTIVE', 3, 1,
    '为北京科技创新公司提供常年法律顾问服务', '分期付款，每季度3万', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1, 1, false),
   
   -- 上海金融投资集团 - 股权并购项目
   (102, '2025民代字第0002号', '股权并购法律服务合同', 102, 'SERVICE', 'FIXED', 500000.00, 'CNY',
-   '2025-08-25', '2025-09-01', '2026-03-31', 'SIGNED', 4, 1,
+   '2025-08-25', '2025-09-01', '2026-03-31', 'ACTIVE', 4, 1,
    '上海金融投资集团并购项目法律服务', '重大项目', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1, 1, false),
   
   -- 广州制造业公司 - 劳动仲裁代理
   (103, '2025民代字第0003号', '劳动争议代理合同', 103, 'LITIGATION', 'CONTINGENCY', 30000.00, 'CNY',
-   '2025-10-10', '2025-10-10', '2026-04-10', 'SIGNED', 3, 4,
+   '2025-10-10', '2025-10-10', '2026-04-10', 'ACTIVE', 3, 4,
    '代理广州制造业公司劳动争议仲裁案件', '风险代理，胜诉后收费', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1, 1, false),
   
   -- 深圳互联网公司 - 知识产权维权
   (104, '2025知代字第0001号', '知识产权维权代理合同', 104, 'LITIGATION', 'CONTINGENCY', 80000.00, 'CNY',
-   '2025-11-20', '2025-11-20', '2026-05-20', 'SIGNED', 4, 4,
+   '2025-11-20', '2025-11-20', '2026-05-20', 'ACTIVE', 4, 4,
    '代理深圳互联网公司专利侵权维权', '按件收费', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1, 1, false),
   
   -- 个人客户 - 劳动争议
   (105, '2025民代字第0004号', '劳动争议代理合同', 105, 'LITIGATION', 'FIXED', 15000.00, 'CNY',
-   '2025-12-05', '2025-12-05', '2026-06-05', 'SIGNED', 3, 4,
+   '2025-12-05', '2025-12-05', '2026-06-05', 'ACTIVE', 3, 4,
    '代理李建军劳动仲裁案件', NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1, 1, false),
   
   -- 个人客户 - 离婚诉讼
   (106, '2026民代字第0001号', '婚姻家事代理合同', 106, 'LITIGATION', 'FIXED', 20000.00, 'CNY',
-   '2026-01-08', '2026-01-08', '2026-07-08', 'APPROVED', 3, 4,
+   '2026-01-08', '2026-01-08', '2026-07-08', 'ACTIVE', 3, 4,
    '代理王美丽离婚诉讼案件', '刚签约', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1, 1, false)
 ON CONFLICT (id) DO NOTHING;
 

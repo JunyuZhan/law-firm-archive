@@ -6,6 +6,7 @@ import com.lawfirm.domain.finance.repository.PaymentRepository;
 import com.lawfirm.domain.matter.repository.MatterRepository;
 import com.lawfirm.domain.client.repository.ClientRepository;
 import com.lawfirm.domain.system.repository.UserRepository;
+import com.lawfirm.infrastructure.persistence.mapper.DepartmentMapper;
 import com.lawfirm.infrastructure.persistence.mapper.StatisticsMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,6 +31,7 @@ public class StatisticsAppService {
     private final ClientRepository clientRepository;
     private final UserRepository userRepository;
     private final StatisticsMapper statisticsMapper;
+    private final DepartmentMapper departmentMapper;
     private final com.lawfirm.domain.matter.repository.TimesheetRepository timesheetRepository;
     private final com.lawfirm.domain.matter.repository.TaskRepository taskRepository;
     private final com.lawfirm.domain.finance.repository.CommissionRepository commissionRepository;
@@ -38,6 +40,7 @@ public class StatisticsAppService {
     // ✅ 修复问题554: 使用ThreadLocal缓存（同一请求内复用）
     private static final ThreadLocal<Map<String, List<Long>>> MATTER_IDS_CACHE = new ThreadLocal<>();
     private static final ThreadLocal<Map<String, List<Long>>> CLIENT_IDS_CACHE = new ThreadLocal<>();
+    private static final ThreadLocal<Map<Long, List<Long>>> DEPT_CHILDREN_CACHE = new ThreadLocal<>();
     
     /**
      * 清理缓存（请求结束后调用，可在Filter或Interceptor中调用）
@@ -45,6 +48,45 @@ public class StatisticsAppService {
     public static void clearCache() {
         MATTER_IDS_CACHE.remove();
         CLIENT_IDS_CACHE.remove();
+        DEPT_CHILDREN_CACHE.remove();
+    }
+    
+    /**
+     * 获取部门及所有下级部门ID列表
+     * 使用递归CTE一次性查询，并添加缓存
+     */
+    private List<Long> getAllDepartmentIds(Long deptId) {
+        if (deptId == null) {
+            return new ArrayList<>();
+        }
+        
+        // 检查缓存
+        Map<Long, List<Long>> cache = DEPT_CHILDREN_CACHE.get();
+        if (cache != null && cache.containsKey(deptId)) {
+            return new ArrayList<>(cache.get(deptId));
+        }
+        
+        // 使用递归CTE查询所有后代部门
+        List<Long> result = new ArrayList<>();
+        result.add(deptId); // 包含自身
+        
+        try {
+            List<Long> descendantIds = departmentMapper.selectAllDescendantDeptIds(deptId);
+            if (descendantIds != null) {
+                result.addAll(descendantIds);
+            }
+        } catch (Exception e) {
+            log.warn("查询子部门失败: deptId={}, error={}", deptId, e.getMessage());
+        }
+        
+        // 放入缓存
+        if (cache == null) {
+            cache = new HashMap<>();
+            DEPT_CHILDREN_CACHE.set(cache);
+        }
+        cache.put(deptId, result);
+        
+        return result;
     }
 
     /**
@@ -116,11 +158,11 @@ public class StatisticsAppService {
                         .eq(com.lawfirm.domain.matter.entity.Matter::getDeleted, false)
                         .count();
             } else if ("DEPT_AND_CHILD".equals(dataScope) && deptId != null) {
-                // 部门及下级部门
-                // TODO: 需要实现部门递归查询
+                // 部门及下级部门：使用递归CTE查询所有下级部门
+                List<Long> allDeptIds = getAllDepartmentIds(deptId);
                 totalMatters = matterRepository.lambdaQuery()
                         .eq(com.lawfirm.domain.matter.entity.Matter::getDeleted, false)
-                        .eq(com.lawfirm.domain.matter.entity.Matter::getDepartmentId, deptId)
+                        .in(com.lawfirm.domain.matter.entity.Matter::getDepartmentId, allDeptIds)
                         .count();
             } else if ("DEPT".equals(dataScope) && deptId != null) {
                 // 本部门
@@ -444,12 +486,12 @@ public class StatisticsAppService {
         List<Long> matterIds = new ArrayList<>();
         
         if ("DEPT_AND_CHILD".equals(dataScope) && deptId != null) {
-            // 部门及下级部门：查询本部门及下级部门的项目
-            // TODO: 需要实现部门递归查询
+            // 部门及下级部门：使用递归CTE查询所有下级部门的项目
+            List<Long> allDeptIds = getAllDepartmentIds(deptId);
             matterIds = matterRepository.lambdaQuery()
                     .select(com.lawfirm.domain.matter.entity.Matter::getId)
                     .eq(com.lawfirm.domain.matter.entity.Matter::getDeleted, false)
-                    .eq(com.lawfirm.domain.matter.entity.Matter::getDepartmentId, deptId)
+                    .in(com.lawfirm.domain.matter.entity.Matter::getDepartmentId, allDeptIds)
                     .list()
                     .stream()
                     .map(com.lawfirm.domain.matter.entity.Matter::getId)
@@ -533,13 +575,12 @@ public class StatisticsAppService {
         List<Long> clientIds = new ArrayList<>();
         
         if ("DEPT_AND_CHILD".equals(dataScope) && deptId != null) {
-            // 部门及下级部门：查询本部门及下级部门负责的客户
+            // 部门及下级部门：使用递归CTE查询所有下级部门的用户负责的客户
             // 客户没有部门字段，通过负责律师的部门来过滤
-            // TODO: 需要实现部门递归查询
-            // 先查询该部门的用户，再查询这些用户负责的客户
+            List<Long> allDeptIds = getAllDepartmentIds(deptId);
             var users = userRepository.lambdaQuery()
                     .select(com.lawfirm.domain.system.entity.User::getId)
-                    .eq(com.lawfirm.domain.system.entity.User::getDepartmentId, deptId)
+                    .in(com.lawfirm.domain.system.entity.User::getDepartmentId, allDeptIds)
                     .eq(com.lawfirm.domain.system.entity.User::getDeleted, false)
                     .list();
             List<Long> userIds = users.stream()

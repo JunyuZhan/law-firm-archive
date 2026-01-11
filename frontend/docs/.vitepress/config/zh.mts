@@ -130,6 +130,14 @@ function sidebarApi(): DefaultTheme.SidebarItem[] {
         { link: 'case', text: '项目接口' },
         { link: 'contract', text: '合同接口' },
         { link: 'finance', text: '财务接口' },
+        { link: 'client', text: '客户接口' },
+        { link: 'conflict', text: '利冲接口' },
+        { link: 'lead', text: '案源接口' },
+        { link: 'document', text: '文档接口' },
+        { link: 'archive', text: '档案接口' },
+        { link: 'admin', text: '行政接口' },
+        { link: 'hr', text: '人力接口' },
+        { link: 'knowledge', text: '知识库接口' },
       ],
     },
   ];
@@ -151,6 +159,11 @@ function nav(): DefaultTheme.NavItem[] {
       text: 'API 文档',
       link: '/guide/api/introduction',
       activeMatch: '^/guide/api/',
+    },
+    {
+      text: '登录',
+      link: '/login',
+      activeMatch: '^/login',
     },
   ];
 }

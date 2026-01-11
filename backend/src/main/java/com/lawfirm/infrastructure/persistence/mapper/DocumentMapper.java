@@ -68,4 +68,10 @@ public interface DocumentMapper extends BaseMapper<Document> {
      */
     @Update("UPDATE matter_dossier_item SET document_count = GREATEST(0, COALESCE(document_count, 0) + #{delta}) WHERE id = #{dossierItemId}")
     void updateDossierItemDocCount(@Param("dossierItemId") Long dossierItemId, @Param("delta") int delta);
+
+    /**
+     * 根据卷宗目录项ID查询文档
+     */
+    @Select("SELECT * FROM doc_document WHERE dossier_item_id = #{dossierItemId} AND deleted = false ORDER BY display_order ASC, created_at DESC")
+    java.util.List<Document> selectByDossierItemId(@Param("dossierItemId") Long dossierItemId);
 }

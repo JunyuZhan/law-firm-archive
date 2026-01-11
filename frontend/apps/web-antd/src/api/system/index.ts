@@ -543,6 +543,13 @@ export function getExternalIntegrationDetail(id: number) {
   return requestClient.get<ExternalIntegrationDTO>(`/system/integration/${id}`);
 }
 
+/** 创建外部系统集成 */
+export function createExternalIntegration(
+  data: Omit<UpdateExternalIntegrationCommand, 'id'>,
+) {
+  return requestClient.post<ExternalIntegrationDTO>('/system/integration', data);
+}
+
 /** 更新外部系统集成 */
 export function updateExternalIntegration(
   data: UpdateExternalIntegrationCommand,

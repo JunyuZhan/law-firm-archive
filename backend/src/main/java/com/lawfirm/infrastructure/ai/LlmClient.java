@@ -5,11 +5,25 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lawfirm.domain.system.entity.ExternalIntegration;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.hc.client5.http.classic.HttpClient;
+import org.apache.hc.client5.http.config.ConnectionConfig;
+import org.apache.hc.client5.http.config.RequestConfig;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager;
+import org.apache.hc.client5.http.socket.ConnectionSocketFactory;
+import org.apache.hc.client5.http.socket.PlainConnectionSocketFactory;
+import org.apache.hc.client5.http.ssl.SSLConnectionSocketFactory;
+import org.apache.hc.core5.http.config.Registry;
+import org.apache.hc.core5.http.config.RegistryBuilder;
+import org.apache.hc.core5.http.io.SocketConfig;
+import org.apache.hc.core5.util.Timeout;
 import org.springframework.http.*;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
+import java.io.IOException;
 import java.util.*;
 
 /**
@@ -25,18 +39,109 @@ public class LlmClient {
 
     private final ObjectMapper objectMapper;
     
-    // AI 请求超时配置：连接 30 秒，读取 180 秒（本地模型可能更慢）
+    // AI 请求超时配置
+    // 连接超时：30秒
     private static final int CONNECT_TIMEOUT_MS = 30_000;
-    private static final int READ_TIMEOUT_MS = 180_000;
+    // 读取超时：5分钟（DeepSeek R1 等推理模型可能需要更长时间）
+    private static final int READ_TIMEOUT_MS = 300_000;
+    // 请求超时（整个请求的最大时间）：6分钟
+    private static final int REQUEST_TIMEOUT_MS = 360_000;
+    // 最大重试次数
+    private static final int MAX_RETRIES = 2;
+    // 重试延迟（毫秒）
+    private static final int RETRY_DELAY_MS = 1000;
     
     /**
      * 创建配置了超时时间的 RestTemplate
+     * 使用 Apache HttpClient 5，更好地处理长连接和大响应
      */
     private RestTemplate createRestTemplate() {
-        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(CONNECT_TIMEOUT_MS);
-        factory.setReadTimeout(READ_TIMEOUT_MS);
+        // Socket 配置：启用 TCP Keep-Alive，增加 socket 超时
+        SocketConfig socketConfig = SocketConfig.custom()
+                .setSoTimeout(Timeout.ofMilliseconds(READ_TIMEOUT_MS))
+                .setSoKeepAlive(true)  // 启用 TCP Keep-Alive
+                .setTcpNoDelay(true)   // 禁用 Nagle 算法，减少延迟
+                .build();
+        
+        // 连接配置
+        ConnectionConfig connectionConfig = ConnectionConfig.custom()
+                .setConnectTimeout(Timeout.ofMilliseconds(CONNECT_TIMEOUT_MS))
+                .setSocketTimeout(Timeout.ofMilliseconds(READ_TIMEOUT_MS))
+                .build();
+        
+        // 配置 SSL 和普通连接
+        Registry<ConnectionSocketFactory> socketFactoryRegistry = RegistryBuilder.<ConnectionSocketFactory>create()
+                .register("http", PlainConnectionSocketFactory.getSocketFactory())
+                .register("https", SSLConnectionSocketFactory.getSocketFactory())
+                .build();
+        
+        // 配置连接池
+        PoolingHttpClientConnectionManager connectionManager = new PoolingHttpClientConnectionManager(socketFactoryRegistry);
+        connectionManager.setMaxTotal(50);
+        connectionManager.setDefaultMaxPerRoute(10);
+        connectionManager.setDefaultSocketConfig(socketConfig);
+        connectionManager.setDefaultConnectionConfig(connectionConfig);
+        
+        // 配置请求超时
+        RequestConfig requestConfig = RequestConfig.custom()
+                .setConnectTimeout(Timeout.ofMilliseconds(CONNECT_TIMEOUT_MS))
+                .setResponseTimeout(Timeout.ofMilliseconds(READ_TIMEOUT_MS))
+                .setConnectionRequestTimeout(Timeout.ofMilliseconds(REQUEST_TIMEOUT_MS))
+                .setConnectionKeepAlive(Timeout.ofMinutes(5))  // 保持连接活跃
+                .build();
+        
+        // 创建 HttpClient
+        HttpClient httpClient = HttpClients.custom()
+                .setConnectionManager(connectionManager)
+                .setDefaultRequestConfig(requestConfig)
+                .evictExpiredConnections()
+                .evictIdleConnections(Timeout.ofMinutes(2))
+                .disableContentCompression()  // 禁用压缩，避免分块解码问题
+                .build();
+        
+        // 创建 RestTemplate
+        HttpComponentsClientHttpRequestFactory factory = new HttpComponentsClientHttpRequestFactory(httpClient);
         return new RestTemplate(factory);
+    }
+    
+    /**
+     * 带重试的 HTTP POST 请求
+     * 处理 "Premature EOF" 等临时网络错误
+     */
+    private <T> ResponseEntity<String> executeWithRetry(RestTemplate restTemplate, String url, 
+            HttpEntity<T> request, String apiName) {
+        Exception lastException = null;
+        
+        for (int attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+            try {
+                return restTemplate.postForEntity(url, request, String.class);
+            } catch (ResourceAccessException e) {
+                lastException = e;
+                String errorMsg = e.getMessage() != null ? e.getMessage() : "";
+                
+                // 检查是否是可重试的错误
+                boolean isRetryable = errorMsg.contains("Premature EOF") 
+                        || errorMsg.contains("Connection reset")
+                        || errorMsg.contains("Read timed out")
+                        || (e.getCause() instanceof IOException);
+                
+                if (isRetryable && attempt < MAX_RETRIES) {
+                    log.warn("调用 {} API 出现临时错误 (尝试 {}/{}): {}，将在 {}ms 后重试", 
+                            apiName, attempt, MAX_RETRIES, errorMsg, RETRY_DELAY_MS);
+                    try {
+                        Thread.sleep(RETRY_DELAY_MS * attempt); // 递增延迟
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        throw new RuntimeException("请求被中断", ie);
+                    }
+                } else {
+                    throw e;
+                }
+            }
+        }
+        
+        throw new RuntimeException("调用 " + apiName + " API 失败，已重试 " + MAX_RETRIES + " 次: " 
+                + (lastException != null ? lastException.getMessage() : "未知错误"));
     }
 
     /**
@@ -96,6 +201,7 @@ public class LlmClient {
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.set("x-api-key", integration.getApiKey());
         headers.set("anthropic-version", "2023-06-01");
+        headers.setConnection("keep-alive");
 
         Map<String, Object> extraConfig = integration.getExtraConfig();
         String model = getConfigValue(extraConfig, "model", "claude-3-opus-20240229");
@@ -116,7 +222,7 @@ public class LlmClient {
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
         
         try {
-            ResponseEntity<String> response = restTemplate.postForEntity(apiUrl, request, String.class);
+            ResponseEntity<String> response = executeWithRetry(restTemplate, apiUrl, request, "Claude");
             JsonNode json = objectMapper.readTree(response.getBody());
             return json.path("content").get(0).path("text").asText();
         } catch (Exception e) {
@@ -133,6 +239,7 @@ public class LlmClient {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.set("Authorization", "Bearer " + integration.getApiKey());
+        headers.setConnection("keep-alive");
 
         Map<String, Object> extraConfig = integration.getExtraConfig();
         String model = getConfigValue(extraConfig, "model", "qwen-max");
@@ -154,7 +261,7 @@ public class LlmClient {
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
         
         try {
-            ResponseEntity<String> response = restTemplate.postForEntity(apiUrl, request, String.class);
+            ResponseEntity<String> response = executeWithRetry(restTemplate, apiUrl, request, "通义千问");
             JsonNode json = objectMapper.readTree(response.getBody());
             return json.path("output").path("text").asText();
         } catch (Exception e) {
@@ -173,6 +280,7 @@ public class LlmClient {
         
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setConnection("keep-alive");
 
         Map<String, Object> body = new HashMap<>();
         body.put("messages", List.of(
@@ -188,7 +296,7 @@ public class LlmClient {
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
         
         try {
-            ResponseEntity<String> response = restTemplate.postForEntity(apiUrl, request, String.class);
+            ResponseEntity<String> response = executeWithRetry(restTemplate, apiUrl, request, "文心一言");
             JsonNode json = objectMapper.readTree(response.getBody());
             return json.path("result").asText();
         } catch (Exception e) {
@@ -252,6 +360,7 @@ public class LlmClient {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.set("Authorization", "Bearer " + integration.getApiKey());
+        headers.setConnection("keep-alive");
 
         Map<String, Object> extraConfig = integration.getExtraConfig();
         String model = getConfigValue(extraConfig, "model", "abab5.5-chat");
@@ -273,7 +382,7 @@ public class LlmClient {
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
         
         try {
-            ResponseEntity<String> response = restTemplate.postForEntity(apiUrl, request, String.class);
+            ResponseEntity<String> response = executeWithRetry(restTemplate, apiUrl, request, "MiniMax");
             JsonNode json = objectMapper.readTree(response.getBody());
             return json.path("choices").get(0).path("messages").get(0).path("text").asText();
         } catch (Exception e) {
@@ -294,6 +403,7 @@ public class LlmClient {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.set("Authorization", "Bearer " + integration.getApiKey());
+        headers.setConnection("keep-alive");
 
         Map<String, Object> extraConfig = integration.getExtraConfig();
         String user = getConfigValue(extraConfig, "user", "law-firm-user");
@@ -334,7 +444,7 @@ public class LlmClient {
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
         
         try {
-            ResponseEntity<String> response = restTemplate.postForEntity(apiUrl, request, String.class);
+            ResponseEntity<String> response = executeWithRetry(restTemplate, apiUrl, request, "Dify");
             JsonNode json = objectMapper.readTree(response.getBody());
             
             // Dify 返回格式
@@ -360,6 +470,7 @@ public class LlmClient {
         RestTemplate restTemplate = createRestTemplate();
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setConnection("keep-alive");
 
         Map<String, Object> extraConfig = integration.getExtraConfig();
         String model = getConfigValue(extraConfig, "model", "llama2");
@@ -406,7 +517,7 @@ public class LlmClient {
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
         
         try {
-            ResponseEntity<String> response = restTemplate.postForEntity(apiUrl, request, String.class);
+            ResponseEntity<String> response = executeWithRetry(restTemplate, apiUrl, request, "Ollama");
             JsonNode json = objectMapper.readTree(response.getBody());
             
             // Ollama 返回格式
@@ -478,6 +589,7 @@ public class LlmClient {
         RestTemplate restTemplate = createRestTemplate();
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setConnection("keep-alive");
         
         Map<String, Object> extraConfig = integration.getExtraConfig();
         
@@ -543,7 +655,7 @@ public class LlmClient {
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
         
         try {
-            ResponseEntity<String> response = restTemplate.postForEntity(apiUrl, request, String.class);
+            ResponseEntity<String> response = executeWithRetry(restTemplate, apiUrl, request, "自定义 API");
             JsonNode json = objectMapper.readTree(response.getBody());
             
             // 自定义响应解析
@@ -572,6 +684,7 @@ public class LlmClient {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setBearerAuth(integration.getApiKey());
+        headers.setConnection("keep-alive");  // 保持连接活跃
 
         Map<String, Object> extraConfig = integration.getExtraConfig();
         String model = getConfigValue(extraConfig, "model", defaultModel);
@@ -592,14 +705,15 @@ public class LlmClient {
         apiUrl += endpoint;
 
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+        String apiName = integration.getIntegrationName();
         
         try {
-            ResponseEntity<String> response = restTemplate.postForEntity(apiUrl, request, String.class);
+            ResponseEntity<String> response = executeWithRetry(restTemplate, apiUrl, request, apiName);
             JsonNode json = objectMapper.readTree(response.getBody());
             return json.path("choices").get(0).path("message").path("content").asText();
         } catch (Exception e) {
-            log.error("调用 AI API 失败: {}", integration.getIntegrationName(), e);
-            throw new RuntimeException("调用 " + integration.getIntegrationName() + " API 失败: " + e.getMessage());
+            log.error("调用 AI API 失败: {}", apiName, e);
+            throw new RuntimeException("调用 " + apiName + " API 失败: " + e.getMessage());
         }
     }
 

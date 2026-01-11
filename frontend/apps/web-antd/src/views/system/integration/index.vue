@@ -7,6 +7,7 @@ import { Page } from '@vben/common-ui';
 
 import {
   Alert,
+  Button,
   Card,
   Descriptions,
   DescriptionsItem,
@@ -26,6 +27,7 @@ import {
 } from 'ant-design-vue';
 
 import {
+  createExternalIntegration,
   disableExternalIntegration,
   enableExternalIntegration,
   getExternalIntegrationList,
@@ -63,6 +65,7 @@ const formData = reactive({
 const integrationTypeOptions = [
   { value: 'ARCHIVE', label: '档案系统' },
   { value: 'AI', label: 'AI大模型' },
+  { value: 'CLIENT_SERVICE', label: '客户服务系统' },
   { value: 'OTHER', label: '其他' },
 ];
 
@@ -83,8 +86,13 @@ const aiIntegrations = computed(() =>
   dataSource.value.filter((item) => item.integrationType === 'AI'),
 );
 
+const clientServiceIntegrations = computed(() =>
+  dataSource.value.filter((item) => item.integrationType === 'CLIENT_SERVICE'),
+);
+
 const otherIntegrations = computed(() =>
-  dataSource.value.filter((item) => item.integrationType === 'OTHER'),
+  dataSource.value.filter((item) => item.integrationType === 'OTHER' || 
+    !['ARCHIVE', 'AI', 'CLIENT_SERVICE'].includes(item.integrationType)),
 );
 
 // 表格列
@@ -147,6 +155,26 @@ function handleEdit(record: ExternalIntegrationDTO) {
   modalVisible.value = true;
 }
 
+// 添加客户服务系统配置
+function handleAddClientService() {
+  Object.assign(formData, {
+    id: undefined,
+    integrationCode: 'CLIENT_SERVICE',
+    integrationName: '客户服务系统',
+    integrationType: 'CLIENT_SERVICE',
+    apiUrl: '',
+    apiKey: '',
+    apiSecret: '',
+    authType: 'API_KEY',
+    extraConfig: {
+      notifyChannels: ['SMS', 'WECHAT'],
+      defaultValidDays: 30,
+    },
+    description: '向客户推送项目信息，支持短信、公众号等多渠道通知客户查看项目进度。',
+  });
+  modalVisible.value = true;
+}
+
 // 查看详情
 function handleView(record: ExternalIntegrationDTO) {
   currentDetail.value = record;
@@ -158,27 +186,39 @@ async function handleSave() {
   try {
     await formRef.value?.validate();
 
-    const updateData: Record<string, unknown> = {
-      id: formData.id,
+    const saveData: Record<string, unknown> = {
       apiUrl: formData.apiUrl || undefined,
       authType: formData.authType,
       description: formData.description || undefined,
     };
 
     if (formData.apiKey) {
-      updateData.apiKey = formData.apiKey;
+      saveData.apiKey = formData.apiKey;
     }
     if (formData.apiSecret) {
-      updateData.apiSecret = formData.apiSecret;
+      saveData.apiSecret = formData.apiSecret;
     }
     if (Object.keys(formData.extraConfig).length > 0) {
-      updateData.extraConfig = formData.extraConfig;
+      saveData.extraConfig = formData.extraConfig;
     }
 
-    await updateExternalIntegration(
-      updateData as unknown as Parameters<typeof updateExternalIntegration>[0],
-    );
-    message.success('保存成功');
+    if (formData.id) {
+      // 更新
+      saveData.id = formData.id;
+      await updateExternalIntegration(
+        saveData as unknown as Parameters<typeof updateExternalIntegration>[0],
+      );
+    } else {
+      // 创建
+      saveData.integrationCode = formData.integrationCode;
+      saveData.integrationName = formData.integrationName;
+      saveData.integrationType = formData.integrationType;
+      await createExternalIntegration(
+        saveData as unknown as Parameters<typeof createExternalIntegration>[0],
+      );
+    }
+    
+    message.success(formData.id ? '保存成功' : '创建成功');
     modalVisible.value = false;
     fetchData();
   } catch (error: unknown) {
@@ -491,6 +531,166 @@ onMounted(() => {
           </Table>
         </Tabs.TabPane>
 
+        <!-- 客户服务系统 -->
+        <Tabs.TabPane key="CLIENT_SERVICE" tab="客户服务系统">
+          <Alert
+            type="info"
+            style="margin-bottom: 16px"
+          >
+            <template #message>
+              <div>
+                <b>客户服务系统</b>用于向客户推送项目信息。配置后，律师可以在项目详情页将项目进度等信息推送到客户服务系统，系统会自动通知客户查看。
+              </div>
+            </template>
+            <template #description>
+              <ul style="margin: 8px 0 0; padding-left: 20px; color: #666">
+                <li>客户服务系统需要另行部署，本系统仅提供数据推送功能</li>
+                <li>推送的数据会自动脱敏处理（如手机号、邮箱等）</li>
+                <li>客户服务系统收到数据后，会通过短信、公众号等渠道通知客户</li>
+              </ul>
+            </template>
+          </Alert>
+          
+          <!-- 如果没有配置，显示添加按钮 -->
+          <div v-if="clientServiceIntegrations.length === 0" style="text-align: center; padding: 40px 0">
+            <p style="color: #999; margin-bottom: 16px">暂未配置客户服务系统</p>
+            <Space>
+              <Button type="primary" @click="handleAddClientService">
+                + 添加客户服务系统配置
+              </Button>
+              <Button @click="fetchData">刷新</Button>
+            </Space>
+          </div>
+          
+          <Table
+            v-else
+            :columns="columns"
+            :data-source="clientServiceIntegrations"
+            :loading="loading"
+            :pagination="false"
+            row-key="id"
+            :scroll="{ x: 900 }"
+          >
+            <template #bodyCell="{ column, record: rawRecord }">
+              <template v-if="column.key === 'authType'">
+                <Tag>
+                  {{
+                    formatAuthType(
+                      (rawRecord as ExternalIntegrationDTO).authType,
+                    )
+                  }}
+                </Tag>
+              </template>
+              <template v-else-if="column.key === 'enabled'">
+                <Tag
+                  :color="
+                    (rawRecord as ExternalIntegrationDTO).enabled
+                      ? 'success'
+                      : 'default'
+                  "
+                >
+                  {{
+                    (rawRecord as ExternalIntegrationDTO).enabled
+                      ? '已启用'
+                      : '未启用'
+                  }}
+                </Tag>
+              </template>
+              <template v-else-if="column.key === 'lastTestResult'">
+                <Space>
+                  <Tag
+                    :color="
+                      formatTestResult(
+                        (rawRecord as ExternalIntegrationDTO).lastTestResult,
+                      ).color
+                    "
+                  >
+                    {{
+                      formatTestResult(
+                        (rawRecord as ExternalIntegrationDTO).lastTestResult,
+                      ).text
+                    }}
+                  </Tag>
+                </Space>
+              </template>
+              <template v-else-if="column.key === 'action'">
+                <Space>
+                  <a @click="handleView(rawRecord as ExternalIntegrationDTO)"
+                    >详情</a
+                  >
+                  <a @click="handleEdit(rawRecord as ExternalIntegrationDTO)"
+                    >配置</a
+                  >
+                  <a @click="handleTest(rawRecord as ExternalIntegrationDTO)"
+                    >测试</a
+                  >
+                  <Popconfirm
+                    :title="
+                      (rawRecord as ExternalIntegrationDTO).enabled
+                        ? '确定要禁用此集成？'
+                        : '确定要启用此集成？'
+                    "
+                    @confirm="
+                      handleToggleEnabled(rawRecord as ExternalIntegrationDTO)
+                    "
+                  >
+                    <a
+                      :style="{
+                        color: (rawRecord as ExternalIntegrationDTO).enabled
+                          ? '#ff4d4f'
+                          : '#52c41a',
+                      }"
+                    >
+                      {{
+                        (rawRecord as ExternalIntegrationDTO).enabled
+                          ? '禁用'
+                          : '启用'
+                      }}
+                    </a>
+                  </Popconfirm>
+                </Space>
+              </template>
+            </template>
+          </Table>
+
+          <!-- 客户服务系统接口规范说明 -->
+          <Card title="接口规范说明" size="small" style="margin-top: 16px">
+            <Descriptions :column="1" size="small" bordered>
+              <DescriptionsItem label="接口地址">
+                <code>POST {API地址}/matter/receive</code>
+              </DescriptionsItem>
+              <DescriptionsItem label="认证方式">
+                <code>Authorization: Bearer {API密钥}</code>
+              </DescriptionsItem>
+              <DescriptionsItem label="请求格式">
+                <pre style="margin: 0; font-size: 12px; background: #f5f5f5; padding: 8px; border-radius: 4px">
+{
+  "clientId": 123,
+  "clientName": "张三",
+  "matterData": {
+    "matterId": 456,
+    "matterName": "项目名称",
+    "status": "ACTIVE",
+    ...
+  },
+  "validDays": 30,
+  "scopes": ["MATTER_INFO", "MATTER_PROGRESS"]
+}</pre>
+              </DescriptionsItem>
+              <DescriptionsItem label="响应格式">
+                <pre style="margin: 0; font-size: 12px; background: #f5f5f5; padding: 8px; border-radius: 4px">
+{
+  "code": 200,
+  "data": {
+    "id": "外部系统数据ID",
+    "accessUrl": "客户访问链接"
+  }
+}</pre>
+              </DescriptionsItem>
+            </Descriptions>
+          </Card>
+        </Tabs.TabPane>
+
         <!-- 其他系统 -->
         <Tabs.TabPane key="OTHER" tab="其他系统">
           <Table
@@ -592,10 +792,10 @@ onMounted(() => {
       </Tabs>
     </Card>
 
-    <!-- 编辑弹窗 -->
+    <!-- 编辑/创建弹窗 -->
     <Modal
       v-model:open="modalVisible"
-      :title="`配置 - ${formData.integrationName}`"
+      :title="formData.id ? `配置 - ${formData.integrationName}` : '添加集成配置'"
       width="640px"
       @ok="handleSave"
     >
@@ -606,8 +806,38 @@ onMounted(() => {
         :wrapper-col="{ span: 18 }"
         style="margin-top: 20px"
       >
+        <FormItem 
+          label="集成名称" 
+          name="integrationName"
+          :rules="formData.id ? [] : [{ required: true, message: '请输入集成名称' }]"
+        >
+          <Input 
+            v-model:value="formData.integrationName" 
+            :disabled="!!formData.id"
+            placeholder="如：客户服务系统"
+          />
+        </FormItem>
+
         <FormItem label="集成编码">
-          <Input v-model:value="formData.integrationCode" disabled />
+          <Input 
+            v-model:value="formData.integrationCode" 
+            :disabled="!!formData.id"
+            placeholder="如：CLIENT_SERVICE"
+          />
+        </FormItem>
+
+        <FormItem 
+          v-if="!formData.id"
+          label="集成类型" 
+          name="integrationType"
+          :rules="[{ required: true, message: '请选择集成类型' }]"
+        >
+          <Select
+            v-model:value="formData.integrationType"
+            :options="integrationTypeOptions"
+            placeholder="请选择类型"
+            style="width: 200px"
+          />
         </FormItem>
 
         <FormItem

@@ -21,6 +21,8 @@ import com.lawfirm.domain.archive.repository.ArchiveOperationLogRepository;
 import com.lawfirm.domain.matter.entity.Matter;
 import com.lawfirm.domain.matter.repository.MatterRepository;
 import com.lawfirm.infrastructure.persistence.mapper.ArchiveMapper;
+import com.lawfirm.application.workbench.service.ApprovalService;
+import com.lawfirm.application.workbench.service.ApproverService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
@@ -52,6 +54,8 @@ public class ArchiveAppService {
     private final ArchiveDataCollectorService dataCollectorService;
     private final com.lawfirm.infrastructure.external.document.DossierCoverGenerator coverGenerator;
     private final com.lawfirm.infrastructure.external.minio.MinioService minioService;
+    private final ApprovalService approvalService;
+    private final ApproverService approverService;
     private com.lawfirm.application.matter.service.MatterAppService matterAppService;
     
     @org.springframework.beans.factory.annotation.Autowired
@@ -456,35 +460,73 @@ public class ArchiveAppService {
         archive.setStatus("PENDING_STORE");
         archiveRepository.updateById(archive);
 
-        // TODO: 创建审批记录，通知主任审批
+        // 创建审批记录，通知主任审批
+        Long approverId = approverService.findArchiveStoreApprover();
+        String businessTitle = String.format("档案入库审批：%s", archive.getArchiveNo());
+        approvalService.createApproval(
+                "ARCHIVE_STORE",
+                archive.getId(),
+                archive.getArchiveNo(),
+                businessTitle,
+                approverId
+        );
+        
         logOperation(archive.getId(), "SUBMIT_STORE", "提交入库审批", SecurityUtils.getUserId());
         log.info("档案入库审批已提交: {}", archive.getArchiveNo());
     }
 
     /**
-     * 审批入库
+     * 审批入库（手动调用）
      */
     @Transactional
     public void approveStore(Long archiveId, boolean approved, String comment) {
+        if (approved) {
+            onStoreApprovalApproved(archiveId, comment);
+        } else {
+            onStoreApprovalRejected(archiveId, comment);
+        }
+    }
+
+    /**
+     * 档案入库审批通过回调（由审批事件监听器调用）
+     */
+    @Transactional
+    public void onStoreApprovalApproved(Long archiveId, String comment) {
         Archive archive = archiveRepository.getByIdOrThrow(archiveId, "档案不存在");
         
         if (!"PENDING_STORE".equals(archive.getStatus())) {
-            throw new BusinessException("档案不在待入库审批状态");
+            log.warn("档案不在待入库审批状态，可能已从其他地方处理: archiveId={}, status={}", 
+                    archiveId, archive.getStatus());
+            return;
         }
 
-        if (approved) {
-            // 审批通过后，档案状态变为待入库（等待行政人员实际入库操作）
-            archive.setStatus("PENDING");
-            logOperation(archive.getId(), "APPROVE_STORE", "入库审批通过：" + comment, SecurityUtils.getUserId());
-            log.info("档案入库审批通过: {}", archive.getArchiveNo());
-        } else {
-            // 审批拒绝，退回待入库状态
-            archive.setStatus("PENDING");
-            logOperation(archive.getId(), "REJECT_STORE", "入库审批拒绝：" + comment, SecurityUtils.getUserId());
-            log.info("档案入库审批拒绝: {}", archive.getArchiveNo());
-        }
-        
+        // 审批通过后，档案状态变为待入库（等待行政人员实际入库操作）
+        archive.setStatus("PENDING");
         archiveRepository.updateById(archive);
+        
+        logOperation(archive.getId(), "APPROVE_STORE", "入库审批通过：" + (comment != null ? comment : ""), SecurityUtils.getUserId());
+        log.info("档案入库审批通过: {}", archive.getArchiveNo());
+    }
+
+    /**
+     * 档案入库审批拒绝回调（由审批事件监听器调用）
+     */
+    @Transactional
+    public void onStoreApprovalRejected(Long archiveId, String comment) {
+        Archive archive = archiveRepository.getByIdOrThrow(archiveId, "档案不存在");
+        
+        if (!"PENDING_STORE".equals(archive.getStatus())) {
+            log.warn("档案不在待入库审批状态，可能已从其他地方处理: archiveId={}, status={}", 
+                    archiveId, archive.getStatus());
+            return;
+        }
+
+        // 审批拒绝，退回待入库状态
+        archive.setStatus("PENDING");
+        archiveRepository.updateById(archive);
+        
+        logOperation(archive.getId(), "REJECT_STORE", "入库审批拒绝：" + (comment != null ? comment : ""), SecurityUtils.getUserId());
+        log.info("档案入库审批拒绝: {}", archive.getArchiveNo());
     }
 
     /**

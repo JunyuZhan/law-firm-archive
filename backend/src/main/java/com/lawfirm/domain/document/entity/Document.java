@@ -144,4 +144,24 @@ public class Document extends BaseEntity {
      * 缩略图URL（图片和PDF文件）
      */
     private String thumbnailUrl;
+
+    /**
+     * 文档来源类型：
+     * SYSTEM_GENERATED - 系统自动生成
+     * SYSTEM_LINKED - 系统自动关联（引用其他模块已有文件）
+     * USER_UPLOADED - 用户上传
+     * SIGNED_VERSION - 签字版本（用户上传的签字盖章版）
+     */
+    @lombok.Builder.Default
+    private String sourceType = "USER_UPLOADED";
+
+    /**
+     * 来源数据ID（如合同ID、审批ID等）
+     */
+    private Long sourceId;
+
+    /**
+     * 来源模块：CONTRACT-合同, APPROVAL-审批, INVOICE-发票, MATTER-项目
+     */
+    private String sourceModule;
 }

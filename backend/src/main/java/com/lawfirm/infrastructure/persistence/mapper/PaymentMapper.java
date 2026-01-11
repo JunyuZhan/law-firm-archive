@@ -38,5 +38,13 @@ public interface PaymentMapper extends BaseMapper<Payment> {
      */
     @Select("SELECT * FROM finance_payment WHERE contract_id = #{contractId} AND deleted = false ORDER BY payment_date DESC")
     List<Payment> selectByContractId(@Param("contractId") Long contractId);
+
+    /**
+     * 统计项目已收款金额（通过合同关联）
+     */
+    @Select("SELECT COALESCE(SUM(p.amount), 0) FROM finance_payment p " +
+            "INNER JOIN finance_contract c ON p.contract_id = c.id " +
+            "WHERE c.matter_id = #{matterId} AND p.status = 'CONFIRMED' AND p.deleted = false")
+    BigDecimal sumReceivedByMatterId(@Param("matterId") Long matterId);
 }
 

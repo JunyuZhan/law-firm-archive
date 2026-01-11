@@ -123,6 +123,9 @@ public class DocumentTemplateAppService {
         if (command.getDescription() != null) {
             template.setDescription(command.getDescription());
         }
+        if (command.getContent() != null) {
+            template.setContent(command.getContent());
+        }
         if (StringUtils.hasText(command.getStatus())) {
             template.setStatus(command.getStatus());
         }

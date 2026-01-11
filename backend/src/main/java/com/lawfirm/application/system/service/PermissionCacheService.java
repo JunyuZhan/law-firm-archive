@@ -1,5 +1,6 @@
 package com.lawfirm.application.system.service;
 
+import com.lawfirm.infrastructure.security.UserDetailsServiceImpl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -16,6 +17,7 @@ import java.util.List;
 public class PermissionCacheService {
 
     private final RedisTemplate<String, Object> redisTemplate;
+    private final UserDetailsServiceImpl userDetailsService;
 
     /**
      * Token缓存前缀
@@ -29,7 +31,7 @@ public class PermissionCacheService {
 
     /**
      * 清除用户权限缓存
-     * 包括Token缓存和权限缓存
+     * 包括Token缓存、权限缓存和用户认证缓存
      */
     public void clearUserPermissionCache(Long userId) {
         if (userId == null) {
@@ -43,6 +45,9 @@ public class PermissionCacheService {
         // 清除权限缓存
         String permissionCacheKey = PERMISSION_CACHE_PREFIX + userId;
         redisTemplate.delete(permissionCacheKey);
+        
+        // 清除用户认证缓存
+        userDetailsService.clearUserAuthCacheByUserId(userId);
 
         log.info("已清除用户权限缓存: userId={}", userId);
     }

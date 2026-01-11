@@ -1,9 +1,11 @@
-import type { PageResult } from '../matter/types';
-
 /**
  * 证据管理模块 API
  */
+import { useAccessStore } from '@vben/stores';
+
 import { requestClient } from '#/api/request';
+
+import type { PageResult } from '../matter/types';
 
 // ========== 证据管理类型定义 ==========
 export interface EvidenceDTO {
@@ -27,8 +29,8 @@ export interface EvidenceDTO {
   fileName?: string;
   fileSize?: number;
   fileSizeDisplay?: string;
-  fileType?: string; // 文件类型：image, pdf, word, excel, video, audio, other
-  thumbnailUrl?: string; // 缩略图URL（仅图片文件）
+  fileType?: string;  // 文件类型：image, pdf, word, excel, video, audio, other
+  thumbnailUrl?: string;  // 缩略图URL（仅图片文件）
   submitterId?: number;
   submitterName?: string;
   submitTime?: string;
@@ -113,16 +115,12 @@ export function deleteEvidence(id: number) {
 
 /** 调整排序 */
 export function updateEvidenceSort(id: number, sortOrder: number) {
-  return requestClient.put(`/evidence/${id}/sort`, null, {
-    params: { sortOrder },
-  });
+  return requestClient.put(`/evidence/${id}/sort`, null, { params: { sortOrder } });
 }
 
 /** 批量调整分组 */
 export function batchUpdateGroup(ids: number[], groupName: string) {
-  return requestClient.post(`/evidence/batch-group`, ids, {
-    params: { groupName },
-  });
+  return requestClient.post(`/evidence/batch-group`, ids, { params: { groupName } });
 }
 
 /** 按案件获取证据列表 */
@@ -137,54 +135,39 @@ export function getEvidenceGroups(matterId: number) {
 
 /** 上传证据文件 */
 export function uploadEvidenceFile(file: File) {
-  return requestClient.upload<{
-    canPreview: boolean;
-    fileName: string;
+  return requestClient.upload<{ 
+    fileUrl: string; 
+    fileName: string; 
     fileSize: number;
     fileType: string;
-    fileUrl: string;
-    thumbnailUrl: null | string;
+    thumbnailUrl: string | null;
+    canPreview: boolean;
   }>('/evidence/upload', { file });
 }
 
 /** 获取文件预览URL（预签名URL） */
 export function getEvidencePreviewUrl(id: number) {
-  return requestClient.get<{
-    canPreview: boolean;
-    fileName: string;
-    fileType: string;
-    fileUrl: string;
-  }>(`/evidence/${id}/preview`);
+  return requestClient.get<{ fileUrl: string; fileName: string; fileType: string; canPreview: boolean }>(`/evidence/${id}/preview`);
 }
 
 /** 获取文件下载URL（预签名URL） */
 export function getEvidenceDownloadUrl(id: number) {
-  return requestClient.get<{ downloadUrl: string; fileName: string }>(
-    `/evidence/${id}/download-url`,
-  );
+  return requestClient.get<{ downloadUrl: string; fileName: string }>(`/evidence/${id}/download-url`);
 }
 
 /** 获取 OnlyOffice 预览URL（Docker 容器可访问） */
 export function getEvidenceOnlyOfficeUrl(id: number) {
-  return requestClient.get<{
-    fileName: string;
-    fileType: string;
-    fileUrl: string;
-  }>(`/evidence/${id}/onlyoffice-url`);
+  return requestClient.get<{ fileUrl: string; fileName: string; fileType: string }>(`/evidence/${id}/onlyoffice-url`);
 }
 
 /** 获取文件缩略图URL */
 export function getEvidenceThumbnailUrl(id: number) {
-  return requestClient.get<{ fileType: string; thumbnailUrl: null | string }>(
-    `/evidence/${id}/thumbnail`,
-  );
+  return requestClient.get<{ thumbnailUrl: string | null; fileType: string }>(`/evidence/${id}/thumbnail`);
 }
 
 /** 获取文件文本内容 */
 export function getEvidenceFileContent(id: number) {
-  return requestClient.get<{ content: string; supported: boolean }>(
-    `/evidence/${id}/content`,
-  );
+  return requestClient.get<{ content: string; supported: boolean }>(`/evidence/${id}/content`);
 }
 
 // ========== 证据清单导出 ==========
@@ -205,69 +188,85 @@ export interface EvidenceExportItem {
 }
 
 /** 导出证据清单（GET方式，导出全部） */
-export function exportEvidenceListAll(
-  matterId: number,
-  format: 'pdf' | 'word' = 'word',
-) {
+export function exportEvidenceListAll(matterId: number, format: 'word' | 'pdf' = 'word') {
   // 使用 window.open 打开下载链接
   const baseUrl = import.meta.env.VITE_GLOB_API_URL || '/api';
-  window.open(
-    `${baseUrl}/evidence/matter/${matterId}/export?format=${format}`,
-    '_blank',
-  );
+  window.open(`${baseUrl}/evidence/matter/${matterId}/export?format=${format}`, '_blank');
 }
 
 /** 导出证据清单（POST方式，指定证据项） */
-export async function exportEvidenceList(
-  matterId: number,
-  items: EvidenceExportItem[],
-  format: 'pdf' | 'word' = 'word',
-) {
-  const response = await requestClient.post(
-    `/evidence/matter/${matterId}/export?format=${format}`,
-    items,
-    {
-      responseType: 'blob',
-    },
-  );
-
+export async function exportEvidenceList(matterId: number, items: EvidenceExportItem[], format: 'word' | 'pdf' = 'word') {
+  const response = await requestClient.post(`/evidence/matter/${matterId}/export?format=${format}`, items, {
+    responseType: 'blob',
+  });
+  
   // 创建下载链接
-  const blob = new Blob([response as any], {
-    type:
-      format === 'word'
-        ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-        : 'application/pdf',
+  const blob = new Blob([response as any], { 
+    type: format === 'word' 
+      ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' 
+      : 'application/pdf' 
   });
   const url = window.URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
   link.download = `证据清单_${new Date().toISOString().slice(0, 10)}.${format === 'word' ? 'docx' : 'pdf'}`;
-  document.body.append(link);
+  document.body.appendChild(link);
   link.click();
-  link.remove();
+  document.body.removeChild(link);
   window.URL.revokeObjectURL(url);
 }
 
-/** 批量下载证据文件（打包为 ZIP） */
-export function batchDownloadEvidence(ids: number[]) {
-  return requestClient.post('/evidence/batch-download', ids, {
-    responseType: 'blob',
-  });
+/** 获取当前用户的访问令牌 */
+export async function getAccessToken(): Promise<string | null> {
+  const accessStore = useAccessStore();
+  return accessStore.accessToken || null;
 }
 
-/** 批量下载并触发浏览器下载 */
-export async function downloadEvidenceAsZip(ids: number[], filename?: string) {
-  const response = await batchDownloadEvidence(ids);
+/** 直接下载证据清单（带 token 授权） */
+export async function downloadEvidenceListDirect(
+  matterId: number, 
+  items: EvidenceExportItem[], 
+  format: 'word' | 'pdf' = 'word',
+  _token?: string  // token 参数保留但不使用，因为 requestClient 会自动带上
+) {
+  const response = await requestClient.post(`/evidence/matter/${matterId}/export?format=${format}`, items, {
+    responseType: 'blob',
+  });
+  
+  // 创建下载链接
+  const blob = new Blob([response as any], { 
+    type: format === 'word' 
+      ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' 
+      : 'application/pdf' 
+  });
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `证据清单_${new Date().toISOString().slice(0, 10)}.${format === 'word' ? 'docx' : 'pdf'}`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.URL.revokeObjectURL(url);
+}
+
+/** 批量下载证据文件为 ZIP */
+export async function downloadEvidenceAsZip(ids: number[], fileName?: string) {
+  const response = await requestClient.post('/evidence/batch-download', ids, {
+    responseType: 'blob',
+  });
+  
+  // 创建下载链接
   const blob = new Blob([response as any], { type: 'application/zip' });
   const url = window.URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = filename || `evidence_${Date.now()}.zip`;
-  document.body.append(link);
+  link.download = fileName || `证据材料_${new Date().toISOString().slice(0, 10)}.zip`;
+  document.body.appendChild(link);
   link.click();
-  link.remove();
+  document.body.removeChild(link);
   window.URL.revokeObjectURL(url);
 }
 
 // 导出类型
 export type * from './types';
+

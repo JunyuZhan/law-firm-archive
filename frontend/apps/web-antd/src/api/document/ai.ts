@@ -180,8 +180,8 @@ export interface AiGenerateResult {
   document?: any;
 }
 
-// AI 请求超时时间：2 分钟（AI 生成可能需要较长时间）
-const AI_TIMEOUT = 120_000;
+// AI 请求超时时间：6 分钟（DeepSeek R1 等推理模型需要较长时间）
+const AI_TIMEOUT = 360_000;
 
 /**
  * 检查 AI 服务状态

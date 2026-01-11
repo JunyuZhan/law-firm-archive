@@ -779,6 +779,22 @@ function getFileTypeConfig(fileType: string | undefined): {
   return fileTypeConfig[ext] || fileTypeConfig.default!;
 }
 
+// 获取文档来源类型配置
+const sourceTypeConfig: Record<string, { color: string; label: string }> = {
+  SYSTEM_GENERATED: { color: 'blue', label: '系统生成' },
+  SYSTEM_LINKED: { color: 'cyan', label: '系统关联' },
+  USER_UPLOADED: { color: 'default', label: '用户上传' },
+  SIGNED_VERSION: { color: 'green', label: '签字版' },
+};
+
+function getSourceTypeConfig(sourceType: string | undefined): {
+  color: string;
+  label: string;
+} {
+  if (!sourceType) return { color: 'default', label: '用户上传' };
+  return sourceTypeConfig[sourceType] || { color: 'default', label: sourceType };
+}
+
 // 格式化日期时间
 function formatDateTime(dateStr: string | undefined) {
   if (!dateStr) return '-';
@@ -1365,6 +1381,42 @@ function handleMoveDocument(record: DocumentDTO) {
   });
 }
 
+// 上传签字版本
+function handleUploadSignedVersion(record: DocumentDTO) {
+  if (!selectedMatter.value) {
+    message.warning('请先选择项目');
+    return;
+  }
+
+  // 创建文件输入元素
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.pdf,.jpg,.jpeg,.png';
+  input.onchange = async (e: Event) => {
+    const file = (e.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+
+    try {
+      loading.value = true;
+      // 上传签字版本，传递 sourceType 参数
+      await uploadFiles([file], {
+        matterId: selectedMatter.value!.id,
+        dossierItemId: record.dossierItemId,
+        description: `${record.title || record.fileName} 的签字版本`,
+        sourceType: 'SIGNED_VERSION', // 标记为签字版本
+      });
+      message.success('签字版本上传成功');
+      await loadProjectDocuments();
+      await loadDossierItems();
+    } catch (error: any) {
+      message.error(`上传失败: ${error.message || '未知错误'}`);
+    } finally {
+      loading.value = false;
+    }
+  };
+  input.click();
+}
+
 // 保存上传
 async function handleSaveUpload() {
   if (fileList.value.length === 0) {
@@ -1821,9 +1873,10 @@ onMounted(() => {
               <div class="col-drag" style="width: 30px"></div>
               <div class="col-name" style="flex: 1">文档名称</div>
               <div class="col-type" style="width: 80px">类型</div>
+              <div class="col-source" style="width: 80px">来源</div>
               <div class="col-size" style="width: 80px">大小</div>
               <div class="col-time" style="width: 140px">修改时间</div>
-              <div class="col-action" style="width: 160px">操作</div>
+              <div class="col-action" style="width: 180px">操作</div>
             </div>
 
             <!-- 可拖拽文档列表 -->
@@ -1928,6 +1981,16 @@ onMounted(() => {
                     </Tag>
                   </div>
 
+                  <!-- 文档来源 -->
+                  <div class="col-source">
+                    <Tag
+                      :color="getSourceTypeConfig(record.sourceType).color"
+                      style="padding: 1px 6px; margin: 0; font-size: 11px"
+                    >
+                      {{ getSourceTypeConfig(record.sourceType).label }}
+                    </Tag>
+                  </div>
+
                   <!-- 文件大小 -->
                   <div class="col-size">
                     {{ formatFileSize(record.fileSize) }}
@@ -1998,6 +2061,14 @@ onMounted(() => {
                             >
                               <span style="margin-right: 8px">📁</span>
                               移动
+                            </MenuItem>
+                            <MenuItem
+                              v-if="record.sourceType === 'SYSTEM_GENERATED'"
+                              key="upload-signed"
+                              @click="handleUploadSignedVersion(record)"
+                            >
+                              <span style="margin-right: 8px">✍️</span>
+                              上传签字版本
                             </MenuItem>
                             <MenuItem
                               v-if="isImageFile(record.fileType)"

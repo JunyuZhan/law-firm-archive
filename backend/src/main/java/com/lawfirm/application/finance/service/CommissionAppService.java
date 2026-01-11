@@ -40,8 +40,11 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -707,14 +710,66 @@ public class CommissionAppService {
                 .filter(p -> !paymentIdsWithCommission.contains(p.getId()))
                 .collect(Collectors.toList());
         
-        // 转换为DTO并填充关联信息
+        if (pendingPayments.isEmpty()) {
+            return List.of();
+        }
+        
+        // 批量收集所有需要查询的ID
+        Set<Long> clientIds = new HashSet<>();
+        Set<Long> matterIds = new HashSet<>();
+        Set<Long> feeIds = new HashSet<>();
+        
+        for (Payment payment : pendingPayments) {
+            if (payment.getClientId() != null) {
+                clientIds.add(payment.getClientId());
+            }
+            if (payment.getMatterId() != null) {
+                matterIds.add(payment.getMatterId());
+            }
+            if (payment.getFeeId() != null) {
+                feeIds.add(payment.getFeeId());
+            }
+        }
+        
+        // 批量加载客户
+        Map<Long, Client> clientMap = new HashMap<>();
+        if (!clientIds.isEmpty()) {
+            clientMap = clientRepository.listByIds(clientIds).stream()
+                    .collect(Collectors.toMap(Client::getId, Function.identity()));
+        }
+        
+        // 批量加载项目
+        Map<Long, Matter> matterMap = new HashMap<>();
+        if (!matterIds.isEmpty()) {
+            matterRepository.listByIds(matterIds).forEach(m -> matterMap.put(m.getId(), m));
+        }
+        
+        // 批量加载费用记录（用于获取项目ID）
+        Map<Long, Fee> feeMap = new HashMap<>();
+        if (!feeIds.isEmpty()) {
+            feeRepository.listByIds(feeIds).forEach(f -> feeMap.put(f.getId(), f));
+            // 从费用记录中提取额外的项目ID
+            Set<Long> additionalMatterIds = feeMap.values().stream()
+                    .filter(f -> f.getMatterId() != null && !matterMap.containsKey(f.getMatterId()))
+                    .map(Fee::getMatterId)
+                    .collect(Collectors.toSet());
+            if (!additionalMatterIds.isEmpty()) {
+                matterRepository.listByIds(additionalMatterIds).forEach(m -> matterMap.put(m.getId(), m));
+            }
+        }
+        
+        // 使用批量加载的数据转换DTO
+        final Map<Long, Client> finalClientMap = clientMap;
+        final Map<Long, Fee> finalFeeMap = feeMap;
+        final Map<Long, Matter> finalMatterMap = matterMap;
+        
         return pendingPayments.stream().map(payment -> {
             PaymentDTO dto = new PaymentDTO();
             BeanUtils.copyProperties(payment, dto);
             
             // 填充客户信息
             if (payment.getClientId() != null) {
-                Client client = clientRepository.findById(payment.getClientId());
+                Client client = finalClientMap.get(payment.getClientId());
                 if (client != null) {
                     dto.setClientId(client.getId());
                     dto.setClientName(client.getName());
@@ -723,16 +778,16 @@ public class CommissionAppService {
             
             // 填充项目信息
             if (payment.getMatterId() != null) {
-                Matter matter = matterRepository.findById(payment.getMatterId());
+                Matter matter = finalMatterMap.get(payment.getMatterId());
                 if (matter != null) {
                     dto.setMatterId(matter.getId());
                     dto.setMatterName(matter.getName());
                 }
             } else if (payment.getFeeId() != null) {
                 // 如果收款记录没有项目ID，尝试从收费记录获取
-                Fee fee = feeRepository.findById(payment.getFeeId());
+                Fee fee = finalFeeMap.get(payment.getFeeId());
                 if (fee != null && fee.getMatterId() != null) {
-                    Matter matter = matterRepository.findById(fee.getMatterId());
+                    Matter matter = finalMatterMap.get(fee.getMatterId());
                     if (matter != null) {
                         dto.setMatterId(matter.getId());
                         dto.setMatterName(matter.getName());

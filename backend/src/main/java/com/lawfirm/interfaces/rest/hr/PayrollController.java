@@ -147,10 +147,9 @@ public class PayrollController {
     }
 
     /**
-     * 财务确认工资表（已废弃，使用提交审批）
-     * @deprecated 使用 submitApproval 方法
+     * 财务确认工资表
+     * 确认所有员工都已确认后，更新工资表状态为财务已确认
      */
-    @Deprecated
     @PostMapping("/{id}/finance-confirm")
     @RequirePermission("payroll:finance:confirm")
     public Result<Void> financeConfirmPayrollSheet(@PathVariable Long id) {

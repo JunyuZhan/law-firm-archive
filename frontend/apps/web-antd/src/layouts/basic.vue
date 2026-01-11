@@ -327,28 +327,36 @@ const showDot = computed(() =>
   notifications.value.some((item) => !item.isRead),
 );
 
-// 用户手册地址（docs 应用部署后的地址，开发时指向本地 6173 端口）
+// 用户手册地址（docs 应用部署后的地址，开发时指向本地 6173 端口，base路径为 /docs/）
 const USER_MANUAL_URL =
-  import.meta.env.VITE_USER_MANUAL_URL || 'http://localhost:6173/';
+  import.meta.env.VITE_USER_MANUAL_URL || 'http://localhost:6173/docs/';
 
-const menus = computed(() => [
-  {
-    handler: () => {
-      router.push({ name: 'Profile' });
+  const menus = computed(() => [
+    {
+      handler: () => {
+        router.push({ name: 'Profile' });
+      },
+      icon: 'lucide:user',
+      text: $t('page.auth.profile'),
     },
-    icon: 'lucide:user',
-    text: $t('page.auth.profile'),
-  },
-  {
-    handler: () => {
-      openWindow(USER_MANUAL_URL, {
-        target: '_blank',
-      });
+    {
+      handler: () => {
+        // 获取当前用户的accessToken
+        const token = accessStore.accessToken;
+        let url = USER_MANUAL_URL;
+        if (token) {
+          // 将token作为参数附加到文档站点URL
+          const separator = url.includes('?') ? '&' : '?';
+          url = `${url}${separator}token=${encodeURIComponent(token)}`;
+        }
+        openWindow(url, {
+          target: '_blank',
+        });
+      },
+      icon: BookOpenText,
+      text: '用户手册',
     },
-    icon: BookOpenText,
-    text: '用户手册',
-  },
-]);
+  ]);
 
 const avatar = computed(() => {
   return userStore.userInfo?.avatar ?? preferences.app.defaultAvatar;

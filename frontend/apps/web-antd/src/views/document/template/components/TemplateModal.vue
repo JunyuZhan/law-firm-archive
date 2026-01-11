@@ -140,6 +140,7 @@ const [Modal, modalApi] = useVbenModal({
         await updateTemplate(editingId.value, {
           name: formData.name,
           templateType: formData.templateType,
+          content: formData.content,
           description: formData.description,
         });
         message.success('更新成功');

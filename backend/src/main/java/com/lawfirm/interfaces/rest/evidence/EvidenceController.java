@@ -483,7 +483,7 @@ public class EvidenceController {
     }
 
     /**
-     * 导出证据清单为 Word 文档
+     * 导出证据清单为 Word 或 PDF 文档
      */
     @PostMapping("/matter/{matterId}/export")
     @RequirePermission("evidence:view")
@@ -493,19 +493,40 @@ public class EvidenceController {
             @RequestParam(defaultValue = "word") String format,
             @RequestBody(required = false) List<EvidenceExportItemDTO> items,
             HttpServletResponse response) {
-        try {
-            byte[] content;
-            String contentType;
-            String extension;
+        byte[] content;
+        String contentType;
+        String extension;
 
+        try {
+            // 先生成文档内容（可能抛出异常）
             if ("word".equalsIgnoreCase(format) || "docx".equalsIgnoreCase(format)) {
                 content = evidenceExportService.exportToWord(matterId, items);
                 contentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
                 extension = "docx";
+            } else if ("pdf".equalsIgnoreCase(format)) {
+                content = evidenceExportService.exportToPdf(matterId, items);
+                contentType = "application/pdf";
+                extension = "pdf";
             } else {
-                throw new com.lawfirm.common.exception.BusinessException("暂不支持的导出格式: " + format);
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.setContentType("application/json;charset=UTF-8");
+                response.getWriter().write("{\"message\":\"暂不支持的导出格式: " + format + "\"}");
+                return;
             }
+        } catch (Exception e) {
+            log.error("导出证据清单失败", e);
+            try {
+                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+                response.setContentType("application/json;charset=UTF-8");
+                response.getWriter().write("{\"message\":\"导出失败: " + e.getMessage() + "\"}");
+            } catch (Exception writeError) {
+                log.debug("写入错误响应失败", writeError);
+            }
+            return;
+        }
 
+        // 写入响应（此时不会再抛出业务异常）
+        try {
             String fileName = evidenceExportService.getExportFileName(matterId, extension);
             
             response.setContentType(contentType);
@@ -515,12 +536,7 @@ public class EvidenceController {
             response.getOutputStream().write(content);
             response.getOutputStream().flush();
         } catch (Exception e) {
-            log.error("导出证据清单失败", e);
-            try {
-                response.sendError(500, "导出失败: " + e.getMessage());
-            } catch (Exception sendError) {
-                log.debug("发送错误响应失败", sendError);
-            }
+            log.error("写入导出文件响应失败", e);
         }
     }
 

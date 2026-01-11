@@ -29,6 +29,11 @@ public class UpdateDocumentTemplateCommand {
     private String description;
 
     /**
+     * 模板内容
+     */
+    private String content;
+
+    /**
      * 状态
      */
     private String status;

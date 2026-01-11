@@ -161,5 +161,28 @@ public class SecurityUtils {
         String scope = getDataScope();
         return "ALL".equals(scope) || "DEPT_AND_CHILD".equals(scope) || "DEPT".equals(scope);
     }
+
+    /**
+     * 获取当前用户ID，如果未登录则返回默认值
+     * 用于异步任务或系统自动操作场景
+     * 
+     * @param defaultUserId 默认用户ID
+     * @return 用户ID
+     */
+    public static Long getUserIdOrDefault(Long defaultUserId) {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return defaultUserId;
+            }
+            Object principal = authentication.getPrincipal();
+            if (principal instanceof LoginUser) {
+                return ((LoginUser) principal).getUserId();
+            }
+            return defaultUserId;
+        } catch (Exception e) {
+            return defaultUserId;
+        }
+    }
 }
 

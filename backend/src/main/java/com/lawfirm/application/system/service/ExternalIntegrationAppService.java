@@ -100,6 +100,47 @@ public class ExternalIntegrationAppService {
     }
 
     /**
+     * 创建集成配置
+     */
+    @Transactional
+    public ExternalIntegrationDTO createIntegration(UpdateExternalIntegrationCommand command) {
+        // 权限验证：只有管理员才能创建集成配置
+        if (!SecurityUtils.hasAnyRole("ADMIN", "SYSTEM_ADMIN", "SUPER_ADMIN")) {
+            throw new BusinessException("权限不足：只有管理员才能创建集成配置");
+        }
+
+        // 检查编码是否重复
+        ExternalIntegration existing = integrationMapper.selectByCode(command.getIntegrationCode());
+        if (existing != null) {
+            throw new BusinessException("集成编码已存在: " + command.getIntegrationCode());
+        }
+
+        ExternalIntegration integration = new ExternalIntegration();
+        integration.setIntegrationCode(command.getIntegrationCode());
+        integration.setIntegrationName(command.getIntegrationName());
+        integration.setIntegrationType(command.getIntegrationType());
+        integration.setApiUrl(command.getApiUrl());
+        integration.setAuthType(command.getAuthType());
+        integration.setExtraConfig(command.getExtraConfig());
+        integration.setDescription(command.getDescription());
+        integration.setEnabled(false); // 默认禁用
+
+        // 加密存储 API 密钥
+        if (StringUtils.hasText(command.getApiKey())) {
+            integration.setApiKey(encryptionService.encrypt(command.getApiKey()));
+        }
+        if (StringUtils.hasText(command.getApiSecret())) {
+            integration.setApiSecret(encryptionService.encrypt(command.getApiSecret()));
+        }
+
+        integrationMapper.insert(integration);
+        log.info("创建集成配置成功: integrationCode={}, operator={}", 
+                integration.getIntegrationCode(), SecurityUtils.getUserId());
+
+        return toDTO(integration);
+    }
+
+    /**
      * 更新集成配置
      */
     @Transactional
@@ -210,24 +251,31 @@ public class ExternalIntegrationAppService {
         String message;
 
         try {
-            // 简单的连通性测试（去除可能的空格）
-            String apiUrl = integration.getApiUrl().trim();
-            URL url = URI.create(apiUrl).toURL();
-            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-            // ✅ 使用可配置的超时时间
-            connection.setConnectTimeout(connectTimeoutMs);
-            connection.setReadTimeout(readTimeoutMs);
-            connection.setRequestMethod("HEAD");
-
-            int responseCode = connection.getResponseCode();
-            if (responseCode >= 200 && responseCode < 500) {
-                result = ExternalIntegration.TEST_SUCCESS;
-                message = "连接成功，响应码: " + responseCode;
+            // 根据集成类型选择不同的测试方式
+            if (ExternalIntegration.TYPE_AI.equals(integration.getIntegrationType())) {
+                // AI 集成：验证 API Key 是否有效
+                TestResult testResult = testAiApiKey(integration);
+                result = testResult.success ? ExternalIntegration.TEST_SUCCESS : ExternalIntegration.TEST_FAILED;
+                message = testResult.message;
             } else {
-                result = ExternalIntegration.TEST_FAILED;
-                message = "连接失败，响应码: " + responseCode;
+                // 其他集成：简单的连通性测试
+                String apiUrl = integration.getApiUrl().trim();
+                URL url = URI.create(apiUrl).toURL();
+                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+                connection.setConnectTimeout(connectTimeoutMs);
+                connection.setReadTimeout(readTimeoutMs);
+                connection.setRequestMethod("HEAD");
+
+                int responseCode = connection.getResponseCode();
+                if (responseCode >= 200 && responseCode < 400) {
+                    result = ExternalIntegration.TEST_SUCCESS;
+                    message = "连接成功，响应码: " + responseCode;
+                } else {
+                    result = ExternalIntegration.TEST_FAILED;
+                    message = "连接失败，响应码: " + responseCode;
+                }
+                connection.disconnect();
             }
-            connection.disconnect();
         } catch (Exception e) {
             result = ExternalIntegration.TEST_FAILED;
             message = "连接异常: " + e.getMessage();
@@ -239,6 +287,72 @@ public class ExternalIntegrationAppService {
 
         // 重新获取更新后的记录
         return getIntegrationById(id);
+    }
+
+    /**
+     * 测试 AI API Key 是否有效
+     * 通过调用 /models 接口验证密钥
+     */
+    private TestResult testAiApiKey(ExternalIntegration integration) {
+        String apiUrl = integration.getApiUrl().trim();
+        if (!apiUrl.endsWith("/")) apiUrl += "/";
+        
+        // 解密 API Key
+        String apiKey = integration.getApiKey();
+        if (StringUtils.hasText(apiKey)) {
+            try {
+                apiKey = encryptionService.decrypt(apiKey);
+            } catch (Exception e) {
+                log.warn("API密钥解密失败，使用原值");
+            }
+        }
+        
+        if (!StringUtils.hasText(apiKey)) {
+            return new TestResult(false, "API Key 未配置");
+        }
+        
+        try {
+            // 调用 models 接口验证 API Key
+            URL url = URI.create(apiUrl + "models").toURL();
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setConnectTimeout(connectTimeoutMs);
+            connection.setReadTimeout(readTimeoutMs);
+            connection.setRequestMethod("GET");
+            connection.setRequestProperty("Authorization", "Bearer " + apiKey);
+            connection.setRequestProperty("Content-Type", "application/json");
+            
+            int responseCode = connection.getResponseCode();
+            connection.disconnect();
+            
+            if (responseCode == 200) {
+                return new TestResult(true, "API Key 验证成功");
+            } else if (responseCode == 401) {
+                return new TestResult(false, "API Key 无效或已过期 (401)");
+            } else if (responseCode == 403) {
+                return new TestResult(false, "API Key 权限不足 (403)");
+            } else if (responseCode == 429) {
+                return new TestResult(false, "API 调用次数超限 (429)");
+            } else {
+                return new TestResult(false, "API 验证失败，响应码: " + responseCode);
+            }
+        } catch (java.net.SocketTimeoutException e) {
+            return new TestResult(false, "连接超时，请检查网络");
+        } catch (Exception e) {
+            return new TestResult(false, "连接异常: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * 测试结果内部类
+     */
+    private static class TestResult {
+        final boolean success;
+        final String message;
+        
+        TestResult(boolean success, String message) {
+            this.success = success;
+            this.message = message;
+        }
     }
 
     /**

@@ -4,6 +4,7 @@ import com.lawfirm.common.exception.BusinessException;
 import com.lawfirm.domain.system.entity.User;
 import com.lawfirm.domain.system.repository.UserRepository;
 import com.lawfirm.infrastructure.security.LoginUser;
+import com.lawfirm.infrastructure.security.UserDetailsServiceImpl;
 import com.lawfirm.infrastructure.security.jwt.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,6 +35,7 @@ public class AuthService {
     private final SessionAppService sessionAppService;
     private final com.lawfirm.application.system.util.UserAgentParser userAgentParser;
     private final com.lawfirm.infrastructure.notification.AlertService alertService;
+    private final UserDetailsServiceImpl userDetailsService;
 
     private static final String TOKEN_CACHE_PREFIX = "token:";
     private static final long TOKEN_CACHE_HOURS = 24;
@@ -254,6 +256,9 @@ public class AuthService {
         if (token != null) {
             sessionAppService.logoutSessionByToken(token);
         }
+        
+        // 3. 清除用户认证缓存
+        userDetailsService.clearUserAuthCacheByUserId(userId);
 
         log.info("用户登出: {}", userId);
     }
