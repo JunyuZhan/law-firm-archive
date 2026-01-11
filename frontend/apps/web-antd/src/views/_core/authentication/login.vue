@@ -12,6 +12,9 @@ import { useAuthStore } from '#/store';
 
 defineOptions({ name: 'Login' });
 
+// 版本号
+const appVersion = import.meta.env.VITE_APP_VERSION || '1.0.0';
+
 const authStore = useAuthStore();
 
 // 滑块验证码状态
@@ -69,26 +72,56 @@ async function handleLogin(values: Recordable<any>) {
 </script>
 
 <template>
-  <AuthenticationLogin
-    :form-schema="formSchema"
-    :loading="authStore.loginLoading"
-    :show-code-login="false"
-    :show-qrcode-login="false"
-    :show-register="false"
-    :show-third-party-login="false"
-    :show-forget-password="true"
-    :show-remember-me="true"
-    @submit="handleLogin"
-  >
-    <!-- 在表单和记住密码之间插入滑块验证码 -->
-    <template #after-form>
-      <div class="mb-4">
-        <SliderCaptcha
-          ref="sliderCaptchaRef"
-          v-model="captchaVerified"
-          @success="handleCaptchaSuccess"
-        />
-      </div>
-    </template>
-  </AuthenticationLogin>
+  <div class="login-container">
+    <AuthenticationLogin
+      :form-schema="formSchema"
+      :loading="authStore.loginLoading"
+      :show-code-login="false"
+      :show-qrcode-login="false"
+      :show-register="false"
+      :show-third-party-login="false"
+      :show-forget-password="true"
+      :show-remember-me="true"
+      @submit="handleLogin"
+    >
+      <!-- 在表单和记住密码之间插入滑块验证码 -->
+      <template #after-form>
+        <div class="mb-4">
+          <SliderCaptcha
+            ref="sliderCaptchaRef"
+            v-model="captchaVerified"
+            @success="handleCaptchaSuccess"
+          />
+        </div>
+      </template>
+    </AuthenticationLogin>
+    
+    <!-- 版本号显示 -->
+    <div class="version-info">
+      v{{ appVersion }}
+    </div>
+  </div>
 </template>
+
+<style scoped>
+.login-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.version-info {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  z-index: 10;
+}
+
+/* 亮色模式下调整颜色 */
+:root:not(.dark) .version-info {
+  color: rgba(0, 0, 0, 0.35);
+}
+</style>
