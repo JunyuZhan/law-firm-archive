@@ -1,22 +1,47 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { message, Card, Table, Button, Space, Tag, Input, Tabs, Modal, Form, FormItem, Select, Textarea, Popconfirm, Descriptions, DescriptionsItem, Timeline, DatePicker } from 'ant-design-vue';
+import type {
+  CareerLevelDTO,
+  PromotionApplicationDTO,
+  PromotionApplicationQuery,
+} from '#/api/hr/promotion';
+
+import { onMounted, ref } from 'vue';
+
 import { Page } from '@vben/common-ui';
 import { Plus } from '@vben/icons';
+
 import {
-  getPromotionApplicationList,
-  getPromotionApplicationDetail,
-  submitPromotionApplication,
-  cancelPromotionApplication,
+  Button,
+  Card,
+  DatePicker,
+  Descriptions,
+  DescriptionsItem,
+  Form,
+  FormItem,
+  Input,
+  message,
+  Modal,
+  Popconfirm,
+  Select,
+  Space,
+  Table,
+  Tabs,
+  Tag,
+  Textarea,
+  Timeline,
+} from 'ant-design-vue';
+import dayjs from 'dayjs';
+
+import {
   approvePromotionApplication,
-  rejectPromotionApplication,
+  cancelPromotionApplication,
   getCareerLevelList,
-  type PromotionApplicationDTO,
-  type PromotionApplicationQuery,
-  type CareerLevelDTO,
+  getPromotionApplicationDetail,
+  getPromotionApplicationList,
+  rejectPromotionApplication,
+  submitPromotionApplication,
 } from '#/api/hr/promotion';
 import UserTreeSelect from '#/components/UserTreeSelect';
-import dayjs from 'dayjs';
 
 defineOptions({ name: 'HrPromotion' });
 
@@ -39,7 +64,7 @@ const queryParams = ref<PromotionApplicationQuery>({
 const modalVisible = ref(false);
 const detailVisible = ref(false);
 const approveVisible = ref(false);
-const currentRecord = ref<PromotionApplicationDTO | null>(null);
+const currentRecord = ref<null | PromotionApplicationDTO>(null);
 
 // 表单
 const formData = ref({
@@ -47,23 +72,48 @@ const formData = ref({
   applyReason: '',
   achievements: '',
   selfEvaluation: '',
-  directManagerId: undefined as number | undefined,  // 直属上级
-  hrReviewerId: undefined as number | undefined,      // HR评审人
+  directManagerId: undefined as number | undefined, // 直属上级
+  hrReviewerId: undefined as number | undefined, // HR评审人
 });
 
 const approveForm = ref({
-  approved: 'approve' as string,  // 'approve' | 'reject'
+  approved: 'approve' as string, // 'approve' | 'reject'
   comment: '',
   effectiveDate: undefined as any,
 });
 
 // 表格列
 const columns = [
-  { title: '申请编号', dataIndex: 'applicationNo', key: 'applicationNo', width: 140 },
-  { title: '员工姓名', dataIndex: 'employeeName', key: 'employeeName', width: 100 },
-  { title: '部门', dataIndex: 'departmentName', key: 'departmentName', width: 120 },
-  { title: '当前职级', dataIndex: 'currentLevelName', key: 'currentLevelName', width: 100 },
-  { title: '申请职级', dataIndex: 'targetLevelName', key: 'targetLevelName', width: 100 },
+  {
+    title: '申请编号',
+    dataIndex: 'applicationNo',
+    key: 'applicationNo',
+    width: 140,
+  },
+  {
+    title: '员工姓名',
+    dataIndex: 'employeeName',
+    key: 'employeeName',
+    width: 100,
+  },
+  {
+    title: '部门',
+    dataIndex: 'departmentName',
+    key: 'departmentName',
+    width: 120,
+  },
+  {
+    title: '当前职级',
+    dataIndex: 'currentLevelName',
+    key: 'currentLevelName',
+    width: 100,
+  },
+  {
+    title: '申请职级',
+    dataIndex: 'targetLevelName',
+    key: 'targetLevelName',
+    width: 100,
+  },
   { title: '申请日期', dataIndex: 'applyDate', key: 'applyDate', width: 110 },
   { title: '状态', dataIndex: 'status', key: 'status', width: 100 },
   { title: '操作', key: 'action', width: 150, fixed: 'right' as const },
@@ -96,7 +146,11 @@ async function loadData() {
 // 加载职级列表
 async function loadCareerLevels() {
   try {
-    const res = await getCareerLevelList({ pageNum: 1, pageSize: 100, status: 'ACTIVE' });
+    const res = await getCareerLevelList({
+      pageNum: 1,
+      pageSize: 100,
+      status: 'ACTIVE',
+    });
     careerLevels.value = res.list || [];
   } catch (error) {
     console.error('加载职级失败', error);
@@ -104,7 +158,7 @@ async function loadCareerLevels() {
 }
 
 // Tab切换
-function handleTabChange(key: string | number) {
+function handleTabChange(key: number | string) {
   const keyStr = String(key);
   activeTab.value = keyStr;
   queryParams.value.status = keyStr === 'all' ? undefined : keyStr;
@@ -208,11 +262,14 @@ async function submitApproval() {
       await approvePromotionApplication(
         currentRecord.value.id,
         approveForm.value.comment,
-        approveForm.value.effectiveDate?.format('YYYY-MM-DD')
+        approveForm.value.effectiveDate?.format('YYYY-MM-DD'),
       );
       message.success('已通过晋升申请');
     } else {
-      await rejectPromotionApplication(currentRecord.value.id, approveForm.value.comment);
+      await rejectPromotionApplication(
+        currentRecord.value.id,
+        approveForm.value.comment,
+      );
       message.success('已拒绝晋升申请');
     }
     approveVisible.value = false;
@@ -236,21 +293,27 @@ onMounted(() => {
 <template>
   <Page title="晋升管理" description="管理员工晋升申请">
     <Card>
-      <Tabs v-model:activeKey="activeTab" @change="handleTabChange">
+      <Tabs v-model:active-key="activeTab" @change="handleTabChange">
         <Tabs.TabPane key="all" tab="全部" />
         <Tabs.TabPane key="PENDING" tab="待审批" />
         <Tabs.TabPane key="APPROVED" tab="已通过" />
         <Tabs.TabPane key="REJECTED" tab="已拒绝" />
       </Tabs>
-      
-      <div style=" display: flex; justify-content: space-between;margin-bottom: 16px;">
+
+      <div
+        style="
+          display: flex;
+          justify-content: space-between;
+          margin-bottom: 16px;
+        "
+      >
         <Space>
           <Input
             v-model:value="queryParams.keyword"
             placeholder="搜索员工姓名"
             style="width: 200px"
-            allowClear
-            @pressEnter="handleSearch"
+            allow-clear
+            @press-enter="handleSearch"
           />
           <Button @click="handleSearch">查询</Button>
         </Space>
@@ -259,20 +322,20 @@ onMounted(() => {
           申请晋升
         </Button>
       </div>
-      
+
       <Table
         :columns="columns"
-        :dataSource="dataSource"
+        :data-source="dataSource"
         :loading="loading"
         :pagination="{
           current: queryParams.pageNum,
           pageSize: queryParams.pageSize,
-          total: total,
+          total,
           showSizeChanger: true,
           showQuickJumper: true,
         }"
         :scroll="{ x: 1000 }"
-        rowKey="id"
+        row-key="id"
         @change="handleTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -281,7 +344,11 @@ onMounted(() => {
           </template>
           <template v-else-if="column.key === 'status'">
             <Tag :color="statusMap[record.status]?.color || 'default'">
-              {{ record.statusName || statusMap[record.status]?.text || record.status }}
+              {{
+                record.statusName ||
+                statusMap[record.status]?.text ||
+                record.status
+              }}
             </Tag>
           </template>
           <template v-else-if="column.key === 'action'">
@@ -294,7 +361,13 @@ onMounted(() => {
               >
                 <a style="color: #ff4d4f">取消</a>
               </Popconfirm>
-              <a v-if="record.status === 'PENDING' || record.status === 'REVIEWING'" @click="handleApprove(record)">审批</a>
+              <a
+                v-if="
+                  record.status === 'PENDING' || record.status === 'REVIEWING'
+                "
+                @click="handleApprove(record)"
+                >审批</a
+              >
             </Space>
           </template>
         </template>
@@ -302,13 +375,23 @@ onMounted(() => {
     </Card>
 
     <!-- 申请弹窗 -->
-    <Modal v-model:open="modalVisible" title="申请晋升" width="650px" @ok="handleSubmit">
-      <Form :labelCol="{ span: 5 }" :wrapperCol="{ span: 18 }">
+    <Modal
+      v-model:open="modalVisible"
+      title="申请晋升"
+      width="650px"
+      @ok="handleSubmit"
+    >
+      <Form :label-col="{ span: 5 }" :wrapper-col="{ span: 18 }">
         <FormItem label="目标职级" required>
           <Select
             v-model:value="formData.targetLevelId"
             placeholder="请选择目标职级"
-            :options="careerLevels.map(l => ({ label: `${l.levelName} (${l.categoryName || l.category})`, value: l.id }))"
+            :options="
+              careerLevels.map((l) => ({
+                label: `${l.levelName} (${l.categoryName || l.category})`,
+                value: l.id,
+              }))
+            "
           />
         </FormItem>
         <FormItem label="直属上级" required>
@@ -324,67 +407,145 @@ onMounted(() => {
           />
         </FormItem>
         <FormItem label="申请理由" required>
-          <Textarea v-model:value="formData.applyReason" :rows="3" placeholder="请说明申请晋升的理由" />
+          <Textarea
+            v-model:value="formData.applyReason"
+            :rows="3"
+            placeholder="请说明申请晋升的理由"
+          />
         </FormItem>
         <FormItem label="工作业绩">
-          <Textarea v-model:value="formData.achievements" :rows="3" placeholder="请描述您的主要工作业绩" />
+          <Textarea
+            v-model:value="formData.achievements"
+            :rows="3"
+            placeholder="请描述您的主要工作业绩"
+          />
         </FormItem>
         <FormItem label="自我评价">
-          <Textarea v-model:value="formData.selfEvaluation" :rows="3" placeholder="请进行自我评价" />
+          <Textarea
+            v-model:value="formData.selfEvaluation"
+            :rows="3"
+            placeholder="请进行自我评价"
+          />
         </FormItem>
       </Form>
     </Modal>
 
     <!-- 详情弹窗 -->
-    <Modal v-model:open="detailVisible" title="晋升申请详情" width="700px" :footer="null">
+    <Modal
+      v-model:open="detailVisible"
+      title="晋升申请详情"
+      width="700px"
+      :footer="null"
+    >
       <Descriptions v-if="currentRecord" :column="2" bordered size="small">
-        <DescriptionsItem label="申请编号">{{ currentRecord.applicationNo }}</DescriptionsItem>
-        <DescriptionsItem label="员工姓名">{{ currentRecord.employeeName }}</DescriptionsItem>
-        <DescriptionsItem label="部门">{{ currentRecord.departmentName }}</DescriptionsItem>
-        <DescriptionsItem label="当前职级">{{ currentRecord.currentLevelName }}</DescriptionsItem>
-        <DescriptionsItem label="目标职级">{{ currentRecord.targetLevelName }}</DescriptionsItem>
-        <DescriptionsItem label="申请日期">{{ formatDate(currentRecord.applyDate) }}</DescriptionsItem>
+        <DescriptionsItem label="申请编号">
+          {{ currentRecord.applicationNo }}
+        </DescriptionsItem>
+        <DescriptionsItem label="员工姓名">
+          {{ currentRecord.employeeName }}
+        </DescriptionsItem>
+        <DescriptionsItem label="部门">
+          {{ currentRecord.departmentName }}
+        </DescriptionsItem>
+        <DescriptionsItem label="当前职级">
+          {{ currentRecord.currentLevelName }}
+        </DescriptionsItem>
+        <DescriptionsItem label="目标职级">
+          {{ currentRecord.targetLevelName }}
+        </DescriptionsItem>
+        <DescriptionsItem label="申请日期">
+          {{ formatDate(currentRecord.applyDate) }}
+        </DescriptionsItem>
         <DescriptionsItem label="状态">
-          <Tag :color="currentRecord.status ? statusMap[currentRecord.status]?.color : 'default'">
-            {{ currentRecord.statusName || (currentRecord.status ? statusMap[currentRecord.status]?.text : '-') }}
+          <Tag
+            :color="
+              currentRecord.status
+                ? statusMap[currentRecord.status]?.color
+                : 'default'
+            "
+          >
+            {{
+              currentRecord.statusName ||
+              (currentRecord.status
+                ? statusMap[currentRecord.status]?.text
+                : '-')
+            }}
           </Tag>
         </DescriptionsItem>
-        <DescriptionsItem label="生效日期">{{ formatDate(currentRecord.effectiveDate) }}</DescriptionsItem>
-        <DescriptionsItem label="申请理由" :span="2">{{ currentRecord.applyReason || '-' }}</DescriptionsItem>
-        <DescriptionsItem label="工作业绩" :span="2">{{ currentRecord.achievements || '-' }}</DescriptionsItem>
-        <DescriptionsItem label="自我评价" :span="2">{{ currentRecord.selfEvaluation || '-' }}</DescriptionsItem>
-        <DescriptionsItem v-if="currentRecord.approvalComment" label="审批意见" :span="2">
+        <DescriptionsItem label="生效日期">
+          {{ formatDate(currentRecord.effectiveDate) }}
+        </DescriptionsItem>
+        <DescriptionsItem label="申请理由" :span="2">
+          {{ currentRecord.applyReason || '-' }}
+        </DescriptionsItem>
+        <DescriptionsItem label="工作业绩" :span="2">
+          {{ currentRecord.achievements || '-' }}
+        </DescriptionsItem>
+        <DescriptionsItem label="自我评价" :span="2">
+          {{ currentRecord.selfEvaluation || '-' }}
+        </DescriptionsItem>
+        <DescriptionsItem
+          v-if="currentRecord.approvalComment"
+          label="审批意见"
+          :span="2"
+        >
           {{ currentRecord.approvalComment }}
         </DescriptionsItem>
       </Descriptions>
-      
+
       <div v-if="currentRecord?.reviews?.length" style="margin-top: 16px">
         <h4>评审记录</h4>
         <Timeline>
-          <Timeline.Item v-for="review in currentRecord.reviews" :key="review.id">
-            <p><strong>{{ review.reviewerName }}</strong> ({{ review.reviewerRoleName }})</p>
-            <p>评审意见: {{ review.reviewOpinionName }} | 评分: {{ review.totalScore }}</p>
+          <Timeline.Item
+            v-for="review in currentRecord.reviews"
+            :key="review.id"
+          >
+            <p>
+              <strong>{{ review.reviewerName }}</strong> ({{
+                review.reviewerRoleName
+              }})
+            </p>
+            <p>
+              评审意见: {{ review.reviewOpinionName }} | 评分:
+              {{ review.totalScore }}
+            </p>
             <p v-if="review.reviewComment">评语: {{ review.reviewComment }}</p>
-            <p style=" font-size: 12px;color: #999">{{ formatDate(review.reviewTime) }}</p>
+            <p style="font-size: 12px; color: #999">
+              {{ formatDate(review.reviewTime) }}
+            </p>
           </Timeline.Item>
         </Timeline>
       </div>
     </Modal>
 
     <!-- 审批弹窗 -->
-    <Modal v-model:open="approveVisible" title="审批晋升申请" @ok="submitApproval">
-      <Form :labelCol="{ span: 5 }" :wrapperCol="{ span: 18 }">
+    <Modal
+      v-model:open="approveVisible"
+      title="审批晋升申请"
+      @ok="submitApproval"
+    >
+      <Form :label-col="{ span: 5 }" :wrapper-col="{ span: 18 }">
         <FormItem label="审批结果">
-          <Select v-model:value="approveForm.approved" :options="[
-            { label: '通过', value: 'approve' },
-            { label: '拒绝', value: 'reject' },
-          ]" />
+          <Select
+            v-model:value="approveForm.approved"
+            :options="[
+              { label: '通过', value: 'approve' },
+              { label: '拒绝', value: 'reject' },
+            ]"
+          />
         </FormItem>
         <FormItem v-if="approveForm.approved === 'approve'" label="生效日期">
-          <DatePicker v-model:value="approveForm.effectiveDate" style="width: 100%" />
+          <DatePicker
+            v-model:value="approveForm.effectiveDate"
+            style="width: 100%"
+          />
         </FormItem>
         <FormItem label="审批意见">
-          <Textarea v-model:value="approveForm.comment" :rows="3" placeholder="请输入审批意见" />
+          <Textarea
+            v-model:value="approveForm.comment"
+            :rows="3"
+            placeholder="请输入审批意见"
+          />
         </FormItem>
       </Form>
     </Modal>

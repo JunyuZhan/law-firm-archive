@@ -1,11 +1,25 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import { useVbenModal, z } from '@vben/common-ui';
-import { useVbenForm } from '#/adapter/form';
 import type { VbenFormSchema } from '#/adapter/form';
+import type {
+  CreateUserCommand,
+  DepartmentDTO,
+  RoleDTO,
+  UpdateUserCommand,
+} from '#/api/system/types';
+
+import { ref, watch } from 'vue';
+
+import { useVbenModal, z } from '@vben/common-ui';
+
 import { message } from 'ant-design-vue';
-import { createUser, updateUser, getAllRoles, getDepartmentTree } from '#/api/system';
-import type { RoleDTO, DepartmentDTO, CreateUserCommand, UpdateUserCommand } from '#/api/system/types';
+
+import { useVbenForm } from '#/adapter/form';
+import {
+  createUser,
+  getAllRoles,
+  getDepartmentTree,
+  updateUser,
+} from '#/api/system';
 
 const emit = defineEmits<{
   success: [];
@@ -23,116 +37,133 @@ async function loadOptions() {
       getAllRoles(),
       getDepartmentTree(),
     ]);
-    // 更新响应式数据，computed formSchema 会自动更新
+    // 更新响应式数据
     roles.value = rolesRes;
     departments.value = deptRes;
+    // 动态更新表单schema
+    updateFormSchema();
   } catch (error) {
     console.error('加载选项失败:', error);
   }
 }
 
-// 表单 Schema
-const formSchema = computed<VbenFormSchema[]>(() => [
-  {
-    fieldName: 'username',
-    label: '用户名',
-    component: 'Input',
-    rules: z.string().min(1, '请输入用户名'),
-    componentProps: {
-      placeholder: '请输入用户名',
-      disabled: isEdit.value,
+// 基础表单 Schema
+function getFormSchema(): VbenFormSchema[] {
+  return [
+    {
+      fieldName: 'username',
+      label: '用户名',
+      component: 'Input',
+      rules: z.string().min(1, '请输入用户名'),
+      componentProps: {
+        placeholder: '请输入用户名',
+        disabled: isEdit.value,
+      },
     },
-  },
-  {
-    fieldName: 'password',
-    label: '密码',
-    component: 'InputPassword',
-    rules: isEdit.value ? z.string().optional() : z.string().min(1, '请输入密码'),
-    dependencies: {
-      show: () => !isEdit.value,
+    {
+      fieldName: 'password',
+      label: '密码',
+      component: 'InputPassword',
+      rules: isEdit.value
+        ? z.string().optional()
+        : z.string().min(1, '请输入密码'),
+      hide: isEdit.value,
+      componentProps: {
+        placeholder: '请输入密码',
+      },
     },
-    componentProps: {
-      placeholder: '请输入密码',
+    {
+      fieldName: 'realName',
+      label: '姓名',
+      component: 'Input',
+      rules: z.string().min(1, '请输入姓名'),
+      componentProps: {
+        placeholder: '请输入姓名',
+      },
     },
-  },
-  {
-    fieldName: 'realName',
-    label: '姓名',
-    component: 'Input',
-    rules: z.string().min(1, '请输入姓名'),
-    componentProps: {
-      placeholder: '请输入姓名',
+    {
+      fieldName: 'email',
+      label: '邮箱',
+      component: 'Input',
+      componentProps: {
+        placeholder: '请输入邮箱',
+      },
     },
-  },
-  {
-    fieldName: 'email',
-    label: '邮箱',
-    component: 'Input',
-    componentProps: {
-      placeholder: '请输入邮箱',
+    {
+      fieldName: 'phone',
+      label: '手机号',
+      component: 'Input',
+      componentProps: {
+        placeholder: '请输入手机号',
+      },
     },
-  },
-  {
-    fieldName: 'phone',
-    label: '手机号',
-    component: 'Input',
-    componentProps: {
-      placeholder: '请输入手机号',
+    {
+      fieldName: 'departmentId',
+      label: '部门',
+      component: 'TreeSelect',
+      componentProps: {
+        placeholder: '请选择部门',
+        treeData: departments.value,
+        fieldNames: { label: 'name', value: 'id', children: 'children' },
+        allowClear: true,
+        style: { width: '100%' },
+        treeDefaultExpandAll: true,
+        dropdownStyle: { maxHeight: '400px', overflow: 'auto' },
+      },
     },
-  },
-  {
-    fieldName: 'departmentId',
-    label: '部门',
-    component: 'TreeSelect',
-    componentProps: {
-      placeholder: '请选择部门',
-      treeData: departments.value,
-      fieldNames: { label: 'name', value: 'id', children: 'children' },
-      allowClear: true,
-      style: { width: '100%' },
-      treeDefaultExpandAll: true,
-      dropdownStyle: { maxHeight: '400px', overflow: 'auto' },
+    {
+      fieldName: 'position',
+      label: '职位',
+      component: 'Input',
+      componentProps: {
+        placeholder: '请输入职位',
+      },
     },
-  },
-  {
-    fieldName: 'position',
-    label: '职位',
-    component: 'Input',
-    componentProps: {
-      placeholder: '请输入职位',
+    {
+      fieldName: 'roleIds',
+      label: '角色',
+      component: 'Select',
+      componentProps: {
+        placeholder: '请选择角色',
+        mode: 'multiple',
+        style: { width: '100%' },
+        options: roles.value.map((r: RoleDTO) => ({
+          label: r.roleName,
+          value: r.id,
+        })),
+      },
     },
-  },
-  {
-    fieldName: 'roleIds',
-    label: '角色',
-    component: 'Select',
-    componentProps: {
-      placeholder: '请选择角色',
-      mode: 'multiple',
-      style: { width: '100%' },
-      options: roles.value.map((r: RoleDTO) => ({ label: r.roleName, value: r.id })),
+    {
+      fieldName: 'status',
+      label: '状态',
+      component: 'RadioGroup',
+      defaultValue: 'ACTIVE',
+      componentProps: {
+        options: [
+          { label: '正常', value: 'ACTIVE' },
+          { label: '禁用', value: 'DISABLED' },
+        ],
+      },
     },
-  },
-  {
-    fieldName: 'status',
-    label: '状态',
-    component: 'RadioGroup',
-    defaultValue: 'ACTIVE',
-    componentProps: {
-      options: [
-        { label: '正常', value: 'ACTIVE' },
-        { label: '禁用', value: 'DISABLED' },
-      ],
-    },
-  },
-]);
+  ];
+}
 
 const [Form, formApi] = useVbenForm({
-  schema: formSchema,
+  schema: getFormSchema(),
   showDefaultActions: false,
   commonConfig: {
     labelWidth: 80,
   },
+});
+
+// 更新表单schema
+function updateFormSchema() {
+  formApi.setState({ schema: getFormSchema() });
+}
+
+// 监听isEdit变化，更新表单schema
+watch(isEdit, () => {
+  updateFormSchema();
 });
 
 const [Modal, modalApi] = useVbenModal({
@@ -142,7 +173,7 @@ const [Modal, modalApi] = useVbenModal({
       await formApi.validate();
       // 获取所有表单值（包括未修改的字段）
       const values = await formApi.getValues();
-      
+
       if (isEdit.value && editId.value) {
         const updateData: UpdateUserCommand = {
           id: editId.value,
@@ -160,7 +191,7 @@ const [Modal, modalApi] = useVbenModal({
         await createUser(createData);
         message.success('创建成功');
       }
-      
+
       modalApi.close();
       emit('success');
     } catch (error: unknown) {

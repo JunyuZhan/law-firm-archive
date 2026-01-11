@@ -1,31 +1,33 @@
 <script setup lang="ts">
+import type { OnlyOfficeConfig } from '#/api/document';
+
 /**
  * OnlyOffice 文档编辑/预览页面
- * 
+ *
  * 使用方式：
  * - 预览模式：/office-preview?documentId=123&mode=view
  * - 编辑模式：/office-preview?documentId=123&mode=edit
  * - 直接URL模式（兼容旧版）：/office-preview?url=xxx&filename=xxx
  */
-import { onMounted, onUnmounted, ref, computed } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { Button, Space, Spin, Alert } from 'ant-design-vue';
-import { getDocumentPreviewConfig, getDocumentEditConfig, type OnlyOfficeConfig } from '#/api/document';
+
+import { Alert, Button, Space, Spin } from 'ant-design-vue';
+
+import {
+  getDocumentEditConfig,
+  getDocumentPreviewConfig,
+} from '#/api/document';
 
 const route = useRoute();
 const router = useRouter();
 
 const loading = ref(true);
-const error = ref<string | null>(null);
-const config = ref<OnlyOfficeConfig | null>(null);
-const currentMode = ref<'view' | 'edit'>('view');
+const error = ref<null | string>(null);
+const config = ref<null | OnlyOfficeConfig>(null);
+const currentMode = ref<'edit' | 'view'>('view');
 const documentTitle = ref('');
 let editorInstance: any = null;
-
-// 是否支持编辑
-const canEdit = computed(() => {
-  return config.value?.document?.permissions?.edit ?? false;
-});
 
 // 是否支持预览
 const isSupported = computed(() => {
@@ -35,24 +37,23 @@ const isSupported = computed(() => {
 onMounted(async () => {
   const { documentId, mode, url, filename, type, ext } = route.query as {
     documentId?: string;
-    mode?: 'view' | 'edit';
-    url?: string;
-    filename?: string;
-    type?: string;
     ext?: string;
+    filename?: string;
+    mode?: 'edit' | 'view';
+    type?: string;
+    url?: string;
   };
 
   currentMode.value = mode || 'view';
 
   // 如果有 documentId，从后端获取配置
   if (documentId) {
-    await loadFromBackend(parseInt(documentId), currentMode.value);
-  } 
+    await loadFromBackend(Number.parseInt(documentId), currentMode.value);
+  }
   // 兼容旧版直接 URL 模式
   else if (url && filename) {
     await loadDirectUrl(url, filename, type || 'word', ext || 'docx');
-  } 
-  else {
+  } else {
     error.value = '缺少必要参数：documentId 或 url';
     loading.value = false;
   }
@@ -63,8 +64,8 @@ onUnmounted(() => {
   if (editorInstance) {
     try {
       editorInstance.destroyEditor();
-    } catch (e) {
-      console.warn('销毁编辑器失败:', e);
+    } catch (error_) {
+      console.warn('销毁编辑器失败:', error_);
     }
   }
 });
@@ -72,15 +73,16 @@ onUnmounted(() => {
 /**
  * 从后端 API 加载配置
  */
-async function loadFromBackend(documentId: number, mode: 'view' | 'edit') {
+async function loadFromBackend(documentId: number, mode: 'edit' | 'view') {
   try {
     loading.value = true;
     error.value = null;
 
     // 根据模式获取不同的配置
-    const response = mode === 'edit' 
-      ? await getDocumentEditConfig(documentId)
-      : await getDocumentPreviewConfig(documentId);
+    const response =
+      mode === 'edit'
+        ? await getDocumentEditConfig(documentId)
+        : await getDocumentPreviewConfig(documentId);
 
     config.value = response;
 
@@ -93,12 +95,14 @@ async function loadFromBackend(documentId: number, mode: 'view' | 'edit') {
     documentTitle.value = response.document?.title || '';
 
     // 加载 OnlyOffice API 并初始化编辑器
-    await loadOnlyOfficeApi(response.apiJsUrl || `${response.documentServerUrl}/web-apps/apps/api/documents/api.js`);
+    await loadOnlyOfficeApi(
+      response.apiJsUrl ||
+        `${response.documentServerUrl}/web-apps/apps/api/documents/api.js`,
+    );
     initEditorFromConfig(response);
-
-  } catch (e: any) {
-    console.error('加载文档配置失败:', e);
-    error.value = e.message || '加载失败';
+  } catch (error_: any) {
+    console.error('加载文档配置失败:', error_);
+    error.value = error_.message || '加载失败';
     loading.value = false;
   }
 }
@@ -106,19 +110,27 @@ async function loadFromBackend(documentId: number, mode: 'view' | 'edit') {
 /**
  * 直接 URL 模式（兼容旧版）
  */
-async function loadDirectUrl(url: string, filename: string, type: string, ext: string) {
+async function loadDirectUrl(
+  url: string,
+  filename: string,
+  type: string,
+  ext: string,
+) {
   try {
-    const ONLYOFFICE_URL = import.meta.env.VITE_ONLYOFFICE_URL || 'http://localhost:8088';
+    const ONLYOFFICE_URL =
+      import.meta.env.VITE_ONLYOFFICE_URL || 'http://localhost:8088';
     documentTitle.value = filename;
 
-    await loadOnlyOfficeApi(`${ONLYOFFICE_URL}/web-apps/apps/api/documents/api.js`);
-    
+    await loadOnlyOfficeApi(
+      `${ONLYOFFICE_URL}/web-apps/apps/api/documents/api.js`,
+    );
+
     const directConfig = {
       document: {
         fileType: ext,
         key: Date.now().toString(),
         title: filename,
-        url: url,
+        url,
       },
       documentType: type,
       editorConfig: {
@@ -136,8 +148,8 @@ async function loadDirectUrl(url: string, filename: string, type: string, ext: s
     };
 
     initEditor(directConfig);
-  } catch (e: any) {
-    error.value = e.message || '加载失败';
+  } catch (error_: any) {
+    error.value = error_.message || '加载失败';
     loading.value = false;
   }
 }
@@ -155,15 +167,19 @@ function loadOnlyOfficeApi(apiUrl: string): Promise<void> {
 
     const script = document.createElement('script');
     script.src = apiUrl;
-    script.onload = () => {
+    script.addEventListener('load', () => {
       console.log('OnlyOffice API loaded');
       resolve();
-    };
+    });
     script.onerror = (e) => {
       console.error('OnlyOffice API load error:', e);
-      reject(new Error('OnlyOffice 服务未启动，请确保 Docker 中的 OnlyOffice 容器正在运行'));
+      reject(
+        new Error(
+          'OnlyOffice 服务未启动，请确保 Docker 中的 OnlyOffice 容器正在运行',
+        ),
+      );
     };
-    document.head.appendChild(script);
+    document.head.append(script);
   });
 }
 
@@ -213,7 +229,7 @@ function initEditorFromConfig(cfg: OnlyOfficeConfig) {
  * 初始化编辑器
  */
 function initEditor(editorConfig: any) {
-  const container = document.getElementById('onlyoffice-editor');
+  const container = document.querySelector('#onlyoffice-editor');
   if (!container) {
     error.value = '编辑器容器未找到';
     loading.value = false;
@@ -225,9 +241,9 @@ function initEditor(editorConfig: any) {
   try {
     // @ts-ignore
     editorInstance = new DocsAPI.DocEditor('onlyoffice-editor', editorConfig);
-  } catch (e: any) {
-    console.error('DocEditor creation error:', e);
-    error.value = `编辑器创建失败: ${e.message}`;
+  } catch (error_: any) {
+    console.error('DocEditor creation error:', error_);
+    error.value = `编辑器创建失败: ${error_.message}`;
     loading.value = false;
   }
 }
@@ -240,13 +256,13 @@ async function toggleMode() {
   if (!documentId) return;
 
   const newMode = currentMode.value === 'view' ? 'edit' : 'view';
-  
+
   // 刷新页面切换模式
   router.replace({
     path: route.path,
     query: { ...route.query, mode: newMode },
   });
-  
+
   // 重新加载
   window.location.reload();
 }
@@ -262,7 +278,7 @@ function goBack() {
     window.close();
     return;
   }
-  
+
   // 检查是否有历史记录可以返回
   if (window.history.length > 1) {
     router.back();
@@ -282,13 +298,11 @@ function goBack() {
     <!-- 顶部工具栏 -->
     <div class="toolbar">
       <Space>
-        <Button @click="goBack">
-          ← 关闭
-        </Button>
+        <Button @click="goBack"> ← 关闭 </Button>
         <span class="document-title">{{ documentTitle }}</span>
       </Space>
       <Space>
-        <Button 
+        <Button
           v-if="isSupported && route.query.documentId"
           :type="currentMode === 'edit' ? 'primary' : 'default'"
           @click="toggleMode"
@@ -306,11 +320,7 @@ function goBack() {
 
     <!-- 错误提示 -->
     <div v-if="error" class="error-container">
-      <Alert
-        type="error"
-        :message="error"
-        show-icon
-      >
+      <Alert type="error" :message="error" show-icon>
         <template #description>
           <div>
             <p>可能的原因：</p>

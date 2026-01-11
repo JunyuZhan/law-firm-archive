@@ -8,14 +8,14 @@ GET /api/contract/list
 
 查询参数：
 
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| pageNum | number | 页码 |
-| pageSize | number | 每页数量 |
+| 参数       | 类型   | 说明     |
+| ---------- | ------ | -------- |
+| pageNum    | number | 页码     |
+| pageSize   | number | 每页数量 |
 | contractNo | string | 合同编号 |
-| name | string | 合同名称 |
-| clientId | number | 客户ID |
-| status | string | 状态 |
+| name       | string | 合同名称 |
+| clientId   | number | 客户ID   |
+| status     | string | 状态     |
 
 ## 已审批合同列表
 
@@ -38,6 +38,7 @@ POST /api/contract
 ```
 
 请求：
+
 ```json
 {
   "name": "法律服务合同",
@@ -69,6 +70,7 @@ POST /api/contract/{id}/approve
 ```
 
 请求：
+
 ```json
 {
   "approved": true,
@@ -78,29 +80,29 @@ POST /api/contract/{id}/approve
 
 ## 合同类型
 
-| 值 | 说明 |
-|------|------|
-| SERVICE | 法律服务合同 |
+| 值         | 说明         |
+| ---------- | ------------ |
+| SERVICE    | 法律服务合同 |
 | LITIGATION | 诉讼代理合同 |
-| COUNSEL | 法律顾问合同 |
+| COUNSEL    | 法律顾问合同 |
 
 ## 收费方式
 
-| 值 | 说明 |
-|------|------|
-| FIXED | 固定收费 |
-| HOURLY | 计时收费 |
+| 值          | 说明     |
+| ----------- | -------- |
+| FIXED       | 固定收费 |
+| HOURLY      | 计时收费 |
 | CONTINGENCY | 风险代理 |
-| MIXED | 混合收费 |
+| MIXED       | 混合收费 |
 
 ## 合同状态
 
-| 值 | 说明 |
-|------|------|
-| DRAFT | 草稿 |
-| PENDING | 待审批 |
-| APPROVED | 已审批 |
-| REJECTED | 已拒绝 |
-| ACTIVE | 执行中 |
-| COMPLETED | 已完成 |
+| 值         | 说明   |
+| ---------- | ------ |
+| DRAFT      | 草稿   |
+| PENDING    | 待审批 |
+| APPROVED   | 已审批 |
+| REJECTED   | 已拒绝 |
+| ACTIVE     | 执行中 |
+| COMPLETED  | 已完成 |
 | TERMINATED | 已终止 |

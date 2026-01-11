@@ -1,12 +1,26 @@
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue';
+import type { LetterTemplateDTO } from '#/api/admin';
+
+import { reactive, ref } from 'vue';
+
 import { useVbenModal } from '@vben/common-ui';
-import { message, Alert, Button, Space, Divider, Form, FormItem, Input, Select, Textarea, Row, Col } from 'ant-design-vue';
+
 import {
-  createTemplate,
-  updateTemplate,
-  type LetterTemplateDTO,
-} from '#/api/admin';
+  Alert,
+  Button,
+  Col,
+  Divider,
+  Form,
+  FormItem,
+  Input,
+  message,
+  Row,
+  Select,
+  Space,
+  Textarea,
+} from 'ant-design-vue';
+
+import { createTemplate, updateTemplate } from '#/api/admin';
 import RichTextEditor from '#/components/RichTextEditor/index.vue';
 
 const emit = defineEmits<{
@@ -25,19 +39,51 @@ const formData = reactive({
 const letterVariables = [
   { label: '项目名称', value: 'matterName', description: '委托项目/案件名称' },
   { label: '案由', value: 'causeOfAction', description: '案件案由' },
-  { label: '案件阶段', value: 'trialStage', description: '案件审理阶段（一审、二审、再审等）' },
-  { label: '程序阶段', value: 'procedureStage', description: '程序阶段（一审、二审、再审等，与案件阶段同义）' },
-  { label: '承办律师', value: 'lawyerNames', description: '承办律师姓名（多人逗号分隔）' },
-  { label: '律师执业证号', value: 'lawyerLicenseNo', description: '承办律师执业证号' },
-  { label: '委托人姓名', value: 'clientName', description: '委托人/当事人姓名' },
-  { label: '委托人身份证号', value: 'clientIdNumber', description: '委托人身份证号码' },
-  { label: '对方当事人', value: 'opposingParty', description: '对方当事人姓名' },
+  {
+    label: '案件阶段',
+    value: 'trialStage',
+    description: '案件审理阶段（一审、二审、再审等）',
+  },
+  {
+    label: '程序阶段',
+    value: 'procedureStage',
+    description: '程序阶段（一审、二审、再审等，与案件阶段同义）',
+  },
+  {
+    label: '承办律师',
+    value: 'lawyerNames',
+    description: '承办律师姓名（多人逗号分隔）',
+  },
+  {
+    label: '律师执业证号',
+    value: 'lawyerLicenseNo',
+    description: '承办律师执业证号',
+  },
+  {
+    label: '委托人姓名',
+    value: 'clientName',
+    description: '委托人/当事人姓名',
+  },
+  {
+    label: '委托人身份证号',
+    value: 'clientIdNumber',
+    description: '委托人身份证号码',
+  },
+  {
+    label: '对方当事人',
+    value: 'opposingParty',
+    description: '对方当事人姓名',
+  },
   { label: '目标单位', value: 'targetUnit', description: '函件送达单位' },
   { label: '目标地址', value: 'targetAddress', description: '函件送达地址' },
   { label: '律所名称', value: 'firmName', description: '律师事务所全称' },
   { label: '律所地址', value: 'firmAddress', description: '律师事务所地址' },
   { label: '律所电话', value: 'firmPhone', description: '律师事务所电话' },
-  { label: '律所执业许可证', value: 'firmLicense', description: '律师事务所执业许可证号' },
+  {
+    label: '律所执业许可证',
+    value: 'firmLicense',
+    description: '律师事务所执业许可证号',
+  },
   { label: '函件编号', value: 'letterNo', description: '出函编号' },
   { label: '出函日期', value: 'date', description: '出函日期' },
   { label: '当前年份', value: 'currentYear', description: '当前年份' },
@@ -225,48 +271,83 @@ defineExpose({
     <Form :label-col="{ span: 4 }" :wrapper-col="{ span: 19 }">
       <Row :gutter="[16, 8]">
         <Col :xs="24" :md="12">
-          <FormItem label="模板名称" required :label-col="{ span: 8 }" :wrapper-col="{ span: 16 }">
+          <FormItem
+            label="模板名称"
+            required
+            :label-col="{ span: 8 }"
+            :wrapper-col="{ span: 16 }"
+          >
             <Input v-model:value="formData.name" placeholder="如：律师介绍信" />
           </FormItem>
         </Col>
         <Col :xs="24" :md="12">
-          <FormItem label="函件类型" required :label-col="{ span: 8 }" :wrapper-col="{ span: 16 }">
-            <Select v-model:value="formData.letterType" :options="letterTypeOptions" style="width: 100%" />
+          <FormItem
+            label="函件类型"
+            required
+            :label-col="{ span: 8 }"
+            :wrapper-col="{ span: 16 }"
+          >
+            <Select
+              v-model:value="formData.letterType"
+              :options="letterTypeOptions"
+              style="width: 100%"
+            />
           </FormItem>
         </Col>
       </Row>
       <FormItem label="描述">
-        <Textarea v-model:value="formData.description" :rows="2" placeholder="模板用途说明" />
+        <Textarea
+          v-model:value="formData.description"
+          :rows="2"
+          placeholder="模板用途说明"
+        />
       </FormItem>
     </Form>
 
     <Divider style="margin: 12px 0" />
 
-    <Alert 
-      message="提示：使用工具栏插入变量，变量会在生成实际函件时自动替换为真实数据" 
-      type="info" 
-      show-icon 
+    <Alert
+      message="提示：使用工具栏插入变量，变量会在生成实际函件时自动替换为真实数据"
+      type="info"
+      show-icon
       style="margin-bottom: 12px"
     />
-    
-    <div style="margin-bottom: 12px;">
-      <span style=" margin-right: 12px; font-size: 13px;color: #666;">快速加载模板：</span>
+
+    <div style="margin-bottom: 12px">
+      <span style="margin-right: 12px; font-size: 13px; color: #666"
+        >快速加载模板：</span
+      >
       <Space>
-        <Button size="small" @click="loadDefaultTemplate('introduction')">介绍信</Button>
-        <Button size="small" @click="loadDefaultTemplate('meeting')">会见函</Button>
-        <Button size="small" @click="loadDefaultTemplate('fileReview')">阅卷函</Button>
-        <Button size="small" @click="loadDefaultTemplate('investigation')">调查函</Button>
+        <Button size="small" @click="loadDefaultTemplate('introduction')">
+          介绍信
+        </Button>
+        <Button size="small" @click="loadDefaultTemplate('meeting')">
+          会见函
+        </Button>
+        <Button size="small" @click="loadDefaultTemplate('fileReview')">
+          阅卷函
+        </Button>
+        <Button size="small" @click="loadDefaultTemplate('investigation')">
+          调查函
+        </Button>
       </Space>
     </div>
-    
-    <RichTextEditor 
-      v-model="formData.content" 
+
+    <RichTextEditor
+      v-model="formData.content"
       height="450px"
       placeholder="请输入函件模板内容..."
       :variables="letterVariables"
     />
 
-    <div style=" padding-top: 16px;margin-top: 16px; text-align: right; border-top: 1px solid #e8e8e8;">
+    <div
+      style="
+        padding-top: 16px;
+        margin-top: 16px;
+        text-align: right;
+        border-top: 1px solid #e8e8e8;
+      "
+    >
       <Space>
         <Button @click="modalApi.close()">取消</Button>
         <Button type="primary" @click="handleSave">保存模板</Button>

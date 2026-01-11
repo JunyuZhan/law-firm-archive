@@ -157,4 +157,3 @@ export interface ApproveMigrateRequest {
   comment?: string;
   deleteFiles?: boolean;
 }
-

@@ -71,13 +71,13 @@ export const REMINDER_OPTIONS = [
 
 /** 查询日程列表 */
 export function getSchedules(params: {
-  userId?: number;
-  matterId?: number;
-  scheduleType?: string;
-  startTime?: string;
   endTime?: string;
+  matterId?: number;
   pageNum?: number;
   pageSize?: number;
+  scheduleType?: string;
+  startTime?: string;
+  userId?: number;
 }) {
   return requestClient.get<ScheduleDTO[]>('/schedules', { params });
 }
@@ -109,7 +109,9 @@ export function cancelSchedule(id: number) {
 
 /** 获取用户某天的日程 */
 export function getSchedulesByUserAndDate(userId: number, date: string) {
-  return requestClient.get<ScheduleDTO[]>(`/schedules/user/${userId}/date/${date}`);
+  return requestClient.get<ScheduleDTO[]>(
+    `/schedules/user/${userId}/date/${date}`,
+  );
 }
 
 /** 获取我今天的日程 */
@@ -119,6 +121,7 @@ export function getMyTodaySchedules() {
 
 /** 获取我近期的日程 */
 export function getMyUpcomingSchedules(days: number = 7, limit: number = 10) {
-  return requestClient.get<ScheduleDTO[]>('/schedules/my/upcoming', { params: { days, limit } });
+  return requestClient.get<ScheduleDTO[]>('/schedules/my/upcoming', {
+    params: { days, limit },
+  });
 }
-

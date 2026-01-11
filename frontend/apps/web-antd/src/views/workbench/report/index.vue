@@ -1,36 +1,40 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount } from 'vue';
-import { message } from 'ant-design-vue';
+import type { GenerateReportCommand } from '#/api/workbench/report';
+import type {
+  ClientStats,
+  LawyerPerformance,
+  MatterStats,
+  RevenueStats,
+} from '#/api/workbench/statistics';
+
+import { onBeforeUnmount, onMounted, ref } from 'vue';
+
 import { Page } from '@vben/common-ui';
-import {
-  Card,
-  Row,
-  Col,
-  Statistic,
-  Button,
-  Space,
-  Tabs,
-  TabPane,
-  DatePicker,
-  Spin,
-} from 'ant-design-vue';
-import dayjs from 'dayjs';
 // 使用项目封装的 echarts
 import echarts from '@vben/plugins/echarts';
+
 import {
-  getRevenueStats,
-  getMatterStats,
+  Button,
+  Card,
+  Col,
+  DatePicker,
+  message,
+  Row,
+  Space,
+  Spin,
+  Statistic,
+  TabPane,
+  Tabs,
+} from 'ant-design-vue';
+import dayjs from 'dayjs';
+
+import { generateReport } from '#/api/workbench/report';
+import {
   getClientStats,
   getLawyerPerformanceRanking,
-  type RevenueStats,
-  type MatterStats,
-  type ClientStats,
-  type LawyerPerformance,
+  getMatterStats,
+  getRevenueStats,
 } from '#/api/workbench/statistics';
-import {
-  generateReport,
-  type GenerateReportCommand,
-} from '#/api/workbench/report';
 
 defineOptions({ name: 'ReportCenter' });
 
@@ -43,7 +47,7 @@ const dateRange = ref<[dayjs.Dayjs, dayjs.Dayjs]>([
 ]);
 
 // 统计数据
-const revenueStats = ref<RevenueStats | null>(null);
+const revenueStats = ref<null | RevenueStats>(null);
 const matterStats = ref<MatterStats | null>(null);
 const clientStats = ref<ClientStats | null>(null);
 const lawyerRanking = ref<LawyerPerformance[]>([]);
@@ -86,7 +90,7 @@ async function loadRevenueStats() {
     revenueStats.value = data;
     renderRevenueTrendChart();
   } catch (error: any) {
-    message.error('加载收入统计失败：' + (error.message || '未知错误'));
+    message.error(`加载收入统计失败：${error.message || '未知错误'}`);
   }
 }
 
@@ -98,7 +102,7 @@ async function loadMatterStats() {
     renderMatterStatusChart();
     renderMatterTypeChart();
   } catch (error: any) {
-    message.error('加载项目统计失败：' + (error.message || '未知错误'));
+    message.error(`加载项目统计失败：${error.message || '未知错误'}`);
   }
 }
 
@@ -109,7 +113,7 @@ async function loadClientStats() {
     clientStats.value = data;
     renderClientTypeChart();
   } catch (error: any) {
-    message.error('加载客户统计失败：' + (error.message || '未知错误'));
+    message.error(`加载客户统计失败：${error.message || '未知错误'}`);
   }
 }
 
@@ -120,18 +124,18 @@ async function loadLawyerRanking() {
     lawyerRanking.value = data || [];
     renderLawyerRankingChart();
   } catch (error: any) {
-    message.error('加载律师业绩排行失败：' + (error.message || '未知错误'));
+    message.error(`加载律师业绩排行失败：${error.message || '未知错误'}`);
   }
 }
 
 // 渲染收入趋势图
 function renderRevenueTrendChart() {
   if (!revenueTrendChartRef.value || !revenueStats.value) return;
-  
+
   const chart = getOrCreateChart(revenueTrendChartRef.value);
   if (!chart) return;
   const trends = revenueStats.value.trends || [];
-  
+
   chart.setOption({
     title: {
       text: '收入趋势',
@@ -147,13 +151,13 @@ function renderRevenueTrendChart() {
     },
     xAxis: {
       type: 'category',
-      data: trends.map(t => t.period),
+      data: trends.map((t) => t.period),
     },
     yAxis: {
       type: 'value',
       axisLabel: {
         formatter: (value: number) => {
-          if (value >= 10000) return (value / 10000).toFixed(1) + '万';
+          if (value >= 10_000) return `${(value / 10_000).toFixed(1)}万`;
           return value.toString();
         },
       },
@@ -162,7 +166,7 @@ function renderRevenueTrendChart() {
       {
         name: '收入',
         type: 'line',
-        data: trends.map(t => getNumberValue(t.amount)),
+        data: trends.map((t) => getNumberValue(t.amount)),
         smooth: true,
         areaStyle: {},
         itemStyle: {
@@ -176,11 +180,11 @@ function renderRevenueTrendChart() {
 // 渲染项目状态分布图
 function renderMatterStatusChart() {
   if (!matterStatusChartRef.value || !matterStats.value) return;
-  
+
   const chart = getOrCreateChart(matterStatusChartRef.value);
   if (!chart) return;
   const statusCount = matterStats.value.statusCount || {};
-  
+
   chart.setOption({
     title: {
       text: '项目状态分布',
@@ -218,11 +222,11 @@ function renderMatterStatusChart() {
 // 渲染项目类型分布图
 function renderMatterTypeChart() {
   if (!matterTypeChartRef.value || !matterStats.value) return;
-  
+
   const chart = getOrCreateChart(matterTypeChartRef.value);
   if (!chart) return;
   const typeCount = matterStats.value.typeCount || {};
-  
+
   chart.setOption({
     title: {
       text: '项目类型分布',
@@ -236,7 +240,9 @@ function renderMatterTypeChart() {
     },
     xAxis: {
       type: 'category',
-      data: Object.entries(typeCount).map(([type]) => matterTypeMap[type] || type),
+      data: Object.entries(typeCount).map(
+        ([type]) => matterTypeMap[type] || type,
+      ),
     },
     yAxis: {
       type: 'value',
@@ -257,11 +263,11 @@ function renderMatterTypeChart() {
 // 渲染客户类型分布图
 function renderClientTypeChart() {
   if (!clientTypeChartRef.value || !clientStats.value) return;
-  
+
   const chart = getOrCreateChart(clientTypeChartRef.value);
   if (!chart) return;
   const typeCount = clientStats.value.typeCount || {};
-  
+
   chart.setOption({
     title: {
       text: '客户类型分布',
@@ -308,11 +314,11 @@ function renderClientTypeChart() {
 
 // 渲染律师业绩排行图
 function renderLawyerRankingChart() {
-  if (!lawyerRankingChartRef.value || !lawyerRanking.value.length) return;
-  
+  if (!lawyerRankingChartRef.value || lawyerRanking.value.length === 0) return;
+
   const chart = getOrCreateChart(lawyerRankingChartRef.value);
   if (!chart) return;
-  
+
   chart.setOption({
     title: {
       text: '律师业绩排行（Top 10）',
@@ -337,21 +343,21 @@ function renderLawyerRankingChart() {
       type: 'value',
       axisLabel: {
         formatter: (value: number) => {
-          if (value >= 10000) return (value / 10000).toFixed(1) + '万';
+          if (value >= 10_000) return `${(value / 10_000).toFixed(1)}万`;
           return value.toString();
         },
       },
     },
     yAxis: {
       type: 'category',
-      data: lawyerRanking.value.map(l => l.lawyerName),
+      data: lawyerRanking.value.map((l) => l.lawyerName),
       inverse: true,
     },
     series: [
       {
         name: '收入',
         type: 'bar',
-        data: lawyerRanking.value.map(l => getNumberValue(l.revenue)),
+        data: lawyerRanking.value.map((l) => getNumberValue(l.revenue)),
         itemStyle: {
           color: '#faad14',
         },
@@ -389,32 +395,39 @@ async function handleExportReport(reportType: string) {
     await generateReport(command);
     message.success('报表生成任务已提交，请稍后查看报表列表');
   } catch (error: any) {
-    message.error('导出报表失败：' + (error.message || '未知错误'));
+    message.error(`导出报表失败：${error.message || '未知错误'}`);
   }
 }
 
 // 格式化金额（处理BigDecimal类型）
-function formatCurrency(amount: number | string | undefined | null | any): string {
+function formatCurrency(
+  amount: any | null | number | string | undefined,
+): string {
   if (amount === undefined || amount === null) return '¥0.00';
-  
+
   // 如果是对象（BigDecimal序列化后的结果），尝试提取值
   let numValue: number;
   if (typeof amount === 'object') {
     // BigDecimal序列化后可能是 {value: "123.45"} 或类似结构
-    numValue = parseFloat(amount.toString() || '0');
+    numValue = Number.parseFloat(amount.toString() || '0');
   } else {
     numValue = Number(amount);
   }
-  
+
   if (isNaN(numValue)) return '¥0.00';
-  return '¥' + numValue.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return `¥${numValue.toLocaleString('zh-CN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
 }
 
 // 获取数值（处理BigDecimal）
-function getNumberValue(value: number | string | undefined | null | any): number {
+function getNumberValue(
+  value: any | null | number | string | undefined,
+): number {
   if (value === undefined || value === null) return 0;
   if (typeof value === 'object') {
-    return parseFloat(value.toString() || '0');
+    return Number.parseFloat(value.toString() || '0');
   }
   return Number(value) || 0;
 }
@@ -422,20 +435,20 @@ function getNumberValue(value: number | string | undefined | null | any): number
 // 获取或创建图表实例（避免重复初始化）
 function getOrCreateChart(dom: HTMLElement | null): echarts.ECharts | null {
   if (!dom) return null;
-  
+
   // 检查是否已存在实例
   const existingChart = echarts.getInstanceByDom(dom);
   if (existingChart) {
     // 如果已存在，先销毁再创建新实例
     existingChart.dispose();
   }
-  
+
   // 创建新实例
   return echarts.init(dom);
 }
 
 // Tab切换
-function handleTabChange(key: string | number) {
+function handleTabChange(key: number | string) {
   activeTab.value = String(key);
   if (key === 'overview') {
     setTimeout(() => {
@@ -453,7 +466,7 @@ function disposeAllCharts() {
     clientTypeChartRef.value,
     lawyerRankingChartRef.value,
   ];
-  
+
   chartRefs.forEach((ref) => {
     if (ref) {
       const chart = echarts.getInstanceByDom(ref);
@@ -476,107 +489,164 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <Page title="报表中心" description="查看各类业务数据统计图表，直观了解业务情况">
+  <Page
+    title="报表中心"
+    description="查看各类业务数据统计图表，直观了解业务情况"
+  >
     <Spin :spinning="loading">
-      <Tabs v-model:activeKey="activeTab" @change="handleTabChange">
+      <Tabs v-model:active-key="activeTab" @change="handleTabChange">
         <TabPane key="overview" tab="数据概览">
           <!-- 收入统计卡片 -->
-          <Card title="收入统计" style="margin-bottom: 16px;">
+          <Card title="收入统计" style="margin-bottom: 16px">
             <Row :gutter="16">
               <Col :xs="24" :sm="12" :md="6">
                 <Statistic
                   title="总收入"
-                  :value="formatCurrency(getNumberValue(revenueStats?.totalRevenue))"
+                  :value="
+                    formatCurrency(getNumberValue(revenueStats?.totalRevenue))
+                  "
                 />
               </Col>
               <Col :xs="24" :sm="12" :md="6">
                 <Statistic
                   title="本月收入"
-                  :value="formatCurrency(getNumberValue(revenueStats?.monthlyRevenue))"
+                  :value="
+                    formatCurrency(getNumberValue(revenueStats?.monthlyRevenue))
+                  "
                 />
               </Col>
               <Col :xs="24" :sm="12" :md="6">
                 <Statistic
                   title="本年收入"
-                  :value="formatCurrency(getNumberValue(revenueStats?.yearlyRevenue))"
+                  :value="
+                    formatCurrency(getNumberValue(revenueStats?.yearlyRevenue))
+                  "
                 />
               </Col>
               <Col :xs="24" :sm="12" :md="6">
                 <Statistic
                   title="待收金额"
-                  :value="formatCurrency(getNumberValue(revenueStats?.pendingRevenue))"
+                  :value="
+                    formatCurrency(getNumberValue(revenueStats?.pendingRevenue))
+                  "
                 />
               </Col>
             </Row>
-            <div ref="revenueTrendChartRef" style="width: 100%; height: 400px; margin-top: 24px;"></div>
+            <div
+              ref="revenueTrendChartRef"
+              style="width: 100%; height: 400px; margin-top: 24px"
+            ></div>
           </Card>
 
           <!-- 项目统计卡片 -->
-          <Card title="项目统计" style="margin-bottom: 16px;">
+          <Card title="项目统计" style="margin-bottom: 16px">
             <Row :gutter="16">
               <Col :xs="24" :sm="8">
-                <Statistic title="总项目数" :value="matterStats?.totalMatters || 0" />
+                <Statistic
+                  title="总项目数"
+                  :value="matterStats?.totalMatters || 0"
+                />
               </Col>
               <Col :xs="24" :sm="8">
-                <Statistic title="进行中" :value="matterStats?.activeMatters || 0" />
+                <Statistic
+                  title="进行中"
+                  :value="matterStats?.activeMatters || 0"
+                />
               </Col>
               <Col :xs="24" :sm="8">
-                <Statistic title="已完成" :value="matterStats?.completedMatters || 0" />
+                <Statistic
+                  title="已完成"
+                  :value="matterStats?.completedMatters || 0"
+                />
               </Col>
             </Row>
-            <Row :gutter="16" style="margin-top: 24px;">
+            <Row :gutter="16" style="margin-top: 24px">
               <Col :xs="24" :sm="12">
-                <div ref="matterStatusChartRef" style="width: 100%; height: 300px;"></div>
+                <div
+                  ref="matterStatusChartRef"
+                  style="width: 100%; height: 300px"
+                ></div>
               </Col>
               <Col :xs="24" :sm="12">
-                <div ref="matterTypeChartRef" style="width: 100%; height: 300px;"></div>
+                <div
+                  ref="matterTypeChartRef"
+                  style="width: 100%; height: 300px"
+                ></div>
               </Col>
             </Row>
           </Card>
 
           <!-- 客户统计卡片 -->
-          <Card title="客户统计" style="margin-bottom: 16px;">
+          <Card title="客户统计" style="margin-bottom: 16px">
             <Row :gutter="16">
               <Col :xs="24" :sm="6">
-                <Statistic title="总客户数" :value="clientStats?.totalClients || 0" />
+                <Statistic
+                  title="总客户数"
+                  :value="clientStats?.totalClients || 0"
+                />
               </Col>
               <Col :xs="24" :sm="6">
-                <Statistic title="正式客户" :value="clientStats?.formalClients || 0" />
+                <Statistic
+                  title="正式客户"
+                  :value="clientStats?.formalClients || 0"
+                />
               </Col>
               <Col :xs="24" :sm="6">
-                <Statistic title="潜在客户" :value="clientStats?.potentialClients || 0" />
+                <Statistic
+                  title="潜在客户"
+                  :value="clientStats?.potentialClients || 0"
+                />
               </Col>
               <Col :xs="24" :sm="6">
-                <Statistic title="本月新增" :value="clientStats?.newClientsThisMonth || 0" />
+                <Statistic
+                  title="本月新增"
+                  :value="clientStats?.newClientsThisMonth || 0"
+                />
               </Col>
             </Row>
-            <div ref="clientTypeChartRef" style="width: 100%; height: 400px; margin-top: 24px;"></div>
+            <div
+              ref="clientTypeChartRef"
+              style="width: 100%; height: 400px; margin-top: 24px"
+            ></div>
           </Card>
 
           <!-- 律师业绩排行 -->
           <Card title="律师业绩排行">
-            <div ref="lawyerRankingChartRef" style="width: 100%; height: 400px;"></div>
+            <div
+              ref="lawyerRankingChartRef"
+              style="width: 100%; height: 400px"
+            ></div>
           </Card>
         </TabPane>
 
         <TabPane key="export" tab="导出报表">
           <Card>
-            <Space direction="vertical" style="width: 100%;" size="large">
+            <Space direction="vertical" style="width: 100%" size="large">
               <div>
                 <h3>选择时间范围</h3>
                 <DatePicker.RangePicker
                   v-model:value="dateRange"
-                  style="width: 100%; max-width: 400px;"
+                  style="width: 100%; max-width: 400px"
                 />
               </div>
               <div>
                 <h3>选择报表类型</h3>
                 <Space wrap>
-                  <Button @click="handleExportReport('REVENUE')">导出收入报表</Button>
-                  <Button @click="handleExportReport('MATTER')">导出项目报表</Button>
-                  <Button @click="handleExportReport('CLIENT')">导出客户报表</Button>
-                  <Button @click="handleExportReport('LAWYER_PERFORMANCE')">导出律师业绩报表</Button>
-                  <Button @click="handleExportReport('RECEIVABLE')">导出应收报表</Button>
+                  <Button @click="handleExportReport('REVENUE')">
+                    导出收入报表
+                  </Button>
+                  <Button @click="handleExportReport('MATTER')">
+                    导出项目报表
+                  </Button>
+                  <Button @click="handleExportReport('CLIENT')">
+                    导出客户报表
+                  </Button>
+                  <Button @click="handleExportReport('LAWYER_PERFORMANCE')">
+                    导出律师业绩报表
+                  </Button>
+                  <Button @click="handleExportReport('RECEIVABLE')">
+                    导出应收报表
+                  </Button>
                 </Space>
               </div>
             </Space>

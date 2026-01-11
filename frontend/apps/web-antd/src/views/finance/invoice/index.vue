@@ -1,35 +1,44 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue';
-import { message, Modal } from 'ant-design-vue';
+import type { VxeGridProps } from '#/adapter/vxe-table';
+import type { ClientDTO } from '#/api/client/types';
+import type {
+  CreateInvoiceCommand,
+  InvoiceDTO,
+  InvoiceQuery,
+} from '#/api/finance/types';
+
+import { onMounted, reactive, ref } from 'vue';
+
 import { Page } from '@vben/common-ui';
+import { Plus } from '@vben/icons';
+
 import {
-  Card,
   Button,
-  Space,
-  Tag,
-  Select,
+  Card,
+  Col,
   Form,
   FormItem,
   Input,
   InputNumber,
-  Textarea,
+  message,
+  Modal,
   Row,
-  Col,
+  Select,
+  Space,
   Tabs,
+  Tag,
+  Textarea,
 } from 'ant-design-vue';
-import { Plus } from '@vben/icons';
-import type { VxeGridProps } from '#/adapter/vxe-table';
+
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
-import {
-  getInvoiceList,
-  getInvoiceDetail,
-  applyInvoice,
-  issueInvoice,
-  cancelInvoice,
-} from '#/api/finance';
 import { getClientSelectOptions } from '#/api/client';
-import type { InvoiceDTO, InvoiceQuery, CreateInvoiceCommand } from '#/api/finance/types';
-import type { ClientDTO } from '#/api/client/types';
+import {
+  applyInvoice,
+  cancelInvoice,
+  getInvoiceDetail,
+  getInvoiceList,
+  issueInvoice,
+} from '#/api/finance';
 
 defineOptions({ name: 'FinanceInvoice' });
 
@@ -67,7 +76,9 @@ const queryParams = ref<InvoiceQuery>({
   createdAtTo: `${currentYear}-12-31T23:59:59`,
 });
 
-const formData = reactive<Partial<CreateInvoiceCommand> & { taxAmount?: number; totalAmount?: number }>({
+const formData = reactive<
+  Partial<CreateInvoiceCommand> & { taxAmount?: number; totalAmount?: number }
+>({
   clientId: undefined,
   invoiceType: 'GENERAL',
   title: '',
@@ -96,21 +107,50 @@ const statusOptions = [
 
 // ==================== 表格配置 ====================
 
-const gridColumns: VxeGridProps['gridOptions']['columns'] = [
+const gridColumns: VxeGridProps['columns'] = [
   { title: '发票编号', field: 'invoiceNo', width: 130 },
   { title: '客户名称', field: 'clientName', minWidth: 150 },
   { title: '发票抬头', field: 'title', minWidth: 180, showOverflow: true },
   { title: '发票类型', field: 'invoiceTypeName', width: 100 },
-  { title: '发票金额', field: 'totalAmount', width: 120, slots: { default: 'totalAmount' } },
-  { title: '税额', field: 'taxAmount', width: 100, slots: { default: 'taxAmount' } },
+  {
+    title: '发票金额',
+    field: 'totalAmount',
+    width: 120,
+    slots: { default: 'totalAmount' },
+  },
+  {
+    title: '税额',
+    field: 'taxAmount',
+    width: 100,
+    slots: { default: 'taxAmount' },
+  },
   { title: '申请日期', field: 'createdAt', width: 120 },
   { title: '开票日期', field: 'invoiceDate', width: 120 },
-  { title: '状态', field: 'statusName', width: 100, slots: { default: 'status' } },
-  { title: '操作', field: 'action', width: 150, fixed: 'right', slots: { default: 'action' } },
+  {
+    title: '状态',
+    field: 'statusName',
+    width: 100,
+    slots: { default: 'status' },
+  },
+  {
+    title: '操作',
+    field: 'action',
+    width: 150,
+    fixed: 'right',
+    slots: { default: 'action' },
+  },
 ];
 
-async function loadData({ page }: { page: { currentPage: number; pageSize: number } }) {
-  const params = { ...queryParams.value, pageNum: page.currentPage, pageSize: page.pageSize };
+async function loadData({
+  page,
+}: {
+  page: { currentPage: number; pageSize: number };
+}) {
+  const params = {
+    ...queryParams.value,
+    pageNum: page.currentPage,
+    pageSize: page.pageSize,
+  };
   const res = await getInvoiceList(params);
   return { items: res.list || [], total: res.total || 0 };
 }
@@ -128,7 +168,10 @@ const [Grid, gridApi] = useVbenVxeGrid({
 
 async function loadOptions() {
   try {
-    const clientRes = await getClientSelectOptions({ pageNum: 1, pageSize: 1000 });
+    const clientRes = await getClientSelectOptions({
+      pageNum: 1,
+      pageSize: 1000,
+    });
     clients.value = clientRes.list;
   } catch (error: any) {
     console.error('加载选项失败:', error);
@@ -159,10 +202,10 @@ function handleYearChange(value: any) {
 
 function handleReset() {
   selectedYear.value = currentYear;
-  queryParams.value = { 
-    pageNum: 1, 
-    pageSize: 10, 
-    status: undefined, 
+  queryParams.value = {
+    pageNum: 1,
+    pageSize: 10,
+    status: undefined,
     clientId: undefined,
     createdAtFrom: `${currentYear}-01-01T00:00:00`,
     createdAtTo: `${currentYear}-12-31T23:59:59`,
@@ -170,16 +213,30 @@ function handleReset() {
   gridApi.reload();
 }
 
-function handleTabChange(key: string | number) {
+function handleTabChange(key: number | string) {
   activeTab.value = String(key);
-  if (key === 'all') {
-    queryParams.value.status = undefined;
-  } else if (key === 'pending') {
-    queryParams.value.status = 'PENDING';
-  } else if (key === 'approved') {
-    queryParams.value.status = 'APPROVED';
-  } else if (key === 'issued') {
-    queryParams.value.status = 'ISSUED';
+  switch (key) {
+    case 'all': {
+      queryParams.value.status = undefined;
+
+      break;
+    }
+    case 'approved': {
+      queryParams.value.status = 'APPROVED';
+
+      break;
+    }
+    case 'issued': {
+      queryParams.value.status = 'ISSUED';
+
+      break;
+    }
+    case 'pending': {
+      queryParams.value.status = 'PENDING';
+
+      break;
+    }
+    // No default
   }
   gridApi.reload();
 }
@@ -213,12 +270,14 @@ async function handleView(row: InvoiceDTO) {
 async function handleSave() {
   try {
     await formRef.value?.validate();
-    
+
     if (formData.amount && formData.taxRate) {
-      formData.taxAmount = Number((formData.amount * formData.taxRate / 100).toFixed(2));
+      formData.taxAmount = Number(
+        ((formData.amount * formData.taxRate) / 100).toFixed(2),
+      );
       formData.totalAmount = formData.amount + formData.taxAmount;
     }
-    
+
     const submitData: CreateInvoiceCommand = {
       clientId: formData.clientId!,
       invoiceType: formData.invoiceType!,
@@ -227,7 +286,7 @@ async function handleSave() {
       taxRate: formData.taxRate,
       remark: formData.remark,
     };
-    
+
     await applyInvoice(submitData);
     message.success('申请开票成功');
     modalVisible.value = false;
@@ -287,7 +346,9 @@ function handleCancel(row: InvoiceDTO) {
 
 function calculateTax() {
   if (formData.amount && formData.taxRate) {
-    formData.taxAmount = Number((formData.amount * formData.taxRate / 100).toFixed(2));
+    formData.taxAmount = Number(
+      ((formData.amount * formData.taxRate) / 100).toFixed(2),
+    );
     formData.totalAmount = formData.amount + formData.taxAmount;
   }
 }
@@ -303,7 +364,8 @@ function getStatusColor(status: string) {
 }
 
 function formatAmount(row: InvoiceDTO) {
-  const total = row.amount && row.taxAmount ? (row.amount + row.taxAmount) : row.amount || 0;
+  const total =
+    row.amount && row.taxAmount ? row.amount + row.taxAmount : row.amount || 0;
   return `¥${total.toLocaleString()}`;
 }
 
@@ -315,7 +377,7 @@ onMounted(() => {
 <template>
   <Page title="发票管理" description="管理发票申请与开具">
     <Card>
-      <Tabs v-model:activeKey="activeTab" @change="handleTabChange">
+      <Tabs v-model:active-key="activeTab" @change="handleTabChange">
         <Tabs.TabPane key="all" tab="全部" />
         <Tabs.TabPane key="pending" tab="待审批" />
         <Tabs.TabPane key="approved" tab="待开票" />
@@ -338,7 +400,7 @@ onMounted(() => {
             <Select
               v-model:value="queryParams.status"
               placeholder="发票状态"
-              allowClear
+              allow-clear
               style="width: 100%"
               :options="statusOptions"
             />
@@ -347,18 +409,30 @@ onMounted(() => {
             <Select
               v-model:value="queryParams.clientId"
               placeholder="客户"
-              allowClear
-              showSearch
-              :filterOption="(input: string, option: any) => (option?.label || '').toLowerCase().includes(input.toLowerCase())"
+              allow-clear
+              show-search
+              :filter-option="
+                (input: string, option: any) =>
+                  (option?.label || '')
+                    .toLowerCase()
+                    .includes(input.toLowerCase())
+              "
               style="width: 100%"
-              :options="clients.map(c => ({ label: c.clientNo ? `[${c.clientNo}] ${c.name}` : c.name, value: c.id }))"
+              :options="
+                clients.map((c) => ({
+                  label: c.clientNo ? `[${c.clientNo}] ${c.name}` : c.name,
+                  value: c.id,
+                }))
+              "
             />
           </Col>
           <Col :xs="24" :sm="24" :md="12">
             <Space>
               <Button type="primary" @click="handleSearch">查询</Button>
               <Button @click="handleReset">重置</Button>
-              <Button type="primary" @click="handleAdd"><Plus class="size-4" />申请开票</Button>
+              <Button type="primary" @click="handleAdd">
+                <Plus class="size-4" />申请开票
+              </Button>
             </Space>
           </Col>
         </Row>
@@ -377,8 +451,15 @@ onMounted(() => {
         <template #action="{ row }">
           <Space>
             <a @click="handleView(row)">查看</a>
-            <a v-if="row.status === 'APPROVED'" @click="handleIssue(row)">开具</a>
-            <a v-if="row.status === 'ISSUED'" @click="handleCancel(row)" style="color: red">作废</a>
+            <a v-if="row.status === 'APPROVED'" @click="handleIssue(row)"
+              >开具</a
+            >
+            <a
+              v-if="row.status === 'ISSUED'"
+              @click="handleCancel(row)"
+              style="color: red"
+              >作废</a
+            >
           </Space>
         </template>
       </Grid>
@@ -391,23 +472,57 @@ onMounted(() => {
       width="800px"
       @ok="handleSave"
     >
-      <Form ref="formRef" :model="formData" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">
-        <FormItem label="客户" name="clientId" :rules="[{ required: true, message: '请选择客户' }]">
+      <Form
+        ref="formRef"
+        :model="formData"
+        :label-col="{ span: 6 }"
+        :wrapper-col="{ span: 18 }"
+      >
+        <FormItem
+          label="客户"
+          name="clientId"
+          :rules="[{ required: true, message: '请选择客户' }]"
+        >
           <Select
             v-model:value="formData.clientId"
             placeholder="请选择客户"
-            showSearch
-            :filterOption="(input: string, option: any) => (option?.label || '').toLowerCase().includes(input.toLowerCase())"
-            :options="clients.map(c => ({ label: c.clientNo ? `[${c.clientNo}] ${c.name}` : c.name, value: c.id }))"
+            show-search
+            :filter-option="
+              (input: string, option: any) =>
+                (option?.label || '')
+                  .toLowerCase()
+                  .includes(input.toLowerCase())
+            "
+            :options="
+              clients.map((c) => ({
+                label: c.clientNo ? `[${c.clientNo}] ${c.name}` : c.name,
+                value: c.id,
+              }))
+            "
           />
         </FormItem>
-        <FormItem label="发票抬头" name="title" :rules="[{ required: true, message: '请输入发票抬头' }]">
+        <FormItem
+          label="发票抬头"
+          name="title"
+          :rules="[{ required: true, message: '请输入发票抬头' }]"
+        >
           <Input v-model:value="formData.title" placeholder="请输入发票抬头" />
         </FormItem>
-        <FormItem label="发票类型" name="invoiceType" :rules="[{ required: true, message: '请选择发票类型' }]">
-          <Select v-model:value="formData.invoiceType" :options="invoiceTypeOptions" />
+        <FormItem
+          label="发票类型"
+          name="invoiceType"
+          :rules="[{ required: true, message: '请选择发票类型' }]"
+        >
+          <Select
+            v-model:value="formData.invoiceType"
+            :options="invoiceTypeOptions"
+          />
         </FormItem>
-        <FormItem label="发票金额" name="amount" :rules="[{ required: true, message: '请输入发票金额' }]">
+        <FormItem
+          label="发票金额"
+          name="amount"
+          :rules="[{ required: true, message: '请输入发票金额' }]"
+        >
           <InputNumber
             v-model:value="formData.amount"
             placeholder="请输入发票金额"
@@ -429,13 +544,25 @@ onMounted(() => {
           />
         </FormItem>
         <FormItem label="税额" name="taxAmount">
-          <InputNumber v-model:value="formData.taxAmount" :disabled="true" style="width: 100%" />
+          <InputNumber
+            v-model:value="formData.taxAmount"
+            :disabled="true"
+            style="width: 100%"
+          />
         </FormItem>
         <FormItem label="总金额" name="totalAmount">
-          <InputNumber v-model:value="formData.totalAmount" :disabled="true" style="width: 100%" />
+          <InputNumber
+            v-model:value="formData.totalAmount"
+            :disabled="true"
+            style="width: 100%"
+          />
         </FormItem>
         <FormItem label="备注" name="remark">
-          <Textarea v-model:value="formData.remark" :rows="3" placeholder="请输入备注" />
+          <Textarea
+            v-model:value="formData.remark"
+            :rows="3"
+            placeholder="请输入备注"
+          />
         </FormItem>
       </Form>
     </Modal>
@@ -450,39 +577,65 @@ onMounted(() => {
       <div v-if="currentInvoice" style="padding: 20px">
         <Row :gutter="[16, 16]">
           <Col :span="12">
-            <div><strong>发票编号：</strong>{{ currentInvoice.invoiceNo || '-' }}</div>
+            <div>
+              <strong>发票编号：</strong>{{ currentInvoice.invoiceNo || '-' }}
+            </div>
           </Col>
           <Col :span="12">
-            <div><strong>客户名称：</strong>{{ currentInvoice.clientName || '-' }}</div>
+            <div>
+              <strong>客户名称：</strong>{{ currentInvoice.clientName || '-' }}
+            </div>
           </Col>
           <Col :span="12">
-            <div><strong>发票抬头：</strong>{{ currentInvoice.title || '-' }}</div>
+            <div>
+              <strong>发票抬头：</strong>{{ currentInvoice.title || '-' }}
+            </div>
           </Col>
           <Col :span="12">
-            <div><strong>发票类型：</strong>{{ currentInvoice.invoiceTypeName || '-' }}</div>
+            <div>
+              <strong>发票类型：</strong
+              >{{ currentInvoice.invoiceTypeName || '-' }}
+            </div>
           </Col>
           <Col :span="12">
-            <div><strong>发票金额：</strong>¥{{ currentInvoice.amount?.toLocaleString() || '0' }}</div>
+            <div>
+              <strong>发票金额：</strong>¥{{
+                currentInvoice.amount?.toLocaleString() || '0'
+              }}
+            </div>
           </Col>
           <Col :span="12">
             <div><strong>税率：</strong>{{ currentInvoice.taxRate }}%</div>
           </Col>
           <Col :span="12">
-            <div><strong>税额：</strong>¥{{ currentInvoice.taxAmount?.toLocaleString() || '0' }}</div>
-          </Col>
-          <Col :span="12">
-            <div><strong>总金额：</strong>{{ formatAmount(currentInvoice) }}</div>
-          </Col>
-          <Col :span="12">
-            <div><strong>状态：</strong>
-              <Tag :color="getStatusColor(currentInvoice.status)">{{ currentInvoice.statusName }}</Tag>
+            <div>
+              <strong>税额：</strong>¥{{
+                currentInvoice.taxAmount?.toLocaleString() || '0'
+              }}
             </div>
           </Col>
           <Col :span="12">
-            <div><strong>申请日期：</strong>{{ currentInvoice.createdAt || '-' }}</div>
+            <div>
+              <strong>总金额：</strong>{{ formatAmount(currentInvoice) }}
+            </div>
           </Col>
           <Col :span="12">
-            <div><strong>开票日期：</strong>{{ currentInvoice.invoiceDate || '-' }}</div>
+            <div>
+              <strong>状态：</strong>
+              <Tag :color="getStatusColor(currentInvoice.status)">
+                {{ currentInvoice.statusName }}
+              </Tag>
+            </div>
+          </Col>
+          <Col :span="12">
+            <div>
+              <strong>申请日期：</strong>{{ currentInvoice.createdAt || '-' }}
+            </div>
+          </Col>
+          <Col :span="12">
+            <div>
+              <strong>开票日期：</strong>{{ currentInvoice.invoiceDate || '-' }}
+            </div>
           </Col>
           <Col :span="24">
             <div><strong>备注：</strong>{{ currentInvoice.remark || '-' }}</div>

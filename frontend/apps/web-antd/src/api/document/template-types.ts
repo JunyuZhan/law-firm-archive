@@ -51,15 +51,14 @@ export interface UpdateDocumentTemplateCommand {
 
 export interface GenerateDocumentCommand {
   templateId: number;
-  matterId?: number;  // 可选，不传则为个人文书
+  matterId?: number; // 可选，不传则为个人文书
   variables?: Record<string, any>;
   fileName?: string;
-  dossierItemId?: number;  // 卷宗目录项ID
+  dossierItemId?: number; // 卷宗目录项ID
 }
 
 export interface PreviewTemplateCommand {
   templateId: number;
-  matterId?: number;  // 可选，用于预览时自动填充项目相关变量
+  matterId?: number; // 可选，用于预览时自动填充项目相关变量
   variables?: Record<string, any>;
 }
-

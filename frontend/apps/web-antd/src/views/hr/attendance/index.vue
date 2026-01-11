@@ -1,18 +1,23 @@
 <script setup lang="ts">
+import type { VxeGridProps } from '#/adapter/vxe-table';
+import type { AttendanceRecord } from '#/api/hr/types';
+
 import { onMounted, reactive, ref } from 'vue';
+
 import { Page } from '@vben/common-ui';
+
 import {
   Button,
   Card,
+  Col,
   DatePicker,
   message,
+  Row,
   Select,
   Space,
   Tag,
-  Row,
-  Col,
 } from 'ant-design-vue';
-import type { VxeGridProps } from '#/adapter/vxe-table';
+
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
   checkIn,
@@ -20,7 +25,6 @@ import {
   fetchAttendanceList,
   getTodayAttendance,
 } from '#/api/hr/attendance';
-import type { AttendanceRecord } from '#/api/hr/types';
 
 defineOptions({ name: 'AttendanceManagement' });
 
@@ -67,7 +71,7 @@ const statusTextMap: Record<string, string> = {
 
 // ==================== 表格配置 ====================
 
-const gridColumns: VxeGridProps['gridOptions']['columns'] = [
+const gridColumns: VxeGridProps['columns'] = [
   { title: '姓名', field: 'realName', width: 100 },
   { title: '日期', field: 'attendanceDate', width: 120 },
   { title: '签到时间', field: 'checkInTime', width: 120 },
@@ -77,8 +81,16 @@ const gridColumns: VxeGridProps['gridOptions']['columns'] = [
   { title: '备注', field: 'remark', minWidth: 150, showOverflow: true },
 ];
 
-async function loadData({ page }: { page: { currentPage: number; pageSize: number } }) {
-  const params = { ...searchForm, pageNum: page.currentPage, pageSize: page.pageSize };
+async function loadData({
+  page,
+}: {
+  page: { currentPage: number; pageSize: number };
+}) {
+  const params = {
+    ...searchForm,
+    pageNum: page.currentPage,
+    pageSize: page.pageSize,
+  };
   const res = await fetchAttendanceList(params);
   return { items: res.list || [], total: res.total || 0 };
 }
@@ -163,18 +175,25 @@ onMounted(() => {
     <div class="space-y-4 p-4">
       <!-- 今日考勤卡片 -->
       <Card title="今日考勤">
-        <div class="flex items-center gap-8 flex-wrap">
+        <div class="flex flex-wrap items-center gap-8">
           <div>
             <span class="text-gray-500">签到时间：</span>
-            <span class="font-medium">{{ todayAttendance?.checkInTime || '未签到' }}</span>
+            <span class="font-medium">{{
+              todayAttendance?.checkInTime || '未签到'
+            }}</span>
           </div>
           <div>
             <span class="text-gray-500">签退时间：</span>
-            <span class="font-medium">{{ todayAttendance?.checkOutTime || '未签退' }}</span>
+            <span class="font-medium">{{
+              todayAttendance?.checkOutTime || '未签退'
+            }}</span>
           </div>
           <div>
             <span class="text-gray-500">状态：</span>
-            <Tag v-if="todayAttendance?.status" :color="statusColorMap[todayAttendance.status]">
+            <Tag
+              v-if="todayAttendance?.status"
+              :color="statusColorMap[todayAttendance.status]"
+            >
               {{ statusTextMap[todayAttendance.status] }}
             </Tag>
             <span v-else>-</span>
@@ -190,7 +209,9 @@ onMounted(() => {
             </Button>
             <Button
               :loading="checkOutLoading"
-              :disabled="!todayAttendance?.checkInTime || !!todayAttendance?.checkOutTime"
+              :disabled="
+                !todayAttendance?.checkInTime || !!todayAttendance?.checkOutTime
+              "
               @click="handleCheckOut"
             >
               签退
@@ -209,7 +230,7 @@ onMounted(() => {
             <Select
               v-model:value="searchForm.status"
               placeholder="状态"
-              allowClear
+              allow-clear
               style="width: 100%"
               :options="statusOptions"
             />
@@ -227,7 +248,9 @@ onMounted(() => {
       <Card title="考勤记录">
         <Grid>
           <template #status="{ row }">
-            <Tag :color="statusColorMap[row.status]">{{ statusTextMap[row.status] }}</Tag>
+            <Tag :color="statusColorMap[row.status]">
+              {{ statusTextMap[row.status] }}
+            </Tag>
           </template>
         </Grid>
       </Card>

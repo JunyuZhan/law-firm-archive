@@ -1,12 +1,25 @@
 <script setup lang="ts">
-import { ref } from 'vue';
-import { message, Modal } from 'ant-design-vue';
-import { Page } from '@vben/common-ui';
-import { Button, Space, Tag, Collapse, CollapsePanel } from 'ant-design-vue';
-import { Plus } from '@vben/icons';
 import type { VxeGridProps } from '#/adapter/vxe-table';
+import type { CommissionRule } from '#/api/finance/commission-rule';
+
+import { ref } from 'vue';
+
+import { Page } from '@vben/common-ui';
+import { Plus } from '@vben/icons';
+
+import {
+  Button,
+  Collapse,
+  CollapsePanel,
+  message,
+  Modal,
+  Space,
+  Tag,
+} from 'ant-design-vue';
+
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
-import { commissionRuleApi, type CommissionRule } from '#/api/finance/commission-rule';
+import { commissionRuleApi } from '#/api/finance/commission-rule';
+
 import CommissionRuleModal from './components/CommissionRuleModal.vue';
 
 defineOptions({ name: 'SystemCommissionConfig' });
@@ -17,18 +30,59 @@ const ruleModalRef = ref<InstanceType<typeof CommissionRuleModal>>();
 
 // ==================== 表格配置 ====================
 
-const gridColumns: VxeGridProps['gridOptions']['columns'] = [
+const gridColumns: VxeGridProps['columns'] = [
   { title: '方案名称', field: 'ruleName', minWidth: 120 },
-  { title: '律所', field: 'firmRate', width: 80, slots: { default: 'firmRate' } },
-  { title: '主办律师', field: 'leadLawyerRate', width: 90, slots: { default: 'leadLawyerRate' } },
-  { title: '协办律师', field: 'assistLawyerRate', width: 90, slots: { default: 'assistLawyerRate' } },
-  { title: '辅助人员', field: 'supportStaffRate', width: 90, slots: { default: 'supportStaffRate' } },
-  { title: '案源人', field: 'originatorRate', width: 80, slots: { default: 'originatorRate' } },
-  { title: '可修改', field: 'allowModify', width: 70, slots: { default: 'allowModify' } },
-  { title: '默认', field: 'isDefault', width: 60, slots: { default: 'isDefault' } },
+  {
+    title: '律所',
+    field: 'firmRate',
+    width: 80,
+    slots: { default: 'firmRate' },
+  },
+  {
+    title: '主办律师',
+    field: 'leadLawyerRate',
+    width: 90,
+    slots: { default: 'leadLawyerRate' },
+  },
+  {
+    title: '协办律师',
+    field: 'assistLawyerRate',
+    width: 90,
+    slots: { default: 'assistLawyerRate' },
+  },
+  {
+    title: '辅助人员',
+    field: 'supportStaffRate',
+    width: 90,
+    slots: { default: 'supportStaffRate' },
+  },
+  {
+    title: '案源人',
+    field: 'originatorRate',
+    width: 80,
+    slots: { default: 'originatorRate' },
+  },
+  {
+    title: '可修改',
+    field: 'allowModify',
+    width: 70,
+    slots: { default: 'allowModify' },
+  },
+  {
+    title: '默认',
+    field: 'isDefault',
+    width: 60,
+    slots: { default: 'isDefault' },
+  },
   { title: '状态', field: 'active', width: 60, slots: { default: 'active' } },
   { title: '说明', field: 'description', minWidth: 180 },
-  { title: '操作', field: 'action', width: 200, fixed: 'right', slots: { default: 'action' } },
+  {
+    title: '操作',
+    field: 'action',
+    width: 200,
+    fixed: 'right',
+    slots: { default: 'action' },
+  },
 ];
 
 // 加载数据
@@ -128,8 +182,8 @@ function handleModalSuccess() {
 </script>
 
 <template>
-  <Page 
-    title="提成规则配置" 
+  <Page
+    title="提成规则配置"
     description="设置案件收入分配预设方案，律师创建合同时可选择并自定义"
     auto-content-height
   >
@@ -140,10 +194,10 @@ function handleModalSuccess() {
     </template>
 
     <!-- 帮助说明（可折叠） -->
-    <Collapse 
-      :bordered="false" 
+    <Collapse
+      :bordered="false"
       class="mb-4 bg-transparent"
-      style="background: transparent;"
+      style="background: transparent"
     >
       <CollapsePanel key="help" header="📖 使用说明与业务流程">
         <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -152,8 +206,14 @@ function handleModalSuccess() {
             <div class="mb-2 font-medium text-blue-700">💡 使用说明</div>
             <ul class="m-0 list-none space-y-1 p-0 text-sm text-gray-600">
               <li>• <strong>比例可以为0</strong>：0%表示该角色不参与分配</li>
-              <li>• <strong>比例之和不强制=100%</strong>：根据实际情况灵活设置</li>
-              <li>• <strong>允许修改</strong>：律师创建合同时可在预设基础上自定义比例</li>
+              <li>
+                • <strong>比例之和不强制=100%</strong>：根据实际情况灵活设置
+              </li>
+              <li>
+                •
+                <strong>允许修改</strong
+                >：律师创建合同时可在预设基础上自定义比例
+              </li>
             </ul>
           </div>
 
@@ -176,7 +236,9 @@ function handleModalSuccess() {
             <div class="mb-2 font-medium text-purple-700">🎯 常见场景</div>
             <div class="space-y-1 text-sm text-gray-600">
               <div><strong>独立办案</strong>：律所30% + 主办70%</div>
-              <div><strong>团队协作</strong>：律所20% + 主办40% + 协办30% + 辅助10%</div>
+              <div>
+                <strong>团队协作</strong>：律所20% + 主办40% + 协办30% + 辅助10%
+              </div>
               <div><strong>律所不提成</strong>：律所0% + 主办70% + 协办30%</div>
             </div>
           </div>
@@ -188,32 +250,60 @@ function handleModalSuccess() {
     <Grid>
       <!-- 工具栏按钮（隐藏，使用页面顶部按钮） -->
       <template #toolbar-buttons>
-        <span />
+        <span></span>
       </template>
 
       <!-- 比例列 -->
       <template #firmRate="{ row }">
-        <span :class="row.firmRate > 0 ? 'text-blue-500 font-medium' : 'text-gray-400'">
+        <span
+          :class="
+            row.firmRate > 0 ? 'font-medium text-blue-500' : 'text-gray-400'
+          "
+        >
           {{ formatRate(row.firmRate) }}
         </span>
       </template>
       <template #leadLawyerRate="{ row }">
-        <span :class="row.leadLawyerRate > 0 ? 'text-green-500 font-medium' : 'text-gray-400'">
+        <span
+          :class="
+            row.leadLawyerRate > 0
+              ? 'font-medium text-green-500'
+              : 'text-gray-400'
+          "
+        >
           {{ formatRate(row.leadLawyerRate) }}
         </span>
       </template>
       <template #assistLawyerRate="{ row }">
-        <span :class="row.assistLawyerRate > 0 ? 'text-orange-500 font-medium' : 'text-gray-400'">
+        <span
+          :class="
+            row.assistLawyerRate > 0
+              ? 'font-medium text-orange-500'
+              : 'text-gray-400'
+          "
+        >
           {{ formatRate(row.assistLawyerRate) }}
         </span>
       </template>
       <template #supportStaffRate="{ row }">
-        <span :class="row.supportStaffRate > 0 ? 'text-purple-500 font-medium' : 'text-gray-400'">
+        <span
+          :class="
+            row.supportStaffRate > 0
+              ? 'font-medium text-purple-500'
+              : 'text-gray-400'
+          "
+        >
           {{ formatRate(row.supportStaffRate) }}
         </span>
       </template>
       <template #originatorRate="{ row }">
-        <span :class="row.originatorRate > 0 ? 'text-pink-500 font-medium' : 'text-gray-400'">
+        <span
+          :class="
+            row.originatorRate > 0
+              ? 'font-medium text-pink-500'
+              : 'text-gray-400'
+          "
+        >
           {{ formatRate(row.originatorRate) }}
         </span>
       </template>
@@ -237,20 +327,25 @@ function handleModalSuccess() {
       <!-- 操作列 -->
       <template #action="{ row }">
         <Space :size="4">
-          <a class="text-blue-500 hover:text-blue-600" @click="handleEdit(row)">编辑</a>
-          <a 
-            v-if="!row.isDefault" 
-            class="text-blue-500 hover:text-blue-600" 
+          <a class="text-blue-500 hover:text-blue-600" @click="handleEdit(row)"
+            >编辑</a
+          >
+          <a
+            v-if="!row.isDefault"
+            class="text-blue-500 hover:text-blue-600"
             @click="handleSetDefault(row)"
           >
             设为默认
           </a>
-          <a class="text-blue-500 hover:text-blue-600" @click="handleToggle(row)">
+          <a
+            class="text-blue-500 hover:text-blue-600"
+            @click="handleToggle(row)"
+          >
             {{ row.active ? '停用' : '启用' }}
           </a>
-          <a 
-            v-if="!row.isDefault" 
-            class="text-red-500 hover:text-red-600" 
+          <a
+            v-if="!row.isDefault"
+            class="text-red-500 hover:text-red-600"
             @click="handleDelete(row)"
           >
             删除

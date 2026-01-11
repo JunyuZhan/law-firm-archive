@@ -21,9 +21,21 @@ export const sampleData: Record<string, string> = {};
 
 // 模板列表
 export const templateList = [
-  { key: 'civil-standard', name: '民事委托代理合同（标准版）', type: 'LITIGATION' },
-  { key: 'criminal-standard', name: '刑事委托代理合同（标准版）', type: 'LITIGATION' },
-  { key: 'criminal-simple', name: '刑事委托代理合同（简版）', type: 'LITIGATION' },
+  {
+    key: 'civil-standard',
+    name: '民事委托代理合同（标准版）',
+    type: 'LITIGATION',
+  },
+  {
+    key: 'criminal-standard',
+    name: '刑事委托代理合同（标准版）',
+    type: 'LITIGATION',
+  },
+  {
+    key: 'criminal-simple',
+    name: '刑事委托代理合同（简版）',
+    type: 'LITIGATION',
+  },
   { key: 'retainer', name: '常年法律顾问合同', type: 'RETAINER' },
 ];
 
@@ -235,26 +247,28 @@ const retainerContract = `
 `;
 
 // 默认模板集合
-export const defaultTemplates: Record<string, { content: string; name: string; type: string }> = {
-  'civil-standard': { 
-    content: civilContractStandard, 
+export const defaultTemplates: Record<
+  string,
+  { content: string; name: string; type: string }
+> = {
+  'civil-standard': {
+    content: civilContractStandard,
     name: '民事委托代理合同（标准版）',
-    type: 'LITIGATION'
+    type: 'LITIGATION',
   },
-  'criminal-standard': { 
-    content: criminalContractStandard, 
+  'criminal-standard': {
+    content: criminalContractStandard,
     name: '刑事委托代理合同（标准版）',
-    type: 'LITIGATION'
+    type: 'LITIGATION',
   },
-  'criminal-simple': { 
-    content: criminalContractSimple, 
+  'criminal-simple': {
+    content: criminalContractSimple,
     name: '刑事委托代理合同（简版）',
-    type: 'LITIGATION'
+    type: 'LITIGATION',
   },
-  'retainer': { 
-    content: retainerContract, 
+  retainer: {
+    content: retainerContract,
     name: '常年法律顾问合同',
-    type: 'RETAINER'
+    type: 'RETAINER',
   },
 };
-

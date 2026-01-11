@@ -110,7 +110,7 @@ defineExpose({
 
     <Form />
 
-    <slot name="after-form" />
+    <slot name="after-form"></slot>
 
     <div
       v-if="showRememberMe || showForgetPassword"

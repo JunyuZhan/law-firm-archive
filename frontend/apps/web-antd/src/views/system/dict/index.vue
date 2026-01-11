@@ -1,43 +1,42 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
-import { message, Modal } from 'ant-design-vue';
+import type { DictDataDTO, DictTypeDTO } from '#/api/system/types';
+
+import { computed, onMounted, ref } from 'vue';
+
 import { Page } from '@vben/common-ui';
-import { useVbenVxeGrid } from '#/adapter/vxe-table';
+import { DeleteOutlined, EditOutlined, Plus } from '@vben/icons';
+
 import {
-  Card,
   Button,
-  Space,
-  Tag,
-  Input,
-  Row,
+  Card,
   Col,
+  Descriptions,
+  DescriptionsItem,
+  Empty,
+  Input,
   List,
   ListItem,
   ListItemMeta,
-  Descriptions,
-  DescriptionsItem,
-  Tooltip,
-  Empty,
+  message,
+  Modal,
   Popconfirm,
+  Row,
+  Space,
+  Tag,
+  Tooltip,
 } from 'ant-design-vue';
+
+import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
-  Plus,
-  EditOutlined,
-  DeleteOutlined,
-} from '@vben/icons';
-import {
-  getDictTypeList,
-  getDictItemsByTypeId,
-  deleteDictType,
   deleteDictItem,
+  deleteDictType,
+  getDictItemsByTypeId,
+  getDictTypeList,
   toggleDictItemStatus,
 } from '#/api/system';
-import type {
-  DictTypeDTO,
-  DictDataDTO,
-} from '#/api/system/types';
-import DictTypeModal from './components/DictTypeModal.vue';
+
 import DictItemModal from './components/DictItemModal.vue';
+import DictTypeModal from './components/DictTypeModal.vue';
 
 defineOptions({ name: 'SystemDict' });
 
@@ -264,7 +263,10 @@ onMounted(() => {
 </script>
 
 <template>
-  <Page title="字典管理" description="管理系统数据字典，字典编码用于在代码中获取对应的选项列表">
+  <Page
+    title="字典管理"
+    description="管理系统数据字典，字典编码用于在代码中获取对应的选项列表"
+  >
     <Row :gutter="16">
       <!-- 左侧：字典类型列表 -->
       <Col :xs="24" :sm="24" :md="8" :lg="6" :xl="5">
@@ -298,14 +300,21 @@ onMounted(() => {
             >
               <template #renderItem="{ item }">
                 <ListItem
-                  :class="['dict-type-item', { 'selected': item.id === selectedTypeId }]"
+                  class="dict-type-item"
+                  :class="[{ selected: item.id === selectedTypeId }]"
                   @click="handleSelectType(item)"
                 >
                   <ListItemMeta>
                     <template #title>
                       <div class="dict-type-title">
                         <span>{{ item.name }}</span>
-                        <Tag v-if="item.isSystem" color="blue" class="system-tag">系统</Tag>
+                        <Tag
+                          v-if="item.isSystem"
+                          color="blue"
+                          class="system-tag"
+                        >
+                          系统
+                        </Tag>
                       </div>
                     </template>
                     <template #description>
@@ -331,12 +340,7 @@ onMounted(() => {
                         @confirm="handleDeleteType(item)"
                       >
                         <Tooltip title="删除">
-                          <Button
-                            type="text"
-                            size="small"
-                            danger
-                            @click.stop
-                          >
+                          <Button type="text" size="small" danger @click.stop>
                             <DeleteOutlined class="size-3" />
                           </Button>
                         </Tooltip>
@@ -346,7 +350,11 @@ onMounted(() => {
                 </ListItem>
               </template>
             </List>
-            <Empty v-if="!loading && filteredDictTypes.length === 0" description="暂无字典类型" :image="Empty.PRESENTED_IMAGE_SIMPLE" />
+            <Empty
+              v-if="!loading && filteredDictTypes.length === 0"
+              description="暂无字典类型"
+              :image="Empty.PRESENTED_IMAGE_SIMPLE"
+            />
           </div>
         </Card>
       </Col>
@@ -356,13 +364,23 @@ onMounted(() => {
         <Card :bordered="false">
           <!-- 选中的字典类型信息 -->
           <template v-if="selectedType">
-            <Descriptions :column="{ xs: 1, sm: 2, md: 4 }" size="small" style="margin-bottom: 16px">
-              <DescriptionsItem label="字典名称">{{ selectedType.name }}</DescriptionsItem>
+            <Descriptions
+              :column="{ xs: 1, sm: 2, md: 4 }"
+              size="small"
+              style="margin-bottom: 16px"
+            >
+              <DescriptionsItem label="字典名称">
+                {{ selectedType.name }}
+              </DescriptionsItem>
               <DescriptionsItem label="字典编码">
                 <Tag color="processing">{{ selectedType.code }}</Tag>
               </DescriptionsItem>
               <DescriptionsItem label="状态">
-                <Tag :color="selectedType.status === 'ENABLED' ? 'success' : 'error'">
+                <Tag
+                  :color="
+                    selectedType.status === 'ENABLED' ? 'success' : 'error'
+                  "
+                >
                   {{ selectedType.status === 'ENABLED' ? '启用' : '禁用' }}
                 </Tag>
               </DescriptionsItem>
@@ -371,7 +389,11 @@ onMounted(() => {
                   {{ selectedType.isSystem ? '是' : '否' }}
                 </Tag>
               </DescriptionsItem>
-              <DescriptionsItem v-if="selectedType.description" label="描述" :span="4">
+              <DescriptionsItem
+                v-if="selectedType.description"
+                label="描述"
+                :span="4"
+              >
                 {{ selectedType.description }}
               </DescriptionsItem>
             </Descriptions>
@@ -395,8 +417,10 @@ onMounted(() => {
               <template #action="{ row }">
                 <Space size="small">
                   <a @click="handleEditItem(row)">编辑</a>
-                  <a 
-                    :class="row.status === 'ENABLED' ? 'danger-link' : 'success-link'"
+                  <a
+                    :class="
+                      row.status === 'ENABLED' ? 'danger-link' : 'success-link'
+                    "
                     @click="handleToggleItemStatus(row)"
                   >
                     {{ row.status === 'ENABLED' ? '禁用' : '启用' }}

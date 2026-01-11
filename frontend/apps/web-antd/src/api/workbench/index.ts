@@ -45,7 +45,10 @@ export interface ApproveCommand {
 
 /** 获取审批列表 */
 export function getApprovalList(params: ApprovalQuery) {
-  return requestClient.get<{ list: ApprovalDTO[]; total: number }>('/workbench/approval/list', { params });
+  return requestClient.get<{ list: ApprovalDTO[]; total: number }>(
+    '/workbench/approval/list',
+    { params },
+  );
 }
 
 /** 获取待审批列表 */
@@ -82,17 +85,21 @@ export function getBusinessApprovals(businessType: string, businessId: number) {
 
 /** 获取工作台统计数据 */
 export function getWorkbenchStats() {
-  return requestClient.get<import('./types').WorkbenchStatsDTO>('/workbench/stats');
+  return requestClient.get<import('./types').WorkbenchStatsDTO>(
+    '/workbench/stats',
+  );
 }
 
 /** 获取最近项目 */
 export function getRecentProjects() {
-  return requestClient.get<Array<{
-    id: number;
-    matterNo: string;
-    matterName: string;
-    clientName?: string;
-    status: string;
-    lastUpdateTime?: string;
-  }>>('/workbench/project/recent');
+  return requestClient.get<
+    Array<{
+      clientName?: string;
+      id: number;
+      lastUpdateTime?: string;
+      matterName: string;
+      matterNo: string;
+      status: string;
+    }>
+  >('/workbench/project/recent');
 }

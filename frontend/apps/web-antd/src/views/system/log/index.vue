@@ -1,13 +1,32 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { message } from 'ant-design-vue';
-import { Page } from '@vben/common-ui';
-import { Tag, Button, Space, Card, Statistic, Row, Col, Popconfirm } from 'ant-design-vue';
-import { DownloadOutlined, DeleteOutlined } from '@vben/icons';
 import type { VbenFormSchema } from '#/adapter/form';
-import { useVbenVxeGrid } from '#/adapter/vxe-table';
-import { getOperationLogList, exportOperationLog, getLogStatistics, cleanOldLogs } from '#/api/system';
 import type { OperationLogDTO } from '#/api/system/types';
+
+import { onMounted, ref } from 'vue';
+
+import { Page } from '@vben/common-ui';
+import { DeleteOutlined, DownloadOutlined } from '@vben/icons';
+
+import {
+  Button,
+  Card,
+  Col,
+  message,
+  Popconfirm,
+  Row,
+  Space,
+  Statistic,
+  Tag,
+} from 'ant-design-vue';
+
+import { useVbenVxeGrid } from '#/adapter/vxe-table';
+import {
+  cleanOldLogs,
+  exportOperationLog,
+  getLogStatistics,
+  getOperationLogList,
+} from '#/api/system';
+
 import LogDetailModal from './components/LogDetailModal.vue';
 
 defineOptions({ name: 'SystemLog' });
@@ -91,11 +110,19 @@ const gridColumns: any[] = [
   { title: '状态', field: 'status', width: 80, slots: { default: 'status' } },
   { title: '耗时(ms)', field: 'duration', width: 100 },
   { title: '操作时间', field: 'operationTime', width: 180 },
-  { title: '操作', field: 'action_btn', width: 80, fixed: 'right', slots: { default: 'action' } },
+  {
+    title: '操作',
+    field: 'action_btn',
+    width: 80,
+    fixed: 'right',
+    slots: { default: 'action' },
+  },
 ];
 
 // 加载数据
-async function loadData(params: { page: number; pageSize: number } & Record<string, any>) {
+async function loadData(
+  params: Record<string, any> & { page: number; pageSize: number },
+) {
   // 保存查询条件用于导出
   currentQueryParams.value = {
     module: params.module,
@@ -104,7 +131,7 @@ async function loadData(params: { page: number; pageSize: number } & Record<stri
     startTime: params.startTime,
     endTime: params.endTime,
   };
-  
+
   const res = await getOperationLogList({
     pageNum: params.page,
     pageSize: params.pageSize,
@@ -128,7 +155,7 @@ const [Grid, gridApi] = useVbenVxeGrid({
     height: 'auto',
     proxyConfig: {
       ajax: {
-        query: async ({ page, form }: { page: any; form: any }) => {
+        query: async ({ page, form }: { form: any; page: any }) => {
           return await loadData({
             page: page.currentPage,
             pageSize: page.pageSize,
@@ -156,8 +183,8 @@ async function loadStatistics() {
   try {
     const res = await getLogStatistics();
     statistics.value = res;
-  } catch (err: any) {
-    console.error('加载统计信息失败', err);
+  } catch (error: any) {
+    console.error('加载统计信息失败', error);
   } finally {
     statisticsLoading.value = false;
   }
@@ -168,7 +195,7 @@ async function handleExport() {
   exportLoading.value = true;
   try {
     const res = await exportOperationLog(currentQueryParams.value);
-    
+
     // 处理返回的 Blob
     let blob: Blob;
     if (res instanceof Blob) {
@@ -176,30 +203,30 @@ async function handleExport() {
     } else if (res?.data instanceof Blob) {
       blob = res.data;
     } else {
-      throw new Error('导出失败：未知响应格式');
+      throw new TypeError('导出失败：未知响应格式');
     }
-    
+
     // 检查是否是错误响应（JSON格式）
     if (blob.type === 'application/json') {
       const text = await blob.text();
       const errorData = JSON.parse(text);
       throw new Error(errorData.message || '导出失败');
     }
-    
+
     // 创建下载链接
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
     link.download = `操作日志_${new Date().toISOString().slice(0, 10)}.xlsx`;
-    document.body.appendChild(link);
+    document.body.append(link);
     link.click();
-    document.body.removeChild(link);
+    link.remove();
     window.URL.revokeObjectURL(url);
-    
+
     message.success('导出成功');
-  } catch (err: any) {
-    console.error('导出失败:', err);
-    message.error(err?.message || '导出失败');
+  } catch (error: any) {
+    console.error('导出失败:', error);
+    message.error(error?.message || '导出失败');
   } finally {
     exportLoading.value = false;
   }
@@ -213,8 +240,8 @@ async function handleClean() {
     message.success('清理成功');
     gridApi.reload();
     await loadStatistics();
-  } catch (err: any) {
-    message.error(err.message || '清理失败');
+  } catch (error: any) {
+    message.error(error.message || '清理失败');
   } finally {
     cleanLoading.value = false;
   }
@@ -231,28 +258,32 @@ onMounted(() => {
     <Card class="mb-4" :bordered="false">
       <Row :gutter="16">
         <Col :xs="24" :sm="12" :md="6">
-          <Statistic title="总日志数" :value="statistics.totalCount || 0" :loading="statisticsLoading" />
+          <Statistic
+            title="总日志数"
+            :value="statistics.totalCount || 0"
+            :loading="statisticsLoading"
+          />
         </Col>
         <Col :xs="24" :sm="12" :md="6">
-          <Statistic 
-            title="成功" 
-            :value="statistics.successCount || 0" 
+          <Statistic
+            title="成功"
+            :value="statistics.successCount || 0"
             :value-style="{ color: '#3f8600' }"
             :loading="statisticsLoading"
           />
         </Col>
         <Col :xs="24" :sm="12" :md="6">
-          <Statistic 
-            title="失败" 
-            :value="statistics.failCount || 0" 
+          <Statistic
+            title="失败"
+            :value="statistics.failCount || 0"
             :value-style="{ color: '#cf1322' }"
             :loading="statisticsLoading"
           />
         </Col>
         <Col :xs="24" :sm="12" :md="6">
-          <Statistic 
-            title="平均耗时" 
-            :value="statistics.avgExecutionTime || 0" 
+          <Statistic
+            title="平均耗时"
+            :value="statistics.avgExecutionTime || 0"
             suffix="ms"
             :loading="statisticsLoading"
           />

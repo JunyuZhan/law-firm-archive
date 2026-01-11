@@ -12,8 +12,11 @@ export function sendMeetingNotice(bookingId: number) {
 
 /** 批量发送即将开始的会议通知 */
 export function sendUpcomingMeetingNotices(minutesBefore: number = 30) {
-  return requestClient.post<number>('/admin/meeting-notices/send-upcoming', null, {
-    params: { minutesBefore },
-  });
+  return requestClient.post<number>(
+    '/admin/meeting-notices/send-upcoming',
+    null,
+    {
+      params: { minutesBefore },
+    },
+  );
 }
-

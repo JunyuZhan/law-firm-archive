@@ -1,57 +1,59 @@
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue';
-import { message, Modal } from 'ant-design-vue';
+import type {
+  IssuePayrollCommand,
+  PayrollItemDTO,
+  PayrollSheetDTO,
+  PayrollSheetQuery,
+  UpdatePayrollItemCommand,
+} from '#/api/hr/payroll';
+
+import { computed, onMounted, reactive, ref } from 'vue';
+
 import { Page } from '@vben/common-ui';
+
 import {
-  Card,
-  Table,
-  Button,
-  Space,
-  Tag,
-  Input,
-  InputNumber,
-  Select,
   AutoComplete,
-  Form,
-  FormItem,
+  Button,
+  Card,
   DatePicker,
   Descriptions,
   DescriptionsItem,
   Divider,
+  Form,
+  FormItem,
+  Input,
+  InputNumber,
+  message,
+  Modal,
+  Select,
+  Space,
+  Table,
+  Tag,
 } from 'ant-design-vue';
 import dayjs from 'dayjs';
 
 import {
-  getPayrollSheetList,
-  getPayrollSheetDetail,
-  getPayrollItemsBySheetId,
+  exportPayrollSheet,
+  financeConfirmPayrollSheet,
   getPayrollItemsByYearMonth,
+  getPayrollSheetDetail,
+  getPayrollSheetList,
+  issuePayroll,
+  submitPayrollSheet,
   updatePayrollItem,
   updatePayrollItemByEmployee,
-  submitPayrollSheet,
-  financeConfirmPayrollSheet,
-  issuePayroll,
-  exportPayrollSheet,
-} from '#/api/hr/payroll';
-import type {
-  PayrollSheetDTO,
-  PayrollSheetQuery,
-  UpdatePayrollItemCommand,
-  PayrollItemDTO,
-  IssuePayrollCommand,
 } from '#/api/hr/payroll';
 
 defineOptions({ name: 'PayrollManagement' });
 
 // 状态
 const loading = ref(false);
-const sheetList = ref<PayrollSheetDTO[]>([]); // 工资表列表（用于选择）
 const selectedSheetId = ref<number | undefined>(undefined); // 当前选中的工资表ID
 const dataSource = ref<PayrollItemDTO[]>([]); // 员工工资明细列表
 const itemEditModalVisible = ref(false);
 const issueModalVisible = ref(false);
-const currentSheet = ref<PayrollSheetDTO | null>(null);
-const currentItem = ref<PayrollItemDTO | null>(null);
+const currentSheet = ref<null | PayrollSheetDTO>(null);
+const currentItem = ref<null | PayrollItemDTO>(null);
 const currentItemConfirmDeadline = ref<any>(null); // 用于DatePicker的确认截止时间（dayjs对象）
 
 // 查询参数
@@ -77,7 +79,10 @@ function calculateIncomeTotal(record: PayrollItemDTO): number {
     return 0;
   }
   return record.incomes.reduce((sum, income) => {
-    const amount = typeof income.amount === 'string' ? parseFloat(income.amount) : (income.amount || 0);
+    const amount =
+      typeof income.amount === 'string'
+        ? Number.parseFloat(income.amount)
+        : income.amount || 0;
     return sum + amount;
   }, 0);
 }
@@ -86,14 +91,45 @@ function calculateIncomeTotal(record: PayrollItemDTO): number {
 const columns = [
   { title: '工号', dataIndex: 'employeeNo', key: 'employeeNo', width: 100 },
   { title: '姓名', dataIndex: 'employeeName', key: 'employeeName', width: 100 },
-  { title: '收入', key: 'income', width: 120, customRender: ({ record }: { record: PayrollItemDTO }) => formatCurrency(calculateIncomeTotal(record)) },
-  { title: '应发工资', dataIndex: 'grossAmount', key: 'grossAmount', width: 120, customRender: ({ record }: { record: PayrollItemDTO }) => formatCurrency(record.grossAmount) },
-  { title: '扣减总额', dataIndex: 'deductionAmount', key: 'deductionAmount', width: 120, customRender: ({ record }: { record: PayrollItemDTO }) => formatCurrency(record.deductionAmount) },
-  { title: '实发工资', dataIndex: 'netAmount', key: 'netAmount', width: 120, customRender: ({ record }: { record: PayrollItemDTO }) => formatCurrency(record.netAmount) },
-  { title: '确认状态', dataIndex: 'confirmStatusName', key: 'confirmStatusName', width: 100 },
+  {
+    title: '收入',
+    key: 'income',
+    width: 120,
+    customRender: ({ record }: { record: PayrollItemDTO }) =>
+      formatCurrency(calculateIncomeTotal(record)),
+  },
+  {
+    title: '应发工资',
+    dataIndex: 'grossAmount',
+    key: 'grossAmount',
+    width: 120,
+    customRender: ({ record }: { record: PayrollItemDTO }) =>
+      formatCurrency(record.grossAmount),
+  },
+  {
+    title: '扣减总额',
+    dataIndex: 'deductionAmount',
+    key: 'deductionAmount',
+    width: 120,
+    customRender: ({ record }: { record: PayrollItemDTO }) =>
+      formatCurrency(record.deductionAmount),
+  },
+  {
+    title: '实发工资',
+    dataIndex: 'netAmount',
+    key: 'netAmount',
+    width: 120,
+    customRender: ({ record }: { record: PayrollItemDTO }) =>
+      formatCurrency(record.netAmount),
+  },
+  {
+    title: '确认状态',
+    dataIndex: 'confirmStatusName',
+    key: 'confirmStatusName',
+    width: 100,
+  },
   { title: '操作', key: 'action', width: 150, fixed: 'right' as const },
 ];
-
 
 // 月份选项
 const monthOptions = Array.from({ length: 12 }, (_, i) => ({
@@ -108,8 +144,6 @@ const yearOptions = Array.from({ length: 5 }, (_, i) => ({
   value: currentYear - i,
 }));
 
-
-
 // 发放表单
 const issueForm = reactive<IssuePayrollCommand>({
   payrollSheetId: 0,
@@ -121,35 +155,8 @@ const issueForm = reactive<IssuePayrollCommand>({
 // 格式化货币
 function formatCurrency(amount: number | string | undefined): string {
   if (amount === undefined || amount === null) return '¥0.00';
-  const num = typeof amount === 'string' ? parseFloat(amount) : amount;
+  const num = typeof amount === 'string' ? Number.parseFloat(amount) : amount;
   return `¥${num.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
-
-// 加载工资表列表（用于选择）
-async function fetchSheetList() {
-  try {
-    const res = await getPayrollSheetList({
-      ...queryParams,
-      pageSize: 100,
-    });
-    sheetList.value = res.list;
-    // 查找当前年月的工资表
-    const foundSheet = sheetList.value.find(
-      sheet => sheet.payrollYear === queryParams.payrollYear && 
-               sheet.payrollMonth === queryParams.payrollMonth
-    );
-    if (foundSheet && foundSheet.id) {
-      selectedSheetId.value = foundSheet.id;
-      currentSheet.value = foundSheet;
-    } else {
-      selectedSheetId.value = undefined;
-      currentSheet.value = null;
-    }
-    // 加载员工工资明细
-    await fetchPayrollItems();
-  } catch (error: any) {
-    message.error(error.message || '加载工资表列表失败');
-  }
 }
 
 // 加载员工工资明细列表（根据年月）
@@ -158,13 +165,16 @@ async function fetchPayrollItems() {
     dataSource.value = [];
     return;
   }
-  
+
   loading.value = true;
   try {
     // 直接根据年月查询员工工资明细
-    const items = await getPayrollItemsByYearMonth(queryParams.payrollYear, queryParams.payrollMonth);
+    const items = await getPayrollItemsByYearMonth(
+      queryParams.payrollYear,
+      queryParams.payrollMonth,
+    );
     dataSource.value = items;
-    
+
     // 查找该年月的工资表，用于显示汇总信息
     const res = await getPayrollSheetList({
       payrollYear: queryParams.payrollYear,
@@ -189,13 +199,6 @@ async function fetchPayrollItems() {
   }
 }
 
-// 工资表选择变化（保留此方法以防需要）
-async function handleSheetChange() {
-  if (selectedSheetId.value) {
-    await fetchPayrollItems();
-  }
-}
-
 // 搜索
 async function handleSearch() {
   queryParams.pageNum = 1;
@@ -212,23 +215,24 @@ function handleReset() {
 // 过滤后的数据源
 const filteredDataSource = computed(() => {
   let result = dataSource.value;
-  
+
   if (filterParams.employeeName) {
-    result = result.filter(item => 
-      item.employeeName && item.employeeName.includes(filterParams.employeeName)
+    result = result.filter(
+      (item) =>
+        item.employeeName &&
+        item.employeeName.includes(filterParams.employeeName),
     );
   }
-  
+
   if (filterParams.employeeNo) {
-    result = result.filter(item => 
-      item.employeeNo && item.employeeNo.includes(filterParams.employeeNo)
+    result = result.filter(
+      (item) =>
+        item.employeeNo && item.employeeNo.includes(filterParams.employeeNo),
     );
   }
-  
+
   return result;
 });
-
-
 
 // 编辑工资明细（可编辑扣减项）
 function handleEditItem(item: PayrollItemDTO) {
@@ -240,7 +244,9 @@ function handleEditItem(item: PayrollItemDTO) {
     const year = queryParams.payrollYear;
     const month = queryParams.payrollMonth;
     // 设置默认确认截止时间为每月27日23:59:59
-    currentItemConfirmDeadline.value = dayjs(`${year}-${month.toString().padStart(2, '0')}-27 23:59:59`);
+    currentItemConfirmDeadline.value = dayjs(
+      `${year}-${month.toString().padStart(2, '0')}-27 23:59:59`,
+    );
   } else {
     currentItemConfirmDeadline.value = null;
   }
@@ -249,11 +255,10 @@ function handleEditItem(item: PayrollItemDTO) {
   itemEditModalVisible.value = true;
 }
 
-
 // 保存工资明细
 async function handleSaveItem() {
   if (!currentItem.value) return;
-  
+
   // 验证扣减项必须有备注
   if (currentItem.value.deductions) {
     for (const deduction of currentItem.value.deductions) {
@@ -263,46 +268,58 @@ async function handleSaveItem() {
       }
     }
   }
-  
+
   try {
     // 确保应发工资和实发工资已更新
     updateDeductionAmount(currentItem.value);
-    
+
     const command: UpdatePayrollItemCommand = {
       payrollItemId: currentItem.value.id,
-      confirmDeadline: currentItemConfirmDeadline.value ? dayjs(currentItemConfirmDeadline.value).toISOString() : undefined,
-      incomes: currentItem.value.incomes?.map(income => ({
+      confirmDeadline: currentItemConfirmDeadline.value
+        ? dayjs(currentItemConfirmDeadline.value).toISOString()
+        : undefined,
+      incomes: currentItem.value.incomes?.map((income) => ({
         id: income.id,
         incomeType: income.incomeType!,
-        amount: typeof income.amount === 'string' ? parseFloat(income.amount) : (income.amount || 0),
+        amount:
+          typeof income.amount === 'string'
+            ? Number.parseFloat(income.amount)
+            : income.amount || 0,
         remark: income.remark || '',
         sourceType: income.sourceType,
         sourceId: income.sourceId,
       })),
-      deductions: currentItem.value.deductions?.map(deduction => ({
+      deductions: currentItem.value.deductions?.map((deduction) => ({
         id: deduction.id,
         deductionType: deduction.deductionType || 'OTHER_DEDUCTION', // 如果为空则使用默认值
-        amount: typeof deduction.amount === 'string' ? parseFloat(deduction.amount) : (deduction.amount || 0),
+        amount:
+          typeof deduction.amount === 'string'
+            ? Number.parseFloat(deduction.amount)
+            : deduction.amount || 0,
         remark: deduction.remark || '',
         sourceType: deduction.sourceType,
       })),
     };
-    
+
     // 如果有工资明细ID，使用更新接口；否则使用根据员工ID更新的接口
     if (currentItem.value.id) {
       await updatePayrollItem(currentItem.value.id, command);
-    } else if (currentItem.value.employeeId && queryParams.payrollYear && queryParams.payrollMonth) {
+    } else if (
+      currentItem.value.employeeId &&
+      queryParams.payrollYear &&
+      queryParams.payrollMonth
+    ) {
       await updatePayrollItemByEmployee(
         queryParams.payrollYear,
         queryParams.payrollMonth,
         currentItem.value.employeeId,
-        command
+        command,
       );
     } else {
       message.error('无法保存：缺少必要信息');
       return;
     }
-    
+
     message.success('保存工资明细成功');
     itemEditModalVisible.value = false;
     await fetchPayrollItems();
@@ -314,14 +331,13 @@ async function handleSaveItem() {
 // 获取收入类型名称
 function getIncomeTypeName(type: string): string {
   const typeMap: Record<string, string> = {
-    'BASE_SALARY': '基本工资',
-    'COMMISSION': '提成',
-    'PERFORMANCE_BONUS': '绩效奖金',
-    'OTHER_ALLOWANCE': '其他津贴',
+    BASE_SALARY: '基本工资',
+    COMMISSION: '提成',
+    PERFORMANCE_BONUS: '绩效奖金',
+    OTHER_ALLOWANCE: '其他津贴',
   };
   return typeMap[type] || type;
 }
-
 
 // 提交工资表
 function handleSubmit(record: PayrollSheetDTO) {
@@ -381,21 +397,26 @@ async function handleConfirmIssue() {
 // 判断是否为税费类扣减项
 function isTaxDeduction(deductionType: string): boolean {
   if (!deductionType) return false;
-  return deductionType === 'INCOME_TAX' 
-    || deductionType === 'SOCIAL_INSURANCE' 
-    || deductionType === 'HOUSING_FUND'
-    || deductionType.includes('税')
-    || deductionType.includes('社保')
-    || deductionType.includes('公积金');
+  return (
+    deductionType === 'INCOME_TAX' ||
+    deductionType === 'SOCIAL_INSURANCE' ||
+    deductionType === 'HOUSING_FUND' ||
+    deductionType.includes('税') ||
+    deductionType.includes('社保') ||
+    deductionType.includes('公积金')
+  );
 }
 
 // 计算税费扣减项总额
 function calculateTaxDeductionTotal(item: PayrollItemDTO): number {
   if (!item.deductions) return 0;
   return item.deductions
-    .filter(d => isTaxDeduction(d.deductionType || ''))
+    .filter((d) => isTaxDeduction(d.deductionType || ''))
     .reduce((sum, deduction) => {
-      const amount = typeof deduction.amount === 'string' ? parseFloat(deduction.amount) : (deduction.amount || 0);
+      const amount =
+        typeof deduction.amount === 'string'
+          ? Number.parseFloat(deduction.amount)
+          : deduction.amount || 0;
       return sum + amount;
     }, 0);
 }
@@ -404,9 +425,12 @@ function calculateTaxDeductionTotal(item: PayrollItemDTO): number {
 function calculateOtherDeductionTotal(item: PayrollItemDTO): number {
   if (!item.deductions) return 0;
   return item.deductions
-    .filter(d => !isTaxDeduction(d.deductionType || ''))
+    .filter((d) => !isTaxDeduction(d.deductionType || ''))
     .reduce((sum, deduction) => {
-      const amount = typeof deduction.amount === 'string' ? parseFloat(deduction.amount) : (deduction.amount || 0);
+      const amount =
+        typeof deduction.amount === 'string'
+          ? Number.parseFloat(deduction.amount)
+          : deduction.amount || 0;
       return sum + amount;
     }, 0);
 }
@@ -416,15 +440,15 @@ function updateDeductionAmount(item: PayrollItemDTO) {
   const taxDeductionTotal = calculateTaxDeductionTotal(item);
   const otherDeductionTotal = calculateOtherDeductionTotal(item);
   const totalDeduction = taxDeductionTotal + otherDeductionTotal;
-  
+
   item.deductionAmount = totalDeduction;
-  
+
   // 收入（提成总额）
   const income = calculateIncomeTotal(item);
-  
+
   // 应发工资 = 收入 - 税费扣减项
   item.grossAmount = income - taxDeductionTotal;
-  
+
   // 实发工资 = 应发工资 - 其他扣减项
   item.netAmount = item.grossAmount - otherDeductionTotal;
 }
@@ -462,19 +486,12 @@ function removeDeduction(index: number) {
   }
 }
 
-
-
 // 发放方式选项
 const paymentMethodOptions = [
   { label: '银行转账', value: 'BANK_TRANSFER' },
   { label: '现金', value: 'CASH' },
   { label: '其他', value: 'OTHER' },
 ];
-
-// 操作按钮显示逻辑
-const canEdit = (record: PayrollSheetDTO) => {
-  return record.status === 'DRAFT' || record.status === 'PENDING_CONFIRM';
-};
 
 const canSubmit = (record: PayrollSheetDTO) => {
   return record.status === 'DRAFT';
@@ -498,27 +515,27 @@ async function handleExport() {
     message.error('请先选择工资表');
     return;
   }
-  
+
   if (!canExport(currentSheet.value)) {
     message.error('只有已审批通过的工资表才能导出');
     return;
   }
-  
+
   try {
     loading.value = true;
     const blob = await exportPayrollSheet(currentSheet.value.id);
-    
+
     // 创建下载链接
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
     const filename = `${currentSheet.value.payrollYear}年${currentSheet.value.payrollMonth}月工资表.xlsx`;
     link.download = filename;
-    document.body.appendChild(link);
+    document.body.append(link);
     link.click();
-    document.body.removeChild(link);
+    link.remove();
     window.URL.revokeObjectURL(url);
-    
+
     message.success('导出成功');
   } catch (error: any) {
     message.error(error.message || '导出失败');
@@ -533,16 +550,16 @@ function handlePrint() {
     message.error('请先选择工资表');
     return;
   }
-  
+
   const printWindow = window.open('', '_blank');
   if (!printWindow) {
     message.error('无法打开打印窗口，请检查浏览器弹窗设置');
     return;
   }
-  
+
   // 生成打印HTML
   const html = generatePrintHtml();
-  
+
   printWindow.document.write(`
     <!DOCTYPE html>
     <html>
@@ -628,11 +645,11 @@ function handlePrint() {
 // 生成打印HTML
 function generatePrintHtml(): string {
   if (!currentSheet.value) return '';
-  
+
   const sheet = currentSheet.value;
   const year = sheet.payrollYear || new Date().getFullYear();
   const month = sheet.payrollMonth || new Date().getMonth() + 1;
-  
+
   // 表头
   let html = `
     <div class="header">
@@ -640,7 +657,7 @@ function generatePrintHtml(): string {
       <div class="subtitle">${year}年${month}月</div>
     </div>
   `;
-  
+
   // 汇总信息
   html += `
     <div class="summary">
@@ -653,7 +670,7 @@ function generatePrintHtml(): string {
       <div class="summary-item"><strong>已确认人数：</strong>${sheet.confirmedCount || 0}/${sheet.totalEmployees || 0}</div>
     </div>
   `;
-  
+
   // 表格
   html += `
     <table>
@@ -672,14 +689,20 @@ function generatePrintHtml(): string {
       </thead>
       <tbody>
   `;
-  
+
   filteredDataSource.value.forEach((item, index) => {
     const income = calculateIncomeTotal(item);
     const taxDeduction = calculateTaxDeductionTotal(item);
     const otherDeduction = calculateOtherDeductionTotal(item);
-    const grossAmount = typeof item.grossAmount === 'string' ? parseFloat(item.grossAmount) : (item.grossAmount || 0);
-    const netAmount = typeof item.netAmount === 'string' ? parseFloat(item.netAmount) : (item.netAmount || 0);
-    
+    const grossAmount =
+      typeof item.grossAmount === 'string'
+        ? Number.parseFloat(item.grossAmount)
+        : item.grossAmount || 0;
+    const netAmount =
+      typeof item.netAmount === 'string'
+        ? Number.parseFloat(item.netAmount)
+        : item.netAmount || 0;
+
     html += `
       <tr>
         <td>${index + 1}</td>
@@ -694,12 +717,12 @@ function generatePrintHtml(): string {
       </tr>
     `;
   });
-  
+
   html += `
       </tbody>
     </table>
   `;
-  
+
   return html;
 }
 
@@ -714,24 +737,64 @@ onMounted(() => {
       <!-- 搜索表单 -->
       <Form :model="queryParams" layout="inline" class="mb-4">
         <FormItem label="年份">
-          <Select v-model:value="queryParams.payrollYear" style="width: 120px" :options="yearOptions" @change="handleSearch" />
+          <Select
+            v-model:value="queryParams.payrollYear"
+            style="width: 120px"
+            :options="yearOptions"
+            @change="handleSearch"
+          />
         </FormItem>
         <FormItem label="月份">
-          <Select v-model:value="queryParams.payrollMonth" style="width: 120px" :options="monthOptions" @change="handleSearch" />
+          <Select
+            v-model:value="queryParams.payrollMonth"
+            style="width: 120px"
+            :options="monthOptions"
+            @change="handleSearch"
+          />
         </FormItem>
         <FormItem label="员工姓名">
-          <Input v-model:value="filterParams.employeeName" placeholder="请输入员工姓名" style="width: 150px" allow-clear @pressEnter="handleSearch" />
+          <Input
+            v-model:value="filterParams.employeeName"
+            placeholder="请输入员工姓名"
+            style="width: 150px"
+            allow-clear
+            @press-enter="handleSearch"
+          />
         </FormItem>
         <FormItem label="工号">
-          <Input v-model:value="filterParams.employeeNo" placeholder="请输入工号" style="width: 150px" allow-clear @pressEnter="handleSearch" />
+          <Input
+            v-model:value="filterParams.employeeNo"
+            placeholder="请输入工号"
+            style="width: 150px"
+            allow-clear
+            @press-enter="handleSearch"
+          />
         </FormItem>
         <FormItem>
           <Space>
             <Button type="primary" @click="handleSearch">查询</Button>
             <Button @click="handleReset">重置</Button>
-            <Button v-if="currentSheet && canSubmit(currentSheet)" type="primary" @click="handleSubmit(currentSheet)">提交工资表</Button>
-            <Button v-if="currentSheet && canFinanceConfirm(currentSheet)" type="primary" @click="handleFinanceConfirm(currentSheet)">财务确认</Button>
-            <Button v-if="currentSheet && canIssue(currentSheet)" type="primary" @click="handleIssue(currentSheet)">发放工资</Button>
+            <Button
+              v-if="currentSheet && canSubmit(currentSheet)"
+              type="primary"
+              @click="handleSubmit(currentSheet)"
+            >
+              提交工资表
+            </Button>
+            <Button
+              v-if="currentSheet && canFinanceConfirm(currentSheet)"
+              type="primary"
+              @click="handleFinanceConfirm(currentSheet)"
+            >
+              财务确认
+            </Button>
+            <Button
+              v-if="currentSheet && canIssue(currentSheet)"
+              type="primary"
+              @click="handleIssue(currentSheet)"
+            >
+              发放工资
+            </Button>
           </Space>
         </FormItem>
       </Form>
@@ -741,22 +804,49 @@ onMounted(() => {
         <Space>
           <span><strong>工资表编号：</strong>{{ currentSheet.payrollNo }}</span>
           <span><strong>状态：</strong>{{ currentSheet.statusName }}</span>
-          <span><strong>总人数：</strong>{{ currentSheet.totalEmployees }}</span>
-          <span><strong>应发总额：</strong>{{ formatCurrency(currentSheet.totalGrossAmount) }}</span>
-          <span><strong>扣减总额：</strong>{{ formatCurrency(currentSheet.totalDeductionAmount) }}</span>
-          <span><strong>实发总额：</strong>{{ formatCurrency(currentSheet.totalNetAmount) }}</span>
-          <span><strong>已确认：</strong>{{ currentSheet.confirmedCount }}/{{ currentSheet.totalEmployees }}</span>
-          <Space v-if="canExport(currentSheet)" style="margin-left: 20px;">
+          <span
+            ><strong>总人数：</strong>{{ currentSheet.totalEmployees }}</span
+          >
+          <span
+            ><strong>应发总额：</strong
+            >{{ formatCurrency(currentSheet.totalGrossAmount) }}</span
+          >
+          <span
+            ><strong>扣减总额：</strong
+            >{{ formatCurrency(currentSheet.totalDeductionAmount) }}</span
+          >
+          <span
+            ><strong>实发总额：</strong
+            >{{ formatCurrency(currentSheet.totalNetAmount) }}</span
+          >
+          <span
+            ><strong>已确认：</strong>{{ currentSheet.confirmedCount }}/{{
+              currentSheet.totalEmployees
+            }}</span
+          >
+          <Space v-if="canExport(currentSheet)" style="margin-left: 20px">
             <Button type="default" @click="handleExport">导出Excel</Button>
             <Button type="default" @click="handlePrint">打印</Button>
           </Space>
         </Space>
       </div>
-      
+
       <!-- 提示信息 -->
-      <div v-if="!currentSheet && queryParams.payrollYear && queryParams.payrollMonth" class="mb-4">
-        <div style="padding: 16px; background: #e6f7ff; border: 1px solid #91d5ff; border-radius: 4px;">
-          <span style="color: #1890ff;">
+      <div
+        v-if="
+          !currentSheet && queryParams.payrollYear && queryParams.payrollMonth
+        "
+        class="mb-4"
+      >
+        <div
+          style="
+            padding: 16px;
+            background: #e6f7ff;
+            border: 1px solid #91d5ff;
+            border-radius: 4px;
+          "
+        >
+          <span style="color: #1890ff">
             当前显示所有符合条件的员工工资信息。员工属性确认后自动显示在工资列表中，离职后次月起不再显示。
           </span>
         </div>
@@ -773,12 +863,31 @@ onMounted(() => {
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'income'">
-            <span :style="{ color: calculateIncomeTotal(record as PayrollItemDTO) < 0 ? '#ff4d4f' : '#1890ff', fontWeight: '500' }">
-              {{ formatCurrency(calculateIncomeTotal(record as PayrollItemDTO)) }}
+            <span
+              :style="{
+                color:
+                  calculateIncomeTotal(record as PayrollItemDTO) < 0
+                    ? '#ff4d4f'
+                    : '#1890ff',
+                fontWeight: '500',
+              }"
+            >
+              {{
+                formatCurrency(calculateIncomeTotal(record as PayrollItemDTO))
+              }}
             </span>
           </template>
           <template v-if="column.key === 'grossAmount'">
-            <span :style="{ color: (typeof record.grossAmount === 'string' ? parseFloat(record.grossAmount) : (record.grossAmount || 0)) < 0 ? '#ff4d4f' : '' }">
+            <span
+              :style="{
+                color:
+                  (typeof record.grossAmount === 'string'
+                    ? parseFloat(record.grossAmount)
+                    : record.grossAmount || 0) < 0
+                    ? '#ff4d4f'
+                    : '',
+              }"
+            >
               {{ formatCurrency(record.grossAmount) }}
             </span>
           </template>
@@ -786,19 +895,36 @@ onMounted(() => {
             {{ formatCurrency(record.deductionAmount) }}
           </template>
           <template v-if="column.key === 'netAmount'">
-            <span :style="{ color: (typeof record.netAmount === 'string' ? parseFloat(record.netAmount) : (record.netAmount || 0)) < 0 ? '#ff4d4f' : '' }">
+            <span
+              :style="{
+                color:
+                  (typeof record.netAmount === 'string'
+                    ? parseFloat(record.netAmount)
+                    : record.netAmount || 0) < 0
+                    ? '#ff4d4f'
+                    : '',
+              }"
+            >
               {{ formatCurrency(record.netAmount) }}
             </span>
           </template>
           <template v-if="column.key === 'confirmStatusName'">
-            <Tag :color="record.confirmStatus === 'PENDING' ? 'orange' : record.confirmStatus === 'CONFIRMED' ? 'green' : 'red'">
+            <Tag
+              :color="
+                record.confirmStatus === 'PENDING'
+                  ? 'orange'
+                  : record.confirmStatus === 'CONFIRMED'
+                    ? 'green'
+                    : 'red'
+              "
+            >
               {{ record.confirmStatusName }}
             </Tag>
           </template>
           <template v-if="column.key === 'action'">
-            <Button 
-              type="link" 
-              size="small" 
+            <Button
+              type="link"
+              size="small"
               @click="handleEditItem(record as unknown as PayrollItemDTO)"
             >
               编辑扣减项
@@ -817,14 +943,23 @@ onMounted(() => {
     >
       <div v-if="currentItem">
         <Descriptions :column="2" bordered>
-          <DescriptionsItem label="工号">{{ currentItem.employeeNo }}</DescriptionsItem>
-          <DescriptionsItem label="姓名">{{ currentItem.employeeName }}</DescriptionsItem>
+          <DescriptionsItem label="工号">
+            {{ currentItem.employeeNo }}
+          </DescriptionsItem>
+          <DescriptionsItem label="姓名">
+            {{ currentItem.employeeName }}
+          </DescriptionsItem>
         </Descriptions>
 
         <Divider>收入项明细（自动从提成数据导入，不可编辑）</Divider>
         <Table
           :columns="[
-            { title: '收入类型', dataIndex: 'incomeType', key: 'incomeType', width: 150 },
+            {
+              title: '收入类型',
+              dataIndex: 'incomeType',
+              key: 'incomeType',
+              width: 150,
+            },
             { title: '金额', dataIndex: 'amount', key: 'amount', width: 150 },
             { title: '说明', dataIndex: 'remark', key: 'remark' },
           ]"
@@ -848,7 +983,12 @@ onMounted(() => {
         <Divider>扣减项明细</Divider>
         <Table
           :columns="[
-            { title: '扣减类型', dataIndex: 'deductionType', key: 'deductionType', width: 150 },
+            {
+              title: '扣减类型',
+              dataIndex: 'deductionType',
+              key: 'deductionType',
+              width: 150,
+            },
             { title: '类别', key: 'category', width: 100 },
             { title: '金额', dataIndex: 'amount', key: 'amount', width: 150 },
             { title: '说明（必填）', dataIndex: 'remark', key: 'remark' },
@@ -870,24 +1010,53 @@ onMounted(() => {
               />
             </template>
             <template v-if="column.key === 'category'">
-              <Tag :color="isTaxDeduction(record.deductionType || '') ? 'blue' : 'orange'">
-                {{ isTaxDeduction(record.deductionType || '') ? '税费类' : '其他类' }}
+              <Tag
+                :color="
+                  isTaxDeduction(record.deductionType || '') ? 'blue' : 'orange'
+                "
+              >
+                {{
+                  isTaxDeduction(record.deductionType || '')
+                    ? '税费类'
+                    : '其他类'
+                }}
               </Tag>
             </template>
             <template v-if="column.key === 'amount'">
-              <InputNumber v-model:value="record.amount" :precision="2" style="width: 100%" @change="() => updateDeductionAmount(currentItem!)" />
+              <InputNumber
+                v-model:value="record.amount"
+                :precision="2"
+                style="width: 100%"
+                @change="() => updateDeductionAmount(currentItem!)"
+              />
             </template>
             <template v-if="column.key === 'remark'">
-              <Input v-model:value="record.remark" placeholder="请输入扣减说明（必填）" style="width: 100%" :required="true" />
+              <Input
+                v-model:value="record.remark"
+                placeholder="请输入扣减说明（必填）"
+                style="width: 100%"
+                :required="true"
+              />
             </template>
             <template v-if="column.key === 'action'">
-              <Button type="link" size="small" danger @click="removeDeduction(index)">删除</Button>
+              <Button
+                type="link"
+                size="small"
+                danger
+                @click="removeDeduction(index)"
+              >
+                删除
+              </Button>
             </template>
           </template>
         </Table>
-        <Button type="dashed" block class="mt-2" @click="addDeduction">添加扣减项</Button>
-        <div style=" margin-top: 8px; font-size: 12px;color: #999;">
-          <div>• 税费类扣减项（个人所得税、社保、公积金等）用于计算应发工资</div>
+        <Button type="dashed" block class="mt-2" @click="addDeduction">
+          添加扣减项
+        </Button>
+        <div style="margin-top: 8px; font-size: 12px; color: #999">
+          <div>
+            • 税费类扣减项（个人所得税、社保、公积金等）用于计算应发工资
+          </div>
           <div>• 其他扣减项（预支、欠款、办公室租金等）用于计算实发工资</div>
           <div>• 工资可以为负数（当扣减项大于收入时）</div>
         </div>
@@ -902,7 +1071,7 @@ onMounted(() => {
               placeholder="请选择确认截止时间（默认每月27日24时）"
               style="width: 300px"
             />
-            <div style=" margin-top: 4px; font-size: 12px;color: #999;">
+            <div style="margin-top: 4px; font-size: 12px; color: #999">
               超过此时间未确认，系统将自动确认。默认：每月27日24时
             </div>
           </FormItem>
@@ -911,19 +1080,45 @@ onMounted(() => {
         <Divider>汇总</Divider>
         <Descriptions :column="4" bordered>
           <DescriptionsItem label="收入（提成总额）">
-            <span :style="{ color: calculateIncomeTotal(currentItem) < 0 ? '#ff4d4f' : '' }">
+            <span
+              :style="{
+                color: calculateIncomeTotal(currentItem) < 0 ? '#ff4d4f' : '',
+              }"
+            >
               {{ formatCurrency(calculateIncomeTotal(currentItem)) }}
             </span>
           </DescriptionsItem>
-          <DescriptionsItem label="税费扣减">{{ formatCurrency(calculateTaxDeductionTotal(currentItem)) }}</DescriptionsItem>
+          <DescriptionsItem label="税费扣减">
+            {{ formatCurrency(calculateTaxDeductionTotal(currentItem)) }}
+          </DescriptionsItem>
           <DescriptionsItem label="应发工资（税后）">
-            <span :style="{ color: (typeof currentItem.grossAmount === 'string' ? parseFloat(currentItem.grossAmount) : (currentItem.grossAmount || 0)) < 0 ? '#ff4d4f' : '' }">
+            <span
+              :style="{
+                color:
+                  (typeof currentItem.grossAmount === 'string'
+                    ? parseFloat(currentItem.grossAmount)
+                    : currentItem.grossAmount || 0) < 0
+                    ? '#ff4d4f'
+                    : '',
+              }"
+            >
               {{ formatCurrency(currentItem.grossAmount) }}
             </span>
           </DescriptionsItem>
-          <DescriptionsItem label="其他扣减">{{ formatCurrency(calculateOtherDeductionTotal(currentItem)) }}</DescriptionsItem>
+          <DescriptionsItem label="其他扣减">
+            {{ formatCurrency(calculateOtherDeductionTotal(currentItem)) }}
+          </DescriptionsItem>
           <DescriptionsItem label="实发工资" :span="2">
-            <span :style="{ color: (typeof currentItem.netAmount === 'string' ? parseFloat(currentItem.netAmount) : (currentItem.netAmount || 0)) < 0 ? '#ff4d4f' : '' }">
+            <span
+              :style="{
+                color:
+                  (typeof currentItem.netAmount === 'string'
+                    ? parseFloat(currentItem.netAmount)
+                    : currentItem.netAmount || 0) < 0
+                    ? '#ff4d4f'
+                    : '',
+              }"
+            >
               {{ formatCurrency(currentItem.netAmount) }}
             </span>
           </DescriptionsItem>
@@ -940,17 +1135,25 @@ onMounted(() => {
     >
       <Form :model="issueForm" layout="vertical">
         <FormItem label="发放方式" required>
-          <Select v-model:value="issueForm.paymentMethod" :options="paymentMethodOptions" />
+          <Select
+            v-model:value="issueForm.paymentMethod"
+            :options="paymentMethodOptions"
+          />
         </FormItem>
         <FormItem label="发放凭证URL">
-          <Input v-model:value="issueForm.paymentVoucherUrl" placeholder="请输入凭证URL" />
+          <Input
+            v-model:value="issueForm.paymentVoucherUrl"
+            placeholder="请输入凭证URL"
+          />
         </FormItem>
         <FormItem label="备注">
-          <Input.TextArea v-model:value="issueForm.remark" :rows="3" placeholder="请输入备注" />
+          <Input.TextArea
+            v-model:value="issueForm.remark"
+            :rows="3"
+            placeholder="请输入备注"
+          />
         </FormItem>
       </Form>
     </Modal>
   </Page>
 </template>
-
-

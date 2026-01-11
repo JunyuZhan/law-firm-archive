@@ -1,9 +1,9 @@
+import type { PageResult } from '../matter/types';
+
 /**
  * 采购管理 API
  */
 import { requestClient } from '#/api/request';
-
-import type { PageResult } from '../matter/types';
 
 // ========== 类型定义 ==========
 export interface PurchaseItemDTO {
@@ -112,7 +112,9 @@ export interface PurchaseReceiveCommand {
 
 /** 分页查询采购申请 */
 export function getPurchaseList(params: PurchaseQuery) {
-  return requestClient.get<PageResult<PurchaseRequestDTO>>('/admin/purchases', { params });
+  return requestClient.get<PageResult<PurchaseRequestDTO>>('/admin/purchases', {
+    params,
+  });
 }
 
 /** 获取采购申请详情 */
@@ -131,18 +133,29 @@ export function submitPurchaseRequest(id: number) {
 }
 
 /** 审批采购申请 */
-export function approvePurchaseRequest(id: number, approved: boolean, comment?: string) {
-  return requestClient.post(`/admin/purchases/${id}/approve`, null, { params: { approved, comment } });
+export function approvePurchaseRequest(
+  id: number,
+  approved: boolean,
+  comment?: string,
+) {
+  return requestClient.post(`/admin/purchases/${id}/approve`, null, {
+    params: { approved, comment },
+  });
 }
 
 /** 开始采购 */
 export function startPurchasing(id: number, supplierId: number) {
-  return requestClient.post(`/admin/purchases/${id}/start`, null, { params: { supplierId } });
+  return requestClient.post(`/admin/purchases/${id}/start`, null, {
+    params: { supplierId },
+  });
 }
 
 /** 采购入库 */
 export function receivePurchaseItem(data: PurchaseReceiveCommand) {
-  return requestClient.post<PurchaseReceiveDTO>('/admin/purchases/receive', data);
+  return requestClient.post<PurchaseReceiveDTO>(
+    '/admin/purchases/receive',
+    data,
+  );
 }
 
 /** 取消采购申请 */
@@ -152,7 +165,9 @@ export function cancelPurchaseRequest(id: number) {
 
 /** 获取入库记录 */
 export function getPurchaseReceiveRecords(id: number) {
-  return requestClient.get<PurchaseReceiveDTO[]>(`/admin/purchases/${id}/receives`);
+  return requestClient.get<PurchaseReceiveDTO[]>(
+    `/admin/purchases/${id}/receives`,
+  );
 }
 
 /** 获取我的采购申请 */
@@ -169,4 +184,3 @@ export function getPendingPurchaseApproval() {
 export function getPurchaseStatistics() {
   return requestClient.get<Record<string, any>>('/admin/purchases/statistics');
 }
-

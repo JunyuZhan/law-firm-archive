@@ -1,4 +1,12 @@
 <script setup lang="ts">
+import type { EmployeeDTO } from '#/api/hr/employee';
+import type {
+  ApproveRegularizationCommand,
+  CreateRegularizationCommand,
+  RegularizationDTO,
+  RegularizationQuery,
+} from '#/api/hr/regularization';
+
 import { onMounted, reactive, ref } from 'vue';
 
 import { Page } from '@vben/common-ui';
@@ -18,6 +26,7 @@ import {
   Textarea,
 } from 'ant-design-vue';
 
+import { getEmployeeList } from '#/api/hr/employee';
 import {
   approveRegularization,
   createRegularization,
@@ -25,17 +34,8 @@ import {
   getRegularizationDetail,
   getRegularizationList,
 } from '#/api/hr/regularization';
-import type {
-  ApproveRegularizationCommand,
-  CreateRegularizationCommand,
-  RegularizationDTO,
-  RegularizationQuery,
-} from '#/api/hr/regularization';
-import { getEmployeeList } from '#/api/hr/employee';
-import type { EmployeeDTO } from '#/api/hr/employee';
 
 defineOptions({ name: 'RegularizationManagement' });
-
 
 // 搜索表单
 const searchForm = reactive<RegularizationQuery>({
@@ -67,14 +67,49 @@ const statusTextMap: Record<string, string> = {
 
 // 表格列
 const columns = [
-  { title: '申请编号', dataIndex: 'applicationNo', key: 'applicationNo', width: 120 },
-  { title: '员工姓名', dataIndex: 'employeeName', key: 'employeeName', width: 100 },
-  { title: '试用期开始', dataIndex: 'probationStartDate', key: 'probationStartDate', width: 120 },
-  { title: '试用期结束', dataIndex: 'probationEndDate', key: 'probationEndDate', width: 120 },
-  { title: '期望转正日期', dataIndex: 'expectedRegularDate', key: 'expectedRegularDate', width: 120 },
-  { title: '申请日期', dataIndex: 'applicationDate', key: 'applicationDate', width: 120 },
+  {
+    title: '申请编号',
+    dataIndex: 'applicationNo',
+    key: 'applicationNo',
+    width: 120,
+  },
+  {
+    title: '员工姓名',
+    dataIndex: 'employeeName',
+    key: 'employeeName',
+    width: 100,
+  },
+  {
+    title: '试用期开始',
+    dataIndex: 'probationStartDate',
+    key: 'probationStartDate',
+    width: 120,
+  },
+  {
+    title: '试用期结束',
+    dataIndex: 'probationEndDate',
+    key: 'probationEndDate',
+    width: 120,
+  },
+  {
+    title: '期望转正日期',
+    dataIndex: 'expectedRegularDate',
+    key: 'expectedRegularDate',
+    width: 120,
+  },
+  {
+    title: '申请日期',
+    dataIndex: 'applicationDate',
+    key: 'applicationDate',
+    width: 120,
+  },
   { title: '状态', dataIndex: 'status', key: 'status', width: 100 },
-  { title: '审批人', dataIndex: 'approverName', key: 'approverName', width: 100 },
+  {
+    title: '审批人',
+    dataIndex: 'approverName',
+    key: 'approverName',
+    width: 100,
+  },
   { title: '操作', key: 'action', width: 200, fixed: 'right' as const },
 ];
 
@@ -96,7 +131,7 @@ const employeeList = ref<EmployeeDTO[]>([]);
 const modalVisible = ref(false);
 const modalLoading = ref(false);
 const regularizationForm = reactive<CreateRegularizationCommand>({
-  employeeId: undefined as number | undefined,
+  employeeId: undefined as unknown as number,
   probationStartDate: '',
   probationEndDate: '',
   expectedRegularDate: '',
@@ -106,7 +141,7 @@ const regularizationForm = reactive<CreateRegularizationCommand>({
 // 审批弹窗
 const approveModalVisible = ref(false);
 const approveModalLoading = ref(false);
-const currentRecord = ref<RegularizationDTO | null>(null);
+const currentRecord = ref<null | RegularizationDTO>(null);
 const approveForm = reactive<ApproveRegularizationCommand>({
   approved: true,
   comment: '',
@@ -203,16 +238,16 @@ async function handleSubmit() {
 }
 
 // 审批转正申请
-function handleApprove(record: RegularizationDTO) {
-  currentRecord.value = record;
+function handleApprove(record: Record<string, any>) {
+  currentRecord.value = record as RegularizationDTO;
   approveForm.approved = true;
   approveForm.comment = '';
   approveModalVisible.value = true;
 }
 
 // 拒绝转正申请
-function handleReject(record: RegularizationDTO) {
-  currentRecord.value = record;
+function handleReject(record: Record<string, any>) {
+  currentRecord.value = record as RegularizationDTO;
   approveForm.approved = false;
   approveForm.comment = '';
   approveModalVisible.value = true;
@@ -240,7 +275,7 @@ async function handleApproveSubmit() {
 }
 
 // 删除转正申请
-function handleDelete(record: RegularizationDTO) {
+function handleDelete(record: Record<string, any>) {
   Modal.confirm({
     title: '确认删除',
     content: `确定要删除转正申请"${record.applicationNo || record.id}"吗？`,
@@ -260,9 +295,9 @@ function handleDelete(record: RegularizationDTO) {
 
 // 查看详情
 const detailModalVisible = ref(false);
-const detailData = ref<RegularizationDTO | null>(null);
+const detailData = ref<null | RegularizationDTO>(null);
 
-async function handleView(record: RegularizationDTO) {
+async function handleView(record: Record<string, any>) {
   try {
     const detail = await getRegularizationDetail(record.id);
     detailData.value = detail;
@@ -271,7 +306,6 @@ async function handleView(record: RegularizationDTO) {
     message.error(error?.message || '获取详情失败');
   }
 }
-
 
 onMounted(() => {
   fetchEmployees();
@@ -291,17 +325,35 @@ onMounted(() => {
               placeholder="请选择员工"
               allow-clear
               show-search
-              :filter-option="(input: string, option: any) => option.children[0].children.toLowerCase().indexOf(input.toLowerCase()) >= 0"
+              :filter-option="
+                (input: string, option: any) =>
+                  option.children[0].children
+                    .toLowerCase()
+                    .includes(input.toLowerCase())
+              "
               style="width: 150px"
             >
-              <Select.Option v-for="emp in employeeList" :key="emp.id" :value="emp.id">
-                {{ emp.realName || emp.name || '-' }}
+              <Select.Option
+                v-for="emp in employeeList"
+                :key="emp.id"
+                :value="emp.id"
+              >
+                {{ emp.realName || '-' }}
               </Select.Option>
             </Select>
           </FormItem>
           <FormItem label="状态">
-            <Select v-model:value="searchForm.status" placeholder="请选择状态" allow-clear style="width: 120px">
-              <Select.Option v-for="item in statusOptions" :key="item.value" :value="item.value">
+            <Select
+              v-model:value="searchForm.status"
+              placeholder="请选择状态"
+              allow-clear
+              style="width: 120px"
+            >
+              <Select.Option
+                v-for="item in statusOptions"
+                :key="item.value"
+                :value="item.value"
+              >
                 {{ item.label }}
               </Select.Option>
             </Select>
@@ -332,7 +384,7 @@ onMounted(() => {
               {{ statusTextMap[record.status || ''] || record.status }}
             </Tag>
           </template>
-            <template v-if="column.key === 'action'">
+          <template v-if="column.key === 'action'">
             <Space>
               <a @click="handleView(record)">查看</a>
               <template v-if="record.status === 'PENDING'">
@@ -360,10 +412,19 @@ onMounted(() => {
             v-model:value="regularizationForm.employeeId"
             placeholder="请选择员工"
             show-search
-            :filter-option="(input: string, option: any) => option.children[0].children.toLowerCase().indexOf(input.toLowerCase()) >= 0"
+            :filter-option="
+              (input: string, option: any) =>
+                option.children[0].children
+                  .toLowerCase()
+                  .includes(input.toLowerCase())
+            "
           >
-            <Select.Option v-for="emp in employeeList" :key="emp.id" :value="emp.id">
-              {{ emp.name }}
+            <Select.Option
+              v-for="emp in employeeList"
+              :key="emp.id"
+              :value="emp.id"
+            >
+              {{ emp.realName || '-' }}
             </Select.Option>
           </Select>
         </FormItem>
@@ -389,7 +450,11 @@ onMounted(() => {
           />
         </FormItem>
         <FormItem label="自我评价">
-          <Textarea v-model:value="regularizationForm.selfEvaluation" placeholder="请输入自我评价" :rows="4" />
+          <Textarea
+            v-model:value="regularizationForm.selfEvaluation"
+            placeholder="请输入自我评价"
+            :rows="4"
+          />
         </FormItem>
       </Form>
     </Modal>
@@ -403,24 +468,42 @@ onMounted(() => {
     >
       <Form :model="approveForm" layout="vertical">
         <FormItem label="审批意见" required>
-          <Textarea v-model:value="approveForm.comment" placeholder="请输入审批意见" :rows="4" />
+          <Textarea
+            v-model:value="approveForm.comment"
+            placeholder="请输入审批意见"
+            :rows="4"
+          />
         </FormItem>
       </Form>
     </Modal>
 
     <!-- 详情弹窗 -->
-    <Modal v-model:open="detailModalVisible" title="转正申请详情" width="600px" :footer="null">
+    <Modal
+      v-model:open="detailModalVisible"
+      title="转正申请详情"
+      width="600px"
+      :footer="null"
+    >
       <div v-if="detailData" style="line-height: 2">
         <p><strong>申请编号:</strong> {{ detailData.applicationNo || '-' }}</p>
         <p><strong>员工姓名:</strong> {{ detailData.employeeName || '-' }}</p>
-        <p><strong>试用期开始:</strong> {{ detailData.probationStartDate || '-' }}</p>
-        <p><strong>试用期结束:</strong> {{ detailData.probationEndDate || '-' }}</p>
-        <p><strong>期望转正日期:</strong> {{ detailData.expectedRegularDate || '-' }}</p>
+        <p>
+          <strong>试用期开始:</strong>
+          {{ detailData.probationStartDate || '-' }}
+        </p>
+        <p>
+          <strong>试用期结束:</strong> {{ detailData.probationEndDate || '-' }}
+        </p>
+        <p>
+          <strong>期望转正日期:</strong>
+          {{ detailData.expectedRegularDate || '-' }}
+        </p>
         <p><strong>自我评价:</strong> {{ detailData.selfEvaluation || '-' }}</p>
         <p><strong>状态:</strong> {{ detailData.statusName || '-' }}</p>
-        <p v-if="detailData.comment"><strong>审批意见:</strong> {{ detailData.comment }}</p>
+        <p v-if="detailData.comment">
+          <strong>审批意见:</strong> {{ detailData.comment }}
+        </p>
       </div>
     </Modal>
   </Page>
 </template>
-

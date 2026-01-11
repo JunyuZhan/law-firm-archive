@@ -1,83 +1,91 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted, h, computed, watch } from 'vue';
-import { message, Modal, Cascader } from 'ant-design-vue';
+import type { ClientDTO } from '#/api/client/types';
+import type { CommissionRule } from '#/api/finance/commission-rule';
+import type {
+  ContractDTO,
+  ContractParticipantDTO,
+  ContractPaymentScheduleDTO,
+  ContractQuery,
+  ContractStatistics,
+  CreateContractCommand,
+  CreateParticipantCommand,
+  CreatePaymentScheduleCommand,
+} from '#/api/finance/types';
+import type { ContractPrintDTO } from '#/api/matter';
+import type { DepartmentDTO } from '#/api/system/types';
+
+import { computed, h, onMounted, reactive, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
+
 import { Page } from '@vben/common-ui';
+import { Plus } from '@vben/icons';
 import { useUserStore } from '@vben/stores';
-import dayjs from 'dayjs';
+
 import {
-  Card,
-  Table,
+  Alert,
   Button,
-  Space,
-  Tag,
-  Input,
-  Select,
+  Card,
+  Cascader,
+  Checkbox,
+  Col,
+  DatePicker,
+  Divider,
   Form,
   FormItem,
-  DatePicker,
+  Input,
   InputNumber,
-  Textarea,
-  Row,
-  Col,
-  Tabs,
-  TabPane,
-  Statistic,
-  Divider,
+  message,
+  Modal,
   Popconfirm,
-  Alert,
-  Checkbox,
+  Row,
+  Select,
+  Space,
+  Statistic,
+  Table,
+  TabPane,
+  Tabs,
+  Tag,
+  Textarea,
 } from 'ant-design-vue';
-import {
-  createContract,
-  submitContract,
-  applyContractChange,
-  updateContract,
-  getContractApprovers,
-  getContractDetail,
-  getMatterContractList,
-  getMatterContractStatistics,
-} from '#/api/matter';
+import dayjs from 'dayjs';
+
+import { getClientList } from '#/api/client';
 // UpdateContractCommand 用于类型推断
 import {
-  getContractPaymentSchedules,
+  createContractFromTemplate,
+  createContractParticipant,
   createPaymentSchedule,
-  updatePaymentSchedule,
+  deleteContractParticipant,
   deletePaymentSchedule,
   getContractParticipants,
-  createContractParticipant,
+  getContractPaymentSchedules,
   updateContractParticipant,
-  deleteContractParticipant,
-  createContractFromTemplate,
+  updatePaymentSchedule,
 } from '#/api/finance';
+import { commissionRuleApi } from '#/api/finance/commission-rule';
+import {
+  applyContractChange,
+  createContract,
+  getContractApprovers,
+  getContractDetail,
+  getContractPrintData,
+  getMatterContractList,
+  getMatterContractStatistics,
+  submitContract,
+  updateContract,
+} from '#/api/matter';
 import { requestClient } from '#/api/request';
-import { approveApproval, getBusinessApprovals } from '#/api/workbench';
-import type { 
-  ContractDTO, 
-  ContractQuery, 
-  CreateContractCommand,
-  ContractPaymentScheduleDTO,
-  ContractParticipantDTO,
-  CreatePaymentScheduleCommand,
-  CreateParticipantCommand,
-  ContractStatistics,
-} from '#/api/finance/types';
-import { getClientList } from '#/api/client';
-import { getContractPrintData, type ContractPrintDTO } from '#/api/matter';
 import { getDepartmentTreePublic } from '#/api/system';
-import type { ClientDTO } from '#/api/client/types';
-import type { DepartmentDTO } from '#/api/system/types';
+import { approveApproval, getBusinessApprovals } from '#/api/workbench';
 import { UserTreeSelect } from '#/components/UserTreeSelect';
-import { Plus } from '@vben/icons';
 import {
   CASE_CATEGORY_OPTIONS,
-  needsCauseOfAction,
-  getCauseTypeByCase,
-  getCausesByType,
   causesToCascaderOptions,
   findCauseNameInAll,
+  getCausesByType,
+  getCauseTypeByCase,
+  needsCauseOfAction,
 } from '#/constants/causes';
-import { commissionRuleApi, type CommissionRule } from '#/api/finance/commission-rule';
 
 defineOptions({ name: 'MatterContractList' });
 
@@ -92,38 +100,38 @@ function canOperateContract(contract: ContractDTO): boolean {
 }
 
 // 金额转中文大写
-function amountToChinese(num: number | undefined | null): string {
+function amountToChinese(num: null | number | undefined): string {
   if (num === undefined || num === null || isNaN(num)) return '';
   if (num === 0) return '零元整';
-  
+
   const digits = ['零', '壹', '贰', '叁', '肆', '伍', '陆', '柒', '捌', '玖'];
   const units = ['', '拾', '佰', '仟'];
   const bigUnits = ['', '万', '亿', '兆'];
-  
+
   // 分离整数和小数部分
   const parts = num.toFixed(2).split('.');
   const intPart = parts[0] || '0';
   const decPart = parts[1] || '00';
   let result = '';
-  
+
   // 处理整数部分
   if (intPart !== '0') {
     let intStr: string = intPart;
     let groupIndex = 0;
-    
+
     while (intStr.length > 0) {
       const group = intStr.slice(-4);
       intStr = intStr.slice(0, -4);
-      
+
       let groupResult = '';
       let hasZero = false;
-      
+
       for (let i = 0; i < group.length; i++) {
         const char = group[i];
         if (char === undefined) continue;
-        const digit = parseInt(char, 10);
+        const digit = Number.parseInt(char, 10);
         const unitIndex = group.length - 1 - i;
-        
+
         if (digit === 0) {
           hasZero = true;
         } else {
@@ -134,41 +142,42 @@ function amountToChinese(num: number | undefined | null): string {
           groupResult += (digits[digit] || '') + (units[unitIndex] || '');
         }
       }
-      
+
       if (groupResult) {
         result = groupResult + (bigUnits[groupIndex] || '') + result;
-      } else if (result && groupIndex > 0) {
-        // 如果当前组为空但后面有数字，需要添加零
-        if (!result.startsWith('零')) {
-          result = '零' + result;
-        }
+      } else if (
+        result &&
+        groupIndex > 0 && // 如果当前组为空但后面有数字，需要添加零
+        !result.startsWith('零')
+      ) {
+        result = `零${result}`;
       }
-      
+
       groupIndex++;
     }
-    
+
     result += '元';
   }
-  
+
   // 处理小数部分
   const jiaoChar = decPart[0];
   const fenChar = decPart[1];
-  const jiao = jiaoChar ? parseInt(jiaoChar, 10) : 0;
-  const fen = fenChar ? parseInt(fenChar, 10) : 0;
-  
+  const jiao = jiaoChar ? Number.parseInt(jiaoChar, 10) : 0;
+  const fen = fenChar ? Number.parseInt(fenChar, 10) : 0;
+
   if (jiao === 0 && fen === 0) {
     result += '整';
   } else {
     if (jiao > 0) {
-      result += (digits[jiao] || '') + '角';
+      result += `${digits[jiao] || ''}角`;
     } else if (result) {
       result += '零';
     }
     if (fen > 0) {
-      result += (digits[fen] || '') + '分';
+      result += `${digits[fen] || ''}分`;
     }
   }
-  
+
   return result || '零元整';
 }
 
@@ -217,8 +226,8 @@ const templatePreviewContent = ref('');
 // 打印弹窗相关
 const printModalVisible = ref(false);
 const printOptions = reactive({
-  printContract: true,      // 打印合同
-  printApprovalForm: true,  // 打印收案审批表
+  printContract: true, // 打印合同
+  printApprovalForm: true, // 打印收案审批表
 });
 const currentPrintData = ref<ContractPrintDTO | null>(null);
 
@@ -243,13 +252,13 @@ const commissionFormData = reactive({
 });
 
 const changeFormData = reactive<{
-  contractId?: number;
-  changeReason: string;
+  [key: string]: any;
   changeDescription: string;
-  signDate?: any;
+  changeReason: string;
+  contractId?: number;
   effectiveDate?: any;
   expiryDate?: any;
-  [key: string]: any;
+  signDate?: any;
 }>({
   changeReason: '',
   changeDescription: '',
@@ -306,27 +315,29 @@ function handleYearChange(value: any) {
 }
 
 // 表单数据
-const formData = reactive<Partial<CreateContractCommand> & { 
-  id?: number;
-  signDate?: any;
-  effectiveDate?: any;
-  expiryDate?: any;
-  // 模板专用扩展字段
-  lawyerNames?: string;
-  assistantNames?: string;
-  authorizationType?: string;
-  paymentDeadline?: string;
-  disputeResolution?: string;
-  arbitrationCommittee?: string;
-  specialTerms?: string;
-  defendantName?: string;
-  criminalCharge?: string;
-  defenseStage?: string;
-  partnerRate?: number;
-  seniorRate?: number;
-  assistantRate?: number;
-  serviceHours?: number;
-}>({
+const formData = reactive<
+  {
+    arbitrationCommittee?: string;
+    assistantNames?: string;
+    assistantRate?: number;
+    authorizationType?: string;
+    criminalCharge?: string;
+    defendantName?: string;
+    defenseStage?: string;
+    disputeResolution?: string;
+    effectiveDate?: any;
+    expiryDate?: any;
+    id?: number;
+    // 模板专用扩展字段
+    lawyerNames?: string;
+    partnerRate?: number;
+    paymentDeadline?: string;
+    seniorRate?: number;
+    serviceHours?: number;
+    signDate?: any;
+    specialTerms?: string;
+  } & Partial<CreateContractCommand>
+>({
   name: '',
   clientId: undefined,
   contractType: 'SERVICE',
@@ -343,7 +354,7 @@ const formData = reactive<Partial<CreateContractCommand> & {
   // 扩展字段
   caseType: undefined,
   causeOfAction: undefined,
-  trialStage: [] as string[],  // 支持多选
+  trialStage: [] as string[], // 支持多选
   claimAmount: undefined,
   jurisdictionCourt: '',
   opposingParty: '',
@@ -369,7 +380,9 @@ const formData = reactive<Partial<CreateContractCommand> & {
 });
 
 // 付款计划表单
-const scheduleFormData = reactive<Partial<CreatePaymentScheduleCommand> & { id?: number }>({
+const scheduleFormData = reactive<
+  Partial<CreatePaymentScheduleCommand> & { id?: number }
+>({
   phaseName: '',
   amount: undefined,
   percentage: undefined,
@@ -378,7 +391,9 @@ const scheduleFormData = reactive<Partial<CreatePaymentScheduleCommand> & { id?:
 });
 
 // 参与人表单（用于合同详情页）
-const participantFormData = reactive<Partial<CreateParticipantCommand> & { id?: number }>({
+const participantFormData = reactive<
+  Partial<CreateParticipantCommand> & { id?: number }
+>({
   userId: undefined,
   role: 'CO_COUNSEL',
   commissionRate: undefined,
@@ -397,11 +412,32 @@ const contractParticipants = ref<ContractParticipantInput[]>([]);
 // 表格列
 const columns = [
   { title: '合同编号', dataIndex: 'contractNo', key: 'contractNo', width: 140 },
-  { title: '合同名称', dataIndex: 'name', key: 'name', width: 180, ellipsis: true },
+  {
+    title: '合同名称',
+    dataIndex: 'name',
+    key: 'name',
+    width: 180,
+    ellipsis: true,
+  },
   { title: '客户', dataIndex: 'clientName', key: 'clientName', width: 120 },
-  { title: '合同类型', dataIndex: 'contractTypeName', key: 'contractTypeName', width: 100 },
-  { title: '收费方式', dataIndex: 'feeTypeName', key: 'feeTypeName', width: 100 },
-  { title: '合同金额', dataIndex: 'totalAmount', key: 'totalAmount', width: 120 },
+  {
+    title: '合同类型',
+    dataIndex: 'contractTypeName',
+    key: 'contractTypeName',
+    width: 100,
+  },
+  {
+    title: '收费方式',
+    dataIndex: 'feeTypeName',
+    key: 'feeTypeName',
+    width: 100,
+  },
+  {
+    title: '合同金额',
+    dataIndex: 'totalAmount',
+    key: 'totalAmount',
+    width: 120,
+  },
   { title: '状态', dataIndex: 'statusName', key: 'statusName', width: 90 },
   { title: '签约日期', dataIndex: 'signDate', key: 'signDate', width: 110 },
   { title: '操作', key: 'action', width: 220, fixed: 'right' as const },
@@ -412,7 +448,12 @@ const scheduleColumns = [
   { title: '阶段名称', dataIndex: 'phaseName', key: 'phaseName', width: 150 },
   { title: '金额', dataIndex: 'amount', key: 'amount', width: 120 },
   { title: '比例(%)', dataIndex: 'percentage', key: 'percentage', width: 100 },
-  { title: '计划日期', dataIndex: 'plannedDate', key: 'plannedDate', width: 120 },
+  {
+    title: '计划日期',
+    dataIndex: 'plannedDate',
+    key: 'plannedDate',
+    width: 120,
+  },
   { title: '实际日期', dataIndex: 'actualDate', key: 'actualDate', width: 120 },
   { title: '状态', dataIndex: 'statusName', key: 'statusName', width: 100 },
   { title: '操作', key: 'action', width: 150 },
@@ -422,7 +463,12 @@ const scheduleColumns = [
 const participantColumns = [
   { title: '姓名', dataIndex: 'userName', key: 'userName', width: 120 },
   { title: '角色', dataIndex: 'roleName', key: 'roleName', width: 100 },
-  { title: '提成比例(%)', dataIndex: 'commissionRate', key: 'commissionRate', width: 120 },
+  {
+    title: '提成比例(%)',
+    dataIndex: 'commissionRate',
+    key: 'commissionRate',
+    width: 120,
+  },
   { title: '备注', dataIndex: 'remark', key: 'remark', width: 150 },
   { title: '操作', key: 'action', width: 150 },
 ];
@@ -444,54 +490,53 @@ const feeTypeOptions = [
 ];
 
 // 审理阶段选项 - 根据案件类型动态显示
-const trialStageOptionsMap: Record<string, { label: string; value: string }[]> = {
-  // 民事案件
-  CIVIL: [
-    { label: '一审', value: 'FIRST_INSTANCE' },
-    { label: '二审', value: 'SECOND_INSTANCE' },
-    { label: '再审', value: 'RETRIAL' },
-    { label: '执行', value: 'EXECUTION' },
-  ],
-  // 刑事案件
-  CRIMINAL: [
-    { label: '侦查阶段', value: 'INVESTIGATION' },
-    { label: '审查起诉', value: 'PROSECUTION_REVIEW' },
-    { label: '一审', value: 'FIRST_INSTANCE' },
-    { label: '二审', value: 'SECOND_INSTANCE' },
-    { label: '死刑复核', value: 'DEATH_PENALTY_REVIEW' },
-    { label: '再审', value: 'RETRIAL' },
-  ],
-  // 行政案件
-  ADMINISTRATIVE: [
-    { label: '行政复议', value: 'ADMINISTRATIVE_RECONSIDERATION' },
-    { label: '一审', value: 'FIRST_INSTANCE' },
-    { label: '二审', value: 'SECOND_INSTANCE' },
-    { label: '再审', value: 'RETRIAL' },
-  ],
-  // 劳动仲裁
-  LABOR_ARBITRATION: [
-    { label: '仲裁阶段', value: 'ARBITRATION' },
-    { label: '一审', value: 'FIRST_INSTANCE' },
-    { label: '二审', value: 'SECOND_INSTANCE' },
-    { label: '再审', value: 'RETRIAL' },
-    { label: '执行', value: 'EXECUTION' },
-  ],
-  // 商事仲裁
-  COMMERCIAL_ARBITRATION: [
-    { label: '仲裁阶段', value: 'ARBITRATION' },
-    { label: '执行', value: 'EXECUTION' },
-  ],
-  // 执行案件
-  ENFORCEMENT: [
-    { label: '执行阶段', value: 'EXECUTION' },
-    { label: '执行异议', value: 'EXECUTION_OBJECTION' },
-    { label: '执行复议', value: 'EXECUTION_REVIEW' },
-  ],
-  // 默认选项（非诉等）
-  DEFAULT: [
-    { label: '非诉服务', value: 'NON_LITIGATION' },
-  ],
-};
+const trialStageOptionsMap: Record<string, { label: string; value: string }[]> =
+  {
+    // 民事案件
+    CIVIL: [
+      { label: '一审', value: 'FIRST_INSTANCE' },
+      { label: '二审', value: 'SECOND_INSTANCE' },
+      { label: '再审', value: 'RETRIAL' },
+      { label: '执行', value: 'EXECUTION' },
+    ],
+    // 刑事案件
+    CRIMINAL: [
+      { label: '侦查阶段', value: 'INVESTIGATION' },
+      { label: '审查起诉', value: 'PROSECUTION_REVIEW' },
+      { label: '一审', value: 'FIRST_INSTANCE' },
+      { label: '二审', value: 'SECOND_INSTANCE' },
+      { label: '死刑复核', value: 'DEATH_PENALTY_REVIEW' },
+      { label: '再审', value: 'RETRIAL' },
+    ],
+    // 行政案件
+    ADMINISTRATIVE: [
+      { label: '行政复议', value: 'ADMINISTRATIVE_RECONSIDERATION' },
+      { label: '一审', value: 'FIRST_INSTANCE' },
+      { label: '二审', value: 'SECOND_INSTANCE' },
+      { label: '再审', value: 'RETRIAL' },
+    ],
+    // 劳动仲裁
+    LABOR_ARBITRATION: [
+      { label: '仲裁阶段', value: 'ARBITRATION' },
+      { label: '一审', value: 'FIRST_INSTANCE' },
+      { label: '二审', value: 'SECOND_INSTANCE' },
+      { label: '再审', value: 'RETRIAL' },
+      { label: '执行', value: 'EXECUTION' },
+    ],
+    // 商事仲裁
+    COMMERCIAL_ARBITRATION: [
+      { label: '仲裁阶段', value: 'ARBITRATION' },
+      { label: '执行', value: 'EXECUTION' },
+    ],
+    // 执行案件
+    ENFORCEMENT: [
+      { label: '执行阶段', value: 'EXECUTION' },
+      { label: '执行异议', value: 'EXECUTION_OBJECTION' },
+      { label: '执行复议', value: 'EXECUTION_REVIEW' },
+    ],
+    // 默认选项（非诉等）
+    DEFAULT: [{ label: '非诉服务', value: 'NON_LITIGATION' }],
+  };
 
 // 根据案件类型获取审理阶段选项
 const trialStageOptions = computed(() => {
@@ -528,7 +573,9 @@ const statusOptions = [
 ];
 
 // 案件类型选项（诉讼类）
-const caseTypeOptions = CASE_CATEGORY_OPTIONS.filter(opt => opt.matterType === 'LITIGATION');
+const caseTypeOptions = CASE_CATEGORY_OPTIONS.filter(
+  (opt) => opt.matterType === 'LITIGATION',
+);
 
 // 案由级联选择值
 const causeValue = ref<string[]>([]);
@@ -548,28 +595,37 @@ const causeOptions = computed(() => {
 });
 
 // 监听案件类型变化，清空案由
-watch(() => formData.caseType, () => {
-  formData.causeOfAction = undefined;
-  formData.trialStage = [];  // 案件类型改变时清空审理阶段
-  causeValue.value = [];
-});
+watch(
+  () => formData.caseType,
+  () => {
+    formData.causeOfAction = undefined;
+    formData.trialStage = []; // 案件类型改变时清空审理阶段
+    causeValue.value = [];
+  },
+);
 
 // 监听案由级联选择变化
 watch(causeValue, (val) => {
-  if (val && val.length > 0) {
-    formData.causeOfAction = val[val.length - 1];
-  } else {
-    formData.causeOfAction = undefined;
-  }
+  formData.causeOfAction =
+    val && val.length > 0 ? val[val.length - 1] : undefined;
 });
 
 // 监听提成方案比例变化，自动更新参与人比例
 watch(
-  () => [commissionFormData.firmRate, commissionFormData.leadLawyerRate, commissionFormData.assistLawyerRate, commissionFormData.supportStaffRate, commissionFormData.originatorRate],
+  () => [
+    commissionFormData.firmRate,
+    commissionFormData.leadLawyerRate,
+    commissionFormData.assistLawyerRate,
+    commissionFormData.supportStaffRate,
+    commissionFormData.originatorRate,
+  ],
   () => {
     // 如果已选择方案且方案允许修改，同步更新参与人比例
-    if (selectedCommissionRule.value && selectedCommissionRule.value.allowModify) {
-      contractParticipants.value.forEach(p => {
+    if (
+      selectedCommissionRule.value &&
+      selectedCommissionRule.value.allowModify
+    ) {
+      contractParticipants.value.forEach((p) => {
         if (p.role) {
           const rate = getCommissionRateByRole(p.role);
           if (rate !== undefined) {
@@ -579,12 +635,15 @@ watch(
       });
     }
   },
-  { deep: true }
+  { deep: true },
 );
 
 // 计算提成比例总和
 const totalCommissionRate = computed(() => {
-  return participants.value.reduce((sum, p) => sum + (p.commissionRate || 0), 0);
+  return participants.value.reduce(
+    (sum, p) => sum + (p.commissionRate || 0),
+    0,
+  );
 });
 
 // 计算付款计划总额
@@ -631,56 +690,63 @@ async function loadOptions() {
   try {
     const clientRes = await getClientList({ pageNum: 1, pageSize: 1000 });
     clients.value = clientRes.list || [];
-  } catch (e) {
-    console.warn('加载客户列表失败', e);
+  } catch (error) {
+    console.warn('加载客户列表失败', error);
   }
-  
+
   // 部门树（使用公共接口，无需特殊权限）
   try {
     const deptRes = await getDepartmentTreePublic();
     departments.value = deptRes || [];
-  } catch (e) {
-    console.warn('加载部门树失败', e);
+  } catch (error) {
+    console.warn('加载部门树失败', error);
   }
-  
+
   // 合同模板 - 使用不需要权限的接口
   try {
-    const templateRes = await requestClient.get<ContractTemplateDTO[]>('/system/contract-template/active');
+    const templateRes = await requestClient.get<ContractTemplateDTO[]>(
+      '/system/contract-template/active',
+    );
     contractTemplates.value = templateRes || [];
-  } catch (e) {
-    console.warn('加载合同模板失败', e);
+  } catch (error) {
+    console.warn('加载合同模板失败', error);
   }
-  
+
   // 提成方案（使用公共接口，无需特殊权限）
   try {
     const ruleRes = await commissionRuleApi.getActiveRules();
     commissionRules.value = ruleRes || [];
-    
+
     // 设置默认提成方案
-    const defaultRule = commissionRules.value.find(r => r.isDefault);
+    const defaultRule = commissionRules.value.find((r) => r.isDefault);
     if (defaultRule) {
       handleCommissionRuleChange(defaultRule.id);
     }
-  } catch (e) {
-    console.warn('加载提成方案失败', e);
+  } catch (error) {
+    console.warn('加载提成方案失败', error);
   }
 }
 
 // 根据角色获取对应的提成比例
 function getCommissionRateByRole(role: string): number | undefined {
   if (!selectedCommissionRule.value) return undefined;
-  
+
   switch (role) {
-    case 'LEAD':
-      return selectedCommissionRule.value.leadLawyerRate;
-    case 'CO_COUNSEL':
+    case 'CO_COUNSEL': {
       return selectedCommissionRule.value.assistLawyerRate;
-    case 'PARALEGAL':
-      return selectedCommissionRule.value.supportStaffRate;
-    case 'ORIGINATOR':
+    }
+    case 'LEAD': {
+      return selectedCommissionRule.value.leadLawyerRate;
+    }
+    case 'ORIGINATOR': {
       return selectedCommissionRule.value.originatorRate;
-    default:
+    }
+    case 'PARALEGAL': {
+      return selectedCommissionRule.value.supportStaffRate;
+    }
+    default: {
       return undefined;
+    }
   }
 }
 
@@ -691,16 +757,22 @@ function handleCommissionRuleChange(value: any) {
   selectedCommissionRuleId.value = ruleId;
   if (!ruleId) {
     selectedCommissionRule.value = null;
-    Object.assign(commissionFormData, { firmRate: 0, leadLawyerRate: 0, assistLawyerRate: 0, supportStaffRate: 0, originatorRate: 0 });
+    Object.assign(commissionFormData, {
+      firmRate: 0,
+      leadLawyerRate: 0,
+      assistLawyerRate: 0,
+      supportStaffRate: 0,
+      originatorRate: 0,
+    });
     // 清空参与人的比例
-    contractParticipants.value.forEach(p => {
+    contractParticipants.value.forEach((p) => {
       p.commissionRate = undefined;
     });
     console.log('清空提成方案后参与人:', contractParticipants.value);
     return;
   }
 
-  const rule = commissionRules.value.find(r => r.id === ruleId);
+  const rule = commissionRules.value.find((r) => r.id === ruleId);
   if (rule) {
     console.log('找到提成方案:', rule);
     selectedCommissionRule.value = rule;
@@ -711,12 +783,12 @@ function handleCommissionRuleChange(value: any) {
       supportStaffRate: rule.supportStaffRate,
       originatorRate: rule.originatorRate || 0,
     });
-    
+
     // 根据方案自动初始化参与人列表
     // 如果参与人列表为空，根据方案自动添加有比例的角色的参与人
     if (contractParticipants.value.length === 0) {
       const newParticipants: any[] = [];
-      
+
       // 主办律师
       if (rule.leadLawyerRate > 0) {
         newParticipants.push({
@@ -725,7 +797,7 @@ function handleCommissionRuleChange(value: any) {
           commissionRate: rule.leadLawyerRate,
         });
       }
-      
+
       // 协办律师
       if (rule.assistLawyerRate > 0) {
         newParticipants.push({
@@ -734,7 +806,7 @@ function handleCommissionRuleChange(value: any) {
           commissionRate: rule.assistLawyerRate,
         });
       }
-      
+
       // 辅助人员
       if (rule.supportStaffRate > 0) {
         newParticipants.push({
@@ -743,7 +815,7 @@ function handleCommissionRuleChange(value: any) {
           commissionRate: rule.supportStaffRate,
         });
       }
-      
+
       // 案源人
       if (rule.originatorRate && rule.originatorRate > 0) {
         newParticipants.push({
@@ -752,7 +824,7 @@ function handleCommissionRuleChange(value: any) {
           commissionRate: rule.originatorRate,
         });
       }
-      
+
       // 如果方案中所有角色比例都为0，至少添加一个主办律师（比例为0）
       if (newParticipants.length === 0) {
         newParticipants.push({
@@ -761,15 +833,18 @@ function handleCommissionRuleChange(value: any) {
           commissionRate: rule.leadLawyerRate || 0,
         });
       }
-      
+
       contractParticipants.value.push(...newParticipants);
     } else {
       // 如果已有参与人，更新他们的比例并补充缺失的角色
       const newParticipants: any[] = [];
-      
+
       // 更新已有参与人的提成比例（根据角色）
-      console.log('更新已有参与人的比例，当前参与人:', contractParticipants.value);
-      contractParticipants.value.forEach(p => {
+      console.log(
+        '更新已有参与人的比例，当前参与人:',
+        contractParticipants.value,
+      );
+      contractParticipants.value.forEach((p) => {
         if (p.role) {
           const rate = getCommissionRateByRole(p.role);
           console.log(`参与人角色 ${p.role} 对应比例:`, rate);
@@ -779,44 +854,57 @@ function handleCommissionRuleChange(value: any) {
         }
       });
       console.log('更新后参与人:', contractParticipants.value);
-      
+
       // 检查并补充缺失的角色（如果方案中有比例但参与人列表中还没有）
       // 主办律师
-      if (rule.leadLawyerRate > 0 && !contractParticipants.value.find(p => p.role === 'LEAD')) {
+      if (
+        rule.leadLawyerRate > 0 &&
+        !contractParticipants.value.find((p) => p.role === 'LEAD')
+      ) {
         newParticipants.push({
           userId: undefined,
           role: 'LEAD',
           commissionRate: rule.leadLawyerRate,
         });
       }
-      
+
       // 协办律师
-      if (rule.assistLawyerRate > 0 && !contractParticipants.value.find(p => p.role === 'CO_COUNSEL')) {
+      if (
+        rule.assistLawyerRate > 0 &&
+        !contractParticipants.value.find((p) => p.role === 'CO_COUNSEL')
+      ) {
         newParticipants.push({
           userId: undefined,
           role: 'CO_COUNSEL',
           commissionRate: rule.assistLawyerRate,
         });
       }
-      
+
       // 辅助人员
-      if (rule.supportStaffRate > 0 && !contractParticipants.value.find(p => p.role === 'PARALEGAL')) {
+      if (
+        rule.supportStaffRate > 0 &&
+        !contractParticipants.value.find((p) => p.role === 'PARALEGAL')
+      ) {
         newParticipants.push({
           userId: undefined,
           role: 'PARALEGAL',
           commissionRate: rule.supportStaffRate,
         });
       }
-      
+
       // 案源人
-      if (rule.originatorRate && rule.originatorRate > 0 && !contractParticipants.value.find(p => p.role === 'ORIGINATOR')) {
+      if (
+        rule.originatorRate &&
+        rule.originatorRate > 0 &&
+        !contractParticipants.value.find((p) => p.role === 'ORIGINATOR')
+      ) {
         newParticipants.push({
           userId: undefined,
           role: 'ORIGINATOR',
           commissionRate: rule.originatorRate,
         });
       }
-      
+
       contractParticipants.value.push(...newParticipants);
     }
   }
@@ -838,32 +926,75 @@ interface FieldConfig {
 
 const fieldConfig: Record<string, FieldConfig> = {
   // 标准服务合同
-  'SERVICE': {
-    basic: ['clientId', 'totalAmount', 'signDate', 'paymentTerms', 'effectiveDate', 'expiryDate'],
+  SERVICE: {
+    basic: [
+      'clientId',
+      'totalAmount',
+      'signDate',
+      'paymentTerms',
+      'effectiveDate',
+      'expiryDate',
+    ],
     litigation: [],
     criminal: [],
     nonLitigation: [],
     retainer: [],
   },
   // 常年法律顾问
-  'RETAINER': {
-    basic: ['clientId', 'totalAmount', 'signDate', 'paymentTerms', 'effectiveDate', 'expiryDate', 'serviceHours'],
+  RETAINER: {
+    basic: [
+      'clientId',
+      'totalAmount',
+      'signDate',
+      'paymentTerms',
+      'effectiveDate',
+      'expiryDate',
+      'serviceHours',
+    ],
     litigation: [],
     criminal: [],
     nonLitigation: [],
     retainer: ['serviceHours'],
   },
   // 诉讼代理（民事/行政）
-  'LITIGATION': {
-    basic: ['clientId', 'totalAmount', 'signDate', 'paymentTerms', 'paymentDeadline', 'effectiveDate', 'expiryDate'],
-    litigation: ['caseType', 'causeOfAction', 'trialStage', 'opposingParty', 'claimAmount', 'jurisdictionCourt', 'lawyerNames', 'assistantNames', 'authorizationType', 'disputeResolution', 'arbitrationCommittee', 'specialTerms'],
+  LITIGATION: {
+    basic: [
+      'clientId',
+      'totalAmount',
+      'signDate',
+      'paymentTerms',
+      'paymentDeadline',
+      'effectiveDate',
+      'expiryDate',
+    ],
+    litigation: [
+      'caseType',
+      'causeOfAction',
+      'trialStage',
+      'opposingParty',
+      'claimAmount',
+      'jurisdictionCourt',
+      'lawyerNames',
+      'assistantNames',
+      'authorizationType',
+      'disputeResolution',
+      'arbitrationCommittee',
+      'specialTerms',
+    ],
     criminal: [],
     nonLitigation: [],
     retainer: [],
   },
   // 非诉项目
-  'NON_LITIGATION': {
-    basic: ['clientId', 'totalAmount', 'signDate', 'paymentTerms', 'effectiveDate', 'expiryDate'],
+  NON_LITIGATION: {
+    basic: [
+      'clientId',
+      'totalAmount',
+      'signDate',
+      'paymentTerms',
+      'effectiveDate',
+      'expiryDate',
+    ],
     litigation: [],
     criminal: [],
     nonLitigation: ['partnerRate', 'seniorRate', 'assistantRate'],
@@ -874,16 +1005,32 @@ const fieldConfig: Record<string, FieldConfig> = {
 // 根据模板ID获取需要的字段列表
 const visibleFields = computed(() => {
   if (!selectedTemplateId.value) {
-    return { basic: [], litigation: [], criminal: [], nonLitigation: [], retainer: [] };
+    return {
+      basic: [],
+      litigation: [],
+      criminal: [],
+      nonLitigation: [],
+      retainer: [],
+    };
   }
-  
-  const template = contractTemplates.value.find(t => t.id === selectedTemplateId.value);
+
+  const template = contractTemplates.value.find(
+    (t) => t.id === selectedTemplateId.value,
+  );
   if (!template) {
-    return { basic: [], litigation: [], criminal: [], nonLitigation: [], retainer: [] };
+    return {
+      basic: [],
+      litigation: [],
+      criminal: [],
+      nonLitigation: [],
+      retainer: [],
+    };
   }
-  
-  const contractType = (template.contractType || 'SERVICE') as keyof typeof fieldConfig;
-  const config: FieldConfig = (fieldConfig[contractType] ?? fieldConfig['SERVICE']) as FieldConfig;
+
+  const contractType = (template.contractType ||
+    'SERVICE') as keyof typeof fieldConfig;
+  const config: FieldConfig = (fieldConfig[contractType] ??
+    fieldConfig.SERVICE) as FieldConfig;
   const fields: FieldConfig = {
     basic: [...(config.basic || [])],
     litigation: [],
@@ -891,10 +1038,11 @@ const visibleFields = computed(() => {
     nonLitigation: [],
     retainer: [],
   };
-  
+
   // 判断是否为刑事案件模板（通过模板名称）
-  const isCriminalTemplate = template.name?.includes('刑事') || template.name?.includes('刑辩');
-  
+  const isCriminalTemplate =
+    template.name?.includes('刑事') || template.name?.includes('刑辩');
+
   // 如果是诉讼类
   if (template.contractType === 'LITIGATION') {
     if (isCriminalTemplate) {
@@ -907,17 +1055,17 @@ const visibleFields = computed(() => {
       fields.litigation = [...(config.litigation || [])];
     }
   }
-  
+
   // 如果是非诉项目，添加非诉字段
   if (template.contractType === 'NON_LITIGATION') {
     fields.nonLitigation = [...(config.nonLitigation || [])];
   }
-  
+
   // 如果是常年法顾，添加法顾字段
   if (template.contractType === 'RETAINER') {
     fields.retainer = [...(config.retainer || [])];
   }
-  
+
   return fields;
 });
 
@@ -940,8 +1088,8 @@ function handleTemplateChange(value: any) {
   if (!templateId) {
     return;
   }
-  
-  const template = contractTemplates.value.find(t => t.id === templateId);
+
+  const template = contractTemplates.value.find((t) => t.id === templateId);
   if (template) {
     // 自动填充合同类型和收费方式
     formData.contractType = template.contractType || 'SERVICE';
@@ -959,7 +1107,7 @@ function handleClientChange(value: any) {
 // 打印正式合同（审批后）- 打开打印选项弹窗
 async function handlePrintContract() {
   if (!currentContract.value) return;
-  
+
   try {
     loading.value = true;
     // 获取打印数据
@@ -969,7 +1117,7 @@ async function handlePrintContract() {
     printOptions.printApprovalForm = true;
     printModalVisible.value = true;
   } catch (error: any) {
-    message.error('获取打印数据失败：' + (error.message || '未知错误'));
+    message.error(`获取打印数据失败：${error.message || '未知错误'}`);
   } finally {
     loading.value = false;
   }
@@ -986,7 +1134,7 @@ function handleEditApprovalForm() {
 // 保存审批表（案情摘要）
 async function handleSaveApprovalForm() {
   if (!approvalFormData.contractId) return;
-  
+
   try {
     savingApprovalForm.value = true;
     await updateContract({
@@ -995,16 +1143,16 @@ async function handleSaveApprovalForm() {
     });
     message.success('保存成功');
     approvalFormModalVisible.value = false;
-    
+
     // 更新当前合同的案情摘要
     if (currentContract.value) {
       currentContract.value.caseSummary = approvalFormData.caseSummary;
     }
-    
+
     // 刷新列表
     fetchData();
   } catch (error: any) {
-    message.error('保存失败：' + (error.message || '未知错误'));
+    message.error(`保存失败：${error.message || '未知错误'}`);
   } finally {
     savingApprovalForm.value = false;
   }
@@ -1013,20 +1161,20 @@ async function handleSaveApprovalForm() {
 // 单独预览审批表
 async function handlePreviewApprovalForm() {
   if (!currentContract.value) return;
-  
+
   try {
     loading.value = true;
     const printData = await getContractPrintData(currentContract.value.id);
-    
+
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
       message.error('无法打开预览窗口');
       return;
     }
-    
+
     // 只生成审批表HTML
     const approvalFormHtml = generateApprovalFormHtml(printData);
-    
+
     printWindow.document.write(`
       <!DOCTYPE html>
       <html>
@@ -1053,7 +1201,7 @@ async function handlePreviewApprovalForm() {
     `);
     printWindow.document.close();
   } catch (error: any) {
-    message.error('获取预览数据失败：' + (error.message || '未知错误'));
+    message.error(`获取预览数据失败：${error.message || '未知错误'}`);
   } finally {
     loading.value = false;
   }
@@ -1063,10 +1211,10 @@ async function handlePreviewApprovalForm() {
 function generateApprovalFormHtml(data: ContractPrintDTO): string {
   // 案由：将代码转换为名称（确保转为字符串进行查找）
   const causeCode = data.causeOfAction ? String(data.causeOfAction) : '';
-  const causeOfActionDisplay = causeCode 
-    ? (findCauseNameInAll(causeCode) || data.causeOfActionName || causeCode)
-    : (data.causeOfActionName || data.caseTypeName || '');
-  
+  const causeOfActionDisplay = causeCode
+    ? findCauseNameInAll(causeCode) || data.causeOfActionName || causeCode
+    : data.causeOfActionName || data.caseTypeName || '';
+
   return `
     <div style="max-width: 800px; margin: 0 auto; font-family: 'SimSun', '宋体', serif; font-size: 14pt;">
       <h2 style="text-align: center; margin-bottom: 5px; font-family: 'SimSun', '宋体', serif; font-size: 18pt;">${data.firmName || ''}</h2>
@@ -1124,9 +1272,9 @@ function generateApprovalFormHtml(data: ContractPrintDTO): string {
         <tr>
           <td colspan="3" style="height: 80px; vertical-align: top;">
             <div><strong>律所领导意见：</strong></div>
-            <div style="margin-top: 10px;">${data.approvals && data.approvals[0]?.comment || ''}</div>
+            <div style="margin-top: 10px;">${(data.approvals && data.approvals[0]?.comment) || ''}</div>
             <div style="text-align: right; margin-top: 10px;">
-              签名：${data.approvals && data.approvals[0]?.approverName || '________________'} 日期：${data.approvals && data.approvals[0]?.approvedAt?.substring(0, 10) || '_____年___月___日'}
+              签名：${(data.approvals && data.approvals[0]?.approverName) || '________________'} 日期：${(data.approvals && data.approvals[0]?.approvedAt?.slice(0, 10)) || '_____年___月___日'}
             </div>
           </td>
         </tr>
@@ -1138,16 +1286,16 @@ function generateApprovalFormHtml(data: ContractPrintDTO): string {
 // 执行打印
 async function executePrint() {
   if (!currentPrintData.value) return;
-  
+
   const printWindow = window.open('', '_blank');
   if (!printWindow) {
     message.error('无法打开打印窗口，请检查浏览器是否阻止了弹出窗口');
     return;
   }
-  
+
   const data = currentPrintData.value;
   let htmlContent = '';
-  
+
   // 公共样式
   const commonStyles = `
     body { font-family: "SimSun", "宋体", serif; padding: 40px; line-height: 1.8; font-size: 14pt; }
@@ -1173,7 +1321,7 @@ async function executePrint() {
       @page { margin: 2cm; }
     }
   `;
-  
+
   // 打印合同
   if (printOptions.printContract) {
     let contractContent = data.contractContent || '';
@@ -1191,7 +1339,7 @@ async function executePrint() {
         ${data.jurisdictionCourt ? `<div class="info"><strong>管辖法院：</strong>${data.jurisdictionCourt}</div>` : ''}
       `;
     }
-    
+
     htmlContent += `
       <div class="contract-page" style="font-family: 'SimSun', '宋体', serif; font-size: 14pt;">
         <div class="header-info">合同编号：${data.contractNo}</div>
@@ -1214,28 +1362,34 @@ async function executePrint() {
         </div>
       </div>
     `;
-    
+
     if (printOptions.printApprovalForm) {
       htmlContent += '<div class="page-break"></div>';
     }
   }
-  
+
   // 打印收案审批表
   if (printOptions.printApprovalForm) {
-    const signDateStr = data.signDate ? new Date(data.signDate).toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' }) : '____年____月____日';
-    
+    const signDateStr = data.signDate
+      ? new Date(data.signDate).toLocaleDateString('zh-CN', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        })
+      : '____年____月____日';
+
     // 案由：将代码转换为名称（确保转为字符串进行查找）
     const causeCode = data.causeOfAction ? String(data.causeOfAction) : '';
-    const causeOfActionDisplay = causeCode 
-      ? (findCauseNameInAll(causeCode) || data.causeOfActionName || causeCode)
-      : (data.causeOfActionName || data.contractTypeName || '');
-    
+    const causeOfActionDisplay = causeCode
+      ? findCauseNameInAll(causeCode) || data.causeOfActionName || causeCode
+      : data.causeOfActionName || data.contractTypeName || '';
+
     // 获取审批信息
     // 接待律师（申请人）意见固定为"拟接受委托"
     // 律所领导意见从审批记录中获取
     const receptionLawyerName = data.originatorName || data.signerName || '';
     let approvalRows = '';
-    
+
     // 接待律师意见（申请人）
     approvalRows += `
       <tr>
@@ -1251,12 +1405,18 @@ async function executePrint() {
         <td class="no-border" style="font-family: 'SimSun', '宋体', serif; font-size: 14pt;">${signDateStr}</td>
       </tr>
     `;
-    
+
     // 律所领导意见（审批人）
     if (data.approvals && data.approvals.length > 0) {
       const leaderApproval = data.approvals[0]; // 第一个审批人是真正的审批人
-      const leaderDate = leaderApproval?.approvedAt ? new Date(leaderApproval.approvedAt).toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' }) : '____年____月____日';
-      
+      const leaderDate = leaderApproval?.approvedAt
+        ? new Date(leaderApproval.approvedAt).toLocaleDateString('zh-CN', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+          })
+        : '____年____月____日';
+
       approvalRows += `
         <tr>
           <th rowspan="3" style="font-family: 'SimSun', '宋体', serif; font-size: 14pt;">律所领导意见</th>
@@ -1288,7 +1448,7 @@ async function executePrint() {
         </tr>
       `;
     }
-    
+
     htmlContent += `
       <div class="approval-form-page" style="font-family: 'SimSun', '宋体', serif; font-size: 14pt;">
         <h1 style="font-family: 'SimSun', '宋体', serif; font-size: 18pt;">${data.firmName || ''}</h1>
@@ -1316,7 +1476,7 @@ async function executePrint() {
           </tr>
           <tr>
             <th>代理/辩护费</th>
-            <td>${data.totalAmount ? '¥' + data.totalAmount.toLocaleString() : ''}</td>
+            <td>${data.totalAmount ? `¥${data.totalAmount.toLocaleString()}` : ''}</td>
             <th style="width: 80px;">委托时间</th>
             <td style="width: 150px;">${signDateStr}</td>
           </tr>
@@ -1341,7 +1501,7 @@ async function executePrint() {
       </div>
     `;
   }
-  
+
   // 生成完整 HTML
   printWindow.document.write(`
     <!DOCTYPE html>
@@ -1355,10 +1515,10 @@ async function executePrint() {
     </body>
     </html>
   `);
-  
+
   printWindow.document.close();
   printModalVisible.value = false;
-  
+
   setTimeout(() => {
     printWindow.print();
   }, 500);
@@ -1435,7 +1595,6 @@ async function loadParticipants(contractId: number) {
   }
 }
 
-
 // 编辑合同
 async function handleEdit(record: ContractDTO) {
   try {
@@ -1445,11 +1604,7 @@ async function handleEdit(record: ContractDTO) {
     selectedTemplateId.value = undefined;
 
     // 设置案由级联值
-    if (detail.causeOfAction) {
-      causeValue.value = [detail.causeOfAction];
-    } else {
-      causeValue.value = [];
-    }
+    causeValue.value = detail.causeOfAction ? [detail.causeOfAction] : [];
 
     // 填充表单数据
     formData.id = detail.id;
@@ -1460,8 +1615,12 @@ async function handleEdit(record: ContractDTO) {
     formData.totalAmount = detail.totalAmount;
     formData.currency = detail.currency || 'CNY';
     formData.signDate = detail.signDate ? dayjs(detail.signDate) : undefined;
-    formData.effectiveDate = detail.effectiveDate ? dayjs(detail.effectiveDate) : undefined;
-    formData.expiryDate = detail.expiryDate ? dayjs(detail.expiryDate) : undefined;
+    formData.effectiveDate = detail.effectiveDate
+      ? dayjs(detail.effectiveDate)
+      : undefined;
+    formData.expiryDate = detail.expiryDate
+      ? dayjs(detail.expiryDate)
+      : undefined;
     formData.signerId = detail.signerId;
     formData.departmentId = detail.departmentId;
     formData.paymentTerms = detail.paymentTerms || '';
@@ -1482,7 +1641,9 @@ async function handleEdit(record: ContractDTO) {
     // 提成方案
     selectedCommissionRuleId.value = detail.commissionRuleId;
     if (detail.commissionRuleId) {
-      const rule = commissionRules.value.find(r => r.id === detail.commissionRuleId);
+      const rule = commissionRules.value.find(
+        (r) => r.id === detail.commissionRuleId,
+      );
       selectedCommissionRule.value = rule || null;
     } else {
       selectedCommissionRule.value = null;
@@ -1498,7 +1659,7 @@ async function handleEdit(record: ContractDTO) {
     // 加载现有的参与人列表（编辑模式下需要）
     const participants = await getContractParticipants(record.id);
     console.log('编辑合同时加载的参与人:', participants);
-    contractParticipants.value = participants.map(p => ({
+    contractParticipants.value = participants.map((p) => ({
       userId: p.userId,
       role: p.role,
       commissionRate: p.commissionRate,
@@ -1514,30 +1675,30 @@ async function handleEdit(record: ContractDTO) {
 
 // 保存
 async function handleSave() {
-  console.log('handleSave 被调用', { 
-    hasId: !!formData.id, 
+  console.log('handleSave 被调用', {
+    hasId: !!formData.id,
     templateId: selectedTemplateId.value,
     clientId: formData.clientId,
-    totalAmount: formData.totalAmount 
+    totalAmount: formData.totalAmount,
   });
-  
+
   try {
     saving.value = true;
-    
+
     // 创建合同时必须选择模板
     if (!formData.id && !selectedTemplateId.value) {
       message.error('请先选择合同模板');
       saving.value = false;
       return;
     }
-    
+
     // 表单验证
     if (!formRef.value) {
       message.error('表单未初始化');
       saving.value = false;
       return;
     }
-    
+
     try {
       await formRef.value.validate();
     } catch (validateError: any) {
@@ -1553,7 +1714,7 @@ async function handleSave() {
       saving.value = false;
       return;
     }
-    
+
     if (!formData.clientId) {
       message.error('请选择客户');
       saving.value = false;
@@ -1564,7 +1725,7 @@ async function handleSave() {
       saving.value = false;
       return;
     }
-    
+
     const baseData: any = {
       name: formData.name || '',
       clientId: formData.clientId,
@@ -1583,7 +1744,9 @@ async function handleSave() {
       caseType: formData.caseType,
       causeOfAction: formData.causeOfAction,
       // trialStage 多选，转换为逗号分隔字符串存储
-      trialStage: Array.isArray(formData.trialStage) ? formData.trialStage.join(',') : formData.trialStage,
+      trialStage: Array.isArray(formData.trialStage)
+        ? formData.trialStage.join(',')
+        : formData.trialStage,
       claimAmount: formData.claimAmount,
       jurisdictionCourt: formData.jurisdictionCourt,
       opposingParty: formData.opposingParty,
@@ -1618,28 +1781,38 @@ async function handleSave() {
       totalAmountChinese: totalAmountChinese.value,
       claimAmountChinese: claimAmountChinese.value,
     };
-    
+
     // 确保提成比例数据正确：如果选择了方案，优先使用 commissionFormData 的值（可能被用户修改过），否则使用方案的值
     if (selectedCommissionRule.value) {
       // 如果 commissionFormData 的值是 undefined 或 null，使用方案的值
       // 否则使用 commissionFormData 的值（可能被用户修改过，如果方案允许修改）
-      baseData.firmRate = (commissionFormData.firmRate !== undefined && commissionFormData.firmRate !== null) 
-        ? commissionFormData.firmRate 
-        : selectedCommissionRule.value.firmRate;
-      baseData.leadLawyerRate = (commissionFormData.leadLawyerRate !== undefined && commissionFormData.leadLawyerRate !== null)
-        ? commissionFormData.leadLawyerRate
-        : selectedCommissionRule.value.leadLawyerRate;
-      baseData.assistLawyerRate = (commissionFormData.assistLawyerRate !== undefined && commissionFormData.assistLawyerRate !== null)
-        ? commissionFormData.assistLawyerRate
-        : selectedCommissionRule.value.assistLawyerRate;
-      baseData.supportStaffRate = (commissionFormData.supportStaffRate !== undefined && commissionFormData.supportStaffRate !== null)
-        ? commissionFormData.supportStaffRate
-        : selectedCommissionRule.value.supportStaffRate;
-      baseData.originatorRate = (commissionFormData.originatorRate !== undefined && commissionFormData.originatorRate !== null)
-        ? commissionFormData.originatorRate
-        : (selectedCommissionRule.value.originatorRate || 0);
+      baseData.firmRate =
+        commissionFormData.firmRate !== undefined &&
+        commissionFormData.firmRate !== null
+          ? commissionFormData.firmRate
+          : selectedCommissionRule.value.firmRate;
+      baseData.leadLawyerRate =
+        commissionFormData.leadLawyerRate !== undefined &&
+        commissionFormData.leadLawyerRate !== null
+          ? commissionFormData.leadLawyerRate
+          : selectedCommissionRule.value.leadLawyerRate;
+      baseData.assistLawyerRate =
+        commissionFormData.assistLawyerRate !== undefined &&
+        commissionFormData.assistLawyerRate !== null
+          ? commissionFormData.assistLawyerRate
+          : selectedCommissionRule.value.assistLawyerRate;
+      baseData.supportStaffRate =
+        commissionFormData.supportStaffRate !== undefined &&
+        commissionFormData.supportStaffRate !== null
+          ? commissionFormData.supportStaffRate
+          : selectedCommissionRule.value.supportStaffRate;
+      baseData.originatorRate =
+        commissionFormData.originatorRate !== undefined &&
+        commissionFormData.originatorRate !== null
+          ? commissionFormData.originatorRate
+          : selectedCommissionRule.value.originatorRate || 0;
     }
-    
+
     // 调试：打印提成方案数据
     console.log('保存合同时的提成方案数据:', {
       commissionRuleId: selectedCommissionRuleId.value,
@@ -1654,16 +1827,19 @@ async function handleSave() {
         originatorRate: baseData.originatorRate,
       },
     });
-    
+
     let createdContractId: number | undefined;
-    
+
     if (formData.id) {
       // 编辑合同
       await updateContract({ id: formData.id, ...baseData });
       message.success('合同更新成功');
     } else if (selectedTemplateId.value) {
       // 基于模板创建合同
-      const contractResult = await createContractFromTemplate(selectedTemplateId.value, baseData);
+      const contractResult = await createContractFromTemplate(
+        selectedTemplateId.value,
+        baseData,
+      );
       createdContractId = contractResult?.id;
       message.success('合同创建成功（基于模板），请提交审批');
     } else {
@@ -1672,7 +1848,7 @@ async function handleSave() {
       createdContractId = contractResult?.id;
       message.success('合同创建成功，请提交审批');
     }
-    
+
     // 处理参与人（新建合同时创建，编辑合同时更新）
     if (contractParticipants.value.length > 0) {
       try {
@@ -1680,18 +1856,26 @@ async function handleSave() {
           if (participant.userId) {
             if (formData.id) {
               // 编辑合同时，尝试更新现有参与人或创建新参与人
-              const existingParticipants = await getContractParticipants(formData.id);
-              const existingParticipant = existingParticipants.find(p =>
-                p.userId === participant.userId && p.role === participant.role
+              const existingParticipants = await getContractParticipants(
+                formData.id,
+              );
+              const existingParticipant = existingParticipants.find(
+                (p) =>
+                  p.userId === participant.userId &&
+                  p.role === participant.role,
               );
 
               if (existingParticipant) {
                 // 更新现有参与人
-                await updateContractParticipant(formData.id, existingParticipant.id, {
-                  role: participant.role || 'LEAD',
-                  commissionRate: participant.commissionRate,
-                  remark: '编辑合同时更新',
-                });
+                await updateContractParticipant(
+                  formData.id,
+                  existingParticipant.id,
+                  {
+                    role: participant.role || 'LEAD',
+                    commissionRate: participant.commissionRate,
+                    remark: '编辑合同时更新',
+                  },
+                );
               } else {
                 // 创建新参与人
                 await createContractParticipant(formData.id, {
@@ -1718,7 +1902,7 @@ async function handleSave() {
         // 参与人处理失败不影响合同保存，只记录日志
       }
     }
-    
+
     modalVisible.value = false;
     handleResetForm();
     selectedTemplateId.value = undefined;
@@ -1726,7 +1910,11 @@ async function handleSave() {
   } catch (error: any) {
     // API 错误
     console.error('保存合同失败:', error);
-    const errorMsg = error?.response?.data?.message || error?.message || error?.msg || (formData.id ? '更新合同失败' : '创建合同失败');
+    const errorMsg =
+      error?.response?.data?.message ||
+      error?.message ||
+      error?.msg ||
+      (formData.id ? '更新合同失败' : '创建合同失败');
     message.error(errorMsg);
   } finally {
     saving.value = false;
@@ -1739,27 +1927,40 @@ function handleAddContractParticipant() {
   // 优先选择方案中有比例但参与人列表中还没有的角色
   let defaultRole: string | undefined;
   let defaultRate: number | undefined;
-  
+
   if (selectedCommissionRule.value) {
     const rule = selectedCommissionRule.value;
-    
+
     // 检查主办律师：如果方案中有比例且参与人列表中还没有主办律师
-    if (rule.leadLawyerRate > 0 && !contractParticipants.value.find(p => p.role === 'LEAD')) {
+    if (
+      rule.leadLawyerRate > 0 &&
+      !contractParticipants.value.find((p) => p.role === 'LEAD')
+    ) {
       defaultRole = 'LEAD';
       defaultRate = rule.leadLawyerRate;
     }
     // 检查协办律师：如果方案中有比例且参与人列表中还没有协办律师
-    else if (rule.assistLawyerRate > 0 && !contractParticipants.value.find(p => p.role === 'CO_COUNSEL')) {
+    else if (
+      rule.assistLawyerRate > 0 &&
+      !contractParticipants.value.find((p) => p.role === 'CO_COUNSEL')
+    ) {
       defaultRole = 'CO_COUNSEL';
       defaultRate = rule.assistLawyerRate;
     }
     // 检查辅助人员：如果方案中有比例且参与人列表中还没有辅助人员
-    else if (rule.supportStaffRate > 0 && !contractParticipants.value.find(p => p.role === 'PARALEGAL')) {
+    else if (
+      rule.supportStaffRate > 0 &&
+      !contractParticipants.value.find((p) => p.role === 'PARALEGAL')
+    ) {
       defaultRole = 'PARALEGAL';
       defaultRate = rule.supportStaffRate;
     }
     // 检查案源人：如果方案中有比例且参与人列表中还没有案源人
-    else if (rule.originatorRate && rule.originatorRate > 0 && !contractParticipants.value.find(p => p.role === 'ORIGINATOR')) {
+    else if (
+      rule.originatorRate &&
+      rule.originatorRate > 0 &&
+      !contractParticipants.value.find((p) => p.role === 'ORIGINATOR')
+    ) {
       defaultRole = 'ORIGINATOR';
       defaultRate = rule.originatorRate;
     }
@@ -1773,7 +1974,7 @@ function handleAddContractParticipant() {
     defaultRole = 'LEAD';
     defaultRate = undefined;
   }
-  
+
   contractParticipants.value.push({
     userId: undefined,
     role: defaultRole,
@@ -1815,7 +2016,7 @@ function handleResetForm() {
     remark: '',
     caseType: undefined,
     causeOfAction: undefined,
-    trialStage: [],  // 支持多选，重置为空数组
+    trialStage: [], // 支持多选，重置为空数组
     claimAmount: undefined,
     jurisdictionCourt: '',
     opposingParty: '',
@@ -1824,17 +2025,23 @@ function handleResetForm() {
     advanceTravelFee: undefined,
     riskRatio: undefined,
   });
-  
+
   // 重置提成方案为默认
-  const defaultRule = commissionRules.value.find(r => r.isDefault);
+  const defaultRule = commissionRules.value.find((r) => r.isDefault);
   if (defaultRule) {
     handleCommissionRuleChange(defaultRule.id);
   } else {
     selectedCommissionRuleId.value = undefined;
     selectedCommissionRule.value = null;
-    Object.assign(commissionFormData, { firmRate: 0, leadLawyerRate: 0, assistLawyerRate: 0, supportStaffRate: 0, originatorRate: 0 });
+    Object.assign(commissionFormData, {
+      firmRate: 0,
+      leadLawyerRate: 0,
+      assistLawyerRate: 0,
+      supportStaffRate: 0,
+      originatorRate: 0,
+    });
   }
-  
+
   modalTitle.value = '创建合同';
 }
 
@@ -1856,7 +2063,7 @@ async function handleSubmit(record: ContractDTO) {
     // 加载可选审批人
     const approvers = await getContractApprovers();
     approverOptions.value = approvers || [];
-    
+
     // 始终弹出选择审批人的弹窗
     pendingSubmitContract.value = record;
     selectedApproverId.value = undefined;
@@ -1869,14 +2076,17 @@ async function handleSubmit(record: ContractDTO) {
 // 确认提交审批（选择审批人后）
 async function handleConfirmSubmit() {
   if (!pendingSubmitContract.value) return;
-  
+
   if (approverOptions.value.length > 0 && !selectedApproverId.value) {
     message.warning('请选择审批人');
     return;
   }
-  
+
   try {
-    await submitContract(pendingSubmitContract.value.id, selectedApproverId.value);
+    await submitContract(
+      pendingSubmitContract.value.id,
+      selectedApproverId.value,
+    );
     message.success('提交审批成功');
     approverModalVisible.value = false;
     pendingSubmitContract.value = null;
@@ -1891,13 +2101,13 @@ async function handleConfirmSubmit() {
 async function handleApprove(record: ContractDTO) {
   try {
     const approvals = await getBusinessApprovals('CONTRACT', record.id);
-    const pendingApproval = approvals.find(a => a.status === 'PENDING');
-    
+    const pendingApproval = approvals.find((a) => a.status === 'PENDING');
+
     if (!pendingApproval) {
       message.warning('未找到待审批的审批单');
       return;
     }
-    
+
     Modal.confirm({
       title: '确认审批',
       content: `确定要审批通过合同 "${record.name}" 吗？`,
@@ -1926,34 +2136,41 @@ async function handleApprove(record: ContractDTO) {
 async function handleReject(record: ContractDTO) {
   try {
     const approvals = await getBusinessApprovals('CONTRACT', record.id);
-    const pendingApproval = approvals.find(a => a.status === 'PENDING');
-    
+    const pendingApproval = approvals.find((a) => a.status === 'PENDING');
+
     if (!pendingApproval) {
       message.warning('未找到待审批的审批单');
       return;
     }
-    
+
     const rejectReasonRef = ref<string>('');
-    
+
     Modal.confirm({
       title: '拒绝审批',
       width: 500,
-      content: () => h('div', [
-        h('p', { style: 'margin-bottom: 12px' }, `确定要拒绝合同 "${record.name}" 吗？`),
-        h(Textarea, {
-          value: rejectReasonRef.value,
-          placeholder: '请输入拒绝事由（必填）',
-          rows: 4,
-          'onUpdate:value': (value: string) => { rejectReasonRef.value = value; },
-        }),
-      ]),
+      content: () =>
+        h('div', [
+          h(
+            'p',
+            { style: 'margin-bottom: 12px' },
+            `确定要拒绝合同 "${record.name}" 吗？`,
+          ),
+          h(Textarea, {
+            value: rejectReasonRef.value,
+            placeholder: '请输入拒绝事由（必填）',
+            rows: 4,
+            'onUpdate:value': (value: string) => {
+              rejectReasonRef.value = value;
+            },
+          }),
+        ]),
       okText: '确认拒绝',
       cancelText: '取消',
       okButtonProps: { danger: true },
       onOk: async () => {
         if (!rejectReasonRef.value?.trim()) {
           message.error('拒绝时必须填写拒绝事由');
-          return Promise.reject();
+          throw undefined;
         }
         try {
           await approveApproval({
@@ -1988,7 +2205,9 @@ async function handleChange(record: ContractDTO) {
       totalAmount: detail.totalAmount,
       currency: detail.currency || 'CNY',
       signDate: detail.signDate ? dayjs(detail.signDate) : undefined,
-      effectiveDate: detail.effectiveDate ? dayjs(detail.effectiveDate) : undefined,
+      effectiveDate: detail.effectiveDate
+        ? dayjs(detail.effectiveDate)
+        : undefined,
       expiryDate: detail.expiryDate ? dayjs(detail.expiryDate) : undefined,
       signerId: detail.signerId,
       departmentId: detail.departmentId,
@@ -2009,7 +2228,7 @@ async function handleSubmitChange() {
       message.error('请输入变更原因');
       return;
     }
-    
+
     await applyContractChange({
       contractId: changeFormData.contractId!,
       changeReason: changeFormData.changeReason,
@@ -2020,9 +2239,15 @@ async function handleSubmitChange() {
       feeType: changeFormData.feeType,
       totalAmount: changeFormData.totalAmount,
       currency: changeFormData.currency,
-      signDate: changeFormData.signDate?.format?.('YYYY-MM-DD') || changeFormData.signDate,
-      effectiveDate: changeFormData.effectiveDate?.format?.('YYYY-MM-DD') || changeFormData.effectiveDate,
-      expiryDate: changeFormData.expiryDate?.format?.('YYYY-MM-DD') || changeFormData.expiryDate,
+      signDate:
+        changeFormData.signDate?.format?.('YYYY-MM-DD') ||
+        changeFormData.signDate,
+      effectiveDate:
+        changeFormData.effectiveDate?.format?.('YYYY-MM-DD') ||
+        changeFormData.effectiveDate,
+      expiryDate:
+        changeFormData.expiryDate?.format?.('YYYY-MM-DD') ||
+        changeFormData.expiryDate,
       signerId: changeFormData.signerId,
       departmentId: changeFormData.departmentId,
       paymentTerms: changeFormData.paymentTerms,
@@ -2056,7 +2281,14 @@ function handleCreateClient() {
 
 // ========== 付款计划管理 ==========
 function handleAddSchedule() {
-  Object.assign(scheduleFormData, { id: undefined, phaseName: '', amount: undefined, percentage: undefined, plannedDate: undefined, remark: '' });
+  Object.assign(scheduleFormData, {
+    id: undefined,
+    phaseName: '',
+    amount: undefined,
+    percentage: undefined,
+    plannedDate: undefined,
+    remark: '',
+  });
   scheduleModalVisible.value = true;
 }
 
@@ -2076,17 +2308,24 @@ async function handleSaveSchedule() {
   try {
     await scheduleFormRef.value?.validate();
     if (!currentContract.value) return;
-    
+
     const data = {
       phaseName: scheduleFormData.phaseName || '',
       amount: scheduleFormData.amount,
       percentage: scheduleFormData.percentage,
-      plannedDate: typeof scheduleFormData.plannedDate === 'string' ? scheduleFormData.plannedDate : (scheduleFormData.plannedDate as any)?.format?.('YYYY-MM-DD'),
+      plannedDate:
+        typeof scheduleFormData.plannedDate === 'string'
+          ? scheduleFormData.plannedDate
+          : (scheduleFormData.plannedDate as any)?.format?.('YYYY-MM-DD'),
       remark: scheduleFormData.remark,
     };
-    
+
     if (scheduleFormData.id) {
-      await updatePaymentSchedule(currentContract.value.id, scheduleFormData.id, data);
+      await updatePaymentSchedule(
+        currentContract.value.id,
+        scheduleFormData.id,
+        data,
+      );
       message.success('付款计划更新成功');
     } else {
       await createPaymentSchedule(currentContract.value.id, data);
@@ -2113,7 +2352,13 @@ async function handleDeleteSchedule(record: ContractPaymentScheduleDTO) {
 
 // ========== 参与人管理 ==========
 function handleAddParticipant() {
-  Object.assign(participantFormData, { id: undefined, userId: undefined, role: 'CO_COUNSEL', commissionRate: undefined, remark: '' });
+  Object.assign(participantFormData, {
+    id: undefined,
+    userId: undefined,
+    role: 'CO_COUNSEL',
+    commissionRate: undefined,
+    remark: '',
+  });
   participantModalVisible.value = true;
 }
 
@@ -2132,16 +2377,20 @@ async function handleSaveParticipant() {
   try {
     await participantFormRef.value?.validate();
     if (!currentContract.value) return;
-    
+
     const data = {
       userId: participantFormData.userId!,
       role: participantFormData.role || 'CO_COUNSEL',
       commissionRate: participantFormData.commissionRate,
       remark: participantFormData.remark,
     };
-    
+
     if (participantFormData.id) {
-      await updateContractParticipant(currentContract.value.id, participantFormData.id, data);
+      await updateContractParticipant(
+        currentContract.value.id,
+        participantFormData.id,
+        data,
+      );
       message.success('参与人更新成功');
     } else {
       await createContractParticipant(currentContract.value.id, data);
@@ -2169,8 +2418,12 @@ async function handleDeleteParticipant(record: ContractParticipantDTO) {
 // 获取状态颜色
 function getStatusColor(status: string) {
   const colorMap: Record<string, string> = {
-    DRAFT: 'default', PENDING: 'orange', ACTIVE: 'green',
-    REJECTED: 'red', TERMINATED: 'gray', COMPLETED: 'blue',
+    DRAFT: 'default',
+    PENDING: 'orange',
+    ACTIVE: 'green',
+    REJECTED: 'red',
+    TERMINATED: 'gray',
+    COMPLETED: 'blue',
   };
   return colorMap[status] || 'default';
 }
@@ -2188,9 +2441,11 @@ onMounted(async () => {
 });
 </script>
 
-
 <template>
-  <Page title="合同管理" description="管理项目合同，创建合同后可提交审批，审批通过后可基于合同创建项目">
+  <Page
+    title="合同管理"
+    description="管理项目合同，创建合同后可提交审批，审批通过后可基于合同创建项目"
+  >
     <!-- 统计卡片 -->
     <Row :gutter="16" style="margin-bottom: 16px" v-if="statistics">
       <Col :span="6">
@@ -2200,30 +2455,52 @@ onMounted(async () => {
       </Col>
       <Col :span="6">
         <Card>
-          <Statistic title="生效中" :value="statistics.activeCount" :value-style="{ color: '#52c41a' }" />
+          <Statistic
+            title="生效中"
+            :value="statistics.activeCount"
+            :value-style="{ color: '#52c41a' }"
+          />
         </Card>
       </Col>
       <Col :span="6">
         <Card>
-          <Statistic title="合同总金额" :value="statistics.totalAmount" prefix="¥" :precision="2" />
+          <Statistic
+            title="合同总金额"
+            :value="statistics.totalAmount"
+            prefix="¥"
+            :precision="2"
+          />
         </Card>
       </Col>
       <Col :span="6">
         <Card>
-          <Statistic title="待收金额" :value="statistics.unpaidAmount" prefix="¥" :precision="2" :value-style="{ color: '#faad14' }" />
+          <Statistic
+            title="待收金额"
+            :value="statistics.unpaidAmount"
+            prefix="¥"
+            :precision="2"
+            :value-style="{ color: '#faad14' }"
+          />
         </Card>
       </Col>
     </Row>
 
     <Card>
       <!-- 操作栏 -->
-      <div style=" display: flex; align-items: center; justify-content: space-between;margin-bottom: 16px">
+      <div
+        style="
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 16px;
+        "
+      >
         <Button type="primary" size="large" @click="handleAdd">
           <template #icon><Plus /></template>
           创建合同
         </Button>
       </div>
-      
+
       <!-- 搜索栏 -->
       <div style="margin-bottom: 16px">
         <Row :gutter="[16, 16]">
@@ -2237,16 +2514,38 @@ onMounted(async () => {
             />
           </Col>
           <Col :xs="24" :sm="12" :md="8" :lg="6" :xl="4">
-            <Input v-model:value="queryParams.contractNo" placeholder="合同编号" allowClear @pressEnter="handleSearch" />
+            <Input
+              v-model:value="queryParams.contractNo"
+              placeholder="合同编号"
+              allow-clear
+              @press-enter="handleSearch"
+            />
           </Col>
           <Col :xs="24" :sm="12" :md="8" :lg="6" :xl="4">
-            <Input v-model:value="queryParams.name" placeholder="合同名称" allowClear @pressEnter="handleSearch" />
+            <Input
+              v-model:value="queryParams.name"
+              placeholder="合同名称"
+              allow-clear
+              @press-enter="handleSearch"
+            />
           </Col>
           <Col :xs="24" :sm="12" :md="8" :lg="6" :xl="4">
-            <Select v-model:value="queryParams.feeType" placeholder="收费方式" allowClear style="width: 100%" :options="feeTypeOptions" />
+            <Select
+              v-model:value="queryParams.feeType"
+              placeholder="收费方式"
+              allow-clear
+              style="width: 100%"
+              :options="feeTypeOptions"
+            />
           </Col>
           <Col :xs="24" :sm="12" :md="8" :lg="6" :xl="4">
-            <Select v-model:value="queryParams.status" placeholder="合同状态" allowClear style="width: 100%" :options="statusOptions" />
+            <Select
+              v-model:value="queryParams.status"
+              placeholder="合同状态"
+              allow-clear
+              style="width: 100%"
+              :options="statusOptions"
+            />
           </Col>
           <Col :xs="24" :sm="12" :md="8" :lg="6" :xl="4">
             <UserTreeSelect
@@ -2272,17 +2571,23 @@ onMounted(async () => {
         :pagination="{
           current: queryParams.pageNum,
           pageSize: queryParams.pageSize,
-          total: total,
+          total,
           showSizeChanger: true,
           showTotal: (total) => `共 ${total} 条`,
-          onChange: (page, size) => { queryParams.pageNum = page; queryParams.pageSize = size; fetchData(); },
+          onChange: (page, size) => {
+            queryParams.pageNum = page;
+            queryParams.pageSize = size;
+            fetchData();
+          },
         }"
         row-key="id"
         :scroll="{ x: 1200 }"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'statusName'">
-            <Tag :color="getStatusColor((record as ContractDTO).status)">{{ (record as ContractDTO).statusName }}</Tag>
+            <Tag :color="getStatusColor((record as ContractDTO).status)">
+              {{ (record as ContractDTO).statusName }}
+            </Tag>
           </template>
           <template v-if="column.key === 'totalAmount'">
             {{ formatMoney((record as ContractDTO).totalAmount) }}
@@ -2290,21 +2595,42 @@ onMounted(async () => {
           <template v-if="column.key === 'action'">
             <Space>
               <a @click="handleView(record as ContractDTO)">查看</a>
-              <template v-if="(record as ContractDTO).status === 'DRAFT' && canOperateContract(record as ContractDTO)">
+              <template
+                v-if="
+                  (record as ContractDTO).status === 'DRAFT' &&
+                  canOperateContract(record as ContractDTO)
+                "
+              >
                 <a @click="handleEdit(record as ContractDTO)">编辑</a>
                 <a @click="handleSubmit(record as ContractDTO)">提交审批</a>
               </template>
-              <template v-if="(record as ContractDTO).status === 'REJECTED' && canOperateContract(record as ContractDTO)">
+              <template
+                v-if="
+                  (record as ContractDTO).status === 'REJECTED' &&
+                  canOperateContract(record as ContractDTO)
+                "
+              >
                 <a @click="handleEdit(record as ContractDTO)">编辑</a>
                 <a @click="handleSubmit(record as ContractDTO)">重新提交</a>
               </template>
               <template v-if="(record as ContractDTO).status === 'PENDING'">
                 <a @click="handleApprove(record as ContractDTO)">通过</a>
-                <a style="color: red" @click="handleReject(record as ContractDTO)">拒绝</a>
+                <a
+                  style="color: red"
+                  @click="handleReject(record as ContractDTO)"
+                  >拒绝</a
+                >
               </template>
-              <template v-if="(record as ContractDTO).status === 'ACTIVE' && canOperateContract(record as ContractDTO)">
+              <template
+                v-if="
+                  (record as ContractDTO).status === 'ACTIVE' &&
+                  canOperateContract(record as ContractDTO)
+                "
+              >
                 <a @click="handleChange(record as ContractDTO)">变更</a>
-                <a @click="handleCreateMatter(record as ContractDTO)">创建项目</a>
+                <a @click="handleCreateMatter(record as ContractDTO)"
+                  >创建项目</a
+                >
               </template>
             </Space>
           </template>
@@ -2313,578 +2639,1124 @@ onMounted(async () => {
     </Card>
 
     <!-- 创建/编辑合同弹窗 -->
-    <Modal 
-      v-model:open="modalVisible" 
-      :title="modalTitle" 
-      width="900px" 
+    <Modal
+      v-model:open="modalVisible"
+      :title="modalTitle"
+      width="900px"
       :confirm-loading="saving"
       @ok="handleSave"
     >
       <div style="max-height: 70vh; overflow-y: auto">
-        <Form ref="formRef" :model="formData" :label-col="{ span: 7 }" :wrapper-col="{ span: 17 }">
-            <!-- 第一步：选择模板（仅新建时显示） -->
-            <template v-if="!formData.id">
-              <div style=" padding: 12px 16px; margin-bottom: 16px;background: #e6f7ff; border: 1px solid #91d5ff; border-radius: 4px;">
-                <FormItem label="合同模板" style="margin-bottom: 0;">
-                  <Select
-                    v-model:value="selectedTemplateId"
-                    placeholder="请选择合同模板（必选）"
-                    size="large"
-                    @change="handleTemplateChange"
-                    :options="contractTemplates.map(t => ({ label: t.name, value: t.id }))"
-                  />
-                </FormItem>
-              </div>
-            </template>
-
-            <!-- 基本信息 -->
-            <Divider orientation="left" style="margin: 8px 0 16px; font-size: 13px; color: #1890ff;">基本信息</Divider>
-            
-            <FormItem label="委托人（甲方）" name="clientId" :rules="[{ required: true, message: '请选择客户' }]">
-              <div style="display: flex; gap: 8px">
+        <Form
+          ref="formRef"
+          :model="formData"
+          :label-col="{ span: 7 }"
+          :wrapper-col="{ span: 17 }"
+        >
+          <!-- 第一步：选择模板（仅新建时显示） -->
+          <template v-if="!formData.id">
+            <div
+              style="
+                padding: 12px 16px;
+                margin-bottom: 16px;
+                background: #e6f7ff;
+                border: 1px solid #91d5ff;
+                border-radius: 4px;
+              "
+            >
+              <FormItem label="合同模板" style="margin-bottom: 0">
                 <Select
-                  v-model:value="formData.clientId"
-                  placeholder="请选择委托人/客户"
-                  showSearch
-                  allowClear
-                  style="flex: 1"
-                  :filterOption="(input, option) => (option?.label || '').toLowerCase().includes(input.toLowerCase())"
-                  :options="clients.map(c => ({ label: c.clientNo ? `[${c.clientNo}] ${c.name}` : c.name, value: c.id }))"
-                  @change="handleClientChange"
+                  v-model:value="selectedTemplateId"
+                  placeholder="请选择合同模板（必选）"
+                  size="large"
+                  @change="handleTemplateChange"
+                  :options="
+                    contractTemplates.map((t) => ({
+                      label: t.name,
+                      value: t.id,
+                    }))
+                  "
                 />
-                <Button type="link" size="small" @click="handleCreateClient"><Plus class="size-4" />新建</Button>
-              </div>
-            </FormItem>
+              </FormItem>
+            </div>
+          </template>
 
-            <FormItem label="合同金额" name="totalAmount" :rules="[{ required: true, message: '请输入合同金额' }]">
-              <InputNumber 
-                v-model:value="formData.totalAmount" 
-                :min="0" 
-                :precision="2" 
-                style="width: 100%" 
-                placeholder="请输入金额"
-                addon-before="¥"
+          <!-- 基本信息 -->
+          <Divider
+            orientation="left"
+            style="margin: 8px 0 16px; font-size: 13px; color: #1890ff"
+          >
+            基本信息
+          </Divider>
+
+          <FormItem
+            label="委托人（甲方）"
+            name="clientId"
+            :rules="[{ required: true, message: '请选择客户' }]"
+          >
+            <div style="display: flex; gap: 8px">
+              <Select
+                v-model:value="formData.clientId"
+                placeholder="请选择委托人/客户"
+                show-search
+                allow-clear
+                style="flex: 1"
+                :filter-option="
+                  (input, option) =>
+                    (option?.label || '')
+                      .toLowerCase()
+                      .includes(input.toLowerCase())
+                "
+                :options="
+                  clients.map((c) => ({
+                    label: c.clientNo ? `[${c.clientNo}] ${c.name}` : c.name,
+                    value: c.id,
+                  }))
+                "
+                @change="handleClientChange"
               />
-            </FormItem>
-            <FormItem label="金额大写">
-              <Input 
-                :value="totalAmountChinese" 
-                disabled 
-                style="width: 100%; color: #ad6800; background: #fffbe6;" 
-                placeholder="大写金额自动生成"
-              />
-            </FormItem>
+              <Button type="link" size="small" @click="handleCreateClient">
+                <Plus class="size-4" />新建
+              </Button>
+            </div>
+          </FormItem>
 
-            <Row :gutter="12" v-if="shouldShowField('signDate') || shouldShowField('paymentDeadline')">
-              <Col :span="12" v-if="shouldShowField('signDate')">
-                <FormItem label="签约日期" name="signDate" :label-col="{ span: 10 }" :wrapper-col="{ span: 14 }">
-                  <DatePicker 
-                    v-model:value="formData.signDate" 
-                    style="width: 100%" 
-                    format="YYYY-MM-DD" 
-                    value-format="YYYY-MM-DD"
-                    placeholder="默认今天"
-                  />
-                </FormItem>
-              </Col>
-              <Col :span="12" v-if="shouldShowField('paymentDeadline')">
-                <FormItem label="付款期限" name="paymentDeadline" :label-col="{ span: 10 }" :wrapper-col="{ span: 14 }">
-                  <Input 
-                    v-model:value="formData.paymentDeadline" 
-                    placeholder="如：合同签订后3日内"
-                  />
-                </FormItem>
-              </Col>
-            </Row>
+          <FormItem
+            label="合同金额"
+            name="totalAmount"
+            :rules="[{ required: true, message: '请输入合同金额' }]"
+          >
+            <InputNumber
+              v-model:value="formData.totalAmount"
+              :min="0"
+              :precision="2"
+              style="width: 100%"
+              placeholder="请输入金额"
+              addon-before="¥"
+            />
+          </FormItem>
+          <FormItem label="金额大写">
+            <Input
+              :value="totalAmountChinese"
+              disabled
+              style="width: 100%; color: #ad6800; background: #fffbe6"
+              placeholder="大写金额自动生成"
+            />
+          </FormItem>
 
-            <Row :gutter="12">
-              <Col :span="12">
-                <FormItem label="合同类型" name="contractType" :label-col="{ span: 14 }" :wrapper-col="{ span: 10 }">
-                  <Select v-model:value="formData.contractType" :options="contractTypeOptions" />
-                </FormItem>
-              </Col>
-              <Col :span="12">
-                <FormItem label="收费方式" name="feeType" :label-col="{ span: 10 }" :wrapper-col="{ span: 14 }">
-                  <Select v-model:value="formData.feeType" :options="feeTypeOptions" />
-                </FormItem>
-              </Col>
-            </Row>
-
-            <!-- 案件信息（诉讼类） -->
-            <template v-if="visibleFields.litigation.length > 0 || visibleFields.criminal.length > 0">
-              <Divider orientation="left" style="margin: 8px 0 16px; font-size: 13px; color: #1890ff;">
-                {{ visibleFields.criminal.length > 0 ? '刑事案件信息' : '案件信息（诉讼类）' }}
-              </Divider>
-            
-              <Row :gutter="12" v-if="shouldShowField('caseType') || shouldShowField('trialStage')">
-                <Col :span="12" v-if="shouldShowField('caseType')">
-                  <FormItem label="案件类型" name="caseType" :label-col="{ span: 14 }" :wrapper-col="{ span: 10 }">
-                    <Select 
-                      v-model:value="formData.caseType" 
-                      :options="caseTypeOptions" 
-                      placeholder="选择"
-                      allowClear
-                    />
-                  </FormItem>
-                </Col>
-                <Col :span="12" v-if="shouldShowField('trialStage')">
-                  <FormItem label="审理阶段" name="trialStage" :label-col="{ span: 10 }" :wrapper-col="{ span: 14 }">
-                    <Select 
-                      v-model:value="formData.trialStage" 
-                      :options="trialStageOptions" 
-                      mode="multiple"
-                      allowClear 
-                      placeholder="可多选" 
-                      :maxTagCount="2"
-                    />
-                  </FormItem>
-                </Col>
-              </Row>
-
-              <FormItem v-if="shouldShowField('causeOfAction') && showCauseSelect" label="案由" name="causeOfAction">
-                <Cascader
-                  v-model:value="causeValue"
-                  :options="causeOptions"
-                  placeholder="请选择案由"
-                  change-on-select
-                  :show-search="{ filter: (inputValue, path) => path.some(option => option.label.toLowerCase().includes(inputValue.toLowerCase())) }"
-                  :display-render="({ labels }) => labels[labels.length - 1]"
+          <Row
+            :gutter="12"
+            v-if="
+              shouldShowField('signDate') || shouldShowField('paymentDeadline')
+            "
+          >
+            <Col :span="12" v-if="shouldShowField('signDate')">
+              <FormItem
+                label="签约日期"
+                name="signDate"
+                :label-col="{ span: 10 }"
+                :wrapper-col="{ span: 14 }"
+              >
+                <DatePicker
+                  v-model:value="formData.signDate"
                   style="width: 100%"
+                  format="YYYY-MM-DD"
+                  value-format="YYYY-MM-DD"
+                  placeholder="默认今天"
                 />
               </FormItem>
-
-              <FormItem v-if="shouldShowField('opposingParty')" label="对方当事人（被告/被申请人）" name="opposingParty">
-                <Input v-model:value="formData.opposingParty" placeholder="被告/被申请人名称"  />
-              </FormItem>
-
-              <template v-if="shouldShowField('claimAmount')">
-                <FormItem label="标的金额" name="claimAmount">
-                  <InputNumber 
-                    v-model:value="formData.claimAmount" 
-                    :min="0" 
-                    :precision="2" 
-                    style="width: 100%" 
-                    placeholder="请输入金额"
-                    addon-before="¥"
-                  />
-                </FormItem>
-                <FormItem label="标的金额大写">
-                  <Input 
-                    :value="claimAmountChinese" 
-                    disabled 
-                    style="width: 100%; color: #ad6800; background: #fffbe6;" 
-                    placeholder="大写金额自动生成"
-                  />
-                </FormItem>
-              </template>
-
-              <FormItem v-if="shouldShowField('jurisdictionCourt')" label="管辖法院" name="jurisdictionCourt">
-                <Input v-model:value="formData.jurisdictionCourt" placeholder="如：北京市朝阳区人民法院"  />
-              </FormItem>
-
-              <!-- 案情摘要 - 用于审批表 -->
-              <FormItem label="案情摘要" name="caseSummary">
-                <Textarea 
-                  v-model:value="formData.caseSummary" 
-                  :rows="4" 
-                  placeholder="请简要描述案件基本情况，该内容将显示在收案审批表的【案情摘要】栏目中"
+            </Col>
+            <Col :span="12" v-if="shouldShowField('paymentDeadline')">
+              <FormItem
+                label="付款期限"
+                name="paymentDeadline"
+                :label-col="{ span: 10 }"
+                :wrapper-col="{ span: 14 }"
+              >
+                <Input
+                  v-model:value="formData.paymentDeadline"
+                  placeholder="如：合同签订后3日内"
                 />
               </FormItem>
+            </Col>
+          </Row>
 
-              <!-- 刑事案件信息 -->
-              <template v-if="visibleFields.criminal.length > 0">
-                <Row :gutter="12">
-                  <Col :span="12" v-if="shouldShowField('defendantName')">
-                    <FormItem label="被告人姓名" name="defendantName" :label-col="{ span: 10 }" :wrapper-col="{ span: 14 }">
-                      <Input v-model:value="formData.defendantName" placeholder="犯罪嫌疑人/被告人姓名"  />
-                    </FormItem>
-                  </Col>
-                  <Col :span="12" v-if="shouldShowField('criminalCharge')">
-                    <FormItem label="涉嫌罪名" name="criminalCharge" :label-col="{ span: 10 }" :wrapper-col="{ span: 14 }">
-                      <Input v-model:value="formData.criminalCharge" placeholder="如：盗窃罪"  />
-                    </FormItem>
-                  </Col>
-                </Row>
-                
-                <FormItem v-if="shouldShowField('defenseStage')" label="辩护阶段" name="defenseStage">
-                  <Select 
-                    v-model:value="formData.defenseStage" 
-                    placeholder="选择辩护阶段"
-                    :options="[
-                      { label: 'A-侦查阶段律师', value: 'A-侦查阶段律师' },
-                      { label: 'B-审查起诉阶段辩护人', value: 'B-审查起诉阶段辩护人' },
-                      { label: 'C-一审辩护人', value: 'C-一审辩护人' },
-                      { label: 'D-二审辩护人', value: 'D-二审辩护人' },
-                      { label: 'E-死刑复核阶段辩护人', value: 'E-死刑复核阶段辩护人' },
-                      { label: 'F-再审辩护人', value: 'F-再审辩护人' },
-                    ]"
+          <Row :gutter="12">
+            <Col :span="12">
+              <FormItem
+                label="合同类型"
+                name="contractType"
+                :label-col="{ span: 14 }"
+                :wrapper-col="{ span: 10 }"
+              >
+                <Select
+                  v-model:value="formData.contractType"
+                  :options="contractTypeOptions"
+                />
+              </FormItem>
+            </Col>
+            <Col :span="12">
+              <FormItem
+                label="收费方式"
+                name="feeType"
+                :label-col="{ span: 10 }"
+                :wrapper-col="{ span: 14 }"
+              >
+                <Select
+                  v-model:value="formData.feeType"
+                  :options="feeTypeOptions"
+                />
+              </FormItem>
+            </Col>
+          </Row>
+
+          <!-- 案件信息（诉讼类） -->
+          <template
+            v-if="
+              visibleFields.litigation.length > 0 ||
+              visibleFields.criminal.length > 0
+            "
+          >
+            <Divider
+              orientation="left"
+              style="margin: 8px 0 16px; font-size: 13px; color: #1890ff"
+            >
+              {{
+                visibleFields.criminal.length > 0
+                  ? '刑事案件信息'
+                  : '案件信息（诉讼类）'
+              }}
+            </Divider>
+
+            <Row
+              :gutter="12"
+              v-if="
+                shouldShowField('caseType') || shouldShowField('trialStage')
+              "
+            >
+              <Col :span="12" v-if="shouldShowField('caseType')">
+                <FormItem
+                  label="案件类型"
+                  name="caseType"
+                  :label-col="{ span: 14 }"
+                  :wrapper-col="{ span: 10 }"
+                >
+                  <Select
+                    v-model:value="formData.caseType"
+                    :options="caseTypeOptions"
+                    placeholder="选择"
+                    allow-clear
                   />
                 </FormItem>
-              </template>
+              </Col>
+              <Col :span="12" v-if="shouldShowField('trialStage')">
+                <FormItem
+                  label="审理阶段"
+                  name="trialStage"
+                  :label-col="{ span: 10 }"
+                  :wrapper-col="{ span: 14 }"
+                >
+                  <Select
+                    v-model:value="formData.trialStage"
+                    :options="trialStageOptions"
+                    mode="multiple"
+                    allow-clear
+                    placeholder="可多选"
+                    :max-tag-count="2"
+                  />
+                </FormItem>
+              </Col>
+            </Row>
+
+            <FormItem
+              v-if="shouldShowField('causeOfAction') && showCauseSelect"
+              label="案由"
+              name="causeOfAction"
+            >
+              <Cascader
+                v-model:value="causeValue"
+                :options="causeOptions"
+                placeholder="请选择案由"
+                change-on-select
+                :show-search="{
+                  filter: (inputValue, path) =>
+                    path.some((option) =>
+                      option.label
+                        .toLowerCase()
+                        .includes(inputValue.toLowerCase()),
+                    ),
+                }"
+                :display-render="({ labels }) => labels[labels.length - 1]"
+                style="width: 100%"
+              />
+            </FormItem>
+
+            <FormItem
+              v-if="shouldShowField('opposingParty')"
+              label="对方当事人（被告/被申请人）"
+              name="opposingParty"
+            >
+              <Input
+                v-model:value="formData.opposingParty"
+                placeholder="被告/被申请人名称"
+              />
+            </FormItem>
+
+            <template v-if="shouldShowField('claimAmount')">
+              <FormItem label="标的金额" name="claimAmount">
+                <InputNumber
+                  v-model:value="formData.claimAmount"
+                  :min="0"
+                  :precision="2"
+                  style="width: 100%"
+                  placeholder="请输入金额"
+                  addon-before="¥"
+                />
+              </FormItem>
+              <FormItem label="标的金额大写">
+                <Input
+                  :value="claimAmountChinese"
+                  disabled
+                  style="width: 100%; color: #ad6800; background: #fffbe6"
+                  placeholder="大写金额自动生成"
+                />
+              </FormItem>
             </template>
 
-            <!-- 律师信息 -->
-            <template v-if="shouldShowField('lawyerNames') || shouldShowField('assistantNames') || shouldShowField('authorizationType')">
-              <Divider orientation="left" style="margin: 8px 0 16px; font-size: 13px; color: #1890ff;">律师信息</Divider>
-              
+            <FormItem
+              v-if="shouldShowField('jurisdictionCourt')"
+              label="管辖法院"
+              name="jurisdictionCourt"
+            >
+              <Input
+                v-model:value="formData.jurisdictionCourt"
+                placeholder="如：北京市朝阳区人民法院"
+              />
+            </FormItem>
+
+            <!-- 案情摘要 - 用于审批表 -->
+            <FormItem label="案情摘要" name="caseSummary">
+              <Textarea
+                v-model:value="formData.caseSummary"
+                :rows="4"
+                placeholder="请简要描述案件基本情况，该内容将显示在收案审批表的【案情摘要】栏目中"
+              />
+            </FormItem>
+
+            <!-- 刑事案件信息 -->
+            <template v-if="visibleFields.criminal.length > 0">
               <Row :gutter="12">
-                <Col :span="12" v-if="shouldShowField('lawyerNames')">
-                  <FormItem label="主办律师" name="lawyerNames" :label-col="{ span: 10 }" :wrapper-col="{ span: 14 }">
-                    <Input v-model:value="formData.lawyerNames" placeholder="律师姓名，多人用顿号分隔"  />
+                <Col :span="12" v-if="shouldShowField('defendantName')">
+                  <FormItem
+                    label="被告人姓名"
+                    name="defendantName"
+                    :label-col="{ span: 10 }"
+                    :wrapper-col="{ span: 14 }"
+                  >
+                    <Input
+                      v-model:value="formData.defendantName"
+                      placeholder="犯罪嫌疑人/被告人姓名"
+                    />
                   </FormItem>
                 </Col>
-                <Col :span="12" v-if="shouldShowField('assistantNames')">
-                  <FormItem label="律师助理" name="assistantNames" :label-col="{ span: 10 }" :wrapper-col="{ span: 14 }">
-                    <Input v-model:value="formData.assistantNames" placeholder="助理姓名（选填）"  />
+                <Col :span="12" v-if="shouldShowField('criminalCharge')">
+                  <FormItem
+                    label="涉嫌罪名"
+                    name="criminalCharge"
+                    :label-col="{ span: 10 }"
+                    :wrapper-col="{ span: 14 }"
+                  >
+                    <Input
+                      v-model:value="formData.criminalCharge"
+                      placeholder="如：盗窃罪"
+                    />
                   </FormItem>
                 </Col>
               </Row>
 
-              <FormItem v-if="shouldShowField('authorizationType')" label="代理权限" name="authorizationType">
-                <Select 
-                  v-model:value="formData.authorizationType" 
+              <FormItem
+                v-if="shouldShowField('defenseStage')"
+                label="辩护阶段"
+                name="defenseStage"
+              >
+                <Select
+                  v-model:value="formData.defenseStage"
+                  placeholder="选择辩护阶段"
                   :options="[
-                    { label: '一般代理', value: '一般代理' },
-                    { label: '特别代理', value: '特别代理' },
+                    { label: 'A-侦查阶段律师', value: 'A-侦查阶段律师' },
+                    {
+                      label: 'B-审查起诉阶段辩护人',
+                      value: 'B-审查起诉阶段辩护人',
+                    },
+                    { label: 'C-一审辩护人', value: 'C-一审辩护人' },
+                    { label: 'D-二审辩护人', value: 'D-二审辩护人' },
+                    {
+                      label: 'E-死刑复核阶段辩护人',
+                      value: 'E-死刑复核阶段辩护人',
+                    },
+                    { label: 'F-再审辩护人', value: 'F-再审辩护人' },
                   ]"
                 />
               </FormItem>
             </template>
+          </template>
 
-            <!-- 非诉项目计时收费 -->
-            <template v-if="visibleFields.nonLitigation.length > 0">
-              <Divider orientation="left" style="margin: 8px 0 16px; font-size: 13px; color: #1890ff;">计时收费标准</Divider>
-              
-              <Row :gutter="12">
-                <Col :span="8" v-if="shouldShowField('partnerRate')">
-                  <FormItem label="合伙人" name="partnerRate">
-                    <InputNumber 
-                      v-model:value="formData.partnerRate" 
-                      :min="0" 
-                      :precision="2" 
-                      style="width: 100%" 
-                      placeholder="元/小时"
-                      addon-after="元/小时"
-                    />
-                  </FormItem>
-                </Col>
-                <Col :span="8" v-if="shouldShowField('seniorRate')">
-                  <FormItem label="资深律师" name="seniorRate">
-                    <InputNumber 
-                      v-model:value="formData.seniorRate" 
-                      :min="0" 
-                      :precision="2" 
-                      style="width: 100%" 
-                      placeholder="元/小时"
-                      addon-after="元/小时"
-                    />
-                  </FormItem>
-                </Col>
-                <Col :span="8" v-if="shouldShowField('assistantRate')">
-                  <FormItem label="律师助理" name="assistantRate">
-                    <InputNumber 
-                      v-model:value="formData.assistantRate" 
-                      :min="0" 
-                      :precision="2" 
-                      style="width: 100%" 
-                      placeholder="元/小时"
-                      addon-after="元/小时"
-                    />
-                  </FormItem>
-                </Col>
-              </Row>
-            </template>
+          <!-- 律师信息 -->
+          <template
+            v-if="
+              shouldShowField('lawyerNames') ||
+              shouldShowField('assistantNames') ||
+              shouldShowField('authorizationType')
+            "
+          >
+            <Divider
+              orientation="left"
+              style="margin: 8px 0 16px; font-size: 13px; color: #1890ff"
+            >
+              律师信息
+            </Divider>
 
-            <!-- 常年法顾服务小时数 -->
-            <FormItem v-if="shouldShowField('serviceHours')" label="服务小时数" name="serviceHours">
-              <InputNumber 
-                v-model:value="formData.serviceHours" 
-                :min="0" 
-                style="width: 100%" 
-                placeholder="每月服务小时数"
-                addon-after="小时/月"
-              />
-            </FormItem>
-
-            <!-- 合同期限 -->
-            <template v-if="shouldShowField('effectiveDate') || shouldShowField('expiryDate')">
-              <Divider orientation="left" style="margin: 8px 0 16px; font-size: 13px; color: #1890ff;">合同期限</Divider>
-              
-              <Row :gutter="12">
-                <Col :span="12" v-if="shouldShowField('effectiveDate')">
-                  <FormItem label="生效日期" name="effectiveDate" :label-col="{ span: 14 }" :wrapper-col="{ span: 10 }">
-                    <DatePicker v-model:value="formData.effectiveDate" style="width: 100%" format="YYYY-MM-DD" value-format="YYYY-MM-DD" placeholder="选择日期" />
-                  </FormItem>
-                </Col>
-                <Col :span="12" v-if="shouldShowField('expiryDate')">
-                  <FormItem label="到期日期" name="expiryDate" :label-col="{ span: 10 }" :wrapper-col="{ span: 14 }">
-                    <DatePicker v-model:value="formData.expiryDate" style="width: 100%" format="YYYY-MM-DD" value-format="YYYY-MM-DD" placeholder="选择日期" />
-                  </FormItem>
-                </Col>
-              </Row>
-            </template>
-
-            <!-- 其他信息 -->
-            <Divider orientation="left" style="margin: 8px 0 16px; font-size: 13px; color: #1890ff;">其他信息</Divider>
-            
             <Row :gutter="12">
-              <Col :span="12">
-                <FormItem label="利冲审查" name="conflictCheckStatus" :label-col="{ span: 14 }" :wrapper-col="{ span: 10 }">
-                  <Select v-model:value="formData.conflictCheckStatus" :options="conflictCheckStatusOptions" />
+              <Col :span="12" v-if="shouldShowField('lawyerNames')">
+                <FormItem
+                  label="主办律师"
+                  name="lawyerNames"
+                  :label-col="{ span: 10 }"
+                  :wrapper-col="{ span: 14 }"
+                >
+                  <Input
+                    v-model:value="formData.lawyerNames"
+                    placeholder="律师姓名，多人用顿号分隔"
+                  />
                 </FormItem>
               </Col>
-              <Col :span="12" v-if="formData.feeType === 'CONTINGENCY'">
-                <FormItem label="风险代理比例" name="riskRatio" :label-col="{ span: 10 }" :wrapper-col="{ span: 14 }">
-                  <InputNumber v-model:value="formData.riskRatio" :min="0" :max="100" :precision="1" style="width: 100%" addon-after="%" />
-                </FormItem>
-              </Col>
-              <Col :span="12" v-else>
-                <FormItem label="预支差旅费" name="advanceTravelFee" :label-col="{ span: 10 }" :wrapper-col="{ span: 14 }">
-                  <InputNumber v-model:value="formData.advanceTravelFee" :min="0" :precision="2" style="width: 100%" placeholder="0.00" />
+              <Col :span="12" v-if="shouldShowField('assistantNames')">
+                <FormItem
+                  label="律师助理"
+                  name="assistantNames"
+                  :label-col="{ span: 10 }"
+                  :wrapper-col="{ span: 14 }"
+                >
+                  <Input
+                    v-model:value="formData.assistantNames"
+                    placeholder="助理姓名（选填）"
+                  />
                 </FormItem>
               </Col>
             </Row>
 
-            <FormItem v-if="shouldShowField('paymentTerms')" label="付款条款" name="paymentTerms">
-              <Textarea v-model:value="formData.paymentTerms" :rows="2" placeholder="约定付款方式、时间节点等"  />
-            </FormItem>
-
-            <!-- 争议解决 -->
-            <template v-if="shouldShowField('disputeResolution') || shouldShowField('arbitrationCommittee')">
-              <Divider orientation="left" style="margin: 8px 0 16px; font-size: 13px; color: #1890ff;">争议解决</Divider>
-              
-              <Row :gutter="12">
-                <Col :span="12" v-if="shouldShowField('disputeResolution')">
-                  <FormItem label="争议解决方式" name="disputeResolution" :label-col="{ span: 12 }" :wrapper-col="{ span: 12 }">
-                    <Select 
-                      v-model:value="formData.disputeResolution" 
-                      :options="[
-                        { label: '1-受托人住所地法院管辖', value: '1' },
-                        { label: '2-仲裁委员会仲裁', value: '2' },
-                      ]"
-                    />
-                  </FormItem>
-                </Col>
-                <Col :span="12" v-if="shouldShowField('arbitrationCommittee') && formData.disputeResolution === '2'">
-                  <FormItem label="仲裁委员会" name="arbitrationCommittee" :label-col="{ span: 10 }" :wrapper-col="{ span: 14 }">
-                    <Input v-model:value="formData.arbitrationCommittee" placeholder="如：北京"  />
-                  </FormItem>
-                </Col>
-              </Row>
-            </template>
-
-            <FormItem v-if="shouldShowField('specialTerms')" label="特别约定" name="specialTerms">
-              <Textarea v-model:value="formData.specialTerms" :rows="2" placeholder="双方的特别约定事项（选填）"  />
-            </FormItem>
-
-            <FormItem label="备注" name="remark">
-              <Textarea v-model:value="formData.remark" :rows="2" placeholder="其他需要说明的事项" />
-            </FormItem>
-
-            <!-- 提成方案 -->
-            <Divider orientation="left" style="margin: 8px 0 16px; font-size: 13px; color: #1890ff;">提成分配方案</Divider>
-            
-            <FormItem label="选择方案">
+            <FormItem
+              v-if="shouldShowField('authorizationType')"
+              label="代理权限"
+              name="authorizationType"
+            >
               <Select
-                v-model:value="selectedCommissionRuleId"
-                placeholder="选择提成分配方案"
-                allowClear
-                @change="handleCommissionRuleChange"
-                :options="commissionRules.map(r => ({ 
-                  label: `${r.ruleName} (律所${r.firmRate}% 主办${r.leadLawyerRate}%)`, 
-                  value: r.id 
-                }))"
+                v-model:value="formData.authorizationType"
+                :options="[
+                  { label: '一般代理', value: '一般代理' },
+                  { label: '特别代理', value: '特别代理' },
+                ]"
               />
             </FormItem>
-            
-            <div v-if="selectedCommissionRule" style=" padding: 12px; margin-bottom: 16px;background: #fafafa; border-radius: 4px;">
-              <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                <span style="font-size: 12px; color: #666;">
-                  <Tag v-if="selectedCommissionRule.allowModify" color="green" size="small">可调整</Tag>
-                  <Tag v-else size="small">固定</Tag>
-                  {{ selectedCommissionRule.description }}
-                </span>
-                <span style="font-size: 12px; color: #1890ff;">
-                  合计: {{ ((commissionFormData.firmRate || 0) + (commissionFormData.leadLawyerRate || 0) + (commissionFormData.assistLawyerRate || 0) + (commissionFormData.supportStaffRate || 0)).toFixed(2) }}%
-                </span>
-              </div>
-              <div style=" padding: 4px 0; margin-bottom: 8px;font-size: 11px; color: #999;">
-                💡 提示：此比例将自动应用到下方参与人（根据角色匹配），可在参与人部分手动调整
-              </div>
-              <Row :gutter="8">
-                <Col :span="6">
-                  <div style=" margin-bottom: 4px;font-size: 11px; color: #999;">律所</div>
-                  <InputNumber 
-                    v-model:value="commissionFormData.firmRate" 
-                    :min="0" :max="100" :precision="2"
-                    :disabled="!selectedCommissionRule.allowModify"
-                    size="small"
-                    addon-after="%"
+          </template>
+
+          <!-- 非诉项目计时收费 -->
+          <template v-if="visibleFields.nonLitigation.length > 0">
+            <Divider
+              orientation="left"
+              style="margin: 8px 0 16px; font-size: 13px; color: #1890ff"
+            >
+              计时收费标准
+            </Divider>
+
+            <Row :gutter="12">
+              <Col :span="8" v-if="shouldShowField('partnerRate')">
+                <FormItem label="合伙人" name="partnerRate">
+                  <InputNumber
+                    v-model:value="formData.partnerRate"
+                    :min="0"
+                    :precision="2"
+                    style="width: 100%"
+                    placeholder="元/小时"
+                    addon-after="元/小时"
+                  />
+                </FormItem>
+              </Col>
+              <Col :span="8" v-if="shouldShowField('seniorRate')">
+                <FormItem label="资深律师" name="seniorRate">
+                  <InputNumber
+                    v-model:value="formData.seniorRate"
+                    :min="0"
+                    :precision="2"
+                    style="width: 100%"
+                    placeholder="元/小时"
+                    addon-after="元/小时"
+                  />
+                </FormItem>
+              </Col>
+              <Col :span="8" v-if="shouldShowField('assistantRate')">
+                <FormItem label="律师助理" name="assistantRate">
+                  <InputNumber
+                    v-model:value="formData.assistantRate"
+                    :min="0"
+                    :precision="2"
+                    style="width: 100%"
+                    placeholder="元/小时"
+                    addon-after="元/小时"
+                  />
+                </FormItem>
+              </Col>
+            </Row>
+          </template>
+
+          <!-- 常年法顾服务小时数 -->
+          <FormItem
+            v-if="shouldShowField('serviceHours')"
+            label="服务小时数"
+            name="serviceHours"
+          >
+            <InputNumber
+              v-model:value="formData.serviceHours"
+              :min="0"
+              style="width: 100%"
+              placeholder="每月服务小时数"
+              addon-after="小时/月"
+            />
+          </FormItem>
+
+          <!-- 合同期限 -->
+          <template
+            v-if="
+              shouldShowField('effectiveDate') || shouldShowField('expiryDate')
+            "
+          >
+            <Divider
+              orientation="left"
+              style="margin: 8px 0 16px; font-size: 13px; color: #1890ff"
+            >
+              合同期限
+            </Divider>
+
+            <Row :gutter="12">
+              <Col :span="12" v-if="shouldShowField('effectiveDate')">
+                <FormItem
+                  label="生效日期"
+                  name="effectiveDate"
+                  :label-col="{ span: 14 }"
+                  :wrapper-col="{ span: 10 }"
+                >
+                  <DatePicker
+                    v-model:value="formData.effectiveDate"
+                    style="width: 100%"
+                    format="YYYY-MM-DD"
+                    value-format="YYYY-MM-DD"
+                    placeholder="选择日期"
+                  />
+                </FormItem>
+              </Col>
+              <Col :span="12" v-if="shouldShowField('expiryDate')">
+                <FormItem
+                  label="到期日期"
+                  name="expiryDate"
+                  :label-col="{ span: 10 }"
+                  :wrapper-col="{ span: 14 }"
+                >
+                  <DatePicker
+                    v-model:value="formData.expiryDate"
+                    style="width: 100%"
+                    format="YYYY-MM-DD"
+                    value-format="YYYY-MM-DD"
+                    placeholder="选择日期"
+                  />
+                </FormItem>
+              </Col>
+            </Row>
+          </template>
+
+          <!-- 其他信息 -->
+          <Divider
+            orientation="left"
+            style="margin: 8px 0 16px; font-size: 13px; color: #1890ff"
+          >
+            其他信息
+          </Divider>
+
+          <Row :gutter="12">
+            <Col :span="12">
+              <FormItem
+                label="利冲审查"
+                name="conflictCheckStatus"
+                :label-col="{ span: 14 }"
+                :wrapper-col="{ span: 10 }"
+              >
+                <Select
+                  v-model:value="formData.conflictCheckStatus"
+                  :options="conflictCheckStatusOptions"
+                />
+              </FormItem>
+            </Col>
+            <Col :span="12" v-if="formData.feeType === 'CONTINGENCY'">
+              <FormItem
+                label="风险代理比例"
+                name="riskRatio"
+                :label-col="{ span: 10 }"
+                :wrapper-col="{ span: 14 }"
+              >
+                <InputNumber
+                  v-model:value="formData.riskRatio"
+                  :min="0"
+                  :max="100"
+                  :precision="1"
+                  style="width: 100%"
+                  addon-after="%"
+                />
+              </FormItem>
+            </Col>
+            <Col :span="12" v-else>
+              <FormItem
+                label="预支差旅费"
+                name="advanceTravelFee"
+                :label-col="{ span: 10 }"
+                :wrapper-col="{ span: 14 }"
+              >
+                <InputNumber
+                  v-model:value="formData.advanceTravelFee"
+                  :min="0"
+                  :precision="2"
+                  style="width: 100%"
+                  placeholder="0.00"
+                />
+              </FormItem>
+            </Col>
+          </Row>
+
+          <FormItem
+            v-if="shouldShowField('paymentTerms')"
+            label="付款条款"
+            name="paymentTerms"
+          >
+            <Textarea
+              v-model:value="formData.paymentTerms"
+              :rows="2"
+              placeholder="约定付款方式、时间节点等"
+            />
+          </FormItem>
+
+          <!-- 争议解决 -->
+          <template
+            v-if="
+              shouldShowField('disputeResolution') ||
+              shouldShowField('arbitrationCommittee')
+            "
+          >
+            <Divider
+              orientation="left"
+              style="margin: 8px 0 16px; font-size: 13px; color: #1890ff"
+            >
+              争议解决
+            </Divider>
+
+            <Row :gutter="12">
+              <Col :span="12" v-if="shouldShowField('disputeResolution')">
+                <FormItem
+                  label="争议解决方式"
+                  name="disputeResolution"
+                  :label-col="{ span: 12 }"
+                  :wrapper-col="{ span: 12 }"
+                >
+                  <Select
+                    v-model:value="formData.disputeResolution"
+                    :options="[
+                      { label: '1-受托人住所地法院管辖', value: '1' },
+                      { label: '2-仲裁委员会仲裁', value: '2' },
+                    ]"
+                  />
+                </FormItem>
+              </Col>
+              <Col
+                :span="12"
+                v-if="
+                  shouldShowField('arbitrationCommittee') &&
+                  formData.disputeResolution === '2'
+                "
+              >
+                <FormItem
+                  label="仲裁委员会"
+                  name="arbitrationCommittee"
+                  :label-col="{ span: 10 }"
+                  :wrapper-col="{ span: 14 }"
+                >
+                  <Input
+                    v-model:value="formData.arbitrationCommittee"
+                    placeholder="如：北京"
+                  />
+                </FormItem>
+              </Col>
+            </Row>
+          </template>
+
+          <FormItem
+            v-if="shouldShowField('specialTerms')"
+            label="特别约定"
+            name="specialTerms"
+          >
+            <Textarea
+              v-model:value="formData.specialTerms"
+              :rows="2"
+              placeholder="双方的特别约定事项（选填）"
+            />
+          </FormItem>
+
+          <FormItem label="备注" name="remark">
+            <Textarea
+              v-model:value="formData.remark"
+              :rows="2"
+              placeholder="其他需要说明的事项"
+            />
+          </FormItem>
+
+          <!-- 提成方案 -->
+          <Divider
+            orientation="left"
+            style="margin: 8px 0 16px; font-size: 13px; color: #1890ff"
+          >
+            提成分配方案
+          </Divider>
+
+          <FormItem label="选择方案">
+            <Select
+              v-model:value="selectedCommissionRuleId"
+              placeholder="选择提成分配方案"
+              allow-clear
+              @change="handleCommissionRuleChange"
+              :options="
+                commissionRules.map((r) => ({
+                  label: `${r.ruleName} (律所${r.firmRate}% 主办${r.leadLawyerRate}%)`,
+                  value: r.id,
+                }))
+              "
+            />
+          </FormItem>
+
+          <div
+            v-if="selectedCommissionRule"
+            style="
+              padding: 12px;
+              margin-bottom: 16px;
+              background: #fafafa;
+              border-radius: 4px;
+            "
+          >
+            <div
+              style="
+                display: flex;
+                justify-content: space-between;
+                margin-bottom: 8px;
+              "
+            >
+              <span style="font-size: 12px; color: #666">
+                <Tag
+                  v-if="selectedCommissionRule.allowModify"
+                  color="green"
+                  size="small"
+                  >可调整</Tag
+                >
+                <Tag v-else size="small">固定</Tag>
+                {{ selectedCommissionRule.description }}
+              </span>
+              <span style="font-size: 12px; color: #1890ff">
+                合计:
+                {{
+                  (
+                    (commissionFormData.firmRate || 0) +
+                    (commissionFormData.leadLawyerRate || 0) +
+                    (commissionFormData.assistLawyerRate || 0) +
+                    (commissionFormData.supportStaffRate || 0)
+                  ).toFixed(2)
+                }}%
+              </span>
+            </div>
+            <div
+              style="
+                padding: 4px 0;
+                margin-bottom: 8px;
+                font-size: 11px;
+                color: #999;
+              "
+            >
+              💡
+              提示：此比例将自动应用到下方参与人（根据角色匹配），可在参与人部分手动调整
+            </div>
+            <Row :gutter="8">
+              <Col :span="6">
+                <div style="margin-bottom: 4px; font-size: 11px; color: #999">
+                  律所
+                </div>
+                <InputNumber
+                  v-model:value="commissionFormData.firmRate"
+                  :min="0"
+                  :max="100"
+                  :precision="2"
+                  :disabled="!selectedCommissionRule.allowModify"
+                  size="small"
+                  addon-after="%"
+                  style="width: 100%"
+                />
+              </Col>
+              <Col :span="6">
+                <div style="margin-bottom: 4px; font-size: 11px; color: #999">
+                  主办律师
+                </div>
+                <InputNumber
+                  v-model:value="commissionFormData.leadLawyerRate"
+                  :min="0"
+                  :max="100"
+                  :precision="2"
+                  :disabled="!selectedCommissionRule.allowModify"
+                  size="small"
+                  addon-after="%"
+                  style="width: 100%"
+                />
+              </Col>
+              <Col :span="6">
+                <div style="margin-bottom: 4px; font-size: 11px; color: #999">
+                  协办律师
+                </div>
+                <InputNumber
+                  v-model:value="commissionFormData.assistLawyerRate"
+                  :min="0"
+                  :max="100"
+                  :precision="2"
+                  :disabled="!selectedCommissionRule.allowModify"
+                  size="small"
+                  addon-after="%"
+                  style="width: 100%"
+                />
+              </Col>
+              <Col :span="6">
+                <div style="margin-bottom: 4px; font-size: 11px; color: #999">
+                  辅助人员
+                </div>
+                <InputNumber
+                  v-model:value="commissionFormData.supportStaffRate"
+                  :min="0"
+                  :max="100"
+                  :precision="2"
+                  :disabled="!selectedCommissionRule.allowModify"
+                  size="small"
+                  addon-after="%"
+                  style="width: 100%"
+                />
+              </Col>
+            </Row>
+          </div>
+
+          <!-- 参与人 -->
+          <Divider
+            orientation="left"
+            style="margin: 8px 0 16px; font-size: 13px; color: #1890ff"
+          >
+            参与人
+          </Divider>
+
+          <div style="margin-bottom: 16px">
+            <div
+              style="
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                margin-bottom: 8px;
+              "
+            >
+              <span style="font-size: 12px; color: #666"
+                >选择合同参与人（用于提成分配和"我的收款"显示）</span
+              >
+              <Button
+                type="link"
+                size="small"
+                @click="handleAddContractParticipant"
+              >
+                <Plus class="size-4" />添加参与人
+              </Button>
+            </div>
+
+            <div
+              v-if="contractParticipants.length === 0"
+              style="
+                padding: 12px;
+                font-size: 12px;
+                color: #999;
+                text-align: center;
+                background: #fafafa;
+                border-radius: 4px;
+              "
+            >
+              未添加参与人，将自动添加签约人或当前用户为参与人
+            </div>
+
+            <div
+              v-for="(participant, index) in contractParticipants"
+              :key="index"
+              style="
+                padding: 12px;
+                margin-bottom: 8px;
+                background: #fafafa;
+                border-radius: 4px;
+              "
+            >
+              <Row :gutter="8" align="middle">
+                <Col :span="8">
+                  <UserTreeSelect
+                    v-model:value="participant.userId"
+                    placeholder="选择人员"
                     style="width: 100%"
                   />
                 </Col>
                 <Col :span="6">
-                  <div style=" margin-bottom: 4px;font-size: 11px; color: #999;">主办律师</div>
-                  <InputNumber 
-                    v-model:value="commissionFormData.leadLawyerRate" 
-                    :min="0" :max="100" :precision="2"
-                    :disabled="!selectedCommissionRule.allowModify"
-                    size="small"
-                    addon-after="%"
+                  <Select
+                    v-model:value="participant.role"
                     style="width: 100%"
+                    @change="
+                      (value: any) =>
+                        handleParticipantRoleChange(index, String(value))
+                    "
+                    :options="[
+                      { label: '主办律师', value: 'LEAD' },
+                      { label: '协办律师', value: 'CO_COUNSEL' },
+                      { label: '案源人', value: 'ORIGINATOR' },
+                      { label: '律师助理', value: 'PARALEGAL' },
+                    ]"
                   />
                 </Col>
                 <Col :span="6">
-                  <div style=" margin-bottom: 4px;font-size: 11px; color: #999;">协办律师</div>
-                  <InputNumber 
-                    v-model:value="commissionFormData.assistLawyerRate" 
-                    :min="0" :max="100" :precision="2"
-                    :disabled="!selectedCommissionRule.allowModify"
-                    size="small"
-                    addon-after="%"
+                  <InputNumber
+                    v-model:value="participant.commissionRate"
+                    :min="0"
+                    :max="100"
+                    :precision="2"
                     style="width: 100%"
+                    placeholder="提成比例"
+                    addon-after="%"
                   />
                 </Col>
-                <Col :span="6">
-                  <div style=" margin-bottom: 4px;font-size: 11px; color: #999;">辅助人员</div>
-                  <InputNumber 
-                    v-model:value="commissionFormData.supportStaffRate"
-                    :min="0" :max="100" :precision="2"
-                    :disabled="!selectedCommissionRule.allowModify"
+                <Col :span="4">
+                  <Button
+                    type="link"
+                    danger
                     size="small"
-                    addon-after="%"
-                    style="width: 100%"
-                  />
+                    @click="contractParticipants.splice(index, 1)"
+                  >
+                    删除
+                  </Button>
                 </Col>
               </Row>
             </div>
-
-            <!-- 参与人 -->
-            <Divider orientation="left" style="margin: 8px 0 16px; font-size: 13px; color: #1890ff;">参与人</Divider>
-            
-            <div style="margin-bottom: 16px;">
-              <div style=" display: flex; align-items: center; justify-content: space-between;margin-bottom: 8px;">
-                <span style="font-size: 12px; color: #666;">选择合同参与人（用于提成分配和"我的收款"显示）</span>
-                <Button type="link" size="small" @click="handleAddContractParticipant">
-                  <Plus class="size-4" />添加参与人
-                </Button>
-              </div>
-              
-              <div v-if="contractParticipants.length === 0" style="padding: 12px; font-size: 12px; color: #999; text-align: center; background: #fafafa; border-radius: 4px;">
-                未添加参与人，将自动添加签约人或当前用户为参与人
-              </div>
-              
-              <div v-for="(participant, index) in contractParticipants" :key="index" style=" padding: 12px;margin-bottom: 8px; background: #fafafa; border-radius: 4px;">
-                <Row :gutter="8" align="middle">
-                  <Col :span="8">
-                    <UserTreeSelect
-                      v-model:value="participant.userId"
-                      placeholder="选择人员"
-                      style="width: 100%"
-                    />
-                  </Col>
-                  <Col :span="6">
-                    <Select
-                      v-model:value="participant.role"
-                      style="width: 100%"
-                      @change="(value: any) => handleParticipantRoleChange(index, String(value))"
-                      :options="[
-                        { label: '主办律师', value: 'LEAD' },
-                        { label: '协办律师', value: 'CO_COUNSEL' },
-                        { label: '案源人', value: 'ORIGINATOR' },
-                        { label: '律师助理', value: 'PARALEGAL' },
-                      ]"
-                    />
-                  </Col>
-                  <Col :span="6">
-                    <InputNumber
-                      v-model:value="participant.commissionRate"
-                      :min="0"
-                      :max="100"
-                      :precision="2"
-                      style="width: 100%"
-                      placeholder="提成比例"
-                      addon-after="%"
-                    />
-                  </Col>
-                  <Col :span="4">
-                    <Button type="link" danger size="small" @click="contractParticipants.splice(index, 1)">删除</Button>
-                  </Col>
-                </Row>
-              </div>
-            </div>
-          </Form>
+          </div>
+        </Form>
       </div>
     </Modal>
 
     <!-- 合同详情弹窗 -->
-    <Modal v-model:open="detailModalVisible" title="合同详情" width="1000px" :footer="null">
+    <Modal
+      v-model:open="detailModalVisible"
+      title="合同详情"
+      width="1000px"
+      :footer="null"
+    >
       <!-- 审批通过后显示打印按钮 -->
-      <div v-if="currentContract && currentContract.status === 'ACTIVE'" style=" display: flex; align-items: center; justify-content: space-between; padding: 12px;margin-bottom: 16px; background: #f6ffed; border: 1px solid #b7eb8f; border-radius: 4px;">
-        <span style="color: #52c41a;">✓ 合同已审批通过，可打印正式合同文本供双方签字</span>
+      <div
+        v-if="currentContract && currentContract.status === 'ACTIVE'"
+        style="
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 12px;
+          margin-bottom: 16px;
+          background: #f6ffed;
+          border: 1px solid #b7eb8f;
+          border-radius: 4px;
+        "
+      >
+        <span style="color: #52c41a"
+          >✓ 合同已审批通过，可打印正式合同文本供双方签字</span
+        >
         <Space>
           <Button @click="handlePreviewApprovalForm">📋 预览审批表</Button>
           <!-- 只有合同创建人或签约律师可以编辑审批表 -->
-          <Button 
-            v-if="currentContract.createdBy === currentUserId || currentContract.signerId === currentUserId"
+          <Button
+            v-if="
+              currentContract.createdBy === currentUserId ||
+              currentContract.signerId === currentUserId
+            "
             @click="handleEditApprovalForm"
-          >✏️ 编辑审批表</Button>
-          <Button type="primary" @click="handlePrintContract">🖨️ 打印合同</Button>
+          >
+            ✏️ 编辑审批表
+          </Button>
+          <Button type="primary" @click="handlePrintContract">
+            🖨️ 打印合同
+          </Button>
         </Space>
       </div>
-      <Tabs v-model:activeKey="activeTab">
+      <Tabs v-model:active-key="activeTab">
         <TabPane key="info" tab="基本信息">
           <div v-if="currentContract" style="padding: 16px">
             <Row :gutter="[16, 12]">
-              <Col :span="8"><strong>合同编号：</strong>{{ currentContract.contractNo }}</Col>
-              <Col :span="8"><strong>合同名称：</strong>{{ currentContract.name }}</Col>
-              <Col :span="8"><strong>状态：</strong><Tag :color="getStatusColor(currentContract.status)">{{ currentContract.statusName }}</Tag></Col>
-              <Col :span="8"><strong>客户：</strong>{{ currentContract.clientName }}</Col>
-              <Col :span="8"><strong>合同类型：</strong>{{ currentContract.contractTypeName }}</Col>
-              <Col :span="8"><strong>收费方式：</strong>{{ currentContract.feeTypeName }}</Col>
-              <Col :span="8"><strong>合同金额：</strong>{{ formatMoney(currentContract.totalAmount) }}</Col>
-              <Col :span="8"><strong>已收金额：</strong>{{ formatMoney(currentContract.paidAmount) }}</Col>
-              <Col :span="8"><strong>待收金额：</strong>{{ formatMoney(currentContract.unpaidAmount) }}</Col>
-              <Col :span="8" v-if="currentContract.trialStage"><strong>审理阶段：</strong>{{ currentContract.trialStageName }}</Col>
-              <Col :span="8" v-if="currentContract.claimAmount"><strong>标的金额：</strong>{{ formatMoney(currentContract.claimAmount) }}</Col>
-              <Col :span="8" v-if="currentContract.jurisdictionCourt"><strong>管辖法院：</strong>{{ currentContract.jurisdictionCourt }}</Col>
-              <Col :span="8" v-if="currentContract.opposingParty"><strong>对方当事人：</strong>{{ currentContract.opposingParty }}</Col>
-              <Col :span="8"><strong>利冲审查：</strong>{{ currentContract.conflictCheckStatusName }}</Col>
-              <Col :span="8" v-if="currentContract.riskRatio"><strong>风险代理比例：</strong>{{ currentContract.riskRatio }}%</Col>
-              <Col :span="8"><strong>签约日期：</strong>{{ currentContract.signDate || '-' }}</Col>
-              <Col :span="8"><strong>生效日期：</strong>{{ currentContract.effectiveDate || '-' }}</Col>
-              <Col :span="8"><strong>到期日期：</strong>{{ currentContract.expiryDate || '-' }}</Col>
+              <Col :span="8">
+                <strong>合同编号：</strong>{{ currentContract.contractNo }}
+              </Col>
+              <Col :span="8">
+                <strong>合同名称：</strong>{{ currentContract.name }}
+              </Col>
+              <Col :span="8">
+                <strong>状态：</strong
+                ><Tag :color="getStatusColor(currentContract.status)">
+                  {{ currentContract.statusName }}
+                </Tag>
+              </Col>
+              <Col :span="8">
+                <strong>客户：</strong>{{ currentContract.clientName }}
+              </Col>
+              <Col :span="8">
+                <strong>合同类型：</strong
+                >{{ currentContract.contractTypeName }}
+              </Col>
+              <Col :span="8">
+                <strong>收费方式：</strong>{{ currentContract.feeTypeName }}
+              </Col>
+              <Col :span="8">
+                <strong>合同金额：</strong
+                >{{ formatMoney(currentContract.totalAmount) }}
+              </Col>
+              <Col :span="8">
+                <strong>已收金额：</strong
+                >{{ formatMoney(currentContract.paidAmount) }}
+              </Col>
+              <Col :span="8">
+                <strong>待收金额：</strong
+                >{{ formatMoney(currentContract.unpaidAmount) }}
+              </Col>
+              <Col :span="8" v-if="currentContract.trialStage">
+                <strong>审理阶段：</strong>{{ currentContract.trialStageName }}
+              </Col>
+              <Col :span="8" v-if="currentContract.claimAmount">
+                <strong>标的金额：</strong
+                >{{ formatMoney(currentContract.claimAmount) }}
+              </Col>
+              <Col :span="8" v-if="currentContract.jurisdictionCourt">
+                <strong>管辖法院：</strong
+                >{{ currentContract.jurisdictionCourt }}
+              </Col>
+              <Col :span="8" v-if="currentContract.opposingParty">
+                <strong>对方当事人：</strong>{{ currentContract.opposingParty }}
+              </Col>
+              <Col :span="8">
+                <strong>利冲审查：</strong
+                >{{ currentContract.conflictCheckStatusName }}
+              </Col>
+              <Col :span="8" v-if="currentContract.riskRatio">
+                <strong>风险代理比例：</strong>{{ currentContract.riskRatio }}%
+              </Col>
+              <Col :span="8">
+                <strong>签约日期：</strong>{{ currentContract.signDate || '-' }}
+              </Col>
+              <Col :span="8">
+                <strong>生效日期：</strong
+                >{{ currentContract.effectiveDate || '-' }}
+              </Col>
+              <Col :span="8">
+                <strong>到期日期：</strong
+                >{{ currentContract.expiryDate || '-' }}
+              </Col>
             </Row>
             <Divider />
             <div v-if="currentContract.caseSummary" style="margin-bottom: 12px">
               <strong>案情摘要：</strong>
-              <div style=" padding: 12px;margin-top: 8px; white-space: pre-wrap; background: #fafafa; border-radius: 4px;">{{ currentContract.caseSummary }}</div>
+              <div
+                style="
+                  padding: 12px;
+                  margin-top: 8px;
+                  white-space: pre-wrap;
+                  background: #fafafa;
+                  border-radius: 4px;
+                "
+              >
+                {{ currentContract.caseSummary }}
+              </div>
             </div>
-            <div v-if="currentContract.remark"><strong>备注：</strong>{{ currentContract.remark }}</div>
+            <div v-if="currentContract.remark">
+              <strong>备注：</strong>{{ currentContract.remark }}
+            </div>
           </div>
         </TabPane>
         <TabPane key="schedule" tab="付款计划">
-          <div style=" display: flex; align-items: center; justify-content: space-between;margin-bottom: 16px">
+          <div
+            style="
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              margin-bottom: 16px;
+            "
+          >
             <div>
-              <span>付款计划总额：<strong>{{ formatMoney(totalScheduleAmount) }}</strong></span>
+              <span
+                >付款计划总额：<strong>{{
+                  formatMoney(totalScheduleAmount)
+                }}</strong></span
+              >
               <span style="margin-left: 16px" v-if="currentContract">
-                合同金额：<strong>{{ formatMoney(currentContract.totalAmount) }}</strong>
-                <Tag v-if="totalScheduleAmount === currentContract.totalAmount" color="green" style="margin-left: 8px">已匹配</Tag>
-                <Tag v-else color="orange" style="margin-left: 8px">差额: {{ formatMoney(currentContract.totalAmount - totalScheduleAmount) }}</Tag>
+                合同金额：<strong>{{
+                  formatMoney(currentContract.totalAmount)
+                }}</strong>
+                <Tag
+                  v-if="totalScheduleAmount === currentContract.totalAmount"
+                  color="green"
+                  style="margin-left: 8px"
+                  >已匹配</Tag
+                >
+                <Tag v-else color="orange" style="margin-left: 8px"
+                  >差额:
+                  {{
+                    formatMoney(
+                      currentContract.totalAmount - totalScheduleAmount,
+                    )
+                  }}</Tag
+                >
               </span>
             </div>
-            <Button type="primary" size="small" @click="handleAddSchedule">添加付款计划</Button>
+            <Button type="primary" size="small" @click="handleAddSchedule">
+              添加付款计划
+            </Button>
           </div>
-          <Table :columns="scheduleColumns" :data-source="paymentSchedules" :pagination="false" row-key="id" size="small">
+          <Table
+            :columns="scheduleColumns"
+            :data-source="paymentSchedules"
+            :pagination="false"
+            row-key="id"
+            size="small"
+          >
             <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'amount'">{{ formatMoney((record as ContractPaymentScheduleDTO).amount) }}</template>
+              <template v-if="column.key === 'amount'">
+                {{ formatMoney((record as ContractPaymentScheduleDTO).amount) }}
+              </template>
               <template v-if="column.key === 'statusName'">
-                <Tag>{{ (record as ContractPaymentScheduleDTO).statusName }}</Tag>
+                <Tag>
+                  {{ (record as ContractPaymentScheduleDTO).statusName }}
+                </Tag>
               </template>
               <template v-if="column.key === 'action'">
                 <Space>
-                  <a @click="handleEditSchedule(record as ContractPaymentScheduleDTO)">编辑</a>
-                  <Popconfirm title="确定删除？" @confirm="handleDeleteSchedule(record as ContractPaymentScheduleDTO)">
+                  <a
+                    @click="
+                      handleEditSchedule(record as ContractPaymentScheduleDTO)
+                    "
+                    >编辑</a
+                  >
+                  <Popconfirm
+                    title="确定删除？"
+                    @confirm="
+                      handleDeleteSchedule(record as ContractPaymentScheduleDTO)
+                    "
+                  >
                     <a style="color: red">删除</a>
                   </Popconfirm>
                 </Space>
@@ -2893,41 +3765,101 @@ onMounted(async () => {
           </Table>
         </TabPane>
         <TabPane key="participant" tab="参与人">
-          
-          <div style=" display: flex; align-items: center; justify-content: space-between;margin-bottom: 16px">
+          <div
+            style="
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              margin-bottom: 16px;
+            "
+          >
             <div>
-              <span>提成比例总和：<strong>{{ totalCommissionRate }}%</strong></span>
-              <Tag v-if="totalCommissionRate <= 100" color="green" style="margin-left: 8px">正常</Tag>
+              <span
+                >提成比例总和：<strong>{{ totalCommissionRate }}%</strong></span
+              >
+              <Tag
+                v-if="totalCommissionRate <= 100"
+                color="green"
+                style="margin-left: 8px"
+              >
+                正常
+              </Tag>
               <Tag v-else color="red" style="margin-left: 8px">超过100%</Tag>
             </div>
-            <Button type="primary" size="small" @click="handleAddParticipant">添加参与人</Button>
+            <Button type="primary" size="small" @click="handleAddParticipant">
+              添加参与人
+            </Button>
           </div>
-          <Table :columns="participantColumns" :data-source="participants" :pagination="false" row-key="id" size="small">
+          <Table
+            :columns="participantColumns"
+            :data-source="participants"
+            :pagination="false"
+            row-key="id"
+            size="small"
+          >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'roleName'">
-                <Tag :color="(record as ContractParticipantDTO).role === 'LEAD' ? 'blue' : 'default'">
+                <Tag
+                  :color="
+                    (record as ContractParticipantDTO).role === 'LEAD'
+                      ? 'blue'
+                      : 'default'
+                  "
+                >
                   {{ (record as ContractParticipantDTO).roleName }}
                 </Tag>
               </template>
               <template v-if="column.key === 'commissionRate'">
-                <span>{{ (record as ContractParticipantDTO).commissionRate || 0 }}%</span>
+                <span
+                  >{{
+                    (record as ContractParticipantDTO).commissionRate || 0
+                  }}%</span
+                >
                 <!-- 显示与方案比例的对比 -->
-                <span v-if="currentContract" style="margin-left: 8px; font-size: 11px; color: #999;">
-                  <template v-if="(record as ContractParticipantDTO).role === 'LEAD' && currentContract.leadLawyerRate">
+                <span
+                  v-if="currentContract"
+                  style="margin-left: 8px; font-size: 11px; color: #999"
+                >
+                  <template
+                    v-if="
+                      (record as ContractParticipantDTO).role === 'LEAD' &&
+                      currentContract.leadLawyerRate
+                    "
+                  >
                     (方案: {{ currentContract.leadLawyerRate }}%)
                   </template>
-                  <template v-else-if="(record as ContractParticipantDTO).role === 'CO_COUNSEL' && currentContract.assistLawyerRate">
+                  <template
+                    v-else-if="
+                      (record as ContractParticipantDTO).role ===
+                        'CO_COUNSEL' && currentContract.assistLawyerRate
+                    "
+                  >
                     (方案: {{ currentContract.assistLawyerRate }}%)
                   </template>
-                  <template v-else-if="(record as ContractParticipantDTO).role === 'PARALEGAL' && currentContract.supportStaffRate">
+                  <template
+                    v-else-if="
+                      (record as ContractParticipantDTO).role === 'PARALEGAL' &&
+                      currentContract.supportStaffRate
+                    "
+                  >
                     (方案: {{ currentContract.supportStaffRate }}%)
                   </template>
                 </span>
               </template>
               <template v-if="column.key === 'action'">
                 <Space>
-                  <a @click="handleEditParticipant(record as ContractParticipantDTO)">编辑</a>
-                  <Popconfirm title="确定删除？" @confirm="handleDeleteParticipant(record as ContractParticipantDTO)">
+                  <a
+                    @click="
+                      handleEditParticipant(record as ContractParticipantDTO)
+                    "
+                    >编辑</a
+                  >
+                  <Popconfirm
+                    title="确定删除？"
+                    @confirm="
+                      handleDeleteParticipant(record as ContractParticipantDTO)
+                    "
+                  >
                     <a style="color: red">删除</a>
                   </Popconfirm>
                 </Space>
@@ -2939,19 +3871,52 @@ onMounted(async () => {
     </Modal>
 
     <!-- 付款计划弹窗 -->
-    <Modal v-model:open="scheduleModalVisible" :title="scheduleFormData.id ? '编辑付款计划' : '添加付款计划'" width="500px" @ok="handleSaveSchedule">
-      <Form ref="scheduleFormRef" :model="scheduleFormData" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">
-        <FormItem label="阶段名称" name="phaseName" :rules="[{ required: true, message: '请输入阶段名称' }]">
-          <Input v-model:value="scheduleFormData.phaseName" placeholder="如：首付款、尾款" />
+    <Modal
+      v-model:open="scheduleModalVisible"
+      :title="scheduleFormData.id ? '编辑付款计划' : '添加付款计划'"
+      width="500px"
+      @ok="handleSaveSchedule"
+    >
+      <Form
+        ref="scheduleFormRef"
+        :model="scheduleFormData"
+        :label-col="{ span: 6 }"
+        :wrapper-col="{ span: 18 }"
+      >
+        <FormItem
+          label="阶段名称"
+          name="phaseName"
+          :rules="[{ required: true, message: '请输入阶段名称' }]"
+        >
+          <Input
+            v-model:value="scheduleFormData.phaseName"
+            placeholder="如：首付款、尾款"
+          />
         </FormItem>
         <FormItem label="金额" name="amount">
-          <InputNumber v-model:value="scheduleFormData.amount" :min="0" :precision="2" style="width: 100%" prefix="¥" />
+          <InputNumber
+            v-model:value="scheduleFormData.amount"
+            :min="0"
+            :precision="2"
+            style="width: 100%"
+            prefix="¥"
+          />
         </FormItem>
         <FormItem label="比例(%)" name="percentage">
-          <InputNumber v-model:value="scheduleFormData.percentage" :min="0" :max="100" :precision="1" style="width: 100%" />
+          <InputNumber
+            v-model:value="scheduleFormData.percentage"
+            :min="0"
+            :max="100"
+            :precision="1"
+            style="width: 100%"
+          />
         </FormItem>
         <FormItem label="计划日期" name="plannedDate">
-          <DatePicker v-model:value="scheduleFormData.plannedDate" style="width: 100%" format="YYYY-MM-DD" />
+          <DatePicker
+            v-model:value="scheduleFormData.plannedDate"
+            style="width: 100%"
+            format="YYYY-MM-DD"
+          />
         </FormItem>
         <FormItem label="备注" name="remark">
           <Textarea v-model:value="scheduleFormData.remark" :rows="2" />
@@ -2960,9 +3925,23 @@ onMounted(async () => {
     </Modal>
 
     <!-- 参与人弹窗 -->
-    <Modal v-model:open="participantModalVisible" :title="participantFormData.id ? '编辑参与人' : '添加参与人'" width="500px" @ok="handleSaveParticipant">
-      <Form ref="participantFormRef" :model="participantFormData" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">
-        <FormItem label="人员" name="userId" :rules="[{ required: true, message: '请选择人员' }]">
+    <Modal
+      v-model:open="participantModalVisible"
+      :title="participantFormData.id ? '编辑参与人' : '添加参与人'"
+      width="500px"
+      @ok="handleSaveParticipant"
+    >
+      <Form
+        ref="participantFormRef"
+        :model="participantFormData"
+        :label-col="{ span: 6 }"
+        :wrapper-col="{ span: 18 }"
+      >
+        <FormItem
+          label="人员"
+          name="userId"
+          :rules="[{ required: true, message: '请选择人员' }]"
+        >
           <UserTreeSelect
             v-model:value="participantFormData.userId"
             placeholder="选择人员（按部门筛选）"
@@ -2970,10 +3949,19 @@ onMounted(async () => {
           />
         </FormItem>
         <FormItem label="角色" name="role" :rules="[{ required: true }]">
-          <Select v-model:value="participantFormData.role" :options="participantRoleOptions" />
+          <Select
+            v-model:value="participantFormData.role"
+            :options="participantRoleOptions"
+          />
         </FormItem>
         <FormItem label="提成比例(%)" name="commissionRate">
-          <InputNumber v-model:value="participantFormData.commissionRate" :min="0" :max="100" :precision="1" style="width: 100%" />
+          <InputNumber
+            v-model:value="participantFormData.commissionRate"
+            :min="0"
+            :max="100"
+            :precision="1"
+            style="width: 100%"
+          />
         </FormItem>
         <FormItem label="备注" name="remark">
           <Textarea v-model:value="participantFormData.remark" :rows="2" />
@@ -2982,13 +3970,34 @@ onMounted(async () => {
     </Modal>
 
     <!-- 合同变更申请弹窗 -->
-    <Modal v-model:open="changeModalVisible" title="合同变更申请" width="800px" @ok="handleSubmitChange">
-      <Form ref="changeFormRef" :model="changeFormData" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">
-        <FormItem label="变更原因" name="changeReason" :rules="[{ required: true, message: '请输入变更原因' }]">
-          <Input v-model:value="changeFormData.changeReason" placeholder="请输入变更原因" />
+    <Modal
+      v-model:open="changeModalVisible"
+      title="合同变更申请"
+      width="800px"
+      @ok="handleSubmitChange"
+    >
+      <Form
+        ref="changeFormRef"
+        :model="changeFormData"
+        :label-col="{ span: 6 }"
+        :wrapper-col="{ span: 18 }"
+      >
+        <FormItem
+          label="变更原因"
+          name="changeReason"
+          :rules="[{ required: true, message: '请输入变更原因' }]"
+        >
+          <Input
+            v-model:value="changeFormData.changeReason"
+            placeholder="请输入变更原因"
+          />
         </FormItem>
         <FormItem label="变更说明" name="changeDescription">
-          <Textarea v-model:value="changeFormData.changeDescription" :rows="2" placeholder="请详细说明变更内容" />
+          <Textarea
+            v-model:value="changeFormData.changeDescription"
+            :rows="2"
+            placeholder="请详细说明变更内容"
+          />
         </FormItem>
         <Divider>变更内容</Divider>
         <Row :gutter="16">
@@ -2999,115 +4008,165 @@ onMounted(async () => {
           </Col>
           <Col :span="12">
             <FormItem label="合同金额" name="totalAmount">
-              <InputNumber v-model:value="changeFormData.totalAmount" :min="0" :precision="2" style="width: 100%" prefix="¥" />
+              <InputNumber
+                v-model:value="changeFormData.totalAmount"
+                :min="0"
+                :precision="2"
+                style="width: 100%"
+                prefix="¥"
+              />
             </FormItem>
           </Col>
         </Row>
         <Row :gutter="16">
           <Col :span="12">
             <FormItem label="收费方式" name="feeType">
-              <Select v-model:value="changeFormData.feeType" :options="feeTypeOptions" />
+              <Select
+                v-model:value="changeFormData.feeType"
+                :options="feeTypeOptions"
+              />
             </FormItem>
           </Col>
           <Col :span="12">
             <FormItem label="到期日期" name="expiryDate">
-              <DatePicker v-model:value="changeFormData.expiryDate" style="width: 100%" format="YYYY-MM-DD" />
+              <DatePicker
+                v-model:value="changeFormData.expiryDate"
+                style="width: 100%"
+                format="YYYY-MM-DD"
+              />
             </FormItem>
           </Col>
         </Row>
-        <FormItem label="付款条款" name="paymentTerms" :label-col="{ span: 3 }" :wrapper-col="{ span: 21 }">
+        <FormItem
+          label="付款条款"
+          name="paymentTerms"
+          :label-col="{ span: 3 }"
+          :wrapper-col="{ span: 21 }"
+        >
           <Textarea v-model:value="changeFormData.paymentTerms" :rows="2" />
         </FormItem>
       </Form>
     </Modal>
 
     <!-- 模板预览弹窗 -->
-    <Modal v-model:open="templatePreviewVisible" title="模板内容预览" width="800px" :footer="null">
-      <div style=" max-height: 500px; padding: 16px; overflow-y: auto;white-space: pre-wrap; background: #f5f5f5; border-radius: 4px;">
+    <Modal
+      v-model:open="templatePreviewVisible"
+      title="模板内容预览"
+      width="800px"
+      :footer="null"
+    >
+      <div
+        style="
+          max-height: 500px;
+          padding: 16px;
+          overflow-y: auto;
+          white-space: pre-wrap;
+          background: #f5f5f5;
+          border-radius: 4px;
+        "
+      >
         {{ templatePreviewContent || '暂无内容' }}
       </div>
     </Modal>
 
     <!-- 打印选项弹窗 -->
-    <Modal 
-      v-model:open="printModalVisible" 
-      title="🖨️ 打印设置" 
+    <Modal
+      v-model:open="printModalVisible"
+      title="🖨️ 打印设置"
       width="500px"
       @ok="executePrint"
-      okText="开始打印"
-      cancelText="取消"
+      ok-text="开始打印"
+      cancel-text="取消"
     >
-      <div style="padding: 16px 0;">
-        <Alert 
-          message="请选择要打印的内容" 
+      <div style="padding: 16px 0">
+        <Alert
+          message="请选择要打印的内容"
           description="合同审批通过后，您可以打印合同文本供双方签字，同时打印收案审批表用于律所存档。"
-          type="info" 
-          show-icon 
-          style="margin-bottom: 20px;"
+          type="info"
+          show-icon
+          style="margin-bottom: 20px"
         />
-        
-        <div style="display: flex; flex-direction: column; gap: 16px;">
+
+        <div style="display: flex; flex-direction: column; gap: 16px">
           <Checkbox v-model:checked="printOptions.printContract">
-            <span style="font-size: 15px; font-weight: 500;">📄 合同文本</span>
-            <div style=" margin-top: 4px; font-size: 13px;color: #666;">
+            <span style="font-size: 15px; font-weight: 500">📄 合同文本</span>
+            <div style="margin-top: 4px; font-size: 13px; color: #666">
               打印完整合同内容，包含双方签字盖章区域
             </div>
           </Checkbox>
-          
+
           <Checkbox v-model:checked="printOptions.printApprovalForm">
-            <span style="font-size: 15px; font-weight: 500;">📋 收案审批表</span>
-            <div style=" margin-top: 4px; font-size: 13px;color: #666;">
+            <span style="font-size: 15px; font-weight: 500">📋 收案审批表</span>
+            <div style="margin-top: 4px; font-size: 13px; color: #666">
               打印律所内部收案审批表，包含委托人信息、案情摘要、审批意见等
             </div>
           </Checkbox>
         </div>
-        
-        <div v-if="currentPrintData" style=" padding: 12px;margin-top: 20px; background: #f5f5f5; border-radius: 8px;">
-          <div style=" margin-bottom: 8px;font-weight: 500;">📌 合同信息</div>
-          <div style="font-size: 13px; color: #666;">
+
+        <div
+          v-if="currentPrintData"
+          style="
+            padding: 12px;
+            margin-top: 20px;
+            background: #f5f5f5;
+            border-radius: 8px;
+          "
+        >
+          <div style="margin-bottom: 8px; font-weight: 500">📌 合同信息</div>
+          <div style="font-size: 13px; color: #666">
             <div>合同编号：{{ currentPrintData.contractNo }}</div>
             <div>合同名称：{{ currentPrintData.name }}</div>
             <div>委托人：{{ currentPrintData.clientName }}</div>
-            <div>合同金额：¥{{ currentPrintData.totalAmount?.toLocaleString() }}</div>
+            <div>
+              合同金额：¥{{ currentPrintData.totalAmount?.toLocaleString() }}
+            </div>
           </div>
         </div>
       </div>
     </Modal>
 
     <!-- 审批表编辑弹窗 -->
-    <Modal 
-      v-model:open="approvalFormModalVisible" 
-      title="✏️ 编辑收案审批表" 
+    <Modal
+      v-model:open="approvalFormModalVisible"
+      title="✏️ 编辑收案审批表"
       width="700px"
       @ok="handleSaveApprovalForm"
-      :confirmLoading="savingApprovalForm"
-      okText="保存"
-      cancelText="取消"
+      :confirm-loading="savingApprovalForm"
+      ok-text="保存"
+      cancel-text="取消"
     >
-      <div style="padding: 16px 0;">
-        <Alert 
-          message="编辑案情摘要" 
+      <div style="padding: 16px 0">
+        <Alert
+          message="编辑案情摘要"
           description="案情摘要将显示在收案审批表的【案情摘要】栏目中，请简要描述案件基本情况。该内容独立于合同文本。"
-          type="info" 
-          show-icon 
-          style="margin-bottom: 20px;"
+          type="info"
+          show-icon
+          style="margin-bottom: 20px"
         />
-        
+
         <Form layout="vertical">
           <FormItem label="案情摘要（附接待笔录）">
-            <Textarea 
-              v-model:value="approvalFormData.caseSummary" 
-              :rows="8" 
+            <Textarea
+              v-model:value="approvalFormData.caseSummary"
+              :rows="8"
               placeholder="请简要描述案件基本情况，如：&#10;1. 委托人基本情况&#10;2. 案件起因经过&#10;3. 诉讼请求或法律需求&#10;4. 证据材料概述"
               show-count
               :maxlength="2000"
             />
           </FormItem>
         </Form>
-        
-        <div style=" padding: 12px;margin-top: 16px; background: #fffbe6; border: 1px solid #ffe58f; border-radius: 4px;">
-          <div style=" font-weight: 500;color: #ad6800;">💡 提示</div>
-          <div style=" margin-top: 8px; font-size: 13px;color: #666;">
+
+        <div
+          style="
+            padding: 12px;
+            margin-top: 16px;
+            background: #fffbe6;
+            border: 1px solid #ffe58f;
+            border-radius: 4px;
+          "
+        >
+          <div style="font-weight: 500; color: #ad6800">💡 提示</div>
+          <div style="margin-top: 8px; font-size: 13px; color: #666">
             案情摘要应包含以下要点：委托人身份信息、案件基本事实、争议焦点、代理目标等。
             保存后可在合同详情中查看，也可通过预览审批表查看最终效果。
           </div>
@@ -3116,42 +4175,59 @@ onMounted(async () => {
     </Modal>
 
     <!-- 选择审批人弹窗 -->
-    <Modal 
-      v-model:open="approverModalVisible" 
-      title="选择审批人" 
-      width="500px" 
+    <Modal
+      v-model:open="approverModalVisible"
+      title="选择审批人"
+      width="500px"
       @ok="handleConfirmSubmit"
-      okText="提交审批"
-      cancelText="取消"
+      ok-text="提交审批"
+      cancel-text="取消"
     >
-      <div style="margin-bottom: 16px;">
-        <p>请选择审批人，合同 <strong>{{ pendingSubmitContract?.name }}</strong> 将提交给选中的审批人进行审批。</p>
+      <div style="margin-bottom: 16px">
+        <p>
+          请选择审批人，合同
+          <strong>{{ pendingSubmitContract?.name }}</strong>
+          将提交给选中的审批人进行审批。
+        </p>
       </div>
-      
+
       <template v-if="approverOptions.length > 0">
         <Select
           v-model:value="selectedApproverId"
           placeholder="请选择审批人"
           style="width: 100%"
           size="large"
-          showSearch
-          :filterOption="(input, option) => (option?.label || '').toLowerCase().includes(input.toLowerCase())"
+          show-search
+          :filter-option="
+            (input, option) =>
+              (option?.label || '').toLowerCase().includes(input.toLowerCase())
+          "
         >
           <template v-for="approver in approverOptions" :key="approver.id">
             <Select.Option :value="approver.id" :label="approver.realName">
-              <div style="display: flex; align-items: center; justify-content: space-between;">
+              <div
+                style="
+                  display: flex;
+                  align-items: center;
+                  justify-content: space-between;
+                "
+              >
                 <span>{{ approver.realName }}</span>
-                <span style=" font-size: 12px;color: #999;">{{ approver.position }} · {{ approver.departmentName }}</span>
+                <span style="font-size: 12px; color: #999"
+                  >{{ approver.position }} · {{ approver.departmentName }}</span
+                >
               </div>
             </Select.Option>
           </template>
         </Select>
       </template>
-      
+
       <template v-else>
-        <div style=" padding: 20px; color: #999;text-align: center;">
+        <div style="padding: 20px; color: #999; text-align: center">
           <p>暂无可选审批人</p>
-          <p style="font-size: 12px;">系统将自动分配审批人，或请联系管理员配置合伙人/主任角色</p>
+          <p style="font-size: 12px">
+            系统将自动分配审批人，或请联系管理员配置合伙人/主任角色
+          </p>
         </div>
       </template>
     </Modal>
@@ -3254,7 +4330,7 @@ onMounted(async () => {
 }
 
 /* 变量占位符样式 */
-:deep(.contract-preview-content) span[style*="background"] {
+:deep(.contract-preview-content) span[style*='background'] {
   padding: 2px 4px;
   border-radius: 2px;
 }

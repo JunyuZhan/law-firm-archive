@@ -17,6 +17,7 @@ docker-compose up -d
 ```
 
 这将启动：
+
 - PostgreSQL
 - Redis
 - MinIO
@@ -41,6 +42,7 @@ java -jar target/law-firm-backend.jar
 ### 5. 启动前端
 
 开发环境：
+
 ```bash
 cd frontend
 pnpm install
@@ -49,6 +51,7 @@ pnpm dev
 ```
 
 生产环境：
+
 ```bash
 cd frontend
 pnpm build:antd

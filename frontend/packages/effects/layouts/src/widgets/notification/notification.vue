@@ -35,11 +35,11 @@ withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   clear: [];
+  click: [NotificationItem];
   makeAll: [];
   read: [NotificationItem];
   remove: [NotificationItem];
   viewAll: [];
-  click: [NotificationItem];
 }>();
 
 const router = useRouter();

@@ -1,5 +1,3 @@
-import { requestClient } from '#/api/request';
-
 import type {
   LeaveApplication,
   LeaveBalance,
@@ -7,6 +5,8 @@ import type {
   LeaveType,
   PageResult,
 } from './types';
+
+import { requestClient } from '#/api/request';
 
 /**
  * 获取请假类型列表
@@ -18,21 +18,31 @@ export function getLeaveTypes(): Promise<LeaveType[]> {
 /**
  * 获取假期余额
  */
-export function getLeaveBalance(params?: { userId?: number; year?: number }): Promise<LeaveBalance[]> {
+export function getLeaveBalance(params?: {
+  userId?: number;
+  year?: number;
+}): Promise<LeaveBalance[]> {
   return requestClient.get('/admin/leave/balance', { params });
 }
 
 /**
  * 获取请假记录列表
  */
-export function fetchLeaveList(params: LeaveQueryParams): Promise<PageResult<LeaveApplication>> {
+export function fetchLeaveList(
+  params: LeaveQueryParams,
+): Promise<PageResult<LeaveApplication>> {
   return requestClient.get('/admin/leave/applications', { params });
 }
 
 /**
  * 提交请假申请
  */
-export function createLeave(data: { leaveTypeId: number; startDate: string; endDate: string; reason?: string }): Promise<LeaveApplication> {
+export function createLeave(data: {
+  endDate: string;
+  leaveTypeId: number;
+  reason?: string;
+  startDate: string;
+}): Promise<LeaveApplication> {
   return requestClient.post('/admin/leave/applications', data);
 }
 
@@ -53,13 +63,25 @@ export function cancelLeave(id: number): Promise<void> {
 /**
  * 审批通过
  */
-export function approveLeave(data: { applicationId: number; comment?: string }): Promise<LeaveApplication> {
-  return requestClient.post('/admin/leave/applications/approve', { ...data, approved: true });
+export function approveLeave(data: {
+  applicationId: number;
+  comment?: string;
+}): Promise<LeaveApplication> {
+  return requestClient.post('/admin/leave/applications/approve', {
+    ...data,
+    approved: true,
+  });
 }
 
 /**
  * 审批拒绝
  */
-export function rejectLeave(data: { applicationId: number; comment?: string }): Promise<LeaveApplication> {
-  return requestClient.post('/admin/leave/applications/approve', { ...data, approved: false });
+export function rejectLeave(data: {
+  applicationId: number;
+  comment?: string;
+}): Promise<LeaveApplication> {
+  return requestClient.post('/admin/leave/applications/approve', {
+    ...data,
+    approved: false,
+  });
 }

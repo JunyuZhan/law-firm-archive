@@ -1,12 +1,28 @@
 <script setup lang="ts">
 import type { VxeGridProps } from '#/adapter/vxe-table';
-import { ref } from 'vue';
-import { Page } from '@vben/common-ui';
-import { useVbenVxeGrid } from '#/adapter/vxe-table';
-import { message, Tag, Space, Popconfirm, Card, Button, Input, Select, Row, Col } from 'ant-design-vue';
-import { Plus } from '@vben/icons';
-import { getSealList, deleteSeal, changeSealStatus } from '#/api/document/seal';
 import type { SealDTO, SealQuery } from '#/api/document/seal-types';
+
+import { ref } from 'vue';
+
+import { Page } from '@vben/common-ui';
+import { Plus } from '@vben/icons';
+
+import {
+  Button,
+  Card,
+  Col,
+  Input,
+  message,
+  Popconfirm,
+  Row,
+  Select,
+  Space,
+  Tag,
+} from 'ant-design-vue';
+
+import { useVbenVxeGrid } from '#/adapter/vxe-table';
+import { changeSealStatus, deleteSeal, getSealList } from '#/api/document/seal';
+
 import SealModal from './components/SealModal.vue';
 
 defineOptions({ name: 'DocumentSeal' });
@@ -33,18 +49,37 @@ const statusOptions = [
   { label: '停用', value: 'INACTIVE' },
 ];
 
-const gridColumns: VxeGridProps['gridOptions']['columns'] = [
+const gridColumns: VxeGridProps['columns'] = [
   { title: '印章名称', field: 'name', minWidth: 150 },
   { title: '印章类型', field: 'sealTypeName', width: 120 },
   { title: '保管人', field: 'keeperName', width: 100 },
   { title: '使用次数', field: 'useCount', width: 100 },
-  { title: '状态', field: 'statusName', width: 100, slots: { default: 'status' } },
+  {
+    title: '状态',
+    field: 'statusName',
+    width: 100,
+    slots: { default: 'status' },
+  },
   { title: '创建时间', field: 'createdAt', width: 160 },
-  { title: '操作', field: 'action', width: 180, fixed: 'right', slots: { default: 'action' } },
+  {
+    title: '操作',
+    field: 'action',
+    width: 180,
+    fixed: 'right',
+    slots: { default: 'action' },
+  },
 ];
 
-async function loadData({ page }: { page: { currentPage: number; pageSize: number } }) {
-  const params = { ...queryParams.value, pageNum: page.currentPage, pageSize: page.pageSize };
+async function loadData({
+  page,
+}: {
+  page: { currentPage: number; pageSize: number };
+}) {
+  const params = {
+    ...queryParams.value,
+    pageNum: page.currentPage,
+    pageSize: page.pageSize,
+  };
   const res = await getSealList(params);
   return { items: res.list || [], total: res.total || 0 };
 }
@@ -63,7 +98,13 @@ function handleSearch() {
 }
 
 function handleReset() {
-  queryParams.value = { pageNum: 1, pageSize: 10, name: undefined, sealType: undefined, status: undefined };
+  queryParams.value = {
+    pageNum: 1,
+    pageSize: 10,
+    name: undefined,
+    sealType: undefined,
+    status: undefined,
+  };
   gridApi.reload();
 }
 
@@ -107,19 +148,38 @@ function getStatusColor(status: string) {
       <div style="margin-bottom: 16px">
         <Row :gutter="16">
           <Col :span="6">
-            <Input v-model:value="queryParams.name" placeholder="印章名称" allowClear @pressEnter="handleSearch" />
+            <Input
+              v-model:value="queryParams.name"
+              placeholder="印章名称"
+              allow-clear
+              @press-enter="handleSearch"
+            />
           </Col>
           <Col :span="6">
-            <Select v-model:value="queryParams.sealType" placeholder="印章类型" allowClear style="width: 100%" :options="sealTypeOptions" />
+            <Select
+              v-model:value="queryParams.sealType"
+              placeholder="印章类型"
+              allow-clear
+              style="width: 100%"
+              :options="sealTypeOptions"
+            />
           </Col>
           <Col :span="6">
-            <Select v-model:value="queryParams.status" placeholder="状态" allowClear style="width: 100%" :options="statusOptions" />
+            <Select
+              v-model:value="queryParams.status"
+              placeholder="状态"
+              allow-clear
+              style="width: 100%"
+              :options="statusOptions"
+            />
           </Col>
           <Col :span="6">
             <Space>
               <Button type="primary" @click="handleSearch">查询</Button>
               <Button @click="handleReset">重置</Button>
-              <Button type="primary" @click="handleAdd"><Plus class="size-4" />添加印章</Button>
+              <Button type="primary" @click="handleAdd">
+                <Plus class="size-4" />添加印章
+              </Button>
             </Space>
           </Col>
         </Row>
@@ -132,7 +192,9 @@ function getStatusColor(status: string) {
         <template #action="{ row }">
           <Space>
             <a @click="handleEdit(row)">编辑</a>
-            <a @click="handleChangeStatus(row)">{{ row.status === 'ACTIVE' ? '停用' : '启用' }}</a>
+            <a @click="handleChangeStatus(row)">{{
+              row.status === 'ACTIVE' ? '停用' : '启用'
+            }}</a>
             <Popconfirm title="确定删除？" @confirm="handleDelete(row)">
               <a style="color: red">删除</a>
             </Popconfirm>

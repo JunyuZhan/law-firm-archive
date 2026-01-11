@@ -1,11 +1,15 @@
 <script setup lang="ts">
-import { useRouter } from 'vue-router';
-import { Space, Tag } from 'ant-design-vue';
-import { Page } from '@vben/common-ui';
 import type { VbenFormSchema } from '#/adapter/form';
+import type { ContractDTO } from '#/api/finance/types';
+
+import { useRouter } from 'vue-router';
+
+import { Page } from '@vben/common-ui';
+
+import { Space, Tag } from 'ant-design-vue';
+
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import { getMyContracts } from '#/api/finance';
-import type { ContractDTO } from '#/api/finance/types';
 
 defineOptions({ name: 'MyContract' });
 
@@ -73,7 +77,7 @@ const formSchema: VbenFormSchema[] = [
     componentProps: {
       placeholder: '请选择状态',
       allowClear: true,
-      options: statusOptions.filter(o => o.value !== undefined),
+      options: statusOptions.filter((o) => o.value !== undefined),
     },
   },
 ];
@@ -85,14 +89,27 @@ const gridColumns = [
   { title: '合同名称', field: 'name', width: 200, showOverflow: true },
   { title: '客户', field: 'clientName', width: 120 },
   { title: '收费方式', field: 'feeTypeName', width: 100 },
-  { title: '合同金额', field: 'totalAmount', width: 120, slots: { default: 'totalAmount' } },
+  {
+    title: '合同金额',
+    field: 'totalAmount',
+    width: 120,
+    slots: { default: 'totalAmount' },
+  },
   { title: '状态', field: 'status', width: 100, slots: { default: 'status' } },
   { title: '签约日期', field: 'signDate', width: 120 },
-  { title: '操作', field: 'action', width: 100, fixed: 'right' as const, slots: { default: 'action' } },
+  {
+    title: '操作',
+    field: 'action',
+    width: 100,
+    fixed: 'right' as const,
+    slots: { default: 'action' },
+  },
 ];
 
 // 加载数据
-async function loadData(params: { page: number; pageSize: number } & Record<string, any>) {
+async function loadData(
+  params: Record<string, any> & { page: number; pageSize: number },
+) {
   // 处理年份筛选参数
   let createdAtFrom: string | undefined;
   let createdAtTo: string | undefined;
@@ -103,7 +120,7 @@ async function loadData(params: { page: number; pageSize: number } & Record<stri
     createdAtTo = `${year}-12-31T23:59:59`;
   }
   // year为undefined或0时，不设置时间范围，显示所有数据
-  
+
   const res = await getMyContracts({
     pageNum: params.page,
     pageSize: params.pageSize,
@@ -130,7 +147,7 @@ const [Grid] = useVbenVxeGrid({
     height: 'auto',
     proxyConfig: {
       ajax: {
-        query: async ({ page, form }: { page: any; form: any }) => {
+        query: async ({ page, form }: { form: any; page: any }) => {
           return await loadData({
             page: page.currentPage,
             pageSize: page.pageSize,
@@ -183,7 +200,11 @@ function handleView(row: ContractDTO) {
 </script>
 
 <template>
-  <Page title="我的合同" description="查看我创建或签约的合同" auto-content-height>
+  <Page
+    title="我的合同"
+    description="查看我创建或签约的合同"
+    auto-content-height
+  >
     <Grid>
       <!-- 合同金额列 -->
       <template #totalAmount="{ row }">

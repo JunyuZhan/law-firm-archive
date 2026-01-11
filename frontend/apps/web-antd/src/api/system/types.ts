@@ -244,7 +244,7 @@ export interface MigrationDTO {
   scriptName: string;
   scriptPath: string;
   description?: string;
-  status: 'PENDING' | 'SUCCESS' | 'FAILED' | 'ROLLED_BACK';
+  status: 'FAILED' | 'PENDING' | 'ROLLED_BACK' | 'SUCCESS';
   executedAt?: string;
   executionTimeMs?: number;
   errorMessage?: string;
@@ -325,10 +325,10 @@ export interface RolePermissionDTO {
   roleName: string;
   dataScope: string;
   permissions: Array<{
+    hasPermission: boolean;
+    menuType: string;
     permissionCode: string;
     permissionName: string;
-    menuType: string;
-    hasPermission: boolean;
   }>;
 }
 
@@ -405,16 +405,26 @@ export interface DataHandoverPreviewDTO {
   userId: number;
   userName: string;
   leadMatterCount: number;
-  leadMatters?: Array<{ id: number; matterNo: string; name: string; status: string }>;
+  leadMatters?: Array<{
+    id: number;
+    matterNo: string;
+    name: string;
+    status: string;
+  }>;
   participantMatterCount: number;
   participantMatters?: Array<{ id: number; matterId: number; role: string }>;
   originatorMatterCount: number;
   clientCount: number;
-  clients?: Array<{ id: number; clientNo: string; name: string }>;
+  clients?: Array<{ clientNo: string; id: number; name: string }>;
   leadCount: number;
-  leads?: Array<{ id: number; leadNo: string; leadName: string; status: string }>;
+  leads?: Array<{
+    id: number;
+    leadName: string;
+    leadNo: string;
+    status: string;
+  }>;
   taskCount: number;
-  tasks?: Array<{ id: number; taskNo: string; title: string; status: string }>;
+  tasks?: Array<{ id: number; status: string; taskNo: string; title: string }>;
   contractParticipantCount: number;
   totalCount: number;
 }

@@ -1,30 +1,35 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue';
-import { message, Modal } from 'ant-design-vue';
+import type { ArchiveDTO, ArchiveQuery } from '#/api/archive/types';
+
+import { onMounted, reactive, ref } from 'vue';
+
 import { Page } from '@vben/common-ui';
+
 import {
-  Card,
-  Table,
+  Alert,
   Button,
-  Space,
-  Input,
-  Select,
+  Card,
+  Checkbox,
+  Col,
   Form,
   FormItem,
+  Input,
+  message,
+  Modal,
   Row,
-  Col,
-  Tag,
+  Select,
+  Space,
+  Table,
   Tabs,
+  Tag,
   Textarea,
-  Alert,
-  Checkbox,
 } from 'ant-design-vue';
+
 import {
-  getArchiveList,
   applyMigrateArchive,
   approveMigrateArchive,
+  getArchiveList,
 } from '#/api/archive';
-import type { ArchiveDTO, ArchiveQuery } from '#/api/archive/types';
 
 defineOptions({ name: 'ArchiveMigrate' });
 
@@ -61,12 +66,32 @@ const queryParams = reactive<ArchiveQuery>({
 // 表格列
 const columns = [
   { title: '档案编号', dataIndex: 'archiveNo', key: 'archiveNo', width: 130 },
-  { title: '档案名称', dataIndex: 'archiveName', key: 'archiveName', width: 200 },
+  {
+    title: '档案名称',
+    dataIndex: 'archiveName',
+    key: 'archiveName',
+    width: 200,
+  },
   { title: '项目名称', dataIndex: 'matterName', key: 'matterName', width: 150 },
-  { title: '保管期限', dataIndex: 'retentionPeriodName', key: 'retentionPeriodName', width: 100 },
-  { title: '到期日期', dataIndex: 'retentionExpireDate', key: 'retentionExpireDate', width: 110 },
+  {
+    title: '保管期限',
+    dataIndex: 'retentionPeriodName',
+    key: 'retentionPeriodName',
+    width: 100,
+  },
+  {
+    title: '到期日期',
+    dataIndex: 'retentionExpireDate',
+    key: 'retentionExpireDate',
+    width: 110,
+  },
   { title: '状态', dataIndex: 'statusName', key: 'statusName', width: 100 },
-  { title: '迁移目标', dataIndex: 'migrateTarget', key: 'migrateTarget', width: 150 },
+  {
+    title: '迁移目标',
+    dataIndex: 'migrateTarget',
+    key: 'migrateTarget',
+    width: 150,
+  },
   { title: '操作', key: 'action', width: 200, fixed: 'right' as const },
 ];
 
@@ -83,16 +108,27 @@ async function fetchData() {
   loading.value = true;
   try {
     // 根据tab设置状态筛选
-    if (activeTab.value === 'stored') {
-      queryParams.status = 'STORED';
-    } else if (activeTab.value === 'pending') {
-      queryParams.status = 'PENDING_MIGRATE';
-    } else if (activeTab.value === 'migrated') {
-      queryParams.status = 'MIGRATED';
-    } else {
-      queryParams.status = undefined;
+    switch (activeTab.value) {
+      case 'migrated': {
+        queryParams.status = 'MIGRATED';
+
+        break;
+      }
+      case 'pending': {
+        queryParams.status = 'PENDING_MIGRATE';
+
+        break;
+      }
+      case 'stored': {
+        queryParams.status = 'STORED';
+
+        break;
+      }
+      default: {
+        queryParams.status = undefined;
+      }
     }
-    
+
     const res = await getArchiveList(queryParams);
     dataSource.value = res.list;
     total.value = res.total;
@@ -104,7 +140,7 @@ async function fetchData() {
 }
 
 // Tab切换
-function handleTabChange(key: string | number) {
+function handleTabChange(key: number | string) {
   activeTab.value = String(key);
   queryParams.pageNum = 1;
   fetchData();
@@ -208,14 +244,18 @@ onMounted(() => {
       style="margin-bottom: 16px"
     >
       <template #description>
-        <p>档案迁移是将本系统中的档案转移到外部档案管理系统（如市档案馆、区档案馆等）的过程。</p>
-        <p>迁移后，可选择删除本系统中的实体文件以节省存储空间，但档案信息将保留用于查询。</p>
+        <p>
+          档案迁移是将本系统中的档案转移到外部档案管理系统（如市档案馆、区档案馆等）的过程。
+        </p>
+        <p>
+          迁移后，可选择删除本系统中的实体文件以节省存储空间，但档案信息将保留用于查询。
+        </p>
       </template>
     </Alert>
-    
+
     <Card>
       <!-- Tab切换 -->
-      <Tabs v-model:activeKey="activeTab" @change="handleTabChange">
+      <Tabs v-model:active-key="activeTab" @change="handleTabChange">
         <Tabs.TabPane key="stored" tab="可迁移档案" />
         <Tabs.TabPane key="pending" tab="待审批" />
         <Tabs.TabPane key="migrated" tab="已迁移" />
@@ -229,7 +269,7 @@ onMounted(() => {
             <Input
               v-model:value="queryParams.archiveName"
               placeholder="档案名称"
-              allowClear
+              allow-clear
             />
           </Col>
           <Col :xs="24" :sm="12" :md="16" :lg="18">
@@ -249,7 +289,7 @@ onMounted(() => {
         :pagination="{
           current: queryParams.pageNum,
           pageSize: queryParams.pageSize,
-          total: total,
+          total,
           showSizeChanger: true,
           showTotal: (total) => `共 ${total} 条`,
           onChange: (page, size) => {
@@ -270,7 +310,12 @@ onMounted(() => {
           <template v-if="column.key === 'migrateTarget'">
             <span v-if="(record as ArchiveDTO).migrateTarget">
               {{ (record as ArchiveDTO).migrateTarget }}
-              <Tag v-if="(record as ArchiveDTO).filesDeleted" color="orange" size="small">文件已删除</Tag>
+              <Tag
+                v-if="(record as ArchiveDTO).filesDeleted"
+                color="orange"
+                size="small"
+                >文件已删除</Tag
+              >
             </span>
             <span v-else>-</span>
           </template>
@@ -278,15 +323,21 @@ onMounted(() => {
             <Space>
               <!-- 已入库：可申请迁移 -->
               <template v-if="(record as ArchiveDTO).status === 'STORED'">
-                <a @click="handleApplyMigrate(record as ArchiveDTO)">申请迁移</a>
+                <a @click="handleApplyMigrate(record as ArchiveDTO)"
+                  >申请迁移</a
+                >
               </template>
               <!-- 待迁移审批：可审批 -->
-              <template v-if="(record as ArchiveDTO).status === 'PENDING_MIGRATE'">
+              <template
+                v-if="(record as ArchiveDTO).status === 'PENDING_MIGRATE'"
+              >
                 <a @click="handleApproveMigrate(record as ArchiveDTO)">审批</a>
               </template>
               <!-- 已迁移：查看详情 -->
               <template v-if="(record as ArchiveDTO).status === 'MIGRATED'">
-                <span style="color: #999">已迁移至 {{ (record as ArchiveDTO).migrateTarget }}</span>
+                <span style="color: #999"
+                  >已迁移至 {{ (record as ArchiveDTO).migrateTarget }}</span
+                >
               </template>
             </Space>
           </template>
@@ -307,17 +358,27 @@ onMounted(() => {
         <p><strong>项目名称：</strong>{{ currentArchive?.matterName }}</p>
       </div>
       <Form :label-col="{ span: 4 }" :wrapper-col="{ span: 20 }">
-        <FormItem label="迁移目标" :rules="[{ required: true, message: '请选择迁移目标' }]">
-          <Select 
-            v-model:value="migrateFormData.migrateTarget" 
+        <FormItem
+          label="迁移目标"
+          :rules="[{ required: true, message: '请选择迁移目标' }]"
+        >
+          <Select
+            v-model:value="migrateFormData.migrateTarget"
             placeholder="请选择迁移目标"
             :options="migrateTargetOptions"
             style="width: 100%"
           />
         </FormItem>
-        <FormItem label="迁移原因" :rules="[{ required: true, message: '请输入迁移原因' }]">
-          <Textarea v-model:value="migrateFormData.reason" :rows="4" placeholder="请输入迁移原因（如：保管期限到期、存储空间不足等）" />
-      </FormItem>
+        <FormItem
+          label="迁移原因"
+          :rules="[{ required: true, message: '请输入迁移原因' }]"
+        >
+          <Textarea
+            v-model:value="migrateFormData.reason"
+            :rows="4"
+            placeholder="请输入迁移原因（如：保管期限到期、存储空间不足等）"
+          />
+        </FormItem>
       </Form>
     </Modal>
 
@@ -335,20 +396,28 @@ onMounted(() => {
         <p><strong>迁移原因：</strong>{{ currentArchive?.migrateReason }}</p>
       </div>
       <Form :label-col="{ span: 4 }" :wrapper-col="{ span: 20 }">
-      <FormItem label="审批结果">
-          <Select :value="approveFormData.approved ? 'true' : 'false'" @change="(v: any) => approveFormData.approved = v === 'true'" style="width: 100%">
+        <FormItem label="审批结果">
+          <Select
+            :value="approveFormData.approved ? 'true' : 'false'"
+            @change="(v: any) => (approveFormData.approved = v === 'true')"
+            style="width: 100%"
+          >
             <Select.Option value="true">通过</Select.Option>
             <Select.Option value="false">拒绝</Select.Option>
-        </Select>
-      </FormItem>
-      <FormItem label="审批意见">
-          <Textarea v-model:value="approveFormData.comment" :rows="3" placeholder="请输入审批意见" />
+          </Select>
+        </FormItem>
+        <FormItem label="审批意见">
+          <Textarea
+            v-model:value="approveFormData.comment"
+            :rows="3"
+            placeholder="请输入审批意见"
+          />
         </FormItem>
         <FormItem v-if="approveFormData.approved" label="删除文件">
           <Checkbox v-model:checked="approveFormData.deleteFiles">
             迁移后删除本系统中的实体文件（保留档案信息）
           </Checkbox>
-      </FormItem>
+        </FormItem>
       </Form>
     </Modal>
   </Page>

@@ -1,33 +1,35 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue';
+import type { ClientDTO } from '#/api/client/types';
+import type { ContractDTO, ContractQuery } from '#/api/finance/types';
+import type { MatterSimpleDTO } from '#/api/matter/types';
+import type { DepartmentDTO, UserDTO } from '#/api/system/types';
+
+import { onMounted, reactive, ref } from 'vue';
+
 import { Page } from '@vben/common-ui';
-import dayjs from 'dayjs';
+
 import {
-  Card,
-  Table,
   Button,
-  Space,
-  Input,
-  Select,
+  Card,
+  Col,
+  DatePicker,
   Form,
   FormItem,
-  DatePicker,
+  Input,
   InputNumber,
-  Textarea,
-  Row,
-  Col,
   Modal,
+  Row,
+  Select,
+  Space,
+  Table,
+  Textarea,
 } from 'ant-design-vue';
-import {
-  getContractList,
-} from '#/api/finance';
+import dayjs from 'dayjs';
+
 import { getClientSelectOptions } from '#/api/client';
+import { getContractList } from '#/api/finance';
 import { getMatterSelectOptions } from '#/api/matter';
-import { getUserSelectOptions, getDepartmentTreePublic } from '#/api/system';
-import type { ContractDTO, ContractQuery } from '#/api/finance/types';
-import type { ClientDTO } from '#/api/client/types';
-import type { MatterDTO } from '#/api/matter/types';
-import type { UserDTO, DepartmentDTO } from '#/api/system/types';
+import { getDepartmentTreePublic, getUserSelectOptions } from '#/api/system';
 
 defineOptions({ name: 'FinanceContract' });
 
@@ -37,7 +39,7 @@ const dataSource = ref<ContractDTO[]>([]);
 const total = ref(0);
 const modalVisible = ref(false);
 const clients = ref<ClientDTO[]>([]);
-const matters = ref<MatterDTO[]>([]);
+const matters = ref<MatterSimpleDTO[]>([]);
 const users = ref<UserDTO[]>([]);
 const departments = ref<DepartmentDTO[]>([]);
 
@@ -48,11 +50,13 @@ const queryParams = reactive<ContractQuery>({
 });
 
 // 表单数据（只读展示）
-const formData = reactive<Partial<ContractDTO> & {
-  signDate?: any;
-  effectiveDate?: any;
-  expiryDate?: any;
-}>({
+const formData = reactive<
+  Partial<ContractDTO> & {
+    effectiveDate?: any;
+    expiryDate?: any;
+    signDate?: any;
+  }
+>({
   id: undefined,
   name: '',
   clientId: undefined,
@@ -73,11 +77,33 @@ const formData = reactive<Partial<ContractDTO> & {
 // 表格列
 const columns = [
   { title: '合同编号', dataIndex: 'contractNo', key: 'contractNo', width: 130 },
-  { title: '合同名称', dataIndex: 'name', key: 'name', width: 200, ellipsis: true },
+  {
+    title: '合同名称',
+    dataIndex: 'name',
+    key: 'name',
+    width: 200,
+    ellipsis: true,
+  },
   { title: '客户', dataIndex: 'clientName', key: 'clientName', width: 150 },
-  { title: '项目', dataIndex: 'matterName', key: 'matterName', width: 180, ellipsis: true },
-  { title: '合同类型', dataIndex: 'contractTypeName', key: 'contractTypeName', width: 100 },
-  { title: '合同金额', dataIndex: 'totalAmount', key: 'totalAmount', width: 120 },
+  {
+    title: '项目',
+    dataIndex: 'matterName',
+    key: 'matterName',
+    width: 180,
+    ellipsis: true,
+  },
+  {
+    title: '合同类型',
+    dataIndex: 'contractTypeName',
+    key: 'contractTypeName',
+    width: 100,
+  },
+  {
+    title: '合同金额',
+    dataIndex: 'totalAmount',
+    key: 'totalAmount',
+    width: 120,
+  },
   { title: '已收金额', dataIndex: 'paidAmount', key: 'paidAmount', width: 120 },
   { title: '签订日期', dataIndex: 'signDate', key: 'signDate', width: 120 },
   { title: '状态', dataIndex: 'statusName', key: 'statusName', width: 100 },
@@ -165,8 +191,12 @@ function handleView(record: ContractDTO) {
   formData.totalAmount = record.totalAmount;
   formData.currency = record.currency || 'CNY';
   formData.signDate = record.signDate ? dayjs(record.signDate) : undefined;
-  formData.effectiveDate = record.effectiveDate ? dayjs(record.effectiveDate) : undefined;
-  formData.expiryDate = record.expiryDate ? dayjs(record.expiryDate) : undefined;
+  formData.effectiveDate = record.effectiveDate
+    ? dayjs(record.effectiveDate)
+    : undefined;
+  formData.expiryDate = record.expiryDate
+    ? dayjs(record.expiryDate)
+    : undefined;
   formData.signerId = record.signerId;
   formData.departmentId = record.departmentId;
   formData.paymentTerms = record.paymentTerms || '';
@@ -174,12 +204,7 @@ function handleView(record: ContractDTO) {
   modalVisible.value = true;
 }
 
-// 分页变化
-function handleTableChange(pagination: any) {
-  queryParams.pageNum = pagination.current;
-  queryParams.pageSize = pagination.pageSize;
-  fetchData();
-}
+// 分页变化在 VxeGrid 内部处理
 
 // 格式化金额
 function formatMoney(value?: number) {
@@ -200,12 +225,20 @@ onMounted(() => {
         <Row :gutter="[16, 16]">
           <Col :xs="24" :sm="12" :md="8" :lg="6" :xl="4">
             <FormItem label="合同编号">
-              <Input v-model:value="queryParams.contractNo" placeholder="请输入" allow-clear />
+              <Input
+                v-model:value="queryParams.contractNo"
+                placeholder="请输入"
+                allow-clear
+              />
             </FormItem>
           </Col>
           <Col :xs="24" :sm="12" :md="8" :lg="6" :xl="4">
             <FormItem label="合同名称">
-              <Input v-model:value="queryParams.name" placeholder="请输入" allow-clear />
+              <Input
+                v-model:value="queryParams.name"
+                placeholder="请输入"
+                allow-clear
+              />
             </FormItem>
           </Col>
           <Col :xs="24" :sm="12" :md="8" :lg="6" :xl="4">
@@ -215,10 +248,18 @@ onMounted(() => {
                 placeholder="请选择"
                 allow-clear
                 show-search
-                :filter-option="(input: string, option: any) => option.label.toLowerCase().includes(input.toLowerCase())"
+                :filter-option="
+                  (input: string, option: any) =>
+                    option.label.toLowerCase().includes(input.toLowerCase())
+                "
                 style="width: 100%"
               >
-                <Select.Option v-for="c in clients" :key="c.id" :value="c.id" :label="c.name">
+                <Select.Option
+                  v-for="c in clients"
+                  :key="c.id"
+                  :value="c.id"
+                  :label="c.name"
+                >
                   {{ c.name }}
                 </Select.Option>
               </Select>
@@ -226,7 +267,12 @@ onMounted(() => {
           </Col>
           <Col :xs="24" :sm="12" :md="8" :lg="6" :xl="4">
             <FormItem label="状态">
-              <Select v-model:value="queryParams.status" placeholder="请选择" allow-clear style="width: 100%">
+              <Select
+                v-model:value="queryParams.status"
+                placeholder="请选择"
+                allow-clear
+                style="width: 100%"
+              >
                 <Select.Option value="DRAFT">草稿</Select.Option>
                 <Select.Option value="PENDING">待审批</Select.Option>
                 <Select.Option value="ACTIVE">生效中</Select.Option>
@@ -310,11 +356,13 @@ onMounted(() => {
         <Row :gutter="16">
           <Col :span="12">
             <FormItem label="客户">
-              <Select
-                v-model:value="formData.clientId"
-                :disabled="true"
-              >
-                <Select.Option v-for="c in clients" :key="c.id" :value="c.id" :label="c.name">
+              <Select v-model:value="formData.clientId" :disabled="true">
+                <Select.Option
+                  v-for="c in clients"
+                  :key="c.id"
+                  :value="c.id"
+                  :label="c.name"
+                >
                   {{ c.name }}
                 </Select.Option>
               </Select>
@@ -327,7 +375,12 @@ onMounted(() => {
                 :disabled="true"
                 allow-clear
               >
-                <Select.Option v-for="m in matters" :key="m.id" :value="m.id" :label="m.name">
+                <Select.Option
+                  v-for="m in matters"
+                  :key="m.id"
+                  :value="m.id"
+                  :label="m.name"
+                >
                   {{ m.name }}
                 </Select.Option>
               </Select>
@@ -338,7 +391,11 @@ onMounted(() => {
           <Col :span="12">
             <FormItem label="合同类型">
               <Select v-model:value="formData.contractType" :disabled="true">
-                <Select.Option v-for="opt in contractTypeOptions" :key="opt.value" :value="opt.value">
+                <Select.Option
+                  v-for="opt in contractTypeOptions"
+                  :key="opt.value"
+                  :value="opt.value"
+                >
                   {{ opt.label }}
                 </Select.Option>
               </Select>
@@ -347,7 +404,11 @@ onMounted(() => {
           <Col :span="12">
             <FormItem label="收费类型">
               <Select v-model:value="formData.feeType" :disabled="true">
-                <Select.Option v-for="opt in feeTypeOptions" :key="opt.value" :value="opt.value">
+                <Select.Option
+                  v-for="opt in feeTypeOptions"
+                  :key="opt.value"
+                  :value="opt.value"
+                >
                   {{ opt.label }}
                 </Select.Option>
               </Select>
@@ -367,7 +428,11 @@ onMounted(() => {
           <Col :span="12">
             <FormItem label="货币">
               <Select v-model:value="formData.currency" :disabled="true">
-                <Select.Option v-for="opt in currencyOptions" :key="opt.value" :value="opt.value">
+                <Select.Option
+                  v-for="opt in currencyOptions"
+                  :key="opt.value"
+                  :value="opt.value"
+                >
                   {{ opt.label }}
                 </Select.Option>
               </Select>
@@ -377,19 +442,34 @@ onMounted(() => {
         <Row :gutter="16">
           <Col :span="12">
             <FormItem label="签订日期">
-              <DatePicker v-model:value="formData.signDate" :disabled="true" style="width: 100%" format="YYYY-MM-DD" />
+              <DatePicker
+                v-model:value="formData.signDate"
+                :disabled="true"
+                style="width: 100%"
+                format="YYYY-MM-DD"
+              />
             </FormItem>
           </Col>
           <Col :span="12">
             <FormItem label="生效日期">
-              <DatePicker v-model:value="formData.effectiveDate" :disabled="true" style="width: 100%" format="YYYY-MM-DD" />
+              <DatePicker
+                v-model:value="formData.effectiveDate"
+                :disabled="true"
+                style="width: 100%"
+                format="YYYY-MM-DD"
+              />
             </FormItem>
           </Col>
         </Row>
         <Row :gutter="16">
           <Col :span="12">
             <FormItem label="到期日期">
-              <DatePicker v-model:value="formData.expiryDate" :disabled="true" style="width: 100%" format="YYYY-MM-DD" />
+              <DatePicker
+                v-model:value="formData.expiryDate"
+                :disabled="true"
+                style="width: 100%"
+                format="YYYY-MM-DD"
+              />
             </FormItem>
           </Col>
           <Col :span="12">
@@ -399,7 +479,12 @@ onMounted(() => {
                 :disabled="true"
                 allow-clear
               >
-                <Select.Option v-for="u in users" :key="u.id" :value="u.id" :label="u.realName">
+                <Select.Option
+                  v-for="u in users"
+                  :key="u.id"
+                  :value="u.id"
+                  :label="u.realName"
+                >
                   {{ u.realName }}
                 </Select.Option>
               </Select>
@@ -407,10 +492,18 @@ onMounted(() => {
           </Col>
         </Row>
         <FormItem label="付款条件">
-          <Textarea v-model:value="formData.paymentTerms" :disabled="true" :rows="2" />
+          <Textarea
+            v-model:value="formData.paymentTerms"
+            :disabled="true"
+            :rows="2"
+          />
         </FormItem>
         <FormItem label="备注">
-          <Textarea v-model:value="formData.remark" :disabled="true" :rows="3" />
+          <Textarea
+            v-model:value="formData.remark"
+            :disabled="true"
+            :rows="3"
+          />
         </FormItem>
       </Form>
     </Modal>

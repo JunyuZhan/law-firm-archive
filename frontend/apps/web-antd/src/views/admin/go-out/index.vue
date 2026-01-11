@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { GoOutCommand, GoOutRecordDTO } from '#/api/admin/go-out';
+
 import { onMounted, reactive, ref } from 'vue';
 
 import { Page } from '@vben/common-ui';
@@ -25,7 +27,6 @@ import {
   registerGoOut,
   registerReturn,
 } from '#/api/admin/go-out';
-import type { GoOutCommand, GoOutRecordDTO } from '#/api/admin/go-out';
 
 defineOptions({ name: 'GoOutManagement' });
 
@@ -54,8 +55,18 @@ const columns = [
   { title: '记录编号', dataIndex: 'recordNo', key: 'recordNo', width: 120 },
   { title: '姓名', dataIndex: 'userName', key: 'userName', width: 100 },
   { title: '外出时间', dataIndex: 'outTime', key: 'outTime', width: 160 },
-  { title: '预计返回时间', dataIndex: 'expectedReturnTime', key: 'expectedReturnTime', width: 160 },
-  { title: '实际返回时间', dataIndex: 'actualReturnTime', key: 'actualReturnTime', width: 160 },
+  {
+    title: '预计返回时间',
+    dataIndex: 'expectedReturnTime',
+    key: 'expectedReturnTime',
+    width: 160,
+  },
+  {
+    title: '实际返回时间',
+    dataIndex: 'actualReturnTime',
+    key: 'actualReturnTime',
+    width: 160,
+  },
   { title: '外出地点', dataIndex: 'location', key: 'location', width: 150 },
   { title: '外出事由', dataIndex: 'reason', key: 'reason', ellipsis: true },
   { title: '状态', dataIndex: 'status', key: 'status', width: 100 },
@@ -82,11 +93,9 @@ async function fetchData() {
   loading.value = true;
   try {
     let data: GoOutRecordDTO[];
-    if (searchForm.startDate && searchForm.endDate) {
-      data = await getGoOutRecordsByDateRange(searchForm.startDate, searchForm.endDate);
-    } else {
-      data = await getMyGoOutRecords();
-    }
+    data = await (searchForm.startDate && searchForm.endDate
+      ? getGoOutRecordsByDateRange(searchForm.startDate, searchForm.endDate)
+      : getMyGoOutRecords());
     tableData.value = data || [];
   } catch (error) {
     console.error('获取外出记录失败:', error);
@@ -156,7 +165,7 @@ async function handleSubmit() {
 }
 
 // 登记返回
-async function handleReturn(record: GoOutRecordDTO) {
+async function handleReturn(record: Record<string, any>) {
   Modal.confirm({
     title: '确认返回',
     content: `确定要登记返回吗？`,
@@ -225,7 +234,9 @@ onMounted(() => {
           </template>
           <template v-if="column.key === 'action'">
             <Space>
-              <a v-if="record.status === 'OUT'" @click="handleReturn(record)">登记返回</a>
+              <a v-if="record.status === 'OUT'" @click="handleReturn(record)"
+                >登记返回</a
+              >
             </Space>
           </template>
         </template>
@@ -258,16 +269,25 @@ onMounted(() => {
           />
         </FormItem>
         <FormItem label="外出地点">
-          <Input v-model:value="goOutForm.location" placeholder="请输入外出地点" />
+          <Input
+            v-model:value="goOutForm.location"
+            placeholder="请输入外出地点"
+          />
         </FormItem>
         <FormItem label="外出事由" required>
-          <Textarea v-model:value="goOutForm.reason" placeholder="请输入外出事由" :rows="4" />
+          <Textarea
+            v-model:value="goOutForm.reason"
+            placeholder="请输入外出事由"
+            :rows="4"
+          />
         </FormItem>
         <FormItem label="同行人员">
-          <Input v-model:value="goOutForm.companions" placeholder="请输入同行人员" />
+          <Input
+            v-model:value="goOutForm.companions"
+            placeholder="请输入同行人员"
+          />
         </FormItem>
       </Form>
     </Modal>
   </Page>
 </template>
-

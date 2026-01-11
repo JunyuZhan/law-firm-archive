@@ -7,6 +7,7 @@
 本项目基于 **Vben Admin 5.x** (monorepo 结构)，主应用位于 `frontend/apps/web-antd`。
 
 ### 核心特性
+
 - **国际化 (i18n)**: 支持中英文切换，语言包位于 `src/locales/langs/`
 - **权限控制**: 支持前端/后端两种权限模式，基于权限码 (accessCodes) 控制
 - **动态菜单**: 从后端 `/system/menu/user` 获取用户菜单
@@ -16,6 +17,7 @@
 ## 二、国际化配置
 
 ### 2.1 语言包结构
+
 ```
 src/locales/langs/
 ├── zh-CN/
@@ -29,6 +31,7 @@ src/locales/langs/
 ### 2.2 添加新模块翻译
 
 1. 在 `zh-CN/page.json` 添加中文：
+
 ```json
 {
   "client": {
@@ -42,6 +45,7 @@ src/locales/langs/
 ```
 
 2. 在 `en-US/page.json` 添加英文：
+
 ```json
 {
   "client": {
@@ -55,6 +59,7 @@ src/locales/langs/
 ```
 
 ### 2.3 使用翻译
+
 ```typescript
 import { $t } from '#/locales';
 
@@ -85,6 +90,7 @@ Vben Admin 支持两种权限模式（在 `preferences.ts` 中配置）：
 登录时后端返回用户权限码列表，存储在 `accessStore.accessCodes` 中。
 
 后端权限码格式：`模块:资源:操作`
+
 ```
 sys:user:list      - 用户列表
 sys:user:create    - 创建用户
@@ -101,7 +107,9 @@ matter:create      - 创建项目
 ```vue
 <!-- 基于权限码控制 -->
 <a-button v-access:code="'sys:user:create'">新增用户</a-button>
-<a-button v-access:code="['sys:user:update', 'sys:user:delete']">批量操作</a-button>
+<a-button
+  v-access:code="['sys:user:update', 'sys:user:delete']"
+>批量操作</a-button>
 
 <!-- 基于角色控制（仅 frontend 模式有效） -->
 <a-button v-access:role="'ADMIN'">管理员操作</a-button>
@@ -166,6 +174,7 @@ export default routes;
 后端 `/system/menu/user` 返回菜单数据，前端自动转换为路由。
 
 后端菜单格式：
+
 ```json
 {
   "id": 1,
@@ -193,6 +202,7 @@ export default routes;
 ```
 
 前端转换逻辑在 `src/api/core/menu.ts`：
+
 - `component: "LAYOUT"` → 布局组件
 - `component: "client/list/index"` → 自动映射到 `src/views/client/list/index.vue`
 
@@ -201,6 +211,7 @@ export default routes;
 ## 五、API 开发规范
 
 ### 5.1 目录结构
+
 ```
 src/api/
 ├── core/           # 核心API（认证、菜单）
@@ -254,7 +265,10 @@ import type { ClientDTO, ClientQuery, CreateClientCommand } from './types';
 
 /** 获取客户列表 */
 export function getClientList(params: ClientQuery) {
-  return requestClient.get<{ list: ClientDTO[]; total: number }>('/crm/client', { params });
+  return requestClient.get<{ list: ClientDTO[]; total: number }>(
+    '/crm/client',
+    { params },
+  );
 }
 
 /** 获取客户详情 */
@@ -281,6 +295,7 @@ export function deleteClient(id: number) {
 ### 5.3 请求响应格式
 
 后端统一响应格式：
+
 ```json
 {
   "success": true,
@@ -297,6 +312,7 @@ export function deleteClient(id: number) {
 ## 六、页面开发规范
 
 ### 6.1 目录结构
+
 ```
 src/views/
 ├── _core/              # 核心页面（登录、404等）
@@ -365,7 +381,11 @@ onMounted(fetchData);
         </a-form-item>
         <a-form-item>
           <a-button type="primary" @click="fetchData">查询</a-button>
-          <a-button class="ml-2" @click="queryParams = { pageNum: 1, pageSize: 10 }">重置</a-button>
+          <a-button
+            class="ml-2"
+            @click="queryParams = { pageNum: 1, pageSize: 10 }"
+            >重置</a-button
+          >
         </a-form-item>
       </a-form>
     </a-card>
@@ -400,7 +420,12 @@ onMounted(fetchData);
             编辑
           </a-button>
           <a-popconfirm title="确定删除？" @confirm="handleDelete(record.id)">
-            <a-button v-access:code="'client:delete'" type="link" size="small" danger>
+            <a-button
+              v-access:code="'client:delete'"
+              type="link"
+              size="small"
+              danger
+            >
               删除
             </a-button>
           </a-popconfirm>
@@ -417,19 +442,19 @@ onMounted(fetchData);
 
 根据系统功能清单，需要对接以下模块：
 
-| 模块 | 路由前缀 | API前缀 | 状态 |
-|------|---------|---------|------|
-| 工作台 | /dashboard | /workbench | ✅ 已完成 |
-| 系统管理 | /system | /system | ✅ 已完成 |
-| 客户管理 | /crm | /crm | ✅ 已完成 |
-| 项目管理 | /matter | /matter | ✅ 已完成 |
-| 财务管理 | /finance | /finance | ✅ 已完成 |
-| 文书管理 | /document | /document | ✅ 已完成 |
-| 证据管理 | /evidence | /evidence | ✅ 已完成 |
-| 档案管理 | /archive | /archive | ✅ 已完成 |
-| 行政管理 | /admin | /admin | ✅ 已完成 |
-| 人力资源 | /hr | /hr | ✅ 已完成 |
-| 知识库 | /knowledge | /knowledge | ✅ 已完成 |
+| 模块     | 路由前缀   | API前缀    | 状态      |
+| -------- | ---------- | ---------- | --------- |
+| 工作台   | /dashboard | /workbench | ✅ 已完成 |
+| 系统管理 | /system    | /system    | ✅ 已完成 |
+| 客户管理 | /crm       | /crm       | ✅ 已完成 |
+| 项目管理 | /matter    | /matter    | ✅ 已完成 |
+| 财务管理 | /finance   | /finance   | ✅ 已完成 |
+| 文书管理 | /document  | /document  | ✅ 已完成 |
+| 证据管理 | /evidence  | /evidence  | ✅ 已完成 |
+| 档案管理 | /archive   | /archive   | ✅ 已完成 |
+| 行政管理 | /admin     | /admin     | ✅ 已完成 |
+| 人力资源 | /hr        | /hr        | ✅ 已完成 |
+| 知识库   | /knowledge | /knowledge | ✅ 已完成 |
 
 > **注意**: 模块状态请根据实际开发进度更新此表格。
 

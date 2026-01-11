@@ -1,53 +1,58 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed, watch, nextTick } from 'vue';
-import { message } from 'ant-design-vue';
+import type {
+  CaseTypeOption,
+  ContractNumberPattern,
+  ContractNumberPreview,
+  ContractNumberVariable,
+  SysConfigDTO,
+} from '#/api/system/types';
+
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
+
 import { Page } from '@vben/common-ui';
+import { CircleHelp, Copy, Eye } from '@vben/icons';
+
 import {
-  Card,
-  Table,
+  Alert,
+  Modal as AModal,
   Button,
-  Space,
-  Input,
+  Card,
+  Col,
+  Divider,
   Form,
   FormItem,
-  Textarea,
-  Tabs,
-  TabPane,
-  Tag,
-  Alert,
-  Select,
+  Input,
   InputNumber,
-  Divider,
+  message,
   Row,
-  Col,
+  Select,
+  Space,
+  Table,
+  TabPane,
+  Tabs,
+  Tag,
+  Textarea,
   Tooltip,
-  Modal as AModal,
 } from 'ant-design-vue';
-import { Copy, Eye, CircleHelp } from '@vben/icons';
-import { 
-  getSysConfigList, 
-  updateConfig, 
-  previewContractNumber,
-  getContractNumberVariables,
-  getRecommendedPatterns,
-  getCaseTypeOptions,
-  getMaintenanceStatus,
-  enableMaintenanceMode,
+
+import {
   disableMaintenanceMode,
-  getVersionInfo,
-  testEmailConfig,
+  enableMaintenanceMode,
+  getCaseTypeOptions,
+  getContractNumberVariables,
   getEmailStatus,
-  sendTestAlert,
+  getMaintenanceStatus,
+  getRecommendedPatterns,
+  getSysConfigList,
+  getVersionInfo,
+  previewContractNumber,
   previewSystemReport,
   sendSystemReport,
+  sendTestAlert,
+  testEmailConfig,
+  updateConfig,
 } from '#/api/system';
-import type { 
-  SysConfigDTO, 
-  ContractNumberPreview, 
-  ContractNumberVariable, 
-  ContractNumberPattern,
-  CaseTypeOption,
-} from '#/api/system/types';
+
 import ConfigModal from './components/ConfigModal.vue';
 
 defineOptions({ name: 'SysConfig' });
@@ -80,16 +85,16 @@ const maintenanceMessage = ref('');
 
 // 版本信息相关
 const versionInfo = ref<{
-  version: string; // 显示版本号（优先数据库配置，支持简单格式如 0.4）
-  buildVersion?: string; // 构建版本号（如 1.0.0-SNAPSHOT）
   buildTime: string;
+  buildVersion?: string; // 构建版本号（如 1.0.0-SNAPSHOT）
   gitCommit: string;
-  profile: string;
-  javaVersion: string;
   javaVendor: string;
+  javaVersion: string;
   osName: string;
   osVersion: string;
+  profile: string;
   serverTime: string;
+  version: string; // 显示版本号（优先数据库配置，支持简单格式如 0.4）
 } | null>(null);
 const versionLoading = ref(false);
 
@@ -103,10 +108,25 @@ const reportPreviewVisible = ref(false);
 
 // 表格列 - 移除固定宽度，让列自适应
 const columns = [
-  { title: '配置名称', dataIndex: 'configName', key: 'configName', ellipsis: true },
+  {
+    title: '配置名称',
+    dataIndex: 'configName',
+    key: 'configName',
+    ellipsis: true,
+  },
   { title: '配置键', dataIndex: 'configKey', key: 'configKey', ellipsis: true },
-  { title: '配置值', dataIndex: 'configValue', key: 'configValue', ellipsis: true },
-  { title: '备注', dataIndex: 'description', key: 'description', ellipsis: true },
+  {
+    title: '配置值',
+    dataIndex: 'configValue',
+    key: 'configValue',
+    ellipsis: true,
+  },
+  {
+    title: '备注',
+    dataIndex: 'description',
+    key: 'description',
+    ellipsis: true,
+  },
   { title: '操作', key: 'action', width: 80, fixed: 'right' as const },
 ];
 
@@ -116,27 +136,27 @@ const configGroupOrder: Record<string, number> = {
   'sys.name': 1,
   'sys.version': 2,
   'sys.copyright': 3,
-  
+
   // 2. 登录安全配置
   'sys.login.captcha': 10,
   'sys.login.maxAttempts': 11,
   'sys.login.lockDuration': 12,
-  
+
   // 3. 密码配置
   'sys.password.minLength': 20,
   'sys.password.complexity': 21,
-  
+
   // 4. 会话配置
   'sys.session.timeout': 30,
-  
+
   // 5. 维护模式
   'sys.maintenance.enabled': 40,
   'sys.maintenance.message': 41,
-  
+
   // 6. 上传配置
   'sys.upload.maxSize': 50,
   'sys.upload.allowTypes': 51,
-  
+
   // 7. 邮件通知配置
   'notification.email.enabled': 60,
   'notification.email.smtp.host': 61,
@@ -144,14 +164,14 @@ const configGroupOrder: Record<string, number> = {
   'notification.email.smtp.username': 63,
   'notification.email.smtp.password': 64,
   'notification.email.admin.recipients': 65,
-  
+
   // 8. 告警配置
   'notification.alert.login.failure': 70,
   'notification.alert.account.locked': 71,
   'notification.alert.system.error': 72,
   'notification.alert.disk.space': 73,
   'notification.alert.backup.failure': 74,
-  
+
   // 9. 定时报告配置
   'notification.report.daily.enabled': 80,
   'notification.report.weekly.enabled': 81,
@@ -178,21 +198,23 @@ function getConfigSortWeight(key: string): number {
 
 // 过滤出非合同编号的配置，并按功能模块分组排序
 const generalConfigs = computed(() => {
-  const filtered = dataSource.value.filter(item => !item.configKey?.startsWith('contract.number.'));
-  
+  const filtered = dataSource.value.filter(
+    (item) => !item.configKey?.startsWith('contract.number.'),
+  );
+
   // 按分组排序
   return filtered.sort((a, b) => {
     const keyA = a.configKey || '';
     const keyB = b.configKey || '';
-    
+
     const weightA = getConfigSortWeight(keyA);
     const weightB = getConfigSortWeight(keyB);
-    
+
     // 先按权重排序
     if (weightA !== weightB) {
       return weightA - weightB;
     }
-    
+
     // 同一组内按字母顺序
     return keyA.localeCompare(keyB);
   });
@@ -221,13 +243,21 @@ async function fetchData() {
 
 // 初始化合同编号配置
 function initContractNumberConfig() {
-  const prefixConfig = dataSource.value.find(c => c.configKey === 'contract.number.prefix');
-  const patternConfig = dataSource.value.find(c => c.configKey === 'contract.number.pattern');
-  const lengthConfig = dataSource.value.find(c => c.configKey === 'contract.number.sequence.length');
-  
+  const prefixConfig = dataSource.value.find(
+    (c) => c.configKey === 'contract.number.prefix',
+  );
+  const patternConfig = dataSource.value.find(
+    (c) => c.configKey === 'contract.number.pattern',
+  );
+  const lengthConfig = dataSource.value.find(
+    (c) => c.configKey === 'contract.number.sequence.length',
+  );
+
   if (prefixConfig) contractNumberConfig.prefix = prefixConfig.configValue;
   if (patternConfig) contractNumberConfig.pattern = patternConfig.configValue;
-  if (lengthConfig) contractNumberConfig.sequenceLength = parseInt(lengthConfig.configValue) || 4;
+  if (lengthConfig)
+    contractNumberConfig.sequenceLength =
+      Number.parseInt(lengthConfig.configValue) || 4;
 }
 
 // 加载合同编号相关数据
@@ -358,21 +388,39 @@ function copyVariable(variable: ContractNumberVariable) {
 
 async function saveContractNumberConfig() {
   try {
-    const prefixConfig = dataSource.value.find(c => c.configKey === 'contract.number.prefix');
-    const patternConfig = dataSource.value.find(c => c.configKey === 'contract.number.pattern');
-    const lengthConfig = dataSource.value.find(c => c.configKey === 'contract.number.sequence.length');
-    
+    const prefixConfig = dataSource.value.find(
+      (c) => c.configKey === 'contract.number.prefix',
+    );
+    const patternConfig = dataSource.value.find(
+      (c) => c.configKey === 'contract.number.pattern',
+    );
+    const lengthConfig = dataSource.value.find(
+      (c) => c.configKey === 'contract.number.sequence.length',
+    );
+
     const promises = [];
     if (prefixConfig) {
-      promises.push(updateConfig(prefixConfig.id, { configValue: contractNumberConfig.prefix }));
+      promises.push(
+        updateConfig(prefixConfig.id, {
+          configValue: contractNumberConfig.prefix,
+        }),
+      );
     }
     if (patternConfig) {
-      promises.push(updateConfig(patternConfig.id, { configValue: contractNumberConfig.pattern }));
+      promises.push(
+        updateConfig(patternConfig.id, {
+          configValue: contractNumberConfig.pattern,
+        }),
+      );
     }
     if (lengthConfig) {
-      promises.push(updateConfig(lengthConfig.id, { configValue: String(contractNumberConfig.sequenceLength) }));
+      promises.push(
+        updateConfig(lengthConfig.id, {
+          configValue: String(contractNumberConfig.sequenceLength),
+        }),
+      );
     }
-    
+
     await Promise.all(promises);
     message.success('合同编号配置保存成功');
     fetchData();
@@ -405,17 +453,25 @@ async function handleModalSuccess() {
 // ==================== 生命周期 ====================
 
 // 监听 dataSource 变化，强制更新表格
-watch(() => dataSource.value, () => {
-  nextTick(() => {
-    tableKey.value = Date.now();
-  });
-}, { deep: true, flush: 'post' });
+watch(
+  () => dataSource.value,
+  () => {
+    nextTick(() => {
+      tableKey.value = Date.now();
+    });
+  },
+  { deep: true, flush: 'post' },
+);
 
-watch(() => contractNumberConfig.pattern, () => {
-  if (contractNumberConfig.pattern) {
-    handlePreview();
-  }
-}, { debounce: 500 } as any);
+watch(
+  () => contractNumberConfig.pattern,
+  () => {
+    if (contractNumberConfig.pattern) {
+      handlePreview();
+    }
+  },
+  { debounce: 500 } as any,
+);
 
 // 加载维护模式状态
 async function loadMaintenanceStatus() {
@@ -423,8 +479,8 @@ async function loadMaintenanceStatus() {
     const res = await getMaintenanceStatus();
     maintenanceStatus.value = res;
     maintenanceMessage.value = res.message || '系统正在维护中，请稍后再试';
-  } catch (err: any) {
-    console.error('加载维护模式状态失败', err);
+  } catch (error: any) {
+    console.error('加载维护模式状态失败', error);
   }
 }
 
@@ -439,8 +495,8 @@ async function handleEnableMaintenance() {
     await enableMaintenanceMode(maintenanceMessage.value);
     message.success('维护模式已开启');
     await loadMaintenanceStatus();
-  } catch (err: any) {
-    message.error(err.message || '开启维护模式失败');
+  } catch (error: any) {
+    message.error(error.message || '开启维护模式失败');
   } finally {
     maintenanceLoading.value = false;
   }
@@ -453,8 +509,8 @@ async function handleDisableMaintenance() {
     await disableMaintenanceMode();
     message.success('维护模式已关闭');
     await loadMaintenanceStatus();
-  } catch (err: any) {
-    message.error(err.message || '关闭维护模式失败');
+  } catch (error: any) {
+    message.error(error.message || '关闭维护模式失败');
   } finally {
     maintenanceLoading.value = false;
   }
@@ -482,7 +538,7 @@ watch(activeTab, (newTab) => {
 
 <template>
   <Page title="系统配置" description="管理系统配置参数">
-    <Tabs v-model:activeKey="activeTab">
+    <Tabs v-model:active-key="activeTab">
       <!-- 合同编号配置 -->
       <TabPane key="contract" tab="合同编号配置">
         <Card title="编号规则设置" :bordered="false">
@@ -490,44 +546,54 @@ watch(activeTab, (newTab) => {
             <Col :xs="24" :lg="16">
               <Form layout="vertical">
                 <FormItem label="编号前缀">
-                  <Input 
-                    v-model:value="contractNumberConfig.prefix" 
-                    placeholder="如：HT、CONTRACT" 
+                  <Input
+                    v-model:value="contractNumberConfig.prefix"
+                    placeholder="如：HT、CONTRACT"
                     style="width: 200px"
                     @change="handlePreview"
                   />
-                  <span style="margin-left: 12px; color: #999;">用于 {PREFIX} 变量</span>
+                  <span style="margin-left: 12px; color: #999"
+                    >用于 {PREFIX} 变量</span
+                  >
                 </FormItem>
-                
+
                 <FormItem label="序号长度">
-                  <InputNumber 
-                    v-model:value="contractNumberConfig.sequenceLength" 
-                    :min="1" 
+                  <InputNumber
+                    v-model:value="contractNumberConfig.sequenceLength"
+                    :min="1"
                     :max="10"
                     style="width: 120px"
                     @change="handlePreview"
                   />
-                  <span style="margin-left: 12px; color: #999;">序号不足位数前面补0，如：0001</span>
+                  <span style="margin-left: 12px; color: #999"
+                    >序号不足位数前面补0，如：0001</span
+                  >
                 </FormItem>
-                
+
                 <FormItem>
                   <template #label>
                     <span>编号规则</span>
-                    <Tooltip title="使用变量组合定义编号格式，变量会在生成时被替换为实际值">
-                      <CircleHelp class="size-4 ml-1 text-gray-400 inline-block" />
+                    <Tooltip
+                      title="使用变量组合定义编号格式，变量会在生成时被替换为实际值"
+                    >
+                      <CircleHelp
+                        class="ml-1 inline-block size-4 text-gray-400"
+                      />
                     </Tooltip>
                   </template>
-                  <Textarea 
-                    v-model:value="contractNumberConfig.pattern" 
-                    :rows="2" 
+                  <Textarea
+                    v-model:value="contractNumberConfig.pattern"
+                    :rows="2"
                     placeholder="如：{YEAR}{CASE_TYPE}代字第{SEQUENCE_YEAR}号"
-                    style="font-family: monospace; font-size: 14px;"
+                    style="font-family: monospace; font-size: 14px"
                   />
                 </FormItem>
-                
+
                 <FormItem>
                   <Space>
-                    <Button type="primary" @click="saveContractNumberConfig">保存配置</Button>
+                    <Button type="primary" @click="saveContractNumberConfig">
+                      保存配置
+                    </Button>
                     <Button @click="handlePreview" :loading="previewLoading">
                       <template #icon><Eye class="size-4" /></template>
                       刷新预览
@@ -536,31 +602,49 @@ watch(activeTab, (newTab) => {
                 </FormItem>
               </Form>
             </Col>
-            
+
             <Col :xs="24" :lg="8">
               <Card title="编号预览" size="small" :loading="previewLoading">
-                <div v-if="previewResults.length">
-                  <div v-for="item in previewResults" :key="item.caseType" style="margin-bottom: 12px;">
-                    <Tag v-if="item.caseTypeName !== '通用'" color="blue">{{ item.caseTypeName }}</Tag>
-                    <div style=" margin-top: 4px; font-family: monospace;font-size: 16px; font-weight: 500; color: #1890ff;">
+                <div v-if="previewResults.length > 0">
+                  <div
+                    v-for="item in previewResults"
+                    :key="item.caseType"
+                    style="margin-bottom: 12px"
+                  >
+                    <Tag v-if="item.caseTypeName !== '通用'" color="blue">
+                      {{ item.caseTypeName }}
+                    </Tag>
+                    <div
+                      style="
+                        margin-top: 4px;
+                        font-family: monospace;
+                        font-size: 16px;
+                        font-weight: 500;
+                        color: #1890ff;
+                      "
+                    >
                       {{ item.preview }}
                     </div>
                   </div>
                 </div>
-                <div v-else style="color: #999;">暂无预览</div>
-                
-                <Divider style="margin: 16px 0 12px;" />
-                <div style=" font-size: 12px;color: #999;">
+                <div v-else style="color: #999">暂无预览</div>
+
+                <Divider style="margin: 16px 0 12px" />
+                <div style="font-size: 12px; color: #999">
                   选择案件类型查看不同类型的编号效果
                 </div>
-                <Select 
-                  v-model:value="selectedCaseType" 
-                  placeholder="选择案件类型预览" 
-                  style="width: 100%; margin-top: 8px;"
-                  allowClear
+                <Select
+                  v-model:value="selectedCaseType"
+                  placeholder="选择案件类型预览"
+                  style="width: 100%; margin-top: 8px"
+                  allow-clear
                   @change="handlePreview"
                 >
-                  <Select.Option v-for="opt in caseTypeOptions" :key="opt.value" :value="opt.value">
+                  <Select.Option
+                    v-for="opt in caseTypeOptions"
+                    :key="opt.value"
+                    :value="opt.value"
+                  >
                     {{ opt.label }} ({{ opt.shortName }}/{{ opt.code }})
                   </Select.Option>
                 </Select>
@@ -568,66 +652,107 @@ watch(activeTab, (newTab) => {
             </Col>
           </Row>
         </Card>
-        
-        <Row :gutter="[16, 16]" style="margin-top: 16px;">
+
+        <Row :gutter="[16, 16]" style="margin-top: 16px">
           <Col :xs="24" :lg="12">
             <Card title="推荐规则模板" size="small" :bordered="false">
-              <div style="max-height: 360px; overflow-y: auto;">
-                <div 
-                  v-for="pattern in recommendedPatterns" 
+              <div style="max-height: 360px; overflow-y: auto">
+                <div
+                  v-for="pattern in recommendedPatterns"
                   :key="pattern.name"
-                  style="padding: 12px; margin-bottom: 8px; cursor: pointer; background: #fafafa; border-radius: 6px; transition: all 0.2s;"
-                  :style="{ background: contractNumberConfig.pattern === pattern.pattern ? '#e6f7ff' : '#fafafa' }"
+                  style="
+                    padding: 12px;
+                    margin-bottom: 8px;
+                    cursor: pointer;
+                    background: #fafafa;
+                    border-radius: 6px;
+                    transition: all 0.2s;
+                  "
+                  :style="{
+                    background:
+                      contractNumberConfig.pattern === pattern.pattern
+                        ? '#e6f7ff'
+                        : '#fafafa',
+                  }"
                   @click="selectRecommendedPattern(pattern)"
                 >
-                  <div style="display: flex; align-items: center; justify-content: space-between;">
-                    <span style="font-weight: 500;">{{ pattern.name }}</span>
+                  <div
+                    style="
+                      display: flex;
+                      align-items: center;
+                      justify-content: space-between;
+                    "
+                  >
+                    <span style="font-weight: 500">{{ pattern.name }}</span>
                     <Tag color="green">{{ pattern.example }}</Tag>
                   </div>
-                  <div style=" margin-top: 4px; font-family: monospace; font-size: 12px;color: #666;">
+                  <div
+                    style="
+                      margin-top: 4px;
+                      font-family: monospace;
+                      font-size: 12px;
+                      color: #666;
+                    "
+                  >
                     {{ pattern.pattern }}
                   </div>
-                  <div style=" margin-top: 4px; font-size: 12px;color: #999;">
+                  <div style="margin-top: 4px; font-size: 12px; color: #999">
                     {{ pattern.description }}
                   </div>
                 </div>
               </div>
             </Card>
           </Col>
-          
+
           <Col :xs="24" :lg="12">
             <Card title="支持的变量" size="small" :bordered="false">
-              <div style="max-height: 360px; overflow-y: auto;">
-                <div 
-                  v-for="variable in variables" 
+              <div style="max-height: 360px; overflow-y: auto">
+                <div
+                  v-for="variable in variables"
                   :key="variable.name"
-                  style="display: flex; align-items: center; padding: 8px 0; border-bottom: 1px solid #f0f0f0;"
+                  style="
+                    display: flex;
+                    align-items: center;
+                    padding: 8px 0;
+                    border-bottom: 1px solid #f0f0f0;
+                  "
                 >
-                  <Tag color="blue" style="font-family: monospace; cursor: pointer;" @click="insertVariable(variable)">
+                  <Tag
+                    color="blue"
+                    style="font-family: monospace; cursor: pointer"
+                    @click="insertVariable(variable)"
+                  >
                     {{ variable.name }}
                   </Tag>
-                  <span style="flex: 1; margin-left: 8px;">
-                    <span style="font-weight: 500;">{{ variable.label }}</span>
-                    <span style=" margin-left: 8px; font-size: 12px;color: #999;">{{ variable.description }}</span>
+                  <span style="flex: 1; margin-left: 8px">
+                    <span style="font-weight: 500">{{ variable.label }}</span>
+                    <span
+                      style="margin-left: 8px; font-size: 12px; color: #999"
+                      >{{ variable.description }}</span
+                    >
                   </span>
                   <Tooltip title="复制变量">
-                    <Button type="text" size="small" @click="copyVariable(variable)">
+                    <Button
+                      type="text"
+                      size="small"
+                      @click="copyVariable(variable)"
+                    >
                       <template #icon><Copy class="size-4" /></template>
                     </Button>
                   </Tooltip>
                 </div>
               </div>
-              <Alert 
-                type="info" 
+              <Alert
+                type="info"
                 :show-icon="false"
-                style="margin-top: 12px;"
+                style="margin-top: 12px"
                 message="点击变量标签可直接插入到编号规则中"
               />
             </Card>
           </Col>
         </Row>
       </TabPane>
-      
+
       <!-- 维护模式配置 -->
       <TabPane key="maintenance" tab="维护模式">
         <Card title="系统维护模式" :bordered="false">
@@ -637,7 +762,7 @@ watch(activeTab, (newTab) => {
             show-icon
             message="系统当前处于维护模式"
             :description="maintenanceStatus.message"
-            style="margin-bottom: 24px;"
+            style="margin-bottom: 24px"
           />
           <Alert
             v-else
@@ -645,10 +770,10 @@ watch(activeTab, (newTab) => {
             show-icon
             message="系统正常运行"
             description="维护模式关闭时，所有用户均可正常访问系统"
-            style="margin-bottom: 24px;"
+            style="margin-bottom: 24px"
           />
-          
-          <Form layout="vertical" style="max-width: 600px;">
+
+          <Form layout="vertical" style="max-width: 600px">
             <FormItem label="维护提示信息">
               <Textarea
                 v-model:value="maintenanceMessage"
@@ -657,7 +782,7 @@ watch(activeTab, (newTab) => {
                 :disabled="maintenanceStatus.enabled"
               />
             </FormItem>
-            
+
             <FormItem>
               <Space>
                 <Button
@@ -680,16 +805,12 @@ watch(activeTab, (newTab) => {
               </Space>
             </FormItem>
           </Form>
-          
+
           <Divider />
-          
-          <Alert
-            type="warning"
-            :show-icon="false"
-            style="margin-top: 16px;"
-          >
-            <div style=" margin-bottom: 8px;font-weight: 500;">注意事项：</div>
-            <ul style=" padding-left: 20px;margin: 0; color: #666;">
+
+          <Alert type="warning" :show-icon="false" style="margin-top: 16px">
+            <div style="margin-bottom: 8px; font-weight: 500">注意事项：</div>
+            <ul style="padding-left: 20px; margin: 0; color: #666">
               <li>开启维护模式后，只有管理员账户可以访问系统</li>
               <li>普通用户访问时将看到维护提示信息</li>
               <li>维护模式下，登录接口仍然可用，允许管理员登录</li>
@@ -698,36 +819,45 @@ watch(activeTab, (newTab) => {
           </Alert>
         </Card>
       </TabPane>
-      
+
       <!-- 版本信息 -->
       <TabPane key="version" tab="版本信息">
         <Card title="系统版本信息" :bordered="false">
-          <div v-if="versionLoading" style=" padding: 40px;text-align: center;">
+          <div v-if="versionLoading" style="padding: 40px; text-align: center">
             <span>加载中...</span>
           </div>
-          <div v-else-if="versionInfo" style="max-width: 800px;">
+          <div v-else-if="versionInfo" style="max-width: 800px">
             <Row :gutter="[16, 16]">
               <Col :span="12">
                 <Card size="small" title="应用版本">
-                  <div style="font-size: 24px; font-weight: bold; color: #1890ff;">
+                  <div
+                    style="font-size: 24px; font-weight: bold; color: #1890ff"
+                  >
                     {{ versionInfo.version }}
                   </div>
-                  <div v-if="versionInfo.buildVersion && versionInfo.buildVersion !== versionInfo.version" 
-                       style=" margin-top: 4px;font-size: 12px; color: #999;">
+                  <div
+                    v-if="
+                      versionInfo.buildVersion &&
+                      versionInfo.buildVersion !== versionInfo.version
+                    "
+                    style="margin-top: 4px; font-size: 12px; color: #999"
+                  >
                     构建版本: {{ versionInfo.buildVersion }}
                   </div>
                 </Card>
               </Col>
               <Col :span="12">
                 <Card size="small" title="构建时间">
-                  <div style="font-size: 14px; color: #666;">
+                  <div style="font-size: 14px; color: #666">
                     {{ versionInfo.buildTime }}
                   </div>
                 </Card>
               </Col>
               <Col :span="12">
                 <Card size="small" title="Git 提交">
-                  <div style=" font-family: monospace;font-size: 14px; color: #666;">
+                  <div
+                    style="font-family: monospace; font-size: 14px; color: #666"
+                  >
                     {{ versionInfo.gitCommit }}
                   </div>
                 </Card>
@@ -741,46 +871,69 @@ watch(activeTab, (newTab) => {
                 <Card size="small" title="系统信息">
                   <Row :gutter="[16, 8]">
                     <Col :span="8">
-                      <div><strong>Java 版本:</strong> {{ versionInfo.javaVersion }}</div>
+                      <div>
+                        <strong>Java 版本:</strong>
+                        {{ versionInfo.javaVersion }}
+                      </div>
                     </Col>
                     <Col :span="8">
-                      <div><strong>Java 供应商:</strong> {{ versionInfo.javaVendor }}</div>
+                      <div>
+                        <strong>Java 供应商:</strong>
+                        {{ versionInfo.javaVendor }}
+                      </div>
                     </Col>
                     <Col :span="8">
-                      <div><strong>操作系统:</strong> {{ versionInfo.osName }} {{ versionInfo.osVersion }}</div>
+                      <div>
+                        <strong>操作系统:</strong> {{ versionInfo.osName }}
+                        {{ versionInfo.osVersion }}
+                      </div>
                     </Col>
                     <Col :span="24">
-                      <div><strong>服务器时间:</strong> {{ versionInfo.serverTime }}</div>
+                      <div>
+                        <strong>服务器时间:</strong>
+                        {{ versionInfo.serverTime }}
+                      </div>
                     </Col>
                   </Row>
                 </Card>
               </Col>
             </Row>
             <Divider />
-            <Alert
-              type="info"
-              :show-icon="false"
-              style="margin-top: 16px;"
-            >
-              <div style=" margin-bottom: 8px;font-weight: 500;">版本信息说明：</div>
-              <ul style=" padding-left: 20px;margin: 0; color: #666;">
-                <li><strong>版本号</strong>：当前系统版本，优先从数据库配置（sys.version）读取，支持简单格式如 0.4、1.2 等</li>
-                <li><strong>构建版本</strong>：Maven 构建时的版本号（如 1.0.0-SNAPSHOT），仅在版本号与构建版本不同时显示</li>
+            <Alert type="info" :show-icon="false" style="margin-top: 16px">
+              <div style="margin-bottom: 8px; font-weight: 500">
+                版本信息说明：
+              </div>
+              <ul style="padding-left: 20px; margin: 0; color: #666">
+                <li>
+                  <strong>版本号</strong
+                  >：当前系统版本，优先从数据库配置（sys.version）读取，支持简单格式如
+                  0.4、1.2 等
+                </li>
+                <li>
+                  <strong>构建版本</strong>：Maven 构建时的版本号（如
+                  1.0.0-SNAPSHOT），仅在版本号与构建版本不同时显示
+                </li>
                 <li><strong>构建时间</strong>：应用打包构建的时间</li>
-                <li><strong>Git 提交</strong>：构建时对应的 Git 提交 ID（短格式）</li>
-                <li><strong>运行环境</strong>：当前 Spring Profile（dev/test/prod）</li>
-                <li style="margin-top: 8px; color: #1890ff;">
-                  💡 <strong>提示</strong>：可以在"通用配置"中修改 sys.version 来设置简单的版本号格式（如 0.4）
+                <li>
+                  <strong>Git 提交</strong>：构建时对应的 Git 提交 ID（短格式）
+                </li>
+                <li>
+                  <strong>运行环境</strong>：当前 Spring
+                  Profile（dev/test/prod）
+                </li>
+                <li style="margin-top: 8px; color: #1890ff">
+                  💡 <strong>提示</strong>：可以在"通用配置"中修改 sys.version
+                  来设置简单的版本号格式（如 0.4）
                 </li>
               </ul>
             </Alert>
           </div>
-          <div v-else style=" padding: 40px; color: #999;text-align: center;">
+          <div v-else style="padding: 40px; color: #999; text-align: center">
             无法加载版本信息
           </div>
         </Card>
       </TabPane>
-      
+
       <!-- 邮件通知配置 -->
       <TabPane key="notification" tab="邮件通知">
         <Card title="邮件服务配置" :bordered="false">
@@ -790,7 +943,7 @@ watch(activeTab, (newTab) => {
             show-icon
             message="邮件服务已启用"
             description="系统将通过邮件发送告警通知和运行报告"
-            style="margin-bottom: 24px;"
+            style="margin-bottom: 24px"
           />
           <Alert
             v-else
@@ -798,21 +951,21 @@ watch(activeTab, (newTab) => {
             show-icon
             message="邮件服务未启用"
             description="请在下方的通用配置中配置 SMTP 信息并启用邮件通知"
-            style="margin-bottom: 24px;"
+            style="margin-bottom: 24px"
           />
-          
+
           <Divider orientation="left">测试邮件配置</Divider>
-          <Form layout="inline" style="margin-bottom: 24px;">
+          <Form layout="inline" style="margin-bottom: 24px">
             <FormItem label="测试邮箱">
-              <Input 
-                v-model:value="testEmailAddress" 
+              <Input
+                v-model:value="testEmailAddress"
                 placeholder="请输入接收测试邮件的邮箱地址"
-                style="width: 300px;"
+                style="width: 300px"
               />
             </FormItem>
             <FormItem>
-              <Button 
-                type="primary" 
+              <Button
+                type="primary"
                 :loading="emailTestLoading"
                 :disabled="!emailStatus.enabled"
                 @click="handleTestEmail"
@@ -821,9 +974,9 @@ watch(activeTab, (newTab) => {
               </Button>
             </FormItem>
           </Form>
-          
+
           <Divider orientation="left">测试告警功能</Divider>
-          <Space style="margin-bottom: 24px;">
+          <Space style="margin-bottom: 24px">
             <Button @click="handleSendTestAlert('login')">
               测试登录失败告警
             </Button>
@@ -837,29 +990,29 @@ watch(activeTab, (newTab) => {
               测试备份失败告警
             </Button>
           </Space>
-          
+
           <Divider orientation="left">系统运行报告</Divider>
-          <Space style="margin-bottom: 24px;">
-            <Button 
+          <Space style="margin-bottom: 24px">
+            <Button
               :loading="reportPreviewLoading"
               @click="handlePreviewReport('daily')"
             >
               预览日报
             </Button>
-            <Button 
+            <Button
               :loading="reportPreviewLoading"
               @click="handlePreviewReport('weekly')"
             >
               预览周报
             </Button>
-            <Button 
+            <Button
               type="primary"
               :disabled="!emailStatus.enabled"
               @click="handleSendReport('daily')"
             >
               立即发送日报
             </Button>
-            <Button 
+            <Button
               type="primary"
               :disabled="!emailStatus.enabled"
               @click="handleSendReport('weekly')"
@@ -867,23 +1020,34 @@ watch(activeTab, (newTab) => {
               立即发送周报
             </Button>
           </Space>
-          
+
           <Divider />
-          <Alert
-            type="info"
-            :show-icon="false"
-            style="margin-top: 16px;"
-          >
-            <div style=" margin-bottom: 8px;font-weight: 500;">配置说明：</div>
-            <ul style=" padding-left: 20px;margin: 0; color: #666;">
-              <li><strong>邮件通知开关</strong>：在"通用配置"中设置 notification.email.enabled 为 true 启用</li>
-              <li><strong>SMTP 配置</strong>：需配置 SMTP 服务器、端口、用户名（发件邮箱）、密码（授权码）</li>
-              <li><strong>告警接收邮箱</strong>：设置 notification.email.admin.recipients，多个邮箱用逗号分隔</li>
-              <li><strong>定时报告</strong>：启用 notification.report.daily.enabled 每天早上8点发送日报</li>
-              <li><strong>每周报告</strong>：启用 notification.report.weekly.enabled 每周一早上9点发送周报</li>
-              <li style="margin-top: 8px;">
+          <Alert type="info" :show-icon="false" style="margin-top: 16px">
+            <div style="margin-bottom: 8px; font-weight: 500">配置说明：</div>
+            <ul style="padding-left: 20px; margin: 0; color: #666">
+              <li>
+                <strong>邮件通知开关</strong>：在"通用配置"中设置
+                notification.email.enabled 为 true 启用
+              </li>
+              <li>
+                <strong>SMTP 配置</strong>：需配置 SMTP
+                服务器、端口、用户名（发件邮箱）、密码（授权码）
+              </li>
+              <li>
+                <strong>告警接收邮箱</strong>：设置
+                notification.email.admin.recipients，多个邮箱用逗号分隔
+              </li>
+              <li>
+                <strong>定时报告</strong>：启用
+                notification.report.daily.enabled 每天早上8点发送日报
+              </li>
+              <li>
+                <strong>每周报告</strong>：启用
+                notification.report.weekly.enabled 每周一早上9点发送周报
+              </li>
+              <li style="margin-top: 8px">
                 💡 <strong>常用 SMTP 配置</strong>：
-                <ul style="margin-top: 4px;">
+                <ul style="margin-top: 4px">
                   <li>QQ邮箱：smtp.qq.com，端口 465 (SSL)，密码使用授权码</li>
                   <li>163邮箱：smtp.163.com，端口 465 (SSL)，密码使用授权码</li>
                   <li>Gmail：smtp.gmail.com，端口 587 (TLS)，需开启两步验证</li>
@@ -893,7 +1057,7 @@ watch(activeTab, (newTab) => {
           </Alert>
         </Card>
       </TabPane>
-      
+
       <!-- 通用配置 -->
       <TabPane key="general" tab="通用配置">
         <Card :bordered="false">
@@ -920,7 +1084,7 @@ watch(activeTab, (newTab) => {
         </Card>
       </TabPane>
     </Tabs>
-    
+
     <!-- 报告预览弹窗 -->
     <AModal
       v-model:open="reportPreviewVisible"
@@ -928,7 +1092,10 @@ watch(activeTab, (newTab) => {
       :width="800"
       :footer="null"
     >
-      <div v-html="reportPreviewHtml" style="max-height: 600px; overflow: auto;" />
+      <div
+        v-html="reportPreviewHtml"
+        style="max-height: 600px; overflow: auto"
+      ></div>
     </AModal>
 
     <!-- 配置弹窗 -->

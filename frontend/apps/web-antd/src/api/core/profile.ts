@@ -60,4 +60,3 @@ export async function updateProfile(data: ProfileApi.UpdateProfileRequest) {
 export async function changePassword(data: ProfileApi.ChangePasswordRequest) {
   return requestClient.post('/profile/change-password', data);
 }
-

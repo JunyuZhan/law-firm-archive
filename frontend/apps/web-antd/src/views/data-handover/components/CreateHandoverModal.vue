@@ -1,37 +1,44 @@
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue';
+import type {
+  CreateHandoverCommand,
+  DataHandoverPreviewDTO,
+} from '#/api/system/types';
+
+import { computed, reactive, ref } from 'vue';
+
 import { useVbenModal } from '@vben/common-ui';
 import { useUserStore } from '@vben/stores';
-import { message } from 'ant-design-vue';
+
 import {
-  Form,
-  FormItem,
-  Select,
-  Textarea,
-  Switch,
-  Steps,
-  Step,
   Alert,
   Button,
-  Space,
-  Row,
   Col,
-  Statistic,
   Divider,
+  Empty,
+  Form,
+  FormItem,
   List,
   ListItem,
   ListItemMeta,
+  message,
+  Row,
+  Select,
+  Space,
+  Statistic,
+  Step,
+  Steps,
+  Switch,
   Tag,
-  Empty,
+  Textarea,
 } from 'ant-design-vue';
+
 import {
-  previewHandover,
-  createResignationHandover,
-  createProjectHandover,
   createClientHandover,
+  createProjectHandover,
+  createResignationHandover,
+  previewHandover,
 } from '#/api/system';
 import { UserTreeSelect } from '#/components/UserTreeSelect';
-import type { DataHandoverPreviewDTO, CreateHandoverCommand } from '#/api/system/types';
 
 const emit = defineEmits<{
   success: [];
@@ -61,7 +68,7 @@ const formData = reactive<CreateHandoverCommand>({
 });
 
 // 项目状态映射
-const matterStatusMap: Record<string, { text: string; color: string }> = {
+const matterStatusMap: Record<string, { color: string; text: string }> = {
   DRAFT: { text: '草稿', color: 'default' },
   PENDING: { text: '待审批', color: 'orange' },
   ACTIVE: { text: '进行中', color: 'processing' },
@@ -135,18 +142,29 @@ async function handleSubmitCreate() {
     message.warning('移交人和接收人不能相同');
     return;
   }
-  
+
   loading.value = true;
   try {
     let res;
-    if (formData.handoverType === 'RESIGNATION') {
-      res = await createResignationHandover(formData);
-    } else if (formData.handoverType === 'PROJECT') {
-      res = await createProjectHandover(formData);
-    } else if (formData.handoverType === 'CLIENT') {
-      res = await createClientHandover(formData);
-    } else {
-      res = await createResignationHandover(formData);
+    switch (formData.handoverType) {
+      case 'CLIENT': {
+        res = await createClientHandover(formData);
+
+        break;
+      }
+      case 'PROJECT': {
+        res = await createProjectHandover(formData);
+
+        break;
+      }
+      case 'RESIGNATION': {
+        res = await createResignationHandover(formData);
+
+        break;
+      }
+      default: {
+        res = await createResignationHandover(formData);
+      }
     }
     message.success(`交接单创建成功：${res.handoverNo}`);
     modalApi.close();
@@ -181,25 +199,43 @@ defineExpose({ open });
     <div v-if="createStep === 0">
       <Form :label-col="{ span: 6 }" :wrapper-col="{ span: 16 }">
         <FormItem label="移交人">
-          <div style="padding: 4px 11px; color: #333; background: #f5f5f5; border-radius: 6px;">
-            {{ currentUserName }} <Tag color="blue" style="margin-left: 8px">当前登录用户</Tag>
+          <div
+            style="
+              padding: 4px 11px;
+              color: #333;
+              background: #f5f5f5;
+              border-radius: 6px;
+            "
+          >
+            {{ currentUserName }}
+            <Tag color="blue" style="margin-left: 8px">当前登录用户</Tag>
           </div>
         </FormItem>
         <FormItem label="交接类型">
           <Select v-model:value="formData.handoverType" style="width: 100%">
-            <Select.Option value="RESIGNATION">离职交接（全部移交）</Select.Option>
+            <Select.Option value="RESIGNATION">
+              离职交接（全部移交）
+            </Select.Option>
             <Select.Option value="PROJECT">项目移交（指定项目）</Select.Option>
             <Select.Option value="CLIENT">客户移交（指定客户）</Select.Option>
           </Select>
         </FormItem>
         <FormItem label="交接原因">
-          <Textarea v-model:value="formData.reason" placeholder="请输入交接原因" :rows="3" />
+          <Textarea
+            v-model:value="formData.reason"
+            placeholder="请输入交接原因"
+            :rows="3"
+          />
         </FormItem>
       </Form>
-      <div style=" margin-top: 24px;text-align: right">
+      <div style="margin-top: 24px; text-align: right">
         <Space>
           <Button @click="modalApi.close()">取消</Button>
-          <Button type="primary" :loading="loading" @click="handleSelectFromUser">
+          <Button
+            type="primary"
+            :loading="loading"
+            @click="handleSelectFromUser"
+          >
             下一步：预览数据
           </Button>
         </Space>
@@ -214,19 +250,35 @@ defineExpose({ open });
         :message="`${previewData.userName} 共有 ${totalDataCount} 条数据需要交接`"
         style="margin-bottom: 16px"
       />
-      
+
       <Row :gutter="16">
         <Col :span="6">
-          <Statistic title="主办项目" :value="previewData.leadMatterCount" suffix="个" />
+          <Statistic
+            title="主办项目"
+            :value="previewData.leadMatterCount"
+            suffix="个"
+          />
         </Col>
         <Col :span="6">
-          <Statistic title="负责客户" :value="previewData.clientCount" suffix="个" />
+          <Statistic
+            title="负责客户"
+            :value="previewData.clientCount"
+            suffix="个"
+          />
         </Col>
         <Col :span="6">
-          <Statistic title="跟进案源" :value="previewData.leadCount" suffix="个" />
+          <Statistic
+            title="跟进案源"
+            :value="previewData.leadCount"
+            suffix="个"
+          />
         </Col>
         <Col :span="6">
-          <Statistic title="待办任务" :value="previewData.taskCount" suffix="个" />
+          <Statistic
+            title="待办任务"
+            :value="previewData.taskCount"
+            suffix="个"
+          />
         </Col>
       </Row>
 
@@ -235,20 +287,33 @@ defineExpose({ open });
       <!-- 项目列表 -->
       <div v-if="previewData.leadMatters && previewData.leadMatters.length > 0">
         <h4>主办项目</h4>
-        <List size="small" :data-source="previewData.leadMatters" style="max-height: 200px; overflow-y: auto">
+        <List
+          size="small"
+          :data-source="previewData.leadMatters"
+          style="max-height: 200px; overflow-y: auto"
+        >
           <template #renderItem="{ item }">
             <ListItem>
               <ListItemMeta :title="item.name" :description="item.matterNo" />
-              <Tag :color="getMatterStatusColor(item.status)">{{ item.statusName || getMatterStatusText(item.status) }}</Tag>
+              <Tag :color="getMatterStatusColor(item.status)">
+                {{ item.statusName || getMatterStatusText(item.status) }}
+              </Tag>
             </ListItem>
           </template>
         </List>
       </div>
 
       <!-- 客户列表 -->
-      <div v-if="previewData.clients && previewData.clients.length > 0" style="margin-top: 16px">
+      <div
+        v-if="previewData.clients && previewData.clients.length > 0"
+        style="margin-top: 16px"
+      >
         <h4>负责客户</h4>
-        <List size="small" :data-source="previewData.clients" style="max-height: 150px; overflow-y: auto">
+        <List
+          size="small"
+          :data-source="previewData.clients"
+          style="max-height: 150px; overflow-y: auto"
+        >
           <template #renderItem="{ item }">
             <ListItem>
               <ListItemMeta :title="item.name" :description="item.clientNo" />
@@ -261,10 +326,14 @@ defineExpose({ open });
         <Empty description="该用户暂无需要交接的数据" />
       </div>
 
-      <div style=" margin-top: 24px;text-align: right">
+      <div style="margin-top: 24px; text-align: right">
         <Space>
           <Button @click="createStep = 0">上一步</Button>
-          <Button type="primary" @click="createStep = 2" :disabled="totalDataCount === 0">
+          <Button
+            type="primary"
+            @click="createStep = 2"
+            :disabled="totalDataCount === 0"
+          >
             下一步：选择接收人
           </Button>
         </Space>
@@ -282,12 +351,21 @@ defineExpose({ open });
             :exclude-user-ids="formData.fromUserId ? [formData.fromUserId] : []"
           />
         </FormItem>
-        <FormItem v-if="formData.handoverType === 'RESIGNATION'" label="包含案源人身份">
+        <FormItem
+          v-if="formData.handoverType === 'RESIGNATION'"
+          label="包含案源人身份"
+        >
           <Switch v-model:checked="formData.includeOriginator" />
-          <span style="margin-left: 8px; color: #999">勾选后案源人身份也会一并移交（涉及提成分配）</span>
+          <span style="margin-left: 8px; color: #999"
+            >勾选后案源人身份也会一并移交（涉及提成分配）</span
+          >
         </FormItem>
         <FormItem label="备注">
-          <Textarea v-model:value="formData.remark" placeholder="备注信息" :rows="3" />
+          <Textarea
+            v-model:value="formData.remark"
+            placeholder="备注信息"
+            :rows="3"
+          />
         </FormItem>
       </Form>
 
@@ -298,7 +376,7 @@ defineExpose({ open });
         style="margin-top: 16px"
       />
 
-      <div style=" margin-top: 24px;text-align: right">
+      <div style="margin-top: 24px; text-align: right">
         <Space>
           <Button @click="createStep = 1">上一步</Button>
           <Button type="primary" :loading="loading" @click="handleSubmitCreate">

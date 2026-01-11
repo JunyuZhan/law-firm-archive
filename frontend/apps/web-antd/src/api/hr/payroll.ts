@@ -1,9 +1,9 @@
+import type { PageResult } from '../matter/types';
+
 /**
  * 工资管理 API
  */
 import { requestClient } from '#/api/request';
-
-import type { PageResult } from '../matter/types';
 
 // ========== 类型定义 ==========
 
@@ -187,24 +187,45 @@ export function getPayrollItemsByYearMonth(year: number, month: number) {
 /**
  * 为工资表添加员工工资明细
  */
-export function addPayrollItem(sheetId: number, command: AddPayrollItemCommand) {
-  return requestClient.post<PayrollItemDTO>(`/hr/payroll/${sheetId}/add-item`, command);
+export function addPayrollItem(
+  sheetId: number,
+  command: AddPayrollItemCommand,
+) {
+  return requestClient.post<PayrollItemDTO>(
+    `/hr/payroll/${sheetId}/add-item`,
+    command,
+  );
 }
 
 /**
  * 更新工资明细
  */
-export function updatePayrollItem(itemId: number, command: UpdatePayrollItemCommand) {
-  return requestClient.put<PayrollItemDTO>(`/hr/payroll/item/${itemId}`, command);
+export function updatePayrollItem(
+  itemId: number,
+  command: UpdatePayrollItemCommand,
+) {
+  return requestClient.put<PayrollItemDTO>(
+    `/hr/payroll/item/${itemId}`,
+    command,
+  );
 }
 
 /**
  * 根据年月和员工ID更新或创建工资明细（用于没有工资表时也能编辑）
  */
-export function updatePayrollItemByEmployee(year: number, month: number, employeeId: number, command: UpdatePayrollItemCommand) {
-  return requestClient.put<PayrollItemDTO>(`/hr/payroll/item/by-employee`, command, {
-    params: { year, month, employeeId },
-  });
+export function updatePayrollItemByEmployee(
+  year: number,
+  month: number,
+  employeeId: number,
+  command: UpdatePayrollItemCommand,
+) {
+  return requestClient.put<PayrollItemDTO>(
+    `/hr/payroll/item/by-employee`,
+    command,
+    {
+      params: { year, month, employeeId },
+    },
+  );
 }
 
 /**
@@ -259,4 +280,3 @@ export function exportPayrollSheet(id: number) {
     responseType: 'blob',
   });
 }
-

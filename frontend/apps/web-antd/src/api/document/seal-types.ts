@@ -93,4 +93,3 @@ export interface CreateSealApplicationCommand {
   expectedUseDate?: string;
   approverId: number; // 审批人ID（必填）
 }
-

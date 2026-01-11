@@ -1,8 +1,3 @@
-/**
- * 项目管理模块 API
- */
-import { requestClient } from '#/api/request';
-
 import type {
   CreateMatterCommand,
   CreateTaskCommand,
@@ -19,6 +14,11 @@ import type {
   UpdateMatterCommand,
 } from './types';
 
+/**
+ * 项目管理模块 API
+ */
+import { requestClient } from '#/api/request';
+
 // ========== 项目/案件管理 API ==========
 
 /** 获取项目列表 */
@@ -32,7 +32,10 @@ export function getMatterList(params: MatterQuery) {
  * 返回精简数据，不包含金额、对方信息等敏感信息
  */
 export function getMatterSelectOptions(params?: MatterQuery) {
-  return requestClient.get<PageResult<MatterSimpleDTO>>('/matter/select-options', { params });
+  return requestClient.get<PageResult<MatterSimpleDTO>>(
+    '/matter/select-options',
+    { params },
+  );
 }
 
 /** 获取我的项目 */
@@ -66,12 +69,15 @@ export function changeMatterStatus(id: number, status: string) {
 }
 
 /** 添加团队成员 */
-export function addParticipant(matterId: number, data: {
-  userId: number;
-  role: string;
-  commissionRate?: number;
-  isOriginator?: boolean;
-}) {
+export function addParticipant(
+  matterId: number,
+  data: {
+    commissionRate?: number;
+    isOriginator?: boolean;
+    role: string;
+    userId: number;
+  },
+) {
   return requestClient.post(`/matter/${matterId}/participant`, data);
 }
 
@@ -82,28 +88,36 @@ export function removeParticipant(matterId: number, userId: number) {
 
 /** 获取结案审批人列表 */
 export function getMatterCloseApprovers() {
-  return requestClient.get<Array<{
-    id: number;
-    realName: string;
-    departmentName: string;
-    position: string;
-    recommended: boolean;
-  }>>('/matter/close/approvers');
+  return requestClient.get<
+    Array<{
+      departmentName: string;
+      id: number;
+      position: string;
+      realName: string;
+      recommended: boolean;
+    }>
+  >('/matter/close/approvers');
 }
 
 /** 申请结案 */
-export function applyCloseMatter(id: number, data: { 
-  closingDate: string;      // 结案日期
-  closingReason: string;    // 结案原因：WIN/LOSE/SETTLEMENT/WITHDRAWAL/COMPLETED/OTHER
-  outcome?: string;         // 判决/调解结果描述
-  summary?: string;         // 结案总结
-  approverId?: number;      // 审批人ID
-}) {
+export function applyCloseMatter(
+  id: number,
+  data: {
+    approverId?: number; // 审批人ID
+    closingDate: string; // 结案日期
+    closingReason: string; // 结案原因：WIN/LOSE/SETTLEMENT/WITHDRAWAL/COMPLETED/OTHER
+    outcome?: string; // 判决/调解结果描述
+    summary?: string; // 结案总结
+  },
+) {
   return requestClient.post(`/matter/${id}/close/apply`, data);
 }
 
 /** 审批结案 */
-export function approveCloseMatter(id: number, data: { approved: boolean; comment?: string }) {
+export function approveCloseMatter(
+  id: number,
+  data: { approved: boolean; comment?: string },
+) {
   return requestClient.post(`/matter/${id}/close/approve`, data);
 }
 
@@ -135,7 +149,9 @@ export interface MatterContractQuery {
 
 /** 获取合同列表（律师有权限） */
 export function getMatterContractList(params: MatterContractQuery) {
-  return requestClient.get<PageResult<any>>('/matter/contract/list', { params });
+  return requestClient.get<PageResult<any>>('/matter/contract/list', {
+    params,
+  });
 }
 
 /** 获取我的合同 */
@@ -160,7 +176,9 @@ export function getContractDetail(id: number) {
 
 /** 获取合同打印数据 */
 export function getContractPrintData(id: number) {
-  return requestClient.get<ContractPrintDTO>(`/matter/contract/${id}/print-data`);
+  return requestClient.get<ContractPrintDTO>(
+    `/matter/contract/${id}/print-data`,
+  );
 }
 
 /** 合同打印数据类型 */
@@ -216,12 +234,12 @@ export interface ContractPrintDTO {
   conflictCheckResult: string;
   // 审批信息
   approvals: Array<{
+    approvedAt: string;
     approverName: string;
     approverRole: string;
+    comment: string;
     status: string;
     statusName: string;
-    comment: string;
-    approvedAt: string;
   }>;
   // 模板内容
   contractContent: string;
@@ -233,12 +251,18 @@ export function getApprovedContracts() {
 }
 
 /** 基于合同创建项目 */
-export function createMatterFromContract(contractId: number, data: CreateMatterCommand) {
-  return requestClient.post<MatterDTO>(`/matter/from-contract/${contractId}`, data);
+export function createMatterFromContract(
+  contractId: number,
+  data: CreateMatterCommand,
+) {
+  return requestClient.post<MatterDTO>(
+    `/matter/from-contract/${contractId}`,
+    data,
+  );
 }
 
 /** 更新合同（在项目管理模块中） */
-export function updateContract(data: { id: number; [key: string]: any }) {
+export function updateContract(data: { [key: string]: any; id: number }) {
   const { id, ...updateData } = data;
   return requestClient.put<any>(`/matter/contract/${id}`, updateData);
 }
@@ -252,12 +276,14 @@ export function submitContract(id: number, approverId?: number) {
 
 /** 获取可选审批人列表 */
 export function getContractApprovers() {
-  return requestClient.get<Array<{
-    id: number;
-    realName: string;
-    departmentName: string;
-    position: string;
-  }>>('/matter/contract/approvers');
+  return requestClient.get<
+    Array<{
+      departmentName: string;
+      id: number;
+      position: string;
+      realName: string;
+    }>
+  >('/matter/contract/approvers');
 }
 
 /** 审批合同（通过） */
@@ -272,24 +298,24 @@ export function rejectContract(id: number, reason: string) {
 
 /** 申请合同变更 */
 export function applyContractChange(data: {
-  contractId: number;
-  changeReason: string;
   changeDescription?: string;
-  name?: string;
-  contractType?: string;
+  changeReason: string;
   clientId?: number;
-  matterId?: number;
-  feeType?: string;
-  totalAmount?: number;
+  contractId: number;
+  contractType?: string;
   currency?: string;
-  signDate?: string;
+  departmentId?: number;
   effectiveDate?: string;
   expiryDate?: string;
-  signerId?: number;
-  departmentId?: number;
-  paymentTerms?: string;
+  feeType?: string;
   fileUrl?: string;
+  matterId?: number;
+  name?: string;
+  paymentTerms?: string;
   remark?: string;
+  signDate?: string;
+  signerId?: number;
+  totalAmount?: number;
 }) {
   return requestClient.post('/matter/contract/change', data);
 }
@@ -303,7 +329,9 @@ export function getTimesheetList(params: TimesheetQuery) {
 
 /** 获取我的工时 */
 export function getMyTimesheets(params: TimesheetQuery) {
-  return requestClient.get<PageResult<TimesheetDTO>>('/timesheets/my', { params });
+  return requestClient.get<PageResult<TimesheetDTO>>('/timesheets/my', {
+    params,
+  });
 }
 
 /** 获取工时详情 */
@@ -317,7 +345,10 @@ export function createTimesheet(data: CreateTimesheetCommand) {
 }
 
 /** 更新工时记录 */
-export function updateTimesheet(id: number, data: Partial<CreateTimesheetCommand>) {
+export function updateTimesheet(
+  id: number,
+  data: Partial<CreateTimesheetCommand>,
+) {
   return requestClient.put<TimesheetDTO>(`/timesheets/${id}`, data);
 }
 
@@ -346,16 +377,22 @@ export function rejectTimesheet(id: number, comment?: string) {
 }
 
 /** 审核工时（统一接口，根据approved字段调用approve或reject） */
-export function reviewTimesheet(id: number, data: { approved: boolean; comment?: string }) {
-  if (data.approved) {
-    return approveTimesheet(id, data.comment);
-  } else {
-    return rejectTimesheet(id, data.comment);
-  }
+export function reviewTimesheet(
+  id: number,
+  data: { approved: boolean; comment?: string },
+) {
+  return data.approved
+    ? approveTimesheet(id, data.comment)
+    : rejectTimesheet(id, data.comment);
 }
 
 /** 工时统计 */
-export function getTimesheetStats(params: { matterId?: number; userId?: number; startDate?: string; endDate?: string }) {
+export function getTimesheetStats(params: {
+  endDate?: string;
+  matterId?: number;
+  startDate?: string;
+  userId?: number;
+}) {
   return requestClient.get('/timesheets/stats', { params });
 }
 
@@ -403,12 +440,16 @@ export function deleteTask(id: number) {
 
 /** 修改任务状态 */
 export function changeTaskStatus(id: number, status: string) {
-  return requestClient.put<TaskDTO>(`/tasks/${id}/status`, null, { params: { status } });
+  return requestClient.put<TaskDTO>(`/tasks/${id}/status`, null, {
+    params: { status },
+  });
 }
 
 /** 更新任务进度 */
 export function updateTaskProgress(id: number, progress: number) {
-  return requestClient.put<TaskDTO>(`/tasks/${id}/progress`, null, { params: { progress } });
+  return requestClient.put<TaskDTO>(`/tasks/${id}/progress`, null, {
+    params: { progress },
+  });
 }
 
 /** 验收任务（通过） */
@@ -418,7 +459,9 @@ export function approveTask(id: number) {
 
 /** 验收任务（退回） */
 export function rejectTask(id: number, comment: string) {
-  return requestClient.post<TaskDTO>(`/tasks/${id}/review/reject`, null, { params: { comment } });
+  return requestClient.post<TaskDTO>(`/tasks/${id}/review/reject`, null, {
+    params: { comment },
+  });
 }
 
 /** 获取案件任务统计 */

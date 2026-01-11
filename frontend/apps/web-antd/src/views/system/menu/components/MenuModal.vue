@@ -1,11 +1,19 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
-import { useVbenModal } from '@vben/common-ui';
-import { useVbenForm } from '#/adapter/form';
 import type { VbenFormSchema } from '#/adapter/form';
+import type {
+  CreateMenuCommand,
+  MenuDTO,
+  UpdateMenuCommand,
+} from '#/api/system/types';
+
+import { computed, ref, watch } from 'vue';
+
+import { useVbenDrawer } from '@vben/common-ui';
+
 import { message } from 'ant-design-vue';
+
+import { useVbenForm } from '#/adapter/form';
 import { createMenu, updateMenu } from '#/api/system';
-import type { MenuDTO, CreateMenuCommand, UpdateMenuCommand } from '#/api/system/types';
 
 const props = defineProps<{
   menuTree: MenuDTO[];
@@ -30,8 +38,8 @@ const menuTypeOptions = [
 const menuTreeData = computed(() => {
   const buildTree = (menus: MenuDTO[], parentId: number = 0): any[] => {
     return menus
-      .filter(menu => menu.parentId === parentId)
-      .map(menu => ({
+      .filter((menu) => menu.parentId === parentId)
+      .map((menu) => ({
         id: menu.id,
         name: menu.name,
         children: buildTree(menus, menu.id),
@@ -41,7 +49,7 @@ const menuTreeData = computed(() => {
   const flattenMenus = (menus: MenuDTO[]): MenuDTO[] => {
     const result: MenuDTO[] = [];
     const flatten = (items: MenuDTO[]) => {
-      items.forEach(item => {
+      items.forEach((item) => {
         result.push(item);
         if (item.children?.length) {
           flatten(item.children);
@@ -51,138 +59,184 @@ const menuTreeData = computed(() => {
     flatten(menus);
     return result;
   };
-  return [{ id: 0, name: '顶级菜单', children: buildTree(flattenMenus(props.menuTree)) }];
+  return [
+    {
+      id: 0,
+      name: '顶级菜单',
+      children: buildTree(flattenMenus(props.menuTree)),
+    },
+  ];
 });
 
-// 表单 Schema
-const formSchema = computed<VbenFormSchema[]>(() => [
-  {
-    fieldName: 'parentId',
-    label: '上级菜单',
-    component: 'TreeSelect',
-    defaultValue: 0,
-    componentProps: {
-      placeholder: '请选择上级菜单',
-      treeData: menuTreeData.value,
-      fieldNames: { label: 'name', value: 'id', children: 'children' },
-      allowClear: true,
-      treeDefaultExpandAll: true,
-    },
-  },
-  {
-    fieldName: 'menuType',
-    label: '菜单类型',
-    component: 'Select',
-    rules: 'required',
-    defaultValue: 'MENU',
-    componentProps: {
-      options: menuTypeOptions,
-      onChange: (val: string) => {
-        currentMenuType.value = val;
+// 构建表单 Schema
+function getFormSchema(): VbenFormSchema[] {
+  return [
+    {
+      fieldName: 'parentId',
+      label: '上级菜单',
+      component: 'TreeSelect',
+      defaultValue: 0,
+      componentProps: {
+        placeholder: '请选择上级菜单',
+        treeData: menuTreeData.value,
+        fieldNames: { label: 'name', value: 'id', children: 'children' },
+        allowClear: true,
+        treeDefaultExpandAll: true,
       },
     },
-  },
-  {
-    fieldName: 'name',
-    label: '菜单名称',
-    component: 'Input',
-    rules: 'required',
-    componentProps: {
-      placeholder: '请输入菜单名称',
+    {
+      fieldName: 'menuType',
+      label: '菜单类型',
+      component: 'Select',
+      rules: 'required',
+      defaultValue: 'MENU',
+      componentProps: {
+        options: menuTypeOptions,
+        onChange: (val: string) => {
+          currentMenuType.value = val;
+          updateFormSchema();
+        },
+      },
     },
-  },
-  {
-    fieldName: 'path',
-    label: '路由路径',
-    component: 'Input',
-    componentProps: {
-      placeholder: '请输入路由路径',
+    {
+      fieldName: 'name',
+      label: '菜单名称',
+      component: 'Input',
+      rules: 'required',
+      componentProps: {
+        placeholder: '请输入菜单名称',
+      },
     },
-  },
-  {
-    fieldName: 'component',
-    label: '组件路径',
-    component: 'Input',
-    dependencies: {
-      show: () => currentMenuType.value === 'MENU',
+    {
+      fieldName: 'path',
+      label: '路由路径',
+      component: 'Input',
+      componentProps: {
+        placeholder: '请输入路由路径',
+      },
     },
-    componentProps: {
-      placeholder: '请输入组件路径',
+    {
+      fieldName: 'component',
+      label: '组件路径',
+      component: 'Input',
+      hide: currentMenuType.value !== 'MENU',
+      componentProps: {
+        placeholder: '请输入组件路径',
+      },
     },
-  },
-  {
-    fieldName: 'icon',
-    label: '图标',
-    component: 'Input',
-    componentProps: {
-      placeholder: '请输入图标名称',
+    {
+      fieldName: 'icon',
+      label: '图标',
+      component: 'Input',
+      componentProps: {
+        placeholder: '请输入图标名称',
+      },
     },
-  },
-  {
-    fieldName: 'permission',
-    label: '权限标识',
-    component: 'Input',
-    componentProps: {
-      placeholder: '请输入权限标识',
+    {
+      fieldName: 'permission',
+      label: '权限标识',
+      component: 'Input',
+      componentProps: {
+        placeholder: '请输入权限标识',
+      },
     },
-  },
-  {
-    fieldName: 'sortOrder',
-    label: '排序',
-    component: 'InputNumber',
-    defaultValue: 0,
-    componentProps: {
-      min: 0,
-      style: { width: '100%' },
+    {
+      fieldName: 'sortOrder',
+      label: '排序',
+      component: 'InputNumber',
+      defaultValue: 0,
+      componentProps: {
+        min: 0,
+        style: { width: '100%' },
+      },
     },
-  },
-  {
-    fieldName: 'visible',
-    label: '是否可见',
-    component: 'Switch',
-    defaultValue: true,
-  },
-  {
-    fieldName: 'isCache',
-    label: '是否缓存',
-    component: 'Switch',
-    defaultValue: true,
-  },
-  {
-    fieldName: 'isExternal',
-    label: '是否外链',
-    component: 'Switch',
-    defaultValue: false,
-  },
-]);
+    {
+      fieldName: 'visible',
+      label: '是否可见',
+      component: 'Switch',
+      defaultValue: true,
+    },
+    {
+      fieldName: 'isCache',
+      label: '是否缓存',
+      component: 'Switch',
+      defaultValue: true,
+    },
+    {
+      fieldName: 'isExternal',
+      label: '是否外链',
+      component: 'Switch',
+      defaultValue: false,
+    },
+  ];
+}
 
 const [Form, formApi] = useVbenForm({
-  schema: formSchema,
+  schema: getFormSchema(),
   showDefaultActions: false,
   commonConfig: {
     labelWidth: 100,
   },
 });
 
-const [Modal, modalApi] = useVbenModal({
+// 更新表单schema
+function updateFormSchema() {
+  formApi.setState({ schema: getFormSchema() });
+}
+
+// 监听菜单树变化更新表单
+watch(
+  () => props.menuTree,
+  () => {
+    updateFormSchema();
+  },
+  { deep: true },
+);
+
+const [Drawer, drawerApi] = useVbenDrawer({
+  overlayBlur: 4,
+  placement: 'right', // 默认从右侧滑入
   async onConfirm() {
     try {
-      const values = await formApi.validate();
-      
+      await formApi.validate();
+      const values = await formApi.getValues();
+
       if (isEdit.value && editId.value) {
         const updateData: UpdateMenuCommand = {
           id: editId.value,
-          ...values,
+          parentId: values.parentId,
+          name: values.name,
+          path: values.path,
+          component: values.component,
+          icon: values.icon,
+          menuType: values.menuType,
+          permission: values.permission,
+          sortOrder: values.sortOrder,
+          visible: values.visible,
+          isExternal: values.isExternal,
+          isCache: values.isCache,
         };
         await updateMenu(updateData);
         message.success('更新成功');
       } else {
-        const createData: CreateMenuCommand = values as CreateMenuCommand;
+        const createData: CreateMenuCommand = {
+          parentId: values.parentId,
+          name: values.name,
+          path: values.path,
+          component: values.component,
+          icon: values.icon,
+          menuType: values.menuType,
+          permission: values.permission,
+          sortOrder: values.sortOrder,
+          visible: values.visible,
+          isExternal: values.isExternal,
+          isCache: values.isCache,
+        };
         await createMenu(createData);
         message.success('创建成功');
       }
-      
-      modalApi.close();
+
+      drawerApi.close();
       emit('success');
     } catch (error: unknown) {
       const err = error as { errorFields?: unknown; message?: string };
@@ -192,7 +246,7 @@ const [Modal, modalApi] = useVbenModal({
   },
 });
 
-// 打开新增弹窗
+// 打开新增抽屉（左侧按钮 → 右侧抽屉）
 function openCreate(parentId?: number) {
   isEdit.value = false;
   editId.value = undefined;
@@ -201,11 +255,11 @@ function openCreate(parentId?: number) {
   if (parentId !== undefined) {
     formApi.setValues({ parentId });
   }
-  modalApi.setState({ title: '新增菜单' });
-  modalApi.open();
+  drawerApi.setState({ title: '新增菜单', placement: 'right' });
+  drawerApi.open();
 }
 
-// 打开编辑弹窗
+// 打开编辑抽屉（右侧按钮 → 左侧抽屉）
 function openEdit(record: MenuDTO) {
   isEdit.value = true;
   editId.value = record.id;
@@ -225,15 +279,15 @@ function openEdit(record: MenuDTO) {
     isExternal: record.isExternal || false,
     isCache: record.isCache !== false,
   });
-  modalApi.setState({ title: '编辑菜单' });
-  modalApi.open();
+  drawerApi.setState({ title: '编辑菜单', placement: 'left' });
+  drawerApi.open();
 }
 
 defineExpose({ openCreate, openEdit });
 </script>
 
 <template>
-  <Modal class="w-[650px]">
+  <Drawer class="w-[520px]">
     <Form />
-  </Modal>
+  </Drawer>
 </template>

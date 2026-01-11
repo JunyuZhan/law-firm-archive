@@ -14,4 +14,8 @@ export interface CauseCategory {
   causes: CauseItem[];
 }
 
-export type CauseType = 'CIVIL' | 'CRIMINAL' | 'ADMINISTRATIVE' | 'LABOR_ARBITRATION';
+export type CauseType =
+  | 'ADMINISTRATIVE'
+  | 'CIVIL'
+  | 'CRIMINAL'
+  | 'LABOR_ARBITRATION';

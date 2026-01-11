@@ -1,10 +1,14 @@
 <script setup lang="ts">
-import { ref } from 'vue';
-import { useVbenModal } from '@vben/common-ui';
-import { useVbenForm } from '#/adapter/form';
-import { message } from 'ant-design-vue';
-import { createSeal, updateSeal } from '#/api/document/seal';
 import type { SealDTO } from '#/api/document/seal-types';
+
+import { ref } from 'vue';
+
+import { useVbenModal } from '@vben/common-ui';
+
+import { message } from 'ant-design-vue';
+
+import { useVbenForm } from '#/adapter/form';
+import { createSeal, updateSeal } from '#/api/document/seal';
 
 const emit = defineEmits<{ success: [] }>();
 
@@ -19,11 +23,38 @@ const sealTypeOptions = [
 
 const [Form, formApi] = useVbenForm({
   schema: [
-    { fieldName: 'name', label: '印章名称', component: 'Input', rules: 'required', componentProps: { placeholder: '请输入印章名称' } },
-    { fieldName: 'sealType', label: '印章类型', component: 'Select', rules: 'required', componentProps: { options: sealTypeOptions } },
-    { fieldName: 'keeperId', label: '保管人', component: 'UserTreeSelect', componentProps: { placeholder: '选择保管人', allowClear: true } },
-    { fieldName: 'imageUrl', label: '印章图片URL', component: 'Input', componentProps: { placeholder: '请输入印章图片URL' } },
-    { fieldName: 'description', label: '描述', component: 'Textarea', componentProps: { rows: 3, placeholder: '请输入描述' } },
+    {
+      fieldName: 'name',
+      label: '印章名称',
+      component: 'Input',
+      rules: 'required',
+      componentProps: { placeholder: '请输入印章名称' },
+    },
+    {
+      fieldName: 'sealType',
+      label: '印章类型',
+      component: 'Select',
+      rules: 'required',
+      componentProps: { options: sealTypeOptions },
+    },
+    {
+      fieldName: 'keeperId',
+      label: '保管人',
+      component: 'UserTreeSelect',
+      componentProps: { placeholder: '选择保管人', allowClear: true },
+    },
+    {
+      fieldName: 'imageUrl',
+      label: '印章图片URL',
+      component: 'Input',
+      componentProps: { placeholder: '请输入印章图片URL' },
+    },
+    {
+      fieldName: 'description',
+      label: '描述',
+      component: 'Textarea',
+      componentProps: { rows: 3, placeholder: '请输入描述' },
+    },
   ],
   showDefaultActions: false,
   commonConfig: { componentProps: { class: 'w-full' } },
@@ -31,13 +62,26 @@ const [Form, formApi] = useVbenForm({
 
 const [Modal, modalApi] = useVbenModal({
   async onConfirm() {
-    const values = await formApi.validate();
+    await formApi.validate();
+    const values = await formApi.getValues();
     try {
       if (editingId.value) {
-        await updateSeal(editingId.value, values);
+        await updateSeal(editingId.value, {
+          name: values.name,
+          sealType: values.sealType,
+          keeperId: values.keeperId,
+          imageUrl: values.imageUrl,
+          description: values.description,
+        });
         message.success('更新成功');
       } else {
-        await createSeal(values);
+        await createSeal({
+          name: values.name,
+          sealType: values.sealType,
+          keeperId: values.keeperId,
+          imageUrl: values.imageUrl,
+          description: values.description,
+        });
         message.success('创建成功');
       }
       emit('success');

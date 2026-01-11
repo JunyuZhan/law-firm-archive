@@ -21,7 +21,9 @@ const formSchema = computed((): VbenFormSchema[] => {
       componentProps: {
         placeholder: '请输入旧密码',
       },
-      rules: z.string({ required_error: '请输入旧密码' }).min(1, { message: '请输入旧密码' }),
+      rules: z
+        .string({ required_error: '请输入旧密码' })
+        .min(1, { message: '请输入旧密码' }),
     },
     {
       fieldName: 'newPassword',

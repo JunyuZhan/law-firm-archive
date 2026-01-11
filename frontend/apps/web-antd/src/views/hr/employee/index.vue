@@ -1,54 +1,52 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref, computed } from 'vue';
+import type {
+  CreateEmployeeCommand,
+  EmployeeDTO,
+  EmployeeQuery,
+} from '#/api/hr/employee';
+import type { DepartmentDTO, UserDTO, UserQuery } from '#/api/system/types';
+
+import { onMounted, reactive, ref } from 'vue';
 
 import { Page } from '@vben/common-ui';
+import { IconifyIcon } from '@vben/icons';
 
 import {
   Button,
   Card,
+  Col,
   DatePicker,
+  Descriptions,
+  DescriptionsItem,
+  Divider,
   Form,
   FormItem,
   Input,
   message,
   Modal,
+  Popconfirm,
+  Row,
   Select,
   Space,
+  Spin,
   Table,
+  Tabs,
   Tag,
   Textarea,
-  Descriptions,
-  DescriptionsItem,
-  Divider,
-  Popconfirm,
-  Tabs,
-  Row,
-  Col,
-  Upload,
-  Spin,
   Tooltip,
+  Upload,
 } from 'ant-design-vue';
-import { IconifyIcon } from '@vben/icons';
 import dayjs from 'dayjs';
 
 import {
-  getEmployeeList,
-  getEmployeeDetail,
   createEmployee,
-  updateEmployee,
   deleteEmployee,
+  getEmployeeDetail,
+  getEmployeeList,
+  updateEmployee,
 } from '#/api/hr/employee';
-import { recognizeIdCard, type OcrResultDTO, OCR_DISABLED, OCR_DISABLED_MESSAGE } from '#/api/ocr';
-import type {
-  EmployeeDTO,
-  EmployeeQuery,
-  CreateEmployeeCommand,
-  UpdateEmployeeCommand,
-} from '#/api/hr/employee';
-import { getUserSelectOptions } from '#/api/system';
-import type { UserDTO, UserQuery } from '#/api/system/types';
-import { getDepartmentTreePublic } from '#/api/system';
-import type { DepartmentDTO } from '#/api/system/types';
+import { OCR_DISABLED, OCR_DISABLED_MESSAGE, recognizeIdCard } from '#/api/ocr';
+import { getDepartmentTreePublic, getUserSelectOptions } from '#/api/system';
 
 defineOptions({ name: 'EmployeeManagement' });
 
@@ -80,7 +78,12 @@ const userPagination = reactive({
 const userColumns = [
   { title: '用户名', dataIndex: 'username', key: 'username', width: 120 },
   { title: '姓名', dataIndex: 'realName', key: 'realName', width: 100 },
-  { title: '部门', dataIndex: 'departmentName', key: 'departmentName', width: 120 },
+  {
+    title: '部门',
+    dataIndex: 'departmentName',
+    key: 'departmentName',
+    width: 120,
+  },
   { title: '职位', dataIndex: 'position', key: 'position', width: 100 },
   { title: '手机号', dataIndex: 'phone', key: 'phone', width: 120 },
   { title: '邮箱', dataIndex: 'email', key: 'email', width: 150 },
@@ -127,7 +130,12 @@ const workStatusTextMap: Record<string, string> = {
 const columns = [
   { title: '员工编号', dataIndex: 'employeeNo', key: 'employeeNo', width: 120 },
   { title: '姓名', dataIndex: 'realName', key: 'realName', width: 100 },
-  { title: '部门', dataIndex: 'departmentName', key: 'departmentName', width: 120 },
+  {
+    title: '部门',
+    dataIndex: 'departmentName',
+    key: 'departmentName',
+    width: 120,
+  },
   { title: '职位', dataIndex: 'position', key: 'position', width: 100 },
   { title: '手机号', dataIndex: 'phone', key: 'phone', width: 120 },
   { title: '邮箱', dataIndex: 'email', key: 'email', width: 150 },
@@ -151,10 +159,10 @@ const departmentTree = ref<DepartmentDTO[]>([]);
 // 新增/编辑弹窗
 const modalVisible = ref(false);
 const modalLoading = ref(false);
-const editingId = ref<number | null>(null);
+const editingId = ref<null | number>(null);
 const ocrLoading = ref(false);
-const employeeForm = reactive<CreateEmployeeCommand>({
-  userId: undefined as number | undefined,
+const employeeForm = reactive<CreateEmployeeCommand & { realName?: string }>({
+  userId: undefined as unknown as number,
   employeeNo: '',
   gender: undefined,
   birthDate: undefined,
@@ -205,7 +213,7 @@ async function fetchUsers() {
     userList.value = res.list || [];
     userPagination.total = res.total || 0;
     userTotal.value = res.total || 0;
-    
+
     // 标记已创建员工档案的用户
     await markEmployeesWithProfile();
   } catch (error) {
@@ -219,8 +227,12 @@ async function fetchUsers() {
 // 标记已创建员工档案的用户
 async function markEmployeesWithProfile() {
   try {
-    const res = await getEmployeeList({ pageNum: 1, pageSize: 10000 });
-    employeeUserIds.value = new Set((res.list || []).map((emp: EmployeeDTO) => emp.userId).filter(Boolean));
+    const res = await getEmployeeList({ pageNum: 1, pageSize: 10_000 });
+    employeeUserIds.value = new Set(
+      (res.list || [])
+        .map((emp: EmployeeDTO) => emp.userId)
+        .filter((id): id is number => id !== undefined),
+    );
   } catch (error) {
     console.error('获取员工档案列表失败:', error);
   }
@@ -261,7 +273,9 @@ async function handleBatchImport() {
   }
 
   // 过滤掉已创建档案的用户
-  const toCreate = selectedUserIds.value.filter(id => !employeeUserIds.value.has(id));
+  const toCreate = selectedUserIds.value.filter(
+    (id) => !employeeUserIds.value.has(id),
+  );
   if (toCreate.length === 0) {
     message.warning('所选用户均已创建员工档案');
     return;
@@ -271,10 +285,10 @@ async function handleBatchImport() {
   try {
     let successCount = 0;
     let failCount = 0;
-    
+
     for (const userId of toCreate) {
       try {
-        const user = userList.value.find(u => u.id === userId);
+        const user = userList.value.find((u) => u.id === userId);
         if (!user) continue;
 
         await createEmployee({
@@ -291,7 +305,9 @@ async function handleBatchImport() {
       }
     }
 
-    message.success(`批量创建完成：成功 ${successCount} 条，失败 ${failCount} 条`);
+    message.success(
+      `批量创建完成：成功 ${successCount} 条，失败 ${failCount} 条`,
+    );
     batchImportVisible.value = false;
     selectedUserIds.value = [];
     await markEmployeesWithProfile();
@@ -398,7 +414,7 @@ function handleAdd() {
   modalVisible.value = true;
 }
 
-async function handleEdit(record: EmployeeDTO) {
+async function handleEdit(record: Record<string, any>) {
   editingId.value = record.id;
   try {
     const detail = await getEmployeeDetail(record.id);
@@ -414,20 +430,28 @@ async function handleEdit(record: EmployeeDTO) {
       education: detail.education,
       major: detail.major || '',
       graduationSchool: detail.graduationSchool || '',
-      graduationDate: detail.graduationDate ? dayjs(detail.graduationDate) : undefined,
+      graduationDate: detail.graduationDate
+        ? dayjs(detail.graduationDate)
+        : undefined,
       emergencyContact: detail.emergencyContact || '',
       emergencyPhone: detail.emergencyPhone || '',
       address: detail.address || '',
       lawyerLicenseNo: detail.lawyerLicenseNo || '',
-      licenseIssueDate: detail.licenseIssueDate ? dayjs(detail.licenseIssueDate) : undefined,
-      licenseExpireDate: detail.licenseExpireDate ? dayjs(detail.licenseExpireDate) : undefined,
+      licenseIssueDate: detail.licenseIssueDate
+        ? dayjs(detail.licenseIssueDate)
+        : undefined,
+      licenseExpireDate: detail.licenseExpireDate
+        ? dayjs(detail.licenseExpireDate)
+        : undefined,
       licenseStatus: detail.licenseStatus,
       practiceArea: detail.practiceArea || '',
       practiceYears: detail.practiceYears,
       position: detail.position || '',
       level: detail.level,
       entryDate: detail.entryDate ? dayjs(detail.entryDate) : undefined,
-      probationEndDate: detail.probationEndDate ? dayjs(detail.probationEndDate) : undefined,
+      probationEndDate: detail.probationEndDate
+        ? dayjs(detail.probationEndDate)
+        : undefined,
       workStatus: detail.workStatus || 'ACTIVE',
       remark: detail.remark || '',
     });
@@ -438,7 +462,7 @@ async function handleEdit(record: EmployeeDTO) {
   }
 }
 
-async function handleView(record: EmployeeDTO) {
+async function handleView(record: Record<string, any>) {
   try {
     currentRecord.value = await getEmployeeDetail(record.id);
     detailVisible.value = true;
@@ -464,11 +488,11 @@ async function handleDelete(id: number) {
 async function handleIdCardOcr(info: any) {
   const file = info.file.originFileObj || info.file;
   if (!file) return;
-  
+
   ocrLoading.value = true;
   try {
     const result = await recognizeIdCard(file, true); // 识别正面
-    
+
     if (result.success) {
       // 自动填充表单
       if (result.idNumber) employeeForm.idCard = result.idNumber;
@@ -483,13 +507,15 @@ async function handleIdCardOcr(info: any) {
       if (result.birthDate) {
         employeeForm.birthDate = dayjs(result.birthDate) as any;
       }
-      
-      message.success(`身份证识别成功！置信度: ${Math.round((result.confidence || 0) * 100)}%`);
+
+      message.success(
+        `身份证识别成功！置信度: ${Math.round((result.confidence || 0) * 100)}%`,
+      );
     } else {
       message.error(result.errorMessage || '身份证识别失败');
     }
-  } catch (e: any) {
-    message.error(e?.message || '身份证识别失败');
+  } catch (error: any) {
+    message.error(error?.message || '身份证识别失败');
   } finally {
     ocrLoading.value = false;
   }
@@ -505,12 +531,24 @@ async function handleSave() {
   try {
     const formData: any = {
       ...employeeForm,
-      birthDate: employeeForm.birthDate ? dayjs(employeeForm.birthDate).format('YYYY-MM-DD') : undefined,
-      graduationDate: employeeForm.graduationDate ? dayjs(employeeForm.graduationDate).format('YYYY-MM-DD') : undefined,
-      licenseIssueDate: employeeForm.licenseIssueDate ? dayjs(employeeForm.licenseIssueDate).format('YYYY-MM-DD') : undefined,
-      licenseExpireDate: employeeForm.licenseExpireDate ? dayjs(employeeForm.licenseExpireDate).format('YYYY-MM-DD') : undefined,
-      entryDate: employeeForm.entryDate ? dayjs(employeeForm.entryDate).format('YYYY-MM-DD') : undefined,
-      probationEndDate: employeeForm.probationEndDate ? dayjs(employeeForm.probationEndDate).format('YYYY-MM-DD') : undefined,
+      birthDate: employeeForm.birthDate
+        ? dayjs(employeeForm.birthDate).format('YYYY-MM-DD')
+        : undefined,
+      graduationDate: employeeForm.graduationDate
+        ? dayjs(employeeForm.graduationDate).format('YYYY-MM-DD')
+        : undefined,
+      licenseIssueDate: employeeForm.licenseIssueDate
+        ? dayjs(employeeForm.licenseIssueDate).format('YYYY-MM-DD')
+        : undefined,
+      licenseExpireDate: employeeForm.licenseExpireDate
+        ? dayjs(employeeForm.licenseExpireDate).format('YYYY-MM-DD')
+        : undefined,
+      entryDate: employeeForm.entryDate
+        ? dayjs(employeeForm.entryDate).format('YYYY-MM-DD')
+        : undefined,
+      probationEndDate: employeeForm.probationEndDate
+        ? dayjs(employeeForm.probationEndDate).format('YYYY-MM-DD')
+        : undefined,
     };
 
     if (editingId.value) {
@@ -531,41 +569,6 @@ async function handleSave() {
   }
 }
 
-// 从用户创建员工档案
-function handleCreateFromUser(user: UserDTO) {
-  editingId.value = null;
-  Object.assign(employeeForm, {
-    userId: user.id,
-    employeeNo: user.employeeNo || '',
-    position: user.position || '',
-    entryDate: user.joinDate ? dayjs(user.joinDate) : undefined,
-    workStatus: 'ACTIVE',
-    gender: undefined,
-    birthDate: undefined,
-    idCard: '',
-    nationality: '中国',
-    nativePlace: '',
-    politicalStatus: undefined,
-    education: undefined,
-    major: '',
-    graduationSchool: '',
-    graduationDate: undefined,
-    emergencyContact: '',
-    emergencyPhone: '',
-    address: '',
-    lawyerLicenseNo: user.lawyerLicenseNo || '',
-    licenseIssueDate: undefined,
-    licenseExpireDate: undefined,
-    licenseStatus: undefined,
-    practiceArea: '',
-    practiceYears: undefined,
-    level: undefined,
-    probationEndDate: undefined,
-    remark: '',
-  });
-  modalVisible.value = true;
-}
-
 function renderDepartmentOptions(departments: DepartmentDTO[]): any[] {
   const options: any[] = [];
   departments.forEach((dept) => {
@@ -581,8 +584,8 @@ function renderDepartmentOptions(departments: DepartmentDTO[]): any[] {
 }
 
 // Tab切换
-function handleTabChange(key: string) {
-  activeTab.value = key;
+function handleTabChange(key: number | string) {
+  activeTab.value = String(key);
   if (key === 'users') {
     fetchUsers();
   } else if (key === 'employees') {
@@ -603,16 +606,30 @@ onMounted(() => {
 <template>
   <Page title="员工档案" description="管理员工档案信息，可从用户列表批量导入">
     <Card>
-      <Tabs v-model:activeKey="activeTab" @change="handleTabChange">
+      <Tabs v-model:active-key="activeTab" @change="handleTabChange">
         <!-- Tab 1: 用户列表 -->
         <Tabs.TabPane key="users" tab="用户列表">
           <div style="margin-bottom: 16px">
-            <Form layout="inline" :model="userQueryParams" @finish="handleUserSearch">
+            <Form
+              layout="inline"
+              :model="userQueryParams"
+              @finish="handleUserSearch"
+            >
               <FormItem label="用户名">
-                <Input v-model:value="userQueryParams.username" placeholder="请输入用户名" allow-clear style="width: 150px" />
+                <Input
+                  v-model:value="userQueryParams.username"
+                  placeholder="请输入用户名"
+                  allow-clear
+                  style="width: 150px"
+                />
               </FormItem>
               <FormItem label="姓名">
-                <Input v-model:value="userQueryParams.realName" placeholder="请输入姓名" allow-clear style="width: 150px" />
+                <Input
+                  v-model:value="userQueryParams.realName"
+                  placeholder="请输入姓名"
+                  allow-clear
+                  style="width: 150px"
+                />
               </FormItem>
               <FormItem label="部门">
                 <Select
@@ -655,8 +672,10 @@ onMounted(() => {
             :scroll="{ x: 1200 }"
             :row-selection="{
               selectedRowKeys: selectedUserIds,
-              onChange: (keys: number[]) => {
-                selectedUserIds = keys;
+              onChange: (keys: (string | number)[]) => {
+                selectedUserIds = keys.filter(
+                  (k): k is number => typeof k === 'number',
+                );
               },
               getCheckboxProps: (record: UserDTO) => ({
                 disabled: employeeUserIds.has(record.id || 0),
@@ -666,7 +685,11 @@ onMounted(() => {
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'joinDate'">
-                {{ record.joinDate ? dayjs(record.joinDate).format('YYYY-MM-DD') : '-' }}
+                {{
+                  record.joinDate
+                    ? dayjs(record.joinDate).format('YYYY-MM-DD')
+                    : '-'
+                }}
               </template>
               <template v-else-if="column.key === 'status'">
                 <Tag :color="record.status === 'ACTIVE' ? 'green' : 'default'">
@@ -682,10 +705,20 @@ onMounted(() => {
           <div style="margin-bottom: 16px">
             <Form layout="inline" :model="searchForm" @finish="handleSearch">
               <FormItem label="员工编号">
-                <Input v-model:value="searchForm.employeeNo" placeholder="请输入员工编号" allow-clear style="width: 150px" />
+                <Input
+                  v-model:value="searchForm.employeeNo"
+                  placeholder="请输入员工编号"
+                  allow-clear
+                  style="width: 150px"
+                />
               </FormItem>
               <FormItem label="姓名">
-                <Input v-model:value="searchForm.realName" placeholder="请输入姓名" allow-clear style="width: 150px" />
+                <Input
+                  v-model:value="searchForm.realName"
+                  placeholder="请输入姓名"
+                  allow-clear
+                  style="width: 150px"
+                />
               </FormItem>
               <FormItem label="部门">
                 <Select
@@ -704,20 +737,36 @@ onMounted(() => {
                 </Select>
               </FormItem>
               <FormItem label="工作状态">
-                <Select v-model:value="searchForm.workStatus" placeholder="请选择状态" allow-clear style="width: 120px">
-                  <Select.Option v-for="item in workStatusOptions" :key="item.value" :value="item.value">
+                <Select
+                  v-model:value="searchForm.workStatus"
+                  placeholder="请选择状态"
+                  allow-clear
+                  style="width: 120px"
+                >
+                  <Select.Option
+                    v-for="item in workStatusOptions"
+                    :key="item.value"
+                    :value="item.value"
+                  >
                     {{ item.label }}
                   </Select.Option>
                 </Select>
               </FormItem>
               <FormItem label="职位">
-                <Input v-model:value="searchForm.position" placeholder="请输入职位" allow-clear style="width: 120px" />
+                <Input
+                  v-model:value="searchForm.position"
+                  placeholder="请输入职位"
+                  allow-clear
+                  style="width: 120px"
+                />
               </FormItem>
               <FormItem>
                 <Space>
                   <Button type="primary" html-type="submit">查询</Button>
                   <Button @click="handleReset">重置</Button>
-                  <Button type="primary" @click="handleAdd">新建员工档案</Button>
+                  <Button type="primary" @click="handleAdd">
+                    新建员工档案
+                  </Button>
                 </Space>
               </FormItem>
             </Form>
@@ -734,18 +783,32 @@ onMounted(() => {
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'entryDate'">
-                {{ record.entryDate ? dayjs(record.entryDate).format('YYYY-MM-DD') : '-' }}
+                {{
+                  record.entryDate
+                    ? dayjs(record.entryDate).format('YYYY-MM-DD')
+                    : '-'
+                }}
               </template>
               <template v-else-if="column.key === 'workStatus'">
                 <Tag :color="workStatusColorMap[record.workStatus || '']">
-                  {{ workStatusTextMap[record.workStatus || ''] || record.workStatus }}
+                  {{
+                    workStatusTextMap[record.workStatus || ''] ||
+                    record.workStatus
+                  }}
                 </Tag>
               </template>
               <template v-else-if="column.key === 'action'">
                 <Space>
-                  <Button type="link" size="small" @click="handleView(record)">查看</Button>
-                  <Button type="link" size="small" @click="handleEdit(record)">编辑</Button>
-                  <Popconfirm title="确定要删除吗？" @confirm="handleDelete(record.id)">
+                  <Button type="link" size="small" @click="handleView(record)">
+                    查看
+                  </Button>
+                  <Button type="link" size="small" @click="handleEdit(record)">
+                    编辑
+                  </Button>
+                  <Popconfirm
+                    title="确定要删除吗？"
+                    @confirm="handleDelete(record.id)"
+                  >
                     <Button type="link" size="small" danger>删除</Button>
                   </Popconfirm>
                 </Space>
@@ -765,7 +828,7 @@ onMounted(() => {
       @cancel="batchImportVisible = false"
     >
       <p>确定要为以下 {{ selectedUserIds.length }} 个用户创建员工档案吗？</p>
-      <p style=" margin-top: 8px; font-size: 12px;color: #999">
+      <p style="margin-top: 8px; font-size: 12px; color: #999">
         注意：已创建员工档案的用户将被自动跳过
       </p>
     </Modal>
@@ -786,23 +849,43 @@ onMounted(() => {
             placeholder="请选择用户"
             :disabled="!!editingId"
             show-search
-            :filter-option="(input: string, option: any) => option.children[0].children.toLowerCase().indexOf(input.toLowerCase()) >= 0"
+            :filter-option="
+              (input: string, option: any) =>
+                option.children[0].children
+                  .toLowerCase()
+                  .includes(input.toLowerCase())
+            "
           >
-            <Select.Option v-for="user in userList" :key="user.id" :value="user.id">
+            <Select.Option
+              v-for="user in userList"
+              :key="user.id"
+              :value="user.id"
+            >
               {{ user.realName }} ({{ user.username }})
             </Select.Option>
           </Select>
         </FormItem>
         <FormItem label="员工编号">
-          <Input v-model:value="employeeForm.employeeNo" placeholder="请输入员工编号" />
+          <Input
+            v-model:value="employeeForm.employeeNo"
+            placeholder="请输入员工编号"
+          />
         </FormItem>
 
         <!-- OCR智能识别区域 -->
-        <div v-if="!OCR_DISABLED" class="mb-4 p-3 bg-blue-50 rounded border border-blue-200">
-          <div class="flex items-center mb-2">
-            <IconifyIcon icon="ant-design:scan-outlined" class="text-blue-500 mr-2" />
+        <div
+          v-if="!OCR_DISABLED"
+          class="mb-4 rounded border border-blue-200 bg-blue-50 p-3"
+        >
+          <div class="mb-2 flex items-center">
+            <IconifyIcon
+              icon="ant-design:scan-outlined"
+              class="mr-2 text-blue-500"
+            />
             <span class="font-medium text-blue-700">身份证智能识别</span>
-            <span class="text-gray-500 text-xs ml-2">上传身份证正面自动填充</span>
+            <span class="ml-2 text-xs text-gray-500"
+              >上传身份证正面自动填充</span
+            >
           </div>
           <Spin :spinning="ocrLoading" size="small">
             <Upload
@@ -811,9 +894,17 @@ onMounted(() => {
               accept="image/*"
               @change="handleIdCardOcr"
             >
-              <Tooltip title="上传身份证正面照片，自动识别姓名、身份证号、出生日期等">
-                <Button :loading="ocrLoading" :disabled="ocrLoading" size="small">
-                  <template #icon><IconifyIcon icon="ant-design:idcard-outlined" /></template>
+              <Tooltip
+                title="上传身份证正面照片，自动识别姓名、身份证号、出生日期等"
+              >
+                <Button
+                  :loading="ocrLoading"
+                  :disabled="ocrLoading"
+                  size="small"
+                >
+                  <template #icon>
+                    <IconifyIcon icon="ant-design:idcard-outlined" />
+                  </template>
                   识别身份证
                 </Button>
               </Tooltip>
@@ -821,19 +912,28 @@ onMounted(() => {
           </Spin>
         </div>
         <!-- OCR禁用提示 -->
-        <div v-else class="mb-4 p-3 bg-gray-50 rounded border border-gray-200">
+        <div v-else class="mb-4 rounded border border-gray-200 bg-gray-50 p-3">
           <div class="flex items-center">
-            <IconifyIcon icon="ant-design:scan-outlined" class="text-gray-400 mr-2" />
+            <IconifyIcon
+              icon="ant-design:scan-outlined"
+              class="mr-2 text-gray-400"
+            />
             <span class="font-medium text-gray-500">身份证智能识别</span>
             <Tag color="default" class="ml-2">暂不可用</Tag>
           </div>
-          <div class="text-gray-400 text-xs mt-1">{{ OCR_DISABLED_MESSAGE }}</div>
+          <div class="mt-1 text-xs text-gray-400">
+            {{ OCR_DISABLED_MESSAGE }}
+          </div>
         </div>
 
         <Row :gutter="16">
           <Col :span="12">
             <FormItem label="性别">
-              <Select v-model:value="employeeForm.gender" placeholder="请选择性别" allow-clear>
+              <Select
+                v-model:value="employeeForm.gender"
+                placeholder="请选择性别"
+                allow-clear
+              >
                 <Select.Option value="MALE">男</Select.Option>
                 <Select.Option value="FEMALE">女</Select.Option>
               </Select>
@@ -841,31 +941,47 @@ onMounted(() => {
           </Col>
           <Col :span="12">
             <FormItem label="出生日期">
-              <DatePicker v-model:value="employeeForm.birthDate" style="width: 100%" />
+              <DatePicker
+                v-model:value="employeeForm.birthDate"
+                style="width: 100%"
+              />
             </FormItem>
           </Col>
         </Row>
         <Row :gutter="16">
           <Col :span="12">
             <FormItem label="身份证号">
-              <Input v-model:value="employeeForm.idCard" placeholder="请输入身份证号" />
+              <Input
+                v-model:value="employeeForm.idCard"
+                placeholder="请输入身份证号"
+              />
             </FormItem>
           </Col>
           <Col :span="12">
             <FormItem label="民族">
-              <Input v-model:value="employeeForm.nationality" placeholder="请输入民族" />
+              <Input
+                v-model:value="employeeForm.nationality"
+                placeholder="请输入民族"
+              />
             </FormItem>
           </Col>
         </Row>
         <Row :gutter="16">
           <Col :span="12">
             <FormItem label="籍贯">
-              <Input v-model:value="employeeForm.nativePlace" placeholder="请输入籍贯" />
+              <Input
+                v-model:value="employeeForm.nativePlace"
+                placeholder="请输入籍贯"
+              />
             </FormItem>
           </Col>
           <Col :span="12">
             <FormItem label="政治面貌">
-              <Select v-model:value="employeeForm.politicalStatus" placeholder="请选择政治面貌" allow-clear>
+              <Select
+                v-model:value="employeeForm.politicalStatus"
+                placeholder="请选择政治面貌"
+                allow-clear
+              >
                 <Select.Option value="PARTY_MEMBER">党员</Select.Option>
                 <Select.Option value="LEAGUE_MEMBER">团员</Select.Option>
                 <Select.Option value="MASSES">群众</Select.Option>
@@ -876,7 +992,11 @@ onMounted(() => {
         <Row :gutter="16">
           <Col :span="12">
             <FormItem label="学历">
-              <Select v-model:value="employeeForm.education" placeholder="请选择学历" allow-clear>
+              <Select
+                v-model:value="employeeForm.education"
+                placeholder="请选择学历"
+                allow-clear
+              >
                 <Select.Option value="DOCTOR">博士</Select.Option>
                 <Select.Option value="MASTER">硕士</Select.Option>
                 <Select.Option value="BACHELOR">本科</Select.Option>
@@ -887,19 +1007,28 @@ onMounted(() => {
           </Col>
           <Col :span="12">
             <FormItem label="专业">
-              <Input v-model:value="employeeForm.major" placeholder="请输入专业" />
+              <Input
+                v-model:value="employeeForm.major"
+                placeholder="请输入专业"
+              />
             </FormItem>
           </Col>
         </Row>
         <Row :gutter="16">
           <Col :span="12">
             <FormItem label="毕业院校">
-              <Input v-model:value="employeeForm.graduationSchool" placeholder="请输入毕业院校" />
+              <Input
+                v-model:value="employeeForm.graduationSchool"
+                placeholder="请输入毕业院校"
+              />
             </FormItem>
           </Col>
           <Col :span="12">
             <FormItem label="毕业日期">
-              <DatePicker v-model:value="employeeForm.graduationDate" style="width: 100%" />
+              <DatePicker
+                v-model:value="employeeForm.graduationDate"
+                style="width: 100%"
+              />
             </FormItem>
           </Col>
         </Row>
@@ -907,28 +1036,44 @@ onMounted(() => {
         <Row :gutter="16">
           <Col :span="12">
             <FormItem label="紧急联系人">
-              <Input v-model:value="employeeForm.emergencyContact" placeholder="请输入紧急联系人" />
+              <Input
+                v-model:value="employeeForm.emergencyContact"
+                placeholder="请输入紧急联系人"
+              />
             </FormItem>
           </Col>
           <Col :span="12">
             <FormItem label="紧急联系电话">
-              <Input v-model:value="employeeForm.emergencyPhone" placeholder="请输入紧急联系电话" />
+              <Input
+                v-model:value="employeeForm.emergencyPhone"
+                placeholder="请输入紧急联系电话"
+              />
             </FormItem>
           </Col>
         </Row>
         <FormItem label="联系地址">
-          <Input v-model:value="employeeForm.address" placeholder="请输入联系地址" />
+          <Input
+            v-model:value="employeeForm.address"
+            placeholder="请输入联系地址"
+          />
         </FormItem>
         <Divider>律师执业信息</Divider>
         <Row :gutter="16">
           <Col :span="12">
             <FormItem label="律师执业证号">
-              <Input v-model:value="employeeForm.lawyerLicenseNo" placeholder="请输入律师执业证号" />
+              <Input
+                v-model:value="employeeForm.lawyerLicenseNo"
+                placeholder="请输入律师执业证号"
+              />
             </FormItem>
           </Col>
           <Col :span="12">
             <FormItem label="执业证状态">
-              <Select v-model:value="employeeForm.licenseStatus" placeholder="请选择状态" allow-clear>
+              <Select
+                v-model:value="employeeForm.licenseStatus"
+                placeholder="请选择状态"
+                allow-clear
+              >
                 <Select.Option value="VALID">有效</Select.Option>
                 <Select.Option value="EXPIRED">过期</Select.Option>
                 <Select.Option value="SUSPENDED">暂停</Select.Option>
@@ -939,19 +1084,28 @@ onMounted(() => {
         <Row :gutter="16">
           <Col :span="12">
             <FormItem label="执业证发证日期">
-              <DatePicker v-model:value="employeeForm.licenseIssueDate" style="width: 100%" />
+              <DatePicker
+                v-model:value="employeeForm.licenseIssueDate"
+                style="width: 100%"
+              />
             </FormItem>
           </Col>
           <Col :span="12">
             <FormItem label="执业证到期日期">
-              <DatePicker v-model:value="employeeForm.licenseExpireDate" style="width: 100%" />
+              <DatePicker
+                v-model:value="employeeForm.licenseExpireDate"
+                style="width: 100%"
+              />
             </FormItem>
           </Col>
         </Row>
         <Row :gutter="16">
           <Col :span="12">
             <FormItem label="执业领域">
-              <Input v-model:value="employeeForm.practiceArea" placeholder="请输入执业领域" />
+              <Input
+                v-model:value="employeeForm.practiceArea"
+                placeholder="请输入执业领域"
+              />
             </FormItem>
           </Col>
           <Col :span="12">
@@ -968,36 +1122,59 @@ onMounted(() => {
         <Row :gutter="16">
           <Col :span="12">
             <FormItem label="职位">
-              <Input v-model:value="employeeForm.position" placeholder="请输入职位" />
+              <Input
+                v-model:value="employeeForm.position"
+                placeholder="请输入职位"
+              />
             </FormItem>
           </Col>
           <Col :span="12">
             <FormItem label="级别">
-              <Input v-model:value="employeeForm.level" placeholder="请输入级别" />
+              <Input
+                v-model:value="employeeForm.level"
+                placeholder="请输入级别"
+              />
             </FormItem>
           </Col>
         </Row>
         <Row :gutter="16">
           <Col :span="12">
             <FormItem label="入职日期">
-              <DatePicker v-model:value="employeeForm.entryDate" style="width: 100%" />
+              <DatePicker
+                v-model:value="employeeForm.entryDate"
+                style="width: 100%"
+              />
             </FormItem>
           </Col>
           <Col :span="12">
             <FormItem label="试用期结束日期">
-              <DatePicker v-model:value="employeeForm.probationEndDate" style="width: 100%" />
+              <DatePicker
+                v-model:value="employeeForm.probationEndDate"
+                style="width: 100%"
+              />
             </FormItem>
           </Col>
         </Row>
         <FormItem label="工作状态">
-          <Select v-model:value="employeeForm.workStatus" placeholder="请选择工作状态">
-            <Select.Option v-for="item in workStatusOptions" :key="item.value" :value="item.value">
+          <Select
+            v-model:value="employeeForm.workStatus"
+            placeholder="请选择工作状态"
+          >
+            <Select.Option
+              v-for="item in workStatusOptions"
+              :key="item.value"
+              :value="item.value"
+            >
               {{ item.label }}
             </Select.Option>
           </Select>
         </FormItem>
         <FormItem label="备注">
-          <Textarea v-model:value="employeeForm.remark" :rows="3" placeholder="请输入备注" />
+          <Textarea
+            v-model:value="employeeForm.remark"
+            :rows="3"
+            placeholder="请输入备注"
+          />
         </FormItem>
       </Form>
     </Modal>
@@ -1010,21 +1187,49 @@ onMounted(() => {
       :footer="null"
     >
       <Descriptions v-if="currentRecord" :column="2" bordered>
-        <DescriptionsItem label="员工编号">{{ currentRecord.employeeNo || '-' }}</DescriptionsItem>
-        <DescriptionsItem label="姓名">{{ currentRecord.realName || '-' }}</DescriptionsItem>
-        <DescriptionsItem label="部门">{{ currentRecord.departmentName || '-' }}</DescriptionsItem>
-        <DescriptionsItem label="职位">{{ currentRecord.position || '-' }}</DescriptionsItem>
-        <DescriptionsItem label="手机号">{{ currentRecord.phone || '-' }}</DescriptionsItem>
-        <DescriptionsItem label="邮箱">{{ currentRecord.email || '-' }}</DescriptionsItem>
+        <DescriptionsItem label="员工编号">
+          {{ currentRecord.employeeNo || '-' }}
+        </DescriptionsItem>
+        <DescriptionsItem label="姓名">
+          {{ currentRecord.realName || '-' }}
+        </DescriptionsItem>
+        <DescriptionsItem label="部门">
+          {{ currentRecord.departmentName || '-' }}
+        </DescriptionsItem>
+        <DescriptionsItem label="职位">
+          {{ currentRecord.position || '-' }}
+        </DescriptionsItem>
+        <DescriptionsItem label="手机号">
+          {{ currentRecord.phone || '-' }}
+        </DescriptionsItem>
+        <DescriptionsItem label="邮箱">
+          {{ currentRecord.email || '-' }}
+        </DescriptionsItem>
         <DescriptionsItem label="性别">
-          {{ currentRecord.gender === 'MALE' ? '男' : currentRecord.gender === 'FEMALE' ? '女' : '-' }}
+          {{
+            currentRecord.gender === 'MALE'
+              ? '男'
+              : currentRecord.gender === 'FEMALE'
+                ? '女'
+                : '-'
+          }}
         </DescriptionsItem>
         <DescriptionsItem label="出生日期">
-          {{ currentRecord.birthDate ? dayjs(currentRecord.birthDate).format('YYYY-MM-DD') : '-' }}
+          {{
+            currentRecord.birthDate
+              ? dayjs(currentRecord.birthDate).format('YYYY-MM-DD')
+              : '-'
+          }}
         </DescriptionsItem>
-        <DescriptionsItem label="身份证号">{{ currentRecord.idCard || '-' }}</DescriptionsItem>
-        <DescriptionsItem label="民族">{{ currentRecord.nationality || '-' }}</DescriptionsItem>
-        <DescriptionsItem label="籍贯">{{ currentRecord.nativePlace || '-' }}</DescriptionsItem>
+        <DescriptionsItem label="身份证号">
+          {{ currentRecord.idCard || '-' }}
+        </DescriptionsItem>
+        <DescriptionsItem label="民族">
+          {{ currentRecord.nationality || '-' }}
+        </DescriptionsItem>
+        <DescriptionsItem label="籍贯">
+          {{ currentRecord.nativePlace || '-' }}
+        </DescriptionsItem>
         <DescriptionsItem label="政治面貌">
           {{
             currentRecord.politicalStatus === 'PARTY_MEMBER'
@@ -1051,15 +1256,31 @@ onMounted(() => {
                       : '-'
           }}
         </DescriptionsItem>
-        <DescriptionsItem label="专业">{{ currentRecord.major || '-' }}</DescriptionsItem>
-        <DescriptionsItem label="毕业院校">{{ currentRecord.graduationSchool || '-' }}</DescriptionsItem>
-        <DescriptionsItem label="毕业日期">
-          {{ currentRecord.graduationDate ? dayjs(currentRecord.graduationDate).format('YYYY-MM-DD') : '-' }}
+        <DescriptionsItem label="专业">
+          {{ currentRecord.major || '-' }}
         </DescriptionsItem>
-        <DescriptionsItem label="紧急联系人">{{ currentRecord.emergencyContact || '-' }}</DescriptionsItem>
-        <DescriptionsItem label="紧急联系电话">{{ currentRecord.emergencyPhone || '-' }}</DescriptionsItem>
-        <DescriptionsItem label="联系地址" :span="2">{{ currentRecord.address || '-' }}</DescriptionsItem>
-        <DescriptionsItem label="律师执业证号">{{ currentRecord.lawyerLicenseNo || '-' }}</DescriptionsItem>
+        <DescriptionsItem label="毕业院校">
+          {{ currentRecord.graduationSchool || '-' }}
+        </DescriptionsItem>
+        <DescriptionsItem label="毕业日期">
+          {{
+            currentRecord.graduationDate
+              ? dayjs(currentRecord.graduationDate).format('YYYY-MM-DD')
+              : '-'
+          }}
+        </DescriptionsItem>
+        <DescriptionsItem label="紧急联系人">
+          {{ currentRecord.emergencyContact || '-' }}
+        </DescriptionsItem>
+        <DescriptionsItem label="紧急联系电话">
+          {{ currentRecord.emergencyPhone || '-' }}
+        </DescriptionsItem>
+        <DescriptionsItem label="联系地址" :span="2">
+          {{ currentRecord.address || '-' }}
+        </DescriptionsItem>
+        <DescriptionsItem label="律师执业证号">
+          {{ currentRecord.lawyerLicenseNo || '-' }}
+        </DescriptionsItem>
         <DescriptionsItem label="执业证状态">
           {{
             currentRecord.licenseStatus === 'VALID'
@@ -1072,26 +1293,53 @@ onMounted(() => {
           }}
         </DescriptionsItem>
         <DescriptionsItem label="执业证发证日期">
-          {{ currentRecord.licenseIssueDate ? dayjs(currentRecord.licenseIssueDate).format('YYYY-MM-DD') : '-' }}
+          {{
+            currentRecord.licenseIssueDate
+              ? dayjs(currentRecord.licenseIssueDate).format('YYYY-MM-DD')
+              : '-'
+          }}
         </DescriptionsItem>
         <DescriptionsItem label="执业证到期日期">
-          {{ currentRecord.licenseExpireDate ? dayjs(currentRecord.licenseExpireDate).format('YYYY-MM-DD') : '-' }}
+          {{
+            currentRecord.licenseExpireDate
+              ? dayjs(currentRecord.licenseExpireDate).format('YYYY-MM-DD')
+              : '-'
+          }}
         </DescriptionsItem>
-        <DescriptionsItem label="执业领域">{{ currentRecord.practiceArea || '-' }}</DescriptionsItem>
-        <DescriptionsItem label="执业年限">{{ currentRecord.practiceYears || '-' }}</DescriptionsItem>
-        <DescriptionsItem label="级别">{{ currentRecord.level || '-' }}</DescriptionsItem>
+        <DescriptionsItem label="执业领域">
+          {{ currentRecord.practiceArea || '-' }}
+        </DescriptionsItem>
+        <DescriptionsItem label="执业年限">
+          {{ currentRecord.practiceYears || '-' }}
+        </DescriptionsItem>
+        <DescriptionsItem label="级别">
+          {{ currentRecord.level || '-' }}
+        </DescriptionsItem>
         <DescriptionsItem label="入职日期">
-          {{ currentRecord.entryDate ? dayjs(currentRecord.entryDate).format('YYYY-MM-DD') : '-' }}
+          {{
+            currentRecord.entryDate
+              ? dayjs(currentRecord.entryDate).format('YYYY-MM-DD')
+              : '-'
+          }}
         </DescriptionsItem>
         <DescriptionsItem label="试用期结束日期">
-          {{ currentRecord.probationEndDate ? dayjs(currentRecord.probationEndDate).format('YYYY-MM-DD') : '-' }}
+          {{
+            currentRecord.probationEndDate
+              ? dayjs(currentRecord.probationEndDate).format('YYYY-MM-DD')
+              : '-'
+          }}
         </DescriptionsItem>
         <DescriptionsItem label="工作状态">
           <Tag :color="workStatusColorMap[currentRecord.workStatus || '']">
-            {{ workStatusTextMap[currentRecord.workStatus || ''] || currentRecord.workStatus }}
+            {{
+              workStatusTextMap[currentRecord.workStatus || ''] ||
+              currentRecord.workStatus
+            }}
           </Tag>
         </DescriptionsItem>
-        <DescriptionsItem label="备注" :span="2">{{ currentRecord.remark || '-' }}</DescriptionsItem>
+        <DescriptionsItem label="备注" :span="2">
+          {{ currentRecord.remark || '-' }}
+        </DescriptionsItem>
       </Descriptions>
     </Modal>
   </Page>

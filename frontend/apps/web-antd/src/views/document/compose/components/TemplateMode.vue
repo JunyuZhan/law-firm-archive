@@ -1,36 +1,54 @@
 <script setup lang="ts">
+import type { DocumentPrintData } from '@vben/utils';
+
+import type {
+  DocumentTemplateDTO,
+  GenerateDocumentCommand,
+} from '#/api/document/template-types';
+
 /**
  * 模板制作模式组件
  * 使用模板生成文书：选择模板 → 选择项目 → 填写变量 → 预览生成
  */
-import { ref, reactive, computed } from 'vue';
+import { computed, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { message } from 'ant-design-vue';
+
+import { printDocument } from '@vben/utils';
+
 import {
-  Card,
-  Steps,
-  Step,
   Button,
-  Space,
-  Select,
+  Card,
+  Col,
+  Divider,
+  Empty,
   Form,
   FormItem,
   Input,
-  Row,
-  Col,
-  Empty,
-  Spin,
-  Result,
-  Divider,
-  Tag,
   List,
   ListItem,
+  message,
+  Result,
+  Row,
+  Select,
+  Space,
+  Spin,
+  Step,
+  Steps,
+  Tag,
 } from 'ant-design-vue';
-import { getActiveTemplateList, generateDocument, previewTemplate } from '#/api/document/template';
-import type { DocumentTemplateDTO, GenerateDocumentCommand } from '#/api/document/template-types';
-import { printDocument, type DocumentPrintData } from '@vben/utils';
+
+import {
+  generateDocument,
+  getActiveTemplateList,
+  previewTemplate,
+} from '#/api/document/template';
+
+import {
+  BUSINESS_TYPE_OPTIONS,
+  TEMPLATE_TYPE_MAP,
+  VARIABLE_NAME_MAP,
+} from '../types';
 import MatterSelector from './MatterSelector.vue';
-import { TEMPLATE_TYPE_MAP, BUSINESS_TYPE_OPTIONS, VARIABLE_NAME_MAP } from '../types';
 
 defineOptions({ name: 'TemplateMode' });
 
@@ -59,8 +77,8 @@ const isPersonalDoc = ref(false);
 
 // 表单数据
 const templateFormData = reactive<{
-  variables: Record<string, string>;
   fileName: string;
+  variables: Record<string, string>;
 }>({
   variables: {},
   fileName: '',
@@ -77,11 +95,15 @@ const steps = [
 // 计算属性
 const filteredTemplates = computed(() => {
   if (!templateCategory.value) return templates.value;
-  return templates.value.filter(t => t.businessType === templateCategory.value);
+  return templates.value.filter(
+    (t) => t.businessType === templateCategory.value,
+  );
 });
 
 const successSubTitle = computed(() => {
-  return isPersonalDoc.value ? '文书已保存到"我的文书"中' : '文书已保存到项目卷宗中';
+  return isPersonalDoc.value
+    ? '文书已保存到"我的文书"中'
+    : '文书已保存到项目卷宗中';
 });
 
 const viewButtonText = computed(() => {
@@ -110,14 +132,20 @@ function handleSelectTemplate(template: DocumentTemplateDTO) {
   selectedTemplate.value = template;
   templateFormData.variables = {};
   templateFormData.fileName = `${template.name}_${new Date().toLocaleDateString()}`;
-  
+
   if (template.content) {
-    const matches = template.content.match(/\{\{(\w+)\}\}|\$\{(\w+(?:\.\w+)*)\}/g);
+    const matches = template.content.match(
+      /\{\{(\w+)\}\}|\$\{(\w+(?:\.\w+)*)\}/g,
+    );
     if (matches) {
-      const uniqueVars = [...new Set(matches.map(m => {
-        return m.replace(/\{\{|\}\}|\$\{|\}/g, '');
-      }))];
-      uniqueVars.forEach(v => {
+      const uniqueVars = [
+        ...new Set(
+          matches.map((m) => {
+            return m.replaceAll(/\{\{|\}\}|\$\{|\}/g, '');
+          }),
+        ),
+      ];
+      uniqueVars.forEach((v) => {
         templateFormData.variables[v] = '';
       });
     }
@@ -129,7 +157,11 @@ function handleNext() {
     message.warning('请选择一个模板');
     return;
   }
-  if (currentStep.value === 1 && !isPersonalDoc.value && !selectedMatterId.value) {
+  if (
+    currentStep.value === 1 &&
+    !isPersonalDoc.value &&
+    !selectedMatterId.value
+  ) {
     message.warning('请选择一个项目，或切换为"个人文书"模式');
     return;
   }
@@ -145,7 +177,7 @@ function handlePrev() {
 
 async function handlePreview() {
   if (!selectedTemplate.value) return;
-  
+
   templatePreviewLoading.value = true;
   try {
     const data = await previewTemplate({
@@ -153,7 +185,8 @@ async function handlePreview() {
       matterId: selectedMatterId.value,
       variables: templateFormData.variables,
     });
-    templatePreviewContent.value = data.content || data.preview || '预览内容生成中...';
+    templatePreviewContent.value =
+      data.content || data.preview || '预览内容生成中...';
   } catch (error: any) {
     message.error(error.message || '预览失败');
     templatePreviewContent.value = '预览加载失败';
@@ -167,7 +200,7 @@ async function handleGenerate() {
     message.error('请选择模板');
     return;
   }
-  
+
   templateGenerating.value = true;
   try {
     const command: GenerateDocumentCommand = {
@@ -177,7 +210,7 @@ async function handleGenerate() {
       fileName: templateFormData.fileName,
       dossierItemId: selectedDossierId.value,
     };
-    
+
     await generateDocument(command);
     generateSuccess.value = true;
     message.success('文书生成成功！');
@@ -194,7 +227,7 @@ function handlePrint() {
     message.warning('暂无内容可打印');
     return;
   }
-  
+
   try {
     const printData: DocumentPrintData = {
       title: selectedTemplate.value?.name || '文书预览',
@@ -242,7 +275,12 @@ defineExpose({
 <template>
   <div class="template-mode">
     <Steps :current="currentStep" class="steps-bar">
-      <Step v-for="step in steps" :key="step.title" :title="step.title" :description="step.description" />
+      <Step
+        v-for="step in steps"
+        :key="step.title"
+        :title="step.title"
+        :description="step.description"
+      />
     </Steps>
 
     <div class="step-content">
@@ -255,12 +293,12 @@ defineExpose({
               v-model:value="templateCategory"
               placeholder="按业务类型筛选"
               style="width: 180px"
-              allowClear
+              allow-clear
               :options="BUSINESS_TYPE_OPTIONS"
             />
           </Space>
         </div>
-        
+
         <Spin :spinning="loading">
           <List
             v-if="filteredTemplates.length > 0"
@@ -277,14 +315,21 @@ defineExpose({
                   <template #title>
                     <Space>
                       <span>{{ item.name }}</span>
-                      <Tag v-if="selectedTemplate?.id === item.id" color="blue">已选择</Tag>
+                      <Tag v-if="selectedTemplate?.id === item.id" color="blue">
+                        已选择
+                      </Tag>
                     </Space>
                   </template>
                   <p class="template-desc">
                     {{ item.description || '暂无描述' }}
                   </p>
                   <Space>
-                    <Tag>{{ TEMPLATE_TYPE_MAP[item.templateType || ''] || item.templateType }}</Tag>
+                    <Tag>
+                      {{
+                        TEMPLATE_TYPE_MAP[item.templateType || ''] ||
+                        item.templateType
+                      }}
+                    </Tag>
                     <Tag color="green">使用 {{ item.useCount || 0 }} 次</Tag>
                   </Space>
                 </Card>
@@ -318,16 +363,27 @@ defineExpose({
       <div v-show="currentStep === 2">
         <Form layout="vertical">
           <FormItem label="文件名称" required>
-            <Input v-model:value="templateFormData.fileName" placeholder="请输入文件名称" style="max-width: 500px" />
+            <Input
+              v-model:value="templateFormData.fileName"
+              placeholder="请输入文件名称"
+              style="max-width: 500px"
+            />
           </FormItem>
-          
+
           <Divider>模板变量</Divider>
-          
+
           <template v-if="Object.keys(templateFormData.variables).length > 0">
             <Row :gutter="16">
-              <Col v-for="(_value, key) in templateFormData.variables" :key="key" :span="12">
+              <Col
+                v-for="(_value, key) in templateFormData.variables"
+                :key="key"
+                :span="12"
+              >
                 <FormItem :label="formatVariableName(String(key))">
-                  <Input v-model:value="templateFormData.variables[key]" :placeholder="`请输入 ${formatVariableName(String(key))}`" />
+                  <Input
+                    v-model:value="templateFormData.variables[key]"
+                    :placeholder="`请输入 ${formatVariableName(String(key))}`"
+                  />
                 </FormItem>
               </Col>
             </Row>
@@ -342,10 +398,10 @@ defineExpose({
           <Row :gutter="24">
             <Col :span="16">
               <div class="preview-header">
-                <h4 style="margin: 0;">📄 文书预览</h4>
-                <Button 
-                  v-if="templatePreviewContent" 
-                  type="primary" 
+                <h4 style="margin: 0">📄 文书预览</h4>
+                <Button
+                  v-if="templatePreviewContent"
+                  type="primary"
                   ghost
                   @click="handlePrint"
                 >
@@ -354,7 +410,9 @@ defineExpose({
               </div>
               <Spin :spinning="templatePreviewLoading">
                 <Card class="preview-card">
-                  <pre class="preview-content">{{ templatePreviewContent }}</pre>
+                  <pre class="preview-content">{{
+                    templatePreviewContent
+                  }}</pre>
                 </Card>
               </Spin>
             </Col>
@@ -373,8 +431,13 @@ defineExpose({
             </Col>
           </Row>
         </template>
-        
-        <Result v-else status="success" title="文书生成成功！" :sub-title="successSubTitle">
+
+        <Result
+          v-else
+          status="success"
+          title="文书生成成功！"
+          :sub-title="successSubTitle"
+        >
           <template #extra>
             <Space>
               <Button type="primary" @click="handleReset">继续制作</Button>
@@ -389,9 +452,18 @@ defineExpose({
 
     <div class="action-bar">
       <Space>
-        <Button v-if="currentStep > 0 && !generateSuccess" @click="handlePrev">上一步</Button>
-        <Button v-if="currentStep < 3" type="primary" @click="handleNext">下一步</Button>
-        <Button v-if="currentStep === 3 && !generateSuccess" type="primary" :loading="templateGenerating" @click="handleGenerate">
+        <Button v-if="currentStep > 0 && !generateSuccess" @click="handlePrev">
+          上一步
+        </Button>
+        <Button v-if="currentStep < 3" type="primary" @click="handleNext">
+          下一步
+        </Button>
+        <Button
+          v-if="currentStep === 3 && !generateSuccess"
+          type="primary"
+          :loading="templateGenerating"
+          @click="handleGenerate"
+        >
           生成文书
         </Button>
       </Space>
@@ -474,4 +546,3 @@ defineExpose({
   padding: 16px;
 }
 </style>
-

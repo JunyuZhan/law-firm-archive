@@ -1,8 +1,12 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { onMounted, ref } from 'vue';
+
 import { useVbenModal } from '@vben/common-ui';
-import { message, Button, Space, Tag } from 'ant-design-vue';
+
+import { Button, message, Space, Tag } from 'ant-design-vue';
+
 import { getConfigValue } from '#/api/system';
+
 import { createContractSampleData } from '../constants/sample-data';
 
 interface ContractTemplateDTO {
@@ -33,7 +37,7 @@ async function loadFirmInfo() {
       getConfigValue('firm.postcode').catch(() => null),
       getConfigValue('firm.legal.rep').catch(() => null),
     ]);
-    
+
     if (firmNameConfig?.configValue) {
       sampleData.value.firmName = firmNameConfig.configValue;
     }
@@ -62,25 +66,25 @@ const [Modal, modalApi] = useVbenModal({
 async function open(record: ContractTemplateDTO) {
   previewTitle.value = record.name;
   let content = record.content || '';
-  
+
   // 确保律所信息已加载
   if (!sampleData.value.firmAddress && !sampleData.value.firmPhone) {
     await loadFirmInfo();
   }
-  
+
   // 替换变量为示例值
   Object.entries(sampleData.value).forEach(([key, value]) => {
     const displayValue = value || `[${key}]`;
-    content = content.replace(
-      new RegExp(`\\$\\{${key}\\}`, 'g'), 
-      `<span class="preview-var">${displayValue}</span>`
+    content = content.replaceAll(
+      new RegExp(String.raw`\$\{${key}\}`, 'g'),
+      `<span class="preview-var">${displayValue}</span>`,
     );
-    content = content.replace(
+    content = content.replaceAll(
       new RegExp(`<span[^>]*data-variable="${key}"[^>]*>[^<]*</span>`, 'g'),
-      `<span class="preview-var">${displayValue}</span>`
+      `<span class="preview-var">${displayValue}</span>`,
     );
   });
-  
+
   previewContent.value = content;
   modalApi.setState({ title: `预览 - ${record.name}` });
   modalApi.open();
@@ -98,7 +102,7 @@ function handlePrint() {
     message.error('无法打开打印窗口，请检查浏览器弹窗设置');
     return;
   }
-  
+
   printWindow.document.write(`
     <!DOCTYPE html>
     <html>
@@ -143,15 +147,16 @@ defineExpose({ open });
         <Button type="primary" @click="handlePrint">打印 / 导出PDF</Button>
       </Space>
     </div>
-    
+
     <div class="preview-container">
       <div class="preview-paper">
         <div v-html="previewContent" class="preview-content"></div>
       </div>
     </div>
-    
+
     <div class="preview-footer">
-      <Tag color="blue">蓝色文字</Tag> 表示已替换的变量值（实际合同中为正常黑色）
+      <Tag color="blue">蓝色文字</Tag>
+      表示已替换的变量值（实际合同中为正常黑色）
     </div>
   </Modal>
 </template>
@@ -183,7 +188,7 @@ defineExpose({ open });
 }
 
 .preview-content {
-  font-family: SimSun, "宋体", serif;
+  font-family: SimSun, '宋体', serif;
   font-size: 14pt;
   line-height: 2;
   color: #000;

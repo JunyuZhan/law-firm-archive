@@ -1,35 +1,44 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue';
-import { message, Modal } from 'ant-design-vue';
+import type {
+  ArchiveBorrowDTO,
+  CreateBorrowCommand,
+  ReturnArchiveCommand,
+} from '#/api/archive/borrow';
+import type { ArchiveDTO } from '#/api/archive/types';
+
+import { onMounted, reactive, ref } from 'vue';
+
 import { Page } from '@vben/common-ui';
+
 import {
-  Card,
-  Table,
   Button,
-  Space,
-  Input,
-  Select,
+  Card,
+  Col,
+  DatePicker,
   Form,
   FormItem,
+  Input,
+  message,
+  Modal,
   Row,
-  Col,
-  Tag,
+  Select,
+  Space,
+  Table,
   Tabs,
-  DatePicker,
+  Tag,
   Textarea,
 } from 'ant-design-vue';
-import {
-  getBorrowList,
-  createBorrow,
-  approveBorrow,
-  rejectBorrow,
-  confirmBorrow,
-  returnArchive,
-  getOverdueBorrows,
-} from '#/api/archive/borrow';
+
 import { getArchiveList } from '#/api/archive';
-import type { ArchiveBorrowDTO, CreateBorrowCommand, ReturnArchiveCommand } from '#/api/archive/borrow';
-import type { ArchiveDTO } from '#/api/archive/types';
+import {
+  approveBorrow,
+  confirmBorrow,
+  createBorrow,
+  getBorrowList,
+  getOverdueBorrows,
+  rejectBorrow,
+  returnArchive,
+} from '#/api/archive/borrow';
 
 defineOptions({ name: 'ArchiveBorrow' });
 
@@ -60,21 +69,43 @@ const formData = reactive<CreateBorrowCommand>({
 });
 
 // 归还表单数据
-const returnFormData = reactive<ReturnArchiveCommand & { returnDate?: string }>({
-  borrowId: 0,
-  returnDate: '',
-  condition: '',
-});
+const returnFormData = reactive<ReturnArchiveCommand & { returnDate?: string }>(
+  {
+    borrowId: 0,
+    returnDate: '',
+    condition: '',
+  },
+);
 
 // 表格列
 const columns = [
   { title: '借阅编号', dataIndex: 'borrowNo', key: 'borrowNo', width: 130 },
-  { title: '档案名称', dataIndex: 'archiveName', key: 'archiveName', width: 200 },
+  {
+    title: '档案名称',
+    dataIndex: 'archiveName',
+    key: 'archiveName',
+    width: 200,
+  },
   { title: '档案编号', dataIndex: 'archiveNo', key: 'archiveNo', width: 130 },
-  { title: '借阅人', dataIndex: 'borrowerName', key: 'borrowerName', width: 100 },
+  {
+    title: '借阅人',
+    dataIndex: 'borrowerName',
+    key: 'borrowerName',
+    width: 100,
+  },
   { title: '借阅日期', dataIndex: 'borrowDate', key: 'borrowDate', width: 120 },
-  { title: '预计归还', dataIndex: 'expectedReturnDate', key: 'expectedReturnDate', width: 120 },
-  { title: '实际归还', dataIndex: 'actualReturnDate', key: 'actualReturnDate', width: 120 },
+  {
+    title: '预计归还',
+    dataIndex: 'expectedReturnDate',
+    key: 'expectedReturnDate',
+    width: 120,
+  },
+  {
+    title: '实际归还',
+    dataIndex: 'actualReturnDate',
+    key: 'actualReturnDate',
+    width: 120,
+  },
   { title: '状态', dataIndex: 'statusName', key: 'statusName', width: 100 },
   { title: '操作', key: 'action', width: 200, fixed: 'right' as const },
 ];
@@ -84,21 +115,30 @@ async function fetchData() {
   loading.value = true;
   try {
     // 根据tab设置状态筛选
-    if (activeTab.value === 'borrowing') {
-      queryParams.status = 'BORROWING';
-    } else if (activeTab.value === 'returned') {
-      queryParams.status = 'RETURNED';
-    } else if (activeTab.value === 'overdue') {
-      // 逾期未还 - 使用特殊接口
-      const data = await getOverdueBorrows();
-      dataSource.value = data;
-      total.value = data.length;
-      loading.value = false;
-      return;
-    } else {
-      queryParams.status = undefined;
+    switch (activeTab.value) {
+      case 'borrowing': {
+        queryParams.status = 'BORROWING';
+
+        break;
+      }
+      case 'overdue': {
+        // 逾期未还 - 使用特殊接口
+        const data = await getOverdueBorrows();
+        dataSource.value = data;
+        total.value = data.length;
+        loading.value = false;
+        return;
+      }
+      case 'returned': {
+        queryParams.status = 'RETURNED';
+
+        break;
+      }
+      default: {
+        queryParams.status = undefined;
+      }
     }
-    
+
     const res = await getBorrowList(queryParams);
     dataSource.value = res.list;
     total.value = res.total;
@@ -112,7 +152,11 @@ async function fetchData() {
 // 加载档案列表
 async function loadArchives() {
   try {
-    const res = await getArchiveList({ pageNum: 1, pageSize: 1000, status: 'ARCHIVED' });
+    const res = await getArchiveList({
+      pageNum: 1,
+      pageSize: 1000,
+      status: 'ARCHIVED',
+    });
     archives.value = res.list;
   } catch (error: any) {
     console.error('加载档案列表失败:', error);
@@ -120,8 +164,8 @@ async function loadArchives() {
 }
 
 // Tab切换
-function handleTabChange(key: string) {
-  activeTab.value = key;
+function handleTabChange(key: number | string) {
+  activeTab.value = String(key);
   queryParams.pageNum = 1;
   fetchData();
 }
@@ -154,12 +198,12 @@ function handleAdd() {
 async function handleSave() {
   try {
     await formRef.value?.validate();
-    
+
     if (!formData.archiveId) {
       message.error('请选择档案');
       return;
     }
-    
+
     await createBorrow(formData);
     message.success('申请提交成功');
     modalVisible.value = false;
@@ -264,7 +308,7 @@ onMounted(() => {
   <Page title="档案借阅" description="管理档案借阅记录">
     <Card>
       <!-- Tab切换 -->
-      <Tabs v-model:activeKey="activeTab" @change="handleTabChange">
+      <Tabs v-model:active-key="activeTab" @change="handleTabChange">
         <Tabs.TabPane key="borrowing" tab="借阅中" />
         <Tabs.TabPane key="returned" tab="已归还" />
         <Tabs.TabPane key="overdue" tab="逾期未还" />
@@ -278,11 +322,16 @@ onMounted(() => {
             <Select
               v-model:value="queryParams.archiveId"
               placeholder="选择档案"
-              allowClear
-              showSearch
+              allow-clear
+              show-search
               style="width: 100%"
-              :filterOption="(input, option) => (option?.label || '').toLowerCase().includes(input.toLowerCase())"
-              :options="archives.map(a => ({ label: a.name, value: a.id }))"
+              :filter-option="
+                (input, option) =>
+                  (option?.label || '')
+                    .toLowerCase()
+                    .includes(input.toLowerCase())
+              "
+              :options="archives.map((a) => ({ label: a.name, value: a.id }))"
             />
           </Col>
           <Col :xs="24" :sm="12" :md="16" :lg="18">
@@ -303,7 +352,7 @@ onMounted(() => {
         :pagination="{
           current: queryParams.pageNum,
           pageSize: queryParams.pageSize,
-          total: total,
+          total,
           showSizeChanger: true,
           showTotal: (total) => `共 ${total} 条`,
           onChange: (page, size) => {
@@ -323,14 +372,26 @@ onMounted(() => {
           </template>
           <template v-if="column.key === 'action'">
             <Space>
-              <template v-if="(record as ArchiveBorrowDTO).status === 'PENDING'">
+              <template
+                v-if="(record as ArchiveBorrowDTO).status === 'PENDING'"
+              >
                 <a @click="handleApprove(record as ArchiveBorrowDTO)">通过</a>
-                <a @click="handleReject(record as ArchiveBorrowDTO)" style="color: red">拒绝</a>
+                <a
+                  @click="handleReject(record as ArchiveBorrowDTO)"
+                  style="color: red"
+                  >拒绝</a
+                >
               </template>
-              <template v-if="(record as ArchiveBorrowDTO).status === 'APPROVED'">
-                <a @click="handleConfirm(record as ArchiveBorrowDTO)">确认借出</a>
+              <template
+                v-if="(record as ArchiveBorrowDTO).status === 'APPROVED'"
+              >
+                <a @click="handleConfirm(record as ArchiveBorrowDTO)"
+                  >确认借出</a
+                >
               </template>
-              <template v-if="(record as ArchiveBorrowDTO).status === 'BORROWING'">
+              <template
+                v-if="(record as ArchiveBorrowDTO).status === 'BORROWING'"
+              >
                 <a @click="handleReturn(record as ArchiveBorrowDTO)">归还</a>
               </template>
             </Space>
@@ -352,17 +413,30 @@ onMounted(() => {
         :label-col="{ span: 6 }"
         :wrapper-col="{ span: 18 }"
       >
-        <FormItem label="选择档案" name="archiveId" :rules="[{ required: true, message: '请选择档案' }]">
+        <FormItem
+          label="选择档案"
+          name="archiveId"
+          :rules="[{ required: true, message: '请选择档案' }]"
+        >
           <Select
             v-model:value="formData.archiveId"
             placeholder="请选择档案"
-            showSearch
+            show-search
             style="width: 100%"
-            :filterOption="(input, option) => (option?.label || '').toLowerCase().includes(input.toLowerCase())"
-            :options="archives.map(a => ({ label: a.name, value: a.id }))"
+            :filter-option="
+              (input, option) =>
+                (option?.label || '')
+                  .toLowerCase()
+                  .includes(input.toLowerCase())
+            "
+            :options="archives.map((a) => ({ label: a.name, value: a.id }))"
           />
         </FormItem>
-        <FormItem label="预计归还日期" name="expectedReturnDate" :rules="[{ required: true, message: '请选择预计归还日期' }]">
+        <FormItem
+          label="预计归还日期"
+          name="expectedReturnDate"
+          :rules="[{ required: true, message: '请选择预计归还日期' }]"
+        >
           <DatePicker
             v-model:value="formData.expectedReturnDate"
             placeholder="请选择预计归还日期"
@@ -371,7 +445,11 @@ onMounted(() => {
           />
         </FormItem>
         <FormItem label="借阅事由" name="reason">
-          <Textarea v-model:value="formData.reason" :rows="3" placeholder="请输入借阅事由" />
+          <Textarea
+            v-model:value="formData.reason"
+            :rows="3"
+            placeholder="请输入借阅事由"
+          />
         </FormItem>
       </Form>
     </Modal>
@@ -391,7 +469,10 @@ onMounted(() => {
         <FormItem label="档案名称">
           <Input :value="currentBorrow?.archiveName" disabled />
         </FormItem>
-        <FormItem label="归还日期" :rules="[{ required: true, message: '请选择归还日期' }]">
+        <FormItem
+          label="归还日期"
+          :rules="[{ required: true, message: '请选择归还日期' }]"
+        >
           <DatePicker
             v-model:value="returnFormData.returnDate"
             placeholder="请选择归还日期"
@@ -400,7 +481,11 @@ onMounted(() => {
           />
         </FormItem>
         <FormItem label="档案状况">
-          <Textarea v-model:value="returnFormData.condition" :rows="3" placeholder="请输入档案状况（可选）" />
+          <Textarea
+            v-model:value="returnFormData.condition"
+            :rows="3"
+            placeholder="请输入档案状况（可选）"
+          />
         </FormItem>
       </Form>
     </Modal>

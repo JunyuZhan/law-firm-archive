@@ -194,9 +194,13 @@ export function checkAiStatus() {
  * AI 生成文书
  */
 export function aiGenerateDocument(command: AiGenerateDocumentCommand) {
-  return requestClient.post<AiGenerateResult>('/document/ai/generate', command, {
-    timeout: AI_TIMEOUT,
-  });
+  return requestClient.post<AiGenerateResult>(
+    '/document/ai/generate',
+    command,
+    {
+      timeout: AI_TIMEOUT,
+    },
+  );
 }
 
 /**
@@ -218,15 +222,21 @@ export function collectMatterContext(
   includeDocuments = true,
   extractContent = false,
 ) {
-  return requestClient.get<MatterContextDTO>(`/document/ai/context/${matterId}`, {
-    params: { includeDocuments, extractContent },
-  });
+  return requestClient.get<MatterContextDTO>(
+    `/document/ai/context/${matterId}`,
+    {
+      params: { includeDocuments, extractContent },
+    },
+  );
 }
 
 /**
  * 选择性收集项目上下文
  */
-export function collectSelectiveContext(matterId: number, options: CollectOptions) {
+export function collectSelectiveContext(
+  matterId: number,
+  options: CollectOptions,
+) {
   return requestClient.post<MatterContextDTO>(
     `/document/ai/context/${matterId}/selective`,
     options,
@@ -237,7 +247,9 @@ export function collectSelectiveContext(matterId: number, options: CollectOption
  * 获取项目可选文档列表
  */
 export function getAvailableDocuments(matterId: number) {
-  return requestClient.get<DocumentInfo[]>(`/document/ai/context/${matterId}/documents`);
+  return requestClient.get<DocumentInfo[]>(
+    `/document/ai/context/${matterId}/documents`,
+  );
 }
 
 // ========== 脱敏处理 ==========
@@ -246,7 +258,10 @@ export function getAvailableDocuments(matterId: number) {
  * 脱敏项目上下文信息
  */
 export function maskMatterContext(context: MatterContextDTO) {
-  return requestClient.post<MatterContextDTO>('/document/ai/context/mask', context);
+  return requestClient.post<MatterContextDTO>(
+    '/document/ai/context/mask',
+    context,
+  );
 }
 
 /**
@@ -267,15 +282,21 @@ export function collectAndMaskContext(
   includeDocuments = true,
   extractContent = false,
 ) {
-  return requestClient.get<MatterContextDTO>(`/document/ai/context/${matterId}/masked`, {
-    params: { includeDocuments, extractContent },
-  });
+  return requestClient.get<MatterContextDTO>(
+    `/document/ai/context/${matterId}/masked`,
+    {
+      params: { includeDocuments, extractContent },
+    },
+  );
 }
 
 /**
  * 收集并脱敏（带映射，用于还原）
  */
-export function collectAndMaskWithMapping(matterId: number, options?: CollectOptions) {
+export function collectAndMaskWithMapping(
+  matterId: number,
+  options?: CollectOptions,
+) {
   return requestClient.post<MaskingResultResponse>(
     `/document/ai/context/${matterId}/masked-with-mapping`,
     options || {},
@@ -288,7 +309,10 @@ export function collectAndMaskWithMapping(matterId: number, options?: CollectOpt
  * 脱敏还原
  * 将 AI 生成的脱敏文书还原为包含真实信息的文书
  */
-export function restoreMaskedText(maskedText: string, mapping: MaskingMappingDTO) {
+export function restoreMaskedText(
+  maskedText: string,
+  mapping: MaskingMappingDTO,
+) {
   return requestClient.post<string>('/document/ai/restore', {
     maskedText,
     mapping,

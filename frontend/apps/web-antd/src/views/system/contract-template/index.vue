@@ -1,14 +1,18 @@
 <script setup lang="ts">
-import { ref } from 'vue';
-import { message, Modal } from 'ant-design-vue';
-import { Page } from '@vben/common-ui';
-import { Button, Space, Tag } from 'ant-design-vue';
-import { Plus } from '@vben/icons';
 import type { VxeGridProps } from '#/adapter/vxe-table';
+
+import { ref } from 'vue';
+
+import { Page } from '@vben/common-ui';
+import { Plus } from '@vben/icons';
+
+import { Button, message, Modal, Space, Tag } from 'ant-design-vue';
+
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import { requestClient } from '#/api/request';
-import ContractTemplateModal from './components/ContractTemplateModal.vue';
+
 import ContractPreviewModal from './components/ContractPreviewModal.vue';
+import ContractTemplateModal from './components/ContractTemplateModal.vue';
 
 defineOptions({ name: 'SystemContractTemplate' });
 
@@ -35,7 +39,7 @@ const previewModalRef = ref<InstanceType<typeof ContractPreviewModal>>();
 
 // ==================== 表格配置 ====================
 
-const gridColumns: VxeGridProps['gridOptions']['columns'] = [
+const gridColumns: VxeGridProps['columns'] = [
   { title: '模板编号', field: 'templateNo', width: 100 },
   { title: '模板名称', field: 'name', width: 150 },
   { title: '合同类型', field: 'contractTypeName', width: 100 },
@@ -43,12 +47,20 @@ const gridColumns: VxeGridProps['gridOptions']['columns'] = [
   { title: '状态', field: 'status', width: 80, slots: { default: 'status' } },
   { title: '描述', field: 'description', minWidth: 150 },
   { title: '创建时间', field: 'createdAt', width: 160 },
-  { title: '操作', field: 'action', width: 200, fixed: 'right', slots: { default: 'action' } },
+  {
+    title: '操作',
+    field: 'action',
+    width: 200,
+    fixed: 'right',
+    slots: { default: 'action' },
+  },
 ];
 
 // 加载数据
 async function loadData() {
-  const list = await requestClient.get<ContractTemplateDTO[]>('/system/contract-template/list');
+  const list = await requestClient.get<ContractTemplateDTO[]>(
+    '/system/contract-template/list',
+  );
   return {
     items: list,
     total: list.length,
@@ -126,9 +138,9 @@ function handleModalSuccess() {
 </script>
 
 <template>
-  <Page 
-    title="合同模板管理" 
-    description="管理委托合同模板，支持富文本编辑和变量插入" 
+  <Page
+    title="合同模板管理"
+    description="管理委托合同模板，支持富文本编辑和变量插入"
     auto-content-height
   >
     <Grid>
@@ -160,7 +172,10 @@ function handleModalSuccess() {
     </Grid>
 
     <!-- 编辑弹窗 -->
-    <ContractTemplateModal ref="templateModalRef" @success="handleModalSuccess" />
+    <ContractTemplateModal
+      ref="templateModalRef"
+      @success="handleModalSuccess"
+    />
 
     <!-- 预览弹窗 -->
     <ContractPreviewModal ref="previewModalRef" />

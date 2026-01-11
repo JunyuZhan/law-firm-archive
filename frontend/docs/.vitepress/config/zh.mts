@@ -64,9 +64,7 @@ function sidebarUser(): DefaultTheme.SidebarItem[] {
     {
       collapsed: false,
       text: '财务管理',
-      items: [
-        { link: 'finance-management', text: '财务管理' },
-      ],
+      items: [{ link: 'finance-management', text: '财务管理' }],
     },
     {
       collapsed: false,
@@ -98,9 +96,7 @@ function sidebarUser(): DefaultTheme.SidebarItem[] {
     {
       collapsed: false,
       text: '帮助',
-      items: [
-        { link: 'faq', text: '常见问题' },
-      ],
+      items: [{ link: 'faq', text: '常见问题' }],
     },
   ];
 }

@@ -1,37 +1,57 @@
 <script setup lang="ts">
+import type { MatterDossierItem } from '../types';
+
+import type { MatterDTO } from '#/api/matter/types';
+
 /**
  * 项目选择器组件
  * 用于选择关联项目和卷宗目录
  * 支持远程搜索大量项目
  */
-import { ref, computed, watch, onMounted } from 'vue';
-import { message } from 'ant-design-vue';
-import { Space, Select, Switch, Alert, Card, Tag, Row, Col, Spin } from 'ant-design-vue';
+import { computed, onMounted, ref, watch } from 'vue';
+
+import {
+  Alert,
+  Card,
+  Col,
+  message,
+  Row,
+  Select,
+  Space,
+  Spin,
+  Switch,
+  Tag,
+} from 'ant-design-vue';
+
+import {
+  getMatterDossierItems,
+  initMatterDossier,
+} from '#/api/document/dossier';
 import { getMyMatters } from '#/api/matter';
-import { getMatterDossierItems, initMatterDossier } from '#/api/document/dossier';
-import type { MatterDTO } from '#/api/matter/types';
-import type { MatterDossierItem } from '../types';
 
 defineOptions({ name: 'MatterSelector' });
 
-const props = withDefaults(defineProps<{
-  /** 选中的项目 ID */
-  modelValue?: number;
-  /** 是否个人文书 */
-  isPersonalDoc?: boolean;
-  /** 选中的卷宗目录 ID */
-  dossierId?: number;
-  /** 是否显示卷宗目录选择 */
-  showDossier?: boolean;
-  /** 是否显示项目信息卡片 */
-  showMatterCard?: boolean;
-}>(), {
-  modelValue: undefined,
-  isPersonalDoc: false,
-  dossierId: undefined,
-  showDossier: true,
-  showMatterCard: true,
-});
+const props = withDefaults(
+  defineProps<{
+    /** 选中的卷宗目录 ID */
+    dossierId?: number;
+    /** 是否个人文书 */
+    isPersonalDoc?: boolean;
+    /** 选中的项目 ID */
+    modelValue?: number;
+    /** 是否显示卷宗目录选择 */
+    showDossier?: boolean;
+    /** 是否显示项目信息卡片 */
+    showMatterCard?: boolean;
+  }>(),
+  {
+    modelValue: undefined,
+    isPersonalDoc: false,
+    dossierId: undefined,
+    showDossier: true,
+    showMatterCard: true,
+  },
+);
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: number | undefined): void;
@@ -54,11 +74,11 @@ const pageSize = 20;
 
 // 计算属性
 const selectedMatter = computed(() => {
-  return matters.value.find(m => m.id === props.modelValue) || null;
+  return matters.value.find((m) => m.id === props.modelValue) || null;
 });
 
 const matterOptions = computed(() => {
-  return matters.value.map(m => ({
+  return matters.value.map((m) => ({
     label: `[${m.matterNo}] ${m.name}`,
     value: m.id,
     matter: m, // 保存完整对象用于显示详情
@@ -68,17 +88,14 @@ const matterOptions = computed(() => {
 const dossierOptions = computed(() => {
   const buildOptions = (parentId: number, level: number = 0): any[] => {
     return dossierItems.value
-      .filter(item => item.parentId === parentId)
-      .map(item => ({
-        label: '　'.repeat(level) + '📁 ' + item.name,
+      .filter((item) => item.parentId === parentId)
+      .map((item) => ({
+        label: `${'　'.repeat(level)}📁 ${item.name}`,
         value: item.id,
         children: buildOptions(item.id, level + 1),
       }));
   };
-  return [
-    { label: '📂 项目根目录', value: undefined },
-    ...buildOptions(0),
-  ];
+  return [{ label: '📂 项目根目录', value: undefined }, ...buildOptions(0)];
 });
 
 const hasMoreMatters = computed(() => {
@@ -86,29 +103,32 @@ const hasMoreMatters = computed(() => {
 });
 
 // 方法 - 加载项目（支持搜索和分页）
-async function loadMatters(keyword?: string, page: number = 1, append: boolean = false) {
+async function loadMatters(
+  keyword?: string,
+  page: number = 1,
+  append: boolean = false,
+) {
   if (searching.value) return;
-  
+
   searching.value = true;
   loading.value = page === 1 && !append;
-  
+
   try {
     // 智能搜索：判断输入是否像项目编号（数字开头或包含特定格式）
-    const isLikelyMatterNo = keyword && /^[A-Z0-9\-]/.test(keyword.toUpperCase());
-    
-    const res = await getMyMatters({ 
-      pageNum: page, 
+    const isLikelyMatterNo =
+      keyword && /^[A-Z0-9\-]/.test(keyword.toUpperCase());
+
+    const res = await getMyMatters({
+      pageNum: page,
       pageSize,
       // 按项目名称或编号搜索
       name: keyword || undefined,
       matterNo: isLikelyMatterNo ? keyword : undefined,
     });
-    
-    if (append) {
-      matters.value = [...matters.value, ...(res.list || [])];
-    } else {
-      matters.value = res.list || [];
-    }
+
+    matters.value = append
+      ? [...matters.value, ...(res.list || [])]
+      : res.list || [];
     totalMatters.value = res.total || 0;
     currentPage.value = page;
   } catch (error: any) {
@@ -120,10 +140,10 @@ async function loadMatters(keyword?: string, page: number = 1, append: boolean =
 }
 
 // 远程搜索
-let searchTimer: ReturnType<typeof setTimeout> | null = null;
+let searchTimer: null | ReturnType<typeof setTimeout> = null;
 function handleSearch(keyword: string) {
   searchKeyword.value = keyword;
-  
+
   // 防抖处理
   if (searchTimer) {
     clearTimeout(searchTimer);
@@ -151,20 +171,22 @@ function handlePopupScroll(e: Event) {
 async function loadDossierItems(matterId: number) {
   dossierLoading.value = true;
   dossierItems.value = [];
-  
+
   try {
     let items = await getMatterDossierItems(matterId);
-    
+
     // 如果没有卷宗目录，尝试初始化
     if (!items || items.length === 0) {
       console.log('[MatterSelector] 项目卷宗目录为空，尝试初始化...');
       items = await initMatterDossier(matterId);
     }
-    
+
     // 过滤出文件夹类型
-    dossierItems.value = ((items || []) as MatterDossierItem[]).filter(item => item.itemType === 'FOLDER');
+    dossierItems.value = ((items || []) as MatterDossierItem[]).filter(
+      (item) => item.itemType === 'FOLDER',
+    );
     emit('dossierLoaded', dossierItems.value);
-    
+
     if (dossierItems.value.length === 0) {
       console.log('[MatterSelector] 项目暂无文件夹目录');
     }
@@ -181,16 +203,16 @@ function handleMatterChange(value: any) {
   emit('update:modelValue', numValue);
   emit('update:dossierId', undefined);
   dossierItems.value = [];
-  
+
   if (numValue) {
     loadDossierItems(numValue);
   }
-  
-  const matter = matters.value.find(m => m.id === numValue) || null;
+
+  const matter = matters.value.find((m) => m.id === numValue) || null;
   emit('matterChange', matter);
 }
 
-function handlePersonalDocChange(checked: boolean | string | number) {
+function handlePersonalDocChange(checked: boolean | number | string) {
   const value = Boolean(checked);
   emit('update:isPersonalDoc', value);
   if (value) {
@@ -206,11 +228,14 @@ function handleDossierChange(value: any) {
 }
 
 // 监听
-watch(() => props.modelValue, (newVal) => {
-  if (newVal && dossierItems.value.length === 0) {
-    loadDossierItems(newVal);
-  }
-});
+watch(
+  () => props.modelValue,
+  (newVal) => {
+    if (newVal && dossierItems.value.length === 0) {
+      loadDossierItems(newVal);
+    }
+  },
+);
 
 onMounted(() => {
   loadMatters();
@@ -239,13 +264,13 @@ defineExpose({
     <!-- 项目选择 -->
     <template v-if="!isPersonalDoc">
       <h4 class="section-title">📁 选择关联项目</h4>
-      
+
       <!-- 增强的项目选择器：支持远程搜索 -->
       <Select
         :value="modelValue"
         placeholder="输入项目编号或名称搜索..."
         style="width: 100%"
-        allowClear
+        allow-clear
         show-search
         :filter-option="false"
         :options="matterOptions"
@@ -264,46 +289,60 @@ defineExpose({
             <div v-if="hasMoreMatters" class="load-more-hint">
               <Spin v-if="searching" size="small" />
               <span v-else class="load-more-text">
-                已加载 {{ matters.length }} / {{ totalMatters }} 条，滚动加载更多
+                已加载 {{ matters.length }} /
+                {{ totalMatters }} 条，滚动加载更多
               </span>
             </div>
           </div>
         </template>
       </Select>
-      
+
       <!-- 搜索提示 -->
       <p class="search-hint">
-        <Tag color="blue">{{ totalMatters }}</Tag> 个可选项目，支持按编号/名称/客户搜索
+        <Tag color="blue">{{ totalMatters }}</Tag>
+        个可选项目，支持按编号/名称/客户搜索
       </p>
-      
+
       <!-- 项目信息卡片 -->
       <Card v-if="showMatterCard && selectedMatter" class="matter-card">
         <Row :gutter="16">
           <Col :span="18">
-            <p class="matter-name"><strong>{{ selectedMatter.name }}</strong></p>
+            <p class="matter-name">
+              <strong>{{ selectedMatter.name }}</strong>
+            </p>
             <p class="matter-info">
               <Tag size="small">{{ selectedMatter.matterNo }}</Tag>
               <span>客户：{{ selectedMatter.clientName || '-' }}</span>
-              <span style="margin-left: 12px;">类型：{{ selectedMatter.matterTypeName || selectedMatter.matterType || '-' }}</span>
+              <span style="margin-left: 12px"
+                >类型：{{
+                  selectedMatter.matterTypeName ||
+                  selectedMatter.matterType ||
+                  '-'
+                }}</span
+              >
             </p>
           </Col>
-          <Col :span="6" style="text-align: right;">
-            <Tag :color="selectedMatter.status === 'ACTIVE' ? 'green' : 'default'">
+          <Col :span="6" style="text-align: right">
+            <Tag
+              :color="selectedMatter.status === 'ACTIVE' ? 'green' : 'default'"
+            >
               {{ selectedMatter.statusName || selectedMatter.status }}
             </Tag>
           </Col>
         </Row>
       </Card>
-      
+
       <!-- 卷宗目录选择 -->
       <template v-if="showDossier && modelValue">
-        <h4 class="section-title" style="margin-top: 16px;">📂 保存到卷宗目录</h4>
+        <h4 class="section-title" style="margin-top: 16px">
+          📂 保存到卷宗目录
+        </h4>
         <Spin :spinning="dossierLoading">
           <Select
             :value="dossierId"
             placeholder="选择卷宗目录（可选）"
             style="width: 100%"
-            allowClear
+            allow-clear
             :options="dossierOptions"
             :disabled="dossierLoading"
             @change="handleDossierChange"
@@ -315,16 +354,20 @@ defineExpose({
           </Select>
         </Spin>
         <p class="hint-text">
-          {{ dossierItems.length > 0 ? `共 ${dossierItems.length} 个目录可选` : '不选择则保存到项目根目录' }}
+          {{
+            dossierItems.length > 0
+              ? `共 ${dossierItems.length} 个目录可选`
+              : '不选择则保存到项目根目录'
+          }}
         </p>
       </template>
     </template>
-    
+
     <!-- 个人文书模式提示 -->
-    <Alert 
-      v-else 
-      type="info" 
-      message="个人文书模式" 
+    <Alert
+      v-else
+      type="info"
+      message="个人文书模式"
       description="文书将保存到【我的文书】列表中"
       show-icon
       style="margin-top: 24px"
@@ -395,4 +438,3 @@ defineExpose({
   color: #999;
 }
 </style>
-

@@ -7,9 +7,9 @@ import { requestClient } from '#/api/request';
 // 全局开关：开启 OCR 功能
 // OCR功能暂时禁用，本地PaddleOCR识别较慢(>5秒)，后续版本优化
 export const OCR_DISABLED = true;
-export const OCR_DISABLED_MESSAGE = 'OCR功能暂时禁用，本地识别服务优化中，后续版本将重新开放';
+export const OCR_DISABLED_MESSAGE =
+  'OCR功能暂时禁用，本地识别服务优化中，后续版本将重新开放';
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const ocrDisabledPromise = <_T>(): Promise<never> =>
   Promise.reject(new Error(OCR_DISABLED_MESSAGE));
 
@@ -24,7 +24,7 @@ export interface OcrResultDTO {
   rawText?: string;
   data?: Record<string, any>;
   confidence?: number;
-  
+
   // 银行回单字段
   bankName?: string;
   amount?: number;
@@ -35,7 +35,7 @@ export interface OcrResultDTO {
   payeeAccount?: string;
   transactionNo?: string;
   remark?: string;
-  
+
   // 身份证字段
   name?: string;
   idNumber?: string;
@@ -46,12 +46,13 @@ export interface OcrResultDTO {
   issuingAuthority?: string;
   validFrom?: string;
   validTo?: string;
-  
+
   // 营业执照字段
   companyName?: string;
   creditCode?: string;
   companyType?: string;
   legalRepresentative?: string;
+  legalPerson?: string; // 法人代表（别名）
   registeredCapital?: string;
   establishDate?: string;
   businessTerm?: string;
@@ -117,7 +118,7 @@ export function recognizeText(file: File) {
   formData.append('file', file);
   return requestClient.post<OcrResultDTO>('/ocr/text', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
-    timeout: 120000, // OCR识别超时时间120秒
+    timeout: 120_000, // OCR识别超时时间120秒
   });
 }
 
@@ -135,7 +136,7 @@ export function recognizeTextByUrl(imageUrl: string) {
   if (OCR_DISABLED) return ocrDisabledPromise<OcrResultDTO>();
   return requestClient.post<OcrResultDTO>('/ocr/text/url', null, {
     params: { imageUrl },
-    timeout: 120000, // OCR识别超时时间120秒
+    timeout: 120_000, // OCR识别超时时间120秒
   });
 }
 
@@ -149,7 +150,7 @@ export function recognizeBankReceipt(file: File) {
   formData.append('file', file);
   return requestClient.post<OcrResultDTO>('/ocr/bank-receipt', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
-    timeout: 120000, // OCR识别超时时间120秒
+    timeout: 120_000, // OCR识别超时时间120秒
   });
 }
 
@@ -161,7 +162,7 @@ export function recognizeBankReceiptByUrl(imageUrl: string) {
   if (OCR_DISABLED) return ocrDisabledPromise<OcrResultDTO>();
   return requestClient.post<OcrResultDTO>('/ocr/bank-receipt/url', null, {
     params: { imageUrl },
-    timeout: 120000, // OCR识别超时时间120秒
+    timeout: 120_000, // OCR识别超时时间120秒
   });
 }
 
@@ -177,7 +178,7 @@ export function recognizeIdCard(file: File, isFront: boolean = true) {
   return requestClient.post<OcrResultDTO>('/ocr/id-card', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
     params: { isFront },
-    timeout: 120000, // OCR识别超时时间120秒
+    timeout: 120_000, // OCR识别超时时间120秒
   });
 }
 
@@ -186,11 +187,14 @@ export function recognizeIdCard(file: File, isFront: boolean = true) {
  * @param imageUrl 图片URL
  * @param isFront 是否正面
  */
-export function recognizeIdCardByUrl(imageUrl: string, isFront: boolean = true) {
+export function recognizeIdCardByUrl(
+  imageUrl: string,
+  isFront: boolean = true,
+) {
   if (OCR_DISABLED) return ocrDisabledPromise<OcrResultDTO>();
   return requestClient.post<OcrResultDTO>('/ocr/id-card/url', null, {
     params: { imageUrl, isFront },
-    timeout: 120000, // OCR识别超时时间120秒
+    timeout: 120_000, // OCR识别超时时间120秒
   });
 }
 
@@ -204,7 +208,7 @@ export function recognizeBusinessLicense(file: File) {
   formData.append('file', file);
   return requestClient.post<OcrResultDTO>('/ocr/business-license', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
-    timeout: 120000, // OCR识别超时时间120秒
+    timeout: 120_000, // OCR识别超时时间120秒
   });
 }
 
@@ -216,7 +220,7 @@ export function recognizeBusinessLicenseByUrl(imageUrl: string) {
   if (OCR_DISABLED) return ocrDisabledPromise<OcrResultDTO>();
   return requestClient.post<OcrResultDTO>('/ocr/business-license/url', null, {
     params: { imageUrl },
-    timeout: 120000, // OCR识别超时时间120秒
+    timeout: 120_000, // OCR识别超时时间120秒
   });
 }
 
@@ -230,7 +234,7 @@ export function recognizeBusinessCard(file: File) {
   formData.append('file', file);
   return requestClient.post<OcrResultDTO>('/ocr/business-card', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
-    timeout: 120000, // OCR识别超时时间120秒
+    timeout: 120_000, // OCR识别超时时间120秒
   });
 }
 
@@ -242,7 +246,7 @@ export function recognizeBusinessCardByUrl(imageUrl: string) {
   if (OCR_DISABLED) return ocrDisabledPromise<OcrResultDTO>();
   return requestClient.post<OcrResultDTO>('/ocr/business-card/url', null, {
     params: { imageUrl },
-    timeout: 120000, // OCR识别超时时间120秒
+    timeout: 120_000, // OCR识别超时时间120秒
   });
 }
 
@@ -256,7 +260,7 @@ export function recognizeInvoice(file: File) {
   formData.append('file', file);
   return requestClient.post<OcrResultDTO>('/ocr/invoice', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
-    timeout: 120000, // OCR识别超时时间120秒
+    timeout: 120_000, // OCR识别超时时间120秒
   });
 }
 
@@ -268,7 +272,7 @@ export function recognizeInvoiceByUrl(imageUrl: string) {
   if (OCR_DISABLED) return ocrDisabledPromise<OcrResultDTO>();
   return requestClient.post<OcrResultDTO>('/ocr/invoice/url', null, {
     params: { imageUrl },
-    timeout: 120000, // OCR识别超时时间120秒
+    timeout: 120_000, // OCR识别超时时间120秒
   });
 }
 
@@ -279,12 +283,15 @@ export function recognizeInvoiceByUrl(imageUrl: string) {
  * @param ocrResult OCR识别结果（银行回单）
  */
 export function matchPaymentFromOcr(ocrResult: OcrResultDTO) {
-  return requestClient.post<ReconciliationResultDTO>('/finance/payment/match-ocr', {
-    amount: ocrResult.amount,
-    payerName: ocrResult.payerName,
-    transactionDate: ocrResult.transactionDate,
-    transactionNo: ocrResult.transactionNo,
-  });
+  return requestClient.post<ReconciliationResultDTO>(
+    '/finance/payment/match-ocr',
+    {
+      amount: ocrResult.amount,
+      payerName: ocrResult.payerName,
+      transactionDate: ocrResult.transactionDate,
+      transactionNo: ocrResult.transactionNo,
+    },
+  );
 }
 
 /**
@@ -296,13 +303,15 @@ export function matchPayment(params: {
   transactionDate?: string;
   transactionNo?: string;
 }) {
-  return requestClient.get<ReconciliationResultDTO>('/finance/fee/reconciliation/match', {
-    params: {
-      amount: params.amount,
-      payerName: params.payerName,
-      transactionNo: params.transactionNo,
-      paymentDate: params.transactionDate,
+  return requestClient.get<ReconciliationResultDTO>(
+    '/finance/fee/reconciliation/match',
+    {
+      params: {
+        amount: params.amount,
+        payerName: params.payerName,
+        transactionNo: params.transactionNo,
+        paymentDate: params.transactionDate,
+      },
     },
-  });
+  );
 }
-

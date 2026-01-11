@@ -25,7 +25,8 @@ export interface NotificationQueryDTO {
   isRead?: boolean;
 }
 
-export interface PageResult<T> {
+// 本地分页结果类型（不导出，避免与其他模块冲突）
+interface NotificationPageResult<T> {
   records: T[];
   total: number;
   pageNum: number;
@@ -36,7 +37,10 @@ export interface PageResult<T> {
 
 /** 获取我的通知列表 */
 export function getMyNotifications(params?: NotificationQueryDTO) {
-  return requestClient.get<PageResult<NotificationDTO>>('/system/notification', { params });
+  return requestClient.get<NotificationPageResult<NotificationDTO>>(
+    '/system/notification',
+    { params },
+  );
 }
 
 /** 获取未读数量 */

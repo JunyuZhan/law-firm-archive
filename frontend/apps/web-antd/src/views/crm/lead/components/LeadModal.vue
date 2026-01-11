@@ -1,13 +1,30 @@
 <script setup lang="ts">
-import { ref } from 'vue';
-import { useVbenModal } from '@vben/common-ui';
-import { useVbenForm } from '#/adapter/form';
 import type { VbenFormSchema } from '#/adapter/form';
-import { message, Upload, Spin, Tooltip, Alert, Button, Tag } from 'ant-design-vue';
+import type { CreateLeadCommand, LeadDTO } from '#/api/client/types';
+
+import { ref } from 'vue';
+
+import { useVbenDrawer } from '@vben/common-ui';
 import { IconifyIcon } from '@vben/icons';
+
+import {
+  Alert,
+  Button,
+  Divider,
+  message,
+  Spin,
+  Tag,
+  Tooltip,
+  Upload,
+} from 'ant-design-vue';
+
+import { useVbenForm } from '#/adapter/form';
 import { createLead, updateLead } from '#/api/client';
-import { recognizeBusinessCard, OCR_DISABLED, OCR_DISABLED_MESSAGE } from '#/api/ocr';
-import type { LeadDTO, CreateLeadCommand } from '#/api/client/types';
+import {
+  OCR_DISABLED,
+  OCR_DISABLED_MESSAGE,
+  recognizeBusinessCard,
+} from '#/api/ocr';
 
 const emit = defineEmits<{
   success: [];
@@ -79,8 +96,9 @@ const formSchema: VbenFormSchema[] = [
       min: 0,
       precision: 2,
       style: { width: '100%' },
-      formatter: (value: any) => `¥ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ','),
-      parser: (value: any) => value.replace(/¥\s?|(,*)/g, ''),
+      formatter: (value: any) =>
+        `¥ ${value}`.replaceAll(/\B(?=(\d{3})+(?!\d))/g, ','),
+      parser: (value: any) => value.replaceAll(/¥\s?|(,*)/g, ''),
       placeholder: '请输入预估金额',
     },
   },
@@ -112,20 +130,25 @@ const [Form, formApi] = useVbenForm({
   },
 });
 
-const [Modal, modalApi] = useVbenModal({
+const [Drawer, drawerApi] = useVbenDrawer({
+  overlayBlur: 4,
+  placement: 'right', // 默认从右侧滑入
   async onConfirm() {
     try {
       const values = await formApi.validate();
-      
+
       if (editingId.value) {
-        await updateLead(editingId.value, values as unknown as Partial<CreateLeadCommand>);
+        await updateLead(
+          editingId.value,
+          values as unknown as Partial<CreateLeadCommand>,
+        );
         message.success('更新成功');
       } else {
         await createLead(values as unknown as CreateLeadCommand);
         message.success('创建成功');
       }
-      
-      modalApi.close();
+
+      drawerApi.close();
       emit('success');
     } catch (error: any) {
       if (error?.errorFields) return;
@@ -144,7 +167,7 @@ const [Modal, modalApi] = useVbenModal({
 async function handleBusinessCardOcr(info: any) {
   const file = info.file.originFileObj || info.file;
   if (!file) return;
-  
+
   ocrLoading.value = true;
   try {
     const result = await recognizeBusinessCard(file);
@@ -164,29 +187,29 @@ async function handleBusinessCardOcr(info: any) {
       } else if (result.phone) {
         values.contactPhone = result.phone;
       }
-      
+
       formApi.setValues(values);
       message.success(`名片识别成功！已自动填充联系人信息`);
     } else {
       message.error(result.errorMessage || '名片识别失败');
     }
-  } catch (e: any) {
-    message.error(e?.message || '名片识别失败');
+  } catch (error: any) {
+    message.error(error?.message || '名片识别失败');
   } finally {
     ocrLoading.value = false;
   }
 }
 
-// 打开新增弹窗
+// 打开新增抽屉（左侧按钮 → 右侧抽屉）
 function openCreate() {
   editingId.value = undefined;
   formApi.resetForm();
   formApi.setValues({ source: 'REFERRAL' });
-  modalApi.setState({ title: '新增案源' });
-  modalApi.open();
+  drawerApi.setState({ title: '新增案源', placement: 'right' });
+  drawerApi.open();
 }
 
-// 打开编辑弹窗
+// 打开编辑抽屉（右侧按钮 → 左侧抽屉）
 function openEdit(record: LeadDTO) {
   editingId.value = record.id;
   formApi.resetForm();
@@ -200,8 +223,8 @@ function openEdit(record: LeadDTO) {
     followUpUserId: record.followUpUserId,
     remark: record.remark,
   });
-  modalApi.setState({ title: '编辑案源' });
-  modalApi.open();
+  drawerApi.setState({ title: '编辑案源', placement: 'left' });
+  drawerApi.open();
 }
 
 // 兼容旧的 open 方法
@@ -217,13 +240,18 @@ defineExpose({ open, openCreate, openEdit });
 </script>
 
 <template>
-  <Modal class="w-[600px]">
+  <Drawer class="w-[480px]">
     <Spin :spinning="ocrLoading" tip="正在识别名片...">
       <!-- OCR智能识别区域 - 仅新增时显示 -->
-      <Alert v-if="!editingId && !OCR_DISABLED" type="info" style="margin-bottom: 16px" show-icon>
+      <Alert
+        v-if="!editingId && !OCR_DISABLED"
+        type="info"
+        style="margin-bottom: 16px"
+        show-icon
+      >
         <template #message>
           <span class="font-medium text-blue-700">智能填充</span>
-          <span class="text-gray-500 text-xs ml-2">上传名片自动识别</span>
+          <span class="ml-2 text-xs text-gray-500">上传名片自动识别</span>
         </template>
         <template #description>
           <div class="mt-2">
@@ -234,8 +262,14 @@ defineExpose({ open, openCreate, openEdit });
               @change="handleBusinessCardOcr"
             >
               <Tooltip title="拍照或上传名片，自动识别姓名、电话等信息">
-                <Button :loading="ocrLoading" :disabled="ocrLoading" size="small">
-                  <template #icon><IconifyIcon icon="ant-design:idcard-outlined" /></template>
+                <Button
+                  :loading="ocrLoading"
+                  :disabled="ocrLoading"
+                  size="small"
+                >
+                  <template #icon>
+                    <IconifyIcon icon="ant-design:idcard-outlined" />
+                  </template>
                   名片识别
                 </Button>
               </Tooltip>
@@ -243,19 +277,25 @@ defineExpose({ open, openCreate, openEdit });
           </div>
         </template>
       </Alert>
-      
+
       <!-- OCR禁用提示 -->
-      <Alert v-else-if="!editingId && OCR_DISABLED" type="warning" style="margin-bottom: 16px" show-icon>
+      <Alert
+        v-else-if="!editingId && OCR_DISABLED"
+        type="warning"
+        style="margin-bottom: 16px"
+        show-icon
+      >
         <template #message>
           <span class="font-medium text-gray-500">智能填充</span>
           <Tag color="default" class="ml-2">暂不可用</Tag>
         </template>
         <template #description>
-          <div class="text-gray-400 text-xs">{{ OCR_DISABLED_MESSAGE }}</div>
+          <div class="text-xs text-gray-400">{{ OCR_DISABLED_MESSAGE }}</div>
         </template>
       </Alert>
 
+      <Divider class="!my-3">案源信息</Divider>
       <Form />
     </Spin>
-  </Modal>
+  </Drawer>
 </template>

@@ -180,16 +180,12 @@ export const ADMIN_CAUSES: CauseCategory[] = [
   {
     code: 'A13',
     name: '政府信息公开',
-    causes: [
-      { code: '100', name: '政府信息公开' },
-    ],
+    causes: [{ code: '100', name: '政府信息公开' }],
   },
   {
     code: 'A14',
     name: '行政批复',
-    causes: [
-      { code: '101', name: '行政批复' },
-    ],
+    causes: [{ code: '101', name: '行政批复' }],
   },
   {
     code: 'A15',
@@ -265,22 +261,16 @@ export const ADMIN_CAUSES: CauseCategory[] = [
   {
     code: 'A20',
     name: '行政赔偿',
-    causes: [
-      { code: '143', name: '行政赔偿' },
-    ],
+    causes: [{ code: '143', name: '行政赔偿' }],
   },
   {
     code: 'A21',
     name: '不履行职责',
-    causes: [
-      { code: '144', name: '不履行法定职责' },
-    ],
+    causes: [{ code: '144', name: '不履行法定职责' }],
   },
   {
     code: 'A22',
     name: '行政公益诉讼',
-    causes: [
-      { code: '145', name: '行政行为公益诉讼' },
-    ],
+    causes: [{ code: '145', name: '行政行为公益诉讼' }],
   },
 ];

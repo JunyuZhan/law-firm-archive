@@ -1,6 +1,12 @@
 <script setup lang="ts">
+import type { VxeGridProps } from '#/adapter/vxe-table';
+import type { MeetingBooking, MeetingRoom } from '#/api/hr/types';
+
 import { onMounted, reactive, ref } from 'vue';
+
 import { Page } from '@vben/common-ui';
+import { Plus } from '@vben/icons';
+
 import {
   Button,
   Card,
@@ -14,8 +20,7 @@ import {
   Space,
   Tag,
 } from 'ant-design-vue';
-import { Plus } from '@vben/icons';
-import type { VxeGridProps } from '#/adapter/vxe-table';
+
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
   bookMeetingRoom,
@@ -25,7 +30,6 @@ import {
   fetchBookingList,
   fetchMeetingRoomList,
 } from '#/api/hr/meeting-room';
-import type { MeetingBooking, MeetingRoom } from '#/api/hr/types';
 
 defineOptions({ name: 'MeetingRoomManagement' });
 
@@ -84,18 +88,39 @@ const bookingStatusTextMap: Record<string, string> = {
 
 // ==================== 会议室表格配置 ====================
 
-const roomColumns: VxeGridProps['gridOptions']['columns'] = [
+const roomColumns: VxeGridProps['columns'] = [
   { title: '会议室名称', field: 'name', width: 150 },
   { title: '位置', field: 'location', width: 150 },
   { title: '容纳人数', field: 'capacity', width: 100 },
   { title: '设备', field: 'equipment', minWidth: 200, showOverflow: true },
-  { title: '状态', field: 'status', width: 100, slots: { default: 'roomStatus' } },
-  { title: '操作', field: 'action', width: 200, fixed: 'right', slots: { default: 'roomAction' } },
+  {
+    title: '状态',
+    field: 'status',
+    width: 100,
+    slots: { default: 'roomStatus' },
+  },
+  {
+    title: '操作',
+    field: 'action',
+    width: 200,
+    fixed: 'right',
+    slots: { default: 'roomAction' },
+  },
 ];
 
-async function loadRoomData({ page }: { page: { currentPage: number; pageSize: number } }) {
-  const res = await fetchMeetingRoomList({ pageNum: page.currentPage, pageSize: page.pageSize });
-  return { items: res.list || [], total: res.total || 0 };
+async function loadRoomData({
+  page,
+}: {
+  page: { currentPage: number; pageSize: number };
+}) {
+  const res = (await fetchMeetingRoomList({
+    pageNum: page.currentPage,
+    pageSize: page.pageSize,
+  })) as any;
+  return {
+    items: res.list || res || [],
+    total: res.total || (Array.isArray(res) ? res.length : 0),
+  };
 }
 
 const [RoomGrid, roomGridApi] = useVbenVxeGrid({
@@ -109,18 +134,36 @@ const [RoomGrid, roomGridApi] = useVbenVxeGrid({
 
 // ==================== 预约表格配置 ====================
 
-const bookingColumns: VxeGridProps['gridOptions']['columns'] = [
+const bookingColumns: VxeGridProps['columns'] = [
   { title: '会议室', field: 'roomName', width: 120 },
   { title: '会议主题', field: 'title', minWidth: 150 },
   { title: '预约人', field: 'userName', width: 100 },
   { title: '开始时间', field: 'startTime', width: 150 },
   { title: '结束时间', field: 'endTime', width: 150 },
-  { title: '状态', field: 'status', width: 100, slots: { default: 'bookingStatus' } },
-  { title: '操作', field: 'action', width: 100, fixed: 'right', slots: { default: 'bookingAction' } },
+  {
+    title: '状态',
+    field: 'status',
+    width: 100,
+    slots: { default: 'bookingStatus' },
+  },
+  {
+    title: '操作',
+    field: 'action',
+    width: 100,
+    fixed: 'right',
+    slots: { default: 'bookingAction' },
+  },
 ];
 
-async function loadBookingData({ page }: { page: { currentPage: number; pageSize: number } }) {
-  const res = await fetchBookingList({ pageNum: page.currentPage, pageSize: page.pageSize });
+async function loadBookingData({
+  page,
+}: {
+  page: { currentPage: number; pageSize: number };
+}) {
+  const res = await fetchBookingList({
+    pageNum: page.currentPage,
+    pageSize: page.pageSize,
+  });
   return { items: res.list || [], total: res.total || 0 };
 }
 
@@ -211,10 +254,19 @@ async function handleSubmitBooking() {
     message.warning('请选择会议时间');
     return;
   }
+  if (!bookingForm.roomId) {
+    message.warning('请选择会议室');
+    return;
+  }
 
   bookingModalLoading.value = true;
   try {
-    await bookMeetingRoom(bookingForm);
+    await bookMeetingRoom({
+      roomId: bookingForm.roomId,
+      title: bookingForm.title,
+      startTime: bookingForm.startTime,
+      endTime: bookingForm.endTime,
+    });
     message.success('预约成功');
     bookingModalVisible.value = false;
     bookingGridApi.reload();
@@ -250,11 +302,19 @@ onMounted(() => {});
         </template>
         <RoomGrid>
           <template #roomStatus="{ row }">
-            <Tag :color="roomStatusColorMap[row.status]">{{ roomStatusTextMap[row.status] }}</Tag>
+            <Tag :color="roomStatusColorMap[row.status]">
+              {{ roomStatusTextMap[row.status] }}
+            </Tag>
           </template>
           <template #roomAction="{ row }">
             <Space>
-              <a :class="{ 'opacity-50 cursor-not-allowed': row.status !== 'AVAILABLE' }" @click="row.status === 'AVAILABLE' && handleBookRoom(row)">预约</a>
+              <a
+                :class="{
+                  'cursor-not-allowed opacity-50': row.status !== 'AVAILABLE',
+                }"
+                @click="row.status === 'AVAILABLE' && handleBookRoom(row)"
+                >预约</a
+              >
               <a @click="handleEditRoom(row)">编辑</a>
               <a style="color: red" @click="handleDeleteRoom(row)">删除</a>
             </Space>
@@ -266,10 +326,17 @@ onMounted(() => {});
       <Card title="预约记录">
         <BookingGrid>
           <template #bookingStatus="{ row }">
-            <Tag :color="bookingStatusColorMap[row.status]">{{ bookingStatusTextMap[row.status] }}</Tag>
+            <Tag :color="bookingStatusColorMap[row.status]">
+              {{ bookingStatusTextMap[row.status] }}
+            </Tag>
           </template>
           <template #bookingAction="{ row }">
-            <a v-if="row.status === 'BOOKED'" style="color: red" @click="handleCancelBooking(row)">取消</a>
+            <a
+              v-if="row.status === 'BOOKED'"
+              style="color: red"
+              @click="handleCancelBooking(row)"
+              >取消</a
+            >
           </template>
         </BookingGrid>
       </Card>
@@ -283,16 +350,26 @@ onMounted(() => {});
       >
         <Form :model="roomForm" layout="vertical">
           <FormItem label="会议室名称" required>
-            <Input v-model:value="roomForm.name" placeholder="请输入会议室名称" />
+            <Input
+              v-model:value="roomForm.name"
+              placeholder="请输入会议室名称"
+            />
           </FormItem>
           <FormItem label="位置">
             <Input v-model:value="roomForm.location" placeholder="请输入位置" />
           </FormItem>
           <FormItem label="容纳人数">
-            <InputNumber v-model:value="roomForm.capacity" :min="1" style="width: 100%" />
+            <InputNumber
+              v-model:value="roomForm.capacity"
+              :min="1"
+              style="width: 100%"
+            />
           </FormItem>
           <FormItem label="设备">
-            <Input v-model:value="roomForm.equipment" placeholder="如：投影仪、白板、视频会议设备" />
+            <Input
+              v-model:value="roomForm.equipment"
+              placeholder="如：投影仪、白板、视频会议设备"
+            />
           </FormItem>
           <FormItem label="描述">
             <Input.TextArea v-model:value="roomForm.description" :rows="3" />
@@ -309,7 +386,10 @@ onMounted(() => {});
       >
         <Form :model="bookingForm" layout="vertical">
           <FormItem label="会议主题" required>
-            <Input v-model:value="bookingForm.title" placeholder="请输入会议主题" />
+            <Input
+              v-model:value="bookingForm.title"
+              placeholder="请输入会议主题"
+            />
           </FormItem>
           <FormItem label="开始时间" required>
             <DatePicker
@@ -330,7 +410,10 @@ onMounted(() => {});
             />
           </FormItem>
           <FormItem label="参会人员">
-            <Input v-model:value="bookingForm.participants" placeholder="请输入参会人员，多人用逗号分隔" />
+            <Input
+              v-model:value="bookingForm.participants"
+              placeholder="请输入参会人员，多人用逗号分隔"
+            />
           </FormItem>
           <FormItem label="会议描述">
             <Input.TextArea v-model:value="bookingForm.description" :rows="3" />

@@ -29,7 +29,7 @@ export interface ContractDTO {
   signerId?: number;
   signerName?: string;
   departmentId?: number;
-  createdBy?: number;  // 创建人ID，用于判断操作权限
+  createdBy?: number; // 创建人ID，用于判断操作权限
   departmentName?: string;
   fileUrl?: string;
   paymentTerms?: string;
@@ -48,7 +48,7 @@ export interface ContractDTO {
   causeOfAction?: string;
   causeOfActionName?: string;
   /** 审理阶段 */
-  trialStage?: string | string[];  // 支持单选或多选
+  trialStage?: string | string[]; // 支持单选或多选
   trialStageName?: string;
   /** 标的金额 */
   claimAmount?: number;
@@ -169,7 +169,7 @@ export interface CreateContractCommand {
   // 扩展字段
   caseType?: string;
   causeOfAction?: string;
-  trialStage?: string | string[];  // 支持单选或多选
+  trialStage?: string | string[]; // 支持单选或多选
   claimAmount?: number;
   jurisdictionCourt?: string;
   opposingParty?: string;
@@ -432,10 +432,15 @@ export interface InvoiceStatisticsDTO {
   totalCount: number;
   monthlyAmount: number;
   yearlyAmount: number;
-  byClient: Array<{ clientName: string; amount: number; count: number }>;
-  byType: Array<{ type: string; typeName: string; amount: number; count: number }>;
-  byStatus: Array<{ status: string; statusName: string; count: number }>;
-  trends: Array<{ month: string; amount: number; count: number }>;
+  byClient: Array<{ amount: number; clientName: string; count: number }>;
+  byType: Array<{
+    amount: number;
+    count: number;
+    type: string;
+    typeName: string;
+  }>;
+  byStatus: Array<{ count: number; status: string; statusName: string }>;
+  trends: Array<{ amount: number; count: number; month: string }>;
 }
 
 // ========== 提成管理 ==========
@@ -535,11 +540,11 @@ export interface CreateExpenseCommand {
 export interface ManualCalculateCommissionCommand {
   paymentId: number;
   participants: {
-    participantId: number;
-    userId: number;
-    commissionRate?: number;
     commissionAmount?: number;
+    commissionRate?: number;
+    participantId: number;
     remark?: string;
+    userId: number;
   }[];
 }
 
@@ -551,4 +556,3 @@ export interface PageResult<T> {
   pageSize: number;
   pages?: number;
 }
-

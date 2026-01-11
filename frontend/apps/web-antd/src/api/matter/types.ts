@@ -14,11 +14,18 @@ export interface MatterSimpleDTO {
   name: string;
   matterType: string;
   matterTypeName?: string;
+  caseType?: string;
+  caseTypeName?: string;
   status: string;
   statusName?: string;
   clientName?: string;
   contractNo?: string;
   leadLawyerName?: string;
+  causeOfAction?: string;
+  causeOfActionName?: string;
+  opposingParty?: string;
+  filingDate?: string;
+  createdAt?: string;
 }
 
 export interface MatterClientDTO {
@@ -45,7 +52,7 @@ export interface MatterDTO {
   businessType?: string;
   clientId: number;
   clientName?: string;
-  clients?: MatterClientDTO[];  // 多客户列表
+  clients?: MatterClientDTO[]; // 多客户列表
   opposingParty?: string;
   opposingLawyerName?: string;
   opposingLawyerLicenseNo?: string;
@@ -109,7 +116,7 @@ export interface MatterQuery {
 
 export interface MatterClientCommand {
   clientId: number;
-  clientRole: string;  // PLAINTIFF-原告, DEFENDANT-被告, THIRD_PARTY-第三人, APPLICANT-申请人, RESPONDENT-被申请人
+  clientRole: string; // PLAINTIFF-原告, DEFENDANT-被告, THIRD_PARTY-第三人, APPLICANT-申请人, RESPONDENT-被申请人
   isPrimary: boolean;
 }
 
@@ -120,7 +127,7 @@ export interface CreateMatterCommand {
   causeOfAction?: string;
   businessType?: string;
   clientId: number;
-  clients?: MatterClientCommand[];  // 多客户列表
+  clients?: MatterClientCommand[]; // 多客户列表
   opposingParty?: string;
   opposingLawyerName?: string;
   opposingLawyerLicenseNo?: string;

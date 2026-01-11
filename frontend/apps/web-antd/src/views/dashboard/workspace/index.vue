@@ -5,44 +5,46 @@ import type {
   WorkbenchTrendItem,
 } from '@vben/common-ui';
 
-import { ref, computed, onMounted, onActivated } from 'vue';
+import type { ScheduleDTO } from '#/api/matter/schedule';
+import type { TaskDTO } from '#/api/matter/types';
+import type { ApprovalDTO } from '#/api/workbench';
+
+import { computed, onActivated, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import dayjs from 'dayjs';
 
 import {
   WorkbenchHeader,
   WorkbenchQuickNav,
   WorkbenchTodo,
 } from '@vben/common-ui';
-import {
-  Card,
-  Row,
-  Col,
-  Statistic,
-  Timeline,
-  TimelineItem,
-  List,
-  ListItem,
-  ListItemMeta,
-  Avatar,
-  Tag,
-  Empty,
-} from 'ant-design-vue';
 import { preferences } from '@vben/preferences';
 import { useUserStore } from '@vben/stores';
 import { openWindow } from '@vben/utils';
 
 import {
-  getWorkbenchStats,
-  getPendingApprovals,
+  Avatar,
+  Card,
+  Col,
+  Empty,
+  List,
+  ListItem,
+  ListItemMeta,
+  Row,
+  Statistic,
+  Tag,
+  Timeline,
+  TimelineItem,
+} from 'ant-design-vue';
+import dayjs from 'dayjs';
+
+import { getMyTodoTasks, getMyUpcomingSchedules } from '#/api/matter';
+import {
   getMyApprovedHistory,
   getMyInitiatedApprovals,
+  getPendingApprovals,
   getRecentProjects,
+  getWorkbenchStats,
 } from '#/api/workbench';
-import { getMyUpcomingSchedules, getMyTodoTasks } from '#/api/matter';
-import type { TaskDTO } from '#/api/matter/types';
-import type { ScheduleDTO } from '#/api/matter/schedule';
-import type { ApprovalDTO } from '#/api/workbench';
 
 const userStore = useUserStore();
 const router = useRouter();
@@ -65,7 +67,6 @@ const pendingApprovals = ref<ApprovalDTO[]>([]);
 
 // 近期日程
 const upcomingSchedules = ref<ScheduleDTO[]>([]);
-
 
 // 待办任务列表
 const todoItems = ref<WorkbenchTodoItem[]>([]);
@@ -169,7 +170,7 @@ function formatScheduleTime(schedule: ScheduleDTO) {
   const start = dayjs(schedule.startTime);
   const today = dayjs().startOf('day');
   const tomorrow = today.add(1, 'day');
-  
+
   let dateLabel = '';
   if (start.isSame(today, 'day')) {
     dateLabel = '今天';
@@ -178,7 +179,7 @@ function formatScheduleTime(schedule: ScheduleDTO) {
   } else {
     dateLabel = start.format('MM/DD');
   }
-  
+
   if (schedule.allDay) {
     return `${dateLabel} 全天`;
   }
@@ -252,7 +253,8 @@ async function loadTrends() {
     try {
       const approvedHistory = await getMyApprovedHistory();
       approvedHistory.slice(0, 5).forEach((approval) => {
-        const statusText = approval.status === 'APPROVED' ? '审批通过了' : '拒绝了';
+        const statusText =
+          approval.status === 'APPROVED' ? '审批通过了' : '拒绝了';
 
         // 权限安全：显示审批人信息（如果是管理员看到其他用户的审批）
         // 如果审批人是当前用户，显示"我"；否则显示审批人姓名
@@ -296,7 +298,8 @@ async function loadTrends() {
         .filter((a) => a.status === 'APPROVED' || a.status === 'REJECTED')
         .slice(0, 5)
         .forEach((approval) => {
-          const statusText = approval.status === 'APPROVED' ? '已通过' : '已拒绝';
+          const statusText =
+            approval.status === 'APPROVED' ? '已通过' : '已拒绝';
           const approverName = approval.approverName || '审批人';
 
           const timestamp = approval.approvedAt
@@ -322,7 +325,7 @@ async function loadTrends() {
 
     // 保存所有动态（移除 timestamp 字段）
     allTrendItems.value = trends.map(({ timestamp, ...item }) => item);
-    
+
     // 默认显示前5条
     trendItems.value = allTrendItems.value.slice(0, 5);
 
@@ -348,18 +351,16 @@ async function loadTrends() {
 // 展开/收起动态
 function toggleTrends() {
   trendsExpanded.value = !trendsExpanded.value;
-  if (trendsExpanded.value) {
-    trendItems.value = allTrendItems.value;
-  } else {
-    trendItems.value = allTrendItems.value.slice(0, 5);
-  }
+  trendItems.value = trendsExpanded.value
+    ? allTrendItems.value
+    : allTrendItems.value.slice(0, 5);
 }
 
 // 是否有更多动态可展开
 const hasMoreTrends = computed(() => allTrendItems.value.length > 5);
 
 // 获取问候语（根据时间动态显示）
-function getGreeting(): { greeting: string; action: string } {
+function getGreeting(): { action: string; greeting: string } {
   const hour = dayjs().hour();
   if (hour >= 5 && hour < 12) {
     return { greeting: '早安', action: '开始您一天的工作吧！' };
@@ -416,54 +417,102 @@ onActivated(() => {
       :task-count="stats.taskCount"
     >
       <template #title>
-        {{ getGreeting().greeting }}, {{ userStore.userInfo?.realName }}, {{ getGreeting().action }}
+        {{ getGreeting().greeting }}, {{ userStore.userInfo?.realName }},
+        {{ getGreeting().action }}
       </template>
       <template #description>
-        您有 {{ stats.taskCount }} 个待办任务，本月工时 {{ stats.timesheetHours.toFixed(1) }} 小时
+        您有 {{ stats.taskCount }} 个待办任务，本月工时
+        {{ stats.timesheetHours.toFixed(1) }} 小时
         <span v-if="pendingApprovalCount > 0" class="ml-3">
-          ，<span class="text-orange-500 font-medium cursor-pointer hover:underline" @click="goToApproval">{{ pendingApprovalCount }} 个待审批</span>
+          ，<span
+            class="cursor-pointer font-medium text-orange-500 hover:underline"
+            @click="goToApproval"
+            >{{ pendingApprovalCount }} 个待审批</span
+          >
         </span>
       </template>
     </WorkbenchHeader>
 
     <!-- 待审批提醒卡片 -->
-    <div 
-      v-if="pendingApprovalCount > 0" 
-      class="mt-4 p-4 bg-orange-50 border border-orange-200 rounded-lg flex items-center justify-between cursor-pointer hover:bg-orange-100 transition-colors"
+    <div
+      v-if="pendingApprovalCount > 0"
+      class="mt-4 flex cursor-pointer items-center justify-between rounded-lg border border-orange-200 bg-orange-50 p-4 transition-colors hover:bg-orange-100"
       @click="goToApproval"
     >
       <div class="flex items-center">
-        <div class="w-10 h-10 bg-orange-500 rounded-full flex items-center justify-center mr-4">
-          <span class="text-white text-lg">📋</span>
+        <div
+          class="mr-4 flex h-10 w-10 items-center justify-center rounded-full bg-orange-500"
+        >
+          <span class="text-lg text-white">📋</span>
         </div>
         <div>
-          <div class="font-medium text-orange-800">您有 {{ pendingApprovalCount }} 个待审批事项</div>
+          <div class="font-medium text-orange-800">
+            您有 {{ pendingApprovalCount }} 个待审批事项
+          </div>
           <div class="text-sm text-orange-600">点击前往审批中心处理</div>
         </div>
       </div>
-      <div class="text-orange-500 text-2xl">→</div>
+      <div class="text-2xl text-orange-500">→</div>
     </div>
 
     <!-- 统计卡片 -->
     <Row :gutter="[16, 16]" class="mt-4">
       <Col :xs="12" :sm="12" :md="6">
-        <Card :bordered="false" hoverable class="stat-card stat-card-blue" @click="router.push('/matter/my')">
-          <Statistic title="我的项目" :value="stats.matterCount" :valueStyle="{ color: '#1890ff' }" />
+        <Card
+          :bordered="false"
+          hoverable
+          class="stat-card stat-card-blue"
+          @click="router.push('/matter/my')"
+        >
+          <Statistic
+            title="我的项目"
+            :value="stats.matterCount"
+            :value-style="{ color: '#1890ff' }"
+          />
         </Card>
       </Col>
       <Col :xs="12" :sm="12" :md="6">
-        <Card :bordered="false" hoverable class="stat-card stat-card-green" @click="router.push('/crm/client')">
-          <Statistic title="我的客户" :value="stats.clientCount" :valueStyle="{ color: '#52c41a' }" />
+        <Card
+          :bordered="false"
+          hoverable
+          class="stat-card stat-card-green"
+          @click="router.push('/crm/client')"
+        >
+          <Statistic
+            title="我的客户"
+            :value="stats.clientCount"
+            :value-style="{ color: '#52c41a' }"
+          />
         </Card>
       </Col>
       <Col :xs="12" :sm="12" :md="6">
-        <Card :bordered="false" hoverable class="stat-card stat-card-orange" @click="router.push('/matter/timesheet')">
-          <Statistic title="本月工时" :value="stats.timesheetHours" :precision="1" suffix="h" :valueStyle="{ color: '#fa8c16' }" />
+        <Card
+          :bordered="false"
+          hoverable
+          class="stat-card stat-card-orange"
+          @click="router.push('/matter/timesheet')"
+        >
+          <Statistic
+            title="本月工时"
+            :value="stats.timesheetHours"
+            :precision="1"
+            suffix="h"
+            :value-style="{ color: '#fa8c16' }"
+          />
         </Card>
       </Col>
       <Col :xs="12" :sm="12" :md="6">
-        <Card :bordered="false" hoverable class="stat-card stat-card-purple" @click="router.push('/matter/task')">
-          <Statistic title="待办任务" :value="stats.taskCount" :valueStyle="{ color: '#722ed1' }" />
+        <Card
+          :bordered="false"
+          hoverable
+          class="stat-card stat-card-purple"
+          @click="router.push('/matter/task')"
+        >
+          <Statistic
+            title="待办任务"
+            :value="stats.taskCount"
+            :value-style="{ color: '#722ed1' }"
+          />
         </Card>
       </Col>
     </Row>
@@ -477,29 +526,44 @@ onActivated(() => {
             <div class="flex items-center justify-between">
               <span>📅 最近日程</span>
               <a @click="router.push('/workbench/schedule')">查看全部 →</a>
-        </div>
+            </div>
           </template>
           <Timeline v-if="upcomingSchedules.length > 0">
-            <TimelineItem 
-              v-for="schedule in upcomingSchedules.slice(0, 5)" 
-          :key="schedule.id"
+            <TimelineItem
+              v-for="schedule in upcomingSchedules.slice(0, 5)"
+              :key="schedule.id"
               :color="getScheduleTypeColor(schedule.scheduleType)"
             >
-              <div class="cursor-pointer hover:bg-gray-50 p-2 -m-2 rounded" @click="router.push('/workbench/schedule')">
-                <div class="flex items-center gap-2 mb-1">
-                  <Tag :color="getScheduleTypeColor(schedule.scheduleType)" size="small">
-            {{ schedule.scheduleTypeName }}
+              <div
+                class="-m-2 cursor-pointer rounded p-2 hover:bg-gray-50"
+                @click="router.push('/workbench/schedule')"
+              >
+                <div class="mb-1 flex items-center gap-2">
+                  <Tag
+                    :color="getScheduleTypeColor(schedule.scheduleType)"
+                    size="small"
+                  >
+                    {{ schedule.scheduleTypeName }}
                   </Tag>
-                  <span class="text-gray-500 text-xs">{{ formatScheduleTime(schedule) }}</span>
+                  <span class="text-xs text-gray-500">{{
+                    formatScheduleTime(schedule)
+                  }}</span>
                 </div>
                 <div class="font-medium">{{ schedule.title }}</div>
-                <div v-if="schedule.location" class="text-gray-500 text-xs mt-1">
-            📍 {{ schedule.location }}
-        </div>
-      </div>
+                <div
+                  v-if="schedule.location"
+                  class="mt-1 text-xs text-gray-500"
+                >
+                  📍 {{ schedule.location }}
+                </div>
+              </div>
             </TimelineItem>
           </Timeline>
-          <Empty v-else description="暂无近期日程" :image="Empty.PRESENTED_IMAGE_SIMPLE" />
+          <Empty
+            v-else
+            description="暂无近期日程"
+            :image="Empty.PRESENTED_IMAGE_SIMPLE"
+          />
         </Card>
 
         <!-- 待办事项 -->
@@ -513,13 +577,17 @@ onActivated(() => {
           title="快捷导航"
           @click="navTo"
         />
-        
+
         <!-- 最新动态 - 使用 List 组件 -->
         <Card :bordered="false" class="mt-4">
           <template #title>
             <span>📰 最新动态</span>
           </template>
-          <List v-if="trendItems.length > 0" :dataSource="trendItems" size="small">
+          <List
+            v-if="trendItems.length > 0"
+            :data-source="trendItems"
+            size="small"
+          >
             <template #renderItem="{ item }">
               <ListItem>
                 <ListItemMeta :description="item.date">
@@ -529,19 +597,32 @@ onActivated(() => {
                   <template #title>{{ item.title }}</template>
                   <template #description>
                     <div class="text-xs" v-html="item.content"></div>
-                    <div class="text-gray-400 text-xs mt-1">{{ item.date }}</div>
+                    <div class="mt-1 text-xs text-gray-400">
+                      {{ item.date }}
+                    </div>
                   </template>
                 </ListItemMeta>
               </ListItem>
             </template>
           </List>
-          <Empty v-else description="暂无最新动态" :image="Empty.PRESENTED_IMAGE_SIMPLE" />
+          <Empty
+            v-else
+            description="暂无最新动态"
+            :image="Empty.PRESENTED_IMAGE_SIMPLE"
+          />
           <!-- 展开/收起按钮 -->
-          <div v-if="hasMoreTrends" class="text-center mt-3 pt-3 border-t border-gray-100">
-            <a class="text-primary text-sm" @click="toggleTrends">
-              {{ trendsExpanded ? '收起 ↑' : `展开更多 (${allTrendItems.length - 5}条) ↓` }}
+          <div
+            v-if="hasMoreTrends"
+            class="mt-3 border-t border-gray-100 pt-3 text-center"
+          >
+            <a class="text-sm text-primary" @click="toggleTrends">
+              {{
+                trendsExpanded
+                  ? '收起 ↑'
+                  : `展开更多 (${allTrendItems.length - 5}条) ↓`
+              }}
             </a>
-      </div>
+          </div>
         </Card>
       </Col>
     </Row>

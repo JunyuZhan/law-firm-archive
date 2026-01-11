@@ -1,9 +1,9 @@
+import type { PageResult } from '../matter/types';
+
 /**
  * 资产管理 API
  */
 import { requestClient } from '#/api/request';
-
-import type { PageResult } from '../matter/types';
 
 // ========== 类型定义 ==========
 export interface AssetDTO {
@@ -130,12 +130,16 @@ export function receiveAsset(data: AssetReceiveCommand) {
 
 /** 资产归还 */
 export function returnAsset(id: number, remarks?: string) {
-  return requestClient.post(`/admin/assets/${id}/return`, null, { params: { remarks } });
+  return requestClient.post(`/admin/assets/${id}/return`, null, {
+    params: { remarks },
+  });
 }
 
 /** 资产报废 */
 export function scrapAsset(id: number, reason: string) {
-  return requestClient.post(`/admin/assets/${id}/scrap`, null, { params: { reason } });
+  return requestClient.post(`/admin/assets/${id}/scrap`, null, {
+    params: { reason },
+  });
 }
 
 /** 获取资产操作记录 */
@@ -157,4 +161,3 @@ export function getIdleAssets() {
 export function getAssetStatistics() {
   return requestClient.get<Record<string, any>>('/admin/assets/statistics');
 }
-

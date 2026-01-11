@@ -10,16 +10,16 @@ GET /api/finance/fee/list
 
 查询参数：
 
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| pageNum | number | 页码 |
-| pageSize | number | 每页数量 |
-| feeNo | string | 收费编号 |
-| clientId | number | 客户ID |
-| matterId | number | 项目ID |
-| status | string | 状态 |
+| 参数            | 类型   | 说明       |
+| --------------- | ------ | ---------- |
+| pageNum         | number | 页码       |
+| pageSize        | number | 每页数量   |
+| feeNo           | string | 收费编号   |
+| clientId        | number | 客户ID     |
+| matterId        | number | 项目ID     |
+| status          | string | 状态       |
 | plannedDateFrom | string | 计划日期起 |
-| plannedDateTo | string | 计划日期止 |
+| plannedDateTo   | string | 计划日期止 |
 
 ### 收费详情
 
@@ -36,6 +36,7 @@ POST /api/finance/payment
 ```
 
 请求：
+
 ```json
 {
   "feeId": 1,
@@ -84,6 +85,7 @@ POST /api/finance/commission-rule
 ```
 
 请求：
+
 ```json
 {
   "name": "标准提成规则",
@@ -108,6 +110,7 @@ POST /api/finance/invoice
 ```
 
 请求：
+
 ```json
 {
   "paymentId": 1,
@@ -133,6 +136,7 @@ POST /api/finance/expense
 ```
 
 请求：
+
 ```json
 {
   "matterId": 1,
@@ -145,17 +149,17 @@ POST /api/finance/expense
 
 ## 收款方式
 
-| 值 | 说明 |
-|------|------|
+| 值            | 说明     |
+| ------------- | -------- |
 | BANK_TRANSFER | 银行转账 |
-| CASH | 现金 |
-| CHECK | 支票 |
-| OTHER | 其他 |
+| CASH          | 现金     |
+| CHECK         | 支票     |
+| OTHER         | 其他     |
 
 ## 收费状态
 
-| 值 | 说明 |
-|------|------|
-| PENDING | 待收款 |
+| 值      | 说明     |
+| ------- | -------- |
+| PENDING | 待收款   |
 | PARTIAL | 部分收款 |
-| PAID | 已收款 |
+| PAID    | 已收款   |

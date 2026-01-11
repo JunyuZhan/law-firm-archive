@@ -1,30 +1,35 @@
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue';
-import { message, Modal } from 'ant-design-vue';
+import type {
+  CreateDepartmentCommand,
+  DepartmentDTO,
+  UpdateDepartmentCommand,
+} from '#/api/system/types';
+
+import { computed, onMounted, reactive, ref } from 'vue';
+
 import { Page } from '@vben/common-ui';
+
 import {
-  Card,
-  Table,
   Button,
-  Space,
-  Input,
+  Card,
   Form,
   FormItem,
+  Input,
   InputNumber,
-  TreeSelect,
+  message,
+  Modal,
   Popconfirm,
+  Space,
+  Table,
+  TreeSelect,
 } from 'ant-design-vue';
+
 import {
-  getDepartmentTree,
   createDepartment,
-  updateDepartment,
   deleteDepartment,
+  getDepartmentTree,
+  updateDepartment,
 } from '#/api/system';
-import type { 
-  DepartmentDTO, 
-  CreateDepartmentCommand, 
-  UpdateDepartmentCommand 
-} from '#/api/system/types';
 import { UserTreeSelect } from '#/components/UserTreeSelect';
 
 defineOptions({ name: 'SystemDept' });
@@ -103,7 +108,7 @@ function handleEdit(record: DepartmentDTO) {
 async function handleSave() {
   try {
     await formRef.value?.validate();
-    
+
     if (formData.id) {
       const updateData: UpdateDepartmentCommand = {
         id: formData.id,
@@ -174,17 +179,20 @@ const departmentTreeData = computed<TreeNode[]>(() => {
     traverse(depts);
     return result;
   };
-  
-  const buildTree = (depts: DepartmentDTO[], parentId: number = 0): TreeNode[] => {
+
+  const buildTree = (
+    depts: DepartmentDTO[],
+    parentId: number = 0,
+  ): TreeNode[] => {
     return depts
-      .filter(dept => dept.parentId === parentId)
-      .map(dept => ({
+      .filter((dept) => dept.parentId === parentId)
+      .map((dept) => ({
         id: dept.id,
         name: dept.name,
         children: buildTree(depts, dept.id),
       }));
   };
-  
+
   const allDepts = flattenDepts(dataSource.value);
   return [{ id: 0, name: '顶级部门', children: buildTree(allDepts) }];
 });
@@ -216,7 +224,9 @@ onMounted(() => {
         <template #bodyCell="{ column, record: rawRecord }">
           <template v-if="column.key === 'action'">
             <Space>
-              <a @click="handleAdd((rawRecord as DepartmentDTO).id)">新增子部门</a>
+              <a @click="handleAdd((rawRecord as DepartmentDTO).id)"
+                >新增子部门</a
+              >
               <a @click="handleEdit(rawRecord as DepartmentDTO)">编辑</a>
               <Popconfirm
                 title="确定删除该部门？"
@@ -250,28 +260,32 @@ onMounted(() => {
             :tree-data="departmentTreeData"
             :field-names="{ label: 'name', value: 'id', children: 'children' }"
             placeholder="请选择上级部门"
-            allowClear
+            allow-clear
             style="width: 100%"
           />
         </FormItem>
-        
-        <FormItem 
-          label="部门名称" 
-          name="name" 
+
+        <FormItem
+          label="部门名称"
+          name="name"
           :rules="[{ required: true, message: '请输入部门名称' }]"
         >
           <Input v-model:value="formData.name" placeholder="请输入部门名称" />
         </FormItem>
-        
+
         <FormItem label="负责人" name="leaderId">
           <UserTreeSelect
             v-model:value="formData.leaderId"
             placeholder="选择负责人（按部门筛选）"
           />
         </FormItem>
-        
+
         <FormItem label="排序" name="sortOrder">
-          <InputNumber v-model:value="formData.sortOrder" :min="0" style="width: 100%" />
+          <InputNumber
+            v-model:value="formData.sortOrder"
+            :min="0"
+            style="width: 100%"
+          />
         </FormItem>
       </Form>
     </Modal>

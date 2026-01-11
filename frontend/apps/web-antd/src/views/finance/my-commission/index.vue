@@ -1,17 +1,21 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
-import { message } from 'ant-design-vue';
+import type { VxeGridProps } from '#/adapter/vxe-table';
+
+import { computed, onMounted, ref } from 'vue';
+
 import { Page } from '@vben/common-ui';
+
 import {
   Card,
-  Tag,
-  Row,
   Col,
-  Statistic,
-  Select,
   Empty,
+  message,
+  Row,
+  Select,
+  Statistic,
+  Tag,
 } from 'ant-design-vue';
-import type { VxeGridProps } from '#/adapter/vxe-table';
+
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import { requestClient } from '#/api/request';
 
@@ -39,9 +43,16 @@ const statusFilter = ref<string | undefined>(undefined);
 
 // 统计数据
 const stats = computed(() => {
-  const total = commissions.value.reduce((sum, c) => sum + c.commissionAmount, 0);
-  const paid = commissions.value.filter(c => c.status === 'PAID').reduce((sum, c) => sum + c.commissionAmount, 0);
-  const pending = commissions.value.filter(c => c.status === 'PENDING').reduce((sum, c) => sum + c.commissionAmount, 0);
+  const total = commissions.value.reduce(
+    (sum, c) => sum + c.commissionAmount,
+    0,
+  );
+  const paid = commissions.value
+    .filter((c) => c.status === 'PAID')
+    .reduce((sum, c) => sum + c.commissionAmount, 0);
+  const pending = commissions.value
+    .filter((c) => c.status === 'PENDING')
+    .reduce((sum, c) => sum + c.commissionAmount, 0);
   const count = commissions.value.length;
   return { total, paid, pending, count };
 });
@@ -56,14 +67,39 @@ const statusOptions = [
 
 // ==================== 表格配置 ====================
 
-const gridColumns: VxeGridProps['gridOptions']['columns'] = [
+const gridColumns: VxeGridProps['columns'] = [
   { title: '合同编号', field: 'contractNo', width: 140 },
-  { title: '合同名称', field: 'contractName', minWidth: 180, showOverflow: true },
+  {
+    title: '合同名称',
+    field: 'contractName',
+    minWidth: 180,
+    showOverflow: true,
+  },
   { title: '客户', field: 'clientName', width: 120 },
-  { title: '收款金额', field: 'paymentAmount', width: 120, slots: { default: 'paymentAmount' } },
-  { title: '提成比例', field: 'commissionRate', width: 100, slots: { default: 'commissionRate' } },
-  { title: '提成金额', field: 'commissionAmount', width: 120, slots: { default: 'commissionAmount' } },
-  { title: '状态', field: 'statusName', width: 100, slots: { default: 'status' } },
+  {
+    title: '收款金额',
+    field: 'paymentAmount',
+    width: 120,
+    slots: { default: 'paymentAmount' },
+  },
+  {
+    title: '提成比例',
+    field: 'commissionRate',
+    width: 100,
+    slots: { default: 'commissionRate' },
+  },
+  {
+    title: '提成金额',
+    field: 'commissionAmount',
+    width: 120,
+    slots: { default: 'commissionAmount' },
+  },
+  {
+    title: '状态',
+    field: 'statusName',
+    width: 100,
+    slots: { default: 'status' },
+  },
   { title: '计算时间', field: 'calculatedAt', width: 110 },
   { title: '发放时间', field: 'paidAt', width: 110 },
 ];
@@ -74,7 +110,10 @@ async function loadData() {
     if (statusFilter.value) {
       params.status = statusFilter.value;
     }
-    const res = await requestClient.get<MyCommission[]>('/finance/my/commissions', { params });
+    const res = await requestClient.get<MyCommission[]>(
+      '/finance/my/commissions',
+      { params },
+    );
     commissions.value = res || [];
     return { items: res || [], total: (res || []).length };
   } catch (error: any) {
@@ -122,7 +161,7 @@ onMounted(() => {
 <template>
   <Page title="我的提成" description="查看您的提成记录和发放情况">
     <!-- 统计卡片 -->
-    <Row :gutter="16" style="margin-bottom: 16px;">
+    <Row :gutter="16" style="margin-bottom: 16px">
       <Col :xs="12" :sm="6">
         <Card size="small">
           <Statistic title="提成记录数" :value="stats.count" suffix="条" />
@@ -130,23 +169,40 @@ onMounted(() => {
       </Col>
       <Col :xs="12" :sm="6">
         <Card size="small">
-          <Statistic title="提成总额" :value="stats.total" prefix="¥" :precision="2" />
+          <Statistic
+            title="提成总额"
+            :value="stats.total"
+            prefix="¥"
+            :precision="2"
+          />
         </Card>
       </Col>
       <Col :xs="12" :sm="6">
         <Card size="small">
-          <Statistic title="已发放" :value="stats.paid" prefix="¥" :precision="2" :value-style="{ color: '#52c41a' }" />
+          <Statistic
+            title="已发放"
+            :value="stats.paid"
+            prefix="¥"
+            :precision="2"
+            :value-style="{ color: '#52c41a' }"
+          />
         </Card>
       </Col>
       <Col :xs="12" :sm="6">
         <Card size="small">
-          <Statistic title="待发放" :value="stats.pending" prefix="¥" :precision="2" :value-style="{ color: '#faad14' }" />
+          <Statistic
+            title="待发放"
+            :value="stats.pending"
+            prefix="¥"
+            :precision="2"
+            :value-style="{ color: '#faad14' }"
+          />
         </Card>
       </Col>
     </Row>
 
     <Card>
-      <div style="margin-bottom: 16px;">
+      <div style="margin-bottom: 16px">
         <Select
           v-model:value="statusFilter"
           placeholder="状态筛选"
@@ -164,7 +220,7 @@ onMounted(() => {
           {{ row.commissionRate }}%
         </template>
         <template #commissionAmount="{ row }">
-          <span style=" font-weight: 500;color: #1890ff;">
+          <span style="font-weight: 500; color: #1890ff">
             {{ formatMoney(row.commissionAmount) }}
           </span>
         </template>

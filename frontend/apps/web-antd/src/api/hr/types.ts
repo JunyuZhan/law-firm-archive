@@ -6,11 +6,14 @@ export interface AttendanceRecord {
   userId: number;
   username?: string;
   realName?: string;
+  employeeName?: string;
+  departmentName?: string;
   attendanceDate: string;
   checkInTime?: string;
   checkOutTime?: string;
-  status: 'NORMAL' | 'LATE' | 'EARLY_LEAVE' | 'ABSENT' | 'LEAVE';
+  status: 'ABSENT' | 'EARLY_LEAVE' | 'LATE' | 'LEAVE' | 'NORMAL';
   workHours?: number;
+  location?: string;
   remark?: string;
   createTime?: string;
   updateTime?: string;
@@ -42,7 +45,7 @@ export interface LeaveApplication {
   endDate: string;
   leaveDays: number;
   reason: string;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
+  status: 'APPROVED' | 'CANCELLED' | 'PENDING' | 'REJECTED';
   approverId?: number;
   approverName?: string;
   approveTime?: string;
@@ -90,7 +93,7 @@ export interface MeetingBooking {
   startTime: string;
   endTime: string;
   participants?: string;
-  status: 'BOOKED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+  status: 'BOOKED' | 'CANCELLED' | 'COMPLETED' | 'IN_PROGRESS';
   description?: string;
   createTime?: string;
   updateTime?: string;
@@ -120,6 +123,7 @@ export interface PageResult<T> {
  */
 export interface AttendanceQueryParams extends PageParams {
   userId?: number;
+  date?: string;
   startDate?: string;
   endDate?: string;
   status?: string;
@@ -134,6 +138,7 @@ export interface LeaveQueryParams extends PageParams {
   status?: string;
   startDate?: string;
   endDate?: string;
+  applicationType?: string;
 }
 
 /**

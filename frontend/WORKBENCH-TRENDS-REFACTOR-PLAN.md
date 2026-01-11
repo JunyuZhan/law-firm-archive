@@ -9,6 +9,7 @@
 ## 📋 当前状态
 
 ### 问题
+
 - **位置**: 第94-102行
 - **问题**: `trendItems` 使用硬编码的示例数据
 - **影响**: 用户看不到真实的工作动态
@@ -29,10 +30,10 @@ const trendItems: WorkbenchTrendItem[] = [
 
 ```typescript
 interface WorkbenchTrendItem {
-  avatar: string;    // 头像（可以是 svg:avatar-1 或用户头像URL）
-  content: string;   // 内容描述（支持HTML）
-  date: string;      // 日期（显示文本，如"刚刚"、"2小时前"）
-  title: string;     // 标题（用户名）
+  avatar: string; // 头像（可以是 svg:avatar-1 或用户头像URL）
+  content: string; // 内容描述（支持HTML）
+  date: string; // 日期（显示文本，如"刚刚"、"2小时前"）
+  title: string; // 标题（用户名）
 }
 ```
 
@@ -41,6 +42,7 @@ interface WorkbenchTrendItem {
 ## 🎯 改造目标
 
 使用现有后端接口组合生成真实的工作动态流，包括：
+
 1. ✅ 最近创建的项目
 2. ✅ 最近审批通过/拒绝的事项
 3. ✅ 最近完成的任务（可选）
@@ -51,21 +53,25 @@ interface WorkbenchTrendItem {
 ## 📊 可用数据源
 
 ### 1. 最近项目
+
 - **接口**: `/workbench/project/recent`
 - **返回**: `RecentProjectDTO[]`
 - **字段**: `id`, `matterNo`, `matterName`, `clientName`, `status`, `lastUpdateTime`
 
 ### 2. 审批历史
+
 - **接口**: `/workbench/approval/my-history`
 - **返回**: `ApprovalDTO[]`
 - **字段**: `id`, `businessType`, `businessTitle`, `applicantName`, `status`, `approvedAt`
 
 ### 3. 我发起的审批
+
 - **接口**: `/workbench/approval/my-initiated`
 - **返回**: `ApprovalDTO[]`
 - **字段**: `id`, `businessType`, `businessTitle`, `status`, `createdAt`
 
 ### 4. 待办事项（可选，用于任务完成）
+
 - **接口**: `/workbench/todo/list`
 - **返回**: `TodoItemDTO[]`
 - **字段**: `id`, `type`, `title`, `status`, `dueDate`
@@ -77,6 +83,7 @@ interface WorkbenchTrendItem {
 ### 方案A：使用现有接口组合（推荐）
 
 **优点**：
+
 - ✅ 无需后端改动
 - ✅ 实现简单快速（约1小时）
 - ✅ 风险低
@@ -91,6 +98,7 @@ interface WorkbenchTrendItem {
    - 转换为 `WorkbenchTrendItem[]` 格式
 
 2. **数据转换逻辑**
+
    ```typescript
    // 项目创建动态
    {
@@ -99,7 +107,7 @@ interface WorkbenchTrendItem {
      date: formatRelativeTime(project.lastUpdateTime),
      title: userStore.userInfo?.realName || '我',
    }
-   
+
    // 审批通过动态
    {
      avatar: approval.applicantAvatar || 'svg:avatar-1',
@@ -107,7 +115,7 @@ interface WorkbenchTrendItem {
      date: formatRelativeTime(approval.approvedAt),
      title: approval.applicantName || '用户',
    }
-   
+
    // 审批拒绝动态
    {
      avatar: approval.applicantAvatar || 'svg:avatar-1',
@@ -133,13 +141,17 @@ interface WorkbenchTrendItem {
 ### 1. 导入必要的 API 函数
 
 ```typescript
-import { 
-  getWorkbenchStats, 
+import {
+  getWorkbenchStats,
   getPendingApprovals,
   getMyApprovedHistory,
-  getMyInitiatedApprovals 
+  getMyInitiatedApprovals,
 } from '#/api/workbench';
-import { getMyMatters, getMyUpcomingSchedules, getMyTodoTasks } from '#/api/matter';
+import {
+  getMyMatters,
+  getMyUpcomingSchedules,
+  getMyTodoTasks,
+} from '#/api/matter';
 ```
 
 ### 2. 新增时间格式化函数
@@ -148,18 +160,18 @@ import { getMyMatters, getMyUpcomingSchedules, getMyTodoTasks } from '#/api/matt
 // 格式化相对时间
 function formatRelativeTime(dateStr?: string): string {
   if (!dateStr) return '未知时间';
-  
+
   const date = dayjs(dateStr);
   const now = dayjs();
   const diffMinutes = now.diff(date, 'minute');
   const diffHours = now.diff(date, 'hour');
   const diffDays = now.diff(date, 'day');
-  
+
   if (diffMinutes < 1) return '刚刚';
   if (diffMinutes < 60) return `${diffMinutes}分钟前`;
   if (diffHours < 24) return `${diffHours}小时前`;
   if (diffDays < 7) return `${diffDays}天前`;
-  
+
   return date.format('MM/DD HH:mm');
 }
 ```
@@ -171,7 +183,7 @@ function formatRelativeTime(dateStr?: string): string {
 async function loadTrends() {
   try {
     const trends: WorkbenchTrendItem[] = [];
-    
+
     // 1. 获取最近项目（取前5条）
     try {
       const recentProjects = await getRecentProjects();
@@ -186,27 +198,30 @@ async function loadTrends() {
     } catch (error) {
       console.error('加载最近项目失败:', error);
     }
-    
+
     // 2. 获取审批历史（取前5条）
     try {
       const approvedHistory = await getMyApprovedHistory();
       approvedHistory.slice(0, 5).forEach((approval) => {
-        const statusText = approval.status === 'APPROVED' ? '审批通过了' : '拒绝了';
-        
+        const statusText =
+          approval.status === 'APPROVED' ? '审批通过了' : '拒绝了';
+
         // 权限安全：显示审批人信息（如果是管理员看到其他用户的审批）
         // 如果审批人是当前用户，显示"我"；否则显示审批人姓名
-        const isCurrentUserApprover = approval.approverId === userStore.userInfo?.userId;
-        const approverName = isCurrentUserApprover 
-          ? (userStore.userInfo?.realName || '我')
-          : (approval.approverName || '用户');
+        const isCurrentUserApprover =
+          approval.approverId === userStore.userInfo?.userId;
+        const approverName = isCurrentUserApprover
+          ? userStore.userInfo?.realName || '我'
+          : approval.approverName || '用户';
         const approverAvatar = isCurrentUserApprover
-          ? (userStore.userInfo?.avatar || preferences.app.defaultAvatar)
-          : (approval.approverAvatar || preferences.app.defaultAvatar);
-        
+          ? userStore.userInfo?.avatar || preferences.app.defaultAvatar
+          : approval.approverAvatar || preferences.app.defaultAvatar;
+
         // 动态内容：明确显示审批人和申请人的关系
-        const businessTitle = approval.businessTitle || approval.businessTypeName || '审批事项';
+        const businessTitle =
+          approval.businessTitle || approval.businessTypeName || '审批事项';
         const applicantName = approval.applicantName || '用户';
-        
+
         trends.push({
           avatar: approverAvatar,
           content: `${statusText} <span class="text-primary">${applicantName}</span> 发起的 <span class="text-primary">${businessTitle}</span>`,
@@ -217,17 +232,18 @@ async function loadTrends() {
     } catch (error) {
       console.error('加载审批历史失败:', error);
     }
-    
+
     // 3. 获取我发起的审批（取前5条，状态为已通过或已拒绝）
     try {
       const myInitiated = await getMyInitiatedApprovals();
       myInitiated
-        .filter(a => a.status === 'APPROVED' || a.status === 'REJECTED')
+        .filter((a) => a.status === 'APPROVED' || a.status === 'REJECTED')
         .slice(0, 5)
         .forEach((approval) => {
-          const statusText = approval.status === 'APPROVED' ? '已通过' : '已拒绝';
+          const statusText =
+            approval.status === 'APPROVED' ? '已通过' : '已拒绝';
           const approverName = approval.approverName || '审批人';
-          
+
           trends.push({
             avatar: userStore.userInfo?.avatar || preferences.app.defaultAvatar,
             content: `我发起的 <span class="text-primary">${approval.businessTitle || approval.businessTypeName}</span> 被 <span class="text-primary">${approverName}</span> ${statusText}`,
@@ -238,25 +254,27 @@ async function loadTrends() {
     } catch (error) {
       console.error('加载我发起的审批失败:', error);
     }
-    
+
     // 按时间排序（最新的在前）
     trends.sort((a, b) => {
       const dateA = dayjs(a.date).valueOf();
       const dateB = dayjs(b.date).valueOf();
       return dateB - dateA;
     });
-    
+
     // 取前10条
     trendItems.value = trends.slice(0, 10);
-    
+
     // 如果没有数据，显示提示
     if (trendItems.value.length === 0) {
-      trendItems.value = [{
-        avatar: preferences.app.defaultAvatar,
-        content: '暂无最新动态',
-        date: '刚刚',
-        title: '系统',
-      }];
+      trendItems.value = [
+        {
+          avatar: preferences.app.defaultAvatar,
+          content: '暂无最新动态',
+          date: '刚刚',
+          title: '系统',
+        },
+      ];
     }
   } catch (error) {
     console.error('加载最新动态失败:', error);
@@ -272,14 +290,16 @@ async function loadTrends() {
 ```typescript
 /** 获取最近项目 */
 export function getRecentProjects() {
-  return requestClient.get<Array<{
-    id: number;
-    matterNo: string;
-    matterName: string;
-    clientName?: string;
-    status: string;
-    lastUpdateTime?: string;
-  }>>('/workbench/project/recent');
+  return requestClient.get<
+    Array<{
+      id: number;
+      matterNo: string;
+      matterName: string;
+      clientName?: string;
+      status: string;
+      lastUpdateTime?: string;
+    }>
+  >('/workbench/project/recent');
 }
 ```
 
@@ -312,6 +332,7 @@ onActivated(() => {
 ### 1. 权限安全 ⚠️ **重要**
 
 #### 后端权限控制（已实现）
+
 - ✅ `/workbench/project/recent` - 只返回当前用户参与的项目
 - ✅ `/workbench/approval/my-history` - 权限过滤：
   - 管理员/主任：可查看全部已完成审批
@@ -321,48 +342,58 @@ onActivated(() => {
 #### 前端权限注意事项
 
 **1.1 用户信息显示**
+
 - ✅ 动态中的用户信息（头像、姓名）来自后端返回的数据
 - ✅ 使用 `approval.applicantName` 和 `approval.applicantAvatar`（如果后端返回）
 - ⚠️ 如果没有头像，使用默认头像 `preferences.app.defaultAvatar`
 - ⚠️ 如果没有姓名，使用"用户"作为默认值
 
 **1.2 管理员权限特殊处理**
+
 - ⚠️ 管理员可能看到其他用户的审批动态
 - ✅ 显示审批人信息（`approverName`），而不是申请人信息
 - ✅ 动态内容应该明确显示"审批人"和"申请人"的关系
 
 **1.3 数据过滤**
+
 - ✅ 前端不需要再次过滤数据（后端已做权限控制）
 - ✅ 但需要处理数据为空的情况
 - ⚠️ 不要在前端显示敏感的业务详情（如金额、客户信息等）
 
 **1.4 点击跳转权限**
+
 - ✅ 动态项点击跳转时，后端会再次验证权限
 - ✅ 如果用户没有权限，后端会返回403错误
 - ✅ 前端需要处理403错误，显示友好提示
 
 ### 2. 错误处理
+
 - ✅ 每个接口调用都要有 try-catch，避免单个接口失败影响整体
 - ✅ 单个接口失败不影响其他接口的数据加载
 - ✅ 记录错误日志，便于排查问题
 
 ### 3. 数据排序
+
 - ✅ 按时间倒序排列，最新的在前
 - ✅ 使用 `dayjs` 进行时间比较和排序
 
 ### 4. 数据量控制
+
 - ✅ 每个数据源最多取5条，最终显示前10条
 - ✅ 避免一次性加载过多数据，影响性能
 
 ### 5. 时间格式化
+
 - ✅ 使用相对时间（刚刚、X分钟前）提升用户体验
 - ✅ 超过7天显示具体日期（MM/DD HH:mm）
 
 ### 6. 空数据处理
+
 - ✅ 如果没有数据，显示友好的提示信息
 - ✅ 避免显示空白区域
 
 ### 7. 性能优化
+
 - ✅ 可以考虑添加防抖或节流，避免频繁刷新
 - ✅ 使用 `onActivated` 处理 keep-alive 场景的数据刷新
 
@@ -386,6 +417,7 @@ onActivated(() => {
 ## 📈 预期效果
 
 改造后，工作台最新动态将显示：
+
 - ✅ 真实的项目创建动态
 - ✅ 真实的审批通过/拒绝动态
 - ✅ 相对时间显示（刚刚、X分钟前）
@@ -406,6 +438,7 @@ onActivated(() => {
 ## ✅ 验收标准
 
 ### 功能验收
+
 1. ✅ **已完成** - 最新动态显示真实数据（不再是示例数据）
 2. ✅ **已完成** - 动态按时间倒序排列
 3. ✅ **已完成** - 时间显示为相对时间（刚刚、X分钟前等）
@@ -415,33 +448,30 @@ onActivated(() => {
 7. ✅ **已完成** - 问候语根据时间动态显示（早安/午安/下午好/晚上好/夜深了）
 
 ### 权限安全验收 ⚠️ **重要**
+
 1. ✅ **已完成** - **数据权限**：用户只能看到自己有权限的数据
    - 普通用户：只能看到自己参与的项目和审批
    - 管理员：可以看到所有数据（符合后端权限设计）
-   
 2. ✅ **已完成** - **用户信息显示**：
    - 显示正确的用户信息（审批人/申请人）
    - 使用默认头像和名称处理缺失数据
    - 不泄露敏感信息
-   
 3. ✅ **已完成** - **点击跳转权限**：
    - 点击动态跳转时，后端会验证权限
    - 前端正确处理403错误，显示友好提示
-   
 4. ✅ **已完成** - **数据过滤**：
    - 不显示敏感的业务详情（如金额、客户信息等）
    - 只显示必要的业务标题和类型
 
 ### 测试场景
+
 1. **普通用户测试**：
    - ✅ **已完成** - 只能看到自己参与的项目动态
    - ✅ **已完成** - 只能看到自己审批的或发起的审批动态
-   
 2. **管理员测试**：
    - ✅ **已完成** - 可以看到所有项目的动态
    - ✅ **已完成** - 可以看到所有审批的动态
    - ✅ **已完成** - 动态中正确显示审批人和申请人信息
-   
 3. **错误场景测试**：
    - ✅ **已完成** - 单个接口失败不影响其他接口
    - ✅ **已完成** - 无数据时显示友好提示
@@ -516,6 +546,7 @@ onActivated(() => {
 ### 🎯 改造总结
 
 工作台最新动态改造已全部完成，包括：
+
 - ✅ 真实数据展示
 - ✅ 权限安全处理
 - ✅ 时间格式化
@@ -524,4 +555,3 @@ onActivated(() => {
 - ✅ 代码质量保证
 
 所有功能已通过测试，代码已通过 linter 检查，可以正常使用。
-

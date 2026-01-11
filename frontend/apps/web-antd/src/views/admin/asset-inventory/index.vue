@@ -1,27 +1,36 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref, computed, watch } from 'vue';
+import type {
+  AssetInventoryDetailDTO,
+  AssetInventoryDTO,
+  CreateAssetInventoryCommand,
+  UpdateInventoryDetailRequest,
+} from '#/api/admin/asset-inventory';
+import type { DepartmentDTO } from '#/api/system/types';
+
+import { computed, onMounted, reactive, ref } from 'vue';
 
 import { Page } from '@vben/common-ui';
 
 import {
   Button,
   Card,
+  Col,
   DatePicker,
   Form,
   FormItem,
   Input,
   message,
   Modal,
+  Row,
   Select,
   Space,
   Table,
   Tag,
   Textarea,
   TreeSelect,
-  Row,
-  Col,
 } from 'ant-design-vue';
 
+import { getAssetList, getIdleAssets } from '#/api/admin/asset';
 import {
   completeAssetInventory,
   createAssetInventory,
@@ -29,15 +38,7 @@ import {
   getInProgressInventories,
   updateInventoryDetail,
 } from '#/api/admin/asset-inventory';
-import type {
-  AssetInventoryDTO,
-  AssetInventoryDetailDTO,
-  CreateAssetInventoryCommand,
-  UpdateInventoryDetailRequest,
-} from '#/api/admin/asset-inventory';
-import { getIdleAssets, getAssetList } from '#/api/admin/asset';
 import { getDepartmentTreePublic } from '#/api/system';
-import type { DepartmentDTO } from '#/api/system/types';
 
 defineOptions({ name: 'AssetInventoryManagement' });
 
@@ -81,22 +82,49 @@ function convertToTreeData(departments: DepartmentDTO[]): any[] {
   }));
 }
 
-const departmentTreeData = computed(() => convertToTreeData(departmentTree.value));
+const departmentTreeData = computed(() =>
+  convertToTreeData(departmentTree.value),
+);
 
 // 筛选条件
 const filterCategory = ref<string>('');
 
 // 表格列
 const columns = [
-  { title: '盘点编号', dataIndex: 'inventoryNo', key: 'inventoryNo', width: 120 },
-  { title: '盘点日期', dataIndex: 'inventoryDate', key: 'inventoryDate', width: 120 },
-  { title: '盘点类型', dataIndex: 'inventoryTypeName', key: 'inventoryType', width: 100 },
-  { title: '部门', dataIndex: 'departmentName', key: 'departmentName', width: 120 },
+  {
+    title: '盘点编号',
+    dataIndex: 'inventoryNo',
+    key: 'inventoryNo',
+    width: 120,
+  },
+  {
+    title: '盘点日期',
+    dataIndex: 'inventoryDate',
+    key: 'inventoryDate',
+    width: 120,
+  },
+  {
+    title: '盘点类型',
+    dataIndex: 'inventoryTypeName',
+    key: 'inventoryType',
+    width: 100,
+  },
+  {
+    title: '部门',
+    dataIndex: 'departmentName',
+    key: 'departmentName',
+    width: 120,
+  },
   { title: '位置', dataIndex: 'location', key: 'location', width: 120 },
   { title: '总数', dataIndex: 'totalCount', key: 'totalCount', width: 80 },
   { title: '实盘数', dataIndex: 'actualCount', key: 'actualCount', width: 80 },
   { title: '盘盈', dataIndex: 'surplusCount', key: 'surplusCount', width: 80 },
-  { title: '盘亏', dataIndex: 'shortageCount', key: 'shortageCount', width: 80 },
+  {
+    title: '盘亏',
+    dataIndex: 'shortageCount',
+    key: 'shortageCount',
+    width: 80,
+  },
   { title: '状态', dataIndex: 'status', key: 'status', width: 100 },
   { title: '操作', key: 'action', width: 200, fixed: 'right' as const },
 ];
@@ -105,13 +133,48 @@ const columns = [
 const detailColumns = [
   { title: '资产编号', dataIndex: 'assetNo', key: 'assetNo', width: 120 },
   { title: '资产名称', dataIndex: 'assetName', key: 'assetName', width: 150 },
-  { title: '预期状态', dataIndex: 'expectedStatus', key: 'expectedStatus', width: 100 },
-  { title: '实际状态', dataIndex: 'actualStatus', key: 'actualStatus', width: 100 },
-  { title: '预期位置', dataIndex: 'expectedLocation', key: 'expectedLocation', width: 120 },
-  { title: '实际位置', dataIndex: 'actualLocation', key: 'actualLocation', width: 120 },
-  { title: '预期使用人', dataIndex: 'expectedUserName', key: 'expectedUserName', width: 100 },
-  { title: '实际使用人', dataIndex: 'actualUserName', key: 'actualUserName', width: 100 },
-  { title: '差异类型', dataIndex: 'discrepancyTypeName', key: 'discrepancyType', width: 100 },
+  {
+    title: '预期状态',
+    dataIndex: 'expectedStatus',
+    key: 'expectedStatus',
+    width: 100,
+  },
+  {
+    title: '实际状态',
+    dataIndex: 'actualStatus',
+    key: 'actualStatus',
+    width: 100,
+  },
+  {
+    title: '预期位置',
+    dataIndex: 'expectedLocation',
+    key: 'expectedLocation',
+    width: 120,
+  },
+  {
+    title: '实际位置',
+    dataIndex: 'actualLocation',
+    key: 'actualLocation',
+    width: 120,
+  },
+  {
+    title: '预期使用人',
+    dataIndex: 'expectedUserName',
+    key: 'expectedUserName',
+    width: 100,
+  },
+  {
+    title: '实际使用人',
+    dataIndex: 'actualUserName',
+    key: 'actualUserName',
+    width: 100,
+  },
+  {
+    title: '差异类型',
+    dataIndex: 'discrepancyTypeName',
+    key: 'discrepancyType',
+    width: 100,
+  },
   { title: '操作', key: 'action', width: 120, fixed: 'right' as const },
 ];
 
@@ -153,23 +216,26 @@ const allAssets = ref<any[]>([]); // 全部资产（用于全盘时按条件筛�
 
 // 根据筛选条件过滤的资产列表
 const filteredAssets = computed(() => {
-  let list = inventoryForm.inventoryType === 'PARTIAL' ? assetList.value : allAssets.value;
-  
+  let list =
+    inventoryForm.inventoryType === 'PARTIAL'
+      ? assetList.value
+      : allAssets.value;
+
   // 按分类筛选
   if (filterCategory.value) {
     list = list.filter((a) => a.category === filterCategory.value);
   }
-  
+
   // 按部门筛选
   if (inventoryForm.departmentId) {
     list = list.filter((a) => a.departmentId === inventoryForm.departmentId);
   }
-  
+
   // 按位置筛选
   if (inventoryForm.location) {
     list = list.filter((a) => a.location?.includes(inventoryForm.location));
   }
-  
+
   return list;
 });
 
@@ -270,7 +336,7 @@ async function handleSubmit() {
 }
 
 // 查看详情
-async function handleView(record: AssetInventoryDTO) {
+async function handleView(record: Record<string, any>) {
   try {
     const detail = await getAssetInventoryDetail(record.id);
     detailData.value = detail;
@@ -282,7 +348,7 @@ async function handleView(record: AssetInventoryDTO) {
 }
 
 // 完成盘点
-function handleComplete(record: AssetInventoryDTO) {
+function handleComplete(record: Record<string, any>) {
   Modal.confirm({
     title: '确认完成',
     content: `确定要完成盘点"${record.inventoryNo || record.id}"吗？`,
@@ -301,8 +367,8 @@ function handleComplete(record: AssetInventoryDTO) {
 }
 
 // 更新明细
-function handleUpdateDetail(record: AssetInventoryDetailDTO) {
-  currentDetail.value = record;
+function handleUpdateDetail(record: Record<string, any>) {
+  currentDetail.value = record as AssetInventoryDetailDTO;
   Object.assign(detailUpdateForm, {
     actualStatus: record.actualStatus || '',
     actualLocation: record.actualLocation || '',
@@ -362,7 +428,11 @@ onMounted(() => {
           <template v-if="column.key === 'action'">
             <Space>
               <a @click="handleView(record)">查看</a>
-              <a v-if="record.status === 'IN_PROGRESS'" @click="handleComplete(record)">完成盘点</a>
+              <a
+                v-if="record.status === 'IN_PROGRESS'"
+                @click="handleComplete(record)"
+                >完成盘点</a
+              >
             </Space>
           </template>
         </template>
@@ -391,8 +461,15 @@ onMounted(() => {
           </Col>
           <Col :span="12">
             <FormItem label="盘点类型" required>
-              <Select v-model:value="inventoryForm.inventoryType" placeholder="请选择盘点类型">
-                <Select.Option v-for="item in inventoryTypeOptions" :key="item.value" :value="item.value">
+              <Select
+                v-model:value="inventoryForm.inventoryType"
+                placeholder="请选择盘点类型"
+              >
+                <Select.Option
+                  v-for="item in inventoryTypeOptions"
+                  :key="item.value"
+                  :value="item.value"
+                >
                   {{ item.label }}
                 </Select.Option>
               </Select>
@@ -415,8 +492,16 @@ onMounted(() => {
           </Col>
           <Col :span="12">
             <FormItem label="资产分类">
-              <Select v-model:value="filterCategory" placeholder="请选择资产分类" allow-clear>
-                <Select.Option v-for="item in assetCategoryOptions" :key="item.value" :value="item.value">
+              <Select
+                v-model:value="filterCategory"
+                placeholder="请选择资产分类"
+                allow-clear
+              >
+                <Select.Option
+                  v-for="item in assetCategoryOptions"
+                  :key="item.value"
+                  :value="item.value"
+                >
                   {{ item.label }}
                 </Select.Option>
               </Select>
@@ -425,10 +510,16 @@ onMounted(() => {
         </Row>
 
         <FormItem label="盘点位置">
-          <Input v-model:value="inventoryForm.location" placeholder="请输入位置（如：3楼办公区）" />
+          <Input
+            v-model:value="inventoryForm.location"
+            placeholder="请输入位置（如：3楼办公区）"
+          />
         </FormItem>
 
-        <FormItem v-if="inventoryForm.inventoryType === 'PARTIAL'" label="选择资产">
+        <FormItem
+          v-if="inventoryForm.inventoryType === 'PARTIAL'"
+          label="选择资产"
+        >
           <Select
             v-model:value="inventoryForm.assetIds"
             mode="multiple"
@@ -436,33 +527,59 @@ onMounted(() => {
             style="width: 100%"
             :max-tag-count="5"
             show-search
-            :filter-option="(input: string, option: any) => option.label?.toLowerCase().includes(input.toLowerCase())"
+            :filter-option="
+              (input: string, option: any) =>
+                option.label?.toLowerCase().includes(input.toLowerCase())
+            "
           >
-            <Select.Option 
-              v-for="asset in filteredAssets" 
-              :key="asset.id" 
+            <Select.Option
+              v-for="asset in filteredAssets"
+              :key="asset.id"
               :value="asset.id"
               :label="`${asset.assetNo} - ${asset.name}`"
             >
-              <div style="display: flex; justify-content: space-between;">
+              <div style="display: flex; justify-content: space-between">
                 <span>{{ asset.assetNo }} - {{ asset.name }}</span>
-                <span style=" font-size: 12px;color: #999;">{{ asset.location || '未知位置' }}</span>
+                <span style="font-size: 12px; color: #999">{{
+                  asset.location || '未知位置'
+                }}</span>
               </div>
             </Select.Option>
           </Select>
         </FormItem>
 
         <FormItem label="备注">
-          <Textarea v-model:value="inventoryForm.remark" placeholder="请输入盘点说明或备注" :rows="3" />
+          <Textarea
+            v-model:value="inventoryForm.remark"
+            placeholder="请输入盘点说明或备注"
+            :rows="3"
+          />
         </FormItem>
 
         <!-- 预计盘点信息 -->
-        <div style=" padding: 12px; margin-top: 8px;background: #f5f5f5; border-radius: 4px;">
-          <div style=" font-size: 14px;color: #666;">
+        <div
+          style="
+            padding: 12px;
+            margin-top: 8px;
+            background: #f5f5f5;
+            border-radius: 4px;
+          "
+        >
+          <div style="font-size: 14px; color: #666">
             <span>预计盘点资产数量：</span>
-            <span style=" font-weight: 500;color: #1890ff;">{{ expectedAssetCount }}</span>
+            <span style="font-weight: 500; color: #1890ff">{{
+              expectedAssetCount
+            }}</span>
             <span> 件</span>
-            <span v-if="inventoryForm.inventoryType === 'FULL' && (inventoryForm.departmentId || filterCategory || inventoryForm.location)" style="margin-left: 12px; color: #999;">
+            <span
+              v-if="
+                inventoryForm.inventoryType === 'FULL' &&
+                (inventoryForm.departmentId ||
+                  filterCategory ||
+                  inventoryForm.location)
+              "
+              style="margin-left: 12px; color: #999"
+            >
               （已按条件筛选）
             </span>
           </div>
@@ -480,7 +597,9 @@ onMounted(() => {
       <div v-if="detailData" style="margin-bottom: 16px; line-height: 2">
         <p><strong>盘点编号:</strong> {{ detailData.inventoryNo || '-' }}</p>
         <p><strong>盘点日期:</strong> {{ detailData.inventoryDate || '-' }}</p>
-        <p><strong>盘点类型:</strong> {{ detailData.inventoryTypeName || '-' }}</p>
+        <p>
+          <strong>盘点类型:</strong> {{ detailData.inventoryTypeName || '-' }}
+        </p>
         <p><strong>部门:</strong> {{ detailData.departmentName || '-' }}</p>
         <p><strong>位置:</strong> {{ detailData.location || '-' }}</p>
         <p><strong>总数:</strong> {{ detailData.totalCount || 0 }}</p>
@@ -497,7 +616,11 @@ onMounted(() => {
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'action'">
-            <a v-if="detailData?.status === 'IN_PROGRESS'" @click="handleUpdateDetail(record)">更新</a>
+            <a
+              v-if="detailData?.status === 'IN_PROGRESS'"
+              @click="handleUpdateDetail(record)"
+              >更新</a
+            >
           </template>
         </template>
       </Table>
@@ -513,10 +636,16 @@ onMounted(() => {
     >
       <Form :model="detailUpdateForm" layout="vertical">
         <FormItem label="实际状态">
-          <Input v-model:value="detailUpdateForm.actualStatus" placeholder="请输入实际状态" />
+          <Input
+            v-model:value="detailUpdateForm.actualStatus"
+            placeholder="请输入实际状态"
+          />
         </FormItem>
         <FormItem label="实际位置">
-          <Input v-model:value="detailUpdateForm.actualLocation" placeholder="请输入实际位置" />
+          <Input
+            v-model:value="detailUpdateForm.actualLocation"
+            placeholder="请输入实际位置"
+          />
         </FormItem>
         <FormItem label="差异描述">
           <Textarea
@@ -529,4 +658,3 @@ onMounted(() => {
     </Modal>
   </Page>
 </template>
-

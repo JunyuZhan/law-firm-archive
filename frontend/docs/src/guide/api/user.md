@@ -8,14 +8,14 @@ GET /api/system/user/list
 
 查询参数：
 
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| pageNum | number | 页码 |
+| 参数     | 类型   | 说明     |
+| -------- | ------ | -------- |
+| pageNum  | number | 页码     |
 | pageSize | number | 每页数量 |
-| username | string | 用户名 |
-| realName | string | 姓名 |
-| status | string | 状态 |
-| deptId | number | 部门ID |
+| username | string | 用户名   |
+| realName | string | 姓名     |
+| status   | string | 状态     |
+| deptId   | number | 部门ID   |
 
 ## 用户详情
 
@@ -30,6 +30,7 @@ POST /api/system/user
 ```
 
 请求：
+
 ```json
 {
   "username": "zhangsan",
@@ -67,6 +68,7 @@ PUT /api/system/user/{id}/status
 ```
 
 请求：
+
 ```json
 {
   "status": "DISABLED"

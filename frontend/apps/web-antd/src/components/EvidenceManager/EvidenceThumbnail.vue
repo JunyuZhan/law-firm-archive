@@ -1,18 +1,22 @@
 <script setup lang="ts">
+import type { EvidenceItem } from './types';
+
 /**
  * 证据缩略图组件
  * 根据文件类型显示不同的缩略图/图标
  */
 import { computed } from 'vue';
-import { Image } from 'ant-design-vue';
+
 import { Eye } from '@vben/icons';
-import type { EvidenceItem } from './types';
+
+import { Image } from 'ant-design-vue';
+
 import { getFileTypeInfo } from './types';
 
 const props = defineProps<{
   evidence: EvidenceItem;
-  size?: 'small' | 'medium' | 'large';
   showPreview?: boolean;
+  size?: 'large' | 'medium' | 'small';
 }>();
 
 const sizeMap = {
@@ -64,29 +68,45 @@ const fileTypeEmoji = computed(() => {
         :width="dimensions.width"
         :height="dimensions.height"
         :preview="showPreview !== false"
-        :previewSrc="evidence.fileUrl"
+        :preview-src="evidence.fileUrl"
         class="thumbnail-image"
       />
     </template>
 
     <!-- 视频类型：显示播放图标 -->
     <template v-else-if="evidence.fileType === 'video'">
-      <div class="icon-container video-icon" :style="{ background: fileTypeInfo.color }">
-        <Eye :style="{ width: `${dimensions.iconSize}px`, height: `${dimensions.iconSize}px`, color: '#fff' }" />
+      <div
+        class="icon-container video-icon"
+        :style="{ background: fileTypeInfo.color }"
+      >
+        <Eye
+          :style="{
+            width: `${dimensions.iconSize}px`,
+            height: `${dimensions.iconSize}px`,
+            color: '#fff',
+          }"
+        />
       </div>
     </template>
 
     <!-- 音频类型：显示音频图标 -->
     <template v-else-if="evidence.fileType === 'audio'">
-      <div class="icon-container audio-icon" :style="{ background: fileTypeInfo.color }">
-        <span :style="{ fontSize: `${dimensions.iconSize}px` }">{{ fileTypeEmoji }}</span>
+      <div
+        class="icon-container audio-icon"
+        :style="{ background: fileTypeInfo.color }"
+      >
+        <span :style="{ fontSize: `${dimensions.iconSize}px` }">{{
+          fileTypeEmoji
+        }}</span>
       </div>
     </template>
 
     <!-- 其他文档类型：显示对应图标 -->
     <template v-else>
       <div class="icon-container" :style="{ background: '#f5f5f5' }">
-        <span :style="{ fontSize: `${dimensions.iconSize}px` }">{{ fileTypeEmoji }}</span>
+        <span :style="{ fontSize: `${dimensions.iconSize}px` }">{{
+          fileTypeEmoji
+        }}</span>
       </div>
     </template>
   </div>

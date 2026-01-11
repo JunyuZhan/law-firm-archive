@@ -1,6 +1,6 @@
 /**
  * 收款变更申请 API
- * 
+ *
  * Requirements: 3.5
  */
 import { requestClient } from '#/api/request';
@@ -34,7 +34,8 @@ export interface CreatePaymentAmendmentCommand {
   reason: string;
 }
 
-export interface PageResult<T> {
+// 本地分页结果类型（不导出，避免与其他模块冲突）
+interface AmendmentPageResult<T> {
   records: T[];
   total: number;
   pageNum: number;
@@ -47,25 +48,36 @@ export interface PageResult<T> {
  * 申请修改已锁定的收款记录
  */
 export function createPaymentAmendment(data: CreatePaymentAmendmentCommand) {
-  return requestClient.post<PaymentAmendmentDTO>('/finance/payment-amendment', data);
+  return requestClient.post<PaymentAmendmentDTO>(
+    '/finance/payment-amendment',
+    data,
+  );
 }
 
 /**
  * 审批通过变更申请
  */
 export function approvePaymentAmendment(id: number, comment?: string) {
-  return requestClient.post<PaymentAmendmentDTO>(`/finance/payment-amendment/${id}/approve`, null, {
-    params: { comment },
-  });
+  return requestClient.post<PaymentAmendmentDTO>(
+    `/finance/payment-amendment/${id}/approve`,
+    null,
+    {
+      params: { comment },
+    },
+  );
 }
 
 /**
  * 拒绝变更申请
  */
 export function rejectPaymentAmendment(id: number, rejectReason: string) {
-  return requestClient.post<PaymentAmendmentDTO>(`/finance/payment-amendment/${id}/reject`, null, {
-    params: { rejectReason },
-  });
+  return requestClient.post<PaymentAmendmentDTO>(
+    `/finance/payment-amendment/${id}/reject`,
+    null,
+    {
+      params: { rejectReason },
+    },
+  );
 }
 
 /**
@@ -76,19 +88,26 @@ export function getPaymentAmendmentList(params: {
   pageSize?: number;
   status?: string;
 }) {
-  return requestClient.get<PageResult<PaymentAmendmentDTO>>('/finance/payment-amendment/list', { params });
+  return requestClient.get<AmendmentPageResult<PaymentAmendmentDTO>>(
+    '/finance/payment-amendment/list',
+    { params },
+  );
 }
 
 /**
  * 获取变更申请详情
  */
 export function getPaymentAmendmentDetail(id: number) {
-  return requestClient.get<PaymentAmendmentDTO>(`/finance/payment-amendment/${id}`);
+  return requestClient.get<PaymentAmendmentDTO>(
+    `/finance/payment-amendment/${id}`,
+  );
 }
 
 /**
  * 查询收款记录的变更历史
  */
 export function getPaymentAmendmentHistory(paymentId: number) {
-  return requestClient.get<PaymentAmendmentDTO[]>(`/finance/payment-amendment/payment/${paymentId}/history`);
+  return requestClient.get<PaymentAmendmentDTO[]>(
+    `/finance/payment-amendment/payment/${paymentId}/history`,
+  );
 }

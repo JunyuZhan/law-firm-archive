@@ -7,6 +7,7 @@ POST /api/auth/login
 ```
 
 请求：
+
 ```json
 {
   "username": "admin",
@@ -15,6 +16,7 @@ POST /api/auth/login
 ```
 
 响应：
+
 ```json
 {
   "accessToken": "eyJhbGciOiJIUzI1NiIs...",
@@ -29,6 +31,7 @@ POST /api/auth/refresh
 ```
 
 请求：
+
 ```json
 {
   "refreshToken": "eyJhbGciOiJIUzI1NiIs..."
@@ -48,6 +51,7 @@ GET /api/auth/user-info
 ```
 
 响应：
+
 ```json
 {
   "id": 1,
@@ -66,6 +70,7 @@ GET /api/auth/menus
 ```
 
 响应：
+
 ```json
 [
   {

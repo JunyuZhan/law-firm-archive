@@ -1,25 +1,48 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { message, Card, Table, Button, Space, Tag, Input, Select, Statistic, Row, Col, Modal, Form, FormItem, Textarea, DatePicker, InputNumber, Descriptions, DescriptionsItem, Popconfirm, Timeline } from 'ant-design-vue';
+import type { AssetDTO, AssetQuery, AssetRecordDTO } from '#/api/admin/asset';
+
+import { onMounted, ref } from 'vue';
+
 import { Page } from '@vben/common-ui';
 import { Plus } from '@vben/icons';
+
 import {
-  getAssetList,
-  getAssetDetail,
+  Button,
+  Card,
+  Col,
+  DatePicker,
+  Descriptions,
+  DescriptionsItem,
+  Form,
+  FormItem,
+  Input,
+  InputNumber,
+  message,
+  Modal,
+  Popconfirm,
+  Row,
+  Select,
+  Space,
+  Statistic,
+  Table,
+  Tag,
+  Textarea,
+  Timeline,
+} from 'ant-design-vue';
+import dayjs from 'dayjs';
+
+import {
   createAsset,
-  updateAsset,
-  deleteAsset,
+  getAssetDetail,
+  getAssetList,
+  getAssetRecords,
+  getAssetStatistics,
   receiveAsset,
   returnAsset,
   scrapAsset,
-  getAssetRecords,
-  getAssetStatistics,
-  type AssetDTO,
-  type AssetQuery,
-  type AssetRecordDTO,
+  updateAsset,
 } from '#/api/admin/asset';
 import { UserTreeSelect } from '#/components/UserTreeSelect';
-import dayjs from 'dayjs';
 
 defineOptions({ name: 'AdminAsset' });
 
@@ -39,7 +62,7 @@ const queryParams = ref<AssetQuery>({
 const modalVisible = ref(false);
 const detailVisible = ref(false);
 const receiveVisible = ref(false);
-const editingId = ref<number | null>(null);
+const editingId = ref<null | number>(null);
 const currentAsset = ref<AssetDTO | null>(null);
 const assetRecords = ref<AssetRecordDTO[]>([]);
 
@@ -69,11 +92,26 @@ const receiveForm = ref({
 const columns = [
   { title: '资产编号', dataIndex: 'assetNo', key: 'assetNo', width: 130 },
   { title: '资产名称', dataIndex: 'name', key: 'name', width: 150 },
-  { title: '资产类型', dataIndex: 'categoryName', key: 'categoryName', width: 100 },
+  {
+    title: '资产类型',
+    dataIndex: 'categoryName',
+    key: 'categoryName',
+    width: 100,
+  },
   { title: '品牌/型号', dataIndex: 'brand', key: 'brand', width: 120 },
-  { title: '使用人', dataIndex: 'currentUserName', key: 'currentUserName', width: 100 },
+  {
+    title: '使用人',
+    dataIndex: 'currentUserName',
+    key: 'currentUserName',
+    width: 100,
+  },
   { title: '存放位置', dataIndex: 'location', key: 'location', width: 120 },
-  { title: '购入日期', dataIndex: 'purchaseDate', key: 'purchaseDate', width: 110 },
+  {
+    title: '购入日期',
+    dataIndex: 'purchaseDate',
+    key: 'purchaseDate',
+    width: 110,
+  },
   { title: '状态', dataIndex: 'status', key: 'status', width: 90 },
   { title: '操作', key: 'action', width: 180, fixed: 'right' as const },
 ];
@@ -146,7 +184,7 @@ function handleAdd() {
   modalVisible.value = true;
 }
 
-async function handleEdit(record: AssetDTO) {
+async function handleEdit(record: Record<string, any>) {
   try {
     const detail = await getAssetDetail(record.id);
     editingId.value = record.id;
@@ -157,10 +195,14 @@ async function handleEdit(record: AssetDTO) {
       model: detail.model || '',
       specification: detail.specification || '',
       serialNumber: detail.serialNumber || '',
-      purchaseDate: detail.purchaseDate ? dayjs(detail.purchaseDate) : undefined,
+      purchaseDate: detail.purchaseDate
+        ? dayjs(detail.purchaseDate)
+        : undefined,
       purchasePrice: detail.purchasePrice,
       supplier: detail.supplier || '',
-      warrantyExpireDate: detail.warrantyExpireDate ? dayjs(detail.warrantyExpireDate) : undefined,
+      warrantyExpireDate: detail.warrantyExpireDate
+        ? dayjs(detail.warrantyExpireDate)
+        : undefined,
       usefulLife: detail.usefulLife,
       location: detail.location || '',
       remarks: detail.remarks || '',
@@ -180,7 +222,8 @@ async function handleSave() {
     const data = {
       ...formData.value,
       purchaseDate: formData.value.purchaseDate?.format('YYYY-MM-DD'),
-      warrantyExpireDate: formData.value.warrantyExpireDate?.format('YYYY-MM-DD'),
+      warrantyExpireDate:
+        formData.value.warrantyExpireDate?.format('YYYY-MM-DD'),
     };
     if (editingId.value) {
       await updateAsset(editingId.value, data);
@@ -197,7 +240,7 @@ async function handleSave() {
   }
 }
 
-async function handleView(record: AssetDTO) {
+async function handleView(record: Record<string, any>) {
   try {
     const [detail, records] = await Promise.all([
       getAssetDetail(record.id),
@@ -211,18 +254,7 @@ async function handleView(record: AssetDTO) {
   }
 }
 
-async function handleDelete(id: number) {
-  try {
-    await deleteAsset(id);
-    message.success('删除成功');
-    loadData();
-    loadStatistics();
-  } catch (error: any) {
-    message.error(error.message || '删除失败');
-  }
-}
-
-function openReceive(record: AssetDTO) {
+function openReceive(record: Record<string, any>) {
   receiveForm.value = {
     assetId: record.id,
     userId: undefined,
@@ -241,7 +273,8 @@ async function handleReceive() {
     await receiveAsset({
       assetId: receiveForm.value.assetId,
       userId: receiveForm.value.userId,
-      expectedReturnDate: receiveForm.value.expectedReturnDate?.format('YYYY-MM-DD'),
+      expectedReturnDate:
+        receiveForm.value.expectedReturnDate?.format('YYYY-MM-DD'),
       reason: receiveForm.value.reason,
     });
     message.success('领用成功');
@@ -292,40 +325,134 @@ onMounted(() => {
 <template>
   <Page title="资产管理" description="管理律所固定资产">
     <Row :gutter="16" style="margin-bottom: 16px">
-      <Col :span="6"><Card><Statistic title="资产总数" :value="statistics.totalCount || 0" suffix="件" /></Card></Col>
-      <Col :span="6"><Card><Statistic title="在用资产" :value="statistics.inUseCount || 0" suffix="件" /></Card></Col>
-      <Col :span="6"><Card><Statistic title="闲置资产" :value="statistics.idleCount || 0" suffix="件" /></Card></Col>
-      <Col :span="6"><Card><Statistic title="资产总值" :value="statistics.totalValue || 0" prefix="¥" :precision="0" /></Card></Col>
+      <Col :span="6">
+        <Card>
+          <Statistic
+            title="资产总数"
+            :value="statistics.totalCount || 0"
+            suffix="件"
+          />
+        </Card>
+      </Col>
+      <Col :span="6">
+        <Card>
+          <Statistic
+            title="在用资产"
+            :value="statistics.inUseCount || 0"
+            suffix="件"
+          />
+        </Card>
+      </Col>
+      <Col :span="6">
+        <Card>
+          <Statistic
+            title="闲置资产"
+            :value="statistics.idleCount || 0"
+            suffix="件"
+          />
+        </Card>
+      </Col>
+      <Col :span="6">
+        <Card>
+          <Statistic
+            title="资产总值"
+            :value="statistics.totalValue || 0"
+            prefix="¥"
+            :precision="0"
+          />
+        </Card>
+      </Col>
     </Row>
 
     <Card>
-      <div style=" display: flex; justify-content: space-between;margin-bottom: 16px;">
+      <div
+        style="
+          display: flex;
+          justify-content: space-between;
+          margin-bottom: 16px;
+        "
+      >
         <Space>
-          <Select v-model:value="queryParams.category" placeholder="资产类型" style="width: 120px" allowClear :options="categoryOptions" @change="handleSearch" />
-          <Select v-model:value="queryParams.status" placeholder="状态" style="width: 100px" allowClear
-            :options="Object.entries(statusMap).map(([k, v]) => ({ label: v.text, value: k }))" @change="handleSearch" />
-          <Input v-model:value="queryParams.keyword" placeholder="搜索资产" style="width: 200px" allowClear @pressEnter="handleSearch" />
+          <Select
+            v-model:value="queryParams.category"
+            placeholder="资产类型"
+            style="width: 120px"
+            allow-clear
+            :options="categoryOptions"
+            @change="handleSearch"
+          />
+          <Select
+            v-model:value="queryParams.status"
+            placeholder="状态"
+            style="width: 100px"
+            allow-clear
+            :options="
+              Object.entries(statusMap).map(([k, v]) => ({
+                label: v.text,
+                value: k,
+              }))
+            "
+            @change="handleSearch"
+          />
+          <Input
+            v-model:value="queryParams.keyword"
+            placeholder="搜索资产"
+            style="width: 200px"
+            allow-clear
+            @press-enter="handleSearch"
+          />
           <Button @click="handleSearch">查询</Button>
         </Space>
         <Button type="primary" @click="handleAdd"><Plus />添加资产</Button>
       </div>
-      
-      <Table :columns="columns" :dataSource="dataSource" :loading="loading"
-        :pagination="{ current: queryParams.pageNum, pageSize: queryParams.pageSize, total, showSizeChanger: true }"
-        :scroll="{ x: 1200 }" rowKey="id" @change="handleTableChange">
+
+      <Table
+        :columns="columns"
+        :data-source="dataSource"
+        :loading="loading"
+        :pagination="{
+          current: queryParams.pageNum,
+          pageSize: queryParams.pageSize,
+          total,
+          showSizeChanger: true,
+        }"
+        :scroll="{ x: 1200 }"
+        row-key="id"
+        @change="handleTableChange"
+      >
         <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'brand'">{{ record.brand }}{{ record.model ? ` / ${record.model}` : '' }}</template>
-          <template v-else-if="column.key === 'purchaseDate'">{{ formatDate(record.purchaseDate) }}</template>
+          <template v-if="column.key === 'brand'">
+            {{ record.brand }}{{ record.model ? ` / ${record.model}` : '' }}
+          </template>
+          <template v-else-if="column.key === 'purchaseDate'">
+            {{ formatDate(record.purchaseDate) }}
+          </template>
           <template v-else-if="column.key === 'status'">
-            <Tag :color="statusMap[record.status]?.color || 'default'">{{ record.statusName || statusMap[record.status]?.text }}</Tag>
+            <Tag :color="statusMap[record.status]?.color || 'default'">
+              {{ record.statusName || statusMap[record.status]?.text }}
+            </Tag>
           </template>
           <template v-else-if="column.key === 'action'">
             <Space>
               <a @click="handleView(record)">查看</a>
               <a @click="handleEdit(record)">编辑</a>
-              <a v-if="record.status === 'IDLE'" @click="openReceive(record)">领用</a>
-              <Popconfirm v-if="record.status === 'IN_USE'" title="确定归还此资产？" @confirm="handleReturn(record.id)"><a>归还</a></Popconfirm>
-              <Popconfirm v-if="record.status === 'IDLE'" title="确定报废此资产？" @confirm="handleScrap(record.id)"><a style="color: #ff4d4f">报废</a></Popconfirm>
+              <a v-if="record.status === 'IDLE'" @click="openReceive(record)"
+                >领用</a
+              >
+              <Popconfirm
+                v-if="record.status === 'IN_USE'"
+                title="确定归还此资产？"
+                @confirm="handleReturn(record.id)"
+              >
+                <a>归还</a>
+              </Popconfirm>
+              <Popconfirm
+                v-if="record.status === 'IDLE'"
+                title="确定报废此资产？"
+                @confirm="handleScrap(record.id)"
+              >
+                <a style="color: #ff4d4f">报废</a>
+              </Popconfirm>
             </Space>
           </template>
         </template>
@@ -333,47 +460,136 @@ onMounted(() => {
     </Card>
 
     <!-- 新建/编辑弹窗 -->
-    <Modal v-model:open="modalVisible" :title="editingId ? '编辑资产' : '添加资产'" width="600px" @ok="handleSave">
-      <Form :labelCol="{ span: 5 }" :wrapperCol="{ span: 18 }">
-        <FormItem label="资产名称" required><Input v-model:value="formData.name" placeholder="如：ThinkPad笔记本" /></FormItem>
-        <FormItem label="资产类型" required><Select v-model:value="formData.category" :options="categoryOptions" /></FormItem>
-        <FormItem label="品牌"><Input v-model:value="formData.brand" placeholder="品牌" /></FormItem>
-        <FormItem label="型号"><Input v-model:value="formData.model" placeholder="型号" /></FormItem>
-        <FormItem label="规格"><Input v-model:value="formData.specification" placeholder="规格参数" /></FormItem>
-        <FormItem label="序列号"><Input v-model:value="formData.serialNumber" placeholder="序列号/SN" /></FormItem>
-        <FormItem label="购入日期"><DatePicker v-model:value="formData.purchaseDate" style="width: 100%" /></FormItem>
-        <FormItem label="购入价格"><InputNumber v-model:value="formData.purchasePrice" :min="0" prefix="¥" style="width: 100%" /></FormItem>
-        <FormItem label="供应商"><Input v-model:value="formData.supplier" placeholder="供应商名称" /></FormItem>
-        <FormItem label="保修到期"><DatePicker v-model:value="formData.warrantyExpireDate" style="width: 100%" /></FormItem>
-        <FormItem label="存放位置"><Input v-model:value="formData.location" placeholder="存放位置" /></FormItem>
-        <FormItem label="备注"><Textarea v-model:value="formData.remarks" :rows="2" /></FormItem>
+    <Modal
+      v-model:open="modalVisible"
+      :title="editingId ? '编辑资产' : '添加资产'"
+      width="600px"
+      @ok="handleSave"
+    >
+      <Form :label-col="{ span: 5 }" :wrapper-col="{ span: 18 }">
+        <FormItem label="资产名称" required>
+          <Input
+            v-model:value="formData.name"
+            placeholder="如：ThinkPad笔记本"
+          />
+        </FormItem>
+        <FormItem label="资产类型" required>
+          <Select
+            v-model:value="formData.category"
+            :options="categoryOptions"
+          />
+        </FormItem>
+        <FormItem label="品牌">
+          <Input v-model:value="formData.brand" placeholder="品牌" />
+        </FormItem>
+        <FormItem label="型号">
+          <Input v-model:value="formData.model" placeholder="型号" />
+        </FormItem>
+        <FormItem label="规格">
+          <Input
+            v-model:value="formData.specification"
+            placeholder="规格参数"
+          />
+        </FormItem>
+        <FormItem label="序列号">
+          <Input
+            v-model:value="formData.serialNumber"
+            placeholder="序列号/SN"
+          />
+        </FormItem>
+        <FormItem label="购入日期">
+          <DatePicker
+            v-model:value="formData.purchaseDate"
+            style="width: 100%"
+          />
+        </FormItem>
+        <FormItem label="购入价格">
+          <InputNumber
+            v-model:value="formData.purchasePrice"
+            :min="0"
+            prefix="¥"
+            style="width: 100%"
+          />
+        </FormItem>
+        <FormItem label="供应商">
+          <Input v-model:value="formData.supplier" placeholder="供应商名称" />
+        </FormItem>
+        <FormItem label="保修到期">
+          <DatePicker
+            v-model:value="formData.warrantyExpireDate"
+            style="width: 100%"
+          />
+        </FormItem>
+        <FormItem label="存放位置">
+          <Input v-model:value="formData.location" placeholder="存放位置" />
+        </FormItem>
+        <FormItem label="备注">
+          <Textarea v-model:value="formData.remarks" :rows="2" />
+        </FormItem>
       </Form>
     </Modal>
 
     <!-- 详情弹窗 -->
-    <Modal v-model:open="detailVisible" title="资产详情" width="700px" :footer="null">
+    <Modal
+      v-model:open="detailVisible"
+      title="资产详情"
+      width="700px"
+      :footer="null"
+    >
       <Descriptions v-if="currentAsset" :column="2" bordered size="small">
-        <DescriptionsItem label="资产编号">{{ currentAsset.assetNo }}</DescriptionsItem>
-        <DescriptionsItem label="资产名称">{{ currentAsset.name }}</DescriptionsItem>
-        <DescriptionsItem label="资产类型">{{ currentAsset.categoryName }}</DescriptionsItem>
-        <DescriptionsItem label="品牌/型号">{{ currentAsset.brand }} {{ currentAsset.model }}</DescriptionsItem>
-        <DescriptionsItem label="序列号">{{ currentAsset.serialNumber || '-' }}</DescriptionsItem>
-        <DescriptionsItem label="状态"><Tag :color="statusMap[currentAsset.status]?.color">{{ statusMap[currentAsset.status]?.text }}</Tag></DescriptionsItem>
-        <DescriptionsItem label="购入日期">{{ formatDate(currentAsset.purchaseDate) }}</DescriptionsItem>
-        <DescriptionsItem label="购入价格">{{ formatMoney(currentAsset.purchasePrice) }}</DescriptionsItem>
-        <DescriptionsItem label="使用人">{{ currentAsset.currentUserName || '-' }}</DescriptionsItem>
-        <DescriptionsItem label="存放位置">{{ currentAsset.location || '-' }}</DescriptionsItem>
-        <DescriptionsItem label="保修到期">{{ formatDate(currentAsset.warrantyExpireDate) }}</DescriptionsItem>
-        <DescriptionsItem label="保修状态"><Tag :color="currentAsset.inWarranty ? 'success' : 'default'">{{ currentAsset.inWarranty ? '保修中' : '已过保' }}</Tag></DescriptionsItem>
+        <DescriptionsItem label="资产编号">
+          {{ currentAsset.assetNo }}
+        </DescriptionsItem>
+        <DescriptionsItem label="资产名称">
+          {{ currentAsset.name }}
+        </DescriptionsItem>
+        <DescriptionsItem label="资产类型">
+          {{ currentAsset.categoryName }}
+        </DescriptionsItem>
+        <DescriptionsItem label="品牌/型号">
+          {{ currentAsset.brand }} {{ currentAsset.model }}
+        </DescriptionsItem>
+        <DescriptionsItem label="序列号">
+          {{ currentAsset.serialNumber || '-' }}
+        </DescriptionsItem>
+        <DescriptionsItem label="状态">
+          <Tag :color="statusMap[currentAsset.status]?.color">
+            {{ statusMap[currentAsset.status]?.text }}
+          </Tag>
+        </DescriptionsItem>
+        <DescriptionsItem label="购入日期">
+          {{ formatDate(currentAsset.purchaseDate) }}
+        </DescriptionsItem>
+        <DescriptionsItem label="购入价格">
+          {{ formatMoney(currentAsset.purchasePrice) }}
+        </DescriptionsItem>
+        <DescriptionsItem label="使用人">
+          {{ currentAsset.currentUserName || '-' }}
+        </DescriptionsItem>
+        <DescriptionsItem label="存放位置">
+          {{ currentAsset.location || '-' }}
+        </DescriptionsItem>
+        <DescriptionsItem label="保修到期">
+          {{ formatDate(currentAsset.warrantyExpireDate) }}
+        </DescriptionsItem>
+        <DescriptionsItem label="保修状态">
+          <Tag :color="currentAsset.inWarranty ? 'success' : 'default'">
+            {{ currentAsset.inWarranty ? '保修中' : '已过保' }}
+          </Tag>
+        </DescriptionsItem>
       </Descriptions>
-      <div v-if="assetRecords.length" style="margin-top: 16px">
+      <div v-if="assetRecords.length > 0" style="margin-top: 16px">
         <h4>操作记录</h4>
         <Timeline>
           <Timeline.Item v-for="r in assetRecords" :key="r.id">
-            <p><strong>{{ r.recordTypeName }}</strong> - {{ r.operatorName }}</p>
+            <p>
+              <strong>{{ r.recordTypeName }}</strong> - {{ r.operatorName }}
+            </p>
             <p v-if="r.toUserName">领用人: {{ r.toUserName }}</p>
             <p v-if="r.reason">原因: {{ r.reason }}</p>
-            <p style=" font-size: 12px;color: #999">{{ formatDate(r.operateDate) }}</p>
+            <p style="font-size: 12px; color: #999">
+              {{ formatDate(r.operateDate) }}
+            </p>
           </Timeline.Item>
         </Timeline>
       </div>
@@ -381,15 +597,26 @@ onMounted(() => {
 
     <!-- 领用弹窗 -->
     <Modal v-model:open="receiveVisible" title="资产领用" @ok="handleReceive">
-      <Form :labelCol="{ span: 5 }" :wrapperCol="{ span: 18 }">
+      <Form :label-col="{ span: 5 }" :wrapper-col="{ span: 18 }">
         <FormItem label="领用人" required>
           <UserTreeSelect
             v-model:value="receiveForm.userId"
             placeholder="选择领用人（按部门筛选）"
           />
         </FormItem>
-        <FormItem label="预计归还"><DatePicker v-model:value="receiveForm.expectedReturnDate" style="width: 100%" /></FormItem>
-        <FormItem label="领用原因"><Textarea v-model:value="receiveForm.reason" :rows="2" placeholder="领用原因" /></FormItem>
+        <FormItem label="预计归还">
+          <DatePicker
+            v-model:value="receiveForm.expectedReturnDate"
+            style="width: 100%"
+          />
+        </FormItem>
+        <FormItem label="领用原因">
+          <Textarea
+            v-model:value="receiveForm.reason"
+            :rows="2"
+            placeholder="领用原因"
+          />
+        </FormItem>
       </Form>
     </Modal>
   </Page>

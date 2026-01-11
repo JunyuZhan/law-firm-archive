@@ -58,7 +58,7 @@ export interface CreateDocumentCommand {
 
 export interface UpdateDocumentCommand {
   id: number;
-  title?: string;  // 文档标题（重命名）
+  title?: string; // 文档标题（重命名）
   categoryId?: number;
   description?: string;
 }
@@ -70,4 +70,3 @@ export interface UploadNewVersionCommand {
   fileSize: number;
   fileType?: string;
 }
-

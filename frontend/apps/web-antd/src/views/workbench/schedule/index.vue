@@ -1,21 +1,43 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
-import { message, Card, Button, Space, Modal, Form, FormItem, Input, Select, DatePicker, TimeRangePicker, Tag, Table, Tabs, TabPane, Popconfirm, Textarea, Checkbox } from 'ant-design-vue';
+import type { CreateScheduleCommand, ScheduleDTO } from '#/api/matter/schedule';
+
+import { computed, onMounted, ref } from 'vue';
+
 import { Page } from '@vben/common-ui';
-import { 
-  getSchedules, 
-  createSchedule, 
-  updateSchedule, 
-  deleteSchedule, 
-  cancelSchedule,
-  getMyTodaySchedules,
-  SCHEDULE_TYPE_OPTIONS, 
-  REMINDER_OPTIONS,
-  type ScheduleDTO, 
-  type CreateScheduleCommand 
-} from '#/api/matter/schedule';
-import { getMatterSelectOptions } from '#/api/matter';
+
+import {
+  Button,
+  Card,
+  Checkbox,
+  DatePicker,
+  Form,
+  FormItem,
+  Input,
+  message,
+  Modal,
+  Popconfirm,
+  Select,
+  Space,
+  Table,
+  TabPane,
+  Tabs,
+  Tag,
+  Textarea,
+  TimeRangePicker,
+} from 'ant-design-vue';
 import dayjs from 'dayjs';
+
+import { getMatterSelectOptions } from '#/api/matter';
+import {
+  cancelSchedule,
+  createSchedule,
+  deleteSchedule,
+  getMyTodaySchedules,
+  getSchedules,
+  REMINDER_OPTIONS,
+  SCHEDULE_TYPE_OPTIONS,
+  updateSchedule,
+} from '#/api/matter/schedule';
 
 defineOptions({ name: 'ScheduleManagement' });
 
@@ -42,10 +64,15 @@ const calendarDays = computed(() => {
 // 弹窗相关
 const modalVisible = ref(false);
 const modalTitle = ref('新建日程');
-const editingId = ref<number | null>(null);
-const matters = ref<Array<{ id: number; name: string; matterNo: string }>>([]);
+const editingId = ref<null | number>(null);
+const matters = ref<Array<{ id: number; matterNo: string; name: string }>>([]);
 
-const formData = ref<Partial<CreateScheduleCommand> & { date?: dayjs.Dayjs; time?: [dayjs.Dayjs, dayjs.Dayjs] | null }>({
+const formData = ref<
+  Partial<CreateScheduleCommand> & {
+    date?: dayjs.Dayjs;
+    time?: [dayjs.Dayjs, dayjs.Dayjs] | null;
+  }
+>({
   matterId: undefined,
   title: '',
   description: '',
@@ -68,12 +95,35 @@ const queryParams = ref({
 
 // 表格列
 const columns = [
-  { title: '标题', dataIndex: 'title', key: 'title', width: 200, ellipsis: true },
-  { title: '类型', dataIndex: 'scheduleTypeName', key: 'scheduleTypeName', width: 80 },
+  {
+    title: '标题',
+    dataIndex: 'title',
+    key: 'title',
+    width: 200,
+    ellipsis: true,
+  },
+  {
+    title: '类型',
+    dataIndex: 'scheduleTypeName',
+    key: 'scheduleTypeName',
+    width: 80,
+  },
   { title: '开始时间', dataIndex: 'startTime', key: 'startTime', width: 160 },
   { title: '结束时间', dataIndex: 'endTime', key: 'endTime', width: 160 },
-  { title: '地点', dataIndex: 'location', key: 'location', width: 150, ellipsis: true },
-  { title: '关联项目', dataIndex: 'matterName', key: 'matterName', width: 150, ellipsis: true },
+  {
+    title: '地点',
+    dataIndex: 'location',
+    key: 'location',
+    width: 150,
+    ellipsis: true,
+  },
+  {
+    title: '关联项目',
+    dataIndex: 'matterName',
+    key: 'matterName',
+    width: 150,
+    ellipsis: true,
+  },
   { title: '状态', dataIndex: 'status', key: 'status', width: 80 },
   { title: '操作', key: 'action', width: 150, fixed: 'right' as const },
 ];
@@ -110,8 +160,16 @@ async function loadTodaySchedules() {
 // 加载项目列表
 async function loadMatters() {
   try {
-    const res = await getMatterSelectOptions({ pageNum: 1, pageSize: 500, status: 'ACTIVE' });
-    matters.value = (res.list || []).map((m: any) => ({ id: m.id, name: m.name, matterNo: m.matterNo || '' }));
+    const res = await getMatterSelectOptions({
+      pageNum: 1,
+      pageSize: 500,
+      status: 'ACTIVE',
+    });
+    matters.value = (res.list || []).map((m: any) => ({
+      id: m.id,
+      name: m.name,
+      matterNo: m.matterNo || '',
+    }));
   } catch (error) {
     console.error('加载项目列表失败', error);
   }
@@ -152,16 +210,24 @@ function getStatusTag(status: string) {
 // 切换月份
 function changeMonth(delta: number) {
   currentMonth.value = currentMonth.value.add(delta, 'month');
-  queryParams.value.startTime = currentMonth.value.startOf('month').format('YYYY-MM-DDTHH:mm:ss');
-  queryParams.value.endTime = currentMonth.value.endOf('month').format('YYYY-MM-DDTHH:mm:ss');
+  queryParams.value.startTime = currentMonth.value
+    .startOf('month')
+    .format('YYYY-MM-DDTHH:mm:ss');
+  queryParams.value.endTime = currentMonth.value
+    .endOf('month')
+    .format('YYYY-MM-DDTHH:mm:ss');
   loadSchedules();
 }
 
 // 回到今天
 function goToToday() {
   currentMonth.value = dayjs();
-  queryParams.value.startTime = currentMonth.value.startOf('month').format('YYYY-MM-DDTHH:mm:ss');
-  queryParams.value.endTime = currentMonth.value.endOf('month').format('YYYY-MM-DDTHH:mm:ss');
+  queryParams.value.startTime = currentMonth.value
+    .startOf('month')
+    .format('YYYY-MM-DDTHH:mm:ss');
+  queryParams.value.endTime = currentMonth.value
+    .endOf('month')
+    .format('YYYY-MM-DDTHH:mm:ss');
   loadSchedules();
 }
 
@@ -178,7 +244,10 @@ function handleAdd(day?: dayjs.Dayjs) {
     allDay: false,
     reminderMinutes: 30,
     date: day || dayjs(),
-    time: [dayjs().hour(9).minute(0), dayjs().hour(10).minute(0)] as [dayjs.Dayjs, dayjs.Dayjs],
+    time: [dayjs().hour(9).minute(0), dayjs().hour(10).minute(0)] as [
+      dayjs.Dayjs,
+      dayjs.Dayjs,
+    ],
   };
   loadMatters();
   modalVisible.value = true;
@@ -227,8 +296,14 @@ async function handleSubmit() {
     } else if (formData.value.time && formData.value.time.length >= 2) {
       const startHour = dayjs(formData.value.time[0]);
       const endHour = dayjs(formData.value.time[1]);
-      startTime = date.hour(startHour.hour()).minute(startHour.minute()).format('YYYY-MM-DDTHH:mm:ss');
-      endTime = date.hour(endHour.hour()).minute(endHour.minute()).format('YYYY-MM-DDTHH:mm:ss');
+      startTime = date
+        .hour(startHour.hour())
+        .minute(startHour.minute())
+        .format('YYYY-MM-DDTHH:mm:ss');
+      endTime = date
+        .hour(endHour.hour())
+        .minute(endHour.minute())
+        .format('YYYY-MM-DDTHH:mm:ss');
     } else {
       startTime = date.hour(9).minute(0).format('YYYY-MM-DDTHH:mm:ss');
       endTime = date.hour(10).minute(0).format('YYYY-MM-DDTHH:mm:ss');
@@ -309,21 +384,33 @@ onMounted(() => {
   <Page title="日程管理" description="管理您的日程安排，包括开庭、会议、约见等">
     <div class="schedule-page">
       <!-- 今日日程提醒 -->
-      <Card v-if="todaySchedules.length > 0" title="今日日程" size="small" style="margin-bottom: 16px">
+      <Card
+        v-if="todaySchedules.length > 0"
+        title="今日日程"
+        size="small"
+        style="margin-bottom: 16px"
+      >
         <div class="today-schedules">
           <div v-for="s in todaySchedules" :key="s.id" class="today-item">
-            <Tag :color="getTypeColor(s.scheduleType)" style="margin-right: 8px">
+            <Tag
+              :color="getTypeColor(s.scheduleType)"
+              style="margin-right: 8px"
+            >
               {{ s.scheduleTypeName || s.scheduleType }}
             </Tag>
-            <span class="today-time">{{ dayjs(s.startTime).format('HH:mm') }}</span>
+            <span class="today-time">{{
+              dayjs(s.startTime).format('HH:mm')
+            }}</span>
             <span class="today-title">{{ s.title }}</span>
-            <span v-if="s.location" class="today-location">📍 {{ s.location }}</span>
+            <span v-if="s.location" class="today-location"
+              >📍 {{ s.location }}</span
+            >
           </div>
         </div>
       </Card>
 
       <Card>
-        <Tabs v-model:activeKey="activeTab">
+        <Tabs v-model:active-key="activeTab">
           <TabPane key="calendar">
             <template #tab>
               <span>📅 日历视图</span>
@@ -344,13 +431,19 @@ onMounted(() => {
               <Button @click="goToToday">今天</Button>
               <Button @click="changeMonth(1)">下月</Button>
             </Space>
-            <span class="current-month">{{ currentMonth.format('YYYY年MM月') }}</span>
+            <span class="current-month">{{
+              currentMonth.format('YYYY年MM月')
+            }}</span>
             <Button type="primary" @click="handleAdd()">新建日程</Button>
           </div>
 
           <div class="calendar-grid">
             <div class="weekday-header">
-              <div v-for="day in ['日', '一', '二', '三', '四', '五', '六']" :key="day" class="weekday">
+              <div
+                v-for="day in ['日', '一', '二', '三', '四', '五', '六']"
+                :key="day"
+                class="weekday"
+              >
                 {{ day }}
               </div>
             </div>
@@ -361,7 +454,7 @@ onMounted(() => {
                 class="day-cell"
                 :class="{
                   'other-month': !day.isSame(currentMonth, 'month'),
-                  'today': day.isSame(dayjs(), 'day'),
+                  today: day.isSame(dayjs(), 'day'),
                 }"
                 @click="handleAdd(day)"
               >
@@ -374,10 +467,15 @@ onMounted(() => {
                     :style="{ backgroundColor: getTypeColor(s.scheduleType) }"
                     @click.stop="handleEdit(s)"
                   >
-                    <span v-if="!s.allDay" class="schedule-time">{{ dayjs(s.startTime).format('HH:mm') }}</span>
+                    <span v-if="!s.allDay" class="schedule-time">{{
+                      dayjs(s.startTime).format('HH:mm')
+                    }}</span>
                     {{ s.title }}
                   </div>
-                  <div v-if="getSchedulesForDay(day).length > 3" class="more-schedules">
+                  <div
+                    v-if="getSchedulesForDay(day).length > 3"
+                    class="more-schedules"
+                  >
                     +{{ getSchedulesForDay(day).length - 3 }} 更多
                   </div>
                 </div>
@@ -394,7 +492,7 @@ onMounted(() => {
                 v-model:value="queryParams.scheduleType"
                 placeholder="日程类型"
                 style="width: 120px"
-                allowClear
+                allow-clear
                 :options="SCHEDULE_TYPE_OPTIONS"
                 @change="loadSchedules"
               />
@@ -404,11 +502,11 @@ onMounted(() => {
 
           <Table
             :columns="columns"
-            :dataSource="schedules"
+            :data-source="schedules"
             :loading="loading"
             :pagination="{ showSizeChanger: true, showQuickJumper: true }"
             :scroll="{ x: 1200 }"
-            rowKey="id"
+            row-key="id"
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'scheduleTypeName'">
@@ -429,7 +527,13 @@ onMounted(() => {
               </template>
               <template v-else-if="column.key === 'action'">
                 <Space>
-                  <Button type="link" size="small" @click="handleEdit(record as ScheduleDTO)">编辑</Button>
+                  <Button
+                    type="link"
+                    size="small"
+                    @click="handleEdit(record as ScheduleDTO)"
+                  >
+                    编辑
+                  </Button>
                   <Popconfirm
                     v-if="record.status === 'ACTIVE'"
                     title="确定要取消这个日程吗？"
@@ -437,7 +541,10 @@ onMounted(() => {
                   >
                     <Button type="link" size="small">取消</Button>
                   </Popconfirm>
-                  <Popconfirm title="确定要删除这个日程吗？" @confirm="handleDelete(record.id)">
+                  <Popconfirm
+                    title="确定要删除这个日程吗？"
+                    @confirm="handleDelete(record.id)"
+                  >
                     <Button type="link" size="small" danger>删除</Button>
                   </Popconfirm>
                 </Space>
@@ -449,7 +556,12 @@ onMounted(() => {
     </div>
 
     <!-- 新建/编辑弹窗 -->
-    <Modal v-model:open="modalVisible" :title="modalTitle" width="550px" @ok="handleSubmit">
+    <Modal
+      v-model:open="modalVisible"
+      :title="modalTitle"
+      width="550px"
+      @ok="handleSubmit"
+    >
       <Form :label-col="{ span: 5 }" :wrapper-col="{ span: 18 }">
         <FormItem label="日程标题" required>
           <Input v-model:value="formData.title" placeholder="如：XX案开庭" />
@@ -461,7 +573,11 @@ onMounted(() => {
           />
         </FormItem>
         <FormItem label="日期" required>
-          <DatePicker v-model:value="formData.date" style="width: 100%" format="YYYY-MM-DD" />
+          <DatePicker
+            v-model:value="formData.date"
+            style="width: 100%"
+            format="YYYY-MM-DD"
+          />
         </FormItem>
         <FormItem label="全天">
           <Checkbox v-model:checked="formData.allDay">全天日程</Checkbox>
@@ -475,23 +591,41 @@ onMounted(() => {
           />
         </FormItem>
         <FormItem label="地点">
-          <Input v-model:value="formData.location" placeholder="如：XX法院第3法庭" />
+          <Input
+            v-model:value="formData.location"
+            placeholder="如：XX法院第3法庭"
+          />
         </FormItem>
         <FormItem label="关联项目">
           <Select
             v-model:value="formData.matterId"
             placeholder="选择关联项目（可选）"
-            allowClear
-            showSearch
-            :filterOption="(input: string, option: any) => option.label.toLowerCase().includes(input.toLowerCase())"
-            :options="matters.map(m => ({ label: `[${m.matterNo}] ${m.name}`, value: m.id }))"
+            allow-clear
+            show-search
+            :filter-option="
+              (input: string, option: any) =>
+                option.label.toLowerCase().includes(input.toLowerCase())
+            "
+            :options="
+              matters.map((m) => ({
+                label: `[${m.matterNo}] ${m.name}`,
+                value: m.id,
+              }))
+            "
           />
         </FormItem>
         <FormItem label="提前提醒">
-          <Select v-model:value="formData.reminderMinutes" :options="REMINDER_OPTIONS" />
+          <Select
+            v-model:value="formData.reminderMinutes"
+            :options="REMINDER_OPTIONS"
+          />
         </FormItem>
         <FormItem label="备注">
-          <Textarea v-model:value="formData.description" :rows="2" placeholder="备注信息" />
+          <Textarea
+            v-model:value="formData.description"
+            :rows="2"
+            placeholder="备注信息"
+          />
         </FormItem>
       </Form>
     </Modal>
@@ -646,4 +780,3 @@ onMounted(() => {
   }
 }
 </style>
-

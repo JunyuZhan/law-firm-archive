@@ -5,12 +5,12 @@ export interface CommissionRule {
   ruleCode: string;
   ruleName: string;
   ruleType?: string;
-  firmRate: number;           // 律所比例(%)，0表示不参与分配
-  leadLawyerRate: number;     // 主办律师比例(%)，0表示不参与分配
-  assistLawyerRate: number;   // 协办律师比例(%)，0表示无协办或不参与分配
-  supportStaffRate: number;   // 辅助人员比例(%)，0表示无辅助或不参与分配
-  originatorRate: number;     // 案源人比例(%)，0表示不参与分配
-  allowModify: boolean;       // 律师创建合同时是否允许修改比例
+  firmRate: number; // 律所比例(%)，0表示不参与分配
+  leadLawyerRate: number; // 主办律师比例(%)，0表示不参与分配
+  assistLawyerRate: number; // 协办律师比例(%)，0表示无协办或不参与分配
+  supportStaffRate: number; // 辅助人员比例(%)，0表示无辅助或不参与分配
+  originatorRate: number; // 案源人比例(%)，0表示不参与分配
+  allowModify: boolean; // 律师创建合同时是否允许修改比例
   description?: string;
   isDefault: boolean;
   active: boolean;
@@ -52,15 +52,21 @@ export const commissionRuleApi = {
   /**
    * 创建提成规则
    */
-  create: (data: Omit<CommissionRule, 'id' | 'createdAt' | 'updatedAt'>) => {
-    return requestClient.post<CommissionRule>('/finance/commission/rules', data);
+  create: (data: Omit<CommissionRule, 'createdAt' | 'id' | 'updatedAt'>) => {
+    return requestClient.post<CommissionRule>(
+      '/finance/commission/rules',
+      data,
+    );
   },
 
   /**
    * 更新提成规则
    */
   update: (id: number, data: Partial<CommissionRule>) => {
-    return requestClient.put<CommissionRule>(`/finance/commission/rules/${id}`, data);
+    return requestClient.put<CommissionRule>(
+      `/finance/commission/rules/${id}`,
+      data,
+    );
   },
 
   /**
@@ -88,7 +94,9 @@ export const commissionRuleApi = {
    * 获取默认规则
    */
   getDefault: () => {
-    return requestClient.get<CommissionRule>('/finance/commission/rules/default');
+    return requestClient.get<CommissionRule>(
+      '/finance/commission/rules/default',
+    );
   },
 
   /**
@@ -96,6 +104,8 @@ export const commissionRuleApi = {
    * 无需特殊权限
    */
   getActiveRules: () => {
-    return requestClient.get<CommissionRule[]>('/finance/commission/rules/active');
+    return requestClient.get<CommissionRule[]>(
+      '/finance/commission/rules/active',
+    );
   },
 };

@@ -1,34 +1,54 @@
 <script setup lang="ts">
+import type { Key } from 'ant-design-vue/es/_util/type';
+
+import type { MatterDossierItem } from '#/api/document/dossier';
+
 /**
  * 卷宗目录管理组件
  * 显示项目的卷宗目录树，支持添加、编辑、删除目录项
  */
-import { ref, computed, watch, h } from 'vue';
-import { Tree, Button, Space, Spin, Empty, Modal, Form, FormItem, Input, Select, message, Popconfirm, Badge, Tooltip } from 'ant-design-vue';
-import { Plus, RotateCw, ExternalLink } from '@vben/icons';
-import type { Key } from 'ant-design-vue/es/_util/type';
+import { computed, h, ref, watch } from 'vue';
+
+import { ExternalLink, Plus, RotateCw } from '@vben/icons';
+
 import {
+  Badge,
+  Button,
+  Empty,
+  Form,
+  FormItem,
+  Input,
+  message,
+  Modal,
+  Popconfirm,
+  Select,
+  Space,
+  Spin,
+  Tooltip,
+  Tree,
+} from 'ant-design-vue';
+
+import {
+  addDossierItem,
+  deleteDossierItem,
   getMatterDossierItems,
   initMatterDossier,
-  addDossierItem,
   updateDossierItem,
-  deleteDossierItem,
-  type MatterDossierItem,
 } from '#/api/document/dossier';
-
-// 文件夹图标组件
-const FolderIcon = () => h('span', { style: 'font-size: 14px; margin-right: 4px;' }, '📁');
-const FileIcon = () => h('span', { style: 'font-size: 14px; margin-right: 4px;' }, '📄');
 
 const props = defineProps<{
   matterId: number;
   readonly?: boolean;
 }>();
-
 const emit = defineEmits<{
   (e: 'select', item: MatterDossierItem | null): void;
   (e: 'upload', item: MatterDossierItem): void;
 }>();
+// 文件夹图标组件
+const FolderIcon = () =>
+  h('span', { style: 'font-size: 14px; margin-right: 4px;' }, '📁');
+const FileIcon = () =>
+  h('span', { style: 'font-size: 14px; margin-right: 4px;' }, '📄');
 
 // 状态
 const loading = ref(false);
@@ -50,9 +70,9 @@ const formData = ref({
 const treeData = computed(() => {
   const buildTree = (parentId: number): any[] => {
     return dossierItems.value
-      .filter(item => item.parentId === parentId)
+      .filter((item) => item.parentId === parentId)
       .sort((a, b) => a.sortOrder - b.sortOrder)
-      .map(item => ({
+      .map((item) => ({
         key: String(item.id),
         title: item.name,
         icon: item.itemType === 'FOLDER' ? FolderIcon : FileIcon,
@@ -67,16 +87,16 @@ const treeData = computed(() => {
 // 加载数据
 async function loadData() {
   if (!props.matterId) return;
-  
+
   loading.value = true;
   try {
     const items = await getMatterDossierItems(props.matterId);
     dossierItems.value = items || [];
-    
+
     // 默认展开所有目录
     expandedKeys.value = dossierItems.value
-      .filter(item => item.itemType === 'FOLDER')
-      .map(item => String(item.id));
+      .filter((item) => item.itemType === 'FOLDER')
+      .map((item) => String(item.id));
   } catch (error: any) {
     console.error('加载卷宗目录失败:', error);
   } finally {
@@ -91,8 +111,8 @@ async function handleInitialize() {
     const items = await initMatterDossier(props.matterId);
     dossierItems.value = items || [];
     expandedKeys.value = dossierItems.value
-      .filter(item => item.itemType === 'FOLDER')
-      .map(item => String(item.id));
+      .filter((item) => item.itemType === 'FOLDER')
+      .map((item) => String(item.id));
     message.success('卷宗目录初始化成功');
   } catch (error: any) {
     message.error(error.message || '初始化失败');
@@ -103,7 +123,7 @@ async function handleInitialize() {
 
 // 选择节点
 function handleSelect(keys: Key[], info: any) {
-  selectedKeys.value = keys.map(k => String(k));
+  selectedKeys.value = keys.map(String);
   if (keys.length > 0 && info.node) {
     emit('select', info.node.data);
   } else {
@@ -127,7 +147,7 @@ async function handleAdd() {
     message.error('请输入名称');
     return;
   }
-  
+
   try {
     await addDossierItem(props.matterId, {
       parentId: formData.value.parentId,
@@ -160,7 +180,7 @@ async function handleUpdate() {
     message.error('请输入名称');
     return;
   }
-  
+
   try {
     await updateDossierItem(props.matterId, currentItem.value.id, {
       name: formData.value.name.trim(),
@@ -191,11 +211,15 @@ function goToDossierList() {
 }
 
 // 监听 matterId 变化
-watch(() => props.matterId, () => {
-  if (props.matterId) {
-    loadData();
-  }
-}, { immediate: true });
+watch(
+  () => props.matterId,
+  () => {
+    if (props.matterId) {
+      loadData();
+    }
+  },
+  { immediate: true },
+);
 
 // 暴露方法
 defineExpose({
@@ -207,54 +231,106 @@ defineExpose({
   <div class="dossier-manager">
     <Spin :spinning="loading">
       <!-- 工具栏 -->
-      <div class="toolbar" style=" display: flex; align-items: center; justify-content: space-between;margin-bottom: 12px;">
+      <div
+        class="toolbar"
+        style="
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 12px;
+        "
+      >
         <Space>
-          <Button v-if="!readonly" type="primary" size="small" @click="showAddModal(0)">
-            <Plus class="w-4 h-4" />
+          <Button
+            v-if="!readonly"
+            type="primary"
+            size="small"
+            @click="showAddModal(0)"
+          >
+            <Plus class="h-4 w-4" />
             添加目录
           </Button>
           <Button size="small" @click="loadData">
-            <RotateCw class="w-4 h-4" />
+            <RotateCw class="h-4 w-4" />
             刷新
           </Button>
         </Space>
         <Tooltip title="在卷宗管理页面查看完整文件列表">
           <Button type="link" size="small" @click="goToDossierList">
-            <ExternalLink class="w-4 h-4" />
+            <ExternalLink class="h-4 w-4" />
             查看全部文件
           </Button>
         </Tooltip>
       </div>
 
       <!-- 目录树 -->
-      <div v-if="dossierItems.length > 0" class="tree-container" style=" min-height: 300px; padding: 12px;border: 1px solid #f0f0f0; border-radius: 6px;">
+      <div
+        v-if="dossierItems.length > 0"
+        class="tree-container"
+        style="
+          min-height: 300px;
+          padding: 12px;
+          border: 1px solid #f0f0f0;
+          border-radius: 6px;
+        "
+      >
         <Tree
-          v-model:selectedKeys="selectedKeys"
-          v-model:expandedKeys="expandedKeys"
+          v-model:selected-keys="selectedKeys"
+          v-model:expanded-keys="expandedKeys"
           :tree-data="treeData"
           show-icon
           block-node
           @select="handleSelect"
         >
           <template #title="{ data }">
-            <div class="tree-node" style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
-              <span class="node-title" style="flex: 1;">
+            <div
+              class="tree-node"
+              style="
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                width: 100%;
+              "
+            >
+              <span class="node-title" style="flex: 1">
                 {{ data.title }}
-                <Badge 
-                  v-if="data.data?.documentCount > 0" 
-                  :count="data.data.documentCount" 
-                  :number-style="{ backgroundColor: '#52c41a', fontSize: '10px', minWidth: '16px', height: '16px', lineHeight: '16px' }"
-                  style="margin-left: 8px;"
+                <Badge
+                  v-if="data.data?.documentCount > 0"
+                  :count="data.data.documentCount"
+                  :number-style="{
+                    backgroundColor: '#52c41a',
+                    fontSize: '10px',
+                    minWidth: '16px',
+                    height: '16px',
+                    lineHeight: '16px',
+                  }"
+                  style="margin-left: 8px"
                 />
               </span>
-              <Space v-if="!readonly" class="node-actions" size="small" style="opacity: 0; transition: opacity 0.2s;">
-                <Tooltip v-if="data.data?.itemType === 'FOLDER'" title="添加子目录">
-                  <Button type="text" size="small" @click.stop="showAddModal(data.data.id)">
-                    <Plus class="w-3 h-3" />
+              <Space
+                v-if="!readonly"
+                class="node-actions"
+                size="small"
+                style="opacity: 0; transition: opacity 0.2s"
+              >
+                <Tooltip
+                  v-if="data.data?.itemType === 'FOLDER'"
+                  title="添加子目录"
+                >
+                  <Button
+                    type="text"
+                    size="small"
+                    @click.stop="showAddModal(data.data.id)"
+                  >
+                    <Plus class="h-3 w-3" />
                   </Button>
                 </Tooltip>
                 <Tooltip title="编辑">
-                  <Button type="text" size="small" @click.stop="showEditModal(data.data)">
+                  <Button
+                    type="text"
+                    size="small"
+                    @click.stop="showEditModal(data.data)"
+                  >
                     ✏️
                   </Button>
                 </Tooltip>
@@ -283,11 +359,7 @@ defineExpose({
     </Spin>
 
     <!-- 添加弹窗 -->
-    <Modal
-      v-model:open="addModalVisible"
-      title="添加目录项"
-      @ok="handleAdd"
-    >
+    <Modal v-model:open="addModalVisible" title="添加目录项" @ok="handleAdd">
       <Form :label-col="{ span: 5 }" :wrapper-col="{ span: 18 }">
         <FormItem label="名称" required>
           <Input v-model:value="formData.name" placeholder="请输入目录名称" />
@@ -321,4 +393,3 @@ defineExpose({
   opacity: 1 !important;
 }
 </style>
-

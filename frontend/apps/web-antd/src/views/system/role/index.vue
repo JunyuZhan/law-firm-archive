@@ -1,39 +1,44 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue';
-import { message, Modal } from 'ant-design-vue';
+import type {
+  CreateRoleCommand,
+  MenuDTO,
+  RoleDTO,
+  RoleQuery,
+  UpdateRoleCommand,
+} from '#/api/system/types';
+
+import { onMounted, reactive, ref } from 'vue';
+
 import { Page } from '@vben/common-ui';
+
 import {
-  Card,
-  Table,
   Button,
-  Space,
-  Input,
-  Select,
+  Card,
+  Col,
   Form,
   FormItem,
+  Input,
   InputNumber,
-  Textarea,
-  Row,
-  Col,
+  message,
+  Modal,
   Popconfirm,
+  Row,
+  Select,
+  Space,
+  Table,
+  Textarea,
   Tree,
 } from 'ant-design-vue';
+
 import {
-  getRoleList,
+  assignRoleMenus,
   createRole,
-  updateRole,
   deleteRole,
   getMenuTree,
+  getRoleList,
   getRoleMenuIds,
-  assignRoleMenus,
+  updateRole,
 } from '#/api/system';
-import type { 
-  RoleDTO, 
-  RoleQuery, 
-  CreateRoleCommand, 
-  UpdateRoleCommand, 
-  MenuDTO 
-} from '#/api/system/types';
 
 defineOptions({ name: 'SystemRole' });
 
@@ -46,7 +51,7 @@ const modalVisible = ref(false);
 const modalTitle = ref('新增角色');
 const formRef = ref();
 const menuModalVisible = ref(false);
-const currentRole = ref<RoleDTO | null>(null);
+const currentRole = ref<null | RoleDTO>(null);
 const menuTree = ref<MenuDTO[]>([]);
 const checkedMenuKeys = ref<number[]>([]);
 
@@ -74,8 +79,18 @@ const formData = reactive<Partial<CreateRoleCommand> & { id?: number }>({
 const columns = [
   { title: '角色编码', dataIndex: 'roleCode', key: 'roleCode', width: 150 },
   { title: '角色名称', dataIndex: 'roleName', key: 'roleName', width: 150 },
-  { title: '数据范围', dataIndex: 'dataScopeName', key: 'dataScopeName', width: 120 },
-  { title: '描述', dataIndex: 'description', key: 'description', ellipsis: true },
+  {
+    title: '数据范围',
+    dataIndex: 'dataScopeName',
+    key: 'dataScopeName',
+    width: 120,
+  },
+  {
+    title: '描述',
+    dataIndex: 'description',
+    key: 'description',
+    ellipsis: true,
+  },
   { title: '排序', dataIndex: 'sortOrder', key: 'sortOrder', width: 80 },
   { title: '创建时间', dataIndex: 'createdAt', key: 'createdAt', width: 160 },
   { title: '操作', key: 'action', width: 200, fixed: 'right' as const },
@@ -153,7 +168,7 @@ function handleEdit(record: RoleDTO) {
 async function handleSave() {
   try {
     await formRef.value?.validate();
-    
+
     if (formData.id) {
       const updateData: UpdateRoleCommand = {
         id: formData.id,
@@ -255,16 +270,16 @@ onMounted(() => {
             <Input
               v-model:value="queryParams.roleCode"
               placeholder="角色编码"
-              allowClear
-              @pressEnter="handleSearch"
+              allow-clear
+              @press-enter="handleSearch"
             />
           </Col>
           <Col :xs="24" :sm="12" :md="6" :lg="5">
             <Input
               v-model:value="queryParams.roleName"
               placeholder="角色名称"
-              allowClear
-              @pressEnter="handleSearch"
+              allow-clear
+              @press-enter="handleSearch"
             />
           </Col>
           <Col :xs="24" :sm="24" :md="12" :lg="14">
@@ -285,7 +300,7 @@ onMounted(() => {
         :pagination="{
           current: queryParams.pageNum,
           pageSize: queryParams.pageSize,
-          total: total,
+          total,
           showSizeChanger: true,
           showQuickJumper: true,
           showTotal: (t: number) => `共 ${t} 条`,
@@ -296,7 +311,11 @@ onMounted(() => {
       >
         <template #bodyCell="{ column, record: rawRecord }">
           <template v-if="column.key === 'dataScopeName'">
-            {{ dataScopeOptions.find(o => o.value === (rawRecord as RoleDTO).dataScope)?.label || (rawRecord as RoleDTO).dataScope }}
+            {{
+              dataScopeOptions.find(
+                (o) => o.value === (rawRecord as RoleDTO).dataScope,
+              )?.label || (rawRecord as RoleDTO).dataScope
+            }}
           </template>
           <template v-else-if="column.key === 'action'">
             <Space>
@@ -328,40 +347,51 @@ onMounted(() => {
         :wrapper-col="{ span: 18 }"
         style="margin-top: 16px"
       >
-        <FormItem 
-          label="角色编码" 
-          name="roleCode" 
+        <FormItem
+          label="角色编码"
+          name="roleCode"
           :rules="[{ required: true, message: '请输入角色编码' }]"
         >
-          <Input 
-            v-model:value="formData.roleCode" 
-            :disabled="!!formData.id" 
-            placeholder="请输入角色编码" 
+          <Input
+            v-model:value="formData.roleCode"
+            :disabled="!!formData.id"
+            placeholder="请输入角色编码"
           />
         </FormItem>
-        
-        <FormItem 
-          label="角色名称" 
-          name="roleName" 
+
+        <FormItem
+          label="角色名称"
+          name="roleName"
           :rules="[{ required: true, message: '请输入角色名称' }]"
         >
-          <Input v-model:value="formData.roleName" placeholder="请输入角色名称" />
+          <Input
+            v-model:value="formData.roleName"
+            placeholder="请输入角色名称"
+          />
         </FormItem>
-        
+
         <FormItem label="数据范围" name="dataScope">
-          <Select 
-            v-model:value="formData.dataScope" 
-            :options="dataScopeOptions" 
+          <Select
+            v-model:value="formData.dataScope"
+            :options="dataScopeOptions"
             style="width: 100%"
           />
         </FormItem>
-        
+
         <FormItem label="排序" name="sortOrder">
-          <InputNumber v-model:value="formData.sortOrder" :min="0" style="width: 100%" />
+          <InputNumber
+            v-model:value="formData.sortOrder"
+            :min="0"
+            style="width: 100%"
+          />
         </FormItem>
-        
+
         <FormItem label="描述" name="description">
-          <Textarea v-model:value="formData.description" :rows="3" placeholder="请输入描述" />
+          <Textarea
+            v-model:value="formData.description"
+            :rows="3"
+            placeholder="请输入描述"
+          />
         </FormItem>
       </Form>
     </Modal>
@@ -374,8 +404,8 @@ onMounted(() => {
       @ok="handleSaveMenu"
     >
       <Tree
-        v-model:checkedKeys="checkedMenuKeys"
-        :tree-data="menuTree"
+        v-model:checked-keys="checkedMenuKeys"
+        :tree-data="menuTree as any"
         :field-names="{ title: 'name', key: 'id', children: 'children' }"
         checkable
         :default-expand-all="true"
@@ -390,4 +420,3 @@ onMounted(() => {
   vertical-align: middle;
 }
 </style>
-

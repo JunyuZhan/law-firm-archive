@@ -1,24 +1,29 @@
 <script setup lang="ts">
+import type { VxeGridProps } from '#/adapter/vxe-table';
+import type { LeaveApplication, LeaveBalance, LeaveType } from '#/api/hr/types';
+
 import { onMounted, reactive, ref } from 'vue';
+
 import { Page } from '@vben/common-ui';
+import { Plus } from '@vben/icons';
+
 import {
   Button,
   Card,
+  Col,
   DatePicker,
   Form,
   FormItem,
   InputNumber,
   message,
   Modal,
+  Row,
   Select,
   Space,
   Tag,
   Textarea,
-  Row,
-  Col,
 } from 'ant-design-vue';
-import { Plus } from '@vben/icons';
-import type { VxeGridProps } from '#/adapter/vxe-table';
+
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
   approveLeave,
@@ -29,7 +34,6 @@ import {
   getLeaveTypes,
   rejectLeave,
 } from '#/api/hr/leave';
-import type { LeaveApplication, LeaveBalance, LeaveType } from '#/api/hr/types';
 
 defineOptions({ name: 'LeaveManagement' });
 
@@ -80,7 +84,7 @@ const statusTextMap: Record<string, string> = {
 
 // ==================== 表格配置 ====================
 
-const gridColumns: VxeGridProps['gridOptions']['columns'] = [
+const gridColumns: VxeGridProps['columns'] = [
   { title: '请假类型', field: 'leaveTypeName', width: 100 },
   { title: '开始日期', field: 'startDate', width: 120 },
   { title: '结束日期', field: 'endDate', width: 120 },
@@ -88,11 +92,25 @@ const gridColumns: VxeGridProps['gridOptions']['columns'] = [
   { title: '请假原因', field: 'reason', minWidth: 200, showOverflow: true },
   { title: '状态', field: 'status', width: 100, slots: { default: 'status' } },
   { title: '审批人', field: 'approverName', width: 100 },
-  { title: '操作', field: 'action', width: 150, fixed: 'right', slots: { default: 'action' } },
+  {
+    title: '操作',
+    field: 'action',
+    width: 150,
+    fixed: 'right',
+    slots: { default: 'action' },
+  },
 ];
 
-async function loadData({ page }: { page: { currentPage: number; pageSize: number } }) {
-  const params = { ...searchForm, pageNum: page.currentPage, pageSize: page.pageSize };
+async function loadData({
+  page,
+}: {
+  page: { currentPage: number; pageSize: number };
+}) {
+  const params = {
+    ...searchForm,
+    pageNum: page.currentPage,
+    pageSize: page.pageSize,
+  };
   const res = await fetchLeaveList(params);
   return { items: res.list || [], total: res.total || 0 };
 }
@@ -164,7 +182,12 @@ async function handleSubmit() {
 
   modalLoading.value = true;
   try {
-    await createLeave(leaveForm);
+    await createLeave({
+      leaveTypeId: leaveForm.leaveTypeId,
+      startDate: leaveForm.startDate,
+      endDate: leaveForm.endDate,
+      reason: leaveForm.reason,
+    });
     message.success('提交成功');
     modalVisible.value = false;
     gridApi.reload();
@@ -189,7 +212,7 @@ async function handleCancel(row: LeaveApplication) {
 
 async function handleApprove(row: LeaveApplication) {
   try {
-    await approveLeave(row.id);
+    await approveLeave({ applicationId: row.id });
     message.success('审批通过');
     gridApi.reload();
   } catch (error: any) {
@@ -199,7 +222,7 @@ async function handleApprove(row: LeaveApplication) {
 
 async function handleReject(row: LeaveApplication) {
   try {
-    await rejectLeave(row.id);
+    await rejectLeave({ applicationId: row.id });
     message.success('已拒绝');
     gridApi.reload();
   } catch (error: any) {
@@ -233,10 +256,18 @@ onMounted(() => {
       <!-- 假期余额卡片 -->
       <Card title="假期余额">
         <div class="flex flex-wrap gap-6">
-          <div v-for="balance in leaveBalances" :key="balance.leaveTypeId" class="text-center">
-            <div class="text-gray-500 text-sm">{{ balance.leaveTypeName }}</div>
-            <div class="text-2xl font-bold text-blue-500">{{ balance.remainingDays }}</div>
-            <div class="text-gray-400 text-xs">剩余 / {{ balance.totalDays }} 天</div>
+          <div
+            v-for="balance in leaveBalances"
+            :key="balance.leaveTypeId"
+            class="text-center"
+          >
+            <div class="text-sm text-gray-500">{{ balance.leaveTypeName }}</div>
+            <div class="text-2xl font-bold text-blue-500">
+              {{ balance.remainingDays }}
+            </div>
+            <div class="text-xs text-gray-400">
+              剩余 / {{ balance.totalDays }} 天
+            </div>
           </div>
         </div>
       </Card>
@@ -248,10 +279,14 @@ onMounted(() => {
             <Select
               v-model:value="searchForm.leaveTypeId"
               placeholder="请假类型"
-              allowClear
+              allow-clear
               style="width: 100%"
             >
-              <Select.Option v-for="type in leaveTypes" :key="type.id" :value="type.id">
+              <Select.Option
+                v-for="type in leaveTypes"
+                :key="type.id"
+                :value="type.id"
+              >
                 {{ type.name }}
               </Select.Option>
             </Select>
@@ -260,7 +295,7 @@ onMounted(() => {
             <Select
               v-model:value="searchForm.status"
               placeholder="状态"
-              allowClear
+              allow-clear
               style="width: 100%"
               :options="statusOptions"
             />
@@ -281,13 +316,24 @@ onMounted(() => {
       <Card title="请假记录">
         <Grid>
           <template #status="{ row }">
-            <Tag :color="statusColorMap[row.status]">{{ statusTextMap[row.status] }}</Tag>
+            <Tag :color="statusColorMap[row.status]">
+              {{ statusTextMap[row.status] }}
+            </Tag>
           </template>
           <template #action="{ row }">
             <Space>
-              <a v-if="row.status === 'PENDING'" @click="handleCancel(row)">取消</a>
-              <a v-if="row.status === 'PENDING'" @click="handleApprove(row)">通过</a>
-              <a v-if="row.status === 'PENDING'" style="color: red" @click="handleReject(row)">拒绝</a>
+              <a v-if="row.status === 'PENDING'" @click="handleCancel(row)"
+                >取消</a
+              >
+              <a v-if="row.status === 'PENDING'" @click="handleApprove(row)"
+                >通过</a
+              >
+              <a
+                v-if="row.status === 'PENDING'"
+                style="color: red"
+                @click="handleReject(row)"
+                >拒绝</a
+              >
             </Space>
           </template>
         </Grid>
@@ -302,8 +348,15 @@ onMounted(() => {
       >
         <Form :model="leaveForm" layout="vertical">
           <FormItem label="请假类型" required>
-            <Select v-model:value="leaveForm.leaveTypeId" placeholder="请选择请假类型">
-              <Select.Option v-for="type in leaveTypes" :key="type.id" :value="type.id">
+            <Select
+              v-model:value="leaveForm.leaveTypeId"
+              placeholder="请选择请假类型"
+            >
+              <Select.Option
+                v-for="type in leaveTypes"
+                :key="type.id"
+                :value="type.id"
+              >
                 {{ type.name }}
               </Select.Option>
             </Select>
@@ -312,10 +365,19 @@ onMounted(() => {
             <RangePicker style="width: 100%" @change="handleDateRangeChange" />
           </FormItem>
           <FormItem label="请假天数">
-            <InputNumber v-model:value="leaveForm.leaveDays" :min="0.5" :step="0.5" style="width: 100%" />
+            <InputNumber
+              v-model:value="leaveForm.leaveDays"
+              :min="0.5"
+              :step="0.5"
+              style="width: 100%"
+            />
           </FormItem>
           <FormItem label="请假原因" required>
-            <Textarea v-model:value="leaveForm.reason" placeholder="请输入请假原因" :rows="4" />
+            <Textarea
+              v-model:value="leaveForm.reason"
+              placeholder="请输入请假原因"
+              :rows="4"
+            />
           </FormItem>
         </Form>
       </Modal>

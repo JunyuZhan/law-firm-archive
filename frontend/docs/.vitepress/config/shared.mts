@@ -28,9 +28,7 @@ export const shared = defineConfig({
   base: '/docs/',
   head: head(),
   // 忽略文档中的配置示例链接
-  ignoreDeadLinks: [
-    /localhost/,
-  ],
+  ignoreDeadLinks: [/localhost/],
   markdown: {
     preConfig(md) {
       md.use(demoPreviewPlugin);

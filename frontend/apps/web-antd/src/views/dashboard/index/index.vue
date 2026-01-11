@@ -1,18 +1,21 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import {
-  Card,
-  Row,
-  Col,
-  Button,
-  List,
-  Avatar,
-  Tag,
-  Badge,
-  Empty,
-} from 'ant-design-vue';
+
 import { Page } from '@vben/common-ui';
+
+import {
+  Avatar,
+  Badge,
+  Button,
+  Card,
+  Col,
+  Empty,
+  List,
+  Row,
+  Tag,
+} from 'ant-design-vue';
+
 import { requestClient } from '#/api/request';
 import { getPendingApprovals } from '#/api/workbench';
 
@@ -51,11 +54,11 @@ const greeting = computed(() => {
 
 // 日期格式化
 const formattedDate = computed(() => {
-  return new Date().toLocaleDateString('zh-CN', { 
-    weekday: 'long', 
-    year: 'numeric', 
-    month: 'long', 
-    day: 'numeric' 
+  return new Date().toLocaleDateString('zh-CN', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
   });
 });
 
@@ -69,28 +72,32 @@ async function loadStats() {
       timesheetHours: res.timesheetHours || 0,
       taskCount: res.taskCount || 0,
     };
-  } catch (e) {
-    console.error('加载统计数据失败:', e);
+  } catch (error) {
+    console.error('加载统计数据失败:', error);
   }
 }
 
 // 加载待办任务
 async function loadPendingTasks() {
   try {
-    const res = await requestClient.get('/tasks/my', { params: { status: 'PENDING', pageSize: 5 } });
+    const res = await requestClient.get('/tasks/my', {
+      params: { status: 'PENDING', pageSize: 5 },
+    });
     pendingTasks.value = res.list || [];
-  } catch (e) {
-    console.error('加载待办任务失败:', e);
+  } catch (error) {
+    console.error('加载待办任务失败:', error);
   }
 }
 
 // 加载最近项目
 async function loadRecentMatters() {
   try {
-    const res = await requestClient.get('/matter/my', { params: { pageSize: 5 } });
+    const res = await requestClient.get('/matter/my', {
+      params: { pageSize: 5 },
+    });
     recentMatters.value = res.list || [];
-  } catch (e) {
-    console.error('加载最近项目失败:', e);
+  } catch (error) {
+    console.error('加载最近项目失败:', error);
   }
 }
 
@@ -99,8 +106,8 @@ async function loadPendingApprovals() {
   try {
     const data = await getPendingApprovals();
     pendingApprovalCount.value = data?.length || 0;
-  } catch (e) {
-    console.error('加载待审批数据失败:', e);
+  } catch (error) {
+    console.error('加载待审批数据失败:', error);
   }
 }
 
@@ -140,8 +147,8 @@ onMounted(() => {
           </div>
           <div class="welcome-actions">
             <Badge :count="pendingApprovalCount" :offset="[-5, 5]">
-              <Button 
-                type="primary" 
+              <Button
+                type="primary"
                 size="large"
                 class="approval-btn"
                 @click="goToApproval"
@@ -157,7 +164,10 @@ onMounted(() => {
       <!-- 统计卡片区域 -->
       <Row :gutter="[20, 20]" class="stats-row">
         <Col :xs="12" :sm="12" :md="6" :lg="6">
-          <div class="stat-card stat-card-blue" @click="router.push('/matter/my')">
+          <div
+            class="stat-card stat-card-blue"
+            @click="router.push('/matter/my')"
+          >
             <div class="stat-icon">📁</div>
             <div class="stat-info">
               <div class="stat-value">{{ stats.matterCount }}</div>
@@ -165,9 +175,12 @@ onMounted(() => {
             </div>
             <div class="stat-trend">进行中</div>
           </div>
-      </Col>
+        </Col>
         <Col :xs="12" :sm="12" :md="6" :lg="6">
-          <div class="stat-card stat-card-green" @click="router.push('/crm/client')">
+          <div
+            class="stat-card stat-card-green"
+            @click="router.push('/crm/client')"
+          >
             <div class="stat-icon">👥</div>
             <div class="stat-info">
               <div class="stat-value">{{ stats.clientCount }}</div>
@@ -175,19 +188,27 @@ onMounted(() => {
             </div>
             <div class="stat-trend">负责中</div>
           </div>
-      </Col>
+        </Col>
         <Col :xs="12" :sm="12" :md="6" :lg="6">
-          <div class="stat-card stat-card-orange" @click="router.push('/matter/timesheet')">
+          <div
+            class="stat-card stat-card-orange"
+            @click="router.push('/matter/timesheet')"
+          >
             <div class="stat-icon">⏱️</div>
             <div class="stat-info">
-              <div class="stat-value">{{ stats.timesheetHours.toFixed(1) }}</div>
+              <div class="stat-value">
+                {{ stats.timesheetHours.toFixed(1) }}
+              </div>
               <div class="stat-label">本月工时</div>
             </div>
             <div class="stat-trend">小时</div>
           </div>
-      </Col>
+        </Col>
         <Col :xs="12" :sm="12" :md="6" :lg="6">
-          <div class="stat-card stat-card-red" @click="router.push('/matter/task')">
+          <div
+            class="stat-card stat-card-red"
+            @click="router.push('/matter/task')"
+          >
             <div class="stat-icon">✅</div>
             <div class="stat-info">
               <div class="stat-value">{{ stats.taskCount }}</div>
@@ -195,22 +216,30 @@ onMounted(() => {
             </div>
             <div class="stat-trend">待处理</div>
           </div>
-      </Col>
-    </Row>
+        </Col>
+      </Row>
 
       <!-- 待审批提醒 -->
-      <div v-if="pendingApprovalCount > 0" class="approval-alert" @click="goToApproval">
+      <div
+        v-if="pendingApprovalCount > 0"
+        class="approval-alert"
+        @click="goToApproval"
+      >
         <div class="alert-icon">🔔</div>
         <div class="alert-content">
-          <div class="alert-title">您有 <span class="highlight">{{ pendingApprovalCount }}</span> 个待审批事项</div>
+          <div class="alert-title">
+            您有
+            <span class="highlight">{{ pendingApprovalCount }}</span>
+            个待审批事项
+          </div>
           <div class="alert-desc">点击前往审批中心处理</div>
         </div>
         <div class="alert-arrow">→</div>
       </div>
 
-    <!-- 内容区域 -->
+      <!-- 内容区域 -->
       <Row :gutter="[20, 20]" class="content-row">
-      <!-- 待办任务 -->
+        <!-- 待办任务 -->
         <Col :xs="24" :md="12">
           <Card class="content-card" :bordered="false">
             <template #title>
@@ -219,30 +248,48 @@ onMounted(() => {
                 <span>待办任务</span>
               </div>
             </template>
-          <template #extra>
-              <Button type="link" @click="router.push('/matter/task')">查看全部 →</Button>
-          </template>
+            <template #extra>
+              <Button type="link" @click="router.push('/matter/task')">
+                查看全部 →
+              </Button>
+            </template>
             <div class="task-list">
-              <Empty v-if="pendingTasks.length === 0" description="暂无待办任务，休息一下吧 ☕" />
+              <Empty
+                v-if="pendingTasks.length === 0"
+                description="暂无待办任务，休息一下吧 ☕"
+              />
               <List v-else :data-source="pendingTasks" :split="false">
-            <template #renderItem="{ item }">
+                <template #renderItem="{ item }">
                   <div class="task-item">
-                    <div class="task-priority" :class="item.priority?.toLowerCase() || 'medium'"></div>
+                    <div
+                      class="task-priority"
+                      :class="item.priority?.toLowerCase() || 'medium'"
+                    ></div>
                     <div class="task-content">
                       <div class="task-title">{{ item.title }}</div>
-                      <div class="task-meta">{{ item.matterName || '通用任务' }}</div>
+                      <div class="task-meta">
+                        {{ item.matterName || '通用任务' }}
+                      </div>
                     </div>
-                    <Tag v-if="item.dueDate" :color="new Date(item.dueDate) < new Date() ? 'error' : 'processing'" size="small">
-                    {{ item.dueDate }}
-                  </Tag>
+                    <Tag
+                      v-if="item.dueDate"
+                      :color="
+                        new Date(item.dueDate) < new Date()
+                          ? 'error'
+                          : 'processing'
+                      "
+                      size="small"
+                    >
+                      {{ item.dueDate }}
+                    </Tag>
                   </div>
-            </template>
-          </List>
+                </template>
+              </List>
             </div>
-        </Card>
-      </Col>
+          </Card>
+        </Col>
 
-      <!-- 最近项目 -->
+        <!-- 最近项目 -->
         <Col :xs="24" :md="12">
           <Card class="content-card" :bordered="false">
             <template #title>
@@ -251,15 +298,23 @@ onMounted(() => {
                 <span>最近项目</span>
               </div>
             </template>
-          <template #extra>
-              <Button type="link" @click="router.push('/matter/list')">查看全部 →</Button>
-          </template>
+            <template #extra>
+              <Button type="link" @click="router.push('/matter/list')">
+                查看全部 →
+              </Button>
+            </template>
             <div class="project-list">
-              <Empty v-if="recentMatters.length === 0" description="暂无项目，开始创建吧 🚀" />
+              <Empty
+                v-if="recentMatters.length === 0"
+                description="暂无项目，开始创建吧 🚀"
+              />
               <List v-else :data-source="recentMatters" :split="false">
-            <template #renderItem="{ item }">
-                  <div class="project-item" @click="router.push(`/matter/detail/${item.id}`)">
-                    <Avatar 
+                <template #renderItem="{ item }">
+                  <div
+                    class="project-item"
+                    @click="router.push(`/matter/detail/${item.id}`)"
+                  >
+                    <Avatar
                       :style="{ backgroundColor: getStatusColor(item.status) }"
                       class="project-avatar"
                     >
@@ -268,22 +323,26 @@ onMounted(() => {
                     <div class="project-content">
                       <div class="project-title">{{ item.name }}</div>
                       <div class="project-meta">
-                        <span class="project-no" v-if="item.matterNo">{{ item.matterNo }}</span>
-                        <span class="project-client">{{ item.clientName || '未关联客户' }}</span>
+                        <span class="project-no" v-if="item.matterNo">{{
+                          item.matterNo
+                        }}</span>
+                        <span class="project-client">{{
+                          item.clientName || '未关联客户'
+                        }}</span>
                         <Tag :color="getStatusColor(item.status)" size="small">
-                    {{ item.statusName || item.status }}
-                  </Tag>
+                          {{ item.statusName || item.status }}
+                        </Tag>
                       </div>
                     </div>
                   </div>
-            </template>
-          </List>
+                </template>
+              </List>
             </div>
-        </Card>
-      </Col>
-    </Row>
+          </Card>
+        </Col>
+      </Row>
 
-    <!-- 快捷操作 -->
+      <!-- 快捷操作 -->
       <Card class="quick-actions-card" :bordered="false">
         <template #title>
           <div class="card-title">
@@ -300,7 +359,10 @@ onMounted(() => {
             <div class="action-icon action-icon-green">👤</div>
             <div class="action-text">新建客户</div>
           </div>
-          <div class="quick-action-item" @click="router.push('/matter/timesheet')">
+          <div
+            class="quick-action-item"
+            @click="router.push('/matter/timesheet')"
+          >
             <div class="action-icon action-icon-orange">⏰</div>
             <div class="action-text">记录工时</div>
           </div>
@@ -308,27 +370,32 @@ onMounted(() => {
             <div class="action-icon action-icon-purple">✏️</div>
             <div class="action-text">创建任务</div>
           </div>
-          <div class="quick-action-item" @click="router.push('/finance/contract')">
+          <div
+            class="quick-action-item"
+            @click="router.push('/finance/contract')"
+          >
             <div class="action-icon action-icon-cyan">📄</div>
             <div class="action-text">财务合同</div>
           </div>
           <div class="quick-action-item" @click="goToApproval">
             <div class="action-icon action-icon-red">
-              <Badge :count="pendingApprovalCount" :offset="[0, 0]" size="small">
+              <Badge
+                :count="pendingApprovalCount"
+                :offset="[0, 0]"
+                size="small"
+              >
                 📋
               </Badge>
             </div>
             <div class="action-text">审批中心</div>
           </div>
         </div>
-    </Card>
+      </Card>
     </div>
   </Page>
 </template>
 
 <style scoped>
-
-
 @media (max-width: 992px) {
   .quick-actions {
     grid-template-columns: repeat(3, 1fr);
@@ -439,13 +506,21 @@ onMounted(() => {
   transform: translate(30%, -30%);
 }
 
-.stat-card-blue::after { background: #1890ff; }
+.stat-card-blue::after {
+  background: #1890ff;
+}
 
-.stat-card-green::after { background: #52c41a; }
+.stat-card-green::after {
+  background: #52c41a;
+}
 
-.stat-card-orange::after { background: #faad14; }
+.stat-card-orange::after {
+  background: #faad14;
+}
 
-.stat-card-red::after { background: #ff4d4f; }
+.stat-card-red::after {
+  background: #ff4d4f;
+}
 
 .stat-icon {
   display: flex;
@@ -457,13 +532,21 @@ onMounted(() => {
   border-radius: 12px;
 }
 
-.stat-card-blue .stat-icon { background: linear-gradient(135deg, #e6f4ff 0%, #bae0ff 100%); }
+.stat-card-blue .stat-icon {
+  background: linear-gradient(135deg, #e6f4ff 0%, #bae0ff 100%);
+}
 
-.stat-card-green .stat-icon { background: linear-gradient(135deg, #f6ffed 0%, #b7eb8f 100%); }
+.stat-card-green .stat-icon {
+  background: linear-gradient(135deg, #f6ffed 0%, #b7eb8f 100%);
+}
 
-.stat-card-orange .stat-icon { background: linear-gradient(135deg, #fffbe6 0%, #ffe58f 100%); }
+.stat-card-orange .stat-icon {
+  background: linear-gradient(135deg, #fffbe6 0%, #ffe58f 100%);
+}
 
-.stat-card-red .stat-icon { background: linear-gradient(135deg, #fff2f0 0%, #ffccc7 100%); }
+.stat-card-red .stat-icon {
+  background: linear-gradient(135deg, #fff2f0 0%, #ffccc7 100%);
+}
 
 .stat-info {
   flex: 1;
@@ -475,13 +558,21 @@ onMounted(() => {
   line-height: 1.2;
 }
 
-.stat-card-blue .stat-value { color: #1890ff; }
+.stat-card-blue .stat-value {
+  color: #1890ff;
+}
 
-.stat-card-green .stat-value { color: #52c41a; }
+.stat-card-green .stat-value {
+  color: #52c41a;
+}
 
-.stat-card-orange .stat-value { color: #faad14; }
+.stat-card-orange .stat-value {
+  color: #faad14;
+}
 
-.stat-card-red .stat-value { color: #ff4d4f; }
+.stat-card-red .stat-value {
+  color: #ff4d4f;
+}
 
 .stat-label {
   margin-top: 4px;
@@ -598,11 +689,17 @@ onMounted(() => {
   border-radius: 2px;
 }
 
-.task-priority.high { background: #ff4d4f; }
+.task-priority.high {
+  background: #ff4d4f;
+}
 
-.task-priority.medium { background: #faad14; }
+.task-priority.medium {
+  background: #faad14;
+}
 
-.task-priority.low { background: #52c41a; }
+.task-priority.low {
+  background: #52c41a;
+}
 
 .task-content {
   flex: 1;
@@ -725,17 +822,29 @@ onMounted(() => {
   border-radius: 12px;
 }
 
-.action-icon-blue { background: linear-gradient(135deg, #e6f4ff 0%, #bae0ff 100%); }
+.action-icon-blue {
+  background: linear-gradient(135deg, #e6f4ff 0%, #bae0ff 100%);
+}
 
-.action-icon-green { background: linear-gradient(135deg, #f6ffed 0%, #b7eb8f 100%); }
+.action-icon-green {
+  background: linear-gradient(135deg, #f6ffed 0%, #b7eb8f 100%);
+}
 
-.action-icon-orange { background: linear-gradient(135deg, #fffbe6 0%, #ffe58f 100%); }
+.action-icon-orange {
+  background: linear-gradient(135deg, #fffbe6 0%, #ffe58f 100%);
+}
 
-.action-icon-purple { background: linear-gradient(135deg, #f9f0ff 0%, #d3adf7 100%); }
+.action-icon-purple {
+  background: linear-gradient(135deg, #f9f0ff 0%, #d3adf7 100%);
+}
 
-.action-icon-cyan { background: linear-gradient(135deg, #e6fffb 0%, #87e8de 100%); }
+.action-icon-cyan {
+  background: linear-gradient(135deg, #e6fffb 0%, #87e8de 100%);
+}
 
-.action-icon-red { background: linear-gradient(135deg, #fff2f0 0%, #ffccc7 100%); }
+.action-icon-red {
+  background: linear-gradient(135deg, #fff2f0 0%, #ffccc7 100%);
+}
 
 .action-text {
   font-size: 13px;

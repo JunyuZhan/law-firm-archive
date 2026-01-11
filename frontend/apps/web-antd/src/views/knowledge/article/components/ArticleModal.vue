@@ -1,12 +1,17 @@
 <script setup lang="ts">
-import { ref } from 'vue';
-import { useVbenModal } from '@vben/common-ui';
-import { useVbenForm } from '#/adapter/form';
-import { message, Upload, Spin, Alert, Tooltip, Space } from 'ant-design-vue';
-import { IconifyIcon } from '@vben/icons';
-import { createArticle, updateArticle } from '#/api/knowledge';
-import { recognizeGeneral, type OcrResultDTO } from '#/api/ocr';
 import type { KnowledgeArticleDTO } from '#/api/knowledge/types';
+import type { OcrResultDTO } from '#/api/ocr';
+
+import { ref } from 'vue';
+
+import { useVbenModal } from '@vben/common-ui';
+import { IconifyIcon } from '@vben/icons';
+
+import { Alert, message, Spin, Tooltip, Upload } from 'ant-design-vue';
+
+import { useVbenForm } from '#/adapter/form';
+import { createArticle, updateArticle } from '#/api/knowledge';
+import { recognizeGeneral } from '#/api/ocr';
 
 const emit = defineEmits<{ success: [] }>();
 
@@ -49,13 +54,21 @@ const [Form, formApi] = useVbenForm({
 
 const [Modal, modalApi] = useVbenModal({
   async onConfirm() {
-    const values = await formApi.validate();
+    await formApi.validate();
+    const values = await formApi.getValues();
     try {
+      const data = {
+        title: values.title,
+        content: values.content,
+        categoryId: values.categoryId,
+        keywords: values.keywords,
+        summary: values.summary,
+      };
       if (editingId.value) {
-        await updateArticle(editingId.value, values);
+        await updateArticle(editingId.value, data);
         message.success('更新成功');
       } else {
-        await createArticle(values);
+        await createArticle(data);
         message.success('创建成功');
       }
       emit('success');
@@ -93,13 +106,15 @@ async function handleOcrArticle(file: File) {
       // 获取当前内容并追加
       const currentContent = (await formApi.getValues()).content || '';
       const separator = currentContent ? '\n\n--- OCR识别内容 ---\n' : '';
-      formApi.setValues({ content: currentContent + separator + result.rawText });
+      formApi.setValues({
+        content: currentContent + separator + result.rawText,
+      });
       message.success('OCR识别成功，内容已添加');
     } else {
       message.error(result.errorMessage || 'OCR识别失败');
     }
-  } catch (e: any) {
-    message.error(e?.message || 'OCR识别失败');
+  } catch (error: any) {
+    message.error(error?.message || 'OCR识别失败');
   } finally {
     ocrLoading.value = false;
   }
@@ -116,7 +131,9 @@ defineExpose({ open });
       <Alert type="info" style="margin-bottom: 16px" show-icon>
         <template #message>
           <span class="font-medium text-blue-700">智能识别图片内容</span>
-          <span class="text-gray-500 text-xs ml-2">上传文章截图自动提取文字</span>
+          <span class="ml-2 text-xs text-gray-500"
+            >上传文章截图自动提取文字</span
+          >
         </template>
         <template #description>
           <div class="mt-2">
@@ -126,16 +143,19 @@ defineExpose({ open });
               accept="image/*"
             >
               <Tooltip title="上传文章截图，自动识别文字内容">
-                <a class="text-blue-600 hover:text-blue-800 font-medium">
-                  <IconifyIcon icon="ant-design:scan-outlined" class="mr-1" />识别图片内容
+                <a class="font-medium text-blue-600 hover:text-blue-800">
+                  <IconifyIcon
+                    icon="ant-design:scan-outlined"
+                    class="mr-1"
+                  />识别图片内容
                 </a>
               </Tooltip>
             </Upload>
           </div>
         </template>
       </Alert>
-      
-    <Form />
+
+      <Form />
     </Spin>
   </Modal>
 </template>

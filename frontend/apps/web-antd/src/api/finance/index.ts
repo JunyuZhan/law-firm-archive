@@ -1,23 +1,18 @@
-/**
- * 财务管理模块 API
- */
-import { requestClient } from '#/api/request';
-
 import type {
   CommissionDTO,
   CommissionQuery,
   ContractDTO,
-  ContractQuery,
-  ContractPaymentScheduleDTO,
   ContractParticipantDTO,
+  ContractPaymentScheduleDTO,
+  ContractQuery,
   ContractStatistics,
   CreateContractCommand,
   CreateExpenseCommand,
   CreateFeeCommand,
   CreateInvoiceCommand,
+  CreateParticipantCommand,
   CreatePaymentCommand,
   CreatePaymentScheduleCommand,
-  CreateParticipantCommand,
   ExpenseDTO,
   ExpenseQuery,
   FeeDTO,
@@ -28,20 +23,29 @@ import type {
   PageResult,
   PaymentDTO,
   UpdateContractCommand,
-  UpdatePaymentScheduleCommand,
   UpdateParticipantCommand,
+  UpdatePaymentScheduleCommand,
 } from './types';
+
+/**
+ * 财务管理模块 API
+ */
+import { requestClient } from '#/api/request';
 
 // ========== 合同管理 API ==========
 
 /** 获取合同列表 */
 export function getContractList(params: ContractQuery) {
-  return requestClient.get<PageResult<ContractDTO>>('/finance/contract/list', { params });
+  return requestClient.get<PageResult<ContractDTO>>('/finance/contract/list', {
+    params,
+  });
 }
 
 /** 获取我的合同 */
 export function getMyContracts(params: ContractQuery) {
-  return requestClient.get<PageResult<ContractDTO>>('/matter/contract/my', { params });
+  return requestClient.get<PageResult<ContractDTO>>('/matter/contract/my', {
+    params,
+  });
 }
 
 /** 获取合同详情 */
@@ -93,63 +97,118 @@ export function completeContract(id: number) {
 
 /** 获取合同付款计划列表 */
 export function getContractPaymentSchedules(contractId: number) {
-  return requestClient.get<ContractPaymentScheduleDTO[]>(`/matter/contract/${contractId}/payment-schedules`);
+  return requestClient.get<ContractPaymentScheduleDTO[]>(
+    `/matter/contract/${contractId}/payment-schedules`,
+  );
 }
 
 /** 创建付款计划 */
-export function createPaymentSchedule(contractId: number, data: CreatePaymentScheduleCommand) {
-  return requestClient.post<ContractPaymentScheduleDTO>(`/matter/contract/${contractId}/payment-schedules`, data);
+export function createPaymentSchedule(
+  contractId: number,
+  data: CreatePaymentScheduleCommand,
+) {
+  return requestClient.post<ContractPaymentScheduleDTO>(
+    `/matter/contract/${contractId}/payment-schedules`,
+    data,
+  );
 }
 
 /** 更新付款计划 */
-export function updatePaymentSchedule(contractId: number, scheduleId: number, data: UpdatePaymentScheduleCommand) {
-  return requestClient.put<ContractPaymentScheduleDTO>(`/matter/contract/${contractId}/payment-schedules/${scheduleId}`, data);
+export function updatePaymentSchedule(
+  contractId: number,
+  scheduleId: number,
+  data: UpdatePaymentScheduleCommand,
+) {
+  return requestClient.put<ContractPaymentScheduleDTO>(
+    `/matter/contract/${contractId}/payment-schedules/${scheduleId}`,
+    data,
+  );
 }
 
 /** 删除付款计划 */
 export function deletePaymentSchedule(contractId: number, scheduleId: number) {
-  return requestClient.delete(`/matter/contract/${contractId}/payment-schedules/${scheduleId}`);
+  return requestClient.delete(
+    `/matter/contract/${contractId}/payment-schedules/${scheduleId}`,
+  );
 }
 
 // ========== 合同参与人 API (matter模块) ==========
 
 /** 获取合同参与人列表 */
 export function getContractParticipants(contractId: number) {
-  return requestClient.get<ContractParticipantDTO[]>(`/matter/contract/${contractId}/participants`);
+  return requestClient.get<ContractParticipantDTO[]>(
+    `/matter/contract/${contractId}/participants`,
+  );
 }
 
 /** 创建参与人 */
-export function createContractParticipant(contractId: number, data: CreateParticipantCommand) {
-  return requestClient.post<ContractParticipantDTO>(`/matter/contract/${contractId}/participants`, data);
+export function createContractParticipant(
+  contractId: number,
+  data: CreateParticipantCommand,
+) {
+  return requestClient.post<ContractParticipantDTO>(
+    `/matter/contract/${contractId}/participants`,
+    data,
+  );
 }
 
 /** 更新参与人 */
-export function updateContractParticipant(contractId: number, participantId: number, data: UpdateParticipantCommand) {
-  return requestClient.put<ContractParticipantDTO>(`/matter/contract/${contractId}/participants/${participantId}`, data);
+export function updateContractParticipant(
+  contractId: number,
+  participantId: number,
+  data: UpdateParticipantCommand,
+) {
+  return requestClient.put<ContractParticipantDTO>(
+    `/matter/contract/${contractId}/participants/${participantId}`,
+    data,
+  );
 }
 
 /** 删除参与人 */
-export function deleteContractParticipant(contractId: number, participantId: number) {
-  return requestClient.delete(`/matter/contract/${contractId}/participants/${participantId}`);
+export function deleteContractParticipant(
+  contractId: number,
+  participantId: number,
+) {
+  return requestClient.delete(
+    `/matter/contract/${contractId}/participants/${participantId}`,
+  );
 }
 
 // ========== 合同统计 API (matter模块) ==========
 
 /** 获取合同统计 */
-export function getContractStatistics(params?: { departmentId?: number; startDate?: string; endDate?: string }) {
-  return requestClient.get<ContractStatistics>('/matter/contract/statistics', { params });
+export function getContractStatistics(params?: {
+  departmentId?: number;
+  endDate?: string;
+  startDate?: string;
+}) {
+  return requestClient.get<ContractStatistics>('/matter/contract/statistics', {
+    params,
+  });
 }
 
 // ========== 合同模板 API (matter模块) ==========
 
 /** 基于模板创建合同 */
-export function createContractFromTemplate(templateId: number, data: CreateContractCommand) {
-  return requestClient.post<ContractDTO>(`/matter/contract/from-template/${templateId}`, data);
+export function createContractFromTemplate(
+  templateId: number,
+  data: CreateContractCommand,
+) {
+  return requestClient.post<ContractDTO>(
+    `/matter/contract/from-template/${templateId}`,
+    data,
+  );
 }
 
 /** 预览模板内容 */
-export function previewTemplateContent(templateId: number, data: CreateContractCommand) {
-  return requestClient.post<string>(`/matter/contract/template/${templateId}/preview`, data);
+export function previewTemplateContent(
+  templateId: number,
+  data: CreateContractCommand,
+) {
+  return requestClient.post<string>(
+    `/matter/contract/template/${templateId}/preview`,
+    data,
+  );
 }
 
 // ========== 收费管理 API ==========
@@ -201,7 +260,9 @@ export function cancelPayment(id: number) {
 
 /** 获取发票列表 */
 export function getInvoiceList(params: InvoiceQuery) {
-  return requestClient.get<PageResult<InvoiceDTO>>('/finance/invoice/list', { params });
+  return requestClient.get<PageResult<InvoiceDTO>>('/finance/invoice/list', {
+    params,
+  });
 }
 
 /** 获取发票详情 */
@@ -234,7 +295,9 @@ export function getInvoiceStatistics() {
 
 /** 获取提成列表 */
 export function getCommissionList(params: CommissionQuery) {
-  return requestClient.get<PageResult<CommissionDTO>>('/finance/commission', { params });
+  return requestClient.get<PageResult<CommissionDTO>>('/finance/commission', {
+    params,
+  });
 }
 
 /** 获取提成详情 */
@@ -244,37 +307,56 @@ export function getCommissionDetail(id: number) {
 
 /** 获取待计算提成的收款记录列表 */
 export function getPendingCommissionPayments() {
-  return requestClient.get<PaymentDTO[]>('/finance/commission/pending-payments');
+  return requestClient.get<PaymentDTO[]>(
+    '/finance/commission/pending-payments',
+  );
 }
 
 /** 计算提成 */
 export function calculateCommission(paymentId: number) {
-  return requestClient.post<CommissionDTO[]>(`/finance/commission/calculate/${paymentId}`);
+  return requestClient.post<CommissionDTO[]>(
+    `/finance/commission/calculate/${paymentId}`,
+  );
 }
 
 /** 手动计算提成 */
 export function manualCalculateCommission(data: {
-  paymentId: number;
   participants: Array<{
-    participantId: number;
-    userId: number;
-    commissionRate?: number;
     commissionAmount?: number;
+    commissionRate?: number;
+    participantId: number;
     remark?: string;
+    userId: number;
   }>;
+  paymentId: number;
 }) {
-  return requestClient.post<CommissionDTO[]>(`/finance/commission/manual-calculate`, data);
+  return requestClient.post<CommissionDTO[]>(
+    `/finance/commission/manual-calculate`,
+    data,
+  );
 }
 
 /** 审批提成 */
-export function approveCommission(id: number, approved: boolean, comment?: string) {
-  return requestClient.post<CommissionDTO>(`/finance/commission/${id}/approve`, null, {
-    params: { approved, comment },
-  });
+export function approveCommission(
+  id: number,
+  approved: boolean,
+  comment?: string,
+) {
+  return requestClient.post<CommissionDTO>(
+    `/finance/commission/${id}/approve`,
+    null,
+    {
+      params: { approved, comment },
+    },
+  );
 }
 
 /** 批量审批提成 */
-export function batchApproveCommission(ids: number[], approved: boolean, comment?: string) {
+export function batchApproveCommission(
+  ids: number[],
+  approved: boolean,
+  comment?: string,
+) {
   return requestClient.post('/finance/commission/batch-approve', ids, {
     params: { approved, comment },
   });
@@ -303,7 +385,11 @@ export function getCommissionSummary(startDate?: string, endDate?: string) {
 }
 
 /** 生成提成报表 */
-export function getCommissionReport(startDate?: string, endDate?: string, userId?: number) {
+export function getCommissionReport(
+  startDate?: string,
+  endDate?: string,
+  userId?: number,
+) {
   return requestClient.get('/finance/commission/report', {
     params: { startDate, endDate, userId },
   });
@@ -314,7 +400,9 @@ export function getCommissionReport(startDate?: string, endDate?: string, userId
 
 /** 获取费用报销列表 */
 export function getExpenseList(params: ExpenseQuery) {
-  return requestClient.get<PageResult<ExpenseDTO>>('/finance/expense', { params });
+  return requestClient.get<PageResult<ExpenseDTO>>('/finance/expense', {
+    params,
+  });
 }
 
 /** 获取费用报销详情 */
@@ -328,13 +416,18 @@ export function createExpense(data: CreateExpenseCommand) {
 }
 
 /** 审批费用报销 */
-export function approveExpense(id: number, data: { approved: boolean; comment?: string }) {
+export function approveExpense(
+  id: number,
+  data: { approved: boolean; comment?: string },
+) {
   return requestClient.post(`/finance/expense/${id}/approve`, data);
 }
 
 /** 确认支付 */
 export function payExpense(id: number, paymentMethod: string) {
-  return requestClient.post(`/finance/expense/${id}/pay`, null, { params: { paymentMethod } });
+  return requestClient.post(`/finance/expense/${id}/pay`, null, {
+    params: { paymentMethod },
+  });
 }
 
 /** 成本归集 */
@@ -349,15 +442,17 @@ export function getMatterCosts(matterId: number) {
 
 /** 获取项目总成本 */
 export function getMatterTotalCost(matterId: number) {
-  return requestClient.get<number>(`/finance/expense/matters/${matterId}/total-cost`);
+  return requestClient.get<number>(
+    `/finance/expense/matters/${matterId}/total-cost`,
+  );
 }
 
 /** 成本分摊 */
 export function splitCost(data: {
   expenseId: number;
   matterIds: number[];
-  splitMethod: 'EQUAL' | 'RATIO' | 'MANUAL';
   ratios?: Record<number, number>;
+  splitMethod: 'EQUAL' | 'MANUAL' | 'RATIO';
 }) {
   return requestClient.post('/finance/expense/split-cost', data);
 }
@@ -372,9 +467,8 @@ export function deleteExpense(id: number) {
   return requestClient.delete(`/finance/expense/${id}`);
 }
 
-// 导出类型
-export type * from './types';
-
 // 导出提成规则管理API
 export * from './commission-rule';
 
+// 导出类型
+export type * from './types';

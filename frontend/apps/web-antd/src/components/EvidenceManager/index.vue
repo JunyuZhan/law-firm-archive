@@ -1,26 +1,41 @@
 <script setup lang="ts">
+import type { EvidenceGroup, EvidenceItem, ViewMode } from './types';
+
+import type { EvidenceDTO } from '#/api/evidence';
+
 /**
  * 证据管理主组件
  * 支持网格/列表视图、分组树、拖拽排序、证据详情
  */
-import { ref, computed, watch, onMounted } from 'vue';
-import { Card, Button, Space, Spin, Empty, Modal, message, Segmented, Tooltip, Popconfirm } from 'ant-design-vue';
-import { Plus, ExternalLink, RotateCw, LayoutGrid, List } from '@vben/icons';
-import draggable from 'vuedraggable';
-import { Tree } from '@vben/common-ui';
-import EvidenceGridItem from './EvidenceGridItem.vue';
-import EvidenceListItem from './EvidenceListItem.vue';
-import EvidenceDetail from './EvidenceDetail.vue';
-import EvidenceForm from './EvidenceForm.vue';
-import type { EvidenceItem, ViewMode, EvidenceGroup } from './types';
+import { computed, onMounted, ref, watch } from 'vue';
+
+import { LayoutGrid, List, Plus, RotateCw } from '@vben/icons';
+
 import {
+  Button,
+  Card,
+  Empty,
+  message,
+  Modal,
+  Segmented,
+  Space,
+  Spin,
+  Tooltip,
+} from 'ant-design-vue';
+import draggable from 'vuedraggable';
+
+import {
+  deleteEvidence,
+  downloadEvidenceAsZip,
   getEvidenceByMatter,
   getEvidenceGroups,
-  deleteEvidence,
   updateEvidenceSort,
-  downloadEvidenceAsZip,
-  type EvidenceDTO,
 } from '#/api/evidence';
+
+import EvidenceDetail from './EvidenceDetail.vue';
+import EvidenceForm from './EvidenceForm.vue';
+import EvidenceGridItem from './EvidenceGridItem.vue';
+import EvidenceListItem from './EvidenceListItem.vue';
 
 const props = defineProps<{
   matterId: number;
@@ -50,11 +65,19 @@ const selectMode = ref(false);
 // 分组树数据
 const groupTreeData = computed(() => {
   const data: EvidenceGroup[] = [
-    { key: 'all', title: `全部 (${evidenceList.value.length})`, count: evidenceList.value.length },
-    { key: 'ungrouped', title: `未分组 (${evidenceList.value.filter(e => !e.groupName).length})`, count: evidenceList.value.filter(e => !e.groupName).length },
+    {
+      key: 'all',
+      title: `全部 (${evidenceList.value.length})`,
+      count: evidenceList.value.length,
+    },
+    {
+      key: 'ungrouped',
+      title: `未分组 (${evidenceList.value.filter((e) => !e.groupName).length})`,
+      count: evidenceList.value.filter((e) => !e.groupName).length,
+    },
   ];
-  groups.value.forEach(g => {
-    const count = evidenceList.value.filter(e => e.groupName === g).length;
+  groups.value.forEach((g) => {
+    const count = evidenceList.value.filter((e) => e.groupName === g).length;
     data.push({ key: g, title: `${g} (${count})`, count });
   });
   return data;
@@ -63,12 +86,18 @@ const groupTreeData = computed(() => {
 // 当前分组的证据列表
 const currentEvidences = computed(() => {
   if (selectedGroupKey.value === 'all') {
-    return [...evidenceList.value].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+    return [...evidenceList.value].sort(
+      (a, b) => (a.sortOrder || 0) - (b.sortOrder || 0),
+    );
   }
   if (selectedGroupKey.value === 'ungrouped') {
-    return evidenceList.value.filter(e => !e.groupName).sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+    return evidenceList.value
+      .filter((e) => !e.groupName)
+      .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
   }
-  return evidenceList.value.filter(e => e.groupName === selectedGroupKey.value).sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+  return evidenceList.value
+    .filter((e) => e.groupName === selectedGroupKey.value)
+    .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
 });
 
 // 视图模式选项
@@ -80,7 +109,7 @@ const viewModeOptions = [
 // 加载数据
 async function loadData() {
   if (!props.matterId) return;
-  
+
   loading.value = true;
   try {
     const [evidences, groupList] = await Promise.all([
@@ -114,7 +143,10 @@ function mapEvidenceDTO(dto: EvidenceDTO): EvidenceItem {
     copyCount: dto.copyCount,
     pageStart: dto.pageStart,
     pageEnd: dto.pageEnd,
-    pageRange: dto.pageStart && dto.pageEnd ? `${dto.pageStart}-${dto.pageEnd}` : undefined,
+    pageRange:
+      dto.pageStart && dto.pageEnd
+        ? `${dto.pageStart}-${dto.pageEnd}`
+        : undefined,
     fileUrl: dto.fileUrl,
     fileName: dto.fileName,
     fileSize: dto.fileSize,
@@ -185,50 +217,56 @@ async function handlePreview(evidence: EvidenceItem) {
     message.warning('该证据没有关联文件');
     return;
   }
-  
+
   try {
     // 获取预签名URL
     const { getEvidencePreviewUrl } = await import('#/api/evidence');
     const result = await getEvidencePreviewUrl(evidence.id);
     const previewUrl = result.fileUrl;
-    
+
     // 图片直接用 antd Image 预览
     if (evidence.fileType === 'image') {
       // 已在 EvidenceDetail 中处理
       return;
     }
-    
+
     // 视频/音频打开新窗口播放
     if (evidence.fileType === 'video' || evidence.fileType === 'audio') {
       window.open(previewUrl, '_blank');
       return;
     }
-    
+
     // PDF 直接打开
     if (evidence.fileType === 'pdf') {
       window.open(previewUrl, '_blank');
       return;
     }
-    
+
     // Office 文档：使用本地 OnlyOffice 预览
-    if (['word', 'excel', 'ppt'].includes(evidence.fileType || '')) {
+    if (['excel', 'ppt', 'word'].includes(evidence.fileType || '')) {
       // 获取 OnlyOffice 可访问的 URL
       const { getEvidenceOnlyOfficeUrl } = await import('#/api/evidence');
       const onlyOfficeResult = await getEvidenceOnlyOfficeUrl(evidence.id);
-      
+
       // 使用 OnlyOffice Document Server 预览
-      const docType = evidence.fileType === 'word' ? 'word' : evidence.fileType === 'excel' ? 'cell' : 'slide';
-      const fileExt = evidence.fileName?.split('.').pop()?.toLowerCase() || 'docx';
-      
+      const docType =
+        evidence.fileType === 'word'
+          ? 'word'
+          : evidence.fileType === 'excel'
+            ? 'cell'
+            : 'slide';
+      const fileExt =
+        evidence.fileName?.split('.').pop()?.toLowerCase() || 'docx';
+
       // 打开 OnlyOffice 预览窗口
       const onlyofficeUrl = `/office-preview?url=${encodeURIComponent(onlyOfficeResult.fileUrl)}&filename=${encodeURIComponent(evidence.fileName || 'document')}&type=${docType}&ext=${fileExt}`;
       window.open(onlyofficeUrl, '_blank', 'width=1200,height=800');
       return;
     }
-    
+
     // 其他文件下载
     handleDownload(evidence);
-  } catch (error: any) {
+  } catch {
     message.error('获取预览链接失败');
   }
 }
@@ -239,17 +277,17 @@ async function handleDownload(evidence: EvidenceItem) {
     message.warning('该证据没有关联文件');
     return;
   }
-  
+
   try {
     // 获取预签名下载URL
     const { getEvidenceDownloadUrl } = await import('#/api/evidence');
     const result = await getEvidenceDownloadUrl(evidence.id);
-    
+
     const link = document.createElement('a');
     link.href = result.downloadUrl;
     link.download = result.fileName || 'download';
     link.click();
-  } catch (error: any) {
+  } catch {
     message.error('获取下载链接失败');
   }
 }
@@ -277,15 +315,19 @@ function isEvidenceSelected(evidenceId: number) {
 }
 
 function isAllEvidenceSelected() {
-  return currentEvidences.value.length > 0 && 
-         currentEvidences.value.every(e => selectedEvidenceIds.value.has(e.id));
+  return (
+    currentEvidences.value.length > 0 &&
+    currentEvidences.value.every((e) => selectedEvidenceIds.value.has(e.id))
+  );
 }
 
 function toggleSelectAllEvidence() {
   if (isAllEvidenceSelected()) {
-    currentEvidences.value.forEach(e => selectedEvidenceIds.value.delete(e.id));
+    currentEvidences.value.forEach((e) =>
+      selectedEvidenceIds.value.delete(e.id),
+    );
   } else {
-    currentEvidences.value.forEach(e => selectedEvidenceIds.value.add(e.id));
+    currentEvidences.value.forEach((e) => selectedEvidenceIds.value.add(e.id));
   }
   selectedEvidenceIds.value = new Set(selectedEvidenceIds.value);
 }
@@ -297,17 +339,17 @@ function clearEvidenceSelection() {
 
 // 批量下载证据
 async function handleBatchDownload() {
-  const ids = Array.from(selectedEvidenceIds.value);
+  const ids = [...selectedEvidenceIds.value];
   if (ids.length === 0) {
     message.warning('请先选择要下载的证据');
     return;
   }
-  
+
   if (ids.length > 100) {
     message.warning('单次最多下载100个证据文件');
     return;
   }
-  
+
   batchDownloading.value = true;
   try {
     const fileName = `证据材料_${new Date().toISOString().slice(0, 10)}.zip`;
@@ -315,7 +357,7 @@ async function handleBatchDownload() {
     message.success(`成功下载 ${ids.length} 个证据文件`);
     clearEvidenceSelection();
   } catch (error: any) {
-    message.error('批量下载失败：' + (error.message || '未知错误'));
+    message.error(`批量下载失败：${error.message || '未知错误'}`);
   } finally {
     batchDownloading.value = false;
   }
@@ -328,11 +370,13 @@ async function handleDragEnd() {
     id: item.id,
     sortOrder: index + 1,
   }));
-  
+
   try {
-    await Promise.all(updates.map(u => updateEvidenceSort(u.id, u.sortOrder)));
+    await Promise.all(
+      updates.map((u) => updateEvidenceSort(u.id, u.sortOrder)),
+    );
     message.success('排序已保存');
-  } catch (error: any) {
+  } catch {
     message.error('保存排序失败');
     await loadData();
   }
@@ -343,11 +387,14 @@ function handleFormSuccess() {
   loadData();
 }
 
-
 // 监听 matterId 变化
-watch(() => props.matterId, () => {
-  loadData();
-}, { immediate: true });
+watch(
+  () => props.matterId,
+  () => {
+    loadData();
+  },
+  { immediate: true },
+);
 
 onMounted(() => {
   if (props.matterId) {
@@ -378,8 +425,13 @@ defineExpose({
             </div>
           </div>
           <template #extra>
-            <Button v-if="!readonly" type="link" size="small" @click="handleAdd">
-              <Plus class="w-4 h-4" /> 添加
+            <Button
+              v-if="!readonly"
+              type="link"
+              size="small"
+              @click="handleAdd"
+            >
+              <Plus class="h-4 w-4" /> 添加
             </Button>
           </template>
         </Card>
@@ -388,7 +440,13 @@ defineExpose({
         <Card class="evidence-panel" size="small">
           <template #title>
             <div class="panel-header">
-              <span>{{ selectedGroupKey === 'all' ? '全部证据' : selectedGroupKey === 'ungrouped' ? '未分组' : selectedGroupKey }}</span>
+              <span>{{
+                selectedGroupKey === 'all'
+                  ? '全部证据'
+                  : selectedGroupKey === 'ungrouped'
+                    ? '未分组'
+                    : selectedGroupKey
+              }}</span>
               <span class="count">({{ currentEvidences.length }})</span>
             </div>
           </template>
@@ -396,9 +454,9 @@ defineExpose({
             <Space>
               <!-- 批量操作按钮 -->
               <template v-if="selectMode">
-                <Button 
-                  v-if="selectedEvidenceIds.size > 0" 
-                  type="primary" 
+                <Button
+                  v-if="selectedEvidenceIds.size > 0"
+                  type="primary"
                   size="small"
                   :loading="batchDownloading"
                   @click="handleBatchDownload"
@@ -408,7 +466,9 @@ defineExpose({
                 <Button size="small" @click="toggleSelectAllEvidence">
                   {{ isAllEvidenceSelected() ? '取消全选' : '全选' }}
                 </Button>
-                <Button size="small" @click="clearEvidenceSelection">取消选择</Button>
+                <Button size="small" @click="clearEvidenceSelection">
+                  取消选择
+                </Button>
               </template>
               <Tooltip :title="selectMode ? '退出选择' : '批量选择'">
                 <Button
@@ -422,19 +482,30 @@ defineExpose({
               </Tooltip>
               <Tooltip title="刷新">
                 <Button type="text" size="small" @click="loadData">
-                  <template #icon><RotateCw class="w-4 h-4" /></template>
+                  <template #icon><RotateCw class="h-4 w-4" /></template>
                 </Button>
               </Tooltip>
               <Segmented
                 v-model:value="viewMode"
-                :options="viewModeOptions.map(o => ({ value: o.value, title: o.title }))"
+                :options="
+                  viewModeOptions.map((o) => ({
+                    value: o.value,
+                    title: o.title,
+                  }))
+                "
                 size="small"
               >
                 <template #label="{ value }">
-                  <component :is="viewModeOptions.find(o => o.value === value)?.icon" class="w-4 h-4" />
+                  <component
+                    :is="viewModeOptions.find((o) => o.value === value)?.icon"
+                    class="h-4 w-4"
+                  />
                 </template>
               </Segmented>
-              <Tooltip v-if="!readonly" :title="dragEnabled ? '关闭排序' : '拖拽排序'">
+              <Tooltip
+                v-if="!readonly"
+                :title="dragEnabled ? '关闭排序' : '拖拽排序'"
+              >
                 <Button
                   type="text"
                   size="small"
@@ -444,8 +515,13 @@ defineExpose({
                   ⋮⋮
                 </Button>
               </Tooltip>
-              <Button v-if="!readonly" type="primary" size="small" @click="handleAdd">
-                <Plus class="w-4 h-4" /> 添加证据
+              <Button
+                v-if="!readonly"
+                type="primary"
+                size="small"
+                @click="handleAdd"
+              >
+                <Plus class="h-4 w-4" /> 添加证据
               </Button>
             </Space>
           </template>
@@ -462,10 +538,17 @@ defineExpose({
               @end="handleDragEnd"
             >
               <template #item="{ element }">
-                <div class="grid-item-wrapper" :class="{ 'item-selected': isEvidenceSelected(element.id) }">
-                  <div v-if="selectMode" class="item-checkbox" @click.stop="toggleEvidenceSelection(element.id, $event)">
-                    <input 
-                      type="checkbox" 
+                <div
+                  class="grid-item-wrapper"
+                  :class="{ 'item-selected': isEvidenceSelected(element.id) }"
+                >
+                  <div
+                    v-if="selectMode"
+                    class="item-checkbox"
+                    @click.stop="toggleEvidenceSelection(element.id, $event)"
+                  >
+                    <input
+                      type="checkbox"
                       :checked="isEvidenceSelected(element.id)"
                       @click.stop
                       @change="toggleEvidenceSelection(element.id)"
@@ -475,7 +558,11 @@ defineExpose({
                     :evidence="element"
                     :selected="selectedEvidence?.id === element.id"
                     :draggable="dragEnabled && !readonly"
-                    @click="selectMode ? toggleEvidenceSelection(element.id) : handleEvidenceClick(element)"
+                    @click="
+                      selectMode
+                        ? toggleEvidenceSelection(element.id)
+                        : handleEvidenceClick(element)
+                    "
                     @dblclick="handleEvidenceDblClick"
                   />
                 </div>
@@ -497,10 +584,17 @@ defineExpose({
               @end="handleDragEnd"
             >
               <template #item="{ element }">
-                <div class="list-item-wrapper" :class="{ 'item-selected': isEvidenceSelected(element.id) }">
-                  <div v-if="selectMode" class="item-checkbox" @click.stop="toggleEvidenceSelection(element.id, $event)">
-                    <input 
-                      type="checkbox" 
+                <div
+                  class="list-item-wrapper"
+                  :class="{ 'item-selected': isEvidenceSelected(element.id) }"
+                >
+                  <div
+                    v-if="selectMode"
+                    class="item-checkbox"
+                    @click.stop="toggleEvidenceSelection(element.id, $event)"
+                  >
+                    <input
+                      type="checkbox"
                       :checked="isEvidenceSelected(element.id)"
                       @click.stop
                       @change="toggleEvidenceSelection(element.id)"
@@ -511,7 +605,11 @@ defineExpose({
                     :selected="selectedEvidence?.id === element.id"
                     :draggable="dragEnabled && !readonly"
                     :readonly="readonly"
-                    @click="selectMode ? toggleEvidenceSelection(element.id) : handleEvidenceClick(element)"
+                    @click="
+                      selectMode
+                        ? toggleEvidenceSelection(element.id)
+                        : handleEvidenceClick(element)
+                    "
                     @edit="handleEdit"
                     @delete="handleDelete"
                     @preview="handlePreview"
@@ -546,7 +644,6 @@ defineExpose({
       :groups="groups"
       @success="handleFormSuccess"
     />
-
   </div>
 </template>
 
@@ -628,12 +725,12 @@ defineExpose({
     .grid-item-wrapper,
     .list-item-wrapper {
       position: relative;
-      
+
       &.item-selected {
         background-color: #e6f7ff;
         border-radius: 4px;
       }
-      
+
       .item-checkbox {
         position: absolute;
         top: 4px;
@@ -642,19 +739,19 @@ defineExpose({
         background: rgba(255, 255, 255, 0.9);
         border-radius: 4px;
         padding: 2px 4px;
-        
-        input[type="checkbox"] {
+
+        input[type='checkbox'] {
           width: 16px;
           height: 16px;
           cursor: pointer;
         }
       }
     }
-    
+
     .list-item-wrapper {
       display: flex;
       align-items: center;
-      
+
       .item-checkbox {
         position: relative;
         top: auto;

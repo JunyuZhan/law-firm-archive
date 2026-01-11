@@ -1,13 +1,48 @@
 <script setup lang="ts">
+import type { EvidenceItem } from './types';
+
+import type {
+  CreateEvidenceCommand,
+  EvidenceExportItem,
+  UpdateEvidenceCommand,
+} from '#/api/evidence';
+
 /**
  * 证据整理 - 清单式编辑器
  * 支持分组管理，每组可包含多个证据
  */
 import { ref, watch } from 'vue';
-import { Input, Button, Space, Popconfirm, message, Tag, Empty, Switch, InputNumber, Tooltip, Divider } from 'ant-design-vue';
-import { Plus, Trash, Save, Download, ChevronUp, ChevronDown, Printer } from '@vben/icons';
-import type { EvidenceItem } from './types';
-import { createEvidence, updateEvidence, deleteEvidence, exportEvidenceList, type CreateEvidenceCommand, type UpdateEvidenceCommand, type EvidenceExportItem } from '#/api/evidence';
+
+import {
+  ChevronDown,
+  ChevronUp,
+  Download,
+  Plus,
+  Printer,
+  Save,
+  Trash,
+} from '@vben/icons';
+
+import {
+  Button,
+  Divider,
+  Empty,
+  Input,
+  InputNumber,
+  message,
+  Popconfirm,
+  Space,
+  Switch,
+  Tag,
+  Tooltip,
+} from 'ant-design-vue';
+
+import {
+  createEvidence,
+  deleteEvidence,
+  exportEvidenceList,
+  updateEvidence,
+} from '#/api/evidence';
 
 interface EvidenceRow {
   id?: number;
@@ -26,24 +61,24 @@ interface GroupData {
   key: string;
   groupName: string;
   order: number;
-  proofContent: string;  // 证明内容（组级别）
-  proofPurpose: string;  // 证明目的（组级别）
+  proofContent: string; // 证明内容（组级别）
+  proofPurpose: string; // 证明目的（组级别）
   evidences: EvidenceRow[];
   isNew?: boolean;
   isDirty?: boolean;
 }
 
 const props = defineProps<{
-  matterId: number;
   evidences: EvidenceItem[];
+  matterId: number;
   readonly?: boolean;
-  submitter?: string;
   submitDate?: string;
+  submitter?: string;
 }>();
 
 const emit = defineEmits<{
   (e: 'refresh'): void;
-  (e: 'export', format: 'word' | 'pdf'): void;
+  (e: 'export', format: 'pdf' | 'word'): void;
 }>();
 
 // 分组数据
@@ -55,45 +90,51 @@ const submitterName = ref(props.submitter || '');
 const submitDateStr = ref(props.submitDate || '');
 
 // 初始化分组数据 - 按 groupName 或 sortOrder 分组
-watch(() => props.evidences, (evidences) => {
-  // 按 groupName 分组，没有 groupName 的按 sortOrder 单独成组
-  const groupMap = new Map<string, EvidenceItem[]>();
-  
-  evidences.forEach((e) => {
-    const groupKey = e.groupName || `group-${e.sortOrder || e.id}`;
-    if (!groupMap.has(groupKey)) {
-      groupMap.set(groupKey, []);
-    }
-    groupMap.get(groupKey)!.push(e);
-  });
+watch(
+  () => props.evidences,
+  (evidences) => {
+    // 按 groupName 分组，没有 groupName 的按 sortOrder 单独成组
+    const groupMap = new Map<string, EvidenceItem[]>();
 
-  // 转换为分组数据
-  let order = 1;
-  groupList.value = Array.from(groupMap.entries()).map(([groupName, items]) => {
-    const firstItem = items[0]!;
-    return {
-      key: `group-${order}`,
-      groupName: groupName.startsWith('group-') ? `第 ${order} 组` : groupName,
-      order: order++,
-      proofContent: firstItem.description || '',
-      proofPurpose: firstItem.provePurpose || '',
-      evidences: items.map((e) => ({
-        id: e.id,
-        key: `evidence-${e.id}`,
-        name: e.name || '',
-        source: e.source || '',
-        isOriginal: e.isOriginal ?? false,
-        pageStart: e.pageStart,
-        pageEnd: e.pageEnd,
+    evidences.forEach((e) => {
+      const groupKey = e.groupName || `group-${e.sortOrder || e.id}`;
+      if (!groupMap.has(groupKey)) {
+        groupMap.set(groupKey, []);
+      }
+      groupMap.get(groupKey)!.push(e);
+    });
+
+    // 转换为分组数据
+    let order = 1;
+    groupList.value = [...groupMap.entries()].map(([groupName, items]) => {
+      const firstItem = items[0]!;
+      return {
+        key: `group-${order}`,
+        groupName: groupName.startsWith('group-')
+          ? `第 ${order} 组`
+          : groupName,
+        order: order++,
+        proofContent: firstItem.description || '',
+        proofPurpose: firstItem.provePurpose || '',
+        evidences: items.map((e) => ({
+          id: e.id,
+          key: `evidence-${e.id}`,
+          name: e.name || '',
+          source: e.source || '',
+          isOriginal: e.isOriginal ?? false,
+          pageStart: e.pageStart,
+          pageEnd: e.pageEnd,
+          isNew: false,
+          isDirty: false,
+          isSaving: false,
+        })),
         isNew: false,
         isDirty: false,
-        isSaving: false,
-      })),
-      isNew: false,
-      isDirty: false,
-    };
-  });
-}, { immediate: true });
+      };
+    });
+  },
+  { immediate: true },
+);
 
 // 添加新组
 function handleAddGroup() {
@@ -104,14 +145,16 @@ function handleAddGroup() {
     order: newOrder,
     proofContent: '',
     proofPurpose: '',
-    evidences: [{
-      key: `new-evidence-${Date.now()}`,
-      name: '',
-      source: '',
-      isOriginal: false,
-      isNew: true,
-      isDirty: true,
-    }],
+    evidences: [
+      {
+        key: `new-evidence-${Date.now()}`,
+        name: '',
+        source: '',
+        isOriginal: false,
+        isNew: true,
+        isDirty: true,
+      },
+    ],
     isNew: true,
     isDirty: true,
   });
@@ -131,7 +174,11 @@ function handleAddEvidence(group: GroupData) {
 }
 
 // 删除组内证据
-async function handleDeleteEvidence(group: GroupData, evidence: EvidenceRow, evidenceIndex: number) {
+async function handleDeleteEvidence(
+  group: GroupData,
+  evidence: EvidenceRow,
+  evidenceIndex: number,
+) {
   if (evidence.id) {
     try {
       await deleteEvidence(evidence.id);
@@ -144,8 +191,8 @@ async function handleDeleteEvidence(group: GroupData, evidence: EvidenceRow, evi
   group.evidences.splice(evidenceIndex, 1);
   // 如果组内没有证据了，删除整个组
   if (group.evidences.length === 0) {
-    const groupIndex = groupList.value.findIndex(g => g.key === group.key);
-    if (groupIndex >= 0) {
+    const groupIndex = groupList.value.findIndex((g) => g.key === group.key);
+    if (groupIndex !== -1) {
       groupList.value.splice(groupIndex, 1);
       updateGroupOrder();
     }
@@ -183,7 +230,7 @@ function markEvidenceDirty(group: GroupData, evidence: EvidenceRow) {
 // 保存单个组
 async function handleSaveGroup(group: GroupData) {
   // 验证：至少有一个证据有名称
-  const validEvidences = group.evidences.filter(e => e.name.trim());
+  const validEvidences = group.evidences.filter((e) => e.name.trim());
   if (validEvidences.length === 0) {
     message.warning('请至少输入一个证据名称');
     return;
@@ -251,7 +298,7 @@ async function handleSaveGroup(group: GroupData) {
 
 // 保存全部
 async function handleSaveAll() {
-  const dirtyGroups = groupList.value.filter(g => g.isDirty);
+  const dirtyGroups = groupList.value.filter((g) => g.isDirty);
   if (dirtyGroups.length === 0) {
     message.info('没有需要保存的修改');
     return;
@@ -294,11 +341,11 @@ function updateGroupOrder() {
 
 // 检查是否有未保存的修改
 function hasDirtyItems() {
-  return groupList.value.some(g => g.isDirty);
+  return groupList.value.some((g) => g.isDirty);
 }
 
 // 导出
-async function handleExport(format: 'word' | 'pdf') {
+async function handleExport(format: 'pdf' | 'word') {
   if (groupList.value.length === 0) {
     message.warning('暂无证据可导出');
     return;
@@ -306,7 +353,7 @@ async function handleExport(format: 'word' | 'pdf') {
 
   try {
     message.loading('正在导出...', 0);
-    
+
     // 转换为导出格式
     const exportItems: EvidenceExportItem[] = [];
     groupList.value.forEach((group) => {
@@ -475,9 +522,10 @@ function handlePrint() {
 
     group.evidences.forEach((evidence, index) => {
       if (evidence.name.trim()) {
-        const pageRange = evidence.pageStart && evidence.pageEnd 
-          ? `第${evidence.pageStart}-${evidence.pageEnd}页` 
-          : '';
+        const pageRange =
+          evidence.pageStart && evidence.pageEnd
+            ? `第${evidence.pageStart}-${evidence.pageEnd}页`
+            : '';
         printContent += `
           <tr>
             <td class="col-index">${index + 1}</td>
@@ -544,15 +592,15 @@ function handlePrint() {
 
   printWindow.document.write(printContent);
   printWindow.document.close();
-  
+
   // 等待内容加载后打印
-  printWindow.onload = () => {
+  printWindow.addEventListener('load', () => {
     setTimeout(() => {
       printWindow.print();
       // 打印后关闭窗口（可选）
       // printWindow.close();
     }, 250);
-  };
+  });
 }
 </script>
 
@@ -562,31 +610,31 @@ function handlePrint() {
     <div class="toolbar">
       <Space>
         <Button v-if="!readonly" type="primary" @click="handleAddGroup">
-          <Plus class="w-4 h-4" />
+          <Plus class="h-4 w-4" />
           添加证据组
         </Button>
-        <Button 
-          v-if="!readonly && hasDirtyItems()" 
-          type="primary" 
+        <Button
+          v-if="!readonly && hasDirtyItems()"
+          type="primary"
           ghost
           :loading="saving"
           @click="handleSaveAll"
         >
-          <Save class="w-4 h-4" />
+          <Save class="h-4 w-4" />
           保存全部
         </Button>
       </Space>
       <Space>
         <Button @click="handlePrint">
-          <Printer class="w-4 h-4" />
+          <Printer class="h-4 w-4" />
           打印
         </Button>
         <Button @click="handleExport('word')">
-          <Download class="w-4 h-4" />
+          <Download class="h-4 w-4" />
           导出 Word
         </Button>
         <Button @click="handleExport('pdf')">
-          <Download class="w-4 h-4" />
+          <Download class="h-4 w-4" />
           导出 PDF
         </Button>
       </Space>
@@ -599,8 +647,8 @@ function handlePrint() {
 
     <!-- 分组列表 -->
     <div v-if="groupList.length > 0" class="group-list">
-      <div 
-        v-for="(group, groupIndex) in groupList" 
+      <div
+        v-for="(group, groupIndex) in groupList"
         :key="group.key"
         class="group-item"
         :class="{ 'is-dirty': group.isDirty, 'is-new': group.isNew }"
@@ -611,41 +659,48 @@ function handlePrint() {
             <Tag :color="group.isNew ? 'green' : 'blue'" class="group-tag">
               {{ group.groupName }}
             </Tag>
-            <Tag v-if="group.isDirty && !group.isNew" color="orange">未保存</Tag>
-            <span class="evidence-count">（{{ group.evidences.length }} 项证据）</span>
+            <Tag v-if="group.isDirty && !group.isNew" color="orange">
+              未保存
+            </Tag>
+            <span class="evidence-count"
+              >（{{ group.evidences.length }} 项证据）</span
+            >
           </div>
           <Space v-if="!readonly" class="group-actions">
             <Tooltip title="上移">
-              <Button 
-                type="text" 
-                size="small" 
+              <Button
+                type="text"
+                size="small"
                 :disabled="groupIndex === 0"
                 @click="handleMoveGroupUp(groupIndex)"
               >
-                <ChevronUp class="w-4 h-4" />
+                <ChevronUp class="h-4 w-4" />
               </Button>
             </Tooltip>
             <Tooltip title="下移">
-              <Button 
-                type="text" 
-                size="small" 
+              <Button
+                type="text"
+                size="small"
                 :disabled="groupIndex === groupList.length - 1"
                 @click="handleMoveGroupDown(groupIndex)"
               >
-                <ChevronDown class="w-4 h-4" />
+                <ChevronDown class="h-4 w-4" />
               </Button>
             </Tooltip>
-            <Button 
-              type="primary" 
-              size="small" 
+            <Button
+              type="primary"
+              size="small"
               :disabled="!group.isDirty"
               @click="handleSaveGroup(group)"
             >
               保存本组
             </Button>
-            <Popconfirm title="确定删除整个证据组吗？组内所有证据都会被删除！" @confirm="handleDeleteGroup(group, groupIndex)">
+            <Popconfirm
+              title="确定删除整个证据组吗？组内所有证据都会被删除！"
+              @confirm="handleDeleteGroup(group, groupIndex)"
+            >
               <Button type="text" size="small" danger>
-                <Trash class="w-4 h-4" />
+                <Trash class="h-4 w-4" />
               </Button>
             </Popconfirm>
           </Space>
@@ -661,34 +716,34 @@ function handlePrint() {
             <span class="col-pages">页码</span>
             <span class="col-action">操作</span>
           </div>
-          <div 
-            v-for="(evidence, evidenceIndex) in group.evidences" 
+          <div
+            v-for="(evidence, evidenceIndex) in group.evidences"
             :key="evidence.key"
             class="evidence-row"
             :class="{ 'is-new': evidence.isNew }"
           >
             <span class="col-index">{{ evidenceIndex + 1 }}</span>
             <div class="col-name">
-              <Input 
-                v-model:value="evidence.name" 
+              <Input
+                v-model:value="evidence.name"
                 :disabled="readonly"
-                placeholder="证据名称" 
+                placeholder="证据名称"
                 size="small"
                 @change="markEvidenceDirty(group, evidence)"
               />
             </div>
             <div class="col-source">
-              <Input 
-                v-model:value="evidence.source" 
+              <Input
+                v-model:value="evidence.source"
                 :disabled="readonly"
-                placeholder="来源" 
+                placeholder="来源"
                 size="small"
                 @change="markEvidenceDirty(group, evidence)"
               />
             </div>
             <div class="col-original">
-              <Switch 
-                v-model:checked="evidence.isOriginal" 
+              <Switch
+                v-model:checked="evidence.isOriginal"
                 :disabled="readonly"
                 size="small"
                 @change="markEvidenceDirty(group, evidence)"
@@ -696,58 +751,63 @@ function handlePrint() {
             </div>
             <div class="col-pages">
               <Space size="small">
-                <InputNumber 
-                  v-model:value="evidence.pageStart" 
+                <InputNumber
+                  v-model:value="evidence.pageStart"
                   :disabled="readonly"
                   :min="1"
-                  placeholder="起" 
+                  placeholder="起"
                   size="small"
-                  style="width: 60px;"
+                  style="width: 60px"
                   @change="markEvidenceDirty(group, evidence)"
                 />
                 <span>-</span>
-                <InputNumber 
-                  v-model:value="evidence.pageEnd" 
+                <InputNumber
+                  v-model:value="evidence.pageEnd"
                   :disabled="readonly"
                   :min="evidence.pageStart || 1"
-                  placeholder="止" 
+                  placeholder="止"
                   size="small"
-                  style="width: 60px;"
+                  style="width: 60px"
                   @change="markEvidenceDirty(group, evidence)"
                 />
               </Space>
             </div>
             <div class="col-action">
-              <Popconfirm 
+              <Popconfirm
                 v-if="!readonly"
-                title="确定删除此证据吗？" 
+                title="确定删除此证据吗？"
                 @confirm="handleDeleteEvidence(group, evidence, evidenceIndex)"
               >
                 <Button type="text" size="small" danger>
-                  <Trash class="w-3 h-3" />
+                  <Trash class="h-3 w-3" />
                 </Button>
               </Popconfirm>
             </div>
           </div>
-          
+
           <!-- 添加证据按钮 -->
           <div v-if="!readonly" class="add-evidence-row">
-            <Button type="dashed" size="small" block @click="handleAddEvidence(group)">
-              <Plus class="w-3 h-3" />
+            <Button
+              type="dashed"
+              size="small"
+              block
+              @click="handleAddEvidence(group)"
+            >
+              <Plus class="h-3 w-3" />
               添加证据到本组
             </Button>
           </div>
         </div>
 
-        <Divider style="margin: 12px 0;" />
+        <Divider style="margin: 12px 0" />
 
         <!-- 组级别的证明内容和证明目的 -->
         <div class="group-fields">
           <div class="field-row">
             <div class="field-item proof-content">
               <label class="field-label">证明内容</label>
-              <Input.TextArea 
-                v-model:value="group.proofContent" 
+              <Input.TextArea
+                v-model:value="group.proofContent"
                 :disabled="readonly"
                 placeholder="该组证据说明了什么事实"
                 :auto-size="{ minRows: 1, maxRows: 3 }"
@@ -758,8 +818,8 @@ function handlePrint() {
           <div class="field-row">
             <div class="field-item proof-purpose">
               <label class="field-label">证明目的</label>
-              <Input.TextArea 
-                v-model:value="group.proofPurpose" 
+              <Input.TextArea
+                v-model:value="group.proofPurpose"
                 :disabled="readonly"
                 placeholder="该组证据用于证明什么"
                 :auto-size="{ minRows: 1, maxRows: 3 }"
@@ -773,7 +833,7 @@ function handlePrint() {
 
     <Empty v-else description="暂无证据，点击上方「添加证据组」开始">
       <Button v-if="!readonly" type="primary" @click="handleAddGroup">
-        <Plus class="w-4 h-4" />
+        <Plus class="h-4 w-4" />
         添加第一组证据
       </Button>
     </Empty>
@@ -783,23 +843,27 @@ function handlePrint() {
       <div class="signature-row">
         <div class="signature-item">
           <span class="signature-label">证据提交人：</span>
-          <Input 
+          <Input
             v-if="!readonly"
-            v-model:value="submitterName" 
-            placeholder="输入提交人姓名" 
-            style="width: 150px;"
+            v-model:value="submitterName"
+            placeholder="输入提交人姓名"
+            style="width: 150px"
           />
-          <span v-else class="signature-value">{{ submitterName || '_______________' }}</span>
+          <span v-else class="signature-value">{{
+            submitterName || '_______________'
+          }}</span>
         </div>
         <div class="signature-item">
           <span class="signature-label">日期：</span>
-          <Input 
+          <Input
             v-if="!readonly"
-            v-model:value="submitDateStr" 
-            placeholder="YYYY年MM月DD日" 
-            style="width: 150px;"
+            v-model:value="submitDateStr"
+            placeholder="YYYY年MM月DD日"
+            style="width: 150px"
           />
-          <span v-else class="signature-value">{{ submitDateStr || '______年____月____日' }}</span>
+          <span v-else class="signature-value">{{
+            submitDateStr || '______年____月____日'
+          }}</span>
         </div>
       </div>
     </div>

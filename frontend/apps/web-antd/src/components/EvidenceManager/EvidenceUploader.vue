@@ -1,12 +1,17 @@
 <script setup lang="ts">
+import type { UploadFile, UploadProps } from 'ant-design-vue';
+
 /**
  * 证据文件上传组件
  */
-import { ref, computed } from 'vue';
-import { Upload, message, Progress } from 'ant-design-vue';
+import { computed, ref } from 'vue';
+
 import { Inbox, X } from '@vben/icons';
-import type { UploadProps, UploadFile } from 'ant-design-vue';
+
+import { message, Progress, Upload } from 'ant-design-vue';
+
 import { uploadEvidenceFile } from '#/api/evidence';
+
 import { formatFileSize, getFileTypeInfo } from './types';
 
 export interface UploadResult {
@@ -14,16 +19,16 @@ export interface UploadResult {
   fileName: string;
   fileSize: number;
   fileType: string;
-  thumbnailUrl: string | null;
+  thumbnailUrl: null | string;
 }
 
 const props = defineProps<{
-  modelValue?: UploadResult | null;
   disabled?: boolean;
+  modelValue?: null | UploadResult;
 }>();
 
 const emit = defineEmits<{
-  (e: 'update:modelValue', value: UploadResult | null): void;
+  (e: 'update:modelValue', value: null | UploadResult): void;
   (e: 'success', result: UploadResult): void;
 }>();
 
@@ -32,15 +37,17 @@ const uploadProgress = ref(0);
 const fileList = ref<UploadFile[]>([]);
 
 const hasFile = computed(() => !!props.modelValue?.fileUrl);
-const fileTypeInfo = computed(() => getFileTypeInfo(props.modelValue?.fileType));
+const fileTypeInfo = computed(() =>
+  getFileTypeInfo(props.modelValue?.fileType),
+);
 
 const customRequest: UploadProps['customRequest'] = async (options) => {
   const { file, onSuccess, onError, onProgress } = options;
-  
+
   try {
     uploading.value = true;
     uploadProgress.value = 0;
-    
+
     // 模拟进度
     const progressInterval = setInterval(() => {
       if (uploadProgress.value < 90) {
@@ -51,11 +58,11 @@ const customRequest: UploadProps['customRequest'] = async (options) => {
 
     const result = await uploadEvidenceFile(file as File);
     clearInterval(progressInterval);
-    
+
     // 处理响应数据
     const responseData = (result as any)?.data || result;
     const uploadResult: UploadResult = responseData?.data || responseData;
-    
+
     if (uploadResult?.fileUrl) {
       uploadProgress.value = 100;
       emit('update:modelValue', uploadResult);
@@ -96,14 +103,26 @@ const beforeUpload: UploadProps['beforeUpload'] = (file) => {
     <div v-if="hasFile" class="uploaded-file">
       <div class="file-info">
         <span class="file-icon" :style="{ color: fileTypeInfo.color }">
-          {{ modelValue?.fileType === 'image' ? '🖼️' : modelValue?.fileType === 'pdf' ? '📄' : modelValue?.fileType === 'word' ? '📝' : modelValue?.fileType === 'video' ? '🎥' : '📎' }}
+          {{
+            modelValue?.fileType === 'image'
+              ? '🖼️'
+              : modelValue?.fileType === 'pdf'
+                ? '📄'
+                : modelValue?.fileType === 'word'
+                  ? '📝'
+                  : modelValue?.fileType === 'video'
+                    ? '🎥'
+                    : '📎'
+          }}
         </span>
         <div class="file-detail">
           <div class="file-name">{{ modelValue?.fileName }}</div>
-          <div class="file-size">{{ formatFileSize(modelValue?.fileSize) }}</div>
+          <div class="file-size">
+            {{ formatFileSize(modelValue?.fileSize) }}
+          </div>
         </div>
       </div>
-      <X v-if="!disabled" class="remove-btn w-4 h-4" @click="handleRemove" />
+      <X v-if="!disabled" class="remove-btn h-4 w-4" @click="handleRemove" />
     </div>
 
     <!-- 上传区域 -->
@@ -118,11 +137,16 @@ const beforeUpload: UploadProps['beforeUpload'] = (file) => {
     >
       <div class="upload-content">
         <p class="upload-icon">
-          <Inbox class="w-12 h-12" />
+          <Inbox class="h-12 w-12" />
         </p>
         <p class="upload-text">点击或拖拽文件到此区域上传</p>
         <p class="upload-hint">支持图片、文档、音视频等格式，最大 100MB</p>
-        <Progress v-if="uploading" :percent="uploadProgress" size="small" style="width: 80%; margin-top: 12px" />
+        <Progress
+          v-if="uploading"
+          :percent="uploadProgress"
+          size="small"
+          style="width: 80%; margin-top: 12px"
+        />
       </div>
     </Upload.Dragger>
   </div>

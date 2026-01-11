@@ -1,12 +1,13 @@
 <script lang="ts" setup>
-import type { Recordable } from '@vben/types';
 import type { VbenFormSchema } from '@vben/common-ui';
+import type { Recordable } from '@vben/types';
 
 import { computed, ref } from 'vue';
 
-import { message } from 'ant-design-vue';
 import { AuthenticationLogin, SliderCaptcha, z } from '@vben/common-ui';
 import { $t } from '@vben/locales';
+
+import { message } from 'ant-design-vue';
 
 import { useAuthStore } from '#/store';
 
@@ -56,7 +57,7 @@ async function handleLogin(values: Recordable<any>) {
     message.error('请先完成滑块验证');
     return;
   }
-  
+
   try {
     await authStore.authLogin(values);
     // 登录成功后重置验证码
@@ -95,11 +96,9 @@ async function handleLogin(values: Recordable<any>) {
         </div>
       </template>
     </AuthenticationLogin>
-    
+
     <!-- 版本号显示 -->
-    <div class="version-info">
-      v{{ appVersion }}
-    </div>
+    <div class="version-info">v{{ appVersion }}</div>
   </div>
 </template>
 <style scoped>
@@ -120,4 +119,3 @@ async function handleLogin(values: Recordable<any>) {
   color: rgb(255 255 255 / 50%) !important;
 }
 </style>
-

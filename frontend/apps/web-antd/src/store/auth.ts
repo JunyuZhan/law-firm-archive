@@ -10,9 +10,9 @@ import { resetAllStores, useAccessStore, useUserStore } from '@vben/stores';
 import { notification } from 'ant-design-vue';
 import { defineStore } from 'pinia';
 
-import { getAccessCodesApi, getUserInfoApi, loginApi, logoutApi } from '#/api';
+import { getUserInfoApi, loginApi, logoutApi } from '#/api';
 import { getProfileInfo } from '#/api/core/profile';
-import { getPendingApprovals, getMyInitiatedApprovals } from '#/api/workbench';
+import { getMyInitiatedApprovals, getPendingApprovals } from '#/api/workbench';
 import { $t } from '#/locales';
 
 // 已通知的审批进度记录（避免重复弹窗）
@@ -54,20 +54,28 @@ export const useAuthStore = defineStore('auth', () => {
     let userInfo: null | UserInfo = null;
     try {
       loginLoading.value = true;
-      
+
       // 调用登录接口
       const loginResult = await loginApi({
         username: params.username,
         password: params.password,
       });
 
-      const { accessToken, refreshToken, permissions, roles, realName, userId, username } = loginResult;
+      const {
+        accessToken,
+        refreshToken,
+        permissions,
+        roles,
+        realName,
+        userId,
+        username,
+      } = loginResult;
 
       // 如果成功获取到 accessToken
       if (accessToken) {
         // 存储 accessToken
         accessStore.setAccessToken(accessToken);
-        
+
         // 存储 refreshToken 到 localStorage
         if (refreshToken) {
           localStorage.setItem('refreshToken', refreshToken);
@@ -78,17 +86,18 @@ export const useAuthStore = defineStore('auth', () => {
           userId: String(userId),
           username,
           realName,
-          roles: roles ? Array.from(roles) : [],
+          roles: roles ? [...roles] : [],
           avatar: '',
           homePath: '/dashboard',
-          email: undefined, // 将在fetchUserInfo中补充
-        };
+          desc: '', // 用户描述
+          token: accessToken, // 访问令牌
+        } as UserInfo & { email?: string };
 
         // 存储用户信息
         userStore.setUserInfo(userInfo);
-        
+
         // 存储权限码
-        const accessCodes = permissions ? Array.from(permissions) : [];
+        const accessCodes = permissions ? [...permissions] : [];
         accessStore.setAccessCodes(accessCodes);
 
         if (accessStore.loginExpired) {
@@ -107,7 +116,7 @@ export const useAuthStore = defineStore('auth', () => {
             duration: 3,
             message: $t('authentication.loginSuccess'),
           });
-          
+
           // 登录成功后显示审批提醒
           showApprovalNotifications();
         }
@@ -127,10 +136,10 @@ export const useAuthStore = defineStore('auth', () => {
     } catch {
       // 不做任何处理
     }
-    
+
     // 清除 refreshToken
     localStorage.removeItem('refreshToken');
-    
+
     resetAllStores();
     accessStore.setLoginExpired(false);
 
@@ -146,21 +155,30 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function fetchUserInfo() {
-    let userInfo: null | UserInfo = null;
-    userInfo = await getUserInfoApi();
-    
+    const apiUserInfo = await getUserInfoApi();
+
+    // 将API返回的用户信息转换为应用需要的格式
+    const userInfo: UserInfo = {
+      userId: String(apiUserInfo.userId),
+      username: apiUserInfo.username,
+      realName: apiUserInfo.realName,
+      roles: apiUserInfo.roles || [],
+      avatar: apiUserInfo.avatar || '',
+      homePath: '/dashboard',
+      desc: '', // 用户描述
+      token: '', // token已存储在accessStore中
+    };
+
     // 补充email信息（从/profile/info获取）
-    if (userInfo && !userInfo.email) {
-      try {
-        const profileInfo = await getProfileInfo();
-        if (profileInfo?.email) {
-          userInfo.email = profileInfo.email;
-        }
-      } catch {
-        // 静默失败，不影响主流程
+    try {
+      const profileInfo = await getProfileInfo();
+      if (profileInfo?.email) {
+        (userInfo as UserInfo & { email?: string }).email = profileInfo.email;
       }
+    } catch {
+      // 静默失败，不影响主流程
     }
-    
+
     userStore.setUserInfo(userInfo);
     return userInfo;
   }
@@ -175,12 +193,12 @@ export const useAuthStore = defineStore('auth', () => {
   async function showApprovalNotifications() {
     try {
       // 延迟1秒显示，避免和登录成功通知重叠
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+
       // 获取待审批列表
       const pendingList = await getPendingApprovals();
       const pendingCount = pendingList?.length || 0;
-      
+
       if (pendingCount > 0) {
         notification.warning({
           message: '待审批提醒',
@@ -192,32 +210,36 @@ export const useAuthStore = defineStore('auth', () => {
           style: { cursor: 'pointer' },
         });
       }
-      
+
       // 获取我发起的审批中已处理的（只通知上次登录后新处理的）
       const initiatedList = await getMyInitiatedApprovals();
       const lastNotifiedTime = getLastNotifiedTime();
       const now = Date.now();
-      
-      const recentlyProcessed = (initiatedList || []).filter(item => {
+
+      const recentlyProcessed = (initiatedList || []).filter((item) => {
         if (item.status === 'PENDING') return false;
         if (!item.approvedAt) return false;
         const approvedTime = new Date(item.approvedAt).getTime();
         // 只通知上次通知时间之后处理的审批
         return approvedTime > lastNotifiedTime;
       });
-      
+
       if (recentlyProcessed.length > 0) {
         // 延迟显示，避免通知堆叠
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        const approvedCount = recentlyProcessed.filter(item => item.status === 'APPROVED').length;
-        const rejectedCount = recentlyProcessed.filter(item => item.status === 'REJECTED').length;
-        
+        await new Promise((resolve) => setTimeout(resolve, 500));
+
+        const approvedCount = recentlyProcessed.filter(
+          (item) => item.status === 'APPROVED',
+        ).length;
+        const rejectedCount = recentlyProcessed.filter(
+          (item) => item.status === 'REJECTED',
+        ).length;
+
         let description = '您发起的审批有新进展：';
         if (approvedCount > 0) description += `${approvedCount} 项已通过`;
         if (approvedCount > 0 && rejectedCount > 0) description += '，';
         if (rejectedCount > 0) description += `${rejectedCount} 项已拒绝`;
-        
+
         notification.info({
           message: '审批进度通知',
           description,
@@ -228,7 +250,7 @@ export const useAuthStore = defineStore('auth', () => {
           style: { cursor: 'pointer' },
         });
       }
-      
+
       // 更新最后通知时间
       setLastNotifiedTime(now);
     } catch (error) {

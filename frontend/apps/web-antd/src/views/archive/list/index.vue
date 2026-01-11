@@ -1,49 +1,66 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed } from 'vue';
-import { message, Modal } from 'ant-design-vue';
+import type {
+  ArchiveCheckResult,
+  ArchiveDataSnapshot,
+  ArchiveDataSource,
+  ArchiveDTO,
+  ArchiveQuery,
+  CreateArchiveCommand,
+  StoreArchiveCommand,
+} from '#/api/archive/types';
+import type { MatterDTO, MatterSimpleDTO } from '#/api/matter/types';
+
+import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+
 import { Page } from '@vben/common-ui';
+import { DownloadOutlined, FileOutlined, RotateCw } from '@vben/icons';
+
 import {
-  Card,
+  Alert,
   Button,
-  Space,
-  Input,
-  Select,
-  Form,
-  FormItem,
-  Row,
+  Card,
+  Checkbox,
   Col,
-  Tag,
-  Textarea,
   Descriptions,
   DescriptionsItem,
-  Alert,
-  Statistic,
-  Checkbox,
-  Spin,
-  Steps,
-  Step,
   Dropdown,
+  Form,
+  FormItem,
+  Input,
   Menu,
   MenuItem,
+  message,
+  Modal,
   Pagination,
+  Row,
+  Select,
+  Space,
+  Spin,
+  Statistic,
+  Step,
+  Steps,
+  Tag,
+  Textarea,
 } from 'ant-design-vue';
-import { FileOutlined, DownloadOutlined, RotateCw } from '@vben/icons';
+
 import {
-  getArchiveList,
-  createArchive,
-  storeArchive,
-  submitStoreApproval,
   approveStore,
   checkArchiveRequirements,
-  previewArchiveData,
-  getArchiveDataSources,
+  createArchive,
   downloadArchiveCover,
+  getArchiveDataSources,
+  getArchiveList,
+  previewArchiveData,
   regenerateArchiveCover,
+  storeArchive,
+  submitStoreApproval,
 } from '#/api/archive';
-import { getMatterSelectOptions, changeMatterStatus, getMatterDetail } from '#/api/matter';
-import type { ArchiveDTO, ArchiveQuery, CreateArchiveCommand, StoreArchiveCommand, ArchiveCheckResult, ArchiveDataSnapshot, ArchiveDataSource } from '#/api/archive/types';
-import type { MatterDTO } from '#/api/matter/types';
+import {
+  changeMatterStatus,
+  getMatterDetail,
+  getMatterSelectOptions,
+} from '#/api/matter';
 import { CASE_CATEGORY_OPTIONS } from '#/constants/causes/utils';
 
 defineOptions({ name: 'ArchiveList' });
@@ -58,14 +75,14 @@ const total = ref(0);
 const storeModalVisible = ref(false);
 const approveModalVisible = ref(false);
 const currentArchive = ref<ArchiveDTO | null>(null);
-const matters = ref<MatterDTO[]>([]);
+const matters = ref<MatterSimpleDTO[]>([]);
 const matterDetailsMap = ref<Map<number, MatterDTO>>(new Map());
 
 // 归档向导状态
 const archiveWizardVisible = ref(false);
 const archiveWizardStep = ref(0);
 const archiveWizardLoading = ref(false);
-const selectedMatterId = ref<number | null>(null);
+const selectedMatterId = ref<null | number>(null);
 const checkResult = ref<ArchiveCheckResult | null>(null);
 const dataSnapshot = ref<ArchiveDataSnapshot | null>(null);
 const dataSources = ref<ArchiveDataSource[]>([]);
@@ -115,7 +132,9 @@ const statusOptions = [
 
 // 计算属性：可归档的项目（已结案或已归档）
 const archivableMatters = computed(() => {
-  return matters.value.filter(m => m.status === 'CLOSED' || m.status === 'ARCHIVED');
+  return matters.value.filter(
+    (m) => m.status === 'CLOSED' || m.status === 'ARCHIVED',
+  );
 });
 
 // 加载数据
@@ -137,10 +156,10 @@ async function fetchData() {
 // 加载项目详情
 async function loadMatterDetails(archives: ArchiveDTO[]) {
   const matterIds = archives
-    .filter(a => a.matterId)
-    .map(a => a.matterId!)
+    .filter((a) => a.matterId)
+    .map((a) => a.matterId!)
     .filter((id, index, arr) => arr.indexOf(id) === index); // 去重
-  
+
   for (const matterId of matterIds) {
     if (!matterDetailsMap.value.has(matterId)) {
       try {
@@ -169,8 +188,8 @@ async function loadDataSources() {
     dataSources.value = await getArchiveDataSources();
     // 默认选中所有启用的数据源
     selectedDataSourceIds.value = dataSources.value
-      .filter(ds => ds.is_enabled)
-      .map(ds => ds.id);
+      .filter((ds) => ds.is_enabled)
+      .map((ds) => ds.id);
   } catch (error: any) {
     console.error('加载数据源配置失败:', error);
   }
@@ -209,7 +228,7 @@ async function handleSelectMatter() {
     message.warning('请选择要归档的项目');
     return;
   }
-  
+
   archiveWizardLoading.value = true;
   try {
     // 检查归档条件
@@ -225,7 +244,7 @@ async function handleSelectMatter() {
 // 归档向导：预览数据
 async function handlePreviewData() {
   if (!selectedMatterId.value) return;
-  
+
   archiveWizardLoading.value = true;
   try {
     dataSnapshot.value = await previewArchiveData(selectedMatterId.value);
@@ -240,26 +259,26 @@ async function handlePreviewData() {
 // 归档向导：创建档案
 async function handleCreateArchive() {
   if (!selectedMatterId.value || !dataSnapshot.value) return;
-  
+
   archiveWizardLoading.value = true;
   try {
     const command: CreateArchiveCommand = {
       matterId: selectedMatterId.value,
-      archiveName: dataSnapshot.value.matterName + ' - 档案',
+      archiveName: `${dataSnapshot.value.matterName} - 档案`,
       archiveType: 'LITIGATION',
       retentionPeriod: '10_YEARS',
       selectedDataSourceIds: selectedDataSourceIds.value,
     };
-    
+
     await createArchive(command);
-    
+
     // 更新项目状态为已归档
     try {
       await changeMatterStatus(selectedMatterId.value, 'ARCHIVED');
-    } catch (e) {
-      console.warn('更新项目状态失败，项目可能已是归档状态', e);
+    } catch (error) {
+      console.warn('更新项目状态失败，项目可能已是归档状态', error);
     }
-    
+
     message.success('档案创建成功，项目已归档');
     archiveWizardVisible.value = false;
     fetchData();
@@ -301,7 +320,11 @@ function handleApproveStore(record: ArchiveDTO) {
 async function handleApproveStoreSave() {
   try {
     if (currentArchive.value) {
-      await approveStore(currentArchive.value.id, approveFormData.approved, approveFormData.comment);
+      await approveStore(
+        currentArchive.value.id,
+        approveFormData.approved,
+        approveFormData.comment,
+      );
       message.success(approveFormData.approved ? '审批通过' : '已拒绝');
       approveModalVisible.value = false;
       fetchData();
@@ -320,11 +343,11 @@ async function handleDownloadCover(record: ArchiveDTO) {
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    const fileName = (record.archiveName || record.matterName || '档案') + '_卷宗封面.pdf';
+    const fileName = `${record.archiveName || record.matterName || '档案'}_卷宗封面.pdf`;
     link.download = fileName;
-    document.body.appendChild(link);
+    document.body.append(link);
     link.click();
-    document.body.removeChild(link);
+    link.remove();
     window.URL.revokeObjectURL(url);
     message.success('封面下载成功');
   } catch (error: any) {
@@ -381,56 +404,73 @@ function getStatusColor(status: string) {
 
 // 获取项目封面主题（根据项目类型）
 function getArchiveCoverTheme(archive: ArchiveDTO) {
-  const matter = archive.matterId ? matterDetailsMap.value.get(archive.matterId) : null;
+  const matter = archive.matterId
+    ? matterDetailsMap.value.get(archive.matterId)
+    : null;
   const matterType = matter?.matterType || archive.archiveType || 'LITIGATION';
   const caseType = matter?.caseType || '';
-  
+
   // 根据项目大类设置主题
   if (matterType === 'LITIGATION') {
-    const caseTypeOption = CASE_CATEGORY_OPTIONS.find(opt => opt.value === caseType);
+    const caseTypeOption = CASE_CATEGORY_OPTIONS.find(
+      (opt) => opt.value === caseType,
+    );
     const label = caseTypeOption?.label || '诉讼案件';
-    
+
     switch (caseType) {
-      case 'CRIMINAL':
-        return { label, color: '#d32f2f' };
-      case 'CIVIL':
-        return { label, color: '#1976d2' };
-      case 'ADMINISTRATIVE':
+      case 'ADMINISTRATIVE': {
         return { label, color: '#388e3c' };
-      case 'BANKRUPTCY':
-        return { label, color: '#f57c00' };
-      case 'IP':
-        return { label, color: '#7b1fa2' };
+      }
       case 'ARBITRATION':
       case 'COMMERCIAL_ARBITRATION':
-      case 'LABOR_ARBITRATION':
+      case 'LABOR_ARBITRATION': {
         return { label, color: '#0288d1' };
-      case 'ENFORCEMENT':
+      }
+      case 'BANKRUPTCY': {
+        return { label, color: '#f57c00' };
+      }
+      case 'CIVIL': {
+        return { label, color: '#1976d2' };
+      }
+      case 'CRIMINAL': {
+        return { label, color: '#d32f2f' };
+      }
+      case 'ENFORCEMENT': {
         return { label, color: '#5d4037' };
-      default:
+      }
+      case 'IP': {
+        return { label, color: '#7b1fa2' };
+      }
+      default: {
         return { label, color: '#616161' };
+      }
     }
   } else if (matterType === 'NON_LITIGATION') {
-    const caseTypeOption = CASE_CATEGORY_OPTIONS.find(opt => opt.value === caseType);
+    const caseTypeOption = CASE_CATEGORY_OPTIONS.find(
+      (opt) => opt.value === caseType,
+    );
     const label = caseTypeOption?.label || '非诉项目';
-    
+
     switch (caseType) {
-      case 'LEGAL_COUNSEL':
+      case 'LEGAL_COUNSEL': {
         return { label, color: '#00796b' };
-      case 'SPECIAL_SERVICE':
+      }
+      case 'SPECIAL_SERVICE': {
         return { label, color: '#e64a19' };
-      default:
+      }
+      default: {
         return { label, color: '#455a64' };
+      }
     }
   }
-  
+
   return { label: '业务档案卷宗', color: '#757575' };
 }
 
 // 格式化日期
 function formatDate(dateStr: string | undefined): string {
   if (!dateStr) return '-';
-  return dateStr.substring(0, 10);
+  return dateStr.slice(0, 10);
 }
 
 // 获取项目信息
@@ -441,15 +481,15 @@ function getMatterInfo(archive: ArchiveDTO) {
 // 获取统计标签
 function getStatLabel(key: string): string {
   const labelMap: Record<string, string> = {
-    '客户数': '客户',
-    '团队成员数': '团队成员',
-    '合同数': '合同',
-    '收费记录数': '收费记录',
-    '工时记录数': '工时记录',
-    '文档数': '文档',
-    '证据数': '证据',
-    '审批记录数': '审批',
-    '任务数': '任务',
+    客户数: '客户',
+    团队成员数: '团队成员',
+    合同数: '合同',
+    收费记录数: '收费记录',
+    工时记录数: '工时记录',
+    文档数: '文档',
+    证据数: '证据',
+    审批记录数: '审批',
+    任务数: '任务',
   };
   return labelMap[key] || key;
 }
@@ -462,15 +502,15 @@ async function handleRouteQuery() {
     if (!isNaN(id)) {
       // 清除查询参数
       router.replace({ path: '/archive/list', query: {} });
-      
+
       // 等待数据加载完成
       await loadMatters();
       await loadDataSources();
-      
+
       // 自动选中项目并打开向导
       selectedMatterId.value = id;
       archiveWizardVisible.value = true;
-      
+
       // 自动开始检查
       archiveWizardLoading.value = true;
       try {
@@ -504,21 +544,21 @@ onMounted(async () => {
             <Input
               v-model:value="queryParams.archiveName"
               placeholder="档案名称"
-              allowClear
+              allow-clear
             />
           </Col>
           <Col :xs="24" :sm="12" :md="6" :lg="5">
             <Input
               v-model:value="queryParams.matterNo"
               placeholder="项目编号"
-              allowClear
+              allow-clear
             />
           </Col>
           <Col :xs="24" :sm="12" :md="6" :lg="4">
             <Select
               v-model:value="queryParams.archiveType"
               placeholder="档案类型"
-              allowClear
+              allow-clear
               style="width: 100%"
               :options="archiveTypeOptions"
             />
@@ -527,7 +567,7 @@ onMounted(async () => {
             <Select
               v-model:value="queryParams.status"
               placeholder="状态"
-              allowClear
+              allow-clear
               style="width: 100%"
               :options="statusOptions"
             />
@@ -536,7 +576,9 @@ onMounted(async () => {
             <Space wrap>
               <Button type="primary" @click="handleSearch">查询</Button>
               <Button @click="handleReset">重置</Button>
-              <Button type="primary" @click="handleOpenArchiveWizard">创建档案</Button>
+              <Button type="primary" @click="handleOpenArchiveWizard">
+                创建档案
+              </Button>
             </Space>
           </Col>
         </Row>
@@ -544,7 +586,10 @@ onMounted(async () => {
 
       <!-- 卡片列表 -->
       <Spin :spinning="loading">
-        <div v-if="dataSource.length === 0" style=" padding: 60px; color: #999;text-align: center">
+        <div
+          v-if="dataSource.length === 0"
+          style="padding: 60px; color: #999; text-align: center"
+        >
           暂无档案数据
         </div>
         <Row v-else :gutter="[16, 16]">
@@ -559,7 +604,7 @@ onMounted(async () => {
           >
             <div class="archive-cover-card" @click.stop>
               <!-- 牛皮纸封面 -->
-              <div 
+              <div
                 class="cover-paper"
                 :style="{
                   borderColor: getArchiveCoverTheme(archive).color,
@@ -567,89 +612,126 @@ onMounted(async () => {
                 }"
               >
                 <!-- 颜色标识条 -->
-                <div 
+                <div
                   class="cover-color-bar"
-                  :style="{ backgroundColor: getArchiveCoverTheme(archive).color }"
+                  :style="{
+                    backgroundColor: getArchiveCoverTheme(archive).color,
+                  }"
                 ></div>
-                
+
                 <!-- 封面标题区域 -->
                 <div class="cover-header">
                   <div class="cover-title-main">业务档案卷宗</div>
-                  <div class="cover-title-sub">{{ getArchiveCoverTheme(archive).label }}</div>
+                  <div class="cover-title-sub">
+                    {{ getArchiveCoverTheme(archive).label }}
+                  </div>
                 </div>
-                
+
                 <!-- 封面信息区域 -->
                 <div class="cover-info">
                   <div class="cover-info-row">
                     <span class="cover-info-label">项目名称</span>
-                    <span class="cover-info-value">{{ archive.matterName || archive.archiveName || '-' }}</span>
+                    <span class="cover-info-value">{{
+                      archive.matterName || archive.archiveName || '-'
+                    }}</span>
                   </div>
                   <div class="cover-info-row">
                     <span class="cover-info-label">项目编号</span>
-                    <span class="cover-info-value">{{ archive.matterNo || '-' }}</span>
+                    <span class="cover-info-value">{{
+                      archive.matterNo || '-'
+                    }}</span>
                   </div>
                   <div class="cover-info-row">
                     <span class="cover-info-label">档案编号</span>
-                    <span class="cover-info-value">{{ archive.archiveNo || '-' }}</span>
+                    <span class="cover-info-value">{{
+                      archive.archiveNo || '-'
+                    }}</span>
                   </div>
                   <div class="cover-info-row" v-if="getMatterInfo(archive)">
                     <span class="cover-info-label">案件类型</span>
-                    <span class="cover-info-value">{{ getMatterInfo(archive)?.caseTypeName || '-' }}</span>
+                    <span class="cover-info-value">{{
+                      getMatterInfo(archive)?.caseTypeName || '-'
+                    }}</span>
                   </div>
                   <div class="cover-info-row">
                     <span class="cover-info-label">客户</span>
-                    <span class="cover-info-value">{{ archive.clientName || '-' }}</span>
+                    <span class="cover-info-value">{{
+                      archive.clientName || '-'
+                    }}</span>
                   </div>
                   <div class="cover-info-row">
                     <span class="cover-info-label">主办律师</span>
-                    <span class="cover-info-value">{{ archive.mainLawyerName || '-' }}</span>
+                    <span class="cover-info-value">{{
+                      archive.mainLawyerName || '-'
+                    }}</span>
                   </div>
                   <div class="cover-info-row">
                     <span class="cover-info-label">结案日期</span>
-                    <span class="cover-info-value">{{ formatDate(archive.caseCloseDate) }}</span>
+                    <span class="cover-info-value">{{
+                      formatDate(archive.caseCloseDate)
+                    }}</span>
                   </div>
                   <div class="cover-info-row">
                     <span class="cover-info-label">归档日期</span>
-                    <span class="cover-info-value">{{ formatDate(archive.archiveDate) }}</span>
+                    <span class="cover-info-value">{{
+                      formatDate(archive.archiveDate)
+                    }}</span>
                   </div>
                 </div>
-                
+
                 <!-- 封面底部 -->
                 <div class="cover-footer">
-                  <Tag :color="getStatusColor(archive.status || '')" style="margin: 0">
+                  <Tag
+                    :color="getStatusColor(archive.status || '')"
+                    style="margin: 0"
+                  >
                     {{ archive.statusName || '-' }}
                   </Tag>
                 </div>
               </div>
-              
+
               <!-- 卡片操作栏 -->
               <div class="cover-actions">
                 <Space>
                   <Dropdown>
                     <template #overlay>
                       <Menu>
-                        <MenuItem key="download" @click="handleDownloadCover(archive)">
-                      <DownloadOutlined style="margin-right: 8px;" />
-                      下载封面
-                    </MenuItem>
-                        <MenuItem key="regenerate" @click="handleRegenerateCover(archive)">
-                      <RotateCw :size="14" style="margin-right: 8px;" />
-                      重新生成
-                    </MenuItem>
+                        <MenuItem
+                          key="download"
+                          @click="handleDownloadCover(archive)"
+                        >
+                          <DownloadOutlined style="margin-right: 8px" />
+                          下载封面
+                        </MenuItem>
+                        <MenuItem
+                          key="regenerate"
+                          @click="handleRegenerateCover(archive)"
+                        >
+                          <RotateCw :size="14" style="margin-right: 8px" />
+                          重新生成
+                        </MenuItem>
                       </Menu>
                     </template>
                     <Button type="link" size="small">
-                      <FileOutlined style="margin-right: 4px;" />
+                      <FileOutlined style="margin-right: 4px" />
                       封面
                     </Button>
                   </Dropdown>
                   <template v-if="archive.status === 'PENDING'">
-                    <Button type="link" size="small" @click="handleSubmitStoreApproval(archive)">
+                    <Button
+                      type="link"
+                      size="small"
+                      @click="handleSubmitStoreApproval(archive)"
+                    >
                       提交审批
                     </Button>
                   </template>
                   <template v-if="archive.status === 'PENDING_STORE'">
-                    <Button type="link" size="small" @click="handleApproveStore(archive)">
+                    <Button
+                      type="link"
+                      size="small"
+                      @click="handleApproveStore(archive)"
+                    >
                       审批
                     </Button>
                   </template>
@@ -658,7 +740,7 @@ onMounted(async () => {
             </div>
           </Col>
         </Row>
-        
+
         <!-- 分页 -->
         <div style="margin-top: 24px; text-align: right">
           <Pagination
@@ -667,11 +749,13 @@ onMounted(async () => {
             :total="total"
             :show-size-changer="true"
             :show-total="(total) => `共 ${total} 条`"
-            @change="(page, size) => {
-              queryParams.pageNum = page;
-              queryParams.pageSize = size;
-              fetchData();
-            }"
+            @change="
+              (page, size) => {
+                queryParams.pageNum = page;
+                queryParams.pageSize = size;
+                fetchData();
+              }
+            "
           />
         </div>
       </Spin>
@@ -702,19 +786,33 @@ onMounted(async () => {
             style="margin-bottom: 16px"
           />
           <FormItem label="选择项目">
-          <Select
+            <Select
               v-model:value="selectedMatterId as any"
               placeholder="请选择已结案的项目"
-            showSearch
-            style="width: 100%"
-            :filterOption="(input, option) => (option?.label || '').toLowerCase().includes(input.toLowerCase())"
-              :options="archivableMatters.map(m => ({ label: `[${m.matterNo}] ${m.name}`, value: m.id }))"
-          />
-        </FormItem>
-          <div style=" margin-top: 24px;text-align: right">
+              show-search
+              style="width: 100%"
+              :filter-option="
+                (input, option) =>
+                  (option?.label || '')
+                    .toLowerCase()
+                    .includes(input.toLowerCase())
+              "
+              :options="
+                archivableMatters.map((m) => ({
+                  label: `[${m.matterNo}] ${m.name}`,
+                  value: m.id,
+                }))
+              "
+            />
+          </FormItem>
+          <div style="margin-top: 24px; text-align: right">
             <Space>
               <Button @click="archiveWizardVisible = false">取消</Button>
-              <Button type="primary" @click="handleSelectMatter" :disabled="!selectedMatterId">
+              <Button
+                type="primary"
+                @click="handleSelectMatter"
+                :disabled="!selectedMatterId"
+              >
                 下一步
               </Button>
             </Space>
@@ -740,25 +838,39 @@ onMounted(async () => {
             style="margin-bottom: 16px"
           />
 
-          <div v-if="checkResult.missingItems.length > 0" style="margin-bottom: 16px">
+          <div
+            v-if="checkResult.missingItems.length > 0"
+            style="margin-bottom: 16px"
+          >
             <h4>缺失项：</h4>
             <ul>
-              <li v-for="item in checkResult.missingItems" :key="item" style="color: red">
+              <li
+                v-for="item in checkResult.missingItems"
+                :key="item"
+                style="color: red"
+              >
                 {{ item }}
               </li>
             </ul>
           </div>
 
-          <div v-if="checkResult.warnings.length > 0" style="margin-bottom: 16px">
+          <div
+            v-if="checkResult.warnings.length > 0"
+            style="margin-bottom: 16px"
+          >
             <h4>警告：</h4>
             <ul>
-              <li v-for="item in checkResult.warnings" :key="item" style="color: orange">
+              <li
+                v-for="item in checkResult.warnings"
+                :key="item"
+                style="color: orange"
+              >
                 {{ item }}
               </li>
             </ul>
           </div>
 
-          <div style=" margin-top: 24px;text-align: right">
+          <div style="margin-top: 24px; text-align: right">
             <Space>
               <Button @click="archiveWizardStep = 0">上一步</Button>
               <Button type="primary" @click="handlePreviewData">
@@ -770,22 +882,42 @@ onMounted(async () => {
 
         <!-- 步骤3：预览数据 -->
         <div v-if="archiveWizardStep === 2 && dataSnapshot">
-          <Descriptions title="项目信息" :column="2" bordered size="small" style="margin-bottom: 16px">
-            <DescriptionsItem label="项目编号">{{ dataSnapshot.matterNo }}</DescriptionsItem>
-            <DescriptionsItem label="项目名称">{{ dataSnapshot.matterName }}</DescriptionsItem>
+          <Descriptions
+            title="项目信息"
+            :column="2"
+            bordered
+            size="small"
+            style="margin-bottom: 16px"
+          >
+            <DescriptionsItem label="项目编号">
+              {{ dataSnapshot.matterNo }}
+            </DescriptionsItem>
+            <DescriptionsItem label="项目名称">
+              {{ dataSnapshot.matterName }}
+            </DescriptionsItem>
           </Descriptions>
 
           <h4 style="margin-bottom: 12px">数据统计</h4>
           <Row :gutter="16" style="margin-bottom: 16px">
-            <Col :span="4" v-for="(value, key) in dataSnapshot.statistics" :key="key">
+            <Col
+              :span="4"
+              v-for="(value, key) in dataSnapshot.statistics"
+              :key="key"
+            >
               <Card size="small">
-                <Statistic :title="getStatLabel(key as string)" :value="value" />
+                <Statistic
+                  :title="getStatLabel(key as string)"
+                  :value="value"
+                />
               </Card>
             </Col>
           </Row>
 
           <h4 style="margin-bottom: 12px">选择要包含的数据</h4>
-          <Checkbox.Group v-model:value="selectedDataSourceIds" style="width: 100%">
+          <Checkbox.Group
+            v-model:value="selectedDataSourceIds"
+            style="width: 100%"
+          >
             <Row>
               <Col :span="8" v-for="ds in dataSources" :key="ds.id">
                 <Checkbox :value="ds.id" :disabled="ds.is_required">
@@ -796,7 +928,7 @@ onMounted(async () => {
             </Row>
           </Checkbox.Group>
 
-          <div style=" margin-top: 24px;text-align: right">
+          <div style="margin-top: 24px; text-align: right">
             <Space>
               <Button @click="archiveWizardStep = 1">上一步</Button>
               <Button type="primary" @click="archiveWizardStep = 3">
@@ -817,13 +949,19 @@ onMounted(async () => {
           />
 
           <Descriptions title="档案信息" :column="2" bordered size="small">
-            <DescriptionsItem label="档案名称">{{ dataSnapshot.matterName }} - 档案</DescriptionsItem>
-            <DescriptionsItem label="项目编号">{{ dataSnapshot.matterNo }}</DescriptionsItem>
-            <DescriptionsItem label="包含数据源">{{ selectedDataSourceIds.length }} 个</DescriptionsItem>
+            <DescriptionsItem label="档案名称">
+              {{ dataSnapshot.matterName }} - 档案
+            </DescriptionsItem>
+            <DescriptionsItem label="项目编号">
+              {{ dataSnapshot.matterNo }}
+            </DescriptionsItem>
+            <DescriptionsItem label="包含数据源">
+              {{ selectedDataSourceIds.length }} 个
+            </DescriptionsItem>
             <DescriptionsItem label="初始状态">待入库</DescriptionsItem>
           </Descriptions>
 
-          <div style=" margin-top: 24px;text-align: right">
+          <div style="margin-top: 24px; text-align: right">
             <Space>
               <Button @click="archiveWizardStep = 2">上一步</Button>
               <Button type="primary" @click="handleCreateArchive">
@@ -850,15 +988,24 @@ onMounted(async () => {
         <FormItem label="档案名称">
           <Input :value="currentArchive?.archiveName" disabled />
         </FormItem>
-        <FormItem label="存放位置" :rules="[{ required: true, message: '请选择存放位置' }]">
-          <Select v-model:value="storeFormData.locationId" placeholder="请选择库位">
+        <FormItem
+          label="存放位置"
+          :rules="[{ required: true, message: '请选择存放位置' }]"
+        >
+          <Select
+            v-model:value="storeFormData.locationId"
+            placeholder="请选择库位"
+          >
             <Select.Option :value="1">A区-01-001</Select.Option>
             <Select.Option :value="2">A区-01-002</Select.Option>
             <Select.Option :value="3">B区-01-001</Select.Option>
           </Select>
         </FormItem>
         <FormItem label="档案盒编号">
-          <Input v-model:value="storeFormData.boxNo" placeholder="请输入档案盒编号" />
+          <Input
+            v-model:value="storeFormData.boxNo"
+            placeholder="请输入档案盒编号"
+          />
         </FormItem>
       </Form>
     </Modal>
@@ -882,13 +1029,20 @@ onMounted(async () => {
           <Input :value="currentArchive?.matterName" disabled />
         </FormItem>
         <FormItem label="审批结果">
-          <Select v-model:value="approveFormData.approved as any" style="width: 100%">
+          <Select
+            v-model:value="approveFormData.approved as any"
+            style="width: 100%"
+          >
             <Select.Option :value="true">通过</Select.Option>
             <Select.Option :value="false">拒绝</Select.Option>
           </Select>
         </FormItem>
         <FormItem label="审批意见">
-          <Textarea v-model:value="approveFormData.comment" :rows="3" placeholder="请输入审批意见" />
+          <Textarea
+            v-model:value="approveFormData.comment"
+            :rows="3"
+            placeholder="请输入审批意见"
+          />
         </FormItem>
       </Form>
     </Modal>
@@ -896,28 +1050,26 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-
-
 /* 响应式调整 */
 @media (max-width: 768px) {
   .cover-paper {
     min-height: 300px;
     padding: 15px;
   }
-  
+
   .cover-title-main {
     font-size: 22px;
   }
-  
+
   .cover-title-sub {
     font-size: 16px;
   }
-  
+
   .cover-info-label {
     flex: 0 0 70px;
     font-size: 12px;
   }
-  
+
   .cover-info-value {
     font-size: 12px;
   }
@@ -944,7 +1096,9 @@ onMounted(async () => {
   border: 3px solid; /* 边框颜色由内联样式动态设置 */
   border-radius: 4px;
   box-shadow: 0 2px 8px rgb(0 0 0 / 15%);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease;
 }
 
 /* 颜色标识条 */

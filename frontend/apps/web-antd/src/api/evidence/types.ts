@@ -23,8 +23,8 @@ export interface EvidenceDTO {
   fileName?: string;
   fileSize?: number;
   fileSizeDisplay?: string;
-  fileType?: string;  // 文件类型：image, pdf, word, excel, video, audio, other
-  thumbnailUrl?: string;  // 缩略图URL（仅图片文件）
+  fileType?: string; // 文件类型：image, pdf, word, excel, video, audio, other
+  thumbnailUrl?: string; // 缩略图URL（仅图片文件）
   submitterId?: number;
   submitterName?: string;
   submitTime?: string;
@@ -75,4 +75,3 @@ export interface UpdateEvidenceCommand {
   pageStart?: number;
   pageEnd?: number;
 }
-

@@ -1,20 +1,39 @@
 <script setup lang="ts">
 import type { VxeGridProps } from '#/adapter/vxe-table';
+import type {
+  KnowledgeArticleDTO,
+  KnowledgeArticleQuery,
+} from '#/api/knowledge/types';
+
 import { ref } from 'vue';
+
 import { Page } from '@vben/common-ui';
-import { useVbenVxeGrid } from '#/adapter/vxe-table';
-import { message, Tag, Space, Popconfirm, Card, Button, Input, Select, Row, Col } from 'ant-design-vue';
 import { Plus } from '@vben/icons';
+
 import {
-  getArticleList,
-  deleteArticle,
-  publishArticle,
+  Button,
+  Card,
+  Col,
+  Input,
+  message,
+  Popconfirm,
+  Row,
+  Select,
+  Space,
+  Tag,
+} from 'ant-design-vue';
+
+import { useVbenVxeGrid } from '#/adapter/vxe-table';
+import {
   archiveArticle,
-  likeArticle,
   collectArticle,
+  deleteArticle,
+  getArticleList,
+  likeArticle,
+  publishArticle,
   uncollectArticle,
 } from '#/api/knowledge';
-import type { KnowledgeArticleDTO, KnowledgeArticleQuery } from '#/api/knowledge/types';
+
 import ArticleModal from './components/ArticleModal.vue';
 
 defineOptions({ name: 'KnowledgeArticle' });
@@ -42,18 +61,33 @@ const statusOptions = [
   { label: '已归档', value: 'ARCHIVED' },
 ];
 
-const gridColumns: VxeGridProps['gridOptions']['columns'] = [
+const gridColumns: VxeGridProps['columns'] = [
   { title: '文章标题', field: 'title', minWidth: 250 },
   { title: '分类', field: 'categoryName', width: 120 },
   { title: '作者', field: 'authorName', width: 100 },
   { title: '发布时间', field: 'publishTime', width: 160 },
   { title: '浏览量', field: 'views', width: 80 },
   { title: '点赞数', field: 'likes', width: 80 },
-  { title: '状态', field: 'statusName', width: 100, slots: { default: 'status' } },
-  { title: '操作', field: 'action', width: 220, fixed: 'right', slots: { default: 'action' } },
+  {
+    title: '状态',
+    field: 'statusName',
+    width: 100,
+    slots: { default: 'status' },
+  },
+  {
+    title: '操作',
+    field: 'action',
+    width: 220,
+    fixed: 'right',
+    slots: { default: 'action' },
+  },
 ];
 
-async function loadData({ page }: { page: { currentPage: number; pageSize: number } }) {
+async function loadData({
+  page,
+}: {
+  page: { currentPage: number; pageSize: number };
+}) {
   const params = {
     ...queryParams.value,
     pageNum: page.currentPage,
@@ -77,7 +111,13 @@ function handleSearch() {
 }
 
 function handleReset() {
-  queryParams.value = { pageNum: 1, pageSize: 10, title: undefined, category: undefined, status: undefined };
+  queryParams.value = {
+    pageNum: 1,
+    pageSize: 10,
+    title: undefined,
+    category: undefined,
+    status: undefined,
+  };
   gridApi.reload();
 }
 
@@ -145,7 +185,11 @@ async function handleCollect(row: KnowledgeArticleDTO) {
 }
 
 function getStatusColor(status: string) {
-  const colorMap: Record<string, string> = { DRAFT: 'orange', PUBLISHED: 'green', ARCHIVED: 'default' };
+  const colorMap: Record<string, string> = {
+    DRAFT: 'orange',
+    PUBLISHED: 'green',
+    ARCHIVED: 'default',
+  };
   return colorMap[status] || 'default';
 }
 </script>
@@ -156,19 +200,38 @@ function getStatusColor(status: string) {
       <div style="margin-bottom: 16px">
         <Row :gutter="[16, 16]">
           <Col :xs="24" :sm="12" :md="8" :lg="6">
-            <Input v-model:value="queryParams.title" placeholder="文章标题" allowClear @pressEnter="handleSearch" />
+            <Input
+              v-model:value="queryParams.title"
+              placeholder="文章标题"
+              allow-clear
+              @press-enter="handleSearch"
+            />
           </Col>
           <Col :xs="24" :sm="12" :md="8" :lg="6">
-            <Select v-model:value="queryParams.category" placeholder="文章分类" allowClear style="width: 100%" :options="categoryOptions" />
+            <Select
+              v-model:value="queryParams.category"
+              placeholder="文章分类"
+              allow-clear
+              style="width: 100%"
+              :options="categoryOptions"
+            />
           </Col>
           <Col :xs="24" :sm="12" :md="8" :lg="6">
-            <Select v-model:value="queryParams.status" placeholder="状态" allowClear style="width: 100%" :options="statusOptions" />
+            <Select
+              v-model:value="queryParams.status"
+              placeholder="状态"
+              allow-clear
+              style="width: 100%"
+              :options="statusOptions"
+            />
           </Col>
           <Col :xs="24" :sm="12" :md="24" :lg="6">
             <Space wrap>
               <Button type="primary" @click="handleSearch">查询</Button>
               <Button @click="handleReset">重置</Button>
-              <Button type="primary" @click="handleAdd"><Plus class="size-4" />发布文章</Button>
+              <Button type="primary" @click="handleAdd">
+                <Plus class="size-4" />发布文章
+              </Button>
             </Space>
           </Col>
         </Row>
@@ -181,10 +244,18 @@ function getStatusColor(status: string) {
         <template #action="{ row }">
           <Space>
             <a @click="handleEdit(row)">编辑</a>
-            <a v-if="row.status === 'DRAFT'" @click="handlePublish(row)">发布</a>
-            <a v-if="row.status === 'PUBLISHED'" @click="handleArchive(row)">归档</a>
-            <a v-if="row.status === 'PUBLISHED'" @click="handleLike(row)">点赞</a>
-            <a @click="handleCollect(row)">{{ row.collected ? '取消收藏' : '收藏' }}</a>
+            <a v-if="row.status === 'DRAFT'" @click="handlePublish(row)"
+              >发布</a
+            >
+            <a v-if="row.status === 'PUBLISHED'" @click="handleArchive(row)"
+              >归档</a
+            >
+            <a v-if="row.status === 'PUBLISHED'" @click="handleLike(row)"
+              >点赞</a
+            >
+            <a @click="handleCollect(row)">{{
+              row.collected ? '取消收藏' : '收藏'
+            }}</a>
             <Popconfirm title="确定删除？" @confirm="handleDelete(row)">
               <a style="color: red">删除</a>
             </Popconfirm>

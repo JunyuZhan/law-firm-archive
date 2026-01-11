@@ -1,15 +1,32 @@
 <script setup lang="ts">
+import type { EvidenceItem } from './types';
+
+import type { OcrResultDTO } from '#/api/ocr';
+
 /**
  * 证据详情面板组件
  */
 import { computed, ref, watch } from 'vue';
-import { Descriptions, DescriptionsItem, Button, Space, Image, Tag, Spin, Tooltip, message, Modal, Textarea } from 'ant-design-vue';
-import { Eye, X, ArrowDown } from '@vben/icons';
-import { IconifyIcon, Copy } from '@vben/icons';
-import type { EvidenceItem } from './types';
-import { formatFileSize, getFileTypeInfo } from './types';
+
+import { ArrowDown, Copy, Eye, IconifyIcon, X } from '@vben/icons';
+
+import {
+  Button,
+  Descriptions,
+  DescriptionsItem,
+  Image,
+  message,
+  Modal,
+  Space,
+  Tag,
+  Textarea,
+  Tooltip,
+} from 'ant-design-vue';
+
 import { getEvidencePreviewUrl } from '#/api/evidence';
-import { recognizeTextByUrl, type OcrResultDTO } from '#/api/ocr';
+import { recognizeTextByUrl } from '#/api/ocr';
+
+import { formatFileSize, getFileTypeInfo } from './types';
 
 const props = defineProps<{
   evidence: EvidenceItem | null;
@@ -35,29 +52,34 @@ const statusColor = computed(() => {
 });
 
 // 预签名 URL（用于图片和音频预览）
-const presignedUrl = ref<string | null>(null);
+const presignedUrl = ref<null | string>(null);
 
 // OCR识别状态
 const ocrLoading = ref(false);
-const ocrResult = ref<OcrResultDTO | null>(null);
+const ocrResult = ref<null | OcrResultDTO>(null);
 const ocrModalVisible = ref(false);
 
 // 监听 evidence 变化，获取预签名 URL
-watch(() => props.evidence, async (newEvidence) => {
-  presignedUrl.value = null;
-  ocrResult.value = null;
-  if (newEvidence?.id && newEvidence.fileUrl) {
-    // 图片和音频需要预签名 URL
-    if (newEvidence.fileType === 'image' || newEvidence.fileType === 'audio') {
+watch(
+  () => props.evidence,
+  async (newEvidence) => {
+    presignedUrl.value = null;
+    ocrResult.value = null;
+    if (
+      newEvidence?.id &&
+      newEvidence.fileUrl && // 图片和音频需要预签名 URL
+      (newEvidence.fileType === 'image' || newEvidence.fileType === 'audio')
+    ) {
       try {
         const result = await getEvidencePreviewUrl(newEvidence.id);
         presignedUrl.value = result.fileUrl;
-      } catch (e) {
-        console.error('获取预签名URL失败', e);
+      } catch (error) {
+        console.error('获取预签名URL失败', error);
       }
     }
-  }
-}, { immediate: true });
+  },
+  { immediate: true },
+);
 
 // OCR提取图片文字
 async function handleOcrExtract() {
@@ -65,12 +87,12 @@ async function handleOcrExtract() {
     message.warning('请等待图片加载完成');
     return;
   }
-  
+
   ocrLoading.value = true;
   try {
     const result = await recognizeTextByUrl(presignedUrl.value);
     ocrResult.value = result;
-    
+
     if (result.success && result.rawText) {
       ocrModalVisible.value = true;
       message.success('文字提取成功');
@@ -79,8 +101,8 @@ async function handleOcrExtract() {
     } else {
       message.error(result.errorMessage || 'OCR识别失败');
     }
-  } catch (e: any) {
-    message.error(e?.message || 'OCR识别失败');
+  } catch (error: any) {
+    message.error(error?.message || 'OCR识别失败');
   } finally {
     ocrLoading.value = false;
   }
@@ -112,8 +134,13 @@ function handlePreview() {
         <Button type="link" size="small" @click="emit('edit', evidence)">
           编辑
         </Button>
-        <Button type="link" size="small" danger @click="emit('delete', evidence)">
-          <template #icon><X class="w-4 h-4" /></template>
+        <Button
+          type="link"
+          size="small"
+          danger
+          @click="emit('delete', evidence)"
+        >
+          <template #icon><X class="h-4 w-4" /></template>
         </Button>
       </Space>
     </div>
@@ -122,19 +149,26 @@ function handlePreview() {
     <div v-if="evidence.fileUrl" class="preview-area">
       <!-- 图片预览 -->
       <template v-if="evidence.fileType === 'image'">
-        <Image v-if="presignedUrl" :src="presignedUrl" :preview="true" class="preview-image" />
+        <Image
+          v-if="presignedUrl"
+          :src="presignedUrl"
+          :preview="true"
+          class="preview-image"
+        />
         <div v-else class="loading-preview">加载中...</div>
         <!-- OCR提取文字按钮 -->
         <div v-if="presignedUrl" class="ocr-action">
           <Tooltip title="使用OCR识别图片中的文字">
-            <Button 
-              size="small" 
-              type="primary" 
+            <Button
+              size="small"
+              type="primary"
               ghost
               :loading="ocrLoading"
               @click="handleOcrExtract"
             >
-              <template #icon><IconifyIcon icon="ant-design:scan-outlined" /></template>
+              <template #icon>
+                <IconifyIcon icon="ant-design:scan-outlined" />
+              </template>
               提取文字
             </Button>
           </Tooltip>
@@ -143,26 +177,45 @@ function handlePreview() {
       <!-- 视频预览 -->
       <template v-else-if="evidence.fileType === 'video'">
         <div class="video-preview" @click="handlePreview">
-          <Eye class="play-icon w-12 h-12" />
+          <Eye class="play-icon h-12 w-12" />
           <span>点击播放视频</span>
         </div>
       </template>
       <!-- 音频预览 -->
       <template v-else-if="evidence.fileType === 'audio'">
-        <audio v-if="presignedUrl" :src="presignedUrl" controls class="audio-player" />
+        <audio
+          v-if="presignedUrl"
+          :src="presignedUrl"
+          controls
+          class="audio-player"
+        ></audio>
         <div v-else class="loading-preview">加载中...</div>
       </template>
       <!-- 其他文件 -->
       <template v-else>
         <div class="file-preview">
           <div class="file-icon" :style="{ color: fileTypeInfo.color }">
-            {{ evidence.fileType === 'pdf' ? '📄' : evidence.fileType === 'word' ? '📝' : evidence.fileType === 'excel' ? '📊' : '📎' }}
+            {{
+              evidence.fileType === 'pdf'
+                ? '📄'
+                : evidence.fileType === 'word'
+                  ? '📝'
+                  : evidence.fileType === 'excel'
+                    ? '📊'
+                    : '📎'
+            }}
           </div>
           <div class="file-name">{{ evidence.fileName }}</div>
           <Space>
-            <Button v-if="fileTypeInfo.canPreview" size="small" @click="handlePreview">预览</Button>
+            <Button
+              v-if="fileTypeInfo.canPreview"
+              size="small"
+              @click="handlePreview"
+            >
+              预览
+            </Button>
             <Button size="small" @click="handleDownload">
-              <template #icon><ArrowDown class="w-4 h-4" /></template>
+              <template #icon><ArrowDown class="h-4 w-4" /></template>
               下载
             </Button>
           </Space>
@@ -172,10 +225,18 @@ function handlePreview() {
 
     <!-- 证据信息 -->
     <Descriptions :column="1" size="small" class="detail-info">
-      <DescriptionsItem label="证据编号">{{ evidence.evidenceNo }}</DescriptionsItem>
-      <DescriptionsItem label="证据类型">{{ evidence.evidenceTypeName || '-' }}</DescriptionsItem>
-      <DescriptionsItem label="证据来源">{{ evidence.source || '-' }}</DescriptionsItem>
-      <DescriptionsItem label="分组">{{ evidence.groupName || '未分组' }}</DescriptionsItem>
+      <DescriptionsItem label="证据编号">
+        {{ evidence.evidenceNo }}
+      </DescriptionsItem>
+      <DescriptionsItem label="证据类型">
+        {{ evidence.evidenceTypeName || '-' }}
+      </DescriptionsItem>
+      <DescriptionsItem label="证据来源">
+        {{ evidence.source || '-' }}
+      </DescriptionsItem>
+      <DescriptionsItem label="分组">
+        {{ evidence.groupName || '未分组' }}
+      </DescriptionsItem>
       <DescriptionsItem v-if="evidence.provePurpose" label="证明目的">
         {{ evidence.provePurpose }}
       </DescriptionsItem>
@@ -198,11 +259,7 @@ function handlePreview() {
   </div>
 
   <!-- OCR结果弹窗 -->
-  <Modal
-    v-model:open="ocrModalVisible"
-    title="OCR文字识别结果"
-    width="600px"
-  >
+  <Modal v-model:open="ocrModalVisible" title="OCR文字识别结果" width="600px">
     <template #footer>
       <Space>
         <Button @click="ocrModalVisible = false">关闭</Button>
@@ -214,18 +271,18 @@ function handlePreview() {
     </template>
     <div v-if="ocrResult?.success" class="ocr-result">
       <div class="ocr-confidence mb-2">
-        <Tag color="green">置信度: {{ Math.round((ocrResult.confidence || 0) * 100) }}%</Tag>
+        <Tag color="green">
+          置信度: {{ Math.round((ocrResult.confidence || 0) * 100) }}%
+        </Tag>
       </div>
-      <Textarea 
-        :value="ocrResult.rawText" 
-        :rows="12" 
+      <Textarea
+        :value="ocrResult.rawText"
+        :rows="12"
         readonly
         class="ocr-text"
       />
     </div>
-    <div v-else class="text-center text-gray-500 py-8">
-      未识别到文字内容
-    </div>
+    <div v-else class="py-8 text-center text-gray-500">未识别到文字内容</div>
   </Modal>
 </template>
 

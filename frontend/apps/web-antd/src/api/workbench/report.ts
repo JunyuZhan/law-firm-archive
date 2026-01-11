@@ -50,7 +50,10 @@ export function getAvailableReports() {
 
 /** 获取报表列表 */
 export function getReportList(params: ReportQuery) {
-  return requestClient.get<{ records: ReportDTO[]; total: number }>('/workbench/report', { params });
+  return requestClient.get<{ records: ReportDTO[]; total: number }>(
+    '/workbench/report',
+    { params },
+  );
 }
 
 /** 获取报表详情 */
@@ -72,4 +75,3 @@ export function getReportDownloadUrl(id: number) {
 export function deleteReport(id: number) {
   return requestClient.delete(`/workbench/report/${id}`);
 }
-

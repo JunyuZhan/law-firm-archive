@@ -1,15 +1,33 @@
 <script setup lang="ts">
-import { ref, reactive } from 'vue';
+import type { LetterTemplateDTO } from '#/api/admin';
+
+import { reactive, ref } from 'vue';
+
 import { useVbenModal } from '@vben/common-ui';
-import { message, Form, FormItem, Input, Select, Textarea, Divider, Alert, Space, Button, Row, Col } from 'ant-design-vue';
-import { createTemplate, updateTemplate, type LetterTemplateDTO } from '#/api/admin';
+
+import {
+  Alert,
+  Button,
+  Col,
+  Divider,
+  Form,
+  FormItem,
+  Input,
+  message,
+  Row,
+  Select,
+  Space,
+  Textarea,
+} from 'ant-design-vue';
+
+import { createTemplate, updateTemplate } from '#/api/admin';
 import RichTextEditor from '#/components/RichTextEditor/index.vue';
 
 const emit = defineEmits<{
   success: [];
 }>();
 
-const editingId = ref<number | null>(null);
+const editingId = ref<null | number>(null);
 const formData = reactive({
   name: '',
   letterType: 'INTRODUCTION',
@@ -24,38 +42,98 @@ const letterVariables = [
   { label: '项目编号', value: 'matterNo', description: '案件编号' },
   { label: '案由', value: 'causeOfAction', description: '案件案由' },
   { label: '案件类型', value: 'caseType', description: '民事/刑事/行政等' },
-  { label: '案件阶段', value: 'trialStage', description: '案件审理阶段（一审、二审、再审等）' },
-  { label: '程序阶段', value: 'procedureStage', description: '程序阶段（一审、二审、再审等，与案件阶段同义）' },
-  { label: '对方当事人', value: 'opposingParty', description: '对方当事人姓名' },
-  { label: '对方律师', value: 'opposingLawyerName', description: '对方律师姓名' },
-  { label: '对方律所', value: 'opposingLawyerFirm', description: '对方律师所在律所' },
+  {
+    label: '案件阶段',
+    value: 'trialStage',
+    description: '案件审理阶段（一审、二审、再审等）',
+  },
+  {
+    label: '程序阶段',
+    value: 'procedureStage',
+    description: '程序阶段（一审、二审、再审等，与案件阶段同义）',
+  },
+  {
+    label: '对方当事人',
+    value: 'opposingParty',
+    description: '对方当事人姓名',
+  },
+  {
+    label: '对方律师',
+    value: 'opposingLawyerName',
+    description: '对方律师姓名',
+  },
+  {
+    label: '对方律所',
+    value: 'opposingLawyerFirm',
+    description: '对方律师所在律所',
+  },
   { label: '标的金额', value: 'claimAmount', description: '诉讼标的金额' },
-  { label: '管辖法院', value: 'jurisdictionCourt', description: '管辖法院名称' },
-  
+  {
+    label: '管辖法院',
+    value: 'jurisdictionCourt',
+    description: '管辖法院名称',
+  },
+
   // 委托人/客户信息
-  { label: '委托人姓名', value: 'clientName', description: '委托人/当事人姓名' },
-  { label: '委托人身份证号', value: 'clientIdNumber', description: '委托人身份证号码' },
-  { label: '委托人地址', value: 'clientAddress', description: '委托人联系地址' },
+  {
+    label: '委托人姓名',
+    value: 'clientName',
+    description: '委托人/当事人姓名',
+  },
+  {
+    label: '委托人身份证号',
+    value: 'clientIdNumber',
+    description: '委托人身份证号码',
+  },
+  {
+    label: '委托人地址',
+    value: 'clientAddress',
+    description: '委托人联系地址',
+  },
   { label: '委托人电话', value: 'clientPhone', description: '委托人联系电话' },
   { label: '委托人邮箱', value: 'clientEmail', description: '委托人邮箱' },
-  { label: '法定代表人', value: 'legalRepresentative', description: '企业法定代表人' },
-  { label: '统一社会信用代码', value: 'creditCode', description: '企业统一社会信用代码' },
-  
+  {
+    label: '法定代表人',
+    value: 'legalRepresentative',
+    description: '企业法定代表人',
+  },
+  {
+    label: '统一社会信用代码',
+    value: 'creditCode',
+    description: '企业统一社会信用代码',
+  },
+
   // 律师/律所信息
-  { label: '承办律师', value: 'lawyerNames', description: '承办律师姓名（多人逗号分隔）' },
-  { label: '律师执业证号', value: 'lawyerLicenseNo', description: '承办律师执业证号' },
+  {
+    label: '承办律师',
+    value: 'lawyerNames',
+    description: '承办律师姓名（多人逗号分隔）',
+  },
+  {
+    label: '律师执业证号',
+    value: 'lawyerLicenseNo',
+    description: '承办律师执业证号',
+  },
   { label: '律所名称', value: 'firmName', description: '律师事务所全称' },
   { label: '律所地址', value: 'firmAddress', description: '律师事务所地址' },
   { label: '律所电话', value: 'firmPhone', description: '律师事务所电话' },
-  { label: '律所执业许可证', value: 'firmLicense', description: '律师事务所执业许可证号' },
-  { label: '律所负责人', value: 'firmLegalPerson', description: '律师事务所负责人' },
-  
+  {
+    label: '律所执业许可证',
+    value: 'firmLicense',
+    description: '律师事务所执业许可证号',
+  },
+  {
+    label: '律所负责人',
+    value: 'firmLegalPerson',
+    description: '律师事务所负责人',
+  },
+
   // 函件信息
   { label: '目标单位', value: 'targetUnit', description: '函件送达单位' },
   { label: '目标地址', value: 'targetAddress', description: '函件送达地址' },
   { label: '函件编号', value: 'letterNo', description: '出函编号' },
   { label: '出函日期', value: 'date', description: '出函日期' },
-  
+
   // 日期变量
   { label: '当前年份', value: 'currentYear', description: '当前年份' },
   { label: '当前日期', value: 'currentDate', description: '当前完整日期' },
@@ -188,7 +266,7 @@ function loadDefaultTemplate(type: string) {
 </div>
     `,
   };
-  
+
   formData.content = templates[type] || '';
 }
 
@@ -226,42 +304,70 @@ defineExpose({ openCreate, openEdit });
     <Form :label-col="{ span: 4 }" :wrapper-col="{ span: 19 }">
       <Row :gutter="16">
         <Col :span="12">
-          <FormItem label="模板名称" required :label-col="{ span: 8 }" :wrapper-col="{ span: 16 }">
+          <FormItem
+            label="模板名称"
+            required
+            :label-col="{ span: 8 }"
+            :wrapper-col="{ span: 16 }"
+          >
             <Input v-model:value="formData.name" placeholder="如：律师介绍信" />
           </FormItem>
         </Col>
         <Col :span="12">
-          <FormItem label="函件类型" required :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">
-            <Select v-model:value="formData.letterType" :options="letterTypeOptions" style="width: 200px" />
+          <FormItem
+            label="函件类型"
+            required
+            :label-col="{ span: 6 }"
+            :wrapper-col="{ span: 18 }"
+          >
+            <Select
+              v-model:value="formData.letterType"
+              :options="letterTypeOptions"
+              style="width: 200px"
+            />
           </FormItem>
         </Col>
       </Row>
       <FormItem label="描述">
-        <Textarea v-model:value="formData.description" :rows="2" placeholder="模板用途说明" />
+        <Textarea
+          v-model:value="formData.description"
+          :rows="2"
+          placeholder="模板用途说明"
+        />
       </FormItem>
     </Form>
 
     <Divider style="margin: 12px 0" />
 
-    <Alert 
-      message="提示：使用工具栏插入变量，变量会在生成实际函件时自动替换为真实数据" 
-      type="info" 
-      show-icon 
+    <Alert
+      message="提示：使用工具栏插入变量，变量会在生成实际函件时自动替换为真实数据"
+      type="info"
+      show-icon
       style="margin-bottom: 12px"
     />
-    
-    <div style="margin-bottom: 12px;">
-      <span style=" margin-right: 12px; font-size: 13px;color: #666;">快速加载模板：</span>
+
+    <div style="margin-bottom: 12px">
+      <span style="margin-right: 12px; font-size: 13px; color: #666"
+        >快速加载模板：</span
+      >
       <Space>
-        <Button size="small" @click="loadDefaultTemplate('introduction')">介绍信</Button>
-        <Button size="small" @click="loadDefaultTemplate('meeting')">会见函</Button>
-        <Button size="small" @click="loadDefaultTemplate('fileReview')">阅卷函</Button>
-        <Button size="small" @click="loadDefaultTemplate('investigation')">调查函</Button>
+        <Button size="small" @click="loadDefaultTemplate('introduction')">
+          介绍信
+        </Button>
+        <Button size="small" @click="loadDefaultTemplate('meeting')">
+          会见函
+        </Button>
+        <Button size="small" @click="loadDefaultTemplate('fileReview')">
+          阅卷函
+        </Button>
+        <Button size="small" @click="loadDefaultTemplate('investigation')">
+          调查函
+        </Button>
       </Space>
     </div>
-    
-    <RichTextEditor 
-      v-model="formData.content" 
+
+    <RichTextEditor
+      v-model="formData.content"
       height="400px"
       placeholder="请输入函件模板内容..."
       :variables="letterVariables"

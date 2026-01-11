@@ -1,19 +1,24 @@
 <script setup lang="ts">
-import { ref } from 'vue';
-import { message, Modal } from 'ant-design-vue';
-import { Page } from '@vben/common-ui';
-import { Button, Space, Tag } from 'ant-design-vue';
 import type { VbenFormSchema } from '#/adapter/form';
 import type { VxeGridProps } from '#/adapter/vxe-table';
+import type { DepartmentDTO, UserDTO } from '#/api/system/types';
+
+import { ref } from 'vue';
+
+import { Page } from '@vben/common-ui';
+
+import { Button, message, Modal, Space, Switch, Tag, Tooltip } from 'ant-design-vue';
+
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
-  getUserList,
-  deleteUser,
-  resetPassword,
   changeUserStatus,
+  deleteUser,
   getDepartmentTree,
+  getUserList,
+  resetPassword,
 } from '#/api/system';
-import type { UserDTO, DepartmentDTO } from '#/api/system/types';
+
+import UserDrawer from './components/UserDrawer.vue';
 import UserModal from './components/UserModal.vue';
 
 defineOptions({ name: 'SystemUser' });
@@ -21,6 +26,8 @@ defineOptions({ name: 'SystemUser' });
 // ==================== 状态定义 ====================
 
 const userModalRef = ref<InstanceType<typeof UserModal>>();
+const userDrawerRef = ref<InstanceType<typeof UserDrawer>>();
+const useDrawer = ref(true); // 默认使用抽屉模式体验
 const departments = ref<DepartmentDTO[]>([]);
 
 // 加载部门树
@@ -82,7 +89,7 @@ const formSchema: VbenFormSchema[] = [
 
 // ==================== 表格配置 ====================
 
-const gridColumns: VxeGridProps['gridOptions']['columns'] = [
+const gridColumns: VxeGridProps['columns'] = [
   { type: 'checkbox', width: 50 },
   { title: '用户名', field: 'username', width: 120 },
   { title: '姓名', field: 'realName', width: 100 },
@@ -92,11 +99,19 @@ const gridColumns: VxeGridProps['gridOptions']['columns'] = [
   { title: '邮箱', field: 'email', minWidth: 180 },
   { title: '状态', field: 'status', width: 80, slots: { default: 'status' } },
   { title: '创建时间', field: 'createdAt', width: 160 },
-  { title: '操作', field: 'action', width: 220, fixed: 'right', slots: { default: 'action' } },
+  {
+    title: '操作',
+    field: 'action',
+    width: 220,
+    fixed: 'right',
+    slots: { default: 'action' },
+  },
 ];
 
 // 加载数据
-async function loadData(params: { page: number; pageSize: number } & Record<string, any>) {
+async function loadData(
+  params: Record<string, any> & { page: number; pageSize: number },
+) {
   const res = await getUserList({
     pageNum: params.page,
     pageSize: params.pageSize,
@@ -123,7 +138,13 @@ const [Grid, gridApi] = useVbenVxeGrid({
     height: 'auto',
     proxyConfig: {
       ajax: {
-        query: async ({ page, form }) => {
+        query: async ({
+          page,
+          form,
+        }: {
+          form: Record<string, any>;
+          page: { currentPage: number; pageSize: number };
+        }) => {
           return await loadData({
             page: page.currentPage,
             pageSize: page.pageSize,
@@ -144,14 +165,22 @@ const [Grid, gridApi] = useVbenVxeGrid({
 
 // ==================== 操作方法 ====================
 
-// 新增用户
+// 新增用户（左侧按钮 → 右侧抽屉）
 function handleAdd() {
-  userModalRef.value?.openCreate();
+  if (useDrawer.value) {
+    userDrawerRef.value?.openCreate('right');
+  } else {
+    userModalRef.value?.openCreate();
+  }
 }
 
-// 编辑用户
+// 编辑用户（右侧按钮 → 左侧抽屉）
 function handleEdit(row: UserDTO) {
-  userModalRef.value?.openEdit(row);
+  if (useDrawer.value) {
+    userDrawerRef.value?.openEdit(row, 'left');
+  } else {
+    userModalRef.value?.openEdit(row);
+  }
 }
 
 // 删除用户
@@ -231,7 +260,18 @@ function getStatusColor(status: string) {
     <Grid>
       <!-- 工具栏按钮 -->
       <template #toolbar-buttons>
-        <Button v-access:code="'user:create'" type="primary" @click="handleAdd">新增用户</Button>
+        <Space>
+          <Button v-access:code="'user:create'" type="primary" @click="handleAdd">
+            新增用户
+          </Button>
+          <Tooltip title="切换弹窗/抽屉模式">
+            <Space>
+              <span class="text-gray-500 text-sm">弹窗</span>
+              <Switch v-model:checked="useDrawer" />
+              <span class="text-gray-500 text-sm">抽屉</span>
+            </Space>
+          </Tooltip>
+        </Space>
       </template>
 
       <!-- 状态列 -->
@@ -245,16 +285,27 @@ function getStatusColor(status: string) {
       <template #action="{ row }">
         <Space>
           <a v-access:code="'user:edit'" @click="handleEdit(row)">编辑</a>
-          <a v-access:code="'user:reset-password'" @click="handleResetPassword(row)">重置密码</a>
+          <a
+            v-access:code="'user:reset-password'"
+            @click="handleResetPassword(row)"
+            >重置密码</a
+          >
           <a v-access:code="'user:edit'" @click="handleStatusChange(row)">
             {{ row.status === 'ACTIVE' ? '禁用' : '启用' }}
           </a>
-          <a v-access:code="'user:delete'" style="color: #ff4d4f" @click="handleDelete(row)">删除</a>
+          <a
+            v-access:code="'user:delete'"
+            style="color: #ff4d4f"
+            @click="handleDelete(row)"
+            >删除</a
+          >
         </Space>
       </template>
     </Grid>
 
     <!-- 用户弹窗 -->
     <UserModal ref="userModalRef" @success="handleModalSuccess" />
+    <!-- 用户抽屉 -->
+    <UserDrawer ref="userDrawerRef" @success="handleModalSuccess" />
   </Page>
 </template>

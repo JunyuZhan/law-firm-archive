@@ -1,14 +1,15 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import { useVbenModal } from '@vben/common-ui';
-import { useVbenForm } from '#/adapter/form';
 import type { VbenFormSchema } from '#/adapter/form';
+import type { CreateDictTypeCommand, DictTypeDTO } from '#/api/system/types';
+
+import { ref } from 'vue';
+
+import { useVbenModal } from '@vben/common-ui';
+
 import { message } from 'ant-design-vue';
+
+import { useVbenForm } from '#/adapter/form';
 import { createDictType, updateDictType } from '#/api/system';
-import type {
-  DictTypeDTO,
-  CreateDictTypeCommand,
-} from '#/api/system/types';
 
 const emit = defineEmits<{
   success: [];
@@ -18,7 +19,7 @@ const isEdit = ref(false);
 const editId = ref<number>();
 
 // 表单 Schema
-const formSchema = computed<VbenFormSchema[]>(() => [
+const formSchema: VbenFormSchema[] = [
   {
     fieldName: 'name',
     label: '字典名称',
@@ -38,7 +39,7 @@ const formSchema = computed<VbenFormSchema[]>(() => [
       placeholder: '请输入字典编码（字母开头，只能包含字母、数字和下划线）',
       maxlength: 50,
     },
-    helpMessage: '只能包含字母、数字和下划线，以字母开头，长度1-50',
+    help: '只能包含字母、数字和下划线，以字母开头，长度1-50',
   },
   {
     fieldName: 'description',
@@ -50,7 +51,7 @@ const formSchema = computed<VbenFormSchema[]>(() => [
       maxlength: 200,
     },
   },
-]);
+];
 
 const [Form, formApi] = useVbenForm({
   schema: formSchema,
@@ -63,12 +64,18 @@ const [Form, formApi] = useVbenForm({
 const [Modal, modalApi] = useVbenModal({
   async onConfirm() {
     try {
-      const values = await formApi.validate<CreateDictTypeCommand>();
+      await formApi.validate();
+      const values = await formApi.getValues();
+      const submitData: CreateDictTypeCommand = {
+        name: values.name,
+        code: values.code,
+        description: values.description,
+      };
       if (isEdit.value && editId.value) {
-        await updateDictType(editId.value, values);
+        await updateDictType(editId.value, submitData);
         message.success('更新成功');
       } else {
-        await createDictType(values);
+        await createDictType(submitData);
         message.success('创建成功');
       }
       modalApi.close();
@@ -119,4 +126,3 @@ defineExpose({ openCreate, openEdit });
     <Form />
   </Modal>
 </template>
-

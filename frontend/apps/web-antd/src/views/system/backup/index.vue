@@ -1,37 +1,42 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
-import { message, Modal } from 'ant-design-vue';
+import type { VbenFormSchema } from '#/adapter/form';
+import type {
+  BackupDTO,
+  CreateBackupCommand,
+  RestoreBackupCommand,
+} from '#/api/system/types';
+
+import { onMounted, onUnmounted, ref } from 'vue';
+
 import { Page } from '@vben/common-ui';
+import { Plus, UploadOutlined } from '@vben/icons';
+
 import {
-  Tag,
   Button,
-  Space,
   Card,
-  Statistic,
-  Row,
-  Col,
-  Popconfirm,
   Form,
   FormItem,
-  Select,
-  Textarea,
+  message,
+  Modal,
+  Popconfirm,
   Progress,
+  Select,
+  Space,
+  Tag,
+  Textarea,
   Upload,
 } from 'ant-design-vue';
-import { Plus, DownloadOutlined, DeleteOutlined, UploadOutlined } from '@vben/icons';
-import type { VbenFormSchema } from '#/adapter/form';
+
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
-  getBackupList,
-  getBackupDetail,
   createBackup,
-  restoreBackup,
   deleteBackup,
   downloadBackup,
+  getBackupDetail,
+  getBackupList,
   importBackup,
+  restoreBackup,
 } from '#/api/system';
-import type { BackupDTO, CreateBackupCommand, RestoreBackupCommand } from '#/api/system/types';
-import dayjs from 'dayjs';
 
 defineOptions({ name: 'SystemBackup' });
 
@@ -46,13 +51,13 @@ const restoreLoading = ref(false);
 const currentBackup = ref<BackupDTO | null>(null);
 
 // 下载进度相关
-const downloadingId = ref<number | null>(null);
+const downloadingId = ref<null | number>(null);
 const downloadProgress = ref(0);
 const downloadModalVisible = ref(false);
 const downloadFileName = ref('');
 
 // 恢复进度相关
-const restoringId = ref<number | null>(null);
+const restoringId = ref<null | number>(null);
 const restoreProgressModalVisible = ref(false);
 const restoreProgressInterval = ref<NodeJS.Timeout | null>(null);
 
@@ -60,7 +65,6 @@ const restoreProgressInterval = ref<NodeJS.Timeout | null>(null);
 const importModalVisible = ref(false);
 const importLoading = ref(false);
 const importProgress = ref(0);
-const importFormRef = ref();
 const importFormData = ref({
   file: null as File | null,
   backupType: 'DATABASE',
@@ -146,17 +150,35 @@ const formSchema: VbenFormSchema[] = [
 const gridColumns: any[] = [
   { title: '备份编号', field: 'backupNo', width: 180 },
   { title: '备份名称', field: 'backupName', width: 200 },
-  { title: '备份类型', field: 'backupType', width: 120, slots: { default: 'backupType' } },
-  { title: '文件大小', field: 'fileSize', width: 120, slots: { default: 'fileSize' } },
+  {
+    title: '备份类型',
+    field: 'backupType',
+    width: 120,
+    slots: { default: 'backupType' },
+  },
+  {
+    title: '文件大小',
+    field: 'fileSize',
+    width: 120,
+    slots: { default: 'fileSize' },
+  },
   { title: '状态', field: 'status', width: 100, slots: { default: 'status' } },
   { title: '备份时间', field: 'backupTime', width: 180 },
   { title: '创建人', field: 'createdByName', width: 100 },
   { title: '描述', field: 'description', width: 200, ellipsis: true },
-  { title: '操作', field: 'action_btn', width: 200, fixed: 'right', slots: { default: 'action' } },
+  {
+    title: '操作',
+    field: 'action_btn',
+    width: 200,
+    fixed: 'right',
+    slots: { default: 'action' },
+  },
 ];
 
 // 加载数据
-async function loadData(params: { page: number; pageSize: number } & Record<string, any>) {
+async function loadData(
+  params: Record<string, any> & { page: number; pageSize: number },
+) {
   const res = await getBackupList({
     pageNum: params.page,
     pageSize: params.pageSize,
@@ -183,7 +205,7 @@ const [Grid, gridApi] = useVbenVxeGrid({
     height: 'auto',
     proxyConfig: {
       ajax: {
-        query: async ({ page, form }: { page: any; form: any }) => {
+        query: async ({ page, form }: { form: any; page: any }) => {
           return await loadData({
             page: page.currentPage,
             pageSize: page.pageSize,
@@ -220,11 +242,11 @@ async function handleCreateSubmit() {
     createFormData.value = { backupType: '', description: '' };
     createFormRef.value?.resetFields();
     gridApi.reload();
-  } catch (err: any) {
-    if (err?.errorFields) {
+  } catch (error: any) {
+    if (error?.errorFields) {
       return; // 表单验证错误
     }
-    message.error(err.message || '创建备份失败');
+    message.error(error.message || '创建备份失败');
   } finally {
     createLoading.value = false;
   }
@@ -243,11 +265,11 @@ function handleRestore(row: BackupDTO) {
 // 恢复备份
 async function handleRestoreSubmit() {
   if (!currentBackup.value) return;
-  
+
   try {
     await restoreFormRef.value?.validate();
     restoreLoading.value = true;
-    
+
     Modal.confirm({
       title: '确认恢复备份',
       content: `确定要恢复备份 "${currentBackup.value.backupName}" 吗？此操作将覆盖当前数据库数据，请谨慎操作！`,
@@ -260,21 +282,21 @@ async function handleRestoreSubmit() {
             backupId: currentBackup.value!.id,
             description: restoreFormData.value.description,
           });
-          
+
           // 关闭确认弹窗
           restoreModalVisible.value = false;
           restoreFormData.value = { backupId: 0, description: '' };
           restoreFormRef.value?.resetFields();
           restoreLoading.value = false;
-          
+
           // 开始轮询恢复进度
           restoringId.value = currentBackup.value!.id;
           restoreProgressModalVisible.value = true;
           startRestoreProgressPolling(currentBackup.value!.id);
-          
+
           currentBackup.value = null;
-        } catch (err: any) {
-          message.error(err.message || '恢复备份失败');
+        } catch (error: any) {
+          message.error(error.message || '恢复备份失败');
           restoreLoading.value = false;
         }
       },
@@ -282,11 +304,11 @@ async function handleRestoreSubmit() {
         restoreLoading.value = false;
       },
     });
-  } catch (err: any) {
-    if (err?.errorFields) {
+  } catch (error: any) {
+    if (error?.errorFields) {
       return; // 表单验证错误
     }
-    message.error(err.message || '恢复备份失败');
+    message.error(error.message || '恢复备份失败');
     restoreLoading.value = false;
   }
 }
@@ -297,10 +319,10 @@ function startRestoreProgressPolling(backupId: number) {
   if (restoreProgressInterval.value) {
     clearInterval(restoreProgressInterval.value);
   }
-  
+
   // 立即查询一次
   checkRestoreStatus(backupId);
-  
+
   // 每2秒轮询一次
   restoreProgressInterval.value = setInterval(() => {
     checkRestoreStatus(backupId);
@@ -311,8 +333,8 @@ function startRestoreProgressPolling(backupId: number) {
 async function checkRestoreStatus(backupId: number) {
   try {
     const result = await getBackupDetail(backupId);
-    const backup = result.data || result;
-    
+    const backup = (result as any).data || result;
+
     if (backup.status === 'SUCCESS') {
       // 恢复成功
       if (restoreProgressInterval.value) {
@@ -331,12 +353,12 @@ async function checkRestoreStatus(backupId: number) {
       }
       restoreProgressModalVisible.value = false;
       restoringId.value = null;
-      message.error('备份恢复失败：' + (backup.description || '未知错误'));
+      message.error(`备份恢复失败：${backup.description || '未知错误'}`);
       gridApi.reload();
     }
     // IN_PROGRESS 状态继续轮询
-  } catch (err: any) {
-    console.error('查询恢复状态失败:', err);
+  } catch (error: any) {
+    console.error('查询恢复状态失败:', error);
     // 查询失败时继续轮询，不中断
   }
 }
@@ -363,7 +385,7 @@ async function handleDownload(row: BackupDTO) {
     const response = await downloadBackup(row.id, (progress) => {
       downloadProgress.value = progress.percent;
     });
-    
+
     // 检查返回的数据是否是 Blob
     let blob: Blob;
     if (response instanceof Blob) {
@@ -378,42 +400,42 @@ async function handleDownload(row: BackupDTO) {
       }
       throw new Error('返回的数据格式不正确');
     }
-    
+
     downloadProgress.value = 100;
-    
+
     // 延迟一下让用户看到100%的进度
     await new Promise((resolve) => setTimeout(resolve, 300));
-    
+
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
     link.download = downloadFileName.value;
-    document.body.appendChild(link);
+    document.body.append(link);
     link.click();
-    document.body.removeChild(link);
+    link.remove();
     window.URL.revokeObjectURL(url);
-    
+
     message.success('下载成功');
     downloadModalVisible.value = false;
     downloadingId.value = null;
     downloadProgress.value = 0;
-  } catch (err: any) {
-    console.error('下载备份失败:', err);
+  } catch (error: any) {
+    console.error('下载备份失败:', error);
     downloadModalVisible.value = false;
     downloadingId.value = null;
     downloadProgress.value = 0;
-    
+
     // 如果是 Blob 类型的错误响应，尝试解析错误信息
-    if (err?.response?.data instanceof Blob) {
+    if (error?.response?.data instanceof Blob) {
       try {
-        const text = await err.response.data.text();
+        const text = await error.response.data.text();
         const errorData = JSON.parse(text);
         message.error(errorData.message || errorData.msg || '下载失败');
       } catch {
         message.error('下载失败');
       }
     } else {
-      message.error(err.message || err.msg || '下载失败');
+      message.error(error.message || error.msg || '下载失败');
     }
   }
 }
@@ -424,8 +446,8 @@ async function handleDelete(row: BackupDTO) {
     await deleteBackup(row.id);
     message.success('删除成功');
     gridApi.reload();
-  } catch (err: any) {
-    message.error(err.message || '删除失败');
+  } catch (error: any) {
+    message.error(error.message || '删除失败');
   }
 }
 
@@ -440,13 +462,6 @@ function handleOpenImport() {
   importModalVisible.value = true;
 }
 
-// 处理文件选择
-function handleFileChange(info: any) {
-  if (info.file) {
-    importFormData.value.file = info.file;
-  }
-}
-
 // 阻止默认上传行为
 function beforeUpload(file: File) {
   importFormData.value.file = file;
@@ -459,28 +474,32 @@ async function handleImportSubmit() {
     message.error('请选择要导入的备份文件');
     return;
   }
-  
+
   try {
     importLoading.value = true;
     importProgress.value = 0;
-    
+
     await importBackup(
       importFormData.value.file,
       importFormData.value.backupType,
       importFormData.value.description,
       (progress) => {
         importProgress.value = progress.percent;
-      }
+      },
     );
-    
+
     importProgress.value = 100;
     message.success('备份文件导入成功');
     importModalVisible.value = false;
-    importFormData.value = { file: null, backupType: 'DATABASE', description: '' };
+    importFormData.value = {
+      file: null,
+      backupType: 'DATABASE',
+      description: '',
+    };
     gridApi.reload();
-  } catch (err: any) {
-    console.error('导入备份失败:', err);
-    message.error(err.message || '导入备份失败');
+  } catch (error: any) {
+    console.error('导入备份失败:', error);
+    message.error(error.message || '导入备份失败');
   } finally {
     importLoading.value = false;
     importProgress.value = 0;
@@ -493,7 +512,7 @@ function formatFileSize(bytes: number): string {
   const k = 1024;
   const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+  return `${Math.round((bytes / k ** i) * 100) / 100} ${sizes[i]}`;
 }
 
 // 获取备份类型名称
@@ -536,15 +555,19 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <Page title="数据库备份" description="管理系统数据库备份和恢复" auto-content-height>
+  <Page
+    title="数据库备份"
+    description="管理系统数据库备份和恢复"
+    auto-content-height
+  >
     <!-- 操作栏 -->
     <Card class="mb-4" :bordered="false">
       <Space>
         <Button type="primary" @click="handleCreate">
-          <Plus class="size-4 mr-1" /> 创建备份
+          <Plus class="mr-1 size-4" /> 创建备份
         </Button>
         <Button @click="handleOpenImport">
-          <UploadOutlined class="size-4 mr-1" /> 导入备份
+          <UploadOutlined class="mr-1 size-4" /> 导入备份
         </Button>
         <Button @click="gridApi.reload()">刷新</Button>
       </Space>
@@ -572,9 +595,11 @@ onUnmounted(() => {
       <template #action="{ row }">
         <Space>
           <a @click="handleDownload(row)">下载</a>
-          <a 
-            v-if="row.status === 'SUCCESS' || row.status === 'IN_PROGRESS'" 
-            :class="{ 'opacity-50 cursor-not-allowed': row.status === 'IN_PROGRESS' }"
+          <a
+            v-if="row.status === 'SUCCESS' || row.status === 'IN_PROGRESS'"
+            :class="{
+              'cursor-not-allowed opacity-50': row.status === 'IN_PROGRESS',
+            }"
             @click="row.status === 'IN_PROGRESS' ? null : handleRestore(row)"
           >
             {{ row.status === 'IN_PROGRESS' ? '恢复中...' : '恢复' }}
@@ -597,7 +622,12 @@ onUnmounted(() => {
       title="创建备份"
       :confirm-loading="createLoading"
       @ok="handleCreateSubmit"
-      @cancel="() => { createFormRef?.resetFields(); createFormData = { backupType: '', description: '' }; }"
+      @cancel="
+        () => {
+          createFormRef?.resetFields();
+          createFormData = { backupType: '', description: '' };
+        }
+      "
     >
       <Form ref="createFormRef" :model="createFormData" layout="vertical">
         <FormItem
@@ -605,7 +635,11 @@ onUnmounted(() => {
           label="备份类型"
           :rules="[{ required: true, message: '请选择备份类型' }]"
         >
-          <Select v-model:value="createFormData.backupType" :options="backupTypeOptions" placeholder="请选择备份类型" />
+          <Select
+            v-model:value="createFormData.backupType"
+            :options="backupTypeOptions"
+            placeholder="请选择备份类型"
+          />
         </FormItem>
         <FormItem name="description" label="备份说明">
           <Textarea
@@ -625,13 +659,24 @@ onUnmounted(() => {
       ok-type="danger"
       ok-text="确认恢复"
       @ok="handleRestoreSubmit"
-      @cancel="() => { restoreFormRef?.resetFields(); restoreFormData = { backupId: 0, description: '' }; currentBackup = null; }"
+      @cancel="
+        () => {
+          restoreFormRef?.resetFields();
+          restoreFormData = { backupId: 0, description: '' };
+          currentBackup = null;
+        }
+      "
     >
       <div v-if="currentBackup" class="mb-4">
         <p><strong>备份名称：</strong>{{ currentBackup.backupName }}</p>
-        <p><strong>备份类型：</strong>{{ getBackupTypeName(currentBackup.backupType) }}</p>
+        <p>
+          <strong>备份类型：</strong
+          >{{ getBackupTypeName(currentBackup.backupType) }}
+        </p>
         <p><strong>备份时间：</strong>{{ currentBackup.backupTime }}</p>
-        <p class="text-red-500 mt-2">警告：恢复备份将覆盖当前数据库数据，请谨慎操作！</p>
+        <p class="mt-2 text-red-500">
+          警告：恢复备份将覆盖当前数据库数据，请谨慎操作！
+        </p>
       </div>
       <Form ref="restoreFormRef" :model="restoreFormData" layout="vertical">
         <FormItem name="description" label="恢复说明">
@@ -652,10 +697,15 @@ onUnmounted(() => {
       :closable="false"
       :mask-closable="false"
     >
-      <div class="text-center py-4">
+      <div class="py-4 text-center">
         <p class="mb-4">正在下载备份文件：{{ downloadFileName }}</p>
-        <Progress :percent="downloadProgress" :status="downloadProgress === 100 ? 'success' : 'active'" />
-        <p v-if="downloadProgress === 100" class="mt-4 text-green-500">下载完成！</p>
+        <Progress
+          :percent="downloadProgress"
+          :status="downloadProgress === 100 ? 'success' : 'active'"
+        />
+        <p v-if="downloadProgress === 100" class="mt-4 text-green-500">
+          下载完成！
+        </p>
       </div>
     </Modal>
 
@@ -667,10 +717,12 @@ onUnmounted(() => {
       :closable="false"
       :mask-closable="false"
     >
-      <div class="text-center py-4">
+      <div class="py-4 text-center">
         <p class="mb-4">正在恢复备份，请稍候...</p>
         <Progress :percent="100" status="active" :show-info="false" />
-        <p class="mt-4 text-gray-500">恢复操作可能需要几分钟时间，请勿关闭此窗口</p>
+        <p class="mt-4 text-gray-500">
+          恢复操作可能需要几分钟时间，请勿关闭此窗口
+        </p>
         <Button class="mt-4" @click="cancelRestoreProgress">取消监控</Button>
       </div>
     </Modal>
@@ -682,7 +734,15 @@ onUnmounted(() => {
       :confirm-loading="importLoading"
       ok-text="导入"
       @ok="handleImportSubmit"
-      @cancel="() => { importFormData = { file: null, backupType: 'DATABASE', description: '' }; }"
+      @cancel="
+        () => {
+          importFormData = {
+            file: null,
+            backupType: 'DATABASE',
+            description: '',
+          };
+        }
+      "
     >
       <Form ref="importFormRef" :model="importFormData" layout="vertical">
         <FormItem
@@ -691,16 +751,33 @@ onUnmounted(() => {
           :rules="[{ required: true, message: '请选择备份文件' }]"
         >
           <Upload
-            :before-upload="beforeUpload"
+            :before-upload="
+              (file: any) => {
+                beforeUpload(file);
+                return false;
+              }
+            "
             :max-count="1"
-            :file-list="importFormData.file ? [{ uid: '-1', name: importFormData.file.name, status: 'done' }] : []"
-            @remove="() => importFormData.file = null"
+            :file-list="
+              importFormData.file
+                ? [
+                    {
+                      uid: '-1',
+                      name: importFormData.file.name,
+                      status: 'done',
+                    },
+                  ]
+                : []
+            "
+            @remove="
+              () => {
+                importFormData.file = null;
+              }
+            "
           >
-            <Button>
-              <UploadOutlined class="size-4 mr-1" /> 选择文件
-            </Button>
+            <Button> <UploadOutlined class="mr-1 size-4" /> 选择文件 </Button>
           </Upload>
-          <div class="text-gray-400 text-xs mt-1">
+          <div class="mt-1 text-xs text-gray-400">
             支持 .sql 或 pg_dump 格式的备份文件
           </div>
         </FormItem>
@@ -709,7 +786,11 @@ onUnmounted(() => {
           label="备份类型"
           :rules="[{ required: true, message: '请选择备份类型' }]"
         >
-          <Select v-model:value="importFormData.backupType" :options="backupTypeOptions" placeholder="请选择备份类型" />
+          <Select
+            v-model:value="importFormData.backupType"
+            :options="backupTypeOptions"
+            placeholder="请选择备份类型"
+          />
         </FormItem>
         <FormItem name="description" label="备份说明">
           <Textarea
@@ -719,10 +800,12 @@ onUnmounted(() => {
           />
         </FormItem>
         <FormItem v-if="importLoading">
-          <Progress :percent="importProgress" :status="importProgress === 100 ? 'success' : 'active'" />
+          <Progress
+            :percent="importProgress"
+            :status="importProgress === 100 ? 'success' : 'active'"
+          />
         </FormItem>
       </Form>
     </Modal>
   </Page>
 </template>
-

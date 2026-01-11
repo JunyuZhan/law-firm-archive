@@ -1,17 +1,32 @@
 <script setup lang="ts">
+import type { Key } from 'ant-design-vue/es/_util/type';
+
+import type { DocumentDTO } from '#/api/document';
+import type { MatterDossierItem } from '#/api/document/dossier';
+
 /**
  * 卷宗文件选择器组件
  * 用于从卷宗管理中选择文件作为证据材料
  */
-import { ref, watch, computed } from 'vue';
-import { Modal, Tree, Empty, Spin, Input, Tag, Space, Button } from 'ant-design-vue';
-import type { Key } from 'ant-design-vue/es/_util/type';
-import { getMatterDossierItems, type MatterDossierItem } from '#/api/document/dossier';
-import { getDocumentsByMatter, type DocumentDTO } from '#/api/document';
+import { computed, ref, watch } from 'vue';
+
+import {
+  Button,
+  Empty,
+  Input,
+  Modal,
+  Space,
+  Spin,
+  Tag,
+  Tree,
+} from 'ant-design-vue';
+
+import { getDocumentsByMatter } from '#/api/document';
+import { getMatterDossierItems } from '#/api/document/dossier';
 
 const props = defineProps<{
-  open: boolean;
   matterId: number;
+  open: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -31,9 +46,10 @@ const searchKeyword = ref('');
 const filteredDocuments = computed(() => {
   if (!searchKeyword.value) return documents.value;
   const keyword = searchKeyword.value.toLowerCase();
-  return documents.value.filter(doc => 
-    doc.title?.toLowerCase().includes(keyword) || 
-    doc.fileName?.toLowerCase().includes(keyword)
+  return documents.value.filter(
+    (doc) =>
+      doc.title?.toLowerCase().includes(keyword) ||
+      doc.fileName?.toLowerCase().includes(keyword),
   );
 });
 
@@ -41,15 +57,17 @@ const filteredDocuments = computed(() => {
 const treeData = computed(() => {
   const buildTree = (parentId: number): any[] => {
     const items = dossierItems.value
-      .filter(item => item.parentId === parentId)
+      .filter((item) => item.parentId === parentId)
       .sort((a, b) => a.sortOrder - b.sortOrder);
-    
-    return items.map(item => {
+
+    return items.map((item) => {
       const children = item.itemType === 'FOLDER' ? buildTree(item.id) : [];
-      
+
       // 如果是目录，查找该目录下的文档
-      const folderDocs = documents.value.filter(doc => doc.dossierItemId === item.id);
-      const docNodes = folderDocs.map(doc => ({
+      const folderDocs = documents.value.filter(
+        (doc) => doc.dossierItemId === item.id,
+      );
+      const docNodes = folderDocs.map((doc) => ({
         key: `doc-${doc.id}`,
         title: doc.title || doc.fileName,
         isLeaf: true,
@@ -57,7 +75,7 @@ const treeData = computed(() => {
         data: doc,
         icon: () => getFileIcon(doc.fileType),
       }));
-      
+
       return {
         key: `folder-${item.id}`,
         title: item.name,
@@ -67,10 +85,10 @@ const treeData = computed(() => {
       };
     });
   };
-  
+
   // 未分类文档
-  const uncategorizedDocs = documents.value.filter(doc => !doc.dossierItemId);
-  const uncategorizedNodes = uncategorizedDocs.map(doc => ({
+  const uncategorizedDocs = documents.value.filter((doc) => !doc.dossierItemId);
+  const uncategorizedNodes = uncategorizedDocs.map((doc) => ({
     key: `doc-${doc.id}`,
     title: doc.title || doc.fileName,
     isLeaf: true,
@@ -78,9 +96,9 @@ const treeData = computed(() => {
     data: doc,
     icon: () => getFileIcon(doc.fileType),
   }));
-  
+
   const tree = buildTree(0);
-  
+
   if (uncategorizedNodes.length > 0) {
     tree.push({
       key: 'uncategorized',
@@ -90,26 +108,40 @@ const treeData = computed(() => {
       icon: () => '📂',
     });
   }
-  
+
   return tree;
 });
 
 function getFileIcon(fileType?: string): string {
   switch (fileType?.toLowerCase()) {
-    case 'image': return '🖼️';
-    case 'pdf': return '📕';
-    case 'word': return '📘';
-    case 'excel': return '📗';
-    case 'video': return '🎬';
-    case 'audio': return '🎵';
-    default: return '📄';
+    case 'audio': {
+      return '🎵';
+    }
+    case 'excel': {
+      return '📗';
+    }
+    case 'image': {
+      return '🖼️';
+    }
+    case 'pdf': {
+      return '📕';
+    }
+    case 'video': {
+      return '🎬';
+    }
+    case 'word': {
+      return '📘';
+    }
+    default: {
+      return '📄';
+    }
   }
 }
 
 // 加载数据
 async function loadData() {
   if (!props.matterId) return;
-  
+
   loading.value = true;
   try {
     const [items, docs] = await Promise.all([
@@ -118,11 +150,11 @@ async function loadData() {
     ]);
     dossierItems.value = items || [];
     documents.value = docs || [];
-    
+
     // 默认展开所有目录
     expandedKeys.value = dossierItems.value
-      .filter(item => item.itemType === 'FOLDER')
-      .map(item => `folder-${item.id}`);
+      .filter((item) => item.itemType === 'FOLDER')
+      .map((item) => `folder-${item.id}`);
   } catch (error: any) {
     console.error('加载卷宗文件失败:', error);
   } finally {
@@ -142,7 +174,7 @@ function handleConfirm() {
   const selectedKey = selectedKeys.value[0];
   if (selectedKey && String(selectedKey).startsWith('doc-')) {
     const docId = Number(String(selectedKey).replace('doc-', ''));
-    const doc = documents.value.find(d => d.id === docId);
+    const doc = documents.value.find((d) => d.id === docId);
     if (doc) {
       emit('select', doc);
       emit('update:open', false);
@@ -156,13 +188,25 @@ function handleCancel() {
 }
 
 // 监听弹窗打开
-watch(() => props.open, (val) => {
-  if (val) {
-    selectedKeys.value = [];
-    searchKeyword.value = '';
-    loadData();
-  }
-});
+watch(
+  () => props.open,
+  (val) => {
+    if (val) {
+      selectedKeys.value = [];
+      searchKeyword.value = '';
+      loadData();
+    }
+  },
+);
+</script>
+
+<script lang="ts">
+function formatFileSize(bytes?: number): string {
+  if (!bytes) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 </script>
 
 <template>
@@ -175,7 +219,11 @@ watch(() => props.open, (val) => {
     <template #footer>
       <Space>
         <Button @click="handleCancel">取消</Button>
-        <Button type="primary" :disabled="selectedKeys.length === 0" @click="handleConfirm">
+        <Button
+          type="primary"
+          :disabled="selectedKeys.length === 0"
+          @click="handleConfirm"
+        >
           确认选择
         </Button>
       </Space>
@@ -186,15 +234,24 @@ watch(() => props.open, (val) => {
       <Input.Search
         v-model:value="searchKeyword"
         placeholder="搜索文件名..."
-        style="margin-bottom: 12px;"
+        style="margin-bottom: 12px"
       />
 
       <!-- 文件树 -->
-      <div v-if="treeData.length > 0 || filteredDocuments.length > 0" style="max-height: 400px; padding: 12px; overflow-y: auto; border: 1px solid #f0f0f0; border-radius: 6px;">
+      <div
+        v-if="treeData.length > 0 || filteredDocuments.length > 0"
+        style="
+          max-height: 400px;
+          padding: 12px;
+          overflow-y: auto;
+          border: 1px solid #f0f0f0;
+          border-radius: 6px;
+        "
+      >
         <Tree
           v-if="!searchKeyword"
-          v-model:selectedKeys="selectedKeys"
-          v-model:expandedKeys="expandedKeys"
+          v-model:selected-keys="selectedKeys"
+          v-model:expanded-keys="expandedKeys"
           :tree-data="treeData"
           show-icon
           block-node
@@ -202,12 +259,12 @@ watch(() => props.open, (val) => {
         >
           <template #title="{ title, data }">
             <span>{{ title }}</span>
-            <Tag v-if="data?.fileSize" style="margin-left: 8px;" size="small">
+            <Tag v-if="data?.fileSize" style="margin-left: 8px" size="small">
               {{ formatFileSize(data.fileSize) }}
             </Tag>
           </template>
         </Tree>
-        
+
         <!-- 搜索结果列表 -->
         <div v-else>
           <div
@@ -215,12 +272,21 @@ watch(() => props.open, (val) => {
             :key="doc.id"
             class="file-item"
             :class="{ selected: selectedKeys.includes(`doc-${doc.id}`) }"
-            style=" display: flex; gap: 8px; align-items: center;padding: 8px 12px; cursor: pointer; border-radius: 4px;"
+            style="
+              display: flex;
+              gap: 8px;
+              align-items: center;
+              padding: 8px 12px;
+              cursor: pointer;
+              border-radius: 4px;
+            "
             @click="selectedKeys = [`doc-${doc.id}`]"
           >
             <span>{{ getFileIcon(doc.fileType) }}</span>
-            <span style="flex: 1;">{{ doc.title || doc.fileName }}</span>
-            <Tag v-if="doc.fileSize" size="small">{{ formatFileSize(doc.fileSize) }}</Tag>
+            <span style="flex: 1">{{ doc.title || doc.fileName }}</span>
+            <Tag v-if="doc.fileSize" size="small">
+              {{ formatFileSize(doc.fileSize) }}
+            </Tag>
           </div>
         </div>
       </div>
@@ -229,15 +295,6 @@ watch(() => props.open, (val) => {
     </Spin>
   </Modal>
 </template>
-
-<script lang="ts">
-function formatFileSize(bytes?: number): string {
-  if (!bytes) return '';
-  if (bytes < 1024) return bytes + ' B';
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-}
-</script>
 
 <style scoped>
 .file-item:hover {
@@ -249,4 +306,3 @@ function formatFileSize(bytes?: number): string {
   border: 1px solid #1890ff;
 }
 </style>
-

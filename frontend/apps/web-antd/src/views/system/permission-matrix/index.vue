@@ -1,40 +1,46 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed, h } from 'vue';
-import { message, Tag, Checkbox, Tree } from 'ant-design-vue';
-import { Page } from '@vben/common-ui';
-import {
-  Card,
-  Button,
-  Space,
-  Select,
-  Row,
-  Col,
-  Alert,
-  Modal,
-  Table,
-} from 'ant-design-vue';
-import type { VbenFormSchema } from '#/adapter/form';
-import { 
-  getPermissionMatrix, 
-  comparePermissions, 
-  getAllRoles, 
-  assignRoleMenus, 
-  getRoleMenuIds, 
-  getMenuTree 
-} from '#/api/system';
-import type { 
-  PermissionMatrixDTO, 
-  PermissionCompareDTO, 
-  RoleDTO, 
-  MenuDTO 
+import type {
+  MenuDTO,
+  PermissionCompareDTO,
+  PermissionMatrixDTO,
+  RoleDTO,
 } from '#/api/system/types';
+
+import { computed, h, onMounted, reactive, ref } from 'vue';
+
+import { Page } from '@vben/common-ui';
+
+import {
+  Alert,
+  Button,
+  Card,
+  Checkbox,
+  Col,
+  message,
+  Modal,
+  Row,
+  Select,
+  Space,
+  Table,
+  Tag,
+  Tree,
+} from 'ant-design-vue';
+
+import {
+  assignRoleMenus,
+  comparePermissions,
+  getAllRoles,
+  getMenuTree,
+  getPermissionMatrix,
+  getRoleMenuIds,
+} from '#/api/system';
 
 defineOptions({ name: 'PermissionMatrix' });
 
 // ==================== 状态定义 ====================
 
 const loading = ref(false);
-const matrixData = ref<PermissionMatrixDTO | null>(null);
+const matrixData = ref<null | PermissionMatrixDTO>(null);
 const roles = ref<RoleDTO[]>([]);
 const menuTree = ref<MenuDTO[]>([]);
 const isEditMode = ref(false);
@@ -43,12 +49,12 @@ const isEditMode = ref(false);
 const selectedRoleIds = ref<number[]>([]);
 const compareModalVisible = ref(false);
 const compareLoading = ref(false);
-const compareResult = ref<PermissionCompareDTO | null>(null);
+const compareResult = ref<null | PermissionCompareDTO>(null);
 
 // 编辑权限相关
 const editModalVisible = ref(false);
 const editLoading = ref(false);
-const currentEditRole = ref<RoleDTO | null>(null);
+const currentEditRole = ref<null | RoleDTO>(null);
 const checkedMenuKeys = ref<number[]>([]);
 
 // 筛选参数
@@ -109,18 +115,30 @@ const columns = computed(() => {
       fixed: 'left',
       customRender: ({ record }: any) => {
         return h('div', { style: 'line-height: 1.3' }, [
-          h('div', { style: 'font-weight: 500; font-size: 12px' }, record.permissionName),
-          h('div', { style: 'font-size: 10px; color: #999; margin-top: 1px' }, record.permissionCode),
-          h(Tag, {
-            size: 'small',
-            style: 'margin-top: 2px; font-size: 10px',
-            color: record.menuType === 'BUTTON' ? 'blue' : 'default'
-          }, () => record.menuType === 'BUTTON' ? '按钮' : '菜单')
+          h(
+            'div',
+            { style: 'font-weight: 500; font-size: 12px' },
+            record.permissionName,
+          ),
+          h(
+            'div',
+            { style: 'font-size: 10px; color: #999; margin-top: 1px' },
+            record.permissionCode,
+          ),
+          h(
+            Tag,
+            {
+              size: 'small',
+              style: 'margin-top: 2px; font-size: 10px',
+              color: record.menuType === 'BUTTON' ? 'blue' : 'default',
+            },
+            () => (record.menuType === 'BUTTON' ? '按钮' : '菜单'),
+          ),
         ]);
-      }
+      },
     },
   ];
-  
+
   if (matrixData.value && matrixData.value.roles.length > 0) {
     matrixData.value.roles.forEach((role) => {
       cols.push({
@@ -132,35 +150,55 @@ const columns = computed(() => {
         customRender: ({ record }: any) => {
           const cellData = record[`role_${role.id}`];
           if (!cellData) return null;
-          
-          return h('div', {
-            class: ['permission-cell', { 'editable': isEditMode.value, 'has-permission': cellData.hasPermission }],
-            style: {
-              cursor: isEditMode.value ? 'pointer' : 'default',
-              padding: '2px',
-              transition: 'background-color 0.2s'
+
+          return h(
+            'div',
+            {
+              class: [
+                'permission-cell',
+                {
+                  editable: isEditMode.value,
+                  'has-permission': cellData.hasPermission,
+                },
+              ],
+              style: {
+                cursor: isEditMode.value ? 'pointer' : 'default',
+                padding: '2px',
+                transition: 'background-color 0.2s',
+              },
+              title: isEditMode.value ? '点击切换权限' : '',
+              onClick: isEditMode.value
+                ? () =>
+                    handleTogglePermission(
+                      cellData.roleId,
+                      cellData.permissionIndex,
+                    )
+                : undefined,
             },
-            title: isEditMode.value ? '点击切换权限' : '',
-            onClick: isEditMode.value ? () => handleTogglePermission(cellData.roleId, cellData.permissionIndex) : undefined
-          }, [
-            h(Tag, {
-              color: cellData.hasPermission ? 'success' : 'default',
-              size: 'small',
-              style: 'font-size: 11px'
-            }, () => cellData.hasPermission ? '✓' : '✗')
-          ]);
-        }
+            [
+              h(
+                Tag,
+                {
+                  color: cellData.hasPermission ? 'success' : 'default',
+                  size: 'small',
+                  style: 'font-size: 11px',
+                },
+                () => (cellData.hasPermission ? '✓' : '✗'),
+              ),
+            ],
+          );
+        },
       });
     });
   }
-  
+
   return cols;
 });
 
 // 表格数据
 const tableData = computed(() => {
   if (!matrixData.value?.permissions?.length) return [];
-  
+
   return matrixData.value.permissions.map((perm, permIndex) => {
     const rowData: any = {
       key: perm.permissionCode,
@@ -168,7 +206,7 @@ const tableData = computed(() => {
       permissionName: perm.permissionName,
       menuType: perm.menuType,
     };
-    
+
     matrixData.value?.matrix?.forEach((matrixRow) => {
       const cell = matrixRow.permissions[permIndex];
       rowData[`role_${matrixRow.roleId}`] = {
@@ -177,7 +215,7 @@ const tableData = computed(() => {
         permissionIndex: permIndex,
       };
     });
-    
+
     return rowData;
   });
 });
@@ -189,12 +227,15 @@ async function fetchMatrix() {
   try {
     const params: any = {};
     if (filterParams.module) params.module = filterParams.module;
-    if (filterParams.permissionType) params.permissionType = filterParams.permissionType;
-    
-    matrixData.value = await getPermissionMatrix(Object.keys(params).length > 0 ? params : undefined);
+    if (filterParams.permissionType)
+      params.permissionType = filterParams.permissionType;
+
+    matrixData.value = await getPermissionMatrix(
+      Object.keys(params).length > 0 ? params : undefined,
+    );
   } catch (error: unknown) {
     const err = error as { message?: string };
-    message.error('加载权限矩阵失败: ' + (err.message || '未知错误'));
+    message.error(`加载权限矩阵失败: ${err.message || '未知错误'}`);
   } finally {
     loading.value = false;
   }
@@ -202,7 +243,7 @@ async function fetchMatrix() {
 
 async function loadRoles() {
   try {
-    roles.value = await getAllRoles() || [];
+    roles.value = (await getAllRoles()) || [];
   } catch (error) {
     console.warn('加载角色列表失败', error);
   }
@@ -230,7 +271,10 @@ function toggleEditMode() {
 }
 
 // 查找菜单ID
-function findMenuIdByPermission(menus: MenuDTO[], permissionCode: string): number | null {
+function findMenuIdByPermission(
+  menus: MenuDTO[],
+  permissionCode: string,
+): null | number {
   for (const menu of menus) {
     if (menu.permission === permissionCode) return menu.id;
     if (menu.children?.length) {
@@ -244,15 +288,15 @@ function findMenuIdByPermission(menus: MenuDTO[], permissionCode: string): numbe
 // 快速切换权限
 function handleTogglePermission(roleId: number, permissionIndex: number) {
   if (!isEditMode.value || !matrixData.value) return;
-  
-  const row = matrixData.value.matrix.find(r => r.roleId === roleId);
+
+  const row = matrixData.value.matrix.find((r) => r.roleId === roleId);
   const cell = row?.permissions[permissionIndex];
   const permission = matrixData.value.permissions[permissionIndex];
   if (!cell || !permission) return;
-  
-  const role = roles.value.find(r => r.id === roleId);
+
+  const role = roles.value.find((r) => r.id === roleId);
   const action = cell.hasPermission ? '移除' : '添加';
-  
+
   Modal.confirm({
     title: '确认修改权限',
     content: `确定要${action}角色"${role?.roleName || roleId}"的权限"${permission.permissionName}"吗？`,
@@ -262,33 +306,41 @@ function handleTogglePermission(roleId: number, permissionIndex: number) {
   });
 }
 
-async function executeTogglePermission(roleId: number, permissionIndex: number) {
+async function executeTogglePermission(
+  roleId: number,
+  permissionIndex: number,
+) {
   if (!matrixData.value) return;
-  
-  const row = matrixData.value.matrix.find(r => r.roleId === roleId);
+
+  const row = matrixData.value.matrix.find((r) => r.roleId === roleId);
   const cell = row?.permissions[permissionIndex];
   const permission = matrixData.value.permissions[permissionIndex];
   if (!cell || !permission) return;
-  
+
   try {
     const currentMenuIds = await getRoleMenuIds(roleId);
-    
-    if (!menuTree.value.length) {
+
+    if (menuTree.value.length === 0) {
       menuTree.value = await getMenuTree();
     }
-    
-    const menuId = findMenuIdByPermission(menuTree.value, permission.permissionCode);
+
+    const menuId = findMenuIdByPermission(
+      menuTree.value,
+      permission.permissionCode,
+    );
     if (!menuId) {
       message.warning(`未找到权限 "${permission.permissionName}" 对应的菜单`);
       return;
     }
-    
+
     const newMenuIds = cell.hasPermission
-      ? currentMenuIds.filter(id => id !== menuId)
+      ? currentMenuIds.filter((id) => id !== menuId)
       : [...currentMenuIds, menuId];
-    
+
     await assignRoleMenus(roleId, newMenuIds);
-    message.success(`权限已${cell.hasPermission ? '移除' : '添加'}: ${permission.permissionName}`);
+    message.success(
+      `权限已${cell.hasPermission ? '移除' : '添加'}: ${permission.permissionName}`,
+    );
     await fetchMatrix();
   } catch (error: unknown) {
     const err = error as { message?: string };
@@ -309,13 +361,13 @@ async function executeCompare(roleIds: number[]) {
     message.warning('请至少选择2个角色进行对比');
     return;
   }
-  
+
   compareLoading.value = true;
   try {
     compareResult.value = await comparePermissions(roleIds);
   } catch (error: unknown) {
     const err = error as { message?: string };
-    message.error('对比权限失败: ' + (err.message || '未知错误'));
+    message.error(`对比权限失败: ${err.message || '未知错误'}`);
   } finally {
     compareLoading.value = false;
   }
@@ -323,29 +375,14 @@ async function executeCompare(roleIds: number[]) {
 
 // ==================== 编辑角色权限 ====================
 
-async function handleEditRole(role: RoleDTO) {
-  currentEditRole.value = role;
-  editLoading.value = true;
-  try {
-    if (!menuTree.value.length) {
-      menuTree.value = await getMenuTree();
-    }
-    checkedMenuKeys.value = await getRoleMenuIds(role.id);
-    editModalVisible.value = true;
-  } catch (error: unknown) {
-    const err = error as { message?: string };
-    message.error('加载权限失败: ' + (err.message || '未知错误'));
-  } finally {
-    editLoading.value = false;
-  }
-}
-
 async function handleSavePermissions() {
   if (!currentEditRole.value) return;
   editLoading.value = true;
   try {
     await assignRoleMenus(currentEditRole.value.id, checkedMenuKeys.value);
-    message.success(`权限分配成功，已分配 ${checkedMenuKeys.value.length} 个权限`);
+    message.success(
+      `权限分配成功，已分配 ${checkedMenuKeys.value.length} 个权限`,
+    );
     editModalVisible.value = false;
     await fetchMatrix();
   } catch (error: unknown) {
@@ -380,7 +417,7 @@ onMounted(() => {
             <Select
               v-model:value="filterParams.module"
               placeholder="模块筛选"
-              allowClear
+              allow-clear
               style="width: 100%"
               :options="moduleOptions"
             />
@@ -389,7 +426,7 @@ onMounted(() => {
             <Select
               v-model:value="filterParams.permissionType"
               placeholder="权限类型"
-              allowClear
+              allow-clear
               style="width: 100%"
               :options="permissionTypeOptions"
             />
@@ -398,7 +435,10 @@ onMounted(() => {
             <Space wrap>
               <Button type="primary" @click="handleSearch">查询</Button>
               <Button @click="handleReset">重置</Button>
-              <Button :type="isEditMode ? 'default' : 'primary'" @click="toggleEditMode">
+              <Button
+                :type="isEditMode ? 'default' : 'primary'"
+                @click="toggleEditMode"
+              >
                 {{ isEditMode ? '退出编辑' : '编辑权限' }}
               </Button>
               <Button @click="handleCompare">对比权限</Button>
@@ -413,7 +453,12 @@ onMounted(() => {
         :columns="columns"
         :data-source="tableData"
         :loading="loading"
-        :pagination="{ pageSize: 50, showSizeChanger: true, showQuickJumper: true, pageSizeOptions: ['20', '50', '100', '200'] }"
+        :pagination="{
+          pageSize: 50,
+          showSizeChanger: true,
+          showQuickJumper: true,
+          pageSizeOptions: ['20', '50', '100', '200'],
+        }"
         :scroll="{ x: 'max-content', y: 500 }"
         bordered
         size="small"
@@ -423,9 +468,11 @@ onMounted(() => {
       <!-- 说明 -->
       <Alert
         :message="isEditMode ? '编辑模式已开启' : '权限矩阵说明'"
-        :description="isEditMode 
-          ? '点击单元格切换权限时会弹出确认对话框，确认后立即生效。' 
-          : '✓ 表示拥有该权限，✗ 表示没有该权限。点击「编辑权限」可进入编辑模式。'"
+        :description="
+          isEditMode
+            ? '点击单元格切换权限时会弹出确认对话框，确认后立即生效。'
+            : '✓ 表示拥有该权限，✗ 表示没有该权限。点击「编辑权限」可进入编辑模式。'
+        "
         :type="isEditMode ? 'warning' : 'info'"
         show-icon
         style="margin-top: 16px"
@@ -449,7 +496,11 @@ onMounted(() => {
           </Row>
         </Checkbox.Group>
         <div style="margin-top: 16px; text-align: right">
-          <Button type="primary" @click="executeCompare(selectedRoleIds)" :loading="compareLoading">
+          <Button
+            type="primary"
+            @click="executeCompare(selectedRoleIds)"
+            :loading="compareLoading"
+          >
             开始对比
           </Button>
         </div>
@@ -465,30 +516,40 @@ onMounted(() => {
         <div v-if="compareResult.permissions?.length">
           <Table
             :columns="[
-              { title: '权限名称', key: 'permissionName', dataIndex: 'permissionName', width: 200 },
-              ...(compareResult.roles || []).map(r => ({ 
-                title: r.roleName, 
-                key: `role_${r.id}`, 
-                dataIndex: `role_${r.id}`, 
-                width: 100, 
-                align: 'center' as const 
-              }))
+              {
+                title: '权限名称',
+                key: 'permissionName',
+                dataIndex: 'permissionName',
+                width: 200,
+              },
+              ...(compareResult.roles || []).map((r) => ({
+                title: r.roleName,
+                key: `role_${r.id}`,
+                dataIndex: `role_${r.id}`,
+                width: 100,
+                align: 'center' as const,
+              })),
             ]"
-            :data-source="compareResult.permissions.map((p, idx) => ({
-              key: idx,
-              permissionName: p.permissionName,
-              ...(compareResult.roles || []).reduce((acc, r) => {
-                acc[`role_${r.id}`] = p.roleHasPermission?.[r.id] || false;
-                return acc;
-              }, {} as any)
-            }))"
+            :data-source="
+              compareResult?.permissions?.map((p, idx) => ({
+                key: idx,
+                permissionName: p.permissionName,
+                ...(compareResult?.roles || []).reduce((acc, r) => {
+                  acc[`role_${r.id}`] = p.roleHasPermission?.[r.id] || false;
+                  return acc;
+                }, {} as any),
+              })) || []
+            "
             :pagination="false"
             bordered
             size="small"
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key?.toString().startsWith('role_')">
-                <Tag :color="record[column.key] ? 'success' : 'default'" size="small">
+                <Tag
+                  :color="record[column.key] ? 'success' : 'default'"
+                  size="small"
+                >
                   {{ record[column.key] ? '✓' : '✗' }}
                 </Tag>
               </template>
@@ -507,8 +568,8 @@ onMounted(() => {
       :confirm-loading="editLoading"
     >
       <Tree
-        v-model:checkedKeys="checkedMenuKeys"
-        :tree-data="menuTree"
+        v-model:checked-keys="checkedMenuKeys"
+        :tree-data="menuTree as any"
         :field-names="{ title: 'name', key: 'id', children: 'children' }"
         checkable
         :default-expand-all="true"

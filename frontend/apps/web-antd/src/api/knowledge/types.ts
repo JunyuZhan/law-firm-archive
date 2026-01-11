@@ -19,6 +19,7 @@ export interface LawRegulationDTO {
   isRepealed?: boolean;
   repealedDate?: string;
   repealedReason?: string;
+  collected?: boolean;
   createdAt?: string;
 }
 
@@ -139,4 +140,3 @@ export interface PageResult<T> {
   pageSize: number;
   pages?: number;
 }
-

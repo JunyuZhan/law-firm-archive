@@ -1,20 +1,24 @@
 <script setup lang="ts">
+import type { EvidenceItem } from './types';
+
 /**
  * 证据列表项组件
  * 用于列表视图中展示单个证据
  */
 import { computed } from 'vue';
-import { Tag, Space, Button, Popconfirm } from 'ant-design-vue';
-import { Eye, X, ArrowDown, GripVertical } from '@vben/icons';
+
+import { ArrowDown, Eye, GripVertical, X } from '@vben/icons';
+
+import { Button, Popconfirm, Space, Tag } from 'ant-design-vue';
+
 import EvidenceThumbnail from './EvidenceThumbnail.vue';
-import type { EvidenceItem } from './types';
 import { formatFileSize } from './types';
 
 const props = defineProps<{
-  evidence: EvidenceItem;
-  selected?: boolean;
   draggable?: boolean;
+  evidence: EvidenceItem;
   readonly?: boolean;
+  selected?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -35,7 +39,9 @@ const statusColor = computed(() => {
 });
 
 const fileSizeDisplay = computed(() => {
-  return props.evidence.fileSizeDisplay || formatFileSize(props.evidence.fileSize);
+  return (
+    props.evidence.fileSizeDisplay || formatFileSize(props.evidence.fileSize)
+  );
 });
 </script>
 
@@ -47,12 +53,16 @@ const fileSizeDisplay = computed(() => {
   >
     <!-- 拖拽手柄 -->
     <div v-if="draggable && !readonly" class="drag-handle">
-      <GripVertical class="w-4 h-4" />
+      <GripVertical class="h-4 w-4" />
     </div>
 
     <!-- 缩略图 -->
     <div class="thumbnail-col">
-      <EvidenceThumbnail :evidence="evidence" size="small" :showPreview="false" />
+      <EvidenceThumbnail
+        :evidence="evidence"
+        size="small"
+        :show-preview="false"
+      />
     </div>
 
     <!-- 基本信息 -->
@@ -63,13 +73,19 @@ const fileSizeDisplay = computed(() => {
         <span class="meta-divider">|</span>
         <span class="meta-item">{{ evidence.evidenceTypeName }}</span>
         <span v-if="evidence.fileName" class="meta-divider">|</span>
-        <span v-if="evidence.fileName" class="meta-item">{{ fileSizeDisplay }}</span>
+        <span v-if="evidence.fileName" class="meta-item">{{
+          fileSizeDisplay
+        }}</span>
       </div>
     </div>
 
     <!-- 证明目的 -->
     <div class="purpose-col">
-      <div v-if="evidence.provePurpose" class="purpose-text" :title="evidence.provePurpose">
+      <div
+        v-if="evidence.provePurpose"
+        class="purpose-text"
+        :title="evidence.provePurpose"
+      >
         {{ evidence.provePurpose }}
       </div>
       <div v-else class="purpose-empty">-</div>
@@ -91,7 +107,7 @@ const fileSizeDisplay = computed(() => {
           size="small"
           @click="emit('preview', evidence)"
         >
-          <template #icon><Eye class="w-4 h-4" /></template>
+          <template #icon><Eye class="h-4 w-4" /></template>
         </Button>
         <Button
           v-if="evidence.fileUrl"
@@ -99,7 +115,7 @@ const fileSizeDisplay = computed(() => {
           size="small"
           @click="emit('download', evidence)"
         >
-          <template #icon><ArrowDown class="w-4 h-4" /></template>
+          <template #icon><ArrowDown class="h-4 w-4" /></template>
         </Button>
         <Button
           v-if="!readonly"
@@ -115,7 +131,7 @@ const fileSizeDisplay = computed(() => {
           @confirm="emit('delete', evidence)"
         >
           <Button type="text" size="small" danger>
-            <template #icon><X class="w-4 h-4" /></template>
+            <template #icon><X class="h-4 w-4" /></template>
           </Button>
         </Popconfirm>
       </Space>

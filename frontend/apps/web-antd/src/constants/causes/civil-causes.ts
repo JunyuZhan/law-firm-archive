@@ -164,7 +164,6 @@ export const CIVIL_PART5_PROPERTY_PROTECTION: CauseCategory = {
   ],
 };
 
-
 /** 六、所有权纠纷 */
 export const CIVIL_PART6_OWNERSHIP: CauseCategory = {
   code: 'P6',
@@ -301,7 +300,6 @@ export const CIVIL_PART9_POSSESSION: CauseCategory = {
     { code: '77', name: '占有物损害赔偿纠纷' },
   ],
 };
-
 
 /** 十、合同纠纷 */
 export const CIVIL_PART10_CONTRACT: CauseCategory = {
@@ -599,7 +597,6 @@ export const CIVIL_PART12_NEGOTIORUM_GESTIO: CauseCategory = {
   causes: [{ code: '149', name: '无因管理纠纷' }],
 };
 
-
 /** 十三、知识产权合同纠纷 */
 export const CIVIL_PART13_IP_CONTRACT: CauseCategory = {
   code: 'P13',
@@ -893,7 +890,10 @@ export const CIVIL_PART14_IP_INFRINGEMENT: CauseCategory = {
         { code: '181.5', name: '因申请停止侵害外观设计专利权损害责任纠纷' },
         { code: '181.6', name: '因申请停止侵害植物新品种权损害责任纠纷' },
         { code: '181.7', name: '因申请停止侵害计算机软件著作权损害责任纠纷' },
-        { code: '181.8', name: '因申请停止侵害集成电路布图设计专有权损害责任纠纷' },
+        {
+          code: '181.8',
+          name: '因申请停止侵害集成电路布图设计专有权损害责任纠纷',
+        },
         { code: '181.9', name: '因申请海关知识产权保护措施损害责任纠纷' },
         { code: '181.10', name: '因申请停止侵害技术秘密损害责任纠纷' },
         { code: '181.11', name: '因申请停止侵害经营秘密损害责任纠纷' },
@@ -923,7 +923,10 @@ export const CIVIL_PART15_UNFAIR_COMPETITION: CauseCategory = {
       code: '186',
       name: '仿冒纠纷',
       children: [
-        { code: '186.1', name: '擅自使用与他人有一定影响的商品名称、包装、装潢等相同或者近似的标识纠纷' },
+        {
+          code: '186.1',
+          name: '擅自使用与他人有一定影响的商品名称、包装、装潢等相同或者近似的标识纠纷',
+        },
         { code: '186.2', name: '擅自使用他人有一定影响的名称、姓名纠纷' },
         { code: '186.3', name: '擅自使用他人有一定影响的网络活动标识纠纷' },
       ],
@@ -985,7 +988,6 @@ export const CIVIL_PART16_MONOPOLY: CauseCategory = {
     { code: '198', name: '经营者集中纠纷' },
   ],
 };
-
 
 /** 十七、数据纠纷 */
 export const CIVIL_PART17_DATA: CauseCategory = {
@@ -1091,7 +1093,10 @@ export const CIVIL_PART22_MARITIME: CauseCategory = {
     { code: '222', name: '海上、通海水域养殖损害责任纠纷' },
     { code: '223', name: '海上、通海水域财产损害责任纠纷' },
     { code: '224', name: '海上、通海水域人身损害责任纠纷' },
-    { code: '225', name: '非法留置船舶、船载货物、船用燃油、船用物料损害责任纠纷' },
+    {
+      code: '225',
+      name: '非法留置船舶、船载货物、船用燃油、船用物料损害责任纠纷',
+    },
     { code: '226', name: '船舶部件、物料产品责任纠纷' },
     { code: '227', name: '海运物流服务合同纠纷' },
     { code: '228', name: '海上、通海水域货物运输合同纠纷' },
@@ -1170,7 +1175,6 @@ export const CIVIL_PART22_MARITIME: CauseCategory = {
     { code: '275', name: '海事债权确权纠纷' },
   ],
 };
-
 
 /** 二十三、与企业有关的纠纷 */
 export const CIVIL_PART23_ENTERPRISE: CauseCategory = {
@@ -1513,7 +1517,6 @@ export const CIVIL_PART34_GUARANTEE: CauseCategory = {
     { code: '401', name: '独立保函撤销纠纷' },
   ],
 };
-
 
 /** 三十五、侵权责任纠纷 */
 export const CIVIL_PART35_TORT: CauseCategory = {
@@ -1937,7 +1940,6 @@ export const CIVIL_PART59_EXECUTION_OBJECTION: CauseCategory = {
     { code: '514', name: '执行分配方案异议之诉' },
   ],
 };
-
 
 /** 劳动争议 - 用于劳动仲裁案由选择 */
 export const CIVIL_PART6_LABOR = CIVIL_PART19_LABOR;

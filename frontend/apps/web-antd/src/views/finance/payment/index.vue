@@ -1,46 +1,64 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue';
-import { message, Upload } from 'ant-design-vue';
+import type { VxeGridProps } from '#/adapter/vxe-table';
+import type { ClientDTO } from '#/api/client/types';
+import type {
+  CreatePaymentCommand,
+  FeeDTO,
+  FeeQuery,
+  PaymentDTO,
+} from '#/api/finance/types';
+import type {
+  MatchCandidateDTO,
+  OcrResultDTO,
+  ReconciliationResultDTO,
+} from '#/api/ocr';
+
+import { onMounted, reactive, ref } from 'vue';
+
 import { Page } from '@vben/common-ui';
+import { IconifyIcon } from '@vben/icons';
+
 import {
-  Card,
-  Table,
+  Alert,
   Button,
-  Space,
-  Tag,
-  Input,
-  Select,
+  Card,
+  Col,
+  DatePicker,
+  Divider,
   Form,
   FormItem,
-  DatePicker,
+  Input,
   InputNumber,
-  Textarea,
-  Row,
-  Col,
-  Statistic,
-  Modal,
-  Alert,
-  Spin,
-  Progress,
   List,
   ListItem,
   ListItemMeta,
-  Divider,
+  message,
+  Modal,
+  Row,
+  Select,
+  Space,
+  Spin,
+  Statistic,
+  Table,
+  Tag,
+  Textarea,
+  Upload,
 } from 'ant-design-vue';
-import { IconifyIcon } from '@vben/icons';
-import type { VxeGridProps } from '#/adapter/vxe-table';
+
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
-import {
-  getFeeList,
-  getFeeDetail,
-  createPayment,
-  confirmPayment,
-} from '#/api/finance';
 import { getClientSelectOptions } from '#/api/client';
-import { recognizeBankReceipt, matchPayment, type OcrResultDTO, type MatchCandidateDTO, type ReconciliationResultDTO, OCR_DISABLED, OCR_DISABLED_MESSAGE } from '#/api/ocr';
-import type { FeeDTO, FeeQuery, CreatePaymentCommand, PaymentDTO } from '#/api/finance/types';
-import type { ClientDTO } from '#/api/client/types';
-import dayjs from 'dayjs';
+import {
+  confirmPayment,
+  createPayment,
+  getFeeDetail,
+  getFeeList,
+} from '#/api/finance';
+import {
+  matchPayment,
+  OCR_DISABLED,
+  OCR_DISABLED_MESSAGE,
+  recognizeBankReceipt,
+} from '#/api/ocr';
 
 defineOptions({ name: 'FinancePayment' });
 
@@ -69,10 +87,10 @@ const selectedYear = ref<number>(currentYear);
 // ==================== OCR智能识别状态 ====================
 const ocrModalVisible = ref(false);
 const ocrLoading = ref(false);
-const ocrResult = ref<OcrResultDTO | null>(null);
-const matchResult = ref<ReconciliationResultDTO | null>(null);
+const ocrResult = ref<null | OcrResultDTO>(null);
+const matchResult = ref<null | ReconciliationResultDTO>(null);
 const matchLoading = ref(false);
-const ocrStep = ref<'upload' | 'result' | 'match'>('upload');
+const ocrStep = ref<'match' | 'result' | 'upload'>('upload');
 
 const queryParams = ref<FeeQuery>({
   pageNum: 1,
@@ -117,22 +135,51 @@ const statusOptions = [
 
 // ==================== 表格配置 ====================
 
-const gridColumns: VxeGridProps['gridOptions']['columns'] = [
+const gridColumns: VxeGridProps['columns'] = [
   { title: '收费编号', field: 'feeNo', width: 130 },
   { title: '项目', field: 'matterName', minWidth: 200, showOverflow: true },
   { title: '客户', field: 'clientName', width: 150 },
   { title: '收费类型', field: 'feeTypeName', width: 100 },
   { title: '收费名称', field: 'feeName', width: 150 },
-  { title: '应收金额', field: 'amount', width: 120, slots: { default: 'amount' } },
-  { title: '已收金额', field: 'paidAmount', width: 120, slots: { default: 'paidAmount' } },
+  {
+    title: '应收金额',
+    field: 'amount',
+    width: 120,
+    slots: { default: 'amount' },
+  },
+  {
+    title: '已收金额',
+    field: 'paidAmount',
+    width: 120,
+    slots: { default: 'paidAmount' },
+  },
   { title: '计划日期', field: 'plannedDate', width: 120 },
   { title: '实际日期', field: 'actualDate', width: 120 },
-  { title: '状态', field: 'statusName', width: 100, slots: { default: 'status' } },
-  { title: '操作', field: 'action', width: 150, fixed: 'right', slots: { default: 'action' } },
+  {
+    title: '状态',
+    field: 'statusName',
+    width: 100,
+    slots: { default: 'status' },
+  },
+  {
+    title: '操作',
+    field: 'action',
+    width: 150,
+    fixed: 'right',
+    slots: { default: 'action' },
+  },
 ];
 
-async function loadData({ page }: { page: { currentPage: number; pageSize: number } }) {
-  const params = { ...queryParams.value, pageNum: page.currentPage, pageSize: page.pageSize };
+async function loadData({
+  page,
+}: {
+  page: { currentPage: number; pageSize: number };
+}) {
+  const params = {
+    ...queryParams.value,
+    pageNum: page.currentPage,
+    pageSize: page.pageSize,
+  };
   const res = await getFeeList(params);
   return { items: res.list || [], total: res.total || 0 };
 }
@@ -150,9 +197,24 @@ const [Grid, gridApi] = useVbenVxeGrid({
 const paymentColumns = [
   { title: '收款编号', dataIndex: 'paymentNo', key: 'paymentNo', width: 130 },
   { title: '收款金额', dataIndex: 'amount', key: 'amount', width: 120 },
-  { title: '收款方式', dataIndex: 'paymentMethodName', key: 'paymentMethodName', width: 100 },
-  { title: '收款日期', dataIndex: 'paymentDate', key: 'paymentDate', width: 120 },
-  { title: '交易流水号', dataIndex: 'transactionNo', key: 'transactionNo', width: 150 },
+  {
+    title: '收款方式',
+    dataIndex: 'paymentMethodName',
+    key: 'paymentMethodName',
+    width: 100,
+  },
+  {
+    title: '收款日期',
+    dataIndex: 'paymentDate',
+    key: 'paymentDate',
+    width: 120,
+  },
+  {
+    title: '交易流水号',
+    dataIndex: 'transactionNo',
+    key: 'transactionNo',
+    width: 150,
+  },
   { title: '状态', dataIndex: 'statusName', key: 'statusName', width: 90 },
   { title: '备注', dataIndex: 'remark', key: 'remark', ellipsis: true },
 ];
@@ -160,7 +222,10 @@ const paymentColumns = [
 // ==================== 加载选项 ====================
 
 async function loadOptions() {
-  const clientRes = await getClientSelectOptions({ pageNum: 1, pageSize: 1000 });
+  const clientRes = await getClientSelectOptions({
+    pageNum: 1,
+    pageSize: 1000,
+  });
   clients.value = clientRes.list;
 }
 
@@ -226,9 +291,9 @@ async function handleSave() {
     }
     modalVisible.value = false;
     gridApi.reload();
-  } catch (e: any) {
-    if (e?.message) {
-      message.error(e.message);
+  } catch (error: any) {
+    if (error?.message) {
+      message.error(error.message);
     }
   }
 }
@@ -276,19 +341,19 @@ function openOcrModal() {
 async function handleOcrUpload(info: any) {
   const file = info.file.originFileObj || info.file;
   if (!file) return;
-  
+
   ocrLoading.value = true;
   ocrStep.value = 'result';
-  
+
   try {
     const result = await recognizeBankReceipt(file);
     ocrResult.value = result;
-    
+
     if (result.success && result.amount) {
       // 自动进行智能匹配
       matchLoading.value = true;
       ocrStep.value = 'match';
-      
+
       const matchRes = await matchPayment({
         amount: result.amount,
         payerName: result.payerName,
@@ -297,8 +362,8 @@ async function handleOcrUpload(info: any) {
       });
       matchResult.value = matchRes;
     }
-  } catch (e: any) {
-    message.error(e?.message || 'OCR识别失败');
+  } catch (error: any) {
+    message.error(error?.message || 'OCR识别失败');
     ocrStep.value = 'upload';
   } finally {
     ocrLoading.value = false;
@@ -308,7 +373,7 @@ async function handleOcrUpload(info: any) {
 
 function handleSelectMatch(candidate: MatchCandidateDTO) {
   // 选择匹配的收费项目，自动填充收款表单
-  const fee: FeeDTO = {
+  const fee = {
     id: candidate.feeId,
     feeNo: candidate.feeNo,
     feeName: candidate.feeName || '',
@@ -321,10 +386,12 @@ function handleSelectMatch(candidate: MatchCandidateDTO) {
     paidAmount: candidate.expectedAmount - candidate.unpaidAmount,
     status: 'PENDING',
     statusName: '待收款',
-  } as FeeDTO;
-  
+    feeType: 'SERVICE',
+    currency: 'CNY',
+  } as unknown as FeeDTO;
+
   selectedFee.value = fee;
-  
+
   // 填充表单数据
   Object.assign(formData, {
     feeId: candidate.feeId,
@@ -334,9 +401,11 @@ function handleSelectMatch(candidate: MatchCandidateDTO) {
     paymentDate: ocrResult.value?.transactionDate || '',
     bankAccount: ocrResult.value?.payeeAccount || '',
     transactionNo: ocrResult.value?.transactionNo || '',
-    remark: ocrResult.value?.remark || `银行: ${ocrResult.value?.bankName || ''}, 付款方: ${ocrResult.value?.payerName || ''}`,
+    remark:
+      ocrResult.value?.remark ||
+      `银行: ${ocrResult.value?.bankName || ''}, 付款方: ${ocrResult.value?.payerName || ''}`,
   });
-  
+
   ocrModalVisible.value = false;
   modalVisible.value = true;
   message.success('已自动填充收款信息，请核对后确认');
@@ -396,45 +465,68 @@ onMounted(() => {
           />
         </Col>
         <Col :xs="24" :sm="12" :md="5">
-          <Input v-model:value="queryParams.feeNo" placeholder="收费编号" allowClear @pressEnter="handleSearch" />
+          <Input
+            v-model:value="queryParams.feeNo"
+            placeholder="收费编号"
+            allow-clear
+            @press-enter="handleSearch"
+          />
         </Col>
         <Col :xs="24" :sm="12" :md="5">
           <Select
             v-model:value="queryParams.clientId"
             placeholder="客户"
-            allowClear
-            showSearch
-            :filter-option="(input: string, option: any) => option.label?.toLowerCase().includes(input.toLowerCase())"
+            allow-clear
+            show-search
+            :filter-option="
+              (input: string, option: any) =>
+                option.label?.toLowerCase().includes(input.toLowerCase())
+            "
             style="width: 100%"
           >
-            <Select.Option v-for="c in clients" :key="c.id" :value="c.id" :label="c.name">
+            <Select.Option
+              v-for="c in clients"
+              :key="c.id"
+              :value="c.id"
+              :label="c.name"
+            >
               {{ c.name }}
             </Select.Option>
           </Select>
         </Col>
         <Col :xs="24" :sm="12" :md="4">
-          <Select v-model:value="queryParams.status" placeholder="状态" allowClear style="width: 100%" :options="statusOptions" />
+          <Select
+            v-model:value="queryParams.status"
+            placeholder="状态"
+            allow-clear
+            style="width: 100%"
+            :options="statusOptions"
+          />
         </Col>
         <Col :xs="24" :sm="24" :md="10">
           <Space wrap>
             <Button type="primary" @click="handleSearch">查询</Button>
             <Button @click="handleReset">重置</Button>
-            <Button 
+            <Button
               v-if="!OCR_DISABLED"
-              type="primary" 
-              ghost 
+              type="primary"
+              ghost
               @click="openOcrModal"
             >
-              <template #icon><IconifyIcon icon="ant-design:scan-outlined" /></template>
+              <template #icon>
+                <IconifyIcon icon="ant-design:scan-outlined" />
+              </template>
               OCR识别
             </Button>
-            <Button 
+            <Button
               v-else
-              type="default" 
+              type="default"
               disabled
               :title="OCR_DISABLED_MESSAGE"
             >
-              <template #icon><IconifyIcon icon="ant-design:scan-outlined" /></template>
+              <template #icon>
+                <IconifyIcon icon="ant-design:scan-outlined" />
+              </template>
               OCR识别（暂不可用）
             </Button>
           </Space>
@@ -456,8 +548,17 @@ onMounted(() => {
         </template>
         <template #action="{ row }">
           <Space>
-            <a v-if="row.status !== 'PAID'" v-access:code="'fee:payment'" @click="handleAdd(row)">登记收款</a>
-            <a v-if="row.status === 'PAID' || row.status === 'PARTIAL'" @click="handleViewPayments(row)">查看明细</a>
+            <a
+              v-if="row.status !== 'PAID'"
+              v-access:code="'fee:payment'"
+              @click="handleAdd(row)"
+              >登记收款</a
+            >
+            <a
+              v-if="row.status === 'PAID' || row.status === 'PARTIAL'"
+              @click="handleViewPayments(row)"
+              >查看明细</a
+            >
           </Space>
         </template>
       </Grid>
@@ -479,11 +580,19 @@ onMounted(() => {
         <FormItem label="收费项目" name="feeId">
           <Input :value="selectedFee?.feeName" disabled />
         </FormItem>
-        <FormItem label="收款金额" name="amount" :rules="[{ required: true, message: '请输入收款金额' }]">
+        <FormItem
+          label="收款金额"
+          name="amount"
+          :rules="[{ required: true, message: '请输入收款金额' }]"
+        >
           <InputNumber
             v-model:value="formData.amount"
             :min="0"
-            :max="selectedFee ? selectedFee.amount - (selectedFee.paidAmount || 0) : undefined"
+            :max="
+              selectedFee
+                ? selectedFee.amount - (selectedFee.paidAmount || 0)
+                : undefined
+            "
             :precision="2"
             style="width: 100%"
             placeholder="请输入"
@@ -491,18 +600,39 @@ onMounted(() => {
         </FormItem>
         <Row :gutter="16">
           <Col :span="12">
-            <FormItem label="货币" name="currency" :rules="[{ required: true, message: '请选择货币' }]">
-              <Select v-model:value="formData.currency" :options="currencyOptions" />
+            <FormItem
+              label="货币"
+              name="currency"
+              :rules="[{ required: true, message: '请选择货币' }]"
+            >
+              <Select
+                v-model:value="formData.currency"
+                :options="currencyOptions"
+              />
             </FormItem>
           </Col>
           <Col :span="12">
-            <FormItem label="收款方式" name="paymentMethod" :rules="[{ required: true, message: '请选择收款方式' }]">
-              <Select v-model:value="formData.paymentMethod" :options="paymentMethodOptions" />
+            <FormItem
+              label="收款方式"
+              name="paymentMethod"
+              :rules="[{ required: true, message: '请选择收款方式' }]"
+            >
+              <Select
+                v-model:value="formData.paymentMethod"
+                :options="paymentMethodOptions"
+              />
             </FormItem>
           </Col>
         </Row>
-        <FormItem label="收款日期" name="paymentDate" :rules="[{ required: true, message: '请选择收款日期' }]">
-          <DatePicker v-model:value="formData.paymentDate" style="width: 100%" />
+        <FormItem
+          label="收款日期"
+          name="paymentDate"
+          :rules="[{ required: true, message: '请选择收款日期' }]"
+        >
+          <DatePicker
+            v-model:value="formData.paymentDate"
+            style="width: 100%"
+          />
         </FormItem>
         <FormItem label="银行账户" name="bankAccount">
           <Input v-model:value="formData.bankAccount" placeholder="请输入" />
@@ -511,7 +641,11 @@ onMounted(() => {
           <Input v-model:value="formData.transactionNo" placeholder="请输入" />
         </FormItem>
         <FormItem label="备注" name="remark">
-          <Textarea v-model:value="formData.remark" :rows="3" placeholder="请输入" />
+          <Textarea
+            v-model:value="formData.remark"
+            :rows="3"
+            placeholder="请输入"
+          />
         </FormItem>
       </Form>
     </Modal>
@@ -524,7 +658,7 @@ onMounted(() => {
       :footer="null"
     >
       <!-- 步骤1: 上传图片 -->
-      <div v-if="ocrStep === 'upload'" class="text-center py-8">
+      <div v-if="ocrStep === 'upload'" class="py-8 text-center">
         <Upload.Dragger
           :show-upload-list="false"
           :before-upload="() => false"
@@ -532,10 +666,15 @@ onMounted(() => {
           @change="handleOcrUpload"
         >
           <p class="ant-upload-drag-icon">
-            <IconifyIcon icon="ant-design:scan-outlined" style="font-size: 48px; color: #1890ff" />
+            <IconifyIcon
+              icon="ant-design:scan-outlined"
+              style="font-size: 48px; color: #1890ff"
+            />
           </p>
           <p class="ant-upload-text">点击或拖拽银行回单图片到此处</p>
-          <p class="ant-upload-hint">支持 JPG、PNG、GIF 格式图片，自动识别回单信息并智能匹配待收款项目</p>
+          <p class="ant-upload-hint">
+            支持 JPG、PNG、GIF 格式图片，自动识别回单信息并智能匹配待收款项目
+          </p>
         </Upload.Dragger>
       </div>
 
@@ -561,16 +700,39 @@ onMounted(() => {
             <Card title="识别结果" size="small" class="mb-4">
               <Row :gutter="16">
                 <Col :span="12">
-                  <div class="mb-2"><strong>银行名称：</strong>{{ ocrResult.bankName || '-' }}</div>
-                  <div class="mb-2"><strong>交易金额：</strong><span class="text-red-500 text-lg font-bold">¥{{ ocrResult.amount?.toLocaleString() || '-' }}</span></div>
-                  <div class="mb-2"><strong>交易日期：</strong>{{ ocrResult.transactionDate || '-' }}</div>
-                  <div class="mb-2"><strong>交易流水号：</strong>{{ ocrResult.transactionNo || '-' }}</div>
+                  <div class="mb-2">
+                    <strong>银行名称：</strong>{{ ocrResult.bankName || '-' }}
+                  </div>
+                  <div class="mb-2">
+                    <strong>交易金额：</strong
+                    ><span class="text-lg font-bold text-red-500"
+                      >¥{{ ocrResult.amount?.toLocaleString() || '-' }}</span
+                    >
+                  </div>
+                  <div class="mb-2">
+                    <strong>交易日期：</strong
+                    >{{ ocrResult.transactionDate || '-' }}
+                  </div>
+                  <div class="mb-2">
+                    <strong>交易流水号：</strong
+                    >{{ ocrResult.transactionNo || '-' }}
+                  </div>
                 </Col>
                 <Col :span="12">
-                  <div class="mb-2"><strong>付款方：</strong>{{ ocrResult.payerName || '-' }}</div>
-                  <div class="mb-2"><strong>付款账号：</strong>{{ ocrResult.payerAccount || '-' }}</div>
-                  <div class="mb-2"><strong>收款方：</strong>{{ ocrResult.payeeName || '-' }}</div>
-                  <div class="mb-2"><strong>收款账号：</strong>{{ ocrResult.payeeAccount || '-' }}</div>
+                  <div class="mb-2">
+                    <strong>付款方：</strong>{{ ocrResult.payerName || '-' }}
+                  </div>
+                  <div class="mb-2">
+                    <strong>付款账号：</strong
+                    >{{ ocrResult.payerAccount || '-' }}
+                  </div>
+                  <div class="mb-2">
+                    <strong>收款方：</strong>{{ ocrResult.payeeName || '-' }}
+                  </div>
+                  <div class="mb-2">
+                    <strong>收款账号：</strong
+                    >{{ ocrResult.payeeAccount || '-' }}
+                  </div>
                 </Col>
               </Row>
               <div v-if="ocrResult.remark" class="mt-2">
@@ -584,7 +746,7 @@ onMounted(() => {
         <Spin :spinning="matchLoading" tip="正在智能匹配待收款项目...">
           <div v-if="matchResult && ocrStep === 'match'">
             <Divider>智能匹配结果</Divider>
-            
+
             <Alert
               v-if="matchResult.hasRecommended && matchResult.canAutoReconcile"
               type="success"
@@ -616,7 +778,11 @@ onMounted(() => {
               <template #renderItem="{ item }">
                 <ListItem>
                   <template #actions>
-                    <Button type="primary" size="small" @click="handleSelectMatch(item)">
+                    <Button
+                      type="primary"
+                      size="small"
+                      @click="handleSelectMatch(item)"
+                    >
                       选择并填充
                     </Button>
                   </template>
@@ -632,12 +798,27 @@ onMounted(() => {
                     </template>
                     <template #description>
                       <div>
-                        <span class="mr-4">项目: {{ item.matterName || '-' }}</span>
-                        <span class="mr-4">客户: {{ item.clientName || '-' }}</span>
-                        <span class="mr-4">待收: <strong class="text-orange-500">¥{{ item.unpaidAmount?.toLocaleString() }}</strong></span>
+                        <span class="mr-4"
+                          >项目: {{ item.matterName || '-' }}</span
+                        >
+                        <span class="mr-4"
+                          >客户: {{ item.clientName || '-' }}</span
+                        >
+                        <span class="mr-4"
+                          >待收:
+                          <strong class="text-orange-500"
+                            >¥{{ item.unpaidAmount?.toLocaleString() }}</strong
+                          ></span
+                        >
                       </div>
-                      <div v-if="item.matchReasons?.length" class="text-green-600 text-xs mt-1">
-                        <IconifyIcon icon="ant-design:check-circle-outlined" class="mr-1" />
+                      <div
+                        v-if="item.matchReasons?.length"
+                        class="mt-1 text-xs text-green-600"
+                      >
+                        <IconifyIcon
+                          icon="ant-design:check-circle-outlined"
+                          class="mr-1"
+                        />
                         {{ item.matchReasons.join('、') }}
                       </div>
                     </template>
@@ -646,7 +827,7 @@ onMounted(() => {
               </template>
             </List>
 
-            <div class="text-center mt-4">
+            <div class="mt-4 text-center">
               <Button @click="ocrStep = 'upload'">重新上传</Button>
             </div>
           </div>
@@ -676,15 +857,21 @@ onMounted(() => {
         <Row :gutter="16" class="mt-2">
           <Col :span="8">
             <strong>已收金额：</strong>
-            <span class="text-green-600">{{ formatMoney(currentFee.paidAmount) }}</span>
+            <span class="text-green-600">{{
+              formatMoney(currentFee.paidAmount)
+            }}</span>
           </Col>
           <Col :span="8">
             <strong>待收金额：</strong>
-            <span class="text-orange-500">{{ formatMoney(currentFee.amount - (currentFee.paidAmount || 0)) }}</span>
+            <span class="text-orange-500">{{
+              formatMoney(currentFee.amount - (currentFee.paidAmount || 0))
+            }}</span>
           </Col>
           <Col :span="8">
             <strong>状态：</strong>
-            <Tag :color="getStatusColor(currentFee.status)">{{ currentFee.statusName }}</Tag>
+            <Tag :color="getStatusColor(currentFee.status)">
+              {{ currentFee.statusName }}
+            </Tag>
           </Col>
         </Row>
       </div>
@@ -701,7 +888,15 @@ onMounted(() => {
             {{ formatMoney(record.amount) }}
           </template>
           <template v-if="column.key === 'statusName'">
-            <Tag :color="record.status === 'CONFIRMED' ? 'green' : record.status === 'PENDING' ? 'orange' : 'default'">
+            <Tag
+              :color="
+                record.status === 'CONFIRMED'
+                  ? 'green'
+                  : record.status === 'PENDING'
+                    ? 'orange'
+                    : 'default'
+              "
+            >
               {{ record.statusName }}
             </Tag>
           </template>

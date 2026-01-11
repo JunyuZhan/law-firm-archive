@@ -1,81 +1,89 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed, h } from 'vue';
-import { message, Modal } from 'ant-design-vue';
+import type { MatterDossierItem } from '#/api/document/dossier';
+import type { DocumentDTO } from '#/api/document/types';
+import type { MatterDTO, MatterSimpleDTO } from '#/api/matter/types';
+import type { OcrResultDTO } from '#/api/ocr';
+
+import { computed, h, onMounted, reactive, ref } from 'vue';
+
 import { Page } from '@vben/common-ui';
 import {
-  Card,
-  Table,
-  Button,
-  Space,
-  Input,
-  Select,
-  Form,
-  FormItem,
-  Row,
-  Col,
-  Popconfirm,
-  Upload,
-  Tree,
-  Divider,
-  Tooltip,
-  Dropdown,
-  Menu,
-  MenuItem,
-  Tag,
-  Progress,
-} from 'ant-design-vue';
-import {
-  Eye,
-  Plus,
-  Inbox,
   ArrowUp,
   Edit,
   Ellipsis,
+  Eye,
   GripVertical,
+  Inbox,
+  Plus,
+  SvgDownloadIcon,
   Trash,
 } from '@vben/icons';
-import { SvgDownloadIcon } from '@vben/icons';
-import draggable from 'vuedraggable';
+
 import {
-  getDocumentList,
-  updateDocument,
+  Button,
+  Card,
+  Col,
+  Divider,
+  Dropdown,
+  Form,
+  FormItem,
+  Input,
+  Menu,
+  MenuItem,
+  message,
+  Modal,
+  Row,
+  Select,
+  Space,
+  Table,
+  Tag,
+  Tooltip,
+  Tree,
+  Upload,
+} from 'ant-design-vue';
+import draggable from 'vuedraggable';
+
+import {
+  checkDocumentEditSupport,
+  createFolder,
   deleteDocument,
   downloadDocument,
-  getDocumentVersions,
-  shareDocument,
-  createFolder,
-  uploadFiles,
-  moveDocument,
-  checkDocumentEditSupport,
-  getDocumentPreviewUrl,
-  reorderDocuments,
   downloadDocumentsAsZip,
+  getDocumentList,
+  getDocumentPreviewUrl,
+  getDocumentVersions,
+  moveDocument,
+  reorderDocuments,
+  shareDocument,
+  updateDocument,
+  uploadFiles,
 } from '#/api/document';
-import { 
-  getMatterDossierItems, 
-  initMatterDossier, 
-  addDossierItem, 
-  updateDossierItem, 
+import {
+  addDossierItem,
   deleteDossierItem,
+  getMatterDossierItems,
+  initMatterDossier,
   reorderDossierItems,
-  type MatterDossierItem 
+  updateDossierItem,
 } from '#/api/document/dossier';
 import { getMatterSelectOptions } from '#/api/matter';
-import { recognizeGeneral, type OcrResultDTO } from '#/api/ocr';
-import { findCauseNameInAll, CASE_CATEGORY_OPTIONS, MATTER_TYPE_OPTIONS } from '#/constants/causes';
-import type { DocumentDTO, DocumentQuery, CreateDocumentCommand, UpdateDocumentCommand } from '#/api/document/types';
-import type { MatterDTO } from '#/api/matter/types';
+import { recognizeGeneral } from '#/api/ocr';
+import {
+  CASE_CATEGORY_OPTIONS,
+  findCauseNameInAll,
+  MATTER_TYPE_OPTIONS,
+} from '#/constants/causes';
 
 defineOptions({ name: 'DossierManager' });
 
 // 状态管理
 const loading = ref(false);
 const selectedMatterId = ref<number | undefined>(undefined);
-const selectedMatter = ref<MatterDTO | null>(null);
+const selectedMatter = ref<MatterDTO | MatterSimpleDTO | null>(null);
 const selectedFolder = ref<string>('root');
 const currentPath = ref<string[]>(['根目录']);
 const documents = ref<DocumentDTO[]>([]);
-const matters = ref<MatterDTO[]>([]);
+const matters = ref<MatterSimpleDTO[]>([]);
 const fileList = ref<any[]>([]);
 const dossierItems = ref<MatterDossierItem[]>([]);
 
@@ -104,7 +112,7 @@ const shareUrl = ref('');
 const uploadFormData = reactive({
   matterId: undefined as number | undefined,
   dossierItemId: undefined as number | undefined,
-  folder: 'root',  // 保留 folder 用于 folderPath
+  folder: 'root', // 保留 folder 用于 folderPath
   description: '',
 });
 
@@ -115,27 +123,31 @@ const folderFormData = reactive({
 
 const editFormData = reactive({
   id: undefined as number | undefined,
-  title: '',  // 后端使用 title 字段
+  title: '', // 后端使用 title 字段
   description: '',
 });
 
 // 从后端获取的卷宗目录项构建树形数据
 const folderTreeData = computed(() => {
   if (!selectedMatter.value || dossierItems.value.length === 0) {
-    return [{
-      title: selectedMatter.value ? '卷宗目录（点击初始化）' : '请选择项目',
-      key: 'root',
-      children: []
-    }];
+    return [
+      {
+        title: selectedMatter.value ? '卷宗目录（点击初始化）' : '请选择项目',
+        key: 'root',
+        children: [],
+      },
+    ];
   }
-  
+
   // 将扁平数据转换为树形结构
-  const items = [...dossierItems.value].sort((a, b) => a.sortOrder - b.sortOrder);
-  const rootItems = items.filter(item => item.parentId === 0);
-  
+  const items = [...dossierItems.value].sort(
+    (a, b) => a.sortOrder - b.sortOrder,
+  );
+  const rootItems = items.filter((item) => item.parentId === 0);
+
   const buildTree = (parentItems: MatterDossierItem[]): any[] => {
-    return parentItems.map(item => {
-      const children = items.filter(child => child.parentId === item.id);
+    return parentItems.map((item) => {
+      const children = items.filter((child) => child.parentId === item.id);
       return {
         title: `${item.name}${item.documentCount ? ` (${item.documentCount})` : ''}`,
         key: String(item.id),
@@ -143,16 +155,18 @@ const folderTreeData = computed(() => {
         name: item.name,
         sortOrder: item.sortOrder,
         documentCount: item.documentCount || 0,
-        children: children.length > 0 ? buildTree(children) : undefined
+        children: children.length > 0 ? buildTree(children) : undefined,
       };
     });
   };
-  
-  return [{
-    title: selectedMatter.value.name + ' 卷宗目录',
-    key: 'root',
-    children: buildTree(rootItems)
-  }];
+
+  return [
+    {
+      title: `${selectedMatter.value.name} 卷宗目录`,
+      key: 'root',
+      children: buildTree(rootItems),
+    },
+  ];
 });
 
 // 加载项目的卷宗目录
@@ -161,7 +175,7 @@ async function loadDossierItems() {
     dossierItems.value = [];
     return;
   }
-  
+
   try {
     const items = await getMatterDossierItems(selectedMatter.value.id);
     dossierItems.value = items;
@@ -174,13 +188,13 @@ async function loadDossierItems() {
 // 初始化卷宗目录
 async function handleInitDossier() {
   if (!selectedMatter.value) return;
-  
+
   try {
     const items = await initMatterDossier(selectedMatter.value.id);
     dossierItems.value = items;
     message.success('卷宗目录初始化成功');
   } catch (error: any) {
-    message.error('初始化失败: ' + (error.message || '未知错误'));
+    message.error(`初始化失败: ${error.message || '未知错误'}`);
   }
 }
 
@@ -190,7 +204,7 @@ async function handleAddDossierItem() {
     message.warning('请先选择项目');
     return;
   }
-  
+
   // 使用输入框获取名称
   Modal.confirm({
     title: '新建文件夹',
@@ -200,33 +214,36 @@ async function handleAddDossierItem() {
         id: 'newFolderName',
         type: 'text',
         placeholder: '文件夹名称',
-        style: 'width: 100%; padding: 8px; border: 1px solid #d9d9d9; border-radius: 4px;'
-      })
+        style:
+          'width: 100%; padding: 8px; border: 1px solid #d9d9d9; border-radius: 4px;',
+      }),
     ]),
     onOk: async () => {
-      const input = document.getElementById('newFolderName') as HTMLInputElement;
+      const input = document.querySelector(
+        '#newFolderName',
+      ) as HTMLInputElement;
       const name = input?.value?.trim();
       if (!name) {
         message.error('请输入文件夹名称');
-        return Promise.reject();
+        throw undefined;
       }
-      
+
       try {
         await addDossierItem(selectedMatter.value!.id, { name, parentId: 0 });
         await loadDossierItems();
         message.success('文件夹创建成功');
       } catch (error: any) {
-        message.error('创建失败: ' + (error.message || '未知错误'));
+        message.error(`创建失败: ${error.message || '未知错误'}`);
         return Promise.reject();
       }
-    }
+    },
   });
 }
 
 // 重命名目录项
 async function handleRenameDossierItem(item: any) {
   if (!selectedMatter.value) return;
-  
+
   Modal.confirm({
     title: '重命名文件夹',
     content: h('div', [
@@ -235,38 +252,43 @@ async function handleRenameDossierItem(item: any) {
         id: 'renameFolderName',
         type: 'text',
         value: item.name,
-        style: 'width: 100%; padding: 8px; border: 1px solid #d9d9d9; border-radius: 4px;'
-      })
+        style:
+          'width: 100%; padding: 8px; border: 1px solid #d9d9d9; border-radius: 4px;',
+      }),
     ]),
     onOk: async () => {
-      const input = document.getElementById('renameFolderName') as HTMLInputElement;
+      const input = document.querySelector(
+        '#renameFolderName',
+      ) as HTMLInputElement;
       const name = input?.value?.trim();
       if (!name) {
         message.error('请输入文件夹名称');
-        return Promise.reject();
+        throw undefined;
       }
-      
+
       try {
-        await updateDossierItem(selectedMatter.value!.id, item.dossierItemId, { name });
+        await updateDossierItem(selectedMatter.value!.id, item.dossierItemId, {
+          name,
+        });
         await loadDossierItems();
         message.success('重命名成功');
       } catch (error: any) {
-        message.error('重命名失败: ' + (error.message || '未知错误'));
+        message.error(`重命名失败: ${error.message || '未知错误'}`);
         return Promise.reject();
       }
-    }
+    },
   });
 }
 
 // 删除目录项
 async function handleDeleteDossierItem(item: any) {
   if (!selectedMatter.value) return;
-  
+
   if (item.documentCount > 0) {
     message.error('该文件夹下有文件，无法删除');
     return;
   }
-  
+
   Modal.confirm({
     title: '确认删除',
     content: `确定要删除文件夹 "${item.name}" 吗？`,
@@ -278,31 +300,35 @@ async function handleDeleteDossierItem(item: any) {
         await loadDossierItems();
         message.success('删除成功');
       } catch (error: any) {
-        message.error('删除失败: ' + (error.message || '未知错误'));
+        message.error(`删除失败: ${error.message || '未知错误'}`);
       }
-    }
+    },
   });
 }
 
 // 调整目录项顺序（上移）
 async function handleMoveUp(item: any) {
   if (!selectedMatter.value) return;
-  
-  const items = dossierItems.value.filter(i => i.parentId === 0).sort((a, b) => a.sortOrder - b.sortOrder);
-  const currentIndex = items.findIndex(i => i.id === item.dossierItemId);
+
+  const items = dossierItems.value
+    .filter((i) => i.parentId === 0)
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+  const currentIndex = items.findIndex((i) => i.id === item.dossierItemId);
   if (currentIndex <= 0) return;
-  
+
   // 交换位置
-  const newOrder: number[] = items.map(i => i.id).filter((id): id is number => id !== undefined);
+  const newOrder: number[] = items
+    .map((i) => i.id)
+    .filter((id): id is number => id !== undefined);
   if (newOrder.length < 2) return;
   const temp = newOrder[currentIndex];
   newOrder[currentIndex] = newOrder[currentIndex - 1]!;
   newOrder[currentIndex - 1] = temp!;
-  
+
   try {
     await reorderDossierItems(selectedMatter.value.id, newOrder);
     await loadDossierItems();
-  } catch (error: any) {
+  } catch {
     message.error('调整顺序失败');
   }
 }
@@ -310,28 +336,29 @@ async function handleMoveUp(item: any) {
 // 调整目录项顺序（下移）
 async function handleMoveDown(item: any) {
   if (!selectedMatter.value) return;
-  
-  const items = dossierItems.value.filter(i => i.parentId === 0).sort((a, b) => a.sortOrder - b.sortOrder);
-  const currentIndex = items.findIndex(i => i.id === item.dossierItemId);
-  if (currentIndex < 0 || currentIndex >= items.length - 1) return;
-  
+
+  const items = dossierItems.value
+    .filter((i) => i.parentId === 0)
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+  const currentIndex = items.findIndex((i) => i.id === item.dossierItemId);
+  if (currentIndex === -1 || currentIndex >= items.length - 1) return;
+
   // 交换位置
-  const newOrder: number[] = items.map(i => i.id).filter((id): id is number => id !== undefined);
+  const newOrder: number[] = items
+    .map((i) => i.id)
+    .filter((id): id is number => id !== undefined);
   if (newOrder.length < 2) return;
   const temp = newOrder[currentIndex];
   newOrder[currentIndex] = newOrder[currentIndex + 1]!;
   newOrder[currentIndex + 1] = temp!;
-  
+
   try {
     await reorderDossierItems(selectedMatter.value.id, newOrder);
     await loadDossierItems();
-  } catch (error: any) {
+  } catch {
     message.error('调整顺序失败');
   }
 }
-
-// 当前右键选中的目录项
-const contextMenuItem = ref<any>(null);
 
 // 当前文件夹的文档列表（可拖拽排序）
 const sortableDocuments = ref<DocumentDTO[]>([]);
@@ -341,7 +368,7 @@ const currentDocuments = computed({
   get: () => sortableDocuments.value,
   set: (val: DocumentDTO[]) => {
     sortableDocuments.value = val;
-  }
+  },
 });
 
 // 更新可排序文档列表
@@ -350,37 +377,49 @@ function updateSortableDocuments() {
     sortableDocuments.value = [];
     return;
   }
-  
-  const projectDocs = documents.value.filter(doc => doc.matterId === selectedMatter.value?.id);
-  
+
+  const projectDocs = documents.value.filter(
+    (doc) => doc.matterId === selectedMatter.value?.id,
+  );
+
   // 如果选中的是根文件夹，显示所有项目文档
   if (selectedFolder.value === 'root') {
     // 按 displayOrder 排序
-    sortableDocuments.value = [...projectDocs].sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
+    sortableDocuments.value = [...projectDocs].sort(
+      (a, b) => (a.displayOrder || 0) - (b.displayOrder || 0),
+    );
     return;
   }
-  
+
   // 否则只显示特定 dossierItemId 的文档
-  const dossierItemId = parseInt(selectedFolder.value, 10);
+  const dossierItemId = Number.parseInt(selectedFolder.value, 10);
   if (!isNaN(dossierItemId)) {
-    sortableDocuments.value = [...projectDocs.filter(doc => doc.dossierItemId === dossierItemId)]
+    sortableDocuments.value = projectDocs
+      .filter((doc) => doc.dossierItemId === dossierItemId)
       .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
     return;
   }
-  
-  sortableDocuments.value = [...projectDocs].sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
+
+  sortableDocuments.value = [...projectDocs].sort(
+    (a, b) => (a.displayOrder || 0) - (b.displayOrder || 0),
+  );
 }
 
 // 文档统计
 const documentStats = computed(() => {
   if (!selectedMatter.value) return { total: 0, size: '0B' };
-  
-  const projectDocs = documents.value.filter(doc => doc.matterId === selectedMatter.value?.id);
-  const totalSize = projectDocs.reduce((sum, doc) => sum + (doc.fileSize || 0), 0);
-  
+
+  const projectDocs = documents.value.filter(
+    (doc) => doc.matterId === selectedMatter.value?.id,
+  );
+  const totalSize = projectDocs.reduce(
+    (sum, doc) => sum + (doc.fileSize || 0),
+    0,
+  );
+
   return {
     total: projectDocs.length,
-    size: formatFileSize(totalSize)
+    size: formatFileSize(totalSize),
   };
 });
 
@@ -391,7 +430,7 @@ const currentYear = new Date().getFullYear();
 const filterParams = reactive({
   year: currentYear as number | undefined, // 默认当前年份
   matterType: undefined as string | undefined, // 项目大类
-  caseType: undefined as string | undefined,   // 案件类型
+  caseType: undefined as string | undefined, // 案件类型
   status: undefined as string | undefined,
   keyword: undefined as string | undefined,
 });
@@ -412,144 +451,148 @@ const yearOptions = computed(() => {
 const matterTypeOptions = MATTER_TYPE_OPTIONS;
 
 // 案件类型（case_type）- 使用常量确保完整
-const caseTypeOptions = CASE_CATEGORY_OPTIONS.map(opt => ({
+const caseTypeOptions = CASE_CATEGORY_OPTIONS.map((opt) => ({
   label: opt.label,
-  value: opt.value
+  value: opt.value,
 }));
-
-// 根据项目大类获取显示名称
-function getMatterTypeName(type: string | undefined): string {
-  if (!type) return '-';
-  const option = matterTypeOptions.find(opt => opt.value === type);
-  return option?.label || type;
-}
 
 // 根据案件类型获取显示名称
 function getCaseTypeName(type: string | undefined): string {
   if (!type) return '-';
-  const option = caseTypeOptions.find(opt => opt.value === type);
+  const option = caseTypeOptions.find((opt) => opt.value === type);
   return option?.label || type;
 }
 
 // 根据状态值获取显示名称
 function getStatusName(status: string | undefined): string {
   if (!status) return '-';
-  const option = statusOptions.find(opt => opt.value === status);
+  const option = statusOptions.find((opt) => opt.value === status);
   return option?.label || status;
 }
 
 // 根据项目类型获取封面主题颜色
-function getMatterCoverTheme(matter: MatterDTO) {
+function getMatterCoverTheme(matter: MatterDTO | MatterSimpleDTO) {
   // 根据案件类型设置主题色
   const caseType = matter.caseType;
   const matterType = matter.matterType;
-  
+
   // 诉讼类案件
   if (matterType === 'LITIGATION') {
     switch (caseType) {
-      case 'CRIMINAL':
-        return {
-          primaryColor: '#d32f2f', // 红色 - 刑事
-          bgColor: '#fff5f5',
-          borderColor: '#ffcdd2',
-          label: '刑事诉讼类'
-        };
-      case 'CIVIL':
-        return {
-          primaryColor: '#1976d2', // 蓝色 - 民事
-          bgColor: '#e3f2fd',
-          borderColor: '#bbdefb',
-          label: '民事诉讼类'
-        };
-      case 'ADMINISTRATIVE':
+      case 'ADMINISTRATIVE': {
         return {
           primaryColor: '#388e3c', // 绿色 - 行政
           bgColor: '#f1f8e9',
           borderColor: '#c5e1a5',
-          label: '行政诉讼类'
+          label: '行政诉讼类',
         };
-      case 'BANKRUPTCY':
-        return {
-          primaryColor: '#f57c00', // 橙色 - 破产
-          bgColor: '#fff3e0',
-          borderColor: '#ffe0b2',
-          label: '破产案件类'
-        };
-      case 'IP':
-        return {
-          primaryColor: '#7b1fa2', // 紫色 - 知识产权
-          bgColor: '#f3e5f5',
-          borderColor: '#ce93d8',
-          label: '知识产权类'
-        };
-      case 'ARBITRATION':
+      }
+      case 'ARBITRATION': {
         return {
           primaryColor: '#0288d1', // 青色 - 仲裁
           bgColor: '#e0f7fa',
           borderColor: '#b2ebf2',
-          label: '仲裁案件类'
+          label: '仲裁案件类',
         };
-      case 'ENFORCEMENT':
+      }
+      case 'BANKRUPTCY': {
+        return {
+          primaryColor: '#f57c00', // 橙色 - 破产
+          bgColor: '#fff3e0',
+          borderColor: '#ffe0b2',
+          label: '破产案件类',
+        };
+      }
+      case 'CIVIL': {
+        return {
+          primaryColor: '#1976d2', // 蓝色 - 民事
+          bgColor: '#e3f2fd',
+          borderColor: '#bbdefb',
+          label: '民事诉讼类',
+        };
+      }
+      case 'CRIMINAL': {
+        return {
+          primaryColor: '#d32f2f', // 红色 - 刑事
+          bgColor: '#fff5f5',
+          borderColor: '#ffcdd2',
+          label: '刑事诉讼类',
+        };
+      }
+      case 'ENFORCEMENT': {
         return {
           primaryColor: '#5d4037', // 棕色 - 执行
           bgColor: '#efebe9',
           borderColor: '#d7ccc8',
-          label: '执行案件类'
+          label: '执行案件类',
         };
-      default:
+      }
+      case 'IP': {
+        return {
+          primaryColor: '#7b1fa2', // 紫色 - 知识产权
+          bgColor: '#f3e5f5',
+          borderColor: '#ce93d8',
+          label: '知识产权类',
+        };
+      }
+      default: {
         return {
           primaryColor: '#616161', // 灰色 - 其他诉讼
           bgColor: '#fafafa',
           borderColor: '#e0e0e0',
-          label: '诉讼案件类'
+          label: '诉讼案件类',
         };
+      }
     }
   }
-  
+
   // 非诉项目
   if (matterType === 'NON_LITIGATION') {
     switch (caseType) {
-      case 'LEGAL_COUNSEL':
+      case 'LEGAL_COUNSEL': {
         return {
           primaryColor: '#00796b', // 深青色 - 法律顾问
           bgColor: '#e0f2f1',
           borderColor: '#b2dfdb',
-          label: '法律顾问类'
+          label: '法律顾问类',
         };
-      case 'SPECIAL_SERVICE':
+      }
+      case 'SPECIAL_SERVICE': {
         return {
           primaryColor: '#e64a19', // 深橙色 - 专项服务
           bgColor: '#fbe9e7',
           borderColor: '#ffccbc',
-          label: '专项服务类'
+          label: '专项服务类',
         };
-      default:
+      }
+      default: {
         return {
           primaryColor: '#455a64', // 蓝灰色 - 其他非诉
           bgColor: '#eceff1',
           borderColor: '#cfd8dc',
-          label: '非诉项目类'
+          label: '非诉项目类',
         };
+      }
     }
   }
-  
+
   // 默认主题
   return {
     primaryColor: '#757575',
     bgColor: '#fafafa',
     borderColor: '#e0e0e0',
-    label: '业务档案卷宗'
+    label: '业务档案卷宗',
   };
 }
 
 // 格式化日期（只显示年月日）
 function formatDate(dateStr: string | undefined): string {
   if (!dateStr) return '-';
-  return dateStr.substring(0, 10);
+  return dateStr.slice(0, 10);
 }
 
 // 获取案由名称（将代码转换为名称）
-function getCauseOfActionName(matter: MatterDTO): string {
+function getCauseOfActionName(matter: MatterDTO | MatterSimpleDTO): string {
   // 优先使用后端返回的名称
   if (matter.causeOfActionName) {
     return matter.causeOfActionName;
@@ -565,12 +608,12 @@ function getCauseOfActionName(matter: MatterDTO): string {
 }
 
 // 选择项目（从项目列表卡片点击）
-async function handleSelectMatter(matter: MatterDTO) {
+async function handleSelectMatter(matter: MatterDTO | MatterSimpleDTO) {
   selectedMatterId.value = matter.id;
   selectedMatter.value = matter;
   selectedFolder.value = 'root';
-  currentPath.value = [matter.name + ' 卷宗目录'];
-  
+  currentPath.value = [`${matter.name} 卷宗目录`];
+
   // 加载卷宗目录和文档
   await loadDossierItems();
   loadProjectDocuments();
@@ -602,25 +645,32 @@ const filteredMatters = computed(() => {
 
   // 按项目大类筛选
   if (filterParams.matterType) {
-    filtered = filtered.filter(matter => matter.matterType === filterParams.matterType);
+    filtered = filtered.filter(
+      (matter) => matter.matterType === filterParams.matterType,
+    );
   }
 
   // 按案件类型筛选
   if (filterParams.caseType) {
-    filtered = filtered.filter(matter => matter.caseType === filterParams.caseType);
+    filtered = filtered.filter(
+      (matter) => matter.caseType === filterParams.caseType,
+    );
   }
 
   // 按状态筛选
   if (filterParams.status) {
-    filtered = filtered.filter(matter => matter.status === filterParams.status);
+    filtered = filtered.filter(
+      (matter) => matter.status === filterParams.status,
+    );
   }
 
   // 按关键词筛选
   if (filterParams.keyword) {
     const keyword = filterParams.keyword.toLowerCase();
-    filtered = filtered.filter(matter => 
-      matter.name.toLowerCase().includes(keyword) ||
-      matter.clientName?.toLowerCase().includes(keyword)
+    filtered = filtered.filter(
+      (matter) =>
+        matter.name.toLowerCase().includes(keyword) ||
+        matter.clientName?.toLowerCase().includes(keyword),
     );
   }
 
@@ -635,7 +685,7 @@ function handleFilter() {
   if (selectedMatter.value) {
     handleBackToList();
   }
-  
+
   const count = filteredMatters.value.length;
   if (count === 0) {
     message.warning('没有找到符合条件的项目');
@@ -670,7 +720,10 @@ function handleFilterChange() {
 }
 
 // 文件类型图标和颜色配置
-const fileTypeConfig: Record<string, { icon: string; color: string; label: string }> = {
+const fileTypeConfig: Record<
+  string,
+  { color: string; icon: string; label: string }
+> = {
   // 文档类
   pdf: { icon: '📄', color: '#e74c3c', label: 'PDF' },
   doc: { icon: '📝', color: '#2b579a', label: 'Word' },
@@ -716,7 +769,11 @@ const fileTypeConfig: Record<string, { icon: string; color: string; label: strin
 };
 
 // 获取文件类型配置
-function getFileTypeConfig(fileType: string | undefined): { icon: string; color: string; label: string } {
+function getFileTypeConfig(fileType: string | undefined): {
+  color: string;
+  icon: string;
+  label: string;
+} {
   if (!fileType) return fileTypeConfig.default!;
   const ext = fileType.toLowerCase().replace('.', '');
   return fileTypeConfig[ext] || fileTypeConfig.default!;
@@ -731,24 +788,9 @@ function formatDateTime(dateStr: string | undefined) {
     month: '2-digit',
     day: '2-digit',
     hour: '2-digit',
-    minute: '2-digit'
+    minute: '2-digit',
   });
 }
-
-// 表格列定义
-const columns = [
-  { 
-    title: '文档名称', 
-    dataIndex: 'name', 
-    key: 'name', 
-    width: 350,
-  },
-  { title: '类型', dataIndex: 'fileType', key: 'fileType', width: 80 },
-  { title: '文件大小', dataIndex: 'fileSize', key: 'fileSize', width: 100 },
-  { title: '修改时间', dataIndex: 'updatedAt', key: 'updatedAt', width: 160 },
-  { title: '版本', dataIndex: 'version', key: 'version', width: 60 },
-  { title: '操作', key: 'action', width: 80, fixed: 'right' as const },
-];
 
 // 加载项目列表
 async function loadMatters() {
@@ -762,15 +804,15 @@ async function loadMatters() {
       createdAtFrom = `${filterParams.year}-01-01T00:00:00`;
       createdAtTo = `${filterParams.year}-12-31T23:59:59`;
     }
-    
-    const res = await getMatterSelectOptions({ 
-      pageNum: 1, 
+
+    const res = await getMatterSelectOptions({
+      pageNum: 1,
       pageSize: 1000,
       createdAtFrom,
       createdAtTo,
     });
     console.log('项目列表响应:', res);
-    
+
     if (res && res.list) {
       matters.value = res.list;
       console.log('成功加载项目数量:', matters.value.length);
@@ -781,7 +823,7 @@ async function loadMatters() {
   } catch (error: any) {
     console.error('加载项目列表失败:', error);
     message.error(`加载项目列表失败: ${error.message || '未知错误'}`);
-    
+
     // 如果 API 失败，使用测试数据
     console.log('使用测试数据...');
     matters.value = [
@@ -791,11 +833,9 @@ async function loadMatters() {
         name: '张三诉李四合同纠纷案',
         matterType: 'CIVIL',
         matterTypeName: '民事案件',
-        clientId: 1,
         clientName: '张三',
         status: 'ACTIVE',
         statusName: '进行中',
-        createdAt: '2024-01-01T00:00:00Z'
       },
       {
         id: 2,
@@ -803,11 +843,9 @@ async function loadMatters() {
         name: '王五刑事辩护案',
         matterType: 'CRIMINAL',
         matterTypeName: '刑事案件',
-        clientId: 2,
         clientName: '王五',
         status: 'ACTIVE',
         statusName: '进行中',
-        createdAt: '2024-01-02T00:00:00Z'
       },
       {
         id: 3,
@@ -815,12 +853,10 @@ async function loadMatters() {
         name: 'ABC公司法律顾问',
         matterType: 'LEGAL_COUNSEL',
         matterTypeName: '法律顾问',
-        clientId: 3,
         clientName: 'ABC公司',
         status: 'ACTIVE',
         statusName: '进行中',
-        createdAt: '2024-01-03T00:00:00Z'
-      }
+      },
     ];
   } finally {
     loading.value = false;
@@ -830,18 +866,18 @@ async function loadMatters() {
 // 加载项目文档
 async function loadProjectDocuments() {
   if (!selectedMatter.value) return;
-  
+
   loading.value = true;
   try {
     const res = await getDocumentList({
       matterId: selectedMatter.value.id,
       pageNum: 1,
-      pageSize: 1000
+      pageSize: 1000,
     });
     documents.value = res.list;
     // 更新可排序文档列表
     updateSortableDocuments();
-  } catch (error: any) {
+  } catch {
     message.error('加载文档失败');
   } finally {
     loading.value = false;
@@ -849,22 +885,24 @@ async function loadProjectDocuments() {
 }
 
 // 选择文件夹
-function handleFolderSelect(selectedKeys: any[], info: any) {
+function handleFolderSelect(selectedKeys: any[], _info: any) {
   if (selectedKeys.length > 0) {
     const key = String(selectedKeys[0]);
     selectedFolder.value = key;
-    
+
     // 更新面包屑路径
     if (key === 'root') {
-      currentPath.value = [selectedMatter.value?.name + ' 卷宗目录' || '卷宗目录'];
+      currentPath.value = [
+        `${selectedMatter.value?.name} 卷宗目录` || '卷宗目录',
+      ];
     } else {
-      const dossierItemId = parseInt(key, 10);
-      const item = dossierItems.value.find(i => i.id === dossierItemId);
+      const dossierItemId = Number.parseInt(key, 10);
+      const item = dossierItems.value.find((i) => i.id === dossierItemId);
       if (item) {
         currentPath.value = [selectedMatter.value?.name || '卷宗', item.name];
       }
     }
-    
+
     // 更新可排序文档列表
     updateSortableDocuments();
   }
@@ -877,21 +915,23 @@ const folderOptions = computed(() => {
   if (dossierItems.value.length > 0) {
     // 包含所有顶级目录项（不过滤 itemType，因为 FILE 类型也可以作为上传目标）
     return dossierItems.value
-      .filter(item => item.parentId === 0) // 只显示顶级目录
+      .filter((item) => item.parentId === 0) // 只显示顶级目录
       .sort((a, b) => a.sortOrder - b.sortOrder)
-      .map(item => ({
+      .map((item) => ({
         label: item.name,
-        value: item.id,  // 使用实际的 dossierItemId
+        value: item.id, // 使用实际的 dossierItemId
         dossierItemId: item.id,
-        folderPath: item.name
+        folderPath: item.name,
       }));
   }
-  
+
   // 如果没有卷宗目录，返回空（用户需要先初始化卷宗目录）
   if (!selectedMatter.value) return [];
-  
+
   // 备用静态选项（仅在后端没有数据时使用）
-  return [{ label: '根目录', value: 0, dossierItemId: undefined, folderPath: 'root' }];
+  return [
+    { label: '根目录', value: 0, dossierItemId: undefined, folderPath: 'root' },
+  ];
 });
 
 // 上传文档
@@ -901,12 +941,12 @@ async function handleUpload() {
     return;
   }
   uploadFormData.matterId = selectedMatter.value.id;
-  
+
   // 从后端获取项目的卷宗目录
   try {
     const items = await getMatterDossierItems(selectedMatter.value.id);
     dossierItems.value = items;
-    
+
     if (items.length === 0) {
       message.warning('该项目尚未初始化卷宗目录，请先在左侧目录区初始化');
     }
@@ -914,7 +954,7 @@ async function handleUpload() {
     console.error('获取卷宗目录失败:', error);
     dossierItems.value = [];
   }
-  
+
   // 设置默认的存储位置为第一个可用的文件夹
   const options = folderOptions.value;
   if (options.length > 0 && options[0]) {
@@ -924,7 +964,7 @@ async function handleUpload() {
     uploadFormData.dossierItemId = undefined;
     uploadFormData.folder = 'root';
   }
-  
+
   uploadFormData.description = '';
   fileList.value = [];
   uploadModalVisible.value = true;
@@ -932,7 +972,7 @@ async function handleUpload() {
 
 // 处理上传时的文件夹选择
 function handleUploadFolderSelect(value: any) {
-  const option = folderOptions.value.find(opt => opt.value === value);
+  const option = folderOptions.value.find((opt) => opt.value === value);
   if (option) {
     uploadFormData.dossierItemId = option.dossierItemId ?? undefined;
     uploadFormData.folder = option.folderPath ?? 'root';
@@ -949,28 +989,44 @@ function handleCreateFolder() {
 function isImageFile(fileType: string | undefined): boolean {
   if (!fileType) return false;
   const ext = fileType.toLowerCase();
-  return ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'svg', 'webp', 'ico'].includes(ext);
+  return ['bmp', 'gif', 'ico', 'jpeg', 'jpg', 'png', 'svg', 'webp'].includes(
+    ext,
+  );
 }
 
 // 判断文件是否为视频类型
 function isVideoFile(fileType: string | undefined): boolean {
   if (!fileType) return false;
   const ext = fileType.toLowerCase();
-  return ['mp4', 'webm', 'ogg', 'avi', 'mov', 'mkv'].includes(ext);
+  return ['avi', 'mkv', 'mov', 'mp4', 'ogg', 'webm'].includes(ext);
 }
 
 // 判断文件是否为音频类型
 function isAudioFile(fileType: string | undefined): boolean {
   if (!fileType) return false;
   const ext = fileType.toLowerCase();
-  return ['mp3', 'wav', 'ogg', 'm4a', 'flac', 'aac'].includes(ext);
+  return ['aac', 'flac', 'm4a', 'mp3', 'ogg', 'wav'].includes(ext);
 }
 
 // 判断文件是否支持 OnlyOffice 预览
 function isOfficeFile(fileType: string | undefined): boolean {
   if (!fileType) return false;
   const ext = fileType.toLowerCase();
-  return ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'odt', 'ods', 'odp', 'rtf', 'txt', 'csv', 'pdf'].includes(ext);
+  return [
+    'csv',
+    'doc',
+    'docx',
+    'odp',
+    'ods',
+    'odt',
+    'pdf',
+    'ppt',
+    'pptx',
+    'rtf',
+    'txt',
+    'xls',
+    'xlsx',
+  ].includes(ext);
 }
 
 // 判断文件是否支持在线编辑（不包括 PDF，PDF 只能预览）
@@ -978,25 +1034,38 @@ function isEditableFile(fileType: string | undefined): boolean {
   if (!fileType) return false;
   const ext = fileType.toLowerCase();
   // 支持编辑的文件类型：Word、Excel、PowerPoint 及其开放格式
-  return ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'odt', 'ods', 'odp', 'rtf', 'txt', 'csv'].includes(ext);
+  return [
+    'csv',
+    'doc',
+    'docx',
+    'odp',
+    'ods',
+    'odt',
+    'ppt',
+    'pptx',
+    'rtf',
+    'txt',
+    'xls',
+    'xlsx',
+  ].includes(ext);
 }
 
 // 预览文档（根据文件类型选择不同的预览方式）
 async function handlePreview(record: DocumentDTO) {
   const fileType = record.fileType?.toLowerCase() || '';
-  
+
   // Office 文档类型 - 使用 OnlyOffice 预览
   if (isOfficeFile(fileType)) {
     const url = `/office-preview?documentId=${record.id}&mode=view`;
     window.open(url, '_blank');
     return;
   }
-  
+
   // 对于非 Office 文件，先获取预签名 URL
   try {
     const { previewUrl } = await getDocumentPreviewUrl(record.id);
     const fileUrl = previewUrl;
-    
+
     // 图片类型 - 使用模态框显示
     if (isImageFile(fileType)) {
       Modal.info({
@@ -1004,18 +1073,22 @@ async function handlePreview(record: DocumentDTO) {
         icon: null,
         width: '80%',
         centered: true,
-        content: h('div', { style: 'text-align: center; max-height: 70vh; overflow: auto;' }, [
-          h('img', { 
-            src: fileUrl, 
-            style: 'max-width: 100%; max-height: 65vh; object-fit: contain;',
-            alt: record.fileName
-          })
-        ]),
+        content: h(
+          'div',
+          { style: 'text-align: center; max-height: 70vh; overflow: auto;' },
+          [
+            h('img', {
+              src: fileUrl,
+              style: 'max-width: 100%; max-height: 65vh; object-fit: contain;',
+              alt: record.fileName,
+            }),
+          ],
+        ),
         okText: '关闭',
       });
       return;
     }
-    
+
     // 视频类型 - 使用 HTML5 Video 播放
     if (isVideoFile(fileType)) {
       Modal.info({
@@ -1024,17 +1097,17 @@ async function handlePreview(record: DocumentDTO) {
         width: '80%',
         centered: true,
         content: h('div', { style: 'text-align: center;' }, [
-          h('video', { 
-            src: fileUrl, 
+          h('video', {
+            src: fileUrl,
             controls: true,
             style: 'max-width: 100%; max-height: 70vh;',
-          })
+          }),
         ]),
         okText: '关闭',
       });
       return;
     }
-    
+
     // 音频类型 - 使用 HTML5 Audio 播放
     if (isAudioFile(fileType)) {
       Modal.info({
@@ -1043,29 +1116,28 @@ async function handlePreview(record: DocumentDTO) {
         width: 500,
         centered: true,
         content: h('div', { style: 'text-align: center; padding: 20px 0;' }, [
-          h('audio', { 
-            src: fileUrl, 
+          h('audio', {
+            src: fileUrl,
             controls: true,
             style: 'width: 100%;',
-          })
+          }),
         ]),
         okText: '关闭',
       });
       return;
     }
-    
+
     // PDF 类型 - 直接在新窗口打开
     if (fileType === 'pdf') {
       window.open(fileUrl, '_blank');
       return;
     }
-    
+
     // 其他类型 - 尝试直接下载或打开
     message.info('该文件类型不支持在线预览，将尝试下载');
     window.open(fileUrl, '_blank');
-    
   } catch (error: any) {
-    message.error('获取预览链接失败: ' + (error.message || '未知错误'));
+    message.error(`获取预览链接失败: ${error.message || '未知错误'}`);
   }
 }
 
@@ -1081,7 +1153,7 @@ async function handleOnlineEdit(record: DocumentDTO) {
     // 跳转到编辑页面
     const url = `/office-preview?documentId=${record.id}&mode=edit`;
     window.open(url, '_blank');
-  } catch (error: any) {
+  } catch {
     message.error('检查编辑支持失败');
   }
 }
@@ -1091,7 +1163,7 @@ async function handleDownload(record: DocumentDTO) {
   try {
     await downloadDocument(record.id);
     message.success('下载成功');
-  } catch (error: any) {
+  } catch {
     message.error('下载失败');
   }
 }
@@ -1112,17 +1184,21 @@ function isDocSelected(docId: number) {
 }
 
 function isAllSelected() {
-  return currentDocuments.value.length > 0 && 
-         currentDocuments.value.every(doc => selectedDocIds.value.has(doc.id));
+  return (
+    currentDocuments.value.length > 0 &&
+    currentDocuments.value.every((doc) => selectedDocIds.value.has(doc.id))
+  );
 }
 
 function toggleSelectAll() {
   if (isAllSelected()) {
     // 取消全选
-    currentDocuments.value.forEach(doc => selectedDocIds.value.delete(doc.id));
+    currentDocuments.value.forEach((doc) =>
+      selectedDocIds.value.delete(doc.id),
+    );
   } else {
     // 全选当前文件夹
-    currentDocuments.value.forEach(doc => selectedDocIds.value.add(doc.id));
+    currentDocuments.value.forEach((doc) => selectedDocIds.value.add(doc.id));
   }
   selectedDocIds.value = new Set(selectedDocIds.value);
 }
@@ -1133,17 +1209,17 @@ function clearSelection() {
 
 // 批量下载
 async function handleBatchDownload() {
-  const ids = Array.from(selectedDocIds.value);
+  const ids = [...selectedDocIds.value];
   if (ids.length === 0) {
     message.warning('请先选择要下载的文档');
     return;
   }
-  
+
   if (ids.length > 100) {
     message.warning('单次最多下载100个文档');
     return;
   }
-  
+
   batchDownloading.value = true;
   try {
     const matterName = selectedMatter.value?.name || '文档';
@@ -1152,7 +1228,7 @@ async function handleBatchDownload() {
     message.success(`成功下载 ${ids.length} 个文档`);
     clearSelection();
   } catch (error: any) {
-    message.error('批量下载失败：' + (error.message || '未知错误'));
+    message.error(`批量下载失败：${error.message || '未知错误'}`);
   } finally {
     batchDownloading.value = false;
   }
@@ -1164,21 +1240,23 @@ async function handleOcrExtract(record: DocumentDTO) {
     message.warning('仅支持对图片文件进行OCR识别');
     return;
   }
-  
+
   ocrLoading.value = true;
   ocrModalVisible.value = true;
   ocrResult.value = '';
   currentDocument.value = record;
-  
+
   try {
     // 先获取图片的预签名URL
     const { previewUrl } = await getDocumentPreviewUrl(record.id);
-    
+
     // 下载图片并转换为File对象
     const response = await fetch(previewUrl);
     const blob = await response.blob();
-    const file = new File([blob], record.fileName || 'image.jpg', { type: blob.type });
-    
+    const file = new File([blob], record.fileName || 'image.jpg', {
+      type: blob.type,
+    });
+
     // 调用OCR识别
     const result: OcrResultDTO = await recognizeGeneral(file);
     if (result.success) {
@@ -1188,9 +1266,9 @@ async function handleOcrExtract(record: DocumentDTO) {
       ocrResult.value = result.errorMessage || 'OCR识别失败';
       message.error(result.errorMessage || 'OCR识别失败');
     }
-  } catch (e: any) {
-    ocrResult.value = e?.message || 'OCR识别失败';
-    message.error(e?.message || 'OCR识别失败');
+  } catch (error: any) {
+    ocrResult.value = error?.message || 'OCR识别失败';
+    message.error(error?.message || 'OCR识别失败');
   } finally {
     ocrLoading.value = false;
   }
@@ -1219,7 +1297,7 @@ async function handleShare(record: DocumentDTO) {
     const url = await shareDocument(record.id);
     shareUrl.value = url;
     shareModalVisible.value = true;
-  } catch (error: any) {
+  } catch {
     message.error('生成分享链接失败');
   }
 }
@@ -1231,7 +1309,7 @@ async function handleViewVersions(record: DocumentDTO) {
     const data = await getDocumentVersions(record.id);
     versions.value = data;
     versionModalVisible.value = true;
-  } catch (error: any) {
+  } catch {
     message.error('加载版本列表失败');
   }
 }
@@ -1250,7 +1328,7 @@ function handleDelete(record: DocumentDTO) {
         message.success('删除成功');
         await loadProjectDocuments(); // 刷新文档列表
         await loadDossierItems(); // 刷新目录计数
-      } catch (error: any) {
+      } catch {
         message.error('删除失败');
       }
     },
@@ -1261,13 +1339,13 @@ function handleDelete(record: DocumentDTO) {
 async function handleDragEnd() {
   // 获取排序后的文档ID列表
   const documentIds = currentDocuments.value.map((doc: DocumentDTO) => doc.id);
-  
+
   try {
     // 保存排序到后端
     await reorderDocuments(documentIds);
     message.success('排序已保存');
   } catch (error: any) {
-    message.error('排序保存失败: ' + (error.message || '未知错误'));
+    message.error(`排序保存失败: ${error.message || '未知错误'}`);
     // 重新加载恢复原顺序
     await loadProjectDocuments();
   }
@@ -1279,50 +1357,50 @@ function handleMoveDocument(record: DocumentDTO) {
     message.warning('请先初始化卷宗目录');
     return;
   }
-  
+
   // 构建目录选项
   const options = dossierItems.value
-    .filter(item => item.itemType === 'FOLDER')
-    .map(item => ({
+    .filter((item) => item.itemType === 'FOLDER')
+    .map((item) => ({
       label: item.name,
-      value: item.id
+      value: item.id,
     }));
-  
-  let selectedTargetId: number | undefined;
-  
+
   Modal.confirm({
     title: '移动文件',
     content: h('div', { style: 'padding: 10px 0' }, [
       h('p', `将 "${record.title || record.fileName}" 移动到：`),
-      h('select', {
-        id: 'moveTargetSelect',
-        style: 'width: 100%; padding: 8px; border: 1px solid #d9d9d9; border-radius: 4px; margin-top: 8px;',
-        onChange: (e: Event) => {
-          selectedTargetId = parseInt((e.target as HTMLSelectElement).value, 10);
-        }
-      }, options.map(opt => 
-        h('option', { value: opt.value }, opt.label)
-      ))
+      h(
+        'select',
+        {
+          id: 'moveTargetSelect',
+          style:
+            'width: 100%; padding: 8px; border: 1px solid #d9d9d9; border-radius: 4px; margin-top: 8px;',
+        },
+        options.map((opt) => h('option', { value: opt.value }, opt.label)),
+      ),
     ]),
     onOk: async () => {
-      const select = document.getElementById('moveTargetSelect') as HTMLSelectElement;
-      const targetId = parseInt(select?.value, 10);
-      
+      const select = document.querySelector(
+        '#moveTargetSelect',
+      ) as HTMLSelectElement;
+      const targetId = Number.parseInt(select?.value, 10);
+
       if (!targetId || isNaN(targetId)) {
         message.error('请选择目标目录');
-        return Promise.reject();
+        throw undefined;
       }
-      
+
       try {
         await moveDocument(record.id, targetId);
         message.success('移动成功');
         loadProjectDocuments();
         await loadDossierItems(); // 刷新目录计数
       } catch (error: any) {
-        message.error('移动失败: ' + (error.message || '未知错误'));
+        message.error(`移动失败: ${error.message || '未知错误'}`);
         return Promise.reject();
       }
-    }
+    },
   });
 }
 
@@ -1332,11 +1410,11 @@ async function handleSaveUpload() {
     message.error('请选择要上传的文件');
     return;
   }
-  
+
   try {
     // 提取文件对象
-    const files: File[] = fileList.value.map(f => f.originFileObj || f);
-    
+    const files: File[] = fileList.value.map((f) => f.originFileObj || f);
+
     // 调用批量上传 API，传递 dossierItemId 以关联到正确的卷宗目录
     await uploadFiles(files, {
       matterId: uploadFormData.matterId,
@@ -1344,7 +1422,7 @@ async function handleSaveUpload() {
       description: uploadFormData.description,
       dossierItemId: uploadFormData.dossierItemId,
     });
-    
+
     message.success(`成功上传 ${files.length} 个文件`);
     uploadModalVisible.value = false;
     fileList.value = [];
@@ -1352,7 +1430,7 @@ async function handleSaveUpload() {
     await loadDossierItems(); // 刷新目录计数
   } catch (error: any) {
     console.error('上传失败:', error);
-    message.error('上传失败: ' + (error.message || '未知错误'));
+    message.error(`上传失败: ${error.message || '未知错误'}`);
   }
 }
 
@@ -1362,17 +1440,17 @@ async function handleSaveFolder() {
     message.error('请输入文件夹名称');
     return;
   }
-  
+
   try {
     await createFolder({
       name: folderFormData.name,
       parentFolder: folderFormData.parentFolder,
-      matterId: selectedMatter.value!.id
+      matterId: selectedMatter.value!.id,
     });
     message.success('创建成功');
     folderModalVisible.value = false;
     // 刷新文件夹树
-  } catch (error: any) {
+  } catch {
     message.error('创建失败');
   }
 }
@@ -1383,18 +1461,18 @@ async function handleSaveEdit() {
     message.error('请输入文档名称');
     return;
   }
-  
+
   try {
     await updateDocument(editFormData.id!, {
       id: editFormData.id!,
       title: editFormData.title,
-      description: editFormData.description
+      description: editFormData.description,
     });
     message.success('更新成功');
     editModalVisible.value = false;
     await loadProjectDocuments();
   } catch (error: any) {
-    message.error('更新失败: ' + (error.message || '未知错误'));
+    message.error(`更新失败: ${error.message || '未知错误'}`);
   }
 }
 
@@ -1433,7 +1511,10 @@ onMounted(() => {
 </script>
 
 <template>
-  <Page title="卷宗管理" description="按项目管理卷宗文件，支持预览、编辑、归档等功能">
+  <Page
+    title="卷宗管理"
+    description="按项目管理卷宗文件，支持预览、编辑、归档等功能"
+  >
     <!-- 筛选条件 -->
     <Card class="mb-4">
       <Row :gutter="[16, 16]" align="middle">
@@ -1450,7 +1531,7 @@ onMounted(() => {
           <Select
             v-model:value="filterParams.matterType"
             placeholder="项目大类"
-            allowClear
+            allow-clear
             style="width: 100%"
             :options="matterTypeOptions"
             @change="handleFilterChange"
@@ -1460,7 +1541,7 @@ onMounted(() => {
           <Select
             v-model:value="filterParams.caseType"
             placeholder="案件类型"
-            allowClear
+            allow-clear
             style="width: 100%"
             :options="caseTypeOptions"
             @change="handleFilterChange"
@@ -1470,7 +1551,7 @@ onMounted(() => {
           <Select
             v-model:value="filterParams.status"
             placeholder="项目状态"
-            allowClear
+            allow-clear
             style="width: 100%"
             :options="statusOptions"
             @change="handleFilterChange"
@@ -1480,15 +1561,17 @@ onMounted(() => {
           <Input
             v-model:value="filterParams.keyword"
             placeholder="搜索项目名称或客户"
-            allowClear
-            @pressEnter="handleFilter"
+            allow-clear
+            @press-enter="handleFilter"
           />
         </Col>
         <Col :xs="24" :sm="12" :md="6" :lg="6" :xl="6">
           <Space>
             <Button type="primary" @click="handleFilter">筛选</Button>
             <Button @click="handleResetFilter">重置</Button>
-            <Button v-if="selectedMatter" @click="handleBackToList">返回列表</Button>
+            <Button v-if="selectedMatter" @click="handleBackToList">
+              返回列表
+            </Button>
           </Space>
         </Col>
       </Row>
@@ -1503,65 +1586,121 @@ onMounted(() => {
           <Tag color="blue">{{ filteredMatters.length }} 个项目</Tag>
         </Space>
       </template>
-      
-      <div v-if="loading" style=" padding: 40px;text-align: center">
+
+      <div v-if="loading" style="padding: 40px; text-align: center">
         加载中...
       </div>
-      
-      <div v-else-if="filteredMatters.length === 0" style=" padding: 40px; color: #999;text-align: center">
+
+      <div
+        v-else-if="filteredMatters.length === 0"
+        style="padding: 40px; color: #999; text-align: center"
+      >
         暂无符合条件的项目
       </div>
-      
+
       <Row v-else :gutter="[16, 16]">
-        <Col v-for="matter in filteredMatters" :key="matter.id" :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <Card 
-            hoverable 
-            size="small" 
+        <Col
+          v-for="matter in filteredMatters"
+          :key="matter.id"
+          :xs="24"
+          :sm="12"
+          :md="8"
+          :lg="6"
+          :xl="6"
+        >
+          <Card
+            hoverable
+            size="small"
             @click="handleSelectMatter(matter)"
             class="matter-card"
             :class="`matter-card-${matter.caseType || 'default'}`"
           >
             <template #title>
-              <div style=" overflow: hidden; text-overflow: ellipsis;font-size: 14px; font-weight: 500; white-space: nowrap;">
+              <div
+                style="
+                  overflow: hidden;
+                  text-overflow: ellipsis;
+                  font-size: 14px;
+                  font-weight: 500;
+                  white-space: nowrap;
+                "
+              >
                 {{ matter.name }}
               </div>
             </template>
             <template #extra>
-              <Tag :color="matter.status === 'ACTIVE' ? 'green' : matter.status === 'CLOSED' ? 'default' : 'orange'" style="margin: 0">
+              <Tag
+                :color="
+                  matter.status === 'ACTIVE'
+                    ? 'green'
+                    : matter.status === 'CLOSED'
+                      ? 'default'
+                      : 'orange'
+                "
+                style="margin: 0"
+              >
                 {{ matter.statusName || getStatusName(matter.status) }}
               </Tag>
             </template>
             <div style="font-size: 12px; color: #666">
               <div style="margin-bottom: 6px">
                 <span style="color: #999">项目编号：</span>
-                <span style="font-weight: 500; color: #1890ff">{{ matter.matterNo || '-' }}</span>
+                <span style="font-weight: 500; color: #1890ff">{{
+                  matter.matterNo || '-'
+                }}</span>
               </div>
               <div style="margin-bottom: 6px">
-                <span style="color: #999">客户：</span>{{ matter.clientName || '-' }}
+                <span style="color: #999">客户：</span
+                >{{ matter.clientName || '-' }}
               </div>
-              <div style="margin-bottom: 6px" v-if="matter.causeOfActionName || matter.causeOfAction">
+              <div
+                style="margin-bottom: 6px"
+                v-if="matter.causeOfActionName || matter.causeOfAction"
+              >
                 <span style="color: #999">案由：</span>
-                <span style="color: #333">{{ getCauseOfActionName(matter) }}</span>
+                <span style="color: #333">{{
+                  getCauseOfActionName(matter)
+                }}</span>
               </div>
               <div style="margin-bottom: 6px" v-if="matter.leadLawyerName">
-                <span style="color: #999">承办律师：</span>{{ matter.leadLawyerName }}
+                <span style="color: #999">承办律师：</span
+                >{{ matter.leadLawyerName }}
               </div>
               <div style="margin-bottom: 6px" v-if="matter.opposingParty">
                 <span style="color: #999">对方：</span>
                 <span style="color: #666">{{ matter.opposingParty }}</span>
               </div>
-              <div style="display: flex; justify-content: space-between; padding-top: 8px; margin-top: 8px; border-top: 1px solid #f0f0f0">
+              <div
+                style="
+                  display: flex;
+                  justify-content: space-between;
+                  padding-top: 8px;
+                  margin-top: 8px;
+                  border-top: 1px solid #f0f0f0;
+                "
+              >
                 <div>
                   <span style="color: #999">类型：</span>
-                  <Tag 
-                    :color="getMatterCoverTheme(matter).primaryColor" 
-                    style=" padding: 0 4px;margin: 0; font-size: 10px; border: none;"
+                  <Tag
+                    :color="getMatterCoverTheme(matter).primaryColor"
+                    style="
+                      padding: 0 4px;
+                      margin: 0;
+                      font-size: 10px;
+                      border: none;
+                    "
                   >
-                    {{ matter.caseTypeName || getCaseTypeName(matter.caseType) }}
+                    {{
+                      matter.caseTypeName || getCaseTypeName(matter.caseType)
+                    }}
                   </Tag>
                 </div>
-                <div style=" font-size: 11px;color: #999">
-                  {{ formatDate(matter.filingDate) || formatDate(matter.createdAt) || '-' }}
+                <div style="font-size: 11px; color: #999">
+                  {{
+                    formatDate(matter.filingDate) ||
+                    formatDate(matter.createdAt) ||
+                    '-'
+                  }}
                 </div>
               </div>
             </div>
@@ -1576,12 +1715,17 @@ onMounted(() => {
         <Space>
           <Inbox />
           {{ selectedMatter.name }} - 文档管理
-          <Tag color="orange">{{ selectedMatter.caseTypeName || getCaseTypeName(selectedMatter.caseType) }}</Tag>
+          <Tag color="orange">
+            {{
+              selectedMatter.caseTypeName ||
+              getCaseTypeName(selectedMatter.caseType)
+            }}
+          </Tag>
           <Tag color="blue">{{ documentStats.total }} 个文档</Tag>
           <Tag color="green">{{ documentStats.size }}</Tag>
         </Space>
       </template>
-      
+
       <template #extra>
         <Space>
           <Button type="primary" @click="handleUpload">
@@ -1602,10 +1746,10 @@ onMounted(() => {
             <template #title>
               <Space>
                 <span>卷宗目录</span>
-                <Button 
-                  v-if="dossierItems.length === 0" 
-                  type="link" 
-                  size="small" 
+                <Button
+                  v-if="dossierItems.length === 0"
+                  type="link"
+                  size="small"
                   @click="handleInitDossier"
                   style="padding: 0"
                 >
@@ -1615,12 +1759,16 @@ onMounted(() => {
             </template>
             <template #extra>
               <Space size="small">
-                <Button size="small" @click="handleAddDossierItem" title="添加文件夹">
+                <Button
+                  size="small"
+                  @click="handleAddDossierItem"
+                  title="添加文件夹"
+                >
                   <Plus :size="14" />
                 </Button>
               </Space>
             </template>
-            
+
             <Tree
               :tree-data="folderTreeData"
               :selected-keys="[selectedFolder]"
@@ -1628,12 +1776,18 @@ onMounted(() => {
               :show-icon="true"
               default-expand-all
             >
-              <template #title="{ title, key, dossierItemId, name, documentCount }">
+              <template
+                #title="{ title, key, dossierItemId, name, documentCount }"
+              >
                 <Dropdown :trigger="['contextmenu']" v-if="key !== 'root'">
                   <span>{{ title }}</span>
                   <template #overlay>
                     <Menu>
-                      <MenuItem @click="handleRenameDossierItem({ dossierItemId, name })">
+                      <MenuItem
+                        @click="
+                          handleRenameDossierItem({ dossierItemId, name })
+                        "
+                      >
                         重命名
                       </MenuItem>
                       <MenuItem @click="handleMoveUp({ dossierItemId })">
@@ -1643,8 +1797,14 @@ onMounted(() => {
                         下移
                       </MenuItem>
                       <Divider style="margin: 4px 0" />
-                      <MenuItem 
-                        @click="handleDeleteDossierItem({ dossierItemId, name, documentCount })" 
+                      <MenuItem
+                        @click="
+                          handleDeleteDossierItem({
+                            dossierItemId,
+                            name,
+                            documentCount,
+                          })
+                        "
                         style="color: red"
                         :disabled="documentCount > 0"
                       >
@@ -1666,14 +1826,16 @@ onMounted(() => {
               <Space>
                 <span>{{ currentPath.join(' / ') }}</span>
                 <Tag color="blue">{{ currentDocuments.length }} 个文档</Tag>
-                <Tag v-if="selectedDocIds.size > 0" color="green">已选 {{ selectedDocIds.size }} 个</Tag>
+                <Tag v-if="selectedDocIds.size > 0" color="green">
+                  已选 {{ selectedDocIds.size }} 个
+                </Tag>
               </Space>
             </template>
             <template #extra>
               <Space v-if="selectedDocIds.size > 0">
-                <Button 
-                  type="primary" 
-                  size="small" 
+                <Button
+                  type="primary"
+                  size="small"
                   :loading="batchDownloading"
                   @click="handleBatchDownload"
                 >
@@ -1686,110 +1848,168 @@ onMounted(() => {
 
             <!-- 文档列表头部 -->
             <div class="doc-list-header">
-              <div class="col-checkbox" style="width: 32px;">
-                <input 
-                  type="checkbox" 
-                  :checked="isAllSelected()" 
+              <div class="col-checkbox" style="width: 32px">
+                <input
+                  type="checkbox"
+                  :checked="isAllSelected()"
                   @change="toggleSelectAll"
-                  style=" width: 16px; height: 16px;cursor: pointer;"
+                  style="width: 16px; height: 16px; cursor: pointer"
                   title="全选/取消全选"
                 />
               </div>
-              <div class="col-drag" style="width: 30px;"></div>
-              <div class="col-name" style="flex: 1;">文档名称</div>
-              <div class="col-type" style="width: 80px;">类型</div>
-              <div class="col-size" style="width: 80px;">大小</div>
-              <div class="col-time" style="width: 140px;">修改时间</div>
-              <div class="col-action" style="width: 160px;">操作</div>
+              <div class="col-drag" style="width: 30px"></div>
+              <div class="col-name" style="flex: 1">文档名称</div>
+              <div class="col-type" style="width: 80px">类型</div>
+              <div class="col-size" style="width: 80px">大小</div>
+              <div class="col-time" style="width: 140px">修改时间</div>
+              <div class="col-action" style="width: 160px">操作</div>
             </div>
-            
+
             <!-- 可拖拽文档列表 -->
-            <div v-if="loading" style=" padding: 40px;text-align: center;">加载中...</div>
-            <div v-else-if="currentDocuments.length === 0" style=" padding: 40px; color: #999;text-align: center;">
+            <div v-if="loading" style="padding: 40px; text-align: center">
+              加载中...
+            </div>
+            <div
+              v-else-if="currentDocuments.length === 0"
+              style="padding: 40px; color: #999; text-align: center"
+            >
               暂无文档
             </div>
-            <draggable 
+            <draggable
               v-else
-              v-model="currentDocuments" 
+              v-model="currentDocuments"
               item-key="id"
               handle=".drag-handle"
               @end="handleDragEnd"
               class="doc-list"
             >
               <template #item="{ element: record }">
-                <div class="doc-item" :class="{ 'doc-item-selected': isDocSelected(record.id) }">
+                <div
+                  class="doc-item"
+                  :class="{ 'doc-item-selected': isDocSelected(record.id) }"
+                >
                   <!-- 复选框 -->
-                  <div class="col-checkbox" style="width: 32px;">
-                    <input 
-                      type="checkbox" 
-                      :checked="isDocSelected(record.id)" 
+                  <div class="col-checkbox" style="width: 32px">
+                    <input
+                      type="checkbox"
+                      :checked="isDocSelected(record.id)"
                       @change="toggleDocSelection(record.id)"
                       @click.stop
-                      style=" width: 16px; height: 16px;cursor: pointer;"
+                      style="width: 16px; height: 16px; cursor: pointer"
                     />
                   </div>
-                  
+
                   <!-- 拖拽手柄 -->
                   <div class="col-drag drag-handle">
-                    <GripVertical :size="16" style="color: #bbb; cursor: grab;" />
+                    <GripVertical
+                      :size="16"
+                      style="color: #bbb; cursor: grab"
+                    />
                   </div>
-                  
+
                   <!-- 文档名称 -->
-                  <div class="col-name" style=" display: flex;flex: 1; gap: 10px; align-items: center; min-width: 0;">
+                  <div
+                    class="col-name"
+                    style="
+                      display: flex;
+                      flex: 1;
+                      gap: 10px;
+                      align-items: center;
+                      min-width: 0;
+                    "
+                  >
                     <!-- 缩略图或文件类型图标 -->
-                    <div class="doc-thumbnail" style="flex-shrink: 0;">
-                      <img 
-                        v-if="record.thumbnailUrl" 
-                        :src="record.thumbnailUrl" 
+                    <div class="doc-thumbnail" style="flex-shrink: 0">
+                      <img
+                        v-if="record.thumbnailUrl"
+                        :src="record.thumbnailUrl"
                         :alt="record.fileName"
                         class="thumbnail-img"
-                        @error="(e: Event) => (e.target as HTMLImageElement).style.display = 'none'"
+                        @error="
+                          (e: Event) =>
+                            ((e.target as HTMLImageElement).style.display =
+                              'none')
+                        "
                       />
-                      <span v-else style="font-size: 26px; line-height: 1;">{{ getFileTypeConfig(record.fileType).icon }}</span>
+                      <span v-else style="font-size: 26px; line-height: 1">{{
+                        getFileTypeConfig(record.fileType).icon
+                      }}</span>
                     </div>
-                    <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0; overflow: hidden;">
-                      <a 
-                        @click="handlePreview(record)" 
+                    <div
+                      style="
+                        display: flex;
+                        flex-direction: column;
+                        gap: 2px;
+                        min-width: 0;
+                        overflow: hidden;
+                      "
+                    >
+                      <a
+                        @click="handlePreview(record)"
                         class="doc-name-link"
                         :title="record.title || record.fileName || record.name"
                       >
                         {{ record.title || record.fileName || record.name }}
                       </a>
-                      <span class="doc-desc" v-if="record.description">{{ record.description }}</span>
+                      <span class="doc-desc" v-if="record.description">{{
+                        record.description
+                      }}</span>
                     </div>
                   </div>
-                  
+
                   <!-- 文件类型 -->
                   <div class="col-type">
-                    <Tag 
+                    <Tag
                       :color="getFileTypeConfig(record.fileType).color"
-                      style=" padding: 1px 6px;margin: 0; font-size: 11px;"
+                      style="padding: 1px 6px; margin: 0; font-size: 11px"
                     >
                       {{ getFileTypeConfig(record.fileType).label }}
                     </Tag>
                   </div>
-                  
+
                   <!-- 文件大小 -->
-                  <div class="col-size">{{ formatFileSize(record.fileSize) }}</div>
-                  
+                  <div class="col-size">
+                    {{ formatFileSize(record.fileSize) }}
+                  </div>
+
                   <!-- 修改时间 -->
-                  <div class="col-time">{{ formatDateTime(record.updatedAt) }}</div>
-                  
+                  <div class="col-time">
+                    {{ formatDateTime(record.updatedAt) }}
+                  </div>
+
                   <!-- 操作按钮 -->
                   <div class="col-action">
                     <Space :size="2">
                       <Tooltip title="预览">
-                        <Button type="text" size="small" @click="handlePreview(record)" class="action-btn">
+                        <Button
+                          type="text"
+                          size="small"
+                          @click="handlePreview(record)"
+                          class="action-btn"
+                        >
                           <Eye :size="15" />
                         </Button>
                       </Tooltip>
-                      <Tooltip title="在线编辑" v-if="isEditableFile(record.fileType)">
-                        <Button type="text" size="small" @click="handleOnlineEdit(record)" class="action-btn">
+                      <Tooltip
+                        title="在线编辑"
+                        v-if="isEditableFile(record.fileType)"
+                      >
+                        <Button
+                          type="text"
+                          size="small"
+                          @click="handleOnlineEdit(record)"
+                          class="action-btn"
+                        >
                           <Edit :size="15" />
                         </Button>
                       </Tooltip>
                       <Tooltip title="下载">
-                        <Button type="text" size="small" @click="handleDownload(record)" class="action-btn">
+                        <Button
+                          type="text"
+                          size="small"
+                          @click="handleDownload(record)"
+                          class="action-btn"
+                        >
                           <SvgDownloadIcon :size="15" />
                         </Button>
                       </Tooltip>
@@ -1797,28 +2017,42 @@ onMounted(() => {
                         <template #overlay>
                           <Menu class="action-menu">
                             <MenuItem key="rename" @click="handleEdit(record)">
-                              <Edit :size="14" style="margin-right: 8px;" />
+                              <Edit :size="14" style="margin-right: 8px" />
                               重命名
                             </MenuItem>
                             <MenuItem key="share" @click="handleShare(record)">
-                              <span style="margin-right: 8px;">🔗</span>
+                              <span style="margin-right: 8px">🔗</span>
                               分享
                             </MenuItem>
-                            <MenuItem key="versions" @click="handleViewVersions(record)">
-                              <span style="margin-right: 8px;">📋</span>
+                            <MenuItem
+                              key="versions"
+                              @click="handleViewVersions(record)"
+                            >
+                              <span style="margin-right: 8px">📋</span>
                               版本历史
                             </MenuItem>
-                            <MenuItem key="move" @click="handleMoveDocument(record)">
-                              <span style="margin-right: 8px;">📁</span>
+                            <MenuItem
+                              key="move"
+                              @click="handleMoveDocument(record)"
+                            >
+                              <span style="margin-right: 8px">📁</span>
                               移动
                             </MenuItem>
-                            <MenuItem v-if="isImageFile(record.fileType)" key="ocr" @click="handleOcrExtract(record)">
-                              <span style="margin-right: 8px;">🔍</span>
+                            <MenuItem
+                              v-if="isImageFile(record.fileType)"
+                              key="ocr"
+                              @click="handleOcrExtract(record)"
+                            >
+                              <span style="margin-right: 8px">🔍</span>
                               提取文字(OCR)
                             </MenuItem>
                             <Divider style="margin: 6px 0" />
-                            <MenuItem key="delete" @click="handleDelete(record)" style="color: #ff4d4f">
-                              <Trash :size="14" style="margin-right: 8px;" />
+                            <MenuItem
+                              key="delete"
+                              @click="handleDelete(record)"
+                              style="color: #ff4d4f"
+                            >
+                              <Trash :size="14" style="margin-right: 8px" />
                               删除
                             </MenuItem>
                           </Menu>
@@ -1942,10 +2176,14 @@ onMounted(() => {
           v-if="previewUrl"
           :src="previewUrl"
           style="width: 100%; height: 100%; border: none"
-        />
-        <div v-else style=" padding: 50px;text-align: center">
+        ></iframe>
+        <div v-else style="padding: 50px; text-align: center">
           <div>暂不支持预览此类型文件</div>
-          <Button type="primary" @click="handleDownload(currentDocument!)" style="margin-top: 16px">
+          <Button
+            type="primary"
+            @click="handleDownload(currentDocument!)"
+            style="margin-top: 16px"
+          >
             <SvgDownloadIcon />
             下载文件
           </Button>
@@ -1964,15 +2202,9 @@ onMounted(() => {
         <div style="margin-bottom: 16px">
           <strong>{{ currentDocument?.name }}</strong>
         </div>
-        <div style="margin-bottom: 16px">
-          分享链接（7天内有效）：
-        </div>
+        <div style="margin-bottom: 16px">分享链接（7天内有效）：</div>
         <Input.Group compact>
-          <Input
-            :value="shareUrl"
-            readonly
-            style="width: calc(100% - 80px)"
-          />
+          <Input :value="shareUrl" readonly style="width: calc(100% - 80px)" />
           <Button type="primary" @click="copyShareUrl">复制</Button>
         </Input.Group>
       </div>
@@ -1988,9 +2220,24 @@ onMounted(() => {
       <Table
         :columns="[
           { title: '版本', dataIndex: 'version', key: 'version', width: 80 },
-          { title: '文件大小', dataIndex: 'fileSize', key: 'fileSize', width: 100 },
-          { title: '修改时间', dataIndex: 'updatedAt', key: 'updatedAt', width: 160 },
-          { title: '修改人', dataIndex: 'uploaderName', key: 'uploaderName', width: 100 },
+          {
+            title: '文件大小',
+            dataIndex: 'fileSize',
+            key: 'fileSize',
+            width: 100,
+          },
+          {
+            title: '修改时间',
+            dataIndex: 'updatedAt',
+            key: 'updatedAt',
+            width: 160,
+          },
+          {
+            title: '修改人',
+            dataIndex: 'uploaderName',
+            key: 'uploaderName',
+            width: 100,
+          },
           { title: '操作', key: 'action', width: 120 },
         ]"
         :data-source="versions"
@@ -2018,22 +2265,41 @@ onMounted(() => {
       :title="`OCR识别结果 - ${currentDocument?.fileName || currentDocument?.name || ''}`"
       width="700px"
     >
-      <div v-if="ocrLoading" style=" padding: 40px;text-align: center;">
-        <div style="font-size: 16px; color: #1890ff;">正在识别中...</div>
-        <div style=" margin-top: 8px;color: #999;">请稍候，OCR正在分析图片内容</div>
+      <div v-if="ocrLoading" style="padding: 40px; text-align: center">
+        <div style="font-size: 16px; color: #1890ff">正在识别中...</div>
+        <div style="margin-top: 8px; color: #999">
+          请稍候，OCR正在分析图片内容
+        </div>
       </div>
       <div v-else>
-        <div style=" min-height: 200px; max-height: 400px; padding: 16px; overflow-y: auto; font-family: monospace; line-height: 1.8; word-break: break-all; white-space: pre-wrap;background: #f9f9f9; border-radius: 8px;">
+        <div
+          style="
+            min-height: 200px;
+            max-height: 400px;
+            padding: 16px;
+            overflow-y: auto;
+            font-family: monospace;
+            line-height: 1.8;
+            word-break: break-all;
+            white-space: pre-wrap;
+            background: #f9f9f9;
+            border-radius: 8px;
+          "
+        >
           {{ ocrResult || '未识别到文字内容' }}
         </div>
-        <div style="margin-top: 12px; font-size: 12px; color: #999;">
+        <div style="margin-top: 12px; font-size: 12px; color: #999">
           提示：识别结果仅供参考，可能存在误差。如需精确内容，请人工校对。
         </div>
       </div>
       <template #footer>
         <Space>
           <Button @click="ocrModalVisible = false">关闭</Button>
-          <Button type="primary" :disabled="!ocrResult" @click="handleCopyOcrResult">
+          <Button
+            type="primary"
+            :disabled="!ocrResult"
+            @click="handleCopyOcrResult"
+          >
             复制文字
           </Button>
         </Space>
@@ -2084,17 +2350,46 @@ onMounted(() => {
 }
 
 /* 列宽度 */
-.col-checkbox { display: flex; flex-shrink: 0; align-items: center; justify-content: center; width: 32px; }
+.col-checkbox {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+}
 
-.col-drag { flex-shrink: 0; width: 30px; }
+.col-drag {
+  flex-shrink: 0;
+  width: 30px;
+}
 
-.col-type { flex-shrink: 0; width: 80px; text-align: center; }
+.col-type {
+  flex-shrink: 0;
+  width: 80px;
+  text-align: center;
+}
 
-.col-size { flex-shrink: 0; width: 80px; font-size: 12px; color: #888; text-align: right; }
+.col-size {
+  flex-shrink: 0;
+  width: 80px;
+  font-size: 12px;
+  color: #888;
+  text-align: right;
+}
 
-.col-time { flex-shrink: 0; width: 140px; font-size: 12px; color: #888; text-align: right; }
+.col-time {
+  flex-shrink: 0;
+  width: 140px;
+  font-size: 12px;
+  color: #888;
+  text-align: right;
+}
 
-.col-action { flex-shrink: 0; width: 160px; text-align: right; }
+.col-action {
+  flex-shrink: 0;
+  width: 160px;
+  text-align: right;
+}
 
 /* 拖拽手柄 */
 .drag-handle {
@@ -2238,11 +2533,13 @@ onMounted(() => {
   border-left-color: #5d4037 !important;
 }
 
+/* stylelint-disable-next-line selector-class-pattern -- 类名与后端枚举 CaseType.LEGAL_COUNSEL 一致 */
 .matter-card-LEGAL_COUNSEL {
   background: linear-gradient(to right, rgb(0 121 107 / 2%), #fff);
   border-left-color: #00796b !important;
 }
 
+/* stylelint-disable-next-line selector-class-pattern -- 类名与后端枚举 CaseType.SPECIAL_SERVICE 一致 */
 .matter-card-SPECIAL_SERVICE {
   background: linear-gradient(to right, rgb(230 74 25 / 2%), #fff);
   border-left-color: #e64a19 !important;

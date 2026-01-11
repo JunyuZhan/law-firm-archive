@@ -108,6 +108,7 @@ export interface ConflictCheckDTO {
   reviewTime?: string;
   reviewComment?: string;
   conflictDetails?: string;
+  remark?: string;
   createdAt?: string;
 }
 

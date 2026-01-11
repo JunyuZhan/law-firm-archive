@@ -1,10 +1,23 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
-import { message, Modal } from 'ant-design-vue';
-import { Page } from '@vben/common-ui';
-import { Card, Table, Button, Space, Tag, Popconfirm } from 'ant-design-vue';
-import { getMenuTree, deleteMenu } from '#/api/system';
 import type { MenuDTO } from '#/api/system/types';
+
+import { onMounted, ref } from 'vue';
+
+import { Page } from '@vben/common-ui';
+
+import {
+  Button,
+  Card,
+  message,
+  Modal,
+  Popconfirm,
+  Space,
+  Table,
+  Tag,
+} from 'ant-design-vue';
+
+import { deleteMenu, getMenuTree } from '#/api/system';
+
 import MenuModal from './components/MenuModal.vue';
 
 defineOptions({ name: 'SystemMenu' });
@@ -92,7 +105,7 @@ function handleModalSuccess() {
 
 // 获取菜单类型名称
 function getMenuTypeName(type: string) {
-  return menuTypeOptions.find(o => o.value === type)?.label || type;
+  return menuTypeOptions.find((o) => o.value === type)?.label || type;
 }
 
 // 获取菜单类型颜色
@@ -158,10 +171,10 @@ onMounted(() => {
     </Card>
 
     <!-- 菜单弹窗 -->
-    <MenuModal 
-      ref="menuModalRef" 
-      :menu-tree="dataSource" 
-      @success="handleModalSuccess" 
+    <MenuModal
+      ref="menuModalRef"
+      :menu-tree="dataSource"
+      @success="handleModalSuccess"
     />
   </Page>
 </template>

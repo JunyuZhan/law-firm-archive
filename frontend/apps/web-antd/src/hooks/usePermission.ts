@@ -1,4 +1,5 @@
 import { computed } from 'vue';
+
 import { useAccessStore } from '@vben/stores';
 
 /**
@@ -24,7 +25,9 @@ export function usePermission() {
    */
   const hasAnyPermission = (permissions: string[]): boolean => {
     if (!permissions || permissions.length === 0) return true;
-    return permissions.some(permission => accessStore.accessCodes.includes(permission));
+    return permissions.some((permission) =>
+      accessStore.accessCodes.includes(permission),
+    );
   };
 
   /**
@@ -34,7 +37,9 @@ export function usePermission() {
    */
   const hasAllPermissions = (permissions: string[]): boolean => {
     if (!permissions || permissions.length === 0) return true;
-    return permissions.every(permission => accessStore.accessCodes.includes(permission));
+    return permissions.every((permission) =>
+      accessStore.accessCodes.includes(permission),
+    );
   };
 
   /**
@@ -42,7 +47,7 @@ export function usePermission() {
    * @param role 角色码
    * @returns 是否有角色
    */
-  const hasRole = (role: string): boolean => {
+  const hasRole = (_role: string): boolean => {
     // 这里需要从用户信息中获取角色，暂时返回true
     // 可以根据实际需求从userStore中获取角色信息
     return true;

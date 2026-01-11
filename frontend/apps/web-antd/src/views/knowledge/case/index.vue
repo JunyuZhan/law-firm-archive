@@ -1,14 +1,42 @@
 <script setup lang="ts">
 import type { VxeGridProps } from '#/adapter/vxe-table';
-import { ref, onMounted } from 'vue';
+import type {
+  CaseCategoryDTO,
+  CaseLibraryDTO,
+  CaseLibraryQuery,
+} from '#/api/knowledge';
+
+import { onMounted, ref } from 'vue';
+
 import { Page } from '@vben/common-ui';
-import { useVbenVxeGrid } from '#/adapter/vxe-table';
-import { message, Tag, Space, Popconfirm, Card, Button, Input, Select, TreeSelect, Row, Col } from 'ant-design-vue';
 import { Plus } from '@vben/icons';
-import { getCaseList, deleteCase, collectCase, uncollectCase, getCaseCategoryTree, type CaseLibraryDTO, type CaseLibraryQuery, type CaseCategoryDTO } from '#/api/knowledge';
-import CaseModal from './components/CaseModal.vue';
-import CaseDetailModal from './components/CaseDetailModal.vue';
+
+import {
+  Button,
+  Card,
+  Col,
+  Input,
+  message,
+  Popconfirm,
+  Row,
+  Select,
+  Space,
+  Tag,
+  TreeSelect,
+} from 'ant-design-vue';
 import dayjs from 'dayjs';
+
+import { useVbenVxeGrid } from '#/adapter/vxe-table';
+import {
+  collectCase,
+  deleteCase,
+  getCaseCategoryTree,
+  getCaseList,
+  uncollectCase,
+} from '#/api/knowledge';
+
+import CaseDetailModal from './components/CaseDetailModal.vue';
+import CaseModal from './components/CaseModal.vue';
 
 defineOptions({ name: 'KnowledgeCase' });
 
@@ -42,19 +70,43 @@ const referenceValueMap: Record<string, { color: string; text: string }> = {
   LOW: { color: 'blue', text: '低' },
 };
 
-const gridColumns: VxeGridProps['gridOptions']['columns'] = [
+const gridColumns: VxeGridProps['columns'] = [
   { title: '案例名称', field: 'name', minWidth: 200 },
   { title: '案由类型', field: 'caseTypeName', width: 100 },
   { title: '审理法院', field: 'court', width: 150 },
-  { title: '判决日期', field: 'judgmentDate', width: 110, slots: { default: 'judgmentDate' } },
+  {
+    title: '判决日期',
+    field: 'judgmentDate',
+    width: 110,
+    slots: { default: 'judgmentDate' },
+  },
   { title: '案件结果', field: 'resultName', width: 90 },
   { title: '经办律师', field: 'lawyerName', width: 100 },
-  { title: '参考价值', field: 'referenceValue', width: 90, slots: { default: 'referenceValue' } },
-  { title: '操作', field: 'action', width: 180, fixed: 'right', slots: { default: 'action' } },
+  {
+    title: '参考价值',
+    field: 'referenceValue',
+    width: 90,
+    slots: { default: 'referenceValue' },
+  },
+  {
+    title: '操作',
+    field: 'action',
+    width: 180,
+    fixed: 'right',
+    slots: { default: 'action' },
+  },
 ];
 
-async function loadData({ page }: { page: { currentPage: number; pageSize: number } }) {
-  const params = { ...queryParams.value, pageNum: page.currentPage, pageSize: page.pageSize };
+async function loadData({
+  page,
+}: {
+  page: { currentPage: number; pageSize: number };
+}) {
+  const params = {
+    ...queryParams.value,
+    pageNum: page.currentPage,
+    pageSize: page.pageSize,
+  };
   const res = await getCaseList(params);
   return { items: res.list || [], total: res.total || 0 };
 }
@@ -78,7 +130,7 @@ async function loadCategories() {
 }
 
 function convertToTreeData(data: CaseCategoryDTO[]): any[] {
-  return data.map(item => ({
+  return data.map((item) => ({
     title: item.name,
     value: item.id,
     children: item.children ? convertToTreeData(item.children) : undefined,
@@ -90,7 +142,13 @@ function handleSearch() {
 }
 
 function handleReset() {
-  queryParams.value = { pageNum: 1, pageSize: 10, name: '', caseType: undefined, categoryId: undefined };
+  queryParams.value = {
+    pageNum: 1,
+    pageSize: 10,
+    name: '',
+    caseType: undefined,
+    categoryId: undefined,
+  };
   gridApi.reload();
 }
 
@@ -146,34 +204,62 @@ onMounted(() => {
       <div style="margin-bottom: 16px">
         <Row :gutter="[16, 16]">
           <Col :xs="24" :sm="12" :md="6" :lg="4">
-            <Select v-model:value="queryParams.caseType" placeholder="案由类型" style="width: 100%" allowClear :options="caseTypeOptions" />
+            <Select
+              v-model:value="queryParams.caseType"
+              placeholder="案由类型"
+              style="width: 100%"
+              allow-clear
+              :options="caseTypeOptions"
+            />
           </Col>
           <Col :xs="24" :sm="12" :md="6" :lg="4">
-            <TreeSelect v-model:value="queryParams.categoryId" placeholder="案例分类" style="width: 100%" allowClear :treeData="convertToTreeData(categories)" />
+            <TreeSelect
+              v-model:value="queryParams.categoryId"
+              placeholder="案例分类"
+              style="width: 100%"
+              allow-clear
+              :tree-data="convertToTreeData(categories)"
+            />
           </Col>
           <Col :xs="24" :sm="12" :md="6" :lg="4">
-            <Input v-model:value="queryParams.name" placeholder="搜索案例" allowClear @pressEnter="handleSearch" />
+            <Input
+              v-model:value="queryParams.name"
+              placeholder="搜索案例"
+              allow-clear
+              @press-enter="handleSearch"
+            />
           </Col>
           <Col :xs="24" :sm="12" :md="6" :lg="12">
             <Space wrap>
               <Button type="primary" @click="handleSearch">查询</Button>
               <Button @click="handleReset">重置</Button>
-              <Button type="primary" @click="handleAdd"><Plus class="size-4" />添加案例</Button>
+              <Button type="primary" @click="handleAdd">
+                <Plus class="size-4" />添加案例
+              </Button>
             </Space>
           </Col>
         </Row>
       </div>
 
       <Grid>
-        <template #judgmentDate="{ row }">{{ formatDate(row.judgmentDate) }}</template>
+        <template #judgmentDate="{ row }">
+          {{ formatDate(row.judgmentDate) }}
+        </template>
         <template #referenceValue="{ row }">
-          <Tag :color="referenceValueMap[row.referenceValue]?.color || 'default'">
-            {{ row.referenceValueName || referenceValueMap[row.referenceValue]?.text }}
+          <Tag
+            :color="referenceValueMap[row.referenceValue]?.color || 'default'"
+          >
+            {{
+              row.referenceValueName ||
+              referenceValueMap[row.referenceValue]?.text
+            }}
           </Tag>
         </template>
         <template #action="{ row }">
           <Space>
-            <a @click="handleCollect(row)">{{ row.collected ? '取消收藏' : '收藏' }}</a>
+            <a @click="handleCollect(row)">{{
+              row.collected ? '取消收藏' : '收藏'
+            }}</a>
             <a @click="handleView(row)">查看</a>
             <a @click="handleEdit(row)">编辑</a>
             <Popconfirm title="确定删除此案例？" @confirm="handleDelete(row)">

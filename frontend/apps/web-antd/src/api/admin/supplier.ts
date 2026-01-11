@@ -1,9 +1,9 @@
+import type { PageResult } from '../matter/types';
+
 /**
  * 供应商管理 API
  */
 import { requestClient } from '#/api/request';
-
-import type { PageResult } from '../matter/types';
 
 // ========== 类型定义 ==========
 export interface SupplierDTO {
@@ -57,7 +57,9 @@ export interface CreateSupplierCommand {
 
 /** 分页查询供应商列表 */
 export function getSupplierList(params: SupplierQuery) {
-  return requestClient.get<PageResult<SupplierDTO>>('/admin/suppliers', { params });
+  return requestClient.get<PageResult<SupplierDTO>>('/admin/suppliers', {
+    params,
+  });
 }
 
 /** 获取供应商详情 */
@@ -82,11 +84,12 @@ export function deleteSupplier(id: number) {
 
 /** 启用/停用供应商 */
 export function changeSupplierStatus(id: number, status: string) {
-  return requestClient.put(`/admin/suppliers/${id}/status`, null, { params: { status } });
+  return requestClient.put(`/admin/suppliers/${id}/status`, null, {
+    params: { status },
+  });
 }
 
 /** 获取供应商统计 */
 export function getSupplierStatistics() {
   return requestClient.get<Record<string, any>>('/admin/suppliers/statistics');
 }
-

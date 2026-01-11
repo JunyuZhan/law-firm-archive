@@ -39,8 +39,8 @@ minio:
 ```yaml
 jwt:
   secret: your-secret-key
-  expiration: 86400000  # 24小时
-  refresh-expiration: 604800000  # 7天
+  expiration: 86400000 # 24小时
+  refresh-expiration: 604800000 # 7天
 ```
 
 ## 前端配置
@@ -53,18 +53,18 @@ VITE_GLOB_API_URL=/api
 
 ## 环境变量
 
-| 变量名 | 说明 | 默认值 |
-|--------|------|--------|
-| DB_HOST | 数据库地址 | localhost |
-| DB_PORT | 数据库端口 | 5432 |
-| DB_NAME | 数据库名 | lawfirm |
-| DB_USER | 数据库用户 | lawfirm |
-| DB_PASSWORD | 数据库密码 | - |
-| REDIS_HOST | Redis 地址 | localhost |
-| REDIS_PORT | Redis 端口 | 6379 |
-| MINIO_ENDPOINT | MinIO 地址 | http://localhost:9000 |
-| MINIO_ACCESS_KEY | MinIO 访问密钥 | minioadmin |
-| MINIO_SECRET_KEY | MinIO 密钥 | minioadmin |
+| 变量名           | 说明           | 默认值                |
+| ---------------- | -------------- | --------------------- |
+| DB_HOST          | 数据库地址     | localhost             |
+| DB_PORT          | 数据库端口     | 5432                  |
+| DB_NAME          | 数据库名       | lawfirm               |
+| DB_USER          | 数据库用户     | lawfirm               |
+| DB_PASSWORD      | 数据库密码     | -                     |
+| REDIS_HOST       | Redis 地址     | localhost             |
+| REDIS_PORT       | Redis 端口     | 6379                  |
+| MINIO_ENDPOINT   | MinIO 地址     | http://localhost:9000 |
+| MINIO_ACCESS_KEY | MinIO 访问密钥 | minioadmin            |
+| MINIO_SECRET_KEY | MinIO 密钥     | minioadmin            |
 
 ## Docker Compose 配置
 

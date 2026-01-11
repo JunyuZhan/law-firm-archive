@@ -1,9 +1,9 @@
+import type { PageResult } from '../matter/types';
+
 /**
  * 报表模板管理 API
  */
 import { requestClient } from '#/api/request';
-
-import type { PageResult } from '../matter/types';
 
 // ========== 类型定义 ==========
 export interface FieldConfig {
@@ -88,22 +88,36 @@ export interface GenerateReportByTemplateCommand {
 
 /** 分页查询报表模板 */
 export function getReportTemplateList(params: ReportTemplateQuery) {
-  return requestClient.get<PageResult<ReportTemplateDTO>>('/workbench/report-template', { params });
+  return requestClient.get<PageResult<ReportTemplateDTO>>(
+    '/workbench/report-template',
+    { params },
+  );
 }
 
 /** 获取模板详情 */
 export function getReportTemplateDetail(id: number) {
-  return requestClient.get<ReportTemplateDTO>(`/workbench/report-template/${id}`);
+  return requestClient.get<ReportTemplateDTO>(
+    `/workbench/report-template/${id}`,
+  );
 }
 
 /** 创建报表模板 */
 export function createReportTemplate(data: CreateReportTemplateCommand) {
-  return requestClient.post<ReportTemplateDTO>('/workbench/report-template', data);
+  return requestClient.post<ReportTemplateDTO>(
+    '/workbench/report-template',
+    data,
+  );
 }
 
 /** 更新报表模板 */
-export function updateReportTemplate(id: number, data: CreateReportTemplateCommand) {
-  return requestClient.put<ReportTemplateDTO>(`/workbench/report-template/${id}`, data);
+export function updateReportTemplate(
+  id: number,
+  data: CreateReportTemplateCommand,
+) {
+  return requestClient.put<ReportTemplateDTO>(
+    `/workbench/report-template/${id}`,
+    data,
+  );
 }
 
 /** 删除报表模板 */
@@ -122,19 +136,29 @@ export function disableReportTemplate(id: number) {
 }
 
 /** 根据模板生成报表 */
-export function generateReportByTemplate(id: number, data?: GenerateReportByTemplateCommand) {
-  return requestClient.post<any>(`/workbench/report-template/${id}/generate`, data?.parameters, {
-    params: { format: data?.format || 'EXCEL' },
-  });
+export function generateReportByTemplate(
+  id: number,
+  data?: GenerateReportByTemplateCommand,
+) {
+  return requestClient.post<any>(
+    `/workbench/report-template/${id}/generate`,
+    data?.parameters,
+    {
+      params: { format: data?.format || 'EXCEL' },
+    },
+  );
 }
 
 /** 获取可用数据源列表 */
 export function getReportDataSources() {
-  return requestClient.get<Record<string, any>[]>('/workbench/report-template/data-sources');
+  return requestClient.get<Record<string, any>[]>(
+    '/workbench/report-template/data-sources',
+  );
 }
 
 /** 获取数据源可用字段 */
 export function getReportDataSourceFields(dataSource: string) {
-  return requestClient.get<Record<string, any>[]>(`/workbench/report-template/data-sources/${dataSource}/fields`);
+  return requestClient.get<Record<string, any>[]>(
+    `/workbench/report-template/data-sources/${dataSource}/fields`,
+  );
 }
-

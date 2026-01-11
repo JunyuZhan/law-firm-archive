@@ -1,9 +1,9 @@
+import type { PageResult } from '../matter/types';
+
 /**
  * 员工发展计划 API
  */
 import { requestClient } from '#/api/request';
-
-import type { PageResult } from '../matter/types';
 
 // ========== 类型定义 ==========
 export interface DevelopmentMilestoneDTO {
@@ -89,7 +89,10 @@ export interface MilestoneItem {
 
 /** 分页查询发展规划 */
 export function getDevelopmentPlanList(params: DevelopmentPlanQuery) {
-  return requestClient.get<PageResult<DevelopmentPlanDTO>>('/hr/development-plan', { params });
+  return requestClient.get<PageResult<DevelopmentPlanDTO>>(
+    '/hr/development-plan',
+    { params },
+  );
 }
 
 /** 获取规划详情 */
@@ -99,7 +102,9 @@ export function getDevelopmentPlanDetail(id: number) {
 
 /** 获取我的当年规划 */
 export function getMyCurrentDevelopmentPlan() {
-  return requestClient.get<DevelopmentPlanDTO>('/hr/development-plan/my-current');
+  return requestClient.get<DevelopmentPlanDTO>(
+    '/hr/development-plan/my-current',
+  );
 }
 
 /** 创建发展规划 */
@@ -108,8 +113,14 @@ export function createDevelopmentPlan(data: CreateDevelopmentPlanCommand) {
 }
 
 /** 更新发展规划 */
-export function updateDevelopmentPlan(id: number, data: CreateDevelopmentPlanCommand) {
-  return requestClient.put<DevelopmentPlanDTO>(`/hr/development-plan/${id}`, data);
+export function updateDevelopmentPlan(
+  id: number,
+  data: CreateDevelopmentPlanCommand,
+) {
+  return requestClient.put<DevelopmentPlanDTO>(
+    `/hr/development-plan/${id}`,
+    data,
+  );
 }
 
 /** 删除发展规划 */
@@ -124,13 +135,22 @@ export function submitDevelopmentPlan(id: number) {
 
 /** 审核规划 */
 export function reviewDevelopmentPlan(id: number, comment?: string) {
-  return requestClient.post(`/hr/development-plan/${id}/review`, null, { params: { comment } });
-}
-
-/** 更新里程碑状态 */
-export function updateMilestoneStatus(milestoneId: number, status: string, completionNote?: string) {
-  return requestClient.post(`/hr/development-plan/milestones/${milestoneId}/status`, null, {
-    params: { status, completionNote },
+  return requestClient.post(`/hr/development-plan/${id}/review`, null, {
+    params: { comment },
   });
 }
 
+/** 更新里程碑状态 */
+export function updateMilestoneStatus(
+  milestoneId: number,
+  status: string,
+  completionNote?: string,
+) {
+  return requestClient.post(
+    `/hr/development-plan/milestones/${milestoneId}/status`,
+    null,
+    {
+      params: { status, completionNote },
+    },
+  );
+}

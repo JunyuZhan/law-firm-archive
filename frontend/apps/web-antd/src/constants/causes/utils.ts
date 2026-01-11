@@ -2,24 +2,30 @@
  * 案由数据工具函数
  */
 import type { CauseCategory, CauseItem, CauseType } from './types';
+
+import { ADMIN_CAUSES } from './admin-causes';
 import { CIVIL_CAUSES, CIVIL_PART6_LABOR } from './civil-causes';
 import { CRIMINAL_CHARGES } from './criminal-charges';
-import { ADMIN_CAUSES } from './admin-causes';
 
 /** 根据案件类型获取案由数据 */
 export function getCausesByType(type: CauseType): CauseCategory[] {
   switch (type) {
-    case 'CIVIL':
-      return CIVIL_CAUSES;
-    case 'CRIMINAL':
-      return CRIMINAL_CHARGES;
-    case 'ADMINISTRATIVE':
+    case 'ADMINISTRATIVE': {
       return ADMIN_CAUSES;
-    case 'LABOR_ARBITRATION':
+    }
+    case 'CIVIL': {
+      return CIVIL_CAUSES;
+    }
+    case 'CRIMINAL': {
+      return CRIMINAL_CHARGES;
+    }
+    case 'LABOR_ARBITRATION': {
       // 劳动仲裁使用民事案由中的劳动争议
       return [CIVIL_PART6_LABOR];
-    default:
+    }
+    default: {
       return [];
+    }
   }
 }
 
@@ -57,7 +63,7 @@ export function causesToTreeSelectOptions(categories: CauseCategory[]) {
 
 /** 将案由数据扁平化为下拉选项 (Select) - 只取最末级 */
 export function causesToSelectOptions(categories: CauseCategory[]) {
-  const options: { value: string; label: string; category: string }[] = [];
+  const options: { category: string; label: string; value: string }[] = [];
 
   const flattenItem = (item: CauseItem, categoryName: string) => {
     if (item.children && item.children.length > 0) {
@@ -127,20 +133,98 @@ export const MATTER_TYPE_OPTIONS = [
 /** 案件细分类型选项 */
 export const CASE_CATEGORY_OPTIONS = [
   // 诉讼类
-  { value: 'CIVIL', label: '民事案件', matterType: 'LITIGATION', hasCause: true, causeType: 'CIVIL' as CauseType },
-  { value: 'CRIMINAL', label: '刑事案件', matterType: 'LITIGATION', hasCause: true, causeType: 'CRIMINAL' as CauseType },
-  { value: 'ADMINISTRATIVE', label: '行政案件', matterType: 'LITIGATION', hasCause: true, causeType: 'ADMINISTRATIVE' as CauseType },
-  { value: 'BANKRUPTCY', label: '破产案件', matterType: 'LITIGATION', hasCause: false, causeType: null },
-  { value: 'IP', label: '知识产权案件', matterType: 'LITIGATION', hasCause: false, causeType: null },
-  { value: 'COMMERCIAL_ARBITRATION', label: '商事仲裁', matterType: 'LITIGATION', hasCause: false, causeType: null },
-  { value: 'LABOR_ARBITRATION', label: '劳动仲裁', matterType: 'LITIGATION', hasCause: true, causeType: 'LABOR_ARBITRATION' as CauseType },
-  { value: 'ENFORCEMENT', label: '执行案件', matterType: 'LITIGATION', hasCause: false, causeType: null },
+  {
+    value: 'CIVIL',
+    label: '民事案件',
+    matterType: 'LITIGATION',
+    hasCause: true,
+    causeType: 'CIVIL' as CauseType,
+  },
+  {
+    value: 'CRIMINAL',
+    label: '刑事案件',
+    matterType: 'LITIGATION',
+    hasCause: true,
+    causeType: 'CRIMINAL' as CauseType,
+  },
+  {
+    value: 'ADMINISTRATIVE',
+    label: '行政案件',
+    matterType: 'LITIGATION',
+    hasCause: true,
+    causeType: 'ADMINISTRATIVE' as CauseType,
+  },
+  {
+    value: 'BANKRUPTCY',
+    label: '破产案件',
+    matterType: 'LITIGATION',
+    hasCause: false,
+    causeType: null,
+  },
+  {
+    value: 'IP',
+    label: '知识产权案件',
+    matterType: 'LITIGATION',
+    hasCause: false,
+    causeType: null,
+  },
+  {
+    value: 'COMMERCIAL_ARBITRATION',
+    label: '商事仲裁',
+    matterType: 'LITIGATION',
+    hasCause: false,
+    causeType: null,
+  },
+  {
+    value: 'LABOR_ARBITRATION',
+    label: '劳动仲裁',
+    matterType: 'LITIGATION',
+    hasCause: true,
+    causeType: 'LABOR_ARBITRATION' as CauseType,
+  },
+  {
+    value: 'ENFORCEMENT',
+    label: '执行案件',
+    matterType: 'LITIGATION',
+    hasCause: false,
+    causeType: null,
+  },
   // 非诉类
-  { value: 'LEGAL_COUNSEL', label: '法律顾问', matterType: 'NON_LITIGATION', hasCause: false, causeType: null },
-  { value: 'SPECIAL_SERVICE', label: '专项服务', matterType: 'NON_LITIGATION', hasCause: false, causeType: null },
-  { value: 'DUE_DILIGENCE', label: '尽职调查', matterType: 'NON_LITIGATION', hasCause: false, causeType: null },
-  { value: 'CONTRACT_REVIEW', label: '合同审查', matterType: 'NON_LITIGATION', hasCause: false, causeType: null },
-  { value: 'LEGAL_OPINION', label: '法律意见', matterType: 'NON_LITIGATION', hasCause: false, causeType: null },
+  {
+    value: 'LEGAL_COUNSEL',
+    label: '法律顾问',
+    matterType: 'NON_LITIGATION',
+    hasCause: false,
+    causeType: null,
+  },
+  {
+    value: 'SPECIAL_SERVICE',
+    label: '专项服务',
+    matterType: 'NON_LITIGATION',
+    hasCause: false,
+    causeType: null,
+  },
+  {
+    value: 'DUE_DILIGENCE',
+    label: '尽职调查',
+    matterType: 'NON_LITIGATION',
+    hasCause: false,
+    causeType: null,
+  },
+  {
+    value: 'CONTRACT_REVIEW',
+    label: '合同审查',
+    matterType: 'NON_LITIGATION',
+    hasCause: false,
+    causeType: null,
+  },
+  {
+    value: 'LEGAL_OPINION',
+    label: '法律意见',
+    matterType: 'NON_LITIGATION',
+    hasCause: false,
+    causeType: null,
+  },
 ];
 
 /** 根据项目大类筛选案件类型 */

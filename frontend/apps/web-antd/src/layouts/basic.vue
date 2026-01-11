@@ -1,9 +1,10 @@
 <script lang="ts" setup>
 import type { NotificationItem } from '@vben/layouts';
 
+import type { NotificationDTO } from '#/api/system/notification';
+
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import { message } from 'ant-design-vue';
 
 import { AuthenticationLoginExpiredModal } from '@vben/common-ui';
 import { useWatermark } from '@vben/hooks';
@@ -18,21 +19,23 @@ import { preferences } from '@vben/preferences';
 import { useAccessStore, useUserStore } from '@vben/stores';
 import { openWindow } from '@vben/utils';
 
+import { message } from 'ant-design-vue';
+
+import {
+  deleteNotification as apiDeleteNotification,
+  deleteReadNotifications as apiDeleteReadNotifications,
+  markAllAsRead as apiMarkAllAsRead,
+  markAsRead as apiMarkAsRead,
+  getMyNotifications,
+} from '#/api/system/notification';
 import { $t } from '#/locales';
 import { useAuthStore } from '#/store';
 import LoginForm from '#/views/_core/authentication/login.vue';
-import {
-  getMyNotifications,
-  markAsRead as apiMarkAsRead,
-  markAllAsRead as apiMarkAllAsRead,
-  deleteNotification as apiDeleteNotification,
-  deleteReadNotifications as apiDeleteReadNotifications,
-  type NotificationDTO,
-} from '#/api/system/notification';
 
 const notifications = ref<NotificationItem[]>([]);
-let pollingTimer: ReturnType<typeof setInterval> | null = null;
-let previousUnreadCount = 0;
+let pollingTimer: null | ReturnType<typeof setInterval> = null;
+// 用于跟踪上次未读数量（未来功能扩展用）
+// let _previousUnreadCount = 0;
 
 // 已弹窗提醒过的通知ID集合（存储在localStorage，避免重复弹窗）
 const NOTIFIED_IDS_KEY = 'lawfirm_notified_notification_ids';
@@ -46,15 +49,15 @@ function getNotifiedIds(): Set<string> {
   }
 }
 
-function addNotifiedId(id: string | number) {
+function addNotifiedId(id: number | string) {
   const ids = getNotifiedIds();
   ids.add(String(id));
   // 只保留最近100个，避免localStorage过大
-  const arr = Array.from(ids).slice(-100);
+  const arr = [...ids].slice(-100);
   localStorage.setItem(NOTIFIED_IDS_KEY, JSON.stringify(arr));
 }
 
-function hasBeenNotified(id: string | number): boolean {
+function hasBeenNotified(id: number | string): boolean {
   return getNotifiedIds().has(String(id));
 }
 
@@ -72,43 +75,45 @@ function playNotificationSound() {
   try {
     // 懒加载 AudioContext
     if (!audioContext) {
-      audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      audioContext = new (
+        window.AudioContext || (window as any).webkitAudioContext
+      )();
     }
-    
+
     const ctx = audioContext;
     const now = ctx.currentTime;
-    
+
     // 创建振荡器产生声音
     const oscillator = ctx.createOscillator();
     const gainNode = ctx.createGain();
-    
+
     oscillator.connect(gainNode);
     gainNode.connect(ctx.destination);
-    
+
     // 设置音调 - 使用两个音符创建悦耳的提示音
     oscillator.type = 'sine';
-    oscillator.frequency.setValueAtTime(880, now);       // A5
+    oscillator.frequency.setValueAtTime(880, now); // A5
     oscillator.frequency.setValueAtTime(1100, now + 0.1); // C#6
-    
+
     // 设置音量包络 - 淡入淡出
     gainNode.gain.setValueAtTime(0, now);
     gainNode.gain.linearRampToValueAtTime(0.3, now + 0.02);
     gainNode.gain.linearRampToValueAtTime(0.2, now + 0.1);
     gainNode.gain.linearRampToValueAtTime(0, now + 0.3);
-    
+
     oscillator.start(now);
     oscillator.stop(now + 0.3);
-    
+
     console.debug('通知提示音已播放');
-  } catch (e) {
-    console.debug('播放通知音效失败:', e);
+  } catch (error) {
+    console.debug('播放通知音效失败:', error);
   }
 }
 
 // 显示浏览器通知
 async function showBrowserNotification(title: string, body: string) {
   if (!('Notification' in window)) return;
-  
+
   if (Notification.permission === 'granted') {
     new Notification(title, {
       body,
@@ -143,7 +148,7 @@ function getNotificationAvatar(type: string) {
 // 获取业务链接
 function getBusinessLink(notification: NotificationDTO): string | undefined {
   if (!notification.businessType || !notification.businessId) return undefined;
-  
+
   const linkMap: Record<string, (id?: number) => string> = {
     // LETTER类型：使用特殊标记，点击时异步获取申请详情后跳转到项目详情页
     LETTER: (id) => `letter:${id}`, // 特殊标记，不会直接跳转
@@ -156,15 +161,17 @@ function getBusinessLink(notification: NotificationDTO): string | undefined {
     SCHEDULE: (id) => `/matter/detail/${id}`, // 日程关联项目
     PAYROLL: (id) => `/hr/payroll${id ? `?id=${id}` : ''}`, // 工资通知
   };
-  
+
   const linkGenerator = linkMap[notification.businessType];
   if (!linkGenerator) return undefined;
-  
+
   return linkGenerator(notification.businessId);
 }
 
 // 处理通知点击 - 简化逻辑，只标记为已读，不跳转
-async function handleNotificationClick(item: NotificationItem & { rawData?: NotificationDTO }) {
+async function handleNotificationClick(
+  item: NotificationItem & { rawData?: NotificationDTO },
+) {
   // 点击通知时，只标记为已读，不进行跳转
   // 如果需要查看详情，用户可以从相应的菜单入口进入
   if (!item.isRead && item.id) {
@@ -172,29 +179,28 @@ async function handleNotificationClick(item: NotificationItem & { rawData?: Noti
   }
 }
 
-
 // 安全跳转（已废弃，使用 handleNotificationClick 处理特殊类型）
 // async function safeNavigate(link: string | undefined) {
 //   if (!link) {
 //     message.warning('该通知暂不支持跳转');
 //     return;
 //   }
-//   
+//
 //   // 移除查询参数检查路由
 //   const pathWithoutQuery = link.split('?')[0] || link;
-//   
+//
 //   // 检查路由是否存在
 //   if (!checkRouteExists(pathWithoutQuery)) {
 //     message.warning('无法跳转到该页面，页面不存在或未配置');
 //     return;
 //   }
-//   
+//
 //   // 检查权限
 //   if (!checkRoutePermission(pathWithoutQuery)) {
 //     message.warning('您没有权限访问该页面');
 //     return;
 //   }
-//   
+//
 //   // 执行跳转
 //   try {
 //     await router.push(link);
@@ -214,10 +220,10 @@ function formatDate(dateStr: string): string {
   const date = new Date(dateStr);
   const now = new Date();
   const diff = now.getTime() - date.getTime();
-  const minutes = Math.floor(diff / 60000);
-  const hours = Math.floor(diff / 3600000);
-  const days = Math.floor(diff / 86400000);
-  
+  const minutes = Math.floor(diff / 60_000);
+  const hours = Math.floor(diff / 3_600_000);
+  const days = Math.floor(diff / 86_400_000);
+
   if (minutes < 1) return '刚刚';
   if (minutes < 60) return `${minutes}分钟前`;
   if (hours < 24) return `${hours}小时前`;
@@ -226,15 +232,15 @@ function formatDate(dateStr: string): string {
 }
 
 // 加载通知 - 只加载未读消息
-async function loadNotifications(isInitial = false) {
+async function loadNotifications(_isInitial = false) {
   try {
     // 只加载未读消息，避免已读消息重复出现
-    const res = await getMyNotifications({ 
-      pageNum: 1, 
+    const res = await getMyNotifications({
+      pageNum: 1,
       pageSize: 20,
-      isRead: false  // 只加载未读消息
+      isRead: false, // 只加载未读消息
     });
-    
+
     if (res && res.records) {
       const newNotifications = res.records.map((n: NotificationDTO) => ({
         id: n.id,
@@ -246,28 +252,28 @@ async function loadNotifications(isInitial = false) {
         link: getBusinessLink(n),
         rawData: n,
       }));
-      
+
       // 找出真正的"新"通知：未读且未弹窗提醒过的
       const trulyNewNotifications = newNotifications.filter(
-        (n: NotificationItem) => !n.isRead && !hasBeenNotified(n.id)
+        (n: NotificationItem) => !n.isRead && !hasBeenNotified(n.id),
       );
-      
+
       // 只对真正的新通知播放提示音和弹窗
       if (trulyNewNotifications.length > 0) {
         playNotificationSound();
-        
+
         // 显示浏览器通知
         const latestNew = trulyNewNotifications[0];
         if (latestNew) {
           showBrowserNotification(
             latestNew.title || '新通知',
-            latestNew.message || '您有新的通知'
+            latestNew.message || '您有新的通知',
           );
           // 标记为已弹窗提醒
           addNotifiedId(latestNew.id);
         }
       }
-      
+
       notifications.value = newNotifications;
     }
   } catch (error) {
@@ -279,7 +285,7 @@ async function loadNotifications(isInitial = false) {
 // 启动轮询
 function startPolling() {
   // 每30秒刷新一次通知（更频繁以便及时发现新通知）
-  pollingTimer = setInterval(() => loadNotifications(false), 30000);
+  pollingTimer = setInterval(() => loadNotifications(false), 30_000);
 }
 
 // 停止轮询
@@ -295,8 +301,8 @@ async function requestNotificationPermission() {
   if ('Notification' in window && Notification.permission === 'default') {
     try {
       await Notification.requestPermission();
-    } catch (e) {
-      console.debug('请求通知权限失败:', e);
+    } catch (error) {
+      console.debug('请求通知权限失败:', error);
     }
   }
 }
@@ -322,7 +328,8 @@ const showDot = computed(() =>
 );
 
 // 用户手册地址（docs 应用部署后的地址，开发时指向本地 6173 端口）
-const USER_MANUAL_URL = import.meta.env.VITE_USER_MANUAL_URL || 'http://localhost:6173/';
+const USER_MANUAL_URL =
+  import.meta.env.VITE_USER_MANUAL_URL || 'http://localhost:6173/';
 
 const menus = computed(() => [
   {
@@ -357,9 +364,9 @@ async function handleNoticeClear() {
     message.info('没有消息需要清除');
     return;
   }
-  
+
   const totalCount = notifications.value.length;
-  
+
   try {
     // 先批量删除已读消息
     const readNotifications = notifications.value.filter((item) => item.isRead);
@@ -370,32 +377,34 @@ async function handleNoticeClear() {
         console.warn('批量删除已读通知失败，尝试逐个删除:', error);
         // 如果批量删除失败，尝试逐个删除已读消息
         await Promise.all(
-          readNotifications.map((item) => 
-            apiDeleteNotification(Number(item.id)).catch((err) => {
-              console.warn(`删除已读通知失败 (id: ${item.id}):`, err);
-            })
-          )
+          readNotifications.map((item) =>
+            apiDeleteNotification(Number(item.id)).catch((error_) => {
+              console.warn(`删除已读通知失败 (id: ${item.id}):`, error_);
+            }),
+          ),
         );
       }
     }
-    
+
     // 删除未读消息（逐个删除）
-    const unreadNotifications = notifications.value.filter((item) => !item.isRead);
+    const unreadNotifications = notifications.value.filter(
+      (item) => !item.isRead,
+    );
     if (unreadNotifications.length > 0) {
       await Promise.all(
-        unreadNotifications.map((item) => 
-          apiDeleteNotification(Number(item.id)).catch((err) => {
-            console.warn(`删除未读通知失败 (id: ${item.id}):`, err);
-          })
-        )
+        unreadNotifications.map((item) =>
+          apiDeleteNotification(Number(item.id)).catch((error) => {
+            console.warn(`删除未读通知失败 (id: ${item.id}):`, error);
+          }),
+        ),
       );
     }
-    
+
     // 清空本地列表
     notifications.value = [];
-    
+
     message.success(`已清除 ${totalCount} 条消息`);
-    
+
     // 重新加载通知列表，确保数据同步
     await loadNotifications(false);
   } catch (error) {

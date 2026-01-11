@@ -4,7 +4,7 @@
 import { requestClient } from '#/api/request';
 
 export interface RevenueStats {
-  totalRevenue: number | string;  // BigDecimal可能序列化为字符串
+  totalRevenue: number | string; // BigDecimal可能序列化为字符串
   monthlyRevenue: number | string;
   yearlyRevenue: number | string;
   pendingRevenue: number | string;
@@ -14,7 +14,7 @@ export interface RevenueStats {
 
 export interface RevenueTrend {
   period: string;
-  amount: number | string;  // BigDecimal可能序列化为字符串
+  amount: number | string; // BigDecimal可能序列化为字符串
 }
 
 export interface MatterStats {
@@ -37,8 +37,8 @@ export interface LawyerPerformance {
   lawyerId: number;
   lawyerName: string;
   matterCount: number;
-  revenue: number | string;  // BigDecimal可能序列化为字符串
-  commission: number | string;  // BigDecimal可能序列化为字符串
+  revenue: number | string; // BigDecimal可能序列化为字符串
+  commission: number | string; // BigDecimal可能序列化为字符串
   hours: number;
   rank: number;
 }
@@ -60,8 +60,10 @@ export function getClientStats() {
 
 /** 获取律师业绩排行 */
 export function getLawyerPerformanceRanking(limit = 10) {
-  return requestClient.get<LawyerPerformance[]>('/workbench/statistics/lawyer-performance', {
-    params: { limit },
-  });
+  return requestClient.get<LawyerPerformance[]>(
+    '/workbench/statistics/lawyer-performance',
+    {
+      params: { limit },
+    },
+  );
 }
-

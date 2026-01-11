@@ -21,7 +21,7 @@ export interface DossierTemplateItem {
   templateId: number;
   parentId: number;
   name: string;
-  itemType: 'FOLDER' | 'FILE';
+  itemType: 'FILE' | 'FOLDER';
   fileCategory?: string;
   sortOrder: number;
   required: boolean;
@@ -34,7 +34,7 @@ export interface MatterDossierItem {
   matterId: number;
   parentId: number;
   name: string;
-  itemType: 'FOLDER' | 'FILE';
+  itemType: 'FILE' | 'FOLDER';
   fileCategory?: string;
   sortOrder: number;
   documentCount: number;
@@ -51,24 +51,39 @@ export function getMatterDossierItems(matterId: number) {
 
 /** 初始化项目卷宗目录 */
 export function initMatterDossier(matterId: number) {
-  return requestClient.post<MatterDossierItem[]>(`/matter/${matterId}/dossier/init`);
+  return requestClient.post<MatterDossierItem[]>(
+    `/matter/${matterId}/dossier/init`,
+  );
 }
 
 /** 添加自定义目录项 */
-export function addDossierItem(matterId: number, params: { 
-  parentId?: number; 
-  name: string; 
-  itemType?: string; 
-}) {
-  return requestClient.post<MatterDossierItem>(`/matter/${matterId}/dossier/item`, params);
+export function addDossierItem(
+  matterId: number,
+  params: {
+    itemType?: string;
+    name: string;
+    parentId?: number;
+  },
+) {
+  return requestClient.post<MatterDossierItem>(
+    `/matter/${matterId}/dossier/item`,
+    params,
+  );
 }
 
 /** 更新目录项 */
-export function updateDossierItem(matterId: number, itemId: number, params: { 
-  name?: string; 
-  sortOrder?: number; 
-}) {
-  return requestClient.put<MatterDossierItem>(`/matter/${matterId}/dossier/item/${itemId}`, params);
+export function updateDossierItem(
+  matterId: number,
+  itemId: number,
+  params: {
+    name?: string;
+    sortOrder?: number;
+  },
+) {
+  return requestClient.put<MatterDossierItem>(
+    `/matter/${matterId}/dossier/item/${itemId}`,
+    params,
+  );
 }
 
 /** 删除目录项 */
@@ -90,7 +105,9 @@ export function getAllDossierTemplates() {
 
 /** 获取模板目录项 */
 export function getDossierTemplateItems(templateId: number) {
-  return requestClient.get<DossierTemplateItem[]>(`/dossier/template/${templateId}/items`);
+  return requestClient.get<DossierTemplateItem[]>(
+    `/dossier/template/${templateId}/items`,
+  );
 }
 
 // ========== 文件分类常量 ==========
@@ -112,4 +129,3 @@ export const CASE_TYPE_OPTIONS = [
   { label: '法律顾问', value: 'LEGAL_COUNSEL' },
   { label: '其他非诉', value: 'NON_LITIGATION' },
 ];
-

@@ -4,6 +4,7 @@ import type { VbenFormSchema } from '#/adapter/form';
 import { computed, onMounted, ref } from 'vue';
 
 import { ProfileBaseSetting } from '@vben/common-ui';
+
 import { message } from 'ant-design-vue';
 
 import { getProfileInfo, updateProfile } from '#/api';
@@ -103,8 +104,8 @@ onMounted(() => {
 });
 </script>
 <template>
-  <ProfileBaseSetting 
-    ref="profileBaseSettingRef" 
+  <ProfileBaseSetting
+    ref="profileBaseSettingRef"
     :form-schema="formSchema"
     :loading="loading"
     @submit="handleSubmit"

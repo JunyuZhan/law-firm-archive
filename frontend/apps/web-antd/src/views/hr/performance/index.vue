@@ -1,18 +1,19 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue';
-import { message } from 'ant-design-vue';
+import { ref } from 'vue';
+
 import { Page } from '@vben/common-ui';
+
 import {
-  Card,
-  Table,
   Button,
-  Space,
-  Tag,
+  Card,
+  Col,
   Input,
-  Select,
   Progress,
   Row,
-  Col,
+  Select,
+  Space,
+  Table,
+  Tag,
 } from 'ant-design-vue';
 
 defineOptions({ name: 'HrPerformance' });
@@ -43,14 +44,23 @@ const columns = [
       <div style="margin-bottom: 16px">
         <Row :gutter="16">
           <Col :span="6">
-            <Select v-model:value="period" placeholder="考核周期" style="width: 100%" allowClear>
+            <Select
+              v-model:value="period"
+              placeholder="考核周期"
+              style="width: 100%"
+              allow-clear
+            >
               <Select.Option value="2026Q1">2026年Q1</Select.Option>
               <Select.Option value="2025Q4">2025年Q4</Select.Option>
               <Select.Option value="2025Q3">2025年Q3</Select.Option>
             </Select>
           </Col>
           <Col :span="6">
-            <Input v-model:value="searchText" placeholder="搜索员工" allowClear />
+            <Input
+              v-model:value="searchText"
+              placeholder="搜索员工"
+              allow-clear
+            />
           </Col>
           <Col :span="12">
             <Space>
@@ -72,7 +82,17 @@ const columns = [
             <Progress :percent="record.totalScore" :size="[100, 10]" />
           </template>
           <template v-if="column.key === 'grade'">
-            <Tag :color="record.grade === 'A' ? 'green' : record.grade === 'B' ? 'blue' : record.grade === 'C' ? 'orange' : 'red'">
+            <Tag
+              :color="
+                record.grade === 'A'
+                  ? 'green'
+                  : record.grade === 'B'
+                    ? 'blue'
+                    : record.grade === 'C'
+                      ? 'orange'
+                      : 'red'
+              "
+            >
               {{ record.grade }}
             </Tag>
           </template>

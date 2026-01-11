@@ -1,3 +1,6 @@
+// 使用 types.ts 中的 PageResult 定义
+import type { PageResult } from './types';
+
 import { requestClient } from '#/api/request';
 
 // ==================== 类型定义 ====================
@@ -54,13 +57,6 @@ export interface UpdateDeadlineCommand {
   description?: string;
 }
 
-export interface PageResult<T> {
-  list: T[];
-  total: number;
-  pageNum: number;
-  pageSize: number;
-}
-
 // 期限类型选项
 export const DEADLINE_TYPE_OPTIONS = [
   { label: '举证期', value: 'EVIDENCE_SUBMISSION' },
@@ -84,7 +80,9 @@ export const DEADLINE_STATUS_OPTIONS = [
 
 /** 分页查询期限列表 */
 export function getDeadlines(params: DeadlineQueryDTO) {
-  return requestClient.get<PageResult<DeadlineDTO>>('/matter/deadlines/list', { params });
+  return requestClient.get<PageResult<DeadlineDTO>>('/matter/deadlines/list', {
+    params,
+  });
 }
 
 /** 获取期限详情 */
@@ -94,7 +92,9 @@ export function getDeadlineById(id: number) {
 
 /** 根据项目ID查询期限列表 */
 export function getDeadlinesByMatterId(matterId: number) {
-  return requestClient.get<DeadlineDTO[]>(`/matter/deadlines/matter/${matterId}`);
+  return requestClient.get<DeadlineDTO[]>(
+    `/matter/deadlines/matter/${matterId}`,
+  );
 }
 
 /** 创建期限提醒 */
@@ -121,4 +121,3 @@ export function completeDeadline(id: number) {
 export function deleteDeadline(id: number) {
   return requestClient.delete<void>(`/matter/deadlines/${id}`);
 }
-

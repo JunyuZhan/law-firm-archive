@@ -1,8 +1,3 @@
-/**
- * 客户管理模块 API
- */
-import { requestClient } from '#/api/request';
-
 import type {
   ApplyConflictCheckCommand,
   ClientDTO,
@@ -18,6 +13,11 @@ import type {
   UpdateClientCommand,
 } from './types';
 
+/**
+ * 客户管理模块 API
+ */
+import { requestClient } from '#/api/request';
+
 // ========== 客户管理 API ==========
 
 /** 获取客户列表 */
@@ -25,13 +25,16 @@ export function getClientList(params: ClientQuery) {
   return requestClient.get<PageResult<ClientDTO>>('/client/list', { params });
 }
 
-/** 
+/**
  * 获取客户选择列表（公共接口，无需 client:list 权限）
  * 用于下拉选择框，所有登录用户都可以访问
  * 返回精简数据，不包含联系方式等敏感信息
  */
 export function getClientSelectOptions(params?: ClientQuery) {
-  return requestClient.get<PageResult<ClientSimpleDTO>>('/client/select-options', { params });
+  return requestClient.get<PageResult<ClientSimpleDTO>>(
+    '/client/select-options',
+    { params },
+  );
 }
 
 /** 获取客户详情 */
@@ -76,7 +79,11 @@ export function exportClients(params: ClientQuery) {
 export function importClients(file: File) {
   const formData = new FormData();
   formData.append('file', file);
-  return requestClient.post<{ success: number; failure: number; errors?: string[] }>('/client/import', formData, {
+  return requestClient.post<{
+    errors?: string[];
+    failure: number;
+    success: number;
+  }>('/client/import', formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
     },
@@ -92,7 +99,10 @@ export function batchDeleteClients(ids: number[]) {
 
 /** 获取利冲审查列表 */
 export function getConflictCheckList(params: ConflictCheckQuery) {
-  return requestClient.get<PageResult<ConflictCheckDTO>>('/client/conflict-check/list', { params });
+  return requestClient.get<PageResult<ConflictCheckDTO>>(
+    '/client/conflict-check/list',
+    { params },
+  );
 }
 
 /** 获取利冲审查详情 */
@@ -102,12 +112,17 @@ export function getConflictCheckDetail(id: number) {
 
 /** 申请利冲审查（简化版，手动申请） */
 export function applyConflictCheck(data: ApplyConflictCheckCommand) {
-  return requestClient.post<ConflictCheckDTO>('/client/conflict-check/apply', data);
+  return requestClient.post<ConflictCheckDTO>(
+    '/client/conflict-check/apply',
+    data,
+  );
 }
 
 /** 审核利冲审查（通过） */
 export function approveConflictCheck(id: number, comment?: string) {
-  return requestClient.post(`/client/conflict-check/${id}/approve`, { comment });
+  return requestClient.post(`/client/conflict-check/${id}/approve`, {
+    comment,
+  });
 }
 
 /** 审核利冲审查（拒绝） */
@@ -116,27 +131,39 @@ export function rejectConflictCheck(id: number, comment?: string) {
 }
 
 /** 审核利冲审查 */
-export function reviewConflictCheck(id: number, data: { approved: boolean; comment?: string }) {
-  if (data.approved) {
-    return approveConflictCheck(id, data.comment);
-  } else {
-    return rejectConflictCheck(id, data.comment);
-  }
+export function reviewConflictCheck(
+  id: number,
+  data: { approved: boolean; comment?: string },
+) {
+  return data.approved
+    ? approveConflictCheck(id, data.comment)
+    : rejectConflictCheck(id, data.comment);
 }
 
 /** 申请利益冲突豁免 */
-export function applyExemption(data: { conflictCheckId: number; exemptionReason: string; exemptionDescription?: string }) {
-  return requestClient.post<ConflictCheckDTO>('/client/conflict-check/exemption/apply', data);
+export function applyExemption(data: {
+  conflictCheckId: number;
+  exemptionDescription?: string;
+  exemptionReason: string;
+}) {
+  return requestClient.post<ConflictCheckDTO>(
+    '/client/conflict-check/exemption/apply',
+    data,
+  );
 }
 
 /** 批准豁免申请 */
 export function approveExemption(id: number, comment?: string) {
-  return requestClient.post(`/client/conflict-check/exemption/${id}/approve`, { comment });
+  return requestClient.post(`/client/conflict-check/exemption/${id}/approve`, {
+    comment,
+  });
 }
 
 /** 拒绝豁免申请 */
 export function rejectExemption(id: number, comment?: string) {
-  return requestClient.post(`/client/conflict-check/exemption/${id}/reject`, { comment });
+  return requestClient.post(`/client/conflict-check/exemption/${id}/reject`, {
+    comment,
+  });
 }
 
 /** 冲突候选项 */
@@ -146,8 +173,8 @@ export interface ConflictCandidate {
   clientName: string;
   clientType: string;
   matchScore: number;
-  matchType: 'EXACT' | 'CONTAINS' | 'SIMILAR';
-  riskLevel: 'HIGH' | 'MEDIUM' | 'LOW';
+  matchType: 'CONTAINS' | 'EXACT' | 'SIMILAR';
+  riskLevel: 'HIGH' | 'LOW' | 'MEDIUM';
   riskReason: string;
 }
 
@@ -156,13 +183,19 @@ export interface QuickConflictCheckResult {
   hasConflict: boolean;
   conflictDetail?: string;
   candidates: ConflictCandidate[];
-  riskLevel: 'HIGH' | 'MEDIUM' | 'LOW' | 'NONE';
+  riskLevel: 'HIGH' | 'LOW' | 'MEDIUM' | 'NONE';
   riskSummary: string;
 }
 
 /** 快速利冲检索（增强版，返回候选列表和风险评估） */
-export function quickConflictCheck(data: { clientName: string; opposingParty: string }) {
-  return requestClient.post<QuickConflictCheckResult>('/client/conflict-check/quick', data);
+export function quickConflictCheck(data: {
+  clientName: string;
+  opposingParty: string;
+}) {
+  return requestClient.post<QuickConflictCheckResult>(
+    '/client/conflict-check/quick',
+    data,
+  );
 }
 
 // ========== 案源管理 API ==========
@@ -193,12 +226,18 @@ export function deleteLead(id: number) {
 }
 
 /** 转化案源为客户 */
-export function convertLeadToClient(id: number, data?: { clientId?: number; matterId?: number }) {
+export function convertLeadToClient(
+  id: number,
+  data?: { clientId?: number; matterId?: number },
+) {
   return requestClient.post<LeadDTO>(`/client/lead/${id}/convert`, data || {});
 }
 
 /** 跟进案源 */
-export function followUpLead(id: number, data: { content: string; nextFollowUpTime?: string }) {
+export function followUpLead(
+  id: number,
+  data: { content: string; nextFollowUpTime?: string },
+) {
   return requestClient.post(`/client/lead/${id}/follow-up`, data);
 }
 

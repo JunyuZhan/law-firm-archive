@@ -1,9 +1,9 @@
+import type { PageResult } from '../matter/types';
+
 /**
  * 档案借阅模块 API
  */
 import { requestClient } from '#/api/request';
-
-import type { PageResult } from '../matter/types';
 
 // ========== 档案借阅类型定义 ==========
 export interface ArchiveBorrowDTO {
@@ -38,8 +38,16 @@ export interface ReturnArchiveCommand {
 // ========== 档案借阅 API ==========
 
 /** 获取借阅记录列表 */
-export function getBorrowList(params: { pageNum?: number; pageSize?: number; archiveId?: number; status?: string }) {
-  return requestClient.get<PageResult<ArchiveBorrowDTO>>('/archive/borrow/list', { params });
+export function getBorrowList(params: {
+  archiveId?: number;
+  pageNum?: number;
+  pageSize?: number;
+  status?: string;
+}) {
+  return requestClient.get<PageResult<ArchiveBorrowDTO>>(
+    '/archive/borrow/list',
+    { params },
+  );
 }
 
 /** 创建借阅申请 */
@@ -71,4 +79,3 @@ export function returnArchive(data: ReturnArchiveCommand) {
 export function getOverdueBorrows() {
   return requestClient.get<ArchiveBorrowDTO[]>('/archive/borrow/overdue');
 }
-

@@ -1,30 +1,32 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted, h, computed } from 'vue';
-import { message, Modal } from 'ant-design-vue';
+import type { PaymentAmendmentDTO } from '#/api/finance/payment-amendment';
+
+import { computed, h, onMounted, reactive, ref } from 'vue';
+
 import { Page } from '@vben/common-ui';
+
 import {
-  Card,
-  Table,
-  Button,
-  Space,
-  Tag,
-  Select,
-  Row,
-  Col,
-  Tabs,
-  TabPane,
-  Statistic,
-  Textarea,
   Badge,
+  Card,
+  Col,
   Descriptions,
   DescriptionsItem,
+  message,
+  Modal,
+  Row,
+  Space,
+  Statistic,
+  Table,
+  Tabs,
+  Tag,
+  Textarea,
 } from 'ant-design-vue';
+
 import {
-  getPaymentAmendmentList,
-  getPaymentAmendmentDetail,
   approvePaymentAmendment,
+  getPaymentAmendmentDetail,
+  getPaymentAmendmentList,
   rejectPaymentAmendment,
-  type PaymentAmendmentDTO,
 } from '#/api/finance/payment-amendment';
 
 defineOptions({ name: 'PaymentAmendment' });
@@ -44,32 +46,54 @@ const queryParams = reactive({
 
 // 统计数据
 const stats = computed(() => {
-  const pending = amendments.value.filter(a => a.status === 'PENDING').length;
-  const approved = amendments.value.filter(a => a.status === 'APPROVED').length;
-  const rejected = amendments.value.filter(a => a.status === 'REJECTED').length;
+  const pending = amendments.value.filter((a) => a.status === 'PENDING').length;
+  const approved = amendments.value.filter(
+    (a) => a.status === 'APPROVED',
+  ).length;
+  const rejected = amendments.value.filter(
+    (a) => a.status === 'REJECTED',
+  ).length;
   return { pending, approved, rejected, total: total.value };
 });
 
 // 表格列
 const columns = [
   { title: '收款编号', dataIndex: 'paymentNo', key: 'paymentNo', width: 140 },
-  { title: '原金额', dataIndex: 'originalAmount', key: 'originalAmount', width: 120 },
+  {
+    title: '原金额',
+    dataIndex: 'originalAmount',
+    key: 'originalAmount',
+    width: 120,
+  },
   { title: '新金额', dataIndex: 'newAmount', key: 'newAmount', width: 120 },
   { title: '差额', dataIndex: 'amountDiff', key: 'amountDiff', width: 100 },
-  { title: '变更原因', dataIndex: 'reason', key: 'reason', width: 200, ellipsis: true },
-  { title: '申请人', dataIndex: 'requestedByName', key: 'requestedByName', width: 100 },
-  { title: '申请时间', dataIndex: 'requestedAt', key: 'requestedAt', width: 160 },
+  {
+    title: '变更原因',
+    dataIndex: 'reason',
+    key: 'reason',
+    width: 200,
+    ellipsis: true,
+  },
+  {
+    title: '申请人',
+    dataIndex: 'requestedByName',
+    key: 'requestedByName',
+    width: 100,
+  },
+  {
+    title: '申请时间',
+    dataIndex: 'requestedAt',
+    key: 'requestedAt',
+    width: 160,
+  },
   { title: '状态', dataIndex: 'statusName', key: 'statusName', width: 100 },
-  { title: '审批人', dataIndex: 'approvedByName', key: 'approvedByName', width: 100 },
+  {
+    title: '审批人',
+    dataIndex: 'approvedByName',
+    key: 'approvedByName',
+    width: 100,
+  },
   { title: '操作', key: 'action', width: 150, fixed: 'right' as const },
-];
-
-// 状态选项
-const statusOptions = [
-  { label: '全部', value: undefined },
-  { label: '待审批', value: 'PENDING' },
-  { label: '已批准', value: 'APPROVED' },
-  { label: '已拒绝', value: 'REJECTED' },
 ];
 
 // 加载数据
@@ -87,13 +111,24 @@ async function fetchData() {
 }
 
 // Tab切换
-function handleTabChange(key: string) {
-  if (key === 'all') {
-    queryParams.status = undefined;
-  } else if (key === 'pending') {
-    queryParams.status = 'PENDING';
-  } else if (key === 'completed') {
-    queryParams.status = undefined; // 需要在后端支持多状态查询
+function handleTabChange(key: number | string) {
+  switch (key) {
+    case 'all': {
+      queryParams.status = undefined;
+
+      break;
+    }
+    case 'completed': {
+      queryParams.status = undefined; // 需要在后端支持多状态查询
+
+      break;
+    }
+    case 'pending': {
+      queryParams.status = 'PENDING';
+
+      break;
+    }
+    // No default
   }
   queryParams.pageNum = 1;
   fetchData();
@@ -113,23 +148,77 @@ async function handleView(record: PaymentAmendmentDTO) {
     Modal.info({
       title: '变更申请详情',
       width: 600,
-      content: h(Descriptions, { column: 2, bordered: true, size: 'small' }, () => [
-        h(DescriptionsItem, { label: '收款编号' }, () => detail.paymentNo || '-'),
-        h(DescriptionsItem, { label: '状态' }, () => h(Tag, { color: getStatusColor(detail.status) }, () => detail.statusName)),
-        h(DescriptionsItem, { label: '原金额' }, () => `¥${detail.originalAmount?.toLocaleString()}`),
-        h(DescriptionsItem, { label: '新金额' }, () => `¥${detail.newAmount?.toLocaleString()}`),
-        h(DescriptionsItem, { label: '差额', span: 2 }, () => {
-          const diff = detail.amountDiff;
-          const color = diff > 0 ? '#52c41a' : diff < 0 ? '#f5222d' : '#000';
-          return h('span', { style: { color } }, `${diff > 0 ? '+' : ''}¥${diff?.toLocaleString()}`);
-        }),
-        h(DescriptionsItem, { label: '变更原因', span: 2 }, () => detail.reason),
-        h(DescriptionsItem, { label: '申请人' }, () => detail.requestedByName || '-'),
-        h(DescriptionsItem, { label: '申请时间' }, () => detail.requestedAt || '-'),
-        h(DescriptionsItem, { label: '审批人' }, () => detail.approvedByName || '-'),
-        h(DescriptionsItem, { label: '审批时间' }, () => detail.approvedAt || '-'),
-        detail.rejectReason ? h(DescriptionsItem, { label: '拒绝原因', span: 2 }, () => detail.rejectReason) : null,
-      ].filter(Boolean)),
+      content: h(
+        Descriptions,
+        { column: 2, bordered: true, size: 'small' },
+        () =>
+          [
+            h(
+              DescriptionsItem,
+              { label: '收款编号' },
+              () => detail.paymentNo || '-',
+            ),
+            h(DescriptionsItem, { label: '状态' }, () =>
+              h(
+                Tag,
+                { color: getStatusColor(detail.status) },
+                () => detail.statusName,
+              ),
+            ),
+            h(
+              DescriptionsItem,
+              { label: '原金额' },
+              () => `¥${detail.originalAmount?.toLocaleString()}`,
+            ),
+            h(
+              DescriptionsItem,
+              { label: '新金额' },
+              () => `¥${detail.newAmount?.toLocaleString()}`,
+            ),
+            h(DescriptionsItem, { label: '差额', span: 2 }, () => {
+              const diff = detail.amountDiff;
+              const color =
+                diff > 0 ? '#52c41a' : diff < 0 ? '#f5222d' : '#000';
+              return h(
+                'span',
+                { style: { color } },
+                `${diff > 0 ? '+' : ''}¥${diff?.toLocaleString()}`,
+              );
+            }),
+            h(
+              DescriptionsItem,
+              { label: '变更原因', span: 2 },
+              () => detail.reason,
+            ),
+            h(
+              DescriptionsItem,
+              { label: '申请人' },
+              () => detail.requestedByName || '-',
+            ),
+            h(
+              DescriptionsItem,
+              { label: '申请时间' },
+              () => detail.requestedAt || '-',
+            ),
+            h(
+              DescriptionsItem,
+              { label: '审批人' },
+              () => detail.approvedByName || '-',
+            ),
+            h(
+              DescriptionsItem,
+              { label: '审批时间' },
+              () => detail.approvedAt || '-',
+            ),
+            detail.rejectReason
+              ? h(
+                  DescriptionsItem,
+                  { label: '拒绝原因', span: 2 },
+                  () => detail.rejectReason,
+                )
+              : null,
+          ].filter(Boolean),
+      ),
     });
   } catch (error: any) {
     message.error(error.message || '获取详情失败');
@@ -158,15 +247,18 @@ function handleApprove(record: PaymentAmendmentDTO) {
 // 审批拒绝
 function handleReject(record: PaymentAmendmentDTO) {
   const rejectReasonRef = ref<string>('');
-  
+
   Modal.confirm({
     title: '拒绝变更申请',
     width: 500,
     content: () => {
       return h('div', [
         h('p', { style: 'margin-bottom: 12px' }, `确定要拒绝收款变更申请吗？`),
-        h('p', { style: 'margin-bottom: 12px; color: #666' }, 
-          `原金额：¥${record.originalAmount?.toLocaleString()} → 新金额：¥${record.newAmount?.toLocaleString()}`),
+        h(
+          'p',
+          { style: 'margin-bottom: 12px; color: #666' },
+          `原金额：¥${record.originalAmount?.toLocaleString()} → 新金额：¥${record.newAmount?.toLocaleString()}`,
+        ),
         h(Textarea, {
           value: rejectReasonRef.value,
           placeholder: '请输入拒绝原因（必填）',
@@ -183,7 +275,7 @@ function handleReject(record: PaymentAmendmentDTO) {
     onOk: async () => {
       if (!rejectReasonRef.value?.trim()) {
         message.error('请输入拒绝原因');
-        return Promise.reject();
+        throw undefined;
       }
       try {
         await rejectPaymentAmendment(record.id, rejectReasonRef.value.trim());
@@ -213,8 +305,8 @@ function formatAmount(amount: number) {
 }
 
 // 格式化差额
-function formatDiff(diff: number) {
-  if (diff === null || diff === undefined) return '-';
+function formatDiff(diff: number): { color: string; text: string } {
+  if (diff === null || diff === undefined) return { text: '-', color: '#000' };
   const prefix = diff > 0 ? '+' : '';
   const color = diff > 0 ? '#52c41a' : diff < 0 ? '#f5222d' : '#000';
   return { text: `${prefix}¥${diff.toLocaleString()}`, color };
@@ -223,10 +315,12 @@ function formatDiff(diff: number) {
 // 获取当前数据源（根据tab过滤）
 const currentDataSource = computed(() => {
   if (activeTab.value === 'pending') {
-    return amendments.value.filter(a => a.status === 'PENDING');
+    return amendments.value.filter((a) => a.status === 'PENDING');
   }
   if (activeTab.value === 'completed') {
-    return amendments.value.filter(a => a.status === 'APPROVED' || a.status === 'REJECTED');
+    return amendments.value.filter(
+      (a) => a.status === 'APPROVED' || a.status === 'REJECTED',
+    );
   }
   return amendments.value;
 });
@@ -239,20 +333,32 @@ onMounted(() => {
 <template>
   <Page title="收款变更审批" description="审批已锁定收款记录的变更申请">
     <!-- 统计卡片 -->
-    <Row :gutter="16" style="margin-bottom: 16px;">
+    <Row :gutter="16" style="margin-bottom: 16px">
       <Col :span="6">
         <Card size="small">
-          <Statistic title="待审批" :value="stats.pending" :value-style="{ color: '#faad14' }" />
+          <Statistic
+            title="待审批"
+            :value="stats.pending"
+            :value-style="{ color: '#faad14' }"
+          />
         </Card>
       </Col>
       <Col :span="6">
         <Card size="small">
-          <Statistic title="已批准" :value="stats.approved" :value-style="{ color: '#52c41a' }" />
+          <Statistic
+            title="已批准"
+            :value="stats.approved"
+            :value-style="{ color: '#52c41a' }"
+          />
         </Card>
       </Col>
       <Col :span="6">
         <Card size="small">
-          <Statistic title="已拒绝" :value="stats.rejected" :value-style="{ color: '#f5222d' }" />
+          <Statistic
+            title="已拒绝"
+            :value="stats.rejected"
+            :value-style="{ color: '#f5222d' }"
+          />
         </Card>
       </Col>
       <Col :span="6">
@@ -263,20 +369,35 @@ onMounted(() => {
     </Row>
 
     <Card>
-      <Tabs v-model:activeKey="activeTab" @change="handleTabChange">
+      <Tabs v-model:active-key="activeTab" @change="handleTabChange">
         <TabPane key="all">
           <template #tab>
-            <span>全部申请 <Badge :count="stats.total" :number-style="{ backgroundColor: '#999' }" /></span>
+            <span
+              >全部申请
+              <Badge
+                :count="stats.total"
+                :number-style="{ backgroundColor: '#999' }"
+            /></span>
           </template>
         </TabPane>
         <TabPane key="pending">
           <template #tab>
-            <span>待审批 <Badge :count="stats.pending" :number-style="{ backgroundColor: '#faad14' }" /></span>
+            <span
+              >待审批
+              <Badge
+                :count="stats.pending"
+                :number-style="{ backgroundColor: '#faad14' }"
+            /></span>
           </template>
         </TabPane>
         <TabPane key="completed">
           <template #tab>
-            <span>已处理 <Badge :count="stats.approved + stats.rejected" :number-style="{ backgroundColor: '#52c41a' }" /></span>
+            <span
+              >已处理
+              <Badge
+                :count="stats.approved + stats.rejected"
+                :number-style="{ backgroundColor: '#52c41a' }"
+            /></span>
           </template>
         </TabPane>
       </Tabs>
@@ -288,7 +409,7 @@ onMounted(() => {
         :pagination="{
           current: queryParams.pageNum,
           pageSize: queryParams.pageSize,
-          total: total,
+          total,
           showTotal: (t: number) => `共 ${t} 条`,
           showSizeChanger: true,
         }"
@@ -304,21 +425,38 @@ onMounted(() => {
             {{ formatAmount((record as PaymentAmendmentDTO).newAmount) }}
           </template>
           <template v-if="column.key === 'amountDiff'">
-            <span :style="{ color: formatDiff((record as PaymentAmendmentDTO).amountDiff).color }">
+            <span
+              :style="{
+                color: formatDiff((record as PaymentAmendmentDTO).amountDiff)
+                  .color,
+              }"
+            >
               {{ formatDiff((record as PaymentAmendmentDTO).amountDiff).text }}
             </span>
           </template>
           <template v-if="column.key === 'statusName'">
-            <Tag :color="getStatusColor((record as PaymentAmendmentDTO).status)">
+            <Tag
+              :color="getStatusColor((record as PaymentAmendmentDTO).status)"
+            >
               {{ (record as PaymentAmendmentDTO).statusName }}
             </Tag>
           </template>
           <template v-if="column.key === 'action'">
             <Space>
               <a @click="handleView(record as PaymentAmendmentDTO)">查看</a>
-              <template v-if="(record as PaymentAmendmentDTO).status === 'PENDING'">
-                <a style="color: #52c41a" @click="handleApprove(record as PaymentAmendmentDTO)">通过</a>
-                <a style="color: red" @click="handleReject(record as PaymentAmendmentDTO)">拒绝</a>
+              <template
+                v-if="(record as PaymentAmendmentDTO).status === 'PENDING'"
+              >
+                <a
+                  style="color: #52c41a"
+                  @click="handleApprove(record as PaymentAmendmentDTO)"
+                  >通过</a
+                >
+                <a
+                  style="color: red"
+                  @click="handleReject(record as PaymentAmendmentDTO)"
+                  >拒绝</a
+                >
               </template>
             </Space>
           </template>

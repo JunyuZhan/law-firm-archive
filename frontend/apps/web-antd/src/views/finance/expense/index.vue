@@ -1,30 +1,37 @@
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue';
-import { message, Modal, Upload, Spin, Tooltip } from 'ant-design-vue';
+import type { VxeGridProps } from '#/adapter/vxe-table';
+import type { OcrResultDTO } from '#/api/ocr';
+
+import { computed, onMounted, reactive, ref } from 'vue';
+
 import { Page } from '@vben/common-ui';
+import { IconifyIcon, Plus } from '@vben/icons';
+
 import {
-  Card,
   Button,
-  Tag,
-  Row,
+  Card,
   Col,
-  Statistic,
+  DatePicker,
+  Empty,
   Form,
   FormItem,
   Input,
   InputNumber,
+  message,
+  Modal,
+  Row,
   Select,
-  DatePicker,
-  Empty,
-  Space,
-  Divider,
+  Spin,
+  Statistic,
+  Tag,
+  Tooltip,
+  Upload,
 } from 'ant-design-vue';
-import { Plus, IconifyIcon } from '@vben/icons';
-import type { VxeGridProps } from '#/adapter/vxe-table';
-import { useVbenVxeGrid } from '#/adapter/vxe-table';
-import { requestClient } from '#/api/request';
-import { recognizeInvoice, type OcrResultDTO } from '#/api/ocr';
 import dayjs from 'dayjs';
+
+import { useVbenVxeGrid } from '#/adapter/vxe-table';
+import { recognizeInvoice } from '#/api/ocr';
+import { requestClient } from '#/api/request';
 
 defineOptions({ name: 'ExpenseReimbursement' });
 
@@ -52,7 +59,7 @@ const expenses = ref<ExpenseRecord[]>([]);
 const modalVisible = ref(false);
 const formRef = ref();
 const ocrLoading = ref(false);
-const ocrResult = ref<OcrResultDTO | null>(null);
+const ocrResult = ref<null | OcrResultDTO>(null);
 
 const formData = reactive({
   expenseType: 'TRAVEL',
@@ -65,8 +72,12 @@ const formData = reactive({
 // 统计数据
 const stats = computed(() => {
   const total = expenses.value.reduce((sum, e) => sum + e.amount, 0);
-  const approved = expenses.value.filter(e => e.status === 'APPROVED').reduce((sum, e) => sum + e.amount, 0);
-  const pending = expenses.value.filter(e => e.status === 'PENDING').reduce((sum, e) => sum + e.amount, 0);
+  const approved = expenses.value
+    .filter((e) => e.status === 'APPROVED')
+    .reduce((sum, e) => sum + e.amount, 0);
+  const pending = expenses.value
+    .filter((e) => e.status === 'PENDING')
+    .reduce((sum, e) => sum + e.amount, 0);
   const count = expenses.value.length;
   return { total, approved, pending, count };
 });
@@ -85,21 +96,34 @@ const expenseTypeOptions = [
 
 // ==================== 表格配置 ====================
 
-const gridColumns: VxeGridProps['gridOptions']['columns'] = [
+const gridColumns: VxeGridProps['columns'] = [
   { title: '报销单号', field: 'expenseNo', width: 140 },
   { title: '费用类型', field: 'expenseTypeName', width: 100 },
   { title: '金额', field: 'amount', width: 120, slots: { default: 'amount' } },
   { title: '关联项目', field: 'matterName', minWidth: 150, showOverflow: true },
   { title: '费用日期', field: 'expenseDate', width: 110 },
   { title: '说明', field: 'description', minWidth: 200, showOverflow: true },
-  { title: '状态', field: 'statusName', width: 100, slots: { default: 'status' } },
+  {
+    title: '状态',
+    field: 'statusName',
+    width: 100,
+    slots: { default: 'status' },
+  },
   { title: '提交时间', field: 'createdAt', width: 110 },
-  { title: '操作', field: 'action', width: 100, fixed: 'right', slots: { default: 'action' } },
+  {
+    title: '操作',
+    field: 'action',
+    width: 100,
+    fixed: 'right',
+    slots: { default: 'action' },
+  },
 ];
 
 async function loadData() {
   try {
-    const res = await requestClient.get<ExpenseRecord[]>('/finance/my/expenses');
+    const res = await requestClient.get<ExpenseRecord[]>(
+      '/finance/my/expenses',
+    );
     expenses.value = res || [];
     return { items: res || [], total: (res || []).length };
   } catch (error: any) {
@@ -122,12 +146,12 @@ const [Grid, gridApi] = useVbenVxeGrid({
 async function handleInvoiceOcr(info: any) {
   const file = info.file.originFileObj || info.file;
   if (!file) return;
-  
+
   ocrLoading.value = true;
   try {
     const result = await recognizeInvoice(file);
     ocrResult.value = result;
-    
+
     if (result.success) {
       // 自动填充表单
       if (result.totalAmount) {
@@ -135,23 +159,43 @@ async function handleInvoiceOcr(info: any) {
       } else if (result.invoiceAmount) {
         formData.amount = result.invoiceAmount;
       }
-      
+
       if (result.invoiceDate) {
         formData.expenseDate = dayjs(result.invoiceDate);
       }
-      
+
       // 根据发票内容自动推断费用类型
-      const rawText = (result.rawText || result.data?.raw_text || '').toLowerCase();
-      if (rawText.includes('餐') || rawText.includes('饮') || rawText.includes('食')) {
+      const rawText = (
+        result.rawText ||
+        result.data?.raw_text ||
+        ''
+      ).toLowerCase();
+      if (
+        rawText.includes('餐') ||
+        rawText.includes('饮') ||
+        rawText.includes('食')
+      ) {
         formData.expenseType = 'MEAL';
-      } else if (rawText.includes('住宿') || rawText.includes('酒店') || rawText.includes('宾馆')) {
+      } else if (
+        rawText.includes('住宿') ||
+        rawText.includes('酒店') ||
+        rawText.includes('宾馆')
+      ) {
         formData.expenseType = 'ACCOMMODATION';
-      } else if (rawText.includes('交通') || rawText.includes('出租') || rawText.includes('打车')) {
+      } else if (
+        rawText.includes('交通') ||
+        rawText.includes('出租') ||
+        rawText.includes('打车')
+      ) {
         formData.expenseType = 'TRANSPORT';
-      } else if (rawText.includes('机票') || rawText.includes('火车') || rawText.includes('高铁')) {
+      } else if (
+        rawText.includes('机票') ||
+        rawText.includes('火车') ||
+        rawText.includes('高铁')
+      ) {
         formData.expenseType = 'TRAVEL';
       }
-      
+
       // 填充描述
       const parts = [];
       if (result.invoiceType) parts.push(result.invoiceType);
@@ -160,13 +204,13 @@ async function handleInvoiceOcr(info: any) {
       if (parts.length > 0) {
         formData.description = parts.join(' | ');
       }
-      
+
       message.success(`发票识别成功！已自动填充报销信息`);
     } else {
       message.error(result.errorMessage || '发票识别失败');
     }
-  } catch (e: any) {
-    message.error(e?.message || '发票识别失败');
+  } catch (error: any) {
+    message.error(error?.message || '发票识别失败');
   } finally {
     ocrLoading.value = false;
   }
@@ -189,20 +233,21 @@ function handleAdd() {
 async function handleSubmit() {
   try {
     await formRef.value?.validate();
-    
+
     if (!formData.amount || formData.amount <= 0) {
       message.error('请输入有效金额');
       return;
     }
-    
+
     await requestClient.post('/finance/expense/apply', {
       expenseType: formData.expenseType,
       amount: formData.amount,
       matterId: formData.matterId,
-      expenseDate: formData.expenseDate?.format?.('YYYY-MM-DD') || formData.expenseDate,
+      expenseDate:
+        formData.expenseDate?.format?.('YYYY-MM-DD') || formData.expenseDate,
       description: formData.description,
     });
-    
+
     message.success('报销申请提交成功');
     modalVisible.value = false;
     gridApi.reload();
@@ -257,7 +302,7 @@ onMounted(() => {
 <template>
   <Page title="费用报销" description="提交和查看您的费用报销申请">
     <!-- 统计卡片 -->
-    <Row :gutter="16" style="margin-bottom: 16px;">
+    <Row :gutter="16" style="margin-bottom: 16px">
       <Col :xs="12" :sm="6">
         <Card size="small">
           <Statistic title="报销记录数" :value="stats.count" suffix="条" />
@@ -265,23 +310,40 @@ onMounted(() => {
       </Col>
       <Col :xs="12" :sm="6">
         <Card size="small">
-          <Statistic title="报销总额" :value="stats.total" prefix="¥" :precision="2" />
+          <Statistic
+            title="报销总额"
+            :value="stats.total"
+            prefix="¥"
+            :precision="2"
+          />
         </Card>
       </Col>
       <Col :xs="12" :sm="6">
         <Card size="small">
-          <Statistic title="已审批" :value="stats.approved" prefix="¥" :precision="2" :value-style="{ color: '#52c41a' }" />
+          <Statistic
+            title="已审批"
+            :value="stats.approved"
+            prefix="¥"
+            :precision="2"
+            :value-style="{ color: '#52c41a' }"
+          />
         </Card>
       </Col>
       <Col :xs="12" :sm="6">
         <Card size="small">
-          <Statistic title="待审批" :value="stats.pending" prefix="¥" :precision="2" :value-style="{ color: '#faad14' }" />
+          <Statistic
+            title="待审批"
+            :value="stats.pending"
+            prefix="¥"
+            :precision="2"
+            :value-style="{ color: '#faad14' }"
+          />
         </Card>
       </Col>
     </Row>
 
     <Card>
-      <div style="margin-bottom: 16px;">
+      <div style="margin-bottom: 16px">
         <Button type="primary" @click="handleAdd">
           <Plus class="size-4" /> 新增报销
         </Button>
@@ -295,7 +357,12 @@ onMounted(() => {
           <Tag :color="getStatusColor(row.status)">{{ row.statusName }}</Tag>
         </template>
         <template #action="{ row }">
-          <a v-if="row.status === 'PENDING'" style="color: red" @click="handleCancel(row)">撤销</a>
+          <a
+            v-if="row.status === 'PENDING'"
+            style="color: red"
+            @click="handleCancel(row)"
+            >撤销</a
+          >
           <span v-else>-</span>
         </template>
         <template #empty>
@@ -318,11 +385,14 @@ onMounted(() => {
         :wrapper-col="{ span: 16 }"
       >
         <!-- OCR智能识别区域 -->
-        <div class="mb-4 p-3 bg-green-50 rounded border border-green-200">
-          <div class="flex items-center mb-2">
-            <IconifyIcon icon="ant-design:scan-outlined" class="text-green-600 mr-2" />
+        <div class="mb-4 rounded border border-green-200 bg-green-50 p-3">
+          <div class="mb-2 flex items-center">
+            <IconifyIcon
+              icon="ant-design:scan-outlined"
+              class="mr-2 text-green-600"
+            />
             <span class="font-medium text-green-700">发票智能识别</span>
-            <span class="text-gray-500 text-xs ml-2">上传发票自动填充</span>
+            <span class="ml-2 text-xs text-gray-500">上传发票自动填充</span>
           </div>
           <Spin :spinning="ocrLoading" size="small">
             <Upload
@@ -332,23 +402,44 @@ onMounted(() => {
               @change="handleInvoiceOcr"
             >
               <Tooltip title="上传发票/票据照片，自动识别金额、日期等信息">
-                <Button :loading="ocrLoading" :disabled="ocrLoading" size="small" type="primary" ghost>
-                  <template #icon><IconifyIcon icon="ant-design:file-text-outlined" /></template>
+                <Button
+                  :loading="ocrLoading"
+                  :disabled="ocrLoading"
+                  size="small"
+                  type="primary"
+                  ghost
+                >
+                  <template #icon>
+                    <IconifyIcon icon="ant-design:file-text-outlined" />
+                  </template>
                   拍照识别发票
                 </Button>
               </Tooltip>
             </Upload>
           </Spin>
           <div v-if="ocrResult?.success" class="mt-2 text-xs text-green-600">
-            ✓ 已识别: {{ ocrResult.invoiceType || '票据' }} 
-            <span v-if="ocrResult.totalAmount">¥{{ ocrResult.totalAmount }}</span>
+            ✓ 已识别: {{ ocrResult.invoiceType || '票据' }}
+            <span v-if="ocrResult.totalAmount"
+              >¥{{ ocrResult.totalAmount }}</span
+            >
           </div>
         </div>
 
-        <FormItem label="费用类型" name="expenseType" :rules="[{ required: true, message: '请选择费用类型' }]">
-          <Select v-model:value="formData.expenseType" :options="expenseTypeOptions" />
+        <FormItem
+          label="费用类型"
+          name="expenseType"
+          :rules="[{ required: true, message: '请选择费用类型' }]"
+        >
+          <Select
+            v-model:value="formData.expenseType"
+            :options="expenseTypeOptions"
+          />
         </FormItem>
-        <FormItem label="金额" name="amount" :rules="[{ required: true, message: '请输入金额' }]">
+        <FormItem
+          label="金额"
+          name="amount"
+          :rules="[{ required: true, message: '请输入金额' }]"
+        >
           <InputNumber
             v-model:value="formData.amount"
             :min="0"
@@ -357,11 +448,26 @@ onMounted(() => {
             style="width: 100%"
           />
         </FormItem>
-        <FormItem label="费用日期" name="expenseDate" :rules="[{ required: true, message: '请选择费用日期' }]">
-          <DatePicker v-model:value="formData.expenseDate" style="width: 100%" />
+        <FormItem
+          label="费用日期"
+          name="expenseDate"
+          :rules="[{ required: true, message: '请选择费用日期' }]"
+        >
+          <DatePicker
+            v-model:value="formData.expenseDate"
+            style="width: 100%"
+          />
         </FormItem>
-        <FormItem label="费用说明" name="description" :rules="[{ required: true, message: '请输入费用说明' }]">
-          <Input.TextArea v-model:value="formData.description" :rows="3" placeholder="请描述费用用途" />
+        <FormItem
+          label="费用说明"
+          name="description"
+          :rules="[{ required: true, message: '请输入费用说明' }]"
+        >
+          <Input.TextArea
+            v-model:value="formData.description"
+            :rows="3"
+            placeholder="请描述费用用途"
+          />
         </FormItem>
       </Form>
     </Modal>

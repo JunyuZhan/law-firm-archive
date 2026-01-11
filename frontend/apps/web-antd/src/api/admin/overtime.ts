@@ -42,12 +42,18 @@ export interface ApproveOvertimeRequest {
 
 /** 申请加班 */
 export function applyOvertime(data: ApplyOvertimeCommand) {
-  return requestClient.post<OvertimeApplicationDTO>('/admin/overtime/apply', data);
+  return requestClient.post<OvertimeApplicationDTO>(
+    '/admin/overtime/apply',
+    data,
+  );
 }
 
 /** 审批加班申请 */
 export function approveOvertime(id: number, data: ApproveOvertimeRequest) {
-  return requestClient.post<OvertimeApplicationDTO>(`/admin/overtime/${id}/approve`, data);
+  return requestClient.post<OvertimeApplicationDTO>(
+    `/admin/overtime/${id}/approve`,
+    data,
+  );
 }
 
 /** 查询我的加班申请 */
@@ -56,9 +62,11 @@ export function getMyOvertimeApplications() {
 }
 
 /** 查询指定日期范围的加班申请 */
-export function getOvertimeApplicationsByDateRange(startDate: string, endDate: string) {
+export function getOvertimeApplicationsByDateRange(
+  startDate: string,
+  endDate: string,
+) {
   return requestClient.get<OvertimeApplicationDTO[]>('/admin/overtime/range', {
     params: { startDate, endDate },
   });
 }
-

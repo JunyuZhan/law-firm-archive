@@ -1,25 +1,40 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, h } from 'vue';
-import { message, Modal } from 'ant-design-vue';
-import { Page } from '@vben/common-ui';
-import { Card, Tabs, TabPane, Badge, Button, Space, Tag, Textarea } from 'ant-design-vue';
 import type { Key } from 'ant-design-vue/es/table/interface';
-import { useVbenVxeGrid } from '#/adapter/vxe-table';
+
+import type { ApprovalDTO } from '#/api/workbench';
+
+import { computed, h, onMounted, ref } from 'vue';
+
+import { Page } from '@vben/common-ui';
+
 import {
-  getPendingApprovals,
-  getMyInitiatedApprovals,
-  getMyApprovedHistory,
-  approveApproval,
-  type ApprovalDTO,
-} from '#/api/workbench';
+  Badge,
+  Button,
+  Card,
+  message,
+  Modal,
+  Space,
+  TabPane,
+  Tabs,
+  Tag,
+  Textarea,
+} from 'ant-design-vue';
+
+import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import { requestClient } from '#/api/request';
+import {
+  approveApproval,
+  getMyApprovedHistory,
+  getMyInitiatedApprovals,
+  getPendingApprovals,
+} from '#/api/workbench';
 import ApprovalDetailModal from '#/views/workbench/approval/components/ApprovalDetailModal.vue';
 
 defineOptions({ name: 'DashboardApproval' });
 
 // ==================== 状态定义 ====================
 
-const activeTab = ref<'pending' | 'initiated' | 'history'>('pending');
+const activeTab = ref<'history' | 'initiated' | 'pending'>('pending');
 const activeCategory = ref<string>('all');
 const detailModalRef = ref<InstanceType<typeof ApprovalDetailModal>>();
 
@@ -34,7 +49,11 @@ const businessCategories = [
   { key: 'project', name: '项目业务', types: ['CONTRACT', 'MATTER_CLOSE'] },
   { key: 'finance', name: '财务业务', types: ['EXPENSE', 'PAYMENT_AMENDMENT'] },
   { key: 'admin', name: '行政业务', types: ['SEAL_APPLICATION'] },
-  { key: 'risk', name: '风控业务', types: ['CONFLICT_CHECK', 'CONFLICT_EXEMPTION'] },
+  {
+    key: 'risk',
+    name: '风控业务',
+    types: ['CONFLICT_CHECK', 'CONFLICT_EXEMPTION'],
+  },
   { key: 'hr', name: '人事业务', types: ['REGULARIZATION', 'RESIGNATION'] },
 ];
 
@@ -57,27 +76,28 @@ const priorityColorMap: Record<string, string> = {
 
 function getCategoryCount(data: ApprovalDTO[], categoryKey: string): number {
   if (categoryKey === 'all') return data.length;
-  const category = businessCategories.find(c => c.key === categoryKey);
+  const category = businessCategories.find((c) => c.key === categoryKey);
   if (!category) return 0;
-  return data.filter(item => category.types.includes(item.businessType)).length;
+  return data.filter((item) => category.types.includes(item.businessType))
+    .length;
 }
 
 const pendingStats = computed(() => {
-  return businessCategories.map(cat => ({
+  return businessCategories.map((cat) => ({
     ...cat,
     count: getCategoryCount(allPendingData.value, cat.key),
   }));
 });
 
 const initiatedStats = computed(() => {
-  return businessCategories.map(cat => ({
+  return businessCategories.map((cat) => ({
     ...cat,
     count: getCategoryCount(allInitiatedData.value, cat.key),
   }));
 });
 
 const historyStats = computed(() => {
-  return businessCategories.map(cat => ({
+  return businessCategories.map((cat) => ({
     ...cat,
     count: getCategoryCount(allHistoryData.value, cat.key),
   }));
@@ -88,27 +108,52 @@ const historyStats = computed(() => {
 const pendingColumns = [
   { type: 'checkbox' as const, width: 50 },
   { title: '业务类型', field: 'businessTypeName', width: 100 },
-  { title: '业务标题', field: 'businessTitle', minWidth: 200, showOverflow: true },
+  {
+    title: '业务标题',
+    field: 'businessTitle',
+    minWidth: 200,
+    showOverflow: true,
+  },
   { title: '申请人', field: 'applicantName', width: 100 },
-  { title: '优先级', field: 'priority', width: 80, slots: { default: 'priority' } },
-  { title: '紧急程度', field: 'urgency', width: 80, slots: { default: 'urgency' } },
+  {
+    title: '优先级',
+    field: 'priority',
+    width: 80,
+    slots: { default: 'priority' },
+  },
+  {
+    title: '紧急程度',
+    field: 'urgency',
+    width: 80,
+    slots: { default: 'urgency' },
+  },
   { title: '申请时间', field: 'createdAt', width: 150 },
-  { title: '操作', field: 'action', width: 160, fixed: 'right' as const, slots: { default: 'action' } },
+  {
+    title: '操作',
+    field: 'action',
+    width: 160,
+    fixed: 'right' as const,
+    slots: { default: 'action' },
+  },
 ];
 
 async function loadPendingData() {
-    const data = await getPendingApprovals();
+  const data = await getPendingApprovals();
   allPendingData.value = data || [];
-  
+
   // 根据分类过滤
   let filteredData = data || [];
   if (activeCategory.value !== 'all') {
-    const category = businessCategories.find(c => c.key === activeCategory.value);
+    const category = businessCategories.find(
+      (c) => c.key === activeCategory.value,
+    );
     if (category) {
-      filteredData = filteredData.filter(item => category.types.includes(item.businessType));
+      filteredData = filteredData.filter((item) =>
+        category.types.includes(item.businessType),
+      );
     }
   }
-  
+
   return {
     items: filteredData,
     total: filteredData.length,
@@ -141,27 +186,42 @@ const [PendingGrid, pendingGridApi] = useVbenVxeGrid({
 
 const initiatedColumns = [
   { title: '业务类型', field: 'businessTypeName', width: 100 },
-  { title: '业务标题', field: 'businessTitle', minWidth: 200, showOverflow: true },
+  {
+    title: '业务标题',
+    field: 'businessTitle',
+    minWidth: 200,
+    showOverflow: true,
+  },
   { title: '审批人', field: 'approverName', width: 100 },
   { title: '状态', field: 'status', width: 80, slots: { default: 'status' } },
   { title: '审批意见', field: 'comment', width: 150, showOverflow: true },
   { title: '申请时间', field: 'createdAt', width: 150 },
   { title: '审批时间', field: 'approvedAt', width: 150 },
-  { title: '操作', field: 'action', width: 80, fixed: 'right' as const, slots: { default: 'action' } },
+  {
+    title: '操作',
+    field: 'action',
+    width: 80,
+    fixed: 'right' as const,
+    slots: { default: 'action' },
+  },
 ];
 
 async function loadInitiatedData() {
   const data = await getMyInitiatedApprovals();
   allInitiatedData.value = data || [];
-  
+
   let filteredData = data || [];
   if (activeCategory.value !== 'all') {
-    const category = businessCategories.find(c => c.key === activeCategory.value);
+    const category = businessCategories.find(
+      (c) => c.key === activeCategory.value,
+    );
     if (category) {
-      filteredData = filteredData.filter(item => category.types.includes(item.businessType));
+      filteredData = filteredData.filter((item) =>
+        category.types.includes(item.businessType),
+      );
     }
   }
-  
+
   return {
     items: filteredData,
     total: filteredData.length,
@@ -188,26 +248,41 @@ const [InitiatedGrid, initiatedGridApi] = useVbenVxeGrid({
 
 const historyColumns = [
   { title: '业务类型', field: 'businessTypeName', width: 100 },
-  { title: '业务标题', field: 'businessTitle', minWidth: 200, showOverflow: true },
+  {
+    title: '业务标题',
+    field: 'businessTitle',
+    minWidth: 200,
+    showOverflow: true,
+  },
   { title: '申请人', field: 'applicantName', width: 100 },
   { title: '结果', field: 'status', width: 80, slots: { default: 'status' } },
   { title: '审批意见', field: 'comment', width: 150, showOverflow: true },
   { title: '审批时间', field: 'approvedAt', width: 150 },
-  { title: '操作', field: 'action', width: 80, fixed: 'right' as const, slots: { default: 'action' } },
+  {
+    title: '操作',
+    field: 'action',
+    width: 80,
+    fixed: 'right' as const,
+    slots: { default: 'action' },
+  },
 ];
 
 async function loadHistoryData() {
   const data = await getMyApprovedHistory();
   allHistoryData.value = data || [];
-  
+
   let filteredData = data || [];
   if (activeCategory.value !== 'all') {
-    const category = businessCategories.find(c => c.key === activeCategory.value);
+    const category = businessCategories.find(
+      (c) => c.key === activeCategory.value,
+    );
     if (category) {
-      filteredData = filteredData.filter(item => category.types.includes(item.businessType));
+      filteredData = filteredData.filter((item) =>
+        category.types.includes(item.businessType),
+      );
     }
   }
-  
+
   return {
     items: filteredData,
     total: filteredData.length,
@@ -234,7 +309,7 @@ const [HistoryGrid, historyGridApi] = useVbenVxeGrid({
 
 // 主 Tab 切换
 function handleTabChange(key: Key) {
-  activeTab.value = String(key) as 'pending' | 'initiated' | 'history';
+  activeTab.value = String(key) as 'history' | 'initiated' | 'pending';
   activeCategory.value = 'all';
 }
 
@@ -283,34 +358,37 @@ function handleApprove(row: ApprovalDTO) {
 
 // 审批拒绝
 function handleReject(row: ApprovalDTO) {
-const rejectReason = ref('');
-  
+  const rejectReason = ref('');
+
   Modal.confirm({
     title: '拒绝审批',
-    content: () => h('div', {}, [
-      h('p', { style: 'margin-bottom: 8px;' }, '请填写拒绝原因（必填）：'),
-      h(Textarea, {
-        value: rejectReason.value,
-        'onUpdate:value': (val: string) => { rejectReason.value = val; },
-        placeholder: '请输入拒绝原因',
-        rows: 3,
-        maxlength: 500,
-        showCount: true,
-      }),
-    ]),
+    content: () =>
+      h('div', {}, [
+        h('p', { style: 'margin-bottom: 8px;' }, '请填写拒绝原因（必填）：'),
+        h(Textarea, {
+          value: rejectReason.value,
+          'onUpdate:value': (val: string) => {
+            rejectReason.value = val;
+          },
+          placeholder: '请输入拒绝原因',
+          rows: 3,
+          maxlength: 500,
+          showCount: true,
+        }),
+      ]),
     okText: '拒绝',
     okType: 'danger',
     cancelText: '取消',
     onOk: async () => {
-  if (!rejectReason.value.trim()) {
+      if (!rejectReason.value.trim()) {
         message.warning('请填写拒绝原因');
-        return Promise.reject();
+        throw undefined;
       }
       try {
         await approveApproval({
           approvalId: row.id,
           result: 'REJECTED',
-      comment: rejectReason.value.trim(),
+          comment: rejectReason.value.trim(),
         });
         message.success('已拒绝');
         pendingGridApi.reload();
@@ -330,7 +408,7 @@ async function handleBatchApprove() {
     message.warning('请先选择要审批的记录');
     return;
   }
-  
+
   Modal.confirm({
     title: '批量通过',
     content: `确定要批量通过选中的 ${records.length} 条审批吗？`,
@@ -360,30 +438,37 @@ async function handleBatchReject() {
     message.warning('请先选择要拒绝的记录');
     return;
   }
-  
+
   const rejectReason = ref('');
-  
+
   Modal.confirm({
     title: '批量拒绝',
-    content: () => h('div', {}, [
-      h('p', { style: 'margin-bottom: 8px;' }, `确定要批量拒绝选中的 ${records.length} 条审批吗？`),
-      h('p', { style: 'margin-bottom: 8px;' }, '请填写拒绝原因（必填）：'),
-      h(Textarea, {
-        value: rejectReason.value,
-        'onUpdate:value': (val: string) => { rejectReason.value = val; },
-        placeholder: '请输入拒绝原因',
-        rows: 3,
-        maxlength: 500,
-        showCount: true,
-      }),
-    ]),
+    content: () =>
+      h('div', {}, [
+        h(
+          'p',
+          { style: 'margin-bottom: 8px;' },
+          `确定要批量拒绝选中的 ${records.length} 条审批吗？`,
+        ),
+        h('p', { style: 'margin-bottom: 8px;' }, '请填写拒绝原因（必填）：'),
+        h(Textarea, {
+          value: rejectReason.value,
+          'onUpdate:value': (val: string) => {
+            rejectReason.value = val;
+          },
+          placeholder: '请输入拒绝原因',
+          rows: 3,
+          maxlength: 500,
+          showCount: true,
+        }),
+      ]),
     okText: '拒绝',
     okType: 'danger',
     cancelText: '取消',
     onOk: async () => {
       if (!rejectReason.value.trim()) {
         message.warning('请填写拒绝原因');
-        return Promise.reject();
+        throw undefined;
       }
       try {
         await requestClient.post('/workbench/approval/batch-approve', {
@@ -410,7 +495,7 @@ function handleModalSuccess() {
     initiatedGridApi.reload();
   } else {
     historyGridApi.reload();
-}
+  }
 }
 
 // 获取当前统计数据
@@ -442,10 +527,14 @@ onMounted(async () => {
 </script>
 
 <template>
-  <Page title="审批中心" description="集中管理所有业务审批，快速处理待审批事项" auto-content-height>
+  <Page
+    title="审批中心"
+    description="集中管理所有业务审批，快速处理待审批事项"
+    auto-content-height
+  >
     <Card :bordered="false">
       <!-- 主 Tab：待我审批 / 我发起的 / 审批历史 -->
-      <Tabs v-model:activeKey="activeTab" @change="handleTabChange">
+      <Tabs v-model:active-key="activeTab" @change="handleTabChange">
         <TabPane key="pending">
           <template #tab>
             <Badge :count="pendingCount" :offset="[10, 0]">
@@ -458,20 +547,25 @@ onMounted(async () => {
       </Tabs>
 
       <!-- 分类子 Tab（仅待审批显示数量 Badge） -->
-      <Tabs 
-        v-model:activeKey="activeCategory" 
-        size="small" 
+      <Tabs
+        v-model:active-key="activeCategory"
+        size="small"
         type="card"
         @change="handleCategoryChange"
-        style="margin-bottom: 16px;"
+        style="margin-bottom: 16px"
       >
         <TabPane v-for="cat in currentStats" :key="cat.key">
           <template #tab>
             <template v-if="activeTab === 'pending'">
-              <Badge :count="cat.count" :offset="[8, 0]" :showZero="cat.key === 'all'" size="small">
+              <Badge
+                :count="cat.count"
+                :offset="[8, 0]"
+                :show-zero="cat.key === 'all'"
+                size="small"
+              >
                 <span>{{ cat.name }}</span>
-            </Badge>
-          </template>
+              </Badge>
+            </template>
             <span v-else>{{ cat.name }}</span>
           </template>
         </TabPane>
@@ -489,20 +583,20 @@ onMounted(async () => {
         <template #priority="{ row }">
           <Tag :color="priorityColorMap[row.priority] || 'default'">
             {{ row.priorityName || row.priority }}
-            </Tag>
-          </template>
+          </Tag>
+        </template>
 
         <template #urgency="{ row }">
           <Tag v-if="row.urgency === 'URGENT'" color="red">紧急</Tag>
           <span v-else>{{ row.urgencyName || '普通' }}</span>
-          </template>
+        </template>
 
         <template #action="{ row }">
-            <Space>
+          <Space>
             <a @click="handleViewDetail(row, true)">详情</a>
             <a style="color: #52c41a" @click="handleApprove(row)">通过</a>
             <a style="color: #ff4d4f" @click="handleReject(row)">拒绝</a>
-            </Space>
+          </Space>
         </template>
       </PendingGrid>
 
@@ -511,8 +605,8 @@ onMounted(async () => {
         <template #status="{ row }">
           <Tag :color="statusColorMap[row.status] || 'default'">
             {{ row.statusName || row.status }}
-            </Tag>
-          </template>
+          </Tag>
+        </template>
 
         <template #action="{ row }">
           <a @click="handleViewDetail(row, false)">查看</a>
@@ -524,8 +618,8 @@ onMounted(async () => {
         <template #status="{ row }">
           <Tag :color="statusColorMap[row.status] || 'default'">
             {{ row.statusName || row.status }}
-            </Tag>
-          </template>
+          </Tag>
+        </template>
 
         <template #action="{ row }">
           <a @click="handleViewDetail(row, false)">查看</a>

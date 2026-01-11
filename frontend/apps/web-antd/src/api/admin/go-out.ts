@@ -57,4 +57,3 @@ export function getGoOutRecordsByDateRange(startDate: string, endDate: string) {
 export function getCurrentGoOut() {
   return requestClient.get<GoOutRecordDTO[]>('/admin/go-out/current');
 }
-

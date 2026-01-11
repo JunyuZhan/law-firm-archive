@@ -1,5 +1,3 @@
-import { requestClient } from '#/api/request';
-
 import type {
   MeetingBooking,
   MeetingBookingQueryParams,
@@ -8,10 +6,14 @@ import type {
   PageResult,
 } from './types';
 
+import { requestClient } from '#/api/request';
+
 /**
  * 获取所有会议室列表
  */
-export function fetchMeetingRoomList(params?: MeetingRoomQueryParams): Promise<MeetingRoom[]> {
+export function fetchMeetingRoomList(
+  params?: MeetingRoomQueryParams,
+): Promise<MeetingRoom[]> {
   return requestClient.get('/admin/meeting-room', { params });
 }
 
@@ -25,14 +27,27 @@ export function getAvailableMeetingRooms(): Promise<MeetingRoom[]> {
 /**
  * 创建会议室
  */
-export function createMeetingRoom(data: { name: string; location?: string; capacity?: number; equipment?: string }): Promise<MeetingRoom> {
+export function createMeetingRoom(data: {
+  capacity?: number;
+  equipment?: string;
+  location?: string;
+  name: string;
+}): Promise<MeetingRoom> {
   return requestClient.post('/admin/meeting-room', data);
 }
 
 /**
  * 更新会议室
  */
-export function updateMeetingRoom(id: number, data: { name?: string; location?: string; capacity?: number; equipment?: string }): Promise<MeetingRoom> {
+export function updateMeetingRoom(
+  id: number,
+  data: {
+    capacity?: number;
+    equipment?: string;
+    location?: string;
+    name?: string;
+  },
+): Promise<MeetingRoom> {
   return requestClient.put(`/admin/meeting-room/${id}`, data);
 }
 
@@ -46,21 +61,34 @@ export function deleteMeetingRoom(id: number): Promise<void> {
 /**
  * 更新会议室状态
  */
-export function updateMeetingRoomStatus(id: number, status: string): Promise<void> {
-  return requestClient.put(`/admin/meeting-room/${id}/status`, null, { params: { status } });
+export function updateMeetingRoomStatus(
+  id: number,
+  status: string,
+): Promise<void> {
+  return requestClient.put(`/admin/meeting-room/${id}/status`, null, {
+    params: { status },
+  });
 }
 
 /**
  * 获取预约列表
  */
-export function fetchBookingList(params: MeetingBookingQueryParams): Promise<PageResult<MeetingBooking>> {
+export function fetchBookingList(
+  params: MeetingBookingQueryParams,
+): Promise<PageResult<MeetingBooking>> {
   return requestClient.get('/admin/meeting-room/bookings', { params });
 }
 
 /**
  * 预约会议室
  */
-export function bookMeetingRoom(data: { roomId: number; title: string; startTime: string; endTime: string; participants?: number[] }): Promise<MeetingBooking> {
+export function bookMeetingRoom(data: {
+  endTime: string;
+  participants?: number[];
+  roomId: number;
+  startTime: string;
+  title: string;
+}): Promise<MeetingBooking> {
   return requestClient.post('/admin/meeting-room/bookings', data);
 }
 
@@ -74,8 +102,13 @@ export function cancelBooking(id: number): Promise<void> {
 /**
  * 获取会议室某日预约情况
  */
-export function getRoomDayBookings(roomId: number, date: string): Promise<MeetingBooking[]> {
-  return requestClient.get(`/admin/meeting-room/${roomId}/bookings/day`, { params: { date } });
+export function getRoomDayBookings(
+  roomId: number,
+  date: string,
+): Promise<MeetingBooking[]> {
+  return requestClient.get(`/admin/meeting-room/${roomId}/bookings/day`, {
+    params: { date },
+  });
 }
 
 /**
@@ -88,13 +121,24 @@ export function getMyBookings(): Promise<MeetingBooking[]> {
 /**
  * 获取会议室日程视图
  */
-export function getMeetingRoomSchedule(roomId: number, startDate: string, endDate: string): Promise<MeetingBooking[]> {
-  return requestClient.get(`/admin/meeting-room/${roomId}/schedule`, { params: { startDate, endDate } });
+export function getMeetingRoomSchedule(
+  roomId: number,
+  startDate: string,
+  endDate: string,
+): Promise<MeetingBooking[]> {
+  return requestClient.get(`/admin/meeting-room/${roomId}/schedule`, {
+    params: { startDate, endDate },
+  });
 }
 
 /**
  * 获取所有会议室日程视图
  */
-export function getAllRoomsSchedule(startDate: string, endDate: string): Promise<Record<number, MeetingBooking[]>> {
-  return requestClient.get('/admin/meeting-room/schedule/all', { params: { startDate, endDate } });
+export function getAllRoomsSchedule(
+  startDate: string,
+  endDate: string,
+): Promise<Record<number, MeetingBooking[]>> {
+  return requestClient.get('/admin/meeting-room/schedule/all', {
+    params: { startDate, endDate },
+  });
 }

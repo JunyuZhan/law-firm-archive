@@ -1,8 +1,27 @@
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue';
+import type { CommissionRule } from '#/api/finance/commission-rule';
+
+import { computed, reactive, ref } from 'vue';
+
 import { useVbenModal } from '@vben/common-ui';
-import { message, Form, FormItem, Input, InputNumber, Button, Space, Divider, Textarea, Row, Col, Tooltip, Switch } from 'ant-design-vue';
-import { commissionRuleApi, type CommissionRule } from '#/api/finance/commission-rule';
+
+import {
+  Button,
+  Col,
+  Divider,
+  Form,
+  FormItem,
+  Input,
+  InputNumber,
+  message,
+  Row,
+  Space,
+  Switch,
+  Textarea,
+  Tooltip,
+} from 'ant-design-vue';
+
+import { commissionRuleApi } from '#/api/finance/commission-rule';
 
 const emit = defineEmits<{
   success: [];
@@ -27,7 +46,13 @@ const formData = reactive<CommissionRule>({
 
 // 计算总比例
 const totalRate = computed(() => {
-  return formData.firmRate + formData.leadLawyerRate + formData.assistLawyerRate + formData.supportStaffRate + formData.originatorRate;
+  return (
+    formData.firmRate +
+    formData.leadLawyerRate +
+    formData.assistLawyerRate +
+    formData.supportStaffRate +
+    formData.originatorRate
+  );
 });
 
 const [Modal, modalApi] = useVbenModal({
@@ -114,17 +139,24 @@ defineExpose({
       <Row :gutter="16">
         <Col :span="12">
           <FormItem label="方案编码" required>
-            <Input v-model:value="formData.ruleCode" placeholder="如：SOLO" :disabled="!!editingId" />
+            <Input
+              v-model:value="formData.ruleCode"
+              placeholder="如：SOLO"
+              :disabled="!!editingId"
+            />
           </FormItem>
         </Col>
         <Col :span="12">
           <FormItem label="方案名称" required>
-            <Input v-model:value="formData.ruleName" placeholder="如：独立办案" />
+            <Input
+              v-model:value="formData.ruleName"
+              placeholder="如：独立办案"
+            />
           </FormItem>
         </Col>
       </Row>
 
-      <Divider orientation="left" style="margin: 12px 0;">
+      <Divider orientation="left" style="margin: 12px 0">
         分配比例（0%表示不参与分配）
       </Divider>
 
@@ -206,36 +238,57 @@ defineExpose({
         </Col>
       </Row>
 
-      <div style=" padding: 8px; margin-bottom: 16px;text-align: center; background: #f5f5f5; border-radius: 4px;">
-        <span style="color: #666;">当前合计：</span>
-        <strong :style="{ color: totalRate === 100 ? '#52c41a' : '#1890ff' }">{{ totalRate.toFixed(2) }}%</strong>
-        <span v-if="totalRate !== 100" style=" margin-left: 8px; font-size: 12px;color: #999;">
+      <div
+        style="
+          padding: 8px;
+          margin-bottom: 16px;
+          text-align: center;
+          background: #f5f5f5;
+          border-radius: 4px;
+        "
+      >
+        <span style="color: #666">当前合计：</span>
+        <strong :style="{ color: totalRate === 100 ? '#52c41a' : '#1890ff' }"
+          >{{ totalRate.toFixed(2) }}%</strong
+        >
+        <span
+          v-if="totalRate !== 100"
+          style="margin-left: 8px; font-size: 12px; color: #999"
+        >
           （比例之和不强制=100%）
         </span>
       </div>
 
       <FormItem label="方案说明">
-        <Textarea v-model:value="formData.description" :rows="2" placeholder="描述此方案的适用场景" />
+        <Textarea
+          v-model:value="formData.description"
+          :rows="2"
+          placeholder="描述此方案的适用场景"
+        />
       </FormItem>
 
       <Row :gutter="16">
         <Col :span="12">
           <FormItem label="允许律师修改">
             <Switch v-model:checked="formData.allowModify" />
-            <span style="margin-left: 8px; font-size: 12px; color: #666;">创建合同时可自定义比例</span>
+            <span style="margin-left: 8px; font-size: 12px; color: #666"
+              >创建合同时可自定义比例</span
+            >
           </FormItem>
         </Col>
         <Col :span="12">
           <FormItem label="启用状态">
             <Switch v-model:checked="formData.active" />
-            <span style="margin-left: 8px; font-size: 12px; color: #666;">停用后不可选择</span>
+            <span style="margin-left: 8px; font-size: 12px; color: #666"
+              >停用后不可选择</span
+            >
           </FormItem>
         </Col>
       </Row>
 
       <Divider style="margin: 12px 0" />
 
-      <div style="text-align: right;">
+      <div style="text-align: right">
         <Space>
           <Button @click="modalApi.close()">取消</Button>
           <Button type="primary" :loading="saving" @click="handleSave">

@@ -1,22 +1,22 @@
+import type {
+  CaseCategoryDTO,
+  CaseLibraryDTO,
+  CaseLibraryQuery,
+  CreateArticleCommand,
+  CreateCaseLibraryCommand,
+  CreateLawRegulationCommand,
+  KnowledgeArticleDTO,
+  KnowledgeArticleQuery,
+  LawCategoryDTO,
+  LawRegulationDTO,
+  LawRegulationQuery,
+  PageResult,
+} from './types';
+
 /**
  * 知识库模块 API
  */
 import { requestClient } from '#/api/request';
-
-import type {
-  LawRegulationDTO,
-  LawRegulationQuery,
-  CreateLawRegulationCommand,
-  LawCategoryDTO,
-  KnowledgeArticleDTO,
-  KnowledgeArticleQuery,
-  CreateArticleCommand,
-  CaseLibraryDTO,
-  CaseLibraryQuery,
-  CreateCaseLibraryCommand,
-  CaseCategoryDTO,
-  PageResult,
-} from './types';
 
 // ========== 法律法规 API ==========
 
@@ -27,7 +27,9 @@ export function getLawCategoryTree() {
 
 /** 获取法规列表 */
 export function getLawRegulationList(params: LawRegulationQuery) {
-  return requestClient.get<PageResult<LawRegulationDTO>>('/knowledge/law', { params });
+  return requestClient.get<PageResult<LawRegulationDTO>>('/knowledge/law', {
+    params,
+  });
 }
 
 /** 获取法规详情 */
@@ -41,7 +43,10 @@ export function createLawRegulation(data: CreateLawRegulationCommand) {
 }
 
 /** 更新法规 */
-export function updateLawRegulation(id: number, data: CreateLawRegulationCommand) {
+export function updateLawRegulation(
+  id: number,
+  data: CreateLawRegulationCommand,
+) {
   return requestClient.put<LawRegulationDTO>(`/knowledge/law/${id}`, data);
 }
 
@@ -67,16 +72,23 @@ export function getMyCollectedRegulations() {
 
 /** 标注法规失效 */
 export function markLawRegulationRepealed(id: number, reason?: string) {
-  return requestClient.post<LawRegulationDTO>(`/knowledge/law/${id}/mark-repealed`, null, {
-    params: { reason },
-  });
+  return requestClient.post<LawRegulationDTO>(
+    `/knowledge/law/${id}/mark-repealed`,
+    null,
+    {
+      params: { reason },
+    },
+  );
 }
 
 // ========== 知识文章 API ==========
 
 /** 获取文章列表 */
 export function getArticleList(params: KnowledgeArticleQuery) {
-  return requestClient.get<PageResult<KnowledgeArticleDTO>>('/knowledge/article', { params });
+  return requestClient.get<PageResult<KnowledgeArticleDTO>>(
+    '/knowledge/article',
+    { params },
+  );
 }
 
 /** 获取文章详情 */
@@ -91,7 +103,10 @@ export function createArticle(data: CreateArticleCommand) {
 
 /** 更新文章 */
 export function updateArticle(id: number, data: CreateArticleCommand) {
-  return requestClient.put<KnowledgeArticleDTO>(`/knowledge/article/${id}`, data);
+  return requestClient.put<KnowledgeArticleDTO>(
+    `/knowledge/article/${id}`,
+    data,
+  );
 }
 
 /** 删除文章 */
@@ -101,7 +116,9 @@ export function deleteArticle(id: number) {
 
 /** 发布文章 */
 export function publishArticle(id: number) {
-  return requestClient.post<KnowledgeArticleDTO>(`/knowledge/article/${id}/publish`);
+  return requestClient.post<KnowledgeArticleDTO>(
+    `/knowledge/article/${id}/publish`,
+  );
 }
 
 /** 归档文章 */
@@ -131,7 +148,9 @@ export function uncollectArticle(id: number) {
 
 /** 获取我的收藏文章 */
 export function getMyCollectedArticles() {
-  return requestClient.get<KnowledgeArticleDTO[]>('/knowledge/article/collected');
+  return requestClient.get<KnowledgeArticleDTO[]>(
+    '/knowledge/article/collected',
+  );
 }
 
 // ========== 案例库 API ==========
@@ -143,7 +162,9 @@ export function getCaseCategoryTree() {
 
 /** 获取案例列表 */
 export function getCaseList(params: CaseLibraryQuery) {
-  return requestClient.get<PageResult<CaseLibraryDTO>>('/knowledge/case', { params });
+  return requestClient.get<PageResult<CaseLibraryDTO>>('/knowledge/case', {
+    params,
+  });
 }
 
 /** 获取案例详情 */
@@ -183,4 +204,3 @@ export function getMyCollectedCases() {
 
 // 导出类型
 export type * from './types';
-

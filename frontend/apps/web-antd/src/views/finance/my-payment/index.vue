@@ -1,17 +1,21 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
-import { message } from 'ant-design-vue';
+import type { VxeGridProps } from '#/adapter/vxe-table';
+
+import { computed, onMounted, ref } from 'vue';
+
 import { Page } from '@vben/common-ui';
+
 import {
   Card,
-  Tag,
-  Row,
   Col,
-  Statistic,
-  Progress,
   Empty,
+  message,
+  Progress,
+  Row,
+  Statistic,
+  Tag,
 } from 'ant-design-vue';
-import type { VxeGridProps } from '#/adapter/vxe-table';
+
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import { requestClient } from '#/api/request';
 
@@ -45,29 +49,62 @@ const contracts = ref<MyContractPayment[]>([]);
 
 // 统计数据
 const stats = computed(() => {
-  const totalAmount = contracts.value.reduce((sum, c) => sum + c.totalAmount, 0);
+  const totalAmount = contracts.value.reduce(
+    (sum, c) => sum + c.totalAmount,
+    0,
+  );
   const paidAmount = contracts.value.reduce((sum, c) => sum + c.paidAmount, 0);
-  const unpaidAmount = contracts.value.reduce((sum, c) => sum + c.unpaidAmount, 0);
+  const unpaidAmount = contracts.value.reduce(
+    (sum, c) => sum + c.unpaidAmount,
+    0,
+  );
   const contractCount = contracts.value.length;
   return { totalAmount, paidAmount, unpaidAmount, contractCount };
 });
 
 // ==================== 表格配置 ====================
 
-const gridColumns: VxeGridProps['gridOptions']['columns'] = [
+const gridColumns: VxeGridProps['columns'] = [
   { title: '合同编号', field: 'contractNo', width: 140 },
-  { title: '合同名称', field: 'contractName', minWidth: 200, showOverflow: true },
+  {
+    title: '合同名称',
+    field: 'contractName',
+    minWidth: 200,
+    showOverflow: true,
+  },
   { title: '客户', field: 'clientName', width: 120 },
-  { title: '我的角色', field: 'myRoleName', width: 100, slots: { default: 'role' } },
-  { title: '合同金额', field: 'totalAmount', width: 120, slots: { default: 'totalAmount' } },
-  { title: '已收金额', field: 'paidAmount', width: 120, slots: { default: 'paidAmount' } },
-  { title: '收款进度', field: 'paymentProgress', width: 150, slots: { default: 'progress' } },
+  {
+    title: '我的角色',
+    field: 'myRoleName',
+    width: 100,
+    slots: { default: 'role' },
+  },
+  {
+    title: '合同金额',
+    field: 'totalAmount',
+    width: 120,
+    slots: { default: 'totalAmount' },
+  },
+  {
+    title: '已收金额',
+    field: 'paidAmount',
+    width: 120,
+    slots: { default: 'paidAmount' },
+  },
+  {
+    title: '收款进度',
+    field: 'paymentProgress',
+    width: 150,
+    slots: { default: 'progress' },
+  },
   { title: '最近收款', field: 'lastPaymentDate', width: 110 },
 ];
 
 async function loadData() {
   try {
-    const res = await requestClient.get<MyContractPayment[]>('/finance/my/payments');
+    const res = await requestClient.get<MyContractPayment[]>(
+      '/finance/my/payments',
+    );
     contracts.value = res || [];
     return { items: res || [], total: (res || []).length };
   } catch (error: any) {
@@ -116,25 +153,46 @@ onMounted(() => {
 <template>
   <Page title="我的收款" description="查看您参与合同的收款进度">
     <!-- 统计卡片 -->
-    <Row :gutter="16" style="margin-bottom: 16px;">
+    <Row :gutter="16" style="margin-bottom: 16px">
       <Col :xs="12" :sm="6">
         <Card size="small">
-          <Statistic title="参与合同数" :value="stats.contractCount" suffix="个" />
+          <Statistic
+            title="参与合同数"
+            :value="stats.contractCount"
+            suffix="个"
+          />
         </Card>
       </Col>
       <Col :xs="12" :sm="6">
         <Card size="small">
-          <Statistic title="合同总金额" :value="stats.totalAmount" prefix="¥" :precision="2" />
+          <Statistic
+            title="合同总金额"
+            :value="stats.totalAmount"
+            prefix="¥"
+            :precision="2"
+          />
         </Card>
       </Col>
       <Col :xs="12" :sm="6">
         <Card size="small">
-          <Statistic title="已收金额" :value="stats.paidAmount" prefix="¥" :precision="2" :value-style="{ color: '#52c41a' }" />
+          <Statistic
+            title="已收金额"
+            :value="stats.paidAmount"
+            prefix="¥"
+            :precision="2"
+            :value-style="{ color: '#52c41a' }"
+          />
         </Card>
       </Col>
       <Col :xs="12" :sm="6">
         <Card size="small">
-          <Statistic title="待收金额" :value="stats.unpaidAmount" prefix="¥" :precision="2" :value-style="{ color: '#faad14' }" />
+          <Statistic
+            title="待收金额"
+            :value="stats.unpaidAmount"
+            prefix="¥"
+            :precision="2"
+            :value-style="{ color: '#faad14' }"
+          />
         </Card>
       </Col>
     </Row>
@@ -145,13 +203,17 @@ onMounted(() => {
           {{ formatMoney(row.totalAmount) }}
         </template>
         <template #paidAmount="{ row }">
-          <span style="color: #52c41a;">{{ formatMoney(row.paidAmount) }}</span>
+          <span style="color: #52c41a">{{ formatMoney(row.paidAmount) }}</span>
         </template>
         <template #role="{ row }">
           <Tag :color="getRoleColor(row.myRole)">{{ row.myRoleName }}</Tag>
         </template>
         <template #progress="{ row }">
-          <Progress :percent="row.paymentProgress" :status="getProgressStatus(row.paymentProgress)" size="small" />
+          <Progress
+            :percent="row.paymentProgress"
+            :status="getProgressStatus(row.paymentProgress)"
+            size="small"
+          />
         </template>
         <template #empty>
           <Empty description="暂无参与的合同" />

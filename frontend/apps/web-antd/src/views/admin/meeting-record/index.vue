@@ -1,4 +1,10 @@
 <script setup lang="ts">
+import type {
+  CreateMeetingRecordCommand,
+  MeetingRecordDTO,
+} from '#/api/admin/meeting-record';
+import type { MeetingRoom } from '#/api/hr/types';
+
 import { onMounted, reactive, ref } from 'vue';
 
 import { Page } from '@vben/common-ui';
@@ -15,7 +21,6 @@ import {
   Select,
   Space,
   Table,
-  Tag,
   Textarea,
 } from 'ant-design-vue';
 
@@ -26,9 +31,7 @@ import {
   getMeetingRecordsByDateRange,
   getMeetingRecordsByRoom,
 } from '#/api/admin/meeting-record';
-import type { CreateMeetingRecordCommand, MeetingRecordDTO } from '#/api/admin/meeting-record';
 import { getAvailableMeetingRooms } from '#/api/hr/meeting-room';
-import type { MeetingRoom } from '#/api/hr/types';
 
 defineOptions({ name: 'MeetingRecordManagement' });
 
@@ -46,11 +49,26 @@ const columns = [
   { title: '记录编号', dataIndex: 'recordNo', key: 'recordNo', width: 120 },
   { title: '会议室', dataIndex: 'roomName', key: 'roomName', width: 120 },
   { title: '会议主题', dataIndex: 'title', key: 'title', width: 200 },
-  { title: '会议日期', dataIndex: 'meetingDate', key: 'meetingDate', width: 120 },
+  {
+    title: '会议日期',
+    dataIndex: 'meetingDate',
+    key: 'meetingDate',
+    width: 120,
+  },
   { title: '开始时间', dataIndex: 'startTime', key: 'startTime', width: 100 },
   { title: '结束时间', dataIndex: 'endTime', key: 'endTime', width: 100 },
-  { title: '组织人', dataIndex: 'organizerName', key: 'organizerName', width: 100 },
-  { title: '参会人员', dataIndex: 'attendees', key: 'attendees', ellipsis: true },
+  {
+    title: '组织人',
+    dataIndex: 'organizerName',
+    key: 'organizerName',
+    width: 100,
+  },
+  {
+    title: '参会人员',
+    dataIndex: 'attendees',
+    key: 'attendees',
+    ellipsis: true,
+  },
   { title: '操作', key: 'action', width: 100, fixed: 'right' as const },
 ];
 
@@ -63,7 +81,7 @@ const modalVisible = ref(false);
 const modalLoading = ref(false);
 const recordForm = reactive<CreateMeetingRecordCommand>({
   bookingId: undefined,
-  roomId: undefined as number | undefined,
+  roomId: undefined as unknown as number,
   title: '',
   meetingDate: '',
   startTime: '',
@@ -89,15 +107,18 @@ async function fetchData() {
     if (searchForm.roomId) {
       data = await getMeetingRecordsByRoom(searchForm.roomId);
     } else if (searchForm.startDate && searchForm.endDate) {
-      data = await getMeetingRecordsByDateRange(searchForm.startDate, searchForm.endDate);
+      data = await getMeetingRecordsByDateRange(
+        searchForm.startDate,
+        searchForm.endDate,
+      );
     } else {
       // 默认查询最近一个月
       const endDate = new Date();
       const startDate = new Date();
       startDate.setMonth(startDate.getMonth() - 1);
       data = await getMeetingRecordsByDateRange(
-        startDate.toISOString().split('T')[0],
-        endDate.toISOString().split('T')[0]
+        startDate.toISOString().split('T')[0] || '',
+        endDate.toISOString().split('T')[0] || '',
       );
     }
     tableData.value = data || [];
@@ -183,11 +204,9 @@ async function handleSubmit() {
 
   modalLoading.value = true;
   try {
-    if (recordForm.bookingId) {
-      await createMeetingRecordFromBooking(recordForm.bookingId, recordForm);
-    } else {
-      await createMeetingRecord(recordForm);
-    }
+    await (recordForm.bookingId
+      ? createMeetingRecordFromBooking(recordForm.bookingId, recordForm)
+      : createMeetingRecord(recordForm));
     message.success('创建成功');
     modalVisible.value = false;
     fetchData();
@@ -199,7 +218,7 @@ async function handleSubmit() {
 }
 
 // 查看详情
-async function handleView(record: MeetingRecordDTO) {
+async function handleView(record: Record<string, any>) {
   try {
     const detail = await getMeetingRecordDetail(record.id);
     detailData.value = detail;
@@ -231,7 +250,11 @@ onMounted(() => {
               allow-clear
               style="width: 150px"
             >
-              <Select.Option v-for="room in roomList" :key="room.id" :value="room.id">
+              <Select.Option
+                v-for="room in roomList"
+                :key="room.id"
+                :value="room.id"
+              >
                 {{ room.name }}
               </Select.Option>
             </Select>
@@ -272,17 +295,21 @@ onMounted(() => {
     >
       <Form :model="recordForm" layout="vertical">
         <FormItem label="会议室" required>
-          <Select
-            v-model:value="recordForm.roomId"
-            placeholder="请选择会议室"
-          >
-            <Select.Option v-for="room in roomList" :key="room.id" :value="room.id">
+          <Select v-model:value="recordForm.roomId" placeholder="请选择会议室">
+            <Select.Option
+              v-for="room in roomList"
+              :key="room.id"
+              :value="room.id"
+            >
               {{ room.name }}
             </Select.Option>
           </Select>
         </FormItem>
         <FormItem label="会议主题" required>
-          <Input v-model:value="recordForm.title" placeholder="请输入会议主题" />
+          <Input
+            v-model:value="recordForm.title"
+            placeholder="请输入会议主题"
+          />
         </FormItem>
         <FormItem label="会议日期" required>
           <DatePicker
@@ -292,19 +319,34 @@ onMounted(() => {
           />
         </FormItem>
         <FormItem label="开始时间" required>
-          <Input v-model:value="recordForm.startTime" placeholder="例如：09:00" />
+          <Input
+            v-model:value="recordForm.startTime"
+            placeholder="例如：09:00"
+          />
         </FormItem>
         <FormItem label="结束时间">
           <Input v-model:value="recordForm.endTime" placeholder="例如：10:00" />
         </FormItem>
         <FormItem label="会议内容">
-          <Textarea v-model:value="recordForm.content" placeholder="请输入会议内容" :rows="4" />
+          <Textarea
+            v-model:value="recordForm.content"
+            placeholder="请输入会议内容"
+            :rows="4"
+          />
         </FormItem>
         <FormItem label="会议决议">
-          <Textarea v-model:value="recordForm.decisions" placeholder="请输入会议决议" :rows="3" />
+          <Textarea
+            v-model:value="recordForm.decisions"
+            placeholder="请输入会议决议"
+            :rows="3"
+          />
         </FormItem>
         <FormItem label="行动计划">
-          <Textarea v-model:value="recordForm.actionItems" placeholder="请输入行动计划" :rows="3" />
+          <Textarea
+            v-model:value="recordForm.actionItems"
+            placeholder="请输入行动计划"
+            :rows="3"
+          />
         </FormItem>
       </Form>
     </Modal>
@@ -325,11 +367,16 @@ onMounted(() => {
         <p><strong>结束时间:</strong> {{ detailData.endTime || '-' }}</p>
         <p><strong>组织人:</strong> {{ detailData.organizerName || '-' }}</p>
         <p><strong>参会人员:</strong> {{ detailData.attendees || '-' }}</p>
-        <p v-if="detailData.content"><strong>会议内容:</strong> {{ detailData.content }}</p>
-        <p v-if="detailData.decisions"><strong>会议决议:</strong> {{ detailData.decisions }}</p>
-        <p v-if="detailData.actionItems"><strong>行动计划:</strong> {{ detailData.actionItems }}</p>
+        <p v-if="detailData.content">
+          <strong>会议内容:</strong> {{ detailData.content }}
+        </p>
+        <p v-if="detailData.decisions">
+          <strong>会议决议:</strong> {{ detailData.decisions }}
+        </p>
+        <p v-if="detailData.actionItems">
+          <strong>行动计划:</strong> {{ detailData.actionItems }}
+        </p>
       </div>
     </Modal>
   </Page>
 </template>
-

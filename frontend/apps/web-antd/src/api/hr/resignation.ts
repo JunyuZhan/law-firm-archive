@@ -1,9 +1,9 @@
+import type { PageResult } from '../matter/types';
+
 /**
  * 离职申请管理 API
  */
 import { requestClient } from '#/api/request';
-
-import type { PageResult } from '../matter/types';
 
 // ========== 类型定义 ==========
 export interface ResignationDTO {
@@ -60,7 +60,9 @@ export interface ApproveResignationCommand {
 
 /** 分页查询离职申请 */
 export function getResignationList(params: ResignationQuery) {
-  return requestClient.get<PageResult<ResignationDTO>>('/hr/resignation', { params });
+  return requestClient.get<PageResult<ResignationDTO>>('/hr/resignation', {
+    params,
+  });
 }
 
 /** 根据ID查询离职申请 */
@@ -70,7 +72,9 @@ export function getResignationDetail(id: number) {
 
 /** 根据员工ID查询离职申请 */
 export function getResignationsByEmployeeId(employeeId: number) {
-  return requestClient.get<ResignationDTO[]>(`/hr/resignation/employee/${employeeId}`);
+  return requestClient.get<ResignationDTO[]>(
+    `/hr/resignation/employee/${employeeId}`,
+  );
 }
 
 /** 创建离职申请 */
@@ -79,19 +83,28 @@ export function createResignation(data: CreateResignationCommand) {
 }
 
 /** 审批离职申请 */
-export function approveResignation(id: number, data: ApproveResignationCommand) {
-  return requestClient.post<ResignationDTO>(`/hr/resignation/${id}/approve`, data);
+export function approveResignation(
+  id: number,
+  data: ApproveResignationCommand,
+) {
+  return requestClient.post<ResignationDTO>(
+    `/hr/resignation/${id}/approve`,
+    data,
+  );
 }
 
 /** 完成交接 */
 export function completeResignationHandover(id: number, handoverNote?: string) {
-  return requestClient.post<ResignationDTO>(`/hr/resignation/${id}/complete-handover`, null, {
-    params: { handoverNote },
-  });
+  return requestClient.post<ResignationDTO>(
+    `/hr/resignation/${id}/complete-handover`,
+    null,
+    {
+      params: { handoverNote },
+    },
+  );
 }
 
 /** 删除离职申请 */
 export function deleteResignation(id: number) {
   return requestClient.delete(`/hr/resignation/${id}`);
 }
-

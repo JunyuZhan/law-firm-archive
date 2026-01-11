@@ -1,42 +1,50 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed } from 'vue';
-import { message, Modal } from 'ant-design-vue';
+import type { ClientDTO } from '#/api/client/types';
+import type {
+  CommissionDTO,
+  CommissionQuery,
+  ContractParticipantDTO,
+} from '#/api/finance/types';
+import type { MatterSimpleDTO } from '#/api/matter/types';
+
+import { computed, onMounted, reactive, ref } from 'vue';
+
 import { Page } from '@vben/common-ui';
+
 import {
-  Card,
-  Table,
   Button,
-  Space,
-  Tag,
+  Card,
+  Col,
   Input,
   InputNumber,
-  Select,
+  message,
+  Modal,
   Row,
-  Col,
+  Select,
+  Space,
+  Table,
   Tabs,
+  Tag,
 } from 'ant-design-vue';
 
-const TabPane = Tabs.TabPane;
-
+import { getClientSelectOptions } from '#/api/client';
 import {
-  getCommissionList,
-  getCommissionDetail,
   approveCommission,
   batchApproveCommission,
-  issueCommission,
   batchIssueCommission,
-  getPendingCommissionPayments,
+  getCommissionDetail,
+  getCommissionList,
   getContractDetail,
   getContractParticipants,
+  getPendingCommissionPayments,
+  issueCommission,
   manualCalculateCommission,
 } from '#/api/finance';
-import { getClientSelectOptions } from '#/api/client';
 import { getMatterSelectOptions } from '#/api/matter';
-import type { CommissionDTO, CommissionQuery, ContractParticipantDTO } from '#/api/finance/types';
-import type { ClientDTO } from '#/api/client/types';
-import type { MatterDTO } from '#/api/matter/types';
 
 defineOptions({ name: 'FinanceCommission' });
+
+const TabPane = Tabs.TabPane;
 
 // 状态
 const loading = ref(false);
@@ -45,7 +53,7 @@ const total = ref(0);
 const detailModalVisible = ref(false);
 const currentCommission = ref<CommissionDTO | null>(null);
 const clients = ref<ClientDTO[]>([]);
-const matters = ref<MatterDTO[]>([]);
+const matters = ref<MatterSimpleDTO[]>([]);
 const activeTab = ref('all');
 const selectedRowKeys = ref<number[]>([]);
 
@@ -66,12 +74,38 @@ const queryParams = reactive<CommissionQuery>({
 
 // 表格列
 const columns = [
-  { title: '提成编号', dataIndex: 'commissionNo', key: 'commissionNo', width: 130 },
-  { title: '项目名称', dataIndex: 'matterName', key: 'matterName', width: 180, ellipsis: true },
+  {
+    title: '提成编号',
+    dataIndex: 'commissionNo',
+    key: 'commissionNo',
+    width: 130,
+  },
+  {
+    title: '项目名称',
+    dataIndex: 'matterName',
+    key: 'matterName',
+    width: 180,
+    ellipsis: true,
+  },
   { title: '客户名称', dataIndex: 'clientName', key: 'clientName', width: 150 },
-  { title: '收款金额', dataIndex: 'paymentAmount', key: 'paymentAmount', width: 120 },
-  { title: '提成比例', dataIndex: 'commissionRate', key: 'commissionRate', width: 100 },
-  { title: '提成金额', dataIndex: 'commissionAmount', key: 'commissionAmount', width: 120 },
+  {
+    title: '收款金额',
+    dataIndex: 'paymentAmount',
+    key: 'paymentAmount',
+    width: 120,
+  },
+  {
+    title: '提成比例',
+    dataIndex: 'commissionRate',
+    key: 'commissionRate',
+    width: 100,
+  },
+  {
+    title: '提成金额',
+    dataIndex: 'commissionAmount',
+    key: 'commissionAmount',
+    width: 120,
+  },
   { title: '状态', dataIndex: 'statusName', key: 'statusName', width: 100 },
   { title: '创建时间', dataIndex: 'createdAt', key: 'createdAt', width: 160 },
   { title: '操作', key: 'action', width: 200, fixed: 'right' as const },
@@ -129,7 +163,7 @@ async function loadPendingCommissions() {
       feeNo: payment.paymentNo, // 使用收款编号作为显示
       amount: payment.amount,
       paidAmount: payment.amount, // 已确认的收款，已收金额等于收款金额
-      payment: payment, // 保存完整的payment对象，用于后续计算提成
+      payment, // 保存完整的payment对象，用于后续计算提成
     }));
     pendingTotal.value = pendingDataSource.value.length;
   } catch (error: any) {
@@ -277,7 +311,7 @@ function handleBatchIssue() {
 }
 
 // 主Tab切换
-function handleMainTabChange(key: string | number) {
+function handleMainTabChange(key: number | string) {
   pendingCommissionsTab.value = String(key);
   if (key === 'pending') {
     loadPendingCommissions(); // 加载待计算提成的收款记录
@@ -287,16 +321,30 @@ function handleMainTabChange(key: string | number) {
 }
 
 // Tab切换
-function handleTabChange(key: string | number) {
+function handleTabChange(key: number | string) {
   activeTab.value = String(key);
-  if (key === 'all') {
-    queryParams.status = undefined;
-  } else if (key === 'pending') {
-    queryParams.status = 'PENDING';
-  } else if (key === 'approved') {
-    queryParams.status = 'APPROVED';
-  } else if (key === 'paid') {
-    queryParams.status = 'PAID';
+  switch (key) {
+    case 'all': {
+      queryParams.status = undefined;
+
+      break;
+    }
+    case 'approved': {
+      queryParams.status = 'APPROVED';
+
+      break;
+    }
+    case 'paid': {
+      queryParams.status = 'PAID';
+
+      break;
+    }
+    case 'pending': {
+      queryParams.status = 'PENDING';
+
+      break;
+    }
+    // No default
   }
   queryParams.pageNum = 1;
   fetchData();
@@ -305,20 +353,20 @@ function handleTabChange(key: string | number) {
 // 待计算提成相关状态
 const commissionFormModalVisible = ref(false);
 const currentFee = ref<any>(null);
-const commissionFormData = ref<Array<{
-  participantId: number;
-  userId: number;
-  userName?: string;
-  role: string;
-  roleName: string;
-  commissionRate?: number;
-  originalRate?: number;
-  commissionAmount?: number;
-  remark?: string;
-}>>([]);
+const commissionFormData = ref<
+  Array<{
+    commissionAmount?: number;
+    commissionRate?: number;
+    originalRate?: number;
+    participantId: number;
+    remark?: string;
+    role: string;
+    roleName: string;
+    userId: number;
+    userName?: string;
+  }>
+>([]);
 const commissionSaving = ref(false);
-
-
 
 // 选择收款记录进行提成计算
 async function handleSelectPayment(record: any) {
@@ -335,7 +383,7 @@ async function handleSelectPayment(record: any) {
 
     // 获取合同详情（包含提成比例）
     const contract = await getContractDetail(payment.contractId);
-    
+
     // 保存到 currentFee 用于显示
     currentFee.value = {
       id: payment.feeId,
@@ -347,7 +395,7 @@ async function handleSelectPayment(record: any) {
       clientName: payment.clientName,
       amount: paymentAmount,
       payments: [payment], // 保存payment对象
-      contract: contract, // 保存合同信息
+      contract, // 保存合同信息
     };
 
     // 获取合同参与人
@@ -360,16 +408,21 @@ async function handleSelectPayment(record: any) {
     // 根据参与人角色，匹配合同上对应的提成比例
     function getCommissionRateByRole(role: string): number | undefined {
       switch (role) {
-        case 'LEAD':
-          return contract.leadLawyerRate;
-        case 'CO_COUNSEL':
+        case 'CO_COUNSEL': {
           return contract.assistLawyerRate;
-        case 'PARALEGAL':
-          return contract.supportStaffRate;
-        case 'ORIGINATOR':
+        }
+        case 'LEAD': {
+          return contract.leadLawyerRate;
+        }
+        case 'ORIGINATOR': {
           return contract.originatorRate;
-        default:
+        }
+        case 'PARALEGAL': {
+          return contract.supportStaffRate;
+        }
+        default: {
           return undefined;
+        }
       }
     }
 
@@ -378,9 +431,10 @@ async function handleSelectPayment(record: any) {
     commissionFormData.value = participants.map((p: ContractParticipantDTO) => {
       const contractDefaultRate = getCommissionRateByRole(p.role);
       // 优先使用参与人的比例（p.commissionRate），这是用户创建合同时设置的实际比例
-      const finalRate = (p.commissionRate !== undefined && p.commissionRate !== null) 
-        ? p.commissionRate 
-        : (contractDefaultRate || 0);
+      const finalRate =
+        p.commissionRate !== undefined && p.commissionRate !== null
+          ? p.commissionRate
+          : contractDefaultRate || 0;
 
       return {
         participantId: p.id,
@@ -389,9 +443,12 @@ async function handleSelectPayment(record: any) {
         role: p.role,
         roleName: getRoleName(p.role),
         commissionRate: finalRate,
-        originalRate: p.commissionRate,  // 参与人的实际比例
-        commissionAmount: finalRate > 0 ? Number((paymentAmount * finalRate / 100).toFixed(2)) : undefined,
-        remark: `合同参与人设置为 ${p.commissionRate !== undefined && p.commissionRate !== null ? p.commissionRate + '%' : '无比例'}`,
+        originalRate: p.commissionRate, // 参与人的实际比例
+        commissionAmount:
+          finalRate > 0
+            ? Number(((paymentAmount * finalRate) / 100).toFixed(2))
+            : undefined,
+        remark: `合同参与人设置为 ${p.commissionRate !== undefined && p.commissionRate !== null ? `${p.commissionRate}%` : '无比例'}`,
       };
     });
 
@@ -404,10 +461,10 @@ async function handleSelectPayment(record: any) {
 // 获取角色名称
 function getRoleName(role: string): string {
   const roleMap: Record<string, string> = {
-    'LEAD': '主办律师',
-    'CO_COUNSEL': '协办律师',
-    'ORIGINATOR': '案源人',
-    'PARALEGAL': '律师助理',
+    LEAD: '主办律师',
+    CO_COUNSEL: '协办律师',
+    ORIGINATOR: '案源人',
+    PARALEGAL: '律师助理',
   };
   return roleMap[role] || role;
 }
@@ -417,9 +474,13 @@ function calculateCommissionAmount(index: number) {
   const item = commissionFormData.value[index];
   if (!item) return;
   if (item.commissionRate && currentFee.value) {
-    const payment = currentFee.value.payments?.find((p: any) => p.status === 'CONFIRMED');
+    const payment = currentFee.value.payments?.find(
+      (p: any) => p.status === 'CONFIRMED',
+    );
     if (payment) {
-      item.commissionAmount = Number((payment.amount * item.commissionRate / 100).toFixed(2));
+      item.commissionAmount = Number(
+        ((payment.amount * item.commissionRate) / 100).toFixed(2),
+      );
     }
   }
 }
@@ -432,8 +493,12 @@ async function handleSaveCommission() {
   }
 
   // 验证数据
-  const validParticipants = commissionFormData.value.filter(p =>
-    p.commissionRate && p.commissionRate > 0 && p.commissionAmount && p.commissionAmount > 0
+  const validParticipants = commissionFormData.value.filter(
+    (p) =>
+      p.commissionRate &&
+      p.commissionRate > 0 &&
+      p.commissionAmount &&
+      p.commissionAmount > 0,
   );
 
   if (validParticipants.length === 0) {
@@ -451,7 +516,7 @@ async function handleSaveCommission() {
 
     await manualCalculateCommission({
       paymentId: payment.id,
-      participants: validParticipants.map(p => ({
+      participants: validParticipants.map((p) => ({
         participantId: p.participantId,
         userId: p.userId,
         commissionRate: p.commissionRate,
@@ -462,11 +527,11 @@ async function handleSaveCommission() {
 
     message.success('提成计算成功');
     commissionFormModalVisible.value = false;
-    
+
     // 刷新数据
     loadPendingCommissions(); // 刷新待计算提成列表
     fetchData(); // 刷新提成记录列表
-    
+
     // 切换到提成记录Tab
     pendingCommissionsTab.value = 'commissions';
     activeTab.value = 'all';
@@ -490,7 +555,7 @@ function getStatusColor(status: string) {
 // 行选择
 const rowSelection = computed(() => ({
   selectedRowKeys: selectedRowKeys.value,
-  onChange: (keys: (string | number)[]) => {
+  onChange: (keys: (number | string)[]) => {
     selectedRowKeys.value = keys as number[];
   },
 }));
@@ -504,9 +569,16 @@ onMounted(() => {
 <template>
   <Page title="提成管理" description="管理律师提成计算与发放">
     <Card>
-      <Tabs v-model:activeKey="pendingCommissionsTab" @change="handleMainTabChange">
+      <Tabs
+        v-model:active-key="pendingCommissionsTab"
+        @change="handleMainTabChange"
+      >
         <TabPane key="commissions" tab="提成记录">
-          <Tabs v-model:activeKey="activeTab" @change="handleTabChange" style="margin-bottom: 16px">
+          <Tabs
+            v-model:active-key="activeTab"
+            @change="handleTabChange"
+            style="margin-bottom: 16px"
+          >
             <TabPane key="all" tab="全部" />
             <TabPane key="pending" tab="待审批" />
             <TabPane key="approved" tab="已审批" />
@@ -520,7 +592,7 @@ onMounted(() => {
                 <Select
                   v-model:value="queryParams.status"
                   placeholder="提成状态"
-                  allowClear
+                  allow-clear
                   style="width: 100%"
                   :options="statusOptions"
                 />
@@ -529,22 +601,42 @@ onMounted(() => {
                 <Select
                   v-model:value="queryParams.clientId"
                   placeholder="客户"
-                  allowClear
-                  showSearch
-                  :filterOption="(input, option) => (option?.label || '').toLowerCase().includes(input.toLowerCase())"
+                  allow-clear
+                  show-search
+                  :filter-option="
+                    (input, option) =>
+                      (option?.label || '')
+                        .toLowerCase()
+                        .includes(input.toLowerCase())
+                  "
                   style="width: 100%"
-                  :options="clients.map(c => ({ label: c.clientNo ? `[${c.clientNo}] ${c.name}` : c.name, value: c.id }))"
+                  :options="
+                    clients.map((c) => ({
+                      label: c.clientNo ? `[${c.clientNo}] ${c.name}` : c.name,
+                      value: c.id,
+                    }))
+                  "
                 />
               </Col>
               <Col :xs="24" :sm="12" :md="6">
                 <Select
                   v-model:value="queryParams.matterId"
                   placeholder="项目"
-                  allowClear
-                  showSearch
-                  :filterOption="(input, option) => (option?.label || '').toLowerCase().includes(input.toLowerCase())"
+                  allow-clear
+                  show-search
+                  :filter-option="
+                    (input, option) =>
+                      (option?.label || '')
+                        .toLowerCase()
+                        .includes(input.toLowerCase())
+                  "
                   style="width: 100%"
-                  :options="matters.map(m => ({ label: `[${m.matterNo}] ${m.name}`, value: m.id }))"
+                  :options="
+                    matters.map((m) => ({
+                      label: `[${m.matterNo}] ${m.name}`,
+                      value: m.id,
+                    }))
+                  "
                 />
               </Col>
               <Col :xs="24" :sm="12" :md="6">
@@ -559,7 +651,9 @@ onMounted(() => {
                     批量审批
                   </Button>
                   <Button
-                    v-if="selectedRowKeys.length > 0 && activeTab === 'approved'"
+                    v-if="
+                      selectedRowKeys.length > 0 && activeTab === 'approved'
+                    "
                     type="primary"
                     @click="handleBatchIssue"
                   >
@@ -579,7 +673,7 @@ onMounted(() => {
             :pagination="{
               current: queryParams.pageNum,
               pageSize: queryParams.pageSize,
-              total: total,
+              total,
               showSizeChanger: true,
               showTotal: (total) => `共 ${total} 条`,
               onChange: (page, size) => {
@@ -597,21 +691,36 @@ onMounted(() => {
                 </Tag>
               </template>
               <template v-if="column.key === 'paymentAmount'">
-                ¥{{ (record as CommissionDTO).paymentAmount?.toLocaleString() || '0' }}
+                ¥{{
+                  (record as CommissionDTO).paymentAmount?.toLocaleString() ||
+                  '0'
+                }}
               </template>
               <template v-if="column.key === 'commissionRate'">
-                {{ (record as CommissionDTO).commissionRate ? `${(record as CommissionDTO).commissionRate}%` : '-' }}
+                {{
+                  (record as CommissionDTO).commissionRate
+                    ? `${(record as CommissionDTO).commissionRate}%`
+                    : '-'
+                }}
               </template>
               <template v-if="column.key === 'commissionAmount'">
-                ¥{{ (record as CommissionDTO).commissionAmount?.toLocaleString() || '0' }}
+                ¥{{
+                  (
+                    record as CommissionDTO
+                  ).commissionAmount?.toLocaleString() || '0'
+                }}
               </template>
               <template v-if="column.key === 'action'">
                 <Space>
                   <a @click="handleView(record as CommissionDTO)">查看</a>
-                  <template v-if="(record as CommissionDTO).status === 'PENDING'">
+                  <template
+                    v-if="(record as CommissionDTO).status === 'PENDING'"
+                  >
                     <a @click="handleApprove(record as CommissionDTO)">审批</a>
                   </template>
-                  <template v-if="(record as CommissionDTO).status === 'APPROVED'">
+                  <template
+                    v-if="(record as CommissionDTO).status === 'APPROVED'"
+                  >
                     <a @click="handleIssue(record as CommissionDTO)">发放</a>
                   </template>
                 </Space>
@@ -626,21 +735,41 @@ onMounted(() => {
               <Col :xs="24" :sm="12" :md="6">
                 <Select
                   placeholder="客户"
-                  allowClear
-                  showSearch
-                  :filterOption="(input, option) => (option?.label || '').toLowerCase().includes(input.toLowerCase())"
+                  allow-clear
+                  show-search
+                  :filter-option="
+                    (input, option) =>
+                      (option?.label || '')
+                        .toLowerCase()
+                        .includes(input.toLowerCase())
+                  "
                   style="width: 100%"
-                  :options="clients.map(c => ({ label: c.clientNo ? `[${c.clientNo}] ${c.name}` : c.name, value: c.id }))"
+                  :options="
+                    clients.map((c) => ({
+                      label: c.clientNo ? `[${c.clientNo}] ${c.name}` : c.name,
+                      value: c.id,
+                    }))
+                  "
                 />
               </Col>
               <Col :xs="24" :sm="12" :md="6">
                 <Select
                   placeholder="项目"
-                  allowClear
-                  showSearch
-                  :filterOption="(input, option) => (option?.label || '').toLowerCase().includes(input.toLowerCase())"
+                  allow-clear
+                  show-search
+                  :filter-option="
+                    (input, option) =>
+                      (option?.label || '')
+                        .toLowerCase()
+                        .includes(input.toLowerCase())
+                  "
                   style="width: 100%"
-                  :options="matters.map(m => ({ label: `[${m.matterNo}] ${m.name}`, value: m.id }))"
+                  :options="
+                    matters.map((m) => ({
+                      label: `[${m.matterNo}] ${m.name}`,
+                      value: m.id,
+                    }))
+                  "
                 />
               </Col>
               <Col :xs="24" :sm="12" :md="6">
@@ -655,11 +784,37 @@ onMounted(() => {
           <!-- 待计算提成表格 -->
           <Table
             :columns="[
-              { title: '收费编号', dataIndex: 'feeNo', key: 'feeNo', width: 130 },
-              { title: '项目名称', dataIndex: 'matterName', key: 'matterName', width: 150, ellipsis: true },
-              { title: '客户名称', dataIndex: 'clientName', key: 'clientName', width: 120 },
-              { title: '收费金额', dataIndex: 'amount', key: 'amount', width: 100 },
-              { title: '已收金额', dataIndex: 'paidAmount', key: 'paidAmount', width: 100 },
+              {
+                title: '收费编号',
+                dataIndex: 'feeNo',
+                key: 'feeNo',
+                width: 130,
+              },
+              {
+                title: '项目名称',
+                dataIndex: 'matterName',
+                key: 'matterName',
+                width: 150,
+                ellipsis: true,
+              },
+              {
+                title: '客户名称',
+                dataIndex: 'clientName',
+                key: 'clientName',
+                width: 120,
+              },
+              {
+                title: '收费金额',
+                dataIndex: 'amount',
+                key: 'amount',
+                width: 100,
+              },
+              {
+                title: '已收金额',
+                dataIndex: 'paidAmount',
+                key: 'paidAmount',
+                width: 100,
+              },
               { title: '操作', key: 'action', width: 120 },
             ]"
             :data-source="pendingDataSource"
@@ -669,11 +824,15 @@ onMounted(() => {
             size="middle"
           >
             <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'amount' || column.key === 'paidAmount'">
+              <template
+                v-if="column.key === 'amount' || column.key === 'paidAmount'"
+              >
                 ¥{{ (record[column.key] || 0).toLocaleString() }}
               </template>
               <template v-if="column.key === 'action'">
-                <Button type="link" @click="handleSelectPayment(record)">计算提成</Button>
+                <Button type="link" @click="handleSelectPayment(record)">
+                  计算提成
+                </Button>
               </template>
             </template>
           </Table>
@@ -691,40 +850,69 @@ onMounted(() => {
       <div v-if="currentCommission" style="padding: 20px">
         <Row :gutter="[16, 16]">
           <Col :span="12">
-            <div><strong>提成编号：</strong>{{ currentCommission.commissionNo || '-' }}</div>
+            <div>
+              <strong>提成编号：</strong
+              >{{ currentCommission.commissionNo || '-' }}
+            </div>
           </Col>
           <Col :span="12">
-            <div><strong>项目名称：</strong>{{ currentCommission.matterName || '-' }}</div>
+            <div>
+              <strong>项目名称：</strong
+              >{{ currentCommission.matterName || '-' }}
+            </div>
           </Col>
           <Col :span="12">
-            <div><strong>客户名称：</strong>{{ currentCommission.clientName || '-' }}</div>
+            <div>
+              <strong>客户名称：</strong
+              >{{ currentCommission.clientName || '-' }}
+            </div>
           </Col>
           <Col :span="12">
-            <div><strong>收款金额：</strong>¥{{ currentCommission.paymentAmount?.toLocaleString() || '0' }}</div>
+            <div>
+              <strong>收款金额：</strong>¥{{
+                currentCommission.paymentAmount?.toLocaleString() || '0'
+              }}
+            </div>
           </Col>
           <Col :span="12">
-            <div><strong>提成比例：</strong>{{ currentCommission.commissionRate ? `${currentCommission.commissionRate}%` : '-' }}</div>
+            <div>
+              <strong>提成比例：</strong
+              >{{
+                currentCommission.commissionRate
+                  ? `${currentCommission.commissionRate}%`
+                  : '-'
+              }}
+            </div>
           </Col>
           <Col :span="12">
-            <div><strong>提成金额：</strong>¥{{ currentCommission.commissionAmount?.toLocaleString() || '0' }}</div>
+            <div>
+              <strong>提成金额：</strong>¥{{
+                currentCommission.commissionAmount?.toLocaleString() || '0'
+              }}
+            </div>
           </Col>
           <Col :span="12">
-            <div><strong>状态：</strong>
+            <div>
+              <strong>状态：</strong>
               <Tag :color="getStatusColor(currentCommission.status)">
                 {{ currentCommission.statusName }}
               </Tag>
             </div>
           </Col>
           <Col :span="12">
-            <div><strong>创建时间：</strong>{{ currentCommission.createdAt || '-' }}</div>
+            <div>
+              <strong>创建时间：</strong
+              >{{ currentCommission.createdAt || '-' }}
+            </div>
           </Col>
           <Col :span="24">
-            <div><strong>备注：</strong>{{ currentCommission.remark || '-' }}</div>
+            <div>
+              <strong>备注：</strong>{{ currentCommission.remark || '-' }}
+            </div>
           </Col>
         </Row>
       </div>
     </Modal>
-
 
     <!-- 提成计算表单弹窗 -->
     <Modal
@@ -735,7 +923,7 @@ onMounted(() => {
       @ok="handleSaveCommission"
       @cancel="commissionFormModalVisible = false"
     >
-      <div v-if="currentFee" style="margin-bottom: 16px;">
+      <div v-if="currentFee" style="margin-bottom: 16px">
         <Row :gutter="16">
           <Col :span="12">
             <div><strong>收费编号：</strong>{{ currentFee.feeNo }}</div>
@@ -747,26 +935,58 @@ onMounted(() => {
             <div><strong>客户名称：</strong>{{ currentFee.clientName }}</div>
           </Col>
           <Col :span="12">
-            <div><strong>收款金额：</strong>¥{{ (currentFee.payments?.find((p: any) => p.status === 'CONFIRMED')?.amount || 0).toLocaleString() }}</div>
+            <div>
+              <strong>收款金额：</strong>¥{{
+                (
+                  currentFee.payments?.find(
+                    (p: any) => p.status === 'CONFIRMED',
+                  )?.amount || 0
+                ).toLocaleString()
+              }}
+            </div>
           </Col>
         </Row>
       </div>
 
-      <div style=" padding: 12px;margin-bottom: 16px; background: #f5f5f5; border-radius: 4px;">
-        <div style=" margin-bottom: 8px;font-size: 12px; color: #666;">说明：</div>
-        <div style="font-size: 12px; color: #666;">
-          1. 提成比例已自动载入合同参与人设定的比例，财务可以修改<br/>
-          2. 修改提成比例后，提成金额会自动计算（收款金额 × 提成比例）<br/>
+      <div
+        style="
+          padding: 12px;
+          margin-bottom: 16px;
+          background: #f5f5f5;
+          border-radius: 4px;
+        "
+      >
+        <div style="margin-bottom: 8px; font-size: 12px; color: #666">
+          说明：
+        </div>
+        <div style="font-size: 12px; color: #666">
+          1. 提成比例已自动载入合同参与人设定的比例，财务可以修改<br />
+          2. 修改提成比例后，提成金额会自动计算（收款金额 × 提成比例）<br />
           3. 也可以直接修改提成金额（财务最终结算时使用）
         </div>
       </div>
 
       <Table
         :columns="[
-          { title: '参与人', dataIndex: 'userName', key: 'userName', width: 120 },
+          {
+            title: '参与人',
+            dataIndex: 'userName',
+            key: 'userName',
+            width: 120,
+          },
           { title: '角色', dataIndex: 'roleName', key: 'roleName', width: 100 },
-          { title: '提成比例(%)', dataIndex: 'commissionRate', key: 'commissionRate', width: 120 },
-          { title: '提成金额(元)', dataIndex: 'commissionAmount', key: 'commissionAmount', width: 150 },
+          {
+            title: '提成比例(%)',
+            dataIndex: 'commissionRate',
+            key: 'commissionRate',
+            width: 120,
+          },
+          {
+            title: '提成金额(元)',
+            dataIndex: 'commissionAmount',
+            key: 'commissionAmount',
+            width: 150,
+          },
           { title: '备注', dataIndex: 'remark', key: 'remark' },
         ]"
         :data-source="commissionFormData"
@@ -776,18 +996,23 @@ onMounted(() => {
       >
         <template #bodyCell="{ column, record, index }">
           <template v-if="column.key === 'commissionRate'">
-            <div style="display: flex; gap: 8px; align-items: center;">
+            <div style="display: flex; gap: 8px; align-items: center">
               <InputNumber
                 v-model:value="record.commissionRate"
                 :min="0"
                 :max="100"
                 :precision="2"
-                style="flex: 1;"
+                style="flex: 1"
                 addon-after="%"
                 @change="calculateCommissionAmount(index)"
               />
-              <span v-if="record.originalRate != null && record.originalRate !== record.commissionRate"
-                    style="font-size: 11px; color: #52c41a;">
+              <span
+                v-if="
+                  record.originalRate != null &&
+                  record.originalRate !== record.commissionRate
+                "
+                style="font-size: 11px; color: #52c41a"
+              >
                 (原: {{ record.originalRate }}%)
               </span>
             </div>

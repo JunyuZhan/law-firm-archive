@@ -1,7 +1,7 @@
 /**
  * 打印工具函数
  * 提供符合国务院标准公文格式（GB/T 9704-2012）的打印功能
- * 
+ *
  * 格式说明：
  * - 对外文书（起诉状、代理词、公函、介绍信等）：使用标准公文格式（16pt仿宋体）
  * - 内部文档（合同、卷宗等）：使用4号或小4号字体（14pt或12pt）
@@ -31,8 +31,8 @@ export const EXTERNAL_DOCUMENT_TYPES = [
  */
 export function isExternalDocument(documentType?: string): boolean {
   if (!documentType) return false;
-  return EXTERNAL_DOCUMENT_TYPES.some(type => 
-    documentType.includes(type) || type.includes(documentType)
+  return EXTERNAL_DOCUMENT_TYPES.some(
+    (type) => documentType.includes(type) || type.includes(documentType),
   );
 }
 
@@ -339,11 +339,12 @@ export function printOfficialDocument(options: PrintOptions): void {
     styles = OFFICIAL_DOCUMENT_STYLES;
   } else {
     // 内部文档格式
-    styles = internalFontSize === 'small4' 
-      ? INTERNAL_DOCUMENT_STYLES_SIZE_SMALL_4 
-      : INTERNAL_DOCUMENT_STYLES_SIZE_4;
+    styles =
+      internalFontSize === 'small4'
+        ? INTERNAL_DOCUMENT_STYLES_SIZE_SMALL_4
+        : INTERNAL_DOCUMENT_STYLES_SIZE_4;
   }
-  
+
   if (customStyles) {
     styles += customStyles;
   }
@@ -369,9 +370,9 @@ export function printOfficialDocument(options: PrintOptions): void {
 
   // 使用标志位防止重复打印
   let hasPrinted = false;
-  let printTimer: ReturnType<typeof setTimeout> | null = null;
-  let retryTimer: ReturnType<typeof setTimeout> | null = null;
-  
+  let printTimer: null | ReturnType<typeof setTimeout> = null;
+  let retryTimer: null | ReturnType<typeof setTimeout> = null;
+
   const doPrint = () => {
     if (!hasPrinted && printWindow && !printWindow.closed) {
       hasPrinted = true;
@@ -390,9 +391,9 @@ export function printOfficialDocument(options: PrintOptions): void {
   };
 
   // 等待内容加载完成后触发打印
-  printWindow.onload = () => {
+  printWindow.addEventListener('load', () => {
     printTimer = setTimeout(doPrint, 250);
-  };
+  });
 
   // 兼容处理：如果onload没有触发，使用readyState检查
   printTimer = setTimeout(() => {
@@ -409,10 +410,10 @@ export function printOfficialDocument(options: PrintOptions): void {
       }
     }
   }, 500);
-  
+
   // 监听窗口关闭事件，清理资源
   printWindow.addEventListener('beforeunload', cleanup);
-  
+
   // 监听窗口焦点事件（用户取消打印后窗口会重新获得焦点）
   let focusHandler: (() => void) | null = null;
   focusHandler = () => {
@@ -460,7 +461,7 @@ export interface LetterPrintData {
  */
 export function generateLetterHtml(data: LetterPrintData): string {
   // 二维码HTML（如果有）
-  const qrCodeHtml = data.qrCodeBase64 
+  const qrCodeHtml = data.qrCodeBase64
     ? `
     <div class="qr-code-area" style="text-align: center; margin-top: 30pt; padding-top: 20pt; border-top: 1px dashed #999;">
       <div style="font-family: 'FangSong', '仿宋_GB2312', '仿宋', serif; font-size: 14pt; color: #000; margin-bottom: 10pt; line-height: 20pt;">扫描二维码验证函件真伪</div>
@@ -469,7 +470,7 @@ export function generateLetterHtml(data: LetterPrintData): string {
     </div>
     `
     : '';
-  
+
   // record.content 是后端已经替换了模板变量的完整HTML内容
   // 模板中已经包含了：标题、编号、接收单位、正文、页脚（律师、律所、日期）
   // 模板内容本身已经包含了内联样式，符合公文格式
@@ -482,7 +483,7 @@ export function generateLetterHtml(data: LetterPrintData): string {
     // 确保内容被包裹在 body 中，以便应用公文格式样式
     return `<div class="letter-content">${data.content}${qrCodeHtml}</div>`;
   }
-  
+
   // 备用格式（如果 content 为空，使用标准公文格式结构）
   return `
     <div class="header">
@@ -547,7 +548,7 @@ export function generateDocumentHtml(data: DocumentPrintData): string {
     htmlContent += `<div class="content" style="white-space: pre-wrap; font-family: 'FangSong', '仿宋_GB2312', '仿宋', serif;">${content}</div>`;
   } else {
     // 标准格式：将换行转换为段落
-    const paragraphs = content.split('\n').filter(p => p.trim());
+    const paragraphs = content.split('\n').filter((p) => p.trim());
     htmlContent += '<div class="content">';
     paragraphs.forEach((para, index) => {
       // 第一段可能需要特殊处理（如不需要缩进）
@@ -568,10 +569,11 @@ export function generateDocumentHtml(data: DocumentPrintData): string {
  */
 export function printDocument(data: DocumentPrintData): void {
   const content = generateDocumentHtml(data);
-  
+
   // 判断是否为对外文书
-  const isExternal = !data.forceInternal && isExternalDocument(data.documentType);
-  
+  const isExternal =
+    !data.forceInternal && isExternalDocument(data.documentType);
+
   printOfficialDocument({
     title: data.title || '文书打印',
     content,
@@ -579,4 +581,3 @@ export function printDocument(data: DocumentPrintData): void {
     internalFontSize: data.internalFontSize || 'size4',
   });
 }
-

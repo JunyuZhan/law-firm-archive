@@ -1,16 +1,35 @@
 <script setup lang="ts">
-import { ref, reactive, computed, nextTick } from 'vue';
-import { message, Modal } from 'ant-design-vue';
+import { computed, nextTick, reactive, ref } from 'vue';
+
 import { Page } from '@vben/common-ui';
 import {
-  Card, Button, Space, Tag, Input, Form, FormItem,
-  Tabs, Upload, List,
-} from 'ant-design-vue';
-import { Plus, UploadOutlined, FileOutlined, DownloadOutlined, CheckCircleOutlined, EyeOutlined } from '@vben/icons';
-import { useVbenVxeGrid } from '#/adapter/vxe-table';
+  CheckCircleOutlined,
+  DownloadOutlined,
+  EyeOutlined,
+  FileOutlined,
+  Plus,
+  UploadOutlined,
+} from '@vben/icons';
 import { useUserStore } from '@vben/stores';
-import { requestClient } from '#/api/request';
+
+import {
+  Button,
+  Card,
+  Form,
+  FormItem,
+  Input,
+  List,
+  message,
+  Modal,
+  Space,
+  Tabs,
+  Tag,
+  Upload,
+} from 'ant-design-vue';
+
+import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import { uploadFile } from '#/api/document';
+import { requestClient } from '#/api/request';
 
 defineOptions({ name: 'HrTraining' });
 
@@ -18,8 +37,8 @@ const userStore = useUserStore();
 const isAdmin = computed(() => {
   const roles = userStore.userInfo?.roles ?? [];
   // 管理员(ADMIN)、律所主任(DIRECTOR)、行政(ADMIN_STAFF) 可以发布和管理培训通知
-  return roles.some(role => 
-    ['ADMIN', 'DIRECTOR', 'ADMIN_STAFF'].includes(String(role).toUpperCase())
+  return roles.some((role) =>
+    ['ADMIN', 'ADMIN_STAFF', 'DIRECTOR'].includes(String(role).toUpperCase()),
   );
 });
 
@@ -47,7 +66,7 @@ const activeTab = ref('notices');
 const modalVisible = ref(false);
 const detailVisible = ref(false);
 const uploadVisible = ref(false);
-const currentRecord = ref<TrainingNoticeDTO | null>(null);
+const currentRecord = ref<null | TrainingNoticeDTO>(null);
 const uploading = ref(false);
 
 const formData = reactive({
@@ -73,12 +92,32 @@ const pendingCertificateFile = ref<File | null>(null);
 const noticeColumns = [
   { title: '培训通知标题', field: 'title', minWidth: 250 },
   { title: '发布时间', field: 'publishedAt', width: 160 },
-  { title: '完成情况', field: 'progress', width: 120, slots: { default: 'progress' } },
-  { title: '我的状态', field: 'myStatus', width: 100, slots: { default: 'myStatus' } },
-  { title: '操作', field: 'action', width: 150, fixed: 'right' as const, slots: { default: 'action' } },
+  {
+    title: '完成情况',
+    field: 'progress',
+    width: 120,
+    slots: { default: 'progress' },
+  },
+  {
+    title: '我的状态',
+    field: 'myStatus',
+    width: 100,
+    slots: { default: 'myStatus' },
+  },
+  {
+    title: '操作',
+    field: 'action',
+    width: 150,
+    fixed: 'right' as const,
+    slots: { default: 'action' },
+  },
 ];
 
-async function loadNotices({ page }: { page: { currentPage: number; pageSize: number } }) {
+async function loadNotices({
+  page,
+}: {
+  page: { currentPage: number; pageSize: number };
+}) {
   const res = await requestClient.get<any>('/hr/training-notice', {
     params: { pageNum: page.currentPage, pageSize: page.pageSize },
   });
@@ -101,10 +140,19 @@ const completionColumns = [
   { title: '律师姓名', field: 'employeeName', width: 100 },
   { title: '部门', field: 'departmentName', width: 120 },
   { title: '上传时间', field: 'uploadedAt', width: 160 },
-  { title: '合格证', field: 'certificate', width: 100, slots: { default: 'certificate' } },
+  {
+    title: '合格证',
+    field: 'certificate',
+    width: 100,
+    slots: { default: 'certificate' },
+  },
 ];
 
-async function loadCompletions({ page }: { page: { currentPage: number; pageSize: number } }) {
+async function loadCompletions({
+  page,
+}: {
+  page: { currentPage: number; pageSize: number };
+}) {
   const res = await requestClient.get<any>('/hr/training-notice/completions', {
     params: { pageNum: page.currentPage, pageSize: page.pageSize },
   });
@@ -122,7 +170,7 @@ const [CompletionGrid, completionGridApi] = useVbenVxeGrid({
 
 // ==================== Tab切换 ====================
 
-function handleTabChange(key: string | number) {
+function handleTabChange(key: number | string) {
   activeTab.value = String(key);
   // 延迟执行，确保表格已挂载
   nextTick(() => {
@@ -170,7 +218,7 @@ async function handlePublish() {
 
   try {
     publishing.value = true;
-    
+
     // 先上传所有待上传的附件
     const uploadedAttachments: { fileName: string; fileUrl: string }[] = [];
     for (const file of pendingFiles.value) {
@@ -180,20 +228,20 @@ async function handlePublish() {
           fileName: file.name,
           fileUrl: res.filePath || '',
         });
-      } catch (error) {
+      } catch {
         message.error(`附件"${file.name}"上传失败`);
         publishing.value = false;
         return;
       }
     }
-    
+
     // 发布通知
     await requestClient.post('/hr/training-notice', {
       title: formData.title,
       content: formData.content,
       attachments: uploadedAttachments,
     });
-    
+
     message.success('发布成功');
     modalVisible.value = false;
     pendingFiles.value = [];
@@ -211,10 +259,12 @@ async function handlePublish() {
 
 async function handleView(row: TrainingNoticeDTO) {
   try {
-    const detail = await requestClient.get<TrainingNoticeDTO>(`/hr/training-notice/${row.id}`);
+    const detail = await requestClient.get<TrainingNoticeDTO>(
+      `/hr/training-notice/${row.id}`,
+    );
     currentRecord.value = detail;
     detailVisible.value = true;
-  } catch (error: any) {
+  } catch {
     message.error('加载详情失败');
   }
 }
@@ -247,17 +297,20 @@ async function handleSubmitCertificate() {
 
   try {
     uploading.value = true;
-    
+
     // 先上传文件
     const res = await uploadFile(pendingCertificateFile.value);
     const certificateUrl = res.filePath || '';
-    
+
     // 然后提交完成记录
-    await requestClient.post(`/hr/training-notice/${currentRecord.value?.id}/complete`, {
-      certificateUrl,
-      certificateName: uploadForm.certificateName,
-    });
-    
+    await requestClient.post(
+      `/hr/training-notice/${currentRecord.value?.id}/complete`,
+      {
+        certificateUrl,
+        certificateName: uploadForm.certificateName,
+      },
+    );
+
     message.success('上传成功');
     uploadVisible.value = false;
     pendingCertificateFile.value = null;
@@ -298,27 +351,31 @@ function handleDelete(row: TrainingNoticeDTO) {
 
 async function downloadFile(url?: string, fileName?: string) {
   if (!url) return;
-  
+
   try {
     // 先获取预签名 URL
-    const res = await requestClient.get<{ downloadUrl: string; fileName?: string }>('/hr/training-notice/download-url', {
+    const res = await requestClient.get<{
+      downloadUrl: string;
+      fileName?: string;
+    }>('/hr/training-notice/download-url', {
       params: { fileUrl: url, fileName },
     });
-    
+
     const downloadUrl = res.downloadUrl || url;
-    const downloadFileName = res.fileName || fileName || url.split('/').pop() || 'download';
-    
+    const downloadFileName =
+      res.fileName || fileName || url.split('/').pop() || 'download';
+
     // 使用预签名 URL 直接下载
     const link = document.createElement('a');
     link.href = downloadUrl;
     link.download = downloadFileName;
     link.target = '_blank';
-    document.body.appendChild(link);
+    document.body.append(link);
     link.click();
-    document.body.removeChild(link);
+    link.remove();
   } catch (error: any) {
     console.error('下载文件失败:', error);
-    message.error('文件下载失败: ' + (error.message || '未知错误'));
+    message.error(`文件下载失败: ${error.message || '未知错误'}`);
   }
 }
 </script>
@@ -326,14 +383,14 @@ async function downloadFile(url?: string, fileName?: string) {
 <template>
   <Page title="培训管理" description="发布培训通知，查看律师完成情况">
     <Card>
-      <Tabs v-model:activeKey="activeTab" @change="handleTabChange">
+      <Tabs v-model:active-key="activeTab" @change="handleTabChange">
         <Tabs.TabPane key="notices" tab="培训通知" />
         <Tabs.TabPane v-if="isAdmin" key="completions" tab="完成情况" />
       </Tabs>
 
       <!-- 培训通知列表 -->
       <template v-if="activeTab === 'notices'">
-        <div v-if="isAdmin" style="margin-bottom: 16px;">
+        <div v-if="isAdmin" style="margin-bottom: 16px">
           <Button type="primary" @click="handleAdd">
             <Plus class="size-4" />发布培训通知
           </Button>
@@ -352,8 +409,15 @@ async function downloadFile(url?: string, fileName?: string) {
           <template #action="{ row }">
             <Space>
               <a @click="handleView(row)">查看</a>
-              <a v-if="!row.myCompleted" @click="handleOpenUpload(row)">上传合格证</a>
-              <a v-if="isAdmin" style="color: #ff4d4f" @click="handleDelete(row)">删除</a>
+              <a v-if="!row.myCompleted" @click="handleOpenUpload(row)"
+                >上传合格证</a
+              >
+              <a
+                v-if="isAdmin"
+                style="color: #ff4d4f"
+                @click="handleDelete(row)"
+                >删除</a
+              >
             </Space>
           </template>
         </NoticeGrid>
@@ -363,7 +427,10 @@ async function downloadFile(url?: string, fileName?: string) {
       <template v-if="activeTab === 'completions'">
         <CompletionGrid>
           <template #certificate="{ row }">
-            <a v-if="row.certificateUrl" @click="downloadFile(row.certificateUrl, row.certificateName)">
+            <a
+              v-if="row.certificateUrl"
+              @click="downloadFile(row.certificateUrl, row.certificateName)"
+            >
               <Space size="small">
                 <EyeOutlined />
                 <span>查看</span>
@@ -380,16 +447,23 @@ async function downloadFile(url?: string, fileName?: string) {
       v-model:open="modalVisible"
       title="发布培训通知"
       width="700px"
-      :confirmLoading="publishing"
-      okText="发布"
+      :confirm-loading="publishing"
+      ok-text="发布"
       @ok="handlePublish"
     >
       <Form :label-col="{ span: 4 }" :wrapper-col="{ span: 19 }">
         <FormItem label="通知标题" required>
-          <Input v-model:value="formData.title" placeholder="如：2026年度律师继续教育培训通知" />
+          <Input
+            v-model:value="formData.title"
+            placeholder="如：2026年度律师继续教育培训通知"
+          />
         </FormItem>
         <FormItem label="通知内容">
-          <Input.TextArea v-model:value="formData.content" :rows="8" placeholder="培训要求、培训网站、注意事项等..." />
+          <Input.TextArea
+            v-model:value="formData.content"
+            :rows="8"
+            placeholder="培训要求、培训网站、注意事项等..."
+          />
         </FormItem>
         <FormItem label="附件">
           <Upload
@@ -399,11 +473,17 @@ async function downloadFile(url?: string, fileName?: string) {
           >
             <Button><UploadOutlined />上传附件</Button>
           </Upload>
-          <List v-if="formData.attachments.length > 0" size="small" style="margin-top: 8px;">
+          <List
+            v-if="formData.attachments.length > 0"
+            size="small"
+            style="margin-top: 8px"
+          >
             <List.Item v-for="(att, idx) in formData.attachments" :key="idx">
               <span><FileOutlined /> {{ att.fileName }}</span>
               <template #actions>
-                <a style="color: #ff4d4f" @click="removeAttachment(idx)">删除</a>
+                <a style="color: #ff4d4f" @click="removeAttachment(idx)"
+                  >删除</a
+                >
               </template>
             </List.Item>
           </List>
@@ -419,15 +499,28 @@ async function downloadFile(url?: string, fileName?: string) {
       :footer="null"
     >
       <div v-if="currentRecord">
-        <div style=" margin-bottom: 16px;color: rgb(0 0 0 / 45%);">
+        <div style="margin-bottom: 16px; color: rgb(0 0 0 / 45%)">
           发布时间：{{ currentRecord.publishedAt }}
         </div>
-        <div style=" line-height: 1.8;white-space: pre-wrap;">{{ currentRecord.content || '暂无内容' }}</div>
-        
-        <div v-if="currentRecord.attachments?.length" style=" padding-top: 16px;margin-top: 24px; border-top: 1px solid #f0f0f0;">
-          <div style=" margin-bottom: 8px;font-weight: 500;">附件：</div>
+        <div style="line-height: 1.8; white-space: pre-wrap">
+          {{ currentRecord.content || '暂无内容' }}
+        </div>
+
+        <div
+          v-if="currentRecord.attachments?.length"
+          style="
+            padding-top: 16px;
+            margin-top: 24px;
+            border-top: 1px solid #f0f0f0;
+          "
+        >
+          <div style="margin-bottom: 8px; font-weight: 500">附件：</div>
           <Space direction="vertical">
-            <a v-for="(att, idx) in currentRecord.attachments" :key="idx" @click="downloadFile(att.fileUrl, att.fileName)">
+            <a
+              v-for="(att, idx) in currentRecord.attachments"
+              :key="idx"
+              @click="downloadFile(att.fileUrl, att.fileName)"
+            >
               <DownloadOutlined /> {{ att.fileName }}
             </a>
           </Space>
@@ -441,7 +534,7 @@ async function downloadFile(url?: string, fileName?: string) {
       title="上传培训合格证"
       width="500px"
       @ok="handleSubmitCertificate"
-      :confirmLoading="uploading"
+      :confirm-loading="uploading"
     >
       <Form :label-col="{ span: 5 }" :wrapper-col="{ span: 18 }">
         <FormItem label="培训通知">
@@ -459,7 +552,10 @@ async function downloadFile(url?: string, fileName?: string) {
               {{ uploadForm.certificateName || '选择文件（PDF/图片）' }}
             </Button>
           </Upload>
-          <div v-if="uploadForm.certificateName" style="margin-top: 8px; color: #52c41a;">
+          <div
+            v-if="uploadForm.certificateName"
+            style="margin-top: 8px; color: #52c41a"
+          >
             <FileOutlined /> {{ uploadForm.certificateName }}
           </div>
         </FormItem>

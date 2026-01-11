@@ -1,39 +1,47 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed } from 'vue';
-import { message, Modal } from 'ant-design-vue';
+import type {
+  CreateTimesheetCommand,
+  MatterDTO,
+  TimesheetDTO,
+} from '#/api/matter/types';
+import type { UserDTO } from '#/api/system/types';
+
+import { computed, onMounted, reactive, ref } from 'vue';
+
 import { Page } from '@vben/common-ui';
+import { useUserStore } from '@vben/stores';
+
 import {
-  Card,
   Button,
-  Space,
-  Tag,
-  Select,
+  Card,
+  Col,
+  DatePicker,
   Form,
   FormItem,
-  DatePicker,
   InputNumber,
-  Textarea,
-  Row,
-  Col,
-  Tabs,
+  message,
+  Modal,
   Popconfirm,
+  Row,
+  Select,
+  Space,
   Switch,
+  Tabs,
+  Tag,
+  Textarea,
 } from 'ant-design-vue';
+
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
-  getTimesheetList,
   createTimesheet,
-  updateTimesheet,
   deleteTimesheet,
-  submitTimesheet,
+  getMatterList,
+  getTimesheetList,
   reviewTimesheet,
+  submitTimesheet,
+  updateTimesheet,
 } from '#/api/matter';
-import { getMatterList } from '#/api/matter';
 import { getUserSelectOptions } from '#/api/system';
-import { useUserStore } from '@vben/stores';
-import type { TimesheetDTO, CreateTimesheetCommand } from '#/api/matter/types';
-import type { MatterDTO } from '#/api/matter/types';
-import type { UserDTO } from '#/api/system/types';
 
 defineOptions({ name: 'MatterTimesheet' });
 
@@ -95,21 +103,37 @@ const gridColumns = computed(() => {
   const baseColumns: any[] = [
     { title: '项目', field: 'matterName', width: 180, showOverflow: true },
   ];
-  
+
   if (activeTab.value === 'all') {
     baseColumns.push({ title: '律师', field: 'userName', width: 100 });
   }
-  
+
   return [
     ...baseColumns,
     { title: '工作日期', field: 'workDate', width: 110 },
     { title: '工时', field: 'hours', width: 80 },
-    { title: '工作类型', field: 'workType', width: 100, slots: { default: 'workType' } },
+    {
+      title: '工作类型',
+      field: 'workType',
+      width: 100,
+      slots: { default: 'workType' },
+    },
     { title: '工作描述', field: 'description', width: 180, showOverflow: true },
-    { title: '可计费', field: 'billable', width: 70, slots: { default: 'billable' } },
+    {
+      title: '可计费',
+      field: 'billable',
+      width: 70,
+      slots: { default: 'billable' },
+    },
     { title: '状态', field: 'status', width: 90, slots: { default: 'status' } },
     { title: '创建时间', field: 'createdAt', width: 150 },
-    { title: '操作', field: 'action', width: 180, fixed: 'right' as const, slots: { default: 'action' } },
+    {
+      title: '操作',
+      field: 'action',
+      width: 180,
+      fixed: 'right' as const,
+      slots: { default: 'action' },
+    },
   ];
 });
 
@@ -192,18 +216,18 @@ async function loadUsers() {
 }
 
 // 计算属性
-const matterOptions = computed(() => 
-  matters.value.map(m => ({ 
-    label: `[${m.matterNo}] ${m.name}`, 
-    value: m.id 
-  }))
+const matterOptions = computed(() =>
+  matters.value.map((m) => ({
+    label: `[${m.matterNo}] ${m.name}`,
+    value: m.id,
+  })),
 );
 
-const userOptions = computed(() => 
-  users.value.map(u => ({ 
-    label: u.realName || u.username, 
-    value: u.id 
-  }))
+const userOptions = computed(() =>
+  users.value.map((u) => ({
+    label: u.realName || u.username,
+    value: u.id,
+  })),
 );
 
 // ==================== 搜索操作 ====================
@@ -222,7 +246,7 @@ function handleReset() {
   gridApi.reload();
 }
 
-function handleTabChange(key: string | number) {
+function handleTabChange(key: number | string) {
   activeTab.value = String(key);
   queryParams.userId = undefined;
   gridApi.reload();
@@ -261,9 +285,12 @@ function handleEdit(row: TimesheetDTO) {
 async function handleSave() {
   try {
     await formRef.value?.validate();
-    
+
     if (formData.id) {
-      await updateTimesheet(formData.id, formData as Partial<CreateTimesheetCommand>);
+      await updateTimesheet(
+        formData.id,
+        formData as Partial<CreateTimesheetCommand>,
+      );
       message.success('更新成功');
     } else {
       await createTimesheet(formData as CreateTimesheetCommand);
@@ -319,7 +346,9 @@ function handleSubmit(row: TimesheetDTO) {
 function handleReview(row: TimesheetDTO, approved: boolean) {
   Modal.confirm({
     title: approved ? '确认通过' : '确认拒绝',
-    content: approved ? '确定要通过这条工时记录吗？' : '确定要拒绝这条工时记录吗？',
+    content: approved
+      ? '确定要通过这条工时记录吗？'
+      : '确定要拒绝这条工时记录吗？',
     okText: '确认',
     cancelText: '取消',
     onOk: async () => {
@@ -350,7 +379,7 @@ function getStatusColor(status: string) {
 }
 
 function getWorkTypeName(workType: string) {
-  return workTypeOptions.find(o => o.value === workType)?.label || workType;
+  return workTypeOptions.find((o) => o.value === workType)?.label || workType;
 }
 
 // ==================== 生命周期 ====================
@@ -365,7 +394,7 @@ onMounted(() => {
   <Page title="工时管理" description="管理项目工时记录" auto-content-height>
     <Card>
       <!-- 标签页切换 -->
-      <Tabs v-model:activeKey="activeTab" @change="handleTabChange">
+      <Tabs v-model:active-key="activeTab" @change="handleTabChange">
         <Tabs.TabPane key="all" tab="全部工时" />
         <Tabs.TabPane key="my" tab="我的工时" />
       </Tabs>
@@ -377,9 +406,14 @@ onMounted(() => {
             <Select
               v-model:value="queryParams.matterId"
               placeholder="所属项目"
-              allowClear
-              showSearch
-              :filterOption="(input: string, option: any) => (option?.label || '').toLowerCase().includes(input.toLowerCase())"
+              allow-clear
+              show-search
+              :filter-option="
+                (input: string, option: any) =>
+                  (option?.label || '')
+                    .toLowerCase()
+                    .includes(input.toLowerCase())
+              "
               style="width: 100%"
               :options="matterOptions"
             />
@@ -388,9 +422,14 @@ onMounted(() => {
             <Select
               v-model:value="queryParams.userId"
               placeholder="筛选律师"
-              allowClear
-              showSearch
-              :filterOption="(input: string, option: any) => (option?.label || '').toLowerCase().includes(input.toLowerCase())"
+              allow-clear
+              show-search
+              :filter-option="
+                (input: string, option: any) =>
+                  (option?.label || '')
+                    .toLowerCase()
+                    .includes(input.toLowerCase())
+              "
               style="width: 100%"
               :options="userOptions"
             />
@@ -399,7 +438,7 @@ onMounted(() => {
             <Select
               v-model:value="queryParams.workType"
               placeholder="工作类型"
-              allowClear
+              allow-clear
               style="width: 100%"
               :options="workTypeOptions"
             />
@@ -408,7 +447,7 @@ onMounted(() => {
             <Select
               v-model:value="queryParams.status"
               placeholder="状态"
-              allowClear
+              allow-clear
               style="width: 100%"
               :options="statusOptions"
             />
@@ -476,7 +515,9 @@ onMounted(() => {
             </template>
             <template v-if="row.status === 'PENDING'">
               <a @click="handleReview(row, true)">通过</a>
-              <a @click="handleReview(row, false)" style="color: #ff4d4f">拒绝</a>
+              <a @click="handleReview(row, false)" style="color: #ff4d4f"
+                >拒绝</a
+              >
             </template>
             <Popconfirm title="确定删除？" @confirm="handleDelete(row)">
               <a style="color: #ff4d4f">删除</a>
@@ -499,16 +540,29 @@ onMounted(() => {
         :label-col="{ span: 6 }"
         :wrapper-col="{ span: 18 }"
       >
-        <FormItem label="所属项目" name="matterId" :rules="[{ required: true, message: '请选择所属项目' }]">
+        <FormItem
+          label="所属项目"
+          name="matterId"
+          :rules="[{ required: true, message: '请选择所属项目' }]"
+        >
           <Select
             v-model:value="formData.matterId"
             placeholder="请选择所属项目"
-            showSearch
-            :filterOption="(input: string, option: any) => (option?.label || '').toLowerCase().includes(input.toLowerCase())"
+            show-search
+            :filter-option="
+              (input: string, option: any) =>
+                (option?.label || '')
+                  .toLowerCase()
+                  .includes(input.toLowerCase())
+            "
             :options="matterOptions"
           />
         </FormItem>
-        <FormItem label="工作日期" name="workDate" :rules="[{ required: true, message: '请选择工作日期' }]">
+        <FormItem
+          label="工作日期"
+          name="workDate"
+          :rules="[{ required: true, message: '请选择工作日期' }]"
+        >
           <DatePicker
             v-model:value="formData.workDate"
             style="width: 100%"
@@ -516,7 +570,11 @@ onMounted(() => {
             value-format="YYYY-MM-DD"
           />
         </FormItem>
-        <FormItem label="工时(小时)" name="hours" :rules="[{ required: true, message: '请输入工时' }]">
+        <FormItem
+          label="工时(小时)"
+          name="hours"
+          :rules="[{ required: true, message: '请输入工时' }]"
+        >
           <InputNumber
             v-model:value="formData.hours"
             :min="0.1"
@@ -526,14 +584,29 @@ onMounted(() => {
             placeholder="请输入工时"
           />
         </FormItem>
-        <FormItem label="工作类型" name="workType" :rules="[{ required: true, message: '请选择工作类型' }]">
-          <Select v-model:value="formData.workType" :options="workTypeOptions" />
+        <FormItem
+          label="工作类型"
+          name="workType"
+          :rules="[{ required: true, message: '请选择工作类型' }]"
+        >
+          <Select
+            v-model:value="formData.workType"
+            :options="workTypeOptions"
+          />
         </FormItem>
         <FormItem label="可计费" name="billable">
           <Switch v-model:checked="formData.billable" />
         </FormItem>
-        <FormItem label="工作描述" name="description" :rules="[{ required: true, message: '请输入工作描述' }]">
-          <Textarea v-model:value="formData.description" :rows="4" placeholder="请输入工作描述" />
+        <FormItem
+          label="工作描述"
+          name="description"
+          :rules="[{ required: true, message: '请输入工作描述' }]"
+        >
+          <Textarea
+            v-model:value="formData.description"
+            :rows="4"
+            placeholder="请输入工作描述"
+          />
         </FormItem>
       </Form>
     </Modal>

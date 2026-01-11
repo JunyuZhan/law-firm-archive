@@ -1,9 +1,9 @@
+import type { PageResult } from '../matter/types';
+
 /**
  * 文档管理模块 API
  */
 import { requestClient } from '#/api/request';
-
-import type { PageResult } from '../matter/types';
 
 // ========== 文档管理类型定义 ==========
 export interface DocumentDTO {
@@ -62,7 +62,7 @@ export interface CreateDocumentCommand {
 
 export interface UpdateDocumentCommand {
   id: number;
-  title?: string;  // 文档标题（重命名）
+  title?: string; // 文档标题（重命名）
   categoryId?: number;
   description?: string;
 }
@@ -119,7 +119,9 @@ export function getDocumentVersions(id: number) {
 
 /** 下载文档 */
 export function downloadDocument(id: number) {
-  return requestClient.get(`/document/${id}/download`, { responseType: 'blob' });
+  return requestClient.get(`/document/${id}/download`, {
+    responseType: 'blob',
+  });
 }
 
 /** 获取文档预览配置（OnlyOffice 只读模式） */
@@ -135,11 +137,11 @@ export function getDocumentEditConfig(id: number) {
 /** 检查文档是否支持在线编辑 */
 export function checkDocumentEditSupport(id: number) {
   return requestClient.get<{
+    canEdit: boolean;
+    canPreview: boolean;
     documentId: number;
     fileName: string;
     fileType: string;
-    canEdit: boolean;
-    canPreview: boolean;
   }>(`/document/${id}/edit-support`);
 }
 
@@ -147,11 +149,11 @@ export function checkDocumentEditSupport(id: number) {
 export function getDocumentPreviewUrl(id: number) {
   return requestClient.get<{
     documentId: number;
+    expires: number;
     fileName: string;
     fileType: string;
     mimeType: string;
     previewUrl: string;
-    expires: number;
   }>(`/document/${id}/preview-url`);
 }
 
@@ -161,9 +163,9 @@ export function getDocumentThumbnailUrl(id: number) {
     documentId: number;
     fileName: string;
     fileType: string;
-    thumbnailUrl?: string;
     hasThumbnail: boolean;
     message?: string;
+    thumbnailUrl?: string;
   }>(`/document/${id}/thumbnail`);
 }
 
@@ -173,15 +175,15 @@ export function shareDocument(id: number) {
 }
 
 /** 预览文档（获取预览URL并返回） */
-export async function previewDocument(id: number): Promise<string | null> {
+export async function previewDocument(id: number): Promise<null | string> {
   try {
     const result = await requestClient.get<{
       documentId: number;
+      expires: number;
       fileName: string;
       fileType: string;
       mimeType: string;
       previewUrl: string;
-      expires: number;
     }>(`/document/${id}/preview-url`);
     return result.previewUrl || null;
   } catch {
@@ -199,8 +201,6 @@ export interface OnlyOfficeConfig {
   document?: {
     fileType: string;
     key: string;
-    title: string;
-    url: string;
     permissions?: {
       comment: boolean;
       download: boolean;
@@ -208,17 +208,19 @@ export interface OnlyOfficeConfig {
       print: boolean;
       review: boolean;
     };
+    title: string;
+    url: string;
   };
   documentType?: string;
   editorConfig?: {
-    mode: string;
-    lang: string;
     callbackUrl?: string;
+    customization?: Record<string, any>;
+    lang: string;
+    mode: string;
     user?: {
       id: string;
       name: string;
     };
-    customization?: Record<string, any>;
   };
   height?: string;
   width?: string;
@@ -226,7 +228,11 @@ export interface OnlyOfficeConfig {
 }
 
 /** 创建文件夹 */
-export function createFolder(data: { name: string; parentFolder: string; matterId: number }) {
+export function createFolder(data: {
+  matterId: number;
+  name: string;
+  parentFolder: string;
+}) {
   return requestClient.post('/document/folder', data);
 }
 
@@ -234,10 +240,10 @@ export function createFolder(data: { name: string; parentFolder: string; matterI
 export function uploadFile(
   file: File,
   options: {
-    matterId?: number;
-    folder?: string;
     description?: string;
     dossierItemId?: number;
+    folder?: string;
+    matterId?: number;
   } = {},
 ) {
   const formData = new FormData();
@@ -245,7 +251,8 @@ export function uploadFile(
   if (options.matterId) formData.append('matterId', String(options.matterId));
   if (options.folder) formData.append('folder', options.folder);
   if (options.description) formData.append('description', options.description);
-  if (options.dossierItemId) formData.append('dossierItemId', String(options.dossierItemId));
+  if (options.dossierItemId)
+    formData.append('dossierItemId', String(options.dossierItemId));
 
   return requestClient.post<DocumentDTO>('/document/upload', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
@@ -256,10 +263,10 @@ export function uploadFile(
 export function uploadFiles(
   files: File[],
   options: {
-    matterId?: number;
-    folder?: string;
     description?: string;
     dossierItemId?: number;
+    folder?: string;
+    matterId?: number;
   } = {},
 ) {
   const formData = new FormData();
@@ -267,7 +274,8 @@ export function uploadFiles(
   if (options.matterId) formData.append('matterId', String(options.matterId));
   if (options.folder) formData.append('folder', options.folder);
   if (options.description) formData.append('description', options.description);
-  if (options.dossierItemId) formData.append('dossierItemId', String(options.dossierItemId));
+  if (options.dossierItemId)
+    formData.append('dossierItemId', String(options.dossierItemId));
 
   return requestClient.post<DocumentDTO[]>('/document/upload/batch', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
@@ -275,14 +283,19 @@ export function uploadFiles(
 }
 
 /** 获取文档访问日志 */
-export function getDocumentAccessLogs(id: number, params?: { actionType?: string; pageNum?: number; pageSize?: number }) {
-  return requestClient.get<PageResult<any>>(`/document/${id}/access-logs`, { params });
+export function getDocumentAccessLogs(
+  id: number,
+  params?: { actionType?: string; pageNum?: number; pageSize?: number },
+) {
+  return requestClient.get<PageResult<any>>(`/document/${id}/access-logs`, {
+    params,
+  });
 }
 
 /** 移动文件到指定目录 */
 export function moveDocument(id: number, targetDossierItemId: number) {
   return requestClient.put<DocumentDTO>(`/document/${id}/move`, null, {
-    params: { targetDossierItemId }
+    params: { targetDossierItemId },
   });
 }
 
@@ -306,12 +319,11 @@ export async function downloadDocumentsAsZip(ids: number[], filename?: string) {
   const link = document.createElement('a');
   link.href = url;
   link.download = filename || `documents_${Date.now()}.zip`;
-  document.body.appendChild(link);
+  document.body.append(link);
   link.click();
-  document.body.removeChild(link);
+  link.remove();
   window.URL.revokeObjectURL(url);
 }
 
 // 导出类型
 export type * from './types';
-

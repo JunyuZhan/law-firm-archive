@@ -85,7 +85,9 @@ export function getActiveTemplates() {
 
 /** 获取启用的模板列表（公共接口，用于律师申请出函） */
 export function getActiveTemplatesPublic() {
-  return requestClient.get<LetterTemplateDTO[]>('/admin/letter/template/active');
+  return requestClient.get<LetterTemplateDTO[]>(
+    '/admin/letter/template/active',
+  );
 }
 
 /** 获取所有模板（管理员） */
@@ -100,10 +102,10 @@ export function getTemplateDetail(id: number) {
 
 /** 创建模板 */
 export function createTemplate(data: {
-  name: string;
-  letterType: string;
   content: string;
   description?: string;
+  letterType: string;
+  name: string;
 }) {
   return requestClient.post<LetterTemplateDTO>('/admin/letter/template', null, {
     params: data,
@@ -111,15 +113,22 @@ export function createTemplate(data: {
 }
 
 /** 更新模板 */
-export function updateTemplate(id: number, data: {
-  name?: string;
-  letterType?: string;
-  content?: string;
-  description?: string;
-}) {
-  return requestClient.put<LetterTemplateDTO>(`/admin/letter/template/${id}`, null, {
-    params: data,
-  });
+export function updateTemplate(
+  id: number,
+  data: {
+    content?: string;
+    description?: string;
+    letterType?: string;
+    name?: string;
+  },
+) {
+  return requestClient.put<LetterTemplateDTO>(
+    `/admin/letter/template/${id}`,
+    null,
+    {
+      params: data,
+    },
+  );
 }
 
 /** 启用/停用模板 */
@@ -136,22 +145,31 @@ export function deleteTemplate(id: number) {
 
 /** 创建出函申请 */
 export function createLetterApplication(data: CreateLetterApplicationCommand) {
-  return requestClient.post<LetterApplicationDTO>('/admin/letter/application', data);
+  return requestClient.post<LetterApplicationDTO>(
+    '/admin/letter/application',
+    data,
+  );
 }
 
 /** 获取申请详情 */
 export function getApplicationDetail(id: number) {
-  return requestClient.get<LetterApplicationDTO>(`/admin/letter/application/${id}`);
+  return requestClient.get<LetterApplicationDTO>(
+    `/admin/letter/application/${id}`,
+  );
 }
 
 /** 我的申请列表 */
 export function getMyApplications() {
-  return requestClient.get<LetterApplicationDTO[]>('/admin/letter/application/my');
+  return requestClient.get<LetterApplicationDTO[]>(
+    '/admin/letter/application/my',
+  );
 }
 
 /** 项目的出函记录 */
 export function getApplicationsByMatter(matterId: number) {
-  return requestClient.get<LetterApplicationDTO[]>(`/admin/letter/application/matter/${matterId}`);
+  return requestClient.get<LetterApplicationDTO[]>(
+    `/admin/letter/application/matter/${matterId}`,
+  );
 }
 
 /** 取消申请 */
@@ -161,38 +179,64 @@ export function cancelApplication(id: number) {
 
 /** 待审批列表 */
 export function getPendingApprovalList() {
-  return requestClient.get<LetterApplicationDTO[]>('/admin/letter/application/pending-approval');
+  return requestClient.get<LetterApplicationDTO[]>(
+    '/admin/letter/application/pending-approval',
+  );
 }
 
 /** 审批通过 */
 export function approveApplication(id: number, comment?: string) {
-  return requestClient.post<void>(`/admin/letter/application/${id}/approve`, null, {
-    params: { comment },
-  });
+  return requestClient.post<void>(
+    `/admin/letter/application/${id}/approve`,
+    null,
+    {
+      params: { comment },
+    },
+  );
 }
 
 /** 审批拒绝 */
 export function rejectApplication(id: number, comment: string) {
-  return requestClient.post<void>(`/admin/letter/application/${id}/reject`, null, {
-    params: { comment },
-  });
+  return requestClient.post<void>(
+    `/admin/letter/application/${id}/reject`,
+    null,
+    {
+      params: { comment },
+    },
+  );
 }
 
 /** 退回修改 */
 export function returnApplication(id: number, comment: string) {
-  return requestClient.post<void>(`/admin/letter/application/${id}/return`, null, {
-    params: { comment },
-  });
+  return requestClient.post<void>(
+    `/admin/letter/application/${id}/return`,
+    null,
+    {
+      params: { comment },
+    },
+  );
 }
 
 /** 更新申请（被退回后修改） */
-export function updateApplication(id: number, data: CreateLetterApplicationCommand) {
-  return requestClient.put<LetterApplicationDTO>(`/admin/letter/application/${id}`, data);
+export function updateApplication(
+  id: number,
+  data: CreateLetterApplicationCommand,
+) {
+  return requestClient.put<LetterApplicationDTO>(
+    `/admin/letter/application/${id}`,
+    data,
+  );
 }
 
 /** 重新提交申请 */
-export function resubmitApplication(id: number, data: CreateLetterApplicationCommand) {
-  return requestClient.post<LetterApplicationDTO>(`/admin/letter/application/${id}/resubmit`, data);
+export function resubmitApplication(
+  id: number,
+  data: CreateLetterApplicationCommand,
+) {
+  return requestClient.post<LetterApplicationDTO>(
+    `/admin/letter/application/${id}/resubmit`,
+    data,
+  );
 }
 
 /** 重新提交审批（仅改变状态） */
@@ -205,17 +249,22 @@ export function submitForApproval(id: number) {
 /** 获取全部申请列表（行政管理） */
 export function getAllApplications(params?: {
   applicationNo?: string;
-  matterName?: string;
-  status?: string;
-  startDate?: string;
   endDate?: string;
+  matterName?: string;
+  startDate?: string;
+  status?: string;
 }) {
-  return requestClient.get<LetterApplicationDTO[]>('/admin/letter/application/all', { params });
+  return requestClient.get<LetterApplicationDTO[]>(
+    '/admin/letter/application/all',
+    { params },
+  );
 }
 
 /** 待打印列表 */
 export function getPendingPrintList() {
-  return requestClient.get<LetterApplicationDTO[]>('/admin/letter/application/pending-print');
+  return requestClient.get<LetterApplicationDTO[]>(
+    '/admin/letter/application/pending-print',
+  );
 }
 
 /** 确认打印 */
@@ -230,9 +279,13 @@ export function confirmReceive(id: number) {
 
 /** 更新函件内容（行政人员） */
 export function updateLetterContent(id: number, content: string) {
-  return requestClient.put<LetterApplicationDTO>(`/admin/letter/application/${id}/content`, null, {
-    params: { content },
-  });
+  return requestClient.put<LetterApplicationDTO>(
+    `/admin/letter/application/${id}/content`,
+    null,
+    {
+      params: { content },
+    },
+  );
 }
 
 // ==================== 二维码相关 ====================
@@ -240,9 +293,9 @@ export function updateLetterContent(id: number, content: string) {
 /** 获取函件验证二维码（Base64） */
 export function getLetterQrCode(id: number, size?: number) {
   return requestClient.get<{
+    applicationNo: string;
     qrCodeBase64: string;
     verificationUrl: string;
-    applicationNo: string;
   }>(`/admin/letter/application/${id}/qrcode`, {
     params: { size: size || 200 },
   });
@@ -250,8 +303,11 @@ export function getLetterQrCode(id: number, size?: number) {
 
 /** 下载函件验证二维码图片 */
 export function downloadLetterQrCodeImage(id: number, size?: number) {
-  return requestClient.get<Blob>(`/admin/letter/application/${id}/qrcode/image`, {
-    params: { size: size || 200 },
-    responseType: 'blob',
-  });
+  return requestClient.get<Blob>(
+    `/admin/letter/application/${id}/qrcode/image`,
+    {
+      params: { size: size || 200 },
+      responseType: 'blob',
+    },
+  );
 }

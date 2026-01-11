@@ -1,23 +1,29 @@
 <script setup lang="ts">
+import type { VxeGridProps } from '#/adapter/vxe-table';
+import type { LeadDTO, LeadQuery } from '#/api/client/types';
+
 import { ref } from 'vue';
-import { message, Modal } from 'ant-design-vue';
+
 import { Page } from '@vben/common-ui';
+import { Plus } from '@vben/icons';
+
 import {
-  Card,
   Button,
-  Space,
-  Input,
-  Select,
-  Row,
+  Card,
   Col,
+  Input,
+  message,
+  Modal,
   Popconfirm,
+  Row,
+  Select,
+  Space,
   Tag,
 } from 'ant-design-vue';
-import { Plus } from '@vben/icons';
-import type { VxeGridProps } from '#/adapter/vxe-table';
+
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
-import { getLeadList, deleteLead, convertLeadToClient } from '#/api/client';
-import type { LeadDTO, LeadQuery } from '#/api/client/types';
+import { convertLeadToClient, deleteLead, getLeadList } from '#/api/client';
+
 import LeadModal from './components/LeadModal.vue';
 
 defineOptions({ name: 'CrmLead' });
@@ -54,21 +60,45 @@ const statusOptions = [
 
 // ==================== 表格配置 ====================
 
-const gridColumns: VxeGridProps['gridOptions']['columns'] = [
+const gridColumns: VxeGridProps['columns'] = [
   { title: '案源编号', field: 'leadNo', width: 130 },
   { title: '客户名称', field: 'clientName', minWidth: 150 },
   { title: '联系人', field: 'contactPerson', width: 100 },
   { title: '联系电话', field: 'contactPhone', width: 130 },
   { title: '来源', field: 'sourceName', width: 100 },
-  { title: '预估金额', field: 'estimatedAmount', width: 120, slots: { default: 'estimatedAmount' } },
-  { title: '状态', field: 'statusName', width: 100, slots: { default: 'status' } },
+  {
+    title: '预估金额',
+    field: 'estimatedAmount',
+    width: 120,
+    slots: { default: 'estimatedAmount' },
+  },
+  {
+    title: '状态',
+    field: 'statusName',
+    width: 100,
+    slots: { default: 'status' },
+  },
   { title: '跟进人', field: 'followUpUserName', width: 100 },
   { title: '创建时间', field: 'createdAt', width: 160 },
-  { title: '操作', field: 'action', width: 180, fixed: 'right', slots: { default: 'action' } },
+  {
+    title: '操作',
+    field: 'action',
+    width: 180,
+    fixed: 'right',
+    slots: { default: 'action' },
+  },
 ];
 
-async function loadData({ page }: { page: { currentPage: number; pageSize: number } }) {
-  const params = { ...queryParams.value, pageNum: page.currentPage, pageSize: page.pageSize };
+async function loadData({
+  page,
+}: {
+  page: { currentPage: number; pageSize: number };
+}) {
+  const params = {
+    ...queryParams.value,
+    pageNum: page.currentPage,
+    pageSize: page.pageSize,
+  };
   const res = await getLeadList(params);
   return { items: res.list || [], total: res.total || 0 };
 }
@@ -89,7 +119,13 @@ function handleSearch() {
 }
 
 function handleReset() {
-  queryParams.value = { pageNum: 1, pageSize: 10, clientName: undefined, source: undefined, status: undefined };
+  queryParams.value = {
+    pageNum: 1,
+    pageSize: 10,
+    clientName: undefined,
+    source: undefined,
+    status: undefined,
+  };
   gridApi.reload();
 }
 
@@ -157,15 +193,15 @@ function formatMoney(value?: number) {
             <Input
               v-model:value="queryParams.clientName"
               placeholder="客户名称"
-              allowClear
-              @pressEnter="handleSearch"
+              allow-clear
+              @press-enter="handleSearch"
             />
           </Col>
           <Col :xs="24" :sm="12" :md="6">
             <Select
               v-model:value="queryParams.source"
               placeholder="来源"
-              allowClear
+              allow-clear
               style="width: 100%"
               :options="sourceOptions"
             />
@@ -174,7 +210,7 @@ function formatMoney(value?: number) {
             <Select
               v-model:value="queryParams.status"
               placeholder="状态"
-              allowClear
+              allow-clear
               style="width: 100%"
               :options="statusOptions"
             />

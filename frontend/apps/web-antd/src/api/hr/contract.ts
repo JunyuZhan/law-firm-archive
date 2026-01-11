@@ -1,9 +1,9 @@
+import type { PageResult } from '../matter/types';
+
 /**
  * 劳动合同管理 API
  */
 import { requestClient } from '#/api/request';
-
-import type { PageResult } from '../matter/types';
 
 // ========== 类型定义 ==========
 export interface LaborContractDTO {
@@ -77,7 +77,9 @@ export interface UpdateLaborContractCommand {
 
 /** 分页查询劳动合同 */
 export function getLaborContractList(params: LaborContractQuery) {
-  return requestClient.get<PageResult<LaborContractDTO>>('/hr/contract', { params });
+  return requestClient.get<PageResult<LaborContractDTO>>('/hr/contract', {
+    params,
+  });
 }
 
 /** 根据ID查询劳动合同 */
@@ -87,7 +89,9 @@ export function getLaborContractDetail(id: number) {
 
 /** 根据员工ID查询所有合同 */
 export function getLaborContractsByEmployeeId(employeeId: number) {
-  return requestClient.get<LaborContractDTO[]>(`/hr/contract/employee/${employeeId}`);
+  return requestClient.get<LaborContractDTO[]>(
+    `/hr/contract/employee/${employeeId}`,
+  );
 }
 
 /** 创建劳动合同 */
@@ -96,7 +100,10 @@ export function createLaborContract(data: CreateLaborContractCommand) {
 }
 
 /** 更新劳动合同 */
-export function updateLaborContract(id: number, data: UpdateLaborContractCommand) {
+export function updateLaborContract(
+  id: number,
+  data: UpdateLaborContractCommand,
+) {
   return requestClient.put<LaborContractDTO>(`/hr/contract/${id}`, data);
 }
 
@@ -106,9 +113,16 @@ export function deleteLaborContract(id: number) {
 }
 
 /** 续签合同 */
-export function renewLaborContract(id: number, newStartDate: string, newEndDate: string) {
-  return requestClient.post<LaborContractDTO>(`/hr/contract/${id}/renew`, null, {
-    params: { newStartDate, newEndDate },
-  });
+export function renewLaborContract(
+  id: number,
+  newStartDate: string,
+  newEndDate: string,
+) {
+  return requestClient.post<LaborContractDTO>(
+    `/hr/contract/${id}/renew`,
+    null,
+    {
+      params: { newStartDate, newEndDate },
+    },
+  );
 }
-

@@ -53,15 +53,11 @@ function extendProxyOption(
     const mergedParams = {
       ...params,
       form: {
-        ...(params.form || {}),
+        ...params.form,
         ...mergedFormValues,
       },
     };
-    const data = await configFn(
-      mergedParams,
-      mergedFormValues,
-      ...args,
-    );
+    const data = await configFn(mergedParams, mergedFormValues, ...args);
     return data;
   };
   api.setState({

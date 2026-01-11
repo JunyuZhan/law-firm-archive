@@ -1,22 +1,31 @@
 <script setup lang="ts">
+import type { DataHandoverDTO } from '#/api/system/types';
+
 import { ref } from 'vue';
-import { useVbenModal } from '@vben/common-ui';
-import { message, Modal } from 'ant-design-vue';
+
+import { useVbenDrawer } from '@vben/common-ui';
+
 import {
+  Alert,
+  Button,
+  Col,
   Descriptions,
   DescriptionsItem,
-  Tag,
   Divider,
+  message,
+  Modal,
   Row,
-  Col,
+  Space,
   Statistic,
   Table,
-  Space,
-  Button,
-  Alert,
+  Tag,
 } from 'ant-design-vue';
-import { getHandoverDetail, confirmHandover, cancelHandover } from '#/api/system';
-import type { DataHandoverDTO } from '#/api/system/types';
+
+import {
+  cancelHandover,
+  confirmHandover,
+  getHandoverDetail,
+} from '#/api/system';
 
 const emit = defineEmits<{
   success: [];
@@ -28,17 +37,31 @@ const loading = ref(false);
 // 状态颜色
 function getStatusColor(status: string) {
   switch (status) {
-    case 'PENDING_APPROVAL': return 'processing';
-    case 'APPROVED': return 'orange';
-    case 'REJECTED': return 'error';
-    case 'CONFIRMED': return 'success';
-    case 'CANCELLED': return 'default';
-    default: return 'default';
+    case 'APPROVED': {
+      return 'orange';
+    }
+    case 'CANCELLED': {
+      return 'default';
+    }
+    case 'CONFIRMED': {
+      return 'success';
+    }
+    case 'PENDING_APPROVAL': {
+      return 'processing';
+    }
+    case 'REJECTED': {
+      return 'error';
+    }
+    default: {
+      return 'default';
+    }
   }
 }
 
-const [VbenModal, modalApi] = useVbenModal({
+const [VbenDrawer, drawerApi] = useVbenDrawer({
   footer: false,
+  overlayBlur: 4,
+  placement: 'left', // 右侧按钮触发，从左侧滑入
 });
 
 // 确认交接
@@ -79,7 +102,7 @@ function handleCancel() {
       try {
         await cancelHandover(record.id, '用户取消');
         message.success('已取消');
-        modalApi.close();
+        drawerApi.close();
         emit('success');
       } catch (error: unknown) {
         const err = error as { message?: string };
@@ -89,17 +112,17 @@ function handleCancel() {
   });
 }
 
-// 打开详情弹窗
+// 打开详情抽屉
 async function open(record: DataHandoverDTO) {
   loading.value = true;
-  modalApi.setState({ title: '交接单详情' });
-  modalApi.open();
+  drawerApi.setState({ title: '交接单详情' });
+  drawerApi.open();
   try {
     detailData.value = await getHandoverDetail(record.id);
   } catch (error: unknown) {
     const err = error as { message?: string };
     message.error(err.message || '加载详情失败');
-    modalApi.close();
+    drawerApi.close();
   } finally {
     loading.value = false;
   }
@@ -109,30 +132,58 @@ defineExpose({ open });
 </script>
 
 <template>
-  <VbenModal class="w-[900px]">
+  <VbenDrawer class="w-[680px]">
     <div v-if="detailData" :loading="loading">
       <Descriptions :column="3" bordered size="small">
-        <DescriptionsItem label="交接单号">{{ detailData.handoverNo }}</DescriptionsItem>
-        <DescriptionsItem label="交接类型">{{ detailData.handoverTypeName }}</DescriptionsItem>
-        <DescriptionsItem label="状态">
-          <Tag :color="getStatusColor(detailData.status)">{{ detailData.statusName }}</Tag>
+        <DescriptionsItem label="交接单号">
+          {{ detailData.handoverNo }}
         </DescriptionsItem>
-        <DescriptionsItem label="移交人">{{ detailData.fromUsername }}</DescriptionsItem>
-        <DescriptionsItem label="接收人">{{ detailData.toUsername }}</DescriptionsItem>
-        <DescriptionsItem label="提交人">{{ detailData.submittedByName }}</DescriptionsItem>
-        <DescriptionsItem label="交接原因" :span="3">{{ detailData.handoverReason || '-' }}</DescriptionsItem>
-        <DescriptionsItem label="提交时间">{{ detailData.submittedAt || '-' }}</DescriptionsItem>
-        <DescriptionsItem label="确认人">{{ detailData.confirmedByName || '-' }}</DescriptionsItem>
-        <DescriptionsItem label="确认时间">{{ detailData.confirmedAt || '-' }}</DescriptionsItem>
+        <DescriptionsItem label="交接类型">
+          {{ detailData.handoverTypeName }}
+        </DescriptionsItem>
+        <DescriptionsItem label="状态">
+          <Tag :color="getStatusColor(detailData.status)">
+            {{ detailData.statusName }}
+          </Tag>
+        </DescriptionsItem>
+        <DescriptionsItem label="移交人">
+          {{ detailData.fromUsername }}
+        </DescriptionsItem>
+        <DescriptionsItem label="接收人">
+          {{ detailData.toUsername }}
+        </DescriptionsItem>
+        <DescriptionsItem label="提交人">
+          {{ detailData.submittedByName }}
+        </DescriptionsItem>
+        <DescriptionsItem label="交接原因" :span="3">
+          {{ detailData.handoverReason || '-' }}
+        </DescriptionsItem>
+        <DescriptionsItem label="提交时间">
+          {{ detailData.submittedAt || '-' }}
+        </DescriptionsItem>
+        <DescriptionsItem label="确认人">
+          {{ detailData.confirmedByName || '-' }}
+        </DescriptionsItem>
+        <DescriptionsItem label="确认时间">
+          {{ detailData.confirmedAt || '-' }}
+        </DescriptionsItem>
       </Descriptions>
 
       <Divider>交接明细</Divider>
 
       <Row :gutter="16" style="margin-bottom: 16px">
-        <Col :span="6"><Statistic title="项目" :value="detailData.matterCount" /></Col>
-        <Col :span="6"><Statistic title="客户" :value="detailData.clientCount" /></Col>
-        <Col :span="6"><Statistic title="案源" :value="detailData.leadCount" /></Col>
-        <Col :span="6"><Statistic title="任务" :value="detailData.taskCount" /></Col>
+        <Col :span="6">
+          <Statistic title="项目" :value="detailData.matterCount" />
+        </Col>
+        <Col :span="6">
+          <Statistic title="客户" :value="detailData.clientCount" />
+        </Col>
+        <Col :span="6">
+          <Statistic title="案源" :value="detailData.leadCount" />
+        </Col>
+        <Col :span="6">
+          <Statistic title="任务" :value="detailData.taskCount" />
+        </Col>
       </Row>
 
       <Table
@@ -153,19 +204,35 @@ defineExpose({ open });
         :scroll="{ y: 300 }"
       />
 
-      <div v-if="detailData.status === 'PENDING_APPROVAL'" style=" margin-top: 24px;text-align: right">
+      <div
+        v-if="detailData.status === 'PENDING_APPROVAL'"
+        style="margin-top: 24px; text-align: right"
+      >
         <Space>
-          <Alert message="交接单正在等待审批，审批通过后可确认执行" type="info" show-icon style="margin-right: 16px" />
+          <Alert
+            message="交接单正在等待审批，审批通过后可确认执行"
+            type="info"
+            show-icon
+            style="margin-right: 16px"
+          />
           <Button danger @click="handleCancel">取消交接</Button>
         </Space>
       </div>
-      <div v-else-if="detailData.status === 'APPROVED'" style=" margin-top: 24px;text-align: right">
+      <div
+        v-else-if="detailData.status === 'APPROVED'"
+        style="margin-top: 24px; text-align: right"
+      >
         <Space>
-          <Alert message="审批已通过，请确认执行数据交接" type="success" show-icon style="margin-right: 16px" />
+          <Alert
+            message="审批已通过，请确认执行数据交接"
+            type="success"
+            show-icon
+            style="margin-right: 16px"
+          />
           <Button danger @click="handleCancel">取消交接</Button>
           <Button type="primary" @click="handleConfirm">确认执行</Button>
         </Space>
       </div>
     </div>
-  </VbenModal>
+  </VbenDrawer>
 </template>

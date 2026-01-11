@@ -1,21 +1,46 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
-import { message, Card, Table, Button, Space, Tag, Input, Row, Col, Modal, Form, FormItem, Select, DatePicker, Textarea, Descriptions, DescriptionsItem, Popconfirm, InputNumber, Tabs } from 'ant-design-vue';
+import type { MeetingBooking, MeetingRoom } from '#/api/hr/types';
+
+import { computed, onMounted, ref } from 'vue';
+
 import { Page } from '@vben/common-ui';
 import { Plus } from '@vben/icons';
+
 import {
-  fetchMeetingRoomList,
-  fetchBookingList,
+  Button,
+  Card,
+  Col,
+  DatePicker,
+  Descriptions,
+  DescriptionsItem,
+  Form,
+  FormItem,
+  Input,
+  InputNumber,
+  message,
+  Modal,
+  Popconfirm,
+  Row,
+  Select,
+  Space,
+  Table,
+  Tabs,
+  Tag,
+  Textarea,
+} from 'ant-design-vue';
+import dayjs from 'dayjs';
+
+import {
   bookMeetingRoom,
   cancelBooking,
   createMeetingRoom,
-  updateMeetingRoom,
   deleteMeetingRoom,
+  fetchBookingList,
+  fetchMeetingRoomList,
+  updateMeetingRoom,
   updateMeetingRoomStatus,
 } from '#/api/hr/meeting-room';
-import type { MeetingRoom, MeetingBooking } from '#/api/hr/types';
 import { usePermission } from '#/hooks/usePermission';
-import dayjs from 'dayjs';
 
 defineOptions({ name: 'AdminMeetingRoom' });
 
@@ -46,7 +71,7 @@ const bookingForm = ref({
 
 // 会议室管理相关
 const roomModalVisible = ref(false);
-const editingRoomId = ref<number | null>(null);
+const editingRoomId = ref<null | number>(null);
 
 const roomForm = ref({
   name: '',
@@ -57,7 +82,13 @@ const roomForm = ref({
 
 const bookingColumns = [
   { title: '会议室', dataIndex: 'roomName', key: 'roomName', width: 120 },
-  { title: '会议主题', dataIndex: 'title', key: 'title', width: 200, ellipsis: true },
+  {
+    title: '会议主题',
+    dataIndex: 'title',
+    key: 'title',
+    width: 200,
+    ellipsis: true,
+  },
   { title: '预约人', dataIndex: 'userName', key: 'userName', width: 100 },
   { title: '开始时间', dataIndex: 'startTime', key: 'startTime', width: 150 },
   { title: '结束时间', dataIndex: 'endTime', key: 'endTime', width: 150 },
@@ -69,7 +100,13 @@ const roomColumns = [
   { title: '会议室名称', dataIndex: 'name', key: 'name', width: 150 },
   { title: '位置', dataIndex: 'location', key: 'location', width: 150 },
   { title: '容纳人数', dataIndex: 'capacity', key: 'capacity', width: 100 },
-  { title: '设备', dataIndex: 'equipment', key: 'equipment', width: 200, ellipsis: true },
+  {
+    title: '设备',
+    dataIndex: 'equipment',
+    key: 'equipment',
+    width: 200,
+    ellipsis: true,
+  },
   { title: '状态', dataIndex: 'status', key: 'status', width: 100 },
   { title: '操作', key: 'action', width: 180 },
 ];
@@ -136,7 +173,12 @@ function handleAddBooking() {
 }
 
 async function handleSubmitBooking() {
-  if (!bookingForm.value.roomId || !bookingForm.value.title || !bookingForm.value.startTime || !bookingForm.value.endTime) {
+  if (
+    !bookingForm.value.roomId ||
+    !bookingForm.value.title ||
+    !bookingForm.value.startTime ||
+    !bookingForm.value.endTime
+  ) {
     message.error('请填写必填项');
     return;
   }
@@ -155,8 +197,8 @@ async function handleSubmitBooking() {
   }
 }
 
-function handleViewBooking(record: MeetingBooking) {
-  currentBooking.value = record;
+function handleViewBooking(record: Record<string, any>) {
+  currentBooking.value = record as MeetingBooking;
   detailVisible.value = true;
 }
 
@@ -182,7 +224,7 @@ function handleAddRoom() {
   roomModalVisible.value = true;
 }
 
-function handleEditRoom(record: MeetingRoom) {
+function handleEditRoom(record: Record<string, any>) {
   editingRoomId.value = record.id;
   roomForm.value = {
     name: record.name,
@@ -223,8 +265,9 @@ async function handleDeleteRoom(id: number) {
   }
 }
 
-async function handleToggleRoomStatus(record: MeetingRoom) {
-  const newStatus = record.status === 'MAINTENANCE' ? 'AVAILABLE' : 'MAINTENANCE';
+async function handleToggleRoomStatus(record: Record<string, any>) {
+  const newStatus =
+    record.status === 'MAINTENANCE' ? 'AVAILABLE' : 'MAINTENANCE';
   try {
     await updateMeetingRoomStatus(record.id, newStatus);
     message.success('状态更新成功');
@@ -241,11 +284,12 @@ function formatDateTime(time?: string) {
 function getRoomStatus(room: MeetingRoom) {
   if (room.status === 'MAINTENANCE') return 'MAINTENANCE';
   const now = dayjs();
-  const hasActiveBooking = bookingList.value.some(b => 
-    b.roomId === room.id && 
-    b.status === 'IN_PROGRESS' &&
-    dayjs(b.startTime).isBefore(now) && 
-    dayjs(b.endTime).isAfter(now)
+  const hasActiveBooking = bookingList.value.some(
+    (b) =>
+      b.roomId === room.id &&
+      b.status === 'IN_PROGRESS' &&
+      dayjs(b.startTime).isBefore(now) &&
+      dayjs(b.endTime).isAfter(now),
   );
   return hasActiveBooking ? 'IN_USE' : 'AVAILABLE';
 }
@@ -258,7 +302,7 @@ onMounted(() => {
 
 <template>
   <Page title="会议室预约" description="预约会议室和管理会议室">
-    <Tabs v-model:activeKey="activeTab">
+    <Tabs v-model:active-key="activeTab">
       <Tabs.TabPane key="booking" tab="预约会议室">
         <Row :gutter="16">
           <!-- 会议室列表 -->
@@ -270,23 +314,43 @@ onMounted(() => {
                 :style="{
                   marginBottom: '12px',
                   padding: '12px',
-                  border: selectedRoom === room.id ? '2px solid #1890ff' : '1px solid #f0f0f0',
+                  border:
+                    selectedRoom === room.id
+                      ? '2px solid #1890ff'
+                      : '1px solid #f0f0f0',
                   borderRadius: '4px',
-                  cursor: room.status === 'MAINTENANCE' ? 'not-allowed' : 'pointer',
-                  background: selectedRoom === room.id ? '#e6f7ff' : room.status === 'MAINTENANCE' ? '#f5f5f5' : '#fff',
+                  cursor:
+                    room.status === 'MAINTENANCE' ? 'not-allowed' : 'pointer',
+                  background:
+                    selectedRoom === room.id
+                      ? '#e6f7ff'
+                      : room.status === 'MAINTENANCE'
+                        ? '#f5f5f5'
+                        : '#fff',
                   opacity: room.status === 'MAINTENANCE' ? 0.6 : 1,
                 }"
-                @click="room.status !== 'MAINTENANCE' && handleRoomSelect(room.id)"
+                @click="
+                  room.status !== 'MAINTENANCE' && handleRoomSelect(room.id)
+                "
               >
-                <div style=" margin-bottom: 4px;font-weight: 500">{{ room.name }}</div>
-                <div style=" margin-bottom: 4px;font-size: 12px; color: #999">
-                  容纳 {{ room.capacity }} 人 | {{ room.location || '未设置位置' }}
+                <div style="margin-bottom: 4px; font-weight: 500">
+                  {{ room.name }}
                 </div>
-                <Tag :color="roomStatusMap[getRoomStatus(room)]?.color" size="small">
+                <div style="margin-bottom: 4px; font-size: 12px; color: #999">
+                  容纳 {{ room.capacity }} 人 |
+                  {{ room.location || '未设置位置' }}
+                </div>
+                <Tag
+                  :color="roomStatusMap[getRoomStatus(room)]?.color"
+                  size="small"
+                >
                   {{ roomStatusMap[getRoomStatus(room)]?.text }}
                 </Tag>
               </div>
-              <div v-if="roomList.length === 0" style=" padding: 20px; color: #999;text-align: center;">
+              <div
+                v-if="roomList.length === 0"
+                style="padding: 20px; color: #999; text-align: center"
+              >
                 暂无会议室
               </div>
             </Card>
@@ -297,21 +361,30 @@ onMounted(() => {
             <Card size="small">
               <template #extra>
                 <Space>
-                  <DatePicker :value="selectedDate" @change="handleDateChange" />
-                  <Button type="primary" @click="handleAddBooking"><Plus />预约会议室</Button>
+                  <DatePicker
+                    :value="selectedDate"
+                    @change="handleDateChange"
+                  />
+                  <Button type="primary" @click="handleAddBooking">
+                    <Plus />预约会议室
+                  </Button>
                 </Space>
               </template>
               <Table
                 :columns="bookingColumns"
-                :dataSource="bookingList"
+                :data-source="bookingList"
                 :loading="loading"
                 :pagination="{ pageSize: 10 }"
-                rowKey="id"
+                row-key="id"
                 size="small"
               >
                 <template #bodyCell="{ column, record }">
-                  <template v-if="column.key === 'startTime' || column.key === 'endTime'">
-                    {{ formatDateTime(record[column.dataIndex]) }}
+                  <template
+                    v-if="
+                      column.key === 'startTime' || column.key === 'endTime'
+                    "
+                  >
+                    {{ formatDateTime(record[column.key as string]) }}
                   </template>
                   <template v-else-if="column.key === 'status'">
                     <Tag :color="statusMap[record.status]?.color || 'default'">
@@ -341,18 +414,22 @@ onMounted(() => {
       <Tabs.TabPane v-if="canManage" key="manage" tab="会议室管理">
         <Card size="small">
           <template #extra>
-            <Button type="primary" @click="handleAddRoom"><Plus />添加会议室</Button>
+            <Button type="primary" @click="handleAddRoom">
+              <Plus />添加会议室
+            </Button>
           </template>
           <Table
             :columns="roomColumns"
-            :dataSource="roomList"
+            :data-source="roomList"
             :pagination="false"
-            rowKey="id"
+            row-key="id"
             size="small"
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'status'">
-                <Tag :color="roomStatusMap[record.status || 'AVAILABLE']?.color">
+                <Tag
+                  :color="roomStatusMap[record.status || 'AVAILABLE']?.color"
+                >
                   {{ roomStatusMap[record.status || 'AVAILABLE']?.text }}
                 </Tag>
               </template>
@@ -362,7 +439,10 @@ onMounted(() => {
                   <a @click="handleToggleRoomStatus(record)">
                     {{ record.status === 'MAINTENANCE' ? '启用' : '维护' }}
                   </a>
-                  <Popconfirm title="确定删除此会议室？" @confirm="handleDeleteRoom(record.id)">
+                  <Popconfirm
+                    title="确定删除此会议室？"
+                    @confirm="handleDeleteRoom(record.id)"
+                  >
                     <a style="color: #ff4d4f">删除</a>
                   </Popconfirm>
                 </Space>
@@ -374,26 +454,54 @@ onMounted(() => {
     </Tabs>
 
     <!-- 预约弹窗 -->
-    <Modal v-model:open="bookingModalVisible" title="预约会议室" @ok="handleSubmitBooking">
-      <Form :labelCol="{ span: 5 }" :wrapperCol="{ span: 18 }">
+    <Modal
+      v-model:open="bookingModalVisible"
+      title="预约会议室"
+      @ok="handleSubmitBooking"
+    >
+      <Form :label-col="{ span: 5 }" :wrapper-col="{ span: 18 }">
         <FormItem label="会议室" required>
           <Select
             v-model:value="bookingForm.roomId"
             placeholder="选择会议室"
-            :options="roomList.filter(r => r.status !== 'MAINTENANCE').map(r => ({ label: `${r.name} (${r.capacity}人)`, value: r.id }))"
+            :options="
+              roomList
+                .filter((r) => r.status !== 'MAINTENANCE')
+                .map((r) => ({
+                  label: `${r.name} (${r.capacity}人)`,
+                  value: r.id,
+                }))
+            "
           />
         </FormItem>
         <FormItem label="会议主题" required>
-          <Input v-model:value="bookingForm.title" placeholder="请输入会议主题" />
+          <Input
+            v-model:value="bookingForm.title"
+            placeholder="请输入会议主题"
+          />
         </FormItem>
         <FormItem label="开始时间" required>
-          <DatePicker v-model:value="bookingForm.startTime" showTime format="YYYY-MM-DD HH:mm" style="width: 100%" />
+          <DatePicker
+            v-model:value="bookingForm.startTime"
+            show-time
+            format="YYYY-MM-DD HH:mm"
+            style="width: 100%"
+          />
         </FormItem>
         <FormItem label="结束时间" required>
-          <DatePicker v-model:value="bookingForm.endTime" showTime format="YYYY-MM-DD HH:mm" style="width: 100%" />
+          <DatePicker
+            v-model:value="bookingForm.endTime"
+            show-time
+            format="YYYY-MM-DD HH:mm"
+            style="width: 100%"
+          />
         </FormItem>
         <FormItem label="会议说明">
-          <Textarea v-model:value="bookingForm.description" :rows="2" placeholder="会议说明（可选）" />
+          <Textarea
+            v-model:value="bookingForm.description"
+            :rows="2"
+            placeholder="会议说明（可选）"
+          />
         </FormItem>
       </Form>
     </Modal>
@@ -401,25 +509,43 @@ onMounted(() => {
     <!-- 预约详情弹窗 -->
     <Modal v-model:open="detailVisible" title="预约详情" :footer="null">
       <Descriptions v-if="currentBooking" :column="2" bordered size="small">
-        <DescriptionsItem label="会议室">{{ currentBooking.roomName }}</DescriptionsItem>
-        <DescriptionsItem label="预约人">{{ currentBooking.userName }}</DescriptionsItem>
-        <DescriptionsItem label="会议主题" :span="2">{{ currentBooking.title }}</DescriptionsItem>
-        <DescriptionsItem label="开始时间">{{ formatDateTime(currentBooking.startTime) }}</DescriptionsItem>
-        <DescriptionsItem label="结束时间">{{ formatDateTime(currentBooking.endTime) }}</DescriptionsItem>
+        <DescriptionsItem label="会议室">
+          {{ currentBooking.roomName }}
+        </DescriptionsItem>
+        <DescriptionsItem label="预约人">
+          {{ currentBooking.userName }}
+        </DescriptionsItem>
+        <DescriptionsItem label="会议主题" :span="2">
+          {{ currentBooking.title }}
+        </DescriptionsItem>
+        <DescriptionsItem label="开始时间">
+          {{ formatDateTime(currentBooking.startTime) }}
+        </DescriptionsItem>
+        <DescriptionsItem label="结束时间">
+          {{ formatDateTime(currentBooking.endTime) }}
+        </DescriptionsItem>
         <DescriptionsItem label="状态" :span="2">
           <Tag :color="statusMap[currentBooking.status]?.color">
             {{ statusMap[currentBooking.status]?.text }}
           </Tag>
         </DescriptionsItem>
-        <DescriptionsItem v-if="currentBooking.description" label="会议说明" :span="2">
+        <DescriptionsItem
+          v-if="currentBooking.description"
+          label="会议说明"
+          :span="2"
+        >
           {{ currentBooking.description }}
         </DescriptionsItem>
       </Descriptions>
     </Modal>
 
     <!-- 会议室管理弹窗 -->
-    <Modal v-model:open="roomModalVisible" :title="editingRoomId ? '编辑会议室' : '添加会议室'" @ok="handleSubmitRoom">
-      <Form :labelCol="{ span: 5 }" :wrapperCol="{ span: 18 }">
+    <Modal
+      v-model:open="roomModalVisible"
+      :title="editingRoomId ? '编辑会议室' : '添加会议室'"
+      @ok="handleSubmitRoom"
+    >
+      <Form :label-col="{ span: 5 }" :wrapper-col="{ span: 18 }">
         <FormItem label="名称" required>
           <Input v-model:value="roomForm.name" placeholder="如：大会议室A" />
         </FormItem>
@@ -427,10 +553,18 @@ onMounted(() => {
           <Input v-model:value="roomForm.location" placeholder="如：3楼东侧" />
         </FormItem>
         <FormItem label="容纳人数">
-          <InputNumber v-model:value="roomForm.capacity" :min="1" :max="200" style="width: 120px" />
+          <InputNumber
+            v-model:value="roomForm.capacity"
+            :min="1"
+            :max="200"
+            style="width: 120px"
+          />
         </FormItem>
         <FormItem label="设备">
-          <Input v-model:value="roomForm.equipment" placeholder="如：投影仪、视频会议系统" />
+          <Input
+            v-model:value="roomForm.equipment"
+            placeholder="如：投影仪、视频会议系统"
+          />
         </FormItem>
       </Form>
     </Modal>

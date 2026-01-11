@@ -1,16 +1,22 @@
 <script setup lang="ts">
+import type { EvidenceItem } from './types';
+
+import type { EvidenceDTO, EvidenceExportItem } from '#/api/evidence';
+
 /**
  * 证据整理管理组件
  * 支持两种编辑模式：表格式 和 清单式
  */
-import { ref, watch, onMounted } from 'vue';
-import { Spin, Empty, Segmented, message } from 'ant-design-vue';
-import EvidenceTableEditor from './EvidenceTableEditor.vue';
-import EvidenceListDisplay from './EvidenceListDisplay.vue';
-import type { EvidenceItem } from './types';
-import { getEvidenceByMatter, exportEvidenceList, type EvidenceDTO, type EvidenceExportItem } from '#/api/evidence';
+import { ref, watch } from 'vue';
 
-type EditMode = 'table' | 'list';
+import { message, Segmented, Spin } from 'ant-design-vue';
+
+import { exportEvidenceList, getEvidenceByMatter } from '#/api/evidence';
+
+import EvidenceListDisplay from './EvidenceListDisplay.vue';
+import EvidenceTableEditor from './EvidenceTableEditor.vue';
+
+type EditMode = 'list' | 'table';
 
 const props = defineProps<{
   matterId: number;
@@ -35,7 +41,7 @@ const modeOptions = [
 // 加载数据
 async function loadData() {
   if (!props.matterId) return;
-  
+
   loading.value = true;
   try {
     const evidences = await getEvidenceByMatter(props.matterId);
@@ -65,7 +71,10 @@ function mapEvidenceDTO(dto: EvidenceDTO): EvidenceItem {
     copyCount: dto.copyCount,
     pageStart: dto.pageStart,
     pageEnd: dto.pageEnd,
-    pageRange: dto.pageStart && dto.pageEnd ? `${dto.pageStart}-${dto.pageEnd}` : undefined,
+    pageRange:
+      dto.pageStart && dto.pageEnd
+        ? `${dto.pageStart}-${dto.pageEnd}`
+        : undefined,
     fileUrl: dto.fileUrl,
     fileName: dto.fileName,
     fileSize: dto.fileSize,
@@ -86,7 +95,7 @@ function handleRefresh() {
 }
 
 // 导出
-async function handleExport(format: 'word' | 'pdf') {
+async function handleExport(format: 'pdf' | 'word') {
   if (evidenceList.value.length === 0) {
     message.warning('暂无证据可导出');
     return;
@@ -94,7 +103,7 @@ async function handleExport(format: 'word' | 'pdf') {
 
   try {
     message.loading('正在导出...', 0);
-    
+
     const items: EvidenceExportItem[] = evidenceList.value.map((e, index) => ({
       id: e.id,
       name: e.name,
@@ -116,11 +125,15 @@ async function handleExport(format: 'word' | 'pdf') {
 }
 
 // 监听 matterId 变化
-watch(() => props.matterId, () => {
-  if (props.matterId) {
-    loadData();
-  }
-}, { immediate: true });
+watch(
+  () => props.matterId,
+  () => {
+    if (props.matterId) {
+      loadData();
+    }
+  },
+  { immediate: true },
+);
 
 // 暴露刷新方法
 defineExpose({
@@ -132,7 +145,10 @@ defineExpose({
   <div class="evidence-list-manager">
     <Spin :spinning="loading">
       <!-- 模式切换 -->
-      <div class="mode-switcher" style=" display: flex; justify-content: center;margin-bottom: 16px;">
+      <div
+        class="mode-switcher"
+        style="display: flex; justify-content: center; margin-bottom: 16px"
+      >
         <Segmented v-model:value="editMode" :options="modeOptions" />
       </div>
 
@@ -166,4 +182,3 @@ defineExpose({
   border-radius: 8px;
 }
 </style>
-

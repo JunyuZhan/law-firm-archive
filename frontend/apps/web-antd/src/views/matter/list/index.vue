@@ -1,49 +1,59 @@
 <script setup lang="ts">
-import { ref, reactive, computed, watch, onMounted } from 'vue';
-import { message, Modal, Cascader } from 'ant-design-vue';
-import { useRouter, useRoute } from 'vue-router';
+import type { VbenFormSchema } from '#/adapter/form';
+import type { ClientDTO } from '#/api/client/types';
+import type {
+  CreateMatterCommand,
+  MatterDTO,
+  UpdateMatterCommand,
+} from '#/api/matter/types';
+import type { DepartmentDTO } from '#/api/system/types';
+
+import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+
 import { Page } from '@vben/common-ui';
+import { Plus } from '@vben/icons';
+
 import {
   Button,
-  Space,
-  Tag,
-  Select,
+  Cascader,
+  Col,
+  DatePicker,
   Form,
   FormItem,
-  DatePicker,
   Input,
   InputNumber,
-  Textarea,
+  message,
+  Modal,
   Row,
-  Col,
-  TreeSelect,
+  Select,
   SelectOption,
+  Space,
+  Tag,
+  Textarea,
+  TreeSelect,
 } from 'ant-design-vue';
-import type { VbenFormSchema } from '#/adapter/form';
+
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
-import {
-  getMatterList,
-  getMatterDetail,
-  createMatter,
-  updateMatter,
-  createContract,
-  getApprovedContracts,
-  createMatterFromContract,
-} from '#/api/matter';
 import { getClientList } from '#/api/client';
-import { getDepartmentTreePublic } from '#/api/system';
-import type { MatterDTO, CreateMatterCommand, UpdateMatterCommand } from '#/api/matter/types';
-import type { ClientDTO } from '#/api/client/types';
-import type { DepartmentDTO } from '#/api/system/types';
-import { UserTreeSelect } from '#/components/UserTreeSelect';
-import { Plus } from '@vben/icons';
 import {
-  MATTER_TYPE_OPTIONS,
-  getCaseCategoryByMatterType,
-  needsCauseOfAction,
-  getCauseTypeByCase,
-  getCausesByType,
+  createContract,
+  createMatter,
+  createMatterFromContract,
+  getApprovedContracts,
+  getMatterDetail,
+  getMatterList,
+  updateMatter,
+} from '#/api/matter';
+import { getDepartmentTreePublic } from '#/api/system';
+import { UserTreeSelect } from '#/components/UserTreeSelect';
+import {
   causesToCascaderOptions,
+  getCaseCategoryByMatterType,
+  getCausesByType,
+  getCauseTypeByCase,
+  MATTER_TYPE_OPTIONS,
+  needsCauseOfAction,
 } from '#/constants/causes';
 
 defineOptions({ name: 'MatterList' });
@@ -110,7 +120,7 @@ interface SelectedClient {
   isPrimary: boolean;
 }
 const selectedClients = ref<SelectedClient[]>([
-  { clientId: undefined, clientRole: 'PLAINTIFF', isPrimary: true }
+  { clientId: undefined, clientRole: 'PLAINTIFF', isPrimary: true },
 ]);
 
 // 表单数据
@@ -164,25 +174,28 @@ const causeOptions = computed(() => {
 });
 
 // 监听项目大类变化，清空案件类型和案由
-watch(() => formData.matterType, () => {
-  formData.caseType = undefined;
-  formData.causeOfAction = undefined;
-  causeValue.value = [];
-});
+watch(
+  () => formData.matterType,
+  () => {
+    formData.caseType = undefined;
+    formData.causeOfAction = undefined;
+    causeValue.value = [];
+  },
+);
 
 // 监听案件类型变化，清空案由
-watch(() => formData.caseType, () => {
-  formData.causeOfAction = undefined;
-  causeValue.value = [];
-});
+watch(
+  () => formData.caseType,
+  () => {
+    formData.causeOfAction = undefined;
+    causeValue.value = [];
+  },
+);
 
 // 监听案由级联选择变化
 watch(causeValue, (val) => {
-  if (val && val.length > 0) {
-    formData.causeOfAction = val[val.length - 1];
-  } else {
-    formData.causeOfAction = undefined;
-  }
+  formData.causeOfAction =
+    val && val.length > 0 ? val[val.length - 1] : undefined;
 });
 
 // ==================== 常量选项 ====================
@@ -255,7 +268,7 @@ const formSchema: VbenFormSchema[] = [
     componentProps: {
       placeholder: '请选择状态',
       allowClear: true,
-      options: statusOptions.filter(o => o.value !== undefined),
+      options: statusOptions.filter((o) => o.value !== undefined),
     },
   },
   {
@@ -266,13 +279,13 @@ const formSchema: VbenFormSchema[] = [
       placeholder: '请选择客户',
       allowClear: true,
       showSearch: true,
-      filterOption: (input: string, option: any) => 
+      filterOption: (input: string, option: any) =>
         (option?.label || '').toLowerCase().includes(input.toLowerCase()),
-      options: computed(() => 
-        clients.value.map(c => ({ 
-          label: c.clientNo ? `[${c.clientNo}] ${c.name}` : c.name, 
-          value: c.id 
-        }))
+      options: computed(() =>
+        clients.value.map((c) => ({
+          label: c.clientNo ? `[${c.clientNo}] ${c.name}` : c.name,
+          value: c.id,
+        })),
       ),
     },
   },
@@ -295,14 +308,27 @@ const gridColumns = [
   { title: '客户', field: 'clientName', width: 150 },
   { title: '项目编号', field: 'matterNo', width: 130 },
   { title: '主办律师', field: 'leadLawyerName', width: 100 },
-  { title: '合同金额', field: 'contractAmount', width: 120, slots: { default: 'contractAmount' } },
+  {
+    title: '合同金额',
+    field: 'contractAmount',
+    width: 120,
+    slots: { default: 'contractAmount' },
+  },
   { title: '创建时间', field: 'createdAt', width: 160 },
   { title: '状态', field: 'status', width: 100, slots: { default: 'status' } },
-  { title: '操作', field: 'action', width: 200, fixed: 'right' as const, slots: { default: 'action' } },
+  {
+    title: '操作',
+    field: 'action',
+    width: 200,
+    fixed: 'right' as const,
+    slots: { default: 'action' },
+  },
 ];
 
 // 加载数据
-async function loadData(params: { page: number; pageSize: number } & Record<string, any>) {
+async function loadData(
+  params: Record<string, any> & { page: number; pageSize: number },
+) {
   // 处理年份筛选参数
   let createdAtFrom: string | undefined;
   let createdAtTo: string | undefined;
@@ -311,7 +337,7 @@ async function loadData(params: { page: number; pageSize: number } & Record<stri
     createdAtFrom = `${year}-01-01T00:00:00`;
     createdAtTo = `${year}-12-31T23:59:59`;
   }
-  
+
   const res = await getMatterList({
     pageNum: params.page,
     pageSize: params.pageSize,
@@ -342,7 +368,7 @@ const [Grid, gridApi] = useVbenVxeGrid({
     height: 'auto',
     proxyConfig: {
       ajax: {
-        query: async ({ page, form }: { page: any; form: any }) => {
+        query: async ({ page, form }: { form: any; page: any }) => {
           return await loadData({
             page: page.currentPage,
             pageSize: page.pageSize,
@@ -367,24 +393,23 @@ async function loadOptions() {
   try {
     const clientRes = await getClientList({ pageNum: 1, pageSize: 1000 });
     clients.value = clientRes?.list || [];
-  } catch (e: any) {
+  } catch (error: any) {
     // 403权限错误静默处理，其他错误记录警告
-    if (e?.response?.status !== 403) {
-      console.warn('加载客户列表失败', e);
+    if (error?.response?.status !== 403) {
+      console.warn('加载客户列表失败', error);
     }
     clients.value = [];
   }
-  
-  
+
   // 部门树 - 使用公共接口，无需特殊权限
   try {
     const deptRes = await getDepartmentTreePublic();
     departments.value = deptRes || [];
-  } catch (e: any) {
+  } catch (error: any) {
     // 错误静默处理
-    const status = e?.response?.status || e?.status;
+    const status = error?.response?.status || error?.status;
     if (status !== 403) {
-      console.warn('加载部门树失败', e);
+      console.warn('加载部门树失败', error);
     }
     departments.value = [];
   }
@@ -460,9 +485,9 @@ async function handleAdd() {
       message.warning('暂无可用的已审批合同，请先创建并审批合同');
       return;
     }
-    
+
     modalTitle.value = '创建项目';
-    createFromContract.value = true;  // 必须从合同创建
+    createFromContract.value = true; // 必须从合同创建
     selectedContractId.value = undefined;
     causeValue.value = [];
     resetSelectedClients();
@@ -494,7 +519,7 @@ async function handleAdd() {
     });
     modalVisible.value = true;
   } catch (error: any) {
-    message.error('加载合同列表失败：' + (error.message || ''));
+    message.error(`加载合同列表失败：${error.message || ''}`);
   }
 }
 
@@ -502,28 +527,26 @@ async function handleAdd() {
 function handleEdit(record: MatterDTO) {
   modalTitle.value = '编辑项目';
   // 设置案由级联值
-  if (record.causeOfAction) {
-    causeValue.value = [record.causeOfAction];
-  } else {
-    causeValue.value = [];
-  }
-  
+  causeValue.value = record.causeOfAction ? [record.causeOfAction] : [];
+
   // 加载多客户数据
   if (record.clients && record.clients.length > 0) {
-    selectedClients.value = record.clients.map(c => ({
+    selectedClients.value = record.clients.map((c) => ({
       clientId: c.clientId,
       clientRole: c.clientRole || 'PLAINTIFF',
       isPrimary: c.isPrimary || false,
     }));
   } else {
     // 向后兼容：如果没有clients列表，使用单个clientId
-    selectedClients.value = [{
-      clientId: record.clientId,
-      clientRole: 'PLAINTIFF',
-      isPrimary: true,
-    }];
+    selectedClients.value = [
+      {
+        clientId: record.clientId,
+        clientRole: 'PLAINTIFF',
+        isPrimary: true,
+      },
+    ];
   }
-  
+
   Object.assign(formData, {
     id: record.id,
     name: record.name,
@@ -557,25 +580,26 @@ function handleEdit(record: MatterDTO) {
 async function handleSave() {
   try {
     await formRef.value?.validate();
-    
+
     // 验证客户选择
-    const hasEmptyClient = selectedClients.value.some(c => !c.clientId);
+    const hasEmptyClient = selectedClients.value.some((c) => !c.clientId);
     if (hasEmptyClient || selectedClients.value.length === 0) {
       message.error('请完整填写客户信息');
       return;
     }
-    
+
     // 构建客户列表数据
-    const clientsData = selectedClients.value.map(c => ({
+    const clientsData = selectedClients.value.map((c) => ({
       clientId: c.clientId!,
       clientRole: c.clientRole,
       isPrimary: c.isPrimary,
     }));
-    
+
     // 设置主要客户ID（向后兼容）
-    const primaryClient = selectedClients.value.find(c => c.isPrimary);
-    const primaryClientId = primaryClient?.clientId || selectedClients.value[0]?.clientId;
-    
+    const primaryClient = selectedClients.value.find((c) => c.isPrimary);
+    const primaryClientId =
+      primaryClient?.clientId || selectedClients.value[0]?.clientId;
+
     if (formData.id) {
       const updateData: UpdateMatterCommand = {
         id: formData.id,
@@ -617,109 +641,66 @@ async function handleSave() {
   }
 }
 
-// 从合同创建项目
-async function handleCreateFromContract() {
-  // 加载已审批的合同列表
-  try {
-    const res = await getApprovedContracts();
-    approvedContracts.value = res;
-    if (res.length === 0) {
-      message.warning('暂无已审批的合同，请先创建并审批合同');
-      return;
-    }
-    createFromContract.value = true;
-    modalTitle.value = '从合同创建项目';
-    causeValue.value = [];
-    // 重置表单
-    Object.assign(formData, {
-      id: undefined,
-      name: '',
-      matterType: 'LITIGATION',
-      caseType: undefined,
-      causeOfAction: undefined,
-      businessType: undefined,
-      clientId: undefined,
-      opposingParty: '',
-      opposingLawyerName: '',
-      opposingLawyerLicenseNo: '',
-      opposingLawyerFirm: '',
-      opposingLawyerPhone: '',
-      opposingLawyerEmail: '',
-      description: '',
-      originatorId: undefined,
-      leadLawyerId: undefined,
-      departmentId: undefined,
-      feeType: 'HOURLY',
-      estimatedFee: undefined,
-      filingDate: undefined,
-      expectedClosingDate: undefined,
-      claimAmount: undefined,
-      contractId: undefined,
-      remark: '',
-    });
-    modalVisible.value = true;
-  } catch (error: any) {
-    message.error('加载已审批合同失败：' + (error.message || ''));
-  }
-}
-
 // 选择合同后自动填充项目信息
 function handleContractSelect(contractId: number) {
-  const contract = approvedContracts.value.find(c => c.id === contractId);
+  const contract = approvedContracts.value.find((c) => c.id === contractId);
   if (contract) {
     // 自动填充合同中的所有相关信息
     formData.name = contract.name || '';
     formData.clientId = Number(contract.clientId);
     formData.feeType = contract.feeType;
     formData.estimatedFee = contract.totalAmount;
-    formData.departmentId = contract.departmentId ? Number(contract.departmentId) : undefined;
+    formData.departmentId = contract.departmentId
+      ? Number(contract.departmentId)
+      : undefined;
     formData.contractId = contractId;
     selectedContractId.value = contractId;
-    
+
     // 填充案件类型和案由
-    if (contract.contractType === 'LITIGATION') {
-      formData.matterType = 'LITIGATION';
-    } else {
-      formData.matterType = 'NON_LITIGATION';
-    }
-    
+    formData.matterType =
+      contract.contractType === 'LITIGATION' ? 'LITIGATION' : 'NON_LITIGATION';
+
     if (contract.caseType) {
       formData.caseType = contract.caseType;
     }
-    
+
     if (contract.causeOfAction) {
       formData.causeOfAction = contract.causeOfAction;
       causeValue.value = [contract.causeOfAction];
     }
-    
+
     // 填充对方当事人信息
     if (contract.opposingParty) {
       formData.opposingParty = contract.opposingParty;
     }
-    
+
     // 填充标的金额
     if (contract.claimAmount) {
       formData.claimAmount = contract.claimAmount;
     }
-    
+
     // 填充主办律师（从合同参与人中找LEAD角色）
     if (contract.participants && contract.participants.length > 0) {
-      const leadLawyer = contract.participants.find((p: any) => p.role === 'LEAD');
+      const leadLawyer = contract.participants.find(
+        (p: any) => p.role === 'LEAD',
+      );
       if (leadLawyer) {
         formData.leadLawyerId = leadLawyer.userId;
       }
       // 找案源人
-      const originator = contract.participants.find((p: any) => p.role === 'ORIGINATOR');
+      const originator = contract.participants.find(
+        (p: any) => p.role === 'ORIGINATOR',
+      );
       if (originator) {
         formData.originatorId = originator.userId;
       }
     }
-    
+
     // 填充签署人作为主办律师（如果没有从参与人中找到）
     if (!formData.leadLawyerId && contract.signerId) {
       formData.leadLawyerId = contract.signerId;
     }
-    
+
     message.success('已自动填充合同信息，请检查并补充其他必要信息');
   }
 }
@@ -729,7 +710,7 @@ function handleCreateClient() {
   // 跳转到客户创建页面，并传递回调参数
   router.push({
     path: '/crm/client',
-    query: { 
+    query: {
       action: 'create',
       returnPath: '/matter/list',
       returnQuery: JSON.stringify({ modal: 'create' }),
@@ -769,7 +750,7 @@ function validateClients(_rule: any, _value: any): Promise<void> {
       reject('请至少选择一个客户');
       return;
     }
-    const hasEmpty = selectedClients.value.some(c => !c.clientId);
+    const hasEmpty = selectedClients.value.some((c) => !c.clientId);
     if (hasEmpty) {
       reject('请填写完整的客户信息');
       return;
@@ -781,7 +762,7 @@ function validateClients(_rule: any, _value: any): Promise<void> {
 // 重置多客户选择
 function resetSelectedClients() {
   selectedClients.value = [
-    { clientId: undefined, clientRole: 'PLAINTIFF', isPrimary: true }
+    { clientId: undefined, clientRole: 'PLAINTIFF', isPrimary: true },
   ];
 }
 
@@ -807,11 +788,11 @@ function getStatusColor(status: string) {
 async function handleArchive(record: MatterDTO) {
   // 检查项目状态是否允许归档
   if (record.status !== 'CLOSED' && record.status !== 'ARCHIVED') {
-  Modal.confirm({
+    Modal.confirm({
       title: '项目未结案',
       content: `项目 "${record.name}" 尚未结案，是否先申请结案？只有已结案的项目才能创建档案。`,
       okText: '前往结案',
-    cancelText: '取消',
+      cancelText: '取消',
       onOk: () => {
         // 跳转到项目详情页
         router.push(`/matter/detail/${record.id}`);
@@ -819,7 +800,7 @@ async function handleArchive(record: MatterDTO) {
     });
     return;
   }
-  
+
   // 已结案项目，跳转到档案列表页面并打开归档向导
   Modal.confirm({
     title: '创建档案',
@@ -861,7 +842,7 @@ function handleReturnFromClient() {
 
 onMounted(async () => {
   await loadOptions();
-  
+
   // 检查是否有查询参数 id，如果有则打开编辑弹窗
   const id = route.query.id;
   if (id) {
@@ -877,7 +858,7 @@ onMounted(async () => {
       }
     }
   }
-  
+
   // 检查是否从客户创建页面返回
   handleReturnFromClient();
 });
@@ -889,8 +870,19 @@ onMounted(async () => {
       <!-- 工具栏按钮 -->
       <template #toolbar-buttons>
         <Space>
-          <Button v-access:code="'matter:create'" type="primary" @click="handleAdd">新增项目</Button>
-          <Button v-access:code="['contract:create', 'matter:contract:create']" @click="handleCreateContract">创建合同</Button>
+          <Button
+            v-access:code="'matter:create'"
+            type="primary"
+            @click="handleAdd"
+          >
+            新增项目
+          </Button>
+          <Button
+            v-access:code="['contract:create', 'matter:contract:create']"
+            @click="handleCreateContract"
+          >
+            创建合同
+          </Button>
         </Space>
       </template>
 
@@ -910,8 +902,13 @@ onMounted(async () => {
       <template #action="{ row }">
         <Space>
           <a @click="handleView(row)">详情</a>
-          <a v-if="!['ARCHIVED', 'CLOSED', 'PENDING_CLOSE'].includes(row.status)" v-access:code="'matter:edit'" @click="handleEdit(row)">编辑</a>
-          <a 
+          <a
+            v-if="!['ARCHIVED', 'CLOSED', 'PENDING_CLOSE'].includes(row.status)"
+            v-access:code="'matter:edit'"
+            @click="handleEdit(row)"
+            >编辑</a
+          >
+          <a
             v-if="row.status !== 'ARCHIVED' && row.status !== 'CLOSED'"
             v-access:code="'archive:create'"
             @click="handleArchive(row)"
@@ -937,42 +934,82 @@ onMounted(async () => {
         :wrapper-col="{ span: 18 }"
       >
         <!-- 合同选择（新增时必填） -->
-        <div v-if="!formData.id" style=" padding: 12px;margin-bottom: 16px; background: #e6f7ff; border: 1px solid #91d5ff; border-radius: 4px">
-          <FormItem label="关联合同" name="contractId" :rules="[{ required: true, message: '请选择要关联的合同' }]" style="margin-bottom: 0">
+        <div
+          v-if="!formData.id"
+          style="
+            padding: 12px;
+            margin-bottom: 16px;
+            background: #e6f7ff;
+            border: 1px solid #91d5ff;
+            border-radius: 4px;
+          "
+        >
+          <FormItem
+            label="关联合同"
+            name="contractId"
+            :rules="[{ required: true, message: '请选择要关联的合同' }]"
+            style="margin-bottom: 0"
+          >
             <Select
               v-model:value="selectedContractId"
               placeholder="请选择已审批的合同（必选）"
-              showSearch
+              show-search
               style="width: 100%"
-              :filterOption="(input, option) => (option?.label || '').toLowerCase().includes(input.toLowerCase())"
-              :options="approvedContracts.map(c => ({ label: `${c.contractNo} - ${c.clientName || ''} (${c.name})`, value: c.id }))"
+              :filter-option="
+                (input, option) =>
+                  (option?.label || '')
+                    .toLowerCase()
+                    .includes(input.toLowerCase())
+              "
+              :options="
+                approvedContracts.map((c) => ({
+                  label: `${c.contractNo} - ${c.clientName || ''} (${c.name})`,
+                  value: c.id,
+                }))
+              "
               @change="(val: any) => val && handleContractSelect(val)"
             />
             <div style="margin-top: 8px; font-size: 12px; color: #666">
-              📋 选择合同后将自动填充客户、收费方式等信息。一个合同可以创建多个项目。
+              📋
+              选择合同后将自动填充客户、收费方式等信息。一个合同可以创建多个项目。
             </div>
           </FormItem>
         </div>
         <Row :gutter="16">
           <Col :span="12">
-            <FormItem label="项目名称" name="name" :rules="[{ required: true, message: '请输入项目名称' }]">
-              <Input v-model:value="formData.name" placeholder="请输入项目名称" />
+            <FormItem
+              label="项目名称"
+              name="name"
+              :rules="[{ required: true, message: '请输入项目名称' }]"
+            >
+              <Input
+                v-model:value="formData.name"
+                placeholder="请输入项目名称"
+              />
             </FormItem>
           </Col>
           <Col :span="12">
-            <FormItem label="项目大类" name="matterType" :rules="[{ required: true, message: '请选择项目大类' }]">
-              <Select v-model:value="formData.matterType" :options="matterTypeOptions" placeholder="请选择项目大类" />
+            <FormItem
+              label="项目大类"
+              name="matterType"
+              :rules="[{ required: true, message: '请选择项目大类' }]"
+            >
+              <Select
+                v-model:value="formData.matterType"
+                :options="matterTypeOptions"
+                placeholder="请选择项目大类"
+              />
             </FormItem>
           </Col>
         </Row>
         <Row :gutter="16">
           <Col :span="12">
             <FormItem label="案件类型" name="caseType">
-              <Select 
-                v-model:value="formData.caseType" 
-                :options="caseTypeOptions" 
+              <Select
+                v-model:value="formData.caseType"
+                :options="caseTypeOptions"
                 placeholder="请选择案件类型"
-                allowClear
+                allow-clear
               />
             </FormItem>
           </Col>
@@ -983,34 +1020,72 @@ onMounted(async () => {
                 :options="causeOptions"
                 placeholder="请选择案由"
                 change-on-select
-                :show-search="{ filter: (inputValue, path) => path.some(option => option.label.toLowerCase().includes(inputValue.toLowerCase())) }"
+                :show-search="{
+                  filter: (inputValue, path) =>
+                    path.some((option) =>
+                      option.label
+                        .toLowerCase()
+                        .includes(inputValue.toLowerCase()),
+                    ),
+                }"
                 :display-render="({ labels }) => labels[labels.length - 1]"
                 style="width: 100%"
               />
             </FormItem>
             <FormItem v-else label="业务类型" name="businessType">
-              <Input v-model:value="formData.businessType" placeholder="请输入业务类型" />
+              <Input
+                v-model:value="formData.businessType"
+                placeholder="请输入业务类型"
+              />
             </FormItem>
           </Col>
         </Row>
         <!-- 多客户选择区域 -->
         <Row :gutter="16">
           <Col :span="24">
-            <FormItem label="代理客户" :rules="[{ required: true, validator: validateClients }]">
-              <div style="display: flex; flex-direction: column; gap: 8px;">
+            <FormItem
+              label="代理客户"
+              :rules="[{ required: true, validator: validateClients }]"
+            >
+              <div style="display: flex; flex-direction: column; gap: 8px">
                 <!-- 已添加的客户列表 -->
-                <div v-for="(client, index) in selectedClients" :key="index" 
-                     style="display: flex; gap: 8px; align-items: center; padding: 8px; background: #f5f5f5; border-radius: 4px;">
-                  <Tag :color="client.isPrimary ? 'blue' : 'default'" style="margin: 0;">
+                <div
+                  v-for="(client, index) in selectedClients"
+                  :key="index"
+                  style="
+                    display: flex;
+                    gap: 8px;
+                    align-items: center;
+                    padding: 8px;
+                    background: #f5f5f5;
+                    border-radius: 4px;
+                  "
+                >
+                  <Tag
+                    :color="client.isPrimary ? 'blue' : 'default'"
+                    style="margin: 0"
+                  >
                     {{ client.isPrimary ? '主要' : '共同' }}
                   </Tag>
                   <Select
                     v-model:value="client.clientId"
                     placeholder="请选择客户"
-                    showSearch
+                    show-search
                     style="flex: 2"
-                    :filterOption="(input, option) => (option?.label || '').toLowerCase().includes(input.toLowerCase())"
-                    :options="clients.map(c => ({ label: c.clientNo ? `[${c.clientNo}] ${c.name}` : c.name, value: c.id }))"
+                    :filter-option="
+                      (input, option) =>
+                        (option?.label || '')
+                          .toLowerCase()
+                          .includes(input.toLowerCase())
+                    "
+                    :options="
+                      clients.map((c) => ({
+                        label: c.clientNo
+                          ? `[${c.clientNo}] ${c.name}`
+                          : c.name,
+                        value: c.id,
+                      }))
+                    "
                   />
                   <Select
                     v-model:value="client.clientRole"
@@ -1018,20 +1093,36 @@ onMounted(async () => {
                     style="width: 120px"
                     :options="clientRoleOptions"
                   />
-                  <Button v-if="!client.isPrimary" type="text" size="small" @click="setPrimaryClient(index)">
+                  <Button
+                    v-if="!client.isPrimary"
+                    type="text"
+                    size="small"
+                    @click="setPrimaryClient(index)"
+                  >
                     设为主要
                   </Button>
-                  <Button type="text" danger size="small" @click="removeClient(index)" :disabled="selectedClients.length <= 1">
+                  <Button
+                    type="text"
+                    danger
+                    size="small"
+                    @click="removeClient(index)"
+                    :disabled="selectedClients.length <= 1"
+                  >
                     删除
                   </Button>
                 </div>
                 <!-- 添加客户按钮 -->
-                <div style="display: flex; gap: 8px;">
+                <div style="display: flex; gap: 8px">
                   <Button type="dashed" @click="addClient" style="flex: 1">
                     <template #icon><Plus class="size-4" /></template>
                     添加共同委托人
                   </Button>
-                  <Button type="link" size="small" @click="handleCreateClient" style="padding: 0; white-space: nowrap">
+                  <Button
+                    type="link"
+                    size="small"
+                    @click="handleCreateClient"
+                    style="padding: 0; white-space: nowrap"
+                  >
                     <template #icon><Plus class="size-4" /></template>
                     创建新客户
                   </Button>
@@ -1043,7 +1134,10 @@ onMounted(async () => {
         <Row :gutter="16">
           <Col :span="24">
             <FormItem label="对方当事人" name="opposingParty">
-              <Input v-model:value="formData.opposingParty" placeholder="请输入对方当事人（多个请用逗号分隔）" />
+              <Input
+                v-model:value="formData.opposingParty"
+                placeholder="请输入对方当事人（多个请用逗号分隔）"
+              />
             </FormItem>
           </Col>
         </Row>
@@ -1068,7 +1162,10 @@ onMounted(async () => {
         <Row :gutter="16">
           <Col :span="12">
             <FormItem label="收费方式" name="feeType">
-              <Select v-model:value="formData.feeType" :options="feeTypeOptions" />
+              <Select
+                v-model:value="formData.feeType"
+                :options="feeTypeOptions"
+              />
             </FormItem>
           </Col>
           <Col :span="12">
@@ -1078,7 +1175,9 @@ onMounted(async () => {
                 :min="0"
                 :precision="2"
                 style="width: 100%"
-                :formatter="(value) => `¥ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')"
+                :formatter="
+                  (value) => `¥ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+                "
                 :parser="(value) => value.replace(/¥\s?|(,*)/g, '')"
               />
             </FormItem>
@@ -1090,9 +1189,13 @@ onMounted(async () => {
               <TreeSelect
                 v-model:value="formData.departmentId"
                 :tree-data="departments"
-                :field-names="{ label: 'name', value: 'id', children: 'children' }"
+                :field-names="{
+                  label: 'name',
+                  value: 'id',
+                  children: 'children',
+                }"
                 placeholder="请选择部门"
-                allowClear
+                allow-clear
                 style="width: 100%"
               />
             </FormItem>
@@ -1111,32 +1214,52 @@ onMounted(async () => {
         <Row :gutter="16">
           <Col :span="12">
             <FormItem label="对方律师姓名" name="opposingLawyerName">
-              <Input v-model:value="formData.opposingLawyerName" placeholder="请输入对方律师姓名" />
+              <Input
+                v-model:value="formData.opposingLawyerName"
+                placeholder="请输入对方律师姓名"
+              />
             </FormItem>
           </Col>
           <Col :span="12">
             <FormItem label="对方律师执业证号" name="opposingLawyerLicenseNo">
-              <Input v-model:value="formData.opposingLawyerLicenseNo" placeholder="请输入执业证号" />
+              <Input
+                v-model:value="formData.opposingLawyerLicenseNo"
+                placeholder="请输入执业证号"
+              />
             </FormItem>
           </Col>
         </Row>
         <Row :gutter="16">
           <Col :span="12">
             <FormItem label="对方律师律所" name="opposingLawyerFirm">
-              <Input v-model:value="formData.opposingLawyerFirm" placeholder="请输入律所名称" />
+              <Input
+                v-model:value="formData.opposingLawyerFirm"
+                placeholder="请输入律所名称"
+              />
             </FormItem>
           </Col>
           <Col :span="12">
             <FormItem label="对方律师电话" name="opposingLawyerPhone">
-              <Input v-model:value="formData.opposingLawyerPhone" placeholder="请输入联系电话" />
+              <Input
+                v-model:value="formData.opposingLawyerPhone"
+                placeholder="请输入联系电话"
+              />
             </FormItem>
           </Col>
         </Row>
         <FormItem label="项目描述" name="description">
-          <Textarea v-model:value="formData.description" :rows="3" placeholder="请输入项目描述" />
+          <Textarea
+            v-model:value="formData.description"
+            :rows="3"
+            placeholder="请输入项目描述"
+          />
         </FormItem>
         <FormItem label="备注" name="remark">
-          <Textarea v-model:value="formData.remark" :rows="3" placeholder="请输入备注" />
+          <Textarea
+            v-model:value="formData.remark"
+            :rows="3"
+            placeholder="请输入备注"
+          />
         </FormItem>
       </Form>
     </Modal>
@@ -1156,26 +1279,51 @@ onMounted(async () => {
       >
         <Row :gutter="16">
           <Col :span="12">
-            <FormItem label="合同名称" name="name" :rules="[{ required: true, message: '请输入合同名称' }]">
-              <Input v-model:value="contractFormData.name" placeholder="请输入合同名称" />
+            <FormItem
+              label="合同名称"
+              name="name"
+              :rules="[{ required: true, message: '请输入合同名称' }]"
+            >
+              <Input
+                v-model:value="contractFormData.name"
+                placeholder="请输入合同名称"
+              />
             </FormItem>
           </Col>
           <Col :span="12">
-            <FormItem label="客户" name="clientId" :rules="[{ required: true, message: '请选择客户' }]">
+            <FormItem
+              label="客户"
+              name="clientId"
+              :rules="[{ required: true, message: '请选择客户' }]"
+            >
               <Select
                 v-model:value="contractFormData.clientId"
                 placeholder="请选择客户"
-                showSearch
-                allowClear
-                :filterOption="(input, option) => (option?.label || '').toLowerCase().includes(input.toLowerCase())"
-                :options="clients.map(c => ({ label: c.clientNo ? `[${c.clientNo}] ${c.name}` : c.name, value: c.id }))"
+                show-search
+                allow-clear
+                :filter-option="
+                  (input, option) =>
+                    (option?.label || '')
+                      .toLowerCase()
+                      .includes(input.toLowerCase())
+                "
+                :options="
+                  clients.map((c) => ({
+                    label: c.clientNo ? `[${c.clientNo}] ${c.name}` : c.name,
+                    value: c.id,
+                  }))
+                "
               />
             </FormItem>
           </Col>
         </Row>
         <Row :gutter="16">
           <Col :span="12">
-            <FormItem label="合同类型" name="contractType" :rules="[{ required: true, message: '请选择合同类型' }]">
+            <FormItem
+              label="合同类型"
+              name="contractType"
+              :rules="[{ required: true, message: '请选择合同类型' }]"
+            >
               <Select v-model:value="contractFormData.contractType">
                 <SelectOption value="SERVICE">服务合同</SelectOption>
                 <SelectOption value="RETAINER">常年法顾</SelectOption>
@@ -1185,7 +1333,11 @@ onMounted(async () => {
             </FormItem>
           </Col>
           <Col :span="12">
-            <FormItem label="收费方式" name="feeType" :rules="[{ required: true, message: '请选择收费方式' }]">
+            <FormItem
+              label="收费方式"
+              name="feeType"
+              :rules="[{ required: true, message: '请选择收费方式' }]"
+            >
               <Select v-model:value="contractFormData.feeType">
                 <SelectOption value="FIXED">固定收费</SelectOption>
                 <SelectOption value="HOURLY">计时收费</SelectOption>
@@ -1197,13 +1349,19 @@ onMounted(async () => {
         </Row>
         <Row :gutter="16">
           <Col :span="12">
-            <FormItem label="合同金额" name="totalAmount" :rules="[{ required: true, message: '请输入合同金额' }]">
+            <FormItem
+              label="合同金额"
+              name="totalAmount"
+              :rules="[{ required: true, message: '请输入合同金额' }]"
+            >
               <InputNumber
                 v-model:value="contractFormData.totalAmount"
                 :min="0"
                 :precision="2"
                 style="width: 100%"
-                :formatter="(value) => `¥ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')"
+                :formatter="
+                  (value) => `¥ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+                "
                 :parser="(value) => value.replace(/¥\s?|(,*)/g, '')"
               />
             </FormItem>
@@ -1266,19 +1424,31 @@ onMounted(async () => {
               <TreeSelect
                 v-model:value="contractFormData.departmentId"
                 :tree-data="departments"
-                :field-names="{ label: 'name', value: 'id', children: 'children' }"
+                :field-names="{
+                  label: 'name',
+                  value: 'id',
+                  children: 'children',
+                }"
                 placeholder="请选择部门"
-                allowClear
+                allow-clear
                 style="width: 100%"
               />
             </FormItem>
           </Col>
         </Row>
         <FormItem label="付款条款" name="paymentTerms">
-          <Textarea v-model:value="contractFormData.paymentTerms" :rows="3" placeholder="请输入付款条款" />
+          <Textarea
+            v-model:value="contractFormData.paymentTerms"
+            :rows="3"
+            placeholder="请输入付款条款"
+          />
         </FormItem>
         <FormItem label="备注" name="remark">
-          <Textarea v-model:value="contractFormData.remark" :rows="3" placeholder="请输入备注" />
+          <Textarea
+            v-model:value="contractFormData.remark"
+            :rows="3"
+            placeholder="请输入备注"
+          />
         </FormItem>
       </Form>
     </Modal>

@@ -1,38 +1,41 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed } from 'vue';
-import { message, Modal } from 'ant-design-vue';
+import type { CreateTaskCommand, MatterDTO, TaskDTO } from '#/api/matter/types';
+
+import { computed, onMounted, reactive, ref } from 'vue';
+
 import { Page } from '@vben/common-ui';
+import { useUserStore } from '@vben/stores';
+
 import {
-  Card,
   Button,
-  Space,
-  Tag,
-  Select,
+  Card,
+  Col,
+  DatePicker,
   Form,
   FormItem,
-  DatePicker,
   Input,
-  Textarea,
-  Row,
-  Col,
-  Tabs,
+  message,
+  Modal,
   Popconfirm,
+  Row,
+  Select,
+  Space,
+  Tabs,
+  Tag,
+  Textarea,
 } from 'ant-design-vue';
-import type { VxeGridProps } from '#/adapter/vxe-table';
+
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
-  getTaskList,
-  createTask,
-  updateTask,
-  deleteTask,
-  changeTaskStatus,
   approveTask,
+  changeTaskStatus,
+  createTask,
+  deleteTask,
+  getMatterList,
+  getTaskList,
   rejectTask,
+  updateTask,
 } from '#/api/matter';
-import { getMatterList } from '#/api/matter';
-import { useUserStore } from '@vben/stores';
-import type { TaskDTO, CreateTaskCommand } from '#/api/matter/types';
-import type { MatterDTO } from '#/api/matter/types';
 import { UserTreeSelect } from '#/components/UserTreeSelect';
 
 defineOptions({ name: 'MatterTask' });
@@ -48,7 +51,7 @@ const matters = ref<MatterDTO[]>([]);
 const activeTab = ref('all');
 const reviewModalVisible = ref(false);
 const reviewComment = ref('');
-const reviewingTask = ref<TaskDTO | null>(null);
+const reviewingTask = ref<null | TaskDTO>(null);
 
 // 表单数据
 const formData = reactive<Partial<CreateTaskCommand> & { id?: number }>({
@@ -85,11 +88,22 @@ const gridColumns = [
   { title: '任务标题', field: 'title', width: 200, showOverflow: true },
   { title: '所属项目', field: 'matterName', width: 180, showOverflow: true },
   { title: '负责人', field: 'assigneeName', width: 100 },
-  { title: '优先级', field: 'priority', width: 100, slots: { default: 'priority' } },
+  {
+    title: '优先级',
+    field: 'priority',
+    width: 100,
+    slots: { default: 'priority' },
+  },
   { title: '状态', field: 'status', width: 100, slots: { default: 'status' } },
   { title: '截止日期', field: 'dueDate', width: 120 },
   { title: '创建时间', field: 'createdAt', width: 160 },
-  { title: '操作', field: 'action', width: 200, fixed: 'right' as const, slots: { default: 'action' } },
+  {
+    title: '操作',
+    field: 'action',
+    width: 200,
+    fixed: 'right' as const,
+    slots: { default: 'action' },
+  },
 ];
 
 // 查询参数
@@ -150,11 +164,11 @@ async function loadOptions() {
 }
 
 // 计算属性：项目选项
-const matterOptions = computed(() => 
-  matters.value.map(m => ({ 
-    label: `[${m.matterNo}] ${m.name}`, 
-    value: m.id 
-  }))
+const matterOptions = computed(() =>
+  matters.value.map((m) => ({
+    label: `[${m.matterNo}] ${m.name}`,
+    value: m.id,
+  })),
 );
 
 // ==================== 搜索操作 ====================
@@ -171,18 +185,35 @@ function handleReset() {
 }
 
 // Tab切换
-function handleTabChange(key: string | number) {
+function handleTabChange(key: number | string) {
   activeTab.value = String(key);
-  if (key === 'all') {
-    queryParams.status = undefined;
-  } else if (key === 'pending') {
-    queryParams.status = 'TODO';
-  } else if (key === 'in_progress') {
-    queryParams.status = 'IN_PROGRESS';
-  } else if (key === 'pending_review') {
-    queryParams.status = 'PENDING_REVIEW';
-  } else if (key === 'completed') {
-    queryParams.status = 'COMPLETED';
+  switch (key) {
+    case 'all': {
+      queryParams.status = undefined;
+
+      break;
+    }
+    case 'completed': {
+      queryParams.status = 'COMPLETED';
+
+      break;
+    }
+    case 'in_progress': {
+      queryParams.status = 'IN_PROGRESS';
+
+      break;
+    }
+    case 'pending': {
+      queryParams.status = 'TODO';
+
+      break;
+    }
+    case 'pending_review': {
+      queryParams.status = 'PENDING_REVIEW';
+
+      break;
+    }
+    // No default
   }
   gridApi.reload();
 }
@@ -220,7 +251,7 @@ function handleEdit(row: TaskDTO) {
 async function handleSave() {
   try {
     await formRef.value?.validate();
-    
+
     if (formData.id) {
       await updateTask(formData.id, formData as Partial<CreateTaskCommand>);
       message.success('更新成功');
@@ -347,7 +378,7 @@ onMounted(() => {
 <template>
   <Page title="任务管理" description="管理项目任务" auto-content-height>
     <Card>
-      <Tabs v-model:activeKey="activeTab" @change="handleTabChange">
+      <Tabs v-model:active-key="activeTab" @change="handleTabChange">
         <Tabs.TabPane key="all" tab="全部任务" />
         <Tabs.TabPane key="pending" tab="待处理" />
         <Tabs.TabPane key="in_progress" tab="进行中" />
@@ -362,9 +393,14 @@ onMounted(() => {
             <Select
               v-model:value="queryParams.matterId"
               placeholder="所属项目"
-              allowClear
-              showSearch
-              :filterOption="(input: string, option: any) => (option?.label || '').toLowerCase().includes(input.toLowerCase())"
+              allow-clear
+              show-search
+              :filter-option="
+                (input: string, option: any) =>
+                  (option?.label || '')
+                    .toLowerCase()
+                    .includes(input.toLowerCase())
+              "
               style="width: 100%"
               :options="matterOptions"
             />
@@ -373,7 +409,7 @@ onMounted(() => {
             <Select
               v-model:value="queryParams.status"
               placeholder="任务状态"
-              allowClear
+              allow-clear
               style="width: 100%"
               :options="statusOptions"
             />
@@ -382,7 +418,7 @@ onMounted(() => {
             <Select
               v-model:value="queryParams.priority"
               placeholder="优先级"
-              allowClear
+              allow-clear
               style="width: 100%"
               :options="priorityOptions"
             />
@@ -420,10 +456,19 @@ onMounted(() => {
         <template #action="{ row }">
           <Space>
             <a @click="handleEdit(row)">编辑</a>
-            <template v-if="row.status === 'PENDING_REVIEW' && row.createdBy === userStore.userInfo?.userId">
+            <template
+              v-if="
+                row.status === 'PENDING_REVIEW' &&
+                row.createdBy === userStore.userInfo?.userId
+              "
+            >
               <a @click="handleReview(row)" style="color: #1890ff">验收</a>
             </template>
-            <template v-else-if="row.status !== 'COMPLETED' && row.status !== 'PENDING_REVIEW'">
+            <template
+              v-else-if="
+                row.status !== 'COMPLETED' && row.status !== 'PENDING_REVIEW'
+              "
+            >
               <a @click="handleComplete(row)">完成</a>
             </template>
             <Popconfirm title="确定删除？" @confirm="handleDelete(row)">
@@ -447,16 +492,29 @@ onMounted(() => {
         :label-col="{ span: 6 }"
         :wrapper-col="{ span: 18 }"
       >
-        <FormItem label="所属项目" name="matterId" :rules="[{ required: true, message: '请选择所属项目' }]">
+        <FormItem
+          label="所属项目"
+          name="matterId"
+          :rules="[{ required: true, message: '请选择所属项目' }]"
+        >
           <Select
             v-model:value="formData.matterId"
             placeholder="请选择所属项目"
-            showSearch
-            :filterOption="(input: string, option: any) => (option?.label || '').toLowerCase().includes(input.toLowerCase())"
+            show-search
+            :filter-option="
+              (input: string, option: any) =>
+                (option?.label || '')
+                  .toLowerCase()
+                  .includes(input.toLowerCase())
+            "
             :options="matterOptions"
           />
         </FormItem>
-        <FormItem label="任务标题" name="title" :rules="[{ required: true, message: '请输入任务标题' }]">
+        <FormItem
+          label="任务标题"
+          name="title"
+          :rules="[{ required: true, message: '请输入任务标题' }]"
+        >
           <Input v-model:value="formData.title" placeholder="请输入任务标题" />
         </FormItem>
         <FormItem label="负责人" name="assigneeId">
@@ -466,7 +524,10 @@ onMounted(() => {
           />
         </FormItem>
         <FormItem label="优先级" name="priority">
-          <Select v-model:value="formData.priority" :options="priorityOptions" />
+          <Select
+            v-model:value="formData.priority"
+            :options="priorityOptions"
+          />
         </FormItem>
         <FormItem label="截止日期" name="dueDate">
           <DatePicker
@@ -477,7 +538,11 @@ onMounted(() => {
           />
         </FormItem>
         <FormItem label="任务描述" name="description">
-          <Textarea v-model:value="formData.description" :rows="4" placeholder="请输入任务描述" />
+          <Textarea
+            v-model:value="formData.description"
+            :rows="4"
+            placeholder="请输入任务描述"
+          />
         </FormItem>
       </Form>
     </Modal>
@@ -494,7 +559,10 @@ onMounted(() => {
         <p v-if="reviewingTask.description" style="margin-top: 8px">
           <strong>任务描述：</strong>{{ reviewingTask.description }}
         </p>
-        <p v-if="reviewingTask.reviewComment" style="margin-top: 8px; color: #ff4d4f">
+        <p
+          v-if="reviewingTask.reviewComment"
+          style="margin-top: 8px; color: #ff4d4f"
+        >
           <strong>退回意见：</strong>{{ reviewingTask.reviewComment }}
         </p>
         <FormItem label="退回意见" style="margin-top: 16px">
@@ -504,10 +572,15 @@ onMounted(() => {
             placeholder="如果退回，请填写退回意见"
           />
         </FormItem>
-        <div style=" margin-top: 16px;text-align: right">
+        <div style="margin-top: 16px; text-align: right">
           <Space>
             <Button @click="reviewModalVisible = false">取消</Button>
-            <Button type="primary" danger @click="handleReject" :disabled="!reviewComment.trim()">
+            <Button
+              type="primary"
+              danger
+              @click="handleReject"
+              :disabled="!reviewComment.trim()"
+            >
               退回
             </Button>
             <Button type="primary" @click="handleApprove">通过</Button>

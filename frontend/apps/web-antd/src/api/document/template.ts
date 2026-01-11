@@ -1,10 +1,10 @@
+import type { PageResult } from '../matter/types';
+import type { DocumentDTO } from './types';
+
 /**
  * 文档模板模块 API
  */
 import { requestClient } from '#/api/request';
-
-import type { PageResult } from '../matter/types';
-import type { DocumentDTO } from './types';
 
 // ========== 文档模板类型定义 ==========
 export interface DocumentTemplateDTO {
@@ -56,15 +56,15 @@ export interface UpdateDocumentTemplateCommand {
 
 export interface GenerateDocumentCommand {
   templateId: number;
-  matterId?: number;  // 可选，不传则为个人文书
+  matterId?: number; // 可选，不传则为个人文书
   variables?: Record<string, any>;
   fileName?: string;
-  dossierItemId?: number;  // 卷宗目录项ID
+  dossierItemId?: number; // 卷宗目录项ID
 }
 
 export interface PreviewTemplateCommand {
   templateId: number;
-  matterId?: number;  // 可选，用于预览时自动填充项目相关变量
+  matterId?: number; // 可选，用于预览时自动填充项目相关变量
   variables?: Record<string, any>;
 }
 
@@ -72,12 +72,18 @@ export interface PreviewTemplateCommand {
 
 /** 获取模板列表（需要 doc:template:list 权限） */
 export function getTemplateList(params: DocumentTemplateQuery) {
-  return requestClient.get<PageResult<DocumentTemplateDTO>>('/document/template', { params });
+  return requestClient.get<PageResult<DocumentTemplateDTO>>(
+    '/document/template',
+    { params },
+  );
 }
 
 /** 获取启用的模板列表（公共接口，用于文书制作选择模板） */
 export function getActiveTemplateList(params?: DocumentTemplateQuery) {
-  return requestClient.get<PageResult<DocumentTemplateDTO>>('/document/template/active', { params });
+  return requestClient.get<PageResult<DocumentTemplateDTO>>(
+    '/document/template/active',
+    { params },
+  );
 }
 
 /** 获取模板详情 */
@@ -91,8 +97,14 @@ export function createTemplate(data: CreateDocumentTemplateCommand) {
 }
 
 /** 更新模板 */
-export function updateTemplate(id: number, data: UpdateDocumentTemplateCommand) {
-  return requestClient.put<DocumentTemplateDTO>(`/document/template/${id}`, data);
+export function updateTemplate(
+  id: number,
+  data: UpdateDocumentTemplateCommand,
+) {
+  return requestClient.put<DocumentTemplateDTO>(
+    `/document/template/${id}`,
+    data,
+  );
 }
 
 /** 删除模板 */
@@ -112,9 +124,11 @@ export function generateDocument(data: GenerateDocumentCommand) {
 
 /** 预览模板 */
 export function previewTemplate(data: PreviewTemplateCommand) {
-  return requestClient.post<Record<string, any>>('/document/template/preview', data);
+  return requestClient.post<Record<string, any>>(
+    '/document/template/preview',
+    data,
+  );
 }
 
 // 导出类型
 export type * from './template-types';
-

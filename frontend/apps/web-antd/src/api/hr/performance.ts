@@ -1,9 +1,9 @@
+import type { PageResult } from '../matter/types';
+
 /**
  * 绩效管理 API
  */
 import { requestClient } from '#/api/request';
-
-import type { PageResult } from '../matter/types';
 
 // ========== 类型定义 ==========
 export interface PerformanceTaskDTO {
@@ -128,7 +128,10 @@ export interface SubmitEvaluationCommand {
 
 /** 分页查询考核任务 */
 export function getPerformanceTaskList(params: PerformanceTaskQuery) {
-  return requestClient.get<PageResult<PerformanceTaskDTO>>('/hr/performance/tasks', { params });
+  return requestClient.get<PageResult<PerformanceTaskDTO>>(
+    '/hr/performance/tasks',
+    { params },
+  );
 }
 
 /** 获取考核任务详情 */
@@ -153,26 +156,43 @@ export function completePerformanceTask(id: number) {
 
 /** 获取考核任务统计 */
 export function getPerformanceTaskStatistics(id: number) {
-  return requestClient.get<Record<string, any>>(`/hr/performance/tasks/${id}/statistics`);
+  return requestClient.get<Record<string, any>>(
+    `/hr/performance/tasks/${id}/statistics`,
+  );
 }
 
 // ========== 考核指标 API ==========
 
 /** 查询考核指标列表 */
-export function getPerformanceIndicatorList(category?: string, applicableRole?: string) {
-  return requestClient.get<PerformanceIndicatorDTO[]>('/hr/performance/indicators', {
-    params: { category, applicableRole },
-  });
+export function getPerformanceIndicatorList(
+  category?: string,
+  applicableRole?: string,
+) {
+  return requestClient.get<PerformanceIndicatorDTO[]>(
+    '/hr/performance/indicators',
+    {
+      params: { category, applicableRole },
+    },
+  );
 }
 
 /** 创建考核指标 */
 export function createPerformanceIndicator(data: CreateIndicatorCommand) {
-  return requestClient.post<PerformanceIndicatorDTO>('/hr/performance/indicators', data);
+  return requestClient.post<PerformanceIndicatorDTO>(
+    '/hr/performance/indicators',
+    data,
+  );
 }
 
 /** 更新考核指标 */
-export function updatePerformanceIndicator(id: number, data: CreateIndicatorCommand) {
-  return requestClient.put<PerformanceIndicatorDTO>(`/hr/performance/indicators/${id}`, data);
+export function updatePerformanceIndicator(
+  id: number,
+  data: CreateIndicatorCommand,
+) {
+  return requestClient.put<PerformanceIndicatorDTO>(
+    `/hr/performance/indicators/${id}`,
+    data,
+  );
 }
 
 /** 删除考核指标 */
@@ -184,23 +204,32 @@ export function deletePerformanceIndicator(id: number) {
 
 /** 提交绩效评价 */
 export function submitPerformanceEvaluation(data: SubmitEvaluationCommand) {
-  return requestClient.post<PerformanceEvaluationDTO>('/hr/performance/evaluations', data);
+  return requestClient.post<PerformanceEvaluationDTO>(
+    '/hr/performance/evaluations',
+    data,
+  );
 }
 
 /** 获取员工的评价记录 */
 export function getEmployeeEvaluations(taskId: number, employeeId: number) {
-  return requestClient.get<PerformanceEvaluationDTO[]>('/hr/performance/evaluations', {
-    params: { taskId, employeeId },
-  });
+  return requestClient.get<PerformanceEvaluationDTO[]>(
+    '/hr/performance/evaluations',
+    {
+      params: { taskId, employeeId },
+    },
+  );
 }
 
 /** 获取我待评价的记录 */
 export function getMyPendingEvaluations() {
-  return requestClient.get<PerformanceEvaluationDTO[]>('/hr/performance/evaluations/pending');
+  return requestClient.get<PerformanceEvaluationDTO[]>(
+    '/hr/performance/evaluations/pending',
+  );
 }
 
 /** 获取评价详情 */
 export function getPerformanceEvaluationDetail(id: number) {
-  return requestClient.get<PerformanceEvaluationDTO>(`/hr/performance/evaluations/${id}`);
+  return requestClient.get<PerformanceEvaluationDTO>(
+    `/hr/performance/evaluations/${id}`,
+  );
 }
-

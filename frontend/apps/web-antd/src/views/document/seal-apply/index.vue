@@ -1,52 +1,52 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue';
-import { message, Modal } from 'ant-design-vue';
-import { Page } from '@vben/common-ui';
-import {
-  Card,
-  Table,
-  Button,
-  Space,
-  Input,
-  Select,
-  Form,
-  FormItem,
-  Row,
-  Col,
-  Popconfirm,
-  Tag,
-  Tabs,
-  InputNumber,
-  Textarea,
-} from 'ant-design-vue';
-import {
-  getSealApplicationList,
-  createSealApplication,
-  approveSealApplication,
-  rejectSealApplication,
-  registerSealUsage,
-  cancelSealApplication,
-  getPendingSealApplications,
-  getSealApplicationApprovers,
-  getPendingForKeeper,
-  getProcessedByKeeper,
-  checkIsKeeper,
-} from '#/api/document/seal';
-import { getSealList } from '#/api/document/seal';
-import {
-  getPendingApprovals,
-  approveApproval,
-  type ApprovalDTO,
-} from '#/api/workbench';
-import { useRouter } from 'vue-router';
-import { useUserStore } from '@vben/stores';
-import { usePermission } from '#/hooks/usePermission';
 import type {
+  CreateSealApplicationCommand,
   SealApplicationDTO,
   SealApplicationQuery,
-  CreateSealApplicationCommand,
   SealDTO,
 } from '#/api/document/seal-types';
+import type { ApprovalDTO } from '#/api/workbench';
+
+import { onMounted, reactive, ref } from 'vue';
+import { useRouter } from 'vue-router';
+
+import { Page } from '@vben/common-ui';
+import { useUserStore } from '@vben/stores';
+
+import {
+  Button,
+  Card,
+  Col,
+  Form,
+  FormItem,
+  Input,
+  InputNumber,
+  message,
+  Modal,
+  Row,
+  Select,
+  Space,
+  Table,
+  Tabs,
+  Tag,
+  Textarea,
+} from 'ant-design-vue';
+
+import {
+  approveSealApplication,
+  cancelSealApplication,
+  checkIsKeeper,
+  createSealApplication,
+  getPendingForKeeper,
+  getProcessedByKeeper,
+  getSealApplicationApprovers,
+  getSealApplicationList,
+  getSealList,
+  registerSealUsage,
+  rejectSealApplication,
+} from '#/api/document/seal';
+import { approveApproval, getPendingApprovals } from '#/api/workbench';
+import { usePermission } from '#/hooks/usePermission';
 
 defineOptions({ name: 'DocumentSealApply' });
 
@@ -58,7 +58,7 @@ const { hasPermission } = usePermission();
 const isKeeper = ref(false); // 是否是印章保管人
 const hasApprovalPermission = ref(false); // 是否有审批权限
 const hasManagePermission = ref(false); // 是否有印章管理权限（doc:seal:list）
-const isApplicant = ref(true); // 是否是申请人（所有用户都可以申请）
+// isApplicant: 所有用户都可以申请
 
 // 状态
 const loading = ref(false);
@@ -70,7 +70,7 @@ const activeTab = ref('my');
 const seals = ref<SealDTO[]>([]);
 const approveModalVisible = ref(false);
 const useModalVisible = ref(false);
-const currentApplication = ref<SealApplicationDTO | null>(null);
+const currentApplication = ref<null | SealApplicationDTO>(null);
 const approveComment = ref('');
 // 审批中心待审批列表（用于"待审批"tab）
 const pendingApprovals = ref<ApprovalDTO[]>([]);
@@ -78,9 +78,16 @@ const pendingApprovalsLoading = ref(false);
 // 拒绝审批相关
 const rejectModalVisible = ref(false);
 const rejectReason = ref('');
-const currentApprovalId = ref<number | null>(null);
+const currentApprovalId = ref<null | number>(null);
 // 可选审批人列表
-const approvers = ref<Array<{ id: number; realName: string; departmentName: string; position: string }>>([]);
+const approvers = ref<
+  Array<{
+    departmentName: string;
+    id: number;
+    position: string;
+    realName: string;
+  }>
+>([]);
 const approversLoading = ref(false);
 
 // 查询参数
@@ -107,12 +114,34 @@ const formData = reactive<CreateSealApplicationCommand>({
 
 // 表格列
 const columns = [
-  { title: '申请编号', dataIndex: 'applicationNo', key: 'applicationNo', width: 150 },
+  {
+    title: '申请编号',
+    dataIndex: 'applicationNo',
+    key: 'applicationNo',
+    width: 150,
+  },
   { title: '印章名称', dataIndex: 'sealName', key: 'sealName', width: 120 },
-  { title: '用印文件', dataIndex: 'documentName', key: 'documentName', width: 180, ellipsis: true },
-  { title: '用印目的', dataIndex: 'usePurpose', key: 'usePurpose', width: 150, ellipsis: true },
+  {
+    title: '用印文件',
+    dataIndex: 'documentName',
+    key: 'documentName',
+    width: 180,
+    ellipsis: true,
+  },
+  {
+    title: '用印目的',
+    dataIndex: 'usePurpose',
+    key: 'usePurpose',
+    width: 150,
+    ellipsis: true,
+  },
   { title: '份数', dataIndex: 'copies', key: 'copies', width: 80 },
-  { title: '申请人', dataIndex: 'applicantName', key: 'applicantName', width: 100 },
+  {
+    title: '申请人',
+    dataIndex: 'applicantName',
+    key: 'applicantName',
+    width: 100,
+  },
   { title: '申请时间', dataIndex: 'createdAt', key: 'createdAt', width: 160 },
   { title: '状态', dataIndex: 'statusName', key: 'statusName', width: 100 },
   { title: '操作', key: 'action', width: 200, fixed: 'right' as const },
@@ -132,42 +161,60 @@ const statusOptions = [
 async function fetchData() {
   loading.value = true;
   try {
-    if (activeTab.value === 'pending') {
-      // 待审批 - 从审批中心获取
-      await fetchPendingApprovals();
-      return;
-    } else if (activeTab.value === 'my') {
-      // 我的申请 - 查询当前用户的申请
-      queryParams.applicantId = userStore.userInfo?.userId;
-      queryParams.status = undefined;
-      const res = await getSealApplicationList(queryParams);
-      dataSource.value = res.list;
-      total.value = res.total;
-    } else if (activeTab.value === 'keeper-pending') {
-      // 保管人待办理 - 审批通过且我是保管人
-      const res = await getPendingForKeeper();
-      dataSource.value = res;
-      total.value = res.length;
-    } else if (activeTab.value === 'keeper-processed') {
-      // 保管人已办理 - 已用印且我是保管人
-      const res = await getProcessedByKeeper();
-      dataSource.value = res;
-      total.value = res.length;
-    } else if (activeTab.value === 'my-approvals') {
-      // 我的审批 - 查询我审批过的申请
-      // 这里需要从审批中心获取，暂时使用全部申请过滤
-      queryParams.status = undefined;
-      const res = await getSealApplicationList(queryParams);
-      // 需要根据审批记录过滤，暂时显示全部
-      dataSource.value = res.list;
-      total.value = res.total;
-    } else {
-      // 全部申请
-      queryParams.applicantId = undefined;
-      queryParams.status = undefined;
-      const res = await getSealApplicationList(queryParams);
-      dataSource.value = res.list;
-      total.value = res.total;
+    switch (activeTab.value) {
+      case 'keeper-pending': {
+        // 保管人待办理 - 审批通过且我是保管人
+        const res = await getPendingForKeeper();
+        dataSource.value = res;
+        total.value = res.length;
+
+        break;
+      }
+      case 'keeper-processed': {
+        // 保管人已办理 - 已用印且我是保管人
+        const res = await getProcessedByKeeper();
+        dataSource.value = res;
+        total.value = res.length;
+
+        break;
+      }
+      case 'my': {
+        // 我的申请 - 查询当前用户的申请
+        queryParams.applicantId = userStore.userInfo?.userId as
+          | number
+          | undefined;
+        queryParams.status = undefined;
+        const res = await getSealApplicationList(queryParams);
+        dataSource.value = res.list;
+        total.value = res.total;
+
+        break;
+      }
+      case 'my-approvals': {
+        // 我的审批 - 查询我审批过的申请
+        // 这里需要从审批中心获取，暂时使用全部申请过滤
+        queryParams.status = undefined;
+        const res = await getSealApplicationList(queryParams);
+        // 需要根据审批记录过滤，暂时显示全部
+        dataSource.value = res.list;
+        total.value = res.total;
+
+        break;
+      }
+      case 'pending': {
+        // 待审批 - 从审批中心获取
+        await fetchPendingApprovals();
+
+        break;
+      }
+      default: {
+        // 全部申请
+        queryParams.applicantId = undefined;
+        queryParams.status = undefined;
+        const res = await getSealApplicationList(queryParams);
+        dataSource.value = res.list;
+        total.value = res.total;
+      }
     }
   } catch (error: any) {
     message.error(error.message || '加载申请列表失败');
@@ -183,7 +230,7 @@ async function fetchPendingApprovals() {
     const allPending = await getPendingApprovals();
     // 筛选出用印申请的审批
     pendingApprovals.value = allPending.filter(
-      (item) => item.businessType === 'SEAL_APPLICATION'
+      (item) => item.businessType === 'SEAL_APPLICATION',
     );
     // 转换为SealApplicationDTO格式显示
     dataSource.value = pendingApprovals.value.map((approval) => ({
@@ -209,7 +256,11 @@ async function fetchPendingApprovals() {
 // 加载印章列表
 async function loadSeals() {
   try {
-    const res = await getSealList({ pageNum: 1, pageSize: 1000, status: 'ACTIVE' });
+    const res = await getSealList({
+      pageNum: 1,
+      pageSize: 1000,
+      status: 'ACTIVE',
+    });
     seals.value = res.list;
   } catch (error: any) {
     console.error('加载印章列表失败:', error);
@@ -231,8 +282,8 @@ async function loadApprovers() {
 }
 
 // Tab切换
-function handleTabChange(key: string) {
-  activeTab.value = key;
+function handleTabChange(key: number | string) {
+  activeTab.value = String(key);
   queryParams.pageNum = 1;
   fetchData();
 }
@@ -273,17 +324,17 @@ async function handleAdd() {
 async function handleSave() {
   try {
     await formRef.value?.validate();
-    
+
     if (!formData.sealId) {
       message.error('请选择印章');
       return;
     }
-    
+
     if (!formData.approverId) {
       message.error('请选择审批人');
       return;
     }
-    
+
     await createSealApplication(formData);
     message.success('申请提交成功');
     modalVisible.value = false;
@@ -303,7 +354,7 @@ function handleApprove(record: SealApplicationDTO) {
     handleApproveFromCenter(record as any, true);
     return;
   }
-  
+
   currentApplication.value = record;
   approveComment.value = '';
   approveModalVisible.value = true;
@@ -316,7 +367,7 @@ async function handleApproveFromCenter(record: any, approved: boolean) {
     message.error('审批记录不存在');
     return;
   }
-  
+
   if (!approved) {
     // 拒绝需要填写原因 - 打开拒绝弹窗
     currentApprovalId.value = approvalId;
@@ -324,7 +375,7 @@ async function handleApproveFromCenter(record: any, approved: boolean) {
     rejectModalVisible.value = true;
     return;
   }
-  
+
   // 通过审批
   Modal.confirm({
     title: '确认通过',
@@ -354,12 +405,12 @@ async function handleRejectConfirm() {
     message.warning('请填写拒绝原因');
     return;
   }
-  
+
   if (!currentApprovalId.value) {
     message.error('审批记录不存在');
     return;
   }
-  
+
   try {
     await approveApproval({
       approvalId: currentApprovalId.value,
@@ -381,10 +432,16 @@ async function handleApproveSave(approved: boolean) {
   try {
     if (currentApplication.value) {
       if (approved) {
-        await approveSealApplication(currentApplication.value.id, approveComment.value);
+        await approveSealApplication(
+          currentApplication.value.id,
+          approveComment.value,
+        );
         message.success('审批通过');
       } else {
-        await rejectSealApplication(currentApplication.value.id, approveComment.value);
+        await rejectSealApplication(
+          currentApplication.value.id,
+          approveComment.value,
+        );
         message.success('已拒绝');
       }
       approveModalVisible.value = false;
@@ -410,7 +467,10 @@ function handleUse(record: SealApplicationDTO) {
 async function handleUseSave() {
   try {
     if (currentApplication.value) {
-      await registerSealUsage(currentApplication.value.id, approveComment.value);
+      await registerSealUsage(
+        currentApplication.value.id,
+        approveComment.value,
+      );
       message.success('用印登记成功');
       useModalVisible.value = false;
       fetchData();
@@ -472,7 +532,11 @@ onMounted(async () => {
     activeTab.value = 'my';
   } else if (activeTab.value === 'all' && !hasManagePermission.value) {
     activeTab.value = 'my';
-  } else if ((activeTab.value === 'keeper-pending' || activeTab.value === 'keeper-processed') && !isKeeper.value) {
+  } else if (
+    (activeTab.value === 'keeper-pending' ||
+      activeTab.value === 'keeper-processed') &&
+    !isKeeper.value
+  ) {
     activeTab.value = 'my';
   }
   await fetchData();
@@ -484,11 +548,15 @@ onMounted(async () => {
   <Page title="用印申请" description="管理用印申请流程">
     <Card>
       <!-- Tab切换 -->
-      <Tabs v-model:activeKey="activeTab" @change="handleTabChange">
+      <Tabs v-model:active-key="activeTab" @change="handleTabChange">
         <Tabs.TabPane key="my" tab="我的申请" />
         <Tabs.TabPane v-if="hasApprovalPermission" key="pending" tab="待审批" />
         <Tabs.TabPane v-if="isKeeper" key="keeper-pending" tab="保管人待办理" />
-        <Tabs.TabPane v-if="isKeeper" key="keeper-processed" tab="保管人已办理" />
+        <Tabs.TabPane
+          v-if="isKeeper"
+          key="keeper-processed"
+          tab="保管人已办理"
+        />
         <Tabs.TabPane v-if="hasManagePermission" key="all" tab="全部申请" />
       </Tabs>
 
@@ -499,25 +567,30 @@ onMounted(async () => {
             <Input
               v-model:value="queryParams.applicationNo"
               placeholder="申请编号"
-              allowClear
+              allow-clear
             />
           </Col>
           <Col :span="6">
             <Select
               v-model:value="queryParams.sealId"
               placeholder="印章"
-              allowClear
-              showSearch
+              allow-clear
+              show-search
               style="width: 100%"
-              :filterOption="(input: string, option: any) => (option?.label || '').toLowerCase().includes(input.toLowerCase())"
-              :options="seals.map(s => ({ label: s.name, value: s.id }))"
+              :filter-option="
+                (input: string, option: any) =>
+                  (option?.label || '')
+                    .toLowerCase()
+                    .includes(input.toLowerCase())
+              "
+              :options="seals.map((s) => ({ label: s.name, value: s.id }))"
             />
           </Col>
           <Col :span="6">
             <Select
               v-model:value="queryParams.status"
               placeholder="状态"
-              allowClear
+              allow-clear
               style="width: 100%"
               :options="statusOptions"
             />
@@ -533,11 +606,14 @@ onMounted(async () => {
       </div>
 
       <!-- 待审批tab提示 -->
-      <div v-if="activeTab === 'pending' && hasApprovalPermission" style="margin-bottom: 16px">
+      <div
+        v-if="activeTab === 'pending' && hasApprovalPermission"
+        style="margin-bottom: 16px"
+      >
         <Button type="link" @click="goToApprovalCenter">
           前往审批中心统一处理 →
         </Button>
-        <span style=" margin-left: 8px;color: #999">
+        <span style="margin-left: 8px; color: #999">
           建议在审批中心统一处理所有待审批事项，支持批量审批
         </span>
       </div>
@@ -550,7 +626,7 @@ onMounted(async () => {
         :pagination="{
           current: queryParams.pageNum,
           pageSize: queryParams.pageSize,
-          total: total,
+          total,
           showSizeChanger: true,
           showTotal: (total) => `共 ${total} 条`,
           onChange: (page, size) => {
@@ -570,17 +646,32 @@ onMounted(async () => {
           </template>
           <template v-if="column.key === 'action'">
             <Space>
-              <template v-if="(record as SealApplicationDTO).status === 'PENDING'">
+              <template
+                v-if="(record as SealApplicationDTO).status === 'PENDING'"
+              >
                 <template v-if="activeTab === 'pending'">
-                  <a @click="handleApprove(record as SealApplicationDTO)">审批</a>
+                  <a @click="handleApprove(record as SealApplicationDTO)"
+                    >审批</a
+                  >
                 </template>
                 <template v-else-if="activeTab === 'my'">
-                  <a @click="handleCancel(record as SealApplicationDTO)">取消</a>
+                  <a @click="handleCancel(record as SealApplicationDTO)"
+                    >取消</a
+                  >
                 </template>
               </template>
-              <template v-if="(record as SealApplicationDTO).status === 'APPROVED'">
-                <template v-if="activeTab === 'keeper-pending' || activeTab === 'keeper-processed'">
-                  <a @click="handleUse(record as SealApplicationDTO)">登记用印</a>
+              <template
+                v-if="(record as SealApplicationDTO).status === 'APPROVED'"
+              >
+                <template
+                  v-if="
+                    activeTab === 'keeper-pending' ||
+                    activeTab === 'keeper-processed'
+                  "
+                >
+                  <a @click="handleUse(record as SealApplicationDTO)"
+                    >登记用印</a
+                  >
                 </template>
                 <template v-else-if="activeTab === 'my'">
                   <span style="color: #999">等待保管人登记用印</span>
@@ -605,21 +696,40 @@ onMounted(async () => {
         :label-col="{ span: 6 }"
         :wrapper-col="{ span: 18 }"
       >
-        <FormItem label="印章" name="sealId" :rules="[{ required: true, message: '请选择印章' }]">
+        <FormItem
+          label="印章"
+          name="sealId"
+          :rules="[{ required: true, message: '请选择印章' }]"
+        >
           <Select
             v-model:value="formData.sealId"
             placeholder="请选择印章"
-            showSearch
+            show-search
             style="width: 100%"
-            :filterOption="(input: string, option: any) => (option?.label || '').toLowerCase().includes(input.toLowerCase())"
-            :options="seals.map(s => ({ label: s.name, value: s.id }))"
+            :filter-option="
+              (input: string, option: any) =>
+                (option?.label || '')
+                  .toLowerCase()
+                  .includes(input.toLowerCase())
+            "
+            :options="seals.map((s) => ({ label: s.name, value: s.id }))"
           />
         </FormItem>
-        <FormItem label="用印文件" name="documentName" :rules="[{ required: true, message: '请输入用印文件名称' }]">
-          <Input v-model:value="formData.documentName" placeholder="请输入用印文件名称" />
+        <FormItem
+          label="用印文件"
+          name="documentName"
+          :rules="[{ required: true, message: '请输入用印文件名称' }]"
+        >
+          <Input
+            v-model:value="formData.documentName"
+            placeholder="请输入用印文件名称"
+          />
         </FormItem>
         <FormItem label="文件类型" name="documentType">
-          <Select v-model:value="formData.documentType" placeholder="请选择文件类型">
+          <Select
+            v-model:value="formData.documentType"
+            placeholder="请选择文件类型"
+          >
             <Select.Option value="CONTRACT">合同</Select.Option>
             <Select.Option value="AGREEMENT">协议</Select.Option>
             <Select.Option value="LETTER">函件</Select.Option>
@@ -628,26 +738,42 @@ onMounted(async () => {
           </Select>
         </FormItem>
         <FormItem label="用印目的" name="usePurpose">
-          <Textarea v-model:value="formData.usePurpose" :rows="2" placeholder="请输入用印目的" />
+          <Textarea
+            v-model:value="formData.usePurpose"
+            :rows="2"
+            placeholder="请输入用印目的"
+          />
         </FormItem>
         <FormItem label="用印份数" name="copies">
-          <InputNumber v-model:value="formData.copies" :min="1" style="width: 100%" />
+          <InputNumber
+            v-model:value="formData.copies"
+            :min="1"
+            style="width: 100%"
+          />
         </FormItem>
-        <FormItem label="审批人" name="approverId" :rules="[{ required: true, message: '请选择审批人' }]">
+        <FormItem
+          label="审批人"
+          name="approverId"
+          :rules="[{ required: true, message: '请选择审批人' }]"
+        >
           <Select
             v-model:value="formData.approverId"
             placeholder="请选择审批人"
-            showSearch
+            show-search
             :loading="approversLoading"
             style="width: 100%"
-            :filterOption="(input: string, option: any) => {
-              const label = option?.label || '';
-              return label.toLowerCase().includes(input.toLowerCase());
-            }"
-            :options="approvers.map(a => ({
-              label: `${a.realName}（${a.departmentName} - ${a.position}）`,
-              value: a.id,
-            }))"
+            :filter-option="
+              (input: string, option: any) => {
+                const label = option?.label || '';
+                return label.toLowerCase().includes(input.toLowerCase());
+              }
+            "
+            :options="
+              approvers.map((a) => ({
+                label: `${a.realName}（${a.departmentName} - ${a.position}）`,
+                value: a.id,
+              }))
+            "
           />
         </FormItem>
       </Form>
@@ -661,14 +787,22 @@ onMounted(async () => {
       @ok="handleApproveSave(true)"
     >
       <div style="margin-bottom: 16px">
-        <p><strong>申请编号：</strong>{{ currentApplication?.applicationNo }}</p>
+        <p>
+          <strong>申请编号：</strong>{{ currentApplication?.applicationNo }}
+        </p>
         <p><strong>印章名称：</strong>{{ currentApplication?.sealName }}</p>
         <p><strong>用印文件：</strong>{{ currentApplication?.documentName }}</p>
-        <p><strong>用印目的：</strong>{{ currentApplication?.usePurpose || '-' }}</p>
+        <p>
+          <strong>用印目的：</strong>{{ currentApplication?.usePurpose || '-' }}
+        </p>
         <p><strong>用印份数：</strong>{{ currentApplication?.copies }}</p>
       </div>
       <FormItem label="审批意见">
-        <Textarea v-model:value="approveComment" :rows="3" placeholder="请输入审批意见（可选）" />
+        <Textarea
+          v-model:value="approveComment"
+          :rows="3"
+          placeholder="请输入审批意见（可选）"
+        />
       </FormItem>
       <template #footer>
         <Space>
@@ -687,13 +821,19 @@ onMounted(async () => {
       @ok="handleUseSave"
     >
       <div style="margin-bottom: 16px">
-        <p><strong>申请编号：</strong>{{ currentApplication?.applicationNo }}</p>
+        <p>
+          <strong>申请编号：</strong>{{ currentApplication?.applicationNo }}
+        </p>
         <p><strong>印章名称：</strong>{{ currentApplication?.sealName }}</p>
         <p><strong>用印文件：</strong>{{ currentApplication?.documentName }}</p>
         <p><strong>用印份数：</strong>{{ currentApplication?.copies }}</p>
       </div>
       <FormItem label="用印备注">
-        <Textarea v-model:value="approveComment" :rows="3" placeholder="请输入用印备注（可选）" />
+        <Textarea
+          v-model:value="approveComment"
+          :rows="3"
+          placeholder="请输入用印备注（可选）"
+        />
       </FormItem>
     </Modal>
 
@@ -703,11 +843,11 @@ onMounted(async () => {
       title="拒绝审批"
       width="500px"
       @ok="handleRejectConfirm"
-      okText="拒绝"
-      okType="danger"
+      ok-text="拒绝"
+      ok-type="danger"
     >
       <div style="margin-bottom: 16px">
-        <p style=" margin-bottom: 8px;color: #999;">请填写拒绝原因（必填）：</p>
+        <p style="margin-bottom: 8px; color: #999">请填写拒绝原因（必填）：</p>
         <Textarea
           v-model:value="rejectReason"
           :rows="4"

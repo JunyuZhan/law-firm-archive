@@ -1,7 +1,7 @@
 /**
  * 行政合同查询 API（只读）
  * 用于司法局报备、介绍信等
- * 
+ *
  * Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 6.1, 6.2
  */
 import { requestClient } from '#/api/request';
@@ -42,7 +42,8 @@ export interface AdminContractQueryDTO {
   pageSize?: number;
 }
 
-export interface PageResult<T> {
+// 本地分页结果类型（不导出，避免与其他模块冲突）
+interface ContractPageResult<T> {
   records: T[];
   total: number;
   pageNum: number;
@@ -56,7 +57,10 @@ export interface PageResult<T> {
  * Requirements: 5.1, 5.2, 5.3, 5.4
  */
 export function getAdminContractList(params: AdminContractQueryDTO) {
-  return requestClient.get<PageResult<AdminContractViewDTO>>('/admin/contract/list', { params });
+  return requestClient.get<ContractPageResult<AdminContractViewDTO>>(
+    '/admin/contract/list',
+    { params },
+  );
 }
 
 /**
@@ -71,12 +75,16 @@ export function getAdminContractDetail(id: number) {
  * 导出司法局报备收案清单
  * Requirements: 6.1, 6.2
  */
-export function exportJudicialFiling(year: number, month: number, customFields?: string[]) {
+export function exportJudicialFiling(
+  year: number,
+  month: number,
+  customFields?: string[],
+) {
   const params: Record<string, any> = { year, month };
   if (customFields && customFields.length > 0) {
     params.customFields = customFields;
   }
-  
+
   return requestClient.get('/admin/contract/export/judicial-filing', {
     params,
     responseType: 'blob',
@@ -87,20 +95,24 @@ export function exportJudicialFiling(year: number, month: number, customFields?:
 /**
  * 下载司法局报备Excel（处理blob响应）
  */
-export async function downloadJudicialFilingExcel(year: number, month: number, customFields?: string[]) {
+export async function downloadJudicialFilingExcel(
+  year: number,
+  month: number,
+  customFields?: string[],
+) {
   const response = await exportJudicialFiling(year, month, customFields);
-  
+
   // 创建下载链接
-  const blob = new Blob([response as any], { 
-    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+  const blob = new Blob([response as any], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   });
   const url = window.URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
   link.download = `收案清单_${year}年${month}月.xlsx`;
-  document.body.appendChild(link);
+  document.body.append(link);
   link.click();
-  document.body.removeChild(link);
+  link.remove();
   window.URL.revokeObjectURL(url);
 }
 
@@ -120,10 +132,10 @@ export function exportContractList(params: AdminContractQueryDTO) {
  */
 export async function downloadContractListExcel(params: AdminContractQueryDTO) {
   const response = await exportContractList(params);
-  
+
   // 创建下载链接
-  const blob = new Blob([response as any], { 
-    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+  const blob = new Blob([response as any], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   });
   const url = window.URL.createObjectURL(blob);
   const link = document.createElement('a');
@@ -131,8 +143,8 @@ export async function downloadContractListExcel(params: AdminContractQueryDTO) {
   const today = new Date();
   const dateStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
   link.download = `合同列表_${dateStr}.xlsx`;
-  document.body.appendChild(link);
+  document.body.append(link);
   link.click();
-  document.body.removeChild(link);
+  link.remove();
   window.URL.revokeObjectURL(url);
 }

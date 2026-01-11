@@ -1,19 +1,23 @@
 <script setup lang="ts">
-import { ref } from 'vue';
-import { message, Modal } from 'ant-design-vue';
-import { Page } from '@vben/common-ui';
-import { Button, Space, Tag } from 'ant-design-vue';
-import { Plus } from '@vben/icons';
 import type { VxeGridProps } from '#/adapter/vxe-table';
+import type { LetterTemplateDTO } from '#/api/admin';
+
+import { ref } from 'vue';
+
+import { Page } from '@vben/common-ui';
+import { Plus } from '@vben/icons';
+
+import { Button, message, Modal, Space, Tag } from 'ant-design-vue';
+
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
+  deleteTemplate,
   getAllTemplates,
   toggleTemplateStatus,
-  deleteTemplate,
-  type LetterTemplateDTO,
 } from '#/api/admin';
-import TemplateModal from './components/TemplateModal.vue';
+
 import PreviewModal from './components/PreviewModal.vue';
+import TemplateModal from './components/TemplateModal.vue';
 
 defineOptions({ name: 'SystemLetterTemplate' });
 
@@ -24,14 +28,20 @@ const previewModalRef = ref<InstanceType<typeof PreviewModal>>();
 
 // ==================== 表格配置 ====================
 
-const gridColumns: VxeGridProps['gridOptions']['columns'] = [
+const gridColumns: VxeGridProps['columns'] = [
   { title: '模板编号', field: 'templateNo', width: 120 },
   { title: '模板名称', field: 'name', width: 150 },
   { title: '函件类型', field: 'letterTypeName', width: 100 },
   { title: '状态', field: 'status', width: 80, slots: { default: 'status' } },
   { title: '描述', field: 'description', minWidth: 150 },
   { title: '创建时间', field: 'createdAt', width: 160 },
-  { title: '操作', field: 'action', width: 200, fixed: 'right', slots: { default: 'action' } },
+  {
+    title: '操作',
+    field: 'action',
+    width: 200,
+    fixed: 'right',
+    slots: { default: 'action' },
+  },
 ];
 
 // 加载数据
@@ -112,7 +122,11 @@ function handleModalSuccess() {
 </script>
 
 <template>
-  <Page title="出函模板管理" description="管理律师出函/介绍信模板，支持富文本编辑和变量插入" auto-content-height>
+  <Page
+    title="出函模板管理"
+    description="管理律师出函/介绍信模板，支持富文本编辑和变量插入"
+    auto-content-height
+  >
     <Grid>
       <!-- 工具栏按钮 -->
       <template #toolbar-buttons>
@@ -143,7 +157,7 @@ function handleModalSuccess() {
 
     <!-- 模板弹窗 -->
     <TemplateModal ref="templateModalRef" @success="handleModalSuccess" />
-    
+
     <!-- 预览弹窗 -->
     <PreviewModal ref="previewModalRef" />
   </Page>

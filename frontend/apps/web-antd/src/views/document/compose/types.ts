@@ -1,18 +1,16 @@
+import type {
+  AiModelInfo,
+  MaskingMappingDTO,
+  MatterContextDTO,
+} from '#/api/document/ai';
+import type { DocumentTemplateDTO } from '#/api/document/template-types';
 /**
  * 文书制作模块类型定义
  */
 import type { MatterDTO } from '#/api/matter/types';
-import type { DocumentTemplateDTO } from '#/api/document/template-types';
-import type { 
-  MatterContextDTO, 
-  MaskingMappingDTO, 
-  DocumentInfo, 
-  CollectOptions,
-  AiModelInfo,
-} from '#/api/document/ai';
 
 /** 制作模式 */
-export type ComposeMode = 'template' | 'ai';
+export type ComposeMode = 'ai' | 'template';
 
 /** 卷宗目录项 */
 export interface MatterDossierItem {
@@ -77,7 +75,12 @@ export interface ContextCollectorProps {
 export interface ContextCollectorEmits {
   (e: 'update:matterContext', value: MatterContextDTO | null): void;
   (e: 'update:enableMasking', value: boolean): void;
-  (e: 'contextCollected', context: MatterContextDTO, masked: MatterContextDTO | null, mapping: MaskingMappingDTO | null): void;
+  (
+    e: 'contextCollected',
+    context: MatterContextDTO,
+    masked: MatterContextDTO | null,
+    mapping: MaskingMappingDTO | null,
+  ): void;
 }
 
 /** 模板模式 Props */
@@ -115,8 +118,8 @@ export const VARIABLE_NAME_MAP: Record<string, string> = {
   'user.name': '当前用户',
   'firm.name': '律所名称',
   'firm.address': '律所地址',
-  'date': '日期',
-  'today': '今日日期',
+  date: '日期',
+  today: '今日日期',
 };
 
 /** 文书类型选项 */
@@ -157,4 +160,3 @@ export const BUSINESS_TYPE_OPTIONS = [
   { label: '函件文书', value: 'LETTER' },
   { label: '其他', value: 'OTHER' },
 ];
-

@@ -5,16 +5,19 @@
 ### 服务无法启动
 
 1. 检查端口占用
+
 ```bash
 lsof -i :5666
 ```
 
 2. 检查日志
+
 ```bash
 docker logs law-firm-backend
 ```
 
 3. 检查数据库连接
+
 ```bash
 psql -U lawfirm -h localhost -d lawfirm
 ```
@@ -52,6 +55,7 @@ redis-cli -h localhost ping
 ### 响应慢
 
 1. 检查数据库慢查询
+
 ```sql
 SELECT * FROM pg_stat_activity WHERE state = 'active';
 ```

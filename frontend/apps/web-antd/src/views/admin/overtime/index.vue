@@ -1,4 +1,10 @@
 <script setup lang="ts">
+import type {
+  ApplyOvertimeCommand,
+  ApproveOvertimeRequest,
+  OvertimeApplicationDTO,
+} from '#/api/admin/overtime';
+
 import { onMounted, reactive, ref } from 'vue';
 
 import { Page } from '@vben/common-ui';
@@ -20,12 +26,11 @@ import {
 } from 'ant-design-vue';
 
 import {
-  approveOvertime,
   applyOvertime,
+  approveOvertime,
   getMyOvertimeApplications,
   getOvertimeApplicationsByDateRange,
 } from '#/api/admin/overtime';
-import type { ApplyOvertimeCommand, ApproveOvertimeRequest, OvertimeApplicationDTO } from '#/api/admin/overtime';
 
 defineOptions({ name: 'OvertimeManagement' });
 
@@ -36,13 +41,6 @@ const searchForm = reactive({
   startDate: '',
   endDate: '',
 });
-
-// 状态选项
-const statusOptions = [
-  { label: '待审批', value: 'PENDING' },
-  { label: '已通过', value: 'APPROVED' },
-  { label: '已拒绝', value: 'REJECTED' },
-];
 
 // 状态标签颜色
 const statusColorMap: Record<string, string> = {
@@ -60,15 +58,35 @@ const statusTextMap: Record<string, string> = {
 
 // 表格列
 const columns = [
-  { title: '申请编号', dataIndex: 'applicationNo', key: 'applicationNo', width: 120 },
+  {
+    title: '申请编号',
+    dataIndex: 'applicationNo',
+    key: 'applicationNo',
+    width: 120,
+  },
   { title: '申请人', dataIndex: 'userName', key: 'userName', width: 100 },
-  { title: '加班日期', dataIndex: 'overtimeDate', key: 'overtimeDate', width: 120 },
+  {
+    title: '加班日期',
+    dataIndex: 'overtimeDate',
+    key: 'overtimeDate',
+    width: 120,
+  },
   { title: '开始时间', dataIndex: 'startTime', key: 'startTime', width: 100 },
   { title: '结束时间', dataIndex: 'endTime', key: 'endTime', width: 100 },
-  { title: '加班时长', dataIndex: 'overtimeHours', key: 'overtimeHours', width: 100 },
+  {
+    title: '加班时长',
+    dataIndex: 'overtimeHours',
+    key: 'overtimeHours',
+    width: 100,
+  },
   { title: '加班原因', dataIndex: 'reason', key: 'reason', ellipsis: true },
   { title: '状态', dataIndex: 'status', key: 'status', width: 100 },
-  { title: '审批人', dataIndex: 'approverName', key: 'approverName', width: 100 },
+  {
+    title: '审批人',
+    dataIndex: 'approverName',
+    key: 'approverName',
+    width: 100,
+  },
   { title: '操作', key: 'action', width: 180, fixed: 'right' as const },
 ];
 
@@ -90,7 +108,7 @@ const overtimeForm = reactive<ApplyOvertimeCommand>({
 // 审批弹窗
 const approveModalVisible = ref(false);
 const approveModalLoading = ref(false);
-const currentRecord = ref<OvertimeApplicationDTO | null>(null);
+const currentRecord = ref<null | OvertimeApplicationDTO>(null);
 const approveForm = reactive<ApproveOvertimeRequest>({
   approved: true,
   comment: '',
@@ -101,11 +119,12 @@ async function fetchData() {
   loading.value = true;
   try {
     let data: OvertimeApplicationDTO[];
-    if (searchForm.startDate && searchForm.endDate) {
-      data = await getOvertimeApplicationsByDateRange(searchForm.startDate, searchForm.endDate);
-    } else {
-      data = await getMyOvertimeApplications();
-    }
+    data = await (searchForm.startDate && searchForm.endDate
+      ? getOvertimeApplicationsByDateRange(
+          searchForm.startDate,
+          searchForm.endDate,
+        )
+      : getMyOvertimeApplications());
     tableData.value = data || [];
   } catch (error) {
     console.error('获取加班列表失败:', error);
@@ -179,16 +198,16 @@ async function handleSubmit() {
 }
 
 // 审批加班申请
-function handleApprove(record: OvertimeApplicationDTO) {
-  currentRecord.value = record;
+function handleApprove(record: Record<string, any>) {
+  currentRecord.value = record as OvertimeApplicationDTO;
   approveForm.approved = true;
   approveForm.comment = '';
   approveModalVisible.value = true;
 }
 
 // 拒绝加班申请
-function handleReject(record: OvertimeApplicationDTO) {
-  currentRecord.value = record;
+function handleReject(record: Record<string, any>) {
+  currentRecord.value = record as OvertimeApplicationDTO;
   approveForm.approved = false;
   approveForm.comment = '';
   approveModalVisible.value = true;
@@ -213,10 +232,10 @@ async function handleApproveSubmit() {
 
 // 查看详情
 const detailModalVisible = ref(false);
-const detailData = ref<OvertimeApplicationDTO | null>(null);
+const detailData = ref<null | OvertimeApplicationDTO>(null);
 
-function handleView(record: OvertimeApplicationDTO) {
-  detailData.value = record;
+function handleView(record: Record<string, any>) {
+  detailData.value = record as OvertimeApplicationDTO;
   detailModalVisible.value = true;
 }
 
@@ -254,7 +273,9 @@ onMounted(() => {
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'overtimeHours'">
-            <span>{{ record.overtimeHours ? `${record.overtimeHours} 小时` : '-' }}</span>
+            <span>{{
+              record.overtimeHours ? `${record.overtimeHours} 小时` : '-'
+            }}</span>
           </template>
           <template v-if="column.key === 'status'">
             <Tag :color="statusColorMap[record.status || '']">
@@ -307,10 +328,17 @@ onMounted(() => {
           />
         </FormItem>
         <FormItem label="加班原因">
-          <Input v-model:value="overtimeForm.reason" placeholder="请输入加班原因" />
+          <Input
+            v-model:value="overtimeForm.reason"
+            placeholder="请输入加班原因"
+          />
         </FormItem>
         <FormItem label="工作内容">
-          <Textarea v-model:value="overtimeForm.workContent" placeholder="请输入工作内容" :rows="4" />
+          <Textarea
+            v-model:value="overtimeForm.workContent"
+            placeholder="请输入工作内容"
+            :rows="4"
+          />
         </FormItem>
       </Form>
     </Modal>
@@ -324,26 +352,38 @@ onMounted(() => {
     >
       <Form :model="approveForm" layout="vertical">
         <FormItem label="审批意见">
-          <Textarea v-model:value="approveForm.comment" placeholder="请输入审批意见" :rows="4" />
+          <Textarea
+            v-model:value="approveForm.comment"
+            placeholder="请输入审批意见"
+            :rows="4"
+          />
         </FormItem>
       </Form>
     </Modal>
 
     <!-- 详情弹窗 -->
-    <Modal v-model:open="detailModalVisible" title="加班申请详情" width="600px" :footer="null">
+    <Modal
+      v-model:open="detailModalVisible"
+      title="加班申请详情"
+      width="600px"
+      :footer="null"
+    >
       <div v-if="detailData" style="line-height: 2">
         <p><strong>申请编号:</strong> {{ detailData.applicationNo || '-' }}</p>
         <p><strong>申请人:</strong> {{ detailData.userName || '-' }}</p>
         <p><strong>加班日期:</strong> {{ detailData.overtimeDate || '-' }}</p>
         <p><strong>开始时间:</strong> {{ detailData.startTime || '-' }}</p>
         <p><strong>结束时间:</strong> {{ detailData.endTime || '-' }}</p>
-        <p><strong>加班时长:</strong> {{ detailData.overtimeHours || '-' }} 小时</p>
+        <p>
+          <strong>加班时长:</strong> {{ detailData.overtimeHours || '-' }} 小时
+        </p>
         <p><strong>加班原因:</strong> {{ detailData.reason || '-' }}</p>
         <p><strong>工作内容:</strong> {{ detailData.workContent || '-' }}</p>
         <p><strong>状态:</strong> {{ detailData.statusName || '-' }}</p>
-        <p v-if="detailData.approvalComment"><strong>审批意见:</strong> {{ detailData.approvalComment }}</p>
+        <p v-if="detailData.approvalComment">
+          <strong>审批意见:</strong> {{ detailData.approvalComment }}
+        </p>
       </div>
     </Modal>
   </Page>
 </template>
-

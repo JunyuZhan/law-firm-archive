@@ -1,9 +1,9 @@
+import type { PageResult } from '../matter/types';
+
 /**
  * 定时报表 API
  */
 import { requestClient } from '#/api/request';
-
-import type { PageResult } from '../matter/types';
 
 // ========== 类型定义 ==========
 export interface ScheduledReportDTO {
@@ -93,22 +93,36 @@ export interface ScheduledReportLogQuery {
 
 /** 分页查询定时报表任务 */
 export function getScheduledReportList(params: ScheduledReportQuery) {
-  return requestClient.get<PageResult<ScheduledReportDTO>>('/workbench/scheduled-report', { params });
+  return requestClient.get<PageResult<ScheduledReportDTO>>(
+    '/workbench/scheduled-report',
+    { params },
+  );
 }
 
 /** 获取定时任务详情 */
 export function getScheduledReportDetail(id: number) {
-  return requestClient.get<ScheduledReportDTO>(`/workbench/scheduled-report/${id}`);
+  return requestClient.get<ScheduledReportDTO>(
+    `/workbench/scheduled-report/${id}`,
+  );
 }
 
 /** 创建定时报表任务 */
 export function createScheduledReport(data: CreateScheduledReportCommand) {
-  return requestClient.post<ScheduledReportDTO>('/workbench/scheduled-report', data);
+  return requestClient.post<ScheduledReportDTO>(
+    '/workbench/scheduled-report',
+    data,
+  );
 }
 
 /** 更新定时报表任务 */
-export function updateScheduledReport(id: number, data: CreateScheduledReportCommand) {
-  return requestClient.put<ScheduledReportDTO>(`/workbench/scheduled-report/${id}`, data);
+export function updateScheduledReport(
+  id: number,
+  data: CreateScheduledReportCommand,
+) {
+  return requestClient.put<ScheduledReportDTO>(
+    `/workbench/scheduled-report/${id}`,
+    data,
+  );
 }
 
 /** 删除定时报表任务 */
@@ -132,7 +146,12 @@ export function executeScheduledReportNow(id: number) {
 }
 
 /** 查询执行记录 */
-export function getScheduledReportLogs(id: number, params: ScheduledReportLogQuery) {
-  return requestClient.get<PageResult<ScheduledReportLogDTO>>(`/workbench/scheduled-report/${id}/logs`, { params });
+export function getScheduledReportLogs(
+  id: number,
+  params: ScheduledReportLogQuery,
+) {
+  return requestClient.get<PageResult<ScheduledReportLogDTO>>(
+    `/workbench/scheduled-report/${id}/logs`,
+    { params },
+  );
 }
-

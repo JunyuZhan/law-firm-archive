@@ -1,17 +1,33 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
-import { message, Card, Row, Col, Statistic, DatePicker, Space, Button, Table, Tabs, Spin, Select } from 'ant-design-vue';
+import { computed, onMounted, ref } from 'vue';
+
 import { Page } from '@vben/common-ui';
+
 import {
-  getContractStatistics,
-  getInvoiceStatistics,
-  getCommissionSummary,
+  Button,
+  Card,
+  Col,
+  DatePicker,
+  message,
+  Row,
+  Select,
+  Space,
+  Spin,
+  Statistic,
+  Table,
+  Tabs,
+} from 'ant-design-vue';
+import dayjs from 'dayjs';
+
+import {
   getCommissionReport,
-  getFeeList,
+  getCommissionSummary,
+  getContractStatistics,
   getExpenseList,
+  getFeeList,
+  getInvoiceStatistics,
 } from '#/api/finance';
 import { getRevenueStats } from '#/api/workbench/statistics';
-import dayjs from 'dayjs';
 
 defineOptions({ name: 'FinanceReport' });
 
@@ -36,7 +52,7 @@ const revenueTrends = ref<any[]>([]);
 
 // 计算属性
 const yearlyIncome = computed(() => {
-  return (contractStats.value.totalAmount || 0);
+  return contractStats.value.totalAmount || 0;
 });
 
 const yearlyExpense = computed(() => {
@@ -44,36 +60,87 @@ const yearlyExpense = computed(() => {
 });
 
 const receivableAmount = computed(() => {
-  return (contractStats.value.totalAmount || 0) - (contractStats.value.receivedAmount || 0);
+  return (
+    (contractStats.value.totalAmount || 0) -
+    (contractStats.value.receivedAmount || 0)
+  );
 });
 
 const profitRate = computed(() => {
   if (yearlyIncome.value === 0) return 0;
-  return ((yearlyIncome.value - yearlyExpense.value) / yearlyIncome.value * 100).toFixed(1);
+  return (
+    ((yearlyIncome.value - yearlyExpense.value) / yearlyIncome.value) *
+    100
+  ).toFixed(1);
 });
 
 // 收入统计表格列
 const revenueColumns = [
   { title: '月份', dataIndex: 'month', key: 'month', width: 100 },
-  { title: '合同金额', dataIndex: 'contractAmount', key: 'contractAmount', width: 120 },
-  { title: '收款金额', dataIndex: 'receivedAmount', key: 'receivedAmount', width: 120 },
-  { title: '开票金额', dataIndex: 'invoicedAmount', key: 'invoicedAmount', width: 120 },
-  { title: '提成支出', dataIndex: 'commissionAmount', key: 'commissionAmount', width: 120 },
+  {
+    title: '合同金额',
+    dataIndex: 'contractAmount',
+    key: 'contractAmount',
+    width: 120,
+  },
+  {
+    title: '收款金额',
+    dataIndex: 'receivedAmount',
+    key: 'receivedAmount',
+    width: 120,
+  },
+  {
+    title: '开票金额',
+    dataIndex: 'invoicedAmount',
+    key: 'invoicedAmount',
+    width: 120,
+  },
+  {
+    title: '提成支出',
+    dataIndex: 'commissionAmount',
+    key: 'commissionAmount',
+    width: 120,
+  },
 ];
 
 // 提成报表列
 const commissionColumns = [
   { title: '律师', dataIndex: 'userName', key: 'userName', width: 120 },
   { title: '提成笔数', dataIndex: 'count', key: 'count', width: 100 },
-  { title: '提成总额', dataIndex: 'totalAmount', key: 'totalAmount', width: 120 },
-  { title: '已发放', dataIndex: 'issuedAmount', key: 'issuedAmount', width: 120 },
-  { title: '待发放', dataIndex: 'pendingAmount', key: 'pendingAmount', width: 120 },
+  {
+    title: '提成总额',
+    dataIndex: 'totalAmount',
+    key: 'totalAmount',
+    width: 120,
+  },
+  {
+    title: '已发放',
+    dataIndex: 'issuedAmount',
+    key: 'issuedAmount',
+    width: 120,
+  },
+  {
+    title: '待发放',
+    dataIndex: 'pendingAmount',
+    key: 'pendingAmount',
+    width: 120,
+  },
 ];
 
 // 费用统计列
 const expenseColumns = [
-  { title: '费用类型', dataIndex: 'expenseTypeName', key: 'expenseTypeName', width: 120 },
-  { title: '申请人', dataIndex: 'applicantName', key: 'applicantName', width: 100 },
+  {
+    title: '费用类型',
+    dataIndex: 'expenseTypeName',
+    key: 'expenseTypeName',
+    width: 120,
+  },
+  {
+    title: '申请人',
+    dataIndex: 'applicantName',
+    key: 'applicantName',
+    width: 100,
+  },
   { title: '金额', dataIndex: 'amount', key: 'amount', width: 100 },
   { title: '状态', dataIndex: 'statusName', key: 'statusName', width: 100 },
   { title: '申请日期', dataIndex: 'createdAt', key: 'createdAt', width: 110 },
@@ -160,15 +227,18 @@ async function loadRevenueTrends() {
 function generateMonthlyData() {
   const [startDate, endDate] = dateRange.value;
   let current = startDate.startOf('month');
-  
+
   // 按月份分组统计合同和收款数据
-  const monthStats = new Map<string, {
-    contractAmount: number;
-    receivedAmount: number;
-    invoicedAmount: number;
-    commissionAmount: number;
-  }>();
-  
+  const monthStats = new Map<
+    string,
+    {
+      commissionAmount: number;
+      contractAmount: number;
+      invoicedAmount: number;
+      receivedAmount: number;
+    }
+  >();
+
   // 初始化所有月份
   while (current.isBefore(endDate) || current.isSame(endDate, 'month')) {
     const monthKey = current.format('YYYY-MM');
@@ -180,7 +250,7 @@ function generateMonthlyData() {
     });
     current = current.add(1, 'month');
   }
-  
+
   // 填充收入趋势数据（收款金额）
   const startMonth = startDate.format('YYYY-MM');
   const endMonth = endDate.format('YYYY-MM');
@@ -189,7 +259,7 @@ function generateMonthlyData() {
     const month = trend.period;
     return month >= startMonth && month <= endMonth;
   });
-  
+
   filteredTrends.forEach((trend: any) => {
     if (!trend) return;
     const monthKey = trend.period;
@@ -201,7 +271,7 @@ function generateMonthlyData() {
       stats.contractAmount = stats.receivedAmount;
     }
   });
-  
+
   // 统计提成数据
   commissionReport.value.forEach((item: any) => {
     if (item && item.createdAt) {
@@ -209,13 +279,15 @@ function generateMonthlyData() {
       const monthKey = commDate.format('YYYY-MM');
       if (monthStats.has(monthKey)) {
         const stats = monthStats.get(monthKey)!;
-        stats.commissionAmount += Number(item.commissionAmount || item.totalAmount || 0);
+        stats.commissionAmount += Number(
+          item.commissionAmount || item.totalAmount || 0,
+        );
       }
     }
   });
-  
+
   // 转换为数组
-  revenueData.value = Array.from(monthStats.entries())
+  revenueData.value = [...monthStats.entries()]
     .map(([month, stats]) => ({
       month,
       ...stats,
@@ -228,31 +300,32 @@ function handleMonthFilterChange(value: any) {
   if (!value || typeof value !== 'string') return;
   monthFilter.value = value;
   const now = dayjs();
-  
+
   switch (value) {
-    case 'recent3':
+    case 'custom': {
+      // 自定义时，dateRange已经通过DatePicker设置
+      break;
+    }
+    case 'recent3': {
       dateRange.value = [
         now.subtract(2, 'month').startOf('month'),
         now.endOf('month'),
       ];
       break;
-    case 'recent6':
+    }
+    case 'recent6': {
       dateRange.value = [
         now.subtract(5, 'month').startOf('month'),
         now.endOf('month'),
       ];
       break;
-    case 'thisYear':
-      dateRange.value = [
-        now.startOf('year'),
-        now.endOf('year'),
-      ];
+    }
+    case 'thisYear': {
+      dateRange.value = [now.startOf('year'), now.endOf('year')];
       break;
-    case 'custom':
-      // 自定义时，dateRange已经通过DatePicker设置
-      break;
+    }
   }
-  
+
   loadAllData();
 }
 
@@ -302,26 +375,46 @@ onMounted(() => {
       <Row :gutter="16" style="margin-bottom: 16px">
         <Col :span="6">
           <Card>
-            <Statistic title="年度收入" :value="yearlyIncome" prefix="¥" :precision="2" />
+            <Statistic
+              title="年度收入"
+              :value="yearlyIncome"
+              prefix="¥"
+              :precision="2"
+            />
           </Card>
         </Col>
         <Col :span="6">
           <Card>
-            <Statistic title="年度支出" :value="yearlyExpense" prefix="¥" :precision="2" />
+            <Statistic
+              title="年度支出"
+              :value="yearlyExpense"
+              prefix="¥"
+              :precision="2"
+            />
           </Card>
         </Col>
         <Col :span="6">
           <Card>
-            <Statistic title="应收账款" :value="receivableAmount" prefix="¥" :precision="2" />
+            <Statistic
+              title="应收账款"
+              :value="receivableAmount"
+              prefix="¥"
+              :precision="2"
+            />
           </Card>
         </Col>
         <Col :span="6">
           <Card>
-            <Statistic title="利润率" :value="profitRate" suffix="%" :precision="1" />
+            <Statistic
+              title="利润率"
+              :value="profitRate"
+              suffix="%"
+              :precision="1"
+            />
           </Card>
         </Col>
       </Row>
-      
+
       <Card>
         <template #extra>
           <Space>
@@ -343,126 +436,230 @@ onMounted(() => {
             <Button @click="handleExport">导出报表</Button>
           </Space>
         </template>
-        
-        <Tabs v-model:activeKey="activeTab">
+
+        <Tabs v-model:active-key="activeTab">
           <Tabs.TabPane key="overview" tab="收入概览">
             <Row :gutter="16" style="margin-bottom: 16px">
               <Col :span="6">
                 <Card size="small">
-                  <Statistic title="合同总数" :value="contractStats.totalCount || 0" suffix="份" />
+                  <Statistic
+                    title="合同总数"
+                    :value="contractStats.totalCount || 0"
+                    suffix="份"
+                  />
                 </Card>
               </Col>
               <Col :span="6">
                 <Card size="small">
-                  <Statistic title="合同总额" :value="contractStats.totalAmount || 0" prefix="¥" :precision="0" />
+                  <Statistic
+                    title="合同总额"
+                    :value="contractStats.totalAmount || 0"
+                    prefix="¥"
+                    :precision="0"
+                  />
                 </Card>
               </Col>
               <Col :span="6">
                 <Card size="small">
-                  <Statistic title="已收款" :value="contractStats.receivedAmount || 0" prefix="¥" :precision="0" />
+                  <Statistic
+                    title="已收款"
+                    :value="contractStats.receivedAmount || 0"
+                    prefix="¥"
+                    :precision="0"
+                  />
                 </Card>
               </Col>
               <Col :span="6">
                 <Card size="small">
-                  <Statistic title="待收款" :value="receivableAmount" prefix="¥" :precision="0" />
+                  <Statistic
+                    title="待收款"
+                    :value="receivableAmount"
+                    prefix="¥"
+                    :precision="0"
+                  />
                 </Card>
               </Col>
             </Row>
             <Table
               :columns="revenueColumns"
-              :dataSource="revenueData"
+              :data-source="revenueData"
               :pagination="false"
               size="small"
-              rowKey="month"
+              row-key="month"
               :scroll="{ y: 400 }"
             >
               <template #bodyCell="{ column, text }">
-                <template v-if="['contractAmount', 'receivedAmount', 'invoicedAmount', 'commissionAmount'].includes(column.key as string)">
+                <template
+                  v-if="
+                    [
+                      'contractAmount',
+                      'receivedAmount',
+                      'invoicedAmount',
+                      'commissionAmount',
+                    ].includes(column.key as string)
+                  "
+                >
                   {{ formatMoney(text) }}
                 </template>
               </template>
             </Table>
           </Tabs.TabPane>
-          
+
           <Tabs.TabPane key="invoice" tab="发票统计">
             <Row :gutter="16" style="margin-bottom: 16px">
               <Col :span="6">
                 <Card size="small">
-                  <Statistic title="发票总数" :value="invoiceStats.totalCount || 0" suffix="张" />
+                  <Statistic
+                    title="发票总数"
+                    :value="invoiceStats.totalCount || 0"
+                    suffix="张"
+                  />
                 </Card>
               </Col>
               <Col :span="6">
                 <Card size="small">
-                  <Statistic title="开票总额" :value="invoiceStats.totalAmount || 0" prefix="¥" :precision="0" />
+                  <Statistic
+                    title="开票总额"
+                    :value="invoiceStats.totalAmount || 0"
+                    prefix="¥"
+                    :precision="0"
+                  />
                 </Card>
               </Col>
               <Col :span="6">
                 <Card size="small">
-                  <Statistic title="待开票" :value="invoiceStats.pendingCount || 0" suffix="张" />
+                  <Statistic
+                    title="待开票"
+                    :value="invoiceStats.pendingCount || 0"
+                    suffix="张"
+                  />
                 </Card>
               </Col>
               <Col :span="6">
                 <Card size="small">
-                  <Statistic title="已作废" :value="invoiceStats.cancelledCount || 0" suffix="张" />
+                  <Statistic
+                    title="已作废"
+                    :value="invoiceStats.cancelledCount || 0"
+                    suffix="张"
+                  />
                 </Card>
               </Col>
             </Row>
           </Tabs.TabPane>
-          
+
           <Tabs.TabPane key="commission" tab="提成报表">
             <Row :gutter="16" style="margin-bottom: 16px">
               <Col :span="6">
                 <Card size="small">
-                  <Statistic title="提成总额" :value="commissionSummary.totalAmount || 0" prefix="¥" :precision="0" />
+                  <Statistic
+                    title="提成总额"
+                    :value="commissionSummary.totalAmount || 0"
+                    prefix="¥"
+                    :precision="0"
+                  />
                 </Card>
               </Col>
               <Col :span="6">
                 <Card size="small">
-                  <Statistic title="已发放" :value="commissionSummary.issuedAmount || 0" prefix="¥" :precision="0" />
+                  <Statistic
+                    title="已发放"
+                    :value="commissionSummary.issuedAmount || 0"
+                    prefix="¥"
+                    :precision="0"
+                  />
                 </Card>
               </Col>
               <Col :span="6">
                 <Card size="small">
-                  <Statistic title="待发放" :value="commissionSummary.pendingAmount || 0" prefix="¥" :precision="0" />
+                  <Statistic
+                    title="待发放"
+                    :value="commissionSummary.pendingAmount || 0"
+                    prefix="¥"
+                    :precision="0"
+                  />
                 </Card>
               </Col>
               <Col :span="6">
                 <Card size="small">
-                  <Statistic title="涉及人数" :value="commissionReport.length || 0" suffix="人" />
+                  <Statistic
+                    title="涉及人数"
+                    :value="commissionReport.length || 0"
+                    suffix="人"
+                  />
                 </Card>
               </Col>
             </Row>
-            <Table :columns="commissionColumns" :dataSource="commissionReport" :pagination="false" size="small" rowKey="userId">
+            <Table
+              :columns="commissionColumns"
+              :data-source="commissionReport"
+              :pagination="false"
+              size="small"
+              row-key="userId"
+            >
               <template #bodyCell="{ column, text }">
-                <template v-if="['totalAmount', 'issuedAmount', 'pendingAmount'].includes(column.key as string)">
+                <template
+                  v-if="
+                    ['totalAmount', 'issuedAmount', 'pendingAmount'].includes(
+                      column.key as string,
+                    )
+                  "
+                >
                   {{ formatMoney(text) }}
                 </template>
               </template>
             </Table>
           </Tabs.TabPane>
-          
+
           <Tabs.TabPane key="expense" tab="费用报销">
             <Row :gutter="16" style="margin-bottom: 16px">
               <Col :span="8">
                 <Card size="small">
-                  <Statistic title="报销总额" :value="yearlyExpense" prefix="¥" :precision="0" />
+                  <Statistic
+                    title="报销总额"
+                    :value="yearlyExpense"
+                    prefix="¥"
+                    :precision="0"
+                  />
                 </Card>
               </Col>
               <Col :span="8">
                 <Card size="small">
-                  <Statistic title="报销笔数" :value="expenseData.length" suffix="笔" />
+                  <Statistic
+                    title="报销笔数"
+                    :value="expenseData.length"
+                    suffix="笔"
+                  />
                 </Card>
               </Col>
               <Col :span="8">
                 <Card size="small">
-                  <Statistic title="平均金额" :value="expenseData.length ? yearlyExpense / expenseData.length : 0" prefix="¥" :precision="0" />
+                  <Statistic
+                    title="平均金额"
+                    :value="
+                      expenseData.length > 0
+                        ? yearlyExpense / expenseData.length
+                        : 0
+                    "
+                    prefix="¥"
+                    :precision="0"
+                  />
                 </Card>
               </Col>
             </Row>
-            <Table :columns="expenseColumns" :dataSource="expenseData" :pagination="{ pageSize: 10 }" size="small" rowKey="id">
+            <Table
+              :columns="expenseColumns"
+              :data-source="expenseData"
+              :pagination="{ pageSize: 10 }"
+              size="small"
+              row-key="id"
+            >
               <template #bodyCell="{ column, text }">
-                <template v-if="column.key === 'amount'">{{ formatMoney(text) }}</template>
-                <template v-else-if="column.key === 'createdAt'">{{ formatDate(text) }}</template>
+                <template v-if="column.key === 'amount'">
+                  {{ formatMoney(text) }}
+                </template>
+                <template v-else-if="column.key === 'createdAt'">
+                  {{ formatDate(text) }}
+                </template>
               </template>
             </Table>
           </Tabs.TabPane>

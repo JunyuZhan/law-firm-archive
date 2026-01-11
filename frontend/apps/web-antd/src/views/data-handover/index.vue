@@ -1,13 +1,17 @@
 <script setup lang="ts">
-import { ref } from 'vue';
-import { message, Modal } from 'ant-design-vue';
-import { Page } from '@vben/common-ui';
-import { Button, Space, Tag } from 'ant-design-vue';
 import type { VbenFormSchema } from '#/adapter/form';
 import type { VxeGridProps } from '#/adapter/vxe-table';
-import { useVbenVxeGrid } from '#/adapter/vxe-table';
-import { getHandoverList, confirmHandover, cancelHandover } from '#/api/system';
 import type { DataHandoverDTO } from '#/api/system/types';
+
+import { ref } from 'vue';
+
+import { Page } from '@vben/common-ui';
+
+import { Button, message, Modal, Space, Tag } from 'ant-design-vue';
+
+import { useVbenVxeGrid } from '#/adapter/vxe-table';
+import { cancelHandover, confirmHandover, getHandoverList } from '#/api/system';
+
 import CreateHandoverModal from './components/CreateHandoverModal.vue';
 import HandoverDetailModal from './components/HandoverDetailModal.vue';
 
@@ -56,7 +60,7 @@ const formSchema: VbenFormSchema[] = [
 
 // ==================== 表格配置 ====================
 
-const gridColumns: VxeGridProps['gridOptions']['columns'] = [
+const gridColumns: VxeGridProps['columns'] = [
   { title: '交接单号', field: 'handoverNo', width: 140 },
   { title: '移交人', field: 'fromUsername', width: 100 },
   { title: '接收人', field: 'toUsername', width: 100 },
@@ -69,11 +73,19 @@ const gridColumns: VxeGridProps['gridOptions']['columns'] = [
   { title: '提交人', field: 'submittedByName', width: 100 },
   { title: '提交时间', field: 'submittedAt', width: 160 },
   { title: '确认时间', field: 'confirmedAt', width: 160 },
-  { title: '操作', field: 'action', width: 180, fixed: 'right', slots: { default: 'action' } },
+  {
+    title: '操作',
+    field: 'action',
+    width: 180,
+    fixed: 'right',
+    slots: { default: 'action' },
+  },
 ];
 
 // 加载数据
-async function loadData(params: { page: number; pageSize: number } & Record<string, any>) {
+async function loadData(
+  params: Record<string, any> & { page: number; pageSize: number },
+) {
   const res = await getHandoverList({
     pageNum: params.page,
     pageSize: params.pageSize,
@@ -98,7 +110,13 @@ const [Grid, gridApi] = useVbenVxeGrid({
     height: 'auto',
     proxyConfig: {
       ajax: {
-        query: async ({ page, form }) => {
+        query: async ({
+          page,
+          form,
+        }: {
+          form: Record<string, any>;
+          page: { currentPage: number; pageSize: number };
+        }) => {
           return await loadData({
             page: page.currentPage,
             pageSize: page.pageSize,
@@ -122,12 +140,24 @@ const [Grid, gridApi] = useVbenVxeGrid({
 // 状态颜色
 function getStatusColor(status: string) {
   switch (status) {
-    case 'PENDING_APPROVAL': return 'processing';
-    case 'APPROVED': return 'orange';
-    case 'REJECTED': return 'error';
-    case 'CONFIRMED': return 'success';
-    case 'CANCELLED': return 'default';
-    default: return 'default';
+    case 'APPROVED': {
+      return 'orange';
+    }
+    case 'CANCELLED': {
+      return 'default';
+    }
+    case 'CONFIRMED': {
+      return 'success';
+    }
+    case 'PENDING_APPROVAL': {
+      return 'processing';
+    }
+    case 'REJECTED': {
+      return 'error';
+    }
+    default: {
+      return 'default';
+    }
   }
 }
 
@@ -190,7 +220,11 @@ function handleModalSuccess() {
 </script>
 
 <template>
-  <Page title="数据交接" description="管理用户离职交接和项目移交" auto-content-height>
+  <Page
+    title="数据交接"
+    description="管理用户离职交接和项目移交"
+    auto-content-height
+  >
     <Grid>
       <!-- 工具栏按钮 -->
       <template #toolbar-buttons>

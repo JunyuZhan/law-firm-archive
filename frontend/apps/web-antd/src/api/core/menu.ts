@@ -89,7 +89,9 @@ function transformIcon(icon?: string): string | undefined {
   // 如果已经是 lucide 或 ant-design 格式，直接返回
   if (icon.startsWith('lucide:') || icon.startsWith('ant-design:')) return icon;
   // 尝试从映射表获取
-  return iconMap[icon] || `lucide:${icon.replace('Outlined', '').toLowerCase()}`;
+  return (
+    iconMap[icon] || `lucide:${icon.replace('Outlined', '').toLowerCase()}`
+  );
 }
 
 /**
@@ -99,12 +101,12 @@ function transformIcon(icon?: string): string | undefined {
  */
 function transformComponent(component?: string, menuType?: string): string {
   if (!component) return 'BasicLayout';
-  
+
   // 目录类型使用布局组件
   if (menuType === 'DIRECTORY' || component === 'LAYOUT') {
     return 'BasicLayout';
   }
-  
+
   // 菜单类型，返回组件路径（不带前缀和后缀）
   // 前端 pageMap 会自动匹配 ../views/**/*.vue
   return component;
@@ -117,14 +119,16 @@ function generateRouteName(menu: MenuApi.MenuDTO): string {
   // 使用路径生成名称，如 /system/user -> SystemUser
   const pathParts = menu.path.split('/').filter(Boolean);
   return pathParts
-    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join('');
 }
 
 /**
  * 将后端菜单转换为前端路由格式
  */
-function transformMenuToRoute(menu: MenuApi.MenuDTO): RouteRecordStringComponent {
+function transformMenuToRoute(
+  menu: MenuApi.MenuDTO,
+): RouteRecordStringComponent {
   const route: RouteRecordStringComponent = {
     name: generateRouteName(menu),
     path: menu.path,
@@ -148,6 +152,7 @@ function transformMenuToRoute(menu: MenuApi.MenuDTO): RouteRecordStringComponent
   if (menu.isExternal && menu.path.startsWith('http')) {
     route.meta = {
       ...route.meta,
+      title: route.meta?.title || menu.name,
       link: menu.path,
     };
   }

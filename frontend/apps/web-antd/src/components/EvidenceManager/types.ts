@@ -24,7 +24,7 @@ export interface EvidenceItem {
   fileName?: string;
   fileSize?: number;
   fileSizeDisplay?: string;
-  fileType?: string;  // image, pdf, word, excel, video, audio, other
+  fileType?: string; // image, pdf, word, excel, video, audio, other
   thumbnailUrl?: string;
   crossExamStatus?: string;
   crossExamStatusName?: string;
@@ -53,14 +53,54 @@ export interface FileTypeInfo {
 
 // 文件类型映射
 export const FILE_TYPE_MAP: Record<string, FileTypeInfo> = {
-  image: { type: 'image', icon: 'FileImageOutlined', color: '#52c41a', canPreview: true },
-  pdf: { type: 'pdf', icon: 'FilePdfOutlined', color: '#ff4d4f', canPreview: true },
-  word: { type: 'word', icon: 'FileWordOutlined', color: '#1890ff', canPreview: true },
-  excel: { type: 'excel', icon: 'FileExcelOutlined', color: '#52c41a', canPreview: true },
-  ppt: { type: 'ppt', icon: 'FilePptOutlined', color: '#fa8c16', canPreview: true },
-  video: { type: 'video', icon: 'VideoCameraOutlined', color: '#722ed1', canPreview: true },
-  audio: { type: 'audio', icon: 'AudioOutlined', color: '#13c2c2', canPreview: true },
-  other: { type: 'other', icon: 'FileOutlined', color: '#8c8c8c', canPreview: false },
+  image: {
+    type: 'image',
+    icon: 'FileImageOutlined',
+    color: '#52c41a',
+    canPreview: true,
+  },
+  pdf: {
+    type: 'pdf',
+    icon: 'FilePdfOutlined',
+    color: '#ff4d4f',
+    canPreview: true,
+  },
+  word: {
+    type: 'word',
+    icon: 'FileWordOutlined',
+    color: '#1890ff',
+    canPreview: true,
+  },
+  excel: {
+    type: 'excel',
+    icon: 'FileExcelOutlined',
+    color: '#52c41a',
+    canPreview: true,
+  },
+  ppt: {
+    type: 'ppt',
+    icon: 'FilePptOutlined',
+    color: '#fa8c16',
+    canPreview: true,
+  },
+  video: {
+    type: 'video',
+    icon: 'VideoCameraOutlined',
+    color: '#722ed1',
+    canPreview: true,
+  },
+  audio: {
+    type: 'audio',
+    icon: 'AudioOutlined',
+    color: '#13c2c2',
+    canPreview: true,
+  },
+  other: {
+    type: 'other',
+    icon: 'FileOutlined',
+    color: '#8c8c8c',
+    canPreview: false,
+  },
 };
 
 // 证据类型选项

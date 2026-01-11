@@ -67,7 +67,7 @@ export async function loginApi(data: AuthApi.LoginParams) {
 export async function refreshTokenApi() {
   // 从localStorage获取refreshToken
   const refreshToken = localStorage.getItem('refreshToken') || '';
-  
+
   return baseRequestClient.post<AuthApi.LoginResult>('/auth/refresh', {
     refreshToken,
   });

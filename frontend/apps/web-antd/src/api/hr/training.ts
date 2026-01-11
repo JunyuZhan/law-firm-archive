@@ -1,6 +1,6 @@
-import { requestClient } from '#/api/request';
-
 import type { PageResult } from './types';
+
+import { requestClient } from '#/api/request';
 
 // ========== 培训管理类型定义 ==========
 export interface TrainingDTO {
@@ -20,11 +20,11 @@ export interface TrainingDTO {
   statusName?: string;
   createdAt?: string;
   // 新增字段
-  isRequired?: boolean;           // 是否必修
-  enrollmentType?: string;        // 报名类型: VOLUNTARY/MANDATORY/ASSIGNED
+  isRequired?: boolean; // 是否必修
+  enrollmentType?: string; // 报名类型: VOLUNTARY/MANDATORY/ASSIGNED
   enrollmentTypeName?: string;
-  trainingPlanId?: number;        // 关联年度方案
-  attachments?: AttachmentDTO[];  // 附件列表
+  trainingPlanId?: number; // 关联年度方案
+  attachments?: AttachmentDTO[]; // 附件列表
 }
 
 export interface AttachmentDTO {
@@ -73,7 +73,9 @@ export interface CreateTrainingCommand {
 
 /** 获取培训列表 */
 export function getTrainingList(params: TrainingQuery) {
-  return requestClient.get<PageResult<TrainingDTO>>('/hr/training/list', { params });
+  return requestClient.get<PageResult<TrainingDTO>>('/hr/training/list', {
+    params,
+  });
 }
 
 /** 获取可报名的培训列表 */
@@ -123,6 +125,7 @@ export function getMyTotalCredits() {
 
 /** 获取培训参与者列表 */
 export function getTrainingParticipants(id: number) {
-  return requestClient.get<TrainingRecordDTO[]>(`/hr/training/${id}/participants`);
+  return requestClient.get<TrainingRecordDTO[]>(
+    `/hr/training/${id}/participants`,
+  );
 }
-

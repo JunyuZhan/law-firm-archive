@@ -1,4 +1,12 @@
 <script setup lang="ts">
+import type { EmployeeDTO } from '#/api/hr/employee';
+import type {
+  ApproveResignationCommand,
+  CreateResignationCommand,
+  ResignationDTO,
+  ResignationQuery,
+} from '#/api/hr/resignation';
+
 import { onMounted, reactive, ref } from 'vue';
 
 import { Page } from '@vben/common-ui';
@@ -18,6 +26,7 @@ import {
   Textarea,
 } from 'ant-design-vue';
 
+import { getEmployeeList } from '#/api/hr/employee';
 import {
   approveResignation,
   completeResignationHandover,
@@ -26,14 +35,6 @@ import {
   getResignationDetail,
   getResignationList,
 } from '#/api/hr/resignation';
-import type {
-  ApproveResignationCommand,
-  CreateResignationCommand,
-  ResignationDTO,
-  ResignationQuery,
-} from '#/api/hr/resignation';
-import { getEmployeeList } from '#/api/hr/employee';
-import type { EmployeeDTO } from '#/api/hr/employee';
 
 defineOptions({ name: 'ResignationManagement' });
 
@@ -58,13 +59,6 @@ const resignationTypeOptions = [
   { label: '被动离职', value: 'INVOLUNTARY' },
   { label: '合同到期', value: 'CONTRACT_EXPIRED' },
   { label: '退休', value: 'RETIREMENT' },
-];
-
-// 交接状态选项
-const handoverStatusOptions = [
-  { label: '未交接', value: 'PENDING' },
-  { label: '交接中', value: 'IN_PROGRESS' },
-  { label: '已完成', value: 'COMPLETED' },
 ];
 
 // 状态标签颜色
@@ -92,15 +86,55 @@ const handoverStatusColorMap: Record<string, string> = {
 
 // 表格列
 const columns = [
-  { title: '申请编号', dataIndex: 'applicationNo', key: 'applicationNo', width: 120 },
-  { title: '员工姓名', dataIndex: 'employeeName', key: 'employeeName', width: 100 },
-  { title: '离职类型', dataIndex: 'resignationTypeName', key: 'resignationType', width: 100 },
-  { title: '离职日期', dataIndex: 'resignationDate', key: 'resignationDate', width: 120 },
-  { title: '最后工作日', dataIndex: 'lastWorkDate', key: 'lastWorkDate', width: 120 },
-  { title: '交接人', dataIndex: 'handoverPersonName', key: 'handoverPersonName', width: 100 },
-  { title: '交接状态', dataIndex: 'handoverStatusName', key: 'handoverStatus', width: 100 },
+  {
+    title: '申请编号',
+    dataIndex: 'applicationNo',
+    key: 'applicationNo',
+    width: 120,
+  },
+  {
+    title: '员工姓名',
+    dataIndex: 'employeeName',
+    key: 'employeeName',
+    width: 100,
+  },
+  {
+    title: '离职类型',
+    dataIndex: 'resignationTypeName',
+    key: 'resignationType',
+    width: 100,
+  },
+  {
+    title: '离职日期',
+    dataIndex: 'resignationDate',
+    key: 'resignationDate',
+    width: 120,
+  },
+  {
+    title: '最后工作日',
+    dataIndex: 'lastWorkDate',
+    key: 'lastWorkDate',
+    width: 120,
+  },
+  {
+    title: '交接人',
+    dataIndex: 'handoverPersonName',
+    key: 'handoverPersonName',
+    width: 100,
+  },
+  {
+    title: '交接状态',
+    dataIndex: 'handoverStatusName',
+    key: 'handoverStatus',
+    width: 100,
+  },
   { title: '状态', dataIndex: 'status', key: 'status', width: 100 },
-  { title: '审批人', dataIndex: 'approverName', key: 'approverName', width: 100 },
+  {
+    title: '审批人',
+    dataIndex: 'approverName',
+    key: 'approverName',
+    width: 100,
+  },
   { title: '操作', key: 'action', width: 220, fixed: 'right' as const },
 ];
 
@@ -122,7 +156,7 @@ const employeeList = ref<EmployeeDTO[]>([]);
 const modalVisible = ref(false);
 const modalLoading = ref(false);
 const resignationForm = reactive<CreateResignationCommand>({
-  employeeId: undefined as number | undefined,
+  employeeId: undefined as unknown as number,
   resignationType: '',
   resignationDate: '',
   lastWorkDate: '',
@@ -134,7 +168,7 @@ const resignationForm = reactive<CreateResignationCommand>({
 // 审批弹窗
 const approveModalVisible = ref(false);
 const approveModalLoading = ref(false);
-const currentRecord = ref<ResignationDTO | null>(null);
+const currentRecord = ref<null | ResignationDTO>(null);
 const approveForm = reactive<ApproveResignationCommand>({
   approved: true,
   comment: '',
@@ -253,16 +287,16 @@ async function handleSubmit() {
 }
 
 // 审批离职申请
-function handleApprove(record: ResignationDTO) {
-  currentRecord.value = record;
+function handleApprove(record: Record<string, any>) {
+  currentRecord.value = record as ResignationDTO;
   approveForm.approved = true;
   approveForm.comment = '';
   approveModalVisible.value = true;
 }
 
 // 拒绝离职申请
-function handleReject(record: ResignationDTO) {
-  currentRecord.value = record;
+function handleReject(record: Record<string, any>) {
+  currentRecord.value = record as ResignationDTO;
   approveForm.approved = false;
   approveForm.comment = '';
   approveModalVisible.value = true;
@@ -290,8 +324,8 @@ async function handleApproveSubmit() {
 }
 
 // 完成交接
-function handleCompleteHandover(record: ResignationDTO) {
-  currentRecord.value = record;
+function handleCompleteHandover(record: Record<string, any>) {
+  currentRecord.value = record as ResignationDTO;
   handoverNote.value = record.handoverNote || '';
   handoverModalVisible.value = true;
 }
@@ -302,7 +336,10 @@ async function handleHandoverSubmit() {
 
   handoverModalLoading.value = true;
   try {
-    await completeResignationHandover(currentRecord.value.id, handoverNote.value);
+    await completeResignationHandover(
+      currentRecord.value.id,
+      handoverNote.value,
+    );
     message.success('交接完成');
     handoverModalVisible.value = false;
     fetchData();
@@ -314,7 +351,7 @@ async function handleHandoverSubmit() {
 }
 
 // 删除离职申请
-function handleDelete(record: ResignationDTO) {
+function handleDelete(record: Record<string, any>) {
   Modal.confirm({
     title: '确认删除',
     content: `确定要删除离职申请"${record.applicationNo || record.id}"吗？`,
@@ -334,9 +371,9 @@ function handleDelete(record: ResignationDTO) {
 
 // 查看详情
 const detailModalVisible = ref(false);
-const detailData = ref<ResignationDTO | null>(null);
+const detailData = ref<null | ResignationDTO>(null);
 
-async function handleView(record: ResignationDTO) {
+async function handleView(record: Record<string, any>) {
   try {
     const detail = await getResignationDetail(record.id);
     detailData.value = detail;
@@ -364,17 +401,35 @@ onMounted(() => {
               placeholder="请选择员工"
               allow-clear
               show-search
-              :filter-option="(input: string, option: any) => option.children[0].children.toLowerCase().indexOf(input.toLowerCase()) >= 0"
+              :filter-option="
+                (input: string, option: any) =>
+                  option.children[0].children
+                    .toLowerCase()
+                    .includes(input.toLowerCase())
+              "
               style="width: 150px"
             >
-              <Select.Option v-for="emp in employeeList" :key="emp.id" :value="emp.id">
-                {{ emp.realName || emp.name || '-' }}
+              <Select.Option
+                v-for="emp in employeeList"
+                :key="emp.id"
+                :value="emp.id"
+              >
+                {{ emp.realName || '-' }}
               </Select.Option>
             </Select>
           </FormItem>
           <FormItem label="状态">
-            <Select v-model:value="searchForm.status" placeholder="请选择状态" allow-clear style="width: 120px">
-              <Select.Option v-for="item in statusOptions" :key="item.value" :value="item.value">
+            <Select
+              v-model:value="searchForm.status"
+              placeholder="请选择状态"
+              allow-clear
+              style="width: 120px"
+            >
+              <Select.Option
+                v-for="item in statusOptions"
+                :key="item.value"
+                :value="item.value"
+              >
                 {{ item.label }}
               </Select.Option>
             </Select>
@@ -406,7 +461,10 @@ onMounted(() => {
             </Tag>
           </template>
           <template v-if="column.key === 'handoverStatus'">
-            <Tag v-if="record.handoverStatus" :color="handoverStatusColorMap[record.handoverStatus]">
+            <Tag
+              v-if="record.handoverStatus"
+              :color="handoverStatusColorMap[record.handoverStatus]"
+            >
               {{ record.handoverStatusName || record.handoverStatus }}
             </Tag>
             <span v-else>-</span>
@@ -419,7 +477,12 @@ onMounted(() => {
                 <a style="color: #ff4d4f" @click="handleReject(record)">拒绝</a>
                 <a style="color: #ff4d4f" @click="handleDelete(record)">删除</a>
               </template>
-              <template v-else-if="record.status === 'APPROVED' && record.handoverStatus !== 'COMPLETED'">
+              <template
+                v-else-if="
+                  record.status === 'APPROVED' &&
+                  record.handoverStatus !== 'COMPLETED'
+                "
+              >
                 <a @click="handleCompleteHandover(record)">完成交接</a>
               </template>
             </Space>
@@ -442,16 +505,32 @@ onMounted(() => {
             v-model:value="resignationForm.employeeId"
             placeholder="请选择员工"
             show-search
-            :filter-option="(input: string, option: any) => option.children[0].children.toLowerCase().indexOf(input.toLowerCase()) >= 0"
+            :filter-option="
+              (input: string, option: any) =>
+                option.children[0].children
+                  .toLowerCase()
+                  .includes(input.toLowerCase())
+            "
           >
-            <Select.Option v-for="emp in employeeList" :key="emp.id" :value="emp.id">
-              {{ emp.realName || emp.name || '-' }}
+            <Select.Option
+              v-for="emp in employeeList"
+              :key="emp.id"
+              :value="emp.id"
+            >
+              {{ emp.realName || '-' }}
             </Select.Option>
           </Select>
         </FormItem>
         <FormItem label="离职类型" required>
-          <Select v-model:value="resignationForm.resignationType" placeholder="请选择离职类型">
-            <Select.Option v-for="item in resignationTypeOptions" :key="item.value" :value="item.value">
+          <Select
+            v-model:value="resignationForm.resignationType"
+            placeholder="请选择离职类型"
+          >
+            <Select.Option
+              v-for="item in resignationTypeOptions"
+              :key="item.value"
+              :value="item.value"
+            >
               {{ item.label }}
             </Select.Option>
           </Select>
@@ -471,7 +550,11 @@ onMounted(() => {
           />
         </FormItem>
         <FormItem label="离职原因">
-          <Textarea v-model:value="resignationForm.reason" placeholder="请输入离职原因" :rows="4" />
+          <Textarea
+            v-model:value="resignationForm.reason"
+            placeholder="请输入离职原因"
+            :rows="4"
+          />
         </FormItem>
         <FormItem label="交接人">
           <Select
@@ -479,15 +562,28 @@ onMounted(() => {
             placeholder="请选择交接人"
             allow-clear
             show-search
-            :filter-option="(input: string, option: any) => option.children[0].children.toLowerCase().indexOf(input.toLowerCase()) >= 0"
+            :filter-option="
+              (input: string, option: any) =>
+                option.children[0].children
+                  .toLowerCase()
+                  .includes(input.toLowerCase())
+            "
           >
-            <Select.Option v-for="emp in employeeList" :key="emp.id" :value="emp.id">
-              {{ emp.realName || emp.name || '-' }}
+            <Select.Option
+              v-for="emp in employeeList"
+              :key="emp.id"
+              :value="emp.id"
+            >
+              {{ emp.realName || '-' }}
             </Select.Option>
           </Select>
         </FormItem>
         <FormItem label="交接备注">
-          <Textarea v-model:value="resignationForm.handoverNote" placeholder="请输入交接备注" :rows="3" />
+          <Textarea
+            v-model:value="resignationForm.handoverNote"
+            placeholder="请输入交接备注"
+            :rows="3"
+          />
         </FormItem>
       </Form>
     </Modal>
@@ -501,7 +597,11 @@ onMounted(() => {
     >
       <Form :model="approveForm" layout="vertical">
         <FormItem label="审批意见" required>
-          <Textarea v-model:value="approveForm.comment" placeholder="请输入审批意见" :rows="4" />
+          <Textarea
+            v-model:value="approveForm.comment"
+            placeholder="请输入审批意见"
+            :rows="4"
+          />
         </FormItem>
       </Form>
     </Modal>
@@ -515,27 +615,47 @@ onMounted(() => {
     >
       <Form layout="vertical">
         <FormItem label="交接备注">
-          <Textarea v-model:value="handoverNote" placeholder="请输入交接备注" :rows="4" />
+          <Textarea
+            v-model:value="handoverNote"
+            placeholder="请输入交接备注"
+            :rows="4"
+          />
         </FormItem>
       </Form>
     </Modal>
 
     <!-- 详情弹窗 -->
-    <Modal v-model:open="detailModalVisible" title="离职申请详情" width="600px" :footer="null">
+    <Modal
+      v-model:open="detailModalVisible"
+      title="离职申请详情"
+      width="600px"
+      :footer="null"
+    >
       <div v-if="detailData" style="line-height: 2">
         <p><strong>申请编号:</strong> {{ detailData.applicationNo || '-' }}</p>
         <p><strong>员工姓名:</strong> {{ detailData.employeeName || '-' }}</p>
-        <p><strong>离职类型:</strong> {{ detailData.resignationTypeName || '-' }}</p>
-        <p><strong>离职日期:</strong> {{ detailData.resignationDate || '-' }}</p>
+        <p>
+          <strong>离职类型:</strong> {{ detailData.resignationTypeName || '-' }}
+        </p>
+        <p>
+          <strong>离职日期:</strong> {{ detailData.resignationDate || '-' }}
+        </p>
         <p><strong>最后工作日:</strong> {{ detailData.lastWorkDate || '-' }}</p>
         <p><strong>离职原因:</strong> {{ detailData.reason || '-' }}</p>
-        <p><strong>交接人:</strong> {{ detailData.handoverPersonName || '-' }}</p>
-        <p><strong>交接状态:</strong> {{ detailData.handoverStatusName || '-' }}</p>
+        <p>
+          <strong>交接人:</strong> {{ detailData.handoverPersonName || '-' }}
+        </p>
+        <p>
+          <strong>交接状态:</strong> {{ detailData.handoverStatusName || '-' }}
+        </p>
         <p><strong>状态:</strong> {{ detailData.statusName || '-' }}</p>
-        <p v-if="detailData.comment"><strong>审批意见:</strong> {{ detailData.comment }}</p>
-        <p v-if="detailData.handoverNote"><strong>交接备注:</strong> {{ detailData.handoverNote }}</p>
+        <p v-if="detailData.comment">
+          <strong>审批意见:</strong> {{ detailData.comment }}
+        </p>
+        <p v-if="detailData.handoverNote">
+          <strong>交接备注:</strong> {{ detailData.handoverNote }}
+        </p>
       </div>
     </Modal>
   </Page>
 </template>
-

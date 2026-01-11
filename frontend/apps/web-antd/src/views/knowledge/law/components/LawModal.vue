@@ -1,13 +1,18 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import { useVbenModal } from '@vben/common-ui';
-import { useVbenForm } from '#/adapter/form';
 import type { VbenFormSchema } from '#/adapter/form';
-import { message, Upload, Spin, Alert, Tooltip, Space } from 'ant-design-vue';
+import type { LawRegulationDTO } from '#/api/knowledge/types';
+import type { OcrResultDTO } from '#/api/ocr';
+
+import { ref } from 'vue';
+
+import { useVbenModal } from '@vben/common-ui';
 import { IconifyIcon } from '@vben/icons';
+
+import { Alert, message, Spin, Tooltip, Upload } from 'ant-design-vue';
+
+import { useVbenForm } from '#/adapter/form';
 import { createLawRegulation, updateLawRegulation } from '#/api/knowledge';
-import { recognizeGeneral, type OcrResultDTO } from '#/api/ocr';
-import type { LawRegulationDTO, CreateLawRegulationCommand } from '#/api/knowledge/types';
+import { recognizeGeneral } from '#/api/ocr';
 
 const emit = defineEmits<{
   success: [];
@@ -97,16 +102,28 @@ const [Form, formApi] = useVbenForm({
 const [Modal, modalApi] = useVbenModal({
   async onConfirm() {
     try {
-      const values = await formApi.validate();
-      
+      await formApi.validate();
+      const values = await formApi.getValues();
+
+      const data = {
+        name: values.name,
+        lawType: values.lawType,
+        categoryId: values.categoryId,
+        issuingAuthority: values.issuingAuthority,
+        documentNumber: values.documentNumber,
+        effectiveDate: values.effectiveDate,
+        status: values.status,
+        summary: values.summary,
+      };
+
       if (isEdit.value && editId.value) {
-        await updateLawRegulation(editId.value, values);
+        await updateLawRegulation(editId.value, data);
         message.success('更新成功');
       } else {
-        await createLawRegulation(values as CreateLawRegulationCommand);
+        await createLawRegulation(data);
         message.success('创建成功');
       }
-      
+
       modalApi.close();
       emit('success');
     } catch (error: unknown) {
@@ -150,28 +167,34 @@ async function handleOcrLaw(file: File) {
     const result: OcrResultDTO = await recognizeGeneral(file);
     if (result.success && result.rawText) {
       const text = result.rawText;
-      
+
       // 尝试智能解析法规信息
       const parsed: Record<string, any> = {};
-      
+
       // 提取法规名称（通常在开头）
-      const nameMatch = text.match(/^(.{2,50}(?:法|条例|规定|办法|细则|解释|通知|意见))/m);
-      if (nameMatch) {
+      const nameMatch = text.match(
+        /^(.{2,50}(?:法|条例|规定|办法|细则|解释|通知|意见))/m,
+      );
+      if (nameMatch?.[1]) {
         parsed.name = nameMatch[1].trim();
       }
-      
+
       // 提取发布机关
-      const issuerMatch = text.match(/([\u4e00-\u9fa5]+(?:人大|国务院|最高人民法院|最高人民检察院|公安部|司法部|[\u4e00-\u9fa5]+委员会))/);
+      const issuerMatch = text.match(
+        /([\u4E00-\u9FA5]+(?:人大|国务院|最高人民法院|最高人民检察院|公安部|司法部|[\u4E00-\u9FA5]委员会))/,
+      );
       if (issuerMatch) {
         parsed.issuer = issuerMatch[1];
       }
-      
+
       // 设置内容
       parsed.content = text;
-      
+
       if (Object.keys(parsed).length > 0) {
         formApi.setValues(parsed);
-        message.success(`法规识别成功！已自动填充 ${Object.keys(parsed).length} 个字段`);
+        message.success(
+          `法规识别成功！已自动填充 ${Object.keys(parsed).length} 个字段`,
+        );
       } else {
         formApi.setValues({ content: text });
         message.success('已将识别内容填充到法规内容中');
@@ -179,8 +202,8 @@ async function handleOcrLaw(file: File) {
     } else {
       message.error(result.errorMessage || 'OCR识别失败');
     }
-  } catch (e: any) {
-    message.error(e?.message || 'OCR识别失败');
+  } catch (error: any) {
+    message.error(error?.message || 'OCR识别失败');
   } finally {
     ocrLoading.value = false;
   }
@@ -197,7 +220,7 @@ defineExpose({ openCreate, openEdit });
       <Alert type="info" style="margin-bottom: 16px" show-icon>
         <template #message>
           <span class="font-medium text-blue-700">智能识别法规</span>
-          <span class="text-gray-500 text-xs ml-2">上传法规截图自动填充</span>
+          <span class="ml-2 text-xs text-gray-500">上传法规截图自动填充</span>
         </template>
         <template #description>
           <div class="mt-2">
@@ -207,16 +230,19 @@ defineExpose({ openCreate, openEdit });
               accept="image/*"
             >
               <Tooltip title="上传法规截图，自动识别法规名称、发布机关、内容等">
-                <a class="text-blue-600 hover:text-blue-800 font-medium">
-                  <IconifyIcon icon="ant-design:scan-outlined" class="mr-1" />识别法规截图
+                <a class="font-medium text-blue-600 hover:text-blue-800">
+                  <IconifyIcon
+                    icon="ant-design:scan-outlined"
+                    class="mr-1"
+                  />识别法规截图
                 </a>
               </Tooltip>
             </Upload>
           </div>
         </template>
       </Alert>
-      
-    <Form />
+
+      <Form />
     </Spin>
   </Modal>
 </template>

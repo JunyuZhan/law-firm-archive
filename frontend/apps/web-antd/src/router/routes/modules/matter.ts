@@ -18,4 +18,3 @@ const matterRoutes: RouteRecordRaw[] = [
 ];
 
 export default matterRoutes;
-

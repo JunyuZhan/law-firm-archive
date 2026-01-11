@@ -1,14 +1,15 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import { useVbenModal } from '@vben/common-ui';
-import { useVbenForm } from '#/adapter/form';
 import type { VbenFormSchema } from '#/adapter/form';
+import type { CreateDictItemCommand, DictDataDTO } from '#/api/system/types';
+
+import { ref } from 'vue';
+
+import { useVbenModal } from '@vben/common-ui';
+
 import { message } from 'ant-design-vue';
+
+import { useVbenForm } from '#/adapter/form';
 import { createDictItem, updateDictItem } from '#/api/system';
-import type {
-  DictDataDTO,
-  CreateDictItemCommand,
-} from '#/api/system/types';
 
 const emit = defineEmits<{
   success: [];
@@ -19,7 +20,7 @@ const editId = ref<number>();
 const dictTypeId = ref<number>();
 
 // 表单 Schema
-const formSchema = computed<VbenFormSchema[]>(() => [
+const formSchema: VbenFormSchema[] = [
   {
     fieldName: 'label',
     label: '标签',
@@ -70,7 +71,7 @@ const formSchema = computed<VbenFormSchema[]>(() => [
       maxlength: 50,
     },
   },
-]);
+];
 
 const [Form, formApi] = useVbenForm({
   schema: formSchema,
@@ -83,9 +84,14 @@ const [Form, formApi] = useVbenForm({
 const [Modal, modalApi] = useVbenModal({
   async onConfirm() {
     try {
-      const values = await formApi.validate<CreateDictItemCommand>();
+      await formApi.validate();
+      const values = await formApi.getValues();
       const submitData: CreateDictItemCommand = {
-        ...values,
+        label: values.label,
+        value: values.value,
+        sortOrder: values.sortOrder,
+        description: values.description,
+        cssClass: values.cssClass,
         dictTypeId: dictTypeId.value!,
       };
       if (isEdit.value && editId.value) {
@@ -148,4 +154,3 @@ defineExpose({ openCreate, openEdit });
     <Form />
   </Modal>
 </template>
-

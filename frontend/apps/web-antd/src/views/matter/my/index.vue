@@ -1,11 +1,15 @@
 <script setup lang="ts">
-import { useRouter } from 'vue-router';
-import { Space, Tag, Modal } from 'ant-design-vue';
-import { Page } from '@vben/common-ui';
 import type { VbenFormSchema } from '#/adapter/form';
+import type { MatterDTO } from '#/api/matter/types';
+
+import { useRouter } from 'vue-router';
+
+import { Page } from '@vben/common-ui';
+
+import { Modal, Space, Tag } from 'ant-design-vue';
+
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import { getMyMatters } from '#/api/matter';
-import type { MatterDTO } from '#/api/matter/types';
 
 defineOptions({ name: 'MatterMy' });
 
@@ -75,14 +79,27 @@ const gridColumns = [
   { title: '客户', field: 'clientName', width: 150 },
   { title: '项目编号', field: 'matterNo', width: 130 },
   { title: '主办律师', field: 'leadLawyerName', width: 100 },
-  { title: '合同金额', field: 'contractAmount', width: 120, slots: { default: 'contractAmount' } },
+  {
+    title: '合同金额',
+    field: 'contractAmount',
+    width: 120,
+    slots: { default: 'contractAmount' },
+  },
   { title: '创建时间', field: 'createdAt', width: 160 },
   { title: '状态', field: 'status', width: 100, slots: { default: 'status' } },
-  { title: '操作', field: 'action', width: 200, fixed: 'right' as const, slots: { default: 'action' } },
+  {
+    title: '操作',
+    field: 'action',
+    width: 200,
+    fixed: 'right' as const,
+    slots: { default: 'action' },
+  },
 ];
 
 // 加载数据
-async function loadData(params: { page: number; pageSize: number } & Record<string, any>) {
+async function loadData(
+  params: Record<string, any> & { page: number; pageSize: number },
+) {
   // 处理年份筛选参数
   let createdAtFrom: string | undefined;
   let createdAtTo: string | undefined;
@@ -93,7 +110,7 @@ async function loadData(params: { page: number; pageSize: number } & Record<stri
     createdAtTo = `${year}-12-31T23:59:59`;
   }
   // year为undefined或0时，不设置时间范围，显示所有数据
-  
+
   const res = await getMyMatters({
     pageNum: params.page,
     pageSize: params.pageSize,
@@ -119,7 +136,7 @@ const [Grid] = useVbenVxeGrid({
     height: 'auto',
     proxyConfig: {
       ajax: {
-        query: async ({ page, form }: { page: any; form: any }) => {
+        query: async ({ page, form }: { form: any; page: any }) => {
           return await loadData({
             page: page.currentPage,
             pageSize: page.pageSize,
@@ -180,7 +197,7 @@ async function handleArchive(row: MatterDTO) {
     });
     return;
   }
-  
+
   // 已结案项目，跳转到档案列表页面并打开归档向导
   Modal.confirm({
     title: '创建档案',
@@ -217,8 +234,12 @@ async function handleArchive(row: MatterDTO) {
       <template #action="{ row }">
         <Space>
           <a @click="handleView(row)">详情</a>
-          <a v-if="!['ARCHIVED', 'CLOSED', 'PENDING_CLOSE'].includes(row.status)" @click="handleEdit(row)">编辑</a>
-          <a 
+          <a
+            v-if="!['ARCHIVED', 'CLOSED', 'PENDING_CLOSE'].includes(row.status)"
+            @click="handleEdit(row)"
+            >编辑</a
+          >
+          <a
             v-if="row.status !== 'ARCHIVED' && row.status !== 'CLOSED'"
             @click="handleArchive(row)"
             style="color: #722ed1"

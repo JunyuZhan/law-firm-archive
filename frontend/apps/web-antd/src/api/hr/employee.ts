@@ -1,9 +1,9 @@
+import type { PageResult } from '../matter/types';
+
 /**
  * 员工管理 API
  */
 import { requestClient } from '#/api/request';
-
-import type { PageResult } from '../matter/types';
 
 // ========== 类型定义 ==========
 export interface EmployeeDTO {
@@ -149,4 +149,3 @@ export function updateEmployee(id: number, data: UpdateEmployeeCommand) {
 export function deleteEmployee(id: number) {
   return requestClient.delete(`/hr/employee/${id}`);
 }
-

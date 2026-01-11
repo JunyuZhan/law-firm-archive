@@ -1,17 +1,20 @@
 <script setup lang="ts">
+import type { EvidenceItem } from './types';
+
 /**
  * 证据网格项组件
  * 用于网格视图中展示单个证据
  */
 import { computed } from 'vue';
-import { Tooltip, Tag } from 'ant-design-vue';
+
+import { Tag, Tooltip } from 'ant-design-vue';
+
 import EvidenceThumbnail from './EvidenceThumbnail.vue';
-import type { EvidenceItem } from './types';
 
 const props = defineProps<{
+  draggable?: boolean;
   evidence: EvidenceItem;
   selected?: boolean;
-  draggable?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -37,8 +40,16 @@ const statusColor = computed(() => {
     @dblclick="emit('dblclick', evidence)"
   >
     <div class="thumbnail-wrapper">
-      <EvidenceThumbnail :evidence="evidence" size="medium" :showPreview="false" />
-      <Tag v-if="evidence.crossExamStatusName" :color="statusColor" class="status-tag">
+      <EvidenceThumbnail
+        :evidence="evidence"
+        size="medium"
+        :show-preview="false"
+      />
+      <Tag
+        v-if="evidence.crossExamStatusName"
+        :color="statusColor"
+        class="status-tag"
+      >
         {{ evidence.crossExamStatusName }}
       </Tag>
     </div>

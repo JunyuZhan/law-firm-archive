@@ -1,9 +1,9 @@
+import type { PageResult } from '../matter/types';
+
 /**
  * 印章管理模块 API
  */
 import { requestClient } from '#/api/request';
-
-import type { PageResult } from '../matter/types';
 
 // ========== 印章管理类型定义 ==========
 export interface SealDTO {
@@ -39,6 +39,7 @@ export interface CreateSealCommand {
 
 export interface UpdateSealCommand {
   name?: string;
+  sealType?: string;
   keeperId?: number;
   keeperName?: string;
   imageUrl?: string;
@@ -123,7 +124,9 @@ export function updateSeal(id: number, data: UpdateSealCommand) {
 
 /** 变更印章状态 */
 export function changeSealStatus(id: number, status: string) {
-  return requestClient.put(`/document/seal/${id}/status`, null, { params: { status } });
+  return requestClient.put(`/document/seal/${id}/status`, null, {
+    params: { status },
+  });
 }
 
 /** 删除印章 */
@@ -135,32 +138,52 @@ export function deleteSeal(id: number) {
 
 /** 获取用印申请列表 */
 export function getSealApplicationList(params: SealApplicationQuery) {
-  return requestClient.get<PageResult<SealApplicationDTO>>('/document/seal-application', { params });
+  return requestClient.get<PageResult<SealApplicationDTO>>(
+    '/document/seal-application',
+    { params },
+  );
 }
 
 /** 获取申请详情 */
 export function getSealApplicationDetail(id: number) {
-  return requestClient.get<SealApplicationDTO>(`/document/seal-application/${id}`);
+  return requestClient.get<SealApplicationDTO>(
+    `/document/seal-application/${id}`,
+  );
 }
 
 /** 创建用印申请 */
 export function createSealApplication(data: CreateSealApplicationCommand) {
-  return requestClient.post<SealApplicationDTO>('/document/seal-application', data);
+  return requestClient.post<SealApplicationDTO>(
+    '/document/seal-application',
+    data,
+  );
 }
 
 /** 审批通过 */
 export function approveSealApplication(id: number, comment?: string) {
-  return requestClient.post<SealApplicationDTO>(`/document/seal-application/${id}/approve`, null, { params: { comment } });
+  return requestClient.post<SealApplicationDTO>(
+    `/document/seal-application/${id}/approve`,
+    null,
+    { params: { comment } },
+  );
 }
 
 /** 审批拒绝 */
 export function rejectSealApplication(id: number, comment?: string) {
-  return requestClient.post<SealApplicationDTO>(`/document/seal-application/${id}/reject`, null, { params: { comment } });
+  return requestClient.post<SealApplicationDTO>(
+    `/document/seal-application/${id}/reject`,
+    null,
+    { params: { comment } },
+  );
 }
 
 /** 登记用印 */
 export function registerSealUsage(id: number, remark?: string) {
-  return requestClient.post<SealApplicationDTO>(`/document/seal-application/${id}/use`, null, { params: { remark } });
+  return requestClient.post<SealApplicationDTO>(
+    `/document/seal-application/${id}/use`,
+    null,
+    { params: { remark } },
+  );
 }
 
 /** 取消申请 */
@@ -170,29 +193,37 @@ export function cancelSealApplication(id: number) {
 
 /** 获取待审批列表 */
 export function getPendingSealApplications() {
-  return requestClient.get<SealApplicationDTO[]>('/document/seal-application/pending');
+  return requestClient.get<SealApplicationDTO[]>(
+    '/document/seal-application/pending',
+  );
 }
 
 /** 获取可选审批人列表 */
 export function getSealApplicationApprovers(applicantId?: number) {
-  return requestClient.get<Array<{
-    id: number;
-    realName: string;
-    departmentName: string;
-    position: string;
-  }>>('/document/seal-application/approvers', {
+  return requestClient.get<
+    Array<{
+      departmentName: string;
+      id: number;
+      position: string;
+      realName: string;
+    }>
+  >('/document/seal-application/approvers', {
     params: applicantId ? { applicantId } : undefined,
   });
 }
 
 /** 获取保管人待办理的申请（审批通过且印章的保管人是当前用户） */
 export function getPendingForKeeper() {
-  return requestClient.get<SealApplicationDTO[]>('/document/seal-application/keeper/pending');
+  return requestClient.get<SealApplicationDTO[]>(
+    '/document/seal-application/keeper/pending',
+  );
 }
 
 /** 获取保管人已办理的申请（已用印且印章的保管人是当前用户） */
 export function getProcessedByKeeper() {
-  return requestClient.get<SealApplicationDTO[]>('/document/seal-application/keeper/processed');
+  return requestClient.get<SealApplicationDTO[]>(
+    '/document/seal-application/keeper/processed',
+  );
 }
 
 /** 检查当前用户是否是任何印章的保管人 */
@@ -202,4 +233,3 @@ export function checkIsKeeper() {
 
 // 导出类型
 export type * from './seal-types';
-

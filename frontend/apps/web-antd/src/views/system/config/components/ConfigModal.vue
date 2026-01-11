@@ -1,11 +1,15 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import { useVbenModal } from '@vben/common-ui';
-import { useVbenForm } from '#/adapter/form';
 import type { VbenFormSchema } from '#/adapter/form';
-import { message } from 'ant-design-vue';
-import { createConfig, updateConfig } from '#/api/system';
 import type { SysConfigDTO } from '#/api/system/types';
+
+import { computed, ref } from 'vue';
+
+import { useVbenModal } from '@vben/common-ui';
+
+import { message } from 'ant-design-vue';
+
+import { useVbenForm } from '#/adapter/form';
+import { createConfig, updateConfig } from '#/api/system';
 
 const emit = defineEmits<{
   success: [];
@@ -86,8 +90,8 @@ const [Modal, modalApi] = useVbenModal({
   async onConfirm() {
     try {
       // 使用 getValues 获取表单值，更可靠
-      const formValues = await formApi.getValues() as any;
-      
+      const formValues = (await formApi.getValues()) as any;
+
       if (isEdit.value && editId.value) {
         // 编辑模式 - 只更新 configValue 和 description
         const updateData: { configValue: string; description?: string } = {
@@ -96,16 +100,16 @@ const [Modal, modalApi] = useVbenModal({
         if (formValues?.description !== undefined) {
           updateData.description = String(formValues.description ?? '');
         }
-        
+
         // 先验证表单
         await formApi.validate();
-        
+
         await updateConfig(editId.value, updateData);
         message.success('更新成功');
       } else {
         // 新增模式 - 先验证表单
         await formApi.validate();
-        
+
         await createConfig({
           configKey: String(formValues?.configKey ?? ''),
           configValue: String(formValues?.configValue ?? ''),
@@ -132,11 +136,11 @@ const [Modal, modalApi] = useVbenModal({
 function openEdit(record: SysConfigDTO) {
   isEdit.value = true;
   editId.value = record.id;
-  
+
   // 先打开弹窗，再设置表单值，确保表单已渲染
   modalApi.setState({ title: '编辑配置' });
   modalApi.open();
-  
+
   // 使用 setTimeout 确保弹窗和表单都已渲染完成
   setTimeout(() => {
     formApi.resetForm();

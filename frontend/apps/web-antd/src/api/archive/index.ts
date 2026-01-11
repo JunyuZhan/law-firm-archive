@@ -1,32 +1,32 @@
+import type { PageResult } from '../matter/types';
+import type {
+  ApproveMigrateRequest,
+  ArchiveCheckResult,
+  ArchiveDataSnapshot,
+  ArchiveDataSource,
+  ArchiveDTO,
+  ArchiveQuery,
+  CreateArchiveCommand,
+  MigrateRequest,
+  StoreArchiveCommand,
+} from './types';
+
 /**
  * 档案管理模块 API
  */
 import { requestClient } from '#/api/request';
 
-import type { PageResult } from '../matter/types';
-import type {
-  ArchiveDTO,
-  ArchiveQuery,
-  CreateArchiveCommand,
-  StoreArchiveCommand,
-  ArchiveCheckResult,
-  ArchiveDataSnapshot,
-  ArchiveDataSource,
-  MigrateRequest,
-  ApproveMigrateRequest,
-} from './types';
-
 // 重新导出类型
 export type {
-  ArchiveDTO,
-  ArchiveQuery,
-  CreateArchiveCommand,
-  StoreArchiveCommand,
+  ApproveMigrateRequest,
   ArchiveCheckResult,
   ArchiveDataSnapshot,
   ArchiveDataSource,
+  ArchiveDTO,
+  ArchiveQuery,
+  CreateArchiveCommand,
   MigrateRequest,
-  ApproveMigrateRequest,
+  StoreArchiveCommand,
 };
 
 // ========== 档案管理 API ==========
@@ -72,8 +72,15 @@ export function submitStoreApproval(archiveId: number) {
 }
 
 /** 审批入库 */
-export function approveStore(archiveId: number, approved: boolean, comment?: string) {
-  return requestClient.post(`/archive/${archiveId}/approve-store`, { approved, comment });
+export function approveStore(
+  archiveId: number,
+  approved: boolean,
+  comment?: string,
+) {
+  return requestClient.post(`/archive/${archiveId}/approve-store`, {
+    approved,
+    comment,
+  });
 }
 
 /** 档案入库（实际入库操作） */
@@ -97,13 +104,22 @@ export function applyDestroyArchive(id: number, reason: string) {
 }
 
 /** 审批销毁档案（兼容旧接口，内部调用迁移审批） */
-export function approveDestroyArchive(id: number, approved: boolean, comment?: string) {
-  return requestClient.post(`/archive/${id}/approve-destroy`, { approved, comment });
+export function approveDestroyArchive(
+  id: number,
+  approved: boolean,
+  comment?: string,
+) {
+  return requestClient.post(`/archive/${id}/approve-destroy`, {
+    approved,
+    comment,
+  });
 }
 
 /** 获取即将到期的档案 */
 export function getExpiringArchives(days: number = 90) {
-  return requestClient.get<ArchiveDTO[]>(`/archive/expiring`, { params: { days } });
+  return requestClient.get<ArchiveDTO[]>(`/archive/expiring`, {
+    params: { days },
+  });
 }
 
 /** 按库位查看档案 */
@@ -113,12 +129,20 @@ export function getArchivesByLocation(locationId: number) {
 
 /** 设置档案保管期限 */
 export function setRetentionPeriod(id: number, retentionPeriod: string) {
-  return requestClient.put<ArchiveDTO>(`/archive/${id}/retention-period`, { retentionPeriod });
+  return requestClient.put<ArchiveDTO>(`/archive/${id}/retention-period`, {
+    retentionPeriod,
+  });
 }
 
 /** 销毁登记 */
-export function registerDestroyArchive(id: number, data: { destroyMethod: string; destroyLocation: string; witness: string }) {
-  return requestClient.post<ArchiveDTO>(`/archive/${id}/register-destroy`, data);
+export function registerDestroyArchive(
+  id: number,
+  data: { destroyLocation: string; destroyMethod: string; witness: string },
+) {
+  return requestClient.post<ArchiveDTO>(
+    `/archive/${id}/register-destroy`,
+    data,
+  );
 }
 
 /** 下载卷宗封面 */
@@ -135,4 +159,3 @@ export function regenerateArchiveCover(id: number) {
 
 // 导出类型
 export type * from './types';
-

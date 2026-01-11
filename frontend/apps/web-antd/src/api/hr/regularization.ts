@@ -1,9 +1,9 @@
+import type { PageResult } from '../matter/types';
+
 /**
  * 转正申请管理 API
  */
 import { requestClient } from '#/api/request';
-
-import type { PageResult } from '../matter/types';
 
 // ========== 类型定义 ==========
 export interface RegularizationDTO {
@@ -55,7 +55,10 @@ export interface ApproveRegularizationCommand {
 
 /** 分页查询转正申请 */
 export function getRegularizationList(params: RegularizationQuery) {
-  return requestClient.get<PageResult<RegularizationDTO>>('/hr/regularization', { params });
+  return requestClient.get<PageResult<RegularizationDTO>>(
+    '/hr/regularization',
+    { params },
+  );
 }
 
 /** 根据ID查询转正申请 */
@@ -65,7 +68,9 @@ export function getRegularizationDetail(id: number) {
 
 /** 根据员工ID查询转正申请 */
 export function getRegularizationsByEmployeeId(employeeId: number) {
-  return requestClient.get<RegularizationDTO[]>(`/hr/regularization/employee/${employeeId}`);
+  return requestClient.get<RegularizationDTO[]>(
+    `/hr/regularization/employee/${employeeId}`,
+  );
 }
 
 /** 创建转正申请 */
@@ -74,12 +79,17 @@ export function createRegularization(data: CreateRegularizationCommand) {
 }
 
 /** 审批转正申请 */
-export function approveRegularization(id: number, data: ApproveRegularizationCommand) {
-  return requestClient.post<RegularizationDTO>(`/hr/regularization/${id}/approve`, data);
+export function approveRegularization(
+  id: number,
+  data: ApproveRegularizationCommand,
+) {
+  return requestClient.post<RegularizationDTO>(
+    `/hr/regularization/${id}/approve`,
+    data,
+  );
 }
 
 /** 删除转正申请 */
 export function deleteRegularization(id: number) {
   return requestClient.delete(`/hr/regularization/${id}`);
 }
-

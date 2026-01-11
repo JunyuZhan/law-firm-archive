@@ -1,5 +1,1 @@
-import UserTreeSelect from './index.vue';
-
-export { UserTreeSelect };
-export default UserTreeSelect;
-
+export { default, default as UserTreeSelect } from './index.vue';

@@ -1,12 +1,19 @@
 <script setup lang="ts">
+import type {
+  IDomEditor,
+  IEditorConfig,
+  IToolbarConfig,
+} from '@wangeditor/editor';
+
 /**
  * 富文本模板编辑器组件
  * 支持变量插入的真正富文本编辑器
  */
-import { ref, shallowRef, onBeforeUnmount, watch, computed } from 'vue';
+import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue';
+
 import { Editor, Toolbar } from '@wangeditor/editor-for-vue';
-import type { IEditorConfig, IToolbarConfig, IDomEditor } from '@wangeditor/editor';
-import { Dropdown, Menu, MenuItem, Button, Tooltip, Tag, Space } from 'ant-design-vue';
+import { Space, Tag, Tooltip } from 'ant-design-vue';
+
 import '@wangeditor/editor/dist/css/style.css';
 
 interface VariableItem {
@@ -15,20 +22,23 @@ interface VariableItem {
   description?: string;
 }
 
-const props = withDefaults(defineProps<{
-  modelValue?: string;
-  placeholder?: string;
-  height?: string;
-  variables?: VariableItem[];
-  mode?: 'default' | 'simple';
-  showVariables?: boolean;
-}>(), {
-  modelValue: '',
-  placeholder: '请输入内容...',
-  height: '400px',
-  mode: 'default',
-  showVariables: true,
-});
+const props = withDefaults(
+  defineProps<{
+    height?: string;
+    mode?: 'default' | 'simple';
+    modelValue?: string;
+    placeholder?: string;
+    showVariables?: boolean;
+    variables?: VariableItem[];
+  }>(),
+  {
+    modelValue: '',
+    placeholder: '请输入内容...',
+    height: '400px',
+    mode: 'default',
+    showVariables: true,
+  },
+);
 
 const emit = defineEmits<{
   'update:modelValue': [value: string];
@@ -42,17 +52,33 @@ const htmlContent = ref(props.modelValue || '');
 
 // 默认变量列表
 const defaultVariables: VariableItem[] = [
-  { label: '委托人姓名', value: 'clientName', description: '委托人/当事人姓名' },
-  { label: '委托人身份证号', value: 'clientIdNumber', description: '委托人身份证号码' },
+  {
+    label: '委托人姓名',
+    value: 'clientName',
+    description: '委托人/当事人姓名',
+  },
+  {
+    label: '委托人身份证号',
+    value: 'clientIdNumber',
+    description: '委托人身份证号码',
+  },
   { label: '律所名称', value: 'firmName', description: '律师事务所全称' },
   { label: '律所地址', value: 'firmAddress', description: '律师事务所地址' },
   { label: '律所电话', value: 'firmPhone', description: '律师事务所电话' },
   { label: '承办律师', value: 'lawyerName', description: '承办律师姓名' },
-  { label: '律师执业证号', value: 'lawyerLicenseNo', description: '承办律师执业证号' },
+  {
+    label: '律师执业证号',
+    value: 'lawyerLicenseNo',
+    description: '承办律师执业证号',
+  },
   { label: '项目名称', value: 'matterName', description: '委托项目/案件名称' },
   { label: '案由', value: 'causeOfAction', description: '案件案由' },
   { label: '合同金额', value: 'totalAmount', description: '合同总金额' },
-  { label: '大写金额', value: 'totalAmountChinese', description: '合同金额大写' },
+  {
+    label: '大写金额',
+    value: 'totalAmountChinese',
+    description: '合同金额大写',
+  },
   { label: '签订日期', value: 'signDate', description: '合同签订日期' },
   { label: '合同编号', value: 'contractNo', description: '合同编号' },
   { label: '当前年份', value: 'currentYear', description: '当前年份' },
@@ -74,17 +100,18 @@ const editorConfig: Partial<IEditorConfig> = {
   // 但为了更安全，我们显式配置
   readOnly: false,
   // 自定义粘贴过滤（增强XSS防护）
-  customPaste: (editor, event) => {
+  customPaste: (_editor, _event) => {
     // wangeditor 会自动过滤危险内容，这里可以添加额外的过滤逻辑
-    // 默认行为即可，wangeditor 已经内置了 XSS 防护
+    // 返回 true 表示继续执行默认粘贴行为
+    return true;
   },
   MENU_CONF: {
     uploadImage: {
       customUpload(file: File, insertFn: (url: string) => void) {
         const reader = new FileReader();
-        reader.onload = () => {
+        reader.addEventListener('load', () => {
           insertFn(reader.result as string);
-        };
+        });
         reader.readAsDataURL(file);
       },
     },
@@ -114,28 +141,32 @@ function insertVariable(variable: VariableItem) {
     console.warn('编辑器未初始化');
     return;
   }
-  
+
   // 先聚焦编辑器
   editor.focus();
-  
+
   // 使用 restoreSelection 确保光标位置正确
   editor.restoreSelection();
-  
+
   // 插入变量文本（使用纯文本格式，避免 HTML 解析问题）
   const varText = `\${${variable.value}}`;
   editor.insertText(varText);
 }
 
 // 监听外部值变化
-watch(() => props.modelValue, (newVal) => {
-  if (newVal !== htmlContent.value) {
-    htmlContent.value = newVal || '';
-    const editor = editorRef.value;
-    if (editor && newVal !== editor.getHtml()) {
-      editor.setHtml(newVal || '');
+watch(
+  () => props.modelValue,
+  (newVal) => {
+    if (newVal !== htmlContent.value) {
+      htmlContent.value = newVal || '';
+      const editor = editorRef.value;
+      if (editor && newVal !== editor.getHtml()) {
+        editor.setHtml(newVal || '');
+      }
     }
-  }
-}, { immediate: true });
+  },
+  { immediate: true },
+);
 
 // 组件销毁时销毁编辑器
 onBeforeUnmount(() => {
@@ -149,15 +180,18 @@ onBeforeUnmount(() => {
 <template>
   <div class="rich-text-editor">
     <!-- 变量插入工具栏 -->
-    <div v-if="showVariables && variableList.length > 0" class="variable-toolbar">
+    <div
+      v-if="showVariables && variableList.length > 0"
+      class="variable-toolbar"
+    >
       <span class="toolbar-label">插入变量：</span>
       <Space wrap :size="4">
-        <Tooltip v-for="v in variableList" :key="v.value" :title="v.description || v.label">
-          <Tag 
-            color="blue" 
-            class="variable-tag"
-            @click="insertVariable(v)"
-          >
+        <Tooltip
+          v-for="v in variableList"
+          :key="v.value"
+          :title="v.description || v.label"
+        >
+          <Tag color="blue" class="variable-tag" @click="insertVariable(v)">
             {{ v.label }}
           </Tag>
         </Tooltip>
@@ -168,7 +202,7 @@ onBeforeUnmount(() => {
     <Toolbar
       class="editor-toolbar"
       :editor="editorRef"
-      :defaultConfig="toolbarConfig"
+      :default-config="toolbarConfig"
       :mode="mode"
     />
 
@@ -176,11 +210,11 @@ onBeforeUnmount(() => {
     <Editor
       class="editor-content"
       :style="{ height: editorHeight }"
-      :defaultConfig="editorConfig"
+      :default-config="editorConfig"
       :mode="mode"
       v-model="htmlContent"
-      @onCreated="handleCreated"
-      @onChange="handleChange"
+      @on-created="handleCreated"
+      @on-change="handleChange"
     />
   </div>
 </template>

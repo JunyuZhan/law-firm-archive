@@ -65,17 +65,28 @@ export interface UpdateInventoryDetailRequest {
 
 /** 创建资产盘点 */
 export function createAssetInventory(data: CreateAssetInventoryCommand) {
-  return requestClient.post<AssetInventoryDTO>('/admin/asset-inventories', data);
+  return requestClient.post<AssetInventoryDTO>(
+    '/admin/asset-inventories',
+    data,
+  );
 }
 
 /** 更新盘点明细 */
-export function updateInventoryDetail(detailId: number, data: UpdateInventoryDetailRequest) {
-  return requestClient.put(`/admin/asset-inventories/details/${detailId}`, data);
+export function updateInventoryDetail(
+  detailId: number,
+  data: UpdateInventoryDetailRequest,
+) {
+  return requestClient.put(
+    `/admin/asset-inventories/details/${detailId}`,
+    data,
+  );
 }
 
 /** 完成盘点 */
 export function completeAssetInventory(id: number) {
-  return requestClient.post<AssetInventoryDTO>(`/admin/asset-inventories/${id}/complete`);
+  return requestClient.post<AssetInventoryDTO>(
+    `/admin/asset-inventories/${id}/complete`,
+  );
 }
 
 /** 获取盘点详情 */
@@ -85,6 +96,7 @@ export function getAssetInventoryDetail(id: number) {
 
 /** 查询进行中的盘点 */
 export function getInProgressInventories() {
-  return requestClient.get<AssetInventoryDTO[]>('/admin/asset-inventories/in-progress');
+  return requestClient.get<AssetInventoryDTO[]>(
+    '/admin/asset-inventories/in-progress',
+  );
 }
-

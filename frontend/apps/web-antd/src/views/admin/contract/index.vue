@@ -1,30 +1,33 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed } from 'vue';
-import { message } from 'ant-design-vue';
+import type { AdminContractQueryDTO, AdminContractViewDTO } from '#/api/admin';
+
+import { computed, onMounted, reactive, ref } from 'vue';
+
 import { Page } from '@vben/common-ui';
+
 import {
-  Card,
-  Table,
   Button,
-  Space,
-  Tag,
-  Input,
-  Select,
-  DatePicker,
-  Row,
+  Card,
   Col,
-  Statistic,
-  InputNumber,
-  Modal,
+  DatePicker,
   Descriptions,
+  Input,
+  InputNumber,
+  message,
+  Modal,
+  Row,
+  Select,
+  Space,
+  Statistic,
+  Table,
+  Tag,
 } from 'ant-design-vue';
+
 import {
-  getAdminContractList,
-  getAdminContractDetail,
-  downloadJudicialFilingExcel,
   downloadContractListExcel,
-  type AdminContractViewDTO,
-  type AdminContractQueryDTO,
+  downloadJudicialFilingExcel,
+  getAdminContractDetail,
+  getAdminContractList,
 } from '#/api/admin';
 import { findCauseNameInAll } from '#/constants/causes';
 
@@ -59,26 +62,80 @@ const exportParams = reactive({
 
 // 统计数据
 const stats = computed(() => {
-  const civil = contracts.value.filter(c => c.caseType === 'CIVIL').length;
-  const criminal = contracts.value.filter(c => c.caseType === 'CRIMINAL').length;
-  const administrative = contracts.value.filter(c => c.caseType === 'ADMINISTRATIVE').length;
-  const legalCounsel = contracts.value.filter(c => c.caseType === 'LEGAL_COUNSEL').length;
-  const other = contracts.value.length - civil - criminal - administrative - legalCounsel;
-  return { civil, criminal, administrative, legalCounsel, other, total: total.value };
+  const civil = contracts.value.filter((c) => c.caseType === 'CIVIL').length;
+  const criminal = contracts.value.filter(
+    (c) => c.caseType === 'CRIMINAL',
+  ).length;
+  const administrative = contracts.value.filter(
+    (c) => c.caseType === 'ADMINISTRATIVE',
+  ).length;
+  const legalCounsel = contracts.value.filter(
+    (c) => c.caseType === 'LEGAL_COUNSEL',
+  ).length;
+  const other =
+    contracts.value.length - civil - criminal - administrative - legalCounsel;
+  return {
+    civil,
+    criminal,
+    administrative,
+    legalCounsel,
+    other,
+    total: total.value,
+  };
 });
 
 // 表格列
 const columns = [
   { title: '合同编号', dataIndex: 'contractNo', key: 'contractNo', width: 140 },
-  { title: '合同名称', dataIndex: 'name', key: 'name', width: 200, ellipsis: true },
-  { title: '委托人', dataIndex: 'clientName', key: 'clientName', width: 150, ellipsis: true },
-  { title: '对方当事人', dataIndex: 'opposingParty', key: 'opposingParty', width: 150, ellipsis: true },
-  { title: '案件类型', dataIndex: 'caseTypeName', key: 'caseTypeName', width: 100 },
-  { title: '案由', dataIndex: 'causeOfAction', key: 'causeOfAction', width: 150, ellipsis: true },
-  { title: '承办律师', dataIndex: 'leadLawyerName', key: 'leadLawyerName', width: 100 },
+  {
+    title: '合同名称',
+    dataIndex: 'name',
+    key: 'name',
+    width: 200,
+    ellipsis: true,
+  },
+  {
+    title: '委托人',
+    dataIndex: 'clientName',
+    key: 'clientName',
+    width: 150,
+    ellipsis: true,
+  },
+  {
+    title: '对方当事人',
+    dataIndex: 'opposingParty',
+    key: 'opposingParty',
+    width: 150,
+    ellipsis: true,
+  },
+  {
+    title: '案件类型',
+    dataIndex: 'caseTypeName',
+    key: 'caseTypeName',
+    width: 100,
+  },
+  {
+    title: '案由',
+    dataIndex: 'causeOfAction',
+    key: 'causeOfAction',
+    width: 150,
+    ellipsis: true,
+  },
+  {
+    title: '承办律师',
+    dataIndex: 'leadLawyerName',
+    key: 'leadLawyerName',
+    width: 100,
+  },
   { title: '律师费', dataIndex: 'totalAmount', key: 'totalAmount', width: 120 },
   { title: '签约日期', dataIndex: 'signDate', key: 'signDate', width: 110 },
-  { title: '管辖法院', dataIndex: 'jurisdictionCourt', key: 'jurisdictionCourt', width: 150, ellipsis: true },
+  {
+    title: '管辖法院',
+    dataIndex: 'jurisdictionCourt',
+    key: 'jurisdictionCourt',
+    width: 150,
+    ellipsis: true,
+  },
   { title: '操作', key: 'action', width: 80, fixed: 'right' as const },
 ];
 
@@ -174,7 +231,7 @@ async function handleExport() {
     message.warning('请选择导出年月');
     return;
   }
-  
+
   exportLoading.value = true;
   try {
     await downloadJudicialFilingExcel(exportParams.year, exportParams.month);
@@ -221,33 +278,74 @@ onMounted(() => {
 });
 </script>
 
+<script lang="ts">
+// 获取案件类型颜色
+function getCaseTypeColor(caseType: string) {
+  const colorMap: Record<string, string> = {
+    CIVIL: 'blue',
+    CRIMINAL: 'red',
+    ADMINISTRATIVE: 'orange',
+    BANKRUPTCY: 'purple',
+    IP: 'cyan',
+    ARBITRATION: 'geekblue',
+    ENFORCEMENT: 'volcano',
+    LEGAL_COUNSEL: 'green',
+    SPECIAL_SERVICE: 'lime',
+  };
+  return colorMap[caseType] || 'default';
+}
+</script>
+
 <template>
-  <Page title="合同查询" description="查看已审批通过的合同信息，用于司法局报备等">
+  <Page
+    title="合同查询"
+    description="查看已审批通过的合同信息，用于司法局报备等"
+  >
     <!-- 统计卡片 -->
-    <Row :gutter="16" style="margin-bottom: 16px;">
+    <Row :gutter="16" style="margin-bottom: 16px">
       <Col :span="4">
         <Card size="small">
-          <Statistic title="民事案件" :value="stats.civil" :value-style="{ color: '#1890ff' }" />
+          <Statistic
+            title="民事案件"
+            :value="stats.civil"
+            :value-style="{ color: '#1890ff' }"
+          />
         </Card>
       </Col>
       <Col :span="4">
         <Card size="small">
-          <Statistic title="刑事案件" :value="stats.criminal" :value-style="{ color: '#f5222d' }" />
+          <Statistic
+            title="刑事案件"
+            :value="stats.criminal"
+            :value-style="{ color: '#f5222d' }"
+          />
         </Card>
       </Col>
       <Col :span="4">
         <Card size="small">
-          <Statistic title="行政案件" :value="stats.administrative" :value-style="{ color: '#faad14' }" />
+          <Statistic
+            title="行政案件"
+            :value="stats.administrative"
+            :value-style="{ color: '#faad14' }"
+          />
         </Card>
       </Col>
       <Col :span="4">
         <Card size="small">
-          <Statistic title="法律顾问" :value="stats.legalCounsel" :value-style="{ color: '#52c41a' }" />
+          <Statistic
+            title="法律顾问"
+            :value="stats.legalCounsel"
+            :value-style="{ color: '#52c41a' }"
+          />
         </Card>
       </Col>
       <Col :span="4">
         <Card size="small">
-          <Statistic title="其他" :value="stats.other" :value-style="{ color: '#666' }" />
+          <Statistic
+            title="其他"
+            :value="stats.other"
+            :value-style="{ color: '#666' }"
+          />
         </Card>
       </Col>
       <Col :span="4">
@@ -259,25 +357,33 @@ onMounted(() => {
 
     <Card>
       <!-- 搜索栏 -->
-      <div style="margin-bottom: 16px;">
+      <div style="margin-bottom: 16px">
         <Row :gutter="16">
           <Col :span="4">
-            <Input v-model:value="queryParams.contractNo" placeholder="合同编号" allowClear />
+            <Input
+              v-model:value="queryParams.contractNo"
+              placeholder="合同编号"
+              allow-clear
+            />
           </Col>
           <Col :span="4">
-            <Input v-model:value="queryParams.clientName" placeholder="委托人名称" allowClear />
+            <Input
+              v-model:value="queryParams.clientName"
+              placeholder="委托人名称"
+              allow-clear
+            />
           </Col>
           <Col :span="3">
-            <Select 
-              v-model:value="queryParams.caseType" 
-              placeholder="案件类型" 
-              allowClear 
-              style="width: 100%" 
-              :options="caseTypeOptions" 
+            <Select
+              v-model:value="queryParams.caseType"
+              placeholder="案件类型"
+              allow-clear
+              style="width: 100%"
+              :options="caseTypeOptions"
             />
           </Col>
           <Col :span="5">
-            <DatePicker.RangePicker 
+            <DatePicker.RangePicker
               style="width: 100%"
               :placeholder="['签约开始', '签约结束']"
               @change="handleDateRangeChange"
@@ -296,31 +402,44 @@ onMounted(() => {
       </div>
 
       <!-- 导出栏 -->
-      <div style=" padding: 12px;margin-bottom: 16px; background: #fafafa; border-radius: 4px;">
+      <div
+        style="
+          padding: 12px;
+          margin-bottom: 16px;
+          background: #fafafa;
+          border-radius: 4px;
+        "
+      >
         <Row :gutter="16" align="middle">
           <Col :span="2">
-            <span style="font-weight: 500;">司法局报备导出：</span>
+            <span style="font-weight: 500">司法局报备导出：</span>
           </Col>
           <Col :span="3">
-            <InputNumber 
-              v-model:value="exportParams.year" 
-              :min="2020" 
-              :max="2030" 
+            <InputNumber
+              v-model:value="exportParams.year"
+              :min="2020"
+              :max="2030"
               placeholder="年份"
               style="width: 100%"
             />
           </Col>
           <Col :span="3">
-            <InputNumber 
-              v-model:value="exportParams.month" 
-              :min="1" 
-              :max="12" 
+            <InputNumber
+              v-model:value="exportParams.month"
+              :min="1"
+              :max="12"
               placeholder="月份"
               style="width: 100%"
             />
           </Col>
           <Col :span="4">
-            <Button type="primary" :loading="exportLoading" @click="handleExport">导出Excel</Button>
+            <Button
+              type="primary"
+              :loading="exportLoading"
+              @click="handleExport"
+            >
+              导出Excel
+            </Button>
           </Col>
         </Row>
       </div>
@@ -332,7 +451,7 @@ onMounted(() => {
         :pagination="{
           current: queryParams.pageNum,
           pageSize: queryParams.pageSize,
-          total: total,
+          total,
           showTotal: (t: number) => `共 ${t} 条`,
           showSizeChanger: true,
         }"
@@ -345,12 +464,20 @@ onMounted(() => {
             {{ formatAmount((record as AdminContractViewDTO).totalAmount) }}
           </template>
           <template v-if="column.key === 'caseTypeName'">
-            <Tag :color="getCaseTypeColor((record as AdminContractViewDTO).caseType)">
+            <Tag
+              :color="
+                getCaseTypeColor((record as AdminContractViewDTO).caseType)
+              "
+            >
               {{ (record as AdminContractViewDTO).caseTypeName }}
             </Tag>
           </template>
           <template v-if="column.key === 'causeOfAction'">
-            {{ getCauseOfActionName((record as AdminContractViewDTO).causeOfAction) }}
+            {{
+              getCauseOfActionName(
+                (record as AdminContractViewDTO).causeOfAction,
+              )
+            }}
           </template>
           <template v-if="column.key === 'action'">
             <a @click="handleView(record as AdminContractViewDTO)">查看</a>
@@ -366,11 +493,7 @@ onMounted(() => {
       width="800px"
       :footer="null"
     >
-      <Descriptions
-        v-if="contractDetail"
-        :column="2"
-        bordered
-      >
+      <Descriptions v-if="contractDetail" :column="2" bordered>
         <Descriptions.Item label="合同编号" :span="1">
           {{ contractDetail.contractNo || '-' }}
         </Descriptions.Item>
@@ -408,21 +531,3 @@ onMounted(() => {
     </Modal>
   </Page>
 </template>
-
-<script lang="ts">
-// 获取案件类型颜色
-function getCaseTypeColor(caseType: string) {
-  const colorMap: Record<string, string> = {
-    CIVIL: 'blue',
-    CRIMINAL: 'red',
-    ADMINISTRATIVE: 'orange',
-    BANKRUPTCY: 'purple',
-    IP: 'cyan',
-    ARBITRATION: 'geekblue',
-    ENFORCEMENT: 'volcano',
-    LEGAL_COUNSEL: 'green',
-    SPECIAL_SERVICE: 'lime',
-  };
-  return colorMap[caseType] || 'default';
-}
-</script>
