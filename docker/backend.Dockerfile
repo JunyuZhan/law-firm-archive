@@ -23,7 +23,8 @@ RUN VERSION=$(grep -m1 '<version>' pom.xml | sed 's/.*<version>\(.*\)<\/version>
     sed -i "s/\${project.version}/$VERSION/g" version.properties && \
     sed -i "s/\${maven.build.timestamp}/$BUILD_TIME/g" version.properties && \
     sed -i "s/\${git.commit.id.abbrev:unknown}/docker-build/g" version.properties && \
-    jar uf ../law-firm-backend-*.jar version.properties
+    JAR_FILE=$(ls ../law-firm-backend-*.jar) && \
+    jar uf "$JAR_FILE" version.properties
 
 RUN echo "Build Success 🎉"
 
