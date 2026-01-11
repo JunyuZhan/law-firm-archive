@@ -79,23 +79,23 @@ public class PortalDataService {
             dto.setMatterType(matter.getMatterType());
             dto.setMatterTypeName(getMatterTypeName(matter.getMatterType()));
             dto.setStatus(matter.getStatus());
-            dto.setStatusName(getMatterStatusName(matter.getStatus()));
+            dto.setStatusName(getStatusName(matter.getStatus()));
         }
         
         if (scopes.contains("MATTER_PROGRESS")) {
-            dto.setCurrentPhase(matter.getCurrentPhase());
-            dto.setCurrentPhaseName(getPhaseName(matter.getCurrentPhase()));
-            dto.setProgress(matter.getProgress());
+            dto.setCurrentPhase(getCurrentPhase(matter));
+            dto.setCurrentPhaseName(getPhaseName(getCurrentPhase(matter)));
+            dto.setProgress(calculateProgress(matter));
             dto.setLastUpdateTime(matter.getUpdatedAt() != null ? 
                 matter.getUpdatedAt().format(DATE_TIME_FORMATTER) : null);
         }
         
         if (scopes.contains("LAWYER_INFO")) {
-            dto.setLawyerList(getLawyerList(matter.getId()));
+            dto.setLawyerList(getTeamMembers(matter.getId()));
         }
         
         if (scopes.contains("TASK_LIST")) {
-            dto.setTaskList(getTaskList(matter.getId()));
+            dto.setTaskList(getTaskSummaries(matter.getId()));
         }
         
         if (scopes.contains("DEADLINE_INFO")) {
@@ -213,7 +213,7 @@ public class PortalDataService {
         if (token.hasScope(ClientAccessToken.SCOPE_MATTER_INFO)) {
             if (config == null || config.getShareBasicInfo()) {
                 dto.setMatterNo(matter.getMatterNo());
-                dto.setName(matter.getName());
+                dto.setMatterName(matter.getName());
                 dto.setMatterType(matter.getMatterType());
                 dto.setMatterTypeName(getMatterTypeName(matter.getMatterType()));
                 dto.setCaseType(matter.getCaseType());

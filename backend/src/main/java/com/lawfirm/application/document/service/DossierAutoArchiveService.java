@@ -47,6 +47,11 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class DossierAutoArchiveService {
 
+    // 模板类型常量
+    public static final String TEMPLATE_TYPE_APPROVAL_FORM = "APPROVAL_FORM";
+    public static final String TEMPLATE_TYPE_POWER_OF_ATTORNEY = "POWER_OF_ATTORNEY";
+    public static final String TEMPLATE_TYPE_CONTRACT = "CONTRACT";
+
     private final MatterRepository matterRepository;
     private final MatterDossierItemRepository dossierItemRepository;
     private final MatterDossierService dossierService;

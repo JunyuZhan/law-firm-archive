@@ -16,11 +16,14 @@ import java.util.List;
 public class PortalMatterDTO {
 
     // ========== 基本信息 ==========
+    @Schema(description = "项目ID")
+    private Long matterId;
+
     @Schema(description = "项目编号")
     private String matterNo;
 
     @Schema(description = "项目名称")
-    private String name;
+    private String matterName;
 
     @Schema(description = "项目类型")
     private String matterType;
@@ -56,6 +59,9 @@ public class PortalMatterDTO {
     @Schema(description = "整体进度（百分比）")
     private Integer overallProgress;
 
+    @Schema(description = "进度（百分比）- 别名")
+    private Integer progress;
+
     @Schema(description = "最近更新时间")
     private String lastUpdateTime;
 
@@ -66,13 +72,22 @@ public class PortalMatterDTO {
     @Schema(description = "团队成员列表")
     private List<TeamMemberDTO> teamMembers;
 
+    @Schema(description = "律师列表 - 别名")
+    private List<TeamMemberDTO> lawyerList;
+
     // ========== 任务信息 ==========
     @Schema(description = "任务列表")
     private List<TaskSummaryDTO> tasks;
 
+    @Schema(description = "任务列表 - 别名")
+    private List<TaskSummaryDTO> taskList;
+
     // ========== 期限信息 ==========
     @Schema(description = "关键期限列表")
     private List<DeadlineDTO> deadlines;
+
+    @Schema(description = "期限列表 - 别名")
+    private List<DeadlineDTO> deadlineList;
 
     // ========== 文档信息 ==========
     @Schema(description = "文档列表（仅标题）")
