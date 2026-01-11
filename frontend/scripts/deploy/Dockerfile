@@ -6,6 +6,9 @@ ENV PATH="$PNPM_HOME:$PATH"
 ENV NODE_OPTIONS=--max-old-space-size=8192
 ENV TZ=Asia/Shanghai
 
+# 安装 git（文档构建需要 git changelog 插件）
+RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
+
 RUN npm i -g corepack
 
 WORKDIR /app
