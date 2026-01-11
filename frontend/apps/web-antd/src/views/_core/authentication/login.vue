@@ -72,36 +72,43 @@ async function handleLogin(values: Recordable<any>) {
 </script>
 
 <template>
-  <AuthenticationLogin
-    :form-schema="formSchema"
-    :loading="authStore.loginLoading"
-    :show-code-login="false"
-    :show-qrcode-login="false"
-    :show-register="false"
-    :show-third-party-login="false"
-    :show-forget-password="true"
-    :show-remember-me="true"
-    @submit="handleLogin"
-  >
-    <!-- 在表单和记住密码之间插入滑块验证码 -->
-    <template #after-form>
-      <div class="mb-4">
-        <SliderCaptcha
-          ref="sliderCaptchaRef"
-          v-model="captchaVerified"
-          @success="handleCaptchaSuccess"
-        />
-      </div>
-    </template>
-  </AuthenticationLogin>
-  
-  <!-- 版本号显示（fixed定位，不影响布局） -->
-  <div class="version-info">
-    v{{ appVersion }}
+  <div class="login-container">
+    <AuthenticationLogin
+      :form-schema="formSchema"
+      :loading="authStore.loginLoading"
+      :show-code-login="false"
+      :show-qrcode-login="false"
+      :show-register="false"
+      :show-third-party-login="false"
+      :show-forget-password="true"
+      :show-remember-me="true"
+      @submit="handleLogin"
+    >
+      <!-- 在表单和记住密码之间插入滑块验证码 -->
+      <template #after-form>
+        <div class="mb-4">
+          <SliderCaptcha
+            ref="sliderCaptchaRef"
+            v-model="captchaVerified"
+            @success="handleCaptchaSuccess"
+          />
+        </div>
+      </template>
+    </AuthenticationLogin>
+    
+    <!-- 版本号显示 -->
+    <div class="version-info">
+      v{{ appVersion }}
+    </div>
   </div>
 </template>
 
 <style scoped>
+/* display: contents 让容器"隐形"，不影响子元素布局 */
+.login-container {
+  display: contents;
+}
+
 .version-info {
   position: fixed;
   bottom: 20px;
