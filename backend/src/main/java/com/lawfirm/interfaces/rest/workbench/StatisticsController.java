@@ -34,10 +34,11 @@ public class StatisticsController {
 
     /**
      * 获取收入统计
+     * 权限：report:finance:view（财务相关报表）
      */
     @Operation(summary = "获取收入统计")
     @GetMapping("/statistics/revenue")
-    @RequirePermission("report:list")
+    @RequirePermission("report:finance:view")
     public Result<StatisticsDTO.RevenueStats> getRevenueStats() {
         StatisticsDTO.RevenueStats stats = statisticsAppService.getRevenueStats();
         return Result.success(stats);
@@ -45,10 +46,11 @@ public class StatisticsController {
 
     /**
      * 获取项目统计
+     * 权限：report:matter:view（业务相关报表）
      */
     @Operation(summary = "获取项目统计")
     @GetMapping("/statistics/matter")
-    @RequirePermission("report:list")
+    @RequirePermission("report:matter:view")
     public Result<StatisticsDTO.MatterStats> getMatterStats() {
         StatisticsDTO.MatterStats stats = statisticsAppService.getMatterStats();
         return Result.success(stats);
@@ -56,10 +58,11 @@ public class StatisticsController {
 
     /**
      * 获取客户统计
+     * 权限：report:matter:view（业务相关报表）
      */
     @Operation(summary = "获取客户统计")
     @GetMapping("/statistics/client")
-    @RequirePermission("report:list")
+    @RequirePermission("report:matter:view")
     public Result<StatisticsDTO.ClientStats> getClientStats() {
         StatisticsDTO.ClientStats stats = statisticsAppService.getClientStats();
         return Result.success(stats);
@@ -67,10 +70,11 @@ public class StatisticsController {
 
     /**
      * 获取律师业绩排行
+     * 权限：report:finance:view（涉及业绩收入，属于财务敏感数据）
      */
     @Operation(summary = "获取律师业绩排行")
     @GetMapping("/statistics/lawyer-performance")
-    @RequirePermission("report:list")
+    @RequirePermission("report:finance:view")
     public Result<List<StatisticsDTO.LawyerPerformance>> getLawyerPerformanceRanking(
             @RequestParam(defaultValue = "10") Integer limit) {
         List<StatisticsDTO.LawyerPerformance> rankings = statisticsAppService.getLawyerPerformanceRanking(limit);

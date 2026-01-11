@@ -9,6 +9,7 @@ import type {
   CreateTimesheetCommand,
   MatterDTO,
   MatterQuery,
+  MatterSimpleDTO,
   MatterTimelineDTO,
   PageResult,
   TaskDTO,
@@ -23,6 +24,15 @@ import type {
 /** 获取项目列表 */
 export function getMatterList(params: MatterQuery) {
   return requestClient.get<PageResult<MatterDTO>>('/matter/list', { params });
+}
+
+/**
+ * 获取项目选择列表（公共接口，无需 matter:list 权限）
+ * 用于下拉选择框，所有登录用户都可以访问
+ * 返回精简数据，不包含金额、对方信息等敏感信息
+ */
+export function getMatterSelectOptions(params?: MatterQuery) {
+  return requestClient.get<PageResult<MatterSimpleDTO>>('/matter/select-options', { params });
 }
 
 /** 获取我的项目 */
@@ -108,6 +118,35 @@ export function getMatterTimeline(id: number) {
 }
 
 // ========== 合同管理 API（在项目管理模块中） ==========
+
+/** 合同查询参数 */
+export interface MatterContractQuery {
+  pageNum?: number;
+  pageSize?: number;
+  contractNo?: string;
+  name?: string;
+  clientId?: number;
+  status?: string;
+  createdAtFrom?: string;
+  createdAtTo?: string;
+  signDateFrom?: string;
+  signDateTo?: string;
+}
+
+/** 获取合同列表（律师有权限） */
+export function getMatterContractList(params: MatterContractQuery) {
+  return requestClient.get<PageResult<any>>('/matter/contract/list', { params });
+}
+
+/** 获取我的合同 */
+export function getMyContracts(params: MatterContractQuery) {
+  return requestClient.get<PageResult<any>>('/matter/contract/my', { params });
+}
+
+/** 获取合同统计信息 */
+export function getMatterContractStatistics() {
+  return requestClient.get<any>('/matter/contract/statistics');
+}
 
 /** 创建合同 */
 export function createContract(data: any) {

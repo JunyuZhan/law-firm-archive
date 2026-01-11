@@ -43,6 +43,18 @@ public class DocumentTemplateController {
     }
 
     /**
+     * 获取启用的模板列表（公共接口）
+     * 供文书制作页面选择模板使用，无需特殊权限
+     */
+    @GetMapping("/active")
+    @Operation(summary = "获取启用的模板列表（公共）", description = "供文书制作页面选择模板使用")
+    public Result<PageResult<DocumentTemplateDTO>> listActiveTemplates(DocumentTemplateQueryDTO query) {
+        // 强制只返回启用状态的模板
+        query.setStatus("ENABLED");
+        return Result.success(templateAppService.listTemplates(query));
+    }
+
+    /**
      * 获取模板详情
      */
     @GetMapping("/{id}")

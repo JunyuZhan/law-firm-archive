@@ -31,7 +31,7 @@ import {
   createMatterFromContract,
 } from '#/api/matter';
 import { getClientList } from '#/api/client';
-import { getDepartmentTree } from '#/api/system';
+import { getDepartmentTreePublic } from '#/api/system';
 import type { MatterDTO, CreateMatterCommand, UpdateMatterCommand } from '#/api/matter/types';
 import type { ClientDTO } from '#/api/client/types';
 import type { DepartmentDTO } from '#/api/system/types';
@@ -376,12 +376,12 @@ async function loadOptions() {
   }
   
   
-  // 部门树 - 需要sys:dept:list权限，律师角色可能没有
+  // 部门树 - 使用公共接口，无需特殊权限
   try {
-    const deptRes = await getDepartmentTree();
+    const deptRes = await getDepartmentTreePublic();
     departments.value = deptRes || [];
   } catch (e: any) {
-    // 403权限错误静默处理，其他错误记录警告
+    // 错误静默处理
     const status = e?.response?.status || e?.status;
     if (status !== 403) {
       console.warn('加载部门树失败', e);
@@ -889,8 +889,8 @@ onMounted(async () => {
       <!-- 工具栏按钮 -->
       <template #toolbar-buttons>
         <Space>
-          <Button type="primary" @click="handleAdd">新增项目</Button>
-          <Button @click="handleCreateContract">创建合同</Button>
+          <Button v-access:code="'matter:create'" type="primary" @click="handleAdd">新增项目</Button>
+          <Button v-access:code="['contract:create', 'matter:contract:create']" @click="handleCreateContract">创建合同</Button>
         </Space>
       </template>
 
@@ -910,9 +910,10 @@ onMounted(async () => {
       <template #action="{ row }">
         <Space>
           <a @click="handleView(row)">详情</a>
-          <a v-if="!['ARCHIVED', 'CLOSED', 'PENDING_CLOSE'].includes(row.status)" @click="handleEdit(row)">编辑</a>
+          <a v-if="!['ARCHIVED', 'CLOSED', 'PENDING_CLOSE'].includes(row.status)" v-access:code="'matter:edit'" @click="handleEdit(row)">编辑</a>
           <a 
             v-if="row.status !== 'ARCHIVED' && row.status !== 'CLOSED'"
+            v-access:code="'archive:create'"
             @click="handleArchive(row)"
             style="color: #722ed1"
           >

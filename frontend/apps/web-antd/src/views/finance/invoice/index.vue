@@ -27,7 +27,7 @@ import {
   issueInvoice,
   cancelInvoice,
 } from '#/api/finance';
-import { getClientList } from '#/api/client';
+import { getClientSelectOptions } from '#/api/client';
 import type { InvoiceDTO, InvoiceQuery, CreateInvoiceCommand } from '#/api/finance/types';
 import type { ClientDTO } from '#/api/client/types';
 
@@ -128,7 +128,7 @@ const [Grid, gridApi] = useVbenVxeGrid({
 
 async function loadOptions() {
   try {
-    const clientRes = await getClientList({ pageNum: 1, pageSize: 1000 });
+    const clientRes = await getClientSelectOptions({ pageNum: 1, pageSize: 1000 });
     clients.value = clientRes.list;
   } catch (error: any) {
     console.error('加载选项失败:', error);

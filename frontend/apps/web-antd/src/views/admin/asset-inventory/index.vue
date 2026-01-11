@@ -36,7 +36,7 @@ import type {
   UpdateInventoryDetailRequest,
 } from '#/api/admin/asset-inventory';
 import { getIdleAssets, getAssetList } from '#/api/admin/asset';
-import { getDepartmentTree } from '#/api/system';
+import { getDepartmentTreePublic } from '#/api/system';
 import type { DepartmentDTO } from '#/api/system/types';
 
 defineOptions({ name: 'AssetInventoryManagement' });
@@ -217,10 +217,10 @@ async function fetchAllAssets() {
   }
 }
 
-// 获取部门树
+// 获取部门树（使用公共接口）
 async function fetchDepartmentTree() {
   try {
-    const res = await getDepartmentTree();
+    const res = await getDepartmentTreePublic();
     departmentTree.value = res || [];
   } catch (error) {
     console.error('获取部门树失败:', error);

@@ -24,6 +24,8 @@ import { search as zhSearch } from './zh.mts';
 
 export const shared = defineConfig({
   appearance: 'dark',
+  // 部署在 /docs/ 子目录下
+  base: '/docs/',
   head: head(),
   // 忽略文档中的配置示例链接
   ignoreDeadLinks: [
@@ -39,7 +41,7 @@ export const shared = defineConfig({
   srcDir: 'src',
   themeConfig: {
     i18nRouting: true,
-    logo: 'https://unpkg.com/@vbenjs/static-source@0.1.7/source/logo-v1.webp',
+    logo: '/logos/law-firm-logo.svg',
     search: {
       options: {
         locales: {
@@ -48,12 +50,12 @@ export const shared = defineConfig({
       },
       provider: 'local',
     },
-    siteTitle: 'Vben Admin',
+    siteTitle: '律所管理系统',
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/vbenjs/vue-vben-admin' },
+      { icon: 'github', link: 'https://github.com/junyuzhan/law-firm' },
     ],
   },
-  title: 'Vben Admin',
+  title: '律所管理系统文档',
   vite: {
     build: {
       chunkSizeWarningLimit: Infinity,
@@ -147,24 +149,18 @@ function pwa(): PwaOptions {
   return {
     includeManifestIcons: false,
     manifest: {
-      description:
-        'Vben Admin is a modern admin dashboard template based on Vue 3. ',
+      description: '律师事务所管理系统使用文档',
       icons: [
         {
           sizes: '192x192',
-          src: 'https://unpkg.com/@vbenjs/static-source@0.1.7/source/pwa-icon-192.png',
-          type: 'image/png',
-        },
-        {
-          sizes: '512x512',
-          src: 'https://unpkg.com/@vbenjs/static-source@0.1.7/source/pwa-icon-512.png',
-          type: 'image/png',
+          src: '/docs/logos/law-firm-logo.svg',
+          type: 'image/svg+xml',
         },
       ],
-      id: '/',
-      name: 'Vben Admin Doc',
-      short_name: 'vben_admin_doc',
-      theme_color: '#ffffff',
+      id: '/docs/',
+      name: '律所管理系统文档',
+      short_name: 'law_firm_docs',
+      theme_color: '#1890ff',
     },
     outDir: resolve(process.cwd(), '.vitepress/dist'),
     registerType: 'autoUpdate',

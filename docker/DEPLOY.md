@@ -9,65 +9,72 @@
 - 至少 4GB RAM
 - 20GB 磁盘空间
 
-## 一键部署（推荐）
+## 一键部署
 
 ```bash
-# 1. 配置环境变量
-cp docker/env.example docker/.env
-vim docker/.env  # 修改密码和密钥
-
-# 2. 运行部署脚本
+# 在项目根目录执行
 ./scripts/deploy.sh
 ```
 
-## 手动部署
+脚本会自动完成：
+- ✅ 首次部署自动生成安全密钥（JWT、数据库密码、MinIO密钥）
+- ✅ 构建前端应用（主应用 + 文档站点）
+- ✅ 构建后端服务
+- ✅ 启动所有 Docker 容器
+- ✅ 初始化数据库和示例数据
 
-### 1. 配置环境变量
+## 手动部署（可选）
+
+如果需要手动控制部署过程：
 
 ```bash
 cd docker
+
+# 1. 复制环境变量模板（首次部署）
 cp env.example .env
-```
 
-编辑 `.env` 文件，设置以下必需的环境变量：
-
-| 变量 | 说明 | 示例 |
-|------|------|------|
-| `DB_PASSWORD` | 数据库密码 | `SecurePassword123!` |
-| `JWT_SECRET` | JWT 密钥（至少64字符） | `openssl rand -base64 64` 生成 |
-| `MINIO_SECRET_KEY` | MinIO 密钥 | `MinioSecureKey123!` |
-
-### 2. 启动服务
-
-```bash
-# 构建并启动所有服务
+# 2. 构建并启动
 docker compose -f docker-compose.prod.yml up -d --build
 
-# 查看日志
+# 3. 查看日志
 docker compose -f docker-compose.prod.yml logs -f
-```
-
-### 3. 验证部署
-
-```bash
-# 检查服务状态
-docker compose -f docker-compose.prod.yml ps
-
-# 检查后端健康状态
-curl http://localhost/api/actuator/health
 ```
 
 ## 服务列表
 
 | 服务 | 容器名称 | 端口 | 说明 |
 |------|----------|------|------|
-| frontend | law-firm-frontend | 80 | 前端 + Nginx |
+| frontend | law-firm-frontend | 80 | 前端 + Nginx（包含主应用和文档站点） |
 | backend | law-firm-backend | - | 后端 API（内部） |
 | postgres | law-firm-postgres | - | PostgreSQL 数据库 |
 | redis | law-firm-redis | - | Redis 缓存 |
 | minio | law-firm-minio | 9001 | 对象存储控制台 |
 | paddle-ocr | law-firm-ocr | - | OCR 服务 |
 | onlyoffice | law-firm-onlyoffice | - | 文档预览服务 |
+
+## 访问地址
+
+部署完成后，可通过以下地址访问：
+
+| 站点 | 地址 | 说明 |
+|------|------|------|
+| 主应用 | `http://localhost/` | 律师事务所管理系统主界面 |
+| 文档站点 | `http://localhost/docs/` | 系统使用文档和 API 文档 |
+| MinIO 控制台 | `http://localhost:9001/` | 对象存储管理界面 |
+
+## 默认账号
+
+所有账号密码统一为：`admin123`
+
+| 用户名 | 角色 |
+|--------|------|
+| admin | 管理员 |
+| director | 律所主任 |
+| lawyer1 | 律师 |
+| leader | 团队负责人 |
+| finance | 财务人员 |
+| staff | 行政人员 |
+| trainee | 实习律师 |
 
 ## 常用命令
 

@@ -50,6 +50,20 @@ public class UserController {
     }
 
     /**
+     * 获取用户选择列表（公共接口，用于选择案源人、负责律师等场景）
+     * 所有登录用户都可以访问，无需特殊权限
+     */
+    @GetMapping("/select-options")
+    public Result<PageResult<UserDTO>> getUserSelectOptions(UserQueryDTO query) {
+        // 默认只查询激活状态的用户
+        if (query.getStatus() == null) {
+            query.setStatus("ACTIVE");
+        }
+        PageResult<UserDTO> result = userAppService.listUsers(query);
+        return Result.success(result);
+    }
+
+    /**
      * 获取用户详情
      */
     @GetMapping("/{id}")

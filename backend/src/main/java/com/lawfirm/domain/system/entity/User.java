@@ -1,5 +1,6 @@
 package com.lawfirm.domain.system.entity;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lawfirm.common.base.BaseEntity;
 import com.lawfirm.common.constant.CompensationType;
@@ -57,6 +58,12 @@ public class User extends BaseEntity {
      * 部门ID
      */
     private Long departmentId;
+
+    /**
+     * 部门名称（非数据库字段，用于关联查询）
+     */
+    @TableField(exist = false)
+    private String departmentName;
 
     /**
      * 职位

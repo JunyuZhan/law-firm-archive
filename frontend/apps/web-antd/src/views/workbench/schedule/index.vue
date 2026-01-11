@@ -14,7 +14,7 @@ import {
   type ScheduleDTO, 
   type CreateScheduleCommand 
 } from '#/api/matter/schedule';
-import { getMatterList } from '#/api/matter';
+import { getMatterSelectOptions } from '#/api/matter';
 import dayjs from 'dayjs';
 
 defineOptions({ name: 'ScheduleManagement' });
@@ -110,7 +110,7 @@ async function loadTodaySchedules() {
 // 加载项目列表
 async function loadMatters() {
   try {
-    const res = await getMatterList({ pageNum: 1, pageSize: 500, status: 'ACTIVE' });
+    const res = await getMatterSelectOptions({ pageNum: 1, pageSize: 500, status: 'ACTIVE' });
     matters.value = (res.list || []).map((m: any) => ({ id: m.id, name: m.name, matterNo: m.matterNo || '' }));
   } catch (error) {
     console.error('加载项目列表失败', error);

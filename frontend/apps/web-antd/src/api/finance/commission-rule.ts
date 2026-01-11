@@ -92,7 +92,8 @@ export const commissionRuleApi = {
   },
 
   /**
-   * 获取启用的规则列表（用于下拉选择）
+   * 获取启用的规则列表（公共接口，用于律师创建合同时选择）
+   * 无需特殊权限
    */
   getActiveRules: () => {
     return requestClient.get<CommissionRule[]>('/finance/commission/rules/active');

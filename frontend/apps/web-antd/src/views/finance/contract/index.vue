@@ -21,9 +21,9 @@ import {
 import {
   getContractList,
 } from '#/api/finance';
-import { getClientList } from '#/api/client';
-import { getMatterList } from '#/api/matter';
-import { getUserList, getDepartmentTree } from '#/api/system';
+import { getClientSelectOptions } from '#/api/client';
+import { getMatterSelectOptions } from '#/api/matter';
+import { getUserSelectOptions, getDepartmentTreePublic } from '#/api/system';
 import type { ContractDTO, ContractQuery } from '#/api/finance/types';
 import type { ClientDTO } from '#/api/client/types';
 import type { MatterDTO } from '#/api/matter/types';
@@ -122,10 +122,10 @@ async function fetchData() {
 // 加载选项数据
 async function loadOptions() {
   const [clientRes, matterRes, userRes, deptRes] = await Promise.all([
-    getClientList({ pageNum: 1, pageSize: 1000 }),
-    getMatterList({ pageNum: 1, pageSize: 1000 }),
-    getUserList({ pageNum: 1, pageSize: 1000 }),
-    getDepartmentTree(),
+    getClientSelectOptions({ pageNum: 1, pageSize: 1000 }),
+    getMatterSelectOptions({ pageNum: 1, pageSize: 1000 }),
+    getUserSelectOptions({ pageNum: 1, pageSize: 1000 }),
+    getDepartmentTreePublic(),
   ]);
   clients.value = clientRes.list;
   matters.value = matterRes.list;

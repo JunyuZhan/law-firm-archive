@@ -1,10 +1,19 @@
 #!/bin/bash
-# 智慧律所管理系统 - 一键部署脚本
+# 律师事务所管理系统 - 一键部署脚本
 
 set -e
 
+# 从前端配置读取律所名称
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+FRONTEND_ENV="$SCRIPT_DIR/../frontend/apps/web-antd/.env"
+if [ -f "$FRONTEND_ENV" ]; then
+    FIRM_NAME=$(grep "^VITE_APP_TITLE=" "$FRONTEND_ENV" | cut -d'=' -f2)
+else
+    FIRM_NAME="律师事务所"
+fi
+
 echo "=============================================="
-echo "    智慧律所管理系统 - Docker 部署"
+echo "    ${FIRM_NAME} - Docker 部署"
 echo "=============================================="
 
 # 颜色定义
@@ -179,12 +188,16 @@ docker compose -f docker-compose.prod.yml ps
 
 echo ""
 echo "=============================================="
-echo -e "${GREEN}    ✅ 部署完成！${NC}"
+echo -e "${GREEN}    ✅ ${FIRM_NAME} - 部署完成！${NC}"
 echo "=============================================="
 echo ""
-echo "🌐 访问地址：http://localhost"
+echo "🌐 主应用：http://localhost"
+echo "📚 文档站点：http://localhost/docs/"
 echo "🔧 API 地址：http://localhost/api"
 echo "📦 MinIO 控制台：http://localhost:9001"
+echo ""
+echo "👤 默认账号（密码统一为 admin123）："
+echo "   admin / director / lawyer1 / leader / finance / staff / trainee"
 echo ""
 echo "📋 查看日志：cd docker && docker compose -f docker-compose.prod.yml logs -f"
 echo "🛑 停止服务：cd docker && docker compose -f docker-compose.prod.yml down"

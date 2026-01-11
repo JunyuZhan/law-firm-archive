@@ -56,11 +56,35 @@ public class UserAppService {
                 query.getCompensationType()
         );
 
-        List<UserDTO> records = page.getRecords().stream()
-                .map(this::toDTO)
+        List<User> users = page.getRecords();
+        if (users.isEmpty()) {
+            return PageResult.of(new ArrayList<>(), 0L, query.getPageNum(), query.getPageSize());
+        }
+
+        // 批量加载用户角色信息
+        List<Long> userIds = users.stream().map(User::getId).collect(Collectors.toList());
+        Map<Long, List<Long>> userRoleMap = loadUserRolesMap(userIds);
+
+        List<UserDTO> records = users.stream()
+                .map(user -> toDTO(user, userRoleMap.getOrDefault(user.getId(), new ArrayList<>())))
                 .collect(Collectors.toList());
 
         return PageResult.of(records, page.getTotal(), query.getPageNum(), query.getPageSize());
+    }
+
+    /**
+     * 批量加载用户角色映射
+     */
+    private Map<Long, List<Long>> loadUserRolesMap(List<Long> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return new HashMap<>();
+        }
+        List<UserMapper.UserRoleMapping> mappings = userMapper.selectRoleIdsByUserIds(userIds);
+        return mappings.stream()
+                .collect(Collectors.groupingBy(
+                        UserMapper.UserRoleMapping::getUserId,
+                        Collectors.mapping(UserMapper.UserRoleMapping::getRoleId, Collectors.toList())
+                ));
     }
 
     /**
@@ -643,6 +667,10 @@ public class UserAppService {
      * Entity 转 DTO
      */
     private UserDTO toDTO(User user) {
+        return toDTO(user, null);
+    }
+
+    private UserDTO toDTO(User user, List<Long> roleIds) {
         UserDTO dto = new UserDTO();
         dto.setId(user.getId());
         dto.setUsername(user.getUsername());
@@ -651,6 +679,7 @@ public class UserAppService {
         dto.setPhone(user.getPhone());
         dto.setAvatarUrl(user.getAvatarUrl());
         dto.setDepartmentId(user.getDepartmentId());
+        dto.setDepartmentName(user.getDepartmentName());
         dto.setPosition(user.getPosition());
         dto.setEmployeeNo(user.getEmployeeNo());
         dto.setLawyerLicenseNo(user.getLawyerLicenseNo());
@@ -660,6 +689,7 @@ public class UserAppService {
         dto.setStatus(user.getStatus());
         dto.setCreatedAt(user.getCreatedAt());
         dto.setUpdatedAt(user.getUpdatedAt());
+        dto.setRoleIds(roleIds);
         return dto;
     }
 }

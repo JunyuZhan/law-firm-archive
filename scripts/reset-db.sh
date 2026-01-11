@@ -10,7 +10,7 @@
 set -e
 
 CONTAINER_NAME="law-firm-postgres"
-DB_NAME="law_firm_dev"
+DB_NAME="law_firm"
 DB_USER="law_admin"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INIT_DB_DIR="$SCRIPT_DIR/init-db"
@@ -43,9 +43,12 @@ docker exec $CONTAINER_NAME psql -U $DB_USER -d postgres -c "CREATE DATABASE $DB
 echo ""
 echo "2. 执行初始化脚本..."
 
-# 使用 init-database.sh
-cd "$INIT_DB_DIR"
-./init-database.sh --docker
+# 按顺序执行 SQL 文件
+for sql_file in $(ls "$INIT_DB_DIR"/*.sql 2>/dev/null | sort); do
+    filename=$(basename "$sql_file")
+    echo "  执行: $filename"
+    docker exec -i $CONTAINER_NAME psql -U $DB_USER -d $DB_NAME < "$sql_file"
+done
 
 echo ""
 echo "=========================================="

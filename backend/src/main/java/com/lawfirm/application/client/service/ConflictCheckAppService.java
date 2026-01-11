@@ -431,9 +431,19 @@ public class ConflictCheckAppService {
         // 转换为相似度百分比
         int similarity = (int) ((1.0 - (double) distance / maxLen) * 100);
         
-        // 额外检查：共同字符比例
+        // 额外检查：共同字符比例（使用较长字符串作为分母，避免短名称匹配过高）
         int commonChars = countCommonChars(s1, s2);
-        int commonRatio = (int) ((double) commonChars / Math.min(s1.length(), s2.length()) * 100);
+        int commonRatio = (int) ((double) commonChars / Math.max(s1.length(), s2.length()) * 100);
+        
+        // 如果长度差异较大，降低相似度（避免"张三"和"张三疯"被认为100%相似）
+        int lenDiff = Math.abs(s1.length() - s2.length());
+        int minLen = Math.min(s1.length(), s2.length());
+        if (lenDiff > 0 && minLen > 0) {
+            // 长度差异惩罚：每多一个字符差异，降低一定比例
+            double lenPenalty = 1.0 - (double) lenDiff / (minLen + lenDiff) * 0.5;
+            similarity = (int) (similarity * lenPenalty);
+            commonRatio = (int) (commonRatio * lenPenalty);
+        }
         
         // 取两种算法的较高值
         return Math.max(similarity, commonRatio);

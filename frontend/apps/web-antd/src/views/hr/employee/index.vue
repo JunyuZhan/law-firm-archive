@@ -45,9 +45,9 @@ import type {
   CreateEmployeeCommand,
   UpdateEmployeeCommand,
 } from '#/api/hr/employee';
-import { getUserList } from '#/api/system';
+import { getUserSelectOptions } from '#/api/system';
 import type { UserDTO, UserQuery } from '#/api/system/types';
-import { getDepartmentTree } from '#/api/system';
+import { getDepartmentTreePublic } from '#/api/system';
 import type { DepartmentDTO } from '#/api/system/types';
 
 defineOptions({ name: 'EmployeeManagement' });
@@ -200,7 +200,8 @@ async function fetchUsers() {
       pageNum: userPagination.current,
       pageSize: userPagination.pageSize,
     };
-    const res = await getUserList(params);
+    // 使用公共接口，无需 sys:user:list 权限
+    const res = await getUserSelectOptions(params);
     userList.value = res.list || [];
     userPagination.total = res.total || 0;
     userTotal.value = res.total || 0;
@@ -328,7 +329,7 @@ async function fetchData() {
 
 async function fetchDepartments() {
   try {
-    departmentTree.value = await getDepartmentTree();
+    departmentTree.value = await getDepartmentTreePublic();
   } catch (error) {
     console.error('获取部门列表失败:', error);
     departmentTree.value = [];

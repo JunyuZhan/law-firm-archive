@@ -410,12 +410,13 @@ async function handleConflictCheck() {
       riskSummary: result.riskSummary,
     };
     
-    if (result.hasConflict) {
+    // 根据风险级别显示不同提示，与弹窗显示保持一致
+    if (result.hasConflict || result.riskLevel === 'HIGH') {
       message.warning('发现可能存在利益冲突，请仔细核对');
     } else if (result.riskLevel === 'MEDIUM') {
       message.warning('发现相似客户，请确认是否为同一人/公司');
-    } else if (result.candidates && result.candidates.length > 0) {
-      message.info('发现相似名称的客户，请核对后继续');
+    } else if (result.riskLevel === 'LOW' || (result.candidates && result.candidates.length > 0)) {
+      message.info('发现名称相近的客户，请核对后继续');
     } else {
       message.success('未发现冲突，可以创建客户');
     }
@@ -708,11 +709,12 @@ onMounted(async () => {
             <Space>
               <Button type="primary" @click="handleSearch">查询</Button>
               <Button @click="handleReset">重置</Button>
-              <Button type="primary" @click="handleAdd">
+              <Button v-access:code="'client:create'" type="primary" @click="handleAdd">
                 <Plus class="size-4" />新增客户
               </Button>
               <Button
                 v-if="selectedRowKeys.length > 0"
+                v-access:code="'client:delete'"
                 danger
                 @click="handleBatchDelete"
               >
@@ -732,12 +734,12 @@ onMounted(async () => {
         <!-- 操作列 -->
         <template #action="{ row }">
           <Space>
-            <a @click="handleEdit(row)">编辑</a>
+            <a v-access:code="'client:edit'" @click="handleEdit(row)">编辑</a>
             <template v-if="row.status === 'POTENTIAL'">
-              <a @click="handleConvert(row)">转正式</a>
+              <a v-access:code="'client:edit'" @click="handleConvert(row)">转正式</a>
             </template>
             <Popconfirm title="确定删除？" @confirm="handleDelete(row)">
-              <a style="color: red">删除</a>
+              <a v-access:code="'client:delete'" style="color: red">删除</a>
             </Popconfirm>
           </Space>
         </template>

@@ -159,7 +159,11 @@ INSERT INTO public.sys_external_integration VALUES (21, 'AI_CUSTOM', '自定义 
 --
 
 INSERT INTO public.sys_menu VALUES (31, 3, '客户列表', '/crm/client', 'crm/client/index', NULL, 'ContactsOutlined', 'MENU', 'client:list', 1, true, 'ENABLED', false, true, '2026-01-04 16:14:15.896673', '2026-01-04 16:14:15.896673', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_menu VALUES (311, 31, '创建客户', NULL, NULL, NULL, NULL, 'BUTTON', 'client:create', 1, true, 'ENABLED', false, false, '2026-01-04 16:14:15.896673', '2026-01-04 16:14:15.896673', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_menu VALUES (312, 31, '编辑客户', NULL, NULL, NULL, NULL, 'BUTTON', 'client:update', 2, true, 'ENABLED', false, false, '2026-01-04 16:14:15.896673', '2026-01-04 16:14:15.896673', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_menu VALUES (313, 31, '删除客户', NULL, NULL, NULL, NULL, 'BUTTON', 'client:delete', 3, true, 'ENABLED', false, false, '2026-01-04 16:14:15.896673', '2026-01-04 16:14:15.896673', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (32, 3, '利冲审查', '/crm/conflict', 'crm/conflict/index', NULL, 'SecurityScanOutlined', 'MENU', 'conflict:apply', 2, true, 'ENABLED', false, true, '2026-01-04 16:14:15.896673', '2026-01-04 16:14:15.896673', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_menu VALUES (320, 32, '利冲查询', NULL, NULL, NULL, NULL, 'BUTTON', 'conflict:list', 1, true, 'ENABLED', false, false, '2026-01-04 16:14:15.896673', '2026-01-04 16:14:15.896673', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (33, 3, '案源管理', '/crm/lead', 'crm/lead/index', NULL, 'FunnelPlotOutlined', 'MENU', 'lead:list', 3, true, 'ENABLED', false, true, '2026-01-04 16:14:15.896673', '2026-01-04 16:14:15.896673', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (81, 8, '档案列表', '/archive/list', 'archive/list/index', NULL, 'FolderOpenOutlined', 'MENU', 'archive:list', 1, true, 'ENABLED', false, true, '2026-01-04 16:14:15.89755', '2026-01-04 16:14:15.89755', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (82, 8, '档案借阅', '/archive/borrow', 'archive/borrow/index', NULL, 'ExportOutlined', 'MENU', 'archive:borrow', 2, true, 'ENABLED', false, true, '2026-01-04 16:14:15.89755', '2026-01-04 16:14:15.89755', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
@@ -447,7 +451,23 @@ INSERT INTO public.sys_role_menu VALUES (117, 6, 6, '2026-01-04 16:14:15.901047'
 INSERT INTO public.sys_role_menu VALUES (118, 6, 8, '2026-01-04 16:14:15.901047') ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_role_menu VALUES (119, 6, 11, '2026-01-04 16:14:15.901047') ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_role_menu VALUES (120, 6, 31, '2026-01-04 16:14:15.901047') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_role_menu VALUES (2017, 6, 311, '2026-01-11 09:39:00') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_role_menu VALUES (2018, 6, 312, '2026-01-11 09:39:00') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_role_menu VALUES (2019, 6, 313, '2026-01-11 09:39:00') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_role_menu VALUES (2020, 2, 311, '2026-01-11 09:39:00') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_role_menu VALUES (2021, 2, 312, '2026-01-11 09:39:00') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_role_menu VALUES (2022, 2, 313, '2026-01-11 09:39:00') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_role_menu VALUES (2023, 3, 311, '2026-01-11 09:39:00') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_role_menu VALUES (2024, 3, 312, '2026-01-11 09:39:00') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_role_menu VALUES (2025, 3, 313, '2026-01-11 09:39:00') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_role_menu VALUES (2026, 1, 311, '2026-01-11 09:39:00') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_role_menu VALUES (2027, 1, 312, '2026-01-11 09:39:00') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_role_menu VALUES (2028, 1, 313, '2026-01-11 09:39:00') ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_role_menu VALUES (121, 6, 32, '2026-01-04 16:14:15.901047') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_role_menu VALUES (2013, 6, 320, '2026-01-11 09:30:00') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_role_menu VALUES (2014, 2, 320, '2026-01-11 09:30:00') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_role_menu VALUES (2015, 3, 320, '2026-01-11 09:30:00') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_role_menu VALUES (2016, 1, 320, '2026-01-11 09:30:00') ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_role_menu VALUES (122, 6, 33, '2026-01-04 16:14:15.901047') ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_role_menu VALUES (123, 6, 41, '2026-01-04 16:14:15.901047') ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_role_menu VALUES (124, 6, 42, '2026-01-04 16:14:15.901047') ON CONFLICT (id) DO NOTHING;
@@ -1123,12 +1143,17 @@ ON CONFLICT (role_id, menu_id) DO NOTHING;
 -- BCrypt 哈希 (cost=12): $2a$12$VwbtDL2dik9LtPNlLf7qqu64ZSlS67cedlG/eQXm0mGK7sONamcLO
 -- =====================================================
 
--- 插入默认用户
-INSERT INTO public.sys_user (id, username, password, real_name, email, phone, status, deleted, created_at, updated_at, version)
+-- 插入默认用户（包含部门和职位）
+-- 部门ID: 1-诉讼部, 2-财务部, 3-行政部, 4-第一组, 5-第二组
+INSERT INTO public.sys_user (id, username, password, real_name, email, phone, department_id, position, status, deleted, created_at, updated_at, version)
 VALUES 
-(1, 'admin', '$2a$12$VwbtDL2dik9LtPNlLf7qqu64ZSlS67cedlG/eQXm0mGK7sONamcLO', '系统管理员', 'admin@lawfirm.com', '13800000001', 'ACTIVE', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0),
-(2, 'director', '$2a$12$VwbtDL2dik9LtPNlLf7qqu64ZSlS67cedlG/eQXm0mGK7sONamcLO', '律所主任', 'director@lawfirm.com', '13800000002', 'ACTIVE', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0),
-(3, 'lawyer1', '$2a$12$VwbtDL2dik9LtPNlLf7qqu64ZSlS67cedlG/eQXm0mGK7sONamcLO', '张律师', 'lawyer1@lawfirm.com', '13800000003', 'ACTIVE', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0)
+(1, 'admin', '$2a$12$VwbtDL2dik9LtPNlLf7qqu64ZSlS67cedlG/eQXm0mGK7sONamcLO', '系统管理员', 'admin@lawfirm.com', '13800000001', 3, '系统管理员', 'ACTIVE', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0),
+(2, 'director', '$2a$12$VwbtDL2dik9LtPNlLf7qqu64ZSlS67cedlG/eQXm0mGK7sONamcLO', '律所主任', 'director@lawfirm.com', '13800000002', 1, '律所主任', 'ACTIVE', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0),
+(3, 'lawyer1', '$2a$12$VwbtDL2dik9LtPNlLf7qqu64ZSlS67cedlG/eQXm0mGK7sONamcLO', '张律师', 'lawyer1@lawfirm.com', '13800000003', 1, '高级律师', 'ACTIVE', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0),
+(4, 'leader', '$2a$12$VwbtDL2dik9LtPNlLf7qqu64ZSlS67cedlG/eQXm0mGK7sONamcLO', '李团长', 'leader@lawfirm.com', '13800000004', 4, '团队负责人', 'ACTIVE', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0),
+(5, 'finance', '$2a$12$VwbtDL2dik9LtPNlLf7qqu64ZSlS67cedlG/eQXm0mGK7sONamcLO', '王财务', 'finance@lawfirm.com', '13800000005', 2, '财务主管', 'ACTIVE', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0),
+(6, 'staff', '$2a$12$VwbtDL2dik9LtPNlLf7qqu64ZSlS67cedlG/eQXm0mGK7sONamcLO', '赵行政', 'staff@lawfirm.com', '13800000006', 3, '行政专员', 'ACTIVE', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0),
+(7, 'trainee', '$2a$12$VwbtDL2dik9LtPNlLf7qqu64ZSlS67cedlG/eQXm0mGK7sONamcLO', '陈实习', 'trainee@lawfirm.com', '13800000007', 1, '实习律师', 'ACTIVE', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0)
 ON CONFLICT (id) DO NOTHING;
 
 -- 设置用户ID序列
@@ -1139,5 +1164,9 @@ INSERT INTO public.sys_user_role (user_id, role_id)
 VALUES 
 (1, 1),  -- admin -> 管理员角色
 (2, 2),  -- director -> 主任角色
-(3, 6)   -- lawyer1 -> 律师角色
+(3, 6),  -- lawyer1 -> 律师角色
+(4, 3),  -- leader -> 团队负责人角色
+(5, 5),  -- finance -> 财务角色
+(6, 8),  -- staff -> 行政角色
+(7, 9)   -- trainee -> 实习律师角色
 ON CONFLICT (user_id, role_id) DO NOTHING;

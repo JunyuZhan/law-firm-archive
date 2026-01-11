@@ -164,4 +164,34 @@ public interface UserMapper extends BaseMapper<User> {
         </script>
         """)
     void batchDeleteUserRoles(@Param("userIds") List<Long> userIds);
+
+    /**
+     * 批量查询用户角色ID列表
+     */
+    @Select("""
+        <script>
+        SELECT user_id, role_id FROM sys_user_role WHERE user_id IN
+        <foreach collection="userIds" item="userId" open="(" separator="," close=")">
+            #{userId}
+        </foreach>
+        </script>
+        """)
+    @Results({
+        @Result(column = "user_id", property = "userId"),
+        @Result(column = "role_id", property = "roleId")
+    })
+    List<UserRoleMapping> selectRoleIdsByUserIds(@Param("userIds") List<Long> userIds);
+
+    /**
+     * 用户角色映射 DTO
+     */
+    class UserRoleMapping {
+        private Long userId;
+        private Long roleId;
+        
+        public Long getUserId() { return userId; }
+        public void setUserId(Long userId) { this.userId = userId; }
+        public Long getRoleId() { return roleId; }
+        public void setRoleId(Long roleId) { this.roleId = roleId; }
+    }
 }

@@ -231,7 +231,7 @@ function getStatusColor(status: string) {
     <Grid>
       <!-- 工具栏按钮 -->
       <template #toolbar-buttons>
-        <Button type="primary" @click="handleAdd">新增用户</Button>
+        <Button v-access:code="'user:create'" type="primary" @click="handleAdd">新增用户</Button>
       </template>
 
       <!-- 状态列 -->
@@ -244,12 +244,12 @@ function getStatusColor(status: string) {
       <!-- 操作列 -->
       <template #action="{ row }">
         <Space>
-          <a @click="handleEdit(row)">编辑</a>
-          <a @click="handleResetPassword(row)">重置密码</a>
-          <a @click="handleStatusChange(row)">
+          <a v-access:code="'user:edit'" @click="handleEdit(row)">编辑</a>
+          <a v-access:code="'user:reset-password'" @click="handleResetPassword(row)">重置密码</a>
+          <a v-access:code="'user:edit'" @click="handleStatusChange(row)">
             {{ row.status === 'ACTIVE' ? '禁用' : '启用' }}
           </a>
-          <a style="color: #ff4d4f" @click="handleDelete(row)">删除</a>
+          <a v-access:code="'user:delete'" style="color: #ff4d4f" @click="handleDelete(row)">删除</a>
         </Space>
       </template>
     </Grid>

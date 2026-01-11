@@ -70,9 +70,14 @@ export interface PreviewTemplateCommand {
 
 // ========== 文档模板 API ==========
 
-/** 获取模板列表 */
+/** 获取模板列表（需要 doc:template:list 权限） */
 export function getTemplateList(params: DocumentTemplateQuery) {
   return requestClient.get<PageResult<DocumentTemplateDTO>>('/document/template', { params });
+}
+
+/** 获取启用的模板列表（公共接口，用于文书制作选择模板） */
+export function getActiveTemplateList(params?: DocumentTemplateQuery) {
+  return requestClient.get<PageResult<DocumentTemplateDTO>>('/document/template/active', { params });
 }
 
 /** 获取模板详情 */

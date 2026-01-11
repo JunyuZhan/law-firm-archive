@@ -15,7 +15,12 @@ COPY . /app
 
 # 安装依赖
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
+
+# 构建主前端应用
 RUN pnpm run build:antd
+
+# 构建文档站点
+RUN pnpm run build:docs
 
 RUN echo "Builder Success 🎉"
 
@@ -25,8 +30,11 @@ FROM nginx:stable-alpine AS production
 RUN echo "types { application/javascript js mjs; }" > /etc/nginx/conf.d/mjs.conf \
     && rm -rf /etc/nginx/conf.d/default.conf
 
-# 复制构建产物
+# 复制主前端构建产物
 COPY --from=builder /app/apps/web-antd/dist /usr/share/nginx/html
+
+# 复制文档站点构建产物
+COPY --from=builder /app/docs/.vitepress/dist /usr/share/nginx/html/docs
 
 # 复制 nginx 配置
 COPY --from=builder /app/scripts/deploy/nginx.conf /etc/nginx/nginx.conf

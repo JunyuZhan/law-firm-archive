@@ -36,7 +36,7 @@ import {
   createPayment,
   confirmPayment,
 } from '#/api/finance';
-import { getClientList } from '#/api/client';
+import { getClientSelectOptions } from '#/api/client';
 import { recognizeBankReceipt, matchPayment, type OcrResultDTO, type MatchCandidateDTO, type ReconciliationResultDTO, OCR_DISABLED, OCR_DISABLED_MESSAGE } from '#/api/ocr';
 import type { FeeDTO, FeeQuery, CreatePaymentCommand, PaymentDTO } from '#/api/finance/types';
 import type { ClientDTO } from '#/api/client/types';
@@ -160,7 +160,7 @@ const paymentColumns = [
 // ==================== 加载选项 ====================
 
 async function loadOptions() {
-  const clientRes = await getClientList({ pageNum: 1, pageSize: 1000 });
+  const clientRes = await getClientSelectOptions({ pageNum: 1, pageSize: 1000 });
   clients.value = clientRes.list;
 }
 
@@ -456,7 +456,7 @@ onMounted(() => {
         </template>
         <template #action="{ row }">
           <Space>
-            <a v-if="row.status !== 'PAID'" @click="handleAdd(row)">登记收款</a>
+            <a v-if="row.status !== 'PAID'" v-access:code="'fee:payment'" @click="handleAdd(row)">登记收款</a>
             <a v-if="row.status === 'PAID' || row.status === 'PARTIAL'" @click="handleViewPayments(row)">查看明细</a>
           </Space>
         </template>

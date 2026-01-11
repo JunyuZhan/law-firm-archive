@@ -6,7 +6,7 @@ import { Page } from '@vben/common-ui';
 import { useUserStore } from '@vben/stores';
 import { getMatterDetail, getMatterTimeline, applyCloseMatter, getMatterCloseApprovers, type MatterDTO, type MatterTimelineDTO } from '#/api/matter';
 import { getDeadlinesByMatterId, createDeadline, completeDeadline, deleteDeadline, autoCreateDeadlines, DEADLINE_TYPE_OPTIONS, type DeadlineDTO, type CreateDeadlineCommand } from '#/api/matter/deadline';
-import { getActiveTemplates, createLetterApplication, getApplicationsByMatter, type LetterTemplateDTO, type LetterApplicationDTO, type CreateLetterApplicationCommand } from '#/api/admin';
+import { getActiveTemplatesPublic, createLetterApplication, getApplicationsByMatter, type LetterTemplateDTO, type LetterApplicationDTO, type CreateLetterApplicationCommand } from '#/api/admin';
 import { getSchedules, createSchedule, deleteSchedule, cancelSchedule, SCHEDULE_TYPE_OPTIONS, REMINDER_OPTIONS, type ScheduleDTO, type CreateScheduleCommand } from '#/api/matter/schedule';
 import { UserTreeSelect } from '#/components/UserTreeSelect';
 import { EvidenceListManager } from '#/components/EvidenceManager';
@@ -156,10 +156,10 @@ async function loadMatterDetail() {
   }
 }
 
-// 加载出函选项数据
+// 加载出函选项数据（使用公共接口，无需 admin:letter:list 权限）
 async function loadLetterOptions() {
   try {
-    const templateRes = await getActiveTemplates();
+    const templateRes = await getActiveTemplatesPublic();
     templates.value = templateRes || [];
   } catch (error) {
     console.error('加载出函选项失败', error);

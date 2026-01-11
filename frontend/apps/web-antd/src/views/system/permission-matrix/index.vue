@@ -61,15 +61,33 @@ const filterParams = reactive({
 
 const moduleOptions = [
   { label: '全部', value: undefined },
+  // 业务模块
   { label: '客户管理', value: 'client' },
+  { label: '案源管理', value: 'lead' },
+  { label: '利冲检查', value: 'conflict' },
   { label: '项目管理', value: 'matter' },
-  { label: '财务管理', value: 'finance' },
-  { label: '文档管理', value: 'document' },
-  { label: '证据管理', value: 'evidence' },
-  { label: '档案管理', value: 'archive' },
-  { label: '工时管理', value: 'timesheet' },
+  { label: '合同管理', value: 'contract' },
   { label: '任务管理', value: 'task' },
+  { label: '期限管理', value: 'deadline' },
+  { label: '工时管理', value: 'timesheet' },
+  { label: '日程管理', value: 'schedule' },
+  // 财务模块
+  { label: '财务管理', value: 'finance' },
+  { label: '收费管理', value: 'fee' },
+  { label: '工资管理', value: 'payroll' },
+  // 文档档案
+  { label: '文档管理', value: 'doc' },
+  { label: '档案管理', value: 'archive' },
+  { label: '知识库', value: 'knowledge' },
+  // 审批报表
+  { label: '审批管理', value: 'approval' },
+  { label: '报表统计', value: 'report' },
+  // 人事行政
+  { label: '人力资源', value: 'hr' },
+  { label: '行政管理', value: 'admin' },
+  // 系统管理
   { label: '系统管理', value: 'sys' },
+  { label: '系统配置', value: 'system' },
 ];
 
 const permissionTypeOptions = [

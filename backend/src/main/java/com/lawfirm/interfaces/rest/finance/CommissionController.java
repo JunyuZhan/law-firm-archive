@@ -80,6 +80,21 @@ public class CommissionController {
         return Result.success(rules);
     }
 
+    /**
+     * 获取激活的提成规则列表（公共接口）
+     * 供律师创建合同时选择提成方案使用，无需特殊权限
+     */
+    @GetMapping("/rules/active")
+    @Operation(summary = "获取激活的提成规则列表（公共）", description = "供律师创建合同时选择提成方案使用，所有登录用户都可以访问")
+    public Result<List<CommissionRuleDTO>> listActiveRules() {
+        List<CommissionRuleDTO> rules = commissionAppService.listCommissionRules();
+        // 只返回激活的规则
+        List<CommissionRuleDTO> activeRules = rules.stream()
+                .filter(CommissionRuleDTO::getActive)
+                .collect(java.util.stream.Collectors.toList());
+        return Result.success(activeRules);
+    }
+
     @PutMapping("/rules/{id}/set-default")
     @RequirePermission("finance:commission:rule:update")
     @Operation(summary = "设为默认规则", description = "仅系统管理员和主任可以操作")

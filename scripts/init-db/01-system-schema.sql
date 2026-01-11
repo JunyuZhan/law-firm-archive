@@ -1140,7 +1140,12 @@ CREATE TABLE public.sys_role_change_log (
     pending_business_count integer DEFAULT 0,
     changed_by bigint,
     changed_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+    version integer DEFAULT 1,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    created_by bigint,
+    updated_by bigint,
+    deleted boolean DEFAULT false
 );
 --
 -- Name: TABLE sys_role_change_log; Type: COMMENT; Schema: public; Owner: -

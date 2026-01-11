@@ -47,6 +47,11 @@ export function getUserList(params: UserQuery) {
   return requestClient.get<PageResult<UserDTO>>('/system/user/list', { params });
 }
 
+/** 获取用户选择列表（公共接口，无需特殊权限） */
+export function getUserSelectOptions(params: UserQuery) {
+  return requestClient.get<PageResult<UserDTO>>('/system/user/select-options', { params });
+}
+
 /** 获取用户详情 */
 export function getUserDetail(id: number) {
   return requestClient.get<UserDTO>(`/system/user/${id}`);
@@ -119,6 +124,11 @@ export function deleteRole(id: number) {
 /** 获取部门树 */
 export function getDepartmentTree() {
   return requestClient.get<DepartmentDTO[]>('/system/department/tree');
+}
+
+/** 获取部门树（公共接口，无需特殊权限） */
+export function getDepartmentTreePublic() {
+  return requestClient.get<DepartmentDTO[]>('/system/department/tree-public');
 }
 
 /** 获取部门详情 */

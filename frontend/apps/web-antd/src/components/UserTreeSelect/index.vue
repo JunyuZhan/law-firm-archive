@@ -5,7 +5,7 @@
  */
 import { ref, computed, onMounted, watch, nextTick, h } from 'vue';
 import { TreeSelect } from 'ant-design-vue';
-import { getUserList, getDepartmentTree } from '#/api/system';
+import { getUserSelectOptions, getDepartmentTreePublic } from '#/api/system';
 import type { UserDTO, DepartmentDTO } from '#/api/system/types';
 
 defineOptions({ name: 'UserTreeSelect' });
@@ -71,8 +71,8 @@ async function loadData() {
   loading.value = true;
   try {
     const [userRes, deptRes] = await Promise.all([
-      getUserList({ pageNum: 1, pageSize: 500, status: props.userStatus }),
-      getDepartmentTree(),
+      getUserSelectOptions({ pageNum: 1, pageSize: 500, status: props.userStatus }),
+      getDepartmentTreePublic(),
     ]);
     users.value = userRes.list || [];
     departments.value = deptRes || [];

@@ -145,6 +145,11 @@ public class ConflictCheckController {
         QuickConflictCheckResponse response = new QuickConflictCheckResponse();
         response.setHasConflict(result.hasConflict());
         response.setConflictDetail(result.conflictDetail());
+        response.setCandidates(result.candidates().stream()
+                .map(CandidateDTO::from)
+                .collect(java.util.stream.Collectors.toList()));
+        response.setRiskLevel(result.riskLevel());
+        response.setRiskSummary(result.riskSummary());
         return Result.success(response);
     }
 
@@ -183,6 +188,34 @@ public class ConflictCheckController {
     public static class QuickConflictCheckResponse {
         private boolean hasConflict;
         private String conflictDetail;
+        private java.util.List<CandidateDTO> candidates;
+        private String riskLevel;
+        private String riskSummary;
+    }
+
+    @Data
+    public static class CandidateDTO {
+        private Long clientId;
+        private String clientNo;
+        private String clientName;
+        private String clientType;
+        private int matchScore;
+        private String matchType;
+        private String riskLevel;
+        private String riskReason;
+
+        public static CandidateDTO from(ConflictCheckAppService.ConflictCandidate c) {
+            CandidateDTO dto = new CandidateDTO();
+            dto.setClientId(c.clientId());
+            dto.setClientNo(c.clientNo());
+            dto.setClientName(c.clientName());
+            dto.setClientType(c.clientType());
+            dto.setMatchScore(c.matchScore());
+            dto.setMatchType(c.matchType());
+            dto.setRiskLevel(c.riskLevel());
+            dto.setRiskReason(c.riskReason());
+            return dto;
+        }
     }
 }
 

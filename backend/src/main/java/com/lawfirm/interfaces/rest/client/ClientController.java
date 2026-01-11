@@ -4,6 +4,7 @@ import com.lawfirm.application.client.command.CreateClientCommand;
 import com.lawfirm.application.client.command.UpdateClientCommand;
 import com.lawfirm.application.client.dto.ClientDTO;
 import com.lawfirm.application.client.dto.ClientQueryDTO;
+import com.lawfirm.application.client.dto.ClientSimpleDTO;
 import com.lawfirm.application.client.service.ClientAppService;
 import com.lawfirm.common.annotation.OperationLog;
 import com.lawfirm.common.annotation.RepeatSubmit;
@@ -31,6 +32,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 客户管理 Controller
@@ -52,6 +54,36 @@ public class ClientController {
     public Result<PageResult<ClientDTO>> listClients(ClientQueryDTO query) {
         PageResult<ClientDTO> result = clientAppService.listClients(query);
         return Result.success(result);
+    }
+
+    /**
+     * 获取客户选择列表（公共接口，无需权限）
+     * 用于其他模块的下拉选择框，返回简化的客户信息
+     * 所有登录用户都可以访问
+     * 
+     * 安全说明：只返回必要字段（id、编号、名称），不包含联系方式等敏感信息
+     */
+    @Operation(summary = "获取客户选择列表", description = "公共接口，返回客户ID和名称用于下拉选择")
+    @GetMapping("/select-options")
+    public Result<PageResult<ClientSimpleDTO>> getClientSelectOptions(ClientQueryDTO query) {
+        // 默认只查询正式客户，不包含潜在客户
+        if (query.getStatus() == null) {
+            query.setStatus("ACTIVE");
+        }
+        PageResult<ClientDTO> result = clientAppService.listClients(query);
+        
+        // 转换为简单DTO，只保留必要字段
+        List<ClientSimpleDTO> simpleList = result.getList().stream()
+                .map(c -> ClientSimpleDTO.builder()
+                        .id(c.getId())
+                        .clientNo(c.getClientNo())
+                        .name(c.getName())
+                        .clientType(c.getClientType())
+                        .status(c.getStatus())
+                        .build())
+                .collect(Collectors.toList());
+        
+        return Result.success(PageResult.of(simpleList, result.getTotal(), result.getPageNum(), result.getPageSize()));
     }
 
     /**

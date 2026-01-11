@@ -29,7 +29,7 @@ import {
   reviewTimesheet,
 } from '#/api/matter';
 import { getMatterList } from '#/api/matter';
-import { getUserList } from '#/api/system';
+import { getUserSelectOptions } from '#/api/system';
 import { useUserStore } from '@vben/stores';
 import type { TimesheetDTO, CreateTimesheetCommand } from '#/api/matter/types';
 import type { MatterDTO } from '#/api/matter/types';
@@ -183,7 +183,8 @@ async function loadMatters() {
 
 async function loadUsers() {
   try {
-    const res = await getUserList({ pageNum: 1, pageSize: 500 });
+    // 使用公共接口，无需特殊权限
+    const res = await getUserSelectOptions({ pageNum: 1, pageSize: 500 });
     users.value = res.list;
   } catch (error) {
     console.error('加载用户列表失败:', error);

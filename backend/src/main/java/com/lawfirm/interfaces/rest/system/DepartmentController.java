@@ -39,6 +39,17 @@ public class DepartmentController {
     }
 
     /**
+     * 获取部门树（公共接口，用于用户选择器等场景）
+     * 所有登录用户都可以访问，无需特殊权限
+     */
+    @Operation(summary = "获取部门树（公共）")
+    @GetMapping("/tree-public")
+    public Result<List<DepartmentDTO>> getDepartmentTreePublic() {
+        List<DepartmentDTO> tree = departmentAppService.getDepartmentTree();
+        return Result.success(tree);
+    }
+
+    /**
      * 获取部门列表（平铺）
      */
     @Operation(summary = "获取部门列表")

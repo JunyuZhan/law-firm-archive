@@ -30,8 +30,8 @@ import {
   getContractParticipants,
   manualCalculateCommission,
 } from '#/api/finance';
-import { getClientList } from '#/api/client';
-import { getMatterList } from '#/api/matter';
+import { getClientSelectOptions } from '#/api/client';
+import { getMatterSelectOptions } from '#/api/matter';
 import type { CommissionDTO, CommissionQuery, ContractParticipantDTO } from '#/api/finance/types';
 import type { ClientDTO } from '#/api/client/types';
 import type { MatterDTO } from '#/api/matter/types';
@@ -103,8 +103,8 @@ async function fetchData() {
 async function loadOptions() {
   try {
     const [clientRes, matterRes] = await Promise.all([
-      getClientList({ pageNum: 1, pageSize: 1000 }),
-      getMatterList({ pageNum: 1, pageSize: 1000 }),
+      getClientSelectOptions({ pageNum: 1, pageSize: 1000 }),
+      getMatterSelectOptions({ pageNum: 1, pageSize: 1000 }),
     ]);
     clients.value = clientRes.list;
     matters.value = matterRes.list;

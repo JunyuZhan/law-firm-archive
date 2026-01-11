@@ -35,10 +35,11 @@ import {
   updateContract,
   getContractApprovers,
   getContractDetail,
+  getMatterContractList,
+  getMatterContractStatistics,
 } from '#/api/matter';
 // UpdateContractCommand 用于类型推断
 import {
-  getContractList,
   getContractPaymentSchedules,
   createPaymentSchedule,
   updatePaymentSchedule,
@@ -47,7 +48,6 @@ import {
   createContractParticipant,
   updateContractParticipant,
   deleteContractParticipant,
-  getContractStatistics,
   createContractFromTemplate,
 } from '#/api/finance';
 import { requestClient } from '#/api/request';
@@ -64,7 +64,7 @@ import type {
 } from '#/api/finance/types';
 import { getClientList } from '#/api/client';
 import { getContractPrintData, type ContractPrintDTO } from '#/api/matter';
-import { getDepartmentTree } from '#/api/system';
+import { getDepartmentTreePublic } from '#/api/system';
 import type { ClientDTO } from '#/api/client/types';
 import type { DepartmentDTO } from '#/api/system/types';
 import { UserTreeSelect } from '#/components/UserTreeSelect';
@@ -606,7 +606,7 @@ const claimAmountChinese = computed(() => {
 async function fetchData() {
   loading.value = true;
   try {
-    const res = await getContractList(queryParams);
+    const res = await getMatterContractList(queryParams);
     dataSource.value = res.list;
     total.value = res.total;
   } catch (error: any) {
@@ -619,7 +619,7 @@ async function fetchData() {
 // 加载统计数据
 async function loadStatistics() {
   try {
-    statistics.value = await getContractStatistics();
+    statistics.value = await getMatterContractStatistics();
   } catch (error: any) {
     console.error('加载统计数据失败', error);
   }
@@ -635,9 +635,9 @@ async function loadOptions() {
     console.warn('加载客户列表失败', e);
   }
   
-  // 部门树
+  // 部门树（使用公共接口，无需特殊权限）
   try {
-    const deptRes = await getDepartmentTree();
+    const deptRes = await getDepartmentTreePublic();
     departments.value = deptRes || [];
   } catch (e) {
     console.warn('加载部门树失败', e);
@@ -651,10 +651,10 @@ async function loadOptions() {
     console.warn('加载合同模板失败', e);
   }
   
-  // 提成方案
+  // 提成方案（使用公共接口，无需特殊权限）
   try {
-    const ruleRes = await commissionRuleApi.getList();
-    commissionRules.value = (ruleRes || []).filter(r => r.active);
+    const ruleRes = await commissionRuleApi.getActiveRules();
+    commissionRules.value = ruleRes || [];
     
     // 设置默认提成方案
     const defaultRule = commissionRules.value.find(r => r.isDefault);

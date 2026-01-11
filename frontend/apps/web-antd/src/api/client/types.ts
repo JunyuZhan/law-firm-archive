@@ -3,6 +3,19 @@
  */
 
 // ========== 客户管理 ==========
+
+/**
+ * 客户简要信息（用于下拉选择）
+ * 公共接口返回，不包含敏感信息
+ */
+export interface ClientSimpleDTO {
+  id: number;
+  clientNo: string;
+  name: string;
+  clientType: string;
+  status: string;
+}
+
 export interface ClientDTO {
   id: number;
   clientNo: string;

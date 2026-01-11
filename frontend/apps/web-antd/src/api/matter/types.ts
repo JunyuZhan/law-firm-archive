@@ -3,6 +3,24 @@
  */
 
 // ========== 项目/案件管理 ==========
+
+/**
+ * 项目简要信息（用于下拉选择）
+ * 公共接口返回，不包含敏感信息
+ */
+export interface MatterSimpleDTO {
+  id: number;
+  matterNo: string;
+  name: string;
+  matterType: string;
+  matterTypeName?: string;
+  status: string;
+  statusName?: string;
+  clientName?: string;
+  contractNo?: string;
+  leadLawyerName?: string;
+}
+
 export interface MatterClientDTO {
   id?: number;
   matterId?: number;

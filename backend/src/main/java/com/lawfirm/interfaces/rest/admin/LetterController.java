@@ -40,6 +40,16 @@ public class LetterController {
         return Result.success(letterAppService.listActiveTemplates());
     }
 
+    /**
+     * 获取启用的模板列表（公共接口）
+     * 供律师在项目详情页申请出函时选择模板使用
+     */
+    @Operation(summary = "获取启用的模板列表（公共）", description = "所有登录用户都可以访问，用于申请出函时选择模板")
+    @GetMapping("/template/active")
+    public Result<List<LetterTemplateDTO>> listActiveTemplatesPublic() {
+        return Result.success(letterAppService.listActiveTemplates());
+    }
+
     @Operation(summary = "创建模板")
     @PostMapping("/template")
     @RequirePermission("admin:letter:manage")
@@ -86,9 +96,12 @@ public class LetterController {
 
     // ==================== 出函申请 ====================
 
-    @Operation(summary = "创建出函申请")
+    /**
+     * 创建出函申请（公共接口）
+     * 律师可以在项目详情页申请出函，无需特殊权限
+     */
+    @Operation(summary = "创建出函申请", description = "所有登录用户都可以创建出函申请")
     @PostMapping("/application")
-    @RequirePermission("admin:letter:list")
     public Result<LetterApplicationDTO> createApplication(@RequestBody CreateLetterApplicationCommand command) {
         return Result.success(letterAppService.createApplication(command));
     }

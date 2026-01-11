@@ -26,7 +26,7 @@ import {
   List,
   ListItem,
 } from 'ant-design-vue';
-import { getTemplateList, generateDocument, previewTemplate } from '#/api/document/template';
+import { getActiveTemplateList, generateDocument, previewTemplate } from '#/api/document/template';
 import type { DocumentTemplateDTO, GenerateDocumentCommand } from '#/api/document/template-types';
 import { printDocument, type DocumentPrintData } from '@vben/utils';
 import MatterSelector from './MatterSelector.vue';
@@ -92,7 +92,8 @@ const viewButtonText = computed(() => {
 async function loadTemplates() {
   loading.value = true;
   try {
-    const res = await getTemplateList({ pageNum: 1, pageSize: 100, status: 'ACTIVE' });
+    // 使用公共接口，无需 doc:template:list 权限
+    const res = await getActiveTemplateList({ pageNum: 1, pageSize: 100 });
     templates.value = res.list || [];
   } catch (error: any) {
     message.error(error.message || '加载模板失败');

@@ -60,7 +60,7 @@ import {
   reorderDossierItems,
   type MatterDossierItem 
 } from '#/api/document/dossier';
-import { getMatterList } from '#/api/matter';
+import { getMatterSelectOptions } from '#/api/matter';
 import { recognizeGeneral, type OcrResultDTO } from '#/api/ocr';
 import { findCauseNameInAll, CASE_CATEGORY_OPTIONS, MATTER_TYPE_OPTIONS } from '#/constants/causes';
 import type { DocumentDTO, DocumentQuery, CreateDocumentCommand, UpdateDocumentCommand } from '#/api/document/types';
@@ -763,7 +763,7 @@ async function loadMatters() {
       createdAtTo = `${filterParams.year}-12-31T23:59:59`;
     }
     
-    const res = await getMatterList({ 
+    const res = await getMatterSelectOptions({ 
       pageNum: 1, 
       pageSize: 1000,
       createdAtFrom,

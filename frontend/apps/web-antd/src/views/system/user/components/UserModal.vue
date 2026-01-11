@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
+import { z } from 'zod';
 import { useVbenModal } from '@vben/common-ui';
 import { useVbenForm } from '#/adapter/form';
 import type { VbenFormSchema } from '#/adapter/form';
@@ -23,25 +24,9 @@ async function loadOptions() {
       getAllRoles(),
       getDepartmentTree(),
     ]);
+    // 更新响应式数据，computed formSchema 会自动更新
     roles.value = rolesRes;
     departments.value = deptRes;
-    
-    // 更新表单选项
-    formApi.updateSchema([
-      {
-        fieldName: 'departmentId',
-        componentProps: {
-          treeData: deptRes,
-          fieldNames: { label: 'name', value: 'id', children: 'children' },
-        },
-      },
-      {
-        fieldName: 'roleIds',
-        componentProps: {
-          options: rolesRes.map((r: RoleDTO) => ({ label: r.roleName, value: r.id })),
-        },
-      },
-    ]);
   } catch (error) {
     console.error('加载选项失败:', error);
   }
@@ -53,7 +38,7 @@ const formSchema = computed<VbenFormSchema[]>(() => [
     fieldName: 'username',
     label: '用户名',
     component: 'Input',
-    rules: 'required',
+    rules: z.string().min(1, '请输入用户名'),
     componentProps: {
       placeholder: '请输入用户名',
       disabled: isEdit.value,
@@ -63,7 +48,7 @@ const formSchema = computed<VbenFormSchema[]>(() => [
     fieldName: 'password',
     label: '密码',
     component: 'InputPassword',
-    rules: isEdit.value ? undefined : 'required',
+    rules: isEdit.value ? z.string().optional() : z.string().min(1, '请输入密码'),
     dependencies: {
       show: () => !isEdit.value,
     },
@@ -75,7 +60,7 @@ const formSchema = computed<VbenFormSchema[]>(() => [
     fieldName: 'realName',
     label: '姓名',
     component: 'Input',
-    rules: 'required',
+    rules: z.string().min(1, '请输入姓名'),
     componentProps: {
       placeholder: '请输入姓名',
     },
@@ -105,6 +90,9 @@ const formSchema = computed<VbenFormSchema[]>(() => [
       treeData: departments.value,
       fieldNames: { label: 'name', value: 'id', children: 'children' },
       allowClear: true,
+      style: { width: '100%' },
+      treeDefaultExpandAll: true,
+      dropdownStyle: { maxHeight: '400px', overflow: 'auto' },
     },
   },
   {
@@ -122,6 +110,7 @@ const formSchema = computed<VbenFormSchema[]>(() => [
     componentProps: {
       placeholder: '请选择角色',
       mode: 'multiple',
+      style: { width: '100%' },
       options: roles.value.map((r: RoleDTO) => ({ label: r.roleName, value: r.id })),
     },
   },
@@ -150,12 +139,20 @@ const [Form, formApi] = useVbenForm({
 const [Modal, modalApi] = useVbenModal({
   async onConfirm() {
     try {
-      const values = await formApi.validate();
+      // 先验证表单
+      await formApi.validate();
+      // 获取所有表单值（包括未修改的字段）
+      const values = await formApi.getValues();
       
       if (isEdit.value && editId.value) {
         const updateData: UpdateUserCommand = {
           id: editId.value,
-          ...values,
+          realName: values.realName,
+          email: values.email,
+          phone: values.phone,
+          departmentId: values.departmentId,
+          position: values.position,
+          roleIds: values.roleIds,
         };
         await updateUser(updateData);
         message.success('更新成功');

@@ -41,7 +41,7 @@ import {
   downloadArchiveCover,
   regenerateArchiveCover,
 } from '#/api/archive';
-import { getMatterList, changeMatterStatus, getMatterDetail } from '#/api/matter';
+import { getMatterSelectOptions, changeMatterStatus, getMatterDetail } from '#/api/matter';
 import type { ArchiveDTO, ArchiveQuery, CreateArchiveCommand, StoreArchiveCommand, ArchiveCheckResult, ArchiveDataSnapshot, ArchiveDataSource } from '#/api/archive/types';
 import type { MatterDTO } from '#/api/matter/types';
 import { CASE_CATEGORY_OPTIONS } from '#/constants/causes/utils';
@@ -156,7 +156,7 @@ async function loadMatterDetails(archives: ArchiveDTO[]) {
 // 加载项目列表
 async function loadMatters() {
   try {
-    const res = await getMatterList({ pageNum: 1, pageSize: 1000 });
+    const res = await getMatterSelectOptions({ pageNum: 1, pageSize: 1000 });
     matters.value = res.list;
   } catch (error: any) {
     console.error('加载项目列表失败:', error);

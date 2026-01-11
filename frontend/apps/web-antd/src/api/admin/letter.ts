@@ -78,9 +78,14 @@ export interface CreateLetterApplicationCommand {
 
 // ==================== 模板管理 ====================
 
-/** 获取启用的模板列表 */
+/** 获取启用的模板列表（需要 admin:letter:list 权限） */
 export function getActiveTemplates() {
   return requestClient.get<LetterTemplateDTO[]>('/admin/letter/template/list');
+}
+
+/** 获取启用的模板列表（公共接口，用于律师申请出函） */
+export function getActiveTemplatesPublic() {
+  return requestClient.get<LetterTemplateDTO[]>('/admin/letter/template/active');
 }
 
 /** 获取所有模板（管理员） */

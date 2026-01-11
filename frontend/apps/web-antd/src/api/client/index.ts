@@ -7,6 +7,7 @@ import type {
   ApplyConflictCheckCommand,
   ClientDTO,
   ClientQuery,
+  ClientSimpleDTO,
   ConflictCheckDTO,
   ConflictCheckQuery,
   CreateClientCommand,
@@ -22,6 +23,15 @@ import type {
 /** 获取客户列表 */
 export function getClientList(params: ClientQuery) {
   return requestClient.get<PageResult<ClientDTO>>('/client/list', { params });
+}
+
+/** 
+ * 获取客户选择列表（公共接口，无需 client:list 权限）
+ * 用于下拉选择框，所有登录用户都可以访问
+ * 返回精简数据，不包含联系方式等敏感信息
+ */
+export function getClientSelectOptions(params?: ClientQuery) {
+  return requestClient.get<PageResult<ClientSimpleDTO>>('/client/select-options', { params });
 }
 
 /** 获取客户详情 */

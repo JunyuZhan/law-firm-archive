@@ -5,6 +5,7 @@ import com.lawfirm.application.matter.command.CreateMatterCommand;
 import com.lawfirm.application.matter.command.UpdateMatterCommand;
 import com.lawfirm.application.matter.dto.MatterDTO;
 import com.lawfirm.application.matter.dto.MatterQueryDTO;
+import com.lawfirm.application.matter.dto.MatterSimpleDTO;
 import com.lawfirm.application.matter.dto.MatterTimelineDTO;
 import com.lawfirm.application.matter.service.MatterAppService;
 import com.lawfirm.application.matter.service.MatterTimelineAppService;
@@ -27,6 +28,7 @@ import org.springframework.web.bind.annotation.*;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 案件管理 Controller
@@ -48,6 +50,41 @@ public class MatterController {
     public Result<PageResult<MatterDTO>> listMatters(MatterQueryDTO query) {
         PageResult<MatterDTO> result = matterAppService.listMatters(query);
         return Result.success(result);
+    }
+
+    /**
+     * 获取项目选择列表（公共接口，无需权限）
+     * 用于其他模块的下拉选择框，返回简化的项目信息
+     * 所有登录用户都可以访问
+     * 
+     * 安全说明：只返回必要字段（id、编号、名称、状态），不包含金额、对方信息等敏感数据
+     */
+    @Operation(summary = "获取项目选择列表", description = "公共接口，返回项目ID、编号和名称用于下拉选择")
+    @GetMapping("/select-options")
+    public Result<PageResult<MatterSimpleDTO>> getMatterSelectOptions(MatterQueryDTO query) {
+        // 默认只查询进行中的项目
+        if (query.getStatus() == null) {
+            query.setStatus("ACTIVE");
+        }
+        PageResult<MatterDTO> result = matterAppService.listMatters(query);
+        
+        // 转换为简单DTO，只保留必要字段
+        List<MatterSimpleDTO> simpleList = result.getList().stream()
+                .map(m -> MatterSimpleDTO.builder()
+                        .id(m.getId())
+                        .matterNo(m.getMatterNo())
+                        .name(m.getName())
+                        .matterType(m.getMatterType())
+                        .matterTypeName(m.getMatterTypeName())
+                        .status(m.getStatus())
+                        .statusName(m.getStatusName())
+                        .clientName(m.getClientName())
+                        .contractNo(m.getContractNo())
+                        .leadLawyerName(m.getLeadLawyerName())
+                        .build())
+                .collect(Collectors.toList());
+        
+        return Result.success(PageResult.of(simpleList, result.getTotal(), result.getPageNum(), result.getPageSize()));
     }
 
     /**
