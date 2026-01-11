@@ -113,15 +113,14 @@ async function handleLogin(values: Recordable<any>) {
 .version-info {
   position: fixed;
   bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
+  right: 24px;
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(0, 0, 0, 0.35);
   z-index: 10;
 }
 
-/* 亮色模式下调整颜色 */
-:root:not(.dark) .version-info {
-  color: rgba(0, 0, 0, 0.35);
+/* 暗色模式下调整颜色 */
+.dark .version-info {
+  color: rgba(255, 255, 255, 0.5);
 }
 </style>
