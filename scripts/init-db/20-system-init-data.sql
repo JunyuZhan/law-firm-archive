@@ -1137,6 +1137,27 @@ ON CONFLICT (role_id, menu_id) DO NOTHING;
 --
 
 -- =====================================================
+-- 默认部门数据
+-- =====================================================
+-- 部门结构：
+-- 诉讼部(1) → 第一组(4), 第二组(5)
+-- 财务部(2)
+-- 行政部(3)
+-- =====================================================
+
+INSERT INTO public.sys_department (id, name, parent_id, leader_id, sort_order, status, created_at, updated_at)
+VALUES 
+(1, '诉讼部', 0, NULL, 1, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, '财务部', 0, NULL, 2, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(3, '行政部', 0, NULL, 3, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(4, '第一组', 1, NULL, 1, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(5, '第二组', 1, NULL, 2, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+ON CONFLICT (id) DO NOTHING;
+
+-- 设置部门ID序列
+SELECT setval('sys_department_id_seq', COALESCE((SELECT MAX(id) FROM sys_department), 0) + 1, false);
+
+-- =====================================================
 -- 默认用户数据
 -- =====================================================
 -- 默认密码: admin123
