@@ -1118,7 +1118,7 @@ AND NOT EXISTS (SELECT 1 FROM public.sys_role_menu WHERE role_id = r.id AND menu
 -- 为管理员角色分配数据库备份菜单权限
 INSERT INTO public.sys_role_menu (role_id, menu_id)
 SELECT 1, id FROM public.sys_menu WHERE id = 29
-ON CONFLICT (role_id, menu_id) DO NOTHING;
+  AND NOT EXISTS (SELECT 1 FROM public.sys_role_menu rm WHERE rm.role_id = 1 AND rm.menu_id = 29);
 
 -- =====================================================
 -- 用户管理按钮权限
@@ -1136,7 +1136,7 @@ SELECT r.id, m.id
 FROM public.sys_role r, public.sys_menu m
 WHERE r.role_code IN ('ADMIN', 'DIRECTOR') 
   AND m.id IN (1020, 1021, 1022, 1023)
-ON CONFLICT (role_id, menu_id) DO NOTHING;
+  AND NOT EXISTS (SELECT 1 FROM public.sys_role_menu rm WHERE rm.role_id = r.id AND rm.menu_id = m.id);
 
 -- =====================================================
 -- 其他模块按钮权限（项目、客户、归档、收款）
@@ -1154,7 +1154,7 @@ SELECT r.id, m.id
 FROM public.sys_role r, public.sys_menu m
 WHERE r.role_code IN ('ADMIN', 'DIRECTOR') 
   AND m.id IN (1024, 1025, 1026, 1027)
-ON CONFLICT (role_id, menu_id) DO NOTHING;
+  AND NOT EXISTS (SELECT 1 FROM public.sys_role_menu rm WHERE rm.role_id = r.id AND rm.menu_id = m.id);
 
 -- 为律师角色分配项目编辑、客户编辑权限
 INSERT INTO public.sys_role_menu (role_id, menu_id)
@@ -1162,7 +1162,7 @@ SELECT r.id, m.id
 FROM public.sys_role r, public.sys_menu m
 WHERE r.role_code = 'LAWYER' 
   AND m.id IN (1024, 1025)
-ON CONFLICT (role_id, menu_id) DO NOTHING;
+  AND NOT EXISTS (SELECT 1 FROM public.sys_role_menu rm WHERE rm.role_id = r.id AND rm.menu_id = m.id);
 
 -- 为团队负责人分配项目、客户、归档权限
 INSERT INTO public.sys_role_menu (role_id, menu_id)
@@ -1170,7 +1170,7 @@ SELECT r.id, m.id
 FROM public.sys_role r, public.sys_menu m
 WHERE r.role_code = 'TEAM_LEADER' 
   AND m.id IN (1024, 1025, 1026)
-ON CONFLICT (role_id, menu_id) DO NOTHING;
+  AND NOT EXISTS (SELECT 1 FROM public.sys_role_menu rm WHERE rm.role_id = r.id AND rm.menu_id = m.id);
 
 -- 为财务角色分配收款权限
 INSERT INTO public.sys_role_menu (role_id, menu_id)
@@ -1178,7 +1178,7 @@ SELECT r.id, m.id
 FROM public.sys_role r, public.sys_menu m
 WHERE r.role_code = 'FINANCE' 
   AND m.id = 1027
-ON CONFLICT (role_id, menu_id) DO NOTHING;
+  AND NOT EXISTS (SELECT 1 FROM public.sys_role_menu rm WHERE rm.role_id = r.id AND rm.menu_id = m.id);
 
 -- =====================================================
 -- 劳动合同管理菜单权限
@@ -1186,40 +1186,43 @@ ON CONFLICT (role_id, menu_id) DO NOTHING;
 -- 菜单 ID: 110-劳动合同, 1817-详情, 1818-创建, 1819-更新, 1820-删除, 1821-续签
 -- 角色 ID: 1-ADMIN, 2-DIRECTOR, 3-TEAM_LEADER, 5-FINANCE, 6-LAWYER, 8-ADMIN_STAFF, 9-TRAINEE
 
+-- 重置 sys_role_menu_id_seq 序列，确保不与已存在的 ID 冲突
+SELECT setval('sys_role_menu_id_seq', COALESCE((SELECT MAX(id) FROM sys_role_menu), 0) + 1, false);
+
 -- ADMIN 角色：劳动合同管理全部权限
 INSERT INTO public.sys_role_menu (role_id, menu_id)
 SELECT 1, m.id FROM public.sys_menu m WHERE m.id IN (110, 1817, 1818, 1819, 1820, 1821)
-ON CONFLICT (role_id, menu_id) DO NOTHING;
+  AND NOT EXISTS (SELECT 1 FROM public.sys_role_menu rm WHERE rm.role_id = 1 AND rm.menu_id = m.id);
 
 -- DIRECTOR 角色：劳动合同管理全部权限
 INSERT INTO public.sys_role_menu (role_id, menu_id)
 SELECT 2, m.id FROM public.sys_menu m WHERE m.id IN (110, 1817, 1818, 1819, 1820, 1821)
-ON CONFLICT (role_id, menu_id) DO NOTHING;
+  AND NOT EXISTS (SELECT 1 FROM public.sys_role_menu rm WHERE rm.role_id = 2 AND rm.menu_id = m.id);
 
 -- ADMIN_STAFF (行政) 角色：劳动合同管理全部权限
 INSERT INTO public.sys_role_menu (role_id, menu_id)
 SELECT 8, m.id FROM public.sys_menu m WHERE m.id IN (110, 1817, 1818, 1819, 1820, 1821)
-ON CONFLICT (role_id, menu_id) DO NOTHING;
+  AND NOT EXISTS (SELECT 1 FROM public.sys_role_menu rm WHERE rm.role_id = 8 AND rm.menu_id = m.id);
 
 -- TEAM_LEADER (团队负责人) 角色：查看自己的合同
 INSERT INTO public.sys_role_menu (role_id, menu_id)
 SELECT 3, m.id FROM public.sys_menu m WHERE m.id IN (110, 1817)
-ON CONFLICT (role_id, menu_id) DO NOTHING;
+  AND NOT EXISTS (SELECT 1 FROM public.sys_role_menu rm WHERE rm.role_id = 3 AND rm.menu_id = m.id);
 
 -- FINANCE (财务) 角色：查看合同（薪资相关）
 INSERT INTO public.sys_role_menu (role_id, menu_id)
 SELECT 5, m.id FROM public.sys_menu m WHERE m.id IN (110, 1817)
-ON CONFLICT (role_id, menu_id) DO NOTHING;
+  AND NOT EXISTS (SELECT 1 FROM public.sys_role_menu rm WHERE rm.role_id = 5 AND rm.menu_id = m.id);
 
 -- LAWYER (律师) 角色：查看自己的合同
 INSERT INTO public.sys_role_menu (role_id, menu_id)
 SELECT 6, m.id FROM public.sys_menu m WHERE m.id IN (110, 1817)
-ON CONFLICT (role_id, menu_id) DO NOTHING;
+  AND NOT EXISTS (SELECT 1 FROM public.sys_role_menu rm WHERE rm.role_id = 6 AND rm.menu_id = m.id);
 
 -- TRAINEE (实习律师) 角色：查看自己的合同
 INSERT INTO public.sys_role_menu (role_id, menu_id)
 SELECT 9, m.id FROM public.sys_menu m WHERE m.id IN (110, 1817)
-ON CONFLICT (role_id, menu_id) DO NOTHING;
+  AND NOT EXISTS (SELECT 1 FROM public.sys_role_menu rm WHERE rm.role_id = 9 AND rm.menu_id = m.id);
 
 --
 -- Name: sys_config_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
