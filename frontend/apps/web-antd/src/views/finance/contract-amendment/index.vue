@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 
+import { Page } from '@vben/common-ui';
+
 import {
   Button,
   Card,
@@ -13,6 +15,8 @@ import {
 } from 'ant-design-vue';
 
 import { requestClient } from '#/api/request';
+
+defineOptions({ name: 'FinanceContractAmendment' });
 
 interface Amendment {
   id: number;
@@ -159,8 +163,8 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="contract-amendment-page">
-    <Card title="合同变更处理" :bordered="false">
+  <Page title="合同变更处理" description="处理律师提交的合同变更，同步到财务数据">
+    <Card :bordered="false">
       <template #extra>
         <Button
           type="primary"
@@ -225,11 +229,5 @@ onMounted(() => {
         />
       </Modal>
     </Card>
-  </div>
+  </Page>
 </template>
-
-<style scoped>
-.contract-amendment-page {
-  padding: 16px;
-}
-</style>
