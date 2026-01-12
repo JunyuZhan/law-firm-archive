@@ -96,8 +96,8 @@ create_clients() {
     echo ""
     echo -e "${BLUE}[2/8] 创建客户数据...${NC}"
     
-    # 企业客户
-    api_post "/client/create" '{
+    # 企业客户 (API路径: POST /client)
+    api_post "/client" '{
         "name": "测试科技有限公司",
         "clientType": "ENTERPRISE",
         "creditCode": "91110108MA99TEST01",
@@ -109,11 +109,10 @@ create_clients() {
         "industry": "信息技术",
         "source": "API测试",
         "level": "A",
-        "category": "VIP",
-        "status": "ACTIVE"
+        "category": "VIP"
     }' "企业客户-测试科技有限公司"
     
-    api_post "/client/create" '{
+    api_post "/client" '{
         "name": "演示贸易有限公司",
         "clientType": "ENTERPRISE",
         "creditCode": "91110108MA99TEST02",
@@ -125,12 +124,11 @@ create_clients() {
         "industry": "贸易",
         "source": "API测试",
         "level": "B",
-        "category": "NORMAL",
-        "status": "ACTIVE"
+        "category": "NORMAL"
     }' "企业客户-演示贸易有限公司"
     
     # 个人客户
-    api_post "/client/create" '{
+    api_post "/client" '{
         "name": "测试个人客户",
         "clientType": "INDIVIDUAL",
         "idCard": "110101199001011234",
@@ -138,17 +136,16 @@ create_clients() {
         "contactPhone": "13900003333",
         "contactEmail": "individual@example.com",
         "source": "API测试",
-        "level": "B",
-        "status": "ACTIVE"
+        "level": "B"
     }' "个人客户-测试个人客户"
 }
 
-# 创建合同数据
+# 创建合同数据 (API路径: POST /matter/contract)
 create_contracts() {
     echo ""
     echo -e "${BLUE}[3/8] 创建合同数据...${NC}"
     
-    api_post "/finance/contract/create" '{
+    api_post "/matter/contract" '{
         "name": "API测试服务合同",
         "clientId": 101,
         "contractType": "SERVICE",
@@ -162,7 +159,7 @@ create_contracts() {
         "remark": "通过脚本自动创建"
     }' "服务合同-API测试"
     
-    api_post "/finance/contract/create" '{
+    api_post "/matter/contract" '{
         "name": "API测试诉讼合同",
         "clientId": 102,
         "contractType": "LITIGATION",
@@ -177,12 +174,12 @@ create_contracts() {
     }' "诉讼合同-API测试"
 }
 
-# 创建项目数据
+# 创建项目数据 (API路径: POST /matter)
 create_matters() {
     echo ""
     echo -e "${BLUE}[4/8] 创建项目数据...${NC}"
     
-    api_post "/matter/create" '{
+    api_post "/matter" '{
         "name": "API测试法律顾问项目",
         "matterType": "ADVISORY",
         "clientId": 101,
@@ -192,7 +189,7 @@ create_matters() {
         "expectedEndDate": "2026-12-31"
     }' "顾问项目-API测试"
     
-    api_post "/matter/create" '{
+    api_post "/matter" '{
         "name": "API测试民事诉讼项目",
         "matterType": "LITIGATION",
         "caseType": "CIVIL",
@@ -206,12 +203,12 @@ create_matters() {
     }' "诉讼项目-API测试"
 }
 
-# 创建任务数据
+# 创建任务数据 (API路径: POST /tasks)
 create_tasks() {
     echo ""
     echo -e "${BLUE}[5/8] 创建任务数据...${NC}"
     
-    api_post "/task/create" '{
+    api_post "/tasks" '{
         "title": "API测试任务-合同审查",
         "description": "通过API创建的测试任务",
         "matterId": 101,
@@ -219,7 +216,7 @@ create_tasks() {
         "dueDate": "2026-01-20"
     }' "任务-合同审查"
     
-    api_post "/task/create" '{
+    api_post "/tasks" '{
         "title": "API测试任务-文件整理",
         "description": "整理项目相关文件",
         "matterId": 101,
@@ -227,7 +224,7 @@ create_tasks() {
         "dueDate": "2026-01-25"
     }' "任务-文件整理"
     
-    api_post "/task/create" '{
+    api_post "/tasks" '{
         "title": "API测试任务-起诉状起草",
         "description": "起草民事起诉状",
         "matterId": 102,
@@ -236,12 +233,12 @@ create_tasks() {
     }' "任务-起诉状起草"
 }
 
-# 创建工时记录
+# 创建工时记录 (API路径: POST /timesheets)
 create_timesheets() {
     echo ""
     echo -e "${BLUE}[6/8] 创建工时记录...${NC}"
     
-    api_post "/timesheet/create" '{
+    api_post "/timesheets" '{
         "matterId": 101,
         "workDate": "2026-01-10",
         "hours": 2.5,
@@ -249,7 +246,7 @@ create_timesheets() {
         "workType": "CONTRACT_REVIEW"
     }' "工时-合同审查"
     
-    api_post "/timesheet/create" '{
+    api_post "/timesheets" '{
         "matterId": 101,
         "workDate": "2026-01-11",
         "hours": 1.5,
@@ -257,7 +254,7 @@ create_timesheets() {
         "workType": "CONSULTATION"
     }' "工时-客户沟通"
     
-    api_post "/timesheet/create" '{
+    api_post "/timesheets" '{
         "matterId": 102,
         "workDate": "2026-01-12",
         "hours": 4.0,
@@ -266,12 +263,12 @@ create_timesheets() {
     }' "工时-案件研究"
 }
 
-# 创建收款记录
+# 创建收款记录 (API路径: POST /finance/fee)
 create_fees() {
     echo ""
     echo -e "${BLUE}[7/8] 创建收款记录...${NC}"
     
-    api_post "/finance/fee/create" '{
+    api_post "/finance/fee" '{
         "contractId": 101,
         "matterId": 101,
         "feeType": "SERVICE_FEE",
@@ -280,7 +277,7 @@ create_fees() {
         "dueDate": "2026-01-15"
     }' "收款-首期服务费"
     
-    api_post "/finance/fee/create" '{
+    api_post "/finance/fee" '{
         "contractId": 101,
         "matterId": 101,
         "feeType": "SERVICE_FEE",
@@ -295,23 +292,23 @@ show_statistics() {
     echo ""
     echo -e "${BLUE}[8/8] 数据统计...${NC}"
     
-    # 客户统计
-    local clients=$(curl -s -X GET "$BASE_URL/client/page?pageNum=1&pageSize=1" \
+    # 客户统计 (GET /client/list)
+    local clients=$(curl -s -X GET "$BASE_URL/client/list?pageNum=1&pageSize=1" \
         -H "Authorization: Bearer $TOKEN" | grep -o '"total":[0-9]*' | cut -d':' -f2)
     echo "  客户数量: ${clients:-0}"
     
-    # 合同统计
-    local contracts=$(curl -s -X GET "$BASE_URL/finance/contract/page?pageNum=1&pageSize=1" \
+    # 合同统计 (GET /matter/contract/list)
+    local contracts=$(curl -s -X GET "$BASE_URL/matter/contract/list?pageNum=1&pageSize=1" \
         -H "Authorization: Bearer $TOKEN" | grep -o '"total":[0-9]*' | cut -d':' -f2)
     echo "  合同数量: ${contracts:-0}"
     
-    # 项目统计
-    local matters=$(curl -s -X GET "$BASE_URL/matter/page?pageNum=1&pageSize=1" \
+    # 项目统计 (GET /matter/list)
+    local matters=$(curl -s -X GET "$BASE_URL/matter/list?pageNum=1&pageSize=1" \
         -H "Authorization: Bearer $TOKEN" | grep -o '"total":[0-9]*' | cut -d':' -f2)
     echo "  项目数量: ${matters:-0}"
     
-    # 任务统计
-    local tasks=$(curl -s -X GET "$BASE_URL/task/page?pageNum=1&pageSize=1" \
+    # 任务统计 (GET /tasks)
+    local tasks=$(curl -s -X GET "$BASE_URL/tasks?pageNum=1&pageSize=1" \
         -H "Authorization: Bearer $TOKEN" | grep -o '"total":[0-9]*' | cut -d':' -f2)
     echo "  任务数量: ${tasks:-0}"
 }
