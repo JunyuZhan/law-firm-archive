@@ -8,6 +8,11 @@ import { ref } from 'vue';
 import { Page } from '@vben/common-ui';
 
 import {
+  DownloadOutlined,
+  DownOutlined,
+  UploadOutlined,
+} from '@vben/icons';
+import {
   Button,
   Dropdown,
   Menu,
@@ -19,11 +24,6 @@ import {
   Tag,
   Tooltip,
 } from 'ant-design-vue';
-import {
-  DownloadOutlined,
-  DownOutlined,
-  UploadOutlined,
-} from '@ant-design/icons-vue';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {

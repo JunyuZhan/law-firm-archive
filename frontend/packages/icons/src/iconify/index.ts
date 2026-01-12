@@ -39,3 +39,5 @@ export const PauseCircleOutlined = createIconifyIcon(
   'ant-design:pause-circle-outlined',
 );
 export const MinusOutlined = createIconifyIcon('ant-design:minus-outlined');
+export const DownOutlined = createIconifyIcon('ant-design:down-outlined');
+export const InboxOutlined = createIconifyIcon('ant-design:inbox-outlined');

@@ -3,6 +3,7 @@ import { ref, computed } from 'vue';
 
 import { useVbenModal } from '@vben/common-ui';
 
+import { DownloadOutlined, InboxOutlined } from '@vben/icons';
 import {
   Alert,
   Button,
@@ -11,7 +12,6 @@ import {
   Upload,
   type UploadFile,
 } from 'ant-design-vue';
-import { DownloadOutlined, InboxOutlined } from '@ant-design/icons-vue';
 
 import { downloadUserImportTemplate, importUsers } from '#/api/system';
 
