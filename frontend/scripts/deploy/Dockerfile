@@ -24,7 +24,7 @@ RUN git init && \
     git commit -m "Docker build"
 
 # 安装依赖
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --no-frozen-lockfile
 
 # 构建主前端应用
 RUN pnpm run build:antd
