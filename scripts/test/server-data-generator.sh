@@ -34,7 +34,7 @@ echo ""
 
 # 登录获取 Token
 login() {
-    echo -e "${BLUE}[1/9] 登录系统...${NC}"
+    echo -e "${BLUE}[1/10] 登录系统...${NC}"
     
     local response=$(curl -s -X POST "$BASE_URL/auth/login" \
         -H "Content-Type: application/json" \
@@ -94,7 +94,7 @@ api_post() {
 # 创建客户数据
 create_clients() {
     echo ""
-    echo -e "${BLUE}[2/9] 创建客户数据...${NC}"
+    echo -e "${BLUE}[2/10] 创建客户数据...${NC}"
     
     # 企业客户 (API路径: POST /client)
     api_post "/client" '{
@@ -143,7 +143,7 @@ create_clients() {
 # 创建合同数据 (API路径: POST /matter/contract)
 create_contracts() {
     echo ""
-    echo -e "${BLUE}[3/9] 创建合同数据...${NC}"
+    echo -e "${BLUE}[3/10] 创建合同数据...${NC}"
     
     api_post "/matter/contract" '{
         "name": "API测试服务合同",
@@ -179,7 +179,7 @@ create_contracts() {
 # 使用演示数据中已存在的项目（ID: 101-106）
 create_matters() {
     echo ""
-    echo -e "${BLUE}[4/9] 项目数据...${NC}"
+    echo -e "${BLUE}[4/10] 项目数据...${NC}"
     echo -e "  ${YELLOW}⊘${NC} 跳过 - 创建项目需要关联已审批合同"
     echo -e "  ${YELLOW}⊘${NC} 使用演示数据中已存在的6个项目"
 }
@@ -187,7 +187,7 @@ create_matters() {
 # 创建任务数据 (API路径: POST /tasks)
 create_tasks() {
     echo ""
-    echo -e "${BLUE}[5/9] 创建任务数据...${NC}"
+    echo -e "${BLUE}[5/10] 创建任务数据...${NC}"
     
     api_post "/tasks" '{
         "title": "API测试任务-合同审查",
@@ -217,7 +217,7 @@ create_tasks() {
 # 创建工时记录 (API路径: POST /timesheets)
 create_timesheets() {
     echo ""
-    echo -e "${BLUE}[6/9] 创建工时记录...${NC}"
+    echo -e "${BLUE}[6/10] 创建工时记录...${NC}"
     
     api_post "/timesheets" '{
         "matterId": 101,
@@ -247,7 +247,7 @@ create_timesheets() {
 # 创建收款记录 (API路径: POST /finance/fee)
 create_fees() {
     echo ""
-    echo -e "${BLUE}[7/9] 创建收款记录...${NC}"
+    echo -e "${BLUE}[7/10] 创建收款记录...${NC}"
     
     api_post "/finance/fee" '{
         "name": "首期服务费",
@@ -272,10 +272,49 @@ create_fees() {
     }' "收款-第二期服务费"
 }
 
+# 创建档案数据 (API路径: POST /archive)
+create_archives() {
+    echo ""
+    echo -e "${BLUE}[8/10] 创建档案数据...${NC}"
+    
+    api_post "/archive" '{
+        "matterId": 101,
+        "archiveName": "北京科技创新公司法律顾问档案",
+        "archiveType": "ADVISORY",
+        "volumeCount": 1,
+        "pageCount": 50,
+        "retentionPeriod": "PERMANENT",
+        "hasElectronic": true,
+        "remarks": "常年法律顾问项目归档"
+    }' "档案-法律顾问项目"
+    
+    api_post "/archive" '{
+        "matterId": 103,
+        "archiveName": "广州制造业劳动争议案档案",
+        "archiveType": "LITIGATION",
+        "volumeCount": 2,
+        "pageCount": 120,
+        "retentionPeriod": "30_YEARS",
+        "hasElectronic": true,
+        "remarks": "劳动争议案件归档"
+    }' "档案-劳动争议案"
+    
+    api_post "/archive" '{
+        "matterId": 105,
+        "archiveName": "李建军劳动仲裁案档案",
+        "archiveType": "LITIGATION",
+        "volumeCount": 1,
+        "pageCount": 35,
+        "retentionPeriod": "10_YEARS",
+        "hasElectronic": true,
+        "remarks": "个人劳动仲裁案件归档"
+    }' "档案-劳动仲裁案"
+}
+
 # 创建出函申请 (API路径: POST /admin/letter/application)
 create_letters() {
     echo ""
-    echo -e "${BLUE}[8/9] 创建出函申请...${NC}"
+    echo -e "${BLUE}[9/10] 创建出函申请...${NC}"
     
     api_post "/admin/letter/application" '{
         "templateId": 1,
@@ -308,7 +347,7 @@ create_letters() {
 # 查询各模块数据统计
 show_statistics() {
     echo ""
-    echo -e "${BLUE}[9/9] 数据统计...${NC}"
+    echo -e "${BLUE}[10/10] 数据统计...${NC}"
     
     # 客户统计 (GET /client/list)
     local clients=$(curl -s -X GET "$BASE_URL/client/list?pageNum=1&pageSize=1" \
@@ -334,6 +373,11 @@ show_statistics() {
     local letters=$(curl -s -X GET "$BASE_URL/admin/letter/application/list?pageNum=1&pageSize=1" \
         -H "Authorization: Bearer $TOKEN" | grep -o '"total":[0-9]*' | cut -d':' -f2)
     echo "  出函申请: ${letters:-0}"
+    
+    # 档案统计 (GET /archive/list)
+    local archives=$(curl -s -X GET "$BASE_URL/archive/list?pageNum=1&pageSize=1" \
+        -H "Authorization: Bearer $TOKEN" | grep -o '"total":[0-9]*' | cut -d':' -f2)
+    echo "  档案数量: ${archives:-0}"
 }
 
 # 主流程
@@ -345,6 +389,7 @@ main() {
     create_tasks
     create_timesheets
     create_fees
+    create_archives
     create_letters
     show_statistics
     

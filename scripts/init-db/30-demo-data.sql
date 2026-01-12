@@ -267,6 +267,46 @@ ON CONFLICT (id) DO NOTHING;
 SELECT setval('task_id_seq', COALESCE((SELECT MAX(id) FROM task), 1));
 
 -- =====================================================
+-- 8. 已归档卷宗数据
+-- =====================================================
+-- 档案状态：PENDING-待入库, PENDING_APPROVAL-待审批, STORED-已入库, BORROWED-已借出, DESTROYED-已销毁
+
+-- 先添加档案库位
+INSERT INTO archive_location (id, location_code, location_name, room, cabinet, shelf, total_capacity, used_capacity, status, created_at, updated_at)
+VALUES
+  (1, 'LOC-A-001', '档案室A区1号柜', 'A区', '1号柜', '第1层', 100, 3, 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (2, 'LOC-A-002', '档案室A区2号柜', 'A区', '2号柜', '第1层', 100, 0, 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+ON CONFLICT (id) DO NOTHING;
+
+SELECT setval('archive_location_id_seq', COALESCE((SELECT MAX(id) FROM archive_location), 1));
+
+-- 已入库的档案
+INSERT INTO archive (id, archive_no, matter_id, archive_name, archive_type, matter_no, matter_name, client_name, 
+  main_lawyer_name, case_close_date, volume_count, page_count, location_id, box_no, retention_period, 
+  has_electronic, status, stored_by, stored_at, remarks, created_by, created_at, updated_at, deleted)
+VALUES
+  -- 已完成的法律顾问项目档案
+  (101, 'AR2025-0001', 101, '北京科技创新公司2025年度法律顾问档案', 'ADVISORY', 'M2025001', 
+   '北京科技创新公司法律顾问', '北京科技创新有限公司', '张律师', '2025-12-31', 
+   2, 150, 1, 'BOX-2025-001', '10_YEARS', true, 'STORED', 1, '2025-12-31 10:00:00',
+   '2025年度常年法律顾问项目档案', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+  
+  -- 已结案的劳动争议案档案
+  (102, 'AR2025-0002', 103, '广州制造业劳动争议案档案', 'LITIGATION', 'M2025003',
+   '广州制造业公司劳动争议案', '广州制造业有限公司', '张律师', '2025-11-15',
+   3, 280, 1, 'BOX-2025-002', '30_YEARS', true, 'STORED', 1, '2025-11-20 14:30:00',
+   '群体性劳动争议案件，已调解结案', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+  
+  -- 已结案的个人劳动仲裁案档案
+  (103, 'AR2025-0003', 105, '李建军劳动争议案档案', 'LITIGATION', 'M2025005',
+   '李建军劳动争议案', '李建军', '张律师', '2025-12-20',
+   1, 45, 1, 'BOX-2025-003', '10_YEARS', true, 'STORED', 1, '2025-12-25 09:00:00',
+   '个人劳动仲裁案件，胜诉结案', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
+ON CONFLICT (id) DO NOTHING;
+
+SELECT setval('archive_id_seq', COALESCE((SELECT MAX(id) FROM archive), 1));
+
+-- =====================================================
 -- 完成提示
 -- =====================================================
 DO $$
@@ -281,6 +321,8 @@ BEGIN
   RAISE NOTICE '  - 项目: 6个（4诉讼 + 1非诉 + 1顾问）';
   RAISE NOTICE '  - 项目成员: 10条';
   RAISE NOTICE '  - 任务: 13个';
+  RAISE NOTICE '  - 档案库位: 2个';
+  RAISE NOTICE '  - 已归档卷宗: 3个（已入库）';
   RAISE NOTICE '----------------------------------------------------';
   RAISE NOTICE '数据关系说明：';
   RAISE NOTICE '  - 张律师(lawyer1, id=3): 主办4个项目';
