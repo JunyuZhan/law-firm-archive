@@ -175,32 +175,13 @@ create_contracts() {
 }
 
 # 创建项目数据 (API路径: POST /matter)
+# 注意：创建项目需要关联已审批的合同，这里跳过
+# 使用演示数据中已存在的项目（ID: 101-106）
 create_matters() {
     echo ""
-    echo -e "${BLUE}[4/8] 创建项目数据...${NC}"
-    
-    api_post "/matter" '{
-        "name": "API测试法律顾问项目",
-        "matterType": "ADVISORY",
-        "clientId": 101,
-        "description": "通过API创建的法律顾问项目",
-        "feeType": "FIXED",
-        "estimatedFee": 50000,
-        "expectedEndDate": "2026-12-31"
-    }' "顾问项目-API测试"
-    
-    api_post "/matter" '{
-        "name": "API测试民事诉讼项目",
-        "matterType": "LITIGATION",
-        "caseType": "CIVIL",
-        "causeOfAction": "合同纠纷",
-        "clientId": 102,
-        "opposingParty": "被告公司",
-        "description": "通过API创建的民事诉讼项目",
-        "feeType": "CONTINGENCY",
-        "estimatedFee": 100000,
-        "expectedEndDate": "2026-06-30"
-    }' "诉讼项目-API测试"
+    echo -e "${BLUE}[4/8] 项目数据...${NC}"
+    echo -e "  ${YELLOW}⊘${NC} 跳过 - 创建项目需要关联已审批合同"
+    echo -e "  ${YELLOW}⊘${NC} 使用演示数据中已存在的6个项目"
 }
 
 # 创建任务数据 (API路径: POST /tasks)
@@ -242,7 +223,7 @@ create_timesheets() {
         "matterId": 101,
         "workDate": "2026-01-10",
         "hours": 2.5,
-        "description": "合同审查工作",
+        "workContent": "合同审查工作",
         "workType": "CONTRACT_REVIEW"
     }' "工时-合同审查"
     
@@ -250,7 +231,7 @@ create_timesheets() {
         "matterId": 101,
         "workDate": "2026-01-11",
         "hours": 1.5,
-        "description": "客户电话沟通",
+        "workContent": "客户电话沟通",
         "workType": "CONSULTATION"
     }' "工时-客户沟通"
     
@@ -258,7 +239,7 @@ create_timesheets() {
         "matterId": 102,
         "workDate": "2026-01-12",
         "hours": 4.0,
-        "description": "案件分析研究",
+        "workContent": "案件分析研究",
         "workType": "RESEARCH"
     }' "工时-案件研究"
 }
@@ -269,6 +250,8 @@ create_fees() {
     echo -e "${BLUE}[7/8] 创建收款记录...${NC}"
     
     api_post "/finance/fee" '{
+        "name": "首期服务费",
+        "clientId": 101,
         "contractId": 101,
         "matterId": 101,
         "feeType": "SERVICE_FEE",
@@ -278,6 +261,8 @@ create_fees() {
     }' "收款-首期服务费"
     
     api_post "/finance/fee" '{
+        "name": "第二期服务费",
+        "clientId": 101,
         "contractId": 101,
         "matterId": 101,
         "feeType": "SERVICE_FEE",
