@@ -43,9 +43,23 @@ login() {
     local success=$(echo "$response" | grep -o '"success":true')
     
     if [ -n "$success" ]; then
-        TOKEN=$(echo "$response" | sed 's/.*"token":"\([^"]*\)".*/\1/')
-        echo -e "${GREEN}✓${NC} 登录成功"
-        return 0
+        # 使用 grep 和 sed 提取 token（兼容不同格式）
+        TOKEN=$(echo "$response" | grep -o '"token":"[^"]*"' | sed 's/"token":"\([^"]*\)"/\1/')
+        
+        if [ -z "$TOKEN" ]; then
+            # 尝试另一种格式：accessToken
+            TOKEN=$(echo "$response" | grep -o '"accessToken":"[^"]*"' | sed 's/"accessToken":"\([^"]*\)"/\1/')
+        fi
+        
+        if [ -n "$TOKEN" ]; then
+            echo -e "${GREEN}✓${NC} 登录成功"
+            echo -e "  Token: ${TOKEN:0:50}..."
+            return 0
+        else
+            echo -e "${RED}✗${NC} 无法提取 Token"
+            echo -e "  响应: $response"
+            exit 1
+        fi
     else
         echo -e "${RED}✗${NC} 登录失败: $response"
         exit 1
