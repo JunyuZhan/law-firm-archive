@@ -20,6 +20,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.Wrapper;
 
 import java.time.LocalDate;
 import java.util.*;
@@ -410,7 +411,7 @@ class ClientAppServiceTest {
             );
 
             // 直接Mock Repository的查询方法
-            when(clientRepository.list(any())).thenReturn(clients);
+            when(clientRepository.list(any(Wrapper.class))).thenReturn(clients);
 
             // When
             List<ClientDTO> result = clientAppService.searchClientsForConflictCheck("测试", 10);
@@ -479,7 +480,7 @@ class ClientAppServiceTest {
             assertEquals(2, result.getRecords().size());
         }
     }
-}
+
     // ==================== 辅助方法 ====================
     
     private User createUser(Long id, String realName) {
