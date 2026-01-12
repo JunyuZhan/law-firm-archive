@@ -72,8 +72,8 @@ SELECT setval('timesheet_id_seq', GREATEST((SELECT MAX(id) FROM timesheet), 205)
 -- =====================================================
 -- 4. 额外收费记录
 -- =====================================================
-INSERT INTO finance_fee (id, fee_no, name, client_id, contract_id, matter_id, fee_type, amount, 
-  due_date, status, description, created_by, created_at, updated_at, deleted)
+INSERT INTO finance_fee (id, fee_no, fee_name, client_id, contract_id, matter_id, fee_type, amount, 
+  planned_date, status, remark, created_by, created_at, updated_at, deleted)
 VALUES
   (201, 'FEE2026010001', '法律顾问Q1服务费', 101, 101, 101, 'SERVICE_FEE', 30000.00, 
    '2026-01-15', 'PENDING', '2026年第一季度法律顾问服务费', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
@@ -91,14 +91,14 @@ SELECT setval('finance_fee_id_seq', GREATEST((SELECT MAX(id) FROM finance_fee), 
 -- 5. 额外出函申请
 -- =====================================================
 INSERT INTO letter_application (id, application_no, template_id, matter_id, applicant_id, 
-  target_unit, target_contact, target_phone, target_address, 
+  letter_type, target_unit, target_contact, target_phone, target_address, purpose,
   status, created_at, updated_at, deleted)
 VALUES
-  (201, 'LT2026010001', 1, 101, 3, '某供应商公司', '李经理', '13800001111', '北京市朝阳区某路100号',
+  (201, 'LT2026010001', 1, 101, 3, 'LAWYER_LETTER', '某供应商公司', '李经理', '13800001111', '北京市朝阳区某路100号', '催告供应商履行合同义务',
    'PENDING', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
-  (202, 'LT2026010002', 1, 103, 3, '广州某公司人事部', '人事经理', '13800002222', '广州市天河区某路200号',
+  (202, 'LT2026010002', 1, 103, 3, 'LAWYER_LETTER', '广州某公司人事部', '人事经理', '13800002222', '广州市天河区某路200号', '要求提供劳动关系相关证明材料',
    'PENDING', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
-  (203, 'LT2026010003', 1, 104, 4, '某科技公司', '法务部', '13800003333', '深圳市南山区某路300号',
+  (203, 'LT2026010003', 1, 104, 4, 'LAWYER_LETTER', '某科技公司', '法务部', '13800003333', '深圳市南山区某路300号', '专利侵权警告函',
    'APPROVED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
 ON CONFLICT (id) DO NOTHING;
 
