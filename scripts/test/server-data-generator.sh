@@ -34,7 +34,7 @@ echo ""
 
 # 登录获取 Token
 login() {
-    echo -e "${BLUE}[1/8] 登录系统...${NC}"
+    echo -e "${BLUE}[1/9] 登录系统...${NC}"
     
     local response=$(curl -s -X POST "$BASE_URL/auth/login" \
         -H "Content-Type: application/json" \
@@ -94,7 +94,7 @@ api_post() {
 # 创建客户数据
 create_clients() {
     echo ""
-    echo -e "${BLUE}[2/8] 创建客户数据...${NC}"
+    echo -e "${BLUE}[2/9] 创建客户数据...${NC}"
     
     # 企业客户 (API路径: POST /client)
     api_post "/client" '{
@@ -143,7 +143,7 @@ create_clients() {
 # 创建合同数据 (API路径: POST /matter/contract)
 create_contracts() {
     echo ""
-    echo -e "${BLUE}[3/8] 创建合同数据...${NC}"
+    echo -e "${BLUE}[3/9] 创建合同数据...${NC}"
     
     api_post "/matter/contract" '{
         "name": "API测试服务合同",
@@ -179,7 +179,7 @@ create_contracts() {
 # 使用演示数据中已存在的项目（ID: 101-106）
 create_matters() {
     echo ""
-    echo -e "${BLUE}[4/8] 项目数据...${NC}"
+    echo -e "${BLUE}[4/9] 项目数据...${NC}"
     echo -e "  ${YELLOW}⊘${NC} 跳过 - 创建项目需要关联已审批合同"
     echo -e "  ${YELLOW}⊘${NC} 使用演示数据中已存在的6个项目"
 }
@@ -187,7 +187,7 @@ create_matters() {
 # 创建任务数据 (API路径: POST /tasks)
 create_tasks() {
     echo ""
-    echo -e "${BLUE}[5/8] 创建任务数据...${NC}"
+    echo -e "${BLUE}[5/9] 创建任务数据...${NC}"
     
     api_post "/tasks" '{
         "title": "API测试任务-合同审查",
@@ -217,7 +217,7 @@ create_tasks() {
 # 创建工时记录 (API路径: POST /timesheets)
 create_timesheets() {
     echo ""
-    echo -e "${BLUE}[6/8] 创建工时记录...${NC}"
+    echo -e "${BLUE}[6/9] 创建工时记录...${NC}"
     
     api_post "/timesheets" '{
         "matterId": 101,
@@ -247,7 +247,7 @@ create_timesheets() {
 # 创建收款记录 (API路径: POST /finance/fee)
 create_fees() {
     echo ""
-    echo -e "${BLUE}[7/8] 创建收款记录...${NC}"
+    echo -e "${BLUE}[7/9] 创建收款记录...${NC}"
     
     api_post "/finance/fee" '{
         "name": "首期服务费",
@@ -272,10 +272,43 @@ create_fees() {
     }' "收款-第二期服务费"
 }
 
+# 创建出函申请 (API路径: POST /admin/letter/application)
+create_letters() {
+    echo ""
+    echo -e "${BLUE}[8/9] 创建出函申请...${NC}"
+    
+    api_post "/admin/letter/application" '{
+        "templateId": 1,
+        "matterId": 101,
+        "targetUnit": "北京测试科技有限公司",
+        "targetContact": "张经理",
+        "targetPhone": "13800138000",
+        "targetAddress": "北京市海淀区测试路100号"
+    }' "出函申请-催款函"
+    
+    api_post "/admin/letter/application" '{
+        "templateId": 1,
+        "matterId": 102,
+        "targetUnit": "上海演示贸易有限公司",
+        "targetContact": "李总",
+        "targetPhone": "13900139000",
+        "targetAddress": "上海市浦东新区演示路200号"
+    }' "出函申请-律师函"
+    
+    api_post "/admin/letter/application" '{
+        "templateId": 1,
+        "matterId": 103,
+        "targetUnit": "广州制造有限公司",
+        "targetContact": "王经理",
+        "targetPhone": "13700137000",
+        "targetAddress": "广州市天河区制造路300号"
+    }' "出函申请-告知函"
+}
+
 # 查询各模块数据统计
 show_statistics() {
     echo ""
-    echo -e "${BLUE}[8/8] 数据统计...${NC}"
+    echo -e "${BLUE}[9/9] 数据统计...${NC}"
     
     # 客户统计 (GET /client/list)
     local clients=$(curl -s -X GET "$BASE_URL/client/list?pageNum=1&pageSize=1" \
@@ -296,6 +329,11 @@ show_statistics() {
     local tasks=$(curl -s -X GET "$BASE_URL/tasks?pageNum=1&pageSize=1" \
         -H "Authorization: Bearer $TOKEN" | grep -o '"total":[0-9]*' | cut -d':' -f2)
     echo "  任务数量: ${tasks:-0}"
+    
+    # 出函申请统计 (GET /admin/letter/application/list)
+    local letters=$(curl -s -X GET "$BASE_URL/admin/letter/application/list?pageNum=1&pageSize=1" \
+        -H "Authorization: Bearer $TOKEN" | grep -o '"total":[0-9]*' | cut -d':' -f2)
+    echo "  出函申请: ${letters:-0}"
 }
 
 # 主流程
@@ -307,6 +345,7 @@ main() {
     create_tasks
     create_timesheets
     create_fees
+    create_letters
     show_statistics
     
     echo ""
