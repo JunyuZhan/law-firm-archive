@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ApprovalDTO } from '#/api/workbench';
 
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 
 import { useVbenDrawer } from '@vben/common-ui';
 
@@ -48,6 +48,16 @@ const [VbenDrawer, drawerApi] = useVbenDrawer({
   placement: 'left', // 右侧按钮触发，从左侧滑入
 });
 
+// 解析业务数据快照
+const businessSnapshotData = computed(() => {
+  if (!currentApproval.value?.businessSnapshot) return null;
+  try {
+    return JSON.parse(currentApproval.value.businessSnapshot);
+  } catch {
+    return null;
+  }
+});
+
 // 格式化时间
 function formatTime(time: string | undefined) {
   if (!time) return '-';
@@ -67,6 +77,7 @@ function goToBusinessDetail() {
     MATTER_CLOSE: `/matter/list?id=${record.businessId}`,
     REGULARIZATION: `/hr/regularization?id=${record.businessId}`,
     RESIGNATION: `/hr/resignation?id=${record.businessId}`,
+    LETTER_APPLICATION: `/admin/letter?id=${record.businessId}`,
   };
 
   const url = urlMap[record.businessType];
@@ -212,6 +223,113 @@ defineExpose({ open });
           📄 查看业务详情 →
         </Button>
       </div>
+
+      <!-- 业务数据快照（审批人可查看业务详情） -->
+      <template v-if="businessSnapshotData">
+        <div
+          style="
+            background: #f5f7fa;
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+          "
+        >
+          <div
+            style="
+              font-weight: 500;
+              margin-bottom: 8px;
+              color: #303133;
+              font-size: 14px;
+            "
+          >
+            业务详情
+          </div>
+
+          <!-- 出函申请详情 -->
+          <template v-if="currentApproval?.businessType === 'LETTER_APPLICATION'">
+            <Descriptions :column="2" size="small">
+              <DescriptionsItem label="函件类型">
+                {{ businessSnapshotData.letterTypeName || '-' }}
+              </DescriptionsItem>
+              <DescriptionsItem label="接收单位">
+                {{ businessSnapshotData.targetUnit || '-' }}
+              </DescriptionsItem>
+              <DescriptionsItem label="项目名称" :span="2">
+                {{ businessSnapshotData.matterName || '-' }}
+              </DescriptionsItem>
+              <DescriptionsItem label="项目编号">
+                {{ businessSnapshotData.matterNo || '-' }}
+              </DescriptionsItem>
+              <DescriptionsItem label="出函律师">
+                {{ businessSnapshotData.lawyerNames || '-' }}
+              </DescriptionsItem>
+              <DescriptionsItem label="联系人">
+                {{ businessSnapshotData.targetContact || '-' }}
+              </DescriptionsItem>
+              <DescriptionsItem label="份数">
+                {{ businessSnapshotData.copies || 1 }}
+              </DescriptionsItem>
+              <DescriptionsItem label="出函事由" :span="2">
+                {{ businessSnapshotData.purpose || '-' }}
+              </DescriptionsItem>
+              <DescriptionsItem
+                v-if="businessSnapshotData.expectedDate"
+                label="期望日期"
+              >
+                {{ businessSnapshotData.expectedDate }}
+              </DescriptionsItem>
+            </Descriptions>
+          </template>
+
+          <!-- 费用报销详情 -->
+          <template v-else-if="currentApproval?.businessType === 'EXPENSE'">
+            <Descriptions :column="2" size="small">
+              <DescriptionsItem label="报销金额">
+                ¥{{ businessSnapshotData.amount || 0 }}
+              </DescriptionsItem>
+              <DescriptionsItem label="费用类型">
+                {{ businessSnapshotData.expenseTypeName || '-' }}
+              </DescriptionsItem>
+              <DescriptionsItem label="关联项目" :span="2">
+                {{ businessSnapshotData.matterName || '-' }}
+              </DescriptionsItem>
+              <DescriptionsItem label="报销说明" :span="2">
+                {{ businessSnapshotData.description || '-' }}
+              </DescriptionsItem>
+            </Descriptions>
+          </template>
+
+          <!-- 项目结案详情 -->
+          <template v-else-if="currentApproval?.businessType === 'MATTER_CLOSE'">
+            <Descriptions :column="2" size="small">
+              <DescriptionsItem label="项目名称" :span="2">
+                {{ businessSnapshotData.matterName || '-' }}
+              </DescriptionsItem>
+              <DescriptionsItem label="项目编号">
+                {{ businessSnapshotData.matterNo || '-' }}
+              </DescriptionsItem>
+              <DescriptionsItem label="结案原因" :span="2">
+                {{ businessSnapshotData.closeReason || '-' }}
+              </DescriptionsItem>
+            </Descriptions>
+          </template>
+
+          <!-- 通用展示（其他类型） -->
+          <template v-else>
+            <div style="font-size: 13px; color: #606266; line-height: 1.8">
+              <template
+                v-for="(value, key) in businessSnapshotData"
+                :key="key"
+              >
+                <div v-if="value && typeof value !== 'object'">
+                  <span style="color: #909399">{{ key }}：</span>
+                  {{ value }}
+                </div>
+              </template>
+            </div>
+          </template>
+        </div>
+      </template>
 
       <!-- 待审批时显示审批操作区域 -->
       <template v-if="isPending && currentApproval.status === 'PENDING'">

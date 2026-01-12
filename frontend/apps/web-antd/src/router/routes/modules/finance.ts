@@ -2,6 +2,7 @@ import type { RouteRecordRaw } from 'vue-router';
 
 /**
  * 财务管理路由配置
+ * 注意：大部分页面通过后端菜单配置动态生成路由，这里只配置特殊需要的路由
  */
 const financeRoutes: RouteRecordRaw[] = [
   {

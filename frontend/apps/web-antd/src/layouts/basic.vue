@@ -28,6 +28,7 @@ import {
   markAsRead as apiMarkAsRead,
   getMyNotifications,
 } from '#/api/system/notification';
+import FloatingTimer from '#/components/timer/FloatingTimer.vue';
 import { $t } from '#/locales';
 import { useAuthStore } from '#/store';
 import LoginForm from '#/views/_core/authentication/login.vue';
@@ -63,24 +64,64 @@ function hasBeenNotified(id: number | string): boolean {
 
 // 通知音效 - 使用 Web Audio API
 let audioContext: AudioContext | null = null;
+let hasUserInteracted = false;
 
-// 初始化通知音效
+// 初始化通知音效 - 监听用户交互以启用音效
 function initNotificationSound() {
-  // 延迟初始化 AudioContext，等待用户交互后再创建
-  // 这是因为现代浏览器要求用户交互后才能创建 AudioContext
+  // 监听用户交互事件，一旦有交互就标记为可以播放音效
+  const enableAudio = () => {
+    hasUserInteracted = true;
+    // 如果 AudioContext 已创建但被暂停，尝试恢复
+    if (audioContext && audioContext.state === 'suspended') {
+      audioContext.resume().catch(() => {});
+    }
+  };
+
+  // 只需要第一次交互
+  const events = ['click', 'touchstart', 'keydown'];
+  const removeListeners = () => {
+    events.forEach((event) => {
+      document.removeEventListener(event, handleInteraction);
+    });
+  };
+
+  const handleInteraction = () => {
+    enableAudio();
+    removeListeners();
+  };
+
+  events.forEach((event) => {
+    document.addEventListener(event, handleInteraction, { once: true });
+  });
 }
 
 // 播放通知音效 - 使用 Web Audio API 生成清脆的提示音
-function playNotificationSound() {
+async function playNotificationSound() {
+  // 如果用户还没有与页面交互，不播放音效（浏览器安全限制）
+  if (!hasUserInteracted) {
+    console.debug('等待用户交互后才能播放通知音效');
+    return;
+  }
+
   try {
     // 懒加载 AudioContext
     if (!audioContext) {
-      audioContext = new (
-        window.AudioContext || (window as any).webkitAudioContext
-      )();
+      const AudioContextClass =
+        window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContextClass) {
+        console.debug('浏览器不支持 AudioContext');
+        return;
+      }
+      audioContext = new AudioContextClass();
     }
 
     const ctx = audioContext;
+
+    // 确保 AudioContext 处于运行状态
+    if (ctx.state === 'suspended') {
+      await ctx.resume();
+    }
+
     const now = ctx.currentTime;
 
     // 创建振荡器产生声音
@@ -112,23 +153,36 @@ function playNotificationSound() {
 
 // 显示浏览器通知
 async function showBrowserNotification(title: string, body: string) {
-  if (!('Notification' in window)) return;
+  try {
+    // 检查浏览器是否支持 Notification API
+    if (!('Notification' in window)) return;
 
-  if (Notification.permission === 'granted') {
-    new Notification(title, {
-      body,
-      icon: '/favicon.ico',
-      tag: 'lawfirm-notification',
-    });
-  } else if (Notification.permission !== 'denied') {
-    const permission = await Notification.requestPermission();
-    if (permission === 'granted') {
+    // 检查 Notification 对象是否完整可用
+    if (typeof Notification.permission === 'undefined') return;
+
+    if (Notification.permission === 'granted') {
       new Notification(title, {
         body,
         icon: '/favicon.ico',
         tag: 'lawfirm-notification',
       });
+    } else if (Notification.permission !== 'denied') {
+      // 检查 requestPermission 是否可用
+      if (typeof Notification.requestPermission !== 'function') {
+        console.debug('Notification.requestPermission 不可用');
+        return;
+      }
+      const permission = await Notification.requestPermission();
+      if (permission === 'granted') {
+        new Notification(title, {
+          body,
+          icon: '/favicon.ico',
+          tag: 'lawfirm-notification',
+        });
+      }
     }
+  } catch (error) {
+    console.debug('浏览器通知功能不可用:', error);
   }
 }
 
@@ -298,12 +352,21 @@ function stopPolling() {
 
 // 请求通知权限
 async function requestNotificationPermission() {
-  if ('Notification' in window && Notification.permission === 'default') {
-    try {
-      await Notification.requestPermission();
-    } catch (error) {
-      console.debug('请求通知权限失败:', error);
+  try {
+    // 检查浏览器是否完整支持 Notification API
+    if (
+      !('Notification' in window) ||
+      typeof Notification.permission === 'undefined' ||
+      typeof Notification.requestPermission !== 'function'
+    ) {
+      return;
     }
+
+    if (Notification.permission === 'default') {
+      await Notification.requestPermission();
+    }
+  } catch (error) {
+    console.debug('请求通知权限失败:', error);
   }
 }
 
@@ -506,4 +569,7 @@ watch(
       <LockScreen :avatar @to-login="handleLogout" />
     </template>
   </BasicLayout>
+
+  <!-- 悬浮计时器 -->
+  <FloatingTimer />
 </template>

@@ -558,7 +558,6 @@ onUnmounted(() => {
   <Page
     title="数据库备份"
     description="管理系统数据库备份和恢复"
-    auto-content-height
   >
     <!-- 操作栏 -->
     <Card class="mb-4" :bordered="false">

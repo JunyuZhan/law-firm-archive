@@ -141,7 +141,6 @@ function handleModalSuccess() {
   <Page
     title="合同模板管理"
     description="管理委托合同模板，支持富文本编辑和变量插入"
-    auto-content-height
   >
     <Grid>
       <!-- 工具栏按钮 -->

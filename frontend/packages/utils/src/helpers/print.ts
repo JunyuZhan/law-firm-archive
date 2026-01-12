@@ -464,9 +464,9 @@ export function generateLetterHtml(data: LetterPrintData): string {
   const qrCodeHtml = data.qrCodeBase64
     ? `
     <div class="qr-code-area" style="text-align: center; margin-top: 30pt; padding-top: 20pt; border-top: 1px dashed #999;">
-      <div style="font-family: 'FangSong', '仿宋_GB2312', '仿宋', serif; font-size: 14pt; color: #000; margin-bottom: 10pt; line-height: 20pt;">扫描二维码验证函件真伪</div>
-      <img src="${data.qrCodeBase64}" alt="验证二维码" style="width: 70pt; height: 70pt; display: inline-block; border: 1px solid #ddd;" />
-      <div style="font-family: 'FangSong', '仿宋_GB2312', '仿宋', serif; font-size: 12pt; color: #000; margin-top: 8pt; line-height: 18pt;">编号：${data.applicationNo}</div>
+      <div style="font-family: 'FangSong', '仿宋_GB2312', '仿宋', serif; font-size: 14pt; color: #000; margin-bottom: 8pt; line-height: 20pt;">扫描二维码验证函件真伪</div>
+      <img src="${data.qrCodeBase64}" alt="验证二维码" style="width: 80pt; height: 80pt; display: inline-block;" />
+      <div style="font-family: 'FangSong', '仿宋_GB2312', '仿宋', serif; font-size: 12pt; color: #000; margin-top: 6pt; line-height: 18pt;">编号：${data.applicationNo}</div>
     </div>
     `
     : '';

@@ -377,21 +377,67 @@ function handlePrintFromDetail() {
   if (detailRecord.value) {
     // 使用当前编辑的内容创建临时记录
     const tempRecord = { ...detailRecord.value, content: editingContent.value };
-    handlePrintContent(tempRecord);
+    showPrintOptions(tempRecord);
   }
 }
 
-// 打印函件内容（使用标准公文格式）
-async function handlePrintContent(record: LetterApplicationDTO) {
+// 打印选项状态
+const printWithQrCode = ref(true); // 默认打印二维码
+
+// 显示打印选项弹窗
+function showPrintOptions(record: LetterApplicationDTO) {
+  printWithQrCode.value = true; // 重置为默认值
+  
+  Modal.confirm({
+    title: '打印选项',
+    width: 400,
+    content: () => {
+      return h('div', { style: 'padding: 16px 0' }, [
+        h('div', { style: 'margin-bottom: 16px; color: #666' }, 
+          `即将打印函件：${record.applicationNo}`
+        ),
+        h('div', { style: 'display: flex; align-items: center; gap: 8px' }, [
+          h('input', {
+            type: 'checkbox',
+            checked: printWithQrCode.value,
+            id: 'printQrCodeCheckbox',
+            style: 'width: 16px; height: 16px; cursor: pointer',
+            onChange: (e: Event) => {
+              printWithQrCode.value = (e.target as HTMLInputElement).checked;
+            },
+          }),
+          h('label', { 
+            for: 'printQrCodeCheckbox',
+            style: 'cursor: pointer; user-select: none' 
+          }, '打印验证二维码'),
+        ]),
+        h('div', { style: 'margin-top: 8px; font-size: 12px; color: #999' }, 
+          '二维码用于扫码验证函件真伪，推荐启用'
+        ),
+      ]);
+    },
+    okText: '打印',
+    cancelText: '取消',
+    onOk: async () => {
+      await executePrint(record, printWithQrCode.value);
+    },
+  });
+}
+
+// 执行打印（内部函数）
+async function executePrint(record: LetterApplicationDTO, withQrCode: boolean) {
   try {
-    // 获取验证二维码
     let qrCodeBase64: string | undefined;
-    try {
-      const qrCodeRes = await getLetterQrCode(record.id, 120); // 120px适合打印（约70pt）
-      qrCodeBase64 = qrCodeRes.qrCodeBase64;
-    } catch (qrError: any) {
-      console.warn('获取二维码失败，将不显示二维码:', qrError.message);
-      // 二维码获取失败不影响打印，继续执行
+    
+    if (withQrCode) {
+      // 获取验证二维码
+      try {
+        const qrCodeRes = await getLetterQrCode(record.id, 120); // 120px适合打印（约70pt）
+        qrCodeBase64 = qrCodeRes.qrCodeBase64;
+      } catch (qrError: any) {
+        console.warn('获取二维码失败，将不显示二维码:', qrError.message);
+        message.warning('获取二维码失败，将不打印二维码');
+      }
     }
 
     const printData: LetterPrintData = {
@@ -405,12 +451,17 @@ async function handlePrintContent(record: LetterApplicationDTO) {
       lawyerNames: record.lawyerNames,
       firmName: firmName.value,
       date: dayjs().format('YYYY年MM月DD日'),
-      qrCodeBase64, // 添加二维码
+      qrCodeBase64, // 根据选择添加或不添加二维码
     };
     printLetter(printData);
   } catch (error: any) {
     message.error(error.message || '打印失败');
   }
+}
+
+// 打印函件内容（直接调用，带选项弹窗）
+function handlePrintContent(record: LetterApplicationDTO) {
+  showPrintOptions(record);
 }
 
 // 下载为Word文档

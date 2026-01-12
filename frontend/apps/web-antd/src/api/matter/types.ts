@@ -47,6 +47,8 @@ export interface MatterDTO {
   matterTypeName?: string;
   caseType?: string;
   caseTypeName?: string;
+  litigationStage?: string;
+  litigationStageName?: string;
   causeOfAction?: string;
   causeOfActionName?: string;
   businessType?: string;
@@ -124,6 +126,7 @@ export interface CreateMatterCommand {
   name: string;
   matterType: string;
   caseType?: string;
+  litigationStage?: string;
   causeOfAction?: string;
   businessType?: string;
   clientId: number;

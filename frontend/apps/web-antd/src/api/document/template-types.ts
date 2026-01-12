@@ -11,6 +11,8 @@ export interface DocumentTemplateDTO {
   templateTypeName?: string;
   businessType?: string;
   businessTypeName?: string;
+  caseType?: string;
+  caseTypeName?: string;
   content?: string;
   variables?: string[];
   creatorId?: number;

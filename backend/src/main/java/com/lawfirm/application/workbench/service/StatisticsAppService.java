@@ -124,14 +124,26 @@ public class StatisticsAppService {
         stats.setGrowthRate(growthRate);
 
         // 查询收入趋势
-        List<StatisticsDTO.RevenueTrend> trends = statisticsMapper.getRevenueTrends(accessibleMatterIds).stream()
-                .map(item -> {
-                    StatisticsDTO.RevenueTrend trend = new StatisticsDTO.RevenueTrend();
-                    trend.setPeriod((String) item.get("period"));
-                    trend.setAmount((BigDecimal) item.get("amount"));
-                    return trend;
-                })
-                .collect(Collectors.toList());
+        List<Map<String, Object>> trendData = statisticsMapper.getRevenueTrends(accessibleMatterIds);
+        List<StatisticsDTO.RevenueTrend> trends = new java.util.ArrayList<>();
+        if (trendData != null) {
+            trends = trendData.stream()
+                    .filter(item -> item != null)
+                    .map(item -> {
+                        StatisticsDTO.RevenueTrend trend = new StatisticsDTO.RevenueTrend();
+                        trend.setPeriod((String) item.get("period"));
+                        Object amountObj = item.get("amount");
+                        if (amountObj instanceof BigDecimal) {
+                            trend.setAmount((BigDecimal) amountObj);
+                        } else if (amountObj != null) {
+                            trend.setAmount(new BigDecimal(amountObj.toString()));
+                        } else {
+                            trend.setAmount(BigDecimal.ZERO);
+                        }
+                        return trend;
+                    })
+                    .collect(Collectors.toList());
+        }
         stats.setTrends(trends);
 
         log.info("获取收入统计: total={}, monthly={}, yearly={}, dataScope={}", totalRevenue, monthlyRevenue, yearlyRevenue, dataScope);

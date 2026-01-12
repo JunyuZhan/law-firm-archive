@@ -45,7 +45,7 @@ import {
   getMatterList,
   updateMatter,
 } from '#/api/matter';
-import { getDepartmentTreePublic } from '#/api/system';
+import { getDepartmentTreePublic, getDictDataByCode } from '#/api/system';
 import { UserTreeSelect } from '#/components/UserTreeSelect';
 import {
   causesToCascaderOptions,
@@ -123,12 +123,49 @@ const selectedClients = ref<SelectedClient[]>([
   { clientId: undefined, clientRole: 'PLAINTIFF', isPrimary: true },
 ]);
 
+// 代理阶段选项 - 从后端字典加载
+const litigationStageOptions = ref<{ label: string; value: string }[]>([]);
+const litigationStageLoading = ref(false);
+
+// 案件类型与字典编码的映射
+const caseTypeToDictCode: Record<string, string> = {
+  CIVIL: 'litigation_stage_civil',
+  CRIMINAL: 'litigation_stage_criminal',
+  ADMINISTRATIVE: 'litigation_stage_administrative',
+  LABOR_ARBITRATION: 'litigation_stage_labor_arbitration',
+  COMMERCIAL_ARBITRATION: 'litigation_stage_commercial_arbitration',
+  ENFORCEMENT: 'litigation_stage_enforcement',
+};
+
+// 加载代理阶段选项
+async function loadLitigationStageOptions(caseType: string | undefined) {
+  if (!caseType) {
+    litigationStageOptions.value = [];
+    return;
+  }
+  const dictCode = caseTypeToDictCode[caseType] || 'litigation_stage_default';
+  litigationStageLoading.value = true;
+  try {
+    const items = await getDictDataByCode(dictCode);
+    litigationStageOptions.value = items.map((item) => ({
+      label: item.label,
+      value: item.value,
+    }));
+  } catch (error) {
+    console.warn('加载代理阶段字典失败:', error);
+    litigationStageOptions.value = [];
+  } finally {
+    litigationStageLoading.value = false;
+  }
+}
+
 // 表单数据
 const formData = reactive<Partial<CreateMatterCommand> & { id?: number }>({
   id: undefined,
   name: '',
   matterType: 'LITIGATION',
   caseType: undefined,
+  litigationStage: undefined,
   causeOfAction: undefined,
   businessType: undefined,
   clientId: undefined,
@@ -183,12 +220,15 @@ watch(
   },
 );
 
-// 监听案件类型变化，清空案由
+// 监听案件类型变化，清空案由和代理阶段，并重新加载代理阶段选项
 watch(
   () => formData.caseType,
-  () => {
+  (newCaseType) => {
     formData.causeOfAction = undefined;
+    formData.litigationStage = undefined;
     causeValue.value = [];
+    // 从字典加载代理阶段选项
+    loadLitigationStageOptions(newCaseType);
   },
 );
 
@@ -528,6 +568,8 @@ function handleEdit(record: MatterDTO) {
   modalTitle.value = '编辑项目';
   // 设置案由级联值
   causeValue.value = record.causeOfAction ? [record.causeOfAction] : [];
+  // 加载代理阶段选项（编辑时需要先加载选项，再填充数据）
+  loadLitigationStageOptions(record.caseType);
 
   // 加载多客户数据
   if (record.clients && record.clients.length > 0) {
@@ -552,6 +594,7 @@ function handleEdit(record: MatterDTO) {
     name: record.name,
     matterType: record.matterType,
     caseType: record.caseType,
+    litigationStage: record.litigationStage,
     causeOfAction: record.causeOfAction,
     businessType: record.businessType,
     clientId: record.clientId,
@@ -865,7 +908,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <Page title="项目管理" description="管理案件和项目信息" auto-content-height>
+  <Page title="项目管理" description="管理案件和项目信息">
     <Grid>
       <!-- 工具栏按钮 -->
       <template #toolbar-buttons>
@@ -1014,7 +1057,29 @@ onMounted(async () => {
             </FormItem>
           </Col>
           <Col :span="12">
-            <FormItem v-if="showCauseSelect" label="案由" name="causeOfAction">
+            <FormItem
+              v-if="formData.matterType === 'LITIGATION'"
+              label="代理阶段"
+              name="litigationStage"
+            >
+              <Select
+                v-model:value="formData.litigationStage"
+                :options="litigationStageOptions"
+                placeholder="请选择代理阶段"
+                allow-clear
+              />
+            </FormItem>
+            <FormItem v-else label="业务类型" name="businessType">
+              <Input
+                v-model:value="formData.businessType"
+                placeholder="请输入业务类型"
+              />
+            </FormItem>
+          </Col>
+        </Row>
+        <Row v-if="showCauseSelect" :gutter="16">
+          <Col :span="24">
+            <FormItem label="案由" name="causeOfAction">
               <Cascader
                 v-model:value="causeValue"
                 :options="causeOptions"
@@ -1030,12 +1095,6 @@ onMounted(async () => {
                 }"
                 :display-render="({ labels }) => labels[labels.length - 1]"
                 style="width: 100%"
-              />
-            </FormItem>
-            <FormItem v-else label="业务类型" name="businessType">
-              <Input
-                v-model:value="formData.businessType"
-                placeholder="请输入业务类型"
               />
             </FormItem>
           </Col>

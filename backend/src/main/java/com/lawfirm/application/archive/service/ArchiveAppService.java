@@ -225,9 +225,10 @@ public class ArchiveAppService {
 
         archiveRepository.save(archive);
 
-        // 生成卷宗封面
+        // 生成卷宗封面（传入卷数、页数、保管期限）
         try {
-            byte[] coverPdf = coverGenerator.generateCover(matter, archiveNo);
+            byte[] coverPdf = coverGenerator.generateCover(matter, archiveNo, 
+                    archive.getVolumeCount(), archive.getPageCount(), archive.getRetentionPeriod());
             String coverFileName = "archive_" + archive.getId() + "_cover.pdf";
             String coverPath = "archives/" + archive.getId() + "/" + coverFileName;
             String coverUrl = minioService.uploadBytes(coverPdf, coverPath, "application/pdf");
@@ -397,9 +398,10 @@ public class ArchiveAppService {
 
         archiveRepository.save(archive);
 
-        // 生成卷宗封面
+        // 生成卷宗封面（传入卷数、页数、保管期限）
         try {
-            byte[] coverPdf = coverGenerator.generateCover(matter, archiveNo);
+            byte[] coverPdf = coverGenerator.generateCover(matter, archiveNo,
+                    archive.getVolumeCount(), archive.getPageCount(), archive.getRetentionPeriod());
             String coverFileName = "archive_" + archive.getId() + "_cover.pdf";
             String coverPath = "archives/" + archive.getId() + "/" + coverFileName;
             String coverUrl = minioService.uploadBytes(coverPdf, coverPath, "application/pdf");
@@ -768,8 +770,9 @@ public class ArchiveAppService {
         Matter matter = matterRepository.getByIdOrThrow(archive.getMatterId(), "项目不存在");
         
         try {
-            // 生成新的封面
-            byte[] coverPdf = coverGenerator.generateCover(matter, archive.getArchiveNo());
+            // 生成新的封面（传入卷数、页数、保管期限）
+            byte[] coverPdf = coverGenerator.generateCover(matter, archive.getArchiveNo(),
+                    archive.getVolumeCount(), archive.getPageCount(), archive.getRetentionPeriod());
             String coverFileName = "archive_" + archive.getId() + "_cover.pdf";
             String coverPath = "archives/" + archive.getId() + "/" + coverFileName;
             String coverUrl = minioService.uploadBytes(coverPdf, coverPath, "application/pdf");

@@ -253,7 +253,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <Page title="操作日志" description="查看系统操作日志" auto-content-height>
+  <Page title="操作日志" description="查看系统操作日志">
     <!-- 统计卡片 -->
     <Card class="mb-4" :bordered="false">
       <Row :gutter="16">

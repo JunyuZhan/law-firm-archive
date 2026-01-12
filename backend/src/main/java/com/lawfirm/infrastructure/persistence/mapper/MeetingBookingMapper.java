@@ -50,12 +50,14 @@ public interface MeetingBookingMapper extends BaseMapper<MeetingBooking> {
     /**
      * 检查时间段是否有冲突
      */
-    @Select("SELECT COUNT(*) FROM meeting_booking " +
+    @Select("<script>" +
+            "SELECT COUNT(*) FROM meeting_booking " +
             "WHERE room_id = #{roomId} AND status IN ('BOOKED', 'IN_PROGRESS') AND deleted = false " +
-            "AND ((start_time <= #{startTime} AND end_time > #{startTime}) " +
-            "OR (start_time < #{endTime} AND end_time >= #{endTime}) " +
-            "OR (start_time >= #{startTime} AND end_time <= #{endTime}))" +
-            "<if test='excludeId != null'> AND id != #{excludeId} </if>")
+            "AND ((start_time &lt;= #{startTime} AND end_time &gt; #{startTime}) " +
+            "OR (start_time &lt; #{endTime} AND end_time &gt;= #{endTime}) " +
+            "OR (start_time &gt;= #{startTime} AND end_time &lt;= #{endTime}))" +
+            "<if test='excludeId != null'> AND id != #{excludeId} </if>" +
+            "</script>")
     int countConflicting(@Param("roomId") Long roomId,
                          @Param("startTime") LocalDateTime startTime,
                          @Param("endTime") LocalDateTime endTime,

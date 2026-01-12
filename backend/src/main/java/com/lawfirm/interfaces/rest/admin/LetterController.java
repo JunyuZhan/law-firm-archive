@@ -233,7 +233,8 @@ public class LetterController {
 
     // ==================== 二维码相关 ====================
 
-    @Operation(summary = "获取函件验证二维码（Base64）")
+    @Operation(summary = "获取函件验证二维码（Base64）", 
+               description = "生成二维码并推送验证数据到客服系统（如已配置）")
     @GetMapping("/application/{id}/qrcode")
     @RequirePermission("admin:letter:list")
     public Result<QrCodeResponse> getQrCode(
@@ -241,7 +242,8 @@ public class LetterController {
             @RequestParam(required = false, defaultValue = "200") Integer size) {
         LetterApplication entity = letterApplicationRepository.getByIdOrThrow(id, "函件不存在");
         
-        String qrCodeBase64 = letterVerificationService.generateQrCodeBase64(entity, size);
+        // 使用带推送功能的方法：生成二维码的同时推送验证数据到客服系统
+        String qrCodeBase64 = letterVerificationService.generateQrCodeWithPush(entity, size);
         String verificationUrl = letterVerificationService.generateVerificationUrl(entity);
         
         QrCodeResponse response = new QrCodeResponse();
@@ -252,13 +254,16 @@ public class LetterController {
         return Result.success(response);
     }
 
-    @Operation(summary = "下载函件验证二维码图片")
+    @Operation(summary = "下载函件验证二维码图片", 
+               description = "生成二维码图片并推送验证数据到客服系统（如已配置）")
     @GetMapping(value = "/application/{id}/qrcode/image", produces = MediaType.IMAGE_PNG_VALUE)
     @RequirePermission("admin:letter:list")
     public byte[] getQrCodeImage(
             @PathVariable Long id,
             @RequestParam(required = false, defaultValue = "200") Integer size) {
         LetterApplication entity = letterApplicationRepository.getByIdOrThrow(id, "函件不存在");
+        // 先推送验证数据，然后返回二维码图片
+        letterVerificationService.generateQrCodeWithPush(entity, size);
         return letterVerificationService.generateQrCodeBytes(entity, size);
     }
 

@@ -24,6 +24,15 @@ public class FinanceContractAmendmentController {
 
     private final FinanceContractAmendmentService amendmentService;
 
+    @Operation(summary = "查询所有变更记录")
+    @GetMapping
+    @RequirePermission("finance:contract:amendment:view")
+    public Result<List<FinanceContractAmendment>> getAllAmendments() {
+        // 返回待处理的变更记录作为默认列表
+        List<FinanceContractAmendment> amendments = amendmentService.getPendingAmendments();
+        return Result.success(amendments);
+    }
+
     @Operation(summary = "查询待处理的变更记录")
     @GetMapping("/pending")
     @RequirePermission("finance:contract:amendment:view")

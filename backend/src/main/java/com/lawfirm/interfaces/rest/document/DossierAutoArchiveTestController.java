@@ -104,6 +104,37 @@ public class DossierAutoArchiveTestController {
         }
     }
 
+    /**
+     * 重新生成授权委托书（强制覆盖已有的）
+     * 
+     * 使用场景：
+     * - 模板更新后需要重新生成
+     * - 项目信息变更后需要更新
+     * - 之前无模板时用了默认格式，模板准备好后重新生成
+     */
+    @Operation(summary = "重新生成授权委托书（强制覆盖）")
+    @PostMapping("/power-of-attorney/{matterId}/regenerate")
+    public Result<String> regeneratePowerOfAttorney(@PathVariable Long matterId) {
+        try {
+            // 检查是否有可用模板
+            DocumentTemplate template = documentTemplateRepository.findFirstByTemplateType(
+                DossierAutoArchiveService.TEMPLATE_TYPE_POWER_OF_ATTORNEY);
+            
+            dossierAutoArchiveService.regeneratePowerOfAttorney(matterId);
+            
+            String message;
+            if (template != null) {
+                message = String.format("授权委托书重新生成成功（使用模板：%s）", template.getName());
+            } else {
+                message = "授权委托书重新生成成功（使用默认格式，建议配置模板后再次重新生成）";
+            }
+            
+            return Result.success(message);
+        } catch (Exception e) {
+            return Result.fail("授权委托书重新生成失败: " + e.getMessage());
+        }
+    }
+
     // ==================== 模板预览功能 ====================
 
     /**

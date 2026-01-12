@@ -216,7 +216,7 @@ async function handleArchive(row: MatterDTO) {
 </script>
 
 <template>
-  <Page title="我的项目" description="查看我参与的项目" auto-content-height>
+  <Page title="我的项目" description="查看我参与的项目">
     <Grid>
       <!-- 状态列 -->
       <template #status="{ row }">

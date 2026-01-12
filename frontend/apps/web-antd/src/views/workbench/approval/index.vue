@@ -346,7 +346,6 @@ onMounted(() => {
   <Page
     title="审批中心"
     description="集中管理所有业务审批，快速处理待审批事项"
-    auto-content-height
   >
     <Card :bordered="false">
       <Tabs v-model:active-key="activeTab" @change="handleTabChange">

@@ -156,6 +156,22 @@ const canEditOperations = computed(() => {
   return !['ARCHIVED', 'CLOSED', 'PENDING_CLOSE'].includes(matter.value.status);
 });
 
+// 格式化案件标题（用于打印）：客户名称 诉 对方名称 案由 一案
+const formattedMatterTitle = computed(() => {
+  if (!matter.value) return '';
+  const { clientName, opposingParty, causeOfActionName } = matter.value;
+  // 如果有客户名称和对方名称，使用完整格式
+  if (clientName && opposingParty && causeOfActionName) {
+    return `${clientName}诉${opposingParty}${causeOfActionName}一案`;
+  }
+  // 如果只有客户名称和案由
+  if (clientName && causeOfActionName) {
+    return `${clientName}${causeOfActionName}一案`;
+  }
+  // 退回到使用案件名称
+  return matter.value.name || '';
+});
+
 // 项目类型映射
 const matterTypeMap: Record<string, string> = {
   LITIGATION: '诉讼案件',
@@ -879,6 +895,7 @@ onMounted(() => {
               <EvidenceListManager
                 ref="evidenceManagerRef"
                 :matter-id="matter.id"
+                :matter-name="formattedMatterTitle"
                 :readonly="!canEditDocument"
               />
             </TabPane>

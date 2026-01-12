@@ -9,6 +9,7 @@ import { Plus } from '@vben/icons';
 
 import {
   Button,
+  Card,
   Collapse,
   CollapsePanel,
   message,
@@ -97,7 +98,9 @@ async function loadData() {
 const [Grid, gridApi] = useVbenVxeGrid({
   gridOptions: {
     columns: gridColumns,
-    height: 'auto',
+    // 移除高度限制，让表格完整显示所有数据
+    height: '',
+    minHeight: 200,
     proxyConfig: {
       ajax: {
         query: async () => {
@@ -220,14 +223,14 @@ function handleModalSuccess() {
           <!-- 业务流程 -->
           <div class="rounded-lg bg-green-50 p-4">
             <div class="mb-2 font-medium text-green-700">📋 业务流程</div>
-            <div class="flex items-center gap-2 text-sm text-gray-600">
-              <Tag color="blue">1.创建合同</Tag>
-              <span>→</span>
-              <Tag color="blue">2.收款确认</Tag>
-              <span>→</span>
-              <Tag color="orange">3.财务结算</Tag>
-              <span>→</span>
-              <Tag color="green">4.发放提成</Tag>
+            <div class="flex flex-wrap items-center gap-1 text-sm text-gray-600">
+              <Tag color="blue" class="m-0">1.创建合同</Tag>
+              <span class="mx-1">→</span>
+              <Tag color="blue" class="m-0">2.收款确认</Tag>
+              <span class="mx-1">→</span>
+              <Tag color="orange" class="m-0">3.财务结算</Tag>
+              <span class="mx-1">→</span>
+              <Tag color="green" class="m-0">4.发放提成</Tag>
             </div>
           </div>
 
@@ -247,7 +250,8 @@ function handleModalSuccess() {
     </Collapse>
 
     <!-- 表格区域 -->
-    <Grid>
+    <Card :bordered="false">
+      <Grid>
       <!-- 工具栏按钮（隐藏，使用页面顶部按钮） -->
       <template #toolbar-buttons>
         <span></span>
@@ -352,7 +356,8 @@ function handleModalSuccess() {
           </a>
         </Space>
       </template>
-    </Grid>
+      </Grid>
+    </Card>
 
     <!-- 编辑弹窗 -->
     <CommissionRuleModal ref="ruleModalRef" @success="handleModalSuccess" />
@@ -372,5 +377,13 @@ function handleModalSuccess() {
 
 :deep(.ant-collapse > .ant-collapse-item) {
   border: none;
+}
+
+/* 强制表格显示全部内容，不限制高度 */
+:deep(.vxe-grid),
+:deep(.vxe-table),
+:deep(.vxe-table--body-wrapper) {
+  max-height: none !important;
+  height: auto !important;
 }
 </style>

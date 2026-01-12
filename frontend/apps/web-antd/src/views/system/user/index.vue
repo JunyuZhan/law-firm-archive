@@ -7,18 +7,36 @@ import { ref } from 'vue';
 
 import { Page } from '@vben/common-ui';
 
-import { Button, message, Modal, Space, Switch, Tag, Tooltip } from 'ant-design-vue';
+import {
+  Button,
+  Dropdown,
+  Menu,
+  MenuItem,
+  message,
+  Modal,
+  Space,
+  Switch,
+  Tag,
+  Tooltip,
+} from 'ant-design-vue';
+import {
+  DownloadOutlined,
+  DownOutlined,
+  UploadOutlined,
+} from '@ant-design/icons-vue';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
   changeUserStatus,
   deleteUser,
+  exportUsers,
   getDepartmentTree,
   getUserList,
   resetPassword,
 } from '#/api/system';
 
 import UserDrawer from './components/UserDrawer.vue';
+import UserImportModal from './components/UserImportModal.vue';
 import UserModal from './components/UserModal.vue';
 
 defineOptions({ name: 'SystemUser' });
@@ -27,8 +45,10 @@ defineOptions({ name: 'SystemUser' });
 
 const userModalRef = ref<InstanceType<typeof UserModal>>();
 const userDrawerRef = ref<InstanceType<typeof UserDrawer>>();
+const userImportModalRef = ref<InstanceType<typeof UserImportModal>>();
 const useDrawer = ref(true); // 默认使用抽屉模式体验
 const departments = ref<DepartmentDTO[]>([]);
+const exporting = ref(false);
 
 // 加载部门树
 async function loadDepartments() {
@@ -249,6 +269,31 @@ function handleModalSuccess() {
   gridApi.reload();
 }
 
+// 打开批量导入弹窗
+function handleImport() {
+  userImportModalRef.value?.open();
+}
+
+// 导出用户列表
+async function handleExport() {
+  try {
+    exporting.value = true;
+    const blob = await exportUsers();
+    const url = window.URL.createObjectURL(blob as Blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `用户列表_${new Date().toISOString().split('T')[0]}.xlsx`;
+    link.click();
+    window.URL.revokeObjectURL(url);
+    message.success('导出成功');
+  } catch (error: unknown) {
+    const err = error as { message?: string };
+    message.error(err.message || '导出失败');
+  } finally {
+    exporting.value = false;
+  }
+}
+
 // 状态颜色
 function getStatusColor(status: string) {
   return status === 'ACTIVE' ? 'green' : 'red';
@@ -256,7 +301,7 @@ function getStatusColor(status: string) {
 </script>
 
 <template>
-  <Page title="用户管理" description="管理系统用户" auto-content-height>
+  <Page title="用户管理" description="管理系统用户">
     <Grid>
       <!-- 工具栏按钮 -->
       <template #toolbar-buttons>
@@ -264,6 +309,26 @@ function getStatusColor(status: string) {
           <Button v-access:code="'user:create'" type="primary" @click="handleAdd">
             新增用户
           </Button>
+          <span v-access:code="'user:create'">
+            <Dropdown>
+              <Button>
+                更多操作
+                <DownOutlined />
+              </Button>
+              <template #overlay>
+                <Menu>
+                  <MenuItem key="import" @click="handleImport">
+                    <UploadOutlined />
+                    批量导入
+                  </MenuItem>
+                  <MenuItem key="export" @click="handleExport">
+                    <DownloadOutlined />
+                    {{ exporting ? '导出中...' : '导出列表' }}
+                  </MenuItem>
+                </Menu>
+              </template>
+            </Dropdown>
+          </span>
           <Tooltip title="切换弹窗/抽屉模式">
             <Space>
               <span class="text-gray-500 text-sm">弹窗</span>
@@ -307,5 +372,7 @@ function getStatusColor(status: string) {
     <UserModal ref="userModalRef" @success="handleModalSuccess" />
     <!-- 用户抽屉 -->
     <UserDrawer ref="userDrawerRef" @success="handleModalSuccess" />
+    <!-- 用户导入弹窗 -->
+    <UserImportModal ref="userImportModalRef" @success="handleModalSuccess" />
   </Page>
 </template>

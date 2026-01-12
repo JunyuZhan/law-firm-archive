@@ -91,6 +91,12 @@ VALUES
 -- 日志配置
 ('log.level', 'INFO', '日志级别', 'STRING', '系统日志级别：DEBUG/INFO/WARN/ERROR', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
 ('log.keep.days', '90', '日志保留天数', 'NUMBER', '系统日志保留天数', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
-('log.operation.enabled', 'true', '操作日志', 'BOOLEAN', '是否启用操作日志记录', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
+('log.operation.enabled', 'true', '操作日志', 'BOOLEAN', '是否启用操作日志记录', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+
+-- 函件验证配置（数据隔离模式：验证数据推送到客服系统，律所系统不对外暴露验证接口）
+('letter.verify.public.url', '', '客服系统验证页面URL', 'STRING', '【已弃用】验证数据通过API推送到客服系统，此配置仅用于客服系统未对接时的兜底显示', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+
+-- 律所名称（用于函件验证推送）
+('system.firm.name', '', '律所名称', 'STRING', '律师事务所全称，用于函件验证等场景', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
 ON CONFLICT (config_key) DO NOTHING;
 

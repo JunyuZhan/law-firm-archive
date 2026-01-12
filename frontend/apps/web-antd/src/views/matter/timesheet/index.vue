@@ -391,7 +391,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <Page title="工时管理" description="管理项目工时记录" auto-content-height>
+  <Page title="工时管理" description="管理项目工时记录">
     <Card>
       <!-- 标签页切换 -->
       <Tabs v-model:active-key="activeTab" @change="handleTabChange">

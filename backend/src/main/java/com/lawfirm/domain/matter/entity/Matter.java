@@ -41,6 +41,11 @@ public class Matter extends BaseEntity {
     private String caseType;
 
     /**
+     * 代理阶段：FIRST_INSTANCE-一审, SECOND_INSTANCE-二审, RETRIAL-再审, EXECUTION-执行, ARBITRATION-仲裁, CONSULTATION-咨询
+     */
+    private String litigationStage;
+
+    /**
      * 案由代码（对应前端案由常量的code）
      */
     private String causeOfAction;

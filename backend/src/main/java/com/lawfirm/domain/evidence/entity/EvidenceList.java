@@ -28,7 +28,7 @@ public class EvidenceList extends BaseEntity {
     /** 清单类型 */
     private String listType;
 
-    /** 证据ID列表(JSON) */
+    /** 证据ID列表(JSON字符串) */
     private String evidenceIds;
 
     /** 文件URL */

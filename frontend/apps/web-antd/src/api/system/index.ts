@@ -100,6 +100,62 @@ export function changeUserStatus(id: number, status: string) {
   return requestClient.put(`/system/user/${id}/status`, { status });
 }
 
+/** 导出用户列表 */
+export function exportUsers(params?: UserQuery) {
+  return requestClient.get('/system/user/export', {
+    params,
+    responseType: 'blob',
+    responseReturn: 'body',
+    timeout: 600_000,
+  });
+}
+
+/** 批量导入用户 */
+export function importUsers(
+  file: File,
+  onProgress?: (progress: {
+    loaded: number;
+    percent: number;
+    total: number;
+  }) => void,
+) {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  return requestClient.post<{
+    errorMessages: string[];
+    failCount: number;
+    successCount: number;
+    total: number;
+  }>('/system/user/import', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+    timeout: 600_000,
+    onUploadProgress: (progressEvent) => {
+      if (onProgress && progressEvent.total) {
+        const percent = Math.round(
+          (progressEvent.loaded * 100) / progressEvent.total,
+        );
+        onProgress({
+          loaded: progressEvent.loaded,
+          total: progressEvent.total,
+          percent,
+        });
+      }
+    },
+  });
+}
+
+/** 下载用户导入模板 */
+export function downloadUserImportTemplate() {
+  return requestClient.get('/system/user/export', {
+    params: { pageNum: 1, pageSize: 0 }, // 只返回表头模板
+    responseType: 'blob',
+    responseReturn: 'body',
+  });
+}
+
 // ========== 角色管理 API ==========
 
 /** 获取角色列表 */
@@ -706,6 +762,9 @@ export function sendSystemReport(type: 'daily' | 'weekly' = 'daily') {
     type,
   });
 }
+
+// 导出公告管理API
+export * from './announcement';
 
 // 导出类型
 export type * from './types';

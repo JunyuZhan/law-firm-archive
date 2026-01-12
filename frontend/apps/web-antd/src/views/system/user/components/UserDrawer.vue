@@ -65,12 +65,12 @@ function getFormSchema(): VbenFormSchema[] {
       component: 'InputPassword',
       rules: isEdit.value
         ? z.string().optional()
-        : z.string().min(1, '请输入密码'),
+        : z.string().min(6, '密码长度至少6位'),
       hide: isEdit.value,
       componentProps: {
-        placeholder: '请输入密码',
+        placeholder: '请输入密码（至少6位）',
       },
-      help: '密码长度建议不少于8位',
+      help: '密码需包含大小写字母和数字',
     },
     {
       fieldName: 'realName',
@@ -79,6 +79,14 @@ function getFormSchema(): VbenFormSchema[] {
       rules: z.string().min(1, '请输入姓名'),
       componentProps: {
         placeholder: '请输入真实姓名',
+      },
+    },
+    {
+      fieldName: 'employeeNo',
+      label: '工号',
+      component: 'Input',
+      componentProps: {
+        placeholder: '请输入工号',
       },
     },
     {
@@ -119,6 +127,52 @@ function getFormSchema(): VbenFormSchema[] {
       componentProps: {
         placeholder: '请输入职位名称',
       },
+    },
+    {
+      fieldName: 'lawyerLicenseNo',
+      label: '执业证号',
+      component: 'Input',
+      componentProps: {
+        placeholder: '请输入律师执业证号',
+      },
+      help: '如为律师请填写执业资格证号',
+    },
+    {
+      fieldName: 'joinDate',
+      label: '入职日期',
+      component: 'DatePicker',
+      componentProps: {
+        placeholder: '请选择入职日期',
+        style: { width: '100%' },
+        format: 'YYYY-MM-DD',
+        valueFormat: 'YYYY-MM-DD',
+      },
+    },
+    {
+      fieldName: 'compensationType',
+      label: '薪酬模式',
+      component: 'Select',
+      defaultValue: 'COMMISSION',
+      componentProps: {
+        placeholder: '请选择薪酬模式',
+        options: [
+          { label: '提成制', value: 'COMMISSION' },
+          { label: '固定工资', value: 'SALARIED' },
+          { label: '混合制', value: 'HYBRID' },
+        ],
+      },
+      help: '决定是否参与项目提成分配',
+    },
+    {
+      fieldName: 'canBeOriginator',
+      label: '案源人资格',
+      component: 'Switch',
+      defaultValue: true,
+      componentProps: {
+        checkedChildren: '是',
+        unCheckedChildren: '否',
+      },
+      help: '是否可作为案件案源人',
     },
     {
       fieldName: 'roleIds',
@@ -180,16 +234,35 @@ const [Drawer, drawerApi] = useVbenDrawer({
         const updateData: UpdateUserCommand = {
           id: editId.value,
           realName: values.realName,
+          employeeNo: values.employeeNo,
           email: values.email,
           phone: values.phone,
           departmentId: values.departmentId,
           position: values.position,
+          lawyerLicenseNo: values.lawyerLicenseNo,
+          joinDate: values.joinDate,
+          compensationType: values.compensationType,
+          canBeOriginator: values.canBeOriginator,
           roleIds: values.roleIds,
         };
         await updateUser(updateData);
         message.success('更新成功');
       } else {
-        const createData: CreateUserCommand = values as CreateUserCommand;
+        const createData: CreateUserCommand = {
+          username: values.username,
+          password: values.password,
+          realName: values.realName,
+          employeeNo: values.employeeNo,
+          email: values.email,
+          phone: values.phone,
+          departmentId: values.departmentId,
+          position: values.position,
+          lawyerLicenseNo: values.lawyerLicenseNo,
+          joinDate: values.joinDate,
+          compensationType: values.compensationType,
+          canBeOriginator: values.canBeOriginator,
+          roleIds: values.roleIds,
+        };
         await createUser(createData);
         message.success('创建成功');
       }
@@ -233,10 +306,15 @@ function openEdit(record: Record<string, any>, placement: DrawerPlacement = 'lef
   formApi.setValues({
     username: record.username,
     realName: record.realName,
+    employeeNo: record.employeeNo,
     email: record.email,
     phone: record.phone,
     departmentId: record.departmentId,
     position: record.position,
+    lawyerLicenseNo: record.lawyerLicenseNo,
+    joinDate: record.joinDate,
+    compensationType: record.compensationType || 'COMMISSION',
+    canBeOriginator: record.canBeOriginator ?? true,
     roleIds: record.roleIds || [],
     status: record.status,
   });

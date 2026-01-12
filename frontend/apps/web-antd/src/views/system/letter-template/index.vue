@@ -125,7 +125,6 @@ function handleModalSuccess() {
   <Page
     title="出函模板管理"
     description="管理律师出函/介绍信模板，支持富文本编辑和变量插入"
-    auto-content-height
   >
     <Grid>
       <!-- 工具栏按钮 -->

@@ -24,6 +24,13 @@ public class QualityIssueController {
 
     private final QualityIssueAppService issueAppService;
 
+    @Operation(summary = "查询问题列表")
+    @GetMapping
+    @RequirePermission("knowledge:quality:list")
+    public Result<List<QualityIssueDTO>> listIssues() {
+        return Result.success(issueAppService.getPendingIssues());
+    }
+
     @Operation(summary = "创建问题")
     @PostMapping
     @RequirePermission("knowledge:quality:create")

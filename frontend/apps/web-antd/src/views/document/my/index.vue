@@ -272,7 +272,6 @@ function goToCompose() {
   <Page
     title="我的文书"
     description="查看和管理您的个人文书（不关联项目的文书），项目文书请到对应项目卷宗中查看"
-    auto-content-height
   >
     <Grid>
       <!-- 工具栏按钮 -->

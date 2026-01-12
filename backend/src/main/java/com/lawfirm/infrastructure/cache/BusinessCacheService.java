@@ -92,6 +92,8 @@ public class BusinessCacheService {
     public void evictAllConfigs() {
         log.info("清除所有配置缓存");
         evictByPattern(PREFIX_CONFIG + "*");
+        // 同时清除本地缓存（Redis 不可用时配置缓存在本地）
+        cacheDegradationService.clearLocalCache();
     }
 
     // ========== 用户菜单缓存 ==========

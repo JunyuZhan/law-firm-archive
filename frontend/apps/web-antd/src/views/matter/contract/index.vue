@@ -75,7 +75,7 @@ import {
   updateContract,
 } from '#/api/matter';
 import { requestClient } from '#/api/request';
-import { getDepartmentTreePublic } from '#/api/system';
+import { getDepartmentTreePublic, getDictDataByCode } from '#/api/system';
 import { approveApproval, getBusinessApprovals } from '#/api/workbench';
 import { UserTreeSelect } from '#/components/UserTreeSelect';
 import {
@@ -489,61 +489,41 @@ const feeTypeOptions = [
   { label: '混合收费', value: 'MIXED' },
 ];
 
-// 审理阶段选项 - 根据案件类型动态显示
-const trialStageOptionsMap: Record<string, { label: string; value: string }[]> =
-  {
-    // 民事案件
-    CIVIL: [
-      { label: '一审', value: 'FIRST_INSTANCE' },
-      { label: '二审', value: 'SECOND_INSTANCE' },
-      { label: '再审', value: 'RETRIAL' },
-      { label: '执行', value: 'EXECUTION' },
-    ],
-    // 刑事案件
-    CRIMINAL: [
-      { label: '侦查阶段', value: 'INVESTIGATION' },
-      { label: '审查起诉', value: 'PROSECUTION_REVIEW' },
-      { label: '一审', value: 'FIRST_INSTANCE' },
-      { label: '二审', value: 'SECOND_INSTANCE' },
-      { label: '死刑复核', value: 'DEATH_PENALTY_REVIEW' },
-      { label: '再审', value: 'RETRIAL' },
-    ],
-    // 行政案件
-    ADMINISTRATIVE: [
-      { label: '行政复议', value: 'ADMINISTRATIVE_RECONSIDERATION' },
-      { label: '一审', value: 'FIRST_INSTANCE' },
-      { label: '二审', value: 'SECOND_INSTANCE' },
-      { label: '再审', value: 'RETRIAL' },
-    ],
-    // 劳动仲裁
-    LABOR_ARBITRATION: [
-      { label: '仲裁阶段', value: 'ARBITRATION' },
-      { label: '一审', value: 'FIRST_INSTANCE' },
-      { label: '二审', value: 'SECOND_INSTANCE' },
-      { label: '再审', value: 'RETRIAL' },
-      { label: '执行', value: 'EXECUTION' },
-    ],
-    // 商事仲裁
-    COMMERCIAL_ARBITRATION: [
-      { label: '仲裁阶段', value: 'ARBITRATION' },
-      { label: '执行', value: 'EXECUTION' },
-    ],
-    // 执行案件
-    ENFORCEMENT: [
-      { label: '执行阶段', value: 'EXECUTION' },
-      { label: '执行异议', value: 'EXECUTION_OBJECTION' },
-      { label: '执行复议', value: 'EXECUTION_REVIEW' },
-    ],
-    // 默认选项（非诉等）
-    DEFAULT: [{ label: '非诉服务', value: 'NON_LITIGATION' }],
-  };
+// 审理阶段选项 - 从后端字典加载
+const trialStageOptions = ref<{ label: string; value: string }[]>([]);
+const trialStageLoading = ref(false);
 
-// 根据案件类型获取审理阶段选项
-const trialStageOptions = computed(() => {
-  const caseType = formData.caseType;
-  if (!caseType) return [];
-  return trialStageOptionsMap[caseType] || trialStageOptionsMap.DEFAULT;
-});
+// 案件类型与字典编码的映射
+const caseTypeToDictCode: Record<string, string> = {
+  CIVIL: 'litigation_stage_civil',
+  CRIMINAL: 'litigation_stage_criminal',
+  ADMINISTRATIVE: 'litigation_stage_administrative',
+  LABOR_ARBITRATION: 'litigation_stage_labor_arbitration',
+  COMMERCIAL_ARBITRATION: 'litigation_stage_commercial_arbitration',
+  ENFORCEMENT: 'litigation_stage_enforcement',
+};
+
+// 加载审理阶段选项
+async function loadTrialStageOptions(caseType: string | undefined) {
+  if (!caseType) {
+    trialStageOptions.value = [];
+    return;
+  }
+  const dictCode = caseTypeToDictCode[caseType] || 'litigation_stage_default';
+  trialStageLoading.value = true;
+  try {
+    const items = await getDictDataByCode(dictCode);
+    trialStageOptions.value = items.map((item) => ({
+      label: item.label,
+      value: item.value,
+    }));
+  } catch (error) {
+    console.warn('加载审理阶段字典失败:', error);
+    trialStageOptions.value = [];
+  } finally {
+    trialStageLoading.value = false;
+  }
+}
 
 // 利冲审查状态选项
 const conflictCheckStatusOptions = [
@@ -594,13 +574,15 @@ const causeOptions = computed(() => {
   return causesToCascaderOptions(causes);
 });
 
-// 监听案件类型变化，清空案由
+// 监听案件类型变化，清空案由和审理阶段，并重新加载选项
 watch(
   () => formData.caseType,
-  () => {
+  (newCaseType) => {
     formData.causeOfAction = undefined;
     formData.trialStage = []; // 案件类型改变时清空审理阶段
     causeValue.value = [];
+    // 从字典加载审理阶段选项
+    loadTrialStageOptions(newCaseType);
   },
 );
 
@@ -1619,6 +1601,8 @@ async function handleEdit(record: ContractDTO) {
     // 扩展字段
     formData.caseType = detail.caseType;
     formData.causeOfAction = detail.causeOfAction;
+    // 加载审理阶段选项（编辑时先加载选项，再填充数据）
+    await loadTrialStageOptions(detail.caseType);
     // trialStage 支持多选，后端存储为逗号分隔字符串
     formData.trialStage = detail.trialStage ? detail.trialStage.split(',') : [];
     formData.claimAmount = detail.claimAmount;

@@ -37,6 +37,16 @@ public class DocumentTemplate extends BaseEntity {
     private String templateType;
 
     /**
+     * 案件类型：CIVIL-民事, CRIMINAL-刑事, ADMINISTRATIVE-行政, BANKRUPTCY-破产, 
+     * IP-知识产权, ARBITRATION-仲裁, ENFORCEMENT-执行, LEGAL_COUNSEL-法律顾问, 
+     * SPECIAL_SERVICE-专项服务, ALL-通用（适用所有案件类型）
+     * 
+     * 当同时存在通用模板和特定案件类型模板时，优先使用特定类型模板
+     */
+    @lombok.Builder.Default
+    private String caseType = "ALL";
+
+    /**
      * 文件名
      */
     private String fileName;

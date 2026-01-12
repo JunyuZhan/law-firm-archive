@@ -16,6 +16,8 @@ export interface DocumentTemplateDTO {
   templateTypeName?: string;
   businessType?: string;
   businessTypeName?: string;
+  caseType?: string;
+  caseTypeName?: string;
   content?: string;
   variables?: string[];
   creatorId?: number;
@@ -42,6 +44,7 @@ export interface CreateDocumentTemplateCommand {
   categoryId?: number;
   templateType: string;
   businessType?: string;
+  caseType?: string;
   content: string;
   description?: string;
 }
@@ -50,6 +53,8 @@ export interface UpdateDocumentTemplateCommand {
   name?: string;
   categoryId?: number;
   templateType?: string;
+  caseType?: string;
+  content?: string;
   description?: string;
   status?: string;
 }

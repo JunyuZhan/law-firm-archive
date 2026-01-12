@@ -14,10 +14,13 @@ import { ExternalLink, Plus, RotateCw } from '@vben/icons';
 import {
   Badge,
   Button,
+  Dropdown,
   Empty,
   Form,
   FormItem,
   Input,
+  Menu,
+  MenuItem,
   message,
   Modal,
   Popconfirm,
@@ -33,6 +36,8 @@ import {
   deleteDossierItem,
   getMatterDossierItems,
   initMatterDossier,
+  regeneratePowerOfAttorney,
+  triggerAutoArchive,
   updateDossierItem,
 } from '#/api/document/dossier';
 
@@ -210,6 +215,42 @@ function goToDossierList() {
   window.open(`/document/list?matterId=${props.matterId}`, '_blank');
 }
 
+// 重新生成授权委托书
+const regenerating = ref(false);
+async function handleRegeneratePOA() {
+  regenerating.value = true;
+  try {
+    const result = await regeneratePowerOfAttorney(props.matterId);
+    if (result.templateUsed) {
+      message.success(`${result.message}（使用模板：${result.templateName}）`);
+    } else {
+      message.warning(`${result.message}。${result.hint || ''}`);
+    }
+    // 刷新卷宗目录
+    await loadData();
+  } catch (error: any) {
+    message.error(error.message || '重新生成失败');
+  } finally {
+    regenerating.value = false;
+  }
+}
+
+// 触发自动归档
+const archiving = ref(false);
+async function handleTriggerArchive() {
+  archiving.value = true;
+  try {
+    const result = await triggerAutoArchive(props.matterId);
+    message.success(result.message);
+    // 刷新卷宗目录
+    await loadData();
+  } catch (error: any) {
+    message.error(error.message || '归档失败');
+  } finally {
+    archiving.value = false;
+  }
+}
+
 // 监听 matterId 变化
 watch(
   () => props.matterId,
@@ -254,6 +295,26 @@ defineExpose({
             <RotateCw class="h-4 w-4" />
             刷新
           </Button>
+          <!-- 更多操作下拉菜单（有目录时显示，重新生成不受只读限制） -->
+          <Dropdown v-if="dossierItems.length > 0">
+            <Button size="small" :loading="regenerating || archiving">
+              ⚙️ 更多
+            </Button>
+            <template #overlay>
+              <Menu>
+                <MenuItem key="regenerate-poa" @click="handleRegeneratePOA">
+                  🔄 重新生成授权委托书
+                </MenuItem>
+                <MenuItem
+                  v-if="!readonly"
+                  key="trigger-archive"
+                  @click="handleTriggerArchive"
+                >
+                  📦 触发自动归档
+                </MenuItem>
+              </Menu>
+            </template>
+          </Dropdown>
         </Space>
         <Tooltip title="在卷宗管理页面查看完整文件列表">
           <Button type="link" size="small" @click="goToDossierList">

@@ -13,9 +13,12 @@ import com.lawfirm.domain.finance.entity.Contract;
 import com.lawfirm.domain.finance.repository.ContractRepository;
 import com.lawfirm.domain.matter.entity.Matter;
 import com.lawfirm.domain.matter.repository.MatterRepository;
+import com.lawfirm.domain.system.entity.User;
+import com.lawfirm.domain.system.repository.UserRepository;
 import com.lawfirm.domain.workbench.entity.Approval;
 import com.lawfirm.infrastructure.external.minio.MinioService;
 import com.lawfirm.infrastructure.persistence.mapper.ApprovalMapper;
+import com.lawfirm.infrastructure.persistence.mapper.SysConfigMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -31,16 +34,23 @@ import java.util.UUID;
 /**
  * 卷宗自动归档服务
  * 
- * 负责在业务流程中自动将相关材料归档到项目卷宗：
- * - 收案审批表：基于模板自动生成（支持自定义格式）
- * - 委托合同：关联系统中已生成的合同文档或基于模板生成
- * - 授权委托书：基于模板自动生成（支持自定义代理权限）
- * - 收费发票：开票完成后自动关联
+ * 业务目的：
+ * 将项目材料按照卷宗管理的目录结构自动归档到对应的顺序目录中。
+ * 自动生成的文档可用于打印给客户签字盖章。
  * 
- * 模板类型：
- * - APPROVAL_FORM: 收案审批表
- * - POWER_OF_ATTORNEY: 授权委托书
- * - CONTRACT: 委托合同
+ * 归档内容：
+ * - 收案审批表：合同审批单的快照PDF（审批通过后生成）
+ * - 委托合同：合同表单内容的快照PDF
+ * - 授权委托书：通过文书模板 + 项目信息自动生成（用于打印签字）
+ * 
+ * 触发时机：
+ * - 项目创建后异步触发（archiveMatterDocumentsAsync）
+ * - 也可手动触发重新归档（archiveMatterDocuments）
+ * 
+ * 模板类型常量：
+ * - APPROVAL_FORM: 收案审批表模板
+ * - POWER_OF_ATTORNEY: 授权委托书模板
+ * - CONTRACT: 委托合同模板
  */
 @Slf4j
 @Service
@@ -59,7 +69,9 @@ public class DossierAutoArchiveService {
     private final DocumentTemplateRepository documentTemplateRepository;
     private final ContractRepository contractRepository;
     private final ClientRepository clientRepository;
+    private final UserRepository userRepository;
     private final ApprovalMapper approvalMapper;
+    private final SysConfigMapper sysConfigMapper;
     private final MinioService minioService;
     private final PdfGeneratorService pdfGeneratorService;
     private final TemplateVariableService templateVariableService;
@@ -134,8 +146,8 @@ public class DossierAutoArchiveService {
             // 2. 归档委托合同
             archiveContractInternal(matterId, contractId, operatorId);
             
-            // 3. 归档授权委托书
-            archivePowerOfAttorneyInternal(matterId, operatorId);
+            // 3. 归档授权委托书（首次归档，不强制覆盖）
+            archivePowerOfAttorneyInternal(matterId, operatorId, false);
             
             log.info("项目材料自动归档完成: matterId={}", matterId);
         } catch (Exception e) {
@@ -197,7 +209,9 @@ public class DossierAutoArchiveService {
 
     /**
      * 归档收案审批表（内部方法，指定操作人）
-     * 直接使用审批记录数据生成 PDF（审批表在合同审批时已产生）
+     * 
+     * 业务说明：收案审批表是合同审批单的快照PDF
+     * 只有审批通过后才能生成有效的审批表归档
      */
     private void archiveApprovalFormInternal(Long matterId, Long contractId, Long operatorId) {
         if (contractId == null) {
@@ -225,11 +239,22 @@ public class DossierAutoArchiveService {
                 log.debug("未找到合同审批记录: contractId={}", contractId);
                 return;
             }
-            // 取最新的已通过审批记录
+            
+            // 只取已通过的审批记录（按审批时间倒序取最新的）
+            // 收案审批表必须是已通过的审批才有归档价值
             Approval approval = approvals.stream()
                 .filter(a -> "APPROVED".equals(a.getStatus()))
-                .findFirst()
-                .orElse(approvals.get(0));
+                .max((a1, a2) -> {
+                    if (a1.getApprovedAt() == null) return -1;
+                    if (a2.getApprovedAt() == null) return 1;
+                    return a1.getApprovedAt().compareTo(a2.getApprovedAt());
+                })
+                .orElse(null);
+            
+            if (approval == null) {
+                log.debug("未找到已通过的审批记录，跳过收案审批表归档: contractId={}", contractId);
+                return;
+            }
 
             // 获取合同和项目信息
             Contract contract = contractRepository.getById(contractId);
@@ -280,8 +305,10 @@ public class DossierAutoArchiveService {
 
     /**
      * 归档委托合同（内部方法，指定操作人）
-     * 优先使用已有文件，其次使用合同内容生成 PDF
-     * 注意：合同在创建时已从模板加载内容，这里只是生成快照
+     * 
+     * 业务说明：委托合同是合同表单内容的快照PDF
+     * - 如果合同已有上传的文件，直接关联
+     * - 否则根据合同表单内容生成PDF快照
      */
     private void archiveContractInternal(Long matterId, Long contractId, Long operatorId) {
         if (contractId == null) {
@@ -310,33 +337,19 @@ public class DossierAutoArchiveService {
             }
 
             String fileUrl;
-            String fileName;
+            String fileName = "委托代理合同_" + contract.getContractNo() + ".pdf";
             long fileSize;
             String fileType = "pdf";
             String sourceType;
 
-            // 方案1: 如果合同已有文件，直接关联
+            // 方案1: 如果合同已有上传的文件，直接关联
             if (contract.getFileUrl() != null && !contract.getFileUrl().isEmpty()) {
                 fileUrl = contract.getFileUrl();
-                fileName = "委托代理合同_" + contract.getContractNo() + ".pdf";
-                fileSize = 0; // 无法获取实际大小
+                fileSize = 0; // 已有文件无法获取实际大小
                 sourceType = SOURCE_TYPE_SYSTEM_LINKED;
+                log.debug("委托合同使用已有文件: contractId={}", contractId);
             } 
-            // 方案2: 使用合同内容生成 PDF（合同内容已在创建时从模板填充）
-            else if (contract.getContent() != null && !contract.getContent().isEmpty()) {
-                Matter matter = matterRepository.getById(matterId);
-                Client client = contract.getClientId() != null 
-                    ? clientRepository.getById(contract.getClientId()) : null;
-
-                byte[] pdfContent = pdfGeneratorService.generateContractPdf(contract, matter, client);
-                
-                fileName = "委托代理合同_" + contract.getContractNo() + ".pdf";
-                String storagePath = "dossier/" + matterId + "/" + fileName;
-                fileUrl = minioService.uploadBytes(pdfContent, storagePath, "application/pdf");
-                fileSize = pdfContent.length;
-                sourceType = SOURCE_TYPE_SYSTEM_GENERATED;
-            } 
-            // 方案3: 合同无内容，使用默认格式生成
+            // 方案2: 根据合同表单内容生成PDF快照
             else {
                 Matter matter = matterRepository.getById(matterId);
                 Client client = contract.getClientId() != null 
@@ -344,11 +357,11 @@ public class DossierAutoArchiveService {
 
                 byte[] pdfContent = pdfGeneratorService.generateContractPdf(contract, matter, client);
                 
-                fileName = "委托代理合同_" + contract.getContractNo() + ".pdf";
                 String storagePath = "dossier/" + matterId + "/" + fileName;
                 fileUrl = minioService.uploadBytes(pdfContent, storagePath, "application/pdf");
                 fileSize = pdfContent.length;
                 sourceType = SOURCE_TYPE_SYSTEM_GENERATED;
+                log.debug("委托合同生成PDF快照: contractId={}", contractId);
             }
 
             createArchivedDocument(
@@ -379,14 +392,48 @@ public class DossierAutoArchiveService {
      */
     @Transactional
     public void archivePowerOfAttorney(Long matterId) {
-        archivePowerOfAttorneyInternal(matterId, SecurityUtils.getUserIdOrDefault(1L));
+        archivePowerOfAttorneyInternal(matterId, SecurityUtils.getUserIdOrDefault(1L), false);
+    }
+
+    /**
+     * 重新生成授权委托书（强制覆盖已有的）
+     * 
+     * 使用场景：
+     * - 模板管理员更新了模板后，需要重新生成
+     * - 项目信息变更后，需要更新委托书
+     * - 之前无模板时使用了默认格式，现在模板准备好了
+     * 
+     * @param matterId 项目ID
+     * @return 是否成功重新生成
+     */
+    @Transactional
+    public boolean regeneratePowerOfAttorney(Long matterId) {
+        log.info("开始重新生成授权委托书: matterId={}", matterId);
+        
+        // 查找并删除已有的授权委托书
+        MatterDossierItem dossierItem = findDossierItemByNamePattern(matterId, "授权委托书");
+        if (dossierItem != null) {
+            deleteExistingDocument(dossierItem.getId(), SOURCE_MODULE_MATTER, matterId);
+        }
+        
+        // 重新生成
+        archivePowerOfAttorneyInternal(matterId, SecurityUtils.getUserIdOrDefault(1L), true);
+        return true;
     }
 
     /**
      * 归档授权委托书（内部方法，指定操作人）
-     * 优先使用模板系统生成，支持自定义代理权限
+     * 
+     * 业务说明：授权委托书通过文书模板 + 项目信息自动生成
+     * - 用于打印给客户签字盖章
+     * - 优先使用系统配置的授权委托书模板
+     * - 如无模板则使用默认格式生成
+     * 
+     * @param matterId 项目ID
+     * @param operatorId 操作人ID
+     * @param forceRegenerate 是否强制重新生成（跳过已归档检查）
      */
-    private void archivePowerOfAttorneyInternal(Long matterId, Long operatorId) {
+    private void archivePowerOfAttorneyInternal(Long matterId, Long operatorId, boolean forceRegenerate) {
         // 查找"授权委托书"目录项
         MatterDossierItem dossierItem = findDossierItemByNamePattern(matterId, "授权委托书");
         if (dossierItem == null) {
@@ -394,8 +441,8 @@ public class DossierAutoArchiveService {
             return;
         }
 
-        // 检查是否已归档
-        if (hasArchivedDocument(dossierItem.getId(), SOURCE_MODULE_MATTER, matterId)) {
+        // 检查是否已归档（非强制模式下）
+        if (!forceRegenerate && hasArchivedDocument(dossierItem.getId(), SOURCE_MODULE_MATTER, matterId)) {
             log.debug("授权委托书已归档: matterId={}", matterId);
             return;
         }
@@ -410,26 +457,44 @@ public class DossierAutoArchiveService {
             Client client = matter.getClientId() != null 
                 ? clientRepository.getById(matter.getClientId()) : null;
 
-            byte[] pdfContent;
+            // 获取承办律师信息
+            User lawyer = matter.getLeadLawyerId() != null 
+                ? userRepository.getById(matter.getLeadLawyerId()) : null;
+            String lawyerName = lawyer != null ? lawyer.getRealName() : null;
+            String lawyerLicenseNo = lawyer != null ? lawyer.getLawyerLicenseNo() : null;
+            
+            // 获取律所信息
+            String firmName = getConfigValue("firm.name");
 
-            // 尝试使用模板生成
-            DocumentTemplate template = documentTemplateRepository.findFirstByTemplateType(TEMPLATE_TYPE_POWER_OF_ATTORNEY);
+            byte[] pdfContent;
+            Long usedTemplateId = null;  // 记录使用的模板ID，用于成功后增加计数
+
+            // 尝试使用模板生成（根据案件类型匹配模板）
+            String caseType = matter.getCaseType();
+            DocumentTemplate template = documentTemplateRepository.findByTemplateTypeAndCaseType(
+                TEMPLATE_TYPE_POWER_OF_ATTORNEY, caseType);
             if (template != null && template.getContent() != null && !template.getContent().isEmpty()) {
-                log.debug("使用模板生成授权委托书: templateNo={}", template.getTemplateNo());
+                log.debug("使用模板生成授权委托书: templateNo={}, caseType={}", template.getTemplateNo(), caseType);
                 
-                // 收集变量并替换
+                // 收集变量并替换（自动抓取项目信息）
                 Map<String, Object> variables = templateVariableService.collectVariables(matterId);
                 String content = templateVariableService.replaceVariables(template.getContent(), variables);
                 
-                // 生成 PDF
-                pdfContent = pdfGeneratorService.generatePdfFromTemplateContent("授权委托书", content);
-                
-                // 增加模板使用次数
-                documentTemplateRepository.incrementUseCount(template.getId());
+                // 检测模板格式：JSON分块格式 或 纯文本/HTML格式
+                if (pdfGeneratorService.isBlockTemplateFormat(content)) {
+                    // 使用分块模板格式生成（固定排版格式：标题二号宋体，正文三号仿宋，备注五号宋体）
+                    log.debug("使用分块模板格式生成授权委托书");
+                    pdfContent = pdfGeneratorService.generatePowerOfAttorneyFromBlocks(content);
+                } else {
+                    // 使用纯文本/HTML模板格式生成
+                    pdfContent = pdfGeneratorService.generatePdfFromTemplateContent("授权委托书", content);
+                }
+                usedTemplateId = template.getId();
             } else {
-                // 回退到默认格式
+                // 回退到默认格式（传入律师和律所信息）
                 log.debug("未找到授权委托书模板，使用默认格式");
-                pdfContent = pdfGeneratorService.generatePowerOfAttorneyPdf(matter, client);
+                pdfContent = pdfGeneratorService.generatePowerOfAttorneyPdf(
+                    matter, client, lawyerName, lawyerLicenseNo, firmName);
             }
 
             String fileName = "授权委托书_" + matter.getMatterNo() + ".pdf";
@@ -449,6 +514,11 @@ public class DossierAutoArchiveService {
                 matterId,
                 operatorId
             );
+
+            // 归档成功后再增加模板使用次数
+            if (usedTemplateId != null) {
+                documentTemplateRepository.incrementUseCount(usedTemplateId);
+            }
 
             log.info("授权委托书归档成功: matterId={}", matterId);
         } catch (Exception e) {
@@ -486,6 +556,29 @@ public class DossierAutoArchiveService {
         return existingDocs.stream()
             .anyMatch(doc -> sourceModule.equals(doc.getSourceModule()) 
                 && sourceId.equals(doc.getSourceId()));
+    }
+
+    /**
+     * 删除已有的归档文档（用于重新生成）
+     * 
+     * @param dossierItemId 卷宗目录项ID
+     * @param sourceModule 来源模块
+     * @param sourceId 来源ID
+     */
+    private void deleteExistingDocument(Long dossierItemId, String sourceModule, Long sourceId) {
+        List<Document> existingDocs = documentRepository.findByDossierItemId(dossierItemId);
+        existingDocs.stream()
+            .filter(doc -> sourceModule.equals(doc.getSourceModule()) 
+                && sourceId.equals(doc.getSourceId()))
+            .forEach(doc -> {
+                // 软删除文档
+                doc.setStatus("DELETED");
+                documentRepository.updateById(doc);
+                log.info("删除已有归档文档: docNo={}, title={}", doc.getDocNo(), doc.getTitle());
+            });
+        
+        // 更新文档计数
+        updateDossierItemCount(dossierItemId);
     }
 
     /**
@@ -554,6 +647,21 @@ public class DossierAutoArchiveService {
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
         String uuid = UUID.randomUUID().toString().substring(0, 6).toUpperCase();
         return "DOC-" + timestamp + "-" + uuid;
+    }
+
+    /**
+     * 获取系统配置值
+     * 
+     * @param configKey 配置键
+     * @return 配置值，不存在返回null
+     */
+    private String getConfigValue(String configKey) {
+        try {
+            return sysConfigMapper.selectValueByKey(configKey);
+        } catch (Exception e) {
+            log.warn("获取系统配置失败: key={}, error={}", configKey, e.getMessage());
+            return null;
+        }
     }
 }
 

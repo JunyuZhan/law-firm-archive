@@ -5,6 +5,7 @@ import com.lawfirm.domain.system.entity.User;
 import com.lawfirm.domain.system.repository.UserRepository;
 import com.lawfirm.infrastructure.security.jwt.JwtTokenProvider;
 import com.lawfirm.infrastructure.security.LoginUser;
+import com.lawfirm.infrastructure.security.UserDetailsServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -69,6 +70,9 @@ class AuthServiceTest {
 
     @Mock
     private com.lawfirm.infrastructure.notification.AlertService alertService;
+
+    @Mock
+    private UserDetailsServiceImpl userDetailsService;
 
     @InjectMocks
     private AuthService authService;

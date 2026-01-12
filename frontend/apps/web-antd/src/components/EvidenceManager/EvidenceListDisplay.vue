@@ -72,6 +72,9 @@ interface GroupData {
 const props = defineProps<{
   evidences: EvidenceItem[];
   matterId: number;
+  matterName?: string; // 案件名称，用于打印显示
+  listId?: number; // 关联的证据清单ID
+  listName?: string; // 清单名称，用于打印显示
   readonly?: boolean;
   submitDate?: string;
   submitter?: string;
@@ -505,11 +508,17 @@ function handlePrint() {
           align-items: center;
           gap: 10px;
         }
+        .print-case-info {
+          font-size: 16px;
+          color: #333;
+          margin-bottom: 15px;
+        }
       </style>
     </head>
     <body>
       <div class="print-header">
         <h1>证 据 清 单</h1>
+        ${props.matterName ? `<div class="print-case-info">${props.matterName}</div>` : ''}
       </div>
   `;
 

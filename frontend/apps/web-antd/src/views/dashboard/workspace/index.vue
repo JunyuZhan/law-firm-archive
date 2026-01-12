@@ -9,7 +9,7 @@ import type { ScheduleDTO } from '#/api/matter/schedule';
 import type { TaskDTO } from '#/api/matter/types';
 import type { ApprovalDTO } from '#/api/workbench';
 
-import { computed, onActivated, onMounted, ref } from 'vue';
+import { computed, onActivated, onDeactivated, onMounted, onUnmounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 import {
@@ -29,7 +29,10 @@ import {
   List,
   ListItem,
   ListItemMeta,
+  Modal,
   Row,
+  Space,
+  Spin,
   Statistic,
   Tag,
   Timeline,
@@ -38,6 +41,8 @@ import {
 import dayjs from 'dayjs';
 
 import { getMyTodoTasks, getMyUpcomingSchedules } from '#/api/matter';
+import type { AnnouncementDTO } from '#/api/system/announcement';
+import { getValidAnnouncements, getAnnouncementById, ANNOUNCEMENT_TYPE_OPTIONS } from '#/api/system/announcement';
 
 // HTML转义函数，防止XSS攻击
 function escapeHtml(text: string): string {
@@ -72,6 +77,7 @@ const stats = ref({
   clientCount: 0,
   timesheetHours: 0,
   taskCount: 0,
+  receivableAmount: 0, // 我的收款金额
 });
 
 // 待审批数量
@@ -83,6 +89,38 @@ const upcomingSchedules = ref<ScheduleDTO[]>([]);
 
 // 待办任务列表
 const todoItems = ref<WorkbenchTodoItem[]>([]);
+
+// 系统公告
+const announcements = ref<AnnouncementDTO[]>([]);
+
+// 公告详情弹窗
+const announcementDetailVisible = ref(false);
+const announcementDetailLoading = ref(false);
+const currentAnnouncement = ref<AnnouncementDTO | null>(null);
+
+// 公告滚动相关
+const currentAnnouncementIndex = ref(0);
+let announcementTimer: ReturnType<typeof setInterval> | null = null;
+
+// 开始公告滚动
+function startAnnouncementScroll() {
+  if (announcementTimer) {
+    clearInterval(announcementTimer);
+  }
+  if (announcements.value.length > 1) {
+    announcementTimer = setInterval(() => {
+      currentAnnouncementIndex.value = (currentAnnouncementIndex.value + 1) % announcements.value.length;
+    }, 4000); // 每4秒滚动一次
+  }
+}
+
+// 停止公告滚动
+function stopAnnouncementScroll() {
+  if (announcementTimer) {
+    clearInterval(announcementTimer);
+    announcementTimer = null;
+  }
+}
 
 // 快捷导航
 const quickNavItems: WorkbenchQuickNavItem[] = [
@@ -136,6 +174,7 @@ async function loadStats() {
       clientCount: data.clientCount || 0,
       timesheetHours: data.timesheetHours || 0,
       taskCount: data.taskCount || 0,
+      receivableAmount: (data as any).receivableAmount || 0,
     };
   } catch {
     // 静默处理
@@ -400,12 +439,57 @@ function navTo(nav: WorkbenchQuickNavItem) {
   }
 }
 
+// 加载系统公告
+async function loadAnnouncements() {
+  try {
+    announcements.value = await getValidAnnouncements(10);
+    // 加载完成后开始滚动
+    startAnnouncementScroll();
+  } catch {
+    // 加载公告失败，静默处理
+  }
+}
+
+// 获取公告类型颜色
+function getAnnouncementTypeColor(type: string): string {
+  const option = ANNOUNCEMENT_TYPE_OPTIONS.find((opt) => opt.value === type);
+  return option?.color || 'default';
+}
+
+// 获取公告类型名称
+function getAnnouncementTypeName(type: string): string {
+  const option = ANNOUNCEMENT_TYPE_OPTIONS.find((opt) => opt.value === type);
+  return option?.label || type;
+}
+
+// 查看公告详情
+async function handleViewAnnouncement(announcement: AnnouncementDTO) {
+  announcementDetailVisible.value = true;
+  announcementDetailLoading.value = true;
+  try {
+    const detail = await getAnnouncementById(announcement.id);
+    currentAnnouncement.value = detail;
+  } catch {
+    // 如果获取详情失败，使用列表数据
+    currentAnnouncement.value = announcement;
+  } finally {
+    announcementDetailLoading.value = false;
+  }
+}
+
+// 格式化日期时间
+function formatDateTime(date: string | null | undefined): string {
+  if (!date) return '-';
+  return dayjs(date).format('YYYY-MM-DD HH:mm');
+}
+
 onMounted(() => {
   loadStats();
   loadTodoTasks();
   loadPendingApprovals();
   loadUpcomingSchedules();
   loadTrends();
+  loadAnnouncements();
 });
 
 // 页面激活时刷新数据（用于 keep-alive 场景）
@@ -415,33 +499,74 @@ onActivated(() => {
   loadPendingApprovals();
   loadUpcomingSchedules();
   loadTrends();
+  loadAnnouncements();
+});
+
+// 页面失活时停止滚动
+onDeactivated(() => {
+  stopAnnouncementScroll();
+});
+
+// 组件卸载时清理定时器
+onUnmounted(() => {
+  stopAnnouncementScroll();
 });
 </script>
 
 <template>
   <div class="p-5">
-    <WorkbenchHeader
-      :avatar="userStore.userInfo?.avatar || preferences.app.defaultAvatar"
-      :matter-count="stats.matterCount"
-      :client-count="stats.clientCount"
-      :task-count="stats.taskCount"
-    >
-      <template #title>
-        {{ getGreeting().greeting }}, {{ userStore.userInfo?.realName }},
-        {{ getGreeting().action }}
-      </template>
-      <template #description>
-        您有 {{ stats.taskCount }} 个待办任务，本月工时
-        {{ stats.timesheetHours.toFixed(1) }} 小时
-        <span v-if="pendingApprovalCount > 0" class="ml-3">
-          ，<span
-            class="cursor-pointer font-medium text-orange-500 hover:underline"
-            @click="goToApproval"
-            >{{ pendingApprovalCount }} 个待审批</span
-          >
-        </span>
-      </template>
-    </WorkbenchHeader>
+    <!-- WorkbenchHeader 容器，包含公告 -->
+    <div class="workbench-header-wrapper">
+      <WorkbenchHeader
+        :avatar="userStore.userInfo?.avatar || preferences.app.defaultAvatar"
+        :matter-count="stats.matterCount"
+        :client-count="stats.clientCount"
+        :task-count="stats.taskCount"
+      >
+        <template #title>
+          {{ getGreeting().greeting }}, {{ userStore.userInfo?.realName }},
+          {{ getGreeting().action }}
+        </template>
+        <template #description>
+          您有 {{ stats.taskCount }} 个待办任务，本月工时
+          {{ stats.timesheetHours.toFixed(1) }} 小时
+          <span v-if="pendingApprovalCount > 0" class="ml-3">
+            ，<span
+              class="cursor-pointer font-medium text-orange-500 hover:underline"
+              @click="goToApproval"
+              >{{ pendingApprovalCount }} 个待审批</span
+            >
+          </span>
+        </template>
+      </WorkbenchHeader>
+
+      <!-- 独立的公告容器 -->
+      <div
+        v-if="announcements.length > 0"
+        class="announcement-container"
+        @mouseenter="stopAnnouncementScroll"
+        @mouseleave="startAnnouncementScroll"
+      >
+        <span class="announcement-icon">📢</span>
+        <div class="announcement-scroll-container">
+          <transition name="announcement-slide" mode="out-in">
+            <div
+              :key="currentAnnouncementIndex"
+              class="announcement-item"
+              @click="handleViewAnnouncement(announcements[currentAnnouncementIndex]!)"
+            >
+              <Tag
+                :color="getAnnouncementTypeColor(announcements[currentAnnouncementIndex]!.type)"
+                size="small"
+              >
+                {{ getAnnouncementTypeName(announcements[currentAnnouncementIndex]!.type) }}
+              </Tag>
+              <span class="announcement-title">{{ announcements[currentAnnouncementIndex]!.title }}</span>
+            </div>
+          </transition>
+        </div>
+      </div>
+    </div>
 
     <!-- 待审批提醒卡片 -->
     <div
@@ -467,7 +592,7 @@ onActivated(() => {
 
     <!-- 统计卡片 -->
     <Row :gutter="[16, 16]" class="mt-4">
-      <Col :xs="12" :sm="12" :md="6">
+      <Col :xs="12" :sm="12" :md="6" :lg="6">
         <Card
           :bordered="false"
           hoverable
@@ -481,7 +606,7 @@ onActivated(() => {
           />
         </Card>
       </Col>
-      <Col :xs="12" :sm="12" :md="6">
+      <Col :xs="12" :sm="12" :md="6" :lg="6">
         <Card
           :bordered="false"
           hoverable
@@ -495,23 +620,23 @@ onActivated(() => {
           />
         </Card>
       </Col>
-      <Col :xs="12" :sm="12" :md="6">
+      <Col :xs="12" :sm="12" :md="6" :lg="6">
         <Card
           :bordered="false"
           hoverable
           class="stat-card stat-card-orange"
-          @click="router.push('/matter/timesheet')"
+          @click="router.push('/finance/receivable')"
         >
           <Statistic
-            title="本月工时"
-            :value="stats.timesheetHours"
-            :precision="1"
-            suffix="h"
+            title="我的收款"
+            :value="stats.receivableAmount"
+            :precision="2"
+            prefix="¥"
             :value-style="{ color: '#fa8c16' }"
           />
         </Card>
       </Col>
-      <Col :xs="12" :sm="12" :md="6">
+      <Col :xs="12" :sm="12" :md="6" :lg="6">
         <Card
           :bordered="false"
           hoverable
@@ -636,6 +761,44 @@ onActivated(() => {
         </Card>
       </Col>
     </Row>
+
+    <!-- 公告详情弹窗 -->
+    <Modal
+      v-model:open="announcementDetailVisible"
+      title="公告详情"
+      :footer="null"
+      width="600px"
+    >
+      <Spin :spinning="announcementDetailLoading">
+        <template v-if="currentAnnouncement">
+          <div class="mb-4">
+            <Space>
+              <Tag :color="getAnnouncementTypeColor(currentAnnouncement.type)">
+                {{ currentAnnouncement.typeName || getAnnouncementTypeName(currentAnnouncement.type) }}
+              </Tag>
+            </Space>
+          </div>
+
+          <h2 class="mb-4 text-xl font-semibold">{{ currentAnnouncement.title }}</h2>
+
+          <div class="mb-4 text-sm text-gray-500">
+            <Space split="|">
+              <span>发布人：{{ currentAnnouncement.publisherName || '-' }}</span>
+              <span>发布时间：{{ formatDateTime(currentAnnouncement.publishedAt) }}</span>
+              <span v-if="currentAnnouncement.viewCount !== undefined">浏览量：{{ currentAnnouncement.viewCount }}</span>
+            </Space>
+          </div>
+
+          <div class="rounded bg-gray-50 p-4 leading-relaxed whitespace-pre-wrap">
+            {{ currentAnnouncement.content }}
+          </div>
+
+          <div v-if="currentAnnouncement.expiredAt" class="mt-4 text-xs text-gray-400">
+            过期时间：{{ formatDateTime(currentAnnouncement.expiredAt) }}
+          </div>
+        </template>
+      </Spin>
+    </Modal>
   </div>
 </template>
 
@@ -664,5 +827,107 @@ onActivated(() => {
 
 .stat-card-purple {
   border-left: 3px solid #722ed1;
+}
+
+/* WorkbenchHeader 容器 */
+.workbench-header-wrapper {
+  position: relative;
+}
+
+/* 公告独立容器 */
+.announcement-container {
+  position: absolute;
+  top: 50%;
+  right: 380px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  transform: translateY(-50%);
+}
+
+.announcement-icon {
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.announcement-scroll-container {
+  max-width: 300px;
+  height: 24px;
+  overflow: hidden;
+  line-height: 24px;
+}
+
+.announcement-item {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  cursor: pointer;
+  opacity: 0.85;
+}
+
+.announcement-item:hover {
+  opacity: 1;
+}
+
+.announcement-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.announcement-title:hover {
+  text-decoration: underline;
+}
+
+/* 响应式调整 */
+@media (max-width: 1400px) {
+  .announcement-container {
+    right: 320px;
+  }
+
+  .announcement-scroll-container {
+    max-width: 220px;
+  }
+}
+
+@media (max-width: 1200px) {
+  .announcement-container {
+    right: 280px;
+  }
+
+  .announcement-scroll-container {
+    max-width: 180px;
+  }
+}
+
+@media (max-width: 992px) {
+  .announcement-container {
+    position: static;
+    justify-content: center;
+    padding: 8px 16px;
+    margin-top: -8px;
+    transform: none;
+    border-top: 1px dashed rgb(0 0 0 / 6%);
+  }
+
+  .announcement-scroll-container {
+    max-width: 100%;
+  }
+}
+
+/* 公告滚动动画 */
+.announcement-slide-enter-active,
+.announcement-slide-leave-active {
+  transition: all 0.5s ease;
+}
+
+.announcement-slide-enter-from {
+  opacity: 0;
+  transform: translateY(100%);
+}
+
+.announcement-slide-leave-to {
+  opacity: 0;
+  transform: translateY(-100%);
 }
 </style>

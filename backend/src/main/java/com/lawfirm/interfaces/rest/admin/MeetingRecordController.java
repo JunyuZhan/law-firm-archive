@@ -27,6 +27,16 @@ public class MeetingRecordController {
 
     private final MeetingRecordAppService recordAppService;
 
+    @Operation(summary = "查询会议记录列表")
+    @GetMapping
+    @RequirePermission("admin:meeting:view")
+    public Result<List<MeetingRecordDTO>> listRecords() {
+        // 返回最近30天的会议记录
+        LocalDate endDate = LocalDate.now();
+        LocalDate startDate = endDate.minusDays(30);
+        return Result.success(recordAppService.getRecordsByDateRange(startDate, endDate));
+    }
+
     @Operation(summary = "创建会议记录")
     @PostMapping
     @RequirePermission("admin:meeting:record")

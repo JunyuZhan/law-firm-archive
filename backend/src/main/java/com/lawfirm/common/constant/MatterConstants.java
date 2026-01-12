@@ -39,6 +39,11 @@ public class MatterConstants {
      * 项目状态名称映射
      */
     public static final Map<String, String> MATTER_STATUS_NAME_MAP = new HashMap<>();
+    
+    /**
+     * 代理阶段名称映射
+     */
+    public static final Map<String, String> LITIGATION_STAGE_NAME_MAP = new HashMap<>();
 
     static {
         // 初始化项目大类名称
@@ -69,6 +74,24 @@ public class MatterConstants {
         MATTER_STATUS_NAME_MAP.put("PENDING_CLOSE", "待审批结案");
         MATTER_STATUS_NAME_MAP.put("CLOSED", "已结案");
         MATTER_STATUS_NAME_MAP.put("ARCHIVED", "已归档");
+        
+        // 初始化代理阶段名称（通用）
+        LITIGATION_STAGE_NAME_MAP.put("FIRST_INSTANCE", "一审");
+        LITIGATION_STAGE_NAME_MAP.put("SECOND_INSTANCE", "二审");
+        LITIGATION_STAGE_NAME_MAP.put("RETRIAL", "再审");
+        LITIGATION_STAGE_NAME_MAP.put("EXECUTION", "执行");
+        LITIGATION_STAGE_NAME_MAP.put("ARBITRATION", "仲裁阶段");
+        // 刑事案件特有阶段
+        LITIGATION_STAGE_NAME_MAP.put("INVESTIGATION", "侦查阶段");
+        LITIGATION_STAGE_NAME_MAP.put("PROSECUTION_REVIEW", "审查起诉");
+        LITIGATION_STAGE_NAME_MAP.put("DEATH_PENALTY_REVIEW", "死刑复核");
+        // 行政案件特有阶段
+        LITIGATION_STAGE_NAME_MAP.put("ADMINISTRATIVE_RECONSIDERATION", "行政复议");
+        // 执行案件特有阶段
+        LITIGATION_STAGE_NAME_MAP.put("EXECUTION_OBJECTION", "执行异议");
+        LITIGATION_STAGE_NAME_MAP.put("EXECUTION_REVIEW", "执行复议");
+        // 非诉
+        LITIGATION_STAGE_NAME_MAP.put("NON_LITIGATION", "非诉服务");
     }
 
     /**
@@ -105,6 +128,18 @@ public class MatterConstants {
             return null;
         }
         return MATTER_STATUS_NAME_MAP.getOrDefault(status, status);
+    }
+    
+    /**
+     * 获取代理阶段名称
+     * @param litigationStage 代理阶段代码
+     * @return 代理阶段名称，如果不存在则返回原值
+     */
+    public static String getLitigationStageName(String litigationStage) {
+        if (litigationStage == null) {
+            return null;
+        }
+        return LITIGATION_STAGE_NAME_MAP.getOrDefault(litigationStage, litigationStage);
     }
 }
 

@@ -450,9 +450,11 @@ CREATE TABLE public.crm_client_tag (
     description character varying(200),
     sort_order integer DEFAULT 0,
     created_by bigint,
+    updated_by bigint,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    deleted boolean DEFAULT false
+    deleted boolean DEFAULT false,
+    version integer DEFAULT 1
 );
 --
 -- Name: TABLE crm_client_tag; Type: COMMENT; Schema: public; Owner: -

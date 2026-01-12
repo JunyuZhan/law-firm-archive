@@ -5,6 +5,7 @@ import type { MatterDTO, MatterSimpleDTO } from '#/api/matter/types';
 import type { OcrResultDTO } from '#/api/ocr';
 
 import { computed, h, onMounted, reactive, ref } from 'vue';
+import { useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
 import {
@@ -63,7 +64,9 @@ import {
   deleteDossierItem,
   getMatterDossierItems,
   initMatterDossier,
+  regeneratePowerOfAttorney,
   reorderDossierItems,
+  triggerAutoArchive,
   updateDossierItem,
 } from '#/api/document/dossier';
 import { getMatterSelectOptions } from '#/api/matter';
@@ -75,6 +78,8 @@ import {
 } from '#/constants/causes';
 
 defineOptions({ name: 'DossierManager' });
+
+const router = useRouter();
 
 // 状态管理
 const loading = ref(false);
@@ -195,6 +200,52 @@ async function handleInitDossier() {
     message.success('卷宗目录初始化成功');
   } catch (error: any) {
     message.error(`初始化失败: ${error.message || '未知错误'}`);
+  }
+}
+
+// 重新生成授权委托书
+const regenerating = ref(false);
+async function handleRegeneratePOA() {
+  if (!selectedMatter.value) {
+    message.warning('请先选择项目');
+    return;
+  }
+
+  regenerating.value = true;
+  try {
+    const result = await regeneratePowerOfAttorney(selectedMatter.value.id);
+    if (result.templateUsed) {
+      message.success(`${result.message}（使用模板：${result.templateName}）`);
+    } else {
+      message.warning(`${result.message}。${result.hint || ''}`);
+    }
+    // 刷新文档列表
+    loadProjectDocuments();
+  } catch (error: any) {
+    message.error(error.message || '重新生成失败');
+  } finally {
+    regenerating.value = false;
+  }
+}
+
+// 触发自动归档
+const archiving = ref(false);
+async function handleTriggerArchive() {
+  if (!selectedMatter.value) {
+    message.warning('请先选择项目');
+    return;
+  }
+
+  archiving.value = true;
+  try {
+    const result = await triggerAutoArchive(selectedMatter.value.id);
+    message.success(result.message);
+    // 刷新文档列表
+    loadProjectDocuments();
+  } catch (error: any) {
+    message.error(error.message || '归档失败');
+  } finally {
+    archiving.value = false;
   }
 }
 
@@ -627,6 +678,13 @@ function handleBackToList() {
   currentPath.value = ['根目录'];
   documents.value = [];
   dossierItems.value = [];
+}
+
+// 跳转到项目详情页
+function handleGoToMatterDetail() {
+  if (selectedMatterId.value) {
+    router.push(`/matter/detail/${selectedMatterId.value}`);
+  }
 }
 
 const statusOptions = [
@@ -1585,6 +1643,9 @@ onMounted(() => {
             <Button v-if="selectedMatter" @click="handleBackToList">
               返回列表
             </Button>
+            <Button v-if="selectedMatter" type="link" @click="handleGoToMatterDetail">
+              返回项目详情
+            </Button>
           </Space>
         </Col>
       </Row>
@@ -1779,6 +1840,22 @@ onMounted(() => {
                 >
                   <Plus :size="14" />
                 </Button>
+                <!-- 更多操作下拉菜单 -->
+                <Dropdown v-if="dossierItems.length > 0">
+                  <Button size="small" :loading="regenerating || archiving">
+                    ⚙️
+                  </Button>
+                  <template #overlay>
+                    <Menu>
+                      <MenuItem key="regenerate-poa" @click="handleRegeneratePOA">
+                        🔄 重新生成授权委托书
+                      </MenuItem>
+                      <MenuItem key="trigger-archive" @click="handleTriggerArchive">
+                        📦 触发自动归档
+                      </MenuItem>
+                    </Menu>
+                  </template>
+                </Dropdown>
               </Space>
             </template>
 

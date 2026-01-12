@@ -1,17 +1,26 @@
 <script setup lang="ts">
 import type { EvidenceItem } from './types';
 
-import type { EvidenceDTO, EvidenceExportItem } from '#/api/evidence';
+import type { EvidenceDTO, EvidenceExportItem, EvidenceListDTO } from '#/api/evidence';
 
 /**
  * 证据整理管理组件
- * 支持两种编辑模式：表格式 和 清单式
+ * 每个证据清单对应一个独立的表格，多个清单垂直排列
  */
 import { ref, watch } from 'vue';
 
-import { message, Segmented, Spin } from 'ant-design-vue';
+import { Button, Card, Empty, message, Modal, Form, FormItem, Input, Select, SelectOption, Segmented, Spin, Tag, Popconfirm } from 'ant-design-vue';
+import { Plus, Trash, RotateCw } from '@vben/icons';
 
-import { exportEvidenceList, getEvidenceByMatter } from '#/api/evidence';
+import { 
+  createEvidenceList, 
+  deleteEvidenceList,
+  exportEvidenceList, 
+  getEvidenceByMatter, 
+  getEvidenceListsByMatter,
+  getEvidenceListDetail,
+  EVIDENCE_LIST_TYPE_OPTIONS,
+} from '#/api/evidence';
 
 import EvidenceListDisplay from './EvidenceListDisplay.vue';
 import EvidenceTableEditor from './EvidenceTableEditor.vue';
@@ -20,6 +29,7 @@ type EditMode = 'list' | 'table';
 
 const props = defineProps<{
   matterId: number;
+  matterName?: string; // 案件名称，用于打印显示
   readonly?: boolean;
 }>();
 
@@ -29,8 +39,16 @@ const emit = defineEmits<{
 
 // 状态
 const loading = ref(false);
-const evidenceList = ref<EvidenceItem[]>([]);
+const allEvidences = ref<EvidenceItem[]>([]); // 案件的所有证据
+const evidenceLists = ref<EvidenceListDTO[]>([]); // 案件的所有证据清单
 const editMode = ref<EditMode>('table');
+
+// 新建清单弹窗
+const showCreateModal = ref(false);
+const createForm = ref({
+  name: '',
+  listType: 'SUBMISSION' as string,
+});
 
 // 模式选项
 const modeOptions = [
@@ -38,16 +56,37 @@ const modeOptions = [
   { value: 'list', label: '📝 清单式' },
 ];
 
+// 根据清单ID获取该清单的证据列表
+function getEvidencesForList(list: EvidenceListDTO): EvidenceItem[] {
+  const idList = list.evidenceIdList || [];
+  if (idList.length === 0) {
+    return [];
+  }
+  const idSet = new Set(idList);
+  return allEvidences.value.filter(e => idSet.has(e.id));
+}
+
 // 加载数据
 async function loadData() {
   if (!props.matterId) return;
 
   loading.value = true;
   try {
-    const evidences = await getEvidenceByMatter(props.matterId);
-    evidenceList.value = (evidences || []).map(mapEvidenceDTO);
+    // 并行加载证据和清单
+    const [evidences, lists] = await Promise.all([
+      getEvidenceByMatter(props.matterId),
+      getEvidenceListsByMatter(props.matterId),
+    ]);
+    
+    allEvidences.value = (evidences || []).map(mapEvidenceDTO);
+    
+    // 获取每个清单的详情（包含 evidenceIdList）
+    const detailedLists = await Promise.all(
+      (lists || []).map(list => getEvidenceListDetail(list.id).catch(() => list))
+    );
+    evidenceLists.value = detailedLists;
   } catch (error: any) {
-    console.error('加载证据列表失败:', error);
+    console.error('加载数据失败:', error);
   } finally {
     loading.value = false;
   }
@@ -88,23 +127,79 @@ function mapEvidenceDTO(dto: EvidenceDTO): EvidenceItem {
   };
 }
 
-// 刷新数据
-function handleRefresh() {
-  loadData();
+// 打开新建清单弹窗
+function openCreateModal() {
+  createForm.value = {
+    name: '',
+    listType: 'SUBMISSION',
+  };
+  showCreateModal.value = true;
+}
+
+// 创建新清单
+async function handleCreateList() {
+  if (!createForm.value.name.trim()) {
+    message.warning('请输入清单名称');
+    return;
+  }
+  
+  try {
+    await createEvidenceList({
+      matterId: props.matterId,
+      name: createForm.value.name,
+      listType: createForm.value.listType,
+      evidenceIds: [], // 新建空清单
+    });
+    message.success('创建成功');
+    showCreateModal.value = false;
+    loadData();
+    emit('change');
+  } catch (error: any) {
+    message.error(error.message || '创建失败');
+  }
+}
+
+// 删除清单
+async function handleDeleteList(listId: number) {
+  try {
+    await deleteEvidenceList(listId);
+    message.success('删除成功');
+    loadData();
+    emit('change');
+  } catch (error: any) {
+    message.error(error.message || '删除失败');
+  }
+}
+
+// 刷新单个清单
+async function handleRefreshList(listId: number) {
+  try {
+    const detail = await getEvidenceListDetail(listId);
+    const index = evidenceLists.value.findIndex(l => l.id === listId);
+    if (index !== -1) {
+      evidenceLists.value[index] = detail;
+    }
+  } catch (error: any) {
+    console.error('刷新清单失败:', error);
+  }
+  // 同时刷新证据数据
+  const evidences = await getEvidenceByMatter(props.matterId);
+  allEvidences.value = (evidences || []).map(mapEvidenceDTO);
   emit('change');
 }
 
-// 导出
-async function handleExport(format: 'pdf' | 'word') {
-  if (evidenceList.value.length === 0) {
-    message.warning('暂无证据可导出');
+// 导出清单
+async function handleExportList(list: EvidenceListDTO, format: 'pdf' | 'word') {
+  const evidences = getEvidencesForList(list);
+  if (evidences.length === 0) {
+    message.warning('该清单暂无证据可导出');
     return;
   }
 
   try {
     message.loading('正在导出...', 0);
 
-    const items: EvidenceExportItem[] = evidenceList.value.map((e, index) => ({
+    const items: EvidenceExportItem[] = evidences.map((e, index) => ({
       id: e.id,
       name: e.name,
       source: e.source || '',
@@ -121,6 +216,21 @@ async function handleExport(format: 'pdf' | 'word') {
   } catch (error: any) {
     message.destroy();
     message.error(error.message || '导出失败');
+  }
+}
+
+// 获取类型名称
+function getTypeName(type?: string) {
+  return EVIDENCE_LIST_TYPE_OPTIONS.find(o => o.value === type)?.label || type || '未分类';
+}
+
+// 获取类型颜色
+function getTypeColor(type?: string) {
+  switch (type) {
+    case 'SUBMISSION': return 'blue';
+    case 'EXCHANGE': return 'green';
+    case 'COURT': return 'orange';
+    default: return 'default';
   }
 }
 
@@ -144,34 +254,126 @@ defineExpose({
 <template>
   <div class="evidence-list-manager">
     <Spin :spinning="loading">
-      <!-- 模式切换 -->
-      <div
-        class="mode-switcher"
-        style="display: flex; justify-content: center; margin-bottom: 16px"
-      >
-        <Segmented v-model:value="editMode" :options="modeOptions" />
+      <!-- 顶部操作栏 -->
+      <div class="top-toolbar">
+        <div class="left">
+          <span class="title">📋 证据清单</span>
+          <Tag v-if="evidenceLists.length > 0" color="blue">{{ evidenceLists.length }} 个</Tag>
+        </div>
+        <div class="right">
+          <!-- 模式切换 -->
+          <Segmented v-model:value="editMode" :options="modeOptions" size="small" />
+          <Button v-if="!readonly" type="primary" @click="openCreateModal">
+            <Plus class="h-4 w-4 mr-1" /> 新建清单
+          </Button>
+        </div>
       </div>
 
-      <!-- 表格式 -->
-      <EvidenceTableEditor
-        v-if="editMode === 'table'"
-        :matter-id="matterId"
-        :evidences="evidenceList"
-        :readonly="readonly"
-        @refresh="handleRefresh"
-        @export="handleExport"
+      <!-- 无清单提示 -->
+      <Empty 
+        v-if="evidenceLists.length === 0" 
+        description="暂无证据清单，点击上方按钮创建"
+        style="margin: 40px 0"
       />
 
-      <!-- 清单式 -->
-      <EvidenceListDisplay
-        v-else
-        :matter-id="matterId"
-        :evidences="evidenceList"
-        :readonly="readonly"
-        @refresh="handleRefresh"
-        @export="handleExport"
-      />
+      <!-- 多个清单表格 -->
+      <div v-else class="lists-container">
+        <Card 
+          v-for="list in evidenceLists" 
+          :key="list.id" 
+          class="list-card"
+          :bordered="true"
+        >
+          <!-- 清单标题栏 -->
+          <template #title>
+            <div class="list-header">
+              <div class="list-info">
+                <span class="list-name">{{ list.name }}</span>
+                <Tag :color="getTypeColor(list.listType)" size="small">
+                  {{ getTypeName(list.listType) }}
+                </Tag>
+                <span class="list-meta">
+                  编号: {{ list.listNo }} | 证据: {{ list.evidenceIdList?.length || 0 }} 项
+                </span>
+              </div>
+            </div>
+          </template>
+          
+          <!-- 清单操作按钮 -->
+          <template #extra>
+            <div class="list-actions">
+              <Button size="small" @click="() => handleRefreshList(list.id)">
+                <RotateCw class="h-3 w-3" />
+              </Button>
+              <Popconfirm
+                v-if="!readonly"
+                title="确定删除此清单吗？"
+                ok-text="删除"
+                cancel-text="取消"
+                @confirm="handleDeleteList(list.id)"
+              >
+                <Button size="small" danger>
+                  <Trash class="h-3 w-3" />
+                </Button>
+              </Popconfirm>
+            </div>
+          </template>
+
+          <!-- 清单内容：表格式或清单式 -->
+          <EvidenceTableEditor
+            v-if="editMode === 'table'"
+            :matter-id="matterId"
+            :matter-name="matterName"
+            :evidences="getEvidencesForList(list)"
+            :readonly="readonly"
+            :list-id="list.id"
+            :list-name="list.name"
+            @refresh="() => handleRefreshList(list.id)"
+            @export="(format) => handleExportList(list, format)"
+          />
+
+          <EvidenceListDisplay
+            v-else
+            :matter-id="matterId"
+            :matter-name="matterName"
+            :evidences="getEvidencesForList(list)"
+            :readonly="readonly"
+            :list-id="list.id"
+            :list-name="list.name"
+            @refresh="() => handleRefreshList(list.id)"
+            @export="(format) => handleExportList(list, format)"
+          />
+        </Card>
+      </div>
     </Spin>
+
+    <!-- 新建清单弹窗 -->
+    <Modal
+      v-model:open="showCreateModal"
+      title="新建证据清单"
+      @ok="handleCreateList"
+      :width="450"
+    >
+      <Form layout="vertical" :model="createForm" style="margin-top: 16px">
+        <FormItem label="清单名称" required>
+          <Input 
+            v-model:value="createForm.name" 
+            placeholder="如：一审原告证据清单、二审补充证据"
+          />
+        </FormItem>
+        <FormItem label="清单类型">
+          <Select v-model:value="createForm.listType">
+            <SelectOption 
+              v-for="opt in EVIDENCE_LIST_TYPE_OPTIONS" 
+              :key="opt.value" 
+              :value="opt.value"
+            >
+              {{ opt.label }}
+            </SelectOption>
+          </Select>
+        </FormItem>
+      </Form>
+    </Modal>
   </div>
 </template>
 
@@ -180,5 +382,74 @@ defineExpose({
   padding: 16px;
   background: #fff;
   border-radius: 8px;
+}
+
+.top-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.top-toolbar .left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.top-toolbar .title {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.top-toolbar .right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.lists-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.list-card {
+  border-radius: 8px;
+}
+
+.list-card :deep(.ant-card-head) {
+  background: #fafafa;
+  border-radius: 8px 8px 0 0;
+}
+
+.list-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.list-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.list-name {
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.list-meta {
+  color: #999;
+  font-size: 12px;
+  font-weight: normal;
+}
+
+.list-actions {
+  display: flex;
+  gap: 8px;
 }
 </style>

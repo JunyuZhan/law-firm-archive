@@ -1,17 +1,19 @@
 package com.lawfirm.interfaces.rest.document;
 
+import com.lawfirm.application.document.service.DossierAutoArchiveService;
 import com.lawfirm.application.document.service.MatterDossierService;
 import com.lawfirm.common.annotation.OperationLog;
 import com.lawfirm.common.annotation.RequirePermission;
 import com.lawfirm.common.result.Result;
-import com.lawfirm.domain.document.entity.DossierTemplate;
-import com.lawfirm.domain.document.entity.DossierTemplateItem;
+import com.lawfirm.domain.document.entity.DocumentTemplate;
 import com.lawfirm.domain.document.entity.MatterDossierItem;
+import com.lawfirm.domain.document.repository.DocumentTemplateRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -25,6 +27,8 @@ import java.util.Map;
 public class MatterDossierController {
 
     private final MatterDossierService dossierService;
+    private final DossierAutoArchiveService autoArchiveService;
+    private final DocumentTemplateRepository documentTemplateRepository;
 
     /**
      * 获取项目卷宗目录
@@ -110,6 +114,63 @@ public class MatterDossierController {
             @RequestBody List<Long> itemIds) {
         dossierService.reorderDossierItems(matterId, itemIds);
         return Result.success();
+    }
+
+    // ==================== 自动归档管理 ====================
+
+    /**
+     * 重新生成授权委托书
+     * 
+     * 使用场景：
+     * - 模板更新后需要重新生成
+     * - 项目信息变更后需要更新
+     * - 之前无模板时用了默认格式，模板准备好后重新生成
+     */
+    @Operation(summary = "重新生成授权委托书", description = "使用最新模板重新生成授权委托书，会覆盖已有的版本")
+    @PostMapping("/regenerate/power-of-attorney")
+    @RequirePermission("doc:create")
+    @OperationLog(module = "卷宗管理", action = "重新生成授权委托书")
+    public Result<Map<String, Object>> regeneratePowerOfAttorney(@PathVariable Long matterId) {
+        Map<String, Object> result = new HashMap<>();
+        
+        // 检查是否有可用模板
+        DocumentTemplate template = documentTemplateRepository.findFirstByTemplateType(
+            DossierAutoArchiveService.TEMPLATE_TYPE_POWER_OF_ATTORNEY);
+        
+        // 执行重新生成
+        autoArchiveService.regeneratePowerOfAttorney(matterId);
+        
+        if (template != null) {
+            result.put("success", true);
+            result.put("message", "授权委托书重新生成成功");
+            result.put("templateUsed", true);
+            result.put("templateName", template.getName());
+        } else {
+            result.put("success", true);
+            result.put("message", "授权委托书重新生成成功（使用默认格式）");
+            result.put("templateUsed", false);
+            result.put("hint", "建议配置授权委托书模板后再次重新生成");
+        }
+        
+        return Result.success(result);
+    }
+
+    /**
+     * 触发自动归档
+     * 用于手动触发归档（如果之前归档失败或需要补充归档）
+     */
+    @Operation(summary = "触发自动归档", description = "手动触发项目卷宗自动归档")
+    @PostMapping("/auto-archive")
+    @RequirePermission("doc:create")
+    @OperationLog(module = "卷宗管理", action = "触发自动归档")
+    public Result<Map<String, String>> triggerAutoArchive(
+            @PathVariable Long matterId,
+            @RequestParam(required = false) Long contractId) {
+        autoArchiveService.archiveMatterDocuments(matterId, contractId);
+        
+        Map<String, String> result = new HashMap<>();
+        result.put("message", "自动归档已触发，请刷新查看卷宗目录");
+        return Result.success(result);
     }
 }
 

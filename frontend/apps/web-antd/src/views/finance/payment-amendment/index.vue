@@ -17,6 +17,7 @@ import {
   Space,
   Statistic,
   Table,
+  TabPane,
   Tabs,
   Tag,
   Textarea,

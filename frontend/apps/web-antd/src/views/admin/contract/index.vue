@@ -412,7 +412,7 @@ function getCaseTypeColor(caseType: string) {
       >
         <Row :gutter="16" align="middle">
           <Col :span="2">
-            <span style="font-weight: 500">司法局报备导出：</span>
+            <span style="font-weight: 500">导出合同：</span>
           </Col>
           <Col :span="3">
             <InputNumber

@@ -24,6 +24,13 @@ public class QualityCheckStandardController {
 
     private final QualityCheckStandardAppService standardAppService;
 
+    @Operation(summary = "分页查询检查标准")
+    @GetMapping
+    @RequirePermission("knowledge:quality:list")
+    public Result<List<QualityCheckStandardDTO>> listStandards() {
+        return Result.success(standardAppService.getEnabledStandards());
+    }
+
     @Operation(summary = "获取所有启用的检查标准")
     @GetMapping("/enabled")
     @RequirePermission("knowledge:quality:list")

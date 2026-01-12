@@ -14,6 +14,7 @@ import com.lawfirm.domain.hr.repository.ContractRepository;
 import com.lawfirm.domain.hr.repository.EmployeeRepository;
 import com.lawfirm.domain.system.entity.User;
 import com.lawfirm.domain.system.repository.UserRepository;
+import com.lawfirm.common.util.SecurityUtils;
 import com.lawfirm.infrastructure.persistence.mapper.ContractMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -45,11 +46,26 @@ public class ContractAppService {
     /**
      * 分页查询劳动合同
      * 问题340修复：使用批量加载避免N+1查询
+     * 数据权限：管理角色看全部，普通员工只能看自己的
      */
     public PageResult<ContractDTO> listContracts(ContractQueryDTO query) {
+        // 数据权限控制：普通员工只能看自己的合同
+        Long filterEmployeeId = query.getEmployeeId();
+        if (!SecurityUtils.hasAllDataScope()) {
+            // 非全局权限用户，只能查看自己的合同
+            Long currentUserId = SecurityUtils.getUserId();
+            Optional<Employee> currentEmployeeOpt = employeeRepository.findByUserId(currentUserId);
+            if (currentEmployeeOpt.isPresent()) {
+                filterEmployeeId = currentEmployeeOpt.get().getId();
+            } else {
+                // 用户没有对应的员工档案，返回空结果
+                return PageResult.of(Collections.emptyList(), 0L, query.getPageNum(), query.getPageSize());
+            }
+        }
+        
         IPage<Contract> page = contractMapper.selectContractPage(
                 new Page<>(query.getPageNum(), query.getPageSize()),
-                query.getEmployeeId(),
+                filterEmployeeId,
                 query.getContractNo(),
                 query.getStatus()
         );
@@ -89,9 +105,20 @@ public class ContractAppService {
 
     /**
      * 根据ID查询劳动合同
+     * 数据权限：管理角色可查看所有，普通员工只能查看自己的
      */
     public ContractDTO getContractById(Long id) {
         Contract contract = contractRepository.getByIdOrThrow(id, "劳动合同不存在");
+        
+        // 数据权限检查：普通员工只能查看自己的合同
+        if (!SecurityUtils.hasAllDataScope()) {
+            Long currentUserId = SecurityUtils.getUserId();
+            Optional<Employee> currentEmployeeOpt = employeeRepository.findByUserId(currentUserId);
+            if (currentEmployeeOpt.isEmpty() || !currentEmployeeOpt.get().getId().equals(contract.getEmployeeId())) {
+                throw new BusinessException("无权查看该合同");
+            }
+        }
+        
         return toDTO(contract);
     }
 
@@ -110,6 +137,12 @@ public class ContractAppService {
     public ContractDTO createContract(CreateContractCommand command) {
         // 验证员工存在
         Employee employee = employeeRepository.getByIdOrThrow(command.getEmployeeId(), "员工不存在");
+
+        // 验证合同日期有效性：开始日期不能晚于结束日期
+        if (command.getEndDate() != null && command.getStartDate() != null 
+                && command.getStartDate().isAfter(command.getEndDate())) {
+            throw new BusinessException("合同开始日期不能晚于结束日期");
+        }
 
         // 生成合同编号
         String contractNo = command.getContractNo();

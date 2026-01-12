@@ -16,10 +16,15 @@ import org.mockito.Mockito;
 import java.util.List;
 import java.util.Set;
 
+import com.lawfirm.common.util.SecurityUtils;
+import org.mockito.MockedStatic;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 /**
@@ -190,28 +195,34 @@ class EvidencePermissionPropertyTest {
     void canEditEvidenceShouldReturnCorrectPermission(
             @ForAll("allStatuses") String status) {
         
-        // Setup mocks
-        MatterRepository matterRepository = mock(MatterRepository.class);
-        
-        Matter matter = new Matter();
-        matter.setId(1L);
-        matter.setStatus(status);
-        when(matterRepository.findById(1L)).thenReturn(matter);
-        
-        EvidenceAppService service = new EvidenceAppService(
-                mock(EvidenceRepository.class), 
-                mock(EvidenceMapper.class), 
-                mock(EvidenceCrossExamMapper.class), 
-                new FileTypeService(), 
-                matterRepository);
-        service.setMatterAppService(mock(com.lawfirm.application.matter.service.MatterAppService.class));
-        
-        boolean canEdit = service.canEditEvidence(1L);
-        
-        if (READONLY_STATUSES.contains(status)) {
-            assertThat(canEdit).isFalse();
-        } else {
-            assertThat(canEdit).isTrue();
+        // 使用 MockedStatic 来 Mock SecurityUtils 静态方法
+        try (MockedStatic<SecurityUtils> securityUtilsMock = mockStatic(SecurityUtils.class)) {
+            // 设置 SecurityUtils 返回 "ALL" 权限，绕过权限检查
+            securityUtilsMock.when(SecurityUtils::getDataScope).thenReturn("ALL");
+            
+            // Setup mocks
+            MatterRepository matterRepository = mock(MatterRepository.class);
+            
+            Matter matter = new Matter();
+            matter.setId(1L);
+            matter.setStatus(status);
+            when(matterRepository.findById(1L)).thenReturn(matter);
+            
+            EvidenceAppService service = new EvidenceAppService(
+                    mock(EvidenceRepository.class), 
+                    mock(EvidenceMapper.class), 
+                    mock(EvidenceCrossExamMapper.class), 
+                    new FileTypeService(), 
+                    matterRepository);
+            service.setMatterAppService(mock(com.lawfirm.application.matter.service.MatterAppService.class));
+            
+            boolean canEdit = service.canEditEvidence(1L);
+            
+            if (READONLY_STATUSES.contains(status)) {
+                assertThat(canEdit).isFalse();
+            } else {
+                assertThat(canEdit).isTrue();
+            }
         }
     }
 
@@ -233,7 +244,8 @@ class EvidencePermissionPropertyTest {
                 .name("Test Evidence")
                 .evidenceType("DOCUMENTARY")
                 .build();
-        when(evidenceRepository.findById(1L)).thenReturn(evidence);
+        // 修复：batchUpdateGroup 实际调用的是 getByIdOrThrow 而不是 findById
+        when(evidenceRepository.getByIdOrThrow(eq(1L), anyString())).thenReturn(evidence);
         
         Matter matter = new Matter();
         matter.setId(1L);

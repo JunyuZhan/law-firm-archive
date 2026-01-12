@@ -16,6 +16,7 @@ CREATE TABLE public.matter (
     name character varying(200) NOT NULL,
     matter_type character varying(20) NOT NULL,
     case_type character varying(30),
+    litigation_stage character varying(30),
     cause_of_action character varying(50),
     business_type character varying(50),
     client_id bigint NOT NULL,
@@ -72,6 +73,11 @@ COMMENT ON COLUMN public.matter.matter_type IS '项目大类：LITIGATION-诉讼
 --
 
 COMMENT ON COLUMN public.matter.case_type IS '案件类型：CIVIL-民事, CRIMINAL-刑事, ADMINISTRATIVE-行政, BANKRUPTCY-破产, IP-知识产权, ARBITRATION-仲裁, ENFORCEMENT-执行, LEGAL_COUNSEL-法律顾问, SPECIAL_SERVICE-专项服务';
+--
+-- Name: COLUMN matter.litigation_stage; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.matter.litigation_stage IS '代理阶段：FIRST_INSTANCE-一审, SECOND_INSTANCE-二审, RETRIAL-再审, EXECUTION-执行, ARBITRATION-仲裁, CONSULTATION-咨询, ALL_STAGES-全阶段';
 --
 -- Name: COLUMN matter.cause_of_action; Type: COMMENT; Schema: public; Owner: -
 --

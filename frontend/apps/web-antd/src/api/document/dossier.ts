@@ -96,6 +96,32 @@ export function reorderDossierItems(matterId: number, itemIds: number[]) {
   return requestClient.put(`/matter/${matterId}/dossier/reorder`, itemIds);
 }
 
+// ========== 自动归档 API ==========
+
+/** 重新生成授权委托书结果 */
+export interface RegeneratePOAResult {
+  success: boolean;
+  message: string;
+  templateUsed: boolean;
+  templateName?: string;
+  hint?: string;
+}
+
+/** 重新生成授权委托书（强制覆盖已有版本） */
+export function regeneratePowerOfAttorney(matterId: number) {
+  return requestClient.post<RegeneratePOAResult>(
+    `/matter/${matterId}/dossier/regenerate/power-of-attorney`,
+  );
+}
+
+/** 触发自动归档 */
+export function triggerAutoArchive(matterId: number, contractId?: number) {
+  const params = contractId ? `?contractId=${contractId}` : '';
+  return requestClient.post<{ message: string }>(
+    `/matter/${matterId}/dossier/auto-archive${params}`,
+  );
+}
+
 // ========== 卷宗模板 API ==========
 
 /** 获取所有卷宗模板 */

@@ -121,6 +121,7 @@ export function setRetentionPeriod(id: number, retentionPeriod: string) {
 export function downloadArchiveCover(id: number) {
   return requestClient.get(`/archive/${id}/cover`, {
     responseType: 'blob',
+    responseReturn: 'body', // 直接返回响应体，不经过拦截器处理
   });
 }
 

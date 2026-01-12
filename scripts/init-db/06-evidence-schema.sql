@@ -146,12 +146,14 @@ CREATE TABLE public.evidence_list (
     matter_id bigint NOT NULL,
     name character varying(200) NOT NULL,
     list_type character varying(50),
-    evidence_ids jsonb,
+    evidence_ids text,
     file_url character varying(1000),
     file_name character varying(500),
     status character varying(20) DEFAULT 'DRAFT'::character varying,
+    version integer DEFAULT 1,
     created_by bigint,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_by bigint,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     deleted boolean DEFAULT false
 );

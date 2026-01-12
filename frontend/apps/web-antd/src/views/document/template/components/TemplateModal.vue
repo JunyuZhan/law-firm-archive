@@ -27,6 +27,7 @@ import {
   updateTemplate,
 } from '#/api/document/template';
 import RichTextEditor from '#/components/RichTextEditor/index.vue';
+import PowerOfAttorneyEditor from './PowerOfAttorneyEditor.vue';
 
 const emit = defineEmits<{ success: [] }>();
 
@@ -37,6 +38,7 @@ const formData = reactive({
   name: '',
   templateType: 'HTML',
   businessType: '',
+  caseType: 'ALL',  // 案件类型
   content: '',
   description: '',
 });
@@ -54,6 +56,18 @@ const businessTypeOptions = [
   { label: '诉讼案件', value: 'LITIGATION' },
   { label: '非诉项目', value: 'NON_LITIGATION' },
   { label: '通用', value: 'GENERAL' },
+];
+
+// 案件类型选项（用于授权委托书等需要区分案件类型的模板）
+const caseTypeOptions = [
+  { label: '通用（适用所有案件）', value: 'ALL' },
+  { label: '民事案件', value: 'CIVIL' },
+  { label: '刑事案件', value: 'CRIMINAL' },
+  { label: '行政案件', value: 'ADMINISTRATIVE' },
+  { label: '破产案件', value: 'BANKRUPTCY' },
+  { label: '知识产权案件', value: 'IP' },
+  { label: '仲裁案件', value: 'ARBITRATION' },
+  { label: '执行案件', value: 'ENFORCEMENT' },
 ];
 
 // 系统预设变量（与后端 TemplateVariableService 一致）
@@ -119,6 +133,9 @@ const presetTemplates = [
 // 是否使用富文本编辑器
 const useRichEditor = computed(() => formData.templateType === 'HTML');
 
+// 是否使用授权委托书专用编辑器
+const usePowerOfAttorneyEditor = computed(() => formData.templateType === 'POWER_OF_ATTORNEY');
+
 const [Modal, modalApi] = useVbenModal({
   async onConfirm() {
     if (!formData.name) {
@@ -135,6 +152,7 @@ const [Modal, modalApi] = useVbenModal({
         await updateTemplate(editingId.value, {
           name: formData.name,
           templateType: formData.templateType,
+          caseType: formData.caseType || 'ALL',
           content: formData.content,
           description: formData.description,
         });
@@ -144,6 +162,7 @@ const [Modal, modalApi] = useVbenModal({
           name: formData.name,
           templateType: formData.templateType,
           businessType: formData.businessType || undefined,
+          caseType: formData.caseType || 'ALL',
           content: formData.content,
           description: formData.description || undefined,
         });
@@ -170,6 +189,7 @@ function resetForm() {
     name: '',
     templateType: 'HTML',
     businessType: '',
+    caseType: 'ALL',
     content: '',
     description: '',
   });
@@ -340,6 +360,7 @@ async function open(record?: DocumentTemplateDTO) {
         name: detail.name,
         templateType: detail.templateType || 'HTML',
         businessType: detail.businessType || '',
+        caseType: detail.caseType || 'ALL',
         content: detail.content || '',
         description: detail.description || '',
       });
@@ -403,6 +424,27 @@ defineExpose({ open });
           </FormItem>
         </Col>
       </Row>
+      <!-- 案件类型选择（授权委托书等需要区分案件类型的模板） -->
+      <Row v-if="formData.templateType === 'POWER_OF_ATTORNEY'" :gutter="16">
+        <Col :span="12">
+          <FormItem
+            label="案件类型"
+            :label-col="{ span: 8 }"
+            :wrapper-col="{ span: 16 }"
+          >
+            <Select
+              v-model:value="formData.caseType"
+              :options="caseTypeOptions"
+              style="width: 100%"
+            />
+          </FormItem>
+        </Col>
+        <Col :span="12">
+          <div style="line-height: 32px; color: #999; font-size: 12px">
+            💡 不同案件类型可使用不同模板，优先匹配特定类型模板
+          </div>
+        </Col>
+      </Row>
       <FormItem
         label="描述"
         :label-col="{ span: 4 }"
@@ -433,14 +475,19 @@ defineExpose({ open });
       </Space>
     </div>
 
-    <Alert
-      message="使用 ${变量名} 格式插入变量，生成文书时会自动替换为实际数据"
-      type="info"
-      show-icon
-      style="margin-bottom: 12px"
-    />
+    <!-- 授权委托书专用编辑器 -->
+    <div v-if="usePowerOfAttorneyEditor">
+      <PowerOfAttorneyEditor v-model="formData.content" />
+    </div>
 
-    <div v-if="useRichEditor">
+    <!-- 富文本编辑器 -->
+    <div v-else-if="useRichEditor">
+      <Alert
+        message="使用 ${变量名} 格式插入变量，生成文书时会自动替换为实际数据"
+        type="info"
+        show-icon
+        style="margin-bottom: 12px"
+      />
       <RichTextEditor
         v-model="formData.content"
         height="400px"
@@ -450,7 +497,14 @@ defineExpose({ open });
       />
     </div>
 
+    <!-- 纯文本编辑器 -->
     <div v-else>
+      <Alert
+        message="使用 ${变量名} 格式插入变量，生成文书时会自动替换为实际数据"
+        type="info"
+        show-icon
+        style="margin-bottom: 12px"
+      />
       <div class="variable-panel">
         <div class="variable-title">可用变量（点击插入）：</div>
         <Space wrap :size="4">

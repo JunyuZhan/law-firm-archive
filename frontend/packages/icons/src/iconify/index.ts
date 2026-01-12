@@ -35,3 +35,7 @@ export const LinkOutlined = createIconifyIcon('ant-design:link-outlined');
 export const PlayCircleOutlined = createIconifyIcon(
   'ant-design:play-circle-outlined',
 );
+export const PauseCircleOutlined = createIconifyIcon(
+  'ant-design:pause-circle-outlined',
+);
+export const MinusOutlined = createIconifyIcon('ant-design:minus-outlined');

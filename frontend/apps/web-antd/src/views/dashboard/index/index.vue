@@ -136,7 +136,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <Page auto-content-height>
+  <Page>
     <div class="dashboard-container">
       <!-- 顶部欢迎区域 -->
       <div class="welcome-section">

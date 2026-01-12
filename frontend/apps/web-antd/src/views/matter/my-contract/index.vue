@@ -203,7 +203,6 @@ function handleView(row: ContractDTO) {
   <Page
     title="我的合同"
     description="查看我创建或签约的合同"
-    auto-content-height
   >
     <Grid>
       <!-- 合同金额列 -->

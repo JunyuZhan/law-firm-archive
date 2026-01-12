@@ -470,5 +470,8 @@ export function deleteExpense(id: number) {
 // 导出提成规则管理API
 export * from './commission-rule';
 
+// 导出预收款管理API
+export * from './prepayment';
+
 // 导出类型
 export type * from './types';

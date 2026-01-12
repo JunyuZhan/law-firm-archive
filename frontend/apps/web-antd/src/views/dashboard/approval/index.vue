@@ -11,14 +11,20 @@ import {
   Badge,
   Button,
   Card,
+  Col,
+  DatePicker,
+  Input,
   message,
   Modal,
+  Row,
+  Select,
   Space,
   TabPane,
   Tabs,
   Tag,
   Textarea,
 } from 'ant-design-vue';
+import dayjs from 'dayjs';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import { requestClient } from '#/api/request';
@@ -38,6 +44,15 @@ const activeTab = ref<'history' | 'initiated' | 'pending'>('pending');
 const activeCategory = ref<string>('all');
 const detailModalRef = ref<InstanceType<typeof ApprovalDetailModal>>();
 
+// 筛选条件
+const filterParams = ref({
+  keyword: '',
+  businessType: undefined as string | undefined,
+  priority: undefined as string | undefined,
+  urgency: undefined as string | undefined,
+  dateRange: [] as any[],
+});
+
 // 所有数据（用于分类统计）
 const allPendingData = ref<ApprovalDTO[]>([]);
 const allInitiatedData = ref<ApprovalDTO[]>([]);
@@ -55,6 +70,32 @@ const businessCategories = [
     types: ['CONFLICT_CHECK', 'CONFLICT_EXEMPTION'],
   },
   { key: 'hr', name: '人事业务', types: ['REGULARIZATION', 'RESIGNATION'] },
+];
+
+// 业务类型选项（用于下拉筛选）
+const businessTypeOptions = [
+  { label: '合同审批', value: 'CONTRACT' },
+  { label: '项目结案', value: 'MATTER_CLOSE' },
+  { label: '报销审批', value: 'EXPENSE' },
+  { label: '付款修正', value: 'PAYMENT_AMENDMENT' },
+  { label: '用印申请', value: 'SEAL_APPLICATION' },
+  { label: '利冲检索', value: 'CONFLICT_CHECK' },
+  { label: '利冲豁免', value: 'CONFLICT_EXEMPTION' },
+  { label: '转正申请', value: 'REGULARIZATION' },
+  { label: '离职申请', value: 'RESIGNATION' },
+];
+
+// 优先级选项
+const priorityOptions = [
+  { label: '高', value: 'HIGH' },
+  { label: '中', value: 'MEDIUM' },
+  { label: '低', value: 'LOW' },
+];
+
+// 紧急程度选项
+const urgencyOptions = [
+  { label: '紧急', value: 'URGENT' },
+  { label: '普通', value: 'NORMAL' },
 ];
 
 // 状态颜色映射
@@ -137,12 +178,56 @@ const pendingColumns = [
   },
 ];
 
-async function loadPendingData() {
-  const data = await getPendingApprovals();
-  allPendingData.value = data || [];
+// 通用筛选函数
+function applyFilters(data: ApprovalDTO[]): ApprovalDTO[] {
+  let filteredData = data;
 
-  // 根据分类过滤
-  let filteredData = data || [];
+  // 关键字搜索（业务标题、审批编号、申请人）
+  if (filterParams.value.keyword) {
+    const keyword = filterParams.value.keyword.toLowerCase();
+    filteredData = filteredData.filter(
+      (item) =>
+        item.businessTitle?.toLowerCase().includes(keyword) ||
+        item.approvalNo?.toLowerCase().includes(keyword) ||
+        item.applicantName?.toLowerCase().includes(keyword),
+    );
+  }
+
+  // 业务类型筛选
+  if (filterParams.value.businessType) {
+    filteredData = filteredData.filter(
+      (item) => item.businessType === filterParams.value.businessType,
+    );
+  }
+
+  // 优先级筛选
+  if (filterParams.value.priority) {
+    filteredData = filteredData.filter(
+      (item) => item.priority === filterParams.value.priority,
+    );
+  }
+
+  // 紧急程度筛选
+  if (filterParams.value.urgency) {
+    filteredData = filteredData.filter(
+      (item) => item.urgency === filterParams.value.urgency,
+    );
+  }
+
+  // 时间范围筛选
+  if (filterParams.value.dateRange?.length === 2) {
+    const [start, end] = filterParams.value.dateRange;
+    if (start && end) {
+      const startDate = dayjs(start).startOf('day');
+      const endDate = dayjs(end).endOf('day');
+      filteredData = filteredData.filter((item) => {
+        const itemDate = dayjs(item.createdAt);
+        return itemDate.isAfter(startDate) && itemDate.isBefore(endDate);
+      });
+    }
+  }
+
+  // 分类筛选
   if (activeCategory.value !== 'all') {
     const category = businessCategories.find(
       (c) => c.key === activeCategory.value,
@@ -153,6 +238,15 @@ async function loadPendingData() {
       );
     }
   }
+
+  return filteredData;
+}
+
+async function loadPendingData() {
+  const data = await getPendingApprovals();
+  allPendingData.value = data || [];
+
+  const filteredData = applyFilters(data || []);
 
   return {
     items: filteredData,
@@ -210,17 +304,7 @@ async function loadInitiatedData() {
   const data = await getMyInitiatedApprovals();
   allInitiatedData.value = data || [];
 
-  let filteredData = data || [];
-  if (activeCategory.value !== 'all') {
-    const category = businessCategories.find(
-      (c) => c.key === activeCategory.value,
-    );
-    if (category) {
-      filteredData = filteredData.filter((item) =>
-        category.types.includes(item.businessType),
-      );
-    }
-  }
+  const filteredData = applyFilters(data || []);
 
   return {
     items: filteredData,
@@ -271,17 +355,7 @@ async function loadHistoryData() {
   const data = await getMyApprovedHistory();
   allHistoryData.value = data || [];
 
-  let filteredData = data || [];
-  if (activeCategory.value !== 'all') {
-    const category = businessCategories.find(
-      (c) => c.key === activeCategory.value,
-    );
-    if (category) {
-      filteredData = filteredData.filter((item) =>
-        category.types.includes(item.businessType),
-      );
-    }
-  }
+  const filteredData = applyFilters(data || []);
 
   return {
     items: filteredData,
@@ -317,6 +391,11 @@ function handleTabChange(key: Key) {
 function handleCategoryChange(key: Key) {
   activeCategory.value = String(key);
   // 刷新当前表格
+  reloadCurrentGrid();
+}
+
+// 重新加载当前表格
+function reloadCurrentGrid() {
   if (activeTab.value === 'pending') {
     pendingGridApi.reload();
   } else if (activeTab.value === 'initiated') {
@@ -324,6 +403,24 @@ function handleCategoryChange(key: Key) {
   } else {
     historyGridApi.reload();
   }
+}
+
+// 筛选搜索
+function handleSearch() {
+  reloadCurrentGrid();
+}
+
+// 重置筛选
+function handleReset() {
+  filterParams.value = {
+    keyword: '',
+    businessType: undefined,
+    priority: undefined,
+    urgency: undefined,
+    dateRange: [],
+  };
+  activeCategory.value = 'all';
+  reloadCurrentGrid();
 }
 
 // 查看详情
@@ -530,9 +627,70 @@ onMounted(async () => {
   <Page
     title="审批中心"
     description="集中管理所有业务审批，快速处理待审批事项"
-    auto-content-height
   >
     <Card :bordered="false">
+      <!-- 筛选区域 -->
+      <div class="filter-section">
+        <Row :gutter="[12, 12]" align="middle">
+          <Col :xs="24" :sm="12" :md="6" :lg="5" :xl="4">
+            <Input
+              v-model:value="filterParams.keyword"
+              placeholder="搜索标题/编号/申请人"
+              allow-clear
+              @press-enter="handleSearch"
+            >
+              <template #prefix>
+                <span style="color: #999">🔍</span>
+              </template>
+            </Input>
+          </Col>
+          <Col :xs="12" :sm="8" :md="4" :lg="4" :xl="3">
+            <Select
+              v-model:value="filterParams.businessType"
+              placeholder="业务类型"
+              allow-clear
+              style="width: 100%"
+              :options="businessTypeOptions"
+              @change="handleSearch"
+            />
+          </Col>
+          <Col :xs="12" :sm="8" :md="4" :lg="3" :xl="3">
+            <Select
+              v-model:value="filterParams.priority"
+              placeholder="优先级"
+              allow-clear
+              style="width: 100%"
+              :options="priorityOptions"
+              @change="handleSearch"
+            />
+          </Col>
+          <Col :xs="12" :sm="8" :md="4" :lg="3" :xl="3">
+            <Select
+              v-model:value="filterParams.urgency"
+              placeholder="紧急程度"
+              allow-clear
+              style="width: 100%"
+              :options="urgencyOptions"
+              @change="handleSearch"
+            />
+          </Col>
+          <Col :xs="24" :sm="12" :md="6" :lg="5" :xl="5">
+            <DatePicker.RangePicker
+              v-model:value="filterParams.dateRange"
+              style="width: 100%"
+              placeholder="['开始日期', '结束日期']"
+              @change="handleSearch"
+            />
+          </Col>
+          <Col :xs="24" :sm="12" :md="6" :lg="4" :xl="6">
+            <Space>
+              <Button type="primary" @click="handleSearch">查询</Button>
+              <Button @click="handleReset">重置</Button>
+            </Space>
+          </Col>
+        </Row>
+      </div>
+
       <!-- 主 Tab：待我审批 / 我发起的 / 审批历史 -->
       <Tabs v-model:active-key="activeTab" @change="handleTabChange">
         <TabPane key="pending">
@@ -633,6 +791,13 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+.filter-section {
+  margin-bottom: 16px;
+  padding: 16px;
+  background: #fafafa;
+  border-radius: 8px;
+}
+
 :deep(.ant-badge-count) {
   min-width: 18px;
   height: 18px;

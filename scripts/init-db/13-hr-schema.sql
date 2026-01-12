@@ -2219,6 +2219,103 @@ CREATE INDEX idx_leave_balance_year ON public.leave_balance USING btree (year);
 
 
 --
+-- Name: hr_contract; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.hr_contract (
+    id bigint NOT NULL,
+    employee_id bigint NOT NULL,
+    contract_no character varying(50),
+    contract_type character varying(20) NOT NULL,
+    start_date date NOT NULL,
+    end_date date,
+    probation_months integer DEFAULT 0,
+    probation_end_date date,
+    base_salary numeric(15,2),
+    performance_bonus numeric(15,2),
+    other_allowance numeric(15,2),
+    status character varying(20) DEFAULT 'ACTIVE'::character varying NOT NULL,
+    sign_date date,
+    expire_date date,
+    renew_count integer DEFAULT 0,
+    contract_file_url character varying(500),
+    remark text,
+    version integer DEFAULT 0,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    created_by bigint,
+    updated_by bigint,
+    deleted boolean DEFAULT false
+);
+--
+-- Name: TABLE hr_contract; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.hr_contract IS '劳动合同表';
+--
+-- Name: COLUMN hr_contract.employee_id; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.hr_contract.employee_id IS '员工ID';
+--
+-- Name: COLUMN hr_contract.contract_no; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.hr_contract.contract_no IS '合同编号';
+--
+-- Name: COLUMN hr_contract.contract_type; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.hr_contract.contract_type IS '合同类型: FIXED-固定期限, UNFIXED-无固定期限, PROJECT-项目合同, INTERN-实习';
+--
+-- Name: COLUMN hr_contract.status; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.hr_contract.status IS '状态: ACTIVE-生效中, EXPIRED-已到期, TERMINATED-已终止';
+--
+-- Name: hr_contract_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.hr_contract_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+--
+-- Name: hr_contract_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.hr_contract_id_seq OWNED BY public.hr_contract.id;
+--
+-- Name: hr_contract id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.hr_contract ALTER COLUMN id SET DEFAULT nextval('public.hr_contract_id_seq'::regclass);
+--
+-- Name: hr_contract hr_contract_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.hr_contract
+    ADD CONSTRAINT hr_contract_pkey PRIMARY KEY (id);
+--
+-- Name: idx_hr_contract_employee_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_hr_contract_employee_id ON public.hr_contract USING btree (employee_id);
+--
+-- Name: idx_hr_contract_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_hr_contract_status ON public.hr_contract USING btree (status);
+--
+-- Name: idx_hr_contract_start_date; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_hr_contract_start_date ON public.hr_contract USING btree (start_date);
+
+
+--
 -- PostgreSQL database dump complete
 --
 

@@ -4,48 +4,59 @@
  * 用于项目详情页的"客户服务"Tab，管理数据推送到客户服务系统
  */
 import type {
+  ClientFileDTO,
+  ClientFileSyncRequest,
   PushRecordDTO,
   PushRequest,
   ScopeOption,
-} from '#/api/system/openapi';
+} from '#/api/matter/client-service';
 
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 
 import {
   Alert,
+  Badge,
   Button,
   Card,
   Checkbox,
   Col,
   Descriptions,
   DescriptionsItem,
+  Divider,
   Empty,
   Form,
   FormItem,
   InputNumber,
+  List,
+  ListItem,
+  ListItemMeta,
   message,
   Modal,
+  Popconfirm,
   Row,
   Space,
   Spin,
   Statistic,
   Switch,
-  Table,
   Tag,
-  Timeline,
-  TimelineItem,
   Tooltip,
+  TreeSelect,
 } from 'ant-design-vue';
 import dayjs from 'dayjs';
 
 import {
+  countPendingClientFiles,
+  getPendingClientFiles,
   getPushConfig,
   getPushRecords,
   getPushStatistics,
+  ignoreClientFile,
   pushMatterData,
+  syncClientFile,
   updatePushConfig,
-} from '#/api/system/openapi';
+} from '#/api/matter/client-service';
 import { getDocumentsByMatter } from '#/api/document';
+import { getMatterDossierItems } from '#/api/document/dossier';
 
 const props = defineProps<{
   /** 客户ID */
@@ -90,6 +101,35 @@ const documentLoading = ref(false);
 const pushRecords = ref<PushRecordDTO[]>([]);
 const loading = ref(false);
 
+// ========== 客户上传文件 ==========
+const clientFiles = ref<ClientFileDTO[]>([]);
+const clientFilesLoading = ref(false);
+const pendingFileCount = ref(0);
+
+// 同步弹窗
+const syncModalVisible = ref(false);
+const syncLoading = ref(false);
+const syncForm = reactive<ClientFileSyncRequest>({
+  fileId: 0,
+  targetDossierId: 0,
+  targetFileName: '',
+  documentCategory: '',
+});
+const currentSyncFile = ref<ClientFileDTO | null>(null);
+
+// 卷宗目录树
+const dossierTree = ref<any[]>([]);
+const dossierLoading = ref(false);
+
+// 文件类别映射
+const FILE_CATEGORY_MAP: Record<string, { text: string; color: string }> = {
+  EVIDENCE: { text: '证据材料', color: 'blue' },
+  CONTRACT: { text: '合同文件', color: 'green' },
+  ID_CARD: { text: '身份证件', color: 'orange' },
+  OTHER: { text: '其他', color: 'default' },
+};
+
+
 // 统计
 const statistics = ref<{
   totalPushCount: number;
@@ -127,20 +167,6 @@ const STATUS_MAP: Record<string, { text: string; color: string }> = {
   FAILED: { text: '失败', color: 'error' },
 };
 
-// 推送类型映射
-const PUSH_TYPE_MAP: Record<string, string> = {
-  MANUAL: '手动推送',
-  AUTO: '自动推送',
-  UPDATE: '数据更新',
-};
-
-// 表格列
-const columns = [
-  { title: '推送时间', dataIndex: 'createdAt', key: 'createdAt', width: 160 },
-  { title: '推送内容', dataIndex: 'scopes', key: 'scopes' },
-  { title: '状态', dataIndex: 'status', key: 'status', width: 100 },
-  { title: '有效期至', dataIndex: 'expiresAt', key: 'expiresAt', width: 120 },
-];
 
 // 加载数据
 async function loadData() {
@@ -174,6 +200,143 @@ async function loadData() {
 
 // 客户服务系统是否已对接（从后端获取，暂时模拟为未对接）
 const clientServiceConnected = ref(false);
+
+// ========== 客户文件相关函数 ==========
+
+// 加载客户上传的文件
+async function loadClientFiles() {
+  if (!props.matterId) return;
+  
+  clientFilesLoading.value = true;
+  try {
+    const [files, countRes] = await Promise.all([
+      getPendingClientFiles(props.matterId),
+      countPendingClientFiles(props.matterId),
+    ]);
+    clientFiles.value = files || [];
+    pendingFileCount.value = countRes?.count || 0;
+  } catch (error) {
+    console.error('加载客户文件失败', error);
+  } finally {
+    clientFilesLoading.value = false;
+  }
+}
+
+// 加载卷宗目录树
+async function loadDossierTree() {
+  if (!props.matterId) return;
+  
+  dossierLoading.value = true;
+  try {
+    const items = await getMatterDossierItems(props.matterId);
+    // 将扁平数据转换为树形结构
+    dossierTree.value = buildTreeData(items || []);
+  } catch (error) {
+    console.error('加载卷宗目录失败', error);
+  } finally {
+    dossierLoading.value = false;
+  }
+}
+
+// 将扁平数据构建为 TreeSelect 树形结构
+function buildTreeData(items: any[]): any[] {
+  const map = new Map<number, any>();
+  const roots: any[] = [];
+  
+  // 只包含文件夹类型的目录项
+  const folders = items.filter(item => item.itemType === 'FOLDER');
+  
+  // 创建节点映射
+  folders.forEach(item => {
+    map.set(item.id, {
+      value: item.id,
+      title: item.name,
+      children: [],
+    });
+  });
+  
+  // 构建树
+  folders.forEach(item => {
+    const node = map.get(item.id);
+    if (item.parentId && map.has(item.parentId)) {
+      map.get(item.parentId).children.push(node);
+    } else {
+      roots.push(node);
+    }
+  });
+  
+  // 移除空的 children 数组
+  function cleanEmpty(nodes: any[]) {
+    nodes.forEach(node => {
+      if (node.children && node.children.length === 0) {
+        delete node.children;
+      } else if (node.children) {
+        cleanEmpty(node.children);
+      }
+    });
+  }
+  cleanEmpty(roots);
+  
+  return roots;
+}
+
+// 打开同步弹窗
+async function openSyncModal(file: ClientFileDTO) {
+  currentSyncFile.value = file;
+  syncForm.fileId = file.id;
+  syncForm.targetDossierId = 0;
+  syncForm.targetFileName = file.originalFileName || file.fileName;
+  syncForm.documentCategory = file.fileCategory || '';
+  
+  // 加载卷宗目录
+  if (dossierTree.value.length === 0) {
+    await loadDossierTree();
+  }
+  
+  syncModalVisible.value = true;
+}
+
+// 执行同步
+async function handleSync() {
+  if (!syncForm.targetDossierId) {
+    message.warning('请选择目标卷宗目录');
+    return;
+  }
+  
+  syncLoading.value = true;
+  try {
+    await syncClientFile(syncForm);
+    message.success('文件已同步到卷宗');
+    syncModalVisible.value = false;
+    loadClientFiles();
+  } catch (error: unknown) {
+    const err = error as { message?: string };
+    message.error(err.message || '同步失败');
+  } finally {
+    syncLoading.value = false;
+  }
+}
+
+// 忽略文件
+async function handleIgnoreFile(file: ClientFileDTO) {
+  try {
+    await ignoreClientFile(file.id);
+    message.success('已忽略该文件');
+    loadClientFiles();
+  } catch (error: unknown) {
+    const err = error as { message?: string };
+    message.error(err.message || '操作失败');
+  }
+}
+
+// 预览/下载文件
+function handlePreviewFile(file: ClientFileDTO) {
+  if (file.externalFileUrl) {
+    window.open(file.externalFileUrl, '_blank');
+  } else {
+    message.warning('文件链接不可用');
+  }
+}
 
 // 加载项目文档列表
 async function loadDocuments() {
@@ -276,11 +439,6 @@ function formatTime(time: string | undefined) {
   return dayjs(time).format('YYYY-MM-DD HH:mm');
 }
 
-function formatDate(time: string | undefined) {
-  if (!time) return '-';
-  return dayjs(time).format('YYYY-MM-DD');
-}
-
 // 格式化文件大小
 function formatFileSize(bytes: number): string {
   if (!bytes || bytes === 0) return '';
@@ -325,15 +483,6 @@ function handleSelectAllDocs(e: { target: { checked: boolean } }) {
   }
 }
 
-// 全选/取消全选文档（配置区域）
-function handleSelectAllDocsConfig(e: { target: { checked: boolean } }) {
-  if (e.target.checked) {
-    selectedDocumentIds.value = documentList.value.map(d => d.id);
-  } else {
-    selectedDocumentIds.value = [];
-  }
-}
-
 // 监听 config.scopes 变化，当选择 DOCUMENT_FILES 时加载文档列表
 watch(() => config.scopes, (newScopes) => {
   if (newScopes.includes('DOCUMENT_FILES') && documentList.value.length === 0) {
@@ -345,6 +494,7 @@ watch(() => config.scopes, (newScopes) => {
 onMounted(() => {
   if (props.clientId && props.matterId) {
     loadData();
+    loadClientFiles();
   }
 });
 
@@ -352,6 +502,7 @@ onMounted(() => {
 watch(() => [props.clientId, props.matterId], () => {
   if (props.clientId && props.matterId) {
     loadData();
+    loadClientFiles();
   }
 });
 </script>
@@ -383,212 +534,204 @@ watch(() => [props.clientId, props.matterId], () => {
         </Alert>
 
         <Row :gutter="16">
-          <!-- 左侧：推送操作和配置 -->
+          <!-- 左侧：客户上传文件（主要功能区） -->
           <Col :span="14">
-            <!-- 推送配置 -->
-            <Card title="推送设置" size="small" style="margin-bottom: 16px">
-              <Form layout="vertical">
-                <FormItem label="默认推送内容">
+            <!-- 客户上传的文件 - 突出显示 -->
+            <Card size="small" class="client-files-card">
+              <template #title>
+                <Space>
+                  <span style="font-size: 16px; font-weight: 600">📥 客户上传的文件</span>
+                  <Badge v-if="pendingFileCount > 0" :count="pendingFileCount" :overflow-count="99" />
+                </Space>
+              </template>
+              <template #extra>
+                <Button size="small" @click="loadClientFiles">刷新</Button>
+              </template>
+              
+              <Spin :spinning="clientFilesLoading">
+                <div v-if="clientFiles.length === 0" class="empty-files-placeholder">
+                  <div style="font-size: 64px; margin-bottom: 16px">📥</div>
+                  <div style="font-size: 16px; font-weight: 500; color: #666">暂无客户上传的文件</div>
+                  <div style="font-size: 13px; margin-top: 8px; color: #999">
+                    客户通过客服系统上传的证据材料、合同文件等会显示在这里
+                  </div>
+                  <div style="margin-top: 16px; padding: 12px; background: #f0f7ff; border-radius: 6px; text-align: left">
+                    <div style="font-size: 13px; color: #1890ff; font-weight: 500; margin-bottom: 8px">💡 文件接收流程</div>
+                    <ol style="margin: 0; padding-left: 20px; color: #666; font-size: 12px; line-height: 1.8">
+                      <li>客户通过客服小程序/公众号上传文件</li>
+                      <li>系统自动将文件推送到此处</li>
+                      <li>您可以预览、同步到卷宗或忽略</li>
+                    </ol>
+                  </div>
+                </div>
+                
+                <List v-else :data-source="clientFiles" size="small">
+                  <template #renderItem="{ item }">
+                    <ListItem class="file-list-item">
+                      <ListItemMeta>
+                        <template #avatar>
+                          <div class="file-avatar">
+                            <span style="font-size: 32px">{{ getFileIcon(item.fileType) }}</span>
+                          </div>
+                        </template>
+                        <template #title>
+                          <Space>
+                            <span style="font-weight: 500">{{ item.fileName }}</span>
+                            <Tag :color="FILE_CATEGORY_MAP[item.fileCategory]?.color || 'default'" size="small">
+                              {{ FILE_CATEGORY_MAP[item.fileCategory]?.text || '其他' }}
+                            </Tag>
+                          </Space>
+                        </template>
+                        <template #description>
+                          <Space size="small" wrap>
+                            <span>上传人: {{ item.uploadedBy || item.clientName || '-' }}</span>
+                            <Divider type="vertical" />
+                            <span>{{ formatTime(item.uploadedAt) }}</span>
+                            <span v-if="item.fileSize">· {{ formatFileSize(item.fileSize) }}</span>
+                          </Space>
+                        </template>
+                      </ListItemMeta>
+                      <template #actions>
+                        <Button type="link" size="small" @click="handlePreviewFile(item)">
+                          预览
+                        </Button>
+                        <Button 
+                          v-if="item.status === 'PENDING' && !readonly" 
+                          type="primary" 
+                          size="small" 
+                          @click="openSyncModal(item)"
+                        >
+                          同步到卷宗
+                        </Button>
+                        <Popconfirm
+                          v-if="item.status === 'PENDING' && !readonly"
+                          title="确定忽略此文件？忽略后客服系统将删除该文件。"
+                          @confirm="handleIgnoreFile(item)"
+                        >
+                          <Button type="link" size="small" danger>忽略</Button>
+                        </Popconfirm>
+                        <Tag v-if="item.status === 'SYNCED'" color="success" size="small">已同步</Tag>
+                      </template>
+                    </ListItem>
+                  </template>
+                </List>
+              </Spin>
+            </Card>
+          </Col>
+
+          <!-- 右侧：推送设置和统计 -->
+          <Col :span="10">
+            <!-- 推送统计 - 紧凑显示 -->
+            <Card size="small" style="margin-bottom: 12px">
+              <Row :gutter="16" align="middle">
+                <Col :span="8">
+                  <Statistic
+                    title="累计推送"
+                    :value="statistics.totalPushCount"
+                    suffix="次"
+                    :value-style="{ fontSize: '20px' }"
+                  />
+                </Col>
+                <Col :span="8">
+                  <div class="stat-item">
+                    <div class="stat-title">最近推送</div>
+                    <div class="stat-value" style="font-size: 13px">
+                      {{ statistics.lastPushTime ? formatTime(statistics.lastPushTime) : '暂无' }}
+                    </div>
+                  </div>
+                </Col>
+                <Col :span="8" style="text-align: right">
+                  <Button type="primary" size="small" @click="openPushModal" :disabled="readonly">
+                    📤 推送信息
+                  </Button>
+                </Col>
+              </Row>
+            </Card>
+
+            <!-- 推送设置 - 精简折叠 -->
+            <Card size="small" style="margin-bottom: 12px">
+              <template #title>
+                <span style="font-size: 13px">推送设置</span>
+              </template>
+              <template #extra>
+                <Button type="link" size="small" :loading="configLoading" @click="saveConfig">保存</Button>
+              </template>
+              
+              <Form layout="vertical" size="small">
+                <FormItem label="推送内容" style="margin-bottom: 8px">
                   <Checkbox.Group v-model:value="config.scopes" :disabled="readonly">
-                    <Row :gutter="[0, 8]">
+                    <Row :gutter="[0, 4]">
                       <Col v-for="opt in scopeOptions" :key="opt.value" :span="12">
                         <Tooltip :title="opt.description">
-                          <Checkbox :value="opt.value">{{ opt.label }}</Checkbox>
+                          <Checkbox :value="opt.value" style="font-size: 12px">{{ opt.label }}</Checkbox>
                         </Tooltip>
                       </Col>
                     </Row>
                   </Checkbox.Group>
                 </FormItem>
-
-                <!-- 文档选择（当配置中选择了 DOCUMENT_FILES 时显示） -->
-                <FormItem v-if="config.scopes.includes('DOCUMENT_FILES')" label="选择要推送的文档">
-                  <Spin :spinning="documentLoading">
-                    <div v-if="documentList.length === 0" style="color: #999; padding: 16px; text-align: center; background: #fafafa; border-radius: 4px">
-                      <div style="font-size: 32px; margin-bottom: 8px">📁</div>
-                      <div>该项目暂无可推送的文档</div>
-                      <div style="font-size: 12px; margin-top: 4px">请先在项目中上传文档</div>
-                      <Button size="small" style="margin-top: 8px" @click="loadDocuments">刷新</Button>
-                    </div>
-                    <div v-else>
-                      <!-- 全选操作 -->
-                      <div style="margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid #f0f0f0">
-                        <Checkbox 
-                          :checked="(selectedDocumentIds.length || 0) === documentList.length"
-                          :indeterminate="selectedDocumentIds.length > 0 && selectedDocumentIds.length < documentList.length"
-                          :disabled="readonly"
-                          @change="handleSelectAllDocsConfig"
-                        >
-                          全选 ({{ documentList.length }} 个文档)
-                        </Checkbox>
-                      </div>
-                      <!-- 文档列表 -->
-                      <Checkbox.Group v-model:value="selectedDocumentIds" :disabled="readonly" style="width: 100%">
-                        <div style="max-height: 200px; overflow-y: auto; border: 1px solid #f0f0f0; border-radius: 4px">
-                          <div 
-                            v-for="doc in documentList" 
-                            :key="doc.id"
-                            class="doc-item"
-                          >
-                            <Checkbox :value="doc.id" style="width: 100%">
-                              <div class="doc-item-content">
-                                <span class="doc-icon">{{ getFileIcon(doc.fileType) }}</span>
-                                <div class="doc-info">
-                                  <div class="doc-name">{{ doc.name }}</div>
-                                  <div class="doc-meta">
-                                    <Tag size="small" color="blue">{{ doc.fileType?.toUpperCase() || '文件' }}</Tag>
-                                    <span v-if="doc.fileSize">{{ formatFileSize(doc.fileSize) }}</span>
-                                  </div>
-                                </div>
-                              </div>
-                            </Checkbox>
-                          </div>
-                        </div>
-                      </Checkbox.Group>
-                      <div style="margin-top: 8px; color: #1890ff; font-size: 13px">
-                        ✓ 已选择 <b>{{ selectedDocumentIds.length }}</b> 个文档
-                      </div>
-                    </div>
-                  </Spin>
-                </FormItem>
                 
-                <Row :gutter="16">
+                <Row :gutter="8">
                   <Col :span="12">
-                    <FormItem label="数据有效期">
-                      <Space>
+                    <FormItem label="有效期" style="margin-bottom: 0">
+                      <Space size="small">
                         <InputNumber
                           v-model:value="config.validDays"
                           :min="1"
                           :max="365"
                           :disabled="readonly"
-                          style="width: 100px"
+                          size="small"
+                          style="width: 60px"
                         />
-                        <span>天</span>
+                        <span style="font-size: 12px">天</span>
                       </Space>
                     </FormItem>
                   </Col>
                   <Col :span="12">
-                    <FormItem label="自动推送">
+                    <FormItem label="自动推送" style="margin-bottom: 0">
                       <Switch
                         v-model:checked="config.autoPushOnUpdate"
                         :disabled="readonly"
-                        checked-children="开"
-                        un-checked-children="关"
+                        size="small"
                       />
-                      <span style="margin-left: 8px; color: #999; font-size: 12px">
-                        项目更新时自动推送
-                      </span>
                     </FormItem>
                   </Col>
                 </Row>
-                
-                <FormItem v-if="!readonly">
-                  <Space>
-                    <Button type="primary" @click="openPushModal">
-                      📤 推送到客户服务系统
-                    </Button>
-                    <Button :loading="configLoading" @click="saveConfig">
-                      保存配置
-                    </Button>
-                  </Space>
-                </FormItem>
               </Form>
             </Card>
 
-            <!-- 推送历史 -->
-            <Card title="推送记录" size="small">
+            <!-- 推送记录 - 精简显示 -->
+            <Card size="small">
+              <template #title>
+                <span style="font-size: 13px">推送记录</span>
+              </template>
               <template #extra>
-                <Button size="small" @click="loadData">刷新</Button>
+                <Button type="link" size="small" @click="loadData">刷新</Button>
               </template>
               
-              <Table
-                v-if="pushRecords.length > 0"
-                :columns="columns"
-                :data-source="pushRecords"
-                :pagination="{ pageSize: 5, size: 'small' }"
-                row-key="id"
-                size="small"
-              >
-                <template #bodyCell="{ column, record: rawRecord }">
-                  <template v-if="column.key === 'createdAt'">
-                    <div>{{ formatTime((rawRecord as PushRecordDTO).createdAt) }}</div>
-                    <div style="font-size: 12px; color: #999">
-                      {{ PUSH_TYPE_MAP[(rawRecord as PushRecordDTO).pushType] || (rawRecord as PushRecordDTO).pushType }}
-                    </div>
-                  </template>
-                  <template v-else-if="column.key === 'scopes'">
-                    <Space size="small" wrap>
-                      <Tag
-                        v-for="scope in (rawRecord as PushRecordDTO).scopes.slice(0, 3)"
-                        :key="scope"
-                        size="small"
-                      >
-                        {{ scopeOptions.find(o => o.value === scope)?.label || scope }}
-                      </Tag>
-                      <Tag v-if="(rawRecord as PushRecordDTO).scopes.length > 3" size="small">
-                        +{{ (rawRecord as PushRecordDTO).scopes.length - 3 }}
-                      </Tag>
-                    </Space>
-                  </template>
-                  <template v-else-if="column.key === 'status'">
-                    <Tag :color="STATUS_MAP[(rawRecord as PushRecordDTO).status]?.color">
-                      {{ STATUS_MAP[(rawRecord as PushRecordDTO).status]?.text }}
+              <div v-if="pushRecords.length > 0" style="max-height: 200px; overflow-y: auto">
+                <div 
+                  v-for="record in pushRecords.slice(0, 5)" 
+                  :key="record.id"
+                  class="push-record-item"
+                >
+                  <div style="display: flex; justify-content: space-between; align-items: center">
+                    <span style="font-size: 12px; color: #666">{{ formatTime(record.createdAt) }}</span>
+                    <Tag :color="STATUS_MAP[record.status]?.color" size="small">
+                      {{ STATUS_MAP[record.status]?.text }}
                     </Tag>
-                    <Tooltip v-if="(rawRecord as PushRecordDTO).errorMessage" :title="(rawRecord as PushRecordDTO).errorMessage">
-                      <span style="color: #ff4d4f; cursor: help">❓</span>
-                    </Tooltip>
-                  </template>
-                  <template v-else-if="column.key === 'expiresAt'">
-                    {{ formatDate((rawRecord as PushRecordDTO).expiresAt) }}
-                  </template>
-                </template>
-              </Table>
-              
-              <Empty v-else description="暂无推送记录" />
-            </Card>
-          </Col>
-
-          <!-- 右侧：统计和状态 -->
-          <Col :span="10">
-            <Card title="推送统计" size="small" style="margin-bottom: 16px">
-              <Row :gutter="16">
-                <Col :span="12">
-                  <Statistic
-                    title="累计推送"
-                    :value="statistics.totalPushCount"
-                    suffix="次"
-                  />
-                </Col>
-                <Col :span="12">
-                  <div class="stat-item">
-                    <div class="stat-title">最近推送</div>
-                    <div class="stat-value">
-                      {{ statistics.lastPushTime ? formatTime(statistics.lastPushTime) : '暂无' }}
-                    </div>
                   </div>
-                </Col>
-              </Row>
-            </Card>
-
-            <!-- 说明 -->
-            <Card title="功能说明" size="small">
-              <Timeline>
-                <TimelineItem color="blue">
-                  <b>1. 选择推送内容</b>
-                  <p style="color: #666; margin: 4px 0 0">选择要同步给客户的项目信息</p>
-                </TimelineItem>
-                <TimelineItem color="blue">
-                  <b>2. 点击推送</b>
-                  <p style="color: #666; margin: 4px 0 0">数据将发送到客户服务系统</p>
-                </TimelineItem>
-                <TimelineItem color="green">
-                  <b>3. 客户收到通知</b>
-                  <p style="color: #666; margin: 4px 0 0">系统自动通过短信/公众号通知客户</p>
-                </TimelineItem>
-                <TimelineItem color="green">
-                  <b>4. 客户查看</b>
-                  <p style="color: #666; margin: 4px 0 0">客户点击链接查看项目信息</p>
-                </TimelineItem>
-              </Timeline>
+                  <div style="margin-top: 4px">
+                    <Tag v-for="scope in record.scopes.slice(0, 2)" :key="scope" size="small" style="font-size: 11px">
+                      {{ scopeOptions.find(o => o.value === scope)?.label || scope }}
+                    </Tag>
+                    <span v-if="record.scopes.length > 2" style="font-size: 11px; color: #999">
+                      +{{ record.scopes.length - 2 }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              
+              <Empty v-else description="暂无推送记录" :image="Empty.PRESENTED_IMAGE_SIMPLE" />
             </Card>
           </Col>
         </Row>
@@ -689,6 +832,48 @@ watch(() => [props.clientId, props.matterId], () => {
           </DescriptionsItem>
         </Descriptions>
       </Modal>
+
+      <!-- 同步到卷宗弹窗 -->
+      <Modal
+        v-model:open="syncModalVisible"
+        title="同步文件到卷宗"
+        :width="500"
+        :confirm-loading="syncLoading"
+        ok-text="确认同步"
+        @ok="handleSync"
+      >
+        <Alert
+          type="info"
+          show-icon
+          style="margin-bottom: 16px"
+          message="同步后文件将保存到项目卷宗中，客服系统中的文件将被删除以节省空间"
+        />
+        
+        <Descriptions v-if="currentSyncFile" :column="1" bordered size="small">
+          <DescriptionsItem label="文件名">
+            {{ currentSyncFile.fileName }}
+          </DescriptionsItem>
+          <DescriptionsItem label="文件类型">
+            <Tag :color="FILE_CATEGORY_MAP[currentSyncFile.fileCategory || 'OTHER']?.color || 'default'">
+              {{ FILE_CATEGORY_MAP[currentSyncFile.fileCategory || 'OTHER']?.text || '其他' }}
+            </Tag>
+          </DescriptionsItem>
+          <DescriptionsItem label="上传人">
+            {{ currentSyncFile.uploadedBy || currentSyncFile.clientName || '-' }}
+          </DescriptionsItem>
+          <DescriptionsItem label="目标卷宗">
+            <TreeSelect
+              v-model:value="syncForm.targetDossierId"
+              :tree-data="dossierTree"
+              :loading="dossierLoading"
+              placeholder="请选择目标卷宗目录"
+              tree-default-expand-all
+              style="width: 100%"
+              :dropdown-style="{ maxHeight: '300px', overflow: 'auto' }"
+            />
+          </DescriptionsItem>
+        </Descriptions>
+      </Modal>
     </template>
   </div>
 </template>
@@ -698,14 +883,60 @@ watch(() => [props.clientId, props.matterId], () => {
   padding: 0;
 }
 
+/* 客户文件卡片 - 突出显示 */
+.client-files-card {
+  min-height: 400px;
+}
+
+.client-files-card :deep(.ant-card-head-title) {
+  padding: 12px 0;
+}
+
+/* 空文件占位符 */
+.empty-files-placeholder {
+  text-align: center;
+  padding: 48px 24px;
+}
+
+/* 文件列表项 */
+.file-list-item {
+  padding: 12px 0 !important;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.file-list-item:last-child {
+  border-bottom: none;
+}
+
+.file-avatar {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f7fa;
+  border-radius: 8px;
+}
+
+/* 推送记录项 */
+.push-record-item {
+  padding: 8px 0;
+  border-bottom: 1px solid #f5f5f5;
+}
+
+.push-record-item:last-child {
+  border-bottom: none;
+}
+
+/* 统计样式 */
 .stat-item {
   text-align: center;
 }
 
 .stat-title {
   color: rgba(0, 0, 0, 0.45);
-  font-size: 14px;
-  margin-bottom: 8px;
+  font-size: 12px;
+  margin-bottom: 4px;
 }
 
 .stat-value {
@@ -714,19 +945,21 @@ watch(() => [props.clientId, props.matterId], () => {
 }
 
 :deep(.ant-statistic-title) {
-  font-size: 14px;
+  font-size: 12px;
 }
 
 :deep(.ant-statistic-content) {
-  font-size: 24px;
+  font-size: 20px;
 }
 
-:deep(.ant-timeline-item-content) {
-  padding-bottom: 12px;
+/* 紧凑表单 */
+:deep(.ant-form-item-label) {
+  padding-bottom: 4px !important;
 }
 
-:deep(.ant-timeline-item-content p) {
+:deep(.ant-form-item-label > label) {
   font-size: 12px;
+  color: #666;
 }
 
 /* 文档选择器样式 */

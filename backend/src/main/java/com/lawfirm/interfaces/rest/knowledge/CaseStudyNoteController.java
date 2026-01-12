@@ -27,6 +27,13 @@ public class CaseStudyNoteController {
 
     private final CaseStudyNoteAppService noteAppService;
 
+    @Operation(summary = "查询所有学习笔记")
+    @GetMapping
+    @RequirePermission("knowledge:case:list")
+    public Result<List<CaseStudyNoteDTO>> listNotes() {
+        return Result.success(noteAppService.getMyNotes());
+    }
+
     @Operation(summary = "保存学习笔记")
     @PostMapping("/note")
     @RequirePermission("knowledge:case:list")

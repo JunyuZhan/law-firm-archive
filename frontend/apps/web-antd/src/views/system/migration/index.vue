@@ -224,7 +224,6 @@ onMounted(() => {
   <Page
     title="数据库迁移管理"
     description="管理数据库迁移脚本的执行和记录"
-    auto-content-height
   >
     <Tabs v-model:active-key="activeTab">
       <!-- 迁移脚本 -->

@@ -376,7 +376,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <Page title="任务管理" description="管理项目任务" auto-content-height>
+  <Page title="任务管理" description="管理项目任务">
     <Card>
       <Tabs v-model:active-key="activeTab" @change="handleTabChange">
         <Tabs.TabPane key="all" tab="全部任务" />

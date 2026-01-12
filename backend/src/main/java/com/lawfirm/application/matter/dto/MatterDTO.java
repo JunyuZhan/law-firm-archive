@@ -28,6 +28,12 @@ public class MatterDTO extends BaseDTO {
     private String caseTypeName;
     
     /**
+     * 代理阶段：FIRST_INSTANCE-一审, SECOND_INSTANCE-二审, RETRIAL-再审, EXECUTION-执行等
+     */
+    private String litigationStage;
+    private String litigationStageName;
+    
+    /**
      * 案由代码
      */
     private String causeOfAction;

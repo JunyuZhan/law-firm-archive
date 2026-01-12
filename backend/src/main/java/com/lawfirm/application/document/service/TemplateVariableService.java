@@ -142,6 +142,8 @@ public class TemplateVariableService {
         variables.put("matter.description", nullToEmpty(matter.getDescription()));
         variables.put("matter.opposingParty", nullToEmpty(matter.getOpposingParty()));
         variables.put("matter.causeOfAction", nullToEmpty(matter.getCauseOfAction()));
+        variables.put("matter.litigationStage", nullToEmpty(matter.getLitigationStage()));
+        variables.put("matter.litigationStageName", getLitigationStageName(matter.getLitigationStage()));
         
         if (matter.getFilingDate() != null) {
             variables.put("matter.filingDate", matter.getFilingDate().format(DATE_FORMATTER));
@@ -414,6 +416,33 @@ public class TemplateVariableService {
             case "RETRIAL" -> "再审";
             case "EXECUTION" -> "执行";
             default -> trialStage;
+        };
+    }
+
+    /**
+     * 获取代理阶段名称
+     */
+    private String getLitigationStageName(String litigationStage) {
+        if (litigationStage == null) return "";
+        return switch (litigationStage) {
+            // 通用阶段
+            case "FIRST_INSTANCE" -> "一审";
+            case "SECOND_INSTANCE" -> "二审";
+            case "RETRIAL" -> "再审";
+            case "EXECUTION" -> "执行";
+            case "ARBITRATION" -> "仲裁阶段";
+            // 刑事案件特有
+            case "INVESTIGATION" -> "侦查阶段";
+            case "PROSECUTION_REVIEW" -> "审查起诉";
+            case "DEATH_PENALTY_REVIEW" -> "死刑复核";
+            // 行政案件特有
+            case "ADMINISTRATIVE_RECONSIDERATION" -> "行政复议";
+            // 执行案件特有
+            case "EXECUTION_OBJECTION" -> "执行异议";
+            case "EXECUTION_REVIEW" -> "执行复议";
+            // 非诉
+            case "NON_LITIGATION" -> "非诉服务";
+            default -> litigationStage;
         };
     }
 

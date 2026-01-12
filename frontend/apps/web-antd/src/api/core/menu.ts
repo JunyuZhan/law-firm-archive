@@ -79,6 +79,8 @@ const iconMap: Record<string, string> = {
   DollarOutlined: 'lucide:dollar-sign',
   AccountBookOutlined: 'lucide:book-open-check',
   MailOutlined: 'lucide:mail',
+  // 系统管理新增图标
+  NotificationOutlined: 'lucide:bell',
 };
 
 /**

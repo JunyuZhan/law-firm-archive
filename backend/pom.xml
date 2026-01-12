@@ -316,6 +316,40 @@
                     </annotationProcessorPaths>
                 </configuration>
             </plugin>
+            <!-- JaCoCo 测试覆盖率插件 -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>0.8.11</version>
+                <executions>
+                    <execution>
+                        <id>prepare-agent</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <excludes>
+                        <!-- 排除 DTO、VO、Entity 等数据类 -->
+                        <exclude>**/dto/**</exclude>
+                        <exclude>**/vo/**</exclude>
+                        <exclude>**/entity/**</exclude>
+                        <exclude>**/model/**</exclude>
+                        <!-- 排除配置类 -->
+                        <exclude>**/config/**</exclude>
+                        <!-- 排除 MapStruct 生成的代码 -->
+                        <exclude>**/*MapperImpl.class</exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
             <!-- Git 提交信息插件 -->
             <plugin>
                 <groupId>pl.project13.maven</groupId>

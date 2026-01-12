@@ -232,6 +232,8 @@ public class MatterAppService {
         dto.setMatterTypeName(MatterConstants.getMatterTypeName(matter.getMatterType()));
         dto.setCaseType(matter.getCaseType());
         dto.setCaseTypeName(MatterConstants.getCaseTypeName(matter.getCaseType()));
+        dto.setLitigationStage(matter.getLitigationStage());
+        dto.setLitigationStageName(MatterConstants.getLitigationStageName(matter.getLitigationStage()));
         dto.setCauseOfAction(matter.getCauseOfAction());
         dto.setBusinessType(matter.getBusinessType());
         dto.setClientId(matter.getClientId());
@@ -342,6 +344,7 @@ public class MatterAppService {
                 .name(command.getName())
                 .matterType(command.getMatterType())
                 .caseType(command.getCaseType())
+                .litigationStage(command.getLitigationStage())
                 .causeOfAction(command.getCauseOfAction())
                 .businessType(command.getBusinessType())
                 .clientId(command.getClientId())
@@ -483,6 +486,9 @@ public class MatterAppService {
         }
         if (command.getCaseType() != null) {
             matter.setCaseType(command.getCaseType());
+        }
+        if (command.getLitigationStage() != null) {
+            matter.setLitigationStage(command.getLitigationStage());
         }
         if (command.getCauseOfAction() != null) {
             matter.setCauseOfAction(command.getCauseOfAction());
@@ -1068,6 +1074,8 @@ public class MatterAppService {
         dto.setMatterTypeName(MatterConstants.getMatterTypeName(matter.getMatterType()));
         dto.setCaseType(matter.getCaseType());
         dto.setCaseTypeName(MatterConstants.getCaseTypeName(matter.getCaseType()));
+        dto.setLitigationStage(matter.getLitigationStage());
+        dto.setLitigationStageName(MatterConstants.getLitigationStageName(matter.getLitigationStage()));
         dto.setCauseOfAction(matter.getCauseOfAction());
         // 案由名称由前端根据code查找，后端只存储code
         dto.setBusinessType(matter.getBusinessType());
@@ -1278,9 +1286,9 @@ public class MatterAppService {
 
         // 创建结案审批记录
         try {
-            // 使用指定的审批人，如果没有指定则使用默认审批人
+            // 使用指定的审批人，如果没有指定则使用结案审批人（优先团队负责人）
             Long approverId = command.getApproverId() != null ? 
-                    command.getApproverId() : approverService.findDefaultApprover();
+                    command.getApproverId() : approverService.findMatterCloseApprover();
             String businessSnapshot = objectMapper.writeValueAsString(matter);
             approvalService.createApproval(
                     "MATTER_CLOSE",

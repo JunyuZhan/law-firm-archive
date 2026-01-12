@@ -15,6 +15,8 @@ import com.itextpdf.layout.element.Table;
 import com.itextpdf.layout.properties.TextAlignment;
 import com.itextpdf.layout.properties.UnitValue;
 import com.itextpdf.layout.properties.VerticalAlignment;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lawfirm.domain.client.entity.Client;
 import com.lawfirm.domain.finance.entity.Contract;
 import com.lawfirm.domain.matter.entity.Matter;
@@ -254,55 +256,79 @@ public class PdfGeneratorService {
     }
 
     /**
-     * 生成授权委托书PDF
+     * 生成授权委托书PDF（简化版，向后兼容）
      */
     public byte[] generatePowerOfAttorneyPdf(Matter matter, Client client) {
+        return generatePowerOfAttorneyPdf(matter, client, null, null, null);
+    }
+
+    /**
+     * 生成授权委托书PDF（紧凑排版，确保一页显示）
+     * 
+     * @param matter 项目信息
+     * @param client 客户信息
+     * @param lawyerName 承办律师姓名（可为null）
+     * @param lawyerLicenseNo 律师执业证号（可为null）
+     * @param firmName 律所名称（可为null）
+     */
+    public byte[] generatePowerOfAttorneyPdf(Matter matter, Client client, 
+            String lawyerName, String lawyerLicenseNo, String firmName) {
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
             PdfWriter writer = new PdfWriter(baos);
             PdfDocument pdfDoc = new PdfDocument(writer);
             Document document = new Document(pdfDoc, PageSize.A4);
-            document.setMargins(60, 60, 60, 60);
+            // 减小边距，增加可用空间
+            document.setMargins(40, 50, 40, 50);
 
             PdfFont font = createChineseFont();
 
             // 标题
             document.add(new Paragraph("授 权 委 托 书")
                 .setFont(font)
-                .setFontSize(22)
+                .setFontSize(20)
                 .setBold()
                 .setTextAlignment(TextAlignment.CENTER)
-                .setMarginBottom(30));
+                .setMarginBottom(20));
 
             // 委托人信息
             String clientName = client != null ? client.getName() : "_______________";
             String clientType = client != null && "ENTERPRISE".equals(client.getClientType()) ? "法定代表人" : "身份证号";
+            String clientIdValue = client != null ? 
+                ("ENTERPRISE".equals(client.getClientType()) ? 
+                    (client.getLegalRepresentative() != null ? client.getLegalRepresentative() : "_______________") :
+                    (client.getIdCard() != null ? client.getIdCard() : "_______________")
+                ) : "_______________";
             String clientContact = client != null && client.getContactPhone() != null ? client.getContactPhone() : "_______________";
 
             document.add(new Paragraph("委托人：" + clientName)
                 .setFont(font)
-                .setFontSize(12)
-                .setMarginBottom(10));
+                .setFontSize(11)
+                .setMarginBottom(6));
             
-            document.add(new Paragraph(clientType + "：_______________")
+            document.add(new Paragraph(clientType + "：" + clientIdValue)
                 .setFont(font)
-                .setFontSize(12)
-                .setMarginBottom(10));
+                .setFontSize(11)
+                .setMarginBottom(6));
             
             document.add(new Paragraph("联系电话：" + clientContact)
                 .setFont(font)
-                .setFontSize(12)
-                .setMarginBottom(20));
+                .setFontSize(11)
+                .setMarginBottom(12));
 
             // 受托人信息
-            document.add(new Paragraph("受托人：_______________律师事务所 _______________ 律师")
-                .setFont(font)
-                .setFontSize(12)
-                .setMarginBottom(10));
+            String firmNameDisplay = firmName != null && !firmName.isEmpty() ? firmName : "_______________";
+            String lawyerNameDisplay = lawyerName != null && !lawyerName.isEmpty() ? lawyerName : "_______________";
+            String licenseNoDisplay = lawyerLicenseNo != null && !lawyerLicenseNo.isEmpty() ? lawyerLicenseNo : "_______________";
             
-            document.add(new Paragraph("执业证号：_______________")
+            document.add(new Paragraph("受托人：" + firmNameDisplay + " " + lawyerNameDisplay + " 律师")
                 .setFont(font)
-                .setFontSize(12)
-                .setMarginBottom(20));
+                .setFontSize(11)
+                .setMarginBottom(6));
+            
+            document.add(new Paragraph("执业证号：" + licenseNoDisplay)
+                .setFont(font)
+                .setFontSize(11)
+                .setMarginBottom(12));
 
             // 委托事项
             String matterName = matter != null && matter.getName() != null ? matter.getName() : "_______________";
@@ -310,21 +336,21 @@ public class PdfGeneratorService {
 
             document.add(new Paragraph("委托事项：")
                 .setFont(font)
-                .setFontSize(12)
+                .setFontSize(11)
                 .setBold()
-                .setMarginBottom(10));
+                .setMarginBottom(6));
             
             document.add(new Paragraph("    本人因" + matterName + "（" + caseType + "）一案，特委托上述受托人作为本人的诉讼代理人。")
                 .setFont(font)
-                .setFontSize(12)
-                .setMarginBottom(20));
+                .setFontSize(11)
+                .setMarginBottom(12));
 
             // 代理权限
             document.add(new Paragraph("代理权限：")
                 .setFont(font)
-                .setFontSize(12)
+                .setFontSize(11)
                 .setBold()
-                .setMarginBottom(10));
+                .setMarginBottom(6));
 
             String[] permissions = {
                 "1. 一般代理（代为起诉、应诉、变更诉讼请求、提供证据、进行辩论、申请调解）",
@@ -333,27 +359,30 @@ public class PdfGeneratorService {
             for (String perm : permissions) {
                 document.add(new Paragraph("    " + perm)
                     .setFont(font)
-                    .setFontSize(11)
-                    .setMarginBottom(5));
+                    .setFontSize(10)
+                    .setMarginBottom(4));
             }
 
             // 委托期限
-            document.add(new Paragraph("\n委托期限：自签署之日起至本案结案止。")
+            document.add(new Paragraph("委托期限：自签署之日起至本案结案止。")
                 .setFont(font)
-                .setFontSize(12)
-                .setMarginTop(20)
-                .setMarginBottom(30));
+                .setFontSize(11)
+                .setMarginTop(12)
+                .setMarginBottom(20));
 
-            // 签章区域
-            document.add(new Paragraph("\n\n委托人（签章）：")
-                .setFont(font)
-                .setFontSize(12)
-                .setMarginTop(30));
-            
-            document.add(new Paragraph("\n日期：     年   月   日")
-                .setFont(font)
-                .setFontSize(12)
-                .setMarginTop(20));
+            // 签章区域（使用表格并排显示）
+            Table signTable = new Table(UnitValue.createPercentArray(new float[]{50, 50}))
+                .setWidth(UnitValue.createPercentValue(100))
+                .setMarginTop(15);
+
+            signTable.addCell(new Cell()
+                .add(new Paragraph("委托人（签章）：\n\n\n日期：     年   月   日").setFont(font).setFontSize(11))
+                .setBorder(null));
+            signTable.addCell(new Cell()
+                .add(new Paragraph("受托人（确认）：\n\n\n日期：     年   月   日").setFont(font).setFontSize(11))
+                .setBorder(null));
+
+            document.add(signTable);
 
             // 页脚
             document.add(new Paragraph("本授权委托书由系统自动生成，仅供参考，请以签字盖章版本为准。")
@@ -361,7 +390,7 @@ public class PdfGeneratorService {
                 .setFontSize(9)
                 .setFontColor(ColorConstants.GRAY)
                 .setTextAlignment(TextAlignment.CENTER)
-                .setMarginTop(50));
+                .setMarginTop(30));
 
             document.close();
             return baos.toByteArray();
@@ -473,10 +502,19 @@ public class PdfGeneratorService {
 
     /**
      * 从模板内容生成 PDF
-     * 支持预格式化的纯文本模板（已替换变量）
+     * 支持 HTML 富文本模板（已替换变量）
+     * 
+     * 支持的HTML格式：
+     * - &lt;p&gt; 段落
+     * - &lt;strong&gt;/&lt;b&gt; 加粗
+     * - &lt;em&gt;/&lt;i&gt; 斜体
+     * - &lt;u&gt; 下划线
+     * - &lt;center&gt; 居中
+     * - &lt;h1&gt;-&lt;h4&gt; 标题
+     * - &lt;br&gt; 换行
      * 
      * @param title 文档标题
-     * @param content 已替换变量的模板内容
+     * @param content 已替换变量的模板内容（支持HTML格式）
      * @return PDF 字节数组
      */
     public byte[] generatePdfFromTemplateContent(String title, String content) {
@@ -488,7 +526,7 @@ public class PdfGeneratorService {
 
             PdfFont font = createChineseFont();
 
-            // 标题
+            // 标题（如果提供）
             if (title != null && !title.isEmpty()) {
                 document.add(new Paragraph(title)
                     .setFont(font)
@@ -498,45 +536,9 @@ public class PdfGeneratorService {
                     .setMarginBottom(20));
             }
 
-            // 内容 - 按行处理，保留格式
+            // 内容 - 解析HTML格式
             if (content != null && !content.isEmpty()) {
-                String[] lines = content.split("\n");
-                for (String line : lines) {
-                    // 检测是否是分隔线
-                    if (line.trim().matches("^[━─═]+$")) {
-                        document.add(new Paragraph(line)
-                            .setFont(font)
-                            .setFontSize(10)
-                            .setFontColor(ColorConstants.GRAY)
-                            .setMarginTop(5)
-                            .setMarginBottom(5));
-                    }
-                    // 检测是否是小标题（以【】包围）
-                    else if (line.trim().startsWith("【") && line.trim().endsWith("】")) {
-                        document.add(new Paragraph(line)
-                            .setFont(font)
-                            .setFontSize(12)
-                            .setBold()
-                            .setTextAlignment(TextAlignment.CENTER)
-                            .setMarginTop(15)
-                            .setMarginBottom(10));
-                    }
-                    // 检测是否是空行
-                    else if (line.trim().isEmpty()) {
-                        document.add(new Paragraph(" ")
-                            .setFont(font)
-                            .setFontSize(8)
-                            .setMarginTop(2)
-                            .setMarginBottom(2));
-                    }
-                    // 普通内容行
-                    else {
-                        document.add(new Paragraph(line)
-                            .setFont(font)
-                            .setFontSize(11)
-                            .setMarginBottom(3));
-                    }
-                }
+                parseHtmlContent(document, content, font);
             }
 
             // 页脚
@@ -552,6 +554,300 @@ public class PdfGeneratorService {
         } catch (Exception e) {
             log.error("从模板内容生成PDF失败", e);
             throw new RuntimeException("生成PDF失败: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 解析HTML内容并添加到PDF文档
+     */
+    private void parseHtmlContent(Document document, String htmlContent, PdfFont font) {
+        // 预处理：规范化HTML
+        String content = htmlContent
+            .replaceAll("<br\\s*/?>", "\n")           // <br> 转换为换行
+            .replaceAll("</p>", "</p>\n")             // 段落后加换行
+            .replaceAll("</div>", "</div>\n")         // div后加换行
+            .replaceAll("</h[1-6]>", "</h>\n")        // 标题后加换行
+            .replaceAll("&nbsp;", " ")                // 空格
+            .replaceAll("&lt;", "<")
+            .replaceAll("&gt;", ">")
+            .replaceAll("&amp;", "&")
+            .replaceAll("&quot;", "\"");
+
+        // 按块解析（段落、标题等）
+        String[] blocks = content.split("(?=<p[^>]*>)|(?=<h[1-6][^>]*>)|(?=<div[^>]*>)|(?<=</p>)|(?<=</h>)|(?<=</div>)|\n");
+        
+        for (String block : blocks) {
+            if (block.trim().isEmpty()) continue;
+            
+            Paragraph para = new Paragraph();
+            para.setFont(font);
+            para.setMarginBottom(6);
+            
+            // 检测块级格式
+            boolean isCentered = block.contains("text-align: center") || 
+                                block.contains("text-align:center") ||
+                                block.matches("(?s).*<center>.*</center>.*");
+            boolean isRight = block.contains("text-align: right") || block.contains("text-align:right");
+            boolean isHeading = block.matches("(?s).*<h[1-6][^>]*>.*");
+            
+            // 设置对齐方式
+            if (isCentered) {
+                para.setTextAlignment(TextAlignment.CENTER);
+            } else if (isRight) {
+                para.setTextAlignment(TextAlignment.RIGHT);
+            } else {
+                para.setTextAlignment(TextAlignment.LEFT);
+            }
+            
+            // 设置字号
+            float fontSize = 11;
+            if (block.matches("(?s).*<h1[^>]*>.*")) fontSize = 18;
+            else if (block.matches("(?s).*<h2[^>]*>.*")) fontSize = 16;
+            else if (block.matches("(?s).*<h3[^>]*>.*")) fontSize = 14;
+            else if (block.matches("(?s).*<h4[^>]*>.*")) fontSize = 12;
+            para.setFontSize(fontSize);
+            
+            // 标题加粗
+            if (isHeading) {
+                para.setBold();
+                para.setMarginTop(10);
+                para.setMarginBottom(8);
+            }
+            
+            // 解析内联格式
+            String text = stripHtmlTags(block);
+            if (text.trim().isEmpty()) continue;
+            
+            // 检测内联格式并应用
+            boolean isBold = block.contains("<strong>") || block.contains("<b>") || 
+                           block.contains("font-weight: bold") || block.contains("font-weight:bold");
+            boolean isItalic = block.contains("<em>") || block.contains("<i>");
+            boolean isUnderline = block.contains("<u>") || 
+                                block.contains("text-decoration: underline") ||
+                                block.contains("text-decoration:underline");
+            
+            if (isBold) para.setBold();
+            if (isItalic) para.setItalic();
+            if (isUnderline) para.setUnderline();
+            
+            // 检测首行缩进
+            if (block.contains("text-indent") || text.startsWith("    ") || text.startsWith("\t")) {
+                para.setFirstLineIndent(24);
+                text = text.stripLeading();
+            }
+            
+            para.add(text);
+            document.add(para);
+        }
+    }
+
+    /**
+     * 去除HTML标签，保留纯文本
+     */
+    private String stripHtmlTags(String html) {
+        if (html == null) return "";
+        return html.replaceAll("<[^>]*>", "")
+                   .replaceAll("\\s+", " ")
+                   .trim();
+    }
+
+    /**
+     * 从分块模板生成授权委托书PDF
+     * 
+     * 固定格式：
+     * - 标题：二号宋体（22pt），居中
+     * - 正文：三号仿宋（16pt）
+     * - 备注：五号宋体（10.5pt）
+     * 
+     * @param templateContent JSON格式的分块模板内容
+     * @return PDF字节数组
+     */
+    public byte[] generatePowerOfAttorneyFromBlocks(String templateContent) {
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+            PdfWriter writer = new PdfWriter(baos);
+            PdfDocument pdfDoc = new PdfDocument(writer);
+            Document document = new Document(pdfDoc, PageSize.A4);
+            document.setMargins(50, 60, 50, 60);
+
+            // 创建中文字体
+            PdfFont songFont = createChineseFont();
+            PdfFont fangsongFont = createFangsongFont();
+
+            // 解析JSON分块内容
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode blocks = mapper.readTree(templateContent);
+
+            // 标题：二号宋体（22pt），居中
+            String title = getBlockContent(blocks, "title", "授 权 委 托 书");
+            document.add(new Paragraph(title)
+                .setFont(songFont)
+                .setFontSize(22)  // 二号字体约22pt
+                .setBold()
+                .setTextAlignment(TextAlignment.CENTER)
+                .setMarginBottom(30));
+
+            // 委托人信息：三号仿宋
+            String clientInfo = getBlockContent(blocks, "clientInfo", "");
+            if (!clientInfo.isEmpty()) {
+                document.add(new Paragraph("【委托人信息】")
+                    .setFont(songFont)
+                    .setFontSize(14)
+                    .setBold()
+                    .setMarginBottom(8));
+                addFormattedParagraphs(document, fangsongFont, 16, clientInfo);
+                document.add(new Paragraph().setMarginBottom(12));
+            }
+
+            // 受托人信息：三号仿宋
+            String agentInfo = getBlockContent(blocks, "agentInfo", "");
+            if (!agentInfo.isEmpty()) {
+                document.add(new Paragraph("【受托人信息】")
+                    .setFont(songFont)
+                    .setFontSize(14)
+                    .setBold()
+                    .setMarginBottom(8));
+                addFormattedParagraphs(document, fangsongFont, 16, agentInfo);
+                document.add(new Paragraph().setMarginBottom(12));
+            }
+
+            // 委托事项：三号仿宋
+            String matterInfo = getBlockContent(blocks, "matterInfo", "");
+            if (!matterInfo.isEmpty()) {
+                document.add(new Paragraph("【委托事项】")
+                    .setFont(songFont)
+                    .setFontSize(14)
+                    .setBold()
+                    .setMarginBottom(8));
+                addFormattedParagraphs(document, fangsongFont, 16, matterInfo);
+                document.add(new Paragraph().setMarginBottom(12));
+            }
+
+            // 代理权限：三号仿宋
+            String authorization = getBlockContent(blocks, "authorization", "");
+            if (!authorization.isEmpty()) {
+                document.add(new Paragraph("【代理权限】")
+                    .setFont(songFont)
+                    .setFontSize(14)
+                    .setBold()
+                    .setMarginBottom(8));
+                addFormattedParagraphs(document, fangsongFont, 16, authorization);
+                document.add(new Paragraph().setMarginBottom(12));
+            }
+
+            // 委托期限：三号仿宋
+            String duration = getBlockContent(blocks, "duration", "");
+            if (!duration.isEmpty()) {
+                document.add(new Paragraph("【委托期限】")
+                    .setFont(songFont)
+                    .setFontSize(14)
+                    .setBold()
+                    .setMarginBottom(8));
+                addFormattedParagraphs(document, fangsongFont, 16, duration);
+                document.add(new Paragraph().setMarginBottom(20));
+            }
+
+            // 签字区域：三号仿宋
+            String signature = getBlockContent(blocks, "signature", "委托人（签章）：________________\n\n日    期：    年  月  日");
+            document.add(new Paragraph("【签字确认】")
+                .setFont(songFont)
+                .setFontSize(14)
+                .setBold()
+                .setMarginBottom(8));
+            addFormattedParagraphs(document, fangsongFont, 16, signature);
+            document.add(new Paragraph().setMarginBottom(20));
+
+            // 分隔线
+            document.add(new Paragraph("━".repeat(40))
+                .setFont(songFont)
+                .setFontSize(10)
+                .setTextAlignment(TextAlignment.CENTER)
+                .setFontColor(ColorConstants.GRAY)
+                .setMarginTop(10)
+                .setMarginBottom(10));
+
+            // 备注：五号宋体（10.5pt）
+            String remarks = getBlockContent(blocks, "remarks", "【本授权委托书由系统自动生成，以签字盖章版本为准】");
+            addFormattedParagraphs(document, songFont, 10.5f, remarks);
+
+            document.close();
+            return baos.toByteArray();
+        } catch (Exception e) {
+            log.error("从分块模板生成授权委托书PDF失败", e);
+            throw new RuntimeException("生成PDF失败: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 获取分块内容
+     */
+    private String getBlockContent(JsonNode blocks, String key, String defaultValue) {
+        if (blocks.has(key)) {
+            String value = blocks.get(key).asText();
+            return value != null && !value.isEmpty() ? value : defaultValue;
+        }
+        return defaultValue;
+    }
+
+    /**
+     * 添加格式化段落（按换行分割）
+     */
+    private void addFormattedParagraphs(Document document, PdfFont font, float fontSize, String content) {
+        if (content == null || content.isEmpty()) return;
+        
+        String[] lines = content.split("\n");
+        for (String line : lines) {
+            // 检测首行缩进
+            boolean hasIndent = line.startsWith("    ") || line.startsWith("\t");
+            String text = line.stripLeading();
+            
+            // 处理空变量为下划线
+            text = text.replaceAll("\\$\\{[^}]+\\}", "________________");
+            
+            if (text.isEmpty()) {
+                document.add(new Paragraph().setMarginBottom(4));
+                continue;
+            }
+            
+            Paragraph para = new Paragraph(text)
+                .setFont(font)
+                .setFontSize(fontSize)
+                .setMarginBottom(4);
+            
+            if (hasIndent) {
+                para.setFirstLineIndent(32); // 两个汉字宽度
+            }
+            
+            document.add(para);
+        }
+    }
+
+    /**
+     * 创建仿宋字体
+     */
+    private PdfFont createFangsongFont() {
+        try {
+            // 尝试使用内置仿宋字体
+            return PdfFontFactory.createFont("STSong-Light", "UniGB-UCS2-H");
+        } catch (Exception e) {
+            log.warn("无法加载仿宋字体，使用默认中文字体", e);
+            return createChineseFont();
+        }
+    }
+
+    /**
+     * 检查模板内容是否为JSON分块格式
+     */
+    public boolean isBlockTemplateFormat(String content) {
+        if (content == null || content.isEmpty()) {
+            return false;
+        }
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode node = mapper.readTree(content);
+            // 检查是否包含授权委托书的典型分块字段
+            return node.has("title") || node.has("clientInfo") || node.has("agentInfo");
+        } catch (Exception e) {
+            return false;
         }
     }
 

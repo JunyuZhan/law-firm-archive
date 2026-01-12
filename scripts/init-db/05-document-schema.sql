@@ -194,6 +194,7 @@ CREATE TABLE public.doc_template (
     name character varying(200) NOT NULL,
     category_id bigint,
     template_type character varying(50),
+    case_type character varying(30) DEFAULT 'ALL',
     file_name character varying(500) NOT NULL,
     file_path character varying(1000) NOT NULL,
     file_size bigint,
@@ -218,6 +219,11 @@ COMMENT ON TABLE public.doc_template IS '文档模板表';
 --
 
 COMMENT ON COLUMN public.doc_template.template_type IS '模板类型: CONTRACT-合同, LEGAL_OPINION-法律意见书, POWER_OF_ATTORNEY-授权委托书, COMPLAINT-起诉状, DEFENSE-答辩状, OTHER-其他';
+--
+-- Name: COLUMN doc_template.case_type; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.doc_template.case_type IS '案件类型: CIVIL-民事, CRIMINAL-刑事, ADMINISTRATIVE-行政, BANKRUPTCY-破产, IP-知识产权, ARBITRATION-仲裁, ENFORCEMENT-执行, ALL-通用';
 --
 -- Name: COLUMN doc_template.variables; Type: COMMENT; Schema: public; Owner: -
 --
