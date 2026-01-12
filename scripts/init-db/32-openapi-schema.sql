@@ -1,11 +1,12 @@
 -- =====================================================
 -- 律师事务所管理系统 - 客户服务 OpenAPI 模块
 -- =====================================================
--- 版本: 1.1.0
--- 日期: 2026-01-11
+-- 版本: 1.2.0
+-- 日期: 2026-01-12
 -- 描述: 
 --   1. 向客户服务系统推送项目数据
 --   2. 为客户服务系统提供数据拉取接口
+--   3. 接收客户上传的文件
 -- =====================================================
 
 -- =====================================================
@@ -250,13 +251,80 @@ CREATE INDEX idx_openapi_verify_business ON public.openapi_verification_code(bus
 COMMENT ON TABLE public.openapi_verification_code IS '公开验证码表 - 用于二维码真伪验证';
 
 -- =====================================================
--- 5. 初始化权限菜单（使用正确的列名）
+-- 5. 客户上传文件表 - 存储客服系统推送的客户上传文件
 -- =====================================================
--- 注意：开放接口管理菜单（ID 1810-1814）已废弃并移除
+CREATE TABLE IF NOT EXISTS public.openapi_client_file (
+    id BIGSERIAL PRIMARY KEY,
+    
+    -- 关联信息
+    matter_id BIGINT NOT NULL,                      -- 项目ID
+    client_id BIGINT NOT NULL,                      -- 客户ID
+    client_name VARCHAR(100),                       -- 客户姓名
+    
+    -- 文件信息
+    file_name VARCHAR(255) NOT NULL,                -- 文件名
+    original_file_name VARCHAR(255),                -- 原始文件名
+    file_size BIGINT,                               -- 文件大小（字节）
+    file_type VARCHAR(100),                         -- 文件类型（MIME类型）
+    file_category VARCHAR(50) DEFAULT 'OTHER',     -- 文件类别：EVIDENCE/CONTRACT/ID_CARD/OTHER
+    description TEXT,                               -- 文件描述
+    
+    -- 外部系统信息
+    external_file_id VARCHAR(255) NOT NULL,         -- 客服系统中的文件ID
+    external_file_url VARCHAR(1000) NOT NULL,       -- 客服系统中的文件下载URL
+    uploaded_by VARCHAR(100),                       -- 上传人
+    uploaded_at TIMESTAMP,                          -- 上传时间
+    
+    -- 同步状态
+    status VARCHAR(20) DEFAULT 'PENDING',           -- 状态：PENDING/SYNCED/DELETED/FAILED
+    local_document_id BIGINT,                       -- 同步后的本地文档ID
+    target_dossier_id BIGINT,                       -- 同步到的卷宗目录ID
+    synced_at TIMESTAMP,                            -- 同步时间
+    synced_by BIGINT,                               -- 同步操作人
+    error_message TEXT,                             -- 错误信息
+    
+    -- 审计字段
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by BIGINT,
+    updated_by BIGINT,
+    deleted BOOLEAN DEFAULT FALSE,
+    version INTEGER DEFAULT 0                        -- 乐观锁版本号
+);
+
+-- 索引
+CREATE INDEX IF NOT EXISTS idx_client_file_matter ON public.openapi_client_file(matter_id);
+CREATE INDEX IF NOT EXISTS idx_client_file_client ON public.openapi_client_file(client_id);
+CREATE INDEX IF NOT EXISTS idx_client_file_status ON public.openapi_client_file(status);
+CREATE INDEX IF NOT EXISTS idx_client_file_external ON public.openapi_client_file(external_file_id);
+CREATE INDEX IF NOT EXISTS idx_client_file_created ON public.openapi_client_file(created_at DESC);
+
+-- 注释
+COMMENT ON TABLE public.openapi_client_file IS '客户上传文件表 - 存储客服系统推送的客户上传文件';
+COMMENT ON COLUMN public.openapi_client_file.matter_id IS '项目ID';
+COMMENT ON COLUMN public.openapi_client_file.client_id IS '客户ID';
+COMMENT ON COLUMN public.openapi_client_file.client_name IS '客户姓名';
+COMMENT ON COLUMN public.openapi_client_file.file_name IS '文件名';
+COMMENT ON COLUMN public.openapi_client_file.original_file_name IS '原始文件名';
+COMMENT ON COLUMN public.openapi_client_file.file_size IS '文件大小（字节）';
+COMMENT ON COLUMN public.openapi_client_file.file_type IS '文件类型（MIME类型）';
+COMMENT ON COLUMN public.openapi_client_file.file_category IS '文件类别：EVIDENCE/CONTRACT/ID_CARD/OTHER';
+COMMENT ON COLUMN public.openapi_client_file.description IS '文件描述';
+COMMENT ON COLUMN public.openapi_client_file.external_file_id IS '客服系统中的文件ID';
+COMMENT ON COLUMN public.openapi_client_file.external_file_url IS '客服系统中的文件下载URL';
+COMMENT ON COLUMN public.openapi_client_file.uploaded_by IS '上传人';
+COMMENT ON COLUMN public.openapi_client_file.uploaded_at IS '上传时间';
+COMMENT ON COLUMN public.openapi_client_file.status IS '状态：PENDING/SYNCED/DELETED/FAILED';
+COMMENT ON COLUMN public.openapi_client_file.local_document_id IS '同步后的本地文档ID';
+COMMENT ON COLUMN public.openapi_client_file.target_dossier_id IS '同步到的卷宗目录ID';
+COMMENT ON COLUMN public.openapi_client_file.synced_at IS '同步时间';
+COMMENT ON COLUMN public.openapi_client_file.synced_by IS '同步操作人';
+COMMENT ON COLUMN public.openapi_client_file.error_message IS '错误信息';
 
 -- =====================================================
--- 项目级别客户服务权限（律师使用）
+-- 6. 初始化权限菜单
 -- =====================================================
+-- 项目级别客户服务权限（律师使用）
 -- 添加到项目管理菜单下（parent_id=4 是项目管理）
 INSERT INTO public.sys_menu (id, parent_id, name, menu_type, permission, sort_order, visible, status, is_external, is_cache)
 VALUES 
@@ -265,7 +333,7 @@ VALUES
 ON CONFLICT (id) DO NOTHING;
 
 -- =====================================================
--- 6. 分配角色权限
+-- 7. 分配角色权限
 -- =====================================================
 -- 修复序列（先执行，避免插入冲突）
 DO $$
@@ -288,7 +356,7 @@ WHERE r.role_code = 'LAWYER' AND m.id IN (1815, 1816)
 ON CONFLICT (role_id, menu_id) DO NOTHING;
 
 -- =====================================================
--- 7. 添加客户服务系统的外部集成配置
+-- 8. 添加客户服务系统的外部集成配置
 -- =====================================================
 -- 修复序列
 DO $$

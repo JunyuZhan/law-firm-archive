@@ -4,8 +4,16 @@
 
 ## 当前状态
 
-截至 2026-01-10，所有开发阶段的迁移脚本已合并到 `init-db/` 初始化脚本中。
-本目录暂时为空，待正式版本发布后用于存放版本间的增量迁移。
+截至 2026-01-12，所有开发阶段的迁移脚本已合并到 `init-db/` 初始化脚本中：
+
+| 原迁移脚本 | 合并到 |
+|-----------|--------|
+| `add_client_file_table.sql` | `init-db/32-openapi-schema.sql` |
+| `add_litigation_stage.sql` | `init-db/03-matter-schema.sql`（初始即包含） |
+| `add_litigation_stage_dict.sql` | `init-db/27-dict-init-data.sql` |
+| `add_template_case_type.sql` | `init-db/05-document-schema.sql`（初始即包含） |
+
+本目录现已清空，待正式版本发布后用于存放版本间的增量迁移。
 
 ## 命名规范
 

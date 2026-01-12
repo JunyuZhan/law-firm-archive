@@ -190,3 +190,7 @@ docker exec -i law-firm-postgres psql -U law_admin -d law_firm_dev < 00-extensio
 
 - **1.0.0** (2026-01-08): 初始版本，基于开发数据库导出并整理
 - **1.0.1** (2026-01-11): 添加字典管理、报表权限细化、审批权限细化、演示数据
+- **1.0.2** (2026-01-12): 合并迁移脚本
+  - 添加客户上传文件表 `openapi_client_file` 到 `32-openapi-schema.sql`
+  - 添加代理阶段字典（ID 51-57）到 `27-dict-init-data.sql`
+  - 注：`litigation_stage` 字段和 `case_type` 字段已在初始 schema 中包含
