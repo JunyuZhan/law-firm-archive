@@ -11,9 +11,12 @@ import com.lawfirm.common.result.PageResult;
 import com.lawfirm.common.util.SecurityUtils;
 import com.lawfirm.domain.system.entity.Backup;
 import com.lawfirm.domain.system.repository.BackupRepository;
+import com.lawfirm.infrastructure.external.minio.MinioService;
+import com.lawfirm.infrastructure.external.minio.MinioService.MinioObjectInfo;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
@@ -36,6 +39,12 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
+import org.apache.commons.compress.archivers.ArchiveEntry;
+import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
+import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
+import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream;
 
 /**
  * 系统备份应用服务
@@ -46,6 +55,9 @@ import java.util.stream.Collectors;
 public class BackupAppService {
 
     private final BackupRepository backupRepository;
+    
+    @Autowired(required = false)
+    private MinioService minioService;
 
     @Value("${spring.datasource.url}")
     private String dbUrl;
@@ -158,7 +170,7 @@ public class BackupAppService {
     @Async
     public void executeBackupAsync(Backup backup) {
         try {
-            backup.setStatus("PENDING");
+            backup.setStatus("IN_PROGRESS");
             backupRepository.updateById(backup);
 
             String backupPath = null;
@@ -166,11 +178,14 @@ public class BackupAppService {
 
             switch (backup.getBackupType()) {
                 case "DATABASE":
-                case "FULL":
                     backupPath = backupDatabase(backup);
                     break;
                 case "FILE":
                     backupPath = backupFiles(backup);
+                    break;
+                case "FULL":
+                    // 全量备份：数据库 + 文件，打包到一个 tar.gz
+                    backupPath = backupFull(backup);
                     break;
                 default:
                     throw new BusinessException("不支持的备份类型: " + backup.getBackupType());
@@ -186,21 +201,21 @@ public class BackupAppService {
                     backup.setStatus("SUCCESS");
                 } else {
                     backup.setStatus("FAILED");
-                    backup.setDescription(backup.getDescription() + " - 备份文件未生成");
+                    backup.setDescription((backup.getDescription() != null ? backup.getDescription() : "") + " - 备份文件未生成");
                 }
             } else {
                 backup.setStatus("FAILED");
-                backup.setDescription(backup.getDescription() + " - 备份失败");
+                backup.setDescription((backup.getDescription() != null ? backup.getDescription() : "") + " - 备份失败");
             }
 
             backupRepository.updateById(backup);
-            log.info("备份完成: backupNo={}, status={}, fileSize={}", 
-                    backup.getBackupNo(), backup.getStatus(), fileSize);
+            log.info("备份完成: backupNo={}, status={}, fileSize={} bytes ({} MB)", 
+                    backup.getBackupNo(), backup.getStatus(), fileSize, fileSize / 1024 / 1024);
 
         } catch (Exception e) {
             log.error("备份执行失败: backupNo={}", backup.getBackupNo(), e);
             backup.setStatus("FAILED");
-            backup.setDescription(backup.getDescription() + " - " + e.getMessage());
+            backup.setDescription((backup.getDescription() != null ? backup.getDescription() : "") + " - " + e.getMessage());
             backupRepository.updateById(backup);
         }
     }
@@ -410,29 +425,336 @@ public class BackupAppService {
     }
 
     /**
-     * 备份文件（MinIO文件列表备份）
+     * 备份文件（MinIO 文件备份为 tar.gz）
      */
     private String backupFiles(Backup backup) throws IOException {
+        // 检查 MinIO 服务是否可用
+        if (minioService == null || !minioService.isAvailable()) {
+            log.warn("MinIO 服务不可用，跳过文件备份");
+            throw new BusinessException("MinIO 服务不可用，无法执行文件备份");
+        }
+
         // 创建备份目录
         Path backupDir = Paths.get(backupBasePath, "files");
         Files.createDirectories(backupDir);
 
         // 生成备份文件名
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
-        String fileName = String.format("files_backup_%s_%s.json", backup.getBackupNo(), timestamp);
+        String fileName = String.format("files_backup_%s_%s.tar.gz", backup.getBackupNo(), timestamp);
         Path backupFile = backupDir.resolve(fileName);
 
-        // 这里应该调用MinIO服务获取文件列表并备份
-        // 目前先创建一个占位文件
-        try (FileWriter writer = new FileWriter(backupFile.toFile())) {
-            writer.write("{\n");
-            writer.write("  \"backupNo\": \"" + backup.getBackupNo() + "\",\n");
-            writer.write("  \"backupTime\": \"" + LocalDateTime.now() + "\",\n");
-            writer.write("  \"note\": \"文件备份功能需要集成MinIO服务\"\n");
-            writer.write("}\n");
+        // 获取所有文件列表
+        List<MinioObjectInfo> allObjects = minioService.listAllObjects();
+        log.info("开始备份 MinIO 文件，共 {} 个文件", allObjects.size());
+
+        if (allObjects.isEmpty()) {
+            // 如果没有文件，创建空的备份包（包含元数据）
+            try (FileOutputStream fos = new FileOutputStream(backupFile.toFile());
+                 GZIPOutputStream gzos = new GZIPOutputStream(fos);
+                 TarArchiveOutputStream taos = new TarArchiveOutputStream(gzos)) {
+                
+                taos.setLongFileMode(TarArchiveOutputStream.LONGFILE_POSIX);
+                
+                // 写入元数据文件
+                String metadata = String.format(
+                        "{\n  \"backupNo\": \"%s\",\n  \"backupTime\": \"%s\",\n  \"bucket\": \"%s\",\n  \"fileCount\": 0\n}\n",
+                        backup.getBackupNo(), LocalDateTime.now(), minioService.getBucketName()
+                );
+                byte[] metaBytes = metadata.getBytes("UTF-8");
+                TarArchiveEntry metaEntry = new TarArchiveEntry("_backup_metadata.json");
+                metaEntry.setSize(metaBytes.length);
+                taos.putArchiveEntry(metaEntry);
+                taos.write(metaBytes);
+                taos.closeArchiveEntry();
+                
+                taos.finish();
+            }
+            log.info("MinIO 中没有文件，创建空备份包");
+            return backupFile.toString();
+        }
+
+        // 创建 tar.gz 备份包
+        long totalBytes = 0;
+        int fileCount = 0;
+        
+        try (FileOutputStream fos = new FileOutputStream(backupFile.toFile());
+             GZIPOutputStream gzos = new GZIPOutputStream(fos);
+             TarArchiveOutputStream taos = new TarArchiveOutputStream(gzos)) {
+            
+            taos.setLongFileMode(TarArchiveOutputStream.LONGFILE_POSIX);
+            
+            // 写入元数据文件
+            String metadata = String.format(
+                    "{\n  \"backupNo\": \"%s\",\n  \"backupTime\": \"%s\",\n  \"bucket\": \"%s\",\n  \"fileCount\": %d\n}\n",
+                    backup.getBackupNo(), LocalDateTime.now(), minioService.getBucketName(), allObjects.size()
+            );
+            byte[] metaBytes = metadata.getBytes("UTF-8");
+            TarArchiveEntry metaEntry = new TarArchiveEntry("_backup_metadata.json");
+            metaEntry.setSize(metaBytes.length);
+            taos.putArchiveEntry(metaEntry);
+            taos.write(metaBytes);
+            taos.closeArchiveEntry();
+            
+            // 逐个下载并打包文件
+            for (MinioObjectInfo obj : allObjects) {
+                try {
+                    byte[] fileData = minioService.downloadFileAsBytes(obj.getObjectName());
+                    
+                    TarArchiveEntry entry = new TarArchiveEntry(obj.getObjectName());
+                    entry.setSize(fileData.length);
+                    taos.putArchiveEntry(entry);
+                    taos.write(fileData);
+                    taos.closeArchiveEntry();
+                    
+                    totalBytes += fileData.length;
+                    fileCount++;
+                    
+                    // 每100个文件输出一次进度
+                    if (fileCount % 100 == 0) {
+                        log.info("文件备份进度: {}/{}, 已处理 {} MB", 
+                                fileCount, allObjects.size(), totalBytes / 1024 / 1024);
+                    }
+                } catch (Exception e) {
+                    log.warn("备份文件失败: {}, 跳过。错误: {}", obj.getObjectName(), e.getMessage());
+                }
+            }
+            
+            taos.finish();
+        }
+
+        log.info("MinIO 文件备份完成: {} 个文件, {} MB", fileCount, totalBytes / 1024 / 1024);
+        return backupFile.toString();
+    }
+
+    /**
+     * 全量备份（数据库 + 文件）
+     */
+    private String backupFull(Backup backup) throws IOException, InterruptedException {
+        // 创建备份目录
+        Path backupDir = Paths.get(backupBasePath, "full");
+        Files.createDirectories(backupDir);
+
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+        String fileName = String.format("full_backup_%s_%s.tar.gz", backup.getBackupNo(), timestamp);
+        Path backupFile = backupDir.resolve(fileName);
+
+        // 创建临时目录
+        Path tempDir = Files.createTempDirectory("law-firm-backup-");
+        
+        try {
+            // 1. 备份数据库到临时目录
+            log.info("全量备份: 开始备份数据库...");
+            backupDatabaseToDir(backup, tempDir);
+            
+            // 2. 备份 MinIO 文件到临时目录
+            String filesBackupPath = null;
+            if (minioService != null && minioService.isAvailable()) {
+                log.info("全量备份: 开始备份 MinIO 文件...");
+                filesBackupPath = backupFilesToDir(backup, tempDir);
+            } else {
+                log.warn("MinIO 服务不可用，跳过文件备份");
+            }
+
+            // 3. 创建元数据
+            String metadata = String.format(
+                    "{\n  \"backupNo\": \"%s\",\n  \"backupTime\": \"%s\",\n  \"backupType\": \"FULL\",\n  \"hasDatabase\": true,\n  \"hasFiles\": %s\n}\n",
+                    backup.getBackupNo(), LocalDateTime.now(), filesBackupPath != null
+            );
+            Path metaFile = tempDir.resolve("_full_backup_metadata.json");
+            Files.writeString(metaFile, metadata);
+
+            // 4. 打包整个临时目录
+            log.info("全量备份: 打包备份文件...");
+            try (FileOutputStream fos = new FileOutputStream(backupFile.toFile());
+                 GZIPOutputStream gzos = new GZIPOutputStream(fos);
+                 TarArchiveOutputStream taos = new TarArchiveOutputStream(gzos)) {
+                
+                taos.setLongFileMode(TarArchiveOutputStream.LONGFILE_POSIX);
+                
+                // 递归添加临时目录下的所有文件
+                addDirectoryToTar(taos, tempDir.toFile(), "");
+                
+                taos.finish();
+            }
+
+            log.info("全量备份完成: {}", backupFile);
+            return backupFile.toString();
+
+        } finally {
+            // 清理临时目录
+            deleteDirectory(tempDir.toFile());
+        }
+    }
+
+    /**
+     * 备份数据库到指定目录
+     */
+    private String backupDatabaseToDir(Backup backup, Path targetDir) throws IOException, InterruptedException {
+        String dbName = extractDatabaseName(dbUrl);
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+        String fileName = String.format("database_%s.dump", timestamp);
+        Path backupFile = targetDir.resolve(fileName);
+
+        ProcessBuilder pb;
+        String containerName = null;
+
+        if (isDockerAvailable()) {
+            containerName = getDockerContainerName();
+            if (containerName != null && isContainerRunning(containerName)) {
+                String containerTempFile = "/tmp/" + fileName;
+                pb = new ProcessBuilder(
+                        "docker", "exec",
+                        containerName,
+                        "pg_dump",
+                        "-U", dbUsername,
+                        "-d", dbName,
+                        "-F", "c",
+                        "-f", containerTempFile
+                );
+                pb.environment().put("PGPASSWORD", dbPassword);
+            } else {
+                containerName = null;
+                String host = extractHost(dbUrl);
+                String port = extractPort(dbUrl);
+                pb = new ProcessBuilder(
+                        "pg_dump",
+                        "-h", host, "-p", port,
+                        "-U", dbUsername, "-d", dbName,
+                        "-F", "c", "-f", backupFile.toString()
+                );
+                pb.environment().put("PGPASSWORD", dbPassword);
+            }
+        } else {
+            String host = extractHost(dbUrl);
+            String port = extractPort(dbUrl);
+            pb = new ProcessBuilder(
+                    "pg_dump",
+                    "-h", host, "-p", port,
+                    "-U", dbUsername, "-d", dbName,
+                    "-F", "c", "-f", backupFile.toString()
+            );
+            pb.environment().put("PGPASSWORD", dbPassword);
+        }
+
+        pb.redirectErrorStream(true);
+        Process process = pb.start();
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                log.debug("pg_dump: {}", line);
+            }
+        }
+
+        int exitCode = process.waitFor();
+        if (exitCode != 0) {
+            throw new BusinessException("数据库备份失败，退出码: " + exitCode);
+        }
+
+        if (containerName != null) {
+            String containerTempFile = "/tmp/" + fileName;
+            ProcessBuilder copyPb = new ProcessBuilder(
+                    "docker", "cp",
+                    containerName + ":" + containerTempFile,
+                    backupFile.toString()
+            );
+            Process copyProcess = copyPb.start();
+            if (copyProcess.waitFor() != 0) {
+                throw new BusinessException("从容器复制备份文件失败");
+            }
+            new ProcessBuilder("docker", "exec", containerName, "rm", "-f", containerTempFile)
+                    .start().waitFor();
         }
 
         return backupFile.toString();
+    }
+
+    /**
+     * 备份 MinIO 文件到指定目录
+     */
+    private String backupFilesToDir(Backup backup, Path targetDir) throws IOException {
+        if (minioService == null || !minioService.isAvailable()) {
+            return null;
+        }
+
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+        String fileName = String.format("minio_files_%s.tar.gz", timestamp);
+        Path backupFile = targetDir.resolve(fileName);
+
+        List<MinioObjectInfo> allObjects = minioService.listAllObjects();
+        log.info("备份 MinIO 文件: {} 个文件", allObjects.size());
+
+        try (FileOutputStream fos = new FileOutputStream(backupFile.toFile());
+             GZIPOutputStream gzos = new GZIPOutputStream(fos);
+             TarArchiveOutputStream taos = new TarArchiveOutputStream(gzos)) {
+            
+            taos.setLongFileMode(TarArchiveOutputStream.LONGFILE_POSIX);
+            
+            int count = 0;
+            for (MinioObjectInfo obj : allObjects) {
+                try {
+                    byte[] fileData = minioService.downloadFileAsBytes(obj.getObjectName());
+                    TarArchiveEntry entry = new TarArchiveEntry(obj.getObjectName());
+                    entry.setSize(fileData.length);
+                    taos.putArchiveEntry(entry);
+                    taos.write(fileData);
+                    taos.closeArchiveEntry();
+                    count++;
+                } catch (Exception e) {
+                    log.warn("备份文件失败: {}", obj.getObjectName());
+                }
+            }
+            
+            taos.finish();
+            log.info("MinIO 文件备份完成: {} 个文件", count);
+        }
+
+        return backupFile.toString();
+    }
+
+    /**
+     * 递归添加目录到 tar
+     */
+    private void addDirectoryToTar(TarArchiveOutputStream taos, File dir, String basePath) throws IOException {
+        File[] files = dir.listFiles();
+        if (files == null) return;
+        
+        for (File file : files) {
+            String entryName = basePath.isEmpty() ? file.getName() : basePath + "/" + file.getName();
+            
+            if (file.isDirectory()) {
+                addDirectoryToTar(taos, file, entryName);
+            } else {
+                TarArchiveEntry entry = new TarArchiveEntry(file, entryName);
+                taos.putArchiveEntry(entry);
+                try (FileInputStream fis = new FileInputStream(file)) {
+                    byte[] buffer = new byte[8192];
+                    int len;
+                    while ((len = fis.read(buffer)) != -1) {
+                        taos.write(buffer, 0, len);
+                    }
+                }
+                taos.closeArchiveEntry();
+            }
+        }
+    }
+
+    /**
+     * 递归删除目录
+     */
+    private void deleteDirectory(File dir) {
+        if (dir == null || !dir.exists()) return;
+        
+        File[] files = dir.listFiles();
+        if (files != null) {
+            for (File file : files) {
+                if (file.isDirectory()) {
+                    deleteDirectory(file);
+                } else {
+                    file.delete();
+                }
+            }
+        }
+        dir.delete();
     }
 
     /**
@@ -499,15 +821,21 @@ public class BackupAppService {
     @Async
     public void executeRestoreAsync(Backup backup) {
         try {
-            log.info("开始恢复备份: backupNo={}", backup.getBackupNo());
+            log.info("开始恢复备份: backupNo={}, type={}", backup.getBackupNo(), backup.getBackupType());
             
             // 根据备份类型执行恢复
-            if ("DATABASE".equals(backup.getBackupType()) || "FULL".equals(backup.getBackupType())) {
-                restoreDatabase(backup);
-            } else if ("FILE".equals(backup.getBackupType())) {
-                restoreFiles(backup);
-            } else {
-                throw new BusinessException("不支持的备份类型: " + backup.getBackupType());
+            switch (backup.getBackupType()) {
+                case "DATABASE":
+                    restoreDatabase(backup);
+                    break;
+                case "FILE":
+                    restoreFiles(backup);
+                    break;
+                case "FULL":
+                    restoreFull(backup);
+                    break;
+                default:
+                    throw new BusinessException("不支持的备份类型: " + backup.getBackupType());
             }
 
             // 更新恢复时间和状态
@@ -520,7 +848,7 @@ public class BackupAppService {
         } catch (Exception e) {
             log.error("备份恢复失败: backupNo={}", backup.getBackupNo(), e);
             backup.setStatus("FAILED");
-            backup.setDescription(backup.getDescription() + " - 恢复失败: " + e.getMessage());
+            backup.setDescription((backup.getDescription() != null ? backup.getDescription() : "") + " - 恢复失败: " + e.getMessage());
             backupRepository.updateById(backup);
         }
     }
@@ -736,11 +1064,306 @@ public class BackupAppService {
     }
 
     /**
-     * 恢复文件
+     * 恢复文件（从 tar.gz 恢复到 MinIO）
      */
-    private void restoreFiles(Backup backup) {
-        // 文件恢复需要集成MinIO服务
-        log.warn("文件恢复功能需要集成MinIO服务: backupNo={}", backup.getBackupNo());
+    private void restoreFiles(Backup backup) throws IOException {
+        // 检查 MinIO 服务是否可用
+        if (minioService == null || !minioService.isAvailable()) {
+            throw new BusinessException("MinIO 服务不可用，无法执行文件恢复");
+        }
+
+        // 解析备份文件路径
+        File backupFile = resolveBackupFile(backup.getBackupPath());
+        if (!backupFile.exists()) {
+            throw new BusinessException("备份文件不存在: " + backupFile.getAbsolutePath());
+        }
+
+        log.info("开始恢复 MinIO 文件: {}", backupFile.getAbsolutePath());
+
+        int restoredCount = 0;
+        long totalBytes = 0;
+
+        try (FileInputStream fis = new FileInputStream(backupFile);
+             GZIPInputStream gzis = new GZIPInputStream(fis);
+             TarArchiveInputStream tais = new TarArchiveInputStream(gzis)) {
+            
+            ArchiveEntry archiveEntry;
+            while ((archiveEntry = tais.getNextEntry()) != null) {
+                TarArchiveEntry entry = (TarArchiveEntry) archiveEntry;
+                String objectName = entry.getName();
+                
+                // 跳过元数据文件
+                if (objectName.startsWith("_")) {
+                    log.debug("跳过元数据文件: {}", objectName);
+                    continue;
+                }
+                
+                // 跳过目录
+                if (entry.isDirectory()) {
+                    continue;
+                }
+                
+                // 读取文件内容
+                byte[] content = new byte[(int) entry.getSize()];
+                int offset = 0;
+                int remaining = content.length;
+                while (remaining > 0) {
+                    int read = tais.read(content, offset, remaining);
+                    if (read == -1) break;
+                    offset += read;
+                    remaining -= read;
+                }
+                
+                // 上传到 MinIO
+                try {
+                    String contentType = guessContentType(objectName);
+                    minioService.uploadBytes(content, objectName, contentType);
+                    restoredCount++;
+                    totalBytes += content.length;
+                    
+                    // 每100个文件输出一次进度
+                    if (restoredCount % 100 == 0) {
+                        log.info("文件恢复进度: {} 个文件, {} MB", restoredCount, totalBytes / 1024 / 1024);
+                    }
+                } catch (Exception e) {
+                    log.warn("恢复文件失败: {}, 错误: {}", objectName, e.getMessage());
+                }
+            }
+        }
+
+        log.info("MinIO 文件恢复完成: {} 个文件, {} MB", restoredCount, totalBytes / 1024 / 1024);
+    }
+
+    /**
+     * 恢复全量备份（数据库 + 文件）
+     */
+    private void restoreFull(Backup backup) throws IOException, InterruptedException {
+        File backupFile = resolveBackupFile(backup.getBackupPath());
+        if (!backupFile.exists()) {
+            throw new BusinessException("备份文件不存在: " + backupFile.getAbsolutePath());
+        }
+
+        log.info("开始恢复全量备份: {}", backupFile.getAbsolutePath());
+
+        // 创建临时目录
+        Path tempDir = Files.createTempDirectory("law-firm-restore-");
+        
+        try {
+            // 解压备份包
+            log.info("解压备份包...");
+            try (FileInputStream fis = new FileInputStream(backupFile);
+                 GZIPInputStream gzis = new GZIPInputStream(fis);
+                 TarArchiveInputStream tais = new TarArchiveInputStream(gzis)) {
+                
+                ArchiveEntry archiveEntry;
+                while ((archiveEntry = tais.getNextEntry()) != null) {
+                    TarArchiveEntry entry = (TarArchiveEntry) archiveEntry;
+                    Path entryPath = tempDir.resolve(entry.getName());
+                    
+                    if (entry.isDirectory()) {
+                        Files.createDirectories(entryPath);
+                    } else {
+                        Files.createDirectories(entryPath.getParent());
+                        try (FileOutputStream fos = new FileOutputStream(entryPath.toFile())) {
+                            byte[] buffer = new byte[8192];
+                            int len;
+                            while ((len = tais.read(buffer)) != -1) {
+                                fos.write(buffer, 0, len);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 恢复数据库
+            File[] dumpFiles = tempDir.toFile().listFiles((dir, name) -> name.endsWith(".dump"));
+            if (dumpFiles != null && dumpFiles.length > 0) {
+                log.info("恢复数据库...");
+                restoreDatabaseFromFile(dumpFiles[0]);
+            }
+
+            // 恢复 MinIO 文件
+            File[] minioFiles = tempDir.toFile().listFiles((dir, name) -> name.startsWith("minio_files_") && name.endsWith(".tar.gz"));
+            if (minioFiles != null && minioFiles.length > 0 && minioService != null && minioService.isAvailable()) {
+                log.info("恢复 MinIO 文件...");
+                restoreMinioFromFile(minioFiles[0]);
+            }
+
+            log.info("全量备份恢复完成");
+
+        } finally {
+            // 清理临时目录
+            deleteDirectory(tempDir.toFile());
+        }
+    }
+
+    /**
+     * 从数据库备份文件恢复
+     */
+    private void restoreDatabaseFromFile(File dumpFile) throws IOException, InterruptedException {
+        String dbName = extractDatabaseName(dbUrl);
+        
+        ProcessBuilder pb;
+        String containerName = null;
+        String containerBackupFile = null;
+        
+        if (isDockerAvailable()) {
+            containerName = getDockerContainerName();
+            
+            if (containerName != null && isContainerRunning(containerName)) {
+                containerBackupFile = "/tmp/" + dumpFile.getName();
+                
+                // 复制到容器
+                ProcessBuilder copyPb = new ProcessBuilder(
+                        "docker", "cp",
+                        dumpFile.getAbsolutePath(),
+                        containerName + ":" + containerBackupFile
+                );
+                if (copyPb.start().waitFor() != 0) {
+                    throw new BusinessException("将备份文件复制到容器失败");
+                }
+                
+                pb = new ProcessBuilder(
+                        "docker", "exec",
+                        containerName,
+                        "pg_restore",
+                        "-U", dbUsername, "-d", dbName,
+                        "-c", "-v", "-j", "2",
+                        containerBackupFile
+                );
+                pb.environment().put("PGPASSWORD", dbPassword);
+            } else {
+                containerName = null;
+                String host = extractHost(dbUrl);
+                String port = extractPort(dbUrl);
+                pb = new ProcessBuilder(
+                        "pg_restore",
+                        "-h", host, "-p", port,
+                        "-U", dbUsername, "-d", dbName,
+                        "-c", "-v", "-j", "2",
+                        dumpFile.getAbsolutePath()
+                );
+                pb.environment().put("PGPASSWORD", dbPassword);
+            }
+        } else {
+            String host = extractHost(dbUrl);
+            String port = extractPort(dbUrl);
+            pb = new ProcessBuilder(
+                    "pg_restore",
+                    "-h", host, "-p", port,
+                    "-U", dbUsername, "-d", dbName,
+                    "-c", "-v", "-j", "2",
+                    dumpFile.getAbsolutePath()
+            );
+            pb.environment().put("PGPASSWORD", dbPassword);
+        }
+
+        pb.redirectErrorStream(true);
+        Process process = pb.start();
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                log.debug("pg_restore: {}", line);
+            }
+        }
+
+        int exitCode = process.waitFor();
+        
+        // 清理容器临时文件
+        if (containerName != null && containerBackupFile != null) {
+            new ProcessBuilder("docker", "exec", containerName, "rm", "-f", containerBackupFile)
+                    .start().waitFor();
+        }
+        
+        if (exitCode != 0) {
+            throw new BusinessException("数据库恢复失败，退出码: " + exitCode);
+        }
+    }
+
+    /**
+     * 从 MinIO 备份文件恢复
+     */
+    private void restoreMinioFromFile(File minioFile) throws IOException {
+        if (minioService == null || !minioService.isAvailable()) {
+            log.warn("MinIO 服务不可用，跳过文件恢复");
+            return;
+        }
+
+        int restoredCount = 0;
+        
+        try (FileInputStream fis = new FileInputStream(minioFile);
+             GZIPInputStream gzis = new GZIPInputStream(fis);
+             TarArchiveInputStream tais = new TarArchiveInputStream(gzis)) {
+            
+            ArchiveEntry archiveEntry;
+            while ((archiveEntry = tais.getNextEntry()) != null) {
+                TarArchiveEntry entry = (TarArchiveEntry) archiveEntry;
+                if (entry.isDirectory() || entry.getName().startsWith("_")) {
+                    continue;
+                }
+                
+                byte[] content = new byte[(int) entry.getSize()];
+                int offset = 0;
+                int remaining = content.length;
+                while (remaining > 0) {
+                    int read = tais.read(content, offset, remaining);
+                    if (read == -1) break;
+                    offset += read;
+                    remaining -= read;
+                }
+                
+                try {
+                    minioService.uploadBytes(content, entry.getName(), guessContentType(entry.getName()));
+                    restoredCount++;
+                } catch (Exception e) {
+                    log.warn("恢复文件失败: {}", entry.getName());
+                }
+            }
+        }
+        
+        log.info("MinIO 文件恢复完成: {} 个文件", restoredCount);
+    }
+
+    /**
+     * 解析备份文件路径
+     */
+    private File resolveBackupFile(String backupPath) {
+        if (backupPath.startsWith("/")) {
+            return new File(backupPath);
+        }
+        
+        Path basePath = Paths.get(backupBasePath).toAbsolutePath().normalize();
+        String normalizedBasePath = backupBasePath.replaceAll("^\\./", "").replaceAll("/$", "");
+        String pathToResolve = backupPath.startsWith("./") ? backupPath.substring(2) : backupPath;
+        
+        if (pathToResolve.startsWith(normalizedBasePath + "/")) {
+            pathToResolve = pathToResolve.substring(normalizedBasePath.length() + 1);
+        } else if (pathToResolve.equals(normalizedBasePath)) {
+            pathToResolve = "";
+        }
+        
+        return basePath.resolve(pathToResolve).toFile();
+    }
+
+    /**
+     * 猜测文件 ContentType
+     */
+    private String guessContentType(String fileName) {
+        String lower = fileName.toLowerCase();
+        if (lower.endsWith(".pdf")) return "application/pdf";
+        if (lower.endsWith(".doc")) return "application/msword";
+        if (lower.endsWith(".docx")) return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+        if (lower.endsWith(".xls")) return "application/vnd.ms-excel";
+        if (lower.endsWith(".xlsx")) return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+        if (lower.endsWith(".png")) return "image/png";
+        if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";
+        if (lower.endsWith(".gif")) return "image/gif";
+        if (lower.endsWith(".txt")) return "text/plain";
+        if (lower.endsWith(".html")) return "text/html";
+        if (lower.endsWith(".json")) return "application/json";
+        if (lower.endsWith(".xml")) return "application/xml";
+        if (lower.endsWith(".zip")) return "application/zip";
+        return "application/octet-stream";
     }
 
     /**

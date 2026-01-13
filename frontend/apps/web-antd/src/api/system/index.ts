@@ -365,6 +365,11 @@ export function updateConfig(
   return requestClient.put(`/system/config/${id}`, data);
 }
 
+/** 删除配置 */
+export function deleteConfig(id: number) {
+  return requestClient.delete(`/system/config/${id}`);
+}
+
 /** 获取维护模式状态 */
 export function getMaintenanceStatus() {
   return requestClient.get<{ enabled: boolean; message: string }>(

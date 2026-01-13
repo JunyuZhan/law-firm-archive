@@ -867,7 +867,7 @@ onUnmounted(() => {
         />
       </Col>
       <Col :xs="24" :md="12" :lg="8">
-        <Card :bordered="false" class="deadline-card">
+        <Card :bordered="false" hoverable class="deadline-card hover-card">
           <template #title>
             <div class="flex items-center justify-between">
               <span>⏰ 即将到期</span>
@@ -909,7 +909,7 @@ onUnmounted(() => {
       </Col>
       <Col :xs="24" :md="24" :lg="8">
         <!-- 最近日程 - 使用 Timeline 组件 -->
-        <Card :bordered="false" class="schedule-card">
+        <Card :bordered="false" hoverable class="schedule-card hover-card">
           <template #title>
             <div class="flex items-center justify-between">
               <span>📅 最近日程</span>
@@ -962,13 +962,15 @@ onUnmounted(() => {
       <!-- 左侧：待办事项 -->
       <Col :xs="24" :lg="14">
         <!-- 待办事项 -->
-        <WorkbenchTodo :items="todoItems" title="待办事项" />
+        <div class="todo-wrapper">
+          <WorkbenchTodo :items="todoItems" title="待办事项" />
+        </div>
       </Col>
 
       <!-- 右侧：最新动态 -->
       <Col :xs="24" :lg="10">
         <!-- 最新动态 - 使用 List 组件 -->
-        <Card :bordered="false">
+        <Card :bordered="false" hoverable class="hover-card">
           <template #title>
             <span>📰 最新动态</span>
           </template>
@@ -1083,6 +1085,16 @@ onUnmounted(() => {
   border-left: 3px solid #722ed1;
 }
 
+/* 通用 hover 卡片效果 */
+.hover-card {
+  transition: all 0.3s;
+}
+
+.hover-card:hover {
+  box-shadow: 0 4px 12px rgb(0 0 0 / 15%);
+  transform: translateY(-2px);
+}
+
 /* 最近日程卡片 - 与快捷导航高度一致 */
 .schedule-card {
   height: 291px;
@@ -1103,6 +1115,16 @@ onUnmounted(() => {
   height: 211px;
   padding-top: 12px;
   overflow-y: auto;
+}
+
+/* 待办事项卡片 hover 效果 */
+.todo-wrapper :deep(.bg-card) {
+  transition: all 0.3s;
+}
+
+.todo-wrapper:hover :deep(.bg-card) {
+  box-shadow: 0 4px 12px rgb(0 0 0 / 15%);
+  transform: translateY(-2px);
 }
 
 /* WorkbenchHeader 容器 */

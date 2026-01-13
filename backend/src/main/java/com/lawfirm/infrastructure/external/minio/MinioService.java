@@ -6,7 +6,9 @@ import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
 import io.minio.GetObjectArgs;
 import io.minio.RemoveObjectArgs;
-import io.minio.errors.MinioException;
+import io.minio.ListObjectsArgs;
+import io.minio.Result;
+import io.minio.messages.Item;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -16,9 +18,8 @@ import org.springframework.web.multipart.MultipartFile;
 import jakarta.annotation.PostConstruct;
 
 import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -319,6 +320,128 @@ public class MinioService {
             String fileUrl = endpoint + "/" + bucketName + "/" + objectName;
             log.info("文件上传成功: {}", fileUrl);
             return fileUrl;
+        }
+    }
+
+    /**
+     * 列出所有文件对象
+     * @return 文件信息列表（包含 objectName 和 size）
+     */
+    public List<MinioObjectInfo> listAllObjects() {
+        List<MinioObjectInfo> objects = new ArrayList<>();
+        
+        if (minioClient == null) {
+            log.warn("MinIO 客户端未初始化，无法列出文件");
+            return objects;
+        }
+        
+        try {
+            Iterable<Result<Item>> results = minioClient.listObjects(
+                    ListObjectsArgs.builder()
+                            .bucket(bucketName)
+                            .recursive(true)  // 递归列出所有子目录
+                            .build()
+            );
+            
+            for (Result<Item> result : results) {
+                Item item = result.get();
+                if (!item.isDir()) {  // 只收集文件，不收集目录
+                    objects.add(new MinioObjectInfo(
+                            item.objectName(),
+                            item.size(),
+                            item.lastModified() != null ? item.lastModified().toString() : null
+                    ));
+                }
+            }
+            
+            log.info("MinIO 文件列表获取成功，共 {} 个文件", objects.size());
+        } catch (Exception e) {
+            log.error("获取 MinIO 文件列表失败", e);
+        }
+        
+        return objects;
+    }
+
+    /**
+     * 列出指定前缀的文件对象
+     * @param prefix 前缀（如 "documents/"）
+     * @return 文件信息列表
+     */
+    public List<MinioObjectInfo> listObjects(String prefix) {
+        List<MinioObjectInfo> objects = new ArrayList<>();
+        
+        if (minioClient == null) {
+            log.warn("MinIO 客户端未初始化，无法列出文件");
+            return objects;
+        }
+        
+        try {
+            Iterable<Result<Item>> results = minioClient.listObjects(
+                    ListObjectsArgs.builder()
+                            .bucket(bucketName)
+                            .prefix(prefix)
+                            .recursive(true)
+                            .build()
+            );
+            
+            for (Result<Item> result : results) {
+                Item item = result.get();
+                if (!item.isDir()) {
+                    objects.add(new MinioObjectInfo(
+                            item.objectName(),
+                            item.size(),
+                            item.lastModified() != null ? item.lastModified().toString() : null
+                    ));
+                }
+            }
+        } catch (Exception e) {
+            log.error("获取 MinIO 文件列表失败: prefix={}", prefix, e);
+        }
+        
+        return objects;
+    }
+
+    /**
+     * 获取存储桶总大小
+     * @return 总字节数
+     */
+    public long getTotalSize() {
+        return listAllObjects().stream()
+                .mapToLong(MinioObjectInfo::getSize)
+                .sum();
+    }
+
+    /**
+     * 获取存储桶名称
+     */
+    public String getBucketName() {
+        return bucketName;
+    }
+
+    /**
+     * MinIO 对象信息
+     */
+    public static class MinioObjectInfo {
+        private final String objectName;
+        private final long size;
+        private final String lastModified;
+
+        public MinioObjectInfo(String objectName, long size, String lastModified) {
+            this.objectName = objectName;
+            this.size = size;
+            this.lastModified = lastModified;
+        }
+
+        public String getObjectName() {
+            return objectName;
+        }
+
+        public long getSize() {
+            return size;
+        }
+
+        public String getLastModified() {
+            return lastModified;
         }
     }
 }

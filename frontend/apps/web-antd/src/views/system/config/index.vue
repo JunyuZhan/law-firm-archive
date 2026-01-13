@@ -33,9 +33,11 @@ import {
   Tag,
   Textarea,
   Tooltip,
+  Popconfirm,
 } from 'ant-design-vue';
 
 import {
+  deleteConfig,
   disableMaintenanceMode,
   enableMaintenanceMode,
   getCaseTypeOptions,
@@ -127,7 +129,7 @@ const columns = [
     key: 'description',
     ellipsis: true,
   },
-  { title: '操作', key: 'action', width: 80, fixed: 'right' as const },
+  { title: '操作', key: 'action', width: 120, fixed: 'right' as const },
 ];
 
 // 配置分组优先级（数字越小越靠前）
@@ -438,6 +440,17 @@ function handleCreate() {
 
 function handleEdit(record: SysConfigDTO) {
   configModalRef.value?.openEdit(record);
+}
+
+async function handleDelete(record: SysConfigDTO) {
+  try {
+    await deleteConfig(record.id);
+    message.success('删除成功');
+    fetchData();
+  } catch (error: unknown) {
+    const err = error as { message?: string };
+    message.error(err.message || '删除失败');
+  }
 }
 
 async function handleModalSuccess() {
@@ -1077,7 +1090,17 @@ watch(activeTab, (newTab) => {
                 <span>{{ rawRecord.configValue || '-' }}</span>
               </template>
               <template v-else-if="column.key === 'action'">
-                <a @click="handleEdit(rawRecord as SysConfigDTO)">编辑</a>
+                <Space>
+                  <a @click="handleEdit(rawRecord as SysConfigDTO)">编辑</a>
+                  <Popconfirm
+                    title="确定要删除该配置吗？"
+                    ok-text="确定"
+                    cancel-text="取消"
+                    @confirm="handleDelete(rawRecord as SysConfigDTO)"
+                  >
+                    <a style="color: #ff4d4f">删除</a>
+                  </Popconfirm>
+                </Space>
               </template>
             </template>
           </Table>

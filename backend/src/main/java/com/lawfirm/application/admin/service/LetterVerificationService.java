@@ -49,9 +49,9 @@ public class LetterVerificationService {
     private static final String CLIENT_SERVICE_TYPE = "CLIENT_SERVICE";
     
     /**
-     * 律所名称配置键
+     * 律所名称配置键（与系统其他模块统一使用 firm.name）
      */
-    private static final String CONFIG_KEY_FIRM_NAME = "system.firm.name";
+    private static final String CONFIG_KEY_FIRM_NAME = "firm.name";
 
     /**
      * 客服系统验证页面URL（兜底默认值）
