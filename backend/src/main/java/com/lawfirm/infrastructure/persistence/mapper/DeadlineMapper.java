@@ -87,5 +87,24 @@ public interface DeadlineMapper extends BaseMapper<Deadline> {
             ORDER BY md.deadline_date ASC
             """)
     List<Deadline> selectByMatterId(@Param("matterId") Long matterId);
+
+    /**
+     * 查询用户即将到期的期限
+     */
+    @Select("""
+            SELECT md.*, m.name as matter_name, m.matter_no
+            FROM matter_deadline md
+            LEFT JOIN matter m ON md.matter_id = m.id
+            LEFT JOIN matter_participant mp ON m.id = mp.matter_id AND mp.deleted = false
+            WHERE md.deleted = false
+            AND md.status = 'ACTIVE'
+            AND md.deadline_date >= CURRENT_DATE
+            AND md.deadline_date <= CURRENT_DATE + (#{days} || ' days')::interval
+            AND (m.lead_lawyer_id = #{userId} OR mp.user_id = #{userId})
+            GROUP BY md.id, m.name, m.matter_no
+            ORDER BY md.deadline_date ASC
+            LIMIT #{limit}
+            """)
+    List<Deadline> selectMyUpcoming(@Param("userId") Long userId, @Param("days") Integer days, @Param("limit") Integer limit);
 }
 

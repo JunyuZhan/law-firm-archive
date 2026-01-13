@@ -30,7 +30,7 @@ public class ArchiveBorrowController {
      * 分页查询借阅记录
      */
     @GetMapping("/list")
-    @RequirePermission("archive:borrow:list")
+    @RequirePermission("archive:borrow")
     public Result<PageResult<ArchiveBorrowDTO>> listBorrows(PageQuery query,
                                                             @RequestParam(required = false) Long archiveId,
                                                             @RequestParam(required = false) String status) {
@@ -97,7 +97,7 @@ public class ArchiveBorrowController {
      * 获取逾期借阅列表
      */
     @GetMapping("/overdue")
-    @RequirePermission("archive:borrow:list")
+    @RequirePermission("archive:borrow")
     public Result<List<ArchiveBorrowDTO>> getOverdueBorrows() {
         List<ArchiveBorrowDTO> borrows = borrowAppService.getOverdueBorrows();
         return Result.success(borrows);

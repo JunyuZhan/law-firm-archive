@@ -23,8 +23,7 @@ public class CreateDeadlineCommand {
     @NotBlank(message = "期限名称不能为空")
     private String deadlineName;
 
-    @NotNull(message = "基准日期不能为空")
-    private LocalDate baseDate;
+    private LocalDate baseDate; // 可选，默认使用当前日期
 
     @NotNull(message = "期限日期不能为空")
     private LocalDate deadlineDate;

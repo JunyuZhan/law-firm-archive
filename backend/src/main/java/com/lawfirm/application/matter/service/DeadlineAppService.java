@@ -97,8 +97,11 @@ public class DeadlineAppService {
         // 验证用户是否是项目负责人或参与者（只有项目成员才能创建期限提醒）
         matterAppService.validateMatterOwnership(command.getMatterId());
 
+        // 基准日期默认为当前日期
+        LocalDate baseDate = command.getBaseDate() != null ? command.getBaseDate() : LocalDate.now();
+
         // 验证期限日期不能早于基准日期
-        if (command.getDeadlineDate().isBefore(command.getBaseDate())) {
+        if (command.getDeadlineDate().isBefore(baseDate)) {
             throw new BusinessException("期限日期不能早于基准日期");
         }
 
@@ -106,7 +109,7 @@ public class DeadlineAppService {
                 .matterId(command.getMatterId())
                 .deadlineType(command.getDeadlineType())
                 .deadlineName(command.getDeadlineName())
-                .baseDate(command.getBaseDate())
+                .baseDate(baseDate)
                 .deadlineDate(command.getDeadlineDate())
                 .reminderDays(command.getReminderDays() != null ? command.getReminderDays() : 7)
                 .reminderSent(false)
@@ -253,6 +256,15 @@ public class DeadlineAppService {
         
         deadlineRepository.softDelete(id);
         log.info("删除期限提醒成功: id={}", id);
+    }
+
+    /**
+     * 获取我的即将到期的期限
+     */
+    public List<DeadlineDTO> getMyUpcomingDeadlines(Integer days, Integer limit) {
+        Long userId = SecurityUtils.getUserId();
+        List<Deadline> deadlines = deadlineRepository.findMyUpcoming(userId, days, limit);
+        return deadlines.stream().map(this::toDTO).collect(Collectors.toList());
     }
 
     /**

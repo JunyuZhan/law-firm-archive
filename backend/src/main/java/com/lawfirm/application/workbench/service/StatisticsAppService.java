@@ -36,6 +36,14 @@ public class StatisticsAppService {
     private final com.lawfirm.domain.matter.repository.TaskRepository taskRepository;
     private final com.lawfirm.domain.finance.repository.CommissionRepository commissionRepository;
     private final com.lawfirm.domain.matter.repository.MatterParticipantRepository matterParticipantRepository;
+    // 行政相关
+    private final com.lawfirm.domain.admin.repository.LetterApplicationRepository letterApplicationRepository;
+    private final com.lawfirm.domain.document.repository.SealApplicationRepository sealApplicationRepository;
+    private final com.lawfirm.domain.admin.repository.LeaveApplicationRepository leaveApplicationRepository;
+    private final com.lawfirm.domain.admin.repository.AssetRecordRepository assetRecordRepository;
+    // 财务相关
+    private final com.lawfirm.domain.finance.repository.ExpenseRepository expenseRepository;
+    private final com.lawfirm.domain.finance.repository.InvoiceRepository invoiceRepository;
     
     // ✅ 修复问题554: 使用ThreadLocal缓存（同一请求内复用）
     private static final ThreadLocal<Map<String, List<Long>>> MATTER_IDS_CACHE = new ThreadLocal<>();
@@ -324,6 +332,7 @@ public class StatisticsAppService {
 
         // ✅ 批量加载所有律师的提成数据（避免N+1查询）
         Set<Long> lawyerIds = rankings.stream()
+                .filter(Objects::nonNull)  // 先过滤掉null的item
                 .map(item -> item.get("lawyer_id"))
                 .filter(Objects::nonNull)
                 .map(id -> ((Number) id).longValue())
@@ -366,15 +375,46 @@ public class StatisticsAppService {
 
     /**
      * 获取工作台统计数据（用于仪表盘）
-     * 修复：使用批量查询替代N+1查询，性能优化
+     * 根据用户角色返回不同的统计数据：
+     * - 律师/团队负责人/主任：项目数、客户数、工时、任务数
+     * - 财务：待确认收款、待开票、待审批报销、本月已收金额
+     * - 行政：待处理出函、待处理用印、待审批请假、待处理资产领用
      */
     public WorkbenchStatsDTO getWorkbenchStats() {
         Long userId = com.lawfirm.common.util.SecurityUtils.getUserId();
+        Set<String> roles = com.lawfirm.common.util.SecurityUtils.getRoles();
         
         WorkbenchStatsDTO stats = new WorkbenchStatsDTO();
         
-        // 我的项目数（我参与的项目）- 使用批量查询优化，避免N+1
-        // 先获取所有参与的项目ID
+        // 待办任务数（所有角色通用）
+        int taskCountInt = taskRepository.countPendingByAssigneeId(userId);
+        stats.setTaskCount(Long.valueOf(taskCountInt));
+        
+        // 根据角色类型返回不同的统计数据
+        if (roles.contains("FINANCE")) {
+            // 财务角色
+            stats.setRoleType("FINANCE");
+            loadFinanceStats(stats);
+        } else if (roles.contains("ADMIN_STAFF")) {
+            // 行政角色
+            stats.setRoleType("ADMIN_STAFF");
+            loadAdminStats(stats);
+        } else {
+            // 律师/团队负责人/主任等业务角色
+            stats.setRoleType("LAWYER");
+            loadLawyerStats(stats, userId);
+        }
+        
+        log.info("获取工作台统计: userId={}, roleType={}", userId, stats.getRoleType());
+        
+        return stats;
+    }
+    
+    /**
+     * 加载律师相关统计数据
+     */
+    private void loadLawyerStats(WorkbenchStatsDTO stats, Long userId) {
+        // 我的项目数（我参与的项目）
         var participantList = matterParticipantRepository.lambdaQuery()
                 .select(com.lawfirm.domain.matter.entity.MatterParticipant::getMatterId)
                 .eq(com.lawfirm.domain.matter.entity.MatterParticipant::getUserId, userId)
@@ -387,47 +427,142 @@ public class StatisticsAppService {
         
         long matterCountLong = 0;
         if (!matterIds.isEmpty()) {
-            // 使用单次批量查询统计有效项目数，避免N+1
             matterCountLong = matterRepository.lambdaQuery()
                     .in(com.lawfirm.domain.matter.entity.Matter::getId, matterIds)
                     .eq(com.lawfirm.domain.matter.entity.Matter::getDeleted, false)
                     .count();
         }
-        Long matterCount = Long.valueOf(matterCountLong);
-        stats.setMatterCount(matterCount);
+        stats.setMatterCount(matterCountLong);
         
-        // 我的客户数（我负责的客户）- 直接使用MyBatis-Plus查询
+        // 我的客户数
         long clientCountLong = clientRepository.lambdaQuery()
                 .eq(com.lawfirm.domain.client.entity.Client::getResponsibleLawyerId, userId)
                 .count();
-        Long clientCount = Long.valueOf(clientCountLong);
-        stats.setClientCount(clientCount);
+        stats.setClientCount(clientCountLong);
         
         // 本月工时
         java.time.LocalDate now = java.time.LocalDate.now();
         BigDecimal monthlyHours = timesheetRepository.sumHoursByUserAndMonth(userId, now.getYear(), now.getMonthValue());
         stats.setTimesheetHours(monthlyHours != null ? monthlyHours.doubleValue() : 0.0);
-        
-        // 待办任务数
-        int taskCountInt = taskRepository.countPendingByAssigneeId(userId);
-        Long taskCount = Long.valueOf(taskCountInt);
-        stats.setTaskCount(taskCount);
-        
-        log.info("获取工作台统计: userId={}, matterCount={}, clientCount={}, hours={}, taskCount={}", 
-                userId, matterCount, clientCount, monthlyHours, taskCount);
-        
-        return stats;
+    }
+    
+    /**
+     * 加载财务相关统计数据
+     */
+    private void loadFinanceStats(WorkbenchStatsDTO stats) {
+        try {
+            // 待确认收款数
+            long pendingPaymentCount = paymentRepository.lambdaQuery()
+                    .eq(com.lawfirm.domain.finance.entity.Payment::getStatus, "PENDING")
+                    .eq(com.lawfirm.domain.finance.entity.Payment::getDeleted, false)
+                    .count();
+            stats.setPendingPaymentCount(pendingPaymentCount);
+            
+            // 待开票数
+            long pendingInvoiceCount = invoiceRepository.lambdaQuery()
+                    .eq(com.lawfirm.domain.finance.entity.Invoice::getStatus, "PENDING")
+                    .eq(com.lawfirm.domain.finance.entity.Invoice::getDeleted, false)
+                    .count();
+            stats.setPendingInvoiceCount(pendingInvoiceCount);
+            
+            // 待审批报销数
+            long pendingExpenseCount = expenseRepository.lambdaQuery()
+                    .eq(com.lawfirm.domain.finance.entity.Expense::getStatus, "PENDING")
+                    .eq(com.lawfirm.domain.finance.entity.Expense::getDeleted, false)
+                    .count();
+            stats.setPendingExpenseCount(pendingExpenseCount);
+            
+            // 本月已收金额 - 使用简化查询
+            java.time.LocalDate now = java.time.LocalDate.now();
+            java.time.LocalDate startOfMonth = now.withDayOfMonth(1);
+            var confirmedPayments = paymentRepository.lambdaQuery()
+                    .eq(com.lawfirm.domain.finance.entity.Payment::getStatus, "CONFIRMED")
+                    .eq(com.lawfirm.domain.finance.entity.Payment::getDeleted, false)
+                    .ge(com.lawfirm.domain.finance.entity.Payment::getPaymentDate, startOfMonth)
+                    .le(com.lawfirm.domain.finance.entity.Payment::getPaymentDate, now)
+                    .list();
+            BigDecimal monthlyReceived = confirmedPayments.stream()
+                    .map(com.lawfirm.domain.finance.entity.Payment::getAmount)
+                    .filter(java.util.Objects::nonNull)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            stats.setMonthlyReceivedAmount(monthlyReceived);
+        } catch (Exception e) {
+            log.error("加载财务统计数据失败", e);
+            stats.setPendingPaymentCount(0L);
+            stats.setPendingInvoiceCount(0L);
+            stats.setPendingExpenseCount(0L);
+            stats.setMonthlyReceivedAmount(BigDecimal.ZERO);
+        }
+    }
+    
+    /**
+     * 加载行政相关统计数据
+     */
+    private void loadAdminStats(WorkbenchStatsDTO stats) {
+        try {
+            // 待处理出函数（待审批 + 已审批待打印的出函申请）
+            long pendingLetterCount = letterApplicationRepository.lambdaQuery()
+                    .in(com.lawfirm.domain.admin.entity.LetterApplication::getStatus, "PENDING", "APPROVED")
+                    .eq(com.lawfirm.domain.admin.entity.LetterApplication::getDeleted, false)
+                    .count();
+            stats.setPendingLetterCount(pendingLetterCount);
+            
+            // 待处理用印数
+            long pendingSealCount = sealApplicationRepository.lambdaQuery()
+                    .in(com.lawfirm.domain.document.entity.SealApplication::getStatus, "PENDING", "APPROVED")
+                    .eq(com.lawfirm.domain.document.entity.SealApplication::getDeleted, false)
+                    .count();
+            stats.setPendingSealCount(pendingSealCount);
+            
+            // 待审批请假数
+            long pendingLeaveCount = leaveApplicationRepository.lambdaQuery()
+                    .eq(com.lawfirm.domain.admin.entity.LeaveApplication::getStatus, "PENDING")
+                    .eq(com.lawfirm.domain.admin.entity.LeaveApplication::getDeleted, false)
+                    .count();
+            stats.setPendingLeaveCount(pendingLeaveCount);
+            
+            // 待处理资产领用数（领用申请待审批）
+            long pendingAssetCount = assetRecordRepository.lambdaQuery()
+                    .eq(com.lawfirm.domain.admin.entity.AssetRecord::getRecordType, "RECEIVE")
+                    .eq(com.lawfirm.domain.admin.entity.AssetRecord::getApprovalStatus, "PENDING")
+                    .eq(com.lawfirm.domain.admin.entity.AssetRecord::getDeleted, false)
+                    .count();
+            stats.setPendingAssetCount(pendingAssetCount);
+        } catch (Exception e) {
+            log.error("加载行政统计数据失败", e);
+            stats.setPendingLetterCount(0L);
+            stats.setPendingSealCount(0L);
+            stats.setPendingLeaveCount(0L);
+            stats.setPendingAssetCount(0L);
+        }
     }
 
     /**
      * 工作台统计数据DTO
+     * 根据角色类型返回不同的统计数据
      */
     @lombok.Data
     public static class WorkbenchStatsDTO {
-        private Long matterCount;      // 我的项目数
-        private Long clientCount;      // 我的客户数
-        private Double timesheetHours;  // 本月工时
-        private Long taskCount;        // 待办任务数
+        // 通用字段
+        private Long taskCount;           // 待办任务数
+        private String roleType;          // 角色类型：LAWYER/FINANCE/ADMIN_STAFF
+        
+        // 律师/团队负责人/主任相关
+        private Long matterCount;         // 我的项目数
+        private Long clientCount;         // 我的客户数
+        private Double timesheetHours;    // 本月工时
+        
+        // 财务相关
+        private Long pendingPaymentCount;    // 待确认收款数
+        private Long pendingInvoiceCount;    // 待开票数
+        private Long pendingExpenseCount;    // 待审批报销数
+        private java.math.BigDecimal monthlyReceivedAmount;  // 本月已收金额
+        
+        // 行政相关
+        private Long pendingLetterCount;     // 待处理出函数
+        private Long pendingSealCount;       // 待处理用印数
+        private Long pendingLeaveCount;      // 待审批请假数
+        private Long pendingAssetCount;      // 待处理资产领用数
     }
 
     /**

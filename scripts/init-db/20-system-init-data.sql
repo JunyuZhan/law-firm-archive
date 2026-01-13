@@ -166,6 +166,13 @@ INSERT INTO public.sys_menu VALUES (313, 31, '删除客户', NULL, NULL, NULL, N
 INSERT INTO public.sys_menu VALUES (32, 3, '利冲审查', '/crm/conflict', 'crm/conflict/index', NULL, 'SecurityScanOutlined', 'MENU', 'conflict:apply', 2, true, 'ENABLED', false, true, '2026-01-04 16:14:15.896673', '2026-01-04 16:14:15.896673', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (320, 32, '利冲查询', NULL, NULL, NULL, NULL, 'BUTTON', 'conflict:list', 1, true, 'ENABLED', false, false, '2026-01-04 16:14:15.896673', '2026-01-04 16:14:15.896673', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (33, 3, '案源管理', '/crm/lead', 'crm/lead/index', NULL, 'FunnelPlotOutlined', 'MENU', 'lead:list', 3, true, 'ENABLED', false, true, '2026-01-04 16:14:15.896673', '2026-01-04 16:14:15.896673', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
+-- 案源管理按钮权限
+INSERT INTO public.sys_menu VALUES (331, 33, '查看案源', NULL, NULL, NULL, NULL, 'BUTTON', 'lead:view', 1, true, 'ENABLED', false, false, '2026-01-13 00:00:00', '2026-01-13 00:00:00', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_menu VALUES (332, 33, '创建案源', NULL, NULL, NULL, NULL, 'BUTTON', 'lead:create', 2, true, 'ENABLED', false, false, '2026-01-13 00:00:00', '2026-01-13 00:00:00', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_menu VALUES (333, 33, '编辑案源', NULL, NULL, NULL, NULL, 'BUTTON', 'lead:update', 3, true, 'ENABLED', false, false, '2026-01-13 00:00:00', '2026-01-13 00:00:00', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_menu VALUES (334, 33, '删除案源', NULL, NULL, NULL, NULL, 'BUTTON', 'lead:delete', 4, true, 'ENABLED', false, false, '2026-01-13 00:00:00', '2026-01-13 00:00:00', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_menu VALUES (335, 33, '跟进案源', NULL, NULL, NULL, NULL, 'BUTTON', 'lead:follow', 5, true, 'ENABLED', false, false, '2026-01-13 00:00:00', '2026-01-13 00:00:00', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_menu VALUES (336, 33, '转化案源', NULL, NULL, NULL, NULL, 'BUTTON', 'lead:convert', 6, true, 'ENABLED', false, false, '2026-01-13 00:00:00', '2026-01-13 00:00:00', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (81, 8, '档案列表', '/archive/list', 'archive/list/index', NULL, 'FolderOpenOutlined', 'MENU', 'archive:list', 1, true, 'ENABLED', false, true, '2026-01-04 16:14:15.89755', '2026-01-04 16:14:15.89755', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (82, 8, '档案借阅', '/archive/borrow', 'archive/borrow/index', NULL, 'ExportOutlined', 'MENU', 'archive:borrow', 2, true, 'ENABLED', false, true, '2026-01-04 16:14:15.89755', '2026-01-04 16:14:15.89755', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (174, 93, '会议室管理', NULL, NULL, NULL, NULL, 'BUTTON', 'admin:meeting:manage', 1, true, 'ENABLED', false, false, '2026-01-06 04:13:09.943026', '2026-01-06 04:13:09.943026', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
@@ -336,6 +343,12 @@ INSERT INTO public.sys_menu VALUES (1818, 110, '创建合同', NULL, NULL, NULL,
 INSERT INTO public.sys_menu VALUES (1819, 110, '更新合同', NULL, NULL, NULL, NULL, 'BUTTON', 'hr:contract:update', 3, true, 'ENABLED', false, false, '2026-01-12 10:00:00', '2026-01-12 10:00:00', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (1820, 110, '删除合同', NULL, NULL, NULL, NULL, 'BUTTON', 'hr:contract:delete', 4, true, 'ENABLED', false, false, '2026-01-12 10:00:00', '2026-01-12 10:00:00', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (1821, 110, '续签合同', NULL, NULL, NULL, NULL, 'BUTTON', 'hr:contract:renew', 5, true, 'ENABLED', false, false, '2026-01-12 10:00:00', '2026-01-12 10:00:00', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_menu VALUES (1822, 120, '模板管理', '', '', NULL, NULL, 'BUTTON', 'admin:letter:manage', 3, true, 'ENABLED', false, false, '2026-01-13 00:00:00', '2026-01-13 00:00:00', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
+-- 证据管理权限（项目详情页中使用）
+INSERT INTO public.sys_menu VALUES (1823, 4, '证据查看', '', '', NULL, NULL, 'BUTTON', 'evidence:view', 20, true, 'ENABLED', false, false, '2026-01-13 00:00:00', '2026-01-13 00:00:00', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_menu VALUES (1824, 4, '证据创建', '', '', NULL, NULL, 'BUTTON', 'evidence:create', 21, true, 'ENABLED', false, false, '2026-01-13 00:00:00', '2026-01-13 00:00:00', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_menu VALUES (1825, 4, '证据编辑', '', '', NULL, NULL, 'BUTTON', 'evidence:edit', 22, true, 'ENABLED', false, false, '2026-01-13 00:00:00', '2026-01-13 00:00:00', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_menu VALUES (1826, 4, '证据删除', '', '', NULL, NULL, 'BUTTON', 'evidence:delete', 23, true, 'ENABLED', false, false, '2026-01-13 00:00:00', '2026-01-13 00:00:00', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 --
 -- Data for Name: sys_role; Type: TABLE DATA; Schema: public; Owner: -
 --
@@ -578,6 +591,33 @@ INSERT INTO public.sys_role_menu VALUES (2008, 3, 218, '2026-01-08 03:26:38.4647
 INSERT INTO public.sys_role_menu VALUES (2009, 1, 219, '2026-01-08 03:26:38.464721') ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_role_menu VALUES (2010, 2, 219, '2026-01-08 03:26:38.464721') ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_role_menu VALUES (2011, 8, 219, '2026-01-08 03:26:38.464721') ON CONFLICT (id) DO NOTHING;
+-- admin:letter:manage 模板管理权限：管理员、律所主任、行政
+INSERT INTO public.sys_role_menu VALUES (2143, 1, 1822, '2026-01-13 00:00:00') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_role_menu VALUES (2144, 2, 1822, '2026-01-13 00:00:00') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_role_menu VALUES (2145, 8, 1822, '2026-01-13 00:00:00') ON CONFLICT (id) DO NOTHING;
+-- 证据管理权限分配
+-- evidence:view: 管理员(1)、律所主任(2)、团队负责人(3)、律师(6)、实习律师(9)
+INSERT INTO public.sys_role_menu VALUES (2146, 1, 1823, '2026-01-13 00:00:00') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_role_menu VALUES (2147, 2, 1823, '2026-01-13 00:00:00') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_role_menu VALUES (2148, 3, 1823, '2026-01-13 00:00:00') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_role_menu VALUES (2149, 6, 1823, '2026-01-13 00:00:00') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_role_menu VALUES (2150, 9, 1823, '2026-01-13 00:00:00') ON CONFLICT (id) DO NOTHING;
+-- evidence:create: 管理员(1)、律所主任(2)、团队负责人(3)、律师(6)、实习律师(9)
+INSERT INTO public.sys_role_menu VALUES (2151, 1, 1824, '2026-01-13 00:00:00') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_role_menu VALUES (2152, 2, 1824, '2026-01-13 00:00:00') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_role_menu VALUES (2153, 3, 1824, '2026-01-13 00:00:00') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_role_menu VALUES (2154, 6, 1824, '2026-01-13 00:00:00') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_role_menu VALUES (2155, 9, 1824, '2026-01-13 00:00:00') ON CONFLICT (id) DO NOTHING;
+-- evidence:edit: 管理员(1)、律所主任(2)、团队负责人(3)、律师(6)
+INSERT INTO public.sys_role_menu VALUES (2156, 1, 1825, '2026-01-13 00:00:00') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_role_menu VALUES (2157, 2, 1825, '2026-01-13 00:00:00') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_role_menu VALUES (2158, 3, 1825, '2026-01-13 00:00:00') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_role_menu VALUES (2159, 6, 1825, '2026-01-13 00:00:00') ON CONFLICT (id) DO NOTHING;
+-- evidence:delete: 管理员(1)、律所主任(2)、团队负责人(3)、律师(6)
+INSERT INTO public.sys_role_menu VALUES (2160, 1, 1826, '2026-01-13 00:00:00') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_role_menu VALUES (2161, 2, 1826, '2026-01-13 00:00:00') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_role_menu VALUES (2162, 3, 1826, '2026-01-13 00:00:00') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_role_menu VALUES (2163, 6, 1826, '2026-01-13 00:00:00') ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_role_menu VALUES (1846, 5, 96, '2026-01-07 14:45:54.753875') ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_role_menu VALUES (1847, 5, 193, '2026-01-07 14:45:54.753875') ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_role_menu VALUES (1848, 5, 194, '2026-01-07 14:45:54.753875') ON CONFLICT (id) DO NOTHING;
@@ -1217,6 +1257,16 @@ SELECT 5, m.id FROM public.sys_menu m WHERE m.id IN (110, 1817)
 -- LAWYER (律师) 角色：查看自己的合同
 INSERT INTO public.sys_role_menu (role_id, menu_id)
 SELECT 6, m.id FROM public.sys_menu m WHERE m.id IN (110, 1817)
+  AND NOT EXISTS (SELECT 1 FROM public.sys_role_menu rm WHERE rm.role_id = 6 AND rm.menu_id = m.id);
+
+-- LAWYER (律师) 角色：案源管理按钮权限
+INSERT INTO public.sys_role_menu (role_id, menu_id)
+SELECT 6, m.id FROM public.sys_menu m WHERE m.id IN (331, 332, 333, 334, 335, 336)
+  AND NOT EXISTS (SELECT 1 FROM public.sys_role_menu rm WHERE rm.role_id = 6 AND rm.menu_id = m.id);
+
+-- LAWYER (律师) 角色：期限管理按钮权限
+INSERT INTO public.sys_role_menu (role_id, menu_id)
+SELECT 6, m.id FROM public.sys_menu m WHERE m.id IN (152, 153, 154, 155, 156)
   AND NOT EXISTS (SELECT 1 FROM public.sys_role_menu rm WHERE rm.role_id = 6 AND rm.menu_id = m.id);
 
 -- TRAINEE (实习律师) 角色：查看自己的合同

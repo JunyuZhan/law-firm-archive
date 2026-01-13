@@ -120,5 +120,18 @@ public class DeadlineController {
         deadlineAppService.deleteDeadline(id);
         return Result.success();
     }
+
+    /**
+     * 获取我的即将到期的期限
+     */
+    @Operation(summary = "获取我的即将到期的期限")
+    @GetMapping("/my-upcoming")
+    @RequirePermission("deadline:view")
+    public Result<List<DeadlineDTO>> getMyUpcomingDeadlines(
+            @RequestParam(defaultValue = "7") Integer days,
+            @RequestParam(defaultValue = "5") Integer limit) {
+        List<DeadlineDTO> deadlines = deadlineAppService.getMyUpcomingDeadlines(days, limit);
+        return Result.success(deadlines);
+    }
 }
 

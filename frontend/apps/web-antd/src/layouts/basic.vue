@@ -29,6 +29,7 @@ import {
   getMyNotifications,
 } from '#/api/system/notification';
 import FloatingTimer from '#/components/timer/FloatingTimer.vue';
+import { useIdleTimeout } from '#/hooks/useIdleTimeout';
 import { $t } from '#/locales';
 import { useAuthStore } from '#/store';
 import LoginForm from '#/views/_core/authentication/login.vue';
@@ -389,6 +390,16 @@ const { destroyWatermark, updateWatermark } = useWatermark();
 const showDot = computed(() =>
   notifications.value.some((item) => !item.isRead),
 );
+
+// 无活动自动登出（30分钟无操作）
+useIdleTimeout({
+  timeout: 30 * 60 * 1000, // 30分钟
+  warningTime: 5 * 60 * 1000, // 提前5分钟警告
+  onTimeout: async () => {
+    message.warning('由于长时间未操作，系统已自动登出');
+    await authStore.logout(false);
+  },
+});
 
 // 用户手册地址（docs 应用部署后的地址，开发时指向本地 6173 端口，base路径为 /docs/）
 const USER_MANUAL_URL =

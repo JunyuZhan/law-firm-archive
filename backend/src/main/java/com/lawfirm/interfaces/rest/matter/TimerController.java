@@ -73,9 +73,9 @@ public class TimerController {
 
     /**
      * 获取当前计时器状态
+     * 注意：此接口仅查询当前用户自己的计时状态，无需特殊权限
      */
     @GetMapping("/status")
-    @RequirePermission("timesheet:record")
     @Operation(summary = "获取计时器状态", description = "获取当前用户的计时器状态")
     public Result<TimerSessionDTO> getTimerStatus() {
         TimerSessionDTO status = timerAppService.getTimerStatus();

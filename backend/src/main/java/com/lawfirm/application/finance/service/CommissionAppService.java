@@ -624,13 +624,15 @@ public class CommissionAppService {
     }
 
     /**
-     * 检查是否有管理层权限（ADMIN/DIRECTOR/TEAM_LEADER）
+     * 检查是否有管理层权限（ADMIN/DIRECTOR/TEAM_LEADER/FINANCE）
+     * 财务人员需要查看提成汇总以制作财务报表
      */
     private void checkManagementPermission() {
         Long userId = SecurityUtils.getUserId();
         List<String> roleCodes = userRepository.findRoleCodesByUserId(userId);
-        if (!roleCodes.contains("ADMIN") && !roleCodes.contains("DIRECTOR") && !roleCodes.contains("TEAM_LEADER")) {
-            throw new BusinessException("只有管理层可以查看提成汇总");
+        if (!roleCodes.contains("ADMIN") && !roleCodes.contains("DIRECTOR") 
+                && !roleCodes.contains("TEAM_LEADER") && !roleCodes.contains("FINANCE")) {
+            throw new BusinessException("只有管理层和财务可以查看提成汇总");
         }
     }
 

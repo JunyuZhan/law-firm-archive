@@ -33,5 +33,12 @@ public class DeadlineRepository extends AbstractRepository<DeadlineMapper, Deadl
     public List<Deadline> findByMatterId(Long matterId) {
         return baseMapper.selectByMatterId(matterId);
     }
+
+    /**
+     * 查询用户即将到期的期限
+     */
+    public List<Deadline> findMyUpcoming(Long userId, Integer days, Integer limit) {
+        return baseMapper.selectMyUpcoming(userId, days, limit);
+    }
 }
 

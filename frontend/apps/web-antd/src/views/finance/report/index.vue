@@ -1,13 +1,16 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import { Page } from '@vben/common-ui';
+import echarts from '@vben/plugins/echarts';
 
 import {
   Button,
   Card,
   Col,
   DatePicker,
+  Dropdown,
+  Menu,
   message,
   Row,
   Select,
@@ -27,6 +30,7 @@ import {
   getFeeList,
   getInvoiceStatistics,
 } from '#/api/finance';
+import { generateReport, type GenerateReportCommand } from '#/api/workbench/report';
 import { getRevenueStats } from '#/api/workbench/statistics';
 
 defineOptions({ name: 'FinanceReport' });
@@ -146,7 +150,148 @@ const expenseColumns = [
   { title: '申请日期', dataIndex: 'createdAt', key: 'createdAt', width: 110 },
 ];
 
+// 收费管理列
+const feeColumns = [
+  { title: '收费编号', dataIndex: 'feeNo', key: 'feeNo', width: 140 },
+  { title: '项目名称', dataIndex: 'matterName', key: 'matterName', width: 150 },
+  { title: '客户名称', dataIndex: 'clientName', key: 'clientName', width: 120 },
+  { title: '收费类型', dataIndex: 'feeTypeName', key: 'feeTypeName', width: 100 },
+  { title: '应收金额', dataIndex: 'amount', key: 'amount', width: 110 },
+  { title: '已收金额', dataIndex: 'paidAmount', key: 'paidAmount', width: 110 },
+  { title: '状态', dataIndex: 'statusName', key: 'statusName', width: 80 },
+  { title: '创建日期', dataIndex: 'createdAt', key: 'createdAt', width: 110 },
+];
+
+// 账龄分析列
+const agingColumns = [
+  { title: '账龄区间', dataIndex: 'range', key: 'range', width: 120 },
+  { title: '笔数', dataIndex: 'count', key: 'count', width: 80 },
+  { title: '应收金额', dataIndex: 'amount', key: 'amount', width: 120 },
+  { title: '占比', dataIndex: 'percentage', key: 'percentage', width: 100 },
+];
+
 const revenueData = ref<any[]>([]);
+
+// 图表引用
+const trendChartRef = ref<HTMLDivElement>();
+const agingChartRef = ref<HTMLDivElement>();
+
+// 渲染收入趋势图
+function renderTrendChart() {
+  if (!trendChartRef.value || revenueData.value.length === 0) return;
+  
+  const chart = echarts.getInstanceByDom(trendChartRef.value) || echarts.init(trendChartRef.value);
+  
+  const months = revenueData.value.map(d => d.month);
+  const received = revenueData.value.map(d => d.receivedAmount || 0);
+  const contract = revenueData.value.map(d => d.contractAmount || 0);
+  
+  chart.setOption({
+    tooltip: { trigger: 'axis' },
+    legend: { data: ['收款金额', '合同金额'], bottom: 0 },
+    grid: { left: 60, right: 20, top: 20, bottom: 40 },
+    xAxis: { type: 'category', data: months },
+    yAxis: { type: 'value', axisLabel: { formatter: (v: number) => `¥${(v / 10000).toFixed(0)}万` } },
+    series: [
+      { name: '收款金额', type: 'line', data: received, smooth: true, itemStyle: { color: '#52c41a' } },
+      { name: '合同金额', type: 'bar', data: contract, itemStyle: { color: '#1890ff' } },
+    ],
+  });
+}
+
+// 渲染账龄分布图
+function renderAgingChart() {
+  if (!agingChartRef.value) return;
+  
+  const chart = echarts.getInstanceByDom(agingChartRef.value) || echarts.init(agingChartRef.value);
+  const data = agingData.value.filter(d => d.amount > 0).map(d => ({
+    name: d.range,
+    value: d.amount,
+  }));
+  
+  if (data.length === 0) {
+    chart.setOption({
+      title: { text: '暂无逾期应收', left: 'center', top: 'center', textStyle: { color: '#999', fontSize: 14 } },
+      series: [],
+    });
+    return;
+  }
+  
+  chart.setOption({
+    tooltip: { trigger: 'item', formatter: '{b}: ¥{c} ({d}%)' },
+    series: [{
+      type: 'pie',
+      radius: ['40%', '70%'],
+      center: ['50%', '50%'],
+      data,
+      label: { show: true, formatter: '{b}\n{d}%' },
+      itemStyle: {
+        color: (params: any) => {
+          const colors = ['#52c41a', '#faad14', '#fa8c16', '#f5222d'];
+          return colors[params.dataIndex] || '#1890ff';
+        },
+      },
+    }],
+  });
+}
+
+// 销毁图表
+function disposeCharts() {
+  [trendChartRef.value, agingChartRef.value].forEach(ref => {
+    if (ref) {
+      const chart = echarts.getInstanceByDom(ref);
+      if (chart) chart.dispose();
+    }
+  });
+}
+
+// 账龄分析数据
+const agingData = computed(() => {
+  // 根据收费数据计算账龄分布
+  const now = dayjs();
+  const ranges = [
+    { range: '0-30天', min: 0, max: 30, count: 0, amount: 0 },
+    { range: '31-60天', min: 31, max: 60, count: 0, amount: 0 },
+    { range: '61-90天', min: 61, max: 90, count: 0, amount: 0 },
+    { range: '90天以上', min: 91, max: 9999, count: 0, amount: 0 },
+  ];
+
+  feeData.value.forEach((fee: any) => {
+    if (fee.status === 'PAID' || !fee.createdAt) return;
+    const receivable = (fee.amount || 0) - (fee.paidAmount || 0);
+    if (receivable <= 0) return;
+
+    const days = now.diff(dayjs(fee.createdAt), 'day');
+    const range = ranges.find((r) => days >= r.min && days <= r.max);
+    if (range) {
+      range.count++;
+      range.amount += receivable;
+    }
+  });
+
+  const total = ranges.reduce((sum, r) => sum + r.amount, 0);
+  return ranges.map((r) => ({
+    ...r,
+    percentage: total > 0 ? ((r.amount / total) * 100).toFixed(1) + '%' : '0%',
+  }));
+});
+
+// 收费统计计算
+const feeStats = computed(() => {
+  const total = feeData.value.reduce((sum, f) => sum + (f.amount || 0), 0);
+  const paid = feeData.value.reduce((sum, f) => sum + (f.paidAmount || 0), 0);
+  const pending = total - paid;
+  const count = feeData.value.length;
+  return { total, paid, pending, count };
+});
+
+// 监听数据变化重新渲染图表
+watch([revenueData, () => agingData.value], () => {
+  setTimeout(() => {
+    renderTrendChart();
+    renderAgingChart();
+  }, 100);
+});
 
 async function loadContractStats() {
   try {
@@ -360,12 +505,52 @@ function formatDate(date?: string) {
   return date ? dayjs(date).format('YYYY-MM-DD') : '-';
 }
 
-function handleExport() {
-  message.info('导出功能开发中');
+// 导出报表类型
+const exportTypes = [
+  { key: 'REVENUE', label: '收入报表' },
+  { key: 'CONTRACT', label: '合同报表' },
+  { key: 'COMMISSION', label: '提成报表' },
+  { key: 'EXPENSE', label: '费用报销报表' },
+  { key: 'RECEIVABLE', label: '应收账款报表' },
+  { key: 'AGING_ANALYSIS', label: '账龄分析报表' },
+];
+
+// 导出中状态
+const exporting = ref(false);
+
+async function handleExport(reportType: string) {
+  if (exporting.value) return;
+  
+  exporting.value = true;
+  try {
+    const [startDate, endDate] = dateRange.value;
+    const command: GenerateReportCommand = {
+      reportType,
+      format: 'EXCEL',
+      parameters: {
+        startDate: startDate.format('YYYY-MM-DD'),
+        endDate: endDate.format('YYYY-MM-DD'),
+      },
+    };
+    await generateReport(command);
+    message.success('报表生成任务已提交，请到"报表中心"查看和下载');
+  } catch (error: any) {
+    message.error(`导出报表失败：${error.message || '未知错误'}`);
+  } finally {
+    exporting.value = false;
+  }
+}
+
+function handleMenuClick(info: { key: string | number }) {
+  handleExport(String(info.key));
 }
 
 onMounted(() => {
   loadAllData();
+});
+
+onBeforeUnmount(() => {
+  disposeCharts();
 });
 </script>
 
@@ -433,7 +618,21 @@ onMounted(() => {
               :disabled="monthFilter !== 'custom'"
               @change="handleDateChange"
             />
-            <Button @click="handleExport">导出报表</Button>
+            <Dropdown>
+              <Button :loading="exporting">
+                导出报表
+                <template #icon>
+                  <span style="margin-left: 4px">▼</span>
+                </template>
+              </Button>
+              <template #overlay>
+                <Menu @click="handleMenuClick">
+                  <Menu.Item v-for="item in exportTypes" :key="item.key">
+                    {{ item.label }}
+                  </Menu.Item>
+                </Menu>
+              </template>
+            </Dropdown>
           </Space>
         </template>
 
@@ -480,13 +679,17 @@ onMounted(() => {
                 </Card>
               </Col>
             </Row>
+            <!-- 收入趋势图 -->
+            <Card size="small" title="收入趋势" style="margin-bottom: 16px">
+              <div ref="trendChartRef" style="height: 280px"></div>
+            </Card>
             <Table
               :columns="revenueColumns"
               :data-source="revenueData"
               :pagination="false"
               size="small"
               row-key="month"
-              :scroll="{ y: 400 }"
+              :scroll="{ y: 300 }"
             >
               <template #bodyCell="{ column, text }">
                 <template
@@ -662,6 +865,145 @@ onMounted(() => {
                 </template>
               </template>
             </Table>
+          </Tabs.TabPane>
+
+          <Tabs.TabPane key="fee" tab="收费管理">
+            <Row :gutter="16" style="margin-bottom: 16px">
+              <Col :span="6">
+                <Card size="small">
+                  <Statistic
+                    title="收费笔数"
+                    :value="feeStats.count"
+                    suffix="笔"
+                  />
+                </Card>
+              </Col>
+              <Col :span="6">
+                <Card size="small">
+                  <Statistic
+                    title="应收总额"
+                    :value="feeStats.total"
+                    prefix="¥"
+                    :precision="0"
+                  />
+                </Card>
+              </Col>
+              <Col :span="6">
+                <Card size="small">
+                  <Statistic
+                    title="已收金额"
+                    :value="feeStats.paid"
+                    prefix="¥"
+                    :precision="0"
+                  />
+                </Card>
+              </Col>
+              <Col :span="6">
+                <Card size="small">
+                  <Statistic
+                    title="待收金额"
+                    :value="feeStats.pending"
+                    prefix="¥"
+                    :precision="0"
+                  />
+                </Card>
+              </Col>
+            </Row>
+            <Table
+              :columns="feeColumns"
+              :data-source="feeData"
+              :pagination="{ pageSize: 10 }"
+              size="small"
+              row-key="id"
+            >
+              <template #bodyCell="{ column, text }">
+                <template v-if="['amount', 'paidAmount'].includes(column.key as string)">
+                  {{ formatMoney(text) }}
+                </template>
+                <template v-else-if="column.key === 'createdAt'">
+                  {{ formatDate(text) }}
+                </template>
+              </template>
+            </Table>
+          </Tabs.TabPane>
+
+          <Tabs.TabPane key="aging" tab="账龄分析">
+            <Row :gutter="16" style="margin-bottom: 16px">
+              <Col :span="6">
+                <Card size="small">
+                  <Statistic
+                    title="0-30天"
+                    :value="agingData[0]?.amount || 0"
+                    prefix="¥"
+                    :precision="0"
+                    :value-style="{ color: '#52c41a' }"
+                  />
+                </Card>
+              </Col>
+              <Col :span="6">
+                <Card size="small">
+                  <Statistic
+                    title="31-60天"
+                    :value="agingData[1]?.amount || 0"
+                    prefix="¥"
+                    :precision="0"
+                    :value-style="{ color: '#faad14' }"
+                  />
+                </Card>
+              </Col>
+              <Col :span="6">
+                <Card size="small">
+                  <Statistic
+                    title="61-90天"
+                    :value="agingData[2]?.amount || 0"
+                    prefix="¥"
+                    :precision="0"
+                    :value-style="{ color: '#fa8c16' }"
+                  />
+                </Card>
+              </Col>
+              <Col :span="6">
+                <Card size="small" :style="{ background: (agingData[3] && agingData[3].amount > 0) ? '#fff2f0' : '' }">
+                  <Statistic
+                    title="90天以上(逾期)"
+                    :value="agingData[3]?.amount || 0"
+                    prefix="¥"
+                    :precision="0"
+                    :value-style="{ color: '#f5222d' }"
+                  />
+                </Card>
+              </Col>
+            </Row>
+            <Row :gutter="16">
+              <Col :span="10">
+                <!-- 账龄分布图 -->
+                <Card size="small" title="账龄分布">
+                  <div ref="agingChartRef" style="height: 260px"></div>
+                </Card>
+              </Col>
+              <Col :span="14">
+                <Card size="small" title="账龄明细">
+                  <Table
+                    :columns="agingColumns"
+                    :data-source="agingData"
+                    :pagination="false"
+                    size="small"
+                    row-key="range"
+                  >
+                    <template #bodyCell="{ column, text, record }">
+                      <template v-if="column.key === 'amount'">
+                        {{ formatMoney(text) }}
+                      </template>
+                      <template v-else-if="column.key === 'range'">
+                        <span :style="{ color: record.range === '90天以上' && record.amount > 0 ? '#f5222d' : '' }">
+                          {{ text }}
+                        </span>
+                      </template>
+                    </template>
+                  </Table>
+                </Card>
+              </Col>
+            </Row>
           </Tabs.TabPane>
         </Tabs>
       </Card>

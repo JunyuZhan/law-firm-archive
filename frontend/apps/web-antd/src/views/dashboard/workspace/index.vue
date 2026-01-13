@@ -41,6 +41,8 @@ import {
 import dayjs from 'dayjs';
 
 import { getMyTodoTasks, getMyUpcomingSchedules } from '#/api/matter';
+import type { DeadlineDTO } from '#/api/matter/deadline';
+import { getMyUpcomingDeadlines } from '#/api/matter/deadline';
 import type { AnnouncementDTO } from '#/api/system/announcement';
 import { getValidAnnouncements, getAnnouncementById, ANNOUNCEMENT_TYPE_OPTIONS } from '#/api/system/announcement';
 
@@ -73,11 +75,23 @@ const allTrendItems = ref<WorkbenchTrendItem[]>([]);
 
 // 统计数据
 const stats = ref({
+  // 通用
+  taskCount: 0,
+  roleType: 'LAWYER' as 'LAWYER' | 'FINANCE' | 'ADMIN_STAFF',
+  // 律师相关
   matterCount: 0,
   clientCount: 0,
   timesheetHours: 0,
-  taskCount: 0,
-  receivableAmount: 0, // 我的收款金额
+  // 财务相关
+  pendingPaymentCount: 0,
+  pendingInvoiceCount: 0,
+  pendingExpenseCount: 0,
+  monthlyReceivedAmount: 0,
+  // 行政相关
+  pendingLetterCount: 0,
+  pendingSealCount: 0,
+  pendingLeaveCount: 0,
+  pendingAssetCount: 0,
 });
 
 // 待审批数量
@@ -86,6 +100,9 @@ const pendingApprovals = ref<ApprovalDTO[]>([]);
 
 // 近期日程
 const upcomingSchedules = ref<ScheduleDTO[]>([]);
+
+// 即将到期的期限
+const upcomingDeadlines = ref<DeadlineDTO[]>([]);
 
 // 待办任务列表
 const todoItems = ref<WorkbenchTodoItem[]>([]);
@@ -170,11 +187,23 @@ async function loadStats() {
   try {
     const data = await getWorkbenchStats();
     stats.value = {
+      // 通用
+      taskCount: data.taskCount || 0,
+      roleType: data.roleType || 'LAWYER',
+      // 律师相关
       matterCount: data.matterCount || 0,
       clientCount: data.clientCount || 0,
       timesheetHours: data.timesheetHours || 0,
-      taskCount: data.taskCount || 0,
-      receivableAmount: (data as any).receivableAmount || 0,
+      // 财务相关
+      pendingPaymentCount: data.pendingPaymentCount || 0,
+      pendingInvoiceCount: data.pendingInvoiceCount || 0,
+      pendingExpenseCount: data.pendingExpenseCount || 0,
+      monthlyReceivedAmount: data.monthlyReceivedAmount || 0,
+      // 行政相关
+      pendingLetterCount: data.pendingLetterCount || 0,
+      pendingSealCount: data.pendingSealCount || 0,
+      pendingLeaveCount: data.pendingLeaveCount || 0,
+      pendingAssetCount: data.pendingAssetCount || 0,
     };
   } catch {
     // 静默处理
@@ -215,6 +244,38 @@ async function loadUpcomingSchedules() {
   } catch {
     // 静默处理
   }
+}
+
+// 加载即将到期的期限
+async function loadUpcomingDeadlines() {
+  try {
+    const data = await getMyUpcomingDeadlines(14, 5);
+    upcomingDeadlines.value = data || [];
+  } catch {
+    // 静默处理
+  }
+}
+
+// 格式化期限剩余天数
+function formatDeadlineDays(deadline: DeadlineDTO) {
+  const today = dayjs();
+  const deadlineDate = dayjs(deadline.deadlineDate);
+  const days = deadlineDate.diff(today, 'day');
+  if (days < 0) return '已过期';
+  if (days === 0) return '今天到期';
+  if (days === 1) return '明天到期';
+  return `${days}天后到期`;
+}
+
+// 获取期限紧急程度颜色
+function getDeadlineColor(deadline: DeadlineDTO) {
+  const today = dayjs();
+  const deadlineDate = dayjs(deadline.deadlineDate);
+  const days = deadlineDate.diff(today, 'day');
+  if (days <= 0) return '#ff4d4f'; // 红色 - 已过期或今天
+  if (days <= 3) return '#fa8c16'; // 橙色 - 3天内
+  if (days <= 7) return '#faad14'; // 黄色 - 7天内
+  return '#52c41a'; // 绿色 - 7天以上
 }
 
 // 格式化日程时间
@@ -488,6 +549,7 @@ onMounted(() => {
   loadTodoTasks();
   loadPendingApprovals();
   loadUpcomingSchedules();
+  loadUpcomingDeadlines();
   loadTrends();
   loadAnnouncements();
 });
@@ -498,6 +560,7 @@ onActivated(() => {
   loadTodoTasks();
   loadPendingApprovals();
   loadUpcomingSchedules();
+  loadUpcomingDeadlines();
   loadTrends();
   loadAnnouncements();
 });
@@ -519,17 +582,23 @@ onUnmounted(() => {
     <div class="workbench-header-wrapper">
       <WorkbenchHeader
         :avatar="userStore.userInfo?.avatar || preferences.app.defaultAvatar"
-        :matter-count="stats.matterCount"
-        :client-count="stats.clientCount"
-        :task-count="stats.taskCount"
       >
         <template #title>
           {{ getGreeting().greeting }}, {{ userStore.userInfo?.realName }},
           {{ getGreeting().action }}
         </template>
         <template #description>
-          您有 {{ stats.taskCount }} 个待办任务，本月工时
-          {{ stats.timesheetHours.toFixed(1) }} 小时
+          <template v-if="stats.roleType === 'LAWYER'">
+            您有 {{ stats.taskCount }} 个待办任务，本月工时
+            {{ stats.timesheetHours.toFixed(1) }} 小时
+          </template>
+          <template v-else-if="stats.roleType === 'FINANCE'">
+            您有 {{ stats.taskCount }} 个待办任务，本月已收
+            ¥{{ stats.monthlyReceivedAmount.toLocaleString() }}
+          </template>
+          <template v-else>
+            您有 {{ stats.taskCount }} 个待办任务
+          </template>
           <span v-if="pendingApprovalCount > 0" class="ml-3">
             ，<span
               class="cursor-pointer font-medium text-orange-500 hover:underline"
@@ -590,8 +659,9 @@ onUnmounted(() => {
       <div class="text-2xl text-orange-500">→</div>
     </div>
 
-    <!-- 统计卡片 -->
-    <Row :gutter="[16, 16]" class="mt-4">
+    <!-- 统计卡片 - 根据角色类型显示不同内容 -->
+    <!-- 律师/团队负责人/主任 统计卡片 -->
+    <Row v-if="stats.roleType === 'LAWYER'" :gutter="[16, 16]" class="mt-4">
       <Col :xs="12" :sm="12" :md="6" :lg="6">
         <Card
           :bordered="false"
@@ -625,13 +695,13 @@ onUnmounted(() => {
           :bordered="false"
           hoverable
           class="stat-card stat-card-orange"
-          @click="router.push('/finance/receivable')"
+          @click="router.push('/matter/timesheet')"
         >
           <Statistic
-            title="我的收款"
-            :value="stats.receivableAmount"
-            :precision="2"
-            prefix="¥"
+            title="本月工时"
+            :value="stats.timesheetHours"
+            suffix="小时"
+            :precision="1"
             :value-style="{ color: '#fa8c16' }"
           />
         </Card>
@@ -652,69 +722,253 @@ onUnmounted(() => {
       </Col>
     </Row>
 
+    <!-- 财务 统计卡片 -->
+    <Row v-else-if="stats.roleType === 'FINANCE'" :gutter="[16, 16]" class="mt-4">
+      <Col :xs="12" :sm="12" :md="6" :lg="6">
+        <Card
+          :bordered="false"
+          hoverable
+          class="stat-card stat-card-blue"
+          @click="router.push('/finance/payment')"
+        >
+          <Statistic
+            title="待确认收款"
+            :value="stats.pendingPaymentCount"
+            :value-style="{ color: '#1890ff' }"
+          />
+        </Card>
+      </Col>
+      <Col :xs="12" :sm="12" :md="6" :lg="6">
+        <Card
+          :bordered="false"
+          hoverable
+          class="stat-card stat-card-green"
+          @click="router.push('/finance/invoice')"
+        >
+          <Statistic
+            title="待开票"
+            :value="stats.pendingInvoiceCount"
+            :value-style="{ color: '#52c41a' }"
+          />
+        </Card>
+      </Col>
+      <Col :xs="12" :sm="12" :md="6" :lg="6">
+        <Card
+          :bordered="false"
+          hoverable
+          class="stat-card stat-card-orange"
+          @click="router.push('/finance/expense')"
+        >
+          <Statistic
+            title="待审批报销"
+            :value="stats.pendingExpenseCount"
+            :value-style="{ color: '#fa8c16' }"
+          />
+        </Card>
+      </Col>
+      <Col :xs="12" :sm="12" :md="6" :lg="6">
+        <Card
+          :bordered="false"
+          hoverable
+          class="stat-card stat-card-purple"
+          @click="router.push('/finance/payment')"
+        >
+          <Statistic
+            title="本月已收"
+            :value="stats.monthlyReceivedAmount"
+            :precision="2"
+            prefix="¥"
+            :value-style="{ color: '#722ed1' }"
+          />
+        </Card>
+      </Col>
+    </Row>
+
+    <!-- 行政 统计卡片 -->
+    <Row v-else-if="stats.roleType === 'ADMIN_STAFF'" :gutter="[16, 16]" class="mt-4">
+      <Col :xs="12" :sm="12" :md="6" :lg="6">
+        <Card
+          :bordered="false"
+          hoverable
+          class="stat-card stat-card-blue"
+          @click="router.push('/admin/letter')"
+        >
+          <Statistic
+            title="待处理出函"
+            :value="stats.pendingLetterCount"
+            :value-style="{ color: '#1890ff' }"
+          />
+        </Card>
+      </Col>
+      <Col :xs="12" :sm="12" :md="6" :lg="6">
+        <Card
+          :bordered="false"
+          hoverable
+          class="stat-card stat-card-green"
+          @click="router.push('/document/seal-apply')"
+        >
+          <Statistic
+            title="待处理用印"
+            :value="stats.pendingSealCount"
+            :value-style="{ color: '#52c41a' }"
+          />
+        </Card>
+      </Col>
+      <Col :xs="12" :sm="12" :md="6" :lg="6">
+        <Card
+          :bordered="false"
+          hoverable
+          class="stat-card stat-card-orange"
+          @click="router.push('/admin/leave')"
+        >
+          <Statistic
+            title="待审批请假"
+            :value="stats.pendingLeaveCount"
+            :value-style="{ color: '#fa8c16' }"
+          />
+        </Card>
+      </Col>
+      <Col :xs="12" :sm="12" :md="6" :lg="6">
+        <Card
+          :bordered="false"
+          hoverable
+          class="stat-card stat-card-purple"
+          @click="router.push('/admin/asset')"
+        >
+          <Statistic
+            title="待处理资产"
+            :value="stats.pendingAssetCount"
+            :value-style="{ color: '#722ed1' }"
+          />
+        </Card>
+      </Col>
+    </Row>
+
+    <!-- 默认统计卡片（兜底） -->
+    <Row v-else :gutter="[16, 16]" class="mt-4">
+      <Col :xs="12" :sm="12" :md="6" :lg="6">
+        <Card :bordered="false" hoverable class="stat-card stat-card-purple">
+          <Statistic
+            title="待办任务"
+            :value="stats.taskCount"
+            :value-style="{ color: '#722ed1' }"
+          />
+        </Card>
+      </Col>
+    </Row>
+
+    <!-- 快捷导航 + 即将到期的期限 + 最近日程 -->
     <Row :gutter="[16, 16]" class="mt-4">
-      <!-- 左侧：最近日程 + 待办事项 -->
-      <Col :xs="24" :lg="14">
+      <Col :xs="24" :md="12" :lg="8">
+        <WorkbenchQuickNav
+          :items="quickNavItems"
+          title="快捷导航"
+          @click="navTo"
+        />
+      </Col>
+      <Col :xs="24" :md="12" :lg="8">
+        <Card :bordered="false" class="deadline-card">
+          <template #title>
+            <div class="flex items-center justify-between">
+              <span>⏰ 即将到期</span>
+            </div>
+          </template>
+          <div class="deadline-content">
+            <Timeline v-if="upcomingDeadlines.length > 0">
+              <TimelineItem
+                v-for="deadline in upcomingDeadlines"
+                :key="deadline.id"
+                :color="getDeadlineColor(deadline)"
+              >
+                <div
+                  class="-m-2 cursor-pointer rounded p-2 hover:bg-gray-50"
+                  @click="router.push(`/matter/detail/${deadline.matterId}`)"
+                >
+                  <div class="mb-1 flex items-center gap-2">
+                    <Tag :color="getDeadlineColor(deadline)" size="small">
+                      {{ formatDeadlineDays(deadline) }}
+                    </Tag>
+                    <span class="text-xs text-gray-500">{{
+                      deadline.deadlineDate
+                    }}</span>
+                  </div>
+                  <div class="font-medium">{{ deadline.deadlineName }}</div>
+                  <div class="mt-1 text-xs text-gray-500">
+                    📁 {{ deadline.matterName }}
+                  </div>
+                </div>
+              </TimelineItem>
+            </Timeline>
+            <Empty
+              v-else
+              :image="Empty.PRESENTED_IMAGE_SIMPLE"
+              description="暂无即将到期的期限"
+            />
+          </div>
+        </Card>
+      </Col>
+      <Col :xs="24" :md="24" :lg="8">
         <!-- 最近日程 - 使用 Timeline 组件 -->
-        <Card :bordered="false" class="mb-4">
+        <Card :bordered="false" class="schedule-card">
           <template #title>
             <div class="flex items-center justify-between">
               <span>📅 最近日程</span>
               <a @click="router.push('/workbench/schedule')">查看全部 →</a>
             </div>
           </template>
-          <Timeline v-if="upcomingSchedules.length > 0">
-            <TimelineItem
-              v-for="schedule in upcomingSchedules.slice(0, 5)"
-              :key="schedule.id"
-              :color="getScheduleTypeColor(schedule.scheduleType)"
-            >
-              <div
-                class="-m-2 cursor-pointer rounded p-2 hover:bg-gray-50"
-                @click="router.push('/workbench/schedule')"
+          <div class="schedule-content">
+            <Timeline v-if="upcomingSchedules.length > 0">
+              <TimelineItem
+                v-for="schedule in upcomingSchedules.slice(0, 4)"
+                :key="schedule.id"
+                :color="getScheduleTypeColor(schedule.scheduleType)"
               >
-                <div class="mb-1 flex items-center gap-2">
-                  <Tag
-                    :color="getScheduleTypeColor(schedule.scheduleType)"
-                    size="small"
-                  >
-                    {{ schedule.scheduleTypeName }}
-                  </Tag>
-                  <span class="text-xs text-gray-500">{{
-                    formatScheduleTime(schedule)
-                  }}</span>
-                </div>
-                <div class="font-medium">{{ schedule.title }}</div>
                 <div
-                  v-if="schedule.location"
-                  class="mt-1 text-xs text-gray-500"
+                  class="-m-2 cursor-pointer rounded p-2 hover:bg-gray-50"
+                  @click="router.push('/workbench/schedule')"
                 >
-                  📍 {{ schedule.location }}
+                  <div class="mb-1 flex items-center gap-2">
+                    <Tag
+                      :color="getScheduleTypeColor(schedule.scheduleType)"
+                      size="small"
+                    >
+                      {{ schedule.scheduleTypeName }}
+                    </Tag>
+                    <span class="text-xs text-gray-500">{{
+                      formatScheduleTime(schedule)
+                    }}</span>
+                  </div>
+                  <div class="font-medium">{{ schedule.title }}</div>
+                  <div
+                    v-if="schedule.location"
+                    class="mt-1 text-xs text-gray-500"
+                  >
+                    📍 {{ schedule.location }}
+                  </div>
                 </div>
-              </div>
-            </TimelineItem>
-          </Timeline>
-          <Empty
-            v-else
-            description="暂无近期日程"
-            :image="Empty.PRESENTED_IMAGE_SIMPLE"
-          />
+              </TimelineItem>
+            </Timeline>
+            <Empty
+              v-else
+              description="暂无近期日程"
+              :image="Empty.PRESENTED_IMAGE_SIMPLE"
+            />
+          </div>
         </Card>
+      </Col>
+    </Row>
 
+    <Row :gutter="[16, 16]" class="mt-4">
+      <!-- 左侧：待办事项 -->
+      <Col :xs="24" :lg="14">
         <!-- 待办事项 -->
         <WorkbenchTodo :items="todoItems" title="待办事项" />
       </Col>
 
-      <!-- 右侧：快捷导航 + 最新动态 -->
+      <!-- 右侧：最新动态 -->
       <Col :xs="24" :lg="10">
-        <WorkbenchQuickNav
-          :items="quickNavItems"
-          title="快捷导航"
-          @click="navTo"
-        />
-
         <!-- 最新动态 - 使用 List 组件 -->
-        <Card :bordered="false" class="mt-4">
+        <Card :bordered="false">
           <template #title>
             <span>📰 最新动态</span>
           </template>
@@ -827,6 +1081,28 @@ onUnmounted(() => {
 
 .stat-card-purple {
   border-left: 3px solid #722ed1;
+}
+
+/* 最近日程卡片 - 与快捷导航高度一致 */
+.schedule-card {
+  height: 291px;
+}
+
+.schedule-card .schedule-content {
+  height: 211px;
+  padding-top: 12px;
+  overflow-y: auto;
+}
+
+/* 即将到期期限卡片 - 与快捷导航高度一致 */
+.deadline-card {
+  height: 291px;
+}
+
+.deadline-card .deadline-content {
+  height: 211px;
+  padding-top: 12px;
+  overflow-y: auto;
 }
 
 /* WorkbenchHeader 容器 */

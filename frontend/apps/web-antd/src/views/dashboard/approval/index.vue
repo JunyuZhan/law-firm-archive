@@ -63,7 +63,11 @@ const businessCategories = [
   { key: 'all', name: '全部', types: [] as string[] },
   { key: 'project', name: '项目业务', types: ['CONTRACT', 'MATTER_CLOSE'] },
   { key: 'finance', name: '财务业务', types: ['EXPENSE', 'PAYMENT_AMENDMENT'] },
-  { key: 'admin', name: '行政业务', types: ['SEAL_APPLICATION'] },
+  {
+    key: 'admin',
+    name: '行政业务',
+    types: ['SEAL_APPLICATION', 'LETTER_APPLICATION'],
+  },
   {
     key: 'risk',
     name: '风控业务',
@@ -79,6 +83,7 @@ const businessTypeOptions = [
   { label: '报销审批', value: 'EXPENSE' },
   { label: '付款修正', value: 'PAYMENT_AMENDMENT' },
   { label: '用印申请', value: 'SEAL_APPLICATION' },
+  { label: '出函申请', value: 'LETTER_APPLICATION' },
   { label: '利冲检索', value: 'CONFLICT_CHECK' },
   { label: '利冲豁免', value: 'CONFLICT_EXEMPTION' },
   { label: '转正申请', value: 'REGULARIZATION' },
@@ -678,7 +683,7 @@ onMounted(async () => {
             <DatePicker.RangePicker
               v-model:value="filterParams.dateRange"
               style="width: 100%"
-              placeholder="['开始日期', '结束日期']"
+              :placeholder="['开始日期', '结束日期']"
               @change="handleSearch"
             />
           </Col>

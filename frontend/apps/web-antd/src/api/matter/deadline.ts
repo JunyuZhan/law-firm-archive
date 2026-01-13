@@ -121,3 +121,10 @@ export function completeDeadline(id: number) {
 export function deleteDeadline(id: number) {
   return requestClient.delete<void>(`/matter/deadlines/${id}`);
 }
+
+/** 获取我的即将到期的期限 */
+export function getMyUpcomingDeadlines(days: number = 7, limit: number = 5) {
+  return requestClient.get<DeadlineDTO[]>('/matter/deadlines/my-upcoming', {
+    params: { days, limit },
+  });
+}

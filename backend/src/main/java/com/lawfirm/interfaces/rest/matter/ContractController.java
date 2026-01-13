@@ -261,7 +261,7 @@ public class ContractController {
      * 获取合同统计信息
      */
     @GetMapping("/statistics")
-    @RequirePermission("matter:contract:view")
+    @RequirePermission(value = {"matter:contract:view", "finance:report:view"}, logical = RequirePermission.Logical.OR)
     public Result<Map<String, Object>> getStatistics(
             @RequestParam(required = false) Long departmentId,
             @RequestParam(required = false) LocalDate startDate,

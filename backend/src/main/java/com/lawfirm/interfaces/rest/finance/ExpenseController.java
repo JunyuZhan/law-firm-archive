@@ -34,7 +34,7 @@ public class ExpenseController {
     private final ExpenseAppService expenseAppService;
 
     @GetMapping
-    @RequirePermission("finance:expense:list")
+    @RequirePermission(value = {"finance:expense:list", "finance:report:view"}, logical = RequirePermission.Logical.OR)
     @Operation(summary = "查询费用报销列表")
     public Result<PageResult<ExpenseDTO>> listExpenses(ExpenseQueryDTO query) {
         PageResult<ExpenseDTO> result = expenseAppService.listExpenses(query);

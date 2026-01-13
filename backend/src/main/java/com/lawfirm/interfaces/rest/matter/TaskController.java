@@ -106,9 +106,9 @@ public class TaskController {
 
     /**
      * 获取我的任务（支持分页和状态过滤）
+     * 注意：此接口仅返回当前用户自己的任务，无需特殊权限
      */
     @GetMapping("/my")
-    @RequirePermission("task:view")
     public Result<PageResult<TaskDTO>> getMyTasks(TaskQueryDTO query) {
         // 设置当前用户为执行人
         query.setAssigneeId(com.lawfirm.common.util.SecurityUtils.getUserId());
@@ -117,9 +117,9 @@ public class TaskController {
 
     /**
      * 获取我的待办任务
+     * 注意：此接口仅返回当前用户自己的待办任务，无需特殊权限
      */
     @GetMapping("/my/todo")
-    @RequirePermission("task:view")
     public Result<List<TaskDTO>> getMyTodo() {
         return Result.success(taskAppService.getMyTodoTasks());
     }
