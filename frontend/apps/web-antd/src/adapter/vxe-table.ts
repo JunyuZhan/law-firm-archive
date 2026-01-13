@@ -38,6 +38,15 @@ setupVbenVxeTable({
         rowConfig: {
           keyField: 'id', // 默认使用 id 作为行唯一标识
         },
+        // 虚拟滚动配置 - 优化大数据量表格性能
+        scrollY: {
+          enabled: true,
+          gt: 30, // 超过30条数据时启用Y轴虚拟滚动
+        },
+        scrollX: {
+          enabled: true,
+          gt: 10, // 超过10列时启用X轴虚拟滚动
+        },
       } as VxeTableGridOptions,
     });
 

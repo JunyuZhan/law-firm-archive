@@ -424,20 +424,20 @@ onMounted(() => {
     <Card>
       <!-- 搜索栏 -->
       <div style="margin-bottom: 16px">
-        <Form layout="inline" :model="searchForm" @finish="handleSearch">
-          <FormItem label="员工">
+        <Row :gutter="[16, 16]">
+          <Col :xs="24" :sm="12" :md="6" :lg="5">
             <Select
               v-model:value="searchForm.employeeId"
-              placeholder="请选择员工"
+              placeholder="员工"
               allow-clear
               show-search
+              style="width: 100%"
               :filter-option="
                 (input: string, option: any) =>
                   option.children[0].children
                     .toLowerCase()
                     .includes(input.toLowerCase())
               "
-              style="width: 150px"
             >
               <Select.Option
                 v-for="emp in employeeList"
@@ -447,21 +447,21 @@ onMounted(() => {
                 {{ emp.realName || '-' }}
               </Select.Option>
             </Select>
-          </FormItem>
-          <FormItem label="合同编号">
+          </Col>
+          <Col :xs="24" :sm="12" :md="6" :lg="5">
             <Input
               v-model:value="searchForm.contractNo"
-              placeholder="请输入合同编号"
+              placeholder="合同编号"
               allow-clear
-              style="width: 150px"
+              @press-enter="handleSearch"
             />
-          </FormItem>
-          <FormItem label="状态">
+          </Col>
+          <Col :xs="24" :sm="12" :md="6" :lg="4">
             <Select
               v-model:value="searchForm.status"
-              placeholder="请选择状态"
+              placeholder="状态"
               allow-clear
-              style="width: 120px"
+              style="width: 100%"
             >
               <Select.Option
                 v-for="item in statusOptions"
@@ -471,15 +471,15 @@ onMounted(() => {
                 {{ item.label }}
               </Select.Option>
             </Select>
-          </FormItem>
-          <FormItem>
-            <Space>
-              <Button type="primary" html-type="submit">查询</Button>
+          </Col>
+          <Col :xs="24" :sm="12" :md="6" :lg="10">
+            <Space wrap>
+              <Button type="primary" @click="handleSearch">查询</Button>
               <Button @click="handleReset">重置</Button>
               <Button type="primary" @click="handleAdd">新建劳动合同</Button>
             </Space>
-          </FormItem>
-        </Form>
+          </Col>
+        </Row>
       </div>
 
       <!-- 表格 -->

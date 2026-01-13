@@ -408,6 +408,8 @@ onMounted(() => {
               placeholder="所属项目"
               allow-clear
               show-search
+              :virtual="matterOptions.length > 50"
+              :list-height="256"
               :filter-option="
                 (input: string, option: any) =>
                   (option?.label || '')
@@ -424,6 +426,8 @@ onMounted(() => {
               placeholder="筛选律师"
               allow-clear
               show-search
+              :virtual="userOptions.length > 50"
+              :list-height="256"
               :filter-option="
                 (input: string, option: any) =>
                   (option?.label || '')
@@ -549,6 +553,8 @@ onMounted(() => {
             v-model:value="formData.matterId"
             placeholder="请选择所属项目"
             show-search
+            :virtual="matterOptions.length > 50"
+            :list-height="256"
             :filter-option="
               (input: string, option: any) =>
                 (option?.label || '')

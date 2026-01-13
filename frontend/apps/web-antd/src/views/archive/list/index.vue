@@ -110,7 +110,7 @@ const extendedQuery = reactive({
 // 查询参数
 const queryParams = reactive<ArchiveQuery>({
   pageNum: 1,
-  pageSize: 100, // 加载更多数据用于前端过滤
+  pageSize: 24, // 优化：减少单页数据量，使用分页加载
   archiveNo: undefined,
   archiveName: undefined,
   matterId: undefined,
@@ -1090,6 +1090,8 @@ onMounted(async () => {
               placeholder="请选择已结案的项目"
               show-search
               style="width: 100%"
+              :virtual="archivableMatters.length > 50"
+              :list-height="256"
               :filter-option="
                 (input, option) =>
                   (option?.label || '')
@@ -1368,6 +1370,9 @@ onMounted(async () => {
   transition:
     transform 0.3s ease,
     box-shadow 0.3s ease;
+  /* 性能优化：延迟渲染不在视口中的卡片 */
+  content-visibility: auto;
+  contain-intrinsic-size: 0 380px;
 }
 
 .archive-cover-card:hover {

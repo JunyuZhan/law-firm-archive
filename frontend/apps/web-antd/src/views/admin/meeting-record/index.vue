@@ -12,12 +12,14 @@ import { Page } from '@vben/common-ui';
 import {
   Button,
   Card,
+  Col,
   DatePicker,
   Form,
   FormItem,
   Input,
   message,
   Modal,
+  Row,
   Select,
   Space,
   Table,
@@ -239,16 +241,16 @@ onMounted(() => {
     <Card>
       <!-- 搜索栏 -->
       <div style="margin-bottom: 16px">
-        <Form layout="inline" :model="searchForm" @finish="handleSearch">
-          <FormItem label="日期范围">
-            <RangePicker style="width: 240px" @change="handleDateRangeChange" />
-          </FormItem>
-          <FormItem label="会议室">
+        <Row :gutter="[16, 16]">
+          <Col :xs="24" :sm="12" :md="8" :lg="6">
+            <RangePicker style="width: 100%" @change="handleDateRangeChange" />
+          </Col>
+          <Col :xs="24" :sm="12" :md="6" :lg="5">
             <Select
               v-model:value="searchForm.roomId"
-              placeholder="请选择会议室"
+              placeholder="会议室"
               allow-clear
-              style="width: 150px"
+              style="width: 100%"
             >
               <Select.Option
                 v-for="room in roomList"
@@ -258,15 +260,15 @@ onMounted(() => {
                 {{ room.name }}
               </Select.Option>
             </Select>
-          </FormItem>
-          <FormItem>
-            <Space>
-              <Button type="primary" html-type="submit">查询</Button>
+          </Col>
+          <Col :xs="24" :sm="24" :md="10" :lg="13">
+            <Space wrap>
+              <Button type="primary" @click="handleSearch">查询</Button>
               <Button @click="handleReset">重置</Button>
               <Button type="primary" @click="handleAdd">新建会议记录</Button>
             </Space>
-          </FormItem>
-        </Form>
+          </Col>
+        </Row>
       </div>
 
       <!-- 表格 -->

@@ -319,6 +319,8 @@ const formSchema: VbenFormSchema[] = [
       placeholder: '请选择客户',
       allowClear: true,
       showSearch: true,
+      virtual: true, // 启用虚拟滚动
+      listHeight: 256,
       filterOption: (input: string, option: any) =>
         (option?.label || '').toLowerCase().includes(input.toLowerCase()),
       options: computed(() =>
@@ -1131,6 +1133,8 @@ onMounted(async () => {
                     placeholder="请选择客户"
                     show-search
                     style="flex: 2"
+                    :virtual="clients.length > 50"
+                    :list-height="256"
                     :filter-option="
                       (input, option) =>
                         (option?.label || '')
@@ -1360,6 +1364,8 @@ onMounted(async () => {
                 placeholder="请选择客户"
                 show-search
                 allow-clear
+                :virtual="clients.length > 50"
+                :list-height="256"
                 :filter-option="
                   (input, option) =>
                     (option?.label || '')

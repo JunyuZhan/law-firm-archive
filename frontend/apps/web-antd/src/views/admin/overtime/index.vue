@@ -12,12 +12,14 @@ import { Page } from '@vben/common-ui';
 import {
   Button,
   Card,
+  Col,
   DatePicker,
   Form,
   FormItem,
   Input,
   message,
   Modal,
+  Row,
   Space,
   Table,
   Tag,
@@ -249,18 +251,18 @@ onMounted(() => {
     <Card>
       <!-- 搜索栏 -->
       <div style="margin-bottom: 16px">
-        <Form layout="inline" :model="searchForm" @finish="handleSearch">
-          <FormItem label="日期范围">
-            <RangePicker style="width: 240px" @change="handleDateRangeChange" />
-          </FormItem>
-          <FormItem>
-            <Space>
-              <Button type="primary" html-type="submit">查询</Button>
+        <Row :gutter="[16, 16]">
+          <Col :xs="24" :sm="12" :md="8" :lg="6">
+            <RangePicker style="width: 100%" @change="handleDateRangeChange" />
+          </Col>
+          <Col :xs="24" :sm="12" :md="16" :lg="18">
+            <Space wrap>
+              <Button type="primary" @click="handleSearch">查询</Button>
               <Button @click="handleReset">重置</Button>
               <Button type="primary" @click="handleAdd">申请加班</Button>
             </Space>
-          </FormItem>
-        </Form>
+          </Col>
+        </Row>
       </div>
 
       <!-- 表格 -->

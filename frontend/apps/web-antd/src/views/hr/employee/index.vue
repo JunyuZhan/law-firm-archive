@@ -610,33 +610,29 @@ onMounted(() => {
         <!-- Tab 1: 用户列表 -->
         <Tabs.TabPane key="users" tab="用户列表">
           <div style="margin-bottom: 16px">
-            <Form
-              layout="inline"
-              :model="userQueryParams"
-              @finish="handleUserSearch"
-            >
-              <FormItem label="用户名">
+            <Row :gutter="[16, 16]">
+              <Col :xs="24" :sm="12" :md="6" :lg="4">
                 <Input
                   v-model:value="userQueryParams.username"
-                  placeholder="请输入用户名"
+                  placeholder="用户名"
                   allow-clear
-                  style="width: 150px"
+                  @press-enter="handleUserSearch"
                 />
-              </FormItem>
-              <FormItem label="姓名">
+              </Col>
+              <Col :xs="24" :sm="12" :md="6" :lg="4">
                 <Input
                   v-model:value="userQueryParams.realName"
-                  placeholder="请输入姓名"
+                  placeholder="姓名"
                   allow-clear
-                  style="width: 150px"
+                  @press-enter="handleUserSearch"
                 />
-              </FormItem>
-              <FormItem label="部门">
+              </Col>
+              <Col :xs="24" :sm="12" :md="6" :lg="4">
                 <Select
                   v-model:value="userQueryParams.departmentId"
-                  placeholder="请选择部门"
+                  placeholder="部门"
                   allow-clear
-                  style="width: 150px"
+                  style="width: 100%"
                 >
                   <Select.Option
                     v-for="dept in renderDepartmentOptions(departmentTree)"
@@ -646,10 +642,10 @@ onMounted(() => {
                     {{ dept.label }}
                   </Select.Option>
                 </Select>
-              </FormItem>
-              <FormItem>
-                <Space>
-                  <Button type="primary" html-type="submit">查询</Button>
+              </Col>
+              <Col :xs="24" :sm="12" :md="6" :lg="12">
+                <Space wrap>
+                  <Button type="primary" @click="handleUserSearch">查询</Button>
                   <Button @click="handleUserReset">重置</Button>
                   <Button
                     type="primary"
@@ -659,8 +655,8 @@ onMounted(() => {
                     批量创建员工档案 ({{ selectedUserIds.length }})
                   </Button>
                 </Space>
-              </FormItem>
-            </Form>
+              </Col>
+            </Row>
           </div>
 
           <Table
@@ -703,29 +699,29 @@ onMounted(() => {
         <!-- Tab 2: 员工档案 -->
         <Tabs.TabPane key="employees" tab="员工档案">
           <div style="margin-bottom: 16px">
-            <Form layout="inline" :model="searchForm" @finish="handleSearch">
-              <FormItem label="员工编号">
+            <Row :gutter="[16, 16]">
+              <Col :xs="24" :sm="12" :md="6" :lg="4">
                 <Input
                   v-model:value="searchForm.employeeNo"
-                  placeholder="请输入员工编号"
+                  placeholder="员工编号"
                   allow-clear
-                  style="width: 150px"
+                  @press-enter="handleSearch"
                 />
-              </FormItem>
-              <FormItem label="姓名">
+              </Col>
+              <Col :xs="24" :sm="12" :md="6" :lg="4">
                 <Input
                   v-model:value="searchForm.realName"
-                  placeholder="请输入姓名"
+                  placeholder="姓名"
                   allow-clear
-                  style="width: 150px"
+                  @press-enter="handleSearch"
                 />
-              </FormItem>
-              <FormItem label="部门">
+              </Col>
+              <Col :xs="24" :sm="12" :md="6" :lg="4">
                 <Select
                   v-model:value="searchForm.departmentId"
-                  placeholder="请选择部门"
+                  placeholder="部门"
                   allow-clear
-                  style="width: 150px"
+                  style="width: 100%"
                 >
                   <Select.Option
                     v-for="dept in renderDepartmentOptions(departmentTree)"
@@ -735,13 +731,13 @@ onMounted(() => {
                     {{ dept.label }}
                   </Select.Option>
                 </Select>
-              </FormItem>
-              <FormItem label="工作状态">
+              </Col>
+              <Col :xs="24" :sm="12" :md="6" :lg="4">
                 <Select
                   v-model:value="searchForm.workStatus"
-                  placeholder="请选择状态"
+                  placeholder="工作状态"
                   allow-clear
-                  style="width: 120px"
+                  style="width: 100%"
                 >
                   <Select.Option
                     v-for="item in workStatusOptions"
@@ -751,25 +747,25 @@ onMounted(() => {
                     {{ item.label }}
                   </Select.Option>
                 </Select>
-              </FormItem>
-              <FormItem label="职位">
+              </Col>
+              <Col :xs="24" :sm="12" :md="6" :lg="4">
                 <Input
                   v-model:value="searchForm.position"
-                  placeholder="请输入职位"
+                  placeholder="职位"
                   allow-clear
-                  style="width: 120px"
+                  @press-enter="handleSearch"
                 />
-              </FormItem>
-              <FormItem>
-                <Space>
-                  <Button type="primary" html-type="submit">查询</Button>
+              </Col>
+              <Col :xs="24" :sm="12" :md="6" :lg="4">
+                <Space wrap>
+                  <Button type="primary" @click="handleSearch">查询</Button>
                   <Button @click="handleReset">重置</Button>
                   <Button type="primary" @click="handleAdd">
                     新建员工档案
                   </Button>
                 </Space>
-              </FormItem>
-            </Form>
+              </Col>
+            </Row>
           </div>
 
           <Table

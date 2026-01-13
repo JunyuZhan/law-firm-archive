@@ -3,7 +3,7 @@ import type { DepartmentDTO, UserDTO } from '#/api/system/types';
 
 /**
  * 用户选择器组件
- * 支持按部门分组展示用户，支持搜索
+ * 支持按部门分组展示用户，支持搜索和虚拟滚动
  */
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 
@@ -33,6 +33,10 @@ const props = withDefaults(
     userStatus?: string;
     /** 选中的用户ID（单选） */
     value?: null | number | number[];
+    /** 虚拟滚动列表高度 */
+    listHeight?: number;
+    /** 启用虚拟滚动的阈值 */
+    virtualThreshold?: number;
   }>(),
   {
     placeholder: '请选择用户',
@@ -41,6 +45,8 @@ const props = withDefaults(
     excludeUserIds: () => [],
     userStatus: 'ACTIVE',
     multiple: false,
+    listHeight: 300,
+    virtualThreshold: 30,
   },
 );
 
@@ -170,6 +176,11 @@ const dataReady = computed(
   () => users.value.length > 0 && departments.value.length > 0,
 );
 
+// 是否启用虚拟滚动（用户数量超过阈值时启用）
+const enableVirtual = computed(() => {
+  return users.value.length >= props.virtualThreshold;
+});
+
 // 标记是否正在更新值，防止无限循环
 let isUpdatingValue = false;
 
@@ -218,12 +229,14 @@ defineExpose({
     :loading="loading"
     :style="{ width: '100%', ...(typeof style === 'object' ? style : {}) }"
     show-search
-    tree-default-expand-all
+    :tree-default-expand-all="!enableVirtual"
     :filter-tree-node="filterTreeNode"
-    :dropdown-style="{ maxHeight: '400px', overflow: 'auto' }"
+    :dropdown-style="{ maxHeight: `${listHeight}px`, overflow: 'auto' }"
     :multiple="multiple"
     :tree-checkable="multiple"
     :max-tag-count="multiple ? 3 : undefined"
     tree-node-label-prop="title"
+    :virtual="enableVirtual"
+    :list-height="listHeight"
   />
 </template>

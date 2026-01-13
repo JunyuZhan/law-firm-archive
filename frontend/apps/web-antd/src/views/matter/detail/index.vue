@@ -881,9 +881,10 @@ onMounted(() => {
 
         <!-- 标签页内容 -->
         <Card style="margin-bottom: 16px">
-          <Tabs v-model:active-key="activeTab">
+          <!-- destroyInactiveTabPane: 销毁非活动Tab内容，减少内存占用和初始渲染负担 -->
+          <Tabs v-model:active-key="activeTab" :destroyInactiveTabPane="true">
             <!-- 卷宗文件 - 显示项目卷宗目录结构（优先级最高） -->
-            <TabPane key="dossier" tab="卷宗文件">
+            <TabPane key="dossier" tab="卷宗文件" :forceRender="false">
               <DossierManager
                 :matter-id="matter.id"
                 :readonly="!canEditDocument"
@@ -891,7 +892,7 @@ onMounted(() => {
             </TabPane>
 
             <!-- 证据整理 - 支持表格式和清单式两种编辑模式 -->
-            <TabPane key="evidence" tab="证据整理">
+            <TabPane key="evidence" tab="证据整理" :forceRender="false">
               <EvidenceListManager
                 ref="evidenceManagerRef"
                 :matter-id="matter.id"
@@ -1309,7 +1310,7 @@ onMounted(() => {
             </TabPane>
 
             <!-- 客户服务 -->
-            <TabPane key="clientService" tab="客户服务">
+            <TabPane key="clientService" tab="客户服务" :forceRender="false">
               <ClientServicePanel
                 :client-id="matter.clientId"
                 :client-name="matter.clientName || ''"

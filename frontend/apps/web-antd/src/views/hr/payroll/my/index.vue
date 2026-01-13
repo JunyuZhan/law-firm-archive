@@ -12,6 +12,7 @@ import { Page } from '@vben/common-ui';
 import {
   Button,
   Card,
+  Col,
   Descriptions,
   DescriptionsItem,
   Divider,
@@ -21,6 +22,7 @@ import {
   Input,
   message,
   Modal,
+  Row,
   Select,
   Space,
   Table,
@@ -212,29 +214,33 @@ onMounted(() => {
   <Page>
     <Card>
       <!-- 搜索表单 -->
-      <Form :model="queryParams" layout="inline" class="mb-4">
-        <FormItem label="年份">
-          <Select
-            v-model:value="queryParams.year"
-            style="width: 120px"
-            :options="yearOptions"
-          />
-        </FormItem>
-        <FormItem label="月份">
-          <Select
-            v-model:value="queryParams.month"
-            style="width: 120px"
-            :options="monthOptions"
-            allow-clear
-          />
-        </FormItem>
-        <FormItem>
-          <Space>
-            <Button type="primary" @click="handleSearch">搜索</Button>
-            <Button @click="handleReset">重置</Button>
-          </Space>
-        </FormItem>
-      </Form>
+      <div class="mb-4">
+        <Row :gutter="[16, 16]">
+          <Col :xs="12" :sm="8" :md="4" :lg="3">
+            <Select
+              v-model:value="queryParams.year"
+              placeholder="年份"
+              style="width: 100%"
+              :options="yearOptions"
+            />
+          </Col>
+          <Col :xs="12" :sm="8" :md="4" :lg="3">
+            <Select
+              v-model:value="queryParams.month"
+              placeholder="月份"
+              style="width: 100%"
+              :options="monthOptions"
+              allow-clear
+            />
+          </Col>
+          <Col :xs="24" :sm="8" :md="16" :lg="18">
+            <Space wrap>
+              <Button type="primary" @click="handleSearch">搜索</Button>
+              <Button @click="handleReset">重置</Button>
+            </Space>
+          </Col>
+        </Row>
+      </div>
 
       <!-- 表格 -->
       <Table

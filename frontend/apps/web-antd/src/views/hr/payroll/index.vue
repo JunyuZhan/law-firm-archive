@@ -15,6 +15,7 @@ import {
   AutoComplete,
   Button,
   Card,
+  Col,
   DatePicker,
   Descriptions,
   DescriptionsItem,
@@ -25,6 +26,7 @@ import {
   InputNumber,
   message,
   Modal,
+  Row,
   Select,
   Space,
   Table,
@@ -735,69 +737,71 @@ onMounted(() => {
   <Page>
     <Card>
       <!-- 搜索表单 -->
-      <Form :model="queryParams" layout="inline" class="mb-4">
-        <FormItem label="年份">
-          <Select
-            v-model:value="queryParams.payrollYear"
-            style="width: 120px"
-            :options="yearOptions"
-            @change="handleSearch"
-          />
-        </FormItem>
-        <FormItem label="月份">
-          <Select
-            v-model:value="queryParams.payrollMonth"
-            style="width: 120px"
-            :options="monthOptions"
-            @change="handleSearch"
-          />
-        </FormItem>
-        <FormItem label="员工姓名">
-          <Input
-            v-model:value="filterParams.employeeName"
-            placeholder="请输入员工姓名"
-            style="width: 150px"
-            allow-clear
-            @press-enter="handleSearch"
-          />
-        </FormItem>
-        <FormItem label="工号">
-          <Input
-            v-model:value="filterParams.employeeNo"
-            placeholder="请输入工号"
-            style="width: 150px"
-            allow-clear
-            @press-enter="handleSearch"
-          />
-        </FormItem>
-        <FormItem>
-          <Space>
-            <Button type="primary" @click="handleSearch">查询</Button>
-            <Button @click="handleReset">重置</Button>
-            <Button
-              v-if="currentSheet && canSubmit(currentSheet)"
-              type="primary"
-              @click="handleSubmit(currentSheet)"
-            >
-              提交工资表
-            </Button>
-            <Button
-              v-if="currentSheet && canFinanceConfirm(currentSheet)"
-              type="primary"
-              @click="handleFinanceConfirm(currentSheet)"
-            >
-              财务确认
-            </Button>
-            <Button
-              v-if="currentSheet && canIssue(currentSheet)"
-              type="primary"
-              @click="handleIssue(currentSheet)"
-            >
-              发放工资
-            </Button>
-          </Space>
-        </FormItem>
-      </Form>
+      <div class="mb-4">
+        <Row :gutter="[16, 16]">
+          <Col :xs="12" :sm="8" :md="4" :lg="3">
+            <Select
+              v-model:value="queryParams.payrollYear"
+              placeholder="年份"
+              style="width: 100%"
+              :options="yearOptions"
+              @change="handleSearch"
+            />
+          </Col>
+          <Col :xs="12" :sm="8" :md="4" :lg="3">
+            <Select
+              v-model:value="queryParams.payrollMonth"
+              placeholder="月份"
+              style="width: 100%"
+              :options="monthOptions"
+              @change="handleSearch"
+            />
+          </Col>
+          <Col :xs="24" :sm="8" :md="5" :lg="4">
+            <Input
+              v-model:value="filterParams.employeeName"
+              placeholder="员工姓名"
+              allow-clear
+              @press-enter="handleSearch"
+            />
+          </Col>
+          <Col :xs="24" :sm="8" :md="5" :lg="4">
+            <Input
+              v-model:value="filterParams.employeeNo"
+              placeholder="工号"
+              allow-clear
+              @press-enter="handleSearch"
+            />
+          </Col>
+          <Col :xs="24" :sm="16" :md="6" :lg="10">
+            <Space wrap>
+              <Button type="primary" @click="handleSearch">查询</Button>
+              <Button @click="handleReset">重置</Button>
+              <Button
+                v-if="currentSheet && canSubmit(currentSheet)"
+                type="primary"
+                @click="handleSubmit(currentSheet)"
+              >
+                提交工资表
+              </Button>
+              <Button
+                v-if="currentSheet && canFinanceConfirm(currentSheet)"
+                type="primary"
+                @click="handleFinanceConfirm(currentSheet)"
+              >
+                财务确认
+              </Button>
+              <Button
+                v-if="currentSheet && canIssue(currentSheet)"
+                type="primary"
+                @click="handleIssue(currentSheet)"
+              >
+                发放工资
+              </Button>
+            </Space>
+          </Col>
+        </Row>
+      </div>
 
       <!-- 工资表汇总信息 -->
       <div v-if="currentSheet" class="mb-4">
@@ -860,6 +864,8 @@ onMounted(() => {
         :pagination="false"
         row-key="employeeId"
         size="small"
+        :virtual="filteredDataSource.length > 50"
+        :scroll="{ y: 600 }"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'income'">

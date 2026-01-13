@@ -603,6 +603,8 @@ onMounted(() => {
                   placeholder="客户"
                   allow-clear
                   show-search
+                  :virtual="clients.length > 50"
+                  :list-height="256"
                   :filter-option="
                     (input, option) =>
                       (option?.label || '')
@@ -624,6 +626,8 @@ onMounted(() => {
                   placeholder="项目"
                   allow-clear
                   show-search
+                  :virtual="matters.length > 50"
+                  :list-height="256"
                   :filter-option="
                     (input, option) =>
                       (option?.label || '')

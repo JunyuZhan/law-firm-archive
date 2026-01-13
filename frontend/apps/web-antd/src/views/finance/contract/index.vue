@@ -248,21 +248,15 @@ onMounted(() => {
                 placeholder="请选择"
                 allow-clear
                 show-search
+                :virtual="clients.length > 50"
+                :list-height="256"
                 :filter-option="
                   (input: string, option: any) =>
                     option.label.toLowerCase().includes(input.toLowerCase())
                 "
+                :options="clients.map((c) => ({ label: c.name, value: c.id }))"
                 style="width: 100%"
-              >
-                <Select.Option
-                  v-for="c in clients"
-                  :key="c.id"
-                  :value="c.id"
-                  :label="c.name"
-                >
-                  {{ c.name }}
-                </Select.Option>
-              </Select>
+              />
             </FormItem>
           </Col>
           <Col :xs="24" :sm="12" :md="8" :lg="6" :xl="4">
