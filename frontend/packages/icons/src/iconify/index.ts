@@ -41,3 +41,7 @@ export const PauseCircleOutlined = createIconifyIcon(
 export const MinusOutlined = createIconifyIcon('ant-design:minus-outlined');
 export const DownOutlined = createIconifyIcon('ant-design:down-outlined');
 export const InboxOutlined = createIconifyIcon('ant-design:inbox-outlined');
+export const BookOutlined = createIconifyIcon('ant-design:book-outlined');
+export const FileProtectOutlined = createIconifyIcon(
+  'ant-design:file-protect-outlined',
+);
