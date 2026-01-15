@@ -4,11 +4,12 @@ import type { CauseTreeNodeDTO } from '#/api/system/types';
 import { computed, onMounted, ref, watch } from 'vue';
 
 import { Page } from '@vben/common-ui';
+
 import {
   BookOutlined,
   FileProtectOutlined,
   WarningOutlined,
-} from '@vben/icons';
+} from '@ant-design/icons-vue';
 
 import {
   Card,
