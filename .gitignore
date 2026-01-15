@@ -61,3 +61,4 @@ LOG_PATH_IS_UNDEFINED/
 backend/logs/
 .cursor/rules/
 backend/backups/
+*.jqwik-database
