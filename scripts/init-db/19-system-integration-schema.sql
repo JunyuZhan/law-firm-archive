@@ -67,7 +67,6 @@ INSERT INTO public.sys_external_integration (
     auth_type,
     extra_config,
     enabled,
-    version,
     deleted
 ) VALUES (
     'WECOM_BOT',
@@ -79,6 +78,5 @@ INSERT INTO public.sys_external_integration (
     'WEBHOOK',
     '{"mentionAll": false, "enabledTypes": ["TASK", "SCHEDULE", "APPROVAL", "CONTRACT", "REMINDER"]}',
     false,
-    1,
     false
 ) ON CONFLICT (integration_code) DO NOTHING;
