@@ -51,12 +51,13 @@ INSERT INTO sys_cause_of_action (code, name, cause_type, category_code, category
 ('6', '名誉权纠纷', 'CIVIL', 'P1', '人格权纠纷', 1, 6),
 ('7', '荣誉权纠纷', 'CIVIL', 'P1', '人格权纠纷', 1, 7),
 ('8', '隐私权、个人信息保护纠纷', 'CIVIL', 'P1', '人格权纠纷', 1, 8),
-('8.1', '隐私权纠纷', 'CIVIL', 'P1', '人格权纠纷', 2, 81) ON CONFLICT DO NOTHING,
-('8.2', '个人信息保护纠纷', 'CIVIL', 'P1', '人格权纠纷', 2, 82) ON CONFLICT DO NOTHING,
+('8.1', '隐私权纠纷', 'CIVIL', 'P1', '人格权纠纷', 2, 81),
+('8.2', '个人信息保护纠纷', 'CIVIL', 'P1', '人格权纠纷', 2, 82),
 ('9', '婚姻自主权纠纷', 'CIVIL', 'P1', '人格权纠纷', 1, 9),
 ('10', '人身自由权纠纷', 'CIVIL', 'P1', '人格权纠纷', 1, 10),
 ('11', '一般人格权纠纷', 'CIVIL', 'P1', '人格权纠纷', 1, 11),
-('11.1', '平等就业权纠纷', 'CIVIL', 'P1', '人格权纠纷', 2, 111) ON CONFLICT DO NOTHING;
+('11.1', '平等就业权纠纷', 'CIVIL', 'P1', '人格权纠纷', 2, 111)
+ON CONFLICT (code, cause_type) DO NOTHING;
 
 -- 二、婚姻家庭纠纷
 INSERT INTO sys_cause_of_action (code, name, cause_type, category_code, category_name, level, sort_order) VALUES
@@ -69,32 +70,34 @@ INSERT INTO sys_cause_of_action (code, name, cause_type, category_code, category
 ('18', '撤销婚姻纠纷', 'CIVIL', 'P2', '婚姻家庭纠纷', 1, 18),
 ('19', '夫妻财产约定纠纷', 'CIVIL', 'P2', '婚姻家庭纠纷', 1, 19),
 ('20', '同居关系纠纷', 'CIVIL', 'P2', '婚姻家庭纠纷', 1, 20),
-('20.1', '同居关系析产纠纷', 'CIVIL', 'P2', '婚姻家庭纠纷', 2, 201) ON CONFLICT DO NOTHING,
-('20.2', '同居关系子女抚养纠纷', 'CIVIL', 'P2', '婚姻家庭纠纷', 2, 202) ON CONFLICT DO NOTHING,
+('20.1', '同居关系析产纠纷', 'CIVIL', 'P2', '婚姻家庭纠纷', 2, 201),
+('20.2', '同居关系子女抚养纠纷', 'CIVIL', 'P2', '婚姻家庭纠纷', 2, 202),
 ('21', '亲子关系纠纷', 'CIVIL', 'P2', '婚姻家庭纠纷', 1, 21),
-('21.1', '确认亲子关系纠纷', 'CIVIL', 'P2', '婚姻家庭纠纷', 2, 211) ON CONFLICT DO NOTHING,
-('21.2', '否认亲子关系纠纷', 'CIVIL', 'P2', '婚姻家庭纠纷', 2, 212) ON CONFLICT DO NOTHING,
+('21.1', '确认亲子关系纠纷', 'CIVIL', 'P2', '婚姻家庭纠纷', 2, 211),
+('21.2', '否认亲子关系纠纷', 'CIVIL', 'P2', '婚姻家庭纠纷', 2, 212),
 ('22', '抚养纠纷', 'CIVIL', 'P2', '婚姻家庭纠纷', 1, 22),
-('22.1', '抚养费纠纷', 'CIVIL', 'P2', '婚姻家庭纠纷', 2, 221) ON CONFLICT DO NOTHING,
-('22.2', '变更抚养关系纠纷', 'CIVIL', 'P2', '婚姻家庭纠纷', 2, 222) ON CONFLICT DO NOTHING,
+('22.1', '抚养费纠纷', 'CIVIL', 'P2', '婚姻家庭纠纷', 2, 221),
+('22.2', '变更抚养关系纠纷', 'CIVIL', 'P2', '婚姻家庭纠纷', 2, 222),
 ('23', '扶养纠纷', 'CIVIL', 'P2', '婚姻家庭纠纷', 1, 23),
 ('24', '赡养纠纷', 'CIVIL', 'P2', '婚姻家庭纠纷', 1, 24),
 ('25', '收养关系纠纷', 'CIVIL', 'P2', '婚姻家庭纠纷', 1, 25),
 ('26', '监护权纠纷', 'CIVIL', 'P2', '婚姻家庭纠纷', 1, 26),
 ('27', '探望权纠纷', 'CIVIL', 'P2', '婚姻家庭纠纷', 1, 27),
-('28', '分家析产纠纷', 'CIVIL', 'P2', '婚姻家庭纠纷', 1, 28) ON CONFLICT DO NOTHING;
+('28', '分家析产纠纷', 'CIVIL', 'P2', '婚姻家庭纠纷', 1, 28)
+ON CONFLICT (code, cause_type) DO NOTHING;
 
 -- 三、继承纠纷
 INSERT INTO sys_cause_of_action (code, name, cause_type, category_code, category_name, level, sort_order) VALUES
 ('29', '法定继承纠纷', 'CIVIL', 'P3', '继承纠纷', 1, 29),
-('29.1', '转继承纠纷', 'CIVIL', 'P3', '继承纠纷', 2, 291) ON CONFLICT DO NOTHING,
-('29.2', '代位继承纠纷', 'CIVIL', 'P3', '继承纠纷', 2, 292) ON CONFLICT DO NOTHING,
+('29.1', '转继承纠纷', 'CIVIL', 'P3', '继承纠纷', 2, 291),
+('29.2', '代位继承纠纷', 'CIVIL', 'P3', '继承纠纷', 2, 292),
 ('30', '遗嘱继承纠纷', 'CIVIL', 'P3', '继承纠纷', 1, 30),
 ('31', '被继承人债务清偿纠纷', 'CIVIL', 'P3', '继承纠纷', 1, 31),
 ('32', '遗赠纠纷', 'CIVIL', 'P3', '继承纠纷', 1, 32),
 ('33', '遗赠扶养协议纠纷', 'CIVIL', 'P3', '继承纠纷', 1, 33),
 ('34', '非遗产继承人分配遗产纠纷', 'CIVIL', 'P3', '继承纠纷', 1, 34),
-('35', '遗产管理纠纷', 'CIVIL', 'P3', '继承纠纷', 1, 35) ON CONFLICT DO NOTHING;
+('35', '遗产管理纠纷', 'CIVIL', 'P3', '继承纠纷', 1, 35)
+ON CONFLICT (code, cause_type) DO NOTHING;
 
 -- 十、合同纠纷（常用）
 INSERT INTO sys_cause_of_action (code, name, cause_type, category_code, category_name, level, sort_order) VALUES
@@ -104,35 +107,37 @@ INSERT INTO sys_cause_of_action (code, name, cause_type, category_code, category
 ('81', '债权人代位权纠纷', 'CIVIL', 'P10', '合同纠纷', 1, 81),
 ('82', '债权人撤销权纠纷', 'CIVIL', 'P10', '合同纠纷', 1, 82),
 ('88', '买卖合同纠纷', 'CIVIL', 'P10', '合同纠纷', 1, 88),
-('88.1', '分期付款买卖合同纠纷', 'CIVIL', 'P10', '合同纠纷', 2, 881) ON CONFLICT DO NOTHING,
-('88.7', '国际货物买卖合同纠纷', 'CIVIL', 'P10', '合同纠纷', 2, 887) ON CONFLICT DO NOTHING,
+('88.1', '分期付款买卖合同纠纷', 'CIVIL', 'P10', '合同纠纷', 2, 881),
+('88.7', '国际货物买卖合同纠纷', 'CIVIL', 'P10', '合同纠纷', 2, 887),
 ('96', '房屋买卖合同纠纷', 'CIVIL', 'P10', '合同纠纷', 1, 96),
-('96.1', '商品房预约合同纠纷', 'CIVIL', 'P10', '合同纠纷', 2, 961) ON CONFLICT DO NOTHING,
-('96.2', '商品房预售合同纠纷', 'CIVIL', 'P10', '合同纠纷', 2, 962) ON CONFLICT DO NOTHING,
-('96.3', '商品房销售合同纠纷', 'CIVIL', 'P10', '合同纠纷', 2, 963) ON CONFLICT DO NOTHING,
+('96.1', '商品房预约合同纠纷', 'CIVIL', 'P10', '合同纠纷', 2, 961),
+('96.2', '商品房预售合同纠纷', 'CIVIL', 'P10', '合同纠纷', 2, 962),
+('96.3', '商品房销售合同纠纷', 'CIVIL', 'P10', '合同纠纷', 2, 963),
 ('108', '借款合同纠纷', 'CIVIL', 'P10', '合同纠纷', 1, 108),
-('108.1', '金融借款合同纠纷', 'CIVIL', 'P10', '合同纠纷', 2, 1081) ON CONFLICT DO NOTHING,
-('108.3', '民间借贷纠纷', 'CIVIL', 'P10', '合同纠纷', 2, 1083) ON CONFLICT DO NOTHING,
+('108.1', '金融借款合同纠纷', 'CIVIL', 'P10', '合同纠纷', 2, 1081),
+('108.3', '民间借贷纠纷', 'CIVIL', 'P10', '合同纠纷', 2, 1083),
 ('109', '保证合同纠纷', 'CIVIL', 'P10', '合同纠纷', 1, 109),
 ('116', '租赁合同纠纷', 'CIVIL', 'P10', '合同纠纷', 1, 116),
-('116.2', '房屋租赁合同纠纷', 'CIVIL', 'P10', '合同纠纷', 2, 1162) ON CONFLICT DO NOTHING,
+('116.2', '房屋租赁合同纠纷', 'CIVIL', 'P10', '合同纠纷', 2, 1162),
 ('117', '融资租赁合同纠纷', 'CIVIL', 'P10', '合同纠纷', 1, 117),
 ('120', '建设工程合同纠纷', 'CIVIL', 'P10', '合同纠纷', 1, 120),
-('120.3', '建设工程施工合同纠纷', 'CIVIL', 'P10', '合同纠纷', 2, 1203) ON CONFLICT DO NOTHING,
+('120.3', '建设工程施工合同纠纷', 'CIVIL', 'P10', '合同纠纷', 2, 1203),
 ('124', '委托合同纠纷', 'CIVIL', 'P10', '合同纠纷', 1, 124),
 ('126', '物业服务合同纠纷', 'CIVIL', 'P10', '合同纠纷', 1, 126),
-('142', '服务合同纠纷', 'CIVIL', 'P10', '合同纠纷', 1, 142) ON CONFLICT DO NOTHING;
+('142', '服务合同纠纷', 'CIVIL', 'P10', '合同纠纷', 1, 142)
+ON CONFLICT (code, cause_type) DO NOTHING;
 
 -- 十九、劳动争议
 INSERT INTO sys_cause_of_action (code, name, cause_type, category_code, category_name, level, sort_order) VALUES
 ('205', '劳动合同纠纷', 'CIVIL', 'P19', '劳动争议', 1, 205),
-('205.1', '确认劳动关系纠纷', 'CIVIL', 'P19', '劳动争议', 2, 2051) ON CONFLICT DO NOTHING,
-('205.5', '追索劳动报酬纠纷', 'CIVIL', 'P19', '劳动争议', 2, 2055) ON CONFLICT DO NOTHING,
-('205.6', '经济补偿金纠纷', 'CIVIL', 'P19', '劳动争议', 2, 2056) ON CONFLICT DO NOTHING,
-('205.7', '竞业限制纠纷', 'CIVIL', 'P19', '劳动争议', 2, 2057) ON CONFLICT DO NOTHING,
+('205.1', '确认劳动关系纠纷', 'CIVIL', 'P19', '劳动争议', 2, 2051),
+('205.5', '追索劳动报酬纠纷', 'CIVIL', 'P19', '劳动争议', 2, 2055),
+('205.6', '经济补偿金纠纷', 'CIVIL', 'P19', '劳动争议', 2, 2056),
+('205.7', '竞业限制纠纷', 'CIVIL', 'P19', '劳动争议', 2, 2057),
 ('206', '社会保险纠纷', 'CIVIL', 'P19', '劳动争议', 1, 206),
-('206.2', '工伤保险待遇纠纷', 'CIVIL', 'P19', '劳动争议', 2, 2062) ON CONFLICT DO NOTHING,
-('207', '福利待遇纠纷', 'CIVIL', 'P19', '劳动争议', 1, 207) ON CONFLICT DO NOTHING;
+('206.2', '工伤保险待遇纠纷', 'CIVIL', 'P19', '劳动争议', 2, 2062),
+('207', '福利待遇纠纷', 'CIVIL', 'P19', '劳动争议', 1, 207)
+ON CONFLICT (code, cause_type) DO NOTHING;
 
 -- 二十四、与公司有关的纠纷
 INSERT INTO sys_cause_of_action (code, name, cause_type, category_code, category_name, level, sort_order) VALUES
@@ -144,7 +149,8 @@ INSERT INTO sys_cause_of_action (code, name, cause_type, category_code, category
 ('304', '公司盈余分配纠纷', 'CIVIL', 'P24', '与公司有关的纠纷', 1, 304),
 ('305', '损害股东利益责任纠纷', 'CIVIL', 'P24', '与公司有关的纠纷', 1, 305),
 ('306', '损害公司利益责任纠纷', 'CIVIL', 'P24', '与公司有关的纠纷', 1, 306),
-('315', '公司解散纠纷', 'CIVIL', 'P24', '与公司有关的纠纷', 1, 315) ON CONFLICT DO NOTHING;
+('315', '公司解散纠纷', 'CIVIL', 'P24', '与公司有关的纠纷', 1, 315)
+ON CONFLICT (code, cause_type) DO NOTHING;
 
 -- 三十五、侵权责任纠纷
 INSERT INTO sys_cause_of_action (code, name, cause_type, category_code, category_name, level, sort_order) VALUES
@@ -157,7 +163,8 @@ INSERT INTO sys_cause_of_action (code, name, cause_type, category_code, category
 ('413', '医疗损害责任纠纷', 'CIVIL', 'P35', '侵权责任纠纷', 1, 413),
 ('414', '环境污染责任纠纷', 'CIVIL', 'P35', '侵权责任纠纷', 1, 414),
 ('419', '饲养动物损害责任纠纷', 'CIVIL', 'P35', '侵权责任纠纷', 1, 419),
-('420', '建筑物和物件损害责任纠纷', 'CIVIL', 'P35', '侵权责任纠纷', 1, 420) ON CONFLICT DO NOTHING;
+('420', '建筑物和物件损害责任纠纷', 'CIVIL', 'P35', '侵权责任纠纷', 1, 420)
+ON CONFLICT (code, cause_type) DO NOTHING;
 
 -- =============================================
 -- 插入刑事罪名数据（常用罪名）
@@ -168,7 +175,8 @@ INSERT INTO sys_cause_of_action (code, name, cause_type, category_code, category
 ('C101', '背叛国家罪', 'CRIMINAL', 'C1', '危害国家安全罪', 1, 101),
 ('C102', '分裂国家罪', 'CRIMINAL', 'C1', '危害国家安全罪', 1, 102),
 ('C103', '煽动分裂国家罪', 'CRIMINAL', 'C1', '危害国家安全罪', 1, 103),
-('C110', '间谍罪', 'CRIMINAL', 'C1', '危害国家安全罪', 1, 110) ON CONFLICT DO NOTHING;
+('C110', '间谍罪', 'CRIMINAL', 'C1', '危害国家安全罪', 1, 110)
+ON CONFLICT (code, cause_type) DO NOTHING;
 
 -- 危害公共安全罪
 INSERT INTO sys_cause_of_action (code, name, cause_type, category_code, category_name, level, sort_order) VALUES
@@ -178,7 +186,8 @@ INSERT INTO sys_cause_of_action (code, name, cause_type, category_code, category
 ('C117', '投放危险物质罪', 'CRIMINAL', 'C2', '危害公共安全罪', 1, 117),
 ('C122', '劫持航空器罪', 'CRIMINAL', 'C2', '危害公共安全罪', 1, 122),
 ('C133', '交通肇事罪', 'CRIMINAL', 'C2', '危害公共安全罪', 1, 133),
-('C133A', '危险驾驶罪', 'CRIMINAL', 'C2', '危害公共安全罪', 1, 1331) ON CONFLICT DO NOTHING;
+('C133A', '危险驾驶罪', 'CRIMINAL', 'C2', '危害公共安全罪', 1, 1331)
+ON CONFLICT (code, cause_type) DO NOTHING;
 
 -- 破坏社会主义市场经济秩序罪
 INSERT INTO sys_cause_of_action (code, name, cause_type, category_code, category_name, level, sort_order) VALUES
@@ -198,7 +207,8 @@ INSERT INTO sys_cause_of_action (code, name, cause_type, category_code, category
 ('C217', '侵犯著作权罪', 'CRIMINAL', 'C3', '破坏社会主义市场经济秩序罪', 1, 217),
 ('C219', '侵犯商业秘密罪', 'CRIMINAL', 'C3', '破坏社会主义市场经济秩序罪', 1, 219),
 ('C224', '合同诈骗罪', 'CRIMINAL', 'C3', '破坏社会主义市场经济秩序罪', 1, 224),
-('C225', '非法经营罪', 'CRIMINAL', 'C3', '破坏社会主义市场经济秩序罪', 1, 225) ON CONFLICT DO NOTHING;
+('C225', '非法经营罪', 'CRIMINAL', 'C3', '破坏社会主义市场经济秩序罪', 1, 225)
+ON CONFLICT (code, cause_type) DO NOTHING;
 
 -- 侵犯公民人身权利、民主权利罪
 INSERT INTO sys_cause_of_action (code, name, cause_type, category_code, category_name, level, sort_order) VALUES
@@ -212,7 +222,8 @@ INSERT INTO sys_cause_of_action (code, name, cause_type, category_code, category
 ('C240', '拐卖妇女、儿童罪', 'CRIMINAL', 'C4', '侵犯公民人身权利、民主权利罪', 1, 240),
 ('C245', '非法搜查罪', 'CRIMINAL', 'C4', '侵犯公民人身权利、民主权利罪', 1, 245),
 ('C246', '侮辱罪', 'CRIMINAL', 'C4', '侵犯公民人身权利、民主权利罪', 1, 246),
-('C246A', '诽谤罪', 'CRIMINAL', 'C4', '侵犯公民人身权利、民主权利罪', 1, 2461) ON CONFLICT DO NOTHING;
+('C246A', '诽谤罪', 'CRIMINAL', 'C4', '侵犯公民人身权利、民主权利罪', 1, 2461)
+ON CONFLICT (code, cause_type) DO NOTHING;
 
 -- 侵犯财产罪
 INSERT INTO sys_cause_of_action (code, name, cause_type, category_code, category_name, level, sort_order) VALUES
@@ -224,7 +235,8 @@ INSERT INTO sys_cause_of_action (code, name, cause_type, category_code, category
 ('C271', '职务侵占罪', 'CRIMINAL', 'C5', '侵犯财产罪', 1, 271),
 ('C272', '挪用资金罪', 'CRIMINAL', 'C5', '侵犯财产罪', 1, 272),
 ('C274', '敲诈勒索罪', 'CRIMINAL', 'C5', '侵犯财产罪', 1, 274),
-('C275', '故意毁坏财物罪', 'CRIMINAL', 'C5', '侵犯财产罪', 1, 275) ON CONFLICT DO NOTHING;
+('C275', '故意毁坏财物罪', 'CRIMINAL', 'C5', '侵犯财产罪', 1, 275)
+ON CONFLICT (code, cause_type) DO NOTHING;
 
 -- 妨害社会管理秩序罪
 INSERT INTO sys_cause_of_action (code, name, cause_type, category_code, category_name, level, sort_order) VALUES
@@ -241,7 +253,8 @@ INSERT INTO sys_cause_of_action (code, name, cause_type, category_code, category
 ('C347', '走私、贩卖、运输、制造毒品罪', 'CRIMINAL', 'C6', '妨害社会管理秩序罪', 1, 347),
 ('C348', '非法持有毒品罪', 'CRIMINAL', 'C6', '妨害社会管理秩序罪', 1, 348),
 ('C354', '容留他人吸毒罪', 'CRIMINAL', 'C6', '妨害社会管理秩序罪', 1, 354),
-('C358', '组织卖淫罪', 'CRIMINAL', 'C6', '妨害社会管理秩序罪', 1, 358) ON CONFLICT DO NOTHING;
+('C358', '组织卖淫罪', 'CRIMINAL', 'C6', '妨害社会管理秩序罪', 1, 358)
+ON CONFLICT (code, cause_type) DO NOTHING;
 
 -- 贪污贿赂罪
 INSERT INTO sys_cause_of_action (code, name, cause_type, category_code, category_name, level, sort_order) VALUES
@@ -252,13 +265,15 @@ INSERT INTO sys_cause_of_action (code, name, cause_type, category_code, category
 ('C389', '行贿罪', 'CRIMINAL', 'C8', '贪污贿赂罪', 1, 389),
 ('C390', '对单位行贿罪', 'CRIMINAL', 'C8', '贪污贿赂罪', 1, 390),
 ('C391', '介绍贿赂罪', 'CRIMINAL', 'C8', '贪污贿赂罪', 1, 391),
-('C395', '巨额财产来源不明罪', 'CRIMINAL', 'C8', '贪污贿赂罪', 1, 395) ON CONFLICT DO NOTHING;
+('C395', '巨额财产来源不明罪', 'CRIMINAL', 'C8', '贪污贿赂罪', 1, 395)
+ON CONFLICT (code, cause_type) DO NOTHING;
 
 -- 渎职罪
 INSERT INTO sys_cause_of_action (code, name, cause_type, category_code, category_name, level, sort_order) VALUES
 ('C397', '滥用职权罪', 'CRIMINAL', 'C9', '渎职罪', 1, 397),
 ('C398', '玩忽职守罪', 'CRIMINAL', 'C9', '渎职罪', 1, 398),
-('C399', '徇私枉法罪', 'CRIMINAL', 'C9', '渎职罪', 1, 399) ON CONFLICT DO NOTHING;
+('C399', '徇私枉法罪', 'CRIMINAL', 'C9', '渎职罪', 1, 399)
+ON CONFLICT (code, cause_type) DO NOTHING;
 
 -- =============================================
 -- 插入行政案由数据（常用）
@@ -335,7 +350,8 @@ INSERT INTO sys_cause_of_action (code, name, cause_type, category_code, category
 ('A13', '行政协议', 'ADMIN', 'A13', '行政协议', 1, 13),
 ('A13.1', '政府特许经营协议', 'ADMIN', 'A13', '行政协议', 2, 131),
 ('A13.2', '土地房屋征收补偿协议', 'ADMIN', 'A13', '行政协议', 2, 132),
-('A13.3', '国有土地使用权出让协议', 'ADMIN', 'A13', '行政协议', 2, 133) ON CONFLICT DO NOTHING;
+('A13.3', '国有土地使用权出让协议', 'ADMIN', 'A13', '行政协议', 2, 133)
+ON CONFLICT (code, cause_type) DO NOTHING;
 
 -- =============================================
 -- 创建案由查询函数

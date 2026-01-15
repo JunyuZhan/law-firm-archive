@@ -159,6 +159,7 @@ pnpm docs:dev
 **开发环境：** 通过 `frontend/docs/.env.development` 配置：
 - `VITE_DOCS_USERNAME` - 登录用户名（默认：admin）
 - `VITE_DOCS_PASSWORD` - 登录密码（默认：lawfirm@2026）
+- `查看密码`  - cat .env | grep DOCS_PASSWORD
 
 #### 从主应用跳转
 
