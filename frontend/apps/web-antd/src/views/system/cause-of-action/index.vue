@@ -21,7 +21,7 @@ import {
   Spin,
   Tag,
   Tree,
-  TreeExpandAllButton,
+  Button,
 } from 'ant-design-vue';
 
 import { useResponsive } from '#/hooks/useResponsive';
@@ -51,6 +51,7 @@ const showSearchResults = ref(false);
 const expandedKeys = ref<string[]>([]);
 const selectedKeys = ref<string[]>([]);
 const selectedNode = ref<CauseTreeNodeDTO>();
+const isAllExpanded = ref(true); // 默认展开
 
 // 案由类型选项
 const causeTypeOptions = getCauseTypeOptions();
@@ -131,6 +132,26 @@ function expandAllNodes(nodes: CauseTreeNodeDTO[]) {
   }
   collectKeys(nodes);
   expandedKeys.value = keys;
+  isAllExpanded.value = true;
+}
+
+/**
+ * 折叠所有节点
+ */
+function collapseAllNodes() {
+  expandedKeys.value = [];
+  isAllExpanded.value = false;
+}
+
+/**
+ * 切换展开/折叠所有节点
+ */
+function toggleExpandAll() {
+  if (isAllExpanded.value) {
+    collapseAllNodes();
+  } else {
+    expandAllNodes(causeTree.value);
+  }
 }
 
 /**
@@ -318,7 +339,13 @@ onMounted(() => {
             </div>
           </template>
           <template #extra>
-            <TreeExpandAllButton v-if="!showSearchResults" :tree-data="treeData" />
+            <Button
+              v-if="!showSearchResults"
+              size="small"
+              @click="toggleExpandAll"
+            >
+              {{ isAllExpanded ? '全部折叠' : '全部展开' }}
+            </Button>
           </template>
 
           <Spin :spinning="loading">
