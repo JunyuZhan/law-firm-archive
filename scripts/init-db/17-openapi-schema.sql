@@ -364,11 +364,12 @@ BEGIN
     PERFORM setval('sys_external_integration_id_seq', COALESCE((SELECT MAX(id) FROM sys_external_integration), 0) + 1, false);
 END $$;
 
--- 插入客户服务系统配置
+-- 插入客户服务系统配置（使用 ID=101 避免与 20-init-data.sql 中的数据冲突）
 INSERT INTO public.sys_external_integration (
-    integration_code, integration_name, integration_type, description, 
+    id, integration_code, integration_name, integration_type, description, 
     api_url, auth_type, extra_config, enabled
 ) VALUES (
+    101,
     'CLIENT_SERVICE',
     '客户服务系统',
     'CLIENT_SERVICE',

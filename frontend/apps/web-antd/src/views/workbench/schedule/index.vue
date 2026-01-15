@@ -40,6 +40,7 @@ import {
   SCHEDULE_TYPE_OPTIONS,
   updateSchedule,
 } from '#/api/matter/schedule';
+import { getOffDays } from '#/api/system/holiday';
 
 defineOptions({ name: 'ScheduleManagement' });
 
@@ -51,12 +52,24 @@ const loading = ref(false);
 const schedules = ref<ScheduleDTO[]>([]);
 const todaySchedules = ref<ScheduleDTO[]>([]);
 const activeTab = ref<'calendar' | 'list'>('calendar');
+const offDays = ref<Set<string>>(new Set()); // 休息日集合
 
 // 日历相关
 const currentMonth = ref(dayjs());
+
+// 获取日历视图的日期范围（固定从周日开始到周六结束）
+function getCalendarRange(month: dayjs.Dayjs) {
+  const monthStart = month.startOf('month');
+  const monthEnd = month.endOf('month');
+  // 找到该月第一天所在周的周日（day() 返回 0-6，0 是周日）
+  const start = monthStart.subtract(monthStart.day(), 'day');
+  // 找到该月最后一天所在周的周六
+  const end = monthEnd.add(6 - monthEnd.day(), 'day');
+  return { start, end };
+}
+
 const calendarDays = computed(() => {
-  const start = currentMonth.value.startOf('month').startOf('week');
-  const end = currentMonth.value.endOf('month').endOf('week');
+  const { start, end } = getCalendarRange(currentMonth.value);
   const days: dayjs.Dayjs[] = [];
   let day = start;
   while (day.isBefore(end) || day.isSame(end, 'day')) {
@@ -172,6 +185,25 @@ async function loadTodaySchedules() {
   }
 }
 
+// 加载休息日数据
+async function loadOffDays() {
+  try {
+    const { start, end } = getCalendarRange(currentMonth.value);
+    const res = await getOffDays(
+      start.format('YYYY-MM-DD'),
+      end.format('YYYY-MM-DD'),
+    );
+    offDays.value = new Set(res.offDays || []);
+  } catch (error) {
+    console.error('加载休息日数据失败', error);
+  }
+}
+
+// 判断是否为休息日
+function isOffDay(day: dayjs.Dayjs): boolean {
+  return offDays.value.has(day.format('YYYY-MM-DD'));
+}
+
 // 加载项目列表
 async function loadMatters() {
   try {
@@ -232,6 +264,7 @@ function changeMonth(delta: number) {
     .endOf('month')
     .format('YYYY-MM-DDTHH:mm:ss');
   loadSchedules();
+  loadOffDays();
 }
 
 // 回到今天
@@ -392,6 +425,7 @@ function formatTime(time: string) {
 onMounted(() => {
   loadSchedules();
   loadTodaySchedules();
+  loadOffDays();
 });
 </script>
 
@@ -470,10 +504,14 @@ onMounted(() => {
                 :class="{
                   'other-month': !day.isSame(currentMonth, 'month'),
                   today: day.isSame(dayjs(), 'day'),
+                  'off-day': isOffDay(day),
                 }"
                 @click="handleAdd(day)"
               >
-                <div class="day-number">{{ day.date() }}</div>
+                <div class="day-number">
+                  {{ day.date() }}
+                  <span v-if="isOffDay(day)" class="off-day-badge">休</span>
+                </div>
                 <div class="day-schedules">
                   <div
                     v-for="s in getSchedulesForDay(day).slice(0, 3)"
@@ -756,9 +794,30 @@ onMounted(() => {
             }
           }
 
+          &.off-day {
+            background: #fff7e6;
+            
+            &:hover {
+              background: #fff1e0;
+            }
+          }
+
           .day-number {
             font-size: 14px;
             margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            
+            .off-day-badge {
+              font-size: 10px;
+              color: #fa8c16;
+              background: #fff7e6;
+              border: 1px solid #ffd591;
+              border-radius: 2px;
+              padding: 0 3px;
+              line-height: 1.4;
+            }
           }
 
           .day-schedules {

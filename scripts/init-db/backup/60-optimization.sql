@@ -20,13 +20,13 @@
 
 -- crm_client 表外键
 ALTER TABLE public.crm_client
-    ADD CONSTRAINT IF NOT EXISTS fk_client_originator
+    ADD CONSTRAINT fk_client_originator
     FOREIGN KEY (originator_id) REFERENCES public.sys_user(id) ON DELETE SET NULL,
-    ADD CONSTRAINT IF NOT EXISTS fk_client_responsible_lawyer
+    ADD CONSTRAINT fk_client_responsible_lawyer
     FOREIGN KEY (responsible_lawyer_id) REFERENCES public.sys_user(id) ON DELETE SET NULL,
-    ADD CONSTRAINT IF NOT EXISTS fk_client_created_by
+    ADD CONSTRAINT fk_client_created_by
     FOREIGN KEY (created_by) REFERENCES public.sys_user(id) ON DELETE SET NULL,
-    ADD CONSTRAINT IF NOT EXISTS fk_client_updated_by
+    ADD CONSTRAINT fk_client_updated_by
     FOREIGN KEY (updated_by) REFERENCES public.sys_user(id) ON DELETE SET NULL;
 
 COMMENT ON CONSTRAINT fk_client_originator ON public.crm_client IS '案源人关联';
@@ -34,87 +34,87 @@ COMMENT ON CONSTRAINT fk_client_responsible_lawyer ON public.crm_client IS '负�
 
 -- crm_client_change_history 表外键
 ALTER TABLE public.crm_client_change_history
-    ADD CONSTRAINT IF NOT EXISTS fk_client_change_client
+    ADD CONSTRAINT fk_client_change_client
     FOREIGN KEY (client_id) REFERENCES public.crm_client(id) ON DELETE CASCADE,
-    ADD CONSTRAINT IF NOT EXISTS fk_client_change_created_by
+    ADD CONSTRAINT fk_client_change_created_by
     FOREIGN KEY (created_by) REFERENCES public.sys_user(id) ON DELETE SET NULL,
-    ADD CONSTRAINT IF NOT EXISTS fk_client_change_updated_by
+    ADD CONSTRAINT fk_client_change_updated_by
     FOREIGN KEY (updated_by) REFERENCES public.sys_user(id) ON DELETE SET NULL;
 
 -- crm_client_contact_record 表外键
 ALTER TABLE public.crm_client_contact_record
-    ADD CONSTRAINT IF NOT EXISTS fk_contact_record_client
+    ADD CONSTRAINT fk_contact_record_client
     FOREIGN KEY (client_id) REFERENCES public.crm_client(id) ON DELETE CASCADE,
-    ADD CONSTRAINT IF NOT EXISTS fk_contact_record_created_by
+    ADD CONSTRAINT fk_contact_record_created_by
     FOREIGN KEY (created_by) REFERENCES public.sys_user(id) ON DELETE SET NULL;
 
 -- crm_client_related_company 表外键
 ALTER TABLE public.crm_client_related_company
-    ADD CONSTRAINT IF NOT EXISTS fk_related_company_client
+    ADD CONSTRAINT fk_related_company_client
     FOREIGN KEY (client_id) REFERENCES public.crm_client(id) ON DELETE CASCADE;
 
 -- crm_client_shareholder 表外键
 ALTER TABLE public.crm_client_shareholder
-    ADD CONSTRAINT IF NOT EXISTS fk_shareholder_client
+    ADD CONSTRAINT fk_shareholder_client
     FOREIGN KEY (client_id) REFERENCES public.crm_client(id) ON DELETE CASCADE;
 
 -- crm_client_tag_relation 表外键
 ALTER TABLE public.crm_client_tag_relation
-    ADD CONSTRAINT IF NOT EXISTS fk_client_tag_client
+    ADD CONSTRAINT fk_client_tag_client
     FOREIGN KEY (client_id) REFERENCES public.crm_client(id) ON DELETE CASCADE,
-    ADD CONSTRAINT IF NOT EXISTS fk_client_tag_tag
+    ADD CONSTRAINT fk_client_tag_tag
     FOREIGN KEY (tag_id) REFERENCES public.crm_client_tag(id) ON DELETE CASCADE,
-    ADD CONSTRAINT IF NOT EXISTS fk_client_tag_created_by
+    ADD CONSTRAINT fk_client_tag_created_by
     FOREIGN KEY (created_by) REFERENCES public.sys_user(id) ON DELETE SET NULL;
 
 -- crm_contact 表外键
 ALTER TABLE public.crm_contact
-    ADD CONSTRAINT IF NOT EXISTS fk_contact_client
+    ADD CONSTRAINT fk_contact_client
     FOREIGN KEY (client_id) REFERENCES public.crm_client(id) ON DELETE CASCADE,
-    ADD CONSTRAINT IF NOT EXISTS fk_contact_created_by
+    ADD CONSTRAINT fk_contact_created_by
     FOREIGN KEY (created_by) REFERENCES public.sys_user(id) ON DELETE SET NULL,
-    ADD CONSTRAINT IF NOT EXISTS fk_contact_updated_by
+    ADD CONSTRAINT fk_contact_updated_by
     FOREIGN KEY (updated_by) REFERENCES public.sys_user(id) ON DELETE SET NULL;
 
 -- crm_conflict_check 表外键
 ALTER TABLE public.crm_conflict_check
-    ADD CONSTRAINT IF NOT EXISTS fk_conflict_check_client
+    ADD CONSTRAINT fk_conflict_check_client
     FOREIGN KEY (client_id) REFERENCES public.crm_client(id) ON DELETE SET NULL,
-    ADD CONSTRAINT IF NOT EXISTS fk_conflict_check_matter
+    ADD CONSTRAINT fk_conflict_check_matter
     FOREIGN KEY (matter_id) REFERENCES public.matter(id) ON DELETE SET NULL,
-    ADD CONSTRAINT IF NOT EXISTS fk_conflict_check_applicant
+    ADD CONSTRAINT fk_conflict_check_applicant
     FOREIGN KEY (applicant_id) REFERENCES public.sys_user(id) ON DELETE SET NULL,
-    ADD CONSTRAINT IF NOT EXISTS fk_conflict_check_reviewer
+    ADD CONSTRAINT fk_conflict_check_reviewer
     FOREIGN KEY (reviewer_id) REFERENCES public.sys_user(id) ON DELETE SET NULL,
-    ADD CONSTRAINT IF NOT EXISTS fk_conflict_check_created_by
+    ADD CONSTRAINT fk_conflict_check_created_by
     FOREIGN KEY (created_by) REFERENCES public.sys_user(id) ON DELETE SET NULL,
-    ADD CONSTRAINT IF NOT EXISTS fk_conflict_check_updated_by
+    ADD CONSTRAINT fk_conflict_check_updated_by
     FOREIGN KEY (updated_by) REFERENCES public.sys_user(id) ON DELETE SET NULL;
 
 -- crm_conflict_check_item 表外键
 ALTER TABLE public.crm_conflict_check_item
-    ADD CONSTRAINT IF NOT EXISTS fk_conflict_item_check
+    ADD CONSTRAINT fk_conflict_item_check
     FOREIGN KEY (check_id) REFERENCES public.crm_conflict_check(id) ON DELETE CASCADE,
-    ADD CONSTRAINT IF NOT EXISTS fk_conflict_item_matter
+    ADD CONSTRAINT fk_conflict_item_matter
     FOREIGN KEY (related_matter_id) REFERENCES public.matter(id) ON DELETE SET NULL,
-    ADD CONSTRAINT IF NOT EXISTS fk_conflict_item_client
+    ADD CONSTRAINT fk_conflict_item_client
     FOREIGN KEY (related_client_id) REFERENCES public.crm_client(id) ON DELETE SET NULL,
-    ADD CONSTRAINT IF NOT EXISTS fk_conflict_item_created_by
+    ADD CONSTRAINT fk_conflict_item_created_by
     FOREIGN KEY (created_by) REFERENCES public.sys_user(id) ON DELETE SET NULL,
-    ADD CONSTRAINT IF NOT EXISTS fk_conflict_item_updated_by
+    ADD CONSTRAINT fk_conflict_item_updated_by
     FOREIGN KEY (updated_by) REFERENCES public.sys_user(id) ON DELETE SET NULL;
 
 -- crm_lead 表外键
 ALTER TABLE public.crm_lead
-    ADD CONSTRAINT IF NOT EXISTS fk_lead_originator
+    ADD CONSTRAINT fk_lead_originator
     FOREIGN KEY (originator_id) REFERENCES public.sys_user(id) ON DELETE SET NULL,
-    ADD CONSTRAINT IF NOT EXISTS fk_lead_responsible_user
+    ADD CONSTRAINT fk_lead_responsible_user
     FOREIGN KEY (responsible_user_id) REFERENCES public.sys_user(id) ON DELETE SET NULL,
-    ADD CONSTRAINT IF NOT EXISTS fk_lead_converted_client
+    ADD CONSTRAINT fk_lead_converted_client
     FOREIGN KEY (converted_to_client_id) REFERENCES public.crm_client(id) ON DELETE SET NULL,
-    ADD CONSTRAINT IF NOT EXISTS fk_lead_created_by
+    ADD CONSTRAINT fk_lead_created_by
     FOREIGN KEY (created_by) REFERENCES public.sys_user(id) ON DELETE SET NULL,
-    ADD CONSTRAINT IF NOT EXISTS fk_lead_updated_by
+    ADD CONSTRAINT fk_lead_updated_by
     FOREIGN KEY (updated_by) REFERENCES public.sys_user(id) ON DELETE SET NULL;
 
 COMMENT ON CONSTRAINT fk_lead_originator ON public.crm_lead IS '案源人关联';
@@ -122,11 +122,11 @@ COMMENT ON CONSTRAINT fk_lead_responsible_user ON public.crm_lead IS '负责人�
 
 -- crm_lead_follow_up 表外键
 ALTER TABLE public.crm_lead_follow_up
-    ADD CONSTRAINT IF NOT EXISTS fk_lead_follow_up_lead
+    ADD CONSTRAINT fk_lead_follow_up_lead
     FOREIGN KEY (lead_id) REFERENCES public.crm_lead(id) ON DELETE CASCADE,
-    ADD CONSTRAINT IF NOT EXISTS fk_lead_follow_up_user
+    ADD CONSTRAINT fk_lead_follow_up_user
     FOREIGN KEY (follow_user_id) REFERENCES public.sys_user(id) ON DELETE SET NULL,
-    ADD CONSTRAINT IF NOT EXISTS fk_lead_follow_up_created_by
+    ADD CONSTRAINT fk_lead_follow_up_created_by
     FOREIGN KEY (created_by) REFERENCES public.sys_user(id) ON DELETE SET NULL;
 
 -- =====================================================
@@ -135,36 +135,36 @@ ALTER TABLE public.crm_lead_follow_up
 
 -- matter 表外键
 ALTER TABLE public.matter
-    ADD CONSTRAINT IF NOT EXISTS fk_matter_client
+    ADD CONSTRAINT fk_matter_client
     FOREIGN KEY (client_id) REFERENCES public.crm_client(id) ON DELETE RESTRICT,
-    ADD CONSTRAINT IF NOT EXISTS fk_matter_responsible_lawyer
+    ADD CONSTRAINT fk_matter_responsible_lawyer
     FOREIGN KEY (responsible_lawyer_id) REFERENCES public.sys_user(id) ON DELETE SET NULL,
-    ADD CONSTRAINT IF NOT EXISTS fk_matter_created_by
+    ADD CONSTRAINT fk_matter_created_by
     FOREIGN KEY (created_by) REFERENCES public.sys_user(id) ON DELETE SET NULL,
-    ADD CONSTRAINT IF NOT EXISTS fk_matter_updated_by
+    ADD CONSTRAINT fk_matter_updated_by
     FOREIGN KEY (updated_by) REFERENCES public.sys_user(id) ON DELETE SET NULL;
 
 COMMENT ON CONSTRAINT fk_matter_responsible_lawyer ON public.matter IS '负责律师关联';
 
 -- matter_participant 表外键
 ALTER TABLE public.matter_participant
-    ADD CONSTRAINT IF NOT EXISTS fk_participant_matter
+    ADD CONSTRAINT fk_participant_matter
     FOREIGN KEY (matter_id) REFERENCES public.matter(id) ON DELETE CASCADE,
-    ADD CONSTRAINT IF NOT EXISTS fk_participant_user
+    ADD CONSTRAINT fk_participant_user
     FOREIGN KEY (user_id) REFERENCES public.sys_user(id) ON DELETE SET NULL;
 
 -- matter_deadline 表外键
 ALTER TABLE public.matter_deadline
-    ADD CONSTRAINT IF NOT EXISTS fk_deadline_matter
+    ADD CONSTRAINT fk_deadline_matter
     FOREIGN KEY (matter_id) REFERENCES public.matter(id) ON DELETE CASCADE,
-    ADD CONSTRAINT IF NOT EXISTS fk_deadline_created_by
+    ADD CONSTRAINT fk_deadline_created_by
     FOREIGN KEY (created_by) REFERENCES public.sys_user(id) ON DELETE SET NULL;
 
 -- matter_client 表外键
 ALTER TABLE public.matter_client
-    ADD CONSTRAINT IF NOT EXISTS fk_matter_client_matter
+    ADD CONSTRAINT fk_matter_client_matter
     FOREIGN KEY (matter_id) REFERENCES public.matter(id) ON DELETE CASCADE,
-    ADD CONSTRAINT IF NOT EXISTS fk_matter_client_client
+    ADD CONSTRAINT fk_matter_client_client
     FOREIGN KEY (client_id) REFERENCES public.crm_client(id) ON DELETE CASCADE;
 
 -- =====================================================
@@ -173,82 +173,82 @@ ALTER TABLE public.matter_client
 
 -- finance_contract 表外键
 ALTER TABLE public.finance_contract
-    ADD CONSTRAINT IF NOT EXISTS fk_contract_client
+    ADD CONSTRAINT fk_contract_client
     FOREIGN KEY (client_id) REFERENCES public.crm_client(id) ON DELETE RESTRICT,
-    ADD CONSTRAINT IF NOT EXISTS fk_contract_matter
+    ADD CONSTRAINT fk_contract_matter
     FOREIGN KEY (matter_id) REFERENCES public.matter(id) ON DELETE SET NULL,
-    ADD CONSTRAINT IF NOT EXISTS fk_contract_originator
+    ADD CONSTRAINT fk_contract_originator
     FOREIGN KEY (originator_id) REFERENCES public.sys_user(id) ON DELETE SET NULL,
-    ADD CONSTRAINT IF NOT EXISTS fk_contract_created_by
+    ADD CONSTRAINT fk_contract_created_by
     FOREIGN KEY (created_by) REFERENCES public.sys_user(id) ON DELETE SET NULL,
-    ADD CONSTRAINT IF NOT EXISTS fk_contract_updated_by
+    ADD CONSTRAINT fk_contract_updated_by
     FOREIGN KEY (updated_by) REFERENCES public.sys_user(id) ON DELETE SET NULL;
 
 -- finance_payment 表外键
 ALTER TABLE public.finance_payment
-    ADD CONSTRAINT IF NOT EXISTS fk_payment_contract
+    ADD CONSTRAINT fk_payment_contract
     FOREIGN KEY (contract_id) REFERENCES public.finance_contract(id) ON DELETE SET NULL,
-    ADD CONSTRAINT IF NOT EXISTS fk_payment_matter
+    ADD CONSTRAINT fk_payment_matter
     FOREIGN KEY (matter_id) REFERENCES public.matter(id) ON DELETE SET NULL,
-    ADD CONSTRAINT IF NOT EXISTS fk_payment_client
+    ADD CONSTRAINT fk_payment_client
     FOREIGN KEY (client_id) REFERENCES public.crm_client(id) ON DELETE SET NULL,
-    ADD CONSTRAINT IF NOT EXISTS fk_payment_created_by
+    ADD CONSTRAINT fk_payment_created_by
     FOREIGN KEY (created_by) REFERENCES public.sys_user(id) ON DELETE SET NULL,
-    ADD CONSTRAINT IF NOT EXISTS fk_payment_updated_by
+    ADD CONSTRAINT fk_payment_updated_by
     FOREIGN KEY (updated_by) REFERENCES public.sys_user(id) ON DELETE SET NULL;
 
 -- finance_payment_amendment 表外键
 ALTER TABLE public.finance_payment_amendment
-    ADD CONSTRAINT IF NOT EXISTS fk_payment_amendment_payment
+    ADD CONSTRAINT fk_payment_amendment_payment
     FOREIGN KEY (payment_id) REFERENCES public.finance_payment(id) ON DELETE CASCADE,
-    ADD CONSTRAINT IF NOT EXISTS fk_payment_amendment_requested_by
+    ADD CONSTRAINT fk_payment_amendment_requested_by
     FOREIGN KEY (requested_by) REFERENCES public.sys_user(id) ON DELETE SET NULL,
-    ADD CONSTRAINT IF NOT EXISTS fk_payment_amendment_approved_by
+    ADD CONSTRAINT fk_payment_amendment_approved_by
     FOREIGN KEY (approved_by) REFERENCES public.sys_user(id) ON DELETE SET NULL;
 
 -- finance_commission 表外键
 ALTER TABLE public.finance_commission
-    ADD CONSTRAINT IF NOT EXISTS fk_commission_payment
+    ADD CONSTRAINT fk_commission_payment
     FOREIGN KEY (payment_id) REFERENCES public.finance_payment(id) ON DELETE SET NULL,
-    ADD CONSTRAINT IF NOT EXISTS fk_commission_fee
+    ADD CONSTRAINT fk_commission_fee
     FOREIGN KEY (fee_id) REFERENCES public.finance_fee(id) ON DELETE SET NULL,
-    ADD CONSTRAINT IF NOT EXISTS fk_commission_contract
+    ADD CONSTRAINT fk_commission_contract
     FOREIGN KEY (contract_id) REFERENCES public.finance_contract(id) ON DELETE SET NULL,
-    ADD CONSTRAINT IF NOT EXISTS fk_commission_matter
+    ADD CONSTRAINT fk_commission_matter
     FOREIGN KEY (matter_id) REFERENCES public.matter(id) ON DELETE SET NULL,
-    ADD CONSTRAINT IF NOT EXISTS fk_commission_client
+    ADD CONSTRAINT fk_commission_client
     FOREIGN KEY (client_id) REFERENCES public.crm_client(id) ON DELETE SET NULL,
-    ADD CONSTRAINT IF NOT EXISTS fk_commission_rule
+    ADD CONSTRAINT fk_commission_rule
     FOREIGN KEY (rule_id) REFERENCES public.hr_commission_rule(id) ON DELETE SET NULL,
-    ADD CONSTRAINT IF NOT EXISTS fk_commission_originator
+    ADD CONSTRAINT fk_commission_originator
     FOREIGN KEY (originator_id) REFERENCES public.sys_user(id) ON DELETE SET NULL,
-    ADD CONSTRAINT IF NOT EXISTS fk_commission_approved_by
+    ADD CONSTRAINT fk_commission_approved_by
     FOREIGN KEY (approved_by) REFERENCES public.sys_user(id) ON DELETE SET NULL,
-    ADD CONSTRAINT IF NOT EXISTS fk_commission_paid_by
+    ADD CONSTRAINT fk_commission_paid_by
     FOREIGN KEY (paid_by) REFERENCES public.sys_user(id) ON DELETE SET NULL,
-    ADD CONSTRAINT IF NOT EXISTS fk_commission_created_by
+    ADD CONSTRAINT fk_commission_created_by
     FOREIGN KEY (created_by) REFERENCES public.sys_user(id) ON DELETE SET NULL,
-    ADD CONSTRAINT IF NOT EXISTS fk_commission_updated_by
+    ADD CONSTRAINT fk_commission_updated_by
     FOREIGN KEY (updated_by) REFERENCES public.sys_user(id) ON DELETE SET NULL;
 
 -- finance_commission_detail 表外键
 ALTER TABLE public.finance_commission_detail
-    ADD CONSTRAINT IF NOT EXISTS fk_commission_detail_commission
+    ADD CONSTRAINT fk_commission_detail_commission
     FOREIGN KEY (commission_id) REFERENCES public.finance_commission(id) ON DELETE CASCADE,
-    ADD CONSTRAINT IF NOT EXISTS fk_commission_detail_user
+    ADD CONSTRAINT fk_commission_detail_user
     FOREIGN KEY (user_id) REFERENCES public.sys_user(id) ON DELETE SET NULL;
 
 -- finance_invoice 表外键
 ALTER TABLE public.finance_invoice
-    ADD CONSTRAINT IF NOT EXISTS fk_invoice_contract
+    ADD CONSTRAINT fk_invoice_contract
     FOREIGN KEY (contract_id) REFERENCES public.finance_contract(id) ON DELETE SET NULL,
-    ADD CONSTRAINT IF NOT EXISTS fk_invoice_payment
+    ADD CONSTRAINT fk_invoice_payment
     FOREIGN KEY (payment_id) REFERENCES public.finance_payment(id) ON DELETE SET NULL,
-    ADD CONSTRAINT IF NOT EXISTS fk_invoice_matter
+    ADD CONSTRAINT fk_invoice_matter
     FOREIGN KEY (matter_id) REFERENCES public.matter(id) ON DELETE SET NULL,
-    ADD CONSTRAINT IF NOT EXISTS fk_invoice_client
+    ADD CONSTRAINT fk_invoice_client
     FOREIGN KEY (client_id) REFERENCES public.crm_client(id) ON DELETE SET NULL,
-    ADD CONSTRAINT IF NOT EXISTS fk_invoice_created_by
+    ADD CONSTRAINT fk_invoice_created_by
     FOREIGN KEY (created_by) REFERENCES public.sys_user(id) ON DELETE SET NULL;
 
 -- =====================================================
@@ -257,22 +257,22 @@ ALTER TABLE public.finance_invoice
 
 -- seal_application 表外键
 ALTER TABLE public.seal_application
-    ADD CONSTRAINT IF NOT EXISTS fk_seal_applicant
+    ADD CONSTRAINT fk_seal_applicant
     FOREIGN KEY (applicant_id) REFERENCES public.sys_user(id) ON DELETE SET NULL,
-    ADD CONSTRAINT IF NOT EXISTS fk_seal_approver
+    ADD CONSTRAINT fk_seal_approver
     FOREIGN KEY (approved_by) REFERENCES public.sys_user(id) ON DELETE SET NULL,
-    ADD CONSTRAINT IF NOT EXISTS fk_seal_seal
+    ADD CONSTRAINT fk_seal_seal
     FOREIGN KEY (seal_id) REFERENCES public.admin_seal(id) ON DELETE SET NULL,
-    ADD CONSTRAINT IF NOT EXISTS fk_seal_matter
+    ADD CONSTRAINT fk_seal_matter
     FOREIGN KEY (matter_id) REFERENCES public.matter(id) ON DELETE SET NULL,
-    ADD CONSTRAINT IF NOT EXISTS fk_seal_used_by
+    ADD CONSTRAINT fk_seal_used_by
     FOREIGN KEY (used_by) REFERENCES public.sys_user(id) ON DELETE SET NULL;
 
 -- 注：会议室预约功能暂未实现，需要创建 meeting_room_reservation 表
 -- ALTER TABLE public.meeting_room_reservation
---     ADD CONSTRAINT IF NOT EXISTS fk_meeting_room
+--     ADD CONSTRAINT fk_meeting_room
 --     FOREIGN KEY (room_id) REFERENCES public.meeting_room(id) ON DELETE CASCADE,
---     ADD CONSTRAINT IF NOT EXISTS fk_meeting_organizer
+--     ADD CONSTRAINT fk_meeting_organizer
 --     FOREIGN KEY (organizer_id) REFERENCES public.sys_user(id) ON DELETE SET NULL;
 
 -- =====================================================
@@ -281,18 +281,18 @@ ALTER TABLE public.seal_application
 
 -- timesheet 表外键
 ALTER TABLE public.timesheet
-    ADD CONSTRAINT IF NOT EXISTS fk_timesheet_user
+    ADD CONSTRAINT fk_timesheet_user
     FOREIGN KEY (user_id) REFERENCES public.sys_user(id) ON DELETE CASCADE,
-    ADD CONSTRAINT IF NOT EXISTS fk_timesheet_matter
+    ADD CONSTRAINT fk_timesheet_matter
     FOREIGN KEY (matter_id) REFERENCES public.matter(id) ON DELETE SET NULL,
-    ADD CONSTRAINT IF NOT EXISTS fk_timesheet_created_by
+    ADD CONSTRAINT fk_timesheet_created_by
     FOREIGN KEY (created_by) REFERENCES public.sys_user(id) ON DELETE SET NULL;
 
 -- timer_session 表外键
 ALTER TABLE public.timer_session
-    ADD CONSTRAINT IF NOT EXISTS fk_timer_user
+    ADD CONSTRAINT fk_timer_user
     FOREIGN KEY (user_id) REFERENCES public.sys_user(id) ON DELETE CASCADE,
-    ADD CONSTRAINT IF NOT EXISTS fk_timer_matter
+    ADD CONSTRAINT fk_timer_matter
     FOREIGN KEY (matter_id) REFERENCES public.matter(id) ON DELETE SET NULL;
 
 -- =====================================================
@@ -301,18 +301,18 @@ ALTER TABLE public.timer_session
 
 -- task 表外键
 ALTER TABLE public.task
-    ADD CONSTRAINT IF NOT EXISTS fk_task_matter
+    ADD CONSTRAINT fk_task_matter
     FOREIGN KEY (matter_id) REFERENCES public.matter(id) ON DELETE SET NULL,
-    ADD CONSTRAINT IF NOT EXISTS fk_task_assignee
+    ADD CONSTRAINT fk_task_assignee
     FOREIGN KEY (assignee_id) REFERENCES public.sys_user(id) ON DELETE SET NULL,
-    ADD CONSTRAINT IF NOT EXISTS fk_task_creator
+    ADD CONSTRAINT fk_task_creator
     FOREIGN KEY (created_by) REFERENCES public.sys_user(id) ON DELETE SET NULL;
 
 -- task_comment 表外键
 ALTER TABLE public.task_comment
-    ADD CONSTRAINT IF NOT EXISTS fk_task_comment_task
+    ADD CONSTRAINT fk_task_comment_task
     FOREIGN KEY (task_id) REFERENCES public.task(id) ON DELETE CASCADE,
-    ADD CONSTRAINT IF NOT EXISTS fk_task_comment_user
+    ADD CONSTRAINT fk_task_comment_user
     FOREIGN KEY (user_id) REFERENCES public.sys_user(id) ON DELETE SET NULL;
 
 -- =====================================================
@@ -321,24 +321,24 @@ ALTER TABLE public.task_comment
 
 -- hr_employee 表外键
 ALTER TABLE public.hr_employee
-    ADD CONSTRAINT IF NOT EXISTS fk_employee_user
+    ADD CONSTRAINT fk_employee_user
     FOREIGN KEY (user_id) REFERENCES public.sys_user(id) ON DELETE SET NULL,
-    ADD CONSTRAINT IF NOT EXISTS fk_employee_department
+    ADD CONSTRAINT fk_employee_department
     FOREIGN KEY (department_id) REFERENCES public.sys_department(id) ON DELETE SET NULL;
 
 -- hr_attendance 表外键
 ALTER TABLE public.hr_attendance
-    ADD CONSTRAINT IF NOT EXISTS fk_attendance_employee
+    ADD CONSTRAINT fk_attendance_employee
     FOREIGN KEY (employee_id) REFERENCES public.hr_employee(id) ON DELETE CASCADE;
 
 -- hr_payroll 表外键
 ALTER TABLE public.hr_payroll
-    ADD CONSTRAINT IF NOT EXISTS fk_payroll_employee
+    ADD CONSTRAINT fk_payroll_employee
     FOREIGN KEY (employee_id) REFERENCES public.hr_employee(id) ON DELETE CASCADE;
 
 -- hr_training 表外键
 ALTER TABLE public.hr_training
-    ADD CONSTRAINT IF NOT EXISTS fk_training_created_by
+    ADD CONSTRAINT fk_training_created_by
     FOREIGN KEY (created_by) REFERENCES public.sys_user(id) ON DELETE SET NULL;
 
 -- =====================================================
@@ -347,9 +347,9 @@ ALTER TABLE public.hr_training
 
 -- archive 表外键
 ALTER TABLE public.archive
-    ADD CONSTRAINT IF NOT EXISTS fk_archive_matter
+    ADD CONSTRAINT fk_archive_matter
     FOREIGN KEY (matter_id) REFERENCES public.matter(id) ON DELETE SET NULL,
-    ADD CONSTRAINT IF NOT EXISTS fk_archive_creator
+    ADD CONSTRAINT fk_archive_creator
     FOREIGN KEY (created_by) REFERENCES public.sys_user(id) ON DELETE SET NULL;
 
 -- =====================================================
@@ -358,16 +358,16 @@ ALTER TABLE public.archive
 
 -- doc_file 表外键
 ALTER TABLE public.doc_file
-    ADD CONSTRAINT IF NOT EXISTS fk_doc_matter
+    ADD CONSTRAINT fk_doc_matter
     FOREIGN KEY (matter_id) REFERENCES public.matter(id) ON DELETE SET NULL,
-    ADD CONSTRAINT IF NOT EXISTS fk_doc_creator
+    ADD CONSTRAINT fk_doc_creator
     FOREIGN KEY (created_by) REFERENCES public.sys_user(id) ON DELETE SET NULL;
 
 -- doc_version 表外键
 ALTER TABLE public.doc_version
-    ADD CONSTRAINT IF NOT EXISTS fk_doc_version_file
+    ADD CONSTRAINT fk_doc_version_file
     FOREIGN KEY (file_id) REFERENCES public.doc_file(id) ON DELETE CASCADE,
-    ADD CONSTRAINT IF NOT EXISTS fk_doc_version_creator
+    ADD CONSTRAINT fk_doc_version_creator
     FOREIGN KEY (created_by) REFERENCES public.sys_user(id) ON DELETE SET NULL;
 
 -- =====================================================
@@ -1062,97 +1062,97 @@ END $$;
 
 -- sys_user 表：邮箱格式检查
 ALTER TABLE public.sys_user
-    ADD CONSTRAINT IF NOT EXISTS chk_user_email_format
+    ADD CONSTRAINT chk_user_email_format
     CHECK (email IS NULL OR email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$');
 
 -- sys_user 表：手机号格式检查（中国手机号）
 ALTER TABLE public.sys_user
-    ADD CONSTRAINT IF NOT EXISTS chk_user_phone_format
+    ADD CONSTRAINT chk_user_phone_format
     CHECK (phone IS NULL OR phone ~* '^1[3-9][0-9]{9}$');
 
 -- sys_user 表：状态值检查
 ALTER TABLE public.sys_user
-    ADD CONSTRAINT IF NOT EXISTS chk_user_status
+    ADD CONSTRAINT chk_user_status
     CHECK (status IN ('ACTIVE', 'INACTIVE', 'LOCKED'));
 
 -- sys_user 表：薪酬模式检查
 ALTER TABLE public.sys_user
-    ADD CONSTRAINT IF NOT EXISTS chk_user_compensation_type
+    ADD CONSTRAINT chk_user_compensation_type
     CHECK (compensation_type IN ('COMMISSION', 'SALARIED', 'HYBRID'));
 
 -- sys_role 表：数据范围检查
 ALTER TABLE public.sys_role
-    ADD CONSTRAINT IF NOT EXISTS chk_role_data_scope
+    ADD CONSTRAINT chk_role_data_scope
     CHECK (data_scope IN ('ALL', 'DEPT', 'DEPT_AND_CHILD', 'SELF', 'CUSTOM'));
 
 -- sys_role 表：状态检查
 ALTER TABLE public.sys_role
-    ADD CONSTRAINT IF NOT EXISTS chk_role_status
+    ADD CONSTRAINT chk_role_status
     CHECK (status IN ('ACTIVE', 'INACTIVE'));
 
 -- sys_department 表：状态检查
 ALTER TABLE public.sys_department
-    ADD CONSTRAINT IF NOT EXISTS chk_dept_status
+    ADD CONSTRAINT chk_dept_status
     CHECK (status IN ('ACTIVE', 'INACTIVE'));
 
 -- sys_menu 表：菜单类型检查
 ALTER TABLE public.sys_menu
-    ADD CONSTRAINT IF NOT EXISTS chk_menu_type
+    ADD CONSTRAINT chk_menu_type
     CHECK (menu_type IN ('DIRECTORY', 'MENU', 'BUTTON'));
 
 -- sys_menu 表：状态检查
 ALTER TABLE public.sys_menu
-    ADD CONSTRAINT IF NOT EXISTS chk_menu_status
+    ADD CONSTRAINT chk_menu_status
     CHECK (status IN ('ENABLED', 'DISABLED'));
 
 -- sys_config 表：配置类型检查
 ALTER TABLE public.sys_config
-    ADD CONSTRAINT IF NOT EXISTS chk_config_type
+    ADD CONSTRAINT chk_config_type
     CHECK (config_type IN ('STRING', 'NUMBER', 'BOOLEAN', 'JSON', 'TEXT'));
 
 -- sys_dict_type 表：状态检查
 ALTER TABLE public.sys_dict_type
-    ADD CONSTRAINT IF NOT EXISTS chk_dict_type_status
+    ADD CONSTRAINT chk_dict_type_status
     CHECK (status IN ('ENABLED', 'DISABLED'));
 
 -- sys_dict_item 表：状态检查
 ALTER TABLE public.sys_dict_item
-    ADD CONSTRAINT IF NOT EXISTS chk_dict_item_status
+    ADD CONSTRAINT chk_dict_item_status
     CHECK (status IN ('ENABLED', 'DISABLED'));
 
 -- sys_login_log 表：状态检查
 ALTER TABLE public.sys_login_log
-    ADD CONSTRAINT IF NOT EXISTS chk_login_log_status
+    ADD CONSTRAINT chk_login_log_status
     CHECK (status IN ('SUCCESS', 'FAILURE'));
 
 -- sys_login_log 表：设备类型检查
 ALTER TABLE public.sys_login_log
-    ADD CONSTRAINT IF NOT EXISTS chk_login_log_device
+    ADD CONSTRAINT chk_login_log_device
     CHECK (device_type IN ('PC', 'MOBILE', 'TABLET', 'UNKNOWN'));
 
 -- sys_notification 表：类型检查
 ALTER TABLE public.sys_notification
-    ADD CONSTRAINT IF NOT EXISTS chk_notification_type
+    ADD CONSTRAINT chk_notification_type
     CHECK (type IN ('SYSTEM', 'APPROVAL', 'TASK', 'REMINDER', 'ANNOUNCEMENT'));
 
 -- sys_user_session 表：状态检查
 ALTER TABLE public.sys_user_session
-    ADD CONSTRAINT IF NOT EXISTS chk_session_status
+    ADD CONSTRAINT chk_session_status
     CHECK (status IN ('ACTIVE', 'EXPIRED', 'REVOKED'));
 
 -- sys_data_handover 表：交接类型检查
 ALTER TABLE public.sys_data_handover
-    ADD CONSTRAINT IF NOT EXISTS chk_handover_type
+    ADD CONSTRAINT chk_handover_type
     CHECK (handover_type IN ('RESIGNATION', 'PROJECT', 'CLIENT', 'LEAD', 'TASK'));
 
 -- sys_data_handover 表：状态检查
 ALTER TABLE public.sys_data_handover
-    ADD CONSTRAINT IF NOT EXISTS chk_handover_status
+    ADD CONSTRAINT chk_handover_status
     CHECK (status IN ('PENDING_APPROVAL', 'APPROVED', 'REJECTED', 'CONFIRMED', 'CANCELLED'));
 
 -- sys_operation_log 表：状态检查
 ALTER TABLE public.sys_operation_log
-    ADD CONSTRAINT IF NOT EXISTS chk_operation_status
+    ADD CONSTRAINT chk_operation_status
     CHECK (status IN ('SUCCESS', 'FAILURE', 'PARTIAL'));
 
 -- =====================================================
@@ -1161,124 +1161,124 @@ ALTER TABLE public.sys_operation_log
 
 -- crm_client 表：客户类型检查
 ALTER TABLE public.crm_client
-    ADD CONSTRAINT IF NOT EXISTS chk_client_type
+    ADD CONSTRAINT chk_client_type
     CHECK (client_type IN ('INDIVIDUAL', 'ENTERPRISE', 'GOVERNMENT', 'OTHER'));
 
 -- crm_client 表：客户级别检查
 ALTER TABLE public.crm_client
-    ADD CONSTRAINT IF NOT EXISTS chk_client_level
+    ADD CONSTRAINT chk_client_level
     CHECK (level IN ('A', 'B', 'C'));
 
 -- crm_client 表：客户分类检查
 ALTER TABLE public.crm_client
-    ADD CONSTRAINT IF NOT EXISTS chk_client_category
+    ADD CONSTRAINT chk_client_category
     CHECK (category IN ('VIP', 'NORMAL', 'POTENTIAL'));
 
 -- crm_client 表：客户状态检查
 ALTER TABLE public.crm_client
-    ADD CONSTRAINT IF NOT EXISTS chk_client_status
+    ADD CONSTRAINT chk_client_status
     CHECK (status IN ('POTENTIAL', 'ACTIVE', 'INACTIVE', 'BLACKLIST'));
 
 -- crm_client 表：身份证格式检查
 ALTER TABLE public.crm_client
-    ADD CONSTRAINT IF NOT EXISTS chk_client_id_card
+    ADD CONSTRAINT chk_client_id_card
     CHECK (id_card IS NULL OR id_card ~* '^[1-9][0-9]{16}[0-9Xx]$');
 
 -- crm_client 表：信用代码格式检查
 ALTER TABLE public.crm_client
-    ADD CONSTRAINT IF NOT EXISTS chk_client_credit_code
+    ADD CONSTRAINT chk_client_credit_code
     CHECK (credit_code IS NULL OR credit_code ~* '^[0-9A-Z]{18}$');
 
 -- crm_client 表：手机号格式检查
 ALTER TABLE public.crm_client
-    ADD CONSTRAINT IF NOT EXISTS chk_client_phone
+    ADD CONSTRAINT chk_client_phone
     CHECK (contact_phone IS NULL OR contact_phone ~* '^1[3-9][0-9]{9}$');
 
 -- crm_client 表：邮箱格式检查
 ALTER TABLE public.crm_client
-    ADD CONSTRAINT IF NOT EXISTS chk_client_email
+    ADD CONSTRAINT chk_client_email
     CHECK (contact_email IS NULL OR contact_email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$');
 
 -- crm_contact 表：邮箱格式检查
 ALTER TABLE public.crm_contact
-    ADD CONSTRAINT IF NOT EXISTS chk_contact_email
+    ADD CONSTRAINT chk_contact_email
     CHECK (email IS NULL OR email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$');
 
 -- crm_contact 表：手机号格式检查
 ALTER TABLE public.crm_contact
-    ADD CONSTRAINT IF NOT EXISTS chk_contact_phone
+    ADD CONSTRAINT chk_contact_phone
     CHECK (mobile_phone IS NULL OR mobile_phone ~* '^1[3-9][0-9]{9}$');
 
 -- crm_client_change_history 表：变更类型检查
 ALTER TABLE public.crm_client_change_history
-    ADD CONSTRAINT IF NOT EXISTS chk_change_type
+    ADD CONSTRAINT chk_change_type
     CHECK (change_type IN ('NAME', 'REGISTERED_CAPITAL', 'LEGAL_REPRESENTATIVE',
                           'ADDRESS', 'BUSINESS_SCOPE', 'SHAREHOLDER', 'OTHER'));
 
 -- crm_client_related_company 表：关联类型检查
 ALTER TABLE public.crm_client_related_company
-    ADD CONSTRAINT IF NOT EXISTS chk_related_company_type
+    ADD CONSTRAINT chk_related_company_type
     CHECK (related_company_type IN ('PARENT', 'SUBSIDIARY', 'AFFILIATE'));
 
 -- crm_client_shareholder 表：股东类型检查
 ALTER TABLE public.crm_client_shareholder
-    ADD CONSTRAINT IF NOT EXISTS chk_shareholder_type
+    ADD CONSTRAINT chk_shareholder_type
     CHECK (shareholder_type IN ('INDIVIDUAL', 'ENTERPRISE'));
 
 -- crm_client_shareholder 表：持股比例范围检查
 ALTER TABLE public.crm_client_shareholder
-    ADD CONSTRAINT IF NOT EXISTS chk_shareholding_ratio
+    ADD CONSTRAINT chk_shareholding_ratio
     CHECK (shareholding_ratio IS NULL OR (shareholding_ratio >= 0 AND shareholding_ratio <= 100));
 
 -- crm_lead 表：案源类型检查
 ALTER TABLE public.crm_lead
-    ADD CONSTRAINT IF NOT EXISTS chk_lead_type
+    ADD CONSTRAINT chk_lead_type
     CHECK (lead_type IN ('INDIVIDUAL', 'ENTERPRISE', 'GOVERNMENT'));
 
 -- crm_lead 表：状态检查
 ALTER TABLE public.crm_lead
-    ADD CONSTRAINT IF NOT EXISTS chk_lead_status
+    ADD CONSTRAINT chk_lead_status
     CHECK (status IN ('PENDING', 'FOLLOWING', 'CONVERTED', 'ABANDONED'));
 
 -- crm_lead 表：优先级检查
 ALTER TABLE public.crm_lead
-    ADD CONSTRAINT IF NOT EXISTS chk_lead_priority
+    ADD CONSTRAINT chk_lead_priority
     CHECK (priority IN ('HIGH', 'NORMAL', 'LOW'));
 
 -- crm_lead 表：手机号格式检查
 ALTER TABLE public.crm_lead
-    ADD CONSTRAINT IF NOT EXISTS chk_lead_phone
+    ADD CONSTRAINT chk_lead_phone
     CHECK (contact_phone IS NULL OR contact_phone ~* '^1[3-9][0-9]{9}$');
 
 -- crm_lead 表：邮箱格式检查
 ALTER TABLE public.crm_lead
-    ADD CONSTRAINT IF NOT EXISTS chk_lead_email
+    ADD CONSTRAINT chk_lead_email
     CHECK (contact_email IS NULL OR contact_email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$');
 
 -- crm_lead_follow_up 表：跟进方式检查
 ALTER TABLE public.crm_lead_follow_up
-    ADD CONSTRAINT IF NOT EXISTS chk_follow_type
+    ADD CONSTRAINT chk_follow_type
     CHECK (follow_type IN ('PHONE', 'EMAIL', 'VISIT', 'MEETING', 'OTHER'));
 
 -- crm_lead_follow_up 表：跟进结果检查
 ALTER TABLE public.crm_lead_follow_up
-    ADD CONSTRAINT IF NOT EXISTS chk_follow_result
+    ADD CONSTRAINT chk_follow_result
     CHECK (follow_result IN ('POSITIVE', 'NEUTRAL', 'NEGATIVE'));
 
 -- crm_conflict_check 表：检查类型检查
 ALTER TABLE public.crm_conflict_check
-    ADD CONSTRAINT IF NOT EXISTS chk_conflict_check_type
+    ADD CONSTRAINT chk_conflict_check_type
     CHECK (check_type IN ('NEW_CLIENT', 'NEW_MATTER', 'MANUAL', 'PERIODIC'));
 
 -- crm_conflict_check 表：状态检查
 ALTER TABLE public.crm_conflict_check
-    ADD CONSTRAINT IF NOT EXISTS chk_conflict_check_status
+    ADD CONSTRAINT chk_conflict_check_status
     CHECK (status IN ('PENDING', 'CHECKING', 'PASSED', 'CONFLICT', 'EXEMPTION_PENDING',
                       'WAIVED', 'REJECTED'));
 
 -- crm_conflict_check_item 表：当事人类型检查
 ALTER TABLE public.crm_conflict_check_item
-    ADD CONSTRAINT IF NOT EXISTS chk_party_type
+    ADD CONSTRAINT chk_party_type
     CHECK (party_type IN ('CLIENT', 'OPPOSING', 'RELATED', 'THIRD_PARTY'));
 
 -- =====================================================
@@ -1287,47 +1287,47 @@ ALTER TABLE public.crm_conflict_check_item
 
 -- matter 表：项目类型检查
 ALTER TABLE public.matter
-    ADD CONSTRAINT IF NOT EXISTS chk_matter_type
+    ADD CONSTRAINT chk_matter_type
     CHECK (matter_type IN ('LITIGATION', 'NON_LITIGATION', 'LEGAL_ADVICE', 'DRAFTING',
                           'CONSULTING', 'OTHER'));
 
 -- matter 表：项目状态检查
 ALTER TABLE public.matter
-    ADD CONSTRAINT IF NOT EXISTS chk_matter_status
+    ADD CONSTRAINT chk_matter_status
     CHECK (matter_status IN ('PENDING', 'IN_PROGRESS', 'SUSPENDED', 'COMPLETED', 'CANCELLED'));
 
 -- matter 表：案件性质检查
 ALTER TABLE public.matter
-    ADD CONSTRAINT IF NOT EXISTS chk_case_nature
+    ADD CONSTRAINT chk_case_nature
     CHECK (case_nature IN ('CIVIL', 'ADMINISTRATIVE', 'CRIMINAL', 'STATE_COMPENSATION',
                             'ENFORCEMENT', 'OTHER'));
 
 -- matter 表：审理程序检查
 ALTER TABLE public.matter
-    ADD CONSTRAINT IF NOT EXISTS chk_trial_procedure
+    ADD CONSTRAINT chk_trial_procedure
     CHECK (trial_procedure IN ('FIRST_INSTANCE', 'SECOND_INSTANCE', 'RETRIAL',
                                'SUMMARY', 'SUPERVISION', 'EXECUTION'));
 
 -- matter 表：项目等级检查
 ALTER TABLE public.matter
-    ADD CONSTRAINT IF NOT EXISTS chk_matter_level
+    ADD CONSTRAINT chk_matter_level
     CHECK (matter_level IN ('MAJOR', 'IMPORTANT', 'NORMAL', 'MINOR'));
 
 -- matter 表：紧急程度检查
 ALTER TABLE public.matter
-    ADD CONSTRAINT IF NOT EXISTS chk_urgency
+    ADD CONSTRAINT chk_urgency
     CHECK (urgency IN ('URGENT', 'NORMAL', 'LOW'));
 
 -- matter_participant 表：参与人角色检查
 ALTER TABLE public.matter_participant
-    ADD CONSTRAINT IF NOT EXISTS chk_participant_role
+    ADD CONSTRAINT chk_participant_role
     CHECK (participant_role IN ('PLAINTIFF', 'DEFENDANT', 'THIRD_PARTY',
                                 'PROSECUTOR', 'DEFENSE_COUNSEL', 'PLAINTIFF_COUNSEL',
                                 'JUDGE', 'CLERK', 'OTHER'));
 
 -- matter_deadline 表：期限类型检查
 ALTER TABLE public.matter_deadline
-    ADD CONSTRAINT IF NOT EXISTS chk_deadline_type
+    ADD CONSTRAINT chk_deadline_type
     CHECK (deadline_type IN ('COURT_HEARING', 'EVIDENCE_SUBMISSION', 'STATEMENT_SUBMISSION',
                              'APPEAL_DEADLINE', 'EXECUTION_DEADLINE', 'OTHER'));
 
@@ -1337,75 +1337,75 @@ ALTER TABLE public.matter_deadline
 
 -- finance_contract 表：合同类型检查
 ALTER TABLE public.finance_contract
-    ADD CONSTRAINT IF NOT EXISTS chk_contract_type
+    ADD CONSTRAINT chk_contract_type
     CHECK (contract_type IN ('FIXED_FEE', 'HOURLY', 'CONTINGENCY', 'HYBRID', 'RETAINER',
                              'LEGAL_AID', 'PRO_BONO', 'OTHER'));
 
 -- finance_contract 表：合同状态检查
 ALTER TABLE public.finance_contract
-    ADD CONSTRAINT IF NOT EXISTS chk_contract_status
+    ADD CONSTRAINT chk_contract_status
     CHECK (contract_status IN ('DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'SIGNED',
                                 'EXECUTING', 'COMPLETED', 'TERMINATED', 'CANCELLED'));
 
 -- finance_contract 表：金额检查
 ALTER TABLE public.finance_contract
-    ADD CONSTRAINT IF NOT EXISTS chk_contract_amount_positive
+    ADD CONSTRAINT chk_contract_amount_positive
     CHECK (contract_amount IS NULL OR contract_amount >= 0);
 
 -- finance_payment 表：收款状态检查
 ALTER TABLE public.finance_payment
-    ADD CONSTRAINT IF NOT EXISTS chk_payment_status
+    ADD CONSTRAINT chk_payment_status
     CHECK (payment_status IN ('PENDING', 'PARTIAL', 'COMPLETED', 'CANCELLED'));
 
 -- finance_payment 表：收款方式检查
 ALTER TABLE public.finance_payment
-    ADD CONSTRAINT IF NOT EXISTS chk_payment_method
+    ADD CONSTRAINT chk_payment_method
     CHECK (payment_method IN ('CASH', 'BANK_TRANSFER', 'CHECK', 'ALIPAY', 'WECHAT_PAY',
                                'POS', 'OTHER'));
 
 -- finance_payment 表：金额检查
 ALTER TABLE public.finance_payment
-    ADD CONSTRAINT IF NOT EXISTS chk_payment_amount_positive
+    ADD CONSTRAINT chk_payment_amount_positive
     CHECK (amount > 0);
 
 -- finance_payment 表：已收金额检查
 ALTER TABLE public.finance_payment
-    ADD CONSTRAINT IF NOT EXISTS chk_received_amount_valid
+    ADD CONSTRAINT chk_received_amount_valid
     CHECK (received_amount >= 0 AND received_amount <= amount);
 
 -- finance_commission 表：提成状态检查
 ALTER TABLE public.finance_commission
-    ADD CONSTRAINT IF NOT EXISTS chk_commission_status
+    ADD CONSTRAINT chk_commission_status
     CHECK (status IN ('PENDING', 'APPROVED', 'PAID', 'CANCELLED'));
 
 -- finance_commission 表：薪酬模式检查
 ALTER TABLE public.finance_commission
-    ADD CONSTRAINT IF NOT EXISTS chk_commission_compensation_type
+    ADD CONSTRAINT chk_commission_compensation_type
     CHECK (compensation_type IN ('COMMISSION', 'SALARIED', 'HYBRID'));
 
 -- finance_commission 表：分配比例范围检查
 ALTER TABLE public.finance_commission
-    ADD CONSTRAINT IF NOT EXISTS chk_distribution_ratio
+    ADD CONSTRAINT chk_distribution_ratio
     CHECK (distribution_ratio IS NULL OR (distribution_ratio >= 0 AND distribution_ratio <= 100));
 
 -- finance_commission 表：提成比例范围检查
 ALTER TABLE public.finance_commission
-    ADD CONSTRAINT IF NOT EXISTS chk_commission_rate
+    ADD CONSTRAINT chk_commission_rate
     CHECK (commission_rate IS NULL OR (commission_rate >= 0 AND commission_rate <= 100));
 
 -- finance_commission_detail 表：分配比例范围检查
 ALTER TABLE public.finance_commission_detail
-    ADD CONSTRAINT IF NOT EXISTS chk_allocation_rate_positive
+    ADD CONSTRAINT chk_allocation_rate_positive
     CHECK (allocation_rate > 0 AND allocation_rate <= 100);
 
 -- finance_invoice 表：发票类型检查
 ALTER TABLE public.finance_invoice
-    ADD CONSTRAINT IF NOT EXISTS chk_invoice_type
+    ADD CONSTRAINT chk_invoice_type
     CHECK (invoice_type IN ('VAT_SPECIAL', 'VAT_GENERAL', 'COMMON', 'PROFORMA', 'OTHER'));
 
 -- finance_invoice 表：发票状态检查
 ALTER TABLE public.finance_invoice
-    ADD CONSTRAINT IF NOT EXISTS chk_invoice_status
+    ADD CONSTRAINT chk_invoice_status
     CHECK (invoice_status IN ('PENDING', 'PROCESSING', 'ISSUED', 'VOID', 'CANCELLED'));
 
 -- =====================================================
@@ -1414,22 +1414,22 @@ ALTER TABLE public.finance_invoice
 
 -- admin_seal 表：印章状态检查
 ALTER TABLE public.admin_seal
-    ADD CONSTRAINT IF NOT EXISTS chk_seal_status
+    ADD CONSTRAINT chk_seal_status
     CHECK (seal_status IN ('ACTIVE', 'INACTIVE', 'LOST', 'DAMAGED'));
 
 -- seal_application 表：申请状态检查
 ALTER TABLE public.seal_application
-    ADD CONSTRAINT IF NOT EXISTS chk_seal_app_status
+    ADD CONSTRAINT chk_seal_app_status
     CHECK (status IN ('PENDING', 'APPROVED', 'REJECTED', 'USED', 'CANCELLED'));
 
 -- meeting_room 表：会议室状态检查
 ALTER TABLE public.meeting_room
-    ADD CONSTRAINT IF NOT EXISTS chk_meeting_room_status
+    ADD CONSTRAINT chk_meeting_room_status
     CHECK (status IN ('AVAILABLE', 'OCCUPIED', 'MAINTENANCE', 'DISABLED'));
 
 -- 注：会议室预约功能暂未实现
 -- ALTER TABLE public.meeting_room_reservation
---     ADD CONSTRAINT IF NOT EXISTS chk_meeting_res_status
+--     ADD CONSTRAINT chk_meeting_res_status
 --     CHECK (reservation_status IN ('PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED'));
 
 -- =====================================================
@@ -1438,22 +1438,22 @@ ALTER TABLE public.meeting_room
 
 -- timesheet 表：工作类型检查
 ALTER TABLE public.timesheet
-    ADD CONSTRAINT IF NOT EXISTS chk_work_type
+    ADD CONSTRAINT chk_work_type
     CHECK (work_type IN ('BILLABLE', 'NON_BILLABLE', 'ADMIN', 'PRO_BONO', 'OTHER'));
 
 -- timesheet 表：工时范围检查
 ALTER TABLE public.timesheet
-    ADD CONSTRAINT IF NOT EXISTS chk_work_hours_positive
+    ADD CONSTRAINT chk_work_hours_positive
     CHECK (work_hours > 0 AND work_hours <= 24);
 
 -- timesheet 表：年份范围检查
 ALTER TABLE public.timesheet
-    ADD CONSTRAINT IF NOT EXISTS chk_work_year_valid
+    ADD CONSTRAINT chk_work_year_valid
     CHECK (work_year >= 2020 AND work_year <= 2100);
 
 -- timesheet 表：月份范围检查
 ALTER TABLE public.timesheet
-    ADD CONSTRAINT IF NOT EXISTS chk_work_month_valid
+    ADD CONSTRAINT chk_work_month_valid
     CHECK (work_month >= 1 AND work_month <= 12);
 
 -- =====================================================
@@ -1462,12 +1462,12 @@ ALTER TABLE public.timesheet
 
 -- task 表：任务状态检查
 ALTER TABLE public.task
-    ADD CONSTRAINT IF NOT EXISTS chk_task_status
+    ADD CONSTRAINT chk_task_status
     CHECK (status IN ('PENDING', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'BLOCKED'));
 
 -- task 表：优先级检查
 ALTER TABLE public.task
-    ADD CONSTRAINT IF NOT EXISTS chk_task_priority
+    ADD CONSTRAINT chk_task_priority
     CHECK (priority IN ('URGENT', 'HIGH', 'NORMAL', 'LOW'));
 
 -- =====================================================
@@ -1476,27 +1476,27 @@ ALTER TABLE public.task
 
 -- hr_employee 表：员工状态检查
 ALTER TABLE public.hr_employee
-    ADD CONSTRAINT IF NOT EXISTS chk_employee_status
+    ADD CONSTRAINT chk_employee_status
     CHECK (status IN ('ACTIVE', 'INACTIVE', 'RESIGNED', 'TERMINATED'));
 
 -- hr_employee 表：性别检查
 ALTER TABLE public.hr_employee
-    ADD CONSTRAINT IF NOT EXISTS chk_employee_gender
+    ADD CONSTRAINT chk_employee_gender
     CHECK (gender IN ('MALE', 'FEMALE', 'OTHER'));
 
 -- hr_attendance 表：考勤状态检查
 ALTER TABLE public.hr_attendance
-    ADD CONSTRAINT IF NOT EXISTS chk_attendance_status
+    ADD CONSTRAINT chk_attendance_status
     CHECK (attendance_status IN ('PRESENT', 'ABSENT', 'LATE', 'EARLY_LEAVE', 'LEAVE', 'BUSINESS_TRIP'));
 
 -- hr_payroll 表：薪酬状态检查
 ALTER TABLE public.hr_payroll
-    ADD CONSTRAINT IF NOT EXISTS chk_payroll_status
+    ADD CONSTRAINT chk_payroll_status
     CHECK (payroll_status IN ('DRAFT', 'PENDING', 'APPROVED', 'PAID', 'CANCELLED'));
 
 -- hr_performance 表：考核等级检查
 ALTER TABLE public.hr_performance
-    ADD CONSTRAINT IF NOT EXISTS chk_performance_rating
+    ADD CONSTRAINT chk_performance_rating
     CHECK (rating IN ('S', 'A', 'B', 'C', 'D'));
 
 -- =====================================================
@@ -1505,17 +1505,17 @@ ALTER TABLE public.hr_performance
 
 -- archive 表：档案状态检查
 ALTER TABLE public.archive
-    ADD CONSTRAINT IF NOT EXISTS chk_archive_status
+    ADD CONSTRAINT chk_archive_status
     CHECK (archive_status IN ('PENDING', 'STORED', 'BORROWED', 'DESTROYED'));
 
 -- archive 表：保管期限检查
 ALTER TABLE public.archive
-    ADD CONSTRAINT IF NOT EXISTS chk_retention_period
+    ADD CONSTRAINT chk_retention_period
     CHECK (retention_period IN ('PERMANENT', 'LONG_TERM', 'SHORT_TERM', 'TEMPORARY'));
 
 -- archive_borrow 表：借阅状态检查
 ALTER TABLE public.archive_borrow
-    ADD CONSTRAINT IF NOT EXISTS chk_borrow_status
+    ADD CONSTRAINT chk_borrow_status
     CHECK (borrow_status IN ('PENDING', 'APPROVED', 'BORROWED', 'RETURNED', 'OVERDUE'));
 
 -- =====================================================
@@ -1524,18 +1524,18 @@ ALTER TABLE public.archive_borrow
 
 -- doc_file 表：文档类型检查
 ALTER TABLE public.doc_file
-    ADD CONSTRAINT IF NOT EXISTS chk_doc_type
+    ADD CONSTRAINT chk_doc_type
     CHECK (doc_type IN ('CONTRACT', 'EVIDENCE', 'PLEADING', 'CORRESPONDENCE',
                          'COURT_DOCUMENT', 'OPINION', 'RESEARCH', 'ADMIN', 'OTHER'));
 
 -- doc_file 表：文档状态检查
 ALTER TABLE public.doc_file
-    ADD CONSTRAINT IF NOT EXISTS chk_doc_status
+    ADD CONSTRAINT chk_doc_status
     CHECK (doc_status IN ('DRAFT', 'REVIEW', 'APPROVED', 'FINAL', 'ARCHIVED'));
 
 -- doc_version 表：版本类型检查
 ALTER TABLE public.doc_version
-    ADD CONSTRAINT IF NOT EXISTS chk_version_type
+    ADD CONSTRAINT chk_version_type
     CHECK (version_type IN ('DRAFT', 'MINOR', 'MAJOR', 'FINAL'));
 
 -- =====================================================
@@ -1544,23 +1544,23 @@ ALTER TABLE public.doc_version
 
 -- quality_check 表：检查状态检查
 ALTER TABLE public.quality_check
-    ADD CONSTRAINT IF NOT EXISTS chk_quality_check_status
+    ADD CONSTRAINT chk_quality_check_status
     CHECK (check_status IN ('PENDING', 'IN_PROGRESS', 'PASSED', 'FAILED', 'SKIPPED'));
 
 -- quality_check 表：检查类型检查
 ALTER TABLE public.quality_check
-    ADD CONSTRAINT IF NOT EXISTS chk_quality_check_type
+    ADD CONSTRAINT chk_quality_check_type
     CHECK (check_type IN ('FILE_REVIEW', 'MATTER_REVIEW', 'CONTRACT_REVIEW',
                           'COURT_DOCUMENT_REVIEW', 'OTHER'));
 
 -- quality_risk 表：风险等级检查
 ALTER TABLE public.quality_risk
-    ADD CONSTRAINT IF NOT EXISTS chk_risk_level
+    ADD CONSTRAINT chk_risk_level
     CHECK (risk_level IN ('CRITICAL', 'HIGH', 'MEDIUM', 'LOW'));
 
 -- quality_risk 表：风险状态检查
 ALTER TABLE public.quality_risk
-    ADD CONSTRAINT IF NOT EXISTS chk_risk_status
+    ADD CONSTRAINT chk_risk_status
     CHECK (status IN ('OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED', 'IGNORED'));
 
 -- =====================================================
@@ -1569,24 +1569,24 @@ ALTER TABLE public.quality_risk
 
 -- wb_approval 表：审批状态检查
 ALTER TABLE public.wb_approval
-    ADD CONSTRAINT IF NOT EXISTS chk_approval_status
+    ADD CONSTRAINT chk_approval_status
     CHECK (approval_status IN ('PENDING', 'IN_PROGRESS', 'APPROVED', 'REJECTED', 'CANCELLED'));
 
 -- wb_approval 表：审批类型检查
 ALTER TABLE public.wb_approval
-    ADD CONSTRAINT IF NOT EXISTS chk_approval_type
+    ADD CONSTRAINT chk_approval_type
     CHECK (approval_type IN ('CONTRACT', 'SEAL', 'LEAVE', 'REIMBURSEMENT', 'PURCHASE',
                              'CONFLICT_CHECK', 'MATTER_CLOSE', 'OTHER'));
 
 -- wb_schedule 表：日程类型检查
 ALTER TABLE public.wb_schedule
-    ADD CONSTRAINT IF NOT EXISTS chk_schedule_type
+    ADD CONSTRAINT chk_schedule_type
     CHECK (schedule_type IN ('COURT_HEARING', 'MEETING', 'CLIENT_VISIT', 'DEPOSITION',
                              'MEDITATION', 'ARBITRATION', 'TRAINING', 'OTHER'));
 
 -- wb_schedule 表：提醒类型检查
 ALTER TABLE public.wb_schedule
-    ADD CONSTRAINT IF NOT EXISTS chk_reminder_type
+    ADD CONSTRAINT chk_reminder_type
     CHECK (reminder_type IN ('NONE', 'EMAIL', 'SMS', 'SYSTEM', 'ALL'));
 
 -- =====================================================

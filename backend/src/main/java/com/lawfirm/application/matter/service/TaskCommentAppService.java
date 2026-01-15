@@ -2,12 +2,15 @@ package com.lawfirm.application.matter.service;
 
 import com.lawfirm.application.matter.command.CreateTaskCommentCommand;
 import com.lawfirm.application.matter.dto.TaskCommentDTO;
+import com.lawfirm.application.system.command.SendNotificationCommand;
+import com.lawfirm.application.system.service.NotificationAppService;
 import com.lawfirm.common.exception.BusinessException;
 import com.lawfirm.common.util.SecurityUtils;
 import com.lawfirm.domain.matter.entity.Task;
 import com.lawfirm.domain.matter.entity.TaskComment;
 import com.lawfirm.domain.matter.repository.TaskCommentRepository;
 import com.lawfirm.domain.matter.repository.TaskRepository;
+import com.lawfirm.domain.system.entity.Notification;
 import com.lawfirm.domain.system.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,6 +31,7 @@ public class TaskCommentAppService {
     private final TaskCommentRepository taskCommentRepository;
     private final TaskRepository taskRepository;
     private final UserRepository userRepository;
+    private final NotificationAppService notificationAppService;
 
     /**
      * 创建任务评论（M3-057）
@@ -48,10 +52,11 @@ public class TaskCommentAppService {
 
         taskCommentRepository.save(comment);
 
-        log.info("创建任务评论: taskId={}, commentId={}, userId={}", 
+        log.info("创建任务评论: taskId={}, commentId={}, userId={}",
                 command.getTaskId(), comment.getId(), SecurityUtils.getUserId());
 
-        // TODO: M3-059 - 发送@提醒通知（如果mentionedUserIds不为空）
+        // 发送@提醒通知（M3-059）
+        sendMentionNotifications(command.getMentionedUserIds(), task, comment);
 
         return toDTO(comment);
     }
@@ -83,6 +88,56 @@ public class TaskCommentAppService {
 
         taskCommentRepository.softDelete(commentId);
         log.info("删除任务评论: commentId={}, userId={}", commentId, SecurityUtils.getUserId());
+    }
+
+    /**
+     * 发送@提醒通知（M3-059）
+     *
+     * @param mentionedUserIds 被@的用户ID列表
+     * @param task 任务对象
+     * @param comment 评论对象
+     */
+    private void sendMentionNotifications(List<Long> mentionedUserIds, Task task, TaskComment comment) {
+        if (mentionedUserIds == null || mentionedUserIds.isEmpty()) {
+            return;
+        }
+
+        try {
+            // 获取当前用户信息
+            Long currentUserId = SecurityUtils.getUserId();
+            String currentUserName = "系统";
+            if (currentUserId != null) {
+                var currentUser = userRepository.findById(currentUserId);
+                if (currentUser != null) {
+                    currentUserName = currentUser.getRealName();
+                }
+            }
+
+            // 构建通知标题和内容
+            String title = "任务评论@提醒";
+            String content = String.format("%s 在任务「%s」中评论提到了您",
+                    currentUserName, task.getTitle());
+
+            // 构建通知命令
+            SendNotificationCommand notificationCommand = new SendNotificationCommand();
+            notificationCommand.setReceiverIds(mentionedUserIds);
+            notificationCommand.setTitle(title);
+            notificationCommand.setContent(content);
+            notificationCommand.setType(Notification.TYPE_REMINDER);
+            notificationCommand.setBusinessType("TASK_COMMENT");
+            notificationCommand.setBusinessId(comment.getId());
+
+            // 批量发送通知
+            notificationAppService.sendNotification(notificationCommand);
+
+            log.info("发送@提醒通知成功: taskId={}, commentId={}, mentionedUserIds={}",
+                    task.getId(), comment.getId(), mentionedUserIds);
+
+        } catch (Exception e) {
+            // 通知发送失败不影响评论创建，只记录日志
+            log.warn("发送@提醒通知失败: taskId={}, commentId={}, error={}",
+                    task.getId(), comment.getId(), e.getMessage());
+        }
     }
 
     /**

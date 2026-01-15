@@ -9,9 +9,12 @@ import com.lawfirm.application.workbench.command.CreateScheduledReportCommand;
 import com.lawfirm.application.workbench.dto.ReportDTO;
 import com.lawfirm.application.workbench.dto.ScheduledReportDTO;
 import com.lawfirm.application.workbench.dto.ScheduledReportLogDTO;
+import com.lawfirm.application.system.command.SendNotificationCommand;
+import com.lawfirm.application.system.service.NotificationAppService;
 import com.lawfirm.common.exception.BusinessException;
 import com.lawfirm.common.result.PageResult;
 import com.lawfirm.common.util.SecurityUtils;
+import com.lawfirm.domain.system.entity.Notification;
 import com.lawfirm.domain.workbench.entity.ReportTemplate;
 import com.lawfirm.domain.workbench.entity.ScheduledReport;
 import com.lawfirm.domain.workbench.entity.ScheduledReportLog;
@@ -45,6 +48,7 @@ public class ScheduledReportAppService {
     private final ScheduledReportLogMapper logMapper;
     private final ReportTemplateRepository templateRepository;
     private final CustomReportAppService customReportAppService;
+    private final NotificationAppService notificationAppService;
     private final ObjectMapper objectMapper;
 
     /**
@@ -255,7 +259,7 @@ public class ScheduledReportAppService {
             LocalDateTime nextExecuteTime = calculateNextExecuteTime(task);
             scheduledReportRepository.updateExecuteStats(task.getId(), startTime, "SUCCESS", nextExecuteTime, true);
 
-            // TODO: 发送通知
+            // 发送通知
             if (Boolean.TRUE.equals(task.getNotifyEnabled())) {
                 sendNotification(task, report, logRecord);
             }
@@ -279,12 +283,96 @@ public class ScheduledReportAppService {
         }
     }
 
+    /**
+     * 发送定时报表通知
+     */
     private void sendNotification(ScheduledReport task, ReportDTO report, ScheduledReportLog logRecord) {
-        // TODO: 实现邮件/站内信通知
-        log.info("发送报表通知: taskNo={}, reportNo={}", task.getTaskNo(), report.getReportNo());
-        logRecord.setNotifyStatus("SENT");
-        logRecord.setNotifyResult("通知已发送");
-        logRepository.updateById(logRecord);
+        try {
+            // 解析接收人
+            List<Long> userIds = new ArrayList<>();
+
+            // 添加任务创建者
+            if (task.getCreatedBy() != null) {
+                userIds.add(task.getCreatedBy());
+            }
+
+            // 添加指定的通知用户
+            if (task.getNotifyUserIds() != null && !task.getNotifyUserIds().isEmpty()) {
+                Arrays.stream(task.getNotifyUserIds().split(","))
+                        .map(String::trim)
+                        .filter(s -> !s.isEmpty())
+                        .map(Long::parseLong)
+                        .forEach(userIds::add);
+            }
+
+            // 去重
+            userIds = userIds.stream().distinct().collect(Collectors.toList());
+
+            if (userIds.isEmpty()) {
+                logRecord.setNotifyStatus("SKIPPED");
+                logRecord.setNotifyResult("无接收人");
+                logRepository.updateById(logRecord);
+                return;
+            }
+
+            // 构建通知内容
+            String title = "定时报表生成完成";
+            String content = String.format(
+                    "您的定时报表「%s」已生成完成。\n报表编号: %s\n生成时间: %s\n状态: %s",
+                    task.getTaskName(),
+                    report.getReportNo(),
+                    logRecord.getExecuteTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")),
+                    "SUCCESS".equals(logRecord.getStatus()) ? "成功" : "失败"
+            );
+
+            // 发送站内通知
+            SendNotificationCommand command = new SendNotificationCommand();
+            command.setReceiverIds(userIds);
+            command.setTitle(title);
+            command.setContent(content);
+            command.setType(Notification.TYPE_SYSTEM);
+            command.setBusinessType("SCHEDULED_REPORT");
+            command.setBusinessId(report.getId());
+
+            notificationAppService.sendNotification(command);
+
+            // 更新通知状态
+            logRecord.setNotifyStatus("SENT");
+            logRecord.setNotifyResult(String.format("已发送给%d个用户", userIds.size()));
+            logRepository.updateById(logRecord);
+
+            log.info("发送定时报表通知成功: taskNo={}, receivers={}", task.getTaskNo(), userIds.size());
+
+            // TODO: 发送邮件通知（如果配置了邮件服务）
+            sendEmailNotification(task, report, userIds);
+
+        } catch (Exception e) {
+            log.error("发送定时报表通知失败: taskNo={}", task.getTaskNo(), e);
+            logRecord.setNotifyStatus("FAILED");
+            logRecord.setNotifyResult("发送失败: " + e.getMessage());
+            logRepository.updateById(logRecord);
+        }
+    }
+
+    /**
+     * 发送邮件通知（预留接口）
+     */
+    private void sendEmailNotification(ScheduledReport task, ReportDTO report, List<Long> userIds) {
+        // 检查是否配置了邮件接收地址
+        if (task.getNotifyEmails() == null || task.getNotifyEmails().isEmpty()) {
+            return;
+        }
+
+        try {
+            // TODO: 实现邮件发送逻辑
+            // 1. 从配置中获取邮件服务器信息
+            // 2. 构建邮件内容
+            // 3. 发送邮件
+            log.debug("邮件通知功能待实现: taskNo={}, emails={}",
+                    task.getTaskNo(), task.getNotifyEmails());
+        } catch (Exception e) {
+            log.warn("发送邮件通知失败（不影响主流程）: taskNo={}", task.getTaskNo(), e);
+        }
     }
 
     private void validateScheduleConfig(CreateScheduledReportCommand command) {

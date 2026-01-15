@@ -177,7 +177,6 @@ async function loadDossierItems(matterId: number) {
 
     // 如果没有卷宗目录，尝试初始化
     if (!items || items.length === 0) {
-      console.log('[MatterSelector] 项目卷宗目录为空，尝试初始化...');
       items = await initMatterDossier(matterId);
     }
 
@@ -186,10 +185,6 @@ async function loadDossierItems(matterId: number) {
       (item) => item.itemType === 'FOLDER',
     );
     emit('dossierLoaded', dossierItems.value);
-
-    if (dossierItems.value.length === 0) {
-      console.log('[MatterSelector] 项目暂无文件夹目录');
-    }
   } catch (error: any) {
     console.error('[MatterSelector] 加载卷宗目录失败:', error);
     message.error(error.message || '加载卷宗目录失败');
