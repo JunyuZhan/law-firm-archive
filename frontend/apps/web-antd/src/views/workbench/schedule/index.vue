@@ -5,6 +5,8 @@ import { computed, onMounted, ref } from 'vue';
 
 import { Page } from '@vben/common-ui';
 
+import { useResponsive } from '#/hooks/useResponsive';
+
 import {
   Button,
   Card,
@@ -40,6 +42,9 @@ import {
 } from '#/api/matter/schedule';
 
 defineOptions({ name: 'ScheduleManagement' });
+
+// 响应式布局
+const { isMobile } = useResponsive();
 
 // 状态
 const loading = ref(false);
@@ -93,40 +98,50 @@ const queryParams = ref({
   scheduleType: undefined as string | undefined,
 });
 
-// 表格列
-const columns = [
-  {
-    title: '标题',
-    dataIndex: 'title',
-    key: 'title',
-    width: 200,
-    ellipsis: true,
-  },
-  {
-    title: '类型',
-    dataIndex: 'scheduleTypeName',
-    key: 'scheduleTypeName',
-    width: 80,
-  },
-  { title: '开始时间', dataIndex: 'startTime', key: 'startTime', width: 160 },
-  { title: '结束时间', dataIndex: 'endTime', key: 'endTime', width: 160 },
-  {
-    title: '地点',
-    dataIndex: 'location',
-    key: 'location',
-    width: 150,
-    ellipsis: true,
-  },
-  {
-    title: '关联项目',
-    dataIndex: 'matterName',
-    key: 'matterName',
-    width: 150,
-    ellipsis: true,
-  },
-  { title: '状态', dataIndex: 'status', key: 'status', width: 80 },
-  { title: '操作', key: 'action', width: 150, fixed: 'right' as const },
-];
+// 表格列（响应式）
+const columns = computed(() => {
+  const baseColumns = [
+    {
+      title: '标题',
+      dataIndex: 'title',
+      key: 'title',
+      width: isMobile.value ? 150 : 200,
+      ellipsis: true,
+      mobileShow: true,
+    },
+    {
+      title: '类型',
+      dataIndex: 'scheduleTypeName',
+      key: 'scheduleTypeName',
+      width: 80,
+      mobileShow: true,
+    },
+    { title: '开始时间', dataIndex: 'startTime', key: 'startTime', width: 160 },
+    { title: '结束时间', dataIndex: 'endTime', key: 'endTime', width: 160 },
+    {
+      title: '地点',
+      dataIndex: 'location',
+      key: 'location',
+      width: 150,
+      ellipsis: true,
+    },
+    {
+      title: '关联项目',
+      dataIndex: 'matterName',
+      key: 'matterName',
+      width: 150,
+      ellipsis: true,
+    },
+    { title: '状态', dataIndex: 'status', key: 'status', width: 80, mobileShow: true },
+    { title: '操作', key: 'action', width: isMobile.value ? 100 : 150, fixed: 'right' as const, mobileShow: true },
+  ];
+  
+  // 移动端隐藏部分列
+  if (isMobile.value) {
+    return baseColumns.filter(col => col.mobileShow === true);
+  }
+  return baseColumns;
+});
 
 // 加载日程列表
 async function loadSchedules() {
@@ -559,10 +574,15 @@ onMounted(() => {
     <Modal
       v-model:open="modalVisible"
       :title="modalTitle"
-      width="550px"
+      :width="isMobile ? '100%' : '550px'"
+      :centered="isMobile"
       @ok="handleSubmit"
     >
-      <Form :label-col="{ span: 5 }" :wrapper-col="{ span: 18 }">
+      <Form 
+        :label-col="isMobile ? { span: 24 } : { span: 5 }" 
+        :wrapper-col="isMobile ? { span: 24 } : { span: 18 }"
+        :layout="isMobile ? 'vertical' : 'horizontal'"
+      >
         <FormItem label="日程标题" required>
           <Input v-model:value="formData.title" placeholder="如：XX案开庭" />
         </FormItem>
@@ -777,6 +797,82 @@ onMounted(() => {
 
   .list-view {
     margin-top: 16px;
+  }
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  .schedule-page {
+    .today-schedules {
+      flex-direction: column;
+      gap: 8px;
+
+      .today-item {
+        flex-wrap: wrap;
+        padding: 8px;
+
+        .today-title {
+          width: 100%;
+          margin: 4px 0;
+        }
+
+        .today-location {
+          width: 100%;
+        }
+      }
+    }
+
+    .calendar-view {
+      .calendar-header {
+        flex-direction: column;
+        gap: 12px;
+        align-items: stretch;
+
+        .current-month {
+          text-align: center;
+        }
+      }
+
+      .calendar-grid {
+        .weekday-header .weekday {
+          padding: 8px 2px;
+          font-size: 12px;
+        }
+
+        .days-grid .day-cell {
+          min-height: 60px;
+          padding: 4px;
+
+          .day-number {
+            font-size: 12px;
+          }
+
+          .day-schedules .schedule-item {
+            font-size: 10px;
+            padding: 1px 2px;
+
+            .schedule-time {
+              display: none;
+            }
+          }
+
+          .day-schedules .more-schedules {
+            font-size: 10px;
+          }
+        }
+      }
+    }
+
+    .list-view {
+      :deep(.ant-table) {
+        font-size: 13px;
+      }
+
+      :deep(.ant-btn-link) {
+        padding: 0 4px;
+        font-size: 12px;
+      }
+    }
   }
 }
 </style>

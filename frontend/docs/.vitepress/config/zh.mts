@@ -34,8 +34,8 @@ export const zh = defineConfig({
 
     sidebar: {
       '/guide/user/': { base: '/guide/user/', items: sidebarUser() },
-      '/guide/ops/': { base: '/guide/ops/', items: sidebarOps() },
-      '/guide/api/': { base: '/guide/api/', items: sidebarApi() },
+      '/guide/ops/': sidebarProtected(),
+      '/guide/api/': sidebarProtected(),
     },
     sidebarMenuLabel: '菜单',
   },
@@ -101,43 +101,39 @@ function sidebarUser(): DefaultTheme.SidebarItem[] {
   ];
 }
 
-function sidebarOps(): DefaultTheme.SidebarItem[] {
+// 受保护内容的合并侧边栏（运维手册 + API 文档）
+function sidebarProtected(): DefaultTheme.SidebarItem[] {
   return [
     {
       collapsed: false,
       text: '运维手册',
       items: [
-        { link: 'introduction', text: '概述' },
-        { link: 'deployment', text: '部署指南' },
-        { link: 'configuration', text: '配置说明' },
-        { link: 'backup', text: '备份恢复' },
-        { link: 'monitoring', text: '监控告警' },
-        { link: 'troubleshooting', text: '故障排查' },
+        { link: '/guide/ops/introduction', text: '概述' },
+        { link: '/guide/ops/deployment', text: '部署指南' },
+        { link: '/guide/ops/configuration', text: '配置说明' },
+        { link: '/guide/ops/backup', text: '备份恢复' },
+        { link: '/guide/ops/monitoring', text: '监控告警' },
+        { link: '/guide/ops/troubleshooting', text: '故障排查' },
       ],
     },
-  ];
-}
-
-function sidebarApi(): DefaultTheme.SidebarItem[] {
-  return [
     {
       collapsed: false,
       text: 'API 文档',
       items: [
-        { link: 'introduction', text: '接口概述' },
-        { link: 'auth', text: '认证接口' },
-        { link: 'user', text: '用户接口' },
-        { link: 'case', text: '项目接口' },
-        { link: 'contract', text: '合同接口' },
-        { link: 'finance', text: '财务接口' },
-        { link: 'client', text: '客户接口' },
-        { link: 'conflict', text: '利冲接口' },
-        { link: 'lead', text: '案源接口' },
-        { link: 'document', text: '文档接口' },
-        { link: 'archive', text: '档案接口' },
-        { link: 'admin', text: '行政接口' },
-        { link: 'hr', text: '人力接口' },
-        { link: 'knowledge', text: '知识库接口' },
+        { link: '/guide/api/introduction', text: '接口概述' },
+        { link: '/guide/api/auth', text: '认证接口' },
+        { link: '/guide/api/user', text: '用户接口' },
+        { link: '/guide/api/case', text: '项目接口' },
+        { link: '/guide/api/contract', text: '合同接口' },
+        { link: '/guide/api/finance', text: '财务接口' },
+        { link: '/guide/api/client', text: '客户接口' },
+        { link: '/guide/api/conflict', text: '利冲接口' },
+        { link: '/guide/api/lead', text: '案源接口' },
+        { link: '/guide/api/document', text: '文档接口' },
+        { link: '/guide/api/archive', text: '档案接口' },
+        { link: '/guide/api/admin', text: '行政接口' },
+        { link: '/guide/api/hr', text: '人力接口' },
+        { link: '/guide/api/knowledge', text: '知识库接口' },
       ],
     },
   ];

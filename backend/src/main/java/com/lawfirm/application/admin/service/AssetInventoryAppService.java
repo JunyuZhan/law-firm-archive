@@ -1,8 +1,12 @@
 package com.lawfirm.application.admin.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lawfirm.application.admin.command.CreateAssetInventoryCommand;
 import com.lawfirm.application.admin.dto.AssetInventoryDTO;
 import com.lawfirm.application.admin.dto.AssetInventoryDetailDTO;
+import com.lawfirm.common.base.PageQuery;
+import com.lawfirm.common.result.PageResult;
 import com.lawfirm.common.exception.BusinessException;
 import com.lawfirm.common.util.SecurityUtils;
 import com.lawfirm.domain.admin.entity.Asset;
@@ -236,6 +240,26 @@ public class AssetInventoryAppService {
         return details.stream()
                 .map(d -> toDetailDTO(d, assetMap))
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * 分页查询资产盘点列表
+     */
+    public PageResult<AssetInventoryDTO> listInventories(PageQuery query, String status) {
+        Page<AssetInventory> page = new Page<>(query.getPageNum(), query.getPageSize());
+        LambdaQueryWrapper<AssetInventory> wrapper = new LambdaQueryWrapper<>();
+        // 注意：deleted 条件由 @TableLogic 注解自动处理
+        if (status != null && !status.isEmpty()) {
+            wrapper.eq(AssetInventory::getStatus, status);
+        }
+        wrapper.orderByDesc(AssetInventory::getCreatedAt);
+        
+        Page<AssetInventory> result = inventoryMapper.selectPage(page, wrapper);
+        List<AssetInventoryDTO> items = result.getRecords().stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
+        
+        return PageResult.of(items, result.getTotal(), query.getPageNum(), query.getPageSize());
     }
 
     /**

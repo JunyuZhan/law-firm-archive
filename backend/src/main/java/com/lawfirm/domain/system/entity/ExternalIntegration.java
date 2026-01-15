@@ -66,6 +66,8 @@ public class ExternalIntegration extends BaseEntity {
     public static final String TYPE_AI = "AI";
     public static final String TYPE_OCR = "OCR";
     public static final String TYPE_STORAGE = "STORAGE";
+    public static final String TYPE_NOTIFICATION = "NOTIFICATION";
+    public static final String TYPE_ENTERPRISE_INFO = "ENTERPRISE_INFO";
     public static final String TYPE_OTHER = "OTHER";
 
     // ===== 认证方式常量 =====
@@ -73,6 +75,7 @@ public class ExternalIntegration extends BaseEntity {
     public static final String AUTH_BEARER_TOKEN = "BEARER_TOKEN";
     public static final String AUTH_BASIC = "BASIC";
     public static final String AUTH_OAUTH2 = "OAUTH2";
+    public static final String AUTH_WEBHOOK = "WEBHOOK";
 
     // ===== 测试结果常量 =====
     public static final String TEST_SUCCESS = "SUCCESS";

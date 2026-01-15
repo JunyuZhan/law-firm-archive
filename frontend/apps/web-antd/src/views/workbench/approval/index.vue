@@ -95,7 +95,9 @@ async function loadPendingData() {
 const [PendingGrid, pendingGridApi] = useVbenVxeGrid({
   gridOptions: {
     columns: pendingColumns,
-    height: 'auto',
+    // 移除高度限制，让表格完整显示所有数据
+    height: '',
+    minHeight: 200,
     proxyConfig: {
       ajax: {
         query: loadPendingData,
@@ -145,7 +147,9 @@ async function loadInitiatedData() {
 const [InitiatedGrid, initiatedGridApi] = useVbenVxeGrid({
   gridOptions: {
     columns: initiatedColumns,
-    height: 'auto',
+    // 移除高度限制，让表格完整显示所有数据
+    height: '',
+    minHeight: 200,
     proxyConfig: {
       ajax: {
         query: loadInitiatedData,

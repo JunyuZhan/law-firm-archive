@@ -5,6 +5,8 @@ import { computed, onMounted, reactive, ref } from 'vue';
 
 import { Page } from '@vben/common-ui';
 
+import { useResponsive } from '#/hooks/useResponsive';
+
 import {
   Button,
   Card,
@@ -29,9 +31,12 @@ import {
   getAdminContractDetail,
   getAdminContractList,
 } from '#/api/admin';
-import { findCauseNameInAll } from '#/constants/causes';
+import { findCauseNameInAll } from '#/composables/useCauseOfAction';
 
 defineOptions({ name: 'AdminContract' });
+
+// 响应式布局
+const { isMobile } = useResponsive();
 
 // 状态
 const loading = ref(false);
@@ -302,8 +307,8 @@ function getCaseTypeColor(caseType: string) {
     description="查看已审批通过的合同信息，用于司法局报备等"
   >
     <!-- 统计卡片 -->
-    <Row :gutter="16" style="margin-bottom: 16px">
-      <Col :span="4">
+    <Row :gutter="[16, 16]" style="margin-bottom: 16px">
+      <Col :xs="8" :sm="8" :md="4" :lg="4">
         <Card size="small">
           <Statistic
             title="民事案件"
@@ -312,7 +317,7 @@ function getCaseTypeColor(caseType: string) {
           />
         </Card>
       </Col>
-      <Col :span="4">
+      <Col :xs="8" :sm="8" :md="4" :lg="4">
         <Card size="small">
           <Statistic
             title="刑事案件"
@@ -321,7 +326,7 @@ function getCaseTypeColor(caseType: string) {
           />
         </Card>
       </Col>
-      <Col :span="4">
+      <Col :xs="8" :sm="8" :md="4" :lg="4">
         <Card size="small">
           <Statistic
             title="行政案件"
@@ -330,7 +335,7 @@ function getCaseTypeColor(caseType: string) {
           />
         </Card>
       </Col>
-      <Col :span="4">
+      <Col :xs="8" :sm="8" :md="4" :lg="4">
         <Card size="small">
           <Statistic
             title="法律顾问"
@@ -339,7 +344,7 @@ function getCaseTypeColor(caseType: string) {
           />
         </Card>
       </Col>
-      <Col :span="4">
+      <Col :xs="8" :sm="8" :md="4" :lg="4">
         <Card size="small">
           <Statistic
             title="其他"
@@ -348,7 +353,7 @@ function getCaseTypeColor(caseType: string) {
           />
         </Card>
       </Col>
-      <Col :span="4">
+      <Col :xs="8" :sm="8" :md="4" :lg="4">
         <Card size="small">
           <Statistic title="总计" :value="stats.total" />
         </Card>
@@ -358,22 +363,22 @@ function getCaseTypeColor(caseType: string) {
     <Card>
       <!-- 搜索栏 -->
       <div style="margin-bottom: 16px">
-        <Row :gutter="16">
-          <Col :span="4">
+        <Row :gutter="[16, 12]">
+          <Col :xs="12" :sm="12" :md="4" :lg="4">
             <Input
               v-model:value="queryParams.contractNo"
               placeholder="合同编号"
               allow-clear
             />
           </Col>
-          <Col :span="4">
+          <Col :xs="12" :sm="12" :md="4" :lg="4">
             <Input
               v-model:value="queryParams.clientName"
               placeholder="委托人名称"
               allow-clear
             />
           </Col>
-          <Col :span="3">
+          <Col :xs="12" :sm="12" :md="3" :lg="3">
             <Select
               v-model:value="queryParams.caseType"
               placeholder="案件类型"
@@ -382,15 +387,15 @@ function getCaseTypeColor(caseType: string) {
               :options="caseTypeOptions"
             />
           </Col>
-          <Col :span="5">
+          <Col :xs="12" :sm="12" :md="5" :lg="5">
             <DatePicker.RangePicker
               style="width: 100%"
               :placeholder="['签约开始', '签约结束']"
               @change="handleDateRangeChange"
             />
           </Col>
-          <Col :span="8">
-            <Space>
+          <Col :xs="24" :sm="24" :md="8" :lg="8">
+            <Space :wrap="isMobile">
               <Button type="primary" @click="handleSearch">查询</Button>
               <Button @click="handleReset">重置</Button>
               <Button :loading="exportListLoading" @click="handleExportList">
@@ -410,11 +415,11 @@ function getCaseTypeColor(caseType: string) {
           border-radius: 4px;
         "
       >
-        <Row :gutter="16" align="middle">
-          <Col :span="2">
+        <Row :gutter="[16, 12]" align="middle">
+          <Col :xs="24" :sm="24" :md="2" :lg="2">
             <span style="font-weight: 500">导出合同：</span>
           </Col>
-          <Col :span="3">
+          <Col :xs="8" :sm="8" :md="3" :lg="3">
             <InputNumber
               v-model:value="exportParams.year"
               :min="2020"
@@ -423,7 +428,7 @@ function getCaseTypeColor(caseType: string) {
               style="width: 100%"
             />
           </Col>
-          <Col :span="3">
+          <Col :xs="8" :sm="8" :md="3" :lg="3">
             <InputNumber
               v-model:value="exportParams.month"
               :min="1"
@@ -432,7 +437,7 @@ function getCaseTypeColor(caseType: string) {
               style="width: 100%"
             />
           </Col>
-          <Col :span="4">
+          <Col :xs="8" :sm="8" :md="4" :lg="4">
             <Button
               type="primary"
               :loading="exportLoading"
@@ -456,7 +461,7 @@ function getCaseTypeColor(caseType: string) {
           showSizeChanger: true,
         }"
         row-key="id"
-        :scroll="{ x: 1500 }"
+        :scroll="{ x: isMobile ? 1000 : 1500 }"
         @change="handleTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -490,7 +495,8 @@ function getCaseTypeColor(caseType: string) {
     <Modal
       v-model:open="modalVisible"
       title="合同详情"
-      width="800px"
+      :width="isMobile ? '100%' : '800px'"
+      :centered="isMobile"
       :footer="null"
     >
       <Descriptions v-if="contractDetail" :column="2" bordered>

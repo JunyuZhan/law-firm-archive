@@ -273,11 +273,11 @@ public class FinanceContractAmendmentService {
             // 检查是否有已收款的计划
             boolean hasReceivedPayment = existingSchedules.stream()
                     .anyMatch(s -> "PAID".equals(s.getStatus()) || "PARTIAL".equals(s.getStatus()));
-            
+
             if (hasReceivedPayment) {
                 log.warn("合同存在已收款的付款计划，仅同步未收款部分: contractId={}", amendment.getContractId());
-                // 只更新未收款的计划
-                // TODO: 实现部分同步逻辑
+                // 实现部分同步逻辑：保留已收款计划，更新未收款计划
+                syncPaymentPlansPartially(amendment, afterSchedules, existingSchedules);
             } else {
                 // 全部替换
                 scheduleRepository.deleteByContractId(amendment.getContractId());
@@ -294,11 +294,45 @@ public class FinanceContractAmendmentService {
             }
             
             log.info("同步合同付款计划变更: contractId={}", amendment.getContractId());
-            
+
         } catch (Exception e) {
             log.error("同步付款计划变更失败", e);
             throw new BusinessException("同步付款计划变更失败: " + e.getMessage());
         }
+    }
+
+    /**
+     * 部分同步付款计划（保留已收款计划，更新未收款计划）
+     */
+    private void syncPaymentPlansPartially(FinanceContractAmendment amendment,
+                                           List<Map<String, Object>> afterSchedules,
+                                           List<ContractPaymentSchedule> existingSchedules) {
+        // 找出已收款的计划
+        List<ContractPaymentSchedule> paidSchedules = existingSchedules.stream()
+                .filter(s -> "PAID".equals(s.getStatus()) || "PARTIAL".equals(s.getStatus()))
+                .collect(java.util.stream.Collectors.toList());
+
+        // 找出未收款的计划
+        List<ContractPaymentSchedule> unpaidSchedules = existingSchedules.stream()
+                .filter(s -> "PENDING".equals(s.getStatus()) || "OVERDUE".equals(s.getStatus()))
+                .collect(java.util.stream.Collectors.toList());
+
+        // 删除所有未收款的计划
+        unpaidSchedules.forEach(s -> scheduleRepository.removeById(s.getId()));
+
+        // 创建新的付款计划
+        for (Map<String, Object> sData : afterSchedules) {
+            ContractPaymentSchedule schedule = ContractPaymentSchedule.builder()
+                    .contractId(amendment.getContractId())
+                    .phaseName((String) sData.get("phaseName"))
+                    .amount(new java.math.BigDecimal(sData.get("amount").toString()))
+                    .status("PENDING")
+                    .build();
+            scheduleRepository.save(schedule);
+        }
+
+        log.info("部分同步付款计划完成: contractId={}, 保留已收款={}, 新增未收款={}",
+                amendment.getContractId(), paidSchedules.size(), afterSchedules.size());
     }
 
     /**

@@ -11,6 +11,8 @@ import { onMounted, ref } from 'vue';
 import { Page } from '@vben/common-ui';
 import { Plus } from '@vben/icons';
 
+import { useResponsive } from '#/hooks/useResponsive';
+
 import {
   Button,
   Card,
@@ -48,6 +50,9 @@ import { getCareerLevelList } from '#/api/hr/promotion';
 import { UserTreeSelect } from '#/components/UserTreeSelect';
 
 defineOptions({ name: 'HrDevelopment' });
+
+// 响应式布局
+const { isMobile } = useResponsive();
 
 // 状态
 const loading = ref(false);
@@ -384,17 +389,19 @@ onMounted(() => {
   <Page title="发展计划" description="管理员工职业发展计划">
     <Card>
       <div
-        style="
-          display: flex;
-          justify-content: space-between;
-          margin-bottom: 16px;
-        "
+        :style="{
+          display: 'flex',
+          flexDirection: isMobile ? 'column' : 'row',
+          justifyContent: 'space-between',
+          gap: isMobile ? '12px' : '0',
+          marginBottom: '16px',
+        }"
       >
-        <Space>
+        <Space :wrap="isMobile">
           <Select
             v-model:value="queryParams.planYear"
             placeholder="计划年度"
-            style="width: 120px"
+            :style="{ width: isMobile ? '100%' : '120px', minWidth: '100px' }"
             allow-clear
             :options="
               [2024, 2025, 2026, 2027].map((y) => ({
@@ -407,7 +414,7 @@ onMounted(() => {
           <Select
             v-model:value="queryParams.status"
             placeholder="状态"
-            style="width: 120px"
+            :style="{ width: isMobile ? '100%' : '120px', minWidth: '100px' }"
             allow-clear
             :options="
               Object.entries(statusMap).map(([k, v]) => ({
@@ -420,13 +427,13 @@ onMounted(() => {
           <Input
             v-model:value="queryParams.keyword"
             placeholder="搜索员工姓名"
-            style="width: 200px"
+            :style="{ width: isMobile ? '100%' : '200px', minWidth: '150px' }"
             allow-clear
             @press-enter="handleSearch"
           />
           <Button @click="handleSearch">查询</Button>
         </Space>
-        <Button type="primary" @click="handleAdd">
+        <Button type="primary" :block="isMobile" @click="handleAdd">
           <Plus />
           新建计划
         </Button>
@@ -441,9 +448,9 @@ onMounted(() => {
           pageSize: queryParams.pageSize,
           total,
           showSizeChanger: true,
-          showQuickJumper: true,
+          showQuickJumper: !isMobile,
         }"
-        :scroll="{ x: 1300 }"
+        :scroll="{ x: isMobile ? 900 : 1300 }"
         row-key="id"
         @change="handleTableChange"
       >
@@ -496,7 +503,8 @@ onMounted(() => {
     <Modal
       v-model:open="modalVisible"
       :title="editingId ? '编辑发展计划' : '新建发展计划'"
-      width="800px"
+      :width="isMobile ? '100%' : '800px'"
+      :centered="isMobile"
       @ok="handleSave"
     >
       <Form :label-col="{ span: 5 }" :wrapper-col="{ span: 18 }">
@@ -612,7 +620,8 @@ onMounted(() => {
     <Modal
       v-model:open="detailVisible"
       title="发展计划详情"
-      width="800px"
+      :width="isMobile ? '100%' : '800px'"
+      :centered="isMobile"
       :footer="null"
     >
       <Descriptions v-if="currentRecord" :column="2" bordered size="small">

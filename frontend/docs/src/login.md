@@ -1,5 +1,7 @@
 ---
-layout: false
+layout: page
+title: 登录
+sidebar: false
 ---
 
-<!-- 这个页面由前端组件处理，不需要 markdown 内容 -->
+<!-- 登录页面由 site-layout.vue 中的 Login 组件处理 -->

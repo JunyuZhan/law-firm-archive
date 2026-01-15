@@ -105,6 +105,7 @@ public class SupplierAppService {
 
     /**
      * 更新供应商
+     * 问题修复：只更新非null字段，避免覆盖原有数据
      */
     @Transactional
     public SupplierDTO updateSupplier(Long id, CreateSupplierCommand command) {
@@ -113,18 +114,43 @@ public class SupplierAppService {
             throw new BusinessException("供应商不存在");
         }
         
-        supplier.setName(command.getName());
-        supplier.setSupplierType(command.getSupplierType());
-        supplier.setContactPerson(command.getContactPerson());
-        supplier.setContactPhone(command.getContactPhone());
-        supplier.setContactEmail(command.getContactEmail());
-        supplier.setAddress(command.getAddress());
-        supplier.setCreditCode(command.getCreditCode());
-        supplier.setBankName(command.getBankName());
-        supplier.setBankAccount(command.getBankAccount());
-        supplier.setSupplyScope(command.getSupplyScope());
-        supplier.setRating(command.getRating());
-        supplier.setRemarks(command.getRemarks());
+        // 只更新非null字段，避免覆盖原有数据导致NPE
+        if (command.getName() != null) {
+            supplier.setName(command.getName());
+        }
+        if (command.getSupplierType() != null) {
+            supplier.setSupplierType(command.getSupplierType());
+        }
+        if (command.getContactPerson() != null) {
+            supplier.setContactPerson(command.getContactPerson());
+        }
+        if (command.getContactPhone() != null) {
+            supplier.setContactPhone(command.getContactPhone());
+        }
+        if (command.getContactEmail() != null) {
+            supplier.setContactEmail(command.getContactEmail());
+        }
+        if (command.getAddress() != null) {
+            supplier.setAddress(command.getAddress());
+        }
+        if (command.getCreditCode() != null) {
+            supplier.setCreditCode(command.getCreditCode());
+        }
+        if (command.getBankName() != null) {
+            supplier.setBankName(command.getBankName());
+        }
+        if (command.getBankAccount() != null) {
+            supplier.setBankAccount(command.getBankAccount());
+        }
+        if (command.getSupplyScope() != null) {
+            supplier.setSupplyScope(command.getSupplyScope());
+        }
+        if (command.getRating() != null) {
+            supplier.setRating(command.getRating());
+        }
+        if (command.getRemarks() != null) {
+            supplier.setRemarks(command.getRemarks());
+        }
         
         supplierRepository.updateById(supplier);
         log.info("更新供应商: {}", supplier.getName());
@@ -204,15 +230,18 @@ public class SupplierAppService {
     }
 
     private String getSupplierTypeName(String type) {
+        if (type == null) return null;
         return switch (type) {
             case "GOODS" -> "物品供应商";
             case "SERVICE" -> "服务供应商";
             case "BOTH" -> "综合供应商";
+            case "OFFICE_SUPPLIES" -> "办公用品供应商";
             default -> type;
         };
     }
 
     private String getRatingName(String rating) {
+        if (rating == null) return null;
         return switch (rating) {
             case "A" -> "优秀";
             case "B" -> "良好";

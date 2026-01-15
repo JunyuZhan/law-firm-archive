@@ -18,14 +18,18 @@ import {
   groupIconMdPlugin,
   groupIconVitePlugin,
 } from 'vitepress-plugin-group-icons';
+import type { Plugin } from 'vite';
 
 import { demoPreviewPlugin } from './plugins/demo-preview';
 import { search as zhSearch } from './zh.mts';
 
+// 检测是否是开发模式
+const isDev = process.env.NODE_ENV !== 'production';
+
 export const shared = defineConfig({
   appearance: 'dark',
-  // 部署在 /docs/ 子目录下
-  base: '/docs/',
+  // 开发模式下使用根路径，生产模式下使用 /docs/
+  base: isDev ? '/' : '/docs/',
   head: head(),
   // 忽略文档中的配置示例链接
   ignoreDeadLinks: [/localhost/],
@@ -75,7 +79,54 @@ export const shared = defineConfig({
     json: {
       stringify: true,
     },
-    plugins: [
+    plugins: ([
+      {
+        name: 'docs-base-rewrite',
+        enforce: 'pre',
+        apply: 'serve',
+        configureServer(server) {
+          // 在所有中间件之前执行 URL 重写
+          const rewriteMiddleware = (req: any, res: any, next: any) => {
+            const url = req.url;
+            if (!url) {
+              next();
+              return;
+            }
+            
+            // 处理 /docs 重定向
+            if (url === '/docs') {
+              res.statusCode = 302;
+              res.setHeader('Location', '/docs/');
+              res.end();
+              return;
+            }
+            
+            // 从 /docs 开头的 URL 中去掉 /docs 前缀
+            // 这样 Vite 才能正确处理这些请求
+            if (url.startsWith('/docs/')) {
+              const newUrl = url.slice('/docs'.length) || '/';
+              // 只重写 Vite 内部路径，不重写页面路径
+              if (
+                newUrl.startsWith('/@') ||
+                newUrl.startsWith('/__') ||
+                newUrl.startsWith('/node_modules/') ||
+                newUrl.startsWith('/src/') ||
+                newUrl.includes('.vitepress')
+              ) {
+                console.log(`[docs-rewrite] ${url} -> ${newUrl}`);
+                req.url = newUrl;
+              }
+            }
+            next();
+          };
+          
+          // 将中间件添加到栈的最前面
+          server.middlewares.stack.unshift({
+            route: '',
+            handle: rewriteMiddleware,
+          });
+        },
+      } satisfies Plugin,
       GitChangelog({
         mapAuthors: [
           {
@@ -98,7 +149,7 @@ export const shared = defineConfig({
       viteArchiverPlugin({ outputDir: '.vitepress' }),
       groupIconVitePlugin(),
       await viteVxeTableImportsPlugin(),
-    ],
+    ]) as any,
     server: {
       fs: {
         allow: ['../..'],

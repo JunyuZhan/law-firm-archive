@@ -398,7 +398,29 @@ public class LeadAppService {
             }
         }
 
-        // TODO: 查询转化后的客户和项目名称
+        // 查询转化后的客户名称
+        if (lead.getConvertedToClientId() != null) {
+            try {
+                ClientDTO client = clientAppService.getClientById(lead.getConvertedToClientId());
+                if (client != null) {
+                    dto.setConvertedToClientName(client.getName());
+                }
+            } catch (Exception e) {
+                log.debug("获取转化客户信息失败: clientId={}", lead.getConvertedToClientId());
+            }
+        }
+
+        // 查询转化后的项目名称
+        if (lead.getConvertedToMatterId() != null) {
+            try {
+                MatterDTO matter = matterAppService.getMatterById(lead.getConvertedToMatterId());
+                if (matter != null) {
+                    dto.setConvertedToMatterName(matter.getName());
+                }
+            } catch (Exception e) {
+                log.debug("获取转化项目信息失败: matterId={}", lead.getConvertedToMatterId());
+            }
+        }
 
         return dto;
     }

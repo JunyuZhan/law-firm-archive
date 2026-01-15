@@ -3,6 +3,8 @@ import { ref } from 'vue';
 
 import { Page } from '@vben/common-ui';
 
+import { useResponsive } from '#/hooks/useResponsive';
+
 import {
   Button,
   Card,
@@ -17,6 +19,9 @@ import {
 } from 'ant-design-vue';
 
 defineOptions({ name: 'HrPerformance' });
+
+// 响应式布局
+const { isMobile } = useResponsive();
 
 // 状态
 const loading = ref(false);
@@ -42,8 +47,8 @@ const columns = [
     <Card>
       <!-- 搜索栏 -->
       <div style="margin-bottom: 16px">
-        <Row :gutter="16">
-          <Col :span="6">
+        <Row :gutter="[16, 12]">
+          <Col :xs="12" :sm="12" :md="6">
             <Select
               v-model:value="period"
               placeholder="考核周期"
@@ -55,15 +60,15 @@ const columns = [
               <Select.Option value="2025Q3">2025年Q3</Select.Option>
             </Select>
           </Col>
-          <Col :span="6">
+          <Col :xs="12" :sm="12" :md="6">
             <Input
               v-model:value="searchText"
               placeholder="搜索员工"
               allow-clear
             />
           </Col>
-          <Col :span="12">
-            <Space>
+          <Col :xs="24" :sm="24" :md="12">
+            <Space :wrap="isMobile">
               <Button type="primary">查询</Button>
               <Button>重置</Button>
               <Button type="primary">发起考核</Button>
@@ -76,6 +81,7 @@ const columns = [
         :data-source="dataSource"
         :loading="loading"
         :pagination="{ pageSize: 10 }"
+        :scroll="{ x: isMobile ? 800 : undefined }"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'totalScore'">

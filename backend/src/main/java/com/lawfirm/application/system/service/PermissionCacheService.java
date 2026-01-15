@@ -1,5 +1,6 @@
 package com.lawfirm.application.system.service;
 
+import com.lawfirm.infrastructure.persistence.mapper.UserRoleMapper;
 import com.lawfirm.infrastructure.security.UserDetailsServiceImpl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,6 +19,7 @@ public class PermissionCacheService {
 
     private final RedisTemplate<String, Object> redisTemplate;
     private final UserDetailsServiceImpl userDetailsService;
+    private final UserRoleMapper userRoleMapper;
 
     /**
      * Token缓存前缀
@@ -89,10 +91,18 @@ public class PermissionCacheService {
             return;
         }
 
-        // TODO: 查询所有拥有该角色的用户，然后清除他们的缓存
-        // 这需要查询sys_user_role表
-        // 暂时不实现，避免循环依赖
-        log.info("清除角色权限缓存: roleId={}", roleId);
+        // 查询所有拥有该角色的用户ID
+        List<Long> userIds = userRoleMapper.selectUserIdsByRoleId(roleId);
+        
+        if (userIds == null || userIds.isEmpty()) {
+            log.info("角色无关联用户，无需清除缓存: roleId={}", roleId);
+            return;
+        }
+
+        // 批量清除这些用户的权限缓存
+        batchClearPermissionCache(userIds);
+        
+        log.info("清除角色权限缓存完成: roleId={}, affectedUsers={}", roleId, userIds.size());
     }
 }
 

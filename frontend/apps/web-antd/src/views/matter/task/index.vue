@@ -268,23 +268,15 @@ async function handleSave() {
   }
 }
 
-function handleDelete(row: TaskDTO) {
-  Modal.confirm({
-    title: '确认删除',
-    content: `确定要删除任务 "${row.title}" 吗？`,
-    okText: '确认',
-    cancelText: '取消',
-    onOk: async () => {
-      try {
-        await deleteTask(row.id);
-        message.success('删除成功');
-        gridApi.reload();
-      } catch (error: unknown) {
-        const err = error as { message?: string };
-        message.error(err.message || '删除失败');
-      }
-    },
-  });
+async function handleDelete(row: TaskDTO) {
+  try {
+    await deleteTask(row.id);
+    message.success('删除成功');
+    gridApi.reload();
+  } catch (error: unknown) {
+    const err = error as { message?: string };
+    message.error(err.message || '删除失败');
+  }
 }
 
 function handleComplete(row: TaskDTO) {

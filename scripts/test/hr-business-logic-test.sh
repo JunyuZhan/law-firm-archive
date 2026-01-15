@@ -426,11 +426,11 @@ test_payroll_management() {
     
     # 3.4 创建工资表
     local year=$(date +%Y)
-    local month=$(date +%m)
+    # 去掉月份前导零，避免 JSON parse error: Leading zeroes not allowed
+    local month=$((10#$(date +%m)))
     local create_payroll='{
         "payrollYear": '$year',
-        "payrollMonth": '$month',
-        "title": "测试工资表"
+        "payrollMonth": '$month'
     }'
     response=$(send_request "POST" "$BASE_URL/hr/payroll" "$create_payroll" "$auth_header")
     body=$(echo "$response" | sed '$d')
@@ -752,13 +752,12 @@ test_promotion_management() {
     
     # 7.4 创建职级
     local create_level='{
-        "name": "测试职级",
-        "code": "TEST_LEVEL",
+        "levelName": "测试职级",
+        "levelCode": "TEST_LEVEL_'$(date +%s)'",
         "category": "LAWYER",
-        "level": 99,
+        "levelOrder": 99,
         "description": "测试用职级",
-        "minYears": 1,
-        "status": "ENABLED"
+        "minWorkYears": 1
     }'
     response=$(send_request "POST" "$BASE_URL/hr/promotion/levels" "$create_level" "$auth_header")
     body=$(echo "$response" | sed '$d')

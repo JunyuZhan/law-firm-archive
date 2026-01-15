@@ -824,11 +824,11 @@ test_purchase_management() {
         "title": "办公用品采购",
         "purchaseType": "OFFICE_SUPPLIES",
         "items": [
-            {"name": "A4打印纸", "specification": "70g", "quantity": 10, "unit": "箱", "estimatedPrice": 200},
-            {"name": "签字笔", "specification": "黑色", "quantity": 100, "unit": "支", "estimatedPrice": 200}
+            {"itemName": "A4打印纸", "specification": "70g", "quantity": 10, "unit": "箱", "estimatedPrice": 200},
+            {"itemName": "签字笔", "specification": "黑色", "quantity": 100, "unit": "支", "estimatedPrice": 200}
         ],
         "reason": "日常办公消耗",
-        "expectedDeliveryDate": "2026-01-20"
+        "expectedDate": "2026-01-20"
     }'
     response=$(send_request "POST" "$BASE_URL/admin/purchases" "$create_purchase" "$auth_header")
     body=$(echo "$response" | sed '$d')
@@ -925,8 +925,9 @@ test_supplier_management() {
     fi
     
     # 7.2 创建供应商
+    local timestamp=$(date +%s)
     local create_supplier='{
-        "name": "测试供应商有限公司",
+        "name": "测试供应商有限公司_'$timestamp'",
         "supplierType": "OFFICE_SUPPLIES",
         "contactPerson": "张经理",
         "contactPhone": "13800138000",
@@ -1074,7 +1075,10 @@ test_letter_management() {
     fi
     
     # 8.3 创建模板
-    response=$(send_request "POST" "$BASE_URL/admin/letter/template?name=测试模板&letterType=INTRODUCTION&content=这是一份测试模板内容&description=用于测试" "" "$auth_header")
+    local template_name="TestTemplate_$(date +%s)"
+    local encoded_name=$(echo -n "$template_name" | python3 -c "import sys, urllib.parse; print(urllib.parse.quote(sys.stdin.read()))")
+    local encoded_content=$(echo -n "This is a test template content" | python3 -c "import sys, urllib.parse; print(urllib.parse.quote(sys.stdin.read()))")
+    response=$(send_request "POST" "$BASE_URL/admin/letter/template?name=$encoded_name&letterType=INTRODUCTION&content=$encoded_content&description=ForTesting" "" "$auth_header")
     body=$(echo "$response" | sed '$d')
     
     if check_success "$body"; then
@@ -1159,7 +1163,7 @@ test_asset_inventory() {
     local auth_header="Authorization: Bearer $TOKEN"
     
     # 9.1 查询盘点任务列表
-    local response=$(send_request "GET" "$BASE_URL/admin/asset-inventory?pageNum=1&pageSize=10" "" "$auth_header")
+    local response=$(send_request "GET" "$BASE_URL/admin/asset-inventories?pageNum=1&pageSize=10" "" "$auth_header")
     local body=$(echo "$response" | sed '$d')
     
     if check_success "$body"; then

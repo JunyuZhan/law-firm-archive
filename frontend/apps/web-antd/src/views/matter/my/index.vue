@@ -2,11 +2,14 @@
 import type { VbenFormSchema } from '#/adapter/form';
 import type { MatterDTO } from '#/api/matter/types';
 
+import { watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
 
 import { Modal, Space, Tag } from 'ant-design-vue';
+
+import { useResponsive } from '#/hooks/useResponsive';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import { getMyMatters } from '#/api/matter';
@@ -14,6 +17,9 @@ import { getMyMatters } from '#/api/matter';
 defineOptions({ name: 'MatterMy' });
 
 const router = useRouter();
+
+// 响应式布局
+const { isMobile } = useResponsive();
 
 // 获取当前年份
 const currentYear = new Date().getFullYear();
@@ -72,29 +78,39 @@ const formSchema: VbenFormSchema[] = [
 
 // ==================== 表格配置 ====================
 
-const gridColumns = [
-  { title: '类型', field: 'matterTypeName', width: 100 },
-  { title: '案件类型', field: 'caseTypeName', width: 100 },
-  { title: '合同编号', field: 'contractNo', width: 130 },
-  { title: '客户', field: 'clientName', width: 150 },
-  { title: '项目编号', field: 'matterNo', width: 130 },
-  { title: '主办律师', field: 'leadLawyerName', width: 100 },
-  {
-    title: '合同金额',
-    field: 'contractAmount',
-    width: 120,
-    slots: { default: 'contractAmount' },
-  },
-  { title: '创建时间', field: 'createdAt', width: 160 },
-  { title: '状态', field: 'status', width: 100, slots: { default: 'status' } },
-  {
-    title: '操作',
-    field: 'action',
-    width: 200,
-    fixed: 'right' as const,
-    slots: { default: 'action' },
-  },
-];
+// 响应式列配置
+function getGridColumns() {
+  const baseColumns = [
+    { title: '类型', field: 'matterTypeName', width: 100, mobileShow: true },
+    { title: '案件类型', field: 'caseTypeName', width: 100 },
+    { title: '合同编号', field: 'contractNo', width: 130 },
+    { title: '客户', field: 'clientName', width: 150, mobileShow: true },
+    { title: '项目编号', field: 'matterNo', width: 130 },
+    { title: '主办律师', field: 'leadLawyerName', width: 100 },
+    {
+      title: '合同金额',
+      field: 'contractAmount',
+      width: 120,
+      slots: { default: 'contractAmount' },
+    },
+    { title: '创建时间', field: 'createdAt', width: 160 },
+    { title: '状态', field: 'status', width: 100, slots: { default: 'status' }, mobileShow: true },
+    {
+      title: '操作',
+      field: 'action',
+      width: isMobile.value ? 100 : 200,
+      fixed: 'right' as const,
+      slots: { default: 'action' },
+      mobileShow: true,
+    },
+  ];
+  
+  // 移动端只显示标记的列
+  if (isMobile.value) {
+    return baseColumns.filter(col => col.mobileShow === true);
+  }
+  return baseColumns;
+}
 
 // 加载数据
 async function loadData(
@@ -125,14 +141,14 @@ async function loadData(
   };
 }
 
-const [Grid] = useVbenVxeGrid({
+const [Grid, gridApi] = useVbenVxeGrid({
   formOptions: {
     schema: formSchema,
     submitButtonOptions: { content: '查询' },
     resetButtonOptions: { content: '重置' },
   },
   gridOptions: {
-    columns: gridColumns,
+    columns: getGridColumns(),
     height: 'auto',
     proxyConfig: {
       ajax: {
@@ -150,6 +166,11 @@ const [Grid] = useVbenVxeGrid({
       pageSizes: [10, 20, 50, 100],
     },
   },
+});
+
+// 监听响应式变化，更新列配置
+watch(isMobile, () => {
+  gridApi.setGridOptions({ columns: getGridColumns() });
 });
 
 // ==================== 操作方法 ====================
@@ -251,3 +272,24 @@ async function handleArchive(row: MatterDTO) {
     </Grid>
   </Page>
 </template>
+
+<style scoped>
+/* 移动端适配 */
+@media (max-width: 768px) {
+  :deep(.vxe-table) {
+    font-size: 13px;
+  }
+
+  :deep(.vxe-cell) {
+    padding: 8px 4px;
+  }
+
+  :deep(.ant-space) {
+    gap: 4px !important;
+  }
+
+  :deep(.ant-space-item a) {
+    font-size: 12px;
+  }
+}
+</style>

@@ -7,9 +7,11 @@ import type {
   UpdateRoleCommand,
 } from '#/api/system/types';
 
-import { onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 
 import { Page } from '@vben/common-ui';
+
+import { useResponsive } from '#/hooks/useResponsive';
 
 import {
   Button,
@@ -41,6 +43,9 @@ import {
 } from '#/api/system';
 
 defineOptions({ name: 'SystemRole' });
+
+// 响应式布局
+const { isMobile } = useResponsive();
 
 // ==================== 状态定义 ====================
 
@@ -75,26 +80,34 @@ const formData = reactive<Partial<CreateRoleCommand> & { id?: number }>({
 
 // ==================== 常量配置 ====================
 
-// 表格列
-const columns = [
-  { title: '角色编码', dataIndex: 'roleCode', key: 'roleCode', width: 150 },
-  { title: '角色名称', dataIndex: 'roleName', key: 'roleName', width: 150 },
-  {
-    title: '数据范围',
-    dataIndex: 'dataScopeName',
-    key: 'dataScopeName',
-    width: 120,
-  },
-  {
-    title: '描述',
-    dataIndex: 'description',
-    key: 'description',
-    ellipsis: true,
-  },
-  { title: '排序', dataIndex: 'sortOrder', key: 'sortOrder', width: 80 },
-  { title: '创建时间', dataIndex: 'createdAt', key: 'createdAt', width: 160 },
-  { title: '操作', key: 'action', width: 200, fixed: 'right' as const },
-];
+// 表格列（响应式）
+const columns = computed(() => {
+  const baseColumns = [
+    { title: '角色编码', dataIndex: 'roleCode', key: 'roleCode', width: 150 },
+    { title: '角色名称', dataIndex: 'roleName', key: 'roleName', width: 150, mobileShow: true },
+    {
+      title: '数据范围',
+      dataIndex: 'dataScopeName',
+      key: 'dataScopeName',
+      width: 120,
+      mobileShow: true,
+    },
+    {
+      title: '描述',
+      dataIndex: 'description',
+      key: 'description',
+      ellipsis: true,
+    },
+    { title: '排序', dataIndex: 'sortOrder', key: 'sortOrder', width: 80 },
+    { title: '创建时间', dataIndex: 'createdAt', key: 'createdAt', width: 160 },
+    { title: '操作', key: 'action', width: isMobile.value ? 120 : 200, fixed: 'right' as const, mobileShow: true },
+  ];
+  
+  if (isMobile.value) {
+    return baseColumns.filter(col => col.mobileShow === true);
+  }
+  return baseColumns;
+});
 
 // 数据范围选项
 const dataScopeOptions = [
@@ -193,23 +206,15 @@ async function handleSave() {
 }
 
 // 删除角色
-function handleDelete(record: RoleDTO) {
-  Modal.confirm({
-    title: '确认删除',
-    content: `确定要删除角色 "${record.roleName}" 吗？`,
-    okText: '确认',
-    cancelText: '取消',
-    onOk: async () => {
-      try {
-        await deleteRole(record.id);
-        message.success('删除成功');
-        fetchData();
-      } catch (error: unknown) {
-        const err = error as { message?: string };
-        message.error(err.message || '删除失败');
-      }
-    },
-  });
+async function handleDelete(record: RoleDTO) {
+  try {
+    await deleteRole(record.id);
+    message.success('删除成功');
+    fetchData();
+  } catch (error: unknown) {
+    const err = error as { message?: string };
+    message.error(err.message || '删除失败');
+  }
 }
 
 // ==================== 权限分配 ====================
@@ -337,7 +342,8 @@ onMounted(() => {
     <Modal
       v-model:open="modalVisible"
       :title="modalTitle"
-      width="600px"
+      :width="isMobile ? '100%' : '600px'"
+      :centered="isMobile"
       @ok="handleSave"
     >
       <Form
@@ -400,7 +406,8 @@ onMounted(() => {
     <Modal
       v-model:open="menuModalVisible"
       :title="`分配权限 - ${currentRole?.roleName || ''}`"
-      width="600px"
+      :width="isMobile ? '100%' : '600px'"
+      :centered="isMobile"
       @ok="handleSaveMenu"
     >
       <Tree

@@ -6,10 +6,12 @@ import type {
 } from '#/api/matter/types';
 import type { UserDTO } from '#/api/system/types';
 
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 
 import { Page } from '@vben/common-ui';
 import { useUserStore } from '@vben/stores';
+
+import { useResponsive } from '#/hooks/useResponsive';
 
 import {
   Button,
@@ -45,6 +47,9 @@ import { getUserSelectOptions } from '#/api/system';
 
 defineOptions({ name: 'MatterTimesheet' });
 
+// 响应式布局
+const { isMobile } = useResponsive();
+
 const userStore = useUserStore();
 
 // ==================== 状态定义 ====================
@@ -63,7 +68,7 @@ const formData = reactive<Partial<CreateTimesheetCommand> & { id?: number }>({
   workDate: undefined,
   hours: 1,
   workType: 'RESEARCH',
-  description: '',
+  workContent: '',
   billable: true,
 });
 
@@ -98,44 +103,50 @@ const statusOptions = [
 
 // ==================== 表格配置 ====================
 
-// 表格列 - 根据标签页动态显示
-const gridColumns = computed(() => {
+// 表格列 - 根据标签页和屏幕尺寸动态显示
+function getGridColumns() {
   const baseColumns: any[] = [
-    { title: '项目', field: 'matterName', width: 180, showOverflow: true },
+    { title: '项目', field: 'matterName', width: isMobile.value ? 120 : 180, showOverflow: true, mobileShow: true },
   ];
 
-  if (activeTab.value === 'all') {
+  if (activeTab.value === 'all' && !isMobile.value) {
     baseColumns.push({ title: '律师', field: 'userName', width: 100 });
   }
 
-  return [
+  const allColumns = [
     ...baseColumns,
-    { title: '工作日期', field: 'workDate', width: 110 },
-    { title: '工时', field: 'hours', width: 80 },
+    { title: '工作日期', field: 'workDate', width: 110, mobileShow: true },
+    { title: '工时', field: 'hours', width: 80, mobileShow: true },
     {
       title: '工作类型',
       field: 'workType',
       width: 100,
       slots: { default: 'workType' },
     },
-    { title: '工作描述', field: 'description', width: 180, showOverflow: true },
+    { title: '工作描述', field: 'workContent', width: 180, showOverflow: true },
     {
       title: '可计费',
       field: 'billable',
       width: 70,
       slots: { default: 'billable' },
     },
-    { title: '状态', field: 'status', width: 90, slots: { default: 'status' } },
+    { title: '状态', field: 'status', width: 90, slots: { default: 'status' }, mobileShow: true },
     { title: '创建时间', field: 'createdAt', width: 150 },
     {
       title: '操作',
       field: 'action',
-      width: 180,
+      width: isMobile.value ? 100 : 180,
       fixed: 'right' as const,
       slots: { default: 'action' },
+      mobileShow: true,
     },
   ];
-});
+  
+  if (isMobile.value) {
+    return allColumns.filter(col => col.mobileShow === true);
+  }
+  return allColumns;
+}
 
 // 加载数据
 async function loadData(params: { page: number; pageSize: number }) {
@@ -172,7 +183,7 @@ async function loadData(params: { page: number; pageSize: number }) {
 
 const [Grid, gridApi] = useVbenVxeGrid({
   gridOptions: {
-    columns: gridColumns.value,
+    columns: getGridColumns(),
     height: 'auto',
     proxyConfig: {
       ajax: {
@@ -192,6 +203,11 @@ const [Grid, gridApi] = useVbenVxeGrid({
       slots: { buttons: 'toolbar-buttons' },
     },
   },
+});
+
+// 监听响应式变化，更新列配置
+watch([isMobile, activeTab], () => {
+  gridApi.setGridOptions({ columns: getGridColumns() });
 });
 
 // ==================== 数据加载 ====================
@@ -262,7 +278,7 @@ function handleAdd() {
     workDate: undefined,
     hours: 1,
     workType: 'RESEARCH',
-    description: '',
+    workContent: '',
     billable: true,
   });
   modalVisible.value = true;
@@ -276,7 +292,7 @@ function handleEdit(row: TimesheetDTO) {
     workDate: row.workDate,
     hours: row.hours,
     workType: row.workType,
-    description: row.description,
+    workContent: row.workContent,
     billable: row.billable,
   });
   modalVisible.value = true;
@@ -305,23 +321,15 @@ async function handleSave() {
   }
 }
 
-function handleDelete(row: TimesheetDTO) {
-  Modal.confirm({
-    title: '确认删除',
-    content: '确定要删除这条工时记录吗？',
-    okText: '确认',
-    cancelText: '取消',
-    onOk: async () => {
-      try {
-        await deleteTimesheet(row.id);
-        message.success('删除成功');
-        gridApi.reload();
-      } catch (error: unknown) {
-        const err = error as { message?: string };
-        message.error(err.message || '删除失败');
-      }
-    },
-  });
+async function handleDelete(row: TimesheetDTO) {
+  try {
+    await deleteTimesheet(row.id);
+    message.success('删除成功');
+    gridApi.reload();
+  } catch (error: unknown) {
+    const err = error as { message?: string };
+    message.error(err.message || '删除失败');
+  }
 }
 
 function handleSubmit(row: TimesheetDTO) {
@@ -535,7 +543,8 @@ onMounted(() => {
     <Modal
       v-model:open="modalVisible"
       :title="modalTitle"
-      width="700px"
+      :width="isMobile ? '100%' : '700px'"
+      :centered="isMobile"
       @ok="handleSave"
     >
       <Form
@@ -605,11 +614,11 @@ onMounted(() => {
         </FormItem>
         <FormItem
           label="工作描述"
-          name="description"
-          :rules="[{ required: true, message: '请输入工作描述' }]"
+          name="workContent"
+          :rules="[{ required: false, message: '请输入工作描述' }]"
         >
           <Textarea
-            v-model:value="formData.description"
+            v-model:value="formData.workContent"
             :rows="4"
             placeholder="请输入工作描述"
           />

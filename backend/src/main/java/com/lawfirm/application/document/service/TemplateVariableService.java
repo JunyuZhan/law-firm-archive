@@ -1,5 +1,6 @@
 package com.lawfirm.application.document.service;
 
+import com.lawfirm.application.system.service.CauseOfActionService;
 import com.lawfirm.domain.client.entity.Client;
 import com.lawfirm.domain.client.repository.ClientRepository;
 import com.lawfirm.domain.finance.entity.Contract;
@@ -37,6 +38,7 @@ public class TemplateVariableService {
     private final ContractRepository contractRepository;
     private final ApprovalMapper approvalMapper;
     private final SysConfigMapper sysConfigMapper;
+    private final CauseOfActionService causeOfActionService;
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy年MM月dd日");
     private static final DateTimeFormatter DATE_SHORT_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
@@ -142,6 +144,7 @@ public class TemplateVariableService {
         variables.put("matter.description", nullToEmpty(matter.getDescription()));
         variables.put("matter.opposingParty", nullToEmpty(matter.getOpposingParty()));
         variables.put("matter.causeOfAction", nullToEmpty(matter.getCauseOfAction()));
+        variables.put("matter.causeOfActionName", getCauseOfActionName(matter.getCauseOfAction(), matter.getCaseType()));
         variables.put("matter.litigationStage", nullToEmpty(matter.getLitigationStage()));
         variables.put("matter.litigationStageName", getLitigationStageName(matter.getLitigationStage()));
         
@@ -202,6 +205,7 @@ public class TemplateVariableService {
         variables.put("contract.caseType", nullToEmpty(contract.getCaseType()));
         variables.put("contract.opposingParty", nullToEmpty(contract.getOpposingParty()));
         variables.put("contract.causeOfAction", nullToEmpty(contract.getCauseOfAction()));
+        variables.put("contract.causeOfActionName", getCauseOfActionName(contract.getCauseOfAction(), contract.getCaseType()));
         
         if (contract.getTotalAmount() != null) {
             variables.put("contract.totalAmount", String.format("%.2f", contract.getTotalAmount()));
@@ -495,6 +499,23 @@ public class TemplateVariableService {
 
         result.append("元整");
         return result.toString();
+    }
+
+    /**
+     * 获取案由名称
+     */
+    private String getCauseOfActionName(String causeOfAction, String caseType) {
+        if (causeOfAction == null || causeOfAction.isEmpty()) {
+            return "";
+        }
+        
+        String causeType = switch (caseType != null ? caseType : "") {
+            case "CRIMINAL" -> CauseOfActionService.TYPE_CRIMINAL;
+            case "ADMINISTRATIVE" -> CauseOfActionService.TYPE_ADMIN;
+            default -> CauseOfActionService.TYPE_CIVIL;
+        };
+        
+        return causeOfActionService.getCauseName(causeOfAction, causeType);
     }
 }
 

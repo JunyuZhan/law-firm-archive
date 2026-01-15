@@ -148,9 +148,10 @@ public class JudicialFilingExportService {
             caseTypeCell.setCellValue(nullSafe(contract.getCaseTypeName()));
             caseTypeCell.setCellStyle(dataStyle);
 
-            // 案由
+            // 案由（使用案由名称，如果没有则用代码）
             Cell causeCell = dataRow.createCell(colNum++);
-            causeCell.setCellValue(nullSafe(contract.getCauseOfAction()));
+            causeCell.setCellValue(nullSafe(contract.getCauseOfActionName() != null ? 
+                contract.getCauseOfActionName() : contract.getCauseOfAction()));
             causeCell.setCellStyle(dataStyle);
 
             // 承办律师
@@ -326,9 +327,10 @@ public class JudicialFilingExportService {
             caseTypeCell.setCellValue(nullSafe(contract.getCaseTypeName()));
             caseTypeCell.setCellStyle(dataStyle);
 
-            // 案由
+            // 案由（使用案由名称，如果没有则用代码）
             Cell causeCell = row.createCell(colNum++);
-            causeCell.setCellValue(nullSafe(contract.getCauseOfAction()));
+            causeCell.setCellValue(nullSafe(contract.getCauseOfActionName() != null ?
+                contract.getCauseOfActionName() : contract.getCauseOfAction()));
             causeCell.setCellStyle(dataStyle);
 
             // 承办律师
@@ -387,7 +389,8 @@ public class JudicialFilingExportService {
             case "委托人" -> nullSafe(contract.getClientName());
             case "对方当事人" -> nullSafe(contract.getOpposingParty());
             case "案件类型" -> nullSafe(contract.getCaseTypeName());
-            case "案由" -> nullSafe(contract.getCauseOfAction());
+            case "案由" -> nullSafe(contract.getCauseOfActionName() != null ? 
+                contract.getCauseOfActionName() : contract.getCauseOfAction());
             case "承办律师" -> nullSafe(contract.getLeadLawyerName());
             case "律师费金额" -> contract.getTotalAmount() != null ? contract.getTotalAmount().toString() : "";
             case "签约日期" -> contract.getSignDate() != null

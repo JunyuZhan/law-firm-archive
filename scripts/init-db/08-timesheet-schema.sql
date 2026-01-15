@@ -22,8 +22,12 @@ CREATE TABLE public.timer_session (
     resume_time timestamp without time zone,
     elapsed_seconds bigint DEFAULT 0,
     status character varying(20) DEFAULT 'RUNNING'::character varying,
+    version integer DEFAULT 1,
+    created_by bigint,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+    updated_by bigint,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    deleted boolean DEFAULT false
 );
 --
 -- Name: TABLE timer_session; Type: COMMENT; Schema: public; Owner: -
@@ -107,7 +111,7 @@ CREATE TABLE public.timesheet (
     work_date date NOT NULL,
     hours numeric(5,2) NOT NULL,
     work_type character varying(50),
-    work_content text NOT NULL,
+    work_content text,
     billable boolean DEFAULT true,
     hourly_rate numeric(10,2),
     amount numeric(15,2),

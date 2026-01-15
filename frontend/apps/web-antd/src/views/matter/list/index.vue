@@ -14,6 +14,8 @@ import { useRoute, useRouter } from 'vue-router';
 import { Page } from '@vben/common-ui';
 import { Plus } from '@vben/icons';
 
+import { useResponsive } from '#/hooks/useResponsive';
+
 import {
   Button,
   Cascader,
@@ -54,12 +56,15 @@ import {
   getCauseTypeByCase,
   MATTER_TYPE_OPTIONS,
   needsCauseOfAction,
-} from '#/constants/causes';
+} from '#/composables/useCauseOfAction';
 
 defineOptions({ name: 'MatterList' });
 
 const router = useRouter();
 const route = useRoute();
+
+// 响应式布局
+const { isMobile } = useResponsive();
 
 // 获取当前年份
 const currentYear = new Date().getFullYear();
@@ -201,14 +206,23 @@ const showCauseSelect = computed(() => {
   return formData.caseType && needsCauseOfAction(formData.caseType);
 });
 
-// 案由选项
-const causeOptions = computed(() => {
-  if (!formData.caseType) return [];
+// 案由选项（异步加载）
+const causeOptions = ref<any[]>([]);
+
+// 加载案由选项
+async function loadCauseOptions() {
+  if (!formData.caseType) {
+    causeOptions.value = [];
+    return;
+  }
   const causeType = getCauseTypeByCase(formData.caseType);
-  if (!causeType) return [];
-  const causes = getCausesByType(causeType);
-  return causesToCascaderOptions(causes);
-});
+  if (!causeType) {
+    causeOptions.value = [];
+    return;
+  }
+  const causes = await getCausesByType(causeType);
+  causeOptions.value = causesToCascaderOptions(causes);
+}
 
 // 监听项目大类变化，清空案件类型和案由
 watch(
@@ -218,6 +232,15 @@ watch(
     formData.causeOfAction = undefined;
     causeValue.value = [];
   },
+);
+
+// 监听案件类型变化，加载案由选项
+watch(
+  () => formData.caseType,
+  () => {
+    loadCauseOptions();
+  },
+  { immediate: true },
 );
 
 // 监听案件类型变化，清空案由和代理阶段，并重新加载代理阶段选项
@@ -343,29 +366,39 @@ const formSchema: VbenFormSchema[] = [
 
 // ==================== 表格配置 ====================
 
-const gridColumns = [
-  { title: '类型', field: 'matterTypeName', width: 100 },
-  { title: '案件类型', field: 'caseTypeName', width: 100 },
-  { title: '合同编号', field: 'contractNo', width: 130 },
-  { title: '客户', field: 'clientName', width: 150 },
-  { title: '项目编号', field: 'matterNo', width: 130 },
-  { title: '主办律师', field: 'leadLawyerName', width: 100 },
-  {
-    title: '合同金额',
-    field: 'contractAmount',
-    width: 120,
-    slots: { default: 'contractAmount' },
-  },
-  { title: '创建时间', field: 'createdAt', width: 160 },
-  { title: '状态', field: 'status', width: 100, slots: { default: 'status' } },
-  {
-    title: '操作',
-    field: 'action',
-    width: 200,
-    fixed: 'right' as const,
-    slots: { default: 'action' },
-  },
-];
+// 响应式列配置
+function getGridColumns() {
+  const baseColumns = [
+    { title: '类型', field: 'matterTypeName', width: 100, mobileShow: true },
+    { title: '案件类型', field: 'caseTypeName', width: 100 },
+    { title: '合同编号', field: 'contractNo', width: 130 },
+    { title: '客户', field: 'clientName', width: 150, mobileShow: true },
+    { title: '项目编号', field: 'matterNo', width: 130 },
+    { title: '主办律师', field: 'leadLawyerName', width: 100 },
+    {
+      title: '合同金额',
+      field: 'contractAmount',
+      width: 120,
+      slots: { default: 'contractAmount' },
+    },
+    { title: '创建时间', field: 'createdAt', width: 160 },
+    { title: '状态', field: 'status', width: 100, slots: { default: 'status' }, mobileShow: true },
+    {
+      title: '操作',
+      field: 'action',
+      width: isMobile.value ? 120 : 200,
+      fixed: 'right' as const,
+      slots: { default: 'action' },
+      mobileShow: true,
+    },
+  ];
+  
+  // 移动端隐藏部分列
+  if (isMobile.value) {
+    return baseColumns.filter(col => col.mobileShow === true);
+  }
+  return baseColumns;
+}
 
 // 加载数据
 async function loadData(
@@ -406,7 +439,7 @@ const [Grid, gridApi] = useVbenVxeGrid({
     resetButtonOptions: { content: '重置' },
   },
   gridOptions: {
-    columns: gridColumns,
+    columns: getGridColumns(),
     height: 'auto',
     proxyConfig: {
       ajax: {
@@ -427,6 +460,11 @@ const [Grid, gridApi] = useVbenVxeGrid({
       slots: { buttons: 'toolbar-buttons' },
     },
   },
+});
+
+// 监听响应式变化，更新列配置
+watch(isMobile, () => {
+  gridApi.setGridOptions({ columns: getGridColumns() });
 });
 
 // 加载选项数据 - 每个API独立处理错误，避免一个失败导致全部失败
@@ -969,14 +1007,16 @@ onMounted(async () => {
     <Modal
       v-model:open="modalVisible"
       :title="modalTitle"
-      width="900px"
+      :width="isMobile ? '100%' : '900px'"
+      :centered="isMobile"
       @ok="handleSave"
     >
       <Form
         ref="formRef"
         :model="formData"
-        :label-col="{ span: 6 }"
-        :wrapper-col="{ span: 18 }"
+        :label-col="isMobile ? { span: 24 } : { span: 6 }"
+        :wrapper-col="isMobile ? { span: 24 } : { span: 18 }"
+        :layout="isMobile ? 'vertical' : 'horizontal'"
       >
         <!-- 合同选择（新增时必填） -->
         <div
@@ -1021,7 +1061,7 @@ onMounted(async () => {
           </FormItem>
         </div>
         <Row :gutter="16">
-          <Col :span="12">
+          <Col :xs="24" :sm="24" :md="12">
             <FormItem
               label="项目名称"
               name="name"
@@ -1033,7 +1073,7 @@ onMounted(async () => {
               />
             </FormItem>
           </Col>
-          <Col :span="12">
+          <Col :xs="24" :sm="24" :md="12">
             <FormItem
               label="项目大类"
               name="matterType"
@@ -1048,7 +1088,7 @@ onMounted(async () => {
           </Col>
         </Row>
         <Row :gutter="16">
-          <Col :span="12">
+          <Col :xs="24" :sm="24" :md="12">
             <FormItem label="案件类型" name="caseType">
               <Select
                 v-model:value="formData.caseType"
@@ -1058,7 +1098,7 @@ onMounted(async () => {
               />
             </FormItem>
           </Col>
-          <Col :span="12">
+          <Col :xs="24" :sm="24" :md="12">
             <FormItem
               v-if="formData.matterType === 'LITIGATION'"
               label="代理阶段"

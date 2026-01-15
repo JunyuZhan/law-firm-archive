@@ -80,16 +80,32 @@ node scripts/sync-version.mjs
 
 ### init-db/ 目录
 
+> **v2.0 整合版**: 脚本已从 46 个整合为 26 个核心脚本，详见 [init-db/README.md](init-db/README.md)
+
 数据库初始化脚本，按顺序执行：
 
-| 脚本 | 说明 |
-|------|------|
-| `00-extensions.sql` | PostgreSQL 扩展 |
-| `01-system-schema.sql` | 系统表结构 |
-| `02-19-*-schema.sql` | 业务表结构 |
-| `20-system-init-data.sql` | 系统初始数据 |
-| `28-29-*-permission.sql` | 权限配置 |
-| `30-demo-data.sql` | 示例数据 |
+| 脚本 | 说明 | 必需 |
+|------|------|------|
+| `00-extensions.sql` | PostgreSQL 扩展（pg_trgm, uuid-ossp） | ✅ |
+| `01-19-*-schema.sql` | 19个模块表结构 | ✅ |
+| `20-init-data.sql` | 系统初始化数据（整合版：菜单、角色、权限、配置、模板） | ✅ |
+| `25-enhancement.sql` | 增强功能（整合版：version字段、权限细化、自动归档） | ✅ |
+| `27-dict-init-data.sql` | 字典数据（50种字典类型） | ✅ |
+| `30-demo-data-full.sql` | 完整演示数据（整合版：所有模块演示数据） | 可选 |
+| `60-optimization.sql` | 性能优化（整合版：外键、索引、约束、触发器） | 推荐 |
+
+**快速执行**：
+
+```bash
+# 生产环境
+for f in 00-extensions.sql 01-*.sql 02-*.sql ... 19-*.sql \
+         20-init-data.sql 25-enhancement.sql 27-dict-init-data.sql 60-optimization.sql; do
+    psql -U law_admin -d law_firm_dev -f "$f"
+done
+
+# 开发环境（包含演示数据）
+# 在上述基础上添加 30-demo-data-full.sql
+```
 
 ## 备份恢复脚本
 
@@ -170,13 +186,17 @@ scripts/
 ├── restore.sh                # 数据恢复
 ├── reset-db.sh               # 数据库重置（开发用）
 ├── check-production-ready.sh # 生产环境检查
-├── init-db/                  # 数据库初始化脚本
+├── init-db/                  # 数据库初始化脚本（v2.0 整合版）
+│   ├── README.md             # 详细说明文档
 │   ├── init-database.sh.manual  # 手动初始化脚本
-│   ├── 00-extensions.sql
-│   ├── 01-19-*-schema.sql    # 表结构
-│   ├── 20-27-*-data.sql      # 初始数据
-│   ├── 28-29-*-permission.sql # 权限配置
-│   └── 30-demo-data.sql      # 示例数据
+│   ├── 00-extensions.sql     # PostgreSQL 扩展
+│   ├── 01-19-*-schema.sql    # 19个模块表结构
+│   ├── 20-init-data.sql      # 系统初始化数据（整合版）
+│   ├── 25-enhancement.sql    # 增强功能（整合版）
+│   ├── 27-dict-init-data.sql # 字典数据
+│   ├── 30-demo-data-full.sql # 完整演示数据（整合版）
+│   ├── 60-optimization.sql   # 性能优化（整合版）
+│   └── backup/               # 原有脚本备份
 ├── jmeter/                   # 压力测试
 │   ├── run-all-tests.sh
 │   └── *.jmx

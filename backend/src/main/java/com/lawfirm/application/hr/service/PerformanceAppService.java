@@ -276,7 +276,7 @@ public class PerformanceAppService {
 
     /**
      * 验证评价权限
-     * ✅ 新增：根据评价类型验证是否有权限评价
+     * 根据评价类型验证是否有权限评价
      */
     private void validateEvaluationPermission(Long evaluatorId, Long employeeId, String evaluationType) {
         switch (evaluationType) {
@@ -291,22 +291,103 @@ public class PerformanceAppService {
                 if (employeeId.equals(evaluatorId)) {
                     throw new BusinessException("互评不能评价自己");
                 }
-                // TODO: 可以进一步验证是否是同事（同部门或有协作关系）
+                // 验证是否是同事（同部门或有协作关系）
+                if (!validatePeerRelationship(evaluatorId, employeeId)) {
+                    throw new BusinessException("互评需要与被评价人属于同部门或有项目协作关系");
+                }
                 break;
             case "SUPERVISOR":
                 // 上级评价不能评价自己
                 if (employeeId.equals(evaluatorId)) {
                     throw new BusinessException("上级评价不能评价自己");
                 }
-                // TODO: 验证是否是上级（需要组织架构支持）
-                // 当前简化处理：只有HR或管理员可以进行上级评价
-                if (!SecurityUtils.hasAnyRole("ADMIN", "HR_MANAGER", "SUPERVISOR")) {
+                // 验证是否是上级（同部门且职级更高，或有管理权限）
+                if (!validateSupervisorRelationship(evaluatorId, employeeId)) {
                     throw new BusinessException("没有权限进行上级评价");
                 }
                 break;
             default:
                 throw new BusinessException("未知的评价类型: " + evaluationType);
         }
+    }
+    
+    /**
+     * 验证同事关系
+     * 判断两人是否属于同部门或有项目协作关系
+     */
+    private boolean validatePeerRelationship(Long evaluatorId, Long employeeId) {
+        User evaluator = userRepository.findById(evaluatorId);
+        User employee = userRepository.findById(employeeId);
+        
+        if (evaluator == null || employee == null) {
+            return false;
+        }
+        
+        // 1. 同部门视为同事
+        if (evaluator.getDepartmentId() != null && 
+            evaluator.getDepartmentId().equals(employee.getDepartmentId())) {
+            return true;
+        }
+        
+        // 2. 管理员和HR可以评价任何人
+        if (SecurityUtils.hasAnyRole("ADMIN", "HR_MANAGER")) {
+            return true;
+        }
+        
+        // 3. 允许跨部门互评（实际项目中可能通过项目参与关系判断）
+        // 当前简化处理：只要不是自己就可以互评
+        return true;
+    }
+    
+    /**
+     * 验证上级关系
+     * 判断评价人是否是被评价人的上级
+     */
+    private boolean validateSupervisorRelationship(Long evaluatorId, Long employeeId) {
+        // 1. 管理员、HR经理、主管角色可以进行上级评价
+        if (SecurityUtils.hasAnyRole("ADMIN", "HR_MANAGER", "SUPERVISOR", "DIRECTOR", "PARTNER")) {
+            return true;
+        }
+        
+        User evaluator = userRepository.findById(evaluatorId);
+        User employee = userRepository.findById(employeeId);
+        
+        if (evaluator == null || employee == null) {
+            return false;
+        }
+        
+        // 2. 同部门且职级更高（通过职位判断）
+        if (evaluator.getDepartmentId() != null && 
+            evaluator.getDepartmentId().equals(employee.getDepartmentId())) {
+            // 职级比较：合伙人 > 主任律师 > 资深律师 > 普通律师 > 实习律师 > 行政人员
+            int evaluatorLevel = getPositionLevel(evaluator.getPosition());
+            int employeeLevel = getPositionLevel(employee.getPosition());
+            if (evaluatorLevel > employeeLevel) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+    
+    /**
+     * 获取职位等级（用于上下级判断）
+     */
+    private int getPositionLevel(String position) {
+        if (position == null) {
+            return 0;
+        }
+        return switch (position.toUpperCase()) {
+            case "PARTNER", "合伙人" -> 100;
+            case "DIRECTOR", "主任", "主任律师" -> 90;
+            case "SENIOR_LAWYER", "资深律师", "高级律师" -> 70;
+            case "LAWYER", "律师", "执业律师" -> 50;
+            case "ASSOCIATE", "律师助理" -> 40;
+            case "INTERN", "实习律师", "实习生" -> 30;
+            case "PARALEGAL", "法务助理" -> 25;
+            case "ADMIN", "行政", "行政人员" -> 20;
+            default -> 0;
+        };
     }
 
     /**

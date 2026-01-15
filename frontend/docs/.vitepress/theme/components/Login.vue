@@ -1,19 +1,19 @@
 <script lang="ts" setup>
 import { ref } from 'vue'
-import { useRoute, useRouter } from 'vitepress'
 import { Button, Input, Card, message } from 'ant-design-vue'
 
-const route = useRoute()
-const router = useRouter()
+import { loginWithCredentials } from './auth'
 
 const username = ref('')
 const password = ref('')
 const loading = ref(false)
 
-// 简单的固定密码验证（实际应用中应该使用更安全的验证方式）
-const validCredentials = {
-  username: 'admin',
-  password: 'lawfirm2026' // 生产环境应该使用环境变量
+function isSafeRedirectPath(value: string | null): value is string {
+  return !!value && value.startsWith('/') && !value.startsWith('//');
+}
+
+function getBasePrefix(): string {
+  return window.location.pathname.startsWith('/docs/') ? '/docs' : '';
 }
 
 const handleLogin = () => {
@@ -26,17 +26,15 @@ const handleLogin = () => {
   
   // 模拟API调用延迟
   setTimeout(() => {
-    if (username.value === validCredentials.username && 
-        password.value === validCredentials.password) {
-      // 存储登录状态
-      localStorage.setItem('docs_auth_token', 'authenticated')
-      localStorage.setItem('docs_auth_user', username.value)
-      localStorage.setItem('docs_auth_time', new Date().toISOString())
-      
+    if (loginWithCredentials(username.value, password.value)) {
       message.success('登录成功')
       
       // 跳转到原来的页面或首页
-      const redirect = route.query.redirect as string || '/guide/ops/introduction'
+      const basePrefix = getBasePrefix()
+      const redirectFromQuery = new URLSearchParams(window.location.search).get('redirect')
+      const safeRedirectFromQuery = isSafeRedirectPath(redirectFromQuery) ? redirectFromQuery : null
+      const isRootLoginPage = /^\/(docs\/)?login(\.html)?$/.test(window.location.pathname)
+      const redirect = safeRedirectFromQuery || (isRootLoginPage ? `${basePrefix}/guide/ops/introduction` : window.location.pathname)
       window.location.href = redirect
     } else {
       message.error('用户名或密码错误')
@@ -97,9 +95,7 @@ const handleKeyPress = (e: KeyboardEvent) => {
         </div>
         
         <div class="login-hint">
-          <p>默认用户名: admin</p>
-          <p>默认密码: lawfirm2026</p>
-          <p class="hint-note">请及时修改默认密码</p>
+          <p>请联系管理员获取账号密码</p>
         </div>
       </div>
     </Card>

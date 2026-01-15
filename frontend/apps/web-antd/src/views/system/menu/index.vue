@@ -75,27 +75,19 @@ function handleEdit(record: MenuDTO) {
 }
 
 // 删除菜单
-function handleDelete(record: MenuDTO) {
+async function handleDelete(record: MenuDTO) {
   if (record.children && record.children.length > 0) {
     message.warning('请先删除子菜单');
     return;
   }
-  Modal.confirm({
-    title: '确认删除',
-    content: `确定要删除菜单 "${record.name}" 吗？`,
-    okText: '确认',
-    cancelText: '取消',
-    onOk: async () => {
-      try {
-        await deleteMenu(record.id);
-        message.success('删除成功');
-        fetchData();
-      } catch (error: unknown) {
-        const err = error as { message?: string };
-        message.error(err.message || '删除失败');
-      }
-    },
-  });
+  try {
+    await deleteMenu(record.id);
+    message.success('删除成功');
+    fetchData();
+  } catch (error: unknown) {
+    const err = error as { message?: string };
+    message.error(err.message || '删除失败');
+  }
 }
 
 // 弹窗成功回调

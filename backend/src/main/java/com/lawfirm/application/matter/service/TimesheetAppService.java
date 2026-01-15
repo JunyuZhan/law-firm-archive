@@ -20,6 +20,8 @@ import com.lawfirm.domain.matter.entity.MatterParticipant;
 import com.lawfirm.domain.matter.repository.MatterRepository;
 import com.lawfirm.domain.matter.entity.Matter;
 import com.lawfirm.infrastructure.persistence.mapper.DepartmentMapper;
+import com.lawfirm.domain.system.repository.UserRepository;
+import com.lawfirm.domain.system.entity.User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -49,6 +51,7 @@ public class TimesheetAppService {
     private final MatterRepository matterRepository;
     private final MatterParticipantRepository matterParticipantRepository;
     private final DepartmentMapper departmentMapper;
+    private final UserRepository userRepository;
 
     /**
      * 分页查询工时
@@ -553,6 +556,24 @@ public class TimesheetAppService {
         dto.setTimesheetNo(timesheet.getTimesheetNo());
         dto.setMatterId(timesheet.getMatterId());
         dto.setUserId(timesheet.getUserId());
+        
+        // 填充项目名称
+        if (timesheet.getMatterId() != null) {
+            Matter matter = matterRepository.findById(timesheet.getMatterId());
+            if (matter != null) {
+                dto.setMatterName(matter.getName());
+                dto.setMatterNo(matter.getMatterNo());
+            }
+        }
+        
+        // 填充用户名称
+        if (timesheet.getUserId() != null) {
+            User user = userRepository.findById(timesheet.getUserId());
+            if (user != null) {
+                dto.setUserName(user.getRealName() != null ? user.getRealName() : user.getUsername());
+            }
+        }
+        
         dto.setWorkDate(timesheet.getWorkDate());
         dto.setHours(timesheet.getHours());
         dto.setWorkType(timesheet.getWorkType());

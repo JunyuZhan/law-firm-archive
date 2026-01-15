@@ -401,9 +401,12 @@ useIdleTimeout({
   },
 });
 
-// 用户手册地址（docs 应用部署后的地址，开发时指向本地 6173 端口，base路径为 /docs/）
+// 用户手册地址
+// 开发模式：http://localhost:6173/（无 base 路径）
+// 生产模式：由环境变量 VITE_USER_MANUAL_URL 配置，默认 /docs/
 const USER_MANUAL_URL =
-  import.meta.env.VITE_USER_MANUAL_URL || 'http://localhost:6173/docs/';
+  import.meta.env.VITE_USER_MANUAL_URL || 
+  (import.meta.env.DEV ? 'http://localhost:6173/' : '/docs/');
 
   const menus = computed(() => [
     {
@@ -415,15 +418,12 @@ const USER_MANUAL_URL =
     },
     {
       handler: () => {
-        // 获取当前用户的accessToken
         const token = accessStore.accessToken;
-        let url = USER_MANUAL_URL;
+        const url = new URL(USER_MANUAL_URL, window.location.origin);
         if (token) {
-          // 将token作为参数附加到文档站点URL
-          const separator = url.includes('?') ? '&' : '?';
-          url = `${url}${separator}token=${encodeURIComponent(token)}`;
+          url.searchParams.set('token', token);
         }
-        openWindow(url, {
+        openWindow(url.toString(), {
           target: '_blank',
         });
       },

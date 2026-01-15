@@ -37,10 +37,12 @@ import {
 } from 'ant-design-vue';
 
 import {
+  createConfig,
   deleteConfig,
   disableMaintenanceMode,
   enableMaintenanceMode,
   getCaseTypeOptions,
+  getConfigValue,
   getContractNumberVariables,
   getEmailStatus,
   getMaintenanceStatus,
@@ -54,6 +56,7 @@ import {
   testEmailConfig,
   updateConfig,
 } from '#/api/system';
+import { getWecomStatus, testWecomBot } from '#/api/system/wecom';
 
 import ConfigModal from './components/ConfigModal.vue';
 
@@ -107,6 +110,11 @@ const testEmailAddress = ref('');
 const reportPreviewLoading = ref(false);
 const reportPreviewHtml = ref('');
 const reportPreviewVisible = ref(false);
+
+// 企业微信机器人相关
+const wecomStatus = ref({ enabled: false });
+const wecomTestLoading = ref(false);
+const wecomWebhookUrl = ref('');
 
 // 表格列 - 移除固定宽度，让列自适应
 const columns = [
@@ -354,6 +362,85 @@ async function handleSendReport(type: 'daily' | 'weekly') {
   }
 }
 
+// ==================== 企业微信机器人操作 ====================
+
+// 加载企业微信状态
+async function loadWecomStatus() {
+  try {
+    wecomStatus.value = await getWecomStatus();
+    // 从配置中读取 webhook URL
+    const webhookConfig = dataSource.value.find(
+      (c) => c.configKey === 'wecom.bot.webhook',
+    );
+    if (webhookConfig) {
+      wecomWebhookUrl.value = webhookConfig.configValue || '';
+    }
+  } catch (error: unknown) {
+    console.error('加载企业微信状态失败', error);
+  }
+}
+
+// 保存企业微信 Webhook 配置
+async function handleSaveWecomWebhook() {
+  if (!wecomWebhookUrl.value) {
+    message.warning('请输入 Webhook 地址');
+    return;
+  }
+  try {
+    // 先检查配置是否存在
+    let existingConfig = null;
+    try {
+      existingConfig = await getConfigValue('wecom.bot.webhook');
+    } catch {
+      // 配置不存在，忽略错误
+    }
+
+    if (existingConfig?.id) {
+      // 更新现有配置
+      await updateConfig(existingConfig.id, {
+        configValue: wecomWebhookUrl.value,
+        description: '企业微信群机器人的 Webhook 地址',
+      });
+    } else {
+      // 创建新配置
+      await createConfig({
+        configKey: 'wecom.bot.webhook',
+        configName: '企业微信机器人Webhook',
+        configValue: wecomWebhookUrl.value,
+        description: '企业微信群机器人的 Webhook 地址',
+      });
+    }
+    message.success('Webhook 配置已保存');
+    await fetchData();
+    await loadWecomStatus();
+  } catch (error: unknown) {
+    const err = error as { message?: string };
+    message.error(err.message || '保存失败');
+  }
+}
+
+// 测试企业微信机器人
+async function handleTestWecomBot() {
+  if (!wecomWebhookUrl.value) {
+    message.warning('请先配置 Webhook 地址');
+    return;
+  }
+  wecomTestLoading.value = true;
+  try {
+    const result = await testWecomBot();
+    if (result.success) {
+      message.success('测试消息已发送，请在企业微信群中查看');
+    } else {
+      message.error(result.message || '测试失败');
+    }
+  } catch (error: unknown) {
+    const err = error as { message?: string };
+    message.error(err.message || '测试失败');
+  } finally {
+    wecomTestLoading.value = false;
+  }
+}
+
 // ==================== 合同编号操作 ====================
 
 async function handlePreview() {
@@ -536,6 +623,7 @@ onMounted(async () => {
   await loadMaintenanceStatus();
   await loadVersionInfo();
   await loadEmailStatus();
+  await loadWecomStatus();
 });
 
 // 监听标签页切换，切换到版本信息时刷新
@@ -1067,6 +1155,67 @@ watch(activeTab, (newTab) => {
                 </ul>
               </li>
             </ul>
+          </Alert>
+        </Card>
+      </TabPane>
+
+      <!-- 企业微信机器人配置 -->
+      <TabPane key="wecom" tab="企业微信">
+        <Card title="企业微信群机器人" :bordered="false">
+          <Alert
+            :message="wecomStatus.enabled ? '企业微信通知已启用' : '企业微信通知未配置'"
+            :type="wecomStatus.enabled ? 'success' : 'warning'"
+            show-icon
+            style="margin-bottom: 24px"
+          />
+
+          <Form layout="vertical">
+            <FormItem label="Webhook 地址">
+              <Input
+                v-model:value="wecomWebhookUrl"
+                placeholder="请输入企业微信群机器人的 Webhook 地址"
+                style="max-width: 600px"
+              />
+              <div style="color: #888; font-size: 12px; margin-top: 4px">
+                格式：https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxx
+              </div>
+            </FormItem>
+            <FormItem>
+              <Space>
+                <Button type="primary" @click="handleSaveWecomWebhook">
+                  保存配置
+                </Button>
+                <Button :loading="wecomTestLoading" @click="handleTestWecomBot">
+                  发送测试消息
+                </Button>
+              </Space>
+            </FormItem>
+          </Form>
+
+          <Divider />
+
+          <Alert type="info" show-icon>
+            <template #message>配置说明</template>
+            <template #description>
+              <ul style="margin: 8px 0 0 0; padding-left: 20px">
+                <li>
+                  <strong>如何获取 Webhook</strong>：在企业微信群中 → 群设置 →
+                  群机器人 → 添加机器人 → 复制 Webhook 地址
+                </li>
+                <li style="margin-top: 8px">
+                  <strong>消息类型</strong>：系统会自动发送以下通知到群聊：
+                  <ul style="margin-top: 4px">
+                    <li>任务到期提醒</li>
+                    <li>日程开始提醒</li>
+                    <li>合同到期预警</li>
+                    <li>审批待办通知</li>
+                  </ul>
+                </li>
+                <li style="margin-top: 8px">
+                  💡 <strong>提示</strong>：企业微信机器人是免费的，无需额外付费
+                </li>
+              </ul>
+            </template>
           </Alert>
         </Card>
       </TabPane>

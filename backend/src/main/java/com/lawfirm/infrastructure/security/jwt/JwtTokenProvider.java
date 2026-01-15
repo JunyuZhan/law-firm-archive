@@ -109,6 +109,29 @@ public class JwtTokenProvider {
     }
 
     /**
+     * 从令牌获取签发时间
+     */
+    public long getIssuedAtFromToken(String token) {
+        return parseClaims(token).getIssuedAt().getTime();
+    }
+
+    /**
+     * 从令牌获取过期时间
+     */
+    public long getExpirationFromToken(String token) {
+        return parseClaims(token).getExpiration().getTime();
+    }
+
+    /**
+     * 获取令牌剩余有效期（秒）
+     */
+    public long getRemainingExpirationSeconds(String token) {
+        long expirationTime = getExpirationFromToken(token);
+        long currentTime = System.currentTimeMillis();
+        return Math.max(0, (expirationTime - currentTime) / 1000);
+    }
+
+    /**
      * 验证令牌
      */
     public boolean validateToken(String token) {

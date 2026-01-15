@@ -75,7 +75,7 @@ import {
   CASE_CATEGORY_OPTIONS,
   findCauseNameInAll,
   MATTER_TYPE_OPTIONS,
-} from '#/constants/causes';
+} from '#/composables/useCauseOfAction';
 
 defineOptions({ name: 'DossierManager' });
 

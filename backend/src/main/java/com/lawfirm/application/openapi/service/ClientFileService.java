@@ -14,6 +14,9 @@ import com.lawfirm.infrastructure.persistence.mapper.ExternalIntegrationMapper;
 import com.lawfirm.infrastructure.persistence.mapper.MatterMapper;
 import com.lawfirm.infrastructure.persistence.mapper.openapi.ClientFileMapper;
 import com.lawfirm.infrastructure.persistence.mapper.UserMapper;
+import com.lawfirm.infrastructure.external.minio.MinioService;
+import com.lawfirm.domain.document.entity.Document;
+import com.lawfirm.domain.document.repository.DocumentRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;
@@ -21,12 +24,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
+import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.net.URL;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -42,6 +47,8 @@ public class ClientFileService {
     private final MatterMapper matterMapper;
     private final ExternalIntegrationMapper integrationMapper;
     private final UserMapper userMapper;
+    private final MinioService minioService;
+    private final DocumentRepository documentRepository;
 
     private static final String CLIENT_SERVICE_TYPE = "CLIENT_SERVICE";
 
@@ -139,7 +146,7 @@ public class ClientFileService {
 
     /**
      * 同步文件到卷宗
-     * TODO: 卷宗系统集成待完善
+     * 从外部URL下载文件，上传到MinIO，并创建文档记录关联到卷宗目录项
      */
     @Transactional
     public ClientFileDTO syncToFolder(ClientFileSyncRequest request, Long operatorId) {
@@ -153,25 +160,65 @@ public class ClientFileService {
             throw new BusinessException("该文件已同步或已删除");
         }
 
-        // TODO: 卷宗同步功能待实现，需要完善卷宗模块
-        // 当前版本仅更新状态，不进行实际文件同步
         try {
-            // 更新客户文件状态为已同步
+            // 2. 从外部URL下载文件
+            byte[] fileContent = downloadFile(clientFile.getExternalFileUrl());
+            if (fileContent == null || fileContent.length == 0) {
+                throw new BusinessException("下载文件失败：文件内容为空");
+            }
+            
+            // 3. 构建存储路径并上传到MinIO
+            String storagePath = String.format("matters/%d/client_uploads/", clientFile.getMatterId());
+            String fileName = UUID.randomUUID().toString() + "_" + clientFile.getFileName();
+            String objectName = storagePath + fileName;
+            
+            String fileUrl = minioService.uploadFile(
+                    new ByteArrayInputStream(fileContent),
+                    objectName,
+                    clientFile.getFileType()
+            );
+            
+            // 4. 创建文档记录并关联到卷宗目录项
+            Document document = Document.builder()
+                    .docNo("DOC" + System.currentTimeMillis())
+                    .title(clientFile.getOriginalFileName())
+                    .matterId(clientFile.getMatterId())
+                    .fileName(clientFile.getOriginalFileName())
+                    .filePath(fileUrl)
+                    .fileSize(clientFile.getFileSize())
+                    .fileType(getFileExtension(clientFile.getFileName()))
+                    .mimeType(clientFile.getFileType())
+                    .version(1)
+                    .isLatest(true)
+                    .securityLevel("INTERNAL")
+                    .status("ACTIVE")
+                    .description(clientFile.getDescription())
+                    .dossierItemId(request.getTargetDossierId())
+                    .folderPath("client_uploads")
+                    .sourceType("CLIENT_PORTAL") // 标记来源为客户门户
+                    .createdBy(operatorId)
+                    .build();
+            
+            documentRepository.save(document);
+            log.info("文档记录已创建: documentId={}, fileName={}", document.getId(), document.getFileName());
+            
+            // 5. 更新客户文件状态为已同步
             clientFileMapper.updateSyncStatus(
                     clientFile.getId(),
                     ClientFile.STATUS_SYNCED,
-                    null, // 暂无本地文档ID
+                    document.getId(), // 关联本地文档ID
                     request.getTargetDossierId(),
                     operatorId,
                     null
             );
 
-            // 通知客服系统删除文件
+            // 6. 通知客服系统删除文件
             notifyClientServiceToDelete(clientFile.getExternalFileId());
 
-            log.info("文件同步状态已更新: clientFileId={}", clientFile.getId());
+            log.info("文件同步成功: clientFileId={}, documentId={}", clientFile.getId(), document.getId());
 
             clientFile.setStatus(ClientFile.STATUS_SYNCED);
+            clientFile.setLocalDocumentId(document.getId());
             clientFile.setTargetDossierId(request.getTargetDossierId());
             clientFile.setSyncedAt(LocalDateTime.now());
             clientFile.setSyncedBy(operatorId);
@@ -179,6 +226,17 @@ public class ClientFileService {
             Matter matter = matterMapper.selectById(clientFile.getMatterId());
             return convertToDTO(clientFile, matter);
 
+        } catch (BusinessException e) {
+            log.error("文件同步失败: {}", e.getMessage());
+            clientFileMapper.updateSyncStatus(
+                    clientFile.getId(),
+                    ClientFile.STATUS_FAILED,
+                    null,
+                    null,
+                    operatorId,
+                    e.getMessage()
+            );
+            throw e;
         } catch (Exception e) {
             log.error("文件同步失败: {}", e.getMessage(), e);
             clientFileMapper.updateSyncStatus(
@@ -191,6 +249,16 @@ public class ClientFileService {
             );
             throw new BusinessException("文件同步失败: " + e.getMessage());
         }
+    }
+    
+    /**
+     * 获取文件扩展名
+     */
+    private String getFileExtension(String filename) {
+        if (filename == null || !filename.contains(".")) {
+            return "";
+        }
+        return filename.substring(filename.lastIndexOf(".") + 1).toLowerCase();
     }
 
     /**

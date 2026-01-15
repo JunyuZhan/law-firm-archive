@@ -21,6 +21,8 @@ import { Page } from '@vben/common-ui';
 import { Plus } from '@vben/icons';
 import { useUserStore } from '@vben/stores';
 
+import { useResponsive } from '#/hooks/useResponsive';
+
 import {
   Alert,
   Button,
@@ -85,9 +87,12 @@ import {
   getCausesByType,
   getCauseTypeByCase,
   needsCauseOfAction,
-} from '#/constants/causes';
+} from '#/composables/useCauseOfAction';
 
 defineOptions({ name: 'MatterContractList' });
+
+// 响应式布局
+const { isMobile } = useResponsive();
 
 // 用户信息
 const userStore = useUserStore();
@@ -409,39 +414,49 @@ interface ContractParticipantInput {
 
 const contractParticipants = ref<ContractParticipantInput[]>([]);
 
-// 表格列
-const columns = [
-  { title: '合同编号', dataIndex: 'contractNo', key: 'contractNo', width: 140 },
-  {
-    title: '合同名称',
-    dataIndex: 'name',
-    key: 'name',
-    width: 180,
-    ellipsis: true,
-  },
-  { title: '客户', dataIndex: 'clientName', key: 'clientName', width: 120 },
-  {
-    title: '合同类型',
-    dataIndex: 'contractTypeName',
-    key: 'contractTypeName',
-    width: 100,
-  },
-  {
-    title: '收费方式',
-    dataIndex: 'feeTypeName',
-    key: 'feeTypeName',
-    width: 100,
-  },
-  {
-    title: '合同金额',
-    dataIndex: 'totalAmount',
-    key: 'totalAmount',
-    width: 120,
-  },
-  { title: '状态', dataIndex: 'statusName', key: 'statusName', width: 90 },
-  { title: '签约日期', dataIndex: 'signDate', key: 'signDate', width: 110 },
-  { title: '操作', key: 'action', width: 220, fixed: 'right' as const },
-];
+// 表格列（响应式）
+const columns = computed(() => {
+  const baseColumns = [
+    { title: '合同编号', dataIndex: 'contractNo', key: 'contractNo', width: 140 },
+    {
+      title: '合同名称',
+      dataIndex: 'name',
+      key: 'name',
+      width: isMobile.value ? 120 : 180,
+      ellipsis: true,
+      mobileShow: true,
+    },
+    { title: '客户', dataIndex: 'clientName', key: 'clientName', width: 120, mobileShow: true },
+    {
+      title: '合同类型',
+      dataIndex: 'contractTypeName',
+      key: 'contractTypeName',
+      width: 100,
+    },
+    {
+      title: '收费方式',
+      dataIndex: 'feeTypeName',
+      key: 'feeTypeName',
+      width: 100,
+    },
+    {
+      title: '合同金额',
+      dataIndex: 'totalAmount',
+      key: 'totalAmount',
+      width: 120,
+      mobileShow: true,
+    },
+    { title: '状态', dataIndex: 'statusName', key: 'statusName', width: 90, mobileShow: true },
+    { title: '签约日期', dataIndex: 'signDate', key: 'signDate', width: 110 },
+    { title: '操作', key: 'action', width: isMobile.value ? 120 : 220, fixed: 'right' as const, mobileShow: true },
+  ];
+  
+  // 移动端隐藏部分列
+  if (isMobile.value) {
+    return baseColumns.filter(col => col.mobileShow === true);
+  }
+  return baseColumns;
+});
 
 // 付款计划表格列
 const scheduleColumns = [
@@ -565,14 +580,23 @@ const showCauseSelect = computed(() => {
   return formData.caseType && needsCauseOfAction(formData.caseType);
 });
 
-// 案由选项
-const causeOptions = computed(() => {
-  if (!formData.caseType) return [];
+// 案由选项（异步加载）
+const causeOptions = ref<any[]>([]);
+
+// 加载案由选项
+async function loadCauseOptions() {
+  if (!formData.caseType) {
+    causeOptions.value = [];
+    return;
+  }
   const causeType = getCauseTypeByCase(formData.caseType);
-  if (!causeType) return [];
-  const causes = getCausesByType(causeType);
-  return causesToCascaderOptions(causes);
-});
+  if (!causeType) {
+    causeOptions.value = [];
+    return;
+  }
+  const causes = await getCausesByType(causeType);
+  causeOptions.value = causesToCascaderOptions(causes);
+}
 
 // 监听案件类型变化，清空案由和审理阶段，并重新加载选项
 watch(
@@ -583,6 +607,8 @@ watch(
     causeValue.value = [];
     // 从字典加载审理阶段选项
     loadTrialStageOptions(newCaseType);
+    // 加载案由选项
+    loadCauseOptions();
   },
 );
 
@@ -1270,6 +1296,8 @@ async function executePrint() {
   let htmlContent = '';
 
   // 公共样式
+  // 重要：不要为所有 p 标签添加默认的 text-indent，否则会覆盖编辑器设置的格式
+  // wangeditor 编辑器使用内联样式保存格式（如 text-align, text-indent），需要保留这些内联样式
   const commonStyles = `
     body { font-family: "SimSun", "宋体", serif; padding: 40px; line-height: 1.8; font-size: 14pt; }
     * { font-family: "SimSun", "宋体", serif; }
@@ -1288,10 +1316,23 @@ async function executePrint() {
     .text-center { text-align: center; }
     .text-right { text-align: right; }
     .header-info { text-align: right; color: #666; margin-bottom: 20px; font-size: 14pt; font-family: "SimSun", "宋体", serif; }
-    p, div, span, td, th { font-family: "SimSun", "宋体", serif; font-size: 14pt; }
+    p, div, span { font-family: "SimSun", "宋体", serif; font-size: 14pt; margin: 0.5em 0; }
+    /* 保留编辑器内联样式的格式 - 内联样式会覆盖这些默认样式 */
+    /* 支持 wangeditor 的对齐和缩进格式 */
+    p[style*="text-align"], div[style*="text-align"] { /* 保持用户设置的对齐 */ }
+    p[style*="text-indent"], div[style*="text-indent"] { /* 保持用户设置的缩进 */ }
+    /* 列表样式 */
+    ul, ol { padding-left: 2em; margin: 0.5em 0; }
+    li { margin: 0.3em 0; }
+    /* 加粗、斜体、下划线 */
+    strong, b { font-weight: bold; }
+    em, i { font-style: italic; }
+    u { text-decoration: underline; }
     @media print { 
       body { padding: 20px; } 
       @page { margin: 2cm; }
+      /* 确保打印时保留内联样式 */
+      p[style], div[style], span[style] { /* 内联样式在打印时保持不变 */ }
     }
   `;
 
@@ -2395,13 +2436,13 @@ onMounted(async () => {
     description="管理项目合同，创建合同后可提交审批，审批通过后可基于合同创建项目"
   >
     <!-- 统计卡片 -->
-    <Row :gutter="16" style="margin-bottom: 16px" v-if="statistics">
-      <Col :span="6">
+    <Row :gutter="[16, 16]" style="margin-bottom: 16px" v-if="statistics">
+      <Col :xs="12" :sm="12" :md="6" :lg="6">
         <Card>
           <Statistic title="合同总数" :value="statistics.totalCount" />
         </Card>
       </Col>
-      <Col :span="6">
+      <Col :xs="12" :sm="12" :md="6" :lg="6">
         <Card>
           <Statistic
             title="生效中"
@@ -2410,7 +2451,7 @@ onMounted(async () => {
           />
         </Card>
       </Col>
-      <Col :span="6">
+      <Col :xs="12" :sm="12" :md="6" :lg="6">
         <Card>
           <Statistic
             title="合同总金额"
@@ -2420,7 +2461,7 @@ onMounted(async () => {
           />
         </Card>
       </Col>
-      <Col :span="6">
+      <Col :xs="12" :sm="12" :md="6" :lg="6">
         <Card>
           <Statistic
             title="待收金额"
@@ -2529,7 +2570,7 @@ onMounted(async () => {
           },
         }"
         row-key="id"
-        :scroll="{ x: 1200 }"
+        :scroll="{ x: isMobile ? 600 : 1200 }"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'statusName'">
@@ -2590,7 +2631,8 @@ onMounted(async () => {
     <Modal
       v-model:open="modalVisible"
       :title="modalTitle"
-      width="900px"
+      :width="isMobile ? '100%' : '900px'"
+      :centered="isMobile"
       :confirm-loading="saving"
       @ok="handleSave"
     >
@@ -3508,7 +3550,8 @@ onMounted(async () => {
     <Modal
       v-model:open="detailModalVisible"
       title="合同详情"
-      width="1000px"
+      :width="isMobile ? '100%' : '1000px'"
+      :centered="isMobile"
       :footer="null"
     >
       <!-- 审批通过后显示打印按钮 -->
@@ -3921,7 +3964,8 @@ onMounted(async () => {
     <Modal
       v-model:open="changeModalVisible"
       title="合同变更申请"
-      width="800px"
+      :width="isMobile ? '100%' : '800px'"
+      :centered="isMobile"
       @ok="handleSubmitChange"
     >
       <Form
@@ -4232,7 +4276,7 @@ onMounted(async () => {
 
 :deep(.contract-preview-content p) {
   margin: 8px 0;
-  text-align: justify;
+  /* 不设置默认 text-align，保留编辑器的内联样式设置 */
 }
 
 :deep(.contract-preview-content table) {

@@ -10,6 +10,8 @@ import { computed, onMounted, ref } from 'vue';
 import { Page } from '@vben/common-ui';
 import { Plus } from '@vben/icons';
 
+import { useResponsive } from '#/hooks/useResponsive';
+
 import {
   Button,
   Card,
@@ -43,6 +45,9 @@ import {
 } from '#/api/admin/purchase';
 
 defineOptions({ name: 'AdminPurchase' });
+
+// 响应式布局
+const { isMobile } = useResponsive();
 
 const loading = ref(false);
 const dataSource = ref<PurchaseRequestDTO[]>([]);
@@ -328,17 +333,19 @@ onMounted(() => {
       </Tabs>
 
       <div
-        style="
-          display: flex;
-          justify-content: space-between;
-          margin-bottom: 16px;
-        "
+        :style="{
+          display: 'flex',
+          flexDirection: isMobile ? 'column' : 'row',
+          justifyContent: 'space-between',
+          gap: isMobile ? '12px' : '0',
+          marginBottom: '16px',
+        }"
       >
-        <Space>
+        <Space :wrap="isMobile">
           <Select
             v-model:value="queryParams.purchaseType"
             placeholder="采购类型"
-            style="width: 120px"
+            :style="{ width: isMobile ? '100%' : '120px', minWidth: '120px' }"
             allow-clear
             :options="purchaseTypeOptions"
             @change="handleSearch"
@@ -346,13 +353,13 @@ onMounted(() => {
           <Input
             v-model:value="queryParams.keyword"
             placeholder="搜索采购"
-            style="width: 200px"
+            :style="{ width: isMobile ? '100%' : '200px', minWidth: '150px' }"
             allow-clear
             @press-enter="handleSearch"
           />
           <Button @click="handleSearch">查询</Button>
         </Space>
-        <Button type="primary" @click="handleAdd"><Plus />新建采购申请</Button>
+        <Button type="primary" :block="isMobile" @click="handleAdd"><Plus />新建采购申请</Button>
       </div>
 
       <Table
@@ -365,7 +372,7 @@ onMounted(() => {
           total,
           showSizeChanger: true,
         }"
-        :scroll="{ x: 1100 }"
+        :scroll="{ x: isMobile ? 800 : 1100 }"
         row-key="id"
         @change="handleTableChange"
       >
@@ -409,7 +416,8 @@ onMounted(() => {
     <Modal
       v-model:open="modalVisible"
       title="新建采购申请"
-      width="700px"
+      :width="isMobile ? '100%' : '700px'"
+      :centered="isMobile"
       @ok="handleSave"
     >
       <Form :label-col="{ span: 4 }" :wrapper-col="{ span: 19 }">
@@ -496,7 +504,8 @@ onMounted(() => {
     <Modal
       v-model:open="detailVisible"
       title="采购申请详情"
-      width="700px"
+      :width="isMobile ? '100%' : '700px'"
+      :centered="isMobile"
       :footer="null"
     >
       <Descriptions v-if="currentPurchase" :column="2" bordered size="small">
@@ -573,6 +582,8 @@ onMounted(() => {
     <Modal
       v-model:open="approveVisible"
       title="审批采购申请"
+      :width="isMobile ? '100%' : '520px'"
+      :centered="isMobile"
       @ok="handleApprove"
     >
       <Form :label-col="{ span: 5 }" :wrapper-col="{ span: 18 }">

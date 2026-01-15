@@ -254,6 +254,10 @@ async function handleSave() {
     message.error('请输入模板名称');
     return;
   }
+  if (!formData.content) {
+    message.error('请输入合同正文内容');
+    return;
+  }
 
   // 过滤空条款
   const validClauses = clausesList.value.filter((c) => c.title && c.content);

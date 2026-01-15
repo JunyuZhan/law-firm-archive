@@ -7,11 +7,13 @@ import type {
   UpdateClientCommand,
 } from '#/api/client/types';
 
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
 import { IconifyIcon, Plus } from '@vben/icons';
+
+import { useResponsive } from '#/hooks/useResponsive';
 
 import {
   Alert,
@@ -58,6 +60,9 @@ defineOptions({ name: 'CrmClient' });
 
 const router = useRouter();
 const route = useRoute();
+
+// 响应式布局
+const { isMobile } = useResponsive();
 
 // 获取当前年份
 const currentYear = new Date().getFullYear();
@@ -125,6 +130,7 @@ const formData = reactive<
   creditCode: '',
   idCard: '',
   legalRepresentative: '',
+  registeredAddress: '',
   contactPerson: '',
   contactPhone: '',
   contactEmail: '',
@@ -184,32 +190,43 @@ const statusOptions = [
 
 // ==================== 表格配置 ====================
 
-const gridColumns: VxeGridProps['columns'] = [
-  { type: 'checkbox', width: 50 },
-  { title: '客户编号', field: 'clientNo', width: 120 },
-  { title: '客户名称', field: 'name', minWidth: 180 },
-  { title: '客户类型', field: 'clientTypeName', width: 100 },
-  { title: '联系人', field: 'contactPerson', width: 100 },
-  { title: '联系电话', field: 'contactPhone', width: 130 },
-  { title: '客户级别', field: 'levelName', width: 100 },
-  { title: '客户分类', field: 'categoryName', width: 100 },
-  {
-    title: '状态',
-    field: 'statusName',
-    width: 80,
-    slots: { default: 'status' },
-  },
-  { title: '案源人', field: 'originatorName', width: 100 },
-  { title: '负责律师', field: 'responsibleLawyerName', width: 100 },
-  { title: '创建时间', field: 'createdAt', width: 160 },
-  {
-    title: '操作',
-    field: 'action',
-    width: 180,
-    fixed: 'right',
-    slots: { default: 'action' },
-  },
-];
+// 响应式列配置
+function getGridColumns(): VxeGridProps['columns'] {
+  const baseColumns = [
+    { type: 'checkbox', width: 50 },
+    { title: '客户编号', field: 'clientNo', width: 120 },
+    { title: '客户名称', field: 'name', minWidth: isMobile.value ? 120 : 180, mobileShow: true },
+    { title: '客户类型', field: 'clientTypeName', width: 100, mobileShow: true },
+    { title: '联系人', field: 'contactPerson', width: 100 },
+    { title: '联系电话', field: 'contactPhone', width: 130 },
+    { title: '客户级别', field: 'levelName', width: 100 },
+    { title: '客户分类', field: 'categoryName', width: 100 },
+    {
+      title: '状态',
+      field: 'statusName',
+      width: 80,
+      slots: { default: 'status' },
+      mobileShow: true,
+    },
+    { title: '案源人', field: 'originatorName', width: 100 },
+    { title: '负责律师', field: 'responsibleLawyerName', width: 100 },
+    { title: '创建时间', field: 'createdAt', width: 160 },
+    {
+      title: '操作',
+      field: 'action',
+      width: isMobile.value ? 100 : 180,
+      fixed: 'right',
+      slots: { default: 'action' },
+      mobileShow: true,
+    },
+  ];
+  
+  // 移动端隐藏部分列
+  if (isMobile.value) {
+    return baseColumns.filter(col => col.type === 'checkbox' || col.mobileShow === true);
+  }
+  return baseColumns;
+}
 
 async function loadData({
   page,
@@ -227,7 +244,7 @@ async function loadData({
 
 const [Grid, gridApi] = useVbenVxeGrid({
   gridOptions: {
-    columns: gridColumns,
+    columns: getGridColumns(),
     height: 'auto',
     pagerConfig: {},
     proxyConfig: { ajax: { query: loadData } },
@@ -245,6 +262,11 @@ const [Grid, gridApi] = useVbenVxeGrid({
       selectedRowKeys.value = records.map((r) => r.id);
     },
   },
+});
+
+// 监听响应式变化，更新列配置
+watch(isMobile, () => {
+  gridApi.setGridOptions({ columns: getGridColumns() });
 });
 
 // ==================== 搜索操作 ====================
@@ -296,6 +318,7 @@ function handleAdd() {
     creditCode: '',
     idCard: '',
     legalRepresentative: '',
+    registeredAddress: '',
     contactPerson: '',
     contactPhone: '',
     contactEmail: '',
@@ -321,6 +344,7 @@ function handleEdit(row: ClientDTO) {
     creditCode: row.creditCode,
     idCard: row.idCard,
     legalRepresentative: row.legalRepresentative,
+    registeredAddress: row.registeredAddress,
     contactPerson: row.contactPerson,
     contactPhone: row.contactPhone,
     contactEmail: row.contactEmail,
@@ -781,7 +805,7 @@ onMounted(async () => {
     </Card>
 
     <!-- 新增/编辑弹窗 -->
-    <Modal v-model:open="modalVisible" :title="modalTitle" width="800px">
+    <Modal v-model:open="modalVisible" :title="modalTitle" :width="isMobile ? '100%' : '800px'" :centered="isMobile">
       <template #footer>
         <Button @click="modalVisible = false">取消</Button>
         <Button type="primary" :disabled="!canSave" @click="handleSave">
@@ -900,6 +924,7 @@ onMounted(async () => {
               v-if="formData.clientType === 'ENTERPRISE'"
               label="统一社会信用代码"
               name="creditCode"
+              :rules="[{ required: true, message: '请输入统一社会信用代码' }]"
             >
               <Input
                 v-model:value="formData.creditCode"
@@ -910,6 +935,7 @@ onMounted(async () => {
               v-else-if="formData.clientType === 'INDIVIDUAL'"
               label="身份证号"
               name="idCard"
+              :rules="[{ required: true, message: '请输入身份证号' }]"
             >
               <Input
                 v-model:value="formData.idCard"
@@ -922,6 +948,7 @@ onMounted(async () => {
               v-if="formData.clientType === 'ENTERPRISE'"
               label="法定代表人"
               name="legalRepresentative"
+              :rules="[{ required: true, message: '请输入法定代表人' }]"
             >
               <Input
                 v-model:value="formData.legalRepresentative"
@@ -931,8 +958,28 @@ onMounted(async () => {
           </Col>
         </Row>
         <Row :gutter="16">
+          <Col :span="24">
+            <FormItem
+              label="联系地址"
+              name="registeredAddress"
+              :label-col="{ span: 3 }"
+              :wrapper-col="{ span: 21 }"
+              :rules="[{ required: true, message: '请输入联系地址' }]"
+            >
+              <Input
+                v-model:value="formData.registeredAddress"
+                placeholder="请输入联系地址（用于合同等法律文书）"
+              />
+            </FormItem>
+          </Col>
+        </Row>
+        <Row :gutter="16">
           <Col :span="12">
-            <FormItem label="联系人" name="contactPerson">
+            <FormItem
+              label="联系人"
+              name="contactPerson"
+              :rules="[{ required: true, message: '请输入联系人' }]"
+            >
               <Input
                 v-model:value="formData.contactPerson"
                 placeholder="请输入联系人"
@@ -940,7 +987,11 @@ onMounted(async () => {
             </FormItem>
           </Col>
           <Col :span="12">
-            <FormItem label="联系电话" name="contactPhone">
+            <FormItem
+              label="联系电话"
+              name="contactPhone"
+              :rules="[{ required: true, message: '请输入联系电话' }]"
+            >
               <Input
                 v-model:value="formData.contactPhone"
                 placeholder="请输入联系电话"

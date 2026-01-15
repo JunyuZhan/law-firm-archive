@@ -2,10 +2,14 @@ package com.lawfirm.infrastructure.external.onlyoffice;
 
 import com.lawfirm.infrastructure.config.OnlyOfficeConfig;
 import com.lawfirm.infrastructure.external.minio.MinioService;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -13,6 +17,10 @@ import java.util.UUID;
 /**
  * OnlyOffice 文档服务
  * 提供在线文档编辑和预览功能
+ * 
+ * 安全增强：
+ * - 支持 JWT 签名验证，防止配置篡改
+ * - 回调请求 JWT 验证
  */
 @Slf4j
 @Service
@@ -116,10 +124,75 @@ public class OnlyOfficeService {
         config.put("documentServerUrl", this.config.getDocumentServerUrl());
         config.put("apiJsUrl", this.config.getApiJsUrl());
         
-        log.debug("生成 OnlyOffice 配置: fileName={}, mode={}, documentKey={}", 
-                fileName, mode, document.get("key"));
+        // JWT 签名（如果启用）
+        if (this.config.isJwtEnabled() && this.config.getJwtSecret() != null 
+                && !this.config.getJwtSecret().isEmpty()) {
+            String token = generateJwtToken(config);
+            config.put("token", token);
+            log.debug("OnlyOffice JWT 签名已添加");
+        }
+        
+        log.debug("生成 OnlyOffice 配置: fileName={}, mode={}, documentKey={}, jwtEnabled={}", 
+                fileName, mode, document.get("key"), this.config.isJwtEnabled());
         
         return config;
+    }
+    
+    /**
+     * 生成 OnlyOffice JWT Token
+     * 用于验证配置未被篡改
+     */
+    private String generateJwtToken(Map<String, Object> payload) {
+        try {
+            SecretKey key = Keys.hmacShaKeyFor(
+                    this.config.getJwtSecret().getBytes(StandardCharsets.UTF_8));
+            
+            return Jwts.builder()
+                    .claims(payload)
+                    .signWith(key)
+                    .compact();
+        } catch (Exception e) {
+            log.error("生成 OnlyOffice JWT Token 失败: {}", e.getMessage());
+            throw new RuntimeException("生成 JWT Token 失败", e);
+        }
+    }
+    
+    /**
+     * 验证 OnlyOffice 回调请求的 JWT Token
+     * 
+     * @param token JWT Token
+     * @return 解析后的 payload
+     */
+    public Map<String, Object> verifyCallbackToken(String token) {
+        if (!this.config.isJwtEnabled() || this.config.getJwtSecret() == null 
+                || this.config.getJwtSecret().isEmpty()) {
+            log.warn("OnlyOffice JWT 未启用，跳过验证");
+            return null;
+        }
+        
+        try {
+            SecretKey key = Keys.hmacShaKeyFor(
+                    this.config.getJwtSecret().getBytes(StandardCharsets.UTF_8));
+            
+            var claims = Jwts.parser()
+                    .verifyWith(key)
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload();
+            
+            return new HashMap<>(claims);
+        } catch (Exception e) {
+            log.error("OnlyOffice 回调 JWT 验证失败: {}", e.getMessage());
+            throw new RuntimeException("JWT 验证失败", e);
+        }
+    }
+    
+    /**
+     * 检查 JWT 是否已启用
+     */
+    public boolean isJwtEnabled() {
+        return this.config.isJwtEnabled() && this.config.getJwtSecret() != null 
+                && !this.config.getJwtSecret().isEmpty();
     }
     
     /**

@@ -128,6 +128,42 @@ pnpm dev
 | [开发文档](./docs/README.md) | 开发者参考文档 |
 | [用户手册](./frontend/docs/) | 用户操作手册（VitePress） |
 
+### 文档站点
+
+基于 VitePress 构建的文档站点，包含用户手册、运维手册和 API 文档。
+
+#### 启动文档站点
+
+```bash
+cd frontend
+pnpm docs:dev
+```
+
+访问地址：http://localhost:6173
+
+#### 访问权限
+
+| 文档类型 | 路径 | 是否需要登录 |
+|---------|------|-------------|
+| 首页 | `/` | ❌ 不需要 |
+| 用户手册 | `/guide/user/` | ❌ 不需要 |
+| 运维手册 | `/guide/ops/` | ✅ 需要登录 |
+| API 文档 | `/guide/api/` | ✅ 需要登录 |
+
+#### 登录凭证配置
+
+**生产环境（一键部署）：** 密码在首次部署时自动生成，保存在项目根目录的 `.env` 文件中：
+- `DOCS_USERNAME` - 登录用户名（默认：admin）
+- `DOCS_PASSWORD` - 登录密码（自动生成）
+
+**开发环境：** 通过 `frontend/docs/.env.development` 配置：
+- `VITE_DOCS_USERNAME` - 登录用户名（默认：admin）
+- `VITE_DOCS_PASSWORD` - 登录密码（默认：lawfirm@2026）
+
+#### 从主应用跳转
+
+用户可以从主应用（http://localhost:5666）的用户头像菜单中点击「用户手册」直接跳转到文档站点，系统会自动携带登录 token，无需再次登录即可查看运维手册和 API 文档。
+
 ## 开发规范
 
 ### Git 提交规范

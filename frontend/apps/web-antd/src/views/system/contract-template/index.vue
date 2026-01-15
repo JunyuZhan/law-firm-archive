@@ -70,7 +70,9 @@ async function loadData() {
 const [Grid, gridApi] = useVbenVxeGrid({
   gridOptions: {
     columns: gridColumns,
-    height: 'auto',
+    // 移除高度限制，让表格完整显示所有数据
+    height: '',
+    minHeight: 200,
     proxyConfig: {
       ajax: {
         query: async () => {

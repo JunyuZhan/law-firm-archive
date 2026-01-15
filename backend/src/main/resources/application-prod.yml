@@ -51,7 +51,18 @@ ocr:
   provider: paddle
   paddle:
     url: ${OCR_SERVICE_URL:http://paddle-ocr:8000}
+    # OCR 服务 API Key（必须设置）
+    api-key: ${OCR_API_KEY:}
   timeout: 30000
+
+# OnlyOffice 配置 - 生产环境启用 JWT
+onlyoffice:
+  document-server-url: ${ONLYOFFICE_URL:http://onlyoffice:80}
+  callback-url: ${ONLYOFFICE_CALLBACK_URL:http://backend:8080/api}
+  file-server-url: ${FILE_SERVER_URL:http://minio:9000}
+  # 生产环境必须启用 JWT
+  jwt-enabled: true
+  jwt-secret: ${ONLYOFFICE_JWT_SECRET}
 
 # 日志配置 - 生产环境降低日志级别
 logging:

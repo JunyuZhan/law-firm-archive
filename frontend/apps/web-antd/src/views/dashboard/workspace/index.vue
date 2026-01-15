@@ -12,6 +12,8 @@ import type { ApprovalDTO } from '#/api/workbench';
 import { computed, onActivated, onDeactivated, onMounted, onUnmounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
+import { useResponsive } from '#/hooks/useResponsive';
+
 import {
   WorkbenchHeader,
   WorkbenchQuickNav,
@@ -68,6 +70,9 @@ import {
 
 const userStore = useUserStore();
 const router = useRouter();
+
+// 响应式布局
+const { isMobile, modalWidth } = useResponsive();
 
 // 最新动态展开状态
 const trendsExpanded = ref(false);
@@ -857,57 +862,9 @@ onUnmounted(() => {
       </Col>
     </Row>
 
-    <!-- 快捷导航 + 即将到期的期限 + 最近日程 -->
+    <!-- 最近日程 + 即将到期的期限 + 快捷导航 -->
     <Row :gutter="[16, 16]" class="mt-4">
       <Col :xs="24" :md="12" :lg="8">
-        <WorkbenchQuickNav
-          :items="quickNavItems"
-          title="快捷导航"
-          @click="navTo"
-        />
-      </Col>
-      <Col :xs="24" :md="12" :lg="8">
-        <Card :bordered="false" hoverable class="deadline-card hover-card">
-          <template #title>
-            <div class="flex items-center justify-between">
-              <span>⏰ 即将到期</span>
-            </div>
-          </template>
-          <div class="deadline-content">
-            <Timeline v-if="upcomingDeadlines.length > 0">
-              <TimelineItem
-                v-for="deadline in upcomingDeadlines"
-                :key="deadline.id"
-                :color="getDeadlineColor(deadline)"
-              >
-                <div
-                  class="-m-2 cursor-pointer rounded p-2 hover:bg-gray-50"
-                  @click="router.push(`/matter/detail/${deadline.matterId}`)"
-                >
-                  <div class="mb-1 flex items-center gap-2">
-                    <Tag :color="getDeadlineColor(deadline)" size="small">
-                      {{ formatDeadlineDays(deadline) }}
-                    </Tag>
-                    <span class="text-xs text-gray-500">{{
-                      deadline.deadlineDate
-                    }}</span>
-                  </div>
-                  <div class="font-medium">{{ deadline.deadlineName }}</div>
-                  <div class="mt-1 text-xs text-gray-500">
-                    📁 {{ deadline.matterName }}
-                  </div>
-                </div>
-              </TimelineItem>
-            </Timeline>
-            <Empty
-              v-else
-              :image="Empty.PRESENTED_IMAGE_SIMPLE"
-              description="暂无即将到期的期限"
-            />
-          </div>
-        </Card>
-      </Col>
-      <Col :xs="24" :md="24" :lg="8">
         <!-- 最近日程 - 使用 Timeline 组件 -->
         <Card :bordered="false" hoverable class="schedule-card hover-card">
           <template #title>
@@ -955,6 +912,54 @@ onUnmounted(() => {
             />
           </div>
         </Card>
+      </Col>
+      <Col :xs="24" :md="12" :lg="8">
+        <Card :bordered="false" hoverable class="deadline-card hover-card">
+          <template #title>
+            <div class="flex items-center justify-between">
+              <span>⏰ 即将到期</span>
+            </div>
+          </template>
+          <div class="deadline-content">
+            <Timeline v-if="upcomingDeadlines.length > 0">
+              <TimelineItem
+                v-for="deadline in upcomingDeadlines"
+                :key="deadline.id"
+                :color="getDeadlineColor(deadline)"
+              >
+                <div
+                  class="-m-2 cursor-pointer rounded p-2 hover:bg-gray-50"
+                  @click="router.push(`/matter/detail/${deadline.matterId}`)"
+                >
+                  <div class="mb-1 flex items-center gap-2">
+                    <Tag :color="getDeadlineColor(deadline)" size="small">
+                      {{ formatDeadlineDays(deadline) }}
+                    </Tag>
+                    <span class="text-xs text-gray-500">{{
+                      deadline.deadlineDate
+                    }}</span>
+                  </div>
+                  <div class="font-medium">{{ deadline.deadlineName }}</div>
+                  <div class="mt-1 text-xs text-gray-500">
+                    📁 {{ deadline.matterName }}
+                  </div>
+                </div>
+              </TimelineItem>
+            </Timeline>
+            <Empty
+              v-else
+              :image="Empty.PRESENTED_IMAGE_SIMPLE"
+              description="暂无即将到期的期限"
+            />
+          </div>
+        </Card>
+      </Col>
+      <Col :xs="24" :md="24" :lg="8">
+        <WorkbenchQuickNav
+          :items="quickNavItems"
+          title="快捷导航"
+          @click="navTo"
+        />
       </Col>
     </Row>
 
@@ -1023,7 +1028,8 @@ onUnmounted(() => {
       v-model:open="announcementDetailVisible"
       title="公告详情"
       :footer="null"
-      width="600px"
+      :width="isMobile ? '100%' : '600px'"
+      :centered="isMobile"
     >
       <Spin :spinning="announcementDetailLoading">
         <template v-if="currentAnnouncement">
@@ -1059,6 +1065,29 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+/* 移动端优化 */
+@media (max-width: 768px) {
+  .stat-card :deep(.ant-statistic-title) {
+    font-size: 12px;
+  }
+
+  .stat-card :deep(.ant-statistic-content-value) {
+    font-size: 20px;
+  }
+
+  .schedule-card,
+  .deadline-card {
+    height: auto;
+    min-height: 200px;
+  }
+
+  .schedule-card .schedule-content,
+  .deadline-card .deadline-content {
+    height: auto;
+    max-height: 300px;
+  }
+}
+
 .stat-card {
   cursor: pointer;
   transition: all 0.3s;

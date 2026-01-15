@@ -14,6 +14,7 @@ import com.itextpdf.layout.element.Cell;
 import com.itextpdf.layout.properties.TextAlignment;
 import com.itextpdf.layout.properties.UnitValue;
 import com.itextpdf.layout.properties.VerticalAlignment;
+import com.lawfirm.application.system.service.CauseOfActionService;
 import com.lawfirm.application.system.service.SysConfigAppService;
 import com.lawfirm.common.constant.MatterConstants;
 import com.lawfirm.domain.client.entity.Client;
@@ -45,6 +46,7 @@ public class DossierCoverGenerator {
     private final UserRepository userRepository;
     private final ClientRepository clientRepository;
     private final SysConfigAppService sysConfigAppService;
+    private final CauseOfActionService causeOfActionService;
 
     // 牛皮纸颜色（RGB: 210, 180, 140）- 更接近真实牛皮纸
     private static final DeviceRgb KRAFT_PAPER_COLOR = new DeviceRgb(210, 180, 140);
@@ -144,8 +146,8 @@ public class DossierCoverGenerator {
         Table mainTable = new Table(UnitValue.createPercentArray(new float[]{25, 25, 25, 25}))
                 .useAllAvailableWidth();
         
-        // 案由行
-        addFullWidthRow(mainTable, "案    由", matter.getCauseOfAction(), font);
+        // 案由行（转换代码为名称）
+        addFullWidthRow(mainTable, "案    由", getCauseOfActionName(matter), font);
         
         // 委托人 | 承办人
         addTwoColumnRow(mainTable, "委 托 人", getClientName(matter.getClientId()),
@@ -230,7 +232,7 @@ public class DossierCoverGenerator {
         
         // 案由 | 第___号
         String noStr = archiveNo != null ? archiveNo : "第    号";
-        addTwoColumnRow(mainTable, "案    由", matter.getCauseOfAction(), "", noStr, font);
+        addTwoColumnRow(mainTable, "案    由", getCauseOfActionName(matter), "", noStr, font);
         
         // 收案日期 | 委托人
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy年MM月dd日");
@@ -520,5 +522,22 @@ public class DossierCoverGenerator {
     private String truncate(String str, int maxLen) {
         if (str == null) return "";
         return str.length() > maxLen ? str.substring(0, maxLen) + "..." : str;
+    }
+
+    /**
+     * 获取案由名称
+     */
+    private String getCauseOfActionName(Matter matter) {
+        if (matter.getCauseOfAction() == null || matter.getCauseOfAction().isEmpty()) {
+            return "";
+        }
+        
+        String causeType = switch (matter.getCaseType() != null ? matter.getCaseType() : "") {
+            case "CRIMINAL" -> CauseOfActionService.TYPE_CRIMINAL;
+            case "ADMINISTRATIVE" -> CauseOfActionService.TYPE_ADMIN;
+            default -> CauseOfActionService.TYPE_CIVIL;
+        };
+        
+        return causeOfActionService.getCauseName(matter.getCauseOfAction(), causeType);
     }
 }

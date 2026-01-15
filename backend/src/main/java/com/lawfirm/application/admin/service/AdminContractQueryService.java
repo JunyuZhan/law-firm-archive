@@ -8,6 +8,7 @@ import com.lawfirm.application.admin.dto.AdminContractViewDTO;
 import com.lawfirm.application.common.service.ContractDataPermissionService;
 import com.lawfirm.common.result.PageResult;
 import com.lawfirm.common.constant.MatterConstants;
+import com.lawfirm.application.system.service.CauseOfActionService;
 import com.lawfirm.domain.client.entity.Client;
 import com.lawfirm.domain.client.repository.ClientRepository;
 import com.lawfirm.domain.finance.entity.Contract;
@@ -40,6 +41,7 @@ public class AdminContractQueryService {
     private final ClientRepository clientRepository;
     private final UserRepository userRepository;
     private final ContractDataPermissionService dataPermissionService;
+    private final CauseOfActionService causeOfActionService;
 
     /**
      * 查询已审批合同列表（只读）
@@ -166,7 +168,7 @@ public class AdminContractQueryService {
         dto.setCaseType(contract.getCaseType());
         dto.setCaseTypeName(MatterConstants.getCaseTypeName(contract.getCaseType()));
         dto.setCauseOfAction(contract.getCauseOfAction());
-        dto.setCauseOfActionName(getCauseOfActionName(contract.getCauseOfAction()));
+        dto.setCauseOfActionName(getCauseOfActionName(contract.getCauseOfAction(), contract.getCaseType()));
         dto.setOpposingParty(contract.getOpposingParty());
         dto.setTotalAmount(contract.getTotalAmount());
         dto.setStatus(contract.getStatus());
@@ -236,22 +238,26 @@ public class AdminContractQueryService {
 
     /**
      * 获取案由名称
-     * 案由存储的是ID或名称，需要根据实际情况处理
+     * 
+     * 数据库存储的是案由代码（如 "14", "76.2"），需要转换为中文名称用于导出。
+     * 根据案件类型选择查询民事/刑事/行政案由。
+     * 
+     * @param causeOfAction 案由代码或名称
+     * @param caseType 案件类型
+     * @return 案由中文名称
      */
-    private String getCauseOfActionName(String causeOfAction) {
+    private String getCauseOfActionName(String causeOfAction, String caseType) {
         if (causeOfAction == null || causeOfAction.isEmpty()) {
             return null;
         }
-        // 如果是纯数字，说明存储的是案由ID，需要查询案由名称
-        // 这里简化处理，直接返回原值，实际应该查询案由表
-        // TODO: 如果有案由表，应该查询案由名称
-        try {
-            Long.parseLong(causeOfAction);
-            // 是数字ID，暂时返回原值，后续可以查询案由表
-            return causeOfAction;
-        } catch (NumberFormatException e) {
-            // 不是数字，说明存储的就是案由名称
-            return causeOfAction;
-        }
+        
+        // 根据案件类型选择案由类型
+        String causeType = switch (caseType) {
+            case "CRIMINAL" -> CauseOfActionService.TYPE_CRIMINAL;
+            case "ADMINISTRATIVE" -> CauseOfActionService.TYPE_ADMIN;
+            default -> CauseOfActionService.TYPE_CIVIL; // 民事、劳动仲裁等都用民事案由
+        };
+        
+        return causeOfActionService.getCauseName(causeOfAction, causeType);
     }
 }

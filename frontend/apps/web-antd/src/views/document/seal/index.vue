@@ -7,6 +7,8 @@ import { ref } from 'vue';
 import { Page } from '@vben/common-ui';
 import { Plus } from '@vben/icons';
 
+import { useResponsive } from '#/hooks/useResponsive';
+
 import {
   Button,
   Card,
@@ -26,6 +28,9 @@ import { changeSealStatus, deleteSeal, getSealList } from '#/api/document/seal';
 import SealModal from './components/SealModal.vue';
 
 defineOptions({ name: 'DocumentSeal' });
+
+// 响应式布局
+const { isMobile } = useResponsive();
 
 const sealModalRef = ref<InstanceType<typeof SealModal>>();
 const queryParams = ref<SealQuery>({
@@ -146,8 +151,8 @@ function getStatusColor(status: string) {
   <Page title="印章管理" description="管理律所印章">
     <Card>
       <div style="margin-bottom: 16px">
-        <Row :gutter="16">
-          <Col :span="6">
+        <Row :gutter="[16, 12]">
+          <Col :xs="12" :sm="12" :md="6">
             <Input
               v-model:value="queryParams.name"
               placeholder="印章名称"
@@ -155,7 +160,7 @@ function getStatusColor(status: string) {
               @press-enter="handleSearch"
             />
           </Col>
-          <Col :span="6">
+          <Col :xs="12" :sm="12" :md="6">
             <Select
               v-model:value="queryParams.sealType"
               placeholder="印章类型"
@@ -164,7 +169,7 @@ function getStatusColor(status: string) {
               :options="sealTypeOptions"
             />
           </Col>
-          <Col :span="6">
+          <Col :xs="12" :sm="12" :md="6">
             <Select
               v-model:value="queryParams.status"
               placeholder="状态"
@@ -173,8 +178,8 @@ function getStatusColor(status: string) {
               :options="statusOptions"
             />
           </Col>
-          <Col :span="6">
-            <Space>
+          <Col :xs="12" :sm="12" :md="6">
+            <Space :wrap="isMobile">
               <Button type="primary" @click="handleSearch">查询</Button>
               <Button @click="handleReset">重置</Button>
               <Button type="primary" @click="handleAdd">

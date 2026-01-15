@@ -3,9 +3,11 @@ import type { VbenFormSchema } from '#/adapter/form';
 import type { VxeGridProps } from '#/adapter/vxe-table';
 import type { LawRegulationDTO } from '#/api/knowledge/types';
 
-import { onMounted, ref } from 'vue';
+import { onMounted, ref, watch } from 'vue';
 
 import { Page } from '@vben/common-ui';
+
+import { useResponsive } from '#/hooks/useResponsive';
 
 import {
   Button,
@@ -32,6 +34,9 @@ import {
 import LawModal from './components/LawModal.vue';
 
 defineOptions({ name: 'KnowledgeLaw' });
+
+// 响应式布局
+const { isMobile } = useResponsive();
 
 const lawModalRef = ref<InstanceType<typeof LawModal>>();
 const categories = ref<any[]>([]);
@@ -76,27 +81,37 @@ const formSchema: VbenFormSchema[] = [
   },
 ];
 
-const gridColumns: VxeGridProps['columns'] = [
-  { title: '法规名称', field: 'name', width: 200 },
-  { title: '法规类型', field: 'lawTypeName', width: 120 },
-  { title: '分类', field: 'categoryName', width: 120 },
-  { title: '发布机关', field: 'issuer', width: 150 },
-  { title: '发布日期', field: 'issueDate', width: 120 },
-  { title: '实施日期', field: 'effectiveDate', width: 120 },
-  {
-    title: '效力状态',
-    field: 'status',
-    width: 100,
-    slots: { default: 'status' },
-  },
-  {
-    title: '操作',
-    field: 'action',
-    width: 200,
-    fixed: 'right',
-    slots: { default: 'action' },
-  },
-];
+// 响应式列配置
+function getGridColumns(): VxeGridProps['columns'] {
+  const baseColumns = [
+    { title: '法规名称', field: 'name', width: isMobile.value ? 150 : 200, mobileShow: true },
+    { title: '法规类型', field: 'lawTypeName', width: 120, mobileShow: true },
+    { title: '分类', field: 'categoryName', width: 120 },
+    { title: '发布机关', field: 'issuer', width: 150 },
+    { title: '发布日期', field: 'issueDate', width: 120 },
+    { title: '实施日期', field: 'effectiveDate', width: 120 },
+    {
+      title: '效力状态',
+      field: 'status',
+      width: 100,
+      slots: { default: 'status' },
+      mobileShow: true,
+    },
+    {
+      title: '操作',
+      field: 'action',
+      width: isMobile.value ? 100 : 200,
+      fixed: 'right',
+      slots: { default: 'action' },
+      mobileShow: true,
+    },
+  ];
+  
+  if (isMobile.value) {
+    return baseColumns.filter(col => col.mobileShow === true);
+  }
+  return baseColumns;
+}
 
 async function loadData(
   params: Record<string, any> & { page: number; pageSize: number },
@@ -120,7 +135,7 @@ const [Grid, gridApi] = useVbenVxeGrid({
     resetButtonOptions: { content: '重置' },
   },
   gridOptions: {
-    columns: gridColumns,
+    columns: getGridColumns(),
     height: 'auto',
     proxyConfig: {
       ajax: {
@@ -141,6 +156,11 @@ const [Grid, gridApi] = useVbenVxeGrid({
     pagerConfig: { pageSize: 10, pageSizes: [10, 20, 50, 100] },
     toolbarConfig: { slots: { buttons: 'toolbar-buttons' } },
   },
+});
+
+// 监听响应式变化，更新列配置
+watch(isMobile, () => {
+  gridApi.setGridOptions({ columns: getGridColumns() });
 });
 
 async function loadCategories() {

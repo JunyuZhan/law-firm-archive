@@ -1,7 +1,7 @@
 # 生产环境部署配置
-# 使用方法：docker compose -f docker-compose.prod.yml up -d
+# 使用方法：docker compose --env-file ../.env -f docker-compose.prod.yml up -d
 # 
-# 注意：需要先配置 ../.env 文件
+# 注意：环境变量配置文件在项目根目录 .env
 
 # 项目名称，所有容器、网络、数据卷都会以此为前缀
 name: law-firm
@@ -14,6 +14,9 @@ services:
     build:
       context: ../frontend
       dockerfile: scripts/deploy/Dockerfile
+      args:
+        - DOCS_USERNAME=${DOCS_USERNAME:-admin}
+        - DOCS_PASSWORD=${DOCS_PASSWORD:-lawfirm@2026}
     container_name: law-firm-frontend
     ports:
       - "80:8080"
@@ -156,7 +159,12 @@ services:
     image: law-firm-onlyoffice:latest
     container_name: law-firm-onlyoffice
     environment:
-      - JWT_ENABLED=false
+      # 启用 JWT 验证，防止配置篡改
+      - JWT_ENABLED=true
+      - JWT_SECRET=${ONLYOFFICE_JWT_SECRET:-your-onlyoffice-jwt-secret-change-in-production}
+      - JWT_HEADER=Authorization
+      # 允许私有 IP 地址（用于 Docker 网络）
+      - ALLOW_PRIVATE_IP_ADDRESS=true
     volumes:
       - onlyoffice_data:/var/www/onlyoffice/Data
     networks:

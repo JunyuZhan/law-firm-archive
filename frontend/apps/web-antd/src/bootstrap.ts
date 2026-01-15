@@ -7,6 +7,9 @@ import { initStores } from '@vben/stores';
 import '@vben/styles';
 import '@vben/styles/antd';
 
+// 移动端适配样式
+import './styles/mobile.css';
+
 import { useTitle } from '@vueuse/core';
 
 import { $t, setupI18n } from '#/locales';

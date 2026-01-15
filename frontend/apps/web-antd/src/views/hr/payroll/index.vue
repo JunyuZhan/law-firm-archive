@@ -805,34 +805,66 @@ onMounted(() => {
 
       <!-- 工资表汇总信息 -->
       <div v-if="currentSheet" class="mb-4">
-        <Space>
-          <span><strong>工资表编号：</strong>{{ currentSheet.payrollNo }}</span>
-          <span><strong>状态：</strong>{{ currentSheet.statusName }}</span>
-          <span
-            ><strong>总人数：</strong>{{ currentSheet.totalEmployees }}</span
-          >
-          <span
-            ><strong>应发总额：</strong
-            >{{ formatCurrency(currentSheet.totalGrossAmount) }}</span
-          >
-          <span
-            ><strong>扣减总额：</strong
-            >{{ formatCurrency(currentSheet.totalDeductionAmount) }}</span
-          >
-          <span
-            ><strong>实发总额：</strong
-            >{{ formatCurrency(currentSheet.totalNetAmount) }}</span
-          >
-          <span
-            ><strong>已确认：</strong>{{ currentSheet.confirmedCount }}/{{
-              currentSheet.totalEmployees
-            }}</span
-          >
-          <Space v-if="canExport(currentSheet)" style="margin-left: 20px">
-            <Button type="default" @click="handleExport">导出Excel</Button>
-            <Button type="default" @click="handlePrint">打印</Button>
-          </Space>
-        </Space>
+        <Row :gutter="[16, 8]" align="middle">
+          <Col :xs="24" :sm="12" :md="8" :lg="6" :xl="4">
+            <div class="payroll-info-item">
+              <span class="payroll-info-label">工资表编号</span>
+              <span class="payroll-info-value">{{ currentSheet.payrollNo }}</span>
+            </div>
+          </Col>
+          <Col :xs="12" :sm="6" :md="4" :lg="3" :xl="2">
+            <div class="payroll-info-item">
+              <span class="payroll-info-label">状态</span>
+              <Tag
+                :color="
+                  currentSheet.status === 'DRAFT'
+                    ? 'default'
+                    : currentSheet.status === 'ISSUED'
+                      ? 'green'
+                      : 'blue'
+                "
+              >
+                {{ currentSheet.statusName }}
+              </Tag>
+            </div>
+          </Col>
+          <Col :xs="12" :sm="6" :md="4" :lg="3" :xl="2">
+            <div class="payroll-info-item">
+              <span class="payroll-info-label">总人数</span>
+              <span class="payroll-info-value">{{ currentSheet.totalEmployees }}人</span>
+            </div>
+          </Col>
+          <Col :xs="12" :sm="8" :md="5" :lg="4" :xl="3">
+            <div class="payroll-info-item">
+              <span class="payroll-info-label">应发总额</span>
+              <span class="payroll-info-value payroll-amount">{{ formatCurrency(currentSheet.totalGrossAmount) }}</span>
+            </div>
+          </Col>
+          <Col :xs="12" :sm="8" :md="5" :lg="4" :xl="3">
+            <div class="payroll-info-item">
+              <span class="payroll-info-label">扣减总额</span>
+              <span class="payroll-info-value payroll-deduction">{{ formatCurrency(currentSheet.totalDeductionAmount) }}</span>
+            </div>
+          </Col>
+          <Col :xs="12" :sm="8" :md="5" :lg="4" :xl="3">
+            <div class="payroll-info-item">
+              <span class="payroll-info-label">实发总额</span>
+              <span class="payroll-info-value payroll-net">{{ formatCurrency(currentSheet.totalNetAmount) }}</span>
+            </div>
+          </Col>
+          <Col :xs="12" :sm="6" :md="4" :lg="3" :xl="2">
+            <div class="payroll-info-item">
+              <span class="payroll-info-label">已确认</span>
+              <span class="payroll-info-value">{{ currentSheet.confirmedCount }}/{{ currentSheet.totalEmployees }}</span>
+            </div>
+          </Col>
+          <Col v-if="canExport(currentSheet)" :xs="24" :sm="18" :md="12" :lg="9" :xl="5">
+            <Space>
+              <Button type="default" @click="handleExport">导出Excel</Button>
+              <Button type="default" @click="handlePrint">打印</Button>
+            </Space>
+          </Col>
+        </Row>
       </div>
 
       <!-- 提示信息 -->
@@ -864,8 +896,7 @@ onMounted(() => {
         :pagination="false"
         row-key="employeeId"
         size="small"
-        :virtual="filteredDataSource.length > 50"
-        :scroll="{ y: 600 }"
+        :scroll="{ x: 'max-content' }"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'income'">
@@ -1163,3 +1194,39 @@ onMounted(() => {
     </Modal>
   </Page>
 </template>
+
+<style scoped>
+.payroll-info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 12px;
+  background: #f5f7fa;
+  border-radius: 6px;
+  min-height: 56px;
+}
+
+.payroll-info-label {
+  font-size: 12px;
+  color: #8c8c8c;
+}
+
+.payroll-info-value {
+  font-size: 14px;
+  font-weight: 500;
+  color: #262626;
+}
+
+.payroll-amount {
+  color: #1890ff;
+}
+
+.payroll-deduction {
+  color: #ff4d4f;
+}
+
+.payroll-net {
+  color: #52c41a;
+  font-weight: 600;
+}
+</style>

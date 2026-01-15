@@ -536,6 +536,37 @@ export interface RestoreBackupCommand {
   description?: string;
 }
 
+// ========== 案由管理 ==========
+
+/** 案由DTO */
+export interface CauseOfActionDTO {
+  id: number;
+  code: string;
+  name: string;
+  type: 'CIVIL' | 'CRIMINAL' | 'ADMIN';
+  typeName?: string;
+  parentCode?: string;
+  parentName?: string;
+  level: number;
+  sortOrder?: number;
+  description?: string;
+  isLeaf: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/** 案由树节点 */
+export interface CauseTreeNodeDTO {
+  code: string;
+  name: string;
+  parentCode?: string;
+  level: number;
+  sortOrder?: number;
+  description?: string;
+  isLeaf: boolean;
+  children?: CauseTreeNodeDTO[];
+}
+
 // ========== 通用分页结果 ==========
 export interface PageResult<T> {
   list: T[];

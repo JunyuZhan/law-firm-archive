@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.lawfirm.application.admin.command.CreateLetterApplicationCommand;
 import com.lawfirm.application.admin.dto.LetterApplicationDTO;
 import com.lawfirm.application.admin.dto.LetterTemplateDTO;
+import com.lawfirm.application.system.service.CauseOfActionService;
 import com.lawfirm.application.system.service.NotificationAppService;
 import com.lawfirm.application.workbench.service.ApprovalService;
 import com.lawfirm.common.exception.BusinessException;
@@ -58,6 +59,7 @@ public class LetterAppService {
     private final SysConfigAppService sysConfigAppService;
     private final ApprovalService approvalService;
     private final ObjectMapper objectMapper;
+    private final CauseOfActionService causeOfActionService;
     private com.lawfirm.application.matter.service.MatterAppService matterAppService;
     
     @org.springframework.beans.factory.annotation.Autowired
@@ -815,7 +817,17 @@ public class LetterAppService {
         // ========== 项目信息 ==========
         result = result.replace("${matterName}", matter.getName() != null ? matter.getName() : "");
         result = result.replace("${matterNo}", matter.getMatterNo() != null ? matter.getMatterNo() : "");
-        result = result.replace("${causeOfAction}", matter.getCauseOfAction() != null ? matter.getCauseOfAction() : "");
+        // 案由：使用案由名称（根据案件类型智能查询）
+        String causeOfActionName = "";
+        if (matter.getCauseOfAction() != null && !matter.getCauseOfAction().isEmpty()) {
+            String causeType = switch (matter.getCaseType() != null ? matter.getCaseType() : "") {
+                case "CRIMINAL" -> CauseOfActionService.TYPE_CRIMINAL;
+                case "ADMINISTRATIVE" -> CauseOfActionService.TYPE_ADMIN;
+                default -> CauseOfActionService.TYPE_CIVIL;
+            };
+            causeOfActionName = causeOfActionService.getCauseName(matter.getCauseOfAction(), causeType);
+        }
+        result = result.replace("${causeOfAction}", causeOfActionName);
         
         // ========== 合同信息 ==========
         String contractNo = "";
@@ -927,7 +939,10 @@ public class LetterAppService {
         
         // ========== 日期信息 ==========
         LocalDate now = LocalDate.now();
-        result = result.replace("${date}", now.toString());
+        // 格式化为中文日期：YYYY年MM月DD日
+        String chineseDate = String.format("%d年%02d月%02d日", 
+            now.getYear(), now.getMonthValue(), now.getDayOfMonth());
+        result = result.replace("${date}", chineseDate);
         result = result.replace("${currentYear}", String.valueOf(now.getYear()));
         
         return result;

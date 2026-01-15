@@ -4,6 +4,8 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { Page } from '@vben/common-ui';
 import echarts from '@vben/plugins/echarts';
 
+import { useResponsive } from '#/hooks/useResponsive';
+
 import {
   Button,
   Card,
@@ -34,6 +36,9 @@ import { generateReport, type GenerateReportCommand } from '#/api/workbench/repo
 import { getRevenueStats } from '#/api/workbench/statistics';
 
 defineOptions({ name: 'FinanceReport' });
+
+// 响应式布局
+const { isMobile } = useResponsive();
 
 const loading = ref(false);
 const activeTab = ref('overview');
@@ -557,8 +562,8 @@ onBeforeUnmount(() => {
 <template>
   <Page title="财务报表" description="查看财务统计报表">
     <Spin :spinning="loading">
-      <Row :gutter="16" style="margin-bottom: 16px">
-        <Col :span="6">
+      <Row :gutter="[16, 16]" style="margin-bottom: 16px">
+        <Col :xs="12" :sm="12" :md="6" :lg="6">
           <Card>
             <Statistic
               title="年度收入"
@@ -568,7 +573,7 @@ onBeforeUnmount(() => {
             />
           </Card>
         </Col>
-        <Col :span="6">
+        <Col :xs="12" :sm="12" :md="6" :lg="6">
           <Card>
             <Statistic
               title="年度支出"
@@ -578,7 +583,7 @@ onBeforeUnmount(() => {
             />
           </Card>
         </Col>
-        <Col :span="6">
+        <Col :xs="12" :sm="12" :md="6" :lg="6">
           <Card>
             <Statistic
               title="应收账款"
@@ -588,7 +593,7 @@ onBeforeUnmount(() => {
             />
           </Card>
         </Col>
-        <Col :span="6">
+        <Col :xs="12" :sm="12" :md="6" :lg="6">
           <Card>
             <Statistic
               title="利润率"
@@ -602,10 +607,10 @@ onBeforeUnmount(() => {
 
       <Card>
         <template #extra>
-          <Space>
+          <Space :direction="isMobile ? 'vertical' : 'horizontal'" :size="isMobile ? 8 : 12">
             <Select
               v-model:value="monthFilter"
-              style="width: 150px"
+              :style="{ width: isMobile ? '100%' : '150px' }"
               @change="handleMonthFilterChange"
             >
               <Select.Option value="recent3">最近3个月</Select.Option>
@@ -616,10 +621,11 @@ onBeforeUnmount(() => {
             <DatePicker.RangePicker
               v-model:value="dateRange"
               :disabled="monthFilter !== 'custom'"
+              :style="{ width: isMobile ? '100%' : 'auto' }"
               @change="handleDateChange"
             />
             <Dropdown>
-              <Button :loading="exporting">
+              <Button :loading="exporting" :block="isMobile">
                 导出报表
                 <template #icon>
                   <span style="margin-left: 4px">▼</span>
@@ -638,8 +644,8 @@ onBeforeUnmount(() => {
 
         <Tabs v-model:active-key="activeTab">
           <Tabs.TabPane key="overview" tab="收入概览">
-            <Row :gutter="16" style="margin-bottom: 16px">
-              <Col :span="6">
+            <Row :gutter="[16, 16]" style="margin-bottom: 16px">
+              <Col :xs="12" :sm="12" :md="6" :lg="6">
                 <Card size="small">
                   <Statistic
                     title="合同总数"
@@ -648,7 +654,7 @@ onBeforeUnmount(() => {
                   />
                 </Card>
               </Col>
-              <Col :span="6">
+              <Col :xs="12" :sm="12" :md="6" :lg="6">
                 <Card size="small">
                   <Statistic
                     title="合同总额"
@@ -658,7 +664,7 @@ onBeforeUnmount(() => {
                   />
                 </Card>
               </Col>
-              <Col :span="6">
+              <Col :xs="12" :sm="12" :md="6" :lg="6">
                 <Card size="small">
                   <Statistic
                     title="已收款"
@@ -668,7 +674,7 @@ onBeforeUnmount(() => {
                   />
                 </Card>
               </Col>
-              <Col :span="6">
+              <Col :xs="12" :sm="12" :md="6" :lg="6">
                 <Card size="small">
                   <Statistic
                     title="待收款"
@@ -689,7 +695,6 @@ onBeforeUnmount(() => {
               :pagination="false"
               size="small"
               row-key="month"
-              :scroll="{ y: 300 }"
             >
               <template #bodyCell="{ column, text }">
                 <template
@@ -709,8 +714,8 @@ onBeforeUnmount(() => {
           </Tabs.TabPane>
 
           <Tabs.TabPane key="invoice" tab="发票统计">
-            <Row :gutter="16" style="margin-bottom: 16px">
-              <Col :span="6">
+            <Row :gutter="[16, 16]" style="margin-bottom: 16px">
+              <Col :xs="12" :sm="12" :md="6" :lg="6">
                 <Card size="small">
                   <Statistic
                     title="发票总数"
@@ -719,7 +724,7 @@ onBeforeUnmount(() => {
                   />
                 </Card>
               </Col>
-              <Col :span="6">
+              <Col :xs="12" :sm="12" :md="6" :lg="6">
                 <Card size="small">
                   <Statistic
                     title="开票总额"
@@ -729,7 +734,7 @@ onBeforeUnmount(() => {
                   />
                 </Card>
               </Col>
-              <Col :span="6">
+              <Col :xs="12" :sm="12" :md="6" :lg="6">
                 <Card size="small">
                   <Statistic
                     title="待开票"
@@ -738,7 +743,7 @@ onBeforeUnmount(() => {
                   />
                 </Card>
               </Col>
-              <Col :span="6">
+              <Col :xs="12" :sm="12" :md="6" :lg="6">
                 <Card size="small">
                   <Statistic
                     title="已作废"
@@ -751,8 +756,8 @@ onBeforeUnmount(() => {
           </Tabs.TabPane>
 
           <Tabs.TabPane key="commission" tab="提成报表">
-            <Row :gutter="16" style="margin-bottom: 16px">
-              <Col :span="6">
+            <Row :gutter="[16, 16]" style="margin-bottom: 16px">
+              <Col :xs="12" :sm="12" :md="6" :lg="6">
                 <Card size="small">
                   <Statistic
                     title="提成总额"
@@ -762,7 +767,7 @@ onBeforeUnmount(() => {
                   />
                 </Card>
               </Col>
-              <Col :span="6">
+              <Col :xs="12" :sm="12" :md="6" :lg="6">
                 <Card size="small">
                   <Statistic
                     title="已发放"
@@ -772,7 +777,7 @@ onBeforeUnmount(() => {
                   />
                 </Card>
               </Col>
-              <Col :span="6">
+              <Col :xs="12" :sm="12" :md="6" :lg="6">
                 <Card size="small">
                   <Statistic
                     title="待发放"
@@ -782,7 +787,7 @@ onBeforeUnmount(() => {
                   />
                 </Card>
               </Col>
-              <Col :span="6">
+              <Col :xs="12" :sm="12" :md="6" :lg="6">
                 <Card size="small">
                   <Statistic
                     title="涉及人数"
@@ -814,8 +819,8 @@ onBeforeUnmount(() => {
           </Tabs.TabPane>
 
           <Tabs.TabPane key="expense" tab="费用报销">
-            <Row :gutter="16" style="margin-bottom: 16px">
-              <Col :span="8">
+            <Row :gutter="[16, 16]" style="margin-bottom: 16px">
+              <Col :xs="24" :sm="8" :md="8" :lg="8">
                 <Card size="small">
                   <Statistic
                     title="报销总额"
@@ -825,7 +830,7 @@ onBeforeUnmount(() => {
                   />
                 </Card>
               </Col>
-              <Col :span="8">
+              <Col :xs="12" :sm="8" :md="8" :lg="8">
                 <Card size="small">
                   <Statistic
                     title="报销笔数"
@@ -834,7 +839,7 @@ onBeforeUnmount(() => {
                   />
                 </Card>
               </Col>
-              <Col :span="8">
+              <Col :xs="12" :sm="8" :md="8" :lg="8">
                 <Card size="small">
                   <Statistic
                     title="平均金额"
@@ -868,8 +873,8 @@ onBeforeUnmount(() => {
           </Tabs.TabPane>
 
           <Tabs.TabPane key="fee" tab="收费管理">
-            <Row :gutter="16" style="margin-bottom: 16px">
-              <Col :span="6">
+            <Row :gutter="[16, 16]" style="margin-bottom: 16px">
+              <Col :xs="12" :sm="12" :md="6" :lg="6">
                 <Card size="small">
                   <Statistic
                     title="收费笔数"
@@ -878,7 +883,7 @@ onBeforeUnmount(() => {
                   />
                 </Card>
               </Col>
-              <Col :span="6">
+              <Col :xs="12" :sm="12" :md="6" :lg="6">
                 <Card size="small">
                   <Statistic
                     title="应收总额"
@@ -888,7 +893,7 @@ onBeforeUnmount(() => {
                   />
                 </Card>
               </Col>
-              <Col :span="6">
+              <Col :xs="12" :sm="12" :md="6" :lg="6">
                 <Card size="small">
                   <Statistic
                     title="已收金额"
@@ -898,7 +903,7 @@ onBeforeUnmount(() => {
                   />
                 </Card>
               </Col>
-              <Col :span="6">
+              <Col :xs="12" :sm="12" :md="6" :lg="6">
                 <Card size="small">
                   <Statistic
                     title="待收金额"
@@ -928,8 +933,8 @@ onBeforeUnmount(() => {
           </Tabs.TabPane>
 
           <Tabs.TabPane key="aging" tab="账龄分析">
-            <Row :gutter="16" style="margin-bottom: 16px">
-              <Col :span="6">
+            <Row :gutter="[16, 16]" style="margin-bottom: 16px">
+              <Col :xs="12" :sm="12" :md="6" :lg="6">
                 <Card size="small">
                   <Statistic
                     title="0-30天"
@@ -940,7 +945,7 @@ onBeforeUnmount(() => {
                   />
                 </Card>
               </Col>
-              <Col :span="6">
+              <Col :xs="12" :sm="12" :md="6" :lg="6">
                 <Card size="small">
                   <Statistic
                     title="31-60天"
@@ -951,7 +956,7 @@ onBeforeUnmount(() => {
                   />
                 </Card>
               </Col>
-              <Col :span="6">
+              <Col :xs="12" :sm="12" :md="6" :lg="6">
                 <Card size="small">
                   <Statistic
                     title="61-90天"
@@ -962,7 +967,7 @@ onBeforeUnmount(() => {
                   />
                 </Card>
               </Col>
-              <Col :span="6">
+              <Col :xs="12" :sm="12" :md="6" :lg="6">
                 <Card size="small" :style="{ background: (agingData[3] && agingData[3].amount > 0) ? '#fff2f0' : '' }">
                   <Statistic
                     title="90天以上(逾期)"
@@ -974,14 +979,14 @@ onBeforeUnmount(() => {
                 </Card>
               </Col>
             </Row>
-            <Row :gutter="16">
-              <Col :span="10">
+            <Row :gutter="[16, 16]">
+              <Col :xs="24" :sm="24" :md="10" :lg="10">
                 <!-- 账龄分布图 -->
                 <Card size="small" title="账龄分布">
                   <div ref="agingChartRef" style="height: 260px"></div>
                 </Card>
               </Col>
-              <Col :span="14">
+              <Col :xs="24" :sm="24" :md="14" :lg="14">
                 <Card size="small" title="账龄明细">
                   <Table
                     :columns="agingColumns"

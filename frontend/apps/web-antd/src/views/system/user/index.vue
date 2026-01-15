@@ -3,9 +3,11 @@ import type { VbenFormSchema } from '#/adapter/form';
 import type { VxeGridProps } from '#/adapter/vxe-table';
 import type { DepartmentDTO, UserDTO } from '#/api/system/types';
 
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 
 import { Page } from '@vben/common-ui';
+
+import { useResponsive } from '#/hooks/useResponsive';
 
 import {
   DownloadOutlined,
@@ -40,6 +42,9 @@ import UserImportModal from './components/UserImportModal.vue';
 import UserModal from './components/UserModal.vue';
 
 defineOptions({ name: 'SystemUser' });
+
+// 响应式布局
+const { isMobile } = useResponsive();
 
 // ==================== 状态定义 ====================
 
@@ -109,24 +114,33 @@ const formSchema: VbenFormSchema[] = [
 
 // ==================== 表格配置 ====================
 
-const gridColumns: VxeGridProps['columns'] = [
-  { type: 'checkbox', width: 50 },
-  { title: '用户名', field: 'username', width: 120 },
-  { title: '姓名', field: 'realName', width: 100 },
-  { title: '部门', field: 'departmentName', width: 120 },
-  { title: '职位', field: 'position', width: 100 },
-  { title: '手机号', field: 'phone', width: 130 },
-  { title: '邮箱', field: 'email', minWidth: 180 },
-  { title: '状态', field: 'status', width: 80, slots: { default: 'status' } },
-  { title: '创建时间', field: 'createdAt', width: 160 },
-  {
-    title: '操作',
-    field: 'action',
-    width: 220,
-    fixed: 'right',
-    slots: { default: 'action' },
-  },
-];
+// 响应式列配置
+function getGridColumns(): VxeGridProps['columns'] {
+  const baseColumns = [
+    { type: 'checkbox', width: 50 },
+    { title: '用户名', field: 'username', width: 120, mobileShow: true },
+    { title: '姓名', field: 'realName', width: 100, mobileShow: true },
+    { title: '部门', field: 'departmentName', width: 120 },
+    { title: '职位', field: 'position', width: 100 },
+    { title: '手机号', field: 'phone', width: 130 },
+    { title: '邮箱', field: 'email', minWidth: 180 },
+    { title: '状态', field: 'status', width: 80, slots: { default: 'status' }, mobileShow: true },
+    { title: '创建时间', field: 'createdAt', width: 160 },
+    {
+      title: '操作',
+      field: 'action',
+      width: isMobile.value ? 120 : 220,
+      fixed: 'right',
+      slots: { default: 'action' },
+      mobileShow: true,
+    },
+  ];
+  
+  if (isMobile.value) {
+    return baseColumns.filter(col => col.type === 'checkbox' || col.mobileShow === true);
+  }
+  return baseColumns;
+}
 
 // 加载数据
 async function loadData(
@@ -154,7 +168,7 @@ const [Grid, gridApi] = useVbenVxeGrid({
     resetButtonOptions: { content: '重置' },
   },
   gridOptions: {
-    columns: gridColumns,
+    columns: getGridColumns(),
     height: 'auto',
     proxyConfig: {
       ajax: {
@@ -181,6 +195,11 @@ const [Grid, gridApi] = useVbenVxeGrid({
       slots: { buttons: 'toolbar-buttons' },
     },
   },
+});
+
+// 监听响应式变化，更新列配置
+watch(isMobile, () => {
+  gridApi.setGridOptions({ columns: getGridColumns() });
 });
 
 // ==================== 操作方法 ====================

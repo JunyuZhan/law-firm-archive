@@ -520,10 +520,37 @@ public class PayrollAppService {
             commissionTotal = commissionTotal.add(comm.getCommissionAmount());
         }
         
-        // 2. 计算扣减项（暂时为空，需要手动输入或根据规则计算）
-        // TODO: 实现扣减项自动计算逻辑
+        // 2. 计算扣减项（自动计算社保、公积金、个税）
+        // 扣减计算基于基本工资作为社保公积金基数
         BigDecimal taxDeductionAmount = BigDecimal.ZERO; // 税费扣减项总和
         BigDecimal otherDeductionAmount = BigDecimal.ZERO; // 其他扣减项总和
+        
+        // 获取员工的劳动合同，使用基本工资作为社保公积金基数
+        Optional<com.lawfirm.domain.hr.entity.Contract> contractOpt = hrContractRepository.findActiveContractByEmployeeId(employee.getId());
+        if (contractOpt.isPresent()) {
+            com.lawfirm.domain.hr.entity.Contract hrContract = contractOpt.get();
+            
+            // 使用基本工资作为社保和公积金的缴费基数
+            BigDecimal baseSalary = hrContract.getBaseSalary();
+            if (baseSalary == null) {
+                baseSalary = BigDecimal.ZERO;
+            }
+            
+            // 社保个人部分（约10.5%：养老8% + 医疗2% + 失业0.5%）
+            BigDecimal socialInsurance = baseSalary.multiply(new BigDecimal("0.105"));
+            
+            // 公积金个人部分（通常5%-12%，取7%）
+            BigDecimal housingFund = baseSalary.multiply(new BigDecimal("0.07"));
+            
+            otherDeductionAmount = socialInsurance.add(housingFund);
+        }
+        
+        // 计算应税收入（提成 - 社保公积金 - 5000元起征点）
+        BigDecimal taxableIncome = commissionTotal.subtract(otherDeductionAmount).subtract(new BigDecimal("5000"));
+        if (taxableIncome.compareTo(BigDecimal.ZERO) > 0) {
+            // 简化的个税计算（累进税率：0-3000:3%, 3000-12000:10%, 12000-25000:20%...）
+            taxDeductionAmount = calculateIncomeTax(taxableIncome);
+        }
         
         // 应发工资 = 收入（提成总额）- 税费扣减项
         BigDecimal grossAmount = commissionTotal.subtract(taxDeductionAmount);
@@ -586,6 +613,47 @@ public class PayrollAppService {
         }
 
         return item;
+    }
+
+    /**
+     * 计算个人所得税（累进税率）
+     * 依据中国个税七级超额累进税率
+     * @param taxableIncome 应税收入（已扣除起征点5000元和五险一金）
+     * @return 应纳个人所得税
+     */
+    private BigDecimal calculateIncomeTax(BigDecimal taxableIncome) {
+        if (taxableIncome == null || taxableIncome.compareTo(BigDecimal.ZERO) <= 0) {
+            return BigDecimal.ZERO;
+        }
+        
+        BigDecimal tax;
+        double income = taxableIncome.doubleValue();
+        
+        if (income <= 3000) {
+            // 3% 税率，速算扣除数 0
+            tax = taxableIncome.multiply(new BigDecimal("0.03"));
+        } else if (income <= 12000) {
+            // 10% 税率，速算扣除数 210
+            tax = taxableIncome.multiply(new BigDecimal("0.10")).subtract(new BigDecimal("210"));
+        } else if (income <= 25000) {
+            // 20% 税率，速算扣除数 1410
+            tax = taxableIncome.multiply(new BigDecimal("0.20")).subtract(new BigDecimal("1410"));
+        } else if (income <= 35000) {
+            // 25% 税率，速算扣除数 2660
+            tax = taxableIncome.multiply(new BigDecimal("0.25")).subtract(new BigDecimal("2660"));
+        } else if (income <= 55000) {
+            // 30% 税率，速算扣除数 4410
+            tax = taxableIncome.multiply(new BigDecimal("0.30")).subtract(new BigDecimal("4410"));
+        } else if (income <= 80000) {
+            // 35% 税率，速算扣除数 7160
+            tax = taxableIncome.multiply(new BigDecimal("0.35")).subtract(new BigDecimal("7160"));
+        } else {
+            // 45% 税率，速算扣除数 15160
+            tax = taxableIncome.multiply(new BigDecimal("0.45")).subtract(new BigDecimal("15160"));
+        }
+        
+        // 四舍五入保留两位小数
+        return tax.setScale(2, java.math.RoundingMode.HALF_UP);
     }
 
     /**
@@ -1405,6 +1473,65 @@ public class PayrollAppService {
                     SecurityUtils.getUserId(), year, month, e);
             throw new BusinessException("查询工资表失败: " + e.getMessage());
         }
+    }
+
+    /**
+     * 查询我的工资表详情（带权限检查）
+     * 员工只能查看自己所属的工资表
+     */
+    public PayrollSheetDTO getMyPayrollSheetById(Long id) {
+        Long currentUserId = SecurityUtils.getUserId();
+        log.debug("查询我的工资表详情: userId={}, payrollSheetId={}", currentUserId, id);
+
+        // 查询当前用户的员工档案
+        Optional<Employee> employeeOpt = employeeRepository.findByUserId(currentUserId);
+        if (!employeeOpt.isPresent()) {
+            throw new BusinessException("您没有员工档案，无法查看工资表");
+        }
+
+        Employee employee = employeeOpt.get();
+
+        // 获取工资表
+        PayrollSheet sheet = payrollSheetRepository.getByIdOrThrow(id, "工资表不存在");
+
+        // 权限检查：普通员工只能查看包含自己工资明细的工资表
+        if (!SecurityUtils.isAdmin() && !SecurityUtils.hasAnyRole("DIRECTOR", "FINANCE")) {
+            // 检查该工资表是否包含当前用户的工资明细
+            boolean hasMyPayrollItem = payrollItemRepository.lambdaQuery()
+                    .eq(PayrollItem::getPayrollSheetId, id)
+                    .eq(PayrollItem::getEmployeeId, employee.getId())
+                    .eq(PayrollItem::getDeleted, false)
+                    .exists();
+
+            if (!hasMyPayrollItem) {
+                log.warn("员工尝试查看不属于自己的工资表: userId={}, employeeId={}, payrollSheetId={}",
+                        currentUserId, employee.getId(), id);
+                throw new BusinessException("无权查看该工资表");
+            }
+        }
+
+        // 加载工资表详情
+        PayrollSheetDTO dto = toSheetDTO(sheet);
+
+        // 只加载属于当前员工的工资明细
+        List<PayrollItem> items;
+        if (SecurityUtils.isAdmin() || SecurityUtils.hasAnyRole("DIRECTOR", "FINANCE")) {
+            // 管理人员可以看到所有工资明细
+            items = payrollItemRepository.findByPayrollSheetId(id);
+        } else {
+            // 普通员工只能看到自己的工资明细
+            items = payrollItemRepository.lambdaQuery()
+                    .eq(PayrollItem::getPayrollSheetId, id)
+                    .eq(PayrollItem::getEmployeeId, employee.getId())
+                    .eq(PayrollItem::getDeleted, false)
+                    .list();
+        }
+
+        dto.setItems(items.stream()
+                .map(this::toItemDTO)
+                .collect(Collectors.toList()));
+
+        return dto;
     }
 
     /**

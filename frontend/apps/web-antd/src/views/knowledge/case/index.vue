@@ -6,10 +6,12 @@ import type {
   CaseLibraryQuery,
 } from '#/api/knowledge';
 
-import { onMounted, ref } from 'vue';
+import { onMounted, ref, watch } from 'vue';
 
 import { Page } from '@vben/common-ui';
 import { Plus } from '@vben/icons';
+
+import { useResponsive } from '#/hooks/useResponsive';
 
 import {
   Button,
@@ -39,6 +41,9 @@ import CaseDetailModal from './components/CaseDetailModal.vue';
 import CaseModal from './components/CaseModal.vue';
 
 defineOptions({ name: 'KnowledgeCase' });
+
+// 响应式布局
+const { isMobile } = useResponsive();
 
 const caseModalRef = ref<InstanceType<typeof CaseModal>>();
 const caseDetailModalRef = ref<InstanceType<typeof CaseDetailModal>>();
@@ -70,32 +75,42 @@ const referenceValueMap: Record<string, { color: string; text: string }> = {
   LOW: { color: 'blue', text: '低' },
 };
 
-const gridColumns: VxeGridProps['columns'] = [
-  { title: '案例名称', field: 'name', minWidth: 200 },
-  { title: '案由类型', field: 'caseTypeName', width: 100 },
-  { title: '审理法院', field: 'court', width: 150 },
-  {
-    title: '判决日期',
-    field: 'judgmentDate',
-    width: 110,
-    slots: { default: 'judgmentDate' },
-  },
-  { title: '案件结果', field: 'resultName', width: 90 },
-  { title: '经办律师', field: 'lawyerName', width: 100 },
-  {
-    title: '参考价值',
-    field: 'referenceValue',
-    width: 90,
-    slots: { default: 'referenceValue' },
-  },
-  {
-    title: '操作',
-    field: 'action',
-    width: 180,
-    fixed: 'right',
-    slots: { default: 'action' },
-  },
-];
+// 响应式列配置
+function getGridColumns(): VxeGridProps['columns'] {
+  const baseColumns = [
+    { title: '案例名称', field: 'name', minWidth: isMobile.value ? 120 : 200, mobileShow: true },
+    { title: '案由类型', field: 'caseTypeName', width: 100, mobileShow: true },
+    { title: '审理法院', field: 'court', width: 150 },
+    {
+      title: '判决日期',
+      field: 'judgmentDate',
+      width: 110,
+      slots: { default: 'judgmentDate' },
+    },
+    { title: '案件结果', field: 'resultName', width: 90 },
+    { title: '经办律师', field: 'lawyerName', width: 100 },
+    {
+      title: '参考价值',
+      field: 'referenceValue',
+      width: 90,
+      slots: { default: 'referenceValue' },
+      mobileShow: true,
+    },
+    {
+      title: '操作',
+      field: 'action',
+      width: isMobile.value ? 100 : 180,
+      fixed: 'right',
+      slots: { default: 'action' },
+      mobileShow: true,
+    },
+  ];
+  
+  if (isMobile.value) {
+    return baseColumns.filter(col => col.mobileShow === true);
+  }
+  return baseColumns;
+}
 
 async function loadData({
   page,
@@ -113,11 +128,16 @@ async function loadData({
 
 const [Grid, gridApi] = useVbenVxeGrid({
   gridOptions: {
-    columns: gridColumns,
+    columns: getGridColumns(),
     height: 'auto',
     pagerConfig: {},
     proxyConfig: { ajax: { query: loadData } },
   },
+});
+
+// 监听响应式变化，更新列配置
+watch(isMobile, () => {
+  gridApi.setGridOptions({ columns: getGridColumns() });
 });
 
 async function loadCategories() {

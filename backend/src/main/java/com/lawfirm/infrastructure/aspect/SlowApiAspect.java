@@ -1,6 +1,8 @@
 package com.lawfirm.infrastructure.aspect;
 
+import com.lawfirm.infrastructure.notification.WecomNotificationChannel;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
@@ -11,6 +13,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
+
+import java.util.Collections;
 
 /**
  * 慢接口监控切面
@@ -25,7 +29,10 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 @Slf4j
 @Aspect
 @Component
+@RequiredArgsConstructor
 public class SlowApiAspect {
+
+    private final WecomNotificationChannel wecomNotificationChannel;
 
     /**
      * 慢接口阈值（毫秒），默认 3000ms
@@ -38,6 +45,12 @@ public class SlowApiAspect {
      */
     @Value("${law-firm.performance.warn-api-threshold:1000}")
     private long warnApiThreshold;
+    
+    /**
+     * 是否启用企业微信告警，默认关闭
+     */
+    @Value("${law-firm.performance.slow-api-alert-enabled:false}")
+    private boolean alertEnabled;
 
     /**
      * 切入点：所有 Controller 的 public 方法
@@ -103,7 +116,8 @@ public class SlowApiAspect {
         } else if (costTime >= slowApiThreshold) {
             // 慢接口告警
             log.error("🐢 慢接口告警 - {} - {}ms (阈值: {}ms)", apiInfo, costTime, slowApiThreshold);
-            // TODO: 可以在这里添加告警通知（邮件、钉钉、企业微信等）
+            // 发送企业微信告警通知
+            sendSlowApiAlert(apiInfo, costTime);
         } else if (costTime >= warnApiThreshold) {
             // 性能警告
             log.warn("⚠️ 接口较慢 - {} - {}ms", apiInfo, costTime);
@@ -112,6 +126,36 @@ public class SlowApiAspect {
             if (log.isDebugEnabled()) {
                 log.debug("✅ 接口正常 - {} - {}ms", apiInfo, costTime);
             }
+        }
+    }
+    
+    /**
+     * 发送慢接口告警通知
+     */
+    private void sendSlowApiAlert(String apiInfo, long costTime) {
+        if (!alertEnabled) {
+            return;
+        }
+        
+        try {
+            String title = "慢接口告警";
+            String content = String.format(
+                    "**接口**: %s\n" +
+                    "**耗时**: %dms\n" +
+                    "**阈值**: %dms\n" +
+                    "**时间**: %s\n\n" +
+                    "请检查接口性能问题！",
+                    apiInfo,
+                    costTime,
+                    slowApiThreshold,
+                    java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+            );
+            
+            // 发送紧急通知到企业微信
+            wecomNotificationChannel.sendUrgentNotification(title, content, Collections.emptyList());
+            
+        } catch (Exception e) {
+            log.warn("发送慢接口告警失败: {}", e.getMessage());
         }
     }
 }

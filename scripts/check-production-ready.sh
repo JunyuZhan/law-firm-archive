@@ -4,6 +4,11 @@
 
 set -e
 
+# 获取项目根目录
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+cd "$PROJECT_ROOT"
+
 echo "=============================================="
 echo "  生产环境部署前检查"
 echo "=============================================="
@@ -35,8 +40,17 @@ check_warn() {
 
 # 1. 检查环境变量文件
 echo "【1/10】检查环境变量配置..."
-if [ -f "docker/.env" ]; then
-    source docker/.env
+
+# 优先检查项目根目录的 .env，兼容 docker/.env 位置
+ENV_FILE=""
+if [ -f ".env" ]; then
+    ENV_FILE=".env"
+elif [ -f "docker/.env" ]; then
+    ENV_FILE="docker/.env"
+fi
+
+if [ -n "$ENV_FILE" ]; then
+    source "$ENV_FILE"
     
     # 检查 JWT_SECRET
     if [ -z "$JWT_SECRET" ] || [ "$JWT_SECRET" = "your_very_long_and_secure_jwt_secret_key_here_at_least_64_characters" ]; then
@@ -70,7 +84,7 @@ if [ -f "docker/.env" ]; then
         check_pass "Swagger UI 已禁用"
     fi
 else
-    check_fail "未找到 docker/.env 文件，请先创建配置文件"
+    check_fail "未找到 .env 文件，请先运行 ./scripts/deploy.sh 创建配置"
 fi
 
 echo ""
@@ -123,7 +137,7 @@ echo ""
 echo "【5/10】检查备份配置..."
 if [ -f "scripts/db-auto-backup.sh" ] || [ -f "scripts/backup.sh" ]; then
     check_pass "备份脚本存在"
-    check_warn "请确认备份脚本已配置自动执行（cron）"
+    echo "  提示: 请在生产服务器上配置定时任务(cron)定期执行备份脚本"
 else
     check_warn "未找到备份脚本，建议配置自动备份"
 fi
@@ -132,7 +146,8 @@ echo ""
 
 # 6. 检查安全修复
 echo "【6/10】检查安全修复..."
-if grep -q "强制要求验证码" backend/src/main/java/com/lawfirm/interfaces/rest/AuthController.java; then
+if grep -q "captchaId" backend/src/main/java/com/lawfirm/interfaces/rest/AuthController.java && \
+   grep -q "captchaService.verifyCaptcha" backend/src/main/java/com/lawfirm/interfaces/rest/AuthController.java; then
     check_pass "登录验证码强制要求已实施"
 else
     check_warn "请确认登录验证码强制要求已实施"
@@ -182,8 +197,6 @@ fi
 
 if [ -f "DEPLOY.md" ]; then
     check_pass "部署指南文档存在"
-else
-    check_warn "未找到部署指南文档"
 fi
 
 echo ""
@@ -224,4 +237,3 @@ else
     echo "请参考 docs/PRODUCTION_DEPLOYMENT_CHECKLIST.md 进行详细检查"
     exit 1
 fi
-

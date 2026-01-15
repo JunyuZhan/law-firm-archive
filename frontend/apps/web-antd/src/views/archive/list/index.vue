@@ -68,7 +68,7 @@ import {
   CASE_CATEGORY_OPTIONS,
   getCaseCategoryByMatterType,
   MATTER_TYPE_OPTIONS,
-} from '#/constants/causes/utils';
+} from '#/composables/useCauseOfAction';
 import ArchiveCoverPreview from '../components/ArchiveCoverPreview.vue';
 
 defineOptions({ name: 'ArchiveList' });

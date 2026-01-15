@@ -3,9 +3,11 @@ import type { Key } from 'ant-design-vue/es/table/interface';
 
 import type { ApprovalDTO } from '#/api/workbench';
 
-import { computed, h, onMounted, ref } from 'vue';
+import { computed, h, onMounted, ref, watch } from 'vue';
 
 import { Page } from '@vben/common-ui';
+
+import { useResponsive } from '#/hooks/useResponsive';
 
 import {
   Badge,
@@ -37,6 +39,9 @@ import {
 import ApprovalDetailModal from '#/views/workbench/approval/components/ApprovalDetailModal.vue';
 
 defineOptions({ name: 'DashboardApproval' });
+
+// 响应式布局
+const { isMobile } = useResponsive();
 
 // ==================== 状态定义 ====================
 
@@ -151,37 +156,52 @@ const historyStats = computed(() => {
 
 // ==================== 待审批表格配置 ====================
 
-const pendingColumns = [
-  { type: 'checkbox' as const, width: 50 },
-  { title: '业务类型', field: 'businessTypeName', width: 100 },
-  {
-    title: '业务标题',
-    field: 'businessTitle',
-    minWidth: 200,
-    showOverflow: true,
-  },
-  { title: '申请人', field: 'applicantName', width: 100 },
-  {
-    title: '优先级',
-    field: 'priority',
-    width: 80,
-    slots: { default: 'priority' },
-  },
-  {
-    title: '紧急程度',
-    field: 'urgency',
-    width: 80,
-    slots: { default: 'urgency' },
-  },
-  { title: '申请时间', field: 'createdAt', width: 150 },
-  {
-    title: '操作',
-    field: 'action',
-    width: 160,
-    fixed: 'right' as const,
-    slots: { default: 'action' },
-  },
-];
+// 待审批表格列配置函数
+function getPendingColumns() {
+  const baseColumns = [
+    { type: 'checkbox' as const, width: 50 },
+    { title: '业务类型', field: 'businessTypeName', width: 100, mobileShow: true },
+    {
+      title: '业务标题',
+      field: 'businessTitle',
+      minWidth: isMobile.value ? 150 : 200,
+      showOverflow: true,
+      mobileShow: true,
+    },
+    { title: '申请人', field: 'applicantName', width: 100 },
+    {
+      title: '优先级',
+      field: 'priority',
+      width: 80,
+      slots: { default: 'priority' },
+    },
+    {
+      title: '紧急程度',
+      field: 'urgency',
+      width: 80,
+      slots: { default: 'urgency' },
+    },
+    { title: '申请时间', field: 'createdAt', width: 150 },
+    {
+      title: '操作',
+      field: 'action',
+      width: isMobile.value ? 120 : 160,
+      fixed: 'right' as const,
+      slots: { default: 'action' },
+      mobileShow: true,
+    },
+  ];
+  
+  // 移动端隐藏部分列
+  if (isMobile.value) {
+    return baseColumns.filter(col => 
+      col.type === 'checkbox' || 
+      col.mobileShow === true ||
+      col.field === 'action'
+    );
+  }
+  return baseColumns;
+}
 
 // 通用筛选函数
 function applyFilters(data: ApprovalDTO[]): ApprovalDTO[] {
@@ -261,7 +281,7 @@ async function loadPendingData() {
 
 const [PendingGrid, pendingGridApi] = useVbenVxeGrid({
   gridOptions: {
-    columns: pendingColumns,
+    columns: getPendingColumns(),
     height: 'auto',
     proxyConfig: {
       ajax: {
@@ -279,6 +299,11 @@ const [PendingGrid, pendingGridApi] = useVbenVxeGrid({
       slots: { buttons: 'toolbar-buttons' },
     },
   },
+});
+
+// 监听响应式变化，更新列配置
+watch(isMobile, () => {
+  pendingGridApi.setGridOptions({ columns: getPendingColumns() });
 });
 
 // ==================== 我发起的审批表格配置 ====================
@@ -812,5 +837,30 @@ onMounted(async () => {
 
 :deep(.ant-tabs-card > .ant-tabs-nav .ant-tabs-tab) {
   padding: 4px 12px;
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  .filter-section {
+    padding: 12px;
+  }
+
+  :deep(.ant-tabs-nav-list) {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+
+  :deep(.ant-tabs-tab) {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+
+  :deep(.vxe-table) {
+    font-size: 13px;
+  }
+
+  :deep(.vxe-cell) {
+    padding: 8px 4px;
+  }
 }
 </style>

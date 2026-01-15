@@ -23,6 +23,7 @@ CREATE TABLE public.asset_inventory (
     surplus_count integer DEFAULT 0,
     shortage_count integer DEFAULT 0,
     remark character varying(500),
+    version integer DEFAULT 1,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     created_by bigint,
@@ -61,6 +62,7 @@ CREATE TABLE public.asset_inventory_detail (
     discrepancy_type character varying(20),
     discrepancy_desc character varying(500),
     remark character varying(500),
+    version integer DEFAULT 1,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );

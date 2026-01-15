@@ -13,6 +13,8 @@ import { computed, onMounted, reactive, ref } from 'vue';
 
 import { Page } from '@vben/common-ui';
 
+import { useResponsive } from '#/hooks/useResponsive';
+
 import {
   Badge,
   Button,
@@ -65,6 +67,9 @@ import {
 } from '#/api/knowledge/quality';
 
 defineOptions({ name: 'QualityManagement' });
+
+// 响应式布局
+const { isMobile } = useResponsive();
 
 // 当前Tab
 const activeTab = ref('overview');
@@ -412,8 +417,8 @@ onMounted(() => {
     <Tabs v-model:activeKey="activeTab" @change="handleTabChange">
       <!-- 概览 -->
       <Tabs.TabPane key="overview" tab="概览">
-        <Row :gutter="16" style="margin-bottom: 24px">
-          <Col :span="6">
+        <Row :gutter="[16, 16]" style="margin-bottom: 24px">
+          <Col :xs="12" :sm="12" :md="6" :lg="6">
             <Card>
               <Statistic
                 title="进行中的检查"
@@ -422,7 +427,7 @@ onMounted(() => {
               />
             </Card>
           </Col>
-          <Col :span="6">
+          <Col :xs="12" :sm="12" :md="6" :lg="6">
             <Card>
               <Statistic
                 title="待处理问题"
@@ -431,7 +436,7 @@ onMounted(() => {
               />
             </Card>
           </Col>
-          <Col :span="6">
+          <Col :xs="12" :sm="12" :md="6" :lg="6">
             <Card>
               <Statistic
                 title="活跃预警"
@@ -440,7 +445,7 @@ onMounted(() => {
               />
             </Card>
           </Col>
-          <Col :span="6">
+          <Col :xs="12" :sm="12" :md="6" :lg="6">
             <Card>
               <Statistic
                 title="高风险预警"
@@ -459,6 +464,7 @@ onMounted(() => {
             :pagination="false"
             row-key="id"
             size="small"
+            :scroll="{ x: isMobile ? 700 : undefined }"
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'issueType'">
@@ -502,6 +508,7 @@ onMounted(() => {
             :pagination="false"
             row-key="id"
             size="small"
+            :scroll="{ x: isMobile ? 800 : undefined }"
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'riskType'">
@@ -568,6 +575,7 @@ onMounted(() => {
               :data-source="standardList"
               :pagination="false"
               row-key="id"
+              :scroll="{ x: isMobile ? 600 : undefined }"
             >
               <template #bodyCell="{ column, record }">
                 <template v-if="column.key === 'category'">
@@ -596,7 +604,8 @@ onMounted(() => {
       v-model:open="standardModalVisible"
       :title="isEditStandard ? '编辑检查标准' : '新建检查标准'"
       :confirm-loading="standardLoading"
-      width="600px"
+      :width="isMobile ? '100%' : '600px'"
+      :centered="isMobile"
       @ok="handleStandardSubmit"
     >
       <Form :label-col="{ span: 5 }" :wrapper-col="{ span: 17 }">
@@ -622,7 +631,7 @@ onMounted(() => {
     </Modal>
 
     <!-- 问题详情弹窗 -->
-    <Modal v-model:open="issueDetailVisible" title="问题详情" :footer="null" width="650px">
+    <Modal v-model:open="issueDetailVisible" title="问题详情" :footer="null" :width="isMobile ? '100%' : '650px'" :centered="isMobile">
       <Spin :spinning="issueDetailLoading">
         <template v-if="issueDetailData">
           <Descriptions :column="2" bordered size="small">
@@ -652,7 +661,7 @@ onMounted(() => {
     </Modal>
 
     <!-- 预警详情弹窗 -->
-    <Modal v-model:open="warningDetailVisible" title="预警详情" :footer="null" width="650px">
+    <Modal v-model:open="warningDetailVisible" title="预警详情" :footer="null" :width="isMobile ? '100%' : '650px'" :centered="isMobile">
       <Spin :spinning="warningDetailLoading">
         <template v-if="warningDetailData">
           <Descriptions :column="2" bordered size="small">

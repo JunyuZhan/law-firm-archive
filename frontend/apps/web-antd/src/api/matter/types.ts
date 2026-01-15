@@ -176,7 +176,7 @@ export interface TimesheetDTO {
   amount?: number;
   workType: string;
   workTypeName?: string;
-  description: string;
+  workContent?: string;
   status: string;
   statusName?: string;
   billable: boolean;
@@ -199,7 +199,7 @@ export interface CreateTimesheetCommand {
   workDate: string;
   hours: number;
   workType: string;
-  description: string;
+  workContent: string;
   billable?: boolean;
 }
 

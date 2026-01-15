@@ -1,6 +1,40 @@
 # 部署指南
 
-## Docker 部署（推荐）
+## 一键部署（生产环境推荐）
+
+如果你使用的是「一键部署」方案，可以直接通过根目录脚本完成全栈部署。
+
+### 1. 准备环境
+
+```bash
+# 安装 Docker 和 Docker Compose
+curl -fsSL https://get.docker.com | sh
+```
+
+### 2. 一键部署
+
+在项目根目录执行：
+
+```bash
+./scripts/deploy.sh --quick
+```
+
+脚本会自动完成：
+
+- 生成或更新 `.env` 配置（首次部署时自动生成安全密钥）
+- 构建并启动所有容器（前端、后端、PostgreSQL、Redis、MinIO、OnlyOffice、OCR 等）
+- 初始化数据库和示例数据（根据脚本提示）
+
+部署成功后，默认访问地址：
+
+- 主应用：`http://localhost/`
+- 文档站点：`http://localhost/docs/`
+
+如需分布式部署或 NAS 存储模式，请参考项目根目录下的 [docker/DEPLOY.md](file:///Users/apple/Documents/Project/law-firm/docker/DEPLOY.md) 和 [docker/DEPLOY-SWARM.md](file:///Users/apple/Documents/Project/law-firm/docker/DEPLOY-SWARM.md)。
+
+---
+
+## Docker 部署（手动方式）
 
 ### 1. 准备环境
 

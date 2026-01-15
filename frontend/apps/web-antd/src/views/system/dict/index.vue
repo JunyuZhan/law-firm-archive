@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import type { DictDataDTO, DictTypeDTO } from '#/api/system/types';
 
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 
 import { Page } from '@vben/common-ui';
 import { DeleteOutlined, EditOutlined, Plus } from '@vben/icons';
+
+import { useResponsive } from '#/hooks/useResponsive';
 
 import {
   Button,
@@ -40,6 +42,9 @@ import DictTypeModal from './components/DictTypeModal.vue';
 
 defineOptions({ name: 'SystemDict' });
 
+// 响应式布局
+const { isMobile } = useResponsive();
+
 // ==================== 状态定义 ====================
 
 const loading = ref(false);
@@ -69,27 +74,37 @@ const filteredDictTypes = computed(() => {
 
 // ==================== 字典项表格配置 ====================
 
-const gridColumns: any[] = [
-  { type: 'seq', width: 50, title: '序号' },
-  { field: 'label', title: '标签', minWidth: 120 },
-  { field: 'value', title: '值', minWidth: 120 },
-  { field: 'sortOrder', title: '排序', width: 80, align: 'center' },
-  {
-    field: 'status',
-    title: '状态',
-    width: 80,
-    align: 'center',
-    slots: { default: 'status' },
-  },
-  { field: 'description', title: '描述', minWidth: 150 },
-  {
-    field: 'action',
-    title: '操作',
-    width: 180,
-    fixed: 'right',
-    slots: { default: 'action' },
-  },
-];
+// 响应式列配置
+function getGridColumns() {
+  const baseColumns: any[] = [
+    { type: 'seq', width: 50, title: '序号' },
+    { field: 'label', title: '标签', minWidth: 120, mobileShow: true },
+    { field: 'value', title: '值', minWidth: 120, mobileShow: true },
+    { field: 'sortOrder', title: '排序', width: 80, align: 'center' },
+    {
+      field: 'status',
+      title: '状态',
+      width: 80,
+      align: 'center',
+      slots: { default: 'status' },
+      mobileShow: true,
+    },
+    { field: 'description', title: '描述', minWidth: 150 },
+    {
+      field: 'action',
+      title: '操作',
+      width: isMobile.value ? 100 : 180,
+      fixed: 'right',
+      slots: { default: 'action' },
+      mobileShow: true,
+    },
+  ];
+  
+  if (isMobile.value) {
+    return baseColumns.filter(col => col.type === 'seq' || col.mobileShow === true);
+  }
+  return baseColumns;
+}
 
 // 加载字典项数据
 async function loadDictItems() {
@@ -108,9 +123,10 @@ async function loadDictItems() {
 
 const [Grid, gridApi] = useVbenVxeGrid({
   gridOptions: {
-    columns: gridColumns,
-    height: 'auto',
-    minHeight: 300,
+    columns: getGridColumns(),
+    // 移除高度限制，让表格完整显示所有数据
+    height: '',
+    minHeight: 200,
     showOverflow: true,
     border: true,
     stripe: true,
@@ -126,6 +142,11 @@ const [Grid, gridApi] = useVbenVxeGrid({
       },
     },
   },
+});
+
+// 监听响应式变化，更新列配置
+watch(isMobile, () => {
+  gridApi.setGridOptions({ columns: getGridColumns() });
 });
 
 // ==================== 数据加载 ====================
@@ -173,31 +194,23 @@ function handleEditType(record: DictTypeDTO) {
 }
 
 // 删除字典类型
-function handleDeleteType(record: DictTypeDTO) {
+async function handleDeleteType(record: DictTypeDTO) {
   if (record.isSystem) {
     message.warning('系统内置字典不能删除');
     return;
   }
-  Modal.confirm({
-    title: '确认删除',
-    content: `确定要删除字典类型 "${record.name}" 吗？删除后该类型下的所有字典项也将无法使用。`,
-    okText: '确认',
-    cancelText: '取消',
-    onOk: async () => {
-      try {
-        await deleteDictType(record.id);
-        message.success('删除成功');
-        if (selectedTypeId.value === record.id) {
-          selectedTypeId.value = undefined;
-          selectedType.value = undefined;
-        }
-        fetchDictTypes();
-      } catch (error: unknown) {
-        const err = error as { message?: string };
-        message.error(err.message || '删除失败');
-      }
-    },
-  });
+  try {
+    await deleteDictType(record.id);
+    message.success('删除成功');
+    if (selectedTypeId.value === record.id) {
+      selectedTypeId.value = undefined;
+      selectedType.value = undefined;
+    }
+    fetchDictTypes();
+  } catch (error: unknown) {
+    const err = error as { message?: string };
+    message.error(err.message || '删除失败');
+  }
 }
 
 // 新增字典项
@@ -215,23 +228,15 @@ function handleEditItem(record: DictDataDTO) {
 }
 
 // 删除字典项
-function handleDeleteItem(record: DictDataDTO) {
-  Modal.confirm({
-    title: '确认删除',
-    content: `确定要删除字典项 "${record.label}" 吗？`,
-    okText: '确认',
-    cancelText: '取消',
-    onOk: async () => {
-      try {
-        await deleteDictItem(record.id);
-        message.success('删除成功');
-        gridApi.reload();
-      } catch (error: unknown) {
-        const err = error as { message?: string };
-        message.error(err.message || '删除失败');
-      }
-    },
-  });
+async function handleDeleteItem(record: DictDataDTO) {
+  try {
+    await deleteDictItem(record.id);
+    message.success('删除成功');
+    gridApi.reload();
+  } catch (error: unknown) {
+    const err = error as { message?: string };
+    message.error(err.message || '删除失败');
+  }
 }
 
 // 启用/禁用字典项

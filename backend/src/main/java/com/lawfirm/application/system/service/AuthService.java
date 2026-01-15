@@ -6,6 +6,7 @@ import com.lawfirm.domain.system.repository.UserRepository;
 import com.lawfirm.infrastructure.security.LoginUser;
 import com.lawfirm.infrastructure.security.UserDetailsServiceImpl;
 import com.lawfirm.infrastructure.security.jwt.JwtTokenProvider;
+import com.lawfirm.infrastructure.security.jwt.TokenBlacklistService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -36,6 +37,7 @@ public class AuthService {
     private final com.lawfirm.application.system.util.UserAgentParser userAgentParser;
     private final com.lawfirm.infrastructure.notification.AlertService alertService;
     private final UserDetailsServiceImpl userDetailsService;
+    private final TokenBlacklistService tokenBlacklistService;
 
     private static final String TOKEN_CACHE_PREFIX = "token:";
     private static final long TOKEN_CACHE_HOURS = 24;
@@ -203,6 +205,11 @@ public class AuthService {
 
     /**
      * 刷新Token
+     * 
+     * 安全增强：
+     * 1. 检查 refresh token 是否已被使用（防止重放攻击）
+     * 2. 使用后将旧 refresh token 标记为已使用
+     * 3. 实现 Token 轮换机制
      */
     public LoginResult refreshToken(String refreshToken) {
         // 1. 验证refreshToken
@@ -210,27 +217,46 @@ public class AuthService {
             throw new BusinessException("刷新令牌无效或已过期");
         }
 
-        // 2. 获取用户信息
+        // 2. 检查 refresh token 是否已被使用（防止重放攻击）
+        if (tokenBlacklistService.isRefreshTokenUsed(refreshToken)) {
+            log.warn("检测到 Refresh Token 重放攻击！");
+            // 可选：失效该用户的所有 token
+            Long userIdFromToken = jwtTokenProvider.getUserIdFromToken(refreshToken);
+            tokenBlacklistService.invalidateUserTokens(userIdFromToken);
+            throw new BusinessException("安全风险：刷新令牌已被使用，请重新登录");
+        }
+
+        // 3. 获取用户信息
         Long userId = jwtTokenProvider.getUserIdFromToken(refreshToken);
         String username = jwtTokenProvider.getUsernameFromToken(refreshToken);
 
-        // 3. 查询用户（确保用户仍然有效）
+        // 4. 查询用户（确保用户仍然有效）
         User user = userRepository.findById(userId);
         if (user == null || !"ACTIVE".equals(user.getStatus())) {
             throw new BusinessException("用户不存在或已被禁用");
         }
 
-        // 4. 生成新Token
+        // 5. 标记旧 refresh token 为已使用（在生成新 token 之前）
+        long remainingSeconds = jwtTokenProvider.getRemainingExpirationSeconds(refreshToken);
+        if (!tokenBlacklistService.markRefreshTokenUsed(refreshToken, remainingSeconds + 60)) {
+            // 并发情况下可能有其他请求已经使用了这个 token
+            log.warn("Refresh Token 标记失败，可能存在并发使用");
+            throw new BusinessException("刷新令牌已被使用，请重新登录");
+        }
+
+        // 6. 生成新Token
         String newAccessToken = jwtTokenProvider.generateAccessToken(userId, username);
         String newRefreshToken = jwtTokenProvider.generateRefreshToken(userId, username);
 
-        // 5. 更新缓存
+        // 7. 更新缓存
         String cacheKey = TOKEN_CACHE_PREFIX + userId;
         redisTemplate.opsForValue().set(cacheKey, newAccessToken, TOKEN_CACHE_HOURS, TimeUnit.HOURS);
 
-        // 6. 查询角色权限
+        // 8. 查询角色权限
         var roles = new HashSet<>(userRepository.findRoleCodesByUserId(userId));
         var permissions = new HashSet<>(userRepository.findPermissionsByUserId(userId));
+
+        log.info("Token 刷新成功: userId={}", userId);
 
         return LoginResult.builder()
                 .accessToken(newAccessToken)
@@ -246,21 +272,57 @@ public class AuthService {
 
     /**
      * 登出
+     * 
+     * 安全增强：
+     * 1. 将 access token 加入黑名单
+     * 2. 防止已登出的 token 被继续使用
      */
     public void logout(Long userId, String token) {
         // 1. 删除Redis缓存
         String cacheKey = TOKEN_CACHE_PREFIX + userId;
         redisTemplate.delete(cacheKey);
 
-        // 2. 更新会话状态
+        // 2. 将 token 加入黑名单
+        if (token != null && !token.isEmpty()) {
+            try {
+                long remainingSeconds = jwtTokenProvider.getRemainingExpirationSeconds(token);
+                if (remainingSeconds > 0) {
+                    tokenBlacklistService.addToBlacklist(token, remainingSeconds);
+                    log.debug("Token 已加入黑名单，剩余有效期: {}秒", remainingSeconds);
+                }
+            } catch (Exception e) {
+                // Token 可能已过期或无效，忽略
+                log.debug("无法获取 token 剩余有效期: {}", e.getMessage());
+            }
+        }
+
+        // 3. 更新会话状态
         if (token != null) {
             sessionAppService.logoutSessionByToken(token);
         }
         
-        // 3. 清除用户认证缓存
+        // 4. 清除用户认证缓存
         userDetailsService.clearUserAuthCacheByUserId(userId);
 
         log.info("用户登出: {}", userId);
+    }
+
+    /**
+     * 强制登出用户（使该用户的所有 token 失效）
+     * 用于密码修改、账户锁定等场景
+     */
+    public void forceLogoutUser(Long userId) {
+        // 1. 失效该用户的所有 token
+        tokenBlacklistService.invalidateUserTokens(userId);
+        
+        // 2. 删除Redis缓存
+        String cacheKey = TOKEN_CACHE_PREFIX + userId;
+        redisTemplate.delete(cacheKey);
+        
+        // 3. 清除用户认证缓存
+        userDetailsService.clearUserAuthCacheByUserId(userId);
+        
+        log.info("用户强制登出，所有 Token 已失效: userId={}", userId);
     }
 
     /**

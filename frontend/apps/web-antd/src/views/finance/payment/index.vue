@@ -13,10 +13,12 @@ import type {
   ReconciliationResultDTO,
 } from '#/api/ocr';
 
-import { onMounted, reactive, ref } from 'vue';
+import { onMounted, reactive, ref, watch } from 'vue';
 
 import { Page } from '@vben/common-ui';
 import { IconifyIcon } from '@vben/icons';
+
+import { useResponsive } from '#/hooks/useResponsive';
 
 import {
   Alert,
@@ -61,6 +63,9 @@ import {
 } from '#/api/ocr';
 
 defineOptions({ name: 'FinancePayment' });
+
+// 响应式布局
+const { isMobile } = useResponsive();
 
 // ==================== 状态定义 ====================
 
@@ -135,40 +140,51 @@ const statusOptions = [
 
 // ==================== 表格配置 ====================
 
-const gridColumns: VxeGridProps['columns'] = [
-  { title: '收费编号', field: 'feeNo', width: 130 },
-  { title: '项目', field: 'matterName', minWidth: 200, showOverflow: true },
-  { title: '客户', field: 'clientName', width: 150 },
-  { title: '收费类型', field: 'feeTypeName', width: 100 },
-  { title: '收费名称', field: 'feeName', width: 150 },
-  {
-    title: '应收金额',
-    field: 'amount',
-    width: 120,
-    slots: { default: 'amount' },
-  },
-  {
-    title: '已收金额',
-    field: 'paidAmount',
-    width: 120,
-    slots: { default: 'paidAmount' },
-  },
-  { title: '计划日期', field: 'plannedDate', width: 120 },
-  { title: '实际日期', field: 'actualDate', width: 120 },
-  {
-    title: '状态',
-    field: 'statusName',
-    width: 100,
-    slots: { default: 'status' },
-  },
-  {
-    title: '操作',
-    field: 'action',
-    width: 150,
-    fixed: 'right',
-    slots: { default: 'action' },
-  },
-];
+// 响应式列配置
+function getGridColumns(): VxeGridProps['columns'] {
+  const baseColumns = [
+    { title: '收费编号', field: 'feeNo', width: 130 },
+    { title: '项目', field: 'matterName', minWidth: isMobile.value ? 120 : 200, showOverflow: true, mobileShow: true },
+    { title: '客户', field: 'clientName', width: 150, mobileShow: true },
+    { title: '收费类型', field: 'feeTypeName', width: 100 },
+    { title: '收费名称', field: 'feeName', width: 150 },
+    {
+      title: '应收金额',
+      field: 'amount',
+      width: 120,
+      slots: { default: 'amount' },
+      mobileShow: true,
+    },
+    {
+      title: '已收金额',
+      field: 'paidAmount',
+      width: 120,
+      slots: { default: 'paidAmount' },
+    },
+    { title: '计划日期', field: 'plannedDate', width: 120 },
+    { title: '实际日期', field: 'actualDate', width: 120 },
+    {
+      title: '状态',
+      field: 'statusName',
+      width: 100,
+      slots: { default: 'status' },
+      mobileShow: true,
+    },
+    {
+      title: '操作',
+      field: 'action',
+      width: isMobile.value ? 100 : 150,
+      fixed: 'right',
+      slots: { default: 'action' },
+      mobileShow: true,
+    },
+  ];
+  
+  if (isMobile.value) {
+    return baseColumns.filter(col => col.mobileShow === true);
+  }
+  return baseColumns;
+}
 
 async function loadData({
   page,
@@ -186,11 +202,16 @@ async function loadData({
 
 const [Grid, gridApi] = useVbenVxeGrid({
   gridOptions: {
-    columns: gridColumns,
+    columns: getGridColumns(),
     height: 'auto',
     pagerConfig: {},
     proxyConfig: { ajax: { query: loadData } },
   },
+});
+
+// 监听响应式变化，更新列配置
+watch(isMobile, () => {
+  gridApi.setGridOptions({ columns: getGridColumns() });
 });
 
 // 收款明细表格列
@@ -568,7 +589,8 @@ onMounted(() => {
     <Modal
       v-model:open="modalVisible"
       title="登记收款"
-      width="600px"
+      :width="isMobile ? '100%' : '600px'"
+      :centered="isMobile"
       @ok="handleSave"
     >
       <Form
@@ -654,7 +676,8 @@ onMounted(() => {
     <Modal
       v-model:open="ocrModalVisible"
       title="银行回单智能识别"
-      width="800px"
+      :width="isMobile ? '100%' : '800px'"
+      :centered="isMobile"
       :footer="null"
     >
       <!-- 步骤1: 上传图片 -->
@@ -839,7 +862,8 @@ onMounted(() => {
     <Modal
       v-model:open="detailModalVisible"
       title="收款明细"
-      width="900px"
+      :width="isMobile ? '100%' : '900px'"
+      :centered="isMobile"
       :footer="null"
     >
       <div v-if="currentFee" class="mb-4">

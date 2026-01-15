@@ -2,33 +2,243 @@
 PaddleOCR服务 - 智慧律所管理系统
 提供通用文字识别、银行回单识别、身份证识别、营业执照识别等功能
 优化配置：使用轻量级模型，禁用不必要的预处理，确保快速响应
+
+安全特性：
+- API Key 鉴权
+- 速率限制（IP级别）
+- 文件大小限制
+- PII 数据脱敏日志
 """
 import os
 import re
 import io
 import logging
 import time
-from typing import Optional
+import hashlib
+from typing import Optional, Dict
+from collections import defaultdict
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, File, UploadFile, HTTPException
+from functools import wraps
+
+from fastapi import FastAPI, File, UploadFile, HTTPException, Header, Request, Depends
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from PIL import Image
 import numpy as np
 from paddleocr import PaddleOCR
 import httpx
 
-# 配置日志
+# ==================== 安全配置 ====================
+
+# API Key（从环境变量获取，生产环境必须设置）
+API_KEY = os.getenv("OCR_API_KEY", "")
+API_KEY_ENABLED = os.getenv("OCR_API_KEY_ENABLED", "true").lower() == "true"
+
+# 速率限制配置
+RATE_LIMIT_REQUESTS = int(os.getenv("OCR_RATE_LIMIT_REQUESTS", "30"))  # 每个时间窗口最大请求数
+RATE_LIMIT_WINDOW = int(os.getenv("OCR_RATE_LIMIT_WINDOW", "60"))  # 时间窗口（秒）
+
+# 文件大小限制（字节）
+MAX_FILE_SIZE = int(os.getenv("OCR_MAX_FILE_SIZE", str(10 * 1024 * 1024)))  # 默认 10MB
+
+# 允许的图片格式
+ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "gif", "bmp", "webp", "tiff"}
+ALLOWED_CONTENT_TYPES = {
+    "image/jpeg", "image/png", "image/gif", "image/bmp", 
+    "image/webp", "image/tiff", "application/octet-stream"
+}
+
+# ==================== 日志配置（PII 脱敏） ====================
+
+class PIISanitizingFormatter(logging.Formatter):
+    """PII 数据脱敏日志格式化器"""
+    
+    # 敏感数据正则表达式
+    PATTERNS = [
+        # 身份证号（18位）
+        (re.compile(r'\b(\d{6})\d{8}(\d{4})\b'), r'\1********\2'),
+        # 手机号（11位）
+        (re.compile(r'\b(1[3-9]\d)\d{4}(\d{4})\b'), r'\1****\2'),
+        # 银行卡号（16-19位）
+        (re.compile(r'\b(\d{4})\d{8,12}(\d{4})\b'), r'\1********\2'),
+        # 邮箱
+        (re.compile(r'\b(\w{1,3})\w*@(\w+\.\w+)\b'), r'\1***@\2'),
+        # 姓名（2-4个中文字符）- 保留姓，隐藏名
+        (re.compile(r'姓名[：:]\s*([\u4e00-\u9fa5])([\u4e00-\u9fa5]{1,3})'), r'姓名：\1**'),
+    ]
+    
+    def format(self, record):
+        message = super().format(record)
+        for pattern, replacement in self.PATTERNS:
+            message = pattern.sub(replacement, message)
+        return message
+
+# 配置脱敏日志
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# 全局OCR实例
+# 替换默认处理器为脱敏处理器
+for handler in logger.handlers:
+    handler.setFormatter(PIISanitizingFormatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    ))
+
+# 如果没有处理器，添加一个
+if not logger.handlers:
+    handler = logging.StreamHandler()
+    handler.setFormatter(PIISanitizingFormatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    ))
+    logger.addHandler(handler)
+
+# ==================== 速率限制 ====================
+
+class RateLimiter:
+    """基于内存的 IP 速率限制器"""
+    
+    def __init__(self, max_requests: int, window_seconds: int):
+        self.max_requests = max_requests
+        self.window_seconds = window_seconds
+        self.requests: Dict[str, list] = defaultdict(list)
+    
+    def is_allowed(self, client_ip: str) -> bool:
+        """检查是否允许请求"""
+        now = time.time()
+        window_start = now - self.window_seconds
+        
+        # 清理过期记录
+        self.requests[client_ip] = [
+            req_time for req_time in self.requests[client_ip]
+            if req_time > window_start
+        ]
+        
+        # 检查是否超限
+        if len(self.requests[client_ip]) >= self.max_requests:
+            return False
+        
+        # 记录本次请求
+        self.requests[client_ip].append(now)
+        return True
+    
+    def get_remaining(self, client_ip: str) -> int:
+        """获取剩余请求数"""
+        now = time.time()
+        window_start = now - self.window_seconds
+        current_requests = len([
+            req_time for req_time in self.requests[client_ip]
+            if req_time > window_start
+        ])
+        return max(0, self.max_requests - current_requests)
+
+rate_limiter = RateLimiter(RATE_LIMIT_REQUESTS, RATE_LIMIT_WINDOW)
+
+# ==================== 安全依赖 ====================
+
+def get_client_ip(request: Request) -> str:
+    """获取客户端 IP"""
+    # 优先使用 X-Forwarded-For（如果通过代理）
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    # 否则使用直接连接 IP
+    return request.client.host if request.client else "unknown"
+
+async def verify_api_key(
+    request: Request,
+    x_api_key: Optional[str] = Header(None, alias="X-API-Key")
+):
+    """验证 API Key"""
+    if not API_KEY_ENABLED:
+        return True
+    
+    if not API_KEY:
+        logger.warning("⚠️ OCR_API_KEY 未配置，API Key 验证已禁用")
+        return True
+    
+    if not x_api_key:
+        logger.warning(f"缺少 API Key，IP: {get_client_ip(request)}")
+        raise HTTPException(
+            status_code=401,
+            detail="缺少 API Key，请在请求头中添加 X-API-Key"
+        )
+    
+    # 使用常量时间比较防止时序攻击
+    if not hmac_compare(x_api_key, API_KEY):
+        logger.warning(f"无效的 API Key，IP: {get_client_ip(request)}")
+        raise HTTPException(
+            status_code=401,
+            detail="无效的 API Key"
+        )
+    
+    return True
+
+def hmac_compare(a: str, b: str) -> bool:
+    """常量时间字符串比较，防止时序攻击"""
+    if len(a) != len(b):
+        return False
+    result = 0
+    for x, y in zip(a.encode(), b.encode()):
+        result |= x ^ y
+    return result == 0
+
+async def check_rate_limit(request: Request):
+    """检查速率限制"""
+    client_ip = get_client_ip(request)
+    
+    if not rate_limiter.is_allowed(client_ip):
+        remaining = rate_limiter.get_remaining(client_ip)
+        logger.warning(f"速率限制触发，IP: {client_ip}")
+        raise HTTPException(
+            status_code=429,
+            detail=f"请求过于频繁，请在 {RATE_LIMIT_WINDOW} 秒后重试",
+            headers={
+                "X-RateLimit-Limit": str(RATE_LIMIT_REQUESTS),
+                "X-RateLimit-Remaining": str(remaining),
+                "X-RateLimit-Reset": str(RATE_LIMIT_WINDOW),
+                "Retry-After": str(RATE_LIMIT_WINDOW)
+            }
+        )
+
+async def validate_file(file: UploadFile):
+    """验证上传文件"""
+    # 检查文件名
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="文件名不能为空")
+    
+    # 检查文件扩展名
+    ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else ""
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"不支持的文件格式: {ext}，允许的格式: {', '.join(ALLOWED_EXTENSIONS)}"
+        )
+    
+    # 检查 Content-Type
+    if file.content_type and file.content_type not in ALLOWED_CONTENT_TYPES:
+        logger.warning(f"可疑的 Content-Type: {file.content_type}")
+    
+    # 检查文件大小
+    contents = await file.read()
+    if len(contents) > MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=413,
+            detail=f"文件过大，最大允许 {MAX_FILE_SIZE // (1024*1024)}MB"
+        )
+    
+    # 重置文件指针
+    await file.seek(0)
+    
+    return contents
+
+# ==================== OCR 初始化 ====================
+
 ocr = None
 
 def init_ocr():
     """初始化轻量级PaddleOCR - 优化速度"""
     global ocr
-ocr_lang = os.getenv("OCR_LANG", "ch")
+    ocr_lang = os.getenv("OCR_LANG", "ch")
     
     logger.info("🚀 初始化轻量级PaddleOCR...")
     start = time.time()
@@ -39,7 +249,6 @@ ocr_lang = os.getenv("OCR_LANG", "ch")
         lang=ocr_lang,
         use_gpu=False,
         show_log=False,           # 禁用日志输出
-        # 使用移动端轻量模型
         det_model_dir=None,       # 使用默认轻量检测模型
         rec_model_dir=None,       # 使用默认轻量识别模型
         det_db_thresh=0.3,        # 检测阈值
@@ -50,46 +259,78 @@ ocr_lang = os.getenv("OCR_LANG", "ch")
         use_space_char=True,      # 使用空格字符
     )
     
-    # 预热模型 - 用一个小图片触发模型加载
+    # 预热模型
     logger.info("🔥 预热OCR模型...")
     dummy_img = np.zeros((100, 100, 3), dtype=np.uint8)
-    dummy_img.fill(255)  # 白色背景
+    dummy_img.fill(255)
     try:
         ocr.ocr(dummy_img, cls=False)
     except:
-        pass  # 忽略预热错误
+        pass
     
     elapsed = time.time() - start
     logger.info(f"✅ PaddleOCR初始化完成，耗时: {elapsed:.2f}秒")
+    
+    # 安全配置日志
+    logger.info(f"🔐 安全配置:")
+    logger.info(f"   - API Key 验证: {'启用' if API_KEY_ENABLED and API_KEY else '禁用'}")
+    logger.info(f"   - 速率限制: {RATE_LIMIT_REQUESTS} 请求/{RATE_LIMIT_WINDOW}秒")
+    logger.info(f"   - 最大文件大小: {MAX_FILE_SIZE // (1024*1024)}MB")
+    
     return ocr
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """应用生命周期管理 - 启动时初始化OCR"""
+    """应用生命周期管理"""
     init_ocr()
     yield
     logger.info("OCR服务关闭")
 
-# 初始化FastAPI（带生命周期管理）
-app = FastAPI(title="PaddleOCR Service", version="1.0.0", lifespan=lifespan)
+# ==================== FastAPI 应用 ====================
 
+app = FastAPI(
+    title="PaddleOCR Service",
+    version="2.0.0",
+    description="安全加固版 OCR 服务",
+    lifespan=lifespan
+)
+
+# CORS 配置（生产环境应限制允许的源）
+ALLOWED_ORIGINS = os.getenv("OCR_ALLOWED_ORIGINS", "*").split(",")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["GET", "POST"],
+    allow_headers=["*"],
+)
 
 class UrlRequest(BaseModel):
     image_url: str
 
+# ==================== API 端点 ====================
 
 @app.get("/health")
 async def health_check():
-    """健康检查"""
-    return {"status": "healthy", "service": "paddle-ocr"}
+    """健康检查（不需要认证）"""
+    return {
+        "status": "healthy",
+        "service": "paddle-ocr",
+        "version": "2.0.0",
+        "security": {
+            "api_key_enabled": API_KEY_ENABLED and bool(API_KEY),
+            "rate_limit": f"{RATE_LIMIT_REQUESTS}/{RATE_LIMIT_WINDOW}s"
+        }
+    }
 
 
-@app.post("/ocr/general")
-async def recognize_general(file: UploadFile = File(...)):
+@app.post("/ocr/general", dependencies=[Depends(verify_api_key), Depends(check_rate_limit)])
+async def recognize_general(request: Request, file: UploadFile = File(...)):
     """通用文字识别"""
     try:
+        await validate_file(file)
         image = await load_image(file)
-        result = ocr.ocr(image, cls=False)  # cls=False 跳过方向分类，加速识别
+        result = ocr.ocr(image, cls=False)
         
         texts = []
         for line in result[0] if result[0] else []:
@@ -97,47 +338,51 @@ async def recognize_general(file: UploadFile = File(...)):
             confidence = line[1][1]
             texts.append({"text": text, "confidence": confidence})
         
+        logger.info(f"通用OCR完成，识别 {len(texts)} 行文本，IP: {get_client_ip(request)}")
         return {"success": True, "result": texts}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"通用文字识别失败: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="OCR 识别失败")
 
 
-@app.post("/ocr/bank_receipt")
-async def recognize_bank_receipt(file: UploadFile = File(...)):
+@app.post("/ocr/bank_receipt", dependencies=[Depends(verify_api_key), Depends(check_rate_limit)])
+async def recognize_bank_receipt(request: Request, file: UploadFile = File(...)):
     """银行回单识别"""
     try:
+        await validate_file(file)
         image = await load_image(file)
-        result = ocr.ocr(image, cls=False)  # cls=False 跳过方向分类，加速识别
+        result = ocr.ocr(image, cls=False)
         
-        # 提取所有文本
         all_text = []
         for line in result[0] if result[0] else []:
             all_text.append(line[1][0])
         
         full_text = "\n".join(all_text)
-        
-        # 解析银行回单信息
         parsed = parse_bank_receipt(full_text)
         parsed["raw_text"] = full_text
         parsed["confidence"] = 0.9
         
+        logger.info(f"银行回单识别完成，IP: {get_client_ip(request)}")
         return {"success": True, "result": parsed}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"银行回单识别失败: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="银行回单识别失败")
 
 
-@app.post("/ocr/idcard_front")
-async def recognize_idcard_front(file: UploadFile = File(...)):
+@app.post("/ocr/idcard_front", dependencies=[Depends(verify_api_key), Depends(check_rate_limit)])
+async def recognize_idcard_front(request: Request, file: UploadFile = File(...)):
     """身份证正面识别"""
     try:
+        await validate_file(file)
         image = await load_image(file)
-        logger.info(f"图片尺寸: {image.shape if hasattr(image, 'shape') else 'unknown'}")
+        logger.info(f"处理身份证识别请求，图片尺寸: {image.shape}, IP: {get_client_ip(request)}")
         
-        result = ocr.ocr(image, cls=False)  # cls=False 跳过方向分类，加速识别
+        result = ocr.ocr(image, cls=False)
         
-        # 检查OCR结果
         if not result or not result[0]:
             logger.warning("OCR识别结果为空")
             return {
@@ -161,26 +406,30 @@ async def recognize_idcard_front(file: UploadFile = File(...)):
                 all_text.append(text)
         
         full_text = "\n".join(all_text)
-        logger.info(f"身份证OCR原始文本 (前500字符): {full_text[:500]}")  # 记录前500字符用于调试
+        # 注意：日志会自动脱敏
         logger.info(f"身份证OCR识别行数: {len(result[0])}")
         
         parsed = parse_idcard_front(full_text)
-        parsed["raw_text"] = full_text  # 添加原始文本
+        parsed["raw_text"] = full_text
         parsed["confidence"] = 0.95
         
-        logger.info(f"身份证OCR解析结果: {parsed}")  # 记录解析结果
+        # 脱敏日志
+        logger.info(f"身份证识别完成，姓名: {parsed.get('name', '')[:1]}**, IP: {get_client_ip(request)}")
         return {"success": True, "result": parsed}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"身份证正面识别失败: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="身份证识别失败")
 
 
-@app.post("/ocr/idcard_back")
-async def recognize_idcard_back(file: UploadFile = File(...)):
+@app.post("/ocr/idcard_back", dependencies=[Depends(verify_api_key), Depends(check_rate_limit)])
+async def recognize_idcard_back(request: Request, file: UploadFile = File(...)):
     """身份证背面识别"""
     try:
+        await validate_file(file)
         image = await load_image(file)
-        result = ocr.ocr(image, cls=False)  # cls=False 跳过方向分类，加速识别
+        result = ocr.ocr(image, cls=False)
         
         all_text = []
         for line in result[0] if result[0] else []:
@@ -190,18 +439,22 @@ async def recognize_idcard_back(file: UploadFile = File(...)):
         parsed = parse_idcard_back(full_text)
         parsed["confidence"] = 0.95
         
+        logger.info(f"身份证背面识别完成，IP: {get_client_ip(request)}")
         return {"success": True, "result": parsed}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"身份证背面识别失败: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="身份证背面识别失败")
 
 
-@app.post("/ocr/business_license")
-async def recognize_business_license(file: UploadFile = File(...)):
+@app.post("/ocr/business_license", dependencies=[Depends(verify_api_key), Depends(check_rate_limit)])
+async def recognize_business_license(request: Request, file: UploadFile = File(...)):
     """营业执照识别"""
     try:
+        await validate_file(file)
         image = await load_image(file)
-        result = ocr.ocr(image, cls=False)  # cls=False 跳过方向分类，加速识别
+        result = ocr.ocr(image, cls=False)
         
         all_text = []
         for line in result[0] if result[0] else []:
@@ -211,22 +464,76 @@ async def recognize_business_license(file: UploadFile = File(...)):
         parsed = parse_business_license(full_text)
         parsed["confidence"] = 0.9
         
+        logger.info(f"营业执照识别完成，IP: {get_client_ip(request)}")
         return {"success": True, "result": parsed}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"营业执照识别失败: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="营业执照识别失败")
 
+
+@app.post("/ocr/business_card", dependencies=[Depends(verify_api_key), Depends(check_rate_limit)])
+async def recognize_business_card(request: Request, file: UploadFile = File(...)):
+    """名片识别"""
+    try:
+        await validate_file(file)
+        image = await load_image(file)
+        result = ocr.ocr(image, cls=False)
+        
+        all_text = []
+        for line in result[0] if result[0] else []:
+            all_text.append(line[1][0])
+        
+        full_text = "\n".join(all_text)
+        parsed = parse_business_card(full_text)
+        parsed["raw_text"] = full_text
+        parsed["confidence"] = 0.9
+        
+        logger.info(f"名片识别完成，IP: {get_client_ip(request)}")
+        return {"success": True, "result": parsed}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"名片识别失败: {e}")
+        raise HTTPException(status_code=500, detail="名片识别失败")
+
+
+@app.post("/ocr/invoice", dependencies=[Depends(verify_api_key), Depends(check_rate_limit)])
+async def recognize_invoice(request: Request, file: UploadFile = File(...)):
+    """发票/票据识别"""
+    try:
+        await validate_file(file)
+        image = await load_image(file)
+        result = ocr.ocr(image, cls=False)
+        
+        all_text = []
+        for line in result[0] if result[0] else []:
+            all_text.append(line[1][0])
+        
+        full_text = "\n".join(all_text)
+        parsed = parse_invoice(full_text)
+        parsed["raw_text"] = full_text
+        parsed["confidence"] = 0.9
+        
+        logger.info(f"发票识别完成，IP: {get_client_ip(request)}")
+        return {"success": True, "result": parsed}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"发票识别失败: {e}")
+        raise HTTPException(status_code=500, detail="发票识别失败")
+
+
+# ==================== 辅助函数 ====================
 
 async def load_image(file: UploadFile) -> np.ndarray:
     """加载图片"""
     contents = await file.read()
     image = Image.open(io.BytesIO(contents))
-    # 转换为RGB格式（PIL默认可能是RGBA或其他格式）
     if image.mode != 'RGB':
         image = image.convert('RGB')
-    # 确保图片是3通道的numpy数组
     img_array = np.array(image)
-    # 如果是灰度图（2D），转换为3通道
     if len(img_array.shape) == 2:
         img_array = np.stack([img_array] * 3, axis=-1)
     return img_array
@@ -234,20 +541,19 @@ async def load_image(file: UploadFile) -> np.ndarray:
 
 async def load_image_from_url(url: str) -> np.ndarray:
     """从URL加载图片"""
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         response = await client.get(url)
         response.raise_for_status()
         image = Image.open(io.BytesIO(response.content))
-        # 转换为RGB格式
         if image.mode != 'RGB':
             image = image.convert('RGB')
         img_array = np.array(image)
-        # 如果是灰度图（2D），转换为3通道
         if len(img_array.shape) == 2:
             img_array = np.stack([img_array] * 3, axis=-1)
         return img_array
 
 
+# ==================== 解析函数 ====================
 
 def parse_bank_receipt(text: str) -> dict:
     """解析银行回单"""
@@ -365,7 +671,7 @@ def parse_idcard_front(text: str) -> dict:
         "id_number": ""
     }
     
-    # 姓名 - 多种模式匹配
+    # 姓名
     name_patterns = [
         r"姓名\s*[:：]?\s*([^\n性别]+?)(?:\n|性别|$)",
         r"姓名\s+([^\n]+)",
@@ -373,20 +679,17 @@ def parse_idcard_front(text: str) -> dict:
     ]
     for pattern in name_patterns:
         name_match = re.search(pattern, text)
-    if name_match:
+        if name_match:
             name = name_match.group(1).strip()
-            # 清理可能的标签文字
             name = re.sub(r'[姓名：:]\s*', '', name).strip()
-            if name and len(name) <= 10:  # 姓名通常不超过10个字符
+            if name and len(name) <= 10:
                 result["name"] = name
                 break
     
-    # 如果还没找到，尝试从第一行提取（可能是姓名）
     if not result["name"]:
         lines = text.split('\n')
-        for line in lines[:3]:  # 检查前3行
+        for line in lines[:3]:
             line = line.strip()
-            # 如果这一行看起来像姓名（2-4个中文字符，不包含数字和特殊符号）
             if re.match(r'^[\u4e00-\u9fa5]{2,4}$', line):
                 result["name"] = line
                 break
@@ -404,11 +707,11 @@ def parse_idcard_front(text: str) -> dict:
     ]
     for pattern in ethnicity_patterns:
         ethnicity_match = re.search(pattern, text)
-    if ethnicity_match:
-        result["ethnicity"] = ethnicity_match.group(1).strip()
+        if ethnicity_match:
+            result["ethnicity"] = ethnicity_match.group(1).strip()
             break
     
-    # 出生日期 - 多种格式
+    # 出生日期
     birth_patterns = [
         r"(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日",
         r"(\d{4})[/-](\d{1,2})[/-](\d{1,2})",
@@ -416,7 +719,7 @@ def parse_idcard_front(text: str) -> dict:
     ]
     for pattern in birth_patterns:
         birth_match = re.search(pattern, text)
-    if birth_match:
+        if birth_match:
             year, month, day = birth_match.groups()
             result["birth_date"] = f"{year}-{month.zfill(2)}-{day.zfill(2)}"
             break
@@ -428,11 +731,11 @@ def parse_idcard_front(text: str) -> dict:
     ]
     for pattern in addr_patterns:
         addr_match = re.search(pattern, text, re.DOTALL)
-    if addr_match:
+        if addr_match:
             result["address"] = addr_match.group(1).replace("\n", " ").strip()
             break
     
-    # 身份证号 - 更严格的匹配
+    # 身份证号
     id_patterns = [
         r"(\d{17}[\dXx])",
         r"身份证号\s*[:：]?\s*(\d{17}[\dXx])",
@@ -440,8 +743,8 @@ def parse_idcard_front(text: str) -> dict:
     ]
     for pattern in id_patterns:
         id_match = re.search(pattern, text)
-    if id_match:
-        result["id_number"] = id_match.group(1).upper()
+        if id_match:
+            result["id_number"] = id_match.group(1).upper()
             break
     
     return result
@@ -455,12 +758,10 @@ def parse_idcard_back(text: str) -> dict:
         "valid_to": ""
     }
     
-    # 签发机关
     authority_match = re.search(r"签发机关\s*(.+?)(?:\n|有效期)", text)
     if authority_match:
         result["issuing_authority"] = authority_match.group(1).strip()
     
-    # 有效期
     valid_match = re.search(r"(\d{4})\.(\d{2})\.(\d{2})\s*[-—]\s*(\d{4})\.(\d{2})\.(\d{2}|长期)", text)
     if valid_match:
         result["valid_from"] = f"{valid_match.group(1)}-{valid_match.group(2)}-{valid_match.group(3)}"
@@ -486,96 +787,43 @@ def parse_business_license(text: str) -> dict:
         "registered_address": ""
     }
     
-    # 统一社会信用代码
     credit_match = re.search(r"统一社会信用代码[：:]\s*(\w{18})", text)
     if credit_match:
         result["credit_code"] = credit_match.group(1)
     
-    # 企业名称
     name_match = re.search(r"名\s*称[：:]\s*(.+?)(?:\n|类型)", text)
     if name_match:
         result["company_name"] = name_match.group(1).strip()
     
-    # 类型
     type_match = re.search(r"类\s*型[：:]\s*(.+?)(?:\n|住所)", text)
     if type_match:
         result["company_type"] = type_match.group(1).strip()
     
-    # 法定代表人
     legal_match = re.search(r"法定代表人[：:]\s*(.+?)(?:\n|注册资本)", text)
     if legal_match:
         result["legal_representative"] = legal_match.group(1).strip()
     
-    # 注册资本
     capital_match = re.search(r"注册资本[：:]\s*(.+?)(?:\n|成立日期)", text)
     if capital_match:
         result["registered_capital"] = capital_match.group(1).strip()
     
-    # 成立日期
     date_match = re.search(r"成立日期[：:]\s*(\d{4}年\d{1,2}月\d{1,2}日)", text)
     if date_match:
         result["establish_date"] = date_match.group(1)
     
-    # 营业期限
     term_match = re.search(r"营业期限[：:]\s*(.+?)(?:\n|经营范围)", text)
     if term_match:
         result["business_term"] = term_match.group(1).strip()
     
-    # 经营范围
     scope_match = re.search(r"经营范围[：:]\s*(.+?)(?:\n|$)", text, re.DOTALL)
     if scope_match:
         result["business_scope"] = scope_match.group(1).replace("\n", "").strip()
     
-    # 住所/地址
     addr_match = re.search(r"住\s*所[：:]\s*(.+?)(?:\n|法定代表人)", text)
     if addr_match:
         result["registered_address"] = addr_match.group(1).strip()
     
     return result
-
-
-@app.post("/ocr/business_card")
-async def recognize_business_card(file: UploadFile = File(...)):
-    """名片识别"""
-    try:
-        image = await load_image(file)
-        result = ocr.ocr(image, cls=False)  # cls=False 跳过方向分类，加速识别
-        
-        all_text = []
-        for line in result[0] if result[0] else []:
-            all_text.append(line[1][0])
-        
-        full_text = "\n".join(all_text)
-        parsed = parse_business_card(full_text)
-        parsed["raw_text"] = full_text
-        parsed["confidence"] = 0.9
-        
-        return {"success": True, "result": parsed}
-    except Exception as e:
-        logger.error(f"名片识别失败: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.post("/ocr/invoice")
-async def recognize_invoice(file: UploadFile = File(...)):
-    """发票/票据识别"""
-    try:
-        image = await load_image(file)
-        result = ocr.ocr(image, cls=False)  # cls=False 跳过方向分类，加速识别
-        
-        all_text = []
-        for line in result[0] if result[0] else []:
-            all_text.append(line[1][0])
-        
-        full_text = "\n".join(all_text)
-        parsed = parse_invoice(full_text)
-        parsed["raw_text"] = full_text
-        parsed["confidence"] = 0.9
-        
-        return {"success": True, "result": parsed}
-    except Exception as e:
-        logger.error(f"发票识别失败: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
 
 
 def parse_business_card(text: str) -> dict:
@@ -593,46 +841,38 @@ def parse_business_card(text: str) -> dict:
     
     lines = text.split('\n')
     
-    # 手机号 (11位)
     mobile_match = re.search(r'1[3-9]\d{9}', text)
     if mobile_match:
         result["mobile"] = mobile_match.group()
     
-    # 固定电话
     phone_match = re.search(r'(\d{3,4}[-\s]?\d{7,8})', text)
     if phone_match:
         result["phone"] = phone_match.group(1)
     
-    # 邮箱
     email_match = re.search(r'[\w\.-]+@[\w\.-]+\.\w+', text)
     if email_match:
         result["email"] = email_match.group()
     
-    # 网站
     website_match = re.search(r'(www\.[\w\.-]+\.\w+|https?://[\w\.-]+)', text, re.IGNORECASE)
     if website_match:
         result["website"] = website_match.group()
     
-    # 地址 (包含省市区关键词的行)
     for line in lines:
         if any(kw in line for kw in ['省', '市', '区', '县', '路', '街', '号', '大厦', '广场']):
             result["address"] = line.strip()
             break
     
-    # 公司名称 (包含公司/有限/集团等关键词)
     for line in lines:
         if any(kw in line for kw in ['公司', '有限', '集团', '律师事务所', '律所', '股份']):
             result["company"] = line.strip()
             break
     
-    # 职位 (包含职位关键词)
     for line in lines:
         if any(kw in line for kw in ['总', '经理', '主任', '律师', '合伙人', '顾问', '助理', '秘书', '总监', 'CEO', 'CTO', 'CFO']):
             if not result["company"] or line != result["company"]:
                 result["title"] = line.strip()
                 break
     
-    # 姓名 (通常是较短的2-4个汉字，不含数字和符号)
     for line in lines:
         line = line.strip()
         if 2 <= len(line) <= 4 and re.match(r'^[\u4e00-\u9fa5]+$', line):
@@ -660,7 +900,6 @@ def parse_invoice(text: str) -> dict:
         "items": []
     }
     
-    # 发票类型
     if "增值税专用发票" in text:
         result["invoice_type"] = "增值税专用发票"
     elif "增值税普通发票" in text:
@@ -670,17 +909,14 @@ def parse_invoice(text: str) -> dict:
     elif "收据" in text:
         result["invoice_type"] = "收据"
     
-    # 发票代码
     code_match = re.search(r'发票代码[：:]\s*(\d{10,12})', text)
     if code_match:
         result["invoice_code"] = code_match.group(1)
     
-    # 发票号码
     no_match = re.search(r'发票号码[：:]\s*(\d{8})', text)
     if no_match:
         result["invoice_no"] = no_match.group(1)
     
-    # 开票日期
     date_patterns = [
         r'开票日期[：:]\s*(\d{4}年\d{1,2}月\d{1,2}日)',
         r'(\d{4}[-/]\d{1,2}[-/]\d{1,2})',
@@ -691,7 +927,6 @@ def parse_invoice(text: str) -> dict:
             result["invoice_date"] = match.group(1)
             break
     
-    # 金额
     amount_patterns = [
         r'合计金额[：:]*\s*[¥￥]?([\d,]+\.?\d*)',
         r'金额合计[：:]*\s*[¥￥]?([\d,]+\.?\d*)',
@@ -703,24 +938,20 @@ def parse_invoice(text: str) -> dict:
             result["total_amount"] = match.group(1).replace(",", "")
             break
     
-    # 税额
     tax_match = re.search(r'税额[：:]*\s*[¥￥]?([\d,]+\.?\d*)', text)
     if tax_match:
         result["tax_amount"] = tax_match.group(1).replace(",", "")
     
-    # 销售方名称
     seller_match = re.search(r'销售方[：:]\s*(.+?)(?:\n|$)', text)
     if not seller_match:
         seller_match = re.search(r'名\s*称[：:]\s*(.+?)(?:\n|税号)', text)
     if seller_match:
         result["seller_name"] = seller_match.group(1).strip()
     
-    # 购买方名称
     buyer_match = re.search(r'购买方[：:]\s*(.+?)(?:\n|$)', text)
     if buyer_match:
         result["buyer_name"] = buyer_match.group(1).strip()
     
-    # 纳税人识别号
     tax_no_pattern = r'纳税人识别号[：:]\s*(\w{15,20})'
     tax_nos = re.findall(tax_no_pattern, text)
     if len(tax_nos) >= 2:

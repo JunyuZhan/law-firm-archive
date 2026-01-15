@@ -208,9 +208,8 @@ public class PayrollController {
     @GetMapping("/my/{id}")
     @RequirePermission("payroll:my:view")
     public Result<PayrollSheetDTO> getMyPayrollSheetById(@PathVariable Long id) {
-        PayrollSheetDTO dto = payrollAppService.getPayrollSheetById(id);
-        // 权限检查：只能查看自己的工资
-        // TODO: 在Service层添加权限检查
+        // 使用带权限检查的方法，确保员工只能查看自己的工资
+        PayrollSheetDTO dto = payrollAppService.getMyPayrollSheetById(id);
         return Result.success(dto);
     }
 

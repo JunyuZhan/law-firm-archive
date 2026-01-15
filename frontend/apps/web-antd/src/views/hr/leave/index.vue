@@ -2,10 +2,12 @@
 import type { VxeGridProps } from '#/adapter/vxe-table';
 import type { LeaveApplication, LeaveBalance, LeaveType } from '#/api/hr/types';
 
-import { onMounted, reactive, ref } from 'vue';
+import { onMounted, reactive, ref, watch } from 'vue';
 
 import { Page } from '@vben/common-ui';
 import { Plus } from '@vben/icons';
+
+import { useResponsive } from '#/hooks/useResponsive';
 
 import {
   Button,
@@ -36,6 +38,9 @@ import {
 } from '#/api/hr/leave';
 
 defineOptions({ name: 'LeaveManagement' });
+
+// 响应式布局
+const { isMobile } = useResponsive();
 
 const { RangePicker } = DatePicker;
 
@@ -84,22 +89,31 @@ const statusTextMap: Record<string, string> = {
 
 // ==================== 表格配置 ====================
 
-const gridColumns: VxeGridProps['columns'] = [
-  { title: '请假类型', field: 'leaveTypeName', width: 100 },
-  { title: '开始日期', field: 'startDate', width: 120 },
-  { title: '结束日期', field: 'endDate', width: 120 },
-  { title: '请假天数', field: 'leaveDays', width: 100 },
-  { title: '请假原因', field: 'reason', minWidth: 200, showOverflow: true },
-  { title: '状态', field: 'status', width: 100, slots: { default: 'status' } },
-  { title: '审批人', field: 'approverName', width: 100 },
-  {
-    title: '操作',
-    field: 'action',
-    width: 150,
-    fixed: 'right',
-    slots: { default: 'action' },
-  },
-];
+// 响应式列配置
+function getGridColumns(): VxeGridProps['columns'] {
+  const baseColumns = [
+    { title: '请假类型', field: 'leaveTypeName', width: 100, mobileShow: true },
+    { title: '开始日期', field: 'startDate', width: 120, mobileShow: true },
+    { title: '结束日期', field: 'endDate', width: 120 },
+    { title: '请假天数', field: 'leaveDays', width: 100, mobileShow: true },
+    { title: '请假原因', field: 'reason', minWidth: 200, showOverflow: true },
+    { title: '状态', field: 'status', width: 100, slots: { default: 'status' }, mobileShow: true },
+    { title: '审批人', field: 'approverName', width: 100 },
+    {
+      title: '操作',
+      field: 'action',
+      width: isMobile.value ? 100 : 150,
+      fixed: 'right',
+      slots: { default: 'action' },
+      mobileShow: true,
+    },
+  ];
+  
+  if (isMobile.value) {
+    return baseColumns.filter(col => col.mobileShow === true);
+  }
+  return baseColumns;
+}
 
 async function loadData({
   page,
@@ -117,11 +131,16 @@ async function loadData({
 
 const [Grid, gridApi] = useVbenVxeGrid({
   gridOptions: {
-    columns: gridColumns,
+    columns: getGridColumns(),
     height: 'auto',
     pagerConfig: {},
     proxyConfig: { ajax: { query: loadData } },
   },
+});
+
+// 监听响应式变化，更新列配置
+watch(isMobile, () => {
+  gridApi.setGridOptions({ columns: getGridColumns() });
 });
 
 // ==================== 数据加载 ====================
@@ -274,8 +293,8 @@ onMounted(() => {
 
       <!-- 搜索区域 -->
       <Card>
-        <Row :gutter="16">
-          <Col :xs="24" :sm="12" :md="6">
+        <Row :gutter="[16, 12]">
+          <Col :xs="12" :sm="12" :md="6">
             <Select
               v-model:value="searchForm.leaveTypeId"
               placeholder="请假类型"
@@ -291,7 +310,7 @@ onMounted(() => {
               </Select.Option>
             </Select>
           </Col>
-          <Col :xs="24" :sm="12" :md="6">
+          <Col :xs="12" :sm="12" :md="6">
             <Select
               v-model:value="searchForm.status"
               placeholder="状态"
@@ -301,7 +320,7 @@ onMounted(() => {
             />
           </Col>
           <Col :xs="24" :sm="24" :md="12">
-            <Space>
+            <Space :wrap="isMobile">
               <Button type="primary" @click="handleSearch">查询</Button>
               <Button @click="handleReset">重置</Button>
               <Button type="primary" @click="handleAdd">
@@ -343,6 +362,8 @@ onMounted(() => {
       <Modal
         v-model:open="modalVisible"
         title="申请请假"
+        :width="isMobile ? '100%' : '520px'"
+        :centered="isMobile"
         :confirm-loading="modalLoading"
         @ok="handleSubmit"
       >

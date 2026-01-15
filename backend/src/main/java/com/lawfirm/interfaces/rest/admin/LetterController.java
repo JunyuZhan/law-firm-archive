@@ -54,11 +54,21 @@ public class LetterController {
     @PostMapping("/template")
     @RequirePermission("admin:letter:manage")
     public Result<LetterTemplateDTO> createTemplate(
-            @RequestParam String name,
-            @RequestParam String letterType,
-            @RequestParam String content,
-            @RequestParam(required = false) String description) {
-        return Result.success(letterAppService.createTemplate(name, letterType, content, description));
+            @RequestParam(required = true) String name,
+            @RequestParam(required = true) String letterType,
+            @RequestParam(required = true) String content,
+            @RequestParam(required = false, defaultValue = "") String description) {
+        // 参数校验
+        if (name == null || name.trim().isEmpty()) {
+            return Result.fail("模板名称不能为空");
+        }
+        if (letterType == null || letterType.trim().isEmpty()) {
+            return Result.fail("函件类型不能为空");
+        }
+        if (content == null || content.trim().isEmpty()) {
+            return Result.fail("模板内容不能为空");
+        }
+        return Result.success(letterAppService.createTemplate(name.trim(), letterType.trim(), content, description));
     }
 
     @Operation(summary = "更新模板")

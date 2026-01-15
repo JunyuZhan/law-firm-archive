@@ -5,10 +5,12 @@ import type {
   KnowledgeArticleQuery,
 } from '#/api/knowledge/types';
 
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 
 import { Page } from '@vben/common-ui';
 import { Plus } from '@vben/icons';
+
+import { useResponsive } from '#/hooks/useResponsive';
 
 import {
   Button,
@@ -38,6 +40,9 @@ import ArticleModal from './components/ArticleModal.vue';
 
 defineOptions({ name: 'KnowledgeArticle' });
 
+// 响应式布局
+const { isMobile } = useResponsive();
+
 const articleModalRef = ref<InstanceType<typeof ArticleModal>>();
 const queryParams = ref<KnowledgeArticleQuery>({
   pageNum: 1,
@@ -61,27 +66,37 @@ const statusOptions = [
   { label: '已归档', value: 'ARCHIVED' },
 ];
 
-const gridColumns: VxeGridProps['columns'] = [
-  { title: '文章标题', field: 'title', minWidth: 250 },
-  { title: '分类', field: 'categoryName', width: 120 },
-  { title: '作者', field: 'authorName', width: 100 },
-  { title: '发布时间', field: 'publishTime', width: 160 },
-  { title: '浏览量', field: 'views', width: 80 },
-  { title: '点赞数', field: 'likes', width: 80 },
-  {
-    title: '状态',
-    field: 'statusName',
-    width: 100,
-    slots: { default: 'status' },
-  },
-  {
-    title: '操作',
-    field: 'action',
-    width: 220,
-    fixed: 'right',
-    slots: { default: 'action' },
-  },
-];
+// 响应式列配置
+function getGridColumns(): VxeGridProps['columns'] {
+  const baseColumns = [
+    { title: '文章标题', field: 'title', minWidth: isMobile.value ? 150 : 250, mobileShow: true },
+    { title: '分类', field: 'categoryName', width: 120, mobileShow: true },
+    { title: '作者', field: 'authorName', width: 100 },
+    { title: '发布时间', field: 'publishTime', width: 160 },
+    { title: '浏览量', field: 'views', width: 80 },
+    { title: '点赞数', field: 'likes', width: 80 },
+    {
+      title: '状态',
+      field: 'statusName',
+      width: 100,
+      slots: { default: 'status' },
+      mobileShow: true,
+    },
+    {
+      title: '操作',
+      field: 'action',
+      width: isMobile.value ? 100 : 220,
+      fixed: 'right',
+      slots: { default: 'action' },
+      mobileShow: true,
+    },
+  ];
+  
+  if (isMobile.value) {
+    return baseColumns.filter(col => col.mobileShow === true);
+  }
+  return baseColumns;
+}
 
 async function loadData({
   page,
@@ -99,11 +114,16 @@ async function loadData({
 
 const [Grid, gridApi] = useVbenVxeGrid({
   gridOptions: {
-    columns: gridColumns,
+    columns: getGridColumns(),
     height: 'auto',
     pagerConfig: {},
     proxyConfig: { ajax: { query: loadData } },
   },
+});
+
+// 监听响应式变化，更新列配置
+watch(isMobile, () => {
+  gridApi.setGridOptions({ columns: getGridColumns() });
 });
 
 function handleSearch() {

@@ -103,6 +103,8 @@ function handlePrint() {
     return;
   }
 
+  // 重要：不要为所有 p 标签添加默认的 text-indent
+  // wangeditor 编辑器使用内联样式保存格式，需要保留这些样式
   printWindow.document.write(`
     <!DOCTYPE html>
     <html>
@@ -123,7 +125,14 @@ function handlePrint() {
         h1, h2, h3 { text-align: center; }
         h2 { font-size: 18pt; }
         h3 { font-size: 14pt; text-align: left; margin: 1.5em 0 0.5em; }
-        p { text-indent: 2em; margin: 0.5em 0; }
+        /* 不设置默认 text-indent，保留编辑器的内联样式设置 */
+        p { margin: 0.5em 0; }
+        /* 支持 wangeditor 的对齐和缩进格式 - 内联样式会覆盖默认样式 */
+        ul, ol { padding-left: 2em; margin: 0.5em 0; }
+        li { margin: 0.3em 0; }
+        strong, b { font-weight: bold; }
+        em, i { font-style: italic; }
+        u { text-decoration: underline; }
         table { width: 100%; border-collapse: collapse; margin: 1em 0; }
         td, th { border: 1px solid #000; padding: 8px; }
       </style>
@@ -215,7 +224,7 @@ defineExpose({ open });
 
 .preview-content :deep(p) {
   margin: 0.5em 0;
-  text-indent: 2em;
+  /* 不设置默认 text-indent，保留编辑器的内联样式设置 */
 }
 
 .preview-content :deep(.preview-var) {

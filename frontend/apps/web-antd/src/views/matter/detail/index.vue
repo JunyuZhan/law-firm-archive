@@ -12,6 +12,8 @@ import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
+
+import { useResponsive } from '#/hooks/useResponsive';
 import { useUserStore } from '@vben/stores';
 
 import {
@@ -77,6 +79,9 @@ defineOptions({ name: 'MatterDetail' });
 
 const route = useRoute();
 const router = useRouter();
+
+// 响应式布局
+const { isMobile } = useResponsive();
 
 // 获取当前用户
 const userStore = useUserStore();
@@ -1352,7 +1357,8 @@ onMounted(() => {
     <Modal
       v-model:open="closeModalVisible"
       title="申请结案"
-      width="500px"
+      :width="isMobile ? '100%' : '500px'"
+      :centered="isMobile"
       @ok="handleSubmitClose"
       ok-text="提交申请"
     >
@@ -1435,7 +1441,8 @@ onMounted(() => {
     <Modal
       v-model:open="deadlineModalVisible"
       title="添加期限提醒"
-      width="500px"
+      :width="isMobile ? '100%' : '500px'"
+      :centered="isMobile"
       @ok="handleSubmitDeadline"
     >
       <Form :label-col="{ span: 5 }" :wrapper-col="{ span: 18 }">
@@ -1490,7 +1497,8 @@ onMounted(() => {
     <Modal
       v-model:open="letterModalVisible"
       title="申请出函"
-      width="600px"
+      :width="isMobile ? '100%' : '600px'"
+      :centered="isMobile"
       @ok="handleSubmitLetter"
     >
       <Form :label-col="{ span: 5 }" :wrapper-col="{ span: 18 }">
@@ -1571,7 +1579,8 @@ onMounted(() => {
     <Modal
       v-model:open="scheduleModalVisible"
       title="添加日程"
-      width="550px"
+      :width="isMobile ? '100%' : '550px'"
+      :centered="isMobile"
       @ok="handleSubmitSchedule"
     >
       <Form :label-col="{ span: 5 }" :wrapper-col="{ span: 18 }">
@@ -1631,7 +1640,8 @@ onMounted(() => {
     <Modal
       v-model:open="letterDetailVisible"
       title="出函申请详情"
-      width="800px"
+      :width="isMobile ? '100%' : '800px'"
+      :centered="isMobile"
       :footer="null"
     >
       <div v-if="letterDetailRecord">

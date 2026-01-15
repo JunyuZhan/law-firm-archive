@@ -10,6 +10,8 @@ import { onMounted, ref } from 'vue';
 import { Page } from '@vben/common-ui';
 import { Plus } from '@vben/icons';
 
+import { useResponsive } from '#/hooks/useResponsive';
+
 import {
   Button,
   Card,
@@ -44,6 +46,9 @@ import {
 import UserTreeSelect from '#/components/UserTreeSelect';
 
 defineOptions({ name: 'HrPromotion' });
+
+// 响应式布局
+const { isMobile } = useResponsive();
 
 // 状态
 const loading = ref(false);
@@ -301,23 +306,25 @@ onMounted(() => {
       </Tabs>
 
       <div
-        style="
-          display: flex;
-          justify-content: space-between;
-          margin-bottom: 16px;
-        "
+        :style="{
+          display: 'flex',
+          flexDirection: isMobile ? 'column' : 'row',
+          justifyContent: 'space-between',
+          gap: isMobile ? '12px' : '0',
+          marginBottom: '16px',
+        }"
       >
-        <Space>
+        <Space :wrap="isMobile">
           <Input
             v-model:value="queryParams.keyword"
             placeholder="搜索员工姓名"
-            style="width: 200px"
+            :style="{ width: isMobile ? '100%' : '200px', minWidth: '150px' }"
             allow-clear
             @press-enter="handleSearch"
           />
           <Button @click="handleSearch">查询</Button>
         </Space>
-        <Button type="primary" @click="handleAdd">
+        <Button type="primary" :block="isMobile" @click="handleAdd">
           <Plus />
           申请晋升
         </Button>
@@ -332,9 +339,9 @@ onMounted(() => {
           pageSize: queryParams.pageSize,
           total,
           showSizeChanger: true,
-          showQuickJumper: true,
+          showQuickJumper: !isMobile,
         }"
-        :scroll="{ x: 1000 }"
+        :scroll="{ x: isMobile ? 800 : 1000 }"
         row-key="id"
         @change="handleTableChange"
       >
@@ -378,7 +385,8 @@ onMounted(() => {
     <Modal
       v-model:open="modalVisible"
       title="申请晋升"
-      width="650px"
+      :width="isMobile ? '100%' : '650px'"
+      :centered="isMobile"
       @ok="handleSubmit"
     >
       <Form :label-col="{ span: 5 }" :wrapper-col="{ span: 18 }">
@@ -434,7 +442,8 @@ onMounted(() => {
     <Modal
       v-model:open="detailVisible"
       title="晋升申请详情"
-      width="700px"
+      :width="isMobile ? '100%' : '700px'"
+      :centered="isMobile"
       :footer="null"
     >
       <Descriptions v-if="currentRecord" :column="2" bordered size="small">
@@ -522,6 +531,8 @@ onMounted(() => {
     <Modal
       v-model:open="approveVisible"
       title="审批晋升申请"
+      :width="isMobile ? '100%' : '520px'"
+      :centered="isMobile"
       @ok="submitApproval"
     >
       <Form :label-col="{ span: 5 }" :wrapper-col="{ span: 18 }">

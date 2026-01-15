@@ -771,5 +771,8 @@ export function sendSystemReport(type: 'daily' | 'weekly' = 'daily') {
 // 导出公告管理API
 export * from './announcement';
 
+// 导出案由管理API
+export * from './cause-of-action';
+
 // 导出类型
 export type * from './types';

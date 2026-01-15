@@ -22,6 +22,7 @@ import com.lawfirm.infrastructure.external.report.PdfReportGenerator;
 import com.lawfirm.infrastructure.persistence.mapper.ReportMapper;
 import com.lawfirm.infrastructure.persistence.mapper.StatisticsMapper;
 import com.lawfirm.infrastructure.persistence.mapper.ApprovalMapper;
+import com.lawfirm.application.system.service.NotificationAppService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -54,6 +55,7 @@ public class ReportAppService {
     private final ReportMapper reportMapper;
     private final ApprovalMapper approvalMapper;
     private final com.lawfirm.domain.matter.repository.MatterRepository matterRepository;
+    private final NotificationAppService notificationAppService;
     
     // ObjectMapper由Spring Boot自动配置
     private final ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
@@ -307,18 +309,36 @@ public class ReportAppService {
             
             log.info("报表异步生成成功: reportNo={}, fileUrl={}", report.getReportNo(), fileUrl);
             
-            // TODO: 可以在这里发送通知给用户
-            // notificationAppService.sendSystemNotification(userId, "报表生成完成", 
-            //         report.getReportName() + " 已生成完成，请前往报表中心查看", "REPORT", reportId);
+            // 发送报表生成完成通知
+            try {
+                notificationAppService.sendSystemNotification(
+                        userId, 
+                        "报表生成完成", 
+                        report.getReportName() + " 已生成完成，请前往报表中心查看", 
+                        "REPORT", 
+                        reportId
+                );
+            } catch (Exception notifyEx) {
+                log.warn("发送报表完成通知失败: {}", notifyEx.getMessage());
+            }
             
         } catch (Exception e) {
             log.error("报表异步生成失败: reportNo={}", report.getReportNo(), e);
             report.setStatus("FAILED");
             reportRepository.updateById(report);
             
-            // TODO: 可以在这里发送失败通知
-            // notificationAppService.sendSystemNotification(userId, "报表生成失败", 
-            //         report.getReportName() + " 生成失败: " + e.getMessage(), "REPORT", reportId);
+            // 发送报表生成失败通知
+            try {
+                notificationAppService.sendSystemNotification(
+                        userId, 
+                        "报表生成失败", 
+                        report.getReportName() + " 生成失败: " + e.getMessage(), 
+                        "REPORT", 
+                        reportId
+                );
+            } catch (Exception notifyEx) {
+                log.warn("发送报表失败通知失败: {}", notifyEx.getMessage());
+            }
         }
     }
     

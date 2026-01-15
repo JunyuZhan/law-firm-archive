@@ -5,8 +5,11 @@ import com.lawfirm.application.admin.dto.AssetInventoryDTO;
 import com.lawfirm.application.admin.service.AssetInventoryAppService;
 import com.lawfirm.common.annotation.OperationLog;
 import com.lawfirm.common.annotation.RequirePermission;
+import com.lawfirm.common.base.PageQuery;
+import com.lawfirm.common.result.PageResult;
 import com.lawfirm.common.result.Result;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.Data;
@@ -25,6 +28,15 @@ import java.util.List;
 public class AssetInventoryController {
 
     private final AssetInventoryAppService inventoryAppService;
+
+    @Operation(summary = "分页查询资产盘点列表")
+    @GetMapping
+    @RequirePermission("admin:asset:inventory")
+    public Result<PageResult<AssetInventoryDTO>> list(
+            PageQuery query,
+            @Parameter(description = "状态") @RequestParam(required = false) String status) {
+        return Result.success(inventoryAppService.listInventories(query, status));
+    }
 
     @Operation(summary = "创建资产盘点")
     @PostMapping

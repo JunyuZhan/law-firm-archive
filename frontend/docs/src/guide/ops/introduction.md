@@ -1,6 +1,6 @@
 # 运维手册
 
-本手册面向系统管理员，介绍系统部署、配置和维护。
+本手册面向系统管理员，介绍系统部署、配置、备份、监控和安全运维。
 
 ## 系统架构
 
@@ -29,6 +29,13 @@
 | MinIO         | 最新版 | 文件存储         |
 | Elasticsearch | 8.x    | 全文搜索（可选） |
 
+## 部署形态一览
+
+- 单机一键部署：适合小型律所或测试环境，使用 `./scripts/deploy.sh --quick` 一键拉起所有服务
+- NAS 存储分离：应用服务器 + NAS 存储，提高数据安全性，参考 `docker/DEPLOY-NAS.md`
+- Docker Swarm 分布式：多节点高可用与水平扩展，参考 `docker/DEPLOY-SWARM.md`
+- MinIO 分布式存储集群：文件数据采用纠删码冗余，参考 `docker/DATA-SECURITY.md`
+
 ## 端口说明
 
 | 服务       | 端口      | 说明     |
@@ -46,3 +53,4 @@
 - [备份恢复](/guide/ops/backup)
 - [监控告警](/guide/ops/monitoring)
 - [故障排查](/guide/ops/troubleshooting)
+- [数据安全（高级）](file:///Users/apple/Documents/Project/law-firm/docker/DATA-SECURITY.md)

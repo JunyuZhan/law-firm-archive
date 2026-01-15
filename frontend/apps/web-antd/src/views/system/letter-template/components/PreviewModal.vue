@@ -4,6 +4,7 @@ import type { LetterTemplateDTO } from '#/api/admin';
 import { onMounted, ref } from 'vue';
 
 import { useVbenModal } from '@vben/common-ui';
+import { OFFICIAL_DOCUMENT_STYLES } from '@vben/utils';
 
 import { Button, message, Space, Tag } from 'ant-design-vue';
 
@@ -53,7 +54,7 @@ const [Modal, modalApi] = useVbenModal({
   footer: false,
 });
 
-// 打印预览
+// 打印预览 - 使用共享的公文格式样式
 function handlePrint() {
   const printWindow = window.open('', '_blank');
   if (!printWindow) {
@@ -61,54 +62,19 @@ function handlePrint() {
     return;
   }
 
+  // 使用共享的公文格式样式，添加预览变量高亮样式
+  const customStyles = `
+    .preview-var { color: #000; font-weight: 500; }
+  `;
+
   printWindow.document.write(`
     <!DOCTYPE html>
     <html>
     <head>
       <title>${previewTitle.value}</title>
       <style>
-        @page { 
-          size: A4;
-          margin-top: 3.7cm;
-          margin-bottom: 3.5cm;
-          margin-left: 2.8cm;
-          margin-right: 2.6cm;
-        }
-        body { 
-          font-family: "FangSong", "仿宋_GB2312", "仿宋", serif; 
-          font-size: 16pt; 
-          line-height: 28pt;
-          color: #000;
-          padding: 0;
-          margin: 0;
-        }
-        * {
-          font-family: "FangSong", "仿宋_GB2312", "仿宋", serif;
-        }
-        .preview-var { color: #000; font-weight: 500; }
-        h1, h2, h3 { 
-          text-align: center; 
-          font-family: "FZXiaoBiaoSong-B05S", "方正小标宋", "FZXBS", serif;
-          font-size: 22pt;
-          font-weight: normal;
-          letter-spacing: 2pt;
-          margin: 20pt 0 10pt;
-        }
-        p { 
-          text-indent: 2em; 
-          margin: 0; 
-          padding: 0;
-          font-family: "FangSong", "仿宋_GB2312", "仿宋", serif; 
-          font-size: 16pt;
-          line-height: 28pt;
-        }
-        .signature { 
-          text-align: right; 
-          margin-top: 40pt; 
-          font-family: "FangSong", "仿宋_GB2312", "仿宋", serif; 
-          font-size: 16pt;
-          line-height: 28pt;
-        }
+        ${OFFICIAL_DOCUMENT_STYLES}
+        ${customStyles}
       </style>
     </head>
     <body>

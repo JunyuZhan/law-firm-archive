@@ -7,10 +7,12 @@ import type {
   InvoiceQuery,
 } from '#/api/finance/types';
 
-import { onMounted, reactive, ref } from 'vue';
+import { onMounted, reactive, ref, watch } from 'vue';
 
 import { Page } from '@vben/common-ui';
 import { Plus } from '@vben/icons';
+
+import { useResponsive } from '#/hooks/useResponsive';
 
 import {
   Button,
@@ -41,6 +43,9 @@ import {
 } from '#/api/finance';
 
 defineOptions({ name: 'FinanceInvoice' });
+
+// 响应式布局
+const { isMobile } = useResponsive();
 
 // 获取当前年份
 const currentYear = new Date().getFullYear();
@@ -107,39 +112,50 @@ const statusOptions = [
 
 // ==================== 表格配置 ====================
 
-const gridColumns: VxeGridProps['columns'] = [
-  { title: '发票编号', field: 'invoiceNo', width: 130 },
-  { title: '客户名称', field: 'clientName', minWidth: 150 },
-  { title: '发票抬头', field: 'title', minWidth: 180, showOverflow: true },
-  { title: '发票类型', field: 'invoiceTypeName', width: 100 },
-  {
-    title: '发票金额',
-    field: 'totalAmount',
-    width: 120,
-    slots: { default: 'totalAmount' },
-  },
-  {
-    title: '税额',
-    field: 'taxAmount',
-    width: 100,
-    slots: { default: 'taxAmount' },
-  },
-  { title: '申请日期', field: 'createdAt', width: 120 },
-  { title: '开票日期', field: 'invoiceDate', width: 120 },
-  {
-    title: '状态',
-    field: 'statusName',
-    width: 100,
-    slots: { default: 'status' },
-  },
-  {
-    title: '操作',
-    field: 'action',
-    width: 150,
-    fixed: 'right',
-    slots: { default: 'action' },
-  },
-];
+// 响应式列配置
+function getGridColumns(): VxeGridProps['columns'] {
+  const baseColumns = [
+    { title: '发票编号', field: 'invoiceNo', width: 130 },
+    { title: '客户名称', field: 'clientName', minWidth: isMobile.value ? 100 : 150, mobileShow: true },
+    { title: '发票抬头', field: 'title', minWidth: 180, showOverflow: true },
+    { title: '发票类型', field: 'invoiceTypeName', width: 100 },
+    {
+      title: '发票金额',
+      field: 'totalAmount',
+      width: 120,
+      slots: { default: 'totalAmount' },
+      mobileShow: true,
+    },
+    {
+      title: '税额',
+      field: 'taxAmount',
+      width: 100,
+      slots: { default: 'taxAmount' },
+    },
+    { title: '申请日期', field: 'createdAt', width: 120 },
+    { title: '开票日期', field: 'invoiceDate', width: 120 },
+    {
+      title: '状态',
+      field: 'statusName',
+      width: 100,
+      slots: { default: 'status' },
+      mobileShow: true,
+    },
+    {
+      title: '操作',
+      field: 'action',
+      width: isMobile.value ? 100 : 150,
+      fixed: 'right',
+      slots: { default: 'action' },
+      mobileShow: true,
+    },
+  ];
+  
+  if (isMobile.value) {
+    return baseColumns.filter(col => col.mobileShow === true);
+  }
+  return baseColumns;
+}
 
 async function loadData({
   page,
@@ -157,11 +173,16 @@ async function loadData({
 
 const [Grid, gridApi] = useVbenVxeGrid({
   gridOptions: {
-    columns: gridColumns,
+    columns: getGridColumns(),
     height: 'auto',
     pagerConfig: {},
     proxyConfig: { ajax: { query: loadData } },
   },
+});
+
+// 监听响应式变化，更新列配置
+watch(isMobile, () => {
+  gridApi.setGridOptions({ columns: getGridColumns() });
 });
 
 // ==================== 加载选项 ====================
@@ -469,7 +490,8 @@ onMounted(() => {
     <Modal
       v-model:open="modalVisible"
       title="申请开票"
-      width="800px"
+      :width="isMobile ? '100%' : '800px'"
+      :centered="isMobile"
       @ok="handleSave"
     >
       <Form
@@ -571,7 +593,8 @@ onMounted(() => {
     <Modal
       v-model:open="detailModalVisible"
       title="发票详情"
-      width="800px"
+      :width="isMobile ? '100%' : '800px'"
+      :centered="isMobile"
       :footer="null"
     >
       <div v-if="currentInvoice" style="padding: 20px">

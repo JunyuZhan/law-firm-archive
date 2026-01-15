@@ -9,9 +9,11 @@ import com.lawfirm.common.result.PageResult;
 import com.lawfirm.common.util.SecurityUtils;
 import com.lawfirm.domain.system.entity.Notification;
 import com.lawfirm.domain.system.repository.NotificationRepository;
+import com.lawfirm.infrastructure.notification.WecomNotificationChannel;
 import com.lawfirm.infrastructure.persistence.mapper.NotificationMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +30,9 @@ public class NotificationAppService {
 
     private final NotificationRepository notificationRepository;
     private final NotificationMapper notificationMapper;
+    
+    @Autowired(required = false)
+    private WecomNotificationChannel wecomChannel;
 
     /**
      * 分页查询我的通知
@@ -149,6 +154,76 @@ public class NotificationAppService {
                 .businessId(businessId)
                 .build();
         notificationRepository.save(notification);
+        
+        // 同时推送到企业微信
+        pushToWecom(notification);
+    }
+    
+    /**
+     * 发送系统通知（增强版，支持自定义类型）
+     */
+    @Transactional
+    public void sendSystemNotificationWithType(Long receiverId, String title, String content, 
+                                               String type, String businessType, Long businessId) {
+        Notification notification = Notification.builder()
+                .title(title)
+                .content(content)
+                .type(type != null ? type : Notification.TYPE_SYSTEM)
+                .receiverId(receiverId)
+                .isRead(false)
+                .businessType(businessType)
+                .businessId(businessId)
+                .build();
+        notificationRepository.save(notification);
+        
+        // 同时推送到企业微信
+        pushToWecom(notification);
+    }
+    
+    /**
+     * 发送紧急通知（会推送到企业微信，更醒目）
+     */
+    @Transactional
+    public void sendUrgentNotification(List<Long> receiverIds, String title, String content, 
+                                       String businessType, Long businessId) {
+        // 保存到数据库
+        for (Long receiverId : receiverIds) {
+            Notification notification = Notification.builder()
+                    .title(title)
+                    .content(content)
+                    .type(Notification.TYPE_REMINDER)
+                    .receiverId(receiverId)
+                    .isRead(false)
+                    .businessType(businessType)
+                    .businessId(businessId)
+                    .build();
+            notificationRepository.save(notification);
+        }
+        
+        // 推送紧急通知到企业微信
+        if (wecomChannel != null) {
+            wecomChannel.sendUrgentNotification(title, content, receiverIds);
+        }
+    }
+    
+    /**
+     * 推送通知到企业微信（异步）
+     */
+    private void pushToWecom(Notification notification) {
+        if (wecomChannel != null) {
+            try {
+                wecomChannel.sendNotification(notification);
+            } catch (Exception e) {
+                log.warn("推送企业微信通知失败: {}", e.getMessage());
+            }
+        }
+    }
+    
+    /**
+     * 检查企业微信推送是否已启用
+     */
+    public boolean isWecomEnabled() {
+        return wecomChannel != null && wecomChannel.isEnabled();
     }
 
     /**

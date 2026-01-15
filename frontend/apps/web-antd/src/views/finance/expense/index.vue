@@ -2,10 +2,12 @@
 import type { VxeGridProps } from '#/adapter/vxe-table';
 import type { OcrResultDTO } from '#/api/ocr';
 
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 
 import { Page } from '@vben/common-ui';
 import { IconifyIcon, Plus } from '@vben/icons';
+
+import { useResponsive } from '#/hooks/useResponsive';
 
 import {
   Button,
@@ -34,6 +36,9 @@ import { recognizeInvoice } from '#/api/ocr';
 import { requestClient } from '#/api/request';
 
 defineOptions({ name: 'ExpenseReimbursement' });
+
+// 响应式布局
+const { isMobile } = useResponsive();
 
 interface ExpenseRecord {
   id: number;
@@ -96,28 +101,38 @@ const expenseTypeOptions = [
 
 // ==================== 表格配置 ====================
 
-const gridColumns: VxeGridProps['columns'] = [
-  { title: '报销单号', field: 'expenseNo', width: 140 },
-  { title: '费用类型', field: 'expenseTypeName', width: 100 },
-  { title: '金额', field: 'amount', width: 120, slots: { default: 'amount' } },
-  { title: '关联项目', field: 'matterName', minWidth: 150, showOverflow: true },
-  { title: '费用日期', field: 'expenseDate', width: 110 },
-  { title: '说明', field: 'description', minWidth: 200, showOverflow: true },
-  {
-    title: '状态',
-    field: 'statusName',
-    width: 100,
-    slots: { default: 'status' },
-  },
-  { title: '提交时间', field: 'createdAt', width: 110 },
-  {
-    title: '操作',
-    field: 'action',
-    width: 100,
-    fixed: 'right',
-    slots: { default: 'action' },
-  },
-];
+// 响应式列配置
+function getGridColumns(): VxeGridProps['columns'] {
+  const baseColumns = [
+    { title: '报销单号', field: 'expenseNo', width: 140 },
+    { title: '费用类型', field: 'expenseTypeName', width: 100, mobileShow: true },
+    { title: '金额', field: 'amount', width: 120, slots: { default: 'amount' }, mobileShow: true },
+    { title: '关联项目', field: 'matterName', minWidth: 150, showOverflow: true },
+    { title: '费用日期', field: 'expenseDate', width: 110 },
+    { title: '说明', field: 'description', minWidth: 200, showOverflow: true },
+    {
+      title: '状态',
+      field: 'statusName',
+      width: 100,
+      slots: { default: 'status' },
+      mobileShow: true,
+    },
+    { title: '提交时间', field: 'createdAt', width: 110 },
+    {
+      title: '操作',
+      field: 'action',
+      width: 100,
+      fixed: 'right',
+      slots: { default: 'action' },
+      mobileShow: true,
+    },
+  ];
+  
+  if (isMobile.value) {
+    return baseColumns.filter(col => col.mobileShow === true);
+  }
+  return baseColumns;
+}
 
 async function loadData() {
   try {
@@ -134,11 +149,18 @@ async function loadData() {
 
 const [Grid, gridApi] = useVbenVxeGrid({
   gridOptions: {
-    columns: gridColumns,
-    height: 'auto',
+    columns: getGridColumns(),
+    // 移除高度限制，让表格完整显示所有数据
+    height: '',
+    minHeight: 200,
     pagerConfig: { enabled: false },
     proxyConfig: { ajax: { query: loadData } },
   },
+});
+
+// 监听响应式变化，更新列配置
+watch(isMobile, () => {
+  gridApi.setGridOptions({ columns: getGridColumns() });
 });
 
 // ==================== OCR识别操作 ====================
@@ -375,7 +397,8 @@ onMounted(() => {
     <Modal
       v-model:open="modalVisible"
       title="新增报销"
-      width="500px"
+      :width="isMobile ? '100%' : '500px'"
+      :centered="isMobile"
       @ok="handleSubmit"
     >
       <Form

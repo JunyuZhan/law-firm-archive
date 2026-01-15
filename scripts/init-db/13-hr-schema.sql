@@ -1065,8 +1065,10 @@ CREATE TABLE public.hr_training (
     status character varying(50) DEFAULT 'DRAFT'::character varying,
     materials_url character varying(500),
     remarks text,
+    version integer DEFAULT 1,
     created_by bigint,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_by bigint,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     deleted boolean DEFAULT false
 );
@@ -1195,7 +1197,10 @@ CREATE TABLE public.hr_training_record (
     rating integer,
     certificate_url character varying(500),
     remarks text,
+    version integer DEFAULT 1,
+    created_by bigint,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_by bigint,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     deleted boolean DEFAULT false
 );

@@ -20,3 +20,25 @@ html.dark {
 .VPNavBarMenuGroup.active {
   border-bottom-color: var(--vp-c-brand-1);
 }
+
+html:not(.docs-is-admin) .VPNavBarMenu a[href^='/guide/ops/'],
+html:not(.docs-is-admin) .VPNavBarMenu a[href^='/guide/api/'],
+html:not(.docs-is-admin) .VPNavBarMenu a[href^='/docs/guide/ops/'],
+html:not(.docs-is-admin) .VPNavBarMenu a[href^='/docs/guide/api/'],
+html:not(.docs-is-admin) .VPNavBarMenuGroup a[href^='/guide/ops/'],
+html:not(.docs-is-admin) .VPNavBarMenuGroup a[href^='/guide/api/'],
+html:not(.docs-is-admin) .VPNavBarMenuGroup a[href^='/docs/guide/ops/'],
+html:not(.docs-is-admin) .VPNavBarMenuGroup a[href^='/docs/guide/api/'],
+html:not(.docs-is-admin) .VPHomeHero .actions a[href^='/guide/ops/'],
+html:not(.docs-is-admin) .VPHomeHero .actions a[href^='/guide/api/'],
+html:not(.docs-is-admin) .VPHomeHero .actions a[href^='/docs/guide/ops/'],
+html:not(.docs-is-admin) .VPHomeHero .actions a[href^='/docs/guide/api/'],
+html:not(.docs-is-admin) .VPHomeFeatures a[href^='/guide/ops/'],
+html:not(.docs-is-admin) .VPHomeFeatures a[href^='/guide/api/'] {
+  display: none !important;
+}
+
+html:not(.docs-is-admin) .VPHomeFeatures a[href^='/docs/guide/ops/'],
+html:not(.docs-is-admin) .VPHomeFeatures a[href^='/docs/guide/api/'] {
+  display: none !important;
+}

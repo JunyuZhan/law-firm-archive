@@ -1,10 +1,18 @@
 FROM node:22-slim AS builder
 
+# 构建参数（从 docker-compose 传入）
+ARG DOCS_USERNAME=admin
+ARG DOCS_PASSWORD=lawfirm@2026
+
 # --max-old-space-size
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 ENV NODE_OPTIONS=--max-old-space-size=8192
 ENV TZ=Asia/Shanghai
+
+# 文档站点构建时的环境变量
+ENV VITE_DOCS_USERNAME=$DOCS_USERNAME
+ENV VITE_DOCS_PASSWORD=$DOCS_PASSWORD
 
 # 安装 git（文档构建需要 git changelog 插件）
 RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*

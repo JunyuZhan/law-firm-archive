@@ -6,9 +6,11 @@ import type {
 } from '#/api/archive/borrow';
 import type { ArchiveDTO } from '#/api/archive/types';
 
-import { onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 
 import { Page } from '@vben/common-ui';
+
+import { useResponsive } from '#/hooks/useResponsive';
 
 import {
   Button,
@@ -41,6 +43,9 @@ import {
 } from '#/api/archive/borrow';
 
 defineOptions({ name: 'ArchiveBorrow' });
+
+// 响应式布局
+const { isMobile } = useResponsive();
 
 // 状态
 const loading = ref(false);
@@ -77,38 +82,47 @@ const returnFormData = reactive<ReturnArchiveCommand & { returnDate?: string }>(
   },
 );
 
-// 表格列
-const columns = [
-  { title: '借阅编号', dataIndex: 'borrowNo', key: 'borrowNo', width: 130 },
-  {
-    title: '档案名称',
-    dataIndex: 'archiveName',
-    key: 'archiveName',
-    width: 200,
-  },
-  { title: '档案编号', dataIndex: 'archiveNo', key: 'archiveNo', width: 130 },
-  {
-    title: '借阅人',
-    dataIndex: 'borrowerName',
-    key: 'borrowerName',
-    width: 100,
-  },
-  { title: '借阅日期', dataIndex: 'borrowDate', key: 'borrowDate', width: 120 },
-  {
-    title: '预计归还',
-    dataIndex: 'expectedReturnDate',
-    key: 'expectedReturnDate',
-    width: 120,
-  },
-  {
-    title: '实际归还',
-    dataIndex: 'actualReturnDate',
-    key: 'actualReturnDate',
-    width: 120,
-  },
-  { title: '状态', dataIndex: 'statusName', key: 'statusName', width: 100 },
-  { title: '操作', key: 'action', width: 200, fixed: 'right' as const },
-];
+// 表格列（响应式）
+const columns = computed(() => {
+  const baseColumns = [
+    { title: '借阅编号', dataIndex: 'borrowNo', key: 'borrowNo', width: 130 },
+    {
+      title: '档案名称',
+      dataIndex: 'archiveName',
+      key: 'archiveName',
+      width: isMobile.value ? 120 : 200,
+      mobileShow: true,
+    },
+    { title: '档案编号', dataIndex: 'archiveNo', key: 'archiveNo', width: 130 },
+    {
+      title: '借阅人',
+      dataIndex: 'borrowerName',
+      key: 'borrowerName',
+      width: 100,
+      mobileShow: true,
+    },
+    { title: '借阅日期', dataIndex: 'borrowDate', key: 'borrowDate', width: 120 },
+    {
+      title: '预计归还',
+      dataIndex: 'expectedReturnDate',
+      key: 'expectedReturnDate',
+      width: 120,
+    },
+    {
+      title: '实际归还',
+      dataIndex: 'actualReturnDate',
+      key: 'actualReturnDate',
+      width: 120,
+    },
+    { title: '状态', dataIndex: 'statusName', key: 'statusName', width: 100, mobileShow: true },
+    { title: '操作', key: 'action', width: isMobile.value ? 100 : 200, fixed: 'right' as const, mobileShow: true },
+  ];
+  
+  if (isMobile.value) {
+    return baseColumns.filter(col => col.mobileShow === true);
+  }
+  return baseColumns;
+});
 
 // 加载数据
 async function fetchData() {

@@ -9,6 +9,8 @@ import { computed, onMounted, reactive, ref } from 'vue';
 
 import { Page } from '@vben/common-ui';
 
+import { useResponsive } from '#/hooks/useResponsive';
+
 import {
   Button,
   Card,
@@ -34,6 +36,9 @@ import { UserTreeSelect } from '#/components/UserTreeSelect';
 
 defineOptions({ name: 'SystemDept' });
 
+// 响应式布局
+const { isMobile } = useResponsive();
+
 // ==================== 状态定义 ====================
 
 const loading = ref(false);
@@ -53,14 +58,21 @@ const formData = reactive<Partial<CreateDepartmentCommand> & { id?: number }>({
 
 // ==================== 常量配置 ====================
 
-// 表格列
-const columns = [
-  { title: '部门名称', dataIndex: 'name', key: 'name', width: 200 },
-  { title: '负责人', dataIndex: 'leaderName', key: 'leaderName', width: 120 },
-  { title: '排序', dataIndex: 'sortOrder', key: 'sortOrder', width: 80 },
-  { title: '创建时间', dataIndex: 'createdAt', key: 'createdAt', width: 160 },
-  { title: '操作', key: 'action', width: 220 },
-];
+// 表格列（响应式）
+const columns = computed(() => {
+  const baseColumns = [
+    { title: '部门名称', dataIndex: 'name', key: 'name', width: isMobile.value ? 150 : 200, mobileShow: true },
+    { title: '负责人', dataIndex: 'leaderName', key: 'leaderName', width: 120, mobileShow: true },
+    { title: '排序', dataIndex: 'sortOrder', key: 'sortOrder', width: 80 },
+    { title: '创建时间', dataIndex: 'createdAt', key: 'createdAt', width: 160 },
+    { title: '操作', key: 'action', width: isMobile.value ? 120 : 220, mobileShow: true },
+  ];
+  
+  if (isMobile.value) {
+    return baseColumns.filter(col => col.mobileShow === true);
+  }
+  return baseColumns;
+});
 
 // ==================== 数据加载 ====================
 
@@ -133,27 +145,19 @@ async function handleSave() {
 }
 
 // 删除部门
-function handleDelete(record: DepartmentDTO) {
+async function handleDelete(record: DepartmentDTO) {
   if (record.children && record.children.length > 0) {
     message.warning('请先删除子部门');
     return;
   }
-  Modal.confirm({
-    title: '确认删除',
-    content: `确定要删除部门 "${record.name}" 吗？`,
-    okText: '确认',
-    cancelText: '取消',
-    onOk: async () => {
-      try {
-        await deleteDepartment(record.id);
-        message.success('删除成功');
-        fetchData();
-      } catch (error: unknown) {
-        const err = error as { message?: string };
-        message.error(err.message || '删除失败');
-      }
-    },
-  });
+  try {
+    await deleteDepartment(record.id);
+    message.success('删除成功');
+    fetchData();
+  } catch (error: unknown) {
+    const err = error as { message?: string };
+    message.error(err.message || '删除失败');
+  }
 }
 
 // ==================== 辅助方法 ====================
@@ -244,7 +248,8 @@ onMounted(() => {
     <Modal
       v-model:open="modalVisible"
       :title="modalTitle"
-      width="600px"
+      :width="isMobile ? '100%' : '600px'"
+      :centered="isMobile"
       @ok="handleSave"
     >
       <Form

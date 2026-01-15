@@ -43,6 +43,7 @@ import com.lawfirm.domain.system.entity.User;
 import com.lawfirm.domain.system.entity.Department;
 import com.lawfirm.domain.system.repository.UserRepository;
 import com.lawfirm.domain.system.repository.DepartmentRepository;
+import com.lawfirm.application.system.service.CauseOfActionService;
 import com.lawfirm.application.system.service.SysConfigAppService;
 import com.lawfirm.infrastructure.persistence.mapper.ContractMapper;
 import com.lawfirm.infrastructure.persistence.mapper.UserMapper;
@@ -91,6 +92,7 @@ public class ContractAppService {
     private final ApplicationEventPublisher eventPublisher;
     private final ContractNumberGenerator contractNumberGenerator;
     private final SysConfigAppService sysConfigAppService;
+    private final CauseOfActionService causeOfActionService;
 
     /**
      * 分页查询合同
@@ -2065,6 +2067,79 @@ public class ContractAppService {
             }
         }
         
+        // ========== 补充客户详细信息 ==========
+        if (contract.getClientId() != null) {
+            try {
+                Client client = clientRepository.getById(contract.getClientId());
+                if (client != null) {
+                    // 身份证号（个人客户）
+                    variables.put("clientIdNumber", client.getIdCard() != null ? client.getIdCard() : "");
+                    // 统一社会信用代码（企业客户）
+                    variables.put("creditCode", client.getCreditCode() != null ? client.getCreditCode() : "");
+                    // 邮箱
+                    variables.put("clientEmail", client.getContactEmail() != null ? client.getContactEmail() : "");
+                    // 法定代表人
+                    variables.put("legalRepresentative", client.getLegalRepresentative() != null ? client.getLegalRepresentative() : "");
+                }
+            } catch (Exception e) {
+                log.warn("获取客户详细信息失败", e);
+            }
+        }
+        
+        // ========== 律所负责人（添加别名）==========
+        String firmLegalPerson = variables.get("firmLegalRep");
+        if (firmLegalPerson != null) {
+            variables.put("firmLegalPerson", firmLegalPerson);
+        }
+        
+        // ========== 律师执业证号 ==========
+        if (contract.getSignerId() != null) {
+            try {
+                User user = userRepository.getById(contract.getSignerId());
+                if (user != null && user.getLawyerLicenseNo() != null) {
+                    variables.put("lawyerLicenseNo", user.getLawyerLicenseNo());
+                }
+            } catch (Exception e) {
+                log.warn("获取律师执业证号失败", e);
+            }
+        }
+        
+        // ========== 合同名称 ==========
+        if (contract.getName() != null) {
+            variables.put("contractName", contract.getName());
+        }
+        
+        // ========== 案件类型名称 ==========
+        if (contract.getCaseType() != null) {
+            variables.put("caseType", contract.getCaseType());
+        }
+        
+        // ========== 案情摘要 ==========
+        if (contract.getCaseSummary() != null) {
+            variables.put("caseSummary", contract.getCaseSummary());
+        }
+        
+        // ========== 收费方式名称 ==========
+        if (contract.getFeeType() != null) {
+            String feeTypeName = getFeeTypeName(contract.getFeeType());
+            variables.put("feeType", feeTypeName);
+            variables.put("feeTypeName", feeTypeName);
+        }
+        
+        // ========== 风险代理和预支差旅费 ==========
+        if (contract.getRiskRatio() != null) {
+            variables.put("riskRatio", contract.getRiskRatio().toString() + "%");
+        }
+        if (contract.getAdvanceTravelFee() != null) {
+            variables.put("advanceTravelFee", contract.getAdvanceTravelFee().toString());
+            variables.put("advanceTravelFeeFormatted", com.lawfirm.common.util.MoneyUtils.formatWithComma(contract.getAdvanceTravelFee()));
+        }
+        
+        // ========== 当前日期和年份 ==========
+        java.time.LocalDate today = java.time.LocalDate.now();
+        variables.put("currentYear", String.valueOf(today.getYear()));
+        variables.put("currentDate", today.format(DateTimeFormatter.ofPattern("yyyy年MM月dd日")));
+        
         // 执行变量替换
         return replaceVariables(templateContent, variables);
     }
@@ -2175,8 +2250,8 @@ public class ContractAppService {
         printDTO.setCaseType(contract.getCaseType());
         printDTO.setCaseTypeName(MatterConstants.getCaseTypeName(contract.getCaseType()));
         printDTO.setCauseOfAction(contract.getCauseOfAction());
-        // 案由名称直接使用案由代码（前端传入的可能已经是名称）
-        printDTO.setCauseOfActionName(contract.getCauseOfAction());
+        // 案由名称转换
+        printDTO.setCauseOfActionName(getCauseOfActionName(contract.getCauseOfAction(), contract.getCaseType()));
         printDTO.setTrialStage(contract.getTrialStage());
         printDTO.setTrialStageName(getTrialStageName(contract.getTrialStage()));
         printDTO.setOpposingParty(contract.getOpposingParty());
@@ -2265,23 +2340,45 @@ public class ContractAppService {
             }).collect(Collectors.toList()));
         }
         
-        // 获取模板内容（如果有模板ID）
-        try {
-            // 默认使用模板1，或者从合同中获取模板ID
-            Long templateId = 1L; // 默认模板
-            ContractTemplate template = contractTemplateRepository.findById(templateId);
-            if (template != null && StringUtils.hasText(template.getContent())) {
-                ContractDTO tempDto = getContractById(contractId);
-                CreateContractCommand tempCommand = new CreateContractCommand();
-                tempCommand.setClientId(contract.getClientId());
-                String content = processTemplateVariables(template.getContent(), tempDto, tempCommand);
-                printDTO.setContractContent(content);
+        // 获取合同内容
+        // 优先使用已经替换好变量的内容（存储在remark字段中）
+        if (StringUtils.hasText(contract.getRemark())) {
+            printDTO.setContractContent(contract.getRemark());
+        } else {
+            // 如果remark为空，则尝试从模板重新生成（兼容旧数据）
+            try {
+                Long templateId = 1L; // 默认模板
+                ContractTemplate template = contractTemplateRepository.findById(templateId);
+                if (template != null && StringUtils.hasText(template.getContent())) {
+                    ContractDTO tempDto = getContractById(contractId);
+                    CreateContractCommand tempCommand = new CreateContractCommand();
+                    tempCommand.setClientId(contract.getClientId());
+                    String content = processTemplateVariables(template.getContent(), tempDto, tempCommand);
+                    printDTO.setContractContent(content);
+                }
+            } catch (Exception e) {
+                log.warn("获取模板内容失败", e);
             }
-        } catch (Exception e) {
-            log.warn("获取模板内容失败", e);
         }
         
         return printDTO;
+    }
+
+    /**
+     * 获取案由名称
+     */
+    private String getCauseOfActionName(String causeOfAction, String caseType) {
+        if (causeOfAction == null || causeOfAction.isEmpty()) {
+            return "";
+        }
+        
+        String causeType = switch (caseType != null ? caseType : "") {
+            case "CRIMINAL" -> CauseOfActionService.TYPE_CRIMINAL;
+            case "ADMINISTRATIVE" -> CauseOfActionService.TYPE_ADMIN;
+            default -> CauseOfActionService.TYPE_CIVIL;
+        };
+        
+        return causeOfActionService.getCauseName(causeOfAction, causeType);
     }
 }
 
