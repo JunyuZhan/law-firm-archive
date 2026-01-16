@@ -3,9 +3,9 @@
  * 手动实现的 Service Worker，避免 vite-plugin-pwa 与 Vite 7 的兼容性问题
  */
 
-const CACHE_NAME = 'law-firm-cache-v1';
-const STATIC_CACHE_NAME = 'law-firm-static-v1';
-const API_CACHE_NAME = 'law-firm-api-v1';
+const CACHE_NAME = 'law-firm-cache-v2';
+const STATIC_CACHE_NAME = 'law-firm-static-v2';
+const API_CACHE_NAME = 'law-firm-api-v2';
 
 // 预缓存的核心资源
 const PRECACHE_URLS = [
