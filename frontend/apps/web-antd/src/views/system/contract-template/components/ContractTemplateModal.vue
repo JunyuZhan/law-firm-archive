@@ -16,6 +16,8 @@ import {
   Menu,
   MenuItem,
   message,
+  Radio,
+  RadioGroup,
   Row,
   Select,
   Space,
@@ -33,6 +35,7 @@ import {
   feeTypeOptions,
   templateList,
 } from './contract-templates';
+import StructuredTemplateEditor from './StructuredTemplateEditor.vue';
 
 const emit = defineEmits<{
   success: [];
@@ -186,6 +189,9 @@ const formData = reactive({
 
 // 标准条款列表
 const clausesList = ref<ClauseItem[]>([]);
+
+// 编辑模式：structured（结构化，推荐）或 freeform（自由编辑）
+const editMode = ref<'structured' | 'freeform'>('structured');
 
 const [Modal, modalApi] = useVbenModal({
   footer: false,
@@ -364,49 +370,75 @@ defineExpose({
 
     <Tabs v-model:active-key="activeTab">
       <TabPane key="content" tab="合同正文">
-        <Alert
-          message="提示：使用工具栏插入变量，变量会在生成实际合同时自动替换为真实数据。"
-          type="info"
-          show-icon
-          style="margin-bottom: 12px"
-        />
-
-        <div
-          style="
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            align-items: center;
-            margin-bottom: 12px;
-          "
-        >
-          <span style="font-size: 13px; color: #666">快速加载模板：</span>
-          <Dropdown>
-            <Button>选择模板 ▼</Button>
-            <template #overlay>
-              <Menu>
-                <MenuItem
-                  v-for="tpl in templateList"
-                  :key="tpl.key"
-                  @click="loadDefaultTemplate(tpl.key)"
-                >
-                  {{ tpl.name }}
-                </MenuItem>
-              </Menu>
-            </template>
-          </Dropdown>
-          <span style="margin-left: 8px; font-size: 12px; color: #999">
-            选择后将加载标准模板内容，可在此基础上修改
-          </span>
+        <!-- 编辑模式选择 -->
+        <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 16px; padding: 12px; background: #f0f5ff; border-radius: 6px;">
+          <span style="font-weight: 500;">编辑模式：</span>
+          <RadioGroup v-model:value="editMode">
+            <Radio value="structured">
+              <span style="font-weight: 500; color: #1890ff;">📋 结构化编辑（推荐）</span>
+              <span style="font-size: 12px; color: #666; margin-left: 4px;">按区块填写，打印自动排版</span>
+            </Radio>
+            <Radio value="freeform">
+              <span>📝 自由编辑</span>
+              <span style="font-size: 12px; color: #666; margin-left: 4px;">富文本编辑器</span>
+            </Radio>
+          </RadioGroup>
         </div>
 
-        <RichTextEditor
-          v-model="formData.content"
-          height="500px"
-          placeholder="请输入合同正文内容..."
-          :variables="contractVariables"
-          :show-variables="true"
-        />
+        <!-- 结构化编辑模式 -->
+        <div v-if="editMode === 'structured'">
+          <StructuredTemplateEditor
+            v-model="formData.content"
+            :variables="contractVariables"
+          />
+        </div>
+
+        <!-- 自由编辑模式 -->
+        <div v-else>
+          <Alert
+            message="提示：使用工具栏插入变量，变量会在生成实际合同时自动替换为真实数据。"
+            type="info"
+            show-icon
+            style="margin-bottom: 12px"
+          />
+
+          <div
+            style="
+              display: flex;
+              flex-wrap: wrap;
+              gap: 8px;
+              align-items: center;
+              margin-bottom: 12px;
+            "
+          >
+            <span style="font-size: 13px; color: #666">快速加载模板：</span>
+            <Dropdown>
+              <Button>选择模板 ▼</Button>
+              <template #overlay>
+                <Menu>
+                  <MenuItem
+                    v-for="tpl in templateList"
+                    :key="tpl.key"
+                    @click="loadDefaultTemplate(tpl.key)"
+                  >
+                    {{ tpl.name }}
+                  </MenuItem>
+                </Menu>
+              </template>
+            </Dropdown>
+            <span style="margin-left: 8px; font-size: 12px; color: #999">
+              选择后将加载标准模板内容，可在此基础上修改
+            </span>
+          </div>
+
+          <RichTextEditor
+            v-model="formData.content"
+            height="500px"
+            placeholder="请输入合同正文内容..."
+            :variables="contractVariables"
+            :show-variables="true"
+          />
+        </div>
       </TabPane>
 
       <TabPane key="clauses" tab="标准条款">

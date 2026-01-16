@@ -8,6 +8,7 @@ import { Button, message, Space, Tag } from 'ant-design-vue';
 import { getConfigValue } from '#/api/system';
 
 import { createContractSampleData } from '../constants/sample-data';
+import { isStructuredContent, formatStructuredForPrint, formatPlainTextForPrint } from '../utils/print-formatter';
 
 interface ContractTemplateDTO {
   id: number;
@@ -65,27 +66,42 @@ const [Modal, modalApi] = useVbenModal({
 // 打开预览
 async function open(record: ContractTemplateDTO) {
   previewTitle.value = record.name;
-  let content = record.content || '';
+  const content = record.content || '';
 
   // 确保律所信息已加载
   if (!sampleData.value.firmAddress && !sampleData.value.firmPhone) {
     await loadFirmInfo();
   }
 
-  // 替换变量为示例值
-  Object.entries(sampleData.value).forEach(([key, value]) => {
-    const displayValue = value || `[${key}]`;
-    content = content.replaceAll(
-      new RegExp(String.raw`\$\{${key}\}`, 'g'),
-      `<span class="preview-var">${displayValue}</span>`,
-    );
-    content = content.replaceAll(
-      new RegExp(`<span[^>]*data-variable="${key}"[^>]*>[^<]*</span>`, 'g'),
-      `<span class="preview-var">${displayValue}</span>`,
-    );
-  });
+  // 检查是否为结构化内容
+  if (isStructuredContent(content)) {
+    // 使用新的格式化函数处理结构化内容
+    let formatted = formatStructuredForPrint(content, sampleData.value);
+    // 高亮变量值
+    Object.entries(sampleData.value).forEach(([key, value]) => {
+      if (value) {
+        formatted = formatted.replaceAll(value, `<span class="preview-var">${value}</span>`);
+      }
+    });
+    previewContent.value = formatted;
+  } else {
+    // 旧格式：使用智能格式化或直接显示
+    let formatted = formatPlainTextForPrint(content, {});
+    // 替换变量为示例值并高亮
+    Object.entries(sampleData.value).forEach(([key, value]) => {
+      const displayValue = value || `[${key}]`;
+      formatted = formatted.replaceAll(
+        new RegExp(String.raw`\$\{${key}\}`, 'g'),
+        `<span class="preview-var">${displayValue}</span>`,
+      );
+      formatted = formatted.replaceAll(
+        new RegExp(`<span[^>]*data-variable="${key}"[^>]*>[^<]*</span>`, 'g'),
+        `<span class="preview-var">${displayValue}</span>`,
+      );
+    });
+    previewContent.value = formatted;
+  }
 
-  previewContent.value = content;
   modalApi.setState({ title: `预览 - ${record.name}` });
   modalApi.open();
 }
