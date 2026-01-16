@@ -20,6 +20,13 @@
     <!-- 由 vite 注入 VITE_APP_TITLE 变量，在 .env 文件内配置 -->
     <title><%= VITE_APP_TITLE %></title>
     <link rel="icon" href="/favicon.ico" />
+    <!-- PWA 支持 -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#1890ff" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="威迪律所" />
+    <link rel="apple-touch-icon" href="/pwa-192x192.png" />
     <!-- 如需统计，请替换为项目自己的统计代码 -->
     <!--
     <script>

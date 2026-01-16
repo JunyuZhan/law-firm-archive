@@ -28,4 +28,45 @@ async function initApplication() {
   unmountGlobalLoading();
 }
 
+// 注册 PWA Service Worker（使用原生 API，避免 Vite 7 兼容性问题）
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker
+      .register('/sw.js')
+      .then((registration) => {
+        console.log('[PWA] Service Worker 注册成功:', registration.scope);
+
+        // 监听更新
+        registration.addEventListener('updatefound', () => {
+          const newWorker = registration.installing;
+          if (newWorker) {
+            newWorker.addEventListener('statechange', () => {
+              if (
+                newWorker.state === 'installed' &&
+                navigator.serviceWorker.controller
+              ) {
+                // 新版本已安装，提示用户刷新
+                if (confirm('发现新版本，是否立即更新？')) {
+                  newWorker.postMessage({ type: 'SKIP_WAITING' });
+                  window.location.reload();
+                }
+              }
+            });
+          }
+        });
+
+        // 定期检查更新（每小时）
+        setInterval(
+          () => {
+            registration.update();
+          },
+          60 * 60 * 1000,
+        );
+      })
+      .catch((error) => {
+        console.warn('[PWA] Service Worker 注册失败:', error);
+      });
+  });
+}
+
 initApplication();

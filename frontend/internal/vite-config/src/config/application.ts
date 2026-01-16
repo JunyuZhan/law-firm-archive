@@ -46,8 +46,10 @@ function defineApplicationConfig(userConfigPromise?: DefineApplicationOptions) {
       printInfoMap: {
         'Vben Admin Docs': 'https://doc.vben.pro',
       },
-      pwa: true,
+      pwa: false, // 禁用 vite-plugin-pwa，改用手动 PWA 实现（解决 Vite 7 + jiti 兼容性问题）
       pwaOptions: getDefaultPwaOptions(appTitle),
+      pwaManifest: true, // 启用动态 manifest 生成（从环境变量加载应用名称）
+      pwaManifestOptions: { name: appTitle },
       vxeTableLazyImport: true,
       ...envConfig,
       ...application,

@@ -3,6 +3,8 @@ import type { ConfigEnv, PluginOption, UserConfig } from 'vite';
 import type { PluginOptions } from 'vite-plugin-dts';
 import type { Options as PwaPluginOptions } from 'vite-plugin-pwa';
 
+import type { PwaManifestOptions } from './plugins/pwa-manifest';
+
 /**
  * ImportMap 配置接口
  * @description 用于配置模块导入映射，支持自定义导入路径和范围
@@ -270,6 +272,16 @@ interface ApplicationPluginOptions extends CommonPluginOptions {
    */
   pwaOptions?: Partial<PwaPluginOptions>;
   /**
+   * 是否开启 PWA Manifest 动态生成（从环境变量加载应用名称）
+   * @default false
+   */
+  pwaManifest?: boolean;
+  /**
+   * PWA Manifest 插件配置
+   * @description name 字段从环境变量 VITE_APP_TITLE 动态加载
+   */
+  pwaManifestOptions?: PwaManifestOptions;
+  /**
    * 是否开启 VXE Table 懒加载
    * @default false
    */
@@ -340,4 +352,5 @@ export type {
   LibraryPluginOptions,
   NitroMockPluginOptions,
   PrintPluginOptions,
+  PwaManifestOptions,
 };

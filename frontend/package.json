@@ -88,9 +88,11 @@
     "typescript": "catalog:",
     "unbuild": "catalog:",
     "vite": "catalog:",
+    "vite-plugin-pwa": "^1.2.0",
     "vitest": "catalog:",
     "vue": "catalog:",
-    "vue-tsc": "catalog:"
+    "vue-tsc": "catalog:",
+    "workbox-window": "^7.4.0"
   },
   "engines": {
     "node": ">=20.12.0",

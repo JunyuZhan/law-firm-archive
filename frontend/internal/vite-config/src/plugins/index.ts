@@ -25,6 +25,7 @@ import { viteMetadataPlugin } from './inject-metadata';
 import { viteLicensePlugin } from './license';
 import { viteNitroMockPlugin } from './nitro-mock';
 import { vitePrintPlugin } from './print';
+import { vitePwaManifestPlugin } from './pwa-manifest';
 import { viteVxeTableImportsPlugin } from './vxe-table';
 
 /**
@@ -110,6 +111,8 @@ async function loadApplicationPlugins(
     printInfoMap,
     pwa,
     pwaOptions,
+    pwaManifest,
+    pwaManifestOptions,
     vxeTableLazyImport,
     ...commonOptions
   } = options;
@@ -206,6 +209,10 @@ async function loadApplicationPlugins(
       plugins: async () => [
         await viteExtraAppConfigPlugin({ isBuild: true, root: process.cwd() }),
       ],
+    },
+    {
+      condition: isBuild && pwaManifest && pwaManifestOptions,
+      plugins: () => [vitePwaManifestPlugin(pwaManifestOptions!)],
     },
     {
       condition: archiver,
