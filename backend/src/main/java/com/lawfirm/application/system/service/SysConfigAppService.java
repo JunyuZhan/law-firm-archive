@@ -38,6 +38,16 @@ public class SysConfigAppService {
     }
 
     /**
+     * 根据前缀获取配置
+     */
+    public List<SysConfigDTO> listConfigsByPrefix(String keyPrefix) {
+        return configMapper.selectAllConfigs().stream()
+                .filter(c -> c.getConfigKey() != null && c.getConfigKey().startsWith(keyPrefix))
+                .map(this::toDTO)
+                .collect(Collectors.toList());
+    }
+
+    /**
      * 根据键获取配置值（带缓存）
      */
     public String getConfigValue(String key) {

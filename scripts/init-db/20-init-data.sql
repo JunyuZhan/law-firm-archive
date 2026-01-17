@@ -279,6 +279,30 @@ INSERT INTO public.sys_menu VALUES (200, 0, '报表中心', '/workbench/report',
 INSERT INTO public.sys_menu VALUES (23, 2, '部门管理', '/system/dept', 'system/dept/index', NULL, 'ApartmentOutlined', 'MENU', 'sys:dept:list', 3, true, 'ENABLED', false, true, '2026-01-04 16:14:15.896441', '2026-01-06 11:40:43.86229', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (24, 2, '菜单管理', '/system/menu', 'system/menu/index', NULL, 'MenuOutlined', 'MENU', 'sys:menu:list', 4, true, 'ENABLED', false, true, '2026-01-04 16:14:15.896441', '2026-01-06 11:40:43.86229', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (30, 2, '字典管理', '/system/dict', 'system/dict/index', NULL, 'BookOutlined', 'MENU', 'sys:dict:list', 5, true, 'ENABLED', false, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
+-- 案由管理已合并到系统配置模块，删除独立菜单（160）
+-- 但保留按钮权限菜单（161, 162, 163），用于权限控制
+-- 按钮权限的 parent_id 改为系统配置菜单（25）
+INSERT INTO public.sys_menu VALUES (161, 25, '创建案由', NULL, NULL, NULL, NULL, 'BUTTON', 'system:cause:create', 1, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL, NULL, false) 
+ON CONFLICT (id) DO UPDATE SET 
+  name = EXCLUDED.name,
+  parent_id = 25,
+  permission = EXCLUDED.permission,
+  status = 'ENABLED',
+  updated_at = CURRENT_TIMESTAMP;
+INSERT INTO public.sys_menu VALUES (162, 25, '更新案由', NULL, NULL, NULL, NULL, 'BUTTON', 'system:cause:update', 2, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL, NULL, false) 
+ON CONFLICT (id) DO UPDATE SET 
+  name = EXCLUDED.name,
+  parent_id = 25,
+  permission = EXCLUDED.permission,
+  status = 'ENABLED',
+  updated_at = CURRENT_TIMESTAMP;
+INSERT INTO public.sys_menu VALUES (163, 25, '删除案由', NULL, NULL, NULL, NULL, 'BUTTON', 'system:cause:delete', 3, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL, NULL, false) 
+ON CONFLICT (id) DO UPDATE SET 
+  name = EXCLUDED.name,
+  parent_id = 25,
+  permission = EXCLUDED.permission,
+  status = 'ENABLED',
+  updated_at = CURRENT_TIMESTAMP;
 INSERT INTO public.sys_menu VALUES (198, 2, '权限矩阵', '/system/permission-matrix', 'system/permission-matrix/index', NULL, 'TableOutlined', 'MENU', 'sys:role:list', 6, true, 'ENABLED', false, true, '2026-01-06 11:40:43.855721', '2026-01-06 11:40:43.855721', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (156, 2, '期限删除', NULL, NULL, NULL, NULL, 'BUTTON', 'deadline:delete', 15, true, 'ENABLED', false, true, '2026-01-06 04:02:22.67069', '2026-01-06 11:40:43.86229', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (703, 207, '查询交接', NULL, NULL, NULL, NULL, 'BUTTON', 'sys:handover:list', 0, true, 'ENABLED', false, true, '2026-01-06 12:36:38.137972', '2026-01-06 12:36:38.137972', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
@@ -1287,6 +1311,23 @@ SELECT 6, m.id FROM public.sys_menu m WHERE m.id IN (110, 1817)
 INSERT INTO public.sys_role_menu (role_id, menu_id)
 SELECT 6, m.id FROM public.sys_menu m WHERE m.id IN (331, 332, 333, 334, 335, 336)
   AND NOT EXISTS (SELECT 1 FROM public.sys_role_menu rm WHERE rm.role_id = 6 AND rm.menu_id = m.id);
+
+-- =====================================================
+-- 案由管理权限分配（案由管理已合并到系统配置模块）
+-- =====================================================
+-- 管理员(1)和主任(2)：案由管理完全权限（查看、创建、更新、删除）
+-- 注意：案由管理现在作为系统配置的一个tab，权限通过系统配置菜单和按钮权限控制
+-- 按钮权限仍然需要分配（161, 162, 163），但不再需要菜单权限（160）
+INSERT INTO public.sys_role_menu (role_id, menu_id)
+SELECT 1, m.id FROM public.sys_menu m WHERE m.id IN (161, 162, 163)
+  AND NOT EXISTS (SELECT 1 FROM public.sys_role_menu rm WHERE rm.role_id = 1 AND rm.menu_id = m.id);
+
+INSERT INTO public.sys_role_menu (role_id, menu_id)
+SELECT 2, m.id FROM public.sys_menu m WHERE m.id IN (161, 162, 163)
+  AND NOT EXISTS (SELECT 1 FROM public.sys_role_menu rm WHERE rm.role_id = 2 AND rm.menu_id = m.id);
+
+-- 其他角色（团队负责人、律师、财务、行政、实习律师）：只有查看权限（通过系统配置菜单）
+-- 不再需要单独分配案由管理菜单权限，因为已经包含在系统配置菜单中
 
 -- DIRECTOR (主任) 角色：期限管理按钮权限
 INSERT INTO public.sys_role_menu (role_id, menu_id)

@@ -95,6 +95,7 @@ import {
   needsCauseOfAction,
   preloadAllCauses,
 } from '#/composables/useCauseOfAction';
+import { getStageDictCode } from '#/composables/useStageDict';
 
 defineOptions({ name: 'MatterContractList' });
 
@@ -517,23 +518,13 @@ const feeTypeOptions = [
 const trialStageOptions = ref<{ label: string; value: string }[]>([]);
 const trialStageLoading = ref(false);
 
-// 案件类型与字典编码的映射
-const caseTypeToDictCode: Record<string, string> = {
-  CIVIL: 'litigation_stage_civil',
-  CRIMINAL: 'litigation_stage_criminal',
-  ADMINISTRATIVE: 'litigation_stage_administrative',
-  LABOR_ARBITRATION: 'litigation_stage_labor_arbitration',
-  COMMERCIAL_ARBITRATION: 'litigation_stage_commercial_arbitration',
-  ENFORCEMENT: 'litigation_stage_enforcement',
-};
-
-// 加载审理阶段选项
+// 加载审理阶段选项（使用公共映射）
 async function loadTrialStageOptions(caseType: string | undefined) {
   if (!caseType) {
     trialStageOptions.value = [];
     return;
   }
-  const dictCode = caseTypeToDictCode[caseType] || 'litigation_stage_default';
+  const dictCode = getStageDictCode(caseType);
   trialStageLoading.value = true;
   try {
     const items = await getDictDataByCode(dictCode);
@@ -1210,6 +1201,12 @@ function handleTemplateChange(value: any) {
         break;
       case 'ADMINISTRATIVE_PROXY':
         formData.caseType = 'ADMINISTRATIVE';
+        break;
+      case 'STATE_COMP_ADMIN':
+        formData.caseType = 'STATE_COMP_ADMIN';
+        break;
+      case 'STATE_COMP_CRIMINAL':
+        formData.caseType = 'STATE_COMP_CRIMINAL';
         break;
       case 'LEGAL_COUNSEL':
         formData.caseType = 'LEGAL_COUNSEL';

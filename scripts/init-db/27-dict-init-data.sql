@@ -792,28 +792,120 @@ VALUES
 (570, 57, '非诉服务', 'NON_LITIGATION', 1, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
 ON CONFLICT (id) DO UPDATE SET label = EXCLUDED.label, value = EXCLUDED.value, sort_order = EXCLUDED.sort_order;
 
+-- ==================== 第十三部分：国家赔偿相关字典 ====================
+
+-- 61. 行政国家赔偿代理阶段
+INSERT INTO sys_dict_type (id, name, code, description, status, is_system, created_at, updated_at, deleted)
+VALUES (61, '行政国家赔偿代理阶段', 'litigation_stage_state_comp_admin', '行政国家赔偿案件的代理阶段', 'ENABLED', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, code = EXCLUDED.code, description = EXCLUDED.description;
+
+INSERT INTO sys_dict_item (id, dict_type_id, label, value, sort_order, status, created_at, updated_at, deleted)
+VALUES 
+(610, 61, '赔偿申请', 'COMPENSATION_APPLICATION', 1, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+(611, 61, '赔偿决定', 'COMPENSATION_DECISION', 2, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+(612, 61, '行政复议', 'ADMIN_RECONSIDERATION', 3, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+(613, 61, '行政赔偿诉讼', 'ADMIN_LITIGATION', 4, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+(614, 61, '一审', 'FIRST_INSTANCE', 5, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+(615, 61, '二审', 'SECOND_INSTANCE', 6, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+(616, 61, '执行', 'ENFORCEMENT', 7, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
+ON CONFLICT (id) DO UPDATE SET label = EXCLUDED.label, value = EXCLUDED.value, sort_order = EXCLUDED.sort_order;
+
+-- 62. 刑事国家赔偿代理阶段
+INSERT INTO sys_dict_type (id, name, code, description, status, is_system, created_at, updated_at, deleted)
+VALUES (62, '刑事国家赔偿代理阶段', 'litigation_stage_state_comp_criminal', '刑事国家赔偿案件的代理阶段', 'ENABLED', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, code = EXCLUDED.code, description = EXCLUDED.description;
+
+INSERT INTO sys_dict_item (id, dict_type_id, label, value, sort_order, status, created_at, updated_at, deleted)
+VALUES 
+(620, 62, '刑事诉讼终结确认', 'CRIMINAL_TERMINATION', 1, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+(621, 62, '赔偿申请', 'COMPENSATION_APPLICATION', 2, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+(622, 62, '赔偿决定', 'COMPENSATION_DECISION', 3, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+(623, 62, '刑事赔偿复议', 'CRIMINAL_REVIEW', 4, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+(624, 62, '赔偿委员会', 'COMPENSATION_COMMITTEE', 5, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+(625, 62, '上级赔偿委员会', 'COMMITTEE_REVIEW', 6, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+(626, 62, '支付赔偿金', 'PAYMENT', 7, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
+ON CONFLICT (id) DO UPDATE SET label = EXCLUDED.label, value = EXCLUDED.value, sort_order = EXCLUDED.sort_order;
+
+-- 63. 赔偿义务机关类型
+INSERT INTO sys_dict_type (id, name, code, description, status, is_system, created_at, updated_at, deleted)
+VALUES (63, '赔偿义务机关类型', 'obligor_org_type', '国家赔偿案件中的赔偿义务机关类型', 'ENABLED', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, code = EXCLUDED.code, description = EXCLUDED.description;
+
+INSERT INTO sys_dict_item (id, dict_type_id, label, value, sort_order, status, created_at, updated_at, deleted)
+VALUES 
+(630, 63, '公安机关', 'PUBLIC_SECURITY', 1, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+(631, 63, '检察机关', 'PROCURATORATE', 2, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+(632, 63, '审判机关', 'COURT', 3, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+(633, 63, '监狱管理机关', 'PRISON', 4, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+(634, 63, '行政机关', 'ADMIN_ORGAN', 5, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+(635, 63, '其他', 'OTHER', 6, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
+ON CONFLICT (id) DO UPDATE SET label = EXCLUDED.label, value = EXCLUDED.value, sort_order = EXCLUDED.sort_order;
+
+-- 64. 致损行为类型
+INSERT INTO sys_dict_type (id, name, code, description, status, is_system, created_at, updated_at, deleted)
+VALUES (64, '致损行为类型', 'damage_cause_type', '国家赔偿案件中的致损行为类型', 'ENABLED', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, code = EXCLUDED.code, description = EXCLUDED.description;
+
+INSERT INTO sys_dict_item (id, dict_type_id, label, value, sort_order, status, created_at, updated_at, deleted)
+VALUES 
+(640, 64, '违法拘留', 'ILLEGAL_DETENTION', 1, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+(641, 64, '违法采取强制措施', 'ILLEGAL_COERCIVE', 2, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+(642, 64, '违法使用武器警械', 'ILLEGAL_WEAPON', 3, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+(643, 64, '违法搜查', 'ILLEGAL_SEARCH', 4, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+(644, 64, '错误判决/错判', 'WRONGFUL_CONVICT', 5, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+(645, 64, '违法查封/扣押/冻结财产', 'ILLEGAL_DETENTION_PROPERTY', 6, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+(646, 64, '违法行政处罚', 'ILLEGAL_ADMIN_PUNISHMENT', 7, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+(647, 64, '其他', 'OTHER', 8, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
+ON CONFLICT (id) DO UPDATE SET label = EXCLUDED.label, value = EXCLUDED.value, sort_order = EXCLUDED.sort_order;
+
+-- 65. 赔偿决定结果
+INSERT INTO sys_dict_type (id, name, code, description, status, is_system, created_at, updated_at, deleted)
+VALUES (65, '赔偿决定结果', 'compensation_decision_result', '国家赔偿案件的决定结果类型', 'ENABLED', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, code = EXCLUDED.code, description = EXCLUDED.description;
+
+INSERT INTO sys_dict_item (id, dict_type_id, label, value, sort_order, status, created_at, updated_at, deleted)
+VALUES 
+(650, 65, '予以赔偿', 'GRANTED', 1, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+(651, 65, '不予赔偿', 'DENIED', 2, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+(652, 65, '部分赔偿', 'PARTIAL_GRANTED', 3, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
+ON CONFLICT (id) DO UPDATE SET label = EXCLUDED.label, value = EXCLUDED.value, sort_order = EXCLUDED.sort_order;
+
+-- 66. 赔偿支付状态
+INSERT INTO sys_dict_type (id, name, code, description, status, is_system, created_at, updated_at, deleted)
+VALUES (66, '赔偿支付状态', 'compensation_payment_status', '国家赔偿金的支付状态', 'ENABLED', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, code = EXCLUDED.code, description = EXCLUDED.description;
+
+INSERT INTO sys_dict_item (id, dict_type_id, label, value, sort_order, status, created_at, updated_at, deleted)
+VALUES 
+(660, 66, '未支付', 'UNPAID', 1, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+(661, 66, '已支付', 'PAID', 2, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+(662, 66, '部分支付', 'PARTIAL_PAID', 3, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
+ON CONFLICT (id) DO UPDATE SET label = EXCLUDED.label, value = EXCLUDED.value, sort_order = EXCLUDED.sort_order;
+
 -- ==================== 更新序列 ====================
 
-SELECT setval('sys_dict_type_id_seq', GREATEST((SELECT MAX(id) FROM sys_dict_type), 60));
-SELECT setval('sys_dict_item_id_seq', GREATEST((SELECT MAX(id) FROM sys_dict_item), 600));
+SELECT setval('sys_dict_type_id_seq', GREATEST((SELECT MAX(id) FROM sys_dict_type), 70));
+SELECT setval('sys_dict_item_id_seq', GREATEST((SELECT MAX(id) FROM sys_dict_item), 700));
 
 -- ============================================
 -- 统计信息
 -- ============================================
--- 字典类型：57 种
--- 字典项：约 230 个
+-- 字典类型：66 种（+9 国家赔偿相关）
+-- 字典项：约 270 个（+40 国家赔偿相关）
 -- 覆盖模块：系统管理、案件管理、客户管理、财务管理、
---           人力资源、文档管理、工时管理、行政管理、知识库、代理阶段
+--           人力资源、文档管理、工时管理、行政管理、知识库、代理阶段、国家赔偿
 -- ============================================
 -- 字典编码与案件类型对照表
 -- ============================================
--- 案件类型         | 字典编码
--- ----------------|-----------------------------------
--- CIVIL           | litigation_stage_civil
--- CRIMINAL        | litigation_stage_criminal
--- ADMINISTRATIVE  | litigation_stage_administrative
--- LABOR_ARBITRATION | litigation_stage_labor_arbitration
--- COMMERCIAL_ARBITRATION | litigation_stage_commercial_arbitration
--- ENFORCEMENT     | litigation_stage_enforcement
--- 其他（非诉）    | litigation_stage_default
+-- 案件类型                 | 字典编码
+-- ------------------------|-----------------------------------
+-- CIVIL                   | litigation_stage_civil
+-- CRIMINAL                | litigation_stage_criminal
+-- ADMINISTRATIVE          | litigation_stage_administrative
+-- LABOR_ARBITRATION       | litigation_stage_labor_arbitration
+-- COMMERCIAL_ARBITRATION  | litigation_stage_commercial_arbitration
+-- ENFORCEMENT             | litigation_stage_enforcement
+-- STATE_COMP_ADMIN        | litigation_stage_state_comp_admin
+-- STATE_COMP_CRIMINAL     | litigation_stage_state_comp_criminal
+-- 其他（非诉）            | litigation_stage_default
 -- ============================================

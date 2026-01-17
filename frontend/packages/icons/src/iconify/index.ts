@@ -45,3 +45,7 @@ export const BookOutlined = createIconifyIcon('ant-design:book-outlined');
 export const FileProtectOutlined = createIconifyIcon(
   'ant-design:file-protect-outlined',
 );
+export const FolderOutlined = createIconifyIcon('ant-design:folder-outlined');
+export const FolderOpenOutlined = createIconifyIcon(
+  'ant-design:folder-open-outlined',
+);

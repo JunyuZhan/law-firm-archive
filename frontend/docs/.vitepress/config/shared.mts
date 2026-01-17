@@ -27,7 +27,7 @@ import { search as zhSearch } from './zh.mts';
 const isDev = process.env.NODE_ENV !== 'production';
 
 export const shared = defineConfig({
-  appearance: 'dark',
+  appearance: true,
   // 开发模式下使用根路径，生产模式下使用 /docs/
   base: isDev ? '/' : '/docs/',
   head: head(),
@@ -130,20 +130,21 @@ export const shared = defineConfig({
       GitChangelog({
         mapAuthors: [
           {
-            mapByNameAliases: ['Vben'],
-            name: 'vben',
-            username: 'anncwb',
-          },
-          {
-            name: 'vince',
-            username: 'vince292007',
-          },
-          {
-            name: 'Li Kui',
-            username: 'likui628',
+            mapByNameAliases: [
+              'Vben',
+              'Vbenjs Team',
+              'vben',
+              'vince',
+              'Li Kui',
+              'anncwb',
+              'vince292007',
+              'likui628',
+            ],
+            name: 'junyuzhan',
+            username: 'junyuzhan',
           },
         ],
-        repoURL: () => 'https://github.com/vbenjs/vue-vben-admin',
+        repoURL: () => 'https://github.com/junyuzhan/law-firm',
       }),
       GitChangelogMarkdownSection(),
       viteArchiverPlugin({ outputDir: '.vitepress' }),
@@ -166,11 +167,16 @@ export const shared = defineConfig({
 
 function head(): HeadConfig[] {
   return [
-    ['meta', { content: 'Vbenjs Team', name: 'author' }],
+    [
+      'script',
+      {},
+      `;(function(){try{var k='vitepress-theme-appearance';if(localStorage.getItem(k)==null){localStorage.setItem(k,'light')}}catch(e){}})();`,
+    ],
+    ['meta', { content: 'junyuzhan', name: 'author' }],
     [
       'meta',
       {
-        content: 'vben, vitejs, vite, shacdn-ui, vue',
+        content: 'law-firm, 律所管理系统, docs, vitepress, vue',
         name: 'keywords',
       },
     ],
@@ -183,7 +189,6 @@ function head(): HeadConfig[] {
         name: 'viewport',
       },
     ],
-    ['meta', { content: 'vben admin docs', name: 'keywords' }],
     ['link', { href: '/favicon.ico', rel: 'icon' }],
     // [
     //   'script',

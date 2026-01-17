@@ -544,13 +544,17 @@ export interface CauseOfActionDTO {
   code: string;
   name: string;
   type: 'CIVIL' | 'CRIMINAL' | 'ADMIN';
+  causeType?: 'CIVIL' | 'CRIMINAL' | 'ADMIN';
   typeName?: string;
+  categoryCode?: string;
+  categoryName?: string;
   parentCode?: string;
   parentName?: string;
   level: number;
   sortOrder?: number;
   description?: string;
-  isLeaf: boolean;
+  isLeaf?: boolean;
+  isActive?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -564,6 +568,9 @@ export interface CauseTreeNodeDTO {
   sortOrder?: number;
   description?: string;
   isLeaf: boolean;
+  categoryCode?: string;
+  categoryName?: string;
+  id?: number;
   children?: CauseTreeNodeDTO[];
 }
 

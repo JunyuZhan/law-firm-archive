@@ -65,6 +65,9 @@ public class MatterConstants {
         CASE_TYPE_NAME_MAP.put("DUE_DILIGENCE", "尽职调查");
         CASE_TYPE_NAME_MAP.put("CONTRACT_REVIEW", "合同审查");
         CASE_TYPE_NAME_MAP.put("LEGAL_OPINION", "法律意见");
+        // 国家赔偿案件类型
+        CASE_TYPE_NAME_MAP.put("STATE_COMP_ADMIN", "行政国家赔偿");
+        CASE_TYPE_NAME_MAP.put("STATE_COMP_CRIMINAL", "刑事国家赔偿");
         
         // 初始化项目状态名称
         MATTER_STATUS_NAME_MAP.put("DRAFT", "草稿");
@@ -92,6 +95,16 @@ public class MatterConstants {
         LITIGATION_STAGE_NAME_MAP.put("EXECUTION_REVIEW", "执行复议");
         // 非诉
         LITIGATION_STAGE_NAME_MAP.put("NON_LITIGATION", "非诉服务");
+        // 国家赔偿案件特有阶段
+        LITIGATION_STAGE_NAME_MAP.put("COMPENSATION_APPLICATION", "赔偿申请");
+        LITIGATION_STAGE_NAME_MAP.put("COMPENSATION_DECISION", "赔偿决定");
+        LITIGATION_STAGE_NAME_MAP.put("ADMIN_RECONSIDERATION", "行政复议");
+        LITIGATION_STAGE_NAME_MAP.put("ADMIN_LITIGATION", "行政赔偿诉讼");
+        LITIGATION_STAGE_NAME_MAP.put("CRIMINAL_TERMINATION", "刑事诉讼终结确认");
+        LITIGATION_STAGE_NAME_MAP.put("CRIMINAL_REVIEW", "刑事赔偿复议");
+        LITIGATION_STAGE_NAME_MAP.put("COMPENSATION_COMMITTEE", "赔偿委员会");
+        LITIGATION_STAGE_NAME_MAP.put("COMMITTEE_REVIEW", "上级赔偿委员会");
+        LITIGATION_STAGE_NAME_MAP.put("PAYMENT", "支付赔偿金");
     }
 
     /**

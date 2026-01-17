@@ -1,6 +1,10 @@
 package com.lawfirm.interfaces.rest.system;
 
+import com.lawfirm.application.system.command.CreateCauseCommand;
+import com.lawfirm.application.system.command.UpdateCauseCommand;
 import com.lawfirm.application.system.service.CauseOfActionService;
+import com.lawfirm.common.annotation.OperationLog;
+import com.lawfirm.common.annotation.RequirePermission;
 import com.lawfirm.common.result.Result;
 import com.lawfirm.domain.system.entity.CauseOfAction;
 import io.swagger.v3.oas.annotations.Operation;
@@ -54,5 +58,49 @@ public class CauseOfActionController {
             @Parameter(description = "案由代码") @RequestParam String code,
             @Parameter(description = "案由类型: CIVIL/CRIMINAL/ADMIN") @RequestParam(defaultValue = "CIVIL") String type) {
         return Result.success(causeOfActionService.getCauseName(code, type));
+    }
+
+    // ==================== CRUD 操作 ====================
+
+    @Operation(summary = "获取案由详情")
+    @GetMapping("/{id}")
+    public Result<CauseOfAction> getCause(@PathVariable Long id) {
+        return Result.success(causeOfActionService.getCauseById(id));
+    }
+
+    @Operation(summary = "创建案由/罪名")
+    @PostMapping
+    @RequirePermission("system:cause:create")
+    @OperationLog(module = "案由管理", action = "创建案由")
+    public Result<CauseOfAction> createCause(@RequestBody CreateCauseCommand command) {
+        return Result.success(causeOfActionService.createCause(command));
+    }
+
+    @Operation(summary = "更新案由/罪名")
+    @PutMapping("/{id}")
+    @RequirePermission("system:cause:update")
+    @OperationLog(module = "案由管理", action = "更新案由")
+    public Result<CauseOfAction> updateCause(
+            @PathVariable Long id,
+            @RequestBody UpdateCauseCommand command) {
+        return Result.success(causeOfActionService.updateCause(id, command));
+    }
+
+    @Operation(summary = "删除案由/罪名")
+    @DeleteMapping("/{id}")
+    @RequirePermission("system:cause:delete")
+    @OperationLog(module = "案由管理", action = "删除案由")
+    public Result<Void> deleteCause(@PathVariable Long id) {
+        causeOfActionService.deleteCause(id);
+        return Result.success();
+    }
+
+    @Operation(summary = "启用/禁用案由")
+    @PostMapping("/{id}/toggle")
+    @RequirePermission("system:cause:update")
+    @OperationLog(module = "案由管理", action = "切换案由状态")
+    public Result<Void> toggleCauseStatus(@PathVariable Long id) {
+        causeOfActionService.toggleCauseStatus(id);
+        return Result.success();
     }
 }

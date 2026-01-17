@@ -38,6 +38,7 @@ import java.util.*;
 public class LlmClient {
 
     private final ObjectMapper objectMapper;
+    private final AiUsageRecorder usageRecorder;
     
     // AI 请求超时配置
     // 连接超时：30秒
@@ -145,7 +146,7 @@ public class LlmClient {
     }
 
     /**
-     * 调用大模型生成文本
+     * 调用大模型生成文本（简化版，向后兼容）
      * 
      * @param integration AI 集成配置
      * @param systemPrompt 系统提示词
@@ -153,34 +154,239 @@ public class LlmClient {
      * @return 生成的文本内容
      */
     public String generate(ExternalIntegration integration, String systemPrompt, String userPrompt) {
+        return generate(integration, systemPrompt, userPrompt, null, null, null);
+    }
+
+    /**
+     * 调用大模型生成文本（完整版，支持使用量记录）
+     * 
+     * @param integration AI 集成配置
+     * @param systemPrompt 系统提示词
+     * @param userPrompt 用户提示词
+     * @param requestType 请求类型（DOCUMENT_GENERATE/CHAT/SUMMARY等）
+     * @param businessType 业务类型（MATTER/PERSONAL）
+     * @param businessId 业务ID（如项目ID）
+     * @return 生成的文本内容
+     */
+    public String generate(ExternalIntegration integration, String systemPrompt, String userPrompt,
+                          String requestType, String businessType, Long businessId) {
         String code = integration.getIntegrationCode();
+        long startTime = System.currentTimeMillis();
+        String responseBody = null;
+        boolean success = true;
+        String errorMessage = null;
         
-        log.info("调用大模型: code={}, name={}", code, integration.getIntegrationName());
+        log.info("调用大模型: code={}, name={}, requestType={}", 
+                code, integration.getIntegrationName(), requestType);
         
-        return switch (code) {
-            // 云端大模型
-            case "AI_OPENAI" -> callOpenAI(integration, systemPrompt, userPrompt);
-            case "AI_CLAUDE" -> callClaude(integration, systemPrompt, userPrompt);
-            case "AI_QWEN" -> callQwen(integration, systemPrompt, userPrompt);
-            case "AI_WENXIN" -> callWenxin(integration, systemPrompt, userPrompt);
-            case "AI_ZHIPU" -> callZhipu(integration, systemPrompt, userPrompt);
-            case "AI_DEEPSEEK", "AI_DEEPSEEK_R1" -> callDeepSeek(integration, systemPrompt, userPrompt);
-            case "AI_MOONSHOT" -> callMoonshot(integration, systemPrompt, userPrompt);
-            case "AI_YI" -> callYi(integration, systemPrompt, userPrompt);
-            case "AI_MINIMAX" -> callMinimax(integration, systemPrompt, userPrompt);
+        try {
+            // 调用并获取原始响应
+            GenerateResult result = switch (code) {
+                // 云端大模型
+                case "AI_OPENAI" -> callOpenAIWithResponse(integration, systemPrompt, userPrompt);
+                case "AI_CLAUDE" -> callClaudeWithResponse(integration, systemPrompt, userPrompt);
+                case "AI_QWEN" -> callQwenWithResponse(integration, systemPrompt, userPrompt);
+                case "AI_WENXIN" -> callWenxinWithResponse(integration, systemPrompt, userPrompt);
+                case "AI_ZHIPU" -> callZhipuWithResponse(integration, systemPrompt, userPrompt);
+                case "AI_DEEPSEEK", "AI_DEEPSEEK_R1" -> callDeepSeekWithResponse(integration, systemPrompt, userPrompt);
+                case "AI_MOONSHOT" -> callMoonshotWithResponse(integration, systemPrompt, userPrompt);
+                case "AI_YI" -> callYiWithResponse(integration, systemPrompt, userPrompt);
+                case "AI_MINIMAX" -> callMinimaxWithResponse(integration, systemPrompt, userPrompt);
+                
+                // 本地部署/私有化大模型
+                case "AI_DIFY" -> callDifyWithResponse(integration, systemPrompt, userPrompt);
+                case "AI_OLLAMA" -> callOllamaWithResponse(integration, systemPrompt, userPrompt);
+                case "AI_LOCALAI" -> callLocalAIWithResponse(integration, systemPrompt, userPrompt);
+                case "AI_VLLM" -> callVllmWithResponse(integration, systemPrompt, userPrompt);
+                case "AI_XINFERENCE" -> callXinferenceWithResponse(integration, systemPrompt, userPrompt);
+                case "AI_ONEAPI" -> callOneAPIWithResponse(integration, systemPrompt, userPrompt);
+                case "AI_OPENAI_COMPATIBLE" -> callOpenAICompatibleWithResponse(integration, systemPrompt, userPrompt);
+                case "AI_CUSTOM" -> callCustomAPIWithResponse(integration, systemPrompt, userPrompt);
+                
+                default -> throw new RuntimeException("不支持的 AI 模型: " + code);
+            };
             
-            // 本地部署/私有化大模型
-            case "AI_DIFY" -> callDify(integration, systemPrompt, userPrompt);
-            case "AI_OLLAMA" -> callOllama(integration, systemPrompt, userPrompt);
-            case "AI_LOCALAI" -> callLocalAI(integration, systemPrompt, userPrompt);
-            case "AI_VLLM" -> callVllm(integration, systemPrompt, userPrompt);
-            case "AI_XINFERENCE" -> callXinference(integration, systemPrompt, userPrompt);
-            case "AI_ONEAPI" -> callOneAPI(integration, systemPrompt, userPrompt);
-            case "AI_OPENAI_COMPATIBLE" -> callOpenAICompatible(integration, systemPrompt, userPrompt);
-            case "AI_CUSTOM" -> callCustomAPI(integration, systemPrompt, userPrompt);
+            responseBody = result.responseBody;
+            return result.content;
             
-            default -> throw new RuntimeException("不支持的 AI 模型: " + code);
-        };
+        } catch (Exception e) {
+            success = false;
+            errorMessage = e.getMessage();
+            throw e;
+            
+        } finally {
+            // 异步记录使用量（不阻塞主流程）
+            long duration = System.currentTimeMillis() - startTime;
+            if (usageRecorder != null) {
+                usageRecorder.recordUsage(
+                    integration, requestType, businessType, businessId,
+                    responseBody, duration, success, errorMessage
+                );
+            }
+        }
+    }
+
+    /**
+     * 生成结果内部类（包含内容和原始响应）
+     */
+    private static class GenerateResult {
+        String content;
+        String responseBody;
+        
+        GenerateResult(String content, String responseBody) {
+            this.content = content;
+            this.responseBody = responseBody;
+        }
+    }
+
+    // ==================== 带响应体的调用方法（用于使用量记录） ====================
+
+    private GenerateResult callOpenAIWithResponse(ExternalIntegration integration, String systemPrompt, String userPrompt) {
+        String responseBody = callOpenAIStyleRaw(integration, systemPrompt, userPrompt, "chat/completions");
+        String content = extractOpenAIContent(responseBody);
+        return new GenerateResult(content, responseBody);
+    }
+
+    private GenerateResult callClaudeWithResponse(ExternalIntegration integration, String systemPrompt, String userPrompt) {
+        String content = callClaude(integration, systemPrompt, userPrompt);
+        return new GenerateResult(content, null); // Claude方法需要重构才能获取响应体
+    }
+
+    private GenerateResult callQwenWithResponse(ExternalIntegration integration, String systemPrompt, String userPrompt) {
+        String responseBody = callOpenAIStyleRaw(integration, systemPrompt, userPrompt, "chat/completions");
+        String content = extractOpenAIContent(responseBody);
+        return new GenerateResult(content, responseBody);
+    }
+
+    private GenerateResult callWenxinWithResponse(ExternalIntegration integration, String systemPrompt, String userPrompt) {
+        String content = callWenxin(integration, systemPrompt, userPrompt);
+        return new GenerateResult(content, null);
+    }
+
+    private GenerateResult callZhipuWithResponse(ExternalIntegration integration, String systemPrompt, String userPrompt) {
+        String responseBody = callOpenAIStyleRaw(integration, systemPrompt, userPrompt, "chat/completions");
+        String content = extractOpenAIContent(responseBody);
+        return new GenerateResult(content, responseBody);
+    }
+
+    private GenerateResult callDeepSeekWithResponse(ExternalIntegration integration, String systemPrompt, String userPrompt) {
+        String responseBody = callOpenAIStyleRaw(integration, systemPrompt, userPrompt, "chat/completions");
+        String content = extractOpenAIContent(responseBody);
+        return new GenerateResult(content, responseBody);
+    }
+
+    private GenerateResult callMoonshotWithResponse(ExternalIntegration integration, String systemPrompt, String userPrompt) {
+        String responseBody = callOpenAIStyleRaw(integration, systemPrompt, userPrompt, "chat/completions");
+        String content = extractOpenAIContent(responseBody);
+        return new GenerateResult(content, responseBody);
+    }
+
+    private GenerateResult callYiWithResponse(ExternalIntegration integration, String systemPrompt, String userPrompt) {
+        String responseBody = callOpenAIStyleRaw(integration, systemPrompt, userPrompt, "chat/completions");
+        String content = extractOpenAIContent(responseBody);
+        return new GenerateResult(content, responseBody);
+    }
+
+    private GenerateResult callMinimaxWithResponse(ExternalIntegration integration, String systemPrompt, String userPrompt) {
+        String content = callMinimax(integration, systemPrompt, userPrompt);
+        return new GenerateResult(content, null);
+    }
+
+    private GenerateResult callDifyWithResponse(ExternalIntegration integration, String systemPrompt, String userPrompt) {
+        String content = callDify(integration, systemPrompt, userPrompt);
+        return new GenerateResult(content, null);
+    }
+
+    private GenerateResult callOllamaWithResponse(ExternalIntegration integration, String systemPrompt, String userPrompt) {
+        String content = callOllama(integration, systemPrompt, userPrompt);
+        return new GenerateResult(content, null);
+    }
+
+    private GenerateResult callLocalAIWithResponse(ExternalIntegration integration, String systemPrompt, String userPrompt) {
+        String responseBody = callOpenAIStyleRaw(integration, systemPrompt, userPrompt, "chat/completions");
+        String content = extractOpenAIContent(responseBody);
+        return new GenerateResult(content, responseBody);
+    }
+
+    private GenerateResult callVllmWithResponse(ExternalIntegration integration, String systemPrompt, String userPrompt) {
+        String responseBody = callOpenAIStyleRaw(integration, systemPrompt, userPrompt, "chat/completions");
+        String content = extractOpenAIContent(responseBody);
+        return new GenerateResult(content, responseBody);
+    }
+
+    private GenerateResult callXinferenceWithResponse(ExternalIntegration integration, String systemPrompt, String userPrompt) {
+        String responseBody = callOpenAIStyleRaw(integration, systemPrompt, userPrompt, "chat/completions");
+        String content = extractOpenAIContent(responseBody);
+        return new GenerateResult(content, responseBody);
+    }
+
+    private GenerateResult callOneAPIWithResponse(ExternalIntegration integration, String systemPrompt, String userPrompt) {
+        String responseBody = callOpenAIStyleRaw(integration, systemPrompt, userPrompt, "chat/completions");
+        String content = extractOpenAIContent(responseBody);
+        return new GenerateResult(content, responseBody);
+    }
+
+    private GenerateResult callOpenAICompatibleWithResponse(ExternalIntegration integration, String systemPrompt, String userPrompt) {
+        String responseBody = callOpenAIStyleRaw(integration, systemPrompt, userPrompt, "chat/completions");
+        String content = extractOpenAIContent(responseBody);
+        return new GenerateResult(content, responseBody);
+    }
+
+    private GenerateResult callCustomAPIWithResponse(ExternalIntegration integration, String systemPrompt, String userPrompt) {
+        String content = callCustomAPI(integration, systemPrompt, userPrompt);
+        return new GenerateResult(content, null);
+    }
+
+    /**
+     * OpenAI 风格 API 调用（返回原始响应）
+     */
+    private String callOpenAIStyleRaw(ExternalIntegration integration, String systemPrompt, String userPrompt, String endpoint) {
+        RestTemplate restTemplate = createRestTemplate();
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(integration.getApiKey());
+        headers.setConnection("keep-alive");
+
+        Map<String, Object> extraConfig = integration.getExtraConfig();
+        String model = getConfigValue(extraConfig, "model", "gpt-3.5-turbo");
+        int maxTokens = getConfigIntValue(extraConfig, "maxTokens", 4096);
+        double temperature = getConfigDoubleValue(extraConfig, "temperature", 0.7);
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("model", model);
+        body.put("max_tokens", maxTokens);
+        body.put("temperature", temperature);
+        body.put("messages", List.of(
+                Map.of("role", "system", "content", systemPrompt),
+                Map.of("role", "user", "content", userPrompt)
+        ));
+
+        String apiUrl = integration.getApiUrl().trim();
+        if (!apiUrl.endsWith("/")) apiUrl += "/";
+        apiUrl += endpoint;
+
+        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+        
+        try {
+            ResponseEntity<String> response = executeWithRetry(restTemplate, apiUrl, request, "OpenAI Style");
+            return response.getBody();
+        } catch (Exception e) {
+            log.error("调用 OpenAI Style API 失败", e);
+            throw new RuntimeException("调用 OpenAI Style API 失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 从 OpenAI 风格响应中提取内容
+     */
+    private String extractOpenAIContent(String responseBody) {
+        try {
+            JsonNode json = objectMapper.readTree(responseBody);
+            return json.path("choices").get(0).path("message").path("content").asText();
+        } catch (Exception e) {
+            log.error("解析 OpenAI 响应失败", e);
+            throw new RuntimeException("解析 OpenAI 响应失败: " + e.getMessage());
+        }
     }
 
     // ==================== 云端大模型 API ====================

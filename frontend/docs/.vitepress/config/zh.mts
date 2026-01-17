@@ -3,7 +3,7 @@ import type { DefaultTheme } from 'vitepress';
 import { defineConfig } from 'vitepress';
 
 export const zh = defineConfig({
-  description: '智慧律所管理系统文档',
+  description: '律所管理系统文档',
   lang: 'zh-Hans',
   themeConfig: {
     darkModeSwitchLabel: '主题',
@@ -13,7 +13,7 @@ export const zh = defineConfig({
       prev: '上一页',
     },
     footer: {
-      copyright: `Copyright © ${new Date().getFullYear()} 智慧律所`,
+      copyright: `Copyright © ${new Date().getFullYear()} junyuzhan`,
       message: '内部文档',
     },
     langMenuLabel: '多语言',

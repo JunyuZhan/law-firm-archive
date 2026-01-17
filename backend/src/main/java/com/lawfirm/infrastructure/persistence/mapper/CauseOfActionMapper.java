@@ -49,4 +49,22 @@ public interface CauseOfActionMapper extends BaseMapper<CauseOfAction> {
      */
     @Select("SELECT * FROM sys_cause_of_action WHERE cause_type = #{causeType} AND name LIKE CONCAT('%', #{keyword}, '%') AND is_active = TRUE ORDER BY sort_order LIMIT 50")
     List<CauseOfAction> searchByName(@Param("causeType") String causeType, @Param("keyword") String keyword);
+
+    /**
+     * 根据父代码获取子案由
+     */
+    @Select("SELECT * FROM sys_cause_of_action WHERE parent_code = #{parentCode} AND cause_type = #{causeType} AND is_active = TRUE ORDER BY sort_order")
+    List<CauseOfAction> findByParentCode(@Param("parentCode") String parentCode, @Param("causeType") String causeType);
+
+    /**
+     * 检查代码是否存在（同一类型下）
+     */
+    @Select("SELECT COUNT(*) > 0 FROM sys_cause_of_action WHERE code = #{code} AND cause_type = #{causeType}")
+    boolean existsByCodeAndType(@Param("code") String code, @Param("causeType") String causeType);
+
+    /**
+     * 获取最大排序号（按类型和分类）
+     */
+    @Select("SELECT COALESCE(MAX(sort_order), 0) FROM sys_cause_of_action WHERE cause_type = #{causeType} AND category_code = #{categoryCode}")
+    Integer getMaxSortOrder(@Param("causeType") String causeType, @Param("categoryCode") String categoryCode);
 }

@@ -1334,3 +1334,84 @@ public void generateMonthlyBills() {
 | **0%** | 单位全额承担（免费） | 0元 |
 
 管理员可随时调整比例，调整后对新产生的费用生效。
+
+---
+
+## 十一、实施任务分配
+
+> 实施日期：2026-01-17  
+> 参与人员：A工程师、B工程师、C工程师
+
+### 11.1 任务分配表
+
+| 工程师 | 职责 | 任务内容 | 状态 |
+|-------|------|---------|------|
+| **A工程师** | 后端基础设施 | 数据库表设计、Domain层实体/Repository、核心记录器、LlmClient修改 | ✅ 已完成 |
+| **B工程师** | 后端API层 | Application层Service/DTO、REST Controller、权限配置、字典数据 | ✅ 已完成 |
+| **C工程师** | 前端开发 | API接口定义、个人使用页面、管理员账单页面、路由配置 | ✅ 已完成 |
+
+### 11.2 详细任务清单
+
+#### A工程师任务（后端基础设施）
+
+| 序号 | 任务 | 产出文件 | 状态 |
+|-----|------|---------|------|
+| A1 | 创建数据库迁移脚本 | `scripts/init-db/29-ai-usage-schema.sql` | ✅ 已完成 |
+| A2 | 创建AI使用记录实体 | `domain/ai/entity/AiUsageLog.java` | ✅ 已完成 |
+| A3 | 创建AI定价配置实体 | `domain/ai/entity/AiPricingConfig.java` | ✅ 已完成 |
+| A4 | 创建AI用户配额实体 | `domain/ai/entity/AiUserQuota.java` | ✅ 已完成 |
+| A5 | 创建AI月度账单实体 | `domain/ai/entity/AiMonthlyBill.java` | ✅ 已完成 |
+| A6 | 创建Repository接口 | `domain/ai/repository/*.java` | ✅ 已完成 |
+| A7 | 创建MyBatis Mapper | `infrastructure/persistence/mapper/Ai*.java` | ✅ 已完成 |
+| A8 | 创建使用量记录器 | `infrastructure/ai/AiUsageRecorder.java` | ✅ 已完成 |
+| A9 | 修改LlmClient | 增加使用量记录调用 | ✅ 已完成 |
+
+#### B工程师任务（后端API层）
+
+| 序号 | 任务 | 产出文件 | 状态 | 完成时间 |
+|-----|------|---------|------|----------|
+| B1 | 创建DTO类 | `application/ai/dto/*.java` | ✅ 已完成 | 2026-01-17 |
+| B2 | 创建使用量服务 | `application/ai/service/AiUsageAppService.java` | ✅ 已完成 | 2026-01-17 |
+| B3 | 创建账单服务 | `application/ai/service/AiBillingAppService.java` | ✅ 已完成 | 2026-01-17 |
+| B4 | 创建REST控制器 | `interfaces/rest/ai/AiUsageController.java` | ✅ 已完成 | 2026-01-17 |
+| B5 | 创建定时任务 | `interfaces/scheduler/AiBillingScheduler.java` | ✅ 已完成 | 2026-01-17 |
+| B6 | 添加权限配置 | `30-ai-permission-init.sql` | ✅ 已完成 | 2026-01-17 |
+| B7 | 添加字典数据 | `31-ai-dict-init.sql` | ✅ 已完成 | 2026-01-17 |
+
+#### C工程师任务（前端开发）
+
+| 序号 | 任务 | 产出文件 | 状态 | 完成时间 |
+|-----|------|---------|------|----------|
+| C1 | 创建API接口 | `api/ai/usage.ts` | ✅ 已完成 | 2026-01-17 |
+| C2 | 创建类型定义 | `api/ai/types.ts` | ✅ 已完成 | 2026-01-17 |
+| C3 | 创建个人使用页面 | `views/personal/ai-usage/index.vue` | ✅ 已完成 | 2026-01-17 |
+| C4 | 创建管理员统计页面 | `views/finance/ai-billing/index.vue` | ✅ 已完成 | 2026-01-17 |
+| C5 | 添加路由配置 | `router/routes/modules/ai.ts` | ✅ 已完成 | 2026-01-17 |
+| C6 | 添加菜单配置 | 在B工程师权限脚本中已包含 | ✅ 已完成 | 2026-01-17 |
+
+### 11.3 依赖关系
+
+```
+A工程师任务 ──┬──> B工程师任务 ──> C工程师任务
+              │
+              └──> C工程师可并行准备API接口定义
+```
+
+### 11.4 完成标准
+
+- [x] 所有代码通过编译无错误
+- [x] 数据库迁移脚本可正常执行
+- [x] API接口可正常调用
+- [x] 前端页面可正常访问
+- [ ] 基础功能测试通过（待集成测试）
+
+### 11.5 实施完成总结
+
+> **完成日期：2026-01-17**
+
+| 工程师 | 完成任务数 | 状态 |
+|-------|----------|------|
+| A工程师 | 9/9 | ✅ 100% |
+| B工程师 | 7/7 | ✅ 100% |
+| C工程师 | 6/6 | ✅ 100% |
+| **总计** | **22/22** | ✅ **100%** |

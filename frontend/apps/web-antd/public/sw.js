@@ -1,17 +1,32 @@
 /**
  * Service Worker - 律师事务所 PWA
  * 手动实现的 Service Worker，避免 vite-plugin-pwa 与 Vite 7 的兼容性问题
+ * 
+ * 安全策略：
+ * - 只缓存安全的只读 API（字典、配置、案由等公共数据）
+ * - 敏感业务数据（案件、客户、财务等）不缓存
  */
 
-const CACHE_NAME = 'law-firm-cache-v2';
-const STATIC_CACHE_NAME = 'law-firm-static-v2';
-const API_CACHE_NAME = 'law-firm-api-v2';
+const CACHE_NAME = 'law-firm-cache-v3';
+const STATIC_CACHE_NAME = 'law-firm-static-v3';
+const API_CACHE_NAME = 'law-firm-api-v3';
 
 // 预缓存的核心资源
 const PRECACHE_URLS = [
   '/',
   '/index.html',
   '/offline.html'
+];
+
+// 安全的只读 API 路径（可缓存）
+// 这些 API 返回的是公共数据，不包含敏感信息
+const SAFE_API_PATTERNS = [
+  '/api/dict/',           // 字典数据
+  '/api/config/',         // 系统配置
+  '/api/causes/',         // 案由/罪名数据
+  '/api/public/',         // 公共接口
+  '/api/menu/',           // 菜单数据
+  '/api/department/',     // 部门数据（公共）
 ];
 
 // 安装事件 - 预缓存核心资源
@@ -66,9 +81,19 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // API 请求 - 网络优先策略
+  // API 请求处理
   if (url.pathname.startsWith('/api/')) {
-    event.respondWith(networkFirst(request, API_CACHE_NAME));
+    // 检查是否为安全的只读 API
+    const isSafeApi = SAFE_API_PATTERNS.some(pattern => 
+      url.pathname.startsWith(pattern)
+    );
+    
+    if (isSafeApi) {
+      // 安全 API - 网络优先，支持离线缓存
+      event.respondWith(networkFirst(request, API_CACHE_NAME));
+    }
+    // 敏感 API（案件、客户、财务等）- 不缓存，直接走网络
+    // 不调用 event.respondWith()，让浏览器正常处理
     return;
   }
 

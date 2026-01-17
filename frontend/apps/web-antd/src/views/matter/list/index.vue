@@ -38,6 +38,7 @@ import {
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import { getClientList } from '#/api/client';
+import { getStageDictCode } from '#/composables/useStageDict';
 import {
   createContract,
   createMatter,
@@ -146,23 +147,13 @@ const selectedClients = ref<SelectedClient[]>([
 const litigationStageOptions = ref<{ label: string; value: string }[]>([]);
 const litigationStageLoading = ref(false);
 
-// 案件类型与字典编码的映射
-const caseTypeToDictCode: Record<string, string> = {
-  CIVIL: 'litigation_stage_civil',
-  CRIMINAL: 'litigation_stage_criminal',
-  ADMINISTRATIVE: 'litigation_stage_administrative',
-  LABOR_ARBITRATION: 'litigation_stage_labor_arbitration',
-  COMMERCIAL_ARBITRATION: 'litigation_stage_commercial_arbitration',
-  ENFORCEMENT: 'litigation_stage_enforcement',
-};
-
-// 加载代理阶段选项
+// 加载代理阶段选项（使用公共映射）
 async function loadLitigationStageOptions(caseType: string | undefined) {
   if (!caseType) {
     litigationStageOptions.value = [];
     return;
   }
-  const dictCode = caseTypeToDictCode[caseType] || 'litigation_stage_default';
+  const dictCode = getStageDictCode(caseType);
   litigationStageLoading.value = true;
   try {
     const items = await getDictDataByCode(dictCode);

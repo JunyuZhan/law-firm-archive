@@ -7,7 +7,15 @@ import type {
   SysConfigDTO,
 } from '#/api/system/types';
 
-import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
+import {
+  computed,
+  defineAsyncComponent,
+  nextTick,
+  onMounted,
+  reactive,
+  ref,
+  watch,
+} from 'vue';
 
 import { Page } from '@vben/common-ui';
 import { CircleHelp, Copy, Eye } from '@vben/icons';
@@ -59,6 +67,14 @@ import {
 import { getWecomStatus, testWecomBot } from '#/api/system/wecom';
 
 import ConfigModal from './components/ConfigModal.vue';
+
+// 懒加载组件，提高首次加载速度
+const CauseOfActionTab = defineAsyncComponent(
+  () => import('./components/CauseOfActionTab.vue'),
+);
+const AiBillingTab = defineAsyncComponent(
+  () => import('./components/AiBillingTab.vue'),
+);
 
 defineOptions({ name: 'SysConfig' });
 
@@ -1218,6 +1234,16 @@ watch(activeTab, (newTab) => {
             </template>
           </Alert>
         </Card>
+      </TabPane>
+
+      <!-- 案由罪名配置 -->
+      <TabPane key="cause" tab="案由罪名配置">
+        <CauseOfActionTab />
+      </TabPane>
+
+      <!-- AI计费配置 -->
+      <TabPane key="ai-billing" tab="AI计费配置">
+        <AiBillingTab />
       </TabPane>
 
       <!-- 通用配置 -->

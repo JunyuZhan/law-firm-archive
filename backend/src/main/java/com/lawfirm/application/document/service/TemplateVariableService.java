@@ -481,6 +481,8 @@ public class TemplateVariableService {
             case "ADMINISTRATIVE" -> "行政案件";
             case "ARBITRATION" -> "仲裁案件";
             case "NON_LITIGATION" -> "非诉讼业务";
+            case "STATE_COMP_ADMIN" -> "行政国家赔偿";
+            case "STATE_COMP_CRIMINAL" -> "刑事国家赔偿";
             default -> caseType;
         };
     }
@@ -655,8 +657,8 @@ public class TemplateVariableService {
         }
         
         String causeType = switch (caseType != null ? caseType : "") {
-            case "CRIMINAL" -> CauseOfActionService.TYPE_CRIMINAL;
-            case "ADMINISTRATIVE" -> CauseOfActionService.TYPE_ADMIN;
+            case "CRIMINAL", "STATE_COMP_CRIMINAL" -> CauseOfActionService.TYPE_CRIMINAL;
+            case "ADMINISTRATIVE", "STATE_COMP_ADMIN" -> CauseOfActionService.TYPE_ADMIN;
             default -> CauseOfActionService.TYPE_CIVIL;
         };
         

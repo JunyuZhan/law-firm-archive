@@ -36,7 +36,10 @@ public class SysConfigController {
     @Operation(summary = "获取所有配置")
     @GetMapping
     @RequirePermission("sys:config:list")
-    public Result<List<SysConfigDTO>> listConfigs() {
+    public Result<List<SysConfigDTO>> listConfigs(@RequestParam(required = false) String keyPrefix) {
+        if (keyPrefix != null && !keyPrefix.isEmpty()) {
+            return Result.success(configAppService.listConfigsByPrefix(keyPrefix));
+        }
         return Result.success(configAppService.listConfigs());
     }
 

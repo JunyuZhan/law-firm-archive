@@ -4,6 +4,7 @@ import { ref } from 'vue';
 import { Profile } from '@vben/common-ui';
 import { useUserStore } from '@vben/stores';
 
+import ProfileAiUsage from './ai-usage-setting.vue';
 import ProfileBase from './base-setting.vue';
 import ProfileNotificationSetting from './notification-setting.vue';
 import ProfilePasswordSetting from './password-setting.vue';
@@ -30,6 +31,10 @@ const tabs = ref([
     label: '新消息提醒',
     value: 'notice',
   },
+  {
+    label: 'AI使用统计',
+    value: 'ai-usage',
+  },
 ]);
 </script>
 <template>
@@ -44,6 +49,7 @@ const tabs = ref([
       <ProfileSecuritySetting v-if="tabsValue === 'security'" />
       <ProfilePasswordSetting v-if="tabsValue === 'password'" />
       <ProfileNotificationSetting v-if="tabsValue === 'notice'" />
+      <ProfileAiUsage v-if="tabsValue === 'ai-usage'" />
     </template>
   </Profile>
 </template>

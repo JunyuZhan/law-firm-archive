@@ -1,6 +1,6 @@
 # 智慧律所管理系统 - 前端
 
-**项目仓库**: [https://github.com/junyuzhan/law-firm](https://github.com/junyuzhan/law-firm)
+**项目仓库**: [https://github.com/JunyuZhan/law-firm](https://github.com/JunyuZhan/law-firm)
 
 基于 Vue 3 + Vite + TypeScript + Ant Design Vue 的律师事务所业务管理系统前端。
 

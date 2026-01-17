@@ -58,7 +58,7 @@ cp env.example .env
 
 # 启动服务
 cd ..
-./scripts/deploy.sh
+bash scripts/deploy.sh
 ```
 
 ### 开发环境
@@ -73,8 +73,13 @@ docker compose up -d postgres redis minio
 #### 2. 初始化数据库
 
 ```bash
+# 方式一：使用重置脚本（推荐）
+cd scripts
+./reset-db.sh --dev
+
+# 方式二：手动初始化
 cd scripts/init-db
-./init-database.sh
+./init-database.sh.manual --drop
 ```
 
 #### 3. 启动后端
@@ -84,7 +89,7 @@ cd backend
 mvn spring-boot:run
 ```
 
-后端地址：http://localhost:8080
+后端地址：http://localhost:8080/api
 
 #### 4. 启动前端
 
@@ -95,7 +100,7 @@ pnpm dev
 # 选择 @vben/web-antd
 ```
 
-前端地址：http://localhost:5666
+前端地址：http://localhost:5173（Vite 默认端口）
 
 ### 默认账号
 
@@ -163,7 +168,7 @@ pnpm docs:dev
 
 #### 从主应用跳转
 
-用户可以从主应用（http://localhost:5666）的用户头像菜单中点击「用户手册」直接跳转到文档站点，系统会自动携带登录 token，无需再次登录即可查看运维手册和 API 文档。
+用户可以从主应用（http://localhost:5173）的用户头像菜单中点击「用户手册」直接跳转到文档站点，系统会自动携带登录 token，无需再次登录即可查看运维手册和 API 文档。
 
 ## 开发规范
 

@@ -23,7 +23,11 @@ const initZoom = () => {
   mediumZoom('.VPContent img', { background: 'var(--vp-c-bg)' });
 };
 
-const isDark = ref(true);
+const isDark = ref(
+  typeof window !== 'undefined'
+    ? document.documentElement.classList.contains('dark')
+    : false,
+);
 let darkModeObserver: MutationObserver | undefined;
 
 watch(

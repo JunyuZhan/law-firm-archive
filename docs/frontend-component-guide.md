@@ -427,6 +427,7 @@ try {
 | 提成规则配置 | `/system/commission-config` | ✅ 已完成 | useVbenVxeGrid + 弹窗组件抽离 |
 | 权限矩阵 | `/system/permission-matrix` | ✅ 已完成 | 保持原结构（特殊页面） |
 | **外部系统集成** | `/system/integration` | ✅ 已完成 | 符合规范，类型安全 |
+| **案由管理** | `/system/cause-of-action` | ✅ 已完成 | 树形结构 + useVbenForm + useVbenModal，权限控制 |
 
 ### 5.3 案件管理模块 (`/matter`)
 
@@ -584,6 +585,7 @@ try {
 | 2026-01-08 | 完成客户管理模块改造（客户管理、线索管理、利冲检索使用useVbenVxeGrid） | AI Assistant |
 | 2026-01-08 | 完成财务管理模块改造（收款、我的收款、发票、费用、我的提成使用useVbenVxeGrid） | AI Assistant |
 | 2026-01-08 | 完成人力资源模块改造（考勤、请假、会议室、培训使用useVbenVxeGrid） | AI Assistant |
+| 2026-01-17 | 完成案由管理页面实现（树形结构展示、CRUD操作、权限控制） | AI Assistant |
 
 ---
 

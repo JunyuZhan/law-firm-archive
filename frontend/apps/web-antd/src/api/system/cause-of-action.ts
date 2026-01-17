@@ -63,3 +63,55 @@ export function getCauseTypeOptions(): CauseTypeOption[] {
     { value: 'ADMIN', label: '行政案由', description: '行政案件相关案由' },
   ];
 }
+
+// ==================== CRUD 操作 ====================
+
+/** 创建案由命令 */
+export interface CreateCauseCommand {
+  code: string;
+  name: string;
+  causeType: CauseType;
+  categoryCode?: string;
+  categoryName?: string;
+  parentCode?: string;
+  level: number;
+  sortOrder?: number;
+  isActive?: boolean;
+}
+
+/** 更新案由命令 */
+export interface UpdateCauseCommand {
+  code: string;
+  name: string;
+  categoryCode?: string;
+  categoryName?: string;
+  parentCode?: string;
+  level?: number;
+  sortOrder?: number;
+  isActive?: boolean;
+}
+
+/** 获取案由详情 */
+export function getCauseById(id: number) {
+  return requestClient.get<CauseOfActionDTO>(`/causes/${id}`);
+}
+
+/** 创建案由/罪名 */
+export function createCause(command: CreateCauseCommand) {
+  return requestClient.post<CauseOfActionDTO>('/causes', command);
+}
+
+/** 更新案由/罪名 */
+export function updateCause(id: number, command: UpdateCauseCommand) {
+  return requestClient.put<CauseOfActionDTO>(`/causes/${id}`, command);
+}
+
+/** 删除案由/罪名 */
+export function deleteCause(id: number) {
+  return requestClient.delete<void>(`/causes/${id}`);
+}
+
+/** 启用/禁用案由 */
+export function toggleCauseStatus(id: number) {
+  return requestClient.post<void>(`/causes/${id}/toggle`);
+}

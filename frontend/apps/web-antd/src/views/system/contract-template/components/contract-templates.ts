@@ -3,6 +3,8 @@ export const templateTypeOptions = [
   { label: '民事代理', value: 'CIVIL_PROXY' },
   { label: '行政代理', value: 'ADMINISTRATIVE_PROXY' },
   { label: '刑事辩护', value: 'CRIMINAL_DEFENSE' },
+  { label: '行政国家赔偿', value: 'STATE_COMP_ADMIN' },
+  { label: '刑事国家赔偿', value: 'STATE_COMP_CRIMINAL' },
   { label: '法律顾问', value: 'LEGAL_COUNSEL' },
   { label: '非诉案件', value: 'NON_LITIGATION' },
   { label: '自定义模板', value: 'CUSTOM' },

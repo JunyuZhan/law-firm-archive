@@ -77,6 +77,9 @@ public class ContractNumberGenerator {
         CASE_TYPE_CN_MAP.put("LEGAL_COUNSEL", "顾");
         CASE_TYPE_CN_MAP.put("SPECIAL_SERVICE", "非");
         CASE_TYPE_CN_MAP.put("BANKRUPTCY", "破");
+        // 国家赔偿
+        CASE_TYPE_CN_MAP.put("STATE_COMP_ADMIN", "行赔");
+        CASE_TYPE_CN_MAP.put("STATE_COMP_CRIMINAL", "刑赔");
     }
 
     /**
@@ -93,6 +96,9 @@ public class ContractNumberGenerator {
         CASE_TYPE_CODE_MAP.put("LEGAL_COUNSEL", "GW");
         CASE_TYPE_CODE_MAP.put("SPECIAL_SERVICE", "ZX");
         CASE_TYPE_CODE_MAP.put("BANKRUPTCY", "PC");
+        // 国家赔偿
+        CASE_TYPE_CODE_MAP.put("STATE_COMP_ADMIN", "XZPC");
+        CASE_TYPE_CODE_MAP.put("STATE_COMP_CRIMINAL", "XSPC");
     }
 
     /**

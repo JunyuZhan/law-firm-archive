@@ -3,12 +3,12 @@ layout: home
 sidebar: false
 
 hero:
-  name: 智慧律所管理系统
+  name: 律所管理系统
   text: 用户文档中心
   tagline: 系统使用指南、运维手册、API 文档
   image:
     src: /logos/law-firm-logo.svg
-    alt: 智慧律所管理系统
+    alt: 律所管理系统
   actions:
     - theme: brand
       text: 用户手册 ->

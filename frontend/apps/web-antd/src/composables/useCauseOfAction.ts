@@ -309,6 +309,21 @@ export const CASE_CATEGORY_OPTIONS = [
     hasCause: false,
     causeType: null,
   },
+  // 国家赔偿类
+  {
+    value: 'STATE_COMP_ADMIN',
+    label: '行政国家赔偿',
+    matterType: 'LITIGATION',
+    hasCause: false,
+    causeType: null,
+  },
+  {
+    value: 'STATE_COMP_CRIMINAL',
+    label: '刑事国家赔偿',
+    matterType: 'LITIGATION',
+    hasCause: false,
+    causeType: null,
+  },
   // 非诉类
   {
     value: 'LEGAL_COUNSEL',

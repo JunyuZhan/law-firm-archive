@@ -5,7 +5,7 @@ import { defineConfig } from 'vitepress';
 import { version } from '../../../package.json';
 
 export const en = defineConfig({
-  description: 'Vben Admin & Enterprise level management system framework',
+  description: 'Law firm management system documentation',
   lang: 'en-US',
   themeConfig: {
     darkModeSwitchLabel: 'Theme',
@@ -16,12 +16,12 @@ export const en = defineConfig({
     },
     editLink: {
       pattern:
-        'https://github.com/vbenjs/vue-vben-admin/edit/main/docs/src/:path',
+        'https://github.com/junyuzhan/law-firm/edit/main/frontend/docs/src/:path',
       text: 'Edit this page on GitHub',
     },
     footer: {
-      copyright: `Copyright © 2020-${new Date().getFullYear()} Vben`,
-      message: 'Released under the MIT License.',
+      copyright: `Copyright © ${new Date().getFullYear()} junyuzhan`,
+      message: 'Internal documentation.',
     },
     langMenuLabel: 'Language',
     lastUpdated: {
@@ -55,7 +55,7 @@ function sidebarGuide(): DefaultTheme.SidebarItem[] {
       items: [
         {
           link: 'introduction/vben',
-          text: 'About Vben Admin',
+          text: 'About the project',
         },
         {
           link: 'introduction/why',
