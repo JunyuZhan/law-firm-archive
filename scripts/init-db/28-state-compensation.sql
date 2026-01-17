@@ -115,20 +115,7 @@ COMMENT ON COLUMN public.matter.case_type IS '案件类型：CIVIL-民事, CRIMI
 -- =====================================================
 -- 国家赔偿相关字典数据
 -- =====================================================
--- 注意：赔偿义务机关类型(obligor_org_type)已在 27-dict-init-data.sql 中定义（ID=63）
-
--- 致损行为类型
-INSERT INTO sys_dict_type (id, name, code, description, status, is_system, created_at, updated_at, deleted)
-VALUES (76, '致损行为类型', 'damage_cause_type', '国家赔偿致损行为类型', 'ENABLED', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
-ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, code = EXCLUDED.code;
-
-INSERT INTO sys_dict_item (id, dict_type_id, label, value, sort_order, status, created_at, updated_at, deleted) VALUES
-(760, 76, '违法拘留', 'ILLEGAL_DETENTION', 1, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
-(761, 76, '违法采取强制措施', 'ILLEGAL_COERCIVE', 2, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
-(762, 76, '违法使用武器警械', 'ILLEGAL_WEAPON', 3, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
-(763, 76, '违法搜查', 'ILLEGAL_SEARCH', 4, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
-(764, 76, '错误判决/错判', 'WRONGFUL_CONVICT', 5, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
-(765, 76, '违法查封/扣押/冻结财产', 'ILLEGAL_DETENTION_PROPERTY', 6, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
-(766, 76, '违法行政处罚', 'ILLEGAL_ADMIN_PUNISHMENT', 7, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
-(767, 76, '其他', 'OTHER', 99, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
-ON CONFLICT (id) DO UPDATE SET label = EXCLUDED.label, value = EXCLUDED.value;
+-- 注意：以下字典类型已在 27-dict-init-data.sql 中定义：
+--   - 赔偿义务机关类型 (obligor_org_type) - ID=63
+--   - 致损行为类型 (damage_cause_type) - ID=64
+-- 此脚本不再重复定义，避免唯一约束冲突
