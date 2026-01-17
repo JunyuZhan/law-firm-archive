@@ -104,11 +104,15 @@ pnpm dev
 
 ### 默认账号
 
-| 用户名 | 密码 | 角色 |
-|--------|------|------|
-| admin | admin123 | 管理员 |
-| director | admin123 | 律所主任 |
-| lawyer1 | admin123 | 律师 |
+| 用户名 | 密码 | 角色 | 姓名 |
+|--------|------|------|------|
+| admin | admin123 | 管理员 | 系统管理员 |
+| director | admin123 | 律所主任 | 律所主任 |
+| lawyer1 | admin123 | 律师 | 张律师 |
+| leader | admin123 | 团队负责人 | 李团长 |
+| finance | admin123 | 财务 | 王财务 |
+| staff | admin123 | 行政 | 赵行政 |
+| trainee | admin123 | 实习律师 | 陈实习 |
 
 ## 功能模块
 
