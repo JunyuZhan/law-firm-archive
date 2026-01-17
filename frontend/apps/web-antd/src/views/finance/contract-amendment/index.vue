@@ -163,7 +163,10 @@ onMounted(() => {
 </script>
 
 <template>
-  <Page title="合同变更处理" description="处理律师提交的合同变更，同步到财务数据">
+  <Page
+    title="合同变更处理"
+    description="处理律师提交的合同变更，同步到财务数据"
+  >
     <Card :bordered="false">
       <template #extra>
         <Button

@@ -31,7 +31,11 @@ export interface DocumentDTO {
   /** 缩略图URL（图片和PDF文件） */
   thumbnailUrl?: string;
   /** 文档来源类型: SYSTEM_GENERATED, SYSTEM_LINKED, USER_UPLOADED, SIGNED_VERSION */
-  sourceType?: 'SIGNED_VERSION' | 'SYSTEM_GENERATED' | 'SYSTEM_LINKED' | 'USER_UPLOADED';
+  sourceType?:
+    | 'SIGNED_VERSION'
+    | 'SYSTEM_GENERATED'
+    | 'SYSTEM_LINKED'
+    | 'USER_UPLOADED';
   /** 文档来源类型名称 */
   sourceTypeName?: string;
   /** 来源数据ID */

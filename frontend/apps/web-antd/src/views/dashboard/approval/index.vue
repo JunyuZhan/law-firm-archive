@@ -160,7 +160,12 @@ const historyStats = computed(() => {
 function getPendingColumns() {
   const baseColumns = [
     { type: 'checkbox' as const, width: 50 },
-    { title: '业务类型', field: 'businessTypeName', width: 100, mobileShow: true },
+    {
+      title: '业务类型',
+      field: 'businessTypeName',
+      width: 100,
+      mobileShow: true,
+    },
     {
       title: '业务标题',
       field: 'businessTitle',
@@ -191,13 +196,14 @@ function getPendingColumns() {
       mobileShow: true,
     },
   ];
-  
+
   // 移动端隐藏部分列
   if (isMobile.value) {
-    return baseColumns.filter(col => 
-      col.type === 'checkbox' || 
-      col.mobileShow === true ||
-      col.field === 'action'
+    return baseColumns.filter(
+      (col) =>
+        col.type === 'checkbox' ||
+        col.mobileShow === true ||
+        col.field === 'action',
     );
   }
   return baseColumns;
@@ -654,10 +660,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <Page
-    title="审批中心"
-    description="集中管理所有业务审批，快速处理待审批事项"
-  >
+  <Page title="审批中心" description="集中管理所有业务审批，快速处理待审批事项">
     <Card :bordered="false">
       <!-- 筛选区域 -->
       <div class="filter-section">
@@ -821,24 +824,6 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.filter-section {
-  margin-bottom: 16px;
-  padding: 16px;
-  background: #fafafa;
-  border-radius: 8px;
-}
-
-:deep(.ant-badge-count) {
-  min-width: 18px;
-  height: 18px;
-  font-size: 12px;
-  line-height: 18px;
-}
-
-:deep(.ant-tabs-card > .ant-tabs-nav .ant-tabs-tab) {
-  padding: 4px 12px;
-}
-
 /* 移动端适配 */
 @media (max-width: 768px) {
   .filter-section {
@@ -862,5 +847,23 @@ onMounted(async () => {
   :deep(.vxe-cell) {
     padding: 8px 4px;
   }
+}
+
+.filter-section {
+  padding: 16px;
+  margin-bottom: 16px;
+  background: #fafafa;
+  border-radius: 8px;
+}
+
+:deep(.ant-badge-count) {
+  min-width: 18px;
+  height: 18px;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+:deep(.ant-tabs-card > .ant-tabs-nav .ant-tabs-tab) {
+  padding: 4px 12px;
 }
 </style>

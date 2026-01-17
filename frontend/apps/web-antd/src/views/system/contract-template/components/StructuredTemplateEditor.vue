@@ -131,7 +131,7 @@ watch(
       parseContent(newVal);
     }
   },
-  { immediate: true }
+  { immediate: true },
 );
 
 // 监听区块变化，输出内容
@@ -140,16 +140,23 @@ watch(
   () => {
     emit('update:modelValue', blocksToContent());
   },
-  { deep: true }
+  { deep: true },
 );
 
 // 在光标位置插入变量
 function insertVariable(
-  target: 'contractName' | 'partyA' | 'partyB' | 'clauses' | 'partyASign' | 'partyBSign' | 'signInfo',
-  variable: string
+  target:
+    | 'contractName'
+    | 'partyA'
+    | 'partyB'
+    | 'clauses'
+    | 'partyASign'
+    | 'partyBSign'
+    | 'signInfo',
+  variable: string,
 ) {
   const varStr = `\${${variable}}`;
-  
+
   // 获取当前值
   let currentValue = '';
   if (target === 'contractName') {
@@ -167,13 +174,14 @@ function insertVariable(
   } else if (target === 'signInfo') {
     currentValue = blocks.signature.signInfo;
   }
-  
+
   // 获取记录的光标位置，如果没有记录则追加到末尾
   const cursorPos = cursorPositions.value[target] ?? currentValue.length;
-  
+
   // 在光标位置插入变量
-  const newValue = currentValue.slice(0, cursorPos) + varStr + currentValue.slice(cursorPos);
-  
+  const newValue =
+    currentValue.slice(0, cursorPos) + varStr + currentValue.slice(cursorPos);
+
   // 更新对应区块的值
   if (target === 'contractName') {
     blocks.title.contractName = newValue;
@@ -190,7 +198,7 @@ function insertVariable(
   } else if (target === 'signInfo') {
     blocks.signature.signInfo = newValue;
   }
-  
+
   // 更新光标位置（移到插入变量之后）
   cursorPositions.value[target] = cursorPos + varStr.length;
 }
@@ -198,12 +206,12 @@ function insertVariable(
 // 变量分组 - 按类别明确分类
 const variableGroups = computed(() => {
   const groups: Record<string, Array<{ label: string; value: string }>> = {
-    '合同信息': [],
+    合同信息: [],
     '委托人/甲方': [],
     '律所/乙方': [],
     '项目/案件': [],
     '金额/收费': [],
-    '日期': [],
+    日期: [],
   };
 
   // 明确的分组映射
@@ -214,7 +222,7 @@ const variableGroups = computed(() => {
     signDate: '合同信息',
     effectiveDate: '合同信息',
     expiryDate: '合同信息',
-    
+
     // 委托人/甲方
     clientName: '委托人/甲方',
     clientIdNumber: '委托人/甲方',
@@ -223,7 +231,7 @@ const variableGroups = computed(() => {
     clientEmail: '委托人/甲方',
     legalRepresentative: '委托人/甲方',
     creditCode: '委托人/甲方',
-    
+
     // 律所/乙方
     lawyerName: '律所/乙方',
     lawyerLicenseNo: '律所/乙方',
@@ -231,7 +239,7 @@ const variableGroups = computed(() => {
     firmAddress: '律所/乙方',
     firmPhone: '律所/乙方',
     firmLegalPerson: '律所/乙方',
-    
+
     // 项目/案件
     matterName: '项目/案件',
     matterNo: '项目/案件',
@@ -244,7 +252,7 @@ const variableGroups = computed(() => {
     caseSummary: '项目/案件',
     procedureStage: '项目/案件',
     authorityScope: '项目/案件',
-    
+
     // 金额/收费
     totalAmount: '金额/收费',
     totalAmountChinese: '金额/收费',
@@ -255,7 +263,7 @@ const variableGroups = computed(() => {
     paymentTerms: '金额/收费',
     riskRatio: '金额/收费',
     advanceTravelFee: '金额/收费',
-    
+
     // 日期
     currentYear: '日期',
     currentDate: '日期',
@@ -288,7 +296,7 @@ const variableGroups = computed(() => {
         <template #extra>
           <Tag color="blue">合同名称</Tag>
         </template>
-        
+
         <div class="block-content">
           <div class="field-group">
             <label>合同名称（将居中显示为大标题）</label>
@@ -301,7 +309,7 @@ const variableGroups = computed(() => {
               @keyup="(e: Event) => handleSelect('contractName', e)"
             />
             <div class="variable-hint">
-              <span style="color: #999; font-size: 12px;">
+              <span style="font-size: 12px; color: #999">
                 💡 合同编号由系统自动生成，打印时自动载入
               </span>
             </div>
@@ -314,7 +322,7 @@ const variableGroups = computed(() => {
         <template #extra>
           <Tag color="green">甲方乙方信息</Tag>
         </template>
-        
+
         <div class="block-content">
           <div class="parties-row">
             <div class="party-section">
@@ -324,8 +332,8 @@ const variableGroups = computed(() => {
                   <Button size="small" type="link">+ 插入变量</Button>
                   <template #overlay>
                     <Menu>
-                      <MenuItem 
-                        v-for="v in variableGroups['委托人/甲方']" 
+                      <MenuItem
+                        v-for="v in variableGroups['委托人/甲方']"
                         :key="v.value"
                         @click="insertVariable('partyA', v.value)"
                       >
@@ -355,8 +363,8 @@ const variableGroups = computed(() => {
                   <Button size="small" type="link">+ 插入变量</Button>
                   <template #overlay>
                     <Menu>
-                      <MenuItem 
-                        v-for="v in variableGroups['律所/乙方']" 
+                      <MenuItem
+                        v-for="v in variableGroups['律所/乙方']"
                         :key="v.value"
                         @click="insertVariable('partyB', v.value)"
                       >
@@ -387,18 +395,18 @@ const variableGroups = computed(() => {
         <template #extra>
           <Tag color="orange">约定内容</Tag>
         </template>
-        
+
         <div class="block-content">
           <div class="field-group">
             <label>合同条款内容（每个条款用"一、""二、"等编号）</label>
-            
+
             <!-- 变量标签横向排列 -->
             <div class="variables-panel">
               <template v-for="(vars, group) in variableGroups" :key="group">
                 <div v-if="vars.length > 0" class="variable-group">
                   <span class="group-label">{{ group }}：</span>
-                  <Tag 
-                    v-for="v in vars" 
+                  <Tag
+                    v-for="v in vars"
                     :key="v.value"
                     color="cyan"
                     class="var-tag"
@@ -409,7 +417,7 @@ const variableGroups = computed(() => {
                 </div>
               </template>
             </div>
-            
+
             <Textarea
               v-model:value="blocks.clauses"
               :rows="15"
@@ -446,7 +454,7 @@ ${paymentTerms}
         <template #extra>
           <Tag color="purple">签字盖章</Tag>
         </template>
-        
+
         <div class="block-content">
           <div class="parties-row">
             <div class="party-section">
@@ -478,7 +486,7 @@ ${paymentTerms}
             </div>
           </div>
 
-          <div class="field-group" style="margin-top: 16px;">
+          <div class="field-group" style="margin-top: 16px">
             <label>签订日期/地点</label>
             <Input
               v-model:value="blocks.signature.signInfo"
@@ -540,8 +548,8 @@ ${paymentTerms}
 .variable-group {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
   gap: 6px;
+  align-items: center;
   margin-bottom: 8px;
 }
 
@@ -550,10 +558,10 @@ ${paymentTerms}
 }
 
 .group-label {
+  min-width: 80px;
   font-size: 12px;
   font-weight: 500;
   color: #52c41a;
-  min-width: 80px;
 }
 
 .var-tag {

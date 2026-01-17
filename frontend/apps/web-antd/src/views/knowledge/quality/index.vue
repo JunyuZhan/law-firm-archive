@@ -99,7 +99,9 @@ const checkList = ref<QualityCheckDTO[]>([]);
 
 // ==================== 标准管理 ====================
 const standardModalVisible = ref(false);
-const standardForm = reactive<CreateQualityCheckStandardCommand & { id?: number }>({
+const standardForm = reactive<
+  CreateQualityCheckStandardCommand & { id?: number }
+>({
   standardName: '',
   category: '',
   description: '',
@@ -122,7 +124,12 @@ const warningDetailLoading = ref(false);
 
 // 标准表格列
 const standardColumns = [
-  { title: '标准名称', dataIndex: 'standardName', key: 'standardName', ellipsis: true },
+  {
+    title: '标准名称',
+    dataIndex: 'standardName',
+    key: 'standardName',
+    ellipsis: true,
+  },
   { title: '分类', dataIndex: 'category', key: 'category', width: 120 },
   { title: '最高分', dataIndex: 'maxScore', key: 'maxScore', width: 80 },
   { title: '权重', dataIndex: 'weight', key: 'weight', width: 80 },
@@ -165,7 +172,7 @@ async function loadOverview() {
     overviewData.pendingIssues = issues?.length || 0;
     overviewData.activeWarnings = warnings?.length || 0;
     overviewData.highRiskWarnings = highRisk?.length || 0;
-    
+
     checkList.value = checks || [];
     issueList.value = issues || [];
     warningList.value = warnings || [];
@@ -472,12 +479,18 @@ onMounted(() => {
               </template>
               <template v-else-if="column.key === 'severity'">
                 <Tag :color="getSeverityConfig(record.severity).color">
-                  {{ record.severityName || getSeverityConfig(record.severity).label }}
+                  {{
+                    record.severityName ||
+                    getSeverityConfig(record.severity).label
+                  }}
                 </Tag>
               </template>
               <template v-else-if="column.key === 'status'">
                 <Tag :color="getIssueStatusConfig(record.status).color">
-                  {{ record.statusName || getIssueStatusConfig(record.status).label }}
+                  {{
+                    record.statusName ||
+                    getIssueStatusConfig(record.status).label
+                  }}
                 </Tag>
               </template>
               <template v-else-if="column.key === 'deadline'">
@@ -485,7 +498,12 @@ onMounted(() => {
               </template>
               <template v-else-if="column.key === 'action'">
                 <Space>
-                  <Button type="link" size="small" @click="handleViewIssue(record)">详情</Button>
+                  <Button
+                    type="link"
+                    size="small"
+                    @click="handleViewIssue(record)"
+                    >详情</Button
+                  >
                   <Button
                     v-if="record.status !== 'RESOLVED'"
                     type="link"
@@ -516,12 +534,18 @@ onMounted(() => {
               </template>
               <template v-else-if="column.key === 'riskLevel'">
                 <Tag :color="getRiskLevelConfig(record.riskLevel).color">
-                  {{ record.riskLevelName || getRiskLevelConfig(record.riskLevel).label }}
+                  {{
+                    record.riskLevelName ||
+                    getRiskLevelConfig(record.riskLevel).label
+                  }}
                 </Tag>
               </template>
               <template v-else-if="column.key === 'status'">
                 <Tag :color="getWarningStatusConfig(record.status).color">
-                  {{ record.statusName || getWarningStatusConfig(record.status).label }}
+                  {{
+                    record.statusName ||
+                    getWarningStatusConfig(record.status).label
+                  }}
                 </Tag>
               </template>
               <template v-else-if="column.key === 'createdAt'">
@@ -529,7 +553,12 @@ onMounted(() => {
               </template>
               <template v-else-if="column.key === 'action'">
                 <Space>
-                  <Button type="link" size="small" @click="handleViewWarning(record)">详情</Button>
+                  <Button
+                    type="link"
+                    size="small"
+                    @click="handleViewWarning(record)"
+                    >详情</Button
+                  >
                   <Button
                     v-if="record.status === 'PENDING'"
                     type="link"
@@ -566,7 +595,9 @@ onMounted(() => {
       <Tabs.TabPane key="standards" tab="检查标准">
         <Card>
           <template #extra>
-            <Button type="primary" @click="handleCreateStandard">新建标准</Button>
+            <Button type="primary" @click="handleCreateStandard"
+              >新建标准</Button
+            >
           </template>
 
           <Spin :spinning="loading">
@@ -582,12 +613,23 @@ onMounted(() => {
                   {{ record.categoryName || getCategoryName(record.category) }}
                 </template>
                 <template v-else-if="column.key === 'enabled'">
-                  <Badge :status="record.enabled ? 'success' : 'default'" :text="record.enabled ? '启用' : '停用'" />
+                  <Badge
+                    :status="record.enabled ? 'success' : 'default'"
+                    :text="record.enabled ? '启用' : '停用'"
+                  />
                 </template>
                 <template v-else-if="column.key === 'action'">
                   <Space>
-                    <Button type="link" size="small" @click="handleEditStandard(record)">编辑</Button>
-                    <Popconfirm title="确定删除此标准？" @confirm="handleDeleteStandard(record)">
+                    <Button
+                      type="link"
+                      size="small"
+                      @click="handleEditStandard(record)"
+                      >编辑</Button
+                    >
+                    <Popconfirm
+                      title="确定删除此标准？"
+                      @confirm="handleDeleteStandard(record)"
+                    >
                       <Button type="link" size="small" danger>删除</Button>
                     </Popconfirm>
                   </Space>
@@ -610,83 +652,175 @@ onMounted(() => {
     >
       <Form :label-col="{ span: 5 }" :wrapper-col="{ span: 17 }">
         <Form.Item label="标准名称" required>
-          <Input v-model:value="standardForm.standardName" placeholder="请输入标准名称" />
+          <Input
+            v-model:value="standardForm.standardName"
+            placeholder="请输入标准名称"
+          />
         </Form.Item>
         <Form.Item label="分类" required>
-          <Select v-model:value="standardForm.category" placeholder="请选择分类" :options="STANDARD_CATEGORY_OPTIONS" />
+          <Select
+            v-model:value="standardForm.category"
+            placeholder="请选择分类"
+            :options="STANDARD_CATEGORY_OPTIONS"
+          />
         </Form.Item>
         <Form.Item label="最高分">
-          <InputNumber v-model:value="standardForm.maxScore" :min="1" :max="100" style="width: 100%" />
+          <InputNumber
+            v-model:value="standardForm.maxScore"
+            :min="1"
+            :max="100"
+            style="width: 100%"
+          />
         </Form.Item>
         <Form.Item label="权重">
-          <InputNumber v-model:value="standardForm.weight" :min="0.1" :max="10" :step="0.1" style="width: 100%" />
+          <InputNumber
+            v-model:value="standardForm.weight"
+            :min="0.1"
+            :max="10"
+            :step="0.1"
+            style="width: 100%"
+          />
         </Form.Item>
         <Form.Item label="检查要点">
-          <Input.TextArea v-model:value="standardForm.checkPoints" :rows="3" placeholder="请输入检查要点" />
+          <Input.TextArea
+            v-model:value="standardForm.checkPoints"
+            :rows="3"
+            placeholder="请输入检查要点"
+          />
         </Form.Item>
         <Form.Item label="说明">
-          <Input.TextArea v-model:value="standardForm.description" :rows="2" placeholder="请输入说明" />
+          <Input.TextArea
+            v-model:value="standardForm.description"
+            :rows="2"
+            placeholder="请输入说明"
+          />
         </Form.Item>
       </Form>
     </Modal>
 
     <!-- 问题详情弹窗 -->
-    <Modal v-model:open="issueDetailVisible" title="问题详情" :footer="null" :width="isMobile ? '100%' : '650px'" :centered="isMobile">
+    <Modal
+      v-model:open="issueDetailVisible"
+      title="问题详情"
+      :footer="null"
+      :width="isMobile ? '100%' : '650px'"
+      :centered="isMobile"
+    >
       <Spin :spinning="issueDetailLoading">
         <template v-if="issueDetailData">
           <Descriptions :column="2" bordered size="small">
-            <Descriptions.Item label="问题编号">{{ issueDetailData.issueNo }}</Descriptions.Item>
+            <Descriptions.Item label="问题编号">{{
+              issueDetailData.issueNo
+            }}</Descriptions.Item>
             <Descriptions.Item label="状态">
               <Tag :color="getIssueStatusConfig(issueDetailData.status).color">
-                {{ issueDetailData.statusName || getIssueStatusConfig(issueDetailData.status).label }}
+                {{
+                  issueDetailData.statusName ||
+                  getIssueStatusConfig(issueDetailData.status).label
+                }}
               </Tag>
             </Descriptions.Item>
-            <Descriptions.Item label="项目">{{ issueDetailData.matterName }}</Descriptions.Item>
-            <Descriptions.Item label="检查编号">{{ issueDetailData.checkNo || '-' }}</Descriptions.Item>
+            <Descriptions.Item label="项目">{{
+              issueDetailData.matterName
+            }}</Descriptions.Item>
+            <Descriptions.Item label="检查编号">{{
+              issueDetailData.checkNo || '-'
+            }}</Descriptions.Item>
             <Descriptions.Item label="问题类型">
-              {{ issueDetailData.issueTypeName || getIssueTypeName(issueDetailData.issueType) }}
+              {{
+                issueDetailData.issueTypeName ||
+                getIssueTypeName(issueDetailData.issueType)
+              }}
             </Descriptions.Item>
             <Descriptions.Item label="严重程度">
               <Tag :color="getSeverityConfig(issueDetailData.severity).color">
-                {{ issueDetailData.severityName || getSeverityConfig(issueDetailData.severity).label }}
+                {{
+                  issueDetailData.severityName ||
+                  getSeverityConfig(issueDetailData.severity).label
+                }}
               </Tag>
             </Descriptions.Item>
-            <Descriptions.Item label="责任人">{{ issueDetailData.responsible || '-' }}</Descriptions.Item>
-            <Descriptions.Item label="截止日期">{{ formatDate(issueDetailData.deadline) }}</Descriptions.Item>
-            <Descriptions.Item label="问题描述" :span="2">{{ issueDetailData.description }}</Descriptions.Item>
-            <Descriptions.Item label="处理结果" :span="2">{{ issueDetailData.resolution || '-' }}</Descriptions.Item>
+            <Descriptions.Item label="责任人">{{
+              issueDetailData.responsible || '-'
+            }}</Descriptions.Item>
+            <Descriptions.Item label="截止日期">{{
+              formatDate(issueDetailData.deadline)
+            }}</Descriptions.Item>
+            <Descriptions.Item label="问题描述" :span="2">{{
+              issueDetailData.description
+            }}</Descriptions.Item>
+            <Descriptions.Item label="处理结果" :span="2">{{
+              issueDetailData.resolution || '-'
+            }}</Descriptions.Item>
           </Descriptions>
         </template>
       </Spin>
     </Modal>
 
     <!-- 预警详情弹窗 -->
-    <Modal v-model:open="warningDetailVisible" title="预警详情" :footer="null" :width="isMobile ? '100%' : '650px'" :centered="isMobile">
+    <Modal
+      v-model:open="warningDetailVisible"
+      title="预警详情"
+      :footer="null"
+      :width="isMobile ? '100%' : '650px'"
+      :centered="isMobile"
+    >
       <Spin :spinning="warningDetailLoading">
         <template v-if="warningDetailData">
           <Descriptions :column="2" bordered size="small">
-            <Descriptions.Item label="预警编号">{{ warningDetailData.warningNo }}</Descriptions.Item>
+            <Descriptions.Item label="预警编号">{{
+              warningDetailData.warningNo
+            }}</Descriptions.Item>
             <Descriptions.Item label="状态">
-              <Tag :color="getWarningStatusConfig(warningDetailData.status).color">
-                {{ warningDetailData.statusName || getWarningStatusConfig(warningDetailData.status).label }}
+              <Tag
+                :color="getWarningStatusConfig(warningDetailData.status).color"
+              >
+                {{
+                  warningDetailData.statusName ||
+                  getWarningStatusConfig(warningDetailData.status).label
+                }}
               </Tag>
             </Descriptions.Item>
-            <Descriptions.Item label="项目">{{ warningDetailData.matterName }}</Descriptions.Item>
+            <Descriptions.Item label="项目">{{
+              warningDetailData.matterName
+            }}</Descriptions.Item>
             <Descriptions.Item label="风险类型">
-              {{ warningDetailData.riskTypeName || getRiskTypeName(warningDetailData.riskType) }}
+              {{
+                warningDetailData.riskTypeName ||
+                getRiskTypeName(warningDetailData.riskType)
+              }}
             </Descriptions.Item>
             <Descriptions.Item label="风险等级" :span="2">
-              <Tag :color="getRiskLevelConfig(warningDetailData.riskLevel).color">
-                {{ warningDetailData.riskLevelName || getRiskLevelConfig(warningDetailData.riskLevel).label }}
+              <Tag
+                :color="getRiskLevelConfig(warningDetailData.riskLevel).color"
+              >
+                {{
+                  warningDetailData.riskLevelName ||
+                  getRiskLevelConfig(warningDetailData.riskLevel).label
+                }}
               </Tag>
             </Descriptions.Item>
-            <Descriptions.Item label="风险描述" :span="2">{{ warningDetailData.description }}</Descriptions.Item>
-            <Descriptions.Item label="建议措施" :span="2">{{ warningDetailData.suggestedAction || '-' }}</Descriptions.Item>
-            <Descriptions.Item label="确认人">{{ warningDetailData.acknowledgedByName || '-' }}</Descriptions.Item>
-            <Descriptions.Item label="确认时间">{{ formatDateTime(warningDetailData.acknowledgedAt) }}</Descriptions.Item>
-            <Descriptions.Item label="解决人">{{ warningDetailData.resolvedByName || '-' }}</Descriptions.Item>
-            <Descriptions.Item label="解决时间">{{ formatDateTime(warningDetailData.resolvedAt) }}</Descriptions.Item>
-            <Descriptions.Item label="解决方案" :span="2">{{ warningDetailData.resolution || '-' }}</Descriptions.Item>
+            <Descriptions.Item label="风险描述" :span="2">{{
+              warningDetailData.description
+            }}</Descriptions.Item>
+            <Descriptions.Item label="建议措施" :span="2">{{
+              warningDetailData.suggestedAction || '-'
+            }}</Descriptions.Item>
+            <Descriptions.Item label="确认人">{{
+              warningDetailData.acknowledgedByName || '-'
+            }}</Descriptions.Item>
+            <Descriptions.Item label="确认时间">{{
+              formatDateTime(warningDetailData.acknowledgedAt)
+            }}</Descriptions.Item>
+            <Descriptions.Item label="解决人">{{
+              warningDetailData.resolvedByName || '-'
+            }}</Descriptions.Item>
+            <Descriptions.Item label="解决时间">{{
+              formatDateTime(warningDetailData.resolvedAt)
+            }}</Descriptions.Item>
+            <Descriptions.Item label="解决方案" :span="2">{{
+              warningDetailData.resolution || '-'
+            }}</Descriptions.Item>
           </Descriptions>
         </template>
       </Spin>

@@ -80,14 +80,37 @@ const gridColumns: any[] = [
   { title: '报表模板', field: 'templateName', width: 150, showOverflow: true },
   { title: '执行周期', field: 'scheduleDescription', width: 150 },
   { title: '状态', field: 'status', width: 100, slots: { default: 'status' } },
-  { title: '上次执行', field: 'lastExecuteTime', width: 160, slots: { default: 'lastExecuteTime' } },
-  { title: '执行结果', field: 'lastExecuteStatus', width: 100, slots: { default: 'lastExecuteStatus' } },
-  { title: '下次执行', field: 'nextExecuteTime', width: 160, slots: { default: 'nextExecuteTime' } },
-  { title: '操作', field: 'action', width: 250, fixed: 'right', slots: { default: 'action' } },
+  {
+    title: '上次执行',
+    field: 'lastExecuteTime',
+    width: 160,
+    slots: { default: 'lastExecuteTime' },
+  },
+  {
+    title: '执行结果',
+    field: 'lastExecuteStatus',
+    width: 100,
+    slots: { default: 'lastExecuteStatus' },
+  },
+  {
+    title: '下次执行',
+    field: 'nextExecuteTime',
+    width: 160,
+    slots: { default: 'nextExecuteTime' },
+  },
+  {
+    title: '操作',
+    field: 'action',
+    width: 250,
+    fixed: 'right',
+    slots: { default: 'action' },
+  },
 ];
 
 // 加载数据
-async function loadData(params: Record<string, any> & { page: number; pageSize: number }) {
+async function loadData(
+  params: Record<string, any> & { page: number; pageSize: number },
+) {
   const res = await getScheduledReportList({
     pageNum: params.page,
     pageSize: params.pageSize,
@@ -276,11 +299,31 @@ const logsPage = ref(1);
 const currentTaskId = ref<number | null>(null);
 
 const logColumns = [
-  { title: '执行时间', dataIndex: 'executeTime', key: 'executeTime', width: 160 },
+  {
+    title: '执行时间',
+    dataIndex: 'executeTime',
+    key: 'executeTime',
+    width: 160,
+  },
   { title: '状态', dataIndex: 'status', key: 'status', width: 100 },
-  { title: '耗时', dataIndex: 'durationDisplay', key: 'durationDisplay', width: 100 },
-  { title: '文件大小', dataIndex: 'fileSizeDisplay', key: 'fileSizeDisplay', width: 100 },
-  { title: '错误信息', dataIndex: 'errorMessage', key: 'errorMessage', ellipsis: true },
+  {
+    title: '耗时',
+    dataIndex: 'durationDisplay',
+    key: 'durationDisplay',
+    width: 100,
+  },
+  {
+    title: '文件大小',
+    dataIndex: 'fileSizeDisplay',
+    key: 'fileSizeDisplay',
+    width: 100,
+  },
+  {
+    title: '错误信息',
+    dataIndex: 'errorMessage',
+    key: 'errorMessage',
+    ellipsis: true,
+  },
 ];
 
 async function handleViewLogs(row: ScheduledReportDTO) {
@@ -423,7 +466,10 @@ onMounted(() => {
           v-if="row.lastExecuteStatus"
           :color="getExecuteStatusColor(row.lastExecuteStatus)"
         >
-          {{ row.lastExecuteStatusName || getExecuteStatusName(row.lastExecuteStatus) }}
+          {{
+            row.lastExecuteStatusName ||
+            getExecuteStatusName(row.lastExecuteStatus)
+          }}
         </Tag>
         <span v-else>-</span>
       </template>

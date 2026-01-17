@@ -102,12 +102,37 @@ const pricingForm = reactive({
 });
 
 const pricingColumns = [
-  { title: '集成代码', dataIndex: 'integrationCode', key: 'integrationCode', width: 140 },
+  {
+    title: '集成代码',
+    dataIndex: 'integrationCode',
+    key: 'integrationCode',
+    width: 140,
+  },
   { title: '模型名称', dataIndex: 'modelName', key: 'modelName', width: 180 },
-  { title: '输入价格 (元/千Token)', dataIndex: 'promptPrice', key: 'promptPrice', width: 160 },
-  { title: '输出价格 (元/千Token)', dataIndex: 'completionPrice', key: 'completionPrice', width: 160 },
-  { title: '单次调用费', dataIndex: 'perCallPrice', key: 'perCallPrice', width: 120 },
-  { title: '计费模式', dataIndex: 'pricingMode', key: 'pricingMode', width: 100 },
+  {
+    title: '输入价格 (元/千Token)',
+    dataIndex: 'promptPrice',
+    key: 'promptPrice',
+    width: 160,
+  },
+  {
+    title: '输出价格 (元/千Token)',
+    dataIndex: 'completionPrice',
+    key: 'completionPrice',
+    width: 160,
+  },
+  {
+    title: '单次调用费',
+    dataIndex: 'perCallPrice',
+    key: 'perCallPrice',
+    width: 120,
+  },
+  {
+    title: '计费模式',
+    dataIndex: 'pricingMode',
+    key: 'pricingMode',
+    width: 100,
+  },
   { title: '状态', dataIndex: 'enabled', key: 'enabled', width: 80 },
   { title: '操作', key: 'action', width: 120, fixed: 'right' as const },
 ];
@@ -165,7 +190,10 @@ function openPricingModal(record?: AiPricingConfig) {
 async function savePricing() {
   try {
     if (editingPricing.value) {
-      await requestClient.put(`/ai/pricing/${editingPricing.value.id}`, pricingForm);
+      await requestClient.put(
+        `/ai/pricing/${editingPricing.value.id}`,
+        pricingForm,
+      );
       message.success('定价已更新');
     } else {
       await requestClient.post('/ai/pricing', pricingForm);
@@ -211,7 +239,11 @@ defineExpose({ loadData });
 <template>
   <div class="ai-billing-tab">
     <!-- 系统配置 -->
-    <Card title="计费全局配置" :loading="configLoading" style="margin-bottom: 16px">
+    <Card
+      title="计费全局配置"
+      :loading="configLoading"
+      style="margin-bottom: 16px"
+    >
       <Row :gutter="[24, 16]">
         <Col
           v-for="cfg in configs"
@@ -229,21 +261,31 @@ defineExpose({ loadData });
               <template v-if="configValueType[cfg.configKey] === 'boolean'">
                 <Switch
                   :checked="cfg.configValue === 'true'"
-                  @change="(checked) => updateConfig(cfg.configKey, String(checked))"
+                  @change="
+                    (checked) => updateConfig(cfg.configKey, String(checked))
+                  "
                 />
               </template>
               <template v-else-if="configValueType[cfg.configKey] === 'number'">
                 <InputNumber
                   :value="Number(cfg.configValue)"
                   style="width: 120px"
-                  @change="(val) => updateConfig(cfg.configKey, String(val ?? 0))"
+                  @change="
+                    (val) => updateConfig(cfg.configKey, String(val ?? 0))
+                  "
                 />
               </template>
               <template v-else>
                 <Input
                   :value="cfg.configValue"
                   style="width: 120px"
-                  @change="(e: Event) => updateConfig(cfg.configKey, (e.target as HTMLInputElement).value)"
+                  @change="
+                    (e: Event) =>
+                      updateConfig(
+                        cfg.configKey,
+                        (e.target as HTMLInputElement).value,
+                      )
+                  "
                 />
               </template>
             </div>
@@ -255,9 +297,7 @@ defineExpose({ loadData });
     <!-- 定价配置 -->
     <Card title="AI模型定价配置" :loading="pricingLoading">
       <template #extra>
-        <Button type="primary" @click="openPricingModal()">
-          新增定价
-        </Button>
+        <Button type="primary" @click="openPricingModal()"> 新增定价 </Button>
       </template>
 
       <Table
@@ -285,10 +325,19 @@ defineExpose({ loadData });
           </template>
           <template v-else-if="column.key === 'action'">
             <Space>
-              <Button type="link" size="small" @click="openPricingModal(record as AiPricingConfig)">
+              <Button
+                type="link"
+                size="small"
+                @click="openPricingModal(record as AiPricingConfig)"
+              >
                 编辑
               </Button>
-              <Button type="link" size="small" danger @click="deletePricing(record.id)">
+              <Button
+                type="link"
+                size="small"
+                danger
+                @click="deletePricing(record.id)"
+              >
                 删除
               </Button>
             </Space>
@@ -314,7 +363,10 @@ defineExpose({ loadData });
           />
         </Form.Item>
         <Form.Item label="模型名称" required>
-          <Input v-model:value="pricingForm.modelName" placeholder="如: gpt-4, deepseek-chat" />
+          <Input
+            v-model:value="pricingForm.modelName"
+            placeholder="如: gpt-4, deepseek-chat"
+          />
         </Form.Item>
         <Form.Item label="计费模式">
           <Select
@@ -368,31 +420,34 @@ defineExpose({ loadData });
 </template>
 
 <style scoped>
-.ai-billing-tab {
-  padding: 0;
-}
-.config-item {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.config-label {
-  font-weight: 500;
-  color: #333;
-}
-.config-value {
-  display: flex;
-  align-items: center;
-}
-
 /* 移动端适配 */
 @media (max-width: 576px) {
   .config-label {
     font-size: 13px;
   }
-  
+
   .config-value :deep(.ant-input-number) {
     width: 100% !important;
   }
+}
+
+.ai-billing-tab {
+  padding: 0;
+}
+
+.config-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.config-label {
+  font-weight: 500;
+  color: #333;
+}
+
+.config-value {
+  display: flex;
+  align-items: center;
 }
 </style>

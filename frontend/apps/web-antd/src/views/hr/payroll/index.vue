@@ -809,7 +809,9 @@ onMounted(() => {
           <Col :xs="24" :sm="12" :md="8" :lg="6" :xl="4">
             <div class="payroll-info-item">
               <span class="payroll-info-label">工资表编号</span>
-              <span class="payroll-info-value">{{ currentSheet.payrollNo }}</span>
+              <span class="payroll-info-value">{{
+                currentSheet.payrollNo
+              }}</span>
             </div>
           </Col>
           <Col :xs="12" :sm="6" :md="4" :lg="3" :xl="2">
@@ -831,34 +833,53 @@ onMounted(() => {
           <Col :xs="12" :sm="6" :md="4" :lg="3" :xl="2">
             <div class="payroll-info-item">
               <span class="payroll-info-label">总人数</span>
-              <span class="payroll-info-value">{{ currentSheet.totalEmployees }}人</span>
+              <span class="payroll-info-value"
+                >{{ currentSheet.totalEmployees }}人</span
+              >
             </div>
           </Col>
           <Col :xs="12" :sm="8" :md="5" :lg="4" :xl="3">
             <div class="payroll-info-item">
               <span class="payroll-info-label">应发总额</span>
-              <span class="payroll-info-value payroll-amount">{{ formatCurrency(currentSheet.totalGrossAmount) }}</span>
+              <span class="payroll-info-value payroll-amount">{{
+                formatCurrency(currentSheet.totalGrossAmount)
+              }}</span>
             </div>
           </Col>
           <Col :xs="12" :sm="8" :md="5" :lg="4" :xl="3">
             <div class="payroll-info-item">
               <span class="payroll-info-label">扣减总额</span>
-              <span class="payroll-info-value payroll-deduction">{{ formatCurrency(currentSheet.totalDeductionAmount) }}</span>
+              <span class="payroll-info-value payroll-deduction">{{
+                formatCurrency(currentSheet.totalDeductionAmount)
+              }}</span>
             </div>
           </Col>
           <Col :xs="12" :sm="8" :md="5" :lg="4" :xl="3">
             <div class="payroll-info-item">
               <span class="payroll-info-label">实发总额</span>
-              <span class="payroll-info-value payroll-net">{{ formatCurrency(currentSheet.totalNetAmount) }}</span>
+              <span class="payroll-info-value payroll-net">{{
+                formatCurrency(currentSheet.totalNetAmount)
+              }}</span>
             </div>
           </Col>
           <Col :xs="12" :sm="6" :md="4" :lg="3" :xl="2">
             <div class="payroll-info-item">
               <span class="payroll-info-label">已确认</span>
-              <span class="payroll-info-value">{{ currentSheet.confirmedCount }}/{{ currentSheet.totalEmployees }}</span>
+              <span class="payroll-info-value"
+                >{{ currentSheet.confirmedCount }}/{{
+                  currentSheet.totalEmployees
+                }}</span
+              >
             </div>
           </Col>
-          <Col v-if="canExport(currentSheet)" :xs="24" :sm="18" :md="12" :lg="9" :xl="5">
+          <Col
+            v-if="canExport(currentSheet)"
+            :xs="24"
+            :sm="18"
+            :md="12"
+            :lg="9"
+            :xl="5"
+          >
             <Space>
               <Button type="default" @click="handleExport">导出Excel</Button>
               <Button type="default" @click="handlePrint">打印</Button>
@@ -1200,10 +1221,10 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-height: 56px;
   padding: 8px 12px;
   background: #f5f7fa;
   border-radius: 6px;
-  min-height: 56px;
 }
 
 .payroll-info-label {
@@ -1226,7 +1247,7 @@ onMounted(() => {
 }
 
 .payroll-net {
-  color: #52c41a;
   font-weight: 600;
+  color: #52c41a;
 }
 </style>

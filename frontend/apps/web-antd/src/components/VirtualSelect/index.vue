@@ -113,7 +113,7 @@ const mergedOptions = computed(() => {
 const enableVirtual = computed(() => {
   const totalOptions = useRemoteSearch.value
     ? mergedOptions.value.length
-    : (props.options?.length || 0);
+    : props.options?.length || 0;
   return totalOptions >= props.virtualThreshold;
 });
 
@@ -152,7 +152,11 @@ function handleDropdownVisibleChange(open: boolean) {
 watch(
   () => props.initialOptions,
   (newOptions) => {
-    if (newOptions && newOptions.length > 0 && remoteOptions.value.length === 0) {
+    if (
+      newOptions &&
+      newOptions.length > 0 &&
+      remoteOptions.value.length === 0
+    ) {
       // 如果有初始选项且远程选项为空，使用初始选项
       remoteOptions.value = [...newOptions];
     }
@@ -192,7 +196,7 @@ defineExpose({
     @dropdownVisibleChange="handleDropdownVisibleChange"
   >
     <template v-if="loading" #notFoundContent>
-      <div style="text-align: center; padding: 12px">
+      <div style="padding: 12px; text-align: center">
         <Spin size="small" />
         <span style="margin-left: 8px">搜索中...</span>
       </div>

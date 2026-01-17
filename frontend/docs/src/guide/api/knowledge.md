@@ -12,15 +12,15 @@ GET /api/knowledge/article/list
 
 查询参数：
 
-| 参数         | 类型   | 说明         |
-| ------------ | ------ | ------------ |
-| pageNum      | number | 页码         |
-| pageSize     | number | 每页数量     |
-| title        | string | 文章标题     |
-| categoryId   | number | 分类ID       |
-| authorId     | number | 作者ID       |
-| status       | string | 文章状态     |
-| tags         | string | 标签         |
+| 参数       | 类型   | 说明     |
+| ---------- | ------ | -------- |
+| pageNum    | number | 页码     |
+| pageSize   | number | 每页数量 |
+| title      | string | 文章标题 |
+| categoryId | number | 分类ID   |
+| authorId   | number | 作者ID   |
+| status     | string | 文章状态 |
+| tags       | string | 标签     |
 
 ### 创建文章
 
@@ -62,12 +62,12 @@ DELETE /api/knowledge/article/{id}
 
 ### 文章状态
 
-| 值           | 说明       |
-| ------------ | ---------- |
-| DRAFT        | 草稿       |
-| PUBLISHED    | 已发布     |
-| REVIEWING    | 审核中     |
-| REJECTED     | 已驳回     |
+| 值        | 说明   |
+| --------- | ------ |
+| DRAFT     | 草稿   |
+| PUBLISHED | 已发布 |
+| REVIEWING | 审核中 |
+| REJECTED  | 已驳回 |
 
 ## 文章分类
 
@@ -116,14 +116,14 @@ GET /api/knowledge/case/list
 
 查询参数：
 
-| 参数           | 类型   | 说明         |
-| -------------- | ------ | ------------ |
-| pageNum        | number | 页码         |
-| pageSize       | number | 每页数量     |
-| title          | string | 案例标题     |
-| caseType       | string | 案例类型     |
-| court          | string | 法院         |
-| tags           | string | 标签         |
+| 参数     | 类型   | 说明     |
+| -------- | ------ | -------- |
+| pageNum  | number | 页码     |
+| pageSize | number | 每页数量 |
+| title    | string | 案例标题 |
+| caseType | string | 案例类型 |
+| court    | string | 法院     |
+| tags     | string | 标签     |
 
 ### 创建案例
 
@@ -156,12 +156,12 @@ GET /api/knowledge/case/{id}
 
 ### 案例类型
 
-| 值               | 说明       |
-| ---------------- | ---------- |
-| CIVIL            | 民事       |
-| CRIMINAL         | 刑事       |
-| ADMINISTRATIVE   | 行政       |
-| COMMERCIAL       | 商事       |
+| 值             | 说明 |
+| -------------- | ---- |
+| CIVIL          | 民事 |
+| CRIMINAL       | 刑事 |
+| ADMINISTRATIVE | 行政 |
+| COMMERCIAL     | 商事 |
 
 ## 法规库
 
@@ -173,14 +173,14 @@ GET /api/knowledge/law/list
 
 查询参数：
 
-| 参数         | 类型   | 说明         |
-| ------------ | ------ | ------------ |
-| pageNum      | number | 页码         |
-| pageSize     | number | 每页数量     |
-| title        | string | 法规标题     |
-| issuingOrg   | string | 发布机关     |
-| lawType      | string | 法规类型     |
-| effectDate   | string | 生效日期     |
+| 参数       | 类型   | 说明     |
+| ---------- | ------ | -------- |
+| pageNum    | number | 页码     |
+| pageSize   | number | 每页数量 |
+| title      | string | 法规标题 |
+| issuingOrg | string | 发布机关 |
+| lawType    | string | 法规类型 |
+| effectDate | string | 生效日期 |
 
 ### 创建法规
 
@@ -251,9 +251,9 @@ GET /api/knowledge/tag/hot
 
 参数：
 
-| 参数         | 类型   | 说明         |
-| ------------ | ------ | ------------ |
-| limit        | number | 返回数量     |
+| 参数  | 类型   | 说明     |
+| ----- | ------ | -------- |
+| limit | number | 返回数量 |
 
 ## 搜索
 
@@ -265,18 +265,18 @@ GET /api/knowledge/search
 
 参数：
 
-| 参数         | 类型   | 说明         |
-| ------------ | ------ | ------------ |
-| keyword      | string | 关键词       |
-| type         | string | 类型（article/case/law） |
-| categoryId   | number | 分类ID       |
-| pageNum      | number | 页码         |
-| pageSize     | number | 每页数量     |
+| 参数       | 类型   | 说明                     |
+| ---------- | ------ | ------------------------ |
+| keyword    | string | 关键词                   |
+| type       | string | 类型（article/case/law） |
+| categoryId | number | 分类ID                   |
+| pageNum    | number | 页码                     |
+| pageSize   | number | 每页数量                 |
 
 ---
 
 ## 文档更新记录
 
-| 更新时间 | 更新内容 | 操作人 |
-|----------|----------|--------|
+| 更新时间   | 更新内容               | 操作人       |
+| ---------- | ---------------------- | ------------ |
 | 2026-01-11 | 创建知识库接口文档骨架 | AI Assistant |

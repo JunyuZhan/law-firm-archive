@@ -1179,7 +1179,9 @@ watch(activeTab, (newTab) => {
       <TabPane key="wecom" tab="企业微信">
         <Card title="企业微信群机器人" :bordered="false">
           <Alert
-            :message="wecomStatus.enabled ? '企业微信通知已启用' : '企业微信通知未配置'"
+            :message="
+              wecomStatus.enabled ? '企业微信通知已启用' : '企业微信通知未配置'
+            "
             :type="wecomStatus.enabled ? 'success' : 'warning'"
             show-icon
             style="margin-bottom: 24px"
@@ -1192,7 +1194,7 @@ watch(activeTab, (newTab) => {
                 placeholder="请输入企业微信群机器人的 Webhook 地址"
                 style="max-width: 600px"
               />
-              <div style="color: #888; font-size: 12px; margin-top: 4px">
+              <div style="margin-top: 4px; font-size: 12px; color: #888">
                 格式：https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxx
               </div>
             </FormItem>
@@ -1213,7 +1215,7 @@ watch(activeTab, (newTab) => {
           <Alert type="info" show-icon>
             <template #message>配置说明</template>
             <template #description>
-              <ul style="margin: 8px 0 0 0; padding-left: 20px">
+              <ul style="padding-left: 20px; margin: 8px 0 0">
                 <li>
                   <strong>如何获取 Webhook</strong>：在企业微信群中 → 群设置 →
                   群机器人 → 添加机器人 → 复制 Webhook 地址

@@ -482,7 +482,7 @@ async function handleApproveStoreSave() {
 // 打印卷宗封面
 function handlePrintCover(record: ArchiveDTO) {
   const matter = getMatterInfo(record);
-  
+
   // 创建打印窗口
   const printWindow = window.open('', '_blank', 'width=800,height=1000');
   if (!printWindow) {
@@ -507,7 +507,9 @@ function handlePrintCover(record: ArchiveDTO) {
     CONSULTATION: '咨询',
     ALL_STAGES: '全程',
   };
-  const stageName = matter?.litigationStage ? stageMap[matter.litigationStage] || '' : '';
+  const stageName = matter?.litigationStage
+    ? stageMap[matter.litigationStage] || ''
+    : '';
 
   // 结果标签
   const resultLabel = isArbitration
@@ -532,7 +534,9 @@ function handlePrintCover(record: ArchiveDTO) {
     '3_YEARS': '3年',
     '1_YEAR': '1年',
   };
-  const retentionPeriod = record.retentionPeriod ? periodMap[record.retentionPeriod] || '' : '';
+  const retentionPeriod = record.retentionPeriod
+    ? periodMap[record.retentionPeriod] || ''
+    : '';
 
   // 格式化日期
   const formatDate = (dateStr?: string) => {
@@ -543,21 +547,35 @@ function handlePrintCover(record: ArchiveDTO) {
 
   // 年份转中文
   const toChineseYear = (year: number) => {
-    const cnNumbers = ['〇', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
+    const cnNumbers = [
+      '〇',
+      '一',
+      '二',
+      '三',
+      '四',
+      '五',
+      '六',
+      '七',
+      '八',
+      '九',
+    ];
     return String(year)
       .split('')
       .map((c) => cnNumbers[Number.parseInt(c)])
       .join('');
   };
 
-  const year = matter?.createdAt ? new Date(matter.createdAt).getFullYear() : new Date().getFullYear();
+  const year = matter?.createdAt
+    ? new Date(matter.createdAt).getFullYear()
+    : new Date().getFullYear();
   const yearCn = toChineseYear(year);
   const archiveNo = record.archiveNo || '    ';
   const matterNo = record.matterNo || matter?.matterNo || '';
   const archiveDate = formatDate(record.archiveDate || record.createdAt);
 
   // 生成HTML内容
-  const html = `
+  const html =
+    `
 <!DOCTYPE html>
 <html>
 <head>
@@ -727,15 +745,19 @@ function handlePrintCover(record: ArchiveDTO) {
       }
     </div>
   </div>
-  <scr` + `ipt>
+  <scr` +
+    `ipt>
     window.onload = function() {
       setTimeout(function() {
         window.print();
       }, 300);
     };
-  </scr` + `ipt>
-</bo` + `dy>
-</ht` + `ml>`;
+  </scr` +
+    `ipt>
+</bo` +
+    `dy>
+</ht` +
+    `ml>`;
 
   printWindow.document.write(html);
   printWindow.document.close();
@@ -988,10 +1010,7 @@ onMounted(async () => {
 
               <!-- 底部操作栏（状态+操作按钮） -->
               <div class="cover-footer">
-                <Tag
-                  :color="getStatusColor(archive.status || '')"
-                  size="small"
-                >
+                <Tag :color="getStatusColor(archive.status || '')" size="small">
                   {{ archive.statusName || '-' }}
                 </Tag>
                 <div class="cover-actions">
@@ -1351,7 +1370,18 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-/* Tab样式 */
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .archive-cover-card {
+    margin-bottom: 12px;
+  }
+
+  .cover-footer {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+}
+
 :deep(.ant-tabs-nav) {
   margin-bottom: 16px;
 }
@@ -1366,13 +1396,14 @@ onMounted(async () => {
 
 /* 档案封面卡片容器 */
 .archive-cover-card {
+  contain-intrinsic-size: 0 380px;
   margin-bottom: 16px;
+
+  /* 性能优化：延迟渲染不在视口中的卡片 */
+  content-visibility: auto;
   transition:
     transform 0.3s ease,
     box-shadow 0.3s ease;
-  /* 性能优化：延迟渲染不在视口中的卡片 */
-  content-visibility: auto;
-  contain-intrinsic-size: 0 380px;
 }
 
 .archive-cover-card:hover {
@@ -1406,15 +1437,5 @@ onMounted(async () => {
   font-size: 12px;
 }
 
-/* 响应式调整 */
-@media (max-width: 768px) {
-  .archive-cover-card {
-    margin-bottom: 12px;
-  }
-
-  .cover-footer {
-    flex-wrap: wrap;
-    gap: 4px;
-  }
-}
+/* Tab样式 */
 </style>

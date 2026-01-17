@@ -8,7 +8,12 @@ import { Button, message, Space, Tag } from 'ant-design-vue';
 import { getConfigValue } from '#/api/system';
 
 import { createContractSampleData } from '../constants/sample-data';
-import { isStructuredContent, formatStructuredForPrint, formatPlainTextForPrint, decodeHtmlEntities } from '../utils/print-formatter';
+import {
+  isStructuredContent,
+  formatStructuredForPrint,
+  formatPlainTextForPrint,
+  decodeHtmlEntities,
+} from '../utils/print-formatter';
 
 interface ContractTemplateDTO {
   id: number;
@@ -84,34 +89,55 @@ async function open(record: ContractTemplateDTO) {
   try {
     // 调试：记录内容类型和内容预览
     const isStructured = isStructuredContent(content);
-    const contentPreview = content.substring(0, 100) + (content.length > 100 ? '...' : '');
-    console.log('预览内容类型:', isStructured ? '结构化' : '纯文本', '内容长度:', content.length);
+    const contentPreview =
+      content.substring(0, 100) + (content.length > 100 ? '...' : '');
+    console.log(
+      '预览内容类型:',
+      isStructured ? '结构化' : '纯文本',
+      '内容长度:',
+      content.length,
+    );
     console.log('内容预览（解码后）:', contentPreview);
-    
+
     // 如果识别为纯文本但看起来像 JSON，尝试强制解析
-    if (!isStructured && content.trim().startsWith('{') && content.trim().endsWith('}')) {
+    if (
+      !isStructured &&
+      content.trim().startsWith('{') &&
+      content.trim().endsWith('}')
+    ) {
       try {
         const parsed = JSON.parse(content.trim());
-        if (parsed && typeof parsed === 'object' && parsed._structured === true) {
+        if (
+          parsed &&
+          typeof parsed === 'object' &&
+          parsed._structured === true
+        ) {
           console.log('检测到未被识别的结构化内容，强制使用结构化格式化');
           // 强制使用结构化格式化
           let formatted = formatStructuredForPrint(content.trim(), displayData);
-          
+
           if (!formatted || formatted.trim() === '') {
             console.error('强制格式化结构化内容失败，内容为空');
-            previewContent.value = '<p style="color: red;">⚠️ 模板内容格式错误，无法预览。请检查模板内容是否正确。</p>';
+            previewContent.value =
+              '<p style="color: red;">⚠️ 模板内容格式错误，无法预览。请检查模板内容是否正确。</p>';
             modalApi.setState({ title: `预览 - ${record.name}` });
             modalApi.open();
             return;
           }
-          
+
           // 高亮变量值（包括未配置的提示）
           Object.entries(displayData).forEach(([_key, value]) => {
             if (value && value.startsWith('[') && value.endsWith(']')) {
-              formatted = formatted.replaceAll(value, `<span class="preview-var-missing">${value}</span>`);
+              formatted = formatted.replaceAll(
+                value,
+                `<span class="preview-var-missing">${value}</span>`,
+              );
             } else if (value) {
               const escapedValue = value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-              formatted = formatted.replace(new RegExp(escapedValue, 'g'), `<span class="preview-var">${value}</span>`);
+              formatted = formatted.replace(
+                new RegExp(escapedValue, 'g'),
+                `<span class="preview-var">${value}</span>`,
+              );
             }
           });
           previewContent.value = formatted;
@@ -123,45 +149,53 @@ async function open(record: ContractTemplateDTO) {
         console.warn('强制解析 JSON 失败:', e);
       }
     }
-    
+
     if (isStructured) {
       // 使用新的格式化函数处理结构化内容
       let formatted = formatStructuredForPrint(content, displayData);
-      
+
       // 如果格式化结果为空，说明解析失败
       if (!formatted || formatted.trim() === '') {
         console.error('格式化结构化内容失败，内容为空');
-        previewContent.value = '<p style="color: red;">⚠️ 模板内容格式错误，无法预览。请检查模板内容是否正确。</p>';
+        previewContent.value =
+          '<p style="color: red;">⚠️ 模板内容格式错误，无法预览。请检查模板内容是否正确。</p>';
         modalApi.setState({ title: `预览 - ${record.name}` });
         modalApi.open();
         return;
       }
-      
+
       // 高亮变量值（包括未配置的提示）
       Object.entries(displayData).forEach(([_key, value]) => {
         if (value && value.startsWith('[') && value.endsWith(']')) {
           // 未配置的变量，用红色警告样式
-          formatted = formatted.replaceAll(value, `<span class="preview-var-missing">${value}</span>`);
+          formatted = formatted.replaceAll(
+            value,
+            `<span class="preview-var-missing">${value}</span>`,
+          );
         } else if (value) {
           // 转义特殊字符，避免在 replaceAll 中出错
           const escapedValue = value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-          formatted = formatted.replace(new RegExp(escapedValue, 'g'), `<span class="preview-var">${value}</span>`);
+          formatted = formatted.replace(
+            new RegExp(escapedValue, 'g'),
+            `<span class="preview-var">${value}</span>`,
+          );
         }
       });
       previewContent.value = formatted;
     } else {
       // 旧格式：使用智能格式化或直接显示
       let formatted = formatPlainTextForPrint(content, displayData);
-      
+
       // 如果格式化结果看起来像JSON（可能是未被识别的结构化内容），给出提示
       if (formatted.trim().startsWith('{') && formatted.trim().endsWith('}')) {
         console.warn('检测到可能是JSON格式的内容，但未被识别为结构化内容');
-        previewContent.value = '<p style="color: red;">⚠️ 模板内容格式错误：检测到JSON格式但无法解析。请检查模板内容是否正确保存。</p>';
+        previewContent.value =
+          '<p style="color: red;">⚠️ 模板内容格式错误：检测到JSON格式但无法解析。请检查模板内容是否正确保存。</p>';
         modalApi.setState({ title: `预览 - ${record.name}` });
         modalApi.open();
         return;
       }
-      
+
       // 替换变量为示例值并高亮
       Object.entries(displayData).forEach(([key, value]) => {
         const isMissing = value && value.startsWith('[') && value.endsWith(']');
@@ -173,7 +207,10 @@ async function open(record: ContractTemplateDTO) {
           `<span class="${cssClass}">${value}</span>`,
         );
         formatted = formatted.replace(
-          new RegExp(`<span[^>]*data-variable="${escapedKey}"[^>]*>[^<]*</span>`, 'g'),
+          new RegExp(
+            `<span[^>]*data-variable="${escapedKey}"[^>]*>[^<]*</span>`,
+            'g',
+          ),
           `<span class="${cssClass}">${value}</span>`,
         );
       });
@@ -263,7 +300,10 @@ defineExpose({ open });
     <div class="preview-footer">
       <Space>
         <span><Tag color="blue">蓝色文字</Tag> 已替换的变量值</span>
-        <span><Tag color="red">红色文字</Tag> 系统未配置，请前往「系统管理 → 基础配置」设置</span>
+        <span
+          ><Tag color="red">红色文字</Tag> 系统未配置，请前往「系统管理 →
+          基础配置」设置</span
+        >
       </Space>
     </div>
   </Modal>
@@ -323,6 +363,7 @@ defineExpose({ open });
 
 .preview-content :deep(p) {
   margin: 0.5em 0;
+
   /* 不设置默认 text-indent，保留编辑器的内联样式设置 */
 }
 
@@ -332,10 +373,10 @@ defineExpose({ open });
 }
 
 .preview-content :deep(.preview-var-missing) {
+  padding: 0 4px;
   font-weight: 500;
   color: #ff4d4f;
   background: #fff2f0;
-  padding: 0 4px;
   border-radius: 2px;
 }
 

@@ -356,15 +356,15 @@ defineExpose({ openCreate, openEdit });
     <!-- 编辑器类型选择 -->
     <div style="margin-bottom: 12px">
       <Space>
-        <Button 
-          :type="useStructuredEditor ? 'primary' : 'default'" 
+        <Button
+          :type="useStructuredEditor ? 'primary' : 'default'"
           size="small"
           @click="useStructuredEditor = true"
         >
           📝 分块编辑（推荐）
         </Button>
-        <Button 
-          :type="!useStructuredEditor ? 'primary' : 'default'" 
+        <Button
+          :type="!useStructuredEditor ? 'primary' : 'default'"
           size="small"
           @click="useStructuredEditor = false"
         >
@@ -375,8 +375,8 @@ defineExpose({ openCreate, openEdit });
 
     <!-- 结构化编辑器 -->
     <div v-if="useStructuredEditor">
-      <StructuredLetterEditor 
-        v-model="formData.content" 
+      <StructuredLetterEditor
+        v-model="formData.content"
         :variables="letterVariables"
       />
     </div>

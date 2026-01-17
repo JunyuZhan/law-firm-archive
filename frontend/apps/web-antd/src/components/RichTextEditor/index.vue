@@ -33,8 +33,12 @@ function decodeHtmlEntities(text: string): string {
   for (const [entity, char] of Object.entries(entities)) {
     result = result.split(entity).join(char);
   }
-  result = result.replace(/&#(\d+);/g, (_, num) => String.fromCharCode(parseInt(num, 10)));
-  result = result.replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+  result = result.replace(/&#(\d+);/g, (_, num) =>
+    String.fromCharCode(parseInt(num, 10)),
+  );
+  result = result.replace(/&#x([0-9a-fA-F]+);/g, (_, hex) =>
+    String.fromCharCode(parseInt(hex, 16)),
+  );
   return result;
 }
 

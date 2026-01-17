@@ -144,7 +144,13 @@ const statusOptions = [
 function getGridColumns(): VxeGridProps['columns'] {
   const baseColumns = [
     { title: '收费编号', field: 'feeNo', width: 130 },
-    { title: '项目', field: 'matterName', minWidth: isMobile.value ? 120 : 200, showOverflow: true, mobileShow: true },
+    {
+      title: '项目',
+      field: 'matterName',
+      minWidth: isMobile.value ? 120 : 200,
+      showOverflow: true,
+      mobileShow: true,
+    },
     { title: '客户', field: 'clientName', width: 150, mobileShow: true },
     { title: '收费类型', field: 'feeTypeName', width: 100 },
     { title: '收费名称', field: 'feeName', width: 150 },
@@ -179,9 +185,9 @@ function getGridColumns(): VxeGridProps['columns'] {
       mobileShow: true,
     },
   ];
-  
+
   if (isMobile.value) {
-    return baseColumns.filter(col => col.mobileShow === true);
+    return baseColumns.filter((col) => col.mobileShow === true);
   }
   return baseColumns;
 }

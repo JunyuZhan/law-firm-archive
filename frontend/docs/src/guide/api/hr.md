@@ -12,15 +12,15 @@ GET /api/hr/employee/list
 
 查询参数：
 
-| 参数         | 类型   | 说明         |
-| ------------ | ------ | ------------ |
-| pageNum      | number | 页码         |
-| pageSize     | number | 每页数量     |
-| name         | string | 员工姓名     |
-| employeeNo   | string | 员工编号     |
-| departmentId | number | 部门ID       |
-| position     | string | 职位         |
-| status       | string | 员工状态     |
+| 参数         | 类型   | 说明     |
+| ------------ | ------ | -------- |
+| pageNum      | number | 页码     |
+| pageSize     | number | 每页数量 |
+| name         | string | 员工姓名 |
+| employeeNo   | string | 员工编号 |
+| departmentId | number | 部门ID   |
+| position     | string | 职位     |
+| status       | string | 员工状态 |
 
 ### 创建员工
 
@@ -67,20 +67,20 @@ DELETE /api/hr/employee/{id}
 
 ### 员工状态
 
-| 值               | 说明       |
-| ---------------- | ---------- |
-| PROBATION        | 试用期     |
-| REGULAR          | 正式       |
-| RESIGNED         | 已离职     |
-| RETIRED          | 已退休     |
+| 值        | 说明   |
+| --------- | ------ |
+| PROBATION | 试用期 |
+| REGULAR   | 正式   |
+| RESIGNED  | 已离职 |
+| RETIRED   | 已退休 |
 
 ### 员工类型
 
-| 值               | 说明       |
-| ---------------- | ---------- |
-| FULL_TIME        | 全职       |
-| PART_TIME        | 兼职       |
-| INTERN           | 实习生     |
+| 值        | 说明   |
+| --------- | ------ |
+| FULL_TIME | 全职   |
+| PART_TIME | 兼职   |
+| INTERN    | 实习生 |
 
 ## 考勤管理
 
@@ -92,12 +92,12 @@ GET /api/hr/attendance/list
 
 查询参数：
 
-| 参数         | 类型   | 说明         |
-| ------------ | ------ | ------------ |
-| employeeId   | number | 员工ID       |
-| startDate    | string | 开始日期     |
-| endDate      | string | 结束日期     |
-| attendanceType | string | 考勤类型   |
+| 参数           | 类型   | 说明     |
+| -------------- | ------ | -------- |
+| employeeId     | number | 员工ID   |
+| startDate      | string | 开始日期 |
+| endDate        | string | 结束日期 |
+| attendanceType | string | 考勤类型 |
 
 ### 打卡记录
 
@@ -119,13 +119,13 @@ POST /api/hr/attendance/clock
 
 ### 考勤类型
 
-| 值               | 说明       |
-| ---------------- | ---------- |
-| IN               | 上班打卡   |
-| OUT              | 下班打卡   |
-| LEAVE_EARLY      | 早退       |
-| LATE             | 迟到       |
-| ABSENT           | 缺勤       |
+| 值          | 说明     |
+| ----------- | -------- |
+| IN          | 上班打卡 |
+| OUT         | 下班打卡 |
+| LEAVE_EARLY | 早退     |
+| LATE        | 迟到     |
+| ABSENT      | 缺勤     |
 
 ## 请假管理
 
@@ -172,15 +172,15 @@ GET /api/hr/leave/list
 
 ### 请假类型
 
-| 值               | 说明       |
-| ---------------- | ---------- |
-| ANNUAL           | 年假       |
-| SICK             | 病假       |
-| PERSONAL         | 事假       |
-| MARRIAGE         | 婚假       |
-| MATERNITY        | 产假       |
-| PATERNITY        | 陪产假     |
-| BEREAVEMENT      | 丧假       |
+| 值          | 说明   |
+| ----------- | ------ |
+| ANNUAL      | 年假   |
+| SICK        | 病假   |
+| PERSONAL    | 事假   |
+| MARRIAGE    | 婚假   |
+| MATERNITY   | 产假   |
+| PATERNITY   | 陪产假 |
+| BEREAVEMENT | 丧假   |
 
 ## 薪资管理
 
@@ -192,11 +192,11 @@ GET /api/hr/payroll/list
 
 查询参数：
 
-| 参数         | 类型   | 说明         |
-| ------------ | ------ | ---------- |
-| employeeId   | number | 员工ID     |
-| month        | string | 月份       |
-| status       | string | 状态       |
+| 参数       | 类型   | 说明   |
+| ---------- | ------ | ------ |
+| employeeId | number | 员工ID |
+| month      | string | 月份   |
+| status     | string | 状态   |
 
 ### 生成工资表
 
@@ -227,16 +227,16 @@ POST /api/hr/payroll/{id}/confirm
 
 ### 工资项
 
-| 项           | 说明         |
-| ------------ | ------------ |
-| baseSalary   | 基本工资     |
-| performance  | 绩效奖金     |
-| allowance    | 津贴补贴     |
-| overtimePay  | 加班费       |
-| commission   | 提成         |
-| tax          | 个人所得税   |
-| insurance    | 社保公积金   |
-| netSalary    | 实发工资     |
+| 项          | 说明       |
+| ----------- | ---------- |
+| baseSalary  | 基本工资   |
+| performance | 绩效奖金   |
+| allowance   | 津贴补贴   |
+| overtimePay | 加班费     |
+| commission  | 提成       |
+| tax         | 个人所得税 |
+| insurance   | 社保公积金 |
+| netSalary   | 实发工资   |
 
 ## 转正管理
 
@@ -254,7 +254,7 @@ POST /api/hr/regularization/apply
   "applyDate": "2026-04-01",
   "probationSummary": "试用期表现良好",
   "selfEvaluation": "已经熟悉工作流程",
-  "expectedSalary": 8000.00
+  "expectedSalary": 8000.0
 }
 ```
 
@@ -294,6 +294,6 @@ POST /api/hr/resignation/{id}/approve
 
 ## 文档更新记录
 
-| 更新时间 | 更新内容 | 操作人 |
-|----------|----------|--------|
+| 更新时间   | 更新内容             | 操作人       |
+| ---------- | -------------------- | ------------ |
 | 2026-01-11 | 创建人力接口文档骨架 | AI Assistant |

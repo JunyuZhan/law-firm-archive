@@ -84,7 +84,12 @@ const formSchema: VbenFormSchema[] = [
 // 响应式列配置
 function getGridColumns(): VxeGridProps['columns'] {
   const baseColumns = [
-    { title: '法规名称', field: 'name', width: isMobile.value ? 150 : 200, mobileShow: true },
+    {
+      title: '法规名称',
+      field: 'name',
+      width: isMobile.value ? 150 : 200,
+      mobileShow: true,
+    },
     { title: '法规类型', field: 'lawTypeName', width: 120, mobileShow: true },
     { title: '分类', field: 'categoryName', width: 120 },
     { title: '发布机关', field: 'issuer', width: 150 },
@@ -106,9 +111,9 @@ function getGridColumns(): VxeGridProps['columns'] {
       mobileShow: true,
     },
   ];
-  
+
   if (isMobile.value) {
-    return baseColumns.filter(col => col.mobileShow === true);
+    return baseColumns.filter((col) => col.mobileShow === true);
   }
   return baseColumns;
 }

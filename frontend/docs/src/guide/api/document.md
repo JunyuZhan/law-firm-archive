@@ -10,15 +10,15 @@ GET /api/document/list
 
 查询参数：
 
-| 参数          | 类型   | 说明         |
-| ------------- | ------ | ------------ |
-| pageNum       | number | 页码         |
-| pageSize      | number | 每页数量     |
-| matterId      | number | 项目ID       |
-| categoryId    | number | 分类ID       |
-| fileName      | string | 文件名称     |
-| uploaderId    | number | 上传人ID     |
-| status        | string | 文档状态     |
+| 参数       | 类型   | 说明     |
+| ---------- | ------ | -------- |
+| pageNum    | number | 页码     |
+| pageSize   | number | 每页数量 |
+| matterId   | number | 项目ID   |
+| categoryId | number | 分类ID   |
+| fileName   | string | 文件名称 |
+| uploaderId | number | 上传人ID |
+| status     | string | 文档状态 |
 
 ## 文档详情
 
@@ -36,12 +36,12 @@ POST /api/document/upload
 
 参数：
 
-| 参数        | 类型   | 说明         |
-| ----------- | ------ | ------------ |
-| file        | file   | 文件         |
-| matterId    | number | 项目ID       |
-| categoryId  | number | 分类ID       |
-| description | string | 文件描述     |
+| 参数        | 类型   | 说明             |
+| ----------- | ------ | ---------------- |
+| file        | file   | 文件             |
+| matterId    | number | 项目ID           |
+| categoryId  | number | 分类ID           |
+| description | string | 文件描述         |
 | tags        | string | 标签（逗号分隔） |
 
 ## 更新文档信息
@@ -172,6 +172,6 @@ POST /api/document/template/{id}/generate
 
 ## 文档更新记录
 
-| 更新时间 | 更新内容 | 操作人 |
-|----------|----------|--------|
+| 更新时间   | 更新内容             | 操作人       |
+| ---------- | -------------------- | ------------ |
 | 2026-01-11 | 创建文档接口文档骨架 | AI Assistant |

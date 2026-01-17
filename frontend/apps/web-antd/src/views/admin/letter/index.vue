@@ -387,14 +387,16 @@ const printWithQrCode = ref(true); // 默认打印二维码
 // 显示打印选项弹窗
 function showPrintOptions(record: LetterApplicationDTO) {
   printWithQrCode.value = true; // 重置为默认值
-  
+
   Modal.confirm({
     title: '打印选项',
     width: 400,
     content: () => {
       return h('div', { style: 'padding: 16px 0' }, [
-        h('div', { style: 'margin-bottom: 16px; color: #666' }, 
-          `即将打印函件：${record.applicationNo}`
+        h(
+          'div',
+          { style: 'margin-bottom: 16px; color: #666' },
+          `即将打印函件：${record.applicationNo}`,
         ),
         h('div', { style: 'display: flex; align-items: center; gap: 8px' }, [
           h('input', {
@@ -406,13 +408,19 @@ function showPrintOptions(record: LetterApplicationDTO) {
               printWithQrCode.value = (e.target as HTMLInputElement).checked;
             },
           }),
-          h('label', { 
-            for: 'printQrCodeCheckbox',
-            style: 'cursor: pointer; user-select: none' 
-          }, '打印验证二维码'),
+          h(
+            'label',
+            {
+              for: 'printQrCodeCheckbox',
+              style: 'cursor: pointer; user-select: none',
+            },
+            '打印验证二维码',
+          ),
         ]),
-        h('div', { style: 'margin-top: 8px; font-size: 12px; color: #999' }, 
-          '二维码用于扫码验证函件真伪，推荐启用'
+        h(
+          'div',
+          { style: 'margin-top: 8px; font-size: 12px; color: #999' },
+          '二维码用于扫码验证函件真伪，推荐启用',
         ),
       ]);
     },
@@ -428,7 +436,7 @@ function showPrintOptions(record: LetterApplicationDTO) {
 async function executePrint(record: LetterApplicationDTO, withQrCode: boolean) {
   try {
     let qrCodeBase64: string | undefined;
-    
+
     if (withQrCode) {
       // 获取验证二维码
       try {

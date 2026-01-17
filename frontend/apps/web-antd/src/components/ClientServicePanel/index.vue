@@ -73,14 +73,46 @@ const props = defineProps<{
 
 // 授权范围选项
 const SCOPE_OPTIONS: ScopeOption[] = [
-  { value: 'MATTER_INFO', label: '项目基本信息', description: '项目名称、编号、类型、状态等' },
-  { value: 'MATTER_PROGRESS', label: '项目进度', description: '当前阶段、整体进度、最近更新时间' },
-  { value: 'LAWYER_INFO', label: '承办律师', description: '团队成员姓名、角色、联系方式（脱敏）' },
-  { value: 'DEADLINE_INFO', label: '关键期限', description: '诉讼时效、举证期限、开庭时间等' },
-  { value: 'TASK_LIST', label: '办理事项', description: '待办事项标题、状态、进度' },
-  { value: 'DOCUMENT_LIST', label: '文书目录', description: '文档名称列表（仅标题，不含文件）' },
-  { value: 'DOCUMENT_FILES', label: '文书文件', description: '推送选定的文档文件（如判决书PDF），客户可下载' },
-  { value: 'FEE_INFO', label: '费用信息', description: '合同金额、已收款、待收款' },
+  {
+    value: 'MATTER_INFO',
+    label: '项目基本信息',
+    description: '项目名称、编号、类型、状态等',
+  },
+  {
+    value: 'MATTER_PROGRESS',
+    label: '项目进度',
+    description: '当前阶段、整体进度、最近更新时间',
+  },
+  {
+    value: 'LAWYER_INFO',
+    label: '承办律师',
+    description: '团队成员姓名、角色、联系方式（脱敏）',
+  },
+  {
+    value: 'DEADLINE_INFO',
+    label: '关键期限',
+    description: '诉讼时效、举证期限、开庭时间等',
+  },
+  {
+    value: 'TASK_LIST',
+    label: '办理事项',
+    description: '待办事项标题、状态、进度',
+  },
+  {
+    value: 'DOCUMENT_LIST',
+    label: '文书目录',
+    description: '文档名称列表（仅标题，不含文件）',
+  },
+  {
+    value: 'DOCUMENT_FILES',
+    label: '文书文件',
+    description: '推送选定的文档文件（如判决书PDF），客户可下载',
+  },
+  {
+    value: 'FEE_INFO',
+    label: '费用信息',
+    description: '合同金额、已收款、待收款',
+  },
 ];
 const scopeOptions = ref<ScopeOption[]>(SCOPE_OPTIONS);
 
@@ -129,7 +161,6 @@ const FILE_CATEGORY_MAP: Record<string, { text: string; color: string }> = {
   OTHER: { text: '其他', color: 'default' },
 };
 
-
 // 统计
 const statistics = ref<{
   totalPushCount: number;
@@ -149,7 +180,9 @@ const pushForm = reactive<PushRequest & { documentIds?: number[] }>({
 });
 
 // 是否选择了文档文件推送
-const hasDocumentFilesScope = computed(() => pushForm.scopes.includes('DOCUMENT_FILES'));
+const hasDocumentFilesScope = computed(() =>
+  pushForm.scopes.includes('DOCUMENT_FILES'),
+);
 
 // 配置
 const configLoading = ref(false);
@@ -167,11 +200,10 @@ const STATUS_MAP: Record<string, { text: string; color: string }> = {
   FAILED: { text: '失败', color: 'error' },
 };
 
-
 // 加载数据
 async function loadData() {
   if (!props.matterId || !props.clientId) return;
-  
+
   loading.value = true;
   try {
     // 并行加载
@@ -180,10 +212,10 @@ async function loadData() {
       getPushStatistics(props.matterId),
       getPushConfig(props.matterId, props.clientId),
     ]);
-    
+
     pushRecords.value = recordsRes.list || [];
     statistics.value = statsRes;
-    
+
     if (configRes) {
       config.enabled = configRes.enabled || false;
       config.scopes = configRes.scopes || [];
@@ -206,7 +238,7 @@ const clientServiceConnected = ref(false);
 // 加载客户上传的文件
 async function loadClientFiles() {
   if (!props.matterId) return;
-  
+
   clientFilesLoading.value = true;
   try {
     const [files, countRes] = await Promise.all([
@@ -225,7 +257,7 @@ async function loadClientFiles() {
 // 加载卷宗目录树
 async function loadDossierTree() {
   if (!props.matterId) return;
-  
+
   dossierLoading.value = true;
   try {
     const items = await getMatterDossierItems(props.matterId);
@@ -242,21 +274,21 @@ async function loadDossierTree() {
 function buildTreeData(items: any[]): any[] {
   const map = new Map<number, any>();
   const roots: any[] = [];
-  
+
   // 只包含文件夹类型的目录项
-  const folders = items.filter(item => item.itemType === 'FOLDER');
-  
+  const folders = items.filter((item) => item.itemType === 'FOLDER');
+
   // 创建节点映射
-  folders.forEach(item => {
+  folders.forEach((item) => {
     map.set(item.id, {
       value: item.id,
       title: item.name,
       children: [],
     });
   });
-  
+
   // 构建树
-  folders.forEach(item => {
+  folders.forEach((item) => {
     const node = map.get(item.id);
     if (item.parentId && map.has(item.parentId)) {
       map.get(item.parentId).children.push(node);
@@ -264,10 +296,10 @@ function buildTreeData(items: any[]): any[] {
       roots.push(node);
     }
   });
-  
+
   // 移除空的 children 数组
   function cleanEmpty(nodes: any[]) {
-    nodes.forEach(node => {
+    nodes.forEach((node) => {
       if (node.children && node.children.length === 0) {
         delete node.children;
       } else if (node.children) {
@@ -276,7 +308,7 @@ function buildTreeData(items: any[]): any[] {
     });
   }
   cleanEmpty(roots);
-  
+
   return roots;
 }
 
@@ -287,12 +319,12 @@ async function openSyncModal(file: ClientFileDTO) {
   syncForm.targetDossierId = 0;
   syncForm.targetFileName = file.originalFileName || file.fileName;
   syncForm.documentCategory = file.fileCategory || '';
-  
+
   // 加载卷宗目录
   if (dossierTree.value.length === 0) {
     await loadDossierTree();
   }
-  
+
   syncModalVisible.value = true;
 }
 
@@ -302,7 +334,7 @@ async function handleSync() {
     message.warning('请选择目标卷宗目录');
     return;
   }
-  
+
   syncLoading.value = true;
   try {
     await syncClientFile(syncForm);
@@ -344,7 +376,7 @@ async function loadDocuments() {
   documentLoading.value = true;
   try {
     const docs = await getDocumentsByMatter(props.matterId);
-    documentList.value = (docs || []).map(d => ({
+    documentList.value = (docs || []).map((d) => ({
       id: d.id,
       name: d.name || d.title || '未命名文档',
       type: d.categoryName || d.fileCategory || '其他',
@@ -365,22 +397,23 @@ async function openPushModal() {
   if (!clientServiceConnected.value) {
     Modal.info({
       title: '客户服务系统尚未对接',
-      content: '客户服务系统正在开发中，暂时无法推送数据。对接完成后，您可以在此将项目信息推送给客户，系统将自动通过短信、公众号等方式通知客户查看。',
+      content:
+        '客户服务系统正在开发中，暂时无法推送数据。对接完成后，您可以在此将项目信息推送给客户，系统将自动通过短信、公众号等方式通知客户查看。',
       okText: '我知道了',
     });
     return;
   }
-  
+
   pushForm.matterId = props.matterId;
   pushForm.clientId = props.clientId;
   pushForm.scopes = [...config.scopes];
   pushForm.validDays = config.validDays;
   pushForm.documentIds = [];
   selectedDocumentIds.value = [];
-  
+
   // 加载文档列表
   await loadDocuments();
-  
+
   pushModalVisible.value = true;
 }
 
@@ -390,7 +423,7 @@ async function handlePush() {
     message.error('请至少选择一项推送内容');
     return;
   }
-  
+
   pushLoading.value = true;
   try {
     await pushMatterData(pushForm);
@@ -403,7 +436,8 @@ async function handlePush() {
     if (err.message?.includes('未配置') || err.message?.includes('未对接')) {
       Modal.warning({
         title: '客户服务系统尚未对接',
-        content: '请先在【系统管理 → 外部系统集成 → 客户服务系统】中配置并启用客户服务系统。',
+        content:
+          '请先在【系统管理 → 外部系统集成 → 客户服务系统】中配置并启用客户服务系统。',
         okText: '我知道了',
       });
     } else {
@@ -477,18 +511,25 @@ function getFileIcon(fileType: string | undefined): string {
 // 全选/取消全选文档（弹窗中）
 function handleSelectAllDocs(e: { target: { checked: boolean } }) {
   if (e.target.checked) {
-    pushForm.documentIds = documentList.value.map(d => d.id);
+    pushForm.documentIds = documentList.value.map((d) => d.id);
   } else {
     pushForm.documentIds = [];
   }
 }
 
 // 监听 config.scopes 变化，当选择 DOCUMENT_FILES 时加载文档列表
-watch(() => config.scopes, (newScopes) => {
-  if (newScopes.includes('DOCUMENT_FILES') && documentList.value.length === 0) {
-    loadDocuments();
-  }
-}, { deep: true });
+watch(
+  () => config.scopes,
+  (newScopes) => {
+    if (
+      newScopes.includes('DOCUMENT_FILES') &&
+      documentList.value.length === 0
+    ) {
+      loadDocuments();
+    }
+  },
+  { deep: true },
+);
 
 // 初始化
 onMounted(() => {
@@ -499,12 +540,15 @@ onMounted(() => {
 });
 
 // 监听 props 变化
-watch(() => [props.clientId, props.matterId], () => {
-  if (props.clientId && props.matterId) {
-    loadData();
-    loadClientFiles();
-  }
-});
+watch(
+  () => [props.clientId, props.matterId],
+  () => {
+    if (props.clientId && props.matterId) {
+      loadData();
+      loadClientFiles();
+    }
+  },
+);
 </script>
 
 <template>
@@ -521,14 +565,11 @@ watch(() => [props.clientId, props.matterId], () => {
     <template v-else>
       <Spin :spinning="loading">
         <!-- 功能说明 -->
-        <Alert
-          type="info"
-          show-icon
-          style="margin-bottom: 16px"
-        >
+        <Alert type="info" show-icon style="margin-bottom: 16px">
           <template #message>
             <span>
-              将项目信息推送到<b>客户服务系统</b>后，系统会自动通过短信、公众号等方式通知客户 <b>{{ clientName }}</b> 查看。
+              将项目信息推送到<b>客户服务系统</b>后，系统会自动通过短信、公众号等方式通知客户
+              <b>{{ clientName }}</b> 查看。
             </span>
           </template>
         </Alert>
@@ -540,65 +581,125 @@ watch(() => [props.clientId, props.matterId], () => {
             <Card size="small" class="client-files-card">
               <template #title>
                 <Space>
-                  <span style="font-size: 16px; font-weight: 600">📥 客户上传的文件</span>
-                  <Badge v-if="pendingFileCount > 0" :count="pendingFileCount" :overflow-count="99" />
+                  <span style="font-size: 16px; font-weight: 600"
+                    >📥 客户上传的文件</span
+                  >
+                  <Badge
+                    v-if="pendingFileCount > 0"
+                    :count="pendingFileCount"
+                    :overflow-count="99"
+                  />
                 </Space>
               </template>
               <template #extra>
                 <Button size="small" @click="loadClientFiles">刷新</Button>
               </template>
-              
+
               <Spin :spinning="clientFilesLoading">
-                <div v-if="clientFiles.length === 0" class="empty-files-placeholder">
-                  <div style="font-size: 64px; margin-bottom: 16px">📥</div>
-                  <div style="font-size: 16px; font-weight: 500; color: #666">暂无客户上传的文件</div>
-                  <div style="font-size: 13px; margin-top: 8px; color: #999">
+                <div
+                  v-if="clientFiles.length === 0"
+                  class="empty-files-placeholder"
+                >
+                  <div style="margin-bottom: 16px; font-size: 64px">📥</div>
+                  <div style="font-size: 16px; font-weight: 500; color: #666">
+                    暂无客户上传的文件
+                  </div>
+                  <div style="margin-top: 8px; font-size: 13px; color: #999">
                     客户通过客服系统上传的证据材料、合同文件等会显示在这里
                   </div>
-                  <div style="margin-top: 16px; padding: 12px; background: #f0f7ff; border-radius: 6px; text-align: left">
-                    <div style="font-size: 13px; color: #1890ff; font-weight: 500; margin-bottom: 8px">💡 文件接收流程</div>
-                    <ol style="margin: 0; padding-left: 20px; color: #666; font-size: 12px; line-height: 1.8">
+                  <div
+                    style="
+                      padding: 12px;
+                      margin-top: 16px;
+                      text-align: left;
+                      background: #f0f7ff;
+                      border-radius: 6px;
+                    "
+                  >
+                    <div
+                      style="
+                        margin-bottom: 8px;
+                        font-size: 13px;
+                        font-weight: 500;
+                        color: #1890ff;
+                      "
+                    >
+                      💡 文件接收流程
+                    </div>
+                    <ol
+                      style="
+                        padding-left: 20px;
+                        margin: 0;
+                        font-size: 12px;
+                        line-height: 1.8;
+                        color: #666;
+                      "
+                    >
                       <li>客户通过客服小程序/公众号上传文件</li>
                       <li>系统自动将文件推送到此处</li>
                       <li>您可以预览、同步到卷宗或忽略</li>
                     </ol>
                   </div>
                 </div>
-                
+
                 <List v-else :data-source="clientFiles" size="small">
                   <template #renderItem="{ item }">
                     <ListItem class="file-list-item">
                       <ListItemMeta>
                         <template #avatar>
                           <div class="file-avatar">
-                            <span style="font-size: 32px">{{ getFileIcon(item.fileType) }}</span>
+                            <span style="font-size: 32px">{{
+                              getFileIcon(item.fileType)
+                            }}</span>
                           </div>
                         </template>
                         <template #title>
                           <Space>
-                            <span style="font-weight: 500">{{ item.fileName }}</span>
-                            <Tag :color="FILE_CATEGORY_MAP[item.fileCategory]?.color || 'default'" size="small">
-                              {{ FILE_CATEGORY_MAP[item.fileCategory]?.text || '其他' }}
+                            <span style="font-weight: 500">{{
+                              item.fileName
+                            }}</span>
+                            <Tag
+                              :color="
+                                FILE_CATEGORY_MAP[item.fileCategory]?.color ||
+                                'default'
+                              "
+                              size="small"
+                            >
+                              {{
+                                FILE_CATEGORY_MAP[item.fileCategory]?.text ||
+                                '其他'
+                              }}
                             </Tag>
                           </Space>
                         </template>
                         <template #description>
                           <Space size="small" wrap>
-                            <span>上传人: {{ item.uploadedBy || item.clientName || '-' }}</span>
+                            <span
+                              >上传人:
+                              {{
+                                item.uploadedBy || item.clientName || '-'
+                              }}</span
+                            >
                             <Divider type="vertical" />
                             <span>{{ formatTime(item.uploadedAt) }}</span>
-                            <span v-if="item.fileSize">· {{ formatFileSize(item.fileSize) }}</span>
+                            <span v-if="item.fileSize"
+                              >· {{ formatFileSize(item.fileSize) }}</span
+                            >
                           </Space>
                         </template>
                       </ListItemMeta>
                       <template #actions>
-                        <Button type="link" size="small" @click="handlePreviewFile(item)">
+                        <Button
+                          type="link"
+                          size="small"
+                          @click="handlePreviewFile(item)"
+                        >
                           预览
                         </Button>
-                        <Button 
-                          v-if="item.status === 'PENDING' && !readonly" 
-                          type="primary" 
-                          size="small" 
+                        <Button
+                          v-if="item.status === 'PENDING' && !readonly"
+                          type="primary"
+                          size="small"
                           @click="openSyncModal(item)"
                         >
                           同步到卷宗
@@ -610,7 +711,12 @@ watch(() => [props.clientId, props.matterId], () => {
                         >
                           <Button type="link" size="small" danger>忽略</Button>
                         </Popconfirm>
-                        <Tag v-if="item.status === 'SYNCED'" color="success" size="small">已同步</Tag>
+                        <Tag
+                          v-if="item.status === 'SYNCED'"
+                          color="success"
+                          size="small"
+                          >已同步</Tag
+                        >
                       </template>
                     </ListItem>
                   </template>
@@ -636,12 +742,21 @@ watch(() => [props.clientId, props.matterId], () => {
                   <div class="stat-item">
                     <div class="stat-title">最近推送</div>
                     <div class="stat-value" style="font-size: 13px">
-                      {{ statistics.lastPushTime ? formatTime(statistics.lastPushTime) : '暂无' }}
+                      {{
+                        statistics.lastPushTime
+                          ? formatTime(statistics.lastPushTime)
+                          : '暂无'
+                      }}
                     </div>
                   </div>
                 </Col>
                 <Col :span="8" style="text-align: right">
-                  <Button type="primary" size="small" @click="openPushModal" :disabled="readonly">
+                  <Button
+                    type="primary"
+                    size="small"
+                    @click="openPushModal"
+                    :disabled="readonly"
+                  >
                     📤 推送信息
                   </Button>
                 </Col>
@@ -654,22 +769,39 @@ watch(() => [props.clientId, props.matterId], () => {
                 <span style="font-size: 13px">推送设置</span>
               </template>
               <template #extra>
-                <Button type="link" size="small" :loading="configLoading" @click="saveConfig">保存</Button>
+                <Button
+                  type="link"
+                  size="small"
+                  :loading="configLoading"
+                  @click="saveConfig"
+                  >保存</Button
+                >
               </template>
-              
+
               <Form layout="vertical" size="small">
                 <FormItem label="推送内容" style="margin-bottom: 8px">
-                  <Checkbox.Group v-model:value="config.scopes" :disabled="readonly">
+                  <Checkbox.Group
+                    v-model:value="config.scopes"
+                    :disabled="readonly"
+                  >
                     <Row :gutter="[0, 4]">
-                      <Col v-for="opt in scopeOptions" :key="opt.value" :span="12">
+                      <Col
+                        v-for="opt in scopeOptions"
+                        :key="opt.value"
+                        :span="12"
+                      >
                         <Tooltip :title="opt.description">
-                          <Checkbox :value="opt.value" style="font-size: 12px">{{ opt.label }}</Checkbox>
+                          <Checkbox
+                            :value="opt.value"
+                            style="font-size: 12px"
+                            >{{ opt.label }}</Checkbox
+                          >
                         </Tooltip>
                       </Col>
                     </Row>
                   </Checkbox.Group>
                 </FormItem>
-                
+
                 <Row :gutter="8">
                   <Col :span="12">
                     <FormItem label="有效期" style="margin-bottom: 0">
@@ -707,31 +839,57 @@ watch(() => [props.clientId, props.matterId], () => {
               <template #extra>
                 <Button type="link" size="small" @click="loadData">刷新</Button>
               </template>
-              
-              <div v-if="pushRecords.length > 0" style="max-height: 200px; overflow-y: auto">
-                <div 
-                  v-for="record in pushRecords.slice(0, 5)" 
+
+              <div
+                v-if="pushRecords.length > 0"
+                style="max-height: 200px; overflow-y: auto"
+              >
+                <div
+                  v-for="record in pushRecords.slice(0, 5)"
                   :key="record.id"
                   class="push-record-item"
                 >
-                  <div style="display: flex; justify-content: space-between; align-items: center">
-                    <span style="font-size: 12px; color: #666">{{ formatTime(record.createdAt) }}</span>
+                  <div
+                    style="
+                      display: flex;
+                      align-items: center;
+                      justify-content: space-between;
+                    "
+                  >
+                    <span style="font-size: 12px; color: #666">{{
+                      formatTime(record.createdAt)
+                    }}</span>
                     <Tag :color="STATUS_MAP[record.status]?.color" size="small">
                       {{ STATUS_MAP[record.status]?.text }}
                     </Tag>
                   </div>
                   <div style="margin-top: 4px">
-                    <Tag v-for="scope in record.scopes.slice(0, 2)" :key="scope" size="small" style="font-size: 11px">
-                      {{ scopeOptions.find(o => o.value === scope)?.label || scope }}
+                    <Tag
+                      v-for="scope in record.scopes.slice(0, 2)"
+                      :key="scope"
+                      size="small"
+                      style="font-size: 11px"
+                    >
+                      {{
+                        scopeOptions.find((o) => o.value === scope)?.label ||
+                        scope
+                      }}
                     </Tag>
-                    <span v-if="record.scopes.length > 2" style="font-size: 11px; color: #999">
+                    <span
+                      v-if="record.scopes.length > 2"
+                      style="font-size: 11px; color: #999"
+                    >
                       +{{ record.scopes.length - 2 }}
                     </span>
                   </div>
                 </div>
               </div>
-              
-              <Empty v-else description="暂无推送记录" :image="Empty.PRESENTED_IMAGE_SIMPLE" />
+
+              <Empty
+                v-else
+                description="暂无推送记录"
+                :image="Empty.PRESENTED_IMAGE_SIMPLE"
+              />
             </Card>
           </Col>
         </Row>
@@ -753,7 +911,7 @@ watch(() => [props.clientId, props.matterId], () => {
           message="推送后，客户服务系统将自动通知客户"
           description="请确认推送内容，客户将通过短信、公众号等方式收到通知并查看项目信息。"
         />
-        
+
         <Descriptions :column="1" bordered size="small">
           <DescriptionsItem label="客户">{{ clientName }}</DescriptionsItem>
           <DescriptionsItem label="项目">{{ matterName }}</DescriptionsItem>
@@ -768,42 +926,81 @@ watch(() => [props.clientId, props.matterId], () => {
               </Row>
             </Checkbox.Group>
           </DescriptionsItem>
-          
+
           <!-- 文档选择（当选择了 DOCUMENT_FILES 时显示） -->
           <DescriptionsItem v-if="hasDocumentFilesScope" label="选择文档">
             <Spin :spinning="documentLoading">
-              <div v-if="documentList.length === 0" style="color: #999; padding: 16px; text-align: center; background: #fafafa; border-radius: 4px">
-                <div style="font-size: 32px; margin-bottom: 8px">📁</div>
+              <div
+                v-if="documentList.length === 0"
+                style="
+                  padding: 16px;
+                  color: #999;
+                  text-align: center;
+                  background: #fafafa;
+                  border-radius: 4px;
+                "
+              >
+                <div style="margin-bottom: 8px; font-size: 32px">📁</div>
                 <div>该项目暂无可推送的文档</div>
-                <div style="font-size: 12px; margin-top: 4px">请先在项目中上传文档</div>
+                <div style="margin-top: 4px; font-size: 12px">
+                  请先在项目中上传文档
+                </div>
               </div>
               <div v-else>
                 <!-- 全选操作 -->
-                <div style="margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid #f0f0f0">
-                  <Checkbox 
-                    :checked="(pushForm.documentIds?.length || 0) === documentList.length"
-                    :indeterminate="(pushForm.documentIds?.length || 0) > 0 && (pushForm.documentIds?.length || 0) < documentList.length"
+                <div
+                  style="
+                    padding-bottom: 8px;
+                    margin-bottom: 8px;
+                    border-bottom: 1px solid #f0f0f0;
+                  "
+                >
+                  <Checkbox
+                    :checked="
+                      (pushForm.documentIds?.length || 0) ===
+                      documentList.length
+                    "
+                    :indeterminate="
+                      (pushForm.documentIds?.length || 0) > 0 &&
+                      (pushForm.documentIds?.length || 0) < documentList.length
+                    "
                     @change="handleSelectAllDocs"
                   >
                     全选 ({{ documentList.length }} 个文档)
                   </Checkbox>
                 </div>
                 <!-- 文档列表 -->
-                <Checkbox.Group v-model:value="pushForm.documentIds" style="width: 100%">
-                  <div style="max-height: 240px; overflow-y: auto; border: 1px solid #f0f0f0; border-radius: 4px">
-                    <div 
-                      v-for="doc in documentList" 
+                <Checkbox.Group
+                  v-model:value="pushForm.documentIds"
+                  style="width: 100%"
+                >
+                  <div
+                    style="
+                      max-height: 240px;
+                      overflow-y: auto;
+                      border: 1px solid #f0f0f0;
+                      border-radius: 4px;
+                    "
+                  >
+                    <div
+                      v-for="doc in documentList"
                       :key="doc.id"
                       class="doc-item"
                     >
                       <Checkbox :value="doc.id" style="width: 100%">
                         <div class="doc-item-content">
-                          <span class="doc-icon">{{ getFileIcon(doc.fileType) }}</span>
+                          <span class="doc-icon">{{
+                            getFileIcon(doc.fileType)
+                          }}</span>
                           <div class="doc-info">
                             <div class="doc-name">{{ doc.name }}</div>
                             <div class="doc-meta">
-                              <Tag size="small" color="blue">{{ doc.fileType?.toUpperCase() || '文件' }}</Tag>
-                              <span v-if="doc.fileSize">{{ formatFileSize(doc.fileSize) }}</span>
+                              <Tag size="small" color="blue">{{
+                                doc.fileType?.toUpperCase() || '文件'
+                              }}</Tag>
+                              <span v-if="doc.fileSize">{{
+                                formatFileSize(doc.fileSize)
+                              }}</span>
                             </div>
                           </div>
                         </div>
@@ -811,13 +1008,15 @@ watch(() => [props.clientId, props.matterId], () => {
                     </div>
                   </div>
                 </Checkbox.Group>
-                <div style="margin-top: 8px; color: #1890ff; font-size: 13px">
-                  ✓ 已选择 <b>{{ pushForm.documentIds?.length || 0 }}</b> 个文档，客户可在有效期内下载
+                <div style="margin-top: 8px; font-size: 13px; color: #1890ff">
+                  ✓ 已选择
+                  <b>{{ pushForm.documentIds?.length || 0 }}</b>
+                  个文档，客户可在有效期内下载
                 </div>
               </div>
             </Spin>
           </DescriptionsItem>
-          
+
           <DescriptionsItem label="有效期">
             <Space>
               <InputNumber
@@ -827,7 +1026,9 @@ watch(() => [props.clientId, props.matterId], () => {
                 style="width: 100px"
               />
               <span>天</span>
-              <span style="color: #999; font-size: 12px">（超过有效期，客户服务系统自动删除数据）</span>
+              <span style="font-size: 12px; color: #999"
+                >（超过有效期，客户服务系统自动删除数据）</span
+              >
             </Space>
           </DescriptionsItem>
         </Descriptions>
@@ -848,18 +1049,28 @@ watch(() => [props.clientId, props.matterId], () => {
           style="margin-bottom: 16px"
           message="同步后文件将保存到项目卷宗中，客服系统中的文件将被删除以节省空间"
         />
-        
+
         <Descriptions v-if="currentSyncFile" :column="1" bordered size="small">
           <DescriptionsItem label="文件名">
             {{ currentSyncFile.fileName }}
           </DescriptionsItem>
           <DescriptionsItem label="文件类型">
-            <Tag :color="FILE_CATEGORY_MAP[currentSyncFile.fileCategory || 'OTHER']?.color || 'default'">
-              {{ FILE_CATEGORY_MAP[currentSyncFile.fileCategory || 'OTHER']?.text || '其他' }}
+            <Tag
+              :color="
+                FILE_CATEGORY_MAP[currentSyncFile.fileCategory || 'OTHER']
+                  ?.color || 'default'
+              "
+            >
+              {{
+                FILE_CATEGORY_MAP[currentSyncFile.fileCategory || 'OTHER']
+                  ?.text || '其他'
+              }}
             </Tag>
           </DescriptionsItem>
           <DescriptionsItem label="上传人">
-            {{ currentSyncFile.uploadedBy || currentSyncFile.clientName || '-' }}
+            {{
+              currentSyncFile.uploadedBy || currentSyncFile.clientName || '-'
+            }}
           </DescriptionsItem>
           <DescriptionsItem label="目标卷宗">
             <TreeSelect
@@ -894,8 +1105,8 @@ watch(() => [props.clientId, props.matterId], () => {
 
 /* 空文件占位符 */
 .empty-files-placeholder {
-  text-align: center;
   padding: 48px 24px;
+  text-align: center;
 }
 
 /* 文件列表项 */
@@ -909,11 +1120,11 @@ watch(() => [props.clientId, props.matterId], () => {
 }
 
 .file-avatar {
-  width: 48px;
-  height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 48px;
+  height: 48px;
   background: #f5f7fa;
   border-radius: 8px;
 }
@@ -934,14 +1145,14 @@ watch(() => [props.clientId, props.matterId], () => {
 }
 
 .stat-title {
-  color: rgba(0, 0, 0, 0.45);
-  font-size: 12px;
   margin-bottom: 4px;
+  font-size: 12px;
+  color: rgb(0 0 0 / 45%);
 }
 
 .stat-value {
-  color: rgba(0, 0, 0, 0.85);
   font-size: 14px;
+  color: rgb(0 0 0 / 85%);
 }
 
 :deep(.ant-statistic-title) {
@@ -979,13 +1190,13 @@ watch(() => [props.clientId, props.matterId], () => {
 
 .doc-item-content {
   display: flex;
-  align-items: center;
   gap: 10px;
+  align-items: center;
 }
 
 .doc-icon {
-  font-size: 24px;
   flex-shrink: 0;
+  font-size: 24px;
 }
 
 .doc-info {
@@ -994,17 +1205,17 @@ watch(() => [props.clientId, props.matterId], () => {
 }
 
 .doc-name {
-  font-size: 13px;
-  color: #333;
   overflow: hidden;
   text-overflow: ellipsis;
+  font-size: 13px;
+  color: #333;
   white-space: nowrap;
 }
 
 .doc-meta {
   display: flex;
-  align-items: center;
   gap: 8px;
+  align-items: center;
   margin-top: 4px;
   font-size: 12px;
   color: #999;

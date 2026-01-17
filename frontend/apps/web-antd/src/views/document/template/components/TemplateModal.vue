@@ -39,7 +39,7 @@ const formData = reactive({
   name: '',
   templateType: 'HTML',
   businessType: '',
-  caseType: 'ALL',  // 案件类型
+  caseType: 'ALL', // 案件类型
   content: '',
   description: '',
 });
@@ -76,23 +76,51 @@ const systemVariables = [
   // 项目相关
   { label: '项目名称', value: 'matter.name', description: '委托项目/案件名称' },
   { label: '项目编号', value: 'matter.no', description: '案件编号' },
-  { label: '案件类型', value: 'matter.caseTypeName', description: '民事/刑事/行政等' },
-  { label: '项目类型', value: 'matter.matterTypeName', description: '诉讼/非诉等' },
+  {
+    label: '案件类型',
+    value: 'matter.caseTypeName',
+    description: '民事/刑事/行政等',
+  },
+  {
+    label: '项目类型',
+    value: 'matter.matterTypeName',
+    description: '诉讼/非诉等',
+  },
   { label: '案由', value: 'matter.causeOfAction', description: '案件案由' },
-  { label: '对方当事人', value: 'matter.opposingParty', description: '对方当事人姓名' },
+  {
+    label: '对方当事人',
+    value: 'matter.opposingParty',
+    description: '对方当事人姓名',
+  },
   { label: '案情简介', value: 'matter.description', description: '案情摘要' },
   { label: '立案日期', value: 'matter.filingDate', description: '立案日期' },
   // 客户相关
   { label: '客户名称', value: 'client.name', description: '委托人/当事人姓名' },
   { label: '客户类型', value: 'client.typeName', description: '企业/个人客户' },
-  { label: '身份标识', value: 'client.idLabel', description: '身份证号/统一社会信用代码' },
-  { label: '身份号码', value: 'client.idNumber', description: '身份证号或信用代码' },
+  {
+    label: '身份标识',
+    value: 'client.idLabel',
+    description: '身份证号/统一社会信用代码',
+  },
+  {
+    label: '身份号码',
+    value: 'client.idNumber',
+    description: '身份证号或信用代码',
+  },
   { label: '客户电话', value: 'client.phone', description: '委托人联系电话' },
   { label: '客户地址', value: 'client.address', description: '委托人联系地址' },
-  { label: '法定代表人', value: 'client.legalPerson', description: '企业法定代表人' },
+  {
+    label: '法定代表人',
+    value: 'client.legalPerson',
+    description: '企业法定代表人',
+  },
   // 律师相关
   { label: '承办律师', value: 'lawyer.name', description: '承办律师姓名' },
-  { label: '律师执业证号', value: 'lawyer.licenseNo', description: '承办律师执业证号' },
+  {
+    label: '律师执业证号',
+    value: 'lawyer.licenseNo',
+    description: '承办律师执业证号',
+  },
   { label: '律师电话', value: 'lawyer.phone', description: '律师联系电话' },
   // 律所相关
   { label: '律所名称', value: 'firm.name', description: '律师事务所全称' },
@@ -101,26 +129,82 @@ const systemVariables = [
   // 合同相关
   { label: '合同编号', value: 'contract.no', description: '合同编号' },
   { label: '合同名称', value: 'contract.name', description: '合同名称' },
-  { label: '合同金额', value: 'contract.totalAmount', description: '合同总金额' },
-  { label: '大写金额', value: 'contract.totalAmountCN', description: '合同金额大写' },
-  { label: '收费方式', value: 'contract.feeTypeName', description: '固定/计时/风险代理等' },
-  { label: '付款条款', value: 'contract.paymentTerms', description: '付款约定' },
-  { label: '合同签署日期', value: 'contract.signDate', description: '合同签署日期' },
+  {
+    label: '合同金额',
+    value: 'contract.totalAmount',
+    description: '合同总金额',
+  },
+  {
+    label: '大写金额',
+    value: 'contract.totalAmountCN',
+    description: '合同金额大写',
+  },
+  {
+    label: '收费方式',
+    value: 'contract.feeTypeName',
+    description: '固定/计时/风险代理等',
+  },
+  {
+    label: '付款条款',
+    value: 'contract.paymentTerms',
+    description: '付款约定',
+  },
+  {
+    label: '合同签署日期',
+    value: 'contract.signDate',
+    description: '合同签署日期',
+  },
   // 审批相关
-  { label: '审批状态', value: 'approval.statusName', description: '待审批/已通过/已驳回' },
-  { label: '审批人', value: 'approval.approverName', description: '审批人姓名' },
-  { label: '审批时间', value: 'approval.approvedAt', description: '审批完成时间' },
+  {
+    label: '审批状态',
+    value: 'approval.statusName',
+    description: '待审批/已通过/已驳回',
+  },
+  {
+    label: '审批人',
+    value: 'approval.approverName',
+    description: '审批人姓名',
+  },
+  {
+    label: '审批时间',
+    value: 'approval.approvedAt',
+    description: '审批完成时间',
+  },
   { label: '审批意见', value: 'approval.comment', description: '审批备注意见' },
   // 代理相关
-  { label: '代理权限类型', value: 'authorizationType', description: '一般代理/特别代理' },
-  { label: '代理权限范围', value: 'authorizationScope', description: '代理权限详细描述' },
+  {
+    label: '代理权限类型',
+    value: 'authorizationType',
+    description: '一般代理/特别代理',
+  },
+  {
+    label: '代理权限范围',
+    value: 'authorizationScope',
+    description: '代理权限详细描述',
+  },
   { label: '审理阶段', value: 'trialStage', description: '一审/二审/再审等' },
   // 多个委托人（自动填充所有委托人）
-  { label: '所有委托人信息', value: 'clients.allInfo', description: '自动填充所有委托人信息（多个委托人用空行分隔）' },
-  { label: '所有委托人名称', value: 'clients.allNames', description: '所有委托人名称（用顿号分隔）' },
+  {
+    label: '所有委托人信息',
+    value: 'clients.allInfo',
+    description: '自动填充所有委托人信息（多个委托人用空行分隔）',
+  },
+  {
+    label: '所有委托人名称',
+    value: 'clients.allNames',
+    description: '所有委托人名称（用顿号分隔）',
+  },
   // 多个受托人（自动填充所有受托人）
-  { label: '所有受托人信息', value: 'lawyers.allInfo', description: '自动填充所有受托人信息（律所+所有律师）' },
-  { label: '所有律师名称', value: 'lawyers.allNames', description: '所有律师名称（用顿号分隔）' },
+  {
+    label: '所有受托人信息',
+    value: 'lawyers.allInfo',
+    description: '自动填充所有受托人信息（律所+所有律师）',
+  },
+  {
+    label: '所有律师名称',
+    value: 'lawyers.allNames',
+    description: '所有律师名称（用顿号分隔）',
+  },
   // 日期相关
   { label: '当前日期', value: 'date.today', description: '当前完整日期' },
   { label: '当前年份', value: 'date.year', description: '当前年份' },
@@ -141,7 +225,9 @@ const presetTemplates = [
 const useRichEditor = computed(() => formData.templateType === 'HTML');
 
 // 是否使用授权委托书专用编辑器
-const usePowerOfAttorneyEditor = computed(() => formData.templateType === 'POWER_OF_ATTORNEY');
+const usePowerOfAttorneyEditor = computed(
+  () => formData.templateType === 'POWER_OF_ATTORNEY',
+);
 
 const [Modal, modalApi] = useVbenModal({
   async onConfirm() {
@@ -448,7 +534,7 @@ defineExpose({ open });
           </FormItem>
         </Col>
         <Col :span="12">
-          <div style="line-height: 32px; color: #999; font-size: 12px">
+          <div style="font-size: 12px; line-height: 32px; color: #999">
             💡 不同案件类型可使用不同模板，优先匹配特定类型模板
           </div>
         </Col>
@@ -485,7 +571,10 @@ defineExpose({ open });
 
     <!-- 授权委托书专用编辑器 -->
     <div v-if="usePowerOfAttorneyEditor">
-      <PowerOfAttorneyEditor v-model="formData.content" :variables="systemVariables" />
+      <PowerOfAttorneyEditor
+        v-model="formData.content"
+        :variables="systemVariables"
+      />
     </div>
 
     <!-- 富文本编辑器 -->

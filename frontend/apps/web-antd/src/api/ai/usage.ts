@@ -55,13 +55,9 @@ export function getMonthlyBills(year: number, month: number) {
 }
 
 export function generateMonthlyBills(year: number, month: number) {
-  return requestClient.post<number>(
-    '/ai/usage/billing/generate',
-    undefined,
-    {
-      params: { year, month },
-    },
-  );
+  return requestClient.post<number>('/ai/usage/billing/generate', undefined, {
+    params: { year, month },
+  });
 }
 
 export function linkToSalaryDeduction(data: SalaryDeductionLinkCommand) {
@@ -69,21 +65,13 @@ export function linkToSalaryDeduction(data: SalaryDeductionLinkCommand) {
 }
 
 export function markBillDeducted(id: number, remark: string) {
-  return requestClient.post<void>(
-    `/ai/usage/billing/${id}/deduct`,
-    undefined,
-    {
-      params: { remark },
-    },
-  );
+  return requestClient.post<void>(`/ai/usage/billing/${id}/deduct`, undefined, {
+    params: { remark },
+  });
 }
 
 export function waiveBill(id: number, reason: string) {
-  return requestClient.post<void>(
-    `/ai/usage/billing/${id}/waive`,
-    undefined,
-    {
-      params: { reason },
-    },
-  );
+  return requestClient.post<void>(`/ai/usage/billing/${id}/waive`, undefined, {
+    params: { reason },
+  });
 }

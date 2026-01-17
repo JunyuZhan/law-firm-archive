@@ -63,9 +63,24 @@ const month = ref<string>(dayjs().format('YYYY-MM'));
 const columns = [
   { title: '时间', dataIndex: 'createdAt', key: 'createdAt', width: 180 },
   { title: '模型', dataIndex: 'modelName', key: 'modelName', width: 160 },
-  { title: '请求类型', dataIndex: 'requestType', key: 'requestType', width: 140 },
-  { title: '业务类型', dataIndex: 'businessType', key: 'businessType', width: 120 },
-  { title: 'Token 数', dataIndex: 'totalTokens', key: 'totalTokens', width: 120 },
+  {
+    title: '请求类型',
+    dataIndex: 'requestType',
+    key: 'requestType',
+    width: 140,
+  },
+  {
+    title: '业务类型',
+    dataIndex: 'businessType',
+    key: 'businessType',
+    width: 120,
+  },
+  {
+    title: 'Token 数',
+    dataIndex: 'totalTokens',
+    key: 'totalTokens',
+    width: 120,
+  },
   { title: '费用', key: 'cost', width: 180 },
   { title: '状态', dataIndex: 'success', key: 'success', width: 100 },
 ];
@@ -109,12 +124,11 @@ function buildTrendData() {
   usageLogs.value.forEach((item) => {
     if (!item.createdAt) return;
     const date = item.createdAt.slice(0, 10);
-    const stat =
-      map.get(date) || {
-        calls: 0,
-        tokens: 0,
-        userCost: 0,
-      };
+    const stat = map.get(date) || {
+      calls: 0,
+      tokens: 0,
+      userCost: 0,
+    };
     stat.calls += 1;
     stat.tokens += item.totalTokens || 0;
     stat.userCost += Number(item.userCost || 0);
@@ -284,7 +298,11 @@ onBeforeUnmount(() => {
     <Row :gutter="[16, 16]" class="summary-cards">
       <Col :xs="24" :sm="12" :lg="6">
         <Card>
-          <Statistic title="本月调用次数" :value="summary.totalCalls" suffix="次" />
+          <Statistic
+            title="本月调用次数"
+            :value="summary.totalCalls"
+            suffix="次"
+          />
         </Card>
       </Col>
       <Col :xs="24" :sm="12" :lg="6">
@@ -388,34 +406,33 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.cost-detail {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 12px;
-  color: #666;
-  margin-top: 8px;
-}
-
-.cost-breakdown {
-  color: #999;
-  font-size: 12px;
-}
-
 /* 移动端适配 */
 @media (max-width: 576px) {
   .summary-cards :deep(.ant-statistic-title) {
     font-size: 12px;
   }
-  
+
   .summary-cards :deep(.ant-statistic-content) {
     font-size: 20px;
   }
-  
+
   .cost-detail {
-    flex-direction: row;
+    flex-flow: row wrap;
     gap: 12px;
-    flex-wrap: wrap;
   }
+}
+
+.cost-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+  font-size: 12px;
+  color: #666;
+}
+
+.cost-breakdown {
+  font-size: 12px;
+  color: #999;
 }
 </style>

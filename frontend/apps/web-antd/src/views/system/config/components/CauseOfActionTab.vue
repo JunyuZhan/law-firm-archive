@@ -95,7 +95,9 @@ const currentIcon = computed(() => {
 
 // 获取当前选中类型的标签
 const currentTypeLabel = computed(() => {
-  return causeTypeOptions.find((t) => t.value === selectedType.value)?.label || '';
+  return (
+    causeTypeOptions.find((t) => t.value === selectedType.value)?.label || ''
+  );
 });
 
 // ==================== 树形数据转换 ====================
@@ -108,7 +110,9 @@ function transformTreeData(nodes: CauseTreeNodeDTO[]): any[] {
   return nodes.map((node) => ({
     ...node,
     // 使用 id 作为 key，确保唯一性；如果没有 id 则使用 code + 随机数作为备用
-    key: node.id ? String(node.id) : `${node.code}_${Math.random().toString(36).slice(2, 8)}`,
+    key: node.id
+      ? String(node.id)
+      : `${node.code}_${Math.random().toString(36).slice(2, 8)}`,
     title: node.name,
     children: node.children ? transformTreeData(node.children) : undefined,
     isLeaf: node.isLeaf ?? false,
@@ -216,10 +220,7 @@ async function handleSearch() {
 /**
  * 将搜索结果构建为树形结构（保留父级路径）
  */
-function buildSearchTree(
-  results: any[],
-  _keyword: string,
-): CauseTreeNodeDTO[] {
+function buildSearchTree(results: any[], _keyword: string): CauseTreeNodeDTO[] {
   // 简化处理：直接展示搜索结果作为扁平列表的树形结构
   return results.map((item) => ({
     code: item.code,
@@ -629,7 +630,9 @@ onMounted(() => {
                         class="node-action-btn"
                         @click.stop
                       >
-                        <template #icon><EditOutlined class="size-3" /></template>
+                        <template #icon
+                          ><EditOutlined class="size-3"
+                        /></template>
                       </Button>
                       <template #overlay>
                         <Menu>
@@ -791,7 +794,10 @@ onMounted(() => {
                   >
                     {{ selectedCause.isActive ? '启用' : '禁用' }}
                   </Tag>
-                  <Tag v-else :color="selectedNode?.isLeaf ? 'green' : 'orange'">
+                  <Tag
+                    v-else
+                    :color="selectedNode?.isLeaf ? 'green' : 'orange'"
+                  >
                     {{ selectedNode?.isLeaf ? '叶子节点' : '非叶子节点' }}
                   </Tag>
                 </div>
@@ -835,7 +841,9 @@ onMounted(() => {
               <Col v-if="selectedCause?.sortOrder" :xs="24" :sm="12">
                 <div class="detail-item">
                   <span class="detail-label">排序号：</span>
-                  <span class="detail-value">{{ selectedCause.sortOrder }}</span>
+                  <span class="detail-value">{{
+                    selectedCause.sortOrder
+                  }}</span>
                 </div>
               </Col>
             </Row>
@@ -871,9 +879,9 @@ onMounted(() => {
 }
 
 .type-label {
+  margin-right: 8px;
   font-size: 14px;
   font-weight: 500;
-  margin-right: 8px;
   white-space: nowrap;
 }
 
@@ -893,10 +901,10 @@ onMounted(() => {
 .result-count {
   padding: 8px 12px;
   margin-bottom: 12px;
-  background: var(--ant-primary-1, #e6f7ff);
-  border-radius: 4px;
   font-size: 13px;
   color: var(--ant-primary-color, #1890ff);
+  background: var(--ant-primary-1, #e6f7ff);
+  border-radius: 4px;
 }
 
 .cause-detail {
@@ -908,8 +916,8 @@ onMounted(() => {
 }
 
 .detail-label {
-  color: #666;
   font-size: 13px;
+  color: #666;
 }
 
 .detail-value {
@@ -919,9 +927,9 @@ onMounted(() => {
 }
 
 .detail-value.code {
+  padding: 2px 6px;
   font-family: Monaco, Menlo, monospace;
   background: #f5f5f5;
-  padding: 2px 6px;
   border-radius: 3px;
 }
 
@@ -970,23 +978,15 @@ onMounted(() => {
 }
 
 .node-action-btn {
+  height: 20px;
+  padding: 0 4px;
+  line-height: 20px;
   opacity: 0;
   transition: opacity 0.2s;
-  padding: 0 4px;
-  height: 20px;
-  line-height: 20px;
 }
 
 .tree-node-title:hover .node-action-btn {
   opacity: 1;
-}
-
-:deep(.ant-tree-node-content-wrapper:hover) {
-  background-color: var(--ant-primary-1, #e6f7ff);
-}
-
-:deep(.ant-tree-node-selected .ant-tree-node-content-wrapper) {
-  background-color: var(--ant-primary-2, #bae7ff) !important;
 }
 
 :deep(.ant-tree-node-selected .node-action-btn) {

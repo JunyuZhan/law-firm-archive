@@ -382,7 +382,12 @@ async function handleExport(format: 'pdf' | 'word') {
 
   try {
     message.loading('正在下载...', 0);
-    await downloadEvidenceListDirect(props.matterId, exportItems, format, token);
+    await downloadEvidenceListDirect(
+      props.matterId,
+      exportItems,
+      format,
+      token,
+    );
     message.destroy();
     message.success('导出成功');
   } catch (error: any) {

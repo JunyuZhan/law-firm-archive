@@ -405,32 +405,32 @@ useIdleTimeout({
 // 开发模式：http://localhost:6173/（无 base 路径）
 // 生产模式：由环境变量 VITE_USER_MANUAL_URL 配置，默认 /docs/
 const USER_MANUAL_URL =
-  import.meta.env.VITE_USER_MANUAL_URL || 
+  import.meta.env.VITE_USER_MANUAL_URL ||
   (import.meta.env.DEV ? 'http://localhost:6173/' : '/docs/');
 
-  const menus = computed(() => [
-    {
-      handler: () => {
-        router.push({ name: 'Profile' });
-      },
-      icon: 'lucide:user',
-      text: $t('page.auth.profile'),
+const menus = computed(() => [
+  {
+    handler: () => {
+      router.push({ name: 'Profile' });
     },
-    {
-      handler: () => {
-        const token = accessStore.accessToken;
-        const url = new URL(USER_MANUAL_URL, window.location.origin);
-        if (token) {
-          url.searchParams.set('token', token);
-        }
-        openWindow(url.toString(), {
-          target: '_blank',
-        });
-      },
-      icon: BookOpenText,
-      text: '用户手册',
+    icon: 'lucide:user',
+    text: $t('page.auth.profile'),
+  },
+  {
+    handler: () => {
+      const token = accessStore.accessToken;
+      const url = new URL(USER_MANUAL_URL, window.location.origin);
+      if (token) {
+        url.searchParams.set('token', token);
+      }
+      openWindow(url.toString(), {
+        target: '_blank',
+      });
     },
-  ]);
+    icon: BookOpenText,
+    text: '用户手册',
+  },
+]);
 
 const avatar = computed(() => {
   return userStore.userInfo?.avatar ?? preferences.app.defaultAvatar;

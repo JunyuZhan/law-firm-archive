@@ -145,13 +145,25 @@ const columns = computed(() => {
       width: 150,
       ellipsis: true,
     },
-    { title: '状态', dataIndex: 'status', key: 'status', width: 80, mobileShow: true },
-    { title: '操作', key: 'action', width: isMobile.value ? 100 : 150, fixed: 'right' as const, mobileShow: true },
+    {
+      title: '状态',
+      dataIndex: 'status',
+      key: 'status',
+      width: 80,
+      mobileShow: true,
+    },
+    {
+      title: '操作',
+      key: 'action',
+      width: isMobile.value ? 100 : 150,
+      fixed: 'right' as const,
+      mobileShow: true,
+    },
   ];
-  
+
   // 移动端隐藏部分列
   if (isMobile.value) {
-    return baseColumns.filter(col => col.mobileShow === true);
+    return baseColumns.filter((col) => col.mobileShow === true);
   }
   return baseColumns;
 });
@@ -616,8 +628,8 @@ onMounted(() => {
       :centered="isMobile"
       @ok="handleSubmit"
     >
-      <Form 
-        :label-col="isMobile ? { span: 24 } : { span: 5 }" 
+      <Form
+        :label-col="isMobile ? { span: 24 } : { span: 5 }"
         :wrapper-col="isMobile ? { span: 24 } : { span: 18 }"
         :layout="isMobile ? 'vertical' : 'horizontal'"
       >
@@ -796,7 +808,7 @@ onMounted(() => {
 
           &.off-day {
             background: #fff7e6;
-            
+
             &:hover {
               background: #fff1e0;
             }
@@ -808,7 +820,7 @@ onMounted(() => {
             display: flex;
             align-items: center;
             gap: 4px;
-            
+
             .off-day-badge {
               font-size: 10px;
               color: #fa8c16;

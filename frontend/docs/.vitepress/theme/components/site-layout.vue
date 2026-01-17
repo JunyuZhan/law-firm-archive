@@ -39,7 +39,7 @@ onMounted(() => {
   initZoom();
   // 处理 URL 中的 token
   handleTokenFromURL();
-  
+
   // 监听暗色模式变化
   if (typeof window !== 'undefined') {
     const htmlElement = document.documentElement;

@@ -99,9 +99,11 @@ function getGridColumns() {
       mobileShow: true,
     },
   ];
-  
+
   if (isMobile.value) {
-    return baseColumns.filter(col => col.type === 'seq' || col.mobileShow === true);
+    return baseColumns.filter(
+      (col) => col.type === 'seq' || col.mobileShow === true,
+    );
   }
   return baseColumns;
 }

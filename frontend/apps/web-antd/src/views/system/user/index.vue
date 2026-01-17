@@ -9,11 +9,7 @@ import { Page } from '@vben/common-ui';
 
 import { useResponsive } from '#/hooks/useResponsive';
 
-import {
-  DownloadOutlined,
-  DownOutlined,
-  UploadOutlined,
-} from '@vben/icons';
+import { DownloadOutlined, DownOutlined, UploadOutlined } from '@vben/icons';
 import {
   Button,
   Dropdown,
@@ -124,7 +120,13 @@ function getGridColumns(): VxeGridProps['columns'] {
     { title: '职位', field: 'position', width: 100 },
     { title: '手机号', field: 'phone', width: 130 },
     { title: '邮箱', field: 'email', minWidth: 180 },
-    { title: '状态', field: 'status', width: 80, slots: { default: 'status' }, mobileShow: true },
+    {
+      title: '状态',
+      field: 'status',
+      width: 80,
+      slots: { default: 'status' },
+      mobileShow: true,
+    },
     { title: '创建时间', field: 'createdAt', width: 160 },
     {
       title: '操作',
@@ -135,9 +137,11 @@ function getGridColumns(): VxeGridProps['columns'] {
       mobileShow: true,
     },
   ];
-  
+
   if (isMobile.value) {
-    return baseColumns.filter(col => col.type === 'checkbox' || col.mobileShow === true);
+    return baseColumns.filter(
+      (col) => col.type === 'checkbox' || col.mobileShow === true,
+    );
   }
   return baseColumns;
 }
@@ -325,7 +329,11 @@ function getStatusColor(status: string) {
       <!-- 工具栏按钮 -->
       <template #toolbar-buttons>
         <Space>
-          <Button v-access:code="'user:create'" type="primary" @click="handleAdd">
+          <Button
+            v-access:code="'user:create'"
+            type="primary"
+            @click="handleAdd"
+          >
             新增用户
           </Button>
           <span v-access:code="'user:create'">
@@ -350,9 +358,9 @@ function getStatusColor(status: string) {
           </span>
           <Tooltip title="切换弹窗/抽屉模式">
             <Space>
-              <span class="text-gray-500 text-sm">弹窗</span>
+              <span class="text-sm text-gray-500">弹窗</span>
               <Switch v-model:checked="useDrawer" />
-              <span class="text-gray-500 text-sm">抽屉</span>
+              <span class="text-sm text-gray-500">抽屉</span>
             </Space>
           </Tooltip>
         </Space>

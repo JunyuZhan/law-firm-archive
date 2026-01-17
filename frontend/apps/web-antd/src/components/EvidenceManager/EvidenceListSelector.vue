@@ -19,11 +19,7 @@ import {
   Spin,
   Tag,
 } from 'ant-design-vue';
-import {
-  Plus,
-  Trash,
-  RotateCw,
-} from '@vben/icons';
+import { Plus, Trash, RotateCw } from '@vben/icons';
 import type { EvidenceListDTO, EvidenceDTO } from '#/api/evidence';
 import {
   getEvidenceListsByMatter,
@@ -65,13 +61,13 @@ const compareLoading = ref(false);
 // 计算当前选中的清单
 const selectedList = computed(() => {
   if (!selectedListId.value) return null;
-  return lists.value.find(l => l.id === selectedListId.value) || null;
+  return lists.value.find((l) => l.id === selectedListId.value) || null;
 });
 
 // 加载证据清单列表
 async function loadLists() {
   if (!props.matterId) return;
-  
+
   loading.value = true;
   try {
     lists.value = await getEvidenceListsByMatter(props.matterId);
@@ -85,7 +81,7 @@ async function loadLists() {
 // 选择清单
 function handleSelectList(id: number | null) {
   selectedListId.value = id;
-  emit('select', id ? lists.value.find(l => l.id === id) || null : null);
+  emit('select', id ? lists.value.find((l) => l.id === id) || null : null);
 }
 
 // 打开创建弹窗
@@ -93,7 +89,7 @@ function openCreateModal() {
   createForm.value = {
     name: '',
     listType: 'SUBMISSION',
-    evidenceIds: props.evidences.map(e => e.id),
+    evidenceIds: props.evidences.map((e) => e.id),
   };
   showCreateModal.value = true;
 }
@@ -104,7 +100,7 @@ async function handleCreate() {
     message.warning('请输入清单名称');
     return;
   }
-  
+
   try {
     await createEvidenceList({
       matterId: props.matterId,
@@ -157,12 +153,12 @@ async function handleCompare() {
     message.warning('请选择要对比的两个清单');
     return;
   }
-  
+
   compareLoading.value = true;
   try {
     compareResult.value = await compareEvidenceLists(
       compareForm.value.listId1,
-      compareForm.value.listId2
+      compareForm.value.listId2,
     );
   } catch (error: any) {
     message.error(error.message || '对比失败');
@@ -174,16 +170,24 @@ async function handleCompare() {
 // 获取类型标签颜色
 function getTypeColor(type?: string) {
   switch (type) {
-    case 'SUBMISSION': return 'blue';
-    case 'EXCHANGE': return 'green';
-    case 'COURT': return 'orange';
-    default: return 'default';
+    case 'SUBMISSION':
+      return 'blue';
+    case 'EXCHANGE':
+      return 'green';
+    case 'COURT':
+      return 'orange';
+    default:
+      return 'default';
   }
 }
 
 // 获取类型名称
 function getTypeName(type?: string) {
-  return EVIDENCE_LIST_TYPE_OPTIONS.find(o => o.value === type)?.label || type || '未分类';
+  return (
+    EVIDENCE_LIST_TYPE_OPTIONS.find((o) => o.value === type)?.label ||
+    type ||
+    '未分类'
+  );
 }
 
 // 监听 matterId 变化
@@ -194,7 +198,7 @@ watch(
       loadLists();
     }
   },
-  { immediate: true }
+  { immediate: true },
 );
 
 // 暴露方法
@@ -214,10 +218,14 @@ defineExpose({
         </div>
         <Space v-if="!readonly">
           <Button type="primary" size="small" @click="openCreateModal">
-            <Plus class="h-4 w-4 mr-1" /> 新建清单
+            <Plus class="mr-1 h-4 w-4" /> 新建清单
           </Button>
-          <Button size="small" @click="openCompareModal" :disabled="lists.length < 2">
-            <RotateCw class="h-4 w-4 mr-1" /> 对比清单
+          <Button
+            size="small"
+            @click="openCompareModal"
+            :disabled="lists.length < 2"
+          >
+            <RotateCw class="mr-1 h-4 w-4" /> 对比清单
           </Button>
         </Space>
       </div>
@@ -277,16 +285,16 @@ defineExpose({
     >
       <Form layout="vertical" :model="createForm">
         <FormItem label="清单名称" required>
-          <Input 
-            v-model:value="createForm.name" 
+          <Input
+            v-model:value="createForm.name"
             placeholder="如：一审原告证据清单、二审补充证据"
           />
         </FormItem>
         <FormItem label="清单类型">
           <Select v-model:value="createForm.listType">
-            <SelectOption 
-              v-for="opt in EVIDENCE_LIST_TYPE_OPTIONS" 
-              :key="opt.value" 
+            <SelectOption
+              v-for="opt in EVIDENCE_LIST_TYPE_OPTIONS"
+              :key="opt.value"
               :value="opt.value"
             >
               {{ opt.label }}
@@ -310,57 +318,73 @@ defineExpose({
     >
       <div class="compare-container">
         <div class="compare-selects">
-          <Select 
-            v-model:value="compareForm.listId1" 
+          <Select
+            v-model:value="compareForm.listId1"
             placeholder="选择清单1"
             style="width: 200px"
           >
-            <SelectOption 
-              v-for="list in lists" 
-              :key="list.id" 
-              :value="list.id"
-            >
+            <SelectOption v-for="list in lists" :key="list.id" :value="list.id">
               {{ list.name }}
             </SelectOption>
           </Select>
           <span class="vs-text">VS</span>
-          <Select 
-            v-model:value="compareForm.listId2" 
+          <Select
+            v-model:value="compareForm.listId2"
             placeholder="选择清单2"
             style="width: 200px"
           >
-            <SelectOption 
-              v-for="list in lists" 
-              :key="list.id" 
-              :value="list.id"
-            >
+            <SelectOption v-for="list in lists" :key="list.id" :value="list.id">
               {{ list.name }}
             </SelectOption>
           </Select>
-          <Button type="primary" @click="handleCompare" :loading="compareLoading">
+          <Button
+            type="primary"
+            @click="handleCompare"
+            :loading="compareLoading"
+          >
             开始对比
           </Button>
         </div>
 
         <div v-if="compareResult" class="compare-result">
           <div class="result-section">
-            <Tag color="green">新增 {{ compareResult.addedIds?.length || 0 }} 项</Tag>
-            <div v-if="compareResult.addedEvidences?.length" class="evidence-list">
-              <div v-for="e in compareResult.addedEvidences" :key="e.id" class="evidence-item">
+            <Tag color="green"
+              >新增 {{ compareResult.addedIds?.length || 0 }} 项</Tag
+            >
+            <div
+              v-if="compareResult.addedEvidences?.length"
+              class="evidence-list"
+            >
+              <div
+                v-for="e in compareResult.addedEvidences"
+                :key="e.id"
+                class="evidence-item"
+              >
                 {{ e.name }}
               </div>
             </div>
           </div>
           <div class="result-section">
-            <Tag color="red">删除 {{ compareResult.removedIds?.length || 0 }} 项</Tag>
-            <div v-if="compareResult.removedEvidences?.length" class="evidence-list">
-              <div v-for="e in compareResult.removedEvidences" :key="e.id" class="evidence-item">
+            <Tag color="red"
+              >删除 {{ compareResult.removedIds?.length || 0 }} 项</Tag
+            >
+            <div
+              v-if="compareResult.removedEvidences?.length"
+              class="evidence-list"
+            >
+              <div
+                v-for="e in compareResult.removedEvidences"
+                :key="e.id"
+                class="evidence-item"
+              >
                 {{ e.name }}
               </div>
             </div>
           </div>
           <div class="result-section">
-            <Tag color="blue">共同 {{ compareResult.commonIds?.length || 0 }} 项</Tag>
+            <Tag color="blue"
+              >共同 {{ compareResult.commonIds?.length || 0 }} 项</Tag
+            >
           </div>
         </div>
       </div>
@@ -370,28 +394,28 @@ defineExpose({
 
 <style scoped>
 .evidence-list-selector {
-  background: #fafafa;
-  border-radius: 8px;
   padding: 12px;
   margin-bottom: 16px;
+  background: #fafafa;
+  border-radius: 8px;
 }
 
 .selector-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
   margin-bottom: 12px;
 }
 
 .header-left {
   display: flex;
-  align-items: center;
   gap: 8px;
+  align-items: center;
 }
 
 .title {
-  font-weight: 600;
   font-size: 14px;
+  font-weight: 600;
 }
 
 .list-container {
@@ -402,24 +426,24 @@ defineExpose({
 
 .list-item {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
   padding: 10px 12px;
+  cursor: pointer;
   background: #fff;
   border: 1px solid #e8e8e8;
   border-radius: 6px;
-  cursor: pointer;
   transition: all 0.2s;
 }
 
 .list-item:hover {
   border-color: #1890ff;
-  box-shadow: 0 2px 8px rgba(24, 144, 255, 0.1);
+  box-shadow: 0 2px 8px rgb(24 144 255 / 10%);
 }
 
 .list-item.active {
-  border-color: #1890ff;
   background: #e6f7ff;
+  border-color: #1890ff;
 }
 
 .list-info {
@@ -428,10 +452,10 @@ defineExpose({
 
 .list-name {
   display: flex;
-  align-items: center;
   gap: 8px;
-  font-weight: 500;
+  align-items: center;
   margin-bottom: 4px;
+  font-weight: 500;
 }
 
 .list-meta {
@@ -442,20 +466,20 @@ defineExpose({
 }
 
 .selected-hint {
-  margin-top: 12px;
-  padding: 8px 12px;
-  background: #e6f7ff;
-  border-radius: 4px;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  padding: 8px 12px;
+  margin-top: 12px;
+  background: #e6f7ff;
+  border-radius: 4px;
 }
 
 .evidence-count-hint {
   padding: 8px 12px;
+  color: #666;
   background: #f5f5f5;
   border-radius: 4px;
-  color: #666;
 }
 
 .compare-container {
@@ -464,8 +488,8 @@ defineExpose({
 
 .compare-selects {
   display: flex;
-  align-items: center;
   gap: 12px;
+  align-items: center;
   margin-bottom: 20px;
 }
 
@@ -487,8 +511,8 @@ defineExpose({
 }
 
 .evidence-list {
-  margin-top: 8px;
   padding-left: 12px;
+  margin-top: 8px;
 }
 
 .evidence-item {

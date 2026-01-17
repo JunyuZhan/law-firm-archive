@@ -170,7 +170,12 @@ async function loadLitigationStageOptions(caseType: string | undefined) {
 }
 
 // 表单数据（litigationStage 在表单中使用数组，提交时转换为字符串）
-const formData = reactive<Omit<Partial<CreateMatterCommand>, 'litigationStage'> & { id?: number; litigationStage?: string[] }>({
+const formData = reactive<
+  Omit<Partial<CreateMatterCommand>, 'litigationStage'> & {
+    id?: number;
+    litigationStage?: string[];
+  }
+>({
   id: undefined,
   name: '',
   matterType: 'LITIGATION',
@@ -387,7 +392,13 @@ function getGridColumns() {
       slots: { default: 'contractAmount' },
     },
     { title: '创建时间', field: 'createdAt', width: 160 },
-    { title: '状态', field: 'status', width: 100, slots: { default: 'status' }, mobileShow: true },
+    {
+      title: '状态',
+      field: 'status',
+      width: 100,
+      slots: { default: 'status' },
+      mobileShow: true,
+    },
     {
       title: '操作',
       field: 'action',
@@ -397,10 +408,10 @@ function getGridColumns() {
       mobileShow: true,
     },
   ];
-  
+
   // 移动端隐藏部分列
   if (isMobile.value) {
-    return baseColumns.filter(col => col.mobileShow === true);
+    return baseColumns.filter((col) => col.mobileShow === true);
   }
   return baseColumns;
 }
@@ -641,7 +652,9 @@ function handleEdit(record: MatterDTO) {
     matterType: record.matterType,
     caseType: record.caseType,
     // litigationStage 支持多选，后端存储为逗号分隔字符串
-    litigationStage: record.litigationStage ? record.litigationStage.split(',') : [],
+    litigationStage: record.litigationStage
+      ? record.litigationStage.split(',')
+      : [],
     causeOfAction: record.causeOfAction,
     businessType: record.businessType,
     clientId: record.clientId,
@@ -1222,7 +1235,9 @@ onMounted(async () => {
                     placeholder="请选择客户"
                     show-search
                     style="flex: 2"
-                    :disabled="createFromContract && !formData.id && client.isPrimary"
+                    :disabled="
+                      createFromContract && !formData.id && client.isPrimary
+                    "
                     :virtual="clients.length > 50"
                     :list-height="256"
                     :filter-option="
@@ -1266,13 +1281,16 @@ onMounted(async () => {
                     danger
                     size="small"
                     @click="removeClient(index)"
-                    :disabled="selectedClients.length <= 1 || (createFromContract && !formData.id && client.isPrimary)"
+                    :disabled="
+                      selectedClients.length <= 1 ||
+                      (createFromContract && !formData.id && client.isPrimary)
+                    "
                   >
                     删除
                   </Button>
                 </div>
                 <!-- 添加客户按钮 -->
-                <div style="display: flex; gap: 8px; flex-direction: column">
+                <div style="display: flex; flex-direction: column; gap: 8px">
                   <div
                     v-if="createFromContract && !formData.id"
                     style="margin-bottom: 4px; font-size: 12px; color: #999"
@@ -1313,7 +1331,11 @@ onMounted(async () => {
               <UserTreeSelect
                 v-model:value="formData.leadLawyerId"
                 :disabled="createFromContract && !formData.id"
-                :placeholder="createFromContract && !formData.id ? '从合同自动继承' : '选择主办律师（按部门筛选）'"
+                :placeholder="
+                  createFromContract && !formData.id
+                    ? '从合同自动继承'
+                    : '选择主办律师（按部门筛选）'
+                "
               />
               <div
                 v-if="createFromContract && !formData.id"
@@ -1325,7 +1347,8 @@ onMounted(async () => {
                 v-else
                 style="margin-top: 4px; font-size: 12px; color: #1890ff"
               >
-                💡 提示：主办律师和团队成员（主办律师、协办律师）将作为授权委托书的受托人信息，请在项目详情页的"团队成员"标签页中管理团队成员
+                💡
+                提示：主办律师和团队成员（主办律师、协办律师）将作为授权委托书的受托人信息，请在项目详情页的"团队成员"标签页中管理团队成员
               </div>
             </FormItem>
           </Col>
@@ -1334,7 +1357,11 @@ onMounted(async () => {
               <UserTreeSelect
                 v-model:value="formData.originatorId"
                 :disabled="createFromContract && !formData.id"
-                :placeholder="createFromContract && !formData.id ? '从合同自动继承' : '选择案源人（按部门筛选）'"
+                :placeholder="
+                  createFromContract && !formData.id
+                    ? '从合同自动继承'
+                    : '选择案源人（按部门筛选）'
+                "
               />
               <div
                 v-if="createFromContract && !formData.id"
@@ -1352,7 +1379,11 @@ onMounted(async () => {
                 v-model:value="formData.feeType"
                 :options="feeTypeOptions"
                 :disabled="createFromContract && !formData.id"
-                :placeholder="createFromContract && !formData.id ? '从合同自动继承' : '请选择收费方式'"
+                :placeholder="
+                  createFromContract && !formData.id
+                    ? '从合同自动继承'
+                    : '请选择收费方式'
+                "
                 show-search
                 :filter-option="
                   (input, option) =>
@@ -1381,7 +1412,11 @@ onMounted(async () => {
                   (value) => `¥ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
                 "
                 :parser="(value) => value.replace(/¥\s?|(,*)/g, '')"
-                :placeholder="createFromContract && !formData.id ? '从合同自动继承' : '请输入预估费用'"
+                :placeholder="
+                  createFromContract && !formData.id
+                    ? '从合同自动继承'
+                    : '请输入预估费用'
+                "
               />
               <div
                 v-if="createFromContract && !formData.id"
@@ -1404,7 +1439,11 @@ onMounted(async () => {
                   value: 'id',
                   children: 'children',
                 }"
-                :placeholder="createFromContract && !formData.id ? '从合同自动继承' : '请选择部门（支持搜索）'"
+                :placeholder="
+                  createFromContract && !formData.id
+                    ? '从合同自动继承'
+                    : '请选择部门（支持搜索）'
+                "
                 allow-clear
                 show-search
                 :tree-node-filter-prop="'name'"

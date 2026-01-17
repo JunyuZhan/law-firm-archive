@@ -221,10 +221,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <Page
-    title="数据库迁移管理"
-    description="管理数据库迁移脚本的执行和记录"
-  >
+  <Page title="数据库迁移管理" description="管理数据库迁移脚本的执行和记录">
     <Tabs v-model:active-key="activeTab">
       <!-- 迁移脚本 -->
       <TabPane key="scripts" tab="迁移脚本">

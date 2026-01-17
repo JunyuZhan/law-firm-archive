@@ -106,7 +106,13 @@ const statusOptions = [
 // 表格列 - 根据标签页和屏幕尺寸动态显示
 function getGridColumns() {
   const baseColumns: any[] = [
-    { title: '项目', field: 'matterName', width: isMobile.value ? 120 : 180, showOverflow: true, mobileShow: true },
+    {
+      title: '项目',
+      field: 'matterName',
+      width: isMobile.value ? 120 : 180,
+      showOverflow: true,
+      mobileShow: true,
+    },
   ];
 
   if (activeTab.value === 'all' && !isMobile.value) {
@@ -130,7 +136,13 @@ function getGridColumns() {
       width: 70,
       slots: { default: 'billable' },
     },
-    { title: '状态', field: 'status', width: 90, slots: { default: 'status' }, mobileShow: true },
+    {
+      title: '状态',
+      field: 'status',
+      width: 90,
+      slots: { default: 'status' },
+      mobileShow: true,
+    },
     { title: '创建时间', field: 'createdAt', width: 150 },
     {
       title: '操作',
@@ -141,9 +153,9 @@ function getGridColumns() {
       mobileShow: true,
     },
   ];
-  
+
   if (isMobile.value) {
-    return allColumns.filter(col => col.mobileShow === true);
+    return allColumns.filter((col) => col.mobileShow === true);
   }
   return allColumns;
 }

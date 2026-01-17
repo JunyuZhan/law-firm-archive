@@ -12,15 +12,15 @@ GET /api/admin/asset/list
 
 查询参数：
 
-| 参数         | 类型   | 说明         |
-| ------------ | ------ | ------------ |
-| pageNum      | number | 页码         |
-| pageSize     | number | 每页数量     |
-| assetNo      | string | 资产编号     |
-| assetName    | string | 资产名称     |
-| category     | string | 资产类别     |
-| status       | string | 资产状态     |
-| keeperId     | number | 保管人ID     |
+| 参数      | 类型   | 说明     |
+| --------- | ------ | -------- |
+| pageNum   | number | 页码     |
+| pageSize  | number | 每页数量 |
+| assetNo   | string | 资产编号 |
+| assetName | string | 资产名称 |
+| category  | string | 资产类别 |
+| status    | string | 资产状态 |
+| keeperId  | number | 保管人ID |
 
 ### 创建资产
 
@@ -38,7 +38,7 @@ POST /api/admin/asset
   "brand": "联想",
   "model": "ThinkPad X1",
   "purchaseDate": "2026-01-01",
-  "purchasePrice": 8999.00,
+  "purchasePrice": 8999.0,
   "keeperId": 1,
   "location": "财务部",
   "remark": "财务专用"
@@ -65,23 +65,23 @@ DELETE /api/admin/asset/{id}
 
 ## 资产类别
 
-| 值               | 说明       |
-| ---------------- | ---------- |
-| ELECTRONIC       | 电子产品   |
-| FURNITURE        | 办公家具   |
-| VEHICLE          | 车辆       |
-| EQUIPMENT        | 设备       |
-| OTHER            | 其他       |
+| 值         | 说明     |
+| ---------- | -------- |
+| ELECTRONIC | 电子产品 |
+| FURNITURE  | 办公家具 |
+| VEHICLE    | 车辆     |
+| EQUIPMENT  | 设备     |
+| OTHER      | 其他     |
 
 ## 资产状态
 
-| 值               | 说明       |
-| ---------------- | ---------- |
-| NORMAL           | 正常       |
-| IN_USE           | 使用中     |
-| REPAIRING        | 维修中     |
-| SCRAPPED         | 已报废     |
-| LOST             | 已丢失     |
+| 值        | 说明   |
+| --------- | ------ |
+| NORMAL    | 正常   |
+| IN_USE    | 使用中 |
+| REPAIRING | 维修中 |
+| SCRAPPED  | 已报废 |
+| LOST      | 已丢失 |
 
 ## 资产盘点
 
@@ -181,12 +181,12 @@ GET /api/admin/meeting-room/reservation/list
 
 查询参数：
 
-| 参数         | 类型   | 说明         |
-| ------------ | ------ | ------------ |
-| roomId       | number | 会议室ID     |
-| startDate    | string | 开始日期     |
-| endDate      | string | 结束日期     |
-| status       | string | 预约状态     |
+| 参数      | 类型   | 说明     |
+| --------- | ------ | -------- |
+| roomId    | number | 会议室ID |
+| startDate | string | 开始日期 |
+| endDate   | string | 结束日期 |
+| status    | string | 预约状态 |
 
 ## 供应商管理
 
@@ -219,12 +219,12 @@ POST /api/admin/supplier
 
 ### 供应商类型
 
-| 值                 | 说明           |
-| ------------------ | -------------- |
-| OFFICE_SUPPLIES    | 办公用品       |
-| EQUIPMENT          | 设备           |
-| SERVICE            | 服务           |
-| OTHER              | 其他           |
+| 值              | 说明     |
+| --------------- | -------- |
+| OFFICE_SUPPLIES | 办公用品 |
+| EQUIPMENT       | 设备     |
+| SERVICE         | 服务     |
+| OTHER           | 其他     |
 
 ## 采购管理
 
@@ -244,10 +244,10 @@ POST /api/admin/purchase/apply
       "itemName": "A4打印纸",
       "quantity": 10,
       "unit": "箱",
-      "estimatedPrice": 180.00
+      "estimatedPrice": 180.0
     }
   ],
-  "totalAmount": 1800.00,
+  "totalAmount": 1800.0,
   "applicantId": 1,
   "reason": "办公室日常使用"
 }
@@ -278,6 +278,6 @@ GET /api/admin/purchase/list
 
 ## 文档更新记录
 
-| 更新时间 | 更新内容 | 操作人 |
-|----------|----------|--------|
+| 更新时间   | 更新内容             | 操作人       |
+| ---------- | -------------------- | ------------ |
 | 2026-01-11 | 创建行政接口文档骨架 | AI Assistant |

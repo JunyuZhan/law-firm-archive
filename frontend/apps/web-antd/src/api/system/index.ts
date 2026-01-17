@@ -608,7 +608,10 @@ export function getExternalIntegrationDetail(id: number) {
 export function createExternalIntegration(
   data: Omit<UpdateExternalIntegrationCommand, 'id'>,
 ) {
-  return requestClient.post<ExternalIntegrationDTO>('/system/integration', data);
+  return requestClient.post<ExternalIntegrationDTO>(
+    '/system/integration',
+    data,
+  );
 }
 
 /** 更新外部系统集成 */

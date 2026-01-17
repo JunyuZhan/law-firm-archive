@@ -140,7 +140,9 @@ onMounted(() => {
             <span>Token 配额</span>
             <Progress
               :percent="summary.tokenUsagePercent || 0"
-              :status="(summary.tokenUsagePercent || 0) > 90 ? 'exception' : 'active'"
+              :status="
+                (summary.tokenUsagePercent || 0) > 90 ? 'exception' : 'active'
+              "
             />
             <span class="quota-text">
               {{ summary.totalTokens?.toLocaleString() }} /
@@ -153,11 +155,14 @@ onMounted(() => {
             <span>费用配额</span>
             <Progress
               :percent="summary.costUsagePercent || 0"
-              :status="(summary.costUsagePercent || 0) > 90 ? 'exception' : 'active'"
+              :status="
+                (summary.costUsagePercent || 0) > 90 ? 'exception' : 'active'
+              "
             />
             <span class="quota-text">
-              ¥{{ summary.userCost?.toFixed(2) }} /
-              ¥{{ summary.monthlyCostQuota?.toFixed(2) }}
+              ¥{{ summary.userCost?.toFixed(2) }} / ¥{{
+                summary.monthlyCostQuota?.toFixed(2)
+              }}
             </span>
           </div>
         </Col>
@@ -185,9 +190,7 @@ onMounted(() => {
     </Card>
 
     <div style="margin-top: 16px; text-align: center">
-      <Button type="primary" @click="goToDetail">
-        查看详细使用记录
-      </Button>
+      <Button type="primary" @click="goToDetail"> 查看详细使用记录 </Button>
     </div>
   </div>
 </template>
@@ -196,11 +199,13 @@ onMounted(() => {
 .ai-usage-setting {
   padding: 16px;
 }
+
 .quota-item {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
+
 .quota-text {
   font-size: 12px;
   color: #666;

@@ -46,10 +46,12 @@ const clientOptions = ref<{ label: string; value: number }[]>([]);
 async function loadClients(keyword?: string) {
   try {
     const res = await getClientList({ pageNum: 1, pageSize: 50, keyword });
-    clientOptions.value = (res.list || []).map((c: { id: number; name: string }) => ({
-      label: c.name,
-      value: c.id,
-    }));
+    clientOptions.value = (res.list || []).map(
+      (c: { id: number; name: string }) => ({
+        label: c.name,
+        value: c.id,
+      }),
+    );
   } catch (error: any) {
     console.error('加载客户列表失败', error);
   }
@@ -98,18 +100,49 @@ const formSchema: VbenFormSchema[] = [
 const gridColumns: any[] = [
   { title: '预收款编号', field: 'prepaymentNo', width: 150 },
   { title: '客户', field: 'clientName', width: 150, showOverflow: true },
-  { title: '金额', field: 'amount', width: 120, align: 'right', slots: { default: 'amount' } },
-  { title: '已用金额', field: 'usedAmount', width: 120, align: 'right', slots: { default: 'usedAmount' } },
-  { title: '剩余金额', field: 'remainingAmount', width: 120, align: 'right', slots: { default: 'remainingAmount' } },
+  {
+    title: '金额',
+    field: 'amount',
+    width: 120,
+    align: 'right',
+    slots: { default: 'amount' },
+  },
+  {
+    title: '已用金额',
+    field: 'usedAmount',
+    width: 120,
+    align: 'right',
+    slots: { default: 'usedAmount' },
+  },
+  {
+    title: '剩余金额',
+    field: 'remainingAmount',
+    width: 120,
+    align: 'right',
+    slots: { default: 'remainingAmount' },
+  },
   { title: '状态', field: 'status', width: 100, slots: { default: 'status' } },
-  { title: '收款日期', field: 'receiptDate', width: 120, slots: { default: 'receiptDate' } },
+  {
+    title: '收款日期',
+    field: 'receiptDate',
+    width: 120,
+    slots: { default: 'receiptDate' },
+  },
   { title: '支付方式', field: 'paymentMethodName', width: 100 },
   { title: '用途', field: 'purpose', showOverflow: true },
-  { title: '操作', field: 'action', width: 180, fixed: 'right', slots: { default: 'action' } },
+  {
+    title: '操作',
+    field: 'action',
+    width: 180,
+    fixed: 'right',
+    slots: { default: 'action' },
+  },
 ];
 
 // 加载数据
-async function loadData(params: Record<string, any> & { page: number; pageSize: number }) {
+async function loadData(
+  params: Record<string, any> & { page: number; pageSize: number },
+) {
   const res = await getPrepaymentList({
     pageNum: params.page,
     pageSize: params.pageSize,
@@ -281,10 +314,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <Page
-    title="预收款管理"
-    description="管理客户预付款项，支持核销到收费记录"
-  >
+  <Page title="预收款管理" description="管理客户预付款项，支持核销到收费记录">
     <Grid>
       <!-- 工具栏 -->
       <template #toolbar-tools>
@@ -324,7 +354,9 @@ onMounted(() => {
       <template #action="{ row }">
         <Space>
           <a @click="handleViewDetail(row)">详情</a>
-          <a v-if="row.status === 'PENDING'" @click="handleConfirm(row)">确认</a>
+          <a v-if="row.status === 'PENDING'" @click="handleConfirm(row)"
+            >确认</a
+          >
           <a
             v-if="row.status === 'ACTIVE' && row.usedAmount === 0"
             style="color: #ff4d4f"
@@ -362,7 +394,9 @@ onMounted(() => {
             :precision="2"
             :step="100"
             style="width: 100%"
-            :formatter="(value: any) => `¥ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')"
+            :formatter="
+              (value: any) => `¥ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+            "
             :parser="(value: any) => value.replace(/¥\s?|(,*)/g, '')"
           />
         </Form.Item>
@@ -459,7 +493,11 @@ onMounted(() => {
               {{ detailData.confirmerName || '-' }}
             </Descriptions.Item>
             <Descriptions.Item label="确认时间">
-              {{ detailData.confirmedAt ? dayjs(detailData.confirmedAt).format('YYYY-MM-DD HH:mm') : '-' }}
+              {{
+                detailData.confirmedAt
+                  ? dayjs(detailData.confirmedAt).format('YYYY-MM-DD HH:mm')
+                  : '-'
+              }}
             </Descriptions.Item>
           </Descriptions>
 
@@ -472,7 +510,11 @@ onMounted(() => {
                 { title: '费用名称', dataIndex: 'feeName', key: 'feeName' },
                 { title: '核销金额', dataIndex: 'amount', key: 'amount' },
                 { title: '核销时间', dataIndex: 'usageTime', key: 'usageTime' },
-                { title: '操作人', dataIndex: 'operatorName', key: 'operatorName' },
+                {
+                  title: '操作人',
+                  dataIndex: 'operatorName',
+                  key: 'operatorName',
+                },
               ]"
               :data-source="detailData.usages"
               :pagination="false"
@@ -484,7 +526,11 @@ onMounted(() => {
                   {{ formatCurrency(record.amount) }}
                 </template>
                 <template v-else-if="column.key === 'usageTime'">
-                  {{ record.usageTime ? dayjs(record.usageTime).format('YYYY-MM-DD HH:mm') : '-' }}
+                  {{
+                    record.usageTime
+                      ? dayjs(record.usageTime).format('YYYY-MM-DD HH:mm')
+                      : '-'
+                  }}
                 </template>
               </template>
             </Table>

@@ -850,7 +850,9 @@ function getSourceTypeConfig(sourceType: string | undefined): {
   label: string;
 } {
   if (!sourceType) return { color: 'default', label: '用户上传' };
-  return sourceTypeConfig[sourceType] || { color: 'default', label: sourceType };
+  return (
+    sourceTypeConfig[sourceType] || { color: 'default', label: sourceType }
+  );
 }
 
 // 格式化日期时间
@@ -1643,7 +1645,11 @@ onMounted(() => {
             <Button v-if="selectedMatter" @click="handleBackToList">
               返回列表
             </Button>
-            <Button v-if="selectedMatter" type="link" @click="handleGoToMatterDetail">
+            <Button
+              v-if="selectedMatter"
+              type="link"
+              @click="handleGoToMatterDetail"
+            >
               返回项目详情
             </Button>
           </Space>
@@ -1847,10 +1853,16 @@ onMounted(() => {
                   </Button>
                   <template #overlay>
                     <Menu>
-                      <MenuItem key="regenerate-poa" @click="handleRegeneratePOA">
+                      <MenuItem
+                        key="regenerate-poa"
+                        @click="handleRegeneratePOA"
+                      >
                         🔄 重新生成授权委托书
                       </MenuItem>
-                      <MenuItem key="trigger-archive" @click="handleTriggerArchive">
+                      <MenuItem
+                        key="trigger-archive"
+                        @click="handleTriggerArchive"
+                      >
                         📦 触发自动归档
                       </MenuItem>
                     </Menu>

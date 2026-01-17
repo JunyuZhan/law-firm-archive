@@ -150,24 +150,24 @@ const employeeList = ref<EmployeeDTO[]>([]);
 const modalVisible = ref(false);
 const modalLoading = ref(false);
 const editingId = ref<null | number>(null);
-const contractForm = reactive<
-  CreateLaborContractCommand & { status?: string }
->({
-  employeeId: undefined as unknown as number,
-  contractNo: undefined,
-  contractType: '',
-  startDate: '',
-  endDate: undefined,
-  probationMonths: undefined,
-  probationEndDate: undefined,
-  baseSalary: undefined,
-  performanceBonus: undefined,
-  otherAllowance: undefined,
-  signDate: undefined,
-  contractFileUrl: undefined,
-  remark: undefined,
-  status: undefined,
-});
+const contractForm = reactive<CreateLaborContractCommand & { status?: string }>(
+  {
+    employeeId: undefined as unknown as number,
+    contractNo: undefined,
+    contractType: '',
+    startDate: '',
+    endDate: undefined,
+    probationMonths: undefined,
+    probationEndDate: undefined,
+    baseSalary: undefined,
+    performanceBonus: undefined,
+    otherAllowance: undefined,
+    signDate: undefined,
+    contractFileUrl: undefined,
+    remark: undefined,
+    status: undefined,
+  },
+);
 
 // 详情弹窗
 const detailVisible = ref(false);
@@ -695,8 +695,7 @@ onMounted(() => {
                 style="width: 100%"
                 placeholder="请输入基本工资"
                 :formatter="
-                  (value) =>
-                    `¥ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+                  (value) => `¥ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
                 "
                 :parser="(value) => value!.replace(/¥\s?|(,*)/g, '')"
               />
@@ -711,8 +710,7 @@ onMounted(() => {
                 style="width: 100%"
                 placeholder="请输入绩效奖金"
                 :formatter="
-                  (value) =>
-                    `¥ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+                  (value) => `¥ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
                 "
                 :parser="(value) => value!.replace(/¥\s?|(,*)/g, '')"
               />
@@ -727,8 +725,7 @@ onMounted(() => {
                 style="width: 100%"
                 placeholder="请输入其他津贴"
                 :formatter="
-                  (value) =>
-                    `¥ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+                  (value) => `¥ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
                 "
                 :parser="(value) => value!.replace(/¥\s?|(,*)/g, '')"
               />
@@ -851,12 +848,8 @@ onMounted(() => {
       @cancel="renewVisible = false"
     >
       <div v-if="currentRecord" style="margin-bottom: 16px">
-        <p>
-          <strong>员工：</strong>{{ currentRecord.employeeName }}
-        </p>
-        <p>
-          <strong>原合同编号：</strong>{{ currentRecord.contractNo }}
-        </p>
+        <p><strong>员工：</strong>{{ currentRecord.employeeName }}</p>
+        <p><strong>原合同编号：</strong>{{ currentRecord.contractNo }}</p>
         <p>
           <strong>原合同结束日期：</strong>
           {{

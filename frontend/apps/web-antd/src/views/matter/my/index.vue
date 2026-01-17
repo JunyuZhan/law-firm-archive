@@ -94,7 +94,13 @@ function getGridColumns() {
       slots: { default: 'contractAmount' },
     },
     { title: '创建时间', field: 'createdAt', width: 160 },
-    { title: '状态', field: 'status', width: 100, slots: { default: 'status' }, mobileShow: true },
+    {
+      title: '状态',
+      field: 'status',
+      width: 100,
+      slots: { default: 'status' },
+      mobileShow: true,
+    },
     {
       title: '操作',
       field: 'action',
@@ -104,10 +110,10 @@ function getGridColumns() {
       mobileShow: true,
     },
   ];
-  
+
   // 移动端只显示标记的列
   if (isMobile.value) {
-    return baseColumns.filter(col => col.mobileShow === true);
+    return baseColumns.filter((col) => col.mobileShow === true);
   }
   return baseColumns;
 }

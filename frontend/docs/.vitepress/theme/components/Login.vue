@@ -1,12 +1,12 @@
 <script lang="ts" setup>
-import { ref } from 'vue'
-import { Button, Input, Card, message } from 'ant-design-vue'
+import { ref } from 'vue';
+import { Button, Input, Card, message } from 'ant-design-vue';
 
-import { loginWithCredentials } from './auth'
+import { loginWithCredentials } from './auth';
 
-const username = ref('')
-const password = ref('')
-const loading = ref(false)
+const username = ref('');
+const password = ref('');
+const loading = ref(false);
 
 function isSafeRedirectPath(value: string | null): value is string {
   return !!value && value.startsWith('/') && !value.startsWith('//');
@@ -18,36 +18,46 @@ function getBasePrefix(): string {
 
 const handleLogin = () => {
   if (!username.value || !password.value) {
-    message.error('请输入用户名和密码')
-    return
+    message.error('请输入用户名和密码');
+    return;
   }
 
-  loading.value = true
-  
+  loading.value = true;
+
   // 模拟API调用延迟
   setTimeout(() => {
     if (loginWithCredentials(username.value, password.value)) {
-      message.success('登录成功')
-      
+      message.success('登录成功');
+
       // 跳转到原来的页面或首页
-      const basePrefix = getBasePrefix()
-      const redirectFromQuery = new URLSearchParams(window.location.search).get('redirect')
-      const safeRedirectFromQuery = isSafeRedirectPath(redirectFromQuery) ? redirectFromQuery : null
-      const isRootLoginPage = /^\/(docs\/)?login(\.html)?$/.test(window.location.pathname)
-      const redirect = safeRedirectFromQuery || (isRootLoginPage ? `${basePrefix}/guide/ops/introduction` : window.location.pathname)
-      window.location.href = redirect
+      const basePrefix = getBasePrefix();
+      const redirectFromQuery = new URLSearchParams(window.location.search).get(
+        'redirect',
+      );
+      const safeRedirectFromQuery = isSafeRedirectPath(redirectFromQuery)
+        ? redirectFromQuery
+        : null;
+      const isRootLoginPage = /^\/(docs\/)?login(\.html)?$/.test(
+        window.location.pathname,
+      );
+      const redirect =
+        safeRedirectFromQuery ||
+        (isRootLoginPage
+          ? `${basePrefix}/guide/ops/introduction`
+          : window.location.pathname);
+      window.location.href = redirect;
     } else {
-      message.error('用户名或密码错误')
-      loading.value = false
+      message.error('用户名或密码错误');
+      loading.value = false;
     }
-  }, 500)
-}
+  }, 500);
+};
 
 const handleKeyPress = (e: KeyboardEvent) => {
   if (e.key === 'Enter') {
-    handleLogin()
+    handleLogin();
   }
-}
+};
 </script>
 
 <template>
@@ -59,7 +69,7 @@ const handleKeyPress = (e: KeyboardEvent) => {
           <p class="login-subtitle">运维手册和API文档需要登录后查看</p>
         </div>
       </template>
-      
+
       <div class="login-form">
         <div class="form-group">
           <label>用户名</label>
@@ -70,7 +80,7 @@ const handleKeyPress = (e: KeyboardEvent) => {
             @keypress="handleKeyPress"
           />
         </div>
-        
+
         <div class="form-group">
           <label>密码</label>
           <Input
@@ -81,7 +91,7 @@ const handleKeyPress = (e: KeyboardEvent) => {
             @keypress="handleKeyPress"
           />
         </div>
-        
+
         <div class="login-actions">
           <Button
             type="primary"
@@ -93,7 +103,7 @@ const handleKeyPress = (e: KeyboardEvent) => {
             登录
           </Button>
         </div>
-        
+
         <div class="login-hint">
           <p>请联系管理员获取账号密码</p>
         </div>

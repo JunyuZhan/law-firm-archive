@@ -79,7 +79,7 @@ export const shared = defineConfig({
     json: {
       stringify: true,
     },
-    plugins: ([
+    plugins: [
       {
         name: 'docs-base-rewrite',
         enforce: 'pre',
@@ -92,7 +92,7 @@ export const shared = defineConfig({
               next();
               return;
             }
-            
+
             // 处理 /docs 重定向
             if (url === '/docs') {
               res.statusCode = 302;
@@ -100,7 +100,7 @@ export const shared = defineConfig({
               res.end();
               return;
             }
-            
+
             // 从 /docs 开头的 URL 中去掉 /docs 前缀
             // 这样 Vite 才能正确处理这些请求
             if (url.startsWith('/docs/')) {
@@ -119,7 +119,7 @@ export const shared = defineConfig({
             }
             next();
           };
-          
+
           // 将中间件添加到栈的最前面
           server.middlewares.stack.unshift({
             route: '',
@@ -150,7 +150,7 @@ export const shared = defineConfig({
       viteArchiverPlugin({ outputDir: '.vitepress' }),
       groupIconVitePlugin(),
       await viteVxeTableImportsPlugin(),
-    ]) as any,
+    ] as any,
     server: {
       fs: {
         allow: ['../..'],

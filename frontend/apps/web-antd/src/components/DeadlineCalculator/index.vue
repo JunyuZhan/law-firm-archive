@@ -46,12 +46,7 @@
     </Form>
 
     <!-- 计算结果 -->
-    <Alert
-      v-if="result"
-      type="info"
-      style="margin-top: 16px"
-      show-icon
-    >
+    <Alert v-if="result" type="info" style="margin-top: 16px" show-icon>
       <template #message>
         <div class="result-content">
           <div class="result-main">
@@ -211,8 +206,8 @@ defineExpose({
 
 .result-main {
   display: flex;
-  align-items: center;
   gap: 8px;
+  align-items: center;
 }
 
 .result-label {
@@ -225,8 +220,8 @@ defineExpose({
 }
 
 .result-detail {
-  color: #666;
   font-size: 13px;
+  color: #666;
 }
 
 .presets-section {
@@ -234,7 +229,7 @@ defineExpose({
 }
 
 .presets-title {
-  color: #999;
   font-size: 12px;
+  color: #999;
 }
 </style>

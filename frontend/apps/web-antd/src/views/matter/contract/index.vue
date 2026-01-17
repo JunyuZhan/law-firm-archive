@@ -426,7 +426,12 @@ const contractParticipants = ref<ContractParticipantInput[]>([]);
 // 表格列（响应式）
 const columns = computed(() => {
   const baseColumns = [
-    { title: '合同编号', dataIndex: 'contractNo', key: 'contractNo', width: 140 },
+    {
+      title: '合同编号',
+      dataIndex: 'contractNo',
+      key: 'contractNo',
+      width: 140,
+    },
     {
       title: '合同名称',
       dataIndex: 'name',
@@ -435,7 +440,13 @@ const columns = computed(() => {
       ellipsis: true,
       mobileShow: true,
     },
-    { title: '客户', dataIndex: 'clientName', key: 'clientName', width: 120, mobileShow: true },
+    {
+      title: '客户',
+      dataIndex: 'clientName',
+      key: 'clientName',
+      width: 120,
+      mobileShow: true,
+    },
     {
       title: '合同类型',
       dataIndex: 'contractTypeName',
@@ -455,14 +466,26 @@ const columns = computed(() => {
       width: 120,
       mobileShow: true,
     },
-    { title: '状态', dataIndex: 'statusName', key: 'statusName', width: 90, mobileShow: true },
+    {
+      title: '状态',
+      dataIndex: 'statusName',
+      key: 'statusName',
+      width: 90,
+      mobileShow: true,
+    },
     { title: '签约日期', dataIndex: 'signDate', key: 'signDate', width: 110 },
-    { title: '操作', key: 'action', width: isMobile.value ? 120 : 220, fixed: 'right' as const, mobileShow: true },
+    {
+      title: '操作',
+      key: 'action',
+      width: isMobile.value ? 120 : 220,
+      fixed: 'right' as const,
+      mobileShow: true,
+    },
   ];
-  
+
   // 移动端隐藏部分列
   if (isMobile.value) {
-    return baseColumns.filter(col => col.mobileShow === true);
+    return baseColumns.filter((col) => col.mobileShow === true);
   }
   return baseColumns;
 });
@@ -654,7 +677,7 @@ watch(
 watch(causeValue, (val) => {
   formData.causeOfAction =
     val && val.length > 0 ? val[val.length - 1] : undefined;
-  
+
   // 如果是刑事案件，自动将案由名称导入到涉嫌罪名字段
   if (formData.caseType === 'CRIMINAL') {
     if (val && val.length > 0) {
@@ -766,7 +789,10 @@ async function loadStatistics() {
 async function loadOptions() {
   // 客户列表（只加载已转正的正式客户，用于创建合同）
   try {
-    const clientRes = await getClientSelectOptions({ pageNum: 1, pageSize: 1000 });
+    const clientRes = await getClientSelectOptions({
+      pageNum: 1,
+      pageSize: 1000,
+    });
     clients.value = clientRes.list || [];
   } catch (error) {
     console.warn('加载客户列表失败', error);
@@ -1106,7 +1132,13 @@ const visibleFields = computed(() => {
   // 根据模板类型确定字段配置
   const templateType = template.templateType || 'CIVIL_PROXY';
   const fields: FieldConfig = {
-    basic: ['clientId', 'totalAmount', 'signDate', 'paymentTerms', 'expiryDate'],
+    basic: [
+      'clientId',
+      'totalAmount',
+      'signDate',
+      'paymentTerms',
+      'expiryDate',
+    ],
     litigation: [],
     criminal: [],
     nonLitigation: [],
@@ -1164,7 +1196,10 @@ function shouldShowField(fieldName: string): boolean {
 watch(
   () => {
     const fields = visibleFields.value;
-    return fields.criminal.includes('criminalCharge') && formData.caseType === 'CRIMINAL';
+    return (
+      fields.criminal.includes('criminalCharge') &&
+      formData.caseType === 'CRIMINAL'
+    );
   },
   (shouldLoad) => {
     if (shouldLoad && criminalChargeOptions.value.length === 0) {
@@ -1177,7 +1212,7 @@ watch(
 function handleTemplateChange(value: any) {
   const templateId = value as number | undefined;
   selectedTemplateId.value = templateId;
-  
+
   if (!templateId) {
     selectedTemplate.value = null;
     return;
@@ -1189,7 +1224,7 @@ function handleTemplateChange(value: any) {
     // 自动填充合同类型（等于模板类型）和收费方式
     formData.contractType = template.templateType || 'CIVIL_PROXY';
     formData.feeType = template.feeType || 'FIXED';
-    
+
     // 根据模板类型自动设置案件类型
     switch (template.templateType) {
       case 'CRIMINAL_DEFENSE':
@@ -1215,8 +1250,10 @@ function handleTemplateChange(value: any) {
         // 非诉项目不需要 caseType
         break;
     }
-    
-    message.success(`已应用模板 "${template.name}"，模板内容将在合同创建时导入`);
+
+    message.success(
+      `已应用模板 "${template.name}"，模板内容将在合同创建时导入`,
+    );
   }
 }
 
@@ -1226,26 +1263,28 @@ function handlePreviewTemplate() {
     message.warning('模板暂无内容');
     return;
   }
-  templatePreviewContent.value = formatTemplateContentForPreview(selectedTemplate.value.content);
+  templatePreviewContent.value = formatTemplateContentForPreview(
+    selectedTemplate.value.content,
+  );
   templatePreviewVisible.value = true;
 }
 
 // 格式化模板内容用于预览
 function formatTemplateContentForPreview(content: string): string {
   if (!content) return '暂无内容';
-  
+
   try {
     // 尝试解析结构化内容（JSON格式）
     const parsed = JSON.parse(content);
     if (parsed._structured && parsed.blocks) {
       const blocks = parsed.blocks;
       let result = '';
-      
+
       // 标题区
       if (blocks.title?.contractName) {
         result += `【标题】\n${blocks.title.contractName}\n\n`;
       }
-      
+
       // 主体区（甲乙双方）
       if (blocks.parties) {
         if (blocks.parties.partyA) {
@@ -1255,12 +1294,12 @@ function formatTemplateContentForPreview(content: string): string {
           result += `【乙方信息】\n${blocks.parties.partyB}\n\n`;
         }
       }
-      
+
       // 条款区
       if (blocks.clauses) {
         result += `【合同条款】\n${blocks.clauses}\n\n`;
       }
-      
+
       // 签署区
       if (blocks.signature) {
         if (blocks.signature.partyASign) {
@@ -1273,13 +1312,13 @@ function formatTemplateContentForPreview(content: string): string {
           result += `【签订信息】\n${blocks.signature.signInfo}\n`;
         }
       }
-      
+
       return result || content;
     }
   } catch {
     // 不是JSON格式，直接返回原内容
   }
-  
+
   return content;
 }
 
@@ -1397,11 +1436,12 @@ function generateApprovalFormHtml(data: ContractPrintDTO): string {
   // 案由：将代码转换为名称（确保转为字符串进行查找）
   const causeCode = data.causeOfAction ? String(data.causeOfAction) : '';
   let causeOfActionDisplay = '';
-  
+
   // 对于刑事案件，优先显示罪名名称，避免显示"刑事案件"
   if (data.caseType === 'CRIMINAL') {
     if (causeCode) {
-      causeOfActionDisplay = findCauseNameInAll(causeCode) || data.causeOfActionName || causeCode;
+      causeOfActionDisplay =
+        findCauseNameInAll(causeCode) || data.causeOfActionName || causeCode;
     } else {
       causeOfActionDisplay = data.causeOfActionName || '';
     }
@@ -1560,12 +1600,12 @@ async function executePrint() {
   if (printOptions.printContract) {
     let contractContent = data.contractContent || '';
     let hasSignature = false; // 标记模板是否已包含签署区域
-    
+
     // 处理合同内容：解码 HTML 实体，处理结构化内容
     if (contractContent) {
       // 先解码 HTML 实体（防止 XSS 过滤导致的乱码）
       contractContent = decodeHtmlEntities(contractContent);
-      
+
       // 检查是否是结构化内容，如果是则格式化
       if (isStructuredContent(contractContent)) {
         // 准备完整的变量替换数据（包含所有可能用到的变量）
@@ -1600,7 +1640,10 @@ async function executePrint() {
         };
         contractContent = formatStructuredForPrint(contractContent, variables);
         // 结构化内容可能已包含签署区域，检查一下
-        if (contractContent.includes('甲方（签章）') || contractContent.includes('乙方（签章）')) {
+        if (
+          contractContent.includes('甲方（签章）') ||
+          contractContent.includes('乙方（签章）')
+        ) {
           hasSignature = true;
         }
       } else {
@@ -1621,14 +1664,17 @@ async function executePrint() {
                 day: 'numeric',
               })
             : '完成之日';
-          
+
           // 替换所有可能的变量
           contractContent = contractContent
             .replace(/\$\{contractNo\}/g, data.contractNo || '')
             .replace(/\$\{clientName\}/g, data.clientName || '')
             .replace(/\$\{firmName\}/g, data.firmName || '')
             .replace(/\$\{signDate\}/g, signDateStr)
-            .replace(/\$\{matterDescription\}/g, data.description || data.opposingParty || '')
+            .replace(
+              /\$\{matterDescription\}/g,
+              data.description || data.opposingParty || '',
+            )
             .replace(/\$\{matterName\}/g, data.name || '')
             .replace(/\$\{paymentTerms\}/g, data.paymentTerms || '一次性支付')
             .replace(/\$\{expiryDate\}/g, expiryDateStr)
@@ -1638,14 +1684,17 @@ async function executePrint() {
             .replace(/\$\{firmPhone\}/g, data.firmPhone || '')
             .replace(/\$\{firmLegalRep\}/g, data.firmLegalRep || '');
         }
-        
+
         // 检查是否已包含签署区域
-        if (contractContent.includes('甲方（签章）') || contractContent.includes('甲方（委托人）')) {
+        if (
+          contractContent.includes('甲方（签章）') ||
+          contractContent.includes('甲方（委托人）')
+        ) {
           hasSignature = true;
         }
       }
     }
-    
+
     if (!contractContent) {
       // 如果没有模板内容，生成基本合同信息
       contractContent = `
@@ -1662,13 +1711,17 @@ async function executePrint() {
     }
 
     // 检查合同内容中是否已包含合同编号（避免重复）
-    const contractNoInContent = contractContent.includes(`合同编号：${data.contractNo}`);
-    
+    const contractNoInContent = contractContent.includes(
+      `合同编号：${data.contractNo}`,
+    );
+
     htmlContent += `
       <div class="contract-page" style="font-family: 'SimSun', '宋体', serif; font-size: 12pt;">
         ${!contractNoInContent ? `<div class="header-info">合同编号：${data.contractNo}</div>` : ''}
         <div style="font-family: 'SimSun', '宋体', serif; font-size: 12pt;">${contractContent}</div>
-        ${!hasSignature ? `
+        ${
+          !hasSignature
+            ? `
         <div class="signature">
           <div class="signature-box">
             <p><strong>甲方（委托人）：</strong></p>
@@ -1685,7 +1738,9 @@ async function executePrint() {
             <p>日期：_______年_______月_______日</p>
           </div>
         </div>
-        ` : ''}
+        `
+            : ''
+        }
       </div>
     `;
 
@@ -1707,11 +1762,12 @@ async function executePrint() {
     // 案由：将代码转换为名称（确保转为字符串进行查找）
     const causeCode = data.causeOfAction ? String(data.causeOfAction) : '';
     let causeOfActionDisplay = '';
-    
+
     // 对于刑事案件，优先显示罪名名称，避免显示"刑事案件"
     if (data.caseType === 'CRIMINAL') {
       if (causeCode) {
-        causeOfActionDisplay = findCauseNameInAll(causeCode) || data.causeOfActionName || causeCode;
+        causeOfActionDisplay =
+          findCauseNameInAll(causeCode) || data.causeOfActionName || causeCode;
       } else {
         causeOfActionDisplay = data.causeOfActionName || '';
       }
@@ -1892,12 +1948,12 @@ async function handleAdd() {
   handleResetForm();
   selectedTemplateId.value = undefined;
   selectedTemplate.value = null;
-  
+
   // 确保选项数据已加载（客户、部门、模板等）
   if (clients.value.length === 0 || contractTemplates.value.length === 0) {
     await loadOptions();
   }
-  
+
   modalVisible.value = true;
 }
 
@@ -1951,12 +2007,14 @@ async function handleEdit(record: ContractDTO) {
 
     // 设置案由级联值
     causeValue.value = detail.causeOfAction ? [detail.causeOfAction] : [];
-    
+
     // 如果是刑事案件，加载刑事罪名选项并设置级联值
     if (detail.caseType === 'CRIMINAL') {
       await loadCriminalChargeOptions();
       // 设置刑事罪名级联值（刑事案件中，案由代码就是罪名代码）
-      criminalChargeValue.value = detail.causeOfAction ? [detail.causeOfAction] : [];
+      criminalChargeValue.value = detail.causeOfAction
+        ? [detail.causeOfAction]
+        : [];
     } else {
       criminalChargeValue.value = [];
     }
@@ -1994,14 +2052,16 @@ async function handleEdit(record: ContractDTO) {
     formData.conflictCheckStatus = detail.conflictCheckStatus || 'NOT_REQUIRED';
     formData.advanceTravelFee = detail.advanceTravelFee;
     formData.riskRatio = detail.riskRatio;
-    
+
     // 刑事案件字段（从详情中获取，如果后端返回的话）
     const detailAny = detail as any;
     formData.defendantName = detailAny.defendantName || '';
     formData.criminalCharge = detailAny.criminalCharge || '';
     // defenseStage 支持多选，后端存储为逗号分隔字符串
-    formData.defenseStage = detailAny.defenseStage ? detailAny.defenseStage.split(',') : [];
-    
+    formData.defenseStage = detailAny.defenseStage
+      ? detailAny.defenseStage.split(',')
+      : [];
+
     // 模板变量字段（从详情中获取，如果后端返回的话）
     formData.lawyerNames = detailAny.lawyerNames || '';
     formData.assistantNames = detailAny.assistantNames || '';
@@ -2993,7 +3053,10 @@ onMounted(async () => {
                   >拒绝</a
                 >
                 <a
-                  v-if="(record as ContractDTO).createdBy === currentUserId || (record as ContractDTO).signerId === currentUserId"
+                  v-if="
+                    (record as ContractDTO).createdBy === currentUserId ||
+                    (record as ContractDTO).signerId === currentUserId
+                  "
                   style="color: #faad14"
                   @click="handleWithdraw(record as ContractDTO)"
                   >撤回</a
@@ -3044,12 +3107,12 @@ onMounted(async () => {
               "
             >
               <FormItem label="合同模板" style="margin-bottom: 8px">
-                <div style="display: flex; gap: 8px; align-items: center;">
+                <div style="display: flex; gap: 8px; align-items: center">
                   <Select
                     v-model:value="selectedTemplateId"
                     placeholder="请选择合同模板（必选）"
                     size="large"
-                    style="flex: 1;"
+                    style="flex: 1"
                     @change="handleTemplateChange"
                     :options="
                       contractTemplates.map((t) => ({
@@ -3058,43 +3121,79 @@ onMounted(async () => {
                       }))
                     "
                   />
-                  <Button 
-                    v-if="selectedTemplate" 
-                    type="link" 
+                  <Button
+                    v-if="selectedTemplate"
+                    type="link"
                     @click="handlePreviewTemplate"
                   >
                     预览模板
                   </Button>
                 </div>
               </FormItem>
-              
+
               <!-- 选中模板后显示模板信息 -->
-              <div v-if="selectedTemplate" style="margin-top: 8px; padding: 8px 12px; background: #fff; border-radius: 4px; border: 1px solid #d9d9d9;">
-                <div style="display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px;">
-                  <span><strong>合同类型：</strong>{{ selectedTemplate.contractTypeName || selectedTemplate.contractType }}</span>
-                  <span><strong>收费方式：</strong>{{ selectedTemplate.feeTypeName || selectedTemplate.feeType }}</span>
+              <div
+                v-if="selectedTemplate"
+                style="
+                  padding: 8px 12px;
+                  margin-top: 8px;
+                  background: #fff;
+                  border: 1px solid #d9d9d9;
+                  border-radius: 4px;
+                "
+              >
+                <div
+                  style="
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 16px;
+                    font-size: 13px;
+                  "
+                >
+                  <span
+                    ><strong>合同类型：</strong
+                    >{{
+                      selectedTemplate.contractTypeName ||
+                      selectedTemplate.contractType
+                    }}</span
+                  >
+                  <span
+                    ><strong>收费方式：</strong
+                    >{{
+                      selectedTemplate.feeTypeName || selectedTemplate.feeType
+                    }}</span
+                  >
                 </div>
-                <div v-if="selectedTemplate.description" style="margin-top: 6px; font-size: 12px; color: #666;">
+                <div
+                  v-if="selectedTemplate.description"
+                  style="margin-top: 6px; font-size: 12px; color: #666"
+                >
                   <strong>说明：</strong>{{ selectedTemplate.description }}
                 </div>
-                <Alert 
+                <Alert
                   v-if="selectedTemplate.content"
-                  type="success" 
-                  style="margin-top: 8px; padding: 6px 12px;"
+                  type="success"
+                  style="padding: 6px 12px; margin-top: 8px"
                   show-icon
                 >
                   <template #message>
-                    <span style="font-size: 12px;">✓ 该模板包含合同正文内容，创建合同时将自动导入模板内容并填充变量</span>
+                    <span style="font-size: 12px"
+                      >✓
+                      该模板包含合同正文内容，创建合同时将自动导入模板内容并填充变量</span
+                    >
                   </template>
                 </Alert>
-                <Alert 
+                <Alert
                   v-else
-                  type="warning" 
-                  style="margin-top: 8px; padding: 6px 12px;"
+                  type="warning"
+                  style="padding: 6px 12px; margin-top: 8px"
                   show-icon
                 >
                   <template #message>
-                    <span style="font-size: 12px;">⚠ 该模板暂无合同正文内容，仅会应用合同类型和收费方式</span>
+                    <span style="font-size: 12px"
+                      >⚠
+                      该模板暂无合同正文内容，仅会应用合同类型和收费方式</span
+                    >
                   </template>
                 </Alert>
               </div>
@@ -3399,7 +3498,9 @@ onMounted(async () => {
                               .includes(inputValue.toLowerCase()),
                           ),
                       }"
-                      :display-render="({ labels }) => labels[labels.length - 1]"
+                      :display-render="
+                        ({ labels }) => labels[labels.length - 1]
+                      "
                       style="width: 100%"
                     />
                   </FormItem>
@@ -4728,6 +4829,7 @@ onMounted(async () => {
 
 :deep(.contract-preview-content p) {
   margin: 8px 0;
+
   /* 不设置默认 text-align，保留编辑器的内联样式设置 */
 }
 

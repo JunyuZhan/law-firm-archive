@@ -116,7 +116,12 @@ const statusOptions = [
 function getGridColumns(): VxeGridProps['columns'] {
   const baseColumns = [
     { title: '发票编号', field: 'invoiceNo', width: 130 },
-    { title: '客户名称', field: 'clientName', minWidth: isMobile.value ? 100 : 150, mobileShow: true },
+    {
+      title: '客户名称',
+      field: 'clientName',
+      minWidth: isMobile.value ? 100 : 150,
+      mobileShow: true,
+    },
     { title: '发票抬头', field: 'title', minWidth: 180, showOverflow: true },
     { title: '发票类型', field: 'invoiceTypeName', width: 100 },
     {
@@ -150,9 +155,9 @@ function getGridColumns(): VxeGridProps['columns'] {
       mobileShow: true,
     },
   ];
-  
+
   if (isMobile.value) {
-    return baseColumns.filter(col => col.mobileShow === true);
+    return baseColumns.filter((col) => col.mobileShow === true);
   }
   return baseColumns;
 }

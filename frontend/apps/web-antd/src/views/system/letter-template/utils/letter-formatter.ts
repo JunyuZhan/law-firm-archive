@@ -29,7 +29,7 @@ export interface StructuredLetterContent {
  */
 export function decodeHtmlEntities(text: string): string {
   if (!text) return text;
-  
+
   const entities: Record<string, string> = {
     '&quot;': '"',
     '&amp;': '&',
@@ -40,17 +40,21 @@ export function decodeHtmlEntities(text: string): string {
     '&#x27;': "'",
     '&nbsp;': ' ',
   };
-  
+
   let result = text;
   for (const [entity, char] of Object.entries(entities)) {
     result = result.split(entity).join(char);
   }
-  
+
   // 处理数字实体 &#xxx;
-  result = result.replace(/&#(\d+);/g, (_, num) => String.fromCharCode(parseInt(num, 10)));
+  result = result.replace(/&#(\d+);/g, (_, num) =>
+    String.fromCharCode(parseInt(num, 10)),
+  );
   // 处理十六进制实体 &#xXXX;
-  result = result.replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
-  
+  result = result.replace(/&#x([0-9a-fA-F]+);/g, (_, hex) =>
+    String.fromCharCode(parseInt(hex, 16)),
+  );
+
   return result;
 }
 
@@ -61,9 +65,9 @@ export function isStructuredLetterContent(content: string): boolean {
   if (!content || typeof content !== 'string') {
     return false;
   }
-  
+
   const decoded = decodeHtmlEntities(content);
-  
+
   try {
     const parsed = JSON.parse(decoded);
     if (parsed && typeof parsed === 'object' && parsed._structured === true) {
@@ -72,7 +76,7 @@ export function isStructuredLetterContent(content: string): boolean {
   } catch {
     // 继续尝试其他方式
   }
-  
+
   try {
     const trimmed = decoded.trim();
     if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
@@ -84,20 +88,22 @@ export function isStructuredLetterContent(content: string): boolean {
   } catch {
     // 忽略
   }
-  
+
   return false;
 }
 
 /**
  * 解析结构化内容
  */
-export function parseStructuredLetterContent(content: string): StructuredLetterContent | null {
+export function parseStructuredLetterContent(
+  content: string,
+): StructuredLetterContent | null {
   if (!content || typeof content !== 'string') {
     return null;
   }
-  
+
   const decoded = decodeHtmlEntities(content);
-  
+
   try {
     const parsed = JSON.parse(decoded);
     if (parsed && typeof parsed === 'object' && parsed._structured === true) {
@@ -106,7 +112,7 @@ export function parseStructuredLetterContent(content: string): StructuredLetterC
   } catch {
     // 继续尝试其他方式
   }
-  
+
   try {
     const trimmed = decoded.trim();
     if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
@@ -118,7 +124,7 @@ export function parseStructuredLetterContent(content: string): StructuredLetterC
   } catch {
     // 忽略
   }
-  
+
   return null;
 }
 
@@ -127,43 +133,51 @@ export function parseStructuredLetterContent(content: string): StructuredLetterC
  */
 function textToHtmlParagraphs(text: string, indent: boolean = true): string {
   if (!text) return '';
-  
-  const lines = text.split('\n').filter(line => line.trim());
-  return lines.map(line => {
-    const trimmed = line.trim();
-    // 公文格式：三号仿宋GB2312，行距28pt
-    return `<p style="font-family: 'FangSong', '仿宋_GB2312', '仿宋', serif; font-size: 16pt; line-height: 28pt; ${indent ? 'text-indent: 2em;' : ''} margin: 4px 0;">${trimmed}</p>`;
-  }).join('\n');
+
+  const lines = text.split('\n').filter((line) => line.trim());
+  return lines
+    .map((line) => {
+      const trimmed = line.trim();
+      // 公文格式：三号仿宋GB2312，行距28pt
+      return `<p style="font-family: 'FangSong', '仿宋_GB2312', '仿宋', serif; font-size: 16pt; line-height: 28pt; ${indent ? 'text-indent: 2em;' : ''} margin: 4px 0;">${trimmed}</p>`;
+    })
+    .join('\n');
 }
 
 /**
  * 格式化结构化函件模板为打印 HTML
  */
-export function formatStructuredLetterForPrint(content: string, variables: Record<string, string> = {}): string {
+export function formatStructuredLetterForPrint(
+  content: string,
+  variables: Record<string, string> = {},
+): string {
   if (!content || content.trim() === '') {
     return '<p>模板内容为空</p>';
   }
 
   const structured = parseStructuredLetterContent(content);
-  
+
   if (!structured) {
     // 如果不是结构化内容，直接返回（可能是HTML格式）
     return content;
   }
 
   const { blocks } = structured;
-  
+
   if (!blocks || typeof blocks !== 'object') {
     return '<p style="color: red;">⚠️ 模板内容格式错误：缺少 blocks 字段</p>';
   }
-  
+
   // 替换变量
   const replaceVars = (text: string): string => {
     if (!text) return '';
     let result = text;
     Object.entries(variables).forEach(([key, value]) => {
       const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      result = result.replace(new RegExp(`\\$\\{${escapedKey}\\}`, 'g'), value || `[${key}]`);
+      result = result.replace(
+        new RegExp(`\\$\\{${escapedKey}\\}`, 'g'),
+        value || `[${key}]`,
+      );
     });
     return result;
   };
@@ -180,7 +194,7 @@ export function formatStructuredLetterForPrint(content: string, variables: Recor
       html += `</div>\n`;
     }
   }
-  
+
   // 编号（如果有）- 公文格式：四号仿宋GB2312，右对齐
   if (blocks.title && blocks.title.letterNo) {
     const letterNo = String(blocks.title.letterNo || '').trim();
@@ -214,35 +228,35 @@ export function formatStructuredLetterForPrint(content: string, variables: Recor
   // 5. 落款区（右对齐）- 公文格式：三号仿宋GB2312
   if (blocks.signature) {
     html += `<div style="text-align: right; margin-top: 40px; font-family: 'FangSong', '仿宋_GB2312', '仿宋', serif; font-size: 16pt; line-height: 28pt;">\n`;
-    
+
     if (blocks.signature.lawyerNames) {
       const lawyerNames = String(blocks.signature.lawyerNames || '').trim();
       if (lawyerNames) {
         html += `  <p style="text-indent: 0; margin: 0 0 8px 0;">${replaceVars(lawyerNames)}</p>\n`;
       }
     }
-    
+
     if (blocks.signature.contactInfo) {
       const contactInfo = String(blocks.signature.contactInfo || '').trim();
       if (contactInfo) {
         html += `  <p style="text-indent: 0; margin: 0 0 8px 0;">${replaceVars(contactInfo)}</p>\n`;
       }
     }
-    
+
     if (blocks.signature.firmName) {
       const firmName = String(blocks.signature.firmName || '').trim();
       if (firmName) {
         html += `  <p style="text-indent: 0; margin: 0 0 8px 0;">${replaceVars(firmName)}</p>\n`;
       }
     }
-    
+
     if (blocks.signature.date) {
       const date = String(blocks.signature.date || '').trim();
       if (date) {
         html += `  <p style="text-indent: 0; margin: 0;">${replaceVars(date)}</p>\n`;
       }
     }
-    
+
     html += `</div>\n`;
   }
 
@@ -256,24 +270,27 @@ export function formatStructuredLetterForPrint(content: string, variables: Recor
 /**
  * 格式化结构化函件模板为预览 HTML（带变量高亮样式）
  */
-export function formatStructuredLetterForPreview(content: string, variables: Record<string, string> = {}): string {
+export function formatStructuredLetterForPreview(
+  content: string,
+  variables: Record<string, string> = {},
+): string {
   if (!content || content.trim() === '') {
     return '<p>模板内容为空</p>';
   }
 
   const structured = parseStructuredLetterContent(content);
-  
+
   if (!structured) {
     // 如果不是结构化内容，直接返回（可能是HTML格式）
     return content;
   }
 
   const { blocks } = structured;
-  
+
   if (!blocks || typeof blocks !== 'object') {
     return '<p style="color: red;">⚠️ 模板内容格式错误：缺少 blocks 字段</p>';
   }
-  
+
   // 替换变量（预览模式下添加高亮样式）
   const replaceVars = (text: string): string => {
     if (!text) return '';
@@ -302,7 +319,7 @@ export function formatStructuredLetterForPreview(content: string, variables: Rec
       html += `</div>\n`;
     }
   }
-  
+
   // 编号（如果有）- 公文格式：四号仿宋GB2312，右对齐
   if (blocks.title && blocks.title.letterNo) {
     const letterNo = String(blocks.title.letterNo || '').trim();
@@ -332,35 +349,35 @@ export function formatStructuredLetterForPreview(content: string, variables: Rec
   // 4. 落款区（右对齐）
   if (blocks.signature) {
     html += `<div style="text-align: right; margin-top: 40px; font-family: 'FangSong', '仿宋_GB2312', '仿宋', serif; font-size: 16pt; line-height: 28pt;">\n`;
-    
+
     if (blocks.signature.lawyerNames) {
       const lawyerNames = String(blocks.signature.lawyerNames || '').trim();
       if (lawyerNames) {
         html += `  <p style="text-indent: 0; margin: 0 0 8px 0;">${replaceVars(lawyerNames)}</p>\n`;
       }
     }
-    
+
     if (blocks.signature.contactInfo) {
       const contactInfo = String(blocks.signature.contactInfo || '').trim();
       if (contactInfo) {
         html += `  <p style="text-indent: 0; margin: 0 0 8px 0;">${replaceVars(contactInfo)}</p>\n`;
       }
     }
-    
+
     if (blocks.signature.firmName) {
       const firmName = String(blocks.signature.firmName || '').trim();
       if (firmName) {
         html += `  <p style="text-indent: 0; margin: 0 0 8px 0;">${replaceVars(firmName)}</p>\n`;
       }
     }
-    
+
     if (blocks.signature.date) {
       const date = String(blocks.signature.date || '').trim();
       if (date) {
         html += `  <p style="text-indent: 0; margin: 0;">${replaceVars(date)}</p>\n`;
       }
     }
-    
+
     html += `</div>\n`;
   }
 

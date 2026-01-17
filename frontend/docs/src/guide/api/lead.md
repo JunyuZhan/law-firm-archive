@@ -10,14 +10,14 @@ GET /api/lead/list
 
 查询参数：
 
-| 参数         | 类型   | 说明         |
-| ------------ | ------ | ------------ |
-| pageNum      | number | 页码         |
-| pageSize     | number | 每页数量     |
-| clientName   | string | 客户名称     |
-| source       | string | 案源来源     |
-| status       | string | 案源状态     |
-| followerId   | number | 跟进人ID     |
+| 参数       | 类型   | 说明     |
+| ---------- | ------ | -------- |
+| pageNum    | number | 页码     |
+| pageSize   | number | 每页数量 |
+| clientName | string | 客户名称 |
+| source     | string | 案源来源 |
+| status     | string | 案源状态 |
+| followerId | number | 跟进人ID |
 
 ## 案源详情
 
@@ -59,22 +59,22 @@ DELETE /api/lead/{id}
 
 ## 案源来源
 
-| 值           | 说明       |
-| ------------ | ---------- |
-| REFERRAL     | 转介绍     |
-| ONLINE       | 网络       |
-| PHONE        | 电话咨询   |
-| VISIT        | 上门咨询   |
-| OTHER        | 其他       |
+| 值       | 说明     |
+| -------- | -------- |
+| REFERRAL | 转介绍   |
+| ONLINE   | 网络     |
+| PHONE    | 电话咨询 |
+| VISIT    | 上门咨询 |
+| OTHER    | 其他     |
 
 ## 案源状态
 
-| 值           | 说明       |
-| ------------ | ---------- |
-| NEW          | 新建       |
-| FOLLOWING    | 跟进中     |
-| CONVERTED    | 已转化     |
-| LOST         | 已流失     |
+| 值        | 说明   |
+| --------- | ------ |
+| NEW       | 新建   |
+| FOLLOWING | 跟进中 |
+| CONVERTED | 已转化 |
+| LOST      | 已流失 |
 
 ## 转化案源
 
@@ -110,6 +110,6 @@ GET /api/lead/{id}/follow-ups
 
 ## 文档更新记录
 
-| 更新时间 | 更新内容 | 操作人 |
-|----------|----------|--------|
+| 更新时间   | 更新内容             | 操作人       |
+| ---------- | -------------------- | ------------ |
 | 2026-01-11 | 创建案源接口文档骨架 | AI Assistant |

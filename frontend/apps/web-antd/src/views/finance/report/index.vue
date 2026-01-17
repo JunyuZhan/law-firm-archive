@@ -32,7 +32,10 @@ import {
   getFeeList,
   getInvoiceStatistics,
 } from '#/api/finance';
-import { generateReport, type GenerateReportCommand } from '#/api/workbench/report';
+import {
+  generateReport,
+  type GenerateReportCommand,
+} from '#/api/workbench/report';
 import { getRevenueStats } from '#/api/workbench/statistics';
 
 defineOptions({ name: 'FinanceReport' });
@@ -160,7 +163,12 @@ const feeColumns = [
   { title: '收费编号', dataIndex: 'feeNo', key: 'feeNo', width: 140 },
   { title: '项目名称', dataIndex: 'matterName', key: 'matterName', width: 150 },
   { title: '客户名称', dataIndex: 'clientName', key: 'clientName', width: 120 },
-  { title: '收费类型', dataIndex: 'feeTypeName', key: 'feeTypeName', width: 100 },
+  {
+    title: '收费类型',
+    dataIndex: 'feeTypeName',
+    key: 'feeTypeName',
+    width: 100,
+  },
   { title: '应收金额', dataIndex: 'amount', key: 'amount', width: 110 },
   { title: '已收金额', dataIndex: 'paidAmount', key: 'paidAmount', width: 110 },
   { title: '状态', dataIndex: 'statusName', key: 'statusName', width: 80 },
@@ -184,22 +192,38 @@ const agingChartRef = ref<HTMLDivElement>();
 // 渲染收入趋势图
 function renderTrendChart() {
   if (!trendChartRef.value || revenueData.value.length === 0) return;
-  
-  const chart = echarts.getInstanceByDom(trendChartRef.value) || echarts.init(trendChartRef.value);
-  
-  const months = revenueData.value.map(d => d.month);
-  const received = revenueData.value.map(d => d.receivedAmount || 0);
-  const contract = revenueData.value.map(d => d.contractAmount || 0);
-  
+
+  const chart =
+    echarts.getInstanceByDom(trendChartRef.value) ||
+    echarts.init(trendChartRef.value);
+
+  const months = revenueData.value.map((d) => d.month);
+  const received = revenueData.value.map((d) => d.receivedAmount || 0);
+  const contract = revenueData.value.map((d) => d.contractAmount || 0);
+
   chart.setOption({
     tooltip: { trigger: 'axis' },
     legend: { data: ['收款金额', '合同金额'], bottom: 0 },
     grid: { left: 60, right: 20, top: 20, bottom: 40 },
     xAxis: { type: 'category', data: months },
-    yAxis: { type: 'value', axisLabel: { formatter: (v: number) => `¥${(v / 10000).toFixed(0)}万` } },
+    yAxis: {
+      type: 'value',
+      axisLabel: { formatter: (v: number) => `¥${(v / 10000).toFixed(0)}万` },
+    },
     series: [
-      { name: '收款金额', type: 'line', data: received, smooth: true, itemStyle: { color: '#52c41a' } },
-      { name: '合同金额', type: 'bar', data: contract, itemStyle: { color: '#1890ff' } },
+      {
+        name: '收款金额',
+        type: 'line',
+        data: received,
+        smooth: true,
+        itemStyle: { color: '#52c41a' },
+      },
+      {
+        name: '合同金额',
+        type: 'bar',
+        data: contract,
+        itemStyle: { color: '#1890ff' },
+      },
     ],
   });
 }
@@ -207,42 +231,53 @@ function renderTrendChart() {
 // 渲染账龄分布图
 function renderAgingChart() {
   if (!agingChartRef.value) return;
-  
-  const chart = echarts.getInstanceByDom(agingChartRef.value) || echarts.init(agingChartRef.value);
-  const data = agingData.value.filter(d => d.amount > 0).map(d => ({
-    name: d.range,
-    value: d.amount,
-  }));
-  
+
+  const chart =
+    echarts.getInstanceByDom(agingChartRef.value) ||
+    echarts.init(agingChartRef.value);
+  const data = agingData.value
+    .filter((d) => d.amount > 0)
+    .map((d) => ({
+      name: d.range,
+      value: d.amount,
+    }));
+
   if (data.length === 0) {
     chart.setOption({
-      title: { text: '暂无逾期应收', left: 'center', top: 'center', textStyle: { color: '#999', fontSize: 14 } },
+      title: {
+        text: '暂无逾期应收',
+        left: 'center',
+        top: 'center',
+        textStyle: { color: '#999', fontSize: 14 },
+      },
       series: [],
     });
     return;
   }
-  
+
   chart.setOption({
     tooltip: { trigger: 'item', formatter: '{b}: ¥{c} ({d}%)' },
-    series: [{
-      type: 'pie',
-      radius: ['40%', '70%'],
-      center: ['50%', '50%'],
-      data,
-      label: { show: true, formatter: '{b}\n{d}%' },
-      itemStyle: {
-        color: (params: any) => {
-          const colors = ['#52c41a', '#faad14', '#fa8c16', '#f5222d'];
-          return colors[params.dataIndex] || '#1890ff';
+    series: [
+      {
+        type: 'pie',
+        radius: ['40%', '70%'],
+        center: ['50%', '50%'],
+        data,
+        label: { show: true, formatter: '{b}\n{d}%' },
+        itemStyle: {
+          color: (params: any) => {
+            const colors = ['#52c41a', '#faad14', '#fa8c16', '#f5222d'];
+            return colors[params.dataIndex] || '#1890ff';
+          },
         },
       },
-    }],
+    ],
   });
 }
 
 // 销毁图表
 function disposeCharts() {
-  [trendChartRef.value, agingChartRef.value].forEach(ref => {
+  [trendChartRef.value, agingChartRef.value].forEach((ref) => {
     if (ref) {
       const chart = echarts.getInstanceByDom(ref);
       if (chart) chart.dispose();
@@ -525,7 +560,7 @@ const exporting = ref(false);
 
 async function handleExport(reportType: string) {
   if (exporting.value) return;
-  
+
   exporting.value = true;
   try {
     const [startDate, endDate] = dateRange.value;
@@ -607,7 +642,10 @@ onBeforeUnmount(() => {
 
       <Card>
         <template #extra>
-          <Space :direction="isMobile ? 'vertical' : 'horizontal'" :size="isMobile ? 8 : 12">
+          <Space
+            :direction="isMobile ? 'vertical' : 'horizontal'"
+            :size="isMobile ? 8 : 12"
+          >
             <Select
               v-model:value="monthFilter"
               :style="{ width: isMobile ? '100%' : '150px' }"
@@ -922,7 +960,9 @@ onBeforeUnmount(() => {
               row-key="id"
             >
               <template #bodyCell="{ column, text }">
-                <template v-if="['amount', 'paidAmount'].includes(column.key as string)">
+                <template
+                  v-if="['amount', 'paidAmount'].includes(column.key as string)"
+                >
                   {{ formatMoney(text) }}
                 </template>
                 <template v-else-if="column.key === 'createdAt'">
@@ -968,7 +1008,13 @@ onBeforeUnmount(() => {
                 </Card>
               </Col>
               <Col :xs="12" :sm="12" :md="6" :lg="6">
-                <Card size="small" :style="{ background: (agingData[3] && agingData[3].amount > 0) ? '#fff2f0' : '' }">
+                <Card
+                  size="small"
+                  :style="{
+                    background:
+                      agingData[3] && agingData[3].amount > 0 ? '#fff2f0' : '',
+                  }"
+                >
                   <Statistic
                     title="90天以上(逾期)"
                     :value="agingData[3]?.amount || 0"
@@ -1000,7 +1046,14 @@ onBeforeUnmount(() => {
                         {{ formatMoney(text) }}
                       </template>
                       <template v-else-if="column.key === 'range'">
-                        <span :style="{ color: record.range === '90天以上' && record.amount > 0 ? '#f5222d' : '' }">
+                        <span
+                          :style="{
+                            color:
+                              record.range === '90天以上' && record.amount > 0
+                                ? '#f5222d'
+                                : '',
+                          }"
+                        >
                           {{ text }}
                         </span>
                       </template>

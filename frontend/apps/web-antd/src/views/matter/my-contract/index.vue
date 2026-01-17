@@ -200,10 +200,7 @@ function handleView(row: ContractDTO) {
 </script>
 
 <template>
-  <Page
-    title="我的合同"
-    description="查看我创建或签约的合同"
-  >
+  <Page title="我的合同" description="查看我创建或签约的合同">
     <Grid>
       <!-- 合同金额列 -->
       <template #totalAmount="{ row }">

@@ -436,4 +436,3 @@ onMounted(() => {
     </Card>
   </Page>
 </template>
-

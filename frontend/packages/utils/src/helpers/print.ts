@@ -44,7 +44,7 @@ export function isExternalDocument(documentType?: string): boolean {
  */
 function decodeHtmlEntities(text: string): string {
   if (!text) return text;
-  
+
   // 常见 HTML 实体映射
   const entities: Record<string, string> = {
     '&quot;': '"',
@@ -56,17 +56,21 @@ function decodeHtmlEntities(text: string): string {
     '&#x27;': "'",
     '&nbsp;': ' ',
   };
-  
+
   let result = text;
   for (const [entity, char] of Object.entries(entities)) {
     result = result.split(entity).join(char);
   }
-  
+
   // 处理数字实体 &#xxx;
-  result = result.replace(/&#(\d+);/g, (_, num) => String.fromCharCode(parseInt(num, 10)));
+  result = result.replace(/&#(\d+);/g, (_, num) =>
+    String.fromCharCode(parseInt(num, 10)),
+  );
   // 处理十六进制实体 &#xXXX;
-  result = result.replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
-  
+  result = result.replace(/&#x([0-9a-fA-F]+);/g, (_, hex) =>
+    String.fromCharCode(parseInt(hex, 16)),
+  );
+
   return result;
 }
 

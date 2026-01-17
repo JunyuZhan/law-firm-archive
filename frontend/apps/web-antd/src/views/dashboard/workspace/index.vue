@@ -9,7 +9,14 @@ import type { ScheduleDTO } from '#/api/matter/schedule';
 import type { TaskDTO } from '#/api/matter/types';
 import type { ApprovalDTO } from '#/api/workbench';
 
-import { computed, onActivated, onDeactivated, onMounted, onUnmounted, ref } from 'vue';
+import {
+  computed,
+  onActivated,
+  onDeactivated,
+  onMounted,
+  onUnmounted,
+  ref,
+} from 'vue';
 import { useRouter } from 'vue-router';
 
 import { useResponsive } from '#/hooks/useResponsive';
@@ -46,7 +53,11 @@ import { getMyTodoTasks, getMyUpcomingSchedules } from '#/api/matter';
 import type { DeadlineDTO } from '#/api/matter/deadline';
 import { getMyUpcomingDeadlines } from '#/api/matter/deadline';
 import type { AnnouncementDTO } from '#/api/system/announcement';
-import { getValidAnnouncements, getAnnouncementById, ANNOUNCEMENT_TYPE_OPTIONS } from '#/api/system/announcement';
+import {
+  getValidAnnouncements,
+  getAnnouncementById,
+  ANNOUNCEMENT_TYPE_OPTIONS,
+} from '#/api/system/announcement';
 
 // HTML转义函数，防止XSS攻击
 function escapeHtml(text: string): string {
@@ -131,7 +142,8 @@ function startAnnouncementScroll() {
   }
   if (announcements.value.length > 1) {
     announcementTimer = setInterval(() => {
-      currentAnnouncementIndex.value = (currentAnnouncementIndex.value + 1) % announcements.value.length;
+      currentAnnouncementIndex.value =
+        (currentAnnouncementIndex.value + 1) % announcements.value.length;
     }, 4000); // 每4秒滚动一次
   }
 }
@@ -598,12 +610,11 @@ onUnmounted(() => {
             {{ stats.timesheetHours.toFixed(1) }} 小时
           </template>
           <template v-else-if="stats.roleType === 'FINANCE'">
-            您有 {{ stats.taskCount }} 个待办任务，本月已收
-            ¥{{ stats.monthlyReceivedAmount.toLocaleString() }}
+            您有 {{ stats.taskCount }} 个待办任务，本月已收 ¥{{
+              stats.monthlyReceivedAmount.toLocaleString()
+            }}
           </template>
-          <template v-else>
-            您有 {{ stats.taskCount }} 个待办任务
-          </template>
+          <template v-else> 您有 {{ stats.taskCount }} 个待办任务 </template>
           <span v-if="pendingApprovalCount > 0" class="ml-3">
             ，<span
               class="cursor-pointer font-medium text-orange-500 hover:underline"
@@ -627,15 +638,27 @@ onUnmounted(() => {
             <div
               :key="currentAnnouncementIndex"
               class="announcement-item"
-              @click="handleViewAnnouncement(announcements[currentAnnouncementIndex]!)"
+              @click="
+                handleViewAnnouncement(announcements[currentAnnouncementIndex]!)
+              "
             >
               <Tag
-                :color="getAnnouncementTypeColor(announcements[currentAnnouncementIndex]!.type)"
+                :color="
+                  getAnnouncementTypeColor(
+                    announcements[currentAnnouncementIndex]!.type,
+                  )
+                "
                 size="small"
               >
-                {{ getAnnouncementTypeName(announcements[currentAnnouncementIndex]!.type) }}
+                {{
+                  getAnnouncementTypeName(
+                    announcements[currentAnnouncementIndex]!.type,
+                  )
+                }}
               </Tag>
-              <span class="announcement-title">{{ announcements[currentAnnouncementIndex]!.title }}</span>
+              <span class="announcement-title">{{
+                announcements[currentAnnouncementIndex]!.title
+              }}</span>
             </div>
           </transition>
         </div>
@@ -728,7 +751,11 @@ onUnmounted(() => {
     </Row>
 
     <!-- 财务 统计卡片 -->
-    <Row v-else-if="stats.roleType === 'FINANCE'" :gutter="[16, 16]" class="mt-4">
+    <Row
+      v-else-if="stats.roleType === 'FINANCE'"
+      :gutter="[16, 16]"
+      class="mt-4"
+    >
       <Col :xs="12" :sm="12" :md="6" :lg="6">
         <Card
           :bordered="false"
@@ -790,7 +817,11 @@ onUnmounted(() => {
     </Row>
 
     <!-- 行政 统计卡片 -->
-    <Row v-else-if="stats.roleType === 'ADMIN_STAFF'" :gutter="[16, 16]" class="mt-4">
+    <Row
+      v-else-if="stats.roleType === 'ADMIN_STAFF'"
+      :gutter="[16, 16]"
+      class="mt-4"
+    >
       <Col :xs="12" :sm="12" :md="6" :lg="6">
         <Card
           :bordered="false"
@@ -1036,26 +1067,44 @@ onUnmounted(() => {
           <div class="mb-4">
             <Space>
               <Tag :color="getAnnouncementTypeColor(currentAnnouncement.type)">
-                {{ currentAnnouncement.typeName || getAnnouncementTypeName(currentAnnouncement.type) }}
+                {{
+                  currentAnnouncement.typeName ||
+                  getAnnouncementTypeName(currentAnnouncement.type)
+                }}
               </Tag>
             </Space>
           </div>
 
-          <h2 class="mb-4 text-xl font-semibold">{{ currentAnnouncement.title }}</h2>
+          <h2 class="mb-4 text-xl font-semibold">
+            {{ currentAnnouncement.title }}
+          </h2>
 
           <div class="mb-4 text-sm text-gray-500">
             <Space split="|">
-              <span>发布人：{{ currentAnnouncement.publisherName || '-' }}</span>
-              <span>发布时间：{{ formatDateTime(currentAnnouncement.publishedAt) }}</span>
-              <span v-if="currentAnnouncement.viewCount !== undefined">浏览量：{{ currentAnnouncement.viewCount }}</span>
+              <span
+                >发布人：{{ currentAnnouncement.publisherName || '-' }}</span
+              >
+              <span
+                >发布时间：{{
+                  formatDateTime(currentAnnouncement.publishedAt)
+                }}</span
+              >
+              <span v-if="currentAnnouncement.viewCount !== undefined"
+                >浏览量：{{ currentAnnouncement.viewCount }}</span
+              >
             </Space>
           </div>
 
-          <div class="rounded bg-gray-50 p-4 leading-relaxed whitespace-pre-wrap">
+          <div
+            class="whitespace-pre-wrap rounded bg-gray-50 p-4 leading-relaxed"
+          >
             {{ currentAnnouncement.content }}
           </div>
 
-          <div v-if="currentAnnouncement.expiredAt" class="mt-4 text-xs text-gray-400">
+          <div
+            v-if="currentAnnouncement.expiredAt"
+            class="mt-4 text-xs text-gray-400"
+          >
             过期时间：{{ formatDateTime(currentAnnouncement.expiredAt) }}
           </div>
         </template>
@@ -1065,7 +1114,6 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-/* 移动端优化 */
 @media (max-width: 768px) {
   .stat-card :deep(.ant-statistic-title) {
     font-size: 12px;
@@ -1085,6 +1133,42 @@ onUnmounted(() => {
   .deadline-card .deadline-content {
     height: auto;
     max-height: 300px;
+  }
+}
+
+/* 响应式调整 */
+@media (max-width: 1400px) {
+  .announcement-container {
+    right: 320px;
+  }
+
+  .announcement-scroll-container {
+    max-width: 220px;
+  }
+}
+
+@media (max-width: 1200px) {
+  .announcement-container {
+    right: 280px;
+  }
+
+  .announcement-scroll-container {
+    max-width: 180px;
+  }
+}
+
+@media (max-width: 992px) {
+  .announcement-container {
+    position: static;
+    justify-content: center;
+    padding: 8px 16px;
+    margin-top: -8px;
+    border-top: 1px dashed rgb(0 0 0 / 6%);
+    transform: none;
+  }
+
+  .announcement-scroll-container {
+    max-width: 100%;
   }
 }
 
@@ -1206,42 +1290,6 @@ onUnmounted(() => {
   text-decoration: underline;
 }
 
-/* 响应式调整 */
-@media (max-width: 1400px) {
-  .announcement-container {
-    right: 320px;
-  }
-
-  .announcement-scroll-container {
-    max-width: 220px;
-  }
-}
-
-@media (max-width: 1200px) {
-  .announcement-container {
-    right: 280px;
-  }
-
-  .announcement-scroll-container {
-    max-width: 180px;
-  }
-}
-
-@media (max-width: 992px) {
-  .announcement-container {
-    position: static;
-    justify-content: center;
-    padding: 8px 16px;
-    margin-top: -8px;
-    transform: none;
-    border-top: 1px dashed rgb(0 0 0 / 6%);
-  }
-
-  .announcement-scroll-container {
-    max-width: 100%;
-  }
-}
-
 /* 公告滚动动画 */
 .announcement-slide-enter-active,
 .announcement-slide-leave-active {
@@ -1257,4 +1305,6 @@ onUnmounted(() => {
   opacity: 0;
   transform: translateY(-100%);
 }
+
+/* 移动端优化 */
 </style>

@@ -19,10 +19,7 @@ import {
 
 import { requestClient } from '#/api/request';
 
-import {
-  templateTypeOptions,
-  feeTypeOptions,
-} from './contract-templates';
+import { templateTypeOptions, feeTypeOptions } from './contract-templates';
 import StructuredTemplateEditor from './StructuredTemplateEditor.vue';
 
 const emit = defineEmits<{
@@ -45,7 +42,11 @@ const contractVariables = [
   // 项目/案件信息
   { label: '项目名称', value: 'matterName', description: '委托项目/案件名称' },
   { label: '项目编号', value: 'matterNo', description: '案件编号' },
-  { label: '案件描述', value: 'matterDescription', description: '案件/事项描述' },
+  {
+    label: '案件描述',
+    value: 'matterDescription',
+    description: '案件/事项描述',
+  },
   { label: '案由', value: 'causeOfAction', description: '案件案由' },
   { label: '案件类型', value: 'caseType', description: '民事/刑事/行政等' },
   { label: '审理阶段', value: 'trialStage', description: '一审/二审/再审等' },

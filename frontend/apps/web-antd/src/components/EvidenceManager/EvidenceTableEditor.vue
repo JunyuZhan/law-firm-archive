@@ -171,13 +171,13 @@ function openGroupEditModal(record: any) {
 // 确认修改组别
 function confirmGroupEdit() {
   if (!editingRowKey.value) return;
-  
-  const row = tableData.value.find(r => r.key === editingRowKey.value);
+
+  const row = tableData.value.find((r) => r.key === editingRowKey.value);
   if (row) {
     row.groupName = editingGroupName.value;
     row.isDirty = true;
   }
-  
+
   groupEditModalVisible.value = false;
   editingRowKey.value = null;
 }
@@ -187,7 +187,7 @@ const sortedTableData = computed(() => {
   // 按组别分组
   const groupMap = new Map<string, TableRow[]>();
   const groupOrder: string[] = []; // 记录组别出现的顺序
-  
+
   tableData.value.forEach((row) => {
     const groupName = row.groupName || '未分组';
     if (!groupMap.has(groupName)) {
@@ -196,7 +196,7 @@ const sortedTableData = computed(() => {
     }
     groupMap.get(groupName)!.push(row);
   });
-  
+
   // 按组别顺序重组数据，并添加合并信息
   const result: TableRow[] = [];
   groupOrder.forEach((groupName) => {
@@ -207,16 +207,19 @@ const sortedTableData = computed(() => {
     });
     result.push(...rows);
   });
-  
+
   // 设置全局序号（按最终顺序递增）
   result.forEach((row, index) => {
     row.order = index + 1;
   });
-  
+
   // 自动计算页码范围（根据页数累计）
   let currentPage = 1;
   result.forEach((row) => {
-    const pageCount = typeof row.pageCount === 'number' && row.pageCount > 0 ? row.pageCount : 0;
+    const pageCount =
+      typeof row.pageCount === 'number' && row.pageCount > 0
+        ? row.pageCount
+        : 0;
     if (pageCount > 0) {
       const startPage = currentPage;
       const endPage = currentPage + pageCount - 1;
@@ -226,7 +229,7 @@ const sortedTableData = computed(() => {
       row.pageRange = ''; // 没有输入页数则不显示
     }
   });
-  
+
   return result;
 });
 
@@ -389,17 +392,17 @@ const tableColumns = computed(() => {
     // 组别、证明内容、证明目的列添加单元格合并和特殊样式
     customCell: (record: TableRow) => {
       const cellProps: Record<string, any> = {};
-      
+
       // 合并单元格
       if (mergeColumns.includes(col.key)) {
         cellProps.rowSpan = record._groupRowSpan;
       }
-      
+
       // 证明内容和证明目的列：首行缩进、两端对齐、顶部对齐
       if (textColumns.includes(col.key)) {
         cellProps.class = 'text-column-cell';
       }
-      
+
       return cellProps;
     },
   }));
@@ -448,21 +451,21 @@ function handleAddRow() {
 // 在指定行上方插入新行
 function handleInsertRowAbove(rowKey: string) {
   const sortedData = sortedTableData.value;
-  const sortedIndex = sortedData.findIndex(r => r.key === rowKey);
+  const sortedIndex = sortedData.findIndex((r) => r.key === rowKey);
   if (sortedIndex === -1) return;
-  
+
   const currentRow = sortedData[sortedIndex];
   const newRow = createNewRow(currentRow?.groupName); // 继承当前行的组别
-  
+
   // 在原始数据中找到位置并插入
   // 由于 sortedTableData 是按组别排序的，我们需要在 tableData 中正确的位置插入
-  const originalIndex = tableData.value.findIndex(r => r.key === rowKey);
+  const originalIndex = tableData.value.findIndex((r) => r.key === rowKey);
   if (originalIndex !== -1) {
     tableData.value.splice(originalIndex, 0, newRow);
   } else {
     tableData.value.push(newRow);
   }
-  
+
   updateRowOrder();
   message.success('已在上方插入新行');
 }
@@ -470,29 +473,29 @@ function handleInsertRowAbove(rowKey: string) {
 // 在指定行下方插入新行
 function handleInsertRowBelow(rowKey: string) {
   const sortedData = sortedTableData.value;
-  const sortedIndex = sortedData.findIndex(r => r.key === rowKey);
+  const sortedIndex = sortedData.findIndex((r) => r.key === rowKey);
   if (sortedIndex === -1) return;
-  
+
   const currentRow = sortedData[sortedIndex];
   const newRow = createNewRow(currentRow?.groupName); // 继承当前行的组别
-  
+
   // 在原始数据中找到位置并插入
-  const originalIndex = tableData.value.findIndex(r => r.key === rowKey);
+  const originalIndex = tableData.value.findIndex((r) => r.key === rowKey);
   if (originalIndex !== -1) {
     tableData.value.splice(originalIndex + 1, 0, newRow);
   } else {
     tableData.value.push(newRow);
   }
-  
+
   updateRowOrder();
   message.success('已在下方插入新行');
 }
 
 // 删除行（通过 key 查找实际位置）
 async function handleDeleteRow(rowKey: string) {
-  const index = tableData.value.findIndex(r => r.key === rowKey);
+  const index = tableData.value.findIndex((r) => r.key === rowKey);
   if (index === -1) return;
-  
+
   const row = tableData.value[index];
   if (row?.id) {
     try {
@@ -529,7 +532,7 @@ function updateRowOrder() {
 
 // 标记为已修改（通过 key 查找）
 function markDirty(rowKey: string) {
-  const row = tableData.value.find(r => r.key === rowKey);
+  const row = tableData.value.find((r) => r.key === rowKey);
   if (row) {
     row.isDirty = true;
   }
@@ -605,7 +608,7 @@ function handleDeleteColumn(key: string) {
   nextTick(() => {
     const col = columns.value.find((c) => c.key === key);
     if (!col) return;
-    
+
     // 自定义列可以真正删除
     if (col.isCustom) {
       const index = columns.value.findIndex((c) => c.key === key);
@@ -787,7 +790,10 @@ function handleInputChange(rowKey: string) {
 }
 
 // 从页码范围字符串解析起始和结束页码
-function parsePageRange(pageRange: string): { pageStart?: number; pageEnd?: number } {
+function parsePageRange(pageRange: string): {
+  pageStart?: number;
+  pageEnd?: number;
+} {
   if (!pageRange || !pageRange.includes('-')) {
     return {};
   }
@@ -811,15 +817,15 @@ async function handleSaveAll() {
   saving.value = true;
   try {
     const newEvidenceIds: number[] = []; // 收集新创建的证据ID
-    
+
     // 使用 sortedTableData 获取计算后的页码范围
     const sortedData = sortedTableData.value;
-    
+
     for (const row of dirtyRows) {
       // 从排序后的数据中找到对应行，获取计算后的页码范围
-      const sortedRow = sortedData.find(r => r.key === row.key);
+      const sortedRow = sortedData.find((r) => r.key === row.key);
       const { pageStart, pageEnd } = parsePageRange(sortedRow?.pageRange || '');
-      
+
       if (row.isNew) {
         const command: CreateEvidenceCommand = {
           matterId: props.matterId,
@@ -855,7 +861,7 @@ async function handleSaveAll() {
         await updateEvidence(row.id, command);
       }
     }
-    
+
     // 如果有新创建的证据且有关联的清单，需要将新证据添加到清单中
     if (newEvidenceIds.length > 0 && props.listId) {
       try {
@@ -871,7 +877,7 @@ async function handleSaveAll() {
         message.warning('证据已保存，但添加到清单失败，请手动刷新');
       }
     }
-    
+
     message.success(`保存成功，共更新 ${dirtyRows.length} 条记录`);
     // 刷新后重新加载组别列表
     await loadGroups();
@@ -933,9 +939,12 @@ function handlePrint() {
 
   // 获取可见列（过滤掉隐藏的列）
   const visibleColumns = columns.value.filter((col) => !col.hidden);
-  
+
   // 计算总宽度用于百分比（只计算可见列）
-  const totalWidth = visibleColumns.reduce((sum, col) => sum + (col.width || 100), 0);
+  const totalWidth = visibleColumns.reduce(
+    (sum, col) => sum + (col.width || 100),
+    0,
+  );
 
   // 生成打印内容
   let printContent = `
@@ -1015,7 +1024,7 @@ function handlePrint() {
   visibleColumns.forEach((col) => {
     if (col.key !== 'key') {
       // 将像素宽度转换为百分比
-      const widthPercent = ((col.width || 100) / totalWidth * 100).toFixed(1);
+      const widthPercent = (((col.width || 100) / totalWidth) * 100).toFixed(1);
       printContent += `<th class="col-${col.key}" style="width: ${widthPercent}%">${col.title}</th>`;
     }
   });
@@ -1035,17 +1044,18 @@ function handlePrint() {
         if (col.key !== 'key') {
           // 需要合并的列（组别、证明内容、证明目的）
           const isMergeColumn = mergeColumns.includes(col.key);
-          
+
           // 如果是合并列且 rowSpan 为 0，跳过此单元格（已被上方单元格合并）
           if (isMergeColumn && row._groupRowSpan === 0) {
             return;
           }
-          
+
           // 构建单元格属性
-          const rowSpanAttr = isMergeColumn && row._groupRowSpan > 1 
-            ? ` rowspan="${row._groupRowSpan}"` 
-            : '';
-          
+          const rowSpanAttr =
+            isMergeColumn && row._groupRowSpan > 1
+              ? ` rowspan="${row._groupRowSpan}"`
+              : '';
+
           // 序号列显示动态生成的序号
           if (col.key === 'order') {
             printContent += `<td class="col-${col.key}">${row.order}</td>`;
@@ -1115,7 +1125,11 @@ const lastColumnKey = computed(() => {
           :disabled="!hasDirtyRows"
           @click="handleSaveAll"
         >
-          💾 保存{{ hasDirtyRows ? ` (${tableData.filter(r => r.isDirty).length})` : '' }}
+          💾 保存{{
+            hasDirtyRows
+              ? ` (${tableData.filter((r) => r.isDirty).length})`
+              : ''
+          }}
         </Button>
       </Space>
       <Space>
@@ -1153,7 +1167,8 @@ const lastColumnKey = computed(() => {
       <span class="tip-text">
         <strong>组别说明：</strong>
         输入相同组别名称的证据会自动归为一组，组别、证明内容、证明目的列会合并显示。
-        <strong>如需修改组别：</strong>首行直接编辑；其他行点击右侧 📝 按钮修改。
+        <strong>如需修改组别：</strong>首行直接编辑；其他行点击右侧 📝
+        按钮修改。
       </span>
     </div>
 
@@ -1169,10 +1184,16 @@ const lastColumnKey = computed(() => {
     >
       <template #bodyCell="{ column, record }">
         <!-- 合并列（组别、证明内容、证明目的）- 被合并的单元格不渲染内容 -->
-        <template v-if="['groupName', 'proofContent', 'provePurpose'].includes(column.key as string) && record._groupRowSpan === 0">
+        <template
+          v-if="
+            ['groupName', 'proofContent', 'provePurpose'].includes(
+              column.key as string,
+            ) && record._groupRowSpan === 0
+          "
+        >
           <!-- 空，被合并的行不显示 -->
         </template>
-        
+
         <!-- 序号列 - 动态生成，不依赖 order 字段 -->
         <template v-else-if="column.key === 'order'">
           <span>{{ record.order || 1 }}</span>
@@ -1183,7 +1204,12 @@ const lastColumnKey = computed(() => {
           <div class="cell-content-wrapper">
             <div class="cell-content">
               <!-- 不可编辑列（如页码范围）显示为只读文本 -->
-              <span v-if="column.key && columns.find((c) => c.key === column.key)?.editable === false">
+              <span
+                v-if="
+                  column.key &&
+                  columns.find((c) => c.key === column.key)?.editable === false
+                "
+              >
                 {{ record[column.key] || '' }}
               </span>
               <template v-else-if="!readonly">
@@ -1412,17 +1438,27 @@ const lastColumnKey = computed(() => {
                 <!-- 显示/隐藏复选框 -->
                 <Checkbox
                   :checked="!col.hidden"
-                  @change="(e: any) => toggleColumnVisibility(col.key, e.target.checked)"
+                  @change="
+                    (e: any) =>
+                      toggleColumnVisibility(col.key, e.target.checked)
+                  "
                 />
                 <span style="min-width: 30px; font-size: 12px; color: #999">{{
                   index + 1
                 }}</span>
-                <span :style="{ minWidth: '100px', fontWeight: 500, textDecoration: col.hidden ? 'line-through' : 'none' }">{{
-                  col.title
-                }}</span>
+                <span
+                  :style="{
+                    minWidth: '100px',
+                    fontWeight: 500,
+                    textDecoration: col.hidden ? 'line-through' : 'none',
+                  }"
+                  >{{ col.title }}</span
+                >
                 <Tag v-if="col.isSystem" color="blue" size="small">系统</Tag>
                 <Tag v-if="col.required" color="red" size="small">必填</Tag>
-                <Tag v-if="col.isCustom" color="purple" size="small">自定义</Tag>
+                <Tag v-if="col.isCustom" color="purple" size="small"
+                  >自定义</Tag
+                >
                 <Tag v-if="col.hidden" color="default" size="small">已隐藏</Tag>
                 <span style="margin-left: 8px; font-size: 12px; color: #999"
                   >列宽：</span
@@ -1513,15 +1549,15 @@ const lastColumnKey = computed(() => {
 <style scoped>
 .usage-tips {
   display: flex;
-  align-items: flex-start;
   gap: 8px;
+  align-items: flex-start;
   padding: 10px 14px;
   margin-bottom: 16px;
+  font-size: 13px;
+  color: #666;
   background: linear-gradient(135deg, #fffbe6 0%, #fff7e6 100%);
   border: 1px solid #ffe58f;
   border-radius: 6px;
-  font-size: 13px;
-  color: #666;
 }
 
 .usage-tips .tip-icon {
@@ -1549,24 +1585,24 @@ const lastColumnKey = computed(() => {
 
 .evidence-table-editor :deep(.ant-table-tbody > tr > td) {
   height: auto !important;
-  white-space: normal !important; /* 允许换行 */
-  word-wrap: break-word;
   vertical-align: middle !important;
+  word-wrap: break-word;
+  white-space: normal !important; /* 允许换行 */
 }
 
 /* 单元格内容包装器 - 垂直居中 */
 .cell-content-wrapper {
   display: flex;
+  gap: 4px;
   align-items: center;
   justify-content: center;
-  gap: 4px;
   width: 100%;
   min-height: 32px;
 }
 
 .cell-content {
-  flex: 1;
   display: flex;
+  flex: 1;
   align-items: center;
   justify-content: center;
 }
@@ -1620,26 +1656,27 @@ const lastColumnKey = computed(() => {
   opacity: 0.5;
 }
 
-.evidence-table-editor :deep(.ant-table-thead th:hover .header-delete-btn:hover) {
+.evidence-table-editor
+  :deep(.ant-table-thead th:hover .header-delete-btn:hover) {
   opacity: 1;
 }
 
 /* 证明内容和证明目的列 - 首行缩进、两端对齐、垂直居中 */
 .evidence-table-editor :deep(.text-column-cell) {
-  text-align: justify !important;
   vertical-align: middle !important;
+  text-align: justify !important;
 }
 
 .evidence-table-editor :deep(.text-column-cell .ant-input-textarea textarea) {
-  text-indent: 2em;
-  text-align: justify;
   min-height: 60px; /* 最小高度 */
+  text-align: justify;
+  text-indent: 2em;
 }
 
 .evidence-table-editor :deep(.text-column-cell span) {
   display: block;
-  text-indent: 2em;
   text-align: justify;
+  text-indent: 2em;
 }
 
 /* 列宽拖动调整 */

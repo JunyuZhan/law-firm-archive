@@ -105,9 +105,12 @@ export const PAYMENT_METHOD_OPTIONS = [
 
 /** 分页查询预收款 */
 export function getPrepaymentList(params: PrepaymentQueryDTO) {
-  return requestClient.get<PageResult<PrepaymentDTO>>('/finance/prepayment/list', {
-    params,
-  });
+  return requestClient.get<PageResult<PrepaymentDTO>>(
+    '/finance/prepayment/list',
+    {
+      params,
+    },
+  );
 }
 
 /** 获取预收款详情 */
@@ -127,17 +130,26 @@ export function confirmPrepayment(id: number) {
 
 /** 使用预收款（核销） */
 export function usePrepayment(data: UsePrepaymentCommand) {
-  return requestClient.post<PrepaymentUsageDTO>('/finance/prepayment/use', data);
+  return requestClient.post<PrepaymentUsageDTO>(
+    '/finance/prepayment/use',
+    data,
+  );
 }
 
 /** 查询客户可用预收款 */
 export function getAvailablePrepayments(clientId: number) {
-  return requestClient.get<PrepaymentDTO[]>(`/finance/prepayment/available/${clientId}`);
+  return requestClient.get<PrepaymentDTO[]>(
+    `/finance/prepayment/available/${clientId}`,
+  );
 }
 
 /** 退款 */
 export function refundPrepayment(id: number, remark: string) {
-  return requestClient.post<PrepaymentDTO>(`/finance/prepayment/${id}/refund`, null, {
-    params: { remark },
-  });
+  return requestClient.post<PrepaymentDTO>(
+    `/finance/prepayment/${id}/refund`,
+    null,
+    {
+      params: { remark },
+    },
+  );
 }

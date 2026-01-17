@@ -123,7 +123,13 @@ export const CONTRACT_TYPE_FIELDS: Record<string, string[]> = {
     'caseType',
     'causeOfAction',
   ],
-  HOURLY: ['clientId', 'totalAmount', 'signDate', 'paymentTerms', 'serviceScope'],
+  HOURLY: [
+    'clientId',
+    'totalAmount',
+    'signDate',
+    'paymentTerms',
+    'serviceScope',
+  ],
   CONTINGENCY: [
     'clientId',
     'claimAmount',

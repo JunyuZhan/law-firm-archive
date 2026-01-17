@@ -78,7 +78,12 @@ const referenceValueMap: Record<string, { color: string; text: string }> = {
 // 响应式列配置
 function getGridColumns(): VxeGridProps['columns'] {
   const baseColumns = [
-    { title: '案例名称', field: 'name', minWidth: isMobile.value ? 120 : 200, mobileShow: true },
+    {
+      title: '案例名称',
+      field: 'name',
+      minWidth: isMobile.value ? 120 : 200,
+      mobileShow: true,
+    },
     { title: '案由类型', field: 'caseTypeName', width: 100, mobileShow: true },
     { title: '审理法院', field: 'court', width: 150 },
     {
@@ -105,9 +110,9 @@ function getGridColumns(): VxeGridProps['columns'] {
       mobileShow: true,
     },
   ];
-  
+
   if (isMobile.value) {
-    return baseColumns.filter(col => col.mobileShow === true);
+    return baseColumns.filter((col) => col.mobileShow === true);
   }
   return baseColumns;
 }

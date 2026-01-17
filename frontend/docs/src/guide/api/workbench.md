@@ -18,12 +18,12 @@ GET /api/workbench/report
 
 查询参数：
 
-| 参数 | 类型 | 说明 |
-| --- | --- | --- |
-| pageNum | number | 页码 |
-| pageSize | number | 每页数量 |
+| 参数       | 类型   | 说明     |
+| ---------- | ------ | -------- |
+| pageNum    | number | 页码     |
+| pageSize   | number | 每页数量 |
 | reportType | string | 报表类型 |
-| status | string | 状态 |
+| status     | string | 状态     |
 
 ### 同步生成报表
 

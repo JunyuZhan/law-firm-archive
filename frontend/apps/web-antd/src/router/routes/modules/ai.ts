@@ -25,4 +25,3 @@ const aiRoutes: RouteRecordRaw[] = [
 ];
 
 export default aiRoutes;
-

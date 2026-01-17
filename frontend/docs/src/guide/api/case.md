@@ -111,14 +111,14 @@ GET /api/tasks
 
 查询参数：
 
-| 参数 | 类型 | 说明 |
-| --- | --- | --- |
-| pageNum | number | 页码 |
-| pageSize | number | 每页数量 |
-| matterId | number | 关联案件ID |
-| assigneeId | number | 负责人ID |
-| status | string | 状态 |
-| priority | string | 优先级 |
+| 参数       | 类型   | 说明       |
+| ---------- | ------ | ---------- |
+| pageNum    | number | 页码       |
+| pageSize   | number | 每页数量   |
+| matterId   | number | 关联案件ID |
+| assigneeId | number | 负责人ID   |
+| status     | string | 状态       |
+| priority   | string | 优先级     |
 
 ### 创建任务
 
@@ -227,4 +227,3 @@ POST /api/timesheets/{id}/submit
 ```
 POST /api/timesheets/batch-submit
 ```
-

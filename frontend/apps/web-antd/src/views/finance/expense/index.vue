@@ -105,9 +105,25 @@ const expenseTypeOptions = [
 function getGridColumns(): VxeGridProps['columns'] {
   const baseColumns = [
     { title: '报销单号', field: 'expenseNo', width: 140 },
-    { title: '费用类型', field: 'expenseTypeName', width: 100, mobileShow: true },
-    { title: '金额', field: 'amount', width: 120, slots: { default: 'amount' }, mobileShow: true },
-    { title: '关联项目', field: 'matterName', minWidth: 150, showOverflow: true },
+    {
+      title: '费用类型',
+      field: 'expenseTypeName',
+      width: 100,
+      mobileShow: true,
+    },
+    {
+      title: '金额',
+      field: 'amount',
+      width: 120,
+      slots: { default: 'amount' },
+      mobileShow: true,
+    },
+    {
+      title: '关联项目',
+      field: 'matterName',
+      minWidth: 150,
+      showOverflow: true,
+    },
     { title: '费用日期', field: 'expenseDate', width: 110 },
     { title: '说明', field: 'description', minWidth: 200, showOverflow: true },
     {
@@ -127,9 +143,9 @@ function getGridColumns(): VxeGridProps['columns'] {
       mobileShow: true,
     },
   ];
-  
+
   if (isMobile.value) {
-    return baseColumns.filter(col => col.mobileShow === true);
+    return baseColumns.filter((col) => col.mobileShow === true);
   }
   return baseColumns;
 }

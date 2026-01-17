@@ -156,11 +156,7 @@ defineExpose({ open });
   <Modal class="w-[600px]">
     <div class="space-y-4">
       <!-- 操作说明 -->
-      <Alert
-        message="导入说明"
-        type="info"
-        show-icon
-      >
+      <Alert message="导入说明" type="info" show-icon>
         <template #description>
           <div class="text-sm">
             <p>1. 请先下载导入模板，按模板格式填写用户信息</p>
@@ -198,7 +194,7 @@ defineExpose({ open });
       <!-- 上传进度 -->
       <div v-if="uploading" class="mt-4">
         <Progress :percent="uploadProgress" status="active" />
-        <p class="text-center text-gray-500 mt-2">正在导入，请稍候...</p>
+        <p class="mt-2 text-center text-gray-500">正在导入，请稍候...</p>
       </div>
 
       <!-- 导入结果 -->
@@ -218,11 +214,13 @@ defineExpose({ open });
 
         <!-- 错误详情 -->
         <div
-          v-if="importResult.errorMessages && importResult.errorMessages.length > 0"
-          class="mt-3 max-h-[200px] overflow-auto bg-red-50 rounded p-3"
+          v-if="
+            importResult.errorMessages && importResult.errorMessages.length > 0
+          "
+          class="mt-3 max-h-[200px] overflow-auto rounded bg-red-50 p-3"
         >
-          <p class="font-medium text-red-600 mb-2">错误详情：</p>
-          <ul class="list-disc list-inside text-sm text-red-500 space-y-1">
+          <p class="mb-2 font-medium text-red-600">错误详情：</p>
+          <ul class="list-inside list-disc space-y-1 text-sm text-red-500">
             <li v-for="(err, idx) in importResult.errorMessages" :key="idx">
               {{ err }}
             </li>
@@ -231,7 +229,7 @@ defineExpose({ open });
       </div>
 
       <!-- 操作按钮 -->
-      <div class="flex justify-end gap-3 mt-6 pt-4 border-t">
+      <div class="mt-6 flex justify-end gap-3 border-t pt-4">
         <Button @click="handleClose">关闭</Button>
         <Button
           type="primary"

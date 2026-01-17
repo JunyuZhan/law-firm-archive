@@ -299,7 +299,10 @@ function openCreate(placement: DrawerPlacement = 'right') {
 }
 
 // 打开编辑抽屉（右侧按钮 → 左侧抽屉）
-function openEdit(record: Record<string, any>, placement: DrawerPlacement = 'left') {
+function openEdit(
+  record: Record<string, any>,
+  placement: DrawerPlacement = 'left',
+) {
   isEdit.value = true;
   editId.value = record.id;
   formApi.resetForm();
@@ -329,7 +332,7 @@ defineExpose({ openCreate, openEdit });
 <template>
   <Drawer class="w-[480px]">
     <div class="px-2">
-      <div class="mb-4 text-gray-500 text-sm">
+      <div class="mb-4 text-sm text-gray-500">
         {{ isEdit ? '修改用户信息，用户名不可更改' : '创建新用户账号' }}
       </div>
       <Divider class="!my-3">基本信息</Divider>
@@ -337,4 +340,3 @@ defineExpose({ openCreate, openEdit });
     </div>
   </Drawer>
 </template>
-

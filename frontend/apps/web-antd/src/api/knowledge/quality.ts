@@ -230,39 +230,58 @@ export function getQualityCheckById(id: number) {
 
 /** 获取项目的所有检查 */
 export function getQualityChecksByMatterId(matterId: number) {
-  return requestClient.get<QualityCheckDTO[]>(`/knowledge/quality-check/matter/${matterId}`);
+  return requestClient.get<QualityCheckDTO[]>(
+    `/knowledge/quality-check/matter/${matterId}`,
+  );
 }
 
 /** 获取进行中的检查 */
 export function getInProgressChecks() {
-  return requestClient.get<QualityCheckDTO[]>('/knowledge/quality-check/in-progress');
+  return requestClient.get<QualityCheckDTO[]>(
+    '/knowledge/quality-check/in-progress',
+  );
 }
 
 // ==================== 质量检查标准 API ====================
 
 /** 获取所有启用的检查标准 */
 export function getEnabledStandards() {
-  return requestClient.get<QualityCheckStandardDTO[]>('/knowledge/quality-standard/enabled');
+  return requestClient.get<QualityCheckStandardDTO[]>(
+    '/knowledge/quality-standard/enabled',
+  );
 }
 
 /** 按分类查询检查标准 */
 export function getStandardsByCategory(category: string) {
-  return requestClient.get<QualityCheckStandardDTO[]>(`/knowledge/quality-standard/category/${category}`);
+  return requestClient.get<QualityCheckStandardDTO[]>(
+    `/knowledge/quality-standard/category/${category}`,
+  );
 }
 
 /** 获取检查标准详情 */
 export function getStandardById(id: number) {
-  return requestClient.get<QualityCheckStandardDTO>(`/knowledge/quality-standard/${id}`);
+  return requestClient.get<QualityCheckStandardDTO>(
+    `/knowledge/quality-standard/${id}`,
+  );
 }
 
 /** 创建检查标准 */
 export function createStandard(data: CreateQualityCheckStandardCommand) {
-  return requestClient.post<QualityCheckStandardDTO>('/knowledge/quality-standard', data);
+  return requestClient.post<QualityCheckStandardDTO>(
+    '/knowledge/quality-standard',
+    data,
+  );
 }
 
 /** 更新检查标准 */
-export function updateStandard(id: number, data: CreateQualityCheckStandardCommand) {
-  return requestClient.put<QualityCheckStandardDTO>(`/knowledge/quality-standard/${id}`, data);
+export function updateStandard(
+  id: number,
+  data: CreateQualityCheckStandardCommand,
+) {
+  return requestClient.put<QualityCheckStandardDTO>(
+    `/knowledge/quality-standard/${id}`,
+    data,
+  );
 }
 
 /** 删除检查标准 */
@@ -274,7 +293,9 @@ export function deleteStandard(id: number) {
 
 /** 获取待整改的问题 */
 export function getPendingIssues() {
-  return requestClient.get<QualityIssueDTO[]>('/knowledge/quality-issue/pending');
+  return requestClient.get<QualityIssueDTO[]>(
+    '/knowledge/quality-issue/pending',
+  );
 }
 
 /** 创建问题 */
@@ -283,10 +304,18 @@ export function createIssue(data: CreateQualityIssueCommand) {
 }
 
 /** 更新问题状态 */
-export function updateIssueStatus(id: number, status: string, resolution?: string) {
-  return requestClient.put<QualityIssueDTO>(`/knowledge/quality-issue/${id}/status`, null, {
-    params: { status, resolution },
-  });
+export function updateIssueStatus(
+  id: number,
+  status: string,
+  resolution?: string,
+) {
+  return requestClient.put<QualityIssueDTO>(
+    `/knowledge/quality-issue/${id}/status`,
+    null,
+    {
+      params: { status, resolution },
+    },
+  );
 }
 
 /** 获取问题详情 */
@@ -296,7 +325,9 @@ export function getIssueById(id: number) {
 
 /** 获取项目的所有问题 */
 export function getIssuesByMatterId(matterId: number) {
-  return requestClient.get<QualityIssueDTO[]>(`/knowledge/quality-issue/matter/${matterId}`);
+  return requestClient.get<QualityIssueDTO[]>(
+    `/knowledge/quality-issue/matter/${matterId}`,
+  );
 }
 
 // ==================== 风险预警 API ====================
@@ -308,17 +339,23 @@ export function createWarning(data: CreateRiskWarningCommand) {
 
 /** 确认预警 */
 export function acknowledgeWarning(id: number) {
-  return requestClient.post<RiskWarningDTO>(`/knowledge/risk-warning/${id}/acknowledge`);
+  return requestClient.post<RiskWarningDTO>(
+    `/knowledge/risk-warning/${id}/acknowledge`,
+  );
 }
 
 /** 解决预警 */
 export function resolveWarning(id: number) {
-  return requestClient.post<RiskWarningDTO>(`/knowledge/risk-warning/${id}/resolve`);
+  return requestClient.post<RiskWarningDTO>(
+    `/knowledge/risk-warning/${id}/resolve`,
+  );
 }
 
 /** 关闭预警 */
 export function closeWarning(id: number) {
-  return requestClient.post<RiskWarningDTO>(`/knowledge/risk-warning/${id}/close`);
+  return requestClient.post<RiskWarningDTO>(
+    `/knowledge/risk-warning/${id}/close`,
+  );
 }
 
 /** 获取预警详情 */
@@ -328,7 +365,9 @@ export function getWarningById(id: number) {
 
 /** 获取项目的所有预警 */
 export function getWarningsByMatterId(matterId: number) {
-  return requestClient.get<RiskWarningDTO[]>(`/knowledge/risk-warning/matter/${matterId}`);
+  return requestClient.get<RiskWarningDTO[]>(
+    `/knowledge/risk-warning/matter/${matterId}`,
+  );
 }
 
 /** 获取活跃的预警 */
@@ -338,5 +377,7 @@ export function getActiveWarnings() {
 
 /** 获取高风险预警 */
 export function getHighRiskWarnings() {
-  return requestClient.get<RiskWarningDTO[]>('/knowledge/risk-warning/high-risk');
+  return requestClient.get<RiskWarningDTO[]>(
+    '/knowledge/risk-warning/high-risk',
+  );
 }

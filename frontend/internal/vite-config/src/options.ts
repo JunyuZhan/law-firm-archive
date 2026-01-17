@@ -12,10 +12,14 @@ const getDefaultPwaOptions = (name: string): Partial<PwaPluginOptions> => ({
     // 可以根据实际应用名称自定义，例如：
     // - "智慧律所管理系统" -> "律所系统"
     // - "Law Firm Management" -> "Law Firm"
-    short_name: name.length > 12
-      ? (name.includes('律所') ? '律所系统' : name.substring(0, 12))
-      : name,
-    description: '专业的律所业务管理平台，支持案件管理、客户管理、文档管理等功能',
+    short_name:
+      name.length > 12
+        ? name.includes('律所')
+          ? '律所系统'
+          : name.substring(0, 12)
+        : name,
+    description:
+      '专业的律所业务管理平台，支持案件管理、客户管理、文档管理等功能',
     display: 'standalone',
     theme_color: '#1890ff',
     background_color: '#ffffff',
@@ -52,9 +56,7 @@ const getDefaultPwaOptions = (name: string): Partial<PwaPluginOptions> => ({
     skipWaiting: true,
     clientsClaim: true,
     // 缓存策略
-    globPatterns: [
-      '**/*.{js,css,html,woff2,png,svg,jpg,jpeg,gif,webp,ico}',
-    ],
+    globPatterns: ['**/*.{js,css,html,woff2,png,svg,jpg,jpeg,gif,webp,ico}'],
     // 预缓存版本控制
     navigateFallback: '/index.html',
     // 最大缓存大小（建议根据实际调整）

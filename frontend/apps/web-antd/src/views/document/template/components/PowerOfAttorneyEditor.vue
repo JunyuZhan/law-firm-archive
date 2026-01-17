@@ -107,7 +107,13 @@ function parseContent(content: string) {
       // 新格式：{ _structured: true, blocks: { ... } }
       Object.assign(blocks, parsed.blocks);
       return;
-    } else if (parsed.title || parsed.client || parsed.agent || parsed.matter || parsed.signature) {
+    } else if (
+      parsed.title ||
+      parsed.client ||
+      parsed.agent ||
+      parsed.matter ||
+      parsed.signature
+    ) {
       // 兼容旧格式：直接是 blocks 对象
       Object.assign(blocks, parsed);
       return;
@@ -140,7 +146,7 @@ watch(
       parseContent(newVal);
     }
   },
-  { immediate: true }
+  { immediate: true },
 );
 
 // 监听区块变化，输出内容
@@ -149,16 +155,23 @@ watch(
   () => {
     emit('update:modelValue', blocksToContent());
   },
-  { deep: true }
+  { deep: true },
 );
 
 // 在光标位置插入变量
 function insertVariable(
-  target: 'documentTitle' | 'client' | 'agent' | 'matter' | 'clientSign' | 'signDate' | 'remarks',
-  variable: string
+  target:
+    | 'documentTitle'
+    | 'client'
+    | 'agent'
+    | 'matter'
+    | 'clientSign'
+    | 'signDate'
+    | 'remarks',
+  variable: string,
 ) {
   const varStr = `\${${variable}}`;
-  
+
   // 获取当前值
   let currentValue = '';
   if (target === 'documentTitle') {
@@ -176,13 +189,14 @@ function insertVariable(
   } else if (target === 'remarks') {
     currentValue = blocks.signature.remarks;
   }
-  
+
   // 获取记录的光标位置，如果没有记录则追加到末尾
   const cursorPos = cursorPositions.value[target] ?? currentValue.length;
-  
+
   // 在光标位置插入变量
-  const newValue = currentValue.slice(0, cursorPos) + varStr + currentValue.slice(cursorPos);
-  
+  const newValue =
+    currentValue.slice(0, cursorPos) + varStr + currentValue.slice(cursorPos);
+
   // 更新对应区块的值
   if (target === 'documentTitle') {
     blocks.title.documentTitle = newValue;
@@ -199,7 +213,7 @@ function insertVariable(
   } else if (target === 'remarks') {
     blocks.signature.remarks = newValue;
   }
-  
+
   // 更新光标位置（移到插入变量之后）
   cursorPositions.value[target] = cursorPos + varStr.length;
 }
@@ -207,11 +221,11 @@ function insertVariable(
 // 变量分组 - 按类别明确分类
 const variableGroups = computed(() => {
   const groups: Record<string, Array<{ label: string; value: string }>> = {
-    '委托人信息': [],
-    '受托人信息': [],
+    委托人信息: [],
+    受托人信息: [],
     '项目/案件': [],
-    '代理权限': [],
-    '日期': [],
+    代理权限: [],
+    日期: [],
   };
 
   // 明确的分组映射
@@ -224,7 +238,7 @@ const variableGroups = computed(() => {
     'client.address': '委托人信息',
     'client.legalPerson': '委托人信息',
     'client.typeName': '委托人信息',
-    
+
     // 受托人信息
     'lawyer.name': '受托人信息',
     'lawyer.licenseNo': '受托人信息',
@@ -232,7 +246,7 @@ const variableGroups = computed(() => {
     'firm.name': '受托人信息',
     'firm.address': '受托人信息',
     'firm.phone': '受托人信息',
-    
+
     // 项目/案件
     'matter.name': '项目/案件',
     'matter.no': '项目/案件',
@@ -243,18 +257,18 @@ const variableGroups = computed(() => {
     'matter.description': '项目/案件',
     'matter.litigationStageName': '项目/案件',
     'matter.filingDate': '项目/案件',
-    'trialStage': '项目/案件',
-    
+    trialStage: '项目/案件',
+
     // 代理权限
-    'authorizationType': '代理权限',
-    'authorizationScope': '代理权限',
-    
+    authorizationType: '代理权限',
+    authorizationScope: '代理权限',
+
     // 多个委托人/受托人
     'clients.allInfo': '委托人信息',
     'clients.allNames': '委托人信息',
     'lawyers.allInfo': '受托人信息',
     'lawyers.allNames': '受托人信息',
-    
+
     // 日期
     'date.today': '日期',
     'date.year': '日期',
@@ -283,7 +297,10 @@ const variableGroups = computed(() => {
         if (targetGroup) {
           targetGroup.push(v);
         }
-      } else if (v.value.includes('authorization') || v.value.includes('代理')) {
+      } else if (
+        v.value.includes('authorization') ||
+        v.value.includes('代理')
+      ) {
         const targetGroup = groups['代理权限'];
         if (targetGroup) {
           targetGroup.push(v);
@@ -317,7 +334,7 @@ const variableGroups = computed(() => {
         <template #extra>
           <Tag color="blue">委托书标题</Tag>
         </template>
-        
+
         <div class="block-content">
           <div class="field-group">
             <label>委托书标题（将居中显示为大标题）</label>
@@ -330,7 +347,7 @@ const variableGroups = computed(() => {
               @keyup="(e: Event) => handleSelect('documentTitle', e)"
             />
             <div class="variable-hint">
-              <span style="color: #999; font-size: 12px;">
+              <span style="font-size: 12px; color: #999">
                 💡 标题将在打印时居中显示为大标题
               </span>
             </div>
@@ -343,7 +360,7 @@ const variableGroups = computed(() => {
         <template #extra>
           <Tag color="green">委托人信息</Tag>
         </template>
-        
+
         <div class="block-content">
           <div class="field-group">
             <div class="field-header">
@@ -352,8 +369,8 @@ const variableGroups = computed(() => {
                 <Button size="small" type="link">+ 插入变量</Button>
                 <template #overlay>
                   <Menu>
-                    <MenuItem 
-                      v-for="v in variableGroups['委托人信息']" 
+                    <MenuItem
+                      v-for="v in variableGroups['委托人信息']"
                       :key="v.value"
                       @click="insertVariable('client', v.value)"
                     >
@@ -383,7 +400,7 @@ ${client.idLabel}：${client.idNumber}
         <template #extra>
           <Tag color="orange">受托人信息</Tag>
         </template>
-        
+
         <div class="block-content">
           <div class="field-group">
             <div class="field-header">
@@ -392,8 +409,8 @@ ${client.idLabel}：${client.idNumber}
                 <Button size="small" type="link">+ 插入变量</Button>
                 <template #overlay>
                   <Menu>
-                    <MenuItem 
-                      v-for="v in variableGroups['受托人信息']" 
+                    <MenuItem
+                      v-for="v in variableGroups['受托人信息']"
                       :key="v.value"
                       @click="insertVariable('agent', v.value)"
                     >
@@ -423,18 +440,18 @@ ${client.idLabel}：${client.idNumber}
         <template #extra>
           <Tag color="purple">委托事项</Tag>
         </template>
-        
+
         <div class="block-content">
           <div class="field-group">
             <label>委托事项内容（包含案件信息、代理权限、委托期限等）</label>
-            
+
             <!-- 变量标签横向排列 -->
             <div class="variables-panel">
               <template v-for="(vars, group) in variableGroups" :key="group">
                 <div v-if="vars.length > 0" class="variable-group">
                   <span class="group-label">{{ group }}：</span>
-                  <Tag 
-                    v-for="v in vars" 
+                  <Tag
+                    v-for="v in vars"
                     :key="v.value"
                     color="cyan"
                     class="var-tag"
@@ -445,7 +462,7 @@ ${client.idLabel}：${client.idNumber}
                 </div>
               </template>
             </div>
-            
+
             <Textarea
               v-model:value="blocks.matter"
               :rows="15"
@@ -471,7 +488,7 @@ ${authorizationScope}
         <template #extra>
           <Tag color="red">签字盖章</Tag>
         </template>
-        
+
         <div class="block-content">
           <div class="field-group">
             <label>委托人签署</label>
@@ -508,7 +525,7 @@ ${authorizationScope}
               @keyup="(e: Event) => handleSelect('remarks', e)"
             />
             <div class="variable-hint">
-              <span style="color: #999; font-size: 12px;">
+              <span style="font-size: 12px; color: #999">
                 💡 备注信息将以较小字体显示在文档底部
               </span>
             </div>
@@ -580,8 +597,8 @@ ${authorizationScope}
 .variable-group {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
   gap: 6px;
+  align-items: center;
   margin-bottom: 8px;
 }
 
@@ -590,10 +607,10 @@ ${authorizationScope}
 }
 
 .group-label {
+  min-width: 80px;
   font-size: 12px;
   font-weight: 500;
   color: #52c41a;
-  min-width: 80px;
 }
 
 .var-tag {

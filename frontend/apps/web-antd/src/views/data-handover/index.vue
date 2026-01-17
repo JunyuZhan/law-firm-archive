@@ -220,10 +220,7 @@ function handleModalSuccess() {
 </script>
 
 <template>
-  <Page
-    title="数据交接"
-    description="管理用户离职交接和项目移交"
-  >
+  <Page title="数据交接" description="管理用户离职交接和项目移交">
     <Grid>
       <!-- 工具栏按钮 -->
       <template #toolbar-buttons>

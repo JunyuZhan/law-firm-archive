@@ -140,7 +140,12 @@ const DAILY_RATE_2024 = 436.89;
 const compensationItemColumns = [
   { title: '项目类型', dataIndex: 'type', key: 'type', width: 150 },
   { title: '天数', dataIndex: 'days', key: 'days', width: 100 },
-  { title: '日赔偿金(元)', dataIndex: 'dailyAmount', key: 'dailyAmount', width: 120 },
+  {
+    title: '日赔偿金(元)',
+    dataIndex: 'dailyAmount',
+    key: 'dailyAmount',
+    width: 120,
+  },
   { title: '金额(元)', dataIndex: 'amount', key: 'amount', width: 120 },
   { title: '操作', key: 'action', width: 80 },
 ];
@@ -204,7 +209,10 @@ function calculateItemAmount(item: CompensationItem) {
 // 计算总金额
 const totalClaimAmount = computed(() => {
   if (!formData.compensationItems?.length) return 0;
-  return formData.compensationItems.reduce((sum, item) => sum + (item.amount || 0), 0);
+  return formData.compensationItems.reduce(
+    (sum, item) => sum + (item.amount || 0),
+    0,
+  );
 });
 
 // 同步总金额到表单
@@ -324,7 +332,7 @@ defineExpose({
       <template v-if="isCriminalCompensation">
         <Divider orientation="left">
           刑事赔偿信息
-          <span style="color: #ff4d4f; font-size: 12px; margin-left: 8px">
+          <span style="margin-left: 8px; font-size: 12px; color: #ff4d4f">
             （刑事诉讼终结是刑事赔偿的前置条件）
           </span>
         </Divider>
@@ -511,7 +519,14 @@ defineExpose({
             </template>
           </template>
         </Table>
-        <div style="margin-top: 8px; display: flex; justify-content: space-between; align-items: center">
+        <div
+          style="
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 8px;
+          "
+        >
           <Button type="dashed" size="small" @click="addCompensationItem">
             + 添加赔偿项目
           </Button>
@@ -548,7 +563,10 @@ defineExpose({
               :min="0"
               :precision="2"
               style="width: 100%"
-              :formatter="(value: any) => `¥ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')"
+              :formatter="
+                (value: any) =>
+                  `¥ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+              "
               :parser="(value: any) => value.replace(/¥\s?|(,*)/g, '')"
             />
           </FormItem>
@@ -601,8 +619,8 @@ defineExpose({
 }
 
 .compensation-items-section {
-  background: #fafafa;
   padding: 16px;
+  background: #fafafa;
   border-radius: 4px;
 }
 </style>

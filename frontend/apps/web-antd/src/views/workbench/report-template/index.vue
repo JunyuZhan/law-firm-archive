@@ -94,17 +94,41 @@ const formSchema: VbenFormSchema[] = [
 
 // ==================== 表格配置 ====================
 const gridColumns: any[] = [
-  { title: '模板名称', field: 'templateName', minWidth: 180, showOverflow: true },
+  {
+    title: '模板名称',
+    field: 'templateName',
+    minWidth: 180,
+    showOverflow: true,
+  },
   { title: '数据源', field: 'dataSourceName', width: 150 },
   { title: '状态', field: 'status', width: 100, slots: { default: 'status' } },
-  { title: '系统模板', field: 'isSystem', width: 100, align: 'center', slots: { default: 'isSystem' } },
+  {
+    title: '系统模板',
+    field: 'isSystem',
+    width: 100,
+    align: 'center',
+    slots: { default: 'isSystem' },
+  },
   { title: '创建人', field: 'createdByName', width: 100 },
-  { title: '创建时间', field: 'createdAt', width: 160, slots: { default: 'createdAt' } },
-  { title: '操作', field: 'action', width: 220, fixed: 'right', slots: { default: 'action' } },
+  {
+    title: '创建时间',
+    field: 'createdAt',
+    width: 160,
+    slots: { default: 'createdAt' },
+  },
+  {
+    title: '操作',
+    field: 'action',
+    width: 220,
+    fixed: 'right',
+    slots: { default: 'action' },
+  },
 ];
 
 // 加载数据
-async function loadData(params: Record<string, any> & { page: number; pageSize: number }) {
+async function loadData(
+  params: Record<string, any> & { page: number; pageSize: number },
+) {
   const res = await getReportTemplateList({
     pageNum: params.page,
     pageSize: params.pageSize,
@@ -367,10 +391,24 @@ onMounted(() => {
       <!-- 操作列 -->
       <template #action="{ row }">
         <Space>
-          <a v-if="!row.isSystem" @click="handleEdit(row as ReportTemplateDTO)">编辑</a>
-          <a v-if="row.status === 'DISABLED'" @click="handleEnable(row as ReportTemplateDTO)">启用</a>
-          <a v-if="row.status === 'ENABLED'" @click="handleDisable(row as ReportTemplateDTO)">停用</a>
-          <a v-if="row.status === 'ENABLED'" @click="handleGenerate(row as ReportTemplateDTO)">生成</a>
+          <a v-if="!row.isSystem" @click="handleEdit(row as ReportTemplateDTO)"
+            >编辑</a
+          >
+          <a
+            v-if="row.status === 'DISABLED'"
+            @click="handleEnable(row as ReportTemplateDTO)"
+            >启用</a
+          >
+          <a
+            v-if="row.status === 'ENABLED'"
+            @click="handleDisable(row as ReportTemplateDTO)"
+            >停用</a
+          >
+          <a
+            v-if="row.status === 'ENABLED'"
+            @click="handleGenerate(row as ReportTemplateDTO)"
+            >生成</a
+          >
           <Popconfirm
             v-if="!row.isSystem"
             title="确定删除此模板？"
@@ -419,7 +457,12 @@ onMounted(() => {
             v-model:value="selectedFields"
             mode="multiple"
             placeholder="请选择要显示的字段"
-            :options="availableFields.map((f) => ({ label: f.label || f.field, value: f.field }))"
+            :options="
+              availableFields.map((f) => ({
+                label: f.label || f.field,
+                value: f.field,
+              }))
+            "
             style="width: 100%"
           />
         </Form.Item>

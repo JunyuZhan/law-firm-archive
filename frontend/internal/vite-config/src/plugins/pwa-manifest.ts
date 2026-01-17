@@ -30,11 +30,13 @@ export function vitePwaManifestPlugin(options: PwaManifestOptions): Plugin {
   } = options;
 
   // 自动生成 short_name（PWA 标准建议不超过 12 个字符）
-  const generatedShortName = shortName || (
-    name.length > 12
-      ? (name.includes('律所') || name.includes('律师') ? '律所系统' : name.substring(0, 12))
-      : name
-  );
+  const generatedShortName =
+    shortName ||
+    (name.length > 12
+      ? name.includes('律所') || name.includes('律师')
+        ? '律所系统'
+        : name.substring(0, 12)
+      : name);
 
   const manifest = {
     name,
@@ -67,16 +69,16 @@ export function vitePwaManifestPlugin(options: PwaManifestOptions): Plugin {
   return {
     name: 'vite-plugin-pwa-manifest',
     apply: 'build',
-    
+
     writeBundle(outputOptions) {
       const outDir = outputOptions.dir || 'dist';
       const manifestPath = join(outDir, 'manifest.webmanifest');
-      
+
       // 确保输出目录存在
       if (!existsSync(outDir)) {
         mkdirSync(outDir, { recursive: true });
       }
-      
+
       // 写入 manifest 文件
       writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), 'utf-8');
       console.log(`[PWA] Generated manifest.webmanifest with name: "${name}"`);

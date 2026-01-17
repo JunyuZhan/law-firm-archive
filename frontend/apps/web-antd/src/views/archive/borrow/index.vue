@@ -101,7 +101,12 @@ const columns = computed(() => {
       width: 100,
       mobileShow: true,
     },
-    { title: '借阅日期', dataIndex: 'borrowDate', key: 'borrowDate', width: 120 },
+    {
+      title: '借阅日期',
+      dataIndex: 'borrowDate',
+      key: 'borrowDate',
+      width: 120,
+    },
     {
       title: '预计归还',
       dataIndex: 'expectedReturnDate',
@@ -114,12 +119,24 @@ const columns = computed(() => {
       key: 'actualReturnDate',
       width: 120,
     },
-    { title: '状态', dataIndex: 'statusName', key: 'statusName', width: 100, mobileShow: true },
-    { title: '操作', key: 'action', width: isMobile.value ? 100 : 200, fixed: 'right' as const, mobileShow: true },
+    {
+      title: '状态',
+      dataIndex: 'statusName',
+      key: 'statusName',
+      width: 100,
+      mobileShow: true,
+    },
+    {
+      title: '操作',
+      key: 'action',
+      width: isMobile.value ? 100 : 200,
+      fixed: 'right' as const,
+      mobileShow: true,
+    },
   ];
-  
+
   if (isMobile.value) {
-    return baseColumns.filter(col => col.mobileShow === true);
+    return baseColumns.filter((col) => col.mobileShow === true);
   }
   return baseColumns;
 });

@@ -7,7 +7,7 @@ import { computed } from 'vue';
  */
 export function useResponsive() {
   const breakpoints = useBreakpoints(breakpointsTailwind);
-  
+
   // 移动端检测 (< 768px)
   const isMobile = breakpoints.smaller('md');
 

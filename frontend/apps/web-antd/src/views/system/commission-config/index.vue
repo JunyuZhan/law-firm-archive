@@ -223,7 +223,9 @@ function handleModalSuccess() {
           <!-- 业务流程 -->
           <div class="rounded-lg bg-green-50 p-4">
             <div class="mb-2 font-medium text-green-700">📋 业务流程</div>
-            <div class="flex flex-wrap items-center gap-1 text-sm text-gray-600">
+            <div
+              class="flex flex-wrap items-center gap-1 text-sm text-gray-600"
+            >
               <Tag color="blue" class="m-0">1.创建合同</Tag>
               <span class="mx-1">→</span>
               <Tag color="blue" class="m-0">2.收款确认</Tag>
@@ -252,110 +254,112 @@ function handleModalSuccess() {
     <!-- 表格区域 -->
     <Card :bordered="false">
       <Grid>
-      <!-- 工具栏按钮（隐藏，使用页面顶部按钮） -->
-      <template #toolbar-buttons>
-        <span></span>
-      </template>
+        <!-- 工具栏按钮（隐藏，使用页面顶部按钮） -->
+        <template #toolbar-buttons>
+          <span></span>
+        </template>
 
-      <!-- 比例列 -->
-      <template #firmRate="{ row }">
-        <span
-          :class="
-            row.firmRate > 0 ? 'font-medium text-blue-500' : 'text-gray-400'
-          "
-        >
-          {{ formatRate(row.firmRate) }}
-        </span>
-      </template>
-      <template #leadLawyerRate="{ row }">
-        <span
-          :class="
-            row.leadLawyerRate > 0
-              ? 'font-medium text-green-500'
-              : 'text-gray-400'
-          "
-        >
-          {{ formatRate(row.leadLawyerRate) }}
-        </span>
-      </template>
-      <template #assistLawyerRate="{ row }">
-        <span
-          :class="
-            row.assistLawyerRate > 0
-              ? 'font-medium text-orange-500'
-              : 'text-gray-400'
-          "
-        >
-          {{ formatRate(row.assistLawyerRate) }}
-        </span>
-      </template>
-      <template #supportStaffRate="{ row }">
-        <span
-          :class="
-            row.supportStaffRate > 0
-              ? 'font-medium text-purple-500'
-              : 'text-gray-400'
-          "
-        >
-          {{ formatRate(row.supportStaffRate) }}
-        </span>
-      </template>
-      <template #originatorRate="{ row }">
-        <span
-          :class="
-            row.originatorRate > 0
-              ? 'font-medium text-pink-500'
-              : 'text-gray-400'
-          "
-        >
-          {{ formatRate(row.originatorRate) }}
-        </span>
-      </template>
+        <!-- 比例列 -->
+        <template #firmRate="{ row }">
+          <span
+            :class="
+              row.firmRate > 0 ? 'font-medium text-blue-500' : 'text-gray-400'
+            "
+          >
+            {{ formatRate(row.firmRate) }}
+          </span>
+        </template>
+        <template #leadLawyerRate="{ row }">
+          <span
+            :class="
+              row.leadLawyerRate > 0
+                ? 'font-medium text-green-500'
+                : 'text-gray-400'
+            "
+          >
+            {{ formatRate(row.leadLawyerRate) }}
+          </span>
+        </template>
+        <template #assistLawyerRate="{ row }">
+          <span
+            :class="
+              row.assistLawyerRate > 0
+                ? 'font-medium text-orange-500'
+                : 'text-gray-400'
+            "
+          >
+            {{ formatRate(row.assistLawyerRate) }}
+          </span>
+        </template>
+        <template #supportStaffRate="{ row }">
+          <span
+            :class="
+              row.supportStaffRate > 0
+                ? 'font-medium text-purple-500'
+                : 'text-gray-400'
+            "
+          >
+            {{ formatRate(row.supportStaffRate) }}
+          </span>
+        </template>
+        <template #originatorRate="{ row }">
+          <span
+            :class="
+              row.originatorRate > 0
+                ? 'font-medium text-pink-500'
+                : 'text-gray-400'
+            "
+          >
+            {{ formatRate(row.originatorRate) }}
+          </span>
+        </template>
 
-      <!-- 状态列 -->
-      <template #allowModify="{ row }">
-        <Tag :color="row.allowModify ? 'green' : 'default'" class="m-0">
-          {{ row.allowModify ? '是' : '否' }}
-        </Tag>
-      </template>
-      <template #isDefault="{ row }">
-        <Tag v-if="row.isDefault" color="gold" class="m-0">默认</Tag>
-        <span v-else class="text-gray-400">-</span>
-      </template>
-      <template #active="{ row }">
-        <Tag :color="row.active ? 'success' : 'default'" class="m-0">
-          {{ row.active ? '启用' : '停用' }}
-        </Tag>
-      </template>
+        <!-- 状态列 -->
+        <template #allowModify="{ row }">
+          <Tag :color="row.allowModify ? 'green' : 'default'" class="m-0">
+            {{ row.allowModify ? '是' : '否' }}
+          </Tag>
+        </template>
+        <template #isDefault="{ row }">
+          <Tag v-if="row.isDefault" color="gold" class="m-0">默认</Tag>
+          <span v-else class="text-gray-400">-</span>
+        </template>
+        <template #active="{ row }">
+          <Tag :color="row.active ? 'success' : 'default'" class="m-0">
+            {{ row.active ? '启用' : '停用' }}
+          </Tag>
+        </template>
 
-      <!-- 操作列 -->
-      <template #action="{ row }">
-        <Space :size="4">
-          <a class="text-blue-500 hover:text-blue-600" @click="handleEdit(row)"
-            >编辑</a
-          >
-          <a
-            v-if="!row.isDefault"
-            class="text-blue-500 hover:text-blue-600"
-            @click="handleSetDefault(row)"
-          >
-            设为默认
-          </a>
-          <a
-            class="text-blue-500 hover:text-blue-600"
-            @click="handleToggle(row)"
-          >
-            {{ row.active ? '停用' : '启用' }}
-          </a>
-          <a
-            v-if="!row.isDefault"
-            class="text-red-500 hover:text-red-600"
-            @click="handleDelete(row)"
-          >
-            删除
-          </a>
-        </Space>
-      </template>
+        <!-- 操作列 -->
+        <template #action="{ row }">
+          <Space :size="4">
+            <a
+              class="text-blue-500 hover:text-blue-600"
+              @click="handleEdit(row)"
+              >编辑</a
+            >
+            <a
+              v-if="!row.isDefault"
+              class="text-blue-500 hover:text-blue-600"
+              @click="handleSetDefault(row)"
+            >
+              设为默认
+            </a>
+            <a
+              class="text-blue-500 hover:text-blue-600"
+              @click="handleToggle(row)"
+            >
+              {{ row.active ? '停用' : '启用' }}
+            </a>
+            <a
+              v-if="!row.isDefault"
+              class="text-red-500 hover:text-red-600"
+              @click="handleDelete(row)"
+            >
+              删除
+            </a>
+          </Space>
+        </template>
       </Grid>
     </Card>
 
@@ -383,7 +387,7 @@ function handleModalSuccess() {
 :deep(.vxe-grid),
 :deep(.vxe-table),
 :deep(.vxe-table--body-wrapper) {
-  max-height: none !important;
   height: auto !important;
+  max-height: none !important;
 }
 </style>

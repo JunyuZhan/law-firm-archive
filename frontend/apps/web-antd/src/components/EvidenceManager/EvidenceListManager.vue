@@ -1,7 +1,11 @@
 <script setup lang="ts">
 import type { EvidenceItem } from './types';
 
-import type { EvidenceDTO, EvidenceExportItem, EvidenceListDTO } from '#/api/evidence';
+import type {
+  EvidenceDTO,
+  EvidenceExportItem,
+  EvidenceListDTO,
+} from '#/api/evidence';
 
 /**
  * 证据整理管理组件
@@ -9,14 +13,29 @@ import type { EvidenceDTO, EvidenceExportItem, EvidenceListDTO } from '#/api/evi
  */
 import { ref, watch } from 'vue';
 
-import { Button, Card, Empty, message, Modal, Form, FormItem, Input, Select, SelectOption, Segmented, Spin, Tag, Popconfirm } from 'ant-design-vue';
+import {
+  Button,
+  Card,
+  Empty,
+  message,
+  Modal,
+  Form,
+  FormItem,
+  Input,
+  Select,
+  SelectOption,
+  Segmented,
+  Spin,
+  Tag,
+  Popconfirm,
+} from 'ant-design-vue';
 import { Plus, Trash, RotateCw } from '@vben/icons';
 
-import { 
-  createEvidenceList, 
+import {
+  createEvidenceList,
   deleteEvidenceList,
-  exportEvidenceList, 
-  getEvidenceByMatter, 
+  exportEvidenceList,
+  getEvidenceByMatter,
   getEvidenceListsByMatter,
   getEvidenceListDetail,
   EVIDENCE_LIST_TYPE_OPTIONS,
@@ -63,7 +82,7 @@ function getEvidencesForList(list: EvidenceListDTO): EvidenceItem[] {
     return [];
   }
   const idSet = new Set(idList);
-  return allEvidences.value.filter(e => idSet.has(e.id));
+  return allEvidences.value.filter((e) => idSet.has(e.id));
 }
 
 // 加载数据
@@ -77,12 +96,14 @@ async function loadData() {
       getEvidenceByMatter(props.matterId),
       getEvidenceListsByMatter(props.matterId),
     ]);
-    
+
     allEvidences.value = (evidences || []).map(mapEvidenceDTO);
-    
+
     // 获取每个清单的详情（包含 evidenceIdList）
     const detailedLists = await Promise.all(
-      (lists || []).map(list => getEvidenceListDetail(list.id).catch(() => list))
+      (lists || []).map((list) =>
+        getEvidenceListDetail(list.id).catch(() => list),
+      ),
     );
     evidenceLists.value = detailedLists;
   } catch (error: any) {
@@ -142,7 +163,7 @@ async function handleCreateList() {
     message.warning('请输入清单名称');
     return;
   }
-  
+
   try {
     await createEvidenceList({
       matterId: props.matterId,
@@ -175,7 +196,7 @@ async function handleDeleteList(listId: number) {
 async function handleRefreshList(listId: number) {
   try {
     const detail = await getEvidenceListDetail(listId);
-    const index = evidenceLists.value.findIndex(l => l.id === listId);
+    const index = evidenceLists.value.findIndex((l) => l.id === listId);
     if (index !== -1) {
       evidenceLists.value[index] = detail;
     }
@@ -221,16 +242,24 @@ async function handleExportList(list: EvidenceListDTO, format: 'pdf' | 'word') {
 
 // 获取类型名称
 function getTypeName(type?: string) {
-  return EVIDENCE_LIST_TYPE_OPTIONS.find(o => o.value === type)?.label || type || '未分类';
+  return (
+    EVIDENCE_LIST_TYPE_OPTIONS.find((o) => o.value === type)?.label ||
+    type ||
+    '未分类'
+  );
 }
 
 // 获取类型颜色
 function getTypeColor(type?: string) {
   switch (type) {
-    case 'SUBMISSION': return 'blue';
-    case 'EXCHANGE': return 'green';
-    case 'COURT': return 'orange';
-    default: return 'default';
+    case 'SUBMISSION':
+      return 'blue';
+    case 'EXCHANGE':
+      return 'green';
+    case 'COURT':
+      return 'orange';
+    default:
+      return 'default';
   }
 }
 
@@ -258,29 +287,35 @@ defineExpose({
       <div class="top-toolbar">
         <div class="left">
           <span class="title">📋 证据清单</span>
-          <Tag v-if="evidenceLists.length > 0" color="blue">{{ evidenceLists.length }} 个</Tag>
+          <Tag v-if="evidenceLists.length > 0" color="blue"
+            >{{ evidenceLists.length }} 个</Tag
+          >
         </div>
         <div class="right">
           <!-- 模式切换 -->
-          <Segmented v-model:value="editMode" :options="modeOptions" size="small" />
+          <Segmented
+            v-model:value="editMode"
+            :options="modeOptions"
+            size="small"
+          />
           <Button v-if="!readonly" type="primary" @click="openCreateModal">
-            <Plus class="h-4 w-4 mr-1" /> 新建清单
+            <Plus class="mr-1 h-4 w-4" /> 新建清单
           </Button>
         </div>
       </div>
 
       <!-- 无清单提示 -->
-      <Empty 
-        v-if="evidenceLists.length === 0" 
+      <Empty
+        v-if="evidenceLists.length === 0"
         description="暂无证据清单，点击上方按钮创建"
         style="margin: 40px 0"
       />
 
       <!-- 多个清单表格 -->
       <div v-else class="lists-container">
-        <Card 
-          v-for="list in evidenceLists" 
-          :key="list.id" 
+        <Card
+          v-for="list in evidenceLists"
+          :key="list.id"
           class="list-card"
           :bordered="true"
         >
@@ -293,12 +328,13 @@ defineExpose({
                   {{ getTypeName(list.listType) }}
                 </Tag>
                 <span class="list-meta">
-                  编号: {{ list.listNo }} | 证据: {{ list.evidenceIdList?.length || 0 }} 项
+                  编号: {{ list.listNo }} | 证据:
+                  {{ list.evidenceIdList?.length || 0 }} 项
                 </span>
               </div>
             </div>
           </template>
-          
+
           <!-- 清单操作按钮 -->
           <template #extra>
             <div class="list-actions">
@@ -356,16 +392,16 @@ defineExpose({
     >
       <Form layout="vertical" :model="createForm" style="margin-top: 16px">
         <FormItem label="清单名称" required>
-          <Input 
-            v-model:value="createForm.name" 
+          <Input
+            v-model:value="createForm.name"
             placeholder="如：一审原告证据清单、二审补充证据"
           />
         </FormItem>
         <FormItem label="清单类型">
           <Select v-model:value="createForm.listType">
-            <SelectOption 
-              v-for="opt in EVIDENCE_LIST_TYPE_OPTIONS" 
-              :key="opt.value" 
+            <SelectOption
+              v-for="opt in EVIDENCE_LIST_TYPE_OPTIONS"
+              :key="opt.value"
               :value="opt.value"
             >
               {{ opt.label }}
@@ -386,17 +422,17 @@ defineExpose({
 
 .top-toolbar {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  justify-content: space-between;
   padding-bottom: 16px;
+  margin-bottom: 16px;
   border-bottom: 1px solid #f0f0f0;
 }
 
 .top-toolbar .left {
   display: flex;
-  align-items: center;
   gap: 8px;
+  align-items: center;
 }
 
 .top-toolbar .title {
@@ -406,8 +442,8 @@ defineExpose({
 
 .top-toolbar .right {
   display: flex;
-  align-items: center;
   gap: 12px;
+  align-items: center;
 }
 
 .lists-container {
@@ -427,25 +463,25 @@ defineExpose({
 
 .list-header {
   display: flex;
-  align-items: center;
   gap: 12px;
+  align-items: center;
 }
 
 .list-info {
   display: flex;
-  align-items: center;
   gap: 8px;
+  align-items: center;
 }
 
 .list-name {
-  font-weight: 600;
   font-size: 15px;
+  font-weight: 600;
 }
 
 .list-meta {
-  color: #999;
   font-size: 12px;
   font-weight: normal;
+  color: #999;
 }
 
 .list-actions {

@@ -83,7 +83,9 @@ export function getPushRecords(params: {
  * 获取推送记录详情
  */
 export function getPushRecordById(id: number) {
-  return requestClient.get<PushRecordDTO>(`/matter/client-service/records/${id}`);
+  return requestClient.get<PushRecordDTO>(
+    `/matter/client-service/records/${id}`,
+  );
 }
 
 /**
@@ -107,10 +109,17 @@ export function getPushConfig(matterId: number, clientId: number) {
 /**
  * 更新推送配置
  */
-export function updatePushConfig(matterId: number, config: Partial<PushConfigDTO>) {
-  return requestClient.put<PushConfigDTO>('/matter/client-service/config', config, {
-    params: { matterId },
-  });
+export function updatePushConfig(
+  matterId: number,
+  config: Partial<PushConfigDTO>,
+) {
+  return requestClient.put<PushConfigDTO>(
+    '/matter/client-service/config',
+    config,
+    {
+      params: { matterId },
+    },
+  );
 }
 
 /**
@@ -202,23 +211,32 @@ export function getPendingClientFiles(matterId: number) {
  * 获取待同步文件数量
  */
 export function countPendingClientFiles(matterId: number) {
-  return requestClient.get<{ count: number }>('/matter/client-files/pending/count', {
-    params: { matterId },
-  });
+  return requestClient.get<{ count: number }>(
+    '/matter/client-files/pending/count',
+    {
+      params: { matterId },
+    },
+  );
 }
 
 /**
  * 同步文件到卷宗
  */
 export function syncClientFile(request: ClientFileSyncRequest) {
-  return requestClient.post<ClientFileDTO>('/matter/client-files/sync', request);
+  return requestClient.post<ClientFileDTO>(
+    '/matter/client-files/sync',
+    request,
+  );
 }
 
 /**
  * 批量同步文件
  */
 export function batchSyncClientFiles(requests: ClientFileSyncRequest[]) {
-  return requestClient.post<ClientFileDTO[]>('/matter/client-files/sync/batch', requests);
+  return requestClient.post<ClientFileDTO[]>(
+    '/matter/client-files/sync/batch',
+    requests,
+  );
 }
 
 /**

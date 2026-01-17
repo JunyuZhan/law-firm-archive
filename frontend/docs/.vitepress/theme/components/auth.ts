@@ -17,7 +17,10 @@ function canUseStorage(): boolean {
 /**
  * 存储token和过期时间
  */
-export function storeToken(token: string, expiryHours: number = DEFAULT_EXPIRY_HOURS): void {
+export function storeToken(
+  token: string,
+  expiryHours: number = DEFAULT_EXPIRY_HOURS,
+): void {
   if (!canUseStorage()) {
     return;
   }
@@ -127,7 +130,11 @@ function inferRoleFromToken(token: string): 'admin' | 'user' {
     const normalized = permissions
       .filter((p) => typeof p === 'string')
       .map((p) => (p as string).toLowerCase());
-    if (normalized.includes('*') || normalized.includes('all') || normalized.includes('admin')) {
+    if (
+      normalized.includes('*') ||
+      normalized.includes('all') ||
+      normalized.includes('admin')
+    ) {
       return 'admin';
     }
   }
@@ -177,14 +184,14 @@ export function handleTokenFromURL(): boolean {
     const role = inferRoleFromToken(token);
     storeToken(token);
     storeRole(role);
-    
+
     // 清除URL中的token参数（避免泄露）
     const newUrl = window.location.pathname + window.location.hash;
     window.history.replaceState({}, '', newUrl);
-    
+
     return true;
   }
-  
+
   return false;
 }
 
@@ -201,27 +208,33 @@ export function isAdminAuthenticated(): boolean {
 
 /**
  * 登录（文档站点自己的登录系统）
- * 
+ *
  * 密码配置方式：
  * 1. 在 frontend/docs/.env 文件中设置 VITE_DOCS_PASSWORD=你的密码
  * 2. 或在部署时通过环境变量设置
  * 3. 默认密码仅用于开发环境
  */
-export function loginWithCredentials(username: string, password: string): boolean {
+export function loginWithCredentials(
+  username: string,
+  password: string,
+): boolean {
   // 从环境变量获取凭证，未设置时使用默认值（仅开发环境）
   const validCredentials = {
     username: (import.meta as any).env?.VITE_DOCS_USERNAME || 'admin',
-    password: (import.meta as any).env?.VITE_DOCS_PASSWORD || 'lawfirm@2026'
+    password: (import.meta as any).env?.VITE_DOCS_PASSWORD || 'lawfirm@2026',
   };
 
-  if (username === validCredentials.username && password === validCredentials.password) {
+  if (
+    username === validCredentials.username &&
+    password === validCredentials.password
+  ) {
     // 生成一个简单的token（实际应用中应该使用更安全的生成方式）
     const token = `docs_${Date.now()}_${Math.random().toString(36).substr(2)}`;
     storeToken(token);
     storeRole('admin');
     return true;
   }
-  
+
   return false;
 }
 
@@ -232,6 +245,8 @@ export function logout(): void {
   clearToken();
   // 刷新页面以清除状态
   if (typeof window !== 'undefined') {
-    window.location.href = window.location.pathname.startsWith('/docs/') ? '/docs/' : '/';
+    window.location.href = window.location.pathname.startsWith('/docs/')
+      ? '/docs/'
+      : '/';
   }
 }

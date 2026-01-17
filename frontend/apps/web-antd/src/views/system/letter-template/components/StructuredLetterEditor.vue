@@ -99,7 +99,12 @@ function parseContent(content: string) {
       // 新格式：{ _structured: true, blocks: { ... } }
       Object.assign(blocks, parsed.blocks);
       return;
-    } else if (parsed.title || parsed.recipient || parsed.body || parsed.signature) {
+    } else if (
+      parsed.title ||
+      parsed.recipient ||
+      parsed.body ||
+      parsed.signature
+    ) {
       // 兼容旧格式：直接是 blocks 对象
       Object.assign(blocks, parsed);
       return;
@@ -131,7 +136,7 @@ watch(
       parseContent(newVal);
     }
   },
-  { immediate: true }
+  { immediate: true },
 );
 
 // 监听区块变化，输出内容
@@ -140,16 +145,24 @@ watch(
   () => {
     emit('update:modelValue', blocksToContent());
   },
-  { deep: true }
+  { deep: true },
 );
 
 // 在光标位置插入变量
 function insertVariable(
-  target: 'letterTitle' | 'letterNo' | 'recipient' | 'body' | 'firmName' | 'lawyerNames' | 'date' | 'contactInfo',
-  variable: string
+  target:
+    | 'letterTitle'
+    | 'letterNo'
+    | 'recipient'
+    | 'body'
+    | 'firmName'
+    | 'lawyerNames'
+    | 'date'
+    | 'contactInfo',
+  variable: string,
 ) {
   const varStr = `\${${variable}}`;
-  
+
   // 获取当前值
   let currentValue = '';
   if (target === 'letterTitle') {
@@ -169,13 +182,14 @@ function insertVariable(
   } else if (target === 'contactInfo') {
     currentValue = blocks.signature.contactInfo;
   }
-  
+
   // 获取记录的光标位置，如果没有记录则追加到末尾
   const cursorPos = cursorPositions.value[target] ?? currentValue.length;
-  
+
   // 在光标位置插入变量
-  const newValue = currentValue.slice(0, cursorPos) + varStr + currentValue.slice(cursorPos);
-  
+  const newValue =
+    currentValue.slice(0, cursorPos) + varStr + currentValue.slice(cursorPos);
+
   // 更新对应区块的值
   if (target === 'letterTitle') {
     blocks.title.letterTitle = newValue;
@@ -194,7 +208,7 @@ function insertVariable(
   } else if (target === 'contactInfo') {
     blocks.signature.contactInfo = newValue;
   }
-  
+
   // 更新光标位置（移到插入变量之后）
   cursorPositions.value[target] = cursorPos + varStr.length;
 }
@@ -202,60 +216,60 @@ function insertVariable(
 // 变量分组 - 按类别明确分类
 const variableGroups = computed(() => {
   const groups: Record<string, Array<{ label: string; value: string }>> = {
-    '函件信息': [],
+    函件信息: [],
     '项目/案件': [],
-    '委托人信息': [],
+    委托人信息: [],
     '律师/律所': [],
-    '收件单位': [],
-    '日期': [],
+    收件单位: [],
+    日期: [],
   };
 
   // 明确的分组映射
   const groupMapping: Record<string, string> = {
     // 函件信息
-    'letterNo': '函件信息',
-    'targetUnit': '收件单位',
-    'targetAddress': '收件单位',
-    
+    letterNo: '函件信息',
+    targetUnit: '收件单位',
+    targetAddress: '收件单位',
+
     // 项目/案件
-    'matterName': '项目/案件',
-    'matterNo': '项目/案件',
-    'caseType': '项目/案件',
-    'causeOfAction': '项目/案件',
-    'trialStage': '项目/案件',
-    'procedureStage': '项目/案件',
-    'opposingParty': '项目/案件',
-    'opposingPartyRole': '项目/案件',
-    'opposingPartyRoleName': '项目/案件',
-    'opposingLawyerName': '项目/案件',
-    'opposingLawyerFirm': '项目/案件',
-    'claimAmount': '项目/案件',
-    'jurisdictionCourt': '项目/案件',
-    
+    matterName: '项目/案件',
+    matterNo: '项目/案件',
+    caseType: '项目/案件',
+    causeOfAction: '项目/案件',
+    trialStage: '项目/案件',
+    procedureStage: '项目/案件',
+    opposingParty: '项目/案件',
+    opposingPartyRole: '项目/案件',
+    opposingPartyRoleName: '项目/案件',
+    opposingLawyerName: '项目/案件',
+    opposingLawyerFirm: '项目/案件',
+    claimAmount: '项目/案件',
+    jurisdictionCourt: '项目/案件',
+
     // 委托人信息
-    'clientName': '委托人信息',
-    'clientIdNumber': '委托人信息',
-    'clientAddress': '委托人信息',
-    'clientPhone': '委托人信息',
-    'clientEmail': '委托人信息',
-    'clientRole': '委托人信息',
-    'clientRoleName': '委托人信息',
-    'legalRepresentative': '委托人信息',
-    'creditCode': '委托人信息',
-    
+    clientName: '委托人信息',
+    clientIdNumber: '委托人信息',
+    clientAddress: '委托人信息',
+    clientPhone: '委托人信息',
+    clientEmail: '委托人信息',
+    clientRole: '委托人信息',
+    clientRoleName: '委托人信息',
+    legalRepresentative: '委托人信息',
+    creditCode: '委托人信息',
+
     // 律师/律所
-    'lawyerNames': '律师/律所',
-    'lawyerLicenseNo': '律师/律所',
-    'firmName': '律师/律所',
-    'firmAddress': '律师/律所',
-    'firmPhone': '律师/律所',
-    'firmLicense': '律师/律所',
-    'firmLegalPerson': '律师/律所',
-    
+    lawyerNames: '律师/律所',
+    lawyerLicenseNo: '律师/律所',
+    firmName: '律师/律所',
+    firmAddress: '律师/律所',
+    firmPhone: '律师/律所',
+    firmLicense: '律师/律所',
+    firmLegalPerson: '律师/律所',
+
     // 日期
-    'date': '日期',
-    'currentDate': '日期',
-    'currentYear': '日期',
+    date: '日期',
+    currentDate: '日期',
+    currentYear: '日期',
   };
 
   props.variables?.forEach((v) => {
@@ -274,7 +288,11 @@ const variableGroups = computed(() => {
         if (targetGroup) {
           targetGroup.push(v);
         }
-      } else if (v.value.startsWith('matter') || v.value.includes('case') || v.value.includes('opposing')) {
+      } else if (
+        v.value.startsWith('matter') ||
+        v.value.includes('case') ||
+        v.value.includes('opposing')
+      ) {
         const targetGroup = groups['项目/案件'];
         if (targetGroup) {
           targetGroup.push(v);
@@ -318,7 +336,7 @@ const variableGroups = computed(() => {
         <template #extra>
           <Tag color="blue">函件标题</Tag>
         </template>
-        
+
         <div class="block-content">
           <div class="field-group">
             <div class="field-header">
@@ -327,8 +345,10 @@ const variableGroups = computed(() => {
                 <Button size="small" type="link">+ 插入变量</Button>
                 <template #overlay>
                   <Menu>
-                    <MenuItem 
-                      v-for="v in (variableGroups['律师/律所'] || []).filter(v => ['firmName', 'lawyerNames'].includes(v.value))" 
+                    <MenuItem
+                      v-for="v in (variableGroups['律师/律所'] || []).filter(
+                        (v) => ['firmName', 'lawyerNames'].includes(v.value),
+                      )"
                       :key="v.value"
                       @click="insertVariable('letterTitle', v.value)"
                     >
@@ -347,12 +367,12 @@ const variableGroups = computed(() => {
               @keyup="(e: Event) => handleSelect('letterTitle', e)"
             />
             <div class="variable-hint">
-              <span style="color: #999; font-size: 12px;">
+              <span style="font-size: 12px; color: #999">
                 💡 可以在标题中使用变量，如：${firmName}、${lawyerNames} 等
               </span>
             </div>
           </div>
-          
+
           <div class="field-group">
             <div class="field-header">
               <label>函件编号（可选，将显示在标题下方居中）</label>
@@ -360,8 +380,8 @@ const variableGroups = computed(() => {
                 <Button size="small" type="link">+ 插入变量</Button>
                 <template #overlay>
                   <Menu>
-                    <MenuItem 
-                      v-for="v in variableGroups['函件信息']" 
+                    <MenuItem
+                      v-for="v in variableGroups['函件信息']"
                       :key="v.value"
                       @click="insertVariable('letterNo', v.value)"
                     >
@@ -379,7 +399,7 @@ const variableGroups = computed(() => {
               @keyup="(e: Event) => handleSelect('letterNo', e)"
             />
             <div class="variable-hint">
-              <span style="color: #999; font-size: 12px;">
+              <span style="font-size: 12px; color: #999">
                 💡 函件编号由系统自动生成，打印时自动载入。常用变量：${letterNo}
               </span>
             </div>
@@ -392,7 +412,7 @@ const variableGroups = computed(() => {
         <template #extra>
           <Tag color="green">收件单位</Tag>
         </template>
-        
+
         <div class="block-content">
           <div class="field-group">
             <div class="field-header">
@@ -401,8 +421,8 @@ const variableGroups = computed(() => {
                 <Button size="small" type="link">+ 插入变量</Button>
                 <template #overlay>
                   <Menu>
-                    <MenuItem 
-                      v-for="v in variableGroups['收件单位']" 
+                    <MenuItem
+                      v-for="v in variableGroups['收件单位']"
                       :key="v.value"
                       @click="insertVariable('recipient', v.value)"
                     >
@@ -429,18 +449,18 @@ const variableGroups = computed(() => {
         <template #extra>
           <Tag color="orange">正文</Tag>
         </template>
-        
+
         <div class="block-content">
           <div class="field-group">
             <label>正文内容（函件的主要内容）</label>
-            
+
             <!-- 变量标签横向排列 -->
             <div class="variables-panel">
               <template v-for="(vars, group) in variableGroups" :key="group">
                 <div v-if="vars.length > 0" class="variable-group">
                   <span class="group-label">{{ group }}：</span>
-                  <Tag 
-                    v-for="v in vars" 
+                  <Tag
+                    v-for="v in vars"
                     :key="v.value"
                     color="cyan"
                     class="var-tag"
@@ -451,7 +471,7 @@ const variableGroups = computed(() => {
                 </div>
               </template>
             </div>
-            
+
             <Textarea
               v-model:value="blocks.body"
               :rows="15"
@@ -469,7 +489,7 @@ const variableGroups = computed(() => {
         <template #extra>
           <Tag color="purple">落款</Tag>
         </template>
-        
+
         <div class="block-content">
           <div class="field-group">
             <label>律所名称</label>
@@ -514,7 +534,7 @@ const variableGroups = computed(() => {
               @keyup="(e: Event) => handleSelect('contactInfo', e)"
             />
             <div class="variable-hint">
-              <span style="color: #999; font-size: 12px;">
+              <span style="font-size: 12px; color: #999">
                 💡 联系方式将显示在落款区域
               </span>
             </div>
@@ -586,8 +606,8 @@ const variableGroups = computed(() => {
 .variable-group {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
   gap: 6px;
+  align-items: center;
   margin-bottom: 8px;
 }
 
@@ -596,10 +616,10 @@ const variableGroups = computed(() => {
 }
 
 .group-label {
+  min-width: 80px;
   font-size: 12px;
   font-weight: 500;
   color: #52c41a;
-  min-width: 80px;
 }
 
 .var-tag {

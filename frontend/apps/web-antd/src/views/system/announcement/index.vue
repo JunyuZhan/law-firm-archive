@@ -68,17 +68,40 @@ const formSchema: VbenFormSchema[] = [
 const gridColumns: any[] = [
   { title: '标题', field: 'title', minWidth: 200, showOverflow: true },
   { title: '类型', field: 'type', width: 100, slots: { default: 'type' } },
-  { title: '优先级', field: 'priority', width: 80, slots: { default: 'priority' } },
+  {
+    title: '优先级',
+    field: 'priority',
+    width: 80,
+    slots: { default: 'priority' },
+  },
   { title: '状态', field: 'status', width: 100, slots: { default: 'status' } },
   { title: '发布人', field: 'publisherName', width: 100 },
-  { title: '发布时间', field: 'publishedAt', width: 160, slots: { default: 'publishedAt' } },
-  { title: '过期时间', field: 'expiredAt', width: 160, slots: { default: 'expiredAt' } },
+  {
+    title: '发布时间',
+    field: 'publishedAt',
+    width: 160,
+    slots: { default: 'publishedAt' },
+  },
+  {
+    title: '过期时间',
+    field: 'expiredAt',
+    width: 160,
+    slots: { default: 'expiredAt' },
+  },
   { title: '浏览量', field: 'viewCount', width: 80, align: 'center' },
-  { title: '操作', field: 'action', width: 200, fixed: 'right', slots: { default: 'action' } },
+  {
+    title: '操作',
+    field: 'action',
+    width: 200,
+    fixed: 'right',
+    slots: { default: 'action' },
+  },
 ];
 
 // 加载数据
-async function loadData(params: Record<string, any> & { page: number; pageSize: number }) {
+async function loadData(
+  params: Record<string, any> & { page: number; pageSize: number },
+) {
   const res = await getAnnouncementList({
     pageNum: params.page,
     pageSize: params.pageSize,
@@ -270,7 +293,9 @@ function getStatusName(status: string) {
 
 function getPriorityName(priority: number | undefined) {
   if (priority === undefined || priority === null) return '普通';
-  const option = ANNOUNCEMENT_PRIORITY_OPTIONS.find((o) => o.value === priority);
+  const option = ANNOUNCEMENT_PRIORITY_OPTIONS.find(
+    (o) => o.value === priority,
+  );
   return option?.label || '普通';
 }
 
@@ -414,7 +439,10 @@ function formatDateTime(date: string | null | undefined) {
                 {{ detailData.typeName || getTypeName(detailData.type) }}
               </Tag>
               <Tag :color="getPriorityColor(detailData.priority)">
-                {{ detailData.priorityName || getPriorityName(detailData.priority) }}
+                {{
+                  detailData.priorityName ||
+                  getPriorityName(detailData.priority)
+                }}
               </Tag>
               <Tag :color="getStatusColor(detailData.status)">
                 {{ detailData.statusName || getStatusName(detailData.status) }}
@@ -424,21 +452,23 @@ function formatDateTime(date: string | null | undefined) {
 
           <h2 style="margin-bottom: 16px">{{ detailData.title }}</h2>
 
-          <div style="color: #666; margin-bottom: 16px; font-size: 13px">
+          <div style="margin-bottom: 16px; font-size: 13px; color: #666">
             <Space split="|">
               <span>发布人：{{ detailData.publisherName || '-' }}</span>
-              <span>发布时间：{{ formatDateTime(detailData.publishedAt) }}</span>
+              <span
+                >发布时间：{{ formatDateTime(detailData.publishedAt) }}</span
+              >
               <span>浏览量：{{ detailData.viewCount || 0 }}</span>
             </Space>
           </div>
 
           <div
             style="
-              background: #fafafa;
               padding: 16px;
-              border-radius: 4px;
-              white-space: pre-wrap;
               line-height: 1.8;
+              white-space: pre-wrap;
+              background: #fafafa;
+              border-radius: 4px;
             "
           >
             {{ detailData.content }}
@@ -446,7 +476,7 @@ function formatDateTime(date: string | null | undefined) {
 
           <div
             v-if="detailData.expiredAt"
-            style="margin-top: 16px; color: #999; font-size: 12px"
+            style="margin-top: 16px; font-size: 12px; color: #999"
           >
             过期时间：{{ formatDateTime(detailData.expiredAt) }}
           </div>

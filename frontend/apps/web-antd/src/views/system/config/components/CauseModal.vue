@@ -56,34 +56,34 @@ const formSchema = computed<VbenFormSchema[]>(() => [
       disabled: isEdit.value, // 编辑时不允许修改代码
     },
   },
-    {
-      fieldName: 'name',
-      label: '案由名称',
-      component: 'Input',
-      rules: 'required',
-      componentProps: {
-        placeholder: '请输入案由名称',
-        maxlength: 200,
-      },
+  {
+    fieldName: 'name',
+    label: '案由名称',
+    component: 'Input',
+    rules: 'required',
+    componentProps: {
+      placeholder: '请输入案由名称',
+      maxlength: 200,
     },
-    {
-      fieldName: 'categoryCode',
-      label: '分类代码',
-      component: 'Input',
-      componentProps: {
-        placeholder: '请输入分类代码（如：P1, C1, A1）',
-        maxlength: 20,
-      },
+  },
+  {
+    fieldName: 'categoryCode',
+    label: '分类代码',
+    component: 'Input',
+    componentProps: {
+      placeholder: '请输入分类代码（如：P1, C1, A1）',
+      maxlength: 20,
     },
-    {
-      fieldName: 'categoryName',
-      label: '分类名称',
-      component: 'Input',
-      componentProps: {
-        placeholder: '请输入分类名称',
-        maxlength: 100,
-      },
+  },
+  {
+    fieldName: 'categoryName',
+    label: '分类名称',
+    component: 'Input',
+    componentProps: {
+      placeholder: '请输入分类名称',
+      maxlength: 100,
     },
+  },
   {
     fieldName: 'parentCode',
     label: '父级代码',
@@ -107,16 +107,16 @@ const formSchema = computed<VbenFormSchema[]>(() => [
       disabled: true, // 层级由父级决定
     },
   },
-    {
-      fieldName: 'sortOrder',
-      label: '排序号',
-      component: 'InputNumber',
-      componentProps: {
-        placeholder: '自动生成或手动输入',
-        min: 0,
-        style: { width: '100%' },
-      },
+  {
+    fieldName: 'sortOrder',
+    label: '排序号',
+    component: 'InputNumber',
+    componentProps: {
+      placeholder: '自动生成或手动输入',
+      min: 0,
+      style: { width: '100%' },
     },
+  },
   {
     fieldName: 'isActive',
     label: '是否启用',
@@ -206,12 +206,12 @@ async function handleSubmit() {
     await formApi.validate();
     // 再获取表单值
     const formValues = (await formApi.getValues()) as any;
-    
+
     // 层级为1时，自动清空父级代码
     if (formValues.level === 1) {
       formValues.parentCode = undefined;
     }
-    
+
     const command = {
       ...formValues,
       causeType: props.causeType,

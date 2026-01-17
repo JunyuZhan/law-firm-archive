@@ -359,7 +359,9 @@ onMounted(() => {
           />
           <Button @click="handleSearch">查询</Button>
         </Space>
-        <Button type="primary" :block="isMobile" @click="handleAdd"><Plus />新建采购申请</Button>
+        <Button type="primary" :block="isMobile" @click="handleAdd"
+          ><Plus />新建采购申请</Button
+        >
       </div>
 
       <Table

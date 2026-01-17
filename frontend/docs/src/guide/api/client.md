@@ -8,14 +8,14 @@ GET /api/client/list
 
 查询参数：
 
-| 参数     | 类型   | 说明         |
-| -------- | ------ | ------------ |
-| pageNum  | number | 页码         |
-| pageSize | number | 每页数量     |
-| name     | string | 客户名称     |
-| type     | string | 客户类型     |
-| industry | string | 所属行业     |
-| status   | string | 客户状态     |
+| 参数     | 类型   | 说明     |
+| -------- | ------ | -------- |
+| pageNum  | number | 页码     |
+| pageSize | number | 每页数量 |
+| name     | string | 客户名称 |
+| type     | string | 客户类型 |
+| industry | string | 所属行业 |
+| status   | string | 客户状态 |
 
 ## 客户详情
 
@@ -58,11 +58,11 @@ DELETE /api/client/{id}
 
 ## 客户类型
 
-| 值          | 说明   |
-| ----------- | ------ |
-| INDIVIDUAL  | 个人   |
-| ENTERPRISE  | 企业   |
-| GOVERNMENT  | 政府   |
+| 值          | 说明     |
+| ----------- | -------- |
+| INDIVIDUAL  | 个人     |
+| ENTERPRISE  | 企业     |
+| GOVERNMENT  | 政府     |
 | INSTITUTION | 事业单位 |
 
 ## 客户状态
@@ -89,6 +89,6 @@ GET /api/client/{id}/contracts
 
 ## 文档更新记录
 
-| 更新时间 | 更新内容 | 操作人 |
-|----------|----------|--------|
+| 更新时间   | 更新内容             | 操作人       |
+| ---------- | -------------------- | ------------ |
 | 2026-01-11 | 创建客户接口文档骨架 | AI Assistant |

@@ -184,9 +184,9 @@ function handleDelete(item: CardItem) {
 
 <style scoped>
 .mobile-card-list {
+  min-height: 200px;
   padding: 12px;
   background: #f5f5f5;
-  min-height: 200px;
 }
 
 .card-container {
@@ -198,7 +198,7 @@ function handleDelete(item: CardItem) {
 .mobile-card-item {
   background: #fff;
   border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 8%);
 }
 
 .mobile-card-item :deep(.ant-card-body) {
@@ -207,17 +207,17 @@ function handleDelete(item: CardItem) {
 
 .card-header {
   display: flex;
-  justify-content: space-between;
   align-items: flex-start;
+  justify-content: space-between;
   margin-bottom: 8px;
 }
 
 .card-title {
+  flex: 1;
   font-size: 15px;
   font-weight: 500;
-  color: #262626;
-  flex: 1;
   line-height: 1.4;
+  color: #262626;
   word-break: break-all;
 }
 
@@ -227,15 +227,15 @@ function handleDelete(item: CardItem) {
 }
 
 .card-subtitle {
+  margin-bottom: 8px;
   font-size: 13px;
   color: #8c8c8c;
-  margin-bottom: 8px;
 }
 
 .card-body {
   font-size: 13px;
-  color: #595959;
   line-height: 1.6;
+  color: #595959;
 }
 
 .info-row {
@@ -248,8 +248,8 @@ function handleDelete(item: CardItem) {
 }
 
 .info-label {
-  color: #8c8c8c;
   flex-shrink: 0;
+  color: #8c8c8c;
 }
 
 .info-value {
@@ -259,11 +259,11 @@ function handleDelete(item: CardItem) {
 
 .card-footer {
   display: flex;
-  justify-content: flex-end;
   flex-wrap: wrap;
   gap: 4px;
-  margin-top: 12px;
+  justify-content: flex-end;
   padding-top: 12px;
+  margin-top: 12px;
   border-top: 1px solid #f0f0f0;
 }
 

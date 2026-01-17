@@ -61,15 +61,32 @@ const formData = reactive<Partial<CreateDepartmentCommand> & { id?: number }>({
 // 表格列（响应式）
 const columns = computed(() => {
   const baseColumns = [
-    { title: '部门名称', dataIndex: 'name', key: 'name', width: isMobile.value ? 150 : 200, mobileShow: true },
-    { title: '负责人', dataIndex: 'leaderName', key: 'leaderName', width: 120, mobileShow: true },
+    {
+      title: '部门名称',
+      dataIndex: 'name',
+      key: 'name',
+      width: isMobile.value ? 150 : 200,
+      mobileShow: true,
+    },
+    {
+      title: '负责人',
+      dataIndex: 'leaderName',
+      key: 'leaderName',
+      width: 120,
+      mobileShow: true,
+    },
     { title: '排序', dataIndex: 'sortOrder', key: 'sortOrder', width: 80 },
     { title: '创建时间', dataIndex: 'createdAt', key: 'createdAt', width: 160 },
-    { title: '操作', key: 'action', width: isMobile.value ? 120 : 220, mobileShow: true },
+    {
+      title: '操作',
+      key: 'action',
+      width: isMobile.value ? 120 : 220,
+      mobileShow: true,
+    },
   ];
-  
+
   if (isMobile.value) {
-    return baseColumns.filter(col => col.mobileShow === true);
+    return baseColumns.filter((col) => col.mobileShow === true);
   }
   return baseColumns;
 });

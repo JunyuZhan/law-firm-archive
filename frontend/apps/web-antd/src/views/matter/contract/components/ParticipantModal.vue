@@ -3,7 +3,15 @@ import type { ContractParticipantDTO } from '#/api/finance/types';
 
 import { ref, watch } from 'vue';
 
-import { Form, FormItem, Input, InputNumber, Modal, Select, Textarea } from 'ant-design-vue';
+import {
+  Form,
+  FormItem,
+  Input,
+  InputNumber,
+  Modal,
+  Select,
+  Textarea,
+} from 'ant-design-vue';
 
 import { UserTreeSelect } from '#/components/UserTreeSelect';
 
@@ -113,7 +121,11 @@ defineExpose({
           :disabled="!!participant?.id"
         />
       </FormItem>
-      <FormItem label="角色" name="role" :rules="[{ required: true, message: '请选择角色' }]">
+      <FormItem
+        label="角色"
+        name="role"
+        :rules="[{ required: true, message: '请选择角色' }]"
+      >
         <Select
           v-model:value="formData.role"
           :options="roleOptions"

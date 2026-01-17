@@ -37,7 +37,12 @@ defineOptions({ name: 'FloatingTimer' });
 const timerSession = ref<TimerSessionDTO | null>(null);
 const isRunning = computed(() => timerSession.value?.status === 'RUNNING');
 const isPaused = computed(() => timerSession.value?.status === 'PAUSED');
-const isIdle = computed(() => !timerSession.value || timerSession.value.status === 'IDLE' || timerSession.value.status === 'STOPPED');
+const isIdle = computed(
+  () =>
+    !timerSession.value ||
+    timerSession.value.status === 'IDLE' ||
+    timerSession.value.status === 'STOPPED',
+);
 
 // 显示状态
 const isMinimized = ref(true);
@@ -238,11 +243,18 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div v-if="isVisible" class="floating-timer" :class="{ minimized: isMinimized }">
+  <div
+    v-if="isVisible"
+    class="floating-timer"
+    :class="{ minimized: isMinimized }"
+  >
     <!-- 最小化状态 -->
     <div v-if="isMinimized" class="timer-mini" @click="toggleMinimize">
       <Tooltip title="展开计时器">
-        <div class="timer-icon" :class="{ running: isRunning, paused: isPaused }">
+        <div
+          class="timer-icon"
+          :class="{ running: isRunning, paused: isPaused }"
+        >
           <ClockCircleOutlined />
           <span v-if="!isIdle" class="mini-time">{{ displayTime }}</span>
         </div>
@@ -285,23 +297,13 @@ onUnmounted(() => {
         </template>
         <template v-else>
           <Space>
-            <Button
-              v-if="isRunning"
-              type="default"
-              @click="handlePause"
-            >
+            <Button v-if="isRunning" type="default" @click="handlePause">
               <PauseCircleOutlined /> 暂停
             </Button>
-            <Button
-              v-if="isPaused"
-              type="primary"
-              @click="handleResume"
-            >
+            <Button v-if="isPaused" type="primary" @click="handleResume">
               <PlayCircleOutlined /> 继续
             </Button>
-            <Button danger @click="handleStop">
-              <StopOutlined /> 停止
-            </Button>
+            <Button danger @click="handleStop"> <StopOutlined /> 停止 </Button>
           </Space>
         </template>
       </div>
@@ -342,14 +344,14 @@ onUnmounted(() => {
 <style scoped>
 .floating-timer {
   position: fixed;
-  bottom: 24px;
   right: 24px;
+  bottom: 24px;
   z-index: 1000;
 }
 
 .floating-timer.minimized {
-  bottom: 24px;
   right: 24px;
+  bottom: 24px;
 }
 
 .timer-mini {
@@ -358,51 +360,51 @@ onUnmounted(() => {
 
 .timer-icon {
   display: flex;
-  align-items: center;
   gap: 8px;
+  align-items: center;
   padding: 12px 16px;
   background: #fff;
   border-radius: 24px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 15%);
   transition: all 0.3s;
 }
 
 .timer-icon:hover {
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 6px 16px rgb(0 0 0 / 20%);
 }
 
 .timer-icon.running {
-  background: linear-gradient(135deg, #52c41a, #73d13d);
   color: #fff;
+  background: linear-gradient(135deg, #52c41a, #73d13d);
 }
 
 .timer-icon.paused {
-  background: linear-gradient(135deg, #faad14, #ffc53d);
   color: #fff;
+  background: linear-gradient(135deg, #faad14, #ffc53d);
 }
 
 .mini-time {
-  font-family: 'Monaco', 'Consolas', monospace;
+  font-family: Monaco, Consolas, monospace;
   font-size: 14px;
   font-weight: 500;
 }
 
 .timer-card {
   width: 280px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 15%);
 }
 
 .timer-display {
-  text-align: center;
   margin-bottom: 16px;
+  text-align: center;
 }
 
 .timer-display .time {
-  font-family: 'Monaco', 'Consolas', monospace;
+  font-family: Monaco, Consolas, monospace;
   font-size: 32px;
   font-weight: 600;
-  color: #333;
   line-height: 1.2;
+  color: #333;
 }
 
 .timer-display .time.running {
@@ -415,19 +417,19 @@ onUnmounted(() => {
 
 .timer-display .matter-name {
   margin-top: 8px;
-  font-size: 13px;
-  color: #666;
   overflow: hidden;
   text-overflow: ellipsis;
+  font-size: 13px;
+  color: #666;
   white-space: nowrap;
 }
 
 .timer-display .description {
   margin-top: 4px;
-  font-size: 12px;
-  color: #999;
   overflow: hidden;
   text-overflow: ellipsis;
+  font-size: 12px;
+  color: #999;
   white-space: nowrap;
 }
 

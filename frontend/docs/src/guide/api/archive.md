@@ -10,15 +10,15 @@ GET /api/archive/list
 
 查询参数：
 
-| 参数         | 类型   | 说明         |
-| ------------ | ------ | ------------ |
-| pageNum      | number | 页码         |
-| pageSize     | number | 每页数量     |
-| archiveNo    | string | 档案编号     |
-| matterId     | number | 项目ID       |
-| archiveType  | string | 档案类型     |
-| status       | string | 档案状态     |
-| keeperId     | number | 保管人ID     |
+| 参数        | 类型   | 说明     |
+| ----------- | ------ | -------- |
+| pageNum     | number | 页码     |
+| pageSize    | number | 每页数量 |
+| archiveNo   | string | 档案编号 |
+| matterId    | number | 项目ID   |
+| archiveType | string | 档案类型 |
+| status      | string | 档案状态 |
+| keeperId    | number | 保管人ID |
 
 ## 档案详情
 
@@ -61,23 +61,23 @@ DELETE /api/archive/{id}
 
 ## 档案类型
 
-| 值            | 说明       |
-| ------------- | ---------- |
-| CASE_FILE     | 案件卷宗   |
-| CONTRACT_FILE | 合同档案   |
-| FINANCE_FILE  | 财务档案   |
-| ADMIN_FILE    | 行政档案   |
-| OTHER         | 其他       |
+| 值            | 说明     |
+| ------------- | -------- |
+| CASE_FILE     | 案件卷宗 |
+| CONTRACT_FILE | 合同档案 |
+| FINANCE_FILE  | 财务档案 |
+| ADMIN_FILE    | 行政档案 |
+| OTHER         | 其他     |
 
 ## 档案状态
 
-| 值            | 说明       |
-| ------------- | ---------- |
-| IN_STORAGE    | 在库       |
-| BORROWED      | 已借出     |
-| UNDER_REVIEW  | 查阅中     |
-| TRANSFERRED   | 已移交     |
-| DESTROYED     | 已销毁     |
+| 值           | 说明   |
+| ------------ | ------ |
+| IN_STORAGE   | 在库   |
+| BORROWED     | 已借出 |
+| UNDER_REVIEW | 查阅中 |
+| TRANSFERRED  | 已移交 |
+| DESTROYED    | 已销毁 |
 
 ## 借阅申请
 
@@ -174,13 +174,13 @@ GET /api/archive/borrow/list
 
 查询参数：
 
-| 参数         | 类型   | 说明         |
-| ------------ | ------ | ------------ |
-| pageNum      | number | 页码         |
-| pageSize     | number | 每页数量     |
-| archiveId    | number | 档案ID       |
-| borrowerId   | number | 借阅人ID     |
-| status       | string | 借阅状态     |
+| 参数       | 类型   | 说明     |
+| ---------- | ------ | -------- |
+| pageNum    | number | 页码     |
+| pageSize   | number | 每页数量 |
+| archiveId  | number | 档案ID   |
+| borrowerId | number | 借阅人ID |
+| status     | string | 借阅状态 |
 
 ## 销毁记录列表
 
@@ -192,6 +192,6 @@ GET /api/archive/destroy/list
 
 ## 文档更新记录
 
-| 更新时间 | 更新内容 | 操作人 |
-|----------|----------|--------|
+| 更新时间   | 更新内容             | 操作人       |
+| ---------- | -------------------- | ------------ |
 | 2026-01-11 | 创建档案接口文档骨架 | AI Assistant |

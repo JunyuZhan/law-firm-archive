@@ -228,25 +228,27 @@ defineExpose({ open });
       <template v-if="businessSnapshotData">
         <div
           style="
-            background: #f5f7fa;
             padding: 12px 16px;
-            border-radius: 6px;
             margin-bottom: 16px;
+            background: #f5f7fa;
+            border-radius: 6px;
           "
         >
           <div
             style="
-              font-weight: 500;
               margin-bottom: 8px;
-              color: #303133;
               font-size: 14px;
+              font-weight: 500;
+              color: #303133;
             "
           >
             业务详情
           </div>
 
           <!-- 出函申请详情 -->
-          <template v-if="currentApproval?.businessType === 'LETTER_APPLICATION'">
+          <template
+            v-if="currentApproval?.businessType === 'LETTER_APPLICATION'"
+          >
             <Descriptions :column="2" size="small">
               <DescriptionsItem label="函件类型">
                 {{ businessSnapshotData.letterTypeName || '-' }}
@@ -300,7 +302,9 @@ defineExpose({ open });
           </template>
 
           <!-- 项目结案详情 -->
-          <template v-else-if="currentApproval?.businessType === 'MATTER_CLOSE'">
+          <template
+            v-else-if="currentApproval?.businessType === 'MATTER_CLOSE'"
+          >
             <Descriptions :column="2" size="small">
               <DescriptionsItem label="项目名称" :span="2">
                 {{ businessSnapshotData.matterName || '-' }}
@@ -316,11 +320,8 @@ defineExpose({ open });
 
           <!-- 通用展示（其他类型） -->
           <template v-else>
-            <div style="font-size: 13px; color: #606266; line-height: 1.8">
-              <template
-                v-for="(value, key) in businessSnapshotData"
-                :key="key"
-              >
+            <div style="font-size: 13px; line-height: 1.8; color: #606266">
+              <template v-for="(value, key) in businessSnapshotData" :key="key">
                 <div v-if="value && typeof value !== 'object'">
                   <span style="color: #909399">{{ key }}：</span>
                   {{ value }}

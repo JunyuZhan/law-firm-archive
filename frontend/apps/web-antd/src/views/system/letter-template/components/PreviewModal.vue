@@ -12,7 +12,10 @@ import { getConfigValue } from '#/api/system';
 
 import { createLetterSampleData } from '../constants/sample-data';
 import { decodeHtmlEntities } from '../../contract-template/utils/print-formatter';
-import { isStructuredLetterContent, formatStructuredLetterForPreview } from '../utils/letter-formatter';
+import {
+  isStructuredLetterContent,
+  formatStructuredLetterForPreview,
+} from '../utils/letter-formatter';
 
 const previewContent = ref('');
 const previewTitle = ref('');
@@ -102,7 +105,10 @@ async function open(record: LetterTemplateDTO) {
   // 检查是否为结构化格式
   if (isStructuredLetterContent(content)) {
     // 结构化格式：使用预览格式化函数（函数内部已处理变量替换和高亮样式）
-    previewContent.value = formatStructuredLetterForPreview(content, sampleData.value);
+    previewContent.value = formatStructuredLetterForPreview(
+      content,
+      sampleData.value,
+    );
   } else {
     // 传统格式：直接替换变量
     Object.entries(sampleData.value).forEach(([key, value]) => {

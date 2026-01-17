@@ -84,7 +84,13 @@ const formData = reactive<Partial<CreateRoleCommand> & { id?: number }>({
 const columns = computed(() => {
   const baseColumns = [
     { title: '角色编码', dataIndex: 'roleCode', key: 'roleCode', width: 150 },
-    { title: '角色名称', dataIndex: 'roleName', key: 'roleName', width: 150, mobileShow: true },
+    {
+      title: '角色名称',
+      dataIndex: 'roleName',
+      key: 'roleName',
+      width: 150,
+      mobileShow: true,
+    },
     {
       title: '数据范围',
       dataIndex: 'dataScopeName',
@@ -100,11 +106,17 @@ const columns = computed(() => {
     },
     { title: '排序', dataIndex: 'sortOrder', key: 'sortOrder', width: 80 },
     { title: '创建时间', dataIndex: 'createdAt', key: 'createdAt', width: 160 },
-    { title: '操作', key: 'action', width: isMobile.value ? 120 : 200, fixed: 'right' as const, mobileShow: true },
+    {
+      title: '操作',
+      key: 'action',
+      width: isMobile.value ? 120 : 200,
+      fixed: 'right' as const,
+      mobileShow: true,
+    },
   ];
-  
+
   if (isMobile.value) {
-    return baseColumns.filter(col => col.mobileShow === true);
+    return baseColumns.filter((col) => col.mobileShow === true);
   }
   return baseColumns;
 });

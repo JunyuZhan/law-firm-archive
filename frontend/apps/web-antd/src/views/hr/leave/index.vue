@@ -97,7 +97,13 @@ function getGridColumns(): VxeGridProps['columns'] {
     { title: '结束日期', field: 'endDate', width: 120 },
     { title: '请假天数', field: 'leaveDays', width: 100, mobileShow: true },
     { title: '请假原因', field: 'reason', minWidth: 200, showOverflow: true },
-    { title: '状态', field: 'status', width: 100, slots: { default: 'status' }, mobileShow: true },
+    {
+      title: '状态',
+      field: 'status',
+      width: 100,
+      slots: { default: 'status' },
+      mobileShow: true,
+    },
     { title: '审批人', field: 'approverName', width: 100 },
     {
       title: '操作',
@@ -108,9 +114,9 @@ function getGridColumns(): VxeGridProps['columns'] {
       mobileShow: true,
     },
   ];
-  
+
   if (isMobile.value) {
-    return baseColumns.filter(col => col.mobileShow === true);
+    return baseColumns.filter((col) => col.mobileShow === true);
   }
   return baseColumns;
 }

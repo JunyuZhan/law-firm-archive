@@ -39,7 +39,18 @@ const isArbitration = computed(() => {
 
 // 年份转中文
 function toChineseYear(year: number): string {
-  const cnNumbers = ['〇', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
+  const cnNumbers = [
+    '〇',
+    '一',
+    '二',
+    '三',
+    '四',
+    '五',
+    '六',
+    '七',
+    '八',
+    '九',
+  ];
   return String(year)
     .split('')
     .map((c) => cnNumbers[Number.parseInt(c)])
@@ -169,7 +180,7 @@ const containerStyle = computed(() => {
           </tr>
           <!-- 案由 -->
           <tr>
-            <td class="label">案    由</td>
+            <td class="label">案 由</td>
             <td class="value" colspan="3">
               {{ matter?.causeOfAction || '' }}
             </td>
@@ -188,7 +199,9 @@ const containerStyle = computed(() => {
             <td class="value" colspan="2">{{ archive.clientName || '' }}</td>
           </tr>
           <tr>
-            <td class="label small">{{ isArbitration ? '被申请人' : '被告' }}</td>
+            <td class="label small">
+              {{ isArbitration ? '被申请人' : '被告' }}
+            </td>
             <td class="value" colspan="2">{{ matter?.opposingParty || '' }}</td>
           </tr>
           <tr>
@@ -225,7 +238,7 @@ const containerStyle = computed(() => {
           <tr>
             <td class="label">立 卷 人</td>
             <td class="value">{{ archive.mainLawyerName || '' }}</td>
-            <td class="label">备    注</td>
+            <td class="label">备 注</td>
             <td class="value">{{ truncate(archive.remarks, 10) }}</td>
           </tr>
         </table>
@@ -245,7 +258,7 @@ const containerStyle = computed(() => {
             <td class="value" colspan="3">{{ matter?.opposingParty || '' }}</td>
           </tr>
           <tr>
-            <td class="label">罪    名</td>
+            <td class="label">罪 名</td>
             <td class="value" colspan="3">
               {{ matter?.causeOfAction || '' }}
             </td>
@@ -287,7 +300,7 @@ const containerStyle = computed(() => {
           <tr>
             <td class="label">立 卷 人</td>
             <td class="value">{{ archive.mainLawyerName || '' }}</td>
-            <td class="label">备    注</td>
+            <td class="label">备 注</td>
             <td class="value">{{ truncate(archive.remarks, 10) }}</td>
           </tr>
         </table>
@@ -298,78 +311,78 @@ const containerStyle = computed(() => {
 
 <style scoped>
 .cover-container {
+  position: relative;
+  box-sizing: border-box;
+  padding: 10px;
+  overflow: hidden;
+  font-family: SimSun, STSong, 'Songti SC', serif;
+  color: #3d2914;
   background-color: #d2b48c;
   border: 2px solid #5a3e1b;
   box-shadow:
     0 2px 8px rgb(0 0 0 / 15%),
     inset 0 0 30px rgb(139 90 43 / 10%);
-  padding: 10px;
-  font-family: 'SimSun', 'STSong', 'Songti SC', serif;
-  color: #3d2914;
-  overflow: hidden;
-  box-sizing: border-box;
-  position: relative;
 }
 
 .cover-content {
-  width: 100%;
-  height: 100%;
-  border: 1px solid #5a3e1b;
-  padding: 8px;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
   position: relative;
   z-index: 2;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  padding: 8px;
+  border: 1px solid #5a3e1b;
 }
 
 .firm-name {
-  text-align: center;
-  font-size: 1.2em;
   margin-bottom: 6px;
+  font-size: 1.2em;
+  text-align: center;
   letter-spacing: 2px;
 }
 
 .main-title {
-  text-align: center;
+  margin-bottom: 4px;
   font-size: 1.8em;
   font-weight: bold;
-  margin-bottom: 4px;
+  text-align: center;
   letter-spacing: 4px;
 }
 
 .sub-title {
-  text-align: center;
-  font-size: 1.1em;
   margin-bottom: 4px;
+  font-size: 1.1em;
+  text-align: center;
 }
 
 .year-no {
-  text-align: center;
-  font-size: 1em;
   margin-bottom: 10px;
+  font-size: 1em;
+  text-align: center;
   letter-spacing: 1px;
 }
 
 .info-table {
-  width: 100%;
-  border-collapse: collapse;
   flex: 1;
+  width: 100%;
   table-layout: fixed;
+  border-collapse: collapse;
 }
 
 .info-table td {
-  border: 1px solid #5a3e1b;
   padding: 3px 4px;
-  vertical-align: middle;
   line-height: 1.3;
+  vertical-align: middle;
+  border: 1px solid #5a3e1b;
 }
 
 .info-table .label {
-  text-align: center;
   width: 22%;
-  background-color: rgb(210 180 140 / 60%);
   font-weight: normal;
+  text-align: center;
+  background-color: rgb(210 180 140 / 60%);
 }
 
 .info-table .label.small {
@@ -379,31 +392,28 @@ const containerStyle = computed(() => {
 
 .info-table .label.party-label {
   width: 10%;
+  padding: 2px;
+  font-size: 0.85em;
+  letter-spacing: 2px;
   writing-mode: vertical-lr;
   text-orientation: upright;
-  letter-spacing: 2px;
-  font-size: 0.85em;
-  padding: 2px;
 }
 
 .info-table .value {
-  text-align: left;
   padding-left: 6px;
-  background-color: rgb(222 197 160 / 30%);
   font-size: 0.95em;
+  text-align: left;
   word-break: break-all;
+  background-color: rgb(222 197 160 / 30%);
 }
 
 /* 牛皮纸纹理效果 */
 .cover-container::before {
-  content: '';
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.08'/%3E%3C/svg%3E");
-  pointer-events: none;
+  inset: 0;
   z-index: 1;
+  pointer-events: none;
+  content: '';
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.08'/%3E%3C/svg%3E");
 }
 </style>

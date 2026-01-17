@@ -195,8 +195,18 @@ function getGridColumns(): VxeGridProps['columns'] {
   const baseColumns = [
     { type: 'checkbox', width: 50 },
     { title: '客户编号', field: 'clientNo', width: 120 },
-    { title: '客户名称', field: 'name', minWidth: isMobile.value ? 120 : 180, mobileShow: true },
-    { title: '客户类型', field: 'clientTypeName', width: 100, mobileShow: true },
+    {
+      title: '客户名称',
+      field: 'name',
+      minWidth: isMobile.value ? 120 : 180,
+      mobileShow: true,
+    },
+    {
+      title: '客户类型',
+      field: 'clientTypeName',
+      width: 100,
+      mobileShow: true,
+    },
     { title: '联系人', field: 'contactPerson', width: 100 },
     { title: '联系电话', field: 'contactPhone', width: 130 },
     { title: '客户级别', field: 'levelName', width: 100 },
@@ -220,10 +230,12 @@ function getGridColumns(): VxeGridProps['columns'] {
       mobileShow: true,
     },
   ];
-  
+
   // 移动端隐藏部分列
   if (isMobile.value) {
-    return baseColumns.filter(col => col.type === 'checkbox' || col.mobileShow === true);
+    return baseColumns.filter(
+      (col) => col.type === 'checkbox' || col.mobileShow === true,
+    );
   }
   return baseColumns;
 }
@@ -805,7 +817,12 @@ onMounted(async () => {
     </Card>
 
     <!-- 新增/编辑弹窗 -->
-    <Modal v-model:open="modalVisible" :title="modalTitle" :width="isMobile ? '100%' : '800px'" :centered="isMobile">
+    <Modal
+      v-model:open="modalVisible"
+      :title="modalTitle"
+      :width="isMobile ? '100%' : '800px'"
+      :centered="isMobile"
+    >
       <template #footer>
         <Button @click="modalVisible = false">取消</Button>
         <Button type="primary" :disabled="!canSave" @click="handleSave">
