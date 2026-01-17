@@ -54,6 +54,8 @@ const wrapperClass = computed(() => {
 provideFormRenderProps(props);
 
 const { isCalculated, keepFormItemIndex, wrapperRef } = useExpandable(props);
+// wrapperRef is used in template as ref binding
+void wrapperRef;
 
 const shapes = computed(() => {
   const resultShapes: FormShape[] = [];

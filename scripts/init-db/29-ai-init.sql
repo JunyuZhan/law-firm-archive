@@ -151,8 +151,8 @@ ON CONFLICT (id) DO UPDATE SET parent_id = 0, visible = false;
 
 -- AI费用账单（财务管理下）
 INSERT INTO sys_menu (id, parent_id, name, path, component, icon, menu_type, permission, sort_order, status, visible, created_at, updated_at, deleted)
-VALUES (5100, 5, 'AI费用账单', '/finance/ai-billing', 'finance/ai-billing/index', 'money-collect-outlined', 'MENU', 'ai:billing:view', 60, 'ENABLED', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
-ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, path = EXCLUDED.path;
+VALUES (5100, 5, 'AI费用账单', '/finance/ai-billing', 'finance/ai-billing/index', 'MoneyCollectOutlined', 'MENU', 'ai:billing:view', 60, 'ENABLED', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, path = EXCLUDED.path, icon = EXCLUDED.icon;
 
 -- 注：AI计费配置已整合到系统配置页面的Tab中，不再需要单独菜单
 
