@@ -114,34 +114,9 @@ COMMENT ON COLUMN public.matter.case_type IS '案件类型：CIVIL-民事, CRIMI
 
 -- =====================================================
 -- 国家赔偿相关字典数据
+-- 注意：字典类型和字典项已在 27-dict-init-data.sql 中定义
+-- obligor_org_type (id=63) - 赔偿义务机关类型
+-- damage_cause_type (id=64) - 致损行为类型
+-- compensation_decision_result (id=65) - 赔偿决定结果
+-- compensation_payment_status (id=66) - 赔偿支付状态
 -- =====================================================
-
--- 赔偿义务机关类型
-INSERT INTO sys_dict_type (id, name, code, description, status, is_system, created_at, updated_at, deleted)
-VALUES (75, '赔偿义务机关类型', 'obligor_org_type', '国家赔偿义务机关类型', 'ENABLED', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
-ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, code = EXCLUDED.code;
-
-INSERT INTO sys_dict_item (id, dict_type_id, label, value, sort_order, status, created_at, updated_at, deleted) VALUES
-(750, 75, '公安机关', 'PUBLIC_SECURITY', 1, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
-(751, 75, '检察机关', 'PROCURATORATE', 2, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
-(752, 75, '审判机关', 'COURT', 3, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
-(753, 75, '监狱管理机关', 'PRISON', 4, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
-(754, 75, '行政机关', 'ADMIN_ORGAN', 5, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
-(755, 75, '其他', 'OTHER', 99, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
-ON CONFLICT (id) DO UPDATE SET label = EXCLUDED.label, value = EXCLUDED.value;
-
--- 致损行为类型
-INSERT INTO sys_dict_type (id, name, code, description, status, is_system, created_at, updated_at, deleted)
-VALUES (76, '致损行为类型', 'damage_cause_type', '国家赔偿致损行为类型', 'ENABLED', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
-ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, code = EXCLUDED.code;
-
-INSERT INTO sys_dict_item (id, dict_type_id, label, value, sort_order, status, created_at, updated_at, deleted) VALUES
-(760, 76, '违法拘留', 'ILLEGAL_DETENTION', 1, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
-(761, 76, '违法采取强制措施', 'ILLEGAL_COERCIVE', 2, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
-(762, 76, '违法使用武器警械', 'ILLEGAL_WEAPON', 3, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
-(763, 76, '违法搜查', 'ILLEGAL_SEARCH', 4, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
-(764, 76, '错误判决/错判', 'WRONGFUL_CONVICT', 5, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
-(765, 76, '违法查封/扣押/冻结财产', 'ILLEGAL_DETENTION_PROPERTY', 6, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
-(766, 76, '违法行政处罚', 'ILLEGAL_ADMIN_PUNISHMENT', 7, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
-(767, 76, '其他', 'OTHER', 99, 'ENABLED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
-ON CONFLICT (id) DO UPDATE SET label = EXCLUDED.label, value = EXCLUDED.value;
