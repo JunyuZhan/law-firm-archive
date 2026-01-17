@@ -55,16 +55,16 @@ ocr:
     api-key: ${OCR_API_KEY:}
   timeout: 30000
 
-# OnlyOffice 配置 - 生产环境启用 JWT
-# ⚠️ ONLYOFFICE_URL 必须是浏览器可访问的外部地址，如 http://192.168.50.222:8088
-# 不能使用 Docker 内部地址如 http://onlyoffice:80
+# OnlyOffice 配置 - 生产环境
+# 通过前端 Nginx 代理访问 OnlyOffice（/onlyoffice/ -> onlyoffice:80）
+# ONLYOFFICE_URL 格式：http://你的域名或IP/onlyoffice
 onlyoffice:
-  document-server-url: ${ONLYOFFICE_URL:http://localhost:8088}
-  callback-url: ${ONLYOFFICE_CALLBACK_URL:http://host.docker.internal:8080/api}
+  document-server-url: ${ONLYOFFICE_URL:http://localhost/onlyoffice}
+  callback-url: ${ONLYOFFICE_CALLBACK_URL:http://backend:8080/api}
   file-server-url: ${FILE_SERVER_URL:http://minio:9000}
-  # 生产环境必须启用 JWT
-  jwt-enabled: true
-  jwt-secret: ${ONLYOFFICE_JWT_SECRET}
+  # 生产环境建议启用 JWT
+  jwt-enabled: ${ONLYOFFICE_JWT_ENABLED:false}
+  jwt-secret: ${ONLYOFFICE_JWT_SECRET:}
 
 # 日志配置 - 生产环境降低日志级别
 logging:
