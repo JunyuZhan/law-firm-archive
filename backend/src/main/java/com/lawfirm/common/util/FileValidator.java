@@ -52,9 +52,9 @@ public class FileValidator {
     private static final Map<String, List<byte[]>> FILE_SIGNATURES = new HashMap<>();
 
     /**
-     * 默认最大文件大小：20MB
+     * 默认最大文件大小：100MB（与 application.yml 配置一致）
      */
-    private static final long DEFAULT_MAX_SIZE = 20 * 1024 * 1024;
+    private static final long DEFAULT_MAX_SIZE = 100 * 1024 * 1024;
 
     static {
         // PDF: %PDF
