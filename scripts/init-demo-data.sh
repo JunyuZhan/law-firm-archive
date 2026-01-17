@@ -252,8 +252,14 @@ reset_demo_data() {
 generate_minimal_data() {
     log_info "生成最小示例数据..."
     
-    # 基础示例数据
-    execute_sql_file "$INIT_DB_DIR/30-demo-data.sql" "基础示例数据（客户、合同、项目、任务）"
+    # 使用整合版演示数据文件（v2.0整合后的文件名）
+    if [ -f "$INIT_DB_DIR/30-demo-data-full.sql" ]; then
+        execute_sql_file "$INIT_DB_DIR/30-demo-data-full.sql" "完整示例数据（已整合）"
+    elif [ -f "$INIT_DB_DIR/30-demo-data.sql" ]; then
+        execute_sql_file "$INIT_DB_DIR/30-demo-data.sql" "基础示例数据（客户、合同、项目、任务）"
+    else
+        log_warn "未找到示例数据文件，跳过示例数据初始化"
+    fi
 }
 
 # =====================================================
@@ -262,8 +268,19 @@ generate_minimal_data() {
 generate_full_data() {
     log_info "生成完整示例数据..."
     
-    # 基础示例数据
-    execute_sql_file "$INIT_DB_DIR/30-demo-data.sql" "基础示例数据（客户、合同、项目、任务）"
+    # 优先使用整合版演示数据文件（v2.0整合后的文件名）
+    if [ -f "$INIT_DB_DIR/30-demo-data-full.sql" ]; then
+        execute_sql_file "$INIT_DB_DIR/30-demo-data-full.sql" "完整示例数据（已整合）"
+        return
+    fi
+    
+    # 回退到旧版分散的演示数据文件
+    if [ -f "$INIT_DB_DIR/30-demo-data.sql" ]; then
+        execute_sql_file "$INIT_DB_DIR/30-demo-data.sql" "基础示例数据（客户、合同、项目、任务）"
+    else
+        log_warn "未找到示例数据文件，跳过示例数据初始化"
+        return
+    fi
     
     # 知识库示例数据
     if [ -f "$INIT_DB_DIR/40-knowledge-demo.sql" ]; then
