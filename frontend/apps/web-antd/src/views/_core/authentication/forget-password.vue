@@ -28,7 +28,7 @@ const formSchema = computed((): VbenFormSchema[] => {
   ];
 });
 
-function handleSubmit(value: Recordable<any>) {
+function handleSubmit(_value: Recordable<any>) {
   // 密码重置逻辑由父组件处理
 }
 </script>

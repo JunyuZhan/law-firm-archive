@@ -78,7 +78,7 @@ const remoteOptions = ref<VirtualSelectOption[]>([]);
 
 // 计算选中值
 const selectedValue = computed({
-  get: () => props.value,
+  get: () => props.value ?? undefined,
   set: (val) => {
     emit('update:value', val ?? null);
   },

@@ -55,7 +55,7 @@ const filterParams = ref({
   businessType: undefined as string | undefined,
   priority: undefined as string | undefined,
   urgency: undefined as string | undefined,
-  dateRange: [] as any[],
+  dateRange: undefined as [string, string] | undefined,
 });
 
 // 所有数据（用于分类统计）
@@ -453,7 +453,7 @@ function handleReset() {
     businessType: undefined,
     priority: undefined,
     urgency: undefined,
-    dateRange: [],
+    dateRange: undefined,
   };
   activeCategory.value = 'all';
   reloadCurrentGrid();

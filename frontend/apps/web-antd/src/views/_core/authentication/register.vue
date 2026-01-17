@@ -81,7 +81,7 @@ const formSchema = computed((): VbenFormSchema[] => {
   ];
 });
 
-function handleSubmit(value: Recordable<any>) {
+function handleSubmit(_value: Recordable<any>) {
   // 注册逻辑由父组件处理
 }
 </script>

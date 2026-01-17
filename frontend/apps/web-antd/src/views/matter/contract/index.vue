@@ -51,7 +51,7 @@ import {
 } from 'ant-design-vue';
 import dayjs from 'dayjs';
 
-import { getClientList, getClientSelectOptions } from '#/api/client';
+import { getClientSelectOptions } from '#/api/client';
 // UpdateContractCommand 用于类型推断
 import {
   createContractFromTemplate,
@@ -1026,7 +1026,9 @@ interface FieldConfig {
   retainer: string[];
 }
 
-const fieldConfig: Record<string, FieldConfig> = {
+// @ts-expect-error - fieldConfig is reserved for future use
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _fieldConfig: Record<string, FieldConfig> = {
   // 标准服务合同
   SERVICE: {
     basic: [
@@ -1630,7 +1632,7 @@ async function executePrint() {
           signDate: signDateStr,
           matterDescription: data.description || data.opposingParty || '',
           matterName: data.name || '',
-          paymentTerms: data.paymentTerms || '一次性支付',
+          paymentTerms: (data as any).paymentTerms || '一次性支付',
           expiryDate: expiryDateStr,
           clientAddress: data.clientAddress || '',
           clientPhone: data.clientPhone || '',
@@ -1676,7 +1678,7 @@ async function executePrint() {
               data.description || data.opposingParty || '',
             )
             .replace(/\$\{matterName\}/g, data.name || '')
-            .replace(/\$\{paymentTerms\}/g, data.paymentTerms || '一次性支付')
+            .replace(/\$\{paymentTerms\}/g, (data as any).paymentTerms || '一次性支付')
             .replace(/\$\{expiryDate\}/g, expiryDateStr)
             .replace(/\$\{clientAddress\}/g, data.clientAddress || '')
             .replace(/\$\{clientPhone\}/g, data.clientPhone || '')
@@ -3153,8 +3155,8 @@ onMounted(async () => {
                   <span
                     ><strong>合同类型：</strong
                     >{{
-                      selectedTemplate.contractTypeName ||
-                      selectedTemplate.contractType
+                      selectedTemplate.templateTypeName ||
+                      selectedTemplate.templateType
                     }}</span
                   >
                   <span

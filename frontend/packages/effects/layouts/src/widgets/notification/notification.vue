@@ -68,6 +68,7 @@ function handleClick(item: NotificationItem) {
   emit('click', item);
 }
 
+// @ts-expect-error - navigateTo is reserved for future use when implementing deep linking
 function navigateTo(
   link: string,
   query?: Record<string, any>,

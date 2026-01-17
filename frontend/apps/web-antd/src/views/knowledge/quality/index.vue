@@ -1,15 +1,13 @@
 <script setup lang="ts">
 import type {
   CreateQualityCheckStandardCommand,
-  CreateQualityIssueCommand,
-  CreateRiskWarningCommand,
   QualityCheckDTO,
   QualityCheckStandardDTO,
   QualityIssueDTO,
   RiskWarningDTO,
 } from '#/api/knowledge/quality';
 
-import { computed, onMounted, reactive, ref } from 'vue';
+import { onMounted, reactive, ref } from 'vue';
 
 import { Page } from '@vben/common-ui';
 
@@ -20,7 +18,6 @@ import {
   Button,
   Card,
   Col,
-  DatePicker,
   Descriptions,
   Form,
   Input,
@@ -41,11 +38,8 @@ import dayjs from 'dayjs';
 
 import {
   acknowledgeWarning,
-  CHECK_RESULT_OPTIONS,
   closeWarning,
-  createIssue,
   createStandard,
-  createWarning,
   deleteStandard,
   getActiveWarnings,
   getEnabledStandards,
@@ -210,7 +204,7 @@ function handleCreateStandard() {
 }
 
 // 打开编辑标准弹窗
-function handleEditStandard(record: QualityCheckStandardDTO) {
+function handleEditStandard(record: QualityCheckStandardDTO | Record<string, any>) {
   isEditStandard.value = true;
   Object.assign(standardForm, {
     id: record.id,
@@ -263,7 +257,7 @@ async function handleStandardSubmit() {
 }
 
 // 删除标准
-async function handleDeleteStandard(record: QualityCheckStandardDTO) {
+async function handleDeleteStandard(record: QualityCheckStandardDTO | Record<string, any>) {
   try {
     await deleteStandard(record.id);
     message.success('删除成功');
@@ -274,7 +268,7 @@ async function handleDeleteStandard(record: QualityCheckStandardDTO) {
 }
 
 // 查看问题详情
-async function handleViewIssue(record: QualityIssueDTO) {
+async function handleViewIssue(record: QualityIssueDTO | Record<string, any>) {
   issueDetailLoading.value = true;
   issueDetailVisible.value = true;
   try {
@@ -288,7 +282,7 @@ async function handleViewIssue(record: QualityIssueDTO) {
 }
 
 // 处理问题
-async function handleResolveIssue(record: QualityIssueDTO) {
+async function handleResolveIssue(record: QualityIssueDTO | Record<string, any>) {
   Modal.confirm({
     title: '确认解决问题',
     content: '确定将此问题标记为已解决？',
@@ -305,7 +299,7 @@ async function handleResolveIssue(record: QualityIssueDTO) {
 }
 
 // 查看预警详情
-async function handleViewWarning(record: RiskWarningDTO) {
+async function handleViewWarning(record: RiskWarningDTO | Record<string, any>) {
   warningDetailLoading.value = true;
   warningDetailVisible.value = true;
   try {
@@ -319,7 +313,7 @@ async function handleViewWarning(record: RiskWarningDTO) {
 }
 
 // 确认预警
-async function handleAcknowledgeWarning(record: RiskWarningDTO) {
+async function handleAcknowledgeWarning(record: RiskWarningDTO | Record<string, any>) {
   try {
     await acknowledgeWarning(record.id);
     message.success('确认成功');
@@ -330,7 +324,7 @@ async function handleAcknowledgeWarning(record: RiskWarningDTO) {
 }
 
 // 解决预警
-async function handleResolveWarning(record: RiskWarningDTO) {
+async function handleResolveWarning(record: RiskWarningDTO | Record<string, any>) {
   try {
     await resolveWarning(record.id);
     message.success('解决成功');
@@ -341,7 +335,7 @@ async function handleResolveWarning(record: RiskWarningDTO) {
 }
 
 // 关闭预警
-async function handleCloseWarning(record: RiskWarningDTO) {
+async function handleCloseWarning(record: RiskWarningDTO | Record<string, any>) {
   try {
     await closeWarning(record.id);
     message.success('关闭成功');
@@ -406,8 +400,8 @@ function formatDateTime(date: string | null | undefined) {
 }
 
 // Tab切换
-function handleTabChange(key: string) {
-  activeTab.value = key;
+function handleTabChange(key: string | number) {
+  activeTab.value = String(key);
   if (key === 'standards') {
     loadStandards();
   }

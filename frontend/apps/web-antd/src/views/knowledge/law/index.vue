@@ -106,7 +106,7 @@ function getGridColumns(): VxeGridProps['columns'] {
       title: '操作',
       field: 'action',
       width: isMobile.value ? 100 : 200,
-      fixed: 'right',
+      fixed: 'right' as const,
       slots: { default: 'action' },
       mobileShow: true,
     },

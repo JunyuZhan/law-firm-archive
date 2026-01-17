@@ -100,7 +100,6 @@ export function useIdleTimeout(options: IdleTimeoutOptions = {}) {
    * 启动倒计时显示
    */
   function startCountdown() {
-    const startTime = Date.now();
     const endTime = lastActivityTime + timeout;
 
     countdownInterval = setInterval(() => {
@@ -108,12 +107,8 @@ export function useIdleTimeout(options: IdleTimeoutOptions = {}) {
       const remaining = Math.max(0, endTime - now);
       remainingTime.value = remaining;
 
-      // 更新警告弹窗的内容
-      if (warningModalInstance && remaining > 0) {
-        const minutes = Math.floor(remaining / 60000);
-        const seconds = Math.floor((remaining % 60000) / 1000);
-        // Modal.warning 不支持动态更新内容，所以我们在触发时显示固定内容
-      }
+      // Modal.warning 不支持动态更新内容，所以我们在触发时显示固定内容
+      // 这里只更新 remainingTime 用于外部显示
     }, 1000);
   }
 

@@ -193,7 +193,7 @@ const statusOptions = [
 // 响应式列配置
 function getGridColumns(): VxeGridProps['columns'] {
   const baseColumns = [
-    { type: 'checkbox', width: 50 },
+    { type: 'checkbox' as const, width: 50 },
     { title: '客户编号', field: 'clientNo', width: 120 },
     {
       title: '客户名称',
@@ -225,7 +225,7 @@ function getGridColumns(): VxeGridProps['columns'] {
       title: '操作',
       field: 'action',
       width: isMobile.value ? 100 : 180,
-      fixed: 'right',
+      fixed: 'right' as const,
       slots: { default: 'action' },
       mobileShow: true,
     },

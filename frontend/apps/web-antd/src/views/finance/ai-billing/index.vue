@@ -262,7 +262,7 @@ async function handleGenerateBills() {
   });
 }
 
-async function handleMarkDeducted(record: AiMonthlyBillDTO) {
+async function handleMarkDeducted(record: AiMonthlyBillDTO | Record<string, any>) {
   Modal.confirm({
     title: '标记已扣减',
     content: `确认标记 ${record.userName || ''} 的账单已扣减吗？`,
@@ -278,7 +278,7 @@ async function handleMarkDeducted(record: AiMonthlyBillDTO) {
   });
 }
 
-async function handleWaive(record: AiMonthlyBillDTO) {
+async function handleWaive(record: AiMonthlyBillDTO | Record<string, any>) {
   Modal.confirm({
     title: '减免费用',
     content: `确认减免 ${record.userName || ''} 的 AI 费用吗？`,

@@ -20,6 +20,10 @@ export interface ResponsiveColumnConfig {
   mobileShow?: boolean;
   /** 移动端优先级（数字越小越优先显示） */
   mobilePriority?: number;
+  /** 列类型 (seq, checkbox, radio 等) */
+  type?: string;
+  /** 插槽配置 */
+  slots?: { default?: string; [key: string]: string | undefined };
   /** 其他属性 */
   [key: string]: any;
 }

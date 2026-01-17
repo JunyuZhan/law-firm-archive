@@ -4,7 +4,6 @@ import type {
   CreateCauseCommand,
   UpdateCauseCommand,
 } from '#/api/system/cause-of-action';
-import type { CauseOfActionDTO } from '#/api/system/types';
 
 import { computed, ref, watch } from 'vue';
 

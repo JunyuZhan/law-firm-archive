@@ -109,7 +109,7 @@ async function loadData(
     status: params.status,
   });
   return {
-    items: res.list || [],
+    items: res.records || [],
     total: res.total || 0,
   };
 }

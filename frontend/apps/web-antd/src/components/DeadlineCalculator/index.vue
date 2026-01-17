@@ -36,8 +36,7 @@
         <Col :span="24">
           <Space>
             <Button type="primary" :loading="loading" @click="calculate">
-              <template #icon><CalculatorOutlined /></template>
-              计算截止日期
+              🧮 计算截止日期
             </Button>
             <Button v-if="result" @click="reset">重置</Button>
           </Space>
@@ -100,7 +99,7 @@ import {
   Divider,
   message,
 } from 'ant-design-vue';
-import { CalculatorOutlined } from '@ant-design/icons-vue';
+// Use emoji instead of icon since @ant-design/icons-vue is not a direct dependency
 import dayjs, { type Dayjs } from 'dayjs';
 import { calculateDeadline, type DeadlineResult } from '#/api/system/holiday';
 
@@ -139,7 +138,7 @@ const loading = ref(false);
 const result = ref<DeadlineResult | null>(null);
 
 const form = reactive({
-  startDate: dayjs() as Dayjs | null,
+  startDate: dayjs() as Dayjs | undefined,
   days: props.defaultDays,
   workdaysOnly: false,
 });
@@ -184,7 +183,7 @@ function applyPreset(preset: { days: number; workdaysOnly: boolean }) {
 // 重置
 function reset() {
   result.value = null;
-  form.startDate = dayjs();
+  form.startDate = dayjs() as Dayjs | undefined;
   form.days = props.defaultDays;
   form.workdaysOnly = false;
 }

@@ -61,7 +61,9 @@ class MatterConstantsTest {
         "SPECIAL_SERVICE, 专项服务",
         "DUE_DILIGENCE, 尽职调查",
         "CONTRACT_REVIEW, 合同审查",
-        "LEGAL_OPINION, 法律意见"
+        "LEGAL_OPINION, 法律意见",
+        "STATE_COMP_ADMIN, 行政国家赔偿",
+        "STATE_COMP_CRIMINAL, 刑事国家赔偿"
     })
     @DisplayName("应该正确返回所有案件类型名称")
     void shouldReturnCorrectCaseTypeName(String caseType, String expectedName) {
@@ -87,14 +89,15 @@ class MatterConstantsTest {
     }
 
     @Test
-    @DisplayName("应该包含所有14个案件类型")
-    void shouldContainAll14CaseTypes() {
-        assertThat(MatterConstants.CASE_TYPE_NAME_MAP).hasSize(14);
+    @DisplayName("应该包含所有16个案件类型")
+    void shouldContainAll16CaseTypes() {
+        assertThat(MatterConstants.CASE_TYPE_NAME_MAP).hasSize(16);
         assertThat(MatterConstants.CASE_TYPE_NAME_MAP).containsKeys(
             "CIVIL", "CRIMINAL", "ADMINISTRATIVE", "BANKRUPTCY", "IP",
             "ARBITRATION", "COMMERCIAL_ARBITRATION", "LABOR_ARBITRATION",
             "ENFORCEMENT", "LEGAL_COUNSEL", "SPECIAL_SERVICE",
-            "DUE_DILIGENCE", "CONTRACT_REVIEW", "LEGAL_OPINION"
+            "DUE_DILIGENCE", "CONTRACT_REVIEW", "LEGAL_OPINION",
+            "STATE_COMP_ADMIN", "STATE_COMP_CRIMINAL"
         );
     }
 
@@ -196,10 +199,75 @@ class MatterConstantsTest {
         // 验证关键类型的一致性
         assertThat(MatterConstants.getMatterTypeName("LITIGATION")).isEqualTo("诉讼案件");
         assertThat(MatterConstants.getMatterTypeName("NON_LITIGATION")).isEqualTo("非诉项目");
-        
+
         assertThat(MatterConstants.getCaseTypeName("CIVIL")).isEqualTo("民事案件");
         assertThat(MatterConstants.getCaseTypeName("CRIMINAL")).isEqualTo("刑事案件");
         assertThat(MatterConstants.getCaseTypeName("ADMINISTRATIVE")).isEqualTo("行政案件");
+    }
+
+    // ========== 代理阶段测试 ==========
+
+    @ParameterizedTest
+    @CsvSource({
+        "FIRST_INSTANCE, 一审",
+        "SECOND_INSTANCE, 二审",
+        "RETRIAL, 再审",
+        "EXECUTION, 执行",
+        "ARBITRATION, 仲裁阶段",
+        "INVESTIGATION, 侦查阶段",
+        "PROSECUTION_REVIEW, 审查起诉",
+        "DEATH_PENALTY_REVIEW, 死刑复核",
+        "ADMINISTRATIVE_RECONSIDERATION, 行政复议",
+        "EXECUTION_OBJECTION, 执行异议",
+        "EXECUTION_REVIEW, 执行复议",
+        "NON_LITIGATION, 非诉服务",
+        "COMPENSATION_APPLICATION, 赔偿申请",
+        "COMPENSATION_DECISION, 赔偿决定",
+        "ADMIN_RECONSIDERATION, 行政复议",
+        "ADMIN_LITIGATION, 行政赔偿诉讼",
+        "CRIMINAL_TERMINATION, 刑事诉讼终结确认",
+        "CRIMINAL_REVIEW, 刑事赔偿复议",
+        "COMPENSATION_COMMITTEE, 赔偿委员会",
+        "COMMITTEE_REVIEW, 上级赔偿委员会",
+        "PAYMENT, 支付赔偿金"
+    })
+    @DisplayName("应该正确返回所有代理阶段名称")
+    void shouldReturnCorrectLitigationStageName(String stage, String expectedName) {
+        assertThat(MatterConstants.getLitigationStageName(stage)).isEqualTo(expectedName);
+    }
+
+    @Test
+    @DisplayName("未知代理阶段应该返回原值")
+    void shouldReturnOriginalValueForUnknownStage() {
+        assertThat(MatterConstants.getLitigationStageName("UNKNOWN_STAGE")).isEqualTo("UNKNOWN_STAGE");
+    }
+
+    @Test
+    @DisplayName("null 代理阶段应该返回 null")
+    void shouldReturnNullForNullStage() {
+        assertThat(MatterConstants.getLitigationStageName(null)).isNull();
+    }
+
+    @Test
+    @DisplayName("应该包含所有代理阶段")
+    void shouldContainAllLitigationStages() {
+        assertThat(MatterConstants.LITIGATION_STAGE_NAME_MAP).hasSize(21);
+        assertThat(MatterConstants.LITIGATION_STAGE_NAME_MAP).containsKeys(
+            "FIRST_INSTANCE", "SECOND_INSTANCE", "RETRIAL", "EXECUTION", "ARBITRATION",
+            "INVESTIGATION", "PROSECUTION_REVIEW", "DEATH_PENALTY_REVIEW",
+            "ADMINISTRATIVE_RECONSIDERATION", "EXECUTION_OBJECTION", "EXECUTION_REVIEW",
+            "NON_LITIGATION",
+            "COMPENSATION_APPLICATION", "COMPENSATION_DECISION", "ADMIN_RECONSIDERATION",
+            "ADMIN_LITIGATION", "CRIMINAL_TERMINATION", "CRIMINAL_REVIEW",
+            "COMPENSATION_COMMITTEE", "COMMITTEE_REVIEW", "PAYMENT"
+        );
+    }
+
+    @Test
+    @DisplayName("应该正确返回国家赔偿案件类型名称")
+    void shouldReturnCorrectStateCompensationCaseNames() {
+        assertThat(MatterConstants.getCaseTypeName("STATE_COMP_ADMIN")).isEqualTo("行政国家赔偿");
+        assertThat(MatterConstants.getCaseTypeName("STATE_COMP_CRIMINAL")).isEqualTo("刑事国家赔偿");
     }
 }
 

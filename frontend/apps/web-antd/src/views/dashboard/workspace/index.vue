@@ -83,7 +83,7 @@ const userStore = useUserStore();
 const router = useRouter();
 
 // 响应式布局
-const { isMobile, modalWidth } = useResponsive();
+const { isMobile } = useResponsive();
 
 // 最新动态展开状态
 const trendsExpanded = ref(false);

@@ -30,6 +30,8 @@ const active = defineModel<string>('active');
 
 const contentRef = ref();
 const tabRef = ref();
+void contentRef; // template ref
+void tabRef; // template ref
 
 const style = computed(() => {
   const { gap } = props;

@@ -102,8 +102,8 @@ function stopTimerUpdate() {
 async function loadMatters(keyword?: string) {
   matterLoading.value = true;
   try {
-    const res = await getMatterList({ pageNum: 1, pageSize: 50, keyword });
-    matterOptions.value = (res.records || []).map((m) => ({
+    const res = await getMatterList({ pageNum: 1, pageSize: 50, name: keyword });
+    matterOptions.value = (res.list || []).map((m: { matterNo: string; name: string; id: number }) => ({
       label: `${m.matterNo} - ${m.name}`,
       value: m.id,
     }));
@@ -217,10 +217,6 @@ function toggleMinimize() {
   isMinimized.value = !isMinimized.value;
 }
 
-// 隐藏/显示
-function toggleVisibility() {
-  isVisible.value = !isVisible.value;
-}
 
 // 监听状态变化
 watch(isRunning, (running) => {

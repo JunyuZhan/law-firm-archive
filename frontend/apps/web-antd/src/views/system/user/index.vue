@@ -113,7 +113,7 @@ const formSchema: VbenFormSchema[] = [
 // 响应式列配置
 function getGridColumns(): VxeGridProps['columns'] {
   const baseColumns = [
-    { type: 'checkbox', width: 50 },
+    { type: 'checkbox' as const, width: 50 },
     { title: '用户名', field: 'username', width: 120, mobileShow: true },
     { title: '姓名', field: 'realName', width: 100, mobileShow: true },
     { title: '部门', field: 'departmentName', width: 120 },
@@ -132,7 +132,7 @@ function getGridColumns(): VxeGridProps['columns'] {
       title: '操作',
       field: 'action',
       width: isMobile.value ? 120 : 220,
-      fixed: 'right',
+      fixed: 'right' as const,
       slots: { default: 'action' },
       mobileShow: true,
     },
