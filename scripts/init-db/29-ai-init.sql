@@ -248,7 +248,7 @@ AND NOT EXISTS (SELECT 1 FROM sys_dict_item WHERE value = 'AI_USAGE' AND dict_ty
 -- 第四部分：系统配置
 -- =====================================================
 
-INSERT INTO sys_config (config_key, config_value, config_name, config_type, remark, created_at, updated_at, deleted) VALUES
+INSERT INTO sys_config (config_key, config_value, config_name, config_type, description, created_at, updated_at, deleted) VALUES
 ('ai.billing.enabled', 'false', 'AI计费开关', 'BOOLEAN', '是否启用AI使用计费', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
 ('ai.billing.charge_ratio', '100', 'AI收费比例', 'NUMBER', '用户承担费用的比例（0-100）', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
 ('ai.billing.salary_deduction', 'false', '工资扣减开关', 'BOOLEAN', '是否从工资中自动扣减', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
