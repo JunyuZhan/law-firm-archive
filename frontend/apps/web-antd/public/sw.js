@@ -110,19 +110,26 @@ self.addEventListener('activate', (event) => {
 // 请求拦截
 self.addEventListener('fetch', (event) => {
   const { request } = event;
+  
+  // 只处理 GET 请求，其他请求完全不干预
+  if (request.method !== 'GET') {
+    // 异步清理缓存，不阻塞请求
+    try {
+      const url = new URL(request.url);
+      if (url.origin === location.origin && url.pathname.startsWith('/api/')) {
+        // 使用 setTimeout 确保不阻塞
+        setTimeout(() => clearRelatedMemoryCache(url.pathname), 0);
+      }
+    } catch (e) {
+      // 忽略解析错误
+    }
+    return; // 完全不干预非 GET 请求
+  }
+
   const url = new URL(request.url);
 
   // 只处理同源请求
   if (url.origin !== location.origin) {
-    return;
-  }
-
-  // 只处理 GET 请求的缓存
-  if (request.method !== 'GET') {
-    // POST/PUT/DELETE 等修改请求：清除相关内存缓存
-    if (url.pathname.startsWith('/api/')) {
-      clearRelatedMemoryCache(url.pathname);
-    }
     return;
   }
 
@@ -307,16 +314,32 @@ function updateMemoryCacheInBackground(request, cacheKey) {
 
 // 清除相关内存缓存（当有修改操作时）
 function clearRelatedMemoryCache(pathname) {
-  const prefix = pathname.split('/').slice(0, 3).join('/'); // 如 /api/matter
-  let cleared = 0;
-  for (const key of memoryCache.keys()) {
-    if (key.includes(prefix)) {
+  try {
+    const parts = pathname.split('/');
+    if (parts.length < 3) return;
+    
+    const prefix = parts.slice(0, 3).join('/'); // 如 /api/matter
+    let cleared = 0;
+    const keysToDelete = [];
+    
+    // 先收集要删除的键，避免遍历时修改
+    for (const key of memoryCache.keys()) {
+      if (key.includes(prefix)) {
+        keysToDelete.push(key);
+      }
+    }
+    
+    // 然后删除
+    for (const key of keysToDelete) {
       memoryCache.delete(key);
       cleared++;
     }
-  }
-  if (cleared > 0) {
-    console.log('[SW] Cleared', cleared, 'memory cache entries for:', prefix);
+    
+    if (cleared > 0) {
+      console.log('[SW] Cleared', cleared, 'memory cache entries for:', prefix);
+    }
+  } catch (error) {
+    console.warn('[SW] Error clearing memory cache:', error);
   }
 }
 
