@@ -26,6 +26,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
@@ -48,6 +50,7 @@ import static org.mockito.Mockito.*;
  * 测试模板变量收集和替换功能
  */
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 @DisplayName("TemplateVariableService 模板变量服务测试")
 class TemplateVariableServiceTest {
 
@@ -184,9 +187,9 @@ class TemplateVariableServiceTest {
     @Test
     @DisplayName("应该收集案件基本信息变量")
     void collectVariables_shouldCollectMatterVariables() {
-        when(matterRepository.getByIdOrThrow(1L, anyString())).thenReturn(testMatter);
-        when(matterClientRepository.findByMatterId(1L)).thenReturn(List.of());
-        when(matterParticipantRepository.findByMatterId(1L)).thenReturn(List.of());
+        when(matterRepository.getByIdOrThrow(eq(1L), anyString())).thenReturn(testMatter);
+        when(matterClientRepository.findByMatterId(eq(1L))).thenReturn(List.of());
+        when(matterParticipantRepository.findByMatterId(eq(1L))).thenReturn(List.of());
 
         Map<String, Object> variables = service.collectVariables(1L);
 
@@ -203,10 +206,10 @@ class TemplateVariableServiceTest {
     @Test
     @DisplayName("应该收集客户信息变量")
     void collectVariables_shouldCollectClientVariables() {
-        when(matterRepository.getByIdOrThrow(1L, anyString())).thenReturn(testMatter);
-        when(matterClientRepository.findByMatterId(1L)).thenReturn(List.of());
-        when(clientRepository.findById(100L)).thenReturn(testClient);
-        when(matterParticipantRepository.findByMatterId(1L)).thenReturn(List.of());
+        when(matterRepository.getByIdOrThrow(eq(1L), anyString())).thenReturn(testMatter);
+        when(matterClientRepository.findByMatterId(eq(1L))).thenReturn(List.of());
+        when(clientRepository.findById(eq(100L))).thenReturn(testClient);
+        when(matterParticipantRepository.findByMatterId(eq(1L))).thenReturn(List.of());
 
         Map<String, Object> variables = service.collectVariables(1L);
 
@@ -221,10 +224,10 @@ class TemplateVariableServiceTest {
     @Test
     @DisplayName("应该收集律师信息变量")
     void collectVariables_shouldCollectLawyerVariables() {
-        when(matterRepository.getByIdOrThrow(1L, anyString())).thenReturn(testMatter);
-        when(matterClientRepository.findByMatterId(1L)).thenReturn(List.of());
-        when(matterParticipantRepository.findByMatterId(1L)).thenReturn(List.of());
-        when(userRepository.findById(200L)).thenReturn(testLawyer);
+        when(matterRepository.getByIdOrThrow(eq(1L), anyString())).thenReturn(testMatter);
+        when(matterClientRepository.findByMatterId(eq(1L))).thenReturn(List.of());
+        when(matterParticipantRepository.findByMatterId(eq(1L))).thenReturn(List.of());
+        when(userRepository.findById(eq(200L))).thenReturn(testLawyer);
 
         Map<String, Object> variables = service.collectVariables(1L);
 
@@ -237,11 +240,11 @@ class TemplateVariableServiceTest {
     @Test
     @DisplayName("应该收集合同信息变量")
     void collectVariables_shouldCollectContractVariables() {
-        when(matterRepository.getByIdOrThrow(1L, anyString())).thenReturn(testMatter);
-        when(matterClientRepository.findByMatterId(1L)).thenReturn(List.of());
-        when(matterParticipantRepository.findByMatterId(1L)).thenReturn(List.of());
-        when(contractRepository.getById(300L)).thenReturn(testContract);
-        when(approvalMapper.selectByBusiness(eq("CONTRACT"), eq(300L))).thenReturn(List.of());
+        when(matterRepository.getByIdOrThrow(eq(1L), anyString())).thenReturn(testMatter);
+        when(matterClientRepository.findByMatterId(eq(1L))).thenReturn(List.of());
+        when(matterParticipantRepository.findByMatterId(eq(1L))).thenReturn(List.of());
+        when(contractRepository.getById(eq(300L))).thenReturn(testContract);
+        when(approvalMapper.selectByBusiness(eq("CONTRACT"), anyLong())).thenReturn(List.of());
 
         Map<String, Object> variables = service.collectVariables(1L);
 
@@ -255,13 +258,13 @@ class TemplateVariableServiceTest {
     @Test
     @DisplayName("应该收集日期变量")
     void collectVariables_shouldCollectDateVariables() {
-        when(matterRepository.getByIdOrThrow(1L, anyString())).thenReturn(testMatter);
-        when(matterClientRepository.findByMatterId(1L)).thenReturn(List.of());
-        when(matterParticipantRepository.findByMatterId(1L)).thenReturn(List.of());
+        when(matterRepository.getByIdOrThrow(eq(1L), anyString())).thenReturn(testMatter);
+        when(matterClientRepository.findByMatterId(eq(1L))).thenReturn(List.of());
+        when(matterParticipantRepository.findByMatterId(eq(1L))).thenReturn(List.of());
 
         // Fix the date to ensure consistent test
         LocalDate fixedDate = LocalDate.of(2024, 6, 15);
-        try (var mockedLocalDate = mockStatic(LocalDate.class, MockitoExtension.CALLS_REAL_METHODS)) {
+        try (var mockedLocalDate = mockStatic(LocalDate.class)) {
             mockedLocalDate.when(LocalDate::now).thenReturn(fixedDate);
 
             Map<String, Object> variables = service.collectVariables(1L);
@@ -277,9 +280,9 @@ class TemplateVariableServiceTest {
     @Test
     @DisplayName("应该收集律所信息变量")
     void collectVariables_shouldCollectFirmVariables() {
-        when(matterRepository.getByIdOrThrow(1L, anyString())).thenReturn(testMatter);
-        when(matterClientRepository.findByMatterId(1L)).thenReturn(List.of());
-        when(matterParticipantRepository.findByMatterId(1L)).thenReturn(List.of());
+        when(matterRepository.getByIdOrThrow(eq(1L), anyString())).thenReturn(testMatter);
+        when(matterClientRepository.findByMatterId(eq(1L))).thenReturn(List.of());
+        when(matterParticipantRepository.findByMatterId(eq(1L))).thenReturn(List.of());
 
         Map<String, Object> variables = service.collectVariables(1L);
 
@@ -306,11 +309,11 @@ class TemplateVariableServiceTest {
         mc2.setClientId(101L);
         mc2.setIsPrimary(false);
 
-        when(matterRepository.getByIdOrThrow(1L, anyString())).thenReturn(testMatter);
+        when(matterRepository.getByIdOrThrow(eq(1L), anyString())).thenReturn(testMatter);
         when(matterClientRepository.findByMatterId(1L)).thenReturn(List.of(testMatterClient, mc2));
-        when(clientRepository.findById(100L)).thenReturn(testClient);
-        when(clientRepository.findById(101L)).thenReturn(client2);
-        when(matterParticipantRepository.findByMatterId(1L)).thenReturn(List.of());
+        when(clientRepository.findById(eq(100L))).thenReturn(testClient);
+        when(clientRepository.findById(eq(101L))).thenReturn(client2);
+        when(matterParticipantRepository.findByMatterId(eq(1L))).thenReturn(List.of());
 
         Map<String, Object> variables = service.collectVariables(1L);
 
@@ -336,11 +339,11 @@ class TemplateVariableServiceTest {
         p2.setRole("CO_COUNSEL");
         p2.setStatus("ACTIVE");
 
-        when(matterRepository.getByIdOrThrow(1L, anyString())).thenReturn(testMatter);
-        when(matterClientRepository.findByMatterId(1L)).thenReturn(List.of());
+        when(matterRepository.getByIdOrThrow(eq(1L), anyString())).thenReturn(testMatter);
+        when(matterClientRepository.findByMatterId(eq(1L))).thenReturn(List.of());
         when(matterParticipantRepository.findByMatterId(1L)).thenReturn(List.of(testParticipant, p2));
-        when(userRepository.findById(200L)).thenReturn(testLawyer);
-        when(userRepository.findById(201L)).thenReturn(lawyer2);
+        when(userRepository.findById(eq(200L))).thenReturn(testLawyer);
+        when(userRepository.findById(eq(201L))).thenReturn(lawyer2);
 
         Map<String, Object> variables = service.collectVariables(1L);
 
@@ -390,10 +393,9 @@ class TemplateVariableServiceTest {
     @Test
     @DisplayName("null 变量值应该替换为空字符串")
     void replaceVariables_shouldReplaceNullWithEmpty() {
-        Map<String, Object> variables = Map.of(
-            "matter.name", "测试案件",
-            "matter.description", null
-        );
+        Map<String, Object> variables = new java.util.HashMap<>();
+        variables.put("matter.name", "测试案件");
+        variables.put("matter.description", null);
 
         String template = "案件：${matter.name}，描述：${matter.description}";
         String result = service.replaceVariables(template, variables);
@@ -406,7 +408,7 @@ class TemplateVariableServiceTest {
     @Test
     @DisplayName("案件不存在应该抛出异常")
     void collectVariables_shouldThrowExceptionWhenMatterNotFound() {
-        when(matterRepository.getByIdOrThrow(1L, anyString()))
+        when(matterRepository.getByIdOrThrow(eq(1L), anyString()))
             .thenThrow(new RuntimeException("案件不存在"));
 
         org.junit.jupiter.api.Assertions.assertThrows(
@@ -424,9 +426,9 @@ class TemplateVariableServiceTest {
         emptyMatter.setCaseType(null);
         emptyMatter.setFilingDate(null);
 
-        when(matterRepository.getByIdOrThrow(1L, anyString())).thenReturn(emptyMatter);
-        when(matterClientRepository.findByMatterId(1L)).thenReturn(List.of());
-        when(matterParticipantRepository.findByMatterId(1L)).thenReturn(List.of());
+        when(matterRepository.getByIdOrThrow(eq(1L), anyString())).thenReturn(emptyMatter);
+        when(matterClientRepository.findByMatterId(eq(1L))).thenReturn(List.of());
+        when(matterParticipantRepository.findByMatterId(eq(1L))).thenReturn(List.of());
 
         Map<String, Object> variables = service.collectVariables(1L);
 
@@ -439,9 +441,9 @@ class TemplateVariableServiceTest {
     @DisplayName("应该处理不同案件类型名称")
     void collectVariables_shouldHandleDifferentCaseTypes() {
         testMatter.setCaseType("CRIMINAL");
-        when(matterRepository.getByIdOrThrow(1L, anyString())).thenReturn(testMatter);
-        when(matterClientRepository.findByMatterId(1L)).thenReturn(List.of());
-        when(matterParticipantRepository.findByMatterId(1L)).thenReturn(List.of());
+        when(matterRepository.getByIdOrThrow(eq(1L), anyString())).thenReturn(testMatter);
+        when(matterClientRepository.findByMatterId(eq(1L))).thenReturn(List.of());
+        when(matterParticipantRepository.findByMatterId(eq(1L))).thenReturn(List.of());
 
         Map<String, Object> variables = service.collectVariables(1L);
 
@@ -452,9 +454,9 @@ class TemplateVariableServiceTest {
     @DisplayName("应该处理国家赔偿案件类型")
     void collectVariables_shouldHandleStateCompensationCaseTypes() {
         testMatter.setCaseType("STATE_COMP_ADMIN");
-        when(matterRepository.getByIdOrThrow(1L, anyString())).thenReturn(testMatter);
-        when(matterClientRepository.findByMatterId(1L)).thenReturn(List.of());
-        when(matterParticipantRepository.findByMatterId(1L)).thenReturn(List.of());
+        when(matterRepository.getByIdOrThrow(eq(1L), anyString())).thenReturn(testMatter);
+        when(matterClientRepository.findByMatterId(eq(1L))).thenReturn(List.of());
+        when(matterParticipantRepository.findByMatterId(eq(1L))).thenReturn(List.of());
 
         Map<String, Object> variables = service.collectVariables(1L);
 
@@ -467,10 +469,10 @@ class TemplateVariableServiceTest {
         testClient.setClientType("INDIVIDUAL");
         testClient.setIdCard("110101199001011234");
 
-        when(matterRepository.getByIdOrThrow(1L, anyString())).thenReturn(testMatter);
-        when(matterClientRepository.findByMatterId(1L)).thenReturn(List.of());
-        when(clientRepository.findById(100L)).thenReturn(testClient);
-        when(matterParticipantRepository.findByMatterId(1L)).thenReturn(List.of());
+        when(matterRepository.getByIdOrThrow(eq(1L), anyString())).thenReturn(testMatter);
+        when(matterClientRepository.findByMatterId(eq(1L))).thenReturn(List.of());
+        when(clientRepository.findById(eq(100L))).thenReturn(testClient);
+        when(matterParticipantRepository.findByMatterId(eq(1L))).thenReturn(List.of());
 
         Map<String, Object> variables = service.collectVariables(1L);
 
@@ -484,11 +486,11 @@ class TemplateVariableServiceTest {
     void collectVariables_shouldHandleDifferentFeeTypes() {
         testContract.setFeeType("CONTINGENCY");
 
-        when(matterRepository.getByIdOrThrow(1L, anyString())).thenReturn(testMatter);
-        when(matterClientRepository.findByMatterId(1L)).thenReturn(List.of());
-        when(matterParticipantRepository.findByMatterId(1L)).thenReturn(List.of());
-        when(contractRepository.getById(300L)).thenReturn(testContract);
-        when(approvalMapper.selectByBusiness(eq("CONTRACT"), eq(300L))).thenReturn(List.of());
+        when(matterRepository.getByIdOrThrow(eq(1L), anyString())).thenReturn(testMatter);
+        when(matterClientRepository.findByMatterId(eq(1L))).thenReturn(List.of());
+        when(matterParticipantRepository.findByMatterId(eq(1L))).thenReturn(List.of());
+        when(contractRepository.getById(eq(300L))).thenReturn(testContract);
+        when(approvalMapper.selectByBusiness(eq("CONTRACT"), anyLong())).thenReturn(List.of());
 
         Map<String, Object> variables = service.collectVariables(1L);
 
@@ -504,9 +506,9 @@ class TemplateVariableServiceTest {
         testMatter.setOpposingLawyerPhone("13700137000");
         testMatter.setOpposingLawyerEmail("opposing@example.com");
 
-        when(matterRepository.getByIdOrThrow(1L, anyString())).thenReturn(testMatter);
-        when(matterClientRepository.findByMatterId(1L)).thenReturn(List.of());
-        when(matterParticipantRepository.findByMatterId(1L)).thenReturn(List.of());
+        when(matterRepository.getByIdOrThrow(eq(1L), anyString())).thenReturn(testMatter);
+        when(matterClientRepository.findByMatterId(eq(1L))).thenReturn(List.of());
+        when(matterParticipantRepository.findByMatterId(eq(1L))).thenReturn(List.of());
 
         Map<String, Object> variables = service.collectVariables(1L);
 
