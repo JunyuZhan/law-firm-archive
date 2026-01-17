@@ -3,13 +3,29 @@
  * 手动实现的 Service Worker，避免 vite-plugin-pwa 与 Vite 7 的兼容性问题
  * 
  * 安全策略：
- * - 只缓存安全的只读 API（字典、配置、案由等公共数据）
- * - 敏感业务数据（案件、客户、财务等）不缓存
+ * - 只持久化缓存安全的只读 API（字典、配置、案由等公共数据）
+ * - 敏感业务数据使用短期内存缓存（不持久化，提升性能）
+ * 
+ * 性能优化：
+ * - 静态资源：CacheFirst（优先缓存）
+ * - 安全 API：NetworkFirst + 持久化缓存
+ * - 业务 API：StaleWhileRevalidate + 短期内存缓存（不持久化）
  */
 
-const CACHE_NAME = 'law-firm-cache-v3';
-const STATIC_CACHE_NAME = 'law-firm-static-v3';
-const API_CACHE_NAME = 'law-firm-api-v3';
+const CACHE_NAME = 'law-firm-cache-v4';
+const STATIC_CACHE_NAME = 'law-firm-static-v4';
+const API_CACHE_NAME = 'law-firm-api-v4';
+
+// 短期内存缓存（不持久化到磁盘，安全）
+// 格式: { url: { data: Response, timestamp: number } }
+const memoryCache = new Map();
+
+// 内存缓存 TTL（毫秒）
+const MEMORY_CACHE_TTL = {
+  list: 2 * 60 * 1000,       // 列表数据：2分钟
+  detail: 5 * 60 * 1000,     // 详情数据：5分钟
+  default: 1 * 60 * 1000,    // 默认：1分钟
+};
 
 // 预缓存的核心资源
 const PRECACHE_URLS = [
@@ -18,7 +34,7 @@ const PRECACHE_URLS = [
   '/offline.html'
 ];
 
-// 安全的只读 API 路径（可缓存）
+// 安全的只读 API 路径（持久化缓存）
 // 这些 API 返回的是公共数据，不包含敏感信息
 const SAFE_API_PATTERNS = [
   '/api/dict/',           // 字典数据
@@ -29,9 +45,32 @@ const SAFE_API_PATTERNS = [
   '/api/department/',     // 部门数据（公共）
 ];
 
+// 可使用内存缓存的业务 API（不持久化，但可短期缓存）
+const CACHEABLE_BUSINESS_API = [
+  { pattern: '/api/matter', ttlKey: 'list' },
+  { pattern: '/api/crm', ttlKey: 'list' },
+  { pattern: '/api/document', ttlKey: 'list' },
+  { pattern: '/api/finance', ttlKey: 'list' },
+  { pattern: '/api/task', ttlKey: 'list' },
+  { pattern: '/api/timesheet', ttlKey: 'list' },
+  { pattern: '/api/archive', ttlKey: 'list' },
+  { pattern: '/api/knowledge', ttlKey: 'list' },
+];
+
+// 不缓存的敏感操作 API
+const NO_CACHE_PATTERNS = [
+  '/api/auth/',           // 认证相关
+  '/api/admin/user',      // 用户管理
+  '/api/hr/payroll',      // 薪资数据
+  '/api/hr/employee',     // 员工敏感信息
+];
+
+// 请求去重：正在进行的请求
+const pendingRequests = new Map();
+
 // 安装事件 - 预缓存核心资源
 self.addEventListener('install', (event) => {
-  console.log('[SW] Installing Service Worker');
+  console.log('[SW] Installing Service Worker v4');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
@@ -39,7 +78,6 @@ self.addEventListener('install', (event) => {
         return cache.addAll(PRECACHE_URLS);
       })
       .then(() => {
-        // 立即激活，不等待旧的 Service Worker 停止
         return self.skipWaiting();
       })
   );
@@ -47,13 +85,12 @@ self.addEventListener('install', (event) => {
 
 // 激活事件 - 清理旧缓存
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activating Service Worker');
+  console.log('[SW] Activating Service Worker v4');
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames
           .filter((name) => {
-            // 删除旧版本的缓存
             return name.startsWith('law-firm-') && 
                    name !== CACHE_NAME && 
                    name !== STATIC_CACHE_NAME && 
@@ -65,7 +102,6 @@ self.addEventListener('activate', (event) => {
           })
       );
     }).then(() => {
-      // 立即接管所有客户端
       return self.clients.claim();
     })
   );
@@ -81,19 +117,36 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // 只处理 GET 请求的缓存
+  if (request.method !== 'GET') {
+    // POST/PUT/DELETE 等修改请求：清除相关内存缓存
+    if (url.pathname.startsWith('/api/')) {
+      clearRelatedMemoryCache(url.pathname);
+    }
+    return;
+  }
+
   // API 请求处理
   if (url.pathname.startsWith('/api/')) {
-    // 检查是否为安全的只读 API
-    const isSafeApi = SAFE_API_PATTERNS.some(pattern => 
-      url.pathname.startsWith(pattern)
-    );
-    
-    if (isSafeApi) {
-      // 安全 API - 网络优先，支持离线缓存
-      event.respondWith(networkFirst(request, API_CACHE_NAME));
+    // 检查是否为不缓存的敏感操作
+    if (isNoCacheApi(url.pathname)) {
+      return; // 直接走网络
     }
-    // 敏感 API（案件、客户、财务等）- 不缓存，直接走网络
-    // 不调用 event.respondWith()，让浏览器正常处理
+
+    // 检查是否为安全的只读 API（持久化缓存）
+    if (isSafeApi(url.pathname)) {
+      event.respondWith(networkFirst(request, API_CACHE_NAME));
+      return;
+    }
+
+    // 业务 API：使用 Stale-While-Revalidate + 内存缓存
+    const ttlConfig = getCacheableTTL(url.pathname);
+    if (ttlConfig) {
+      event.respondWith(staleWhileRevalidate(request, ttlConfig.ttl));
+      return;
+    }
+
+    // 其他 API：不缓存
     return;
   }
 
@@ -117,12 +170,32 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(networkFirst(request, CACHE_NAME));
 });
 
-// 判断是否为静态资源
+// ========== 辅助函数 ==========
+
+function isSafeApi(pathname) {
+  return SAFE_API_PATTERNS.some(pattern => pathname.startsWith(pattern));
+}
+
+function isNoCacheApi(pathname) {
+  return NO_CACHE_PATTERNS.some(pattern => pathname.startsWith(pattern));
+}
+
+function getCacheableTTL(pathname) {
+  for (const config of CACHEABLE_BUSINESS_API) {
+    if (pathname.startsWith(config.pattern)) {
+      return { ttl: MEMORY_CACHE_TTL[config.ttlKey] || MEMORY_CACHE_TTL.default };
+    }
+  }
+  return null;
+}
+
 function isStaticAsset(pathname) {
   return /\.(js|css|png|jpg|jpeg|svg|gif|webp|woff2?|ico)$/i.test(pathname);
 }
 
-// 缓存优先策略
+// ========== 缓存策略 ==========
+
+// 缓存优先策略（静态资源）
 async function cacheFirst(request, cacheName) {
   const cachedResponse = await caches.match(request);
   if (cachedResponse) {
@@ -142,7 +215,7 @@ async function cacheFirst(request, cacheName) {
   }
 }
 
-// 网络优先策略
+// 网络优先策略（安全 API + 持久化缓存）
 async function networkFirst(request, cacheName) {
   try {
     const networkResponse = await fetch(request);
@@ -161,9 +234,127 @@ async function networkFirst(request, cacheName) {
   }
 }
 
+// Stale-While-Revalidate 策略（业务 API + 内存缓存）
+// 先返回缓存（如果有且未过期），同时在后台更新
+async function staleWhileRevalidate(request, ttl) {
+  const cacheKey = request.url;
+  const now = Date.now();
+
+  // 检查内存缓存
+  const cached = memoryCache.get(cacheKey);
+  if (cached && (now - cached.timestamp) < ttl) {
+    // 缓存有效，直接返回
+    // 同时在后台更新缓存（不阻塞响应）
+    updateMemoryCacheInBackground(request, cacheKey);
+    return cached.response.clone();
+  }
+
+  // 缓存过期或不存在，请求网络
+  // 使用请求去重，避免短时间内重复请求
+  return deduplicatedFetch(request, cacheKey, ttl);
+}
+
+// 去重的网络请求
+async function deduplicatedFetch(request, cacheKey, ttl) {
+  // 检查是否有正在进行的相同请求
+  if (pendingRequests.has(cacheKey)) {
+    console.log('[SW] Deduplicating request:', cacheKey);
+    return pendingRequests.get(cacheKey);
+  }
+
+  // 创建请求 Promise
+  const fetchPromise = (async () => {
+    try {
+      const response = await fetch(request);
+      if (response.ok) {
+        // 存入内存缓存
+        memoryCache.set(cacheKey, {
+          response: response.clone(),
+          timestamp: Date.now(),
+        });
+      }
+      return response;
+    } finally {
+      // 请求完成，移除 pending 状态
+      pendingRequests.delete(cacheKey);
+    }
+  })();
+
+  // 记录正在进行的请求
+  pendingRequests.set(cacheKey, fetchPromise);
+
+  return fetchPromise;
+}
+
+// 后台更新内存缓存
+function updateMemoryCacheInBackground(request, cacheKey) {
+  // 延迟执行，避免阻塞响应
+  setTimeout(async () => {
+    try {
+      const response = await fetch(request);
+      if (response.ok) {
+        memoryCache.set(cacheKey, {
+          response: response.clone(),
+          timestamp: Date.now(),
+        });
+        console.log('[SW] Background cache updated:', cacheKey);
+      }
+    } catch (error) {
+      console.log('[SW] Background update failed:', error);
+    }
+  }, 100);
+}
+
+// 清除相关内存缓存（当有修改操作时）
+function clearRelatedMemoryCache(pathname) {
+  const prefix = pathname.split('/').slice(0, 3).join('/'); // 如 /api/matter
+  let cleared = 0;
+  for (const key of memoryCache.keys()) {
+    if (key.includes(prefix)) {
+      memoryCache.delete(key);
+      cleared++;
+    }
+  }
+  if (cleared > 0) {
+    console.log('[SW] Cleared', cleared, 'memory cache entries for:', prefix);
+  }
+}
+
+// 定期清理过期的内存缓存（每5分钟）
+setInterval(() => {
+  const now = Date.now();
+  let expired = 0;
+  for (const [key, value] of memoryCache.entries()) {
+    // 超过最长 TTL（5分钟）的缓存清除
+    if (now - value.timestamp > MEMORY_CACHE_TTL.detail) {
+      memoryCache.delete(key);
+      expired++;
+    }
+  }
+  if (expired > 0) {
+    console.log('[SW] Cleaned up', expired, 'expired memory cache entries');
+  }
+}, 5 * 60 * 1000);
+
 // 监听来自客户端的消息
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
+  }
+  
+  // 支持手动清除缓存
+  if (event.data && event.data.type === 'CLEAR_CACHE') {
+    memoryCache.clear();
+    console.log('[SW] Memory cache cleared');
+    
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames
+          .filter((name) => name.startsWith('law-firm-'))
+          .map((name) => caches.delete(name))
+      );
+    }).then(() => {
+      event.source.postMessage({ type: 'CACHE_CLEARED' });
+    });
   }
 });
