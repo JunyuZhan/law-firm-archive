@@ -56,21 +56,21 @@ class UrlSecurityValidatorTest {
     @Test
     @DisplayName("HTTP 协议应该通过验证")
     void validateUrl_shouldAllowHttp() {
-        assertThatCode(() -> validator.validateUrl("http://example.com"))
+        assertThatCode(() -> validator.validateUrl("http://www.baidu.com"))
             .doesNotThrowAnyException();
     }
 
     @Test
     @DisplayName("HTTPS 协议应该通过验证")
     void validateUrl_shouldAllowHttps() {
-        assertThatCode(() -> validator.validateUrl("https://example.com"))
+        assertThatCode(() -> validator.validateUrl("https://www.baidu.com"))
             .doesNotThrowAnyException();
     }
 
     @Test
     @DisplayName("FTP 协议应该被拒绝")
     void validateUrl_shouldRejectFtp() {
-        assertThatThrownBy(() -> validator.validateUrl("ftp://example.com"))
+        assertThatThrownBy(() -> validator.validateUrl("ftp://www.baidu.com"))
             .isInstanceOf(BusinessException.class)
             .hasMessageContaining("只支持HTTP/HTTPS协议");
     }
@@ -164,14 +164,14 @@ class UrlSecurityValidatorTest {
     @Test
     @DisplayName("应该允许访问带端口的公网地址")
     void validateUrl_shouldAllowPublicDomainWithPort() {
-        assertThatCode(() -> validator.validateUrl("https://example.com:443"))
+        assertThatCode(() -> validator.validateUrl("https://www.baidu.com:443"))
             .doesNotThrowAnyException();
     }
 
     @Test
     @DisplayName("应该允许访问带路径的公网地址")
     void validateUrl_shouldAllowPublicDomainWithPath() {
-        assertThatCode(() -> validator.validateUrl("https://api.example.com/v1/data"))
+        assertThatCode(() -> validator.validateUrl("https://www.baidu.com/s?wd=test"))
             .doesNotThrowAnyException();
     }
 
@@ -187,22 +187,22 @@ class UrlSecurityValidatorTest {
     @Test
     @DisplayName("validateImageUrl: 应该允许合法的图片URL")
     void validateImageUrl_shouldAllowValidImageUrl() {
-        assertThatCode(() -> validator.validateImageUrl("https://example.com/image.jpg"))
+        assertThatCode(() -> validator.validateImageUrl("https://www.baidu.com/image.jpg"))
             .doesNotThrowAnyException();
     }
 
     @Test
     @DisplayName("validateImageUrl: 应该允许各种图片格式")
     void validateImageUrl_shouldAllowVariousImageFormats() {
-        assertThatCode(() -> validator.validateImageUrl("https://example.com/image.jpeg"))
+        assertThatCode(() -> validator.validateImageUrl("https://www.baidu.com/image.jpeg"))
             .doesNotThrowAnyException();
-        assertThatCode(() -> validator.validateImageUrl("https://example.com/image.png"))
+        assertThatCode(() -> validator.validateImageUrl("https://www.baidu.com/image.png"))
             .doesNotThrowAnyException();
-        assertThatCode(() -> validator.validateImageUrl("https://example.com/image.gif"))
+        assertThatCode(() -> validator.validateImageUrl("https://www.baidu.com/image.gif"))
             .doesNotThrowAnyException();
-        assertThatCode(() -> validator.validateImageUrl("https://example.com/image.webp"))
+        assertThatCode(() -> validator.validateImageUrl("https://www.baidu.com/image.webp"))
             .doesNotThrowAnyException();
-        assertThatCode(() -> validator.validateImageUrl("https://example.com/image.svg"))
+        assertThatCode(() -> validator.validateImageUrl("https://www.baidu.com/image.svg"))
             .doesNotThrowAnyException();
     }
 
@@ -217,7 +217,7 @@ class UrlSecurityValidatorTest {
     @Test
     @DisplayName("validateImageUrl: 应该允许带查询参数的图片URL")
     void validateImageUrl_shouldAllowImageUrlWithQuery() {
-        assertThatCode(() -> validator.validateImageUrl("https://example.com/image.jpg?t=123"))
+        assertThatCode(() -> validator.validateImageUrl("https://www.baidu.com/image.jpg?t=123"))
             .doesNotThrowAnyException();
     }
 
