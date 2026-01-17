@@ -122,4 +122,17 @@ export const requestClient = createRequestClient(apiURL, {
   timeout: 600_000, // 默认10分钟超时（支持大文件下载和长时间操作）
 });
 
+// baseRequestClient 用于 logout 等特殊接口，不触发 401 重试逻辑，避免循环调用
 export const baseRequestClient = new RequestClient({ baseURL: apiURL });
+// 只添加请求拦截器，用于发送 Authorization header（如果存在）
+baseRequestClient.addRequestInterceptor({
+  fulfilled: async (config) => {
+    const accessStore = useAccessStore();
+    const token = accessStore.accessToken;
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    config.headers['Accept-Language'] = preferences.app.locale;
+    return config;
+  },
+});

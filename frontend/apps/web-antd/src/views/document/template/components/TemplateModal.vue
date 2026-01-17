@@ -28,6 +28,7 @@ import {
 } from '#/api/document/template';
 import RichTextEditor from '#/components/RichTextEditor/index.vue';
 import PowerOfAttorneyEditor from './PowerOfAttorneyEditor.vue';
+import { decodeHtmlEntities } from '../../../system/contract-template/utils/print-formatter';
 
 const emit = defineEmits<{ success: [] }>();
 
@@ -114,6 +115,12 @@ const systemVariables = [
   { label: '代理权限类型', value: 'authorizationType', description: '一般代理/特别代理' },
   { label: '代理权限范围', value: 'authorizationScope', description: '代理权限详细描述' },
   { label: '审理阶段', value: 'trialStage', description: '一审/二审/再审等' },
+  // 多个委托人（自动填充所有委托人）
+  { label: '所有委托人信息', value: 'clients.allInfo', description: '自动填充所有委托人信息（多个委托人用空行分隔）' },
+  { label: '所有委托人名称', value: 'clients.allNames', description: '所有委托人名称（用顿号分隔）' },
+  // 多个受托人（自动填充所有受托人）
+  { label: '所有受托人信息', value: 'lawyers.allInfo', description: '自动填充所有受托人信息（律所+所有律师）' },
+  { label: '所有律师名称', value: 'lawyers.allNames', description: '所有律师名称（用顿号分隔）' },
   // 日期相关
   { label: '当前日期', value: 'date.today', description: '当前完整日期' },
   { label: '当前年份', value: 'date.year', description: '当前年份' },
@@ -361,7 +368,8 @@ async function open(record?: DocumentTemplateDTO) {
         templateType: detail.templateType || 'HTML',
         businessType: detail.businessType || '',
         caseType: detail.caseType || 'ALL',
-        content: detail.content || '',
+        // 解码可能被 HTML 编码的内容
+        content: decodeHtmlEntities(detail.content || ''),
         description: detail.description || '',
       });
     } catch {
@@ -477,7 +485,7 @@ defineExpose({ open });
 
     <!-- 授权委托书专用编辑器 -->
     <div v-if="usePowerOfAttorneyEditor">
-      <PowerOfAttorneyEditor v-model="formData.content" />
+      <PowerOfAttorneyEditor v-model="formData.content" :variables="systemVariables" />
     </div>
 
     <!-- 富文本编辑器 -->

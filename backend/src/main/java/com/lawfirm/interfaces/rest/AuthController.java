@@ -109,17 +109,29 @@ public class AuthController {
 
     /**
      * 登出
+     * 允许未登录用户调用，避免前端循环重试
      */
     @PostMapping("/logout")
     @OperationLog(module = "认证", action = "用户登出")
     @Operation(summary = "用户登出")
     public Result<Void> logout(HttpServletRequest httpRequest) {
-        Long userId = SecurityUtils.getUserId();
+        // 尝试获取用户ID，如果未登录则返回null（避免抛出异常）
+        Long userId = null;
+        try {
+            userId = SecurityUtils.getUserId();
+        } catch (Exception e) {
+            // 用户未登录，允许继续执行（可能是token已过期的情况）
+        }
+        
         String token = httpRequest.getHeader("Authorization");
         if (token != null && token.startsWith("Bearer ")) {
             token = token.substring(7);
         }
-        authService.logout(userId, token);
+        
+        // 如果用户已登录，执行登出逻辑；如果未登录，直接返回成功（避免前端循环重试）
+        if (userId != null) {
+            authService.logout(userId, token);
+        }
         return Result.success();
     }
 

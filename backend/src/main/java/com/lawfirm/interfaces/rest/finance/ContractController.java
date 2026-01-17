@@ -76,6 +76,17 @@ public class ContractController {
         return Result.success();
     }
 
+    /**
+     * 撤回审批（合同创建者或签约人撤回待审批的合同）
+     */
+    @PostMapping("/{id}/withdraw")
+    @RequirePermission("matter:contract:submit")
+    @OperationLog(module = "合同管理", action = "撤回审批")
+    public Result<Void> withdrawApproval(@PathVariable Long id) {
+        contractAppService.withdrawApproval(id);
+        return Result.success();
+    }
+
     // ========== Request DTOs ==========
 
     @Data

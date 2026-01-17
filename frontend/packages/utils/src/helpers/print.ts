@@ -37,6 +37,40 @@ export function isExternalDocument(documentType?: string): boolean {
 }
 
 /**
+ * 解码 HTML 实体
+ * 用于修复 XSS 拦截导致的 HTML 实体转义问题（如 &lt;、&gt;、&quot; 等）
+ * @param text 需要解码的文本
+ * @returns 解码后的文本
+ */
+function decodeHtmlEntities(text: string): string {
+  if (!text) return text;
+  
+  // 常见 HTML 实体映射
+  const entities: Record<string, string> = {
+    '&quot;': '"',
+    '&amp;': '&',
+    '&lt;': '<',
+    '&gt;': '>',
+    '&apos;': "'",
+    '&#39;': "'",
+    '&#x27;': "'",
+    '&nbsp;': ' ',
+  };
+  
+  let result = text;
+  for (const [entity, char] of Object.entries(entities)) {
+    result = result.split(entity).join(char);
+  }
+  
+  // 处理数字实体 &#xxx;
+  result = result.replace(/&#(\d+);/g, (_, num) => String.fromCharCode(parseInt(num, 10)));
+  // 处理十六进制实体 &#xXXX;
+  result = result.replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+  
+  return result;
+}
+
+/**
  * 国务院标准公文格式样式（对外文书）
  * 根据《党政机关公文格式》国家标准（GB/T 9704-2012）
  */
@@ -538,17 +572,21 @@ export interface DocumentPrintData {
 export function generateDocumentHtml(data: DocumentPrintData): string {
   const { title, content, preserveFormat = false } = data;
 
+  // 先解码 HTML 实体（防止 XSS 过滤导致的乱码）
+  let decodedContent = decodeHtmlEntities(content);
+  let decodedTitle = title ? decodeHtmlEntities(title) : '';
+
   let htmlContent = '';
-  if (title) {
-    htmlContent += `<div class="header"><div class="title">${title}</div></div>`;
+  if (decodedTitle) {
+    htmlContent += `<div class="header"><div class="title">${decodedTitle}</div></div>`;
   }
 
   if (preserveFormat) {
     // 保留原始格式（使用 pre 标签）
-    htmlContent += `<div class="content" style="white-space: pre-wrap; font-family: 'FangSong', '仿宋_GB2312', '仿宋', serif;">${content}</div>`;
+    htmlContent += `<div class="content" style="white-space: pre-wrap; font-family: 'FangSong', '仿宋_GB2312', '仿宋', serif;">${decodedContent}</div>`;
   } else {
     // 标准格式：将换行转换为段落
-    const paragraphs = content.split('\n').filter((p) => p.trim());
+    const paragraphs = decodedContent.split('\n').filter((p) => p.trim());
     htmlContent += '<div class="content">';
     paragraphs.forEach((para, index) => {
       // 第一段可能需要特殊处理（如不需要缩进）

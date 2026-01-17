@@ -20,7 +20,7 @@ import java.util.Map;
  * 
  * 提供获取当前请求上下文的通用方法
  * 
- * @author Kiro-1
+ * @author junyuzhan
  * @since 2026-01-10
  */
 public class WebUtils {

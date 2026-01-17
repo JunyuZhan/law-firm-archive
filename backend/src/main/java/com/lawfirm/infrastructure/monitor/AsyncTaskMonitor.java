@@ -16,7 +16,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * 
  * 用于追踪异步任务的执行状态、队列深度、执行耗时
  * 
- * @author system
+ * @author junyuzhan
  * @since 2026-01-10
  */
 @Slf4j

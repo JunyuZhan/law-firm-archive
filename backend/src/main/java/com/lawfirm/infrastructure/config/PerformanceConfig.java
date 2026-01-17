@@ -17,7 +17,7 @@ import javax.sql.DataSource;
  * 1. HikariCP 连接池优化配置
  * 2. 连接池监控配置
  * 
- * @author Kiro-1
+ * @author junyuzhan
  */
 @Slf4j
 @Configuration

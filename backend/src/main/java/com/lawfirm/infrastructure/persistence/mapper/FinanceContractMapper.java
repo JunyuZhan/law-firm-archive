@@ -29,15 +29,35 @@ public interface FinanceContractMapper extends BaseMapper<Contract> {
 
     /**
      * 统计指定日期创建的合同数量
+     * 只统计已审批通过的合同（ACTIVE状态），只有真正生效的合同才占用编号位置
+     * 草稿状态（DRAFT）和已拒绝状态（REJECTED）不占用编号位置
      */
-    @Select("SELECT COUNT(*) FROM finance_contract WHERE DATE(created_at) = #{date} AND deleted = false")
+    @Select("SELECT COUNT(*) FROM finance_contract WHERE DATE(created_at) = #{date} AND status = 'ACTIVE' AND deleted = false")
     long countByCreatedDate(@Param("date") LocalDate date);
 
     /**
      * 统计指定年份创建的合同数量
+     * 只统计已审批通过的合同（ACTIVE状态），只有真正生效的合同才占用编号位置
+     * 草稿状态（DRAFT）和已拒绝状态（REJECTED）不占用编号位置
      */
-    @Select("SELECT COUNT(*) FROM finance_contract WHERE EXTRACT(YEAR FROM created_at) = #{year} AND deleted = false")
+    @Select("SELECT COUNT(*) FROM finance_contract WHERE EXTRACT(YEAR FROM created_at) = #{year} AND status = 'ACTIVE' AND deleted = false")
     long countByCreatedYear(@Param("year") int year);
+
+    /**
+     * 统计指定日期和合同类型创建的合同数量（用于独立编号）
+     * 只统计已审批通过的合同（ACTIVE状态），只有真正生效的合同才占用编号位置
+     * 草稿状态（DRAFT）和已拒绝状态（REJECTED）不占用编号位置
+     */
+    @Select("SELECT COUNT(*) FROM finance_contract WHERE DATE(created_at) = #{date} AND contract_type = #{contractType} AND status = 'ACTIVE' AND deleted = false")
+    long countByCreatedDateAndContractType(@Param("date") LocalDate date, @Param("contractType") String contractType);
+
+    /**
+     * 统计指定年份和合同类型创建的合同数量（用于独立编号）
+     * 只统计已审批通过的合同（ACTIVE状态），只有真正生效的合同才占用编号位置
+     * 草稿状态（DRAFT）和已拒绝状态（REJECTED）不占用编号位置
+     */
+    @Select("SELECT COUNT(*) FROM finance_contract WHERE EXTRACT(YEAR FROM created_at) = #{year} AND contract_type = #{contractType} AND status = 'ACTIVE' AND deleted = false")
+    long countByCreatedYearAndContractType(@Param("year") int year, @Param("contractType") String contractType);
 
     /**
      * 根据ID查询合同并加行锁（用于并发控制）

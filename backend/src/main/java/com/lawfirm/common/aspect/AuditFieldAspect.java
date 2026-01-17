@@ -24,7 +24,7 @@ import java.util.Set;
  * 
  * 自动记录字段变更日志
  * 
- * @author system
+ * @author junyuzhan
  * @since 2026-01-10
  */
 @Slf4j

@@ -14,7 +14,7 @@ import java.lang.annotation.Target;
  * 
  * 支持16-19位银行卡号，可选Luhn算法校验
  * 
- * @author Kiro-1
+ * @author junyuzhan
  * @since 2026-01-10
  */
 @Documented

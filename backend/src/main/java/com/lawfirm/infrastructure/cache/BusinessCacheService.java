@@ -15,7 +15,7 @@ import java.util.function.Supplier;
  * 封装业务层缓存操作，提供类型安全的缓存 API。
  * 基于 CacheDegradationService 实现，支持 Redis + 本地缓存双层架构。
  * 
- * @author Kiro-2
+ * @author junyuzhan
  * @since 2026-01-10
  */
 @Slf4j

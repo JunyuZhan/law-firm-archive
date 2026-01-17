@@ -16,7 +16,7 @@ import java.util.function.Supplier;
  * Redis故障时自动降级到本地Caffeine缓存
  * 集成熔断器保护，防止级联故障
  * 
- * @author Kiro-1 & Kiro-2
+ * @author junyuzhan
  * @since 2026-01-10
  */
 @Slf4j

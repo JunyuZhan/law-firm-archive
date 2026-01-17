@@ -19,8 +19,10 @@ export const createContractSampleData = (): Record<string, string> => {
     clientEmail: 'zhangsan@example.com',
     clientPostcode: '550001',
 
-    // ========== 律所信息（将从系统配置动态加载）==========
-    firmName: '律师事务所',
+    // ========== 律所信息（从系统配置动态加载，此处留空）==========
+    // 这些值将由 ContractPreviewModal 从系统配置加载
+    // 如果系统未配置，预览时会显示 [变量名] 提示管理员配置
+    firmName: '',
     firmAddress: '',
     firmPhone: '',
     firmPostcode: '',
@@ -34,6 +36,7 @@ export const createContractSampleData = (): Record<string, string> => {
 
     // ========== 案件/项目信息 ==========
     matterName: '张三诉李四民间借贷纠纷案',
+    matterDescription: '民间借贷纠纷', // 案由/案件描述
     causeOfAction: '民间借贷纠纷',
     procedureStage: '一审',
     trialStage: '一审',

@@ -20,7 +20,7 @@ import java.util.concurrent.ThreadPoolExecutor;
  * 3. 配置线程前缀，便于日志追踪
  * 4. 添加异常处理器，记录异步任务异常
  * 
- * @author Kiro-1
+ * @author junyuzhan
  */
 @Slf4j
 @Configuration

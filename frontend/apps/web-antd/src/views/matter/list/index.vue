@@ -109,13 +109,27 @@ const contractFormData = reactive({
 
 // 查询参数已由 useVbenVxeGrid 管理
 
-// 客户角色选项
+// 客户角色选项（诉讼地位）
 const clientRoleOptions = [
+  // 一审/普通诉讼
   { label: '原告', value: 'PLAINTIFF' },
   { label: '被告', value: 'DEFENDANT' },
   { label: '第三人', value: 'THIRD_PARTY' },
+  // 二审
+  { label: '上诉人', value: 'APPELLANT' },
+  { label: '被上诉人', value: 'APPELLEE' },
+  // 仲裁
   { label: '申请人', value: 'APPLICANT' },
   { label: '被申请人', value: 'RESPONDENT' },
+  // 执行
+  { label: '申请执行人', value: 'EXECUTION_APPLICANT' },
+  { label: '被执行人', value: 'EXECUTION_RESPONDENT' },
+  // 刑事
+  { label: '犯罪嫌疑人', value: 'SUSPECT' },
+  { label: '被告人', value: 'DEFENDANT_CRIMINAL' },
+  // 再审
+  { label: '再审申请人', value: 'RETRIAL_APPLICANT' },
+  { label: '再审被申请人', value: 'RETRIAL_RESPONDENT' },
 ];
 
 // 多客户选择数据
@@ -164,13 +178,13 @@ async function loadLitigationStageOptions(caseType: string | undefined) {
   }
 }
 
-// 表单数据
-const formData = reactive<Partial<CreateMatterCommand> & { id?: number }>({
+// 表单数据（litigationStage 在表单中使用数组，提交时转换为字符串）
+const formData = reactive<Omit<Partial<CreateMatterCommand>, 'litigationStage'> & { id?: number; litigationStage?: string[] }>({
   id: undefined,
   name: '',
   matterType: 'LITIGATION',
   caseType: undefined,
-  litigationStage: undefined,
+  litigationStage: [] as string[], // 支持多选，初始化为空数组
   causeOfAction: undefined,
   businessType: undefined,
   clientId: undefined,
@@ -248,7 +262,7 @@ watch(
   () => formData.caseType,
   (newCaseType) => {
     formData.causeOfAction = undefined;
-    formData.litigationStage = undefined;
+    formData.litigationStage = []; // 案件类型改变时清空代理阶段（支持多选，使用空数组）
     causeValue.value = [];
     // 从字典加载代理阶段选项
     loadLitigationStageOptions(newCaseType);
@@ -576,6 +590,7 @@ async function handleAdd() {
       name: '',
       matterType: 'LITIGATION',
       caseType: undefined,
+      litigationStage: [], // 支持多选，重置为空数组
       causeOfAction: undefined,
       businessType: undefined,
       clientId: undefined,
@@ -634,7 +649,8 @@ function handleEdit(record: MatterDTO) {
     name: record.name,
     matterType: record.matterType,
     caseType: record.caseType,
-    litigationStage: record.litigationStage,
+    // litigationStage 支持多选，后端存储为逗号分隔字符串
+    litigationStage: record.litigationStage ? record.litigationStage.split(',') : [],
     causeOfAction: record.causeOfAction,
     businessType: record.businessType,
     clientId: record.clientId,
@@ -683,10 +699,16 @@ async function handleSave() {
     const primaryClientId =
       primaryClient?.clientId || selectedClients.value[0]?.clientId;
 
+    // litigationStage 多选，转换为逗号分隔字符串存储
+    const litigationStageValue = Array.isArray(formData.litigationStage)
+      ? formData.litigationStage.join(',')
+      : formData.litigationStage;
+
     if (formData.id) {
       const updateData: UpdateMatterCommand = {
         id: formData.id,
         ...formData,
+        litigationStage: litigationStageValue,
         clientId: primaryClientId!,
         clients: clientsData,
       } as UpdateMatterCommand;
@@ -697,6 +719,7 @@ async function handleSave() {
       if (createFromContract.value && selectedContractId.value) {
         const createData: CreateMatterCommand = {
           ...formData,
+          litigationStage: litigationStageValue,
           clientId: primaryClientId!,
           clients: clientsData,
         } as CreateMatterCommand;
@@ -705,6 +728,7 @@ async function handleSave() {
       } else {
         const createData: CreateMatterCommand = {
           ...formData,
+          litigationStage: litigationStageValue,
           clientId: primaryClientId!,
           clients: clientsData,
         } as CreateMatterCommand;
@@ -738,6 +762,17 @@ function handleContractSelect(contractId: number) {
       : undefined;
     formData.contractId = contractId;
     selectedContractId.value = contractId;
+
+    // 填充主客户（从合同继承）
+    if (contract.clientId) {
+      selectedClients.value = [
+        {
+          clientId: Number(contract.clientId),
+          clientRole: 'PLAINTIFF', // 默认角色，用户可以根据实际情况修改
+          isPrimary: true,
+        },
+      ];
+    }
 
     // 填充案件类型和案由
     formData.matterType =
@@ -1083,6 +1118,13 @@ onMounted(async () => {
                 v-model:value="formData.matterType"
                 :options="matterTypeOptions"
                 placeholder="请选择项目大类"
+                show-search
+                :filter-option="
+                  (input, option) =>
+                    (option?.label || '')
+                      .toLowerCase()
+                      .includes(input.toLowerCase())
+                "
               />
             </FormItem>
           </Col>
@@ -1095,6 +1137,13 @@ onMounted(async () => {
                 :options="caseTypeOptions"
                 placeholder="请选择案件类型"
                 allow-clear
+                show-search
+                :filter-option="
+                  (input, option) =>
+                    (option?.label || '')
+                      .toLowerCase()
+                      .includes(input.toLowerCase())
+                "
               />
             </FormItem>
           </Col>
@@ -1107,8 +1156,17 @@ onMounted(async () => {
               <Select
                 v-model:value="formData.litigationStage"
                 :options="litigationStageOptions"
-                placeholder="请选择代理阶段"
+                mode="multiple"
                 allow-clear
+                placeholder="可多选"
+                :max-tag-count="2"
+                show-search
+                :filter-option="
+                  (input, option) =>
+                    (option?.label || '')
+                      .toLowerCase()
+                      .includes(input.toLowerCase())
+                "
               />
             </FormItem>
             <FormItem v-else label="业务类型" name="businessType">
@@ -1173,6 +1231,7 @@ onMounted(async () => {
                     placeholder="请选择客户"
                     show-search
                     style="flex: 2"
+                    :disabled="createFromContract && !formData.id && client.isPrimary"
                     :virtual="clients.length > 50"
                     :list-height="256"
                     :filter-option="
@@ -1195,6 +1254,13 @@ onMounted(async () => {
                     placeholder="客户角色"
                     style="width: 120px"
                     :options="clientRoleOptions"
+                    show-search
+                    :filter-option="
+                      (input, option) =>
+                        (option?.label || '')
+                          .toLowerCase()
+                          .includes(input.toLowerCase())
+                    "
                   />
                   <Button
                     v-if="!client.isPrimary"
@@ -1209,13 +1275,19 @@ onMounted(async () => {
                     danger
                     size="small"
                     @click="removeClient(index)"
-                    :disabled="selectedClients.length <= 1"
+                    :disabled="selectedClients.length <= 1 || (createFromContract && !formData.id && client.isPrimary)"
                   >
                     删除
                   </Button>
                 </div>
                 <!-- 添加客户按钮 -->
-                <div style="display: flex; gap: 8px">
+                <div style="display: flex; gap: 8px; flex-direction: column">
+                  <div
+                    v-if="createFromContract && !formData.id"
+                    style="margin-bottom: 4px; font-size: 12px; color: #999"
+                  >
+                    提示：主客户将从关联合同中自动继承，您可以添加共同委托人
+                  </div>
                   <Button type="dashed" @click="addClient" style="flex: 1">
                     <template #icon><Plus class="size-4" /></template>
                     添加共同委托人
@@ -1249,16 +1321,36 @@ onMounted(async () => {
             <FormItem label="主办律师" name="leadLawyerId">
               <UserTreeSelect
                 v-model:value="formData.leadLawyerId"
-                placeholder="选择主办律师（按部门筛选）"
+                :disabled="createFromContract && !formData.id"
+                :placeholder="createFromContract && !formData.id ? '从合同自动继承' : '选择主办律师（按部门筛选）'"
               />
+              <div
+                v-if="createFromContract && !formData.id"
+                style="margin-top: 4px; font-size: 12px; color: #999"
+              >
+                提示：主办律师将从关联合同中自动继承，无需手动填写
+              </div>
+              <div
+                v-else
+                style="margin-top: 4px; font-size: 12px; color: #1890ff"
+              >
+                💡 提示：主办律师和团队成员（主办律师、协办律师）将作为授权委托书的受托人信息，请在项目详情页的"团队成员"标签页中管理团队成员
+              </div>
             </FormItem>
           </Col>
           <Col :span="12">
             <FormItem label="案源人" name="originatorId">
               <UserTreeSelect
                 v-model:value="formData.originatorId"
-                placeholder="选择案源人（按部门筛选）"
+                :disabled="createFromContract && !formData.id"
+                :placeholder="createFromContract && !formData.id ? '从合同自动继承' : '选择案源人（按部门筛选）'"
               />
+              <div
+                v-if="createFromContract && !formData.id"
+                style="margin-top: 4px; font-size: 12px; color: #999"
+              >
+                提示：案源人将从关联合同中自动继承，无需手动填写
+              </div>
             </FormItem>
           </Col>
         </Row>
@@ -1268,7 +1360,22 @@ onMounted(async () => {
               <Select
                 v-model:value="formData.feeType"
                 :options="feeTypeOptions"
+                :disabled="createFromContract && !formData.id"
+                :placeholder="createFromContract && !formData.id ? '从合同自动继承' : '请选择收费方式'"
+                show-search
+                :filter-option="
+                  (input, option) =>
+                    (option?.label || '')
+                      .toLowerCase()
+                      .includes(input.toLowerCase())
+                "
               />
+              <div
+                v-if="createFromContract && !formData.id"
+                style="margin-top: 4px; font-size: 12px; color: #999"
+              >
+                提示：收费方式将从关联合同中自动继承，无需手动填写
+              </div>
             </FormItem>
           </Col>
           <Col :span="12">
@@ -1277,12 +1384,20 @@ onMounted(async () => {
                 v-model:value="formData.estimatedFee"
                 :min="0"
                 :precision="2"
+                :disabled="createFromContract && !formData.id"
                 style="width: 100%"
                 :formatter="
                   (value) => `¥ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
                 "
                 :parser="(value) => value.replace(/¥\s?|(,*)/g, '')"
+                :placeholder="createFromContract && !formData.id ? '从合同自动继承' : '请输入预估费用'"
               />
+              <div
+                v-if="createFromContract && !formData.id"
+                style="margin-top: 4px; font-size: 12px; color: #999"
+              >
+                提示：预估费用将从关联合同的合同金额自动继承，无需手动填写
+              </div>
             </FormItem>
           </Col>
         </Row>
@@ -1292,15 +1407,24 @@ onMounted(async () => {
               <TreeSelect
                 v-model:value="formData.departmentId"
                 :tree-data="departments"
+                :disabled="createFromContract && !formData.id"
                 :field-names="{
                   label: 'name',
                   value: 'id',
                   children: 'children',
                 }"
-                placeholder="请选择部门"
+                :placeholder="createFromContract && !formData.id ? '从合同自动继承' : '请选择部门（支持搜索）'"
                 allow-clear
+                show-search
+                :tree-node-filter-prop="'name'"
                 style="width: 100%"
               />
+              <div
+                v-if="createFromContract && !formData.id"
+                style="margin-top: 4px; font-size: 12px; color: #999"
+              >
+                提示：所属部门将从关联合同中自动继承，无需手动填写
+              </div>
             </FormItem>
           </Col>
           <Col :span="12">
@@ -1413,10 +1537,12 @@ onMounted(async () => {
                       .includes(input.toLowerCase())
                 "
                 :options="
-                  clients.map((c) => ({
-                    label: c.clientNo ? `[${c.clientNo}] ${c.name}` : c.name,
-                    value: c.id,
-                  }))
+                  clients
+                    .filter((c) => c.status === 'ACTIVE')
+                    .map((c) => ({
+                      label: c.clientNo ? `[${c.clientNo}] ${c.name}` : c.name,
+                      value: c.id,
+                    }))
                 "
               />
             </FormItem>

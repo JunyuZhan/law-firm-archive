@@ -20,8 +20,8 @@ interface ContractTemplateDTO {
   id: number;
   templateNo: string;
   name: string;
-  contractType: string;
-  contractTypeName: string;
+  templateType: string;
+  templateTypeName: string;
   feeType: string;
   feeTypeName: string;
   content: string;
@@ -42,7 +42,7 @@ const previewModalRef = ref<InstanceType<typeof ContractPreviewModal>>();
 const gridColumns: VxeGridProps['columns'] = [
   { title: '模板编号', field: 'templateNo', width: 100 },
   { title: '模板名称', field: 'name', width: 150 },
-  { title: '合同类型', field: 'contractTypeName', width: 100 },
+  { title: '模板类型', field: 'templateTypeName', width: 100 },
   { title: '收费方式', field: 'feeTypeName', width: 100 },
   { title: '状态', field: 'status', width: 80, slots: { default: 'status' } },
   { title: '描述', field: 'description', minWidth: 150 },

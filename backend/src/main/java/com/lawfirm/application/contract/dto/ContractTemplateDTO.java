@@ -10,8 +10,8 @@ public class ContractTemplateDTO {
     private Long id;
     private String templateNo;
     private String name;
-    private String contractType;
-    private String contractTypeName;
+    private String templateType;
+    private String templateTypeName;
     private String feeType;
     private String feeTypeName;
     private String content;
@@ -23,16 +23,18 @@ public class ContractTemplateDTO {
     private String updatedAt;
 
     /**
-     * 获取合同类型名称
+     * 获取模板类型名称（合同类型名称）
      */
-    public String getContractTypeName() {
-        if (contractType == null) return null;
-        switch (contractType) {
-            case "SERVICE": return "服务合同";
-            case "RETAINER": return "常年法顾";
-            case "LITIGATION": return "诉讼代理";
-            case "NON_LITIGATION": return "非诉项目";
-            default: return contractType;
+    public String getTemplateTypeName() {
+        if (templateType == null) return null;
+        switch (templateType) {
+            case "CIVIL_PROXY": return "民事代理";
+            case "ADMINISTRATIVE_PROXY": return "行政代理";
+            case "CRIMINAL_DEFENSE": return "刑事辩护";
+            case "LEGAL_COUNSEL": return "法律顾问";
+            case "NON_LITIGATION": return "非诉案件";
+            case "CUSTOM": return "自定义模板";
+            default: return templateType;
         }
     }
 

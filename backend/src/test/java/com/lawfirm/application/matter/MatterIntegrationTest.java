@@ -19,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * 
  * 测试项目管理全流程：创建 → 查询 → 更新 → 关闭
  * 
- * @author system
+ * @author junyuzhan
  * @since 2026-01-10
  */
 @SpringBootTest

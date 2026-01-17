@@ -24,7 +24,7 @@ import java.util.UUID;
  * 2. 请求可通过 X-Trace-Id 头传入自定义TraceId
  * 3. 响应头中会返回 X-Trace-Id
  * 
- * @author system
+ * @author junyuzhan
  * @since 2026-01-10
  */
 @Slf4j

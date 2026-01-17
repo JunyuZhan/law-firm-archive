@@ -26,7 +26,7 @@ import java.util.Base64;
  *     aes-iv: "your-16-char-iv!"                 # 16字节IV（任意长度会自动派生为16字节）
  *     sign-key: "your-sign-secret-key"           # 签名密钥
  * 
- * @author Kiro-1
+ * @author junyuzhan
  * @since 2026-01-10
  */
 @Slf4j

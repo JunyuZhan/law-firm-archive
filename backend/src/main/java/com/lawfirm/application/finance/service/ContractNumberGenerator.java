@@ -25,15 +25,18 @@ import java.util.*;
  * - {DAY} 日期(DD)
  * - {DATE} 日期(YYMMDD)
  * - {DATE_FULL} 完整日期(YYYYMMDD)
+ * - {CONTRACT_TYPE} 合同类型简称（模板类型，如民代、刑辩、行代、顾问、非诉）
  * - {CASE_TYPE} 案件类型简称（民、刑、行、知、仲、执、顾、非）
  * - {CASE_TYPE_CODE} 案件类型代码（CIVIL->MS, CRIMINAL->XS等）
  * - {FEE_TYPE} 收费类型简称（固、时、风、混）
- * - {SEQUENCE} 序号（基于当天合同数量，前补0）
- * - {SEQUENCE_YEAR} 年度序号（基于本年合同数量）
+ * - {SEQUENCE} 序号（基于当天合同数量，前补0；如果指定了CONTRACT_TYPE则基于该类型独立统计）
+ * - {SEQUENCE_YEAR} 年度序号（基于本年合同数量，前补0；如果指定了CONTRACT_TYPE则基于该类型独立统计）
  * - {RANDOM} 随机字符
  * - {RANDOM_NUM} 随机数字
  * 
  * 示例规则：
+ * - {CONTRACT_TYPE}字第{SEQUENCE_YEAR}号 -> 民代字第0001号（每种模板类型独立编号）
+ * - {YEAR}{CONTRACT_TYPE}字第{SEQUENCE_YEAR}号 -> 2026刑辩字第0001号
  * - {YEAR}{CASE_TYPE}代字第{SEQUENCE_YEAR}号 -> 2026民代字第0001号
  * - {PREFIX}{DATE}{RANDOM} -> HT2601051ABC
  * - {YEAR}{CASE_TYPE_CODE}-{SEQUENCE_YEAR} -> 2026MS-0001
@@ -104,28 +107,55 @@ public class ContractNumberGenerator {
     }
 
     /**
-     * 生成合同编号（无案件类型和收费类型）
+     * 合同模板类型映射 - 编号简称（用于独立编号）
+     * 每种模板类型独立编号，如：民代字001、刑辩字001
      */
-    public String generate() {
-        return generate(null, null);
+    private static final Map<String, String> CONTRACT_TYPE_SHORT_MAP = new LinkedHashMap<>();
+    static {
+        CONTRACT_TYPE_SHORT_MAP.put("CIVIL_PROXY", "民代");
+        CONTRACT_TYPE_SHORT_MAP.put("ADMINISTRATIVE_PROXY", "行代");
+        CONTRACT_TYPE_SHORT_MAP.put("CRIMINAL_DEFENSE", "刑辩");
+        CONTRACT_TYPE_SHORT_MAP.put("LEGAL_COUNSEL", "顾问");
+        CONTRACT_TYPE_SHORT_MAP.put("NON_LITIGATION", "非诉");
+        CONTRACT_TYPE_SHORT_MAP.put("CUSTOM", "自定");
     }
 
     /**
-     * 生成合同编号（带案件类型和收费类型）
+     * 生成合同编号（无案件类型和收费类型）
+     */
+    public String generate() {
+        return generate(null, null, null);
+    }
+
+    /**
+     * 生成合同编号（带案件类型和收费类型，兼容旧版本）
      */
     public String generate(String caseType, String feeType) {
+        return generate(caseType, feeType, null);
+    }
+
+    /**
+     * 生成合同编号（带案件类型、收费类型和合同类型）
+     * 根据合同类型（模板类型）独立编号，每种模板类型独立计数
+     * 
+     * @param caseType 案件类型
+     * @param feeType 收费类型
+     * @param contractType 合同类型（模板类型），如CIVIL_PROXY、CRIMINAL_DEFENSE等
+     * @return 合同编号
+     */
+    public String generate(String caseType, String feeType, String contractType) {
         String pattern = getConfigValue(CONFIG_KEY_PATTERN, DEFAULT_PATTERN);
         String prefix = getConfigValue(CONFIG_KEY_PREFIX, DEFAULT_PREFIX);
         int sequenceLength = getSequenceLength();
 
         // 生成编号
-        String contractNo = buildContractNumber(pattern, prefix, sequenceLength, caseType, feeType, false);
+        String contractNo = buildContractNumber(pattern, prefix, sequenceLength, caseType, feeType, contractType, false);
         
         // 检查编号是否已存在，如果存在则重新生成（最多重试10次）
         int retryCount = 0;
         while (contractRepository.existsByContractNo(contractNo) && retryCount < 10) {
             log.warn("合同编号已存在，重新生成: {}", contractNo);
-            contractNo = buildContractNumber(pattern, prefix, sequenceLength, caseType, feeType, false);
+            contractNo = buildContractNumber(pattern, prefix, sequenceLength, caseType, feeType, contractType, false);
             retryCount++;
         }
         
@@ -163,7 +193,7 @@ public class ContractNumberGenerator {
         if (pattern.contains("{CASE_TYPE}") || pattern.contains("{CASE_TYPE_CODE}")) {
             // 使用指定的案件类型或遍历所有类型
             if (StringUtils.hasText(caseType) && CASE_TYPE_CN_MAP.containsKey(caseType)) {
-                String preview = buildContractNumber(pattern, prefix, sequenceLength, caseType, feeType, true);
+                String preview = buildContractNumber(pattern, prefix, sequenceLength, caseType, feeType, null, true);
                 Map<String, String> item = new LinkedHashMap<>();
                 item.put("caseType", caseType);
                 item.put("caseTypeName", MatterConstants.getCaseTypeName(caseType));
@@ -173,7 +203,7 @@ public class ContractNumberGenerator {
                 // 生成几个代表性案件类型的预览
                 String[] sampleTypes = {"CIVIL", "CRIMINAL", "ADMINISTRATIVE", "LEGAL_COUNSEL"};
                 for (String type : sampleTypes) {
-                    String preview = buildContractNumber(pattern, prefix, sequenceLength, type, feeType, true);
+                    String preview = buildContractNumber(pattern, prefix, sequenceLength, type, feeType, null, true);
                     Map<String, String> item = new LinkedHashMap<>();
                     item.put("caseType", type);
                     item.put("caseTypeName", MatterConstants.getCaseTypeName(type));
@@ -183,7 +213,7 @@ public class ContractNumberGenerator {
             }
         } else {
             // 不包含案件类型变量，生成单个预览
-            String preview = buildContractNumber(pattern, prefix, sequenceLength, caseType, feeType, true);
+            String preview = buildContractNumber(pattern, prefix, sequenceLength, caseType, feeType, null, true);
             Map<String, String> item = new LinkedHashMap<>();
             item.put("caseType", "");
             item.put("caseTypeName", "通用");
@@ -207,11 +237,12 @@ public class ContractNumberGenerator {
         addVariable(variables, "{DAY}", "日期", "2位日期，如 05");
         addVariable(variables, "{DATE}", "日期组合", "YYMMDD格式，如 260105");
         addVariable(variables, "{DATE_FULL}", "完整日期", "YYYYMMDD格式，如 20260105");
+        addVariable(variables, "{CONTRACT_TYPE}", "合同类型(模板类型)", "民代/刑辩/行代/顾问/非诉/自定（每种模板类型独立编号）");
         addVariable(variables, "{CASE_TYPE}", "案件类型(中文)", "民/刑/行/知/仲/执/顾/非/破");
         addVariable(variables, "{CASE_TYPE_CODE}", "案件类型(代码)", "MS/XS/XZ/ZS/ZC/ZX/GW/ZX/PC");
         addVariable(variables, "{FEE_TYPE}", "收费类型", "固/时/风/混");
-        addVariable(variables, "{SEQUENCE}", "日序号", "当日第N份合同，前补0");
-        addVariable(variables, "{SEQUENCE_YEAR}", "年度序号", "本年度第N份合同，前补0");
+        addVariable(variables, "{SEQUENCE}", "日序号", "当日第N份合同，前补0（如果指定了CONTRACT_TYPE则基于该类型独立统计）");
+        addVariable(variables, "{SEQUENCE_YEAR}", "年度序号", "本年度第N份合同，前补0（如果指定了CONTRACT_TYPE则基于该类型独立统计）");
         addVariable(variables, "{RANDOM}", "随机字符", "随机字母+数字");
         addVariable(variables, "{RANDOM_NUM}", "随机数字", "随机数字");
         
@@ -224,6 +255,10 @@ public class ContractNumberGenerator {
     public List<Map<String, String>> getRecommendedPatterns() {
         List<Map<String, String>> patterns = new ArrayList<>();
         
+        addPattern(patterns, "模板独立编号", "{CONTRACT_TYPE}字第{SEQUENCE_YEAR}号", 
+                   "民代字第0001号", "每种模板类型独立编号，如民代字001、刑辩字001");
+        addPattern(patterns, "年度模板编号", "{YEAR}{CONTRACT_TYPE}字第{SEQUENCE_YEAR}号", 
+                   "2026刑辩字第0001号", "年度+模板类型+独立编号");
         addPattern(patterns, "司法格式", "{YEAR}{CASE_TYPE}代字第{SEQUENCE_YEAR}号", 
                    "2026民代字第0001号", "适用于正式的法律文书编号");
         addPattern(patterns, "简洁格式", "{YEAR}{CASE_TYPE_CODE}-{SEQUENCE_YEAR}", 
@@ -261,10 +296,11 @@ public class ContractNumberGenerator {
     }
 
     /**
-     * 根据规则构建合同编号
+     * 根据规则构建合同编号（支持合同类型）
+     * 如果指定了contractType，序号将基于该类型独立统计
      */
     private String buildContractNumber(String pattern, String prefix, int sequenceLength, 
-                                        String caseType, String feeType, boolean isPreview) {
+                                        String caseType, String feeType, String contractType, boolean isPreview) {
         if (!StringUtils.hasText(pattern)) {
             pattern = DEFAULT_PATTERN;
         }
@@ -283,6 +319,14 @@ public class ContractNumberGenerator {
         result = result.replace("{MONTH}", now.format(DateTimeFormatter.ofPattern("MM")));
         result = result.replace("{DAY}", now.format(DateTimeFormatter.ofPattern("dd")));
         
+        // 替换合同类型（模板类型）- 用于独立编号
+        if (StringUtils.hasText(contractType)) {
+            String contractTypeShort = CONTRACT_TYPE_SHORT_MAP.getOrDefault(contractType, contractType);
+            result = result.replace("{CONTRACT_TYPE}", contractTypeShort);
+        } else {
+            result = result.replace("{CONTRACT_TYPE}", "");
+        }
+        
         // 替换案件类型
         String caseTypeCn = CASE_TYPE_CN_MAP.getOrDefault(caseType, "民");
         String caseTypeCode = CASE_TYPE_CODE_MAP.getOrDefault(caseType, "MS");
@@ -293,13 +337,13 @@ public class ContractNumberGenerator {
         String feeTypeCn = FEE_TYPE_CN_MAP.getOrDefault(feeType, "固");
         result = result.replace("{FEE_TYPE}", feeTypeCn);
         
-        // 替换序号
+        // 替换序号（如果指定了contractType，则基于该类型独立统计）
         if (result.contains("{SEQUENCE}")) {
-            String seq = isPreview ? formatSequence(1, sequenceLength) : generateDailySequence(sequenceLength);
+            String seq = isPreview ? formatSequence(1, sequenceLength) : generateDailySequence(sequenceLength, contractType);
             result = result.replace("{SEQUENCE}", seq);
         }
         if (result.contains("{SEQUENCE_YEAR}")) {
-            String seq = isPreview ? formatSequence(1, sequenceLength) : generateYearlySequence(sequenceLength);
+            String seq = isPreview ? formatSequence(1, sequenceLength) : generateYearlySequence(sequenceLength, contractType);
             result = result.replace("{SEQUENCE_YEAR}", seq);
         }
         
@@ -329,13 +373,27 @@ public class ContractNumberGenerator {
         return sb.toString();
     }
 
-    private String generateDailySequence(int length) {
-        long count = contractRepository.countByCreatedDate(LocalDate.now());
+    private String generateDailySequence(int length, String contractType) {
+        long count;
+        if (StringUtils.hasText(contractType)) {
+            // 基于合同类型（模板类型）独立统计
+            count = contractRepository.countByCreatedDateAndContractType(LocalDate.now(), contractType);
+        } else {
+            // 统计所有合同
+            count = contractRepository.countByCreatedDate(LocalDate.now());
+        }
         return formatSequence(count + 1, length);
     }
 
-    private String generateYearlySequence(int length) {
-        long count = contractRepository.countByCreatedYear(LocalDate.now().getYear());
+    private String generateYearlySequence(int length, String contractType) {
+        long count;
+        if (StringUtils.hasText(contractType)) {
+            // 基于合同类型（模板类型）独立统计
+            count = contractRepository.countByCreatedYearAndContractType(LocalDate.now().getYear(), contractType);
+        } else {
+            // 统计所有合同
+            count = contractRepository.countByCreatedYear(LocalDate.now().getYear());
+        }
         return formatSequence(count + 1, length);
     }
 

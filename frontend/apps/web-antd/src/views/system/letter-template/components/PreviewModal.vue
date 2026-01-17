@@ -11,6 +11,8 @@ import { Button, message, Space, Tag } from 'ant-design-vue';
 import { getConfigValue } from '#/api/system';
 
 import { createLetterSampleData } from '../constants/sample-data';
+import { decodeHtmlEntities } from '../../contract-template/utils/print-formatter';
+import { isStructuredLetterContent, formatStructuredLetterForPreview } from '../utils/letter-formatter';
 
 const previewContent = ref('');
 const previewTitle = ref('');
@@ -89,28 +91,36 @@ function handlePrint() {
 // 打开预览弹窗
 async function open(record: LetterTemplateDTO) {
   previewTitle.value = record.name;
-  let content = record.content || '';
+  // 解码可能被 HTML 编码的内容
+  let content = decodeHtmlEntities(record.content || '');
 
   // 确保律所信息已加载
   if (!sampleData.value.firmAddress && !sampleData.value.firmPhone) {
     await loadFirmInfo();
   }
 
-  // 替换变量为示例值
-  Object.entries(sampleData.value).forEach(([key, value]) => {
-    const displayValue = value || `[${key}]`; // 如果值为空，显示变量名
-    content = content.replaceAll(
-      new RegExp(String.raw`\$\{${key}\}`, 'g'),
-      `<span class="preview-var">${displayValue}</span>`,
-    );
-    // 替换带data-variable属性的标签内容
-    content = content.replaceAll(
-      new RegExp(`<span[^>]*data-variable="${key}"[^>]*>[^<]*</span>`, 'g'),
-      `<span class="preview-var">${displayValue}</span>`,
-    );
-  });
+  // 检查是否为结构化格式
+  if (isStructuredLetterContent(content)) {
+    // 结构化格式：使用预览格式化函数（函数内部已处理变量替换和高亮样式）
+    previewContent.value = formatStructuredLetterForPreview(content, sampleData.value);
+  } else {
+    // 传统格式：直接替换变量
+    Object.entries(sampleData.value).forEach(([key, value]) => {
+      const displayValue = value || `[${key}]`; // 如果值为空，显示变量名
+      content = content.replaceAll(
+        new RegExp(String.raw`\$\{${key}\}`, 'g'),
+        `<span class="preview-var">${displayValue}</span>`,
+      );
+      // 替换带data-variable属性的标签内容
+      content = content.replaceAll(
+        new RegExp(`<span[^>]*data-variable="${key}"[^>]*>[^<]*</span>`, 'g'),
+        `<span class="preview-var">${displayValue}</span>`,
+      );
+    });
 
-  previewContent.value = content;
+    previewContent.value = content;
+  }
+
   modalApi.setState({ title: `预览 - ${record.name}` });
   modalApi.open();
 }

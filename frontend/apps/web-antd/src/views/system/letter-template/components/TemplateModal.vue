@@ -22,12 +22,15 @@ import {
 
 import { createTemplate, updateTemplate } from '#/api/admin';
 import RichTextEditor from '#/components/RichTextEditor/index.vue';
+import StructuredLetterEditor from './StructuredLetterEditor.vue';
+import { decodeHtmlEntities } from '../../contract-template/utils/print-formatter';
 
 const emit = defineEmits<{
   success: [];
 }>();
 
 const editingId = ref<null | number>(null);
+const useStructuredEditor = ref(true); // 默认使用结构化编辑器
 const formData = reactive({
   name: '',
   letterType: 'INTRODUCTION',
@@ -58,6 +61,11 @@ const letterVariables = [
     description: '对方当事人姓名',
   },
   {
+    label: '对方诉讼地位',
+    value: 'opposingPartyRoleName',
+    description: '对方当事人在诉讼中的地位（原告、被告、申请人等）',
+  },
+  {
     label: '对方律师',
     value: 'opposingLawyerName',
     description: '对方律师姓名',
@@ -79,6 +87,11 @@ const letterVariables = [
     label: '委托人姓名',
     value: 'clientName',
     description: '委托人/当事人姓名',
+  },
+  {
+    label: '委托人诉讼地位',
+    value: 'clientRoleName',
+    description: '委托人在诉讼中的地位（原告、被告、申请人等）',
   },
   {
     label: '委托人身份证号',
@@ -289,7 +302,8 @@ function openEdit(record: LetterTemplateDTO) {
   Object.assign(formData, {
     name: record.name,
     letterType: record.letterType,
-    content: record.content,
+    // 解码可能被 HTML 编码的内容
+    content: decodeHtmlEntities(record.content || ''),
     description: record.description || '',
   });
   modalApi.setState({ title: '编辑出函模板' });
@@ -339,39 +353,70 @@ defineExpose({ openCreate, openEdit });
 
     <Divider style="margin: 12px 0" />
 
-    <Alert
-      message="提示：使用工具栏插入变量，变量会在生成实际函件时自动替换为真实数据"
-      type="info"
-      show-icon
-      style="margin-bottom: 12px"
-    />
-
+    <!-- 编辑器类型选择 -->
     <div style="margin-bottom: 12px">
-      <span style="margin-right: 12px; font-size: 13px; color: #666"
-        >快速加载模板：</span
-      >
       <Space>
-        <Button size="small" @click="loadDefaultTemplate('introduction')">
-          介绍信
+        <Button 
+          :type="useStructuredEditor ? 'primary' : 'default'" 
+          size="small"
+          @click="useStructuredEditor = true"
+        >
+          📝 分块编辑（推荐）
         </Button>
-        <Button size="small" @click="loadDefaultTemplate('meeting')">
-          会见函
-        </Button>
-        <Button size="small" @click="loadDefaultTemplate('fileReview')">
-          阅卷函
-        </Button>
-        <Button size="small" @click="loadDefaultTemplate('investigation')">
-          调查函
+        <Button 
+          :type="!useStructuredEditor ? 'primary' : 'default'" 
+          size="small"
+          @click="useStructuredEditor = false"
+        >
+          📄 富文本编辑
         </Button>
       </Space>
     </div>
 
-    <RichTextEditor
-      v-model="formData.content"
-      height="400px"
-      placeholder="请输入函件模板内容..."
-      :variables="letterVariables"
-      :show-variables="true"
-    />
+    <!-- 结构化编辑器 -->
+    <div v-if="useStructuredEditor">
+      <StructuredLetterEditor 
+        v-model="formData.content" 
+        :variables="letterVariables"
+      />
+    </div>
+
+    <!-- 富文本编辑器 -->
+    <div v-else>
+      <Alert
+        message="提示：使用工具栏插入变量，变量会在生成实际函件时自动替换为真实数据"
+        type="info"
+        show-icon
+        style="margin-bottom: 12px"
+      />
+
+      <div style="margin-bottom: 12px">
+        <span style="margin-right: 12px; font-size: 13px; color: #666"
+          >快速加载模板：</span
+        >
+        <Space>
+          <Button size="small" @click="loadDefaultTemplate('introduction')">
+            介绍信
+          </Button>
+          <Button size="small" @click="loadDefaultTemplate('meeting')">
+            会见函
+          </Button>
+          <Button size="small" @click="loadDefaultTemplate('fileReview')">
+            阅卷函
+          </Button>
+          <Button size="small" @click="loadDefaultTemplate('investigation')">
+            调查函
+          </Button>
+        </Space>
+      </div>
+
+      <RichTextEditor
+        v-model="formData.content"
+        height="400px"
+        placeholder="请输入函件模板内容..."
+        :variables="letterVariables"
+        :show-variables="true"
+      />
+    </div>
   </Modal>
 </template>

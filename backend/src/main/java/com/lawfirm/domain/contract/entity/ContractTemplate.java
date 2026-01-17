@@ -30,9 +30,11 @@ public class ContractTemplate extends BaseEntity {
     private String name;
 
     /**
-     * 合同类型：SERVICE-服务合同, RETAINER-常年法顾, LITIGATION-诉讼代理, NON_LITIGATION-非诉项目
+     * 模板类型（合同类型）：CIVIL_PROXY-民事代理, ADMINISTRATIVE_PROXY-行政代理, CRIMINAL_DEFENSE-刑事辩护, 
+     * LEGAL_COUNSEL-法律顾问, NON_LITIGATION-非诉案件, CUSTOM-自定义模板
+     * 每种类型对应一个标准模板，也可以有自定义模板（CUSTOM）
      */
-    private String contractType;
+    private String templateType;
 
     /**
      * 默认收费方式

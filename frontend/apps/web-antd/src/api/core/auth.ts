@@ -75,9 +75,10 @@ export async function refreshTokenApi() {
 
 /**
  * 退出登录
+ * 使用 baseRequestClient 避免触发 401 重试逻辑，防止循环调用
  */
 export async function logoutApi() {
-  return requestClient.post('/auth/logout');
+  return baseRequestClient.post('/auth/logout');
 }
 
 /**

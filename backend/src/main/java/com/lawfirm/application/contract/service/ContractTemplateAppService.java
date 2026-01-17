@@ -87,7 +87,7 @@ public class ContractTemplateAppService {
         ContractTemplate template = ContractTemplate.builder()
                 .templateNo(contractTemplateRepository.generateTemplateNo())
                 .name(command.getName())
-                .contractType(command.getContractType())
+                .templateType(command.getContractType())
                 .feeType(command.getFeeType())
                 .content(command.getContent())
                 .clauses(command.getClauses())
@@ -119,7 +119,7 @@ public class ContractTemplateAppService {
         }
         
         template.setName(command.getName());
-        template.setContractType(command.getContractType());
+        template.setTemplateType(command.getContractType());
         template.setFeeType(command.getFeeType());
         template.setContent(command.getContent());
         template.setClauses(command.getClauses());

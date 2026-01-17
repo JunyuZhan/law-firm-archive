@@ -5,7 +5,7 @@ package com.lawfirm.common.security;
  * 
  * 提供敏感数据加密、解密、签名等功能
  * 
- * @author Kiro-1
+ * @author junyuzhan
  * @since 2026-01-10
  */
 public interface EncryptionService {

@@ -37,7 +37,7 @@ import static org.mockito.Mockito.*;
  * - 登出
  * - 安全限制（IP限流、账户锁定）
  * 
- * @author Kiro-1
+ * @author junyuzhan
  * @since 2026-01-10
  */
 @ExtendWith(MockitoExtension.class)

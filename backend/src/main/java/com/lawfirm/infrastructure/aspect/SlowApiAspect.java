@@ -24,7 +24,7 @@ import java.util.Collections;
  * 2. 超过阈值自动告警（记录日志）
  * 3. 统计接口调用情况
  * 
- * @author Kiro-1
+ * @author junyuzhan
  */
 @Slf4j
 @Aspect

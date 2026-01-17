@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * CircuitBreaker 单元测试
  * 
- * @author Kiro-1
+ * @author junyuzhan
  * @since 2026-01-10
  */
 @DisplayName("CircuitBreaker 单元测试")

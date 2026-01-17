@@ -64,16 +64,16 @@ VALUES
 ('contract.number.pattern', '{YEAR}{CASE_TYPE}代字第{SEQUENCE_YEAR}号', '合同编号规则', 'STRING', '合同编号生成规则，支持多种变量组合。示例：2026民代字第0001号', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
 ('contract.number.sequence.length', '4', '序号长度', 'STRING', '序号部分的长度(1-10)，不足位数前面补0', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
 
--- 律所基本信息
-('firm.name', '', '律所名称', 'STRING', '律师事务所全称，用于合同、函件等文档', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
-('firm.address', '', '律所地址', 'STRING', '律师事务所详细地址', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
-('firm.phone', '', '联系电话', 'STRING', '律所联系电话', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
-('firm.email', '', '电子邮箱', 'STRING', '律所电子邮箱', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
-('firm.license', '', '执业许可证号', 'STRING', '律所执业许可证号', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
-('firm.legal.rep', '', '法定代表人', 'STRING', '律所法定代表人姓名', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
-('firm.fax', '', '传真号码', 'STRING', '律所传真号码', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
-('firm.website', '', '官方网站', 'STRING', '律所官方网站地址', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
-('firm.postcode', '', '邮政编码', 'STRING', '律所所在地邮政编码', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+-- 律所基本信息（请在系统管理-系统配置中修改为实际信息）
+('firm.name', '贵州XX律师事务所', '律所名称', 'STRING', '律师事务所全称，用于合同、函件等文档', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('firm.address', '贵州省贵阳市云岩区中华中路XX号XX大厦X层', '律所地址', 'STRING', '律师事务所详细地址', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('firm.phone', '0851-8888XXXX', '联系电话', 'STRING', '律所联系电话', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('firm.email', 'contact@lawfirm.com', '电子邮箱', 'STRING', '律所电子邮箱', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('firm.license', '黔司律所证字第0001号', '执业许可证号', 'STRING', '律所执业许可证号', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('firm.legal.rep', '张主任', '法定代表人', 'STRING', '律所法定代表人姓名', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('firm.fax', '0851-8888XXXX', '传真号码', 'STRING', '律所传真号码', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('firm.website', 'www.lawfirm.com', '官方网站', 'STRING', '律所官方网站地址', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('firm.postcode', '550001', '邮政编码', 'STRING', '律所所在地邮政编码', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
 
 -- 工作时间配置
 ('work.startTime', '09:00', '上班时间', 'STRING', '标准上班时间，格式：HH:mm', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
@@ -1288,6 +1288,11 @@ INSERT INTO public.sys_role_menu (role_id, menu_id)
 SELECT 6, m.id FROM public.sys_menu m WHERE m.id IN (331, 332, 333, 334, 335, 336)
   AND NOT EXISTS (SELECT 1 FROM public.sys_role_menu rm WHERE rm.role_id = 6 AND rm.menu_id = m.id);
 
+-- DIRECTOR (主任) 角色：期限管理按钮权限
+INSERT INTO public.sys_role_menu (role_id, menu_id)
+SELECT 2, m.id FROM public.sys_menu m WHERE m.id IN (152, 153, 154, 155, 156)
+  AND NOT EXISTS (SELECT 1 FROM public.sys_role_menu rm WHERE rm.role_id = 2 AND rm.menu_id = m.id);
+
 -- LAWYER (律师) 角色：期限管理按钮权限
 INSERT INTO public.sys_role_menu (role_id, menu_id)
 SELECT 6, m.id FROM public.sys_menu m WHERE m.id IN (152, 153, 154, 155, 156)
@@ -1533,193 +1538,15 @@ UPDATE sys_department SET leader_id = 3 WHERE id = 5;  -- 第二组负责人: la
 
 --
 -- Data for Name: contract_template; Type: TABLE DATA; Schema: public; Owner: -
+-- 使用结构化JSON格式，打印时自动排版
 --
 
-INSERT INTO public.contract_template VALUES (1, 'CT-001', '标准服务合同', 'SERVICE', 'FIXED', '委托代理合同
-
-甲方（委托人）：${clientName}
-乙方（受托人）：${firmName}
-
-鉴于甲方因${matterDescription}事宜，委托乙方提供法律服务，经双方协商一致，订立本合同。
-
-第一条 委托事项
-甲方委托乙方就${matterName}事项提供法律服务。
-
-第二条 服务内容
-1. 提供法律咨询；
-2. 代理参与诉讼/仲裁/调解；
-3. 起草、审查法律文书；
-4. 其他双方约定的法律服务。
-
-第三条 服务费用
-本合同项下法律服务费用为人民币${totalAmount}元整。
-
-第四条 付款方式
-${paymentTerms}
-
-第五条 合同期限
-本合同自${effectiveDate}起至${expiryDate}止。
-
-第六条 双方权利义务
-（一）甲方权利义务
-1. 如实向乙方陈述案件事实，提供相关证据材料；
-2. 按约定支付法律服务费用；
-3. 配合乙方开展法律服务工作。
-
-（二）乙方权利义务
-1. 依法维护甲方合法权益；
-2. 保守甲方商业秘密和个人隐私；
-3. 及时向甲方通报案件进展情况。
-
-第七条 违约责任
-任何一方违反本合同约定，应承担相应违约责任。
-
-第八条 争议解决
-本合同履行过程中发生争议，双方协商解决；协商不成的，提交乙方所在地人民法院诉讼解决。
-
-甲方（签章）：                    乙方（签章）：
-日期：${signDate}                 日期：${signDate}', '[{"title":"服务范围","content":"提供法律咨询、代理诉讼、起草审查法律文书等"},{"title":"保密条款","content":"乙方对甲方的商业秘密和个人隐私负有保密义务"},{"title":"免责条款","content":"因甲方提供虚假信息导致的损失由甲方自行承担"}]', '适用于一般法律服务的标准合同模板', 'ACTIVE', 1, '2026-01-04 16:14:15.903185', '2026-01-04 16:14:15.903185', NULL, NULL, false);
-INSERT INTO public.contract_template VALUES (2, 'CT-002', '常年法律顾问合同', 'RETAINER', 'FIXED', '常年法律顾问合同
-
-甲方（委托人）：${clientName}
-乙方（受托人）：${firmName}
-
-第一条 服务期限
-自${effectiveDate}起至${expiryDate}止，为期一年。
-
-第二条 服务内容
-1. 日常法律咨询；
-2. 合同审查与起草；
-3. 法律风险评估；
-4. 参与重大商务谈判；
-5. 代理诉讼/仲裁（另行收费）。
-
-第三条 服务费用
-年度顾问费人民币${totalAmount}元整。
-
-第四条 付款方式
-${paymentTerms}
-
-第五条 服务方式
-1. 电话、邮件咨询不限次数；
-2. 每月提供不少于${serviceHours}小时现场服务；
-3. 紧急事项24小时响应。
-
-甲方（签章）：                    乙方（签章）：
-日期：${signDate}                 日期：${signDate}', '[{"title":"服务响应","content":"常规咨询24小时内响应，紧急事项即时响应"},{"title":"续约条款","content":"合同到期前30日，双方可协商续约事宜"}]', '适用于企业常年法律顾问服务', 'ACTIVE', 2, '2026-01-04 16:14:15.903185', '2026-01-04 16:14:15.903185', NULL, NULL, false);
-INSERT INTO public.contract_template VALUES (3, 'CT-003', '民事/行政委托代理合同', 'LITIGATION', 'FIXED', '委 托 代 理 合 同
-
-（${contractYear}）${contractNo}代字第${contractSeq}号
-
-委托人：${clientName}
-住所地：${clientAddress}                     电话：${clientPhone}
-受托人：${firmName}
-法定代表人（负责人）：${firmLegalRep}        职务：主任
-住所地：${firmAddress}，电话：${firmPhone}。
-
-委托人因与${opposingParty}${causeOfAction}纠纷一案，委托人与受托人就委托代理事宜，经平等协商，自愿订立本合同，以供双方共同遵守执行。
-
-一、受托人接受委托后，指派律师${lawyerNames}、律师助理${assistantNames}为委托人的${trialStage}代理人。
-
-二、代理权限为：${authorizationType}（一般代理或特别代理）。
-一般代理的权限为：拟写诉讼（仲裁）文书、起诉（立案）、应诉、调查取证、参加庭审、签收诉讼（仲裁）法律文书等诉讼活动。
-特别代理的权限（根据相应的代理阶段据实确定）为：承认、变更、放弃诉讼（仲裁）请求，决定是否调解、和解并签订调解、和解协议，提起反诉或上诉，代为申请执行并收付执行款物，以及行使与案件有关的其他诉讼权利。
-
-三、根据《律师服务收费管理办法》及相关规定，委托人应当向受托人支付的代理费大写${totalAmountCN}（¥：${totalAmount}），定于${paymentDeadline}前付清。
-委托人应当以直接汇入受托人单位银行账户或支付给持有受托人单位签章票据（收据或发票）的人员的方式付费，不得私自向受托人单位的律师、律师助理或其他工作人员支付任何费用。否则，由此产生的法律后果与受托人单位无关。
-
-四、委托人必须如实全面地向受托人陈述案情，提供证据及证据线索，并不得有下列行为：
-1、隐瞒案情；2、伪造证据；3、虚假陈述；4、利用受托人提供法律服务谋取非法利益的其他行为。
-受托人发现委托人有前列情形之一时，有权单方终止本合同的履行，所收委托人的一切费用概不予退还。
-
-五、受托人必须尽职尽责，依法维护委托人利益，并不得有下列行为：
-1、与委托人的对方当事人及其代理人恶意串通，损害委托人的利益；2、接受委托人的对方当事人及其代理人的吃请或其他贿赂；3、指派其他律师担任同一案件中对方当事人的代理人；4、泄露委托人的商业秘密或个人隐私；5、其他损害委托人合法利益的行为。
-
-六、委托人不得以下列理由解除本合同：
-1、与对方当事人自行协商、和解；2、法院主持调解结案；3、委托人自己撤诉或放弃权利；4、对方当事人撤诉或主动履行义务；5、未经法院判决应当解除合同的其他理由。
-
-七、受托人在履行本合同过程中，如出现下列情形，委托人可以解除本合同并要求受托人退费：
-1、经人民法院判决确认，受托人实施了损害委托人合法权益的行为；2、受托人无正当理由明确表示不履行代理义务；3、受托人代理义务未履行完毕之前，丧失执业资格。
-
-八、委托人不得以下列理由要求受托人退费：
-1、案件败诉；2、裁判文书确定的利益未实现或未能达到委托人的预期目的；3、案件出现本合同第六条规定的情形；4、未经法院判决受托人应当退费的其他理由。
-
-九、因履行本合同过程中引起的或本合同有关的任何争议，不能协商解决的，双方共同选择以下第${disputeResolution}种方式解决：
-1.由受托人住所地法院管辖。2.提请${arbitrationCommittee}仲裁委员会按该会仲裁规则进行仲裁。
-
-十、本合同自双方签字和盖章之日起生效。
-
-十一、本合同未尽事宜，由双方本着平等、自愿、合法的原则，协商解决。
-
-十二、本合同一式二份，双方各持一份。
-
-十三、特别约定：${specialTerms}
-
-委托人签章：                            受托人签章：
-法定代表人（负责人）：                   负责人签章：
-                           ${signDate}', '[{"title":"代理权限说明","content":"一般代理：拟写诉讼文书、起诉、应诉、调查取证、参加庭审、签收法律文书。特别代理：承认、变更、放弃诉讼请求，调解和解，提起反诉或上诉，申请执行并收付执行款物"},{"title":"委托人义务","content":"如实陈述案情，提供证据，不得隐瞒案情、伪造证据、虚假陈述"},{"title":"受托人义务","content":"尽职尽责，依法维护委托人利益，保守商业秘密和个人隐私"},{"title":"费用支付","content":"应直接汇入受托人单位银行账户或支付给持有受托人单位签章票据的人员"}]', '适用于民事案件和行政案件的委托代理合同，符合律师协会规范', 'ACTIVE', 3, '2026-01-04 16:14:15.903185', '2026-01-04 16:14:15.903185', NULL, NULL, false);
-INSERT INTO public.contract_template VALUES (4, 'CT-004', '非诉项目合同', 'NON_LITIGATION', 'HOURLY', '非诉讼法律服务合同
-
-甲方（委托人）：${clientName}
-乙方（受托人）：${firmName}
-
-第一条 项目名称
-${matterName}
-
-第二条 服务内容
-${matterDescription}
-
-第三条 收费方式
-本项目采用计时收费方式：
-1. 合伙人：人民币${partnerRate}元/小时；
-2. 资深律师：人民币${seniorRate}元/小时；
-3. 律师助理：人民币${assistantRate}元/小时。
-
-第四条 费用预估
-预估总费用人民币${totalAmount}元（实际以工时记录为准）。
-
-第五条 付款方式
-${paymentTerms}
-
-甲方（签章）：                    乙方（签章）：
-日期：${signDate}                 日期：${signDate}', '[{"title":"工时记录","content":"乙方应如实记录工作时间，定期向甲方提供工时报告"},{"title":"费用上限","content":"如实际费用超出预估20%，乙方应提前告知甲方"}]', '适用于非诉讼项目，按工时计费', 'ACTIVE', 4, '2026-01-04 16:14:15.903185', '2026-01-04 16:14:15.903185', NULL, NULL, false);
-INSERT INTO public.contract_template VALUES (5, 'CT-005', '刑事案件委托代理合同', 'LITIGATION', 'FIXED', '委 托 代 理 合 同
-
-（${contractYear}）刑辩字第${contractSeq}号
-
-委托人：${clientName}                           电话：${clientPhone}
-受托人：${firmName}
-法定代表人（负责人）：${firmLegalRep}        职务：主任
-住所地：${firmAddress}，电话：${firmPhone}。
-
-因${defendantName}涉嫌${criminalCharge}一案，委托人与受托人就委托辩护（代理）事宜，经平等协商，自愿订立本合同，以供双方共同遵守。
-
-一、受托人接受委托后，指派律师${lawyerNames}担任被告人（犯罪嫌疑人、受害人）${defendantName}的${defenseStage}。
-A、侦查阶段的律师；B、审查起诉阶段的辩护人；C、一审辩护人；D、二审辩护人；E、死刑复核阶段的辩护人；F、再审辩护人；
-
-二、根据《律师服务收费管理办法》及相关规定，委托人应当向受托人支付辩护费（代理）${totalAmountCN}元（￥${totalAmount}），定于${paymentDeadline}前付清。
-委托人应当以直接汇入受托人单位银行账户或支付给持有受托人单位签章票据（收据或发票）的人员的方式付费，不得私自向受托人单位的律师、律师助理或其他工作人员支付任何费用。否则，由此产生的法律后果与受托人单位无关。
-
-三、受托人必须尽职尽责，依法维护被告人（犯罪嫌疑人、受害人）的合法权益，并及时与委托方沟通联系。
-
-四、如出现被告人（犯罪嫌疑人）拒绝受托人指派的律师为其辩护（代理）的情况，除非受托人实施了损害被告人（犯罪嫌疑人）的合法权益的行为，委托人不得要求受托人退还所交费用。受托人是否实施了损害被告人合法权益的行为，须由人民法院判决确认。
-
-五、委托人不得以下列理由要求受托人退还费用：
-1、侦查部门撤销案件；2、审查起诉部门决定对犯罪嫌疑人不起诉；3、公诉机关撤回对案件的起诉；4、被告人（犯罪嫌疑人）被取保候审；5、案件的处理结果未达到或未能完全达到委托人的预期目的；6、委托人单方解除本合同；7、被告人（犯罪嫌疑人）拒绝委托人指派的律师为其辩护（代理）。8、其他非经法院判决确认退费的理由。
-
-六、因履行本合同所发生的不能协商解决的争议，由受托人住所地法院管辖。
-
-七、本合同自双方签字、盖章之日起生效。
-
-八、本合同未尽事宜，由双方本着平等、自愿、合法的原则，协商解决。
-
-九、本合同一式二份，双方各持一份。
-
-十、特别约定：${specialTerms}
-
-委托人签章：                                受托人签章：
-法定代表人（负责人）：                       负责人签章：
-${signDate}', '[{"title":"辩护阶段说明","content":"A-侦查阶段律师、B-审查起诉阶段辩护人、C-一审辩护人、D-二审辩护人、E-死刑复核阶段辩护人、F-再审辩护人"},{"title":"受托人义务","content":"尽职尽责，依法维护被告人（犯罪嫌疑人、受害人）的合法权益，及时与委托方沟通联系"},{"title":"不予退费情形","content":"侦查部门撤销案件、不起诉、撤回起诉、取保候审、结果未达预期、委托人单方解除、被告人拒绝辩护等"},{"title":"费用支付","content":"应直接汇入受托人单位银行账户或支付给持有受托人单位签章票据的人员"}]', '适用于刑事案件的辩护代理合同，包含侦查、审查起诉、一审、二审、死刑复核、再审等阶段', 'ACTIVE', 5, '2026-01-04 16:14:15.903185', '2026-01-04 16:14:15.903185', NULL, NULL, false);
+INSERT INTO public.contract_template VALUES (1, 'CT-001', '标准服务合同', 'CIVIL_PROXY', 'FIXED', '{"_structured":true,"_version":1,"blocks":{"title":{"contractName":"委托代理合同"},"parties":{"partyA":"委托人：${clientName}\n住所地：${clientAddress}\n联系电话：${clientPhone}","partyB":"受托人：${firmName}\n负责人：${firmLegalPerson}\n地址：${firmAddress}\n电话：${firmPhone}"},"clauses":"鉴于甲方因${matterDescription}事宜，委托乙方提供法律服务，经双方协商一致，订立本合同。\n\n一、委托事项\n甲方委托乙方就${matterName}事项提供法律服务。\n\n二、服务内容\n1. 提供法律咨询\n2. 代理参与诉讼/仲裁/调解\n3. 起草、审查法律文书\n4. 其他双方约定的法律服务\n\n三、服务费用\n本合同项下法律服务费用为人民币${totalAmount}元（大写：${totalAmountChinese}）。\n\n四、付款方式\n${paymentTerms}\n\n五、合同期限\n本合同自${effectiveDate}起至${expiryDate}止。\n\n六、甲方权利义务\n1. 如实向乙方陈述案件事实，提供相关证据材料\n2. 按约定支付法律服务费用\n3. 配合乙方开展法律服务工作\n\n七、乙方权利义务\n1. 依法维护甲方合法权益\n2. 保守甲方商业秘密和个人隐私\n3. 及时向甲方通报案件进展情况\n\n八、违约责任\n任何一方违反本合同约定，应承担相应违约责任。\n\n九、争议解决\n本合同履行过程中发生争议，双方协商解决；协商不成的，提交乙方所在地人民法院诉讼解决。\n\n十、本合同一式二份，双方各执一份，自双方签字盖章之日起生效。","signature":{"partyASign":"甲方（签章）：\n\n法定代表人/委托人：","partyBSign":"乙方（签章）：${firmName}\n\n负责人：${firmLegalPerson}","signInfo":"签订日期：${signDate}"}}}', '[]', '适用于一般法律服务的标准合同模板', 'ACTIVE', 1, '2026-01-04 16:14:15.903185', '2026-01-04 16:14:15.903185', NULL, NULL, false);
+INSERT INTO public.contract_template VALUES (2, 'CT-002', '常年法律顾问合同', 'LEGAL_COUNSEL', 'FIXED', '{"_structured":true,"_version":1,"blocks":{"title":{"contractName":"常年法律顾问合同"},"parties":{"partyA":"委托人：${clientName}\n住所地：${clientAddress}\n法定代表人：${legalRepresentative}\n联系电话：${clientPhone}","partyB":"受托人：${firmName}\n负责人：${firmLegalPerson}\n地址：${firmAddress}\n电话：${firmPhone}"},"clauses":"甲方聘请乙方担任常年法律顾问，经双方协商一致，订立本合同。\n\n一、服务期限\n本合同有效期为壹年，自${effectiveDate}起至${expiryDate}止。\n\n二、服务内容\n1. 日常法律咨询\n2. 合同审查与起草\n3. 法律风险评估与防范建议\n4. 参与重大商务谈判提供法律支持\n5. 出具法律意见书\n6. 代理诉讼/仲裁（另行收费）\n\n三、服务费用\n年度顾问费为人民币${totalAmount}元（大写：${totalAmountChinese}）。\n\n四、付款方式\n${paymentTerms}\n\n五、服务方式\n1. 电话、邮件咨询不限次数\n2. 每月提供不少于${serviceHours}小时现场服务\n3. 紧急事项24小时内响应\n\n六、甲方权利义务\n1. 按时支付顾问费用\n2. 如实提供相关资料和信息\n3. 为乙方开展工作提供必要条件\n\n七、乙方权利义务\n1. 按约定提供法律服务\n2. 保守甲方商业秘密\n3. 及时响应甲方咨询需求\n\n八、续约条款\n合同到期前30日，双方可协商续约事宜。\n\n九、本合同一式二份，双方各执一份，自双方签字盖章之日起生效。","signature":{"partyASign":"甲方（盖章）：\n\n法定代表人：","partyBSign":"乙方（盖章）：${firmName}\n\n负责人：${firmLegalPerson}","signInfo":"签订日期：${signDate}"}}}', '[]', '适用于企业常年法律顾问服务', 'ACTIVE', 2, '2026-01-04 16:14:15.903185', '2026-01-04 16:14:15.903185', NULL, NULL, false);
+INSERT INTO public.contract_template VALUES (3, 'CT-003', '民事委托代理合同', 'CIVIL_PROXY', 'FIXED', '{"_structured":true,"_version":1,"blocks":{"title":{"contractName":"委托代理合同"},"parties":{"partyA":"委托人：${clientName}\n住所地：${clientAddress}\n联系电话：${clientPhone}","partyB":"受托人：${firmName}\n负责人：${firmLegalPerson}\n地址：${firmAddress}\n电话：${firmPhone}"},"clauses":"委托人因与${opposingParty}${causeOfAction}纠纷一案，委托人与受托人就委托代理事宜，经平等协商，自愿订立本合同。\n\n一、承办律师\n受托人接受委托后，指派律师${lawyerName}为委托人的${trialStage}代理人。\n\n二、代理权限\n代理权限为：${authorityScope}\n一般代理权限：拟写诉讼文书、起诉、应诉、调查取证、参加庭审、签收法律文书。\n特别代理权限：承认、变更、放弃诉讼请求，调解和解，提起反诉或上诉，申请执行并收付执行款物。\n\n三、代理费用\n委托人应向受托人支付代理费人民币${totalAmount}元（大写：${totalAmountChinese}）。\n付款时间：${paymentDeadline}前付清。\n付款方式：直接汇入受托人银行账户或支付给持有受托人签章票据的人员。\n\n四、委托人义务\n1. 如实全面地向受托人陈述案情，提供证据及证据线索\n2. 不得隐瞒案情、伪造证据、虚假陈述\n3. 不得利用受托人提供法律服务谋取非法利益\n\n五、受托人义务\n1. 尽职尽责，依法维护委托人利益\n2. 不得与对方当事人恶意串通\n3. 保守委托人商业秘密和个人隐私\n4. 及时通报案件进展情况\n\n六、不予解除合同情形\n1. 与对方当事人自行协商、和解\n2. 法院主持调解结案\n3. 委托人自己撤诉或放弃权利\n4. 对方当事人撤诉或主动履行义务\n\n七、可解除合同情形\n1. 经法院判决确认，受托人损害委托人合法权益\n2. 受托人无正当理由不履行代理义务\n3. 受托人丧失执业资格\n\n八、不予退费情形\n1. 案件败诉\n2. 裁判文书确定的利益未实现或未达预期\n3. 出现第六条规定的情形\n\n九、争议解决\n本合同争议由受托人住所地法院管辖。\n\n十、本合同自双方签字盖章之日起生效，一式二份，双方各执一份。\n\n十一、特别约定\n${specialTerms}","signature":{"partyASign":"委托人（签章）：\n\n法定代表人/委托人：","partyBSign":"受托人（签章）：${firmName}\n\n负责人：${firmLegalPerson}","signInfo":"签订日期：${signDate}"}}}', '[]', '适用于民事案件和行政案件的委托代理合同，符合律师协会规范', 'ACTIVE', 3, '2026-01-04 16:14:15.903185', '2026-01-04 16:14:15.903185', NULL, NULL, false);
+INSERT INTO public.contract_template VALUES (4, 'CT-004', '非诉项目合同', 'NON_LITIGATION', 'HOURLY', '{"_structured":true,"_version":1,"blocks":{"title":{"contractName":"非诉讼法律服务合同"},"parties":{"partyA":"委托人：${clientName}\n住所地：${clientAddress}\n联系电话：${clientPhone}","partyB":"受托人：${firmName}\n负责人：${firmLegalPerson}\n地址：${firmAddress}\n电话：${firmPhone}"},"clauses":"甲方委托乙方就${matterName}项目提供非诉讼法律服务，经双方协商一致，订立本合同。\n\n一、项目名称\n${matterName}\n\n二、服务内容\n${matterDescription}\n\n三、承办律师\n乙方指派律师${lawyerName}为本项目承办律师。\n\n四、收费方式\n本项目采用计时收费方式：\n1. 合伙人：人民币${partnerRate}元/小时\n2. 资深律师：人民币${seniorRate}元/小时\n3. 律师助理：人民币${assistantRate}元/小时\n\n五、费用预估\n预估总费用人民币${totalAmount}元（大写：${totalAmountChinese}）。\n实际费用以工时记录为准。\n\n六、付款方式\n${paymentTerms}\n\n七、工时管理\n1. 乙方应如实记录工作时间\n2. 定期向甲方提供工时报告\n3. 如实际费用超出预估20%，乙方应提前告知甲方\n\n八、甲方义务\n1. 按时支付服务费用\n2. 如实提供项目相关资料\n3. 配合乙方开展工作\n\n九、乙方义务\n1. 按约定提供法律服务\n2. 保守甲方商业秘密\n3. 及时汇报项目进展\n\n十、本合同一式二份，双方各执一份，自双方签字盖章之日起生效。","signature":{"partyASign":"甲方（签章）：\n\n法定代表人/委托人：","partyBSign":"乙方（签章）：${firmName}\n\n负责人：${firmLegalPerson}","signInfo":"签订日期：${signDate}"}}}', '[]', '适用于非诉讼项目，按工时计费', 'ACTIVE', 4, '2026-01-04 16:14:15.903185', '2026-01-04 16:14:15.903185', NULL, NULL, false);
+INSERT INTO public.contract_template VALUES (5, 'CT-005', '刑事案件委托代理合同', 'CRIMINAL_DEFENSE', 'FIXED', '{"_structured":true,"_version":1,"blocks":{"title":{"contractName":"刑事案件委托代理合同"},"parties":{"partyA":"委托人：${clientName}\n住所地：${clientAddress}\n联系电话：${clientPhone}","partyB":"受托人：${firmName}\n负责人：${firmLegalPerson}\n地址：${firmAddress}\n电话：${firmPhone}"},"clauses":"因${defendantName}涉嫌${criminalCharge}一案，委托人与受托人就委托辩护事宜，经平等协商，自愿订立本合同。\n\n一、辩护律师\n受托人接受委托后，指派律师${lawyerName}担任${defendantName}的辩护人。\n\n二、辩护阶段\n本次委托的辩护阶段为：${defenseStage}\nA、侦查阶段\nB、审查起诉阶段\nC、一审阶段\nD、二审阶段\nE、死刑复核阶段\nF、再审阶段\n\n三、辩护费用\n委托人应向受托人支付辩护费人民币${totalAmount}元（大写：${totalAmountChinese}）。\n付款时间：${paymentDeadline}前付清。\n付款方式：直接汇入受托人银行账户或支付给持有受托人签章票据的人员。\n\n四、受托人义务\n1. 尽职尽责，依法维护被告人合法权益\n2. 及时与委托人沟通案件进展\n3. 保守案件相关秘密\n\n五、被告人拒绝辩护\n如被告人拒绝受托人指派的律师为其辩护，除非受托人损害被告人合法权益（须经法院判决确认），委托人不得要求退费。\n\n六、不予退费情形\n1. 侦查部门撤销案件\n2. 审查起诉部门决定不起诉\n3. 公诉机关撤回起诉\n4. 被告人被取保候审\n5. 案件结果未达到委托人预期\n6. 委托人单方解除合同\n7. 被告人拒绝辩护\n8. 其他非经法院判决确认退费的理由\n\n七、争议解决\n本合同争议由受托人住所地法院管辖。\n\n八、本合同自双方签字盖章之日起生效，一式二份，双方各执一份。\n\n九、特别约定\n${specialTerms}","signature":{"partyASign":"委托人（签章）：\n\n法定代表人/委托人：","partyBSign":"受托人（签章）：${firmName}\n\n负责人：${firmLegalPerson}","signInfo":"签订日期：${signDate}"}}}', '[]', '适用于刑事案件的辩护代理合同，包含侦查、审查起诉、一审、二审、死刑复核、再审等阶段', 'ACTIVE', 5, '2026-01-04 16:14:15.903185', '2026-01-04 16:14:15.903185', NULL, NULL, false);
+INSERT INTO public.contract_template VALUES (6, 'CT-006', '行政案件委托代理合同', 'ADMINISTRATIVE_PROXY', 'FIXED', '{"_structured":true,"_version":1,"blocks":{"title":{"contractName":"委托代理合同"},"parties":{"partyA":"委托人：${clientName}\n住所地：${clientAddress}\n联系电话：${clientPhone}","partyB":"受托人：${firmName}\n负责人：${firmLegalPerson}\n地址：${firmAddress}\n电话：${firmPhone}"},"clauses":"委托人因与${opposingParty}${causeOfAction}纠纷一案，委托人与受托人就委托代理事宜，经平等协商，自愿订立本合同。\n\n一、承办律师\n受托人接受委托后，指派律师${lawyerName}为委托人的${trialStage}代理人。\n\n二、代理权限\n代理权限为：${authorityScope}\n一般代理权限：拟写诉讼文书、起诉、应诉、调查取证、参加庭审、签收法律文书。\n特别代理权限：承认、变更、放弃诉讼请求，调解和解，提起反诉或上诉，申请执行并收付执行款物。\n\n三、代理费用\n委托人应向受托人支付代理费人民币${totalAmount}元（大写：${totalAmountChinese}）。\n付款时间：${paymentDeadline}前付清。\n付款方式：直接汇入受托人银行账户或支付给持有受托人签章票据的人员。\n\n四、委托人义务\n1. 如实全面地向受托人陈述案情，提供证据及证据线索\n2. 不得隐瞒案情、伪造证据、虚假陈述\n3. 不得利用受托人提供法律服务谋取非法利益\n\n五、受托人义务\n1. 尽职尽责，依法维护委托人利益\n2. 不得与对方当事人恶意串通\n3. 保守委托人商业秘密和个人隐私\n4. 及时通报案件进展情况\n\n六、不予解除合同情形\n1. 与对方当事人自行协商、和解\n2. 法院主持调解结案\n3. 委托人自己撤诉或放弃权利\n4. 对方当事人撤诉或主动履行义务\n\n七、可解除合同情形\n1. 经法院判决确认，受托人损害委托人合法权益\n2. 受托人无正当理由不履行代理义务\n3. 受托人丧失执业资格\n\n八、不予退费情形\n1. 案件败诉\n2. 裁判文书确定的利益未实现或未达预期\n3. 出现第六条规定的情形\n\n九、争议解决\n本合同争议由受托人住所地法院管辖。\n\n十、本合同自双方签字盖章之日起生效，一式二份，双方各执一份。\n\n十一、特别约定\n${specialTerms}","signature":{"partyASign":"委托人（签章）：\n\n法定代表人/委托人：","partyBSign":"受托人（签章）：${firmName}\n\n负责人：${firmLegalPerson}","signInfo":"签订日期：${signDate}"}}}', '[]', '适用于行政案件的委托代理合同，符合律师协会规范', 'ACTIVE', 6, '2026-01-04 16:14:15.903185', '2026-01-04 16:14:15.903185', NULL, NULL, false);
 --
 -- Data for Name: doc_template; Type: TABLE DATA; Schema: public; Owner: -
 --

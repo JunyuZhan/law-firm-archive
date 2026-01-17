@@ -14,7 +14,7 @@ import java.util.regex.Pattern;
  * - 少数民族名字中的点号（·）
  * - 繁体字
  * 
- * @author Kiro-1
+ * @author junyuzhan
  * @since 2026-01-10
  */
 public class ChineseNameValidator implements ConstraintValidator<ChineseName, String> {

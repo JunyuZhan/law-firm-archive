@@ -11,7 +11,7 @@ import java.lang.annotation.*;
  * @AuditField(fields = {"status", "leadLawyerId", "actualFee"})
  * public void updateMatter(UpdateMatterCommand cmd) { ... }
  * 
- * @author system
+ * @author junyuzhan
  * @since 2026-01-10
  */
 @Target(ElementType.METHOD)

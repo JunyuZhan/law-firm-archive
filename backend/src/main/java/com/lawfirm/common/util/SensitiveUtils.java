@@ -14,7 +14,7 @@ import java.math.BigDecimal;
  * - 地址脱敏
  * - 通用脱敏
  * 
- * @author system
+ * @author junyuzhan
  * @since 2026-01-10
  */
 public class SensitiveUtils {

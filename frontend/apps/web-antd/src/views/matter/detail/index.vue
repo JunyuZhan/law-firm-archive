@@ -1275,6 +1275,13 @@ onMounted(() => {
 
             <!-- 团队成员 -->
             <TabPane key="participants" tab="团队成员">
+              <Alert
+                message="💡 团队成员说明"
+                description="团队成员中的主办律师和协办律师将作为授权委托书的受托人信息，系统会自动收集并填充到委托书模板中。如果团队成员发生变化（如添加或删除协办律师），请在卷宗管理页面重新生成授权委托书。"
+                type="info"
+                show-icon
+                style="margin-bottom: 16px"
+              />
               <Table
                 v-if="matter.participants && matter.participants.length > 0"
                 :columns="[

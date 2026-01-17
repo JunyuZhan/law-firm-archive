@@ -18,7 +18,7 @@ import java.util.regex.Pattern;
  * 
  * 用于生成设备指纹、识别设备类型、提取浏览器和操作系统信息
  * 
- * @author system
+ * @author junyuzhan
  * @since 2026-01-10
  */
 @Slf4j

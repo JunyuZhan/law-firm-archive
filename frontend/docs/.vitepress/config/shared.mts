@@ -209,7 +209,7 @@ function pwa(): PwaOptions {
       id: '/docs/',
       name: '律所管理系统文档',
       short_name: 'law_firm_docs',
-      theme_color: '#1890ff',
+      theme_color: '#4f69fd',
     },
     outDir: resolve(process.cwd(), '.vitepress/dist'),
     registerType: 'autoUpdate',

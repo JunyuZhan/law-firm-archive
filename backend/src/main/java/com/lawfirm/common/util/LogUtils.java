@@ -19,7 +19,7 @@ import java.util.function.Supplier;
  * - 敏感数据脱敏
  * - 条件日志
  * 
- * @author Kiro-1
+ * @author junyuzhan
  * @since 2026-01-10
  */
 @Slf4j

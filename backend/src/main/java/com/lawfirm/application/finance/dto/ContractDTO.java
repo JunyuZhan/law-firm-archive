@@ -18,6 +18,8 @@ public class ContractDTO extends BaseDTO {
 
     private String contractNo;
     private String name;
+    private Long templateId;  // 使用的模板ID
+    private String content;   // 合同内容（基于模板生成）
     private String contractType;
     private String contractTypeName;
     private Long clientId;

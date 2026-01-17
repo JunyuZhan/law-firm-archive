@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.lawfirm.application.admin.command.CreateLetterApplicationCommand;
 import com.lawfirm.application.admin.dto.LetterApplicationDTO;
 import com.lawfirm.application.admin.dto.LetterTemplateDTO;
+import com.lawfirm.application.admin.util.LetterTemplateFormatter;
+import com.lawfirm.application.matter.dto.MatterClientDTO;
 import com.lawfirm.application.system.service.CauseOfActionService;
 import com.lawfirm.application.system.service.NotificationAppService;
 import com.lawfirm.application.workbench.service.ApprovalService;
@@ -32,7 +34,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -60,6 +64,7 @@ public class LetterAppService {
     private final ApprovalService approvalService;
     private final ObjectMapper objectMapper;
     private final CauseOfActionService causeOfActionService;
+    private final LetterTemplateFormatter letterTemplateFormatter;
     private com.lawfirm.application.matter.service.MatterAppService matterAppService;
     
     @org.springframework.beans.factory.annotation.Autowired
@@ -146,6 +151,16 @@ public class LetterAppService {
     public LetterTemplateDTO getTemplateById(Long id) {
         LetterTemplate template = templateRepository.getByIdOrThrow(id, "模板不存在");
         return toTemplateDTO(template);
+    }
+
+    /**
+     * 删除模板（软删除）
+     */
+    @Transactional
+    public void deleteTemplate(Long id) {
+        LetterTemplate template = templateRepository.getByIdOrThrow(id, "模板不存在");
+        templateRepository.removeById(id);
+        log.info("删除出函模板: {}", template.getName());
     }
 
     // ==================== 出函申请 ====================
@@ -805,6 +820,7 @@ public class LetterAppService {
     /**
      * 生成函件内容（替换模板变量）
      * 支持模板中定义的所有变量，根据项目实际信息进行替换
+     * 支持结构化模板格式和传统HTML格式
      */
     private String generateContent(String template, Matter matter, String applicationNo,
             String targetUnit, String targetAddress, List<Long> lawyerIds, String lawyerNames) {
@@ -812,6 +828,16 @@ public class LetterAppService {
             return "";
         }
         
+        // 先收集所有变量值
+        Map<String, String> variables = collectVariables(matter, applicationNo, targetUnit, targetAddress, lawyerIds, lawyerNames);
+        
+        // 检查是否为结构化格式
+        if (letterTemplateFormatter.isStructuredFormat(template)) {
+            // 结构化格式：先格式化再替换变量（格式化过程中会替换变量）
+            return letterTemplateFormatter.formatStructuredLetter(template, variables);
+        }
+        
+        // 传统格式：直接替换变量
         String result = template;
         
         // ========== 项目信息 ==========
@@ -946,6 +972,162 @@ public class LetterAppService {
         result = result.replace("${currentYear}", String.valueOf(now.getYear()));
         
         return result;
+    }
+
+    /**
+     * 收集所有变量值（用于结构化模板格式化）
+     */
+    private Map<String, String> collectVariables(Matter matter, String applicationNo,
+            String targetUnit, String targetAddress, List<Long> lawyerIds, String lawyerNames) {
+        Map<String, String> vars = new HashMap<>();
+        
+        // ========== 项目信息 ==========
+        vars.put("matterName", matter.getName() != null ? matter.getName() : "");
+        vars.put("matterNo", matter.getMatterNo() != null ? matter.getMatterNo() : "");
+        
+        // 案由
+        String causeOfActionName = "";
+        if (matter.getCauseOfAction() != null && !matter.getCauseOfAction().isEmpty()) {
+            String causeType = switch (matter.getCaseType() != null ? matter.getCaseType() : "") {
+                case "CRIMINAL" -> CauseOfActionService.TYPE_CRIMINAL;
+                case "ADMINISTRATIVE" -> CauseOfActionService.TYPE_ADMIN;
+                default -> CauseOfActionService.TYPE_CIVIL;
+            };
+            causeOfActionName = causeOfActionService.getCauseName(matter.getCauseOfAction(), causeType);
+        }
+        vars.put("causeOfAction", causeOfActionName);
+        
+        // ========== 合同信息 ==========
+        String contractNo = "";
+        String trialStage = "";
+        if (matter.getContractId() != null) {
+            try {
+                Contract contract = contractRepository.getById(matter.getContractId());
+                if (contract != null) {
+                    if (contract.getContractNo() != null) {
+                        contractNo = contract.getContractNo();
+                    }
+                    if (contract.getTrialStage() != null && !contract.getTrialStage().isEmpty()) {
+                        trialStage = getTrialStageName(contract.getTrialStage());
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("获取项目合同信息失败: matterId={}, contractId={}", matter.getId(), matter.getContractId(), e);
+            }
+        }
+        vars.put("contractNo", contractNo);
+        vars.put("trialStage", trialStage);
+        vars.put("procedureStage", trialStage);
+        
+        // ========== 客户信息 ==========
+        String clientName = "";
+        String clientIdNumber = "";
+        String clientRole = "";
+        String clientRoleName = "";
+        if (matter.getClientId() != null) {
+            try {
+                var primaryClient = matterClientRepository.findPrimaryClient(matter.getId());
+                Long clientId = primaryClient.map(com.lawfirm.domain.matter.entity.MatterClient::getClientId)
+                        .orElse(matter.getClientId());
+                
+                // 获取客户角色（诉讼地位）
+                if (primaryClient.isPresent()) {
+                    var matterClient = primaryClient.get();
+                    if (matterClient.getClientRole() != null && !matterClient.getClientRole().isEmpty()) {
+                        clientRole = matterClient.getClientRole();
+                        clientRoleName = com.lawfirm.application.matter.dto.MatterClientDTO.getClientRoleName(clientRole);
+                    }
+                }
+                
+                Client client = clientRepository.getById(clientId);
+                if (client != null) {
+                    clientName = client.getName() != null ? client.getName() : "";
+                    if ("INDIVIDUAL".equals(client.getClientType())) {
+                        clientIdNumber = client.getIdCard() != null ? client.getIdCard() : "";
+                    } else {
+                        clientIdNumber = client.getCreditCode() != null ? client.getCreditCode() : "";
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("获取客户信息失败: matterId={}, clientId={}", matter.getId(), matter.getClientId(), e);
+            }
+        }
+        vars.put("clientName", clientName);
+        vars.put("clientIdNumber", clientIdNumber);
+        vars.put("clientRole", clientRole);
+        vars.put("clientRoleName", clientRoleName);
+        
+        // ========== 对方当事人信息 ==========
+        vars.put("opposingParty", matter.getOpposingParty() != null ? matter.getOpposingParty() : "");
+        
+        // 对方当事人诉讼地位（根据委托人诉讼地位推导）
+        String opposingPartyRole = getOpposingPartyRole(clientRole);
+        String opposingPartyRoleName = MatterClientDTO.getClientRoleName(opposingPartyRole);
+        vars.put("opposingPartyRole", opposingPartyRole);
+        vars.put("opposingPartyRoleName", opposingPartyRoleName);
+        
+        // ========== 律师信息 ==========
+        vars.put("lawyerNames", lawyerNames != null ? lawyerNames : "");
+        
+        // 获取律师执业证号
+        String lawyerLicenseNos = "";
+        if (lawyerIds != null && !lawyerIds.isEmpty()) {
+            lawyerLicenseNos = lawyerIds.stream()
+                    .map(id -> {
+                        try {
+                            User user = userMapper.selectById(id);
+                            return user != null && user.getLawyerLicenseNo() != null ? user.getLawyerLicenseNo() : "";
+                        } catch (Exception e) {
+                            log.warn("获取律师执业证号失败: lawyerId={}", id, e);
+                            return "";
+                        }
+                    })
+                    .filter(no -> !no.isEmpty())
+                    .collect(Collectors.joining(","));
+        }
+        vars.put("lawyerLicenseNo", lawyerLicenseNos);
+        
+        // ========== 接收单位信息 ==========
+        vars.put("targetUnit", targetUnit != null ? targetUnit : "");
+        vars.put("targetAddress", targetAddress != null ? targetAddress : "");
+        
+        // ========== 律所信息 ==========
+        String firmName = "";
+        String firmAddress = "";
+        String firmPhone = "";
+        String firmLicense = "";
+        try {
+            firmName = sysConfigAppService.getConfigValue("firm.name");
+            if (firmName == null) firmName = "";
+            
+            firmAddress = sysConfigAppService.getConfigValue("firm.address");
+            if (firmAddress == null) firmAddress = "";
+            
+            firmPhone = sysConfigAppService.getConfigValue("firm.phone");
+            if (firmPhone == null) firmPhone = "";
+            
+            firmLicense = sysConfigAppService.getConfigValue("firm.license");
+            if (firmLicense == null) firmLicense = "";
+        } catch (Exception e) {
+            log.warn("获取律所信息失败", e);
+        }
+        vars.put("firmName", firmName);
+        vars.put("firmAddress", firmAddress);
+        vars.put("firmPhone", firmPhone);
+        vars.put("firmLicense", firmLicense);
+        
+        // ========== 函件信息 ==========
+        vars.put("letterNo", applicationNo != null ? applicationNo : "");
+        
+        // ========== 日期信息 ==========
+        LocalDate now = LocalDate.now();
+        String chineseDate = String.format("%d年%02d月%02d日", 
+            now.getYear(), now.getMonthValue(), now.getDayOfMonth());
+        vars.put("date", chineseDate);
+        vars.put("currentYear", String.valueOf(now.getYear()));
+        vars.put("currentDate", chineseDate);
+        
+        return vars;
     }
 
     /**
@@ -1096,5 +1278,42 @@ public class LetterAppService {
         dto.setCreatedAt(a.getCreatedAt());
         dto.setUpdatedAt(a.getUpdatedAt());
         return dto;
+    }
+
+    /**
+     * 根据委托人诉讼地位推导对方当事人诉讼地位
+     * 
+     * @param clientRole 委托人诉讼地位代码
+     * @return 对方当事人诉讼地位代码
+     */
+    private String getOpposingPartyRole(String clientRole) {
+        if (clientRole == null || clientRole.isEmpty()) {
+            return "";
+        }
+        
+        return switch (clientRole) {
+            // 一审/普通诉讼
+            case "PLAINTIFF" -> "DEFENDANT"; // 原告 → 被告
+            case "DEFENDANT" -> "PLAINTIFF"; // 被告 → 原告
+            
+            // 二审
+            case "APPELLANT" -> "APPELLEE"; // 上诉人 → 被上诉人
+            case "APPELLEE" -> "APPELLANT"; // 被上诉人 → 上诉人
+            
+            // 仲裁
+            case "APPLICANT" -> "RESPONDENT"; // 申请人 → 被申请人
+            case "RESPONDENT" -> "APPLICANT"; // 被申请人 → 申请人
+            
+            // 执行
+            case "EXECUTION_APPLICANT" -> "EXECUTION_RESPONDENT"; // 申请执行人 → 被执行人
+            case "EXECUTION_RESPONDENT" -> "EXECUTION_APPLICANT"; // 被执行人 → 申请执行人
+            
+            // 再审
+            case "RETRIAL_APPLICANT" -> "RETRIAL_RESPONDENT"; // 再审申请人 → 再审被申请人
+            case "RETRIAL_RESPONDENT" -> "RETRIAL_APPLICANT"; // 再审被申请人 → 再审申请人
+            
+            // 其他情况（第三人、犯罪嫌疑人、被告人等）没有对应的对方角色
+            default -> "";
+        };
     }
 }

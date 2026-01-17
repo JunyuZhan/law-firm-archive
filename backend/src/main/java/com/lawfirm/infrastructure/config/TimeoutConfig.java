@@ -17,7 +17,7 @@ import java.time.Duration;
  * 1. HTTP 客户端超时配置
  * 2. RestTemplate 超时配置
  * 
- * @author Kiro-1
+ * @author junyuzhan
  */
 @Slf4j
 @Configuration

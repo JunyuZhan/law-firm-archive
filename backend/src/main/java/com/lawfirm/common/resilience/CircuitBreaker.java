@@ -21,7 +21,7 @@ import java.util.function.Supplier;
  * - 外部 API 调用
  * - 消息发送
  * 
- * @author Kiro-1
+ * @author junyuzhan
  * @since 2026-01-10
  */
 @Slf4j

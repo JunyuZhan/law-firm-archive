@@ -200,7 +200,7 @@ public class ClientAppService {
                 .category(command.getCategory() != null ? command.getCategory() : "NORMAL")
                 .status("POTENTIAL")
                 .originatorId(command.getOriginatorId() != null ? command.getOriginatorId() : SecurityUtils.getUserId())
-                .responsibleLawyerId(command.getResponsibleLawyerId())
+                .responsibleLawyerId(command.getResponsibleLawyerId() != null ? command.getResponsibleLawyerId() : SecurityUtils.getUserId())
                 .firstCooperationDate(command.getFirstCooperationDate())
                 .remark(command.getRemark())
                 .build();

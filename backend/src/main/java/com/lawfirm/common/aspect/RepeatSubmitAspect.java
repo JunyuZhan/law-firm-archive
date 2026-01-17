@@ -31,7 +31,7 @@ import java.util.concurrent.TimeUnit;
  * 
  * 使用Redis实现分布式防重提交
  * 
- * @author system
+ * @author junyuzhan
  * @since 2026-01-10
  */
 @Slf4j

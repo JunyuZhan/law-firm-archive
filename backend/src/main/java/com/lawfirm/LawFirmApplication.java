@@ -9,7 +9,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 /**
  * 智慧律所管理系统启动类
  * 
- * @author LawFirm Team
+ * @author junyuzhan
  * @version 1.0.0
  */
 @SpringBootApplication

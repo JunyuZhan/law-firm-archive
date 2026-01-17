@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * CompressUtils 单元测试
  *
- * @author Kiro-2
+ * @author junyuzhan
  * @since 2026-01-10
  */
 @DisplayName("CompressUtils 压缩工具测试")

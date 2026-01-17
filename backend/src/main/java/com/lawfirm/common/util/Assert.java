@@ -13,7 +13,7 @@ import java.util.Map;
  * - 条件断言
  * - 抛出业务异常
  * 
- * @author system
+ * @author junyuzhan
  * @since 2026-01-10
  */
 public final class Assert {

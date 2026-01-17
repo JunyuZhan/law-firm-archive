@@ -19,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * - 邮箱脱敏
  * - 银行卡脱敏
  * 
- * @author Kiro-1
+ * @author junyuzhan
  * @since 2026-01-10
  */
 @DisplayName("SensitiveUtils 单元测试")

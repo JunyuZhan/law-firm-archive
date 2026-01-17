@@ -53,6 +53,22 @@ public class ContractRepository extends AbstractRepository<FinanceContractMapper
     }
 
     /**
+     * 统计指定日期和合同类型创建的合同数量（用于独立编号）
+     * 每种合同类型（模板类型）独立计数
+     */
+    public long countByCreatedDateAndContractType(LocalDate date, String contractType) {
+        return baseMapper.countByCreatedDateAndContractType(date, contractType);
+    }
+
+    /**
+     * 统计指定年份和合同类型创建的合同数量（用于独立编号）
+     * 每种合同类型（模板类型）独立计数
+     */
+    public long countByCreatedYearAndContractType(int year, String contractType) {
+        return baseMapper.countByCreatedYearAndContractType(year, contractType);
+    }
+
+    /**
      * 根据ID查询合同并加行锁（用于并发控制）
      * 使用 SELECT ... FOR UPDATE 实现悲观锁
      */

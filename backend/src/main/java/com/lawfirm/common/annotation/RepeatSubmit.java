@@ -18,7 +18,7 @@ import java.util.concurrent.TimeUnit;
  * public Result&lt;ContractDTO&gt; createContract(@RequestBody CreateContractCommand cmd) { ... }
  * </pre>
  * 
- * @author system
+ * @author junyuzhan
  * @since 2026-01-10
  */
 @Target(ElementType.METHOD)

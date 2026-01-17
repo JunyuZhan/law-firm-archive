@@ -12,8 +12,6 @@ import com.lawfirm.application.document.command.BatchGenerateDocumentCommand;
 import com.lawfirm.application.document.command.GenerateDocumentCommand;
 import com.lawfirm.application.document.command.PreviewTemplateCommand;
 import com.lawfirm.application.document.dto.DocumentDTO;
-import com.lawfirm.application.document.service.DocumentAppService;
-import com.lawfirm.application.document.service.TemplateVariableService;
 import com.lawfirm.common.util.SecurityUtils;
 import com.lawfirm.domain.document.entity.Document;
 import com.lawfirm.domain.document.entity.DocumentCategory;
@@ -202,6 +200,9 @@ public class DocumentTemplateAppService {
             throw new BusinessException("模板内容为空，请先编辑模板内容");
         }
 
+        // 解码 HTML 实体（防止 XSS 过滤导致的格式问题，如 &lt;、&gt; 等）
+        generatedContent = decodeHtmlEntities(generatedContent);
+
         byte[] generatedBytes = generatedContent.getBytes();
 
         // 生成文档名称
@@ -368,6 +369,55 @@ public class DocumentTemplateAppService {
         String prefix = "TPL" + LocalDate.now().toString().replace("-", "").substring(2);
         String random = UUID.randomUUID().toString().substring(0, 4).toUpperCase();
         return prefix + random;
+    }
+
+    /**
+     * 解码 HTML 实体
+     * 用于修复 XSS 拦截导致的 HTML 实体转义问题（如 &lt;、&gt;、&quot; 等）
+     * 
+     * @param text 需要解码的文本
+     * @return 解码后的文本
+     */
+    private String decodeHtmlEntities(String text) {
+        if (text == null || text.isEmpty()) {
+            return text;
+        }
+        
+        String result = text;
+        
+        // 常见 HTML 实体映射
+        result = result.replace("&quot;", "\"");
+        result = result.replace("&amp;", "&");
+        result = result.replace("&lt;", "<");
+        result = result.replace("&gt;", ">");
+        result = result.replace("&apos;", "'");
+        result = result.replace("&#39;", "'");
+        result = result.replace("&#x27;", "'");
+        result = result.replace("&nbsp;", " ");
+        
+        // 处理数字实体 &#xxx;
+        java.util.regex.Pattern pattern1 = java.util.regex.Pattern.compile("&#(\\d+);");
+        java.util.regex.Matcher matcher1 = pattern1.matcher(result);
+        StringBuffer sb1 = new StringBuffer();
+        while (matcher1.find()) {
+            int code = Integer.parseInt(matcher1.group(1));
+            matcher1.appendReplacement(sb1, String.valueOf((char) code));
+        }
+        matcher1.appendTail(sb1);
+        result = sb1.toString();
+        
+        // 处理十六进制实体 &#xXXX;
+        java.util.regex.Pattern pattern2 = java.util.regex.Pattern.compile("&#x([0-9a-fA-F]+);");
+        java.util.regex.Matcher matcher2 = pattern2.matcher(result);
+        StringBuffer sb2 = new StringBuffer();
+        while (matcher2.find()) {
+            int code = Integer.parseInt(matcher2.group(1), 16);
+            matcher2.appendReplacement(sb2, String.valueOf((char) code));
+        }
+        matcher2.appendTail(sb2);
+        result = sb2.toString();
+        
+        return result;
     }
 
     /**

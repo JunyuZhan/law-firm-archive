@@ -15,7 +15,7 @@ import java.util.function.Function;
  * 2. 分页参数校验：限制最大页数和每页大小
  * 3. 分页结果转换：DTO 转换
  * 
- * @author Kiro-1
+ * @author junyuzhan
  */
 @Slf4j
 public final class PageUtils {

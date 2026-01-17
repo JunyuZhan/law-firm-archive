@@ -13,7 +13,7 @@ import java.util.regex.Pattern;
  * - 格式验证（6位地区码 + 8位生日 + 3位顺序码 + 1位校验码）
  * - 校验位验证（使用ISO 7064:1983, MOD 11-2算法）
  * 
- * @author Kiro-1
+ * @author junyuzhan
  * @since 2026-01-10
  */
 public class IdCardValidator implements ConstraintValidator<IdCard, String> {

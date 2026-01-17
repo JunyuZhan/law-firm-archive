@@ -33,7 +33,7 @@ import java.util.concurrent.TimeUnit;
  * 2. 使用 Redis SETNX 实现分布式锁
  * 3. 根据配置决定是在执行前还是执行后标记
  * 
- * @author system
+ * @author junyuzhan
  * @since 2026-01-10
  */
 @Slf4j

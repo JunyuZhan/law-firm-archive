@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * - 文件大小限制
  * - 文件签名验证
  * 
- * @author Kiro-1
+ * @author junyuzhan
  * @since 2026-01-10
  */
 @DisplayName("FileValidator 单元测试")

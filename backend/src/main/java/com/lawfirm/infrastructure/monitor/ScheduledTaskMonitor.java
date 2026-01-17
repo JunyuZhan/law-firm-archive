@@ -17,7 +17,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * 
  * 用于追踪定时任务的执行状态、耗时、成功/失败次数
  * 
- * @author system
+ * @author junyuzhan
  * @since 2026-01-10
  */
 @Slf4j

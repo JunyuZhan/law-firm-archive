@@ -27,7 +27,7 @@ import java.time.Duration;
  * 3. 启用 TCP KeepAlive
  * 4. 配置自动重连
  * 
- * @author Kiro-1
+ * @author junyuzhan
  */
 @Slf4j
 @Configuration

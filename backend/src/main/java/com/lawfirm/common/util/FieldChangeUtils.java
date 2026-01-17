@@ -13,7 +13,7 @@ import java.util.*;
  * 
  * 用于对比两个对象的字段变更，生成变更记录
  * 
- * @author system
+ * @author junyuzhan
  * @since 2026-01-10
  */
 @Slf4j

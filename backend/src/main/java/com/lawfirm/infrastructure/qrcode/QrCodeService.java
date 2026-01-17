@@ -28,7 +28,7 @@ import java.util.Map;
  * - 项目信息查询
  * - 其他需要二维码的业务场景
  * 
- * @author LawFirm
+ * @author junyuzhan
  */
 @Slf4j
 @Service

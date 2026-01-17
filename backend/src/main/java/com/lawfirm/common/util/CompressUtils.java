@@ -19,7 +19,7 @@ import java.util.zip.*;
  * - 流式压缩
  * </p>
  *
- * @author Kiro-2
+ * @author junyuzhan
  * @since 2026-01-10
  */
 @Slf4j

@@ -23,7 +23,7 @@ import java.util.Base64;
  * 验证码生成算法：HMAC-SHA256
  * 格式：HMAC-SHA256(businessType + businessId + businessNo + timestamp, secret)
  * 
- * @author LawFirm
+ * @author junyuzhan
  */
 @Slf4j
 @Service

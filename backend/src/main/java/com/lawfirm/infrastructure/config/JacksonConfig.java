@@ -8,7 +8,6 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.springframework.boot.autoconfigure.jackson.Jackson2ObjectMapperBuilderCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.web.util.HtmlUtils;
 
 import java.io.IOException;
 import java.util.regex.Pattern;
@@ -20,7 +19,7 @@ import java.util.regex.Pattern;
  * - 自定义 JSON 序列化/反序列化行为
  * - XSS 防护：对输入字符串进行 HTML 转义
  * 
- * @author system
+ * @author junyuzhan
  * @since 2026-01-11
  */
 @Configuration
@@ -87,6 +86,10 @@ public class JacksonConfig {
 
         /**
          * 清理 XSS 脚本
+         * 
+         * 注意：只移除危险的脚本模式，不进行 HTML 转义
+         * HTML 转义应该在输出到 HTML 页面时进行，而不是在存储时
+         * 否则会破坏 JSON 等结构化数据
          */
         private String cleanXss(String value) {
             if (value == null || value.isEmpty()) {
@@ -100,8 +103,10 @@ public class JacksonConfig {
                 cleaned = pattern.matcher(cleaned).replaceAll("");
             }
 
-            // HTML 实体转义 - 转义 < > & " 等特殊字符
-            cleaned = HtmlUtils.htmlEscape(cleaned);
+            // 注意：不在这里进行 HTML 转义
+            // HTML 转义应该在输出到前端 HTML 页面时进行（由前端框架处理）
+            // 在存储时转义会破坏 JSON 等结构化数据（如合同模板内容）
+            // cleaned = HtmlUtils.htmlEscape(cleaned);
 
             return cleaned;
         }

@@ -30,7 +30,7 @@ import java.util.concurrent.TimeUnit;
  * public void doAction(Long userId, String action) { ... }
  * </pre>
  * 
- * @author system
+ * @author junyuzhan
  * @since 2026-01-10
  */
 @Target(ElementType.METHOD)

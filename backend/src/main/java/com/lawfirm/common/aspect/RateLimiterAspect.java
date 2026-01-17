@@ -29,7 +29,7 @@ import java.util.concurrent.TimeUnit;
  * 
  * 使用Redis实现分布式限流
  * 
- * @author system
+ * @author junyuzhan
  * @since 2026-01-10
  */
 @Slf4j

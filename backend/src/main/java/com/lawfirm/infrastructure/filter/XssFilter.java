@@ -4,7 +4,6 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletRequestWrapper;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.web.util.HtmlUtils;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -19,7 +18,7 @@ import java.util.regex.Pattern;
  * - 过滤请求头中的XSS脚本
  * - 可配置排除路径
  * 
- * @author system
+ * @author junyuzhan
  * @since 2026-01-10
  */
 @Slf4j
@@ -164,6 +163,9 @@ public class XssFilter implements Filter {
 
         /**
          * 清理XSS脚本
+         * 
+         * 注意：只移除危险的脚本模式，不进行 HTML 转义
+         * HTML 转义应该在输出到 HTML 页面时进行，由前端框架处理
          */
         private String cleanXss(String value) {
             if (value == null || value.isEmpty()) {
@@ -177,8 +179,9 @@ public class XssFilter implements Filter {
                 cleaned = pattern.matcher(cleaned).replaceAll("");
             }
 
-            // HTML实体转义
-            cleaned = HtmlUtils.htmlEscape(cleaned);
+            // 注意：不在这里进行 HTML 转义
+            // HTML 转义应该在输出到前端 HTML 页面时进行
+            // cleaned = HtmlUtils.htmlEscape(cleaned);
 
             // 如果值被修改，记录日志
             if (!value.equals(cleaned)) {

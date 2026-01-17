@@ -1,10 +1,15 @@
-// 合同类型选项
-export const contractTypeOptions = [
-  { label: '服务合同', value: 'SERVICE' },
-  { label: '常年法顾', value: 'RETAINER' },
-  { label: '诉讼代理', value: 'LITIGATION' },
-  { label: '非诉项目', value: 'NON_LITIGATION' },
+// 模板类型选项（合同类型）
+export const templateTypeOptions = [
+  { label: '民事代理', value: 'CIVIL_PROXY' },
+  { label: '行政代理', value: 'ADMINISTRATIVE_PROXY' },
+  { label: '刑事辩护', value: 'CRIMINAL_DEFENSE' },
+  { label: '法律顾问', value: 'LEGAL_COUNSEL' },
+  { label: '非诉案件', value: 'NON_LITIGATION' },
+  { label: '自定义模板', value: 'CUSTOM' },
 ];
+
+// 向后兼容：保留 contractTypeOptions 作为别名
+export const contractTypeOptions = templateTypeOptions;
 
 // 收费方式选项
 export const feeTypeOptions = [

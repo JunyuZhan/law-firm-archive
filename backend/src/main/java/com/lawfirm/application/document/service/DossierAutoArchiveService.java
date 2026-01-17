@@ -1,5 +1,7 @@
 package com.lawfirm.application.document.service;
 
+import com.lawfirm.application.finance.dto.ContractPrintDTO;
+import com.lawfirm.application.finance.service.ContractAppService;
 import com.lawfirm.common.util.SecurityUtils;
 import com.lawfirm.domain.client.entity.Client;
 import com.lawfirm.domain.client.repository.ClientRepository;
@@ -21,6 +23,7 @@ import com.lawfirm.infrastructure.persistence.mapper.ApprovalMapper;
 import com.lawfirm.infrastructure.persistence.mapper.SysConfigMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -75,6 +78,12 @@ public class DossierAutoArchiveService {
     private final MinioService minioService;
     private final PdfGeneratorService pdfGeneratorService;
     private final TemplateVariableService templateVariableService;
+    
+    // 使用字段注入 + @Lazy 打破循环依赖
+    // 注意：ContractAppService 形成循环依赖链，需要延迟加载
+    @Lazy
+    @org.springframework.beans.factory.annotation.Autowired
+    private ContractAppService contractAppService;
 
     /** 文档来源类型常量 */
     public static final String SOURCE_TYPE_SYSTEM_GENERATED = "SYSTEM_GENERATED";
@@ -233,42 +242,87 @@ public class DossierAutoArchiveService {
         }
 
         try {
-            // 获取审批记录
-            List<Approval> approvals = approvalMapper.selectByBusiness("CONTRACT", contractId);
-            if (approvals == null || approvals.isEmpty()) {
-                log.debug("未找到合同审批记录: contractId={}", contractId);
-                return;
-            }
-            
-            // 只取已通过的审批记录（按审批时间倒序取最新的）
-            // 收案审批表必须是已通过的审批才有归档价值
-            Approval approval = approvals.stream()
-                .filter(a -> "APPROVED".equals(a.getStatus()))
-                .max((a1, a2) -> {
-                    if (a1.getApprovedAt() == null) return -1;
-                    if (a2.getApprovedAt() == null) return 1;
-                    return a1.getApprovedAt().compareTo(a2.getApprovedAt());
-                })
-                .orElse(null);
-            
-            if (approval == null) {
-                log.debug("未找到已通过的审批记录，跳过收案审批表归档: contractId={}", contractId);
+            // 使用 ContractAppService 获取完整的打印数据（包含所有字段）
+            // 这样可以生成与合同管理模块预览一致的完整审批表
+            ContractPrintDTO printDTO;
+            try {
+                printDTO = contractAppService.getContractPrintData(contractId);
+            } catch (Exception e) {
+                log.warn("获取合同打印数据失败，使用简化方式生成审批表: contractId={}, error={}", contractId, e.getMessage());
+                // 降级方案：使用简化方式生成
+                List<Approval> approvals = approvalMapper.selectByBusiness("CONTRACT", contractId);
+                if (approvals == null || approvals.isEmpty()) {
+                    log.debug("未找到合同审批记录: contractId={}", contractId);
+                    return;
+                }
+                
+                Approval approval = approvals.stream()
+                    .filter(a -> "APPROVED".equals(a.getStatus()))
+                    .max((a1, a2) -> {
+                        if (a1.getApprovedAt() == null) return -1;
+                        if (a2.getApprovedAt() == null) return 1;
+                        return a1.getApprovedAt().compareTo(a2.getApprovedAt());
+                    })
+                    .orElse(null);
+                
+                if (approval == null) {
+                    log.debug("未找到已通过的审批记录，跳过收案审批表归档: contractId={}", contractId);
+                    return;
+                }
+
+                Contract contract = contractRepository.getById(contractId);
+                Matter matter = matterRepository.getById(matterId);
+                Client client = contract != null && contract.getClientId() != null 
+                    ? clientRepository.getById(contract.getClientId()) : null;
+
+                byte[] pdfContent = pdfGeneratorService.generateApprovalFormPdf(approval, contract, matter, client);
+                
+                String fileName = "收案审批表_" + (contract != null ? contract.getContractNo() : matterId) + ".pdf";
+                String storagePath = "dossier/" + matterId + "/" + fileName;
+                String fileUrl = minioService.uploadBytes(pdfContent, storagePath, "application/pdf");
+
+                createArchivedDocument(
+                    matterId,
+                    dossierItem.getId(),
+                    "收案审批表",
+                    fileName,
+                    fileUrl,
+                    (long) pdfContent.length,
+                    "pdf",
+                    SOURCE_TYPE_SYSTEM_GENERATED,
+                    SOURCE_MODULE_APPROVAL,
+                    approval.getId(),
+                    operatorId
+                );
+
+                log.info("收案审批表归档成功（简化版）: matterId={}, contractId={}", matterId, contractId);
                 return;
             }
 
-            // 获取合同和项目信息
-            Contract contract = contractRepository.getById(contractId);
-            Matter matter = matterRepository.getById(matterId);
-            Client client = contract != null && contract.getClientId() != null 
-                ? clientRepository.getById(contract.getClientId()) : null;
-
-            // 直接使用审批记录数据生成 PDF（不使用模板，因为审批表格式固定）
-            byte[] pdfContent = pdfGeneratorService.generateApprovalFormPdf(approval, contract, matter, client);
+            // 使用完整数据生成审批表PDF（与合同管理模块预览一致）
+            byte[] pdfContent = pdfGeneratorService.generateApprovalFormPdfFromPrintDTO(printDTO);
 
             // 上传到MinIO
-            String fileName = "收案审批表_" + (contract != null ? contract.getContractNo() : matterId) + ".pdf";
+            String contractNo = printDTO.getContractNo() != null ? printDTO.getContractNo() : String.valueOf(contractId);
+            String fileName = "收案审批表_" + contractNo + ".pdf";
             String storagePath = "dossier/" + matterId + "/" + fileName;
             String fileUrl = minioService.uploadBytes(pdfContent, storagePath, "application/pdf");
+
+            // 获取审批记录ID（用于文档来源追踪）
+            Long approvalId = null;
+            if (printDTO.getApprovals() != null && !printDTO.getApprovals().isEmpty()) {
+                // 查找第一个已通过的审批记录的ID
+                List<Approval> approvals = approvalMapper.selectByBusiness("CONTRACT", contractId);
+                if (approvals != null && !approvals.isEmpty()) {
+                    Approval approval = approvals.stream()
+                        .filter(a -> "APPROVED".equals(a.getStatus()))
+                        .findFirst()
+                        .orElse(null);
+                    if (approval != null) {
+                        approvalId = approval.getId();
+                    }
+                }
+            }
 
             // 创建文档记录
             createArchivedDocument(
@@ -281,11 +335,11 @@ public class DossierAutoArchiveService {
                 "pdf",
                 SOURCE_TYPE_SYSTEM_GENERATED,
                 SOURCE_MODULE_APPROVAL,
-                approval.getId(),
+                approvalId != null ? approvalId : contractId,
                 operatorId
             );
 
-            log.info("收案审批表归档成功: matterId={}, contractId={}", matterId, contractId);
+            log.info("收案审批表归档成功（完整版）: matterId={}, contractId={}", matterId, contractId);
         } catch (Exception e) {
             log.error("收案审批表归档失败: matterId={}, contractId={}, error={}", 
                 matterId, contractId, e.getMessage(), e);

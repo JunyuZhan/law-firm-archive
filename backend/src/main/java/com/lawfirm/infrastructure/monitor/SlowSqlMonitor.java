@@ -15,7 +15,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * 
  * 用于记录和告警慢查询
  * 
- * @author system
+ * @author junyuzhan
  * @since 2026-01-10
  */
 @Slf4j

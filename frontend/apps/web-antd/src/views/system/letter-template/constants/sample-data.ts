@@ -20,6 +20,8 @@ export const createLetterSampleData = (): Record<string, string> => {
 
     // ========== 委托人/客户信息 ==========
     clientName: '张三',
+    clientRole: 'PLAINTIFF', // 诉讼地位代码（原告）
+    clientRoleName: '原告', // 诉讼地位名称（原告、被告、申请人等）
     clientIdNumber: '520102199001011234',
     clientAddress: '贵州省贵阳市云岩区中华中路123号',
     clientPhone: '13800138000',
@@ -30,6 +32,8 @@ export const createLetterSampleData = (): Record<string, string> => {
 
     // ========== 对方当事人信息 ==========
     opposingParty: '李四',
+    opposingPartyRole: 'DEFENDANT', // 对方诉讼地位代码（被告）
+    opposingPartyRoleName: '被告', // 对方诉讼地位名称（原告、被告、申请人等）
     opposingLawyerName: '赵律师',
     opposingLawyerFirm: '某某律师事务所',
 

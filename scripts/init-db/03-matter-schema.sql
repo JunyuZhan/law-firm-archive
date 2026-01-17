@@ -16,7 +16,7 @@ CREATE TABLE public.matter (
     name character varying(200) NOT NULL,
     matter_type character varying(20) NOT NULL,
     case_type character varying(30),
-    litigation_stage character varying(30),
+    litigation_stage character varying(200),
     cause_of_action character varying(50),
     business_type character varying(50),
     client_id bigint NOT NULL,

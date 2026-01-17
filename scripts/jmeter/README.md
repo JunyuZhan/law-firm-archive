@@ -100,7 +100,7 @@ jmeter -n -t login-stress-test.jmx -l results/login-result.jtl -e -o results/log
 
 ## 作者
 
-Kiro-2 @ 2026-01-10
+junyuzhan @ 2026-01-10
 
 ## 文件清单
 

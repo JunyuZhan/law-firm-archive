@@ -17,7 +17,7 @@ import java.util.Map;
  * 
  * 增强 /actuator/health 端点，提供更详细的系统健康信息
  * 
- * @author system
+ * @author junyuzhan
  * @since 2026-01-10
  */
 @Slf4j

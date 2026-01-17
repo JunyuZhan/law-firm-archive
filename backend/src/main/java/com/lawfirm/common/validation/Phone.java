@@ -22,7 +22,7 @@ import java.lang.annotation.Target;
  * }
  * </pre>
  * 
- * @author Kiro-1
+ * @author junyuzhan
  * @since 2026-01-10
  */
 @Documented

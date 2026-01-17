@@ -2,38 +2,26 @@
 import { reactive, ref } from 'vue';
 
 import { useVbenModal } from '@vben/common-ui';
-import { Plus } from '@vben/icons';
 
 import {
-  Alert,
   Button,
   Col,
   Divider,
-  Dropdown,
   Form,
   FormItem,
   Input,
-  Menu,
-  MenuItem,
   message,
-  Radio,
-  RadioGroup,
   Row,
   Select,
   Space,
-  TabPane,
-  Tabs,
   Textarea,
 } from 'ant-design-vue';
 
 import { requestClient } from '#/api/request';
-import RichTextEditor from '#/components/RichTextEditor/index.vue';
 
 import {
-  contractTypeOptions,
-  defaultTemplates,
+  templateTypeOptions,
   feeTypeOptions,
-  templateList,
 } from './contract-templates';
 import StructuredTemplateEditor from './StructuredTemplateEditor.vue';
 
@@ -57,6 +45,7 @@ const contractVariables = [
   // 项目/案件信息
   { label: '项目名称', value: 'matterName', description: '委托项目/案件名称' },
   { label: '项目编号', value: 'matterNo', description: '案件编号' },
+  { label: '案件描述', value: 'matterDescription', description: '案件/事项描述' },
   { label: '案由', value: 'causeOfAction', description: '案件案由' },
   { label: '案件类型', value: 'caseType', description: '民事/刑事/行政等' },
   { label: '审理阶段', value: 'trialStage', description: '一审/二审/再审等' },
@@ -164,34 +153,22 @@ const contractVariables = [
 interface ContractTemplateDTO {
   id: number;
   name: string;
-  contractType: string;
+  templateType: string;
   feeType: string;
   content: string;
   clauses: string;
   description: string;
 }
 
-interface ClauseItem {
-  title: string;
-  content: string;
-}
-
 const editingId = ref<number>();
-const activeTab = ref('content');
 
 const formData = reactive({
   name: '',
-  contractType: 'SERVICE',
+  templateType: 'CIVIL_PROXY',
   feeType: 'FIXED',
   content: '',
   description: '',
 });
-
-// 标准条款列表
-const clausesList = ref<ClauseItem[]>([]);
-
-// 编辑模式：structured（结构化，推荐）或 freeform（自由编辑）
-const editMode = ref<'structured' | 'freeform'>('structured');
 
 const [Modal, modalApi] = useVbenModal({
   footer: false,
@@ -207,13 +184,11 @@ function resetForm() {
   editingId.value = undefined;
   Object.assign(formData, {
     name: '',
-    contractType: 'SERVICE',
+    templateType: 'CIVIL_PROXY',
     feeType: 'FIXED',
     content: '',
     description: '',
   });
-  clausesList.value = [];
-  activeTab.value = 'content';
 }
 
 // 打开新增弹窗
@@ -228,30 +203,13 @@ function openEdit(record: ContractTemplateDTO) {
   editingId.value = record.id;
   Object.assign(formData, {
     name: record.name,
-    contractType: record.contractType,
+    templateType: record.templateType,
     feeType: record.feeType || 'FIXED',
     content: record.content || '',
     description: record.description || '',
   });
-  // 解析条款
-  try {
-    clausesList.value = record.clauses ? JSON.parse(record.clauses) : [];
-  } catch {
-    clausesList.value = [];
-  }
-  activeTab.value = 'content';
   modalApi.setState({ title: '编辑合同模板' });
   modalApi.open();
-}
-
-// 添加条款
-function addClause() {
-  clausesList.value.push({ title: '', content: '' });
-}
-
-// 删除条款
-function removeClause(index: number) {
-  clausesList.value.splice(index, 1);
 }
 
 // 保存
@@ -261,27 +219,19 @@ async function handleSave() {
     return;
   }
   if (!formData.content) {
-    message.error('请输入合同正文内容');
+    message.error('请填写模板内容（至少填写一个区块）');
     return;
   }
-
-  // 过滤空条款
-  const validClauses = clausesList.value.filter((c) => c.title && c.content);
-
-  const submitData = {
-    ...formData,
-    clauses: validClauses.length > 0 ? JSON.stringify(validClauses) : '',
-  };
 
   try {
     if (editingId.value) {
       await requestClient.put(
         `/system/contract-template/${editingId.value}`,
-        submitData,
+        formData,
       );
       message.success('模板更新成功');
     } else {
-      await requestClient.post('/system/contract-template', submitData);
+      await requestClient.post('/system/contract-template', formData);
       message.success('模板创建成功');
     }
     modalApi.close();
@@ -289,19 +239,6 @@ async function handleSave() {
   } catch (error: unknown) {
     const err = error as { message?: string };
     message.error(err.message || '保存失败');
-  }
-}
-
-// 加载默认模板
-function loadDefaultTemplate(key: string) {
-  const template = defaultTemplates[key];
-  if (template) {
-    formData.content = template.content;
-    if (!formData.name) {
-      formData.name = template.name;
-    }
-    formData.contractType = template.type;
-    message.success(`已加载模板：${template.name}`);
   }
 }
 
@@ -330,13 +267,13 @@ defineExpose({
         </Col>
         <Col :span="6">
           <FormItem
-            label="合同类型"
+            label="模板类型"
             :label-col="{ span: 10 }"
             :wrapper-col="{ span: 14 }"
           >
             <Select
-              v-model:value="formData.contractType"
-              :options="contractTypeOptions"
+              v-model:value="formData.templateType"
+              :options="templateTypeOptions"
             />
           </FormItem>
         </Col>
@@ -368,130 +305,11 @@ defineExpose({
 
     <Divider style="margin: 12px 0" />
 
-    <Tabs v-model:active-key="activeTab">
-      <TabPane key="content" tab="合同正文">
-        <!-- 编辑模式选择 -->
-        <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 16px; padding: 12px; background: #f0f5ff; border-radius: 6px;">
-          <span style="font-weight: 500;">编辑模式：</span>
-          <RadioGroup v-model:value="editMode">
-            <Radio value="structured">
-              <span style="font-weight: 500; color: #1890ff;">📋 结构化编辑（推荐）</span>
-              <span style="font-size: 12px; color: #666; margin-left: 4px;">按区块填写，打印自动排版</span>
-            </Radio>
-            <Radio value="freeform">
-              <span>📝 自由编辑</span>
-              <span style="font-size: 12px; color: #666; margin-left: 4px;">富文本编辑器</span>
-            </Radio>
-          </RadioGroup>
-        </div>
-
-        <!-- 结构化编辑模式 -->
-        <div v-if="editMode === 'structured'">
-          <StructuredTemplateEditor
-            v-model="formData.content"
-            :variables="contractVariables"
-          />
-        </div>
-
-        <!-- 自由编辑模式 -->
-        <div v-else>
-          <Alert
-            message="提示：使用工具栏插入变量，变量会在生成实际合同时自动替换为真实数据。"
-            type="info"
-            show-icon
-            style="margin-bottom: 12px"
-          />
-
-          <div
-            style="
-              display: flex;
-              flex-wrap: wrap;
-              gap: 8px;
-              align-items: center;
-              margin-bottom: 12px;
-            "
-          >
-            <span style="font-size: 13px; color: #666">快速加载模板：</span>
-            <Dropdown>
-              <Button>选择模板 ▼</Button>
-              <template #overlay>
-                <Menu>
-                  <MenuItem
-                    v-for="tpl in templateList"
-                    :key="tpl.key"
-                    @click="loadDefaultTemplate(tpl.key)"
-                  >
-                    {{ tpl.name }}
-                  </MenuItem>
-                </Menu>
-              </template>
-            </Dropdown>
-            <span style="margin-left: 8px; font-size: 12px; color: #999">
-              选择后将加载标准模板内容，可在此基础上修改
-            </span>
-          </div>
-
-          <RichTextEditor
-            v-model="formData.content"
-            height="500px"
-            placeholder="请输入合同正文内容..."
-            :variables="contractVariables"
-            :show-variables="true"
-          />
-        </div>
-      </TabPane>
-
-      <TabPane key="clauses" tab="标准条款">
-        <Alert
-          message="添加可复用的标准条款，如保密条款、违约责任等，方便在不同合同中使用"
-          type="info"
-          show-icon
-          style="margin-bottom: 12px"
-        />
-
-        <div
-          v-for="(clause, index) in clausesList"
-          :key="index"
-          style="
-            padding: 12px;
-            margin-bottom: 16px;
-            background: #fafafa;
-            border: 1px solid #e8e8e8;
-            border-radius: 6px;
-          "
-        >
-          <div style="display: flex; align-items: center; margin-bottom: 8px">
-            <span style="width: 80px; font-weight: 500">条款标题：</span>
-            <Input
-              v-model:value="clause.title"
-              placeholder="如：保密条款"
-              style="flex: 1"
-            />
-            <Button
-              type="text"
-              danger
-              @click="removeClause(index)"
-              style="margin-left: 8px"
-            >
-              删除
-            </Button>
-          </div>
-          <div style="display: flex">
-            <span style="width: 80px; font-weight: 500">条款内容：</span>
-            <Textarea
-              v-model:value="clause.content"
-              :rows="4"
-              placeholder="条款具体内容"
-              style="flex: 1"
-            />
-          </div>
-        </div>
-
-        <Button type="dashed" block @click="addClause">
-          <Plus class="size-4" /> 添加条款
-        </Button>
-      </TabPane>
-    </Tabs>
+    <!-- 结构化模板编辑器：四个区块 -->
+    <StructuredTemplateEditor
+      v-model="formData.content"
+      :variables="contractVariables"
+    />
 
     <div
       style="

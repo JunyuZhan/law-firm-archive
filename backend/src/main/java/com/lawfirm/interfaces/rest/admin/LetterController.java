@@ -11,6 +11,7 @@ import com.lawfirm.domain.admin.entity.LetterApplication;
 import com.lawfirm.domain.admin.repository.LetterApplicationRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -54,21 +55,13 @@ public class LetterController {
     @PostMapping("/template")
     @RequirePermission("admin:letter:manage")
     public Result<LetterTemplateDTO> createTemplate(
-            @RequestParam(required = true) String name,
-            @RequestParam(required = true) String letterType,
-            @RequestParam(required = true) String content,
-            @RequestParam(required = false, defaultValue = "") String description) {
-        // 参数校验
-        if (name == null || name.trim().isEmpty()) {
-            return Result.fail("模板名称不能为空");
-        }
-        if (letterType == null || letterType.trim().isEmpty()) {
-            return Result.fail("函件类型不能为空");
-        }
-        if (content == null || content.trim().isEmpty()) {
-            return Result.fail("模板内容不能为空");
-        }
-        return Result.success(letterAppService.createTemplate(name.trim(), letterType.trim(), content, description));
+            @Valid @RequestBody com.lawfirm.interfaces.rest.admin.command.CreateLetterTemplateCommand command) {
+        String description = command.getDescription() != null ? command.getDescription() : "";
+        return Result.success(letterAppService.createTemplate(
+                command.getName().trim(), 
+                command.getLetterType().trim(), 
+                command.getContent(), 
+                description));
     }
 
     @Operation(summary = "更新模板")
@@ -76,10 +69,11 @@ public class LetterController {
     @RequirePermission("admin:letter:manage")
     public Result<LetterTemplateDTO> updateTemplate(
             @PathVariable Long id,
-            @RequestParam(required = false) String name,
-            @RequestParam(required = false) String letterType,
-            @RequestParam(required = false) String content,
-            @RequestParam(required = false) String description) {
+            @Valid @RequestBody com.lawfirm.interfaces.rest.admin.command.CreateLetterTemplateCommand command) {
+        String name = command.getName() != null ? command.getName().trim() : null;
+        String letterType = command.getLetterType() != null ? command.getLetterType().trim() : null;
+        String content = command.getContent();
+        String description = command.getDescription();
         return Result.success(letterAppService.updateTemplate(id, name, letterType, content, description));
     }
 
@@ -102,6 +96,14 @@ public class LetterController {
     @GetMapping("/template/{id}")
     public Result<LetterTemplateDTO> getTemplate(@PathVariable Long id) {
         return Result.success(letterAppService.getTemplateById(id));
+    }
+
+    @Operation(summary = "删除模板")
+    @DeleteMapping("/template/{id}")
+    @RequirePermission("admin:letter:manage")
+    public Result<Void> deleteTemplate(@PathVariable Long id) {
+        letterAppService.deleteTemplate(id);
+        return Result.success();
     }
 
     // ==================== 出函申请 ====================

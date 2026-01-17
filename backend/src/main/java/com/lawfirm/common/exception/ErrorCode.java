@@ -12,7 +12,7 @@ import lombok.Getter;
  * - 4xxx: 数据操作相关
  * - 5xxx: 系统内部错误
  * 
- * @author Kiro-1
+ * @author junyuzhan
  * @since 2026-01-10
  */
 @Getter

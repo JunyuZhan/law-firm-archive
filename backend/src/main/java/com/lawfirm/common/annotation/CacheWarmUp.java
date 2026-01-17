@@ -11,7 +11,7 @@ import java.lang.annotation.*;
  * @CacheWarmUp(keyPrefix = "dict:", order = 1)
  * public List<DictItem> loadAllDictItems() { ... }
  * 
- * @author system
+ * @author junyuzhan
  * @since 2026-01-10
  */
 @Target(ElementType.METHOD)

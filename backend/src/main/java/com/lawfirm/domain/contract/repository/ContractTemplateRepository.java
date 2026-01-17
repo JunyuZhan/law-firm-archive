@@ -38,7 +38,7 @@ public class ContractTemplateRepository extends AbstractRepository<ContractTempl
      */
     public List<ContractTemplate> findByContractType(String contractType) {
         return list(new LambdaQueryWrapper<ContractTemplate>()
-                .eq(ContractTemplate::getContractType, contractType)
+                .eq(ContractTemplate::getTemplateType, contractType)
                 .eq(ContractTemplate::getStatus, "ACTIVE")
                 .eq(ContractTemplate::getDeleted, false)
                 .orderByAsc(ContractTemplate::getSortOrder));

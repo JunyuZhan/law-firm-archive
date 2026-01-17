@@ -13,7 +13,7 @@ import org.springframework.context.annotation.Configuration;
  * - TraceIdFilter: 请求追踪（优先级最高）
  * - XssFilter: XSS 防护
  * 
- * @author system
+ * @author junyuzhan
  */
 @Configuration
 public class FilterConfig {

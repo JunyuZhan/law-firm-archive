@@ -107,9 +107,7 @@ export function createTemplate(data: {
   letterType: string;
   name: string;
 }) {
-  return requestClient.post<LetterTemplateDTO>('/admin/letter/template', null, {
-    params: data,
-  });
+  return requestClient.post<LetterTemplateDTO>('/admin/letter/template', data);
 }
 
 /** 更新模板 */
@@ -124,10 +122,7 @@ export function updateTemplate(
 ) {
   return requestClient.put<LetterTemplateDTO>(
     `/admin/letter/template/${id}`,
-    null,
-    {
-      params: data,
-    },
+    data,
   );
 }
 

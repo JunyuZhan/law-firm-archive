@@ -13,7 +13,7 @@ import java.util.regex.Pattern;
  * - 格式验证（16-19位纯数字）
  * - Luhn算法校验（可选）
  * 
- * @author Kiro-1
+ * @author junyuzhan
  * @since 2026-01-10
  */
 public class BankCardValidator implements ConstraintValidator<BankCard, String> {

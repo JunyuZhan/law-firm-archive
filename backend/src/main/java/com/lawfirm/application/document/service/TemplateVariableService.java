@@ -6,6 +6,10 @@ import com.lawfirm.domain.client.repository.ClientRepository;
 import com.lawfirm.domain.finance.entity.Contract;
 import com.lawfirm.domain.finance.repository.ContractRepository;
 import com.lawfirm.domain.matter.entity.Matter;
+import com.lawfirm.domain.matter.entity.MatterClient;
+import com.lawfirm.domain.matter.entity.MatterParticipant;
+import com.lawfirm.domain.matter.repository.MatterClientRepository;
+import com.lawfirm.domain.matter.repository.MatterParticipantRepository;
 import com.lawfirm.domain.matter.repository.MatterRepository;
 import com.lawfirm.domain.system.entity.User;
 import com.lawfirm.domain.system.repository.UserRepository;
@@ -22,6 +26,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 模板变量服务
@@ -39,6 +44,8 @@ public class TemplateVariableService {
     private final ApprovalMapper approvalMapper;
     private final SysConfigMapper sysConfigMapper;
     private final CauseOfActionService causeOfActionService;
+    private final MatterClientRepository matterClientRepository;
+    private final MatterParticipantRepository matterParticipantRepository;
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy年MM月dd日");
     private static final DateTimeFormatter DATE_SHORT_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
@@ -53,16 +60,51 @@ public class TemplateVariableService {
         Matter matter = matterRepository.getByIdOrThrow(matterId, "案件不存在");
         collectMatterVariables(variables, matter);
 
-        // 获取客户信息
-        if (matter.getClientId() != null) {
+        // 获取客户信息（支持多个委托人）
+        List<MatterClient> matterClients = matterClientRepository.findByMatterId(matterId);
+        if (matterClients != null && !matterClients.isEmpty()) {
+            // 收集所有委托人信息
+            collectMultipleClientsVariables(variables, matterClients);
+            
+            // 向后兼容：主要客户或第一个客户作为 client.* 变量
+            MatterClient primaryClient = matterClients.stream()
+                .filter(mc -> Boolean.TRUE.equals(mc.getIsPrimary()))
+                .findFirst()
+                .orElse(matterClients.get(0));
+            Client client = clientRepository.findById(primaryClient.getClientId());
+            if (client != null) {
+                collectClientVariables(variables, client);
+            }
+        } else if (matter.getClientId() != null) {
+            // 向后兼容：如果没有多客户关联，使用旧的单个客户方式
             Client client = clientRepository.findById(matter.getClientId());
             if (client != null) {
                 collectClientVariables(variables, client);
             }
         }
 
-        // 获取主办律师信息
-        if (matter.getLeadLawyerId() != null) {
+        // 获取律师信息（支持多个受托人）
+        List<MatterParticipant> participants = matterParticipantRepository.findByMatterId(matterId);
+        if (participants != null && !participants.isEmpty()) {
+            // 收集所有受托人（律师）信息
+            collectMultipleLawyersVariables(variables, participants);
+            
+            // 向后兼容：主办律师作为 lawyer.* 变量
+            MatterParticipant leadLawyer = participants.stream()
+                .filter(p -> "LEAD".equals(p.getRole()) && "ACTIVE".equals(p.getStatus()))
+                .findFirst()
+                .orElse(participants.stream()
+                    .filter(p -> "ACTIVE".equals(p.getStatus()))
+                    .findFirst()
+                    .orElse(null));
+            if (leadLawyer != null) {
+                User lawyer = userRepository.findById(leadLawyer.getUserId());
+                if (lawyer != null) {
+                    collectLawyerVariables(variables, lawyer);
+                }
+            }
+        } else if (matter.getLeadLawyerId() != null) {
+            // 向后兼容：如果没有参与人关联，使用旧的单个律师方式
             User lawyer = userRepository.findById(matter.getLeadLawyerId());
             if (lawyer != null) {
                 collectLawyerVariables(variables, lawyer);
@@ -191,6 +233,109 @@ public class TemplateVariableService {
         variables.put("lawyer.phone", nullToEmpty(lawyer.getPhone()));
         variables.put("lawyer.email", nullToEmpty(lawyer.getEmail()));
         variables.put("lawyer.licenseNo", nullToEmpty(lawyer.getLawyerLicenseNo()));
+    }
+
+    /**
+     * 收集多个委托人变量（用于模板自动填充多个委托人）
+     * 格式：每个委托人按模板格式格式化，多个委托人用换行分隔
+     */
+    private void collectMultipleClientsVariables(Map<String, Object> variables, List<MatterClient> matterClients) {
+        if (matterClients == null || matterClients.isEmpty()) {
+            variables.put("clients.allInfo", "");
+            variables.put("clients.allNames", "");
+            return;
+        }
+
+        // 获取所有委托人信息并格式化
+        List<String> clientInfoList = matterClients.stream()
+            .map(mc -> {
+                Client client = clientRepository.findById(mc.getClientId());
+                if (client == null) {
+                    return null;
+                }
+                // 格式化单个委托人信息（与模板中的格式一致）
+                String idLabel = "ENTERPRISE".equals(client.getClientType()) 
+                    ? "统一社会信用代码" : "身份证号";
+                String idNumber = "ENTERPRISE".equals(client.getClientType())
+                    ? nullToEmpty(client.getCreditCode()) : nullToEmpty(client.getIdCard());
+                
+                return String.format("委托人：%s\n%s：%s\n联系电话：%s\n住所地址：%s",
+                    nullToEmpty(client.getName()),
+                    idLabel,
+                    idNumber,
+                    nullToEmpty(client.getContactPhone()),
+                    nullToEmpty(client.getRegisteredAddress()));
+            })
+            .filter(info -> info != null)
+            .collect(Collectors.toList());
+
+        // 用两个换行符连接多个委托人（每个委托人之间空一行）
+        String allClientsInfo = String.join("\n\n", clientInfoList);
+        variables.put("clients.allInfo", allClientsInfo);
+
+        // 所有委托人名称（用顿号分隔）
+        String allClientNames = matterClients.stream()
+            .map(mc -> {
+                Client client = clientRepository.findById(mc.getClientId());
+                return client != null ? nullToEmpty(client.getName()) : null;
+            })
+            .filter(name -> name != null && !name.isEmpty())
+            .collect(Collectors.joining("、"));
+        variables.put("clients.allNames", allClientNames);
+    }
+
+    /**
+     * 收集多个受托人（律师）变量（用于模板自动填充多个受托人）
+     * 格式：律所信息 + 所有律师信息
+     */
+    private void collectMultipleLawyersVariables(Map<String, Object> variables, List<MatterParticipant> participants) {
+        if (participants == null || participants.isEmpty()) {
+            variables.put("lawyers.allInfo", "");
+            variables.put("lawyers.allNames", "");
+            return;
+        }
+
+        // 获取律所信息
+        String firmName = getConfigValue("firm.name", "律师事务所");
+        String firmAddress = getConfigValue("firm.address", "");
+
+        // 获取所有活跃的律师（主办律师和协办律师）
+        List<User> lawyers = participants.stream()
+            .filter(p -> "ACTIVE".equals(p.getStatus()) && 
+                        ("LEAD".equals(p.getRole()) || "CO_COUNSEL".equals(p.getRole())))
+            .map(p -> userRepository.findById(p.getUserId()))
+            .filter(lawyer -> lawyer != null)
+            .collect(Collectors.toList());
+
+        if (lawyers.isEmpty()) {
+            variables.put("lawyers.allInfo", "");
+            variables.put("lawyers.allNames", "");
+            return;
+        }
+
+        // 格式化所有律师信息
+        List<String> lawyerInfoList = lawyers.stream()
+            .map(lawyer -> String.format("承办律师：%s\n执业证号：%s",
+                nullToEmpty(lawyer.getRealName()),
+                nullToEmpty(lawyer.getLawyerLicenseNo())))
+            .collect(Collectors.toList());
+
+        // 组合律所信息和所有律师信息
+        StringBuilder allLawyersInfo = new StringBuilder();
+        allLawyersInfo.append("受托人：").append(firmName).append("\n");
+        if (!firmAddress.isEmpty()) {
+            allLawyersInfo.append("律所地址：").append(firmAddress).append("\n");
+        }
+        allLawyersInfo.append(String.join("\n", lawyerInfoList));
+        
+        variables.put("lawyers.allInfo", allLawyersInfo.toString());
+
+        // 所有律师名称（用顿号分隔）
+        String allLawyerNames = lawyers.stream()
+            .map(lawyer -> nullToEmpty(lawyer.getRealName()))
+            .filter(name -> !name.isEmpty())
+            .collect(Collectors.joining("、"));
+        variables.put("lawyers.allNames", allLawyerNames);
     }
 
     /**

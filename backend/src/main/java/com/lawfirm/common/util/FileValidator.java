@@ -16,7 +16,7 @@ import java.util.*;
  * - 检测可执行文件
  * - 防止文件类型伪装
  * 
- * @author system
+ * @author junyuzhan
  * @since 2026-01-10
  */
 @Slf4j

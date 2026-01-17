@@ -47,6 +47,8 @@ import com.lawfirm.application.system.service.CauseOfActionService;
 import com.lawfirm.application.system.service.SysConfigAppService;
 import com.lawfirm.infrastructure.persistence.mapper.ContractMapper;
 import com.lawfirm.infrastructure.persistence.mapper.UserMapper;
+import com.lawfirm.infrastructure.persistence.mapper.ApprovalMapper;
+import com.lawfirm.domain.workbench.entity.Approval;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -93,6 +95,7 @@ public class ContractAppService {
     private final ContractNumberGenerator contractNumberGenerator;
     private final SysConfigAppService sysConfigAppService;
     private final CauseOfActionService causeOfActionService;
+    private final ApprovalMapper approvalMapper;
 
     /**
      * 分页查询合同
@@ -308,8 +311,11 @@ public class ContractAppService {
      */
     @Transactional
     public ContractDTO createContract(CreateContractCommand command) {
-        // 1. 验证客户存在
+        // 1. 验证客户存在且状态为正式客户
         Client client = clientRepository.getByIdOrThrow(command.getClientId(), "客户不存在");
+        if (!"ACTIVE".equals(client.getStatus())) {
+            throw new BusinessException("只能为已转正的正式客户创建合同，当前客户状态为：" + client.getStatus());
+        }
 
         // 2. 验证案件存在（如果指定）
         if (command.getMatterId() != null) {
@@ -324,16 +330,14 @@ public class ContractAppService {
             }
         }
 
-        // 4. 生成合同编号（传递案件类型和收费类型用于编号规则）
-        String contractNo = contractNumberGenerator.generate(command.getCaseType(), command.getFeeType());
+        // 4. 草稿状态不生成合同编号，编号在提交审批时生成
+        // 这样可以避免草稿占用编号位置，只有审批通过的合同才会真正占用编号
+        String contractNo = null;
 
         // 5. 合同名称（如果为空则自动生成）
         String contractName = command.getName();
         if (contractName == null || contractName.isBlank()) {
-            // 自动生成：客户名称 + 合同类型
-            String clientName = client.getName();
-            String typeName = getContractTypeName(command.getContractType());
-            contractName = clientName + typeName;
+            contractName = generateContractName(command, client);
         }
 
         // 6. 创建合同实体
@@ -562,7 +566,11 @@ public class ContractAppService {
 
     /**
      * 删除合同
-     * 只有草稿状态的合同可以删除，已审批通过的合同任何人都不能删除
+     * 只有草稿状态和已拒绝状态的合同可以删除
+     * 已审批通过的合同（ACTIVE）不能删除（需要终止或完成）
+     * 
+     * 注意：已拒绝状态的合同如果已生成编号，删除后编号不会释放（编号作废不再使用）
+     * 只有真正生效的合同（ACTIVE状态）才占用编号位置
      */
     @Transactional
     public void deleteContract(Long id) {
@@ -571,13 +579,18 @@ public class ContractAppService {
         // 验证用户是否是合同创建者、签约人或参与人（只有所有者才能删除）
         validateContractOwnership(contract);
         
-        // 只有草稿状态可以删除（已审批通过的合同任何人都不能删除）
-        if (!ContractStatus.DRAFT.equals(contract.getStatus())) {
-            throw new BusinessException("只有草稿状态的合同可以删除，已审批通过的合同不能删除");
+        // 只有草稿状态和已拒绝状态可以删除（已审批通过的合同不能删除）
+        if (!ContractStatus.DRAFT.equals(contract.getStatus()) && !ContractStatus.REJECTED.equals(contract.getStatus())) {
+            throw new BusinessException("只有草稿状态或已拒绝状态的合同可以删除，已审批通过的合同不能删除");
+        }
+        
+        // 如果已拒绝状态的合同有编号，记录日志（编号不会释放，作废不再使用）
+        if (ContractStatus.REJECTED.equals(contract.getStatus()) && contract.getContractNo() != null) {
+            log.info("删除已拒绝状态的合同，编号作废: contractNo={}, contractId={}", contract.getContractNo(), contract.getId());
         }
 
         contractMapper.deleteById(id);
-        log.info("合同删除成功: {}", contract.getName());
+        log.info("合同删除成功: {}, 状态: {}", contract.getName(), contract.getStatus());
     }
 
     /**
@@ -611,6 +624,18 @@ public class ContractAppService {
         // 允许草稿状态和被拒绝状态的合同提交审批
         if (!ContractStatus.canSubmit(contract.getStatus())) {
             throw new BusinessException("只有草稿状态或被拒绝状态的合同可以提交审批");
+        }
+
+        // 如果合同还没有编号，提交审批时生成编号
+        // 这样只有提交审批的合同才会占用编号位置，草稿不会占用
+        if (contract.getContractNo() == null || contract.getContractNo().isBlank()) {
+            String contractNo = contractNumberGenerator.generate(
+                    contract.getCaseType(), 
+                    contract.getFeeType(), 
+                    contract.getContractType()
+            );
+            contract.setContractNo(contractNo);
+            log.info("提交审批时生成合同编号: contractId={}, contractNo={}", contract.getId(), contract.getContractNo());
         }
 
         contract.setStatus(ContractStatus.PENDING);
@@ -928,6 +953,49 @@ public class ContractAppService {
     }
 
     /**
+     * 撤回审批
+     * 只有合同创建者或签约人才能撤回，且只能撤回待审批状态的合同
+     */
+    @Transactional
+    public void withdrawApproval(Long id) {
+        Contract contract = contractRepository.getByIdOrThrow(id, "合同不存在");
+        
+        // 只有待审批状态可以撤回
+        if (!ContractStatus.PENDING.equals(contract.getStatus())) {
+            throw new BusinessException("只有待审批状态的合同可以撤回");
+        }
+        
+        // 验证用户是否是合同创建者或签约人
+        Long currentUserId = SecurityUtils.getUserId();
+        if (!currentUserId.equals(contract.getCreatedBy()) && !currentUserId.equals(contract.getSignerId())) {
+            throw new BusinessException("只有合同创建者或签约人才能撤回审批");
+        }
+        
+        // 查找并取消关联的审批单
+        try {
+            LambdaQueryWrapper<Approval> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(Approval::getBusinessType, "CONTRACT")
+                   .eq(Approval::getBusinessId, id)
+                   .eq(Approval::getStatus, ApprovalStatus.PENDING);
+            List<Approval> approvals = approvalMapper.selectList(wrapper);
+            
+            for (Approval approval : approvals) {
+                approval.setStatus(ApprovalStatus.WITHDRAWN);
+                approvalMapper.updateById(approval);
+                log.info("审批单已撤回: approvalId={}", approval.getId());
+            }
+        } catch (Exception e) {
+            log.warn("取消审批单失败: {}", e.getMessage());
+            // 即使取消审批单失败，也继续撤回合同状态
+        }
+        
+        // 将合同状态改回草稿
+        contract.setStatus(ContractStatus.DRAFT);
+        contractRepository.updateById(contract);
+        log.info("合同审批已撤回: {}, 操作人: {}", contract.getName(), currentUserId);
+    }
+
+    /**
      * 终止合同
      */
     @Transactional
@@ -1148,13 +1216,18 @@ public class ContractAppService {
     /**
      * 获取合同类型名称
      */
+    /**
+     * 获取合同类型名称（模板类型名称）
+     */
     private String getContractTypeName(String type) {
         if (type == null) return null;
         return switch (type) {
-            case "SERVICE" -> "服务合同";
-            case "RETAINER" -> "常年法顾";
-            case "LITIGATION" -> "诉讼代理";
-            case "NON_LITIGATION" -> "非诉项目";
+            case "CIVIL_PROXY" -> "民事代理";
+            case "ADMINISTRATIVE_PROXY" -> "行政代理";
+            case "CRIMINAL_DEFENSE" -> "刑事辩护";
+            case "LEGAL_COUNSEL" -> "法律顾问";
+            case "NON_LITIGATION" -> "非诉案件";
+            case "CUSTOM" -> "自定义模板";
             default -> type;
         };
     }
@@ -1340,6 +1413,8 @@ public class ContractAppService {
         dto.setId(contract.getId());
         dto.setContractNo(contract.getContractNo());
         dto.setName(contract.getName());
+        dto.setTemplateId(contract.getTemplateId());
+        dto.setContent(contract.getContent());
         dto.setContractType(contract.getContractType());
         dto.setContractTypeName(getContractTypeName(contract.getContractType()));
         dto.setClientId(contract.getClientId());
@@ -1390,7 +1465,8 @@ public class ContractAppService {
         dto.setCaseType(contract.getCaseType());
         dto.setCaseTypeName(MatterConstants.getCaseTypeName(contract.getCaseType()));
         dto.setCauseOfAction(contract.getCauseOfAction());
-        // 案由名称由前端根据code查找，后端只存储code
+        // 设置案由名称（用于前端显示，特别是审批表）
+        dto.setCauseOfActionName(getCauseOfActionName(contract.getCauseOfAction(), contract.getCaseType()));
         dto.setTrialStage(contract.getTrialStage());
         dto.setTrialStageName(getTrialStageName(contract.getTrialStage()));
         dto.setClaimAmount(contract.getClaimAmount());
@@ -1426,6 +1502,8 @@ public class ContractAppService {
         dto.setId(contract.getId());
         dto.setContractNo(contract.getContractNo());
         dto.setName(contract.getName());
+        dto.setTemplateId(contract.getTemplateId());
+        dto.setContent(contract.getContent());
         dto.setContractType(contract.getContractType());
         dto.setContractTypeName(getContractTypeName(contract.getContractType()));
         dto.setClientId(contract.getClientId());
@@ -1468,6 +1546,8 @@ public class ContractAppService {
         dto.setCaseType(contract.getCaseType());
         dto.setCaseTypeName(MatterConstants.getCaseTypeName(contract.getCaseType()));
         dto.setCauseOfAction(contract.getCauseOfAction());
+        // 设置案由名称（用于前端显示，特别是审批表）
+        dto.setCauseOfActionName(getCauseOfActionName(contract.getCauseOfAction(), contract.getCaseType()));
         dto.setTrialStage(contract.getTrialStage());
         dto.setTrialStageName(getTrialStageName(contract.getTrialStage()));
         dto.setClaimAmount(contract.getClaimAmount());
@@ -1870,25 +1950,44 @@ public class ContractAppService {
         }
         
         // 从模板填充字段（如果命令中未指定）
-        if (!StringUtils.hasText(command.getContractType())) {
-            command.setContractType(template.getContractType());
+        // 合同类型等于模板类型
+        if (!StringUtils.hasText(command.getContractType()) && StringUtils.hasText(template.getTemplateType())) {
+            command.setContractType(template.getTemplateType());
         }
         if (!StringUtils.hasText(command.getFeeType())) {
             command.setFeeType(template.getFeeType());
+        }
+        // 如果未指定案件类型，根据模板类型推断
+        if (!StringUtils.hasText(command.getCaseType()) && StringUtils.hasText(template.getTemplateType())) {
+            String inferredCaseType = switch (template.getTemplateType()) {
+                case "CRIMINAL_DEFENSE" -> "CRIMINAL";
+                case "CIVIL_PROXY" -> "CIVIL";
+                case "ADMINISTRATIVE_PROXY" -> "ADMINISTRATIVE";
+                case "LEGAL_COUNSEL" -> "LEGAL_COUNSEL";
+                case "NON_LITIGATION" -> null; // 非诉项目不需要 caseType
+                default -> null;
+            };
+            if (inferredCaseType != null) {
+                command.setCaseType(inferredCaseType);
+            }
         }
         
         // 创建合同
         ContractDTO contract = createContract(command);
         
-        // 处理模板内容的变量替换
+        // 获取合同实体并设置模板ID
+        Contract entity = contractRepository.getById(contract.getId());
+        entity.setTemplateId(templateId);
+        
+        // 处理模板内容的变量替换，存储到 content 字段
         if (StringUtils.hasText(template.getContent())) {
             String processedContent = processTemplateVariables(template.getContent(), contract, command);
-            // 更新合同的备注或内容字段（这里假设用 remark 存储合同内容）
-            Contract entity = contractRepository.getById(contract.getId());
-            entity.setRemark(processedContent);
-            contractRepository.updateById(entity);
-            contract.setRemark(processedContent);
+            entity.setContent(processedContent);
+            contract.setContent(processedContent);
         }
+        
+        contractRepository.updateById(entity);
+        contract.setTemplateId(templateId);
         
         log.info("基于模板创建合同成功: templateId={}, contractId={}", templateId, contract.getId());
         return contract;
@@ -2315,13 +2414,23 @@ public class ContractAppService {
         // 利冲信息
         printDTO.setConflictCheckStatus(contract.getConflictCheckStatus());
         printDTO.setConflictCheckStatusName(getConflictCheckStatusName(contract.getConflictCheckStatus()));
-        // 简单判断：NO_CONFLICT 为"无"，其他为"有"
-        if ("NO_CONFLICT".equals(contract.getConflictCheckStatus())) {
+        // 根据合同利冲检查状态判断结果显示
+        String conflictCheckStatus = contract.getConflictCheckStatus();
+        if (conflictCheckStatus == null || "NOT_REQUIRED".equals(conflictCheckStatus)) {
+            // 无需审查：创建客户时已通过利冲检查，合同无需再次审查
+            printDTO.setConflictCheckResult("无需审查");
+        } else if ("PASSED".equals(conflictCheckStatus)) {
+            // 已通过：利冲审查已通过，无冲突
             printDTO.setConflictCheckResult("无");
-        } else if ("CONFLICT".equals(contract.getConflictCheckStatus()) || "WAIVED".equals(contract.getConflictCheckStatus())) {
-            printDTO.setConflictCheckResult("有（已豁免）");
-        } else {
+        } else if ("FAILED".equals(conflictCheckStatus)) {
+            // 未通过：利冲审查未通过，存在冲突
+            printDTO.setConflictCheckResult("有");
+        } else if ("PENDING".equals(conflictCheckStatus)) {
+            // 待审查：需要利冲审查
             printDTO.setConflictCheckResult("待审查");
+        } else {
+            // 其他状态使用状态名称
+            printDTO.setConflictCheckResult(getConflictCheckStatusName(conflictCheckStatus));
         }
         
         // 审批信息
@@ -2379,6 +2488,128 @@ public class ContractAppService {
         };
         
         return causeOfActionService.getCauseName(causeOfAction, causeType);
+    }
+
+    /**
+     * 生成合同名称
+     * 优先根据模板类型（contractType），其次根据案件类型（caseType）使用不同的命名规则：
+     * 1. 刑事辩护模板（CRIMINAL_DEFENSE）：被告人/犯罪嫌疑人姓名 + "涉嫌" + 罪名（例如："任七涉嫌盗窃罪"）
+     * 2. 民事代理模板（CIVIL_PROXY）：客户名 + "与" + 对方当事人 + 案由名称（例如："张三与李四离婚纠纷"）
+     * 3. 行政代理模板（ADMINISTRATIVE_PROXY）：客户名 + "与" + 对方当事人 + 案由名称（例如："王五与xx政府行政协议纠纷"）
+     * 4. 其他情况：客户名 + 合同类型名称
+     */
+    private String generateContractName(CreateContractCommand command, Client client) {
+        String clientName = client.getName();
+        String contractType = command.getContractType(); // 合同类型 = 模板类型
+        String caseType = command.getCaseType();
+        
+        // 优先根据模板类型判断命名规则
+        if ("CRIMINAL_DEFENSE".equals(contractType)) {
+            // 刑事辩护模板：被告人姓名 + "涉嫌" + 罪名
+            String defendantName = command.getDefendantName();
+            String criminalCharge = command.getCriminalCharge();
+            
+            if (defendantName != null && !defendantName.isBlank() 
+                && criminalCharge != null && !criminalCharge.isBlank()) {
+                // 格式：被告人姓名 + "涉嫌" + 罪名
+                return defendantName + "涉嫌" + criminalCharge;
+            } else if (defendantName != null && !defendantName.isBlank()) {
+                // 只有被告人姓名，没有罪名
+                return defendantName + "涉嫌刑事案件";
+            } else if (criminalCharge != null && !criminalCharge.isBlank()) {
+                // 只有罪名，没有被告人姓名
+                return clientName + "涉嫌" + criminalCharge;
+            }
+            // 如果都没有，使用默认格式
+            return clientName + "涉嫌刑事案件";
+        }
+        
+        if ("CIVIL_PROXY".equals(contractType) || "ADMINISTRATIVE_PROXY".equals(contractType)) {
+            // 民事代理或行政代理模板：客户名 + "与" + 对方当事人 + 案由名称
+            // 确定案由类型（民事或行政）
+            String effectiveCaseType = "CIVIL_PROXY".equals(contractType) ? "CIVIL" : "ADMINISTRATIVE";
+            // 如果命令中指定了案件类型，优先使用命令中的
+            if (caseType != null && ("CIVIL".equals(caseType) || "ADMINISTRATIVE".equals(caseType))) {
+                effectiveCaseType = caseType;
+            }
+            
+            String opposingParty = command.getOpposingParty() != null && !command.getOpposingParty().isBlank() 
+                ? command.getOpposingParty() : "";
+            String causeName = getCauseOfActionName(command.getCauseOfAction(), effectiveCaseType);
+            
+            if (!opposingParty.isEmpty() && !causeName.isEmpty()) {
+                // 完整格式：客户名 + "与" + 对方名 + 案由名称
+                StringBuilder nameBuilder = new StringBuilder(clientName);
+                nameBuilder.append("与").append(opposingParty);
+                nameBuilder.append(causeName);
+                // 如果案由名称中不包含"纠纷"、"争议"等后缀，则自动添加"纠纷"
+                if (!causeName.contains("纠纷") && !causeName.contains("争议") 
+                    && !causeName.contains("案") && !causeName.contains("事项")) {
+                    nameBuilder.append("纠纷");
+                }
+                return nameBuilder.toString();
+            } else if (!causeName.isEmpty()) {
+                // 只有案由，没有对方当事人：客户名 + 案由名称
+                StringBuilder nameBuilder = new StringBuilder(clientName);
+                nameBuilder.append(causeName);
+                // 如果案由名称中不包含"纠纷"、"争议"等后缀，则自动添加"纠纷"
+                if (!causeName.contains("纠纷") && !causeName.contains("争议") 
+                    && !causeName.contains("案") && !causeName.contains("事项")) {
+                    nameBuilder.append("纠纷");
+                }
+                return nameBuilder.toString();
+            } else if (!opposingParty.isEmpty()) {
+                // 只有对方当事人，没有案由：客户名 + "与" + 对方当事人
+                return clientName + "与" + opposingParty;
+            }
+            // 如果都没有，使用默认格式
+            String typeName = getContractTypeName(contractType);
+            return clientName + typeName;
+        }
+        
+        // 如果模板类型无法确定命名规则，回退到根据案件类型判断
+        if ("CRIMINAL".equals(caseType)) {
+            String defendantName = command.getDefendantName();
+            String criminalCharge = command.getCriminalCharge();
+            
+            if (defendantName != null && !defendantName.isBlank() 
+                && criminalCharge != null && !criminalCharge.isBlank()) {
+                return defendantName + "涉嫌" + criminalCharge;
+            } else if (defendantName != null && !defendantName.isBlank()) {
+                return defendantName + "涉嫌刑事案件";
+            } else if (criminalCharge != null && !criminalCharge.isBlank()) {
+                return clientName + "涉嫌" + criminalCharge;
+            }
+        }
+        
+        if ("CIVIL".equals(caseType) || "ADMINISTRATIVE".equals(caseType)) {
+            String opposingParty = command.getOpposingParty() != null && !command.getOpposingParty().isBlank() 
+                ? command.getOpposingParty() : "";
+            String causeName = getCauseOfActionName(command.getCauseOfAction(), caseType);
+            
+            if (!opposingParty.isEmpty() && !causeName.isEmpty()) {
+                StringBuilder nameBuilder = new StringBuilder(clientName);
+                nameBuilder.append("与").append(opposingParty);
+                nameBuilder.append(causeName);
+                if (!causeName.contains("纠纷") && !causeName.contains("争议") 
+                    && !causeName.contains("案") && !causeName.contains("事项")) {
+                    nameBuilder.append("纠纷");
+                }
+                return nameBuilder.toString();
+            } else if (!causeName.isEmpty()) {
+                StringBuilder nameBuilder = new StringBuilder(clientName);
+                nameBuilder.append(causeName);
+                if (!causeName.contains("纠纷") && !causeName.contains("争议") 
+                    && !causeName.contains("案") && !causeName.contains("事项")) {
+                    nameBuilder.append("纠纷");
+                }
+                return nameBuilder.toString();
+            }
+        }
+        
+        // 最终回退规则：客户名称 + 合同类型名称
+        String typeName = getContractTypeName(contractType);
+        return clientName + (typeName != null ? typeName : "");
     }
 }
 

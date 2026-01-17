@@ -146,7 +146,7 @@ CREATE TABLE public.contract_template (
     id bigint NOT NULL,
     template_no character varying(50) NOT NULL,
     name character varying(200) NOT NULL,
-    contract_type character varying(20) NOT NULL,
+    template_type character varying(50) NOT NULL,
     fee_type character varying(20),
     content text,
     clauses text,
@@ -175,10 +175,10 @@ COMMENT ON COLUMN public.contract_template.template_no IS '模板编号';
 
 COMMENT ON COLUMN public.contract_template.name IS '模板名称';
 --
--- Name: COLUMN contract_template.contract_type; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN contract_template.template_type; Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON COLUMN public.contract_template.contract_type IS '合同类型：SERVICE-服务合同, RETAINER-常年法顾, LITIGATION-诉讼代理, NON_LITIGATION-非诉项目';
+COMMENT ON COLUMN public.contract_template.template_type IS '模板类型（合同类型）：CIVIL_PROXY-民事代理, ADMINISTRATIVE_PROXY-行政代理, CRIMINAL_DEFENSE-刑事辩护, LEGAL_COUNSEL-法律顾问, NON_LITIGATION-非诉案件, CUSTOM-自定义模板';
 --
 -- Name: COLUMN contract_template.fee_type; Type: COMMENT; Schema: public; Owner: -
 --
@@ -283,12 +283,16 @@ CREATE INDEX idx_contract_participant_user ON public.contract_participant USING 
 -- Name: idx_contract_template_contract_type; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_contract_template_contract_type ON public.contract_template USING btree (contract_type);
 --
 -- Name: idx_contract_template_status; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX idx_contract_template_status ON public.contract_template USING btree (status);
+--
+-- Name: idx_contract_template_template_type; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_contract_template_template_type ON public.contract_template USING btree (template_type);
 --
 -- Name: idx_payment_schedule_contract; Type: INDEX; Schema: public; Owner: -
 --

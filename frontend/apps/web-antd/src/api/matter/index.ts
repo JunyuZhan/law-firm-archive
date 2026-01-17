@@ -296,6 +296,11 @@ export function rejectContract(id: number, reason: string) {
   return requestClient.post(`/finance/contract/${id}/reject`, { reason });
 }
 
+/** 撤回合同审批（合同创建者或签约人撤回待审批的合同） */
+export function withdrawContract(id: number) {
+  return requestClient.post(`/finance/contract/${id}/withdraw`);
+}
+
 /** 申请合同变更 */
 export function applyContractChange(data: {
   changeDescription?: string;

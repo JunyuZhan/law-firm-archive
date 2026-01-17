@@ -16,7 +16,7 @@ import java.util.List;
  */
 @Tag(name = "案由管理", description = "案由/罪名数据查询接口")
 @RestController
-@RequestMapping("/api/causes")
+@RequestMapping("/causes")
 @RequiredArgsConstructor
 public class CauseOfActionController {
 

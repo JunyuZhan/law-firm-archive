@@ -22,7 +22,7 @@ import java.util.Map;
  * 
  * 系统启动时自动扫描并执行带有 @CacheWarmUp 注解的方法
  * 
- * @author system
+ * @author junyuzhan
  * @since 2026-01-10
  */
 @Slf4j

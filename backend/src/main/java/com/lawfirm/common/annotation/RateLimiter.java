@@ -16,7 +16,7 @@ import java.lang.annotation.*;
  * public LoginResult login(String username, String password, String ip) { ... }
  * </pre>
  * 
- * @author system
+ * @author junyuzhan
  * @since 2026-01-10
  */
 @Target(ElementType.METHOD)

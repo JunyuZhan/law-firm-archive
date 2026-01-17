@@ -51,7 +51,7 @@ import {
 } from 'ant-design-vue';
 import dayjs from 'dayjs';
 
-import { getClientList } from '#/api/client';
+import { getClientList, getClientSelectOptions } from '#/api/client';
 // UpdateContractCommand 用于类型推断
 import {
   createContractFromTemplate,
@@ -75,11 +75,17 @@ import {
   getMatterContractStatistics,
   submitContract,
   updateContract,
+  withdrawContract,
 } from '#/api/matter';
 import { requestClient } from '#/api/request';
 import { getDepartmentTreePublic, getDictDataByCode } from '#/api/system';
 import { approveApproval, getBusinessApprovals } from '#/api/workbench';
 import { UserTreeSelect } from '#/components/UserTreeSelect';
+import {
+  decodeHtmlEntities,
+  formatStructuredForPrint,
+  isStructuredContent,
+} from '#/views/system/contract-template/utils/print-formatter';
 import {
   CASE_CATEGORY_OPTIONS,
   causesToCascaderOptions,
@@ -87,6 +93,7 @@ import {
   getCausesByType,
   getCauseTypeByCase,
   needsCauseOfAction,
+  preloadAllCauses,
 } from '#/composables/useCauseOfAction';
 
 defineOptions({ name: 'MatterContractList' });
@@ -214,8 +221,8 @@ interface ContractTemplateDTO {
   id: number;
   templateNo: string;
   name: string;
-  contractType: string;
-  contractTypeName: string;
+  templateType: string;
+  templateTypeName: string;
   feeType: string;
   feeTypeName: string;
   content: string;
@@ -225,6 +232,7 @@ interface ContractTemplateDTO {
 }
 const contractTemplates = ref<ContractTemplateDTO[]>([]);
 const selectedTemplateId = ref<number | undefined>(undefined);
+const selectedTemplate = ref<ContractTemplateDTO | null>(null);
 const templatePreviewVisible = ref(false);
 const templatePreviewContent = ref('');
 
@@ -328,7 +336,7 @@ const formData = reactive<
     authorizationType?: string;
     criminalCharge?: string;
     defendantName?: string;
-    defenseStage?: string;
+    defenseStage?: string | string[];
     disputeResolution?: string;
     effectiveDate?: any;
     expiryDate?: any;
@@ -345,7 +353,7 @@ const formData = reactive<
 >({
   name: '',
   clientId: undefined,
-  contractType: 'SERVICE',
+  contractType: 'CIVIL_PROXY',
   feeType: 'FIXED',
   totalAmount: undefined,
   currency: 'CNY',
@@ -377,7 +385,7 @@ const formData = reactive<
   specialTerms: '',
   defendantName: '',
   criminalCharge: '',
-  defenseStage: '',
+  defenseStage: [] as string[], // 支持多选
   partnerRate: undefined,
   seniorRate: undefined,
   assistantRate: undefined,
@@ -490,10 +498,11 @@ const participantColumns = [
 
 // 合同类型选项
 const contractTypeOptions = [
-  { label: '服务合同', value: 'SERVICE' },
-  { label: '常年法顾', value: 'RETAINER' },
-  { label: '诉讼代理', value: 'LITIGATION' },
-  { label: '非诉项目', value: 'NON_LITIGATION' },
+  { label: '民事代理', value: 'CIVIL_PROXY' },
+  { label: '行政代理', value: 'ADMINISTRATIVE_PROXY' },
+  { label: '刑事辩护', value: 'CRIMINAL_DEFENSE' },
+  { label: '法律顾问', value: 'LEGAL_COUNSEL' },
+  { label: '非诉案件', value: 'NON_LITIGATION' },
 ];
 
 // 收费类型选项
@@ -598,6 +607,32 @@ async function loadCauseOptions() {
   causeOptions.value = causesToCascaderOptions(causes);
 }
 
+// 刑事罪名级联选择值
+const criminalChargeValue = ref<string[]>([]);
+
+// 刑事罪名选项（异步加载）
+const criminalChargeOptions = ref<any[]>([]);
+
+// 加载刑事罪名选项
+async function loadCriminalChargeOptions() {
+  if (formData.caseType !== 'CRIMINAL') {
+    criminalChargeOptions.value = [];
+    criminalChargeValue.value = [];
+    return;
+  }
+  try {
+    const causes = await getCausesByType('CRIMINAL');
+    if (causes && causes.length > 0) {
+      criminalChargeOptions.value = causesToCascaderOptions(causes);
+    } else {
+      criminalChargeOptions.value = [];
+    }
+  } catch (error) {
+    console.error('加载刑事罪名选项失败:', error);
+    criminalChargeOptions.value = [];
+  }
+}
+
 // 监听案件类型变化，清空案由和审理阶段，并重新加载选项
 watch(
   () => formData.caseType,
@@ -605,10 +640,22 @@ watch(
     formData.causeOfAction = undefined;
     formData.trialStage = []; // 案件类型改变时清空审理阶段
     causeValue.value = [];
+    // 如果不是刑事案件，清空刑事案件相关字段
+    if (newCaseType !== 'CRIMINAL') {
+      formData.criminalCharge = '';
+      formData.defendantName = '';
+      formData.defenseStage = [];
+      criminalChargeValue.value = [];
+      criminalChargeOptions.value = [];
+    }
     // 从字典加载审理阶段选项
     loadTrialStageOptions(newCaseType);
     // 加载案由选项
     loadCauseOptions();
+    // 如果是刑事案件，加载刑事罪名选项
+    if (newCaseType === 'CRIMINAL') {
+      loadCriminalChargeOptions();
+    }
   },
 );
 
@@ -616,6 +663,38 @@ watch(
 watch(causeValue, (val) => {
   formData.causeOfAction =
     val && val.length > 0 ? val[val.length - 1] : undefined;
+  
+  // 如果是刑事案件，自动将案由名称导入到涉嫌罪名字段
+  if (formData.caseType === 'CRIMINAL') {
+    if (val && val.length > 0) {
+      const causeCode = val[val.length - 1];
+      if (causeCode) {
+        const causeName = findCauseNameInAll(causeCode);
+        if (causeName) {
+          formData.criminalCharge = causeName;
+          // 同步更新刑事罪名级联选择值
+          criminalChargeValue.value = val;
+        }
+      }
+    }
+  }
+});
+
+// 监听刑事罪名级联选择变化
+watch(criminalChargeValue, (val) => {
+  if (formData.caseType === 'CRIMINAL') {
+    if (val && val.length > 0) {
+      const chargeCode = val[val.length - 1];
+      if (chargeCode) {
+        const chargeName = findCauseNameInAll(chargeCode);
+        if (chargeName) {
+          formData.criminalCharge = chargeName;
+        }
+      }
+    } else {
+      formData.criminalCharge = '';
+    }
+  }
 });
 
 // 监听提成方案比例变化，自动更新参与人比例
@@ -694,9 +773,9 @@ async function loadStatistics() {
 
 // 加载选项数据 - 每个API独立处理错误，避免一个失败导致全部失败
 async function loadOptions() {
-  // 客户列表
+  // 客户列表（只加载已转正的正式客户，用于创建合同）
   try {
-    const clientRes = await getClientList({ pageNum: 1, pageSize: 1000 });
+    const clientRes = await getClientSelectOptions({ pageNum: 1, pageSize: 1000 });
     clients.value = clientRes.list || [];
   } catch (error) {
     console.warn('加载客户列表失败', error);
@@ -732,6 +811,13 @@ async function loadOptions() {
     }
   } catch (error) {
     console.warn('加载提成方案失败', error);
+  }
+
+  // 预加载案由数据（民事、刑事、行政）
+  try {
+    await preloadAllCauses();
+  } catch (error) {
+    console.warn('预加载案由数据失败', error);
   }
 }
 
@@ -1026,43 +1112,46 @@ const visibleFields = computed(() => {
     };
   }
 
-  const contractType = (template.contractType ||
-    'SERVICE') as keyof typeof fieldConfig;
-  const config: FieldConfig = (fieldConfig[contractType] ??
-    fieldConfig.SERVICE) as FieldConfig;
+  // 根据模板类型确定字段配置
+  const templateType = template.templateType || 'CIVIL_PROXY';
   const fields: FieldConfig = {
-    basic: [...(config.basic || [])],
+    basic: ['clientId', 'totalAmount', 'signDate', 'paymentTerms', 'expiryDate'],
     litigation: [],
     criminal: [],
     nonLitigation: [],
     retainer: [],
   };
 
-  // 判断是否为刑事案件模板（通过模板名称）
-  const isCriminalTemplate =
-    template.name?.includes('刑事') || template.name?.includes('刑辩');
-
-  // 如果是诉讼类
-  if (template.contractType === 'LITIGATION') {
-    if (isCriminalTemplate) {
+  // 根据模板类型设置字段
+  switch (templateType) {
+    case 'CRIMINAL_DEFENSE':
       // 刑事案件专用字段
       fields.criminal = ['defendantName', 'criminalCharge', 'defenseStage'];
-      // 刑事案件需要的诉讼字段（排除民事案件专用字段）
       fields.litigation = ['lawyerNames', 'paymentDeadline', 'specialTerms'];
-    } else {
+      break;
+    case 'CIVIL_PROXY':
+    case 'ADMINISTRATIVE_PROXY':
       // 民事/行政案件字段
-      fields.litigation = [...(config.litigation || [])];
-    }
-  }
-
-  // 如果是非诉项目，添加非诉字段
-  if (template.contractType === 'NON_LITIGATION') {
-    fields.nonLitigation = [...(config.nonLitigation || [])];
-  }
-
-  // 如果是常年法顾，添加法顾字段
-  if (template.contractType === 'RETAINER') {
-    fields.retainer = [...(config.retainer || [])];
+      fields.litigation = [
+        'caseType',
+        'causeOfAction',
+        'trialStage',
+        'opposingParty',
+        'jurisdictionCourt',
+        'claimAmount',
+        'lawyerNames',
+        'paymentDeadline',
+        'specialTerms',
+      ];
+      break;
+    case 'NON_LITIGATION':
+      // 非诉项目字段
+      fields.nonLitigation = ['partnerRate', 'seniorRate', 'assistantRate'];
+      break;
+    case 'LEGAL_COUNSEL':
+      // 法律顾问字段
+      fields.retainer = ['serviceHours'];
+      break;
   }
 
   return fields;
@@ -1080,21 +1169,121 @@ function shouldShowField(fieldName: string): boolean {
   );
 }
 
+// 监听刑事案件字段显示，如果显示且案件类型为CRIMINAL，确保加载数据
+watch(
+  () => {
+    const fields = visibleFields.value;
+    return fields.criminal.includes('criminalCharge') && formData.caseType === 'CRIMINAL';
+  },
+  (shouldLoad) => {
+    if (shouldLoad && criminalChargeOptions.value.length === 0) {
+      loadCriminalChargeOptions();
+    }
+  },
+);
+
 // 选择模板时自动填充字段
 function handleTemplateChange(value: any) {
   const templateId = value as number | undefined;
   selectedTemplateId.value = templateId;
+  
   if (!templateId) {
+    selectedTemplate.value = null;
     return;
   }
 
   const template = contractTemplates.value.find((t) => t.id === templateId);
   if (template) {
-    // 自动填充合同类型和收费方式
-    formData.contractType = template.contractType || 'SERVICE';
+    selectedTemplate.value = template;
+    // 自动填充合同类型（等于模板类型）和收费方式
+    formData.contractType = template.templateType || 'CIVIL_PROXY';
     formData.feeType = template.feeType || 'FIXED';
-    message.success(`已应用模板 "${template.name}"`);
+    
+    // 根据模板类型自动设置案件类型
+    switch (template.templateType) {
+      case 'CRIMINAL_DEFENSE':
+        formData.caseType = 'CRIMINAL';
+        loadCriminalChargeOptions();
+        break;
+      case 'CIVIL_PROXY':
+        formData.caseType = 'CIVIL';
+        break;
+      case 'ADMINISTRATIVE_PROXY':
+        formData.caseType = 'ADMINISTRATIVE';
+        break;
+      case 'LEGAL_COUNSEL':
+        formData.caseType = 'LEGAL_COUNSEL';
+        break;
+      case 'NON_LITIGATION':
+        // 非诉项目不需要 caseType
+        break;
+    }
+    
+    message.success(`已应用模板 "${template.name}"，模板内容将在合同创建时导入`);
   }
+}
+
+// 预览选中模板的内容
+function handlePreviewTemplate() {
+  if (!selectedTemplate.value || !selectedTemplate.value.content) {
+    message.warning('模板暂无内容');
+    return;
+  }
+  templatePreviewContent.value = formatTemplateContentForPreview(selectedTemplate.value.content);
+  templatePreviewVisible.value = true;
+}
+
+// 格式化模板内容用于预览
+function formatTemplateContentForPreview(content: string): string {
+  if (!content) return '暂无内容';
+  
+  try {
+    // 尝试解析结构化内容（JSON格式）
+    const parsed = JSON.parse(content);
+    if (parsed._structured && parsed.blocks) {
+      const blocks = parsed.blocks;
+      let result = '';
+      
+      // 标题区
+      if (blocks.title?.contractName) {
+        result += `【标题】\n${blocks.title.contractName}\n\n`;
+      }
+      
+      // 主体区（甲乙双方）
+      if (blocks.parties) {
+        if (blocks.parties.partyA) {
+          result += `【甲方信息】\n${blocks.parties.partyA}\n\n`;
+        }
+        if (blocks.parties.partyB) {
+          result += `【乙方信息】\n${blocks.parties.partyB}\n\n`;
+        }
+      }
+      
+      // 条款区
+      if (blocks.clauses) {
+        result += `【合同条款】\n${blocks.clauses}\n\n`;
+      }
+      
+      // 签署区
+      if (blocks.signature) {
+        if (blocks.signature.partyASign) {
+          result += `【甲方签署】\n${blocks.signature.partyASign}\n\n`;
+        }
+        if (blocks.signature.partyBSign) {
+          result += `【乙方签署】\n${blocks.signature.partyBSign}\n\n`;
+        }
+        if (blocks.signature.signInfo) {
+          result += `【签订信息】\n${blocks.signature.signInfo}\n`;
+        }
+      }
+      
+      return result || content;
+    }
+  } catch {
+    // 不是JSON格式，直接返回原内容
+  }
+  
+  return content;
 }
 
 // 选择客户时自动填充客户信息
@@ -1210,70 +1399,79 @@ async function handlePreviewApprovalForm() {
 function generateApprovalFormHtml(data: ContractPrintDTO): string {
   // 案由：将代码转换为名称（确保转为字符串进行查找）
   const causeCode = data.causeOfAction ? String(data.causeOfAction) : '';
-  const causeOfActionDisplay = causeCode
-    ? findCauseNameInAll(causeCode) || data.causeOfActionName || causeCode
-    : data.causeOfActionName || data.caseTypeName || '';
+  let causeOfActionDisplay = '';
+  
+  // 对于刑事案件，优先显示罪名名称，避免显示"刑事案件"
+  if (data.caseType === 'CRIMINAL') {
+    if (causeCode) {
+      causeOfActionDisplay = findCauseNameInAll(causeCode) || data.causeOfActionName || causeCode;
+    } else {
+      causeOfActionDisplay = data.causeOfActionName || '';
+    }
+  } else {
+    // 民事和行政案件使用原有逻辑
+    causeOfActionDisplay = causeCode
+      ? findCauseNameInAll(causeCode) || data.causeOfActionName || causeCode
+      : data.causeOfActionName || data.caseTypeName || '';
+  }
 
   return `
-    <div style="max-width: 800px; margin: 0 auto; font-family: 'SimSun', '宋体', serif; font-size: 14pt;">
-      <h2 style="text-align: center; margin-bottom: 5px; font-family: 'SimSun', '宋体', serif; font-size: 18pt;">${data.firmName || ''}</h2>
-      <h2 style="text-align: center; margin-bottom: 20px; letter-spacing: 8px; font-family: 'SimSun', '宋体', serif; font-size: 18pt;">收案审批表</h2>
+    <div style="max-width: 800px; margin: 0 auto; font-family: 'SimSun', '宋体', serif; font-size: 12pt;">
+      <h2 style="text-align: center; margin-bottom: 5px; font-family: 'SimSun', '宋体', serif; font-size: 16pt;">${data.firmName || ''}</h2>
+      <h2 style="text-align: center; margin-bottom: 10px; letter-spacing: 6px; font-family: 'SimSun', '宋体', serif; font-size: 16pt;">收案审批表</h2>
+      <p style="text-align: right; font-size: 11pt; margin-bottom: 10px; color: #333;">合同编号：${data.contractNo || ''}</p>
       
-      <table border="1" cellpadding="10" cellspacing="0" style="width: 100%; border-collapse: collapse; font-family: 'SimSun', '宋体', serif; font-size: 14pt;">
+      <table border="1" cellpadding="8" cellspacing="0" style="width: 100%; border-collapse: collapse; font-family: 'SimSun', '宋体', serif; font-size: 12pt;">
         <tr>
-          <th style="width: 15%; background: #f5f5f5;">委托人</th>
+          <th style="width: 90px; background: #f5f5f5;">委托人</th>
           <td colspan="3">${data.clientName || ''}</td>
         </tr>
         <tr>
-          <th style="background: #f5f5f5;">案由</th>
+          <th style="width: 90px; background: #f5f5f5;">案由</th>
           <td colspan="3">${causeOfActionDisplay}</td>
         </tr>
         <tr>
-          <th style="background: #f5f5f5;">关联当事人</th>
+          <th style="width: 90px; background: #f5f5f5;">关联当事人</th>
           <td colspan="3">${data.opposingParty || ''}</td>
         </tr>
         <tr>
-          <th style="background: #f5f5f5;">委托程序</th>
+          <th style="width: 90px; background: #f5f5f5;">委托程序</th>
           <td colspan="3">${data.trialStageName || ''}</td>
         </tr>
         <tr>
-          <th style="background: #f5f5f5;">有无利益冲突</th>
-          <td colspan="3">${data.conflictCheckResult || ''}</td>
+          <th style="width: 90px; background: #f5f5f5;">有无利益冲突</th>
+          <td colspan="3">${data.conflictCheckResult || '待审查'}</td>
         </tr>
         <tr>
-          <th style="background: #f5f5f5;">代理/辩护费</th>
-          <td colspan="3">¥${data.totalAmount?.toLocaleString() || ''}</td>
+          <th style="width: 90px; background: #f5f5f5;">代理/辩护费</th>
+          <td>${data.totalAmount ? `¥${data.totalAmount.toLocaleString()}` : ''}</td>
+          <th style="width: 70px; background: #f5f5f5;">委托时间</th>
+          <td style="width: 130px;">${data.signDate || ''}</td>
         </tr>
         <tr>
-          <th style="background: #f5f5f5;">委托时间</th>
-          <td>${data.signDate || ''}</td>
-          <th style="background: #f5f5f5;">接待人</th>
+          <th style="width: 90px; background: #f5f5f5;">接待人</th>
           <td>${data.originatorName || data.leadLawyerName || ''}</td>
+          <th style="width: 70px; background: #f5f5f5;">办案单位</th>
+          <td>${data.jurisdictionCourt || ''}</td>
         </tr>
         <tr>
-          <th style="background: #f5f5f5;">办案单位</th>
-          <td colspan="3">${data.jurisdictionCourt || ''}</td>
+          <th style="width: 90px; background: #f5f5f5; font-size: 12pt;">案情摘要<br/><span style="font-weight: normal; font-size: 10pt;">（附接待笔录）</span></th>
+          <td colspan="3" style="height: 140px; vertical-align: top;">${data.description || '<span style="color: #999;">暂无案情摘要</span>'}</td>
         </tr>
         <tr>
-          <th style="background: #f5f5f5; font-family: 'SimSun', '宋体', serif; font-size: 14pt;">案情摘要<br/><span style="font-weight: normal; font-size: 12pt; font-family: 'SimSun', '宋体', serif;">（附接待笔录）</span></th>
-          <td colspan="3" style="height: 200px; vertical-align: top;">${data.description || '<span style="color: #999;">暂无案情摘要，请在合同中填写</span>'}</td>
-        </tr>
-        <tr>
-          <th rowspan="2" style="background: #f5f5f5;">审查意见</th>
-          <td colspan="3" style="height: 80px; vertical-align: top;">
-            <div><strong>接待律师意见：</strong></div>
-            <div style="margin-top: 10px;">拟接受委托</div>
-            <div style="text-align: right; margin-top: 10px;">
-              签名：${data.originatorName || data.signerName || '________________'} 日期：${data.signDate || '_____年___月___日'}
+          <th rowspan="2" style="width: 90px; background: #f5f5f5;">审查意见</th>
+          <td colspan="3" style="height: 50px; vertical-align: top;">
+            <div><strong>接待律师意见：</strong>拟接受委托</div>
+            <div style="text-align: right; margin-top: 8px;">
+              签名：${data.originatorName || data.signerName || '________'} 日期：${data.signDate || '____年__月__日'}
             </div>
           </td>
         </tr>
         <tr>
-          <td colspan="3" style="height: 80px; vertical-align: top;">
-            <div><strong>律所领导意见：</strong></div>
-            <div style="margin-top: 10px;">${(data.approvals && data.approvals[0]?.comment) || ''}</div>
-            <div style="text-align: right; margin-top: 10px;">
-              签名：${(data.approvals && data.approvals[0]?.approverName) || '________________'} 日期：${(data.approvals && data.approvals[0]?.approvedAt?.slice(0, 10)) || '_____年___月___日'}
+          <td colspan="3" style="height: 50px; vertical-align: top;">
+            <div><strong>律所领导意见：</strong>${(data.approvals && data.approvals[0]?.comment) || ''}</div>
+            <div style="text-align: right; margin-top: 8px;">
+              签名：${(data.approvals && data.approvals[0]?.approverName) || '________'} 日期：${(data.approvals && data.approvals[0]?.approvedAt?.slice(0, 10)) || '____年__月__日'}
             </div>
           </td>
         </tr>
@@ -1299,14 +1497,14 @@ async function executePrint() {
   // 重要：不要为所有 p 标签添加默认的 text-indent，否则会覆盖编辑器设置的格式
   // wangeditor 编辑器使用内联样式保存格式（如 text-align, text-indent），需要保留这些内联样式
   const commonStyles = `
-    body { font-family: "SimSun", "宋体", serif; padding: 40px; line-height: 1.8; font-size: 14pt; }
+    body { font-family: "SimSun", "宋体", serif; padding: 40px; line-height: 1.5; font-size: 12pt; }
     * { font-family: "SimSun", "宋体", serif; }
     h1 { text-align: center; font-size: 22pt; margin-bottom: 10px; font-family: "SimSun", "宋体", serif; }
-    h2 { text-align: center; font-size: 18pt; margin-bottom: 20px; font-family: "SimSun", "宋体", serif; }
+    h2 { text-align: center; font-size: 22pt; margin-bottom: 20px; font-family: "SimSun", "宋体", serif; }
     .page-break { page-break-after: always; }
     table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-    td, th { border: 1px solid #333; padding: 10px; vertical-align: top; }
-    th { background: #f5f5f5; text-align: center; font-weight: bold; width: 120px; }
+    td, th { border: 1px solid #333; padding: 8px; vertical-align: top; }
+    th { background: #f5f5f5; text-align: center; font-weight: bold; width: 90px; }
     .signature { margin-top: 60px; display: flex; justify-content: space-between; }
     .signature-box { width: 45%; }
     .signature-line { border-bottom: 1px solid #333; height: 40px; margin: 20px 0; }
@@ -1315,8 +1513,8 @@ async function executePrint() {
     .no-border { border: none !important; }
     .text-center { text-align: center; }
     .text-right { text-align: right; }
-    .header-info { text-align: right; color: #666; margin-bottom: 20px; font-size: 14pt; font-family: "SimSun", "宋体", serif; }
-    p, div, span { font-family: "SimSun", "宋体", serif; font-size: 14pt; margin: 0.5em 0; }
+    .header-info { text-align: right; color: #666; margin-bottom: 20px; font-size: 12pt; font-family: "SimSun", "宋体", serif; }
+    p, div, span { font-family: "SimSun", "宋体", serif; font-size: 12pt; margin: 4px 0; }
     /* 保留编辑器内联样式的格式 - 内联样式会覆盖这些默认样式 */
     /* 支持 wangeditor 的对齐和缩进格式 */
     p[style*="text-align"], div[style*="text-align"] { /* 保持用户设置的对齐 */ }
@@ -1328,17 +1526,129 @@ async function executePrint() {
     strong, b { font-weight: bold; }
     em, i { font-style: italic; }
     u { text-decoration: underline; }
+    /* 页码样式 */
+    .page-number {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: "SimSun", "宋体", serif;
+      font-size: 10pt;
+      color: #333;
+      text-align: center;
+    }
     @media print { 
-      body { padding: 20px; } 
-      @page { margin: 2cm; }
+      body { padding: 15px; } 
+      @page { 
+        margin: 1.5cm 1.5cm 2cm 1.5cm; 
+        size: A4;
+        /* 页码样式 - 使用 @bottom-center（现代浏览器支持） */
+        @bottom-center {
+          content: counter(page);
+          font-family: "SimSun", "宋体", serif;
+          font-size: 10pt;
+          color: #333;
+        }
+      }
       /* 确保打印时保留内联样式 */
       p[style], div[style], span[style] { /* 内联样式在打印时保持不变 */ }
+      /* 审批表一页打印 */
+      .approval-form-page { page-break-inside: avoid; }
+      /* 打印时隐藏备用页码元素（使用 @page 规则） */
+      .page-number { display: none; }
     }
   `;
 
   // 打印合同
   if (printOptions.printContract) {
     let contractContent = data.contractContent || '';
+    let hasSignature = false; // 标记模板是否已包含签署区域
+    
+    // 处理合同内容：解码 HTML 实体，处理结构化内容
+    if (contractContent) {
+      // 先解码 HTML 实体（防止 XSS 过滤导致的乱码）
+      contractContent = decodeHtmlEntities(contractContent);
+      
+      // 检查是否是结构化内容，如果是则格式化
+      if (isStructuredContent(contractContent)) {
+        // 准备完整的变量替换数据（包含所有可能用到的变量）
+        const signDateStr = data.signDate
+          ? new Date(data.signDate).toLocaleDateString('zh-CN', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+            })
+          : '';
+        const expiryDateStr = data.expiryDate
+          ? new Date(data.expiryDate).toLocaleDateString('zh-CN', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+            })
+          : '完成之日';
+        const variables: Record<string, string> = {
+          contractNo: data.contractNo || '',
+          clientName: data.clientName || '',
+          firmName: data.firmName || '',
+          signDate: signDateStr,
+          matterDescription: data.description || data.opposingParty || '',
+          matterName: data.name || '',
+          paymentTerms: data.paymentTerms || '一次性支付',
+          expiryDate: expiryDateStr,
+          clientAddress: data.clientAddress || '',
+          clientPhone: data.clientPhone || '',
+          firmAddress: data.firmAddress || '',
+          firmPhone: data.firmPhone || '',
+          firmLegalRep: data.firmLegalRep || '',
+        };
+        contractContent = formatStructuredForPrint(contractContent, variables);
+        // 结构化内容可能已包含签署区域，检查一下
+        if (contractContent.includes('甲方（签章）') || contractContent.includes('乙方（签章）')) {
+          hasSignature = true;
+        }
+      } else {
+        // 非结构化内容（纯文本或 HTML），检查是否包含变量占位符
+        // 如果后端没有完全替换变量，手动替换一次
+        if (contractContent.includes('${')) {
+          const signDateStr = data.signDate
+            ? new Date(data.signDate).toLocaleDateString('zh-CN', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+              })
+            : '';
+          const expiryDateStr = data.expiryDate
+            ? new Date(data.expiryDate).toLocaleDateString('zh-CN', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+              })
+            : '完成之日';
+          
+          // 替换所有可能的变量
+          contractContent = contractContent
+            .replace(/\$\{contractNo\}/g, data.contractNo || '')
+            .replace(/\$\{clientName\}/g, data.clientName || '')
+            .replace(/\$\{firmName\}/g, data.firmName || '')
+            .replace(/\$\{signDate\}/g, signDateStr)
+            .replace(/\$\{matterDescription\}/g, data.description || data.opposingParty || '')
+            .replace(/\$\{matterName\}/g, data.name || '')
+            .replace(/\$\{paymentTerms\}/g, data.paymentTerms || '一次性支付')
+            .replace(/\$\{expiryDate\}/g, expiryDateStr)
+            .replace(/\$\{clientAddress\}/g, data.clientAddress || '')
+            .replace(/\$\{clientPhone\}/g, data.clientPhone || '')
+            .replace(/\$\{firmAddress\}/g, data.firmAddress || '')
+            .replace(/\$\{firmPhone\}/g, data.firmPhone || '')
+            .replace(/\$\{firmLegalRep\}/g, data.firmLegalRep || '');
+        }
+        
+        // 检查是否已包含签署区域
+        if (contractContent.includes('甲方（签章）') || contractContent.includes('甲方（委托人）')) {
+          hasSignature = true;
+        }
+      }
+    }
+    
     if (!contractContent) {
       // 如果没有模板内容，生成基本合同信息
       contractContent = `
@@ -1354,10 +1664,14 @@ async function executePrint() {
       `;
     }
 
+    // 检查合同内容中是否已包含合同编号（避免重复）
+    const contractNoInContent = contractContent.includes(`合同编号：${data.contractNo}`);
+    
     htmlContent += `
-      <div class="contract-page" style="font-family: 'SimSun', '宋体', serif; font-size: 14pt;">
-        <div class="header-info">合同编号：${data.contractNo}</div>
-        <div style="font-family: 'SimSun', '宋体', serif; font-size: 14pt;">${contractContent}</div>
+      <div class="contract-page" style="font-family: 'SimSun', '宋体', serif; font-size: 12pt;">
+        ${!contractNoInContent ? `<div class="header-info">合同编号：${data.contractNo}</div>` : ''}
+        <div style="font-family: 'SimSun', '宋体', serif; font-size: 12pt;">${contractContent}</div>
+        ${!hasSignature ? `
         <div class="signature">
           <div class="signature-box">
             <p><strong>甲方（委托人）：</strong></p>
@@ -1374,6 +1688,7 @@ async function executePrint() {
             <p>日期：_______年_______月_______日</p>
           </div>
         </div>
+        ` : ''}
       </div>
     `;
 
@@ -1394,9 +1709,21 @@ async function executePrint() {
 
     // 案由：将代码转换为名称（确保转为字符串进行查找）
     const causeCode = data.causeOfAction ? String(data.causeOfAction) : '';
-    const causeOfActionDisplay = causeCode
-      ? findCauseNameInAll(causeCode) || data.causeOfActionName || causeCode
-      : data.causeOfActionName || data.contractTypeName || '';
+    let causeOfActionDisplay = '';
+    
+    // 对于刑事案件，优先显示罪名名称，避免显示"刑事案件"
+    if (data.caseType === 'CRIMINAL') {
+      if (causeCode) {
+        causeOfActionDisplay = findCauseNameInAll(causeCode) || data.causeOfActionName || causeCode;
+      } else {
+        causeOfActionDisplay = data.causeOfActionName || '';
+      }
+    } else {
+      // 民事和行政案件使用原有逻辑
+      causeOfActionDisplay = causeCode
+        ? findCauseNameInAll(causeCode) || data.causeOfActionName || causeCode
+        : data.causeOfActionName || data.caseTypeName || '';
+    }
 
     // 获取审批信息
     // 接待律师（申请人）意见固定为"拟接受委托"
@@ -1407,16 +1734,16 @@ async function executePrint() {
     // 接待律师意见（申请人）
     approvalRows += `
       <tr>
-        <th rowspan="3" style="width: 100px; font-family: 'SimSun', '宋体', serif; font-size: 14pt;">接待律师意见</th>
-        <td colspan="3" style="height: 80px; font-family: 'SimSun', '宋体', serif; font-size: 14pt;">拟接受委托</td>
+        <th rowspan="3" style="width: 90px; font-family: 'SimSun', '宋体', serif; font-size: 12pt;">接待律师意见</th>
+        <td colspan="3" style="height: 50px; font-family: 'SimSun', '宋体', serif; font-size: 12pt;">拟接受委托</td>
       </tr>
       <tr>
-        <td class="no-border text-right" colspan="2" style="font-family: 'SimSun', '宋体', serif; font-size: 14pt;">签名：</td>
-        <td class="no-border" style="width: 150px; font-family: 'SimSun', '宋体', serif; font-size: 14pt;">${receptionLawyerName}</td>
+        <td class="no-border text-right" colspan="2" style="font-family: 'SimSun', '宋体', serif; font-size: 12pt;">签名：</td>
+        <td class="no-border" style="width: 130px; font-family: 'SimSun', '宋体', serif; font-size: 12pt;">${receptionLawyerName}</td>
       </tr>
       <tr>
-        <td class="no-border text-right" colspan="2" style="font-family: 'SimSun', '宋体', serif; font-size: 14pt;">日期：</td>
-        <td class="no-border" style="font-family: 'SimSun', '宋体', serif; font-size: 14pt;">${signDateStr}</td>
+        <td class="no-border text-right" colspan="2" style="font-family: 'SimSun', '宋体', serif; font-size: 12pt;">日期：</td>
+        <td class="no-border" style="font-family: 'SimSun', '宋体', serif; font-size: 12pt;">${signDateStr}</td>
       </tr>
     `;
 
@@ -1433,82 +1760,83 @@ async function executePrint() {
 
       approvalRows += `
         <tr>
-          <th rowspan="3" style="font-family: 'SimSun', '宋体', serif; font-size: 14pt;">律所领导意见</th>
-          <td colspan="3" style="height: 80px; font-family: 'SimSun', '宋体', serif; font-size: 14pt;">${leaderApproval?.comment || ''}</td>
+          <th rowspan="3" style="width: 90px; font-family: 'SimSun', '宋体', serif; font-size: 12pt;">律所领导意见</th>
+          <td colspan="3" style="height: 50px; font-family: 'SimSun', '宋体', serif; font-size: 12pt;">${leaderApproval?.comment || ''}</td>
         </tr>
         <tr>
-          <td class="no-border text-right" colspan="2" style="font-family: 'SimSun', '宋体', serif; font-size: 14pt;">签名：</td>
-          <td class="no-border" style="font-family: 'SimSun', '宋体', serif; font-size: 14pt;">${leaderApproval?.approverName || ''}</td>
+          <td class="no-border text-right" colspan="2" style="font-family: 'SimSun', '宋体', serif; font-size: 12pt;">签名：</td>
+          <td class="no-border" style="font-family: 'SimSun', '宋体', serif; font-size: 12pt;">${leaderApproval?.approverName || ''}</td>
         </tr>
         <tr>
-          <td class="no-border text-right" colspan="2" style="font-family: 'SimSun', '宋体', serif; font-size: 14pt;">日期：</td>
-          <td class="no-border" style="font-family: 'SimSun', '宋体', serif; font-size: 14pt;">${leaderDate}</td>
+          <td class="no-border text-right" colspan="2" style="font-family: 'SimSun', '宋体', serif; font-size: 12pt;">日期：</td>
+          <td class="no-border" style="font-family: 'SimSun', '宋体', serif; font-size: 12pt;">${leaderDate}</td>
         </tr>
       `;
     } else {
       // 预留律所领导签字区域
       approvalRows += `
         <tr>
-          <th rowspan="3" style="font-family: 'SimSun', '宋体', serif; font-size: 14pt;">律所领导意见</th>
-          <td colspan="3" style="height: 80px; font-family: 'SimSun', '宋体', serif; font-size: 14pt;"></td>
+          <th rowspan="3" style="width: 90px; font-family: 'SimSun', '宋体', serif; font-size: 12pt;">律所领导意见</th>
+          <td colspan="3" style="height: 50px; font-family: 'SimSun', '宋体', serif; font-size: 12pt;"></td>
         </tr>
         <tr>
-          <td class="no-border text-right" colspan="2" style="font-family: 'SimSun', '宋体', serif; font-size: 14pt;">签名：</td>
-          <td class="no-border" style="font-family: 'SimSun', '宋体', serif; font-size: 14pt;"></td>
+          <td class="no-border text-right" colspan="2" style="font-family: 'SimSun', '宋体', serif; font-size: 12pt;">签名：</td>
+          <td class="no-border" style="font-family: 'SimSun', '宋体', serif; font-size: 12pt;"></td>
         </tr>
         <tr>
-          <td class="no-border text-right" colspan="2" style="font-family: 'SimSun', '宋体', serif; font-size: 14pt;">日期：</td>
-          <td class="no-border" style="font-family: 'SimSun', '宋体', serif; font-size: 14pt;">____年____月____日</td>
+          <td class="no-border text-right" colspan="2" style="font-family: 'SimSun', '宋体', serif; font-size: 12pt;">日期：</td>
+          <td class="no-border" style="font-family: 'SimSun', '宋体', serif; font-size: 12pt;">____年____月____日</td>
         </tr>
       `;
     }
 
     htmlContent += `
-      <div class="approval-form-page" style="font-family: 'SimSun', '宋体', serif; font-size: 14pt;">
-        <h1 style="font-family: 'SimSun', '宋体', serif; font-size: 18pt;">${data.firmName || ''}</h1>
-        <h2 style="font-family: 'SimSun', '宋体', serif; font-size: 18pt;">收案审批表</h2>
-        <table style="font-family: 'SimSun', '宋体', serif; font-size: 14pt;">
+      <div class="approval-form-page" style="font-family: 'SimSun', '宋体', serif; font-size: 12pt;">
+        <h1 style="font-family: 'SimSun', '宋体', serif; font-size: 16pt; margin-bottom: 5px;">${data.firmName || ''}</h1>
+        <h2 style="font-family: 'SimSun', '宋体', serif; font-size: 16pt; margin-bottom: 5px;">收案审批表</h2>
+        <p style="text-align: right; font-size: 11pt; margin-bottom: 10px; color: #333;">合同编号：${data.contractNo || ''}</p>
+        <table style="font-family: 'SimSun', '宋体', serif; font-size: 12pt;">
           <tr>
-            <th>委托人</th>
+            <th style="width: 90px;">委托人</th>
             <td colspan="3">${data.clientName || ''}</td>
           </tr>
           <tr>
-            <th>案由</th>
+            <th style="width: 90px;">案由</th>
             <td colspan="3">${causeOfActionDisplay}</td>
           </tr>
           <tr>
-            <th>关联当事人</th>
+            <th style="width: 90px;">关联当事人</th>
             <td colspan="3">${data.opposingParty || ''}</td>
           </tr>
           <tr>
-            <th>委托程序</th>
+            <th style="width: 90px;">委托程序</th>
             <td colspan="3">${data.trialStageName || ''}</td>
           </tr>
           <tr>
-            <th>有无利益冲突</th>
+            <th style="width: 90px;">有无利益冲突</th>
             <td colspan="3">${data.conflictCheckResult || '待审查'}</td>
           </tr>
           <tr>
-            <th>代理/辩护费</th>
+            <th style="width: 90px;">代理/辩护费</th>
             <td>${data.totalAmount ? `¥${data.totalAmount.toLocaleString()}` : ''}</td>
-            <th style="width: 80px;">委托时间</th>
-            <td style="width: 150px;">${signDateStr}</td>
+            <th style="width: 70px;">委托时间</th>
+            <td style="width: 130px;">${signDateStr}</td>
           </tr>
           <tr>
-            <th>接待人</th>
+            <th style="width: 90px;">接待人</th>
             <td>${data.originatorName || data.signerName || ''}</td>
-            <th>办案单位</th>
+            <th style="width: 70px;">办案单位</th>
             <td>${data.jurisdictionCourt || ''}</td>
           </tr>
           <tr>
-            <th style="font-family: 'SimSun', '宋体', serif; font-size: 14pt;">案情摘要<br/><span style="font-weight: normal; font-size: 12pt; font-family: 'SimSun', '宋体', serif;">（附接待笔录）</span></th>
-            <td colspan="3" style="height: 200px; vertical-align: top; font-family: 'SimSun', '宋体', serif; font-size: 14pt;">${data.description || ''}</td>
+            <th style="width: 90px; font-family: 'SimSun', '宋体', serif; font-size: 12pt;">案情摘要<br/><span style="font-weight: normal; font-size: 10pt; font-family: 'SimSun', '宋体', serif;">（附接待笔录）</span></th>
+            <td colspan="3" style="height: 140px; vertical-align: top; font-family: 'SimSun', '宋体', serif; font-size: 12pt;">${data.description || ''}</td>
           </tr>
         </table>
         
-        <div class="approval-section" style="font-family: 'SimSun', '宋体', serif; font-size: 14pt;">
-          <h3 style="text-align: center; margin-bottom: 10px; font-family: 'SimSun', '宋体', serif; font-size: 16pt;">审 查 意 见</h3>
-          <table style="font-family: 'SimSun', '宋体', serif; font-size: 14pt;">
+        <div class="approval-section" style="font-family: 'SimSun', '宋体', serif; font-size: 12pt; margin-top: 10px;">
+          <h3 style="text-align: center; margin-bottom: 8px; font-family: 'SimSun', '宋体', serif; font-size: 14pt;">审 查 意 见</h3>
+          <table style="font-family: 'SimSun', '宋体', serif; font-size: 12pt;">
             ${approvalRows}
           </table>
         </div>
@@ -1563,9 +1891,16 @@ function handleReset() {
 }
 
 // 新增
-function handleAdd() {
+async function handleAdd() {
   handleResetForm();
   selectedTemplateId.value = undefined;
+  selectedTemplate.value = null;
+  
+  // 确保选项数据已加载（客户、部门、模板等）
+  if (clients.value.length === 0 || contractTemplates.value.length === 0) {
+    await loadOptions();
+  }
+  
   modalVisible.value = true;
 }
 
@@ -1619,12 +1954,21 @@ async function handleEdit(record: ContractDTO) {
 
     // 设置案由级联值
     causeValue.value = detail.causeOfAction ? [detail.causeOfAction] : [];
+    
+    // 如果是刑事案件，加载刑事罪名选项并设置级联值
+    if (detail.caseType === 'CRIMINAL') {
+      await loadCriminalChargeOptions();
+      // 设置刑事罪名级联值（刑事案件中，案由代码就是罪名代码）
+      criminalChargeValue.value = detail.causeOfAction ? [detail.causeOfAction] : [];
+    } else {
+      criminalChargeValue.value = [];
+    }
 
     // 填充表单数据
     formData.id = detail.id;
     formData.name = detail.name || '';
     formData.clientId = detail.clientId;
-    formData.contractType = detail.contractType || 'SERVICE';
+    formData.contractType = detail.contractType || 'CIVIL_PROXY';
     formData.feeType = detail.feeType || 'FIXED';
     formData.totalAmount = detail.totalAmount;
     formData.currency = detail.currency || 'CNY';
@@ -1653,6 +1997,26 @@ async function handleEdit(record: ContractDTO) {
     formData.conflictCheckStatus = detail.conflictCheckStatus || 'NOT_REQUIRED';
     formData.advanceTravelFee = detail.advanceTravelFee;
     formData.riskRatio = detail.riskRatio;
+    
+    // 刑事案件字段（从详情中获取，如果后端返回的话）
+    const detailAny = detail as any;
+    formData.defendantName = detailAny.defendantName || '';
+    formData.criminalCharge = detailAny.criminalCharge || '';
+    // defenseStage 支持多选，后端存储为逗号分隔字符串
+    formData.defenseStage = detailAny.defenseStage ? detailAny.defenseStage.split(',') : [];
+    
+    // 模板变量字段（从详情中获取，如果后端返回的话）
+    formData.lawyerNames = detailAny.lawyerNames || '';
+    formData.assistantNames = detailAny.assistantNames || '';
+    formData.authorizationType = detailAny.authorizationType || '一般代理';
+    formData.paymentDeadline = detailAny.paymentDeadline || '';
+    formData.disputeResolution = detailAny.disputeResolution || '1';
+    formData.arbitrationCommittee = detailAny.arbitrationCommittee || '';
+    formData.specialTerms = detailAny.specialTerms || '';
+    formData.partnerRate = detailAny.partnerRate;
+    formData.seniorRate = detailAny.seniorRate;
+    formData.assistantRate = detailAny.assistantRate;
+    formData.serviceHours = detailAny.serviceHours;
 
     // 提成方案
     selectedCommissionRuleId.value = detail.commissionRuleId;
@@ -1735,7 +2099,7 @@ async function handleSave() {
     const baseData: any = {
       name: formData.name || '',
       clientId: formData.clientId,
-      contractType: formData.contractType || 'SERVICE',
+      contractType: formData.contractType || 'CIVIL_PROXY',
       feeType: formData.feeType || 'FIXED',
       totalAmount: formData.totalAmount || 0,
       currency: formData.currency,
@@ -1777,7 +2141,10 @@ async function handleSave() {
       specialTerms: formData.specialTerms,
       defendantName: formData.defendantName,
       criminalCharge: formData.criminalCharge,
-      defenseStage: formData.defenseStage,
+      // defenseStage 多选，转换为逗号分隔字符串存储
+      defenseStage: Array.isArray(formData.defenseStage)
+        ? formData.defenseStage.join(',')
+        : formData.defenseStage,
       partnerRate: formData.partnerRate,
       seniorRate: formData.seniorRate,
       assistantRate: formData.assistantRate,
@@ -1992,7 +2359,7 @@ function handleResetForm() {
     id: undefined,
     name: '',
     clientId: undefined,
-    contractType: 'SERVICE',
+    contractType: 'CIVIL_PROXY',
     feeType: 'FIXED',
     totalAmount: undefined,
     currency: 'CNY',
@@ -2179,6 +2546,25 @@ async function handleReject(record: ContractDTO) {
   }
 }
 
+// 撤回审批（合同创建者或签约人可以撤回待审批的合同）
+async function handleWithdraw(record: ContractDTO) {
+  Modal.confirm({
+    title: '撤回审批',
+    content: `确定要撤回合同 "${record.name}" 的审批吗？撤回后合同将恢复为草稿状态，您可以修改后重新提交。`,
+    okText: '撤回',
+    cancelText: '取消',
+    onOk: async () => {
+      try {
+        await withdrawContract(record.id);
+        message.success('已撤回审批，合同已恢复为草稿状态');
+        fetchData();
+      } catch (error: any) {
+        message.error(error.message || '撤回失败');
+      }
+    },
+  });
+}
+
 // 申请合同变更
 async function handleChange(record: ContractDTO) {
   try {
@@ -2188,7 +2574,7 @@ async function handleChange(record: ContractDTO) {
       changeReason: '',
       changeDescription: '',
       name: detail.name || '',
-      contractType: detail.contractType || 'SERVICE',
+      contractType: detail.contractType || 'CIVIL_PROXY',
       clientId: detail.clientId,
       feeType: detail.feeType || 'FIXED',
       totalAmount: detail.totalAmount,
@@ -2609,6 +2995,12 @@ onMounted(async () => {
                   @click="handleReject(record as ContractDTO)"
                   >拒绝</a
                 >
+                <a
+                  v-if="(record as ContractDTO).createdBy === currentUserId || (record as ContractDTO).signerId === currentUserId"
+                  style="color: #faad14"
+                  @click="handleWithdraw(record as ContractDTO)"
+                  >撤回</a
+                >
               </template>
               <template
                 v-if="
@@ -2654,20 +3046,61 @@ onMounted(async () => {
                 border-radius: 4px;
               "
             >
-              <FormItem label="合同模板" style="margin-bottom: 0">
-                <Select
-                  v-model:value="selectedTemplateId"
-                  placeholder="请选择合同模板（必选）"
-                  size="large"
-                  @change="handleTemplateChange"
-                  :options="
-                    contractTemplates.map((t) => ({
-                      label: t.name,
-                      value: t.id,
-                    }))
-                  "
-                />
+              <FormItem label="合同模板" style="margin-bottom: 8px">
+                <div style="display: flex; gap: 8px; align-items: center;">
+                  <Select
+                    v-model:value="selectedTemplateId"
+                    placeholder="请选择合同模板（必选）"
+                    size="large"
+                    style="flex: 1;"
+                    @change="handleTemplateChange"
+                    :options="
+                      contractTemplates.map((t) => ({
+                        label: t.name,
+                        value: t.id,
+                      }))
+                    "
+                  />
+                  <Button 
+                    v-if="selectedTemplate" 
+                    type="link" 
+                    @click="handlePreviewTemplate"
+                  >
+                    预览模板
+                  </Button>
+                </div>
               </FormItem>
+              
+              <!-- 选中模板后显示模板信息 -->
+              <div v-if="selectedTemplate" style="margin-top: 8px; padding: 8px 12px; background: #fff; border-radius: 4px; border: 1px solid #d9d9d9;">
+                <div style="display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px;">
+                  <span><strong>合同类型：</strong>{{ selectedTemplate.contractTypeName || selectedTemplate.contractType }}</span>
+                  <span><strong>收费方式：</strong>{{ selectedTemplate.feeTypeName || selectedTemplate.feeType }}</span>
+                </div>
+                <div v-if="selectedTemplate.description" style="margin-top: 6px; font-size: 12px; color: #666;">
+                  <strong>说明：</strong>{{ selectedTemplate.description }}
+                </div>
+                <Alert 
+                  v-if="selectedTemplate.content"
+                  type="success" 
+                  style="margin-top: 8px; padding: 6px 12px;"
+                  show-icon
+                >
+                  <template #message>
+                    <span style="font-size: 12px;">✓ 该模板包含合同正文内容，创建合同时将自动导入模板内容并填充变量</span>
+                  </template>
+                </Alert>
+                <Alert 
+                  v-else
+                  type="warning" 
+                  style="margin-top: 8px; padding: 6px 12px;"
+                  show-icon
+                >
+                  <template #message>
+                    <span style="font-size: 12px;">⚠ 该模板暂无合同正文内容，仅会应用合同类型和收费方式</span>
+                  </template>
+                </Alert>
+              </div>
             </div>
           </template>
 
@@ -2956,9 +3389,21 @@ onMounted(async () => {
                     :label-col="{ span: 10 }"
                     :wrapper-col="{ span: 14 }"
                   >
-                    <Input
-                      v-model:value="formData.criminalCharge"
-                      placeholder="如：盗窃罪"
+                    <Cascader
+                      v-model:value="criminalChargeValue"
+                      :options="criminalChargeOptions"
+                      placeholder="请选择罪名"
+                      change-on-select
+                      :show-search="{
+                        filter: (inputValue, path) =>
+                          path.some((option) =>
+                            option.label
+                              .toLowerCase()
+                              .includes(inputValue.toLowerCase()),
+                          ),
+                      }"
+                      :display-render="({ labels }) => labels[labels.length - 1]"
+                      style="width: 100%"
                     />
                   </FormItem>
                 </Col>
@@ -2971,7 +3416,10 @@ onMounted(async () => {
               >
                 <Select
                   v-model:value="formData.defenseStage"
-                  placeholder="选择辩护阶段"
+                  placeholder="可多选"
+                  mode="multiple"
+                  allow-clear
+                  :max-tag-count="2"
                   :options="[
                     { label: 'A-侦查阶段律师', value: 'A-侦查阶段律师' },
                     {
@@ -3756,6 +4204,13 @@ onMounted(async () => {
           </Table>
         </TabPane>
         <TabPane key="participant" tab="参与人">
+          <Alert
+            message="💡 参与人说明"
+            description="合同参与人（主办律师、协办律师）会在创建项目时自动复制为项目团队成员，并作为授权委托书的受托人信息。审批通过后仍可添加参与人。"
+            type="info"
+            show-icon
+            style="margin-bottom: 16px"
+          />
           <div
             style="
               display: flex;

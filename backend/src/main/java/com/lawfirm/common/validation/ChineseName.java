@@ -17,7 +17,7 @@ import java.lang.annotation.Target;
  * - 支持中文、少数民族名字中的点号
  * - 不支持数字和特殊字符
  * 
- * @author Kiro-1
+ * @author junyuzhan
  * @since 2026-01-10
  */
 @Documented

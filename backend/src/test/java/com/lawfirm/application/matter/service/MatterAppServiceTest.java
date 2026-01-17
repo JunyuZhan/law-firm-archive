@@ -41,7 +41,7 @@ import static org.mockito.Mockito.*;
  * - 项目验证逻辑
  * - 业务规则验证
  * 
- * @author Kiro-1
+ * @author junyuzhan
  * @since 2026-01-10
  */
 @ExtendWith(MockitoExtension.class)

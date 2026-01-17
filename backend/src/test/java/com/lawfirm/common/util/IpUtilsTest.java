@@ -19,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * - 内网/公网IP判断
  * - IP描述
  * 
- * @author Kiro-1
+ * @author junyuzhan
  * @since 2026-01-10
  */
 @DisplayName("IpUtils 单元测试")

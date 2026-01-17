@@ -1,189 +1,149 @@
 <script setup lang="ts">
 /**
- * 授权委托书模板编辑器
- * 采用分块编辑方式，简化模板管理
- * 排版格式在PDF生成时固定：标题二号宋体，正文三号仿宋，备注五号宋体
+ * 结构化授权委托书模板编辑器
+ * 将委托书模板分为多个区块：标题、委托人、受托人、委托事项、签字落款
+ * 用户只需关注内容，打印时系统自动排版
  */
-import { computed, reactive, ref, watch } from 'vue';
+import { reactive, ref, watch, computed } from 'vue';
 
 import {
   Alert,
-  Button,
-  Card,
-  Col,
   Collapse,
   CollapsePanel,
-  Divider,
+  Dropdown,
+  Button,
   Input,
-  Row,
-  Space,
+  Menu,
+  MenuItem,
   Tag,
-  Tooltip,
 } from 'ant-design-vue';
 
-// 示例数据，用于预览效果
-const sampleData: Record<string, string> = {
-  'client.name': '张三',
-  'client.idLabel': '身份证号',
-  'client.idNumber': '110101199001011234',
-  'client.phone': '13800138000',
-  'client.address': '北京市朝阳区XX路XX号',
-  'client.legalPerson': '李总',
-  'firm.name': '北京XX律师事务所',
-  'firm.address': '北京市海淀区中关村大街1号',
-  'firm.phone': '010-88888888',
-  'lawyer.name': '王律师',
-  'lawyer.licenseNo': '11101202011234567',
-  'lawyer.phone': '13900139000',
-  'matter.name': '张三诉李四合同纠纷',
-  'matter.caseTypeName': '民事',
-  'matter.causeOfAction': '合同纠纷',
-  'matter.opposingParty': '李四',
-  'matter.litigationStageName': '一审',
-  'authorizationType': '特别授权',
-  'authorizationScope': '特别授权包括：代为承认、放弃、变更诉讼请求，进行和解，提起反诉或上诉，代为签收法律文书等。',
-  'date.today': '2026年1月12日',
-  'date.year': '2026',
-  'date.month': '01',
-  'date.day': '12',
-};
+import { decodeHtmlEntities } from '../../../system/contract-template/utils/print-formatter';
 
+const { TextArea: Textarea } = Input;
+
+// Props
 const props = defineProps<{
   modelValue: string;
+  variables?: Array<{ label: string; value: string; description?: string }>;
 }>();
 
 const emit = defineEmits<{
   'update:modelValue': [value: string];
 }>();
 
-// 模板分块数据结构
+// 委托书模板分块数据结构
 interface TemplateBlocks {
-  title: string; // 标题
-  clientInfo: string; // 委托人信息
-  agentInfo: string; // 受托人信息
-  matterInfo: string; // 委托事项
-  authorization: string; // 代理权限
-  duration: string; // 委托期限
-  signature: string; // 签字区域
-  remarks: string; // 备注
+  title: {
+    documentTitle: string; // 委托书标题
+  };
+  client: string; // 委托人信息
+  agent: string; // 受托人信息
+  matter: string; // 委托事项内容
+  signature: {
+    clientSign: string; // 委托人签署
+    signDate: string; // 签署日期
+    remarks: string; // 备注说明
+  };
 }
 
 const blocks = reactive<TemplateBlocks>({
-  title: '授 权 委 托 书',
-  clientInfo: `委托人：\${client.name}
-\${client.idLabel}：\${client.idNumber}
-联系电话：\${client.phone}
-住所地址：\${client.address}`,
-  agentInfo: `受托人：\${firm.name}
-承办律师：\${lawyer.name}
-执业证号：\${lawyer.licenseNo}
-律所地址：\${firm.address}`,
-  matterInfo: `本人因 \${matter.name}（\${matter.caseTypeName}）一案，特委托上述受托人作为本人的诉讼代理人。
+  title: {
+    documentTitle: '授 权 委 托 书',
+  },
+  client: `\${clients.allInfo}`,
+  agent: `\${lawyers.allInfo}`,
+  matter: `本人因 \${matter.name}（\${matter.caseTypeName}）一案，特委托上述受托人作为本人的诉讼代理人。
 
-代理阶段：\${matter.litigationStageName}`,
-  authorization: `代理权限类型：\${authorizationType}
+代理阶段：\${matter.litigationStageName}
 
-\${authorizationScope}`,
-  duration: `本委托书自签署之日起至本案\${matter.litigationStageName}结案止。`,
-  signature: `委托人（签章）：________________
+代理权限类型：\${authorizationType}
 
-日    期：    年  月  日`,
-  remarks: `生成日期：\${date.today}
+\${authorizationScope}
+
+本委托书自签署之日起至本案\${matter.litigationStageName}结案止。`,
+  signature: {
+    clientSign: '委托人（签章）：________________',
+    signDate: '日    期：    年  月  日',
+    remarks: `生成日期：\${date.today}
 【本授权委托书由系统自动生成，以签字盖章版本为准】`,
+  },
 });
 
-// 各分块可用的变量提示
-const blockVariables: Record<keyof TemplateBlocks, Array<{ label: string; value: string; desc: string }>> = {
-  title: [],
-  clientInfo: [
-    { label: '客户名称', value: 'client.name', desc: '委托人姓名' },
-    { label: '身份标识', value: 'client.idLabel', desc: '身份证号/统一社会信用代码' },
-    { label: '身份号码', value: 'client.idNumber', desc: '身份证号或信用代码' },
-    { label: '客户电话', value: 'client.phone', desc: '联系电话' },
-    { label: '客户地址', value: 'client.address', desc: '联系地址' },
-    { label: '法定代表人', value: 'client.legalPerson', desc: '企业法定代表人' },
-  ],
-  agentInfo: [
-    { label: '律所名称', value: 'firm.name', desc: '律师事务所全称' },
-    { label: '律所地址', value: 'firm.address', desc: '律师事务所地址' },
-    { label: '律所电话', value: 'firm.phone', desc: '律师事务所电话' },
-    { label: '承办律师', value: 'lawyer.name', desc: '承办律师姓名' },
-    { label: '执业证号', value: 'lawyer.licenseNo', desc: '承办律师执业证号' },
-    { label: '律师电话', value: 'lawyer.phone', desc: '律师联系电话' },
-  ],
-  matterInfo: [
-    { label: '项目名称', value: 'matter.name', desc: '委托项目/案件名称' },
-    { label: '案件类型', value: 'matter.caseTypeName', desc: '民事/刑事/行政等' },
-    { label: '案由', value: 'matter.causeOfAction', desc: '案件案由' },
-    { label: '对方当事人', value: 'matter.opposingParty', desc: '对方当事人姓名' },
-    { label: '代理阶段', value: 'matter.litigationStageName', desc: '一审/二审/再审等' },
-  ],
-  authorization: [
-    { label: '代理权限类型', value: 'authorizationType', desc: '一般代理/特别代理' },
-    { label: '代理权限范围', value: 'authorizationScope', desc: '代理权限详细描述' },
-  ],
-  duration: [
-    { label: '代理阶段', value: 'matter.litigationStageName', desc: '一审/二审/再审等' },
-  ],
-  signature: [],
-  remarks: [
-    { label: '当前日期', value: 'date.today', desc: '当前完整日期' },
-    { label: '当前年份', value: 'date.year', desc: '当前年份' },
-    { label: '当前月份', value: 'date.month', desc: '当前月份' },
-    { label: '当前日', value: 'date.day', desc: '当前日' },
-  ],
-};
+// 默认展开的面板
+const activeKeys = ref(['title', 'client', 'agent', 'matter', 'signature']);
 
-// 分块配置
-const blockConfigs = [
-  { key: 'title', label: '标题', format: '二号宋体，居中', rows: 1 },
-  { key: 'clientInfo', label: '委托人信息', format: '三号仿宋', rows: 4 },
-  { key: 'agentInfo', label: '受托人信息', format: '三号仿宋', rows: 4 },
-  { key: 'matterInfo', label: '委托事项', format: '三号仿宋', rows: 4 },
-  { key: 'authorization', label: '代理权限', format: '三号仿宋', rows: 4 },
-  { key: 'duration', label: '委托期限', format: '三号仿宋', rows: 2 },
-  { key: 'signature', label: '签字区域', format: '三号仿宋', rows: 3 },
-  { key: 'remarks', label: '备注说明', format: '五号宋体', rows: 2 },
-] as const;
+// 记录每个输入框的光标位置（在失去焦点或选择变化时更新）
+const cursorPositions = ref<Record<string, number>>({});
 
-// 解析传入的内容到分块
-function parseContentToBlocks(content: string): void {
-  if (!content) return;
-  
-  try {
-    // 尝试解析JSON格式的分块内容
-    const parsed = JSON.parse(content);
-    if (parsed && typeof parsed === 'object') {
-      Object.keys(blocks).forEach((key) => {
-        if (parsed[key] !== undefined) {
-          blocks[key as keyof TemplateBlocks] = parsed[key];
-        }
-      });
-      return;
-    }
-  } catch {
-    // 非JSON格式，尝试解析旧的纯文本格式
-    // 保持默认值
+// 处理输入框失去焦点时保存光标位置
+function handleBlur(name: string, event: FocusEvent) {
+  const target = event.target as HTMLTextAreaElement | HTMLInputElement;
+  if (target) {
+    cursorPositions.value[name] = target.selectionStart ?? 0;
   }
 }
 
-// 将分块组合成JSON字符串输出
-function blocksToContent(): string {
-  return JSON.stringify(blocks);
+// 处理点击和选择变化时更新光标位置
+function handleSelect(name: string, event: Event) {
+  const target = event.target as HTMLTextAreaElement | HTMLInputElement;
+  if (target) {
+    cursorPositions.value[name] = target.selectionStart ?? 0;
+  }
 }
 
-// 初始化：解析传入的内容
+// 解析已有内容到区块
+function parseContent(content: string) {
+  if (!content) return;
+
+  // 先解码 HTML 实体（处理可能被编码的内容）
+  const decoded = decodeHtmlEntities(content);
+
+  // 尝试解析 JSON 格式（结构化存储）
+  try {
+    const parsed = JSON.parse(decoded);
+    // 检查是否是结构化格式
+    if (parsed._structured && parsed.blocks) {
+      // 新格式：{ _structured: true, blocks: { ... } }
+      Object.assign(blocks, parsed.blocks);
+      return;
+    } else if (parsed.title || parsed.client || parsed.agent || parsed.matter || parsed.signature) {
+      // 兼容旧格式：直接是 blocks 对象
+      Object.assign(blocks, parsed);
+      return;
+    }
+  } catch {
+    // 不是 JSON，尝试解析旧格式或设为默认值
+  }
+}
+
+// 将区块转换为存储格式
+function blocksToContent(): string {
+  return JSON.stringify({
+    _structured: true,
+    _version: 1,
+    blocks: {
+      title: blocks.title,
+      client: blocks.client,
+      agent: blocks.agent,
+      matter: blocks.matter,
+      signature: blocks.signature,
+    },
+  });
+}
+
+// 监听 modelValue 变化
 watch(
   () => props.modelValue,
-  (val) => {
-    if (val) {
-      parseContentToBlocks(val);
+  (newVal) => {
+    if (newVal) {
+      parseContent(newVal);
     }
   },
   { immediate: true }
 );
 
-// 监听分块变化，输出内容
+// 监听区块变化，输出内容
 watch(
   blocks,
   () => {
@@ -192,345 +152,469 @@ watch(
   { deep: true }
 );
 
-// 插入变量到指定分块
-function insertVariable(blockKey: keyof TemplateBlocks, variable: string) {
-  blocks[blockKey] += `\${${variable}}`;
-}
-
-// 默认展开的面板
-const activeKeys = ref(['title', 'clientInfo', 'agentInfo', 'matterInfo', 'authorization']);
-
-// 预览模式
-const showPreview = ref(false);
-
-// 替换变量生成预览内容
-function replaceVariables(text: string): string {
-  if (!text) return '';
-  return text.replace(/\$\{([^}]+)\}/g, (match, key) => {
-    return sampleData[key] || `【${key}】`;
-  });
-}
-
-// 预览内容
-const previewContent = computed(() => {
-  const sections = [
-    { label: '', content: blocks.title, isTitle: true },
-    { label: '【委托人信息】', content: blocks.clientInfo },
-    { label: '【受托人信息】', content: blocks.agentInfo },
-    { label: '【委托事项】', content: blocks.matterInfo },
-    { label: '【代理权限】', content: blocks.authorization },
-    { label: '【委托期限】', content: blocks.duration },
-    { label: '【签字确认】', content: blocks.signature },
-    { label: '━'.repeat(30), content: '' },
-    { label: '', content: blocks.remarks, isRemarks: true },
-  ];
+// 在光标位置插入变量
+function insertVariable(
+  target: 'documentTitle' | 'client' | 'agent' | 'matter' | 'clientSign' | 'signDate' | 'remarks',
+  variable: string
+) {
+  const varStr = `\${${variable}}`;
   
-  return sections.map(s => ({
-    ...s,
-    content: replaceVariables(s.content),
-  }));
+  // 获取当前值
+  let currentValue = '';
+  if (target === 'documentTitle') {
+    currentValue = blocks.title.documentTitle;
+  } else if (target === 'client') {
+    currentValue = blocks.client;
+  } else if (target === 'agent') {
+    currentValue = blocks.agent;
+  } else if (target === 'matter') {
+    currentValue = blocks.matter;
+  } else if (target === 'clientSign') {
+    currentValue = blocks.signature.clientSign;
+  } else if (target === 'signDate') {
+    currentValue = blocks.signature.signDate;
+  } else if (target === 'remarks') {
+    currentValue = blocks.signature.remarks;
+  }
+  
+  // 获取记录的光标位置，如果没有记录则追加到末尾
+  const cursorPos = cursorPositions.value[target] ?? currentValue.length;
+  
+  // 在光标位置插入变量
+  const newValue = currentValue.slice(0, cursorPos) + varStr + currentValue.slice(cursorPos);
+  
+  // 更新对应区块的值
+  if (target === 'documentTitle') {
+    blocks.title.documentTitle = newValue;
+  } else if (target === 'client') {
+    blocks.client = newValue;
+  } else if (target === 'agent') {
+    blocks.agent = newValue;
+  } else if (target === 'matter') {
+    blocks.matter = newValue;
+  } else if (target === 'clientSign') {
+    blocks.signature.clientSign = newValue;
+  } else if (target === 'signDate') {
+    blocks.signature.signDate = newValue;
+  } else if (target === 'remarks') {
+    blocks.signature.remarks = newValue;
+  }
+  
+  // 更新光标位置（移到插入变量之后）
+  cursorPositions.value[target] = cursorPos + varStr.length;
+}
+
+// 变量分组 - 按类别明确分类
+const variableGroups = computed(() => {
+  const groups: Record<string, Array<{ label: string; value: string }>> = {
+    '委托人信息': [],
+    '受托人信息': [],
+    '项目/案件': [],
+    '代理权限': [],
+    '日期': [],
+  };
+
+  // 明确的分组映射
+  const groupMapping: Record<string, string> = {
+    // 委托人信息
+    'client.name': '委托人信息',
+    'client.idLabel': '委托人信息',
+    'client.idNumber': '委托人信息',
+    'client.phone': '委托人信息',
+    'client.address': '委托人信息',
+    'client.legalPerson': '委托人信息',
+    'client.typeName': '委托人信息',
+    
+    // 受托人信息
+    'lawyer.name': '受托人信息',
+    'lawyer.licenseNo': '受托人信息',
+    'lawyer.phone': '受托人信息',
+    'firm.name': '受托人信息',
+    'firm.address': '受托人信息',
+    'firm.phone': '受托人信息',
+    
+    // 项目/案件
+    'matter.name': '项目/案件',
+    'matter.no': '项目/案件',
+    'matter.caseTypeName': '项目/案件',
+    'matter.matterTypeName': '项目/案件',
+    'matter.causeOfAction': '项目/案件',
+    'matter.opposingParty': '项目/案件',
+    'matter.description': '项目/案件',
+    'matter.litigationStageName': '项目/案件',
+    'matter.filingDate': '项目/案件',
+    'trialStage': '项目/案件',
+    
+    // 代理权限
+    'authorizationType': '代理权限',
+    'authorizationScope': '代理权限',
+    
+    // 多个委托人/受托人
+    'clients.allInfo': '委托人信息',
+    'clients.allNames': '委托人信息',
+    'lawyers.allInfo': '受托人信息',
+    'lawyers.allNames': '受托人信息',
+    
+    // 日期
+    'date.today': '日期',
+    'date.year': '日期',
+    'date.month': '日期',
+    'date.day': '日期',
+  };
+
+  props.variables?.forEach((v) => {
+    const group = groupMapping[v.value];
+    if (group && groups[group]) {
+      groups[group].push(v);
+    } else {
+      // 未映射的变量，根据名称推测分组
+      if (v.value.startsWith('client.')) {
+        const targetGroup = groups['委托人信息'];
+        if (targetGroup) {
+          targetGroup.push(v);
+        }
+      } else if (v.value.startsWith('lawyer.') || v.value.startsWith('firm.')) {
+        const targetGroup = groups['受托人信息'];
+        if (targetGroup) {
+          targetGroup.push(v);
+        }
+      } else if (v.value.startsWith('matter.')) {
+        const targetGroup = groups['项目/案件'];
+        if (targetGroup) {
+          targetGroup.push(v);
+        }
+      } else if (v.value.includes('authorization') || v.value.includes('代理')) {
+        const targetGroup = groups['代理权限'];
+        if (targetGroup) {
+          targetGroup.push(v);
+        }
+      } else if (v.value.startsWith('date.')) {
+        const targetGroup = groups['日期'];
+        if (targetGroup) {
+          targetGroup.push(v);
+        }
+      }
+    }
+  });
+
+  return groups;
 });
 </script>
 
 <template>
-  <div class="poa-editor">
-    <!-- 工具栏 -->
-    <div class="toolbar">
-      <Button 
-        :type="showPreview ? 'default' : 'primary'" 
-        @click="showPreview = false"
-      >
-        📝 编辑模式
-      </Button>
-      <Button 
-        :type="showPreview ? 'primary' : 'default'" 
-        @click="showPreview = true"
-        style="margin-left: 8px"
-      >
-        👁️ 预览效果
-      </Button>
-      <span style="margin-left: 16px; color: #999; font-size: 12px">
-        {{ showPreview ? '预览使用示例数据填充变量' : '编辑各信息块内容' }}
-      </span>
-    </div>
+  <div class="structured-editor">
+    <Alert
+      message="📝 结构化模板编辑"
+      description="模板只负责内容和换行，不存储格式信息。只需填写文本内容，系统会在预览和打印时自动应用格式（字体、大小、对齐等）。点击变量标签可插入到对应位置。"
+      type="info"
+      show-icon
+      style="margin-bottom: 16px"
+    />
 
-    <!-- 预览模式 -->
-    <div v-if="showPreview" class="preview-mode">
-      <Alert
-        message="以下为模板预览效果（使用示例数据）"
-        type="success"
-        show-icon
-        style="margin-bottom: 16px"
-      />
-      <div class="preview-paper">
-        <template v-for="(section, idx) in previewContent" :key="idx">
-          <h1 v-if="section.isTitle" class="preview-title">{{ section.content }}</h1>
-          <template v-else>
-            <div v-if="section.label && !section.label.startsWith('━')" class="preview-section-title">{{ section.label }}</div>
-            <div v-if="section.label.startsWith('━')" class="preview-divider">{{ section.label }}</div>
-            <div 
-              v-if="section.content" 
-              :class="['preview-content', { 'preview-remarks': section.isRemarks }]"
-            >
-              <p v-for="(line, lineIdx) in section.content.split('\n')" :key="lineIdx">{{ line }}</p>
-            </div>
-          </template>
-        </template>
-      </div>
-    </div>
-
-    <!-- 编辑模式 -->
-    <div v-else>
-      <!-- 编辑说明 -->
-      <Alert
-        type="info"
-        show-icon
-        style="margin-bottom: 16px"
-      >
-        <template #message>
-          <div style="font-weight: 500">授权委托书模板编辑说明</div>
-        </template>
-        <template #description>
-          <div style="font-size: 13px; line-height: 1.8">
-            <p style="margin: 4px 0">• 模板按信息块编辑，<strong>只需填写内容</strong>，排版格式在PDF生成时自动应用</p>
-            <p style="margin: 4px 0">• 使用 <Tag color="blue" style="margin: 0 2px">${变量名}</Tag> 格式插入变量，生成时自动替换为项目实际数据</p>
-            <p style="margin: 4px 0">• 若变量对应的数据为空，生成时会显示为下划线（如：________________）</p>
-          </div>
-        </template>
-      </Alert>
-
-    <!-- 格式预览提示 -->
-    <Card size="small" style="margin-bottom: 16px; background: #fafafa">
-      <template #title>
-        <span style="font-size: 13px; color: #666">📄 PDF生成格式说明</span>
-      </template>
-      <Row :gutter="[16, 8]">
-        <Col :span="8">
-          <Tag color="orange">标题</Tag> 二号宋体，居中
-        </Col>
-        <Col :span="8">
-          <Tag color="blue">正文</Tag> 三号仿宋
-        </Col>
-        <Col :span="8">
-          <Tag color="default">备注</Tag> 五号宋体
-        </Col>
-      </Row>
-    </Card>
-
-    <!-- 分块编辑区域 -->
-    <Collapse v-model:activeKey="activeKeys">
-      <CollapsePanel
-        v-for="config in blockConfigs"
-        :key="config.key"
-        :header="`${config.label}`"
-      >
+    <Collapse v-model:activeKey="activeKeys" :bordered="false">
+      <!-- 区块1：标题区 -->
+      <CollapsePanel key="title" header="📌 区块一：标题块">
         <template #extra>
-          <Tag :color="config.key === 'title' ? 'orange' : config.key === 'remarks' ? 'default' : 'blue'" style="margin-right: 0">
-            {{ config.format }}
-          </Tag>
+          <Tag color="blue">委托书标题</Tag>
         </template>
-
-        <!-- 可用变量 -->
-        <div v-if="blockVariables[config.key].length > 0" class="variable-hints">
-          <span class="hint-label">可用变量：</span>
-          <Space wrap :size="4">
-            <Tooltip v-for="v in blockVariables[config.key]" :key="v.value" :title="v.desc">
-              <Tag
-                color="processing"
-                class="variable-tag"
-                @click="insertVariable(config.key, v.value)"
-              >
-                {{ v.label }}
-              </Tag>
-            </Tooltip>
-          </Space>
+        
+        <div class="block-content">
+          <div class="field-group">
+            <label>委托书标题（将居中显示为大标题）</label>
+            <Textarea
+              v-model:value="blocks.title.documentTitle"
+              :rows="2"
+              placeholder="例如：授权委托书"
+              @blur="(e: FocusEvent) => handleBlur('documentTitle', e)"
+              @click="(e: Event) => handleSelect('documentTitle', e)"
+              @keyup="(e: Event) => handleSelect('documentTitle', e)"
+            />
+            <div class="variable-hint">
+              <span style="color: #999; font-size: 12px;">
+                💡 标题将在打印时居中显示为大标题
+              </span>
+            </div>
+          </div>
         </div>
+      </CollapsePanel>
 
-        <!-- 编辑区域 -->
-        <Input.TextArea
-          v-model:value="blocks[config.key]"
-          :rows="config.rows"
-          :placeholder="`请输入${config.label}内容...`"
-          style="font-family: 'Microsoft YaHei', monospace"
-        />
-
-        <!-- 示例提示 -->
-        <div v-if="config.key === 'clientInfo'" class="example-hint">
-          <strong>示例：</strong>
-          <pre>委托人：张三
-身份证号：110101199001011234
-联系电话：13800138000
-住所地址：北京市朝阳区XX路XX号</pre>
+      <!-- 区块2：委托人区 -->
+      <CollapsePanel key="client" header="👤 区块二：委托人">
+        <template #extra>
+          <Tag color="green">委托人信息</Tag>
+        </template>
+        
+        <div class="block-content">
+          <div class="field-group">
+            <div class="field-header">
+              <label>委托人信息</label>
+              <Dropdown>
+                <Button size="small" type="link">+ 插入变量</Button>
+                <template #overlay>
+                  <Menu>
+                    <MenuItem 
+                      v-for="v in variableGroups['委托人信息']" 
+                      :key="v.value"
+                      @click="insertVariable('client', v.value)"
+                    >
+                      {{ v.label }}
+                    </MenuItem>
+                  </Menu>
+                </template>
+              </Dropdown>
+            </div>
+            <Textarea
+              v-model:value="blocks.client"
+              :rows="6"
+              placeholder="委托人：${client.name}
+${client.idLabel}：${client.idNumber}
+联系电话：${client.phone}
+住所地址：${client.address}"
+              @blur="(e: FocusEvent) => handleBlur('client', e)"
+              @click="(e: Event) => handleSelect('client', e)"
+              @keyup="(e: Event) => handleSelect('client', e)"
+            />
+          </div>
         </div>
-        <div v-if="config.key === 'agentInfo'" class="example-hint">
-          <strong>示例：</strong>
-          <pre>受托人：北京XX律师事务所
-承办律师：李四
-执业证号：11101202011234567
-律所地址：北京市海淀区XX路XX号</pre>
-        </div>
-        <div v-if="config.key === 'matterInfo'" class="example-hint">
-          <strong>示例：</strong>
-          <pre>本人因 张三诉李四合同纠纷（民事）一案，特委托上述受托人作为本人的诉讼代理人。
+      </CollapsePanel>
 
-代理阶段：一审</pre>
+      <!-- 区块3：受托人区 -->
+      <CollapsePanel key="agent" header="⚖️ 区块三：受托人">
+        <template #extra>
+          <Tag color="orange">受托人信息</Tag>
+        </template>
+        
+        <div class="block-content">
+          <div class="field-group">
+            <div class="field-header">
+              <label>受托人信息</label>
+              <Dropdown>
+                <Button size="small" type="link">+ 插入变量</Button>
+                <template #overlay>
+                  <Menu>
+                    <MenuItem 
+                      v-for="v in variableGroups['受托人信息']" 
+                      :key="v.value"
+                      @click="insertVariable('agent', v.value)"
+                    >
+                      {{ v.label }}
+                    </MenuItem>
+                  </Menu>
+                </template>
+              </Dropdown>
+            </div>
+            <Textarea
+              v-model:value="blocks.agent"
+              :rows="6"
+              placeholder="受托人：${firm.name}
+承办律师：${lawyer.name}
+执业证号：${lawyer.licenseNo}
+律所地址：${firm.address}"
+              @blur="(e: FocusEvent) => handleBlur('agent', e)"
+              @click="(e: Event) => handleSelect('agent', e)"
+              @keyup="(e: Event) => handleSelect('agent', e)"
+            />
+          </div>
         </div>
-        <div v-if="config.key === 'authorization'" class="example-hint">
-          <strong>示例：</strong>
-          <pre>代理权限类型：特别授权
+      </CollapsePanel>
 
-特别授权包括：代为承认、放弃、变更诉讼请求，进行和解，提起反诉或上诉，代为签收法律文书等。</pre>
+      <!-- 区块4：委托事项区 -->
+      <CollapsePanel key="matter" header="📜 区块四：委托事项">
+        <template #extra>
+          <Tag color="purple">委托事项</Tag>
+        </template>
+        
+        <div class="block-content">
+          <div class="field-group">
+            <label>委托事项内容（包含案件信息、代理权限、委托期限等）</label>
+            
+            <!-- 变量标签横向排列 -->
+            <div class="variables-panel">
+              <template v-for="(vars, group) in variableGroups" :key="group">
+                <div v-if="vars.length > 0" class="variable-group">
+                  <span class="group-label">{{ group }}：</span>
+                  <Tag 
+                    v-for="v in vars" 
+                    :key="v.value"
+                    color="cyan"
+                    class="var-tag"
+                    @click="insertVariable('matter', v.value)"
+                  >
+                    {{ v.label }}
+                  </Tag>
+                </div>
+              </template>
+            </div>
+            
+            <Textarea
+              v-model:value="blocks.matter"
+              :rows="15"
+              placeholder="本人因 ${matter.name}（${matter.caseTypeName}）一案，特委托上述受托人作为本人的诉讼代理人。
+
+代理阶段：${matter.litigationStageName}
+
+代理权限类型：${authorizationType}
+
+${authorizationScope}
+
+本委托书自签署之日起至本案${matter.litigationStageName}结案止。"
+              @blur="(e: FocusEvent) => handleBlur('matter', e)"
+              @click="(e: Event) => handleSelect('matter', e)"
+              @keyup="(e: Event) => handleSelect('matter', e)"
+            />
+          </div>
+        </div>
+      </CollapsePanel>
+
+      <!-- 区块5：签字落款区 -->
+      <CollapsePanel key="signature" header="✍️ 区块五：签字落款">
+        <template #extra>
+          <Tag color="red">签字盖章</Tag>
+        </template>
+        
+        <div class="block-content">
+          <div class="field-group">
+            <label>委托人签署</label>
+            <Textarea
+              v-model:value="blocks.signature.clientSign"
+              :rows="3"
+              placeholder="委托人（签章）：________________"
+              @blur="(e: FocusEvent) => handleBlur('clientSign', e)"
+              @click="(e: Event) => handleSelect('clientSign', e)"
+              @keyup="(e: Event) => handleSelect('clientSign', e)"
+            />
+          </div>
+
+          <div class="field-group">
+            <label>签署日期</label>
+            <Input
+              v-model:value="blocks.signature.signDate"
+              placeholder="日    期：    年  月  日"
+              @blur="(e: FocusEvent) => handleBlur('signDate', e)"
+              @click="(e: Event) => handleSelect('signDate', e)"
+              @keyup="(e: Event) => handleSelect('signDate', e)"
+            />
+          </div>
+
+          <div class="field-group">
+            <label>备注说明</label>
+            <Textarea
+              v-model:value="blocks.signature.remarks"
+              :rows="3"
+              placeholder="生成日期：${date.today}
+【本授权委托书由系统自动生成，以签字盖章版本为准】"
+              @blur="(e: FocusEvent) => handleBlur('remarks', e)"
+              @click="(e: Event) => handleSelect('remarks', e)"
+              @keyup="(e: Event) => handleSelect('remarks', e)"
+            />
+            <div class="variable-hint">
+              <span style="color: #999; font-size: 12px;">
+                💡 备注信息将以较小字体显示在文档底部
+              </span>
+            </div>
+          </div>
         </div>
       </CollapsePanel>
     </Collapse>
 
-    <!-- 变量使用说明 -->
-    <Divider style="margin: 16px 0 12px" />
-    <div class="usage-tips">
-      <div class="tip-title">💡 变量使用提示</div>
-      <ul class="tip-list">
-        <li>点击分块区域上方的变量标签，可快速插入变量</li>
-        <li>变量格式：<code>${client.name}</code>、<code>${lawyer.name}</code> 等</li>
-        <li>生成PDF时，系统会自动从项目、客户、律师等数据中获取实际值</li>
-        <li>数据为空时，变量会被替换为下划线，方便手工填写</li>
-      </ul>
+    <!-- 预览提示 -->
+    <div class="preview-hint">
+      <Alert
+        message="💡 格式说明：模板只存储内容和换行，格式在预览和打印时自动应用。系统将自动：标题居中大号显示、委托人/受托人信息段落化、委托事项段落缩进、签字落款居右对齐"
+        type="success"
+        show-icon
+      />
     </div>
-    </div><!-- 编辑模式结束 -->
   </div>
 </template>
 
 <style scoped>
-.poa-editor {
+.structured-editor {
   padding: 8px 0;
 }
 
-.toolbar {
-  padding: 12px 16px;
+.block-content {
+  padding: 12px 0;
+}
+
+.field-group {
   margin-bottom: 16px;
-  background: linear-gradient(to right, #f0f5ff, #e6f0ff);
-  border-radius: 8px;
 }
 
-/* 预览模式样式 */
-.preview-mode {
-  padding: 0;
+.field-group:last-child {
+  margin-bottom: 0;
 }
 
-.preview-paper {
-  max-height: 500px;
-  padding: 40px 60px;
-  overflow-y: auto;
-  background: #fff;
-  border: 1px solid #d9d9d9;
-  border-radius: 4px;
-  box-shadow: 0 2px 8px rgb(0 0 0 / 10%);
-}
-
-.preview-title {
-  margin-bottom: 30px;
-  font-family: SimSun, serif;
-  font-size: 22px;
-  font-weight: bold;
-  text-align: center;
-}
-
-.preview-section-title {
-  margin-top: 20px;
-  margin-bottom: 10px;
-  font-family: SimSun, serif;
-  font-size: 14px;
-  font-weight: bold;
-}
-
-.preview-content {
-  font-family: FangSong, STFangsong, serif;
-  font-size: 16px;
-  line-height: 2;
-}
-
-.preview-content p {
-  margin: 0;
-}
-
-.preview-divider {
-  margin: 20px 0;
-  font-size: 10px;
-  color: #999;
-  text-align: center;
-}
-
-.preview-remarks {
-  font-family: SimSun, serif;
-  font-size: 10.5px;
-  color: #666;
-}
-
-.variable-hints {
-  padding: 8px 12px;
+.field-group label {
+  display: block;
   margin-bottom: 8px;
-  background: linear-gradient(to right, #e6f4ff, #f0f7ff);
-  border-radius: 4px;
+  font-weight: 500;
+  color: #333;
 }
 
-.hint-label {
-  margin-right: 8px;
+.field-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.field-header label {
+  margin-bottom: 0;
+}
+
+.variable-hint {
+  margin-top: 8px;
   font-size: 12px;
   color: #666;
 }
 
-.variable-tag {
+.variables-panel {
+  padding: 12px;
+  margin-bottom: 12px;
+  background: #f6ffed;
+  border: 1px solid #b7eb8f;
+  border-radius: 6px;
+}
+
+.variable-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.variable-group:last-child {
+  margin-bottom: 0;
+}
+
+.group-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #52c41a;
+  min-width: 80px;
+}
+
+.var-tag {
   cursor: pointer;
   transition: all 0.2s;
 }
 
-.variable-tag:hover {
-  box-shadow: 0 2px 4px rgb(24 144 255 / 30%);
+.var-tag:hover {
   transform: scale(1.05);
 }
 
-.example-hint {
-  padding: 8px 12px;
-  margin-top: 8px;
-  font-size: 12px;
-  color: #666;
+.preview-hint {
+  margin-top: 16px;
+}
+
+:deep(.ant-collapse-header) {
+  font-weight: 500 !important;
+}
+
+:deep(.ant-collapse-content-box) {
+  padding: 12px 16px !important;
   background: #fafafa;
-  border-left: 3px solid #1890ff;
-  border-radius: 0 4px 4px 0;
-}
-
-.example-hint pre {
-  margin: 4px 0 0;
-  font-family: 'Microsoft YaHei', monospace;
-  font-size: 12px;
-  white-space: pre-wrap;
-}
-
-.usage-tips {
-  padding: 12px;
-  background: #fffbe6;
-  border: 1px solid #ffe58f;
-  border-radius: 6px;
-}
-
-.tip-title {
-  margin-bottom: 8px;
-  font-size: 13px;
-  font-weight: 500;
-  color: #d48806;
-}
-
-.tip-list {
-  padding-left: 20px;
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.8;
-  color: #666;
-}
-
-.tip-list code {
-  padding: 1px 4px;
-  font-family: monospace;
-  background: #f5f5f5;
-  border-radius: 2px;
 }
 </style>

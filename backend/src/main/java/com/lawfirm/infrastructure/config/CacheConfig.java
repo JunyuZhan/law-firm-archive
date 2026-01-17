@@ -32,7 +32,7 @@ import java.util.concurrent.TimeUnit;
  * - @Cacheable(cacheManager = "redisCacheManager", value = "dict", key = "#type")
  * - @Cacheable(cacheManager = "caffeineCacheManager", value = "localCache", key = "#id")
  * 
- * @author Kiro-1
+ * @author junyuzhan
  */
 @Slf4j
 @Configuration

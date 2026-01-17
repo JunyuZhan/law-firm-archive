@@ -16,6 +16,28 @@ import { Space, Tag, Tooltip } from 'ant-design-vue';
 
 import '@wangeditor/editor/dist/css/style.css';
 
+// HTML 实体解码函数
+function decodeHtmlEntities(text: string): string {
+  if (!text) return text;
+  const entities: Record<string, string> = {
+    '&quot;': '"',
+    '&amp;': '&',
+    '&lt;': '<',
+    '&gt;': '>',
+    '&apos;': "'",
+    '&#39;': "'",
+    '&#x27;': "'",
+    '&nbsp;': ' ',
+  };
+  let result = text;
+  for (const [entity, char] of Object.entries(entities)) {
+    result = result.split(entity).join(char);
+  }
+  result = result.replace(/&#(\d+);/g, (_, num) => String.fromCharCode(parseInt(num, 10)));
+  result = result.replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+  return result;
+}
+
 interface VariableItem {
   label: string;
   value: string;
@@ -157,11 +179,13 @@ function insertVariable(variable: VariableItem) {
 watch(
   () => props.modelValue,
   (newVal) => {
-    if (newVal !== htmlContent.value) {
-      htmlContent.value = newVal || '';
+    // 解码可能被 HTML 编码的内容
+    const decodedVal = decodeHtmlEntities(newVal || '');
+    if (decodedVal !== htmlContent.value) {
+      htmlContent.value = decodedVal;
       const editor = editorRef.value;
-      if (editor && newVal !== editor.getHtml()) {
-        editor.setHtml(newVal || '');
+      if (editor && decodedVal !== editor.getHtml()) {
+        editor.setHtml(decodedVal);
       }
     }
   },
