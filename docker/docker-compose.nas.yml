@@ -124,6 +124,8 @@ services:
       - ALLOW_PRIVATE_IP_ADDRESS=true
       - ALLOW_META_IP_ADDRESS=true
       - DS_EXAMPLE_ENABLED=false
+    ports:
+      - "8088:80"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:

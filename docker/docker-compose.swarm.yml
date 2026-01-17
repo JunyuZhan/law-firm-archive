@@ -215,6 +215,8 @@ services:
         limits:
           cpus: '2'
           memory: 2048M
+    ports:
+      - "8088:80"
     environment:
       - JWT_ENABLED=false
       - ALLOW_PRIVATE_IP_ADDRESS=true
