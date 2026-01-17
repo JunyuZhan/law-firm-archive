@@ -33,8 +33,6 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 /**
@@ -107,7 +105,7 @@ class DictAppServiceTest {
         DictType type = createTestDictType();
         DictItem item = createTestDictItem();
 
-        when(dictTypeRepository.getByIdOrThrow(1L, anyString())).thenReturn(type);
+        when(dictTypeRepository.getByIdOrThrow(eq(1L), anyString())).thenReturn(type);
         when(dictItemMapper.selectByTypeId(1L)).thenReturn(List.of(item));
 
         DictTypeDTO result = service.getDictTypeWithItems(1L);
@@ -179,11 +177,11 @@ class DictAppServiceTest {
         command.setDescription("描述");
 
         when(dictTypeMapper.selectByCode("new_dict")).thenReturn(null);
-        when(dictTypeRepository.save(any(DictType.class))).thenAnswer(invocation -> {
+        doAnswer(invocation -> {
             DictType type = invocation.getArgument(0);
             type.setId(1L);
-            return type;
-        });
+            return true;
+        }).when(dictTypeRepository).save(any(DictType.class));
 
         DictTypeDTO result = service.createDictType(command);
 
@@ -200,7 +198,7 @@ class DictAppServiceTest {
         CreateDictTypeCommand command = new CreateDictTypeCommand();
         command.setCode("updated_dict");
 
-        when(dictTypeRepository.getByIdOrThrow(1L, anyString())).thenReturn(systemType);
+        when(dictTypeRepository.getByIdOrThrow(eq(1L), anyString())).thenReturn(systemType);
 
         assertThatThrownBy(() -> service.updateDictType(1L, command))
             .isInstanceOf(BusinessException.class)
@@ -215,7 +213,7 @@ class DictAppServiceTest {
         CreateDictTypeCommand command = new CreateDictTypeCommand();
         command.setCode("updated_dict");
 
-        when(dictTypeRepository.getByIdOrThrow(1L, anyString())).thenReturn(type);
+        when(dictTypeRepository.getByIdOrThrow(eq(1L), anyString())).thenReturn(type);
         when(dictItemMapper.countByTypeId(1L)).thenReturn(5L);
 
         assertThatThrownBy(() -> service.updateDictType(1L, command))
@@ -232,7 +230,7 @@ class DictAppServiceTest {
         command.setName("更新后的名称");
         command.setDescription("新描述");
 
-        when(dictTypeRepository.getByIdOrThrow(1L, anyString())).thenReturn(type);
+        when(dictTypeRepository.getByIdOrThrow(eq(1L), anyString())).thenReturn(type);
 
         DictTypeDTO result = service.updateDictType(1L, command);
 
@@ -245,7 +243,7 @@ class DictAppServiceTest {
         DictType systemType = createTestDictType();
         systemType.setIsSystem(true);
 
-        when(dictTypeRepository.getByIdOrThrow(1L, anyString())).thenReturn(systemType);
+        when(dictTypeRepository.getByIdOrThrow(eq(1L), anyString())).thenReturn(systemType);
 
         assertThatThrownBy(() -> service.deleteDictType(1L))
             .isInstanceOf(BusinessException.class)
@@ -257,7 +255,7 @@ class DictAppServiceTest {
     void deleteDictType_shouldThrowExceptionWhenHasItems() {
         DictType type = createTestDictType();
 
-        when(dictTypeRepository.getByIdOrThrow(1L, anyString())).thenReturn(type);
+        when(dictTypeRepository.getByIdOrThrow(eq(1L), anyString())).thenReturn(type);
         when(dictItemMapper.countByTypeId(1L)).thenReturn(3L);
 
         assertThatThrownBy(() -> service.deleteDictType(1L))
@@ -278,12 +276,12 @@ class DictAppServiceTest {
         command.setSortOrder(10);
 
         DictType type = createTestDictType();
-        when(dictTypeRepository.getByIdOrThrow(1L, anyString())).thenReturn(type);
-        when(dictItemRepository.save(any(DictItem.class))).thenAnswer(invocation -> {
+        when(dictTypeRepository.getByIdOrThrow(any(), anyString())).thenReturn(type);
+        doAnswer(invocation -> {
             DictItem item = invocation.getArgument(0);
             item.setId(1L);
-            return item;
-        });
+            return true;
+        }).when(dictItemRepository).save(any(DictItem.class));
 
         DictItemDTO result = service.createDictItem(command);
 
@@ -305,7 +303,7 @@ class DictAppServiceTest {
         command.setLabel("更新后的标签");
         command.setSortOrder(20);
 
-        when(dictItemRepository.getByIdOrThrow(1L, anyString())).thenReturn(item);
+        when(dictItemRepository.getByIdOrThrow(eq(1L), anyString())).thenReturn(item);
         when(dictTypeRepository.getById(1L)).thenReturn(type);
 
         DictItemDTO result = service.updateDictItem(1L, command);
@@ -323,7 +321,7 @@ class DictAppServiceTest {
         DictItem item = createTestDictItem();
         DictType type = createTestDictType();
 
-        when(dictItemRepository.getByIdOrThrow(1L, anyString())).thenReturn(item);
+        when(dictItemRepository.getByIdOrThrow(eq(1L), anyString())).thenReturn(item);
         when(dictTypeRepository.getById(1L)).thenReturn(type);
 
         service.deleteDictItem(1L);
@@ -342,7 +340,8 @@ class DictAppServiceTest {
         normalUser.setRoles(Set.of("USER"));
 
         try (MockedStatic<SecurityUtils> mockedSecurity = mockStatic(SecurityUtils.class)) {
-            mockedSecurity.when(SecurityUtils::hasRole).thenReturn(false);
+            mockedSecurity.when(() -> SecurityUtils.hasRole("ADMIN")).thenReturn(false);
+            mockedSecurity.when(() -> SecurityUtils.hasRole("SYSTEM_MANAGER")).thenReturn(false);
 
             assertThatThrownBy(() -> service.toggleDictItemStatus(1L))
                 .isInstanceOf(BusinessException.class)
@@ -358,11 +357,11 @@ class DictAppServiceTest {
         DictType type = createTestDictType();
 
         setupAdminUser();
-        when(dictItemRepository.getByIdOrThrow(1L, anyString())).thenReturn(item);
+        when(dictItemRepository.getByIdOrThrow(eq(1L), anyString())).thenReturn(item);
         when(dictTypeRepository.getById(1L)).thenReturn(type);
 
         try (MockedStatic<SecurityUtils> mockedSecurity = mockStatic(SecurityUtils.class)) {
-            mockedSecurity.when(SecurityUtils::hasRole).thenReturn(true);
+            mockedSecurity.when(() -> SecurityUtils.hasRole("ADMIN")).thenReturn(true);
 
             service.toggleDictItemStatus(1L);
 
