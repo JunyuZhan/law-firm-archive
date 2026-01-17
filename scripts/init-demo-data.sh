@@ -37,6 +37,7 @@ NC='\033[0m'
 USE_DOCKER=true
 DATA_LEVEL="full"  # minimal 或 full
 RESET_DATA=false
+DEMO_DATA_CREATED=false  # 跟踪是否成功创建了demo数据
 
 # 数据库连接配置
 DB_HOST="localhost"
@@ -128,6 +129,7 @@ parse_args() {
 execute_sql_file() {
     local sql_file=$1
     local description=$2
+    local exit_code=0
     
     if [ ! -f "$sql_file" ]; then
         log_warn "文件不存在: $sql_file"
@@ -137,17 +139,21 @@ execute_sql_file() {
     log_info "执行: $description"
     
     if [ "$USE_DOCKER" = true ]; then
+        # 使用管道，捕获psql的退出码
         docker exec -i "$DOCKER_CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" < "$sql_file" 2>&1 | \
             grep -E "(NOTICE|ERROR|INSERT|UPDATE|DELETE)" || true
+        exit_code=${PIPESTATUS[0]}
     else
         PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$sql_file" 2>&1 | \
             grep -E "(NOTICE|ERROR|INSERT|UPDATE|DELETE)" || true
+        exit_code=${PIPESTATUS[0]}
     fi
     
-    if [ $? -eq 0 ]; then
+    if [ $exit_code -eq 0 ]; then
         log_success "$description 完成"
+        return 0
     else
-        log_error "$description 失败"
+        log_error "$description 失败 (退出码: $exit_code)"
         return 1
     fi
 }
@@ -254,11 +260,19 @@ generate_minimal_data() {
     
     # 使用整合版演示数据文件（v2.0整合后的文件名）
     if [ -f "$INIT_DB_DIR/30-demo-data-full.sql" ]; then
-        execute_sql_file "$INIT_DB_DIR/30-demo-data-full.sql" "完整示例数据（已整合）"
+        if execute_sql_file "$INIT_DB_DIR/30-demo-data-full.sql" "完整示例数据（已整合）"; then
+            DEMO_DATA_CREATED=true
+        fi
     elif [ -f "$INIT_DB_DIR/30-demo-data.sql" ]; then
-        execute_sql_file "$INIT_DB_DIR/30-demo-data.sql" "基础示例数据（客户、合同、项目、任务）"
+        if execute_sql_file "$INIT_DB_DIR/30-demo-data.sql" "基础示例数据（客户、合同、项目、任务）"; then
+            DEMO_DATA_CREATED=true
+        fi
     else
-        log_warn "未找到示例数据文件，跳过示例数据初始化"
+        log_error "未找到示例数据文件！"
+        log_info "请确保以下文件之一存在："
+        log_info "  - $INIT_DB_DIR/30-demo-data-full.sql"
+        log_info "  - $INIT_DB_DIR/30-demo-data.sql"
+        return 1
     fi
 }
 
@@ -270,16 +284,23 @@ generate_full_data() {
     
     # 优先使用整合版演示数据文件（v2.0整合后的文件名）
     if [ -f "$INIT_DB_DIR/30-demo-data-full.sql" ]; then
-        execute_sql_file "$INIT_DB_DIR/30-demo-data-full.sql" "完整示例数据（已整合）"
+        if execute_sql_file "$INIT_DB_DIR/30-demo-data-full.sql" "完整示例数据（已整合）"; then
+            DEMO_DATA_CREATED=true
+        fi
         return
     fi
     
     # 回退到旧版分散的演示数据文件
     if [ -f "$INIT_DB_DIR/30-demo-data.sql" ]; then
-        execute_sql_file "$INIT_DB_DIR/30-demo-data.sql" "基础示例数据（客户、合同、项目、任务）"
+        if execute_sql_file "$INIT_DB_DIR/30-demo-data.sql" "基础示例数据（客户、合同、项目、任务）"; then
+            DEMO_DATA_CREATED=true
+        fi
     else
-        log_warn "未找到示例数据文件，跳过示例数据初始化"
-        return
+        log_error "未找到示例数据文件！"
+        log_info "请确保以下文件之一存在："
+        log_info "  - $INIT_DB_DIR/30-demo-data-full.sql"
+        log_info "  - $INIT_DB_DIR/30-demo-data.sql"
+        return 1
     fi
     
     # 知识库示例数据
@@ -318,41 +339,53 @@ generate_full_data() {
 # =====================================================
 show_completion() {
     echo ""
-    echo -e "${GREEN}╔══════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${GREEN}║${NC}                                                              ${GREEN}║${NC}"
-    echo -e "${GREEN}║${NC}    ${BOLD}✅ 示例数据初始化完成！${NC}                                  ${GREEN}║${NC}"
-    echo -e "${GREEN}║${NC}                                                              ${GREEN}║${NC}"
-    echo -e "${GREEN}╚══════════════════════════════════════════════════════════════╝${NC}"
-    echo ""
     
-    if [ "$DATA_LEVEL" = "minimal" ]; then
-        echo -e "${BOLD}已创建的最小示例数据：${NC}"
-        echo "  📋 客户: 7个（5企业 + 2个人）"
-        echo "  📄 合同: 6份"
-        echo "  📁 项目: 6个"
-        echo "  ✅ 任务: 13个"
-        echo "  📦 归档: 3个"
+    if [ "$DEMO_DATA_CREATED" = true ]; then
+        echo -e "${GREEN}╔══════════════════════════════════════════════════════════════╗${NC}"
+        echo -e "${GREEN}║${NC}                                                              ${GREEN}║${NC}"
+        echo -e "${GREEN}║${NC}    ${BOLD}✅ 示例数据初始化完成！${NC}                                  ${GREEN}║${NC}"
+        echo -e "${GREEN}║${NC}                                                              ${GREEN}║${NC}"
+        echo -e "${GREEN}╚══════════════════════════════════════════════════════════════╝${NC}"
+        echo ""
+        
+        if [ "$DATA_LEVEL" = "minimal" ]; then
+            echo -e "${BOLD}已创建的最小示例数据：${NC}"
+            echo "  📋 客户: 7个（5企业 + 2个人）"
+            echo "  📄 合同: 6份"
+            echo "  📁 项目: 6个"
+            echo "  ✅ 任务: 13个"
+            echo "  📦 归档: 3个"
+        else
+            echo -e "${BOLD}已创建的完整示例数据：${NC}"
+            echo "  📋 客户: 10+个"
+            echo "  📄 合同: 9+份"
+            echo "  📁 项目: 6+个"
+            echo "  ✅ 任务: 13+个"
+            echo "  📦 归档: 3个"
+            echo "  📚 知识库文章: 10+篇"
+            echo "  📅 日程事件: 15+条"
+            echo "  ⏰ 考勤记录: 若干"
+            echo "  🏢 会议室: 3个"
+            echo "  🔏 印章: 3个"
+            echo "  💰 收费/付款记录: 若干"
+        fi
+        
+        echo ""
+        echo -e "${BOLD}默认账号：${NC}"
+        echo "  👤 admin / director / lawyer1 / leader / finance / staff / trainee"
+        echo "  🔐 密码统一为: admin123"
+        echo ""
+        echo -e "${DIM}提示: 使用 --reset 选项可以清理并重新生成示例数据${NC}"
     else
-        echo -e "${BOLD}已创建的完整示例数据：${NC}"
-        echo "  📋 客户: 10+个"
-        echo "  📄 合同: 9+份"
-        echo "  📁 项目: 6+个"
-        echo "  ✅ 任务: 13+个"
-        echo "  📦 归档: 3个"
-        echo "  📚 知识库文章: 10+篇"
-        echo "  📅 日程事件: 15+条"
-        echo "  ⏰ 考勤记录: 若干"
-        echo "  🏢 会议室: 3个"
-        echo "  🔏 印章: 3个"
-        echo "  💰 收费/付款记录: 若干"
+        echo -e "${YELLOW}╔══════════════════════════════════════════════════════════════╗${NC}"
+        echo -e "${YELLOW}║${NC}                                                              ${YELLOW}║${NC}"
+        echo -e "${YELLOW}║${NC}    ${BOLD}⚠️  未创建示例数据${NC}                                        ${YELLOW}║${NC}"
+        echo -e "${YELLOW}║${NC}                                                              ${YELLOW}║${NC}"
+        echo -e "${YELLOW}╚══════════════════════════════════════════════════════════════╝${NC}"
+        echo ""
+        echo -e "${DIM}系统基础数据已在初始化脚本中配置，可以正常使用。${NC}"
+        echo -e "${DIM}如需示例数据，请确保 30-demo-data-full.sql 文件存在。${NC}"
     fi
-    
-    echo ""
-    echo -e "${BOLD}默认账号：${NC}"
-    echo "  👤 admin / director / lawyer1 / leader / finance / staff / trainee"
-    echo "  🔐 密码统一为: admin123"
-    echo ""
-    echo -e "${DIM}提示: 使用 --reset 选项可以清理并重新生成示例数据${NC}"
     echo ""
 }
 
@@ -377,12 +410,14 @@ main() {
         reset_demo_data
     fi
     
-    # 生成数据
+    # 生成数据（允许失败，不影响脚本继续）
+    set +e
     if [ "$DATA_LEVEL" = "minimal" ]; then
         generate_minimal_data
     else
         generate_full_data
     fi
+    set -e
     
     # 显示完成信息
     show_completion
