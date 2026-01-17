@@ -262,7 +262,9 @@ async function handleGenerateBills() {
   });
 }
 
-async function handleMarkDeducted(record: AiMonthlyBillDTO | Record<string, any>) {
+async function handleMarkDeducted(
+  record: AiMonthlyBillDTO | Record<string, any>,
+) {
   Modal.confirm({
     title: '标记已扣减',
     content: `确认标记 ${record.userName || ''} 的账单已扣减吗？`,

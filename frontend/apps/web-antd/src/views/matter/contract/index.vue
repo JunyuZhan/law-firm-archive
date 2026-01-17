@@ -1678,7 +1678,10 @@ async function executePrint() {
               data.description || data.opposingParty || '',
             )
             .replace(/\$\{matterName\}/g, data.name || '')
-            .replace(/\$\{paymentTerms\}/g, (data as any).paymentTerms || '一次性支付')
+            .replace(
+              /\$\{paymentTerms\}/g,
+              (data as any).paymentTerms || '一次性支付',
+            )
             .replace(/\$\{expiryDate\}/g, expiryDateStr)
             .replace(/\$\{clientAddress\}/g, data.clientAddress || '')
             .replace(/\$\{clientPhone\}/g, data.clientPhone || '')

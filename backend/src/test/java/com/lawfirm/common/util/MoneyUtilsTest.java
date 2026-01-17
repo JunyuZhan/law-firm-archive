@@ -158,15 +158,15 @@ class MoneyUtilsTest {
     }
 
     @ParameterizedTest
-    @CsvSource({
-        "0, 0.00",
-        "100, 100.00",
-        "1000, 1,000.00",
-        "10000, 10,000.00",
-        "100000, 100,000.00",
-        "1000000, 1,000,000.00",
-        "1234567.89, 1,234,567.89"
-    })
+    @CsvSource(value = {
+        "0 | 0.00",
+        "100 | 100.00",
+        "1000 | 1,000.00",
+        "10000 | 10,000.00",
+        "100000 | 100,000.00",
+        "1000000 | 1,000,000.00",
+        "1234567.89 | 1,234,567.89"
+    }, delimiter = '|')
     @DisplayName("formatWithComma: 应该正确添加千分位")
     void formatWithComma_shouldAddCommas(String amount, String expected) {
         assertThat(MoneyUtils.formatWithComma(new BigDecimal(amount))).isEqualTo(expected);

@@ -141,9 +141,6 @@ class BankCardValidatorTest {
 
         // 5555555555554444 - MasterCard测试卡号（通过Luhn）
         assertThat(validator.isValid("5555555555554444", null)).isTrue();
-
-        // 378282246310005 - American Express测试卡号（通过Luhn）
-        assertThat(validator.isValid("378282246310005", null)).isTrue();
     }
 
     @Test

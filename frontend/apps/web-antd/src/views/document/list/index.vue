@@ -1570,11 +1570,11 @@ function toggleViewMode(mode: 'grid' | 'list') {
 function handleDocHover(doc: DocumentDTO, event: MouseEvent) {
   // 只对图片和 PDF 类型显示预览
   if (!isPreviewableFile(doc.fileType)) return;
-  
+
   if (hoverTimeout) {
     clearTimeout(hoverTimeout);
   }
-  
+
   hoverTimeout = setTimeout(() => {
     const rect = (event.target as HTMLElement).getBoundingClientRect();
     hoverPreview.value = {
@@ -1599,8 +1599,8 @@ function handleDocHoverLeave() {
 function isPreviewableFile(fileType?: string): boolean {
   if (!fileType) return false;
   const type = fileType.toLowerCase();
-  return (
-    ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg', 'pdf'].includes(type)
+  return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg', 'pdf'].includes(
+    type,
   );
 }
 
@@ -2081,206 +2081,214 @@ onMounted(() => {
                 @end="handleDragEnd"
                 class="doc-list"
               >
-              <template #item="{ element: record }">
-                <div
-                  class="doc-item"
-                  :class="{ 'doc-item-selected': isDocSelected(record.id) }"
-                >
-                  <!-- 复选框 -->
-                  <div class="col-checkbox" style="width: 32px">
-                    <input
-                      type="checkbox"
-                      :checked="isDocSelected(record.id)"
-                      @change="toggleDocSelection(record.id)"
-                      @click.stop
-                      style="width: 16px; height: 16px; cursor: pointer"
-                    />
-                  </div>
-
-                  <!-- 拖拽手柄 -->
-                  <div class="col-drag drag-handle">
-                    <GripVertical
-                      :size="16"
-                      style="color: #bbb; cursor: grab"
-                    />
-                  </div>
-
-                  <!-- 文档名称 -->
+                <template #item="{ element: record }">
                   <div
-                    class="col-name"
-                    style="
-                      display: flex;
-                      flex: 1;
-                      gap: 10px;
-                      align-items: center;
-                      min-width: 0;
-                    "
+                    class="doc-item"
+                    :class="{ 'doc-item-selected': isDocSelected(record.id) }"
                   >
-                    <!-- 缩略图或文件类型图标 -->
-                    <div class="doc-thumbnail" style="flex-shrink: 0">
-                      <img
-                        v-if="record.thumbnailUrl"
-                        :src="record.thumbnailUrl"
-                        :alt="record.fileName"
-                        class="thumbnail-img"
-                        @error="
-                          (e: Event) =>
-                            ((e.target as HTMLImageElement).style.display =
-                              'none')
-                        "
+                    <!-- 复选框 -->
+                    <div class="col-checkbox" style="width: 32px">
+                      <input
+                        type="checkbox"
+                        :checked="isDocSelected(record.id)"
+                        @change="toggleDocSelection(record.id)"
+                        @click.stop
+                        style="width: 16px; height: 16px; cursor: pointer"
                       />
-                      <span v-else style="font-size: 26px; line-height: 1">{{
-                        getFileTypeConfig(record.fileType).icon
-                      }}</span>
                     </div>
+
+                    <!-- 拖拽手柄 -->
+                    <div class="col-drag drag-handle">
+                      <GripVertical
+                        :size="16"
+                        style="color: #bbb; cursor: grab"
+                      />
+                    </div>
+
+                    <!-- 文档名称 -->
                     <div
+                      class="col-name"
                       style="
                         display: flex;
-                        flex-direction: column;
-                        gap: 2px;
+                        flex: 1;
+                        gap: 10px;
+                        align-items: center;
                         min-width: 0;
-                        overflow: hidden;
                       "
                     >
-                      <a
-                        @click="handlePreview(record)"
-                        class="doc-name-link"
-                        :title="record.title || record.fileName || record.name"
+                      <!-- 缩略图或文件类型图标 -->
+                      <div class="doc-thumbnail" style="flex-shrink: 0">
+                        <img
+                          v-if="record.thumbnailUrl"
+                          :src="record.thumbnailUrl"
+                          :alt="record.fileName"
+                          class="thumbnail-img"
+                          @error="
+                            (e: Event) =>
+                              ((e.target as HTMLImageElement).style.display =
+                                'none')
+                          "
+                        />
+                        <span v-else style="font-size: 26px; line-height: 1">{{
+                          getFileTypeConfig(record.fileType).icon
+                        }}</span>
+                      </div>
+                      <div
+                        style="
+                          display: flex;
+                          flex-direction: column;
+                          gap: 2px;
+                          min-width: 0;
+                          overflow: hidden;
+                        "
                       >
-                        {{ record.title || record.fileName || record.name }}
-                      </a>
-                      <span class="doc-desc" v-if="record.description">{{
-                        record.description
-                      }}</span>
+                        <a
+                          @click="handlePreview(record)"
+                          class="doc-name-link"
+                          :title="
+                            record.title || record.fileName || record.name
+                          "
+                        >
+                          {{ record.title || record.fileName || record.name }}
+                        </a>
+                        <span class="doc-desc" v-if="record.description">{{
+                          record.description
+                        }}</span>
+                      </div>
+                    </div>
+
+                    <!-- 文件类型 -->
+                    <div class="col-type">
+                      <Tag
+                        :color="getFileTypeConfig(record.fileType).color"
+                        style="padding: 1px 6px; margin: 0; font-size: 11px"
+                      >
+                        {{ getFileTypeConfig(record.fileType).label }}
+                      </Tag>
+                    </div>
+
+                    <!-- 文档来源 -->
+                    <div class="col-source">
+                      <Tag
+                        :color="getSourceTypeConfig(record.sourceType).color"
+                        style="padding: 1px 6px; margin: 0; font-size: 11px"
+                      >
+                        {{ getSourceTypeConfig(record.sourceType).label }}
+                      </Tag>
+                    </div>
+
+                    <!-- 文件大小 -->
+                    <div class="col-size">
+                      {{ formatFileSize(record.fileSize) }}
+                    </div>
+
+                    <!-- 修改时间 -->
+                    <div class="col-time">
+                      {{ formatDateTime(record.updatedAt) }}
+                    </div>
+
+                    <!-- 操作按钮 -->
+                    <div class="col-action">
+                      <Space :size="2">
+                        <Tooltip title="预览">
+                          <Button
+                            type="text"
+                            size="small"
+                            @click="handlePreview(record)"
+                            class="action-btn"
+                          >
+                            <Eye :size="15" />
+                          </Button>
+                        </Tooltip>
+                        <Tooltip
+                          title="在线编辑"
+                          v-if="isEditableFile(record.fileType)"
+                        >
+                          <Button
+                            type="text"
+                            size="small"
+                            @click="handleOnlineEdit(record)"
+                            class="action-btn"
+                          >
+                            <Edit :size="15" />
+                          </Button>
+                        </Tooltip>
+                        <Tooltip title="下载">
+                          <Button
+                            type="text"
+                            size="small"
+                            @click="handleDownload(record)"
+                            class="action-btn"
+                          >
+                            <SvgDownloadIcon :size="15" />
+                          </Button>
+                        </Tooltip>
+                        <Dropdown placement="bottomRight">
+                          <template #overlay>
+                            <Menu class="action-menu">
+                              <MenuItem
+                                key="rename"
+                                @click="handleEdit(record)"
+                              >
+                                <Edit :size="14" style="margin-right: 8px" />
+                                重命名
+                              </MenuItem>
+                              <MenuItem
+                                key="share"
+                                @click="handleShare(record)"
+                              >
+                                <span style="margin-right: 8px">🔗</span>
+                                分享
+                              </MenuItem>
+                              <MenuItem
+                                key="versions"
+                                @click="handleViewVersions(record)"
+                              >
+                                <span style="margin-right: 8px">📋</span>
+                                版本历史
+                              </MenuItem>
+                              <MenuItem
+                                key="move"
+                                @click="handleMoveDocument(record)"
+                              >
+                                <span style="margin-right: 8px">📁</span>
+                                移动
+                              </MenuItem>
+                              <MenuItem
+                                v-if="record.sourceType === 'SYSTEM_GENERATED'"
+                                key="upload-signed"
+                                @click="handleUploadSignedVersion(record)"
+                              >
+                                <span style="margin-right: 8px">✍️</span>
+                                上传签字版本
+                              </MenuItem>
+                              <MenuItem
+                                v-if="isImageFile(record.fileType)"
+                                key="ocr"
+                                @click="handleOcrExtract(record)"
+                              >
+                                <span style="margin-right: 8px">🔍</span>
+                                提取文字(OCR)
+                              </MenuItem>
+                              <Divider style="margin: 6px 0" />
+                              <MenuItem
+                                key="delete"
+                                @click="handleDelete(record)"
+                                style="color: #ff4d4f"
+                              >
+                                <Trash :size="14" style="margin-right: 8px" />
+                                删除
+                              </MenuItem>
+                            </Menu>
+                          </template>
+                          <Button type="text" size="small" class="action-btn">
+                            <Ellipsis :size="15" />
+                          </Button>
+                        </Dropdown>
+                      </Space>
                     </div>
                   </div>
-
-                  <!-- 文件类型 -->
-                  <div class="col-type">
-                    <Tag
-                      :color="getFileTypeConfig(record.fileType).color"
-                      style="padding: 1px 6px; margin: 0; font-size: 11px"
-                    >
-                      {{ getFileTypeConfig(record.fileType).label }}
-                    </Tag>
-                  </div>
-
-                  <!-- 文档来源 -->
-                  <div class="col-source">
-                    <Tag
-                      :color="getSourceTypeConfig(record.sourceType).color"
-                      style="padding: 1px 6px; margin: 0; font-size: 11px"
-                    >
-                      {{ getSourceTypeConfig(record.sourceType).label }}
-                    </Tag>
-                  </div>
-
-                  <!-- 文件大小 -->
-                  <div class="col-size">
-                    {{ formatFileSize(record.fileSize) }}
-                  </div>
-
-                  <!-- 修改时间 -->
-                  <div class="col-time">
-                    {{ formatDateTime(record.updatedAt) }}
-                  </div>
-
-                  <!-- 操作按钮 -->
-                  <div class="col-action">
-                    <Space :size="2">
-                      <Tooltip title="预览">
-                        <Button
-                          type="text"
-                          size="small"
-                          @click="handlePreview(record)"
-                          class="action-btn"
-                        >
-                          <Eye :size="15" />
-                        </Button>
-                      </Tooltip>
-                      <Tooltip
-                        title="在线编辑"
-                        v-if="isEditableFile(record.fileType)"
-                      >
-                        <Button
-                          type="text"
-                          size="small"
-                          @click="handleOnlineEdit(record)"
-                          class="action-btn"
-                        >
-                          <Edit :size="15" />
-                        </Button>
-                      </Tooltip>
-                      <Tooltip title="下载">
-                        <Button
-                          type="text"
-                          size="small"
-                          @click="handleDownload(record)"
-                          class="action-btn"
-                        >
-                          <SvgDownloadIcon :size="15" />
-                        </Button>
-                      </Tooltip>
-                      <Dropdown placement="bottomRight">
-                        <template #overlay>
-                          <Menu class="action-menu">
-                            <MenuItem key="rename" @click="handleEdit(record)">
-                              <Edit :size="14" style="margin-right: 8px" />
-                              重命名
-                            </MenuItem>
-                            <MenuItem key="share" @click="handleShare(record)">
-                              <span style="margin-right: 8px">🔗</span>
-                              分享
-                            </MenuItem>
-                            <MenuItem
-                              key="versions"
-                              @click="handleViewVersions(record)"
-                            >
-                              <span style="margin-right: 8px">📋</span>
-                              版本历史
-                            </MenuItem>
-                            <MenuItem
-                              key="move"
-                              @click="handleMoveDocument(record)"
-                            >
-                              <span style="margin-right: 8px">📁</span>
-                              移动
-                            </MenuItem>
-                            <MenuItem
-                              v-if="record.sourceType === 'SYSTEM_GENERATED'"
-                              key="upload-signed"
-                              @click="handleUploadSignedVersion(record)"
-                            >
-                              <span style="margin-right: 8px">✍️</span>
-                              上传签字版本
-                            </MenuItem>
-                            <MenuItem
-                              v-if="isImageFile(record.fileType)"
-                              key="ocr"
-                              @click="handleOcrExtract(record)"
-                            >
-                              <span style="margin-right: 8px">🔍</span>
-                              提取文字(OCR)
-                            </MenuItem>
-                            <Divider style="margin: 6px 0" />
-                            <MenuItem
-                              key="delete"
-                              @click="handleDelete(record)"
-                              style="color: #ff4d4f"
-                            >
-                              <Trash :size="14" style="margin-right: 8px" />
-                              删除
-                            </MenuItem>
-                          </Menu>
-                        </template>
-                        <Button type="text" size="small" class="action-btn">
-                          <Ellipsis :size="15" />
-                        </Button>
-                      </Dropdown>
-                    </Space>
-                  </div>
-                </div>
-              </template>
+                </template>
               </draggable>
             </template>
 
@@ -2293,12 +2301,17 @@ onMounted(() => {
                     type="checkbox"
                     :checked="isAllSelected()"
                     @change="toggleSelectAll"
-                    style="width: 16px; height: 16px; cursor: pointer; margin-right: 8px"
+                    style="
+                      width: 16px;
+                      height: 16px;
+                      cursor: pointer;
+                      margin-right: 8px;
+                    "
                   />
                   全选
                 </label>
               </div>
-              
+
               <!-- 文档网格 -->
               <div class="grid-container">
                 <div
@@ -2324,11 +2337,18 @@ onMounted(() => {
                   <div class="grid-thumbnail">
                     <!-- 图片文件 - 显示实际图片 -->
                     <img
-                      v-if="isImageFile(doc.fileType) && (doc.thumbnailUrl || doc.filePath)"
+                      v-if="
+                        isImageFile(doc.fileType) &&
+                        (doc.thumbnailUrl || doc.filePath)
+                      "
                       :src="doc.thumbnailUrl || doc.filePath"
                       :alt="doc.fileName"
                       class="grid-thumbnail-img"
-                      @error="(e: Event) => ((e.target as HTMLImageElement).style.display = 'none')"
+                      @error="
+                        (e: Event) =>
+                          ((e.target as HTMLImageElement).style.display =
+                            'none')
+                      "
                     />
                     <!-- PDF 文件 - 显示缩略图或 PDF 图标 -->
                     <template v-else-if="doc.fileType?.toLowerCase() === 'pdf'">
@@ -2337,7 +2357,11 @@ onMounted(() => {
                         :src="doc.thumbnailUrl"
                         :alt="doc.fileName"
                         class="grid-thumbnail-img"
-                        @error="(e: Event) => ((e.target as HTMLImageElement).style.display = 'none')"
+                        @error="
+                          (e: Event) =>
+                            ((e.target as HTMLImageElement).style.display =
+                              'none')
+                        "
                       />
                       <div v-else class="grid-thumbnail-icon pdf-icon">
                         <span class="file-icon">📄</span>
@@ -2346,13 +2370,20 @@ onMounted(() => {
                     </template>
                     <!-- 其他文件 - 显示文件类型图标 -->
                     <div v-else class="grid-thumbnail-icon">
-                      <span class="file-icon">{{ getFileTypeConfig(doc.fileType).icon }}</span>
-                      <span class="file-ext">{{ doc.fileType?.toUpperCase() || '?' }}</span>
+                      <span class="file-icon">{{
+                        getFileTypeConfig(doc.fileType).icon
+                      }}</span>
+                      <span class="file-ext">{{
+                        doc.fileType?.toUpperCase() || '?'
+                      }}</span>
                     </div>
                   </div>
 
                   <!-- 文件名 -->
-                  <div class="grid-item-name" :title="doc.title || doc.fileName || doc.name">
+                  <div
+                    class="grid-item-name"
+                    :title="doc.title || doc.fileName || doc.name"
+                  >
                     {{ doc.title || doc.fileName || doc.name }}
                   </div>
 
@@ -2365,7 +2396,9 @@ onMounted(() => {
                     >
                       {{ getFileTypeConfig(doc.fileType).label }}
                     </Tag>
-                    <span class="grid-item-size">{{ formatFileSize(doc.fileSize) }}</span>
+                    <span class="grid-item-size">{{
+                      formatFileSize(doc.fileSize)
+                    }}</span>
                   </div>
 
                   <!-- 快捷操作按钮 -->
@@ -2541,16 +2574,22 @@ onMounted(() => {
       >
         <div class="image-preview-toolbar">
           <Space>
-            <Button size="small" @click="imageZoom -= 0.2" :disabled="imageZoom <= 0.2">
+            <Button
+              size="small"
+              @click="imageZoom -= 0.2"
+              :disabled="imageZoom <= 0.2"
+            >
               <span style="font-size: 16px">−</span>
             </Button>
             <span class="zoom-label">{{ Math.round(imageZoom * 100) }}%</span>
-            <Button size="small" @click="imageZoom += 0.2" :disabled="imageZoom >= 3">
+            <Button
+              size="small"
+              @click="imageZoom += 0.2"
+              :disabled="imageZoom >= 3"
+            >
               <span style="font-size: 16px">+</span>
             </Button>
-            <Button size="small" @click="imageZoom = 1">
-              重置
-            </Button>
+            <Button size="small" @click="imageZoom = 1"> 重置 </Button>
             <Button size="small" @click="handleDownload(currentDocument!)">
               <SvgDownloadIcon :size="14" />
               下载
@@ -3309,22 +3348,25 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   overflow: auto;
-  background: linear-gradient(
-    45deg,
-    #f0f0f0 25%,
-    transparent 25%,
-    transparent 75%,
-    #f0f0f0 75%
-  ),
-  linear-gradient(
-    45deg,
-    #f0f0f0 25%,
-    transparent 25%,
-    transparent 75%,
-    #f0f0f0 75%
-  );
+  background:
+    linear-gradient(
+      45deg,
+      #f0f0f0 25%,
+      transparent 25%,
+      transparent 75%,
+      #f0f0f0 75%
+    ),
+    linear-gradient(
+      45deg,
+      #f0f0f0 25%,
+      transparent 25%,
+      transparent 75%,
+      #f0f0f0 75%
+    );
   background-color: #fafafa;
-  background-position: 0 0, 10px 10px;
+  background-position:
+    0 0,
+    10px 10px;
   background-size: 20px 20px;
   border-radius: 0 0 8px 8px;
 }

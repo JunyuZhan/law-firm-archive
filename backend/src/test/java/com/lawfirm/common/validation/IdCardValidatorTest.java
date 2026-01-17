@@ -80,10 +80,17 @@ class IdCardValidatorTest {
         IdCard annotation = createAnnotation(true, true);
         validator.initialize(annotation);
 
-        // 这些是校验位正确的真实身份证号示例（测试用）
-        assertThat(validator.isValid("110101199001011234", null)).isTrue();  // 校验位4
-        assertThat(validator.isValid("320621198506150016", null)).isTrue();  // 校验位6
-        assertThat(validator.isValid("440308199901010014", null)).isTrue();  // 校验位4
+        // 110101199001011234 计算校验位：
+        // 1*7 + 1*9 + 0*10 + 1*5 + 0*8 + 1*4 + 1*2 + 9*1 + 9*6 + 0*3 + 0*7 + 1*9 + 0*10 + 1*5 + 1*8 + 2*4 + 3*2
+        // = 7 + 9 + 0 + 5 + 0 + 4 + 2 + 9 + 54 + 0 + 0 + 9 + 0 + 5 + 8 + 8 + 6 = 126
+        // 126 % 11 = 5, CHECK_CODES[5] = '7'
+        // 所以正确的身份证号应该是 110101199001011237
+        assertThat(validator.isValid("110101199001011237", null)).isTrue();
+
+        // 11010519491231002X - 这是一个真实的测试身份证号（校验位X）
+        // 验证：权重求和后 mod 11 = 2, CHECK_CODES[2] = 'X'
+        assertThat(validator.isValid("11010519491231002X", null)).isTrue();
+        assertThat(validator.isValid("11010519491231002x", null)).isTrue();
     }
 
     @Test
@@ -92,9 +99,12 @@ class IdCardValidatorTest {
         IdCard annotation = createAnnotation(true, true);
         validator.initialize(annotation);
 
-        // 修改最后一位使校验位错误
-        assertThat(validator.isValid("110101199001011230", null)).isFalse();  // 应该是4
-        assertThat(validator.isValid("110101199001011235", null)).isFalse();  // 应该是4
+        // 正确的应该是 110101199001011237
+        assertThat(validator.isValid("110101199001011230", null)).isFalse();  // 校验位错误
+        assertThat(validator.isValid("110101199001011235", null)).isFalse();  // 校验位错误
+
+        // 正确的应该是 11010519491231002X
+        assertThat(validator.isValid("110105194912310021", null)).isFalse();  // 校验位错误
     }
 
     @Test
@@ -103,7 +113,6 @@ class IdCardValidatorTest {
         IdCard annotation = createAnnotation(true, true);
         validator.initialize(annotation);
 
-        // 440308199901010014 的校验位是4，测试X校验位
         // 11010519491231002X 的校验位是X
         assertThat(validator.isValid("11010519491231002X", null)).isTrue();
         assertThat(validator.isValid("11010519491231002x", null)).isTrue();

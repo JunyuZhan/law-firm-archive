@@ -102,11 +102,17 @@ function stopTimerUpdate() {
 async function loadMatters(keyword?: string) {
   matterLoading.value = true;
   try {
-    const res = await getMatterList({ pageNum: 1, pageSize: 50, name: keyword });
-    matterOptions.value = (res.list || []).map((m: { matterNo: string; name: string; id: number }) => ({
-      label: `${m.matterNo} - ${m.name}`,
-      value: m.id,
-    }));
+    const res = await getMatterList({
+      pageNum: 1,
+      pageSize: 50,
+      name: keyword,
+    });
+    matterOptions.value = (res.list || []).map(
+      (m: { matterNo: string; name: string; id: number }) => ({
+        label: `${m.matterNo} - ${m.name}`,
+        value: m.id,
+      }),
+    );
   } catch (error: any) {
     console.error('加载项目列表失败', error);
   } finally {
@@ -216,7 +222,6 @@ async function handleStop() {
 function toggleMinimize() {
   isMinimized.value = !isMinimized.value;
 }
-
 
 // 监听状态变化
 watch(isRunning, (running) => {

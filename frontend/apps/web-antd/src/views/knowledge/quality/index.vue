@@ -204,7 +204,9 @@ function handleCreateStandard() {
 }
 
 // 打开编辑标准弹窗
-function handleEditStandard(record: QualityCheckStandardDTO | Record<string, any>) {
+function handleEditStandard(
+  record: QualityCheckStandardDTO | Record<string, any>,
+) {
   isEditStandard.value = true;
   Object.assign(standardForm, {
     id: record.id,
@@ -257,7 +259,9 @@ async function handleStandardSubmit() {
 }
 
 // 删除标准
-async function handleDeleteStandard(record: QualityCheckStandardDTO | Record<string, any>) {
+async function handleDeleteStandard(
+  record: QualityCheckStandardDTO | Record<string, any>,
+) {
   try {
     await deleteStandard(record.id);
     message.success('删除成功');
@@ -282,7 +286,9 @@ async function handleViewIssue(record: QualityIssueDTO | Record<string, any>) {
 }
 
 // 处理问题
-async function handleResolveIssue(record: QualityIssueDTO | Record<string, any>) {
+async function handleResolveIssue(
+  record: QualityIssueDTO | Record<string, any>,
+) {
   Modal.confirm({
     title: '确认解决问题',
     content: '确定将此问题标记为已解决？',
@@ -313,7 +319,9 @@ async function handleViewWarning(record: RiskWarningDTO | Record<string, any>) {
 }
 
 // 确认预警
-async function handleAcknowledgeWarning(record: RiskWarningDTO | Record<string, any>) {
+async function handleAcknowledgeWarning(
+  record: RiskWarningDTO | Record<string, any>,
+) {
   try {
     await acknowledgeWarning(record.id);
     message.success('确认成功');
@@ -324,7 +332,9 @@ async function handleAcknowledgeWarning(record: RiskWarningDTO | Record<string, 
 }
 
 // 解决预警
-async function handleResolveWarning(record: RiskWarningDTO | Record<string, any>) {
+async function handleResolveWarning(
+  record: RiskWarningDTO | Record<string, any>,
+) {
   try {
     await resolveWarning(record.id);
     message.success('解决成功');
@@ -335,7 +345,9 @@ async function handleResolveWarning(record: RiskWarningDTO | Record<string, any>
 }
 
 // 关闭预警
-async function handleCloseWarning(record: RiskWarningDTO | Record<string, any>) {
+async function handleCloseWarning(
+  record: RiskWarningDTO | Record<string, any>,
+) {
   try {
     await closeWarning(record.id);
     message.success('关闭成功');

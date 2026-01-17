@@ -115,7 +115,7 @@ class FieldChangeUtilsTest {
 
         List<FieldChangeUtils.FieldChange> changes = FieldChangeUtils.compare(oldObj, newObj);
 
-        assertThat(changes).hasSize(2);
+        assertThat(changes).hasSize(3);
         assertThat(changes).anyMatch(c ->
             c.getFieldName().equals("name") &&
             c.getOldValue().equals("张三") &&
@@ -125,6 +125,11 @@ class FieldChangeUtilsTest {
             c.getFieldName().equals("age") &&
             c.getOldValue().equals("30") &&
             c.getNewValue().equals("35")
+        );
+        assertThat(changes).anyMatch(c ->
+            c.getFieldName().equals("address") &&
+            c.getOldValue().equals("北京") &&
+            c.getNewValue().equals("上海")
         );
     }
 
