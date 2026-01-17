@@ -21,11 +21,18 @@ RUN apt-get update -qq && \
 RUN mkdir -p /usr/share/fonts/truetype/custom
 
 # 复制自定义字体文件（仿宋、楷体、小标宋等法律文档常用字体）
-COPY fonts/*.TTF /usr/share/fonts/truetype/custom/ 2>/dev/null || true
-COPY fonts/*.ttf /usr/share/fonts/truetype/custom/ 2>/dev/null || true
+# 注意：fonts/ 目录下需要有字体文件，否则跳过
+COPY fonts/ /tmp/custom-fonts/
 
-# 设置字体文件权限
-RUN chmod 644 /usr/share/fonts/truetype/custom/*.{TTF,ttf} 2>/dev/null || true && \
+# 移动字体文件并设置权限
+RUN if ls /tmp/custom-fonts/*.TTF 1>/dev/null 2>&1; then \
+        cp /tmp/custom-fonts/*.TTF /usr/share/fonts/truetype/custom/; \
+    fi && \
+    if ls /tmp/custom-fonts/*.ttf 1>/dev/null 2>&1; then \
+        cp /tmp/custom-fonts/*.ttf /usr/share/fonts/truetype/custom/; \
+    fi && \
+    chmod 644 /usr/share/fonts/truetype/custom/* 2>/dev/null || true && \
+    rm -rf /tmp/custom-fonts && \
     # 刷新字体缓存
     fc-cache -fv
 
