@@ -165,11 +165,23 @@ services:
       - JWT_HEADER=Authorization
       # 允许私有 IP 地址（用于 Docker 网络）
       - ALLOW_PRIVATE_IP_ADDRESS=true
+      - ALLOW_META_IP_ADDRESS=true
+      - DS_EXAMPLE_ENABLED=false
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - onlyoffice_data:/var/www/onlyoffice/Data
+      - onlyoffice_logs:/var/log/onlyoffice
+      - onlyoffice_cache:/var/www/onlyoffice/documentserver/.cache
     networks:
       - law-firm-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
 
 volumes:
   postgres_data:
@@ -178,6 +190,8 @@ volumes:
   ocr_models:
   ocr_cache:
   onlyoffice_data:
+  onlyoffice_logs:
+  onlyoffice_cache:
 
 networks:
   law-firm-network:

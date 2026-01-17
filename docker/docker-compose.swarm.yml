@@ -213,14 +213,25 @@ services:
         condition: on-failure
       resources:
         limits:
-          cpus: '1'
-          memory: 1024M
+          cpus: '2'
+          memory: 2048M
     environment:
       - JWT_ENABLED=false
+      - ALLOW_PRIVATE_IP_ADDRESS=true
+      - ALLOW_META_IP_ADDRESS=true
+      - DS_EXAMPLE_ENABLED=false
     volumes:
       - onlyoffice_data:/var/www/onlyoffice/Data
+      - onlyoffice_logs:/var/log/onlyoffice
+      - onlyoffice_cache:/var/www/onlyoffice/documentserver/.cache
     networks:
       - law-firm-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
 
 # ============================================
 # 数据卷（持久化存储）
@@ -235,6 +246,10 @@ volumes:
   ocr_models:
     driver: local
   onlyoffice_data:
+    driver: local
+  onlyoffice_logs:
+    driver: local
+  onlyoffice_cache:
     driver: local
 
 # ============================================

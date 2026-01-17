@@ -12,10 +12,17 @@ RUN apt-get update -qq && \
         fonts-noto-cjk \
         fontconfig \
         curl \
-        jq && \
+        jq \
+        net-tools && \
     # 清理缓存减少镜像大小
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
+
+# 修复 sharp 包缓存目录权限问题
+# 这是 OnlyOffice 9.x 版本的已知问题
+RUN mkdir -p /var/www/onlyoffice/documentserver/.cache && \
+    chown -R ds:ds /var/www/onlyoffice/documentserver/.cache && \
+    chmod -R 755 /var/www/onlyoffice/documentserver/.cache
 
 # 创建自定义字体目录
 RUN mkdir -p /usr/share/fonts/truetype/custom

@@ -116,6 +116,8 @@ services:
       # 允许访问私有 IP 地址（用于从后端代理获取文件）
       - ALLOW_PRIVATE_IP_ADDRESS=true
       - ALLOW_META_IP_ADDRESS=true
+      # 禁用示例应用
+      - DS_EXAMPLE_ENABLED=false
     ports:
       - "8088:80"
     extra_hosts:
@@ -123,13 +125,16 @@ services:
     volumes:
       - onlyoffice_data:/var/www/onlyoffice/Data
       - onlyoffice_logs:/var/log/onlyoffice
+      # 添加缓存卷，解决 sharp 包权限问题
+      - onlyoffice_cache:/var/www/onlyoffice/documentserver/.cache
     networks:
       - law-firm-network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/healthcheck"]
       interval: 30s
       timeout: 10s
-      retries: 3
+      retries: 5
+      start_period: 60s
 
   # Elasticsearch 全文搜索（可选，后期启用）
   # elasticsearch:
@@ -160,6 +165,8 @@ volumes:
   onlyoffice_data:
     driver: local
   onlyoffice_logs:
+    driver: local
+  onlyoffice_cache:
     driver: local
   # elasticsearch_data:
   #   driver: local

@@ -114,17 +114,31 @@ services:
   # OnlyOffice 文档预览
   # ===========================================
   onlyoffice:
-    image: onlyoffice/documentserver:latest
+    build:
+      context: ./onlyoffice
+      dockerfile: Dockerfile
+    image: law-firm-onlyoffice:latest
     container_name: law-firm-onlyoffice
     environment:
       - JWT_ENABLED=false
       - ALLOW_PRIVATE_IP_ADDRESS=true
       - ALLOW_META_IP_ADDRESS=true
+      - DS_EXAMPLE_ENABLED=false
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - onlyoffice_data:/var/www/onlyoffice/Data
+      - onlyoffice_logs:/var/log/onlyoffice
+      - onlyoffice_cache:/var/www/onlyoffice/documentserver/.cache
     networks:
       - law-firm-network
     restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
 
 networks:
   law-firm-network:
@@ -134,4 +148,6 @@ volumes:
   postgres_data:
   redis_data:
   onlyoffice_data:
+  onlyoffice_logs:
+  onlyoffice_cache:
 
