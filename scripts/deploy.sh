@@ -442,9 +442,13 @@ deploy_standalone() {
         fi
     fi
     
-    # 构建并启动
-    log_info "构建并启动服务..."
-    docker compose --env-file "$PROJECT_ROOT/.env" -f docker-compose.prod.yml up -d --build
+    # 先构建镜像（避免 BuildKit 问题）
+    log_info "构建 Docker 镜像..."
+    DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1 docker compose --env-file "$PROJECT_ROOT/.env" -f docker-compose.prod.yml build
+    
+    # 再启动服务
+    log_info "启动服务..."
+    docker compose --env-file "$PROJECT_ROOT/.env" -f docker-compose.prod.yml up -d
     
     echo ""
     log_info "等待服务启动..."
@@ -515,9 +519,13 @@ deploy_nas() {
     
     cd "$DOCKER_DIR"
     
-    # 构建并启动（不包含 MinIO，因为 MinIO 在 NAS 上）
-    log_info "构建并启动应用服务..."
-    docker compose --env-file "$PROJECT_ROOT/.env" -f docker-compose.nas.yml up -d --build
+    # 先构建镜像（不包含 MinIO，因为 MinIO 在 NAS 上）
+    log_info "构建 Docker 镜像..."
+    DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1 docker compose --env-file "$PROJECT_ROOT/.env" -f docker-compose.nas.yml build
+    
+    # 再启动服务
+    log_info "启动应用服务..."
+    docker compose --env-file "$PROJECT_ROOT/.env" -f docker-compose.nas.yml up -d
     
     echo ""
     log_info "等待服务启动..."
@@ -551,7 +559,10 @@ deploy_minio_cluster() {
     
     cd "$DOCKER_DIR"
     
-    docker compose --env-file "$PROJECT_ROOT/.env" -f docker-compose.minio-cluster.yml up -d --build
+    # 先构建镜像
+    DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1 docker compose --env-file "$PROJECT_ROOT/.env" -f docker-compose.minio-cluster.yml build
+    # 再启动服务
+    docker compose --env-file "$PROJECT_ROOT/.env" -f docker-compose.minio-cluster.yml up -d
     
     echo ""
     log_info "等待 MinIO 集群启动..."
