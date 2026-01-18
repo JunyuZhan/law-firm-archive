@@ -268,7 +268,14 @@ setup_env() {
         echo ""
         log_success "安全密钥已保存到 .env"
         log_warn "请妥善保管此文件！"
-        
+
+        # 首次部署后提示用户配置 ONLYOFFICE_URL
+        echo ""
+        echo -e "${YELLOW}⚠️  重要提示：${NC}"
+        echo -e "${DIM}部署完成后，请编辑 .env 文件设置 ONLYOFFICE_URL${NC}"
+        echo -e "${DIM}格式：ONLYOFFICE_URL=https://你的域名/onlyoffice${NC}"
+        echo ""
+
         source "$ENV_FILE"
     else
         # 检查不安全的默认值
@@ -283,7 +290,14 @@ setup_env() {
             log_warn "数据库密码未正确配置"
             HAS_UNSAFE=true
         fi
-        
+
+        # 检查 ONLYOFFICE_URL 是否为默认的 localhost 值
+        if [ -z "${ONLYOFFICE_URL:-}" ] || [ "$ONLYOFFICE_URL" = "http://localhost/onlyoffice" ]; then
+            log_warn "ONLYOFFICE_URL 使用默认值 (localhost)，文档预览可能无法正常工作"
+            log_warn "请在 .env 中设置：ONLYOFFICE_URL=https://你的域名/onlyoffice"
+            HAS_UNSAFE=true
+        fi
+
         # 确保 OnlyOffice JWT 配置完整和一致
         # 如果 ONLYOFFICE_JWT_SECRET 不存在，自动生成
         if [ -z "${ONLYOFFICE_JWT_SECRET:-}" ] || [ "$ONLYOFFICE_JWT_SECRET" = "your-onlyoffice-jwt-secret-change-in-production" ]; then
