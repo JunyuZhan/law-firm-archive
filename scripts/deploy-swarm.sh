@@ -117,7 +117,7 @@ build_images() {
     
     # 构建后端镜像
     log_info "构建后端镜像..."
-    docker build -t law-firm-backend:latest -f backend.Dockerfile ../backend
+    docker build -t law-firm-backend:latest -f ../docker/Dockerfile.prod ../backend
     
     # 构建 OCR 镜像
     log_info "构建 OCR 镜像..."

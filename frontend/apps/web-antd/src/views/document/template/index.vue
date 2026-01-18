@@ -2,7 +2,7 @@
 import type { VxeGridProps } from '#/adapter/vxe-table';
 import type { DocumentTemplateDTO, DocumentTemplateQuery } from '#/api/document/template';
 
-import { ref, computed } from 'vue';
+import { ref } from 'vue';
 
 import { Page } from '@vben/common-ui';
 import { Plus } from '@vben/icons';
@@ -99,7 +99,7 @@ async function loadData(
   };
   const res = await getTemplateList(query);
   return {
-    items: res.list || res.records || [],
+    items: res.list || [],
     total: res.total || 0,
   };
 }

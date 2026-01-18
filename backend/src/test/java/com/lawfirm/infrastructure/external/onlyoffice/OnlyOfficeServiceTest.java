@@ -88,7 +88,7 @@ class OnlyOfficeServiceTest {
             assertThat(editorConfig.get("lang")).isEqualTo("zh-CN");
 
             assertThat(config.get("documentType")).isEqualTo("word");
-            assertThat(config.get("documentServerUrl")).isEqualTo("http://localhost/onlyoffice");
+            assertThat(config.get("documentServerUrl")).isEqualTo("/onlyoffice");
         }
 
         @Test
@@ -603,7 +603,6 @@ class OnlyOfficeServiceTest {
 
             // 验证自定义配置
             assertThat(customization.get("autosave")).isEqualTo(true);
-            assertThat(customization.get("chat")).isEqualTo(false);
             assertThat(customization.get("comments")).isEqualTo(true);
             assertThat(customization.get("help")).isEqualTo(false);
             assertThat(customization.get("plugins")).isEqualTo(false);
@@ -611,6 +610,13 @@ class OnlyOfficeServiceTest {
 
             // 验证logo配置
             assertThat(customization).containsKey("logo");
+
+            // 验证权限配置（chat 已移到 permissions）
+            @SuppressWarnings("unchecked")
+            Map<String, Object> document = (Map<String, Object>) config.get("document");
+            @SuppressWarnings("unchecked")
+            Map<String, Object> permissions = (Map<String, Object>) document.get("permissions");
+            assertThat(permissions.get("chat")).isEqualTo(false);
         }
     }
 }

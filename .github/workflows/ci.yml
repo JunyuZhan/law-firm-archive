@@ -216,7 +216,7 @@ jobs:
       - name: Build backend image
         working-directory: backend
         run: |
-          docker build -f ../docker/backend.Dockerfile -t law-firm-backend:scan .
+          docker build -f ../docker/Dockerfile.prod -t law-firm-backend:scan .
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master

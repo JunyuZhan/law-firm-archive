@@ -54,7 +54,7 @@ services:
     image: ${REGISTRY:-}law-firm-backend:${VERSION:-latest}
     build:
       context: ../backend
-      dockerfile: ../docker/backend.Dockerfile
+      dockerfile: ../docker/Dockerfile.prod
     deploy:
       replicas: 2
       update_config:
