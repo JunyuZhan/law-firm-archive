@@ -248,16 +248,19 @@ public class OnlyOfficeService {
     
     /**
      * 构建文件访问URL（用于文档ID）
-     * 生成带签名验证的后端代理 URL，使用相对路径供浏览器访问
+     * 生成 Docker 内部可访问的完整 URL（OnlyOffice 容器使用）
+     * 前端会自动替换为浏览器可访问的 URL
      */
     public String buildFileUrlForDocument(Long documentId) {
         // 生成 2 小时有效的访问 token
         long expires = System.currentTimeMillis() + 7200 * 1000;
         String token = generateAccessToken(documentId, expires);
 
-        // 使用相对路径，让浏览器自动使用当前域名访问
-        // 格式：/api/document/{id}/content?token=xxx&expires=xxx
-        return "/api/document/" + documentId + "/content?token=" + token + "&expires=" + expires;
+        // 使用 Docker 内部完整 URL（OnlyOffice 容器可以访问）
+        // 前端会智能检测并替换为当前域名
+        String callbackUrl = config.getCallbackUrl();
+        String baseUrl = callbackUrl.endsWith("/api") ? callbackUrl : callbackUrl + "/api";
+        return baseUrl + "/document/" + documentId + "/content?token=" + token + "&expires=" + expires;
     }
     
     /**
