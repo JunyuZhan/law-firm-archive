@@ -18,6 +18,9 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.header.writers.frameoptions.XFrameOptionsHeaderWriter;
+import org.springframework.security.web.header.writers.frameoptions.WhiteListedAllowFromStrategy;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
 import java.util.Arrays;
 
@@ -65,6 +68,18 @@ public class SecurityConfig {
             .exceptionHandling(exception -> exception
                 .authenticationEntryPoint(authenticationEntryPoint)
                 .accessDeniedHandler(accessDeniedHandler)
+            )
+            // 配置响应头 - OnlyOffice 需要 iframe 加载文档
+            .headers(headers -> headers
+                // 对于文档内容接口，禁用 frame options（允许 OnlyOffice 加载）
+                .addHeaderWriter(new XFrameOptionsHeaderWriter(
+                    new WhiteListedAllowFromStrategy(Arrays.asList(
+                        new AntPathRequestMatcher("/document/*/content")
+                    ))
+                ))
+                // 或者完全禁用 X-Frame-Options（如果上面不行，用这个替代）
+                // .frameOptions(frame -> frame.sameOrigin()) // 允许同源 iframe
+                // .frameOptions(frame -> frame.disable()) // 完全禁用
             )
             // 请求授权配置
             .authorizeHttpRequests(auth -> {
