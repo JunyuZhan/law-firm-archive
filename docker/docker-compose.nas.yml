@@ -56,7 +56,7 @@ services:
       - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY}
       - MINIO_SECRET_KEY=${MINIO_SECRET_KEY}
       - OCR_SERVICE_URL=http://paddle-ocr:8000
-      - ONLYOFFICE_URL=http://onlyoffice
+      # ONLYOFFICE_URL 无需配置，前端会自动检测当前访问的域名
     depends_on:
       - postgres
       - redis

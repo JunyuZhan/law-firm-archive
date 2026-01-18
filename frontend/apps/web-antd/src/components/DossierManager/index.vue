@@ -8,6 +8,7 @@ import type { MatterDossierItem } from '#/api/document/dossier';
  * 显示项目的卷宗目录树，支持添加、编辑、删除目录项
  */
 import { computed, h, ref, watch } from 'vue';
+import { useRouter } from 'vue-router';
 
 import { ExternalLink, Plus, RotateCw } from '@vben/icons';
 
@@ -49,6 +50,9 @@ const emit = defineEmits<{
   (e: 'select', item: MatterDossierItem | null): void;
   (e: 'upload', item: MatterDossierItem): void;
 }>();
+
+const router = useRouter();
+
 // 文件夹图标组件
 const FolderIcon = () =>
   h('span', { style: 'font-size: 14px; margin-right: 4px;' }, '📁');
@@ -212,7 +216,11 @@ async function handleDelete(item: MatterDossierItem) {
 // 跳转到卷宗管理页面
 function goToDossierList() {
   // 打开卷宗管理页面并过滤当前项目
-  window.open(`/document/list?matterId=${props.matterId}`, '_blank');
+  const resolved = router.resolve({
+    path: '/document/list',
+    query: { matterId: String(props.matterId) },
+  });
+  window.open(resolved.href, '_blank');
 }
 
 // 重新生成授权委托书

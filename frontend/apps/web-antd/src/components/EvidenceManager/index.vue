@@ -8,6 +8,7 @@ import type { EvidenceDTO } from '#/api/evidence';
  * 支持网格/列表视图、分组树、拖拽排序、证据详情
  */
 import { computed, onMounted, ref, watch } from 'vue';
+import { useRouter } from 'vue-router';
 
 import { LayoutGrid, List, Plus, RotateCw } from '@vben/icons';
 
@@ -45,6 +46,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'export'): void;
 }>();
+
+const router = useRouter();
 
 // 状态
 const loading = ref(false);
@@ -259,8 +262,16 @@ async function handlePreview(evidence: EvidenceItem) {
         evidence.fileName?.split('.').pop()?.toLowerCase() || 'docx';
 
       // 打开 OnlyOffice 预览窗口
-      const onlyofficeUrl = `/office-preview?url=${encodeURIComponent(onlyOfficeResult.fileUrl)}&filename=${encodeURIComponent(evidence.fileName || 'document')}&type=${docType}&ext=${fileExt}`;
-      window.open(onlyofficeUrl, '_blank', 'width=1200,height=800');
+      const resolved = router.resolve({
+        path: '/office-preview',
+        query: {
+          url: onlyOfficeResult.fileUrl,
+          filename: evidence.fileName || 'document',
+          type: docType,
+          ext: fileExt,
+        },
+      });
+      window.open(resolved.href, '_blank', 'width=1200,height=800');
       return;
     }
 

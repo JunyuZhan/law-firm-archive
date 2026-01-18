@@ -114,9 +114,9 @@
 - [ ] **可选配置**
   ```bash
   OCR_SERVICE_URL=http://ocr-service:8000
-  ONLYOFFICE_URL=http://onlyoffice:8088
   BACKUP_PATH=/var/backups
   MIGRATION_PATH=/var/scripts/migration
+  # 注意：ONLYOFFICE_URL 无需配置，前端会自动检测当前访问的域名
   ```
 
 ### 2.2 日志配置

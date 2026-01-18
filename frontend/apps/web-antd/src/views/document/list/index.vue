@@ -1112,8 +1112,11 @@ async function handlePreview(record: DocumentDTO) {
 
   // Office 文档类型 - 使用 OnlyOffice 预览
   if (isOfficeFile(fileType)) {
-    const url = `/office-preview?documentId=${record.id}&mode=view`;
-    window.open(url, '_blank');
+    const resolved = router.resolve({
+      path: '/office-preview',
+      query: { documentId: String(record.id), mode: 'view' },
+    });
+    window.open(resolved.href, '_blank');
     return;
   }
 
@@ -1192,8 +1195,11 @@ async function handleOnlineEdit(record: DocumentDTO) {
       return;
     }
     // 跳转到编辑页面
-    const url = `/office-preview?documentId=${record.id}&mode=edit`;
-    window.open(url, '_blank');
+    const resolved = router.resolve({
+      path: '/office-preview',
+      query: { documentId: String(record.id), mode: 'edit' },
+    });
+    window.open(resolved.href, '_blank');
   } catch {
     message.error('检查编辑支持失败');
   }

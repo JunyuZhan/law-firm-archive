@@ -94,11 +94,18 @@ async function loadFromBackend(documentId: number, mode: 'edit' | 'view') {
 
     documentTitle.value = response.document?.title || '';
 
+    // 智能检测 OnlyOffice URL
+    // 优先使用后端返回的地址，如果没有则使用当前域名 + /onlyoffice
+    const onlyOfficeUrl = getOnlyOfficeUrl(response.documentServerUrl);
+    
     // 加载 OnlyOffice API 并初始化编辑器
     await loadOnlyOfficeApi(
       response.apiJsUrl ||
-        `${response.documentServerUrl}/web-apps/apps/api/documents/api.js`,
+        `${onlyOfficeUrl}/web-apps/apps/api/documents/api.js`,
     );
+    
+    // 更新 response 中的 documentServerUrl 以便后续使用
+    response.documentServerUrl = onlyOfficeUrl;
     initEditorFromConfig(response);
   } catch (error_: any) {
     console.error('加载文档配置失败:', error_);
@@ -117,12 +124,14 @@ async function loadDirectUrl(
   ext: string,
 ) {
   try {
-    const ONLYOFFICE_URL =
-      import.meta.env.VITE_ONLYOFFICE_URL || 'http://localhost:8088';
+    // 使用智能检测获取 OnlyOffice URL
+    const onlyOfficeUrl = getOnlyOfficeUrl(
+      import.meta.env.VITE_ONLYOFFICE_URL,
+    );
     documentTitle.value = filename;
 
     await loadOnlyOfficeApi(
-      `${ONLYOFFICE_URL}/web-apps/apps/api/documents/api.js`,
+      `${onlyOfficeUrl}/web-apps/apps/api/documents/api.js`,
     );
 
     const directConfig = {
@@ -152,6 +161,39 @@ async function loadDirectUrl(
     error.value = error_.message || '加载失败';
     loading.value = false;
   }
+}
+
+/**
+ * 智能获取 OnlyOffice URL
+ * 优先使用后端配置的地址，如果是无效地址，则使用当前域名
+ */
+function getOnlyOfficeUrl(backendUrl?: string): string {
+  // 检查是否为无效地址（localhost、127.0.0.1、Docker 内部地址等）
+  const isInvalidUrl = (url: string): boolean => {
+    if (!url) return true;
+    // localhost 或 127.0.0.1
+    if (url.includes('localhost') || url.includes('127.0.0.1')) return true;
+    // Docker 内部地址（没有点号的主机名，如 http://onlyoffice）
+    try {
+      const urlObj = new URL(url);
+      // 如果主机名不包含点号且不是 localhost，可能是 Docker 容器名
+      if (!urlObj.hostname.includes('.') && urlObj.hostname !== 'localhost') {
+        return true;
+      }
+    } catch {
+      return true;
+    }
+    return false;
+  };
+
+  // 如果后端返回了有效的 URL，直接使用
+  if (backendUrl && !isInvalidUrl(backendUrl)) {
+    return backendUrl;
+  }
+  
+  // 否则使用当前域名 + /onlyoffice 路径
+  const { protocol, host } = window.location;
+  return `${protocol}//${host}/onlyoffice`;
 }
 
 /**
