@@ -240,16 +240,16 @@ public class MinioService {
         int index = fileUrl.indexOf(bucketName + "/");
         String objectName = fileUrl.substring(index + bucketName.length() + 1);
 
-        // 去除可能存在的查询参数
-        if (objectName.contains("?")) {
-            objectName = objectName.substring(0, objectName.indexOf("?"));
-        }
-
-        // URL 解码，防止双重编码 (例如 %E8 -> 中文)
+        // 1. 先进行 URL 解码 (处理 %3F, %25E8 等)
         try {
             objectName = java.net.URLDecoder.decode(objectName, java.nio.charset.StandardCharsets.UTF_8.name());
         } catch (Exception e) {
             log.warn("文件名URL解码失败: {}", objectName);
+        }
+
+        // 2. 解码后再去除查询参数 (此时 %3F 已变成 ?)
+        if (objectName.contains("?")) {
+            objectName = objectName.substring(0, objectName.indexOf("?"));
         }
 
         return objectName;
