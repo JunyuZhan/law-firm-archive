@@ -686,6 +686,197 @@ class DocumentAppServiceTest {
     }
 
     @Nested
+    @DisplayName("批量上传文件测试")
+    class UploadFilesTests {
+
+        @Test
+        @DisplayName("应该成功批量上传文件")
+        void uploadFiles_shouldUploadMultipleFiles() throws Exception {
+            try (MockedStatic<SecurityUtils> mockedSecurity = mockStatic(SecurityUtils.class);
+                 MockedStatic<FileValidator> mockedValidator = mockStatic(FileValidator.class)) {
+                // Given
+                mockedSecurity.when(SecurityUtils::getUserId).thenReturn(TEST_USER_ID);
+                
+                FileValidator.ValidationResult successResult = FileValidator.ValidationResult.success();
+                mockedValidator.when(() -> FileValidator.validate(any(MultipartFile.class))).thenReturn(successResult);
+
+                MultipartFile file1 = mock(MultipartFile.class);
+                when(file1.isEmpty()).thenReturn(false);
+                when(file1.getOriginalFilename()).thenReturn("test1.pdf");
+                when(file1.getContentType()).thenReturn("application/pdf");
+                when(file1.getSize()).thenReturn(1024L);
+                lenient().when(file1.getInputStream()).thenReturn(new ByteArrayInputStream("content1".getBytes()));
+
+                MultipartFile file2 = mock(MultipartFile.class);
+                when(file2.isEmpty()).thenReturn(false);
+                when(file2.getOriginalFilename()).thenReturn("test2.pdf");
+                when(file2.getContentType()).thenReturn("application/pdf");
+                when(file2.getSize()).thenReturn(2048L);
+                lenient().when(file2.getInputStream()).thenReturn(new ByteArrayInputStream("content2".getBytes()));
+
+                MultipartFile[] files = {file1, file2};
+
+                when(minioService.uploadFile(any(MultipartFile.class), anyString()))
+                        .thenReturn("/minio/path/test1.pdf")
+                        .thenReturn("/minio/path/test2.pdf");
+                lenient().when(thumbnailService.supportsThumbnail(anyString())).thenReturn(false);
+                when(documentRepository.save(any(Document.class))).thenReturn(true);
+                when(versionMapper.insert(any(DocumentVersion.class))).thenReturn(1);
+
+                // When
+                List<DocumentDTO> result = documentAppService.uploadFiles(files, TEST_MATTER_ID, null, "批量上传", null, null);
+
+                // Then
+                assertThat(result).hasSize(2);
+                assertThat(result.get(0).getFileName()).isEqualTo("test1.pdf");
+                assertThat(result.get(1).getFileName()).isEqualTo("test2.pdf");
+                verify(minioService, times(2)).uploadFile(any(MultipartFile.class), anyString());
+            }
+        }
+
+        @Test
+        @DisplayName("空文件数组时应抛出异常")
+        void uploadFiles_shouldThrowException_whenEmptyArray() {
+            // When & Then
+            assertThatThrownBy(() -> documentAppService.uploadFiles(new MultipartFile[0], TEST_MATTER_ID, null, null, null, null))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessage("请选择要上传的文件");
+        }
+
+        @Test
+        @DisplayName("所有文件都为空时应抛出异常")
+        void uploadFiles_shouldThrowException_whenAllFilesEmpty() {
+            // Given
+            MultipartFile file1 = mock(MultipartFile.class);
+            when(file1.isEmpty()).thenReturn(true);
+            MultipartFile file2 = mock(MultipartFile.class);
+            when(file2.isEmpty()).thenReturn(true);
+            MultipartFile[] files = {file1, file2};
+
+            // When & Then
+            assertThatThrownBy(() -> documentAppService.uploadFiles(files, TEST_MATTER_ID, null, null, null, null))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessage("没有有效的文件");
+        }
+
+        @Test
+        @DisplayName("上传失败时应清理已上传的文件")
+        void uploadFiles_shouldCleanupOnFailure() throws Exception {
+            try (MockedStatic<SecurityUtils> mockedSecurity = mockStatic(SecurityUtils.class);
+                 MockedStatic<FileValidator> mockedValidator = mockStatic(FileValidator.class)) {
+                // Given
+                mockedSecurity.when(SecurityUtils::getUserId).thenReturn(TEST_USER_ID);
+                
+                FileValidator.ValidationResult successResult = FileValidator.ValidationResult.success();
+                mockedValidator.when(() -> FileValidator.validate(any(MultipartFile.class))).thenReturn(successResult);
+
+                MultipartFile file1 = mock(MultipartFile.class);
+                when(file1.isEmpty()).thenReturn(false);
+                when(file1.getOriginalFilename()).thenReturn("test1.pdf");
+                when(file1.getContentType()).thenReturn("application/pdf");
+                when(file1.getSize()).thenReturn(1024L);
+                lenient().when(file1.getInputStream()).thenReturn(new ByteArrayInputStream("content1".getBytes()));
+
+                MultipartFile file2 = mock(MultipartFile.class);
+                when(file2.isEmpty()).thenReturn(false);
+                when(file2.getOriginalFilename()).thenReturn("test2.pdf");
+                when(file2.getContentType()).thenReturn("application/pdf");
+                when(file2.getSize()).thenReturn(2048L);
+                lenient().when(file2.getInputStream()).thenReturn(new ByteArrayInputStream("content2".getBytes()));
+
+                MultipartFile[] files = {file1, file2};
+
+                // 第一个文件成功上传，第二个文件失败
+                when(minioService.uploadFile(eq(file1), anyString()))
+                        .thenReturn("/minio/path/test1.pdf");
+                when(minioService.uploadFile(eq(file2), anyString()))
+                        .thenReturn("/minio/path/test2.pdf");
+                
+                lenient().when(thumbnailService.supportsThumbnail(anyString())).thenReturn(false);
+                
+                // 第一个文件保存成功
+                when(documentRepository.save(any(Document.class)))
+                        .thenReturn(true)  // 第一个文件
+                        .thenThrow(new RuntimeException("Database error")); // 第二个文件失败
+                when(versionMapper.insert(any(DocumentVersion.class)))
+                        .thenReturn(1)  // 第一个文件的版本
+                        .thenThrow(new RuntimeException("Database error")); // 第二个文件失败
+                
+                // Mock deleteFile方法
+                doNothing().when(minioService).deleteFile(anyString());
+
+                // When & Then
+                assertThatThrownBy(() -> documentAppService.uploadFiles(files, TEST_MATTER_ID, null, null, null, null))
+                        .isInstanceOf(BusinessException.class)
+                        .hasMessageContaining("批量上传失败");
+                
+                // 验证清理操作被调用（第一个文件已成功上传，第二个失败时应该清理第一个）
+                verify(minioService, atLeastOnce()).deleteFile("/minio/path/test1.pdf");
+            }
+        }
+    }
+
+    @Nested
+    @DisplayName("获取缩略图URL测试")
+    class GetThumbnailUrlTests {
+
+        @Test
+        @DisplayName("应该返回缩略图URL")
+        void getThumbnailUrl_shouldReturnThumbnailUrl() {
+            // Given
+            Document doc = createTestDocument(TEST_DOC_ID, "test.jpg", "jpg");
+            doc.setThumbnailUrl("/thumbnail/path/test.jpg");
+
+            when(documentRepository.getByIdOrThrow(TEST_DOC_ID, "文档不存在")).thenReturn(doc);
+
+            // When
+            String result = documentAppService.getThumbnailUrl(TEST_DOC_ID);
+
+            // Then
+            assertThat(result).isEqualTo("/thumbnail/path/test.jpg");
+        }
+
+        @Test
+        @DisplayName("没有缩略图时应生成并返回")
+        void getThumbnailUrl_shouldGenerateWhenNotExists() {
+            // Given
+            Document doc = createTestDocument(TEST_DOC_ID, "test.jpg", "jpg");
+            doc.setThumbnailUrl(null);
+            doc.setFilePath("/path/to/test.jpg");
+
+            when(documentRepository.getByIdOrThrow(TEST_DOC_ID, "文档不存在")).thenReturn(doc);
+            when(thumbnailService.supportsThumbnail("test.jpg")).thenReturn(true);
+            when(thumbnailService.generateThumbnailFromUrl(anyString(), anyString()))
+                    .thenReturn("/thumbnail/path/test.jpg");
+            when(documentRepository.updateById(any(Document.class))).thenReturn(true);
+
+            // When
+            String result = documentAppService.getThumbnailUrl(TEST_DOC_ID);
+
+            // Then
+            assertThat(result).isEqualTo("/thumbnail/path/test.jpg");
+            verify(thumbnailService).generateThumbnailFromUrl(anyString(), anyString());
+        }
+
+        @Test
+        @DisplayName("不支持缩略图时应返回null")
+        void getThumbnailUrl_shouldReturnNull_whenNotSupported() {
+            // Given
+            Document doc = createTestDocument(TEST_DOC_ID, "test.docx", "docx");
+            doc.setThumbnailUrl(null);
+
+            when(documentRepository.getByIdOrThrow(TEST_DOC_ID, "文档不存在")).thenReturn(doc);
+            when(thumbnailService.supportsThumbnail("test.docx")).thenReturn(false);
+
+            // When
+            String result = documentAppService.getThumbnailUrl(TEST_DOC_ID);
+
+            // Then
+            assertThat(result).isNull();
+        }
+    }
+
+    @Nested
     @DisplayName("OnlyOffice保存测试")
     class SaveFromOnlyOfficeTests {
 

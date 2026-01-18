@@ -18,12 +18,6 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.security.web.header.writers.frameoptions.XFrameOptionsHeaderWriter;
-import org.springframework.security.web.header.writers.frameoptions.DelegatingRequestMatcherHeaderWriter;
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
-import org.springframework.security.web.util.matcher.NegatedRequestMatcher;
-import org.springframework.security.web.util.matcher.OrRequestMatcher;
-
 import java.util.Arrays;
 
 /**
@@ -71,18 +65,11 @@ public class SecurityConfig {
                 .authenticationEntryPoint(authenticationEntryPoint)
                 .accessDeniedHandler(accessDeniedHandler)
             )
-            // 配置响应头 - OnlyOffice 需要 iframe 加载文档
+            // 配置安全响应头
+            // X-Frame-Options: SAMEORIGIN - 允许同源页面嵌入 iframe，防止外部网站点击劫持
+            // OnlyOffice 编辑器需要通过 iframe 加载文档内容，因此必须允许同源嵌入
             .headers(headers -> headers
-                // 对于 OnlyOffice 相关接口，禁用 frame options（允许被 iframe 加载）
-                .addHeaderWriter(new DelegatingRequestMatcherHeaderWriter(
-                    new XFrameOptionsHeaderWriter(XFrameOptionsHeaderWriter.XFrameOptionsMode.SAMEORIGIN),
-                    // 对以下路径不应用 frame options（允许 iframe 加载）
-                    new NegatedRequestMatcher(new OrRequestMatcher(
-                        new AntPathRequestMatcher("/document/*/content"),    // OnlyOffice 文件内容接口
-                        new AntPathRequestMatcher("/document/*/callback"),   // OnlyOffice 回调接口
-                        new AntPathRequestMatcher("/onlyoffice/**")          // OnlyOffice 静态资源
-                    ))
-                ))
+                .frameOptions(frame -> frame.sameOrigin())
             )
             // 请求授权配置
             .authorizeHttpRequests(auth -> {
