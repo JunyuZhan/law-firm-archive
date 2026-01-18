@@ -55,8 +55,16 @@ services:
       - MINIO_EXTERNAL_ENDPOINT=http://${NAS_IP:-192.168.50.20}:9000
       - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY}
       - MINIO_SECRET_KEY=${MINIO_SECRET_KEY}
+      - MINIO_BUCKET=law-firm
       - OCR_SERVICE_URL=http://paddle-ocr:8000
-      # ONLYOFFICE_URL 无需配置，前端会自动检测当前访问的域名
+      - SPRING_PROFILES_ACTIVE=prod
+      - SWAGGER_ENABLED=${SWAGGER_ENABLED:-false}
+      # OnlyOffice 配置（与 OnlyOffice 容器保持一致）
+      - ONLYOFFICE_JWT_ENABLED=${ONLYOFFICE_JWT_ENABLED:-true}
+      - ONLYOFFICE_JWT_SECRET=${ONLYOFFICE_JWT_SECRET:-your-onlyoffice-jwt-secret-change-in-production}
+      - ONLYOFFICE_URL=${ONLYOFFICE_URL:-http://localhost/onlyoffice}
+      - ONLYOFFICE_CALLBACK_URL=http://frontend:80/api
+      - FILE_SERVER_URL=http://${NAS_IP:-192.168.50.20}:9000
     depends_on:
       - postgres
       - redis
@@ -120,7 +128,10 @@ services:
     image: law-firm-onlyoffice:latest
     container_name: law-firm-onlyoffice
     environment:
-      - JWT_ENABLED=false
+      # 启用 JWT 验证，防止配置篡改
+      - JWT_ENABLED=true
+      - JWT_SECRET=${ONLYOFFICE_JWT_SECRET:-your-onlyoffice-jwt-secret-change-in-production}
+      - JWT_HEADER=Authorization
       - ALLOW_PRIVATE_IP_ADDRESS=true
       - ALLOW_META_IP_ADDRESS=true
       - DS_EXAMPLE_ENABLED=false

@@ -88,6 +88,13 @@ services:
       - MINIO_BUCKET=law-firm
       - OCR_SERVICE_URL=http://paddle-ocr:8000
       - SPRING_PROFILES_ACTIVE=prod
+      - SWAGGER_ENABLED=${SWAGGER_ENABLED:-false}
+      # OnlyOffice 配置（与 OnlyOffice 容器保持一致）
+      - ONLYOFFICE_JWT_ENABLED=${ONLYOFFICE_JWT_ENABLED:-true}
+      - ONLYOFFICE_JWT_SECRET=${ONLYOFFICE_JWT_SECRET:-your-onlyoffice-jwt-secret-change-in-production}
+      - ONLYOFFICE_URL=${ONLYOFFICE_URL:-http://localhost/onlyoffice}
+      - ONLYOFFICE_CALLBACK_URL=http://frontend:8080/api
+      - FILE_SERVER_URL=http://minio:9000
     networks:
       - law-firm-network
     depends_on:
@@ -218,7 +225,10 @@ services:
     ports:
       - "8088:80"
     environment:
-      - JWT_ENABLED=false
+      # 启用 JWT 验证，防止配置篡改
+      - JWT_ENABLED=true
+      - JWT_SECRET=${ONLYOFFICE_JWT_SECRET:-your-onlyoffice-jwt-secret-change-in-production}
+      - JWT_HEADER=Authorization
       - ALLOW_PRIVATE_IP_ADDRESS=true
       - ALLOW_META_IP_ADDRESS=true
       - DS_EXAMPLE_ENABLED=false
