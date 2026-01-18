@@ -242,7 +242,14 @@ public class OnlyOfficeService {
             String objectName = minioService.extractObjectName(fileUrl);
             if (objectName != null) {
                 // 使用 Docker 可访问的预签名 URL（2小时有效）
-                return minioService.getPresignedUrlForDocker(objectName, 7200);
+                // 在 Linux Docker 环境中，host.docker.internal 可能不可用
+                // 必须强制将主机名替换为 Docker 网络内部的服务名 "minio"
+                String url = minioService.getPresignedUrlForDocker(objectName, 7200);
+                if (url != null) {
+                    return url.replace("host.docker.internal", "minio")
+                            .replace("localhost", "minio")
+                            .replace("127.0.0.1", "minio");
+                }
             }
             return fileUrl;
         } catch (Exception e) {
