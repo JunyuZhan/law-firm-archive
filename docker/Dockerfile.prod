@@ -47,6 +47,11 @@ RUN apk add --no-cache tzdata curl && \
 
 # 创建非 root 用户运行应用
 RUN addgroup -S lawfirm && adduser -S lawfirm -G lawfirm
+
+# 创建日志目录并设置权限
+RUN mkdir -p /var/log/law-firm && \
+    chown -R lawfirm:lawfirm /var/log/law-firm
+
 USER lawfirm
 
 WORKDIR /app

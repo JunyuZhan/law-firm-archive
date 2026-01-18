@@ -198,7 +198,14 @@ setup_env() {
     cd "$PROJECT_ROOT"
     
     ENV_FILE=".env"
-    ENV_EXAMPLE=".env.example"
+    # 优先查找项目根目录的 env.example，如果没有则查找 docker/env.example
+    if [ -f ".env.example" ]; then
+        ENV_EXAMPLE=".env.example"
+    elif [ -f "docker/env.example" ]; then
+        ENV_EXAMPLE="docker/env.example"
+    else
+        ENV_EXAMPLE=".env.example"
+    fi
     FIRST_TIME=false
 
     if [ ! -f "$ENV_FILE" ]; then
@@ -486,15 +493,29 @@ deploy_standalone() {
     cd "$DOCKER_DIR"
     
     # 运行生产环境检查
-    if [ -f "$SCRIPT_DIR/check-production-ready.sh" ] && [ "${SKIP_CHECK:-}" != "true" ]; then
+    if [ "${SKIP_CHECK:-}" != "true" ]; then
         log_info "运行生产环境检查..."
-        if ! bash "$SCRIPT_DIR/check-production-ready.sh"; then
-            echo ""
-            log_warn "部分检查项未通过，但可以继续部署"
-            read -p "是否继续？(y/N) " -n 1 -r
-            echo
-            if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-                exit 1
+        
+        # 优先使用统一的检查脚本
+        if [ -f "$SCRIPT_DIR/pre-deploy-check.sh" ]; then
+            if ! bash "$SCRIPT_DIR/pre-deploy-check.sh"; then
+                echo ""
+                log_warn "部分检查项未通过，但可以继续部署"
+                read -p "是否继续？(y/N) " -n 1 -r
+                echo
+                if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                    exit 1
+                fi
+            fi
+        elif [ -f "$SCRIPT_DIR/check-production-ready.sh" ]; then
+            if ! bash "$SCRIPT_DIR/check-production-ready.sh"; then
+                echo ""
+                log_warn "部分检查项未通过，但可以继续部署"
+                read -p "是否继续？(y/N) " -n 1 -r
+                echo
+                if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                    exit 1
+                fi
             fi
         fi
     fi
