@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type {
   CreateDocumentCommand,
+  DocumentDTO,
   DocumentQuery,
   OnlyOfficeConfig,
   UpdateDocumentCommand,
@@ -178,9 +179,11 @@ describe('Document API', () => {
         title: 'Updated Title',
         description: 'Updated description',
       };
-      const mockResponse = {
+      const mockResponse: DocumentDTO = {
         id: documentId,
-        ...command,
+        name: 'test',
+        title: command.title,
+        description: command.description,
       };
 
       mockPut.mockResolvedValueOnce(mockResponse);

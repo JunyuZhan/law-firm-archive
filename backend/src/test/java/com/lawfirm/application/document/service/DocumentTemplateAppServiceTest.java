@@ -104,7 +104,7 @@ class DocumentTemplateAppServiceTest {
             when(templateRepository.save(any(DocumentTemplate.class))).thenAnswer(invocation -> {
                 DocumentTemplate template = invocation.getArgument(0);
                 template.setId(TEST_TEMPLATE_ID);
-                return template;
+                return true;
             });
 
             // When
@@ -256,7 +256,7 @@ class DocumentTemplateAppServiceTest {
             when(documentRepository.save(any(Document.class))).thenAnswer(invocation -> {
                 Document doc = invocation.getArgument(0);
                 doc.setId(400L);
-                return doc;
+                return true;
             });
             when(documentAppService.getDocumentById(400L)).thenReturn(documentDTO);
 
@@ -347,6 +347,7 @@ class DocumentTemplateAppServiceTest {
             when(templateVariableService.collectVariables(anyLong())).thenReturn(Collections.emptyMap());
             when(templateVariableService.replaceVariables(anyString(), anyMap())).thenReturn("生成的内容");
             try {
+                lenient().when(minioService.extractObjectName(anyString())).thenReturn(null);
                 doReturn("http://minio/file.docx").when(minioService).uploadBytes(any(byte[].class), anyString(), anyString());
             } catch (Exception e) {
                 // ignore
@@ -355,11 +356,12 @@ class DocumentTemplateAppServiceTest {
             when(documentRepository.save(any(Document.class))).thenAnswer(invocation -> {
                 Document doc = invocation.getArgument(0);
                 doc.setId(400L + invocation.getArgument(0, Document.class).getMatterId() - 200L);
-                return doc;
+                return true;
             });
             when(documentAppService.getDocumentById(anyLong())).thenAnswer(invocation -> {
                 DocumentDTO dto = new DocumentDTO();
                 dto.setId(invocation.getArgument(0));
+                dto.setTitle("生成的文档");
                 return dto;
             });
 

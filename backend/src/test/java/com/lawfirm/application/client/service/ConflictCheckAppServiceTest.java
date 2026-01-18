@@ -123,9 +123,9 @@ class ConflictCheckAppServiceTest {
             when(conflictCheckRepository.save(any(ConflictCheck.class))).thenAnswer(invocation -> {
                 ConflictCheck check = invocation.getArgument(0);
                 check.setId(TEST_CHECK_ID);
-                return check;
+                return true;
             });
-            when(clientRepository.list(any(LambdaQueryWrapper.class))).thenReturn(Collections.emptyList());
+            lenient().when(clientRepository.list(any(LambdaQueryWrapper.class))).thenReturn(Collections.emptyList());
             when(matterRepository.list(any(LambdaQueryWrapper.class))).thenReturn(Collections.emptyList());
             when(conflictCheckItemMapper.insert(any(ConflictCheckItem.class))).thenAnswer(invocation -> {
                 ConflictCheckItem item = invocation.getArgument(0);
@@ -137,13 +137,13 @@ class ConflictCheckAppServiceTest {
             
             com.lawfirm.infrastructure.persistence.mapper.ConflictCheckMapper checkBaseMapper = 
                     mock(com.lawfirm.infrastructure.persistence.mapper.ConflictCheckMapper.class);
-            when(conflictCheckRepository.getBaseMapper()).thenReturn(checkBaseMapper);
-            when(checkBaseMapper.updateById(any(ConflictCheck.class))).thenReturn(1);
+            lenient().when(conflictCheckRepository.getBaseMapper()).thenReturn(checkBaseMapper);
+            lenient().when(checkBaseMapper.updateById(any(ConflictCheck.class))).thenReturn(1);
             
             com.lawfirm.infrastructure.persistence.mapper.MatterMapper matterBaseMapper = 
                     mock(com.lawfirm.infrastructure.persistence.mapper.MatterMapper.class);
-            when(matterRepository.getBaseMapper()).thenReturn(matterBaseMapper);
-            when(matterBaseMapper.updateById(any(Matter.class))).thenReturn(1);
+            lenient().when(matterRepository.getBaseMapper()).thenReturn(matterBaseMapper);
+            lenient().when(matterBaseMapper.updateById(any(Matter.class))).thenReturn(1);
 
             // When
             ConflictCheckDTO result = conflictCheckAppService.createConflictCheck(command);
@@ -180,9 +180,16 @@ class ConflictCheckAppServiceTest {
             when(conflictCheckRepository.save(any(ConflictCheck.class))).thenAnswer(invocation -> {
                 ConflictCheck check = invocation.getArgument(0);
                 check.setId(TEST_CHECK_ID);
-                return check;
+                return true;
             });
-            when(clientRepository.list(any(LambdaQueryWrapper.class))).thenReturn(Collections.singletonList(conflictingClient));
+            // Mock matterRepository.list for conflict check - return a conflicting matter
+            Matter conflictingMatter = Matter.builder()
+                    .id(500L)
+                    .name("案件2")
+                    .opposingParty("对方当事人")
+                    .build();
+            when(matterRepository.list(any(LambdaQueryWrapper.class))).thenReturn(Collections.singletonList(conflictingMatter));
+            lenient().when(clientRepository.list(any(LambdaQueryWrapper.class))).thenReturn(Collections.singletonList(conflictingClient));
             when(conflictCheckItemMapper.insert(any(ConflictCheckItem.class))).thenAnswer(invocation -> {
                 ConflictCheckItem item = invocation.getArgument(0);
                 if (item.getId() == null) {
@@ -192,16 +199,16 @@ class ConflictCheckAppServiceTest {
             });
             com.lawfirm.infrastructure.persistence.mapper.ConflictCheckMapper checkBaseMapper = 
                     mock(com.lawfirm.infrastructure.persistence.mapper.ConflictCheckMapper.class);
-            when(conflictCheckRepository.getBaseMapper()).thenReturn(checkBaseMapper);
-            when(checkBaseMapper.updateById(any(ConflictCheck.class))).thenReturn(1);
+            lenient().when(conflictCheckRepository.getBaseMapper()).thenReturn(checkBaseMapper);
+            lenient().when(checkBaseMapper.updateById(any(ConflictCheck.class))).thenReturn(1);
             
             com.lawfirm.infrastructure.persistence.mapper.MatterMapper matterBaseMapper = 
                     mock(com.lawfirm.infrastructure.persistence.mapper.MatterMapper.class);
-            when(matterRepository.getBaseMapper()).thenReturn(matterBaseMapper);
-            when(matterBaseMapper.updateById(any(Matter.class))).thenReturn(1);
+            lenient().when(matterRepository.getBaseMapper()).thenReturn(matterBaseMapper);
+            lenient().when(matterBaseMapper.updateById(any(Matter.class))).thenReturn(1);
             when(approverService.findConflictCheckApprover()).thenReturn(10L);
-            lenient().doNothing().when(approvalService).createApproval(anyString(), anyLong(), anyString(), 
-                    anyString(), anyLong(), anyString(), anyString(), any());
+            lenient().when(approvalService.createApproval(anyString(), anyLong(), anyString(), 
+                    anyString(), anyLong(), anyString(), anyString(), any())).thenReturn(1L);
 
             // When
             ConflictCheckDTO result = conflictCheckAppService.createConflictCheck(command);
@@ -245,7 +252,10 @@ class ConflictCheckAppServiceTest {
                     .clientType("ENTERPRISE")
                     .build();
 
-            when(clientRepository.list(any(LambdaQueryWrapper.class))).thenReturn(Collections.singletonList(client));
+            // Mock 精确匹配返回 client，包含匹配返回空列表（因为已排除）
+            when(clientRepository.list(any(LambdaQueryWrapper.class)))
+                    .thenReturn(Collections.singletonList(client))  // 精确匹配
+                    .thenReturn(Collections.emptyList());  // 包含匹配
 
             // When
             ConflictCheckAppService.QuickConflictCheckResult result = 
@@ -285,7 +295,7 @@ class ConflictCheckAppServiceTest {
             when(conflictCheckRepository.save(any(ConflictCheck.class))).thenAnswer(invocation -> {
                 ConflictCheck check = invocation.getArgument(0);
                 check.setId(TEST_CHECK_ID);
-                return check;
+                return true;
             });
             when(clientRepository.list(any(LambdaQueryWrapper.class))).thenReturn(Collections.emptyList());
             when(matterRepository.list(any(LambdaQueryWrapper.class))).thenReturn(Collections.emptyList());
@@ -293,8 +303,8 @@ class ConflictCheckAppServiceTest {
             
             com.lawfirm.infrastructure.persistence.mapper.ConflictCheckMapper checkBaseMapper = 
                     mock(com.lawfirm.infrastructure.persistence.mapper.ConflictCheckMapper.class);
-            when(conflictCheckRepository.getBaseMapper()).thenReturn(checkBaseMapper);
-            when(checkBaseMapper.updateById(any(ConflictCheck.class))).thenReturn(1);
+            lenient().when(conflictCheckRepository.getBaseMapper()).thenReturn(checkBaseMapper);
+            lenient().when(checkBaseMapper.updateById(any(ConflictCheck.class))).thenReturn(1);
 
             // When
             ConflictCheckDTO result = conflictCheckAppService.applyConflictCheck(
@@ -329,14 +339,14 @@ class ConflictCheckAppServiceTest {
             
             com.lawfirm.infrastructure.persistence.mapper.ConflictCheckMapper checkBaseMapper = 
                     mock(com.lawfirm.infrastructure.persistence.mapper.ConflictCheckMapper.class);
-            when(conflictCheckRepository.getBaseMapper()).thenReturn(checkBaseMapper);
-            when(checkBaseMapper.updateById(any(ConflictCheck.class))).thenReturn(1);
+            lenient().when(conflictCheckRepository.getBaseMapper()).thenReturn(checkBaseMapper);
+            lenient().when(checkBaseMapper.updateById(any(ConflictCheck.class))).thenReturn(1);
             
-            when(matterRepository.findById(TEST_MATTER_ID)).thenReturn(matter);
+            lenient().when(matterRepository.findById(TEST_MATTER_ID)).thenReturn(matter);
             com.lawfirm.infrastructure.persistence.mapper.MatterMapper matterBaseMapper = 
                     mock(com.lawfirm.infrastructure.persistence.mapper.MatterMapper.class);
-            when(matterRepository.getBaseMapper()).thenReturn(matterBaseMapper);
-            when(matterBaseMapper.updateById(any(Matter.class))).thenReturn(1);
+            lenient().when(matterRepository.getBaseMapper()).thenReturn(matterBaseMapper);
+            lenient().when(matterBaseMapper.updateById(any(Matter.class))).thenReturn(1);
 
             // When
             conflictCheckAppService.approve(TEST_CHECK_ID, "审核通过");
@@ -382,14 +392,14 @@ class ConflictCheckAppServiceTest {
             
             com.lawfirm.infrastructure.persistence.mapper.ConflictCheckMapper checkBaseMapper = 
                     mock(com.lawfirm.infrastructure.persistence.mapper.ConflictCheckMapper.class);
-            when(conflictCheckRepository.getBaseMapper()).thenReturn(checkBaseMapper);
-            when(checkBaseMapper.updateById(any(ConflictCheck.class))).thenReturn(1);
+            lenient().when(conflictCheckRepository.getBaseMapper()).thenReturn(checkBaseMapper);
+            lenient().when(checkBaseMapper.updateById(any(ConflictCheck.class))).thenReturn(1);
             
-            when(matterRepository.findById(TEST_MATTER_ID)).thenReturn(matter);
+            lenient().when(matterRepository.findById(TEST_MATTER_ID)).thenReturn(matter);
             com.lawfirm.infrastructure.persistence.mapper.MatterMapper matterBaseMapper = 
                     mock(com.lawfirm.infrastructure.persistence.mapper.MatterMapper.class);
-            when(matterRepository.getBaseMapper()).thenReturn(matterBaseMapper);
-            when(matterBaseMapper.updateById(any(Matter.class))).thenReturn(1);
+            lenient().when(matterRepository.getBaseMapper()).thenReturn(matterBaseMapper);
+            lenient().when(matterBaseMapper.updateById(any(Matter.class))).thenReturn(1);
 
             // When
             conflictCheckAppService.reject(TEST_CHECK_ID, "审核拒绝");
@@ -423,13 +433,13 @@ class ConflictCheckAppServiceTest {
             
             com.lawfirm.infrastructure.persistence.mapper.ConflictCheckMapper checkBaseMapper = 
                     mock(com.lawfirm.infrastructure.persistence.mapper.ConflictCheckMapper.class);
-            when(conflictCheckRepository.getBaseMapper()).thenReturn(checkBaseMapper);
-            when(checkBaseMapper.updateById(any(ConflictCheck.class))).thenReturn(1);
+            lenient().when(conflictCheckRepository.getBaseMapper()).thenReturn(checkBaseMapper);
+            lenient().when(checkBaseMapper.updateById(any(ConflictCheck.class))).thenReturn(1);
             
             when(approverService.findDefaultApprover()).thenReturn(10L);
-            lenient().doNothing().when(approvalService).createApproval(anyString(), anyLong(), anyString(), 
-                    anyString(), anyLong(), anyString(), anyString(), any());
-            when(conflictCheckItemMapper.selectByCheckId(TEST_CHECK_ID)).thenReturn(Collections.emptyList());
+            lenient().when(approvalService.createApproval(anyString(), anyLong(), anyString(), 
+                    anyString(), anyLong(), anyString(), anyString(), any())).thenReturn(1L);
+            lenient().when(conflictCheckItemMapper.selectByCheckId(TEST_CHECK_ID)).thenReturn(Collections.emptyList());
 
             // When
             ConflictCheckDTO result = conflictCheckAppService.applyExemption(command);
@@ -478,15 +488,14 @@ class ConflictCheckAppServiceTest {
             
             com.lawfirm.infrastructure.persistence.mapper.ConflictCheckMapper checkBaseMapper = 
                     mock(com.lawfirm.infrastructure.persistence.mapper.ConflictCheckMapper.class);
-            when(conflictCheckRepository.getBaseMapper()).thenReturn(checkBaseMapper);
-            when(checkBaseMapper.updateById(any(ConflictCheck.class))).thenReturn(1);
+            lenient().when(conflictCheckRepository.getBaseMapper()).thenReturn(checkBaseMapper);
+            lenient().when(checkBaseMapper.updateById(any(ConflictCheck.class))).thenReturn(1);
             
-            when(matterRepository.findById(TEST_MATTER_ID)).thenReturn(matter);
+            lenient().when(matterRepository.findById(TEST_MATTER_ID)).thenReturn(matter);
             com.lawfirm.infrastructure.persistence.mapper.MatterMapper matterBaseMapper = 
                     mock(com.lawfirm.infrastructure.persistence.mapper.MatterMapper.class);
-            when(matterRepository.getBaseMapper()).thenReturn(matterBaseMapper);
-            when(matterBaseMapper.updateById(any(Matter.class))).thenReturn(1);
-            when(conflictCheckItemMapper.selectByCheckId(TEST_CHECK_ID)).thenReturn(Collections.emptyList());
+            lenient().when(matterRepository.getBaseMapper()).thenReturn(matterBaseMapper);
+            lenient().when(matterBaseMapper.updateById(any(Matter.class))).thenReturn(1);
 
             // When
             conflictCheckAppService.approveExemption(TEST_CHECK_ID, "审批通过");
@@ -515,7 +524,7 @@ class ConflictCheckAppServiceTest {
             
             com.lawfirm.infrastructure.persistence.mapper.ConflictCheckMapper checkBaseMapper = 
                     mock(com.lawfirm.infrastructure.persistence.mapper.ConflictCheckMapper.class);
-            when(conflictCheckRepository.getBaseMapper()).thenReturn(checkBaseMapper);
+            lenient().when(conflictCheckRepository.getBaseMapper()).thenReturn(checkBaseMapper);
             lenient().when(checkBaseMapper.updateById(any(ConflictCheck.class))).thenReturn(1);
             
             lenient().when(matterRepository.findById(TEST_MATTER_ID)).thenReturn(matter);

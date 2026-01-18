@@ -423,7 +423,7 @@ describe('Client API', () => {
 
     it('should update lead', async () => {
       const leadId = 1;
-      const data = { name: 'Updated Lead' };
+      const data: Partial<CreateLeadCommand> = { clientName: 'Updated Lead' };
       const mockResponse = { id: leadId, ...data };
 
       mockPut.mockResolvedValueOnce(mockResponse);
