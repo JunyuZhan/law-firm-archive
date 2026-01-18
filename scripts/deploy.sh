@@ -284,9 +284,30 @@ setup_env() {
             HAS_UNSAFE=true
         fi
         
-        # 确保 OnlyOffice JWT 配置一致
+        # 确保 OnlyOffice JWT 配置完整和一致
+        # 如果 ONLYOFFICE_JWT_SECRET 不存在，自动生成
+        if [ -z "${ONLYOFFICE_JWT_SECRET:-}" ] || [ "$ONLYOFFICE_JWT_SECRET" = "your-onlyoffice-jwt-secret-change-in-production" ]; then
+            log_info "检测到 ONLYOFFICE_JWT_SECRET 未配置，自动生成..."
+            NEW_ONLYOFFICE_SECRET=$(openssl rand -hex 32 2>/dev/null || head -c 32 /dev/urandom | xxd -p)
+            if [[ "$OSTYPE" == "darwin"* ]]; then
+                if ! grep -q "^ONLYOFFICE_JWT_SECRET=" "$ENV_FILE"; then
+                    echo "ONLYOFFICE_JWT_SECRET=$NEW_ONLYOFFICE_SECRET" >> "$ENV_FILE"
+                else
+                    sed -i '' "s|ONLYOFFICE_JWT_SECRET=.*|ONLYOFFICE_JWT_SECRET=$NEW_ONLYOFFICE_SECRET|" "$ENV_FILE"
+                fi
+            else
+                if ! grep -q "^ONLYOFFICE_JWT_SECRET=" "$ENV_FILE"; then
+                    echo "ONLYOFFICE_JWT_SECRET=$NEW_ONLYOFFICE_SECRET" >> "$ENV_FILE"
+                else
+                    sed -i "s|ONLYOFFICE_JWT_SECRET=.*|ONLYOFFICE_JWT_SECRET=$NEW_ONLYOFFICE_SECRET|" "$ENV_FILE"
+                fi
+            fi
+            source "$ENV_FILE"
+            log_success "OnlyOffice JWT 密钥已生成"
+        fi
+        
         # 如果 ONLYOFFICE_JWT_SECRET 存在但 ONLYOFFICE_JWT_ENABLED 未设置或为 false，自动启用
-        if [ -n "$ONLYOFFICE_JWT_SECRET" ] && [ -n "${ONLYOFFICE_JWT_SECRET:-}" ]; then
+        if [ -n "${ONLYOFFICE_JWT_SECRET:-}" ] && [ "$ONLYOFFICE_JWT_SECRET" != "your-onlyoffice-jwt-secret-change-in-production" ]; then
             if [ -z "${ONLYOFFICE_JWT_ENABLED:-}" ] || [ "$ONLYOFFICE_JWT_ENABLED" != "true" ]; then
                 log_info "检测到 ONLYOFFICE_JWT_SECRET 已配置，自动启用 JWT..."
                 if [[ "$OSTYPE" == "darwin"* ]]; then
