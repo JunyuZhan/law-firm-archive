@@ -114,22 +114,29 @@ public class OnlyOfficeService {
         editorConfig.put("customization", customization);
         
         config.put("editorConfig", editorConfig);
-        
+
         // 尺寸
         config.put("height", "100%");
         config.put("width", "100%");
         config.put("type", "desktop");
-        
-        // OnlyOffice Document Server URL
+
+        // OnlyOffice Document Server URL（供前端参考，但不会放入 JWT）
+        // 前端会自动检测当前域名来替换这些值
         config.put("documentServerUrl", this.config.getDocumentServerUrl());
         config.put("apiJsUrl", this.config.getApiJsUrl());
-        
+
         // JWT 签名（如果启用）
-        if (this.config.isJwtEnabled() && this.config.getJwtSecret() != null 
+        // 注意：生成 JWT 时排除 documentServerUrl 和 apiJsUrl，让前端自动检测域名
+        if (this.config.isJwtEnabled() && this.config.getJwtSecret() != null
                 && !this.config.getJwtSecret().isEmpty()) {
-            String token = generateJwtToken(config);
+            // 创建用于签名的配置副本（排除 URL 相关字段）
+            Map<String, Object> jwtPayload = new HashMap<>(config);
+            jwtPayload.remove("documentServerUrl");
+            jwtPayload.remove("apiJsUrl");
+
+            String token = generateJwtToken(jwtPayload);
             config.put("token", token);
-            log.debug("OnlyOffice JWT 签名已添加");
+            log.debug("OnlyOffice JWT 签名已添加（URL 由前端自动检测）");
         }
         
         log.debug("生成 OnlyOffice 配置: fileName={}, mode={}, documentKey={}, jwtEnabled={}", 

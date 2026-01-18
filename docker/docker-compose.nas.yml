@@ -59,10 +59,9 @@ services:
       - OCR_SERVICE_URL=http://paddle-ocr:8000
       - SPRING_PROFILES_ACTIVE=prod
       - SWAGGER_ENABLED=${SWAGGER_ENABLED:-false}
-      # OnlyOffice 配置（与 OnlyOffice 容器保持一致）
+      # OnlyOffice JWT 配置（与 OnlyOffice 容器保持一致）
       - ONLYOFFICE_JWT_ENABLED=${ONLYOFFICE_JWT_ENABLED:-true}
       - ONLYOFFICE_JWT_SECRET=${ONLYOFFICE_JWT_SECRET:-your-onlyoffice-jwt-secret-change-in-production}
-      - ONLYOFFICE_URL=${ONLYOFFICE_URL:-http://localhost/onlyoffice}
       - ONLYOFFICE_CALLBACK_URL=http://frontend:80/api
       - FILE_SERVER_URL=http://${NAS_IP:-192.168.50.20}:9000
     depends_on:
