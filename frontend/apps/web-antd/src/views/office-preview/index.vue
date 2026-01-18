@@ -98,11 +98,11 @@ async function loadFromBackend(documentId: number, mode: 'edit' | 'view') {
     // 优先使用后端返回的地址，如果没有则使用当前域名 + /onlyoffice
     const onlyOfficeUrl = getOnlyOfficeUrl(response.documentServerUrl);
     
+    // 构建 API JS URL（始终使用智能检测后的 URL）
+    const apiJsUrl = `${onlyOfficeUrl}/web-apps/apps/api/documents/api.js`;
+    
     // 加载 OnlyOffice API 并初始化编辑器
-    await loadOnlyOfficeApi(
-      response.apiJsUrl ||
-        `${onlyOfficeUrl}/web-apps/apps/api/documents/api.js`,
-    );
+    await loadOnlyOfficeApi(apiJsUrl);
     
     // 更新 response 中的 documentServerUrl 以便后续使用
     response.documentServerUrl = onlyOfficeUrl;
