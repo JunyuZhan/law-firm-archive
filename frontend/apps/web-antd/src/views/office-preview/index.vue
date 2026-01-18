@@ -228,7 +228,7 @@ function loadOnlyOfficeApi(apiUrl: string): Promise<void> {
  * 从后端配置初始化编辑器
  */
 function initEditorFromConfig(cfg: OnlyOfficeConfig) {
-  const editorConfig = {
+  const editorConfig: any = {
     document: cfg.document,
     documentType: cfg.documentType,
     editorConfig: {
@@ -259,6 +259,12 @@ function initEditorFromConfig(cfg: OnlyOfficeConfig) {
     width: '100%',
     type: cfg.type || 'desktop',
   };
+
+  // 如果后端返回了 JWT token，需要传递给 OnlyOffice 编辑器
+  // OnlyOffice Document Server 会验证这个 token
+  if (cfg.token) {
+    editorConfig.token = cfg.token;
+  }
 
   initEditor(editorConfig);
 }

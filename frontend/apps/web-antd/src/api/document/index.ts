@@ -198,6 +198,7 @@ export interface OnlyOfficeConfig {
   documentId?: number;
   documentServerUrl?: string;
   apiJsUrl?: string;
+  token?: string; // JWT token for OnlyOffice Document Server authentication
   document?: {
     fileType: string;
     key: string;
