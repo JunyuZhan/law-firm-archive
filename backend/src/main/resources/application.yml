@@ -114,16 +114,16 @@ quality:
 
 # OnlyOffice 文档服务配置
 onlyoffice:
-  # OnlyOffice Document Server 地址（Docker 部署）
+  # OnlyOffice Document Server 地址（建议在部署脚本中设置为外部可访问的 URL）
   document-server-url: ${ONLYOFFICE_URL:http://localhost:8088}
   # 后端服务地址（OnlyOffice 回调时使用，需要 OnlyOffice 容器能访问）
   callback-url: ${ONLYOFFICE_CALLBACK_URL:http://host.docker.internal:8080/api}
   # 文件服务地址（OnlyOffice 获取文件时使用）
   file-server-url: ${FILE_SERVER_URL:http://host.docker.internal:9000}
-  # JWT 密钥（如果 OnlyOffice 启用了 JWT）
-  jwt-secret: ${ONLYOFFICE_JWT_SECRET:}
-  # 是否启用 JWT
-  jwt-enabled: false
+  # JWT 密钥（生产环境请通过环境变量 ONLYOFFICE_JWT_SECRET 设置）
+  jwt-secret: ${ONLYOFFICE_JWT_SECRET:law-firm-onlyoffice-default-secret-2024}
+  # 是否启用 JWT（生产环境必须启用）
+  jwt-enabled: ${ONLYOFFICE_JWT_ENABLED:true}
 
 # 日志配置
 logging:

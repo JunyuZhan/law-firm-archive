@@ -112,14 +112,17 @@ services:
     container_name: law-firm-onlyoffice
     restart: unless-stopped
     environment:
-      - JWT_ENABLED=false
+      - JWT_ENABLED=true
+      - JWT_SECRET=${ONLYOFFICE_JWT_SECRET:-law-firm-onlyoffice-default-secret-2024}
+      - JWT_HEADER=Authorization
       # 允许访问私有 IP 地址（用于从后端代理获取文件）
       - ALLOW_PRIVATE_IP_ADDRESS=true
       - ALLOW_META_IP_ADDRESS=true
       # 禁用示例应用
       - DS_EXAMPLE_ENABLED=false
     ports:
-      - "8088:80"
+      # 仅绑定到回环地址，防止公网直接访问，必须通过 Nginx 代理
+      - "127.0.0.1:8088:80"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:

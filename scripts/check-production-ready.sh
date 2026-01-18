@@ -83,6 +83,15 @@ if [ -n "$ENV_FILE" ]; then
     else
         check_pass "Swagger UI 已禁用"
     fi
+
+    # 检查 OnlyOffice JWT 密钥
+    if [ -z "$ONLYOFFICE_JWT_SECRET" ] || [ "$ONLYOFFICE_JWT_SECRET" = "law-firm-onlyoffice-default-secret-2024" ]; then
+        if [ "$ONLYOFFICE_JWT_ENABLED" = "true" ]; then
+            check_warn "OnlyOffice 使用了默认或空的 JWT 密钥，生产环境建议修改"
+        fi
+    else
+        check_pass "OnlyOffice JWT 密钥已配置"
+    fi
 else
     check_fail "未找到 .env 文件，请先运行 ./scripts/deploy.sh 创建配置"
 fi
