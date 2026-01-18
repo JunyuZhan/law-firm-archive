@@ -47,6 +47,8 @@ out/
 *.temp
 *.bak
 *.backup
+test*.txt
+test-*.txt
 
 # Database
 *.db

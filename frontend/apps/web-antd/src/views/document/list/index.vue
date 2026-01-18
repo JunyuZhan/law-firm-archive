@@ -1067,7 +1067,9 @@ function isAudioFile(fileType: string | undefined): boolean {
 // 判断文件是否支持 OnlyOffice 预览
 function isOfficeFile(fileType: string | undefined): boolean {
   if (!fileType) return false;
-  const ext = fileType.toLowerCase();
+  // 移除点号并转为小写
+  const ext = fileType.toLowerCase().replace('.', '').trim();
+  // PDF 不在 Office 文件列表中，使用浏览器直接预览
   return [
     'csv',
     'doc',
@@ -1075,7 +1077,6 @@ function isOfficeFile(fileType: string | undefined): boolean {
     'odp',
     'ods',
     'odt',
-    'pdf',
     'ppt',
     'pptx',
     'rtf',
@@ -1108,15 +1109,56 @@ function isEditableFile(fileType: string | undefined): boolean {
 
 // 预览文档（根据文件类型选择不同的预览方式）
 async function handlePreview(record: DocumentDTO) {
-  const fileType = record.fileType?.toLowerCase() || '';
+  // 获取文件扩展名（优先从 fileType，如果没有则从 fileName 提取）
+  let fileExt = '';
+  
+  // 方法1: 从 fileType 字段提取
+  if (record.fileType) {
+    fileExt = record.fileType.toLowerCase().replace(/^\.+/, '').trim();
+  }
+  
+  // 方法2: 如果 fileType 为空或无效，从 fileName 提取
+  if (!fileExt && record.fileName) {
+    const match = record.fileName.match(/\.([^.]+)$/i);
+    if (match && match[1]) {
+      fileExt = match[1].toLowerCase();
+    }
+  }
+  
+  // 方法3: 如果还是为空，从 filePath 提取
+  if (!fileExt && record.filePath) {
+    const match = record.filePath.match(/\.([^.]+)(?:\?|$)/i);
+    if (match && match[1]) {
+      fileExt = match[1].toLowerCase();
+    }
+  }
 
-  // Office 文档类型 - 使用 OnlyOffice 预览
-  if (isOfficeFile(fileType)) {
+  // PDF 类型 - 优先处理，使用弹窗预览（像图片一样在浏览器中预览）
+  if (fileExt === 'pdf') {
+    try {
+      const { previewUrl: previewUrlResult } = await getDocumentPreviewUrl(record.id);
+      const fileUrl = previewUrlResult;
+      currentDocument.value = { ...record, filePath: fileUrl };
+      previewUrl.value = fileUrl;
+      previewModalVisible.value = true;
+      return;
+    } catch (error: any) {
+      message.error(`获取预览链接失败: ${error.message || '未知错误'}`);
+      return;
+    }
+  }
+
+  // Office 文档类型 - 在弹窗中使用 iframe 嵌入 OnlyOffice 预览（确保不是PDF）
+  if (fileExt && fileExt !== 'pdf' && isOfficeFile(fileExt)) {
+    // 构建 OnlyOffice 预览页面的 URL
     const resolved = router.resolve({
       path: '/office-preview',
       query: { documentId: String(record.id), mode: 'view' },
     });
-    window.open(resolved.href, '_blank');
+    // 在弹窗中使用 iframe 预览，而不是新窗口打开
+    currentDocument.value = { ...record, filePath: resolved.href };
+    previewUrl.value = resolved.href;
+    previewModalVisible.value = true;
     return;
   }
 
@@ -1126,7 +1168,7 @@ async function handlePreview(record: DocumentDTO) {
     const fileUrl = previewUrl;
 
     // 图片类型 - 使用专用图片预览弹窗（支持缩放）
-    if (isImageFile(fileType)) {
+    if (isImageFile(fileExt)) {
       currentDocument.value = { ...record, filePath: fileUrl };
       imageZoom.value = 1; // 重置缩放
       previewModalVisible.value = true;
@@ -1134,7 +1176,7 @@ async function handlePreview(record: DocumentDTO) {
     }
 
     // 视频类型 - 使用 HTML5 Video 播放
-    if (isVideoFile(fileType)) {
+    if (isVideoFile(fileExt)) {
       Modal.info({
         title: record.fileName || record.name,
         icon: null,
@@ -1153,7 +1195,7 @@ async function handlePreview(record: DocumentDTO) {
     }
 
     // 音频类型 - 使用 HTML5 Audio 播放
-    if (isAudioFile(fileType)) {
+    if (isAudioFile(fileExt)) {
       Modal.info({
         title: record.fileName || record.name,
         icon: null,
@@ -1168,12 +1210,6 @@ async function handlePreview(record: DocumentDTO) {
         ]),
         okText: '关闭',
       });
-      return;
-    }
-
-    // PDF 类型 - 直接在新窗口打开
-    if (fileType === 'pdf') {
-      window.open(fileUrl, '_blank');
       return;
     }
 
@@ -2568,7 +2604,9 @@ onMounted(() => {
     <Modal
       v-model:open="previewModalVisible"
       :title="`预览 - ${currentDocument?.title || currentDocument?.fileName || currentDocument?.name}`"
-      :width="isImageFile(currentDocument?.fileType) ? '90%' : '80%'"
+      :width="isImageFile(currentDocument?.fileType) || 
+              currentDocument?.fileType?.toLowerCase() === 'pdf' || 
+              (currentDocument?.fileType && isOfficeFile(currentDocument.fileType)) ? '95%' : '80%'"
       :footer="null"
       style="top: 20px"
       :class="{ 'image-preview-modal': isImageFile(currentDocument?.fileType) }"
@@ -2612,12 +2650,14 @@ onMounted(() => {
           />
         </div>
       </div>
-      <!-- 其他类型文件预览 -->
-      <div v-else style="height: 70vh">
+      <!-- 其他类型文件预览（PDF、Office文档等） -->
+      <div v-else style="height: 80vh">
         <iframe
           v-if="previewUrl"
           :src="previewUrl"
           style="width: 100%; height: 100%; border: none"
+          frameborder="0"
+          allowfullscreen
         ></iframe>
         <div v-else style="padding: 50px; text-align: center">
           <div>暂不支持预览此类型文件</div>

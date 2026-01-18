@@ -66,21 +66,57 @@ bash scripts/deploy.sh
 #### 1. 启动基础设施
 
 ```bash
+# 方式一：使用统一环境管理脚本（推荐）
+./scripts/env-start.sh dev
+
+# 方式二：启动全量开发环境（包括 OnlyOffice、OCR 等）
+./scripts/env-start.sh dev --full
+
+# 方式三：手动启动
 cd docker
-docker compose up -d postgres redis minio
+docker compose -f docker-compose.dev.yml up -d
+# 或使用全量配置
+docker compose -f docker-compose.dev-full.yml up -d
 ```
 
 #### 2. 初始化数据库
 
 ```bash
-# 方式一：使用重置脚本（推荐）
-cd scripts
-./reset-db.sh --dev
+# 使用重置脚本（推荐，会自动检测容器）
+./scripts/reset-db.sh --dev
 
-# 方式二：手动初始化
+# 或手动初始化
 cd scripts/init-db
 ./init-database.sh.manual --drop
 ```
+
+#### 3. 停止和重置
+
+```bash
+# 停止开发环境
+./scripts/env-stop.sh dev
+
+# 重置开发环境（删除所有数据并重新初始化）
+./scripts/env-reset.sh dev
+```
+
+### 测试环境
+
+```bash
+# 启动测试环境
+./scripts/env-start.sh test
+
+# 初始化数据库
+./scripts/reset-db.sh --test
+
+# 停止测试环境
+./scripts/env-stop.sh test
+
+# 重置测试环境
+./scripts/env-reset.sh test
+```
+
+> 📖 详细环境配置说明请参考 [环境配置文档](docs/ENVIRONMENT_CONFIGURATION.md)
 
 #### 3. 启动后端
 

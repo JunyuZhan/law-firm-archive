@@ -817,8 +817,13 @@ public class DocumentAppService {
         
         try {
             // 1. 从 OnlyOffice 下载编辑后的文档
+            // OnlyOffice 提供的 downloadUrl 可能包含 localhost，需要替换为 Docker 内部地址
+            String accessibleUrl = normalizeOnlyOfficeDownloadUrl(downloadUrl);
+            log.info("OnlyOffice 下载 URL 规范化: {} -> {}", downloadUrl, accessibleUrl);
+            
             // ⚠️ 内存泄露修复：使用 try-with-resources 确保 InputStream 正确关闭
-            java.net.URL url = new java.net.URL(downloadUrl);
+            // 使用 URI 转换为 URL（避免使用已废弃的 URL 构造函数）
+            java.net.URL url = new java.net.URI(accessibleUrl).toURL();
             byte[] fileContent;
             try (java.io.InputStream inputStream = url.openStream();
                  java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream()) {
@@ -860,6 +865,36 @@ public class DocumentAppService {
             log.error("从 OnlyOffice 保存文档失败: documentId={}, url={}", documentId, downloadUrl, e);
             throw new BusinessException("保存文档失败: " + e.getMessage());
         }
+    }
+
+    /**
+     * 规范化 OnlyOffice 提供的下载 URL
+     * 将 localhost、127.0.0.1 等地址替换为 Docker 内部可访问的地址
+     */
+    private String normalizeOnlyOfficeDownloadUrl(String downloadUrl) {
+        if (downloadUrl == null || downloadUrl.isEmpty()) {
+            return downloadUrl;
+        }
+        
+        // OnlyOffice 提供的 URL 通常是它自己服务器上的临时文件
+        // 如果包含 localhost 或 127.0.0.1，需要替换为 Docker 内部服务名
+        String normalizedUrl = downloadUrl;
+        
+        // 替换 localhost 和 127.0.0.1 为 onlyoffice（Docker 服务名）
+        // 注意：OnlyOffice 容器在 Docker 网络中可以通过服务名访问
+        normalizedUrl = normalizedUrl.replace("http://localhost/", "http://onlyoffice/")
+                .replace("http://127.0.0.1/", "http://onlyoffice/")
+                .replace("http://localhost:80/", "http://onlyoffice/")
+                .replace("http://127.0.0.1:80/", "http://onlyoffice/")
+                .replace("http://localhost:8088/", "http://onlyoffice/")
+                .replace("http://127.0.0.1:8088/", "http://onlyoffice/");
+        
+        // 如果 URL 包含 host.docker.internal，也替换为 onlyoffice
+        normalizedUrl = normalizedUrl.replace("http://host.docker.internal/", "http://onlyoffice/")
+                .replace("http://host.docker.internal:80/", "http://onlyoffice/")
+                .replace("http://host.docker.internal:8088/", "http://onlyoffice/");
+        
+        return normalizedUrl;
     }
 
     /**

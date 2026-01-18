@@ -129,11 +129,55 @@ export function getAllDossierTemplates() {
   return requestClient.get<DossierTemplate[]>('/dossier/template');
 }
 
+/** 创建卷宗模板 */
+export function createDossierTemplate(
+  data: Omit<DossierTemplate, 'id' | 'isDefault'>,
+) {
+  return requestClient.post<DossierTemplate>('/dossier/template', data);
+}
+
+/** 更新卷宗模板 */
+export function updateDossierTemplate(id: number, data: Partial<DossierTemplate>) {
+  return requestClient.put<DossierTemplate>(`/dossier/template/${id}`, data);
+}
+
+/** 删除卷宗模板 */
+export function deleteDossierTemplate(id: number) {
+  return requestClient.delete(`/dossier/template/${id}`);
+}
+
 /** 获取模板目录项 */
 export function getDossierTemplateItems(templateId: number) {
   return requestClient.get<DossierTemplateItem[]>(
     `/dossier/template/${templateId}/items`,
   );
+}
+
+/** 添加模板目录项 */
+export function addDossierTemplateItem(
+  templateId: number,
+  data: Partial<DossierTemplateItem>,
+) {
+  return requestClient.post<DossierTemplateItem>(
+    `/dossier/template/${templateId}/items`,
+    data,
+  );
+}
+
+/** 更新模板目录项 */
+export function updateDossierTemplateItem(
+  itemId: number,
+  data: Partial<DossierTemplateItem>,
+) {
+  return requestClient.put<DossierTemplateItem>(
+    `/dossier/template/items/${itemId}`,
+    data,
+  );
+}
+
+/** 删除模板目录项 */
+export function deleteDossierTemplateItem(itemId: number) {
+  return requestClient.delete(`/dossier/template/items/${itemId}`);
 }
 
 // ========== 文件分类常量 ==========

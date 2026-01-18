@@ -38,6 +38,32 @@ fi
 # 在后台启动字体注册脚本（等待服务启动后运行）
 nohup /app/register-fonts.sh > /var/log/onlyoffice/register-fonts.log 2>&1 &
 
+# 配置 OnlyOffice Nginx CORS 支持
+# 虽然前端代理会处理 CORS，但 OnlyOffice 内部资源（如 Editor.bin）可能直接访问 127.0.0.1:8088
+# 因此需要在 OnlyOffice 容器内部也配置 CORS
+echo "配置 OnlyOffice CORS 支持..."
+DOCSERVICE_CONF="/etc/onlyoffice/documentserver/nginx/includes/ds-docservice.conf"
+
+# 在 ds-docservice.conf 的 cache/files location 块中添加 CORS 头
+if [ -f "$DOCSERVICE_CONF" ]; then
+    # 检查是否已配置 CORS
+    if ! grep -q "Access-Control-Allow-Origin" "$DOCSERVICE_CONF"; then
+        # 在 add_header Content-Disposition 之后添加 CORS 头
+        sed -i '/add_header Content-Disposition/a\
+  # CORS 头（由 entrypoint.sh 自动添加）\
+  add_header Access-Control-Allow-Origin * always;\
+  add_header Access-Control-Allow-Methods "GET, POST, OPTIONS, PUT, DELETE" always;\
+  add_header Access-Control-Allow-Headers "Authorization, Content-Type, X-Requested-With" always;\
+  add_header Access-Control-Allow-Credentials true always;' "$DOCSERVICE_CONF"
+        echo "✓ CORS 配置已添加到 ds-docservice.conf"
+    else
+        echo "✓ CORS 配置已存在"
+    fi
+else
+    echo "⚠ 未找到 ds-docservice.conf 配置文件: $DOCSERVICE_CONF"
+fi
+echo "✓ OnlyOffice 启动完成"
+
 # 查找 OnlyOffice 的原始 entrypoint
 # OnlyOffice 8.x/9.x 使用不同的路径
 ORIGINAL_ENTRYPOINT=""

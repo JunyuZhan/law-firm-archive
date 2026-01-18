@@ -240,6 +240,11 @@ public class DocumentTemplateAppService {
                 .createdBy(SecurityUtils.getUserId())
                 .build();
 
+        // 如果指定了卷宗目录，设置关联
+        if (command.getDossierItemId() != null) {
+            document.setDossierItemId(command.getDossierItemId());
+        }
+
         documentRepository.save(document);
 
         // 增加模板使用次数

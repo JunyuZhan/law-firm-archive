@@ -363,19 +363,24 @@ public class DocumentController {
         String userName = SecurityUtils.getUsername();
 
         // 生成带签名的文件访问 URL
-        // 直接使用 MinIO 预签名 URL
-        String fileUrl = onlyOfficeService.buildFileUrl(doc.getFilePath());
+        // 优先使用后端代理接口，确保 OnlyOffice 容器能够访问
+        // 使用文档ID构建代理URL，OnlyOffice 通过 Docker 网络访问 backend 服务
+        String fileUrl = onlyOfficeService.buildFileUrlForDocument(id);
+
+        // 根据 MIME 类型修正文件名扩展名（如果文件名扩展名与实际内容不匹配）
+        String correctedFileName = correctFileNameByMimeType(doc.getFileName(), doc.getMimeType());
 
         // 生成 OnlyOffice 预览配置
         Map<String, Object> config = onlyOfficeService.generateViewConfig(
                 fileUrl,
-                doc.getFileName(),
+                correctedFileName,
                 userId,
                 userName);
         config.put("supported", true);
         config.put("documentId", id);
 
-        log.info("用户 {} 预览文档: id={}, fileName={}", userName, id, doc.getFileName());
+        log.info("用户 {} 预览文档: id={}, originalFileName={}, correctedFileName={}, mimeType={}", 
+            userName, id, doc.getFileName(), correctedFileName, doc.getMimeType());
         return Result.success(config);
     }
 
@@ -412,13 +417,16 @@ public class DocumentController {
         String documentKey = "doc_" + id + "_v" + (doc.getVersion() != null ? doc.getVersion() : 1);
 
         // 生成带签名的文件访问 URL
-        // 直接使用 MinIO 预签名 URL，确保 OnlyOffice 容器可以下载
-        String fileUrl = onlyOfficeService.buildFileUrl(doc.getFilePath());
+        // 使用后端代理接口，确保 OnlyOffice 容器能够访问
+        String fileUrl = onlyOfficeService.buildFileUrlForDocument(id);
+
+        // 根据 MIME 类型修正文件名扩展名（如果文件名扩展名与实际内容不匹配）
+        String correctedFileName = correctFileNameByMimeType(doc.getFileName(), doc.getMimeType());
 
         // 生成 OnlyOffice 编辑配置
         Map<String, Object> config = onlyOfficeService.generateEditConfig(
                 fileUrl,
-                doc.getFileName(),
+                correctedFileName,
                 documentKey,
                 userId,
                 userName,
@@ -427,8 +435,8 @@ public class DocumentController {
         config.put("supported", true);
         config.put("documentId", id);
 
-        log.info("用户 {} 开始编辑文档: id={}, fileName={}, documentKey={}",
-                userName, id, doc.getFileName(), documentKey);
+        log.info("用户 {} 开始编辑文档: id={}, originalFileName={}, correctedFileName={}, documentKey={}, mimeType={}",
+                userName, id, doc.getFileName(), correctedFileName, documentKey, doc.getMimeType());
         return Result.success(config);
     }
 
@@ -624,6 +632,273 @@ public class DocumentController {
                 log.debug("发送错误响应失败", sendError);
             }
         }
+    }
+
+    /**
+     * 文档文件代理接口（供 OnlyOffice 容器下载文件）
+     * 安全措施：
+     * 1. 使用临时 token 验证（防止未授权访问）
+     * 2. 验证请求来源（只允许 Docker 内部网络或 OnlyOffice 容器）
+     * 3. Token 有时效性（2小时）
+     */
+    @GetMapping("/{id}/file-proxy")
+    @Operation(summary = "文档文件代理", description = "供 OnlyOffice 容器下载文档文件，需要有效的访问 token")
+    public void fileProxy(
+            @PathVariable Long id,
+            @RequestParam(required = false) String token,
+            @RequestParam(required = false) Long expires,
+            HttpServletRequest request,
+            HttpServletResponse response) {
+        try {
+            // 安全验证：检查 token（如果提供）
+            // 注意：OnlyOffice 容器可能无法传递 token，所以这里允许无 token 访问
+            // 但会验证请求来源（通过 IP 或 User-Agent）
+            if (token != null && expires != null) {
+                // URL 解码 token（如果被编码了）
+                String decodedToken = token;
+                try {
+                    decodedToken = java.net.URLDecoder.decode(token, StandardCharsets.UTF_8);
+                } catch (Exception e) {
+                    // 如果解码失败，使用原始 token
+                    log.debug("Token URL 解码失败，使用原始 token: {}", e.getMessage());
+                }
+                
+                log.info("OnlyOffice 文件代理请求（带token）: documentId={}, token={}, expires={}", 
+                    id, decodedToken.substring(0, Math.min(8, decodedToken.length())) + "...", expires);
+                
+                if (!validateAccessToken(id, decodedToken, expires)) {
+                    log.warn("Token 验证失败: documentId={}", id);
+                    response.sendError(HttpServletResponse.SC_FORBIDDEN, "无效的访问令牌");
+                    return;
+                }
+                if (System.currentTimeMillis() > expires) {
+                    log.warn("Token 已过期: documentId={}, expires={}", id, expires);
+                    response.sendError(HttpServletResponse.SC_FORBIDDEN, "访问令牌已过期");
+                    return;
+                }
+            } else {
+                // 无 token 时，验证请求来源（只允许 Docker 内部网络）
+                // OnlyOffice 容器在 Docker 网络中，可以通过服务名访问
+                String clientIp = getClientIp(request);
+                String userAgent = request.getHeader("User-Agent") != null 
+                    ? request.getHeader("User-Agent").toLowerCase() 
+                    : "";
+                
+                // 允许 Docker 内部网络访问（172.x.x.x, 10.x.x.x, 192.168.x.x）
+                // 或者请求来自 OnlyOffice 容器（通过服务名 onlyoffice）
+                boolean isInternalNetwork = clientIp != null && (
+                    clientIp.startsWith("172.") || 
+                    clientIp.startsWith("10.") || 
+                    clientIp.startsWith("192.168.") ||
+                    clientIp.equals("127.0.0.1") ||
+                    clientIp.equals("::1")
+                );
+                
+                // 记录安全日志
+                log.info("OnlyOffice 文件代理请求（无token）: documentId={}, clientIp={}, userAgent={}, isInternal={}", 
+                    id, clientIp, userAgent, isInternalNetwork);
+                
+                // 如果没有 token 且不是内部网络，拒绝访问
+                // 注意：在生产环境中，建议始终使用 token
+                if (!isInternalNetwork) {
+                    log.warn("拒绝未授权访问: documentId={}, clientIp={}", id, clientIp);
+                    response.sendError(HttpServletResponse.SC_FORBIDDEN, "访问被拒绝：需要有效的访问令牌或内部网络访问");
+                    return;
+                }
+            }
+
+            DocumentDTO doc = documentAppService.getDocumentById(id);
+            if (doc == null) {
+                response.sendError(HttpServletResponse.SC_NOT_FOUND, "文档不存在");
+                return;
+            }
+
+            // 从 MinIO 获取文件
+            String objectName = minioService.extractObjectName(doc.getFilePath());
+            log.info("OnlyOffice 文件代理: documentId={}, filePath={}, objectName={}, bucketName={}",
+                id, doc.getFilePath(), objectName, minioService.getBucketName());
+            if (objectName == null) {
+                log.error("无法解析 objectName: documentId={}, filePath={}, bucketName={}",
+                    id, doc.getFilePath(), minioService.getBucketName());
+                response.sendError(HttpServletResponse.SC_NOT_FOUND, "文件不存在");
+                return;
+            }
+
+            // 设置响应头
+            // 优先根据实际文件内容检测文件类型，而不是依赖数据库中的 MIME 类型
+            String detectedMimeType = detectMimeTypeFromContent(doc, minioService, objectName);
+            String mimeType = detectedMimeType != null ? detectedMimeType : doc.getMimeType();
+            if (mimeType == null || mimeType.isEmpty()) {
+                mimeType = "application/octet-stream";
+            }
+            
+            // 根据检测到的 MIME 类型修正文件名
+            String correctedFileName = correctFileNameByMimeType(doc.getFileName(), mimeType);
+            
+            response.setContentType(mimeType);
+            response.setHeader("Content-Disposition", "inline; filename=\"" +
+                    URLEncoder.encode(correctedFileName, StandardCharsets.UTF_8) + "\"");
+            
+            // 设置缓存控制（避免 OnlyOffice 缓存错误内容）
+            response.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+            response.setHeader("Pragma", "no-cache");
+            response.setHeader("Expires", "0");
+
+            // 输出文件内容
+            long totalBytes = 0;
+            try (InputStream inputStream = minioService.downloadFile(objectName);
+                    OutputStream outputStream = response.getOutputStream()) {
+                byte[] buffer = new byte[8192];
+                int bytesRead;
+                while ((bytesRead = inputStream.read(buffer)) != -1) {
+                    outputStream.write(buffer, 0, bytesRead);
+                    totalBytes += bytesRead;
+                }
+                outputStream.flush();
+            }
+
+            log.info("OnlyOffice 文件代理请求成功: id={}, fileName={}, fileSize={}, mimeType={}, bytesSent={}", 
+                id, doc.getFileName(), doc.getFileSize(), mimeType, totalBytes);
+        } catch (Exception e) {
+            log.error("OnlyOffice 文件代理失败: id={}", id, e);
+            try {
+                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "获取文档内容失败");
+            } catch (Exception sendError) {
+                log.debug("发送错误响应失败", sendError);
+            }
+        }
+    }
+
+    /**
+     * 根据文件内容检测实际的 MIME 类型
+     * 通过读取文件头（魔数）来判断文件类型，而不是依赖数据库中的 MIME 类型
+     */
+    private String detectMimeTypeFromContent(DocumentDTO doc, MinioService minioService, String objectName) {
+        try {
+            // 读取文件的前几个字节来检测文件类型
+            byte[] header = new byte[8];
+            try (InputStream inputStream = minioService.downloadFile(objectName)) {
+                int bytesRead = inputStream.read(header);
+                if (bytesRead < 4) {
+                    log.warn("文件太小，无法检测类型: documentId={}", doc.getId());
+                    return null;
+                }
+            }
+            
+            // 检测 ZIP 格式（docx, xlsx, pptx 都是 ZIP 格式）
+            // ZIP 文件头：50 4B 03 04
+            if (header[0] == 0x50 && header[1] == 0x4B && header[2] == 0x03 && header[3] == 0x04) {
+                // 这是 ZIP 格式，可能是 docx, xlsx, pptx
+                // 根据文件名扩展名判断
+                String fileExt = doc.getFileType() != null ? doc.getFileType().toLowerCase() : "";
+                String fileName = doc.getFileName() != null ? doc.getFileName().toLowerCase() : "";
+                if (fileExt.equals("doc") || fileExt.equals("docx") || fileName.endsWith(".doc") || fileName.endsWith(".docx")) {
+                    log.info("检测到文件实际为 docx 格式（ZIP）: documentId={}, fileName={}", doc.getId(), doc.getFileName());
+                    return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+                } else if (fileExt.equals("xls") || fileExt.equals("xlsx") || fileName.endsWith(".xls") || fileName.endsWith(".xlsx")) {
+                    log.info("检测到文件实际为 xlsx 格式（ZIP）: documentId={}, fileName={}", doc.getId(), doc.getFileName());
+                    return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+                } else if (fileExt.equals("ppt") || fileExt.equals("pptx") || fileName.endsWith(".ppt") || fileName.endsWith(".pptx")) {
+                    log.info("检测到文件实际为 pptx 格式（ZIP）: documentId={}, fileName={}", doc.getId(), doc.getFileName());
+                    return "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+                }
+            }
+            
+            // 检测旧的 Office 格式（doc, xls, ppt）
+            // MS Office 97-2003 文件头：D0 CF 11 E0 A1 B1 1A E1
+            if (header[0] == (byte)0xD0 && header[1] == (byte)0xCF && header[2] == 0x11 && header[3] == (byte)0xE0) {
+                String fileExt = doc.getFileType() != null ? doc.getFileType().toLowerCase() : "";
+                String fileName = doc.getFileName() != null ? doc.getFileName().toLowerCase() : "";
+                if (fileExt.equals("doc") || fileName.endsWith(".doc")) {
+                    log.info("检测到文件实际为 doc 格式（MS Office 97-2003）: documentId={}, fileName={}", doc.getId(), doc.getFileName());
+                    return "application/msword";
+                } else if (fileExt.equals("xls") || fileName.endsWith(".xls")) {
+                    return "application/vnd.ms-excel";
+                } else if (fileExt.equals("ppt") || fileName.endsWith(".ppt")) {
+                    return "application/vnd.ms-powerpoint";
+                }
+            }
+            
+            log.debug("无法从文件内容检测 MIME 类型，使用数据库中的值: documentId={}", doc.getId());
+            return null;
+        } catch (Exception e) {
+            log.warn("检测文件 MIME 类型失败: documentId={}, error={}", doc.getId(), e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * 根据 MIME 类型修正文件名扩展名
+     * 如果文件名扩展名与实际 MIME 类型不匹配，修正为正确的扩展名
+     */
+    private String correctFileNameByMimeType(String fileName, String mimeType) {
+        if (fileName == null || mimeType == null) {
+            return fileName;
+        }
+        
+        // MIME 类型到扩展名的映射
+        String correctExt = null;
+        if (mimeType.contains("wordprocessingml.document")) {
+            // docx 格式
+            correctExt = "docx";
+        } else if (mimeType.contains("spreadsheetml.sheet")) {
+            // xlsx 格式
+            correctExt = "xlsx";
+        } else if (mimeType.contains("presentationml.presentation")) {
+            // pptx 格式
+            correctExt = "pptx";
+        } else if (mimeType.contains("msword")) {
+            // 旧的 doc 格式
+            correctExt = "doc";
+        } else if (mimeType.contains("ms-excel")) {
+            // 旧的 xls 格式
+            correctExt = "xls";
+        } else if (mimeType.contains("ms-powerpoint")) {
+            // 旧的 ppt 格式
+            correctExt = "ppt";
+        }
+        
+        if (correctExt != null) {
+            // 检查当前文件名扩展名
+            String currentExt = "";
+            if (fileName.contains(".")) {
+                currentExt = fileName.substring(fileName.lastIndexOf(".") + 1).toLowerCase();
+            }
+            
+            // 如果扩展名不匹配，修正文件名
+            if (!currentExt.equals(correctExt)) {
+                String baseName = fileName.contains(".") 
+                    ? fileName.substring(0, fileName.lastIndexOf(".")) 
+                    : fileName;
+                String corrected = baseName + "." + correctExt;
+                log.info("修正文件名扩展名: original={}, mimeType={}, corrected={}", 
+                    fileName, mimeType, corrected);
+                return corrected;
+            }
+        }
+        
+        return fileName;
+    }
+
+    /**
+     * 获取客户端 IP 地址
+     */
+    private String getClientIp(HttpServletRequest request) {
+        String ip = request.getHeader("X-Forwarded-For");
+        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getHeader("Proxy-Client-IP");
+        }
+        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getHeader("WL-Proxy-Client-IP");
+        }
+        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getRemoteAddr();
+        }
+        // 处理多个 IP 的情况（X-Forwarded-For 可能包含多个 IP）
+        if (ip != null && ip.contains(",")) {
+            ip = ip.split(",")[0].trim();
+        }
+        return ip;
     }
 
     /**

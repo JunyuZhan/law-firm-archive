@@ -142,6 +142,8 @@ async function loadDirectUrl(
         url,
       },
       documentType: type,
+      // 设置 serverUrl，确保内部资源使用代理路径
+      serverUrl: onlyOfficeUrl,
       editorConfig: {
         mode: 'view',
         lang: 'zh-CN',
@@ -165,9 +167,15 @@ async function loadDirectUrl(
 
 /**
  * 智能获取 OnlyOffice URL
- * 优先使用后端配置的地址，如果是无效地址，则使用当前域名
+ * 优先使用后端配置的地址，如果是无效地址或相对路径，则使用当前域名
  */
 function getOnlyOfficeUrl(backendUrl?: string): string {
+  // 如果是相对路径（以 / 开头），转换为绝对路径
+  if (backendUrl && backendUrl.startsWith('/')) {
+    const { protocol, host } = window.location;
+    return `${protocol}//${host}${backendUrl}`;
+  }
+  
   // 检查是否为无效地址（localhost、127.0.0.1、Docker 内部地址等）
   const isInvalidUrl = (url: string): boolean => {
     if (!url) return true;
@@ -246,9 +254,32 @@ function initEditorFromConfig(cfg: OnlyOfficeConfig) {
     }
   }
 
+  // 获取 OnlyOffice 服务器 URL（使用代理路径）
+  const onlyOfficeServerUrl = cfg.documentServerUrl || getOnlyOfficeUrl();
+  
+  // 验证 document.url 是否存在
+  if (!cfg.document?.url) {
+    error.value = '文档 URL 未配置，无法加载文档';
+    loading.value = false;
+    console.error('OnlyOffice 配置错误：document.url 为空', cfg);
+    return;
+  }
+
+  // 记录传递给 OnlyOffice 的配置（用于调试）
+  console.log('OnlyOffice 配置:', {
+    documentUrl: cfg.document.url,
+    documentKey: cfg.document.key,
+    documentTitle: cfg.document.title,
+    documentType: cfg.documentType,
+    serverUrl: onlyOfficeServerUrl,
+  });
+
   const editorConfig: any = {
     document: cfg.document,
     documentType: cfg.documentType,
+    // 关键：设置 serverUrl，告诉 OnlyOffice 使用代理路径生成内部资源 URL
+    // 这样 Editor.bin 等资源会通过代理路径访问，而不是直接访问 127.0.0.1:8088
+    serverUrl: onlyOfficeServerUrl,
     editorConfig: {
       ...cfg.editorConfig,
       customization: {

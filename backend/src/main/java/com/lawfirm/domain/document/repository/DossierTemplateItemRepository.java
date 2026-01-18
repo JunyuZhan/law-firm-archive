@@ -29,5 +29,32 @@ public class DossierTemplateItemRepository {
     public List<DossierTemplateItem> findByParentId(Long templateId, Long parentId) {
         return mapper.selectByParentId(templateId, parentId);
     }
-}
 
+    /**
+     * 根据ID获取目录项
+     */
+    public DossierTemplateItem getById(Long id) {
+        return mapper.selectById(id);
+    }
+
+    /**
+     * 保存目录项
+     */
+    public void save(DossierTemplateItem item) {
+        mapper.insert(item);
+    }
+
+    /**
+     * 更新目录项
+     */
+    public void updateById(DossierTemplateItem item) {
+        mapper.updateById(item);
+    }
+
+    /**
+     * 删除目录项
+     */
+    public void removeById(Long id) {
+        mapper.deleteById(id);
+    }
+}

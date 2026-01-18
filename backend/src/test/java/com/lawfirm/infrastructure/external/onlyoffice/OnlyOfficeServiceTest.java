@@ -17,7 +17,6 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
@@ -392,12 +391,20 @@ class OnlyOfficeServiceTest {
         }
 
         @Test
-        @DisplayName("buildFileUrlForDocument - 应抛出异常")
-        void shouldThrowExceptionForBuildFileUrlForDocument() throws Exception {
-            // When & Then
-            assertThatThrownBy(() -> onlyOfficeService.buildFileUrlForDocument(1L))
-                .isInstanceOf(UnsupportedOperationException.class)
-                .hasMessage("请使用 buildFileUrl(String fileUrl) 方法");
+        @DisplayName("buildFileUrlForDocument - 应返回代理URL")
+        void shouldReturnProxyUrlForBuildFileUrlForDocument() throws Exception {
+            // Given
+            Long documentId = 1L;
+            when(config.getCallbackUrl()).thenReturn("http://backend:8080/api");
+            
+            // When
+            String result = onlyOfficeService.buildFileUrlForDocument(documentId);
+            
+            // Then
+            assertThat(result).isNotNull();
+            assertThat(result).contains("/api/document/" + documentId + "/file-proxy");
+            assertThat(result).contains("token=");
+            assertThat(result).contains("expires=");
         }
     }
 

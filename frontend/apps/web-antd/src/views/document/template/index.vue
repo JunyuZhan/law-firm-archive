@@ -1,35 +1,18 @@
 <script setup lang="ts">
 import type { VxeGridProps } from '#/adapter/vxe-table';
-import type {
-  DocumentTemplateDTO,
-  DocumentTemplateQuery,
-} from '#/api/document/template-types';
+import type { DocumentTemplateDTO, DocumentTemplateQuery } from '#/api/document/template';
 
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 
 import { Page } from '@vben/common-ui';
 import { Plus } from '@vben/icons';
 
-import {
-  Button,
-  Card,
-  Col,
-  Input,
-  message,
-  Popconfirm,
-  Row,
-  Select,
-  Space,
-  Tag,
-  Tooltip,
-} from 'ant-design-vue';
+import { Button, message, Modal, Space, Tag, Select, Input } from 'ant-design-vue';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
-  createTemplate,
-  deleteTemplate,
-  getTemplateDetail,
   getTemplateList,
+  deleteTemplate,
   updateTemplate,
 } from '#/api/document/template';
 
@@ -38,115 +21,106 @@ import TemplateModal from './components/TemplateModal.vue';
 
 defineOptions({ name: 'DocumentTemplate' });
 
+// ==================== 状态定义 ====================
+
 const templateModalRef = ref<InstanceType<typeof TemplateModal>>();
 const previewModalRef = ref<InstanceType<typeof PreviewModal>>();
 
-const queryParams = ref<DocumentTemplateQuery>({
-  pageNum: 1,
-  pageSize: 10,
-  name: undefined,
-  templateType: undefined,
-  businessType: undefined,
-  status: undefined,
+// 搜索条件
+const searchForm = ref<DocumentTemplateQuery>({
+  name: '',
+  templateType: '',
+  businessType: '',
+  status: '',
 });
 
-const templateTypeOptions = [
-  { label: 'Word文档', value: 'WORD' },
-  { label: 'Excel表格', value: 'EXCEL' },
-  { label: 'PDF文档', value: 'PDF' },
-  { label: '富文本', value: 'HTML' },
-  { label: '授权委托书(自动归档)', value: 'POWER_OF_ATTORNEY' },
-];
-
-// 业务类型选项（用于模板筛选）
-const businessTypeOptions = [
-  { label: '诉讼案件', value: 'LITIGATION' },
-  { label: '非诉项目', value: 'NON_LITIGATION' },
-  { label: '通用', value: 'GENERAL' },
-];
-
-const statusOptions = [
-  { label: '全部', value: undefined },
-  { label: '启用', value: 'ACTIVE' },
-  { label: '停用', value: 'INACTIVE' },
-];
+// ==================== 表格配置 ====================
 
 const gridColumns: VxeGridProps['columns'] = [
-  {
-    title: '模板名称',
-    field: 'name',
-    minWidth: 200,
-    slots: { default: 'name' },
-  },
+  { title: '模板名称', field: 'name', minWidth: 180 },
   {
     title: '模板类型',
-    field: 'templateTypeName',
-    width: 100,
+    field: 'templateType',
+    width: 120,
     slots: { default: 'templateType' },
   },
-  { title: '适用业务', field: 'businessTypeName', width: 100 },
-  { title: '创建人', field: 'creatorName', width: 100 },
-  { title: '创建时间', field: 'createdAt', width: 160 },
   {
-    title: '使用次数',
-    field: 'useCount',
-    width: 90,
-    slots: { default: 'useCount' },
+    title: '适用业务',
+    field: 'businessTypeName',
+    width: 120,
+  },
+  {
+    title: '案件类型',
+    field: 'caseTypeName',
+    width: 120,
   },
   {
     title: '状态',
-    field: 'statusName',
+    field: 'status',
     width: 80,
     slots: { default: 'status' },
   },
   {
+    title: '创建人',
+    field: 'creatorName',
+    width: 100,
+  },
+  {
+    title: '使用次数',
+    field: 'useCount',
+    width: 100,
+    align: 'right',
+  },
+  {
+    title: '创建时间',
+    field: 'createdAt',
+    width: 160,
+  },
+  {
     title: '操作',
     field: 'action',
-    width: 200,
+    width: 220,
     fixed: 'right',
     slots: { default: 'action' },
   },
 ];
 
-async function loadData({
-  page,
-}: {
-  page: { currentPage: number; pageSize: number };
-}) {
-  const params = {
-    ...queryParams.value,
-    pageNum: page.currentPage,
-    pageSize: page.pageSize,
+// 加载数据
+async function loadData(
+  params: Record<string, any> & { page: number; pageSize: number },
+) {
+  const query: DocumentTemplateQuery = {
+    pageNum: params.page,
+    pageSize: params.pageSize,
+    name: searchForm.value.name || undefined,
+    templateType: searchForm.value.templateType || undefined,
+    businessType: searchForm.value.businessType || undefined,
+    status: searchForm.value.status || undefined,
   };
-  const res = await getTemplateList(params);
-  return { items: res.list || [], total: res.total || 0 };
+  const res = await getTemplateList(query);
+  return {
+    items: res.list || res.records || [],
+    total: res.total || 0,
+  };
 }
 
 const [Grid, gridApi] = useVbenVxeGrid({
   gridOptions: {
     columns: gridColumns,
-    height: 'auto',
-    pagerConfig: {},
-    proxyConfig: { ajax: { query: loadData } },
-    rowConfig: { keyField: 'id' },
+    height: '',
+    minHeight: 200,
+    proxyConfig: {
+      ajax: {
+        query: loadData,
+      },
+    },
+    toolbarConfig: {
+      slots: { buttons: 'toolbar-buttons' },
+    },
   },
 });
 
-function handleSearch() {
-  gridApi.reload();
-}
-
-function handleReset() {
-  queryParams.value = {
-    pageNum: 1,
-    pageSize: 10,
-    name: undefined,
-    templateType: undefined,
-    businessType: undefined,
-    status: undefined,
-  };
-  gridApi.reload();
-}
+// ==================== 操作方法 ====================
 
 function handleAdd() {
   templateModalRef.value?.open();
@@ -160,51 +134,59 @@ function handlePreview(row: DocumentTemplateDTO) {
   previewModalRef.value?.open(row);
 }
 
-async function handleDelete(row: DocumentTemplateDTO) {
+async function handleToggle(row: DocumentTemplateDTO) {
   try {
-    await deleteTemplate(row.id);
-    message.success('删除成功');
-    gridApi.reload();
-  } catch (error: any) {
-    message.error(error.message || '删除失败');
-  }
-}
-
-// 复制模板
-async function handleCopy(row: DocumentTemplateDTO) {
-  try {
-    const detail = await getTemplateDetail(row.id);
-    await createTemplate({
-      name: `${detail.name} - 副本`,
-      templateType: detail.templateType || 'HTML',
-      businessType: detail.businessType,
-      content: detail.content || '',
-      description: detail.description,
+    await updateTemplate(row.id, {
+      status: row.status === 'ACTIVE' ? 'DISABLED' : 'ACTIVE',
     });
-    message.success('复制成功');
+    message.success(row.status === 'ACTIVE' ? '已停用' : '已启用');
     gridApi.reload();
-  } catch (error: any) {
-    message.error(error.message || '复制失败');
+  } catch (error: unknown) {
+    const err = error as { message?: string };
+    message.error(err.message || '操作失败');
   }
 }
 
-// 切换状态
-async function handleToggleStatus(row: DocumentTemplateDTO) {
-  try {
-    const newStatus = row.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
-    await updateTemplate(row.id, { status: newStatus });
-    message.success(newStatus === 'ACTIVE' ? '已启用' : '已停用');
-    gridApi.reload();
-  } catch (error: any) {
-    message.error(error.message || '操作失败');
-  }
+function handleDelete(row: DocumentTemplateDTO) {
+  Modal.confirm({
+    title: '确认删除',
+    content: `确定要删除模板 "${row.name}" 吗？`,
+    okText: '确认',
+    cancelText: '取消',
+    okButtonProps: { danger: true },
+    onOk: async () => {
+      try {
+        await deleteTemplate(row.id);
+        message.success('删除成功');
+        gridApi.reload();
+      } catch (error: unknown) {
+        const err = error as { message?: string };
+        message.error(err.message || '删除失败');
+      }
+    },
+  });
 }
 
-function getStatusColor(status: string) {
-  return status === 'ACTIVE' ? 'green' : 'default';
+function handleModalSuccess() {
+  gridApi.reload();
 }
 
-function getTemplateTypeColor(type: string) {
+function handleSearch() {
+  gridApi.reload();
+}
+
+function handleReset() {
+  searchForm.value = {
+    name: '',
+    templateType: '',
+    businessType: '',
+    status: '',
+  };
+  gridApi.reload();
+}
+
+// 模板类型颜色映射
+function getTemplateTypeColor(type?: string) {
   const colors: Record<string, string> = {
     WORD: 'blue',
     EXCEL: 'green',
@@ -212,122 +194,100 @@ function getTemplateTypeColor(type: string) {
     HTML: 'purple',
     POWER_OF_ATTORNEY: 'orange',
   };
-  return colors[type] || 'default';
+  return colors[type || ''] || 'default';
 }
 </script>
 
 <template>
-  <Page title="文书模板" description="管理文书模板库，支持变量替换自动生成文书">
-    <Card>
-      <div style="margin-bottom: 16px">
-        <Row :gutter="16" style="margin-bottom: 12px">
-          <Col :span="5">
-            <Input
-              v-model:value="queryParams.name"
-              placeholder="搜索模板名称"
-              allow-clear
-              @press-enter="handleSearch"
-            />
-          </Col>
-          <Col :span="4">
-            <Select
-              v-model:value="queryParams.templateType"
-              placeholder="模板类型"
-              allow-clear
-              style="width: 100%"
-              :options="templateTypeOptions"
-            />
-          </Col>
-          <Col :span="4">
-            <Select
-              v-model:value="queryParams.businessType"
-              placeholder="适用业务"
-              allow-clear
-              style="width: 100%"
-              :options="businessTypeOptions"
-            />
-          </Col>
-          <Col :span="4">
-            <Select
-              v-model:value="queryParams.status"
-              placeholder="状态"
-              allow-clear
-              style="width: 100%"
-              :options="statusOptions"
-            />
-          </Col>
-          <Col :span="7">
-            <Space>
-              <Button type="primary" @click="handleSearch">查询</Button>
-              <Button @click="handleReset">重置</Button>
-              <Button type="primary" @click="handleAdd">
-                <Plus class="size-4" />新建模板
-              </Button>
-            </Space>
-          </Col>
-        </Row>
-      </div>
+  <Page
+    title="文书模板管理"
+    description="管理文书模板库，支持变量替换自动生成文书"
+  >
+    <!-- 搜索栏 -->
+    <div style="margin-bottom: 16px; padding: 16px; background: #fafafa; border-radius: 6px">
+      <Space wrap>
+        <Input
+          v-model:value="searchForm.name"
+          placeholder="模板名称"
+          style="width: 200px"
+          allow-clear
+          @press-enter="handleSearch"
+        />
+        <Select
+          v-model:value="searchForm.templateType"
+          placeholder="模板类型"
+          style="width: 150px"
+          allow-clear
+        >
+          <Select.Option value="WORD">Word文档</Select.Option>
+          <Select.Option value="EXCEL">Excel表格</Select.Option>
+          <Select.Option value="PDF">PDF文档</Select.Option>
+          <Select.Option value="HTML">富文本</Select.Option>
+          <Select.Option value="POWER_OF_ATTORNEY">授权委托书</Select.Option>
+        </Select>
+        <Select
+          v-model:value="searchForm.businessType"
+          placeholder="适用业务"
+          style="width: 150px"
+          allow-clear
+        >
+          <Select.Option value="LITIGATION">诉讼案件</Select.Option>
+          <Select.Option value="NON_LITIGATION">非诉项目</Select.Option>
+          <Select.Option value="GENERAL">通用</Select.Option>
+        </Select>
+        <Select
+          v-model:value="searchForm.status"
+          placeholder="状态"
+          style="width: 120px"
+          allow-clear
+        >
+          <Select.Option value="ACTIVE">启用</Select.Option>
+          <Select.Option value="DISABLED">停用</Select.Option>
+        </Select>
+        <Button type="primary" @click="handleSearch">查询</Button>
+        <Button @click="handleReset">重置</Button>
+      </Space>
+    </div>
 
-      <Grid>
-        <template #name="{ row }">
-          <div>
-            <a @click="handlePreview(row)" style="font-weight: 500">{{
-              row.name
-            }}</a>
-            <div
-              v-if="row.description"
-              style="margin-top: 2px; font-size: 12px; color: #999"
-            >
-              {{ row.description }}
-            </div>
-          </div>
-        </template>
-        <template #templateType="{ row }">
-          <Tag :color="getTemplateTypeColor(row.templateType)">
-            {{ row.templateTypeName || row.templateType }}
-          </Tag>
-        </template>
-        <template #useCount="{ row }">
-          <span style="font-weight: 500; color: #1890ff">{{
-            row.useCount || 0
-          }}</span>
-        </template>
-        <template #status="{ row }">
-          <Tag :color="getStatusColor(row.status)">{{ row.statusName }}</Tag>
-        </template>
-        <template #action="{ row }">
-          <Space>
-            <Tooltip title="预览">
-              <a @click="handlePreview(row)">预览</a>
-            </Tooltip>
-            <Tooltip title="编辑">
-              <a @click="handleEdit(row)">编辑</a>
-            </Tooltip>
-            <Tooltip title="复制">
-              <a @click="handleCopy(row)">复制</a>
-            </Tooltip>
-            <Tooltip :title="row.status === 'ACTIVE' ? '停用' : '启用'">
-              <a
-                @click="handleToggleStatus(row)"
-                :style="{
-                  color: row.status === 'ACTIVE' ? '#faad14' : '#52c41a',
-                }"
-              >
-                {{ row.status === 'ACTIVE' ? '停用' : '启用' }}
-              </a>
-            </Tooltip>
-            <Popconfirm
-              title="确定删除该模板？删除后不可恢复"
-              @confirm="handleDelete(row)"
-            >
-              <a style="color: #ff4d4f">删除</a>
-            </Popconfirm>
-          </Space>
-        </template>
-      </Grid>
-    </Card>
+    <Grid>
+      <!-- 工具栏按钮 -->
+      <template #toolbar-buttons>
+        <Button type="primary" @click="handleAdd">
+          <Plus class="size-4" /> 新增模板
+        </Button>
+      </template>
 
-    <TemplateModal ref="templateModalRef" @success="gridApi.reload()" />
+      <!-- 模板类型列 -->
+      <template #templateType="{ row }">
+        <Tag :color="getTemplateTypeColor(row.templateType)">
+          {{ row.templateTypeName || row.templateType }}
+        </Tag>
+      </template>
+
+      <!-- 状态列 -->
+      <template #status="{ row }">
+        <Tag :color="row.status === 'ACTIVE' ? 'green' : 'default'">
+          {{ row.status === 'ACTIVE' ? '启用' : '停用' }}
+        </Tag>
+      </template>
+
+      <!-- 操作列 -->
+      <template #action="{ row }">
+        <Space>
+          <a @click="handlePreview(row)">预览</a>
+          <a @click="handleEdit(row)">编辑</a>
+          <a @click="handleToggle(row)">
+            {{ row.status === 'ACTIVE' ? '停用' : '启用' }}
+          </a>
+          <a style="color: #ff4d4f" @click="handleDelete(row)">删除</a>
+        </Space>
+      </template>
+    </Grid>
+
+    <!-- 模板弹窗 -->
+    <TemplateModal ref="templateModalRef" @success="handleModalSuccess" />
+
+    <!-- 预览弹窗 -->
     <PreviewModal ref="previewModalRef" />
   </Page>
 </template>

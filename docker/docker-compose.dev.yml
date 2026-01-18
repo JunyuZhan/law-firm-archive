@@ -1,4 +1,9 @@
-# 开发环境配置
+# =====================================================
+# 开发环境配置 (Development Environment)
+# =====================================================
+# 使用方法: docker compose -f docker-compose.dev.yml up -d
+# 或使用脚本: ./scripts/env-start.sh dev
+# =====================================================
 name: law-firm-dev
 
 services:

@@ -20,6 +20,8 @@ export default defineConfig(async () => {
             rewrite: (path: string) => path.replace(/^\/onlyoffice/, ''),
             target: 'http://127.0.0.1:8088',
             ws: true,
+            // 注意：vite 代理是服务器端代理，不存在 CORS 问题
+            // 但如果 OnlyOffice 内部资源使用绝对URL，可能需要配置 OnlyOffice 的环境变量
           },
         },
       },

@@ -32,5 +32,10 @@ public class GenerateDocumentCommand {
      * 额外变量（用于覆盖或补充系统自动收集的变量）
      */
     private Map<String, Object> extraVariables;
+
+    /**
+     * 卷宗目录项ID（可选，用于指定保存到项目的哪个目录）
+     */
+    private Long dossierItemId;
 }
 

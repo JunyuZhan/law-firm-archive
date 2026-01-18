@@ -92,7 +92,7 @@ public class SecurityConfig {
                     "/test/**",              // 测试接口（仅开发/测试环境）
                     "/document/*/callback",  // OnlyOffice 回调接口（无需认证）
                     "/document/*/content",   // OnlyOffice 文件代理接口（通过 token 验证）
-                    "/open/verify/**",       // 公开验证接口（函件、合同等真伪验证）
+                    "/document/*/file-proxy", // OnlyOffice 文件代理接口（通过 token 或 IP 验证）
                     "/open/portal/**"        // 客户门户接口（通过令牌验证）
                     ).permitAll();
                 } else {
@@ -106,7 +106,7 @@ public class SecurityConfig {
                         "/error",
                         "/document/*/callback",  // OnlyOffice 回调接口（无需认证）
                         "/document/*/content",   // OnlyOffice 文件代理接口（通过 token 验证）
-                        "/open/verify/**",       // 公开验证接口（函件、合同等真伪验证）
+                        "/document/*/file-proxy", // OnlyOffice 文件代理接口（通过 token 或 IP 验证）
                         "/open/portal/**"        // 客户门户接口（通过令牌验证）
                     ).permitAll();
                 }

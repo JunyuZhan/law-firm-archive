@@ -289,9 +289,11 @@ CREATE TABLE public.dossier_template (
     case_type character varying(50) NOT NULL,
     description character varying(500),
     is_default boolean DEFAULT false,
+    version integer DEFAULT 1,
     created_by bigint,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_by bigint,
     deleted boolean DEFAULT false
 );
 --

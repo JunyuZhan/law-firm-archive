@@ -55,10 +55,16 @@ public class OnlyOfficeService {
 
         // 文档配置
         Map<String, Object> document = new HashMap<>();
-        document.put("fileType", getFileExtension(fileName));
+        // 根据文件 URL 或 MIME 类型推断正确的文件扩展名
+        String fileType = inferFileTypeFromUrl(fileUrl, fileName);
+        document.put("fileType", fileType);
         document.put("key", documentKey != null ? documentKey : generateDocumentKey());
         document.put("title", fileName);
-        document.put("url", buildFileUrl(fileUrl));
+        // 构建文件 URL（如果已经是代理 URL，直接使用；否则尝试转换）
+        String finalFileUrl = buildFileUrl(fileUrl);
+        log.info("OnlyOffice 配置生成 - 文件 URL: fileName={}, originalUrl={}, finalUrl={}", 
+            fileName, fileUrl, finalFileUrl);
+        document.put("url", finalFileUrl);
 
         // 权限配置
         Map<String, Object> permissions = new HashMap<>();
@@ -67,6 +73,7 @@ public class OnlyOfficeService {
         permissions.put("edit", "edit".equals(mode));
         permissions.put("print", true);
         permissions.put("review", true);
+        permissions.put("chat", false); // chat 参数已从 customization 移到 permissions
         document.put("permissions", permissions);
 
         config.put("document", document);
@@ -93,7 +100,7 @@ public class OnlyOfficeService {
         // 自定义配置
         Map<String, Object> customization = new HashMap<>();
         customization.put("autosave", true);
-        customization.put("chat", false);
+        // chat 参数已移到 permissions 中，不再在 customization 中设置
         customization.put("comments", true);
         customization.put("compactHeader", false);
         customization.put("compactToolbar", false);
@@ -122,8 +129,15 @@ public class OnlyOfficeService {
 
         // OnlyOffice Document Server URL（供前端参考，但不会放入 JWT）
         // 前端会自动检测当前域名来替换这些值
-        config.put("documentServerUrl", this.config.getDocumentServerUrl());
-        config.put("apiJsUrl", this.config.getApiJsUrl());
+        // 如果配置的是 localhost 或 127.0.0.1，返回相对路径让前端自动处理
+        String documentServerUrl = this.config.getDocumentServerUrl();
+        if (documentServerUrl != null && 
+            (documentServerUrl.contains("localhost") || documentServerUrl.contains("127.0.0.1"))) {
+            // 返回相对路径，前端会自动转换为当前域名 + /onlyoffice
+            documentServerUrl = "/onlyoffice";
+        }
+        config.put("documentServerUrl", documentServerUrl);
+        config.put("apiJsUrl", documentServerUrl + "/web-apps/apps/api/documents/api.js");
 
         // JWT 签名（如果启用）
         // 注意：生成 JWT 时排除 documentServerUrl 和 apiJsUrl，让前端自动检测域名
@@ -237,7 +251,23 @@ public class OnlyOfficeService {
      * OnlyOffice 运行在 Docker 容器中，使用 MinIO 预签名 URL
      * 需要设置 OnlyOffice 环境变量 ALLOW_PRIVATE_IP_ADDRESS=true
      */
+    /**
+     * 构建文件访问URL（供 OnlyOffice 使用）
+     * 优先使用后端代理接口，确保 OnlyOffice 容器能够访问
+     */
     public String buildFileUrl(String fileUrl) {
+        // 如果 fileUrl 已经是代理 URL，直接返回
+        // 优先检查 /file-proxy（新的代理接口）
+        if (fileUrl != null && fileUrl.contains("/file-proxy")) {
+            log.debug("文件 URL 已经是代理 URL（file-proxy）: {}", fileUrl);
+            return fileUrl;
+        }
+        // 兼容旧的 /content 接口（但应该迁移到 /file-proxy）
+        if (fileUrl != null && fileUrl.contains("/document/") && fileUrl.contains("/content")) {
+            log.warn("检测到旧的 /content 接口 URL，建议迁移到 /file-proxy: {}", fileUrl);
+            return fileUrl;
+        }
+        
         try {
             // 从 MinIO 文件路径生成预签名 URL
             String objectName = minioService.extractObjectName(fileUrl);
@@ -247,42 +277,90 @@ public class OnlyOfficeService {
                 // 必须强制将主机名替换为 Docker 网络内部的服务名 "minio"
                 String url = minioService.getPresignedUrlForDocker(objectName, 7200);
                 if (url != null) {
-                    return url.replace("host.docker.internal", "minio")
+                    String originalUrl = url;
+                    // 更全面地替换 URL，确保 OnlyOffice 容器能够访问
+                    // 替换各种可能的地址格式
+                    url = url.replace("host.docker.internal:9000", "minio:9000")
+                            .replace("host.docker.internal", "minio")
+                            .replace("localhost:9000", "minio:9000")
+                            .replace("127.0.0.1:9000", "minio:9000")
                             .replace("localhost", "minio")
                             .replace("127.0.0.1", "minio");
+                    
+                    // 使用正则表达式替换可能包含端口的 URL（但保留 minio:9000）
+                    // 例如：http://192.168.x.x:9000 -> http://minio:9000
+                    if (!url.contains("minio:9000")) {
+                        url = url.replaceAll("http://([^/:]+):9000", "http://minio:9000");
+                    }
+                    
+                    if (!originalUrl.equals(url)) {
+                        log.info("OnlyOffice 文件 URL 已替换: {} -> {}", originalUrl, url);
+                    } else {
+                        log.debug("OnlyOffice 文件 URL（无需替换）: {}", url);
+                    }
+                    return url;
                 }
             }
+            log.warn("无法从文件路径提取对象名，使用原始 URL: {}", fileUrl);
             return fileUrl;
         } catch (Exception e) {
-            log.warn("生成预签名URL失败，使用原始URL: {}", e.getMessage());
+            log.error("生成预签名URL失败，使用原始URL: {}", e.getMessage(), e);
             return fileUrl;
         }
     }
-
+    
     /**
-     * 构建文件访问URL（用于文档ID）
-     * 生成 Docker 内部可访问的完整 URL（OnlyOffice 容器使用）
-     * 前端会自动替换为浏览器可访问的 URL
+     * 构建文件访问URL（使用文档ID，供 OnlyOffice 使用）
+     * 使用后端代理接口，确保 OnlyOffice 容器能够访问
+     * 包含临时 token 以提高安全性
      */
     public String buildFileUrlForDocument(Long documentId) {
-        // 直接获取文档信息并生成 MinIO 预签名 URL
-        // 这里的逻辑已经在 downloadFile 中有了，我们需要类似的逻辑
-        // 由于方法签名只接受 documentId，我们需要在这里手动查询或重构
-        // 为了最小化改动且保持正确性，我们应该直接让 Controller 调用 buildFileUrl
-        // 但由于 Controller 需要 documentId 对应的 filePath，这里我们简化逻辑：
-        // 让 Controller 先获取 DocumentDTO，然后调用 buildFileUrl(filePath)
-
-        // 注意：此方法在 Controller 的 getEditConfig/getPreviewConfig 中被调用
-        // Controller 已经查到了 DocumentDTO，应该直接传 filePath 进来
-        // 但为了兼容现有接口，我们在这里抛出异常或提示调用者改用 buildFileUrl(filePath)
-        // 鉴于此时无法修改 Controller 的所有调用处（Controller 代码未完全展示），
-        // 且 DocumentController:363 行调用了此方法，我们必须保持签名兼容。
-        // 但 OnlyOfficeService 没有注入 DocumentAppService，无法查询文档路径。
-
-        // 修正方案：修改 Controller，不再调用此方法，而是直接调用 buildFileUrl(doc.getFilePath())
-        // 此方法标记为废弃或删除
-        throw new UnsupportedOperationException("请使用 buildFileUrl(String fileUrl) 方法");
+        // 使用后端代理接口，OnlyOffice 通过 Docker 网络访问
+        // callbackUrl 格式：http://backend:8080/api
+        // 需要构建：http://backend:8080/api/document/{id}/file-proxy?token=xxx&expires=xxx
+        
+        String baseUrl = this.config.getCallbackUrl();
+        // 移除末尾的 /api（如果有）
+        if (baseUrl.endsWith("/api")) {
+            baseUrl = baseUrl.substring(0, baseUrl.length() - 4);
+        }
+        
+        // 生成临时 token（2小时有效）
+        long expires = System.currentTimeMillis() + 7200 * 1000;
+        String token = generateDocumentAccessToken(documentId, expires);
+        
+        // URL 编码 token，避免特殊字符导致 URL 解析错误
+        String encodedToken = java.net.URLEncoder.encode(token, java.nio.charset.StandardCharsets.UTF_8);
+        
+        // 确保 baseUrl 格式正确（移除末尾的斜杠）
+        if (baseUrl.endsWith("/")) {
+            baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
+        }
+        
+        String proxyUrl = baseUrl + "/api/document/" + documentId + "/file-proxy?token=" + encodedToken + "&expires=" + expires;
+        log.info("生成 OnlyOffice 文档代理 URL（带token）: documentId={}, baseUrl={}, url={}", documentId, baseUrl, proxyUrl);
+        return proxyUrl;
     }
+    
+    /**
+     * 生成文档访问 token（与 DocumentController 中的方法保持一致）
+     * 注意：TOKEN_SECRET 必须与 DocumentController 中的保持一致
+     */
+    private String generateDocumentAccessToken(Long documentId, long expires) {
+        // 使用与 DocumentController 相同的 TOKEN_SECRET
+        // DocumentController.TOKEN_SECRET = "law-firm-document-access-2024"
+        String tokenSecret = "law-firm-document-access-2024";
+        String data = documentId + ":" + expires + ":" + tokenSecret;
+        try {
+            java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] hash = md.digest(data.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            return java.util.HexFormat.of().formatHex(hash).substring(0, 32);
+        } catch (Exception e) {
+            log.error("生成文档访问 token 失败", e);
+            throw new RuntimeException("生成 token 失败", e);
+        }
+    }
+
 
     /**
      * 生成文档唯一标识
@@ -299,6 +377,50 @@ public class OnlyOfficeService {
             return "docx";
         }
         return fileName.substring(fileName.lastIndexOf(".") + 1).toLowerCase();
+    }
+
+    /**
+     * 根据文件 URL 和文件名推断正确的文件类型
+     * 如果文件名扩展名与实际内容不匹配，根据 URL 中的信息或 MIME 类型推断
+     */
+    private String inferFileTypeFromUrl(String fileUrl, String fileName) {
+        String ext = getFileExtension(fileName);
+        
+        // 如果 URL 包含 /file-proxy，说明是代理接口，需要根据实际文件内容判断
+        // 这里我们根据常见的 MIME 类型映射来推断
+        // 如果文件名是 .doc 但实际可能是 .docx，需要特殊处理
+        
+        // 检查 URL 中是否有文件扩展名信息
+        if (fileUrl != null && fileUrl.contains("/file-proxy")) {
+            // 代理接口，无法从 URL 判断，使用文件名扩展名
+            // 但如果文件名是 .doc，OnlyOffice 可能无法正确处理，需要根据实际内容判断
+            // 这里先返回文件名扩展名，如果 OnlyOffice 报错，再根据 MIME 类型修正
+            return ext;
+        }
+        
+        // 尝试从 URL 中提取扩展名
+        if (fileUrl != null) {
+            int lastDot = fileUrl.lastIndexOf(".");
+            int lastSlash = fileUrl.lastIndexOf("/");
+            if (lastDot > lastSlash && lastDot < fileUrl.length() - 1) {
+                String urlExt = fileUrl.substring(lastDot + 1).toLowerCase();
+                // 移除查询参数
+                if (urlExt.contains("?")) {
+                    urlExt = urlExt.substring(0, urlExt.indexOf("?"));
+                }
+                if (urlExt.contains("&")) {
+                    urlExt = urlExt.substring(0, urlExt.indexOf("&"));
+                }
+                // 如果 URL 中的扩展名与文件名不同，优先使用 URL 中的
+                if (!urlExt.isEmpty() && !urlExt.equals(ext)) {
+                    log.info("文件扩展名不一致: fileName={}, fileNameExt={}, urlExt={}, 使用URL扩展名", 
+                        fileName, ext, urlExt);
+                    return urlExt;
+                }
+            }
+        }
+        
+        return ext;
     }
 
     /**

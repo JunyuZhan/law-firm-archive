@@ -68,9 +68,18 @@ export function vitePwaManifestPlugin(options: PwaManifestOptions): Plugin {
 
   return {
     name: 'vite-plugin-pwa-manifest',
-    apply: 'build',
+    apply: 'serve', // 同时支持开发和生产环境
+
+    configureServer(server) {
+      // 开发环境：提供 manifest.webmanifest 文件
+      server.middlewares.use('/manifest.webmanifest', (req, res, next) => {
+        res.setHeader('Content-Type', 'application/manifest+json');
+        res.end(JSON.stringify(manifest, null, 2));
+      });
+    },
 
     writeBundle(outputOptions) {
+      // 生产环境：写入 manifest 文件
       const outDir = outputOptions.dir || 'dist';
       const manifestPath = join(outDir, 'manifest.webmanifest');
 

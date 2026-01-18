@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lawfirm.application.document.dto.DocumentDTO;
 import com.lawfirm.application.document.service.DocAccessLogService;
 import com.lawfirm.application.document.service.DocumentAppService;
-import com.lawfirm.common.result.Result;
 import com.lawfirm.common.util.SecurityUtils;
 import com.lawfirm.domain.document.entity.DocAccessLog;
 import com.lawfirm.infrastructure.external.minio.MinioService;
@@ -23,7 +22,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -93,9 +91,10 @@ class DocumentControllerTest {
         void shouldReturnPreviewConfigForSupportedFile() throws Exception {
             // Given
             DocumentDTO doc = createMockDocument("test.docx", "http://minio:9000/law-firm/test.docx");
+            String proxyUrl = "http://backend:8080/api/document/" + TEST_DOCUMENT_ID + "/file-proxy?token=test&expires=123456";
             when(documentAppService.getDocumentById(TEST_DOCUMENT_ID)).thenReturn(doc);
             when(onlyOfficeService.isPreviewSupported("test.docx")).thenReturn(true);
-            when(onlyOfficeService.buildFileUrl(doc.getFilePath())).thenReturn("http://minio:9000/law-firm/test.docx");
+            when(onlyOfficeService.buildFileUrlForDocument(TEST_DOCUMENT_ID)).thenReturn(proxyUrl);
             Map<String, Object> previewConfig = new HashMap<>();
             previewConfig.put("document", Map.of("key", "test-key"));
             when(onlyOfficeService.generateViewConfig(
@@ -153,9 +152,10 @@ class DocumentControllerTest {
             // Given
             DocumentDTO doc = createMockDocument("test.docx", "http://minio:9000/law-firm/test.docx");
             doc.setVersion(1);
+            String proxyUrl = "http://backend:8080/api/document/" + TEST_DOCUMENT_ID + "/file-proxy?token=test&expires=123456";
             when(documentAppService.getDocumentById(TEST_DOCUMENT_ID)).thenReturn(doc);
             when(onlyOfficeService.isSupported("test.docx")).thenReturn(true);
-            when(onlyOfficeService.buildFileUrl(doc.getFilePath())).thenReturn("http://minio:9000/law-firm/test.docx");
+            when(onlyOfficeService.buildFileUrlForDocument(TEST_DOCUMENT_ID)).thenReturn(proxyUrl);
             Map<String, Object> editConfig = new HashMap<>();
             editConfig.put("document", Map.of("key", "test-key"));
             when(onlyOfficeService.generateEditConfig(

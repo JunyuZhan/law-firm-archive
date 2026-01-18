@@ -65,7 +65,7 @@ onlyoffice:
   file-server-url: ${FILE_SERVER_URL:http://minio:9000}
   # 生产环境必须启用 JWT
   jwt-enabled: ${ONLYOFFICE_JWT_ENABLED:true}
-  jwt-secret: ${ONLYOFFICE_JWT_SECRET:law-firm-onlyoffice-default-secret-2024}
+  jwt-secret: ${ONLYOFFICE_JWT_SECRET}
 
 # 日志配置 - 生产环境降低日志级别
 logging:
