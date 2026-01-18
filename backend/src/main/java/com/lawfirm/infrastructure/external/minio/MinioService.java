@@ -43,7 +43,7 @@ public class MinioService {
 
     @Value("${minio.bucket-name}")
     private String bucketName;
-    
+
     @Value("${minio.external-endpoint:#{null}}")
     private String externalEndpoint;
 
@@ -56,17 +56,17 @@ public class MinioService {
     @PostConstruct
     public void init() {
         log.info("初始化 MinIO 客户端: endpoint={}", endpoint);
-        
+
         try {
             // 创建客户端
             minioClient = MinioClient.builder()
                     .endpoint(endpoint)
                     .credentials(accessKey, secretKey)
                     .build();
-            
+
             // 确保bucket存在
             initializeBucket();
-            
+
             log.info("MinIO 客户端初始化成功");
         } catch (Exception e) {
             log.error("MinIO 客户端初始化失败", e);
@@ -97,6 +97,7 @@ public class MinioService {
     /**
      * 获取 MinIO 客户端
      * 如果客户端未初始化，抛出友好的业务异常而不是返回null导致NPE
+     * 
      * @return MinioClient 实例
      * @throws RuntimeException 如果文件服务不可用
      */
@@ -110,6 +111,7 @@ public class MinioService {
 
     /**
      * 检查文件服务是否可用
+     * 
      * @return true 如果服务可用
      */
     public boolean isAvailable() {
@@ -119,23 +121,22 @@ public class MinioService {
     /**
      * 上传文件
      * 
-     * @param file 文件
+     * @param file   文件
      * @param folder 文件夹路径（如：reports/）
      * @return 文件URL
      */
     public String uploadFile(MultipartFile file, String folder) throws Exception {
         String fileName = UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
         String objectName = folder + fileName;
-        
+
         getMinioClient().putObject(
                 PutObjectArgs.builder()
                         .bucket(bucketName)
                         .object(objectName)
                         .stream(file.getInputStream(), file.getSize(), -1)
                         .contentType(file.getContentType())
-                        .build()
-        );
-        
+                        .build());
+
         String fileUrl = endpoint + "/" + bucketName + "/" + objectName;
         log.info("文件上传成功: {}", fileUrl);
         return fileUrl;
@@ -145,29 +146,29 @@ public class MinioService {
      * 上传文件（从InputStream）
      * 
      * @param inputStream 输入流
-     * @param fileName 文件名
-     * @param folder 文件夹路径
+     * @param fileName    文件名
+     * @param folder      文件夹路径
      * @param contentType 内容类型
      * @return 文件URL
      */
-    public String uploadFile(InputStream inputStream, String fileName, String folder, String contentType) throws Exception {
+    public String uploadFile(InputStream inputStream, String fileName, String folder, String contentType)
+            throws Exception {
         String objectName = folder + fileName;
-        
+
         // 获取文件大小（如果可能）
         long fileSize = inputStream.available();
         if (fileSize <= 0) {
             fileSize = -1; // 未知大小
         }
-        
+
         getMinioClient().putObject(
                 PutObjectArgs.builder()
                         .bucket(bucketName)
                         .object(objectName)
                         .stream(inputStream, fileSize, -1)
                         .contentType(contentType)
-                        .build()
-        );
-        
+                        .build());
+
         String fileUrl = endpoint + "/" + bucketName + "/" + objectName;
         log.info("文件上传成功: {}", fileUrl);
         return fileUrl;
@@ -177,7 +178,7 @@ public class MinioService {
      * 上传文件（使用完整的 objectName）
      * 
      * @param inputStream 输入流
-     * @param objectName 完整的对象路径名称
+     * @param objectName  完整的对象路径名称
      * @param contentType 内容类型
      * @return 文件URL
      */
@@ -187,16 +188,15 @@ public class MinioService {
         if (fileSize <= 0) {
             fileSize = -1; // 未知大小
         }
-        
+
         getMinioClient().putObject(
                 PutObjectArgs.builder()
                         .bucket(bucketName)
                         .object(objectName)
                         .stream(inputStream, fileSize, -1)
                         .contentType(contentType != null ? contentType : "application/octet-stream")
-                        .build()
-        );
-        
+                        .build());
+
         String fileUrl = endpoint + "/" + bucketName + "/" + objectName;
         log.info("文件上传成功: {}", fileUrl);
         return fileUrl;
@@ -213,8 +213,7 @@ public class MinioService {
                 GetObjectArgs.builder()
                         .bucket(bucketName)
                         .object(objectName)
-                        .build()
-        );
+                        .build());
     }
 
     /**
@@ -227,8 +226,7 @@ public class MinioService {
                 RemoveObjectArgs.builder()
                         .bucket(bucketName)
                         .object(objectName)
-                        .build()
-        );
+                        .build());
         log.info("文件删除成功: {}", objectName);
     }
 
@@ -240,7 +238,16 @@ public class MinioService {
             return null;
         }
         int index = fileUrl.indexOf(bucketName + "/");
-        return fileUrl.substring(index + bucketName.length() + 1);
+        String objectName = fileUrl.substring(index + bucketName.length() + 1);
+
+        // 去除可能存在的查询参数
+        if (objectName.contains("?")) {
+            objectName = objectName.substring(0, objectName.indexOf("?"));
+        }
+
+        // 去除由于 URL 编码可能导致的冲突
+        // 简单解码可能不必要，MinIO 客户端通常处理原始名称
+        return objectName;
     }
 
     /**
@@ -268,8 +275,7 @@ public class MinioService {
                         .bucket(bucketName)
                         .object(objectName)
                         .expiry(expirySeconds)
-                        .build()
-        );
+                        .build());
     }
 
     /**
@@ -280,7 +286,7 @@ public class MinioService {
     public String getPresignedUrlForDocker(String objectName, int expirySeconds) throws Exception {
         // 生成标准预签名 URL
         String presignedUrl = getPresignedUrl(objectName, expirySeconds);
-        
+
         // 替换为 Docker 可访问的地址
         // 由于签名包含 host 信息，简单替换可能导致签名验证失败
         // 但 MinIO 在某些配置下会忽略 host 检查
@@ -290,7 +296,7 @@ public class MinioService {
             String externalHost = externalEndpoint.replace("http://", "").replace("https://", "");
             presignedUrl = presignedUrl.replace(originalHost, externalHost);
         }
-        
+
         return presignedUrl;
     }
 
@@ -314,9 +320,8 @@ public class MinioService {
                             .object(objectName)
                             .stream(inputStream, bytes.length, -1)
                             .contentType(contentType)
-                            .build()
-            );
-            
+                            .build());
+
             String fileUrl = endpoint + "/" + bucketName + "/" + objectName;
             log.info("文件上传成功: {}", fileUrl);
             return fileUrl;
@@ -325,84 +330,83 @@ public class MinioService {
 
     /**
      * 列出所有文件对象
+     * 
      * @return 文件信息列表（包含 objectName 和 size）
      */
     public List<MinioObjectInfo> listAllObjects() {
         List<MinioObjectInfo> objects = new ArrayList<>();
-        
+
         if (minioClient == null) {
             log.warn("MinIO 客户端未初始化，无法列出文件");
             return objects;
         }
-        
+
         try {
             Iterable<Result<Item>> results = minioClient.listObjects(
                     ListObjectsArgs.builder()
                             .bucket(bucketName)
-                            .recursive(true)  // 递归列出所有子目录
-                            .build()
-            );
-            
+                            .recursive(true) // 递归列出所有子目录
+                            .build());
+
             for (Result<Item> result : results) {
                 Item item = result.get();
-                if (!item.isDir()) {  // 只收集文件，不收集目录
+                if (!item.isDir()) { // 只收集文件，不收集目录
                     objects.add(new MinioObjectInfo(
                             item.objectName(),
                             item.size(),
-                            item.lastModified() != null ? item.lastModified().toString() : null
-                    ));
+                            item.lastModified() != null ? item.lastModified().toString() : null));
                 }
             }
-            
+
             log.info("MinIO 文件列表获取成功，共 {} 个文件", objects.size());
         } catch (Exception e) {
             log.error("获取 MinIO 文件列表失败", e);
         }
-        
+
         return objects;
     }
 
     /**
      * 列出指定前缀的文件对象
+     * 
      * @param prefix 前缀（如 "documents/"）
      * @return 文件信息列表
      */
     public List<MinioObjectInfo> listObjects(String prefix) {
         List<MinioObjectInfo> objects = new ArrayList<>();
-        
+
         if (minioClient == null) {
             log.warn("MinIO 客户端未初始化，无法列出文件");
             return objects;
         }
-        
+
         try {
             Iterable<Result<Item>> results = minioClient.listObjects(
                     ListObjectsArgs.builder()
                             .bucket(bucketName)
                             .prefix(prefix)
                             .recursive(true)
-                            .build()
-            );
-            
+                            .build());
+
             for (Result<Item> result : results) {
                 Item item = result.get();
                 if (!item.isDir()) {
                     objects.add(new MinioObjectInfo(
                             item.objectName(),
                             item.size(),
-                            item.lastModified() != null ? item.lastModified().toString() : null
-                    ));
+                            item.lastModified() != null ? item.lastModified().toString() : null));
                 }
             }
         } catch (Exception e) {
             log.error("获取 MinIO 文件列表失败: prefix={}", prefix, e);
         }
-        
+
         return objects;
     }
 
     /**
      * 获取存储桶总大小
+     * 
      * @return 总字节数
      */
     public long getTotalSize() {
@@ -445,4 +449,3 @@ public class MinioService {
         }
     }
 }
-
