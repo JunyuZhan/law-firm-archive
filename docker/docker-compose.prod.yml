@@ -54,9 +54,9 @@ services:
       - OCR_SERVICE_URL=http://paddle-ocr:8000
       - SPRING_PROFILES_ACTIVE=prod
       - SWAGGER_ENABLED=false
-      # OnlyOffice JWT 配置（与 OnlyOffice 容器保持一致）
-      - ONLYOFFICE_JWT_ENABLED=${ONLYOFFICE_JWT_ENABLED:-true}
-      - ONLYOFFICE_JWT_SECRET=${ONLYOFFICE_JWT_SECRET:-your-onlyoffice-jwt-secret-change-in-production}
+      # OnlyOffice JWT 配置（临时禁用以排查问题）
+      - ONLYOFFICE_JWT_ENABLED=false
+      # - ONLYOFFICE_JWT_SECRET=${ONLYOFFICE_JWT_SECRET:-your-onlyoffice-jwt-secret-change-in-production}
       - ONLYOFFICE_CALLBACK_URL=http://frontend:8080/api
       - FILE_SERVER_URL=http://minio:9000
     depends_on:
@@ -164,10 +164,10 @@ services:
     image: law-firm-onlyoffice:latest
     container_name: law-firm-onlyoffice
     environment:
-      # 启用 JWT 验证，防止配置篡改
-      - JWT_ENABLED=true
-      - JWT_SECRET=${ONLYOFFICE_JWT_SECRET:-your-onlyoffice-jwt-secret-change-in-production}
-      - JWT_HEADER=Authorization
+      # 临时禁用 JWT 以排查问题
+      - JWT_ENABLED=false
+      # - JWT_SECRET=${ONLYOFFICE_JWT_SECRET:-your-onlyoffice-jwt-secret-change-in-production}
+      # - JWT_HEADER=Authorization
       # 允许私有 IP 地址（用于 Docker 网络）
       - ALLOW_PRIVATE_IP_ADDRESS=true
       - ALLOW_META_IP_ADDRESS=true
