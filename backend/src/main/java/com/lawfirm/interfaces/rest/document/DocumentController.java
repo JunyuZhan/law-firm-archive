@@ -53,7 +53,7 @@ public class DocumentController {
     private final DocAccessLogService accessLogService;
     private final OnlyOfficeService onlyOfficeService;
     private final MinioService minioService;
-    
+
     // 用于生成临时访问 token 的密钥
     private static final String TOKEN_SECRET = "law-firm-document-access-2024";
 
@@ -104,7 +104,7 @@ public class DocumentController {
         if (ids.size() > 100) {
             throw new com.lawfirm.common.exception.BusinessException("单次最多下载100个文档");
         }
-        
+
         try {
             // 收集文件数据
             Map<String, byte[]> filesMap = new java.util.LinkedHashMap<>();
@@ -119,22 +119,22 @@ public class DocumentController {
                     }
                 }
             }
-            
+
             if (filesMap.isEmpty()) {
                 throw new com.lawfirm.common.exception.BusinessException("没有找到可下载的文档");
             }
-            
+
             // 压缩并输出
             byte[] zipData = com.lawfirm.common.util.CompressUtils.zipDataToBytes(filesMap);
-            
+
             String zipFileName = "documents_" + System.currentTimeMillis() + ".zip";
             response.setContentType("application/zip");
-            response.setHeader("Content-Disposition", "attachment; filename=\"" + 
+            response.setHeader("Content-Disposition", "attachment; filename=\"" +
                     URLEncoder.encode(zipFileName, StandardCharsets.UTF_8) + "\"");
             response.setContentLength(zipData.length);
             response.getOutputStream().write(zipData);
             response.getOutputStream().flush();
-            
+
             log.info("批量下载完成: {} 个文档, 大小: {} bytes", filesMap.size(), zipData.length);
         } catch (Exception e) {
             log.error("批量下载失败", e);
@@ -204,10 +204,12 @@ public class DocumentController {
         for (MultipartFile file : files) {
             FileValidator.ValidationResult validationResult = FileValidator.validate(file);
             if (!validationResult.isValid()) {
-                return Result.error("文件 " + file.getOriginalFilename() + " 验证失败: " + validationResult.getErrorMessage());
+                return Result
+                        .error("文件 " + file.getOriginalFilename() + " 验证失败: " + validationResult.getErrorMessage());
             }
         }
-        return Result.success(documentAppService.uploadFiles(files, matterId, folder, description, dossierItemId, sourceType));
+        return Result.success(
+                documentAppService.uploadFiles(files, matterId, folder, description, dossierItemId, sourceType));
     }
 
     /**
@@ -252,7 +254,8 @@ public class DocumentController {
     @PostMapping("/{id}/versions")
     @RequirePermission("doc:upload")
     @OperationLog(module = "文档管理", action = "上传新版本")
-    public Result<DocumentDTO> uploadNewVersion(@PathVariable Long id, @Valid @RequestBody UploadNewVersionCommand command) {
+    public Result<DocumentDTO> uploadNewVersion(@PathVariable Long id,
+            @Valid @RequestBody UploadNewVersionCommand command) {
         command.setDocumentId(id);
         return Result.success(documentAppService.uploadNewVersion(command));
     }
@@ -341,7 +344,7 @@ public class DocumentController {
         if (doc == null) {
             return Result.error("文档不存在");
         }
-        
+
         // 检查文件是否支持预览
         if (!onlyOfficeService.isPreviewSupported(doc.getFileName())) {
             Map<String, Object> result = new HashMap<>();
@@ -351,27 +354,27 @@ public class DocumentController {
             result.put("fileUrl", doc.getFilePath());
             return Result.success(result);
         }
-        
+
         // 记录查看日志
         accessLogService.logAccess(id, DocAccessLog.ACTION_VIEW, request);
-        
+
         // 获取当前用户信息
         Long userId = SecurityUtils.getUserId();
         String userName = SecurityUtils.getUsername();
-        
+
         // 生成带签名的文件访问 URL
-        String fileUrl = onlyOfficeService.buildFileUrlForDocument(id);
-        
+        // 直接使用 MinIO 预签名 URL
+        String fileUrl = onlyOfficeService.buildFileUrl(doc.getFilePath());
+
         // 生成 OnlyOffice 预览配置
         Map<String, Object> config = onlyOfficeService.generateViewConfig(
                 fileUrl,
                 doc.getFileName(),
                 userId,
-                userName
-        );
+                userName);
         config.put("supported", true);
         config.put("documentId", id);
-        
+
         log.info("用户 {} 预览文档: id={}, fileName={}", userName, id, doc.getFileName());
         return Result.success(config);
     }
@@ -387,7 +390,7 @@ public class DocumentController {
         if (doc == null) {
             return Result.error("文档不存在");
         }
-        
+
         // 检查文件是否支持编辑
         if (!onlyOfficeService.isSupported(doc.getFileName())) {
             Map<String, Object> result = new HashMap<>();
@@ -396,21 +399,22 @@ public class DocumentController {
             result.put("fileName", doc.getFileName());
             return Result.success(result);
         }
-        
+
         // 记录编辑日志
         accessLogService.logAccess(id, "EDIT", request);
-        
+
         // 获取当前用户信息
         Long userId = SecurityUtils.getUserId();
         String userName = SecurityUtils.getUsername();
-        
+
         // 生成文档唯一标识（用于协同编辑）
         // 使用 文档ID + 版本号 作为 key，确保不同版本不会冲突
         String documentKey = "doc_" + id + "_v" + (doc.getVersion() != null ? doc.getVersion() : 1);
-        
+
         // 生成带签名的文件访问 URL
-        String fileUrl = onlyOfficeService.buildFileUrlForDocument(id);
-        
+        // 直接使用 MinIO 预签名 URL，确保 OnlyOffice 容器可以下载
+        String fileUrl = onlyOfficeService.buildFileUrl(doc.getFilePath());
+
         // 生成 OnlyOffice 编辑配置
         Map<String, Object> config = onlyOfficeService.generateEditConfig(
                 fileUrl,
@@ -418,12 +422,12 @@ public class DocumentController {
                 documentKey,
                 userId,
                 userName,
-                "/document/" + id + "/callback"  // 回调路径
+                "/document/" + id + "/callback" // 回调路径
         );
         config.put("supported", true);
         config.put("documentId", id);
-        
-        log.info("用户 {} 开始编辑文档: id={}, fileName={}, documentKey={}", 
+
+        log.info("用户 {} 开始编辑文档: id={}, fileName={}, documentKey={}",
                 userName, id, doc.getFileName(), documentKey);
         return Result.success(config);
     }
@@ -437,9 +441,9 @@ public class DocumentController {
     public Map<String, Object> onlyOfficeCallback(
             @PathVariable Long id,
             @RequestBody Map<String, Object> payload) {
-        
+
         Map<String, Object> response = new HashMap<>();
-        
+
         try {
             // OnlyOffice 回调状态
             // 0 - 无错误
@@ -451,9 +455,9 @@ public class DocumentController {
             // 7 - 发生错误（强制保存）
             Integer status = (Integer) payload.get("status");
             String downloadUrl = (String) payload.get("url");
-            
+
             log.info("OnlyOffice 回调: documentId={}, status={}, url={}", id, status, downloadUrl);
-            
+
             if (status == 2 || status == 6) {
                 // 需要保存文档
                 if (downloadUrl != null && !downloadUrl.isEmpty()) {
@@ -462,14 +466,14 @@ public class DocumentController {
                     log.info("文档保存成功: id={}", id);
                 }
             }
-            
+
             response.put("error", 0);
         } catch (Exception e) {
             log.error("OnlyOffice 回调处理失败: documentId={}", id, e);
             response.put("error", 1);
             response.put("message", e.getMessage());
         }
-        
+
         return response;
     }
 
@@ -484,17 +488,17 @@ public class DocumentController {
         if (doc == null) {
             return Result.error("文档不存在");
         }
-        
+
         Map<String, Object> result = new HashMap<>();
         result.put("documentId", id);
         result.put("fileName", doc.getFileName());
         result.put("fileType", doc.getFileType());
         result.put("canEdit", onlyOfficeService.isSupported(doc.getFileName()));
         result.put("canPreview", onlyOfficeService.isPreviewSupported(doc.getFileName()));
-        
+
         return Result.success(result);
     }
-    
+
     /**
      * 获取文档预览 URL（带签名的临时访问链接）
      */
@@ -506,12 +510,12 @@ public class DocumentController {
         if (doc == null) {
             return Result.error("文档不存在");
         }
-        
+
         // 生成带签名的访问 URL（2小时有效）
         long expires = System.currentTimeMillis() + 7200 * 1000;
         String token = generateAccessToken(id, expires);
         String previewUrl = "/api/document/" + id + "/content?token=" + token + "&expires=" + expires;
-        
+
         Map<String, Object> result = new HashMap<>();
         result.put("documentId", id);
         result.put("fileName", doc.getFileName());
@@ -519,7 +523,7 @@ public class DocumentController {
         result.put("mimeType", doc.getMimeType());
         result.put("previewUrl", previewUrl);
         result.put("expires", expires);
-        
+
         return Result.success(result);
     }
 
@@ -534,12 +538,12 @@ public class DocumentController {
         if (doc == null) {
             return Result.error("文档不存在");
         }
-        
+
         Map<String, Object> result = new HashMap<>();
         result.put("documentId", id);
         result.put("fileName", doc.getFileName());
         result.put("fileType", doc.getFileType());
-        
+
         // 获取或生成缩略图
         String thumbnailUrl = documentAppService.getThumbnailUrl(id);
         if (thumbnailUrl != null) {
@@ -549,10 +553,10 @@ public class DocumentController {
             result.put("hasThumbnail", false);
             result.put("message", "该文件类型不支持缩略图");
         }
-        
+
         return Result.success(result);
     }
-    
+
     /**
      * 获取文档原始内容（供 OnlyOffice 访问）
      * 使用临时 token 验证，token 包含文档ID、过期时间和签名
@@ -570,38 +574,38 @@ public class DocumentController {
                 response.sendError(HttpServletResponse.SC_FORBIDDEN, "无效的访问令牌");
                 return;
             }
-            
+
             // 检查是否过期
             if (System.currentTimeMillis() > expires) {
                 response.sendError(HttpServletResponse.SC_FORBIDDEN, "访问令牌已过期");
                 return;
             }
-            
+
             DocumentDTO doc = documentAppService.getDocumentById(id);
             if (doc == null) {
                 response.sendError(HttpServletResponse.SC_NOT_FOUND, "文档不存在");
                 return;
             }
-            
+
             // 从 MinIO 获取文件
             String objectName = minioService.extractObjectName(doc.getFilePath());
             if (objectName == null) {
                 response.sendError(HttpServletResponse.SC_NOT_FOUND, "文件不存在");
                 return;
             }
-            
+
             // 设置响应头
             String mimeType = doc.getMimeType();
             if (mimeType == null || mimeType.isEmpty()) {
                 mimeType = "application/octet-stream";
             }
             response.setContentType(mimeType);
-            response.setHeader("Content-Disposition", "inline; filename=\"" + 
+            response.setHeader("Content-Disposition", "inline; filename=\"" +
                     URLEncoder.encode(doc.getFileName(), StandardCharsets.UTF_8) + "\"");
-            
+
             // 输出文件内容
             try (InputStream inputStream = minioService.downloadFile(objectName);
-                 OutputStream outputStream = response.getOutputStream()) {
+                    OutputStream outputStream = response.getOutputStream()) {
                 byte[] buffer = new byte[8192];
                 int bytesRead;
                 while ((bytesRead = inputStream.read(buffer)) != -1) {
@@ -609,9 +613,9 @@ public class DocumentController {
                 }
                 outputStream.flush();
             }
-            
+
             log.debug("文档内容请求成功: id={}, fileName={}", id, doc.getFileName());
-            
+
         } catch (Exception e) {
             log.error("获取文档内容失败: id={}", id, e);
             try {
@@ -621,7 +625,7 @@ public class DocumentController {
             }
         }
     }
-    
+
     /**
      * 生成文档访问 token
      */
@@ -635,7 +639,7 @@ public class DocumentController {
             throw new RuntimeException("生成 token 失败", e);
         }
     }
-    
+
     /**
      * 验证文档访问 token
      */
