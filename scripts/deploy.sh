@@ -230,6 +230,12 @@ setup_env() {
             sed -i '' "s|MINIO_SECRET_KEY=.*|MINIO_SECRET_KEY=$NEW_MINIO_SECRET|" "$ENV_FILE"
             sed -i '' "s|REDIS_PASSWORD=.*|REDIS_PASSWORD=$NEW_REDIS_PASSWORD|" "$ENV_FILE"
             sed -i '' "s|ONLYOFFICE_JWT_SECRET=.*|ONLYOFFICE_JWT_SECRET=$NEW_ONLYOFFICE_SECRET|" "$ENV_FILE"
+            # 如果 ONLYOFFICE_JWT_ENABLED 不存在，添加它；如果存在，更新它
+            if ! grep -q "^ONLYOFFICE_JWT_ENABLED=" "$ENV_FILE"; then
+                echo "ONLYOFFICE_JWT_ENABLED=true" >> "$ENV_FILE"
+            else
+                sed -i '' "s|ONLYOFFICE_JWT_ENABLED=.*|ONLYOFFICE_JWT_ENABLED=true|" "$ENV_FILE"
+            fi
             sed -i '' "s|OCR_API_KEY=.*|OCR_API_KEY=$NEW_OCR_API_KEY|" "$ENV_FILE"
             sed -i '' "s|DOCS_PASSWORD=.*|DOCS_PASSWORD=$NEW_DOCS_PASSWORD|" "$ENV_FILE"
         else
@@ -239,6 +245,12 @@ setup_env() {
             sed -i "s|MINIO_SECRET_KEY=.*|MINIO_SECRET_KEY=$NEW_MINIO_SECRET|" "$ENV_FILE"
             sed -i "s|REDIS_PASSWORD=.*|REDIS_PASSWORD=$NEW_REDIS_PASSWORD|" "$ENV_FILE"
             sed -i "s|ONLYOFFICE_JWT_SECRET=.*|ONLYOFFICE_JWT_SECRET=$NEW_ONLYOFFICE_SECRET|" "$ENV_FILE"
+            # 如果 ONLYOFFICE_JWT_ENABLED 不存在，添加它；如果存在，更新它
+            if ! grep -q "^ONLYOFFICE_JWT_ENABLED=" "$ENV_FILE"; then
+                echo "ONLYOFFICE_JWT_ENABLED=true" >> "$ENV_FILE"
+            else
+                sed -i "s|ONLYOFFICE_JWT_ENABLED=.*|ONLYOFFICE_JWT_ENABLED=true|" "$ENV_FILE"
+            fi
             sed -i "s|OCR_API_KEY=.*|OCR_API_KEY=$NEW_OCR_API_KEY|" "$ENV_FILE"
             sed -i "s|DOCS_PASSWORD=.*|DOCS_PASSWORD=$NEW_DOCS_PASSWORD|" "$ENV_FILE"
         fi
@@ -249,6 +261,7 @@ setup_env() {
         echo -e "  ${GREEN}✅${NC} MINIO_SECRET_KEY"
         echo -e "  ${GREEN}✅${NC} REDIS_PASSWORD"
         echo -e "  ${GREEN}✅${NC} ONLYOFFICE_JWT_SECRET"
+        echo -e "  ${GREEN}✅${NC} ONLYOFFICE_JWT_ENABLED=true"
         echo -e "  ${GREEN}✅${NC} OCR_API_KEY"
         echo -e "  ${GREEN}✅${NC} DOCS_PASSWORD"
         
@@ -269,6 +282,29 @@ setup_env() {
         if [ "$DB_PASSWORD" = "your_secure_db_password_here" ] || [ -z "$DB_PASSWORD" ]; then
             log_warn "数据库密码未正确配置"
             HAS_UNSAFE=true
+        fi
+        
+        # 确保 OnlyOffice JWT 配置一致
+        # 如果 ONLYOFFICE_JWT_SECRET 存在但 ONLYOFFICE_JWT_ENABLED 未设置或为 false，自动启用
+        if [ -n "$ONLYOFFICE_JWT_SECRET" ] && [ -n "${ONLYOFFICE_JWT_SECRET:-}" ]; then
+            if [ -z "${ONLYOFFICE_JWT_ENABLED:-}" ] || [ "$ONLYOFFICE_JWT_ENABLED" != "true" ]; then
+                log_info "检测到 ONLYOFFICE_JWT_SECRET 已配置，自动启用 JWT..."
+                if [[ "$OSTYPE" == "darwin"* ]]; then
+                    if ! grep -q "^ONLYOFFICE_JWT_ENABLED=" "$ENV_FILE"; then
+                        echo "ONLYOFFICE_JWT_ENABLED=true" >> "$ENV_FILE"
+                    else
+                        sed -i '' "s|ONLYOFFICE_JWT_ENABLED=.*|ONLYOFFICE_JWT_ENABLED=true|" "$ENV_FILE"
+                    fi
+                else
+                    if ! grep -q "^ONLYOFFICE_JWT_ENABLED=" "$ENV_FILE"; then
+                        echo "ONLYOFFICE_JWT_ENABLED=true" >> "$ENV_FILE"
+                    else
+                        sed -i "s|ONLYOFFICE_JWT_ENABLED=.*|ONLYOFFICE_JWT_ENABLED=true|" "$ENV_FILE"
+                    fi
+                fi
+                source "$ENV_FILE"
+                log_success "OnlyOffice JWT 已启用"
+            fi
         fi
         
         if [ "$HAS_UNSAFE" = true ]; then
