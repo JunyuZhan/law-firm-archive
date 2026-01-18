@@ -621,6 +621,9 @@ public class PurchaseAppService {
     }
 
     private String getPurchaseTypeName(String type) {
+        if (type == null) {
+            return "其他";
+        }
         return switch (type) {
             case "OFFICE" -> "办公用品";
             case "IT" -> "IT设备";

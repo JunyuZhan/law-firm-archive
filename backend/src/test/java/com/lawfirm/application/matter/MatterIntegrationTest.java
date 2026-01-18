@@ -5,12 +5,20 @@ import com.lawfirm.application.matter.dto.MatterDTO;
 import com.lawfirm.application.matter.dto.MatterQueryDTO;
 import com.lawfirm.application.matter.service.MatterAppService;
 import com.lawfirm.common.result.PageResult;
+import com.lawfirm.infrastructure.security.LoginUser;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.HashSet;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -26,11 +34,39 @@ import static org.junit.jupiter.api.Assertions.*;
 @ActiveProfiles("test")
 @Transactional
 @DisplayName("项目管理集成测试")
-@org.junit.jupiter.api.Disabled("集成测试需要配置 SecurityContext，待后续完善")
+@org.junit.jupiter.api.Disabled("集成测试需要配置测试数据库，跳过以避免数据库连接错误")
 class MatterIntegrationTest {
 
     @Autowired
     private MatterAppService matterAppService;
+
+    @BeforeEach
+    void setUp() {
+        setupAuthenticatedUser();
+    }
+
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.clearContext();
+    }
+
+    private void setupAuthenticatedUser() {
+        Set<String> roles = new HashSet<>();
+        roles.add("ADMIN");
+        roles.add("SUPER_ADMIN");
+
+        LoginUser user = new LoginUser();
+        user.setUserId(1L);
+        user.setUsername("admin");
+        user.setRealName("管理员");
+        user.setDepartmentId(1L);
+        user.setRoles(roles);
+        user.setDataScope("ALL");
+
+        UsernamePasswordAuthenticationToken authentication =
+            new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+    }
 
     @Test
     @DisplayName("分页查询项目列表")

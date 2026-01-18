@@ -53,9 +53,7 @@ echo ""
 echo -e "${YELLOW}[3/3] 处理配置文件...${NC}"
 cd "$PROJECT_ROOT"
 if [ -f ".env" ]; then
-    BACKUP_NAME=".env.backup.$(date +%Y%m%d_%H%M%S)"
-    mv .env "$BACKUP_NAME"
-    echo -e "${GREEN}原 .env 文件已备份为 $BACKUP_NAME${NC}"
+    echo -e "${GREEN}.env 文件已存在，保持不变（保留安全配置）。${NC}"
 else
     echo ".env 文件不存在，跳过。"
 fi

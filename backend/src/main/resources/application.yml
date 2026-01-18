@@ -90,7 +90,8 @@ jwt:
 minio:
   endpoint: http://localhost:9000
   # 外部访问地址（Docker 容器如 OnlyOffice 访问 MinIO 时使用）
-  external-endpoint: http://host.docker.internal:9000
+  # 使用 Docker 内部服务名，确保容器间可互相访问
+  external-endpoint: ${MINIO_EXTERNAL_ENDPOINT:http://minio:9000}
   access-key: ${MINIO_ACCESS_KEY:minioadmin}
   secret-key: ${MINIO_SECRET_KEY:minioadmin}
   bucket-name: law-firm

@@ -15,15 +15,12 @@ import com.lawfirm.infrastructure.persistence.mapper.ClientMapper;
 import com.lawfirm.infrastructure.persistence.mapper.MatterMapper;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.Disabled;
 import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
-import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.Wrapper;
+import com.baomidou.mybatisplus.extension.conditions.query.LambdaQueryChainWrapper;
 
-import java.time.LocalDate;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -404,16 +401,24 @@ class ClientAppServiceTest {
 
         @Test
         @DisplayName("成功搜索客户用于利冲审查")
-        @Disabled("需要集成测试环境，lambdaQuery() 链式调用mock复杂")
+        @SuppressWarnings("unchecked")
         void searchClientsForConflictCheck_Success() {
             // Given
             List<Client> clients = Arrays.asList(
-                    Client.builder().id(1L).name("测试公司A").build(),
-                    Client.builder().id(2L).name("测试公司B").build()
+                    Client.builder().id(1L).name("测试公司A").deleted(false).build(),
+                    Client.builder().id(2L).name("测试公司B").deleted(false).build()
             );
 
-            // 直接Mock Repository的查询方法
-            when(clientRepository.list(any(Wrapper.class))).thenReturn(clients);
+            // Mock lambdaQuery chain - use doReturn to mock the chain
+            when(clientRepository.lambdaQuery()).thenAnswer(invocation -> {
+                // Create a mock chain wrapper that returns clients when list() is called
+                LambdaQueryChainWrapper<Client> chain = mock(LambdaQueryChainWrapper.class);
+                when(chain.eq(any(), any())).thenReturn(chain);
+                when(chain.like(any(), any())).thenReturn(chain);
+                when(chain.last(anyString())).thenReturn(chain);
+                when(chain.list()).thenReturn(clients);
+                return chain;
+            });
 
             // When
             List<ClientDTO> result = clientAppService.searchClientsForConflictCheck("测试", 10);

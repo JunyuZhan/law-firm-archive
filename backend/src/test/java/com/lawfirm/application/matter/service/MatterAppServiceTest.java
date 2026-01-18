@@ -12,10 +12,12 @@ import com.lawfirm.domain.matter.entity.Matter;
 import com.lawfirm.domain.matter.repository.MatterRepository;
 import com.lawfirm.domain.matter.repository.MatterClientRepository;
 import com.lawfirm.domain.matter.repository.MatterParticipantRepository;
+import com.lawfirm.common.util.SecurityUtils;
 import com.lawfirm.domain.system.repository.UserRepository;
 import com.lawfirm.domain.system.repository.DepartmentRepository;
 import com.lawfirm.infrastructure.persistence.mapper.MatterMapper;
 import com.lawfirm.infrastructure.persistence.mapper.MatterParticipantMapper;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -29,7 +31,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.math.BigDecimal;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
 
@@ -88,9 +89,16 @@ class MatterAppServiceTest {
     private CreateMatterCommand validCommand;
     private Client mockClient;
     private Contract mockContract;
+    private MockedStatic<SecurityUtils> securityUtilsMock;
 
     @BeforeEach
     void setUp() {
+        // Mock SecurityUtils
+        securityUtilsMock = mockStatic(SecurityUtils.class);
+        securityUtilsMock.when(SecurityUtils::getUserId).thenReturn(1L);
+        securityUtilsMock.when(SecurityUtils::getDepartmentId).thenReturn(1L);
+        securityUtilsMock.when(SecurityUtils::getDataScope).thenReturn("ALL");
+        securityUtilsMock.when(SecurityUtils::isAdmin).thenReturn(true);
         // 构建有效的创建命令
         validCommand = new CreateMatterCommand();
         validCommand.setName("测试项目");
@@ -113,6 +121,13 @@ class MatterAppServiceTest {
         mockContract.setClientId(1L);
         mockContract.setStatus("ACTIVE");
         mockContract.setTotalAmount(new BigDecimal("50000"));
+    }
+
+    @AfterEach
+    void tearDown() {
+        if (securityUtilsMock != null) {
+            securityUtilsMock.close();
+        }
     }
 
     @Nested
@@ -192,10 +207,10 @@ class MatterAppServiceTest {
 
         @Test
         @DisplayName("获取项目详情 - 项目不存在")
-        @org.junit.jupiter.api.Disabled("需要 SecurityContext mock，待完善")
         void getMatterById_NotFound_ShouldThrowException() {
             // Given
-            when(matterMapper.selectById(anyLong())).thenReturn(null);
+            when(matterRepository.getByIdOrThrow(eq(999L), anyString()))
+                    .thenThrow(new BusinessException("案件不存在"));
 
             // When & Then
             assertThrows(BusinessException.class,
@@ -204,7 +219,6 @@ class MatterAppServiceTest {
 
         @Test
         @DisplayName("获取项目详情 - 成功")
-        @org.junit.jupiter.api.Disabled("需要 SecurityContext mock，待完善")
         void getMatterById_Success() {
             // Given
             Matter matter = Matter.builder()
@@ -214,8 +228,8 @@ class MatterAppServiceTest {
                     .status("ACTIVE")
                     .clientId(1L)
                     .build();
-            when(matterMapper.selectById(1L)).thenReturn(matter);
-            when(clientRepository.findById(1L)).thenReturn(mockClient);
+            when(matterRepository.getByIdOrThrow(eq(1L), anyString())).thenReturn(matter);
+            when(participantMapper.selectByMatterId(1L)).thenReturn(java.util.Collections.emptyList());
 
             // When
             MatterDTO result = matterAppService.getMatterById(1L);
@@ -233,7 +247,6 @@ class MatterAppServiceTest {
 
         @Test
         @DisplayName("关闭项目审批 - 项目不存在")
-        @org.junit.jupiter.api.Disabled("需要 SecurityContext mock，待完善")
         void approveCloseMatter_NotFound_ShouldThrowException() {
             // Given
             when(matterMapper.selectById(anyLong())).thenReturn(null);

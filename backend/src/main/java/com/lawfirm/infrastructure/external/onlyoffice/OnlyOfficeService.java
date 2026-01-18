@@ -139,8 +139,9 @@ public class OnlyOfficeService {
             log.debug("OnlyOffice JWT 签名已添加（URL 由前端自动检测）");
         }
 
-        log.debug("生成 OnlyOffice 配置: fileName={}, mode={}, documentKey={}, jwtEnabled={}",
-                fileName, mode, document.get("key"), this.config.isJwtEnabled());
+        log.info("生成 OnlyOffice 配置: fileName={}, mode={}, documentKey={}, url={}, callbackUrl={}, jwtEnabled={}",
+                fileName, mode, document.get("key"), document.get("url"), editorConfig.get("callbackUrl"),
+                this.config.isJwtEnabled());
 
         return config;
     }

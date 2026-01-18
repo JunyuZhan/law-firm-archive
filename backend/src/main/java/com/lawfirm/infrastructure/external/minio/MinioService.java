@@ -285,24 +285,27 @@ public class MinioService {
 
     /**
      * 生成 Docker 容器可访问的预签名URL
-     * 先生成标准预签名 URL，然后替换 host 为 Docker 可访问的地址
+     * 使用独立的 MinioClient（endpoint 为 Docker 内部地址）生成 URL
+     * 这样生成的签名与访问时使用的 host 一致，不会出现签名验证失败
      * 注意：需要在 OnlyOffice 中设置 ALLOW_PRIVATE_IP_ADDRESS=true
      */
     public String getPresignedUrlForDocker(String objectName, int expirySeconds) throws Exception {
-        // 生成标准预签名 URL
-        String presignedUrl = getPresignedUrl(objectName, expirySeconds);
-
-        // 替换为 Docker 可访问的地址
-        // 由于签名包含 host 信息，简单替换可能导致签名验证失败
-        // 但 MinIO 在某些配置下会忽略 host 检查
+        // 如果配置了外部端点，使用专门的客户端生成 URL
+        // 这样签名会使用正确的 host（如 minio:9000），避免签名不匹配
         if (externalEndpoint != null && !externalEndpoint.isEmpty()) {
-            // 提取原始 endpoint 的 host:port
-            String originalHost = endpoint.replace("http://", "").replace("https://", "");
-            String externalHost = externalEndpoint.replace("http://", "").replace("https://", "");
-            presignedUrl = presignedUrl.replace(originalHost, externalHost);
+            log.info("使用外部端点生成预签名URL: externalEndpoint={}, objectName={}", externalEndpoint, objectName);
+            return getExternalMinioClient().getPresignedObjectUrl(
+                    io.minio.GetPresignedObjectUrlArgs.builder()
+                            .method(io.minio.http.Method.GET)
+                            .bucket(bucketName)
+                            .object(objectName)
+                            .expiry(expirySeconds)
+                            .build());
         }
 
-        return presignedUrl;
+        // 没有配置外部端点时，回退到标准 URL
+        log.info("使用标准端点生成预签名URL: endpoint={}, objectName={}", endpoint, objectName);
+        return getPresignedUrl(objectName, expirySeconds);
     }
 
     /**

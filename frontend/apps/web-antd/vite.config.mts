@@ -14,6 +14,13 @@ export default defineConfig(async () => {
             target: 'http://localhost:8080',
             ws: true,
           },
+          // OnlyOffice 代理（本地开发时需要）
+          '/onlyoffice': {
+            changeOrigin: true,
+            rewrite: (path: string) => path.replace(/^\/onlyoffice/, ''),
+            target: 'http://127.0.0.1:8088',
+            ws: true,
+          },
         },
       },
     },
