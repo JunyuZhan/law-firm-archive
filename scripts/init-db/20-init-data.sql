@@ -364,7 +364,7 @@ INSERT INTO public.sys_menu VALUES (714, 6, '我的文书', '/document/my', 'doc
 INSERT INTO public.sys_menu VALUES (61, 6, '卷宗列表', '/document/list', 'document/list/index', NULL, 'FileOutlined', 'MENU', 'doc:list', 2, true, 'ENABLED', false, true, '2026-01-04 16:14:15.89735', '2026-01-08 01:43:37.711362', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (62, 6, '文书制作', '/document/compose', 'document/compose/index', NULL, 'FileAddOutlined', 'MENU', 'doc:compose', 3, true, 'ENABLED', false, true, '2026-01-04 16:14:15.89735', '2026-01-08 01:43:37.700594', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (713, 6, '文书模板', '/document/template', 'document/template/index', NULL, 'FileTextOutlined', 'MENU', 'doc:template:list', 4, true, 'ENABLED', false, true, '2026-01-08 01:43:37.711744', '2026-01-08 01:43:37.711744', NULL, NULL, false) ON CONFLICT (id) DO UPDATE SET name = '文书模板', path = '/document/template', component = 'document/template/index', permission = 'doc:template:list', updated_at = CURRENT_TIMESTAMP;
-INSERT INTO public.sys_menu VALUES (715, 6, '卷宗模板', '/document/dossier-template', 'document/dossier-template/index', NULL, 'FileProtectOutlined', 'MENU', 'doc:list', 5, true, 'ENABLED', false, true, '2026-01-08 01:43:37.711744', '2026-01-08 01:43:37.711744', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_menu VALUES (715, 6, '卷宗模板', '/document/dossier-template', 'document/dossier-template/index', NULL, 'FileProtectOutlined', 'MENU', 'doc:list', 5, true, 'ENABLED', false, true, '2026-01-08 01:43:37.711744', '2026-01-08 01:43:37.711744', NULL, NULL, false) ON CONFLICT (id) DO UPDATE SET parent_id = 6, name = '卷宗模板', path = '/document/dossier-template', component = 'document/dossier-template/index', icon = 'FileProtectOutlined', menu_type = 'MENU', permission = 'doc:list', sort_order = 5, visible = true, status = 'ENABLED', deleted = false, updated_at = CURRENT_TIMESTAMP;
 INSERT INTO public.sys_menu VALUES (91, 9, '考勤管理', '/admin/attendance', 'admin/attendance/index', NULL, 'ClockCircleOutlined', 'MENU', 'admin:attendance:list', 1, true, 'ENABLED', false, true, '2026-01-04 16:14:15.89774', '2026-01-04 16:14:15.89774', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (92, 9, '请假管理', '/admin/leave', 'admin/leave/index', NULL, 'CalendarOutlined', 'MENU', 'admin:leave:list', 2, true, 'ENABLED', false, true, '2026-01-04 16:14:15.89774', '2026-01-04 16:14:15.89774', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (97, 9, '加班管理', '/admin/overtime', 'admin/overtime/index', NULL, 'ClockCircleOutlined', 'MENU', 'admin:overtime:list', 3, true, 'ENABLED', false, true, '2026-01-04 16:14:15.89774', '2026-01-04 16:14:15.89774', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
@@ -1161,9 +1161,10 @@ INSERT INTO public.sys_role_menu VALUES (1960, 9, 714, '2026-01-08 02:15:45.8756
 -- 卷宗模板菜单权限分配（2026-01-15）
 -- =====================================================
 -- 为管理员、律所主任、行政角色分配卷宗模板菜单权限（与文书模板权限一致）
-INSERT INTO public.sys_role_menu VALUES (1971, 1, 715, '2026-01-15 00:00:00') ON CONFLICT (id) DO NOTHING;
-INSERT INTO public.sys_role_menu VALUES (1972, 2, 715, '2026-01-15 00:00:00') ON CONFLICT (id) DO NOTHING;
-INSERT INTO public.sys_role_menu VALUES (1973, 8, 715, '2026-01-15 00:00:00') ON CONFLICT (id) DO NOTHING;
+-- 使用 ON CONFLICT (role_id, menu_id) 避免重复插入，不指定ID让数据库自动生成
+INSERT INTO public.sys_role_menu (role_id, menu_id, created_at) VALUES (1, 715, '2026-01-15 00:00:00') ON CONFLICT (role_id, menu_id) DO NOTHING;
+INSERT INTO public.sys_role_menu (role_id, menu_id, created_at) VALUES (2, 715, '2026-01-15 00:00:00') ON CONFLICT (role_id, menu_id) DO NOTHING;
+INSERT INTO public.sys_role_menu (role_id, menu_id, created_at) VALUES (8, 715, '2026-01-15 00:00:00') ON CONFLICT (role_id, menu_id) DO NOTHING;
 
 INSERT INTO public.sys_role_menu VALUES (1970, 8, 196, '2026-01-08 15:35:00') ON CONFLICT (id) DO NOTHING;
 
