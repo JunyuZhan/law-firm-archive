@@ -229,6 +229,7 @@ setup_env() {
         NEW_ONLYOFFICE_SECRET=$(openssl rand -hex 32 2>/dev/null || head -c 32 /dev/urandom | xxd -p)
         NEW_OCR_API_KEY=$(openssl rand -hex 32 2>/dev/null || head -c 32 /dev/urandom | xxd -p)
         NEW_DOCS_PASSWORD=$(generate_password)
+        NEW_GRAFANA_PASSWORD=$(generate_password)
         
         if [[ "$OSTYPE" == "darwin"* ]]; then
             sed -i '' "s|JWT_SECRET=.*|JWT_SECRET=$NEW_JWT_SECRET|" "$ENV_FILE"
@@ -245,6 +246,12 @@ setup_env() {
             fi
             sed -i '' "s|OCR_API_KEY=.*|OCR_API_KEY=$NEW_OCR_API_KEY|" "$ENV_FILE"
             sed -i '' "s|DOCS_PASSWORD=.*|DOCS_PASSWORD=$NEW_DOCS_PASSWORD|" "$ENV_FILE"
+            # 如果 GRAFANA_PASSWORD 不存在，添加它；如果存在，更新它
+            if ! grep -q "^GRAFANA_PASSWORD=" "$ENV_FILE"; then
+                echo "GRAFANA_PASSWORD=$NEW_GRAFANA_PASSWORD" >> "$ENV_FILE"
+            else
+                sed -i '' "s|GRAFANA_PASSWORD=.*|GRAFANA_PASSWORD=$NEW_GRAFANA_PASSWORD|" "$ENV_FILE"
+            fi
         else
             sed -i "s|JWT_SECRET=.*|JWT_SECRET=$NEW_JWT_SECRET|" "$ENV_FILE"
             sed -i "s|DB_PASSWORD=.*|DB_PASSWORD=$NEW_DB_PASSWORD|" "$ENV_FILE"
@@ -260,6 +267,12 @@ setup_env() {
             fi
             sed -i "s|OCR_API_KEY=.*|OCR_API_KEY=$NEW_OCR_API_KEY|" "$ENV_FILE"
             sed -i "s|DOCS_PASSWORD=.*|DOCS_PASSWORD=$NEW_DOCS_PASSWORD|" "$ENV_FILE"
+            # 如果 GRAFANA_PASSWORD 不存在，添加它；如果存在，更新它
+            if ! grep -q "^GRAFANA_PASSWORD=" "$ENV_FILE"; then
+                echo "GRAFANA_PASSWORD=$NEW_GRAFANA_PASSWORD" >> "$ENV_FILE"
+            else
+                sed -i "s|GRAFANA_PASSWORD=.*|GRAFANA_PASSWORD=$NEW_GRAFANA_PASSWORD|" "$ENV_FILE"
+            fi
         fi
         
         echo -e "  ${GREEN}✅${NC} JWT_SECRET"
@@ -271,6 +284,7 @@ setup_env() {
         echo -e "  ${GREEN}✅${NC} ONLYOFFICE_JWT_ENABLED=true"
         echo -e "  ${GREEN}✅${NC} OCR_API_KEY"
         echo -e "  ${GREEN}✅${NC} DOCS_PASSWORD"
+        echo -e "  ${GREEN}✅${NC} GRAFANA_PASSWORD"
         
         echo ""
         log_success "安全密钥已保存到 .env"
@@ -333,6 +347,27 @@ setup_env() {
                 source "$ENV_FILE"
                 log_success "OnlyOffice JWT 已启用"
             fi
+        fi
+        
+        # 如果 GRAFANA_PASSWORD 不存在，自动生成
+        if [ -z "${GRAFANA_PASSWORD:-}" ] || [ "$GRAFANA_PASSWORD" = "your-grafana-password-here" ]; then
+            log_info "检测到 GRAFANA_PASSWORD 未配置，自动生成..."
+            NEW_GRAFANA_PASSWORD=$(generate_password)
+            if [[ "$OSTYPE" == "darwin"* ]]; then
+                if ! grep -q "^GRAFANA_PASSWORD=" "$ENV_FILE"; then
+                    echo "GRAFANA_PASSWORD=$NEW_GRAFANA_PASSWORD" >> "$ENV_FILE"
+                else
+                    sed -i '' "s|GRAFANA_PASSWORD=.*|GRAFANA_PASSWORD=$NEW_GRAFANA_PASSWORD|" "$ENV_FILE"
+                fi
+            else
+                if ! grep -q "^GRAFANA_PASSWORD=" "$ENV_FILE"; then
+                    echo "GRAFANA_PASSWORD=$NEW_GRAFANA_PASSWORD" >> "$ENV_FILE"
+                else
+                    sed -i "s|GRAFANA_PASSWORD=.*|GRAFANA_PASSWORD=$NEW_GRAFANA_PASSWORD|" "$ENV_FILE"
+                fi
+            fi
+            source "$ENV_FILE"
+            log_success "Grafana 密码已生成"
         fi
         
         if [ "$HAS_UNSAFE" = true ]; then
