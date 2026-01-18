@@ -1162,9 +1162,9 @@ INSERT INTO public.sys_role_menu VALUES (1960, 9, 714, '2026-01-08 02:15:45.8756
 -- =====================================================
 -- 为管理员、律所主任、行政角色分配卷宗模板菜单权限（与文书模板权限一致）
 -- ID: 2029-管理员, 2030-律所主任, 2031-行政
-INSERT INTO public.sys_role_menu VALUES (2029, 1, 715, '2026-01-15 00:00:00') ON CONFLICT (id) DO UPDATE SET role_id = 1, menu_id = 715, created_at = '2026-01-15 00:00:00';
-INSERT INTO public.sys_role_menu VALUES (2030, 2, 715, '2026-01-15 00:00:00') ON CONFLICT (id) DO UPDATE SET role_id = 2, menu_id = 715, created_at = '2026-01-15 00:00:00';
-INSERT INTO public.sys_role_menu VALUES (2031, 8, 715, '2026-01-15 00:00:00') ON CONFLICT (id) DO UPDATE SET role_id = 8, menu_id = 715, created_at = '2026-01-15 00:00:00';
+INSERT INTO public.sys_role_menu VALUES (2029, 1, 715, '2026-01-15 00:00:00') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_role_menu VALUES (2030, 2, 715, '2026-01-15 00:00:00') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_role_menu VALUES (2031, 8, 715, '2026-01-15 00:00:00') ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO public.sys_role_menu VALUES (1970, 8, 196, '2026-01-08 15:35:00') ON CONFLICT (id) DO NOTHING;
 
