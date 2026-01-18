@@ -4,7 +4,9 @@ import com.lawfirm.application.finance.command.CreateCommissionRuleCommand;
 import com.lawfirm.application.finance.command.ManualCalculateCommissionCommand;
 import com.lawfirm.application.finance.command.UpdateCommissionRuleCommand;
 import com.lawfirm.application.finance.dto.CommissionDTO;
+import com.lawfirm.application.finance.dto.CommissionQueryDTO;
 import com.lawfirm.application.finance.dto.CommissionRuleDTO;
+import com.lawfirm.common.result.PageResult;
 import com.lawfirm.common.exception.BusinessException;
 import com.lawfirm.common.util.SecurityUtils;
 import com.lawfirm.common.constant.CommissionStatus;
@@ -479,6 +481,331 @@ class CommissionAppServiceTest {
             // Then
             assertThat(result).hasSize(1);
             assertThat(result.get(0).getRuleCode()).isEqualTo("RULE001");
+        }
+    }
+
+    @Nested
+    @DisplayName("查询提成记录测试")
+    class QueryCommissionTests {
+
+        @Test
+        @DisplayName("应该成功分页查询提成记录")
+        void listCommissions_shouldSuccess() {
+            // Given
+            securityUtilsMock.when(SecurityUtils::isAdmin).thenReturn(true);
+            lenient().when(userRepository.findRoleCodesByUserId(TEST_USER_ID)).thenReturn(Arrays.asList("ADMIN"));
+            
+            CommissionQueryDTO query = new CommissionQueryDTO();
+            query.setPageNum(1);
+            query.setPageSize(10);
+
+            Commission commission = Commission.builder()
+                    .id(1L)
+                    .commissionNo("COM2024001")
+                    .paymentId(100L)
+                    .matterId(200L)
+                    .status(CommissionStatus.CALCULATED)
+                    .build();
+
+            com.baomidou.mybatisplus.extension.plugins.pagination.Page<Commission> page = 
+                    new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(1, 10);
+            page.setRecords(Collections.singletonList(commission));
+            page.setTotal(1L);
+
+            when(commissionRepository.page(any(), any())).thenReturn(page);
+
+            // When
+            PageResult<CommissionDTO> result = commissionAppService.listCommissions(query);
+
+            // Then
+            assertThat(result).isNotNull();
+            assertThat(result.getRecords()).hasSize(1);
+            assertThat(result.getTotal()).isEqualTo(1L);
+        }
+
+        @Test
+        @DisplayName("普通用户只能查看自己的提成")
+        void listCommissions_shouldFilterByUserId_whenNotAdmin() {
+            // Given
+            securityUtilsMock.when(SecurityUtils::getRoles).thenReturn(Set.of("LAWYER"));
+            when(userRepository.findRoleCodesByUserId(TEST_USER_ID)).thenReturn(Arrays.asList("LAWYER"));
+
+            CommissionQueryDTO query = new CommissionQueryDTO();
+            query.setPageNum(1);
+            query.setPageSize(10);
+            query.setUserId(999L); // 尝试查看他人的提成
+
+            // When & Then
+            BusinessException exception = assertThrows(BusinessException.class,
+                    () -> commissionAppService.listCommissions(query));
+            assertThat(exception.getMessage()).contains("无权查看");
+        }
+
+        @Test
+        @DisplayName("应该成功获取提成记录详情")
+        void getCommission_shouldSuccess() {
+            // Given
+            Commission commission = Commission.builder()
+                    .id(1L)
+                    .commissionNo("COM2024001")
+                    .paymentId(100L)
+                    .build();
+
+            when(commissionRepository.findById(1L)).thenReturn(commission);
+            lenient().when(userRepository.findRoleCodesByUserId(TEST_USER_ID)).thenReturn(Arrays.asList("ADMIN"));
+            
+            com.lawfirm.infrastructure.persistence.mapper.CommissionMapper commissionBaseMapper = 
+                    mock(com.lawfirm.infrastructure.persistence.mapper.CommissionMapper.class);
+            lenient().when(commissionRepository.getBaseMapper()).thenReturn(commissionBaseMapper);
+            lenient().when(commissionBaseMapper.countByCommissionIdAndUserId(1L, TEST_USER_ID)).thenReturn(1);
+
+            // When
+            CommissionDTO result = commissionAppService.getCommission(1L);
+
+            // Then
+            assertThat(result).isNotNull();
+            assertThat(result.getId()).isEqualTo(1L);
+        }
+
+        @Test
+        @DisplayName("普通用户无权查看他人的提成详情")
+        void getCommission_shouldFail_whenNoPermission() {
+            // Given
+            securityUtilsMock.when(SecurityUtils::getRoles).thenReturn(Set.of("LAWYER"));
+            when(userRepository.findRoleCodesByUserId(TEST_USER_ID)).thenReturn(Arrays.asList("LAWYER"));
+
+            Commission commission = Commission.builder()
+                    .id(1L)
+                    .build();
+
+            when(commissionRepository.findById(1L)).thenReturn(commission);
+            
+            com.lawfirm.infrastructure.persistence.mapper.CommissionMapper commissionBaseMapper = 
+                    mock(com.lawfirm.infrastructure.persistence.mapper.CommissionMapper.class);
+            when(commissionRepository.getBaseMapper()).thenReturn(commissionBaseMapper);
+            when(commissionBaseMapper.countByCommissionIdAndUserId(1L, TEST_USER_ID)).thenReturn(0);
+
+            // When & Then
+            BusinessException exception = assertThrows(BusinessException.class,
+                    () -> commissionAppService.getCommission(1L));
+            assertThat(exception.getMessage()).contains("无权查看");
+        }
+
+        @Test
+        @DisplayName("应该成功查询用户的提成总额")
+        void getUserTotalCommission_shouldSuccess() {
+            // Given
+            when(userRepository.findRoleCodesByUserId(TEST_USER_ID)).thenReturn(Arrays.asList("ADMIN"));
+            when(commissionRepository.sumCommissionByUserId(TEST_USER_ID)).thenReturn(BigDecimal.valueOf(50000));
+
+            // When
+            BigDecimal result = commissionAppService.getUserTotalCommission(TEST_USER_ID);
+
+            // Then
+            assertThat(result).isEqualByComparingTo(BigDecimal.valueOf(50000));
+        }
+
+        @Test
+        @DisplayName("普通用户只能查看自己的提成总额")
+        void getUserTotalCommission_shouldFail_whenNotSelf() {
+            // Given
+            securityUtilsMock.when(SecurityUtils::getRoles).thenReturn(Set.of("LAWYER"));
+            when(userRepository.findRoleCodesByUserId(TEST_USER_ID)).thenReturn(Arrays.asList("LAWYER"));
+
+            // When & Then
+            BusinessException exception = assertThrows(BusinessException.class,
+                    () -> commissionAppService.getUserTotalCommission(999L));
+            assertThat(exception.getMessage()).contains("无权查看");
+        }
+    }
+
+    @Nested
+    @DisplayName("提成汇总测试")
+    class CommissionSummaryTests {
+
+        @Test
+        @DisplayName("应该成功获取全所提成汇总")
+        void getCommissionSummary_shouldSuccess() {
+            // Given
+            when(userRepository.findRoleCodesByUserId(TEST_USER_ID)).thenReturn(Arrays.asList("ADMIN"));
+            when(commissionRepository.sumTotalCommission(anyString(), anyString())).thenReturn(BigDecimal.valueOf(100000));
+            when(commissionRepository.sumCommissionByStatus(eq(CommissionStatus.APPROVED), anyString(), anyString()))
+                    .thenReturn(BigDecimal.valueOf(80000));
+            when(commissionRepository.sumCommissionByStatus(eq(CommissionStatus.PAID), anyString(), anyString()))
+                    .thenReturn(BigDecimal.valueOf(50000));
+            when(commissionRepository.countCommissions(anyString(), anyString())).thenReturn(100L);
+            when(commissionRepository.sumCommissionByUser(anyString(), anyString())).thenReturn(Collections.emptyList());
+
+            // When
+            Map<String, Object> result = commissionAppService.getCommissionSummary("2024-01-01", "2024-12-31");
+
+            // Then
+            assertThat(result).isNotNull();
+            assertThat((BigDecimal) result.get("totalCommission")).isEqualByComparingTo(BigDecimal.valueOf(100000));
+            assertThat((BigDecimal) result.get("approvedCommission")).isEqualByComparingTo(BigDecimal.valueOf(80000));
+            assertThat((BigDecimal) result.get("paidCommission")).isEqualByComparingTo(BigDecimal.valueOf(50000));
+            assertThat(result.get("totalCount")).isEqualTo(100L);
+        }
+
+        @Test
+        @DisplayName("非管理层无权查看提成汇总")
+        void getCommissionSummary_shouldFail_whenNotManagement() {
+            // Given
+            securityUtilsMock.when(SecurityUtils::getRoles).thenReturn(Set.of("LAWYER"));
+            when(userRepository.findRoleCodesByUserId(TEST_USER_ID)).thenReturn(Arrays.asList("LAWYER"));
+
+            // When & Then
+            BusinessException exception = assertThrows(BusinessException.class,
+                    () -> commissionAppService.getCommissionSummary("2024-01-01", "2024-12-31"));
+            assertThat(exception.getMessage()).contains("只有管理层");
+        }
+    }
+
+    @Nested
+    @DisplayName("提成审批测试")
+    class ApproveCommissionTests {
+
+        @Test
+        @DisplayName("应该成功审批通过提成")
+        void approveCommission_shouldSuccess_whenApproved() {
+            // Given
+            securityUtilsMock.when(SecurityUtils::isAdmin).thenReturn(true);
+            lenient().when(userRepository.findRoleCodesByUserId(TEST_USER_ID)).thenReturn(Arrays.asList("DIRECTOR"));
+
+            Commission commission = Commission.builder()
+                    .id(1L)
+                    .commissionNo("COM2024001")
+                    .status(CommissionStatus.CALCULATED)
+                    .build();
+
+            when(commissionRepository.findById(1L)).thenReturn(commission);
+            
+            com.lawfirm.infrastructure.persistence.mapper.CommissionMapper commissionBaseMapper = 
+                    mock(com.lawfirm.infrastructure.persistence.mapper.CommissionMapper.class);
+            when(commissionRepository.getBaseMapper()).thenReturn(commissionBaseMapper);
+            when(commissionBaseMapper.updateById(any(Commission.class))).thenReturn(1);
+
+            // When
+            CommissionDTO result = commissionAppService.approveCommission(1L, true, "审批通过");
+
+            // Then
+            assertThat(result).isNotNull();
+            assertThat(commission.getStatus()).isEqualTo(CommissionStatus.APPROVED);
+            assertThat(commission.getApprovedBy()).isEqualTo(TEST_USER_ID);
+            assertThat(commission.getApprovedAt()).isNotNull();
+        }
+
+        @Test
+        @DisplayName("应该成功审批驳回提成")
+        void approveCommission_shouldSuccess_whenRejected() {
+            // Given
+            securityUtilsMock.when(SecurityUtils::isAdmin).thenReturn(true);
+            lenient().when(userRepository.findRoleCodesByUserId(TEST_USER_ID)).thenReturn(Arrays.asList("DIRECTOR"));
+
+            Commission commission = Commission.builder()
+                    .id(1L)
+                    .status(CommissionStatus.CALCULATED)
+                    .build();
+
+            when(commissionRepository.findById(1L)).thenReturn(commission);
+            
+            com.lawfirm.infrastructure.persistence.mapper.CommissionMapper commissionBaseMapper = 
+                    mock(com.lawfirm.infrastructure.persistence.mapper.CommissionMapper.class);
+            when(commissionRepository.getBaseMapper()).thenReturn(commissionBaseMapper);
+            when(commissionBaseMapper.updateById(any(Commission.class))).thenReturn(1);
+
+            // When
+            CommissionDTO result = commissionAppService.approveCommission(1L, false, "审批驳回");
+
+            // Then
+            assertThat(result).isNotNull();
+            assertThat(commission.getStatus()).isEqualTo(CommissionStatus.CALCULATED);
+        }
+
+        @Test
+        @DisplayName("只有已计算的提成才能审批")
+        void approveCommission_shouldFail_whenNotCalculated() {
+            // Given
+            securityUtilsMock.when(SecurityUtils::isAdmin).thenReturn(true);
+            lenient().when(userRepository.findRoleCodesByUserId(TEST_USER_ID)).thenReturn(Arrays.asList("DIRECTOR"));
+
+            Commission commission = Commission.builder()
+                    .id(1L)
+                    .status(CommissionStatus.APPROVED) // 已审批
+                    .build();
+
+            when(commissionRepository.findById(1L)).thenReturn(commission);
+
+            // When & Then
+            BusinessException exception = assertThrows(BusinessException.class,
+                    () -> commissionAppService.approveCommission(1L, true, ""));
+            assertThat(exception.getMessage()).contains("只有已计算的提成才能审批");
+        }
+    }
+
+    @Nested
+    @DisplayName("提成发放测试")
+    class IssueCommissionTests {
+
+        @Test
+        @DisplayName("应该成功确认提成已发放")
+        void issueCommission_shouldSuccess() {
+            // Given
+            when(userRepository.findRoleCodesByUserId(TEST_USER_ID)).thenReturn(Arrays.asList("FINANCE"));
+
+            Commission commission = Commission.builder()
+                    .id(1L)
+                    .commissionNo("COM2024001")
+                    .commissionAmount(BigDecimal.valueOf(5000))
+                    .status(CommissionStatus.APPROVED)
+                    .build();
+
+            when(commissionRepository.findById(1L)).thenReturn(commission);
+            
+            com.lawfirm.infrastructure.persistence.mapper.CommissionMapper commissionBaseMapper = 
+                    mock(com.lawfirm.infrastructure.persistence.mapper.CommissionMapper.class);
+            when(commissionRepository.getBaseMapper()).thenReturn(commissionBaseMapper);
+            when(commissionBaseMapper.updateById(any(Commission.class))).thenReturn(1);
+
+            // When
+            CommissionDTO result = commissionAppService.issueCommission(1L);
+
+            // Then
+            assertThat(result).isNotNull();
+            assertThat(commission.getStatus()).isEqualTo(CommissionStatus.PAID);
+            assertThat(commission.getPaidAt()).isNotNull();
+        }
+
+        @Test
+        @DisplayName("只有已审批的提成才能发放")
+        void issueCommission_shouldFail_whenNotApproved() {
+            // Given
+            when(userRepository.findRoleCodesByUserId(TEST_USER_ID)).thenReturn(Arrays.asList("FINANCE"));
+
+            Commission commission = Commission.builder()
+                    .id(1L)
+                    .status(CommissionStatus.CALCULATED) // 未审批
+                    .build();
+
+            when(commissionRepository.findById(1L)).thenReturn(commission);
+
+            // When & Then
+            BusinessException exception = assertThrows(BusinessException.class,
+                    () -> commissionAppService.issueCommission(1L));
+            assertThat(exception.getMessage()).contains("只有已审批的提成才能发放");
+        }
+
+        @Test
+        @DisplayName("非财务人员无权确认发放")
+        void issueCommission_shouldFail_whenNotFinance() {
+            // Given
+            securityUtilsMock.when(SecurityUtils::getRoles).thenReturn(Set.of("LAWYER"));
+            when(userRepository.findRoleCodesByUserId(TEST_USER_ID)).thenReturn(Arrays.asList("LAWYER"));
+
+            // When & Then
+            BusinessException exception = assertThrows(BusinessException.class,
+                    () -> commissionAppService.issueCommission(1L));
+            assertThat(exception.getMessage()).contains("只有财务人员");
         }
     }
 }

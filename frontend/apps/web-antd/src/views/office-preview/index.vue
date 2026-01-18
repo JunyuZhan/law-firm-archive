@@ -228,20 +228,18 @@ function loadOnlyOfficeApi(apiUrl: string): Promise<void> {
  * 从后端配置初始化编辑器
  */
 function initEditorFromConfig(cfg: OnlyOfficeConfig) {
-  // 处理 document.url：将 Docker 内部 URL 替换为浏览器可访问的绝对 URL
+  // 处理 document.url：OnlyOffice 容器需要使用 Docker 内部 URL 下载文档
   // Docker 内部 URL 格式：http://frontend:8080/api/document/1/content?token=...
-  // 浏览器需要：http://[当前访问域名]/api/document/1/content?token=...
-  // 使用 window.location 自动获取当前访问的域名（支持一键部署，无需额外配置）
+  // 只有当 URL 是 Docker 内部地址时，才转换为相对路径供浏览器验证
   if (cfg.document?.url) {
     const originalUrl = cfg.document.url as string;
     try {
       const urlObj = new URL(originalUrl);
-      // 检查是否是 Docker 内部地址
+      // 检查是否是 Docker 内部地址（保持原样，供 OnlyOffice 容器访问）
       if (urlObj.hostname === 'frontend' || urlObj.hostname === 'backend' ||
           urlObj.hostname === 'localhost' || urlObj.hostname.includes('127.0.0.1')) {
-        // 使用当前访问的协议、主机和端口构建绝对 URL（自动识别）
-        const { protocol, host } = window.location;
-        cfg.document.url = `${protocol}//${host}${urlObj.pathname}${urlObj.search}`;
+        // Docker 内部地址，保持原样供 OnlyOffice 容器使用
+        // 不需要转换，因为 OnlyOffice 容器可以直接访问这些地址
       }
     } catch {
       // URL 解析失败，保持原样
