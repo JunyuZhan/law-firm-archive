@@ -245,8 +245,13 @@ public class MinioService {
             objectName = objectName.substring(0, objectName.indexOf("?"));
         }
 
-        // 去除由于 URL 编码可能导致的冲突
-        // 简单解码可能不必要，MinIO 客户端通常处理原始名称
+        // URL 解码，防止双重编码 (例如 %E8 -> 中文)
+        try {
+            objectName = java.net.URLDecoder.decode(objectName, java.nio.charset.StandardCharsets.UTF_8.name());
+        } catch (Exception e) {
+            log.warn("文件名URL解码失败: {}", objectName);
+        }
+
         return objectName;
     }
 
