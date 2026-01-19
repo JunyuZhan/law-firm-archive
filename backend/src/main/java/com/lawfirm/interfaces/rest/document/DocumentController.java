@@ -815,8 +815,26 @@ public class DocumentController {
 
             // 输出文件内容
             long totalBytes = 0;
+            byte[] firstBytes = new byte[4]; // 读取前4个字节用于验证
             try (InputStream inputStream = minioService.downloadFile(objectName);
                     OutputStream outputStream = response.getOutputStream()) {
+                // 先读取前几个字节验证文件头
+                int headerRead = inputStream.read(firstBytes);
+                if (headerRead > 0) {
+                    outputStream.write(firstBytes, 0, headerRead);
+                    totalBytes += headerRead;
+                    
+                    // 验证文件头（docx 文件是 ZIP 格式，前4个字节应该是 PK\x03\x04）
+                    if (headerRead >= 4 && firstBytes[0] == 0x50 && firstBytes[1] == 0x4B && 
+                        firstBytes[2] == 0x03 && firstBytes[3] == 0x04) {
+                        log.debug("文件头验证通过（ZIP格式/DOCX）: documentId={}", id);
+                    } else {
+                        log.warn("文件头验证失败，可能不是有效的 DOCX 文件: documentId={}, header={}", 
+                            id, java.util.HexFormat.of().formatHex(firstBytes, 0, Math.min(4, headerRead)));
+                    }
+                }
+                
+                // 继续读取剩余内容
                 byte[] buffer = new byte[8192];
                 int bytesRead;
                 while ((bytesRead = inputStream.read(buffer)) != -1) {
@@ -826,8 +844,13 @@ public class DocumentController {
                 outputStream.flush();
             }
 
-            log.info("OnlyOffice 文件代理请求成功: id={}, fileName={}, fileSize={}, mimeType={}, bytesSent={}", 
-                id, doc.getFileName(), doc.getFileSize(), mimeType, totalBytes);
+            log.info("OnlyOffice 文件代理请求成功: id={}, fileName={}, fileSize={}, mimeType={}, bytesSent={}, expectedSize={}", 
+                id, doc.getFileName(), doc.getFileSize(), mimeType, totalBytes, doc.getFileSize());
+            
+            // 验证文件大小是否匹配
+            if (doc.getFileSize() != null && doc.getFileSize() > 0 && totalBytes != doc.getFileSize()) {
+                log.warn("文件大小不匹配: documentId={}, expected={}, actual={}", id, doc.getFileSize(), totalBytes);
+            }
         } catch (Exception e) {
             log.error("OnlyOffice 文件代理失败: id={}, error={}", id, e.getMessage(), e);
             // 确保在错误时也设置 CORS 头
