@@ -236,18 +236,32 @@ function loadOnlyOfficeApi(apiUrl: string): Promise<void> {
  * 从后端配置初始化编辑器
  */
 function initEditorFromConfig(cfg: OnlyOfficeConfig) {
-  // 处理 document.url：OnlyOffice 容器需要使用 Docker 内部 URL 下载文档
-  // Docker 内部 URL 格式：http://frontend:8080/api/document/1/content?token=...
-  // 只有当 URL 是 Docker 内部地址时，才转换为相对路径供浏览器验证
+  // 处理 document.url：OnlyOffice 在浏览器中运行，需要浏览器可访问的 URL
+  // 如果 URL 是 Docker 内部地址（如 backend:8080），需要转换为浏览器可访问的地址
   if (cfg.document?.url) {
     const originalUrl = cfg.document.url as string;
     try {
       const urlObj = new URL(originalUrl);
-      // 检查是否是 Docker 内部地址（保持原样，供 OnlyOffice 容器访问）
-      if (urlObj.hostname === 'frontend' || urlObj.hostname === 'backend' ||
-          urlObj.hostname === 'localhost' || urlObj.hostname.includes('127.0.0.1')) {
-        // Docker 内部地址，保持原样供 OnlyOffice 容器使用
-        // 不需要转换，因为 OnlyOffice 容器可以直接访问这些地址
+      // 检查是否是 Docker 内部地址（backend、frontend 等）
+      if (urlObj.hostname === 'backend' || urlObj.hostname === 'frontend') {
+        // Docker 内部地址，转换为浏览器可访问的地址
+        // 使用当前页面的协议和主机名，保留路径和查询参数
+        const { protocol, host } = window.location;
+        const browserUrl = `${protocol}//${host}${urlObj.pathname}${urlObj.search}`;
+        cfg.document.url = browserUrl;
+        console.log('OnlyOffice documentUrl 已转换:', {
+          original: originalUrl,
+          converted: browserUrl,
+        });
+      } else if (urlObj.hostname === 'localhost' || urlObj.hostname.includes('127.0.0.1')) {
+        // localhost 地址，也需要转换为浏览器可访问的地址
+        const { protocol, host } = window.location;
+        const browserUrl = `${protocol}//${host}${urlObj.pathname}${urlObj.search}`;
+        cfg.document.url = browserUrl;
+        console.log('OnlyOffice documentUrl 已转换:', {
+          original: originalUrl,
+          converted: browserUrl,
+        });
       }
     } catch {
       // URL 解析失败，保持原样
