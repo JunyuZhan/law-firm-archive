@@ -788,11 +788,10 @@ public class DocumentController {
             // 设置 Content-Type（必须在写入响应体之前设置）
             response.setContentType(mimeType);
             
-            // 设置文件名（使用 RFC 5987 格式，支持 UTF-8）
-            String encodedFileName = URLEncoder.encode(correctedFileName, StandardCharsets.UTF_8)
-                    .replace("+", "%20"); // URLEncoder 会将空格编码为 +，但浏览器期望 %20
-            response.setHeader("Content-Disposition", 
-                    "inline; filename=\"" + encodedFileName + "\"; filename*=UTF-8''" + encodedFileName);
+            // 设置文件名（简化格式，避免 OnlyOffice 解析问题）
+            // 只使用基本的 filename，避免复杂的 RFC 5987 格式
+            String safeFileName = correctedFileName.replace("\"", "'"); // 替换引号避免解析错误
+            response.setHeader("Content-Disposition", "inline; filename=\"" + safeFileName + "\"");
             
             // 设置缓存控制（避免 OnlyOffice 缓存错误内容）
             response.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
