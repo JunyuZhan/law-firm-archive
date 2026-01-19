@@ -4,6 +4,7 @@ import com.lawfirm.infrastructure.interceptor.HttpCacheInterceptor;
 import com.lawfirm.infrastructure.interceptor.MaintenanceModeInterceptor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
@@ -16,6 +17,16 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     private final MaintenanceModeInterceptor maintenanceModeInterceptor;
     private final HttpCacheInterceptor httpCacheInterceptor;
+
+    @Override
+    public void addCorsMappings(CorsRegistry registry) {
+        registry.addMapping("/api/**")
+                .allowedOrigins("*")  // 允许所有来源（生产环境建议配置具体域名）
+                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH")
+                .allowedHeaders("*")
+                .allowCredentials(false)  // 如果使用JWT，不需要credentials
+                .maxAge(3600);  // 预检请求缓存时间
+    }
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
