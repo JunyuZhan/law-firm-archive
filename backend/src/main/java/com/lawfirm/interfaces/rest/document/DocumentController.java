@@ -27,6 +27,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.InputStream;
@@ -635,6 +636,18 @@ public class DocumentController {
     }
 
     /**
+     * 处理 OPTIONS 预检请求（CORS）
+     */
+    @RequestMapping(value = "/{id}/file-proxy", method = RequestMethod.OPTIONS)
+    public void fileProxyOptions(HttpServletResponse response) {
+        response.setHeader("Access-Control-Allow-Origin", "*");
+        response.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+        response.setHeader("Access-Control-Allow-Headers", "*");
+        response.setHeader("Access-Control-Max-Age", "3600");
+        response.setStatus(HttpServletResponse.SC_OK);
+    }
+
+    /**
      * 文档文件代理接口（供 OnlyOffice 容器下载文件）
      * 安全措施：
      * 1. 使用临时 token 验证（防止未授权访问）
@@ -735,6 +748,11 @@ public class DocumentController {
             // 根据检测到的 MIME 类型修正文件名
             String correctedFileName = correctFileNameByMimeType(doc.getFileName(), mimeType);
             
+            // 设置 CORS 头（允许 OnlyOffice 容器访问）
+            response.setHeader("Access-Control-Allow-Origin", "*");
+            response.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+            response.setHeader("Access-Control-Allow-Headers", "*");
+            
             response.setContentType(mimeType);
             response.setHeader("Content-Disposition", "inline; filename=\"" +
                     URLEncoder.encode(correctedFileName, StandardCharsets.UTF_8) + "\"");
@@ -760,11 +778,19 @@ public class DocumentController {
             log.info("OnlyOffice 文件代理请求成功: id={}, fileName={}, fileSize={}, mimeType={}, bytesSent={}", 
                 id, doc.getFileName(), doc.getFileSize(), mimeType, totalBytes);
         } catch (Exception e) {
-            log.error("OnlyOffice 文件代理失败: id={}", id, e);
+            log.error("OnlyOffice 文件代理失败: id={}, error={}", id, e.getMessage(), e);
+            // 确保在错误时也设置 CORS 头
+            response.setHeader("Access-Control-Allow-Origin", "*");
             try {
-                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "获取文档内容失败");
+                // 如果响应还没有提交，发送错误响应
+                if (!response.isCommitted()) {
+                    response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+                    response.setContentType("application/json;charset=UTF-8");
+                    response.getWriter().write("{\"error\":\"获取文档内容失败: " + e.getMessage() + "\"}");
+                    response.getWriter().flush();
+                }
             } catch (Exception sendError) {
-                log.debug("发送错误响应失败", sendError);
+                log.error("发送错误响应失败", sendError);
             }
         }
     }
