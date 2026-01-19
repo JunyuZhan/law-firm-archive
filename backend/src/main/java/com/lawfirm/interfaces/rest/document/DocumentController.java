@@ -681,36 +681,44 @@ public class DocumentController {
             // 安全验证：检查 token（如果提供）
             // 注意：OnlyOffice 容器可能无法传递 token，所以这里允许无 token 访问
             // 但会验证请求来源（通过 IP 或 User-Agent）
-            if (token != null && expires != null) {
-                // URL 解码 token（如果被编码了）
-                String decodedToken = token;
+            boolean useTokenAuth = false;
+            if (token != null && !token.isEmpty() && expires != null) {
                 try {
-                    decodedToken = java.net.URLDecoder.decode(token, StandardCharsets.UTF_8);
+                    // URL 解码 token（如果被编码了）
+                    String decodedToken = token;
+                    try {
+                        decodedToken = java.net.URLDecoder.decode(token, StandardCharsets.UTF_8);
+                    } catch (Exception e) {
+                        // 如果解码失败，使用原始 token
+                        log.debug("Token URL 解码失败，使用原始 token: {}", e.getMessage());
+                    }
+                    
+                    // 检查 token 是否包含无效字符（可能是双重编码或其他问题）
+                    if (decodedToken.length() < 8 || decodedToken.contains("token") || decodedToken.contains("expires")) {
+                        log.warn("Token 格式异常，回退到 IP 验证: documentId={}, token={}", id, decodedToken.substring(0, Math.min(20, decodedToken.length())));
+                        useTokenAuth = false;
+                    } else {
+                        log.info("OnlyOffice 文件代理请求（带token）: documentId={}, token={}, expires={}", 
+                            id, decodedToken.substring(0, Math.min(8, decodedToken.length())) + "...", expires);
+                        
+                        if (!validateAccessToken(id, decodedToken, expires)) {
+                            log.warn("Token 验证失败，回退到 IP 验证: documentId={}", id);
+                            useTokenAuth = false;
+                        } else if (System.currentTimeMillis() > expires) {
+                            log.warn("Token 已过期，回退到 IP 验证: documentId={}, expires={}", id, expires);
+                            useTokenAuth = false;
+                        } else {
+                            useTokenAuth = true;
+                        }
+                    }
                 } catch (Exception e) {
-                    // 如果解码失败，使用原始 token
-                    log.debug("Token URL 解码失败，使用原始 token: {}", e.getMessage());
+                    log.warn("Token 验证过程出错，回退到 IP 验证: documentId={}, error={}", id, e.getMessage());
+                    useTokenAuth = false;
                 }
-                
-                log.info("OnlyOffice 文件代理请求（带token）: documentId={}, token={}, expires={}", 
-                    id, decodedToken.substring(0, Math.min(8, decodedToken.length())) + "...", expires);
-                
-                if (!validateAccessToken(id, decodedToken, expires)) {
-                    log.warn("Token 验证失败: documentId={}", id);
-                    response.setHeader("Access-Control-Allow-Origin", "*");
-                    response.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
-                    response.setHeader("Access-Control-Allow-Headers", "*");
-                    response.sendError(HttpServletResponse.SC_FORBIDDEN, "无效的访问令牌");
-                    return;
-                }
-                if (System.currentTimeMillis() > expires) {
-                    log.warn("Token 已过期: documentId={}, expires={}", id, expires);
-                    response.setHeader("Access-Control-Allow-Origin", "*");
-                    response.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
-                    response.setHeader("Access-Control-Allow-Headers", "*");
-                    response.sendError(HttpServletResponse.SC_FORBIDDEN, "访问令牌已过期");
-                    return;
-                }
-            } else {
+            }
+            
+            // 如果没有使用 token 验证，则使用 IP 验证
+            if (!useTokenAuth) {
                 // 无 token 时，验证请求来源（只允许 Docker 内部网络）
                 // OnlyOffice 容器在 Docker 网络中，可以通过服务名访问
                 String clientIp = getClientIp(request);
