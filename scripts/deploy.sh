@@ -244,6 +244,12 @@ setup_env() {
             else
                 sed -i '' "s|ONLYOFFICE_JWT_ENABLED=.*|ONLYOFFICE_JWT_ENABLED=true|" "$ENV_FILE"
             fi
+            # 确保 ONLYOFFICE_CALLBACK_URL 存在（Docker 内部服务名）
+            if ! grep -q "^ONLYOFFICE_CALLBACK_URL=" "$ENV_FILE"; then
+                echo "ONLYOFFICE_CALLBACK_URL=http://backend:8080/api" >> "$ENV_FILE"
+            else
+                sed -i '' "s|ONLYOFFICE_CALLBACK_URL=.*|ONLYOFFICE_CALLBACK_URL=http://backend:8080/api|" "$ENV_FILE"
+            fi
             sed -i '' "s|OCR_API_KEY=.*|OCR_API_KEY=$NEW_OCR_API_KEY|" "$ENV_FILE"
             sed -i '' "s|DOCS_PASSWORD=.*|DOCS_PASSWORD=$NEW_DOCS_PASSWORD|" "$ENV_FILE"
             # 如果 GRAFANA_PASSWORD 不存在，添加它；如果存在，更新它
@@ -265,6 +271,12 @@ setup_env() {
             else
                 sed -i "s|ONLYOFFICE_JWT_ENABLED=.*|ONLYOFFICE_JWT_ENABLED=true|" "$ENV_FILE"
             fi
+            # 确保 ONLYOFFICE_CALLBACK_URL 存在（Docker 内部服务名）
+            if ! grep -q "^ONLYOFFICE_CALLBACK_URL=" "$ENV_FILE"; then
+                echo "ONLYOFFICE_CALLBACK_URL=http://backend:8080/api" >> "$ENV_FILE"
+            else
+                sed -i "s|ONLYOFFICE_CALLBACK_URL=.*|ONLYOFFICE_CALLBACK_URL=http://backend:8080/api|" "$ENV_FILE"
+            fi
             sed -i "s|OCR_API_KEY=.*|OCR_API_KEY=$NEW_OCR_API_KEY|" "$ENV_FILE"
             sed -i "s|DOCS_PASSWORD=.*|DOCS_PASSWORD=$NEW_DOCS_PASSWORD|" "$ENV_FILE"
             # 如果 GRAFANA_PASSWORD 不存在，添加它；如果存在，更新它
@@ -282,6 +294,7 @@ setup_env() {
         echo -e "  ${GREEN}✅${NC} REDIS_PASSWORD"
         echo -e "  ${GREEN}✅${NC} ONLYOFFICE_JWT_SECRET"
         echo -e "  ${GREEN}✅${NC} ONLYOFFICE_JWT_ENABLED=true"
+        echo -e "  ${GREEN}✅${NC} ONLYOFFICE_CALLBACK_URL=http://backend:8080/api"
         echo -e "  ${GREEN}✅${NC} OCR_API_KEY"
         echo -e "  ${GREEN}✅${NC} DOCS_PASSWORD"
         echo -e "  ${GREEN}✅${NC} GRAFANA_PASSWORD"
@@ -348,7 +361,27 @@ setup_env() {
                 log_success "OnlyOffice JWT 已启用"
             fi
         fi
-        
+
+        # 确保 ONLYOFFICE_CALLBACK_URL 存在且正确（Docker 内部服务名）
+        if [ -z "${ONLYOFFICE_CALLBACK_URL:-}" ] || [ "$ONLYOFFICE_CALLBACK_URL" != "http://backend:8080/api" ]; then
+            log_info "配置 OnlyOffice 回调 URL（Docker 内部地址）..."
+            if [[ "$OSTYPE" == "darwin"* ]]; then
+                if ! grep -q "^ONLYOFFICE_CALLBACK_URL=" "$ENV_FILE"; then
+                    echo "ONLYOFFICE_CALLBACK_URL=http://backend:8080/api" >> "$ENV_FILE"
+                else
+                    sed -i '' "s|ONLYOFFICE_CALLBACK_URL=.*|ONLYOFFICE_CALLBACK_URL=http://backend:8080/api|" "$ENV_FILE"
+                fi
+            else
+                if ! grep -q "^ONLYOFFICE_CALLBACK_URL=" "$ENV_FILE"; then
+                    echo "ONLYOFFICE_CALLBACK_URL=http://backend:8080/api" >> "$ENV_FILE"
+                else
+                    sed -i "s|ONLYOFFICE_CALLBACK_URL=.*|ONLYOFFICE_CALLBACK_URL=http://backend:8080/api|" "$ENV_FILE"
+                fi
+            fi
+            source "$ENV_FILE"
+            log_success "OnlyOffice 回调 URL 已配置"
+        fi
+
         # 如果 GRAFANA_PASSWORD 不存在，自动生成
         if [ -z "${GRAFANA_PASSWORD:-}" ] || [ "$GRAFANA_PASSWORD" = "your-grafana-password-here" ]; then
             log_info "检测到 GRAFANA_PASSWORD 未配置，自动生成..."
