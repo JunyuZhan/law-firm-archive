@@ -1725,10 +1725,10 @@ INSERT INTO public.doc_template VALUES (2, 'TPL-2026-002', '委托代理合同�
 -- Data for Name: dossier_template; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-INSERT INTO public.dossier_template VALUES (1, '刑事案件卷宗模板', 'CRIMINAL', '适用于刑事辩护案件', true, NULL, '2026-01-06 14:53:13.69281', '2026-01-06 14:53:13.69281', false);
-INSERT INTO public.dossier_template VALUES (2, '民事案件卷宗模板', 'CIVIL', '适用于民事诉讼代理案件', true, NULL, '2026-01-06 14:53:13.695714', '2026-01-06 14:53:13.695714', false);
-INSERT INTO public.dossier_template VALUES (3, '法律顾问卷宗模板', 'LEGAL_COUNSEL', '适用于常年法律顾问服务', true, NULL, '2026-01-06 14:53:13.696417', '2026-01-06 14:53:13.696417', false);
-INSERT INTO public.dossier_template VALUES (4, '其他非诉讼法律事务卷宗模板', 'NON_LITIGATION', '适用于其他非诉讼法律事务', true, NULL, '2026-01-06 14:53:13.696917', '2026-01-06 14:53:13.696917', false);
+INSERT INTO public.dossier_template VALUES (1, '刑事案件卷宗模板', 'CRIMINAL', '适用于刑事辩护案件', true, 1, NULL, '2026-01-06 14:53:13.69281', '2026-01-06 14:53:13.69281', NULL, false);
+INSERT INTO public.dossier_template VALUES (2, '民事案件卷宗模板', 'CIVIL', '适用于民事诉讼代理案件', true, 1, NULL, '2026-01-06 14:53:13.695714', '2026-01-06 14:53:13.695714', NULL, false);
+INSERT INTO public.dossier_template VALUES (3, '法律顾问卷宗模板', 'LEGAL_COUNSEL', '适用于常年法律顾问服务', true, 1, NULL, '2026-01-06 14:53:13.696417', '2026-01-06 14:53:13.696417', NULL, false);
+INSERT INTO public.dossier_template VALUES (4, '其他非诉讼法律事务卷宗模板', 'NON_LITIGATION', '适用于其他非诉讼法律事务', true, 1, NULL, '2026-01-06 14:53:13.696917', '2026-01-06 14:53:13.696917', NULL, false);
 --
 -- Data for Name: dossier_template_item; Type: TABLE DATA; Schema: public; Owner: -
 --
