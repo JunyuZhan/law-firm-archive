@@ -785,14 +785,22 @@ public class DocumentController {
             response.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
             response.setHeader("Access-Control-Allow-Headers", "*");
             
+            // 设置 Content-Type（必须在写入响应体之前设置）
             response.setContentType(mimeType);
-            response.setHeader("Content-Disposition", "inline; filename=\"" +
-                    URLEncoder.encode(correctedFileName, StandardCharsets.UTF_8) + "\"");
+            
+            // 设置文件名（使用 RFC 5987 格式，支持 UTF-8）
+            String encodedFileName = URLEncoder.encode(correctedFileName, StandardCharsets.UTF_8)
+                    .replace("+", "%20"); // URLEncoder 会将空格编码为 +，但浏览器期望 %20
+            response.setHeader("Content-Disposition", 
+                    "inline; filename=\"" + encodedFileName + "\"; filename*=UTF-8''" + encodedFileName);
             
             // 设置缓存控制（避免 OnlyOffice 缓存错误内容）
             response.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
             response.setHeader("Pragma", "no-cache");
             response.setHeader("Expires", "0");
+            
+            // 禁用响应缓冲，确保 OnlyOffice 能正确接收文件
+            response.setBufferSize(8192);
 
             // 输出文件内容
             long totalBytes = 0;
@@ -805,6 +813,11 @@ public class DocumentController {
                     totalBytes += bytesRead;
                 }
                 outputStream.flush();
+            }
+            
+            // 设置 Content-Length（在写入完成后设置，确保准确性）
+            if (totalBytes > 0) {
+                response.setContentLengthLong(totalBytes);
             }
 
             log.info("OnlyOffice 文件代理请求成功: id={}, fileName={}, fileSize={}, mimeType={}, bytesSent={}", 
