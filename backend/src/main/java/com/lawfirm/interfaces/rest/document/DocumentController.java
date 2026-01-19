@@ -799,6 +799,11 @@ public class DocumentController {
             response.setHeader("Pragma", "no-cache");
             response.setHeader("Expires", "0");
             
+            // 设置 Content-Length（如果文档有文件大小信息，在写入响应体之前设置）
+            if (doc.getFileSize() != null && doc.getFileSize() > 0) {
+                response.setContentLengthLong(doc.getFileSize());
+            }
+            
             // 禁用响应缓冲，确保 OnlyOffice 能正确接收文件
             response.setBufferSize(8192);
 
@@ -813,11 +818,6 @@ public class DocumentController {
                     totalBytes += bytesRead;
                 }
                 outputStream.flush();
-            }
-            
-            // 设置 Content-Length（在写入完成后设置，确保准确性）
-            if (totalBytes > 0) {
-                response.setContentLengthLong(totalBytes);
             }
 
             log.info("OnlyOffice 文件代理请求成功: id={}, fileName={}, fileSize={}, mimeType={}, bytesSent={}", 
