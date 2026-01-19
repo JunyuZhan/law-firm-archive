@@ -786,11 +786,18 @@ public class DocumentController {
             response.setHeader("Access-Control-Allow-Headers", "*");
             
             // 设置 Content-Type（必须在写入响应体之前设置）
+            // 确保 MIME 类型正确，OnlyOffice 依赖此判断文件类型
             response.setContentType(mimeType);
+            response.setCharacterEncoding("UTF-8");
             
-            // 设置文件名（简化格式，避免 OnlyOffice 解析问题）
-            // 只使用基本的 filename，避免复杂的 RFC 5987 格式
-            String safeFileName = correctedFileName.replace("\"", "'"); // 替换引号避免解析错误
+            // 设置文件名（使用 ASCII 字符，避免编码问题）
+            // OnlyOffice 可能对非 ASCII 字符的文件名处理有问题
+            String safeFileName = correctedFileName;
+            // 如果文件名包含非 ASCII 字符，使用 URL 编码
+            if (!safeFileName.matches("^[\\x00-\\x7F]*$")) {
+                safeFileName = URLEncoder.encode(correctedFileName, StandardCharsets.UTF_8)
+                        .replace("+", "%20");
+            }
             response.setHeader("Content-Disposition", "inline; filename=\"" + safeFileName + "\"");
             
             // 设置缓存控制（避免 OnlyOffice 缓存错误内容）
