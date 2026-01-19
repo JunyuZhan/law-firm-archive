@@ -659,10 +659,25 @@ public class DocumentController {
     public void fileProxy(
             @PathVariable Long id,
             @RequestParam(required = false) String token,
-            @RequestParam(required = false) Long expires,
+            @RequestParam(required = false) String expiresStr,
             HttpServletRequest request,
             HttpServletResponse response) {
         try {
+            // 解析 expires 参数
+            Long expires = null;
+            if (expiresStr != null && !expiresStr.isEmpty()) {
+                try {
+                    expires = Long.parseLong(expiresStr);
+                } catch (NumberFormatException e) {
+                    log.warn("无效的 expires 参数: documentId={}, expiresStr={}", id, expiresStr);
+                    response.setHeader("Access-Control-Allow-Origin", "*");
+                    response.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+                    response.setHeader("Access-Control-Allow-Headers", "*");
+                    response.sendError(HttpServletResponse.SC_BAD_REQUEST, "无效的 expires 参数");
+                    return;
+                }
+            }
+            
             // 安全验证：检查 token（如果提供）
             // 注意：OnlyOffice 容器可能无法传递 token，所以这里允许无 token 访问
             // 但会验证请求来源（通过 IP 或 User-Agent）
@@ -681,11 +696,17 @@ public class DocumentController {
                 
                 if (!validateAccessToken(id, decodedToken, expires)) {
                     log.warn("Token 验证失败: documentId={}", id);
+                    response.setHeader("Access-Control-Allow-Origin", "*");
+                    response.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+                    response.setHeader("Access-Control-Allow-Headers", "*");
                     response.sendError(HttpServletResponse.SC_FORBIDDEN, "无效的访问令牌");
                     return;
                 }
                 if (System.currentTimeMillis() > expires) {
                     log.warn("Token 已过期: documentId={}, expires={}", id, expires);
+                    response.setHeader("Access-Control-Allow-Origin", "*");
+                    response.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+                    response.setHeader("Access-Control-Allow-Headers", "*");
                     response.sendError(HttpServletResponse.SC_FORBIDDEN, "访问令牌已过期");
                     return;
                 }
@@ -715,6 +736,9 @@ public class DocumentController {
                 // 注意：在生产环境中，建议始终使用 token
                 if (!isInternalNetwork) {
                     log.warn("拒绝未授权访问: documentId={}, clientIp={}", id, clientIp);
+                    response.setHeader("Access-Control-Allow-Origin", "*");
+                    response.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+                    response.setHeader("Access-Control-Allow-Headers", "*");
                     response.sendError(HttpServletResponse.SC_FORBIDDEN, "访问被拒绝：需要有效的访问令牌或内部网络访问");
                     return;
                 }
