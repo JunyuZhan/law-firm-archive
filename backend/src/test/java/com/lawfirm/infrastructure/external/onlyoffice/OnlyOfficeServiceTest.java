@@ -88,6 +88,9 @@ class OnlyOfficeServiceTest {
             assertThat(editorConfig.get("lang")).isEqualTo("zh-CN");
 
             assertThat(config.get("documentType")).isEqualTo("word");
+            // Implementation converts localhost URLs to relative paths for frontend auto-detection
+            // The setUp() method sets documentServerUrl to "http://localhost/onlyoffice"
+            // which gets converted to "/onlyoffice" by the implementation
             assertThat(config.get("documentServerUrl")).isEqualTo("/onlyoffice");
         }
 
@@ -600,10 +603,11 @@ class OnlyOfficeServiceTest {
 
             @SuppressWarnings("unchecked")
             Map<String, Object> customization = (Map<String, Object>) editorConfig.get("customization");
+            assertThat(customization).isNotNull();
 
             // 验证自定义配置
             assertThat(customization.get("autosave")).isEqualTo(true);
-            assertThat(customization.get("comments")).isEqualTo(true);
+            assertThat(customization.get("comments")).isNotNull().isEqualTo(true);
             assertThat(customization.get("help")).isEqualTo(false);
             assertThat(customization.get("plugins")).isEqualTo(false);
             assertThat(customization.get("forcesave")).isEqualTo(true);

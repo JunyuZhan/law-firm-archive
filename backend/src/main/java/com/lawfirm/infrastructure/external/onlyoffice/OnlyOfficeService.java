@@ -136,6 +136,10 @@ public class OnlyOfficeService {
             // 返回相对路径，前端会自动转换为当前域名 + /onlyoffice
             documentServerUrl = "/onlyoffice";
         }
+        // Ensure documentServerUrl is not null to prevent NPE
+        if (documentServerUrl == null) {
+            documentServerUrl = "/onlyoffice";
+        }
         config.put("documentServerUrl", documentServerUrl);
         config.put("apiJsUrl", documentServerUrl + "/web-apps/apps/api/documents/api.js");
 
