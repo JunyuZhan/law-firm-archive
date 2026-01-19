@@ -260,6 +260,7 @@ docker network ls
 
 ## 📚 相关文档
 
+- [服务器端：拉取代码、重置数据、重新部署完整指南](./SERVER_RESET_AND_REDEPLOY.md) - **详细的操作步骤和故障排查**
 - [部署脚本使用指南](./DEPLOYMENT_SCRIPTS_GUIDE.md)
 - [生产环境容器清单](./PRODUCTION_CONTAINERS.md)
 - [FRP 配置指南](./FRP_CONFIGURATION_GUIDE.md)

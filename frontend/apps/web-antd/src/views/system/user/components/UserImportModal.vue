@@ -28,6 +28,7 @@ const importResult = ref<{
   failCount: number;
   successCount: number;
   total: number;
+  generatedPasswords?: Record<string, string>; // 用户名 -> 密码
 } | null>(null);
 
 // 是否有导入结果
@@ -144,6 +145,41 @@ async function handleImport() {
   }
 }
 
+// 复制所有密码到剪贴板
+function handleCopyPasswords() {
+  if (!importResult.value?.generatedPasswords) return;
+
+  const passwords = Object.entries(importResult.value.generatedPasswords)
+    .map(([username, password]) => `${username}: ${password}`)
+    .join('\n');
+
+  navigator.clipboard.writeText(passwords).then(() => {
+    message.success('密码已复制到剪贴板');
+  }).catch(() => {
+    message.error('复制失败，请手动复制');
+  });
+}
+
+// 下载密码文件
+function handleDownloadPasswords() {
+  if (!importResult.value?.generatedPasswords) return;
+
+  const passwords = Object.entries(importResult.value.generatedPasswords)
+    .map(([username, password]) => `用户名: ${username}\t密码: ${password}`)
+    .join('\n');
+
+  const content = `用户导入 - 随机密码列表\n生成时间: ${new Date().toLocaleString('zh-CN')}\n\n${passwords}\n\n⚠️ 请妥善保管此文件，并告知用户及时修改密码`;
+
+  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `用户密码_${new Date().toISOString().slice(0, 10)}.txt`;
+  link.click();
+  window.URL.revokeObjectURL(url);
+  message.success('密码文件已下载');
+}
+
 // 关闭弹窗
 function handleClose() {
   modalApi.close();
@@ -160,7 +196,7 @@ defineExpose({ open });
         <template #description>
           <div class="text-sm">
             <p>1. 请先下载导入模板，按模板格式填写用户信息</p>
-            <p>2. 必填字段：用户名、姓名；密码为空时默认为 LawFirm@2026</p>
+            <p>2. 必填字段：用户名、姓名；密码为空时将自动生成随机密码（请妥善保存）</p>
             <p>3. 用户名不能重复，重复的用户名将导入失败</p>
             <p>4. 支持 .xlsx 和 .xls 格式，文件大小不超过 10MB</p>
           </div>
@@ -211,6 +247,56 @@ defineExpose({ open });
             </span>
           </template>
         </Alert>
+
+        <!-- 生成的随机密码提示 -->
+        <div
+          v-if="
+            importResult.generatedPasswords &&
+            Object.keys(importResult.generatedPasswords).length > 0
+          "
+          class="mt-3 rounded bg-yellow-50 p-3"
+        >
+          <p class="mb-2 font-medium text-yellow-700">
+            ⚠️ 重要提示：以下用户使用了自动生成的随机密码
+          </p>
+          <p class="mb-2 text-sm text-yellow-600">
+            请妥善保存这些密码，并告知用户及时修改密码
+          </p>
+          <div class="max-h-[200px] overflow-auto rounded bg-white p-2">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="border-b">
+                  <th class="px-2 py-1 text-left font-medium">用户名</th>
+                  <th class="px-2 py-1 text-left font-medium">随机密码</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="(password, username) in importResult.generatedPasswords"
+                  :key="username"
+                  class="border-b"
+                >
+                  <td class="px-2 py-1">{{ username }}</td>
+                  <td class="px-2 py-1 font-mono">{{ password }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="mt-2 flex gap-2">
+            <Button
+              size="small"
+              @click="handleCopyPasswords"
+            >
+              复制所有密码
+            </Button>
+            <Button
+              size="small"
+              @click="handleDownloadPasswords"
+            >
+              下载密码文件
+            </Button>
+          </div>
+        </div>
 
         <!-- 错误详情 -->
         <div

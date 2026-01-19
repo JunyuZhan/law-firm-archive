@@ -8,8 +8,12 @@
 
 ### Grafana 设置中文
 
+**详细设置步骤请参考**：[Grafana 中文界面设置指南](./GRAFANA_CHINESE_SETUP.md)
+
+**快速步骤**：
+
 1. **登录 Grafana**
-   - 访问：`http://grafana.albertzhan.top`
+   - 访问：`http://grafana.albertzhan.top` 或 `http://your-server-ip:3000`
    - 用户名：`admin`
    - 密码：`.env` 文件中的 `GRAFANA_PASSWORD`
 
@@ -20,6 +24,8 @@
    - 点击 **"Save"**（保存）
 
 3. **界面会立即切换为中文**
+
+**提示**：生产环境已配置默认中文（`GF_DEFAULT_LANGUAGE=zh-Hans`），重启容器后新用户将默认使用中文界面。
 
 ### Prometheus 设置中文
 
@@ -462,6 +468,7 @@ hikari_connections_active
 
 ## 🔗 相关文档
 
+- [Grafana 中文界面设置指南](./GRAFANA_CHINESE_SETUP.md) - 详细的中文设置步骤
 - [监控服务登录指南](./MONITORING_LOGIN_GUIDE.md)
 - [监控认证说明](./MONITORING_AUTH_SUMMARY.md)
 - [生产环境容器清单](./PRODUCTION_CONTAINERS.md)

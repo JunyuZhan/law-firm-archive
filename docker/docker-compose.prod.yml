@@ -246,6 +246,7 @@ services:
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
       - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_DEFAULT_LANGUAGE=zh-Hans
     networks:
       - law-firm-network
     restart: unless-stopped

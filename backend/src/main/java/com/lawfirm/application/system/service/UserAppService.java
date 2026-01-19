@@ -370,6 +370,44 @@ public class UserAppService {
     }
 
     /**
+     * 生成符合强度要求的随机密码
+     * 格式：至少8位，包含大小写字母、数字和特殊字符
+     * @return 随机密码
+     */
+    private String generateRandomPassword() {
+        String upperCase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        String lowerCase = "abcdefghijklmnopqrstuvwxyz";
+        String digits = "0123456789";
+        String specialChars = "@#$%&*";
+        String allChars = upperCase + lowerCase + digits + specialChars;
+        
+        java.util.Random random = new java.util.Random();
+        StringBuilder password = new StringBuilder(12);
+        
+        // 确保至少包含一个大写字母、小写字母、数字和特殊字符
+        password.append(upperCase.charAt(random.nextInt(upperCase.length())));
+        password.append(lowerCase.charAt(random.nextInt(lowerCase.length())));
+        password.append(digits.charAt(random.nextInt(digits.length())));
+        password.append(specialChars.charAt(random.nextInt(specialChars.length())));
+        
+        // 填充剩余字符
+        for (int i = password.length(); i < 12; i++) {
+            password.append(allChars.charAt(random.nextInt(allChars.length())));
+        }
+        
+        // 打乱字符顺序
+        char[] passwordArray = password.toString().toCharArray();
+        for (int i = passwordArray.length - 1; i > 0; i--) {
+            int j = random.nextInt(i + 1);
+            char temp = passwordArray[i];
+            passwordArray[i] = passwordArray[j];
+            passwordArray[j] = temp;
+        }
+        
+        return new String(passwordArray);
+    }
+
+    /**
      * 检查密码是否包含连续字符
      * @param password 密码
      * @param minLength 最小连续长度
@@ -515,13 +553,16 @@ public class UserAppService {
         int successCount = 0;
         int failCount = 0;
         List<String> errorMessages = new ArrayList<>();
+        // 记录使用随机密码的用户（用户名 -> 密码）
+        Map<String, String> generatedPasswords = new HashMap<>();
 
         for (int i = 0; i < excelData.size(); i++) {
             Map<String, Object> row = excelData.get(i);
             int rowNum = i + 2; // Excel行号（从2开始，因为第1行是表头）
 
             try {
-                CreateUserCommand command = parseUserFromExcel(row);
+                // 解析用户信息，返回是否使用了随机密码
+                CreateUserCommand command = parseUserFromExcel(row, generatedPasswords);
                 createUser(command);
                 successCount++;
             } catch (Exception e) {
@@ -537,15 +578,20 @@ public class UserAppService {
         result.put("successCount", successCount);
         result.put("failCount", failCount);
         result.put("errorMessages", errorMessages);
+        result.put("generatedPasswords", generatedPasswords); // 返回生成的密码信息
 
-        log.info("用户批量导入完成: 总数={}, 成功={}, 失败={}", excelData.size(), successCount, failCount);
+        log.info("用户批量导入完成: 总数={}, 成功={}, 失败={}, 生成随机密码={}", 
+                excelData.size(), successCount, failCount, generatedPasswords.size());
         return result;
     }
 
     /**
      * 从Excel行数据解析用户信息
+     * @param row Excel行数据
+     * @param generatedPasswords 用于记录生成的随机密码（用户名 -> 密码）
+     * @return 创建用户命令
      */
-    private CreateUserCommand parseUserFromExcel(Map<String, Object> row) {
+    private CreateUserCommand parseUserFromExcel(Map<String, Object> row, Map<String, String> generatedPasswords) {
         CreateUserCommand.CreateUserCommandBuilder builder = CreateUserCommand.builder();
 
         // 必填字段
@@ -561,12 +607,14 @@ public class UserAppService {
         }
         builder.realName(realName);
 
-        // 密码（必填，默认密码必须符合强度要求）
+        // 密码（必填，如果未提供则生成随机密码）
         String password = getStringValue(row, "密码");
         if (!StringUtils.hasText(password)) {
-            // 使用符合强度要求的默认密码（包含大小写字母和数字）
+            // 生成符合强度要求的随机密码（包含大小写字母、数字和特殊字符）
             // 注意：此密码应在首次登录时强制修改
-            password = "LawFirm@2026";
+            password = generateRandomPassword();
+            // 记录生成的密码，用于返回给管理员
+            generatedPasswords.put(username, password);
         }
         builder.password(password);
 

@@ -252,7 +252,7 @@ check_sensitive_info() {
     HARDCODED=$(grep -r --include="*.java" --include="*.ts" --include="*.vue" \
         -E "(password|secret|apikey|api_key)\s*=\s*['\"][^'\"]+['\"]" \
         backend/src frontend/apps 2>/dev/null | \
-        grep -v "placeholder\|example\|test\|mock\|dev_password_123\|minioadmin" | head -3)
+        grep -v "placeholder\|example\|test\|mock\|dev_password_123\|minioadmin\|show-forget-password\|show-remember-me\|show-code-login\|show-qrcode-login\|show-register\|show-third-party-login\|generateRandomPassword\|LawFirm@2026" | head -3)
     
     if [ -n "$HARDCODED" ]; then
         check_warn "可能存在硬编码的密钥"

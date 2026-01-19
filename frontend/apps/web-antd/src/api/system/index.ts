@@ -127,6 +127,7 @@ export function importUsers(
     failCount: number;
     successCount: number;
     total: number;
+    generatedPasswords?: Record<string, string>; // 用户名 -> 密码
   }>('/system/user/import', formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
