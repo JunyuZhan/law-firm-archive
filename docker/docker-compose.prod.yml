@@ -63,10 +63,11 @@ services:
       - OCR_SERVICE_URL=http://paddle-ocr:8000
       - SPRING_PROFILES_ACTIVE=prod
       - SWAGGER_ENABLED=false
-      # OnlyOffice JWT 配置（必须与容器保持一致）
+      # OnlyOffice 配置（必须与容器保持一致）
       - ONLYOFFICE_JWT_ENABLED=${ONLYOFFICE_JWT_ENABLED:-true}
       - ONLYOFFICE_JWT_SECRET=${ONLYOFFICE_JWT_SECRET:-law-firm-onlyoffice-default-secret-2024}
       - ONLYOFFICE_CALLBACK_URL=http://backend:8080/api
+      - ONLYOFFICE_URL=${ONLYOFFICE_URL:-/onlyoffice}
       - FILE_SERVER_URL=http://minio:9000
     depends_on:
       postgres:
