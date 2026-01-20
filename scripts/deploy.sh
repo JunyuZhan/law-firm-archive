@@ -52,6 +52,31 @@ log_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
 log_warn()    { echo -e "${YELLOW}[WARN]${NC} $1"; }
 log_error()   { echo -e "${RED}[ERROR]${NC} $1"; }
 
+# 检测服务器 IP 地址（优先获取局域网 IP）
+detect_server_ip() {
+    local ip=""
+    # Linux: 尝试获取默认网关对应的 IP
+    if command -v ip &> /dev/null; then
+        ip=$(ip route get 1.1.1.1 2>/dev/null | grep -oP 'src \K[\d.]+' | head -1)
+    fi
+    # macOS: 使用 route 命令
+    if [ -z "$ip" ] && command -v route &> /dev/null; then
+        local iface=$(route -n get default 2>/dev/null | grep 'interface:' | awk '{print $2}')
+        if [ -n "$iface" ]; then
+            ip=$(ifconfig "$iface" 2>/dev/null | grep 'inet ' | awk '{print $2}')
+        fi
+    fi
+    # 备选方案：hostname -I
+    if [ -z "$ip" ] && command -v hostname &> /dev/null; then
+        ip=$(hostname -I 2>/dev/null | awk '{print $1}')
+    fi
+    # 最后备选：localhost
+    if [ -z "$ip" ]; then
+        ip="localhost"
+    fi
+    echo "$ip"
+}
+
 print_banner() {
     clear
     echo ""
@@ -287,14 +312,46 @@ setup_env() {
             fi
         fi
         
+        # 自动检测服务器 IP 并配置外部访问地址
+        SERVER_IP=$(detect_server_ip)
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            # 配置 MINIO_BROWSER_ENDPOINT（缩略图浏览器访问）
+            if ! grep -q "^MINIO_BROWSER_ENDPOINT=" "$ENV_FILE"; then
+                echo "MINIO_BROWSER_ENDPOINT=http://${SERVER_IP}:9000" >> "$ENV_FILE"
+            else
+                sed -i '' "s|MINIO_BROWSER_ENDPOINT=.*|MINIO_BROWSER_ENDPOINT=http://${SERVER_IP}:9000|" "$ENV_FILE"
+            fi
+            # 配置 ONLYOFFICE_URL（浏览器访问 OnlyOffice）
+            if ! grep -q "^ONLYOFFICE_URL=" "$ENV_FILE"; then
+                echo "ONLYOFFICE_URL=http://${SERVER_IP}/onlyoffice" >> "$ENV_FILE"
+            else
+                sed -i '' "s|ONLYOFFICE_URL=.*|ONLYOFFICE_URL=http://${SERVER_IP}/onlyoffice|" "$ENV_FILE"
+            fi
+        else
+            # 配置 MINIO_BROWSER_ENDPOINT（缩略图浏览器访问）
+            if ! grep -q "^MINIO_BROWSER_ENDPOINT=" "$ENV_FILE"; then
+                echo "MINIO_BROWSER_ENDPOINT=http://${SERVER_IP}:9000" >> "$ENV_FILE"
+            else
+                sed -i "s|MINIO_BROWSER_ENDPOINT=.*|MINIO_BROWSER_ENDPOINT=http://${SERVER_IP}:9000|" "$ENV_FILE"
+            fi
+            # 配置 ONLYOFFICE_URL（浏览器访问 OnlyOffice）
+            if ! grep -q "^ONLYOFFICE_URL=" "$ENV_FILE"; then
+                echo "ONLYOFFICE_URL=http://${SERVER_IP}/onlyoffice" >> "$ENV_FILE"
+            else
+                sed -i "s|ONLYOFFICE_URL=.*|ONLYOFFICE_URL=http://${SERVER_IP}/onlyoffice|" "$ENV_FILE"
+            fi
+        fi
+        
         echo -e "  ${GREEN}✅${NC} JWT_SECRET"
         echo -e "  ${GREEN}✅${NC} DB_PASSWORD"
         echo -e "  ${GREEN}✅${NC} MINIO_ACCESS_KEY"
         echo -e "  ${GREEN}✅${NC} MINIO_SECRET_KEY"
+        echo -e "  ${GREEN}✅${NC} MINIO_BROWSER_ENDPOINT=http://${SERVER_IP}:9000"
         echo -e "  ${GREEN}✅${NC} REDIS_PASSWORD"
         echo -e "  ${GREEN}✅${NC} ONLYOFFICE_JWT_SECRET"
         echo -e "  ${GREEN}✅${NC} ONLYOFFICE_JWT_ENABLED=true"
         echo -e "  ${GREEN}✅${NC} ONLYOFFICE_CALLBACK_URL=http://backend:8080/api"
+        echo -e "  ${GREEN}✅${NC} ONLYOFFICE_URL=http://${SERVER_IP}/onlyoffice"
         echo -e "  ${GREEN}✅${NC} OCR_API_KEY"
         echo -e "  ${GREEN}✅${NC} DOCS_PASSWORD"
         echo -e "  ${GREEN}✅${NC} GRAFANA_PASSWORD"
@@ -302,6 +359,7 @@ setup_env() {
         echo ""
         log_success "安全密钥已保存到 .env"
         log_warn "请妥善保管此文件！"
+        log_info "检测到服务器 IP: ${SERVER_IP}"
 
         source "$ENV_FILE"
     else
