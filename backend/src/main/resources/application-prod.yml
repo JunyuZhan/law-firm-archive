@@ -42,6 +42,10 @@ jwt:
 minio:
   endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
   external-endpoint: ${MINIO_EXTERNAL_ENDPOINT:http://minio:9000}
+  # 浏览器访问端点（用于生成浏览器可访问的预签名 URL）
+  # 格式：http://你的域名或IP:9000（如果 MinIO 直接暴露）或通过 Nginx 代理的地址
+  # 如果配置了此端点，缩略图等资源的预签名 URL 将使用此端点
+  browser-endpoint: ${MINIO_BROWSER_ENDPOINT:}
   access-key: ${MINIO_ACCESS_KEY}
   secret-key: ${MINIO_SECRET_KEY}
   bucket-name: ${MINIO_BUCKET:law-firm}

@@ -319,12 +319,17 @@ public class OnlyOfficeService {
      * 包含临时 token 以提高安全性
      */
     public String buildFileUrlForDocument(Long documentId) {
-        // 优先使用外部访问地址（如果配置了）
-        // 这样 OnlyOffice 可以通过 Nginx 代理访问文件，而不是直接访问 Docker 内部地址
+        // OnlyOffice 容器在 Docker 网络中，需要通过 Docker 内部地址访问文件
+        // 如果配置了外部访问地址，OnlyOffice 容器无法直接访问外部 IP
+        // 所以应该使用 Docker 内部地址（backend:8080）或通过 frontend 容器访问
         String baseUrl;
         if (config.getExternalAccessUrl() != null && !config.getExternalAccessUrl().isEmpty()) {
-            baseUrl = config.getExternalAccessUrl();
-            log.info("使用外部访问地址生成文件 URL: externalAccessUrl={}", baseUrl);
+            // 如果配置了外部访问地址，OnlyOffice 容器需要通过 frontend 容器访问
+            // 使用 frontend 容器名（在 Docker 网络中可访问）
+            // 注意：这要求 frontend 容器在同一个 Docker 网络中
+            baseUrl = "http://frontend:8080";
+            log.info("使用外部访问地址配置，OnlyOffice 通过 frontend 容器访问: externalAccessUrl={}, baseUrl={}", 
+                config.getExternalAccessUrl(), baseUrl);
         } else {
             // 回退到使用 callbackUrl（Docker 内部地址）
             baseUrl = this.config.getCallbackUrl();

@@ -40,32 +40,42 @@ OnlyOffice documentUrl 已转换: {
 
 ### 方案一：使用外部访问地址（推荐）
 
-配置 `ONLYOFFICE_EXTERNAL_ACCESS_URL` 环境变量，让后端生成外部可访问的 URL，OnlyOffice 通过 Nginx 代理访问文件。
+配置 `ONLYOFFICE_EXTERNAL_ACCESS_URL` 环境变量，后端会生成通过 `frontend` 容器访问的 URL，OnlyOffice 通过 Nginx 代理访问文件。
 
 **步骤**：
 
 1. **配置环境变量**：
    ```bash
-   # 在 docker/.env 文件中添加
+   # 在项目根目录的 .env 文件中添加
    ONLYOFFICE_EXTERNAL_ACCESS_URL=http://192.168.50.10
    # 或使用域名
    ONLYOFFICE_EXTERNAL_ACCESS_URL=http://oa.albertzhan.top
    ```
+   
+   **注意**：即使配置了外部访问地址，后端也会生成通过 `frontend:8080` 访问的 URL，因为 OnlyOffice 容器需要通过 Docker 网络访问。
 
-2. **重启后端服务**：
+2. **配置 MinIO 浏览器端点**（用于缩略图等资源）：
+   ```bash
+   # 在项目根目录的 .env 文件中添加
+   MINIO_BROWSER_ENDPOINT=http://192.168.50.10:9000
+   # 或如果 MinIO 通过 Nginx 代理
+   # MINIO_BROWSER_ENDPOINT=http://192.168.50.10/api/minio
+   ```
+
+3. **重启后端服务**：
    ```bash
    cd docker
    docker compose -f docker-compose.prod.yml restart backend
    ```
 
-3. **验证配置**：
-   - 查看后端日志，确认使用了外部访问地址：
+4. **验证配置**：
+   - 查看后端日志，确认使用了正确的地址：
      ```bash
      docker logs law-firm-backend | grep "OnlyOffice"
      ```
    - 应该看到类似日志：
      ```
-     使用外部访问地址生成文件 URL: externalAccessUrl=http://192.168.50.10
+     使用外部访问地址配置，OnlyOffice 通过 frontend 容器访问: externalAccessUrl=http://192.168.50.10, baseUrl=http://frontend:8080
      ```
 
 ### 方案二：保持 Docker 内部地址（不推荐）
