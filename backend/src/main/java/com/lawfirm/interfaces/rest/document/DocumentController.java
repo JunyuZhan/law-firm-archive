@@ -368,8 +368,20 @@ public class DocumentController {
         // 使用文档ID构建代理URL，OnlyOffice 通过 Docker 网络访问 backend 服务
         String fileUrl = onlyOfficeService.buildFileUrlForDocument(id);
 
-        // 根据 MIME 类型修正文件名扩展名（如果文件名扩展名与实际内容不匹配）
-        String correctedFileName = correctFileNameByMimeType(doc.getFileName(), doc.getMimeType());
+        // 关键修复：检测文件的真实 MIME 类型（根据文件内容，而非扩展名）
+        // 这解决了 "文件内容与文件扩展名不匹配" 的问题
+        String objectName = minioService.extractObjectName(doc.getFilePath());
+        String detectedMimeType = null;
+        if (objectName != null) {
+            detectedMimeType = detectMimeTypeFromContent(doc, minioService, objectName);
+        }
+        String actualMimeType = detectedMimeType != null ? detectedMimeType : doc.getMimeType();
+        
+        // 根据真实 MIME 类型修正文件名扩展名
+        String correctedFileName = correctFileNameByMimeType(doc.getFileName(), actualMimeType);
+        
+        log.info("文档预览 MIME 类型检测: id={}, fileName={}, dbMimeType={}, detectedMimeType={}, actualMimeType={}, correctedFileName={}",
+            id, doc.getFileName(), doc.getMimeType(), detectedMimeType, actualMimeType, correctedFileName);
 
         // 生成 OnlyOffice 预览配置
         Map<String, Object> config = onlyOfficeService.generateViewConfig(
@@ -381,7 +393,7 @@ public class DocumentController {
         config.put("documentId", id);
 
         log.info("用户 {} 预览文档: id={}, originalFileName={}, correctedFileName={}, mimeType={}", 
-            userName, id, doc.getFileName(), correctedFileName, doc.getMimeType());
+            userName, id, doc.getFileName(), correctedFileName, actualMimeType);
         return Result.success(config);
     }
 
@@ -421,8 +433,20 @@ public class DocumentController {
         // 使用后端代理接口，确保 OnlyOffice 容器能够访问
         String fileUrl = onlyOfficeService.buildFileUrlForDocument(id);
 
-        // 根据 MIME 类型修正文件名扩展名（如果文件名扩展名与实际内容不匹配）
-        String correctedFileName = correctFileNameByMimeType(doc.getFileName(), doc.getMimeType());
+        // 关键修复：检测文件的真实 MIME 类型（根据文件内容，而非扩展名）
+        // 这解决了 "文件内容与文件扩展名不匹配" 的问题
+        String objectName = minioService.extractObjectName(doc.getFilePath());
+        String detectedMimeType = null;
+        if (objectName != null) {
+            detectedMimeType = detectMimeTypeFromContent(doc, minioService, objectName);
+        }
+        String actualMimeType = detectedMimeType != null ? detectedMimeType : doc.getMimeType();
+        
+        // 根据真实 MIME 类型修正文件名扩展名
+        String correctedFileName = correctFileNameByMimeType(doc.getFileName(), actualMimeType);
+        
+        log.info("文档编辑 MIME 类型检测: id={}, fileName={}, dbMimeType={}, detectedMimeType={}, actualMimeType={}, correctedFileName={}",
+            id, doc.getFileName(), doc.getMimeType(), detectedMimeType, actualMimeType, correctedFileName);
 
         // 生成 OnlyOffice 编辑配置
         Map<String, Object> config = onlyOfficeService.generateEditConfig(
@@ -437,7 +461,7 @@ public class DocumentController {
         config.put("documentId", id);
 
         log.info("用户 {} 开始编辑文档: id={}, originalFileName={}, correctedFileName={}, documentKey={}, mimeType={}",
-                userName, id, doc.getFileName(), correctedFileName, documentKey, doc.getMimeType());
+                userName, id, doc.getFileName(), correctedFileName, documentKey, actualMimeType);
         return Result.success(config);
     }
 
