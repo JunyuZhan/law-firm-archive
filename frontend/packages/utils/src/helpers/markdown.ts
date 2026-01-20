@@ -19,7 +19,7 @@ export function markdownToPlainText(markdown: string): string {
   text = text.replace(/```[\s\S]*?```/g, (match) => {
     // 保留代码块内的内容，但移除标记
     const lines = match.split('\n');
-    if (lines.length > 2 && lines[0].trim().startsWith('```')) {
+    if (lines.length > 2 && lines[0]?.trim().startsWith('```')) {
       // 移除第一行和最后一行
       return lines.slice(1, -1).join('\n');
     }
