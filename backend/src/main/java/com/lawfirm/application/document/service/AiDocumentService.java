@@ -53,17 +53,19 @@ public class AiDocumentService {
         // 1. 获取 AI 集成配置（支持指定或使用默认）
         ExternalIntegration aiIntegration;
         if (command.getAiIntegrationId() != null) {
-            // 使用用户指定的 AI 模型
-            aiIntegration = integrationAppService.getAIIntegrationById(command.getAiIntegrationId());
+            // 使用用户指定的 AI 模型（获取解密后的配置）
+            aiIntegration = integrationAppService.getIntegrationWithDecryptedKeys(
+                    integrationAppService.getAIIntegrationById(command.getAiIntegrationId()).getId());
             if (!Boolean.TRUE.equals(aiIntegration.getEnabled())) {
                 throw new BusinessException("指定的 AI 模型未启用");
             }
         } else {
-            // 使用默认的启用 AI 模型
-            aiIntegration = integrationAppService.getEnabledAIIntegration();
-            if (aiIntegration == null) {
+            // 使用默认的启用 AI 模型（获取解密后的配置）
+            ExternalIntegration enabledIntegration = integrationAppService.getEnabledAIIntegration();
+            if (enabledIntegration == null) {
                 throw new BusinessException("未配置或未启用 AI 大模型，请在系统管理-外部集成中配置");
             }
+            aiIntegration = integrationAppService.getIntegrationWithDecryptedKeys(enabledIntegration.getId());
         }
 
         // 2. 构建 Prompt

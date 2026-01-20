@@ -47,9 +47,47 @@ law-firm/
 ### 一键部署
 
 ```bash
-# 克隆项目
-git clone https://github.com/JunyuZhan/law-firm.git
-cd law-firm
+# ⚠️ 如果仓库是私有仓库，服务器部署前请先配置 SSH 密钥
+
+# 方式一：服务器上还没有代码（首次配置）
+# ⚠️ 注意：私有仓库无法直接从 GitHub 下载脚本，需要先上传脚本到服务器
+
+# 方法 A: 上传脚本到服务器（推荐）
+# 1. 在本地电脑上传脚本（替换 root 为你的实际用户名，如 ubuntu, admin）
+scp scripts/init-github-ssh.sh root@192.168.50.10:/tmp/
+# 2. SSH 登录服务器并运行
+ssh root@192.168.50.10
+bash /tmp/init-github-ssh.sh
+
+# 方法 B: 手动配置（最简单，无需脚本）
+# 1. SSH 登录服务器（替换 root 为你的实际用户名）
+ssh root@192.168.50.10
+# 2. 生成 SSH 密钥
+ssh-keygen -t ed25519 -C "deploy@law-firm" -f ~/.ssh/id_ed25519_deploy -N ""
+# 3. 查看公钥并复制
+cat ~/.ssh/id_ed25519_deploy.pub
+# 4. 将公钥添加到 GitHub: https://github.com/junyuzhan/law-firm/settings/keys
+# 5. 配置 SSH
+cat >> ~/.ssh/config << EOF
+Host github.com
+    HostName github.com
+    User git
+    IdentityFile ~/.ssh/id_ed25519_deploy
+    IdentitiesOnly yes
+EOF
+chmod 600 ~/.ssh/config
+# 6. 测试连接
+ssh -T git@github.com
+# 7. 克隆代码
+git clone git@github.com:junyuzhan/law-firm.git /opt/law-firm
+cd /opt/law-firm
+
+# 方式二：服务器上已有代码
+# 直接运行配置脚本
+cd /opt/law-firm
+./scripts/setup-github-ssh.sh
+
+# 详细配置说明请参考: docs/GITHUB_PRIVATE_REPO_SETUP.md
 
 # 配置环境变量
 cd docker
@@ -170,6 +208,7 @@ pnpm dev
 | 文档 | 说明 |
 |------|------|
 | [Docker 部署指南](./docker/DEPLOY.md) | 生产环境部署说明 |
+| [GitHub 私有仓库配置](./docs/GITHUB_PRIVATE_REPO_SETUP.md) | 服务器部署私有仓库配置指南 |
 | [开发文档](./docs/README.md) | 开发者参考文档 |
 | [用户手册](./frontend/docs/) | 用户操作手册（VitePress） |
 

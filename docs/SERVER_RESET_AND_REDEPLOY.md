@@ -66,6 +66,10 @@ cd /opt/law-firm && git pull origin main && ./scripts/clean-law-firm-only.sh --f
 
 ### 步骤 1: 拉取最新代码
 
+**⚠️ 如果仓库是私有仓库，请先配置 SSH 密钥或 Personal Access Token**
+
+参考文档：[GitHub 私有仓库部署配置指南](./GITHUB_PRIVATE_REPO_SETUP.md)
+
 ```bash
 # 进入项目目录（根据你的实际路径调整）
 cd /opt/law-firm
