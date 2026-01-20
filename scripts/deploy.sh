@@ -803,7 +803,9 @@ show_success_banner() {
     echo ""
     echo -e "${BOLD}文档站点账号：${NC}"
     echo -e "  用户名：${DOCS_USERNAME:-admin}"
-    echo -e "  密码：查看 .env 文件中的 DOCS_PASSWORD"
+    # 从 .env 文件读取 DOCS_PASSWORD 并显示
+    local docs_pwd=$(grep "^DOCS_PASSWORD=" .env 2>/dev/null | cut -d'=' -f2)
+    echo -e "  密码：${docs_pwd:-查看 .env 文件中的 DOCS_PASSWORD}"
     echo ""
     print_divider
     echo ""
