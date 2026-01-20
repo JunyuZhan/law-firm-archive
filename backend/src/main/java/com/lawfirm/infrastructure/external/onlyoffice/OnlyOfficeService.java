@@ -317,28 +317,19 @@ public class OnlyOfficeService {
      * 构建文件访问URL（使用文档ID，供 OnlyOffice 使用）
      * 使用后端代理接口，确保 OnlyOffice 容器能够访问
      * 包含临时 token 以提高安全性
+     * 
+     * 重要：OnlyOffice 容器在 Docker 网络中运行，必须使用 Docker 内部地址（backend:8080）
+     * 不能使用外部 IP 地址，因为 OnlyOffice 容器可能无法访问外部网络
      */
     public String buildFileUrlForDocument(Long documentId) {
-        // OnlyOffice 容器在 Docker 网络中，需要通过 Docker 内部地址访问文件
-        // 如果配置了外部访问地址，OnlyOffice 容器无法直接访问外部 IP
-        // 所以应该使用 Docker 内部地址（backend:8080）或通过 frontend 容器访问
-        String baseUrl;
-        if (config.getExternalAccessUrl() != null && !config.getExternalAccessUrl().isEmpty()) {
-            // 如果配置了外部访问地址，OnlyOffice 容器需要通过 frontend 容器访问
-            // 使用 frontend 容器名（在 Docker 网络中可访问）
-            // 注意：这要求 frontend 容器在同一个 Docker 网络中
-            baseUrl = "http://frontend:8080";
-            log.info("使用外部访问地址配置，OnlyOffice 通过 frontend 容器访问: externalAccessUrl={}, baseUrl={}", 
-                config.getExternalAccessUrl(), baseUrl);
-        } else {
-            // 回退到使用 callbackUrl（Docker 内部地址）
-            baseUrl = this.config.getCallbackUrl();
-            // 移除末尾的 /api（如果有）
-            if (baseUrl.endsWith("/api")) {
-                baseUrl = baseUrl.substring(0, baseUrl.length() - 4);
-            }
-            log.info("使用回调地址生成文件 URL（Docker 内部）: callbackUrl={}, baseUrl={}", this.config.getCallbackUrl(), baseUrl);
+        // 始终使用 Docker 内部地址（backend:8080）
+        // OnlyOffice 容器通过 Docker 网络直接访问 backend 容器
+        String baseUrl = this.config.getCallbackUrl();
+        // 移除末尾的 /api（如果有）
+        if (baseUrl.endsWith("/api")) {
+            baseUrl = baseUrl.substring(0, baseUrl.length() - 4);
         }
+        log.info("生成 OnlyOffice 文件 URL（Docker 内部地址）: callbackUrl={}, baseUrl={}", this.config.getCallbackUrl(), baseUrl);
         
         // 生成临时 token（2小时有效）
         long expires = System.currentTimeMillis() + 7200 * 1000;
