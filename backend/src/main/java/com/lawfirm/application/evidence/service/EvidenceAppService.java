@@ -17,6 +17,7 @@ import com.lawfirm.domain.evidence.repository.EvidenceRepository;
 import com.lawfirm.domain.matter.entity.Matter;
 import com.lawfirm.domain.matter.repository.MatterRepository;
 import com.lawfirm.infrastructure.external.file.FileTypeService;
+import com.lawfirm.infrastructure.external.minio.MinioService;
 import com.lawfirm.infrastructure.persistence.mapper.EvidenceCrossExamMapper;
 import com.lawfirm.infrastructure.persistence.mapper.EvidenceMapper;
 import com.lawfirm.application.matter.service.MatterAppService;
@@ -48,6 +49,7 @@ public class EvidenceAppService {
     private final EvidenceMapper evidenceMapper;
     private final EvidenceCrossExamMapper crossExamMapper;
     private final FileTypeService fileTypeService;
+    private final MinioService minioService;
     private final MatterRepository matterRepository;
     private MatterAppService matterAppService;
     
@@ -542,10 +544,11 @@ public class EvidenceAppService {
             dto.setFileType(getFileType(evidence.getFileName()));
         }
         // 设置缩略图URL（优先使用存储的值，否则对图片使用原文件URL）
+        // 转换缩略图 URL 为浏览器可访问的 URL
         if (evidence.getThumbnailUrl() != null) {
-            dto.setThumbnailUrl(evidence.getThumbnailUrl());
+            dto.setThumbnailUrl(minioService.getBrowserAccessibleUrl(evidence.getThumbnailUrl()));
         } else if (isImageFile(evidence.getFileName()) && evidence.getFileUrl() != null) {
-            dto.setThumbnailUrl(evidence.getFileUrl());
+            dto.setThumbnailUrl(minioService.getBrowserAccessibleUrl(evidence.getFileUrl()));
         }
         dto.setCrossExamStatus(evidence.getCrossExamStatus());
         dto.setCrossExamStatusName(getCrossExamStatusName(evidence.getCrossExamStatus()));

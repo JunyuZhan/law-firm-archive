@@ -204,6 +204,12 @@ function isStaticAsset(pathname) {
 
 // 缓存优先策略（静态资源）
 async function cacheFirst(request, cacheName) {
+  // 安全检查：只缓存 GET 请求
+  if (request.method !== 'GET') {
+    // 非 GET 请求直接走网络，不缓存
+    return fetch(request);
+  }
+  
   const cachedResponse = await caches.match(request);
   if (cachedResponse) {
     return cachedResponse;
@@ -224,6 +230,12 @@ async function cacheFirst(request, cacheName) {
 
 // 网络优先策略（安全 API + 持久化缓存）
 async function networkFirst(request, cacheName) {
+  // 安全检查：只缓存 GET 请求
+  if (request.method !== 'GET') {
+    // 非 GET 请求直接走网络，不缓存
+    return fetch(request);
+  }
+  
   try {
     const networkResponse = await fetch(request);
     if (networkResponse.ok) {
@@ -244,6 +256,12 @@ async function networkFirst(request, cacheName) {
 // Stale-While-Revalidate 策略（业务 API + 内存缓存）
 // 先返回缓存（如果有且未过期），同时在后台更新
 async function staleWhileRevalidate(request, ttl) {
+  // 安全检查：只缓存 GET 请求
+  if (request.method !== 'GET') {
+    // 非 GET 请求直接走网络，不缓存
+    return fetch(request);
+  }
+  
   const cacheKey = request.url;
   const now = Date.now();
 

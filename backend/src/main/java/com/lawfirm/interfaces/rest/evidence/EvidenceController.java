@@ -415,9 +415,13 @@ public class EvidenceController {
         
         Map<String, Object> result = new HashMap<>();
         if (fileTypeService.isImageFile(evidence.getFileName())) {
-            // 图片文件：返回缩略图URL或原文件URL
-            result.put("thumbnailUrl", evidence.getThumbnailUrl() != null ? 
-                    evidence.getThumbnailUrl() : evidence.getFileUrl());
+            // 图片文件：返回缩略图URL或原文件URL，转换为浏览器可访问的 URL
+            String thumbnailUrl = evidence.getThumbnailUrl() != null ? 
+                    evidence.getThumbnailUrl() : evidence.getFileUrl();
+            if (thumbnailUrl != null) {
+                thumbnailUrl = minioService.getBrowserAccessibleUrl(thumbnailUrl);
+            }
+            result.put("thumbnailUrl", thumbnailUrl);
         } else {
             // 非图片文件返回null，前端显示默认图标
             result.put("thumbnailUrl", null);

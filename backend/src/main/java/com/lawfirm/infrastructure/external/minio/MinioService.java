@@ -143,6 +143,40 @@ public class MinioService {
     }
 
     /**
+     * 将 MinIO URL 转换为浏览器可访问的 URL
+     * 如果 URL 包含 Docker 内部地址（如 minio:9000），则生成预签名 URL（使用外部端点）
+     * 
+     * @param fileUrl 原始文件 URL
+     * @return 浏览器可访问的 URL
+     */
+    public String getBrowserAccessibleUrl(String fileUrl) {
+        if (fileUrl == null || fileUrl.isEmpty()) {
+            return fileUrl;
+        }
+        
+        // 检查是否是 Docker 内部地址
+        if (fileUrl.contains("minio:9000") || fileUrl.contains("localhost:9000") || 
+            fileUrl.contains("127.0.0.1:9000") || fileUrl.contains("backend:8080")) {
+            try {
+                // 提取对象名称
+                String objectName = extractObjectName(fileUrl);
+                if (objectName != null) {
+                    // 生成预签名 URL（使用外部端点或标准端点）
+                    // 预签名 URL 会自动使用配置的外部端点（如果存在）
+                    String presignedUrl = getPresignedUrl(objectName, 7200); // 2小时有效
+                    log.debug("将内部 URL 转换为浏览器可访问的预签名 URL: {} -> {}", fileUrl, presignedUrl);
+                    return presignedUrl;
+                }
+            } catch (Exception e) {
+                log.warn("无法生成预签名 URL，使用原始 URL: {}", fileUrl, e);
+            }
+        }
+        
+        // 如果已经是外部可访问的 URL，直接返回
+        return fileUrl;
+    }
+
+    /**
      * 上传文件（从InputStream）
      * 
      * @param inputStream 输入流

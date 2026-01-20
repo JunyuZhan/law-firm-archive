@@ -170,7 +170,12 @@ public class DocumentAppService {
         dto.setDossierItemId(doc.getDossierItemId());
         dto.setFolderPath(doc.getFolderPath());
         dto.setDisplayOrder(doc.getDisplayOrder());
-        dto.setThumbnailUrl(doc.getThumbnailUrl());
+        // 转换缩略图 URL 为浏览器可访问的 URL
+        String thumbnailUrl = doc.getThumbnailUrl();
+        if (thumbnailUrl != null && !thumbnailUrl.isEmpty()) {
+            thumbnailUrl = minioService.getBrowserAccessibleUrl(thumbnailUrl);
+        }
+        dto.setThumbnailUrl(thumbnailUrl);
         return dto;
     }
 
@@ -765,13 +770,17 @@ public class DocumentAppService {
     public String getThumbnailUrl(Long documentId) {
         Document document = documentRepository.getByIdOrThrow(documentId, "文档不存在");
         
-        // 如果已有缩略图，直接返回
+        // 如果已有缩略图，转换为浏览器可访问的 URL 后返回
         if (document.getThumbnailUrl() != null && !document.getThumbnailUrl().isEmpty()) {
-            return document.getThumbnailUrl();
+            return minioService.getBrowserAccessibleUrl(document.getThumbnailUrl());
         }
         
         // 尝试生成缩略图
-        return generateThumbnailForDocument(documentId);
+        String thumbnailUrl = generateThumbnailForDocument(documentId);
+        if (thumbnailUrl != null) {
+            return minioService.getBrowserAccessibleUrl(thumbnailUrl);
+        }
+        return null;
     }
 
     /**
@@ -935,7 +944,12 @@ public class DocumentAppService {
         dto.setDossierItemId(doc.getDossierItemId());
         dto.setFolderPath(doc.getFolderPath());
         dto.setDisplayOrder(doc.getDisplayOrder());
-        dto.setThumbnailUrl(doc.getThumbnailUrl());
+        // 转换缩略图 URL 为浏览器可访问的 URL
+        String thumbnailUrl = doc.getThumbnailUrl();
+        if (thumbnailUrl != null && !thumbnailUrl.isEmpty()) {
+            thumbnailUrl = minioService.getBrowserAccessibleUrl(thumbnailUrl);
+        }
+        dto.setThumbnailUrl(thumbnailUrl);
         return dto;
     }
 }
