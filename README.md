@@ -99,6 +99,44 @@ cd ..
 bash scripts/deploy.sh
 ```
 
+### 账号与密码
+
+部署完成后，系统会自动生成安全密钥并保存到 `.env` 文件中。
+
+#### 查看密码
+
+```bash
+# 在项目目录中查看所有密码
+cat .env | grep -E "PASSWORD|SECRET"
+```
+
+#### 系统账号
+
+| 服务 | 账号 | 密码 | 说明 |
+|------|------|------|------|
+| **主应用** | admin | admin123 | 系统管理员 |
+| **主应用** | director | admin123 | 主任律师 |
+| **主应用** | lawyer1 | admin123 | 普通律师 |
+| **主应用** | leader | admin123 | 部门负责人 |
+| **主应用** | finance | admin123 | 财务人员 |
+| **主应用** | staff | admin123 | 行政人员 |
+| **主应用** | trainee | admin123 | 实习律师 |
+| **文档站点** | admin | `.env` 中的 `DOCS_PASSWORD` | 文档站点登录 |
+| **MinIO 控制台** | `.env` 中的 `MINIO_ACCESS_KEY` | `.env` 中的 `MINIO_SECRET_KEY` | 对象存储管理 |
+| **Grafana** | admin | `.env` 中的 `GRAFANA_PASSWORD` | 监控面板 |
+
+#### 密钥说明
+
+| 配置项 | 用途 | 修改影响 |
+|--------|------|----------|
+| `JWT_SECRET` | 用户登录令牌签名 | 修改后所有用户需重新登录 |
+| `DB_PASSWORD` | PostgreSQL 数据库密码 | 首次部署后不要修改 |
+| `REDIS_PASSWORD` | Redis 缓存密码 | 修改后需重启服务 |
+| `MINIO_ACCESS_KEY/SECRET_KEY` | 对象存储访问密钥 | 修改后需重启服务 |
+| `ONLYOFFICE_JWT_SECRET` | OnlyOffice 文档编辑验证 | 需与容器配置一致 |
+
+> ⚠️ **安全提示**：`.env` 文件包含敏感信息，请妥善保管，不要提交到 Git 仓库。
+
 ### 开发环境
 
 #### 1. 启动基础设施
