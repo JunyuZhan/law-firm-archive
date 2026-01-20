@@ -152,28 +152,12 @@ public class MinioService {
     }
 
     /**
-     * 获取浏览器访问的 MinioClient（用于生成浏览器可访问的预签名 URL）
-     */
-    private MinioClient getBrowserMinioClient() {
-        if (browserMinioClient == null) {
-            // 优先使用浏览器端点，如果没有配置则使用外部端点，最后回退到标准端点
-            String browserEp = browserEndpoint != null && !browserEndpoint.isEmpty() 
-                ? browserEndpoint 
-                : (externalEndpoint != null && !externalEndpoint.isEmpty() 
-                    ? externalEndpoint 
-                    : endpoint);
-            browserMinioClient = MinioClient.builder()
-                    .endpoint(browserEp)
-                    .credentials(accessKey, secretKey)
-                    .build();
-            log.info("初始化浏览器访问 MinIO 客户端: endpoint={}", browserEp);
-        }
-        return browserMinioClient;
-    }
-
-    /**
      * 将 MinIO URL 转换为浏览器可访问的 URL
-     * 如果 URL 包含 Docker 内部地址（如 minio:9000），则生成预签名 URL（使用浏览器端点）
+     * 如果 URL 包含 Docker 内部地址（如 minio:9000），则生成预签名 URL
+     * 
+     * 实现策略：
+     * 1. 使用内部 minioClient（minio:9000）生成预签名 URL（因为容器内只能访问内部地址）
+     * 2. 如果配置了 browserEndpoint，将 URL 中的主机名替换为外部地址
      * 
      * @param fileUrl 原始文件 URL
      * @return 浏览器可访问的 URL
@@ -190,16 +174,23 @@ public class MinioService {
                 // 提取对象名称（去除查询参数）
                 String objectName = extractObjectName(fileUrl);
                 if (objectName != null) {
-                    // 使用浏览器端点生成预签名 URL
-                    // 这样生成的 URL 浏览器可以直接访问
-                    String presignedUrl = getBrowserMinioClient().getPresignedObjectUrl(
+                    // 使用内部 minioClient 生成预签名 URL（容器内只能访问内部地址）
+                    String presignedUrl = minioClient.getPresignedObjectUrl(
                             io.minio.GetPresignedObjectUrlArgs.builder()
                                     .method(io.minio.http.Method.GET)
                                     .bucket(bucketName)
                                     .object(objectName)
                                     .expiry(7200) // 2小时有效
                                     .build());
-                    log.debug("将内部 URL 转换为浏览器可访问的预签名 URL: {} -> {}", fileUrl, presignedUrl);
+                    
+                    // 如果配置了 browserEndpoint，替换 URL 中的主机名
+                    if (browserEndpoint != null && !browserEndpoint.isEmpty()) {
+                        // 将 http://minio:9000 替换为 browserEndpoint（如 http://192.168.50.10:9000）
+                        presignedUrl = presignedUrl.replace(endpoint, browserEndpoint);
+                        log.debug("将内部预签名 URL 替换为浏览器可访问地址: endpoint={} -> browserEndpoint={}", endpoint, browserEndpoint);
+                    }
+                    
+                    log.debug("生成浏览器可访问的预签名 URL: {} -> {}", fileUrl, presignedUrl);
                     return presignedUrl;
                 }
             } catch (Exception e) {
