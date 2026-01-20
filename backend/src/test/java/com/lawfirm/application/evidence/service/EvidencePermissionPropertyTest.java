@@ -8,6 +8,7 @@ import com.lawfirm.domain.evidence.repository.EvidenceRepository;
 import com.lawfirm.domain.matter.entity.Matter;
 import com.lawfirm.domain.matter.repository.MatterRepository;
 import com.lawfirm.infrastructure.external.file.FileTypeService;
+import com.lawfirm.infrastructure.external.minio.MinioService;
 import com.lawfirm.infrastructure.persistence.mapper.EvidenceCrossExamMapper;
 import com.lawfirm.infrastructure.persistence.mapper.EvidenceMapper;
 import net.jqwik.api.*;
@@ -80,6 +81,7 @@ class EvidencePermissionPropertyTest {
         EvidenceMapper evidenceMapper = mock(EvidenceMapper.class);
         EvidenceCrossExamMapper crossExamMapper = mock(EvidenceCrossExamMapper.class);
         FileTypeService fileTypeService = new FileTypeService();
+        MinioService minioService = mock(MinioService.class);
         
         Matter matter = new Matter();
         matter.setId(1L);
@@ -88,7 +90,7 @@ class EvidencePermissionPropertyTest {
         when(evidenceRepository.getMaxSortOrder(anyLong(), any())).thenReturn(0);
         
         EvidenceAppService service = new EvidenceAppService(
-                evidenceRepository, evidenceMapper, crossExamMapper, fileTypeService, matterRepository);
+                evidenceRepository, evidenceMapper, crossExamMapper, fileTypeService, minioService, matterRepository);
         service.setMatterAppService(mock(com.lawfirm.application.matter.service.MatterAppService.class));
         
         CreateEvidenceCommand command = new CreateEvidenceCommand();
@@ -124,6 +126,7 @@ class EvidencePermissionPropertyTest {
         EvidenceMapper evidenceMapper = mock(EvidenceMapper.class);
         EvidenceCrossExamMapper crossExamMapper = mock(EvidenceCrossExamMapper.class);
         FileTypeService fileTypeService = new FileTypeService();
+        MinioService minioService = mock(MinioService.class);
         
         Evidence evidence = Evidence.builder()
                 .id(1L)
@@ -139,7 +142,7 @@ class EvidencePermissionPropertyTest {
         when(matterRepository.findById(1L)).thenReturn(matter);
         
         EvidenceAppService service = new EvidenceAppService(
-                evidenceRepository, evidenceMapper, crossExamMapper, fileTypeService, matterRepository);
+                evidenceRepository, evidenceMapper, crossExamMapper, fileTypeService, minioService, matterRepository);
         service.setMatterAppService(mock(com.lawfirm.application.matter.service.MatterAppService.class));
         
         UpdateEvidenceCommand command = new UpdateEvidenceCommand();
@@ -164,6 +167,7 @@ class EvidencePermissionPropertyTest {
         EvidenceMapper evidenceMapper = mock(EvidenceMapper.class);
         EvidenceCrossExamMapper crossExamMapper = mock(EvidenceCrossExamMapper.class);
         FileTypeService fileTypeService = new FileTypeService();
+        MinioService minioService = mock(MinioService.class);
         
         Evidence evidence = Evidence.builder()
                 .id(1L)
@@ -179,7 +183,7 @@ class EvidencePermissionPropertyTest {
         when(matterRepository.findById(1L)).thenReturn(matter);
         
         EvidenceAppService service = new EvidenceAppService(
-                evidenceRepository, evidenceMapper, crossExamMapper, fileTypeService, matterRepository);
+                evidenceRepository, evidenceMapper, crossExamMapper, fileTypeService, minioService, matterRepository);
         service.setMatterAppService(mock(com.lawfirm.application.matter.service.MatterAppService.class));
         
         // Verify that deleting evidence throws BusinessException
@@ -213,6 +217,7 @@ class EvidencePermissionPropertyTest {
                     mock(EvidenceMapper.class), 
                     mock(EvidenceCrossExamMapper.class), 
                     new FileTypeService(), 
+                    mock(MinioService.class),
                     matterRepository);
             service.setMatterAppService(mock(com.lawfirm.application.matter.service.MatterAppService.class));
             
@@ -257,6 +262,7 @@ class EvidencePermissionPropertyTest {
                 mock(EvidenceMapper.class), 
                 mock(EvidenceCrossExamMapper.class), 
                 new FileTypeService(), 
+                mock(MinioService.class),
                 matterRepository);
         service.setMatterAppService(mock(com.lawfirm.application.matter.service.MatterAppService.class));
         
@@ -274,6 +280,7 @@ class EvidencePermissionPropertyTest {
         EvidenceMapper evidenceMapper = mock(EvidenceMapper.class);
         EvidenceCrossExamMapper crossExamMapper = mock(EvidenceCrossExamMapper.class);
         FileTypeService fileTypeService = new FileTypeService();
+        MinioService minioService = mock(MinioService.class);
         
         Matter matter = new Matter();
         matter.setId(matterId);
@@ -281,7 +288,7 @@ class EvidencePermissionPropertyTest {
         when(matterRepository.findById(matterId)).thenReturn(matter);
         
         EvidenceAppService service = new EvidenceAppService(
-                evidenceRepository, evidenceMapper, crossExamMapper, fileTypeService, matterRepository);
+                evidenceRepository, evidenceMapper, crossExamMapper, fileTypeService, minioService, matterRepository);
         service.setMatterAppService(mock(com.lawfirm.application.matter.service.MatterAppService.class));
         return service;
     }
