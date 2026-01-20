@@ -43,6 +43,7 @@ NAS_IP=""
 NAS_PATH=""
 INIT_DEMO_DATA=false
 DEMO_DATA_LEVEL="full"
+NO_CACHE=false
 
 # =====================================================
 # 工具函数
@@ -647,8 +648,14 @@ deploy_standalone() {
     fi
     
     # 先构建镜像（避免 BuildKit 问题）
-    log_info "构建 Docker 镜像..."
-    DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1 docker compose --env-file "$PROJECT_ROOT/.env" -f docker-compose.prod.yml build
+    # 如果指定了 --no-cache 或者不是首次部署，则强制重新构建
+    if [ "$NO_CACHE" = true ]; then
+        log_info "构建 Docker 镜像（强制重新构建，不使用缓存）..."
+        DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1 docker compose --env-file "$PROJECT_ROOT/.env" -f docker-compose.prod.yml build --no-cache
+    else
+        log_info "构建 Docker 镜像..."
+        DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1 docker compose --env-file "$PROJECT_ROOT/.env" -f docker-compose.prod.yml build
+    fi
     
     # 再启动服务
     log_info "启动服务..."
@@ -831,6 +838,7 @@ show_help() {
     echo "                       可选值: standalone, nas, swarm, minio-cluster"
     echo "  --nas-ip=IP          NAS 部署时指定 NAS IP 地址"
     echo "  --skip-check         跳过生产环境检查"
+    echo "  --no-cache           强制重新构建镜像（不使用缓存，用于代码更新后）"
     echo "  --with-demo          部署后初始化示例数据（完整）"
     echo "  --with-demo=minimal  部署后初始化最小示例数据"
     echo "  --help, -h           显示帮助信息"
@@ -838,6 +846,7 @@ show_help() {
     echo "示例："
     echo "  $0                   # 引导式部署（推荐）"
     echo "  $0 --quick           # 快速单机部署"
+    echo "  $0 --no-cache        # 强制重新构建（代码更新后使用）"
     echo "  $0 --quick --with-demo  # 快速部署并初始化示例数据"
     echo "  $0 --mode=swarm      # Swarm 分布式部署"
     echo "  $0 --mode=nas --nas-ip=192.168.1.100"
@@ -876,6 +885,10 @@ parse_args() {
             --with-demo=*)
                 INIT_DEMO_DATA=true
                 DEMO_DATA_LEVEL="${1#*=}"
+                shift
+                ;;
+            --no-cache)
+                NO_CACHE=true
                 shift
                 ;;
             --help|-h)
