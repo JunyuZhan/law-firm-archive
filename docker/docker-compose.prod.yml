@@ -135,7 +135,8 @@ services:
     volumes:
       - minio_data:/data
     ports:
-      - "9001:9001"  # 控制台（可选暴露）
+      - "9000:9000"  # API 端口（浏览器访问缩略图需要）
+      - "9001:9001"  # 控制台
     networks:
       - law-firm-network
     restart: unless-stopped
