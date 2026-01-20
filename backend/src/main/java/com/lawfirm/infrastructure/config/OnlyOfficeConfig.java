@@ -28,6 +28,13 @@ public class OnlyOfficeConfig {
     private String fileServerUrl = "http://host.docker.internal:9000";
     
     /**
+     * 外部访问地址（用于生成 OnlyOffice 可访问的文件 URL）
+     * 如果配置了此地址，OnlyOffice 将通过此地址访问文件（通过 Nginx 代理）
+     * 格式：http://你的域名或IP（不包含 /api 路径）
+     */
+    private String externalAccessUrl;
+    
+    /**
      * JWT 密钥
      */
     private String jwtSecret;

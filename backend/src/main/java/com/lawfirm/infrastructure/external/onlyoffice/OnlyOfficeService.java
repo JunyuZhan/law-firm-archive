@@ -319,14 +319,20 @@ public class OnlyOfficeService {
      * 包含临时 token 以提高安全性
      */
     public String buildFileUrlForDocument(Long documentId) {
-        // 使用后端代理接口，OnlyOffice 通过 Docker 网络访问
-        // callbackUrl 格式：http://backend:8080/api
-        // 需要构建：http://backend:8080/api/document/{id}/file-proxy?token=xxx&expires=xxx
-        
-        String baseUrl = this.config.getCallbackUrl();
-        // 移除末尾的 /api（如果有）
-        if (baseUrl.endsWith("/api")) {
-            baseUrl = baseUrl.substring(0, baseUrl.length() - 4);
+        // 优先使用外部访问地址（如果配置了）
+        // 这样 OnlyOffice 可以通过 Nginx 代理访问文件，而不是直接访问 Docker 内部地址
+        String baseUrl;
+        if (config.getExternalAccessUrl() != null && !config.getExternalAccessUrl().isEmpty()) {
+            baseUrl = config.getExternalAccessUrl();
+            log.info("使用外部访问地址生成文件 URL: externalAccessUrl={}", baseUrl);
+        } else {
+            // 回退到使用 callbackUrl（Docker 内部地址）
+            baseUrl = this.config.getCallbackUrl();
+            // 移除末尾的 /api（如果有）
+            if (baseUrl.endsWith("/api")) {
+                baseUrl = baseUrl.substring(0, baseUrl.length() - 4);
+            }
+            log.info("使用回调地址生成文件 URL（Docker 内部）: callbackUrl={}, baseUrl={}", this.config.getCallbackUrl(), baseUrl);
         }
         
         // 生成临时 token（2小时有效）

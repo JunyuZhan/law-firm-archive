@@ -236,35 +236,42 @@ function loadOnlyOfficeApi(apiUrl: string): Promise<void> {
  * 从后端配置初始化编辑器
  */
 function initEditorFromConfig(cfg: OnlyOfficeConfig) {
-  // 处理 document.url：OnlyOffice 在浏览器中运行，需要浏览器可访问的 URL
-  // 如果 URL 是 Docker 内部地址（如 backend:8080），需要转换为浏览器可访问的地址
+  // 处理 document.url：OnlyOffice 在 Docker 容器中运行，需要 Docker 内部可访问的 URL
+  // 注意：OnlyOffice 容器通过 Docker 网络访问后端，所以应该使用 Docker 内部地址
+  // 如果后端返回的是外部地址（通过 Nginx 代理），则直接使用
+  // 如果后端返回的是 Docker 内部地址（backend:8080），也应该保持原样，因为 OnlyOffice 容器可以访问
   if (cfg.document?.url) {
     const originalUrl = cfg.document.url as string;
     try {
       const urlObj = new URL(originalUrl);
       // 检查是否是 Docker 内部地址（backend、frontend 等）
-      if (urlObj.hostname === 'backend' || urlObj.hostname === 'frontend') {
-        // Docker 内部地址，转换为浏览器可访问的地址
-        // 使用当前页面的协议和主机名，保留路径和查询参数
+      // OnlyOffice 容器在 Docker 网络中，可以访问这些地址，所以不需要转换
+      if (urlObj.hostname === 'backend' || urlObj.hostname === 'frontend' || urlObj.hostname === 'minio') {
+        // Docker 内部地址，OnlyOffice 容器可以直接访问，保持原样
+        console.log('OnlyOffice documentUrl（Docker 内部地址，保持原样）:', {
+          url: originalUrl,
+          note: 'OnlyOffice 容器可以通过 Docker 网络访问此地址',
+        });
+        // 不转换，保持原样
+      } else if (urlObj.hostname === 'localhost' || urlObj.hostname.includes('127.0.0.1')) {
+        // localhost 地址，OnlyOffice 容器无法访问，需要转换为外部地址
+        // 或者，如果后端配置了 external-access-url，应该使用那个地址
         const { protocol, host } = window.location;
         const browserUrl = `${protocol}//${host}${urlObj.pathname}${urlObj.search}`;
         cfg.document.url = browserUrl;
-        console.log('OnlyOffice documentUrl 已转换:', {
+        console.log('OnlyOffice documentUrl 已转换（localhost -> 外部地址）:', {
           original: originalUrl,
           converted: browserUrl,
         });
-      } else if (urlObj.hostname === 'localhost' || urlObj.hostname.includes('127.0.0.1')) {
-        // localhost 地址，也需要转换为浏览器可访问的地址
-        const { protocol, host } = window.location;
-        const browserUrl = `${protocol}//${host}${urlObj.pathname}${urlObj.search}`;
-        cfg.document.url = browserUrl;
-        console.log('OnlyOffice documentUrl 已转换:', {
-          original: originalUrl,
-          converted: browserUrl,
+      } else {
+        // 已经是外部地址（如 192.168.x.x 或域名），直接使用
+        console.log('OnlyOffice documentUrl（外部地址，直接使用）:', {
+          url: originalUrl,
         });
       }
     } catch {
       // URL 解析失败，保持原样
+      console.warn('OnlyOffice documentUrl 解析失败，保持原样:', originalUrl);
     }
   }
 
