@@ -18,7 +18,7 @@ import { computed, onMounted, onUnmounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { IconifyIcon } from '@vben/icons';
-import { printDocument } from '@vben/utils';
+import { markdownToPlainText, printDocument } from '@vben/utils';
 
 import {
   Alert,
@@ -552,6 +552,40 @@ function handlePrint() {
   }
 }
 
+function handleCopyPlainText() {
+  if (!displayedContent.value) {
+    message.warning('暂无内容可复制');
+    return;
+  }
+
+  try {
+    // 将 Markdown 转换为纯文本
+    const plainText = markdownToPlainText(displayedContent.value);
+    
+    // 复制到剪贴板
+    navigator.clipboard.writeText(plainText).then(() => {
+      message.success('已复制为纯文本格式，可直接粘贴到 Word 或打印');
+    }).catch(() => {
+      // 降级方案：使用传统方法
+      const textArea = document.createElement('textarea');
+      textArea.value = plainText;
+      textArea.style.position = 'fixed';
+      textArea.style.opacity = '0';
+      document.body.appendChild(textArea);
+      textArea.select();
+      try {
+        document.execCommand('copy');
+        message.success('已复制为纯文本格式，可直接粘贴到 Word 或打印');
+      } catch (err) {
+        message.error('复制失败，请手动选择文本复制');
+      }
+      document.body.removeChild(textArea);
+    });
+  } catch (error: any) {
+    message.error(error.message || '复制失败');
+  }
+}
+
 function handleContextCollected(
   context: MatterContextDTO,
   masked: MatterContextDTO | null,
@@ -967,6 +1001,14 @@ defineExpose({
                     :disabled="aiGenerating"
                   >
                     <IconifyIcon icon="carbon:edit" /> 修改要求
+                  </Button>
+                  <Button
+                    v-if="displayedContent"
+                    type="primary"
+                    ghost
+                    @click="handleCopyPlainText"
+                  >
+                    📋 复制为纯文本
                   </Button>
                   <Button
                     v-if="displayedContent"

@@ -4,6 +4,14 @@
 
 ---
 
+## 📖 快速入门
+
+**Prometheus 界面是英文的，不会用？** → 查看 [Prometheus 中文使用指南](./PROMETHEUS_CHINESE_GUIDE.md)
+
+**推荐**：使用 Grafana（支持中文界面），更简单易用！
+
+---
+
 ## 🌐 设置中文界面
 
 ### Grafana 设置中文

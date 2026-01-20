@@ -571,6 +571,48 @@ export interface DocumentPrintData {
 }
 
 /**
+ * 简单的 Markdown 转纯文本（用于打印，避免循环依赖）
+ */
+function simpleMarkdownToPlainText(text: string): string {
+  if (!text) return '';
+  
+  let result = text;
+  
+  // 移除代码块
+  result = result.replace(/```[\s\S]*?```/g, '');
+  
+  // 移除行内代码
+  result = result.replace(/`([^`]+)`/g, '$1');
+  
+  // 移除粗体
+  result = result.replace(/\*\*([^*]+)\*\*/g, '$1');
+  result = result.replace(/__([^_]+)__/g, '$1');
+  
+  // 移除斜体
+  result = result.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '$1');
+  result = result.replace(/(?<!_)_([^_]+)_(?!_)/g, '$1');
+  
+  // 移除链接
+  result = result.replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1');
+  
+  // 移除标题标记
+  result = result.replace(/^#{1,6}\s+/gm, '');
+  
+  // 移除列表标记
+  result = result.replace(/^[\s]*[-*+]\s+/gm, '');
+  result = result.replace(/^[\s]*\d+\.\s+/gm, '');
+  
+  // 移除表格标记
+  result = result.replace(/\|/g, ' ');
+  result = result.replace(/^[\s]*[-:]+[\s]*$/gm, '');
+  
+  // 清理多余空行
+  result = result.replace(/\n{3,}/g, '\n\n');
+  
+  return result.trim();
+}
+
+/**
  * 生成文书文档的 HTML 内容
  */
 export function generateDocumentHtml(data: DocumentPrintData): string {
@@ -579,6 +621,13 @@ export function generateDocumentHtml(data: DocumentPrintData): string {
   // 先解码 HTML 实体（防止 XSS 过滤导致的乱码）
   let decodedContent = decodeHtmlEntities(content);
   let decodedTitle = title ? decodeHtmlEntities(title) : '';
+
+  // 如果是 Markdown 格式，转换为纯文本（移除所有 Markdown 语法）
+  // 检查是否包含 Markdown 语法标记
+  const hasMarkdownSyntax = /(\*\*|__|`|#|\[.*\]\(|>|\|)/.test(decodedContent);
+  if (hasMarkdownSyntax && !preserveFormat) {
+    decodedContent = simpleMarkdownToPlainText(decodedContent);
+  }
 
   let htmlContent = '';
   if (decodedTitle) {
