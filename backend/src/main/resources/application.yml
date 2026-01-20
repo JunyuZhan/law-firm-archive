@@ -115,8 +115,10 @@ quality:
 
 # OnlyOffice 文档服务配置
 onlyoffice:
-  # OnlyOffice Document Server 地址（建议在部署脚本中设置为外部可访问的 URL）
-  document-server-url: ${ONLYOFFICE_URL:http://localhost:8088}
+  # OnlyOffice Document Server 地址
+  # 开发环境使用相对路径 /onlyoffice，通过 Vite 代理访问
+  # 生产环境通过 ONLYOFFICE_URL 环境变量设置（如 http://192.168.50.10/onlyoffice）
+  document-server-url: ${ONLYOFFICE_URL:/onlyoffice}
   # 后端服务地址（OnlyOffice 回调时使用，需要 OnlyOffice 容器能访问）
   callback-url: ${ONLYOFFICE_CALLBACK_URL:http://host.docker.internal:8080/api}
   # 文件服务地址（OnlyOffice 获取文件时使用）

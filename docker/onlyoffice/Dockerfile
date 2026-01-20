@@ -47,6 +47,15 @@ RUN if ls /tmp/custom-fonts/*.TTF 1>/dev/null 2>&1; then \
 COPY entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 
+# 复制并应用 CORS 配置（开发环境跨域支持）
+COPY nginx-cors.conf /tmp/nginx-cors.conf
+
+# 创建 CORS 配置的包含脚本，在 nginx 配置中添加 CORS 头
+RUN echo '# Enable CORS for development environment' > /etc/onlyoffice/documentserver/nginx/includes/ds-cors.conf && \
+    echo 'add_header Access-Control-Allow-Origin * always;' >> /etc/onlyoffice/documentserver/nginx/includes/ds-cors.conf && \
+    echo 'add_header Access-Control-Allow-Methods "GET, POST, OPTIONS, PUT, DELETE" always;' >> /etc/onlyoffice/documentserver/nginx/includes/ds-cors.conf && \
+    echo 'add_header Access-Control-Allow-Headers "Authorization, Content-Type, X-Requested-With" always;' >> /etc/onlyoffice/documentserver/nginx/includes/ds-cors.conf
+
 # 复制字体注册脚本
 COPY register-fonts.sh /app/register-fonts.sh
 RUN chmod +x /app/register-fonts.sh
