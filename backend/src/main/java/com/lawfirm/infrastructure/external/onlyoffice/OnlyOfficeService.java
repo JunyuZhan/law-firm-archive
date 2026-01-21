@@ -58,12 +58,13 @@ public class OnlyOfficeService {
         // 根据文件 URL 或 MIME 类型推断正确的文件扩展名
         String fileType = inferFileTypeFromUrl(fileUrl, fileName);
         document.put("fileType", fileType);
-        document.put("key", documentKey != null ? documentKey : generateDocumentKey());
+        String docKey = documentKey != null ? documentKey : generateDocumentKey();
+        document.put("key", docKey);
         document.put("title", fileName);
         // 构建文件 URL（如果已经是代理 URL，直接使用；否则尝试转换）
         String finalFileUrl = buildFileUrl(fileUrl);
-        log.info("OnlyOffice 配置生成 - 文件 URL: fileName={}, originalUrl={}, finalUrl={}", 
-            fileName, fileUrl, finalFileUrl);
+        log.info("OnlyOffice 配置生成 - 文件信息: fileName={}, fileType={}, documentKey={}, originalUrl={}, finalUrl={}", 
+            fileName, fileType, docKey, fileUrl, finalFileUrl);
         document.put("url", finalFileUrl);
 
         // 权限配置
@@ -170,12 +171,15 @@ public class OnlyOfficeService {
      */
     private String generateJwtToken(Map<String, Object> payload) {
         try {
+            // 使用 HS256 算法，这是 OnlyOffice 最广泛支持的算法
+            // 注意：必须显式指定算法，否则 JJWT 会根据密钥长度自动选择
+            // 长密钥会导致使用 HS512，可能导致 OnlyOffice 验证失败
             SecretKey key = Keys.hmacShaKeyFor(
                     this.config.getJwtSecret().getBytes(StandardCharsets.UTF_8));
 
             return Jwts.builder()
                     .claims(payload)
-                    .signWith(key)
+                    .signWith(key, Jwts.SIG.HS256)
                     .compact();
         } catch (Exception e) {
             log.error("生成 OnlyOffice JWT Token 失败: {}", e.getMessage());

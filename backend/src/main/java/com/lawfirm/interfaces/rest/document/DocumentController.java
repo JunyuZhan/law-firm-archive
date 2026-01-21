@@ -811,8 +811,14 @@ public class DocumentController {
             
             // 设置 Content-Type（必须在写入响应体之前设置）
             // 确保 MIME 类型正确，OnlyOffice 依赖此判断文件类型
+            // 注意：对于二进制文件（Office 文档等），不应设置 charset
+            // 否则会导致 Content-Type: application/msword;charset=UTF-8
+            // 这可能导致 OnlyOffice 解析文件类型错误
             response.setContentType(mimeType);
-            response.setCharacterEncoding("UTF-8");
+            // 只对文本类型设置字符编码
+            if (mimeType != null && mimeType.startsWith("text/")) {
+                response.setCharacterEncoding("UTF-8");
+            }
             
             // 设置文件名（使用 ASCII 字符，避免编码问题）
             // OnlyOffice 可能对非 ASCII 字符的文件名处理有问题
