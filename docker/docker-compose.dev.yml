@@ -120,6 +120,8 @@ services:
       - JWT_ENABLED=true
       - JWT_SECRET=${ONLYOFFICE_JWT_SECRET:-law-firm-onlyoffice-default-secret-2024}
       - JWT_HEADER=Authorization
+      # 关键：允许 JWT 在请求体中传递（解决 convert 请求验证失败问题）
+      - JWT_IN_BODY=true
       # 允许访问私有 IP 地址（用于从后端代理获取文件）
       - ALLOW_PRIVATE_IP_ADDRESS=true
       - ALLOW_META_IP_ADDRESS=true
