@@ -109,6 +109,12 @@ VALUES
 ('notification.sms.enabled', 'false', '短信通知', 'BOOLEAN', '是否启用短信通知（暂未实现）', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
 ('notification.sms.provider', '', '短信服务商', 'STRING', '短信服务提供商', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
 
+-- 安全配置：异地登录
+('security.location.enabled', 'true', '异地登录检测', 'BOOLEAN', '是否启用异地登录检测功能', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('security.location.level', 'province', '异地判断级别', 'STRING', '异地登录判断级别：province=省级（跨省算异地），city=市级（跨市算异地）', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('security.location.permit-code.mode', 'fixed', '许可码模式', 'STRING', '异地登录许可码模式：fixed=固定码，random=随机码（邮件通知）', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('security.location.permit-code.value', '888888', '固定许可码', 'STRING', '异地登录固定许可码（仅fixed模式有效）', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+
 -- 财务配置
 ('finance.invoice.prefix', 'FP', '发票编号前缀', 'STRING', '发票编号前缀', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
 ('finance.invoice.taxRate', '6', '默认税率', 'NUMBER', '默认税率(%)，用于发票计算', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),

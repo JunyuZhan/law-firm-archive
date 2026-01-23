@@ -15,9 +15,10 @@ RUN apt-get update && apt-get install -y \
 # 安装Python依赖
 COPY requirements.txt .
 # 所有包都从官方源安装（确保ARM架构兼容性）
+# PaddleOCR 3.x 需要 paddlepaddle>=3.0.0
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir paddlepaddle -i https://pypi.org/simple && \
-    pip install --no-cache-dir paddleocr -i https://pypi.org/simple && \
+    pip install --no-cache-dir "paddlepaddle>=3.0.0" -i https://pypi.org/simple && \
+    pip install --no-cache-dir "paddleocr>=3.0.0" -i https://pypi.org/simple && \
     pip install --no-cache-dir -r requirements.txt -i https://pypi.org/simple
 
 # 复制应用代码

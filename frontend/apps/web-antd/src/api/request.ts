@@ -122,9 +122,13 @@ export const requestClient = createRequestClient(apiURL, {
   timeout: 600_000, // 默认10分钟超时（支持大文件下载和长时间操作）
 });
 
-// baseRequestClient 用于 logout 等特殊接口，不触发 401 重试逻辑，避免循环调用
-export const baseRequestClient = new RequestClient({ baseURL: apiURL });
-// 只添加请求拦截器，用于发送 Authorization header（如果存在）
+// baseRequestClient 用于 logout、login 等特殊接口，不触发 401 重试逻辑，避免循环调用
+export const baseRequestClient = new RequestClient({
+  baseURL: apiURL,
+  responseReturn: 'data', // 自动解包响应数据
+});
+
+// 添加请求拦截器，用于发送 Authorization header（如果存在）
 baseRequestClient.addRequestInterceptor({
   fulfilled: async (config) => {
     const accessStore = useAccessStore();
@@ -136,3 +140,12 @@ baseRequestClient.addRequestInterceptor({
     return config;
   },
 });
+
+// 添加响应拦截器，处理后端返回的数据格式
+baseRequestClient.addResponseInterceptor(
+  defaultResponseInterceptor({
+    codeField: 'success',
+    dataField: 'data',
+    successCode: (code: any) => code === true,
+  }),
+);

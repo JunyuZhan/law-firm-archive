@@ -26,20 +26,22 @@ function handleChange(fieldName: string, value: boolean) {
 }
 </script>
 <template>
-  <Form class="space-y-8">
-    <div class="space-y-4">
+  <Form class="space-y-6 lg:space-y-8">
+    <div class="space-y-3 lg:space-y-4">
       <template v-for="item in formSchema" :key="item.fieldName">
         <FormField type="checkbox" :name="item.fieldName">
           <FormItem
-            class="flex flex-row items-center justify-between rounded-lg border p-4"
+            class="flex flex-row items-center justify-between gap-3 rounded-lg border p-3 lg:p-4"
           >
-            <div class="space-y-0.5">
-              <FormLabel class="text-base"> {{ item.label }} </FormLabel>
-              <FormDescription>
+            <div class="min-w-0 flex-1 space-y-0.5">
+              <FormLabel class="text-sm lg:text-base">
+                {{ item.label }}
+              </FormLabel>
+              <FormDescription class="text-xs lg:text-sm">
                 {{ item.description }}
               </FormDescription>
             </div>
-            <FormControl>
+            <FormControl class="flex-shrink-0">
               <Switch
                 :model-value="item.value"
                 @update:model-value="handleChange(item.fieldName, $event)"

@@ -66,7 +66,8 @@ async function loadConfigs() {
 
 async function updateConfig(key: string, value: string) {
   try {
-    await requestClient.put(`/system/config/${key}`, { value });
+    // 使用 /key/{key} 端点更新配置值
+    await requestClient.put(`/system/config/key/${key}`, { value });
     message.success('配置已更新');
     await loadConfigs();
   } catch (error: any) {

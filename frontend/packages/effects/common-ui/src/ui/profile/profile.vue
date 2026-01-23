@@ -26,35 +26,53 @@ const tabsValue = defineModel<string>('modelValue');
 </script>
 <template>
   <Page auto-content-height>
-    <div class="flex h-full w-full">
-      <Card class="w-1/6 flex-none">
-        <div class="mt-4 flex h-40 flex-col items-center justify-center gap-4">
+    <!-- 移动端：垂直布局，桌面端：水平布局 -->
+    <div class="flex h-full w-full flex-col gap-4 lg:flex-row">
+      <!-- 左侧/顶部用户信息卡片 -->
+      <Card class="w-full flex-none lg:w-1/5 xl:w-1/6">
+        <!-- 用户头像和信息 -->
+        <div
+          class="flex flex-row items-center gap-4 p-4 lg:mt-4 lg:h-40 lg:flex-col lg:justify-center lg:p-0"
+        >
           <VbenAvatar
             :src="userInfo?.avatar ?? preferences.app.defaultAvatar"
-            class="size-20"
+            class="size-16 lg:size-20"
           />
-          <span class="text-lg font-semibold">
-            {{ userInfo?.realName ?? '' }}
-          </span>
-          <span class="text-foreground/80 text-sm">
-            {{ userInfo?.username ?? '' }}
-          </span>
+          <div class="flex flex-col lg:items-center">
+            <span class="text-base font-semibold lg:text-lg">
+              {{ userInfo?.realName ?? '' }}
+            </span>
+            <span class="text-foreground/80 text-sm">
+              {{ userInfo?.username ?? '' }}
+            </span>
+          </div>
         </div>
-        <Separator class="my-4" />
-        <Tabs v-model="tabsValue" orientation="vertical" class="m-4">
-          <TabsList class="bg-card grid w-full grid-cols-1">
-            <TabsTrigger
-              v-for="tab in tabs"
-              :key="tab.value"
-              :value="tab.value"
-              class="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground h-12 justify-start"
+        <Separator class="my-2 lg:my-4" />
+        <!-- 移动端：水平滚动标签，桌面端：垂直标签 -->
+        <Tabs
+          v-model="tabsValue"
+          :orientation="'vertical'"
+          class="m-2 lg:m-4"
+        >
+          <!-- 移动端水平滚动容器 -->
+          <div class="overflow-x-auto lg:overflow-visible">
+            <TabsList
+              class="bg-card flex w-max flex-row gap-1 lg:grid lg:w-full lg:grid-cols-1 lg:gap-0"
             >
-              {{ tab.label }}
-            </TabsTrigger>
-          </TabsList>
+              <TabsTrigger
+                v-for="tab in tabs"
+                :key="tab.value"
+                :value="tab.value"
+                class="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground h-10 whitespace-nowrap px-4 lg:h-12 lg:justify-start lg:px-2"
+              >
+                {{ tab.label }}
+              </TabsTrigger>
+            </TabsList>
+          </div>
         </Tabs>
       </Card>
-      <Card class="ml-4 w-5/6 flex-auto p-8">
+      <!-- 右侧/底部内容区域 -->
+      <Card class="min-h-0 w-full flex-auto p-4 lg:p-8">
         <slot name="content"></slot>
       </Card>
     </div>

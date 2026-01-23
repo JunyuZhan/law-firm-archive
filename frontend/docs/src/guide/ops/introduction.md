@@ -48,9 +48,9 @@
 
 ## 目录
 
-- [部署指南](/guide/ops/deployment)
-- [配置说明](/guide/ops/configuration)
-- [备份恢复](/guide/ops/backup)
-- [监控告警](/guide/ops/monitoring)
-- [故障排查](/guide/ops/troubleshooting)
-- [数据安全（高级）](file:///Users/apple/Documents/Project/law-firm/docker/DATA-SECURITY.md)
+- [部署指南](/guide/ops/deployment) - 系统部署与环境配置
+- [配置说明](/guide/ops/configuration) - 环境变量与应用配置
+- [备份恢复](/guide/ops/backup) - 数据库与文件备份策略
+- [监控告警](/guide/ops/monitoring) - Prometheus + Grafana 监控
+- [安全运维](/guide/ops/security) - 安全架构与防护措施
+- [故障排查](/guide/ops/troubleshooting) - 常见问题与解决方案

@@ -59,6 +59,11 @@ export const useAuthStore = defineStore('auth', () => {
       const loginResult = await loginApi({
         username: params.username,
         password: params.password,
+        sliderVerifyToken: params.sliderVerifyToken,
+        captchaId: params.captchaId,
+        captchaCode: params.captchaCode,
+        permitRequestId: params.permitRequestId,
+        permitCode: params.permitCode,
       });
 
       const {

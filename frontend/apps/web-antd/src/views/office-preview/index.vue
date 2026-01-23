@@ -27,6 +27,7 @@ const error = ref<null | string>(null);
 const config = ref<null | OnlyOfficeConfig>(null);
 const currentMode = ref<'edit' | 'view'>('view');
 const documentTitle = ref('');
+const showToolbar = ref(true); // 是否显示顶部工具栏（iframe 嵌入时隐藏）
 let editorInstance: any = null;
 
 // 是否支持预览
@@ -35,8 +36,9 @@ const isSupported = computed(() => {
 });
 
 onMounted(async () => {
-  const { documentId, mode, url, filename, type, ext } = route.query as {
+  const { documentId, mode, url, filename, type, ext, embed } = route.query as {
     documentId?: string;
+    embed?: string; // 是否嵌入模式（iframe）
     ext?: string;
     filename?: string;
     mode?: 'edit' | 'view';
@@ -45,6 +47,9 @@ onMounted(async () => {
   };
 
   currentMode.value = mode || 'view';
+  
+  // 如果是嵌入模式或在 iframe 中，隐藏工具栏
+  showToolbar.value = embed !== 'true' && window.self === window.top;
 
   // 如果有 documentId，从后端获取配置
   if (documentId) {
@@ -389,8 +394,8 @@ function goBack() {
 
 <template>
   <div class="office-preview">
-    <!-- 顶部工具栏 -->
-    <div class="toolbar">
+    <!-- 顶部工具栏（iframe 嵌入时隐藏） -->
+    <div v-if="showToolbar" class="toolbar">
       <Space>
         <Button @click="goBack"> ← 关闭 </Button>
         <span class="document-title">{{ documentTitle }}</span>

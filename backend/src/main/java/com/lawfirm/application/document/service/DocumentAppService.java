@@ -645,6 +645,35 @@ public class DocumentAppService {
     }
 
     /**
+     * 保存编辑历史（用于 OnlyOffice 自动保存，不作为新版本）
+     * 记录文件路径变化，但版本号保持不变
+     */
+    private void saveEditHistory(Document document, String changeNote) {
+        Long userId = null;
+        try {
+            userId = SecurityUtils.getUserId();
+        } catch (Exception e) {
+            log.debug("OnlyOffice 回调获取用户ID失败，这是正常的: {}", e.getMessage());
+        }
+        
+        // 记录编辑历史，版本号不变，但文件路径可能变化
+        DocumentVersion editRecord = DocumentVersion.builder()
+                .documentId(document.getId())
+                .version(document.getVersion())  // 版本号不变
+                .fileName(document.getFileName())
+                .filePath(document.getFilePath())
+                .fileSize(document.getFileSize())
+                .changeNote(changeNote)
+                .createdBy(userId)
+                .createdAt(LocalDateTime.now())
+                .build();
+        versionMapper.insert(editRecord);
+        
+        log.debug("OnlyOffice 编辑历史已记录: docId={}, version={}", 
+                document.getId(), document.getVersion());
+    }
+
+    /**
      * 格式化文件大小
      */
     private String formatFileSize(Long size) {
@@ -855,20 +884,21 @@ public class DocumentAppService {
             java.io.ByteArrayInputStream uploadStream = new java.io.ByteArrayInputStream(fileContent);
             String newFileUrl = minioService.uploadFile(uploadStream, objectName, document.getMimeType());
             
-            // 5. 更新文档记录（创建新版本）
-            int newVersion = document.getVersion() != null ? document.getVersion() + 1 : 2;
-            
+            // 5. 更新文档记录（不增加版本号，保持 documentKey 不变）
+            // 注意：OnlyOffice 使用 documentKey 识别编辑会话
+            // 如果版本号改变，documentKey 也会变，导致下次打开时提示"版本更新，无法编辑"
+            // 只有用户手动"上传新版本"时才增加版本号
             document.setFilePath(newFileUrl);
             document.setFileSize(newFileSize);
-            document.setVersion(newVersion);
+            // 不改变版本号：document.setVersion(newVersion);
             document.setUpdatedAt(LocalDateTime.now());
             documentRepository.updateById(document);
             
-            // 6. 保存版本历史
-            saveVersion(document, "OnlyOffice 在线编辑保存");
+            // 6. 保存编辑记录（作为历史记录，但不作为新版本）
+            saveEditHistory(document, "OnlyOffice 在线编辑保存");
             
-            log.info("OnlyOffice 文档保存成功: id={}, version={}, newPath={}", 
-                    documentId, newVersion, newFileUrl);
+            log.info("OnlyOffice 文档保存成功: id={}, version={} (版本号未变), newPath={}", 
+                    documentId, document.getVersion(), newFileUrl);
             
         } catch (Exception e) {
             log.error("从 OnlyOffice 保存文档失败: documentId={}, url={}", documentId, downloadUrl, e);

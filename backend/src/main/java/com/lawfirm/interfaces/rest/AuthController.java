@@ -2,6 +2,9 @@ package com.lawfirm.interfaces.rest;
 
 import com.lawfirm.application.system.service.AuthService;
 import com.lawfirm.application.system.service.CaptchaService;
+import com.lawfirm.application.system.service.LoginLockService;
+import com.lawfirm.application.system.service.LoginLocationService;
+import com.lawfirm.application.system.service.SliderCaptchaService;
 import com.lawfirm.common.annotation.OperationLog;
 import com.lawfirm.common.annotation.RateLimiter;
 import com.lawfirm.common.result.Result;
@@ -21,6 +24,13 @@ import java.util.Set;
 
 /**
  * 认证 Controller
+ * 
+ * 安全防护机制：
+ * 1. 滑块验证（后端校验）- 防止机器人
+ * 2. 登录失败锁定 - 防止暴力破解
+ * 3. 条件触发图形验证码 - 失败多次后增强验证
+ * 4. IP速率限制 - 防止高频攻击
+ * 5. 异地登录检测 - 新位置需要额外验证
  */
 @Tag(name = "认证管理", description = "用户认证相关接口")
 @RestController
@@ -31,11 +41,14 @@ public class AuthController {
 
     private final AuthService authService;
     private final CaptchaService captchaService;
+    private final SliderCaptchaService sliderCaptchaService;
+    private final LoginLockService loginLockService;
+    private final LoginLocationService loginLocationService;
 
     /**
-     * 获取验证码
+     * 获取图形验证码
      */
-    @Operation(summary = "获取验证码")
+    @Operation(summary = "获取图形验证码")
     @GetMapping("/captcha")
     @RateLimiter(key = "captcha", rate = 20, interval = 60, limitType = RateLimiter.LimitType.IP, message = "验证码请求过于频繁")
     public Result<CaptchaService.CaptchaResult> getCaptcha() {
@@ -44,46 +57,197 @@ public class AuthController {
     }
 
     /**
+     * 获取滑块验证令牌
+     */
+    @Operation(summary = "获取滑块验证令牌")
+    @GetMapping("/slider/token")
+    @RateLimiter(key = "slider", rate = 30, interval = 60, limitType = RateLimiter.LimitType.IP, message = "请求过于频繁")
+    public Result<SliderCaptchaService.SliderTokenResult> getSliderToken() {
+        SliderCaptchaService.SliderTokenResult result = sliderCaptchaService.generateToken();
+        return Result.success(result);
+    }
+
+    /**
+     * 验证滑块操作
+     */
+    @Operation(summary = "验证滑块操作")
+    @PostMapping("/slider/verify")
+    @RateLimiter(key = "'slider_verify'", rate = 20, interval = 60, limitType = RateLimiter.LimitType.IP, message = "验证请求过于频繁")
+    public Result<SliderCaptchaService.SliderVerifyResult> verifySlider(@RequestBody @Valid SliderVerifyRequest request) {
+        SliderCaptchaService.SliderVerifyResult result = sliderCaptchaService.verify(
+                request.getTokenId(),
+                request.getSlideTime(),
+                request.getSlideTrack()
+        );
+        
+        if (!result.isSuccess()) {
+            return Result.error(result.getMessage());
+        }
+        return Result.success(result);
+    }
+
+    /**
+     * 检查登录状态（是否需要验证码、是否被锁定）
+     */
+    @Operation(summary = "检查登录状态")
+    @GetMapping("/login/status")
+    public Result<LoginStatusResponse> checkLoginStatus(@RequestParam String username) {
+        // 检查账户是否被锁定
+        LoginLockService.LockStatus lockStatus = loginLockService.checkLockStatus(username);
+        
+        // 检查是否需要图形验证码
+        boolean captchaRequired = loginLockService.isCaptchaRequired(username);
+        int failCount = loginLockService.getFailCount(username);
+        
+        LoginStatusResponse response = new LoginStatusResponse();
+        response.setLocked(lockStatus.isLocked());
+        response.setLockRemainingMinutes(lockStatus.getRemainingMinutes());
+        response.setCaptchaRequired(captchaRequired);
+        response.setFailCount(failCount);
+        response.setMessage(lockStatus.isLocked() ? lockStatus.getMessage() : null);
+        
+        return Result.success(response);
+    }
+
+    /**
      * 登录
+     * 
+     * 安全验证流程：
+     * 1. 检查账户是否被锁定
+     * 2. 验证滑块验证凭证（必须）
+     * 3. 如果失败次数>=3，需要图形验证码
+     * 4. 验证用户名密码
+     * 5. 登录失败则记录失败次数
      */
     @PostMapping("/login")
     @OperationLog(module = "认证", action = "用户登录", saveResult = false)
     @Operation(summary = "用户登录")
     @RateLimiter(key = "login", rate = 10, interval = 60, limitType = RateLimiter.LimitType.IP, message = "登录尝试过于频繁，请稍后再试")
-    public Result<LoginResponse> login(@RequestBody @Valid LoginRequest request,
-                                        HttpServletRequest httpRequest) {
-        // ✅ 使用 IpUtils 获取真实IP
+    public Result<?> login(@RequestBody @Valid LoginRequest request,
+                           HttpServletRequest httpRequest) {
         String ip = IpUtils.getIpAddr(httpRequest);
+        String username = request.getUsername();
         
-        // 验证码校验（可选）：如果前端传了验证码则验证，否则跳过
-        // 注：前端使用滑动验证，无需图形验证码
-        if (request.getCaptchaId() != null && request.getCaptchaCode() != null) {
-            boolean verified = captchaService.verifyCaptcha(request.getCaptchaId(), request.getCaptchaCode());
-            if (!verified) {
-                log.warn("验证码验证失败: username={}, ip={}", request.getUsername(), ip);
+        // 1. 检查账户是否被锁定
+        LoginLockService.LockStatus lockStatus = loginLockService.checkLockStatus(username);
+        if (lockStatus.isLocked()) {
+            log.warn("账户已锁定，拒绝登录: username={}, ip={}, remainingMinutes={}", 
+                    username, ip, lockStatus.getRemainingMinutes());
+            return Result.error(lockStatus.getMessage());
+        }
+        
+        // 2. 验证滑块验证凭证（必须）
+        if (request.getSliderVerifyToken() == null || request.getSliderVerifyToken().isEmpty()) {
+            log.warn("缺少滑块验证凭证: username={}, ip={}", username, ip);
+            return Result.error("请先完成滑块验证");
+        }
+        
+        boolean sliderVerified = sliderCaptchaService.checkVerified(request.getSliderVerifyToken());
+        if (!sliderVerified) {
+            log.warn("滑块验证凭证无效: username={}, ip={}", username, ip);
+            return Result.error("滑块验证已过期，请重新验证");
+        }
+        
+        // 3. 检查是否需要图形验证码
+        boolean captchaRequired = loginLockService.isCaptchaRequired(username);
+        if (captchaRequired) {
+            if (request.getCaptchaId() == null || request.getCaptchaCode() == null) {
+                log.warn("需要图形验证码但未提供: username={}, ip={}", username, ip);
+                return Result.error("CAPTCHA_REQUIRED", "请完成图形验证码");
+            }
+            
+            boolean captchaVerified = captchaService.verifyCaptcha(request.getCaptchaId(), request.getCaptchaCode());
+            if (!captchaVerified) {
+                log.warn("图形验证码验证失败: username={}, ip={}", username, ip);
                 return Result.error("验证码错误或已过期，请刷新后重试");
             }
         }
 
-        String userAgent = httpRequest.getHeader("User-Agent");
-        AuthService.LoginResult result = authService.login(
-                request.getUsername(),
-                request.getPassword(),
-                ip,
-                userAgent
-        );
+        // 4. 验证用户名密码
+        try {
+            String userAgent = httpRequest.getHeader("User-Agent");
+            AuthService.LoginResult result = authService.login(
+                    username,
+                    request.getPassword(),
+                    ip,
+                    userAgent
+            );
+            
+            // 5. 检测异地登录（密码验证成功后）
+            LoginLocationService.LocationCheckResult locationCheck = 
+                    loginLocationService.checkLocation(result.getUserId(), ip);
+            
+            if (locationCheck.isNewLocation()) {
+                // 检查是否提供了许可码
+                if (request.getPermitRequestId() == null || request.getPermitRequestId().isEmpty()) {
+                    // 需要许可码，生成许可码请求
+                    String requestId = loginLocationService.requestPermitCode(
+                            result.getUserId(), 
+                            username, 
+                            ip, 
+                            locationCheck.getCurrentLocation());
+                    
+                    log.warn("检测到异地登录，需要管理员许可码: username={}, ip={}, location={}", 
+                            username, ip, locationCheck.getCurrentLocation().getShortDescription());
+                    
+                    // 返回异地登录错误，需要用户输入许可码
+                    NewLocationResponse nlResponse = new NewLocationResponse();
+                    nlResponse.setRequestId(requestId);
+                    nlResponse.setCurrentLocation(locationCheck.getCurrentLocation().getShortDescription());
+                    nlResponse.setMessage("检测到异地登录，请联系管理员获取许可码");
+                    
+                    return Result.error("NEW_LOCATION", nlResponse.getMessage(), nlResponse);
+                }
+                
+                // 验证许可码
+                LoginLocationService.PermitCodeVerifyResult verifyResult = loginLocationService.verifyPermitCode(
+                        request.getPermitRequestId(), 
+                        request.getPermitCode(), 
+                        result.getUserId());
+                
+                if (!verifyResult.isSuccess()) {
+                    log.warn("许可码验证失败: username={}, ip={}, message={}", 
+                            username, ip, verifyResult.getMessage());
+                    return Result.error("PERMIT_CODE_ERROR", verifyResult.getMessage());
+                }
+                
+                // 验证通过，将当前位置添加为可信位置
+                loginLocationService.trustCurrentLocation(result.getUserId(), username, ip);
+                log.info("异地登录许可码验证通过，已添加为可信位置: username={}, ip={}", username, ip);
+            }
+            
+            // 登录成功，清除失败记录并记录登录位置
+            loginLockService.clearFailure(username);
+            loginLocationService.recordLogin(result.getUserId(), ip, true);
 
-        LoginResponse response = new LoginResponse();
-        response.setAccessToken(result.getAccessToken());
-        response.setRefreshToken(result.getRefreshToken());
-        response.setExpiresIn(result.getExpiresIn());
-        response.setUserId(result.getUserId());
-        response.setUsername(result.getUsername());
-        response.setRealName(result.getRealName());
-        response.setRoles(result.getRoles());
-        response.setPermissions(result.getPermissions());
+            LoginResponse response = new LoginResponse();
+            response.setAccessToken(result.getAccessToken());
+            response.setRefreshToken(result.getRefreshToken());
+            response.setExpiresIn(result.getExpiresIn());
+            response.setUserId(result.getUserId());
+            response.setUsername(result.getUsername());
+            response.setRealName(result.getRealName());
+            response.setRoles(result.getRoles());
+            response.setPermissions(result.getPermissions());
 
-        return Result.success(response);
+            log.info("用户登录成功: username={}, ip={}", username, ip);
+            return Result.success(response);
+            
+        } catch (Exception e) {
+            // 5. 登录失败，记录失败次数（带IP，用于告警）
+            LoginLockService.FailResult failResult = loginLockService.recordFailure(username, ip);
+            log.warn("登录失败: username={}, ip={}, failCount={}, locked={}", 
+                    username, ip, failResult.getFailCount(), failResult.isLocked());
+            
+            // 根据失败结果返回不同的错误信息
+            if (failResult.isLocked()) {
+                return Result.error("ACCOUNT_LOCKED", failResult.getMessage());
+            } else if (failResult.isCaptchaRequired()) {
+                return Result.error("CAPTCHA_REQUIRED", failResult.getMessage());
+            } else {
+                return Result.error(failResult.getMessage());
+            }
+        }
     }
 
     /**
@@ -162,8 +326,28 @@ public class AuthController {
         @NotBlank(message = "密码不能为空")
         private String password;
 
-        private String captchaId; // 验证码ID
-        private String captchaCode; // 验证码
+        private String sliderVerifyToken; // 滑块验证凭证（必须）
+        private String captchaId; // 图形验证码ID（失败多次后需要）
+        private String captchaCode; // 图形验证码答案（失败多次后需要）
+        private String permitRequestId; // 许可码请求ID（异地登录后需要）
+        private String permitCode; // 许可码（异地登录后需要，联系管理员获取）
+    }
+
+    @Data
+    public static class SliderVerifyRequest {
+        @NotBlank(message = "令牌ID不能为空")
+        private String tokenId;
+        private long slideTime; // 滑动耗时（毫秒）
+        private int[] slideTrack; // 滑动轨迹（可选）
+    }
+
+    @Data
+    public static class LoginStatusResponse {
+        private boolean locked;
+        private int lockRemainingMinutes;
+        private boolean captchaRequired;
+        private int failCount;
+        private String message;
     }
 
     @Data
@@ -182,6 +366,13 @@ public class AuthController {
         private String realName;
         private Set<String> roles;
         private Set<String> permissions;
+    }
+
+    @Data
+    public static class NewLocationResponse {
+        private String requestId;        // 许可码请求ID
+        private String currentLocation;  // 当前登录位置
+        private String message;          // 提示信息
     }
 
     @Data

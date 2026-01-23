@@ -1,5 +1,7 @@
 # paddlepaddle 和 paddleocr 在 Dockerfile 中单独安装（ARM架构兼容性）
-# paddleocr>=2.7.0
+# PaddleOCR 3.x 支持 PP-OCRv5、PP-StructureV3、PP-ChatOCRv4 等新功能
+# 官方仓库: https://github.com/PaddlePaddle/PaddleOCR
+# paddleocr>=3.0.0
 fastapi>=0.109.0
 uvicorn>=0.27.0
 python-multipart>=0.0.6

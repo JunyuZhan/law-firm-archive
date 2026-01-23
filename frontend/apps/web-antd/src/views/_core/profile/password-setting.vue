@@ -84,7 +84,7 @@ async function handleSubmit(values: Record<string, any>) {
 <template>
   <ProfilePasswordSetting
     ref="profilePasswordSettingRef"
-    class="w-1/3"
+    class="w-full md:w-2/3 lg:w-1/2 xl:w-1/3"
     :form-schema="formSchema"
     :loading="loading"
     @submit="handleSubmit"

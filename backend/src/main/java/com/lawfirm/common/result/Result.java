@@ -44,6 +44,10 @@ public class Result<T> implements Serializable {
         return new Result<>(false, code, message, null);
     }
 
+    public static <T> Result<T> error(String code, String message, T data) {
+        return new Result<>(false, code, message, data);
+    }
+
     public static <T> Result<T> error(String message) {
         return error("500", message);
     }

@@ -12,19 +12,19 @@
  * - 业务 API：StaleWhileRevalidate + 短期内存缓存（不持久化）
  */
 
-const CACHE_NAME = 'law-firm-cache-v4';
-const STATIC_CACHE_NAME = 'law-firm-static-v4';
-const API_CACHE_NAME = 'law-firm-api-v4';
+const CACHE_NAME = 'law-firm-cache-v5';
+const STATIC_CACHE_NAME = 'law-firm-static-v5';
+const API_CACHE_NAME = 'law-firm-api-v5';
 
 // 短期内存缓存（不持久化到磁盘，安全）
 // 格式: { url: { data: Response, timestamp: number } }
 const memoryCache = new Map();
 
-// 内存缓存 TTL（毫秒）
+// 内存缓存 TTL（毫秒）- 与后端 Cache-Control 保持一致
 const MEMORY_CACHE_TTL = {
-  list: 2 * 60 * 1000,       // 列表数据：2分钟
-  detail: 5 * 60 * 1000,     // 详情数据：5分钟
-  default: 1 * 60 * 1000,    // 默认：1分钟
+  list: 1 * 60 * 1000,       // 列表数据：1分钟（与后端一致）
+  detail: 2 * 60 * 1000,     // 详情数据：2分钟
+  default: 30 * 1000,        // 默认：30秒
 };
 
 // 预缓存的核心资源
@@ -57,12 +57,14 @@ const CACHEABLE_BUSINESS_API = [
   { pattern: '/api/knowledge', ttlKey: 'list' },
 ];
 
-// 不缓存的敏感操作 API
+// 不缓存的敏感操作 API（包含用户隐私或高度敏感的数据）
 const NO_CACHE_PATTERNS = [
   '/api/auth/',           // 认证相关
-  '/api/admin/user',      // 用户管理
-  '/api/hr/payroll',      // 薪资数据
-  '/api/hr/employee',     // 员工敏感信息
+  '/api/admin/',          // 整个管理模块（用户、角色、权限等）
+  '/api/hr/',             // 整个人事模块（薪资、考勤、合同、绩效等）
+  '/api/user/info',       // 当前用户信息
+  '/api/user/profile',    // 用户档案
+  '/api/ai/',             // AI 相关（可能包含敏感内容）
 ];
 
 // 请求去重：正在进行的请求
@@ -70,7 +72,7 @@ const pendingRequests = new Map();
 
 // 安装事件 - 预缓存核心资源
 self.addEventListener('install', (event) => {
-  console.log('[SW] Installing Service Worker v4');
+  console.log('[SW] Installing Service Worker v5');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
@@ -85,7 +87,7 @@ self.addEventListener('install', (event) => {
 
 // 激活事件 - 清理旧缓存
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activating Service Worker v4');
+  console.log('[SW] Activating Service Worker v5');
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(

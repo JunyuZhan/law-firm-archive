@@ -84,6 +84,46 @@ public class AlertService {
     }
 
     /**
+     * 发送异地登录告警
+     */
+    public void sendNewLocationLoginAlert(String username, String ip, String location) {
+        String subject = "[安全告警] 检测到异地登录 - " + username;
+        String content = buildAlertHtml(
+                AlertLevel.WARNING,
+                "异地登录告警",
+                String.format("检测到用户 <strong>%s</strong> 从新位置登录。", username),
+                new String[][]{
+                        {"用户名", username},
+                        {"来源IP", ip},
+                        {"登录位置", location},
+                        {"检测时间", LocalDateTime.now().format(DATE_FORMAT)}
+                },
+                "该用户需要输入管理员许可码才能登录。如非本人操作，请检查账户安全。"
+        );
+        emailService.sendAlertToAdmins(subject, content);
+    }
+
+    /**
+     * 发送异地登录成功告警（许可码验证通过）
+     */
+    public void sendNewLocationLoginSuccessAlert(String username, String ip, String location) {
+        String subject = "[安全通知] 异地登录成功 - " + username;
+        String content = buildAlertHtml(
+                AlertLevel.INFO,
+                "异地登录成功通知",
+                String.format("用户 <strong>%s</strong> 已通过许可码验证，从新位置成功登录。", username),
+                new String[][]{
+                        {"用户名", username},
+                        {"来源IP", ip},
+                        {"登录位置", location},
+                        {"登录时间", LocalDateTime.now().format(DATE_FORMAT)}
+                },
+                "该位置已自动添加为用户的常用登录地点。"
+        );
+        emailService.sendAlertToAdmins(subject, content);
+    }
+
+    /**
      * 发送异常IP访问告警
      */
     public void sendSuspiciousIpAlert(String ip, int requestCount, String details) {

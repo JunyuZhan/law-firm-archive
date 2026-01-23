@@ -84,6 +84,8 @@ public class SecurityConfig {
                     "/auth/logout",           // 登出接口允许未认证访问（token 可能已过期）
                     "/auth/refresh",
                     "/auth/captcha",
+                    "/auth/slider/**",        // 滑块验证接口
+                    "/auth/login/status",     // 登录状态检查接口
                     "/swagger-ui/**",
                     "/swagger-ui.html",
                     "/v3/api-docs/**",
@@ -102,6 +104,8 @@ public class SecurityConfig {
                         "/auth/logout",           // 登出接口允许未认证访问（token 可能已过期）
                         "/auth/refresh",
                         "/auth/captcha",
+                        "/auth/slider/**",        // 滑块验证接口
+                        "/auth/login/status",     // 登录状态检查接口
                         "/actuator/health",
                         "/error",
                         "/document/*/callback",  // OnlyOffice 回调接口（无需认证）

@@ -98,19 +98,6 @@ const batchDownloading = ref(false);
 
 // 视图模式状态: 'list' | 'grid'
 const viewMode = ref<'grid' | 'list'>('grid');
-// 悬停预览相关
-const hoverPreview = ref<{
-  doc: DocumentDTO | null;
-  show: boolean;
-  x: number;
-  y: number;
-}>({
-  doc: null,
-  show: false,
-  x: 0,
-  y: 0,
-});
-let hoverTimeout: ReturnType<typeof setTimeout> | null = null;
 
 // 图片预览缩放
 const imageZoom = ref(1);
@@ -802,16 +789,16 @@ const fileTypeConfig: Record<
   { color: string; icon: string; label: string }
 > = {
   // 文档类
-  pdf: { icon: '📄', color: '#e74c3c', label: 'PDF' },
-  doc: { icon: '📝', color: '#2b579a', label: 'Word' },
-  docx: { icon: '📝', color: '#2b579a', label: 'Word' },
-  xls: { icon: '📊', color: '#217346', label: 'Excel' },
-  xlsx: { icon: '📊', color: '#217346', label: 'Excel' },
-  ppt: { icon: '📽️', color: '#d24726', label: 'PPT' },
-  pptx: { icon: '📽️', color: '#d24726', label: 'PPT' },
-  txt: { icon: '📃', color: '#666666', label: '文本' },
-  rtf: { icon: '📃', color: '#666666', label: 'RTF' },
-  odt: { icon: '📝', color: '#0066cc', label: 'ODT' },
+  pdf: { icon: '📕', color: '#e74c3c', label: 'PDF' },
+  doc: { icon: '📘', color: '#2b579a', label: 'Word' },
+  docx: { icon: '📘', color: '#2b579a', label: 'Word' },
+  xls: { icon: '📗', color: '#217346', label: 'Excel' },
+  xlsx: { icon: '📗', color: '#217346', label: 'Excel' },
+  ppt: { icon: '📙', color: '#d24726', label: 'PPT' },
+  pptx: { icon: '📙', color: '#d24726', label: 'PPT' },
+  txt: { icon: '📄', color: '#666666', label: '文本' },
+  rtf: { icon: '📄', color: '#666666', label: 'RTF' },
+  odt: { icon: '📘', color: '#0066cc', label: 'ODT' },
   // 图片类
   jpg: { icon: '🖼️', color: '#9b59b6', label: '图片' },
   jpeg: { icon: '🖼️', color: '#9b59b6', label: '图片' },
@@ -1150,10 +1137,10 @@ async function handlePreview(record: DocumentDTO) {
 
   // Office 文档类型 - 在弹窗中使用 iframe 嵌入 OnlyOffice 预览（确保不是PDF）
   if (fileExt && fileExt !== 'pdf' && isOfficeFile(fileExt)) {
-    // 构建 OnlyOffice 预览页面的 URL
+    // 构建 OnlyOffice 预览页面的 URL（嵌入模式，隐藏工具栏）
     const resolved = router.resolve({
       path: '/office-preview',
-      query: { documentId: String(record.id), mode: 'view' },
+      query: { documentId: String(record.id), mode: 'view', embed: 'true' },
     });
     // 在弹窗中使用 iframe 预览，而不是新窗口打开
     currentDocument.value = { ...record, filePath: resolved.href };
@@ -1239,6 +1226,15 @@ async function handleOnlineEdit(record: DocumentDTO) {
   } catch {
     message.error('检查编辑支持失败');
   }
+}
+
+// 从预览弹框打开编辑器（关闭弹框后在新窗口打开编辑页面）
+async function handleOpenInEditor(record: DocumentDTO) {
+  // 先关闭预览弹框
+  previewModalVisible.value = false;
+  
+  // 然后调用在线编辑
+  await handleOnlineEdit(record);
 }
 
 // 下载文档
@@ -1606,57 +1602,6 @@ function formatFileSize(bytes?: number) {
 // 切换视图模式
 function toggleViewMode(mode: 'grid' | 'list') {
   viewMode.value = mode;
-}
-
-// 处理悬停预览 - 鼠标进入
-function handleDocHover(doc: DocumentDTO, event: MouseEvent) {
-  // 只对图片和 PDF 类型显示预览
-  if (!isPreviewableFile(doc.fileType)) return;
-
-  if (hoverTimeout) {
-    clearTimeout(hoverTimeout);
-  }
-
-  hoverTimeout = setTimeout(() => {
-    const rect = (event.target as HTMLElement).getBoundingClientRect();
-    hoverPreview.value = {
-      doc,
-      show: true,
-      x: rect.right + 10,
-      y: rect.top,
-    };
-  }, 300); // 300ms 延迟显示
-}
-
-// 处理悬停预览 - 鼠标离开
-function handleDocHoverLeave() {
-  if (hoverTimeout) {
-    clearTimeout(hoverTimeout);
-    hoverTimeout = null;
-  }
-  hoverPreview.value.show = false;
-}
-
-// 判断文件是否可预览（图片、PDF）
-function isPreviewableFile(fileType?: string): boolean {
-  if (!fileType) return false;
-  const type = fileType.toLowerCase();
-  return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg', 'pdf'].includes(
-    type,
-  );
-}
-
-// 获取预览图片URL（用于悬停预览）
-function getPreviewImageUrl(doc: DocumentDTO): string {
-  // 如果有缩略图，优先使用缩略图
-  if (doc.thumbnailUrl) {
-    return doc.thumbnailUrl;
-  }
-  // 如果是图片文件，直接使用原图
-  if (isImageFile(doc.fileType)) {
-    return doc.filePath || '';
-  }
-  return '';
 }
 
 // 图片预览滚轮缩放
@@ -2098,7 +2043,7 @@ onMounted(() => {
             <template v-else-if="viewMode === 'list'">
               <!-- 文档列表头部 -->
               <div class="doc-list-header">
-                <div class="col-checkbox" style="width: 32px">
+                <div class="col-checkbox">
                   <input
                     type="checkbox"
                     :checked="isAllSelected()"
@@ -2107,13 +2052,13 @@ onMounted(() => {
                     title="全选/取消全选"
                   />
                 </div>
-                <div class="col-drag" style="width: 30px"></div>
-                <div class="col-name" style="flex: 1">文档名称</div>
-                <div class="col-type" style="width: 80px">类型</div>
-                <div class="col-source" style="width: 80px">来源</div>
-                <div class="col-size" style="width: 80px">大小</div>
-                <div class="col-time" style="width: 140px">修改时间</div>
-                <div class="col-action" style="width: 180px">操作</div>
+                <div class="col-drag"></div>
+                <div class="col-name">文档名称</div>
+                <div class="col-type">类型</div>
+                <div class="col-source">来源</div>
+                <div class="col-size">大小</div>
+                <div class="col-time">修改时间</div>
+                <div class="col-action">操作</div>
               </div>
               <!-- 可拖拽文档列表 -->
               <draggable
@@ -2361,8 +2306,6 @@ onMounted(() => {
                   :key="doc.id"
                   class="grid-item"
                   :class="{ 'grid-item-selected': isDocSelected(doc.id) }"
-                  @mouseenter="handleDocHover(doc, $event)"
-                  @mouseleave="handleDocHoverLeave"
                   @click="handlePreview(doc)"
                 >
                   <!-- 选择复选框 -->
@@ -2443,62 +2386,79 @@ onMounted(() => {
                     }}</span>
                   </div>
 
-                  <!-- 快捷操作按钮 -->
-                  <div class="grid-item-actions" @click.stop>
-                    <Tooltip title="预览">
-                      <Button
-                        type="text"
-                        size="small"
-                        @click="handlePreview(doc)"
-                        class="grid-action-btn"
-                      >
-                        <Eye :size="14" />
-                      </Button>
-                    </Tooltip>
-                    <Tooltip title="下载">
-                      <Button
-                        type="text"
-                        size="small"
-                        @click="handleDownload(doc)"
-                        class="grid-action-btn"
-                      >
-                        <SvgDownloadIcon :size="14" />
-                      </Button>
-                    </Tooltip>
-                    <Dropdown placement="bottomRight">
-                      <template #overlay>
-                        <Menu class="action-menu">
-                          <MenuItem key="rename" @click="handleEdit(doc)">
-                            <Edit :size="14" style="margin-right: 8px" />
-                            重命名
-                          </MenuItem>
-                          <MenuItem
-                            v-if="isEditableFile(doc.fileType)"
-                            key="online-edit"
-                            @click="handleOnlineEdit(doc)"
-                          >
-                            <Edit :size="14" style="margin-right: 8px" />
-                            在线编辑
-                          </MenuItem>
-                          <MenuItem key="share" @click="handleShare(doc)">
-                            <span style="margin-right: 8px">🔗</span>
-                            分享
-                          </MenuItem>
-                          <Divider style="margin: 6px 0" />
-                          <MenuItem
-                            key="delete"
-                            @click="handleDelete(doc)"
-                            style="color: #ff4d4f"
-                          >
-                            <Trash :size="14" style="margin-right: 8px" />
-                            删除
-                          </MenuItem>
-                        </Menu>
-                      </template>
-                      <Button type="text" size="small" class="grid-action-btn">
-                        <Ellipsis :size="14" />
-                      </Button>
-                    </Dropdown>
+                  <!-- 悬停时底部操作栏 (vben-admin 风格) -->
+                  <div class="grid-item-toolbar" @click.stop>
+                    <Space :size="4">
+                      <Tooltip title="预览">
+                        <Button
+                          type="text"
+                          size="small"
+                          @click="handlePreview(doc)"
+                        >
+                          <Eye :size="14" />
+                        </Button>
+                      </Tooltip>
+                      <Tooltip v-if="isEditableFile(doc.fileType)" title="编辑">
+                        <Button
+                          type="text"
+                          size="small"
+                          @click="handleOnlineEdit(doc)"
+                        >
+                          <Edit :size="14" />
+                        </Button>
+                      </Tooltip>
+                      <Tooltip title="下载">
+                        <Button
+                          type="text"
+                          size="small"
+                          @click="handleDownload(doc)"
+                        >
+                          <SvgDownloadIcon :size="14" />
+                        </Button>
+                      </Tooltip>
+                      <Dropdown placement="topRight" trigger="click">
+                        <template #overlay>
+                          <Menu class="grid-dropdown-menu">
+                            <MenuItem key="rename" @click="handleEdit(doc)">
+                              <span class="menu-icon">✏️</span>
+                              <span>重命名</span>
+                            </MenuItem>
+                            <MenuItem key="share" @click="handleShare(doc)">
+                              <span class="menu-icon">🔗</span>
+                              <span>分享链接</span>
+                            </MenuItem>
+                            <MenuItem key="move" @click="handleMoveDocument(doc)">
+                              <span class="menu-icon">📁</span>
+                              <span>移动到...</span>
+                            </MenuItem>
+                            <MenuItem key="versions" @click="handleViewVersions(doc)">
+                              <span class="menu-icon">📋</span>
+                              <span>版本历史</span>
+                            </MenuItem>
+                            <MenuItem
+                              v-if="isImageFile(doc.fileType)"
+                              key="ocr"
+                              @click="handleOcrExtract(doc)"
+                            >
+                              <span class="menu-icon">🔍</span>
+                              <span>提取文字(OCR)</span>
+                            </MenuItem>
+                            <Divider style="margin: 4px 0" />
+                            <MenuItem
+                              key="delete"
+                              @click="handleDelete(doc)"
+                              class="menu-item-danger"
+                            >
+                              <span class="menu-icon">🗑️</span>
+                              <span>删除文件</span>
+                            </MenuItem>
+                          </Menu>
+                        </template>
+                        <Button type="text" size="small">
+                          <Ellipsis :size="14" />
+                        </Button>
+                      </Dropdown>
+                    </Space>
                   </div>
                 </div>
               </div>
@@ -2603,7 +2563,6 @@ onMounted(() => {
     <!-- 文档预览弹窗 -->
     <Modal
       v-model:open="previewModalVisible"
-      :title="`预览 - ${currentDocument?.title || currentDocument?.fileName || currentDocument?.name}`"
       :width="isImageFile(currentDocument?.fileType) || 
               currentDocument?.fileType?.toLowerCase() === 'pdf' || 
               (currentDocument?.fileType && isOfficeFile(currentDocument.fileType)) ? '95%' : '80%'"
@@ -2611,6 +2570,21 @@ onMounted(() => {
       style="top: 20px"
       :class="{ 'image-preview-modal': isImageFile(currentDocument?.fileType) }"
     >
+      <template #title>
+        <div style="display: flex; align-items: center; justify-content: space-between; padding-right: 32px;">
+          <span>预览 - {{ currentDocument?.title || currentDocument?.fileName || currentDocument?.name }}</span>
+          <Space v-if="currentDocument && isEditableFile(currentDocument.fileType)">
+            <Button 
+              type="primary" 
+              size="small"
+              @click="handleOpenInEditor(currentDocument)"
+            >
+              <Edit :size="14" style="margin-right: 4px;" />
+              在线编辑
+            </Button>
+          </Space>
+        </div>
+      </template>
       <!-- 图片专属预览（支持放大缩小） -->
       <div
         v-if="isImageFile(currentDocument?.fileType)"
@@ -2788,52 +2762,6 @@ onMounted(() => {
       </template>
     </Modal>
 
-    <!-- 悬停预览弹层 -->
-    <Teleport to="body">
-      <div
-        v-if="hoverPreview.show && hoverPreview.doc"
-        class="hover-preview"
-        :style="{
-          left: `${hoverPreview.x}px`,
-          top: `${hoverPreview.y}px`,
-        }"
-        @mouseenter="hoverPreview.show = true"
-        @mouseleave="handleDocHoverLeave"
-      >
-        <div class="hover-preview-content">
-          <!-- 图片预览 -->
-          <img
-            v-if="getPreviewImageUrl(hoverPreview.doc)"
-            :src="getPreviewImageUrl(hoverPreview.doc)"
-            :alt="hoverPreview.doc.fileName"
-            class="hover-preview-img"
-          />
-          <!-- PDF 预览提示 -->
-          <div
-            v-else-if="hoverPreview.doc.fileType?.toLowerCase() === 'pdf'"
-            class="hover-preview-placeholder"
-          >
-            <span style="font-size: 48px">📄</span>
-            <div>PDF 文档</div>
-            <div class="preview-hint">点击预览完整内容</div>
-          </div>
-        </div>
-        <div class="hover-preview-info">
-          <div class="preview-filename">
-            {{ hoverPreview.doc.title || hoverPreview.doc.fileName }}
-          </div>
-          <div class="preview-meta">
-            <Tag
-              :color="getFileTypeConfig(hoverPreview.doc.fileType).color"
-              size="small"
-            >
-              {{ getFileTypeConfig(hoverPreview.doc.fileType).label }}
-            </Tag>
-            <span>{{ formatFileSize(hoverPreview.doc.fileSize) }}</span>
-          </div>
-        </div>
-      </div>
-    </Teleport>
   </Page>
 </template>
 
@@ -2849,6 +2777,7 @@ onMounted(() => {
   color: #666;
   background: #fafafa;
   border-bottom: 1px solid #f0f0f0;
+  overflow: hidden;
 }
 
 /* 文档列表 */
@@ -2892,7 +2821,19 @@ onMounted(() => {
   width: 30px;
 }
 
+.col-name {
+  flex: 1;
+  min-width: 150px;
+  overflow: hidden;
+}
+
 .col-type {
+  flex-shrink: 0;
+  width: 80px;
+  text-align: center;
+}
+
+.col-source {
   flex-shrink: 0;
   width: 80px;
   text-align: center;
@@ -2916,7 +2857,7 @@ onMounted(() => {
 
 .col-action {
   flex-shrink: 0;
-  width: 160px;
+  width: 180px;
   text-align: right;
 }
 
@@ -3244,123 +3185,81 @@ onMounted(() => {
   color: #999;
 }
 
-/* 网格项操作按钮 */
-.grid-item-actions {
+/* 网格项底部操作栏 (vben-admin 风格) */
+.grid-item-toolbar {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  right: 0;
+  bottom: 0;
+  left: 0;
   display: flex;
-  gap: 2px;
-  padding: 4px;
-  background: rgb(255 255 255 / 95%);
-  border-radius: 6px;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  background: linear-gradient(to top, rgb(255 255 255 / 95%) 0%, rgb(255 255 255 / 85%) 100%);
+  border-top: 1px solid #f0f0f0;
+  border-radius: 0 0 12px 12px;
   opacity: 0;
-  box-shadow: 0 2px 8px rgb(0 0 0 / 10%);
-  transition: opacity 0.2s;
+  transition: opacity 0.2s ease;
 }
 
-.grid-item:hover .grid-item-actions {
+.grid-item:hover .grid-item-toolbar {
   opacity: 1;
 }
 
-.grid-action-btn {
-  display: inline-flex !important;
+.grid-item-toolbar :deep(.ant-btn-text) {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px !important;
-  height: 28px !important;
-  padding: 0 !important;
-  color: #666;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  color: #595959;
   border-radius: 4px;
 }
 
-.grid-action-btn:hover {
-  color: #1890ff !important;
-  background-color: #e6f7ff !important;
+.grid-item-toolbar :deep(.ant-btn-text:hover) {
+  color: #1890ff;
+  background: #e6f7ff;
 }
 
-/* ==================== 悬停预览样式 ==================== */
-.hover-preview {
-  position: fixed;
-  z-index: 9999;
+/* 网格视图下拉菜单样式 */
+.grid-dropdown-menu {
+  min-width: 140px;
+  padding: 4px 0;
+  border-radius: 8px;
+  box-shadow: 0 6px 16px rgb(0 0 0 / 12%);
+}
+
+.grid-dropdown-menu :deep(.ant-dropdown-menu-item) {
   display: flex;
-  flex-direction: column;
-  width: 320px;
-  max-height: 400px;
-  overflow: hidden;
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 12px 40px rgb(0 0 0 / 20%);
-  animation: fadeIn 0.2s ease;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.hover-preview-content {
-  display: flex;
-  flex: 1;
-  align-items: center;
-  justify-content: center;
-  min-height: 200px;
-  background: linear-gradient(145deg, #f8f9fa 0%, #e9ecef 100%);
-}
-
-.hover-preview-img {
-  width: 100%;
-  height: auto;
-  max-height: 280px;
-  object-fit: contain;
-}
-
-.hover-preview-placeholder {
-  display: flex;
-  flex-direction: column;
   gap: 8px;
   align-items: center;
-  justify-content: center;
-  padding: 32px;
-  color: #666;
+  padding: 8px 12px;
+  font-size: 13px;
+  border-radius: 4px;
+  margin: 2px 4px;
+  transition: all 0.2s;
+}
+
+.grid-dropdown-menu :deep(.ant-dropdown-menu-item:hover) {
+  background: #f5f5f5;
+}
+
+.grid-dropdown-menu .menu-icon {
+  width: 16px;
+  font-size: 14px;
   text-align: center;
 }
 
-.preview-hint {
-  font-size: 12px;
-  color: #999;
+.grid-dropdown-menu .menu-item-danger {
+  color: #ff4d4f;
 }
 
-.hover-preview-info {
-  padding: 12px 16px;
-  background: #fff;
-  border-top: 1px solid #f0f0f0;
+.grid-dropdown-menu .menu-item-danger:hover {
+  color: #ff4d4f;
+  background: #fff1f0;
 }
 
-.preview-filename {
-  margin-bottom: 8px;
-  overflow: hidden;
-  font-size: 14px;
-  font-weight: 500;
-  color: #333;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.preview-meta {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  font-size: 12px;
-  color: #999;
-}
 
 /* ==================== 图片预览弹窗样式 ==================== */
 .image-preview-container {

@@ -77,7 +77,12 @@ public class SysConfigController {
     @PutMapping("/key/{key}")
     @RequirePermission("sys:config:update")
     @OperationLog(module = "系统配置", action = "更新配置值")
-    public Result<Void> updateConfigByKey(@PathVariable String key, @RequestBody String value) {
+    public Result<Void> updateConfigByKey(@PathVariable String key, @RequestBody Map<String, String> body) {
+        String value = body.get("value");
+        if (value == null) {
+            // 兼容直接传字符串的情况
+            value = body.toString();
+        }
         configAppService.updateConfigByKey(key, value);
         return Result.success();
     }

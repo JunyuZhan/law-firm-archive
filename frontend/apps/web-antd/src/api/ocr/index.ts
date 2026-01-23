@@ -1,14 +1,16 @@
 /**
  * OCR识别模块 API
- * 提供通用文字识别、银行回单识别、身份证识别、营业执照识别等功能
+ * 基于 PaddleOCR 3.x (PP-OCRv5) 提供通用文字识别、银行回单识别、身份证识别、营业执照识别等功能
+ * PP-OCRv5 特性：单模型支持简体中文、繁体中文、英文、日文、拼音，准确率比 PP-OCRv4 提升 13%
  */
 import { requestClient } from '#/api/request';
 
 // 全局开关：开启 OCR 功能
-// OCR功能暂时禁用，本地PaddleOCR识别较慢(>5秒)，后续版本优化
+// 已升级到 PaddleOCR 3.x (PP-OCRv5)，准确率大幅提升
+// 暂时禁用 OCR，启用时将 OCR_DISABLED 设为 false 并启动 OCR 服务
 export const OCR_DISABLED = true;
 export const OCR_DISABLED_MESSAGE =
-  'OCR功能暂时禁用，本地识别服务优化中，后续版本将重新开放';
+  'OCR功能暂时禁用，如需启用请启动 PaddleOCR 服务';
 
 const ocrDisabledPromise = <_T>(): Promise<never> =>
   Promise.reject(new Error(OCR_DISABLED_MESSAGE));

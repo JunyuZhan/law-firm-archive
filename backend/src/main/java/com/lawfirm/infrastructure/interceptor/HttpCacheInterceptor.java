@@ -7,7 +7,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 /**
  * HTTP 缓存控制拦截器
@@ -30,15 +29,15 @@ public class HttpCacheInterceptor implements HandlerInterceptor {
 
     // 缓存配置：路径前缀 -> 缓存时间（秒）
     private static final Map<String, CacheConfig> CACHE_CONFIGS = Map.ofEntries(
-        // 静态数据：长缓存
+        // 静态数据：长缓存（公共数据，所有用户相同）
         Map.entry("/api/dict/", new CacheConfig(3600, true)),     // 字典：1小时
-        Map.entry("/api/config/", new CacheConfig(1800, true)),   // 配置：30分钟
         Map.entry("/api/causes/", new CacheConfig(3600, true)),   // 案由：1小时
         Map.entry("/api/public/", new CacheConfig(1800, true)),   // 公共：30分钟
         
-        // 菜单/部门：中等缓存
-        Map.entry("/api/menu/", new CacheConfig(600, true)),      // 菜单：10分钟
-        Map.entry("/api/department/", new CacheConfig(600, true)), // 部门：10分钟
+        // 用户相关数据：私有缓存（不同用户可能不同）
+        Map.entry("/api/config/", new CacheConfig(900, false)),   // 配置：15分钟，私有
+        Map.entry("/api/menu/", new CacheConfig(600, false)),     // 菜单：10分钟，私有（与权限相关）
+        Map.entry("/api/department/", new CacheConfig(600, true)), // 部门：10分钟，公共
         
         // 业务数据：短缓存 + stale-while-revalidate
         Map.entry("/api/matter", new CacheConfig(60, 120)),    // 案件：1分钟，过期后可用2分钟
@@ -51,12 +50,14 @@ public class HttpCacheInterceptor implements HandlerInterceptor {
         Map.entry("/api/knowledge", new CacheConfig(300, 600)) // 知识库：5分钟
     );
 
-    // 不缓存的敏感 API
+    // 不缓存的敏感 API（包含用户隐私或高度敏感的数据）
     private static final String[] NO_CACHE_PATTERNS = {
-        "/api/auth/",
-        "/api/admin/user",
-        "/api/hr/payroll",
-        "/api/hr/employee"
+        "/api/auth/",           // 认证相关
+        "/api/admin/",          // 整个管理模块（用户、角色、权限等）
+        "/api/hr/",             // 整个人事模块（薪资、考勤、合同、绩效等）
+        "/api/user/info",       // 当前用户信息
+        "/api/user/profile",    // 用户档案
+        "/api/ai/"              // AI 相关（可能包含敏感内容）
     };
 
     @Override

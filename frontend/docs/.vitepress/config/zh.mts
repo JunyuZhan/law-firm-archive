@@ -113,6 +113,7 @@ function sidebarProtected(): DefaultTheme.SidebarItem[] {
         { link: '/guide/ops/configuration', text: '配置说明' },
         { link: '/guide/ops/backup', text: '备份恢复' },
         { link: '/guide/ops/monitoring', text: '监控告警' },
+        { link: '/guide/ops/security', text: '安全运维' },
         { link: '/guide/ops/troubleshooting', text: '故障排查' },
       ],
     },

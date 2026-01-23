@@ -30,9 +30,9 @@ public class ThumbnailService {
     private final MinioService minioService;
     private final FileTypeService fileTypeService;
 
-    // 缩略图默认尺寸
-    private static final int THUMBNAIL_WIDTH = 200;
-    private static final int THUMBNAIL_HEIGHT = 200;
+    // 缩略图默认尺寸（提高分辨率以支持更清晰的预览）
+    private static final int THUMBNAIL_WIDTH = 480;
+    private static final int THUMBNAIL_HEIGHT = 480;
 
     // 缩略图存储目录
     private static final String THUMBNAIL_FOLDER = "thumbnails/";
@@ -149,8 +149,8 @@ public class ThumbnailService {
 
                 // 渲染第一页为图片
                 PDFRenderer renderer = new PDFRenderer(document);
-                // 使用72 DPI渲染，足够生成缩略图
-                BufferedImage pageImage = renderer.renderImageWithDPI(0, 72);
+                // 使用150 DPI渲染，保证缩略图清晰度
+                BufferedImage pageImage = renderer.renderImageWithDPI(0, 150);
 
                 // 使用 Thumbnailator 调整大小
                 ByteArrayOutputStream outputStream = new ByteArrayOutputStream();

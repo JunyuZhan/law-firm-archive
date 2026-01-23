@@ -4,6 +4,7 @@ import com.lawfirm.application.system.command.CreateUserCommand;
 import com.lawfirm.application.system.command.UpdateUserCommand;
 import com.lawfirm.application.system.dto.UserDTO;
 import com.lawfirm.application.system.dto.UserQueryDTO;
+import com.lawfirm.application.system.service.LoginLockService;
 import com.lawfirm.application.system.service.UserAppService;
 import com.lawfirm.application.system.service.UserRoleChangeService;
 import com.lawfirm.common.annotation.OperationLog;
@@ -38,6 +39,7 @@ public class UserController {
 
     private final UserAppService userAppService;
     private final UserRoleChangeService userRoleChangeService;
+    private final LoginLockService loginLockService;
 
     /**
      * 分页查询用户列表
@@ -127,6 +129,39 @@ public class UserController {
                                        @RequestBody @Valid ResetPasswordRequest request) {
         userAppService.resetPassword(id, request.getNewPassword());
         return Result.success();
+    }
+
+    /**
+     * 解锁用户账户（清除登录失败记录和锁定状态）
+     */
+    @PostMapping("/{id}/unlock")
+    @RequirePermission("sys:user:update")
+    @OperationLog(module = "用户管理", action = "解锁用户账户")
+    public Result<Void> unlockUser(@PathVariable Long id) {
+        // 获取用户信息
+        UserDTO user = userAppService.getUserById(id);
+        if (user == null) {
+            return Result.error("用户不存在");
+        }
+        
+        // 解锁账户（清除失败次数和锁定状态）
+        loginLockService.unlockAccount(user.getUsername());
+        return Result.success();
+    }
+
+    /**
+     * 获取用户登录锁定状态
+     */
+    @GetMapping("/{id}/lock-status")
+    @RequirePermission("sys:user:list")
+    public Result<LoginLockService.LockStatus> getLockStatus(@PathVariable Long id) {
+        UserDTO user = userAppService.getUserById(id);
+        if (user == null) {
+            return Result.error("用户不存在");
+        }
+        
+        LoginLockService.LockStatus status = loginLockService.checkLockStatus(user.getUsername());
+        return Result.success(status);
     }
 
     /**

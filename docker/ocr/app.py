@@ -1,7 +1,11 @@
 """
 PaddleOCR服务 - 智慧律所管理系统
-提供通用文字识别、银行回单识别、身份证识别、营业执照识别等功能
+基于 PaddleOCR 3.x (PP-OCRv5) 提供通用文字识别、银行回单识别、身份证识别、营业执照识别等功能
 优化配置：使用轻量级模型，禁用不必要的预处理，确保快速响应
+
+PaddleOCR 3.x 新特性：
+- PP-OCRv5: 单模型支持5种文字类型，准确率提升13%
+- 支持简体中文、繁体中文、英文、日文、拼音混合识别
 
 安全特性：
 - API Key 鉴权
@@ -236,40 +240,34 @@ async def validate_file(file: UploadFile):
 ocr = None
 
 def init_ocr():
-    """初始化轻量级PaddleOCR - 优化速度"""
+    """初始化 PaddleOCR 3.x (PP-OCRv5) - 优化速度"""
     global ocr
     ocr_lang = os.getenv("OCR_LANG", "ch")
     
-    logger.info("🚀 初始化轻量级PaddleOCR...")
+    logger.info("🚀 初始化 PaddleOCR 3.x (PP-OCRv5)...")
     start = time.time()
     
-    # 使用轻量级配置，大幅提升速度
+    # PaddleOCR 3.x 配置
+    # 参考: https://paddlepaddle.github.io/PaddleOCR/main/en/quick_start.html
+    # PP-OCRv5 支持：简体中文、繁体中文、英文、日文、拼音混合识别
     ocr = PaddleOCR(
-        use_angle_cls=False,      # 禁用方向分类器（省约30%时间）
         lang=ocr_lang,
-        use_gpu=False,
-        show_log=False,           # 禁用日志输出
-        det_model_dir=None,       # 使用默认轻量检测模型
-        rec_model_dir=None,       # 使用默认轻量识别模型
-        det_db_thresh=0.3,        # 检测阈值
-        det_db_box_thresh=0.5,    # 框阈值
-        det_db_unclip_ratio=1.6,  # 扩展比例
-        rec_batch_num=6,          # 批处理数量
-        max_text_length=25,       # 最大文本长度
-        use_space_char=True,      # 使用空格字符
+        use_doc_orientation_classify=False,  # 禁用文档方向分类（加速）
+        use_doc_unwarping=False,             # 禁用文档矫正（加速）
+        use_textline_orientation=False,      # 禁用文本行方向检测（加速）
     )
     
-    # 预热模型
-    logger.info("🔥 预热OCR模型...")
+    # 预热模型（使用一个小图片进行预热）
+    logger.info("🔥 预热 PP-OCRv5 模型...")
     dummy_img = np.zeros((100, 100, 3), dtype=np.uint8)
     dummy_img.fill(255)
     try:
-        ocr.ocr(dummy_img, cls=False)
-    except:
-        pass
+        list(ocr.predict(dummy_img))  # 消费迭代器以完成预热
+    except Exception as e:
+        logger.warning(f"预热失败（可忽略）: {e}")
     
     elapsed = time.time() - start
-    logger.info(f"✅ PaddleOCR初始化完成，耗时: {elapsed:.2f}秒")
+    logger.info(f"✅ PaddleOCR 3.x (PP-OCRv5) 初始化完成，耗时: {elapsed:.2f}秒")
     
     # 安全配置日志
     logger.info(f"🔐 安全配置:")
@@ -290,8 +288,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="PaddleOCR Service",
-    version="2.0.0",
-    description="安全加固版 OCR 服务",
+    version="3.0.0",
+    description="基于 PaddleOCR 3.x (PP-OCRv5) 的安全加固版 OCR 服务",
     lifespan=lifespan
 )
 
@@ -316,7 +314,8 @@ async def health_check():
     return {
         "status": "healthy",
         "service": "paddle-ocr",
-        "version": "2.0.0",
+        "version": "3.0.0",
+        "engine": "PaddleOCR 3.x (PP-OCRv5)",
         "security": {
             "api_key_enabled": API_KEY_ENABLED and bool(API_KEY),
             "rate_limit": f"{RATE_LIMIT_REQUESTS}/{RATE_LIMIT_WINDOW}s"
@@ -330,16 +329,12 @@ async def recognize_general(request: Request, file: UploadFile = File(...)):
     try:
         await validate_file(file)
         image = await load_image(file)
-        result = ocr.ocr(image, cls=False)
+        # PaddleOCR 3.x 使用 predict() 方法
+        result = ocr.predict(image)
+        _, detailed = extract_ocr_text(result)
         
-        texts = []
-        for line in result[0] if result[0] else []:
-            text = line[1][0]
-            confidence = line[1][1]
-            texts.append({"text": text, "confidence": confidence})
-        
-        logger.info(f"通用OCR完成，识别 {len(texts)} 行文本，IP: {get_client_ip(request)}")
-        return {"success": True, "result": texts}
+        logger.info(f"通用OCR完成，识别 {len(detailed)} 行文本，IP: {get_client_ip(request)}")
+        return {"success": True, "result": detailed}
     except HTTPException:
         raise
     except Exception as e:
@@ -353,12 +348,9 @@ async def recognize_bank_receipt(request: Request, file: UploadFile = File(...))
     try:
         await validate_file(file)
         image = await load_image(file)
-        result = ocr.ocr(image, cls=False)
+        result = ocr.predict(image)
         
-        all_text = []
-        for line in result[0] if result[0] else []:
-            all_text.append(line[1][0])
-        
+        all_text, _ = extract_ocr_text(result)
         full_text = "\n".join(all_text)
         parsed = parse_bank_receipt(full_text)
         parsed["raw_text"] = full_text
@@ -381,9 +373,10 @@ async def recognize_idcard_front(request: Request, file: UploadFile = File(...))
         image = await load_image(file)
         logger.info(f"处理身份证识别请求，图片尺寸: {image.shape}, IP: {get_client_ip(request)}")
         
-        result = ocr.ocr(image, cls=False)
+        result = ocr.predict(image)
+        all_text, detailed = extract_ocr_text(result)
         
-        if not result or not result[0]:
+        if not all_text:
             logger.warning("OCR识别结果为空")
             return {
                 "success": True,
@@ -399,15 +392,8 @@ async def recognize_idcard_front(request: Request, file: UploadFile = File(...))
                 }
             }
         
-        all_text = []
-        for line in result[0]:
-            if line and len(line) > 1:
-                text = line[1][0] if isinstance(line[1], (list, tuple)) else str(line[1])
-                all_text.append(text)
-        
         full_text = "\n".join(all_text)
-        # 注意：日志会自动脱敏
-        logger.info(f"身份证OCR识别行数: {len(result[0])}")
+        logger.info(f"身份证OCR识别行数: {len(all_text)}")
         
         parsed = parse_idcard_front(full_text)
         parsed["raw_text"] = full_text
@@ -429,12 +415,9 @@ async def recognize_idcard_back(request: Request, file: UploadFile = File(...)):
     try:
         await validate_file(file)
         image = await load_image(file)
-        result = ocr.ocr(image, cls=False)
+        result = ocr.predict(image)
         
-        all_text = []
-        for line in result[0] if result[0] else []:
-            all_text.append(line[1][0])
-        
+        all_text, _ = extract_ocr_text(result)
         full_text = "\n".join(all_text)
         parsed = parse_idcard_back(full_text)
         parsed["confidence"] = 0.95
@@ -454,12 +437,9 @@ async def recognize_business_license(request: Request, file: UploadFile = File(.
     try:
         await validate_file(file)
         image = await load_image(file)
-        result = ocr.ocr(image, cls=False)
+        result = ocr.predict(image)
         
-        all_text = []
-        for line in result[0] if result[0] else []:
-            all_text.append(line[1][0])
-        
+        all_text, _ = extract_ocr_text(result)
         full_text = "\n".join(all_text)
         parsed = parse_business_license(full_text)
         parsed["confidence"] = 0.9
@@ -479,12 +459,9 @@ async def recognize_business_card(request: Request, file: UploadFile = File(...)
     try:
         await validate_file(file)
         image = await load_image(file)
-        result = ocr.ocr(image, cls=False)
+        result = ocr.predict(image)
         
-        all_text = []
-        for line in result[0] if result[0] else []:
-            all_text.append(line[1][0])
-        
+        all_text, _ = extract_ocr_text(result)
         full_text = "\n".join(all_text)
         parsed = parse_business_card(full_text)
         parsed["raw_text"] = full_text
@@ -505,12 +482,9 @@ async def recognize_invoice(request: Request, file: UploadFile = File(...)):
     try:
         await validate_file(file)
         image = await load_image(file)
-        result = ocr.ocr(image, cls=False)
+        result = ocr.predict(image)
         
-        all_text = []
-        for line in result[0] if result[0] else []:
-            all_text.append(line[1][0])
-        
+        all_text, _ = extract_ocr_text(result)
         full_text = "\n".join(all_text)
         parsed = parse_invoice(full_text)
         parsed["raw_text"] = full_text
@@ -526,6 +500,35 @@ async def recognize_invoice(request: Request, file: UploadFile = File(...)):
 
 
 # ==================== 辅助函数 ====================
+
+def extract_ocr_text(result) -> tuple[list[str], list[dict]]:
+    """
+    从 PaddleOCR 3.x 结果中提取文本
+    参考: https://paddlepaddle.github.io/PaddleOCR/v3.0.3/en/version3.x/pipeline_usage/OCR.html
+    
+    PaddleOCR 3.x 结果对象是字典类型，包含:
+    - rec_texts: 识别的文本列表
+    - rec_scores: 置信度分数列表
+    - dt_polys: 检测框坐标
+    
+    返回: (文本列表, 详细结果列表)
+    """
+    all_text = []
+    detailed_results = []
+    
+    for res in result:
+        # PaddleOCR 3.x 结果对象是字典类型
+        texts = res.get('rec_texts', []) or []
+        scores = res.get('rec_scores', []) or []
+        
+        for i, text in enumerate(texts):
+            if text:  # 跳过空文本
+                score = float(scores[i]) if i < len(scores) else 0.9
+                all_text.append(str(text))
+                detailed_results.append({"text": str(text), "confidence": score})
+    
+    return all_text, detailed_results
+
 
 async def load_image(file: UploadFile) -> np.ndarray:
     """加载图片"""

@@ -86,9 +86,11 @@ const gridColumns: VxeGridProps['columns'] = [
 ];
 
 // 加载数据
-async function loadData(
-  params: Record<string, any> & { page: number; pageSize: number },
-) {
+async function loadData(params: {
+  page: number;
+  pageSize: number;
+  [key: string]: any;
+}) {
   const query: DocumentTemplateQuery = {
     pageNum: params.page,
     pageSize: params.pageSize,
@@ -111,8 +113,21 @@ const [Grid, gridApi] = useVbenVxeGrid({
     minHeight: 200,
     proxyConfig: {
       ajax: {
-        query: loadData,
+        query: async ({
+          page,
+        }: {
+          page: { currentPage: number; pageSize: number };
+        }) => {
+          return await loadData({
+            page: page.currentPage,
+            pageSize: page.pageSize,
+          });
+        },
       },
+    },
+    pagerConfig: {
+      pageSize: 20,
+      pageSizes: [10, 20, 50, 100],
     },
     toolbarConfig: {
       slots: { buttons: 'toolbar-buttons' },
