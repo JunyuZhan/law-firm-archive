@@ -295,6 +295,12 @@ function initEditorFromConfig(cfg: OnlyOfficeConfig) {
         loading.value = false;
       },
       onError: (e: any) => {
+        // 输出完整错误信息用于调试
+        console.error('OnlyOffice 错误详情:', {
+          errorCode: e.data?.errorCode,
+          errorDescription: e.data?.errorDescription,
+          fullError: e,
+        });
         error.value = `文档加载失败: ${e.data?.errorDescription || '未知错误'}`;
         loading.value = false;
       },

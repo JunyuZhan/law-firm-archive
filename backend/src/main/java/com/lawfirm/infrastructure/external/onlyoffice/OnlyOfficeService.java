@@ -168,14 +168,17 @@ public class OnlyOfficeService {
     /**
      * 生成 OnlyOffice JWT Token
      * 用于验证配置未被篡改
+     * 
+     * 重要：OnlyOffice 使用标准的 HMAC-SHA256 算法验证 JWT。
+     * 必须使用 javax.crypto.spec.SecretKeySpec 直接创建密钥，
+     * 避免 JJWT 的 Keys.hmacShaKeyFor() 方法根据密钥长度自动选择错误的算法。
      */
     private String generateJwtToken(Map<String, Object> payload) {
         try {
-            // 使用 HS256 算法，这是 OnlyOffice 最广泛支持的算法
-            // 注意：必须显式指定算法，否则 JJWT 会根据密钥长度自动选择
-            // 长密钥会导致使用 HS512，可能导致 OnlyOffice 验证失败
-            SecretKey key = Keys.hmacShaKeyFor(
-                    this.config.getJwtSecret().getBytes(StandardCharsets.UTF_8));
+            // 直接使用 SecretKeySpec 创建 HMAC-SHA256 密钥
+            // 这样可以确保无论密钥长度如何，都使用 HS256 算法
+            byte[] keyBytes = this.config.getJwtSecret().getBytes(StandardCharsets.UTF_8);
+            SecretKey key = new javax.crypto.spec.SecretKeySpec(keyBytes, "HmacSHA256");
 
             return Jwts.builder()
                     .claims(payload)
@@ -201,8 +204,9 @@ public class OnlyOfficeService {
         }
 
         try {
-            SecretKey key = Keys.hmacShaKeyFor(
-                    this.config.getJwtSecret().getBytes(StandardCharsets.UTF_8));
+            // 使用 SecretKeySpec 创建密钥，与生成方法保持一致
+            byte[] keyBytes = this.config.getJwtSecret().getBytes(StandardCharsets.UTF_8);
+            SecretKey key = new javax.crypto.spec.SecretKeySpec(keyBytes, "HmacSHA256");
 
             var claims = Jwts.parser()
                     .verifyWith(key)
