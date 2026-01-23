@@ -828,6 +828,7 @@ class DocumentAppServiceTest {
             doc.setThumbnailUrl("/thumbnail/path/test.jpg");
 
             when(documentRepository.getByIdOrThrow(TEST_DOC_ID, "文档不存在")).thenReturn(doc);
+            when(minioService.getBrowserAccessibleUrl(anyString())).thenAnswer(invocation -> invocation.getArgument(0));
 
             // When
             String result = documentAppService.getThumbnailUrl(TEST_DOC_ID);
@@ -849,6 +850,7 @@ class DocumentAppServiceTest {
             when(thumbnailService.generateThumbnailFromUrl(anyString(), anyString()))
                     .thenReturn("/thumbnail/path/test.jpg");
             when(documentRepository.updateById(any(Document.class))).thenReturn(true);
+            when(minioService.getBrowserAccessibleUrl(anyString())).thenAnswer(invocation -> invocation.getArgument(0));
 
             // When
             String result = documentAppService.getThumbnailUrl(TEST_DOC_ID);
