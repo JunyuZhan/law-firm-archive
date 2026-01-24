@@ -132,13 +132,57 @@ docker swarm join --token SWMTKN-1-xxx... 192.168.50.10:2377
 ./scripts/deploy-swarm.sh remove
 ```
 
+## SSL 证书配置（HTTPS）
+
+### 证书存放位置
+
+将 SSL 证书文件放在 `docker/ssl/` 目录下：
+
+```bash
+docker/ssl/
+├── fullchain.pem    # 完整证书链
+└── privkey.pem      # 私钥文件
+```
+
+详细说明请参考：[docker/ssl/README.md](../docker/ssl/README.md)
+
+### 配置 HTTPS
+
+1. **放置证书文件**
+   ```bash
+   # 将证书文件复制到 docker/ssl/ 目录
+   cp /path/to/your/fullchain.pem docker/ssl/fullchain.pem
+   cp /path/to/your/privkey.pem docker/ssl/privkey.pem
+   
+   # 设置正确的文件权限
+   chmod 644 docker/ssl/fullchain.pem
+   chmod 600 docker/ssl/privkey.pem
+   ```
+
+2. **修改 docker-compose.swarm.yml**
+   
+   在 `frontend` 服务中添加 volume 挂载和端口映射：
+   ```yaml
+   frontend:
+     volumes:
+       - ./ssl:/etc/nginx/ssl:ro
+     ports:
+       - "80:8080"   # HTTP（重定向到 HTTPS）
+       - "443:8443"  # HTTPS
+   ```
+
+3. **使用支持 HTTPS 的 Nginx 配置**
+   
+   将 `frontend/scripts/deploy/nginx.conf` 替换为 `nginx-ssl.conf.example` 的内容，或参考该文件修改现有配置。
+
 ## 访问服务
 
 部署完成后，可以通过任意节点 IP 访问：
 
 | 服务 | 地址 |
 |------|------|
-| 系统首页 | `http://<任意节点IP>` |
+| 系统首页（HTTP） | `http://<任意节点IP>` |
+| 系统首页（HTTPS） | `https://<任意节点IP>`（需配置SSL证书） |
 | MinIO 控制台 | `http://<Manager节点IP>:9001` |
 
 ## 高可用配置

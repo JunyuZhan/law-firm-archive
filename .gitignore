@@ -64,3 +64,11 @@ backend/logs/
 .cursor/rules/
 backend/backups/
 *.jqwik-database
+
+# SSL Certificates
+docker/ssl/*.pem
+docker/ssl/*.key
+docker/ssl/*.crt
+docker/ssl/*.p12
+docker/ssl/*.pfx
+!docker/ssl/README.md

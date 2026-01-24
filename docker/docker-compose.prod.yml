@@ -21,7 +21,13 @@ services:
         - DOCS_PASSWORD=${DOCS_PASSWORD:-lawfirm@2026}
     container_name: law-firm-frontend
     ports:
-      - "80:8080"
+      - "80:8080"   # HTTP
+      - "443:8443"  # HTTPS
+    volumes:
+      # SSL 证书挂载
+      - ./ssl:/etc/nginx/ssl:ro
+      # 可选：如果需要使用自定义的 nginx SSL 配置，取消下面的注释
+      # - ../frontend/scripts/deploy/nginx-ssl.conf:/etc/nginx/nginx.conf:ro
     environment:
       - API_HOST=backend
       - API_PORT=8080
