@@ -54,8 +54,8 @@ COPY --from=builder /app/apps/web-antd/dist /usr/share/nginx/html
 # 复制文档站点构建产物
 COPY --from=builder /app/docs/.vitepress/dist /usr/share/nginx/html/docs
 
-# 复制 nginx 配置
-COPY --from=builder /app/scripts/deploy/nginx.conf /etc/nginx/nginx.conf
+# 复制 nginx 配置（使用 SSL 版本）
+COPY --from=builder /app/scripts/deploy/nginx-ssl.conf /etc/nginx/nginx.conf
 
 EXPOSE 8080
 
