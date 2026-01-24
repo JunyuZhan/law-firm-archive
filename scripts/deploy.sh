@@ -378,8 +378,8 @@ setup_env() {
         fi
 
         # 确保 OnlyOffice JWT 配置完整和一致
-        # 如果 ONLYOFFICE_JWT_SECRET 不存在，自动生成
-        if [ -z "${ONLYOFFICE_JWT_SECRET:-}" ] || [ "$ONLYOFFICE_JWT_SECRET" = "your-onlyoffice-jwt-secret-change-in-production" ]; then
+        # 如果 ONLYOFFICE_JWT_SECRET 不存在或是默认值，自动生成
+        if [ -z "${ONLYOFFICE_JWT_SECRET:-}" ] || [ "$ONLYOFFICE_JWT_SECRET" = "your-onlyoffice-jwt-secret-change-in-production" ] || [ "$ONLYOFFICE_JWT_SECRET" = "law-firm-onlyoffice-default-secret-2024" ]; then
             log_info "检测到 ONLYOFFICE_JWT_SECRET 未配置，自动生成..."
             NEW_ONLYOFFICE_SECRET=$(openssl rand -hex 32 2>/dev/null || head -c 32 /dev/urandom | xxd -p)
             if [[ "$OSTYPE" == "darwin"* ]]; then
