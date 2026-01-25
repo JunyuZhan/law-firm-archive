@@ -277,7 +277,16 @@ setup_env() {
                 sed -i '' "s|ONLYOFFICE_CALLBACK_URL=.*|ONLYOFFICE_CALLBACK_URL=http://backend:8080/api|" "$ENV_FILE"
             fi
             sed -i '' "s|OCR_API_KEY=.*|OCR_API_KEY=$NEW_OCR_API_KEY|" "$ENV_FILE"
-            sed -i '' "s|DOCS_PASSWORD=.*|DOCS_PASSWORD=$NEW_DOCS_PASSWORD|" "$ENV_FILE"
+            # 如果 DOCS_USERNAME 不存在，添加它；如果存在，更新它
+            if ! grep -q "^DOCS_USERNAME=" "$ENV_FILE"; then
+                echo "DOCS_USERNAME=admin" >> "$ENV_FILE"
+            fi
+            # 如果 DOCS_PASSWORD 不存在，添加它；如果存在，更新它
+            if ! grep -q "^DOCS_PASSWORD=" "$ENV_FILE"; then
+                echo "DOCS_PASSWORD=$NEW_DOCS_PASSWORD" >> "$ENV_FILE"
+            else
+                sed -i '' "s|DOCS_PASSWORD=.*|DOCS_PASSWORD=$NEW_DOCS_PASSWORD|" "$ENV_FILE"
+            fi
             # 如果 GRAFANA_PASSWORD 不存在，添加它；如果存在，更新它
             if ! grep -q "^GRAFANA_PASSWORD=" "$ENV_FILE"; then
                 echo "GRAFANA_PASSWORD=$NEW_GRAFANA_PASSWORD" >> "$ENV_FILE"
@@ -304,7 +313,16 @@ setup_env() {
                 sed -i "s|ONLYOFFICE_CALLBACK_URL=.*|ONLYOFFICE_CALLBACK_URL=http://backend:8080/api|" "$ENV_FILE"
             fi
             sed -i "s|OCR_API_KEY=.*|OCR_API_KEY=$NEW_OCR_API_KEY|" "$ENV_FILE"
-            sed -i "s|DOCS_PASSWORD=.*|DOCS_PASSWORD=$NEW_DOCS_PASSWORD|" "$ENV_FILE"
+            # 如果 DOCS_USERNAME 不存在，添加它；如果存在，更新它
+            if ! grep -q "^DOCS_USERNAME=" "$ENV_FILE"; then
+                echo "DOCS_USERNAME=admin" >> "$ENV_FILE"
+            fi
+            # 如果 DOCS_PASSWORD 不存在，添加它；如果存在，更新它
+            if ! grep -q "^DOCS_PASSWORD=" "$ENV_FILE"; then
+                echo "DOCS_PASSWORD=$NEW_DOCS_PASSWORD" >> "$ENV_FILE"
+            else
+                sed -i "s|DOCS_PASSWORD=.*|DOCS_PASSWORD=$NEW_DOCS_PASSWORD|" "$ENV_FILE"
+            fi
             # 如果 GRAFANA_PASSWORD 不存在，添加它；如果存在，更新它
             if ! grep -q "^GRAFANA_PASSWORD=" "$ENV_FILE"; then
                 echo "GRAFANA_PASSWORD=$NEW_GRAFANA_PASSWORD" >> "$ENV_FILE"
@@ -439,6 +457,43 @@ setup_env() {
             fi
             source "$ENV_FILE"
             log_success "OnlyOffice 回调 URL 已配置"
+        fi
+
+        # 如果 DOCS_USERNAME 不存在，自动添加
+        if [ -z "${DOCS_USERNAME:-}" ]; then
+            log_info "检测到 DOCS_USERNAME 未配置，自动添加..."
+            if [[ "$OSTYPE" == "darwin"* ]]; then
+                if ! grep -q "^DOCS_USERNAME=" "$ENV_FILE"; then
+                    echo "DOCS_USERNAME=admin" >> "$ENV_FILE"
+                fi
+            else
+                if ! grep -q "^DOCS_USERNAME=" "$ENV_FILE"; then
+                    echo "DOCS_USERNAME=admin" >> "$ENV_FILE"
+                fi
+            fi
+            source "$ENV_FILE"
+            log_success "文档站点用户名已配置"
+        fi
+
+        # 如果 DOCS_PASSWORD 不存在，自动生成
+        if [ -z "${DOCS_PASSWORD:-}" ] || [ "$DOCS_PASSWORD" = "your_docs_password_here" ] || [ "$DOCS_PASSWORD" = "your-docs-password-here" ]; then
+            log_info "检测到 DOCS_PASSWORD 未配置，自动生成..."
+            NEW_DOCS_PASSWORD=$(generate_password)
+            if [[ "$OSTYPE" == "darwin"* ]]; then
+                if ! grep -q "^DOCS_PASSWORD=" "$ENV_FILE"; then
+                    echo "DOCS_PASSWORD=$NEW_DOCS_PASSWORD" >> "$ENV_FILE"
+                else
+                    sed -i '' "s|DOCS_PASSWORD=.*|DOCS_PASSWORD=$NEW_DOCS_PASSWORD|" "$ENV_FILE"
+                fi
+            else
+                if ! grep -q "^DOCS_PASSWORD=" "$ENV_FILE"; then
+                    echo "DOCS_PASSWORD=$NEW_DOCS_PASSWORD" >> "$ENV_FILE"
+                else
+                    sed -i "s|DOCS_PASSWORD=.*|DOCS_PASSWORD=$NEW_DOCS_PASSWORD|" "$ENV_FILE"
+                fi
+            fi
+            source "$ENV_FILE"
+            log_success "文档站点密码已生成"
         fi
 
         # 如果 GRAFANA_PASSWORD 不存在，自动生成
