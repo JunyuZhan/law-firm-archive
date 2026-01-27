@@ -10,8 +10,9 @@ name: law-firm-prod
 
 services:
   # ============================================
-  # 前端服务（Nginx + Vue3 静态文件）
+  # 核心应用服务组（必需）
   # ============================================
+  # 前端服务（Nginx + Vue3 静态文件）
   frontend:
     build:
       context: ../frontend
@@ -96,7 +97,7 @@ services:
           memory: 2G
 
   # ============================================
-  # 基础设施服务（继承开发环境配置）
+  # 基础设施服务组（必需）
   # ============================================
   postgres:
     image: postgres:15-alpine
@@ -118,7 +119,7 @@ services:
       retries: 5
 
   # ============================================
-  # Redis 缓存（无前缀，可共享）
+  # 缓存服务组（必需）
   # ============================================
   redis:
     image: redis:7-alpine
@@ -136,7 +137,7 @@ services:
       retries: 5
 
   # ============================================
-  # 对象存储服务 (MinIO)（项目专用，密码自动生成）
+  # 存储服务组（必需）
   # ============================================
   minio:
     image: minio/minio:RELEASE.2024-07-15T19-02-30Z
@@ -199,9 +200,10 @@ services:
   #     retries: 3
 
   # ============================================
-  # OnlyOffice 文档服务（无前缀，可共享）
+  # 文档服务组（可选，可通过 --profile docs 启用）
   # ============================================
   onlyoffice:
+    profiles: ["docs"]  # 使用 --profile docs 启用文档服务
     build:
       context: ./onlyoffice
       dockerfile: Dockerfile
@@ -238,12 +240,10 @@ services:
       start_period: 60s
 
   # ============================================
-  # 监控服务 (Prometheus)（无前缀，可共享）
-  # ============================================
-  # ============================================
-  # 监控服务 (Prometheus)（无前缀，可共享）
+  # 监控服务组（可选，可通过 --profile monitoring 启用）
   # ============================================
   prometheus:
+    profiles: ["monitoring"]  # 使用 --profile monitoring 启用监控服务
     image: prom/prometheus:latest
     container_name: prometheus
     volumes:
@@ -260,10 +260,8 @@ services:
       - law-firm-network
     restart: unless-stopped
 
-  # ============================================
-  # 监控可视化 (Grafana)（无前缀，可共享）
-  # ============================================
   grafana:
+    profiles: ["monitoring"]  # 使用 --profile monitoring 启用监控服务
     image: grafana/grafana:latest
     container_name: grafana
     ports:
