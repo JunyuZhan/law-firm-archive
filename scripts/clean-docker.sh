@@ -36,6 +36,7 @@ echo -e "${RED}║  • 所有相关数据卷 (数据库、Redis、MinIO、OnlyO
 echo -e "${RED}║  • 所有相关网络                                             ║${NC}"
 echo -e "${RED}║                                                              ║${NC}"
 echo -e "${RED}║  ⚠️  数据库数据将永久丢失！                                 ║${NC}"
+echo -e "${RED}║  ✅ 其他应用的容器和数据卷不会被删除                        ║${NC}"
 echo -e "${RED}╚══════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 
@@ -87,14 +88,9 @@ echo -e "${GREEN}✓ 容器清理完成${NC}"
 echo ""
 echo -e "${YELLOW}[2/4] 删除所有相关数据卷...${NC}"
 
-# 删除所有相关数据卷（只匹配项目相关的前缀，避免误删其他项目）
-VOLUMES=$(docker volume ls -q | grep -E "^(law-firm|dev-|test-)" || true)
-if [ -n "$VOLUMES" ]; then
-    echo "$VOLUMES" | xargs docker volume rm 2>/dev/null || true
-fi
-
-# 也清理docker-compose创建的数据卷（通过compose文件中的volume名称）
-# 这些数据卷通常以项目目录名或服务名命名，更安全
+# 优先通过docker-compose清理数据卷（最安全，只清理本项目定义的资源）
+# 这些数据卷由docker-compose管理，名称通常为：项目名_服务名_data
+# 例如：law-firm-prod_minio_data、law-firm-dev_postgres_data
 cd "$DOCKER_DIR"
 ENV_FILE="$PROJECT_ROOT/.env"
 for compose_file in docker-compose*.yml; do
@@ -106,6 +102,17 @@ for compose_file in docker-compose*.yml; do
         fi
     fi
 done
+
+# 清理可能残留的数据卷（只匹配项目相关的前缀，避免误删其他项目）
+# Docker Compose会自动给数据卷加上项目名称前缀，如：
+# - law-firm-prod_minio_data（生产环境）
+# - law-firm-dev_postgres_data（开发环境）
+# - law-firm-test_redis_data（测试环境）
+# 其他应用的数据卷（如pis_minio_data）不会被删除
+VOLUMES=$(docker volume ls -q | grep -E "^(law-firm|dev-|test-)" || true)
+if [ -n "$VOLUMES" ]; then
+    echo "$VOLUMES" | xargs docker volume rm 2>/dev/null || true
+fi
 
 echo -e "${GREEN}✓ 数据卷清理完成${NC}"
 
