@@ -77,9 +77,9 @@ else
     docker compose -f docker-compose.test.yml down -v --remove-orphans 2>/dev/null || true
 fi
 
-# 强制删除可能残留的容器（排除共享的MinIO容器）
-# 注意：如果使用共享MinIO（如shared-minio），不会被删除
-CONTAINERS=$(docker ps -a --format "{{.Names}}" | grep -E "(law-firm|dev-)" | grep -vE "(shared-minio|shared-)" || true)
+# 强制删除可能残留的容器（只清理 law-firm-* 前缀的容器）
+# 注意：minio 和 onlyoffice 容器（无前缀）不会被删除，因为它们可以共享
+CONTAINERS=$(docker ps -a --format "{{.Names}}" | grep -E "^(law-firm|dev-)" | grep -vE "^(minio|onlyoffice)$" || true)
 if [ -n "$CONTAINERS" ]; then
     echo "$CONTAINERS" | xargs docker rm -f 2>/dev/null || true
 fi
@@ -137,10 +137,10 @@ echo -e "${GREEN}✓ 网络清理完成${NC}"
 echo ""
 echo -e "${YELLOW}[4/4] 验证清理结果...${NC}"
 
-# 验证清理结果
-REMAINING_CONTAINERS=$(docker ps -a --format "{{.Names}}" | grep -E "(law-firm|dev-)" | wc -l | tr -d ' ')
-REMAINING_VOLUMES=$(docker volume ls -q | grep -E "(law-firm|dev-|postgres|redis|minio|onlyoffice|ocr|elasticsearch)" | wc -l | tr -d ' ')
-REMAINING_NETWORKS=$(docker network ls --format "{{.Name}}" | grep -E "(law-firm|dev-)" | wc -l | tr -d ' ')
+# 验证清理结果（只统计 law-firm-* 前缀的容器）
+REMAINING_CONTAINERS=$(docker ps -a --format "{{.Names}}" | grep -E "^(law-firm|dev-)" | wc -l | tr -d ' ')
+REMAINING_VOLUMES=$(docker volume ls -q | grep -E "^(law-firm|dev-|test-)" | wc -l | tr -d ' ')
+REMAINING_NETWORKS=$(docker network ls --format "{{.Name}}" | grep -E "^(law-firm|dev-)" | wc -l | tr -d ' ')
 
 echo ""
 echo -e "${GREEN}==========================================${NC}"
