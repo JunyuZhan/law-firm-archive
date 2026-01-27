@@ -35,6 +35,8 @@ services:
       - backend
     networks:
       - law-firm-network
+      # 如果使用共享 MinIO，也加入共享网络（部署脚本会自动处理）
+      - ${SHARED_MINIO_NETWORK:-shared-network}
     restart: unless-stopped
     deploy:
       resources:
@@ -60,8 +62,10 @@ services:
       - REDIS_PORT=6379
       - REDIS_PASSWORD=${REDIS_PASSWORD:-}
       - JWT_SECRET=${JWT_SECRET}
-      - MINIO_ENDPOINT=http://minio:9000
-      - MINIO_EXTERNAL_ENDPOINT=http://minio:9000
+      # MinIO 配置：如果 USE_SHARED_MINIO=true，使用共享 MinIO；否则使用内置 MinIO
+      # 部署脚本会自动根据 USE_SHARED_MINIO 环境变量设置正确的值
+      - MINIO_ENDPOINT=${MINIO_ENDPOINT:-http://minio:9000}
+      - MINIO_EXTERNAL_ENDPOINT=${MINIO_EXTERNAL_ENDPOINT:-http://minio:9000}
       - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minioadmin}
       - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-minioadmin}
       - MINIO_BUCKET=law-firm
@@ -74,7 +78,7 @@ services:
       - ONLYOFFICE_JWT_SECRET=${ONLYOFFICE_JWT_SECRET:-law-firm-onlyoffice-default-secret-2024}
       - ONLYOFFICE_CALLBACK_URL=http://backend:8080/api
       - ONLYOFFICE_URL=${ONLYOFFICE_URL:-/onlyoffice}
-      - FILE_SERVER_URL=http://minio:9000
+      - FILE_SERVER_URL=${FILE_SERVER_URL:-http://minio:9000}
     depends_on:
       postgres:
         condition: service_healthy
@@ -146,7 +150,11 @@ services:
       - "9001:9001"  # 控制台
     networks:
       - law-firm-network
+      # 如果使用共享 MinIO，也加入共享网络（部署脚本会自动处理）
+      - ${SHARED_MINIO_NETWORK:-law-firm-network}
     restart: unless-stopped
+    # 使用 profiles 控制是否启动：如果 USE_SHARED_MINIO=true，使用 --profile shared-minio 排除此服务
+    profiles: ["!shared-minio"]
 
   minio-init:
     image: minio/mc:latest
@@ -154,16 +162,36 @@ services:
     environment:
       - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minioadmin}
       - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-minioadmin}
+      # 根据 USE_SHARED_MINIO 决定连接哪个 MinIO
+      - USE_SHARED_MINIO=${USE_SHARED_MINIO:-false}
+      - SHARED_MINIO_HOST=${SHARED_MINIO_HOST:-shared-minio}
+      - SHARED_MINIO_PORT=${SHARED_MINIO_PORT:-9000}
     entrypoint: >
       /bin/sh -c "
       sleep 5;
-      mc alias set local http://minio:9000 ${MINIO_ACCESS_KEY:-minioadmin} ${MINIO_SECRET_KEY:-minioadmin};
+      # 根据 USE_SHARED_MINIO 决定连接哪个 MinIO
+      if [ \"$${USE_SHARED_MINIO:-false}\" = \"true\" ]; then
+        MINIO_HOST=$${SHARED_MINIO_HOST:-shared-minio}
+        MINIO_PORT=$${SHARED_MINIO_PORT:-9000}
+        echo \"Using shared MinIO at $${MINIO_HOST}:$${MINIO_PORT}\"
+      else
+        MINIO_HOST=minio
+        MINIO_PORT=9000
+        echo \"Using built-in MinIO at $${MINIO_HOST}:$${MINIO_PORT}\"
+      fi
+      mc alias set local http://$$MINIO_HOST:$$MINIO_PORT $${MINIO_ACCESS_KEY:-minioadmin} $${MINIO_SECRET_KEY:-minioadmin};
       mc mb local/law-firm --ignore-existing;
       mc anonymous set public local/law-firm;
       exit 0;
       "
+    depends_on:
+      minio:
+        condition: service_started
+        required: false
     networks:
       - law-firm-network
+      # 如果使用共享 MinIO，也加入共享网络
+      - ${SHARED_MINIO_NETWORK:-law-firm-network}
 
   # paddle-ocr 服务已停用，如需启用请取消注释
   # paddle-ocr:
@@ -276,5 +304,11 @@ volumes:
 
 networks:
   law-firm-network:
+    driver: bridge
+  # 共享 MinIO 网络（如果使用共享 MinIO，部署脚本会确保此网络存在）
+  # 注意：如果 USE_SHARED_MINIO=true，需要确保共享网络已创建
+  # 创建命令：docker network create shared-network
+  shared-network:
+    name: ${SHARED_MINIO_NETWORK:-shared-network}
     driver: bridge
 

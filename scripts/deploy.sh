@@ -381,6 +381,49 @@ setup_env() {
         log_info "检测到服务器 IP: ${SERVER_IP}"
 
         source "$ENV_FILE"
+        
+        # 检查是否使用共享 MinIO
+        if [ "${USE_SHARED_MINIO:-false}" = "true" ]; then
+            log_info "检测到 USE_SHARED_MINIO=true，将使用共享 MinIO"
+            
+            # 检查共享 MinIO 配置
+            if [ -z "${SHARED_MINIO_HOST:-}" ]; then
+                log_warn "USE_SHARED_MINIO=true 但未配置 SHARED_MINIO_HOST"
+                log_info "默认使用: shared-minio"
+                if [[ "$OSTYPE" == "darwin"* ]]; then
+                    if ! grep -q "^SHARED_MINIO_HOST=" "$ENV_FILE"; then
+                        echo "SHARED_MINIO_HOST=shared-minio" >> "$ENV_FILE"
+                    fi
+                else
+                    if ! grep -q "^SHARED_MINIO_HOST=" "$ENV_FILE"; then
+                        echo "SHARED_MINIO_HOST=shared-minio" >> "$ENV_FILE"
+                    fi
+                fi
+            fi
+            
+            # 更新 MinIO 连接地址
+            SHARED_MINIO_HOST="${SHARED_MINIO_HOST:-shared-minio}"
+            SHARED_MINIO_PORT="${SHARED_MINIO_PORT:-9000}"
+            if [[ "$OSTYPE" == "darwin"* ]]; then
+                sed -i '' "s|MINIO_ENDPOINT=.*|MINIO_ENDPOINT=http://${SHARED_MINIO_HOST}:${SHARED_MINIO_PORT}|" "$ENV_FILE" 2>/dev/null || \
+                echo "MINIO_ENDPOINT=http://${SHARED_MINIO_HOST}:${SHARED_MINIO_PORT}" >> "$ENV_FILE"
+                sed -i '' "s|MINIO_EXTERNAL_ENDPOINT=.*|MINIO_EXTERNAL_ENDPOINT=http://${SHARED_MINIO_HOST}:${SHARED_MINIO_PORT}|" "$ENV_FILE" 2>/dev/null || \
+                echo "MINIO_EXTERNAL_ENDPOINT=http://${SHARED_MINIO_HOST}:${SHARED_MINIO_PORT}" >> "$ENV_FILE"
+                sed -i '' "s|FILE_SERVER_URL=.*|FILE_SERVER_URL=http://${SHARED_MINIO_HOST}:${SHARED_MINIO_PORT}|" "$ENV_FILE" 2>/dev/null || \
+                echo "FILE_SERVER_URL=http://${SHARED_MINIO_HOST}:${SHARED_MINIO_PORT}" >> "$ENV_FILE"
+            else
+                sed -i "s|MINIO_ENDPOINT=.*|MINIO_ENDPOINT=http://${SHARED_MINIO_HOST}:${SHARED_MINIO_PORT}|" "$ENV_FILE" 2>/dev/null || \
+                echo "MINIO_ENDPOINT=http://${SHARED_MINIO_HOST}:${SHARED_MINIO_PORT}" >> "$ENV_FILE"
+                sed -i "s|MINIO_EXTERNAL_ENDPOINT=.*|MINIO_EXTERNAL_ENDPOINT=http://${SHARED_MINIO_HOST}:${SHARED_MINIO_PORT}|" "$ENV_FILE" 2>/dev/null || \
+                echo "MINIO_EXTERNAL_ENDPOINT=http://${SHARED_MINIO_HOST}:${SHARED_MINIO_PORT}" >> "$ENV_FILE"
+                sed -i "s|FILE_SERVER_URL=.*|FILE_SERVER_URL=http://${SHARED_MINIO_HOST}:${SHARED_MINIO_PORT}|" "$ENV_FILE" 2>/dev/null || \
+                echo "FILE_SERVER_URL=http://${SHARED_MINIO_HOST}:${SHARED_MINIO_PORT}" >> "$ENV_FILE"
+            fi
+            
+            log_success "已配置使用共享 MinIO: http://${SHARED_MINIO_HOST}:${SHARED_MINIO_PORT}"
+        fi
+        
+        source "$ENV_FILE"
     else
         # 检查不安全的默认值
         HAS_UNSAFE=false
@@ -712,9 +755,58 @@ deploy_standalone() {
         DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1 docker compose --env-file "$PROJECT_ROOT/.env" -f docker-compose.prod.yml build
     fi
     
+    # 检查是否使用共享 MinIO
+    source "$PROJECT_ROOT/.env"
+    COMPOSE_ARGS=""
+    if [ "${USE_SHARED_MINIO:-false}" = "true" ]; then
+        log_info "使用共享 MinIO，跳过内置 MinIO 服务"
+        # 使用 profiles 排除 minio 服务（minio 服务配置了 profiles: ["!shared-minio"]）
+        COMPOSE_ARGS="--profile shared-minio"
+        
+        # 检查共享 MinIO 是否可用
+        SHARED_MINIO_HOST="${SHARED_MINIO_HOST:-shared-minio}"
+        log_info "检查共享 MinIO 连接: ${SHARED_MINIO_HOST}"
+        
+        # 检查并创建共享 MinIO 网络（如果不存在）
+        SHARED_NETWORK="${SHARED_MINIO_NETWORK:-shared-network}"
+        if docker network inspect "$SHARED_NETWORK" &>/dev/null; then
+            log_success "共享 MinIO 网络已存在: $SHARED_NETWORK"
+        else
+            log_warn "共享 MinIO 网络不存在: $SHARED_NETWORK"
+            log_info "正在创建共享网络..."
+            if docker network create "$SHARED_NETWORK" 2>/dev/null; then
+                log_success "共享网络创建成功"
+            else
+                log_warn "无法创建网络，可能已存在或权限不足"
+            fi
+        fi
+        
+        # 检查共享 MinIO 容器是否运行
+        SHARED_MINIO_CONTAINER="${SHARED_MINIO_HOST:-shared-minio}"
+        if docker ps --format "{{.Names}}" | grep -q "^${SHARED_MINIO_CONTAINER}$"; then
+            log_success "共享 MinIO 容器正在运行: ${SHARED_MINIO_CONTAINER}"
+            # 确保共享 MinIO 容器在共享网络中
+            if ! docker network inspect "$SHARED_NETWORK" 2>/dev/null | grep -q "$SHARED_MINIO_CONTAINER"; then
+                log_info "将共享 MinIO 容器连接到共享网络..."
+                docker network connect "$SHARED_NETWORK" "$SHARED_MINIO_CONTAINER" 2>/dev/null || true
+            fi
+        else
+            log_warn "共享 MinIO 容器未运行: ${SHARED_MINIO_CONTAINER}"
+            log_info "提示：请确保共享 MinIO 容器已启动"
+            log_info "可以使用以下命令启动共享 MinIO："
+            log_info "  cd /opt/shared-minio && docker compose up -d"
+        fi
+    else
+        log_info "使用内置 MinIO 服务"
+    fi
+    
     # 再启动服务
     log_info "启动服务..."
-    docker compose --env-file "$PROJECT_ROOT/.env" -f docker-compose.prod.yml up -d
+    if [ -n "$COMPOSE_ARGS" ]; then
+        docker compose --env-file "$PROJECT_ROOT/.env" -f docker-compose.prod.yml $COMPOSE_ARGS up -d
+    else
+        docker compose --env-file "$PROJECT_ROOT/.env" -f docker-compose.prod.yml up -d
+    fi
     
     echo ""
     log_info "等待服务启动..."
