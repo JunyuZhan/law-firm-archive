@@ -267,6 +267,9 @@ services:
     profiles: ["monitoring"]  # 使用 --profile monitoring 启用监控服务
     image: prom/prometheus:latest
     container_name: prometheus
+    labels:
+      - "com.law-firm.group=monitoring"
+      - "com.law-firm.service=prometheus"
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus_data:/prometheus
@@ -285,6 +288,9 @@ services:
     profiles: ["monitoring"]  # 使用 --profile monitoring 启用监控服务
     image: grafana/grafana:latest
     container_name: grafana
+    labels:
+      - "com.law-firm.group=monitoring"
+      - "com.law-firm.service=grafana"
     ports:
       - "3000:3000"
     volumes:
