@@ -237,11 +237,11 @@ services:
       start_period: 60s
 
   # ============================================
-  # 监控服务 (Prometheus)
+  # 监控服务 (Prometheus)（无前缀，可共享）
   # ============================================
   prometheus:
     image: prom/prometheus:latest
-    container_name: law-firm-prometheus
+    container_name: prometheus
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus_data:/prometheus
@@ -257,11 +257,11 @@ services:
     restart: unless-stopped
 
   # ============================================
-  # 监控可视化 (Grafana)
+  # 监控可视化 (Grafana)（无前缀，可共享）
   # ============================================
   grafana:
     image: grafana/grafana:latest
-    container_name: law-firm-grafana
+    container_name: grafana
     ports:
       - "3000:3000"
     volumes:
