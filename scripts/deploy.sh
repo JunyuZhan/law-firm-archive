@@ -255,7 +255,7 @@ setup_env() {
         NEW_ONLYOFFICE_SECRET=$(openssl rand -hex 32 2>/dev/null || head -c 32 /dev/urandom | xxd -p)
         NEW_OCR_API_KEY=$(openssl rand -hex 32 2>/dev/null || head -c 32 /dev/urandom | xxd -p)
         NEW_DOCS_PASSWORD=$(generate_password)
-        NEW_GRAFANA_PASSWORD=$(generate_password)
+        # Grafana 使用默认密码 admin（可共享）
         
         if [[ "$OSTYPE" == "darwin"* ]]; then
             sed -i '' "s|JWT_SECRET=.*|JWT_SECRET=$NEW_JWT_SECRET|" "$ENV_FILE"
@@ -287,12 +287,7 @@ setup_env() {
             else
                 sed -i '' "s|DOCS_PASSWORD=.*|DOCS_PASSWORD=$NEW_DOCS_PASSWORD|" "$ENV_FILE"
             fi
-            # 如果 GRAFANA_PASSWORD 不存在，添加它；如果存在，更新它
-            if ! grep -q "^GRAFANA_PASSWORD=" "$ENV_FILE"; then
-                echo "GRAFANA_PASSWORD=$NEW_GRAFANA_PASSWORD" >> "$ENV_FILE"
-            else
-                sed -i '' "s|GRAFANA_PASSWORD=.*|GRAFANA_PASSWORD=$NEW_GRAFANA_PASSWORD|" "$ENV_FILE"
-            fi
+            # Grafana 使用默认密码 admin，不需要在 .env 中配置
         else
             sed -i "s|JWT_SECRET=.*|JWT_SECRET=$NEW_JWT_SECRET|" "$ENV_FILE"
             sed -i "s|DB_PASSWORD=.*|DB_PASSWORD=$NEW_DB_PASSWORD|" "$ENV_FILE"
@@ -323,12 +318,7 @@ setup_env() {
             else
                 sed -i "s|DOCS_PASSWORD=.*|DOCS_PASSWORD=$NEW_DOCS_PASSWORD|" "$ENV_FILE"
             fi
-            # 如果 GRAFANA_PASSWORD 不存在，添加它；如果存在，更新它
-            if ! grep -q "^GRAFANA_PASSWORD=" "$ENV_FILE"; then
-                echo "GRAFANA_PASSWORD=$NEW_GRAFANA_PASSWORD" >> "$ENV_FILE"
-            else
-                sed -i "s|GRAFANA_PASSWORD=.*|GRAFANA_PASSWORD=$NEW_GRAFANA_PASSWORD|" "$ENV_FILE"
-            fi
+            # Grafana 使用默认密码 admin，不需要在 .env 中配置
         fi
         
         # 自动检测服务器 IP 并配置外部访问地址
@@ -373,7 +363,7 @@ setup_env() {
         echo -e "  ${GREEN}✅${NC} ONLYOFFICE_URL=http://${SERVER_IP}/onlyoffice"
         echo -e "  ${GREEN}✅${NC} OCR_API_KEY"
         echo -e "  ${GREEN}✅${NC} DOCS_PASSWORD"
-        echo -e "  ${GREEN}✅${NC} GRAFANA_PASSWORD"
+        echo -e "  ${GREEN}✅${NC} Grafana 使用默认密码: admin"
         
         echo ""
         log_success "安全密钥已保存到 .env"
@@ -496,26 +486,8 @@ setup_env() {
             log_success "文档站点密码已生成"
         fi
 
-        # 如果 GRAFANA_PASSWORD 不存在，自动生成
-        if [ -z "${GRAFANA_PASSWORD:-}" ] || [ "$GRAFANA_PASSWORD" = "your-grafana-password-here" ]; then
-            log_info "检测到 GRAFANA_PASSWORD 未配置，自动生成..."
-            NEW_GRAFANA_PASSWORD=$(generate_password)
-            if [[ "$OSTYPE" == "darwin"* ]]; then
-                if ! grep -q "^GRAFANA_PASSWORD=" "$ENV_FILE"; then
-                    echo "GRAFANA_PASSWORD=$NEW_GRAFANA_PASSWORD" >> "$ENV_FILE"
-                else
-                    sed -i '' "s|GRAFANA_PASSWORD=.*|GRAFANA_PASSWORD=$NEW_GRAFANA_PASSWORD|" "$ENV_FILE"
-                fi
-            else
-                if ! grep -q "^GRAFANA_PASSWORD=" "$ENV_FILE"; then
-                    echo "GRAFANA_PASSWORD=$NEW_GRAFANA_PASSWORD" >> "$ENV_FILE"
-                else
-                    sed -i "s|GRAFANA_PASSWORD=.*|GRAFANA_PASSWORD=$NEW_GRAFANA_PASSWORD|" "$ENV_FILE"
-                fi
-            fi
-            source "$ENV_FILE"
-            log_success "Grafana 密码已生成"
-        fi
+        # Grafana 使用默认密码 admin（可共享，便于统一管理）
+        # 不需要在 .env 中配置，docker-compose 中已设置为 admin
         
         if [ "$HAS_UNSAFE" = true ]; then
             echo ""
