@@ -53,9 +53,28 @@ echo -e "${YELLOW}[1/4] 停止并删除所有相关容器...${NC}"
 
 # 停止并删除所有相关容器
 cd "$DOCKER_DIR"
-docker compose -f docker-compose.yml down -v --remove-orphans 2>/dev/null || true
-docker compose -f docker-compose.dev-full.yml down -v --remove-orphans 2>/dev/null || true
-docker compose -f docker-compose.prod.yml down -v --remove-orphans 2>/dev/null || true
+ENV_FILE="$PROJECT_ROOT/.env"
+
+# 如果存在.env文件，使用它；否则不使用
+if [ -f "$ENV_FILE" ]; then
+    docker compose --env-file "$ENV_FILE" -f docker-compose.yml down -v --remove-orphans 2>/dev/null || true
+    docker compose --env-file "$ENV_FILE" -f docker-compose.dev-full.yml down -v --remove-orphans 2>/dev/null || true
+    docker compose --env-file "$ENV_FILE" -f docker-compose.prod.yml down -v --remove-orphans 2>/dev/null || true
+    docker compose --env-file "$ENV_FILE" -f docker-compose.swarm.yml down -v --remove-orphans 2>/dev/null || true
+    docker compose --env-file "$ENV_FILE" -f docker-compose.nas.yml down -v --remove-orphans 2>/dev/null || true
+    docker compose --env-file "$ENV_FILE" -f docker-compose.minio-cluster.yml down -v --remove-orphans 2>/dev/null || true
+    docker compose --env-file "$ENV_FILE" -f docker-compose.minio-nas.yml down -v --remove-orphans 2>/dev/null || true
+    docker compose --env-file "$ENV_FILE" -f docker-compose.test.yml down -v --remove-orphans 2>/dev/null || true
+else
+    docker compose -f docker-compose.yml down -v --remove-orphans 2>/dev/null || true
+    docker compose -f docker-compose.dev-full.yml down -v --remove-orphans 2>/dev/null || true
+    docker compose -f docker-compose.prod.yml down -v --remove-orphans 2>/dev/null || true
+    docker compose -f docker-compose.swarm.yml down -v --remove-orphans 2>/dev/null || true
+    docker compose -f docker-compose.nas.yml down -v --remove-orphans 2>/dev/null || true
+    docker compose -f docker-compose.minio-cluster.yml down -v --remove-orphans 2>/dev/null || true
+    docker compose -f docker-compose.minio-nas.yml down -v --remove-orphans 2>/dev/null || true
+    docker compose -f docker-compose.test.yml down -v --remove-orphans 2>/dev/null || true
+fi
 
 # 强制删除可能残留的容器
 CONTAINERS=$(docker ps -a --format "{{.Names}}" | grep -E "(law-firm|dev-)" || true)
@@ -77,9 +96,14 @@ fi
 # 也清理docker-compose创建的数据卷（通过compose文件中的volume名称）
 # 这些数据卷通常以项目目录名或服务名命名，更安全
 cd "$DOCKER_DIR"
+ENV_FILE="$PROJECT_ROOT/.env"
 for compose_file in docker-compose*.yml; do
     if [ -f "$compose_file" ]; then
-        docker compose -f "$compose_file" down -v --remove-orphans 2>/dev/null || true
+        if [ -f "$ENV_FILE" ]; then
+            docker compose --env-file "$ENV_FILE" -f "$compose_file" down -v --remove-orphans 2>/dev/null || true
+        else
+            docker compose -f "$compose_file" down -v --remove-orphans 2>/dev/null || true
+        fi
     fi
 done
 
