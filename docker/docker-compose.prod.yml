@@ -60,7 +60,7 @@ services:
       - REDIS_PORT=6379
       - REDIS_PASSWORD=${REDIS_PASSWORD:-}
       - JWT_SECRET=${JWT_SECRET}
-      # MinIO 配置（使用无前缀的 minio 容器名，可共享）
+      # MinIO 配置（使用无前缀的 minio 容器名，可共享，默认密码 minioadmin/minioadmin）
       - MINIO_ENDPOINT=http://minio:9000
       - MINIO_EXTERNAL_ENDPOINT=http://minio:9000
       - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minioadmin}
@@ -138,11 +138,14 @@ services:
   # ============================================
   # MinIO 对象存储（无前缀，可共享）
   # ============================================
+  # 对象存储服务 (MinIO)（无前缀，可共享，默认密码 minioadmin/minioadmin）
+  # ============================================
   minio:
     image: minio/minio:RELEASE.2024-07-15T19-02-30Z
     container_name: minio
     command: server /data --console-address ":9001"
     environment:
+      # 使用默认密码 minioadmin/minioadmin（可共享，便于统一管理）
       MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
       MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin}
       TZ: UTC
