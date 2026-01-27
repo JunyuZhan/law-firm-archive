@@ -68,11 +68,20 @@ echo -e "${GREEN}✓ 容器清理完成${NC}"
 echo ""
 echo -e "${YELLOW}[2/4] 删除所有相关数据卷...${NC}"
 
-# 删除所有相关数据卷
-VOLUMES=$(docker volume ls -q | grep -E "(law-firm|dev-|postgres|redis|minio|onlyoffice|ocr|elasticsearch)" || true)
+# 删除所有相关数据卷（只匹配项目相关的前缀，避免误删其他项目）
+VOLUMES=$(docker volume ls -q | grep -E "^(law-firm|dev-|test-)" || true)
 if [ -n "$VOLUMES" ]; then
     echo "$VOLUMES" | xargs docker volume rm 2>/dev/null || true
 fi
+
+# 也清理docker-compose创建的数据卷（通过compose文件中的volume名称）
+# 这些数据卷通常以项目目录名或服务名命名，更安全
+cd "$DOCKER_DIR"
+for compose_file in docker-compose*.yml; do
+    if [ -f "$compose_file" ]; then
+        docker compose -f "$compose_file" down -v --remove-orphans 2>/dev/null || true
+    fi
+done
 
 echo -e "${GREEN}✓ 数据卷清理完成${NC}"
 
