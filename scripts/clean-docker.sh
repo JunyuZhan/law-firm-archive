@@ -77,8 +77,9 @@ else
     docker compose -f docker-compose.test.yml down -v --remove-orphans 2>/dev/null || true
 fi
 
-# 强制删除可能残留的容器
-CONTAINERS=$(docker ps -a --format "{{.Names}}" | grep -E "(law-firm|dev-)" || true)
+# 强制删除可能残留的容器（排除共享的MinIO容器）
+# 注意：如果使用共享MinIO（如shared-minio），不会被删除
+CONTAINERS=$(docker ps -a --format "{{.Names}}" | grep -E "(law-firm|dev-)" | grep -vE "(shared-minio|shared-)" || true)
 if [ -n "$CONTAINERS" ]; then
     echo "$CONTAINERS" | xargs docker rm -f 2>/dev/null || true
 fi
