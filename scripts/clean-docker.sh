@@ -78,8 +78,8 @@ else
 fi
 
 # 强制删除可能残留的容器（只清理 law-firm-* 前缀的容器）
-# 注意：minio、onlyoffice、redis、prometheus、grafana 容器（无前缀）不会被删除，因为它们可以共享
-CONTAINERS=$(docker ps -a --format "{{.Names}}" | grep -E "^(law-firm|dev-)" | grep -vE "^(minio|onlyoffice|redis|prometheus|grafana)$" || true)
+# 注意：onlyoffice、redis、prometheus、grafana 容器（无前缀）不会被删除，因为它们可以共享
+CONTAINERS=$(docker ps -a --format "{{.Names}}" | grep -E "^(law-firm|dev-)" | grep -vE "^(onlyoffice|redis|prometheus|grafana)$" || true)
 if [ -n "$CONTAINERS" ]; then
     echo "$CONTAINERS" | xargs docker rm -f 2>/dev/null || true
 fi
