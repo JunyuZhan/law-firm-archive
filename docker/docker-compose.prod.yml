@@ -152,7 +152,7 @@ services:
   # law-firm 存储服务（必需）
   # ============================================
   minio:
-    image: minio/minio:RELEASE.2024-07-15T19-02-30Z
+    image: minio/minio:${MINIO_VERSION:-RELEASE.2024-07-15T19-02-30Z}
     container_name: law-firm-minio
     labels:
       - "com.law-firm.group=storage"
@@ -173,7 +173,7 @@ services:
     restart: unless-stopped
 
   minio-init:
-    image: minio/mc:latest
+    image: minio/mc:${MINIO_MC_VERSION:-latest}
     container_name: law-firm-minio-init
     labels:
       - "com.law-firm.group=storage"
