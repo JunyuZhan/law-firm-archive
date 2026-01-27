@@ -817,7 +817,7 @@ deploy_minio_cluster() {
     echo ""
     log_success "MinIO 集群部署完成！"
     echo ""
-    echo -e "📦 MinIO 控制台：http://localhost:9001"
+    echo -e "📦 MinIO 控制台：http://localhost:9001 (默认密码: minioadmin/minioadmin)"
     echo ""
 }
 
@@ -836,7 +836,8 @@ show_success_banner() {
     echo -e "  🌐 主应用：      http://localhost"
     echo -e "  📚 文档站点：    http://localhost/docs/"
     echo -e "  🔧 API 地址：    http://localhost/api"
-    echo -e "  📦 MinIO 控制台：http://localhost:9001"
+    echo -e "  📦 MinIO 控制台：http://localhost:9001 (默认密码: minioadmin/minioadmin)"
+    echo -e "  📊 Grafana 监控：http://localhost:3000 (默认密码: admin)"
     echo ""
     echo -e "${BOLD}主应用账号（密码统一为 admin123）：${NC}"
     echo -e "  admin / director / lawyer1 / leader / finance / staff / trainee"
