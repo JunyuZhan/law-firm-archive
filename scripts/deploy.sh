@@ -680,28 +680,71 @@ deploy_standalone() {
     
     # 检查是否使用外部 MinIO（如果 minio 容器已存在且不在当前项目中）
     source "$PROJECT_ROOT/.env"
+    USE_SHARED_MINIO=false
     if docker ps --format "{{.Names}}" | grep -q "^minio$"; then
-        if ! docker ps --format "{{.Names}}" | grep -q "^law-firm-"; then
-            log_info "检测到外部 minio 容器正在运行，将使用共享 MinIO"
+        # 检查 minio 容器是否属于当前项目
+        MINIO_CONTAINER_NETWORK=$(docker inspect minio --format '{{range $net, $conf := .NetworkSettings.Networks}}{{$net}}{{end}}' 2>/dev/null || echo "")
+        if [ -n "$MINIO_CONTAINER_NETWORK" ]; then
+            # 检查是否有 law-firm 相关的容器在同一网络
+            if ! docker ps --format "{{.Names}}" | grep -q "^law-firm-"; then
+                log_info "检测到外部 minio 容器正在运行，将使用共享 MinIO"
+                USE_SHARED_MINIO=true
+                
+                # 注意：外部 minio 容器需要在部署后手动连接到 law-firm-network
+                # 或者确保外部 minio 容器已经在共享网络中
+                log_info "提示：请确保外部 minio 容器已连接到 law-firm-network，否则后端无法访问"
+            else
+                log_info "检测到 minio 容器，但当前项目容器也在运行，使用项目内置的 MinIO 服务"
+            fi
         else
-            log_info "使用项目内置的 MinIO 服务"
+            log_info "检测到外部 minio 容器，将使用共享 MinIO"
+            USE_SHARED_MINIO=true
         fi
     else
-        log_info "启动项目内置的 MinIO 服务"
+        log_info "未检测到外部 minio 容器，将启动项目内置的 MinIO 服务"
     fi
     
     # 启动服务（minio 和 onlyoffice 使用无前缀名称，可共享）
     log_info "启动服务..."
-    docker compose --env-file "$PROJECT_ROOT/.env" -f docker-compose.prod.yml up -d
+    if [ "$USE_SHARED_MINIO" = true ]; then
+        # 使用 --profile shared-minio 排除 minio 和 minio-init 服务
+        log_info "使用 --profile shared-minio 排除内置 MinIO 服务..."
+        docker compose --env-file "$PROJECT_ROOT/.env" -f docker-compose.prod.yml --profile shared-minio up -d
+    else
+        docker compose --env-file "$PROJECT_ROOT/.env" -f docker-compose.prod.yml up -d
+    fi
     
     echo ""
     log_info "等待服务启动..."
     sleep 10
     
+    # 如果使用外部 MinIO，确保它连接到 law-firm-network
+    if [ "$USE_SHARED_MINIO" = true ]; then
+        log_info "检查外部 minio 容器网络连接..."
+        # 等待网络创建
+        sleep 2
+        if docker network ls --format "{{.Name}}" | grep -q "^law-firm-network$"; then
+            # 检查 minio 是否已在网络中
+            if ! docker inspect minio --format '{{range $net, $conf := .NetworkSettings.Networks}}{{$net}}{{end}}' 2>/dev/null | grep -q "law-firm-network"; then
+                log_info "将外部 minio 容器连接到 law-firm-network..."
+                docker network connect law-firm-network minio 2>/dev/null && log_success "minio 容器已连接到 law-firm-network" || log_warn "minio 容器网络连接失败，请手动连接"
+            else
+                log_success "minio 容器已在 law-firm-network 中"
+            fi
+            
+            # 提示用户确保 bucket 已创建
+            log_info "提示：请确保外部 MinIO 中已创建 'law-firm' bucket，或手动运行 minio-init 容器"
+        fi
+    fi
+    
     # 检查服务状态
     echo ""
     log_info "服务状态："
-    docker compose --env-file "$PROJECT_ROOT/.env" -f docker-compose.prod.yml ps
+    if [ "$USE_SHARED_MINIO" = true ]; then
+        docker compose --env-file "$PROJECT_ROOT/.env" -f docker-compose.prod.yml --profile shared-minio ps
+    else
+        docker compose --env-file "$PROJECT_ROOT/.env" -f docker-compose.prod.yml ps
+    fi
     
     show_success_banner
     
