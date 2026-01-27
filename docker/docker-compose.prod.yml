@@ -21,6 +21,9 @@ services:
         - DOCS_USERNAME=${DOCS_USERNAME:-admin}
         - DOCS_PASSWORD=${DOCS_PASSWORD:-lawfirm@2026}
     container_name: law-firm-frontend
+    labels:
+      - "com.law-firm.group=core"
+      - "com.law-firm.service=frontend"
     ports:
       - "80:8080"   # HTTP
       - "443:8443"  # HTTPS
@@ -50,6 +53,9 @@ services:
       context: ../backend
       dockerfile: ../docker/Dockerfile.prod
     container_name: law-firm-backend
+    labels:
+      - "com.law-firm.group=core"
+      - "com.law-firm.service=backend"
     environment:
       - TZ=UTC
       - DB_HOST=postgres
@@ -102,6 +108,9 @@ services:
   postgres:
     image: postgres:15-alpine
     container_name: law-firm-postgres
+    labels:
+      - "com.law-firm.group=infrastructure"
+      - "com.law-firm.service=postgres"
     environment:
       POSTGRES_DB: law_firm
       POSTGRES_USER: law_admin
@@ -124,6 +133,9 @@ services:
   redis:
     image: redis:7-alpine
     container_name: redis
+    labels:
+      - "com.law-firm.group=cache"
+      - "com.law-firm.service=redis"
     command: redis-server --appendonly yes ${REDIS_PASSWORD:+--requirepass $REDIS_PASSWORD}
     volumes:
       - redis_data:/data
@@ -142,6 +154,9 @@ services:
   minio:
     image: minio/minio:RELEASE.2024-07-15T19-02-30Z
     container_name: law-firm-minio
+    labels:
+      - "com.law-firm.group=storage"
+      - "com.law-firm.service=minio"
     command: server /data --console-address ":9001"
     environment:
       # 密码从 .env 文件读取，首次部署时自动生成
@@ -160,6 +175,9 @@ services:
   minio-init:
     image: minio/mc:latest
     container_name: law-firm-minio-init
+    labels:
+      - "com.law-firm.group=storage"
+      - "com.law-firm.service=minio-init"
     environment:
       - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minioadmin}
       - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-minioadmin}
@@ -209,6 +227,9 @@ services:
       dockerfile: Dockerfile
     image: law-firm-onlyoffice:latest
     container_name: onlyoffice
+    labels:
+      - "com.law-firm.group=docs"
+      - "com.law-firm.service=onlyoffice"
     environment:
       # 必须启用 JWT，否则后端请求会被拒绝
       - JWT_ENABLED=${ONLYOFFICE_JWT_ENABLED:-true}
