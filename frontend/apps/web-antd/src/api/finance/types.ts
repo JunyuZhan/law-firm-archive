@@ -32,6 +32,22 @@ export interface ContractDTO {
   createdBy?: number; // 创建人ID，用于判断操作权限
   departmentName?: string;
   fileUrl?: string;
+  /**
+   * MinIO桶名称，默认law-firm
+   */
+  bucketName?: string;
+  /**
+   * 存储路径：contracts/M_{matterId}/{YYYY-MM}/合同文件/
+   */
+  storagePath?: string;
+  /**
+   * 物理文件名：{YYYYMMDD}_{UUID}_{documentName}.{ext}
+   */
+  physicalName?: string;
+  /**
+   * 文件Hash值（SHA-256），用于去重和校验
+   */
+  fileHash?: string;
   paymentTerms?: string;
   remark?: string;
   createdAt?: string;
@@ -507,6 +523,23 @@ export interface ExpenseDTO {
   approverName?: string;
   approveTime?: string;
   payTime?: string;
+  fileUrl?: string;
+  /**
+   * MinIO桶名称，默认law-firm
+   */
+  bucketName?: string;
+  /**
+   * 存储路径：expense/M_{matterId}/{YYYY-MM}/费用凭证/
+   */
+  storagePath?: string;
+  /**
+   * 物理文件名：{YYYYMMDD}_{UUID}_{documentName}.{ext}
+   */
+  physicalName?: string;
+  /**
+   * 文件Hash值（SHA-256），用于去重和校验
+   */
+  fileHash?: string;
   remark?: string;
   createdAt?: string;
 }

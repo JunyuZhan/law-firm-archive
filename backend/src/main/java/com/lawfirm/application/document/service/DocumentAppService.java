@@ -12,6 +12,8 @@ import com.lawfirm.common.exception.BusinessException;
 import com.lawfirm.common.result.PageResult;
 import com.lawfirm.common.util.SecurityUtils;
 import com.lawfirm.common.util.FileValidator;
+import com.lawfirm.common.util.FileHashUtil;
+import com.lawfirm.common.util.MinioPathGenerator;
 import com.lawfirm.domain.document.entity.Document;
 import com.lawfirm.domain.document.entity.DocumentCategory;
 import com.lawfirm.domain.document.entity.DocumentVersion;
@@ -312,6 +314,13 @@ public class DocumentAppService {
     }
 
     /**
+     * 获取文档实体（用于FileAccessService等需要实体对象的场景）
+     */
+    public Document getDocumentEntityById(Long id) {
+        return documentRepository.getByIdOrThrow(id, "文档不存在");
+    }
+
+    /**
      * 获取文档所有版本
      */
     public List<DocumentDTO> getDocumentVersions(Long id) {
@@ -462,35 +471,66 @@ public class DocumentAppService {
         }
         
         try {
-            // 构建存储路径
-            String storagePath = buildStoragePath(matterId, folder);
+            // 1. 计算文件Hash（用于去重和校验，不阻塞上传）
+            String fileHash = FileHashUtil.calculateHash(file);
+            log.debug("文件Hash计算完成: hash={}, fileName={}", fileHash, file.getOriginalFilename());
             
-            // 上传文件到 MinIO
-            String fileUrl = minioService.uploadFile(file, storagePath);
+            // 2. 生成标准化存储路径（新规则）
+            String standardStoragePath = MinioPathGenerator.generateStandardPath(
+                MinioPathGenerator.FileType.MATTERS, matterId, folder);
             
-            // 获取文件信息
+            // 2.1 验证存储路径格式（确保包含项目ID）
+            MinioPathGenerator.validateStoragePath(standardStoragePath, 
+                MinioPathGenerator.FileType.MATTERS, matterId);
+            
+            // 3. 生成物理文件名（包含时间戳和UUID）
             String originalFilename = file.getOriginalFilename();
+            String physicalName = MinioPathGenerator.generatePhysicalName(originalFilename);
+            
+            // 4. 构建完整对象名称（新路径）
+            String objectName = MinioPathGenerator.buildObjectName(standardStoragePath, physicalName);
+            
+            // 5. 上传文件到 MinIO（使用新路径）
+            String newFileUrl = minioService.uploadFile(
+                file.getInputStream(), 
+                objectName, 
+                file.getContentType()
+            );
+            
+            // 6. 构建完整URL（用于file_path字段，双写策略）
+            // 注意：file_path也指向新路径的URL，确保新旧字段指向同一文件
+            String fileUrl = minioService.buildFileUrl(objectName);
+            
+            // 7. 获取文件信息
             String fileType = getFileExtension(originalFilename);
             String mimeType = file.getContentType();
             long fileSize = file.getSize();
             
-            // 生成缩略图（支持图片和PDF）
+            // 8. 生成缩略图（支持图片和PDF）
             String thumbnailUrl = null;
             if (thumbnailService.supportsThumbnail(originalFilename)) {
-                thumbnailUrl = thumbnailService.generateThumbnail(file, fileUrl);
+                // 使用新路径生成缩略图
+                thumbnailUrl = thumbnailService.generateThumbnail(file, newFileUrl);
             }
             
-            // 确定来源类型（默认为用户上传）
+            // 9. 确定来源类型（默认为用户上传）
             String actualSourceType = sourceType != null && !sourceType.isEmpty() 
                 ? sourceType : "USER_UPLOADED";
             
-            // 创建文档记录
+            // 10. 创建文档记录（双写策略：新字段 + file_path）
             Document document = Document.builder()
                     .docNo(generateDocNo())
                     .title(originalFilename)
                     .matterId(matterId)
                     .fileName(originalFilename)
+                    // 新字段（结构化存储）
+                    .bucketName(minioService.getBucketName())
+                    .storagePath(standardStoragePath)
+                    .physicalName(physicalName)
+                    .fileHash(fileHash)
+                    // 旧字段（兼容，双写）- 指向新路径的URL
                     .filePath(fileUrl)
+                    // 其他字段
                     .fileSize(fileSize)
                     .fileType(fileType)
                     .mimeType(mimeType)
@@ -508,10 +548,11 @@ public class DocumentAppService {
             
             documentRepository.save(document);
             
-            // 保存版本历史
+            // 11. 保存版本历史
             saveVersion(document, "初始版本");
             
-            log.info("文件上传成功: {}, path={}, thumbnail={}", originalFilename, fileUrl, thumbnailUrl != null);
+            log.info("文件上传成功（新路径）: fileName={}, storagePath={}, physicalName={}, hash={}, fileUrl={}", 
+                originalFilename, standardStoragePath, physicalName, fileHash, fileUrl);
             return toDTO(document);
             
         } catch (Exception e) {
@@ -569,8 +610,16 @@ public class DocumentAppService {
             for (String filePath : uploadedFilePaths) {
                 try {
                     if (filePath != null && !filePath.isEmpty()) {
-                        minioService.deleteFile(filePath);
-                        log.info("清理失败上传的文件: {}", filePath);
+                        // 从URL提取objectName（deleteFile需要objectName，不是URL）
+                        String objectName = minioService.extractObjectName(filePath);
+                        if (objectName != null && !objectName.isEmpty()) {
+                            minioService.deleteFile(objectName);
+                            log.info("清理失败上传的文件: {}", objectName);
+                        } else {
+                            // 如果无法提取objectName，尝试直接使用filePath（可能是objectName格式）
+                            minioService.deleteFile(filePath);
+                            log.info("清理失败上传的文件（直接使用路径）: {}", filePath);
+                        }
                     }
                 } catch (Exception cleanEx) {
                     log.error("清理文件失败: {}", filePath, cleanEx);

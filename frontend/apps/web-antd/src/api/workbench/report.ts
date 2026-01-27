@@ -14,6 +14,22 @@ export interface ReportDTO {
   status: string;
   statusName?: string;
   fileUrl?: string;
+  /**
+   * MinIO桶名称，默认law-firm
+   */
+  bucketName?: string;
+  /**
+   * 存储路径：report/{reportType}/{YYYY-MM}/
+   */
+  storagePath?: string;
+  /**
+   * 物理文件名：{YYYYMMDD}_{UUID}_{reportName}.{ext}
+   */
+  physicalName?: string;
+  /**
+   * 文件Hash值（SHA-256），用于去重和校验
+   */
+  fileHash?: string;
   fileSize?: number;
   generatedBy?: number;
   generatedByName?: string;

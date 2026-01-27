@@ -48,7 +48,11 @@ CREATE TABLE public.archive (
     migrate_target text,
     files_deleted boolean DEFAULT false,
     archive_snapshot text,
-    electronic_package_path text
+    electronic_package_path text,
+    bucket_name character varying(50) DEFAULT 'law-firm',
+    storage_path character varying(500),
+    physical_name character varying(1000),
+    file_hash character varying(64)
 );
 --
 -- Name: TABLE archive; Type: COMMENT; Schema: public; Owner: -
@@ -75,6 +79,26 @@ COMMENT ON COLUMN public.archive.retention_period IS '保管期限：PERMANENT-�
 --
 
 COMMENT ON COLUMN public.archive.status IS '状态：PENDING-待入库, STORED-已入库, BORROWED-借出, DESTROYED-已销毁';
+--
+-- Name: COLUMN archive.bucket_name; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.archive.bucket_name IS 'MinIO桶名称，默认law-firm';
+--
+-- Name: COLUMN archive.storage_path; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.archive.storage_path IS '存储路径：archive/M_{matterId}/{YYYY-MM}/电子卷宗/';
+--
+-- Name: COLUMN archive.physical_name; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.archive.physical_name IS '物理文件名：20260127_uuid_电子卷宗.zip（支持超长文件名，最大1000字符）';
+--
+-- Name: COLUMN archive.file_hash; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.archive.file_hash IS '文件Hash值（SHA-256），用于去重和校验（测试阶段仅记录，不强制去重）';
 --
 -- Name: archive_borrow; Type: TABLE; Schema: public; Owner: -
 --
@@ -305,49 +329,49 @@ ALTER TABLE ONLY public.archive_operation_log ALTER COLUMN id SET DEFAULT nextva
 --
 
 ALTER TABLE ONLY public.archive
-    ADD CONSTRAINT archive_archive_no_key UNIQUE (archive_no);
+    ADD CONSTRAINT uk_archive_archive_no UNIQUE (archive_no);
 --
 -- Name: archive_borrow archive_borrow_borrow_no_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.archive_borrow
-    ADD CONSTRAINT archive_borrow_borrow_no_key UNIQUE (borrow_no);
+    ADD CONSTRAINT uk_archive_borrow_borrow_no UNIQUE (borrow_no);
 --
 -- Name: archive_borrow archive_borrow_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.archive_borrow
-    ADD CONSTRAINT archive_borrow_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_archive_borrow PRIMARY KEY (id);
 --
 -- Name: archive_data_source archive_data_source_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.archive_data_source
-    ADD CONSTRAINT archive_data_source_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_archive_data_source PRIMARY KEY (id);
 --
 -- Name: archive_location archive_location_location_code_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.archive_location
-    ADD CONSTRAINT archive_location_location_code_key UNIQUE (location_code);
+    ADD CONSTRAINT uk_archive_location_location_code UNIQUE (location_code);
 --
 -- Name: archive_location archive_location_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.archive_location
-    ADD CONSTRAINT archive_location_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_archive_location PRIMARY KEY (id);
 --
 -- Name: archive_operation_log archive_operation_log_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.archive_operation_log
-    ADD CONSTRAINT archive_operation_log_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_archive_operation_log PRIMARY KEY (id);
 --
 -- Name: archive archive_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.archive
-    ADD CONSTRAINT archive_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_archive PRIMARY KEY (id);
 --
 -- Name: idx_archive_archive_no; Type: INDEX; Schema: public; Owner: -
 --
@@ -433,3 +457,13 @@ CREATE INDEX idx_archive_status ON public.archive USING btree (status);
 --
 
 CREATE INDEX idx_archive_type ON public.archive USING btree (archive_type);
+--
+-- Name: idx_archive_file_hash; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_archive_file_hash ON public.archive USING btree (file_hash) WHERE (file_hash IS NOT NULL);
+--
+-- Name: idx_archive_storage_path; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_archive_storage_path ON public.archive USING btree (storage_path) WHERE (storage_path IS NOT NULL);

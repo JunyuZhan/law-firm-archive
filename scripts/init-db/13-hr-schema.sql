@@ -229,7 +229,7 @@ CREATE TABLE public.hr_employee (
     resignation_date date,
     resignation_reason character varying(500),
     work_status character varying(20) DEFAULT 'ACTIVE'::character varying,
-    remark character varying(1000),
+    remark character varying(500),
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     created_by bigint,
@@ -528,7 +528,7 @@ CREATE TABLE public.hr_payroll_sheet (
     issued_by bigint,
     payment_method character varying(50),
     payment_voucher_url character varying(500),
-    remark character varying(1000),
+    remark character varying(500),
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     created_by bigint,
@@ -724,7 +724,7 @@ ALTER SEQUENCE public.hr_performance_evaluation_id_seq OWNED BY public.hr_perfor
 
 CREATE TABLE public.hr_performance_indicator (
     id bigint NOT NULL,
-    name character varying(100) NOT NULL,
+    name character varying(200) NOT NULL,
     code character varying(50),
     category character varying(20) NOT NULL,
     description text,
@@ -851,7 +851,7 @@ CREATE TABLE public.hr_promotion_application (
     employee_id bigint NOT NULL,
     employee_name character varying(50),
     department_id bigint,
-    department_name character varying(100),
+    department_name character varying(50),
     current_level_id bigint,
     current_level_name character varying(100),
     target_level_id bigint NOT NULL,
@@ -940,7 +940,7 @@ ALTER SEQUENCE public.hr_promotion_review_id_seq OWNED BY public.hr_promotion_re
 CREATE TABLE public.hr_regularization (
     id bigint NOT NULL,
     employee_id bigint NOT NULL,
-    application_no character varying(30) NOT NULL,
+    application_no character varying(50) NOT NULL,
     probation_start_date date,
     probation_end_date date,
     application_date date NOT NULL,
@@ -990,7 +990,7 @@ ALTER SEQUENCE public.hr_regularization_id_seq OWNED BY public.hr_regularization
 CREATE TABLE public.hr_resignation (
     id bigint NOT NULL,
     employee_id bigint NOT NULL,
-    application_no character varying(30) NOT NULL,
+    application_no character varying(50) NOT NULL,
     resignation_type character varying(20),
     resignation_date date NOT NULL,
     last_work_date date,
@@ -1049,7 +1049,7 @@ ALTER SEQUENCE public.hr_resignation_id_seq OWNED BY public.hr_resignation.id;
 
 CREATE TABLE public.hr_training (
     id bigint NOT NULL,
-    title character varying(200) NOT NULL,
+    title character varying(500) NOT NULL,
     training_type character varying(50) NOT NULL,
     category character varying(50),
     description text,
@@ -1448,181 +1448,181 @@ ALTER TABLE ONLY public.overtime_application ALTER COLUMN id SET DEFAULT nextval
 --
 
 ALTER TABLE ONLY public.attendance
-    ADD CONSTRAINT attendance_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_attendance PRIMARY KEY (id);
 --
 -- Name: hr_career_level hr_career_level_level_code_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.hr_career_level
-    ADD CONSTRAINT hr_career_level_level_code_key UNIQUE (level_code);
+    ADD CONSTRAINT uk_hr_career_level_level_code UNIQUE (level_code);
 --
 -- Name: hr_career_level hr_career_level_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.hr_career_level
-    ADD CONSTRAINT hr_career_level_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_hr_career_level PRIMARY KEY (id);
 --
 -- Name: hr_development_milestone hr_development_milestone_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.hr_development_milestone
-    ADD CONSTRAINT hr_development_milestone_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_hr_development_milestone PRIMARY KEY (id);
 --
 -- Name: hr_development_plan hr_development_plan_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.hr_development_plan
-    ADD CONSTRAINT hr_development_plan_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_hr_development_plan PRIMARY KEY (id);
 --
 -- Name: hr_development_plan hr_development_plan_plan_no_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.hr_development_plan
-    ADD CONSTRAINT hr_development_plan_plan_no_key UNIQUE (plan_no);
+    ADD CONSTRAINT uk_hr_development_plan_plan_no UNIQUE (plan_no);
 --
 -- Name: hr_employee hr_employee_employee_no_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.hr_employee
-    ADD CONSTRAINT hr_employee_employee_no_key UNIQUE (employee_no);
+    ADD CONSTRAINT uk_hr_employee_employee_no UNIQUE (employee_no);
 --
 -- Name: hr_employee hr_employee_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.hr_employee
-    ADD CONSTRAINT hr_employee_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_hr_employee PRIMARY KEY (id);
 --
 -- Name: hr_payroll_deduction hr_payroll_deduction_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.hr_payroll_deduction
-    ADD CONSTRAINT hr_payroll_deduction_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_hr_payroll_deduction PRIMARY KEY (id);
 --
 -- Name: hr_payroll_income hr_payroll_income_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.hr_payroll_income
-    ADD CONSTRAINT hr_payroll_income_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_hr_payroll_income PRIMARY KEY (id);
 --
 -- Name: hr_payroll_item hr_payroll_item_payroll_sheet_id_employee_id_deleted_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.hr_payroll_item
-    ADD CONSTRAINT hr_payroll_item_payroll_sheet_id_employee_id_deleted_key UNIQUE (payroll_sheet_id, employee_id, deleted);
+    ADD CONSTRAINT uk_hr_payroll_item_payroll_sheet_id_employee_id_deleted UNIQUE (payroll_sheet_id, employee_id, deleted);
 --
 -- Name: hr_payroll_item hr_payroll_item_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.hr_payroll_item
-    ADD CONSTRAINT hr_payroll_item_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_hr_payroll_item PRIMARY KEY (id);
 --
 -- Name: hr_payroll_sheet hr_payroll_sheet_payroll_no_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.hr_payroll_sheet
-    ADD CONSTRAINT hr_payroll_sheet_payroll_no_key UNIQUE (payroll_no);
+    ADD CONSTRAINT uk_hr_payroll_sheet_payroll_no UNIQUE (payroll_no);
 --
 -- Name: hr_payroll_sheet hr_payroll_sheet_payroll_year_payroll_month_deleted_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.hr_payroll_sheet
-    ADD CONSTRAINT hr_payroll_sheet_payroll_year_payroll_month_deleted_key UNIQUE (payroll_year, payroll_month, deleted);
+    ADD CONSTRAINT uk_hr_payroll_sheet_payroll_year_payroll_month_deleted UNIQUE (payroll_year, payroll_month, deleted);
 --
 -- Name: hr_payroll_sheet hr_payroll_sheet_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.hr_payroll_sheet
-    ADD CONSTRAINT hr_payroll_sheet_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_hr_payroll_sheet PRIMARY KEY (id);
 --
 -- Name: hr_performance_evaluation hr_performance_evaluation_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.hr_performance_evaluation
-    ADD CONSTRAINT hr_performance_evaluation_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_hr_performance_evaluation PRIMARY KEY (id);
 --
 -- Name: hr_performance_indicator hr_performance_indicator_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.hr_performance_indicator
-    ADD CONSTRAINT hr_performance_indicator_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_hr_performance_indicator PRIMARY KEY (id);
 --
 -- Name: hr_performance_score hr_performance_score_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.hr_performance_score
-    ADD CONSTRAINT hr_performance_score_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_hr_performance_score PRIMARY KEY (id);
 --
 -- Name: hr_performance_task hr_performance_task_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.hr_performance_task
-    ADD CONSTRAINT hr_performance_task_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_hr_performance_task PRIMARY KEY (id);
 --
 -- Name: hr_promotion_application hr_promotion_application_application_no_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.hr_promotion_application
-    ADD CONSTRAINT hr_promotion_application_application_no_key UNIQUE (application_no);
+    ADD CONSTRAINT uk_hr_promotion_application_application_no UNIQUE (application_no);
 --
 -- Name: hr_promotion_application hr_promotion_application_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.hr_promotion_application
-    ADD CONSTRAINT hr_promotion_application_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_hr_promotion_application PRIMARY KEY (id);
 --
 -- Name: hr_promotion_review hr_promotion_review_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.hr_promotion_review
-    ADD CONSTRAINT hr_promotion_review_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_hr_promotion_review PRIMARY KEY (id);
 --
 -- Name: hr_regularization hr_regularization_application_no_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.hr_regularization
-    ADD CONSTRAINT hr_regularization_application_no_key UNIQUE (application_no);
+    ADD CONSTRAINT uk_hr_regularization_application_no UNIQUE (application_no);
 --
 -- Name: hr_regularization hr_regularization_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.hr_regularization
-    ADD CONSTRAINT hr_regularization_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_hr_regularization PRIMARY KEY (id);
 --
 -- Name: hr_resignation hr_resignation_application_no_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.hr_resignation
-    ADD CONSTRAINT hr_resignation_application_no_key UNIQUE (application_no);
+    ADD CONSTRAINT uk_hr_resignation_application_no UNIQUE (application_no);
 --
 -- Name: hr_resignation hr_resignation_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.hr_resignation
-    ADD CONSTRAINT hr_resignation_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_hr_resignation PRIMARY KEY (id);
 --
 -- Name: hr_training hr_training_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.hr_training
-    ADD CONSTRAINT hr_training_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_hr_training PRIMARY KEY (id);
 --
 -- Name: hr_training_record hr_training_record_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.hr_training_record
-    ADD CONSTRAINT hr_training_record_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_hr_training_record PRIMARY KEY (id);
 --
 -- Name: overtime_application overtime_application_application_no_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.overtime_application
-    ADD CONSTRAINT overtime_application_application_no_key UNIQUE (application_no);
+    ADD CONSTRAINT uk_overtime_application_application_no UNIQUE (application_no);
 --
 -- Name: overtime_application overtime_application_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.overtime_application
-    ADD CONSTRAINT overtime_application_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_overtime_application PRIMARY KEY (id);
 --
 -- Name: attendance uk_attendance_user_date; Type: CONSTRAINT; Schema: public; Owner: -
 --
@@ -1940,32 +1940,32 @@ ALTER TABLE ONLY public.hr_training_record
 --
 
 ALTER TABLE ONLY public.hr_payroll_deduction
-    ADD CONSTRAINT hr_payroll_deduction_payroll_item_id_fkey FOREIGN KEY (payroll_item_id) REFERENCES public.hr_payroll_item(id) ON DELETE CASCADE;
+    ADD CONSTRAINT fk_hr_payroll_deduction_hr_payroll_item_payroll_item_id FOREIGN KEY (payroll_item_id) REFERENCES public.hr_payroll_item(id) ON DELETE CASCADE;
 --
 -- Name: hr_payroll_income hr_payroll_income_payroll_item_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.hr_payroll_income
-    ADD CONSTRAINT hr_payroll_income_payroll_item_id_fkey FOREIGN KEY (payroll_item_id) REFERENCES public.hr_payroll_item(id) ON DELETE CASCADE;
+    ADD CONSTRAINT fk_hr_payroll_income_hr_payroll_item_payroll_item_id FOREIGN KEY (payroll_item_id) REFERENCES public.hr_payroll_item(id) ON DELETE CASCADE;
 --
 -- Name: hr_payroll_item hr_payroll_item_employee_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.hr_payroll_item
-    ADD CONSTRAINT hr_payroll_item_employee_id_fkey FOREIGN KEY (employee_id) REFERENCES public.hr_employee(id);
+    ADD CONSTRAINT fk_hr_payroll_item_hr_employee_employee_id FOREIGN KEY (employee_id) REFERENCES public.hr_employee(id);
 --
 -- Name: hr_payroll_item hr_payroll_item_payroll_sheet_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.hr_payroll_item
-    ADD CONSTRAINT hr_payroll_item_payroll_sheet_id_fkey FOREIGN KEY (payroll_sheet_id) REFERENCES public.hr_payroll_sheet(id);
+    ADD CONSTRAINT fk_hr_payroll_item_hr_payroll_sheet_payroll_sheet_id FOREIGN KEY (payroll_sheet_id) REFERENCES public.hr_payroll_sheet(id);
 
 -- =====================================================
 -- 请假管理相关表（补充）
 -- =====================================================
 CREATE TABLE public.leave_application (
     id bigint NOT NULL,
-    application_no character varying(30) NOT NULL,
+    application_no character varying(50) NOT NULL,
     user_id bigint NOT NULL,
     leave_type_id bigint NOT NULL,
     start_time timestamp without time zone NOT NULL,
@@ -2070,12 +2070,12 @@ ALTER SEQUENCE public.leave_balance_id_seq OWNED BY public.leave_balance.id;
 
 CREATE TABLE public.leave_type (
     id bigint NOT NULL,
-    name character varying(50) NOT NULL,
+    name character varying(200) NOT NULL,
     code character varying(30) NOT NULL,
     paid boolean DEFAULT true,
     annual_limit numeric(5,1),
     need_approval boolean DEFAULT true,
-    description character varying(200),
+    description character varying(500),
     sort_order integer DEFAULT 0,
     enabled boolean DEFAULT true,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
@@ -2138,7 +2138,7 @@ ALTER TABLE ONLY public.leave_type ALTER COLUMN id SET DEFAULT nextval('public.l
 --
 
 ALTER TABLE ONLY public.leave_application
-    ADD CONSTRAINT leave_application_application_no_key UNIQUE (application_no);
+    ADD CONSTRAINT uk_leave_application_application_no UNIQUE (application_no);
 
 
 --
@@ -2146,7 +2146,7 @@ ALTER TABLE ONLY public.leave_application
 --
 
 ALTER TABLE ONLY public.leave_application
-    ADD CONSTRAINT leave_application_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_leave_application PRIMARY KEY (id);
 
 
 --
@@ -2154,7 +2154,7 @@ ALTER TABLE ONLY public.leave_application
 --
 
 ALTER TABLE ONLY public.leave_balance
-    ADD CONSTRAINT leave_balance_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_leave_balance PRIMARY KEY (id);
 
 
 --
@@ -2162,7 +2162,7 @@ ALTER TABLE ONLY public.leave_balance
 --
 
 ALTER TABLE ONLY public.leave_type
-    ADD CONSTRAINT leave_type_code_key UNIQUE (code);
+    ADD CONSTRAINT uk_leave_type_code UNIQUE (code);
 
 
 --
@@ -2170,7 +2170,7 @@ ALTER TABLE ONLY public.leave_type
 --
 
 ALTER TABLE ONLY public.leave_type
-    ADD CONSTRAINT leave_type_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_leave_type PRIMARY KEY (id);
 
 
 --
@@ -2302,7 +2302,7 @@ ALTER TABLE ONLY public.hr_contract ALTER COLUMN id SET DEFAULT nextval('public.
 --
 
 ALTER TABLE ONLY public.hr_contract
-    ADD CONSTRAINT hr_contract_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_hr_contract PRIMARY KEY (id);
 --
 -- Name: idx_hr_contract_employee_id; Type: INDEX; Schema: public; Owner: -
 --

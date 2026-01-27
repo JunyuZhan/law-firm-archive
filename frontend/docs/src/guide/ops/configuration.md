@@ -1,6 +1,74 @@
 # 配置说明
 
-## 后端配置
+## 📋 环境变量配置
+
+### 文件位置
+
+项目使用项目根目录的 `.env` 文件进行配置：
+
+```bash
+# 1. 复制模板文件
+cp env.example .env
+
+# 2. 编辑配置
+vim .env
+```
+
+### 必须修改的配置
+
+#### 1. 数据库密码
+
+```bash
+# 生成强密码
+DB_PASSWORD=$(openssl rand -base64 24)
+```
+
+#### 2. JWT 密钥
+
+```bash
+# 生成至少 64 字符的密钥
+JWT_SECRET=$(openssl rand -base64 64)
+```
+
+#### 3. MinIO 密钥
+
+```bash
+# 不能使用默认的 minioadmin
+MINIO_ACCESS_KEY=$(openssl rand -base64 24)
+MINIO_SECRET_KEY=$(openssl rand -base64 24)
+```
+
+#### 4. OnlyOffice JWT 密钥
+
+```bash
+# 生成密钥
+ONLYOFFICE_JWT_SECRET=$(openssl rand -base64 64)
+```
+
+### 重要配置项
+
+#### OnlyOffice 外部访问地址
+
+```bash
+# 如果使用 IP 访问
+ONLYOFFICE_EXTERNAL_ACCESS_URL=http://192.168.50.10
+
+# 如果使用域名访问
+ONLYOFFICE_EXTERNAL_ACCESS_URL=http://oa.example.com
+```
+
+**作用**：OnlyOffice 容器通过 Nginx 代理访问文件，而不是直接访问 Docker 内部地址。
+
+#### MinIO 外部端点
+
+```bash
+# 如果配置了外部访问地址，缩略图等资源会使用外部地址
+MINIO_EXTERNAL_ENDPOINT=http://minio:9000
+```
+
+---
+
+## 🔧 后端配置
 
 配置文件：`backend/src/main/resources/application.yml`
 
@@ -9,9 +77,9 @@
 ```yaml
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/lawfirm
-    username: lawfirm
-    password: your-password
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:law_firm}
+    username: ${DB_USERNAME:law_admin}
+    password: ${DB_PASSWORD}
 ```
 
 ### Redis 配置
@@ -19,31 +87,33 @@ spring:
 ```yaml
 spring:
   redis:
-    host: localhost
-    port: 6379
-    password: your-password
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+    password: ${REDIS_PASSWORD:}
 ```
 
 ### MinIO 配置
 
 ```yaml
 minio:
-  endpoint: http://localhost:9000
-  access-key: minioadmin
-  secret-key: minioadmin
-  bucket: law-firm
+  endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+  access-key: ${MINIO_ACCESS_KEY:minioadmin}
+  secret-key: ${MINIO_SECRET_KEY:minioadmin}
+  bucket: ${MINIO_BUCKET:law-firm}
 ```
 
 ### JWT 配置
 
 ```yaml
 jwt:
-  secret: your-secret-key
+  secret: ${JWT_SECRET}
   expiration: 86400000 # 24小时
   refresh-expiration: 604800000 # 7天
 ```
 
-## 前端配置
+---
+
+## 🎨 前端配置
 
 配置文件：`frontend/apps/web-antd/.env.production`
 

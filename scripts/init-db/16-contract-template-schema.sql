@@ -239,31 +239,31 @@ ALTER TABLE ONLY public.contract_template ALTER COLUMN id SET DEFAULT nextval('p
 --
 
 ALTER TABLE ONLY public.contract_participant
-    ADD CONSTRAINT contract_participant_contract_id_user_id_key UNIQUE (contract_id, user_id);
+    ADD CONSTRAINT uk_contract_participant_contract_id_user_id UNIQUE (contract_id, user_id);
 --
 -- Name: contract_participant contract_participant_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.contract_participant
-    ADD CONSTRAINT contract_participant_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_contract_participant PRIMARY KEY (id);
 --
 -- Name: contract_payment_schedule contract_payment_schedule_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.contract_payment_schedule
-    ADD CONSTRAINT contract_payment_schedule_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_contract_payment_schedule PRIMARY KEY (id);
 --
 -- Name: contract_template contract_template_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.contract_template
-    ADD CONSTRAINT contract_template_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_contract_template PRIMARY KEY (id);
 --
 -- Name: contract_template contract_template_template_no_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.contract_template
-    ADD CONSTRAINT contract_template_template_no_key UNIQUE (template_no);
+    ADD CONSTRAINT uk_contract_template_template_no UNIQUE (template_no);
 --
 -- Name: idx_contract_participant_contract; Type: INDEX; Schema: public; Owner: -
 --

@@ -95,9 +95,29 @@ public class Invoice extends BaseEntity {
     private Long issuerId;
 
     /**
-     * 发票文件URL
+     * 发票文件URL（向后兼容字段）
      */
     private String fileUrl;
+
+    /**
+     * MinIO桶名称，默认law-firm
+     */
+    private String bucketName;
+
+    /**
+     * 存储路径：invoice/M_{matterId}/{YYYY-MM}/发票文件/
+     */
+    private String storagePath;
+
+    /**
+     * 物理文件名：20260127_uuid_发票.pdf（支持超长文件名，最大1000字符）
+     */
+    private String physicalName;
+
+    /**
+     * 文件Hash值（SHA-256），用于去重和校验
+     */
+    private String fileHash;
 
     /**
      * 备注

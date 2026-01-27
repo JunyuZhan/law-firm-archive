@@ -190,15 +190,8 @@ run_module_tests() {
     run_test_script "system-report-extended-test.sh"
 }
 
-# 辅助模块测试
-run_auxiliary_tests() {
-    print_section "辅助模块测试"
-    echo -e "${YELLOW}说明: 测试边缘功能和补充模块，约5-10分钟${NC}"
-    
-    run_test_script "auxiliary-module-test.sh"
-    run_test_script "edge-module-test.sh"
-    run_test_script "remaining-module-test.sh"
-}
+# 辅助模块测试（已整合到 module-test-final.sh）
+# 不再需要单独的辅助模块测试函数
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 生成测试报告
@@ -330,7 +323,6 @@ show_help() {
   full        全面API测试（约10-15分钟）⭐ 推荐部署前使用
   business    业务逻辑测试（约15-20分钟）
   module      模块专项测试（约10-15分钟）
-  auxiliary   辅助模块测试（约5-10分钟）
   help        显示此帮助信息
 
 推荐使用场景:
@@ -343,7 +335,6 @@ show_help() {
   1. quick    : api-test → integration-test
   2. business : 按依赖顺序（客户→项目→合同→财务→证据→行政→人力）
   3. module   : 权限→审批→财务→其他
-  4. auxiliary: 边缘功能测试
 
 注意事项:
   - 运行前请确保后端服务已启动 (http://localhost:8080)
@@ -389,14 +380,10 @@ main() {
         module)
             run_module_tests
             ;;
-        auxiliary)
-            run_auxiliary_tests
-            ;;
         all|*)
             run_quick_tests
             run_business_tests
             run_module_tests
-            run_auxiliary_tests
             ;;
     esac
     

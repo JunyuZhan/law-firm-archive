@@ -158,34 +158,69 @@ done
 
 | 脚本 | 说明 | 用法 |
 |------|------|------|
-| `check-production-ready.sh` | 生产环境检查 | `./check-production-ready.sh` |
-| `test/api-test.sh` | API 接口测试 | `./test/api-test.sh` |
-| `jmeter/*.jmx` | JMeter 压力测试 | `./jmeter/run-all-tests.sh` |
+| `pre-deploy-check.sh` | 部署前统一检查（推荐） | `./pre-deploy-check.sh` |
+| `check-production-ready.sh` | 生产环境检查（旧版） | `./check-production-ready.sh` |
+| `security-check.sh` | 安全检查 | `./security-check.sh` |
+| `test/run-all-tests.sh` | 一键运行所有测试 | `./test/run-all-tests.sh` |
+| `test/module-test-final.sh` | 模块功能测试 | `./test/module-test-final.sh` |
+| `test/full-api-test.sh` | 完整API测试 | `./test/full-api-test.sh` |
+| `test/business-logic-test.sh` | 业务逻辑测试 | `./test/business-logic-test.sh` |
+| `jmeter/run-all-tests.sh` | JMeter 压力测试 | `./jmeter/run-all-tests.sh` |
 
 ```bash
-# 检查系统是否可以部署到生产环境
-./scripts/check-production-ready.sh
+# 部署前检查（推荐）
+./scripts/pre-deploy-check.sh
 
-# 运行 API 测试
-./scripts/test/api-test.sh
+# 运行所有测试
+./scripts/test/run-all-tests.sh
 
 # 运行压力测试
 ./scripts/jmeter/run-all-tests.sh all
+```
+
+## Docker 清理脚本
+
+| 脚本 | 说明 | 用法 | 推荐场景 |
+|------|------|------|----------|
+| `clean-docker.sh` | 清理项目相关Docker资源 | `./clean-docker.sh` | **日常开发清理（推荐）** |
+| `clean-law-firm-only.sh` | 仅清理律所系统资源（保留frpc等） | `./clean-law-firm-only.sh` | 服务器上保留其他服务 |
+| `clean-docker-all.sh` | 清理所有Docker资源 | `./clean-docker-all.sh` | 完全重置Docker环境 |
+
+```bash
+# 清理项目相关资源（推荐）
+./scripts/clean-docker.sh
+
+# 仅清理律所系统资源（保留其他容器如frpc）
+./scripts/clean-law-firm-only.sh
+
+# 清理所有Docker资源（危险！会删除所有容器和镜像）
+./scripts/clean-docker-all.sh --force
 ```
 
 ## 目录结构
 
 ```
 scripts/
-├── deploy.sh                 # 一键部署
+├── deploy.sh                 # 一键部署（推荐）
 ├── deploy-swarm.sh           # Swarm 集群部署
+├── deploy-to-server.sh        # 快速部署到服务器
+├── pre-deploy-check.sh       # 部署前统一检查（推荐）
+├── check-production-ready.sh # 生产环境检查（旧版）
+├── security-check.sh         # 安全检查
 ├── update-version.sh         # 手动更新版本号
 ├── sync-version.mjs          # 自动同步版本号（构建时）
 ├── backup.sh                 # 完整备份
 ├── db-auto-backup.sh         # 数据库自动备份
 ├── restore.sh                # 数据恢复
 ├── reset-db.sh               # 数据库重置（开发用）
-├── check-production-ready.sh # 生产环境检查
+├── env-start.sh              # 环境启动
+├── env-stop.sh               # 环境停止
+├── env-reset.sh              # 环境重置
+├── clean-docker.sh            # 清理项目Docker资源（推荐）
+├── clean-law-firm-only.sh     # 仅清理律所系统资源（保留其他容器）
+├── start-backend.sh          # 启动后端服务（宿主机）
+├── install-java-maven.sh     # 安装Java和Maven（macOS）
+├── setup-github-ssh.sh       # GitHub SSH配置
 ├── init-db/                  # 数据库初始化脚本（v2.0 整合版）
 │   ├── README.md             # 详细说明文档
 │   ├── init-database.sh.manual  # 手动初始化脚本
@@ -200,8 +235,12 @@ scripts/
 ├── jmeter/                   # 压力测试
 │   ├── run-all-tests.sh
 │   └── *.jmx
-├── test/                     # API 测试
-│   └── api-test.sh
+├── test/                     # 测试脚本
+│   ├── run-all-tests.sh      # 一键运行所有测试
+│   ├── module-test-final.sh  # 模块功能测试
+│   ├── full-api-test.sh      # 完整API测试
+│   ├── business-logic-test.sh # 业务逻辑测试
+│   └── *.sh                  # 其他专项测试脚本
 ├── migration/                # 版本迁移脚本
 ├── backup/                   # 备份文件目录
 └── README.md                 # 本文件

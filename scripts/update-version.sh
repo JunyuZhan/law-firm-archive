@@ -38,6 +38,22 @@ else
 fi
 echo "   ✅ frontend/apps/web-antd/package.json"
 
+# 更新数据库初始化脚本中的版本号
+echo "3. 更新数据库初始化脚本中的版本号..."
+INIT_DATA_FILE="$PROJECT_ROOT/scripts/init-db/20-init-data.sql"
+if [ -f "$INIT_DATA_FILE" ]; then
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        # macOS: 更新 sys.version 配置行
+        sed -i '' "s|('sys.version', '[^']*',|('sys.version', '$NEW_VERSION',|" "$INIT_DATA_FILE"
+    else
+        # Linux: 更新 sys.version 配置行
+        sed -i "s|('sys.version', '[^']*',|('sys.version', '$NEW_VERSION',|" "$INIT_DATA_FILE"
+    fi
+    echo "   ✅ scripts/init-db/20-init-data.sql"
+else
+    echo "   ⚠️  未找到数据库初始化脚本: $INIT_DATA_FILE"
+fi
+
 echo ""
 echo "✅ 版本号已更新为 $NEW_VERSION"
 echo ""

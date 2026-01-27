@@ -9,12 +9,14 @@ import com.lawfirm.application.document.dto.DocumentDTO;
 import com.lawfirm.application.document.dto.DocumentQueryDTO;
 import com.lawfirm.application.document.service.DocAccessLogService;
 import com.lawfirm.application.document.service.DocumentAppService;
+import com.lawfirm.application.document.service.FileAccessService;
 import com.lawfirm.common.annotation.OperationLog;
 import com.lawfirm.common.annotation.RequirePermission;
 import com.lawfirm.common.result.PageResult;
 import com.lawfirm.common.result.Result;
 import com.lawfirm.common.util.FileValidator;
 import com.lawfirm.common.util.SecurityUtils;
+import com.lawfirm.common.util.WebUtils;
 import com.lawfirm.domain.document.entity.DocAccessLog;
 import com.lawfirm.infrastructure.external.onlyoffice.OnlyOfficeService;
 import com.lawfirm.infrastructure.external.minio.MinioService;
@@ -54,6 +56,7 @@ public class DocumentController {
     private final DocAccessLogService accessLogService;
     private final OnlyOfficeService onlyOfficeService;
     private final MinioService minioService;
+    private final FileAccessService fileAccessService;
 
     // 用于生成临时访问 token 的密钥
     private static final String TOKEN_SECRET = "law-firm-document-access-2024";
@@ -86,6 +89,65 @@ public class DocumentController {
     public Result<DocumentDTO> download(@PathVariable Long id, HttpServletRequest request) {
         accessLogService.logAccess(id, DocAccessLog.ACTION_DOWNLOAD, request);
         return Result.success(documentAppService.getDocumentById(id));
+    }
+
+    @GetMapping("/{id}/download")
+    @RequirePermission("doc:download")
+    public void downloadFile(@PathVariable Long id, HttpServletRequest request, HttpServletResponse response) {
+        accessLogService.logAccess(id, DocAccessLog.ACTION_DOWNLOAD, request);
+        try {
+            DocumentDTO doc = documentAppService.getDocumentById(id);
+            if (doc == null) {
+                response.sendError(HttpServletResponse.SC_NOT_FOUND, "文档不存在");
+                return;
+            }
+
+            // 使用统一访问服务获取文件访问URL（优先使用新字段，回退到file_path）
+            // 需要获取Document实体，而不是DTO
+            com.lawfirm.domain.document.entity.Document document = 
+                documentAppService.getDocumentEntityById(id);
+            String fileAccessUrl = fileAccessService.getDocumentAccessUrl(
+                document, "DOWNLOAD");
+            
+            // 从URL提取对象名称（预签名URL可能包含查询参数，需要处理）
+            String objectName = minioService.extractObjectName(fileAccessUrl);
+            if (objectName == null) {
+                // 如果无法提取对象名，尝试从file_path提取（兼容旧数据）
+                objectName = minioService.extractObjectName(doc.getFilePath());
+                if (objectName == null) {
+                    response.sendError(HttpServletResponse.SC_NOT_FOUND, "文件不存在");
+                    return;
+                }
+            }
+
+            String mimeType = doc.getMimeType();
+            if (mimeType == null || mimeType.isEmpty()) {
+                mimeType = "application/octet-stream";
+            }
+            response.setContentType(mimeType);
+            response.setHeader("Content-Disposition", "attachment; filename=\"" +
+                    URLEncoder.encode(doc.getFileName(), StandardCharsets.UTF_8) + "\"");
+            if (doc.getFileSize() != null && doc.getFileSize() > 0) {
+                response.setContentLengthLong(doc.getFileSize());
+            }
+
+            try (InputStream inputStream = minioService.downloadFile(objectName);
+                    OutputStream outputStream = response.getOutputStream()) {
+                byte[] buffer = new byte[8192];
+                int bytesRead;
+                while ((bytesRead = inputStream.read(buffer)) != -1) {
+                    outputStream.write(buffer, 0, bytesRead);
+                }
+                outputStream.flush();
+            }
+        } catch (Exception e) {
+            log.error("下载文档失败: id={}", id, e);
+            try {
+                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "下载文件失败");
+            } catch (Exception sendError) {
+                log.debug("发送错误响应失败", sendError);
+            }
+        }
     }
 
     /**
@@ -560,6 +622,24 @@ public class DocumentController {
         return Result.success(result);
     }
 
+    @PostMapping("/{id}/share")
+    @RequirePermission("doc:detail")
+    public Result<String> shareDocument(@PathVariable Long id) {
+        DocumentDTO doc = documentAppService.getDocumentById(id);
+        if (doc == null) {
+            return Result.error("文档不存在");
+        }
+
+        long expires = System.currentTimeMillis() + 7L * 24 * 3600 * 1000;
+        String token = generateAccessToken(id, expires);
+        String contextPath = WebUtils.getContextPath();
+        String shareUrl = WebUtils.getBaseUrl()
+                + (contextPath != null ? contextPath : "")
+                + "/document/" + id + "/content?token=" + token + "&expires=" + expires;
+
+        return Result.success(shareUrl);
+    }
+
     /**
      * 获取文档缩略图URL
      */
@@ -776,16 +856,30 @@ public class DocumentController {
                 }
             }
 
+            // 获取文档实体（用于FileAccessService）
+            com.lawfirm.domain.document.entity.Document document = 
+                documentAppService.getDocumentEntityById(id);
             DocumentDTO doc = documentAppService.getDocumentById(id);
             if (doc == null) {
                 response.sendError(HttpServletResponse.SC_NOT_FOUND, "文档不存在");
                 return;
             }
 
-            // 从 MinIO 获取文件
-            String objectName = minioService.extractObjectName(doc.getFilePath());
-            log.info("OnlyOffice 文件代理: documentId={}, filePath={}, objectName={}, bucketName={}",
-                id, doc.getFilePath(), objectName, minioService.getBucketName());
+            // 从 MinIO 获取文件（优先使用新字段，回退到file_path）
+            String objectName = null;
+            if (document.getStoragePath() != null && document.getPhysicalName() != null) {
+                // 使用新字段构建对象名
+                objectName = com.lawfirm.common.util.MinioPathGenerator.buildObjectName(
+                    document.getStoragePath(), document.getPhysicalName());
+                log.info("OnlyOffice 文件代理（使用新字段）: documentId={}, storagePath={}, physicalName={}, objectName={}",
+                    id, document.getStoragePath(), document.getPhysicalName(), objectName);
+            } else {
+                // 回退到file_path
+                objectName = minioService.extractObjectName(doc.getFilePath());
+                log.info("OnlyOffice 文件代理（使用file_path）: documentId={}, filePath={}, objectName={}",
+                    id, doc.getFilePath(), objectName);
+            }
+            
             if (objectName == null) {
                 log.error("无法解析 objectName: documentId={}, filePath={}, bucketName={}",
                     id, doc.getFilePath(), minioService.getBucketName());

@@ -1,53 +1,186 @@
 # 监控告警
 
-本章节介绍如何检查系统健康状态，并通过 Prometheus + Alertmanager 实现监控与告警。
+本章节介绍如何检查系统健康状态，并通过 Prometheus + Grafana 实现监控与告警。
 
-## 健康检查
+---
+
+## 📊 监控服务概览
+
+系统使用 **Prometheus** 收集监控数据，**Grafana** 进行可视化展示。
+
+### 访问地址
+
+- **Prometheus**: `http://your-server-ip:9090` 或 `http://prometheus.example.com`
+- **Grafana**: `http://your-server-ip:3000` 或 `http://grafana.example.com`
+
+### 登录信息
+
+**Prometheus**：
+- ✅ **无需登录**：直接访问即可查看监控数据
+- ⚠️ **安全建议**：如需保护，通过 Nginx 反向代理添加基本认证
+
+**Grafana**：
+- 用户名：`admin`
+- 密码：`.env` 文件中的 `GRAFANA_PASSWORD`，如果没有设置则默认为 `admin`
+- ⚠️ **首次登录后会要求修改密码**
+
+---
+
+## 🔍 健康检查
 
 ### 后端健康检查
 
 ```bash
 curl http://localhost:5666/actuator/health
+# 或
+curl http://localhost/api/actuator/health
 ```
 
 ### 数据库检查
 
 ```bash
-docker exec postgres pg_isready -U lawfirm
+# Docker 环境
+docker exec law-firm-postgres pg_isready -U law_admin -d law_firm
+
+# 本地环境
+pg_isready -U law_admin -d law_firm
 ```
 
 ### Redis 检查
 
 ```bash
+# Docker 环境
+docker exec law-firm-redis redis-cli ping
+
+# 本地环境
 redis-cli ping
 ```
 
-## 日志查看
+---
+
+## 📝 日志查看
 
 ### 后端日志
 
 ```bash
-# 实时查看
-tail -f logs/law-firm.log
-
 # Docker 环境
 docker logs -f law-firm-backend
+
+# 本地环境
+tail -f logs/law-firm.log
 ```
 
 ### Nginx 日志
 
 ```bash
+# Docker 环境
+docker logs -f law-firm-nginx
+
+# 本地环境
 tail -f /var/log/nginx/access.log
 tail -f /var/log/nginx/error.log
 ```
 
-## 监控体系（Prometheus）
+---
+
+## 📊 Prometheus 监控
+
+### 配置说明
 
 系统内置了 Prometheus 配置文件 `docker/prometheus/prometheus.yml`，默认抓取以下指标：
 
 - Prometheus 自身：`localhost:9090`
 - 后端服务：`backend:8080/api/actuator/prometheus`
 - Redis：`redis-exporter:9121`
+
+### Prometheus 使用指南
+
+**Prometheus 界面是英文的**，可以使用以下方法：
+
+**方法一：使用浏览器翻译**（最简单）
+- Chrome/Edge：右键 → "翻译为中文"
+- 界面会自动翻译为中文
+
+**方法二：使用 Grafana**（推荐）
+- Grafana 支持中文界面
+- 可以从 Prometheus 读取数据并以更友好的方式展示
+- 详见下面的 Grafana 部分
+
+### Prometheus 查询示例
+
+```promql
+# 检查服务是否在线
+up
+
+# 查询 HTTP 请求速率
+rate(http_requests_total[5m])
+
+# 查询数据库连接数
+pg_stat_database_numbackends
+```
+
+---
+
+## 📈 Grafana 监控
+
+### 设置中文界面
+
+1. **登录 Grafana**
+   - 访问：`http://your-server-ip:3000`
+   - 用户名：`admin`
+   - 密码：`.env` 文件中的 `GRAFANA_PASSWORD`
+
+2. **切换到中文**
+   - 点击左下角用户图标（或右上角头像）
+   - 选择 **"Preferences"**（偏好设置）
+   - 找到 **"Language"**（语言）选项
+   - 选择 **"中文（简体）"**
+   - 点击 **"Save"**（保存）
+
+详细步骤请参考：[Grafana 配置指南](./grafana.md)
+
+### 数据源配置
+
+Grafana 默认已配置 Prometheus 数据源：
+- **名称**：Prometheus
+- **URL**：`http://prometheus:9090`
+- **访问**：Server（服务器模式）
+
+### 仪表板
+
+系统已预置监控仪表板，包括：
+- 系统概览
+- 应用性能
+- 数据库监控
+- Redis 监控
+
+---
+
+## 🚨 告警配置
+
+### Alertmanager 配置
+
+系统使用 Alertmanager 进行告警管理，配置文件位于 `docker/alertmanager/alertmanager.yml`。
+
+### 告警规则
+
+告警规则定义在 `docker/prometheus/alerts.yml`，包括：
+- 服务下线告警
+- 高 CPU 使用率告警
+- 高内存使用率告警
+- 数据库连接数告警
+
+---
+
+## 📚 相关文档
+
+- [Grafana 配置指南](./grafana.md)
+- [故障排查](./troubleshooting.md)
+- [配置说明](./configuration.md)
+
+---
+
+**最后更新**: 2026-01-27
 - PostgreSQL：`postgres-exporter:9187`
 - MinIO 集群：`minio:9000/minio/v2/metrics/cluster`
 - Node Exporter：`node-exporter:9100`

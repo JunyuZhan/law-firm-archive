@@ -12,7 +12,7 @@
 
 CREATE TABLE public.sys_announcement (
     id bigint NOT NULL,
-    title character varying(200) NOT NULL,
+    title character varying(500) NOT NULL,
     content text NOT NULL,
     type character varying(30) DEFAULT 'NOTICE'::character varying,
     priority integer DEFAULT 0,
@@ -400,7 +400,7 @@ ALTER SEQUENCE public.sys_data_sync_log_id_seq OWNED BY public.sys_data_sync_log
 
 CREATE TABLE public.sys_department (
     id bigint NOT NULL,
-    name character varying(100) NOT NULL,
+    name character varying(200) NOT NULL,
     parent_id bigint DEFAULT 0,
     sort_order integer DEFAULT 0,
     leader_id bigint,
@@ -501,7 +501,7 @@ ALTER SEQUENCE public.sys_dict_item_id_seq OWNED BY public.sys_dict_item.id;
 
 CREATE TABLE public.sys_dict_type (
     id bigint NOT NULL,
-    name character varying(100) NOT NULL,
+    name character varying(200) NOT NULL,
     code character varying(50) NOT NULL,
     description character varying(500),
     status character varying(20) DEFAULT 'ENABLED'::character varying,
@@ -819,7 +819,7 @@ ALTER SEQUENCE public.sys_login_log_id_seq OWNED BY public.sys_login_log.id;
 CREATE TABLE public.sys_menu (
     id bigint NOT NULL,
     parent_id bigint DEFAULT 0,
-    name character varying(100) NOT NULL,
+    name character varying(200) NOT NULL,
     path character varying(200),
     component character varying(200),
     redirect character varying(200),
@@ -873,7 +873,7 @@ ALTER SEQUENCE public.sys_menu_id_seq OWNED BY public.sys_menu.id;
 
 CREATE TABLE public.sys_notification (
     id bigint NOT NULL,
-    title character varying(200) NOT NULL,
+    title character varying(500) NOT NULL,
     content text NOT NULL,
     type character varying(30) NOT NULL,
     sender_id bigint,
@@ -1092,7 +1092,7 @@ ALTER SEQUENCE public.sys_permission_change_log_id_seq OWNED BY public.sys_permi
 CREATE TABLE public.sys_role (
     id bigint NOT NULL,
     role_code character varying(50) NOT NULL,
-    role_name character varying(100) NOT NULL,
+    role_name character varying(50) NOT NULL,
     description character varying(500),
     data_scope character varying(20) DEFAULT 'SELF'::character varying,
     status character varying(20) DEFAULT 'ACTIVE'::character varying,
@@ -1618,199 +1618,199 @@ ALTER TABLE ONLY public.sys_user_session ALTER COLUMN id SET DEFAULT nextval('pu
 --
 
 ALTER TABLE ONLY public.sys_announcement
-    ADD CONSTRAINT sys_announcement_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_sys_announcement PRIMARY KEY (id);
 --
 -- Name: sys_backup sys_backup_backup_no_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.sys_backup
-    ADD CONSTRAINT sys_backup_backup_no_key UNIQUE (backup_no);
+    ADD CONSTRAINT uk_sys_backup_backup_no UNIQUE (backup_no);
 --
 -- Name: sys_backup sys_backup_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.sys_backup
-    ADD CONSTRAINT sys_backup_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_sys_backup PRIMARY KEY (id);
 --
 -- Name: sys_config sys_config_config_key_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.sys_config
-    ADD CONSTRAINT sys_config_config_key_key UNIQUE (config_key);
+    ADD CONSTRAINT uk_sys_config_config_key UNIQUE (config_key);
 --
 -- Name: sys_config sys_config_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.sys_config
-    ADD CONSTRAINT sys_config_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_sys_config PRIMARY KEY (id);
 --
 -- Name: sys_data_handover_detail sys_data_handover_detail_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.sys_data_handover_detail
-    ADD CONSTRAINT sys_data_handover_detail_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_sys_data_handover_detail PRIMARY KEY (id);
 --
 -- Name: sys_data_handover sys_data_handover_handover_no_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.sys_data_handover
-    ADD CONSTRAINT sys_data_handover_handover_no_key UNIQUE (handover_no);
+    ADD CONSTRAINT uk_sys_data_handover_handover_no UNIQUE (handover_no);
 --
 -- Name: sys_data_handover sys_data_handover_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.sys_data_handover
-    ADD CONSTRAINT sys_data_handover_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_sys_data_handover PRIMARY KEY (id);
 --
 -- Name: sys_data_sync_log sys_data_sync_log_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.sys_data_sync_log
-    ADD CONSTRAINT sys_data_sync_log_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_sys_data_sync_log PRIMARY KEY (id);
 --
 -- Name: sys_department sys_department_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.sys_department
-    ADD CONSTRAINT sys_department_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_sys_department PRIMARY KEY (id);
 --
 -- Name: sys_dict_item sys_dict_item_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.sys_dict_item
-    ADD CONSTRAINT sys_dict_item_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_sys_dict_item PRIMARY KEY (id);
 --
 -- Name: sys_dict_type sys_dict_type_code_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.sys_dict_type
-    ADD CONSTRAINT sys_dict_type_code_key UNIQUE (code);
+    ADD CONSTRAINT uk_sys_dict_type_code UNIQUE (code);
 --
 -- Name: sys_dict_type sys_dict_type_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.sys_dict_type
-    ADD CONSTRAINT sys_dict_type_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_sys_dict_type PRIMARY KEY (id);
 --
 -- Name: sys_export_log sys_export_log_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.sys_export_log
-    ADD CONSTRAINT sys_export_log_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_sys_export_log PRIMARY KEY (id);
 --
 -- Name: sys_external_integration sys_external_integration_integration_code_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.sys_external_integration
-    ADD CONSTRAINT sys_external_integration_integration_code_key UNIQUE (integration_code);
+    ADD CONSTRAINT uk_sys_external_integration_integration_code UNIQUE (integration_code);
 --
 -- Name: sys_external_integration sys_external_integration_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.sys_external_integration
-    ADD CONSTRAINT sys_external_integration_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_sys_external_integration PRIMARY KEY (id);
 --
 -- Name: sys_login_log sys_login_log_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.sys_login_log
-    ADD CONSTRAINT sys_login_log_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_sys_login_log PRIMARY KEY (id);
 --
 -- Name: sys_menu sys_menu_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.sys_menu
-    ADD CONSTRAINT sys_menu_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_sys_menu PRIMARY KEY (id);
 --
 -- Name: sys_notification sys_notification_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.sys_notification
-    ADD CONSTRAINT sys_notification_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_sys_notification PRIMARY KEY (id);
 --
 -- Name: sys_operation_log sys_operation_log_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.sys_migration
-    ADD CONSTRAINT sys_migration_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_sys_migration PRIMARY KEY (id);
 --
 -- Name: sys_migration sys_migration_migration_no_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.sys_migration
-    ADD CONSTRAINT sys_migration_migration_no_key UNIQUE (migration_no);
+    ADD CONSTRAINT uk_sys_migration_migration_no UNIQUE (migration_no);
 --
 -- Name: sys_operation_log sys_operation_log_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.sys_operation_log
-    ADD CONSTRAINT sys_operation_log_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_sys_operation_log PRIMARY KEY (id);
 --
 -- Name: sys_permission_change_log sys_permission_change_log_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.sys_permission_change_log
-    ADD CONSTRAINT sys_permission_change_log_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_sys_permission_change_log PRIMARY KEY (id);
 --
 -- Name: sys_role_change_log sys_role_change_log_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.sys_role_change_log
-    ADD CONSTRAINT sys_role_change_log_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_sys_role_change_log PRIMARY KEY (id);
 --
 -- Name: sys_role_menu sys_role_menu_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.sys_role_menu
-    ADD CONSTRAINT sys_role_menu_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_sys_role_menu PRIMARY KEY (id);
 --
 -- Name: sys_role_menu sys_role_menu_role_id_menu_id_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.sys_role_menu
-    ADD CONSTRAINT sys_role_menu_role_id_menu_id_key UNIQUE (role_id, menu_id);
+    ADD CONSTRAINT uk_sys_role_menu_role_id_menu_id UNIQUE (role_id, menu_id);
 --
 -- Name: sys_role sys_role_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.sys_role
-    ADD CONSTRAINT sys_role_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_sys_role PRIMARY KEY (id);
 --
 -- Name: sys_role sys_role_role_code_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.sys_role
-    ADD CONSTRAINT sys_role_role_code_key UNIQUE (role_code);
+    ADD CONSTRAINT uk_sys_role_role_code UNIQUE (role_code);
 --
 -- Name: sys_user sys_user_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.sys_user
-    ADD CONSTRAINT sys_user_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_sys_user PRIMARY KEY (id);
 --
 -- Name: sys_user_role sys_user_role_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.sys_user_role
-    ADD CONSTRAINT sys_user_role_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_sys_user_role PRIMARY KEY (id);
 --
 -- Name: sys_user_role sys_user_role_user_id_role_id_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.sys_user_role
-    ADD CONSTRAINT sys_user_role_user_id_role_id_key UNIQUE (user_id, role_id);
+    ADD CONSTRAINT uk_sys_user_role_user_id_role_id UNIQUE (user_id, role_id);
 --
 -- Name: sys_user_session sys_user_session_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.sys_user_session
-    ADD CONSTRAINT sys_user_session_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_sys_user_session PRIMARY KEY (id);
 --
 -- Name: sys_user sys_user_username_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.sys_user
-    ADD CONSTRAINT sys_user_username_key UNIQUE (username);
+    ADD CONSTRAINT uk_sys_user_username UNIQUE (username);
 --
 -- Name: sys_dict_item uk_dict_item; Type: CONSTRAINT; Schema: public; Owner: -
 --
@@ -2088,52 +2088,52 @@ ALTER TABLE ONLY public.sys_export_log
 --
 
 ALTER TABLE ONLY public.sys_data_handover
-    ADD CONSTRAINT sys_data_handover_confirmed_by_fkey FOREIGN KEY (confirmed_by) REFERENCES public.sys_user(id);
+    ADD CONSTRAINT fk_sys_data_handover_sys_user_confirmed_by FOREIGN KEY (confirmed_by) REFERENCES public.sys_user(id);
 --
 -- Name: sys_data_handover_detail sys_data_handover_detail_handover_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.sys_data_handover_detail
-    ADD CONSTRAINT sys_data_handover_detail_handover_id_fkey FOREIGN KEY (handover_id) REFERENCES public.sys_data_handover(id);
+    ADD CONSTRAINT fk_sys_data_handover_detail_sys_data_handover_handover_id FOREIGN KEY (handover_id) REFERENCES public.sys_data_handover(id);
 --
 -- Name: sys_data_handover sys_data_handover_from_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.sys_data_handover
-    ADD CONSTRAINT sys_data_handover_from_user_id_fkey FOREIGN KEY (from_user_id) REFERENCES public.sys_user(id);
+    ADD CONSTRAINT fk_sys_data_handover_sys_user_from_user_id FOREIGN KEY (from_user_id) REFERENCES public.sys_user(id);
 --
 -- Name: sys_data_handover sys_data_handover_submitted_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.sys_data_handover
-    ADD CONSTRAINT sys_data_handover_submitted_by_fkey FOREIGN KEY (submitted_by) REFERENCES public.sys_user(id);
+    ADD CONSTRAINT fk_sys_data_handover_sys_user_submitted_by FOREIGN KEY (submitted_by) REFERENCES public.sys_user(id);
 --
 -- Name: sys_data_handover sys_data_handover_to_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.sys_data_handover
-    ADD CONSTRAINT sys_data_handover_to_user_id_fkey FOREIGN KEY (to_user_id) REFERENCES public.sys_user(id);
+    ADD CONSTRAINT fk_sys_data_handover_sys_user_to_user_id FOREIGN KEY (to_user_id) REFERENCES public.sys_user(id);
 --
 -- Name: sys_permission_change_log sys_permission_change_log_changed_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.sys_permission_change_log
-    ADD CONSTRAINT sys_permission_change_log_changed_by_fkey FOREIGN KEY (changed_by) REFERENCES public.sys_user(id);
+    ADD CONSTRAINT fk_sys_permission_change_log_sys_user_changed_by FOREIGN KEY (changed_by) REFERENCES public.sys_user(id);
 --
 -- Name: sys_permission_change_log sys_permission_change_log_role_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.sys_permission_change_log
-    ADD CONSTRAINT sys_permission_change_log_role_id_fkey FOREIGN KEY (role_id) REFERENCES public.sys_role(id);
+    ADD CONSTRAINT fk_sys_permission_change_log_sys_role_role_id FOREIGN KEY (role_id) REFERENCES public.sys_role(id);
 --
 -- Name: sys_role_change_log sys_role_change_log_changed_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.sys_role_change_log
-    ADD CONSTRAINT sys_role_change_log_changed_by_fkey FOREIGN KEY (changed_by) REFERENCES public.sys_user(id);
+    ADD CONSTRAINT fk_sys_role_change_log_sys_user_changed_by FOREIGN KEY (changed_by) REFERENCES public.sys_user(id);
 --
 -- Name: sys_role_change_log sys_role_change_log_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.sys_role_change_log
-    ADD CONSTRAINT sys_role_change_log_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.sys_user(id);
+    ADD CONSTRAINT fk_sys_role_change_log_sys_user_user_id FOREIGN KEY (user_id) REFERENCES public.sys_user(id);

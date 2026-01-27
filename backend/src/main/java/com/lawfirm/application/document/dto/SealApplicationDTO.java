@@ -50,6 +50,31 @@ public class SealApplicationDTO extends BaseDTO {
     private LocalDateTime usedAt;
     private String useRemark;
     
+    /**
+     * 附件文件URL（向后兼容字段）
+     */
+    private String attachmentUrl;
+    
+    /**
+     * MinIO桶名称，默认law-firm
+     */
+    private String bucketName;
+    
+    /**
+     * 存储路径：seal/M_{matterId}/{YYYY-MM}/用印附件/
+     */
+    private String storagePath;
+    
+    /**
+     * 物理文件名：{YYYYMMDD}_{UUID}_{documentName}.{ext}
+     */
+    private String physicalName;
+    
+    /**
+     * 文件Hash值（SHA-256），用于去重和校验
+     */
+    private String fileHash;
+    
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

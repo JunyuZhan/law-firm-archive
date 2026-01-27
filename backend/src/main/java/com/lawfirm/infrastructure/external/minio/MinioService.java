@@ -491,6 +491,23 @@ public class MinioService {
     }
 
     /**
+     * 获取端点地址
+     */
+    public String getEndpoint() {
+        return endpoint;
+    }
+
+    /**
+     * 构建完整文件URL
+     * 
+     * @param objectName 对象名称
+     * @return 完整文件URL
+     */
+    public String buildFileUrl(String objectName) {
+        return endpoint + "/" + bucketName + "/" + objectName;
+    }
+
+    /**
      * MinIO 对象信息
      */
     public static class MinioObjectInfo {

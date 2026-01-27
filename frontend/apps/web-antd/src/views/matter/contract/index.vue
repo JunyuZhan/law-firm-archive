@@ -2885,38 +2885,43 @@ onMounted(async () => {
   >
     <!-- 统计卡片 -->
     <Row :gutter="[16, 16]" style="margin-bottom: 16px" v-if="statistics">
-      <Col :xs="12" :sm="12" :md="6" :lg="6">
-        <Card>
-          <Statistic title="合同总数" :value="statistics.totalCount" />
-        </Card>
-      </Col>
-      <Col :xs="12" :sm="12" :md="6" :lg="6">
-        <Card>
-          <Statistic
-            title="生效中"
-            :value="statistics.activeCount"
-            :value-style="{ color: '#52c41a' }"
+      <Col :xs="24" :sm="12" :md="6" :lg="6" :xl="6">
+        <Card :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }" style="height: 100%">
+          <Statistic 
+            title="合同总数" 
+            :value="statistics.totalCount"
+            class="contract-statistic"
           />
         </Card>
       </Col>
-      <Col :xs="12" :sm="12" :md="6" :lg="6">
-        <Card>
+      <Col :xs="24" :sm="12" :md="6" :lg="6" :xl="6">
+        <Card :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }" style="height: 100%">
+          <Statistic
+            title="生效中"
+            :value="statistics.activeCount"
+            class="contract-statistic contract-statistic-green"
+          />
+        </Card>
+      </Col>
+      <Col :xs="24" :sm="12" :md="6" :lg="6" :xl="6">
+        <Card :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }" style="height: 100%">
           <Statistic
             title="合同总金额"
             :value="statistics.totalAmount"
             prefix="¥"
             :precision="2"
+            class="contract-statistic contract-statistic-amount"
           />
         </Card>
       </Col>
-      <Col :xs="12" :sm="12" :md="6" :lg="6">
-        <Card>
+      <Col :xs="24" :sm="12" :md="6" :lg="6" :xl="6">
+        <Card :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }" style="height: 100%">
           <Statistic
             title="待收金额"
             :value="statistics.unpaidAmount"
             prefix="¥"
             :precision="2"
-            :value-style="{ color: '#faad14' }"
+            class="contract-statistic contract-statistic-amount contract-statistic-warning"
           />
         </Card>
       </Col>
@@ -4785,6 +4790,34 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+/* 统计卡片样式 - 统一字体大小 */
+.contract-statistic :deep(.ant-statistic-content) {
+  font-size: clamp(14px, 2vw, 20px);
+}
+
+.contract-statistic :deep(.ant-statistic-content-value) {
+  font-size: clamp(14px, 2vw, 20px);
+}
+
+/* 金额统计卡片 - 防止换行 */
+.contract-statistic-amount :deep(.ant-statistic-content-value),
+.contract-statistic-amount :deep(.ant-statistic-content-prefix) {
+  white-space: nowrap;
+}
+
+.contract-statistic-green :deep(.ant-statistic-content-value) {
+  color: #52c41a;
+}
+
+.contract-statistic-warning :deep(.ant-statistic-content-value) {
+  color: #faad14;
+}
+
+/* 确保统计卡片外框大小一致 */
+:deep(.ant-row) > :deep(.ant-col) > :deep(.ant-card) {
+  display: flex;
+  flex-direction: column;
+}
 /* 合同预览内容样式 */
 .contract-preview-content {
   flex: 1;

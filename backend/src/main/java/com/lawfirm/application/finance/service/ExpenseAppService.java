@@ -46,6 +46,11 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import com.lawfirm.domain.matter.entity.Matter;
+import com.lawfirm.application.document.service.FileAccessService;
+import com.lawfirm.common.util.MinioPathGenerator;
+import com.lawfirm.infrastructure.external.minio.MinioService;
+import org.springframework.web.multipart.MultipartFile;
+import java.util.Map;
 
 /**
  * 费用报销应用服务
@@ -65,6 +70,8 @@ public class ExpenseAppService {
     private final ApprovalService approvalService;
     private final ApproverService approverService;
     private final ObjectMapper objectMapper;
+    private final FileAccessService fileAccessService;
+    private final MinioService minioService;
     private MatterAppService matterAppService;
     
     @org.springframework.beans.factory.annotation.Autowired
@@ -261,6 +268,11 @@ public class ExpenseAppService {
                 .createdBy(SecurityUtils.getUserId())
                 .createdAt(LocalDateTime.now())
                 .build();
+
+        // 处理文件URL：如果提供了invoiceUrl，尝试解析并设置新字段（向后兼容）
+        if (command.getInvoiceUrl() != null && !command.getInvoiceUrl().isEmpty()) {
+            setFileStorageInfo(expense, command.getInvoiceUrl());
+        }
 
         expenseRepository.getBaseMapper().insert(expense);
 
@@ -800,6 +812,61 @@ public class ExpenseAppService {
         }
 
         return dto;
+    }
+
+    /**
+     * 设置文件存储信息（新字段）
+     * 如果invoiceUrl是MinIO URL，尝试解析并设置新字段；否则只设置invoiceUrl（向后兼容）
+     */
+    private void setFileStorageInfo(Expense expense, String invoiceUrl) {
+        expense.setInvoiceUrl(invoiceUrl);
+        
+        // 尝试从URL解析存储信息
+        Map<String, String> storageInfo = fileAccessService.parseStorageInfoFromUrl(invoiceUrl);
+        if (storageInfo != null) {
+            expense.setBucketName(storageInfo.get("bucketName"));
+            expense.setStoragePath(storageInfo.get("storagePath"));
+            expense.setPhysicalName(storageInfo.get("physicalName"));
+            // fileHash无法从URL解析，保持为null
+            log.debug("从URL解析存储信息成功: expenseId={}, storagePath={}", expense.getId(), storageInfo.get("storagePath"));
+        } else {
+            // 不是MinIO URL或无法解析，只设置invoiceUrl（向后兼容）
+            log.debug("无法从URL解析存储信息，仅设置invoiceUrl: invoiceUrl={}", invoiceUrl);
+        }
+    }
+
+    /**
+     * 上传费用凭证文件
+     * 
+     * @param file 文件
+     * @param expenseId 费用ID
+     * @return 文件URL
+     */
+    @Transactional
+    public String uploadExpenseFile(MultipartFile file, Long expenseId) {
+        Expense expense = expenseRepository.getByIdOrThrow(expenseId, "费用记录不存在");
+        
+        // 使用FileAccessService上传文件
+        Map<String, String> storageInfo = fileAccessService.uploadFile(
+            file, 
+            MinioPathGenerator.FileType.EXPENSE, 
+            expense.getMatterId(), 
+            "费用凭证"
+        );
+        
+        // 设置存储信息
+        expense.setInvoiceUrl(storageInfo.get("fileUrl"));
+        expense.setBucketName(storageInfo.get("bucketName"));
+        expense.setStoragePath(storageInfo.get("storagePath"));
+        expense.setPhysicalName(storageInfo.get("physicalName"));
+        expense.setFileHash(storageInfo.get("fileHash"));
+        
+        expenseRepository.getBaseMapper().updateById(expense);
+        
+        log.info("费用凭证文件上传成功: expenseId={}, fileName={}, storagePath={}", 
+            expenseId, file.getOriginalFilename(), storageInfo.get("storagePath"));
+        
+        return storageInfo.get("fileUrl");
     }
 }
 

@@ -33,6 +33,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -462,8 +463,9 @@ class DocumentAppServiceTest {
                 // 使用lenient，因为FileValidator已被mock，可能不会读取InputStream
                 lenient().when(file.getInputStream()).thenReturn(new ByteArrayInputStream("test content".getBytes()));
 
-                when(minioService.uploadFile(any(MultipartFile.class), anyString()))
-                        .thenReturn("/minio/path/test.pdf");
+                // Mock MinIO uploadFile方法（三个参数：InputStream, String, String）
+                when(minioService.uploadFile(any(InputStream.class), anyString(), anyString()))
+                        .thenReturn("http://localhost:9000/law-firm/matters/M_100/2026-01/20260127_abc123_test.pdf");
                 // 使用lenient，因为缩略图服务只在支持的文件类型时才会调用
                 lenient().when(thumbnailService.supportsThumbnail(anyString())).thenReturn(false);
                 when(documentRepository.save(any(Document.class))).thenReturn(true);
@@ -475,7 +477,7 @@ class DocumentAppServiceTest {
                 // Then
                 assertThat(result.getFileName()).isEqualTo("test.pdf");
                 assertThat(result.getMatterId()).isEqualTo(TEST_MATTER_ID);
-                verify(minioService).uploadFile(any(MultipartFile.class), anyString());
+                verify(minioService).uploadFile(any(InputStream.class), anyString(), anyString());
             }
         }
 
@@ -716,9 +718,10 @@ class DocumentAppServiceTest {
 
                 MultipartFile[] files = {file1, file2};
 
-                when(minioService.uploadFile(any(MultipartFile.class), anyString()))
-                        .thenReturn("/minio/path/test1.pdf")
-                        .thenReturn("/minio/path/test2.pdf");
+                // Mock MinIO uploadFile方法（三个参数：InputStream, String, String）
+                when(minioService.uploadFile(any(InputStream.class), anyString(), anyString()))
+                        .thenReturn("http://localhost:9000/law-firm/matters/M_100/2026-01/20260127_abc123_test1.pdf")
+                        .thenReturn("http://localhost:9000/law-firm/matters/M_100/2026-01/20260127_def456_test2.pdf");
                 lenient().when(thumbnailService.supportsThumbnail(anyString())).thenReturn(false);
                 when(documentRepository.save(any(Document.class))).thenReturn(true);
                 when(versionMapper.insert(any(DocumentVersion.class))).thenReturn(1);
@@ -730,7 +733,7 @@ class DocumentAppServiceTest {
                 assertThat(result).hasSize(2);
                 assertThat(result.get(0).getFileName()).isEqualTo("test1.pdf");
                 assertThat(result.get(1).getFileName()).isEqualTo("test2.pdf");
-                verify(minioService, times(2)).uploadFile(any(MultipartFile.class), anyString());
+                verify(minioService, times(2)).uploadFile(any(InputStream.class), anyString(), anyString());
             }
         }
 
@@ -787,10 +790,25 @@ class DocumentAppServiceTest {
                 MultipartFile[] files = {file1, file2};
 
                 // 第一个文件成功上传，第二个文件失败
-                when(minioService.uploadFile(eq(file1), anyString()))
-                        .thenReturn("/minio/path/test1.pdf");
-                when(minioService.uploadFile(eq(file2), anyString()))
-                        .thenReturn("/minio/path/test2.pdf");
+                // 注意：uploadFile返回的是MinIO内部URL，但filePath使用的是buildFileUrl生成的URL
+                // objectName是动态生成的（包含UUID），所以我们需要mock动态响应
+                
+                // Mock uploadFile返回MinIO内部URL（实际代码中newFileUrl）
+                when(minioService.uploadFile(any(InputStream.class), anyString(), anyString()))
+                        .thenAnswer(invocation -> {
+                            String objName = invocation.getArgument(1);
+                            return "http://localhost:9000/law-firm/" + objName;
+                        });
+                
+                // Mock buildFileUrl返回filePath（实际代码中filePath使用buildFileUrl生成）
+                when(minioService.buildFileUrl(anyString()))
+                        .thenAnswer(invocation -> {
+                            String objName = invocation.getArgument(0);
+                            return "http://localhost:9000/law-firm/" + objName;
+                        });
+                
+                // Mock getBucketName（用于设置bucketName字段）
+                when(minioService.getBucketName()).thenReturn("law-firm");
                 
                 lenient().when(thumbnailService.supportsThumbnail(anyString())).thenReturn(false);
                 
@@ -802,7 +820,17 @@ class DocumentAppServiceTest {
                         .thenReturn(1)  // 第一个文件的版本
                         .thenThrow(new RuntimeException("Database error")); // 第二个文件失败
                 
-                // Mock deleteFile方法
+                // Mock extractObjectName用于从URL提取objectName（清理时使用）
+                when(minioService.extractObjectName(anyString()))
+                        .thenAnswer(invocation -> {
+                            String url = invocation.getArgument(0);
+                            if (url != null && url.contains("/law-firm/")) {
+                                return url.substring(url.indexOf("/law-firm/") + 10);
+                            }
+                            return null;
+                        });
+                
+                // Mock deleteFile方法（接收objectName）
                 doNothing().when(minioService).deleteFile(anyString());
 
                 // When & Then
@@ -811,7 +839,10 @@ class DocumentAppServiceTest {
                         .hasMessageContaining("批量上传失败");
                 
                 // 验证清理操作被调用（第一个文件已成功上传，第二个失败时应该清理第一个）
-                verify(minioService, atLeastOnce()).deleteFile("/minio/path/test1.pdf");
+                // 代码会先调用extractObjectName从URL提取objectName，然后调用deleteFile
+                // 由于objectName是动态生成的，我们只验证方法被调用了，不验证具体参数
+                verify(minioService, atLeastOnce()).extractObjectName(anyString());
+                verify(minioService, atLeastOnce()).deleteFile(anyString());
             }
         }
     }

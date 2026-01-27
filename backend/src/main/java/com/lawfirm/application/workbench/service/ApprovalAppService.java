@@ -29,6 +29,11 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import com.lawfirm.common.constant.ApprovalStatus;
+import com.lawfirm.application.document.service.FileAccessService;
+import com.lawfirm.common.util.MinioPathGenerator;
+import com.lawfirm.infrastructure.external.minio.MinioService;
+import org.springframework.web.multipart.MultipartFile;
+import java.util.Map;
 
 /**
  * 审批应用服务
@@ -45,6 +50,8 @@ public class ApprovalAppService {
     private final ExpenseAppService expenseAppService;
     private final RegularizationAppService regularizationAppService;
     private final ResignationAppService resignationAppService;
+    private final FileAccessService fileAccessService;
+    private final MinioService minioService;
 
     /**
      * 分页查询审批记录
@@ -459,6 +466,61 @@ public class ApprovalAppService {
             case "NORMAL" -> "普通";
             default -> urgency;
         };
+    }
+
+    /**
+     * 设置文件存储信息（新字段）
+     * 如果fileUrl是MinIO URL，尝试解析并设置新字段；否则只设置fileUrl（向后兼容）
+     */
+    private void setFileStorageInfo(Approval approval, String fileUrl) {
+        approval.setFileUrl(fileUrl);
+        
+        // 尝试从URL解析存储信息
+        Map<String, String> storageInfo = fileAccessService.parseStorageInfoFromUrl(fileUrl);
+        if (storageInfo != null) {
+            approval.setBucketName(storageInfo.get("bucketName"));
+            approval.setStoragePath(storageInfo.get("storagePath"));
+            approval.setPhysicalName(storageInfo.get("physicalName"));
+            // fileHash无法从URL解析，保持为null
+            log.debug("从URL解析存储信息成功: approvalId={}, storagePath={}", approval.getId(), storageInfo.get("storagePath"));
+        } else {
+            // 不是MinIO URL或无法解析，只设置fileUrl（向后兼容）
+            log.debug("无法从URL解析存储信息，仅设置fileUrl: fileUrl={}", fileUrl);
+        }
+    }
+
+    /**
+     * 上传审批附件文件
+     * 
+     * @param file 文件
+     * @param approvalId 审批ID
+     * @return 文件URL
+     */
+    @Transactional
+    public String uploadApprovalFile(MultipartFile file, Long approvalId) {
+        Approval approval = approvalRepository.getByIdOrThrow(approvalId, "审批记录不存在");
+        
+        // 使用FileAccessService上传文件（审批附件的路径包含businessType）
+        Map<String, String> storageInfo = fileAccessService.uploadFile(
+            file, 
+            MinioPathGenerator.FileType.APPROVAL, 
+            approval.getBusinessId(), // 这里使用businessId，实际应该从业务对象获取matterId
+            approval.getBusinessType() // folder参数代表businessType
+        );
+        
+        // 设置存储信息
+        approval.setFileUrl(storageInfo.get("fileUrl"));
+        approval.setBucketName(storageInfo.get("bucketName"));
+        approval.setStoragePath(storageInfo.get("storagePath"));
+        approval.setPhysicalName(storageInfo.get("physicalName"));
+        approval.setFileHash(storageInfo.get("fileHash"));
+        
+        approvalRepository.updateById(approval);
+        
+        log.info("审批附件文件上传成功: approvalId={}, fileName={}, storagePath={}", 
+            approvalId, file.getOriginalFilename(), storageInfo.get("storagePath"));
+        
+        return storageInfo.get("fileUrl");
     }
 }
 

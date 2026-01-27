@@ -120,6 +120,6 @@ fi
 
 echo ""
 echo "下一步操作:"
-echo "  启动开发环境: ./scripts/dev-start.sh"
+echo "  启动开发环境: ./scripts/env-start.sh"
 echo "  初始化数据库: ./scripts/reset-db.sh --dev"
 echo ""

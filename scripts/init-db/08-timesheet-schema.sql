@@ -217,31 +217,31 @@ ALTER TABLE ONLY public.timesheet_summary ALTER COLUMN id SET DEFAULT nextval('p
 --
 
 ALTER TABLE ONLY public.timer_session
-    ADD CONSTRAINT timer_session_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_timer_session PRIMARY KEY (id);
 --
 -- Name: timesheet timesheet_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.timesheet
-    ADD CONSTRAINT timesheet_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_timesheet PRIMARY KEY (id);
 --
 -- Name: timesheet_summary timesheet_summary_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.timesheet_summary
-    ADD CONSTRAINT timesheet_summary_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_timesheet_summary PRIMARY KEY (id);
 --
 -- Name: timesheet_summary timesheet_summary_user_id_matter_id_year_month_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.timesheet_summary
-    ADD CONSTRAINT timesheet_summary_user_id_matter_id_year_month_key UNIQUE (user_id, matter_id, year, month);
+    ADD CONSTRAINT uk_timesheet_summary_user_id_matter_id_year_month UNIQUE (user_id, matter_id, year, month);
 --
 -- Name: timesheet timesheet_timesheet_no_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.timesheet
-    ADD CONSTRAINT timesheet_timesheet_no_key UNIQUE (timesheet_no);
+    ADD CONSTRAINT uk_timesheet_timesheet_no UNIQUE (timesheet_no);
 --
 -- Name: idx_summary_period; Type: INDEX; Schema: public; Owner: -
 --

@@ -50,6 +50,14 @@ public class Document extends BaseEntity {
      */
     private String filePath;
 
+    private String bucketName;
+
+    private String storagePath;
+
+    private String physicalName;
+
+    private String fileHash;
+
     /**
      * 文件大小（字节）
      */

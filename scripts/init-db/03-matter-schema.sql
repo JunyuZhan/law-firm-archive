@@ -403,43 +403,43 @@ ALTER TABLE ONLY public.matter_participant ALTER COLUMN id SET DEFAULT nextval('
 --
 
 ALTER TABLE ONLY public.matter_client
-    ADD CONSTRAINT matter_client_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_matter_client PRIMARY KEY (id);
 --
 -- Name: matter_deadline matter_deadline_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.matter_deadline
-    ADD CONSTRAINT matter_deadline_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_matter_deadline PRIMARY KEY (id);
 --
 -- Name: matter_dossier_item matter_dossier_item_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.matter_dossier_item
-    ADD CONSTRAINT matter_dossier_item_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_matter_dossier_item PRIMARY KEY (id);
 --
 -- Name: matter matter_matter_no_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.matter
-    ADD CONSTRAINT matter_matter_no_key UNIQUE (matter_no);
+    ADD CONSTRAINT uk_matter_matter_no UNIQUE (matter_no);
 --
 -- Name: matter_participant matter_participant_matter_id_user_id_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.matter_participant
-    ADD CONSTRAINT matter_participant_matter_id_user_id_key UNIQUE (matter_id, user_id);
+    ADD CONSTRAINT uk_matter_participant_matter_id_user_id UNIQUE (matter_id, user_id);
 --
 -- Name: matter_participant matter_participant_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.matter_participant
-    ADD CONSTRAINT matter_participant_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_matter_participant PRIMARY KEY (id);
 --
 -- Name: matter matter_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.matter
-    ADD CONSTRAINT matter_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_matter PRIMARY KEY (id);
 --
 -- Name: idx_matter_case_type; Type: INDEX; Schema: public; Owner: -
 --

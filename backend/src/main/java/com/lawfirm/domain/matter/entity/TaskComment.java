@@ -31,10 +31,13 @@ public class TaskComment extends BaseEntity {
     private String content;
 
     /**
-     * 附件列表（JSON格式，存储文件URL列表）
+     * 附件列表（JSONB格式，标准化存储结构）
+     * 格式：[{"bucket_name":"law-firm","storage_path":"matters/M_{matterId}/{YYYY-MM}/任务附件/","physical_name":"{YYYYMMDD}_{UUID}_{originalName}","file_hash":"{SHA-256}","original_name":"{原始文件名}","file_size":{字节数},"mime_type":"{MIME类型}","uploaded_at":"{ISO8601时间}"}]
+     * 必填字段：bucket_name, storage_path, physical_name, file_hash, original_name
+     * 可选字段：file_size, mime_type, uploaded_at
      */
     @TableField(typeHandler = JacksonTypeHandler.class)
-    private List<String> attachments;
+    private List<Object> attachments;
 
     /**
      * @提醒的用户ID列表（JSON格式）

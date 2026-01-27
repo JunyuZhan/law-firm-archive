@@ -312,6 +312,13 @@ function initEditorFromConfig(cfg: OnlyOfficeConfig) {
       onDocumentStateChange: () => {
         // 文档状态变化（是否有未保存的修改）
       },
+      onRequestPrint: () => {
+        // 拦截打印请求，使用自定义打印逻辑
+        // 阻止 OnlyOffice 默认的打印行为（可能只显示页眉页脚）
+        handleCustomPrint();
+        // 返回 false 阻止默认打印行为
+        return false;
+      },
     },
     height: '100%',
     width: '100%',
@@ -364,6 +371,83 @@ async function toggleMode() {
 
   // 重新加载
   window.location.reload();
+}
+
+/**
+ * 自定义打印处理
+ * OnlyOffice 默认打印可能只显示页眉页脚，这里通过下载文档然后打印来解决
+ */
+async function handleCustomPrint() {
+  if (!editorInstance || !config.value?.document?.url) {
+    console.warn('无法打印：编辑器未初始化或文档 URL 不存在');
+    // 允许默认打印行为
+    return;
+  }
+
+  try {
+    const documentId = route.query.documentId as string;
+    if (!documentId) {
+      console.warn('无法打印：缺少 documentId');
+      // 允许默认打印行为
+      return;
+    }
+
+    // 方法1：尝试通过 OnlyOffice API 下载为 PDF
+    // OnlyOffice 支持通过 downloadAs 方法下载为 PDF
+    try {
+      // 使用 OnlyOffice 的下载功能，下载为 PDF
+      if (editorInstance.downloadAs && typeof editorInstance.downloadAs === 'function') {
+        editorInstance.downloadAs('pdf', (url: string) => {
+          if (url) {
+            // 打开 PDF 在新窗口并打印
+            const printWindow = window.open(url, '_blank');
+            if (printWindow) {
+              printWindow.onload = () => {
+                setTimeout(() => {
+                  printWindow.print();
+                }, 500);
+              };
+            }
+            return;
+          }
+        });
+        // 如果 downloadAs 成功调用，不执行后续代码
+        return;
+      }
+    } catch (e) {
+      console.warn('OnlyOffice downloadAs 方法不可用，尝试其他方法:', e);
+    }
+
+    // 方法2：通过后端 API 下载文档
+    // 下载文档后在新窗口中打开并打印
+    const { downloadDocument } = await import('#/api/document');
+    const blob = await downloadDocument(Number.parseInt(documentId));
+    
+    // 创建 blob URL
+    const blobUrl = URL.createObjectURL(blob);
+    
+    // 打开文档在新窗口
+    const printWindow = window.open(blobUrl, '_blank');
+    if (printWindow) {
+      // 等待文档加载后打印
+      printWindow.onload = () => {
+        setTimeout(() => {
+          printWindow.print();
+          // 打印后清理 blob URL
+          setTimeout(() => {
+            URL.revokeObjectURL(blobUrl);
+          }, 1000);
+        }, 1000);
+      };
+    } else {
+      // 如果无法打开新窗口，清理 blob URL
+      URL.revokeObjectURL(blobUrl);
+    }
+  } catch (error_: any) {
+    console.error('自定义打印失败:', error_);
+    // 如果自定义打印失败，允许 OnlyOffice 使用默认打印
+    // 不阻止默认行为，让用户至少能看到一些内容
+  }
 }
 
 /**

@@ -17,7 +17,7 @@ CREATE SEQUENCE IF NOT EXISTS matter_state_compensation_id_seq
 
 -- 创建国家赔偿案件业务信息表
 CREATE TABLE IF NOT EXISTS public.matter_state_compensation (
-    id bigint PRIMARY KEY DEFAULT nextval('matter_state_compensation_id_seq'::regclass),
+    id bigint DEFAULT nextval('matter_state_compensation_id_seq'::regclass),
     matter_id bigint NOT NULL,
 
     -- 赔偿义务机关
@@ -103,6 +103,10 @@ ALTER TABLE public.matter_state_compensation
     FOREIGN KEY (matter_id)
     REFERENCES public.matter(id)
     ON DELETE CASCADE;
+
+-- 添加主键约束（显式命名）
+ALTER TABLE ONLY public.matter_state_compensation
+    ADD CONSTRAINT pk_matter_state_compensation PRIMARY KEY (id);
 
 -- 添加唯一约束（一个案件只能有一条国家赔偿记录）
 CREATE UNIQUE INDEX idx_msc_matter_unique ON public.matter_state_compensation(matter_id) WHERE deleted = FALSE;

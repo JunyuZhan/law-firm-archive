@@ -1,6 +1,6 @@
 # 部署指南
 
-## 一键部署（生产环境推荐）
+## 🚀 一键部署（生产环境推荐）
 
 如果你使用的是「一键部署」方案，可以直接通过根目录脚本完成全栈部署。
 
@@ -11,26 +11,100 @@
 curl -fsSL https://get.docker.com | sh
 ```
 
-### 2. 一键部署
+### 2. 部署前检查（推荐）
+
+```bash
+# 运行部署前检查脚本
+./scripts/pre-deploy-check.sh
+```
+
+检查脚本会验证：
+- ✅ Docker 环境
+- ✅ 环境变量配置
+- ✅ 配置文件完整性
+- ✅ 数据库初始化脚本
+- ✅ 备份配置
+- ✅ 敏感信息泄露
+- ✅ 系统资源
+
+### 3. 一键部署
 
 在项目根目录执行：
 
 ```bash
+# 引导式部署（推荐）
+./scripts/deploy.sh
+
+# 或快速部署（非交互）
 ./scripts/deploy.sh --quick
+
+# 快速部署并初始化示例数据
+./scripts/deploy.sh --quick --with-demo
 ```
 
 脚本会自动完成：
 
-- 生成或更新 `.env` 配置（首次部署时自动生成安全密钥）
-- 构建并启动所有容器（前端、后端、PostgreSQL、Redis、MinIO、OnlyOffice、OCR 等）
-- 初始化数据库和示例数据（根据脚本提示）
+- ✅ 检查 Docker 环境
+- ✅ 创建或验证 `.env` 配置文件
+- ✅ 自动生成安全密钥（首次部署）
+- ✅ 运行生产环境检查
+- ✅ 构建 Docker 镜像
+- ✅ 启动所有服务（前端、后端、PostgreSQL、Redis、MinIO、OnlyOffice、OCR 等）
+- ✅ 初始化数据库和示例数据（根据脚本提示）
+
+### 4. 部署模式选择
+
+部署脚本支持多种部署模式：
+
+1. **单机部署**（推荐小型律所）
+   ```bash
+   ./scripts/deploy.sh --mode=standalone
+   ```
+
+2. **NAS 存储分离部署**（推荐中型律所）
+   ```bash
+   ./scripts/deploy.sh --mode=nas --nas-ip=192.168.1.100
+   ```
+
+3. **Docker Swarm 分布式部署**（推荐大型律所）
+   ```bash
+   ./scripts/deploy.sh --mode=swarm
+   ```
+
+4. **MinIO 分布式存储集群**（企业级）
+   ```bash
+   ./scripts/deploy.sh --mode=minio-cluster
+   ```
+
+### 5. 部署后验证
 
 部署成功后，默认访问地址：
 
-- 主应用：`http://localhost/`
-- 文档站点：`http://localhost/docs/`
+- 🌐 **主应用**: `http://localhost/`
+- 📚 **文档站点**: `http://localhost/docs/`
+- 🔧 **API 地址**: `http://localhost/api`
+- 📦 **MinIO 控制台**: `http://localhost:9001`
+- 📊 **Prometheus**: `http://localhost:9090`
+- 📈 **Grafana**: `http://localhost:3000`
 
-如需分布式部署或 NAS 存储模式，请参考项目根目录下的 [docker/DEPLOY.md](file:///Users/apple/Documents/Project/law-firm/docker/DEPLOY.md) 和 [docker/DEPLOY-SWARM.md](file:///Users/apple/Documents/Project/law-firm/docker/DEPLOY-SWARM.md)。
+**检查服务状态**：
+```bash
+cd docker
+docker compose --env-file ../.env -f docker-compose.prod.yml ps
+```
+
+**检查健康状态**：
+```bash
+curl http://localhost/api/actuator/health
+# 应返回: {"status":"UP"}
+```
+
+**默认账号**（密码统一为 `admin123`）：
+- `admin` - 系统管理员
+- `director` - 主任
+- `lawyer1` - 律师
+
+如需分布式部署或 NAS 存储模式，请参考项目根目录下的 `docker/DEPLOY.md` 和 `docker/DEPLOY-SWARM.md`。
 
 ---
 

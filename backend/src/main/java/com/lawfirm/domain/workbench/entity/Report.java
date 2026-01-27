@@ -44,9 +44,29 @@ public class Report extends BaseEntity {
     private String status;
 
     /**
-     * 文件URL
+     * 文件URL（向后兼容字段）
      */
     private String fileUrl;
+
+    /**
+     * MinIO桶名称，默认law-firm
+     */
+    private String bucketName;
+
+    /**
+     * 存储路径：reports/{reportType}/{YYYY-MM}/报表文件/
+     */
+    private String storagePath;
+
+    /**
+     * 物理文件名：{YYYYMMDD}_{UUID}_{reportName}.{format}（支持超长文件名，最大1000字符）
+     */
+    private String physicalName;
+
+    /**
+     * 文件Hash值（SHA-256），用于去重和校验
+     */
+    private String fileHash;
 
     /**
      * 文件大小（字节）

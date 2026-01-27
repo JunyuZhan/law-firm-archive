@@ -9,11 +9,14 @@ import com.lawfirm.application.evidence.dto.EvidenceExportItemDTO;
 import com.lawfirm.application.evidence.dto.EvidenceQueryDTO;
 import com.lawfirm.application.evidence.service.EvidenceAppService;
 import com.lawfirm.application.evidence.service.EvidenceExportService;
+import com.lawfirm.application.document.service.FileAccessService;
 import com.lawfirm.common.annotation.OperationLog;
 import com.lawfirm.common.annotation.RequirePermission;
 import com.lawfirm.common.result.PageResult;
 import com.lawfirm.common.result.Result;
 import com.lawfirm.common.util.FileValidator;
+import com.lawfirm.common.util.FileHashUtil;
+import com.lawfirm.common.util.MinioPathGenerator;
 import com.lawfirm.infrastructure.external.minio.MinioService;
 import com.lawfirm.infrastructure.external.document.DocumentContentExtractor;
 import com.lawfirm.infrastructure.external.file.FileTypeService;
@@ -45,6 +48,7 @@ public class EvidenceController {
     private final DocumentContentExtractor documentContentExtractor;
     private final FileTypeService fileTypeService;
     private final ThumbnailService thumbnailService;
+    private final FileAccessService fileAccessService;
 
     /**
      * 分页查询证据
@@ -160,11 +164,15 @@ public class EvidenceController {
 
     /**
      * 上传证据文件
+     * 
+     * 注意：证据文件上传时需要matterId，因为文件需要按项目组织
      */
     @PostMapping("/upload")
     @RequirePermission("evidence:create")
     @OperationLog(module = "证据管理", action = "上传证据文件")
-    public Result<Map<String, Object>> uploadFile(@RequestParam("file") MultipartFile file) {
+    public Result<Map<String, Object>> uploadFile(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "matterId", required = false) Long matterId) {
         try {
             // ✅ 安全验证：使用 FileValidator 验证文件（防止恶意文件）
             FileValidator.ValidationResult securityResult = FileValidator.validate(file);
@@ -179,30 +187,71 @@ public class EvidenceController {
                 throw new com.lawfirm.common.exception.BusinessException(validationError);
             }
 
-            // 上传原始文件
-            String fileUrl = minioService.uploadFile(file, "evidence/");
+            // 1. 计算文件Hash
+            String fileHash = FileHashUtil.calculateHash(file);
+            log.debug("证据文件Hash计算完成: hash={}, fileName={}", fileHash, file.getOriginalFilename());
             
-            // 获取文件类型信息
-            String fileName = file.getOriginalFilename();
-            FileTypeService.FileTypeInfo typeInfo = fileTypeService.getFileTypeInfo(fileName);
+            // 2. 生成标准化存储路径（新规则）
+            // 注意：如果matterId为空，使用临时路径（后续创建证据时会更新）
+            String standardStoragePath;
+            if (matterId != null) {
+                standardStoragePath = MinioPathGenerator.generateStandardPath(
+                    MinioPathGenerator.FileType.EVIDENCE, matterId, "证据材料");
+                // 2.1 验证存储路径格式（确保包含项目ID）
+                MinioPathGenerator.validateStoragePath(standardStoragePath, 
+                    MinioPathGenerator.FileType.EVIDENCE, matterId);
+            } else {
+                // matterId为空时，使用临时路径（后续需要迁移）
+                // 注意：临时路径不进行校验，但会在创建证据时要求matterId
+                standardStoragePath = "evidence/temp/";
+            }
             
-            // 生成缩略图（仅图片文件）
+            // 3. 生成物理文件名
+            String originalFilename = file.getOriginalFilename();
+            String physicalName = MinioPathGenerator.generatePhysicalName(originalFilename);
+            
+            // 4. 构建完整对象名称
+            String objectName = MinioPathGenerator.buildObjectName(standardStoragePath, physicalName);
+            
+            // 5. 上传文件到 MinIO（使用新路径）
+            String newFileUrl = minioService.uploadFile(
+                file.getInputStream(), 
+                objectName, 
+                file.getContentType()
+            );
+            
+            // 6. 构建完整URL（用于file_url字段，双写策略）
+            String fileUrl = minioService.buildFileUrl(objectName);
+            
+            // 7. 获取文件类型信息
+            FileTypeService.FileTypeInfo typeInfo = fileTypeService.getFileTypeInfo(originalFilename);
+            
+            // 8. 生成缩略图（仅图片文件）
             String thumbnailUrl = null;
             if (typeInfo.isCanGenerateThumbnail()) {
-                thumbnailUrl = thumbnailService.generateThumbnail(file, fileUrl);
+                thumbnailUrl = thumbnailService.generateThumbnail(file, newFileUrl);
             }
 
             Map<String, Object> result = new HashMap<>();
-            result.put("fileUrl", fileUrl);
-            result.put("fileName", fileName);
+            result.put("fileUrl", fileUrl);  // 返回完整URL（兼容前端）
+            result.put("fileName", originalFilename);
             result.put("fileSize", file.getSize());
             result.put("fileType", typeInfo.getType());
             result.put("thumbnailUrl", thumbnailUrl);
             result.put("canPreview", typeInfo.isCanPreview());
+            // 新增字段（供前端创建证据时使用）
+            result.put("bucketName", minioService.getBucketName());
+            result.put("storagePath", standardStoragePath);
+            result.put("physicalName", physicalName);
+            result.put("fileHash", fileHash);
+            
+            log.info("证据文件上传成功（新路径）: fileName={}, storagePath={}, physicalName={}, hash={}", 
+                originalFilename, standardStoragePath, physicalName, fileHash);
             return Result.success(result);
         } catch (com.lawfirm.common.exception.BusinessException e) {
             throw e;
         } catch (Exception e) {
+            log.error("证据文件上传失败", e);
             throw new com.lawfirm.common.exception.BusinessException("文件上传失败: " + e.getMessage());
         }
     }
@@ -354,13 +403,31 @@ public class EvidenceController {
     @GetMapping("/{id}/file-proxy")
     public void fileProxy(@PathVariable Long id, HttpServletResponse response) {
         try {
-            EvidenceDTO evidence = evidenceAppService.getEvidenceById(id);
-            if (evidence.getFileUrl() == null) {
+            // 获取证据实体（用于FileAccessService）
+            com.lawfirm.domain.evidence.entity.Evidence evidence = 
+                evidenceAppService.getEvidenceEntityById(id);
+            EvidenceDTO evidenceDTO = evidenceAppService.getEvidenceById(id);
+            
+            if (evidenceDTO.getFileUrl() == null) {
                 response.sendError(404, "文件不存在");
                 return;
             }
             
-            String objectName = minioService.extractObjectName(evidence.getFileUrl());
+            // 优先使用新字段构建对象名，回退到file_url
+            String objectName = null;
+            if (evidence.getStoragePath() != null && evidence.getPhysicalName() != null) {
+                // 使用新字段构建对象名
+                objectName = MinioPathGenerator.buildObjectName(
+                    evidence.getStoragePath(), evidence.getPhysicalName());
+                log.debug("证据文件代理（使用新字段）: evidenceId={}, storagePath={}, physicalName={}, objectName={}",
+                    id, evidence.getStoragePath(), evidence.getPhysicalName(), objectName);
+            } else {
+                // 回退到file_url
+                objectName = minioService.extractObjectName(evidenceDTO.getFileUrl());
+                log.debug("证据文件代理（使用file_url）: evidenceId={}, fileUrl={}, objectName={}",
+                    id, evidenceDTO.getFileUrl(), objectName);
+            }
+            
             if (objectName == null) {
                 response.sendError(404, "文件路径无效");
                 return;
@@ -369,10 +436,10 @@ public class EvidenceController {
             byte[] fileBytes = minioService.downloadFileAsBytes(objectName);
             
             // 设置响应头
-            String contentType = getContentType(evidence.getFileName());
+            String contentType = getContentType(evidenceDTO.getFileName());
             response.setContentType(contentType);
             response.setContentLength(fileBytes.length);
-            response.setHeader("Content-Disposition", "inline; filename=\"" + evidence.getFileName() + "\"");
+            response.setHeader("Content-Disposition", "inline; filename=\"" + evidenceDTO.getFileName() + "\"");
             
             // 写入文件内容
             response.getOutputStream().write(fileBytes);

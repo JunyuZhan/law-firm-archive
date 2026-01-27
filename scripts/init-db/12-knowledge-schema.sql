@@ -83,7 +83,7 @@ ALTER SEQUENCE public.article_comment_id_seq OWNED BY public.article_comment.id;
 
 CREATE TABLE public.case_category (
     id bigint NOT NULL,
-    name character varying(100) NOT NULL,
+    name character varying(200) NOT NULL,
     parent_id bigint DEFAULT 0,
     level integer DEFAULT 1,
     sort_order integer DEFAULT 0,
@@ -219,7 +219,7 @@ ALTER SEQUENCE public.case_study_note_id_seq OWNED BY public.case_study_note.id;
 
 CREATE TABLE public.knowledge_article (
     id bigint NOT NULL,
-    title character varying(200) NOT NULL,
+    title character varying(500) NOT NULL,
     category character varying(50),
     content text NOT NULL,
     summary character varying(500),
@@ -307,7 +307,7 @@ ALTER SEQUENCE public.knowledge_collection_id_seq OWNED BY public.knowledge_coll
 
 CREATE TABLE public.law_category (
     id bigint NOT NULL,
-    name character varying(100) NOT NULL,
+    name character varying(200) NOT NULL,
     parent_id bigint DEFAULT 0,
     level integer DEFAULT 1,
     sort_order integer DEFAULT 0,
@@ -440,55 +440,55 @@ ALTER TABLE ONLY public.law_regulation ALTER COLUMN id SET DEFAULT nextval('publ
 --
 
 ALTER TABLE ONLY public.article_collection
-    ADD CONSTRAINT article_collection_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_article_collection PRIMARY KEY (id);
 --
 -- Name: article_comment article_comment_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.article_comment
-    ADD CONSTRAINT article_comment_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_article_comment PRIMARY KEY (id);
 --
 -- Name: case_category case_category_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.case_category
-    ADD CONSTRAINT case_category_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_case_category PRIMARY KEY (id);
 --
 -- Name: case_library case_library_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.case_library
-    ADD CONSTRAINT case_library_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_case_library PRIMARY KEY (id);
 --
 -- Name: case_study_note case_study_note_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.case_study_note
-    ADD CONSTRAINT case_study_note_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_case_study_note PRIMARY KEY (id);
 --
 -- Name: knowledge_article knowledge_article_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.knowledge_article
-    ADD CONSTRAINT knowledge_article_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_knowledge_article PRIMARY KEY (id);
 --
 -- Name: knowledge_collection knowledge_collection_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.knowledge_collection
-    ADD CONSTRAINT knowledge_collection_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_knowledge_collection PRIMARY KEY (id);
 --
 -- Name: law_category law_category_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.law_category
-    ADD CONSTRAINT law_category_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_law_category PRIMARY KEY (id);
 --
 -- Name: law_regulation law_regulation_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.law_regulation
-    ADD CONSTRAINT law_regulation_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_law_regulation PRIMARY KEY (id);
 --
 -- Name: article_collection uk_article_collection; Type: CONSTRAINT; Schema: public; Owner: -
 --

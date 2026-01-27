@@ -110,7 +110,11 @@ function sidebarProtected(): DefaultTheme.SidebarItem[] {
       items: [
         { link: '/guide/ops/introduction', text: '概述' },
         { link: '/guide/ops/deployment', text: '部署指南' },
+        { link: '/guide/ops/deployment-checklist', text: '部署检查清单' },
         { link: '/guide/ops/configuration', text: '配置说明' },
+        { link: '/guide/ops/onlyoffice', text: 'OnlyOffice 配置' },
+        { link: '/guide/ops/grafana', text: 'Grafana 配置' },
+        { link: '/guide/ops/frp', text: 'FRP 内网穿透' },
         { link: '/guide/ops/backup', text: '备份恢复' },
         { link: '/guide/ops/monitoring', text: '监控告警' },
         { link: '/guide/ops/security', text: '安全运维' },

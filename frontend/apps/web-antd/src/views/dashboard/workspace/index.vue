@@ -690,39 +690,45 @@ onUnmounted(() => {
     <!-- 统计卡片 - 根据角色类型显示不同内容 -->
     <!-- 律师/团队负责人/主任 统计卡片 -->
     <Row v-if="stats.roleType === 'LAWYER'" :gutter="[16, 16]" class="mt-4">
-      <Col :xs="12" :sm="12" :md="6" :lg="6">
+      <Col :xs="24" :sm="12" :md="6" :lg="6" :xl="6">
         <Card
           :bordered="false"
           hoverable
           class="stat-card stat-card-blue"
+          :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }"
+          style="height: 100%"
           @click="router.push('/matter/my')"
         >
           <Statistic
             title="我的项目"
             :value="stats.matterCount"
-            :value-style="{ color: '#1890ff' }"
+            :value-style="{ color: '#1890ff', fontSize: '20px', fontWeight: 500, lineHeight: '28px' }"
           />
         </Card>
       </Col>
-      <Col :xs="12" :sm="12" :md="6" :lg="6">
+      <Col :xs="24" :sm="12" :md="6" :lg="6" :xl="6">
         <Card
           :bordered="false"
           hoverable
           class="stat-card stat-card-green"
+          :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }"
+          style="height: 100%"
           @click="router.push('/crm/client')"
         >
           <Statistic
             title="我的客户"
             :value="stats.clientCount"
-            :value-style="{ color: '#52c41a' }"
+            :value-style="{ color: '#52c41a', fontSize: '20px', fontWeight: 500, lineHeight: '28px' }"
           />
         </Card>
       </Col>
-      <Col :xs="12" :sm="12" :md="6" :lg="6">
+      <Col :xs="24" :sm="12" :md="6" :lg="6" :xl="6">
         <Card
           :bordered="false"
           hoverable
           class="stat-card stat-card-orange"
+          :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }"
+          style="height: 100%"
           @click="router.push('/matter/timesheet')"
         >
           <Statistic
@@ -730,21 +736,23 @@ onUnmounted(() => {
             :value="stats.timesheetHours"
             suffix="小时"
             :precision="1"
-            :value-style="{ color: '#fa8c16' }"
+            :value-style="{ color: '#fa8c16', fontSize: '20px', fontWeight: 500, lineHeight: '28px' }"
           />
         </Card>
       </Col>
-      <Col :xs="12" :sm="12" :md="6" :lg="6">
+      <Col :xs="24" :sm="12" :md="6" :lg="6" :xl="6">
         <Card
           :bordered="false"
           hoverable
           class="stat-card stat-card-purple"
+          :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }"
+          style="height: 100%"
           @click="router.push('/matter/task')"
         >
           <Statistic
             title="待办任务"
             :value="stats.taskCount"
-            :value-style="{ color: '#722ed1' }"
+            :value-style="{ color: '#722ed1', fontSize: '20px', fontWeight: 500, lineHeight: '28px' }"
           />
         </Card>
       </Col>
@@ -756,53 +764,61 @@ onUnmounted(() => {
       :gutter="[16, 16]"
       class="mt-4"
     >
-      <Col :xs="12" :sm="12" :md="6" :lg="6">
+      <Col :xs="24" :sm="12" :md="6" :lg="6" :xl="6">
         <Card
           :bordered="false"
           hoverable
           class="stat-card stat-card-blue"
+          :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }"
+          style="height: 100%"
           @click="router.push('/finance/payment')"
         >
           <Statistic
             title="待确认收款"
             :value="stats.pendingPaymentCount"
-            :value-style="{ color: '#1890ff' }"
+            :value-style="{ color: '#1890ff', fontSize: '20px', fontWeight: 500, lineHeight: '28px' }"
           />
         </Card>
       </Col>
-      <Col :xs="12" :sm="12" :md="6" :lg="6">
+      <Col :xs="24" :sm="12" :md="6" :lg="6" :xl="6">
         <Card
           :bordered="false"
           hoverable
           class="stat-card stat-card-green"
+          :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }"
+          style="height: 100%"
           @click="router.push('/finance/invoice')"
         >
           <Statistic
             title="待开票"
             :value="stats.pendingInvoiceCount"
-            :value-style="{ color: '#52c41a' }"
+            :value-style="{ color: '#52c41a', fontSize: '20px', fontWeight: 500, lineHeight: '28px' }"
           />
         </Card>
       </Col>
-      <Col :xs="12" :sm="12" :md="6" :lg="6">
+      <Col :xs="24" :sm="12" :md="6" :lg="6" :xl="6">
         <Card
           :bordered="false"
           hoverable
           class="stat-card stat-card-orange"
+          :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }"
+          style="height: 100%"
           @click="router.push('/finance/expense')"
         >
           <Statistic
             title="待审批报销"
             :value="stats.pendingExpenseCount"
-            :value-style="{ color: '#fa8c16' }"
+            :value-style="{ color: '#fa8c16', fontSize: '20px', fontWeight: 500, lineHeight: '28px' }"
           />
         </Card>
       </Col>
-      <Col :xs="12" :sm="12" :md="6" :lg="6">
+      <Col :xs="24" :sm="12" :md="6" :lg="6" :xl="6">
         <Card
           :bordered="false"
           hoverable
           class="stat-card stat-card-purple"
+          :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }"
+          style="height: 100%"
           @click="router.push('/finance/payment')"
         >
           <Statistic
@@ -810,7 +826,7 @@ onUnmounted(() => {
             :value="stats.monthlyReceivedAmount"
             :precision="2"
             prefix="¥"
-            :value-style="{ color: '#722ed1' }"
+            :value-style="{ color: '#722ed1', fontSize: '20px', fontWeight: 500, lineHeight: '28px', wordBreak: 'break-all' }"
           />
         </Card>
       </Col>

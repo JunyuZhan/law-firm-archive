@@ -4,13 +4,13 @@
 
 -- 案由类型枚举: CIVIL(民事), CRIMINAL(刑事), ADMIN(行政)
 CREATE TABLE IF NOT EXISTS sys_cause_of_action (
-    id BIGSERIAL PRIMARY KEY,
-    code VARCHAR(20) NOT NULL,                    -- 案由代码，如 '14', '8.1'
+    id BIGSERIAL,
+    code VARCHAR(50) NOT NULL,                    -- 案由代码，如 '14', '8.1'
     name VARCHAR(200) NOT NULL,                   -- 案由名称
     cause_type VARCHAR(20) NOT NULL,              -- 类型: CIVIL, CRIMINAL, ADMIN
-    category_code VARCHAR(20),                    -- 所属大类代码，如 'P2'
+    category_code VARCHAR(50),                    -- 所属大类代码，如 'P2'
     category_name VARCHAR(100),                   -- 所属大类名称，如 '婚姻家庭纠纷'
-    parent_code VARCHAR(20),                      -- 父级案由代码（用于子案由）
+    parent_code VARCHAR(50),                      -- 父级案由代码（用于子案由）
     level INT DEFAULT 1,                          -- 层级: 1=一级案由, 2=二级案由
     sort_order INT DEFAULT 0,                     -- 排序号
     is_active BOOLEAN DEFAULT TRUE,               -- 是否启用
@@ -19,8 +19,7 @@ CREATE TABLE IF NOT EXISTS sys_cause_of_action (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by BIGINT,                            -- 创建人ID
     updated_by BIGINT,                            -- 更新人ID
-    deleted BOOLEAN DEFAULT FALSE,                -- 是否删除（软删除标记）
-    UNIQUE(code, cause_type)
+    deleted BOOLEAN DEFAULT FALSE                 -- 是否删除（软删除标记）
 );
 
 -- 创建索引
@@ -61,6 +60,15 @@ END;
 $$ LANGUAGE plpgsql;
 
 COMMENT ON FUNCTION get_cause_name IS '根据案由代码获取案由名称';
+
+-- =====================================================
+-- 添加主键和唯一约束（显式命名）
+-- =====================================================
+ALTER TABLE ONLY public.sys_cause_of_action
+    ADD CONSTRAINT pk_sys_cause_of_action PRIMARY KEY (id);
+
+ALTER TABLE ONLY public.sys_cause_of_action
+    ADD CONSTRAINT uk_sys_cause_of_action_code_type UNIQUE (code, cause_type);
 
 -- 注意：民事、刑事、行政案由数据已拆分到以下独立脚本（20-29区间为初始化数据）：
 -- 22-civil-cause-of-action.sql   - 民事案由（2025年修订版，完整数据）

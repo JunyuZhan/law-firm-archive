@@ -76,9 +76,29 @@ public class Expense extends BaseEntity {
     private String invoiceNo;
 
     /**
-     * 发票附件URL
+     * 发票附件URL（向后兼容字段）
      */
     private String invoiceUrl;
+
+    /**
+     * MinIO桶名称，默认law-firm
+     */
+    private String bucketName;
+
+    /**
+     * 存储路径：expense/M_{matterId}/{YYYY-MM}/费用凭证/
+     */
+    private String storagePath;
+
+    /**
+     * 物理文件名：20260127_uuid_发票.jpg（支持超长文件名，最大1000字符）
+     */
+    private String physicalName;
+
+    /**
+     * 文件Hash值（SHA-256），用于去重和校验
+     */
+    private String fileHash;
 
     /**
      * 状态：PENDING-待审批, APPROVED-已审批, REJECTED-已驳回, PAID-已支付

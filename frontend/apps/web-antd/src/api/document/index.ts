@@ -34,6 +34,22 @@ export interface DocumentDTO {
   displayOrder?: number;
   /** 缩略图URL（图片和PDF文件） */
   thumbnailUrl?: string;
+  /**
+   * MinIO桶名称，默认law-firm
+   */
+  bucketName?: string;
+  /**
+   * 存储路径：document/{matterId}/{folderPath}/
+   */
+  storagePath?: string;
+  /**
+   * 物理文件名：{YYYYMMDD}_{UUID}_{fileName}.{ext}
+   */
+  physicalName?: string;
+  /**
+   * 文件Hash值（SHA-256），用于去重和校验
+   */
+  fileHash?: string;
 }
 
 export interface DocumentQuery {

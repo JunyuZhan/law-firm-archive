@@ -15,6 +15,11 @@ import com.lawfirm.application.workbench.service.ApproverService;
 import com.lawfirm.domain.document.repository.SealApplicationRepository;
 import com.lawfirm.domain.document.repository.SealRepository;
 import com.lawfirm.infrastructure.persistence.mapper.SealApplicationMapper;
+import com.lawfirm.application.document.service.FileAccessService;
+import com.lawfirm.common.util.MinioPathGenerator;
+import com.lawfirm.infrastructure.external.minio.MinioService;
+import org.springframework.web.multipart.MultipartFile;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -42,6 +47,8 @@ public class SealApplicationAppService {
     private final SealApplicationMapper applicationMapper;
     private final ApprovalService approvalService;
     private final ApproverService approverService;
+    private final FileAccessService fileAccessService;
+    private final MinioService minioService;
 
     /**
      * 分页查询用印申请
@@ -350,8 +357,87 @@ public class SealApplicationAppService {
         dto.setUsedBy(app.getUsedBy());
         dto.setUsedAt(app.getUsedAt());
         dto.setUseRemark(app.getUseRemark());
+        dto.setAttachmentUrl(app.getAttachmentUrl());
+        dto.setBucketName(app.getBucketName());
+        dto.setStoragePath(app.getStoragePath());
+        dto.setPhysicalName(app.getPhysicalName());
+        dto.setFileHash(app.getFileHash());
         dto.setCreatedAt(app.getCreatedAt());
         dto.setUpdatedAt(app.getUpdatedAt());
         return dto;
+    }
+
+    /**
+     * 上传用印附件文件
+     * 
+     * @param file 文件
+     * @param applicationId 用印申请ID
+     * @return 文件URL
+     */
+    @Transactional
+    public String uploadAttachmentFile(MultipartFile file, Long applicationId) {
+        SealApplication application = applicationRepository.getByIdOrThrow(applicationId, "用印申请不存在");
+        
+        // 使用FileAccessService上传文件
+        String storagePath = MinioPathGenerator.generateStandardPath(
+            MinioPathGenerator.FileType.SEAL,
+            application.getMatterId(), 
+            "用印附件"
+        );
+        
+        // 生成物理文件名
+        String originalFilename = file.getOriginalFilename();
+        String physicalName = MinioPathGenerator.generatePhysicalName(originalFilename);
+        String objectName = MinioPathGenerator.buildObjectName(storagePath, physicalName);
+        
+        try {
+            // 计算文件Hash
+            String fileHash = com.lawfirm.common.util.FileHashUtil.calculateHash(file);
+            
+            // 上传到MinIO
+            String fileUrl = minioService.uploadFile(
+                file.getInputStream(), 
+                objectName,
+                file.getContentType()
+            );
+            
+            // 设置存储信息
+            application.setAttachmentUrl(fileUrl);
+            application.setBucketName(minioService.getBucketName());
+            application.setStoragePath(storagePath);
+            application.setPhysicalName(physicalName);
+            application.setFileHash(fileHash);
+            
+            applicationRepository.updateById(application);
+            
+            log.info("用印附件文件上传成功: applicationId={}, fileName={}, storagePath={}", 
+                applicationId, originalFilename, storagePath);
+            
+            return fileUrl;
+        } catch (Exception e) {
+            log.error("用印附件文件上传失败", e);
+            throw new BusinessException("文件上传失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 设置文件存储信息（新字段）
+     * 如果attachmentUrl是MinIO URL，尝试解析并设置新字段；否则只设置attachmentUrl（向后兼容）
+     */
+    private void setFileStorageInfo(SealApplication application, String attachmentUrl) {
+        application.setAttachmentUrl(attachmentUrl);
+        
+        // 尝试从URL解析存储信息
+        Map<String, String> storageInfo = fileAccessService.parseStorageInfoFromUrl(attachmentUrl);
+        if (storageInfo != null) {
+            application.setBucketName(storageInfo.get("bucketName"));
+            application.setStoragePath(storageInfo.get("storagePath"));
+            application.setPhysicalName(storageInfo.get("physicalName"));
+            // fileHash无法从URL解析，保持为null
+            log.debug("从URL解析存储信息成功: applicationId={}, storagePath={}", application.getId(), storageInfo.get("storagePath"));
+        } else {
+            // 不是MinIO URL或无法解析，只设置attachmentUrl（向后兼容）
+            log.debug("无法从URL解析存储信息，仅设置attachmentUrl: attachmentUrl={}", attachmentUrl);
+        }
     }
 }

@@ -109,9 +109,29 @@ public class Contract extends BaseEntity {
     private String content;
 
     /**
-     * 合同文件URL
+     * 合同文件URL（向后兼容字段）
      */
     private String fileUrl;
+
+    /**
+     * MinIO桶名称，默认law-firm
+     */
+    private String bucketName;
+
+    /**
+     * 存储路径：contracts/M_{matterId}/{YYYY-MM}/合同文件/
+     */
+    private String storagePath;
+
+    /**
+     * 物理文件名：20260127_uuid_合同.pdf（支持超长文件名，最大1000字符）
+     */
+    private String physicalName;
+
+    /**
+     * 文件Hash值（SHA-256），用于去重和校验
+     */
+    private String fileHash;
 
     /**
      * 付款条款

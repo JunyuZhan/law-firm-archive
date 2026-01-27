@@ -309,53 +309,62 @@ function getCaseTypeColor(caseType: string) {
     <!-- 统计卡片 -->
     <Row :gutter="[16, 16]" style="margin-bottom: 16px">
       <Col :xs="8" :sm="8" :md="4" :lg="4">
-        <Card size="small">
+        <Card :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }" style="height: 100%">
           <Statistic
             title="民事案件"
             :value="stats.civil"
             :value-style="{ color: '#1890ff' }"
+            class="admin-contract-statistic"
           />
         </Card>
       </Col>
       <Col :xs="8" :sm="8" :md="4" :lg="4">
-        <Card size="small">
+        <Card :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }" style="height: 100%">
           <Statistic
             title="刑事案件"
             :value="stats.criminal"
             :value-style="{ color: '#f5222d' }"
+            class="admin-contract-statistic"
           />
         </Card>
       </Col>
       <Col :xs="8" :sm="8" :md="4" :lg="4">
-        <Card size="small">
+        <Card :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }" style="height: 100%">
           <Statistic
             title="行政案件"
             :value="stats.administrative"
             :value-style="{ color: '#faad14' }"
+            class="admin-contract-statistic"
           />
         </Card>
       </Col>
       <Col :xs="8" :sm="8" :md="4" :lg="4">
-        <Card size="small">
+        <Card :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }" style="height: 100%">
           <Statistic
             title="法律顾问"
             :value="stats.legalCounsel"
             :value-style="{ color: '#52c41a' }"
+            class="admin-contract-statistic"
           />
         </Card>
       </Col>
       <Col :xs="8" :sm="8" :md="4" :lg="4">
-        <Card size="small">
+        <Card :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }" style="height: 100%">
           <Statistic
             title="其他"
             :value="stats.other"
             :value-style="{ color: '#666' }"
+            class="admin-contract-statistic"
           />
         </Card>
       </Col>
       <Col :xs="8" :sm="8" :md="4" :lg="4">
-        <Card size="small">
-          <Statistic title="总计" :value="stats.total" />
+        <Card :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }" style="height: 100%">
+          <Statistic 
+            title="总计" 
+            :value="stats.total"
+            class="admin-contract-statistic"
+          />
         </Card>
       </Col>
     </Row>
@@ -364,21 +373,21 @@ function getCaseTypeColor(caseType: string) {
       <!-- 搜索栏 -->
       <div style="margin-bottom: 16px">
         <Row :gutter="[16, 12]">
-          <Col :xs="12" :sm="12" :md="4" :lg="4">
+          <Col :xs="24" :sm="12" :md="4" :lg="4">
             <Input
               v-model:value="queryParams.contractNo"
               placeholder="合同编号"
               allow-clear
             />
           </Col>
-          <Col :xs="12" :sm="12" :md="4" :lg="4">
+          <Col :xs="24" :sm="12" :md="4" :lg="4">
             <Input
               v-model:value="queryParams.clientName"
               placeholder="委托人名称"
               allow-clear
             />
           </Col>
-          <Col :xs="12" :sm="12" :md="3" :lg="3">
+          <Col :xs="24" :sm="12" :md="3" :lg="3">
             <Select
               v-model:value="queryParams.caseType"
               placeholder="案件类型"
@@ -387,7 +396,7 @@ function getCaseTypeColor(caseType: string) {
               :options="caseTypeOptions"
             />
           </Col>
-          <Col :xs="12" :sm="12" :md="5" :lg="5">
+          <Col :xs="24" :sm="12" :md="5" :lg="5">
             <DatePicker.RangePicker
               style="width: 100%"
               :placeholder="['签约开始', '签约结束']"
@@ -395,11 +404,11 @@ function getCaseTypeColor(caseType: string) {
             />
           </Col>
           <Col :xs="24" :sm="24" :md="8" :lg="8">
-            <Space :wrap="isMobile">
+            <Space :wrap="true" style="width: 100%">
               <Button type="primary" @click="handleSearch">查询</Button>
               <Button @click="handleReset">重置</Button>
-              <Button :loading="exportListLoading" @click="handleExportList">
-                导出Excel
+              <Button :loading="exportListLoading" @click="handleExportList" style="white-space: nowrap">
+                导出列表
               </Button>
             </Space>
           </Col>
@@ -416,10 +425,10 @@ function getCaseTypeColor(caseType: string) {
         "
       >
         <Row :gutter="[16, 12]" align="middle">
-          <Col :xs="24" :sm="24" :md="2" :lg="2">
-            <span style="font-weight: 500">导出合同：</span>
+          <Col :xs="24" :sm="6" :md="2" :lg="2">
+            <span style="font-weight: 500">导出</span>
           </Col>
-          <Col :xs="8" :sm="8" :md="3" :lg="3">
+          <Col :xs="12" :sm="6" :md="3" :lg="3">
             <InputNumber
               v-model:value="exportParams.year"
               :min="2020"
@@ -428,7 +437,7 @@ function getCaseTypeColor(caseType: string) {
               style="width: 100%"
             />
           </Col>
-          <Col :xs="8" :sm="8" :md="3" :lg="3">
+          <Col :xs="12" :sm="6" :md="3" :lg="3">
             <InputNumber
               v-model:value="exportParams.month"
               :min="1"
@@ -437,13 +446,14 @@ function getCaseTypeColor(caseType: string) {
               style="width: 100%"
             />
           </Col>
-          <Col :xs="8" :sm="8" :md="4" :lg="4">
+          <Col :xs="24" :sm="6" :md="4" :lg="4">
             <Button
               type="primary"
               :loading="exportLoading"
               @click="handleExport"
+              style="width: 100%"
             >
-              导出Excel
+              导出报备
             </Button>
           </Col>
         </Row>
@@ -537,3 +547,20 @@ function getCaseTypeColor(caseType: string) {
     </Modal>
   </Page>
 </template>
+
+<style scoped>
+/* 统计卡片样式 - 统一字体大小 */
+.admin-contract-statistic :deep(.ant-statistic-content) {
+  font-size: clamp(14px, 2vw, 20px);
+}
+
+.admin-contract-statistic :deep(.ant-statistic-content-value) {
+  font-size: clamp(14px, 2vw, 20px);
+}
+
+/* 确保统计卡片外框大小一致 */
+:deep(.ant-row) > :deep(.ant-col) > :deep(.ant-card) {
+  display: flex;
+  flex-direction: column;
+}
+</style>

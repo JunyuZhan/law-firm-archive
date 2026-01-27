@@ -77,11 +77,16 @@ CREATE TABLE public.workbench_approval (
     priority character varying(20) DEFAULT 'MEDIUM'::character varying,
     urgency character varying(20) DEFAULT 'NORMAL'::character varying,
     business_snapshot text,
+    file_url character varying(500),
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     created_by bigint,
     updated_by bigint,
-    deleted boolean DEFAULT false
+    deleted boolean DEFAULT false,
+    bucket_name character varying(50) DEFAULT 'law-firm',
+    storage_path character varying(500),
+    physical_name character varying(1000),
+    file_hash character varying(64)
 );
 --
 -- Name: TABLE workbench_approval; Type: COMMENT; Schema: public; Owner: -
@@ -163,6 +168,31 @@ COMMENT ON COLUMN public.workbench_approval.urgency IS '紧急程度：URGENT-�
 --
 
 COMMENT ON COLUMN public.workbench_approval.business_snapshot IS '业务数据快照（JSON格式，保存审批时的业务数据）';
+--
+-- Name: COLUMN workbench_approval.file_url; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.workbench_approval.file_url IS '审批附件文件URL（向后兼容字段）';
+--
+-- Name: COLUMN workbench_approval.bucket_name; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.workbench_approval.bucket_name IS 'MinIO桶名称，默认law-firm';
+--
+-- Name: COLUMN workbench_approval.storage_path; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.workbench_approval.storage_path IS '存储路径：approval/{businessType}/M_{matterId}/{YYYY-MM}/审批附件/';
+--
+-- Name: COLUMN workbench_approval.physical_name; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.workbench_approval.physical_name IS '物理文件名：20260127_uuid_审批附件.pdf（支持超长文件名，最大1000字符）';
+--
+-- Name: COLUMN workbench_approval.file_hash; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.workbench_approval.file_hash IS '文件Hash值（SHA-256），用于去重和校验（测试阶段仅记录，不强制去重）';
 --
 -- Name: workbench_approval_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
@@ -324,6 +354,10 @@ CREATE TABLE public.workbench_report (
     format character varying(20) NOT NULL,
     status character varying(20) DEFAULT 'GENERATING'::character varying,
     file_url character varying(500),
+    bucket_name character varying(50) DEFAULT 'law-firm',
+    storage_path character varying(500),
+    physical_name character varying(1000),
+    file_hash character varying(64),
     file_size bigint,
     parameters text,
     generated_at timestamp without time zone,
@@ -344,7 +378,11 @@ COMMENT ON COLUMN public.workbench_report.report_name IS '报表名称';
 COMMENT ON COLUMN public.workbench_report.report_type IS '报表类型：REVENUE-收入报表, MATTER-案件报表, CLIENT-客户报表, LAWYER_PERFORMANCE-律师业绩报表';
 COMMENT ON COLUMN public.workbench_report.format IS '报表格式：EXCEL, PDF';
 COMMENT ON COLUMN public.workbench_report.status IS '状态：GENERATING-生成中, COMPLETED-已完成, FAILED-失败';
-COMMENT ON COLUMN public.workbench_report.file_url IS '文件URL';
+COMMENT ON COLUMN public.workbench_report.file_url IS '文件URL（向后兼容字段）';
+COMMENT ON COLUMN public.workbench_report.bucket_name IS 'MinIO桶名称，默认law-firm';
+COMMENT ON COLUMN public.workbench_report.storage_path IS '存储路径：reports/{reportType}/{YYYY-MM}/报表文件/';
+COMMENT ON COLUMN public.workbench_report.physical_name IS '物理文件名：{YYYYMMDD}_{UUID}_{reportName}.{format}（支持超长文件名，最大1000字符）';
+COMMENT ON COLUMN public.workbench_report.file_hash IS '文件Hash值（SHA-256），用于去重和校验';
 COMMENT ON COLUMN public.workbench_report.file_size IS '文件大小（字节）';
 COMMENT ON COLUMN public.workbench_report.parameters IS '报表参数（JSON格式）';
 COMMENT ON COLUMN public.workbench_report.generated_at IS '生成时间';
@@ -397,59 +435,59 @@ ALTER TABLE ONLY public.workbench_report ALTER COLUMN id SET DEFAULT nextval('pu
 --
 
 ALTER TABLE ONLY public.schedule
-    ADD CONSTRAINT schedule_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_schedule PRIMARY KEY (id);
 --
 -- Name: workbench_approval workbench_approval_approval_no_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.workbench_approval
-    ADD CONSTRAINT workbench_approval_approval_no_key UNIQUE (approval_no);
+    ADD CONSTRAINT uk_workbench_approval_approval_no UNIQUE (approval_no);
 --
 -- Name: workbench_approval workbench_approval_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.workbench_approval
-    ADD CONSTRAINT workbench_approval_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_workbench_approval PRIMARY KEY (id);
 --
 -- Name: workbench_report_template workbench_report_template_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.workbench_report_template
-    ADD CONSTRAINT workbench_report_template_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_workbench_report_template PRIMARY KEY (id);
 --
 -- Name: workbench_report_template workbench_report_template_template_no_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.workbench_report_template
-    ADD CONSTRAINT workbench_report_template_template_no_key UNIQUE (template_no);
+    ADD CONSTRAINT uk_workbench_report_template_template_no UNIQUE (template_no);
 --
 -- Name: workbench_scheduled_report_log workbench_scheduled_report_log_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.workbench_scheduled_report_log
-    ADD CONSTRAINT workbench_scheduled_report_log_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_workbench_scheduled_report_log PRIMARY KEY (id);
 --
 -- Name: workbench_scheduled_report workbench_scheduled_report_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.workbench_scheduled_report
-    ADD CONSTRAINT workbench_scheduled_report_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_workbench_scheduled_report PRIMARY KEY (id);
 --
 -- Name: workbench_scheduled_report workbench_scheduled_report_task_no_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.workbench_scheduled_report
-    ADD CONSTRAINT workbench_scheduled_report_task_no_key UNIQUE (task_no);
+    ADD CONSTRAINT uk_workbench_scheduled_report_task_no UNIQUE (task_no);
 --
 -- Name: workbench_report workbench_report_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 ALTER TABLE ONLY public.workbench_report
-    ADD CONSTRAINT workbench_report_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_workbench_report PRIMARY KEY (id);
 --
 -- Name: workbench_report workbench_report_report_no_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 ALTER TABLE ONLY public.workbench_report
-    ADD CONSTRAINT workbench_report_report_no_key UNIQUE (report_no);
+    ADD CONSTRAINT uk_workbench_report_report_no UNIQUE (report_no);
 --
 -- Name: idx_report_template_created_by; Type: INDEX; Schema: public; Owner: -
 --
@@ -535,10 +573,23 @@ CREATE INDEX idx_workbench_approval_created_at ON public.workbench_approval USIN
 --
 
 CREATE INDEX idx_workbench_approval_status ON public.workbench_approval USING btree (status);
+--
+-- Name: idx_workbench_approval_file_hash; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_workbench_approval_file_hash ON public.workbench_approval USING btree (file_hash) WHERE (file_hash IS NOT NULL);
+--
+-- Name: idx_workbench_approval_storage_path; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_workbench_approval_storage_path ON public.workbench_approval USING btree (storage_path) WHERE (storage_path IS NOT NULL);
 CREATE INDEX idx_workbench_report_report_type ON public.workbench_report USING btree (report_type);
 CREATE INDEX idx_workbench_report_status ON public.workbench_report USING btree (status);
 CREATE INDEX idx_workbench_report_generated_by ON public.workbench_report USING btree (generated_by);
 CREATE INDEX idx_workbench_report_generated_at ON public.workbench_report USING btree (generated_at DESC);
+-- MinIO存储结构索引
+CREATE INDEX idx_workbench_report_file_hash ON public.workbench_report USING btree (file_hash) WHERE (file_hash IS NOT NULL);
+CREATE INDEX idx_workbench_report_storage_path ON public.workbench_report USING btree (storage_path) WHERE (storage_path IS NOT NULL);
 --
 -- Name: workbench_scheduled_report_log fk_scheduled_log_task; Type: FK CONSTRAINT; Schema: public; Owner: -
 --

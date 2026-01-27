@@ -2,6 +2,67 @@
 
 本章节按常见故障分类给出排查步骤，优先从日志、健康检查和脚本入手。
 
+---
+
+## 🔄 系统升级和重置
+
+### 升级代码（保留数据）
+
+**推荐方式**：使用一键部署脚本
+
+```bash
+# 1. 进入项目目录
+cd /opt/law-firm
+
+# 2. 拉取最新代码
+git pull origin main
+
+# 3. 升级部署（保留数据）
+./scripts/deploy.sh --quick
+```
+
+**手动升级**：
+
+```bash
+cd /opt/law-firm/docker
+
+# 1. 停止服务（不删除数据卷）
+docker compose --env-file ../.env -f docker-compose.prod.yml down
+
+# 2. 重新构建镜像
+docker compose --env-file ../.env -f docker-compose.prod.yml build
+
+# 3. 启动服务
+docker compose --env-file ../.env -f docker-compose.prod.yml up -d
+```
+
+### 完全清理并重新部署
+
+⚠️ **警告**：此操作会删除所有数据！
+
+```bash
+# 1. 进入项目目录
+cd /opt/law-firm
+
+# 2. 拉取最新代码
+git pull origin main
+
+# 3. 完全清理（仅清理项目相关资源）
+./scripts/clean-law-firm-only.sh
+
+# 4. 重新部署
+./scripts/deploy.sh --quick
+```
+
+**清理所有 Docker 资源**（包括其他项目）：
+
+```bash
+# ⚠️ 危险操作：会删除所有 Docker 资源
+./scripts/clean-docker-all.sh --force
+```
+
+---
+
 ## 常见问题
 
 ### 服务无法启动
@@ -46,10 +107,31 @@ docker exec law-firm-postgres pg_isready -U law_admin -d law_firm
 psql -U law_admin -h localhost -d law_firm -c "SELECT 1"
 ```
 
-重点检查：
-
+**重点检查**：
 - `.env` 中 `DB_HOST/DB_PORT/DB_NAME/DB_USER/DB_PASSWORD` 是否与容器配置一致
 - 数据库容器是否重启频繁（`docker ps -a` 查看）
+
+### 浏览器缓存问题
+
+如果浏览器显示的是旧内容，需要清除缓存：
+
+**Chrome / Edge（推荐方法）**：
+
+1. **硬刷新**（最快）：
+   - Windows/Linux: `Ctrl + Shift + R` 或 `Ctrl + F5`
+   - Mac: `Cmd + Shift + R` 或 `Cmd + Option + R`
+
+2. **清除缓存**：
+   - 按 `F12` 打开开发者工具
+   - 右键点击浏览器刷新按钮
+   - 选择 **"清空缓存并硬性重新加载"**
+
+**Firefox**：
+- Windows/Linux: `Ctrl + Shift + R` 或 `Ctrl + F5`
+- Mac: `Cmd + Shift + R`
+
+**Safari**：
+- Mac: `Cmd + Option + E`（清空缓存）然后 `Cmd + R`（刷新）
 
 ### Redis 连接失败
 

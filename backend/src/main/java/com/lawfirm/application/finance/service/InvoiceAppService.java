@@ -14,10 +14,15 @@ import com.lawfirm.domain.client.repository.ClientRepository;
 import com.lawfirm.domain.finance.entity.Invoice;
 import com.lawfirm.domain.finance.repository.InvoiceRepository;
 import com.lawfirm.infrastructure.persistence.mapper.InvoiceMapper;
+import com.lawfirm.application.document.service.FileAccessService;
+import com.lawfirm.common.util.MinioPathGenerator;
+import com.lawfirm.infrastructure.external.minio.MinioService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+import java.util.Map;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -38,6 +43,8 @@ public class InvoiceAppService {
     private final InvoiceRepository invoiceRepository;
     private final ClientRepository clientRepository;
     private final InvoiceMapper invoiceMapper;
+    private final FileAccessService fileAccessService;
+    private final MinioService minioService;
 
     /**
      * 分页查询发票
@@ -274,6 +281,68 @@ public class InvoiceAppService {
 
         log.info("获取发票统计: total={}, monthly={}, yearly={}", totalAmount, monthlyAmount, yearlyAmount);
         return statistics;
+    }
+
+    /**
+     * 设置文件存储信息（新字段）
+     * 如果fileUrl是MinIO URL，尝试解析并设置新字段；否则只设置fileUrl（向后兼容）
+     */
+    private void setFileStorageInfo(Invoice invoice, String fileUrl) {
+        invoice.setFileUrl(fileUrl);
+        
+        // 尝试从URL解析存储信息
+        Map<String, String> storageInfo = fileAccessService.parseStorageInfoFromUrl(fileUrl);
+        if (storageInfo != null) {
+            invoice.setBucketName(storageInfo.get("bucketName"));
+            invoice.setStoragePath(storageInfo.get("storagePath"));
+            invoice.setPhysicalName(storageInfo.get("physicalName"));
+            // fileHash无法从URL解析，保持为null
+            log.debug("从URL解析存储信息成功: invoiceId={}, storagePath={}", invoice.getId(), storageInfo.get("storagePath"));
+        } else {
+            // 不是MinIO URL或无法解析，只设置fileUrl（向后兼容）
+            log.debug("无法从URL解析存储信息，仅设置fileUrl: fileUrl={}", fileUrl);
+        }
+    }
+
+    /**
+     * 上传发票文件
+     * 
+     * @param file 文件
+     * @param invoiceId 发票ID
+     * @return 文件URL
+     */
+    @Transactional
+    public String uploadInvoiceFile(MultipartFile file, Long invoiceId) {
+        Invoice invoice = invoiceRepository.getByIdOrThrow(invoiceId, "发票不存在");
+        
+        // 获取关联的项目ID（从合同或费用中获取）
+        Long matterId = null;
+        if (invoice.getContractId() != null) {
+            // 可以从合同获取matterId，这里简化处理
+            // 实际应该查询合同表获取matterId
+        }
+        
+        // 使用FileAccessService上传文件
+        Map<String, String> storageInfo = fileAccessService.uploadFile(
+            file, 
+            MinioPathGenerator.FileType.INVOICE, 
+            matterId, 
+            "发票文件"
+        );
+        
+        // 设置存储信息
+        invoice.setFileUrl(storageInfo.get("fileUrl"));
+        invoice.setBucketName(storageInfo.get("bucketName"));
+        invoice.setStoragePath(storageInfo.get("storagePath"));
+        invoice.setPhysicalName(storageInfo.get("physicalName"));
+        invoice.setFileHash(storageInfo.get("fileHash"));
+        
+        invoiceRepository.updateById(invoice);
+        
+        log.info("发票文件上传成功: invoiceId={}, fileName={}, storagePath={}", 
+            invoiceId, file.getOriginalFilename(), storageInfo.get("storagePath"));
+        
+        return storageInfo.get("fileUrl");
     }
 }
 

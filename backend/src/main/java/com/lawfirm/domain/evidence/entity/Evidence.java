@@ -95,6 +95,14 @@ public class Evidence extends BaseEntity {
      */
     private String fileUrl;
 
+    private String bucketName;
+
+    private String storagePath;
+
+    private String physicalName;
+
+    private String fileHash;
+
     /**
      * 文件名
      */

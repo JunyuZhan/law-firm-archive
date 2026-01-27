@@ -97,7 +97,7 @@ COMMENT ON TABLE public.task_comment IS '任务评论表';
 -- Name: COLUMN task_comment.attachments; Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON COLUMN public.task_comment.attachments IS '附件列表（JSON格式，存储文件URL列表）';
+COMMENT ON COLUMN public.task_comment.attachments IS '附件列表（JSONB格式，标准化存储结构）。格式：[{"bucket_name":"law-firm","storage_path":"matters/M_{matterId}/{YYYY-MM}/任务附件/","physical_name":"{YYYYMMDD}_{UUID}_{originalName}","file_hash":"{SHA-256}","original_name":"{原始文件名}","file_size":{字节数},"mime_type":"{MIME类型}","uploaded_at":"{ISO8601时间}"}]。必填字段：bucket_name, storage_path, physical_name, file_hash, original_name。可选字段：file_size, mime_type, uploaded_at';
 --
 -- Name: COLUMN task_comment.mentioned_user_ids; Type: COMMENT; Schema: public; Owner: -
 --
@@ -148,19 +148,19 @@ ALTER TABLE ONLY public.task_comment ALTER COLUMN id SET DEFAULT nextval('public
 --
 
 ALTER TABLE ONLY public.task_comment
-    ADD CONSTRAINT task_comment_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_task_comment PRIMARY KEY (id);
 --
 -- Name: task task_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.task
-    ADD CONSTRAINT task_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_task PRIMARY KEY (id);
 --
 -- Name: task task_task_no_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.task
-    ADD CONSTRAINT task_task_no_key UNIQUE (task_no);
+    ADD CONSTRAINT uk_task_task_no UNIQUE (task_no);
 --
 -- Name: idx_task_assignee; Type: INDEX; Schema: public; Owner: -
 --

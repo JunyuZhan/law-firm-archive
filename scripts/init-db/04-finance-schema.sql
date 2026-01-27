@@ -275,7 +275,7 @@ CREATE TABLE public.finance_commission_detail (
     id bigint NOT NULL,
     commission_id bigint NOT NULL,
     user_id bigint NOT NULL,
-    user_name character varying(100),
+    user_name character varying(50),
     role_in_matter character varying(50),
     allocation_rate numeric(5,2) NOT NULL,
     commission_amount numeric(15,2) NOT NULL,
@@ -509,7 +509,11 @@ CREATE TABLE public.finance_contract (
     updated_by bigint,
     deleted boolean DEFAULT false,
     originator_rate numeric(5,2),
-    case_summary text
+    case_summary text,
+    bucket_name character varying(50) DEFAULT 'law-firm',
+    storage_path character varying(500),
+    physical_name character varying(1000),
+    file_hash character varying(64)
 );
 --
 -- Name: TABLE finance_contract; Type: COMMENT; Schema: public; Owner: -
@@ -546,6 +550,11 @@ COMMENT ON COLUMN public.finance_contract.status IS '合同状态：DRAFT-草稿
 --
 
 COMMENT ON COLUMN public.finance_contract.content IS '合同内容（基于模板生成）';
+--
+-- Name: COLUMN finance_contract.file_url; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.finance_contract.file_url IS '合同附件文件URL（向后兼容字段，建议使用新的MinIO四元组字段）';
 --
 -- Name: COLUMN finance_contract.case_type; Type: COMMENT; Schema: public; Owner: -
 --
@@ -636,6 +645,26 @@ COMMENT ON COLUMN public.finance_contract.originator_rate IS '案源人比例(%)
 --
 
 COMMENT ON COLUMN public.finance_contract.case_summary IS '案情摘要（用于审批表）';
+--
+-- Name: COLUMN finance_contract.bucket_name; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.finance_contract.bucket_name IS 'MinIO桶名称，默认law-firm';
+--
+-- Name: COLUMN finance_contract.storage_path; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.finance_contract.storage_path IS '存储路径：contracts/M_{matterId}/{YYYY-MM}/合同文件/';
+--
+-- Name: COLUMN finance_contract.physical_name; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.finance_contract.physical_name IS '物理文件名：20260127_uuid_合同.pdf（支持超长文件名，最大1000字符）';
+--
+-- Name: COLUMN finance_contract.file_hash; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.finance_contract.file_hash IS '文件Hash值（SHA-256），用于去重和校验（测试阶段仅记录，不强制去重）';
 --
 -- Name: finance_contract_amendment; Type: TABLE; Schema: public; Owner: -
 --
@@ -911,7 +940,11 @@ CREATE TABLE public.finance_expense (
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     created_by bigint,
     updated_by bigint,
-    deleted boolean DEFAULT false
+    deleted boolean DEFAULT false,
+    bucket_name character varying(50) DEFAULT 'law-firm',
+    storage_path character varying(500),
+    physical_name character varying(1000),
+    file_hash character varying(64)
 );
 --
 -- Name: TABLE finance_expense; Type: COMMENT; Schema: public; Owner: -
@@ -953,6 +986,26 @@ COMMENT ON COLUMN public.finance_expense.status IS '状态：PENDING-待审批, 
 --
 
 COMMENT ON COLUMN public.finance_expense.is_cost_allocation IS '是否已归集到项目成本';
+--
+-- Name: COLUMN finance_expense.bucket_name; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.finance_expense.bucket_name IS 'MinIO桶名称，默认law-firm';
+--
+-- Name: COLUMN finance_expense.storage_path; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.finance_expense.storage_path IS '存储路径：expense/M_{matterId}/{YYYY-MM}/费用凭证/';
+--
+-- Name: COLUMN finance_expense.physical_name; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.finance_expense.physical_name IS '物理文件名：20260127_uuid_发票.jpg（支持超长文件名，最大1000字符）';
+--
+-- Name: COLUMN finance_expense.file_hash; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.finance_expense.file_hash IS '文件Hash值（SHA-256），用于去重和校验（测试阶段仅记录，不强制去重）';
 --
 -- Name: finance_expense_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
@@ -1035,7 +1088,7 @@ CREATE TABLE public.finance_invoice (
     contract_id bigint,
     client_id bigint NOT NULL,
     invoice_type character varying(20) NOT NULL,
-    title character varying(200) NOT NULL,
+    title character varying(500) NOT NULL,
     tax_no character varying(50),
     amount numeric(15,2) NOT NULL,
     tax_rate numeric(5,4) DEFAULT 0.06,
@@ -1051,7 +1104,11 @@ CREATE TABLE public.finance_invoice (
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     updated_by bigint,
-    deleted boolean DEFAULT false
+    deleted boolean DEFAULT false,
+    bucket_name character varying(50) DEFAULT 'law-firm',
+    storage_path character varying(500),
+    physical_name character varying(1000),
+    file_hash character varying(64)
 );
 --
 -- Name: TABLE finance_invoice; Type: COMMENT; Schema: public; Owner: -
@@ -1073,6 +1130,31 @@ COMMENT ON COLUMN public.finance_invoice.invoice_type IS '发票类型：SPECIAL
 --
 
 COMMENT ON COLUMN public.finance_invoice.status IS '状态：PENDING-待开票, ISSUED-已开票, CANCELLED-已作废, RED-已红冲';
+--
+-- Name: COLUMN finance_invoice.file_url; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.finance_invoice.file_url IS '发票附件文件URL（向后兼容字段，建议使用新的MinIO四元组字段）';
+--
+-- Name: COLUMN finance_invoice.bucket_name; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.finance_invoice.bucket_name IS 'MinIO桶名称，默认law-firm';
+--
+-- Name: COLUMN finance_invoice.storage_path; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.finance_invoice.storage_path IS '存储路径：invoice/M_{matterId}/{YYYY-MM}/发票文件/';
+--
+-- Name: COLUMN finance_invoice.physical_name; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.finance_invoice.physical_name IS '物理文件名：20260127_uuid_发票.pdf（支持超长文件名，最大1000字符）';
+--
+-- Name: COLUMN finance_invoice.file_hash; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.finance_invoice.file_hash IS '文件Hash值（SHA-256），用于去重和校验（测试阶段仅记录，不强制去重）';
 --
 -- Name: finance_invoice_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
@@ -1205,7 +1287,7 @@ ALTER SEQUENCE public.hourly_rate_id_seq OWNED BY public.hourly_rate.id;
 --
 CREATE TABLE public.finance_prepayment (
     id bigint NOT NULL,
-    prepayment_no character varying(32) NOT NULL,
+    prepayment_no character varying(50) NOT NULL,
     client_id bigint NOT NULL,
     contract_id bigint,
     matter_id bigint,
@@ -1370,142 +1452,142 @@ ALTER TABLE ONLY public.finance_prepayment_usage ALTER COLUMN id SET DEFAULT nex
 --
 
 ALTER TABLE ONLY public.fin_payment_amendment
-    ADD CONSTRAINT fin_payment_amendment_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_fin_payment_amendment PRIMARY KEY (id);
 --
 -- Name: finance_commission finance_commission_commission_no_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.finance_commission
-    ADD CONSTRAINT finance_commission_commission_no_key UNIQUE (commission_no);
+    ADD CONSTRAINT uk_finance_commission_commission_no UNIQUE (commission_no);
 --
 -- Name: finance_commission_detail finance_commission_detail_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.finance_commission_detail
-    ADD CONSTRAINT finance_commission_detail_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_finance_commission_detail PRIMARY KEY (id);
 --
 -- Name: finance_commission finance_commission_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.finance_commission
-    ADD CONSTRAINT finance_commission_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_finance_commission PRIMARY KEY (id);
 --
 -- Name: finance_commission_rule finance_commission_rule_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.finance_commission_rule
-    ADD CONSTRAINT finance_commission_rule_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_finance_commission_rule PRIMARY KEY (id);
 --
 -- Name: finance_commission_rule finance_commission_rule_rule_code_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.finance_commission_rule
-    ADD CONSTRAINT finance_commission_rule_rule_code_key UNIQUE (rule_code);
+    ADD CONSTRAINT uk_finance_commission_rule_rule_code UNIQUE (rule_code);
 --
 -- Name: finance_contract_amendment finance_contract_amendment_amendment_no_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.finance_contract_amendment
-    ADD CONSTRAINT finance_contract_amendment_amendment_no_key UNIQUE (amendment_no);
+    ADD CONSTRAINT uk_finance_contract_amendment_amendment_no UNIQUE (amendment_no);
 --
 -- Name: finance_contract_amendment finance_contract_amendment_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.finance_contract_amendment
-    ADD CONSTRAINT finance_contract_amendment_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_finance_contract_amendment PRIMARY KEY (id);
 --
 -- Name: finance_contract finance_contract_contract_no_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.finance_contract
-    ADD CONSTRAINT finance_contract_contract_no_key UNIQUE (contract_no);
+    ADD CONSTRAINT uk_finance_contract_contract_no UNIQUE (contract_no);
 --
 -- Name: finance_contract finance_contract_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.finance_contract
-    ADD CONSTRAINT finance_contract_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_finance_contract PRIMARY KEY (id);
 --
 -- Name: finance_cost_allocation finance_cost_allocation_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.finance_cost_allocation
-    ADD CONSTRAINT finance_cost_allocation_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_finance_cost_allocation PRIMARY KEY (id);
 --
 -- Name: finance_cost_split finance_cost_split_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.finance_cost_split
-    ADD CONSTRAINT finance_cost_split_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_finance_cost_split PRIMARY KEY (id);
 --
 -- Name: finance_expense finance_expense_expense_no_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.finance_expense
-    ADD CONSTRAINT finance_expense_expense_no_key UNIQUE (expense_no);
+    ADD CONSTRAINT uk_finance_expense_expense_no UNIQUE (expense_no);
 --
 -- Name: finance_expense finance_expense_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.finance_expense
-    ADD CONSTRAINT finance_expense_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_finance_expense PRIMARY KEY (id);
 --
 -- Name: finance_fee finance_fee_fee_no_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.finance_fee
-    ADD CONSTRAINT finance_fee_fee_no_key UNIQUE (fee_no);
+    ADD CONSTRAINT uk_finance_fee_fee_no UNIQUE (fee_no);
 --
 -- Name: finance_fee finance_fee_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.finance_fee
-    ADD CONSTRAINT finance_fee_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_finance_fee PRIMARY KEY (id);
 --
 -- Name: finance_invoice finance_invoice_invoice_no_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.finance_invoice
-    ADD CONSTRAINT finance_invoice_invoice_no_key UNIQUE (invoice_no);
+    ADD CONSTRAINT uk_finance_invoice_invoice_no UNIQUE (invoice_no);
 --
 -- Name: finance_invoice finance_invoice_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.finance_invoice
-    ADD CONSTRAINT finance_invoice_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_finance_invoice PRIMARY KEY (id);
 --
 -- Name: finance_payment finance_payment_payment_no_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.finance_payment
-    ADD CONSTRAINT finance_payment_payment_no_key UNIQUE (payment_no);
+    ADD CONSTRAINT uk_finance_payment_payment_no UNIQUE (payment_no);
 --
 -- Name: finance_payment finance_payment_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.finance_payment
-    ADD CONSTRAINT finance_payment_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_finance_payment PRIMARY KEY (id);
 --
 -- Name: hourly_rate hourly_rate_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.hourly_rate
-    ADD CONSTRAINT hourly_rate_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_hourly_rate PRIMARY KEY (id);
 --
 -- Name: finance_prepayment finance_prepayment_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 ALTER TABLE ONLY public.finance_prepayment
-    ADD CONSTRAINT finance_prepayment_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_finance_prepayment PRIMARY KEY (id);
 --
 -- Name: finance_prepayment finance_prepayment_prepayment_no_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 ALTER TABLE ONLY public.finance_prepayment
-    ADD CONSTRAINT finance_prepayment_prepayment_no_key UNIQUE (prepayment_no);
+    ADD CONSTRAINT uk_finance_prepayment_prepayment_no UNIQUE (prepayment_no);
 --
 -- Name: finance_prepayment_usage finance_prepayment_usage_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 ALTER TABLE ONLY public.finance_prepayment_usage
-    ADD CONSTRAINT finance_prepayment_usage_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_finance_prepayment_usage PRIMARY KEY (id);
 --
 -- Name: idx_commission_client; Type: INDEX; Schema: public; Owner: -
 --
@@ -1622,6 +1704,31 @@ CREATE INDEX idx_finance_contract_template_id ON public.finance_contract USING b
 
 CREATE INDEX idx_finance_contract_trial_stage ON public.finance_contract USING btree (trial_stage);
 --
+-- Name: idx_finance_contract_file_hash; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_finance_contract_file_hash ON public.finance_contract USING btree (file_hash) WHERE (file_hash IS NOT NULL);
+--
+-- Name: idx_finance_contract_storage_path; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_finance_contract_storage_path ON public.finance_contract USING btree (storage_path) WHERE (storage_path IS NOT NULL);
+--
+-- Name: idx_finance_contract_signer_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_finance_contract_signer_id ON public.finance_contract USING btree (signer_id) WHERE (signer_id IS NOT NULL);
+--
+-- Name: idx_finance_contract_department_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_finance_contract_department_id ON public.finance_contract USING btree (department_id) WHERE (department_id IS NOT NULL);
+--
+-- Name: idx_finance_contract_commission_rule_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_finance_contract_commission_rule_id ON public.finance_contract USING btree (commission_rule_id) WHERE (commission_rule_id IS NOT NULL);
+--
 -- Name: idx_finance_cost_allocation_expense_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1667,6 +1774,31 @@ CREATE INDEX idx_finance_expense_matter_id ON public.finance_expense USING btree
 
 CREATE INDEX idx_finance_expense_status ON public.finance_expense USING btree (status);
 --
+-- Name: idx_finance_expense_file_hash; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_finance_expense_file_hash ON public.finance_expense USING btree (file_hash) WHERE (file_hash IS NOT NULL);
+--
+-- Name: idx_finance_expense_storage_path; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_finance_expense_storage_path ON public.finance_expense USING btree (storage_path) WHERE (storage_path IS NOT NULL);
+--
+-- Name: idx_finance_expense_approver_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_finance_expense_approver_id ON public.finance_expense USING btree (approver_id) WHERE (approver_id IS NOT NULL);
+--
+-- Name: idx_finance_expense_paid_by; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_finance_expense_paid_by ON public.finance_expense USING btree (paid_by) WHERE (paid_by IS NOT NULL);
+--
+-- Name: idx_finance_expense_allocated_to_matter_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_finance_expense_allocated_to_matter_id ON public.finance_expense USING btree (allocated_to_matter_id) WHERE (allocated_to_matter_id IS NOT NULL);
+--
 -- Name: idx_finance_fee_client_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1711,6 +1843,26 @@ CREATE INDEX idx_finance_invoice_date ON public.finance_invoice USING btree (inv
 --
 
 CREATE INDEX idx_finance_invoice_fee_id ON public.finance_invoice USING btree (fee_id);
+--
+-- Name: idx_finance_invoice_file_hash; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_finance_invoice_file_hash ON public.finance_invoice USING btree (file_hash) WHERE (file_hash IS NOT NULL);
+--
+-- Name: idx_finance_invoice_storage_path; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_finance_invoice_storage_path ON public.finance_invoice USING btree (storage_path) WHERE (storage_path IS NOT NULL);
+--
+-- Name: idx_finance_invoice_applicant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_finance_invoice_applicant_id ON public.finance_invoice USING btree (applicant_id) WHERE (applicant_id IS NOT NULL);
+--
+-- Name: idx_finance_invoice_issuer_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_finance_invoice_issuer_id ON public.finance_invoice USING btree (issuer_id) WHERE (issuer_id IS NOT NULL);
 --
 -- Name: idx_finance_invoice_invoice_no; Type: INDEX; Schema: public; Owner: -
 --

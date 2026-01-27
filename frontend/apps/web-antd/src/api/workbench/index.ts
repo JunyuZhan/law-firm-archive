@@ -26,6 +26,26 @@ export interface ApprovalDTO {
   createdAt?: string;
   updatedAt?: string;
   businessSnapshot?: string;
+  /**
+   * 附件文件URL（向后兼容字段）
+   */
+  attachmentUrl?: string;
+  /**
+   * MinIO桶名称，默认law-firm
+   */
+  bucketName?: string;
+  /**
+   * 存储路径：approval/{businessType}/{YYYY-MM}/
+   */
+  storagePath?: string;
+  /**
+   * 物理文件名：{YYYYMMDD}_{UUID}_{documentName}.{ext}
+   */
+  physicalName?: string;
+  /**
+   * 文件Hash值（SHA-256），用于去重和校验
+   */
+  fileHash?: string;
 }
 
 export interface ApprovalQuery {

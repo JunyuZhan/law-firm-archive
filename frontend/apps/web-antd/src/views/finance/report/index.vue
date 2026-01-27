@@ -598,43 +598,47 @@ onBeforeUnmount(() => {
   <Page title="财务报表" description="查看财务统计报表">
     <Spin :spinning="loading">
       <Row :gutter="[16, 16]" style="margin-bottom: 16px">
-        <Col :xs="12" :sm="12" :md="6" :lg="6">
-          <Card>
+        <Col :xs="24" :sm="12" :md="6" :lg="6" :xl="6">
+          <Card :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }" style="height: 100%">
             <Statistic
               title="年度收入"
               :value="yearlyIncome"
               prefix="¥"
               :precision="2"
+              class="finance-statistic finance-statistic-amount"
             />
           </Card>
         </Col>
-        <Col :xs="12" :sm="12" :md="6" :lg="6">
-          <Card>
+        <Col :xs="24" :sm="12" :md="6" :lg="6" :xl="6">
+          <Card :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }" style="height: 100%">
             <Statistic
               title="年度支出"
               :value="yearlyExpense"
               prefix="¥"
               :precision="2"
+              class="finance-statistic finance-statistic-amount"
             />
           </Card>
         </Col>
-        <Col :xs="12" :sm="12" :md="6" :lg="6">
-          <Card>
+        <Col :xs="24" :sm="12" :md="6" :lg="6" :xl="6">
+          <Card :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }" style="height: 100%">
             <Statistic
               title="应收账款"
               :value="receivableAmount"
               prefix="¥"
               :precision="2"
+              class="finance-statistic finance-statistic-amount"
             />
           </Card>
         </Col>
-        <Col :xs="12" :sm="12" :md="6" :lg="6">
-          <Card>
+        <Col :xs="24" :sm="12" :md="6" :lg="6" :xl="6">
+          <Card :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }" style="height: 100%">
             <Statistic
               title="利润率"
               :value="profitRate"
               suffix="%"
               :precision="1"
+              class="finance-statistic"
             />
           </Card>
         </Col>
@@ -684,41 +688,45 @@ onBeforeUnmount(() => {
           <Tabs.TabPane key="overview" tab="收入概览">
             <Row :gutter="[16, 16]" style="margin-bottom: 16px">
               <Col :xs="12" :sm="12" :md="6" :lg="6">
-                <Card size="small">
+                <Card :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }" style="height: 100%">
                   <Statistic
                     title="合同总数"
                     :value="contractStats.totalCount || 0"
                     suffix="份"
+                    class="finance-statistic"
                   />
                 </Card>
               </Col>
               <Col :xs="12" :sm="12" :md="6" :lg="6">
-                <Card size="small">
+                <Card :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }" style="height: 100%">
                   <Statistic
                     title="合同总额"
                     :value="contractStats.totalAmount || 0"
                     prefix="¥"
                     :precision="0"
+                    class="finance-statistic finance-statistic-amount"
                   />
                 </Card>
               </Col>
               <Col :xs="12" :sm="12" :md="6" :lg="6">
-                <Card size="small">
+                <Card :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }" style="height: 100%">
                   <Statistic
                     title="已收款"
                     :value="contractStats.receivedAmount || 0"
                     prefix="¥"
                     :precision="0"
+                    class="finance-statistic finance-statistic-amount"
                   />
                 </Card>
               </Col>
               <Col :xs="12" :sm="12" :md="6" :lg="6">
-                <Card size="small">
+                <Card :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }" style="height: 100%">
                   <Statistic
                     title="待收款"
                     :value="receivableAmount"
                     prefix="¥"
                     :precision="0"
+                    class="finance-statistic finance-statistic-amount"
                   />
                 </Card>
               </Col>
@@ -754,39 +762,43 @@ onBeforeUnmount(() => {
           <Tabs.TabPane key="invoice" tab="发票统计">
             <Row :gutter="[16, 16]" style="margin-bottom: 16px">
               <Col :xs="12" :sm="12" :md="6" :lg="6">
-                <Card size="small">
+                <Card :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }" style="height: 100%">
                   <Statistic
                     title="发票总数"
                     :value="invoiceStats.totalCount || 0"
                     suffix="张"
+                    class="finance-statistic"
                   />
                 </Card>
               </Col>
               <Col :xs="12" :sm="12" :md="6" :lg="6">
-                <Card size="small">
+                <Card :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }" style="height: 100%">
                   <Statistic
                     title="开票总额"
                     :value="invoiceStats.totalAmount || 0"
                     prefix="¥"
                     :precision="0"
+                    class="finance-statistic finance-statistic-amount"
                   />
                 </Card>
               </Col>
               <Col :xs="12" :sm="12" :md="6" :lg="6">
-                <Card size="small">
+                <Card :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }" style="height: 100%">
                   <Statistic
                     title="待开票"
                     :value="invoiceStats.pendingCount || 0"
                     suffix="张"
+                    class="finance-statistic"
                   />
                 </Card>
               </Col>
               <Col :xs="12" :sm="12" :md="6" :lg="6">
-                <Card size="small">
+                <Card :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }" style="height: 100%">
                   <Statistic
                     title="已作废"
                     :value="invoiceStats.cancelledCount || 0"
                     suffix="张"
+                    class="finance-statistic"
                   />
                 </Card>
               </Col>
@@ -796,41 +808,45 @@ onBeforeUnmount(() => {
           <Tabs.TabPane key="commission" tab="提成报表">
             <Row :gutter="[16, 16]" style="margin-bottom: 16px">
               <Col :xs="12" :sm="12" :md="6" :lg="6">
-                <Card size="small">
+                <Card :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }" style="height: 100%">
                   <Statistic
                     title="提成总额"
                     :value="commissionSummary.totalAmount || 0"
                     prefix="¥"
                     :precision="0"
+                    class="finance-statistic finance-statistic-amount"
                   />
                 </Card>
               </Col>
               <Col :xs="12" :sm="12" :md="6" :lg="6">
-                <Card size="small">
+                <Card :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }" style="height: 100%">
                   <Statistic
                     title="已发放"
                     :value="commissionSummary.issuedAmount || 0"
                     prefix="¥"
                     :precision="0"
+                    class="finance-statistic finance-statistic-amount"
                   />
                 </Card>
               </Col>
               <Col :xs="12" :sm="12" :md="6" :lg="6">
-                <Card size="small">
+                <Card :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }" style="height: 100%">
                   <Statistic
                     title="待发放"
                     :value="commissionSummary.pendingAmount || 0"
                     prefix="¥"
                     :precision="0"
+                    class="finance-statistic finance-statistic-amount"
                   />
                 </Card>
               </Col>
               <Col :xs="12" :sm="12" :md="6" :lg="6">
-                <Card size="small">
+                <Card :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }" style="height: 100%">
                   <Statistic
                     title="涉及人数"
                     :value="commissionReport.length || 0"
                     suffix="人"
+                    class="finance-statistic"
                   />
                 </Card>
               </Col>
@@ -1068,3 +1084,26 @@ onBeforeUnmount(() => {
     </Spin>
   </Page>
 </template>
+
+<style scoped>
+/* 财务报表统计卡片样式 - 统一字体大小 */
+.finance-statistic :deep(.ant-statistic-content) {
+  font-size: clamp(14px, 2vw, 20px);
+}
+
+.finance-statistic :deep(.ant-statistic-content-value) {
+  font-size: clamp(14px, 2vw, 20px);
+}
+
+/* 金额统计卡片 - 防止换行 */
+.finance-statistic-amount :deep(.ant-statistic-content-value),
+.finance-statistic-amount :deep(.ant-statistic-content-prefix) {
+  white-space: nowrap;
+}
+
+/* 确保统计卡片外框大小一致 */
+:deep(.ant-row) > :deep(.ant-col) > :deep(.ant-card) {
+  display: flex;
+  flex-direction: column;
+}
+</style>

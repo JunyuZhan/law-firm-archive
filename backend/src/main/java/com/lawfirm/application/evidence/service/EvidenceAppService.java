@@ -21,6 +21,7 @@ import com.lawfirm.infrastructure.external.minio.MinioService;
 import com.lawfirm.infrastructure.persistence.mapper.EvidenceCrossExamMapper;
 import com.lawfirm.infrastructure.persistence.mapper.EvidenceMapper;
 import com.lawfirm.application.matter.service.MatterAppService;
+import com.lawfirm.common.util.MinioPathGenerator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
@@ -118,6 +119,10 @@ public class EvidenceAppService {
         Integer maxSort = evidenceRepository.getMaxSortOrder(command.getMatterId(), command.getGroupName());
         int sortOrder = (maxSort != null ? maxSort : 0) + 1;
 
+        // 处理文件信息（如果从上传接口获取了新字段）
+        // 注意：前端上传时返回的新字段需要传递到CreateEvidenceCommand
+        // 当前CreateEvidenceCommand没有新字段，需要从fileUrl解析或前端传递
+        
         Evidence evidence = Evidence.builder()
                 .evidenceNo(evidenceNo)
                 .matterId(command.getMatterId())
@@ -133,6 +138,8 @@ public class EvidenceAppService {
                 .copyCount(command.getCopyCount() != null ? command.getCopyCount() : 0)
                 .pageStart(command.getPageStart())
                 .pageEnd(command.getPageEnd())
+                // 新字段（如果fileUrl包含新路径信息，需要解析）
+                // 注意：当前前端可能还未传递新字段，这里先保持兼容
                 .fileUrl(command.getFileUrl())
                 .fileName(command.getFileName())
                 .fileSize(command.getFileSize())
@@ -142,6 +149,34 @@ public class EvidenceAppService {
                 .crossExamStatus("PENDING")
                 .status("ACTIVE")
                 .build();
+        
+        // 如果fileUrl存在，尝试从URL解析新字段（兼容处理）
+        if (command.getFileUrl() != null && !command.getFileUrl().isEmpty()) {
+            String objectName = minioService.extractObjectName(command.getFileUrl());
+            if (objectName != null) {
+                // 检查是否是新路径格式：evidence/M_{matterId}/{YYYY-MM}/{folder}/{YYYYMMDD_uuid_filename}
+                if (objectName.startsWith("evidence/M_")) {
+                    // 解析新路径
+                    String[] parts = objectName.split("/");
+                    if (parts.length >= 4) {
+                        // evidence/M_{matterId}/{YYYY-MM}/{folder}/{physicalName}
+                        String folder = parts.length >= 4 ? parts[3] : "证据材料";
+                        String physicalName = parts[parts.length - 1];
+                        String storagePath = String.join("/", 
+                            parts[0], parts[1], parts[2], folder) + "/";
+                        
+                        // 验证存储路径格式（确保包含项目ID）
+                        MinioPathGenerator.validateStoragePath(storagePath, 
+                            MinioPathGenerator.FileType.EVIDENCE, command.getMatterId());
+                        
+                        evidence.setBucketName(minioService.getBucketName());
+                        evidence.setStoragePath(storagePath);
+                        evidence.setPhysicalName(physicalName);
+                        // fileHash需要从上传接口获取，这里暂时不设置
+                    }
+                }
+            }
+        }
 
         evidenceRepository.save(evidence);
         log.info("证据创建成功: {} ({})", evidence.getName(), evidence.getEvidenceNo());
@@ -154,17 +189,14 @@ public class EvidenceAppService {
      */
     public EvidenceDTO getEvidenceById(Long id) {
         Evidence evidence = evidenceRepository.getByIdOrThrow(id, "证据不存在");
-        
-        // ✅ 验证项目访问权限
-        validateEvidenceAccess(evidence);
-        
-        EvidenceDTO dto = toDTO(evidence);
-        
-        // 加载质证记录
-        List<EvidenceCrossExam> crossExams = crossExamMapper.selectByEvidenceId(id);
-        dto.setCrossExams(crossExams.stream().map(this::toCrossExamDTO).collect(Collectors.toList()));
-        
-        return dto;
+        return toDTO(evidence);
+    }
+
+    /**
+     * 获取证据实体（用于FileAccessService等需要实体对象的场景）
+     */
+    public Evidence getEvidenceEntityById(Long id) {
+        return evidenceRepository.getByIdOrThrow(id, "证据不存在");
     }
 
     /**

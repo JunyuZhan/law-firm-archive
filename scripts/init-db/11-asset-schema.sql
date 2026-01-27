@@ -121,19 +121,19 @@ ALTER TABLE ONLY public.asset_inventory_detail ALTER COLUMN id SET DEFAULT nextv
 --
 
 ALTER TABLE ONLY public.asset_inventory_detail
-    ADD CONSTRAINT asset_inventory_detail_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_asset_inventory_detail PRIMARY KEY (id);
 --
 -- Name: asset_inventory asset_inventory_inventory_no_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.asset_inventory
-    ADD CONSTRAINT asset_inventory_inventory_no_key UNIQUE (inventory_no);
+    ADD CONSTRAINT uk_asset_inventory_inventory_no UNIQUE (inventory_no);
 --
 -- Name: asset_inventory asset_inventory_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.asset_inventory
-    ADD CONSTRAINT asset_inventory_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_asset_inventory PRIMARY KEY (id);
 --
 -- Name: idx_asset_inventory_date; Type: INDEX; Schema: public; Owner: -
 --

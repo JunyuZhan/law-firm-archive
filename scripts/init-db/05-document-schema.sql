@@ -50,7 +50,7 @@ ALTER SEQUENCE public.doc_access_log_id_seq OWNED BY public.doc_access_log.id;
 
 CREATE TABLE public.doc_category (
     id bigint NOT NULL,
-    name character varying(100) NOT NULL,
+    name character varying(200) NOT NULL,
     parent_id bigint DEFAULT 0,
     sort_order integer DEFAULT 0,
     description character varying(500),
@@ -122,7 +122,11 @@ CREATE TABLE public.doc_document (
     dossier_item_id bigint,
     ai_generated boolean DEFAULT false,
     display_order integer DEFAULT 0,
-    thumbnail_url character varying(500)
+    thumbnail_url character varying(500),
+    bucket_name character varying(50) DEFAULT 'law-firm',
+    storage_path character varying(500),
+    physical_name character varying(1000),
+    file_hash character varying(64)
 );
 --
 -- Name: TABLE doc_document; Type: COMMENT; Schema: public; Owner: -
@@ -169,6 +173,26 @@ COMMENT ON COLUMN public.doc_document.display_order IS '显示排序顺序（同
 --
 
 COMMENT ON COLUMN public.doc_document.thumbnail_url IS '缩略图URL（图片和PDF文件）';
+--
+-- Name: COLUMN doc_document.bucket_name; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.doc_document.bucket_name IS 'MinIO桶名称，默认law-firm';
+--
+-- Name: COLUMN doc_document.storage_path; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.doc_document.storage_path IS '存储路径：matters/M_101/2026-01/诉讼文书/';
+--
+-- Name: COLUMN doc_document.physical_name; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.doc_document.physical_name IS '物理文件名：20260127_uuid_合同.pdf（支持超长文件名，最大1000字符）';
+--
+-- Name: COLUMN doc_document.file_hash; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.doc_document.file_hash IS '文件Hash值（SHA-256），用于去重和校验（测试阶段仅记录，不强制去重）';
 --
 -- Name: doc_document_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
@@ -285,7 +309,7 @@ ALTER SEQUENCE public.doc_version_id_seq OWNED BY public.doc_version.id;
 
 CREATE TABLE public.dossier_template (
     id bigint NOT NULL,
-    name character varying(100) NOT NULL,
+    name character varying(200) NOT NULL,
     case_type character varying(50) NOT NULL,
     description character varying(500),
     is_default boolean DEFAULT false,
@@ -406,61 +430,61 @@ ALTER TABLE ONLY public.dossier_template_item ALTER COLUMN id SET DEFAULT nextva
 --
 
 ALTER TABLE ONLY public.doc_access_log
-    ADD CONSTRAINT doc_access_log_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_doc_access_log PRIMARY KEY (id);
 --
 -- Name: doc_category doc_category_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.doc_category
-    ADD CONSTRAINT doc_category_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_doc_category PRIMARY KEY (id);
 --
 -- Name: doc_document doc_document_doc_no_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.doc_document
-    ADD CONSTRAINT doc_document_doc_no_key UNIQUE (doc_no);
+    ADD CONSTRAINT uk_doc_document_doc_no UNIQUE (doc_no);
 --
 -- Name: doc_document doc_document_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.doc_document
-    ADD CONSTRAINT doc_document_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_doc_document PRIMARY KEY (id);
 --
 -- Name: doc_template doc_template_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.doc_template
-    ADD CONSTRAINT doc_template_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_doc_template PRIMARY KEY (id);
 --
 -- Name: doc_template doc_template_template_no_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.doc_template
-    ADD CONSTRAINT doc_template_template_no_key UNIQUE (template_no);
+    ADD CONSTRAINT uk_doc_template_template_no UNIQUE (template_no);
 --
 -- Name: doc_version doc_version_document_id_version_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.doc_version
-    ADD CONSTRAINT doc_version_document_id_version_key UNIQUE (document_id, version);
+    ADD CONSTRAINT uk_doc_version_document_id_version UNIQUE (document_id, version);
 --
 -- Name: doc_version doc_version_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.doc_version
-    ADD CONSTRAINT doc_version_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_doc_version PRIMARY KEY (id);
 --
 -- Name: dossier_template_item dossier_template_item_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.dossier_template_item
-    ADD CONSTRAINT dossier_template_item_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_dossier_template_item PRIMARY KEY (id);
 --
 -- Name: dossier_template dossier_template_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.dossier_template
-    ADD CONSTRAINT dossier_template_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_dossier_template PRIMARY KEY (id);
 --
 -- Name: idx_doc_access_document; Type: INDEX; Schema: public; Owner: -
 --
@@ -521,6 +545,16 @@ CREATE INDEX idx_dossier_template_item_template ON public.dossier_template_item 
 --
 
 CREATE INDEX idx_template_category ON public.doc_template USING btree (category_id);
+--
+-- Name: idx_doc_document_file_hash; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_doc_document_file_hash ON public.doc_document USING btree (file_hash) WHERE (file_hash IS NOT NULL);
+--
+-- Name: idx_doc_document_storage_path; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_doc_document_storage_path ON public.doc_document USING btree (storage_path) WHERE (storage_path IS NOT NULL);
 --
 -- Name: dossier_template_item fk_dossier_item_template; Type: FK CONSTRAINT; Schema: public; Owner: -
 --

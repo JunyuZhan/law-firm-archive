@@ -5,7 +5,7 @@
 
 -- 1. 节假日缓存表
 CREATE TABLE IF NOT EXISTS public.sys_holiday_cache (
-    id BIGSERIAL PRIMARY KEY,
+    id BIGSERIAL,
     
     -- 日期信息
     date DATE NOT NULL,                  -- 日期
@@ -24,9 +24,7 @@ CREATE TABLE IF NOT EXISTS public.sys_holiday_cache (
     data_source VARCHAR(20) DEFAULT 'TIMOR',
     fetched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    
-    CONSTRAINT uk_holiday_date UNIQUE (date)
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 索引
@@ -40,17 +38,14 @@ COMMENT ON COLUMN public.sys_holiday_cache.is_off IS '是否休息日（周末+�
 
 -- 2. 用户企业微信绑定表
 CREATE TABLE IF NOT EXISTS public.sys_user_wecom (
-    id BIGSERIAL PRIMARY KEY,
+    id BIGSERIAL,
     user_id BIGINT NOT NULL,             -- 系统用户ID
     wecom_userid VARCHAR(100),           -- 企业微信UserId（用于@）
     wecom_mobile VARCHAR(20),            -- 企业微信绑定手机号（备用）
     enabled BOOLEAN DEFAULT TRUE,
     
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    
-    CONSTRAINT uk_user_wecom_user UNIQUE (user_id),
-    CONSTRAINT fk_user_wecom_user FOREIGN KEY (user_id) REFERENCES sys_user(id)
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 COMMENT ON TABLE public.sys_user_wecom IS '用户企业微信绑定表，用于消息推送时@指定用户';
@@ -82,3 +77,21 @@ INSERT INTO public.sys_external_integration (
     false,
     false
 ) ON CONFLICT (integration_code) DO NOTHING;
+
+-- =====================================================
+-- 添加主键和唯一约束（显式命名）
+-- =====================================================
+ALTER TABLE ONLY public.sys_holiday_cache
+    ADD CONSTRAINT pk_sys_holiday_cache PRIMARY KEY (id);
+
+ALTER TABLE ONLY public.sys_holiday_cache
+    ADD CONSTRAINT uk_sys_holiday_cache_date UNIQUE (date);
+
+ALTER TABLE ONLY public.sys_user_wecom
+    ADD CONSTRAINT pk_sys_user_wecom PRIMARY KEY (id);
+
+ALTER TABLE ONLY public.sys_user_wecom
+    ADD CONSTRAINT uk_sys_user_wecom_user_id UNIQUE (user_id);
+
+ALTER TABLE ONLY public.sys_user_wecom
+    ADD CONSTRAINT fk_sys_user_wecom_sys_user_user_id FOREIGN KEY (user_id) REFERENCES sys_user(id);

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lawfirm.application.document.dto.DocumentDTO;
 import com.lawfirm.application.document.service.DocAccessLogService;
 import com.lawfirm.application.document.service.DocumentAppService;
+import com.lawfirm.application.document.service.FileAccessService;
 import com.lawfirm.common.util.SecurityUtils;
 import com.lawfirm.domain.document.entity.DocAccessLog;
 import com.lawfirm.infrastructure.external.minio.MinioService;
@@ -54,6 +55,9 @@ class DocumentControllerTest {
     @Mock
     private MinioService minioService;
 
+    @Mock
+    private FileAccessService fileAccessService;
+
     private MockMvc mockMvc;
     private DocumentController controller;
     private ObjectMapper objectMapper;
@@ -65,7 +69,8 @@ class DocumentControllerTest {
                 documentAppService,
                 accessLogService,
                 onlyOfficeService,
-                minioService);
+                minioService,
+                fileAccessService);
         mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
         objectMapper = new ObjectMapper();
 

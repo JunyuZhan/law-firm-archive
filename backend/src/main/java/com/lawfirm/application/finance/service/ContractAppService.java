@@ -49,12 +49,17 @@ import com.lawfirm.infrastructure.persistence.mapper.ContractMapper;
 import com.lawfirm.infrastructure.persistence.mapper.UserMapper;
 import com.lawfirm.infrastructure.persistence.mapper.ApprovalMapper;
 import com.lawfirm.domain.workbench.entity.Approval;
+import com.lawfirm.application.document.service.FileAccessService;
+import com.lawfirm.common.util.MinioPathGenerator;
+import com.lawfirm.infrastructure.external.minio.MinioService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.web.multipart.MultipartFile;
+import java.util.Map;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -96,6 +101,8 @@ public class ContractAppService {
     private final SysConfigAppService sysConfigAppService;
     private final CauseOfActionService causeOfActionService;
     private final ApprovalMapper approvalMapper;
+    private final FileAccessService fileAccessService;
+    private final MinioService minioService;
 
     /**
      * 分页查询合同
@@ -381,6 +388,11 @@ public class ContractAppService {
                 .caseSummary(command.getCaseSummary())
                 .build();
 
+        // 处理文件URL：如果提供了fileUrl，尝试解析并设置新字段（向后兼容）
+        if (command.getFileUrl() != null && !command.getFileUrl().isEmpty()) {
+            setFileStorageInfo(contract, command.getFileUrl());
+        }
+
         // 调试日志：打印保存前的提成方案数据
         log.info("=== 保存合同前的提成方案数据 ===");
         log.info("commissionRuleId: {}", contract.getCommissionRuleId());
@@ -499,7 +511,7 @@ public class ContractAppService {
             contract.setPaymentTerms(command.getPaymentTerms());
         }
         if (command.getFileUrl() != null) {
-            contract.setFileUrl(command.getFileUrl());
+            setFileStorageInfo(contract, command.getFileUrl());
         }
         if (command.getRemark() != null) {
             contract.setRemark(command.getRemark());
@@ -1164,7 +1176,7 @@ public class ContractAppService {
             contract.setPaymentTerms(command.getPaymentTerms());
         }
         if (command.getFileUrl() != null) {
-            contract.setFileUrl(command.getFileUrl());
+            setFileStorageInfo(contract, command.getFileUrl());
         }
         
         contractRepository.updateById(contract);
@@ -2610,6 +2622,61 @@ public class ContractAppService {
         // 最终回退规则：客户名称 + 合同类型名称
         String typeName = getContractTypeName(contractType);
         return clientName + (typeName != null ? typeName : "");
+    }
+
+    /**
+     * 设置文件存储信息（新字段）
+     * 如果fileUrl是MinIO URL，尝试解析并设置新字段；否则只设置fileUrl（向后兼容）
+     */
+    private void setFileStorageInfo(Contract contract, String fileUrl) {
+        contract.setFileUrl(fileUrl);
+        
+        // 尝试从URL解析存储信息
+        Map<String, String> storageInfo = fileAccessService.parseStorageInfoFromUrl(fileUrl);
+        if (storageInfo != null) {
+            contract.setBucketName(storageInfo.get("bucketName"));
+            contract.setStoragePath(storageInfo.get("storagePath"));
+            contract.setPhysicalName(storageInfo.get("physicalName"));
+            // fileHash无法从URL解析，保持为null
+            log.debug("从URL解析存储信息成功: contractId={}, storagePath={}", contract.getId(), storageInfo.get("storagePath"));
+        } else {
+            // 不是MinIO URL或无法解析，只设置fileUrl（向后兼容）
+            log.debug("无法从URL解析存储信息，仅设置fileUrl: fileUrl={}", fileUrl);
+        }
+    }
+
+    /**
+     * 上传合同文件
+     * 
+     * @param file 文件
+     * @param contractId 合同ID
+     * @return 文件URL
+     */
+    @Transactional
+    public String uploadContractFile(MultipartFile file, Long contractId) {
+        Contract contract = contractRepository.getByIdOrThrow(contractId, "合同不存在");
+        
+        // 使用FileAccessService上传文件
+        Map<String, String> storageInfo = fileAccessService.uploadFile(
+            file, 
+            MinioPathGenerator.FileType.CONTRACT, 
+            contract.getMatterId(), 
+            "合同文件"
+        );
+        
+        // 设置存储信息
+        contract.setFileUrl(storageInfo.get("fileUrl"));
+        contract.setBucketName(storageInfo.get("bucketName"));
+        contract.setStoragePath(storageInfo.get("storagePath"));
+        contract.setPhysicalName(storageInfo.get("physicalName"));
+        contract.setFileHash(storageInfo.get("fileHash"));
+        
+        contractRepository.updateById(contract);
+        
+        log.info("合同文件上传成功: contractId={}, fileName={}, storagePath={}", 
+            contractId, file.getOriginalFilename(), storageInfo.get("storagePath"));
+        
+        return storageInfo.get("fileUrl");
     }
 }
 

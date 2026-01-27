@@ -95,6 +95,10 @@ minio:
   access-key: ${MINIO_ACCESS_KEY:minioadmin}
   secret-key: ${MINIO_SECRET_KEY:minioadmin}
   bucket-name: law-firm
+  presigned-url:
+    preview-expiry: ${MINIO_PRESIGNED_PREVIEW_EXPIRY:300}
+    download-expiry: ${MINIO_PRESIGNED_DOWNLOAD_EXPIRY:3600}
+    edit-expiry: ${MINIO_PRESIGNED_EDIT_EXPIRY:14400}
 
 # OCR服务配置 (PaddleOCR 3.x / PP-OCRv5)
 # 官方仓库: https://github.com/PaddlePaddle/PaddleOCR

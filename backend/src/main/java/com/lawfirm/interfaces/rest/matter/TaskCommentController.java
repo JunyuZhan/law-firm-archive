@@ -10,9 +10,12 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 任务评论管理接口（M3-057~M3-059）
@@ -61,6 +64,21 @@ public class TaskCommentController {
                                        @PathVariable Long commentId) {
         taskCommentAppService.deleteComment(commentId);
         return Result.success();
+    }
+
+    /**
+     * 上传任务评论附件（M3-058：附件功能）
+     * 上传文件到MinIO并返回标准化的JSONB格式附件信息
+     */
+    @PostMapping(value = "/upload-attachment", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @RequirePermission("task:comment")
+    @Operation(summary = "上传任务评论附件", description = "上传文件到MinIO并返回标准化的JSONB格式附件信息，用于创建评论时使用")
+    @OperationLog(module = "任务协作", action = "上传任务评论附件")
+    public Result<Map<String, Object>> uploadAttachment(
+            @PathVariable Long taskId,
+            @RequestParam("file") MultipartFile file) {
+        Map<String, Object> attachmentInfo = taskCommentAppService.uploadAttachmentFile(file, taskId);
+        return Result.success(attachmentInfo);
     }
 }
 

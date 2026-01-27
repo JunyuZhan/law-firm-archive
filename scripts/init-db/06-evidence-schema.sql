@@ -14,7 +14,7 @@ CREATE TABLE public.evidence (
     id bigint NOT NULL,
     evidence_no character varying(50) NOT NULL,
     matter_id bigint NOT NULL,
-    name character varying(500) NOT NULL,
+    name character varying(200) NOT NULL,
     evidence_type character varying(50) NOT NULL,
     source character varying(200),
     group_name character varying(100),
@@ -38,7 +38,11 @@ CREATE TABLE public.evidence (
     deleted boolean DEFAULT false,
     file_type character varying(50),
     thumbnail_url character varying(1000),
-    document_id bigint
+    document_id bigint,
+    bucket_name character varying(50) DEFAULT 'law-firm',
+    storage_path character varying(500),
+    physical_name character varying(1000),
+    file_hash character varying(64)
 );
 --
 -- Name: TABLE evidence; Type: COMMENT; Schema: public; Owner: -
@@ -70,6 +74,26 @@ COMMENT ON COLUMN public.evidence.thumbnail_url IS '缩略图URL（仅图片文�
 --
 
 COMMENT ON COLUMN public.evidence.document_id IS '关联卷宗文件ID，引用 doc_document.id';
+--
+-- Name: COLUMN evidence.bucket_name; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.evidence.bucket_name IS 'MinIO桶名称，默认law-firm';
+--
+-- Name: COLUMN evidence.storage_path; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.evidence.storage_path IS '存储路径：evidence/M_101/2026-01/证据材料/';
+--
+-- Name: COLUMN evidence.physical_name; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.evidence.physical_name IS '物理文件名：20260127_uuid_借条.jpg（支持超长文件名，最大1000字符）';
+--
+-- Name: COLUMN evidence.file_hash; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.evidence.file_hash IS '文件Hash值（SHA-256），用于去重和校验（测试阶段仅记录，不强制去重）';
 --
 -- Name: evidence_cross_exam; Type: TABLE; Schema: public; Owner: -
 --
@@ -202,31 +226,31 @@ ALTER TABLE ONLY public.evidence_list ALTER COLUMN id SET DEFAULT nextval('publi
 --
 
 ALTER TABLE ONLY public.evidence_cross_exam
-    ADD CONSTRAINT evidence_cross_exam_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_evidence_cross_exam PRIMARY KEY (id);
 --
 -- Name: evidence evidence_evidence_no_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.evidence
-    ADD CONSTRAINT evidence_evidence_no_key UNIQUE (evidence_no);
+    ADD CONSTRAINT uk_evidence_evidence_no UNIQUE (evidence_no);
 --
 -- Name: evidence_list evidence_list_list_no_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.evidence_list
-    ADD CONSTRAINT evidence_list_list_no_key UNIQUE (list_no);
+    ADD CONSTRAINT uk_evidence_list_list_no UNIQUE (list_no);
 --
 -- Name: evidence_list evidence_list_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.evidence_list
-    ADD CONSTRAINT evidence_list_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_evidence_list PRIMARY KEY (id);
 --
 -- Name: evidence evidence_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.evidence
-    ADD CONSTRAINT evidence_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_evidence PRIMARY KEY (id);
 --
 -- Name: idx_cross_exam_evidence; Type: INDEX; Schema: public; Owner: -
 --
@@ -257,3 +281,13 @@ CREATE INDEX idx_evidence_status ON public.evidence USING btree (cross_exam_stat
 --
 
 CREATE INDEX idx_evidence_type ON public.evidence USING btree (evidence_type);
+--
+-- Name: idx_evidence_file_hash; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_evidence_file_hash ON public.evidence USING btree (file_hash) WHERE (file_hash IS NOT NULL);
+--
+-- Name: idx_evidence_storage_path; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_evidence_storage_path ON public.evidence USING btree (storage_path) WHERE (storage_path IS NOT NULL);

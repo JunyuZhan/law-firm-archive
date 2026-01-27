@@ -228,7 +228,7 @@ ALTER SEQUENCE public.admin_purchase_receive_id_seq OWNED BY public.admin_purcha
 CREATE TABLE public.admin_purchase_request (
     id bigint NOT NULL,
     request_no character varying(50) NOT NULL,
-    title character varying(200) NOT NULL,
+    title character varying(500) NOT NULL,
     applicant_id bigint NOT NULL,
     department_id bigint,
     purchase_type character varying(20) NOT NULL,
@@ -368,9 +368,9 @@ ALTER SEQUENCE public.go_out_record_id_seq OWNED BY public.go_out_record.id;
 
 CREATE TABLE public.meeting_booking (
     id bigint NOT NULL,
-    booking_no character varying(30) NOT NULL,
+    booking_no character varying(50) NOT NULL,
     room_id bigint NOT NULL,
-    title character varying(200) NOT NULL,
+    title character varying(500) NOT NULL,
     organizer_id bigint NOT NULL,
     start_time timestamp without time zone NOT NULL,
     end_time timestamp without time zone NOT NULL,
@@ -419,7 +419,7 @@ CREATE TABLE public.meeting_record (
     record_no character varying(50) NOT NULL,
     booking_id bigint,
     room_id bigint,
-    title character varying(200) NOT NULL,
+    title character varying(500) NOT NULL,
     meeting_date date NOT NULL,
     start_time time without time zone NOT NULL,
     end_time time without time zone NOT NULL,
@@ -462,7 +462,7 @@ ALTER SEQUENCE public.meeting_record_id_seq OWNED BY public.meeting_record.id;
 
 CREATE TABLE public.meeting_room (
     id bigint NOT NULL,
-    name character varying(100) NOT NULL,
+    name character varying(200) NOT NULL,
     code character varying(30) NOT NULL,
     location character varying(200),
     capacity integer NOT NULL,
@@ -516,7 +516,7 @@ CREATE TABLE public.seal_application (
     seal_id bigint NOT NULL,
     seal_name character varying(100),
     matter_id bigint,
-    matter_name character varying(500),
+    matter_name character varying(200),
     document_name character varying(500) NOT NULL,
     document_type character varying(50),
     copies integer DEFAULT 1,
@@ -530,6 +530,11 @@ CREATE TABLE public.seal_application (
     used_by bigint,
     used_at timestamp without time zone,
     use_remark text,
+    attachment_url character varying(500),
+    bucket_name character varying(50) DEFAULT 'law-firm',
+    storage_path character varying(500),
+    physical_name character varying(1000),
+    file_hash character varying(64),
     created_by bigint,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
@@ -552,6 +557,31 @@ COMMENT ON COLUMN public.seal_application.status IS '状态: PENDING-待审批, 
 
 COMMENT ON COLUMN public.seal_application.updated_by IS '最后更新人ID';
 --
+-- Name: COLUMN seal_application.attachment_url; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.seal_application.attachment_url IS '附件文件URL（向后兼容字段）';
+--
+-- Name: COLUMN seal_application.bucket_name; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.seal_application.bucket_name IS 'MinIO桶名称，默认law-firm';
+--
+-- Name: COLUMN seal_application.storage_path; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.seal_application.storage_path IS '存储路径：seal/M_{matterId}/{YYYY-MM}/用印附件/';
+--
+-- Name: COLUMN seal_application.physical_name; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.seal_application.physical_name IS '物理文件名：{YYYYMMDD}_{UUID}_{documentName}.{ext}（支持超长文件名，最大1000字符）';
+--
+-- Name: COLUMN seal_application.file_hash; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.seal_application.file_hash IS '文件Hash值（SHA-256），用于去重和校验';
+--
 -- Name: seal_application_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
@@ -573,7 +603,7 @@ ALTER SEQUENCE public.seal_application_id_seq OWNED BY public.seal_application.i
 CREATE TABLE public.seal_info (
     id bigint NOT NULL,
     seal_no character varying(50) NOT NULL,
-    name character varying(100) NOT NULL,
+    name character varying(200) NOT NULL,
     seal_type character varying(50) NOT NULL,
     keeper_id bigint NOT NULL,
     keeper_name character varying(50),
@@ -726,139 +756,139 @@ ALTER TABLE ONLY public.seal_usage_record ALTER COLUMN id SET DEFAULT nextval('p
 --
 
 ALTER TABLE ONLY public.admin_asset
-    ADD CONSTRAINT admin_asset_asset_no_key UNIQUE (asset_no);
+    ADD CONSTRAINT uk_admin_asset_asset_no UNIQUE (asset_no);
 --
 -- Name: admin_asset admin_asset_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.admin_asset
-    ADD CONSTRAINT admin_asset_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_admin_asset PRIMARY KEY (id);
 --
 -- Name: admin_asset_record admin_asset_record_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.admin_asset_record
-    ADD CONSTRAINT admin_asset_record_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_admin_asset_record PRIMARY KEY (id);
 --
 -- Name: admin_purchase_item admin_purchase_item_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.admin_purchase_item
-    ADD CONSTRAINT admin_purchase_item_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_admin_purchase_item PRIMARY KEY (id);
 --
 -- Name: admin_purchase_receive admin_purchase_receive_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.admin_purchase_receive
-    ADD CONSTRAINT admin_purchase_receive_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_admin_purchase_receive PRIMARY KEY (id);
 --
 -- Name: admin_purchase_receive admin_purchase_receive_receive_no_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.admin_purchase_receive
-    ADD CONSTRAINT admin_purchase_receive_receive_no_key UNIQUE (receive_no);
+    ADD CONSTRAINT uk_admin_purchase_receive_receive_no UNIQUE (receive_no);
 --
 -- Name: admin_purchase_request admin_purchase_request_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.admin_purchase_request
-    ADD CONSTRAINT admin_purchase_request_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_admin_purchase_request PRIMARY KEY (id);
 --
 -- Name: admin_purchase_request admin_purchase_request_request_no_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.admin_purchase_request
-    ADD CONSTRAINT admin_purchase_request_request_no_key UNIQUE (request_no);
+    ADD CONSTRAINT uk_admin_purchase_request_request_no UNIQUE (request_no);
 --
 -- Name: admin_supplier admin_supplier_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.admin_supplier
-    ADD CONSTRAINT admin_supplier_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_admin_supplier PRIMARY KEY (id);
 --
 -- Name: admin_supplier admin_supplier_supplier_no_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.admin_supplier
-    ADD CONSTRAINT admin_supplier_supplier_no_key UNIQUE (supplier_no);
+    ADD CONSTRAINT uk_admin_supplier_supplier_no UNIQUE (supplier_no);
 --
 -- Name: go_out_record go_out_record_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.go_out_record
-    ADD CONSTRAINT go_out_record_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_go_out_record PRIMARY KEY (id);
 --
 -- Name: go_out_record go_out_record_record_no_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.go_out_record
-    ADD CONSTRAINT go_out_record_record_no_key UNIQUE (record_no);
+    ADD CONSTRAINT uk_go_out_record_record_no UNIQUE (record_no);
 --
 -- Name: meeting_booking meeting_booking_booking_no_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.meeting_booking
-    ADD CONSTRAINT meeting_booking_booking_no_key UNIQUE (booking_no);
+    ADD CONSTRAINT uk_meeting_booking_booking_no UNIQUE (booking_no);
 --
 -- Name: meeting_booking meeting_booking_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.meeting_booking
-    ADD CONSTRAINT meeting_booking_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_meeting_booking PRIMARY KEY (id);
 --
 -- Name: meeting_record meeting_record_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.meeting_record
-    ADD CONSTRAINT meeting_record_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_meeting_record PRIMARY KEY (id);
 --
 -- Name: meeting_record meeting_record_record_no_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.meeting_record
-    ADD CONSTRAINT meeting_record_record_no_key UNIQUE (record_no);
+    ADD CONSTRAINT uk_meeting_record_record_no UNIQUE (record_no);
 --
 -- Name: meeting_room meeting_room_code_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.meeting_room
-    ADD CONSTRAINT meeting_room_code_key UNIQUE (code);
+    ADD CONSTRAINT uk_meeting_room_code UNIQUE (code);
 --
 -- Name: meeting_room meeting_room_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.meeting_room
-    ADD CONSTRAINT meeting_room_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_meeting_room PRIMARY KEY (id);
 --
 -- Name: seal_application seal_application_application_no_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.seal_application
-    ADD CONSTRAINT seal_application_application_no_key UNIQUE (application_no);
+    ADD CONSTRAINT uk_seal_application_application_no UNIQUE (application_no);
 --
 -- Name: seal_application seal_application_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.seal_application
-    ADD CONSTRAINT seal_application_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_seal_application PRIMARY KEY (id);
 --
 -- Name: seal_info seal_info_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.seal_info
-    ADD CONSTRAINT seal_info_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_seal_info PRIMARY KEY (id);
 --
 -- Name: seal_info seal_info_seal_no_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.seal_info
-    ADD CONSTRAINT seal_info_seal_no_key UNIQUE (seal_no);
+    ADD CONSTRAINT uk_seal_info_seal_no UNIQUE (seal_no);
 --
 -- Name: seal_usage_record seal_usage_record_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.seal_usage_record
-    ADD CONSTRAINT seal_usage_record_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_seal_usage_record PRIMARY KEY (id);
 --
 -- Name: idx_asset_category; Type: INDEX; Schema: public; Owner: -
 --
@@ -994,6 +1024,9 @@ CREATE INDEX idx_seal_app_seal ON public.seal_application USING btree (seal_id);
 --
 
 CREATE INDEX idx_seal_app_status ON public.seal_application USING btree (status);
+-- MinIO存储结构索引
+CREATE INDEX idx_seal_application_file_hash ON public.seal_application USING btree (file_hash) WHERE (file_hash IS NOT NULL);
+CREATE INDEX idx_seal_application_storage_path ON public.seal_application USING btree (storage_path) WHERE (storage_path IS NOT NULL);
 --
 -- Name: idx_seal_keeper; Type: INDEX; Schema: public; Owner: -
 --
@@ -1218,7 +1251,7 @@ ALTER SEQUENCE public.letter_application_id_seq OWNED BY public.letter_applicati
 CREATE TABLE public.letter_template (
     id bigint NOT NULL,
     template_no character varying(50) NOT NULL,
-    name character varying(100) NOT NULL,
+    name character varying(200) NOT NULL,
     letter_type character varying(50) NOT NULL,
     content text NOT NULL,
     description character varying(500),
@@ -1313,7 +1346,7 @@ ALTER TABLE ONLY public.letter_template ALTER COLUMN id SET DEFAULT nextval('pub
 --
 
 ALTER TABLE ONLY public.letter_application
-    ADD CONSTRAINT letter_application_application_no_key UNIQUE (application_no);
+    ADD CONSTRAINT uk_letter_application_application_no UNIQUE (application_no);
 
 
 --
@@ -1321,7 +1354,7 @@ ALTER TABLE ONLY public.letter_application
 --
 
 ALTER TABLE ONLY public.letter_application
-    ADD CONSTRAINT letter_application_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_letter_application PRIMARY KEY (id);
 
 
 --
@@ -1329,7 +1362,7 @@ ALTER TABLE ONLY public.letter_application
 --
 
 ALTER TABLE ONLY public.letter_template
-    ADD CONSTRAINT letter_template_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_letter_template PRIMARY KEY (id);
 
 
 --
@@ -1337,7 +1370,7 @@ ALTER TABLE ONLY public.letter_template
 --
 
 ALTER TABLE ONLY public.letter_template
-    ADD CONSTRAINT letter_template_template_no_key UNIQUE (template_no);
+    ADD CONSTRAINT uk_letter_template_template_no UNIQUE (template_no);
 
 
 --

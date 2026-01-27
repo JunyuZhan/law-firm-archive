@@ -361,7 +361,7 @@ ALTER SEQUENCE public.crm_client_related_company_id_seq OWNED BY public.crm_clie
 CREATE TABLE public.crm_client_shareholder (
     id bigint NOT NULL,
     client_id bigint NOT NULL,
-    shareholder_name character varying(100) NOT NULL,
+    shareholder_name character varying(200) NOT NULL,
     shareholder_type character varying(20),
     id_card character varying(50),
     credit_code character varying(50),
@@ -447,7 +447,7 @@ CREATE TABLE public.crm_client_tag (
     id bigint NOT NULL,
     tag_name character varying(50) NOT NULL,
     tag_color character varying(20) DEFAULT '#1890ff'::character varying,
-    description character varying(200),
+    description character varying(500),
     sort_order integer DEFAULT 0,
     created_by bigint,
     updated_by bigint,
@@ -780,7 +780,7 @@ ALTER SEQUENCE public.crm_lead_follow_up_id_seq OWNED BY public.crm_lead_follow_
 CREATE TABLE public.crm_contact (
     id bigint NOT NULL,
     client_id bigint NOT NULL,
-    contact_name character varying(100) NOT NULL,
+    contact_name character varying(50) NOT NULL,
     position character varying(50),
     department character varying(100),
     mobile_phone character varying(20),
@@ -901,102 +901,102 @@ ALTER TABLE ONLY public.crm_contact ALTER COLUMN id SET DEFAULT nextval('public.
 --
 
 ALTER TABLE ONLY public.crm_client_change_history
-    ADD CONSTRAINT crm_client_change_history_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_crm_client_change_history PRIMARY KEY (id);
 --
 -- Name: crm_client crm_client_client_no_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.crm_client
-    ADD CONSTRAINT crm_client_client_no_key UNIQUE (client_no);
+    ADD CONSTRAINT uk_crm_client_client_no UNIQUE (client_no);
 --
 -- Name: crm_client_contact_record crm_client_contact_record_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.crm_client_contact_record
-    ADD CONSTRAINT crm_client_contact_record_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_crm_client_contact_record PRIMARY KEY (id);
 --
 -- Name: crm_client crm_client_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.crm_client
-    ADD CONSTRAINT crm_client_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_crm_client PRIMARY KEY (id);
 --
 -- Name: crm_client_related_company crm_client_related_company_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.crm_client_related_company
-    ADD CONSTRAINT crm_client_related_company_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_crm_client_related_company PRIMARY KEY (id);
 --
 -- Name: crm_client_shareholder crm_client_shareholder_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.crm_client_shareholder
-    ADD CONSTRAINT crm_client_shareholder_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_crm_client_shareholder PRIMARY KEY (id);
 --
 -- Name: crm_client_tag crm_client_tag_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.crm_client_tag
-    ADD CONSTRAINT crm_client_tag_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_crm_client_tag PRIMARY KEY (id);
 --
 -- Name: crm_client_tag_relation crm_client_tag_relation_client_id_tag_id_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.crm_client_tag_relation
-    ADD CONSTRAINT crm_client_tag_relation_client_id_tag_id_key UNIQUE (client_id, tag_id);
+    ADD CONSTRAINT uk_crm_client_tag_relation_client_id_tag_id UNIQUE (client_id, tag_id);
 --
 -- Name: crm_client_tag_relation crm_client_tag_relation_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.crm_client_tag_relation
-    ADD CONSTRAINT crm_client_tag_relation_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_crm_client_tag_relation PRIMARY KEY (id);
 --
 -- Name: crm_client_tag crm_client_tag_tag_name_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.crm_client_tag
-    ADD CONSTRAINT crm_client_tag_tag_name_key UNIQUE (tag_name);
+    ADD CONSTRAINT uk_crm_client_tag_tag_name UNIQUE (tag_name);
 --
 -- Name: crm_conflict_check crm_conflict_check_check_no_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.crm_conflict_check
-    ADD CONSTRAINT crm_conflict_check_check_no_key UNIQUE (check_no);
+    ADD CONSTRAINT uk_crm_conflict_check_check_no UNIQUE (check_no);
 --
 -- Name: crm_conflict_check_item crm_conflict_check_item_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.crm_conflict_check_item
-    ADD CONSTRAINT crm_conflict_check_item_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_crm_conflict_check_item PRIMARY KEY (id);
 --
 -- Name: crm_conflict_check crm_conflict_check_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.crm_conflict_check
-    ADD CONSTRAINT crm_conflict_check_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_crm_conflict_check PRIMARY KEY (id);
 --
 -- Name: crm_lead_follow_up crm_lead_follow_up_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.crm_lead_follow_up
-    ADD CONSTRAINT crm_lead_follow_up_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_crm_lead_follow_up PRIMARY KEY (id);
 --
 -- Name: crm_contact crm_contact_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 ALTER TABLE ONLY public.crm_contact
-    ADD CONSTRAINT crm_contact_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_crm_contact PRIMARY KEY (id);
 --
 -- Name: crm_lead crm_lead_lead_no_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.crm_lead
-    ADD CONSTRAINT crm_lead_lead_no_key UNIQUE (lead_no);
+    ADD CONSTRAINT uk_crm_lead_lead_no UNIQUE (lead_no);
 --
 -- Name: crm_lead crm_lead_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.crm_lead
-    ADD CONSTRAINT crm_lead_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_crm_lead PRIMARY KEY (id);
 --
 -- Name: idx_client_change_client; Type: INDEX; Schema: public; Owner: -
 --

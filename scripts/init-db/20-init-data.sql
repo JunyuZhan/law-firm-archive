@@ -39,7 +39,7 @@ INSERT INTO public.sys_config (config_key, config_value, config_name, config_typ
 VALUES 
 -- 系统基础信息
 ('sys.name', '智慧律所管理系统', '系统名称', 'STRING', '系统显示名称，用于页面标题等', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
-('sys.version', '1.0.0', '系统版本', 'STRING', '当前系统版本号', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('sys.version', '1.0.0-alpha.2', '系统版本', 'STRING', '当前系统版本号', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
 ('sys.copyright', '© 2026 智慧律所', '版权信息', 'STRING', '页面底部版权信息', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
 
 -- 系统维护模式配置

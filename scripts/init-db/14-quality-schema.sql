@@ -289,55 +289,55 @@ ALTER TABLE ONLY public.risk_warning ALTER COLUMN id SET DEFAULT nextval('public
 --
 
 ALTER TABLE ONLY public.quality_check
-    ADD CONSTRAINT quality_check_check_no_key UNIQUE (check_no);
+    ADD CONSTRAINT uk_quality_check_check_no UNIQUE (check_no);
 --
 -- Name: quality_check_detail quality_check_detail_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.quality_check_detail
-    ADD CONSTRAINT quality_check_detail_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_quality_check_detail PRIMARY KEY (id);
 --
 -- Name: quality_check quality_check_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.quality_check
-    ADD CONSTRAINT quality_check_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_quality_check PRIMARY KEY (id);
 --
 -- Name: quality_check_standard quality_check_standard_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.quality_check_standard
-    ADD CONSTRAINT quality_check_standard_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_quality_check_standard PRIMARY KEY (id);
 --
 -- Name: quality_check_standard quality_check_standard_standard_no_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.quality_check_standard
-    ADD CONSTRAINT quality_check_standard_standard_no_key UNIQUE (standard_no);
+    ADD CONSTRAINT uk_quality_check_standard_standard_no UNIQUE (standard_no);
 --
 -- Name: quality_issue quality_issue_issue_no_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.quality_issue
-    ADD CONSTRAINT quality_issue_issue_no_key UNIQUE (issue_no);
+    ADD CONSTRAINT uk_quality_issue_issue_no UNIQUE (issue_no);
 --
 -- Name: quality_issue quality_issue_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.quality_issue
-    ADD CONSTRAINT quality_issue_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_quality_issue PRIMARY KEY (id);
 --
 -- Name: risk_warning risk_warning_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.risk_warning
-    ADD CONSTRAINT risk_warning_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT pk_risk_warning PRIMARY KEY (id);
 --
 -- Name: risk_warning risk_warning_warning_no_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.risk_warning
-    ADD CONSTRAINT risk_warning_warning_no_key UNIQUE (warning_no);
+    ADD CONSTRAINT uk_risk_warning_warning_no UNIQUE (warning_no);
 --
 -- Name: idx_quality_check_checker; Type: INDEX; Schema: public; Owner: -
 --

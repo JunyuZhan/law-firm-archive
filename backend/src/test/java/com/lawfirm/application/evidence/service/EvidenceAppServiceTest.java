@@ -239,7 +239,8 @@ class EvidenceAppServiceTest {
 
             when(evidenceRepository.getByIdOrThrow(eq(TEST_EVIDENCE_ID), anyString())).thenReturn(evidence);
             // dataScope是"ALL"时，validateMatterAccess直接返回，不需要mock
-            when(crossExamMapper.selectByEvidenceId(TEST_EVIDENCE_ID)).thenReturn(Collections.emptyList());
+            // 使用lenient，因为crossExamMapper可能不会被调用（如果getEvidenceById方法已修改）
+            lenient().when(crossExamMapper.selectByEvidenceId(TEST_EVIDENCE_ID)).thenReturn(Collections.emptyList());
 
             // When
             EvidenceDTO result = evidenceAppService.getEvidenceById(TEST_EVIDENCE_ID);
