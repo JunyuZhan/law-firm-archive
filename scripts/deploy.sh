@@ -732,8 +732,9 @@ deploy_standalone() {
     fi
     
     # 启动服务（每个项目运行自己的容器）
+    # 默认启动核心服务 + 文档服务 + 监控服务
     log_info "启动服务..."
-    docker compose --env-file "$PROJECT_ROOT/.env" -f docker-compose.prod.yml up -d
+    docker compose --env-file "$PROJECT_ROOT/.env" -f docker-compose.prod.yml --profile docs --profile monitoring up -d
     
     echo ""
     log_info "等待服务启动..."
