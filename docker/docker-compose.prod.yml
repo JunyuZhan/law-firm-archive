@@ -152,6 +152,7 @@ services:
   # law-firm 存储服务（必需）
   # ============================================
   minio:
+    # MinIO GUI 最后完整版（RELEASE.2024-07-15T19-02-30Z）
     image: minio/minio:${MINIO_VERSION:-RELEASE.2024-07-15T19-02-30Z}
     container_name: law-firm-minio
     labels:
