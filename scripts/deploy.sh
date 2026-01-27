@@ -249,7 +249,8 @@ setup_env() {
         # 生成所有密钥
         NEW_JWT_SECRET=$(generate_secret)
         NEW_DB_PASSWORD=$(generate_password)
-        # MinIO 使用默认密码 minioadmin/minioadmin（项目专用，每个项目独立运行）
+        NEW_MINIO_ACCESS_KEY="lawfirm_$(openssl rand -hex 8 2>/dev/null || head -c 8 /dev/urandom | xxd -p)"
+        NEW_MINIO_SECRET_KEY=$(generate_password)
         NEW_REDIS_PASSWORD=$(generate_password)
         NEW_ONLYOFFICE_SECRET=$(openssl rand -hex 32 2>/dev/null || head -c 32 /dev/urandom | xxd -p)
         NEW_OCR_API_KEY=$(openssl rand -hex 32 2>/dev/null || head -c 32 /dev/urandom | xxd -p)
@@ -259,7 +260,18 @@ setup_env() {
         if [[ "$OSTYPE" == "darwin"* ]]; then
             sed -i '' "s|JWT_SECRET=.*|JWT_SECRET=$NEW_JWT_SECRET|" "$ENV_FILE"
             sed -i '' "s|DB_PASSWORD=.*|DB_PASSWORD=$NEW_DB_PASSWORD|" "$ENV_FILE"
-            # MinIO 使用默认密码 minioadmin/minioadmin（项目专用），不需要在 .env 中配置
+            # 如果 MINIO_ACCESS_KEY 不存在，添加它；如果存在，更新它
+            if ! grep -q "^MINIO_ACCESS_KEY=" "$ENV_FILE"; then
+                echo "MINIO_ACCESS_KEY=$NEW_MINIO_ACCESS_KEY" >> "$ENV_FILE"
+            else
+                sed -i '' "s|MINIO_ACCESS_KEY=.*|MINIO_ACCESS_KEY=$NEW_MINIO_ACCESS_KEY|" "$ENV_FILE"
+            fi
+            # 如果 MINIO_SECRET_KEY 不存在，添加它；如果存在，更新它
+            if ! grep -q "^MINIO_SECRET_KEY=" "$ENV_FILE"; then
+                echo "MINIO_SECRET_KEY=$NEW_MINIO_SECRET_KEY" >> "$ENV_FILE"
+            else
+                sed -i '' "s|MINIO_SECRET_KEY=.*|MINIO_SECRET_KEY=$NEW_MINIO_SECRET_KEY|" "$ENV_FILE"
+            fi
             sed -i '' "s|REDIS_PASSWORD=.*|REDIS_PASSWORD=$NEW_REDIS_PASSWORD|" "$ENV_FILE"
             sed -i '' "s|ONLYOFFICE_JWT_SECRET=.*|ONLYOFFICE_JWT_SECRET=$NEW_ONLYOFFICE_SECRET|" "$ENV_FILE"
             # 如果 ONLYOFFICE_JWT_ENABLED 不存在，添加它；如果存在，更新它
@@ -289,7 +301,18 @@ setup_env() {
         else
             sed -i "s|JWT_SECRET=.*|JWT_SECRET=$NEW_JWT_SECRET|" "$ENV_FILE"
             sed -i "s|DB_PASSWORD=.*|DB_PASSWORD=$NEW_DB_PASSWORD|" "$ENV_FILE"
-            # MinIO 使用默认密码 minioadmin/minioadmin（项目专用），不需要在 .env 中配置
+            # 如果 MINIO_ACCESS_KEY 不存在，添加它；如果存在，更新它
+            if ! grep -q "^MINIO_ACCESS_KEY=" "$ENV_FILE"; then
+                echo "MINIO_ACCESS_KEY=$NEW_MINIO_ACCESS_KEY" >> "$ENV_FILE"
+            else
+                sed -i "s|MINIO_ACCESS_KEY=.*|MINIO_ACCESS_KEY=$NEW_MINIO_ACCESS_KEY|" "$ENV_FILE"
+            fi
+            # 如果 MINIO_SECRET_KEY 不存在，添加它；如果存在，更新它
+            if ! grep -q "^MINIO_SECRET_KEY=" "$ENV_FILE"; then
+                echo "MINIO_SECRET_KEY=$NEW_MINIO_SECRET_KEY" >> "$ENV_FILE"
+            else
+                sed -i "s|MINIO_SECRET_KEY=.*|MINIO_SECRET_KEY=$NEW_MINIO_SECRET_KEY|" "$ENV_FILE"
+            fi
             sed -i "s|REDIS_PASSWORD=.*|REDIS_PASSWORD=$NEW_REDIS_PASSWORD|" "$ENV_FILE"
             sed -i "s|ONLYOFFICE_JWT_SECRET=.*|ONLYOFFICE_JWT_SECRET=$NEW_ONLYOFFICE_SECRET|" "$ENV_FILE"
             # 如果 ONLYOFFICE_JWT_ENABLED 不存在，添加它；如果存在，更新它
@@ -350,7 +373,8 @@ setup_env() {
         
         echo -e "  ${GREEN}✅${NC} JWT_SECRET"
         echo -e "  ${GREEN}✅${NC} DB_PASSWORD"
-        echo -e "  ${GREEN}✅${NC} MinIO 使用默认密码: minioadmin/minioadmin"
+        echo -e "  ${GREEN}✅${NC} MINIO_ACCESS_KEY"
+        echo -e "  ${GREEN}✅${NC} MINIO_SECRET_KEY"
         echo -e "  ${GREEN}✅${NC} MINIO_BROWSER_ENDPOINT=http://${SERVER_IP}:9000"
         echo -e "  ${GREEN}✅${NC} REDIS_PASSWORD"
         echo -e "  ${GREEN}✅${NC} ONLYOFFICE_JWT_SECRET"
@@ -371,8 +395,8 @@ setup_env() {
         # 检查不安全的默认值
         HAS_UNSAFE=false
         
-        # MinIO 使用默认密码 minioadmin/minioadmin（项目专用，每个项目独立运行）
-        # 不再检查 MinIO 默认密码，因为每个项目运行自己的容器
+        # MinIO 密码已自动生成（项目专用，每个项目独立运行）
+        # 不再检查 MinIO 默认密码，因为每个项目运行自己的容器并自动生成密码
         
         if [ "$DB_PASSWORD" = "your_secure_db_password_here" ] || [ -z "$DB_PASSWORD" ]; then
             log_warn "数据库密码未正确配置"
