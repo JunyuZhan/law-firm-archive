@@ -395,8 +395,37 @@ setup_env() {
         # 检查不安全的默认值
         HAS_UNSAFE=false
         
-        # MinIO 密码已自动生成（项目专用，每个项目独立运行）
-        # 不再检查 MinIO 默认密码，因为每个项目运行自己的容器并自动生成密码
+        # 如果 MinIO 密码未配置或使用默认值，自动生成
+        if [ -z "${MINIO_ACCESS_KEY:-}" ] || [ "$MINIO_ACCESS_KEY" = "your-minio-access-key" ] || [ "$MINIO_ACCESS_KEY" = "minioadmin" ]; then
+            log_info "检测到 MinIO 访问密钥未配置或使用默认值，自动生成..."
+            NEW_MINIO_ACCESS_KEY="lawfirm_$(openssl rand -hex 8 2>/dev/null || head -c 8 /dev/urandom | xxd -p)"
+            NEW_MINIO_SECRET_KEY=$(generate_password)
+            if [[ "$OSTYPE" == "darwin"* ]]; then
+                if ! grep -q "^MINIO_ACCESS_KEY=" "$ENV_FILE"; then
+                    echo "MINIO_ACCESS_KEY=$NEW_MINIO_ACCESS_KEY" >> "$ENV_FILE"
+                else
+                    sed -i '' "s|MINIO_ACCESS_KEY=.*|MINIO_ACCESS_KEY=$NEW_MINIO_ACCESS_KEY|" "$ENV_FILE"
+                fi
+                if ! grep -q "^MINIO_SECRET_KEY=" "$ENV_FILE"; then
+                    echo "MINIO_SECRET_KEY=$NEW_MINIO_SECRET_KEY" >> "$ENV_FILE"
+                else
+                    sed -i '' "s|MINIO_SECRET_KEY=.*|MINIO_SECRET_KEY=$NEW_MINIO_SECRET_KEY|" "$ENV_FILE"
+                fi
+            else
+                if ! grep -q "^MINIO_ACCESS_KEY=" "$ENV_FILE"; then
+                    echo "MINIO_ACCESS_KEY=$NEW_MINIO_ACCESS_KEY" >> "$ENV_FILE"
+                else
+                    sed -i "s|MINIO_ACCESS_KEY=.*|MINIO_ACCESS_KEY=$NEW_MINIO_ACCESS_KEY|" "$ENV_FILE"
+                fi
+                if ! grep -q "^MINIO_SECRET_KEY=" "$ENV_FILE"; then
+                    echo "MINIO_SECRET_KEY=$NEW_MINIO_SECRET_KEY" >> "$ENV_FILE"
+                else
+                    sed -i "s|MINIO_SECRET_KEY=.*|MINIO_SECRET_KEY=$NEW_MINIO_SECRET_KEY|" "$ENV_FILE"
+                fi
+            fi
+            source "$ENV_FILE"
+            log_success "MinIO 密码已生成"
+        fi
         
         if [ "$DB_PASSWORD" = "your_secure_db_password_here" ] || [ -z "$DB_PASSWORD" ]; then
             log_warn "数据库密码未正确配置"
