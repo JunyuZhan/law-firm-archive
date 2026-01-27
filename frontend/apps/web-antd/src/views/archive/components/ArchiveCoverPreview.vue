@@ -173,136 +173,140 @@ const containerStyle = computed(() => {
       <!-- 民事/行政/仲裁案件模板 -->
       <template v-if="!isCriminal">
         <table class="info-table">
-          <!-- 项目编号（合同编号） -->
-          <tr>
-            <td class="label">项目编号</td>
-            <td class="value" colspan="3">{{ matterNo }}</td>
-          </tr>
-          <!-- 案由 -->
-          <tr>
-            <td class="label">案 由</td>
-            <td class="value" colspan="3">
-              {{ matter?.causeOfAction || '' }}
-            </td>
-          </tr>
-          <!-- 委托人/承办人 -->
-          <tr>
-            <td class="label">委 托 人</td>
-            <td class="value">{{ archive.clientName || '' }}</td>
-            <td class="label">承 办 人</td>
-            <td class="value">{{ archive.mainLawyerName || '' }}</td>
-          </tr>
-          <!-- 当事人 -->
-          <tr>
-            <td class="label party-label" rowspan="3">当<br />事<br />人</td>
-            <td class="label small">{{ isArbitration ? '申请人' : '原告' }}</td>
-            <td class="value" colspan="2">{{ archive.clientName || '' }}</td>
-          </tr>
-          <tr>
-            <td class="label small">
-              {{ isArbitration ? '被申请人' : '被告' }}
-            </td>
-            <td class="value" colspan="2">{{ matter?.opposingParty || '' }}</td>
-          </tr>
-          <tr>
-            <td class="label small">第三人</td>
-            <td class="value" colspan="2"></td>
-          </tr>
-          <!-- 审理机关 -->
-          <tr>
-            <td class="label">{{ judgeOrgLabel }}</td>
-            <td class="value" colspan="3"></td>
-          </tr>
-          <!-- 收案/结案日期 -->
-          <tr>
-            <td class="label">收案日期</td>
-            <td class="value">{{ formatDate(matter?.filingDate) }}</td>
-            <td class="label">结案日期</td>
-            <td class="value">{{ formatDate(archive.caseCloseDate) }}</td>
-          </tr>
-          <!-- 案件结果（根据诉讼阶段显示） -->
-          <tr>
-            <td class="label">{{ resultLabel }}</td>
-            <td class="value">{{ truncate(matter?.outcome, 10) }}</td>
-            <td class="label">代理阶段</td>
-            <td class="value">{{ litigationStageName }}</td>
-          </tr>
-          <!-- 归档/保存期限 -->
-          <tr>
-            <td class="label">归档日期</td>
-            <td class="value">{{ archiveDateStr }}</td>
-            <td class="label">保存期限</td>
-            <td class="value">{{ retentionPeriodName }}</td>
-          </tr>
-          <!-- 立卷人/备注 -->
-          <tr>
-            <td class="label">立 卷 人</td>
-            <td class="value">{{ archive.mainLawyerName || '' }}</td>
-            <td class="label">备 注</td>
-            <td class="value">{{ truncate(archive.remarks, 10) }}</td>
-          </tr>
+          <tbody>
+            <!-- 项目编号（合同编号） -->
+            <tr>
+              <td class="label">项目编号</td>
+              <td class="value" colspan="3">{{ matterNo }}</td>
+            </tr>
+            <!-- 案由 -->
+            <tr>
+              <td class="label">案 由</td>
+              <td class="value" colspan="3">
+                {{ matter?.causeOfAction || '' }}
+              </td>
+            </tr>
+            <!-- 委托人/承办人 -->
+            <tr>
+              <td class="label">委 托 人</td>
+              <td class="value">{{ archive.clientName || '' }}</td>
+              <td class="label">承 办 人</td>
+              <td class="value">{{ archive.mainLawyerName || '' }}</td>
+            </tr>
+            <!-- 当事人 -->
+            <tr>
+              <td class="label party-label" rowspan="3">当<br />事<br />人</td>
+              <td class="label small">{{ isArbitration ? '申请人' : '原告' }}</td>
+              <td class="value" colspan="2">{{ archive.clientName || '' }}</td>
+            </tr>
+            <tr>
+              <td class="label small">
+                {{ isArbitration ? '被申请人' : '被告' }}
+              </td>
+              <td class="value" colspan="2">{{ matter?.opposingParty || '' }}</td>
+            </tr>
+            <tr>
+              <td class="label small">第三人</td>
+              <td class="value" colspan="2"></td>
+            </tr>
+            <!-- 审理机关 -->
+            <tr>
+              <td class="label">{{ judgeOrgLabel }}</td>
+              <td class="value" colspan="3"></td>
+            </tr>
+            <!-- 收案/结案日期 -->
+            <tr>
+              <td class="label">收案日期</td>
+              <td class="value">{{ formatDate(matter?.filingDate) }}</td>
+              <td class="label">结案日期</td>
+              <td class="value">{{ formatDate(archive.caseCloseDate) }}</td>
+            </tr>
+            <!-- 案件结果（根据诉讼阶段显示） -->
+            <tr>
+              <td class="label">{{ resultLabel }}</td>
+              <td class="value">{{ truncate(matter?.outcome, 10) }}</td>
+              <td class="label">代理阶段</td>
+              <td class="value">{{ litigationStageName }}</td>
+            </tr>
+            <!-- 归档/保存期限 -->
+            <tr>
+              <td class="label">归档日期</td>
+              <td class="value">{{ archiveDateStr }}</td>
+              <td class="label">保存期限</td>
+              <td class="value">{{ retentionPeriodName }}</td>
+            </tr>
+            <!-- 立卷人/备注 -->
+            <tr>
+              <td class="label">立 卷 人</td>
+              <td class="value">{{ archive.mainLawyerName || '' }}</td>
+              <td class="label">备 注</td>
+              <td class="value">{{ truncate(archive.remarks, 10) }}</td>
+            </tr>
+          </tbody>
         </table>
       </template>
 
       <!-- 刑事案件模板 -->
       <template v-else>
         <table class="info-table">
-          <!-- 项目编号 -->
-          <tr>
-            <td class="label">项目编号</td>
-            <td class="value" colspan="3">{{ matterNo }}</td>
-          </tr>
-          <!-- 被告人/罪名 -->
-          <tr>
-            <td class="label">被 告 人</td>
-            <td class="value" colspan="3">{{ matter?.opposingParty || '' }}</td>
-          </tr>
-          <tr>
-            <td class="label">罪 名</td>
-            <td class="value" colspan="3">
-              {{ matter?.causeOfAction || '' }}
-            </td>
-          </tr>
-          <!-- 委托人/承办律师 -->
-          <tr>
-            <td class="label">委 托 人</td>
-            <td class="value">{{ archive.clientName || '' }}</td>
-            <td class="label">承办律师</td>
-            <td class="value">{{ archive.mainLawyerName || '' }}</td>
-          </tr>
-          <!-- 审理法院 -->
-          <tr>
-            <td class="label">审理法院</td>
-            <td class="value" colspan="3"></td>
-          </tr>
-          <!-- 收案/结案日期 -->
-          <tr>
-            <td class="label">收案日期</td>
-            <td class="value">{{ formatDate(matter?.filingDate) }}</td>
-            <td class="label">结案日期</td>
-            <td class="value">{{ formatDate(archive.caseCloseDate) }}</td>
-          </tr>
-          <!-- 审理结果/审级 -->
-          <tr>
-            <td class="label">{{ resultLabel }}</td>
-            <td class="value">{{ truncate(matter?.outcome, 10) }}</td>
-            <td class="label">代理阶段</td>
-            <td class="value">{{ litigationStageName }}</td>
-          </tr>
-          <!-- 归档/保存期限 -->
-          <tr>
-            <td class="label">归档日期</td>
-            <td class="value">{{ archiveDateStr }}</td>
-            <td class="label">保存期限</td>
-            <td class="value">{{ retentionPeriodName }}</td>
-          </tr>
-          <!-- 立卷人/备注 -->
-          <tr>
-            <td class="label">立 卷 人</td>
-            <td class="value">{{ archive.mainLawyerName || '' }}</td>
-            <td class="label">备 注</td>
-            <td class="value">{{ truncate(archive.remarks, 10) }}</td>
-          </tr>
+          <tbody>
+            <!-- 项目编号 -->
+            <tr>
+              <td class="label">项目编号</td>
+              <td class="value" colspan="3">{{ matterNo }}</td>
+            </tr>
+            <!-- 被告人/罪名 -->
+            <tr>
+              <td class="label">被 告 人</td>
+              <td class="value" colspan="3">{{ matter?.opposingParty || '' }}</td>
+            </tr>
+            <tr>
+              <td class="label">罪 名</td>
+              <td class="value" colspan="3">
+                {{ matter?.causeOfAction || '' }}
+              </td>
+            </tr>
+            <!-- 委托人/承办律师 -->
+            <tr>
+              <td class="label">委 托 人</td>
+              <td class="value">{{ archive.clientName || '' }}</td>
+              <td class="label">承办律师</td>
+              <td class="value">{{ archive.mainLawyerName || '' }}</td>
+            </tr>
+            <!-- 审理法院 -->
+            <tr>
+              <td class="label">审理法院</td>
+              <td class="value" colspan="3"></td>
+            </tr>
+            <!-- 收案/结案日期 -->
+            <tr>
+              <td class="label">收案日期</td>
+              <td class="value">{{ formatDate(matter?.filingDate) }}</td>
+              <td class="label">结案日期</td>
+              <td class="value">{{ formatDate(archive.caseCloseDate) }}</td>
+            </tr>
+            <!-- 审理结果/审级 -->
+            <tr>
+              <td class="label">{{ resultLabel }}</td>
+              <td class="value">{{ truncate(matter?.outcome, 10) }}</td>
+              <td class="label">代理阶段</td>
+              <td class="value">{{ litigationStageName }}</td>
+            </tr>
+            <!-- 归档/保存期限 -->
+            <tr>
+              <td class="label">归档日期</td>
+              <td class="value">{{ archiveDateStr }}</td>
+              <td class="label">保存期限</td>
+              <td class="value">{{ retentionPeriodName }}</td>
+            </tr>
+            <!-- 立卷人/备注 -->
+            <tr>
+              <td class="label">立 卷 人</td>
+              <td class="value">{{ archive.mainLawyerName || '' }}</td>
+              <td class="label">备 注</td>
+              <td class="value">{{ truncate(archive.remarks, 10) }}</td>
+            </tr>
+          </tbody>
         </table>
       </template>
     </div>

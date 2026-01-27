@@ -12,7 +12,7 @@ services:
   # MinIO 节点 1（部署在服务器 1）
   # ===========================================
   minio1:
-    image: minio/minio:RELEASE.2024-01-01T16-36-33Z
+    image: minio/minio:RELEASE.2024-07-15T19-02-30Z
     container_name: law-firm-minio1
     hostname: minio1
     command: server --console-address ":9001" http://minio{1...4}/data
@@ -34,7 +34,7 @@ services:
   # MinIO 节点 2（部署在服务器 2）
   # ===========================================
   minio2:
-    image: minio/minio:RELEASE.2024-01-01T16-36-33Z
+    image: minio/minio:RELEASE.2024-07-15T19-02-30Z
     container_name: law-firm-minio2
     hostname: minio2
     command: server --console-address ":9001" http://minio{1...4}/data
@@ -56,7 +56,7 @@ services:
   # MinIO 节点 3（部署在服务器 3 或服务器 1）
   # ===========================================
   minio3:
-    image: minio/minio:RELEASE.2024-01-01T16-36-33Z
+    image: minio/minio:RELEASE.2024-07-15T19-02-30Z
     container_name: law-firm-minio3
     hostname: minio3
     command: server --console-address ":9001" http://minio{1...4}/data
@@ -78,7 +78,7 @@ services:
   # MinIO 节点 4（部署在服务器 4 或服务器 2）
   # ===========================================
   minio4:
-    image: minio/minio:RELEASE.2024-01-01T16-36-33Z
+    image: minio/minio:RELEASE.2024-07-15T19-02-30Z
     container_name: law-firm-minio4
     hostname: minio4
     command: server --console-address ":9001" http://minio{1...4}/data

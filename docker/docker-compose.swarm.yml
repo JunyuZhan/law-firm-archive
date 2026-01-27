@@ -162,7 +162,7 @@ services:
   # MinIO 对象存储
   # ============================================
   minio:
-    image: minio/minio:RELEASE.2024-01-01T16-36-33Z
+    image: minio/minio:RELEASE.2024-07-15T19-02-30Z
     deploy:
       replicas: 1
       placement:
