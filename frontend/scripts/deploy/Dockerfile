@@ -44,8 +44,8 @@ RUN echo "Builder Success 🎉"
 
 FROM nginx:stable-alpine AS production
 
-# 安装 openssl（用于生成自签名证书）
-RUN apk add --no-cache openssl
+# 安装必要工具
+RUN apk add --no-cache sed
 
 # 配置 nginx
 RUN echo "types { application/javascript js mjs; }" > /etc/nginx/conf.d/mjs.conf \
