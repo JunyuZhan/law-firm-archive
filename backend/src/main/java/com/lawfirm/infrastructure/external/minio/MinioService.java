@@ -186,11 +186,13 @@ public class MinioService {
   /**
    * 将 MinIO URL 转换为浏览器可访问的 URL 如果 URL 包含 Docker 内部地址（如 minio:9000），则生成预签名 URL
    *
-   * <p>实现策略： 1. 使用内部 minioClient（minio:9000）生成预签名 URL（因为容器内只能访问内部地址） 2. 如果配置了 browserEndpoint，将 URL
-   * 中的主机名替换为外部地址
+   * <p>实现策略： 
+   * 1. 使用内部 minioClient（minio:9000）生成预签名 URL
+   * 2. 将绝对 URL 转换为相对路径 /minio/...，通过 nginx 代理访问
+   * 3. 这样可以自动适配 HTTP/HTTPS，避免 Mixed Content 问题
    *
    * @param fileUrl 原始文件 URL
-   * @return 浏览器可访问的 URL
+   * @return 浏览器可访问的 URL（相对路径或绝对路径）
    */
   public String getBrowserAccessibleUrl(final String fileUrl) {
     if (fileUrl == null || fileUrl.isEmpty()) {
@@ -216,9 +218,14 @@ public class MinioService {
                       .expiry(DEFAULT_PRESIGNED_URL_EXPIRY_SECONDS) // 2小时有效
                       .build());
 
-          // 如果配置了 browserEndpoint，替换 URL 中的主机名
-          if (browserEndpoint != null && !browserEndpoint.isEmpty()) {
-            // 将 http://minio:9000 替换为 browserEndpoint（如 http://192.168.50.10:9000）
+          // 优先使用相对路径 /minio/，通过 nginx 代理，自动适配 HTTP/HTTPS
+          // 这样可以避免 Mixed Content 问题（HTTPS 页面加载 HTTP 资源被阻止）
+          if (browserEndpoint != null && browserEndpoint.equals("/minio")) {
+            // 使用相对路径模式：将 http://minio:9000/ 替换为 /minio/
+            presignedUrl = presignedUrl.replace(endpoint + "/", "/minio/");
+            log.debug("使用相对路径模式: {} -> {}", endpoint, "/minio");
+          } else if (browserEndpoint != null && !browserEndpoint.isEmpty()) {
+            // 使用绝对路径模式（向后兼容）
             presignedUrl = presignedUrl.replace(endpoint, browserEndpoint);
             log.debug(
                 "将内部预签名 URL 替换为浏览器可访问地址: endpoint={} -> browserEndpoint={}",
