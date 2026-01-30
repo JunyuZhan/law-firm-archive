@@ -12,9 +12,9 @@
  * - 业务 API：StaleWhileRevalidate + 短期内存缓存（不持久化）
  */
 
-const CACHE_NAME = 'law-firm-cache-v5';
-const STATIC_CACHE_NAME = 'law-firm-static-v5';
-const API_CACHE_NAME = 'law-firm-api-v5';
+const CACHE_NAME = 'law-firm-cache-v6';
+const STATIC_CACHE_NAME = 'law-firm-static-v6';
+const API_CACHE_NAME = 'law-firm-api-v6';
 
 // 短期内存缓存（不持久化到磁盘，安全）
 // 格式: { url: { data: Response, timestamp: number } }
@@ -286,7 +286,17 @@ async function deduplicatedFetch(request, cacheKey, ttl) {
   // 检查是否有正在进行的相同请求
   if (pendingRequests.has(cacheKey)) {
     console.log('[SW] Deduplicating request:', cacheKey);
-    return pendingRequests.get(cacheKey);
+    // 等待原请求完成，然后从缓存返回克隆的响应
+    try {
+      await pendingRequests.get(cacheKey);
+      const cached = memoryCache.get(cacheKey);
+      if (cached) {
+        return cached.response.clone();
+      }
+    } catch (error) {
+      // 原请求失败，重新发起
+      console.log('[SW] Original request failed, retrying:', error);
+    }
   }
 
   // 创建请求 Promise
@@ -294,7 +304,7 @@ async function deduplicatedFetch(request, cacheKey, ttl) {
     try {
       const response = await fetch(request);
       if (response.ok) {
-        // 存入内存缓存
+        // 存入内存缓存（存储克隆的响应）
         memoryCache.set(cacheKey, {
           response: response.clone(),
           timestamp: Date.now(),
