@@ -53,14 +53,19 @@ function setupAccessGuard(router: Router) {
     // 基本路由，这些路由不需要进入权限拦截
     // 但如果是需要布局的页面（如项目详情），仍需要确保菜单已加载
     if (coreRouteNames.includes(to.name as string)) {
-      if (to.path === LOGIN_PATH && accessStore.accessToken) {
-        return decodeURIComponent(
-          (to.query?.redirect as string) ||
-            userStore.userInfo?.homePath ||
-            preferences.app.defaultHomePath,
-        );
+      // 登录页特殊处理：已登录则跳转首页，未登录则直接放行
+      if (to.path === LOGIN_PATH) {
+        if (accessStore.accessToken) {
+          return decodeURIComponent(
+            (to.query?.redirect as string) ||
+              userStore.userInfo?.homePath ||
+              preferences.app.defaultHomePath,
+          );
+        }
+        // 未登录访问登录页，直接放行，不需要加载菜单
+        return true;
       }
-      // 如果菜单尚未加载，不直接返回，继续执行后续的菜单生成逻辑
+      // 其他核心路由：如果菜单已加载则放行，否则继续执行后续的菜单生成逻辑
       // 这样可以确保项目详情等页面刷新时侧边栏能正常显示
       if (accessStore.isAccessChecked) {
         return true;
