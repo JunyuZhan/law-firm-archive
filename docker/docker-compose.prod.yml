@@ -1,10 +1,10 @@
 # =====================================================
 # 生产环境配置 (Production Environment)
 # =====================================================
-# 使用方法: docker compose --env-file ../.env -f docker-compose.prod.yml up -d
-# 或使用脚本: ./scripts/env-start.sh prod
-# 
-# 注意：环境变量配置文件在项目根目录 .env
+# 使用方法: 从 docker/ 目录运行:
+#   docker compose -f docker-compose.prod.yml up -d
+# 或从项目根目录运行:
+#   docker compose --env-file .env -f docker/docker-compose.prod.yml up -d
 # =====================================================
 name: law-firm
 
