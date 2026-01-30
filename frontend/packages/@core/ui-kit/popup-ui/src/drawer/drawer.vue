@@ -55,7 +55,7 @@ const id = useId();
 provide('DISMISSABLE_DRAWER_ID', id);
 
 const wrapperRef = ref<HTMLElement>();
-void wrapperRef; // template ref
+void wrapperRef.value; // template ref
 const { $t } = useSimpleLocale();
 const { isMobile } = useIsMobile();
 

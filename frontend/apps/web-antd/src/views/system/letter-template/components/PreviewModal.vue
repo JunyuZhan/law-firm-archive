@@ -10,11 +10,11 @@ import { Button, message, Space, Tag } from 'ant-design-vue';
 
 import { getConfigValue } from '#/api/system';
 
-import { createLetterSampleData } from '../constants/sample-data';
 import { decodeHtmlEntities } from '../../contract-template/utils/print-formatter';
+import { createLetterSampleData } from '../constants/sample-data';
 import {
-  isStructuredLetterContent,
   formatStructuredLetterForPreview,
+  isStructuredLetterContent,
 } from '../utils/letter-formatter';
 
 const previewContent = ref('');
@@ -149,6 +149,7 @@ defineExpose({ open });
 
     <div class="preview-container">
       <div class="preview-paper">
+        <!-- eslint-disable-next-line vue/no-v-html -->
         <div v-html="previewContent" class="preview-content"></div>
       </div>
     </div>

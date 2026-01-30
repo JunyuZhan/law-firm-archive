@@ -5,12 +5,6 @@ import type {
   AiUsageSummaryDTO,
 } from '#/api/ai/types';
 
-import {
-  getMyUsageByModel,
-  getMyUsageLogs,
-  getMyUsageSummary,
-} from '#/api/ai/usage';
-
 import { onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 
 import { Page } from '@vben/common-ui';
@@ -19,14 +13,20 @@ import echarts from '@vben/plugins/echarts';
 import {
   Card,
   Col,
+  message,
   Progress,
   Row,
   Statistic,
   Table,
   Tag,
-  message,
 } from 'ant-design-vue';
 import dayjs from 'dayjs';
+
+import {
+  getMyUsageByModel,
+  getMyUsageLogs,
+  getMyUsageSummary,
+} from '#/api/ai/usage';
 
 defineOptions({ name: 'MyAiUsage' });
 
@@ -134,7 +134,7 @@ function buildTrendData() {
     stat.userCost += Number(item.userCost || 0);
     map.set(date, stat);
   });
-  const dates = Array.from(map.keys()).sort();
+  const dates = [...map.keys()].toSorted();
   const calls = dates.map((d) => map.get(d)!.calls);
   const tokens = dates.map((d) => map.get(d)!.tokens);
   const costs = dates.map((d) => map.get(d)!.userCost);

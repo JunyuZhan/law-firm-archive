@@ -81,6 +81,7 @@ customDomains = ["grafana.example.com"]
 ### 注意事项
 
 ⚠️ **Cloudflare 代理会影响 WebSocket 连接**：
+
 - OnlyOffice 需要 WebSocket 支持
 - 如果 OnlyOffice 无法正常工作，可能需要：
   - 关闭 Cloudflare 代理（仅 DNS）
@@ -93,6 +94,7 @@ customDomains = ["grafana.example.com"]
 ### 1. 限制访问
 
 **Prometheus 和 Grafana**：
+
 - 建议关闭 Cloudflare 代理（仅内网访问）
 - 或使用 Cloudflare Access 保护
 - 或通过 Nginx 添加基本认证
@@ -123,6 +125,7 @@ token = "your-secret-token"
 ### 问题1：域名无法访问
 
 **检查项**：
+
 1. DNS 解析是否正确
 2. FRP 客户端是否运行
 3. FRP 服务器端口是否开放
@@ -131,6 +134,7 @@ token = "your-secret-token"
 ### 问题2：HTTPS 证书错误
 
 **解决方案**：
+
 - 确保 Cloudflare SSL/TLS 模式设置为"完全"
 - 检查 FRP 服务器 SSL 证书配置
 
@@ -139,6 +143,7 @@ token = "your-secret-token"
 **原因**：Cloudflare 代理可能影响 WebSocket 连接
 
 **解决方案**：
+
 - 关闭 OnlyOffice 相关域名的 Cloudflare 代理
 - 或配置 Cloudflare WebSocket 支持
 

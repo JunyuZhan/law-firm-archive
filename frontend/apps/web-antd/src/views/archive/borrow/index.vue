@@ -10,8 +10,6 @@ import { computed, onMounted, reactive, ref } from 'vue';
 
 import { Page } from '@vben/common-ui';
 
-import { useResponsive } from '#/hooks/useResponsive';
-
 import {
   Button,
   Card,
@@ -41,6 +39,7 @@ import {
   rejectBorrow,
   returnArchive,
 } from '#/api/archive/borrow';
+import { useResponsive } from '#/hooks/useResponsive';
 
 defineOptions({ name: 'ArchiveBorrow' });
 
@@ -266,16 +265,20 @@ function handleReject(record: ArchiveBorrowDTO) {
     okText: '确认',
     cancelText: '取消',
     onOk: async () => {
-      const reason = prompt('请输入拒绝原因:');
-      if (reason) {
-        try {
-          await rejectBorrow(record.id, reason);
-          message.success('已拒绝');
-          fetchData();
-        } catch (error: any) {
-          message.error(error.message || '操作失败');
-        }
-      }
+      Modal.prompt({
+        title: '请输入拒绝原因',
+        onOk: async (reason: string) => {
+          if (reason) {
+            try {
+              await rejectBorrow(record.id, reason);
+              message.success('已拒绝');
+              fetchData();
+            } catch (error: any) {
+              message.error(error.message || '操作失败');
+            }
+          }
+        },
+      });
     },
   });
 }

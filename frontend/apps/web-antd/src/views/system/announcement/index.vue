@@ -5,7 +5,7 @@ import type {
   CreateAnnouncementCommand,
 } from '#/api/system/announcement';
 
-import { ref, reactive } from 'vue';
+import { reactive, ref } from 'vue';
 
 import { Page } from '@vben/common-ui';
 
@@ -305,7 +305,7 @@ function getPriorityColor(priority: number | undefined) {
   return 'default';
 }
 
-function formatDateTime(date: string | null | undefined) {
+function formatDateTime(date: null | string | undefined) {
   if (!date) return '-';
   return dayjs(date).format('YYYY-MM-DD HH:mm');
 }

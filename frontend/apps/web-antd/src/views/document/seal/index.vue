@@ -7,8 +7,6 @@ import { ref } from 'vue';
 import { Page } from '@vben/common-ui';
 import { Plus } from '@vben/icons';
 
-import { useResponsive } from '#/hooks/useResponsive';
-
 import {
   Button,
   Card,
@@ -24,6 +22,7 @@ import {
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import { changeSealStatus, deleteSeal, getSealList } from '#/api/document/seal';
+import { useResponsive } from '#/hooks/useResponsive';
 
 import SealModal from './components/SealModal.vue';
 

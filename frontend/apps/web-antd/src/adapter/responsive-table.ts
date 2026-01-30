@@ -1,6 +1,8 @@
+import type { Ref } from 'vue';
+
 import type { VxeGridProps } from '#/adapter/vxe-table';
 
-import { computed, type Ref } from 'vue';
+import { computed } from 'vue';
 
 import { useResponsive } from '#/hooks/useResponsive';
 
@@ -23,7 +25,7 @@ export interface ResponsiveColumnConfig {
   /** 列类型 (seq, checkbox, radio 等) */
   type?: string;
   /** 插槽配置 */
-  slots?: { default?: string; [key: string]: string | undefined };
+  slots?: { [key: string]: string | undefined; default?: string };
   /** 其他属性 */
   [key: string]: any;
 }
@@ -48,7 +50,7 @@ export interface ResponsiveGridOptions {
  * @param options 响应式配置选项
  */
 export function useResponsiveGrid(
-  baseColumns: ResponsiveColumnConfig[] | Ref<ResponsiveColumnConfig[]>,
+  baseColumns: Ref<ResponsiveColumnConfig[]> | ResponsiveColumnConfig[],
   options: ResponsiveGridOptions = {},
 ) {
   const { isMobile, isTablet } = useResponsive();
@@ -80,7 +82,7 @@ export function useResponsiveGrid(
     const maxColumns = isMobile.value ? mobileMaxColumns : tabletMaxColumns;
 
     // 必须保留的列类型
-    const mustShowTypes = ['seq', 'checkbox', 'radio'];
+    const mustShowTypes = new Set(['checkbox', 'radio', 'seq']);
 
     // 筛选和排序列
     const filteredColumns = columns
@@ -91,7 +93,7 @@ export function useResponsiveGrid(
       }))
       .filter((col) => {
         // 必须显示的列类型
-        if (mustShowTypes.includes(col.type as string)) return true;
+        if (mustShowTypes.has(col.type as string)) return true;
         // 操作列必须显示
         if (col.field === 'action' || col.slots?.default === 'action')
           return true;
@@ -102,12 +104,12 @@ export function useResponsiveGrid(
         // 根据优先级决定
         return col._priority !== undefined;
       })
-      .sort((a, b) => (a._priority || 999) - (b._priority || 999))
+      .toSorted((a, b) => (a._priority || 999) - (b._priority || 999))
       .slice(0, maxColumns);
 
     // 按原始顺序排序
     return filteredColumns
-      .sort((a, b) => a._originalIndex - b._originalIndex)
+      .toSorted((a, b) => a._originalIndex - b._originalIndex)
       .map(({ _originalIndex, _priority, ...col }) => ({
         ...col,
         // 移动端调整列宽

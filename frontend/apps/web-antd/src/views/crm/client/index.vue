@@ -13,8 +13,6 @@ import { useRoute, useRouter } from 'vue-router';
 import { Page } from '@vben/common-ui';
 import { IconifyIcon, Plus } from '@vben/icons';
 
-import { useResponsive } from '#/hooks/useResponsive';
-
 import {
   Alert,
   Button,
@@ -55,6 +53,7 @@ import {
   recognizeIdCard,
 } from '#/api/ocr';
 import { UserTreeSelect } from '#/components/UserTreeSelect';
+import { useResponsive } from '#/hooks/useResponsive';
 
 defineOptions({ name: 'CrmClient' });
 
@@ -290,7 +289,7 @@ function handleSearch() {
 // 年份变化时更新日期范围
 function handleYearChange(value: any) {
   const year = Number(value);
-  if (isNaN(year)) return;
+  if (Number.isNaN(year)) return;
   selectedYear.value = year;
   if (year === 0) {
     // 选择"全部年份"时清除日期筛选

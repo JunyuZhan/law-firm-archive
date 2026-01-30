@@ -100,7 +100,7 @@ function initNotificationSound() {
 async function playNotificationSound() {
   // 如果用户还没有与页面交互，不播放音效（浏览器安全限制）
   if (!hasUserInteracted) {
-    console.debug('等待用户交互后才能播放通知音效');
+    console.warn('等待用户交互后才能播放通知音效');
     return;
   }
 
@@ -110,7 +110,7 @@ async function playNotificationSound() {
       const AudioContextClass =
         window.AudioContext || (window as any).webkitAudioContext;
       if (!AudioContextClass) {
-        console.debug('浏览器不支持 AudioContext');
+        console.warn('浏览器不支持 AudioContext');
         return;
       }
       audioContext = new AudioContextClass();
@@ -146,9 +146,9 @@ async function playNotificationSound() {
     oscillator.start(now);
     oscillator.stop(now + 0.3);
 
-    console.debug('通知提示音已播放');
+    console.warn('通知提示音已播放');
   } catch (error) {
-    console.debug('播放通知音效失败:', error);
+    console.warn('播放通知音效失败:', error);
   }
 }
 
@@ -159,9 +159,10 @@ async function showBrowserNotification(title: string, body: string) {
     if (!('Notification' in window)) return;
 
     // 检查 Notification 对象是否完整可用
-    if (typeof Notification.permission === 'undefined') return;
+    if (Notification.permission === undefined) return;
 
     if (Notification.permission === 'granted') {
+      // eslint-disable-next-line no-new
       new Notification(title, {
         body,
         icon: '/favicon.ico',
@@ -170,11 +171,12 @@ async function showBrowserNotification(title: string, body: string) {
     } else if (Notification.permission !== 'denied') {
       // 检查 requestPermission 是否可用
       if (typeof Notification.requestPermission !== 'function') {
-        console.debug('Notification.requestPermission 不可用');
+        console.warn('Notification.requestPermission 不可用');
         return;
       }
       const permission = await Notification.requestPermission();
       if (permission === 'granted') {
+        // eslint-disable-next-line no-new
         new Notification(title, {
           body,
           icon: '/favicon.ico',
@@ -183,7 +185,7 @@ async function showBrowserNotification(title: string, body: string) {
       }
     }
   } catch (error) {
-    console.debug('浏览器通知功能不可用:', error);
+    console.warn('浏览器通知功能不可用:', error);
   }
 }
 
@@ -357,7 +359,7 @@ async function requestNotificationPermission() {
     // 检查浏览器是否完整支持 Notification API
     if (
       !('Notification' in window) ||
-      typeof Notification.permission === 'undefined' ||
+      Notification.permission === undefined ||
       typeof Notification.requestPermission !== 'function'
     ) {
       return;
@@ -367,7 +369,7 @@ async function requestNotificationPermission() {
       await Notification.requestPermission();
     }
   } catch (error) {
-    console.debug('请求通知权限失败:', error);
+    console.warn('请求通知权限失败:', error);
   }
 }
 

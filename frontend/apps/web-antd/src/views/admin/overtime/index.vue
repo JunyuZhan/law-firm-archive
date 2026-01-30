@@ -120,8 +120,8 @@ const approveForm = reactive<ApproveOvertimeRequest>({
 async function fetchData() {
   loading.value = true;
   try {
-    let data: OvertimeApplicationDTO[];
-    data = await (searchForm.startDate && searchForm.endDate
+    const data: OvertimeApplicationDTO[] = await (searchForm.startDate &&
+    searchForm.endDate
       ? getOvertimeApplicationsByDateRange(
           searchForm.startDate,
           searchForm.endDate,

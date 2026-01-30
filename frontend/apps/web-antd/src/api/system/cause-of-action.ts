@@ -7,7 +7,7 @@ import { requestClient } from '#/api/request';
  */
 
 /** 案由类型 */
-export type CauseType = 'CIVIL' | 'CRIMINAL' | 'ADMIN';
+export type CauseType = 'ADMIN' | 'CIVIL' | 'CRIMINAL';
 
 /** 案由类型选项 */
 export interface CauseTypeOption {
@@ -108,10 +108,10 @@ export function updateCause(id: number, command: UpdateCauseCommand) {
 
 /** 删除案由/罪名 */
 export function deleteCause(id: number) {
-  return requestClient.delete<void>(`/causes/${id}`);
+  return requestClient.delete(`/causes/${id}`);
 }
 
 /** 启用/禁用案由 */
 export function toggleCauseStatus(id: number) {
-  return requestClient.post<void>(`/causes/${id}/toggle`);
+  return requestClient.post(`/causes/${id}/toggle`);
 }

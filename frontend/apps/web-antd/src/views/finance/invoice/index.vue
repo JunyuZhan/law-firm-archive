@@ -12,8 +12,6 @@ import { onMounted, reactive, ref, watch } from 'vue';
 import { Page } from '@vben/common-ui';
 import { Plus } from '@vben/icons';
 
-import { useResponsive } from '#/hooks/useResponsive';
-
 import {
   Button,
   Card,
@@ -41,6 +39,7 @@ import {
   getInvoiceList,
   issueInvoice,
 } from '#/api/finance';
+import { useResponsive } from '#/hooks/useResponsive';
 
 defineOptions({ name: 'FinanceInvoice' });
 
@@ -213,7 +212,7 @@ function handleSearch() {
 // 年份变化时更新日期范围
 function handleYearChange(value: any) {
   const year = Number(value);
-  if (isNaN(year)) return;
+  if (Number.isNaN(year)) return;
   selectedYear.value = year;
   if (year === 0) {
     queryParams.value.createdAtFrom = undefined;
@@ -323,13 +322,9 @@ async function handleSave() {
 }
 
 function handleIssue(row: InvoiceDTO) {
-  Modal.confirm({
-    title: '开具发票',
-    content: '请输入发票号码',
-    okText: '确认',
-    cancelText: '取消',
-    onOk: async () => {
-      const invoiceNo = prompt('请输入发票号码:');
+  Modal.prompt({
+    title: '请输入发票号码',
+    onOk: async (invoiceNo: string) => {
       if (!invoiceNo) {
         message.warning('请输入发票号码');
         return;
@@ -352,18 +347,22 @@ function handleCancel(row: InvoiceDTO) {
     okText: '确认',
     cancelText: '取消',
     onOk: async () => {
-      const reason = prompt('请输入作废原因:');
-      if (!reason) {
-        message.warning('请输入作废原因');
-        return;
-      }
-      try {
-        await cancelInvoice(row.id, reason);
-        message.success('作废发票成功');
-        gridApi.reload();
-      } catch (error: any) {
-        message.error(error.message || '作废发票失败');
-      }
+      Modal.prompt({
+        title: '请输入作废原因',
+        onOk: async (reason: string) => {
+          if (!reason) {
+            message.warning('请输入作废原因');
+            return;
+          }
+          try {
+            await cancelInvoice(row.id, reason);
+            message.success('作废发票成功');
+            gridApi.reload();
+          } catch (error: any) {
+            message.error(error.message || '作废发票失败');
+          }
+        },
+      });
     },
   });
 }
@@ -477,9 +476,11 @@ onMounted(() => {
         <template #action="{ row }">
           <Space>
             <a @click="handleView(row)">查看</a>
+            <!-- eslint-disable-next-line prettier/prettier -->
             <a v-if="row.status === 'APPROVED'" @click="handleIssue(row)"
               >开具</a
             >
+            <!-- eslint-disable-next-line prettier/prettier -->
             <a
               v-if="row.status === 'ISSUED'"
               @click="handleCancel(row)"

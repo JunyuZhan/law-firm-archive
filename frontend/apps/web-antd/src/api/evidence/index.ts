@@ -1,11 +1,11 @@
+import type { PageResult } from '../matter/types';
+
 /**
  * 证据管理模块 API
  */
 import { useAccessStore } from '@vben/stores';
 
 import { requestClient } from '#/api/request';
-
-import type { PageResult } from '../matter/types';
 
 // ========== 证据管理类型定义 ==========
 export interface EvidenceDTO {
@@ -156,22 +156,22 @@ export function getEvidenceGroups(matterId: number) {
 /** 上传证据文件 */
 export function uploadEvidenceFile(file: File) {
   return requestClient.upload<{
-    fileUrl: string;
+    canPreview: boolean;
     fileName: string;
     fileSize: number;
     fileType: string;
-    thumbnailUrl: string | null;
-    canPreview: boolean;
+    fileUrl: string;
+    thumbnailUrl: null | string;
   }>('/evidence/upload', { file });
 }
 
 /** 获取文件预览URL（预签名URL） */
 export function getEvidencePreviewUrl(id: number) {
   return requestClient.get<{
-    fileUrl: string;
+    canPreview: boolean;
     fileName: string;
     fileType: string;
-    canPreview: boolean;
+    fileUrl: string;
   }>(`/evidence/${id}/preview`);
 }
 
@@ -185,15 +185,15 @@ export function getEvidenceDownloadUrl(id: number) {
 /** 获取 OnlyOffice 预览URL（Docker 容器可访问） */
 export function getEvidenceOnlyOfficeUrl(id: number) {
   return requestClient.get<{
-    fileUrl: string;
     fileName: string;
     fileType: string;
+    fileUrl: string;
   }>(`/evidence/${id}/onlyoffice-url`);
 }
 
 /** 获取文件缩略图URL */
 export function getEvidenceThumbnailUrl(id: number) {
-  return requestClient.get<{ thumbnailUrl: string | null; fileType: string }>(
+  return requestClient.get<{ fileType: string; thumbnailUrl: null | string }>(
     `/evidence/${id}/thumbnail`,
   );
 }
@@ -225,7 +225,7 @@ export interface EvidenceExportItem {
 /** 导出证据清单（GET方式，导出全部） */
 export function exportEvidenceListAll(
   matterId: number,
-  format: 'word' | 'pdf' = 'word',
+  format: 'pdf' | 'word' = 'word',
 ) {
   // 使用 window.open 打开下载链接
   const baseUrl = import.meta.env.VITE_GLOB_API_URL || '/api';
@@ -239,7 +239,7 @@ export function exportEvidenceListAll(
 export async function exportEvidenceList(
   matterId: number,
   items: EvidenceExportItem[],
-  format: 'word' | 'pdf' = 'word',
+  format: 'pdf' | 'word' = 'word',
 ) {
   const response = await requestClient.post(
     `/evidence/matter/${matterId}/export?format=${format}`,
@@ -260,14 +260,14 @@ export async function exportEvidenceList(
   const link = document.createElement('a');
   link.href = url;
   link.download = `证据清单_${new Date().toISOString().slice(0, 10)}.${format === 'word' ? 'docx' : 'pdf'}`;
-  document.body.appendChild(link);
+  document.body.append(link);
   link.click();
-  document.body.removeChild(link);
+  link.remove();
   window.URL.revokeObjectURL(url);
 }
 
 /** 获取当前用户的访问令牌 */
-export async function getAccessToken(): Promise<string | null> {
+export async function getAccessToken(): Promise<null | string> {
   const accessStore = useAccessStore();
   return accessStore.accessToken || null;
 }
@@ -276,7 +276,7 @@ export async function getAccessToken(): Promise<string | null> {
 export async function downloadEvidenceListDirect(
   matterId: number,
   items: EvidenceExportItem[],
-  format: 'word' | 'pdf' = 'word',
+  format: 'pdf' | 'word' = 'word',
   _token?: string, // token 参数保留但不使用，因为 requestClient 会自动带上
 ) {
   const response = await requestClient.post(
@@ -298,9 +298,9 @@ export async function downloadEvidenceListDirect(
   const link = document.createElement('a');
   link.href = url;
   link.download = `证据清单_${new Date().toISOString().slice(0, 10)}.${format === 'word' ? 'docx' : 'pdf'}`;
-  document.body.appendChild(link);
+  document.body.append(link);
   link.click();
-  document.body.removeChild(link);
+  link.remove();
   window.URL.revokeObjectURL(url);
 }
 
@@ -317,9 +317,9 @@ export async function downloadEvidenceAsZip(ids: number[], fileName?: string) {
   link.href = url;
   link.download =
     fileName || `证据材料_${new Date().toISOString().slice(0, 10)}.zip`;
-  document.body.appendChild(link);
+  document.body.append(link);
   link.click();
-  document.body.removeChild(link);
+  link.remove();
   window.URL.revokeObjectURL(url);
 }
 
@@ -362,8 +362,8 @@ export interface EvidenceListCompareResult {
 
 /** 获取证据清单列表 */
 export function getEvidenceLists(params: {
-  matterId?: number;
   listType?: string;
+  matterId?: number;
   pageNum?: number;
   pageSize?: number;
 }) {
@@ -385,7 +385,7 @@ export function createEvidenceList(data: CreateEvidenceListCommand) {
 /** 更新证据清单 */
 export function updateEvidenceList(
   id: number,
-  params: { name?: string; listType?: string },
+  params: { listType?: string; name?: string },
   evidenceIds?: number[],
 ) {
   return requestClient.put<EvidenceListDTO>(
@@ -445,9 +445,9 @@ export async function exportEvidenceListToWord(id: number) {
   const link = document.createElement('a');
   link.href = url;
   link.download = `证据清单_${new Date().toISOString().slice(0, 10)}.docx`;
-  document.body.appendChild(link);
+  document.body.append(link);
   link.click();
-  document.body.removeChild(link);
+  link.remove();
   window.URL.revokeObjectURL(url);
 }
 
@@ -462,10 +462,20 @@ export async function exportEvidenceListToPdf(id: number) {
   const link = document.createElement('a');
   link.href = url;
   link.download = `证据清单_${new Date().toISOString().slice(0, 10)}.pdf`;
-  document.body.appendChild(link);
+  document.body.append(link);
   link.click();
-  document.body.removeChild(link);
+  link.remove();
   window.URL.revokeObjectURL(url);
+}
+
+/** 将证据清单保存到卷宗 */
+export async function saveEvidenceListToDossier(
+  listId: number,
+  dossierItemId: number,
+): Promise<number> {
+  return requestClient.post(
+    `/evidence/list/${listId}/save-to-dossier?dossierItemId=${dossierItemId}`,
+  );
 }
 
 // 证据清单类型选项

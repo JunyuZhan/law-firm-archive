@@ -8,16 +8,23 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
-/**
- * 员工档案 Mapper
- */
+/** 员工档案 Mapper */
 @Mapper
 public interface EmployeeMapper extends BaseMapper<Employee> {
 
-    /**
-     * 分页查询员工档案
-     */
-    @Select("""
+  /**
+   * 分页查询员工档案.
+   *
+   * @param page 分页对象
+   * @param employeeNo 员工编号
+   * @param realName 姓名
+   * @param departmentId 部门ID
+   * @param workStatus 工作状态
+   * @param position 职位
+   * @return 员工档案分页结果
+   */
+  @Select(
+      """
         <script>
         SELECT e.*, u.real_name, u.email, u.phone, u.department_id, d.name as department_name
         FROM hr_employee e
@@ -42,17 +49,20 @@ public interface EmployeeMapper extends BaseMapper<Employee> {
         ORDER BY e.id DESC
         </script>
         """)
-    IPage<Employee> selectEmployeePage(Page<Employee> page,
-                                       @Param("employeeNo") String employeeNo,
-                                       @Param("realName") String realName,
-                                       @Param("departmentId") Long departmentId,
-                                       @Param("workStatus") String workStatus,
-                                       @Param("position") String position);
+  IPage<Employee> selectEmployeePage(
+      Page<Employee> page,
+      @Param("employeeNo") String employeeNo,
+      @Param("realName") String realName,
+      @Param("departmentId") Long departmentId,
+      @Param("workStatus") String workStatus,
+      @Param("position") String position);
 
-    /**
-     * 根据用户ID查询员工档案
-     */
-    @Select("SELECT * FROM hr_employee WHERE user_id = #{userId} AND deleted = false LIMIT 1")
-    Employee selectByUserId(@Param("userId") Long userId);
+  /**
+   * 根据用户ID查询员工档案.
+   *
+   * @param userId 用户ID
+   * @return 员工档案
+   */
+  @Select("SELECT * FROM hr_employee WHERE user_id = #{userId} AND deleted = false LIMIT 1")
+  Employee selectByUserId(@Param("userId") Long userId);
 }
-

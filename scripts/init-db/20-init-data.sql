@@ -1517,19 +1517,6 @@ SELECT 8, id FROM public.sys_menu WHERE id IN (765, 766, 767, 768, 769)
 ON CONFLICT DO NOTHING;
 
 -- =====================================================
--- OpenAPI管理权限配置
--- =====================================================
--- 为管理员角色分配OpenAPI管理权限
-INSERT INTO public.sys_role_menu (role_id, menu_id)
-SELECT 1, id FROM public.sys_menu WHERE id IN (770, 771, 772)
-ON CONFLICT DO NOTHING;
-
--- 为律所主任角色分配OpenAPI管理权限
-INSERT INTO public.sys_role_menu (role_id, menu_id)
-SELECT 2, id FROM public.sys_menu WHERE id IN (770, 771, 772)
-ON CONFLICT DO NOTHING;
-
--- =====================================================
 -- 报表模板管理权限配置
 -- =====================================================
 -- 为管理员角色分配报表模板管理权限

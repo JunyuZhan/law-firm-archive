@@ -7,8 +7,6 @@ import { computed, h, onMounted, ref, watch } from 'vue';
 
 import { Page } from '@vben/common-ui';
 
-import { useResponsive } from '#/hooks/useResponsive';
-
 import {
   Badge,
   Button,
@@ -36,6 +34,7 @@ import {
   getMyInitiatedApprovals,
   getPendingApprovals,
 } from '#/api/workbench';
+import { useResponsive } from '#/hooks/useResponsive';
 import ApprovalDetailModal from '#/views/workbench/approval/components/ApprovalDetailModal.vue';
 
 defineOptions({ name: 'DashboardApproval' });
@@ -515,7 +514,7 @@ function handleReject(row: ApprovalDTO) {
     onOk: async () => {
       if (!rejectReason.value.trim()) {
         message.warning('请填写拒绝原因');
-        throw undefined;
+        throw new Error('请填写拒绝原因');
       }
       try {
         await approveApproval({
@@ -528,7 +527,7 @@ function handleReject(row: ApprovalDTO) {
       } catch (error: unknown) {
         const err = error as { message?: string };
         message.error(err.message || '操作失败');
-        return Promise.reject();
+        throw error;
       }
     },
   });
@@ -601,7 +600,7 @@ async function handleBatchReject() {
     onOk: async () => {
       if (!rejectReason.value.trim()) {
         message.warning('请填写拒绝原因');
-        throw undefined;
+        throw new Error('请填写拒绝原因');
       }
       try {
         await requestClient.post('/workbench/approval/batch-approve', {
@@ -614,7 +613,7 @@ async function handleBatchReject() {
       } catch (error: unknown) {
         const err = error as { message?: string };
         message.error(err.message || '批量操作失败');
-        return Promise.reject();
+        throw error;
       }
     },
   });

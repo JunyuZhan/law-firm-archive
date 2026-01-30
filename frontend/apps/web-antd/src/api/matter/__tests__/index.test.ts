@@ -1,5 +1,3 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-
 import type {
   CreateMatterCommand,
   CreateTaskCommand,
@@ -7,13 +5,16 @@ import type {
   MatterQuery,
   UpdateMatterCommand,
 } from '../types';
+
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
 import {
   addParticipant,
+  applyCloseMatter,
   approveCloseMatter,
   approveContract,
   approveTask,
   approveTimesheet,
-  applyCloseMatter,
   changeMatterStatus,
   changeTaskStatus,
   createContract,
@@ -61,7 +62,7 @@ vi.mock('#/api/request', () => ({
   },
 }));
 
-describe('Matter API', () => {
+describe('matter API', () => {
   let mockGet: ReturnType<typeof vi.fn>;
   let mockPost: ReturnType<typeof vi.fn>;
   let mockPut: ReturnType<typeof vi.fn>;
@@ -76,7 +77,7 @@ describe('Matter API', () => {
     vi.clearAllMocks();
   });
 
-  describe('Matter Management', () => {
+  describe('matter Management', () => {
     it('should get matter list', async () => {
       const params: MatterQuery = { pageNum: 1, pageSize: 10 };
       const mockResponse = { list: [], total: 0 };
@@ -241,7 +242,10 @@ describe('Matter API', () => {
 
       await applyCloseMatter(matterId, data);
 
-      expect(mockPost).toHaveBeenCalledWith(`/matter/${matterId}/close/apply`, data);
+      expect(mockPost).toHaveBeenCalledWith(
+        `/matter/${matterId}/close/apply`,
+        data,
+      );
     });
 
     it('should approve close matter', async () => {
@@ -278,7 +282,7 @@ describe('Matter API', () => {
     });
   });
 
-  describe('Contract Management', () => {
+  describe('contract Management', () => {
     it('should create contract', async () => {
       const data = { name: 'Test Contract', clientId: 1 };
       const mockResponse = { id: 1, ...data };
@@ -357,7 +361,7 @@ describe('Matter API', () => {
     });
   });
 
-  describe('Timesheet Management', () => {
+  describe('timesheet Management', () => {
     it('should get timesheet list', async () => {
       const params = { pageNum: 1, pageSize: 10 };
       const mockResponse = { list: [], total: 0 };
@@ -426,7 +430,9 @@ describe('Matter API', () => {
 
       await submitTimesheet(timesheetId);
 
-      expect(mockPost).toHaveBeenCalledWith(`/timesheets/${timesheetId}/submit`);
+      expect(mockPost).toHaveBeenCalledWith(
+        `/timesheets/${timesheetId}/submit`,
+      );
     });
 
     it('should approve timesheet', async () => {
@@ -493,7 +499,7 @@ describe('Matter API', () => {
     });
   });
 
-  describe('Task Management', () => {
+  describe('task Management', () => {
     it('should get task list', async () => {
       const params = { pageNum: 1, pageSize: 10 };
       const mockResponse = { list: [], total: 0 };

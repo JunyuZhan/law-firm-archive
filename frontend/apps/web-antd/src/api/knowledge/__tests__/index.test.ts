@@ -1,5 +1,3 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-
 import type {
   CaseLibraryQuery,
   CreateArticleCommand,
@@ -8,6 +6,9 @@ import type {
   KnowledgeArticleQuery,
   LawRegulationQuery,
 } from '../types';
+
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
 import {
   archiveArticle,
   collectArticle,
@@ -27,10 +28,10 @@ import {
   getLawCategoryTree,
   getLawRegulationDetail,
   getLawRegulationList,
+  getMyArticles,
   getMyCollectedArticles,
   getMyCollectedCases,
   getMyCollectedRegulations,
-  getMyArticles,
   likeArticle,
   markLawRegulationRepealed,
   publishArticle,
@@ -52,7 +53,7 @@ vi.mock('#/api/request', () => ({
   },
 }));
 
-describe('Knowledge API', () => {
+describe('knowledge API', () => {
   let mockGet: ReturnType<typeof vi.fn>;
   let mockPost: ReturnType<typeof vi.fn>;
   let mockPut: ReturnType<typeof vi.fn>;
@@ -67,7 +68,7 @@ describe('Knowledge API', () => {
     vi.clearAllMocks();
   });
 
-  describe('Law Regulation Management', () => {
+  describe('law Regulation Management', () => {
     it('should get law category tree', async () => {
       const mockResponse = [
         {
@@ -142,7 +143,10 @@ describe('Knowledge API', () => {
       const result = await updateLawRegulation(regulationId, data);
 
       expect(result).toEqual(mockResponse);
-      expect(mockPut).toHaveBeenCalledWith(`/knowledge/law/${regulationId}`, data);
+      expect(mockPut).toHaveBeenCalledWith(
+        `/knowledge/law/${regulationId}`,
+        data,
+      );
     });
 
     it('should delete law regulation', async () => {
@@ -162,7 +166,9 @@ describe('Knowledge API', () => {
 
       await collectLawRegulation(regulationId);
 
-      expect(mockPost).toHaveBeenCalledWith(`/knowledge/law/${regulationId}/collect`);
+      expect(mockPost).toHaveBeenCalledWith(
+        `/knowledge/law/${regulationId}/collect`,
+      );
     });
 
     it('should uncollect law regulation', async () => {
@@ -215,7 +221,7 @@ describe('Knowledge API', () => {
     });
   });
 
-  describe('Knowledge Article Management', () => {
+  describe('knowledge Article Management', () => {
     it('should get article list', async () => {
       const params: KnowledgeArticleQuery = { pageNum: 1, pageSize: 10 };
       const mockResponse = { list: [], total: 0 };
@@ -273,7 +279,10 @@ describe('Knowledge API', () => {
       const result = await updateArticle(articleId, data);
 
       expect(result).toEqual(mockResponse);
-      expect(mockPut).toHaveBeenCalledWith(`/knowledge/article/${articleId}`, data);
+      expect(mockPut).toHaveBeenCalledWith(
+        `/knowledge/article/${articleId}`,
+        data,
+      );
     });
 
     it('should delete article', async () => {
@@ -283,7 +292,9 @@ describe('Knowledge API', () => {
 
       await deleteArticle(articleId);
 
-      expect(mockDelete).toHaveBeenCalledWith(`/knowledge/article/${articleId}`);
+      expect(mockDelete).toHaveBeenCalledWith(
+        `/knowledge/article/${articleId}`,
+      );
     });
 
     it('should publish article', async () => {
@@ -298,7 +309,9 @@ describe('Knowledge API', () => {
       const result = await publishArticle(articleId);
 
       expect(result).toEqual(mockResponse);
-      expect(mockPost).toHaveBeenCalledWith(`/knowledge/article/${articleId}/publish`);
+      expect(mockPost).toHaveBeenCalledWith(
+        `/knowledge/article/${articleId}/publish`,
+      );
     });
 
     it('should archive article', async () => {
@@ -308,7 +321,9 @@ describe('Knowledge API', () => {
 
       await archiveArticle(articleId);
 
-      expect(mockPost).toHaveBeenCalledWith(`/knowledge/article/${articleId}/archive`);
+      expect(mockPost).toHaveBeenCalledWith(
+        `/knowledge/article/${articleId}/archive`,
+      );
     });
 
     it('should like article', async () => {
@@ -318,7 +333,9 @@ describe('Knowledge API', () => {
 
       await likeArticle(articleId);
 
-      expect(mockPost).toHaveBeenCalledWith(`/knowledge/article/${articleId}/like`);
+      expect(mockPost).toHaveBeenCalledWith(
+        `/knowledge/article/${articleId}/like`,
+      );
     });
 
     it('should get my articles', async () => {
@@ -344,7 +361,9 @@ describe('Knowledge API', () => {
 
       await collectArticle(articleId);
 
-      expect(mockPost).toHaveBeenCalledWith(`/knowledge/article/${articleId}/collect`);
+      expect(mockPost).toHaveBeenCalledWith(
+        `/knowledge/article/${articleId}/collect`,
+      );
     });
 
     it('should uncollect article', async () => {
@@ -376,7 +395,7 @@ describe('Knowledge API', () => {
     });
   });
 
-  describe('Case Library Management', () => {
+  describe('case Library Management', () => {
     it('should get case category tree', async () => {
       const mockResponse = [
         {
@@ -471,7 +490,9 @@ describe('Knowledge API', () => {
 
       await collectCase(caseId);
 
-      expect(mockPost).toHaveBeenCalledWith(`/knowledge/case/${caseId}/collect`);
+      expect(mockPost).toHaveBeenCalledWith(
+        `/knowledge/case/${caseId}/collect`,
+      );
     });
 
     it('should uncollect case', async () => {
@@ -481,7 +502,9 @@ describe('Knowledge API', () => {
 
       await uncollectCase(caseId);
 
-      expect(mockDelete).toHaveBeenCalledWith(`/knowledge/case/${caseId}/collect`);
+      expect(mockDelete).toHaveBeenCalledWith(
+        `/knowledge/case/${caseId}/collect`,
+      );
     });
 
     it('should get my collected cases', async () => {

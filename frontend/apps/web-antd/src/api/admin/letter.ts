@@ -128,12 +128,12 @@ export function updateTemplate(
 
 /** 启用/停用模板 */
 export function toggleTemplateStatus(id: number) {
-  return requestClient.post<void>(`/admin/letter/template/${id}/toggle`);
+  return requestClient.post(`/admin/letter/template/${id}/toggle`);
 }
 
 /** 删除模板 */
 export function deleteTemplate(id: number) {
-  return requestClient.delete<void>(`/admin/letter/template/${id}`);
+  return requestClient.delete(`/admin/letter/template/${id}`);
 }
 
 // ==================== 出函申请 ====================
@@ -169,7 +169,7 @@ export function getApplicationsByMatter(matterId: number) {
 
 /** 取消申请 */
 export function cancelApplication(id: number) {
-  return requestClient.post<void>(`/admin/letter/application/${id}/cancel`);
+  return requestClient.post(`/admin/letter/application/${id}/cancel`);
 }
 
 /** 待审批列表 */
@@ -181,35 +181,23 @@ export function getPendingApprovalList() {
 
 /** 审批通过 */
 export function approveApplication(id: number, comment?: string) {
-  return requestClient.post<void>(
-    `/admin/letter/application/${id}/approve`,
-    null,
-    {
-      params: { comment },
-    },
-  );
+  return requestClient.post(`/admin/letter/application/${id}/approve`, null, {
+    params: { comment },
+  });
 }
 
 /** 审批拒绝 */
 export function rejectApplication(id: number, comment: string) {
-  return requestClient.post<void>(
-    `/admin/letter/application/${id}/reject`,
-    null,
-    {
-      params: { comment },
-    },
-  );
+  return requestClient.post(`/admin/letter/application/${id}/reject`, null, {
+    params: { comment },
+  });
 }
 
 /** 退回修改 */
 export function returnApplication(id: number, comment: string) {
-  return requestClient.post<void>(
-    `/admin/letter/application/${id}/return`,
-    null,
-    {
-      params: { comment },
-    },
-  );
+  return requestClient.post(`/admin/letter/application/${id}/return`, null, {
+    params: { comment },
+  });
 }
 
 /** 更新申请（被退回后修改） */
@@ -236,7 +224,7 @@ export function resubmitApplication(
 
 /** 重新提交审批（仅改变状态） */
 export function submitForApproval(id: number) {
-  return requestClient.post<void>(`/admin/letter/application/${id}/submit`);
+  return requestClient.post(`/admin/letter/application/${id}/submit`);
 }
 
 // ==================== 行政操作 ====================
@@ -264,12 +252,12 @@ export function getPendingPrintList() {
 
 /** 确认打印 */
 export function confirmPrint(id: number) {
-  return requestClient.post<void>(`/admin/letter/application/${id}/print`);
+  return requestClient.post(`/admin/letter/application/${id}/print`);
 }
 
 /** 确认领取 */
 export function confirmReceive(id: number) {
-  return requestClient.post<void>(`/admin/letter/application/${id}/receive`);
+  return requestClient.post(`/admin/letter/application/${id}/receive`);
 }
 
 /** 更新函件内容（行政人员） */

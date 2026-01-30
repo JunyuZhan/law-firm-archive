@@ -409,9 +409,11 @@ async function downloadFile(url?: string, fileName?: string) {
           <template #action="{ row }">
             <Space>
               <a @click="handleView(row)">查看</a>
+              <!-- eslint-disable-next-line prettier/prettier -->
               <a v-if="!row.myCompleted" @click="handleOpenUpload(row)"
                 >上传合格证</a
               >
+              <!-- eslint-disable-next-line prettier/prettier -->
               <a
                 v-if="isAdmin"
                 style="color: #ff4d4f"
@@ -481,6 +483,7 @@ async function downloadFile(url?: string, fileName?: string) {
             <List.Item v-for="(att, idx) in formData.attachments" :key="idx">
               <span><FileOutlined /> {{ att.fileName }}</span>
               <template #actions>
+                <!-- eslint-disable-next-line prettier/prettier -->
                 <a style="color: #ff4d4f" @click="removeAttachment(idx)"
                   >删除</a
                 >

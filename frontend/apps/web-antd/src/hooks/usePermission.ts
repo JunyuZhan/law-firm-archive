@@ -44,7 +44,7 @@ export function usePermission() {
 
   /**
    * 检查是否有指定角色
-   * @param role 角色码
+   * @param _role 角色码
    * @returns 是否有角色
    */
   const hasRole = (_role: string): boolean => {

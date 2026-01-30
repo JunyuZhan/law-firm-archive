@@ -5,8 +5,10 @@ import type {
   WorkbenchTrendItem,
 } from '@vben/common-ui';
 
+import type { DeadlineDTO } from '#/api/matter/deadline';
 import type { ScheduleDTO } from '#/api/matter/schedule';
 import type { TaskDTO } from '#/api/matter/types';
+import type { AnnouncementDTO } from '#/api/system/announcement';
 import type { ApprovalDTO } from '#/api/workbench';
 
 import {
@@ -18,8 +20,6 @@ import {
   ref,
 } from 'vue';
 import { useRouter } from 'vue-router';
-
-import { useResponsive } from '#/hooks/useResponsive';
 
 import {
   WorkbenchHeader,
@@ -50,14 +50,20 @@ import {
 import dayjs from 'dayjs';
 
 import { getMyTodoTasks, getMyUpcomingSchedules } from '#/api/matter';
-import type { DeadlineDTO } from '#/api/matter/deadline';
 import { getMyUpcomingDeadlines } from '#/api/matter/deadline';
-import type { AnnouncementDTO } from '#/api/system/announcement';
 import {
-  getValidAnnouncements,
-  getAnnouncementById,
   ANNOUNCEMENT_TYPE_OPTIONS,
+  getAnnouncementById,
+  getValidAnnouncements,
 } from '#/api/system/announcement';
+import {
+  getMyApprovedHistory,
+  getMyInitiatedApprovals,
+  getPendingApprovals,
+  getRecentProjects,
+  getWorkbenchStats,
+} from '#/api/workbench';
+import { useResponsive } from '#/hooks/useResponsive';
 
 // HTML转义函数，防止XSS攻击
 function escapeHtml(text: string): string {
@@ -69,15 +75,8 @@ function escapeHtml(text: string): string {
     '"': '&quot;',
     "'": '&#039;',
   };
-  return text.replace(/[&<>"']/g, (m) => map[m] || m);
+  return text.replaceAll(/[&<>"']/g, (m) => map[m] || m);
 }
-import {
-  getMyApprovedHistory,
-  getMyInitiatedApprovals,
-  getPendingApprovals,
-  getRecentProjects,
-  getWorkbenchStats,
-} from '#/api/workbench';
 
 const userStore = useUserStore();
 const router = useRouter();
@@ -93,7 +92,7 @@ const allTrendItems = ref<WorkbenchTrendItem[]>([]);
 const stats = ref({
   // 通用
   taskCount: 0,
-  roleType: 'LAWYER' as 'LAWYER' | 'FINANCE' | 'ADMIN_STAFF',
+  roleType: 'LAWYER' as 'ADMIN_STAFF' | 'FINANCE' | 'LAWYER',
   // 律师相关
   matterCount: 0,
   clientCount: 0,
@@ -133,7 +132,7 @@ const currentAnnouncement = ref<AnnouncementDTO | null>(null);
 
 // 公告滚动相关
 const currentAnnouncementIndex = ref(0);
-let announcementTimer: ReturnType<typeof setInterval> | null = null;
+let announcementTimer: null | ReturnType<typeof setInterval> = null;
 
 // 开始公告滚动
 function startAnnouncementScroll() {
@@ -405,7 +404,8 @@ async function loadTrends() {
 
         const timestamp = approval.approvedAt
           ? dayjs(approval.approvedAt).valueOf()
-          : approval.updatedAt
+          : // eslint-disable-next-line unicorn/no-nested-ternary
+            approval.updatedAt
             ? dayjs(approval.updatedAt).valueOf()
             : Date.now();
 
@@ -434,7 +434,8 @@ async function loadTrends() {
 
           const timestamp = approval.approvedAt
             ? dayjs(approval.approvedAt).valueOf()
-            : approval.updatedAt
+            : // eslint-disable-next-line unicorn/no-nested-ternary
+              approval.updatedAt
               ? dayjs(approval.updatedAt).valueOf()
               : Date.now();
 
@@ -454,6 +455,7 @@ async function loadTrends() {
     trends.sort((a, b) => b.timestamp - a.timestamp);
 
     // 保存所有动态（移除 timestamp 字段）
+    // eslint-disable-next-line unused-imports/no-unused-vars
     allTrendItems.value = trends.map(({ timestamp, ...item }) => item);
 
     // 默认显示前5条
@@ -556,7 +558,7 @@ async function handleViewAnnouncement(announcement: AnnouncementDTO) {
 }
 
 // 格式化日期时间
-function formatDateTime(date: string | null | undefined): string {
+function formatDateTime(date: null | string | undefined): string {
   if (!date) return '-';
   return dayjs(date).format('YYYY-MM-DD HH:mm');
 }
@@ -695,14 +697,24 @@ onUnmounted(() => {
           :bordered="false"
           hoverable
           class="stat-card stat-card-blue"
-          :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }"
+          :body-style="{
+            padding: '16px',
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+          }"
           style="height: 100%"
           @click="router.push('/matter/my')"
         >
           <Statistic
             title="我的项目"
             :value="stats.matterCount"
-            :value-style="{ color: '#1890ff', fontSize: '20px', fontWeight: 500, lineHeight: '28px' }"
+            :value-style="{
+              color: '#1890ff',
+              fontSize: '20px',
+              fontWeight: 500,
+              lineHeight: '28px',
+            }"
           />
         </Card>
       </Col>
@@ -711,14 +723,24 @@ onUnmounted(() => {
           :bordered="false"
           hoverable
           class="stat-card stat-card-green"
-          :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }"
+          :body-style="{
+            padding: '16px',
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+          }"
           style="height: 100%"
           @click="router.push('/crm/client')"
         >
           <Statistic
             title="我的客户"
             :value="stats.clientCount"
-            :value-style="{ color: '#52c41a', fontSize: '20px', fontWeight: 500, lineHeight: '28px' }"
+            :value-style="{
+              color: '#52c41a',
+              fontSize: '20px',
+              fontWeight: 500,
+              lineHeight: '28px',
+            }"
           />
         </Card>
       </Col>
@@ -727,7 +749,12 @@ onUnmounted(() => {
           :bordered="false"
           hoverable
           class="stat-card stat-card-orange"
-          :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }"
+          :body-style="{
+            padding: '16px',
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+          }"
           style="height: 100%"
           @click="router.push('/matter/timesheet')"
         >
@@ -736,7 +763,12 @@ onUnmounted(() => {
             :value="stats.timesheetHours"
             suffix="小时"
             :precision="1"
-            :value-style="{ color: '#fa8c16', fontSize: '20px', fontWeight: 500, lineHeight: '28px' }"
+            :value-style="{
+              color: '#fa8c16',
+              fontSize: '20px',
+              fontWeight: 500,
+              lineHeight: '28px',
+            }"
           />
         </Card>
       </Col>
@@ -745,14 +777,24 @@ onUnmounted(() => {
           :bordered="false"
           hoverable
           class="stat-card stat-card-purple"
-          :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }"
+          :body-style="{
+            padding: '16px',
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+          }"
           style="height: 100%"
           @click="router.push('/matter/task')"
         >
           <Statistic
             title="待办任务"
             :value="stats.taskCount"
-            :value-style="{ color: '#722ed1', fontSize: '20px', fontWeight: 500, lineHeight: '28px' }"
+            :value-style="{
+              color: '#722ed1',
+              fontSize: '20px',
+              fontWeight: 500,
+              lineHeight: '28px',
+            }"
           />
         </Card>
       </Col>
@@ -769,14 +811,24 @@ onUnmounted(() => {
           :bordered="false"
           hoverable
           class="stat-card stat-card-blue"
-          :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }"
+          :body-style="{
+            padding: '16px',
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+          }"
           style="height: 100%"
           @click="router.push('/finance/payment')"
         >
           <Statistic
             title="待确认收款"
             :value="stats.pendingPaymentCount"
-            :value-style="{ color: '#1890ff', fontSize: '20px', fontWeight: 500, lineHeight: '28px' }"
+            :value-style="{
+              color: '#1890ff',
+              fontSize: '20px',
+              fontWeight: 500,
+              lineHeight: '28px',
+            }"
           />
         </Card>
       </Col>
@@ -785,14 +837,24 @@ onUnmounted(() => {
           :bordered="false"
           hoverable
           class="stat-card stat-card-green"
-          :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }"
+          :body-style="{
+            padding: '16px',
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+          }"
           style="height: 100%"
           @click="router.push('/finance/invoice')"
         >
           <Statistic
             title="待开票"
             :value="stats.pendingInvoiceCount"
-            :value-style="{ color: '#52c41a', fontSize: '20px', fontWeight: 500, lineHeight: '28px' }"
+            :value-style="{
+              color: '#52c41a',
+              fontSize: '20px',
+              fontWeight: 500,
+              lineHeight: '28px',
+            }"
           />
         </Card>
       </Col>
@@ -801,14 +863,24 @@ onUnmounted(() => {
           :bordered="false"
           hoverable
           class="stat-card stat-card-orange"
-          :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }"
+          :body-style="{
+            padding: '16px',
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+          }"
           style="height: 100%"
           @click="router.push('/finance/expense')"
         >
           <Statistic
             title="待审批报销"
             :value="stats.pendingExpenseCount"
-            :value-style="{ color: '#fa8c16', fontSize: '20px', fontWeight: 500, lineHeight: '28px' }"
+            :value-style="{
+              color: '#fa8c16',
+              fontSize: '20px',
+              fontWeight: 500,
+              lineHeight: '28px',
+            }"
           />
         </Card>
       </Col>
@@ -817,7 +889,12 @@ onUnmounted(() => {
           :bordered="false"
           hoverable
           class="stat-card stat-card-purple"
-          :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }"
+          :body-style="{
+            padding: '16px',
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+          }"
           style="height: 100%"
           @click="router.push('/finance/payment')"
         >
@@ -826,7 +903,13 @@ onUnmounted(() => {
             :value="stats.monthlyReceivedAmount"
             :precision="2"
             prefix="¥"
-            :value-style="{ color: '#722ed1', fontSize: '20px', fontWeight: 500, lineHeight: '28px', wordBreak: 'break-all' }"
+            :value-style="{
+              color: '#722ed1',
+              fontSize: '20px',
+              fontWeight: 500,
+              lineHeight: '28px',
+              wordBreak: 'break-all',
+            }"
           />
         </Card>
       </Col>
@@ -1039,6 +1122,7 @@ onUnmounted(() => {
                   </template>
                   <template #title>{{ item.title }}</template>
                   <template #description>
+                    <!-- eslint-disable-next-line vue/no-v-html -->
                     <div class="text-xs" v-html="item.content"></div>
                     <div class="mt-1 text-xs text-gray-400">
                       {{ item.date }}

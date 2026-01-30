@@ -89,15 +89,40 @@ check_service() {
     fi
 }
 
-# 测试登录
+# 测试登录（带滑块验证）
 test_login() {
     echo ""
     echo -e "${BLUE}=== 认证模块测试 ===${NC}"
     
-    local response=$(send_request "POST" "$BASE_URL/auth/login" '{"username":"admin","password":"admin123"}')
+    # Step 1: 获取滑块验证令牌
+    local slider_response=$(send_request "GET" "$BASE_URL/auth/slider/token" "" "")
+    local slider_body=$(echo "$slider_response" | sed '$d')
+    local slider_success=$(echo "$slider_body" | grep -o '"success":[^,]*' | head -1 | cut -d':' -f2)
+    
+    if [ "$slider_success" != "true" ]; then
+        print_result "获取滑块令牌" "FAIL" "获取滑块令牌失败"
+        return 1
+    fi
+    
+    local token_id=$(echo "$slider_body" | grep -o '"tokenId":"[^"]*"' | cut -d'"' -f4)
+    
+    # Step 2: 验证滑块
+    local verify_response=$(send_request "POST" "$BASE_URL/auth/slider/verify" "{\"tokenId\":\"$token_id\",\"slideTime\":1500}" "")
+    local verify_body=$(echo "$verify_response" | sed '$d')
+    local verify_success=$(echo "$verify_body" | grep -o '"success":[^,]*' | head -1 | cut -d':' -f2)
+    
+    if [ "$verify_success" != "true" ]; then
+        print_result "滑块验证" "FAIL" "滑块验证失败"
+        return 1
+    fi
+    
+    local slider_verify_token=$(echo "$verify_body" | grep -o '"verifyToken":"[^"]*"' | cut -d'"' -f4)
+    
+    # Step 3: 使用滑块验证令牌登录
+    local response=$(send_request "POST" "$BASE_URL/auth/login" "{\"username\":\"admin\",\"password\":\"admin123\",\"sliderVerifyToken\":\"$slider_verify_token\"}")
     local http_code=$(echo "$response" | tail -1)
     local body=$(echo "$response" | sed '$d')
-    local success=$(echo "$body" | grep -o '"success":[^,]*' | cut -d':' -f2)
+    local success=$(echo "$body" | grep -o '"success":[^,]*' | head -1 | cut -d':' -f2)
     
     if [ "$success" = "true" ] && [ "$http_code" = "200" ]; then
         TOKEN=$(echo "$body" | grep -o '"accessToken":"[^"]*' | cut -d'"' -f4)
@@ -105,7 +130,7 @@ test_login() {
         print_result "用户登录" "PASS"
         return 0
     else
-        local message=$(echo "$body" | grep -o '"message":"[^"]*' | cut -d'"' -f4 || echo "HTTP $http_code")
+        local message=$(echo "$body" | grep -o '"message":"[^"]*' | head -1 | cut -d'"' -f4 || echo "HTTP $http_code")
         print_result "用户登录" "FAIL" "$message"
         return 1
     fi

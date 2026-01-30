@@ -10,8 +10,6 @@ import { onMounted, ref } from 'vue';
 import { Page } from '@vben/common-ui';
 import { Plus } from '@vben/icons';
 
-import { useResponsive } from '#/hooks/useResponsive';
-
 import {
   Button,
   Card,
@@ -44,6 +42,7 @@ import {
   submitPromotionApplication,
 } from '#/api/hr/promotion';
 import UserTreeSelect from '#/components/UserTreeSelect';
+import { useResponsive } from '#/hooks/useResponsive';
 
 defineOptions({ name: 'HrPromotion' });
 

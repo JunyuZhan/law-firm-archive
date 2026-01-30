@@ -1,5 +1,6 @@
-import { breakpointsTailwind, useBreakpoints } from '@vueuse/core';
 import { computed } from 'vue';
+
+import { breakpointsTailwind, useBreakpoints } from '@vueuse/core';
 
 /**
  * 响应式布局工具函数

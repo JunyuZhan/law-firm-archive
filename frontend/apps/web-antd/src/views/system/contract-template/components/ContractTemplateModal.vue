@@ -19,7 +19,7 @@ import {
 
 import { requestClient } from '#/api/request';
 
-import { templateTypeOptions, feeTypeOptions } from './contract-templates';
+import { feeTypeOptions, templateTypeOptions } from './contract-templates';
 import StructuredTemplateEditor from './StructuredTemplateEditor.vue';
 
 const emit = defineEmits<{

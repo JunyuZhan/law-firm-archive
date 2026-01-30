@@ -8,16 +8,21 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
-/**
- * 报表记录 Mapper
- */
+/** 报表记录 Mapper */
 @Mapper
 public interface ReportMapper extends BaseMapper<Report> {
 
-    /**
-     * 分页查询报表记录
-     */
-    @Select("""
+  /**
+   * 分页查询报表记录.
+   *
+   * @param page 分页对象
+   * @param reportType 报表类型
+   * @param status 状态
+   * @param generatedBy 生成人ID
+   * @return 报表记录分页结果
+   */
+  @Select(
+      """
         <script>
         SELECT * FROM workbench_report
         WHERE deleted = false
@@ -33,15 +38,19 @@ public interface ReportMapper extends BaseMapper<Report> {
         ORDER BY created_at DESC
         </script>
         """)
-    IPage<Report> selectReportPage(Page<Report> page,
-                                    @Param("reportType") String reportType,
-                                    @Param("status") String status,
-                                    @Param("generatedBy") Long generatedBy);
+  IPage<Report> selectReportPage(
+      Page<Report> page,
+      @Param("reportType") String reportType,
+      @Param("status") String status,
+      @Param("generatedBy") Long generatedBy);
 
-    /**
-     * 根据报表编号查询
-     */
-    @Select("SELECT * FROM workbench_report WHERE report_no = #{reportNo} AND deleted = false LIMIT 1")
-    Report selectByReportNo(@Param("reportNo") String reportNo);
+  /**
+   * 根据报表编号查询.
+   *
+   * @param reportNo 报表编号
+   * @return 报表记录
+   */
+  @Select(
+      "SELECT * FROM workbench_report WHERE report_no = #{reportNo} AND deleted = false LIMIT 1")
+  Report selectByReportNo(@Param("reportNo") String reportNo);
 }
-

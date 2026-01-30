@@ -2,8 +2,10 @@ import type {
   CaseCategoryDTO,
   CaseLibraryDTO,
   CaseLibraryQuery,
+  CaseStudyNoteDTO,
   CreateArticleCommand,
   CreateCaseLibraryCommand,
+  CreateCaseStudyNoteCommand,
   CreateLawRegulationCommand,
   KnowledgeArticleDTO,
   KnowledgeArticleQuery,
@@ -200,6 +202,40 @@ export function uncollectCase(id: number) {
 /** 获取我的收藏案例 */
 export function getMyCollectedCases() {
   return requestClient.get<CaseLibraryDTO[]>('/knowledge/case/collected');
+}
+
+// ========== 案例学习笔记 API ==========
+
+/** 获取我对某案例的学习笔记 */
+export function getMyCaseNote(caseId: number) {
+  return requestClient.get<CaseStudyNoteDTO>(
+    `/knowledge/case-study/note/${caseId}`,
+  );
+}
+
+/** 获取我的所有学习笔记 */
+export function getMyStudyNotes() {
+  return requestClient.get<CaseStudyNoteDTO[]>('/knowledge/case-study/note/my');
+}
+
+/** 获取某案例的所有学习笔记 */
+export function getCaseStudyNotes(caseId: number) {
+  return requestClient.get<CaseStudyNoteDTO[]>(
+    `/knowledge/case-study/note/case/${caseId}`,
+  );
+}
+
+/** 保存学习笔记 */
+export function saveCaseStudyNote(data: CreateCaseStudyNoteCommand) {
+  return requestClient.post<CaseStudyNoteDTO>(
+    '/knowledge/case-study/note',
+    data,
+  );
+}
+
+/** 删除学习笔记 */
+export function deleteCaseStudyNote(caseId: number) {
+  return requestClient.delete(`/knowledge/case-study/note/${caseId}`);
 }
 
 // 导出类型

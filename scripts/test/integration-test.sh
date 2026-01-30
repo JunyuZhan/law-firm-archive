@@ -90,10 +90,10 @@ send_request() {
     fi
 }
 
-# 检查响应是否成功
+# 检查响应是否成功（只检查第一个 success 字段，即外层响应）
 check_success() {
     local body=$1
-    local success=$(echo "$body" | grep -o '"success":[^,]*' | cut -d':' -f2)
+    local success=$(echo "$body" | grep -o '"success":[^,]*' | head -1 | cut -d':' -f2)
     [ "$success" = "true" ]
 }
 
@@ -123,7 +123,43 @@ login() {
     echo ""
     echo -e "${BLUE}登录获取Token...${NC}"
     
-    local response=$(send_request "POST" "$BASE_URL/auth/login" '{"username":"admin","password":"admin123"}')
+    # Step 1: 获取滑块验证 token
+    echo -e "${BLUE}  → 获取滑块验证令牌...${NC}"
+    local slider_response=$(send_request "GET" "$BASE_URL/auth/slider/token" "" "")
+    local slider_body=$(echo "$slider_response" | sed '$d')
+    
+    if ! check_success "$slider_body"; then
+        echo -e "${RED}✗${NC} 获取滑块令牌失败"
+        return 1
+    fi
+    
+    local token_id=$(echo "$slider_body" | grep -o '"tokenId":"[^"]*"' | cut -d'"' -f4)
+    
+    if [ -z "$token_id" ]; then
+        echo -e "${RED}✗${NC} 解析滑块令牌失败"
+        return 1
+    fi
+    
+    # Step 2: 验证滑块（slideTime 必须在 300ms - 30000ms 之间）
+    echo -e "${BLUE}  → 完成滑块验证...${NC}"
+    local verify_response=$(send_request "POST" "$BASE_URL/auth/slider/verify" "{\"tokenId\":\"$token_id\",\"slideTime\":1500}" "")
+    local verify_body=$(echo "$verify_response" | sed '$d')
+    
+    if ! check_success "$verify_body"; then
+        echo -e "${RED}✗${NC} 滑块验证失败"
+        return 1
+    fi
+    
+    local slider_verify_token=$(echo "$verify_body" | grep -o '"verifyToken":"[^"]*"' | cut -d'"' -f4)
+    
+    if [ -z "$slider_verify_token" ]; then
+        echo -e "${RED}✗${NC} 解析验证令牌失败"
+        return 1
+    fi
+    echo -e "${GREEN}  ✓${NC} 滑块验证通过"
+    
+    # Step 3: 使用滑块验证令牌登录
+    local response=$(send_request "POST" "$BASE_URL/auth/login" "{\"username\":\"admin\",\"password\":\"admin123\",\"sliderVerifyToken\":\"$slider_verify_token\"}")
     local body=$(echo "$response" | sed '$d')
     
     if check_success "$body"; then
@@ -131,7 +167,8 @@ login() {
         echo -e "${GREEN}✓${NC} 登录成功"
         return 0
     else
-        echo -e "${RED}✗${NC} 登录失败"
+        local error_msg=$(echo "$body" | grep -o '"message":"[^"]*"' | cut -d'"' -f4)
+        echo -e "${RED}✗${NC} 登录失败: $error_msg"
         return 1
     fi
 }

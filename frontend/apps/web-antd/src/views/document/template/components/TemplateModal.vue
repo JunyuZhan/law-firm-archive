@@ -27,8 +27,9 @@ import {
   updateTemplate,
 } from '#/api/document/template';
 import RichTextEditor from '#/components/RichTextEditor/index.vue';
-import PowerOfAttorneyEditor from './PowerOfAttorneyEditor.vue';
+
 import { decodeHtmlEntities } from '../../../system/contract-template/utils/print-formatter';
+import PowerOfAttorneyEditor from './PowerOfAttorneyEditor.vue';
 
 const emit = defineEmits<{ success: [] }>();
 
@@ -290,30 +291,36 @@ function resetForm() {
 
 // 获取预设模板内容
 function getPresetContent(type: string): string {
+  /* eslint-disable no-template-curly-in-string */
   const contractTpl = [
     '<h2 style="text-align: center;">委托代理合同</h2>',
     '<p style="text-align: center;">合同编号：${contractNo}</p>',
-    '<p><strong>甲方（委托人）：</strong>${clientName}</p>',
-    '<p><strong>身份证号：</strong>${clientIdNumber}</p>',
-    '<p><strong>地址：</strong>${clientAddress}</p>',
-    '<p><strong>联系电话：</strong>${clientPhone}</p>',
-    '<p><strong>乙方（受托人）：</strong>${firmName}</p>',
-    '<p><strong>地址：</strong>${firmAddress}</p>',
-    '<p><strong>联系电话：</strong>${firmPhone}</p>',
-    '<p>甲方因<strong>${causeOfAction}</strong>一案，委托乙方指派律师担任诉讼代理人。经双方协商，达成如下协议：</p>',
+    '<p><strong>甲方（委托人）：</strong>' + '${clientName}</p>',
+    '<p><strong>身份证号：</strong>' + '${clientIdNumber}</p>',
+    '<p><strong>地址：</strong>' + '${clientAddress}</p>',
+    '<p><strong>联系电话：</strong>' + '${clientPhone}</p>',
+    '<p><strong>乙方（受托人）：</strong>' + '${firmName}</p>',
+    '<p><strong>地址：</strong>' + '${firmAddress}</p>',
+    '<p><strong>联系电话：</strong>' + '${firmPhone}</p>',
+    '<p>甲方因<strong>' +
+      '${causeOfAction}</strong>一案，委托乙方指派律师担任诉讼代理人。经双方协商，达成如下协议：</p>',
     '<p><strong>一、委托事项</strong></p>',
-    '<p>甲方委托乙方指派律师担任${matterName}案件的诉讼代理人。</p>',
+    '<p>甲方委托乙方指派律师担任' + '${matterName}案件的诉讼代理人。</p>',
     '<p><strong>二、代理权限</strong></p>',
     '<p>□ 一般代理 □ 特别授权代理</p>',
     '<p><strong>三、代理费用</strong></p>',
-    '<p>代理费用为人民币${totalAmount}元（大写：${totalAmountChinese}）。</p>',
+    '<p>代理费用为人民币' +
+      '${totalAmount}元（大写：' +
+      '${totalAmountChinese}）。</p>',
     '<div style="text-align: right; margin-top: 40px;">',
     '<p>甲方（签章）：________________</p>',
     '<p>乙方（签章）：________________</p>',
-    '<p>日期：${currentDate}</p>',
+    '<p>日期：' + '${currentDate}</p>',
     '</div>',
   ].join('\n');
+  /* eslint-enable no-template-curly-in-string */
 
+  /* eslint-disable no-template-curly-in-string */
   const authTpl = [
     '<h2 style="text-align: center;">授权委托书</h2>',
     '<p>委托人：${clientName}</p>',

@@ -10,7 +10,7 @@ export interface TimerSessionDTO {
   taskId?: number;
   taskName?: string;
   description?: string;
-  status: 'RUNNING' | 'PAUSED' | 'STOPPED' | 'IDLE';
+  status: 'IDLE' | 'PAUSED' | 'RUNNING' | 'STOPPED';
   startTime?: string;
   pauseTime?: string;
   totalSeconds?: number;
@@ -43,7 +43,7 @@ export function resumeTimer() {
 
 /** 停止计时并保存工时记录 */
 export function stopTimer() {
-  return requestClient.post<void>('/timer/stop');
+  return requestClient.post('/timer/stop');
 }
 
 /** 获取当前计时器状态 */

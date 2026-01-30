@@ -1,18 +1,29 @@
 <script setup lang="ts">
 import type { VxeGridProps } from '#/adapter/vxe-table';
-import type { DocumentTemplateDTO, DocumentTemplateQuery } from '#/api/document/template';
+import type {
+  DocumentTemplateDTO,
+  DocumentTemplateQuery,
+} from '#/api/document/template';
 
 import { ref } from 'vue';
 
 import { Page } from '@vben/common-ui';
 import { Plus } from '@vben/icons';
 
-import { Button, message, Modal, Space, Tag, Select, Input } from 'ant-design-vue';
+import {
+  Button,
+  Input,
+  message,
+  Modal,
+  Select,
+  Space,
+  Tag,
+} from 'ant-design-vue';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
-  getTemplateList,
   deleteTemplate,
+  getTemplateList,
   updateTemplate,
 } from '#/api/document/template';
 
@@ -87,9 +98,9 @@ const gridColumns: VxeGridProps['columns'] = [
 
 // 加载数据
 async function loadData(params: {
+  [key: string]: any;
   page: number;
   pageSize: number;
-  [key: string]: any;
 }) {
   const query: DocumentTemplateQuery = {
     pageNum: params.page,
@@ -219,7 +230,14 @@ function getTemplateTypeColor(type?: string) {
     description="管理文书模板库，支持变量替换自动生成文书"
   >
     <!-- 搜索栏 -->
-    <div style="margin-bottom: 16px; padding: 16px; background: #fafafa; border-radius: 6px">
+    <div
+      style="
+        padding: 16px;
+        margin-bottom: 16px;
+        background: #fafafa;
+        border-radius: 6px;
+      "
+    >
       <Space wrap>
         <Input
           v-model:value="searchForm.name"

@@ -5,6 +5,7 @@ import com.lawfirm.domain.knowledge.entity.KnowledgeCollection;
 import com.lawfirm.infrastructure.persistence.mapper.KnowledgeCollectionMapper;
 import org.springframework.stereotype.Repository;
 
+/** 知识收藏Repository */
 @Repository
-public class KnowledgeCollectionRepository extends AbstractRepository<KnowledgeCollectionMapper, KnowledgeCollection> {
-}
+public class KnowledgeCollectionRepository
+    extends AbstractRepository<KnowledgeCollectionMapper, KnowledgeCollection> {}

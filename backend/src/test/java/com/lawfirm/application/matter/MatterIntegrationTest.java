@@ -1,11 +1,15 @@
 package com.lawfirm.application.matter;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import com.lawfirm.application.matter.command.CreateMatterCommand;
 import com.lawfirm.application.matter.dto.MatterDTO;
 import com.lawfirm.application.matter.dto.MatterQueryDTO;
 import com.lawfirm.application.matter.service.MatterAppService;
 import com.lawfirm.common.result.PageResult;
 import com.lawfirm.infrastructure.security.LoginUser;
+import java.util.HashSet;
+import java.util.Set;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -17,16 +21,11 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.HashSet;
-import java.util.Set;
-
-import static org.junit.jupiter.api.Assertions.*;
-
 /**
  * 项目管理集成测试
- * 
- * 测试项目管理全流程：创建 → 查询 → 更新 → 关闭
- * 
+ *
+ * <p>测试项目管理全流程：创建 → 查询 → 更新 → 关闭
+ *
  * @author junyuzhan
  * @since 2026-01-10
  */
@@ -36,128 +35,127 @@ import static org.junit.jupiter.api.Assertions.*;
 @DisplayName("项目管理集成测试")
 class MatterIntegrationTest {
 
-    @Autowired
-    private MatterAppService matterAppService;
+  @Autowired private MatterAppService matterAppService;
 
-    @BeforeEach
-    void setUp() {
-        setupAuthenticatedUser();
-        initTestData();
+  @BeforeEach
+  void setUp() {
+    setupAuthenticatedUser();
+    initTestData();
+  }
+
+  private void initTestData() {
+    // 预置一个案件用于查询测试
+    CreateMatterCommand command = new CreateMatterCommand();
+    command.setName("集成测试项目");
+    command.setMatterType("LITIGATION");
+    command.setCaseType("CIVIL");
+    command.setClientId(1L);
+    command.setContractId(1L);
+    command.setLeadLawyerId(1L);
+
+    try {
+      matterAppService.createMatter(command);
+    } catch (Exception e) {
+      // 忽略初始化错误，可能因为环境约束
     }
+  }
 
-    private void initTestData() {
-        // 预置一个案件用于查询测试
-        CreateMatterCommand command = new CreateMatterCommand();
-        command.setName("集成测试项目");
-        command.setMatterType("LITIGATION");
-        command.setCaseType("CIVIL");
-        command.setClientId(1L);
-        command.setContractId(1L);
-        command.setLeadLawyerId(1L);
+  @AfterEach
+  void tearDown() {
+    SecurityContextHolder.clearContext();
+  }
 
-        try {
-            matterAppService.createMatter(command);
-        } catch (Exception e) {
-            // 忽略初始化错误，可能因为环境约束
-        }
-    }
+  private void setupAuthenticatedUser() {
+    Set<String> roles = new HashSet<>();
+    roles.add("ADMIN");
+    roles.add("SUPER_ADMIN");
 
-    @AfterEach
-    void tearDown() {
-        SecurityContextHolder.clearContext();
-    }
+    LoginUser user = new LoginUser();
+    user.setUserId(1L);
+    user.setUsername("admin");
+    user.setRealName("管理员");
+    user.setDepartmentId(1L);
+    user.setRoles(roles);
+    user.setPermissions(new HashSet<>());
+    user.setDataScope("ALL");
 
-    private void setupAuthenticatedUser() {
-        Set<String> roles = new HashSet<>();
-        roles.add("ADMIN");
-        roles.add("SUPER_ADMIN");
+    UsernamePasswordAuthenticationToken authentication =
+        new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
+    SecurityContextHolder.getContext().setAuthentication(authentication);
+  }
 
-        LoginUser user = new LoginUser();
-        user.setUserId(1L);
-        user.setUsername("admin");
-        user.setRealName("管理员");
-        user.setDepartmentId(1L);
-        user.setRoles(roles);
-        user.setPermissions(new HashSet<>());
-        user.setDataScope("ALL");
+  @Test
+  @DisplayName("分页查询项目列表")
+  void testListMatters() {
+    // Given
+    MatterQueryDTO query = new MatterQueryDTO();
+    query.setPageNum(1);
+    query.setPageSize(10);
 
-        UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(user, null,
-                user.getAuthorities());
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-    }
+    // When
+    PageResult<MatterDTO> result = matterAppService.listMatters(query);
 
-    @Test
-    @DisplayName("分页查询项目列表")
-    void testListMatters() {
-        // Given
-        MatterQueryDTO query = new MatterQueryDTO();
-        query.setPageNum(1);
-        query.setPageSize(10);
+    // Then
+    assertNotNull(result);
+    assertNotNull(result.getList());
+    assertTrue(result.getTotal() >= 0);
+  }
 
-        // When
-        PageResult<MatterDTO> result = matterAppService.listMatters(query);
+  @Test
+  @DisplayName("查询我的项目")
+  void testListMyMatters() {
+    // Given
+    MatterQueryDTO query = new MatterQueryDTO();
+    query.setPageNum(1);
+    query.setPageSize(10);
+    query.setMyMatters(true);
 
-        // Then
-        assertNotNull(result);
-        assertNotNull(result.getList());
-        assertTrue(result.getTotal() >= 0);
-    }
+    // When
+    PageResult<MatterDTO> result = matterAppService.listMatters(query);
 
-    @Test
-    @DisplayName("查询我的项目")
-    void testListMyMatters() {
-        // Given
-        MatterQueryDTO query = new MatterQueryDTO();
-        query.setPageNum(1);
-        query.setPageSize(10);
-        query.setMyMatters(true);
+    // Then
+    assertNotNull(result);
+    assertNotNull(result.getList());
+  }
 
-        // When
-        PageResult<MatterDTO> result = matterAppService.listMatters(query);
+  @Test
+  @DisplayName("按状态筛选项目")
+  void testListMattersByStatus() {
+    // Given
+    MatterQueryDTO query = new MatterQueryDTO();
+    query.setPageNum(1);
+    query.setPageSize(10);
+    query.setStatus("ACTIVE");
 
-        // Then
-        assertNotNull(result);
-        assertNotNull(result.getList());
-    }
+    // When
+    PageResult<MatterDTO> result = matterAppService.listMatters(query);
 
-    @Test
-    @DisplayName("按状态筛选项目")
-    void testListMattersByStatus() {
-        // Given
-        MatterQueryDTO query = new MatterQueryDTO();
-        query.setPageNum(1);
-        query.setPageSize(10);
-        query.setStatus("ACTIVE");
+    // Then
+    assertNotNull(result);
+    // 验证返回的项目状态都是 ACTIVE
+    result.getList().forEach(matter -> assertEquals("ACTIVE", matter.getStatus()));
+  }
 
-        // When
-        PageResult<MatterDTO> result = matterAppService.listMatters(query);
+  @Test
+  @DisplayName("创建项目 - 无合同应失败")
+  void testCreateMatterWithoutContract() {
+    // Given
+    CreateMatterCommand command = new CreateMatterCommand();
+    command.setName("测试项目");
+    command.setClientId(1L);
+    // 不设置 contractId
 
-        // Then
-        assertNotNull(result);
-        // 验证返回的项目状态都是 ACTIVE
-        result.getList().forEach(matter -> assertEquals("ACTIVE", matter.getStatus()));
-    }
+    // When & Then
+    assertThrows(Exception.class, () -> matterAppService.createMatter(command));
+  }
 
-    @Test
-    @DisplayName("创建项目 - 无合同应失败")
-    void testCreateMatterWithoutContract() {
-        // Given
-        CreateMatterCommand command = new CreateMatterCommand();
-        command.setName("测试项目");
-        command.setClientId(1L);
-        // 不设置 contractId
+  @Test
+  @DisplayName("获取项目详情 - 不存在应返回null或抛异常")
+  void testGetMatterNotFound() {
+    // Given
+    Long nonExistentId = 999999L;
 
-        // When & Then
-        assertThrows(Exception.class, () -> matterAppService.createMatter(command));
-    }
-
-    @Test
-    @DisplayName("获取项目详情 - 不存在应返回null或抛异常")
-    void testGetMatterNotFound() {
-        // Given
-        Long nonExistentId = 999999L;
-
-        // When & Then
-        assertThrows(Exception.class, () -> matterAppService.getMatterById(nonExistentId));
-    }
+    // When & Then
+    assertThrows(Exception.class, () -> matterAppService.getMatterById(nonExistentId));
+  }
 }

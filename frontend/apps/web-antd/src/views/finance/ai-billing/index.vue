@@ -6,6 +6,23 @@ import type {
   SalaryDeductionLinkCommand,
 } from '#/api/ai/types';
 
+import { computed, onMounted, reactive, ref } from 'vue';
+
+import { Page } from '@vben/common-ui';
+
+import {
+  Button,
+  Card,
+  Col,
+  message,
+  Modal,
+  Row,
+  Select,
+  Space,
+  Table,
+  Tag,
+} from 'ant-design-vue';
+
 import {
   generateMonthlyBills,
   getAllUsersSummary,
@@ -15,23 +32,6 @@ import {
   markBillDeducted,
   waiveBill,
 } from '#/api/ai/usage';
-
-import { computed, onMounted, reactive, ref } from 'vue';
-
-import { Page } from '@vben/common-ui';
-
-import {
-  Button,
-  Card,
-  Col,
-  Modal,
-  Row,
-  Select,
-  Space,
-  Table,
-  Tag,
-  message,
-} from 'ant-design-vue';
 
 defineOptions({ name: 'FinanceAiBilling' });
 
@@ -297,7 +297,7 @@ async function handleWaive(record: AiMonthlyBillDTO | Record<string, any>) {
 }
 
 async function handleBatchLinkSalary() {
-  if (!selectedRowKeys.value.length) {
+  if (selectedRowKeys.value.length === 0) {
     message.warning('请先选择要关联的账单');
     return;
   }
@@ -345,7 +345,7 @@ onMounted(() => {
             <Button @click="handleGenerateBills">生成账单</Button>
             <Button
               type="dashed"
-              :disabled="!selectedRowKeys.length"
+              :disabled="selectedRowKeys.length === 0"
               @click="handleBatchLinkSalary"
             >
               批量关联工资扣减

@@ -1,17 +1,12 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import type { UploadFile } from 'ant-design-vue';
+
+import { computed, ref } from 'vue';
 
 import { useVbenModal } from '@vben/common-ui';
-
 import { DownloadOutlined, InboxOutlined } from '@vben/icons';
-import {
-  Alert,
-  Button,
-  message,
-  Progress,
-  Upload,
-  type UploadFile,
-} from 'ant-design-vue';
+
+import { Alert, Button, message, Progress, Upload } from 'ant-design-vue';
 
 import { downloadUserImportTemplate, importUsers } from '#/api/system';
 
@@ -26,9 +21,9 @@ const uploadProgress = ref(0);
 const importResult = ref<{
   errorMessages: string[];
   failCount: number;
+  generatedPasswords?: Record<string, string>; // 用户名 -> 密码
   successCount: number;
   total: number;
-  generatedPasswords?: Record<string, string>; // 用户名 -> 密码
 } | null>(null);
 
 // 是否有导入结果
@@ -153,11 +148,14 @@ function handleCopyPasswords() {
     .map(([username, password]) => `${username}: ${password}`)
     .join('\n');
 
-  navigator.clipboard.writeText(passwords).then(() => {
-    message.success('密码已复制到剪贴板');
-  }).catch(() => {
-    message.error('复制失败，请手动复制');
-  });
+  navigator.clipboard
+    .writeText(passwords)
+    .then(() => {
+      message.success('密码已复制到剪贴板');
+    })
+    .catch(() => {
+      message.error('复制失败，请手动复制');
+    });
 }
 
 // 下载密码文件
@@ -196,7 +194,10 @@ defineExpose({ open });
         <template #description>
           <div class="text-sm">
             <p>1. 请先下载导入模板，按模板格式填写用户信息</p>
-            <p>2. 必填字段：用户名、姓名；密码为空时将自动生成随机密码（请妥善保存）</p>
+            <p>
+              2.
+              必填字段：用户名、姓名；密码为空时将自动生成随机密码（请妥善保存）
+            </p>
             <p>3. 用户名不能重复，重复的用户名将导入失败</p>
             <p>4. 支持 .xlsx 和 .xls 格式，文件大小不超过 10MB</p>
           </div>
@@ -272,7 +273,9 @@ defineExpose({ open });
               </thead>
               <tbody>
                 <tr
-                  v-for="(password, username) in importResult.generatedPasswords"
+                  v-for="(
+                    password, username
+                  ) in importResult.generatedPasswords"
                   :key="username"
                   class="border-b"
                 >
@@ -283,16 +286,10 @@ defineExpose({ open });
             </table>
           </div>
           <div class="mt-2 flex gap-2">
-            <Button
-              size="small"
-              @click="handleCopyPasswords"
-            >
+            <Button size="small" @click="handleCopyPasswords">
               复制所有密码
             </Button>
-            <Button
-              size="small"
-              @click="handleDownloadPasswords"
-            >
+            <Button size="small" @click="handleDownloadPasswords">
               下载密码文件
             </Button>
           </div>

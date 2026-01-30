@@ -111,10 +111,10 @@ export function publishAnnouncement(id: number) {
 
 /** 撤回公告 */
 export function withdrawAnnouncement(id: number) {
-  return requestClient.post<void>(`/system/announcement/${id}/withdraw`);
+  return requestClient.post(`/system/announcement/${id}/withdraw`);
 }
 
 /** 删除公告 */
 export function deleteAnnouncement(id: number) {
-  return requestClient.delete<void>(`/system/announcement/${id}`);
+  return requestClient.delete(`/system/announcement/${id}`);
 }

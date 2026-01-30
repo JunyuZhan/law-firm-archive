@@ -119,9 +119,12 @@ export async function verifySliderApi(data: AuthApi.SliderVerifyParams) {
  * 使用 baseRequestClient 避免触发 401 重试逻辑（登录前调用）
  */
 export async function checkLoginStatusApi(username: string) {
-  return baseRequestClient.get<AuthApi.LoginStatusResult>('/auth/login/status', {
-    params: { username },
-  });
+  return baseRequestClient.get<AuthApi.LoginStatusResult>(
+    '/auth/login/status',
+    {
+      params: { username },
+    },
+  );
 }
 
 /**

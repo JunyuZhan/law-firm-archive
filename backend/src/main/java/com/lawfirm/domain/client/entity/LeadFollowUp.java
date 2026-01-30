@@ -2,14 +2,14 @@ package com.lawfirm.domain.client.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lawfirm.common.base.BaseEntity;
-import lombok.*;
+import java.time.LocalDateTime;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
-import java.time.LocalDateTime;
-
-/**
- * 案源跟进记录实体
- */
+/** 案源跟进记录实体。 */
 @Data
 @SuperBuilder
 @NoArgsConstructor
@@ -18,39 +18,24 @@ import java.time.LocalDateTime;
 @TableName("crm_lead_follow_up")
 public class LeadFollowUp extends BaseEntity {
 
-    /**
-     * 案源ID
-     */
-    private Long leadId;
+  /** 案源ID */
+  private Long leadId;
 
-    /**
-     * 跟进方式：PHONE-电话, EMAIL-邮件, VISIT-拜访, MEETING-会议, OTHER-其他
-     */
-    private String followType;
+  /** 跟进方式：PHONE-电话, EMAIL-邮件, VISIT-拜访, MEETING-会议, OTHER-其他 */
+  private String followType;
 
-    /**
-     * 跟进内容
-     */
-    private String followContent;
+  /** 跟进内容 */
+  private String followContent;
 
-    /**
-     * 跟进结果：POSITIVE-积极, NEUTRAL-中性, NEGATIVE-消极
-     */
-    private String followResult;
+  /** 跟进结果：POSITIVE-积极, NEUTRAL-中性, NEGATIVE-消极 */
+  private String followResult;
 
-    /**
-     * 下次跟进时间
-     */
-    private LocalDateTime nextFollowTime;
+  /** 下次跟进时间 */
+  private LocalDateTime nextFollowTime;
 
-    /**
-     * 下次跟进计划
-     */
-    private String nextFollowPlan;
+  /** 下次跟进计划 */
+  private String nextFollowPlan;
 
-    /**
-     * 跟进人ID
-     */
-    private Long followUserId;
+  /** 跟进人ID */
+  private Long followUserId;
 }
-

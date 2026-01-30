@@ -51,11 +51,11 @@ export function useIdleTimeout(options: IdleTimeoutOptions = {}) {
   const isWarned = ref(false);
   const remainingTime = ref(timeout);
 
-  let timeoutTimer: ReturnType<typeof setTimeout> | null = null;
-  let warningTimer: ReturnType<typeof setTimeout> | null = null;
-  let countdownInterval: ReturnType<typeof setInterval> | null = null;
+  let timeoutTimer: null | ReturnType<typeof setTimeout> = null;
+  let warningTimer: null | ReturnType<typeof setTimeout> = null;
+  let countdownInterval: null | ReturnType<typeof setInterval> = null;
   let lastActivityTime = Date.now();
-  let warningModalInstance: ReturnType<typeof Modal.warning> | null = null;
+  let warningModalInstance: null | ReturnType<typeof Modal.warning> = null;
 
   // 用户活动事件列表
   const activityEvents = [
@@ -118,11 +118,11 @@ export function useIdleTimeout(options: IdleTimeoutOptions = {}) {
   function showWarningModal() {
     if (warningModalInstance) return;
 
-    const remainingMinutes = Math.ceil(warningTime / 60000);
+    const remainingMinutes = Math.ceil(warningTime / 60_000);
 
     warningModalInstance = Modal.warning({
       title: '会话即将过期',
-      content: `您已经 ${Math.floor((timeout - warningTime) / 60000)} 分钟没有操作了。如果在 ${remainingMinutes} 分钟内没有任何操作，系统将自动登出。`,
+      content: `您已经 ${Math.floor((timeout - warningTime) / 60_000)} 分钟没有操作了。如果在 ${remainingMinutes} 分钟内没有任何操作，系统将自动登出。`,
       okText: '继续使用',
       centered: true,
       onOk: () => {
@@ -174,7 +174,7 @@ export function useIdleTimeout(options: IdleTimeoutOptions = {}) {
   /**
    * 使用节流函数减少事件处理频率
    */
-  let throttleTimer: ReturnType<typeof setTimeout> | null = null;
+  let throttleTimer: null | ReturnType<typeof setTimeout> = null;
   const throttledHandleActivity = () => {
     if (throttleTimer) return;
 
@@ -285,8 +285,8 @@ export function useIdleTimeout(options: IdleTimeoutOptions = {}) {
  * 格式化剩余时间
  */
 export function formatRemainingTime(ms: number): string {
-  const minutes = Math.floor(ms / 60000);
-  const seconds = Math.floor((ms % 60000) / 1000);
+  const minutes = Math.floor(ms / 60_000);
+  const seconds = Math.floor((ms % 60_000) / 1000);
 
   if (minutes > 0) {
     return `${minutes}分${seconds}秒`;

@@ -1,107 +1,31 @@
-<template>
-  <Card :title="title" size="small" :bordered="bordered">
-    <Form layout="vertical" :model="form">
-      <Row :gutter="16">
-        <Col :span="8">
-          <FormItem label="起算日期">
-            <DatePicker
-              v-model:value="form.startDate"
-              style="width: 100%"
-              placeholder="选择起算日期"
-              :disabled-date="disabledDate"
-            />
-          </FormItem>
-        </Col>
-        <Col :span="6">
-          <FormItem label="期限天数">
-            <InputNumber
-              v-model:value="form.days"
-              :min="1"
-              :max="365"
-              style="width: 100%"
-              placeholder="天数"
-            />
-          </FormItem>
-        </Col>
-        <Col :span="10">
-          <FormItem label="计算方式">
-            <RadioGroup v-model:value="form.workdaysOnly">
-              <Radio :value="false">自然日（节假日顺延）</Radio>
-              <Radio :value="true">工作日</Radio>
-            </RadioGroup>
-          </FormItem>
-        </Col>
-      </Row>
-      <Row>
-        <Col :span="24">
-          <Space>
-            <Button type="primary" :loading="loading" @click="calculate">
-              🧮 计算截止日期
-            </Button>
-            <Button v-if="result" @click="reset">重置</Button>
-          </Space>
-        </Col>
-      </Row>
-    </Form>
-
-    <!-- 计算结果 -->
-    <Alert v-if="result" type="info" style="margin-top: 16px" show-icon>
-      <template #message>
-        <div class="result-content">
-          <div class="result-main">
-            <span class="result-label">截止日期：</span>
-            <Tag color="blue" class="result-date">{{ result.deadline }}</Tag>
-            <Tag v-if="result.isWorkday" color="green">工作日</Tag>
-            <Tag v-else color="orange">{{ result.deadlineTypeName }}</Tag>
-          </div>
-          <div class="result-detail">
-            {{ result.explanation }}
-          </div>
-        </div>
-      </template>
-    </Alert>
-
-    <!-- 常用期限快捷按钮 -->
-    <div v-if="showPresets" class="presets-section">
-      <Divider orientation="left" plain>
-        <span class="presets-title">常用期限</span>
-      </Divider>
-      <Space wrap>
-        <Button
-          v-for="preset in presets"
-          :key="preset.days"
-          size="small"
-          @click="applyPreset(preset)"
-        >
-          {{ preset.label }}
-        </Button>
-      </Space>
-    </div>
-  </Card>
-</template>
-
 <script setup lang="ts">
-import { ref, reactive } from 'vue';
+import type { Dayjs } from 'dayjs';
+
+import type { DeadlineResult } from '#/api/system/holiday';
+
+import { reactive, ref } from 'vue';
+
 import {
+  Alert,
+  Button,
   Card,
-  Form,
-  FormItem,
-  Row,
   Col,
   DatePicker,
-  InputNumber,
-  RadioGroup,
-  Radio,
-  Button,
-  Space,
-  Alert,
-  Tag,
   Divider,
+  Form,
+  FormItem,
+  InputNumber,
   message,
+  Radio,
+  RadioGroup,
+  Row,
+  Space,
+  Tag,
 } from 'ant-design-vue';
 // Use emoji instead of icon since @ant-design/icons-vue is not a direct dependency
-import dayjs, { type Dayjs } from 'dayjs';
-import { calculateDeadline, type DeadlineResult } from '#/api/system/holiday';
+import dayjs from 'dayjs';
+
+import { calculateDeadline } from '#/api/system/holiday';
 
 // Props
 interface Props {
@@ -195,6 +119,88 @@ defineExpose({
   getResult: () => result.value,
 });
 </script>
+
+<template>
+  <Card :title="title" size="small" :bordered="bordered">
+    <Form layout="vertical" :model="form">
+      <Row :gutter="16">
+        <Col :span="8">
+          <FormItem label="起算日期">
+            <DatePicker
+              v-model:value="form.startDate"
+              style="width: 100%"
+              placeholder="选择起算日期"
+              :disabled-date="disabledDate"
+            />
+          </FormItem>
+        </Col>
+        <Col :span="6">
+          <FormItem label="期限天数">
+            <InputNumber
+              v-model:value="form.days"
+              :min="1"
+              :max="365"
+              style="width: 100%"
+              placeholder="天数"
+            />
+          </FormItem>
+        </Col>
+        <Col :span="10">
+          <FormItem label="计算方式">
+            <RadioGroup v-model:value="form.workdaysOnly">
+              <Radio :value="false">自然日（节假日顺延）</Radio>
+              <Radio :value="true">工作日</Radio>
+            </RadioGroup>
+          </FormItem>
+        </Col>
+      </Row>
+      <Row>
+        <Col :span="24">
+          <Space>
+            <Button type="primary" :loading="loading" @click="calculate">
+              🧮 计算截止日期
+            </Button>
+            <Button v-if="result" @click="reset">重置</Button>
+          </Space>
+        </Col>
+      </Row>
+    </Form>
+
+    <!-- 计算结果 -->
+    <Alert v-if="result" type="info" style="margin-top: 16px" show-icon>
+      <template #message>
+        <div class="result-content">
+          <div class="result-main">
+            <span class="result-label">截止日期：</span>
+            <Tag color="blue" class="result-date">{{ result.deadline }}</Tag>
+            <Tag v-if="result.isWorkday" color="green">工作日</Tag>
+            <Tag v-else color="orange">{{ result.deadlineTypeName }}</Tag>
+          </div>
+          <div class="result-detail">
+            {{ result.explanation }}
+          </div>
+        </div>
+      </template>
+    </Alert>
+
+    <!-- 常用期限快捷按钮 -->
+    <div v-if="showPresets" class="presets-section">
+      <Divider orientation="left" plain>
+        <span class="presets-title">常用期限</span>
+      </Divider>
+      <Space wrap>
+        <Button
+          v-for="preset in presets"
+          :key="preset.days"
+          size="small"
+          @click="applyPreset(preset)"
+        >
+          {{ preset.label }}
+        </Button>
+      </Space>
+    </div>
+  </Card>
+</template>
 
 <style scoped>
 .result-content {

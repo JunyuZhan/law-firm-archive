@@ -3,14 +3,14 @@ package com.lawfirm.domain.document.entity;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-import lombok.*;
-
 import java.io.Serializable;
 import java.time.LocalDateTime;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-/**
- * 文档版本历史实体
- */
+/** 文档版本历史实体. */
 @Data
 @Builder
 @NoArgsConstructor
@@ -18,46 +18,31 @@ import java.time.LocalDateTime;
 @TableName("doc_version")
 public class DocumentVersion implements Serializable {
 
-    @TableId(type = IdType.AUTO)
-    private Long id;
+  /** 主键ID. */
+  @TableId(type = IdType.AUTO)
+  private Long id;
 
-    /**
-     * 文档ID
-     */
-    private Long documentId;
+  /** 文档ID. */
+  private Long documentId;
 
-    /**
-     * 版本号
-     */
-    private Integer version;
+  /** 版本号. */
+  private Integer version;
 
-    /**
-     * 文件名
-     */
-    private String fileName;
+  /** 文件名. */
+  private String fileName;
 
-    /**
-     * 文件路径
-     */
-    private String filePath;
+  /** 文件路径. */
+  private String filePath;
 
-    /**
-     * 文件大小
-     */
-    private Long fileSize;
+  /** 文件大小. */
+  private Long fileSize;
 
-    /**
-     * 变更说明
-     */
-    private String changeNote;
+  /** 变更说明. */
+  private String changeNote;
 
-    /**
-     * 创建人
-     */
-    private Long createdBy;
+  /** 创建人. */
+  private Long createdBy;
 
-    /**
-     * 创建时间
-     */
-    private LocalDateTime createdAt;
+  /** 创建时间. */
+  private LocalDateTime createdAt;
 }

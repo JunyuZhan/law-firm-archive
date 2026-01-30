@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import type { CauseTreeNodeDTO } from '#/api/system/types';
 import type { Key } from 'ant-design-vue/es/_util/type';
+
+import type { CauseType } from '#/api/system/cause-of-action';
+import type { CauseTreeNodeDTO } from '#/api/system/types';
 
 import { computed, onMounted, ref } from 'vue';
 
@@ -32,8 +34,6 @@ import {
   Tree,
 } from 'ant-design-vue';
 
-import { usePermission } from '#/hooks/usePermission';
-
 import {
   deleteCause,
   getCauseById,
@@ -41,8 +41,8 @@ import {
   getCauseTypeOptions,
   searchCauses,
   toggleCauseStatus,
-  type CauseType,
 } from '#/api/system/cause-of-action';
+import { usePermission } from '#/hooks/usePermission';
 
 import CauseModal from './CauseModal.vue';
 
@@ -245,7 +245,7 @@ async function handleSelect(keys: Key[], info: any) {
       try {
         selectedCause.value = await getCauseById(info.node.id);
         selectedCauseId.value = info.node.id;
-      } catch (error) {
+      } catch {
         // 如果获取失败，使用节点数据
         selectedCause.value = info.node;
       }
@@ -320,10 +320,7 @@ function getTypeColor(type: CauseType): string {
  * 新增案由
  */
 function handleAddCause() {
-  if (!selectedNode.value) {
-    // 如果没有选中节点，创建一级案由
-    causeModalRef.value?.openCreate(undefined, 1);
-  } else {
+  if (selectedNode.value) {
     // 如果选中了一级案由，创建二级案由
     if (selectedNode.value.level === 1) {
       causeModalRef.value?.openCreate(
@@ -341,6 +338,9 @@ function handleAddCause() {
         selectedNode.value.categoryName,
       );
     }
+  } else {
+    // 如果没有选中节点，创建一级案由
+    causeModalRef.value?.openCreate(undefined, 1);
   }
 }
 
@@ -630,9 +630,9 @@ onMounted(() => {
                         class="node-action-btn"
                         @click.stop
                       >
-                        <template #icon
-                          ><EditOutlined class="size-3"
-                        /></template>
+                        <template #icon>
+                          <EditOutlined class="size-3" />
+                        </template>
                       </Button>
                       <template #overlay>
                         <Menu>

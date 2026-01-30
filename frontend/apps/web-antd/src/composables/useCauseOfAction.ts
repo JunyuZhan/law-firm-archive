@@ -143,10 +143,10 @@ export function causesToCascaderOptions(
   const convertNode = (node: CauseTreeNode): CascaderOption => ({
     value: node.code,
     label: node.name,
-    children: node.children?.map(convertNode),
+    children: node.children?.map((n) => convertNode(n)),
   });
 
-  return categories.map(convertNode);
+  return categories.map((c) => convertNode(c));
 }
 
 /**
@@ -157,10 +157,10 @@ export function causesToTreeSelectOptions(categories: CauseTreeNode[]) {
     key: node.code,
     value: node.code,
     title: node.name,
-    children: node.children?.map(convertNode),
+    children: node.children?.map((n) => convertNode(n)),
   });
 
-  return categories.map(convertNode);
+  return categories.map((c) => convertNode(c));
 }
 
 /**

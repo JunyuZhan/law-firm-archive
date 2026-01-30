@@ -4,14 +4,14 @@
  * 将函件模板分为多个区块：标题、编号、收件单位、正文、落款
  * 用户只需关注内容，打印时系统自动排版
  */
-import { reactive, ref, watch, computed } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 
 import {
   Alert,
+  Button,
   Collapse,
   CollapsePanel,
   Dropdown,
-  Button,
   Input,
   Menu,
   MenuItem,
@@ -20,35 +20,36 @@ import {
 
 import { decodeHtmlEntities } from '../../contract-template/utils/print-formatter';
 
-const { TextArea: Textarea } = Input;
-
 // Props
 const props = defineProps<{
   modelValue: string;
-  variables?: Array<{ label: string; value: string; description?: string }>;
+  variables?: Array<{ description?: string; label: string; value: string }>;
 }>();
 
 const emit = defineEmits<{
   'update:modelValue': [value: string];
 }>();
 
+const { TextArea: Textarea } = Input;
+
 // 函件模板分块数据结构
 interface TemplateBlocks {
   title: {
-    letterTitle: string; // 函件标题
     letterNo: string; // 函件编号（可选）
+    letterTitle: string; // 函件标题
   };
   recipient: string; // 收件单位
   body: string; // 正文内容
   signature: {
+    contactInfo: string; // 联系方式（可选）
+    date: string; // 日期
     firmName: string; // 律所名称
     lawyerNames: string; // 承办律师
-    date: string; // 日期
-    contactInfo: string; // 联系方式（可选）
   };
 }
 
 const blocks = reactive<TemplateBlocks>({
+  /* eslint-disable no-template-curly-in-string */
   title: {
     letterTitle: '介 绍 信',
     letterNo: '编号：${letterNo}',
@@ -61,6 +62,7 @@ const blocks = reactive<TemplateBlocks>({
     date: '${date}',
     contactInfo: '联系电话：${firmPhone}',
   },
+  /* eslint-enable no-template-curly-in-string */
 });
 
 // 默认展开的面板
@@ -71,7 +73,7 @@ const cursorPositions = ref<Record<string, number>>({});
 
 // 处理输入框失去焦点时保存光标位置
 function handleBlur(name: string, event: FocusEvent) {
-  const target = event.target as HTMLTextAreaElement | HTMLInputElement;
+  const target = event.target as HTMLInputElement | HTMLTextAreaElement;
   if (target) {
     cursorPositions.value[name] = target.selectionStart ?? 0;
   }
@@ -79,7 +81,7 @@ function handleBlur(name: string, event: FocusEvent) {
 
 // 处理点击和选择变化时更新光标位置
 function handleSelect(name: string, event: Event) {
-  const target = event.target as HTMLTextAreaElement | HTMLInputElement;
+  const target = event.target as HTMLInputElement | HTMLTextAreaElement;
   if (target) {
     cursorPositions.value[name] = target.selectionStart ?? 0;
   }
@@ -98,7 +100,6 @@ function parseContent(content: string) {
     if (parsed._structured && parsed.blocks) {
       // 新格式：{ _structured: true, blocks: { ... } }
       Object.assign(blocks, parsed.blocks);
-      return;
     } else if (
       parsed.title ||
       parsed.recipient ||
@@ -107,7 +108,6 @@ function parseContent(content: string) {
     ) {
       // 兼容旧格式：直接是 blocks 对象
       Object.assign(blocks, parsed);
-      return;
     }
   } catch {
     // 不是 JSON，保持默认值
@@ -151,36 +151,62 @@ watch(
 // 在光标位置插入变量
 function insertVariable(
   target:
-    | 'letterTitle'
-    | 'letterNo'
-    | 'recipient'
     | 'body'
+    | 'contactInfo'
+    | 'date'
     | 'firmName'
     | 'lawyerNames'
-    | 'date'
-    | 'contactInfo',
+    | 'letterNo'
+    | 'letterTitle'
+    | 'recipient',
   variable: string,
 ) {
   const varStr = `\${${variable}}`;
 
   // 获取当前值
   let currentValue = '';
-  if (target === 'letterTitle') {
-    currentValue = blocks.title.letterTitle;
-  } else if (target === 'letterNo') {
-    currentValue = blocks.title.letterNo;
-  } else if (target === 'recipient') {
-    currentValue = blocks.recipient;
-  } else if (target === 'body') {
-    currentValue = blocks.body;
-  } else if (target === 'firmName') {
-    currentValue = blocks.signature.firmName;
-  } else if (target === 'lawyerNames') {
-    currentValue = blocks.signature.lawyerNames;
-  } else if (target === 'date') {
-    currentValue = blocks.signature.date;
-  } else if (target === 'contactInfo') {
-    currentValue = blocks.signature.contactInfo;
+  switch (target) {
+    case 'body': {
+      currentValue = blocks.body;
+
+      break;
+    }
+    case 'contactInfo': {
+      currentValue = blocks.signature.contactInfo;
+
+      break;
+    }
+    case 'date': {
+      currentValue = blocks.signature.date;
+
+      break;
+    }
+    case 'firmName': {
+      currentValue = blocks.signature.firmName;
+
+      break;
+    }
+    case 'lawyerNames': {
+      currentValue = blocks.signature.lawyerNames;
+
+      break;
+    }
+    case 'letterNo': {
+      currentValue = blocks.title.letterNo;
+
+      break;
+    }
+    case 'letterTitle': {
+      currentValue = blocks.title.letterTitle;
+
+      break;
+    }
+    case 'recipient': {
+      currentValue = blocks.recipient;
+
+      break;
+    }
+    // No default
   }
 
   // 获取记录的光标位置，如果没有记录则追加到末尾
@@ -191,22 +217,48 @@ function insertVariable(
     currentValue.slice(0, cursorPos) + varStr + currentValue.slice(cursorPos);
 
   // 更新对应区块的值
-  if (target === 'letterTitle') {
-    blocks.title.letterTitle = newValue;
-  } else if (target === 'letterNo') {
-    blocks.title.letterNo = newValue;
-  } else if (target === 'recipient') {
-    blocks.recipient = newValue;
-  } else if (target === 'body') {
-    blocks.body = newValue;
-  } else if (target === 'firmName') {
-    blocks.signature.firmName = newValue;
-  } else if (target === 'lawyerNames') {
-    blocks.signature.lawyerNames = newValue;
-  } else if (target === 'date') {
-    blocks.signature.date = newValue;
-  } else if (target === 'contactInfo') {
-    blocks.signature.contactInfo = newValue;
+  switch (target) {
+    case 'body': {
+      blocks.body = newValue;
+
+      break;
+    }
+    case 'contactInfo': {
+      blocks.signature.contactInfo = newValue;
+
+      break;
+    }
+    case 'date': {
+      blocks.signature.date = newValue;
+
+      break;
+    }
+    case 'firmName': {
+      blocks.signature.firmName = newValue;
+
+      break;
+    }
+    case 'lawyerNames': {
+      blocks.signature.lawyerNames = newValue;
+
+      break;
+    }
+    case 'letterNo': {
+      blocks.title.letterNo = newValue;
+
+      break;
+    }
+    case 'letterTitle': {
+      blocks.title.letterTitle = newValue;
+
+      break;
+    }
+    case 'recipient': {
+      blocks.recipient = newValue;
+
+      break;
+    }
+    // No default
   }
 
   // 更新光标位置（移到插入变量之后）
@@ -330,7 +382,7 @@ const variableGroups = computed(() => {
       style="margin-bottom: 16px"
     />
 
-    <Collapse v-model:activeKey="activeKeys" :bordered="false">
+    <Collapse v-model:active-key="activeKeys" :bordered="false">
       <!-- 区块1：标题区 -->
       <CollapsePanel key="title" header="📌 区块一：标题和编号">
         <template #extra>

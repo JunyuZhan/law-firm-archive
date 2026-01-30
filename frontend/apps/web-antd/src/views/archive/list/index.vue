@@ -41,8 +41,8 @@ import {
   Statistic,
   Step,
   Steps,
-  Tabs,
   TabPane,
+  Tabs,
   Tag,
   Textarea,
 } from 'ant-design-vue';
@@ -69,6 +69,7 @@ import {
   getCaseCategoryByMatterType,
   MATTER_TYPE_OPTIONS,
 } from '#/composables/useCauseOfAction';
+
 import ArchiveCoverPreview from '../components/ArchiveCoverPreview.vue';
 
 defineOptions({ name: 'ArchiveList' });
@@ -212,14 +213,25 @@ const extendedFilteredData = computed(() => {
 const filteredDataSource = computed(() => {
   let result = extendedFilteredData.value;
 
-  if (activeTab.value === 'pending') {
-    result = result.filter(
-      (a) => a.status === 'PENDING' || a.status === 'PENDING_STORE',
-    );
-  } else if (activeTab.value === 'stored') {
-    result = result.filter((a) => a.status === 'STORED');
-  } else if (activeTab.value === 'borrowed') {
-    result = result.filter((a) => a.status === 'BORROWED');
+  switch (activeTab.value) {
+    case 'borrowed': {
+      result = result.filter((a) => a.status === 'BORROWED');
+
+      break;
+    }
+    case 'pending': {
+      result = result.filter(
+        (a) => a.status === 'PENDING' || a.status === 'PENDING_STORE',
+      );
+
+      break;
+    }
+    case 'stored': {
+      result = result.filter((a) => a.status === 'STORED');
+
+      break;
+    }
+    // No default
   }
 
   return result;
@@ -235,19 +247,31 @@ const statusCounts = computed(() => {
     borrowed: 0,
   };
   data.forEach((a) => {
-    if (a.status === 'PENDING' || a.status === 'PENDING_STORE') {
-      counts.pending++;
-    } else if (a.status === 'STORED') {
-      counts.stored++;
-    } else if (a.status === 'BORROWED') {
-      counts.borrowed++;
+    switch (a.status) {
+      case 'BORROWED': {
+        counts.borrowed++;
+
+        break;
+      }
+      case 'PENDING':
+      case 'PENDING_STORE': {
+        counts.pending++;
+
+        break;
+      }
+      case 'STORED': {
+        counts.stored++;
+
+        break;
+      }
+      // No default
     }
   });
   return counts;
 });
 
 // Tab切换处理
-function handleTabChange(key: string | number) {
+function handleTabChange(key: number | string) {
   activeTab.value = String(key);
 }
 
@@ -516,7 +540,8 @@ function handlePrintCover(record: ArchiveDTO) {
     ? '仲裁裁决'
     : matter?.litigationStage === 'FIRST_INSTANCE'
       ? '一审结果'
-      : matter?.litigationStage === 'SECOND_INSTANCE'
+      : // eslint-disable-next-line unicorn/no-nested-ternary
+        matter?.litigationStage === 'SECOND_INSTANCE'
         ? '二审结果'
         : matter?.litigationStage === 'RETRIAL'
           ? '再审结果'
@@ -559,10 +584,7 @@ function handlePrintCover(record: ArchiveDTO) {
       '八',
       '九',
     ];
-    return String(year)
-      .split('')
-      .map((c) => cnNumbers[Number.parseInt(c)])
-      .join('');
+    return [...String(year)].map((c) => cnNumbers[Number.parseInt(c)]).join('');
   };
 
   const year = matter?.createdAt
@@ -695,7 +717,14 @@ function handlePrintCover(record: ArchiveDTO) {
     <div class="cover-inner">
       <div class="firm-name">${systemFirmName.value}</div>
       <div class="main-title">业 务 档 案 卷 宗</div>
-      ${isCriminal ? '<div class="sub-title">（刑事诉讼类）</div>' : isArbitration ? '<div class="sub-title">（仲裁类）</div>' : ''}
+      ${(() => {
+        return isCriminal
+          ? '<div class="sub-title">（刑事诉讼类）</div>'
+          : // eslint-disable-next-line unicorn/no-nested-ternary
+            isArbitration
+            ? '<div class="sub-title">（仲裁类）</div>'
+            : '';
+      })()}
       <div class="year-no">${yearCn}年度        字第${archiveNo}号</div>
       
       ${
@@ -831,7 +860,7 @@ async function handleRouteQuery() {
   const matterId = route.query.matterId;
   if (matterId) {
     const id = Number(matterId);
-    if (!isNaN(id)) {
+    if (!Number.isNaN(id)) {
       // 清除查询参数
       router.replace({ path: '/archive/list', query: {} });
 
@@ -938,7 +967,7 @@ onMounted(async () => {
       </div>
 
       <!-- Tab标签页 -->
-      <Tabs v-model:activeKey="activeTab" @change="handleTabChange">
+      <Tabs v-model:active-key="activeTab" @change="handleTabChange">
         <TabPane key="all">
           <template #tab>
             <span>全部</span>

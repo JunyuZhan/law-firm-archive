@@ -112,10 +112,8 @@ async function loadData() {
       stats.total++;
       switch (record.status) {
         case 'ABSENT': {
-          {
-            stats.absent++;
-            // No default
-          }
+          stats.absent++;
+          // No default
           break;
         }
         case 'EARLY_LEAVE': {

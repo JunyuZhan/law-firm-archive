@@ -1,5 +1,3 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-
 import type {
   ApplyConflictCheckCommand,
   ClientQuery,
@@ -8,11 +6,14 @@ import type {
   LeadQuery,
   UpdateClientCommand,
 } from '../types';
+
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
 import {
-  approveConflictCheck,
-  approveExemption,
   applyConflictCheck,
   applyExemption,
+  approveConflictCheck,
+  approveExemption,
   batchDeleteClients,
   changeClientStatus,
   convertLeadToClient,
@@ -49,7 +50,7 @@ vi.mock('#/api/request', () => ({
   },
 }));
 
-describe('Client API', () => {
+describe('client API', () => {
   let mockGet: ReturnType<typeof vi.fn>;
   let mockPost: ReturnType<typeof vi.fn>;
   let mockPut: ReturnType<typeof vi.fn>;
@@ -64,7 +65,7 @@ describe('Client API', () => {
     vi.clearAllMocks();
   });
 
-  describe('Client Management', () => {
+  describe('client Management', () => {
     it('should get client list', async () => {
       const params: ClientQuery = { pageNum: 1, pageSize: 10 };
       const mockResponse = { list: [], total: 0 };
@@ -167,7 +168,9 @@ describe('Client API', () => {
 
     it('should export clients', async () => {
       const params: ClientQuery = { pageNum: 1 };
-      const mockBlob = new Blob(['export data'], { type: 'application/vnd.ms-excel' });
+      const mockBlob = new Blob(['export data'], {
+        type: 'application/vnd.ms-excel',
+      });
 
       mockGet.mockResolvedValueOnce(mockBlob);
 
@@ -213,11 +216,13 @@ describe('Client API', () => {
 
       await batchDeleteClients(ids);
 
-      expect(mockDelete).toHaveBeenCalledWith('/client/batch', { data: { ids } });
+      expect(mockDelete).toHaveBeenCalledWith('/client/batch', {
+        data: { ids },
+      });
     });
   });
 
-  describe('Conflict Check', () => {
+  describe('conflict Check', () => {
     it('should get conflict check list', async () => {
       const params = { pageNum: 1, pageSize: 10 };
       const mockResponse = { list: [], total: 0 };
@@ -381,7 +386,7 @@ describe('Client API', () => {
     });
   });
 
-  describe('Lead Management', () => {
+  describe('lead Management', () => {
     it('should get lead list', async () => {
       const params: LeadQuery = { pageNum: 1, pageSize: 10 };
       const mockResponse = { list: [], total: 0 };
@@ -454,7 +459,10 @@ describe('Client API', () => {
       const result = await convertLeadToClient(leadId, data);
 
       expect(result).toEqual(mockResponse);
-      expect(mockPost).toHaveBeenCalledWith(`/client/lead/${leadId}/convert`, data);
+      expect(mockPost).toHaveBeenCalledWith(
+        `/client/lead/${leadId}/convert`,
+        data,
+      );
     });
 
     it('should convert lead to client without data', async () => {
@@ -466,7 +474,10 @@ describe('Client API', () => {
       const result = await convertLeadToClient(leadId);
 
       expect(result).toEqual(mockResponse);
-      expect(mockPost).toHaveBeenCalledWith(`/client/lead/${leadId}/convert`, {});
+      expect(mockPost).toHaveBeenCalledWith(
+        `/client/lead/${leadId}/convert`,
+        {},
+      );
     });
 
     it('should follow up lead', async () => {
@@ -480,7 +491,10 @@ describe('Client API', () => {
 
       await followUpLead(leadId, data);
 
-      expect(mockPost).toHaveBeenCalledWith(`/client/lead/${leadId}/follow-up`, data);
+      expect(mockPost).toHaveBeenCalledWith(
+        `/client/lead/${leadId}/follow-up`,
+        data,
+      );
     });
   });
 });

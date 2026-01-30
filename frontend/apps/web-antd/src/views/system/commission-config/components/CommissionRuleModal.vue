@@ -254,9 +254,8 @@ defineExpose({
         <span
           v-if="totalRate !== 100"
           style="margin-left: 8px; font-size: 12px; color: #999"
+          >（比例之和不强制=100%）</span
         >
-          （比例之和不强制=100%）
-        </span>
       </div>
 
       <FormItem label="方案说明">

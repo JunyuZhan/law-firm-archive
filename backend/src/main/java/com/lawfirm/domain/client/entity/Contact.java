@@ -2,12 +2,13 @@ package com.lawfirm.domain.client.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lawfirm.common.base.BaseEntity;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
-/**
- * 客户联系人实体
- */
+/** 客户联系人实体。 */
 @Data
 @SuperBuilder
 @NoArgsConstructor
@@ -16,54 +17,33 @@ import lombok.experimental.SuperBuilder;
 @TableName("crm_contact")
 public class Contact extends BaseEntity {
 
-    /**
-     * 客户ID
-     */
-    private Long clientId;
+  /** 客户ID */
+  private Long clientId;
 
-    /**
-     * 联系人姓名
-     */
-    private String contactName;
+  /** 联系人姓名 */
+  private String contactName;
 
-    /**
-     * 职位
-     */
-    private String position;
+  /** 职位 */
+  private String position;
 
-    /**
-     * 部门
-     */
-    private String department;
+  /** 部门 */
+  private String department;
 
-    /**
-     * 手机号
-     */
-    private String mobilePhone;
+  /** 手机号 */
+  private String mobilePhone;
 
-    /**
-     * 办公电话
-     */
-    private String officePhone;
+  /** 办公电话 */
+  private String officePhone;
 
-    /**
-     * 邮箱
-     */
-    private String email;
+  /** 邮箱 */
+  private String email;
 
-    /**
-     * 微信号
-     */
-    private String wechat;
+  /** 微信号 */
+  private String wechat;
 
-    /**
-     * 是否主要联系人
-     */
-    private Boolean isPrimary;
+  /** 是否主要联系人 */
+  private Boolean isPrimary;
 
-    /**
-     * 关系备注
-     */
-    private String relationshipNote;
+  /** 关系备注 */
+  private String relationshipNote;
 }
-

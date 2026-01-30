@@ -10,76 +10,88 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-/**
- * 在线计时器接口（M3-044）
- */
+/** 在线计时器接口（M3-044） */
 @Tag(name = "在线计时器", description = "在线计时器工具，用于记录工时")
 @RestController
 @RequestMapping("/timer")
 @RequiredArgsConstructor
 public class TimerController {
 
-    private final TimerAppService timerAppService;
+  /** 计时器应用服务 */
+  private final TimerAppService timerAppService;
 
-    /**
-     * 开始计时
-     */
-    @PostMapping("/start")
-    @RequirePermission("timesheet:record")
-    @Operation(summary = "开始计时", description = "开始一个新的计时器会话")
-    @OperationLog(module = "工时管理", action = "开始计时")
-    public Result<TimerSessionDTO> startTimer(@RequestBody @Valid StartTimerCommand command) {
-        TimerSessionDTO session = timerAppService.startTimer(command);
-        return Result.success(session);
-    }
+  /**
+   * 开始计时
+   *
+   * @param command 开始计时命令
+   * @return 计时器会话信息
+   */
+  @PostMapping("/start")
+  @RequirePermission("timesheet:record")
+  @Operation(summary = "开始计时", description = "开始一个新的计时器会话")
+  @OperationLog(module = "工时管理", action = "开始计时")
+  public Result<TimerSessionDTO> startTimer(@RequestBody @Valid final StartTimerCommand command) {
+    TimerSessionDTO session = timerAppService.startTimer(command);
+    return Result.success(session);
+  }
 
-    /**
-     * 暂停计时
-     */
-    @PostMapping("/pause")
-    @RequirePermission("timesheet:record")
-    @Operation(summary = "暂停计时", description = "暂停当前正在运行的计时器")
-    @OperationLog(module = "工时管理", action = "暂停计时")
-    public Result<TimerSessionDTO> pauseTimer() {
-        TimerSessionDTO session = timerAppService.pauseTimer();
-        return Result.success(session);
-    }
+  /**
+   * 暂停计时
+   *
+   * @return 计时器会话信息
+   */
+  @PostMapping("/pause")
+  @RequirePermission("timesheet:record")
+  @Operation(summary = "暂停计时", description = "暂停当前正在运行的计时器")
+  @OperationLog(module = "工时管理", action = "暂停计时")
+  public Result<TimerSessionDTO> pauseTimer() {
+    TimerSessionDTO session = timerAppService.pauseTimer();
+    return Result.success(session);
+  }
 
-    /**
-     * 继续计时
-     */
-    @PostMapping("/resume")
-    @RequirePermission("timesheet:record")
-    @Operation(summary = "继续计时", description = "继续已暂停的计时器")
-    @OperationLog(module = "工时管理", action = "继续计时")
-    public Result<TimerSessionDTO> resumeTimer() {
-        TimerSessionDTO session = timerAppService.resumeTimer();
-        return Result.success(session);
-    }
+  /**
+   * 继续计时
+   *
+   * @return 计时器会话信息
+   */
+  @PostMapping("/resume")
+  @RequirePermission("timesheet:record")
+  @Operation(summary = "继续计时", description = "继续已暂停的计时器")
+  @OperationLog(module = "工时管理", action = "继续计时")
+  public Result<TimerSessionDTO> resumeTimer() {
+    TimerSessionDTO session = timerAppService.resumeTimer();
+    return Result.success(session);
+  }
 
-    /**
-     * 停止计时并保存工时记录
-     */
-    @PostMapping("/stop")
-    @RequirePermission("timesheet:record")
-    @Operation(summary = "停止计时", description = "停止计时器并自动保存为工时记录")
-    @OperationLog(module = "工时管理", action = "停止计时")
-    public Result<Void> stopTimer() {
-        timerAppService.stopTimer();
-        return Result.success();
-    }
+  /**
+   * 停止计时并保存工时记录
+   *
+   * @return 空结果
+   */
+  @PostMapping("/stop")
+  @RequirePermission("timesheet:record")
+  @Operation(summary = "停止计时", description = "停止计时器并自动保存为工时记录")
+  @OperationLog(module = "工时管理", action = "停止计时")
+  public Result<Void> stopTimer() {
+    timerAppService.stopTimer();
+    return Result.success();
+  }
 
-    /**
-     * 获取当前计时器状态
-     * 注意：此接口仅查询当前用户自己的计时状态，无需特殊权限
-     */
-    @GetMapping("/status")
-    @Operation(summary = "获取计时器状态", description = "获取当前用户的计时器状态")
-    public Result<TimerSessionDTO> getTimerStatus() {
-        TimerSessionDTO status = timerAppService.getTimerStatus();
-        return Result.success(status);
-    }
+  /**
+   * 获取当前计时器状态 注意：此接口仅查询当前用户自己的计时状态，无需特殊权限
+   *
+   * @return 计时器状态
+   */
+  @GetMapping("/status")
+  @Operation(summary = "获取计时器状态", description = "获取当前用户的计时器状态")
+  public Result<TimerSessionDTO> getTimerStatus() {
+    TimerSessionDTO status = timerAppService.getTimerStatus();
+    return Result.success(status);
+  }
 }
-

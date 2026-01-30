@@ -2,40 +2,48 @@ package com.lawfirm.application.finance.command;
 
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
-import lombok.Data;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import lombok.Data;
 
-/**
- * 创建预收款命令
- */
+/** 创建预收款命令 */
 @Data
 public class CreatePrepaymentCommand {
 
-    @NotNull(message = "客户ID不能为空")
-    private Long clientId;
+  /** 客户ID */
+  @NotNull(message = "客户ID不能为空")
+  private Long clientId;
 
-    private Long contractId;
+  /** 合同ID */
+  private Long contractId;
 
-    private Long matterId;
+  /** 案件ID */
+  private Long matterId;
 
-    @NotNull(message = "预收款金额不能为空")
-    @Positive(message = "预收款金额必须大于0")
-    private BigDecimal amount;
+  /** 预收款金额 */
+  @NotNull(message = "预收款金额不能为空")
+  @Positive(message = "预收款金额必须大于0")
+  private BigDecimal amount;
 
-    private String currency;
+  /** 币种 */
+  private String currency;
 
-    @NotNull(message = "收款日期不能为空")
-    private LocalDate receiptDate;
+  /** 收款日期 */
+  @NotNull(message = "收款日期不能为空")
+  private LocalDate receiptDate;
 
-    private String paymentMethod;
+  /** 收款方式 */
+  private String paymentMethod;
 
-    private String bankAccount;
+  /** 银行账户 */
+  private String bankAccount;
 
-    private String transactionNo;
+  /** 交易流水号 */
+  private String transactionNo;
 
-    private String purpose;
+  /** 用途 */
+  private String purpose;
 
-    private String remark;
+  /** 备注 */
+  private String remark;
 }

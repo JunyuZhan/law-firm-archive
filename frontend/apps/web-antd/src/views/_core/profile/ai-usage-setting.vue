@@ -1,23 +1,23 @@
 <script setup lang="ts">
 import type { AiModelUsageDTO, AiUsageSummaryDTO } from '#/api/ai/types';
 
-import { getMyUsageByModel, getMyUsageSummary } from '#/api/ai/usage';
-
 import { onMounted, ref } from 'vue';
+import { useRouter } from 'vue-router';
 
 import {
   Alert,
   Button,
   Card,
   Col,
+  message,
   Progress,
   Row,
   Statistic,
   Table,
-  message,
 } from 'ant-design-vue';
 import dayjs from 'dayjs';
-import { useRouter } from 'vue-router';
+
+import { getMyUsageByModel, getMyUsageSummary } from '#/api/ai/usage';
 
 const router = useRouter();
 

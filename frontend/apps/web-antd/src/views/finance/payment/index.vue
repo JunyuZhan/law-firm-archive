@@ -18,8 +18,6 @@ import { onMounted, reactive, ref, watch } from 'vue';
 import { Page } from '@vben/common-ui';
 import { IconifyIcon } from '@vben/icons';
 
-import { useResponsive } from '#/hooks/useResponsive';
-
 import {
   Alert,
   Button,
@@ -61,6 +59,7 @@ import {
   OCR_DISABLED_MESSAGE,
   recognizeBankReceipt,
 } from '#/api/ocr';
+import { useResponsive } from '#/hooks/useResponsive';
 
 defineOptions({ name: 'FinancePayment' });
 
@@ -260,7 +259,7 @@ async function loadOptions() {
 
 function handleYearChange(value: any) {
   const year = Number(value);
-  if (isNaN(year)) return;
+  if (Number.isNaN(year)) return;
   selectedYear.value = year;
   if (year === 0) {
     // 选择"全部年份"时清除日期筛选

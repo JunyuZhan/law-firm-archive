@@ -80,7 +80,7 @@ const treeData = computed(() => {
   const buildTree = (parentId: number): any[] => {
     return dossierItems.value
       .filter((item) => item.parentId === parentId)
-      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .toSorted((a, b) => a.sortOrder - b.sortOrder)
       .map((item) => ({
         key: String(item.id),
         title: item.name,

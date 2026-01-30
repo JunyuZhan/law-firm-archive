@@ -296,7 +296,7 @@ const logsData = ref<ScheduledReportLogDTO[]>([]);
 const logsLoading = ref(false);
 const logsTotal = ref(0);
 const logsPage = ref(1);
-const currentTaskId = ref<number | null>(null);
+const currentTaskId = ref<null | number>(null);
 
 const logColumns = [
   {
@@ -426,7 +426,7 @@ function getExecuteStatusName(status: string) {
   return status || '-';
 }
 
-function formatDateTime(date: string | null | undefined) {
+function formatDateTime(date: null | string | undefined) {
   if (!date) return '-';
   return dayjs(date).format('YYYY-MM-DD HH:mm');
 }

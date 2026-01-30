@@ -94,6 +94,7 @@ const withDefaultPlaceholder = <T extends Component>(
   type: 'input' | 'select',
   componentProps: Recordable<any> = {},
 ) => {
+  // eslint-disable-next-line vue/one-component-per-file
   return defineComponent({
     name: component.name,
     inheritAttrs: false,
@@ -264,6 +265,7 @@ const withPreviewUpload = () => {
 
     render(h(PreviewWrapper), container);
   };
+  // eslint-disable-next-line vue/one-component-per-file
   return defineComponent({
     name: Upload.name,
     emits: ['update:modelValue'],

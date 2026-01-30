@@ -1,6 +1,7 @@
 import type {
   BackupDTO,
   BackupQuery,
+  CacheStats,
   CaseTypeOption,
   ContractNumberPattern,
   ContractNumberPreview,
@@ -22,6 +23,8 @@ import type {
   ExternalIntegrationDTO,
   ExternalIntegrationQuery,
   LogQuery,
+  LoginLogDTO,
+  LoginLogQuery,
   MenuDTO,
   MigrationDTO,
   OperationLogDTO,
@@ -32,6 +35,7 @@ import type {
   RoleDTO,
   RolePermissionDTO,
   RoleQuery,
+  SessionQuery,
   SysConfigDTO,
   UpdateDepartmentCommand,
   UpdateExternalIntegrationCommand,
@@ -40,6 +44,7 @@ import type {
   UpdateUserCommand,
   UserDTO,
   UserQuery,
+  UserSessionDTO,
 } from './types';
 
 /**
@@ -125,9 +130,9 @@ export function importUsers(
   return requestClient.post<{
     errorMessages: string[];
     failCount: number;
+    generatedPasswords?: Record<string, string>; // 用户名 -> 密码
     successCount: number;
     total: number;
-    generatedPasswords?: Record<string, string>; // 用户名 -> 密码
   }>('/system/user/import', formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
@@ -661,12 +666,12 @@ export function createBackup(data: CreateBackupCommand) {
 
 /** 恢复备份 */
 export function restoreBackup(data: RestoreBackupCommand) {
-  return requestClient.post<void>('/system/backup/restore', data);
+  return requestClient.post('/system/backup/restore', data);
 }
 
 /** 删除备份 */
 export function deleteBackup(id: number) {
-  return requestClient.delete<void>(`/system/backup/${id}`);
+  return requestClient.delete(`/system/backup/${id}`);
 }
 
 /** 下载备份文件 */
@@ -771,6 +776,109 @@ export function sendSystemReport(type: 'daily' | 'weekly' = 'daily') {
     type,
   });
 }
+
+// ========== 登录日志 API ==========
+
+/** 获取登录日志列表 */
+export function getLoginLogList(params: LoginLogQuery) {
+  return requestClient.get<PageResult<LoginLogDTO>>('/system/login-log', {
+    params,
+  });
+}
+
+/** 获取登录日志详情 */
+export function getLoginLogDetail(id: number) {
+  return requestClient.get<LoginLogDTO>(`/system/login-log/${id}`);
+}
+
+/** 获取用户最近登录记录 */
+export function getRecentLoginLogs(userId: number, limit: number = 10) {
+  return requestClient.get<LoginLogDTO[]>(
+    `/system/login-log/users/${userId}/recent`,
+    { params: { limit } },
+  );
+}
+
+/** 统计登录失败次数 */
+export function countLoginFailure(username: string) {
+  return requestClient.get<number>('/system/login-log/failure-count', {
+    params: { username },
+  });
+}
+
+// ========== 会话管理 API ==========
+
+/** 获取会话列表 */
+export function getSessionList(params: SessionQuery) {
+  return requestClient.get<PageResult<UserSessionDTO>>('/system/sessions/list', {
+    params,
+  });
+}
+
+/** 获取我的活跃会话 */
+export function getMySessions() {
+  return requestClient.get<UserSessionDTO[]>('/system/sessions/my-sessions');
+}
+
+/** 登出指定会话 */
+export function logoutSession(id: number) {
+  return requestClient.post(`/system/sessions/${id}/logout`, {});
+}
+
+/** 强制下线会话 */
+export function forceLogoutSession(id: number, reason?: string) {
+  return requestClient.post(`/system/sessions/${id}/force-logout`, null, {
+    params: { reason },
+  });
+}
+
+/** 强制下线用户所有会话 */
+export function forceLogoutUser(userId: number, reason?: string) {
+  return requestClient.post(
+    `/system/sessions/user/${userId}/force-logout`,
+    null,
+    { params: { reason } },
+  );
+}
+
+// ========== 缓存管理 API ==========
+
+/** 获取缓存统计 */
+export function getCacheStats() {
+  return requestClient.get<CacheStats>('/api/admin/cache/stats');
+}
+
+/** 清除所有缓存 */
+export function clearAllCache() {
+  return requestClient.delete('/api/admin/cache/all');
+}
+
+/** 清除配置缓存 */
+export function clearConfigCache() {
+  return requestClient.delete('/api/admin/cache/config');
+}
+
+/** 清除菜单缓存 */
+export function clearMenuCache() {
+  return requestClient.delete('/api/admin/cache/menu');
+}
+
+/** 清除部门缓存 */
+export function clearDeptCache() {
+  return requestClient.delete('/api/admin/cache/dept');
+}
+
+/** 清除指定配置缓存 */
+export function clearConfigCacheByKey(key: string) {
+  return requestClient.delete(`/api/admin/cache/config/${key}`);
+}
+
+/** 清除指定用户菜单缓存 */
+export function clearUserMenuCache(userId: number) {
+  return requestClient.delete(`/api/admin/cache/menu/user/${userId}`);
+}
+
+// ========== 客户门户令牌 API ==========
 
 // 导出公告管理API
 export * from './announcement';

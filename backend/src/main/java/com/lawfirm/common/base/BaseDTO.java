@@ -1,20 +1,19 @@
 package com.lawfirm.common.base;
 
-import lombok.Data;
-
 import java.io.Serializable;
 import java.time.LocalDateTime;
+import lombok.Data;
 
-/**
- * DTO基类 - 所有DTO继承此类
- */
+/** DTO基类 - 所有DTO继承此类 */
 @Data
 public abstract class BaseDTO implements Serializable {
 
-    private Long id;
+  /** 主键ID */
+  private Long id;
 
-    private LocalDateTime createdAt;
+  /** 创建时间 */
+  private LocalDateTime createdAt;
 
-    private LocalDateTime updatedAt;
+  /** 更新时间 */
+  private LocalDateTime updatedAt;
 }
-

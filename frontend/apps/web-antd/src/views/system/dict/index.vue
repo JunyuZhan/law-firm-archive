@@ -6,8 +6,6 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { Page } from '@vben/common-ui';
 import { DeleteOutlined, EditOutlined, Plus } from '@vben/icons';
 
-import { useResponsive } from '#/hooks/useResponsive';
-
 import {
   Button,
   Card,
@@ -35,6 +33,7 @@ import {
   getDictTypeList,
   toggleDictItemStatus,
 } from '#/api/system';
+import { useResponsive } from '#/hooks/useResponsive';
 
 import DictItemModal from './components/DictItemModal.vue';
 import DictTypeModal from './components/DictTypeModal.vue';

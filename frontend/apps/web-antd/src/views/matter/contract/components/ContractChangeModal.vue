@@ -18,10 +18,10 @@ import {
 } from 'ant-design-vue';
 
 interface Props {
-  open: boolean;
+  open?: boolean;
   contract?: ContractDTO | null;
   isMobile?: boolean;
-  feeTypeOptions: { label: string; value: string }[];
+  feeTypeOptions?: { label: string; value: string }[];
 }
 
 interface Emits {

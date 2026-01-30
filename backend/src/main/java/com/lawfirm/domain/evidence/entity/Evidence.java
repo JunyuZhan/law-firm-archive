@@ -5,9 +5,7 @@ import com.lawfirm.common.base.BaseEntity;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 
-/**
- * 证据实体
- */
+/** 证据实体 */
 @Data
 @SuperBuilder
 @NoArgsConstructor
@@ -16,128 +14,81 @@ import lombok.experimental.SuperBuilder;
 @TableName("evidence")
 public class Evidence extends BaseEntity {
 
-    /**
-     * 证据编号
-     */
-    private String evidenceNo;
+  /** 证据编号 */
+  private String evidenceNo;
 
-    /**
-     * 关联案件ID
-     */
-    private Long matterId;
+  /** 关联案件ID */
+  private Long matterId;
 
-    /**
-     * 证据名称
-     */
-    private String name;
+  /** 证据名称 */
+  private String name;
 
-    /**
-     * 证据类型
-     */
-    private String evidenceType;
+  /** 证据类型 */
+  private String evidenceType;
 
-    /**
-     * 证据来源
-     */
-    private String source;
+  /** 证据来源 */
+  private String source;
 
-    /**
-     * 证据分组
-     */
-    private String groupName;
+  /** 证据分组 */
+  private String groupName;
 
-    /**
-     * 排序
-     */
-    @lombok.Builder.Default
-    private Integer sortOrder = 0;
+  /** 排序 */
+  @lombok.Builder.Default private Integer sortOrder = 0;
 
-    /**
-     * 证明目的
-     */
-    private String provePurpose;
+  /** 证明目的 */
+  private String provePurpose;
 
-    /**
-     * 描述
-     */
-    private String description;
+  /** 描述 */
+  private String description;
 
-    /**
-     * 是否原件
-     */
-    @lombok.Builder.Default
-    private Boolean isOriginal = false;
+  /** 是否原件 */
+  @lombok.Builder.Default private Boolean isOriginal = false;
 
-    /**
-     * 原件份数
-     */
-    @lombok.Builder.Default
-    private Integer originalCount = 0;
+  /** 原件份数 */
+  @lombok.Builder.Default private Integer originalCount = 0;
 
-    /**
-     * 复印件份数
-     */
-    @lombok.Builder.Default
-    private Integer copyCount = 0;
+  /** 复印件份数 */
+  @lombok.Builder.Default private Integer copyCount = 0;
 
-    /**
-     * 起始页码
-     */
-    private Integer pageStart;
+  /** 起始页码 */
+  private Integer pageStart;
 
-    /**
-     * 结束页码
-     */
-    private Integer pageEnd;
+  /** 结束页码 */
+  private Integer pageEnd;
 
-    /**
-     * 文件URL
-     */
-    private String fileUrl;
+  /** 文件URL */
+  private String fileUrl;
 
-    private String bucketName;
+  /** 存储桶名称 */
+  private String bucketName;
 
-    private String storagePath;
+  /** 存储路径 */
+  private String storagePath;
 
-    private String physicalName;
+  /** 物理文件名 */
+  private String physicalName;
 
-    private String fileHash;
+  /** 文件哈希值 */
+  private String fileHash;
 
-    /**
-     * 文件名
-     */
-    private String fileName;
+  /** 文件名 */
+  private String fileName;
 
-    /**
-     * 文件大小
-     */
-    private Long fileSize;
+  /** 文件大小 */
+  private Long fileSize;
 
-    /**
-     * 文件类型分类（image/pdf/word/excel/ppt/audio/video/other）
-     */
-    private String fileType;
+  /** 文件类型分类（image/pdf/word/excel/ppt/audio/video/other） */
+  private String fileType;
 
-    /**
-     * 缩略图URL（仅图片文件）
-     */
-    private String thumbnailUrl;
+  /** 缩略图URL（仅图片文件） */
+  private String thumbnailUrl;
 
-    /**
-     * 质证状态
-     */
-    @lombok.Builder.Default
-    private String crossExamStatus = "PENDING";
+  /** 质证状态 */
+  @lombok.Builder.Default private String crossExamStatus = "PENDING";
 
-    /**
-     * 状态
-     */
-    @lombok.Builder.Default
-    private String status = "ACTIVE";
+  /** 状态 */
+  @lombok.Builder.Default private String status = "ACTIVE";
 
-    /**
-     * 关联卷宗文件ID，引用 doc_document.id
-     * 当设置此字段时，文件信息从 doc_document 获取
-     */
-    private Long documentId;
+  /** 关联卷宗文件ID，引用 doc_document.id 当设置此字段时，文件信息从 doc_document 获取 */
+  private Long documentId;
 }

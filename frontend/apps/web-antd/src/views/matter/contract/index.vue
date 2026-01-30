@@ -21,8 +21,6 @@ import { Page } from '@vben/common-ui';
 import { Plus } from '@vben/icons';
 import { useUserStore } from '@vben/stores';
 
-import { useResponsive } from '#/hooks/useResponsive';
-
 import {
   Alert,
   Button,
@@ -82,11 +80,6 @@ import { getDepartmentTreePublic, getDictDataByCode } from '#/api/system';
 import { approveApproval, getBusinessApprovals } from '#/api/workbench';
 import { UserTreeSelect } from '#/components/UserTreeSelect';
 import {
-  decodeHtmlEntities,
-  formatStructuredForPrint,
-  isStructuredContent,
-} from '#/views/system/contract-template/utils/print-formatter';
-import {
   CASE_CATEGORY_OPTIONS,
   causesToCascaderOptions,
   findCauseNameInAll,
@@ -96,6 +89,12 @@ import {
   preloadAllCauses,
 } from '#/composables/useCauseOfAction';
 import { getStageDictCode } from '#/composables/useStageDict';
+import { useResponsive } from '#/hooks/useResponsive';
+import {
+  decodeHtmlEntities,
+  formatStructuredForPrint,
+  isStructuredContent,
+} from '#/views/system/contract-template/utils/print-formatter';
 
 defineOptions({ name: 'MatterContractList' });
 
@@ -114,7 +113,7 @@ function canOperateContract(contract: ContractDTO): boolean {
 
 // 金额转中文大写
 function amountToChinese(num: null | number | undefined): string {
-  if (num === undefined || num === null || isNaN(num)) return '';
+  if (num === undefined || num === null || Number.isNaN(num)) return '';
   if (num === 0) return '零元整';
 
   const digits = ['零', '壹', '贰', '叁', '肆', '伍', '陆', '柒', '捌', '玖'];
@@ -314,7 +313,7 @@ const queryParams = reactive<ContractQuery>({
 // 年份变化时更新日期范围
 function handleYearChange(value: any) {
   const year = Number(value);
-  if (isNaN(year)) return;
+  if (Number.isNaN(year)) return;
   selectedYear.value = year;
   if (year === 0) {
     // 选择"全部年份"时清除日期筛选
@@ -636,11 +635,8 @@ async function loadCriminalChargeOptions() {
   }
   try {
     const causes = await getCausesByType('CRIMINAL');
-    if (causes && causes.length > 0) {
-      criminalChargeOptions.value = causesToCascaderOptions(causes);
-    } else {
-      criminalChargeOptions.value = [];
-    }
+    criminalChargeOptions.value =
+      causes && causes.length > 0 ? causesToCascaderOptions(causes) : [];
   } catch (error) {
     console.error('加载刑事罪名选项失败:', error);
     criminalChargeOptions.value = [];
@@ -679,16 +675,14 @@ watch(causeValue, (val) => {
     val && val.length > 0 ? val[val.length - 1] : undefined;
 
   // 如果是刑事案件，自动将案由名称导入到涉嫌罪名字段
-  if (formData.caseType === 'CRIMINAL') {
-    if (val && val.length > 0) {
-      const causeCode = val[val.length - 1];
-      if (causeCode) {
-        const causeName = findCauseNameInAll(causeCode);
-        if (causeName) {
-          formData.criminalCharge = causeName;
-          // 同步更新刑事罪名级联选择值
-          criminalChargeValue.value = val;
-        }
+  if (formData.caseType === 'CRIMINAL' && val && val.length > 0) {
+    const causeCode = val[val.length - 1];
+    if (causeCode) {
+      const causeName = findCauseNameInAll(causeCode);
+      if (causeName) {
+        formData.criminalCharge = causeName;
+        // 同步更新刑事罪名级联选择值
+        criminalChargeValue.value = val;
       }
     }
   }
@@ -961,7 +955,7 @@ function handleCommissionRuleChange(value: any) {
       // 主办律师
       if (
         rule.leadLawyerRate > 0 &&
-        !contractParticipants.value.find((p) => p.role === 'LEAD')
+        !contractParticipants.value.some((p) => p.role === 'LEAD')
       ) {
         newParticipants.push({
           userId: undefined,
@@ -973,7 +967,7 @@ function handleCommissionRuleChange(value: any) {
       // 协办律师
       if (
         rule.assistLawyerRate > 0 &&
-        !contractParticipants.value.find((p) => p.role === 'CO_COUNSEL')
+        !contractParticipants.value.some((p) => p.role === 'CO_COUNSEL')
       ) {
         newParticipants.push({
           userId: undefined,
@@ -985,7 +979,7 @@ function handleCommissionRuleChange(value: any) {
       // 辅助人员
       if (
         rule.supportStaffRate > 0 &&
-        !contractParticipants.value.find((p) => p.role === 'PARALEGAL')
+        !contractParticipants.value.some((p) => p.role === 'PARALEGAL')
       ) {
         newParticipants.push({
           userId: undefined,
@@ -998,7 +992,7 @@ function handleCommissionRuleChange(value: any) {
       if (
         rule.originatorRate &&
         rule.originatorRate > 0 &&
-        !contractParticipants.value.find((p) => p.role === 'ORIGINATOR')
+        !contractParticipants.value.some((p) => p.role === 'ORIGINATOR')
       ) {
         newParticipants.push({
           userId: undefined,
@@ -1027,7 +1021,7 @@ interface FieldConfig {
 }
 
 // @ts-expect-error - fieldConfig is reserved for future use
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+// eslint-disable-next-line no-unused-vars
 const _fieldConfig: Record<string, FieldConfig> = {
   // 标准服务合同
   SERVICE: {
@@ -1149,13 +1143,8 @@ const visibleFields = computed(() => {
 
   // 根据模板类型设置字段
   switch (templateType) {
-    case 'CRIMINAL_DEFENSE':
-      // 刑事案件专用字段
-      fields.criminal = ['defendantName', 'criminalCharge', 'defenseStage'];
-      fields.litigation = ['lawyerNames', 'paymentDeadline', 'specialTerms'];
-      break;
-    case 'CIVIL_PROXY':
     case 'ADMINISTRATIVE_PROXY':
+    case 'CIVIL_PROXY': {
       // 民事/行政案件字段
       fields.litigation = [
         'caseType',
@@ -1169,14 +1158,23 @@ const visibleFields = computed(() => {
         'specialTerms',
       ];
       break;
-    case 'NON_LITIGATION':
-      // 非诉项目字段
-      fields.nonLitigation = ['partnerRate', 'seniorRate', 'assistantRate'];
+    }
+    case 'CRIMINAL_DEFENSE': {
+      // 刑事案件专用字段
+      fields.criminal = ['defendantName', 'criminalCharge', 'defenseStage'];
+      fields.litigation = ['lawyerNames', 'paymentDeadline', 'specialTerms'];
       break;
-    case 'LEGAL_COUNSEL':
+    }
+    case 'LEGAL_COUNSEL': {
       // 法律顾问字段
       fields.retainer = ['serviceHours'];
       break;
+    }
+    case 'NON_LITIGATION': {
+      // 非诉项目字段
+      fields.nonLitigation = ['partnerRate', 'seniorRate', 'assistantRate'];
+      break;
+    }
   }
 
   return fields;
@@ -1229,28 +1227,35 @@ function handleTemplateChange(value: any) {
 
     // 根据模板类型自动设置案件类型
     switch (template.templateType) {
-      case 'CRIMINAL_DEFENSE':
+      case 'ADMINISTRATIVE_PROXY': {
+        formData.caseType = 'ADMINISTRATIVE';
+        break;
+      }
+      case 'CIVIL_PROXY': {
+        formData.caseType = 'CIVIL';
+        break;
+      }
+      case 'CRIMINAL_DEFENSE': {
         formData.caseType = 'CRIMINAL';
         loadCriminalChargeOptions();
         break;
-      case 'CIVIL_PROXY':
-        formData.caseType = 'CIVIL';
-        break;
-      case 'ADMINISTRATIVE_PROXY':
-        formData.caseType = 'ADMINISTRATIVE';
-        break;
-      case 'STATE_COMP_ADMIN':
-        formData.caseType = 'STATE_COMP_ADMIN';
-        break;
-      case 'STATE_COMP_CRIMINAL':
-        formData.caseType = 'STATE_COMP_CRIMINAL';
-        break;
-      case 'LEGAL_COUNSEL':
+      }
+      case 'LEGAL_COUNSEL': {
         formData.caseType = 'LEGAL_COUNSEL';
         break;
-      case 'NON_LITIGATION':
+      }
+      case 'NON_LITIGATION': {
         // 非诉项目不需要 caseType
         break;
+      }
+      case 'STATE_COMP_ADMIN': {
+        formData.caseType = 'STATE_COMP_ADMIN';
+        break;
+      }
+      case 'STATE_COMP_CRIMINAL': {
+        formData.caseType = 'STATE_COMP_CRIMINAL';
+        break;
+      }
     }
 
     message.success(
@@ -1441,12 +1446,9 @@ function generateApprovalFormHtml(data: ContractPrintDTO): string {
 
   // 对于刑事案件，优先显示罪名名称，避免显示"刑事案件"
   if (data.caseType === 'CRIMINAL') {
-    if (causeCode) {
-      causeOfActionDisplay =
-        findCauseNameInAll(causeCode) || data.causeOfActionName || causeCode;
-    } else {
-      causeOfActionDisplay = data.causeOfActionName || '';
-    }
+    causeOfActionDisplay = causeCode
+      ? findCauseNameInAll(causeCode) || data.causeOfActionName || causeCode
+      : data.causeOfActionName || '';
   } else {
     // 民事和行政案件使用原有逻辑
     causeOfActionDisplay = causeCode
@@ -1668,26 +1670,28 @@ async function executePrint() {
             : '完成之日';
 
           // 替换所有可能的变量
+          /* eslint-disable no-template-curly-in-string */
           contractContent = contractContent
-            .replace(/\$\{contractNo\}/g, data.contractNo || '')
-            .replace(/\$\{clientName\}/g, data.clientName || '')
-            .replace(/\$\{firmName\}/g, data.firmName || '')
-            .replace(/\$\{signDate\}/g, signDateStr)
-            .replace(
-              /\$\{matterDescription\}/g,
+            .replaceAll('${contractNo}', data.contractNo || '')
+            .replaceAll('${clientName}', data.clientName || '')
+            .replaceAll('${firmName}', data.firmName || '')
+            .replaceAll('${signDate}', signDateStr)
+            .replaceAll(
+              '${matterDescription}',
               data.description || data.opposingParty || '',
             )
-            .replace(/\$\{matterName\}/g, data.name || '')
-            .replace(
-              /\$\{paymentTerms\}/g,
+            .replaceAll('${matterName}', data.name || '')
+            .replaceAll(
+              '${paymentTerms}',
               (data as any).paymentTerms || '一次性支付',
             )
-            .replace(/\$\{expiryDate\}/g, expiryDateStr)
-            .replace(/\$\{clientAddress\}/g, data.clientAddress || '')
-            .replace(/\$\{clientPhone\}/g, data.clientPhone || '')
-            .replace(/\$\{firmAddress\}/g, data.firmAddress || '')
-            .replace(/\$\{firmPhone\}/g, data.firmPhone || '')
-            .replace(/\$\{firmLegalRep\}/g, data.firmLegalRep || '');
+            .replaceAll('${expiryDate}', expiryDateStr)
+            .replaceAll('${clientAddress}', data.clientAddress || '')
+            .replaceAll('${clientPhone}', data.clientPhone || '')
+            .replaceAll('${firmAddress}', data.firmAddress || '')
+            .replaceAll('${firmPhone}', data.firmPhone || '')
+            .replaceAll('${firmLegalRep}', data.firmLegalRep || '');
+          /* eslint-enable no-template-curly-in-string */
         }
 
         // 检查是否已包含签署区域
@@ -1722,11 +1726,12 @@ async function executePrint() {
 
     htmlContent += `
       <div class="contract-page" style="font-family: 'SimSun', '宋体', serif; font-size: 12pt;">
-        ${!contractNoInContent ? `<div class="header-info">合同编号：${data.contractNo}</div>` : ''}
+        ${contractNoInContent ? '' : `<div class="header-info">合同编号：${data.contractNo}</div>`}
         <div style="font-family: 'SimSun', '宋体', serif; font-size: 12pt;">${contractContent}</div>
         ${
-          !hasSignature
-            ? `
+          hasSignature
+            ? ''
+            : `
         <div class="signature">
           <div class="signature-box">
             <p><strong>甲方（委托人）：</strong></p>
@@ -1744,7 +1749,6 @@ async function executePrint() {
           </div>
         </div>
         `
-            : ''
         }
       </div>
     `;
@@ -1770,12 +1774,9 @@ async function executePrint() {
 
     // 对于刑事案件，优先显示罪名名称，避免显示"刑事案件"
     if (data.caseType === 'CRIMINAL') {
-      if (causeCode) {
-        causeOfActionDisplay =
-          findCauseNameInAll(causeCode) || data.causeOfActionName || causeCode;
-      } else {
-        causeOfActionDisplay = data.causeOfActionName || '';
-      }
+      causeOfActionDisplay = causeCode
+        ? findCauseNameInAll(causeCode) || data.causeOfActionName || causeCode
+        : data.causeOfActionName || '';
     } else {
       // 民事和行政案件使用原有逻辑
       causeOfActionDisplay = causeCode
@@ -2285,6 +2286,7 @@ async function handleSave() {
                   p.role === participant.role,
               );
 
+              // eslint-disable-next-line unicorn/prefer-ternary
               if (existingParticipant) {
                 // 更新现有参与人
                 await updateContractParticipant(
@@ -2352,7 +2354,7 @@ function handleAddContractParticipant() {
     // 检查主办律师：如果方案中有比例且参与人列表中还没有主办律师
     if (
       rule.leadLawyerRate > 0 &&
-      !contractParticipants.value.find((p) => p.role === 'LEAD')
+      !contractParticipants.value.some((p) => p.role === 'LEAD')
     ) {
       defaultRole = 'LEAD';
       defaultRate = rule.leadLawyerRate;
@@ -2360,7 +2362,7 @@ function handleAddContractParticipant() {
     // 检查协办律师：如果方案中有比例且参与人列表中还没有协办律师
     else if (
       rule.assistLawyerRate > 0 &&
-      !contractParticipants.value.find((p) => p.role === 'CO_COUNSEL')
+      !contractParticipants.value.some((p) => p.role === 'CO_COUNSEL')
     ) {
       defaultRole = 'CO_COUNSEL';
       defaultRate = rule.assistLawyerRate;
@@ -2368,7 +2370,7 @@ function handleAddContractParticipant() {
     // 检查辅助人员：如果方案中有比例且参与人列表中还没有辅助人员
     else if (
       rule.supportStaffRate > 0 &&
-      !contractParticipants.value.find((p) => p.role === 'PARALEGAL')
+      !contractParticipants.value.some((p) => p.role === 'PARALEGAL')
     ) {
       defaultRole = 'PARALEGAL';
       defaultRate = rule.supportStaffRate;
@@ -2377,7 +2379,7 @@ function handleAddContractParticipant() {
     else if (
       rule.originatorRate &&
       rule.originatorRate > 0 &&
-      !contractParticipants.value.find((p) => p.role === 'ORIGINATOR')
+      !contractParticipants.value.some((p) => p.role === 'ORIGINATOR')
     ) {
       defaultRole = 'ORIGINATOR';
       defaultRate = rule.originatorRate;
@@ -2588,7 +2590,7 @@ async function handleReject(record: ContractDTO) {
       onOk: async () => {
         if (!rejectReasonRef.value?.trim()) {
           message.error('拒绝时必须填写拒绝事由');
-          throw undefined;
+          throw new Error('操作失败');
         }
         try {
           await approveApproval({
@@ -2886,16 +2888,32 @@ onMounted(async () => {
     <!-- 统计卡片 -->
     <Row :gutter="[16, 16]" style="margin-bottom: 16px" v-if="statistics">
       <Col :xs="24" :sm="12" :md="6" :lg="6" :xl="6">
-        <Card :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }" style="height: 100%">
-          <Statistic 
-            title="合同总数" 
+        <Card
+          :body-style="{
+            padding: '16px',
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+          }"
+          style="height: 100%"
+        >
+          <Statistic
+            title="合同总数"
             :value="statistics.totalCount"
             class="contract-statistic"
           />
         </Card>
       </Col>
       <Col :xs="24" :sm="12" :md="6" :lg="6" :xl="6">
-        <Card :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }" style="height: 100%">
+        <Card
+          :body-style="{
+            padding: '16px',
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+          }"
+          style="height: 100%"
+        >
           <Statistic
             title="生效中"
             :value="statistics.activeCount"
@@ -2904,7 +2922,15 @@ onMounted(async () => {
         </Card>
       </Col>
       <Col :xs="24" :sm="12" :md="6" :lg="6" :xl="6">
-        <Card :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }" style="height: 100%">
+        <Card
+          :body-style="{
+            padding: '16px',
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+          }"
+          style="height: 100%"
+        >
           <Statistic
             title="合同总金额"
             :value="statistics.totalAmount"
@@ -2915,7 +2941,15 @@ onMounted(async () => {
         </Card>
       </Col>
       <Col :xs="24" :sm="12" :md="6" :lg="6" :xl="6">
-        <Card :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }" style="height: 100%">
+        <Card
+          :body-style="{
+            padding: '16px',
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+          }"
+          style="height: 100%"
+        >
           <Statistic
             title="待收金额"
             :value="statistics.unpaidAmount"
@@ -4818,6 +4852,7 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
 }
+
 /* 合同预览内容样式 */
 .contract-preview-content {
   flex: 1;

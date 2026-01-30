@@ -9,8 +9,8 @@ import { requestClient } from '#/api/request';
 export interface UserWecomDTO {
   id: number;
   userId: number;
-  wecomUserid: string | null;
-  wecomMobile: string | null;
+  wecomUserid: null | string;
+  wecomMobile: null | string;
   enabled: boolean;
   createdAt: string;
   updatedAt: string;
@@ -28,7 +28,7 @@ export interface BindWecomCommand {
  * 获取当前用户的企业微信绑定信息
  */
 export function getMyWecomBinding() {
-  return requestClient.get<UserWecomDTO | null>('/system/wecom/my');
+  return requestClient.get<null | UserWecomDTO>('/system/wecom/my');
 }
 
 /**
@@ -42,14 +42,14 @@ export function bindWecom(data: BindWecomCommand) {
  * 解绑企业微信
  */
 export function unbindWecom() {
-  return requestClient.post<void>('/system/wecom/unbind');
+  return requestClient.post('/system/wecom/unbind');
 }
 
 /**
  * 测试企业微信机器人连接
  */
 export function testWecomBot() {
-  return requestClient.post<{ success: boolean; message: string }>(
+  return requestClient.post<{ message: string; success: boolean }>(
     '/system/wecom/test',
   );
 }

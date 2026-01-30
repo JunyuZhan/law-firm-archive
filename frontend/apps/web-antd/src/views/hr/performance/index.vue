@@ -3,8 +3,6 @@ import { ref } from 'vue';
 
 import { Page } from '@vben/common-ui';
 
-import { useResponsive } from '#/hooks/useResponsive';
-
 import {
   Button,
   Card,
@@ -17,6 +15,8 @@ import {
   Table,
   Tag,
 } from 'ant-design-vue';
+
+import { useResponsive } from '#/hooks/useResponsive';
 
 defineOptions({ name: 'HrPerformance' });
 

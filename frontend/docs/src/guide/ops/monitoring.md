@@ -16,10 +16,12 @@
 ### 登录信息
 
 **Prometheus**：
+
 - ✅ **无需登录**：直接访问即可查看监控数据
 - ⚠️ **安全建议**：如需保护，通过 Nginx 反向代理添加基本认证
 
 **Grafana**：
+
 - 用户名：`admin`
 - 密码：`.env` 文件中的 `GRAFANA_PASSWORD`，如果没有设置则默认为 `admin`
 - ⚠️ **首次登录后会要求修改密码**
@@ -98,10 +100,12 @@ tail -f /var/log/nginx/error.log
 **Prometheus 界面是英文的**，可以使用以下方法：
 
 **方法一：使用浏览器翻译**（最简单）
+
 - Chrome/Edge：右键 → "翻译为中文"
 - 界面会自动翻译为中文
 
 **方法二：使用 Grafana**（推荐）
+
 - Grafana 支持中文界面
 - 可以从 Prometheus 读取数据并以更友好的方式展示
 - 详见下面的 Grafana 部分
@@ -142,6 +146,7 @@ pg_stat_database_numbackends
 ### 数据源配置
 
 Grafana 默认已配置 Prometheus 数据源：
+
 - **名称**：Prometheus
 - **URL**：`http://prometheus:9090`
 - **访问**：Server（服务器模式）
@@ -149,6 +154,7 @@ Grafana 默认已配置 Prometheus 数据源：
 ### 仪表板
 
 系统已预置监控仪表板，包括：
+
 - 系统概览
 - 应用性能
 - 数据库监控
@@ -165,6 +171,7 @@ Grafana 默认已配置 Prometheus 数据源：
 ### 告警规则
 
 告警规则定义在 `docker/prometheus/alerts.yml`，包括：
+
 - 服务下线告警
 - 高 CPU 使用率告警
 - 高内存使用率告警
@@ -181,6 +188,7 @@ Grafana 默认已配置 Prometheus 数据源：
 ---
 
 **最后更新**: 2026-01-27
+
 - PostgreSQL：`postgres-exporter:9187`
 - MinIO 集群：`minio:9000/minio/v2/metrics/cluster`
 - Node Exporter：`node-exporter:9100`

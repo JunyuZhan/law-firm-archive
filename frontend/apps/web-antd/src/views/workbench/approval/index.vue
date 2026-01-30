@@ -224,7 +224,7 @@ function handleReject(row: ApprovalDTO) {
     onOk: async () => {
       if (!rejectReason.value.trim()) {
         message.warning('请填写拒绝原因');
-        throw undefined;
+        throw new Error('操作失败');
       }
       try {
         await approveApproval({
@@ -237,7 +237,7 @@ function handleReject(row: ApprovalDTO) {
       } catch (error: unknown) {
         const err = error as { message?: string };
         message.error(err.message || '操作失败');
-        return Promise.reject();
+        throw error;
       }
     },
   });
@@ -310,7 +310,7 @@ async function handleBatchReject() {
     onOk: async () => {
       if (!rejectReason.value.trim()) {
         message.warning('请填写拒绝原因');
-        throw undefined;
+        throw new Error('操作失败');
       }
       try {
         await requestClient.post('/workbench/approval/batch-approve', {
@@ -323,7 +323,7 @@ async function handleBatchReject() {
       } catch (error: unknown) {
         const err = error as { message?: string };
         message.error(err.message || '批量操作失败');
-        return Promise.reject();
+        throw error;
       }
     },
   });

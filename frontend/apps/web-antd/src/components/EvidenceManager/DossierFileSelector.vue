@@ -58,7 +58,7 @@ const treeData = computed(() => {
   const buildTree = (parentId: number): any[] => {
     const items = dossierItems.value
       .filter((item) => item.parentId === parentId)
-      .sort((a, b) => a.sortOrder - b.sortOrder);
+      .toSorted((a, b) => a.sortOrder - b.sortOrder);
 
     return items.map((item) => {
       const children = item.itemType === 'FOLDER' ? buildTree(item.id) : [];

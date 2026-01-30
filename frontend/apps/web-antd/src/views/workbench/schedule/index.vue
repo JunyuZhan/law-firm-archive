@@ -5,8 +5,6 @@ import { computed, onMounted, ref } from 'vue';
 
 import { Page } from '@vben/common-ui';
 
-import { useResponsive } from '#/hooks/useResponsive';
-
 import {
   Button,
   Card,
@@ -41,6 +39,7 @@ import {
   updateSchedule,
 } from '#/api/matter/schedule';
 import { getOffDays } from '#/api/system/holiday';
+import { useResponsive } from '#/hooks/useResponsive';
 
 defineOptions({ name: 'ScheduleManagement' });
 
@@ -241,7 +240,7 @@ function getSchedulesForDay(day: dayjs.Dayjs) {
       const start = dayjs(s.startTime);
       return start.isSame(day, 'day');
     })
-    .sort((a, b) => {
+    .toSorted((a, b) => {
       // 全天日程排在最前面
       if (a.allDay && !b.allDay) return -1;
       if (!a.allDay && b.allDay) return 1;

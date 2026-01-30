@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import type { VbenFormSchema } from '#/adapter/form';
 import type {
+  CauseType,
   CreateCauseCommand,
   UpdateCauseCommand,
 } from '#/api/system/cause-of-action';
+
+import { createCause, getCauseById, updateCause } from '#/api/system/cause-of-action';
 
 import { computed, ref, watch } from 'vue';
 
@@ -12,21 +15,15 @@ import { useVbenModal } from '@vben/common-ui';
 import { message } from 'ant-design-vue';
 
 import { useVbenForm } from '#/adapter/form';
-import {
-  createCause,
-  getCauseById,
-  updateCause,
-  type CauseType,
-} from '#/api/system/cause-of-action';
-
-const emit = defineEmits<{
-  success: [];
-}>();
 
 const props = defineProps<{
   causeType: CauseType;
-  parentCode?: string;
   level?: number;
+  parentCode?: string;
+}>();
+
+const emit = defineEmits<{
+  success: [];
 }>();
 
 const isEdit = ref(false);
@@ -160,8 +157,8 @@ async function openCreate(
     causeType: props.causeType,
     level: currentLevel,
     parentCode: currentLevel === 1 ? undefined : parentCode,
-    categoryCode: categoryCode,
-    categoryName: categoryName,
+    categoryCode,
+    categoryName,
     isActive: true,
   });
   // 更新 schema 以反映 disabled 状态

@@ -2,16 +2,13 @@ package com.lawfirm.domain.admin.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lawfirm.common.base.BaseEntity;
-import lombok.*;
-import lombok.experimental.SuperBuilder;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import lombok.*;
+import lombok.experimental.SuperBuilder;
 
-/**
- * 考勤记录实体
- */
+/** 考勤记录实体. */
 @Data
 @SuperBuilder
 @NoArgsConstructor
@@ -20,46 +17,56 @@ import java.time.LocalDateTime;
 @TableName("attendance")
 public class Attendance extends BaseEntity {
 
-    /** 员工ID */
-    private Long userId;
+  /** 员工ID. */
+  private Long userId;
 
-    /** 考勤日期 */
-    private LocalDate attendanceDate;
+  /** 考勤日期. */
+  private LocalDate attendanceDate;
 
-    /** 签到时间 */
-    private LocalDateTime checkInTime;
+  /** 签到时间. */
+  private LocalDateTime checkInTime;
 
-    /** 签退时间 */
-    private LocalDateTime checkOutTime;
+  /** 签退时间. */
+  private LocalDateTime checkOutTime;
 
-    /** 签到地点 */
-    private String checkInLocation;
+  /** 签到地点. */
+  private String checkInLocation;
 
-    /** 签退地点 */
-    private String checkOutLocation;
+  /** 签退地点. */
+  private String checkOutLocation;
 
-    /** 签到设备 */
-    private String checkInDevice;
+  /** 签到设备. */
+  private String checkInDevice;
 
-    /** 签退设备 */
-    private String checkOutDevice;
+  /** 签退设备. */
+  private String checkOutDevice;
 
-    /** 状态: NORMAL正常/LATE迟到/EARLY早退/ABSENT缺勤/LEAVE请假 */
-    private String status;
+  /** 状态: NORMAL正常/LATE迟到/EARLY早退/ABSENT缺勤/LEAVE请假. */
+  private String status;
 
-    /** 工作时长(小时) */
-    private BigDecimal workHours;
+  /** 工作时长(小时). */
+  private BigDecimal workHours;
 
-    /** 加班时长(小时) */
-    private BigDecimal overtimeHours;
+  /** 加班时长(小时). */
+  private BigDecimal overtimeHours;
 
-    /** 备注 */
-    private String remark;
+  /** 备注. */
+  private String remark;
 
-    // 状态常量
-    public static final String STATUS_NORMAL = "NORMAL";
-    public static final String STATUS_LATE = "LATE";
-    public static final String STATUS_EARLY = "EARLY";
-    public static final String STATUS_ABSENT = "ABSENT";
-    public static final String STATUS_LEAVE = "LEAVE";
+  // 状态常量
+
+  /** 状态：正常. */
+  public static final String STATUS_NORMAL = "NORMAL";
+
+  /** 状态：迟到. */
+  public static final String STATUS_LATE = "LATE";
+
+  /** 状态：早退. */
+  public static final String STATUS_EARLY = "EARLY";
+
+  /** 状态：缺勤. */
+  public static final String STATUS_ABSENT = "ABSENT";
+
+  /** 状态：请假. */
+  public static final String STATUS_LEAVE = "LEAVE";
 }

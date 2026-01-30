@@ -51,6 +51,7 @@ function setupAccessGuard(router: Router) {
     const authStore = useAuthStore();
 
     // 基本路由，这些路由不需要进入权限拦截
+    // 但如果是需要布局的页面（如项目详情），仍需要确保菜单已加载
     if (coreRouteNames.includes(to.name as string)) {
       if (to.path === LOGIN_PATH && accessStore.accessToken) {
         return decodeURIComponent(
@@ -59,7 +60,12 @@ function setupAccessGuard(router: Router) {
             preferences.app.defaultHomePath,
         );
       }
-      return true;
+      // 如果菜单尚未加载，不直接返回，继续执行后续的菜单生成逻辑
+      // 这样可以确保项目详情等页面刷新时侧边栏能正常显示
+      if (accessStore.isAccessChecked) {
+        return true;
+      }
+      // 继续执行，不返回，让后续逻辑生成菜单
     }
 
     // accessToken 检查

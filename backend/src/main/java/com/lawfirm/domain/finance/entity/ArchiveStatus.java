@@ -1,31 +1,24 @@
 package com.lawfirm.domain.finance.entity;
 
-/**
- * 归档状态枚举
- */
+/** 归档状态枚举. */
 public enum ArchiveStatus {
-    /**
-     * 未归档
-     */
-    NOT_ARCHIVED("未归档"),
-    
-    /**
-     * 已归档
-     */
-    ARCHIVED("已归档"),
-    
-    /**
-     * 已销毁
-     */
-    DESTROYED("已销毁");
+  /** 未归档. */
+  NOT_ARCHIVED("未归档"),
 
-    private final String description;
+  /** 已归档. */
+  ARCHIVED("已归档"),
 
-    ArchiveStatus(String description) {
-        this.description = description;
-    }
+  /** 已销毁. */
+  DESTROYED("已销毁");
 
-    public String getDescription() {
-        return description;
-    }
+  /** 状态描述. */
+  private final String description;
+
+  ArchiveStatus(final String description) {
+    this.description = description;
+  }
+
+  public String getDescription() {
+    return description;
+  }
 }

@@ -42,7 +42,7 @@ done
 | `14-quality-schema.sql` | 质量管理 | 质量检查、检查明细、检查标准、风险预警 |
 | `15-workbench-schema.sql` | 工作台 | 审批、日程、定时报表 |
 | `16-contract-template-schema.sql` | 合同模板 | 合同模板、参与人模板、付款计划模板 |
-| `17-openapi-schema.sql` | 开放API | 客户文件上传、开放API集成 |
+| `17-client-service-schema.sql` | 客户服务对接 | 数据推送、客户文件上传、真伪验证 |
 | `18-cause-of-action-schema.sql` | 案由管理 | 案由分类、罪名、起诉理由 |
 | `19-system-integration-schema.sql` | 系统集成 | 节假日缓存、企业微信绑定 |
 
@@ -115,7 +115,7 @@ done
 | **合并** | 25 + 26 + 28 + 29 + 31 | 25-enhancement.sql |
 | **合并** | 30 + 40-44 + 99 | 30-demo-data-full.sql |
 | **合并** | 60-67 | 60-optimization.sql |
-| **重命名** | 32 | 17-openapi-schema.sql |
+| **重命名** | 32 | 17-client-service-schema.sql |
 | **重命名** | 50 | 18-cause-of-action-schema.sql |
 | **重命名** | 34 | 19-system-integration-schema.sql |
 | **保留** | 22, 23 | 冗余备份（配置已在20中） |

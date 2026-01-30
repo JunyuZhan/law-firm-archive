@@ -232,28 +232,28 @@ export function updatePayrollItemByEmployee(
  * 提交工资表
  */
 export function submitPayrollSheet(id: number) {
-  return requestClient.post<void>(`/hr/payroll/${id}/submit`);
+  return requestClient.post(`/hr/payroll/${id}/submit`);
 }
 
 /**
  * 员工确认工资表
  */
 export function confirmPayrollItem(command: ConfirmPayrollCommand) {
-  return requestClient.post<void>('/hr/payroll/item/confirm', command);
+  return requestClient.post('/hr/payroll/item/confirm', command);
 }
 
 /**
  * 财务确认工资表
  */
 export function financeConfirmPayrollSheet(id: number) {
-  return requestClient.post<void>(`/hr/payroll/${id}/finance-confirm`);
+  return requestClient.post(`/hr/payroll/${id}/finance-confirm`);
 }
 
 /**
  * 发放工资
  */
 export function issuePayroll(id: number, command: IssuePayrollCommand) {
-  return requestClient.post<void>(`/hr/payroll/${id}/issue`, command);
+  return requestClient.post(`/hr/payroll/${id}/issue`, command);
 }
 
 /**

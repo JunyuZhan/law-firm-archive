@@ -1,8 +1,6 @@
 <script lang="ts" setup>
 import type { NotificationItem } from './types';
 
-import { useRouter } from 'vue-router';
-
 import { Bell, CircleCheckBig, CircleX, MailCheck } from '@vben/icons';
 import { $t } from '@vben/locales';
 
@@ -42,7 +40,6 @@ const emit = defineEmits<{
   viewAll: [];
 }>();
 
-const router = useRouter();
 const [open, toggle] = useToggle();
 
 function close() {
@@ -66,25 +63,6 @@ function handleClick(item: NotificationItem) {
   // 只触发自定义点击事件，让父组件处理（标记为已读）
   // 不再执行自动跳转，避免跳转逻辑错误
   emit('click', item);
-}
-
-// @ts-expect-error - navigateTo is reserved for future use when implementing deep linking
-function navigateTo(
-  link: string,
-  query?: Record<string, any>,
-  state?: Record<string, any>,
-) {
-  if (link.startsWith('http://') || link.startsWith('https://')) {
-    // 外部链接，在新标签页打开
-    window.open(link, '_blank');
-  } else {
-    // 内部路由链接，支持 query 参数和 state
-    router.push({
-      path: link,
-      query: query || {},
-      state,
-    });
-  }
 }
 </script>
 <template>

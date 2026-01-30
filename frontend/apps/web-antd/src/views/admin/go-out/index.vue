@@ -94,8 +94,8 @@ const goOutForm = reactive<GoOutCommand>({
 async function fetchData() {
   loading.value = true;
   try {
-    let data: GoOutRecordDTO[];
-    data = await (searchForm.startDate && searchForm.endDate
+    const data: GoOutRecordDTO[] = await (searchForm.startDate &&
+    searchForm.endDate
       ? getGoOutRecordsByDateRange(searchForm.startDate, searchForm.endDate)
       : getMyGoOutRecords());
     tableData.value = data || [];
@@ -236,6 +236,7 @@ onMounted(() => {
           </template>
           <template v-if="column.key === 'action'">
             <Space>
+              <!-- eslint-disable-next-line prettier/prettier -->
               <a v-if="record.status === 'OUT'" @click="handleReturn(record)"
                 >登记返回</a
               >

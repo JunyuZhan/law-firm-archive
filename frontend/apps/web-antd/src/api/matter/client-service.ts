@@ -34,6 +34,10 @@ export interface PushConfigDTO {
   scopes: string[];
   autoPushOnUpdate: boolean;
   validDays: number;
+  /** 客户服务系统是否已连接 */
+  clientServiceConnected?: boolean;
+  /** 连接状态信息 */
+  connectionMessage?: string;
 }
 
 /** 推送请求 */
@@ -69,9 +73,9 @@ export function pushMatterData(request: PushRequest) {
  */
 export function getPushRecords(params: {
   matterId: number;
-  status?: string;
   pageNum?: number;
   pageSize?: number;
+  status?: string;
 }) {
   return requestClient.get<{ list: PushRecordDTO[]; total: number }>(
     '/matter/client-service/records',
@@ -127,9 +131,9 @@ export function updatePushConfig(
  */
 export function getPushStatistics(matterId: number) {
   return requestClient.get<{
-    totalPushCount: number;
-    lastPushTime?: string;
     lastPushStatus?: string;
+    lastPushTime?: string;
+    totalPushCount: number;
   }>('/matter/client-service/statistics', {
     params: { matterId },
   });
@@ -188,9 +192,9 @@ export interface ClientFileSyncRequest {
  */
 export function getClientFiles(params: {
   matterId: number;
-  status?: string;
   pageNum?: number;
   pageSize?: number;
+  status?: string;
 }) {
   return requestClient.get<{ list: ClientFileDTO[]; total: number }>(
     '/matter/client-files',
@@ -243,5 +247,5 @@ export function batchSyncClientFiles(requests: ClientFileSyncRequest[]) {
  * 忽略文件（不同步）
  */
 export function ignoreClientFile(fileId: number) {
-  return requestClient.post<void>(`/matter/client-files/${fileId}/ignore`);
+  return requestClient.post(`/matter/client-files/${fileId}/ignore`);
 }

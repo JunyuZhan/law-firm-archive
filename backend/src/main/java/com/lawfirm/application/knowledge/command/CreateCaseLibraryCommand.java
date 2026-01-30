@@ -1,30 +1,62 @@
 package com.lawfirm.application.knowledge.command;
 
+import java.time.LocalDate;
 import lombok.Data;
 
-import java.time.LocalDate;
-
-/**
- * 创建案例命令
- */
+/** 创建案例命令 */
 @Data
 public class CreateCaseLibraryCommand {
-    private String title;
-    private Long categoryId;
-    private String caseNumber;
-    private String courtName;
-    private LocalDate judgeDate;
-    private String caseType;
-    private String causeOfAction;
-    private String trialProcedure;
-    private String plaintiff;
-    private String defendant;
-    private String caseSummary;
-    private String courtOpinion;
-    private String judgmentResult;
-    private String caseSignificance;
-    private String keywords;
-    private String source;
-    private Long matterId;
-    private String attachmentUrl;
+  /** 标题 */
+  private String title;
+
+  /** 类别ID */
+  private Long categoryId;
+
+  /** 案号 */
+  private String caseNumber;
+
+  /** 法院名称 */
+  private String courtName;
+
+  /** 审理日期 */
+  private LocalDate judgeDate;
+
+  /** 案件类型 */
+  private String caseType;
+
+  /** 案由 */
+  private String causeOfAction;
+
+  /** 审理程序 */
+  private String trialProcedure;
+
+  /** 原告 */
+  private String plaintiff;
+
+  /** 被告 */
+  private String defendant;
+
+  /** 案件摘要 */
+  private String caseSummary;
+
+  /** 法院观点 */
+  private String courtOpinion;
+
+  /** 判决结果 */
+  private String judgmentResult;
+
+  /** 案件意义 */
+  private String caseSignificance;
+
+  /** 关键词 */
+  private String keywords;
+
+  /** 来源 */
+  private String source;
+
+  /** 关联案件ID */
+  private Long matterId;
+
+  /** 附件URL */
+  private String attachmentUrl;
 }

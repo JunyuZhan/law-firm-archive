@@ -1,24 +1,42 @@
 package com.lawfirm.application.hr.command;
 
+import java.time.LocalDate;
 import lombok.Data;
 
-import java.time.LocalDate;
-
-/**
- * 创建考核任务命令
- */
+/** 创建考核任务命令 */
 @Data
 public class CreatePerformanceTaskCommand {
 
-    private String name;
-    private String periodType;
-    private Integer year;
-    private Integer period;
-    private LocalDate startDate;
-    private LocalDate endDate;
-    private LocalDate selfEvalDeadline;
-    private LocalDate peerEvalDeadline;
-    private LocalDate supervisorEvalDeadline;
-    private String description;
-    private String remarks;
+  /** 任务名称 */
+  private String name;
+
+  /** 周期类型 */
+  private String periodType;
+
+  /** 年份 */
+  private Integer year;
+
+  /** 周期 */
+  private Integer period;
+
+  /** 开始日期 */
+  private LocalDate startDate;
+
+  /** 结束日期 */
+  private LocalDate endDate;
+
+  /** 自评截止日期 */
+  private LocalDate selfEvalDeadline;
+
+  /** 互评截止日期 */
+  private LocalDate peerEvalDeadline;
+
+  /** 主管评价截止日期 */
+  private LocalDate supervisorEvalDeadline;
+
+  /** 描述 */
+  private String description;
+
+  /** 备注 */
+  private String remarks;
 }

@@ -5,8 +5,6 @@ import type { CommissionRule } from '#/api/finance/commission-rule';
 import { h, reactive, ref } from 'vue';
 
 import { Page } from '@vben/common-ui';
-
-defineOptions({ name: 'FinanceCommissionRules' });
 import { Plus } from '@vben/icons';
 
 import {
@@ -28,6 +26,8 @@ import {
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import { commissionRuleApi } from '#/api/finance/commission-rule';
 import { usePermission } from '#/hooks/usePermission';
+
+defineOptions({ name: 'FinanceCommissionRules' });
 
 const Textarea = Input.TextArea;
 

@@ -104,7 +104,7 @@ export function createDeadline(data: CreateDeadlineCommand) {
 
 /** 自动创建期限提醒 */
 export function autoCreateDeadlines(matterId: number) {
-  return requestClient.post<void>(`/matter/deadlines/auto-create/${matterId}`);
+  return requestClient.post(`/matter/deadlines/auto-create/${matterId}`);
 }
 
 /** 更新期限提醒 */
@@ -119,7 +119,7 @@ export function completeDeadline(id: number) {
 
 /** 删除期限提醒 */
 export function deleteDeadline(id: number) {
-  return requestClient.delete<void>(`/matter/deadlines/${id}`);
+  return requestClient.delete(`/matter/deadlines/${id}`);
 }
 
 /** 获取我的即将到期的期限 */

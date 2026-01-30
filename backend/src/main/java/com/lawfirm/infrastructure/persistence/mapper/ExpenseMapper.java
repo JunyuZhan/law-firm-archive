@@ -2,22 +2,29 @@ package com.lawfirm.infrastructure.persistence.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.lawfirm.domain.finance.entity.Expense;
+import java.util.List;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
-import java.util.List;
-
-/**
- * 费用报销 Mapper
- */
+/** 费用报销 Mapper */
 @Mapper
 public interface ExpenseMapper extends BaseMapper<Expense> {
 
-    /**
-     * 分页查询费用报销列表
-     */
-    @Select("""
+  /**
+   * 分页查询费用报销列表.
+   *
+   * @param expenseNo 报销单号
+   * @param matterId 项目ID
+   * @param applicantId 申请人ID
+   * @param status 状态
+   * @param expenseType 费用类型
+   * @param expenseCategory 费用分类
+   * @param matterIds 项目ID列表
+   * @return 费用报销列表
+   */
+  @Select(
+      """
         <script>
         SELECT e.*, u1.real_name as applicant_name, u2.real_name as approver_name,
                m.name as matter_name
@@ -53,33 +60,38 @@ public interface ExpenseMapper extends BaseMapper<Expense> {
         ORDER BY e.created_at DESC
         </script>
         """)
-    List<Expense> selectExpensePage(
-            @Param("expenseNo") String expenseNo,
-            @Param("matterId") Long matterId,
-            @Param("applicantId") Long applicantId,
-            @Param("status") String status,
-            @Param("expenseType") String expenseType,
-            @Param("expenseCategory") String expenseCategory,
-            @Param("matterIds") java.util.List<Long> matterIds
-    );
+  List<Expense> selectExpensePage(
+      @Param("expenseNo") String expenseNo,
+      @Param("matterId") Long matterId,
+      @Param("applicantId") Long applicantId,
+      @Param("status") String status,
+      @Param("expenseType") String expenseType,
+      @Param("expenseCategory") String expenseCategory,
+      @Param("matterIds") java.util.List<Long> matterIds);
 
-    /**
-     * 根据报销单号查询
-     */
-    @Select("SELECT * FROM finance_expense WHERE expense_no = #{expenseNo} AND deleted = false")
-    Expense selectByExpenseNo(@Param("expenseNo") String expenseNo);
+  /**
+   * 根据报销单号查询.
+   *
+   * @param expenseNo 报销单号
+   * @return 费用报销
+   */
+  @Select("SELECT * FROM finance_expense WHERE expense_no = #{expenseNo} AND deleted = false")
+  Expense selectByExpenseNo(@Param("expenseNo") String expenseNo);
 
-    /**
-     * 查询项目的总成本（已归集的费用）
-     */
-    @Select("""
-        SELECT COALESCE(SUM(amount), 0) 
-        FROM finance_expense 
-        WHERE matter_id = #{matterId} 
-          AND status = 'PAID' 
-          AND is_cost_allocation = true 
+  /**
+   * 查询项目的总成本（已归集的费用）.
+   *
+   * @param matterId 项目ID
+   * @return 总成本
+   */
+  @Select(
+      """
+        SELECT COALESCE(SUM(amount), 0)
+        FROM finance_expense
+        WHERE matter_id = #{matterId}
+          AND status = 'PAID'
+          AND is_cost_allocation = true
           AND deleted = false
         """)
-    java.math.BigDecimal selectTotalCostByMatterId(@Param("matterId") Long matterId);
+  java.math.BigDecimal selectTotalCostByMatterId(@Param("matterId") Long matterId);
 }
-

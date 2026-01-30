@@ -42,8 +42,14 @@ import {
   deleteEvidence,
   downloadEvidenceListDirect,
   getAccessToken,
+  saveEvidenceListToDossier,
   updateEvidence,
 } from '#/api/evidence';
+import {
+  getMatterDossierItems,
+  type MatterDossierItem,
+} from '#/api/document/dossier';
+import { Modal, Select } from 'ant-design-vue';
 
 interface EvidenceRow {
   id?: number;
@@ -71,10 +77,10 @@ interface GroupData {
 
 const props = defineProps<{
   evidences: EvidenceItem[];
-  matterId: number;
-  matterName?: string; // 案件名称，用于打印显示
   listId?: number; // 关联的证据清单ID
   listName?: string; // 清单名称，用于打印显示
+  matterId: number;
+  matterName?: string; // 案件名称，用于打印显示
   readonly?: boolean;
   submitDate?: string;
   submitter?: string;
@@ -396,6 +402,63 @@ async function handleExport(format: 'pdf' | 'word') {
   }
 }
 
+// === 保存到卷宗 ===
+const showDossierModal = ref(false);
+const dossierItems = ref<MatterDossierItem[]>([]);
+const selectedDossierItemId = ref<number | undefined>(undefined);
+const savingToDossier = ref(false);
+
+// 加载卷宗目录
+async function loadDossierItems() {
+  try {
+    const items = await getMatterDossierItems(props.matterId);
+    // 只显示文件夹类型
+    dossierItems.value = items.filter(
+      (item: MatterDossierItem) => item.itemType === 'FOLDER',
+    );
+  } catch (error: any) {
+    message.error('加载卷宗目录失败');
+  }
+}
+
+// 打开保存到卷宗弹窗
+async function openSaveToDossierModal() {
+  if (!props.listId) {
+    message.warning('请先保存证据清单');
+    return;
+  }
+  if (groupList.value.length === 0) {
+    message.warning('暂无证据可保存');
+    return;
+  }
+  await loadDossierItems();
+  selectedDossierItemId.value = undefined;
+  showDossierModal.value = true;
+}
+
+// 确认保存到卷宗
+async function confirmSaveToDossier() {
+  if (!selectedDossierItemId.value) {
+    message.warning('请选择目标文件夹');
+    return;
+  }
+  if (!props.listId) {
+    message.warning('证据清单ID不存在');
+    return;
+  }
+
+  savingToDossier.value = true;
+  try {
+    await saveEvidenceListToDossier(props.listId, selectedDossierItemId.value);
+    message.success('证据清单PDF已保存到卷宗');
+    showDossierModal.value = false;
+  } catch (error: any) {
+    message.error(error.message || '保存失败');
+  } finally {
+    savingToDossier.value = false;
+  }
+}
+
 // 打印 - 文档式格式（清单式特有的打印样式）
 function handlePrint() {
   if (groupList.value.length === 0) {
@@ -663,8 +726,37 @@ function handlePrint() {
           <Download class="h-4 w-4" />
           导出 PDF
         </Button>
+        <Button type="primary" @click="openSaveToDossierModal">
+          📁 保存到卷宗
+        </Button>
       </Space>
     </div>
+
+    <!-- 保存到卷宗弹窗 -->
+    <Modal
+      v-model:open="showDossierModal"
+      title="保存证据清单到卷宗"
+      :confirm-loading="savingToDossier"
+      @ok="confirmSaveToDossier"
+    >
+      <div style="margin-bottom: 16px">
+        选择要保存到的卷宗文件夹：
+      </div>
+      <Select
+        v-model:value="selectedDossierItemId"
+        placeholder="请选择目标文件夹"
+        style="width: 100%"
+        :options="
+          dossierItems.map((item) => ({
+            value: item.id,
+            label: item.name,
+          }))
+        "
+      />
+      <div style="margin-top: 12px; color: #888; font-size: 12px">
+        将生成证据清单PDF文件并保存到选中的卷宗文件夹中
+      </div>
+    </Modal>
 
     <!-- 清单标题 -->
     <div class="list-header">
@@ -688,6 +780,7 @@ function handlePrint() {
             <Tag v-if="group.isDirty && !group.isNew" color="orange">
               未保存
             </Tag>
+            <!-- eslint-disable-next-line prettier/prettier -->
             <span class="evidence-count"
               >（{{ group.evidences.length }} 项证据）</span
             >

@@ -82,11 +82,11 @@ const civilContractStandard = `
 
 <h3>第一条 通知和联系</h3>
 <p><strong>1. 甲方通讯地址及联系方法</strong></p>
-<p>通讯地址：\${clientAddress}　　邮政编码：\${clientPostcode}</p>
-<p>联系人：\${clientName}　　联系电话：\${clientPhone}</p>
+<p>通讯地址：\${clientAddress}    邮政编码：\${clientPostcode}</p>
+<p>联系人：\${clientName}    联系电话：\${clientPhone}</p>
 
 <p><strong>2. 乙方通讯地址及联系方法</strong></p>
-<p>通讯地址：\${firmAddress}　　邮政编码：\${firmPostcode}</p>
+<p>通讯地址：\${firmAddress}    邮政编码：\${firmPostcode}</p>
 <p>联系电话：\${firmPhone}</p>
 
 <h3>第二条 委托事项</h3>
@@ -180,7 +180,7 @@ const criminalContractSimple = `
 <h2 style="text-align: center; letter-spacing: 0.3em;">委托代理合同</h2>
 <p style="text-align: center;">合同编号：\${contractNo}</p>
 
-<p><strong>委托人：</strong>\${clientName}　　<strong>电话：</strong>\${clientPhone}</p>
+<p><strong>委托人：</strong>\${clientName}    <strong>电话：</strong>\${clientPhone}</p>
 <p><strong>受托人：</strong>\${firmName}</p>
 
 <p>因<strong>\${defendant}</strong>涉嫌<strong>\${causeOfAction}</strong>一案，双方就委托辩护事宜订立本合同。</p>

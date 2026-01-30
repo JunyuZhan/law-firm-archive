@@ -104,7 +104,8 @@ async function handleOcrArticle(file: File) {
     const result: OcrResultDTO = await recognizeGeneral(file);
     if (result.success && result.rawText) {
       // 获取当前内容并追加
-      const currentContent = (await formApi.getValues()).content || '';
+      const formValues = await formApi.getValues();
+      const currentContent = formValues.content || '';
       const separator = currentContent ? '\n\n--- OCR识别内容 ---\n' : '';
       formApi.setValues({
         content: currentContent + separator + result.rawText,

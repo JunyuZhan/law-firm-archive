@@ -1,5 +1,3 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-
 import type {
   CommissionQuery,
   ContractQuery,
@@ -15,11 +13,14 @@ import type {
   UpdateContractCommand,
   UpdatePaymentScheduleCommand,
 } from '../types';
+
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
 import {
+  applyInvoice,
   approveCommission,
   approveContract,
   approveExpense,
-  applyInvoice,
   batchApproveCommission,
   batchIssueCommission,
   calculateCommission,
@@ -82,7 +83,7 @@ vi.mock('#/api/request', () => ({
   },
 }));
 
-describe('Finance API', () => {
+describe('finance API', () => {
   let mockGet: ReturnType<typeof vi.fn>;
   let mockPost: ReturnType<typeof vi.fn>;
   let mockPut: ReturnType<typeof vi.fn>;
@@ -97,7 +98,7 @@ describe('Finance API', () => {
     vi.clearAllMocks();
   });
 
-  describe('Contract Management', () => {
+  describe('contract Management', () => {
     it('should get contract list', async () => {
       const params: ContractQuery = { pageNum: 1, pageSize: 10 };
       const mockResponse = { list: [], total: 0 };
@@ -107,7 +108,9 @@ describe('Finance API', () => {
       const result = await getContractList(params);
 
       expect(result).toEqual(mockResponse);
-      expect(mockGet).toHaveBeenCalledWith('/finance/contract/list', { params });
+      expect(mockGet).toHaveBeenCalledWith('/finance/contract/list', {
+        params,
+      });
     });
 
     it('should get my contracts', async () => {
@@ -171,7 +174,9 @@ describe('Finance API', () => {
 
       await deleteContract(contractId);
 
-      expect(mockDelete).toHaveBeenCalledWith(`/finance/contract/${contractId}`);
+      expect(mockDelete).toHaveBeenCalledWith(
+        `/finance/contract/${contractId}`,
+      );
     });
 
     it('should submit contract', async () => {
@@ -181,7 +186,9 @@ describe('Finance API', () => {
 
       await submitContract(contractId);
 
-      expect(mockPost).toHaveBeenCalledWith(`/finance/contract/${contractId}/submit`);
+      expect(mockPost).toHaveBeenCalledWith(
+        `/finance/contract/${contractId}/submit`,
+      );
     });
 
     it('should approve contract', async () => {
@@ -242,7 +249,7 @@ describe('Finance API', () => {
         {
           id: 1,
           contractId,
-          amount: 10000,
+          amount: 10_000,
           dueDate: '2024-01-01',
         },
       ];
@@ -260,7 +267,7 @@ describe('Finance API', () => {
     it('should create payment schedule', async () => {
       const contractId = 1;
       const data: CreatePaymentScheduleCommand = {
-        amount: 10000,
+        amount: 10_000,
         dueDate: '2024-01-01',
       } as any;
       const mockResponse = { id: 1, contractId, ...data };
@@ -280,7 +287,7 @@ describe('Finance API', () => {
       const contractId = 1;
       const scheduleId = 1;
       const data: UpdatePaymentScheduleCommand = {
-        amount: 15000,
+        amount: 15_000,
       } as any;
       const mockResponse = { id: scheduleId, contractId, ...data };
 
@@ -357,7 +364,11 @@ describe('Finance API', () => {
 
       mockPut.mockResolvedValueOnce(mockResponse);
 
-      const result = await updateContractParticipant(contractId, participantId, data);
+      const result = await updateContractParticipant(
+        contractId,
+        participantId,
+        data,
+      );
 
       expect(result).toEqual(mockResponse);
       expect(mockPut).toHaveBeenCalledWith(
@@ -383,7 +394,7 @@ describe('Finance API', () => {
       const params = { startDate: '2024-01-01', endDate: '2024-12-31' };
       const mockResponse = {
         totalContracts: 100,
-        totalAmount: 1000000,
+        totalAmount: 1_000_000,
       };
 
       mockGet.mockResolvedValueOnce(mockResponse);
@@ -435,7 +446,7 @@ describe('Finance API', () => {
     });
   });
 
-  describe('Fee Management', () => {
+  describe('fee Management', () => {
     it('should get fee list', async () => {
       const params: FeeQuery = { pageNum: 1, pageSize: 10 };
       const mockResponse = { list: [], total: 0 };
@@ -450,7 +461,7 @@ describe('Finance API', () => {
 
     it('should get fee detail', async () => {
       const feeId = 1;
-      const mockResponse = { id: feeId, amount: 10000 };
+      const mockResponse = { id: feeId, amount: 10_000 };
 
       mockGet.mockResolvedValueOnce(mockResponse);
 
@@ -463,7 +474,7 @@ describe('Finance API', () => {
     it('should create fee', async () => {
       const data: CreateFeeCommand = {
         matterId: 1,
-        amount: 10000,
+        amount: 10_000,
         feeType: 'FIXED',
       } as any;
       const mockResponse = { id: 1, ...data };
@@ -478,7 +489,7 @@ describe('Finance API', () => {
 
     it('should update fee', async () => {
       const feeId = 1;
-      const data = { amount: 15000 };
+      const data = { amount: 15_000 };
 
       mockPut.mockResolvedValueOnce({ id: feeId, ...data });
 
@@ -498,11 +509,11 @@ describe('Finance API', () => {
     });
   });
 
-  describe('Payment Management', () => {
+  describe('payment Management', () => {
     it('should create payment', async () => {
       const data: CreatePaymentCommand = {
         feeId: 1,
-        amount: 10000,
+        amount: 10_000,
         paymentMethod: 'BANK_TRANSFER',
       } as any;
       const mockResponse = { id: 1, ...data };
@@ -540,7 +551,7 @@ describe('Finance API', () => {
     });
   });
 
-  describe('Invoice Management', () => {
+  describe('invoice Management', () => {
     it('should get invoice list', async () => {
       const params: InvoiceQuery = { pageNum: 1, pageSize: 10 };
       const mockResponse = { list: [], total: 0 };
@@ -568,7 +579,7 @@ describe('Finance API', () => {
     it('should apply invoice', async () => {
       const data: CreateInvoiceCommand = {
         feeId: 1,
-        amount: 10000,
+        amount: 10_000,
       } as any;
       const mockResponse = { id: 1, ...data };
 
@@ -588,9 +599,12 @@ describe('Finance API', () => {
 
       await issueInvoice(invoiceId, invoiceNo);
 
-      expect(mockPost).toHaveBeenCalledWith(`/finance/invoice/${invoiceId}/issue`, {
-        invoiceNo,
-      });
+      expect(mockPost).toHaveBeenCalledWith(
+        `/finance/invoice/${invoiceId}/issue`,
+        {
+          invoiceNo,
+        },
+      );
     });
 
     it('should cancel invoice', async () => {
@@ -601,14 +615,17 @@ describe('Finance API', () => {
 
       await cancelInvoice(invoiceId, reason);
 
-      expect(mockPost).toHaveBeenCalledWith(`/finance/invoice/${invoiceId}/cancel`, {
-        reason,
-      });
+      expect(mockPost).toHaveBeenCalledWith(
+        `/finance/invoice/${invoiceId}/cancel`,
+        {
+          reason,
+        },
+      );
     });
 
     it('should get invoice statistics', async () => {
       const mockResponse = {
-        totalAmount: 100000,
+        totalAmount: 100_000,
         totalCount: 50,
       };
 
@@ -621,7 +638,7 @@ describe('Finance API', () => {
     });
   });
 
-  describe('Commission Management', () => {
+  describe('commission Management', () => {
     it('should get commission list', async () => {
       const params: CommissionQuery = { pageNum: 1, pageSize: 10 };
       const mockResponse = { list: [], total: 0 };
@@ -652,7 +669,7 @@ describe('Finance API', () => {
       const mockResponse = [
         {
           id: 1,
-          amount: 10000,
+          amount: 10_000,
           status: 'PENDING',
         },
       ];
@@ -779,12 +796,15 @@ describe('Finance API', () => {
 
       await batchIssueCommission(ids);
 
-      expect(mockPost).toHaveBeenCalledWith('/finance/commission/batch-issue', ids);
+      expect(mockPost).toHaveBeenCalledWith(
+        '/finance/commission/batch-issue',
+        ids,
+      );
     });
 
     it('should get user commission total', async () => {
       const userId = 1;
-      const mockResponse = 50000;
+      const mockResponse = 50_000;
 
       mockGet.mockResolvedValueOnce(mockResponse);
 
@@ -800,7 +820,7 @@ describe('Finance API', () => {
       const startDate = '2024-01-01';
       const endDate = '2024-12-31';
       const mockResponse = {
-        totalAmount: 100000,
+        totalAmount: 100_000,
         totalCount: 20,
       };
 
@@ -833,7 +853,7 @@ describe('Finance API', () => {
     });
   });
 
-  describe('Expense Management', () => {
+  describe('expense Management', () => {
     it('should get expense list', async () => {
       const params: ExpenseQuery = { pageNum: 1, pageSize: 10 };
       const mockResponse = { list: [], total: 0 };

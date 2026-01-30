@@ -21,7 +21,7 @@ interface CardItem {
   /** 信息行列表 */
   infoRows?: Array<{
     label: string;
-    value: string | number;
+    value: number | string;
   }>;
   /** 原始数据 */
   raw?: any;
@@ -42,10 +42,10 @@ interface Props {
   showDelete?: boolean;
   /** 自定义操作按钮 */
   customActions?: Array<{
-    label: string;
-    type?: 'primary' | 'default' | 'dashed' | 'link' | 'text';
     danger?: boolean;
+    label: string;
     onClick: (item: CardItem) => void;
+    type?: 'dashed' | 'default' | 'link' | 'primary' | 'text';
   }>;
 }
 
@@ -59,9 +59,9 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const emit = defineEmits<{
-  view: [item: CardItem];
-  edit: [item: CardItem];
   delete: [item: CardItem];
+  edit: [item: CardItem];
+  view: [item: CardItem];
 }>();
 
 const hasActions = computed(() => {

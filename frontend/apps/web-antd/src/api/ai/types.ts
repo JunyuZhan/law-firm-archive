@@ -52,10 +52,10 @@ export interface AiUsageSummaryDTO {
   totalCost: number;
   userCost: number;
   companyCost: number;
-  monthlyTokenQuota?: number | null;
-  monthlyCostQuota?: number | null;
-  tokenUsagePercent?: number | null;
-  costUsagePercent?: number | null;
+  monthlyTokenQuota?: null | number;
+  monthlyCostQuota?: null | number;
+  tokenUsagePercent?: null | number;
+  costUsagePercent?: null | number;
 }
 
 export interface AiModelUsageDTO {

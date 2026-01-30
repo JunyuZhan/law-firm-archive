@@ -216,16 +216,20 @@ function handleApprove(record: CommissionDTO) {
       }
     },
     onCancel: async () => {
-      const comment = prompt('请输入拒绝原因:');
-      if (comment) {
-        try {
-          await approveCommission(record.id, false, comment);
-          message.success('审批拒绝成功');
-          fetchData();
-        } catch (error: any) {
-          message.error(error.message || '审批失败');
-        }
-      }
+      Modal.prompt({
+        title: '请输入拒绝原因',
+        onOk: async (comment: string) => {
+          if (comment) {
+            try {
+              await approveCommission(record.id, false, comment);
+              message.success('审批拒绝成功');
+              fetchData();
+            } catch (error: any) {
+              message.error(error.message || '审批失败');
+            }
+          }
+        },
+      });
     },
   });
 }
@@ -271,17 +275,25 @@ function handleBatchApprove() {
       }
     },
     onCancel: async () => {
-      const comment = prompt('请输入拒绝原因:');
-      if (comment) {
-        try {
-          await batchApproveCommission(selectedRowKeys.value, false, comment);
-          message.success('批量审批拒绝成功');
-          selectedRowKeys.value = [];
-          fetchData();
-        } catch (error: any) {
-          message.error(error.message || '批量审批失败');
-        }
-      }
+      Modal.prompt({
+        title: '请输入拒绝原因',
+        onOk: async (comment: string) => {
+          if (comment) {
+            try {
+              await batchApproveCommission(
+                selectedRowKeys.value,
+                false,
+                comment,
+              );
+              message.success('批量审批拒绝成功');
+              selectedRowKeys.value = [];
+              fetchData();
+            } catch (error: any) {
+              message.error(error.message || '批量审批失败');
+            }
+          }
+        },
+      });
     },
   });
 }
@@ -855,18 +867,21 @@ onMounted(() => {
         <Row :gutter="[16, 16]">
           <Col :span="12">
             <div>
+              <!-- eslint-disable-next-line prettier/prettier -->
               <strong>提成编号：</strong
               >{{ currentCommission.commissionNo || '-' }}
             </div>
           </Col>
           <Col :span="12">
             <div>
+              <!-- eslint-disable-next-line prettier/prettier -->
               <strong>项目名称：</strong
               >{{ currentCommission.matterName || '-' }}
             </div>
           </Col>
           <Col :span="12">
             <div>
+              <!-- eslint-disable-next-line prettier/prettier -->
               <strong>客户名称：</strong
               >{{ currentCommission.clientName || '-' }}
             </div>

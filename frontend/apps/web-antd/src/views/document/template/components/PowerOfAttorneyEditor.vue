@@ -4,14 +4,14 @@
  * 将委托书模板分为多个区块：标题、委托人、受托人、委托事项、签字落款
  * 用户只需关注内容，打印时系统自动排版
  */
-import { reactive, ref, watch, computed } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 
 import {
   Alert,
+  Button,
   Collapse,
   CollapsePanel,
   Dropdown,
-  Button,
   Input,
   Menu,
   MenuItem,
@@ -20,17 +20,17 @@ import {
 
 import { decodeHtmlEntities } from '../../../system/contract-template/utils/print-formatter';
 
-const { TextArea: Textarea } = Input;
-
 // Props
 const props = defineProps<{
   modelValue: string;
-  variables?: Array<{ label: string; value: string; description?: string }>;
+  variables?: Array<{ description?: string; label: string; value: string }>;
 }>();
 
 const emit = defineEmits<{
   'update:modelValue': [value: string];
 }>();
+
+const { TextArea: Textarea } = Input;
 
 // 委托书模板分块数据结构
 interface TemplateBlocks {
@@ -42,8 +42,8 @@ interface TemplateBlocks {
   matter: string; // 委托事项内容
   signature: {
     clientSign: string; // 委托人签署
-    signDate: string; // 签署日期
     remarks: string; // 备注说明
+    signDate: string; // 签署日期
   };
 }
 
@@ -78,7 +78,7 @@ const cursorPositions = ref<Record<string, number>>({});
 
 // 处理输入框失去焦点时保存光标位置
 function handleBlur(name: string, event: FocusEvent) {
-  const target = event.target as HTMLTextAreaElement | HTMLInputElement;
+  const target = event.target as HTMLInputElement | HTMLTextAreaElement;
   if (target) {
     cursorPositions.value[name] = target.selectionStart ?? 0;
   }
@@ -86,7 +86,7 @@ function handleBlur(name: string, event: FocusEvent) {
 
 // 处理点击和选择变化时更新光标位置
 function handleSelect(name: string, event: Event) {
-  const target = event.target as HTMLTextAreaElement | HTMLInputElement;
+  const target = event.target as HTMLInputElement | HTMLTextAreaElement;
   if (target) {
     cursorPositions.value[name] = target.selectionStart ?? 0;
   }
@@ -106,7 +106,6 @@ function parseContent(content: string) {
     if (parsed._structured && parsed.blocks) {
       // 新格式：{ _structured: true, blocks: { ... } }
       Object.assign(blocks, parsed.blocks);
-      return;
     } else if (
       parsed.title ||
       parsed.client ||
@@ -116,7 +115,6 @@ function parseContent(content: string) {
     ) {
       // 兼容旧格式：直接是 blocks 对象
       Object.assign(blocks, parsed);
-      return;
     }
   } catch {
     // 不是 JSON，尝试解析旧格式或设为默认值
@@ -161,33 +159,56 @@ watch(
 // 在光标位置插入变量
 function insertVariable(
   target:
-    | 'documentTitle'
-    | 'client'
     | 'agent'
-    | 'matter'
+    | 'client'
     | 'clientSign'
-    | 'signDate'
-    | 'remarks',
+    | 'documentTitle'
+    | 'matter'
+    | 'remarks'
+    | 'signDate',
   variable: string,
 ) {
   const varStr = `\${${variable}}`;
 
   // 获取当前值
   let currentValue = '';
-  if (target === 'documentTitle') {
-    currentValue = blocks.title.documentTitle;
-  } else if (target === 'client') {
-    currentValue = blocks.client;
-  } else if (target === 'agent') {
-    currentValue = blocks.agent;
-  } else if (target === 'matter') {
-    currentValue = blocks.matter;
-  } else if (target === 'clientSign') {
-    currentValue = blocks.signature.clientSign;
-  } else if (target === 'signDate') {
-    currentValue = blocks.signature.signDate;
-  } else if (target === 'remarks') {
-    currentValue = blocks.signature.remarks;
+  switch (target) {
+    case 'agent': {
+      currentValue = blocks.agent;
+
+      break;
+    }
+    case 'client': {
+      currentValue = blocks.client;
+
+      break;
+    }
+    case 'clientSign': {
+      currentValue = blocks.signature.clientSign;
+
+      break;
+    }
+    case 'documentTitle': {
+      currentValue = blocks.title.documentTitle;
+
+      break;
+    }
+    case 'matter': {
+      currentValue = blocks.matter;
+
+      break;
+    }
+    case 'remarks': {
+      currentValue = blocks.signature.remarks;
+
+      break;
+    }
+    case 'signDate': {
+      currentValue = blocks.signature.signDate;
+
+      break;
+    }
+    // No default
   }
 
   // 获取记录的光标位置，如果没有记录则追加到末尾
@@ -198,20 +219,43 @@ function insertVariable(
     currentValue.slice(0, cursorPos) + varStr + currentValue.slice(cursorPos);
 
   // 更新对应区块的值
-  if (target === 'documentTitle') {
-    blocks.title.documentTitle = newValue;
-  } else if (target === 'client') {
-    blocks.client = newValue;
-  } else if (target === 'agent') {
-    blocks.agent = newValue;
-  } else if (target === 'matter') {
-    blocks.matter = newValue;
-  } else if (target === 'clientSign') {
-    blocks.signature.clientSign = newValue;
-  } else if (target === 'signDate') {
-    blocks.signature.signDate = newValue;
-  } else if (target === 'remarks') {
-    blocks.signature.remarks = newValue;
+  switch (target) {
+    case 'agent': {
+      blocks.agent = newValue;
+
+      break;
+    }
+    case 'client': {
+      blocks.client = newValue;
+
+      break;
+    }
+    case 'clientSign': {
+      blocks.signature.clientSign = newValue;
+
+      break;
+    }
+    case 'documentTitle': {
+      blocks.title.documentTitle = newValue;
+
+      break;
+    }
+    case 'matter': {
+      blocks.matter = newValue;
+
+      break;
+    }
+    case 'remarks': {
+      blocks.signature.remarks = newValue;
+
+      break;
+    }
+    case 'signDate': {
+      blocks.signature.signDate = newValue;
+
+      break;
+    }
+    // No default
   }
 
   // 更新光标位置（移到插入变量之后）
@@ -328,7 +372,7 @@ const variableGroups = computed(() => {
       style="margin-bottom: 16px"
     />
 
-    <Collapse v-model:activeKey="activeKeys" :bordered="false">
+    <Collapse v-model:active-key="activeKeys" :bordered="false">
       <!-- 区块1：标题区 -->
       <CollapsePanel key="title" header="📌 区块一：标题块">
         <template #extra>

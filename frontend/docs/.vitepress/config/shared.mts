@@ -1,4 +1,5 @@
 import type { PwaOptions } from '@vite-pwa/vitepress';
+import type { Plugin } from 'vite';
 import type { HeadConfig } from 'vitepress';
 
 import { resolve } from 'node:path';
@@ -18,7 +19,6 @@ import {
   groupIconMdPlugin,
   groupIconVitePlugin,
 } from 'vitepress-plugin-group-icons';
-import type { Plugin } from 'vite';
 
 import { demoPreviewPlugin } from './plugins/demo-preview';
 import { search as zhSearch } from './zh.mts';

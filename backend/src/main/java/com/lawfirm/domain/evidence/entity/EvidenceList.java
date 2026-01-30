@@ -5,9 +5,7 @@ import com.lawfirm.common.base.BaseEntity;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 
-/**
- * 证据清单实体
- */
+/** 证据清单实体 */
 @Data
 @SuperBuilder
 @NoArgsConstructor
@@ -16,35 +14,42 @@ import lombok.experimental.SuperBuilder;
 @TableName("evidence_list")
 public class EvidenceList extends BaseEntity {
 
-    /** 清单编号 */
-    private String listNo;
+  /** 清单编号 */
+  private String listNo;
 
-    /** 案件ID */
-    private Long matterId;
+  /** 案件ID */
+  private Long matterId;
 
-    /** 清单名称 */
-    private String name;
+  /** 清单名称 */
+  private String name;
 
-    /** 清单类型 */
-    private String listType;
+  /** 清单类型 */
+  private String listType;
 
-    /** 证据ID列表(JSON字符串) */
-    private String evidenceIds;
+  /** 证据ID列表(JSON字符串) */
+  private String evidenceIds;
 
-    /** 文件URL */
-    private String fileUrl;
+  /** 文件URL */
+  private String fileUrl;
 
-    /** 文件名 */
-    private String fileName;
+  /** 文件名 */
+  private String fileName;
 
-    /** 状态 */
-    @lombok.Builder.Default
-    private String status = STATUS_DRAFT;
+  /** 状态 */
+  @lombok.Builder.Default private String status = STATUS_DRAFT;
 
-    public static final String STATUS_DRAFT = "DRAFT";
-    public static final String STATUS_GENERATED = "GENERATED";
+  /** 状态：草稿 */
+  public static final String STATUS_DRAFT = "DRAFT";
 
-    public static final String TYPE_SUBMISSION = "SUBMISSION";
-    public static final String TYPE_EXCHANGE = "EXCHANGE";
-    public static final String TYPE_COURT = "COURT";
+  /** 状态：已生成 */
+  public static final String STATUS_GENERATED = "GENERATED";
+
+  /** 类型：提交 */
+  public static final String TYPE_SUBMISSION = "SUBMISSION";
+
+  /** 类型：交换 */
+  public static final String TYPE_EXCHANGE = "EXCHANGE";
+
+  /** 类型：法院 */
+  public static final String TYPE_COURT = "COURT";
 }

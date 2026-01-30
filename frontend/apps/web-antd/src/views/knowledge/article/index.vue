@@ -10,8 +10,6 @@ import { ref, watch } from 'vue';
 import { Page } from '@vben/common-ui';
 import { Plus } from '@vben/icons';
 
-import { useResponsive } from '#/hooks/useResponsive';
-
 import {
   Button,
   Card,
@@ -35,6 +33,7 @@ import {
   publishArticle,
   uncollectArticle,
 } from '#/api/knowledge';
+import { useResponsive } from '#/hooks/useResponsive';
 
 import ArticleModal from './components/ArticleModal.vue';
 
@@ -269,12 +268,15 @@ function getStatusColor(status: string) {
         <template #action="{ row }">
           <Space>
             <a @click="handleEdit(row)">编辑</a>
+            <!-- eslint-disable-next-line prettier/prettier -->
             <a v-if="row.status === 'DRAFT'" @click="handlePublish(row)"
               >发布</a
             >
+            <!-- eslint-disable-next-line prettier/prettier -->
             <a v-if="row.status === 'PUBLISHED'" @click="handleArchive(row)"
               >归档</a
             >
+            <!-- eslint-disable-next-line prettier/prettier -->
             <a v-if="row.status === 'PUBLISHED'" @click="handleLike(row)"
               >点赞</a
             >

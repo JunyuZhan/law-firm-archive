@@ -122,7 +122,7 @@ self.addEventListener('fetch', (event) => {
         // 使用 setTimeout 确保不阻塞
         setTimeout(() => clearRelatedMemoryCache(url.pathname), 0);
       }
-    } catch (e) {
+    } catch {
       // 忽略解析错误
     }
     return; // 完全不干预非 GET 请求

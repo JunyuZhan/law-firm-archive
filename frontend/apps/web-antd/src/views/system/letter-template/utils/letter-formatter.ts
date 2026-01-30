@@ -5,16 +5,16 @@
 
 export interface LetterTemplateBlocks {
   title: {
-    letterTitle: string;
     letterNo: string;
+    letterTitle: string;
   };
   recipient: string;
   body: string;
   signature: {
+    contactInfo: string;
+    date: string;
     firmName: string;
     lawyerNames: string;
-    date: string;
-    contactInfo: string;
   };
 }
 
@@ -47,12 +47,12 @@ export function decodeHtmlEntities(text: string): string {
   }
 
   // 处理数字实体 &#xxx;
-  result = result.replace(/&#(\d+);/g, (_, num) =>
-    String.fromCharCode(parseInt(num, 10)),
+  result = result.replaceAll(/&#(\d+);/g, (_, num) =>
+    String.fromCodePoint(Number.parseInt(num, 10)),
   );
   // 处理十六进制实体 &#xXXX;
-  result = result.replace(/&#x([0-9a-fA-F]+);/g, (_, hex) =>
-    String.fromCharCode(parseInt(hex, 16)),
+  result = result.replaceAll(/&#x([0-9a-fA-F]+);/g, (_, hex) =>
+    String.fromCodePoint(Number.parseInt(hex, 16)),
   );
 
   return result;
@@ -97,7 +97,7 @@ export function isStructuredLetterContent(content: string): boolean {
  */
 export function parseStructuredLetterContent(
   content: string,
-): StructuredLetterContent | null {
+): null | StructuredLetterContent {
   if (!content || typeof content !== 'string') {
     return null;
   }
@@ -173,9 +173,9 @@ export function formatStructuredLetterForPrint(
     if (!text) return '';
     let result = text;
     Object.entries(variables).forEach(([key, value]) => {
-      const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      result = result.replace(
-        new RegExp(`\\$\\{${escapedKey}\\}`, 'g'),
+      const escapedKey = key.replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
+      result = result.replaceAll(
+        new RegExp(String.raw`\$\{${escapedKey}\}`, 'g'),
         value || `[${key}]`,
       );
     });
@@ -296,11 +296,11 @@ export function formatStructuredLetterForPreview(
     if (!text) return '';
     let result = text;
     Object.entries(variables).forEach(([key, value]) => {
-      const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const escapedKey = key.replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
       const displayValue = value || `[${key}]`;
       // 添加高亮样式
-      result = result.replace(
-        new RegExp(`\\$\\{${escapedKey}\\}`, 'g'),
+      result = result.replaceAll(
+        new RegExp(String.raw`\$\{${escapedKey}\}`, 'g'),
         `<span class="preview-var">${displayValue}</span>`,
       );
     });

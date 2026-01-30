@@ -1,6 +1,10 @@
 <script setup lang="ts">
+import type { DossierTemplate } from '#/api/document/dossier';
+
 import { reactive, ref } from 'vue';
+
 import { useVbenModal } from '@vben/common-ui';
+
 import {
   Button,
   Form,
@@ -11,13 +15,13 @@ import {
   Space,
   Textarea,
 } from 'ant-design-vue';
-import { useResponsive } from '#/hooks/useResponsive';
+
 import {
+  CASE_TYPE_OPTIONS,
   createDossierTemplate,
   updateDossierTemplate,
-  CASE_TYPE_OPTIONS,
-  type DossierTemplate,
 } from '#/api/document/dossier';
+import { useResponsive } from '#/hooks/useResponsive';
 
 const emit = defineEmits<{ success: [] }>();
 
@@ -108,14 +112,14 @@ defineExpose({
 </script>
 
 <template>
-  <Modal 
+  <Modal
     :loading="loading"
     :class="isMobile ? 'w-full' : 'w-[600px]'"
     :centered="isMobile"
   >
-    <Form 
+    <Form
       :layout="formLayout"
-      :label-col="isMobile ? undefined : { span: 6 }" 
+      :label-col="isMobile ? undefined : { span: 6 }"
       :wrapper-col="isMobile ? undefined : { span: 18 }"
     >
       <FormItem label="模板名称" required>
@@ -150,9 +154,18 @@ defineExpose({
         borderTop: '1px solid #e8e8e8',
       }"
     >
-      <Space :size="isMobile ? 8 : 8" :direction="isMobile ? 'vertical' : 'horizontal'" :style="{ width: isMobile ? '100%' : 'auto' }">
+      <Space
+        :size="isMobile ? 8 : 8"
+        :direction="isMobile ? 'vertical' : 'horizontal'"
+        :style="{ width: isMobile ? '100%' : 'auto' }"
+      >
         <Button :block="isMobile" @click="modalApi.close()">取消</Button>
-        <Button :block="isMobile" type="primary" :loading="loading" @click="handleSave">
+        <Button
+          :block="isMobile"
+          type="primary"
+          :loading="loading"
+          @click="handleSave"
+        >
           保存
         </Button>
       </Space>

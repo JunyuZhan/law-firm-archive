@@ -250,7 +250,7 @@ function handleReject(record: LetterApplicationDTO) {
     onOk: async () => {
       if (!rejectReasonRef.value?.trim()) {
         message.error('请输入拒绝原因');
-        throw undefined;
+        throw new Error('操作失败');
       }
       try {
         await rejectApplication(record.id, rejectReasonRef.value.trim());
@@ -293,7 +293,7 @@ function handleReturn(record: LetterApplicationDTO) {
     onOk: async () => {
       if (!returnReasonRef.value?.trim()) {
         message.error('请输入退回原因');
-        throw undefined;
+        throw new Error('操作失败');
       }
       try {
         await returnApplication(record.id, returnReasonRef.value.trim());
@@ -697,6 +697,7 @@ onMounted(() => {
       <Tabs v-model:active-key="activeTab" @change="handleTabChange">
         <TabPane key="all">
           <template #tab>
+            <!-- eslint-disable-next-line prettier/prettier -->
             <span
               >全部申请
               <Badge
@@ -707,6 +708,7 @@ onMounted(() => {
         </TabPane>
         <TabPane key="pending">
           <template #tab>
+            <!-- eslint-disable-next-line prettier/prettier -->
             <span
               >待办理
               <Badge
@@ -717,6 +719,7 @@ onMounted(() => {
         </TabPane>
         <TabPane key="completed">
           <template #tab>
+            <!-- eslint-disable-next-line prettier/prettier -->
             <span
               >已完成
               <Badge
@@ -755,16 +758,19 @@ onMounted(() => {
               <template
                 v-if="(record as LetterApplicationDTO).status === 'PENDING'"
               >
+                <!-- eslint-disable-next-line prettier/prettier -->
                 <a
                   style="color: #52c41a"
                   @click="handleApprove(record as LetterApplicationDTO)"
                   >通过</a
                 >
+                <!-- eslint-disable-next-line prettier/prettier -->
                 <a
                   style="color: #faad14"
                   @click="handleReturn(record as LetterApplicationDTO)"
                   >退回</a
                 >
+                <!-- eslint-disable-next-line prettier/prettier -->
                 <a
                   style="color: red"
                   @click="handleReject(record as LetterApplicationDTO)"
@@ -776,16 +782,19 @@ onMounted(() => {
               <template
                 v-if="(record as LetterApplicationDTO).status === 'APPROVED'"
               >
+                <!-- eslint-disable-next-line prettier/prettier -->
                 <a
                   style="color: #1890ff"
                   @click="handlePrintContent(record as LetterApplicationDTO)"
                   >打印</a
                 >
+                <!-- eslint-disable-next-line prettier/prettier -->
                 <a
                   style="color: #722ed1"
                   @click="handleDownloadWord(record as LetterApplicationDTO)"
                   >下载</a
                 >
+                <!-- eslint-disable-next-line prettier/prettier -->
                 <a @click="handlePrint(record as LetterApplicationDTO)"
                   >确认已打印</a
                 >
@@ -795,14 +804,17 @@ onMounted(() => {
               <template
                 v-if="(record as LetterApplicationDTO).status === 'PRINTED'"
               >
+                <!-- eslint-disable-next-line prettier/prettier -->
                 <a @click="handleReceive(record as LetterApplicationDTO)"
                   >确认领取</a
                 >
+                <!-- eslint-disable-next-line prettier/prettier -->
                 <a
                   style="color: #1890ff"
                   @click="handlePrintContent(record as LetterApplicationDTO)"
                   >补打</a
                 >
+                <!-- eslint-disable-next-line prettier/prettier -->
                 <a
                   style="color: #722ed1"
                   @click="handleDownloadWord(record as LetterApplicationDTO)"
@@ -814,11 +826,13 @@ onMounted(() => {
               <template
                 v-if="(record as LetterApplicationDTO).status === 'RECEIVED'"
               >
+                <!-- eslint-disable-next-line prettier/prettier -->
                 <a
                   style="color: #1890ff"
                   @click="handlePrintContent(record as LetterApplicationDTO)"
                   >补打</a
                 >
+                <!-- eslint-disable-next-line prettier/prettier -->
                 <a
                   style="color: #722ed1"
                   @click="handleDownloadWord(record as LetterApplicationDTO)"
@@ -871,6 +885,7 @@ onMounted(() => {
             </div>
             <div><strong>申请人：</strong>{{ detailRecord.applicantName }}</div>
             <div>
+              <!-- eslint-disable-next-line prettier/prettier -->
               <strong>状态：</strong
               ><Tag :color="getStatusColor(detailRecord.status)">
                 {{ detailRecord.statusName }}

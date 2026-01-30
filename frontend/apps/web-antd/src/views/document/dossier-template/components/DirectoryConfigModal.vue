@@ -1,18 +1,32 @@
 <script setup lang="ts">
-import { ref, h } from 'vue';
-import { useVbenModal } from '@vben/common-ui';
-import { message, Tree, Button, Space, Input, Select, Switch, Modal as AntModal } from 'ant-design-vue';
-import { 
-  getDossierTemplateItems,
-  addDossierTemplateItem,
-  updateDossierTemplateItem,
-  deleteDossierTemplateItem,
-  type DossierTemplateItem,
-  FILE_CATEGORY_OPTIONS,
-} from '#/api/document/dossier';
-import { Plus, Edit, Trash } from '@vben/icons';
+import type { DossierTemplateItem } from '#/api/document/dossier';
 
-const props = defineProps<{
+import { h, ref } from 'vue';
+
+import { useVbenModal } from '@vben/common-ui';
+import { Edit, Plus, Trash } from '@vben/icons';
+
+import {
+  Modal as AntModal,
+  Button,
+  Input,
+  message,
+  Select,
+  Space,
+  Switch,
+  Tree,
+} from 'ant-design-vue';
+
+import {
+  addDossierTemplateItem,
+  deleteDossierTemplateItem,
+  FILE_CATEGORY_OPTIONS,
+  getDossierTemplateItems,
+  updateDossierTemplateItem,
+} from '#/api/document/dossier';
+
+// eslint-disable-next-line no-unused-vars
+const _props = defineProps<{
   templateId?: number;
   templateName?: string;
 }>();
@@ -23,15 +37,22 @@ const emit = defineEmits<{
 
 const loading = ref(false);
 const treeData = ref<any[]>([]);
-const editingItem = ref<Partial<DossierTemplateItem> | null>(null);
+const editingItem = ref<null | Partial<DossierTemplateItem>>(null);
 const itemFormVisible = ref(false);
 
 // 构建树形结构
-function buildTree(items: DossierTemplateItem[], parentId: number | null | undefined = null): any[] {
+function buildTree(
+  items: DossierTemplateItem[],
+  parentId: null | number | undefined = null,
+): any[] {
   return items
-    .filter(item => (parentId === null || parentId === undefined ? !item.parentId : item.parentId === parentId))
-    .sort((a, b) => a.sortOrder - b.sortOrder)
-    .map(item => ({
+    .filter((item) =>
+      parentId === null || parentId === undefined
+        ? !item.parentId
+        : item.parentId === parentId,
+    )
+    .toSorted((a, b) => a.sortOrder - b.sortOrder)
+    .map((item) => ({
       key: item.id,
       title: item.name,
       itemType: item.itemType,
@@ -48,7 +69,7 @@ function buildTree(items: DossierTemplateItem[], parentId: number | null | undef
 async function loadItems() {
   const templateId = currentTemplateId.value;
   if (!templateId) return;
-  
+
   loading.value = true;
   try {
     const items = await getDossierTemplateItems(templateId);
@@ -62,27 +83,25 @@ async function loadItems() {
 
 // 打开新增/编辑表单
 function openItemForm(node?: any, parentId?: number) {
-  if (node) {
-    // 编辑模式
-    editingItem.value = {
-      id: node.key,
-      name: node.title,
-      itemType: node.itemType,
-      fileCategory: node.fileCategory,
-      required: node.required,
-      description: node.description,
-      sortOrder: node.sortOrder,
-      parentId: parentId || undefined,
-    };
-  } else {
-    // 新增模式
-    editingItem.value = {
-      itemType: 'FOLDER',
-      required: false,
-      sortOrder: 0,
-      parentId: parentId || undefined,
-    };
-  }
+  editingItem.value = node
+    ? {
+        // 编辑模式
+        id: node.key,
+        name: node.title,
+        itemType: node.itemType,
+        fileCategory: node.fileCategory,
+        required: node.required,
+        description: node.description,
+        sortOrder: node.sortOrder,
+        parentId: parentId || undefined,
+      }
+    : {
+        // 新增模式
+        itemType: 'FOLDER',
+        required: false,
+        sortOrder: 0,
+        parentId: parentId || undefined,
+      };
   itemFormVisible.value = true;
 }
 
@@ -90,7 +109,7 @@ function openItemForm(node?: any, parentId?: number) {
 async function saveItem() {
   const templateId = currentTemplateId.value;
   if (!templateId || !editingItem.value) return;
-  
+
   const form = editingItem.value;
   if (!form.name?.trim()) {
     message.warning('请输入目录项名称');
@@ -151,47 +170,82 @@ function handleDelete(node: any) {
 
 // 树节点标题渲染函数
 function renderTitle(node: any) {
-  return h('div', {
-    style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' },
-  }, [
-    h('span', [
-      h('span', { style: { marginRight: '8px' } }, node.itemType === 'FOLDER' ? '📁' : '📄'),
-      h('span', node.title),
-      node.required && h('span', { style: { color: '#ff4d4f', marginLeft: '4px' } }, '*'),
-      node.fileCategory && h('span', {
-        style: { color: '#999', marginLeft: '8px', fontSize: '12px' },
-      }, `(${FILE_CATEGORY_OPTIONS.find((o: any) => o.value === node.fileCategory)?.label || node.fileCategory})`),
-    ]),
-    h(Space, {
-      size: 'small',
-      onClick: (e: Event) => e.stopPropagation(),
-    }, {
-      default: () => [
-        h(Button, {
-          type: 'link',
+  return h(
+    'div',
+    {
+      style: {
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        width: '100%',
+      },
+    },
+    [
+      h('span', [
+        h(
+          'span',
+          { style: { marginRight: '8px' } },
+          node.itemType === 'FOLDER' ? '📁' : '📄',
+        ),
+        h('span', node.title),
+        node.required &&
+          h('span', { style: { color: '#ff4d4f', marginLeft: '4px' } }, '*'),
+        node.fileCategory &&
+          h(
+            'span',
+            {
+              style: { color: '#999', marginLeft: '8px', fontSize: '12px' },
+            },
+            `(${FILE_CATEGORY_OPTIONS.find((o: any) => o.value === node.fileCategory)?.label || node.fileCategory})`,
+          ),
+      ]),
+      h(
+        Space,
+        {
           size: 'small',
-          onClick: () => openItemForm(node),
-        }, {
-          default: () => [h(Edit, { class: 'size-3' }), ' 编辑'],
-        }),
-        h(Button, {
-          type: 'link',
-          size: 'small',
-          onClick: () => openItemForm(undefined, node.key),
-        }, {
-          default: () => [h(Plus, { class: 'size-3' }), ' 添加子项'],
-        }),
-        h(Button, {
-          type: 'link',
-          size: 'small',
-          danger: true,
-          onClick: () => handleDelete(node),
-        }, {
-          default: () => [h(Trash, { class: 'size-3' }), ' 删除'],
-        }),
-      ],
-    }),
-  ]);
+          onClick: (e: Event) => e.stopPropagation(),
+        },
+        {
+          default: () => [
+            h(
+              Button,
+              {
+                type: 'link',
+                size: 'small',
+                onClick: () => openItemForm(node),
+              },
+              {
+                default: () => [h(Edit, { class: 'size-3' }), ' 编辑'],
+              },
+            ),
+            h(
+              Button,
+              {
+                type: 'link',
+                size: 'small',
+                onClick: () => openItemForm(undefined, node.key),
+              },
+              {
+                default: () => [h(Plus, { class: 'size-3' }), ' 添加子项'],
+              },
+            ),
+            h(
+              Button,
+              {
+                type: 'link',
+                size: 'small',
+                danger: true,
+                onClick: () => handleDelete(node),
+              },
+              {
+                default: () => [h(Trash, { class: 'size-3' }), ' 删除'],
+              },
+            ),
+          ],
+        },
+      ),
+    ],
+  );
 }
 
 const currentTemplateId = ref<number>();
@@ -225,8 +279,8 @@ defineExpose({ open });
 
 <template>
   <Modal class="w-[800px]">
-    <div v-loading="loading" style="min-height: 400px;">
-      <div style="margin-bottom: 16px;">
+    <div v-loading="loading" style="min-height: 400px">
+      <div style="margin-bottom: 16px">
         <Button type="primary" @click="openItemForm()">
           <Plus class="size-4" /> 添加根目录项
         </Button>
@@ -244,7 +298,7 @@ defineExpose({ open });
         </template>
       </Tree>
 
-      <div v-else style="text-align: center; padding: 40px; color: #999;">
+      <div v-else style="padding: 40px; color: #999; text-align: center">
         暂无目录项，请添加根目录项
       </div>
     </div>
@@ -255,11 +309,18 @@ defineExpose({ open });
       :title="editingItem?.id ? '编辑目录项' : '新增目录项'"
       width="600"
       @ok="saveItem"
-      @cancel="() => { itemFormVisible = false; editingItem = null; }"
+      @cancel="
+        () => {
+          itemFormVisible = false;
+          editingItem = null;
+        }
+      "
     >
-      <div v-if="editingItem" style="padding: 16px 0;">
-        <div style="margin-bottom: 16px;">
-          <label style="display: block; margin-bottom: 4px;">目录项名称 <span style="color: #ff4d4f;">*</span></label>
+      <div v-if="editingItem" style="padding: 16px 0">
+        <div style="margin-bottom: 16px">
+          <label style="display: block; margin-bottom: 4px">
+            目录项名称 <span style="color: #ff4d4f">*</span>
+          </label>
           <Input
             v-model:value="editingItem.name"
             placeholder="请输入目录项名称"
@@ -267,19 +328,16 @@ defineExpose({ open });
           />
         </div>
 
-        <div style="margin-bottom: 16px;">
-          <label style="display: block; margin-bottom: 4px;">类型</label>
-          <Select
-            v-model:value="editingItem.itemType"
-            style="width: 100%"
-          >
+        <div style="margin-bottom: 16px">
+          <label style="display: block; margin-bottom: 4px">类型</label>
+          <Select v-model:value="editingItem.itemType" style="width: 100%">
             <Select.Option value="FOLDER">文件夹</Select.Option>
             <Select.Option value="FILE">文件</Select.Option>
           </Select>
         </div>
 
-        <div v-if="editingItem.itemType === 'FILE'" style="margin-bottom: 16px;">
-          <label style="display: block; margin-bottom: 4px;">文件分类</label>
+        <div v-if="editingItem.itemType === 'FILE'" style="margin-bottom: 16px">
+          <label style="display: block; margin-bottom: 4px">文件分类</label>
           <Select
             v-model:value="editingItem.fileCategory"
             placeholder="请选择文件分类"
@@ -296,8 +354,8 @@ defineExpose({ open });
           </Select>
         </div>
 
-        <div style="margin-bottom: 16px;">
-          <label style="display: block; margin-bottom: 4px;">排序</label>
+        <div style="margin-bottom: 16px">
+          <label style="display: block; margin-bottom: 4px">排序</label>
           <Input
             v-model:value="editingItem.sortOrder"
             type="number"
@@ -306,13 +364,13 @@ defineExpose({ open });
           />
         </div>
 
-        <div style="margin-bottom: 16px;">
-          <label style="display: block; margin-bottom: 4px;">是否必填</label>
+        <div style="margin-bottom: 16px">
+          <label style="display: block; margin-bottom: 4px">是否必填</label>
           <Switch v-model:checked="editingItem.required" />
         </div>
 
         <div>
-          <label style="display: block; margin-bottom: 4px;">描述</label>
+          <label style="display: block; margin-bottom: 4px">描述</label>
           <Input.TextArea
             v-model:value="editingItem.description"
             placeholder="请输入描述（可选）"

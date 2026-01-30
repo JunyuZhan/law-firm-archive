@@ -5,9 +5,7 @@ import com.lawfirm.common.base.BaseEntity;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 
-/**
- * 知识收藏实体
- */
+/** 知识收藏实体. */
 @Data
 @SuperBuilder
 @NoArgsConstructor
@@ -16,16 +14,19 @@ import lombok.experimental.SuperBuilder;
 @TableName("knowledge_collection")
 public class KnowledgeCollection extends BaseEntity {
 
-    /** 用户ID */
-    private Long userId;
+  /** 用户ID. */
+  private Long userId;
 
-    /** 目标类型: LAW法规/CASE案例 */
-    private String targetType;
+  /** 目标类型: LAW法规/CASE案例. */
+  private String targetType;
 
-    /** 目标ID */
-    private Long targetId;
+  /** 目标ID. */
+  private Long targetId;
 
-    // 目标类型常量
-    public static final String TYPE_LAW = "LAW";
-    public static final String TYPE_CASE = "CASE";
+  // 目标类型常量
+  /** 目标类型：法规. */
+  public static final String TYPE_LAW = "LAW";
+
+  /** 目标类型：案例. */
+  public static final String TYPE_CASE = "CASE";
 }

@@ -3,14 +3,11 @@ package com.lawfirm.domain.evidence.entity;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-import lombok.*;
-
 import java.io.Serializable;
 import java.time.LocalDateTime;
+import lombok.*;
 
-/**
- * 质证记录实体
- */
+/** 质证记录实体. */
 @Data
 @Builder
 @NoArgsConstructor
@@ -18,53 +15,49 @@ import java.time.LocalDateTime;
 @TableName("evidence_cross_exam")
 public class EvidenceCrossExam implements Serializable {
 
-    @TableId(type = IdType.AUTO)
-    private Long id;
+  /** 主键ID. */
+  @TableId(type = IdType.AUTO)
+  private Long id;
 
-    /**
-     * 证据ID
-     */
-    private Long evidenceId;
+  /** 证据ID. */
+  private Long evidenceId;
 
-    /**
-     * 质证方：OUR_SIDE-我方, OPPOSITE-对方, COURT-法院
-     */
-    private String examParty;
+  /** 质证方：OUR_SIDE-我方, OPPOSITE-对方, COURT-法院. */
+  private String examParty;
 
-    /**
-     * 真实性意见
-     */
-    private String authenticityOpinion;
-    private String authenticityReason;
+  /** 真实性意见. */
+  private String authenticityOpinion;
 
-    /**
-     * 合法性意见
-     */
-    private String legalityOpinion;
-    private String legalityReason;
+  /** 真实性理由. */
+  private String authenticityReason;
 
-    /**
-     * 关联性意见
-     */
-    private String relevanceOpinion;
-    private String relevanceReason;
+  /** 合法性意见. */
+  private String legalityOpinion;
 
-    /**
-     * 综合意见
-     */
-    private String overallOpinion;
+  /** 合法性理由. */
+  private String legalityReason;
 
-    /**
-     * 法院认定意见
-     */
-    private String courtOpinion;
+  /** 关联性意见. */
+  private String relevanceOpinion;
 
-    /**
-     * 法院是否采纳
-     */
-    private Boolean courtAccepted;
+  /** 关联性理由. */
+  private String relevanceReason;
 
-    private Long createdBy;
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
+  /** 综合意见. */
+  private String overallOpinion;
+
+  /** 法院认定意见. */
+  private String courtOpinion;
+
+  /** 法院是否采纳. */
+  private Boolean courtAccepted;
+
+  /** 创建人ID. */
+  private Long createdBy;
+
+  /** 创建时间. */
+  private LocalDateTime createdAt;
+
+  /** 更新时间. */
+  private LocalDateTime updatedAt;
 }

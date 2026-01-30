@@ -11,8 +11,6 @@ import { onMounted, ref } from 'vue';
 import { Page } from '@vben/common-ui';
 import { Plus } from '@vben/icons';
 
-import { useResponsive } from '#/hooks/useResponsive';
-
 import {
   Button,
   Card,
@@ -48,6 +46,7 @@ import {
 } from '#/api/hr/development-plan';
 import { getCareerLevelList } from '#/api/hr/promotion';
 import { UserTreeSelect } from '#/components/UserTreeSelect';
+import { useResponsive } from '#/hooks/useResponsive';
 
 defineOptions({ name: 'HrDevelopment' });
 
@@ -336,7 +335,8 @@ function addGoal(type: 'action' | 'career' | 'performance' | 'skill') {
       ? 'careerGoals'
       : type === 'skill'
         ? 'skillGoals'
-        : type === 'performance'
+        : // eslint-disable-next-line unicorn/no-nested-ternary
+          type === 'performance'
           ? 'performanceGoals'
           : 'actionPlans';
   formData.value[key].push(value);
@@ -353,7 +353,8 @@ function removeGoal(
       ? 'careerGoals'
       : type === 'skill'
         ? 'skillGoals'
-        : type === 'performance'
+        : // eslint-disable-next-line unicorn/no-nested-ternary
+          type === 'performance'
           ? 'performanceGoals'
           : 'actionPlans';
   formData.value[key].splice(index, 1);
@@ -473,14 +474,17 @@ onMounted(() => {
           <template v-else-if="column.key === 'action'">
             <Space>
               <a @click="handleView(record)">查看</a>
+              <!-- eslint-disable-next-line prettier/prettier -->
               <a v-if="record.status === 'DRAFT'" @click="handleEdit(record)"
                 >编辑</a
               >
+              <!-- eslint-disable-next-line prettier/prettier -->
               <a
                 v-if="record.status === 'DRAFT'"
                 @click="handleSubmit(record.id)"
                 >提交</a
               >
+              <!-- eslint-disable-next-line prettier/prettier -->
               <a
                 v-if="record.status === 'SUBMITTED'"
                 @click="handleReview(record.id)"

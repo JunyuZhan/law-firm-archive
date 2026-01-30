@@ -4,23 +4,24 @@ import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lawfirm.domain.matter.entity.Deadline;
+import java.util.List;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
-import java.time.LocalDate;
-import java.util.List;
-
-/**
- * 期限提醒 Mapper
- */
+/** 期限提醒 Mapper */
 @Mapper
 public interface DeadlineMapper extends BaseMapper<Deadline> {
 
-    /**
-     * 分页查询期限提醒
-     */
-    @Select("""
+  /**
+   * 分页查询期限提醒.
+   *
+   * @param page 分页对象
+   * @param query 查询条件
+   * @return 期限提醒分页结果
+   */
+  @Select(
+      """
             <script>
             SELECT md.*, m.name as matter_name, m.matter_no
             FROM matter_deadline md
@@ -44,12 +45,17 @@ public interface DeadlineMapper extends BaseMapper<Deadline> {
             ORDER BY md.deadline_date ASC
             </script>
             """)
-    IPage<Deadline> selectDeadlinePage(Page<Deadline> page, @Param("query") com.lawfirm.application.matter.dto.DeadlineQueryDTO query);
+  IPage<Deadline> selectDeadlinePage(
+      Page<Deadline> page,
+      @Param("query") com.lawfirm.application.matter.dto.DeadlineQueryDTO query);
 
-    /**
-     * 查询需要提醒的期限（未发送提醒且即将到期）
-     */
-    @Select("""
+  /**
+   * 查询需要提醒的期限（未发送提醒且即将到期）。
+   *
+   * @return 需要提醒的期限列表
+   */
+  @Select(
+      """
             SELECT md.*, m.name as matter_name, m.lead_lawyer_id, u.real_name as lead_lawyer_name
             FROM matter_deadline md
             LEFT JOIN matter m ON md.matter_id = m.id
@@ -60,12 +66,15 @@ public interface DeadlineMapper extends BaseMapper<Deadline> {
             AND md.deadline_date BETWEEN CURRENT_DATE AND CURRENT_DATE + (md.reminder_days || ' days')::interval
             ORDER BY md.deadline_date ASC
             """)
-    List<Deadline> selectNeedReminder();
+  List<Deadline> selectNeedReminder();
 
-    /**
-     * 查询即将过期的期限（3天内）
-     */
-    @Select("""
+  /**
+   * 查询即将过期的期限（3天内）。
+   *
+   * @return 即将过期的期限列表
+   */
+  @Select(
+      """
             SELECT md.*, m.name as matter_name, m.lead_lawyer_id
             FROM matter_deadline md
             LEFT JOIN matter m ON md.matter_id = m.id
@@ -74,24 +83,34 @@ public interface DeadlineMapper extends BaseMapper<Deadline> {
             AND md.deadline_date BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '3 days'
             ORDER BY md.deadline_date ASC
             """)
-    List<Deadline> selectUpcomingDeadlines();
+  List<Deadline> selectUpcomingDeadlines();
 
-    /**
-     * 根据项目ID查询期限列表
-     */
-    @Select("""
+  /**
+   * 根据项目ID查询期限列表.
+   *
+   * @param matterId 项目ID
+   * @return 期限列表
+   */
+  @Select(
+      """
             SELECT md.*
             FROM matter_deadline md
             WHERE md.matter_id = #{matterId}
             AND md.deleted = false
             ORDER BY md.deadline_date ASC
             """)
-    List<Deadline> selectByMatterId(@Param("matterId") Long matterId);
+  List<Deadline> selectByMatterId(@Param("matterId") Long matterId);
 
-    /**
-     * 查询用户即将到期的期限
-     */
-    @Select("""
+  /**
+   * 查询用户即将到期的期限.
+   *
+   * @param userId 用户ID
+   * @param days 天数
+   * @param limit 限制数量
+   * @return 期限列表
+   */
+  @Select(
+      """
             SELECT md.*, m.name as matter_name, m.matter_no
             FROM matter_deadline md
             LEFT JOIN matter m ON md.matter_id = m.id
@@ -105,6 +124,6 @@ public interface DeadlineMapper extends BaseMapper<Deadline> {
             ORDER BY md.deadline_date ASC
             LIMIT #{limit}
             """)
-    List<Deadline> selectMyUpcoming(@Param("userId") Long userId, @Param("days") Integer days, @Param("limit") Integer limit);
+  List<Deadline> selectMyUpcoming(
+      @Param("userId") Long userId, @Param("days") Integer days, @Param("limit") Integer limit);
 }
-

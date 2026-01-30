@@ -11,8 +11,6 @@ import { onMounted, ref, watch } from 'vue';
 import { Page } from '@vben/common-ui';
 import { Plus } from '@vben/icons';
 
-import { useResponsive } from '#/hooks/useResponsive';
-
 import {
   Button,
   Card,
@@ -36,6 +34,7 @@ import {
   getCaseList,
   uncollectCase,
 } from '#/api/knowledge';
+import { useResponsive } from '#/hooks/useResponsive';
 
 import CaseDetailModal from './components/CaseDetailModal.vue';
 import CaseModal from './components/CaseModal.vue';

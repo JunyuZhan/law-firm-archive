@@ -9,10 +9,9 @@ import { Page } from '@vben/common-ui';
 
 import { Modal, Space, Tag } from 'ant-design-vue';
 
-import { useResponsive } from '#/hooks/useResponsive';
-
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import { getMyMatters } from '#/api/matter';
+import { useResponsive } from '#/hooks/useResponsive';
 
 defineOptions({ name: 'MatterMy' });
 

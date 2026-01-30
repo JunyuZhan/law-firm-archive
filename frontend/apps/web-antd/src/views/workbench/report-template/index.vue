@@ -348,7 +348,7 @@ function getStatusName(status: string) {
   return option?.label || status;
 }
 
-function formatDateTime(date: string | null | undefined) {
+function formatDateTime(date: null | string | undefined) {
   if (!date) return '-';
   return dayjs(date).format('YYYY-MM-DD HH:mm');
 }

@@ -151,7 +151,7 @@ const folderTreeData = computed(() => {
   }
 
   // 将扁平数据转换为树形结构
-  const items = [...dossierItems.value].sort(
+  const items = [...dossierItems.value].toSorted(
     (a, b) => a.sortOrder - b.sortOrder,
   );
   const rootItems = items.filter((item) => item.parentId === 0);
@@ -282,7 +282,7 @@ async function handleAddDossierItem() {
       const name = input?.value?.trim();
       if (!name) {
         message.error('请输入文件夹名称');
-        throw undefined;
+        throw new Error('操作失败');
       }
 
       try {
@@ -291,7 +291,7 @@ async function handleAddDossierItem() {
         message.success('文件夹创建成功');
       } catch (error: any) {
         message.error(`创建失败: ${error.message || '未知错误'}`);
-        return Promise.reject();
+        throw error;
       }
     },
   });
@@ -320,7 +320,7 @@ async function handleRenameDossierItem(item: any) {
       const name = input?.value?.trim();
       if (!name) {
         message.error('请输入文件夹名称');
-        throw undefined;
+        throw new Error('操作失败');
       }
 
       try {
@@ -331,7 +331,7 @@ async function handleRenameDossierItem(item: any) {
         message.success('重命名成功');
       } catch (error: any) {
         message.error(`重命名失败: ${error.message || '未知错误'}`);
-        return Promise.reject();
+        throw error;
       }
     },
   });
@@ -369,7 +369,7 @@ async function handleMoveUp(item: any) {
 
   const items = dossierItems.value
     .filter((i) => i.parentId === 0)
-    .sort((a, b) => a.sortOrder - b.sortOrder);
+    .toSorted((a, b) => a.sortOrder - b.sortOrder);
   const currentIndex = items.findIndex((i) => i.id === item.dossierItemId);
   if (currentIndex <= 0) return;
 
@@ -396,7 +396,7 @@ async function handleMoveDown(item: any) {
 
   const items = dossierItems.value
     .filter((i) => i.parentId === 0)
-    .sort((a, b) => a.sortOrder - b.sortOrder);
+    .toSorted((a, b) => a.sortOrder - b.sortOrder);
   const currentIndex = items.findIndex((i) => i.id === item.dossierItemId);
   if (currentIndex === -1 || currentIndex >= items.length - 1) return;
 
@@ -442,7 +442,7 @@ function updateSortableDocuments() {
   // 如果选中的是根文件夹，显示所有项目文档
   if (selectedFolder.value === 'root') {
     // 按 displayOrder 排序
-    sortableDocuments.value = [...projectDocs].sort(
+    sortableDocuments.value = [...projectDocs].toSorted(
       (a, b) => (a.displayOrder || 0) - (b.displayOrder || 0),
     );
     return;
@@ -450,14 +450,14 @@ function updateSortableDocuments() {
 
   // 否则只显示特定 dossierItemId 的文档
   const dossierItemId = Number.parseInt(selectedFolder.value, 10);
-  if (!isNaN(dossierItemId)) {
+  if (!Number.isNaN(dossierItemId)) {
     sortableDocuments.value = projectDocs
       .filter((doc) => doc.dossierItemId === dossierItemId)
-      .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
+      .toSorted((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
     return;
   }
 
-  sortableDocuments.value = [...projectDocs].sort(
+  sortableDocuments.value = [...projectDocs].toSorted(
     (a, b) => (a.displayOrder || 0) - (b.displayOrder || 0),
   );
 }
@@ -893,11 +893,7 @@ async function loadMatters() {
       createdAtTo,
     });
 
-    if (res && res.list) {
-      matters.value = res.list;
-    } else {
-      matters.value = [];
-    }
+    matters.value = res && res.list ? res.list : [];
   } catch (error: any) {
     message.error(`加载项目列表失败: ${error.message || '未知错误'}`);
     matters.value = [];
@@ -936,7 +932,9 @@ function handleFolderSelect(selectedKeys: any[], _info: any) {
     // 更新面包屑路径
     if (key === 'root') {
       currentPath.value = [
-        `${selectedMatter.value?.name} 卷宗目录` || '卷宗目录',
+        selectedMatter.value?.name
+          ? `${selectedMatter.value.name} 卷宗目录`
+          : '卷宗目录',
       ];
     } else {
       const dossierItemId = Number.parseInt(key, 10);
@@ -959,7 +957,7 @@ const folderOptions = computed(() => {
     // 包含所有顶级目录项（不过滤 itemType，因为 FILE 类型也可以作为上传目标）
     return dossierItems.value
       .filter((item) => item.parentId === 0) // 只显示顶级目录
-      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .toSorted((a, b) => a.sortOrder - b.sortOrder)
       .map((item) => ({
         label: item.name,
         value: item.id, // 使用实际的 dossierItemId
@@ -1098,23 +1096,23 @@ function isEditableFile(fileType: string | undefined): boolean {
 async function handlePreview(record: DocumentDTO) {
   // 获取文件扩展名（优先从 fileType，如果没有则从 fileName 提取）
   let fileExt = '';
-  
+
   // 方法1: 从 fileType 字段提取
   if (record.fileType) {
     fileExt = record.fileType.toLowerCase().replace(/^\.+/, '').trim();
   }
-  
+
   // 方法2: 如果 fileType 为空或无效，从 fileName 提取
   if (!fileExt && record.fileName) {
-    const match = record.fileName.match(/\.([^.]+)$/i);
+    const match = record.fileName.match(/\.([^.]+)$/);
     if (match && match[1]) {
       fileExt = match[1].toLowerCase();
     }
   }
-  
+
   // 方法3: 如果还是为空，从 filePath 提取
   if (!fileExt && record.filePath) {
-    const match = record.filePath.match(/\.([^.]+)(?:\?|$)/i);
+    const match = record.filePath.match(/\.([^.]+)(?:\?|$)/);
     if (match && match[1]) {
       fileExt = match[1].toLowerCase();
     }
@@ -1123,7 +1121,9 @@ async function handlePreview(record: DocumentDTO) {
   // PDF 类型 - 优先处理，使用弹窗预览（像图片一样在浏览器中预览）
   if (fileExt === 'pdf') {
     try {
-      const { previewUrl: previewUrlResult } = await getDocumentPreviewUrl(record.id);
+      const { previewUrl: previewUrlResult } = await getDocumentPreviewUrl(
+        record.id,
+      );
       const fileUrl = previewUrlResult;
       currentDocument.value = { ...record, filePath: fileUrl };
       previewUrl.value = fileUrl;
@@ -1232,7 +1232,7 @@ async function handleOnlineEdit(record: DocumentDTO) {
 async function handleOpenInEditor(record: DocumentDTO) {
   // 先关闭预览弹框
   previewModalVisible.value = false;
-  
+
   // 然后调用在线编辑
   await handleOnlineEdit(record);
 }
@@ -1465,9 +1465,9 @@ function handleMoveDocument(record: DocumentDTO) {
       ) as HTMLSelectElement;
       const targetId = Number.parseInt(select?.value, 10);
 
-      if (!targetId || isNaN(targetId)) {
+      if (!targetId || Number.isNaN(targetId)) {
         message.error('请选择目标目录');
-        throw undefined;
+        throw new Error('操作失败');
       }
 
       try {
@@ -1477,7 +1477,7 @@ function handleMoveDocument(record: DocumentDTO) {
         await loadDossierItems(); // 刷新目录计数
       } catch (error: any) {
         message.error(`移动失败: ${error.message || '未知错误'}`);
-        return Promise.reject();
+        throw error;
       }
     },
   });
@@ -1494,7 +1494,7 @@ function handleUploadSignedVersion(record: DocumentDTO) {
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = '.pdf,.jpg,.jpeg,.png';
-  input.onchange = async (e: Event) => {
+  input.addEventListener('change', async (e: Event) => {
     const file = (e.target as HTMLInputElement).files?.[0];
     if (!file) return;
 
@@ -1515,7 +1515,7 @@ function handleUploadSignedVersion(record: DocumentDTO) {
     } finally {
       loading.value = false;
     }
-  };
+  });
   input.click();
 }
 
@@ -2291,8 +2291,8 @@ onMounted(() => {
                     style="
                       width: 16px;
                       height: 16px;
-                      cursor: pointer;
                       margin-right: 8px;
+                      cursor: pointer;
                     "
                   />
                   全选
@@ -2377,7 +2377,7 @@ onMounted(() => {
                     <Tag
                       :color="getFileTypeConfig(doc.fileType).color"
                       size="small"
-                      style="font-size: 10px; padding: 0 4px; margin: 0"
+                      style="padding: 0 4px; margin: 0; font-size: 10px"
                     >
                       {{ getFileTypeConfig(doc.fileType).label }}
                     </Tag>
@@ -2427,11 +2427,17 @@ onMounted(() => {
                               <span class="menu-icon">🔗</span>
                               <span>分享链接</span>
                             </MenuItem>
-                            <MenuItem key="move" @click="handleMoveDocument(doc)">
+                            <MenuItem
+                              key="move"
+                              @click="handleMoveDocument(doc)"
+                            >
                               <span class="menu-icon">📁</span>
                               <span>移动到...</span>
                             </MenuItem>
-                            <MenuItem key="versions" @click="handleViewVersions(doc)">
+                            <MenuItem
+                              key="versions"
+                              @click="handleViewVersions(doc)"
+                            >
                               <span class="menu-icon">📋</span>
                               <span>版本历史</span>
                             </MenuItem>
@@ -2563,23 +2569,43 @@ onMounted(() => {
     <!-- 文档预览弹窗 -->
     <Modal
       v-model:open="previewModalVisible"
-      :width="isImageFile(currentDocument?.fileType) || 
-              currentDocument?.fileType?.toLowerCase() === 'pdf' || 
-              (currentDocument?.fileType && isOfficeFile(currentDocument.fileType)) ? '95%' : '80%'"
+      :width="
+        isImageFile(currentDocument?.fileType) ||
+        currentDocument?.fileType?.toLowerCase() === 'pdf' ||
+        (currentDocument?.fileType && isOfficeFile(currentDocument.fileType))
+          ? '95%'
+          : '80%'
+      "
       :footer="null"
       style="top: 20px"
       :class="{ 'image-preview-modal': isImageFile(currentDocument?.fileType) }"
     >
       <template #title>
-        <div style="display: flex; align-items: center; justify-content: space-between; padding-right: 32px;">
-          <span>预览 - {{ currentDocument?.title || currentDocument?.fileName || currentDocument?.name }}</span>
-          <Space v-if="currentDocument && isEditableFile(currentDocument.fileType)">
-            <Button 
-              type="primary" 
+        <div
+          style="
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-right: 32px;
+          "
+        >
+          <span
+            >预览 -
+            {{
+              currentDocument?.title ||
+              currentDocument?.fileName ||
+              currentDocument?.name
+            }}</span
+          >
+          <Space
+            v-if="currentDocument && isEditableFile(currentDocument.fileType)"
+          >
+            <Button
+              type="primary"
               size="small"
               @click="handleOpenInEditor(currentDocument)"
             >
-              <Edit :size="14" style="margin-right: 4px;" />
+              <Edit :size="14" style="margin-right: 4px" />
               在线编辑
             </Button>
           </Space>
@@ -2761,7 +2787,6 @@ onMounted(() => {
         </Space>
       </template>
     </Modal>
-
   </Page>
 </template>
 
@@ -2772,12 +2797,12 @@ onMounted(() => {
   gap: 12px;
   align-items: center;
   padding: 10px 12px;
+  overflow: hidden;
   font-size: 13px;
   font-weight: 500;
   color: #666;
   background: #fafafa;
   border-bottom: 1px solid #f0f0f0;
-  overflow: hidden;
 }
 
 /* 文档列表 */
@@ -3035,8 +3060,8 @@ onMounted(() => {
 }
 
 .grid-select-all {
-  margin-bottom: 16px;
   padding: 0 8px;
+  margin-bottom: 16px;
 }
 
 .select-all-label {
@@ -3159,17 +3184,17 @@ onMounted(() => {
 .grid-item-name {
   display: -webkit-box;
   overflow: hidden;
-  font-size: 13px;
-  font-weight: 500;
-  line-height: 1.4;
-  color: #333;
   text-overflow: ellipsis;
-  word-break: break-all;
-  -webkit-box-orient: vertical;
 
   /* stylelint-disable-next-line property-no-vendor-prefix */
   -webkit-line-clamp: 2;
   line-clamp: 2;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: #333;
+  word-break: break-all;
+  -webkit-box-orient: vertical;
 }
 
 /* 网格项信息 */
@@ -3195,7 +3220,11 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   padding: 8px;
-  background: linear-gradient(to top, rgb(255 255 255 / 95%) 0%, rgb(255 255 255 / 85%) 100%);
+  background: linear-gradient(
+    to top,
+    rgb(255 255 255 / 95%) 0%,
+    rgb(255 255 255 / 85%) 100%
+  );
   border-top: 1px solid #f0f0f0;
   border-radius: 0 0 12px 12px;
   opacity: 0;
@@ -3235,9 +3264,9 @@ onMounted(() => {
   gap: 8px;
   align-items: center;
   padding: 8px 12px;
+  margin: 2px 4px;
   font-size: 13px;
   border-radius: 4px;
-  margin: 2px 4px;
   transition: all 0.2s;
 }
 
@@ -3259,7 +3288,6 @@ onMounted(() => {
   color: #ff4d4f;
   background: #fff1f0;
 }
-
 
 /* ==================== 图片预览弹窗样式 ==================== */
 .image-preview-container {
@@ -3320,8 +3348,8 @@ onMounted(() => {
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
-  transition: transform 0.15s ease;
   transform-origin: center center;
+  transition: transform 0.15s ease;
 }
 
 /* 图片预览模态框特殊样式 */

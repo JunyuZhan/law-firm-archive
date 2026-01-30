@@ -160,7 +160,7 @@ function transformMenuToRoute(
   }
 
   if (menu.children && menu.children.length > 0) {
-    route.children = menu.children.map(transformMenuToRoute);
+    route.children = menu.children.map((child) => transformMenuToRoute(child));
   }
 
   return route;
@@ -172,7 +172,7 @@ function transformMenuToRoute(
 export async function getAllMenusApi() {
   const menus = await requestClient.get<MenuApi.MenuDTO[]>('/system/menu/user');
   // 转换为前端路由格式
-  return menus.map(transformMenuToRoute);
+  return menus.map((menu) => transformMenuToRoute(menu));
 }
 
 /**

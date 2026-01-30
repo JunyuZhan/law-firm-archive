@@ -45,7 +45,7 @@ const showNewLocation = ref(false);
 const newLocationMessage = ref('');
 const permitRequestId = ref(''); // 许可码请求ID
 const permitCode = ref(''); // 用户输入的许可码
-const pendingLoginParams = ref<Recordable<any> | null>(null); // 暂存登录参数
+const pendingLoginParams = ref<null | Recordable<any>>(null); // 暂存登录参数
 
 const formSchema = computed((): VbenFormSchema[] => {
   const schemas: VbenFormSchema[] = [
@@ -195,32 +195,42 @@ async function handleLogin(values: Recordable<any>) {
       '登录失败';
     const errorData = error?.data?.data || error?.response?.data?.data;
 
-    if (errorCode === 'ACCOUNT_LOCKED') {
-      accountLocked.value = true;
-      lockMessage.value = errorMsg;
-      message.error(errorMsg);
-    } else if (errorCode === 'CAPTCHA_REQUIRED') {
-      // 需要图形验证码
-      showImageCaptcha.value = true;
-      await fetchImageCaptcha();
-      message.warning('请完成图形验证码');
-    } else if (errorCode === 'NEW_LOCATION') {
-      // 异地登录，需要管理员许可码
-      showNewLocation.value = true;
-      newLocationMessage.value = `检测到您从 ${errorData?.currentLocation || '未知位置'} 登录，请联系管理员获取许可码`;
-      permitRequestId.value = errorData?.requestId || '';
-      permitCode.value = ''; // 清空之前输入的许可码
-      pendingLoginParams.value = values; // 保存登录参数
-      message.warning('异地登录需要管理员许可');
-      // 不重置滑块，保留验证状态
-      return;
-    } else if (errorCode === 'PERMIT_CODE_ERROR') {
-      // 许可码错误
-      message.error(errorMsg);
-      // 不关闭对话框，让用户重新输入
-      return;
-    } else {
-      message.error(errorMsg);
+    switch (errorCode) {
+      case 'ACCOUNT_LOCKED': {
+        accountLocked.value = true;
+        lockMessage.value = errorMsg;
+        message.error(errorMsg);
+
+        break;
+      }
+      case 'CAPTCHA_REQUIRED': {
+        // 需要图形验证码
+        showImageCaptcha.value = true;
+        await fetchImageCaptcha();
+        message.warning('请完成图形验证码');
+
+        break;
+      }
+      case 'NEW_LOCATION': {
+        // 异地登录，需要管理员许可码
+        showNewLocation.value = true;
+        newLocationMessage.value = `检测到您从 ${errorData?.currentLocation || '未知位置'} 登录，请联系管理员获取许可码`;
+        permitRequestId.value = errorData?.requestId || '';
+        permitCode.value = ''; // 清空之前输入的许可码
+        pendingLoginParams.value = values; // 保存登录参数
+        message.warning('异地登录需要管理员许可');
+        // 不重置滑块，保留验证状态
+        return;
+      }
+      case 'PERMIT_CODE_ERROR': {
+        // 许可码错误
+        message.error(errorMsg);
+        // 不关闭对话框，让用户重新输入
+        return;
+      }
+      default: {
+        message.error(errorMsg);
+      }
     }
 
     // 重置滑块验证
@@ -359,7 +369,7 @@ onMounted(() => {
           show-icon
           class="mb-4"
         />
-        <p class="text-gray-600 mb-4">
+        <p class="mb-4 text-gray-600">
           为保障数据安全，从新位置登录需要管理员授权。请联系管理员获取许可码。
         </p>
         <div class="permit-code-input">
@@ -388,7 +398,13 @@ onMounted(() => {
   </div>
 </template>
 <style scoped>
-/* 版本号固定在视口底部，与版权信息同一行靠右 */
+/* 移动端响应式 */
+@media (max-width: 768px) {
+  .version-info {
+    right: 16px;
+  }
+}
+
 .version-info {
   position: fixed;
   right: 24px;
@@ -422,16 +438,11 @@ onMounted(() => {
 
 .permit-code-input :deep(.ant-input) {
   font-size: 18px;
-  letter-spacing: 4px;
   text-align: center;
+  letter-spacing: 4px;
 }
 
-/* 移动端响应式 */
-@media (max-width: 768px) {
-  .version-info {
-    right: 16px;
-  }
-}
+/* 版本号固定在视口底部，与版权信息同一行靠右 */
 </style>
 
 <style>

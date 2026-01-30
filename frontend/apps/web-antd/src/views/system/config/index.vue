@@ -32,6 +32,7 @@ import {
   Input,
   InputNumber,
   message,
+  Popconfirm,
   Row,
   Select,
   Space,
@@ -41,7 +42,6 @@ import {
   Tag,
   Textarea,
   Tooltip,
-  Popconfirm,
 } from 'ant-design-vue';
 
 import {
@@ -68,6 +68,7 @@ import { getWecomStatus, testWecomBot } from '#/api/system/wecom';
 
 import ConfigModal from './components/ConfigModal.vue';
 
+defineOptions({ name: 'SysConfig' });
 // 懒加载组件，提高首次加载速度
 const CauseOfActionTab = defineAsyncComponent(
   () => import('./components/CauseOfActionTab.vue'),
@@ -75,8 +76,15 @@ const CauseOfActionTab = defineAsyncComponent(
 const AiBillingTab = defineAsyncComponent(
   () => import('./components/AiBillingTab.vue'),
 );
-
-defineOptions({ name: 'SysConfig' });
+const LoginLogTab = defineAsyncComponent(
+  () => import('./components/LoginLogTab.vue'),
+);
+const SessionTab = defineAsyncComponent(
+  () => import('./components/SessionTab.vue'),
+);
+const CacheTab = defineAsyncComponent(
+  () => import('./components/CacheTab.vue'),
+);
 
 // ==================== 状态定义 ====================
 
@@ -229,7 +237,7 @@ const generalConfigs = computed(() => {
   );
 
   // 按分组排序
-  return filtered.sort((a, b) => {
+  return filtered.toSorted((a, b) => {
     const keyA = a.configKey || '';
     const keyB = b.configKey || '';
 
@@ -411,6 +419,7 @@ async function handleSaveWecomWebhook() {
       // 配置不存在，忽略错误
     }
 
+    // eslint-disable-next-line unicorn/prefer-ternary
     if (existingConfig?.id) {
       // 更新现有配置
       await updateConfig(existingConfig.id, {
@@ -1248,6 +1257,21 @@ watch(activeTab, (newTab) => {
         <AiBillingTab />
       </TabPane>
 
+      <!-- 登录日志 -->
+      <TabPane key="login-log" tab="登录日志">
+        <LoginLogTab />
+      </TabPane>
+
+      <!-- 会话管理 -->
+      <TabPane key="session" tab="会话管理">
+        <SessionTab />
+      </TabPane>
+
+      <!-- 缓存管理 -->
+      <TabPane key="cache" tab="缓存管理">
+        <CacheTab />
+      </TabPane>
+
       <!-- 通用配置 -->
       <TabPane key="general" tab="通用配置">
         <Card :bordered="false">
@@ -1292,10 +1316,12 @@ watch(activeTab, (newTab) => {
       :width="800"
       :footer="null"
     >
+      <!-- eslint-disable vue/no-v-html -->
       <div
         v-html="reportPreviewHtml"
         style="max-height: 600px; overflow: auto"
       ></div>
+      <!-- eslint-enable vue/no-v-html -->
     </AModal>
 
     <!-- 配置弹窗 -->

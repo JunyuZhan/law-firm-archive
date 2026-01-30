@@ -15,9 +15,9 @@ import {
 import { UserTreeSelect } from '#/components/UserTreeSelect';
 
 interface Props {
-  open: boolean;
+  open?: boolean;
   participant?: ContractParticipantDTO | null;
-  roleOptions: { label: string; value: string }[];
+  roleOptions?: { label: string; value: string }[];
 }
 
 interface Emits {

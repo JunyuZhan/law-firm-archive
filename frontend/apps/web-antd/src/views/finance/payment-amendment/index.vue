@@ -179,6 +179,7 @@ async function handleView(record: PaymentAmendmentDTO) {
             h(DescriptionsItem, { label: '差额', span: 2 }, () => {
               const diff = detail.amountDiff;
               const color =
+                // eslint-disable-next-line unicorn/no-nested-ternary
                 diff > 0 ? '#52c41a' : diff < 0 ? '#f5222d' : '#000';
               return h(
                 'span',
@@ -276,7 +277,7 @@ function handleReject(record: PaymentAmendmentDTO) {
     onOk: async () => {
       if (!rejectReasonRef.value?.trim()) {
         message.error('请输入拒绝原因');
-        throw undefined;
+        throw new Error('操作失败');
       }
       try {
         await rejectPaymentAmendment(record.id, rejectReasonRef.value.trim());
@@ -309,6 +310,7 @@ function formatAmount(amount: number) {
 function formatDiff(diff: number): { color: string; text: string } {
   if (diff === null || diff === undefined) return { text: '-', color: '#000' };
   const prefix = diff > 0 ? '+' : '';
+  // eslint-disable-next-line unicorn/no-nested-ternary
   const color = diff > 0 ? '#52c41a' : diff < 0 ? '#f5222d' : '#000';
   return { text: `${prefix}¥${diff.toLocaleString()}`, color };
 }
@@ -373,6 +375,7 @@ onMounted(() => {
       <Tabs v-model:active-key="activeTab" @change="handleTabChange">
         <TabPane key="all">
           <template #tab>
+            <!-- eslint-disable-next-line prettier/prettier -->
             <span
               >全部申请
               <Badge
@@ -383,6 +386,7 @@ onMounted(() => {
         </TabPane>
         <TabPane key="pending">
           <template #tab>
+            <!-- eslint-disable-next-line prettier/prettier -->
             <span
               >待审批
               <Badge
@@ -393,6 +397,7 @@ onMounted(() => {
         </TabPane>
         <TabPane key="completed">
           <template #tab>
+            <!-- eslint-disable-next-line prettier/prettier -->
             <span
               >已处理
               <Badge

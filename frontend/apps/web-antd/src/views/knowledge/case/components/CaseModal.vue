@@ -252,6 +252,7 @@ async function handleOcrJudgment(file: File) {
 
       // 提取摘要（裁判要旨或判决主文前100字）
       const summaryMatch = text.match(
+        // eslint-disable-next-line regexp/no-super-linear-backtracking
         /(?:裁判要旨|本院认为|判决如下)[：:]\s*([^。]+。[^。]+。)/,
       );
       if (summaryMatch?.[1]) {
@@ -265,7 +266,8 @@ async function handleOcrJudgment(file: File) {
         parsed.caseType = 'CIVIL';
       } else if (/刑事|犯罪|罪|刑罚/.test(text)) {
         parsed.caseType = 'CRIMINAL';
-      } else if (/行政|行政处罚|行政复议/.test(text)) {
+        // eslint-disable-next-line regexp/no-unused-capturing-group
+      } else if (/行政(处罚|复议)?/.test(text)) {
         parsed.caseType = 'ADMINISTRATIVE';
       } else if (/知识产权|专利|商标|著作权/.test(text)) {
         parsed.caseType = 'IP';

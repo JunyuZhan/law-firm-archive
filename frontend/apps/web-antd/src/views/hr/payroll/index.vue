@@ -80,13 +80,15 @@ function calculateIncomeTotal(record: PayrollItemDTO): number {
     // 如果没有收入项，收入为0（收入应该来自提成管理模块的数据）
     return 0;
   }
-  return record.incomes.reduce((sum, income) => {
+  let sum = 0;
+  for (const income of record.incomes) {
     const amount =
       typeof income.amount === 'string'
         ? Number.parseFloat(income.amount)
         : income.amount || 0;
-    return sum + amount;
-  }, 0);
+    sum += amount;
+  }
+  return sum;
 }
 
 // 表格列（员工工资明细）
@@ -412,29 +414,33 @@ function isTaxDeduction(deductionType: string): boolean {
 // 计算税费扣减项总额
 function calculateTaxDeductionTotal(item: PayrollItemDTO): number {
   if (!item.deductions) return 0;
-  return item.deductions
-    .filter((d) => isTaxDeduction(d.deductionType || ''))
-    .reduce((sum, deduction) => {
-      const amount =
-        typeof deduction.amount === 'string'
-          ? Number.parseFloat(deduction.amount)
-          : deduction.amount || 0;
-      return sum + amount;
-    }, 0);
+  let sum = 0;
+  for (const deduction of item.deductions.filter((d) =>
+    isTaxDeduction(d.deductionType || ''),
+  )) {
+    const amount =
+      typeof deduction.amount === 'string'
+        ? Number.parseFloat(deduction.amount)
+        : deduction.amount || 0;
+    sum += amount;
+  }
+  return sum;
 }
 
 // 计算其他扣减项总额
 function calculateOtherDeductionTotal(item: PayrollItemDTO): number {
   if (!item.deductions) return 0;
-  return item.deductions
-    .filter((d) => !isTaxDeduction(d.deductionType || ''))
-    .reduce((sum, deduction) => {
-      const amount =
-        typeof deduction.amount === 'string'
-          ? Number.parseFloat(deduction.amount)
-          : deduction.amount || 0;
-      return sum + amount;
-    }, 0);
+  let sum = 0;
+  for (const deduction of item.deductions.filter(
+    (d) => !isTaxDeduction(d.deductionType || ''),
+  )) {
+    const amount =
+      typeof deduction.amount === 'string'
+        ? Number.parseFloat(deduction.amount)
+        : deduction.amount || 0;
+    sum += amount;
+  }
+  return sum;
 }
 
 // 更新扣减项金额并重新计算应发工资和实发工资
@@ -833,6 +839,7 @@ onMounted(() => {
           <Col :xs="12" :sm="6" :md="4" :lg="3" :xl="2">
             <div class="payroll-info-item">
               <span class="payroll-info-label">总人数</span>
+              <!-- eslint-disable-next-line prettier/prettier -->
               <span class="payroll-info-value"
                 >{{ currentSheet.totalEmployees }}人</span
               >

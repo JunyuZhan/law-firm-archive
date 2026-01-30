@@ -116,6 +116,7 @@ export const EVIDENCE_TYPE_OPTIONS = [
 
 // 获取文件类型信息
 export function getFileTypeInfo(fileType?: string): FileTypeInfo {
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   return FILE_TYPE_MAP[fileType || 'other'] ?? FILE_TYPE_MAP.other!;
 }
 

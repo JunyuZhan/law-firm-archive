@@ -9,8 +9,6 @@ import { computed, onMounted, reactive, ref } from 'vue';
 
 import { Page } from '@vben/common-ui';
 
-import { useResponsive } from '#/hooks/useResponsive';
-
 import {
   Button,
   Card,
@@ -33,6 +31,7 @@ import {
   updateDepartment,
 } from '#/api/system';
 import { UserTreeSelect } from '#/components/UserTreeSelect';
+import { useResponsive } from '#/hooks/useResponsive';
 
 defineOptions({ name: 'SystemDept' });
 

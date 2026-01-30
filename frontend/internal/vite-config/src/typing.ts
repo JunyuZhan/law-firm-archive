@@ -268,10 +268,6 @@ interface ApplicationPluginOptions extends CommonPluginOptions {
    */
   pwa?: boolean;
   /**
-   * PWA 插件配置
-   */
-  pwaOptions?: Partial<PwaPluginOptions>;
-  /**
    * 是否开启 PWA Manifest 动态生成（从环境变量加载应用名称）
    * @default false
    */
@@ -281,6 +277,10 @@ interface ApplicationPluginOptions extends CommonPluginOptions {
    * @description name 字段从环境变量 VITE_APP_TITLE 动态加载
    */
   pwaManifestOptions?: PwaManifestOptions;
+  /**
+   * PWA 插件配置
+   */
+  pwaOptions?: Partial<PwaPluginOptions>;
   /**
    * 是否开启 VXE Table 懒加载
    * @default false

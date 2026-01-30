@@ -50,20 +50,20 @@ export function getUnreadCount() {
 
 /** 标记为已读 */
 export function markAsRead(id: number) {
-  return requestClient.post<void>(`/system/notification/${id}/read`);
+  return requestClient.post(`/system/notification/${id}/read`);
 }
 
 /** 全部标记为已读 */
 export function markAllAsRead() {
-  return requestClient.post<void>('/system/notification/read-all');
+  return requestClient.post('/system/notification/read-all');
 }
 
 /** 删除通知 */
 export function deleteNotification(id: number) {
-  return requestClient.delete<void>(`/system/notification/${id}`);
+  return requestClient.delete(`/system/notification/${id}`);
 }
 
 /** 批量删除已读通知 */
 export function deleteReadNotifications() {
-  return requestClient.delete<void>('/system/notification/read');
+  return requestClient.delete('/system/notification/read');
 }

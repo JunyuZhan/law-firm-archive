@@ -1,22 +1,26 @@
 package com.lawfirm.application.hr.command;
 
 import jakarta.validation.constraints.NotNull;
+import java.time.LocalDate;
 import lombok.Data;
 
-import java.time.LocalDate;
-
-/**
- * 创建转正申请命令
- */
+/** 创建转正申请命令 */
 @Data
 public class CreateRegularizationCommand {
 
-    @NotNull(message = "员工ID不能为空")
-    private Long employeeId;
+  /** 员工ID */
+  @NotNull(message = "员工ID不能为空")
+  private Long employeeId;
 
-    private LocalDate probationStartDate;
-    private LocalDate probationEndDate;
-    private LocalDate expectedRegularDate;
-    private String selfEvaluation;
+  /** 试用期开始日期 */
+  private LocalDate probationStartDate;
+
+  /** 试用期结束日期 */
+  private LocalDate probationEndDate;
+
+  /** 预计转正日期 */
+  private LocalDate expectedRegularDate;
+
+  /** 自我评价 */
+  private String selfEvaluation;
 }
-

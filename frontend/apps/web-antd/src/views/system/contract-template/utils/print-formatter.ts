@@ -50,12 +50,12 @@ export function decodeHtmlEntities(text: string): string {
   }
 
   // 处理数字实体 &#xxx;
-  result = result.replace(/&#(\d+);/g, (_, num) =>
-    String.fromCharCode(parseInt(num, 10)),
+  result = result.replaceAll(/&#(\d+);/g, (_, num) =>
+    String.fromCodePoint(Number.parseInt(num, 10)),
   );
   // 处理十六进制实体 &#xXXX;
-  result = result.replace(/&#x([0-9a-fA-F]+);/g, (_, hex) =>
-    String.fromCharCode(parseInt(hex, 16)),
+  result = result.replaceAll(/&#x([0-9a-fA-F]+);/g, (_, hex) =>
+    String.fromCodePoint(Number.parseInt(hex, 16)),
   );
 
   return result;
@@ -130,7 +130,7 @@ export function isStructuredContent(content: string): boolean {
  */
 export function parseStructuredContent(
   content: string,
-): StructuredContent | null {
+): null | StructuredContent {
   if (!content || typeof content !== 'string') {
     return null;
   }
@@ -210,7 +210,7 @@ function textToHtmlParagraphs(text: string, indent: boolean = true): string {
       const isClauseTitle =
         /^[一二三四五六七八九十]+、/.test(trimmed) ||
         /^第[一二三四五六七八九十]+条/.test(trimmed) ||
-        /^\d+[\.、]/.test(trimmed);
+        /^\d+[.、]/.test(trimmed);
 
       if (isClauseTitle) {
         return `<p style="text-indent: 0; margin-top: 1em; font-weight: 600;">${trimmed}</p>`;
@@ -253,9 +253,9 @@ export function formatStructuredForPrint(
     let result = text;
     Object.entries(variables).forEach(([key, value]) => {
       // 转义特殊字符，避免在正则表达式中出错
-      const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      result = result.replace(
-        new RegExp(`\\$\\{${escapedKey}\\}`, 'g'),
+      const escapedKey = key.replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
+      result = result.replaceAll(
+        new RegExp(String.raw`\$\{${escapedKey}\}`, 'g'),
         value || `[${key}]`,
       );
     });
@@ -424,11 +424,11 @@ export function formatPlainTextForPrint(
         const contentToFormat = typeof parsed === 'string' ? parsed : content;
         return formatStructuredForPrint(contentToFormat, variables);
       }
-    } catch (e) {
+    } catch (error) {
       // 不是有效的JSON，继续处理
-      console.debug(
+      console.warn(
         'formatPlainTextForPrint: JSON 解析失败，作为纯文本处理',
-        e,
+        error,
       );
     }
   }
@@ -437,9 +437,9 @@ export function formatPlainTextForPrint(
   let text = content;
   Object.entries(variables).forEach(([key, value]) => {
     // 转义特殊字符，避免在正则表达式中出错
-    const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    text = text.replace(
-      new RegExp(`\\$\\{${escapedKey}\\}`, 'g'),
+    const escapedKey = key.replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
+    text = text.replaceAll(
+      new RegExp(String.raw`\$\{${escapedKey}\}`, 'g'),
       value || `[${key}]`,
     );
   });

@@ -60,6 +60,7 @@ export interface MatterSelectorProps {
 export interface MatterSelectorEmits {
   (e: 'update:selectedMatterId', value: number | undefined): void;
   (e: 'update:isPersonalDoc', value: boolean): void;
+  // eslint-disable-next-line @typescript-eslint/unified-signatures
   (e: 'update:selectedDossierId', value: number | undefined): void;
   (e: 'matterChange', matter: MatterDTO | null): void;
 }
@@ -92,6 +93,7 @@ export interface TemplateModeProps {
 /** 模板模式 Emits */
 export interface TemplateModeEmits {
   (e: 'success'): void;
+  // eslint-disable-next-line @typescript-eslint/unified-signatures
   (e: 'reset'): void;
 }
 
@@ -104,6 +106,7 @@ export interface AiModeProps {
 /** AI 模式 Emits */
 export interface AiModeEmits {
   (e: 'success'): void;
+  // eslint-disable-next-line @typescript-eslint/unified-signatures
   (e: 'reset'): void;
 }
 

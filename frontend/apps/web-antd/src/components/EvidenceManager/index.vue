@@ -43,6 +43,7 @@ const props = defineProps<{
   readonly?: boolean;
 }>();
 
+// eslint-disable-next-line no-unused-vars, unused-imports/no-unused-vars
 const emit = defineEmits<{
   (e: 'export'): void;
 }>();
@@ -89,18 +90,18 @@ const groupTreeData = computed(() => {
 // 当前分组的证据列表
 const currentEvidences = computed(() => {
   if (selectedGroupKey.value === 'all') {
-    return [...evidenceList.value].sort(
+    return [...evidenceList.value].toSorted(
       (a, b) => (a.sortOrder || 0) - (b.sortOrder || 0),
     );
   }
   if (selectedGroupKey.value === 'ungrouped') {
     return evidenceList.value
       .filter((e) => !e.groupName)
-      .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+      .toSorted((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
   }
   return evidenceList.value
     .filter((e) => e.groupName === selectedGroupKey.value)
-    .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+    .toSorted((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
 });
 
 // 视图模式选项
@@ -119,7 +120,7 @@ async function loadData() {
       getEvidenceByMatter(props.matterId),
       getEvidenceGroups(props.matterId),
     ]);
-    evidenceList.value = (evidences || []).map(mapEvidenceDTO);
+    evidenceList.value = (evidences || []).map((e) => mapEvidenceDTO(e));
     groups.value = groupList || [];
   } catch (error: any) {
     console.error('加载证据列表失败:', error);
@@ -255,7 +256,8 @@ async function handlePreview(evidence: EvidenceItem) {
       const docType =
         evidence.fileType === 'word'
           ? 'word'
-          : evidence.fileType === 'excel'
+          : // eslint-disable-next-line unicorn/no-nested-ternary
+            evidence.fileType === 'excel'
             ? 'cell'
             : 'slide';
       const fileExt =

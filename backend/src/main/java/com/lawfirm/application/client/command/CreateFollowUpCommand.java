@@ -1,28 +1,32 @@
 package com.lawfirm.application.client.command;
 
-import lombok.Data;
-
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.time.LocalDateTime;
+import lombok.Data;
 
-/**
- * 创建跟进记录命令
- */
+/** 创建跟进记录命令 */
 @Data
 public class CreateFollowUpCommand {
 
-    @NotNull(message = "案源ID不能为空")
-    private Long leadId;
+  /** 案源ID */
+  @NotNull(message = "案源ID不能为空")
+  private Long leadId;
 
-    @NotBlank(message = "跟进方式不能为空")
-    private String followType;  // PHONE, EMAIL, VISIT, MEETING, OTHER
+  /** 跟进方式（PHONE, EMAIL, VISIT, MEETING, OTHER） */
+  @NotBlank(message = "跟进方式不能为空")
+  private String followType;
 
-    @NotBlank(message = "跟进内容不能为空")
-    private String followContent;
+  /** 跟进内容 */
+  @NotBlank(message = "跟进内容不能为空")
+  private String followContent;
 
-    private String followResult;  // POSITIVE, NEUTRAL, NEGATIVE
-    private LocalDateTime nextFollowTime;
-    private String nextFollowPlan;
+  /** 跟进结果（POSITIVE, NEUTRAL, NEGATIVE） */
+  private String followResult;
+
+  /** 下次跟进时间 */
+  private LocalDateTime nextFollowTime;
+
+  /** 下次跟进计划 */
+  private String nextFollowPlan;
 }
-

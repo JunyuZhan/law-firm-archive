@@ -4,14 +4,14 @@
  * 将合同模板分为四个区块：标题、主体、条款、签署
  * 用户只需关注内容，打印时系统自动排版
  */
-import { reactive, ref, watch, computed } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 
 import {
   Alert,
+  Button,
   Collapse,
   CollapsePanel,
   Dropdown,
-  Button,
   Input,
   Menu,
   MenuItem,
@@ -20,17 +20,17 @@ import {
 
 import { decodeHtmlEntities } from '../utils/print-formatter';
 
-const { TextArea: Textarea } = Input;
-
 // Props
 const props = defineProps<{
   modelValue: string;
-  variables?: Array<{ label: string; value: string; description?: string }>;
+  variables?: Array<{ description?: string; label: string; value: string }>;
 }>();
 
 const emit = defineEmits<{
   'update:modelValue': [value: string];
 }>();
+
+const { TextArea: Textarea } = Input;
 
 // 四个区块的数据结构
 interface TemplateBlocks {
@@ -73,7 +73,7 @@ const cursorPositions = ref<Record<string, number>>({});
 
 // 处理输入框失去焦点时保存光标位置
 function handleBlur(name: string, event: FocusEvent) {
-  const target = event.target as HTMLTextAreaElement | HTMLInputElement;
+  const target = event.target as HTMLInputElement | HTMLTextAreaElement;
   if (target) {
     cursorPositions.value[name] = target.selectionStart ?? 0;
   }
@@ -81,7 +81,7 @@ function handleBlur(name: string, event: FocusEvent) {
 
 // 处理点击和选择变化时更新光标位置
 function handleSelect(name: string, event: Event) {
-  const target = event.target as HTMLTextAreaElement | HTMLInputElement;
+  const target = event.target as HTMLInputElement | HTMLTextAreaElement;
   if (target) {
     cursorPositions.value[name] = target.selectionStart ?? 0;
   }
@@ -146,11 +146,11 @@ watch(
 // 在光标位置插入变量
 function insertVariable(
   target:
+    | 'clauses'
     | 'contractName'
     | 'partyA'
-    | 'partyB'
-    | 'clauses'
     | 'partyASign'
+    | 'partyB'
     | 'partyBSign'
     | 'signInfo',
   variable: string,
@@ -159,20 +159,43 @@ function insertVariable(
 
   // 获取当前值
   let currentValue = '';
-  if (target === 'contractName') {
-    currentValue = blocks.title.contractName;
-  } else if (target === 'partyA') {
-    currentValue = blocks.parties.partyA;
-  } else if (target === 'partyB') {
-    currentValue = blocks.parties.partyB;
-  } else if (target === 'clauses') {
-    currentValue = blocks.clauses;
-  } else if (target === 'partyASign') {
-    currentValue = blocks.signature.partyASign;
-  } else if (target === 'partyBSign') {
-    currentValue = blocks.signature.partyBSign;
-  } else if (target === 'signInfo') {
-    currentValue = blocks.signature.signInfo;
+  switch (target) {
+    case 'clauses': {
+      currentValue = blocks.clauses;
+
+      break;
+    }
+    case 'contractName': {
+      currentValue = blocks.title.contractName;
+
+      break;
+    }
+    case 'partyA': {
+      currentValue = blocks.parties.partyA;
+
+      break;
+    }
+    case 'partyASign': {
+      currentValue = blocks.signature.partyASign;
+
+      break;
+    }
+    case 'partyB': {
+      currentValue = blocks.parties.partyB;
+
+      break;
+    }
+    case 'partyBSign': {
+      currentValue = blocks.signature.partyBSign;
+
+      break;
+    }
+    case 'signInfo': {
+      currentValue = blocks.signature.signInfo;
+
+      break;
+    }
+    // No default
   }
 
   // 获取记录的光标位置，如果没有记录则追加到末尾
@@ -183,20 +206,43 @@ function insertVariable(
     currentValue.slice(0, cursorPos) + varStr + currentValue.slice(cursorPos);
 
   // 更新对应区块的值
-  if (target === 'contractName') {
-    blocks.title.contractName = newValue;
-  } else if (target === 'partyA') {
-    blocks.parties.partyA = newValue;
-  } else if (target === 'partyB') {
-    blocks.parties.partyB = newValue;
-  } else if (target === 'clauses') {
-    blocks.clauses = newValue;
-  } else if (target === 'partyASign') {
-    blocks.signature.partyASign = newValue;
-  } else if (target === 'partyBSign') {
-    blocks.signature.partyBSign = newValue;
-  } else if (target === 'signInfo') {
-    blocks.signature.signInfo = newValue;
+  switch (target) {
+    case 'clauses': {
+      blocks.clauses = newValue;
+
+      break;
+    }
+    case 'contractName': {
+      blocks.title.contractName = newValue;
+
+      break;
+    }
+    case 'partyA': {
+      blocks.parties.partyA = newValue;
+
+      break;
+    }
+    case 'partyASign': {
+      blocks.signature.partyASign = newValue;
+
+      break;
+    }
+    case 'partyB': {
+      blocks.parties.partyB = newValue;
+
+      break;
+    }
+    case 'partyBSign': {
+      blocks.signature.partyBSign = newValue;
+
+      break;
+    }
+    case 'signInfo': {
+      blocks.signature.signInfo = newValue;
+
+      break;
+    }
+    // No default
   }
 
   // 更新光标位置（移到插入变量之后）
@@ -290,7 +336,7 @@ const variableGroups = computed(() => {
       style="margin-bottom: 16px"
     />
 
-    <Collapse v-model:activeKey="activeKeys" :bordered="false">
+    <Collapse v-model:active-key="activeKeys" :bordered="false">
       <!-- 区块1：标题区 -->
       <CollapsePanel key="title" header="📌 区块一：标题区">
         <template #extra>
@@ -490,7 +536,7 @@ ${paymentTerms}
             <label>签订日期/地点</label>
             <Input
               v-model:value="blocks.signature.signInfo"
-              placeholder="签订日期：${signDate}　　签订地点：${signPlace}"
+              placeholder="签订日期：${signDate}    签订地点：${signPlace}"
               @blur="(e: FocusEvent) => handleBlur('signInfo', e)"
               @click="(e: Event) => handleSelect('signInfo', e)"
               @keyup="(e: Event) => handleSelect('signInfo', e)"

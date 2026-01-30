@@ -44,6 +44,8 @@ import {
 } from 'ant-design-vue';
 import dayjs from 'dayjs';
 
+import { getDocumentsByMatter } from '#/api/document';
+import { getMatterDossierItems } from '#/api/document/dossier';
 import {
   countPendingClientFiles,
   getPendingClientFiles,
@@ -55,8 +57,6 @@ import {
   syncClientFile,
   updatePushConfig,
 } from '#/api/matter/client-service';
-import { getDocumentsByMatter } from '#/api/document';
-import { getMatterDossierItems } from '#/api/document/dossier';
 
 const props = defineProps<{
   /** 客户ID */
@@ -154,7 +154,7 @@ const dossierTree = ref<any[]>([]);
 const dossierLoading = ref(false);
 
 // 文件类别映射
-const FILE_CATEGORY_MAP: Record<string, { text: string; color: string }> = {
+const FILE_CATEGORY_MAP: Record<string, { color: string; text: string }> = {
   EVIDENCE: { text: '证据材料', color: 'blue' },
   CONTRACT: { text: '合同文件', color: 'green' },
   ID_CARD: { text: '身份证件', color: 'orange' },
@@ -163,9 +163,9 @@ const FILE_CATEGORY_MAP: Record<string, { text: string; color: string }> = {
 
 // 统计
 const statistics = ref<{
-  totalPushCount: number;
-  lastPushTime?: string;
   lastPushStatus?: string;
+  lastPushTime?: string;
+  totalPushCount: number;
 }>({ totalPushCount: 0 });
 
 // 推送表单
@@ -194,7 +194,7 @@ const config = reactive({
 });
 
 // 状态映射（常量使用 UPPER_SNAKE_CASE）
-const STATUS_MAP: Record<string, { text: string; color: string }> = {
+const STATUS_MAP: Record<string, { color: string; text: string }> = {
   PENDING: { text: '待推送', color: 'processing' },
   SUCCESS: { text: '已推送', color: 'success' },
   FAILED: { text: '失败', color: 'error' },
@@ -221,6 +221,9 @@ async function loadData() {
       config.scopes = configRes.scopes || [];
       config.autoPushOnUpdate = configRes.autoPushOnUpdate || false;
       config.validDays = configRes.validDays || 30;
+      // 更新客户服务系统连接状态
+      clientServiceConnected.value = configRes.clientServiceConnected || false;
+      connectionMessage.value = configRes.connectionMessage || '';
     }
   } catch (error: unknown) {
     const err = error as { message?: string };
@@ -230,8 +233,9 @@ async function loadData() {
   }
 }
 
-// 客户服务系统是否已对接（从后端获取，暂时模拟为未对接）
+// 客户服务系统是否已对接（从后端配置接口获取）
 const clientServiceConnected = ref(false);
+const connectionMessage = ref('');
 
 // ========== 客户文件相关函数 ==========
 
@@ -398,6 +402,7 @@ async function openPushModal() {
     Modal.info({
       title: '客户服务系统尚未对接',
       content:
+        connectionMessage.value ||
         '客户服务系统正在开发中，暂时无法推送数据。对接完成后，您可以在此将项目信息推送给客户，系统将自动通过短信、公众号等方式通知客户查看。',
       okText: '我知道了',
     });
@@ -431,7 +436,7 @@ async function handlePush() {
     pushModalVisible.value = false;
     loadData();
   } catch (error: unknown) {
-    const err = error as { message?: string; code?: string };
+    const err = error as { code?: string; message?: string };
     // 检查是否是客户服务系统未配置的错误
     if (err.message?.includes('未配置') || err.message?.includes('未对接')) {
       Modal.warning({
@@ -510,11 +515,9 @@ function getFileIcon(fileType: string | undefined): string {
 
 // 全选/取消全选文档（弹窗中）
 function handleSelectAllDocs(e: { target: { checked: boolean } }) {
-  if (e.target.checked) {
-    pushForm.documentIds = documentList.value.map((d) => d.id);
-  } else {
-    pushForm.documentIds = [];
-  }
+  pushForm.documentIds = e.target.checked
+    ? documentList.value.map((d) => d.id)
+    : [];
 }
 
 // 监听 config.scopes 变化，当选择 DOCUMENT_FILES 时加载文档列表
@@ -581,6 +584,7 @@ watch(
             <Card size="small" class="client-files-card">
               <template #title>
                 <Space>
+                  <!-- eslint-disable-next-line prettier/prettier -->
                   <span style="font-size: 16px; font-weight: 600"
                     >📥 客户上传的文件</span
                   >
@@ -674,6 +678,7 @@ watch(
                         </template>
                         <template #description>
                           <Space size="small" wrap>
+                            <!-- eslint-disable-next-line prettier/prettier -->
                             <span
                               >上传人:
                               {{
@@ -682,6 +687,7 @@ watch(
                             >
                             <Divider type="vertical" />
                             <span>{{ formatTime(item.uploadedAt) }}</span>
+                            <!-- eslint-disable-next-line prettier/prettier -->
                             <span v-if="item.fileSize"
                               >· {{ formatFileSize(item.fileSize) }}</span
                             >
@@ -715,8 +721,9 @@ watch(
                           v-if="item.status === 'SYNCED'"
                           color="success"
                           size="small"
-                          >已同步</Tag
                         >
+                          已同步
+                        </Tag>
                       </template>
                     </ListItem>
                   </template>
@@ -774,8 +781,9 @@ watch(
                   size="small"
                   :loading="configLoading"
                   @click="saveConfig"
-                  >保存</Button
                 >
+                  保存
+                </Button>
               </template>
 
               <Form layout="vertical" size="small">
@@ -791,11 +799,9 @@ watch(
                         :span="12"
                       >
                         <Tooltip :title="opt.description">
-                          <Checkbox
-                            :value="opt.value"
-                            style="font-size: 12px"
-                            >{{ opt.label }}</Checkbox
-                          >
+                          <Checkbox :value="opt.value" style="font-size: 12px">
+                            {{ opt.label }}
+                          </Checkbox>
                         </Tooltip>
                       </Col>
                     </Row>
@@ -995,9 +1001,9 @@ watch(
                           <div class="doc-info">
                             <div class="doc-name">{{ doc.name }}</div>
                             <div class="doc-meta">
-                              <Tag size="small" color="blue">{{
-                                doc.fileType?.toUpperCase() || '文件'
-                              }}</Tag>
+                              <Tag size="small" color="blue">
+                                {{ doc.fileType?.toUpperCase() || '文件' }}
+                              </Tag>
                               <span v-if="doc.fileSize">{{
                                 formatFileSize(doc.fileSize)
                               }}</span>
@@ -1026,6 +1032,7 @@ watch(
                 style="width: 100px"
               />
               <span>天</span>
+              <!-- eslint-disable-next-line prettier/prettier -->
               <span style="font-size: 12px; color: #999"
                 >（超过有效期，客户服务系统自动删除数据）</span
               >

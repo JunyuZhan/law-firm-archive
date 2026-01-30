@@ -99,12 +99,12 @@ export function updateSchedule(id: number, params: UpdateScheduleCommand) {
 
 /** 删除日程 */
 export function deleteSchedule(id: number) {
-  return requestClient.delete<void>(`/schedules/${id}`);
+  return requestClient.delete(`/schedules/${id}`);
 }
 
 /** 取消日程 */
 export function cancelSchedule(id: number) {
-  return requestClient.post<void>(`/schedules/${id}/cancel`);
+  return requestClient.post(`/schedules/${id}/cancel`);
 }
 
 /** 获取用户某天的日程 */

@@ -5,8 +5,6 @@ import { computed, onMounted, reactive, ref } from 'vue';
 
 import { Page } from '@vben/common-ui';
 
-import { useResponsive } from '#/hooks/useResponsive';
-
 import {
   Button,
   Card,
@@ -32,6 +30,7 @@ import {
   getAdminContractList,
 } from '#/api/admin';
 import { findCauseNameInAll } from '#/composables/useCauseOfAction';
+import { useResponsive } from '#/hooks/useResponsive';
 
 defineOptions({ name: 'AdminContract' });
 
@@ -309,7 +308,15 @@ function getCaseTypeColor(caseType: string) {
     <!-- 统计卡片 -->
     <Row :gutter="[16, 16]" style="margin-bottom: 16px">
       <Col :xs="8" :sm="8" :md="4" :lg="4">
-        <Card :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }" style="height: 100%">
+        <Card
+          :body-style="{
+            padding: '16px',
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+          }"
+          style="height: 100%"
+        >
           <Statistic
             title="民事案件"
             :value="stats.civil"
@@ -319,7 +326,15 @@ function getCaseTypeColor(caseType: string) {
         </Card>
       </Col>
       <Col :xs="8" :sm="8" :md="4" :lg="4">
-        <Card :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }" style="height: 100%">
+        <Card
+          :body-style="{
+            padding: '16px',
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+          }"
+          style="height: 100%"
+        >
           <Statistic
             title="刑事案件"
             :value="stats.criminal"
@@ -329,7 +344,15 @@ function getCaseTypeColor(caseType: string) {
         </Card>
       </Col>
       <Col :xs="8" :sm="8" :md="4" :lg="4">
-        <Card :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }" style="height: 100%">
+        <Card
+          :body-style="{
+            padding: '16px',
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+          }"
+          style="height: 100%"
+        >
           <Statistic
             title="行政案件"
             :value="stats.administrative"
@@ -339,7 +362,15 @@ function getCaseTypeColor(caseType: string) {
         </Card>
       </Col>
       <Col :xs="8" :sm="8" :md="4" :lg="4">
-        <Card :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }" style="height: 100%">
+        <Card
+          :body-style="{
+            padding: '16px',
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+          }"
+          style="height: 100%"
+        >
           <Statistic
             title="法律顾问"
             :value="stats.legalCounsel"
@@ -349,7 +380,15 @@ function getCaseTypeColor(caseType: string) {
         </Card>
       </Col>
       <Col :xs="8" :sm="8" :md="4" :lg="4">
-        <Card :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }" style="height: 100%">
+        <Card
+          :body-style="{
+            padding: '16px',
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+          }"
+          style="height: 100%"
+        >
           <Statistic
             title="其他"
             :value="stats.other"
@@ -359,9 +398,17 @@ function getCaseTypeColor(caseType: string) {
         </Card>
       </Col>
       <Col :xs="8" :sm="8" :md="4" :lg="4">
-        <Card :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }" style="height: 100%">
-          <Statistic 
-            title="总计" 
+        <Card
+          :body-style="{
+            padding: '16px',
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+          }"
+          style="height: 100%"
+        >
+          <Statistic
+            title="总计"
             :value="stats.total"
             class="admin-contract-statistic"
           />
@@ -407,7 +454,11 @@ function getCaseTypeColor(caseType: string) {
             <Space :wrap="true" style="width: 100%">
               <Button type="primary" @click="handleSearch">查询</Button>
               <Button @click="handleReset">重置</Button>
-              <Button :loading="exportListLoading" @click="handleExportList" style="white-space: nowrap">
+              <Button
+                :loading="exportListLoading"
+                @click="handleExportList"
+                style="white-space: nowrap"
+              >
                 导出列表
               </Button>
             </Space>

@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { ref } from 'vue';
-import { Button, Input, Card, message } from 'ant-design-vue';
+
+import { Button, Card, Input, message } from 'ant-design-vue';
 
 import { loginWithCredentials } from './auth';
 
@@ -8,7 +9,7 @@ const username = ref('');
 const password = ref('');
 const loading = ref(false);
 
-function isSafeRedirectPath(value: string | null): value is string {
+function isSafeRedirectPath(value: null | string): value is string {
   return !!value && value.startsWith('/') && !value.startsWith('//');
 }
 
@@ -37,7 +38,7 @@ const handleLogin = () => {
       const safeRedirectFromQuery = isSafeRedirectPath(redirectFromQuery)
         ? redirectFromQuery
         : null;
-      const isRootLoginPage = /^\/(docs\/)?login(\.html)?$/.test(
+      const isRootLoginPage = /^\/(?:docs\/)?login(?:\.html)?$/.test(
         window.location.pathname,
       );
       const redirect =

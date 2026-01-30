@@ -13,32 +13,33 @@ import type {
  */
 import { ref, watch } from 'vue';
 
+import { Plus, RotateCw, Trash } from '@vben/icons';
+
 import {
   Button,
   Card,
   Empty,
-  message,
-  Modal,
   Form,
   FormItem,
   Input,
+  message,
+  Modal,
+  Popconfirm,
+  Segmented,
   Select,
   SelectOption,
-  Segmented,
   Spin,
   Tag,
-  Popconfirm,
 } from 'ant-design-vue';
-import { Plus, Trash, RotateCw } from '@vben/icons';
 
 import {
   createEvidenceList,
   deleteEvidenceList,
+  EVIDENCE_LIST_TYPE_OPTIONS,
   exportEvidenceList,
   getEvidenceByMatter,
-  getEvidenceListsByMatter,
   getEvidenceListDetail,
-  EVIDENCE_LIST_TYPE_OPTIONS,
+  getEvidenceListsByMatter,
 } from '#/api/evidence';
 
 import EvidenceListDisplay from './EvidenceListDisplay.vue';
@@ -97,7 +98,7 @@ async function loadData() {
       getEvidenceListsByMatter(props.matterId),
     ]);
 
-    allEvidences.value = (evidences || []).map(mapEvidenceDTO);
+    allEvidences.value = (evidences || []).map((e) => mapEvidenceDTO(e));
 
     // 获取每个清单的详情（包含 evidenceIdList）
     const detailedLists = await Promise.all(
@@ -205,7 +206,7 @@ async function handleRefreshList(listId: number) {
   }
   // 同时刷新证据数据
   const evidences = await getEvidenceByMatter(props.matterId);
-  allEvidences.value = (evidences || []).map(mapEvidenceDTO);
+  allEvidences.value = (evidences || []).map((e) => mapEvidenceDTO(e));
   emit('change');
 }
 
@@ -252,14 +253,18 @@ function getTypeName(type?: string) {
 // 获取类型颜色
 function getTypeColor(type?: string) {
   switch (type) {
-    case 'SUBMISSION':
-      return 'blue';
-    case 'EXCHANGE':
-      return 'green';
-    case 'COURT':
+    case 'COURT': {
       return 'orange';
-    default:
+    }
+    case 'EXCHANGE': {
+      return 'green';
+    }
+    case 'SUBMISSION': {
+      return 'blue';
+    }
+    default: {
       return 'default';
+    }
   }
 }
 
@@ -287,9 +292,9 @@ defineExpose({
       <div class="top-toolbar">
         <div class="left">
           <span class="title">📋 证据清单</span>
-          <Tag v-if="evidenceLists.length > 0" color="blue"
-            >{{ evidenceLists.length }} 个</Tag
-          >
+          <Tag v-if="evidenceLists.length > 0" color="blue">
+            {{ evidenceLists.length }} 个
+          </Tag>
         </div>
         <div class="right">
           <!-- 模式切换 -->

@@ -114,6 +114,7 @@ docker exec law-firm-grafana env | grep GF_SECURITY_ADMIN_PASSWORD
 **解决方案**：
 
 1. **查看 .env 文件中的密码**：
+
    ```bash
    cat .env | grep GRAFANA_PASSWORD
    ```
@@ -133,11 +134,13 @@ docker exec law-firm-grafana env | grep GF_SECURITY_ADMIN_PASSWORD
 **检查项**：
 
 1. **检查容器状态**：
+
    ```bash
    docker ps | grep grafana
    ```
 
 2. **检查端口是否开放**：
+
    ```bash
    # 检查 3000 端口
    sudo lsof -i :3000

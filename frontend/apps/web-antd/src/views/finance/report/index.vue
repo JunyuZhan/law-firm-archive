@@ -1,10 +1,10 @@
 <script setup lang="ts">
+import type { GenerateReportCommand } from '#/api/workbench/report';
+
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import { Page } from '@vben/common-ui';
 import echarts from '@vben/plugins/echarts';
-
-import { useResponsive } from '#/hooks/useResponsive';
 
 import {
   Button,
@@ -32,11 +32,9 @@ import {
   getFeeList,
   getInvoiceStatistics,
 } from '#/api/finance';
-import {
-  generateReport,
-  type GenerateReportCommand,
-} from '#/api/workbench/report';
+import { generateReport } from '#/api/workbench/report';
 import { getRevenueStats } from '#/api/workbench/statistics';
+import { useResponsive } from '#/hooks/useResponsive';
 
 defineOptions({ name: 'FinanceReport' });
 
@@ -208,7 +206,7 @@ function renderTrendChart() {
     xAxis: { type: 'category', data: months },
     yAxis: {
       type: 'value',
-      axisLabel: { formatter: (v: number) => `¥${(v / 10000).toFixed(0)}万` },
+      axisLabel: { formatter: (v: number) => `¥${(v / 10_000).toFixed(0)}万` },
     },
     series: [
       {
@@ -312,7 +310,7 @@ const agingData = computed(() => {
   const total = ranges.reduce((sum, r) => sum + r.amount, 0);
   return ranges.map((r) => ({
     ...r,
-    percentage: total > 0 ? ((r.amount / total) * 100).toFixed(1) + '%' : '0%',
+    percentage: total > 0 ? `${((r.amount / total) * 100).toFixed(1)}%` : '0%',
   }));
 });
 
@@ -477,7 +475,7 @@ function generateMonthlyData() {
       month,
       ...stats,
     }))
-    .sort((a, b) => a.month.localeCompare(b.month));
+    .toSorted((a, b) => a.month.localeCompare(b.month));
 }
 
 // 处理月份筛选变化
@@ -581,7 +579,7 @@ async function handleExport(reportType: string) {
   }
 }
 
-function handleMenuClick(info: { key: string | number }) {
+function handleMenuClick(info: { key: number | string }) {
   handleExport(String(info.key));
 }
 
@@ -599,7 +597,15 @@ onBeforeUnmount(() => {
     <Spin :spinning="loading">
       <Row :gutter="[16, 16]" style="margin-bottom: 16px">
         <Col :xs="24" :sm="12" :md="6" :lg="6" :xl="6">
-          <Card :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }" style="height: 100%">
+          <Card
+            :body-style="{
+              padding: '16px',
+              height: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+            }"
+            style="height: 100%"
+          >
             <Statistic
               title="年度收入"
               :value="yearlyIncome"
@@ -610,7 +616,15 @@ onBeforeUnmount(() => {
           </Card>
         </Col>
         <Col :xs="24" :sm="12" :md="6" :lg="6" :xl="6">
-          <Card :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }" style="height: 100%">
+          <Card
+            :body-style="{
+              padding: '16px',
+              height: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+            }"
+            style="height: 100%"
+          >
             <Statistic
               title="年度支出"
               :value="yearlyExpense"
@@ -621,7 +635,15 @@ onBeforeUnmount(() => {
           </Card>
         </Col>
         <Col :xs="24" :sm="12" :md="6" :lg="6" :xl="6">
-          <Card :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }" style="height: 100%">
+          <Card
+            :body-style="{
+              padding: '16px',
+              height: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+            }"
+            style="height: 100%"
+          >
             <Statistic
               title="应收账款"
               :value="receivableAmount"
@@ -632,7 +654,15 @@ onBeforeUnmount(() => {
           </Card>
         </Col>
         <Col :xs="24" :sm="12" :md="6" :lg="6" :xl="6">
-          <Card :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }" style="height: 100%">
+          <Card
+            :body-style="{
+              padding: '16px',
+              height: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+            }"
+            style="height: 100%"
+          >
             <Statistic
               title="利润率"
               :value="profitRate"
@@ -688,7 +718,15 @@ onBeforeUnmount(() => {
           <Tabs.TabPane key="overview" tab="收入概览">
             <Row :gutter="[16, 16]" style="margin-bottom: 16px">
               <Col :xs="12" :sm="12" :md="6" :lg="6">
-                <Card :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }" style="height: 100%">
+                <Card
+                  :body-style="{
+                    padding: '16px',
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                  }"
+                  style="height: 100%"
+                >
                   <Statistic
                     title="合同总数"
                     :value="contractStats.totalCount || 0"
@@ -698,7 +736,15 @@ onBeforeUnmount(() => {
                 </Card>
               </Col>
               <Col :xs="12" :sm="12" :md="6" :lg="6">
-                <Card :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }" style="height: 100%">
+                <Card
+                  :body-style="{
+                    padding: '16px',
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                  }"
+                  style="height: 100%"
+                >
                   <Statistic
                     title="合同总额"
                     :value="contractStats.totalAmount || 0"
@@ -709,7 +755,15 @@ onBeforeUnmount(() => {
                 </Card>
               </Col>
               <Col :xs="12" :sm="12" :md="6" :lg="6">
-                <Card :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }" style="height: 100%">
+                <Card
+                  :body-style="{
+                    padding: '16px',
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                  }"
+                  style="height: 100%"
+                >
                   <Statistic
                     title="已收款"
                     :value="contractStats.receivedAmount || 0"
@@ -720,7 +774,15 @@ onBeforeUnmount(() => {
                 </Card>
               </Col>
               <Col :xs="12" :sm="12" :md="6" :lg="6">
-                <Card :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }" style="height: 100%">
+                <Card
+                  :body-style="{
+                    padding: '16px',
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                  }"
+                  style="height: 100%"
+                >
                   <Statistic
                     title="待收款"
                     :value="receivableAmount"
@@ -762,7 +824,15 @@ onBeforeUnmount(() => {
           <Tabs.TabPane key="invoice" tab="发票统计">
             <Row :gutter="[16, 16]" style="margin-bottom: 16px">
               <Col :xs="12" :sm="12" :md="6" :lg="6">
-                <Card :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }" style="height: 100%">
+                <Card
+                  :body-style="{
+                    padding: '16px',
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                  }"
+                  style="height: 100%"
+                >
                   <Statistic
                     title="发票总数"
                     :value="invoiceStats.totalCount || 0"
@@ -772,7 +842,15 @@ onBeforeUnmount(() => {
                 </Card>
               </Col>
               <Col :xs="12" :sm="12" :md="6" :lg="6">
-                <Card :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }" style="height: 100%">
+                <Card
+                  :body-style="{
+                    padding: '16px',
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                  }"
+                  style="height: 100%"
+                >
                   <Statistic
                     title="开票总额"
                     :value="invoiceStats.totalAmount || 0"
@@ -783,7 +861,15 @@ onBeforeUnmount(() => {
                 </Card>
               </Col>
               <Col :xs="12" :sm="12" :md="6" :lg="6">
-                <Card :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }" style="height: 100%">
+                <Card
+                  :body-style="{
+                    padding: '16px',
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                  }"
+                  style="height: 100%"
+                >
                   <Statistic
                     title="待开票"
                     :value="invoiceStats.pendingCount || 0"
@@ -793,7 +879,15 @@ onBeforeUnmount(() => {
                 </Card>
               </Col>
               <Col :xs="12" :sm="12" :md="6" :lg="6">
-                <Card :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }" style="height: 100%">
+                <Card
+                  :body-style="{
+                    padding: '16px',
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                  }"
+                  style="height: 100%"
+                >
                   <Statistic
                     title="已作废"
                     :value="invoiceStats.cancelledCount || 0"
@@ -808,7 +902,15 @@ onBeforeUnmount(() => {
           <Tabs.TabPane key="commission" tab="提成报表">
             <Row :gutter="[16, 16]" style="margin-bottom: 16px">
               <Col :xs="12" :sm="12" :md="6" :lg="6">
-                <Card :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }" style="height: 100%">
+                <Card
+                  :body-style="{
+                    padding: '16px',
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                  }"
+                  style="height: 100%"
+                >
                   <Statistic
                     title="提成总额"
                     :value="commissionSummary.totalAmount || 0"
@@ -819,7 +921,15 @@ onBeforeUnmount(() => {
                 </Card>
               </Col>
               <Col :xs="12" :sm="12" :md="6" :lg="6">
-                <Card :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }" style="height: 100%">
+                <Card
+                  :body-style="{
+                    padding: '16px',
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                  }"
+                  style="height: 100%"
+                >
                   <Statistic
                     title="已发放"
                     :value="commissionSummary.issuedAmount || 0"
@@ -830,7 +940,15 @@ onBeforeUnmount(() => {
                 </Card>
               </Col>
               <Col :xs="12" :sm="12" :md="6" :lg="6">
-                <Card :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }" style="height: 100%">
+                <Card
+                  :body-style="{
+                    padding: '16px',
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                  }"
+                  style="height: 100%"
+                >
                   <Statistic
                     title="待发放"
                     :value="commissionSummary.pendingAmount || 0"
@@ -841,7 +959,15 @@ onBeforeUnmount(() => {
                 </Card>
               </Col>
               <Col :xs="12" :sm="12" :md="6" :lg="6">
-                <Card :body-style="{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }" style="height: 100%">
+                <Card
+                  :body-style="{
+                    padding: '16px',
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                  }"
+                  style="height: 100%"
+                >
                   <Statistic
                     title="涉及人数"
                     :value="commissionReport.length || 0"

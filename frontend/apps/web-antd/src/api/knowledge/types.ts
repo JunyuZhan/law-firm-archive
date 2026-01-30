@@ -132,6 +132,25 @@ export interface CaseCategoryDTO {
   children?: CaseCategoryDTO[];
 }
 
+// ========== 案例学习笔记 ==========
+export interface CaseStudyNoteDTO {
+  id?: number;
+  caseId: number;
+  caseName?: string;
+  userId?: number;
+  userName?: string;
+  content: string;
+  keyPoints?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateCaseStudyNoteCommand {
+  caseId: number;
+  content: string;
+  keyPoints?: string;
+}
+
 // ========== 通用分页结果 ==========
 export interface PageResult<T> {
   list: T[];

@@ -1,31 +1,41 @@
 package com.lawfirm.common.annotation;
 
-import java.lang.annotation.*;
+import java.lang.annotation.Documented;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
 /**
  * 权限校验注解
- * 
- * 使用示例：
- * @RequirePermission("sys:user:create")
- * @RequirePermission(value = {"sys:user:edit", "sys:user:delete"}, logical = Logical.OR)
+ *
+ * <p>使用示例： @RequirePermission("sys:user:create") @RequirePermission(value = {"sys:user:edit",
+ * "sys:user:delete"}, logical = Logical.OR)
  */
 @Target({ElementType.METHOD, ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
 public @interface RequirePermission {
 
-    /**
-     * 权限编码
-     */
-    String[] value();
+  /**
+   * 权限编码
+   *
+   * @return 属性值
+   */
+  String[] value();
 
-    /**
-     * 多个权限的逻辑关系
-     */
-    Logical logical() default Logical.AND;
+  /**
+   * 多个权限的逻辑关系
+   *
+   * @return 属性值
+   */
+  Logical logical() default Logical.AND;
 
-    enum Logical {
-        AND, OR
-    }
+  /** 逻辑关系枚举 */
+  enum Logical {
+    /** 与 */
+    AND,
+    /** 或 */
+    OR
+  }
 }
-

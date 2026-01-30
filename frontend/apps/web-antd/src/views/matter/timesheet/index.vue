@@ -11,8 +11,6 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { Page } from '@vben/common-ui';
 import { useUserStore } from '@vben/stores';
 
-import { useResponsive } from '#/hooks/useResponsive';
-
 import {
   Button,
   Card,
@@ -44,6 +42,7 @@ import {
   updateTimesheet,
 } from '#/api/matter';
 import { getUserSelectOptions } from '#/api/system';
+import { useResponsive } from '#/hooks/useResponsive';
 
 defineOptions({ name: 'MatterTimesheet' });
 
@@ -372,15 +371,15 @@ function handleReview(row: TimesheetDTO, approved: boolean) {
     okText: '确认',
     cancelText: '取消',
     onOk: async () => {
-      const promptResult = approved ? undefined : prompt('请输入拒绝原因:');
-      const comment = promptResult === null ? undefined : promptResult;
-      try {
-        await reviewTimesheet(row.id, { approved, comment });
-        message.success(approved ? '审核通过' : '已拒绝');
-        gridApi.reload();
-      } catch (error: unknown) {
-        const err = error as { message?: string };
-        message.error(err.message || '操作失败');
+      if (approved) {
+        try {
+          await reviewTimesheet(row.id, { approved, comment: undefined });
+          message.success('审核通过');
+          gridApi.reload();
+        } catch (error: unknown) {
+          const err = error as { message?: string };
+          message.error(err.message || '操作失败');
+        }
       }
     },
   });

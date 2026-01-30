@@ -7,8 +7,6 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { Page } from '@vben/common-ui';
 import { IconifyIcon, Plus } from '@vben/icons';
 
-import { useResponsive } from '#/hooks/useResponsive';
-
 import {
   Button,
   Card,
@@ -34,6 +32,7 @@ import dayjs from 'dayjs';
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import { recognizeInvoice } from '#/api/ocr';
 import { requestClient } from '#/api/request';
+import { useResponsive } from '#/hooks/useResponsive';
 
 defineOptions({ name: 'ExpenseReimbursement' });
 

@@ -2,37 +2,41 @@ package com.lawfirm.application.matter.command;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import java.time.LocalDate;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDate;
-
-/**
- * 创建期限提醒命令
- */
+/** 创建期限提醒命令. */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class CreateDeadlineCommand {
 
-    @NotNull(message = "项目ID不能为空")
-    private Long matterId;
+  /** 项目ID. */
+  @NotNull(message = "项目ID不能为空")
+  private Long matterId;
 
-    @NotBlank(message = "期限类型不能为空")
-    private String deadlineType;
+  /** 期限类型. */
+  @NotBlank(message = "期限类型不能为空")
+  private String deadlineType;
 
-    @NotBlank(message = "期限名称不能为空")
-    private String deadlineName;
+  /** 期限名称. */
+  @NotBlank(message = "期限名称不能为空")
+  private String deadlineName;
 
-    private LocalDate baseDate; // 可选，默认使用当前日期
+  /** 基准日期（可选，默认使用当前日期）. */
+  private LocalDate baseDate;
 
-    @NotNull(message = "期限日期不能为空")
-    private LocalDate deadlineDate;
+  /** 期限日期. */
+  @NotNull(message = "期限日期不能为空")
+  private LocalDate deadlineDate;
 
-    private Integer reminderDays; // 默认7天
-    private String description;
+  /** 提醒天数（默认7天）. */
+  private Integer reminderDays;
+
+  /** 描述. */
+  private String description;
 }
-

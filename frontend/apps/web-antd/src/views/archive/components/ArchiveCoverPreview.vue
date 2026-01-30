@@ -17,8 +17,9 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  scale: 1,
+  matter: undefined,
   firmName: '律师事务所',
+  scale: 1,
 });
 
 // 是否刑事案件
@@ -51,10 +52,7 @@ function toChineseYear(year: number): string {
     '八',
     '九',
   ];
-  return String(year)
-    .split('')
-    .map((c) => cnNumbers[Number.parseInt(c)])
-    .join('');
+  return [...String(year)].map((c) => cnNumbers[Number.parseInt(c)]).join('');
 }
 
 // 获取年度字号（只显示档案编号）
@@ -196,14 +194,18 @@ const containerStyle = computed(() => {
             <!-- 当事人 -->
             <tr>
               <td class="label party-label" rowspan="3">当<br />事<br />人</td>
-              <td class="label small">{{ isArbitration ? '申请人' : '原告' }}</td>
+              <td class="label small">
+                {{ isArbitration ? '申请人' : '原告' }}
+              </td>
               <td class="value" colspan="2">{{ archive.clientName || '' }}</td>
             </tr>
             <tr>
               <td class="label small">
                 {{ isArbitration ? '被申请人' : '被告' }}
               </td>
-              <td class="value" colspan="2">{{ matter?.opposingParty || '' }}</td>
+              <td class="value" colspan="2">
+                {{ matter?.opposingParty || '' }}
+              </td>
             </tr>
             <tr>
               <td class="label small">第三人</td>
@@ -258,7 +260,9 @@ const containerStyle = computed(() => {
             <!-- 被告人/罪名 -->
             <tr>
               <td class="label">被 告 人</td>
-              <td class="value" colspan="3">{{ matter?.opposingParty || '' }}</td>
+              <td class="value" colspan="3">
+                {{ matter?.opposingParty || '' }}
+              </td>
             </tr>
             <tr>
               <td class="label">罪 名</td>

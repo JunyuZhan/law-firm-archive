@@ -34,7 +34,7 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
     navigator.serviceWorker
       .register('/sw.js')
       .then((registration) => {
-        console.log('[PWA] Service Worker 注册成功:', registration.scope);
+        console.warn('[PWA] Service Worker 注册成功:', registration.scope);
 
         // 监听更新
         registration.addEventListener('updatefound', () => {
@@ -43,13 +43,12 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
             newWorker.addEventListener('statechange', () => {
               if (
                 newWorker.state === 'installed' &&
-                navigator.serviceWorker.controller
+                navigator.serviceWorker.controller && // 新版本已安装，提示用户刷新
+                // eslint-disable-next-line no-alert
+                confirm('发现新版本，是否立即更新？')
               ) {
-                // 新版本已安装，提示用户刷新
-                if (confirm('发现新版本，是否立即更新？')) {
-                  newWorker.postMessage({ type: 'SKIP_WAITING' });
-                  window.location.reload();
-                }
+                newWorker.postMessage({ type: 'SKIP_WAITING' });
+                window.location.reload();
               }
             });
           }

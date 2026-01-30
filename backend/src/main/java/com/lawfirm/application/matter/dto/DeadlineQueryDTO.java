@@ -1,27 +1,30 @@
 package com.lawfirm.application.matter.dto;
 
 import com.lawfirm.common.base.PageQuery;
+import java.time.LocalDate;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.springframework.format.annotation.DateTimeFormat;
 
-import java.time.LocalDate;
-
-/**
- * 期限提醒查询 DTO
- */
+/** 期限提醒查询 DTO. */
 @Data
 @EqualsAndHashCode(callSuper = true)
 public class DeadlineQueryDTO extends PageQuery {
 
-    private Long matterId;
-    private String deadlineType;
-    private String status;
+  /** 案件ID. */
+  private Long matterId;
 
-    @DateTimeFormat(pattern = "yyyy-MM-dd")
-    private LocalDate deadlineDateStart;
+  /** 期限类型. */
+  private String deadlineType;
 
-    @DateTimeFormat(pattern = "yyyy-MM-dd")
-    private LocalDate deadlineDateEnd;
+  /** 状态. */
+  private String status;
+
+  /** 期限日期开始. */
+  @DateTimeFormat(pattern = "yyyy-MM-dd")
+  private LocalDate deadlineDateStart;
+
+  /** 期限日期结束. */
+  @DateTimeFormat(pattern = "yyyy-MM-dd")
+  private LocalDate deadlineDateEnd;
 }
-

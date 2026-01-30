@@ -53,6 +53,7 @@ const coreRoutes: RouteRecordRaw[] = [
       },
       /**
        * 个人中心页面
+       * activePath: 指定激活的菜单路径，解决混合导航模式下侧边栏不显示的问题
        */
       {
         path: '/profile',
@@ -63,11 +64,13 @@ const coreRoutes: RouteRecordRaw[] = [
           hideInMenu: true,
           hideInBreadcrumb: false,
           hideInTab: false,
+          activePath: '/dashboard/workspace',
         },
       },
       /**
        * 项目详情页路由（带参数）
        * 需要在coreRoutes中配置，因为它是动态路由，不通过菜单API生成
+       * activePath: 指定激活的菜单路径，解决混合导航模式下侧边栏不显示的问题
        */
       {
         path: '/matter/detail/:id',
@@ -78,6 +81,7 @@ const coreRoutes: RouteRecordRaw[] = [
           hideInMenu: true,
           hideInBreadcrumb: false,
           hideInTab: false,
+          activePath: '/matter/list',
         },
       },
     ],

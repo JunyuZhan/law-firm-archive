@@ -1,18 +1,26 @@
 package com.lawfirm.application.system.command;
 
+import java.time.LocalDateTime;
 import lombok.Data;
 
-import java.time.LocalDateTime;
-
-/**
- * 创建公告命令
- */
+/** 创建公告命令. */
 @Data
 public class CreateAnnouncementCommand {
-    private String title;
-    private String content;
-    private String type;
-    private Integer priority;
-    private LocalDateTime expireTime;
-    private Boolean isTop;
+  /** 标题. */
+  private String title;
+
+  /** 内容. */
+  private String content;
+
+  /** 类型. */
+  private String type;
+
+  /** 优先级. */
+  private Integer priority;
+
+  /** 过期时间. */
+  private LocalDateTime expireTime;
+
+  /** 是否置顶. */
+  private Boolean isTop;
 }

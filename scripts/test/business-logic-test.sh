@@ -113,6 +113,52 @@ check_service() {
     fi
 }
 
+# 检查响应是否成功（只检查第一个 success 字段）
+check_success() {
+    local body=$1
+    local success=$(echo "$body" | grep -o '"success":[^,]*' | head -1 | cut -d':' -f2)
+    [ "$success" = "true" ]
+}
+
+# 带滑块验证的登录辅助函数
+# 参数：$1=用户名, $2=密码
+# 返回值：成功时 TOKEN 或 LAWYER_TOKEN 设置为 access token
+do_slider_login() {
+    local username=$1
+    local password=$2
+    
+    # Step 1: 获取滑块验证令牌
+    local slider_response=$(send_request "GET" "$BASE_URL/auth/slider/token" "" "")
+    local slider_body=$(echo "$slider_response" | sed '$d')
+    
+    if ! check_success "$slider_body"; then
+        return 1
+    fi
+    
+    local token_id=$(echo "$slider_body" | grep -o '"tokenId":"[^"]*"' | cut -d'"' -f4)
+    
+    # Step 2: 验证滑块
+    local verify_response=$(send_request "POST" "$BASE_URL/auth/slider/verify" "{\"tokenId\":\"$token_id\",\"slideTime\":1500}" "")
+    local verify_body=$(echo "$verify_response" | sed '$d')
+    
+    if ! check_success "$verify_body"; then
+        return 1
+    fi
+    
+    local slider_verify_token=$(echo "$verify_body" | grep -o '"verifyToken":"[^"]*"' | cut -d'"' -f4)
+    
+    # Step 3: 使用滑块验证令牌登录
+    local response=$(send_request "POST" "$BASE_URL/auth/login" "{\"username\":\"$username\",\"password\":\"$password\",\"sliderVerifyToken\":\"$slider_verify_token\"}")
+    local body=$(echo "$response" | sed '$d')
+    
+    if check_success "$body"; then
+        echo "$body" | grep -o '"accessToken":"[^"]*' | cut -d'"' -f4
+        return 0
+    else
+        return 1
+    fi
+}
+
 # ==================== 1. 认证与权限测试 ====================
 test_auth_and_permission() {
     echo ""
@@ -120,28 +166,20 @@ test_auth_and_permission() {
     echo -e "${CYAN}  1. 认证与权限业务逻辑测试${NC}"
     echo -e "${CYAN}══════════════════════════════════════════════════════════${NC}"
     
-    # 1.1 管理员登录
-    local response=$(send_request "POST" "$BASE_URL/auth/login" '{"username":"admin","password":"admin123"}')
-    local http_code=$(echo "$response" | tail -1)
-    local body=$(echo "$response" | sed '$d')
-    local success=$(echo "$body" | grep -o '"success":[^,]*' | cut -d':' -f2)
+    # 1.1 管理员登录（带滑块验证）
+    TOKEN=$(do_slider_login "admin" "admin123")
     
-    if [ "$success" = "true" ]; then
-        TOKEN=$(echo "$body" | grep -o '"accessToken":"[^"]*' | cut -d'"' -f4)
+    if [ -n "$TOKEN" ]; then
         print_result "管理员账号登录成功" "PASS" "" "权限验证"
     else
         print_result "管理员账号登录成功" "FAIL" "登录失败" "权限验证"
         return 1
     fi
     
-    # 1.2 尝试用普通律师账号登录
-    response=$(send_request "POST" "$BASE_URL/auth/login" '{"username":"lawyer1","password":"lawyer123"}')
-    http_code=$(echo "$response" | tail -1)
-    body=$(echo "$response" | sed '$d')
-    success=$(echo "$body" | grep -o '"success":[^,]*' | cut -d':' -f2)
+    # 1.2 尝试用普通律师账号登录（带滑块验证）
+    LAWYER_TOKEN=$(do_slider_login "lawyer1" "lawyer123")
     
-    if [ "$success" = "true" ]; then
-        LAWYER_TOKEN=$(echo "$body" | grep -o '"accessToken":"[^"]*' | cut -d'"' -f4)
+    if [ -n "$LAWYER_TOKEN" ]; then
         print_result "普通律师账号登录成功" "PASS" "" "权限验证"
     else
         print_result "普通律师账号登录成功" "SKIP" "律师账号不存在或密码错误" "权限验证"

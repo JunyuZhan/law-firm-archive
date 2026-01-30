@@ -406,15 +406,12 @@ function formatCurrency(
   if (amount === undefined || amount === null) return '¥0.00';
 
   // 如果是对象（BigDecimal序列化后的结果），尝试提取值
-  let numValue: number;
-  if (typeof amount === 'object') {
-    // BigDecimal序列化后可能是 {value: "123.45"} 或类似结构
-    numValue = Number.parseFloat(amount.toString() || '0');
-  } else {
-    numValue = Number(amount);
-  }
+  const numValue: number =
+    typeof amount === 'object'
+      ? Number.parseFloat(amount.toString() || '0') // BigDecimal序列化后可能是 {value: "123.45"} 或类似结构
+      : Number(amount);
 
-  if (isNaN(numValue)) return '¥0.00';
+  if (Number.isNaN(numValue)) return '¥0.00';
   return `¥${numValue.toLocaleString('zh-CN', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,

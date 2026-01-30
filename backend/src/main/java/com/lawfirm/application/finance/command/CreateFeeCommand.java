@@ -3,40 +3,46 @@ package com.lawfirm.application.finance.command;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
-import lombok.Data;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import lombok.Data;
 
-/**
- * 创建收费记录命令
- */
+/** 创建收费记录命令 */
 @Data
 public class CreateFeeCommand {
 
-    private Long contractId;
+  /** 合同ID */
+  private Long contractId;
 
-    private Long matterId;
+  /** 案件ID */
+  private Long matterId;
 
-    @NotNull(message = "客户不能为空")
-    private Long clientId;
+  /** 客户ID */
+  @NotNull(message = "客户不能为空")
+  private Long clientId;
 
-    @NotBlank(message = "收费类型不能为空")
-    private String feeType;
+  /** 收费类型 */
+  @NotBlank(message = "收费类型不能为空")
+  private String feeType;
 
-    @NotBlank(message = "收费项目名称不能为空")
-    private String feeName;
+  /** 收费项目名称 */
+  @NotBlank(message = "收费项目名称不能为空")
+  private String feeName;
 
-    @NotNull(message = "应收金额不能为空")
-    @Positive(message = "应收金额必须大于0")
-    private BigDecimal amount;
+  /** 应收金额 */
+  @NotNull(message = "应收金额不能为空")
+  @Positive(message = "应收金额必须大于0")
+  private BigDecimal amount;
 
-    private String currency;
+  /** 币种 */
+  private String currency;
 
-    private LocalDate plannedDate;
+  /** 计划日期 */
+  private LocalDate plannedDate;
 
-    private Long responsibleId;
+  /** 负责人ID */
+  private Long responsibleId;
 
-    private String remark;
+  /** 备注 */
+  private String remark;
 }
-

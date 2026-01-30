@@ -116,7 +116,7 @@ async function loadMatters(
   try {
     // 智能搜索：判断输入是否像项目编号（数字开头或包含特定格式）
     const isLikelyMatterNo =
-      keyword && /^[A-Z0-9\-]/.test(keyword.toUpperCase());
+      keyword && /^[A-Z0-9-]/.test(keyword.toUpperCase());
 
     const res = await getMyMatters({
       pageNum: page,

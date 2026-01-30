@@ -49,11 +49,7 @@ const tabsValue = defineModel<string>('modelValue');
         </div>
         <Separator class="my-2 lg:my-4" />
         <!-- 移动端：水平滚动标签，桌面端：垂直标签 -->
-        <Tabs
-          v-model="tabsValue"
-          :orientation="'vertical'"
-          class="m-2 lg:m-4"
-        >
+        <Tabs v-model="tabsValue" orientation="vertical" class="m-2 lg:m-4">
           <!-- 移动端水平滚动容器 -->
           <div class="overflow-x-auto lg:overflow-visible">
             <TabsList

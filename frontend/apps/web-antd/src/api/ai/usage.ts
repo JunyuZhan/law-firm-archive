@@ -1,6 +1,3 @@
-import type { PageResult } from '#/api/client/types';
-import { requestClient } from '#/api/request';
-
 import type {
   AiDepartmentSummaryDTO,
   AiModelUsageDTO,
@@ -10,6 +7,10 @@ import type {
   AiUsageSummaryDTO,
   SalaryDeductionLinkCommand,
 } from './types';
+
+import type { PageResult } from '#/api/client/types';
+
+import { requestClient } from '#/api/request';
 
 export function getMyUsageLogs(params: AiUsageQuery) {
   return requestClient.get<PageResult<AiUsageLogDTO>>('/ai/usage/my', {
@@ -61,17 +62,17 @@ export function generateMonthlyBills(year: number, month: number) {
 }
 
 export function linkToSalaryDeduction(data: SalaryDeductionLinkCommand) {
-  return requestClient.post<void>('/ai/usage/billing/link-salary', data);
+  return requestClient.post('/ai/usage/billing/link-salary', data);
 }
 
 export function markBillDeducted(id: number, remark: string) {
-  return requestClient.post<void>(`/ai/usage/billing/${id}/deduct`, undefined, {
+  return requestClient.post(`/ai/usage/billing/${id}/deduct`, undefined, {
     params: { remark },
   });
 }
 
 export function waiveBill(id: number, reason: string) {
-  return requestClient.post<void>(`/ai/usage/billing/${id}/waive`, undefined, {
+  return requestClient.post(`/ai/usage/billing/${id}/waive`, undefined, {
     params: { reason },
   });
 }

@@ -92,11 +92,13 @@ defineExpose({ open });
           style="margin-bottom: 12px"
         />
         <div class="preview-container">
+          <!-- eslint-disable vue/no-v-html -->
           <div
             v-if="currentTemplate?.templateType === 'HTML'"
             v-html="previewContent"
             class="html-preview"
           ></div>
+          <!-- eslint-enable vue/no-v-html -->
           <pre v-else class="text-preview">{{ previewContent }}</pre>
         </div>
       </TabPane>

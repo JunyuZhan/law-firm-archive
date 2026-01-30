@@ -1,44 +1,63 @@
 package com.lawfirm.application.client.command;
 
 import jakarta.validation.constraints.NotBlank;
+import java.time.LocalDate;
 import lombok.Data;
 
-import java.time.LocalDate;
-
-/**
- * 创建客户命令
- */
+/** 创建客户命令. */
 @Data
 public class CreateClientCommand {
 
-    @NotBlank(message = "客户名称不能为空")
-    private String name;
+  /** 客户名称. */
+  @NotBlank(message = "客户名称不能为空")
+  private String name;
 
-    @NotBlank(message = "客户类型不能为空")
-    private String clientType;
+  /** 客户类型. */
+  @NotBlank(message = "客户类型不能为空")
+  private String clientType;
 
-    /**
-     * 统一社会信用代码（企业客户必填）
-     */
-    private String creditCode;
+  /** 统一社会信用代码（企业客户必填）. */
+  private String creditCode;
 
-    /**
-     * 身份证号（个人客户必填）
-     */
-    private String idCard;
+  /** 身份证号（个人客户必填）. */
+  private String idCard;
 
-    private String legalRepresentative;
-    private String registeredAddress;
-    private String contactPerson;
-    private String contactPhone;
-    private String contactEmail;
-    private String industry;
-    private String source;
-    private String level;
-    private String category;
-    private Long originatorId;
-    private Long responsibleLawyerId;
-    private LocalDate firstCooperationDate;
-    private String remark;
+  /** 法定代表人. */
+  private String legalRepresentative;
+
+  /** 注册地址. */
+  private String registeredAddress;
+
+  /** 联系人. */
+  private String contactPerson;
+
+  /** 联系电话. */
+  private String contactPhone;
+
+  /** 联系邮箱. */
+  private String contactEmail;
+
+  /** 行业. */
+  private String industry;
+
+  /** 来源. */
+  private String source;
+
+  /** 客户级别. */
+  private String level;
+
+  /** 客户类别. */
+  private String category;
+
+  /** 创建人ID. */
+  private Long originatorId;
+
+  /** 负责律师ID. */
+  private Long responsibleLawyerId;
+
+  /** 首次合作日期. */
+  private LocalDate firstCooperationDate;
+
+  /** 备注. */
+  private String remark;
 }
-

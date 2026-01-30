@@ -5,10 +5,7 @@ import com.lawfirm.domain.archive.entity.ArchiveOperationLog;
 import com.lawfirm.infrastructure.persistence.mapper.ArchiveOperationLogMapper;
 import org.springframework.stereotype.Repository;
 
-/**
- * 档案操作日志仓储
- */
+/** 档案操作日志仓储 */
 @Repository
-public class ArchiveOperationLogRepository extends AbstractRepository<ArchiveOperationLogMapper, ArchiveOperationLog> {
-}
-
+public class ArchiveOperationLogRepository
+    extends AbstractRepository<ArchiveOperationLogMapper, ArchiveOperationLog> {}

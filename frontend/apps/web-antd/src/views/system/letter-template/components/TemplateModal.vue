@@ -22,8 +22,9 @@ import {
 
 import { createTemplate, updateTemplate } from '#/api/admin';
 import RichTextEditor from '#/components/RichTextEditor/index.vue';
-import StructuredLetterEditor from './StructuredLetterEditor.vue';
+
 import { decodeHtmlEntities } from '../../contract-template/utils/print-formatter';
+import StructuredLetterEditor from './StructuredLetterEditor.vue';
 
 const emit = defineEmits<{
   success: [];

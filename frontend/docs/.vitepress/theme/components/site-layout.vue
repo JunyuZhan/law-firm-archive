@@ -13,8 +13,8 @@ import mediumZoom from 'medium-zoom';
 import { useRoute } from 'vitepress';
 import DefaultTheme from 'vitepress/theme';
 
-import Login from './Login.vue';
 import { handleTokenFromURL, isAdminAuthenticated } from './auth';
+import Login from './Login.vue';
 
 const { Layout } = DefaultTheme;
 const route = useRoute();
@@ -24,9 +24,9 @@ const initZoom = () => {
 };
 
 const isDark = ref(
-  typeof window !== 'undefined'
-    ? document.documentElement.classList.contains('dark')
-    : false,
+  typeof window === 'undefined'
+    ? false
+    : document.documentElement.classList.contains('dark'),
 );
 let darkModeObserver: MutationObserver | undefined;
 
@@ -70,7 +70,7 @@ const needsAuth = computed(() => {
 
 // 检查是否是登录页面
 const isLoginPage = computed(() => {
-  return /^\/(docs\/)?login(\.html)?$/.test(route.path);
+  return /^\/(?:docs\/)?login(?:\.html)?$/.test(route.path);
 });
 
 // 是否显示登录组件

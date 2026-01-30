@@ -113,7 +113,7 @@ let progressTimer: null | ReturnType<typeof setInterval> = null;
 
 // 组件引用
 const matterSelectorRef = ref<InstanceType<typeof MatterSelector>>();
-// contextCollectorRef 保留用于后续功能扩展
+// contextCollectorRef 已定义但暂未使用，保留用于后续功能扩展
 
 // 表单数据
 const aiFormData = reactive({
@@ -561,26 +561,29 @@ function handleCopyPlainText() {
   try {
     // 将 Markdown 转换为纯文本
     const plainText = markdownToPlainText(displayedContent.value);
-    
+
     // 复制到剪贴板
-    navigator.clipboard.writeText(plainText).then(() => {
-      message.success('已复制为纯文本格式，可直接粘贴到 Word 或打印');
-    }).catch(() => {
-      // 降级方案：使用传统方法
-      const textArea = document.createElement('textarea');
-      textArea.value = plainText;
-      textArea.style.position = 'fixed';
-      textArea.style.opacity = '0';
-      document.body.appendChild(textArea);
-      textArea.select();
-      try {
-        document.execCommand('copy');
+    navigator.clipboard
+      .writeText(plainText)
+      .then(() => {
         message.success('已复制为纯文本格式，可直接粘贴到 Word 或打印');
-      } catch (err) {
-        message.error('复制失败，请手动选择文本复制');
-      }
-      document.body.removeChild(textArea);
-    });
+      })
+      .catch(() => {
+        // 降级方案：使用传统方法
+        const textArea = document.createElement('textarea');
+        textArea.value = plainText;
+        textArea.style.position = 'fixed';
+        textArea.style.opacity = '0';
+        document.body.append(textArea);
+        textArea.select();
+        try {
+          document.execCommand('copy');
+          message.success('已复制为纯文本格式，可直接粘贴到 Word 或打印');
+        } catch {
+          message.error('复制失败，请手动选择文本复制');
+        }
+        textArea.remove();
+      });
   } catch (error: any) {
     message.error(error.message || '复制失败');
   }
@@ -869,7 +872,6 @@ defineExpose({
             <!-- 上下文收集器 -->
             <ContextCollector
               v-if="selectedMatterId && !isPersonalDoc"
-              ref="contextCollectorRef"
               :matter-id="selectedMatterId"
               :enable-masking="enableMasking"
               @update:enable-masking="enableMasking = $event"

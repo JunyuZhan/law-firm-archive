@@ -30,11 +30,13 @@ ONLYOFFICE_JWT_ENABLED=true
 ### 配置说明
 
 **ONLYOFFICE_EXTERNAL_ACCESS_URL**：
+
 - OnlyOffice 容器通过 Nginx 代理访问文件，而不是直接访问 Docker 内部地址
 - 必须配置为外部可访问的地址（IP 或域名）
 - 如果不配置，OnlyOffice 可能无法正常加载文档
 
 **ONLYOFFICE_JWT_SECRET**：
+
 - 用于 OnlyOffice 与后端之间的安全通信
 - 必须使用强随机密钥
 - 生成命令：`openssl rand -base64 64`
@@ -46,24 +48,28 @@ ONLYOFFICE_JWT_ENABLED=true
 ### 问题1：文档加载失败
 
 **错误信息**：
+
 ```
 文档加载失败: 打开文件时出错
 文件内容与文件扩展名不匹配。
 ```
 
 **原因**：
+
 - OnlyOffice 容器无法访问宿主机 IP
 - 后端生成的文件 URL 不正确
 
 **解决方案**：
 
 1. **配置外部访问地址**：
+
    ```bash
    # 在 .env 文件中添加
    ONLYOFFICE_EXTERNAL_ACCESS_URL=http://192.168.50.10
    ```
 
 2. **重启后端服务**：
+
    ```bash
    cd docker
    docker compose --env-file ../.env -f docker-compose.prod.yml restart backend
@@ -78,33 +84,39 @@ ONLYOFFICE_JWT_ENABLED=true
 ### 问题2：CORS 错误
 
 **错误信息**：
+
 ```
-Access to XMLHttpRequest at 'http://127.0.0.1:8088/...' 
+Access to XMLHttpRequest at 'http://127.0.0.1:8088/...'
 from origin 'http://localhost:5666' has been blocked by CORS policy
 ```
 
 **原因**：
+
 - OnlyOffice 内部资源使用 `http://127.0.0.1:8088` 直接访问
 - 浏览器从不同域名访问，触发 CORS 策略
 
 **解决方案**：
+
 - 确保配置了 `ONLYOFFICE_EXTERNAL_ACCESS_URL`
 - 确保 OnlyOffice 通过 Nginx 代理访问
 
 ### 问题3：Token 验证失败
 
 **错误信息**：
+
 ```
 Token 验证失败
 ```
 
 **原因**：
+
 - JWT 密钥未配置或配置错误
 - JWT 验证未启用
 
 **解决方案**：
 
 1. **配置 JWT 密钥**：
+
    ```bash
    # 在 .env 文件中添加
    ONLYOFFICE_JWT_SECRET=$(openssl rand -base64 64)
@@ -162,6 +174,7 @@ docker exec law-firm-backend env | grep ONLYOFFICE
 ```
 
 应该看到：
+
 ```
 ONLYOFFICE_EXTERNAL_ACCESS_URL=http://192.168.50.10
 ONLYOFFICE_JWT_SECRET=...

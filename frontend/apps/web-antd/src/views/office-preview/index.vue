@@ -47,7 +47,7 @@ onMounted(async () => {
   };
 
   currentMode.value = mode || 'view';
-  
+
   // 如果是嵌入模式或在 iframe 中，隐藏工具栏
   showToolbar.value = embed !== 'true' && window.self === window.top;
 
@@ -102,13 +102,13 @@ async function loadFromBackend(documentId: number, mode: 'edit' | 'view') {
     // 智能检测 OnlyOffice URL
     // 优先使用后端返回的地址，如果没有则使用当前域名 + /onlyoffice
     const onlyOfficeUrl = getOnlyOfficeUrl(response.documentServerUrl);
-    
+
     // 构建 API JS URL（始终使用智能检测后的 URL）
     const apiJsUrl = `${onlyOfficeUrl}/web-apps/apps/api/documents/api.js`;
-    
+
     // 加载 OnlyOffice API 并初始化编辑器
     await loadOnlyOfficeApi(apiJsUrl);
-    
+
     // 更新 response 中的 documentServerUrl 以便后续使用
     response.documentServerUrl = onlyOfficeUrl;
     initEditorFromConfig(response);
@@ -130,9 +130,7 @@ async function loadDirectUrl(
 ) {
   try {
     // 使用智能检测获取 OnlyOffice URL
-    const onlyOfficeUrl = getOnlyOfficeUrl(
-      import.meta.env.VITE_ONLYOFFICE_URL,
-    );
+    const onlyOfficeUrl = getOnlyOfficeUrl(import.meta.env.VITE_ONLYOFFICE_URL);
     documentTitle.value = filename;
 
     await loadOnlyOfficeApi(
@@ -180,7 +178,7 @@ function getOnlyOfficeUrl(backendUrl?: string): string {
     const { protocol, host } = window.location;
     return `${protocol}//${host}${backendUrl}`;
   }
-  
+
   // 检查是否为无效地址（localhost、127.0.0.1、Docker 内部地址等）
   const isInvalidUrl = (url: string): boolean => {
     if (!url) return true;
@@ -203,7 +201,7 @@ function getOnlyOfficeUrl(backendUrl?: string): string {
   if (backendUrl && !isInvalidUrl(backendUrl)) {
     return backendUrl;
   }
-  
+
   // 否则使用当前域名 + /onlyoffice 路径
   const { protocol, host } = window.location;
   return `${protocol}//${host}/onlyoffice`;
@@ -225,6 +223,7 @@ function loadOnlyOfficeApi(apiUrl: string): Promise<void> {
     script.addEventListener('load', () => {
       resolve();
     });
+    // eslint-disable-next-line unicorn/prefer-add-event-listener
     script.onerror = (e) => {
       console.error('OnlyOffice API load error:', e);
       reject(
@@ -239,7 +238,7 @@ function loadOnlyOfficeApi(apiUrl: string): Promise<void> {
 
 /**
  * 从后端配置初始化编辑器
- * 
+ *
  * 重要：OnlyOffice 容器在 Docker 网络中运行，后端返回的 document.url 是 Docker 内部地址
  * （如 http://backend:8080/api/document/1/file-proxy?...）
  * 前端不应该转换这个地址，因为 OnlyOffice 容器可以通过 Docker 网络直接访问 backend 容器
@@ -249,17 +248,15 @@ function initEditorFromConfig(cfg: OnlyOfficeConfig) {
   // 后端返回的是 Docker 内部地址（如 backend:8080），OnlyOffice 容器可以直接访问
   // 前端不应该转换这个地址！
   if (cfg.document?.url) {
-    const originalUrl = cfg.document.url as string;
-    console.log('OnlyOffice documentUrl（保持原样，不转换）:', {
-      url: originalUrl,
-      note: 'OnlyOffice 容器通过 Docker 网络访问此地址',
-    });
+    // eslint-disable-next-line no-unused-vars
+    const _originalUrl = cfg.document.url as string;
+    // 调试信息已移除
     // 不做任何转换，直接使用后端返回的地址
   }
 
   // 获取 OnlyOffice 服务器 URL（使用代理路径）
   const onlyOfficeServerUrl = cfg.documentServerUrl || getOnlyOfficeUrl();
-  
+
   // 验证 document.url 是否存在
   if (!cfg.document?.url) {
     error.value = '文档 URL 未配置，无法加载文档';
@@ -268,14 +265,7 @@ function initEditorFromConfig(cfg: OnlyOfficeConfig) {
     return;
   }
 
-  // 记录传递给 OnlyOffice 的配置（用于调试）
-  console.log('OnlyOffice 配置:', {
-    documentUrl: cfg.document.url,
-    documentKey: cfg.document.key,
-    documentTitle: cfg.document.title,
-    documentType: cfg.documentType,
-    serverUrl: onlyOfficeServerUrl,
-  });
+  // 调试信息已移除
 
   const editorConfig: any = {
     document: cfg.document,
@@ -396,41 +386,43 @@ async function handleCustomPrint() {
     // OnlyOffice 支持通过 downloadAs 方法下载为 PDF
     try {
       // 使用 OnlyOffice 的下载功能，下载为 PDF
-      if (editorInstance.downloadAs && typeof editorInstance.downloadAs === 'function') {
+      if (
+        editorInstance.downloadAs &&
+        typeof editorInstance.downloadAs === 'function'
+      ) {
         editorInstance.downloadAs('pdf', (url: string) => {
           if (url) {
             // 打开 PDF 在新窗口并打印
             const printWindow = window.open(url, '_blank');
             if (printWindow) {
-              printWindow.onload = () => {
+              printWindow.addEventListener('load', () => {
                 setTimeout(() => {
                   printWindow.print();
                 }, 500);
-              };
+              });
             }
-            return;
           }
         });
         // 如果 downloadAs 成功调用，不执行后续代码
         return;
       }
-    } catch (e) {
-      console.warn('OnlyOffice downloadAs 方法不可用，尝试其他方法:', e);
+    } catch (error_) {
+      console.warn('OnlyOffice downloadAs 方法不可用，尝试其他方法:', error_);
     }
 
     // 方法2：通过后端 API 下载文档
     // 下载文档后在新窗口中打开并打印
     const { downloadDocument } = await import('#/api/document');
     const blob = await downloadDocument(Number.parseInt(documentId));
-    
+
     // 创建 blob URL
     const blobUrl = URL.createObjectURL(blob);
-    
+
     // 打开文档在新窗口
     const printWindow = window.open(blobUrl, '_blank');
     if (printWindow) {
       // 等待文档加载后打印
-      printWindow.onload = () => {
+      printWindow.addEventListener('load', () => {
         setTimeout(() => {
           printWindow.print();
           // 打印后清理 blob URL
@@ -438,7 +430,7 @@ async function handleCustomPrint() {
             URL.revokeObjectURL(blobUrl);
           }, 1000);
         }, 1000);
-      };
+      });
     } else {
       // 如果无法打开新窗口，清理 blob URL
       URL.revokeObjectURL(blobUrl);

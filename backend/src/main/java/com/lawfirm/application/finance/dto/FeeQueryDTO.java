@@ -1,26 +1,39 @@
 package com.lawfirm.application.finance.dto;
 
 import com.lawfirm.common.base.PageQuery;
+import java.time.LocalDate;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
-import java.time.LocalDate;
-
-/**
- * 收费记录查询条件
- */
+/** 收费记录查询条件 */
 @Data
 @EqualsAndHashCode(callSuper = true)
 public class FeeQueryDTO extends PageQuery {
 
-    private String feeNo;
-    private Long contractId;
-    private Long matterId;
-    private Long clientId;
-    private String feeType;
-    private String status;
-    private LocalDate plannedDateFrom;
-    private LocalDate plannedDateTo;
-    private Long responsibleId;
-}
+  /** 收费编号 */
+  private String feeNo;
 
+  /** 合同ID */
+  private Long contractId;
+
+  /** 案件ID */
+  private Long matterId;
+
+  /** 客户ID */
+  private Long clientId;
+
+  /** 收费类型 */
+  private String feeType;
+
+  /** 状态 */
+  private String status;
+
+  /** 计划日期起始 */
+  private LocalDate plannedDateFrom;
+
+  /** 计划日期结束 */
+  private LocalDate plannedDateTo;
+
+  /** 负责人ID */
+  private Long responsibleId;
+}

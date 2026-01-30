@@ -19,6 +19,7 @@ curl -fsSL https://get.docker.com | sh
 ```
 
 检查脚本会验证：
+
 - ✅ Docker 环境
 - ✅ 环境变量配置
 - ✅ 配置文件完整性
@@ -57,16 +58,19 @@ curl -fsSL https://get.docker.com | sh
 部署脚本支持多种部署模式：
 
 1. **单机部署**（推荐小型律所）
+
    ```bash
    ./scripts/deploy.sh --mode=standalone
    ```
 
 2. **NAS 存储分离部署**（推荐中型律所）
+
    ```bash
    ./scripts/deploy.sh --mode=nas --nas-ip=192.168.1.100
    ```
 
 3. **Docker Swarm 分布式部署**（推荐大型律所）
+
    ```bash
    ./scripts/deploy.sh --mode=swarm
    ```
@@ -88,18 +92,21 @@ curl -fsSL https://get.docker.com | sh
 - 📈 **Grafana**: `http://localhost:3000`
 
 **检查服务状态**：
+
 ```bash
 cd docker
 docker compose --env-file ../.env -f docker-compose.prod.yml ps
 ```
 
 **检查健康状态**：
+
 ```bash
 curl http://localhost/api/actuator/health
 # 应返回: {"status":"UP"}
 ```
 
 **默认账号**（密码统一为 `admin123`）：
+
 - `admin` - 系统管理员
 - `director` - 主任
 - `lawyer1` - 律师

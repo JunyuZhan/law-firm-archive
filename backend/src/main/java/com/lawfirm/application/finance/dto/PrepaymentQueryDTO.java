@@ -4,16 +4,23 @@ import com.lawfirm.common.base.PageQuery;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
-/**
- * 预收款查询DTO
- */
+/** 预收款查询DTO */
 @Data
 @EqualsAndHashCode(callSuper = true)
 public class PrepaymentQueryDTO extends PageQuery {
 
-    private String prepaymentNo;
-    private Long clientId;
-    private Long contractId;
-    private Long matterId;
-    private String status;
+  /** 预收款编号 */
+  private String prepaymentNo;
+
+  /** 客户ID */
+  private Long clientId;
+
+  /** 合同ID */
+  private Long contractId;
+
+  /** 案件ID */
+  private Long matterId;
+
+  /** 状态 */
+  private String status;
 }

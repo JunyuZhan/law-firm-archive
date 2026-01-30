@@ -75,6 +75,7 @@
 ### 2.1 环境变量配置
 
 - [ ] **数据库配置**
+
   ```bash
   DB_HOST=your-db-host
   DB_PORT=5432
@@ -84,6 +85,7 @@
   ```
 
 - [ ] **Redis 配置**
+
   ```bash
   REDIS_HOST=your-redis-host
   REDIS_PORT=6379
@@ -91,6 +93,7 @@
   ```
 
 - [ ] **MinIO 配置**
+
   ```bash
   MINIO_ENDPOINT=http://minio:9000
   MINIO_ACCESS_KEY=<访问密钥>

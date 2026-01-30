@@ -11,8 +11,6 @@ import { computed, onMounted, reactive, ref } from 'vue';
 
 import { Page } from '@vben/common-ui';
 
-import { useResponsive } from '#/hooks/useResponsive';
-
 import {
   Button,
   Card,
@@ -41,6 +39,7 @@ import {
   getRoleMenuIds,
   updateRole,
 } from '#/api/system';
+import { useResponsive } from '#/hooks/useResponsive';
 
 defineOptions({ name: 'SystemRole' });
 

@@ -16,6 +16,29 @@ import { Space, Tag, Tooltip } from 'ant-design-vue';
 
 import '@wangeditor/editor/dist/css/style.css';
 
+const props = withDefaults(
+  defineProps<{
+    height?: string;
+    mode?: 'default' | 'simple';
+    modelValue?: string;
+    placeholder?: string;
+    showVariables?: boolean;
+    variables?: VariableItem[];
+  }>(),
+  {
+    height: '400px',
+    mode: 'default',
+    modelValue: '',
+    placeholder: '请输入内容...',
+    showVariables: true,
+    variables: undefined,
+  },
+);
+
+const emit = defineEmits<{
+  'update:modelValue': [value: string];
+}>();
+
 // HTML 实体解码函数
 function decodeHtmlEntities(text: string): string {
   if (!text) return text;
@@ -33,11 +56,11 @@ function decodeHtmlEntities(text: string): string {
   for (const [entity, char] of Object.entries(entities)) {
     result = result.split(entity).join(char);
   }
-  result = result.replace(/&#(\d+);/g, (_, num) =>
-    String.fromCharCode(parseInt(num, 10)),
+  result = result.replaceAll(/&#(\d+);/g, (_, num) =>
+    String.fromCodePoint(Number.parseInt(num, 10)),
   );
-  result = result.replace(/&#x([0-9a-fA-F]+);/g, (_, hex) =>
-    String.fromCharCode(parseInt(hex, 16)),
+  result = result.replaceAll(/&#x([0-9a-fA-F]+);/g, (_, hex) =>
+    String.fromCodePoint(Number.parseInt(hex, 16)),
   );
   return result;
 }
@@ -47,28 +70,6 @@ interface VariableItem {
   value: string;
   description?: string;
 }
-
-const props = withDefaults(
-  defineProps<{
-    height?: string;
-    mode?: 'default' | 'simple';
-    modelValue?: string;
-    placeholder?: string;
-    showVariables?: boolean;
-    variables?: VariableItem[];
-  }>(),
-  {
-    modelValue: '',
-    placeholder: '请输入内容...',
-    height: '400px',
-    mode: 'default',
-    showVariables: true,
-  },
-);
-
-const emit = defineEmits<{
-  'update:modelValue': [value: string];
-}>();
 
 // 编辑器实例
 const editorRef = shallowRef<IDomEditor>();

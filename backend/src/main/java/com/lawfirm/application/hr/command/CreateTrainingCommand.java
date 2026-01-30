@@ -2,46 +2,57 @@ package com.lawfirm.application.hr.command;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import lombok.Data;
-
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import lombok.Data;
 
-/**
- * 创建培训计划命令
- */
+/** 创建培训计划命令. */
 @Data
 public class CreateTrainingCommand {
 
-    @NotBlank(message = "培训标题不能为空")
-    private String title;
+  /** 培训标题. */
+  @NotBlank(message = "培训标题不能为空")
+  private String title;
 
-    @NotBlank(message = "培训类型不能为空")
-    private String trainingType;
+  /** 培训类型. */
+  @NotBlank(message = "培训类型不能为空")
+  private String trainingType;
 
-    private String category;
+  /** 培训类别. */
+  private String category;
 
-    private String description;
+  /** 培训描述. */
+  private String description;
 
-    private String trainer;
+  /** 培训讲师. */
+  private String trainer;
 
-    private String location;
+  /** 培训地点. */
+  private String location;
 
-    @NotNull(message = "开始时间不能为空")
-    private LocalDateTime startTime;
+  /** 开始时间. */
+  @NotNull(message = "开始时间不能为空")
+  private LocalDateTime startTime;
 
-    @NotNull(message = "结束时间不能为空")
-    private LocalDateTime endTime;
+  /** 结束时间. */
+  @NotNull(message = "结束时间不能为空")
+  private LocalDateTime endTime;
 
-    private Integer duration;
+  /** 时长(分钟). */
+  private Integer duration;
 
-    private Integer credits = 0;
+  /** 学分. */
+  private Integer credits = 0;
 
-    private Integer maxParticipants;
+  /** 最大参与人数. */
+  private Integer maxParticipants;
 
-    private LocalDate enrollDeadline;
+  /** 报名截止日期. */
+  private LocalDate enrollDeadline;
 
-    private String materialsUrl;
+  /** 资料链接. */
+  private String materialsUrl;
 
-    private String remarks;
+  /** 备注. */
+  private String remarks;
 }

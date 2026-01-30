@@ -3,22 +3,35 @@ package com.lawfirm.application.client.command;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
-/**
- * 更新联系人命令
- */
+/** 更新联系人命令 */
 @Data
 public class UpdateContactCommand {
 
-    @NotBlank(message = "联系人姓名不能为空")
-    private String contactName;
+  /** 联系人姓名 */
+  @NotBlank(message = "联系人姓名不能为空")
+  private String contactName;
 
-    private String position;
-    private String department;
-    private String mobilePhone;
-    private String officePhone;
-    private String email;
-    private String wechat;
-    private Boolean isPrimary;
-    private String relationshipNote;
+  /** 职位 */
+  private String position;
+
+  /** 部门 */
+  private String department;
+
+  /** 手机号 */
+  private String mobilePhone;
+
+  /** 办公电话 */
+  private String officePhone;
+
+  /** 邮箱 */
+  private String email;
+
+  /** 微信 */
+  private String wechat;
+
+  /** 是否主要联系人 */
+  private Boolean isPrimary;
+
+  /** 关系备注 */
+  private String relationshipNote;
 }
-

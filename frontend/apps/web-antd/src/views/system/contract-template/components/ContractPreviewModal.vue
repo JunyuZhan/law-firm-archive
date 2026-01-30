@@ -9,10 +9,10 @@ import { getConfigValue } from '#/api/system';
 
 import { createContractSampleData } from '../constants/sample-data';
 import {
-  isStructuredContent,
-  formatStructuredForPrint,
-  formatPlainTextForPrint,
   decodeHtmlEntities,
+  formatPlainTextForPrint,
+  formatStructuredForPrint,
+  isStructuredContent,
 } from '../utils/print-formatter';
 
 interface ContractTemplateDTO {
@@ -89,15 +89,10 @@ async function open(record: ContractTemplateDTO) {
   try {
     // 调试：记录内容类型和内容预览
     const isStructured = isStructuredContent(content);
-    const contentPreview =
-      content.substring(0, 100) + (content.length > 100 ? '...' : '');
-    console.log(
-      '预览内容类型:',
-      isStructured ? '结构化' : '纯文本',
-      '内容长度:',
-      content.length,
-    );
-    console.log('内容预览（解码后）:', contentPreview);
+    // eslint-disable-next-line no-unused-vars
+    const _contentPreview =
+      content.slice(0, 100) + (content.length > 100 ? '...' : '');
+    // 调试信息已移除
 
     // 如果识别为纯文本但看起来像 JSON，尝试强制解析
     if (
@@ -112,7 +107,7 @@ async function open(record: ContractTemplateDTO) {
           typeof parsed === 'object' &&
           parsed._structured === true
         ) {
-          console.log('检测到未被识别的结构化内容，强制使用结构化格式化');
+          // 检测到未被识别的结构化内容，强制使用结构化格式化
           // 强制使用结构化格式化
           let formatted = formatStructuredForPrint(content.trim(), displayData);
 
@@ -133,8 +128,11 @@ async function open(record: ContractTemplateDTO) {
                 `<span class="preview-var-missing">${value}</span>`,
               );
             } else if (value) {
-              const escapedValue = value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-              formatted = formatted.replace(
+              const escapedValue = value.replaceAll(
+                /[.*+?^${}()|[\]\\]/g,
+                String.raw`\$&`,
+              );
+              formatted = formatted.replaceAll(
                 new RegExp(escapedValue, 'g'),
                 `<span class="preview-var">${value}</span>`,
               );
@@ -145,8 +143,8 @@ async function open(record: ContractTemplateDTO) {
           modalApi.open();
           return;
         }
-      } catch (e) {
-        console.warn('强制解析 JSON 失败:', e);
+      } catch (error) {
+        console.warn('强制解析 JSON 失败:', error);
       }
     }
 
@@ -174,8 +172,11 @@ async function open(record: ContractTemplateDTO) {
           );
         } else if (value) {
           // 转义特殊字符，避免在 replaceAll 中出错
-          const escapedValue = value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-          formatted = formatted.replace(
+          const escapedValue = value.replaceAll(
+            /[.*+?^${}()|[\]\\]/g,
+            String.raw`\$&`,
+          );
+          formatted = formatted.replaceAll(
             new RegExp(escapedValue, 'g'),
             `<span class="preview-var">${value}</span>`,
           );
@@ -201,12 +202,15 @@ async function open(record: ContractTemplateDTO) {
         const isMissing = value && value.startsWith('[') && value.endsWith(']');
         const cssClass = isMissing ? 'preview-var-missing' : 'preview-var';
         // 转义特殊字符
-        const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        formatted = formatted.replace(
+        const escapedKey = key.replaceAll(
+          /[.*+?^${}()|[\]\\]/g,
+          String.raw`\$&`,
+        );
+        formatted = formatted.replaceAll(
           new RegExp(String.raw`\$\{${escapedKey}\}`, 'g'),
           `<span class="${cssClass}">${value}</span>`,
         );
-        formatted = formatted.replace(
+        formatted = formatted.replaceAll(
           new RegExp(
             `<span[^>]*data-variable="${escapedKey}"[^>]*>[^<]*</span>`,
             'g',
@@ -293,6 +297,7 @@ defineExpose({ open });
 
     <div class="preview-container">
       <div class="preview-paper">
+        <!-- eslint-disable-next-line vue/no-v-html -->
         <div v-html="previewContent" class="preview-content"></div>
       </div>
     </div>

@@ -94,7 +94,7 @@ const otherIntegrations = computed(() =>
   dataSource.value.filter(
     (item) =>
       item.integrationType === 'OTHER' ||
-      !['ARCHIVE', 'AI', 'CLIENT_SERVICE'].includes(item.integrationType),
+      !['AI', 'ARCHIVE', 'CLIENT_SERVICE'].includes(item.integrationType),
   ),
 );
 

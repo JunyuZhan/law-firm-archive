@@ -51,14 +51,14 @@ export function clearToken(): void {
 /**
  * 获取当前存储的token
  */
-export function getStoredToken(): string | null {
+export function getStoredToken(): null | string {
   if (!canUseStorage()) {
     return null;
   }
   return localStorage.getItem(TOKEN_KEY);
 }
 
-export function getStoredRole(): string | null {
+export function getStoredRole(): null | string {
   if (!canUseStorage()) {
     return null;
   }
@@ -66,24 +66,27 @@ export function getStoredRole(): string | null {
 }
 
 function decodeBase64Url(value: string): string {
-  const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
+  const normalized = value.replaceAll('-', '+').replaceAll('_', '/');
   const padLength = (4 - (normalized.length % 4)) % 4;
   const padded = normalized + '='.repeat(padLength);
   return decodeURIComponent(
-    atob(padded)
-      .split('')
-      .map((c) => `%${c.charCodeAt(0).toString(16).padStart(2, '0')}`)
+    [...atob(padded)]
+      .map((c) => `%${(c.codePointAt(0) ?? 0).toString(16).padStart(2, '0')}`)
       .join(''),
   );
 }
 
-function parseJwtPayload(token: string): Record<string, unknown> | null {
+function parseJwtPayload(token: string): null | Record<string, unknown> {
   const parts = token.split('.');
   if (parts.length < 2) {
     return null;
   }
+  const payloadPart = parts[1];
+  if (!payloadPart) {
+    return null;
+  }
   try {
-    const payloadStr = decodeBase64Url(parts[1]!);
+    const payloadStr = decodeBase64Url(payloadPart);
     const payload = JSON.parse(payloadStr);
     if (payload && typeof payload === 'object') {
       return payload as Record<string, unknown>;
@@ -111,15 +114,17 @@ function inferRoleFromToken(token: string): 'admin' | 'user' {
 
   const roles = payload.roles;
   if (Array.isArray(roles)) {
-    const normalized = roles
-      .filter((r) => typeof r === 'string')
-      .map((r) => (r as string).toLowerCase());
+    const normalized = new Set(
+      roles
+        .filter((r) => typeof r === 'string')
+        .map((r) => (r as string).toLowerCase()),
+    );
     if (
-      normalized.includes('admin') ||
-      normalized.includes('administrator') ||
-      normalized.includes('superadmin') ||
-      normalized.includes('super_admin') ||
-      normalized.includes('root')
+      normalized.has('admin') ||
+      normalized.has('administrator') ||
+      normalized.has('superadmin') ||
+      normalized.has('super_admin') ||
+      normalized.has('root')
     ) {
       return 'admin';
     }
@@ -127,13 +132,15 @@ function inferRoleFromToken(token: string): 'admin' | 'user' {
 
   const permissions = payload.permissions;
   if (Array.isArray(permissions)) {
-    const normalized = permissions
-      .filter((p) => typeof p === 'string')
-      .map((p) => (p as string).toLowerCase());
+    const normalized = new Set(
+      permissions
+        .filter((p) => typeof p === 'string')
+        .map((p) => (p as string).toLowerCase()),
+    );
     if (
-      normalized.includes('*') ||
-      normalized.includes('all') ||
-      normalized.includes('admin')
+      normalized.has('*') ||
+      normalized.has('all') ||
+      normalized.has('admin')
     ) {
       return 'admin';
     }
@@ -159,8 +166,8 @@ export function isTokenValid(): boolean {
     return false;
   }
 
-  const expiryTime = parseInt(expiryStr, 10);
-  if (isNaN(expiryTime) || Date.now() > expiryTime) {
+  const expiryTime = Number.parseInt(expiryStr, 10);
+  if (Number.isNaN(expiryTime) || Date.now() > expiryTime) {
     clearToken(); // 清除过期的token
     return false;
   }
@@ -229,7 +236,7 @@ export function loginWithCredentials(
     password === validCredentials.password
   ) {
     // 生成一个简单的token（实际应用中应该使用更安全的生成方式）
-    const token = `docs_${Date.now()}_${Math.random().toString(36).substr(2)}`;
+    const token = `docs_${Date.now()}_${Math.random().toString(36).slice(2)}`;
     storeToken(token);
     storeRole('admin');
     return true;

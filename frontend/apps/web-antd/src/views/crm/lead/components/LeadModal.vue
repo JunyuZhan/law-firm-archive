@@ -97,8 +97,8 @@ const formSchema: VbenFormSchema[] = [
       precision: 2,
       style: { width: '100%' },
       formatter: (value: any) =>
-        `¥ ${value}`.replaceAll(/\B(?=(\d{3})+(?!\d))/g, ','),
-      parser: (value: any) => value.replaceAll(/¥\s?|(,*)/g, ''),
+        `¥ ${value}`.replaceAll(/\B(?=(?:\d{3})+(?!\d))/g, ','),
+      parser: (value: any) => value.replaceAll(/¥\s?|,/g, ''),
       placeholder: '请输入预估金额',
     },
   },

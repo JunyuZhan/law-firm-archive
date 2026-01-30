@@ -7,8 +7,6 @@ import { onMounted, reactive, ref, watch } from 'vue';
 import { Page } from '@vben/common-ui';
 import { Plus } from '@vben/icons';
 
-import { useResponsive } from '#/hooks/useResponsive';
-
 import {
   Button,
   Card,
@@ -36,6 +34,7 @@ import {
   getLeaveTypes,
   rejectLeave,
 } from '#/api/hr/leave';
+import { useResponsive } from '#/hooks/useResponsive';
 
 defineOptions({ name: 'LeaveManagement' });
 
@@ -347,12 +346,15 @@ onMounted(() => {
           </template>
           <template #action="{ row }">
             <Space>
+              <!-- eslint-disable-next-line prettier/prettier -->
               <a v-if="row.status === 'PENDING'" @click="handleCancel(row)"
                 >取消</a
               >
+              <!-- eslint-disable-next-line prettier/prettier -->
               <a v-if="row.status === 'PENDING'" @click="handleApprove(row)"
                 >通过</a
               >
+              <!-- eslint-disable-next-line prettier/prettier -->
               <a
                 v-if="row.status === 'PENDING'"
                 style="color: red"

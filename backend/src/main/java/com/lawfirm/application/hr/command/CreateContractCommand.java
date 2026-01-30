@@ -1,36 +1,53 @@
 package com.lawfirm.application.hr.command;
 
 import jakarta.validation.constraints.NotNull;
-import lombok.Data;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import lombok.Data;
 
-/**
- * 创建劳动合同命令
- */
+/** 创建劳动合同命令 */
 @Data
 public class CreateContractCommand {
 
-    @NotNull(message = "员工ID不能为空")
-    private Long employeeId;
+  /** 员工ID */
+  @NotNull(message = "员工ID不能为空")
+  private Long employeeId;
 
-    private String contractNo;
-    
-    @NotNull(message = "合同类型不能为空")
-    private String contractType;
+  /** 合同编号 */
+  private String contractNo;
 
-    @NotNull(message = "合同开始日期不能为空")
-    private LocalDate startDate;
+  /** 合同类型 */
+  @NotNull(message = "合同类型不能为空")
+  private String contractType;
 
-    private LocalDate endDate;
-    private Integer probationMonths;
-    private LocalDate probationEndDate;
-    private BigDecimal baseSalary;
-    private BigDecimal performanceBonus;
-    private BigDecimal otherAllowance;
-    private LocalDate signDate;
-    private String contractFileUrl;
-    private String remark;
+  /** 合同开始日期 */
+  @NotNull(message = "合同开始日期不能为空")
+  private LocalDate startDate;
+
+  /** 合同结束日期 */
+  private LocalDate endDate;
+
+  /** 试用期月数 */
+  private Integer probationMonths;
+
+  /** 试用期结束日期 */
+  private LocalDate probationEndDate;
+
+  /** 基本工资 */
+  private BigDecimal baseSalary;
+
+  /** 绩效奖金 */
+  private BigDecimal performanceBonus;
+
+  /** 其他津贴 */
+  private BigDecimal otherAllowance;
+
+  /** 签约日期 */
+  private LocalDate signDate;
+
+  /** 合同文件URL */
+  private String contractFileUrl;
+
+  /** 备注 */
+  private String remark;
 }
-

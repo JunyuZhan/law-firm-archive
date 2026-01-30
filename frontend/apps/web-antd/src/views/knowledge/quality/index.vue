@@ -11,8 +11,6 @@ import { onMounted, reactive, ref } from 'vue';
 
 import { Page } from '@vben/common-ui';
 
-import { useResponsive } from '#/hooks/useResponsive';
-
 import {
   Badge,
   Button,
@@ -59,6 +57,7 @@ import {
   updateStandard,
   WARNING_STATUS_OPTIONS,
 } from '#/api/knowledge/quality';
+import { useResponsive } from '#/hooks/useResponsive';
 
 defineOptions({ name: 'QualityManagement' });
 
@@ -108,12 +107,12 @@ const standardLoading = ref(false);
 
 // ==================== 问题管理 ====================
 const issueDetailVisible = ref(false);
-const issueDetailData = ref<QualityIssueDTO | null>(null);
+const issueDetailData = ref<null | QualityIssueDTO>(null);
 const issueDetailLoading = ref(false);
 
 // ==================== 预警管理 ====================
 const warningDetailVisible = ref(false);
-const warningDetailData = ref<RiskWarningDTO | null>(null);
+const warningDetailData = ref<null | RiskWarningDTO>(null);
 const warningDetailLoading = ref(false);
 
 // 标准表格列
@@ -305,7 +304,7 @@ async function handleResolveIssue(
 }
 
 // 查看预警详情
-async function handleViewWarning(record: RiskWarningDTO | Record<string, any>) {
+async function handleViewWarning(record: Record<string, any> | RiskWarningDTO) {
   warningDetailLoading.value = true;
   warningDetailVisible.value = true;
   try {
@@ -320,7 +319,7 @@ async function handleViewWarning(record: RiskWarningDTO | Record<string, any>) {
 
 // 确认预警
 async function handleAcknowledgeWarning(
-  record: RiskWarningDTO | Record<string, any>,
+  record: Record<string, any> | RiskWarningDTO,
 ) {
   try {
     await acknowledgeWarning(record.id);
@@ -333,7 +332,7 @@ async function handleAcknowledgeWarning(
 
 // 解决预警
 async function handleResolveWarning(
-  record: RiskWarningDTO | Record<string, any>,
+  record: Record<string, any> | RiskWarningDTO,
 ) {
   try {
     await resolveWarning(record.id);
@@ -346,7 +345,7 @@ async function handleResolveWarning(
 
 // 关闭预警
 async function handleCloseWarning(
-  record: RiskWarningDTO | Record<string, any>,
+  record: Record<string, any> | RiskWarningDTO,
 ) {
   try {
     await closeWarning(record.id);
@@ -400,19 +399,19 @@ function getWarningStatusConfig(status: string) {
 }
 
 // 格式化日期
-function formatDate(date: string | null | undefined) {
+function formatDate(date: null | string | undefined) {
   if (!date) return '-';
   return dayjs(date).format('YYYY-MM-DD');
 }
 
 // 格式化时间
-function formatDateTime(date: string | null | undefined) {
+function formatDateTime(date: null | string | undefined) {
   if (!date) return '-';
   return dayjs(date).format('YYYY-MM-DD HH:mm');
 }
 
 // Tab切换
-function handleTabChange(key: string | number) {
+function handleTabChange(key: number | string) {
   activeTab.value = String(key);
   if (key === 'standards') {
     loadStandards();
@@ -427,7 +426,7 @@ onMounted(() => {
 
 <template>
   <Page title="质量管理" description="项目质量检查、问题整改和风险预警管理">
-    <Tabs v-model:activeKey="activeTab" @change="handleTabChange">
+    <Tabs v-model:active-key="activeTab" @change="handleTabChange">
       <!-- 概览 -->
       <Tabs.TabPane key="overview" tab="概览">
         <Row :gutter="[16, 16]" style="margin-bottom: 24px">
@@ -508,8 +507,9 @@ onMounted(() => {
                     type="link"
                     size="small"
                     @click="handleViewIssue(record)"
-                    >详情</Button
                   >
+                    详情
+                  </Button>
                   <Button
                     v-if="record.status !== 'RESOLVED'"
                     type="link"
@@ -563,8 +563,9 @@ onMounted(() => {
                     type="link"
                     size="small"
                     @click="handleViewWarning(record)"
-                    >详情</Button
                   >
+                    详情
+                  </Button>
                   <Button
                     v-if="record.status === 'PENDING'"
                     type="link"
@@ -601,9 +602,9 @@ onMounted(() => {
       <Tabs.TabPane key="standards" tab="检查标准">
         <Card>
           <template #extra>
-            <Button type="primary" @click="handleCreateStandard"
-              >新建标准</Button
-            >
+            <Button type="primary" @click="handleCreateStandard">
+              新建标准
+            </Button>
           </template>
 
           <Spin :spinning="loading">
@@ -630,8 +631,9 @@ onMounted(() => {
                       type="link"
                       size="small"
                       @click="handleEditStandard(record)"
-                      >编辑</Button
                     >
+                      编辑
+                    </Button>
                     <Popconfirm
                       title="确定删除此标准？"
                       @confirm="handleDeleteStandard(record)"
@@ -715,9 +717,9 @@ onMounted(() => {
       <Spin :spinning="issueDetailLoading">
         <template v-if="issueDetailData">
           <Descriptions :column="2" bordered size="small">
-            <Descriptions.Item label="问题编号">{{
-              issueDetailData.issueNo
-            }}</Descriptions.Item>
+            <Descriptions.Item label="问题编号">
+              {{ issueDetailData.issueNo }}
+            </Descriptions.Item>
             <Descriptions.Item label="状态">
               <Tag :color="getIssueStatusConfig(issueDetailData.status).color">
                 {{
@@ -726,12 +728,12 @@ onMounted(() => {
                 }}
               </Tag>
             </Descriptions.Item>
-            <Descriptions.Item label="项目">{{
-              issueDetailData.matterName
-            }}</Descriptions.Item>
-            <Descriptions.Item label="检查编号">{{
-              issueDetailData.checkNo || '-'
-            }}</Descriptions.Item>
+            <Descriptions.Item label="项目">
+              {{ issueDetailData.matterName }}
+            </Descriptions.Item>
+            <Descriptions.Item label="检查编号">
+              {{ issueDetailData.checkNo || '-' }}
+            </Descriptions.Item>
             <Descriptions.Item label="问题类型">
               {{
                 issueDetailData.issueTypeName ||
@@ -746,18 +748,18 @@ onMounted(() => {
                 }}
               </Tag>
             </Descriptions.Item>
-            <Descriptions.Item label="责任人">{{
-              issueDetailData.responsible || '-'
-            }}</Descriptions.Item>
-            <Descriptions.Item label="截止日期">{{
-              formatDate(issueDetailData.deadline)
-            }}</Descriptions.Item>
-            <Descriptions.Item label="问题描述" :span="2">{{
-              issueDetailData.description
-            }}</Descriptions.Item>
-            <Descriptions.Item label="处理结果" :span="2">{{
-              issueDetailData.resolution || '-'
-            }}</Descriptions.Item>
+            <Descriptions.Item label="责任人">
+              {{ issueDetailData.responsible || '-' }}
+            </Descriptions.Item>
+            <Descriptions.Item label="截止日期">
+              {{ formatDate(issueDetailData.deadline) }}
+            </Descriptions.Item>
+            <Descriptions.Item label="问题描述" :span="2">
+              {{ issueDetailData.description }}
+            </Descriptions.Item>
+            <Descriptions.Item label="处理结果" :span="2">
+              {{ issueDetailData.resolution || '-' }}
+            </Descriptions.Item>
           </Descriptions>
         </template>
       </Spin>
@@ -774,9 +776,9 @@ onMounted(() => {
       <Spin :spinning="warningDetailLoading">
         <template v-if="warningDetailData">
           <Descriptions :column="2" bordered size="small">
-            <Descriptions.Item label="预警编号">{{
-              warningDetailData.warningNo
-            }}</Descriptions.Item>
+            <Descriptions.Item label="预警编号">
+              {{ warningDetailData.warningNo }}
+            </Descriptions.Item>
             <Descriptions.Item label="状态">
               <Tag
                 :color="getWarningStatusConfig(warningDetailData.status).color"
@@ -787,9 +789,9 @@ onMounted(() => {
                 }}
               </Tag>
             </Descriptions.Item>
-            <Descriptions.Item label="项目">{{
-              warningDetailData.matterName
-            }}</Descriptions.Item>
+            <Descriptions.Item label="项目">
+              {{ warningDetailData.matterName }}
+            </Descriptions.Item>
             <Descriptions.Item label="风险类型">
               {{
                 warningDetailData.riskTypeName ||
@@ -806,27 +808,27 @@ onMounted(() => {
                 }}
               </Tag>
             </Descriptions.Item>
-            <Descriptions.Item label="风险描述" :span="2">{{
-              warningDetailData.description
-            }}</Descriptions.Item>
-            <Descriptions.Item label="建议措施" :span="2">{{
-              warningDetailData.suggestedAction || '-'
-            }}</Descriptions.Item>
-            <Descriptions.Item label="确认人">{{
-              warningDetailData.acknowledgedByName || '-'
-            }}</Descriptions.Item>
-            <Descriptions.Item label="确认时间">{{
-              formatDateTime(warningDetailData.acknowledgedAt)
-            }}</Descriptions.Item>
-            <Descriptions.Item label="解决人">{{
-              warningDetailData.resolvedByName || '-'
-            }}</Descriptions.Item>
-            <Descriptions.Item label="解决时间">{{
-              formatDateTime(warningDetailData.resolvedAt)
-            }}</Descriptions.Item>
-            <Descriptions.Item label="解决方案" :span="2">{{
-              warningDetailData.resolution || '-'
-            }}</Descriptions.Item>
+            <Descriptions.Item label="风险描述" :span="2">
+              {{ warningDetailData.description }}
+            </Descriptions.Item>
+            <Descriptions.Item label="建议措施" :span="2">
+              {{ warningDetailData.suggestedAction || '-' }}
+            </Descriptions.Item>
+            <Descriptions.Item label="确认人">
+              {{ warningDetailData.acknowledgedByName || '-' }}
+            </Descriptions.Item>
+            <Descriptions.Item label="确认时间">
+              {{ formatDateTime(warningDetailData.acknowledgedAt) }}
+            </Descriptions.Item>
+            <Descriptions.Item label="解决人">
+              {{ warningDetailData.resolvedByName || '-' }}
+            </Descriptions.Item>
+            <Descriptions.Item label="解决时间">
+              {{ formatDateTime(warningDetailData.resolvedAt) }}
+            </Descriptions.Item>
+            <Descriptions.Item label="解决方案" :span="2">
+              {{ warningDetailData.resolution || '-' }}
+            </Descriptions.Item>
           </Descriptions>
         </template>
       </Spin>

@@ -2,15 +2,21 @@ package com.lawfirm.application.hr.dto;
 
 import lombok.Data;
 
-/**
- * 职级查询 DTO
- */
+/** 职级查询 DTO. */
 @Data
 public class CareerLevelQueryDTO {
-    private Integer pageNum = 1;
-    private Integer pageSize = 10;
-    private String keyword;
-    private String category;
-    private String status;
-}
+  /** 页码. */
+  private Integer pageNum = 1;
 
+  /** 每页大小. */
+  private Integer pageSize = 10;
+
+  /** 关键词. */
+  private String keyword;
+
+  /** 分类. */
+  private String category;
+
+  /** 状态. */
+  private String status;
+}

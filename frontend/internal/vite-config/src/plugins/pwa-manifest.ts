@@ -1,19 +1,19 @@
 import type { Plugin } from 'vite';
 
-import { writeFileSync, mkdirSync, existsSync, copyFileSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 export interface PwaManifestOptions {
+  /** 背景颜色 */
+  backgroundColor?: string;
+  /** 应用描述 */
+  description?: string;
   /** 应用名称（从环境变量 VITE_APP_TITLE 获取） */
   name: string;
   /** 应用简称（可选，默认自动生成） */
   shortName?: string;
-  /** 应用描述 */
-  description?: string;
   /** 主题颜色 */
   themeColor?: string;
-  /** 背景颜色 */
-  backgroundColor?: string;
 }
 
 /**
@@ -30,13 +30,17 @@ export function vitePwaManifestPlugin(options: PwaManifestOptions): Plugin {
   } = options;
 
   // 自动生成 short_name（PWA 标准建议不超过 12 个字符）
-  const generatedShortName =
-    shortName ||
-    (name.length > 12
-      ? name.includes('律所') || name.includes('律师')
-        ? '律所系统'
-        : name.substring(0, 12)
-      : name);
+  let generatedShortName = shortName;
+  if (!generatedShortName) {
+    if (name.length > 12) {
+      generatedShortName =
+        name.includes('律所') || name.includes('律师')
+          ? '律所系统'
+          : name.slice(0, 12);
+    } else {
+      generatedShortName = name;
+    }
+  }
 
   const manifest = {
     name,
@@ -72,7 +76,7 @@ export function vitePwaManifestPlugin(options: PwaManifestOptions): Plugin {
 
     configureServer(server) {
       // 开发环境：提供 manifest.webmanifest 文件
-      server.middlewares.use('/manifest.webmanifest', (req, res, next) => {
+      server.middlewares.use('/manifest.webmanifest', (req, res, _next) => {
         res.setHeader('Content-Type', 'application/manifest+json');
         res.end(JSON.stringify(manifest, null, 2));
       });
@@ -89,7 +93,7 @@ export function vitePwaManifestPlugin(options: PwaManifestOptions): Plugin {
       }
 
       // 写入 manifest 文件
-      writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), 'utf-8');
+      writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), 'utf8');
       console.log(`[PWA] Generated manifest.webmanifest with name: "${name}"`);
     },
   };

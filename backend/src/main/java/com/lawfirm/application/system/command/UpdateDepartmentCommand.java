@@ -3,22 +3,26 @@ package com.lawfirm.application.system.command;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
-/**
- * 更新部门命令
- */
+/** 更新部门命令. */
 @Data
 public class UpdateDepartmentCommand {
 
-    @NotNull(message = "部门ID不能为空")
-    private Long id;
+  /** ID. */
+  @NotNull(message = "部门ID不能为空")
+  private Long id;
 
-    private String name;
+  /** 部门名称. */
+  private String name;
 
-    private Long parentId;
+  /** 上级部门ID. */
+  private Long parentId;
 
-    private Integer sortOrder;
+  /** 排序号. */
+  private Integer sortOrder;
 
-    private Long leaderId;
+  /** 负责人ID. */
+  private Long leaderId;
 
-    private String status;
+  /** 状态. */
+  private String status;
 }

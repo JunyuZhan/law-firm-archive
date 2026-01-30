@@ -8,16 +8,20 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
-/**
- * 定时报表执行记录 Mapper
- */
+/** 定时报表执行记录 Mapper */
 @Mapper
 public interface ScheduledReportLogMapper extends BaseMapper<ScheduledReportLog> {
 
-    /**
-     * 分页查询执行记录
-     */
-    @Select("""
+  /**
+   * 分页查询执行记录.
+   *
+   * @param page 分页参数
+   * @param taskId 任务ID
+   * @param status 状态
+   * @return 定时报表执行记录分页结果
+   */
+  @Select(
+      """
         <script>
         SELECT * FROM workbench_scheduled_report_log
         WHERE 1=1
@@ -30,13 +34,16 @@ public interface ScheduledReportLogMapper extends BaseMapper<ScheduledReportLog>
         ORDER BY execute_time DESC
         </script>
         """)
-    IPage<ScheduledReportLog> selectLogPage(Page<ScheduledReportLog> page,
-                                             @Param("taskId") Long taskId,
-                                             @Param("status") String status);
+  IPage<ScheduledReportLog> selectLogPage(
+      Page<ScheduledReportLog> page, @Param("taskId") Long taskId, @Param("status") String status);
 
-    /**
-     * 查询最近一次执行记录
-     */
-    @Select("SELECT * FROM workbench_scheduled_report_log WHERE task_id = #{taskId} ORDER BY execute_time DESC LIMIT 1")
-    ScheduledReportLog selectLatestByTaskId(@Param("taskId") Long taskId);
+  /**
+   * 查询最近一次执行记录.
+   *
+   * @param taskId 任务ID
+   * @return 定时报表执行记录
+   */
+  @Select(
+      "SELECT * FROM workbench_scheduled_report_log WHERE task_id = #{taskId} ORDER BY execute_time DESC LIMIT 1")
+  ScheduledReportLog selectLatestByTaskId(@Param("taskId") Long taskId);
 }

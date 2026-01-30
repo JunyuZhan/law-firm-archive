@@ -6,10 +6,8 @@ import type { DepartmentDTO, UserDTO } from '#/api/system/types';
 import { ref, watch } from 'vue';
 
 import { Page } from '@vben/common-ui';
-
-import { useResponsive } from '#/hooks/useResponsive';
-
 import { DownloadOutlined, DownOutlined, UploadOutlined } from '@vben/icons';
+
 import {
   Button,
   Dropdown,
@@ -32,6 +30,7 @@ import {
   getUserList,
   resetPassword,
 } from '#/api/system';
+import { useResponsive } from '#/hooks/useResponsive';
 
 import UserDrawer from './components/UserDrawer.vue';
 import UserImportModal from './components/UserImportModal.vue';

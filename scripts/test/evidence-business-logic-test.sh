@@ -97,7 +97,7 @@ send_request() {
 # 检查响应是否成功
 check_success() {
     local body=$1
-    local success=$(echo "$body" | grep -o '"success":[^,]*' | cut -d':' -f2)
+    local success=$(echo "$body" | grep -o '"success":[^,]*' | head -1 | cut -d':' -f2)
     [ "$success" = "true" ]
 }
 
@@ -122,12 +122,35 @@ check_service() {
     fi
 }
 
-# 登录
+# 登录（带滑块验证）
 login() {
     echo ""
     echo -e "${BLUE}登录获取Token...${NC}"
     
-    local response=$(send_request "POST" "$BASE_URL/auth/login" '{"username":"admin","password":"admin123"}')
+    # Step 1: 获取滑块验证令牌
+    local slider_response=$(send_request "GET" "$BASE_URL/auth/slider/token" "" "")
+    local slider_body=$(echo "$slider_response" | sed '$d')
+    
+    if ! check_success "$slider_body"; then
+        echo -e "${RED}✗${NC} 获取滑块令牌失败"
+        return 1
+    fi
+    
+    local token_id=$(echo "$slider_body" | grep -o '"tokenId":"[^"]*"' | cut -d'"' -f4)
+    
+    # Step 2: 验证滑块
+    local verify_response=$(send_request "POST" "$BASE_URL/auth/slider/verify" "{\"tokenId\":\"$token_id\",\"slideTime\":1500}" "")
+    local verify_body=$(echo "$verify_response" | sed '$d')
+    
+    if ! check_success "$verify_body"; then
+        echo -e "${RED}✗${NC} 滑块验证失败"
+        return 1
+    fi
+    
+    local slider_verify_token=$(echo "$verify_body" | grep -o '"verifyToken":"[^"]*"' | cut -d'"' -f4)
+    
+    # Step 3: 使用滑块验证令牌登录
+    local response=$(send_request "POST" "$BASE_URL/auth/login" "{\"username\":\"admin\",\"password\":\"admin123\",\"sliderVerifyToken\":\"$slider_verify_token\"}")
     local body=$(echo "$response" | sed '$d')
     
     if check_success "$body"; then

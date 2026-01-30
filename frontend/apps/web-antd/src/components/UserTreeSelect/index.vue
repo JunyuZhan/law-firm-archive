@@ -21,6 +21,8 @@ const props = withDefaults(
     disabled?: boolean;
     /** 排除的用户ID列表 */
     excludeUserIds?: number[];
+    /** 虚拟滚动列表高度 */
+    listHeight?: number;
     /** 最大可选数量（多选时） */
     maxCount?: number;
     /** 是否多选 */
@@ -33,8 +35,6 @@ const props = withDefaults(
     userStatus?: string;
     /** 选中的用户ID（单选） */
     value?: null | number | number[];
-    /** 虚拟滚动列表高度 */
-    listHeight?: number;
     /** 启用虚拟滚动的阈值 */
     virtualThreshold?: number;
   }>(),
@@ -43,9 +43,12 @@ const props = withDefaults(
     allowClear: true,
     disabled: false,
     excludeUserIds: () => [],
-    userStatus: 'ACTIVE',
-    multiple: false,
     listHeight: 300,
+    maxCount: undefined,
+    multiple: false,
+    style: undefined,
+    userStatus: 'ACTIVE',
+    value: undefined,
     virtualThreshold: 30,
   },
 );

@@ -211,8 +211,9 @@ async function loadApplicationPlugins(
       ],
     },
     {
-      condition: isBuild && pwaManifest && pwaManifestOptions,
-      plugins: () => [vitePwaManifestPlugin(pwaManifestOptions!)],
+      condition: isBuild && pwaManifest && !!pwaManifestOptions,
+      plugins: () =>
+        pwaManifestOptions ? [vitePwaManifestPlugin(pwaManifestOptions)] : [],
     },
     {
       condition: archiver,

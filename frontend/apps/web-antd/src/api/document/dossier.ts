@@ -137,7 +137,10 @@ export function createDossierTemplate(
 }
 
 /** 更新卷宗模板 */
-export function updateDossierTemplate(id: number, data: Partial<DossierTemplate>) {
+export function updateDossierTemplate(
+  id: number,
+  data: Partial<DossierTemplate>,
+) {
   return requestClient.put<DossierTemplate>(`/dossier/template/${id}`, data);
 }
 

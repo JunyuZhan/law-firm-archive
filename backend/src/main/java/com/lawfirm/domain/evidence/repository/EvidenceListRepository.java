@@ -5,6 +5,6 @@ import com.lawfirm.domain.evidence.entity.EvidenceList;
 import com.lawfirm.infrastructure.persistence.mapper.EvidenceListMapper;
 import org.springframework.stereotype.Repository;
 
+/** 证据清单Repository */
 @Repository
-public class EvidenceListRepository extends AbstractRepository<EvidenceListMapper, EvidenceList> {
-}
+public class EvidenceListRepository extends AbstractRepository<EvidenceListMapper, EvidenceList> {}

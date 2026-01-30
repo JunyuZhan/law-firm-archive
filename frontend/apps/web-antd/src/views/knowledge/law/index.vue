@@ -7,8 +7,6 @@ import { onMounted, ref, watch } from 'vue';
 
 import { Page } from '@vben/common-ui';
 
-import { useResponsive } from '#/hooks/useResponsive';
-
 import {
   Button,
   Card,
@@ -30,6 +28,7 @@ import {
   markLawRegulationRepealed,
   uncollectLawRegulation,
 } from '#/api/knowledge';
+import { useResponsive } from '#/hooks/useResponsive';
 
 import LawModal from './components/LawModal.vue';
 

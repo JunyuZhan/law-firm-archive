@@ -4,6 +4,14 @@ import type { StartTimerCommand, TimerSessionDTO } from '#/api/matter/timer';
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 
 import {
+  ClockCircleOutlined,
+  MinusOutlined,
+  PauseCircleOutlined,
+  PlayCircleOutlined,
+  StopOutlined,
+} from '@vben/icons';
+
+import {
   Button,
   Card,
   Form,
@@ -14,13 +22,6 @@ import {
   Space,
   Tooltip,
 } from 'ant-design-vue';
-import {
-  ClockCircleOutlined,
-  MinusOutlined,
-  PauseCircleOutlined,
-  PlayCircleOutlined,
-  StopOutlined,
-} from '@vben/icons';
 
 import { getMatterList } from '#/api/matter';
 import {
@@ -34,7 +35,7 @@ import {
 defineOptions({ name: 'FloatingTimer' });
 
 // 计时器状态
-const timerSession = ref<TimerSessionDTO | null>(null);
+const timerSession = ref<null | TimerSessionDTO>(null);
 const isRunning = computed(() => timerSession.value?.status === 'RUNNING');
 const isPaused = computed(() => timerSession.value?.status === 'PAUSED');
 const isIdle = computed(
@@ -51,7 +52,7 @@ const isVisible = ref(true);
 // 计时显示
 const displayTime = ref('00:00:00');
 const elapsedSeconds = ref(0);
-let timerInterval: ReturnType<typeof setInterval> | null = null;
+let timerInterval: null | ReturnType<typeof setInterval> = null;
 
 // 新建弹窗
 const startModalVisible = ref(false);
@@ -108,7 +109,7 @@ async function loadMatters(keyword?: string) {
       name: keyword,
     });
     matterOptions.value = (res.list || []).map(
-      (m: { matterNo: string; name: string; id: number }) => ({
+      (m: { id: number; matterNo: string; name: string }) => ({
         label: `${m.matterNo} - ${m.name}`,
         value: m.id,
       }),

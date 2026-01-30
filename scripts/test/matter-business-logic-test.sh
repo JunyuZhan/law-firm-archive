@@ -112,19 +112,47 @@ check_service() {
     fi
 }
 
-# ==================== 1. 登录获取Token ====================
+# 检查响应是否成功（只检查第一个 success 字段）
+check_success() {
+    local body=$1
+    local success=$(echo "$body" | grep -o '"success":[^,]*' | head -1 | cut -d':' -f2)
+    [ "$success" = "true" ]
+}
+
+# ==================== 1. 登录获取Token（带滑块验证） ====================
 login() {
     echo ""
     echo -e "${CYAN}══════════════════════════════════════════════════════════${NC}"
     echo -e "${CYAN}  1. 登录认证${NC}"
     echo -e "${CYAN}══════════════════════════════════════════════════════════${NC}"
     
-    local response=$(send_request "POST" "$BASE_URL/auth/login" '{"username":"admin","password":"admin123"}')
-    local http_code=$(echo "$response" | tail -1)
-    local body=$(echo "$response" | sed '$d')
-    local success=$(echo "$body" | grep -o '"success":[^,]*' | cut -d':' -f2)
+    # Step 1: 获取滑块验证令牌
+    local slider_response=$(send_request "GET" "$BASE_URL/auth/slider/token" "" "")
+    local slider_body=$(echo "$slider_response" | sed '$d')
     
-    if [ "$success" = "true" ]; then
+    if ! check_success "$slider_body"; then
+        print_result "管理员账号登录" "FAIL" "获取滑块令牌失败" "认证"
+        return 1
+    fi
+    
+    local token_id=$(echo "$slider_body" | grep -o '"tokenId":"[^"]*"' | cut -d'"' -f4)
+    
+    # Step 2: 验证滑块
+    local verify_response=$(send_request "POST" "$BASE_URL/auth/slider/verify" "{\"tokenId\":\"$token_id\",\"slideTime\":1500}" "")
+    local verify_body=$(echo "$verify_response" | sed '$d')
+    
+    if ! check_success "$verify_body"; then
+        print_result "管理员账号登录" "FAIL" "滑块验证失败" "认证"
+        return 1
+    fi
+    
+    local slider_verify_token=$(echo "$verify_body" | grep -o '"verifyToken":"[^"]*"' | cut -d'"' -f4)
+    
+    # Step 3: 使用滑块验证令牌登录
+    local response=$(send_request "POST" "$BASE_URL/auth/login" "{\"username\":\"admin\",\"password\":\"admin123\",\"sliderVerifyToken\":\"$slider_verify_token\"}")
+    local body=$(echo "$response" | sed '$d')
+    
+    if check_success "$body"; then
         TOKEN=$(echo "$body" | grep -o '"accessToken":"[^"]*' | cut -d'"' -f4)
         print_result "管理员账号登录" "PASS" "" "认证"
         return 0

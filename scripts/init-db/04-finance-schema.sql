@@ -467,7 +467,7 @@ ALTER SEQUENCE public.finance_commission_rule_id_seq OWNED BY public.finance_com
 
 CREATE TABLE public.finance_contract (
     id bigint NOT NULL,
-    contract_no character varying(50) NOT NULL,
+    contract_no character varying(50),
     name character varying(200) NOT NULL,
     template_id bigint,
     client_id bigint NOT NULL,

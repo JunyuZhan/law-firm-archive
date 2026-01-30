@@ -7,8 +7,8 @@ import type { SelectProps } from 'ant-design-vue';
 
 import { computed, ref, watch } from 'vue';
 
-import { Select, Spin } from 'ant-design-vue';
 import { useDebounceFn } from '@vueuse/core';
+import { Select, Spin } from 'ant-design-vue';
 
 export interface VirtualSelectOption {
   label: string;
@@ -19,36 +19,36 @@ export interface VirtualSelectOption {
 
 const props = withDefaults(
   defineProps<{
-    /** 选中的值 */
-    value?: null | number | number[] | string | string[];
-    /** 占位文本 */
-    placeholder?: string;
     /** 是否允许清除 */
     allowClear?: boolean;
-    /** 是否禁用 */
-    disabled?: boolean;
-    /** 是否多选 */
-    multiple?: boolean;
     /** 搜索防抖延迟(ms) */
     debounceTime?: number;
-    /** 初始选项（用于回显） */
-    initialOptions?: VirtualSelectOption[];
+    /** 是否禁用 */
+    disabled?: boolean;
+    /** 下拉菜单样式 */
+    dropdownStyle?: Record<string, any>;
     /** 远程搜索函数 */
     fetchOptions?: (keyword: string) => Promise<VirtualSelectOption[]>;
-    /** 静态选项（不需要远程搜索时使用） */
-    options?: VirtualSelectOption[];
+    /** 选项过滤函数（静态选项时使用） */
+    filterOption?: SelectProps['filterOption'];
+    /** 初始选项（用于回显） */
+    initialOptions?: VirtualSelectOption[];
     /** 虚拟滚动列表高度 */
     listHeight?: number;
     /** 最大标签数量（多选时） */
-    maxTagCount?: number | 'responsive';
-    /** 样式 */
-    style?: Record<string, any> | string;
+    maxTagCount?: 'responsive' | number;
+    /** 是否多选 */
+    multiple?: boolean;
+    /** 静态选项（不需要远程搜索时使用） */
+    options?: VirtualSelectOption[];
+    /** 占位文本 */
+    placeholder?: string;
     /** 是否显示搜索框 */
     showSearch?: boolean;
-    /** 下拉菜单样式 */
-    dropdownStyle?: Record<string, any>;
-    /** 选项过滤函数（静态选项时使用） */
-    filterOption?: SelectProps['filterOption'];
+    /** 样式 */
+    style?: Record<string, any> | string;
+    /** 选中的值 */
+    value?: null | number | number[] | string | string[];
     /** 虚拟滚动阈值 */
     virtualThreshold?: number;
   }>(),
@@ -58,9 +58,16 @@ const props = withDefaults(
     disabled: false,
     multiple: false,
     debounceTime: 300,
+    dropdownStyle: undefined,
+    fetchOptions: undefined,
+    filterOption: undefined,
+    initialOptions: undefined,
     listHeight: 256,
     maxTagCount: 'responsive',
+    options: undefined,
     showSearch: true,
+    style: undefined,
+    value: undefined,
     virtualThreshold: 50,
   },
 );
@@ -94,7 +101,7 @@ const mergedOptions = computed(() => {
   }
 
   // 合并远程搜索结果和初始选项（去重）
-  const optionsMap = new Map<string | number, VirtualSelectOption>();
+  const optionsMap = new Map<number | string, VirtualSelectOption>();
 
   // 先添加初始选项（用于回显）
   props.initialOptions?.forEach((opt) => {
@@ -193,7 +200,7 @@ defineExpose({
     :not-found-content="loading ? undefined : '暂无数据'"
     @search="useRemoteSearch ? handleSearch : undefined"
     @change="handleChange"
-    @dropdownVisibleChange="handleDropdownVisibleChange"
+    @dropdown-visible-change="handleDropdownVisibleChange"
   >
     <template v-if="loading" #notFoundContent>
       <div style="padding: 12px; text-align: center">

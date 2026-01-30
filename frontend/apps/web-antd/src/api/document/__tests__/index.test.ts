@@ -1,5 +1,3 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-
 import type {
   CreateDocumentCommand,
   DocumentDTO,
@@ -8,6 +6,9 @@ import type {
   UpdateDocumentCommand,
   UploadNewVersionCommand,
 } from '../index';
+
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
 import {
   batchDownloadDocuments,
   checkDocumentEditSupport,
@@ -22,9 +23,9 @@ import {
   getDocumentList,
   getDocumentPreviewConfig,
   getDocumentPreviewUrl,
+  getDocumentsByMatter,
   getDocumentThumbnailUrl,
   getDocumentVersions,
-  getDocumentsByMatter,
   moveDocument,
   previewDocument,
   reorderDocuments,
@@ -45,7 +46,7 @@ vi.mock('#/api/request', () => ({
   },
 }));
 
-describe('Document API', () => {
+describe('document API', () => {
   let mockGet: ReturnType<typeof vi.fn>;
   let mockPost: ReturnType<typeof vi.fn>;
   let mockPut: ReturnType<typeof vi.fn>;
@@ -374,7 +375,7 @@ describe('Document API', () => {
       const documentId = 1;
       const mockResponse = {
         documentId,
-        expires: Date.now() + 3600000,
+        expires: Date.now() + 3_600_000,
         fileName: 'test.pdf',
         fileType: 'pdf',
         mimeType: 'application/pdf',
@@ -386,7 +387,9 @@ describe('Document API', () => {
       const result = await getDocumentPreviewUrl(documentId);
 
       expect(result).toEqual(mockResponse);
-      expect(result.previewUrl).toBe('https://example.com/preview?token=abc123');
+      expect(result.previewUrl).toBe(
+        'https://example.com/preview?token=abc123',
+      );
       expect(mockGet).toHaveBeenCalledWith(
         `/document/${documentId}/preview-url`,
       );
@@ -434,7 +437,7 @@ describe('Document API', () => {
       const mockResponse = {
         documentId,
         previewUrl: 'https://example.com/preview?token=abc123',
-        expires: Date.now() + 3600000,
+        expires: Date.now() + 3_600_000,
         fileName: 'test.pdf',
         fileType: 'pdf',
         mimeType: 'application/pdf',
@@ -490,7 +493,9 @@ describe('Document API', () => {
 
   describe('uploadFile', () => {
     it('should upload a single file', async () => {
-      const file = new File(['content'], 'test.pdf', { type: 'application/pdf' });
+      const file = new File(['content'], 'test.pdf', {
+        type: 'application/pdf',
+      });
       const options = {
         matterId: 1,
         folder: '/test',
@@ -517,7 +522,9 @@ describe('Document API', () => {
     });
 
     it('should upload file without optional options', async () => {
-      const file = new File(['content'], 'test.pdf', { type: 'application/pdf' });
+      const file = new File(['content'], 'test.pdf', {
+        type: 'application/pdf',
+      });
       const mockResponse = {
         id: 1,
         fileName: 'test.pdf',

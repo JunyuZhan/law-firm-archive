@@ -13,7 +13,7 @@ import {
 } from 'ant-design-vue';
 
 interface Props {
-  open: boolean;
+  open?: boolean;
   schedule?: ContractPaymentScheduleDTO | null;
 }
 

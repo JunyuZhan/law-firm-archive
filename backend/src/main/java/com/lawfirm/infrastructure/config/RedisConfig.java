@@ -13,34 +13,44 @@ import org.springframework.data.redis.serializer.Jackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 /**
- * Redis 配置
+ * Redis 配置.
+ *
+ * @author system
+ * @since 2026-01-17
  */
 @Configuration
 public class RedisConfig {
 
-    @Bean
-    public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory factory) {
-        RedisTemplate<String, Object> template = new RedisTemplate<>();
-        template.setConnectionFactory(factory);
+  /**
+   * 创建 Redis 模板.
+   *
+   * @param factory Redis 连接工厂
+   * @return Redis 模板
+   */
+  @Bean
+  public RedisTemplate<String, Object> redisTemplate(final RedisConnectionFactory factory) {
+    RedisTemplate<String, Object> template = new RedisTemplate<>();
+    template.setConnectionFactory(factory);
 
-        // JSON序列化配置
-        ObjectMapper mapper = new ObjectMapper();
-        mapper.setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.ANY);
-        mapper.activateDefaultTyping(LaissezFaireSubTypeValidator.instance, ObjectMapper.DefaultTyping.NON_FINAL);
-        mapper.registerModule(new JavaTimeModule());
+    // JSON序列化配置
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.ANY);
+    mapper.activateDefaultTyping(
+        LaissezFaireSubTypeValidator.instance, ObjectMapper.DefaultTyping.NON_FINAL);
+    mapper.registerModule(new JavaTimeModule());
 
-        Jackson2JsonRedisSerializer<Object> jsonSerializer = new Jackson2JsonRedisSerializer<>(mapper, Object.class);
-        StringRedisSerializer stringSerializer = new StringRedisSerializer();
+    Jackson2JsonRedisSerializer<Object> jsonSerializer =
+        new Jackson2JsonRedisSerializer<>(mapper, Object.class);
+    StringRedisSerializer stringSerializer = new StringRedisSerializer();
 
-        // key采用String序列化
-        template.setKeySerializer(stringSerializer);
-        template.setHashKeySerializer(stringSerializer);
-        // value采用JSON序列化
-        template.setValueSerializer(jsonSerializer);
-        template.setHashValueSerializer(jsonSerializer);
+    // key采用String序列化
+    template.setKeySerializer(stringSerializer);
+    template.setHashKeySerializer(stringSerializer);
+    // value采用JSON序列化
+    template.setValueSerializer(jsonSerializer);
+    template.setHashValueSerializer(jsonSerializer);
 
-        template.afterPropertiesSet();
-        return template;
-    }
+    template.afterPropertiesSet();
+    return template;
+  }
 }
-

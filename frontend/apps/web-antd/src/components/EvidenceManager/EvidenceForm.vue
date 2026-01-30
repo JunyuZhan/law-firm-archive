@@ -462,6 +462,7 @@ function handleCancel() {
               </Button>
             </Tooltip>
           </Upload>
+          <!-- eslint-disable-next-line prettier/prettier -->
           <span style="font-size: 12px; color: #999"
             >上传图片自动提取文字到描述</span
           >

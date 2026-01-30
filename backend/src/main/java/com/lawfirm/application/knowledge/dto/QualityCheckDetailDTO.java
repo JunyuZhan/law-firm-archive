@@ -1,23 +1,32 @@
 package com.lawfirm.application.knowledge.dto;
 
 import com.lawfirm.common.base.BaseDTO;
+import java.math.BigDecimal;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
-import java.math.BigDecimal;
-
-/**
- * 质量检查明细DTO（M10-031）
- */
+/** 质量检查明细DTO（M10-031） */
 @Data
 @EqualsAndHashCode(callSuper = true)
 public class QualityCheckDetailDTO extends BaseDTO {
-    private Long checkId;
-    private Long standardId;
-    private String checkResult;
-    private BigDecimal score;
-    private BigDecimal maxScore;
-    private String findings;
-    private String suggestions;
-}
+  /** 检查ID */
+  private Long checkId;
 
+  /** 标准ID */
+  private Long standardId;
+
+  /** 检查结果 */
+  private String checkResult;
+
+  /** 得分 */
+  private BigDecimal score;
+
+  /** 最高分 */
+  private BigDecimal maxScore;
+
+  /** 检查发现 */
+  private String findings;
+
+  /** 改进建议 */
+  private String suggestions;
+}

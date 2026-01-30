@@ -6,7 +6,7 @@
 export interface WorkbenchStatsDTO {
   // 通用字段
   taskCount: number; // 待办任务数
-  roleType: 'LAWYER' | 'FINANCE' | 'ADMIN_STAFF'; // 角色类型
+  roleType: 'ADMIN_STAFF' | 'FINANCE' | 'LAWYER'; // 角色类型
 
   // 律师/团队负责人/主任相关
   matterCount?: number; // 我的项目数

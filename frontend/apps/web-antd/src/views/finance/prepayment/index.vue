@@ -237,7 +237,7 @@ async function handleCreateSubmit() {
 
 // ==================== 详情弹窗 ====================
 const detailModalVisible = ref(false);
-const detailData = ref<PrepaymentDTO | null>(null);
+const detailData = ref<null | PrepaymentDTO>(null);
 const detailLoading = ref(false);
 
 async function handleViewDetail(row: PrepaymentDTO) {
@@ -294,7 +294,7 @@ function getStatusName(status: string) {
   return option?.label || status;
 }
 
-function formatCurrency(amount: number | null | undefined) {
+function formatCurrency(amount: null | number | undefined) {
   if (amount === null || amount === undefined) return '¥0.00';
   return `¥${Number(amount).toLocaleString('zh-CN', {
     minimumFractionDigits: 2,
@@ -302,7 +302,7 @@ function formatCurrency(amount: number | null | undefined) {
   })}`;
 }
 
-function formatDate(date: string | null | undefined) {
+function formatDate(date: null | string | undefined) {
   if (!date) return '-';
   return dayjs(date).format('YYYY-MM-DD');
 }

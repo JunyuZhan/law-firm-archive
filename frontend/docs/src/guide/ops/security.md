@@ -35,7 +35,7 @@
 ### 1. 认证与授权
 
 | 机制 | 说明 | 配置位置 |
-|-----|------|---------|
+| --- | --- | --- |
 | JWT 认证 | HMAC-SHA256 签名，支持双令牌机制 | `JwtTokenProvider.java` |
 | Token 黑名单 | Redis 存储已失效 Token，防止重放 | `TokenBlacklistService.java` |
 | BCrypt 加密 | 密码安全存储 | `SecurityConfig.java` |
@@ -71,7 +71,7 @@
 #### 异地登录检测配置
 
 | 配置项 | 默认值 | 说明 |
-|-------|--------|------|
+| --- | --- | --- |
 | `security.location.enabled` | `true` | 是否启用异地登录检测 |
 | `security.location.level` | `province` | 判断级别：`province`=省级，`city`=市级 |
 | `security.location.permit-code.mode` | `fixed` | 许可码模式：`fixed`=固定码，`random`=随机码 |
@@ -79,12 +79,12 @@
 
 **判断级别说明：**
 
-| 模式 | 从 → 到 | 是否异地 |
-|------|---------|---------|
-| `province`（省级） | 北京 → 上海 | ⚠️ 异地 |
-| `province`（省级） | 广州 → 深圳 | ✅ 正常（同省） |
-| `city`（市级） | 广州 → 深圳 | ⚠️ 异地 |
-| `city`（市级） | 北京朝阳 → 北京海淀 | ✅ 正常（同市） |
+| 模式               | 从 → 到             | 是否异地        |
+| ------------------ | ------------------- | --------------- |
+| `province`（省级） | 北京 → 上海         | ⚠️ 异地         |
+| `province`（省级） | 广州 → 深圳         | ✅ 正常（同省） |
+| `city`（市级）     | 广州 → 深圳         | ⚠️ 异地         |
+| `city`（市级）     | 北京朝阳 → 北京海淀 | ✅ 正常（同市） |
 
 **许可码模式说明：**
 
@@ -92,9 +92,9 @@
 - **随机码模式** (`random`)：每次异地登录生成 6 位随机码，邮件通知管理员
 
 ::: tip 使用建议
+
 - 一般律所建议使用 **省级 + 固定码**：简单易用，员工出差前获取许可码即可
-- 高安全要求场景使用 **市级 + 随机码**：每次异地登录都需管理员实时授权
-:::
+- 高安全要求场景使用 **市级 + 随机码**：每次异地登录都需管理员实时授权 :::
 
 **异地登录流程：**
 
@@ -116,30 +116,31 @@
 （该位置自动加入常用位置列表）
 ```
 
-::: warning IP 数据库
-异地登录检测依赖 ip2region 离线数据库。请确保 `backend/src/main/resources/ip2region/ip2region.xdb` 文件存在。
+::: warning IP 数据库异地登录检测依赖 ip2region 离线数据库。请确保 `backend/src/main/resources/ip2region/ip2region.xdb` 文件存在。
 
 下载方式：
+
 ```bash
 cd backend/src/main/resources/ip2region
 wget -O ip2region.xdb "https://gitee.com/lionsoul/ip2region/raw/master/data/ip2region_v4.xdb"
 ```
+
 :::
 
 ### 3. 接口防护
 
-| 机制 | 说明 | 配置位置 |
-|-----|------|---------|
-| 分布式限流 | 基于 Redis，IP/用户级限流 | `RateLimiterAspect.java` |
-| XSS 过滤 | 拦截危险脚本标签 | `XssFilter.java` |
-| SSRF 防护 | 拦截内网 IP 和云元数据地址 | `UrlSecurityValidator.java` |
-| 输入验证 | Bean Validation 参数校验 | 各 Command 类 |
+| 机制       | 说明                       | 配置位置                    |
+| ---------- | -------------------------- | --------------------------- |
+| 分布式限流 | 基于 Redis，IP/用户级限流  | `RateLimiterAspect.java`    |
+| XSS 过滤   | 拦截危险脚本标签           | `XssFilter.java`            |
+| SSRF 防护  | 拦截内网 IP 和云元数据地址 | `UrlSecurityValidator.java` |
+| 输入验证   | Bean Validation 参数校验   | 各 Command 类               |
 
 **限流配置示例：**
 
 ```java
 // 登录接口：每 IP 每分钟最多 10 次
-@RateLimiter(key = "login", rate = 10, interval = 60, 
+@RateLimiter(key = "login", rate = 10, interval = 60,
              limitType = RateLimiter.LimitType.IP)
 ```
 
@@ -156,19 +157,21 @@ wget -O ip2region.xdb "https://gitee.com/lionsoul/ip2region/raw/master/data/ip2r
 ```
 
 **允许的文件类型：**
+
 - 文档：pdf, doc, docx, xls, xlsx, ppt, pptx, txt, rtf
 - 图片：jpg, jpeg, png, gif, bmp, webp, svg
 - 压缩：zip, rar, 7z
 
 ### 4. 数据保护
 
-| 机制 | 说明 |
-|-----|------|
-| AES-256 加密 | 敏感字段（身份证、银行卡等）加密存储 |
-| 数据脱敏 | 支持 13+ 种敏感信息自动脱敏 |
-| HMAC-SHA256 签名 | 数据完整性验证 |
+| 机制             | 说明                                 |
+| ---------------- | ------------------------------------ |
+| AES-256 加密     | 敏感字段（身份证、银行卡等）加密存储 |
+| 数据脱敏         | 支持 13+ 种敏感信息自动脱敏          |
+| HMAC-SHA256 签名 | 数据完整性验证                       |
 
 **支持的脱敏类型：**
+
 - 身份证号、手机号、固定电话
 - 银行卡号、统一社会信用代码
 - 邮箱、IP 地址
@@ -186,18 +189,18 @@ public Result<DocumentDTO> uploadFile(...) { }
 
 ## 安全评估
 
-| 攻击类型 | 防护能力 | 说明 |
-|---------|---------|------|
-| SQL 注入 | ✅ 强 | MyBatis 参数化查询 |
-| XSS | ✅ 强 | XssFilter + Jackson 反序列化过滤 |
-| CSRF | ✅ 强 | 无状态 JWT，无需 CSRF Token |
-| 暴力破解 | ✅ 强 | IP 限流 + 验证码 + 账户锁定 |
-| 凭证泄露 | ✅ 强 | 异地登录检测 + 管理员许可码 |
-| Token 劫持 | ⚡ 中 | 黑名单机制，建议启用 HTTPS |
-| 数据泄露 | ✅ 强 | AES 加密 + 脱敏 + 权限控制 |
-| 文件上传 | ✅ 强 | 多层验证（白名单+魔数） |
-| SSRF | ✅ 强 | 内网 IP 拦截 |
-| 重放攻击 | ✅ 强 | Refresh Token 一次性使用 |
+| 攻击类型   | 防护能力 | 说明                             |
+| ---------- | -------- | -------------------------------- |
+| SQL 注入   | ✅ 强    | MyBatis 参数化查询               |
+| XSS        | ✅ 强    | XssFilter + Jackson 反序列化过滤 |
+| CSRF       | ✅ 强    | 无状态 JWT，无需 CSRF Token      |
+| 暴力破解   | ✅ 强    | IP 限流 + 验证码 + 账户锁定      |
+| 凭证泄露   | ✅ 强    | 异地登录检测 + 管理员许可码      |
+| Token 劫持 | ⚡ 中    | 黑名单机制，建议启用 HTTPS       |
+| 数据泄露   | ✅ 强    | AES 加密 + 脱敏 + 权限控制       |
+| 文件上传   | ✅ 强    | 多层验证（白名单+魔数）          |
+| SSRF       | ✅ 强    | 内网 IP 拦截                     |
+| 重放攻击   | ✅ 强    | Refresh Token 一次性使用         |
 
 ## 生产环境安全配置
 
@@ -205,15 +208,15 @@ public Result<DocumentDTO> uploadFile(...) { }
 
 **只开放以下端口：**
 
-| 端口 | 服务 | 是否对外开放 |
-|-----|------|------------|
-| 80 | HTTP | ✅ 必须开放 |
-| 443 | HTTPS | ✅ 生产环境必须 |
-| 22 | SSH | ⚠️ 限制 IP 访问 |
-| 8080 | 后端 API | ❌ 仅内部访问 |
-| 5432 | PostgreSQL | ❌ 仅内部访问 |
-| 6379 | Redis | ❌ 仅内部访问 |
-| 9000/9001 | MinIO | ❌ 仅内部访问 |
+| 端口      | 服务       | 是否对外开放    |
+| --------- | ---------- | --------------- |
+| 80        | HTTP       | ✅ 必须开放     |
+| 443       | HTTPS      | ✅ 生产环境必须 |
+| 22        | SSH        | ⚠️ 限制 IP 访问 |
+| 8080      | 后端 API   | ❌ 仅内部访问   |
+| 5432      | PostgreSQL | ❌ 仅内部访问   |
+| 6379      | Redis      | ❌ 仅内部访问   |
+| 9000/9001 | MinIO      | ❌ 仅内部访问   |
 
 ### 2. Nginx 安全响应头
 
@@ -223,19 +226,19 @@ public Result<DocumentDTO> uploadFile(...) { }
 server {
     # 防止 MIME 类型嗅探
     add_header X-Content-Type-Options "nosniff" always;
-    
+
     # 防止点击劫持
     add_header X-Frame-Options "SAMEORIGIN" always;
-    
+
     # XSS 防护（现代浏览器）
     add_header X-XSS-Protection "1; mode=block" always;
-    
+
     # 控制 Referer 信息
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-    
+
     # HTTPS 强制（启用 HTTPS 后）
     # add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
-    
+
     # 内容安全策略（可选，根据实际需求调整）
     # add_header Content-Security-Policy "default-src 'self'" always;
 }
@@ -257,10 +260,10 @@ OCR_API_KEY=<64字符随机密钥>
 ```
 
 ::: warning 重要
+
 - 妥善保管 `.env` 文件，不要提交到 Git
 - 定期轮换密钥（建议每季度）
-- 不同环境使用不同密钥
-:::
+- 不同环境使用不同密钥 :::
 
 ### 4. 运行安全检查
 
@@ -283,14 +286,17 @@ OCR_API_KEY=<64字符随机密钥>
 ### 1. 定期安全检查
 
 **每日：**
+
 - 检查系统日志中的异常登录
 - 检查限流拦截记录
 
 **每周：**
+
 - 审查操作日志
 - 检查备份完整性
 
 **每月：**
+
 - 运行依赖漏洞扫描
 - 审计用户权限
 - 检查 SSL 证书有效期
@@ -328,6 +334,7 @@ grep "XSS attack detected" /var/log/law-firm/app.log
 **发现异常时：**
 
 1. **封禁攻击 IP**
+
    ```bash
    # 宝塔面板：安全 → 防火墙 → 添加 IP 黑名单
    # 或使用 iptables
@@ -335,6 +342,7 @@ grep "XSS attack detected" /var/log/law-firm/app.log
    ```
 
 2. **强制用户重新登录**
+
    ```sql
    -- 清除所有会话
    DELETE FROM sys_user_session WHERE user_id = 受影响用户ID;
@@ -343,7 +351,7 @@ grep "XSS attack detected" /var/log/law-firm/app.log
 3. **检查数据完整性**
    ```sql
    -- 检查近期修改
-   SELECT * FROM sys_operation_log 
+   SELECT * FROM sys_operation_log
    WHERE created_at > NOW() - INTERVAL '24 hours'
    ORDER BY created_at DESC;
    ```
@@ -352,11 +360,11 @@ grep "XSS attack detected" /var/log/law-firm/app.log
 
 前端 PWA 实现了安全的缓存策略：
 
-| API 类型 | 缓存策略 | 说明 |
-|---------|---------|------|
-| 敏感 API (`/auth/`, `/admin/`, `/hr/`) | 不缓存 | 包含用户隐私数据 |
-| 公共 API (`/dict/`, `/config/`) | 持久化缓存 | 公共只读数据 |
-| 业务 API (`/matter/`, `/document/`) | 内存缓存 | 不持久化到磁盘 |
+| API 类型                               | 缓存策略   | 说明             |
+| -------------------------------------- | ---------- | ---------------- |
+| 敏感 API (`/auth/`, `/admin/`, `/hr/`) | 不缓存     | 包含用户隐私数据 |
+| 公共 API (`/dict/`, `/config/`)        | 持久化缓存 | 公共只读数据     |
+| 业务 API (`/matter/`, `/document/`)    | 内存缓存   | 不持久化到磁盘   |
 
 ## 安全配置检查清单
 

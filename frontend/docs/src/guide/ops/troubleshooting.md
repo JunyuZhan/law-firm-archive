@@ -108,6 +108,7 @@ psql -U law_admin -h localhost -d law_firm -c "SELECT 1"
 ```
 
 **重点检查**：
+
 - `.env` 中 `DB_HOST/DB_PORT/DB_NAME/DB_USER/DB_PASSWORD` 是否与容器配置一致
 - 数据库容器是否重启频繁（`docker ps -a` 查看）
 
@@ -127,10 +128,12 @@ psql -U law_admin -h localhost -d law_firm -c "SELECT 1"
    - 选择 **"清空缓存并硬性重新加载"**
 
 **Firefox**：
+
 - Windows/Linux: `Ctrl + Shift + R` 或 `Ctrl + F5`
 - Mac: `Cmd + Shift + R`
 
 **Safari**：
+
 - Mac: `Cmd + Option + E`（清空缓存）然后 `Cmd + R`（刷新）
 
 ### Redis 连接失败

@@ -37,9 +37,14 @@ import {
   exportEvidenceList,
   getEvidenceGroups,
   getEvidenceListDetail,
+  saveEvidenceListToDossier,
   updateEvidence,
   updateEvidenceList,
 } from '#/api/evidence';
+import {
+  getMatterDossierItems,
+  type MatterDossierItem,
+} from '#/api/document/dossier';
 
 // 列定义
 interface ColumnDef {
@@ -67,10 +72,10 @@ interface TableRow {
 
 const props = defineProps<{
   evidences: EvidenceItem[];
-  matterId: number;
-  matterName?: string; // 案件名称，用于打印显示
   listId?: number; // 关联的证据清单ID
   listName?: string; // 清单名称，用于打印显示
+  matterId: number;
+  matterName?: string; // 案件名称，用于打印显示
   readonly?: boolean;
 }>();
 
@@ -158,7 +163,7 @@ const groups = ref<string[]>([]); // 组别列表
 
 // 修改组别弹窗
 const groupEditModalVisible = ref(false);
-const editingRowKey = ref<string | null>(null);
+const editingRowKey = ref<null | string>(null);
 const editingGroupName = ref('');
 
 // 打开修改组别弹窗
@@ -294,12 +299,10 @@ onMounted(async () => {
       const hasOrder = parsedColumns.some((c: ColumnDef) => c.key === 'order');
       const hasName = parsedColumns.some((c: ColumnDef) => c.key === 'name');
 
-      if (hasGroupName && hasOrder && hasName) {
-        columns.value = parsedColumns;
-      } else {
-        // 如果保存的配置不完整，使用预设列
-        columns.value = [...defaultColumns];
-      }
+      columns.value =
+        hasGroupName && hasOrder && hasName
+          ? parsedColumns
+          : [...defaultColumns]; // 如果保存的配置不完整，使用预设列
       // 更新组别列选项
       updateGroupNameColumnOptions();
     } catch {
@@ -372,10 +375,10 @@ watch(
 );
 
 // 需要按组别合并的列
-const mergeColumns = ['groupName', 'proofContent', 'provePurpose'];
+const mergeColumns = new Set(['groupName', 'proofContent', 'provePurpose']);
 
 // 需要首行缩进、两端对齐的列
-const textColumns = ['proofContent', 'provePurpose'];
+const textColumns = new Set(['proofContent', 'provePurpose']);
 
 // 计算表格列（过滤掉隐藏的列）
 const tableColumns = computed(() => {
@@ -394,12 +397,12 @@ const tableColumns = computed(() => {
       const cellProps: Record<string, any> = {};
 
       // 合并单元格
-      if (mergeColumns.includes(col.key)) {
+      if (mergeColumns.has(col.key)) {
         cellProps.rowSpan = record._groupRowSpan;
       }
 
       // 证明内容和证明目的列：首行缩进、两端对齐、顶部对齐
-      if (textColumns.includes(col.key)) {
+      if (textColumns.has(col.key)) {
         cellProps.class = 'text-column-cell';
       }
 
@@ -417,7 +420,7 @@ const tableColumns = computed(() => {
 // 创建新行（通用方法）
 function createNewRow(groupName?: string): TableRow {
   const newRow: TableRow = {
-    key: `new-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    key: `new-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
     order: 1, // 默认序号为1，会根据组别调整
     isNew: true,
     isDirty: true,
@@ -460,10 +463,10 @@ function handleInsertRowAbove(rowKey: string) {
   // 在原始数据中找到位置并插入
   // 由于 sortedTableData 是按组别排序的，我们需要在 tableData 中正确的位置插入
   const originalIndex = tableData.value.findIndex((r) => r.key === rowKey);
-  if (originalIndex !== -1) {
-    tableData.value.splice(originalIndex, 0, newRow);
-  } else {
+  if (originalIndex === -1) {
     tableData.value.push(newRow);
+  } else {
+    tableData.value.splice(originalIndex, 0, newRow);
   }
 
   updateRowOrder();
@@ -481,10 +484,10 @@ function handleInsertRowBelow(rowKey: string) {
 
   // 在原始数据中找到位置并插入
   const originalIndex = tableData.value.findIndex((r) => r.key === rowKey);
-  if (originalIndex !== -1) {
-    tableData.value.splice(originalIndex + 1, 0, newRow);
-  } else {
+  if (originalIndex === -1) {
     tableData.value.push(newRow);
+  } else {
+    tableData.value.splice(originalIndex + 1, 0, newRow);
   }
 
   updateRowOrder();
@@ -791,18 +794,18 @@ function handleInputChange(rowKey: string) {
 
 // 从页码范围字符串解析起始和结束页码
 function parsePageRange(pageRange: string): {
-  pageStart?: number;
   pageEnd?: number;
+  pageStart?: number;
 } {
   if (!pageRange || !pageRange.includes('-')) {
     return {};
   }
   const parts = pageRange.split('-');
-  const pageStart = parseInt(parts[0] || '', 10);
-  const pageEnd = parseInt(parts[1] || '', 10);
+  const pageStart = Number.parseInt(parts[0] || '', 10);
+  const pageEnd = Number.parseInt(parts[1] || '', 10);
   return {
-    pageStart: isNaN(pageStart) ? undefined : pageStart,
-    pageEnd: isNaN(pageEnd) ? undefined : pageEnd,
+    pageStart: Number.isNaN(pageStart) ? undefined : pageStart,
+    pageEnd: Number.isNaN(pageEnd) ? undefined : pageEnd,
   };
 }
 
@@ -920,6 +923,63 @@ async function handleExport(format: 'pdf' | 'word') {
   } catch (error: any) {
     message.destroy();
     message.error(error.message || '导出失败');
+  }
+}
+
+// === 保存到卷宗 ===
+const showDossierModal = ref(false);
+const dossierItems = ref<MatterDossierItem[]>([]);
+const selectedDossierItemId = ref<number | undefined>(undefined);
+const savingToDossier = ref(false);
+
+// 加载卷宗目录
+async function loadDossierItems() {
+  try {
+    const items = await getMatterDossierItems(props.matterId);
+    // 只显示文件夹类型
+    dossierItems.value = items.filter(
+      (item: MatterDossierItem) => item.itemType === 'FOLDER',
+    );
+  } catch (error: any) {
+    message.error('加载卷宗目录失败');
+  }
+}
+
+// 打开保存到卷宗弹窗
+async function openSaveToDossierModal() {
+  if (!props.listId) {
+    message.warning('请先保存证据清单');
+    return;
+  }
+  if (tableData.value.length === 0) {
+    message.warning('暂无证据可保存');
+    return;
+  }
+  await loadDossierItems();
+  selectedDossierItemId.value = undefined;
+  showDossierModal.value = true;
+}
+
+// 确认保存到卷宗
+async function confirmSaveToDossier() {
+  if (!selectedDossierItemId.value) {
+    message.warning('请选择目标文件夹');
+    return;
+  }
+  if (!props.listId) {
+    message.warning('证据清单ID不存在');
+    return;
+  }
+
+  savingToDossier.value = true;
+  try {
+    await saveEvidenceListToDossier(props.listId, selectedDossierItemId.value);
+    message.success('证据清单PDF已保存到卷宗');
+    showDossierModal.value = false;
+  } catch (error: any) {
+    message.error(error.message || '保存失败');
+  } finally {
+    savingToDossier.value = false;
   }
 }
 
@@ -1043,7 +1103,7 @@ function handlePrint() {
       visibleColumns.forEach((col) => {
         if (col.key !== 'key') {
           // 需要合并的列（组别、证明内容、证明目的）
-          const isMergeColumn = mergeColumns.includes(col.key);
+          const isMergeColumn = mergeColumns.has(col.key);
 
           // 如果是合并列且 rowSpan 为 0，跳过此单元格（已被上方单元格合并）
           if (isMergeColumn && row._groupRowSpan === 0) {
@@ -1062,7 +1122,12 @@ function handlePrint() {
           } else {
             const value = row[col.key] || '';
             const displayValue =
-              value === true ? '是' : value === false ? '否' : String(value);
+              value === true
+                ? '是'
+                : // eslint-disable-next-line unicorn/no-nested-ternary
+                  value === false
+                  ? '否'
+                  : String(value);
             printContent += `<td class="col-${col.key}"${rowSpanAttr}>${displayValue}</td>`;
           }
         }
@@ -1145,8 +1210,37 @@ const lastColumnKey = computed(() => {
           <Download class="h-4 w-4" />
           导出 PDF
         </Button>
+        <Button type="primary" @click="openSaveToDossierModal">
+          📁 保存到卷宗
+        </Button>
       </Space>
     </div>
+
+    <!-- 保存到卷宗弹窗 -->
+    <Modal
+      v-model:open="showDossierModal"
+      title="保存证据清单到卷宗"
+      :confirm-loading="savingToDossier"
+      @ok="confirmSaveToDossier"
+    >
+      <div style="margin-bottom: 16px">
+        选择要保存到的卷宗文件夹：
+      </div>
+      <Select
+        v-model:value="selectedDossierItemId"
+        placeholder="请选择目标文件夹"
+        style="width: 100%"
+        :options="
+          dossierItems.map((item) => ({
+            value: item.id,
+            label: item.name,
+          }))
+        "
+      />
+      <div style="margin-top: 12px; color: #888; font-size: 12px">
+        将生成证据清单PDF文件并保存到选中的卷宗文件夹中
+      </div>
+    </Modal>
 
     <!-- 表格标题 -->
     <div
@@ -1446,6 +1540,7 @@ const lastColumnKey = computed(() => {
                 <span style="min-width: 30px; font-size: 12px; color: #999">{{
                   index + 1
                 }}</span>
+                <!-- eslint-disable-next-line prettier/prettier -->
                 <span
                   :style="{
                     minWidth: '100px',
@@ -1456,10 +1551,11 @@ const lastColumnKey = computed(() => {
                 >
                 <Tag v-if="col.isSystem" color="blue" size="small">系统</Tag>
                 <Tag v-if="col.required" color="red" size="small">必填</Tag>
-                <Tag v-if="col.isCustom" color="purple" size="small"
-                  >自定义</Tag
-                >
+                <Tag v-if="col.isCustom" color="purple" size="small">
+                  自定义
+                </Tag>
                 <Tag v-if="col.hidden" color="default" size="small">已隐藏</Tag>
+                <!-- eslint-disable-next-line prettier/prettier -->
                 <span style="margin-left: 8px; font-size: 12px; color: #999"
                   >列宽：</span
                 >

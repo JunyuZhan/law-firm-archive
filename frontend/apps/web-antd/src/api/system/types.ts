@@ -543,8 +543,8 @@ export interface CauseOfActionDTO {
   id: number;
   code: string;
   name: string;
-  type: 'CIVIL' | 'CRIMINAL' | 'ADMIN';
-  causeType?: 'CIVIL' | 'CRIMINAL' | 'ADMIN';
+  type: 'ADMIN' | 'CIVIL' | 'CRIMINAL';
+  causeType?: 'ADMIN' | 'CIVIL' | 'CRIMINAL';
   typeName?: string;
   categoryCode?: string;
   categoryName?: string;
@@ -572,6 +572,79 @@ export interface CauseTreeNodeDTO {
   categoryName?: string;
   id?: number;
   children?: CauseTreeNodeDTO[];
+}
+
+// ========== 登录日志 ==========
+
+/** 登录日志DTO */
+export interface LoginLogDTO {
+  id: number;
+  userId?: number;
+  username: string;
+  loginTime: string;
+  loginIp?: string;
+  loginLocation?: string;
+  browser?: string;
+  os?: string;
+  status: string;
+  statusName?: string;
+  loginType?: string;
+  loginTypeName?: string;
+  failReason?: string;
+  userAgent?: string;
+}
+
+/** 登录日志查询条件 */
+export interface LoginLogQuery {
+  username?: string;
+  loginIp?: string;
+  status?: string;
+  startTime?: string;
+  endTime?: string;
+  pageNum?: number;
+  pageSize?: number;
+}
+
+// ========== 会话管理 ==========
+
+/** 用户会话DTO */
+export interface UserSessionDTO {
+  id: number;
+  userId: number;
+  username: string;
+  realName?: string;
+  loginTime: string;
+  loginIp?: string;
+  browser?: string;
+  os?: string;
+  lastAccessTime?: string;
+  expireTime?: string;
+  status: string;
+  statusName?: string;
+}
+
+/** 会话查询条件 */
+export interface SessionQuery {
+  username?: string;
+  loginIp?: string;
+  status?: string;
+  pageNum?: number;
+  pageSize?: number;
+}
+
+// ========== 缓存管理 ==========
+
+/** 缓存统计信息 */
+export interface CacheStats {
+  totalKeys?: number;
+  usedMemory?: string;
+  hitRate?: number;
+  hitCount?: number;
+  missCount?: number;
+  configCacheSize?: number;
+  menuCacheSize?: number;
+  deptCacheSize?: number;
+  userPermissionCacheSize?: number;
 }
 
 // ========== 通用分页结果 ==========

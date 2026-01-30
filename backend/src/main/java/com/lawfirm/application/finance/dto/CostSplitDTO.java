@@ -1,35 +1,55 @@
 package com.lawfirm.application.finance.dto;
 
 import com.lawfirm.common.base.BaseDTO;
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
-import java.math.BigDecimal;
-import java.time.LocalDate;
-
-/**
- * 成本分摊 DTO
- */
+/** 成本分摊 DTO */
 @Data
 @EqualsAndHashCode(callSuper = true)
 public class CostSplitDTO extends BaseDTO {
 
-    private Long expenseId;
-    private String expenseNo;
-    private String expenseDescription;
-    private String expenseType;
-    private LocalDate expenseDate;
+  /** 费用ID */
+  private Long expenseId;
 
-    private Long matterId;
-    private String matterName; // 项目名称
+  /** 费用编号 */
+  private String expenseNo;
 
-    private BigDecimal splitAmount;
-    private BigDecimal splitRatio;
-    private String splitMethod;
-    private LocalDate splitDate;
-    private Long splitBy;
-    private String splitByName; // 操作人姓名
+  /** 费用描述 */
+  private String expenseDescription;
 
-    private String remark;
+  /** 费用类型 */
+  private String expenseType;
+
+  /** 费用日期 */
+  private LocalDate expenseDate;
+
+  /** 案件ID */
+  private Long matterId;
+
+  /** 案件名称 */
+  private String matterName;
+
+  /** 分摊金额 */
+  private BigDecimal splitAmount;
+
+  /** 分摊比例 */
+  private BigDecimal splitRatio;
+
+  /** 分摊方式 */
+  private String splitMethod;
+
+  /** 分摊日期 */
+  private LocalDate splitDate;
+
+  /** 操作人ID */
+  private Long splitBy;
+
+  /** 操作人姓名 */
+  private String splitByName;
+
+  /** 备注 */
+  private String remark;
 }
-

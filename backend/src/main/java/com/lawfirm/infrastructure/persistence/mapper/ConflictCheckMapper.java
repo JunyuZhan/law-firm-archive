@@ -8,22 +8,31 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
-/**
- * 利益冲突检查 Mapper
- */
+/** 利益冲突检查 Mapper */
 @Mapper
 public interface ConflictCheckMapper extends BaseMapper<ConflictCheck> {
 
-    /**
-     * 根据检查编号查询
-     */
-    @Select("SELECT * FROM crm_conflict_check WHERE check_no = #{checkNo} AND deleted = false")
-    ConflictCheck selectByCheckNo(@Param("checkNo") String checkNo);
+  /**
+   * 根据检查编号查询.
+   *
+   * @param checkNo 检查编号
+   * @return 利冲检查记录
+   */
+  @Select("SELECT * FROM crm_conflict_check WHERE check_no = #{checkNo} AND deleted = false")
+  ConflictCheck selectByCheckNo(@Param("checkNo") String checkNo);
 
-    /**
-     * 分页查询利冲记录
-     */
-    @Select("""
+  /**
+   * 分页查询利冲记录.
+   *
+   * @param page 分页对象
+   * @param checkType 检查类型
+   * @param status 状态
+   * @param clientName 客户名称
+   * @param applicantId 申请人ID
+   * @return 利冲检查分页结果
+   */
+  @Select(
+      """
         <script>
         SELECT cc.*, u.real_name as applicant_name, r.real_name as reviewer_name
         FROM crm_conflict_check cc
@@ -45,16 +54,21 @@ public interface ConflictCheckMapper extends BaseMapper<ConflictCheck> {
         ORDER BY cc.id DESC
         </script>
         """)
-    IPage<ConflictCheck> selectConflictCheckPage(Page<ConflictCheck> page,
-                                                   @Param("checkType") String checkType,
-                                                   @Param("status") String status,
-                                                   @Param("clientName") String clientName,
-                                                   @Param("applicantId") Long applicantId);
+  IPage<ConflictCheck> selectConflictCheckPage(
+      Page<ConflictCheck> page,
+      @Param("checkType") String checkType,
+      @Param("status") String status,
+      @Param("clientName") String clientName,
+      @Param("applicantId") Long applicantId);
 
-    /**
-     * 查询客户的利冲记录
-     */
-    @Select("SELECT * FROM crm_conflict_check WHERE client_id = #{clientId} AND deleted = false ORDER BY id DESC")
-    IPage<ConflictCheck> selectByClientId(Page<ConflictCheck> page, @Param("clientId") Long clientId);
+  /**
+   * 查询客户的利冲记录.
+   *
+   * @param page 分页对象
+   * @param clientId 客户ID
+   * @return 利冲检查分页结果
+   */
+  @Select(
+      "SELECT * FROM crm_conflict_check WHERE client_id = #{clientId} AND deleted = false ORDER BY id DESC")
+  IPage<ConflictCheck> selectByClientId(Page<ConflictCheck> page, @Param("clientId") Long clientId);
 }
-

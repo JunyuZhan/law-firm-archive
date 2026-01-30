@@ -105,6 +105,7 @@ frontend:
 
 ## 📚 相关文档
 
+- **[SSL 完整配置指南](./SSL-COMPLETE-GUIDE.md)** - 包含 Cloudflare 集成、FRP 架构、浏览器安全提示处理等完整说明
 - [Nginx SSL 配置文档](https://nginx.org/en/docs/http/configuring_https_servers.html)
 - [Let's Encrypt 文档](https://letsencrypt.org/docs/)
 - [Docker Compose volumes 文档](https://docs.docker.com/compose/compose-file/compose-file-v3/#volumes)

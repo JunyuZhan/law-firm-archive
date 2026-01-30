@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import type { EmployeeDTO } from '#/api/hr/employee';
 import type {
   CreateLaborContractCommand,
   LaborContractDTO,
   LaborContractQuery,
   UpdateLaborContractCommand,
 } from '#/api/hr/contract';
+import type { EmployeeDTO } from '#/api/hr/employee';
 
 import { onMounted, reactive, ref } from 'vue';
 
@@ -408,7 +408,7 @@ async function handleRenewSubmit() {
 }
 
 // 格式化金额
-function formatMoney(value: number | undefined | null): string {
+function formatMoney(value: null | number | undefined): string {
   if (value === undefined || value === null) return '-';
   return `¥${value.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }

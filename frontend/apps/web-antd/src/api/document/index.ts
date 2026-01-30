@@ -320,7 +320,7 @@ export function moveDocument(id: number, targetDossierItemId: number) {
 
 /** 重新排序文档 */
 export function reorderDocuments(documentIds: number[]) {
-  return requestClient.put<void>('/document/reorder', documentIds);
+  return requestClient.put('/document/reorder', documentIds);
 }
 
 /** 批量下载文档（打包为 ZIP） */

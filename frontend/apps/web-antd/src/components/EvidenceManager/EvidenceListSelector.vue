@@ -1,17 +1,22 @@
 <script setup lang="ts">
+import type { EvidenceDTO, EvidenceListDTO } from '#/api/evidence';
+
 /**
  * 证据清单选择器组件
  * 用于管理案件的多个证据清单（一审清单、二审补充清单等）
  */
-import { ref, watch, computed } from 'vue';
+import { computed, ref, watch } from 'vue';
+
+import { Plus, RotateCw, Trash } from '@vben/icons';
+
 import {
   Button,
   Empty,
-  message,
-  Modal,
   Form,
   FormItem,
   Input,
+  message,
+  Modal,
   Popconfirm,
   Select,
   SelectOption,
@@ -19,19 +24,18 @@ import {
   Spin,
   Tag,
 } from 'ant-design-vue';
-import { Plus, Trash, RotateCw } from '@vben/icons';
-import type { EvidenceListDTO, EvidenceDTO } from '#/api/evidence';
+
 import {
-  getEvidenceListsByMatter,
+  compareEvidenceLists,
   createEvidenceList,
   deleteEvidenceList,
-  compareEvidenceLists,
   EVIDENCE_LIST_TYPE_OPTIONS,
+  getEvidenceListsByMatter,
 } from '#/api/evidence';
 
 const props = defineProps<{
-  matterId: number;
   evidences: EvidenceDTO[];
+  matterId: number;
   readonly?: boolean;
 }>();
 
@@ -43,7 +47,7 @@ const emit = defineEmits<{
 // 状态
 const loading = ref(false);
 const lists = ref<EvidenceListDTO[]>([]);
-const selectedListId = ref<number | null>(null);
+const selectedListId = ref<null | number>(null);
 const showCreateModal = ref(false);
 const showCompareModal = ref(false);
 const createForm = ref({
@@ -79,7 +83,7 @@ async function loadLists() {
 }
 
 // 选择清单
-function handleSelectList(id: number | null) {
+function handleSelectList(id: null | number) {
   selectedListId.value = id;
   emit('select', id ? lists.value.find((l) => l.id === id) || null : null);
 }
@@ -170,14 +174,18 @@ async function handleCompare() {
 // 获取类型标签颜色
 function getTypeColor(type?: string) {
   switch (type) {
-    case 'SUBMISSION':
-      return 'blue';
-    case 'EXCHANGE':
-      return 'green';
-    case 'COURT':
+    case 'COURT': {
       return 'orange';
-    default:
+    }
+    case 'EXCHANGE': {
+      return 'green';
+    }
+    case 'SUBMISSION': {
+      return 'blue';
+    }
+    default: {
       return 'default';
+    }
   }
 }
 
@@ -235,7 +243,8 @@ defineExpose({
         <div
           v-for="list in lists"
           :key="list.id"
-          :class="['list-item', { active: selectedListId === list.id }]"
+          class="list-item"
+          :class="[{ active: selectedListId === list.id }]"
           @click="handleSelectList(list.id)"
         >
           <div class="list-info">
@@ -348,9 +357,9 @@ defineExpose({
 
         <div v-if="compareResult" class="compare-result">
           <div class="result-section">
-            <Tag color="green"
-              >新增 {{ compareResult.addedIds?.length || 0 }} 项</Tag
-            >
+            <Tag color="green">
+              新增 {{ compareResult.addedIds?.length || 0 }} 项
+            </Tag>
             <div
               v-if="compareResult.addedEvidences?.length"
               class="evidence-list"
@@ -365,9 +374,9 @@ defineExpose({
             </div>
           </div>
           <div class="result-section">
-            <Tag color="red"
-              >删除 {{ compareResult.removedIds?.length || 0 }} 项</Tag
-            >
+            <Tag color="red">
+              删除 {{ compareResult.removedIds?.length || 0 }} 项
+            </Tag>
             <div
               v-if="compareResult.removedEvidences?.length"
               class="evidence-list"
@@ -382,9 +391,9 @@ defineExpose({
             </div>
           </div>
           <div class="result-section">
-            <Tag color="blue"
-              >共同 {{ compareResult.commonIds?.length || 0 }} 项</Tag
-            >
+            <Tag color="blue">
+              共同 {{ compareResult.commonIds?.length || 0 }} 项
+            </Tag>
           </div>
         </div>
       </div>

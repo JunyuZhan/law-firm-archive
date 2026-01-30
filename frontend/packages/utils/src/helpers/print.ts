@@ -63,12 +63,12 @@ function decodeHtmlEntities(text: string): string {
   }
 
   // 处理数字实体 &#xxx;
-  result = result.replace(/&#(\d+);/g, (_, num) =>
-    String.fromCharCode(parseInt(num, 10)),
+  result = result.replaceAll(/&#(\d+);/g, (_, num) =>
+    String.fromCodePoint(Number.parseInt(num, 10)),
   );
   // 处理十六进制实体 &#xXXX;
-  result = result.replace(/&#x([0-9a-fA-F]+);/g, (_, hex) =>
-    String.fromCharCode(parseInt(hex, 16)),
+  result = result.replaceAll(/&#x([0-9a-fA-F]+);/g, (_, hex) =>
+    String.fromCodePoint(Number.parseInt(hex, 16)),
   );
 
   return result;
@@ -575,40 +575,40 @@ export interface DocumentPrintData {
  */
 function simpleMarkdownToPlainText(text: string): string {
   if (!text) return '';
-  
+
   let result = text;
-  
+
   // 移除代码块
-  result = result.replace(/```[\s\S]*?```/g, '');
-  
+  result = result.replaceAll(/```[\s\S]*?```/g, '');
+
   // 移除行内代码
-  result = result.replace(/`([^`]+)`/g, '$1');
-  
+  result = result.replaceAll(/`([^`]+)`/g, '$1');
+
   // 移除粗体
-  result = result.replace(/\*\*([^*]+)\*\*/g, '$1');
-  result = result.replace(/__([^_]+)__/g, '$1');
-  
+  result = result.replaceAll(/\*\*([^*]+)\*\*/g, '$1');
+  result = result.replaceAll(/__([^_]+)__/g, '$1');
+
   // 移除斜体
-  result = result.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '$1');
-  result = result.replace(/(?<!_)_([^_]+)_(?!_)/g, '$1');
-  
+  result = result.replaceAll(/(?<!\*)\*([^*]+)\*(?!\*)/g, '$1');
+  result = result.replaceAll(/(?<!_)_([^_]+)_(?!_)/g, '$1');
+
   // 移除链接
-  result = result.replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1');
-  
+  result = result.replaceAll(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+
   // 移除标题标记
-  result = result.replace(/^#{1,6}\s+/gm, '');
-  
+  result = result.replaceAll(/^#{1,6}\s+/gm, '');
+
   // 移除列表标记
-  result = result.replace(/^[\s]*[-*+]\s+/gm, '');
-  result = result.replace(/^[\s]*\d+\.\s+/gm, '');
-  
+  result = result.replaceAll(/^\s*[-*+]\s+/gm, '');
+  result = result.replaceAll(/^\s*\d+\.\s+/gm, '');
+
   // 移除表格标记
-  result = result.replace(/\|/g, ' ');
-  result = result.replace(/^[\s]*[-:]+[\s]*$/gm, '');
-  
+  result = result.replaceAll('|', ' ');
+  result = result.replaceAll(/^\s*[-:]+\s*$/gm, '');
+
   // 清理多余空行
-  result = result.replace(/\n{3,}/g, '\n\n');
-  
+  result = result.replaceAll(/\n{3,}/g, '\n\n');
+
   return result.trim();
 }
 
@@ -620,11 +620,11 @@ export function generateDocumentHtml(data: DocumentPrintData): string {
 
   // 先解码 HTML 实体（防止 XSS 过滤导致的乱码）
   let decodedContent = decodeHtmlEntities(content);
-  let decodedTitle = title ? decodeHtmlEntities(title) : '';
+  const decodedTitle = title ? decodeHtmlEntities(title) : '';
 
   // 如果是 Markdown 格式，转换为纯文本（移除所有 Markdown 语法）
   // 检查是否包含 Markdown 语法标记
-  const hasMarkdownSyntax = /(\*\*|__|`|#|\[.*\]\(|>|\|)/.test(decodedContent);
+  const hasMarkdownSyntax = /\*\*|__|[`#>|]|\[[^\]]+\]\(/.test(decodedContent);
   if (hasMarkdownSyntax && !preserveFormat) {
     decodedContent = simpleMarkdownToPlainText(decodedContent);
   }

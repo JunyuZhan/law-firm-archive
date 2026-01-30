@@ -10,8 +10,6 @@ import { computed, onMounted, ref } from 'vue';
 import { Page } from '@vben/common-ui';
 import { Plus } from '@vben/icons';
 
-import { useResponsive } from '#/hooks/useResponsive';
-
 import {
   Button,
   Card,
@@ -43,6 +41,7 @@ import {
   getPurchaseStatistics,
   submitPurchaseRequest,
 } from '#/api/admin/purchase';
+import { useResponsive } from '#/hooks/useResponsive';
 
 defineOptions({ name: 'AdminPurchase' });
 
@@ -359,9 +358,9 @@ onMounted(() => {
           />
           <Button @click="handleSearch">查询</Button>
         </Space>
-        <Button type="primary" :block="isMobile" @click="handleAdd"
-          ><Plus />新建采购申请</Button
-        >
+        <Button type="primary" :block="isMobile" @click="handleAdd">
+          <Plus />新建采购申请
+        </Button>
       </div>
 
       <Table
@@ -393,11 +392,13 @@ onMounted(() => {
           <template v-else-if="column.key === 'action'">
             <Space>
               <a @click="handleView(record)">查看</a>
+              <!-- eslint-disable-next-line prettier/prettier -->
               <a
                 v-if="record.status === 'DRAFT'"
                 @click="handleSubmit(record.id)"
                 >提交</a
               >
+              <!-- eslint-disable-next-line prettier/prettier -->
               <a v-if="record.status === 'PENDING'" @click="openApprove(record)"
                 >审批</a
               >

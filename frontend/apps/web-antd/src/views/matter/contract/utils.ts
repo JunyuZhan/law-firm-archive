@@ -2,7 +2,7 @@
  * 金额转中文大写
  */
 export function amountToChinese(num: null | number | undefined): string {
-  if (num === undefined || num === null || Number.isNaN(num)) return '';
+  if (num === undefined || num === null || Number.Number.isNaN(num)) return '';
   if (num === 0) return '零元整';
 
   const digits = ['零', '壹', '贰', '叁', '肆', '伍', '陆', '柒', '捌', '玖'];

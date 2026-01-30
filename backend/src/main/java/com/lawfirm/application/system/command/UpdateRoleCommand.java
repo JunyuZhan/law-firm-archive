@@ -1,29 +1,29 @@
 package com.lawfirm.application.system.command;
 
 import jakarta.validation.constraints.NotNull;
+import java.util.List;
 import lombok.Data;
 
-import java.util.List;
-
-/**
- * 更新角色命令
- */
+/** 更新角色命令. */
 @Data
 public class UpdateRoleCommand {
 
-    @NotNull(message = "角色ID不能为空")
-    private Long id;
+  /** 角色ID. */
+  @NotNull(message = "角色ID不能为空")
+  private Long id;
 
-    private String roleName;
+  /** 角色名称. */
+  private String roleName;
 
-    private String description;
+  /** 描述. */
+  private String description;
 
-    private String dataScope;
+  /** 数据权限范围. */
+  private String dataScope;
 
-    private Integer sortOrder;
+  /** 排序号. */
+  private Integer sortOrder;
 
-    /**
-     * 菜单ID列表
-     */
-    private List<Long> menuIds;
+  /** 菜单ID列表. */
+  private List<Long> menuIds;
 }

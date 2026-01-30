@@ -436,6 +436,7 @@ onMounted(() => {
             <Space>
               <a @click="handleView(record)">查看</a>
               <a @click="handleEdit(record)">编辑</a>
+              <!-- eslint-disable-next-line prettier/prettier -->
               <a v-if="record.status === 'IDLE'" @click="openReceive(record)"
                 >领用</a
               >

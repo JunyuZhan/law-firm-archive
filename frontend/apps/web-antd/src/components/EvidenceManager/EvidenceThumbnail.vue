@@ -25,6 +25,7 @@ const sizeMap = {
   large: { width: 120, height: 120, iconSize: 48 },
 };
 
+// eslint-disable-next-line unicorn/explicit-length-check
 const dimensions = computed(() => sizeMap[props.size || 'medium']);
 
 const fileTypeInfo = computed(() => getFileTypeInfo(props.evidence.fileType));

@@ -256,20 +256,22 @@ function handleReject(row: ConflictCheckDTO) {
     okText: '确认',
     cancelText: '取消',
     onOk: async () => {
-      const comment = prompt(
-        isExemption ? '请输入拒绝原因:' : '请输入驳回原因:',
-      );
-      if (comment !== null) {
-        try {
-          await (isExemption
-            ? rejectExemption(row.id, comment)
-            : rejectConflictCheck(row.id, comment));
-          message.success(isExemption ? '已拒绝豁免' : '已驳回');
-          gridApi.reload();
-        } catch (error: any) {
-          message.error(error.message || '操作失败');
-        }
-      }
+      Modal.prompt({
+        title: isExemption ? '请输入拒绝原因' : '请输入驳回原因',
+        onOk: async (comment: string) => {
+          if (comment) {
+            try {
+              await (isExemption
+                ? rejectExemption(row.id, comment)
+                : rejectConflictCheck(row.id, comment));
+              message.success(isExemption ? '已拒绝豁免' : '已驳回');
+              gridApi.reload();
+            } catch (error: any) {
+              message.error(error.message || '操作失败');
+            }
+          }
+        },
+      });
     },
   });
 }
@@ -325,7 +327,7 @@ function handleApplyExemption(row: ConflictCheckDTO) {
     onOk: async () => {
       if (!exemptionReason.trim()) {
         message.error('请输入豁免理由');
-        throw undefined;
+        throw new Error('请输入豁免理由');
       }
       try {
         await applyExemption({
