@@ -44,9 +44,15 @@ RUN echo "Builder Success 🎉"
 
 FROM nginx:stable-alpine AS production
 
+# 安装 openssl（用于生成自签名证书）
+RUN apk add --no-cache openssl
+
 # 配置 nginx
 RUN echo "types { application/javascript js mjs; }" > /etc/nginx/conf.d/mjs.conf \
     && rm -rf /etc/nginx/conf.d/default.conf
+
+# 创建 SSL 目录
+RUN mkdir -p /etc/nginx/ssl
 
 # 复制主前端构建产物
 COPY --from=builder /app/apps/web-antd/dist /usr/share/nginx/html
@@ -57,7 +63,11 @@ COPY --from=builder /app/docs/.vitepress/dist /usr/share/nginx/html/docs
 # 复制 nginx 配置（使用 SSL 版本）
 COPY --from=builder /app/scripts/deploy/nginx-ssl.conf /etc/nginx/nginx.conf
 
-EXPOSE 8080
+# 复制启动脚本（自动处理 SSL 证书）
+COPY --from=builder /app/scripts/deploy/docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
 
-# 启动 nginx
-CMD ["nginx", "-g", "daemon off;"]
+EXPOSE 8080 8443
+
+# 使用启动脚本（自动生成自签名证书如果不存在）
+ENTRYPOINT ["/docker-entrypoint.sh"]
