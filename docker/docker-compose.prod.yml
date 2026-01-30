@@ -1,10 +1,10 @@
 # =====================================================
 # 生产环境配置 (Production Environment)
 # =====================================================
-# 使用方法: 从 docker/ 目录运行:
-#   docker compose -f docker-compose.prod.yml up -d
-# 或从项目根目录运行:
+# 使用方法: 从项目根目录运行（推荐）:
 #   docker compose --env-file .env -f docker/docker-compose.prod.yml up -d
+#
+# ⚠️ 注意：环境配置统一使用项目根目录的 .env 文件
 # =====================================================
 name: law-firm
 
