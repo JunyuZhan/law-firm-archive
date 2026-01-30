@@ -7,19 +7,21 @@ import type {
 import type { MatterDTO, MatterTimelineDTO } from '#/api/matter';
 import type { CreateDeadlineCommand, DeadlineDTO } from '#/api/matter/deadline';
 import type { CreateScheduleCommand, ScheduleDTO } from '#/api/matter/schedule';
+import type { StateCompensationDTO } from '#/api/matter/state-compensation';
 
-import { computed, onMounted, ref } from 'vue';
+import { computed, defineAsyncComponent, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
-
-import { useResponsive } from '#/hooks/useResponsive';
 import { useUserStore } from '@vben/stores';
 
 import {
+  Alert,
   Button,
   Card,
   Checkbox,
+  Collapse,
+  CollapsePanel,
   DatePicker,
   Descriptions,
   DescriptionsItem,
@@ -70,12 +72,21 @@ import {
   REMINDER_OPTIONS,
   SCHEDULE_TYPE_OPTIONS,
 } from '#/api/matter/schedule';
-import { ClientServicePanel } from '#/components/ClientServicePanel';
-import { DossierManager } from '#/components/DossierManager';
-import { EvidenceListManager } from '#/components/EvidenceManager';
+import { getStateCompensation } from '#/api/matter/state-compensation';
 import { UserTreeSelect } from '#/components/UserTreeSelect';
+import { useResponsive } from '#/hooks/useResponsive';
 
 defineOptions({ name: 'MatterDetail' });
+// 异步加载重型Tab组件，减少首屏加载时间
+const DossierManager = defineAsyncComponent(
+  () => import('#/components/DossierManager/index.vue'),
+);
+const EvidenceListManager = defineAsyncComponent(
+  () => import('#/components/EvidenceManager/EvidenceListManager.vue'),
+);
+const ClientServicePanel = defineAsyncComponent(
+  () => import('#/components/ClientServicePanel/index.vue'),
+);
 
 const route = useRoute();
 const router = useRouter();
@@ -92,6 +103,17 @@ const loading = ref(false);
 const matter = ref<MatterDTO | null>(null);
 const timeline = ref<MatterTimelineDTO[]>([]);
 const activeTab = ref('dossier');
+
+// 国家赔偿相关
+const stateCompensation = ref<null | StateCompensationDTO>(null);
+
+// 是否为国家赔偿案件
+const isStateCompensationCase = computed(() => {
+  return (
+    matter.value?.caseType === 'STATE_COMP_ADMIN' ||
+    matter.value?.caseType === 'STATE_COMP_CRIMINAL'
+  );
+});
 
 // 出函相关
 const letterModalVisible = ref(false);
@@ -180,9 +202,14 @@ const formattedMatterTitle = computed(() => {
 // 项目类型映射
 const matterTypeMap: Record<string, string> = {
   LITIGATION: '诉讼案件',
+  CIVIL_LITIGATION: '民事诉讼',
+  CRIMINAL_LITIGATION: '刑事诉讼',
+  ADMINISTRATIVE_LITIGATION: '行政诉讼',
   NON_LITIGATION: '非诉项目',
   LEGAL_COUNSEL: '法律顾问',
   SPECIAL_SERVICE: '专项服务',
+  ARBITRATION: '仲裁案件',
+  ENFORCEMENT: '执行案件',
 };
 
 // 状态映射
@@ -238,6 +265,22 @@ async function loadMatterDetail() {
     letterApplications.value = letterRes || [];
     deadlines.value = deadlineRes || [];
     schedules.value = scheduleRes || [];
+
+    // 如果是国家赔偿案件，加载国家赔偿数据
+    if (
+      matterRes.caseType === 'STATE_COMP_ADMIN' ||
+      matterRes.caseType === 'STATE_COMP_CRIMINAL'
+    ) {
+      try {
+        const compensationRes = await getStateCompensation(id);
+        stateCompensation.value = compensationRes;
+      } catch (error) {
+        console.error('加载国家赔偿数据失败:', error);
+        stateCompensation.value = null;
+      }
+    } else {
+      stateCompensation.value = null;
+    }
   } catch (error: any) {
     message.error(error.message || '加载项目详情失败');
     router.back();
@@ -342,7 +385,8 @@ async function handleSubmitLetter() {
       approverId: letterForm.value.approverId,
       copies: letterForm.value.copies,
       expectedDate: letterForm.value.expectedDate
-        ? typeof letterForm.value.expectedDate === 'string'
+        ? // eslint-disable-next-line unicorn/no-nested-ternary
+          typeof letterForm.value.expectedDate === 'string'
           ? letterForm.value.expectedDate
           : letterForm.value.expectedDate.format('YYYY-MM-DD')
         : undefined,
@@ -791,105 +835,130 @@ onMounted(() => {
           </Space>
         </div>
 
-        <!-- 基本信息卡片 -->
-        <Card title="基本信息" style="margin-bottom: 16px">
-          <Descriptions :column="2" bordered>
-            <DescriptionsItem label="项目编号">
-              {{ matter.matterNo }}
-            </DescriptionsItem>
-            <DescriptionsItem label="项目名称">
-              {{ matter.name }}
-            </DescriptionsItem>
-            <DescriptionsItem label="项目类型">
-              <Tag>
-                {{ matterTypeMap[matter.matterType] || matter.matterType }}
-              </Tag>
-            </DescriptionsItem>
-            <DescriptionsItem label="业务类型">
-              {{ matter.businessType || '-' }}
-            </DescriptionsItem>
-            <DescriptionsItem label="客户">
-              {{ matter.clientName || '-' }}
-            </DescriptionsItem>
-            <DescriptionsItem label="状态">
+        <!-- 基本信息摘要（紧凑布局） -->
+        <Card size="small" style="margin-bottom: 12px">
+          <div class="matter-summary">
+            <div class="summary-main">
+              <span class="matter-no">{{ matter.matterNo }}</span>
               <Tag :color="statusMap[matter.status]?.color || 'default'">
                 {{ statusMap[matter.status]?.text || matter.status }}
               </Tag>
-            </DescriptionsItem>
-            <DescriptionsItem label="案源人">
-              {{ matter.originatorName || '-' }}
-            </DescriptionsItem>
-            <DescriptionsItem label="主办律师">
-              {{ matter.leadLawyerName || '-' }}
-            </DescriptionsItem>
-            <DescriptionsItem label="部门">
-              {{ matter.departmentName || '-' }}
-            </DescriptionsItem>
-            <DescriptionsItem label="收费类型">
-              {{ feeTypeMap[matter.feeType || ''] || '-' }}
-            </DescriptionsItem>
-            <DescriptionsItem label="预估费用">
-              {{
-                matter.estimatedFee
-                  ? `¥${matter.estimatedFee.toLocaleString()}`
-                  : '-'
-              }}
-            </DescriptionsItem>
-            <DescriptionsItem label="实际费用">
-              {{
-                matter.actualFee ? `¥${matter.actualFee.toLocaleString()}` : '-'
-              }}
-            </DescriptionsItem>
-            <DescriptionsItem label="立案日期">
-              {{
-                matter.filingDate
-                  ? dayjs(matter.filingDate).format('YYYY-MM-DD')
-                  : '-'
-              }}
-            </DescriptionsItem>
-            <DescriptionsItem label="预计结案日期">
-              {{
-                matter.expectedClosingDate
-                  ? dayjs(matter.expectedClosingDate).format('YYYY-MM-DD')
-                  : '-'
-              }}
-            </DescriptionsItem>
-            <DescriptionsItem label="实际结案日期">
-              {{
-                matter.actualClosingDate
-                  ? dayjs(matter.actualClosingDate).format('YYYY-MM-DD')
-                  : '-'
-              }}
-            </DescriptionsItem>
-            <DescriptionsItem label="标的金额">
-              {{
-                matter.claimAmount
-                  ? `¥${matter.claimAmount.toLocaleString()}`
-                  : '-'
-              }}
-            </DescriptionsItem>
-            <DescriptionsItem label="创建时间" :span="2">
-              {{
-                matter.createdAt
-                  ? dayjs(matter.createdAt).format('YYYY-MM-DD HH:mm:ss')
-                  : '-'
-              }}
-            </DescriptionsItem>
-            <DescriptionsItem label="项目描述" :span="2">
-              {{ matter.description || '-' }}
-            </DescriptionsItem>
-            <DescriptionsItem label="备注" :span="2">
-              {{ matter.remark || '-' }}
-            </DescriptionsItem>
-          </Descriptions>
+              <Tag>
+                {{ matterTypeMap[matter.matterType] || matter.matterType }}
+              </Tag>
+            </div>
+            <Descriptions :column="{ xs: 1, sm: 2, md: 3, lg: 3 }" size="small">
+              <DescriptionsItem label="客户">
+                {{ matter.clientName || '-' }}
+              </DescriptionsItem>
+              <DescriptionsItem label="主办律师">
+                {{ matter.leadLawyerName || '-' }}
+              </DescriptionsItem>
+              <DescriptionsItem label="案源人">
+                {{ matter.originatorName || '-' }}
+              </DescriptionsItem>
+              <DescriptionsItem label="立案日期">
+                {{
+                  matter.filingDate
+                    ? dayjs(matter.filingDate).format('YYYY-MM-DD')
+                    : '-'
+                }}
+              </DescriptionsItem>
+              <DescriptionsItem label="标的金额">
+                {{
+                  matter.claimAmount
+                    ? `¥${matter.claimAmount.toLocaleString()}`
+                    : '-'
+                }}
+              </DescriptionsItem>
+              <DescriptionsItem label="部门">
+                {{ matter.departmentName || '-' }}
+              </DescriptionsItem>
+            </Descriptions>
+            <!-- 可折叠的详细信息 -->
+            <Collapse
+              :bordered="false"
+              style="background: transparent; margin-top: 8px"
+            >
+              <CollapsePanel
+                key="detail"
+                header="查看详细信息"
+                style="border: none"
+              >
+                <Descriptions
+                  :column="{ xs: 1, sm: 2, md: 2 }"
+                  size="small"
+                  :label-style="{ color: '#666', width: '90px' }"
+                >
+                  <DescriptionsItem label="业务类型">
+                    {{ matter.businessType || '-' }}
+                  </DescriptionsItem>
+                  <DescriptionsItem label="收费类型">
+                    {{ feeTypeMap[matter.feeType || ''] || '-' }}
+                  </DescriptionsItem>
+                  <DescriptionsItem label="预估费用">
+                    {{
+                      matter.estimatedFee
+                        ? `¥${matter.estimatedFee.toLocaleString()}`
+                        : '-'
+                    }}
+                  </DescriptionsItem>
+                  <DescriptionsItem label="实际费用">
+                    {{
+                      matter.actualFee
+                        ? `¥${matter.actualFee.toLocaleString()}`
+                        : '-'
+                    }}
+                  </DescriptionsItem>
+                  <DescriptionsItem label="预计结案">
+                    {{
+                      matter.expectedClosingDate
+                        ? dayjs(matter.expectedClosingDate).format('YYYY-MM-DD')
+                        : '-'
+                    }}
+                  </DescriptionsItem>
+                  <DescriptionsItem label="实际结案">
+                    {{
+                      matter.actualClosingDate
+                        ? dayjs(matter.actualClosingDate).format('YYYY-MM-DD')
+                        : '-'
+                    }}
+                  </DescriptionsItem>
+                  <DescriptionsItem label="创建时间">
+                    {{
+                      matter.createdAt
+                        ? dayjs(matter.createdAt).format('YYYY-MM-DD HH:mm')
+                        : '-'
+                    }}
+                  </DescriptionsItem>
+                  <DescriptionsItem label="更新时间">
+                    {{
+                      matter.updatedAt
+                        ? dayjs(matter.updatedAt).format('YYYY-MM-DD HH:mm')
+                        : '-'
+                    }}
+                  </DescriptionsItem>
+                  <DescriptionsItem label="项目描述" :span="2">
+                    {{ matter.description || '-' }}
+                  </DescriptionsItem>
+                  <DescriptionsItem label="备注" :span="2">
+                    {{ matter.remark || '-' }}
+                  </DescriptionsItem>
+                </Descriptions>
+              </CollapsePanel>
+            </Collapse>
+          </div>
         </Card>
 
         <!-- 标签页内容 -->
         <Card style="margin-bottom: 16px">
           <!-- destroyInactiveTabPane: 销毁非活动Tab内容，减少内存占用和初始渲染负担 -->
-          <Tabs v-model:active-key="activeTab" :destroyInactiveTabPane="true">
+          <Tabs
+            v-model:active-key="activeTab"
+            :destroy-inactive-tab-pane="true"
+          >
             <!-- 卷宗文件 - 显示项目卷宗目录结构（优先级最高） -->
-            <TabPane key="dossier" tab="卷宗文件" :forceRender="false">
+            <TabPane key="dossier" tab="卷宗文件" :force-render="false">
               <DossierManager
                 :matter-id="matter.id"
                 :readonly="!canEditDocument"
@@ -897,9 +966,8 @@ onMounted(() => {
             </TabPane>
 
             <!-- 证据整理 - 支持表格式和清单式两种编辑模式 -->
-            <TabPane key="evidence" tab="证据整理" :forceRender="false">
+            <TabPane key="evidence" tab="证据整理" :force-render="false">
               <EvidenceListManager
-                ref="evidenceManagerRef"
                 :matter-id="matter.id"
                 :matter-name="formattedMatterTitle"
                 :readonly="!canEditDocument"
@@ -1322,7 +1390,7 @@ onMounted(() => {
             </TabPane>
 
             <!-- 客户服务 -->
-            <TabPane key="clientService" tab="客户服务" :forceRender="false">
+            <TabPane key="clientService" tab="客户服务" :force-render="false">
               <ClientServicePanel
                 :client-id="matter.clientId"
                 :client-name="matter.clientName || ''"
@@ -1354,6 +1422,126 @@ onMounted(() => {
             </DescriptionsItem>
             <DescriptionsItem label="邮箱">
               {{ matter.opposingLawyerEmail || '-' }}
+            </DescriptionsItem>
+          </Descriptions>
+        </Card>
+
+        <!-- 国家赔偿信息 -->
+        <Card
+          v-if="isStateCompensationCase && stateCompensation"
+          :title="
+            matter.caseType === 'STATE_COMP_CRIMINAL'
+              ? '刑事赔偿信息'
+              : '行政赔偿信息'
+          "
+        >
+          <Descriptions :column="2" bordered>
+            <DescriptionsItem label="赔偿义务机关">
+              {{ stateCompensation.obligorOrgName || '-' }}
+            </DescriptionsItem>
+            <DescriptionsItem label="机关类型">
+              {{ stateCompensation.obligorOrgType || '-' }}
+            </DescriptionsItem>
+            <DescriptionsItem label="致损行为类型">
+              {{ stateCompensation.caseSource || '-' }}
+            </DescriptionsItem>
+            <DescriptionsItem label="损害情况">
+              {{ stateCompensation.damageDescription || '-' }}
+            </DescriptionsItem>
+            <DescriptionsItem
+              v-if="matter.caseType === 'STATE_COMP_CRIMINAL'"
+              label="刑事诉讼终结"
+            >
+              <Tag
+                :color="
+                  stateCompensation.criminalCaseTerminated ? 'green' : 'red'
+                "
+              >
+                {{ stateCompensation.criminalCaseTerminated ? '是' : '否' }}
+              </Tag>
+            </DescriptionsItem>
+            <DescriptionsItem
+              v-if="matter.caseType === 'STATE_COMP_CRIMINAL'"
+              label="原刑事案件编号"
+            >
+              {{ stateCompensation.criminalCaseNo || '-' }}
+            </DescriptionsItem>
+            <DescriptionsItem
+              v-if="matter.caseType === 'STATE_COMP_CRIMINAL'"
+              label="赔偿委员会"
+            >
+              {{ stateCompensation.compensationCommittee || '-' }}
+            </DescriptionsItem>
+            <DescriptionsItem
+              v-if="matter.caseType === 'STATE_COMP_ADMIN'"
+              label="行政诉讼立案日"
+            >
+              {{
+                stateCompensation.adminLitigationFilingDate
+                  ? dayjs(stateCompensation.adminLitigationFilingDate).format(
+                      'YYYY-MM-DD',
+                    )
+                  : '-'
+              }}
+            </DescriptionsItem>
+            <DescriptionsItem
+              v-if="matter.caseType === 'STATE_COMP_ADMIN'"
+              label="行政诉讼法院"
+            >
+              {{ stateCompensation.adminLitigationCourtName || '-' }}
+            </DescriptionsItem>
+            <DescriptionsItem label="赔偿申请日">
+              {{
+                stateCompensation.applicationDate
+                  ? dayjs(stateCompensation.applicationDate).format(
+                      'YYYY-MM-DD',
+                    )
+                  : '-'
+              }}
+            </DescriptionsItem>
+            <DescriptionsItem label="受理日">
+              {{
+                stateCompensation.acceptanceDate
+                  ? dayjs(stateCompensation.acceptanceDate).format('YYYY-MM-DD')
+                  : '-'
+              }}
+            </DescriptionsItem>
+            <DescriptionsItem label="赔偿决定日">
+              {{
+                stateCompensation.decisionDate
+                  ? dayjs(stateCompensation.decisionDate).format('YYYY-MM-DD')
+                  : '-'
+              }}
+            </DescriptionsItem>
+            <DescriptionsItem label="请求赔偿金额">
+              {{
+                stateCompensation.claimAmount
+                  ? `¥${stateCompensation.claimAmount.toLocaleString()}`
+                  : '-'
+              }}
+            </DescriptionsItem>
+            <DescriptionsItem label="决定结果">
+              {{ stateCompensation.decisionResult || '-' }}
+            </DescriptionsItem>
+            <DescriptionsItem label="决定赔偿金额">
+              {{
+                stateCompensation.approvedAmount
+                  ? `¥${stateCompensation.approvedAmount.toLocaleString()}`
+                  : '-'
+              }}
+            </DescriptionsItem>
+            <DescriptionsItem label="支付状态">
+              {{ stateCompensation.paymentStatus || '-' }}
+            </DescriptionsItem>
+            <DescriptionsItem label="支付日期">
+              {{
+                stateCompensation.paymentDate
+                  ? dayjs(stateCompensation.paymentDate).format('YYYY-MM-DD')
+                  : '-'
+              }}
+            </DescriptionsItem>
+            <DescriptionsItem label="备注" :span="2">
+              {{ stateCompensation.remark || '-' }}
             </DescriptionsItem>
           </Descriptions>
         </Card>
@@ -1763,6 +1951,7 @@ onMounted(() => {
         </Descriptions>
         <div v-if="letterDetailRecord.content" style="margin-top: 16px">
           <div style="margin-bottom: 8px; font-weight: 500">函件内容：</div>
+          <!-- eslint-disable vue/no-v-html -->
           <div
             style="
               max-height: 300px;
@@ -1773,6 +1962,7 @@ onMounted(() => {
             "
             v-html="letterDetailRecord.content"
           ></div>
+          <!-- eslint-enable vue/no-v-html -->
         </div>
       </div>
     </Modal>
@@ -1781,6 +1971,41 @@ onMounted(() => {
 
 <style scoped lang="less">
 .matter-detail {
+  /* 项目摘要样式 */
+  .matter-summary {
+    .summary-main {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .matter-no {
+      font-size: 16px;
+      font-weight: 600;
+      color: #1890ff;
+    }
+
+    :deep(.ant-descriptions-item-label) {
+      color: #666;
+      font-size: 13px;
+    }
+
+    :deep(.ant-descriptions-item-content) {
+      font-size: 13px;
+    }
+
+    :deep(.ant-collapse-header) {
+      padding: 8px 0 !important;
+      font-size: 13px;
+      color: #1890ff;
+    }
+
+    :deep(.ant-collapse-content-box) {
+      padding: 12px 0 0 !important;
+    }
+  }
+
   .timeline-container {
     padding: 20px 0;
   }

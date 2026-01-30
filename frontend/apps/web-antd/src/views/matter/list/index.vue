@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { StateCompensationData } from './components/StateCompensationForm.vue';
+
 import type { VbenFormSchema } from '#/adapter/form';
 import type { ClientDTO } from '#/api/client/types';
 import type {
@@ -13,8 +15,6 @@ import { useRoute, useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
 import { Plus } from '@vben/icons';
-
-import { useResponsive } from '#/hooks/useResponsive';
 
 import {
   Button,
@@ -38,7 +38,6 @@ import {
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import { getClientList } from '#/api/client';
-import { getStageDictCode } from '#/composables/useStageDict';
 import {
   createContract,
   createMatter,
@@ -48,6 +47,11 @@ import {
   getMatterList,
   updateMatter,
 } from '#/api/matter';
+import {
+  createStateCompensation,
+  getStateCompensation,
+  updateStateCompensation,
+} from '#/api/matter/state-compensation';
 import { getDepartmentTreePublic, getDictDataByCode } from '#/api/system';
 import { UserTreeSelect } from '#/components/UserTreeSelect';
 import {
@@ -58,6 +62,10 @@ import {
   MATTER_TYPE_OPTIONS,
   needsCauseOfAction,
 } from '#/composables/useCauseOfAction';
+import { getStageDictCode } from '#/composables/useStageDict';
+import { useResponsive } from '#/hooks/useResponsive';
+
+import StateCompensationForm from './components/StateCompensationForm.vue';
 
 defineOptions({ name: 'MatterList' });
 
@@ -83,6 +91,9 @@ const yearOptions = [
 const modalVisible = ref(false);
 const modalTitle = ref('新增项目');
 const formRef = ref();
+const stateCompensationFormRef = ref<InstanceType<
+  typeof StateCompensationForm
+> | null>(null);
 const clients = ref<ClientDTO[]>([]);
 const departments = ref<DepartmentDTO[]>([]);
 
@@ -215,6 +226,18 @@ const caseTypeOptions = computed(() => {
 const showCauseSelect = computed(() => {
   return formData.caseType && needsCauseOfAction(formData.caseType);
 });
+
+// 是否为国家赔偿案件类型
+const isStateCompensationCase = computed(() => {
+  return (
+    formData.caseType === 'STATE_COMP_ADMIN' ||
+    formData.caseType === 'STATE_COMP_CRIMINAL'
+  );
+});
+
+// 国家赔偿表单数据
+const stateCompensationData = ref<StateCompensationData>({});
+const stateCompensationId = ref<number | undefined>(undefined);
 
 // 案由选项（异步加载）
 const causeOptions = ref<any[]>([]);
@@ -614,6 +637,9 @@ async function handleAdd() {
       contractId: undefined,
       remark: '',
     });
+    // 重置国家赔偿数据
+    stateCompensationData.value = {};
+    stateCompensationId.value = undefined;
     modalVisible.value = true;
   } catch (error: any) {
     message.error(`加载合同列表失败：${error.message || ''}`);
@@ -621,7 +647,7 @@ async function handleAdd() {
 }
 
 // 编辑
-function handleEdit(record: MatterDTO) {
+async function handleEdit(record: MatterDTO) {
   modalTitle.value = '编辑项目';
   // 设置案由级联值
   causeValue.value = record.causeOfAction ? [record.causeOfAction] : [];
@@ -629,22 +655,21 @@ function handleEdit(record: MatterDTO) {
   loadLitigationStageOptions(record.caseType);
 
   // 加载多客户数据
-  if (record.clients && record.clients.length > 0) {
-    selectedClients.value = record.clients.map((c) => ({
-      clientId: c.clientId,
-      clientRole: c.clientRole || 'PLAINTIFF',
-      isPrimary: c.isPrimary || false,
-    }));
-  } else {
-    // 向后兼容：如果没有clients列表，使用单个clientId
-    selectedClients.value = [
-      {
-        clientId: record.clientId,
-        clientRole: 'PLAINTIFF',
-        isPrimary: true,
-      },
-    ];
-  }
+  selectedClients.value =
+    record.clients && record.clients.length > 0
+      ? record.clients.map((c) => ({
+          clientId: c.clientId,
+          clientRole: c.clientRole || 'PLAINTIFF',
+          isPrimary: c.isPrimary || false,
+        }))
+      : [
+          // 向后兼容：如果没有clients列表，使用单个clientId
+          {
+            clientId: record.clientId,
+            clientRole: 'PLAINTIFF',
+            isPrimary: true,
+          },
+        ];
 
   Object.assign(formData, {
     id: record.id,
@@ -676,6 +701,36 @@ function handleEdit(record: MatterDTO) {
     contractId: record.contractId,
     remark: record.remark,
   });
+
+  // 如果是国家赔偿案件，加载国家赔偿数据
+  if (
+    record.caseType === 'STATE_COMP_ADMIN' ||
+    record.caseType === 'STATE_COMP_CRIMINAL'
+  ) {
+    try {
+      const compensationRes = await getStateCompensation(record.id);
+      if (compensationRes) {
+        stateCompensationId.value = compensationRes.id;
+        stateCompensationData.value = {
+          ...compensationRes,
+          compensationItems: compensationRes.compensationItems
+            ? JSON.parse(compensationRes.compensationItems)
+            : [],
+        };
+      } else {
+        stateCompensationId.value = undefined;
+        stateCompensationData.value = {};
+      }
+    } catch (error) {
+      console.error('加载国家赔偿数据失败:', error);
+      stateCompensationId.value = undefined;
+      stateCompensationData.value = {};
+    }
+  } else {
+    stateCompensationId.value = undefined;
+    stateCompensationData.value = {};
+  }
+
   modalVisible.value = true;
 }
 
@@ -683,6 +738,11 @@ function handleEdit(record: MatterDTO) {
 async function handleSave() {
   try {
     await formRef.value?.validate();
+
+    // 验证国家赔偿表单（如果是国家赔偿案件）
+    if (isStateCompensationCase.value && stateCompensationFormRef.value) {
+      await stateCompensationFormRef.value.validate();
+    }
 
     // 验证客户选择
     const hasEmptyClient = selectedClients.value.some((c) => !c.clientId);
@@ -708,6 +768,8 @@ async function handleSave() {
       ? formData.litigationStage.join(',')
       : formData.litigationStage;
 
+    let matterId: number | undefined;
+
     if (formData.id) {
       const updateData: UpdateMatterCommand = {
         id: formData.id,
@@ -717,6 +779,7 @@ async function handleSave() {
         clients: clientsData,
       } as UpdateMatterCommand;
       await updateMatter(updateData);
+      matterId = formData.id;
       message.success('更新成功');
     } else {
       // 如果是从合同创建
@@ -727,7 +790,11 @@ async function handleSave() {
           clientId: primaryClientId!,
           clients: clientsData,
         } as CreateMatterCommand;
-        await createMatterFromContract(selectedContractId.value, createData);
+        const res = await createMatterFromContract(
+          selectedContractId.value,
+          createData,
+        );
+        matterId = res?.id;
         message.success('基于合同创建项目成功');
       } else {
         const createData: CreateMatterCommand = {
@@ -736,12 +803,34 @@ async function handleSave() {
           clientId: primaryClientId!,
           clients: clientsData,
         } as CreateMatterCommand;
-        await createMatter(createData);
+        const res = await createMatter(createData);
+        matterId = res?.id;
         message.success('创建成功');
       }
     }
+
+    // 保存国家赔偿数据（如果是国家赔偿案件）
+    if (isStateCompensationCase.value && matterId) {
+      const compensationData = stateCompensationFormRef.value?.getData();
+      if (compensationData) {
+        const command = {
+          matterId,
+          ...compensationData,
+          compensationItems: compensationData.compensationItems
+            ? JSON.stringify(compensationData.compensationItems)
+            : undefined,
+        };
+        await (stateCompensationId.value
+          ? updateStateCompensation(stateCompensationId.value, command)
+          : createStateCompensation(command));
+      }
+    }
+
     modalVisible.value = false;
     resetSelectedClients();
+    // 重置国家赔偿数据
+    stateCompensationData.value = {};
+    stateCompensationId.value = undefined;
     gridApi.reload();
   } catch (error: any) {
     if (error?.errorFields) {
@@ -869,12 +958,12 @@ function setPrimaryClient(index: number) {
 function validateClients(_rule: any, _value: any): Promise<void> {
   return new Promise((resolve, reject) => {
     if (selectedClients.value.length === 0) {
-      reject('请至少选择一个客户');
+      reject(new Error('请至少选择一个客户'));
       return;
     }
     const hasEmpty = selectedClients.value.some((c) => !c.clientId);
     if (hasEmpty) {
-      reject('请填写完整的客户信息');
+      reject(new Error('请填写完整的客户信息'));
       return;
     }
     resolve();
@@ -969,7 +1058,7 @@ onMounted(async () => {
   const id = route.query.id;
   if (id) {
     const matterId = Number(id);
-    if (!isNaN(matterId)) {
+    if (!Number.isNaN(matterId)) {
       try {
         const matter = await getMatterDetail(matterId);
         handleEdit(matter);
@@ -1446,7 +1535,7 @@ onMounted(async () => {
                 "
                 allow-clear
                 show-search
-                :tree-node-filter-prop="'name'"
+                tree-node-filter-prop="name"
                 style="width: 100%"
               />
               <div
@@ -1518,6 +1607,16 @@ onMounted(async () => {
             placeholder="请输入备注"
           />
         </FormItem>
+
+        <!-- 国家赔偿扩展表单 -->
+        <StateCompensationForm
+          v-if="isStateCompensationCase"
+          ref="stateCompensationFormRef"
+          :case-type="formData.caseType || ''"
+          :matter-id="formData.id"
+          :initial-data="stateCompensationData"
+          @update:data="stateCompensationData = $event"
+        />
       </Form>
     </Modal>
 

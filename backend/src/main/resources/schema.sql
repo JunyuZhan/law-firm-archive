@@ -53,3 +53,46 @@ CREATE TABLE matter_participant (
     create_time TIMESTAMP,
     update_time TIMESTAMP
 );
+
+-- 国家赔偿案件业务信息表
+DROP TABLE IF EXISTS matter_state_compensation CASCADE;
+CREATE TABLE matter_state_compensation (
+    id BIGINT PRIMARY KEY,
+    matter_id BIGINT NOT NULL,
+    -- 赔偿义务机关
+    obligor_org_name VARCHAR(200),
+    obligor_org_type VARCHAR(50),
+    -- 致损行为
+    case_source VARCHAR(50),
+    damage_description TEXT,
+    -- 刑事赔偿特有字段
+    criminal_case_terminated BOOLEAN,
+    criminal_case_no VARCHAR(100),
+    compensation_committee VARCHAR(200),
+    -- 程序日期
+    application_date DATE,
+    acceptance_date DATE,
+    decision_date DATE,
+    reconsideration_date DATE,
+    reconsideration_decision_date DATE,
+    committee_app_date DATE,
+    committee_decision_date DATE,
+    -- 行政赔偿特有字段
+    admin_litigation_filing_date DATE,
+    admin_litigation_court_name VARCHAR(200),
+    -- 赔偿请求
+    claim_amount DECIMAL(18,2),
+    compensation_items TEXT,
+    -- 决定结果
+    decision_result VARCHAR(50),
+    approved_amount DECIMAL(18,2),
+    payment_status VARCHAR(50),
+    payment_date DATE,
+    remark TEXT,
+    -- 审计字段
+    deleted BOOLEAN DEFAULT FALSE,
+    create_time TIMESTAMP,
+    update_time TIMESTAMP,
+    create_by BIGINT,
+    update_by BIGINT
+);
