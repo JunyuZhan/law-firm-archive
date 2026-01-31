@@ -142,10 +142,10 @@ echo ""
 echo -e "${YELLOW}[4/4] 初始化数据库...${NC}"
 case "$ENV_TYPE" in
     dev)
-        ./scripts/reset-db.sh --dev --force
+        ./scripts/ops/reset-db.sh --dev --force
         ;;
     test)
-        ./scripts/reset-db.sh --test --force
+        ./scripts/ops/reset-db.sh --test --force
         ;;
     prod)
         echo -e "${RED}警告: 生产环境数据库初始化需要手动执行${NC}"

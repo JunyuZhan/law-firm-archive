@@ -110,7 +110,7 @@ if [ -z "$CONTAINER_NAME" ] || ! docker ps | grep -q "$CONTAINER_NAME"; then
     echo "  docker compose -f docker-compose.dev-full.yml up -d postgres"
     echo ""
     echo "或者运行开发环境启动脚本："
-    echo "  ./scripts/dev-start.sh"
+    echo "  ./scripts/ops/env-start.sh dev"
     exit 1
 fi
 
