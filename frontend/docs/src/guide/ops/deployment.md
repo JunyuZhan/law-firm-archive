@@ -118,6 +118,345 @@ curl http://localhost/api/actuator/health
 
 ---
 
+## 🖥️ 服务器部署完整指南
+
+### 部署前准备
+
+#### 1. 服务器要求
+
+**最低配置：**
+- CPU: 2核
+- 内存: 4GB
+- 磁盘: 20GB
+- 操作系统: Ubuntu 20.04+ / CentOS 7+ / Debian 10+
+
+**推荐配置：**
+- CPU: 4核+
+- 内存: 8GB+
+- 磁盘: 50GB+ SSD
+
+#### 2. 需要开放的端口
+
+| 端口 | 协议 | 说明 |
+|------|------|------|
+| 22 | TCP | SSH（远程管理） |
+| 80 | TCP | HTTP |
+| 443 | TCP | HTTPS |
+
+> 📖 单端口架构下，其他端口不暴露，通过 Nginx 路径访问
+
+### 服务器环境准备
+
+#### 1. 连接到服务器
+
+```bash
+ssh root@你的服务器IP
+```
+
+#### 2. 安装 Docker 和 Docker Compose
+
+**Ubuntu/Debian:**
+```bash
+# 更新系统
+apt update && apt upgrade -y
+
+# 安装 Docker
+curl -fsSL https://get.docker.com | sh
+
+# 启动 Docker
+systemctl start docker
+systemctl enable docker
+
+# 安装 Docker Compose
+apt install docker-compose-plugin -y
+
+# 验证安装
+docker --version
+docker compose version
+```
+
+**CentOS/RHEL:**
+```bash
+# 更新系统
+yum update -y
+
+# 安装 Docker
+curl -fsSL https://get.docker.com | sh
+
+# 启动 Docker
+systemctl start docker
+systemctl enable docker
+
+# 安装 Docker Compose
+yum install docker-compose-plugin -y
+
+# 验证安装
+docker --version
+docker compose version
+```
+
+#### 3. 配置防火墙
+
+```bash
+# Ubuntu/Debian (ufw)
+ufw allow 22/tcp
+ufw allow 80/tcp
+ufw allow 443/tcp
+ufw enable
+
+# CentOS/RHEL (firewalld)
+firewall-cmd --permanent --add-port=22/tcp
+firewall-cmd --permanent --add-port=80/tcp
+firewall-cmd --permanent --add-port=443/tcp
+firewall-cmd --reload
+```
+
+### 上传代码到服务器
+
+#### 方式一：使用 Git（推荐）
+
+```bash
+# 在服务器上克隆代码
+cd /opt  # 或其他目录
+git clone https://github.com/JunyuZhan/law-firm.git
+cd law-firm
+```
+
+**⚠️ 重要提示：** 代码拉取后，SSL 证书文件**不会**自动下载（因为已在 `.gitignore` 中），需要单独上传证书！
+
+#### 方式二：使用部署脚本（推荐）
+
+```bash
+# 从本地执行
+./scripts/deploy/deploy-to-server.sh <服务器IP> [用户名]
+
+# 示例
+./scripts/deploy/deploy-to-server.sh 192.168.1.100 root
+```
+
+脚本会自动：
+- ✅ 检查 SSH 连接
+- ✅ 使用 rsync 同步代码
+- ✅ 自动检查并安装 Docker
+- ✅ 自动执行部署
+
+#### 方式三：使用 SCP 上传
+
+```bash
+# 在本地电脑执行
+scp -r . root@你的服务器IP:/opt/law-firm
+```
+
+### 配置 SSL 证书
+
+**⚠️ 重要：** 证书文件**不会**通过 Git 同步，必须单独上传！
+
+#### 方式一：使用上传脚本（推荐）
+
+```bash
+# 在本地项目目录执行
+./scripts/ssl/upload-ssl-certs.sh <服务器IP> [用户名]
+
+# 例如：
+./scripts/ssl/upload-ssl-certs.sh 192.168.1.100 root
+```
+
+#### 方式二：手动上传
+
+```bash
+# 在服务器上创建证书目录
+ssh root@你的服务器IP "mkdir -p /opt/law-firm/docker/ssl"
+
+# 在本地执行，上传证书文件
+scp docker/ssl/ca.crt root@你的服务器IP:/opt/law-firm/docker/ssl/
+scp docker/ssl/ca.key root@你的服务器IP:/opt/law-firm/docker/ssl/
+
+# 创建符号链接
+ssh root@你的服务器IP "cd /opt/law-firm/docker/ssl && ln -sf ca.crt fullchain.pem && ln -sf ca.key privkey.pem && chmod 644 fullchain.pem && chmod 600 privkey.pem"
+```
+
+#### 方式三：使用 Let's Encrypt（推荐生产环境）
+
+```bash
+# SSH 到服务器
+ssh root@你的服务器IP
+
+# 安装 certbot
+apt install certbot -y
+
+# 获取证书（需要域名已解析到服务器）
+certbot certonly --standalone -d 你的域名.com
+
+# 复制证书到项目目录
+mkdir -p /opt/law-firm/docker/ssl
+cp /etc/letsencrypt/live/你的域名.com/fullchain.pem /opt/law-firm/docker/ssl/fullchain.pem
+cp /etc/letsencrypt/live/你的域名.com/privkey.pem /opt/law-firm/docker/ssl/privkey.pem
+```
+
+### 配置环境变量
+
+```bash
+cd /opt/law-firm
+
+# 复制环境变量模板
+cp env.example .env
+
+# 编辑环境变量（重要！）
+vim .env  # 或使用 nano .env
+```
+
+> **⚠️ 注意：** 环境配置统一使用项目根目录的 `.env` 文件，不要在 `docker/` 目录下创建 `.env`。
+
+**必须修改的配置：**
+
+```bash
+# 数据库密码（必须修改！）
+DB_PASSWORD=你的强密码
+
+# JWT 密钥（必须修改！至少64字符）
+JWT_SECRET=你的JWT密钥（使用 openssl rand -base64 64 生成）
+
+# MinIO 密钥（必须修改！）
+MINIO_ACCESS_KEY=你的访问密钥
+MINIO_SECRET_KEY=你的秘密密钥
+```
+
+**生成安全密钥：**
+
+```bash
+# 生成数据库密码
+openssl rand -base64 24
+
+# 生成 JWT 密钥
+openssl rand -base64 64
+
+# 生成 MinIO 密钥
+openssl rand -base64 24
+```
+
+> 💡 **提示**：使用 `./scripts/deploy.sh` 一键部署时，会自动生成所有安全密钥。
+
+### 部署应用
+
+#### 方式一：一键部署（推荐）
+
+```bash
+cd /opt/law-firm
+
+# 给脚本执行权限
+chmod +x scripts/deploy.sh
+
+# 执行部署
+./scripts/deploy.sh --quick
+```
+
+脚本会自动：
+- ✅ 检查环境
+- ✅ 生成安全密钥（如果未配置）
+- ✅ 构建前端和后端
+- ✅ 启动所有服务
+- ✅ 初始化数据库
+
+#### 方式二：手动部署
+
+```bash
+cd /opt/law-firm
+
+# 1. 构建并启动服务（使用根目录的 .env 文件）
+docker compose --env-file .env -f docker/docker-compose.prod.yml up -d --build
+
+# 2. 查看日志
+docker compose --env-file .env -f docker/docker-compose.prod.yml logs -f
+
+# 3. 检查服务状态
+docker compose --env-file .env -f docker/docker-compose.prod.yml ps
+```
+
+### 验证部署
+
+#### 检查服务状态
+
+```bash
+cd /opt/law-firm
+docker compose --env-file .env -f docker/docker-compose.prod.yml ps
+```
+
+所有服务应该显示 `Up` 状态。
+
+#### 检查健康状态
+
+```bash
+# 测试 HTTP
+curl http://localhost
+
+# 测试 HTTPS（如果配置了）
+curl -k https://localhost
+
+# 测试 API
+curl http://localhost/api/actuator/health
+# 应返回: {"status":"UP"}
+```
+
+#### 浏览器访问
+
+- 主应用: `http://你的服务器IP/` 或 `https://你的域名/`
+- 文档站点: `http://你的服务器IP/docs/`
+- MinIO 控制台: `http://你的服务器IP/minio-console/`
+
+**默认账号密码：** `admin123`
+
+### 日常维护
+
+#### 更新代码
+
+```bash
+cd /opt/law-firm
+
+# 拉取最新代码
+git pull
+
+# 重新部署（从根目录执行，使用根目录的 .env 文件）
+docker compose --env-file .env -f docker/docker-compose.prod.yml up -d --build
+```
+
+#### 查看日志
+
+```bash
+cd /opt/law-firm
+
+# 查看所有日志
+docker compose --env-file .env -f docker/docker-compose.prod.yml logs -f
+
+# 查看最近100行日志
+docker compose --env-file .env -f docker/docker-compose.prod.yml logs --tail=100
+```
+
+#### 重启服务
+
+```bash
+cd /opt/law-firm
+
+# 重启所有服务
+docker compose --env-file .env -f docker/docker-compose.prod.yml restart
+
+# 重启单个服务
+docker compose --env-file .env -f docker/docker-compose.prod.yml restart backend
+```
+
+#### 停止服务
+
+```bash
+cd /opt/law-firm
+
+# 停止所有服务（保留数据）
+docker compose --env-file .env -f docker/docker-compose.prod.yml stop
+
+# 停止并删除容器（数据保留在 volumes 中）
+docker compose --env-file .env -f docker/docker-compose.prod.yml down
+```
+
+---
+
 ## Docker 部署（手动方式）
 
 ### 1. 准备环境

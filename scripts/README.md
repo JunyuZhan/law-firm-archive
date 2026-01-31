@@ -18,7 +18,7 @@ scripts/
 │   ├── deploy-to-server.sh      # 快速部署到服务器
 │   ├── force-update-server.sh   # 强制更新服务器代码
 │   ├── pre-deploy-check.sh      # 部署前统一检查（推荐）
-│   └── check-production-ready.sh # 生产环境检查（旧版）
+│   └── (check-production-ready.sh 已归档到 archive/)
 │
 ├── ops/                         # 🔧 运维相关脚本
 │   ├── backup.sh                # 完整备份
@@ -215,7 +215,6 @@ cd /opt/law-firm
 | 脚本 | 说明 | 用法 |
 |------|------|------|
 | `pre-deploy-check.sh` | 部署前统一检查（推荐） | `./scripts/deploy/pre-deploy-check.sh` |
-| `check-production-ready.sh` | 生产环境检查（旧版） | `./scripts/deploy/check-production-ready.sh` |
 | `security-check.sh` | 安全检查 | `./scripts/security-check.sh` |
 
 ```bash
