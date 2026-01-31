@@ -141,12 +141,23 @@ public class OnlyOfficeService {
 
     // OnlyOffice Document Server URL（供前端参考，但不会放入 JWT）
     // 前端会自动检测当前域名来替换这些值
-    // 如果配置的是 localhost 或 127.0.0.1，返回相对路径让前端自动处理
+    // 如果配置的是 localhost、127.0.0.1 或 IP 地址，返回相对路径让前端自动处理
+    // 这样可以避免 Mixed Content 问题（HTTPS 页面加载 HTTP 资源）
     String documentServerUrl = this.config.getDocumentServerUrl();
-    if (documentServerUrl != null
-        && (documentServerUrl.contains("localhost") || documentServerUrl.contains("127.0.0.1"))) {
-      // 返回相对路径，前端会自动转换为当前域名 + /onlyoffice
-      documentServerUrl = "/onlyoffice";
+    if (documentServerUrl != null) {
+      // 检测是否是无效地址（localhost、127.0.0.1、IP 地址）
+      boolean isInvalidUrl = documentServerUrl.contains("localhost")
+          || documentServerUrl.contains("127.0.0.1")
+          || documentServerUrl.matches("https?://\\d+\\.\\d+\\.\\d+\\.\\d+"); // IP 地址模式
+      
+      if (isInvalidUrl) {
+        // 返回相对路径，前端会自动转换为当前域名 + /onlyoffice
+        documentServerUrl = "/onlyoffice";
+        log.debug("OnlyOffice URL 包含无效地址，已转换为相对路径: /onlyoffice");
+      } else if (documentServerUrl.startsWith("/")) {
+        // 如果已经是相对路径，直接使用
+        log.debug("OnlyOffice URL 已是相对路径: {}", documentServerUrl);
+      }
     }
     // Ensure documentServerUrl is not null to prevent NPE
     if (documentServerUrl == null) {

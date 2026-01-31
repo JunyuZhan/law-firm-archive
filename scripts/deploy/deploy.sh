@@ -357,10 +357,15 @@ setup_env() {
                 fi
             fi
             # 配置 ONLYOFFICE_URL（浏览器访问 OnlyOffice）
+            # ⚠️ 单端口架构：使用相对路径 /onlyoffice，通过 Nginx 代理访问
+            # 这样可以避免 Mixed Content 问题（HTTPS 页面加载 HTTP 资源）
             if ! grep -q "^ONLYOFFICE_URL=" "$ENV_FILE"; then
-                echo "ONLYOFFICE_URL=http://${SERVER_IP}/onlyoffice" >> "$ENV_FILE"
+                echo "ONLYOFFICE_URL=/onlyoffice" >> "$ENV_FILE"
             else
-                sed -i '' "s|ONLYOFFICE_URL=.*|ONLYOFFICE_URL=http://${SERVER_IP}/onlyoffice|" "$ENV_FILE"
+                # 如果已存在但使用的是 IP 地址，更新为相对路径
+                if grep -q "^ONLYOFFICE_URL=http://" "$ENV_FILE"; then
+                    sed -i '' "s|ONLYOFFICE_URL=.*|ONLYOFFICE_URL=/onlyoffice|" "$ENV_FILE"
+                fi
             fi
         else
             # 配置 MINIO_BROWSER_ENDPOINT（缩略图浏览器访问）
@@ -375,10 +380,15 @@ setup_env() {
                 fi
             fi
             # 配置 ONLYOFFICE_URL（浏览器访问 OnlyOffice）
+            # ⚠️ 单端口架构：使用相对路径 /onlyoffice，通过 Nginx 代理访问
+            # 这样可以避免 Mixed Content 问题（HTTPS 页面加载 HTTP 资源）
             if ! grep -q "^ONLYOFFICE_URL=" "$ENV_FILE"; then
-                echo "ONLYOFFICE_URL=http://${SERVER_IP}/onlyoffice" >> "$ENV_FILE"
+                echo "ONLYOFFICE_URL=/onlyoffice" >> "$ENV_FILE"
             else
-                sed -i "s|ONLYOFFICE_URL=.*|ONLYOFFICE_URL=http://${SERVER_IP}/onlyoffice|" "$ENV_FILE"
+                # 如果已存在但使用的是 IP 地址，更新为相对路径
+                if grep -q "^ONLYOFFICE_URL=http://" "$ENV_FILE"; then
+                    sed -i "s|ONLYOFFICE_URL=.*|ONLYOFFICE_URL=/onlyoffice|" "$ENV_FILE"
+                fi
             fi
         fi
         
@@ -391,7 +401,7 @@ setup_env() {
         echo -e "  ${GREEN}✅${NC} ONLYOFFICE_JWT_SECRET"
         echo -e "  ${GREEN}✅${NC} ONLYOFFICE_JWT_ENABLED=true"
         echo -e "  ${GREEN}✅${NC} ONLYOFFICE_CALLBACK_URL=http://backend:8080/api"
-        echo -e "  ${GREEN}✅${NC} ONLYOFFICE_URL=http://${SERVER_IP}/onlyoffice"
+        echo -e "  ${GREEN}✅${NC} ONLYOFFICE_URL=/onlyoffice (相对路径，通过 Nginx 代理)"
         echo -e "  ${GREEN}✅${NC} OCR_API_KEY"
         echo -e "  ${GREEN}✅${NC} DOCS_PASSWORD"
         echo -e "  ${GREEN}✅${NC} Grafana 使用默认密码: admin"

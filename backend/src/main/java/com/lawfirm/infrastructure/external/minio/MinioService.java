@@ -205,7 +205,7 @@ public class MinioService {
         || fileUrl.contains("localhost:9000")
         || fileUrl.contains("127.0.0.1:9000")
         || fileUrl.contains("backend:8080")
-        || fileUrl.matches("https?://\\d+\\.\\d+\\.\\d+\\.\\d+:\\d+/"); // IP 地址模式
+        || fileUrl.matches("https?://\\d+\\.\\d+\\.\\d+\\.\\d+:\\d+"); // IP 地址模式（不需要以 / 结尾）
     
     if (needsConversion) {
       try {

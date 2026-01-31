@@ -4,7 +4,7 @@ import type { DocumentDTO } from '#/api/document/types';
 import type { MatterDTO, MatterSimpleDTO } from '#/api/matter/types';
 import type { OcrResultDTO } from '#/api/ocr';
 
-import { computed, h, onMounted, reactive, ref, watch } from 'vue';
+import { computed, h, nextTick, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
@@ -683,12 +683,27 @@ async function handleSelectMatter(matter: MatterDTO | MatterSimpleDTO) {
 
 // 返回项目列表
 function handleBackToList() {
-  selectedMatterId.value = undefined;
-  selectedMatter.value = null;
-  selectedFolder.value = 'root';
-  currentPath.value = ['根目录'];
-  documents.value = [];
-  dossierItems.value = [];
+  // 设置标记，避免 watch 监听器触发路由更新导致页面刷新
+  isRestoringFromRoute.value = true;
+  
+  try {
+    // 清除选中状态
+    selectedMatterId.value = undefined;
+    selectedMatter.value = null;
+    selectedFolder.value = 'root';
+    currentPath.value = ['根目录'];
+    documents.value = [];
+    dossierItems.value = [];
+    
+    // 手动清除路由参数（避免 watch 触发导致的路由更新）
+    const newQuery = { ...route.query };
+    delete newQuery.matterId;
+    delete newQuery.folderId;
+    router.replace({ query: newQuery });
+  } finally {
+    // 重置标记
+    isRestoringFromRoute.value = false;
+  }
 }
 
 // 跳转到项目详情页
@@ -1768,7 +1783,7 @@ watch(
   },
 );
 
-// 当选择文件夹时，更新路由参数（避免无限循环）
+// 当选择文件夹时，更新路由参数（避免无限循环和页面刷新）
 watch(
   () => selectedFolder.value,
   (newFolder, oldFolder) => {
@@ -1779,7 +1794,9 @@ watch(
     
     if (selectedMatterId.value) {
       const currentFolderId = route.query.folderId as string | undefined;
-      // 只有当路由参数不同时才更新
+      // 只有当路由参数不同时才更新，避免不必要的路由导航导致页面刷新
+      // 注意：router.replace() 更新 query 参数会触发 Vue Router 导航，可能导致组件重新渲染
+      // 这是为了保持 URL 与状态同步（刷新页面后能恢复状态），但会产生视觉上的"刷新"效果
       if (currentFolderId !== newFolder) {
         router.replace({
           query: {
@@ -1933,45 +1950,37 @@ watch(
                 {{ matter.statusName || getStatusName(matter.status) }}
               </Tag>
             </template>
-            <div style="font-size: 12px; color: #666">
-              <div style="margin-bottom: 6px">
-                <span style="color: #999">项目编号：</span>
-                <span style="font-weight: 500; color: #1890ff">{{
+            <div class="matter-card-content">
+              <div class="matter-card-item">
+                <span class="matter-card-label">项目编号：</span>
+                <span class="matter-card-value matter-card-value-primary">{{
                   matter.matterNo || '-'
                 }}</span>
               </div>
-              <div style="margin-bottom: 6px">
-                <span style="color: #999">客户：</span
+              <div class="matter-card-item">
+                <span class="matter-card-label">客户：</span
                 >{{ matter.clientName || '-' }}
               </div>
               <div
-                style="margin-bottom: 6px"
+                class="matter-card-item"
                 v-if="matter.causeOfActionName || matter.causeOfAction"
               >
-                <span style="color: #999">案由：</span>
-                <span style="color: #333">{{
+                <span class="matter-card-label">案由：</span>
+                <span class="matter-card-value">{{
                   getCauseOfActionName(matter)
                 }}</span>
               </div>
-              <div style="margin-bottom: 6px" v-if="matter.leadLawyerName">
-                <span style="color: #999">承办律师：</span
+              <div class="matter-card-item" v-if="matter.leadLawyerName">
+                <span class="matter-card-label">承办律师：</span
                 >{{ matter.leadLawyerName }}
               </div>
-              <div style="margin-bottom: 6px" v-if="matter.opposingParty">
-                <span style="color: #999">对方：</span>
-                <span style="color: #666">{{ matter.opposingParty }}</span>
+              <div class="matter-card-item" v-if="matter.opposingParty">
+                <span class="matter-card-label">对方：</span>
+                <span class="matter-card-value">{{ matter.opposingParty }}</span>
               </div>
-              <div
-                style="
-                  display: flex;
-                  justify-content: space-between;
-                  padding-top: 8px;
-                  margin-top: 8px;
-                  border-top: 1px solid #f0f0f0;
-                "
-              >
+              <div class="matter-card-footer">
                 <div>
-                  <span style="color: #999">类型：</span>
+                  <span class="matter-card-label">类型：</span>
                   <Tag
                     :color="getMatterCoverTheme(matter).primaryColor"
                     style="
@@ -1986,7 +1995,7 @@ watch(
                     }}
                   </Tag>
                 </div>
-                <div style="font-size: 11px; color: #999">
+                <div class="matter-card-date">
                   {{
                     formatDate(matter.filingDate) ||
                     formatDate(matter.createdAt) ||
@@ -3139,8 +3148,32 @@ watch(
 
 /* 项目卡片样式增强 */
 .matter-card {
-  border-left-width: 4px !important;
+  position: relative;
   transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+/* 移除 Card 的默认左边框，使用伪元素替代 */
+.matter-card :deep(.ant-card) {
+  border-left: none;
+}
+
+/* 使用伪元素创建左侧彩色包边 */
+.matter-card::before {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  width: 4px;
+  height: 100%;
+  content: '';
+  border-radius: 4px 0 0 4px;
+}
+
+/* 确保 Card 内容不被伪元素遮挡 */
+.matter-card :deep(.ant-card-body) {
+  position: relative;
+  z-index: 1;
 }
 
 .matter-card:hover {
@@ -3150,55 +3183,277 @@ watch(
 
 /* 根据案件类型设置不同的左侧边框颜色和背景色 */
 .matter-card-CRIMINAL {
-  background: linear-gradient(to right, rgb(211 47 47 / 2%), #fff);
-  border-left-color: #d32f2f !important;
+  background: linear-gradient(to right, rgb(211 47 47 / 2%), var(--ant-color-bg-container, #fff));
+  color: var(--ant-color-text, #333);
+}
+
+.matter-card-CRIMINAL::before {
+  background: #d32f2f;
 }
 
 .matter-card-CIVIL {
-  background: linear-gradient(to right, rgb(25 118 210 / 2%), #fff);
-  border-left-color: #1976d2 !important;
+  background: linear-gradient(to right, rgb(25 118 210 / 2%), var(--ant-color-bg-container, #fff));
+  color: var(--ant-color-text, #333);
+}
+
+.matter-card-CIVIL::before {
+  background: #1976d2;
 }
 
 .matter-card-ADMINISTRATIVE {
-  background: linear-gradient(to right, rgb(56 142 60 / 2%), #fff);
-  border-left-color: #388e3c !important;
+  background: linear-gradient(to right, rgb(56 142 60 / 2%), var(--ant-color-bg-container, #fff));
+  color: var(--ant-color-text, #333);
+}
+
+.matter-card-ADMINISTRATIVE::before {
+  background: #388e3c;
 }
 
 .matter-card-BANKRUPTCY {
-  background: linear-gradient(to right, rgb(245 124 0 / 2%), #fff);
-  border-left-color: #f57c00 !important;
+  background: linear-gradient(to right, rgb(245 124 0 / 2%), var(--ant-color-bg-container, #fff));
+  color: var(--ant-color-text, #333);
+}
+
+.matter-card-BANKRUPTCY::before {
+  background: #f57c00;
 }
 
 .matter-card-IP {
-  background: linear-gradient(to right, rgb(123 31 162 / 2%), #fff);
-  border-left-color: #7b1fa2 !important;
+  background: linear-gradient(to right, rgb(123 31 162 / 2%), var(--ant-color-bg-container, #fff));
+  color: var(--ant-color-text, #333);
+}
+
+.matter-card-IP::before {
+  background: #7b1fa2;
 }
 
 .matter-card-ARBITRATION {
-  background: linear-gradient(to right, rgb(2 136 209 / 2%), #fff);
-  border-left-color: #0288d1 !important;
+  background: linear-gradient(to right, rgb(2 136 209 / 2%), var(--ant-color-bg-container, #fff));
+  color: var(--ant-color-text, #333);
+}
+
+.matter-card-ARBITRATION::before {
+  background: #0288d1;
 }
 
 .matter-card-ENFORCEMENT {
-  background: linear-gradient(to right, rgb(93 64 55 / 2%), #fff);
-  border-left-color: #5d4037 !important;
+  background: linear-gradient(to right, rgb(93 64 55 / 2%), var(--ant-color-bg-container, #fff));
+  color: var(--ant-color-text, #333);
+}
+
+.matter-card-ENFORCEMENT::before {
+  background: #5d4037;
 }
 
 /* stylelint-disable-next-line selector-class-pattern -- 类名与后端枚举 CaseType.LEGAL_COUNSEL 一致 */
 .matter-card-LEGAL_COUNSEL {
-  background: linear-gradient(to right, rgb(0 121 107 / 2%), #fff);
-  border-left-color: #00796b !important;
+  background: linear-gradient(to right, rgb(0 121 107 / 2%), var(--ant-color-bg-container, #fff));
+  color: var(--ant-color-text, #333);
+}
+
+.matter-card-LEGAL_COUNSEL::before {
+  background: #00796b;
 }
 
 /* stylelint-disable-next-line selector-class-pattern -- 类名与后端枚举 CaseType.SPECIAL_SERVICE 一致 */
 .matter-card-SPECIAL_SERVICE {
-  background: linear-gradient(to right, rgb(230 74 25 / 2%), #fff);
-  border-left-color: #e64a19 !important;
+  background: linear-gradient(to right, rgb(230 74 25 / 2%), var(--ant-color-bg-container, #fff));
+  color: var(--ant-color-text, #333);
+}
+
+.matter-card-SPECIAL_SERVICE::before {
+  background: #e64a19;
 }
 
 .matter-card-default {
-  background: #fff;
-  border-left-color: #757575 !important;
+  background: var(--ant-color-bg-container, #fff);
+  color: var(--ant-color-text, #333);
+}
+
+.matter-card-default::before {
+  background: #757575;
+}
+
+/* 深色模式适配 */
+[data-theme='dark'] .matter-card-CRIMINAL,
+.dark .matter-card-CRIMINAL {
+  background: linear-gradient(to right, rgb(211 47 47 / 15%), var(--ant-color-bg-container, #1f1f1f));
+  color: var(--ant-color-text, #fff);
+}
+
+[data-theme='dark'] .matter-card-CIVIL,
+.dark .matter-card-CIVIL {
+  background: linear-gradient(to right, rgb(25 118 210 / 15%), var(--ant-color-bg-container, #1f1f1f));
+  color: var(--ant-color-text, #fff);
+}
+
+[data-theme='dark'] .matter-card-ADMINISTRATIVE,
+.dark .matter-card-ADMINISTRATIVE {
+  background: linear-gradient(to right, rgb(56 142 60 / 15%), var(--ant-color-bg-container, #1f1f1f));
+  color: var(--ant-color-text, #fff);
+}
+
+[data-theme='dark'] .matter-card-BANKRUPTCY,
+.dark .matter-card-BANKRUPTCY {
+  background: linear-gradient(to right, rgb(245 124 0 / 15%), var(--ant-color-bg-container, #1f1f1f));
+  color: var(--ant-color-text, #fff);
+}
+
+[data-theme='dark'] .matter-card-IP,
+.dark .matter-card-IP {
+  background: linear-gradient(to right, rgb(123 31 162 / 15%), var(--ant-color-bg-container, #1f1f1f));
+  color: var(--ant-color-text, #fff);
+}
+
+[data-theme='dark'] .matter-card-ARBITRATION,
+.dark .matter-card-ARBITRATION {
+  background: linear-gradient(to right, rgb(2 136 209 / 15%), var(--ant-color-bg-container, #1f1f1f));
+  color: var(--ant-color-text, #fff);
+}
+
+[data-theme='dark'] .matter-card-ENFORCEMENT,
+.dark .matter-card-ENFORCEMENT {
+  background: linear-gradient(to right, rgb(93 64 55 / 15%), var(--ant-color-bg-container, #1f1f1f));
+  color: var(--ant-color-text, #fff);
+}
+
+[data-theme='dark'] .matter-card-LEGAL_COUNSEL,
+.dark .matter-card-LEGAL_COUNSEL {
+  background: linear-gradient(to right, rgb(0 121 107 / 15%), var(--ant-color-bg-container, #1f1f1f));
+  color: var(--ant-color-text, #fff);
+}
+
+[data-theme='dark'] .matter-card-SPECIAL_SERVICE,
+.dark .matter-card-SPECIAL_SERVICE {
+  background: linear-gradient(to right, rgb(230 74 25 / 15%), var(--ant-color-bg-container, #1f1f1f));
+  color: var(--ant-color-text, #fff);
+}
+
+[data-theme='dark'] .matter-card-default,
+.dark .matter-card-default {
+  background: var(--ant-color-bg-container, #1f1f1f);
+  color: var(--ant-color-text, #fff);
+}
+
+/* 卡片内容样式 */
+.matter-card-content {
+  font-size: 12px;
+  color: var(--ant-color-text-secondary, #666);
+}
+
+.matter-card-item {
+  margin-bottom: 6px;
+}
+
+.matter-card-label {
+  color: var(--ant-color-text-tertiary, #999);
+}
+
+.matter-card-value {
+  color: var(--ant-color-text, #333);
+}
+
+.matter-card-value-primary {
+  font-weight: 500;
+  color: #1890ff;
+}
+
+.matter-card-footer {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 8px;
+  margin-top: 8px;
+  border-top: 1px solid var(--ant-color-border-secondary, #f0f0f0);
+}
+
+.matter-card-date {
+  font-size: 11px;
+  color: var(--ant-color-text-tertiary, #999);
+}
+
+/* 深色模式下的卡片内容 */
+[data-theme='dark'] .matter-card-content,
+.dark .matter-card-content {
+  color: var(--ant-color-text-secondary, rgba(255, 255, 255, 0.65));
+}
+
+[data-theme='dark'] .matter-card-value,
+.dark .matter-card-value {
+  color: var(--ant-color-text, rgba(255, 255, 255, 0.85));
+}
+
+[data-theme='dark'] .matter-card-footer,
+.dark .matter-card-footer {
+  border-top-color: var(--ant-color-border-secondary, rgba(255, 255, 255, 0.1));
+}
+
+/* 深色模式下的网格视图 */
+[data-theme='dark'] .grid-item,
+.dark .grid-item {
+  background: var(--ant-color-bg-container, #1f1f1f);
+  border-color: var(--ant-color-border-secondary, rgba(255, 255, 255, 0.1));
+}
+
+[data-theme='dark'] .grid-item:hover,
+.dark .grid-item:hover {
+  background: var(--ant-color-bg-container-hover, rgba(255, 255, 255, 0.08));
+}
+
+[data-theme='dark'] .grid-item-selected,
+.dark .grid-item-selected {
+  background: var(--ant-color-primary-bg, rgba(24, 144, 255, 0.2)) !important;
+}
+
+[data-theme='dark'] .select-all-label,
+.dark .select-all-label {
+  color: var(--ant-color-text-secondary, rgba(255, 255, 255, 0.65));
+  background: var(--ant-color-fill-tertiary, rgba(255, 255, 255, 0.08));
+}
+
+[data-theme='dark'] .select-all-label:hover,
+.dark .select-all-label:hover {
+  background: var(--ant-color-fill-secondary, rgba(255, 255, 255, 0.12));
+}
+
+[data-theme='dark'] .grid-thumbnail,
+.dark .grid-thumbnail {
+  background: linear-gradient(145deg, var(--ant-color-fill-tertiary, rgba(255, 255, 255, 0.08)) 0%, var(--ant-color-fill-secondary, rgba(255, 255, 255, 0.12)) 100%);
+}
+
+[data-theme='dark'] .grid-thumbnail-icon .file-ext,
+.dark .grid-thumbnail-icon .file-ext {
+  color: var(--ant-color-text-secondary, rgba(255, 255, 255, 0.65));
+  background: var(--ant-color-fill-quaternary, rgba(255, 255, 255, 0.12));
+}
+
+[data-theme='dark'] .grid-item-name,
+.dark .grid-item-name {
+  color: var(--ant-color-text, rgba(255, 255, 255, 0.85));
+}
+
+[data-theme='dark'] .grid-item-size,
+.dark .grid-item-size {
+  color: var(--ant-color-text-tertiary, rgba(255, 255, 255, 0.45));
+}
+
+[data-theme='dark'] .grid-item-toolbar,
+.dark .grid-item-toolbar {
+  background: linear-gradient(
+    to top,
+    var(--ant-color-bg-container, rgba(31, 31, 31, 0.95)) 0%,
+    var(--ant-color-bg-container-secondary, rgba(31, 31, 31, 0.85)) 100%
+  );
+  border-top-color: var(--ant-color-border-secondary, rgba(255, 255, 255, 0.1));
+}
+
+[data-theme='dark'] .grid-item-toolbar :deep(.ant-btn-text),
+.dark .grid-item-toolbar :deep(.ant-btn-text) {
+  color: var(--ant-color-text-secondary, rgba(255, 255, 255, 0.65));
+}
+
+[data-theme='dark'] .grid-item-toolbar :deep(.ant-btn-text:hover),
+.dark .grid-item-toolbar :deep(.ant-btn-text:hover) {
+  background: var(--ant-color-primary-bg, rgba(24, 144, 255, 0.2));
 }
 
 /* ==================== 视图切换按钮 ==================== */
@@ -3226,15 +3481,15 @@ watch(
   align-items: center;
   padding: 6px 12px;
   font-size: 13px;
-  color: #666;
+  color: var(--ant-color-text-secondary, #666);
   cursor: pointer;
-  background: #fafafa;
+  background: var(--ant-color-fill-tertiary, #fafafa);
   border-radius: 6px;
   transition: all 0.2s;
 }
 
 .select-all-label:hover {
-  background: #f0f0f0;
+  background: var(--ant-color-fill-secondary, #f0f0f0);
 }
 
 .grid-container {
@@ -3250,21 +3505,21 @@ watch(
   flex-direction: column;
   padding: 12px;
   cursor: pointer;
-  background: #fff;
-  border: 1px solid #e8e8e8;
+  background: var(--ant-color-bg-container, #fff);
+  border: 1px solid var(--ant-color-border-secondary, #e8e8e8);
   border-radius: 12px;
   transition: all 0.25s ease;
 }
 
 .grid-item:hover {
-  background: #f8fafc;
+  background: var(--ant-color-bg-container-hover, #f8fafc);
   border-color: #1890ff;
   box-shadow: 0 6px 20px rgb(24 144 255 / 12%);
   transform: translateY(-4px);
 }
 
 .grid-item-selected {
-  background: #e6f7ff !important;
+  background: var(--ant-color-primary-bg, #e6f7ff) !important;
   border-color: #1890ff !important;
 }
 
@@ -3291,7 +3546,7 @@ watch(
   height: 140px;
   margin-bottom: 12px;
   overflow: hidden;
-  background: linear-gradient(145deg, #f8f9fa 0%, #e9ecef 100%);
+  background: linear-gradient(145deg, var(--ant-color-fill-tertiary, #f8f9fa) 0%, var(--ant-color-fill-secondary, #e9ecef) 100%);
   border-radius: 8px;
 }
 
@@ -3326,8 +3581,8 @@ watch(
   padding: 2px 8px;
   font-size: 11px;
   font-weight: 600;
-  color: #666;
-  background: rgb(0 0 0 / 8%);
+  color: var(--ant-color-text-secondary, #666);
+  background: var(--ant-color-fill-quaternary, rgb(0 0 0 / 8%));
   border-radius: 4px;
 }
 
@@ -3348,7 +3603,7 @@ watch(
   font-size: 13px;
   font-weight: 500;
   line-height: 1.4;
-  color: #333;
+  color: var(--ant-color-text, #333);
   word-break: break-all;
   -webkit-box-orient: vertical;
 }
@@ -3363,7 +3618,7 @@ watch(
 
 .grid-item-size {
   font-size: 11px;
-  color: #999;
+  color: var(--ant-color-text-tertiary, #999);
 }
 
 /* 网格项底部操作栏 (vben-admin 风格) */
@@ -3378,10 +3633,10 @@ watch(
   padding: 8px;
   background: linear-gradient(
     to top,
-    rgb(255 255 255 / 95%) 0%,
-    rgb(255 255 255 / 85%) 100%
+    var(--ant-color-bg-container, rgb(255 255 255 / 95%)) 0%,
+    var(--ant-color-bg-container-secondary, rgb(255 255 255 / 85%)) 100%
   );
-  border-top: 1px solid #f0f0f0;
+  border-top: 1px solid var(--ant-color-border-secondary, #f0f0f0);
   border-radius: 0 0 12px 12px;
   opacity: 0;
   transition: opacity 0.2s ease;
@@ -3398,13 +3653,13 @@ watch(
   width: 28px;
   height: 28px;
   padding: 0;
-  color: #595959;
+  color: var(--ant-color-text-secondary, #595959);
   border-radius: 4px;
 }
 
 .grid-item-toolbar :deep(.ant-btn-text:hover) {
   color: #1890ff;
-  background: #e6f7ff;
+  background: var(--ant-color-primary-bg, #e6f7ff);
 }
 
 /* 网格视图下拉菜单样式 */
