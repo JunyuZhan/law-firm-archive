@@ -3,7 +3,8 @@
 # 律师事务所管理系统 - 部署前统一检查脚本
 # =====================================================
 # 整合所有检查功能，在部署前运行
-# 用法: ./scripts/pre-deploy-check.sh
+# 整合了 check-production-ready.sh 的所有检查项
+# 用法: ./scripts/deploy/pre-deploy-check.sh
 # =====================================================
 
 set -e
@@ -57,7 +58,7 @@ check_info() {
 # 1. 检查 Docker 环境
 # =====================================================
 check_docker() {
-    echo -e "${BOLD}【1/8】检查 Docker 环境...${NC}"
+    echo -e "${BOLD}【1/10】检查 Docker 环境...${NC}"
     
     if ! command -v docker &> /dev/null; then
         check_fail "Docker 未安装"
@@ -89,7 +90,7 @@ check_docker() {
 # 2. 检查环境变量配置
 # =====================================================
 check_env_config() {
-    echo -e "${BOLD}【2/8】检查环境变量配置...${NC}"
+    echo -e "${BOLD}【2/10】检查环境变量配置...${NC}"
     
     # 查找 .env 文件
     ENV_FILE=""
@@ -158,7 +159,7 @@ check_env_config() {
 # 3. 检查配置文件
 # =====================================================
 check_config_files() {
-    echo -e "${BOLD}【3/8】检查应用配置文件...${NC}"
+    echo -e "${BOLD}【3/10】检查应用配置文件...${NC}"
     
     if [ -f "backend/src/main/resources/application-prod.yml" ]; then
         check_pass "生产环境配置文件存在"
@@ -205,7 +206,7 @@ check_config_files() {
 # 4. 检查数据库初始化脚本
 # =====================================================
 check_database_scripts() {
-    echo -e "${BOLD}【4/8】检查数据库初始化脚本...${NC}"
+    echo -e "${BOLD}【4/10】检查数据库初始化脚本...${NC}"
     
     if [ -f "scripts/init-db/01-system-schema.sql" ]; then
         check_pass "数据库初始化脚本存在"
@@ -224,7 +225,7 @@ check_database_scripts() {
 # 5. 检查备份配置
 # =====================================================
 check_backup_config() {
-    echo -e "${BOLD}【5/8】检查备份配置...${NC}"
+    echo -e "${BOLD}【5/10】检查备份配置...${NC}"
     
     if [ -f "scripts/ops/db-auto-backup.sh" ] || [ -f "scripts/ops/backup.sh" ]; then
         check_pass "备份脚本存在"
@@ -240,7 +241,7 @@ check_backup_config() {
 # 6. 检查敏感信息泄露
 # =====================================================
 check_sensitive_info() {
-    echo -e "${BOLD}【6/8】检查敏感信息泄露...${NC}"
+    echo -e "${BOLD}【6/10】检查敏感信息泄露...${NC}"
     
     # 检查 .env 是否被 git 忽略
     if git ls-files .env --error-unmatch 2>/dev/null; then
@@ -271,7 +272,7 @@ check_sensitive_info() {
 # 7. 检查部署文档
 # =====================================================
 check_documentation() {
-    echo -e "${BOLD}【7/8】检查部署文档...${NC}"
+    echo -e "${BOLD}【7/10】检查部署文档...${NC}"
     
     if [ -f "docs/PRODUCTION_DEPLOYMENT_CHECKLIST.md" ]; then
         check_pass "部署检查清单文档存在"
@@ -291,10 +292,61 @@ check_documentation() {
 }
 
 # =====================================================
-# 8. 检查系统资源
+# 8. 检查安全功能
+# =====================================================
+check_security_features() {
+    echo -e "${BOLD}【8/10】检查安全功能...${NC}"
+    
+    # 检查登录验证码
+    if grep -q "captchaId" backend/src/main/java/com/lawfirm/interfaces/rest/AuthController.java && \
+       grep -q "captchaService.verifyCaptcha" backend/src/main/java/com/lawfirm/interfaces/rest/AuthController.java 2>/dev/null; then
+        check_pass "登录验证码强制要求已实施"
+    else
+        check_warn "请确认登录验证码强制要求已实施"
+    fi
+    
+    # 检查账户锁定机制
+    if grep -q "shouldLockAccount" backend/src/main/java/com/lawfirm/application/system/service/AuthService.java 2>/dev/null; then
+        check_pass "账户锁定机制已实施"
+    else
+        check_warn "请确认账户锁定机制已实施"
+    fi
+    
+    # 检查文件流资源管理
+    if grep -q "try-with-resources\|try (" backend/src/main/java/com/lawfirm/application/document/service/DocumentAppService.java 2>/dev/null; then
+        check_pass "文件流资源管理已优化"
+    else
+        check_warn "请确认文件流资源管理已优化"
+    fi
+    
+    echo ""
+}
+
+# =====================================================
+# 9. 检查依赖版本
+# =====================================================
+check_dependencies() {
+    echo -e "${BOLD}【9/10】检查依赖版本...${NC}"
+    
+    if [ -f "backend/pom.xml" ]; then
+        if command -v mvn &> /dev/null; then
+            check_info "Maven 依赖文件存在"
+            check_info "提示: 建议运行 'mvn dependency-check:check' 检查依赖漏洞"
+        else
+            check_warn "Maven 未安装，无法检查依赖版本"
+        fi
+    else
+        check_fail "未找到 pom.xml 文件"
+    fi
+    
+    echo ""
+}
+
+# =====================================================
+# 10. 检查系统资源
 # =====================================================
 check_system_resources() {
-    echo -e "${BOLD}【8/8】检查系统资源...${NC}"
+    echo -e "${BOLD}【10/10】检查系统资源...${NC}"
     
     # 检查磁盘空间（至少需要 10GB）
     if command -v df &> /dev/null; then
@@ -343,6 +395,8 @@ main() {
     check_backup_config
     check_sensitive_info
     check_documentation
+    check_security_features
+    check_dependencies
     check_system_resources
     
     # 总结
