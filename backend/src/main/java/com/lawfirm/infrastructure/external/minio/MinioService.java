@@ -231,9 +231,10 @@ public class MinioService {
             // - http://192.168.50.10:9000/bucket/object?query
             // - http://localhost:9000/bucket/object?query
             try {
-              java.net.URL url = new java.net.URL(presignedUrl);
-              String path = url.getPath(); // 例如：/law-firm/thumbnails/file.jpg
-              String query = url.getQuery(); // 例如：X-Amz-Algorithm=...
+              // 使用 URI 解析 URL（避免 Java 20+ 的 URL(String) 弃用警告）
+              java.net.URI uri = new java.net.URI(presignedUrl);
+              String path = uri.getPath(); // 例如：/law-firm/thumbnails/file.jpg
+              String query = uri.getQuery(); // 例如：X-Amz-Algorithm=...
               
               // 构建相对路径 URL：/minio/path?query
               if (query != null && !query.isEmpty()) {
@@ -242,10 +243,10 @@ public class MinioService {
                 presignedUrl = "/minio" + path;
               }
               
-              log.debug("使用相对路径模式: {} -> {}", url.toString(), presignedUrl);
+              log.debug("使用相对路径模式: {} -> {}", presignedUrl, presignedUrl);
             } catch (Exception e) {
-              // 如果 URL 解析失败，回退到简单的字符串替换
-              log.warn("URL 解析失败，使用简单替换: {}", presignedUrl, e);
+              // 如果 URI 解析失败，回退到简单的字符串替换
+              log.warn("URI 解析失败，使用简单替换: {}", presignedUrl, e);
               // 替换常见的 host 模式
               presignedUrl = presignedUrl.replaceAll("https?://[^/]+/", "/minio/");
               log.debug("使用简单替换模式: -> {}", presignedUrl);
@@ -254,9 +255,10 @@ public class MinioService {
             // 使用绝对路径模式（向后兼容）
             // 同样需要处理 IP 地址的情况
             try {
-              java.net.URL url = new java.net.URL(presignedUrl);
-              String path = url.getPath();
-              String query = url.getQuery();
+              // 使用 URI 解析 URL（避免 Java 20+ 的 URL(String) 弃用警告）
+              java.net.URI uri = new java.net.URI(presignedUrl);
+              String path = uri.getPath();
+              String query = uri.getQuery();
               
               // 构建新的 URL
               if (query != null && !query.isEmpty()) {
@@ -267,11 +269,11 @@ public class MinioService {
               
               log.debug(
                   "将内部预签名 URL 替换为浏览器可访问地址: {} -> browserEndpoint={}",
-                  url.toString(),
+                  presignedUrl,
                   browserEndpoint);
             } catch (Exception e) {
               // 回退到简单替换
-              log.warn("URL 解析失败，使用简单替换: {}", presignedUrl, e);
+              log.warn("URI 解析失败，使用简单替换: {}", presignedUrl, e);
               presignedUrl = presignedUrl.replaceAll("https?://[^/]+", browserEndpoint);
             }
           }

@@ -4,8 +4,8 @@ import type { DocumentDTO } from '#/api/document/types';
 import type { MatterDTO, MatterSimpleDTO } from '#/api/matter/types';
 import type { OcrResultDTO } from '#/api/ocr';
 
-import { computed, h, onMounted, reactive, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { computed, h, onMounted, reactive, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
 import {
@@ -79,6 +79,7 @@ import {
 
 defineOptions({ name: 'DossierManager' });
 
+const route = useRoute();
 const router = useRouter();
 
 // 状态管理
@@ -95,6 +96,9 @@ const dossierItems = ref<MatterDossierItem[]>([]);
 // 批量选择状态
 const selectedDocIds = ref<Set<number>>(new Set());
 const batchDownloading = ref(false);
+
+// 标记是否正在从路由恢复状态，避免 watch 触发循环
+const isRestoringFromRoute = ref(false);
 
 // 视图模式状态: 'list' | 'grid'
 const viewMode = ref<'grid' | 'list'>('grid');
@@ -674,6 +678,7 @@ async function handleSelectMatter(matter: MatterDTO | MatterSimpleDTO) {
   // 加载卷宗目录和文档
   await loadDossierItems();
   loadProjectDocuments();
+  // 注意：路由参数更新由 watch 监听器自动处理，避免在这里更新导致循环
 }
 
 // 返回项目列表
@@ -946,6 +951,7 @@ function handleFolderSelect(selectedKeys: any[], _info: any) {
 
     // 更新可排序文档列表
     updateSortableDocuments();
+    // 注意：路由参数更新由 watch 监听器自动处理，避免在这里更新导致循环
   }
 }
 
@@ -1138,9 +1144,16 @@ async function handlePreview(record: DocumentDTO) {
   // Office 文档类型 - 在弹窗中使用 iframe 嵌入 OnlyOffice 预览（确保不是PDF）
   if (fileExt && fileExt !== 'pdf' && isOfficeFile(fileExt)) {
     // 构建 OnlyOffice 预览页面的 URL（嵌入模式，隐藏工具栏）
+    // 添加时间戳参数防止 iframe 缓存
+    const timestamp = Date.now();
     const resolved = router.resolve({
       path: '/office-preview',
-      query: { documentId: String(record.id), mode: 'view', embed: 'true' },
+      query: { 
+        documentId: String(record.id), 
+        mode: 'view', 
+        embed: 'true',
+        _t: String(timestamp) // 添加时间戳防止缓存
+      },
     });
     // 在弹窗中使用 iframe 预览，而不是新窗口打开
     currentDocument.value = { ...record, filePath: resolved.href };
@@ -1206,6 +1219,14 @@ async function handlePreview(record: DocumentDTO) {
   } catch (error: any) {
     message.error(`获取预览链接失败: ${error.message || '未知错误'}`);
   }
+}
+
+// 关闭预览弹窗时的处理（清空缓存）
+function handlePreviewModalClose() {
+  previewModalVisible.value = false;
+  // 清空预览 URL 和当前文档，防止 iframe 缓存
+  previewUrl.value = '';
+  currentDocument.value = null;
 }
 
 // 在线编辑文档（跳转到 OnlyOffice 编辑页面）
@@ -1634,9 +1655,143 @@ function copyShareUrl() {
   message.success('链接已复制到剪贴板');
 }
 
-onMounted(() => {
-  loadMatters();
+// 从路由参数恢复状态
+async function restoreStateFromRoute(skipLoadMatters = false) {
+  const matterId = route.query.matterId as string | undefined;
+  const folderId = route.query.folderId as string | undefined;
+  
+  if (matterId) {
+    const matterIdNum = Number.parseInt(matterId, 10);
+    if (!isNaN(matterIdNum)) {
+      // 如果项目列表还未加载，先加载
+      if (!skipLoadMatters && matters.value.length === 0) {
+        await loadMatters();
+      }
+      
+      // 查找对应的项目
+      const matter = matters.value.find((m) => m.id === matterIdNum);
+      if (matter) {
+        // 设置标记，避免 watch 触发循环
+        isRestoringFromRoute.value = true;
+        
+        try {
+          // 如果当前选中的项目不同，才切换
+          if (selectedMatterId.value !== matterIdNum) {
+            // 直接设置状态，不调用 handleSelectMatter（避免触发 watch）
+            selectedMatterId.value = matter.id;
+            selectedMatter.value = matter;
+            selectedFolder.value = 'root';
+            currentPath.value = [`${matter.name} 卷宗目录`];
+            
+            // 加载卷宗目录和文档
+            await loadDossierItems();
+            await loadProjectDocuments();
+          } else {
+            // 项目已选中，但需要确保文档列表已加载（刷新后可能为空）
+            if (documents.value.length === 0) {
+              await loadProjectDocuments();
+            }
+            // 确保目录已加载
+            if (dossierItems.value.length === 0) {
+              await loadDossierItems();
+            }
+          }
+          
+          // 如果指定了文件夹，选择对应的文件夹
+          if (folderId && folderId !== 'root' && selectedFolder.value !== folderId) {
+            const folderIdNum = Number.parseInt(folderId, 10);
+            if (!isNaN(folderIdNum)) {
+              // 等待目录加载完成
+              if (dossierItems.value.length === 0) {
+                await loadDossierItems();
+              }
+              
+              // 检查文件夹是否存在
+              const folderExists = dossierItems.value.some(
+                (item) => item.id === folderIdNum,
+              );
+              if (folderExists) {
+                selectedFolder.value = folderId;
+                // 更新面包屑路径
+                const item = dossierItems.value.find((i) => i.id === folderIdNum);
+                if (item) {
+                  currentPath.value = [selectedMatter.value?.name || '卷宗', item.name];
+                }
+                // 更新可排序文档列表
+                updateSortableDocuments();
+              }
+            }
+          }
+        } finally {
+          // 恢复标记
+          isRestoringFromRoute.value = false;
+        }
+      }
+    }
+  }
+}
+
+onMounted(async () => {
+  await loadMatters();
+  // 尝试从路由参数恢复状态（跳过重复加载项目列表）
+  await restoreStateFromRoute(true);
 });
+
+// 当选择项目时，更新路由参数（避免无限循环）
+watch(
+  () => selectedMatterId.value,
+  (newMatterId, oldMatterId) => {
+    // 如果正在从路由恢复状态，跳过更新
+    if (isRestoringFromRoute.value) return;
+    // 避免初始化时的触发
+    if (newMatterId === oldMatterId) return;
+    
+    if (newMatterId) {
+      const currentMatterId = route.query.matterId as string | undefined;
+      // 只有当路由参数不同时才更新
+      if (currentMatterId !== String(newMatterId)) {
+        router.replace({
+          query: {
+            ...route.query,
+            matterId: String(newMatterId),
+            folderId: selectedFolder.value,
+          },
+        });
+      }
+    } else {
+      // 清除路由参数
+      const newQuery = { ...route.query };
+      delete newQuery.matterId;
+      delete newQuery.folderId;
+      router.replace({ query: newQuery });
+    }
+  },
+);
+
+// 当选择文件夹时，更新路由参数（避免无限循环）
+watch(
+  () => selectedFolder.value,
+  (newFolder, oldFolder) => {
+    // 如果正在从路由恢复状态，跳过更新
+    if (isRestoringFromRoute.value) return;
+    // 避免初始化时的触发
+    if (newFolder === oldFolder) return;
+    
+    if (selectedMatterId.value) {
+      const currentFolderId = route.query.folderId as string | undefined;
+      // 只有当路由参数不同时才更新
+      if (currentFolderId !== newFolder) {
+        router.replace({
+          query: {
+            ...route.query,
+            matterId: String(selectedMatterId.value),
+            folderId: newFolder,
+          },
+        });
+      }
+    }
+  },
+);
 </script>
 
 <template>
@@ -2579,6 +2734,7 @@ onMounted(() => {
       :footer="null"
       style="top: 20px"
       :class="{ 'image-preview-modal': isImageFile(currentDocument?.fileType) }"
+      @cancel="handlePreviewModalClose"
     >
       <template #title>
         <div

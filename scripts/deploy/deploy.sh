@@ -342,7 +342,7 @@ setup_env() {
             # Grafana 使用默认密码 admin，不需要在 .env 中配置
         fi
         
-        # 自动检测服务器 IP 并配置外部访问地址
+        # 自动检测服务器 IP 并配置外部访问地址（无论首次部署还是重新部署都会执行）
         SERVER_IP=$(detect_server_ip)
         if [[ "$OSTYPE" == "darwin"* ]]; then
             # 配置 MINIO_BROWSER_ENDPOINT（缩略图浏览器访问）
