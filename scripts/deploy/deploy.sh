@@ -709,6 +709,16 @@ deploy_standalone() {
                     exit 1
                 fi
             fi
+        elif [ -f "$SCRIPT_DIR/check-production-ready.sh" ]; then
+            if ! bash "$SCRIPT_DIR/check-production-ready.sh"; then
+                echo ""
+                log_warn "部分检查项未通过，但可以继续部署"
+                read -p "是否继续？(y/N) " -n 1 -r
+                echo
+                if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                    exit 1
+                fi
+            fi
         fi
     fi
     

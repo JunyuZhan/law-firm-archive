@@ -11,7 +11,7 @@
 | `deploy-to-server.sh` | 快速部署到服务器 | `./scripts/deploy/deploy-to-server.sh <IP> [用户]` |
 | `force-update-server.sh` | 强制更新服务器代码 | `./scripts/deploy/force-update-server.sh [IP] [用户]` |
 | `pre-deploy-check.sh` | 部署前统一检查（推荐） | `./scripts/deploy/pre-deploy-check.sh` |
-| `check-production-ready.sh` | 生产环境检查（旧版） | 已弃用，已归档到 `scripts/archive/` |
+| `check-production-ready.sh` | 生产环境检查 | `./scripts/deploy/check-production-ready.sh` |
 
 ---
 
