@@ -82,7 +82,7 @@ MINIO_BROWSER_ENDPOINT=/minio
 # OnlyOffice 配置（相对路径）
 ONLYOFFICE_URL=/onlyoffice
 ONLYOFFICE_CALLBACK_URL=http://backend:8080/api
-FILE_SERVER_URL=http://law-firm-minio:9000
+FILE_SERVER_URL=http://minio:9000
 ```
 
 ### Nginx 配置

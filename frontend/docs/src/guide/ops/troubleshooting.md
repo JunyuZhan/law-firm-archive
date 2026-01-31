@@ -150,10 +150,155 @@ docker exec -it law-firm-redis redis-cli ping
 
 ### 文件上传失败
 
-1. 检查 MinIO 服务状态
-2. 检查存储空间
-3. 检查文件大小限制（Nginx `client_max_body_size`，默认 50MB）
-4. 检查 MinIO 访问密钥是否与 `.env` 配置一致
+**症状**：卷宗列表的文档管理无法上传文件，提示"文件上传失败"或"文件服务暂时不可用"
+
+**排查步骤**：
+
+1. **检查 MinIO 服务状态**
+```bash
+# 检查 MinIO 容器是否运行
+docker ps | grep minio
+
+# 检查 MinIO 日志
+docker logs law-firm-minio --tail 50
+
+# 检查 MinIO 健康状态
+docker exec law-firm-minio curl -f http://localhost:9000/minio/health/live
+```
+
+2. **检查后端与 MinIO 的连接**
+```bash
+# 检查后端环境变量配置
+docker exec law-firm-backend env | grep MINIO
+
+# 应该看到：
+# MINIO_ENDPOINT=http://minio:9000  ✅ 正确（使用服务名）
+# 如果看到 http://law-firm-minio:9000，需要修复配置
+
+# 测试后端能否访问 MinIO
+docker exec law-firm-backend curl -f http://minio:9000/minio/health/live
+```
+
+3. **检查 MinIO 访问密钥**
+```bash
+# 检查 .env 文件中的 MinIO 密钥
+grep MINIO .env
+
+# 确认密钥与 MinIO 容器配置一致
+docker exec law-firm-minio env | grep MINIO_ROOT
+```
+
+4. **检查存储空间**
+```bash
+# 检查 MinIO 存储卷
+docker volume inspect law-firm_minio_data
+
+# 检查磁盘空间
+df -h
+```
+
+5. **检查文件大小限制**
+- Nginx 配置：`client_max_body_size 100M`（API 上传）
+- Nginx 配置：`client_max_body_size 500M`（MinIO 代理）
+- Spring Boot：`spring.servlet.multipart.max-file-size=100MB`
+
+**常见问题**：
+
+❌ **问题1**：后端无法连接 MinIO
+- **原因**：`MINIO_ENDPOINT` 配置错误，使用了容器名而不是服务名
+- **解决**：在 `docker-compose.prod.yml` 中修改为 `MINIO_ENDPOINT=http://minio:9000`
+
+❌ **问题2**：是否需要暴露 MinIO 端口？
+- **答案**：**不需要！** 单端口架构的设计：
+  - ✅ **后端服务**：通过 Docker 内部网络直接访问 MinIO（`http://minio:9000`），不需要暴露端口
+  - ✅ **浏览器访问**：通过 Nginx 路径代理（`/minio/`），不需要直接暴露端口
+  - ❌ **暴露端口**：会破坏单端口架构的安全性，不推荐
+
+**验证修复**：
+```bash
+# 1. 重启后端服务（应用新配置）
+docker compose --env-file .env -f docker/docker-compose.prod.yml restart backend
+
+# 2. 检查后端日志，确认 MinIO 连接成功
+docker logs law-firm-backend | grep "MinIO 客户端初始化成功"
+
+# 3. 尝试上传文件，检查是否成功
+```
+
+### MinIO 文件访问方式
+
+在单端口架构下，有多种方式可以访问和管理 MinIO 文件：
+
+#### 方式 1：MinIO Console（Web 管理界面）⭐ 推荐
+
+**访问地址**：
+- 生产环境：`https://your-domain.com/minio-console/`
+- 开发环境：`http://localhost/minio-console/`
+
+**登录信息**：
+- 用户名：`.env` 文件中的 `MINIO_ACCESS_KEY`
+- 密码：`.env` 文件中的 `MINIO_SECRET_KEY`
+
+**功能**：
+- ✅ 可视化文件浏览和管理
+- ✅ 上传、下载、删除文件
+- ✅ 查看文件信息（大小、修改时间等）
+- ✅ Bucket 管理
+- ✅ 用户和权限管理
+
+**优点**：图形界面，操作简单，无需命令行
+
+#### 方式 2：mc 命令行工具
+
+**使用场景**：服务器上批量操作、脚本自动化、CI/CD 集成
+
+```bash
+# 1. 进入 MinIO 容器或使用 mc 容器
+docker exec -it law-firm-minio-init sh
+
+# 2. 配置 MinIO 别名（如果还没配置）
+mc alias set local http://minio:9000 $MINIO_ACCESS_KEY $MINIO_SECRET_KEY
+
+# 3. 常用命令
+mc ls local/law-firm/                    # 列出文件
+mc ls local/law-firm/documents/ -r        # 递归列出目录
+mc cp local/law-firm/file.pdf ./          # 下载文件
+mc cp ./file.pdf local/law-firm/          # 上传文件
+mc rm local/law-firm/file.pdf             # 删除文件
+mc stat local/law-firm/file.pdf           # 查看文件信息
+mc find local/law-firm/ --name "*.pdf"    # 查找文件
+mc du local/law-firm/                     # 查看存储使用情况
+```
+
+**或者直接使用 mc 容器执行命令**：
+```bash
+# 列出文件
+docker run --rm --network law-firm_law-firm-network \
+  -e MINIO_ACCESS_KEY=your_access_key \
+  -e MINIO_SECRET_KEY=your_secret_key \
+  minio/mc:latest \
+  mc alias set local http://minio:9000 $MINIO_ACCESS_KEY $MINIO_SECRET_KEY && \
+  mc ls local/law-firm/
+```
+
+#### 方式 3：通过后端 API（如果实现了文件列表接口）
+
+如果后端实现了文件管理 API，可以通过应用界面访问：
+- 文档管理页面
+- 卷宗列表页面
+- 其他文件管理功能
+
+#### 方式 4：直接访问文件 URL（浏览器）
+
+文件上传后，可以通过以下方式访问：
+- 通过应用界面点击文件链接
+- 直接访问：`https://your-domain.com/minio/law-firm/文件路径`
+- 使用预签名 URL（临时访问链接）
+
+**总结**：
+- 🎯 **日常使用**：MinIO Console（`/minio-console/`）
+- 🔧 **服务器维护**：mc 命令行工具
+- 📱 **应用内访问**：通过后端 API 和应用界面
 
 ### 前端页面空白
 

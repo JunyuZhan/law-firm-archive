@@ -68,8 +68,10 @@ services:
       - REDIS_PASSWORD=${REDIS_PASSWORD:-}
       - JWT_SECRET=${JWT_SECRET}
       # MinIO 配置（项目专用，密码从 .env 文件读取）
-      - MINIO_ENDPOINT=http://law-firm-minio:9000
-      - MINIO_EXTERNAL_ENDPOINT=http://law-firm-minio:9000
+      # ⚠️ 注意：使用 Docker Compose 服务名（minio），而不是容器名（law-firm-minio）
+      # 后端服务通过 Docker 内部网络直接访问 MinIO，不需要通过 Nginx 代理
+      - MINIO_ENDPOINT=http://minio:9000
+      - MINIO_EXTERNAL_ENDPOINT=http://minio:9000
       - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY}
       - MINIO_SECRET_KEY=${MINIO_SECRET_KEY}
       - MINIO_BUCKET=law-firm
@@ -82,7 +84,7 @@ services:
       - ONLYOFFICE_JWT_SECRET=${ONLYOFFICE_JWT_SECRET:-law-firm-onlyoffice-default-secret-2024}
       - ONLYOFFICE_CALLBACK_URL=http://backend:8080/api
       - ONLYOFFICE_URL=${ONLYOFFICE_URL:-/onlyoffice}
-      - FILE_SERVER_URL=http://law-firm-minio:9000
+      - FILE_SERVER_URL=http://minio:9000
     depends_on:
       postgres:
         condition: service_healthy
@@ -188,8 +190,8 @@ services:
     entrypoint: >
       /bin/sh -c "
       sleep 5;
-      # 使用项目专用的 minio 容器名，密码从环境变量读取
-      mc alias set local http://law-firm-minio:9000 $${MINIO_ACCESS_KEY} $${MINIO_SECRET_KEY};
+      # 使用 Docker Compose 服务名（minio），密码从环境变量读取
+      mc alias set local http://minio:9000 $${MINIO_ACCESS_KEY} $${MINIO_SECRET_KEY};
       mc mb local/law-firm --ignore-existing;
       mc anonymous set public local/law-firm;
       exit 0;
