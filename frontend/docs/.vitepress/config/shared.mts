@@ -31,8 +31,12 @@ export const shared = defineConfig({
   // 开发模式下使用根路径，生产模式下使用 /docs/
   base: isDev ? '/' : '/docs/',
   head: head(),
-  // 忽略文档中的配置示例链接
-  ignoreDeadLinks: [/localhost/],
+  // 忽略文档中的配置示例链接和外部文档链接
+  ignoreDeadLinks: [
+    /localhost/,
+    /BACKEND_IMPLEMENTATION_GUIDE/,
+    /VERSION_MANAGEMENT/,
+  ],
   markdown: {
     preConfig(md) {
       md.use(demoPreviewPlugin);
