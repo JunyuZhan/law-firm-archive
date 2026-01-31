@@ -32,12 +32,14 @@
 
 ### 常用参数
 
-- `--quick` - 快速部署，跳过交互
-- `--mode=standalone` - 单机部署
-- `--mode=nas --nas-ip=192.168.1.100` - NAS 存储分离
-- `--mode=swarm` - Swarm 集群部署
-- `--with-demo` - 初始化示例数据
-- `--no-cache` - 强制重新构建镜像
+```bash
+--quick                    # 快速部署，跳过交互
+--mode=standalone          # 单机部署
+--mode=nas --nas-ip=192.168.1.100  # NAS 存储分离
+--mode=swarm               # Swarm 集群部署
+--with-demo                # 初始化示例数据
+--no-cache                 # 强制重新构建镜像
+```
 
 ### 部署模式
 
@@ -174,19 +176,40 @@ docker compose --env-file ../.env -f docker-compose.prod.yml up -d --build
 
 **Q: 部署失败怎么办？**
 
-A: 检查部署前检查脚本的输出，查看 Docker 日志：`docker compose logs`
+```bash
+# 检查部署前检查脚本的输出
+./scripts/deploy/pre-deploy-check.sh
+
+# 查看 Docker 日志
+docker compose logs
+```
 
 **Q: 如何更新已部署的服务？**
 
-A: 更新代码后重新构建：`docker compose up -d --build`
+```bash
+# 更新代码后重新构建
+docker compose up -d --build
+```
 
 **Q: 如何查看服务状态？**
 
-A: `docker compose ps` 或 `docker compose logs -f <服务名>`
+```bash
+# 查看所有服务状态
+docker compose ps
+
+# 查看特定服务日志
+docker compose logs -f <服务名>
+```
 
 **Q: 如何停止服务？**
 
-A: `docker compose down`（停止并删除数据卷：`docker compose down -v`）
+```bash
+# 停止服务
+docker compose down
+
+# 停止并删除数据卷（谨慎使用）
+docker compose down -v
+```
 
 ---
 
