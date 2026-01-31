@@ -109,10 +109,17 @@ done
 # - law-firm-prod_minio_data（生产环境）
 # - law-firm-dev_postgres_data（开发环境）
 # - law-firm-test_redis_data（测试环境）
+# - law-firm_*（下划线格式，如 law-firm_grafana_data）
 # 其他应用的数据卷（如pis_minio_data）不会被删除
 VOLUMES=$(docker volume ls -q | grep -E "^(law-firm|dev-|test-)" || true)
 if [ -n "$VOLUMES" ]; then
     echo "$VOLUMES" | xargs docker volume rm 2>/dev/null || true
+fi
+
+# 清理下划线格式的数据卷（law-firm_*）
+VOLUMES_UNDERSCORE=$(docker volume ls -q | grep -E "^law-firm_" || true)
+if [ -n "$VOLUMES_UNDERSCORE" ]; then
+    echo "$VOLUMES_UNDERSCORE" | xargs docker volume rm 2>/dev/null || true
 fi
 
 echo -e "${GREEN}✓ 数据卷清理完成${NC}"
