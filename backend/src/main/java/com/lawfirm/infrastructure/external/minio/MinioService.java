@@ -199,11 +199,15 @@ public class MinioService {
       return fileUrl;
     }
 
-    // 检查是否是 Docker 内部地址
-    if (fileUrl.contains("minio:9000")
+    // 检查是否是 Docker 内部地址或 IP 地址（需要转换为相对路径）
+    // 匹配模式：http://host:port/ 或 https://host:port/
+    boolean needsConversion = fileUrl.contains("minio:9000")
         || fileUrl.contains("localhost:9000")
         || fileUrl.contains("127.0.0.1:9000")
-        || fileUrl.contains("backend:8080")) {
+        || fileUrl.contains("backend:8080")
+        || fileUrl.matches("https?://\\d+\\.\\d+\\.\\d+\\.\\d+:\\d+/"); // IP 地址模式
+    
+    if (needsConversion) {
       try {
         // 提取对象名称（去除查询参数）
         String objectName = extractObjectName(fileUrl);
@@ -221,16 +225,55 @@ public class MinioService {
           // 优先使用相对路径 /minio/，通过 nginx 代理，自动适配 HTTP/HTTPS
           // 这样可以避免 Mixed Content 问题（HTTPS 页面加载 HTTP 资源被阻止）
           if (browserEndpoint != null && browserEndpoint.equals("/minio")) {
-            // 使用相对路径模式：将 http://minio:9000/ 替换为 /minio/
-            presignedUrl = presignedUrl.replace(endpoint + "/", "/minio/");
-            log.debug("使用相对路径模式: {} -> {}", endpoint, "/minio");
+            // 使用相对路径模式：将任何 host（包括 IP 地址）替换为相对路径 /minio/
+            // 处理各种可能的 URL 格式：
+            // - http://minio:9000/bucket/object?query
+            // - http://192.168.50.10:9000/bucket/object?query
+            // - http://localhost:9000/bucket/object?query
+            try {
+              java.net.URL url = new java.net.URL(presignedUrl);
+              String path = url.getPath(); // 例如：/law-firm/thumbnails/file.jpg
+              String query = url.getQuery(); // 例如：X-Amz-Algorithm=...
+              
+              // 构建相对路径 URL：/minio/path?query
+              if (query != null && !query.isEmpty()) {
+                presignedUrl = "/minio" + path + "?" + query;
+              } else {
+                presignedUrl = "/minio" + path;
+              }
+              
+              log.debug("使用相对路径模式: {} -> {}", url.toString(), presignedUrl);
+            } catch (Exception e) {
+              // 如果 URL 解析失败，回退到简单的字符串替换
+              log.warn("URL 解析失败，使用简单替换: {}", presignedUrl, e);
+              // 替换常见的 host 模式
+              presignedUrl = presignedUrl.replaceAll("https?://[^/]+/", "/minio/");
+              log.debug("使用简单替换模式: -> {}", presignedUrl);
+            }
           } else if (browserEndpoint != null && !browserEndpoint.isEmpty()) {
             // 使用绝对路径模式（向后兼容）
-            presignedUrl = presignedUrl.replace(endpoint, browserEndpoint);
-            log.debug(
-                "将内部预签名 URL 替换为浏览器可访问地址: endpoint={} -> browserEndpoint={}",
-                endpoint,
-                browserEndpoint);
+            // 同样需要处理 IP 地址的情况
+            try {
+              java.net.URL url = new java.net.URL(presignedUrl);
+              String path = url.getPath();
+              String query = url.getQuery();
+              
+              // 构建新的 URL
+              if (query != null && !query.isEmpty()) {
+                presignedUrl = browserEndpoint + path + "?" + query;
+              } else {
+                presignedUrl = browserEndpoint + path;
+              }
+              
+              log.debug(
+                  "将内部预签名 URL 替换为浏览器可访问地址: {} -> browserEndpoint={}",
+                  url.toString(),
+                  browserEndpoint);
+            } catch (Exception e) {
+              // 回退到简单替换
+              log.warn("URL 解析失败，使用简单替换: {}", presignedUrl, e);
+              presignedUrl = presignedUrl.replaceAll("https?://[^/]+", browserEndpoint);
+            }
           }
 
           log.debug("生成浏览器可访问的预签名 URL: {} -> {}", fileUrl, presignedUrl);

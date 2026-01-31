@@ -346,10 +346,15 @@ setup_env() {
         SERVER_IP=$(detect_server_ip)
         if [[ "$OSTYPE" == "darwin"* ]]; then
             # 配置 MINIO_BROWSER_ENDPOINT（缩略图浏览器访问）
+            # ⚠️ 单端口架构：使用相对路径 /minio，通过 Nginx 代理访问
+            # 这样可以避免 Mixed Content 问题（HTTPS 页面加载 HTTP 资源）
             if ! grep -q "^MINIO_BROWSER_ENDPOINT=" "$ENV_FILE"; then
-                echo "MINIO_BROWSER_ENDPOINT=http://${SERVER_IP}:9000" >> "$ENV_FILE"
+                echo "MINIO_BROWSER_ENDPOINT=/minio" >> "$ENV_FILE"
             else
-                sed -i '' "s|MINIO_BROWSER_ENDPOINT=.*|MINIO_BROWSER_ENDPOINT=http://${SERVER_IP}:9000|" "$ENV_FILE"
+                # 如果已存在但使用的是 IP 地址，更新为相对路径
+                if grep -q "^MINIO_BROWSER_ENDPOINT=http://" "$ENV_FILE"; then
+                    sed -i '' "s|MINIO_BROWSER_ENDPOINT=.*|MINIO_BROWSER_ENDPOINT=/minio|" "$ENV_FILE"
+                fi
             fi
             # 配置 ONLYOFFICE_URL（浏览器访问 OnlyOffice）
             if ! grep -q "^ONLYOFFICE_URL=" "$ENV_FILE"; then
@@ -359,10 +364,15 @@ setup_env() {
             fi
         else
             # 配置 MINIO_BROWSER_ENDPOINT（缩略图浏览器访问）
+            # ⚠️ 单端口架构：使用相对路径 /minio，通过 Nginx 代理访问
+            # 这样可以避免 Mixed Content 问题（HTTPS 页面加载 HTTP 资源）
             if ! grep -q "^MINIO_BROWSER_ENDPOINT=" "$ENV_FILE"; then
-                echo "MINIO_BROWSER_ENDPOINT=http://${SERVER_IP}:9000" >> "$ENV_FILE"
+                echo "MINIO_BROWSER_ENDPOINT=/minio" >> "$ENV_FILE"
             else
-                sed -i "s|MINIO_BROWSER_ENDPOINT=.*|MINIO_BROWSER_ENDPOINT=http://${SERVER_IP}:9000|" "$ENV_FILE"
+                # 如果已存在但使用的是 IP 地址，更新为相对路径
+                if grep -q "^MINIO_BROWSER_ENDPOINT=http://" "$ENV_FILE"; then
+                    sed -i "s|MINIO_BROWSER_ENDPOINT=.*|MINIO_BROWSER_ENDPOINT=/minio|" "$ENV_FILE"
+                fi
             fi
             # 配置 ONLYOFFICE_URL（浏览器访问 OnlyOffice）
             if ! grep -q "^ONLYOFFICE_URL=" "$ENV_FILE"; then
@@ -376,7 +386,7 @@ setup_env() {
         echo -e "  ${GREEN}✅${NC} DB_PASSWORD"
         echo -e "  ${GREEN}✅${NC} MINIO_ACCESS_KEY"
         echo -e "  ${GREEN}✅${NC} MINIO_SECRET_KEY"
-        echo -e "  ${GREEN}✅${NC} MINIO_BROWSER_ENDPOINT=http://${SERVER_IP}:9000"
+        echo -e "  ${GREEN}✅${NC} MINIO_BROWSER_ENDPOINT=/minio (相对路径，通过 Nginx 代理)"
         echo -e "  ${GREEN}✅${NC} REDIS_PASSWORD"
         echo -e "  ${GREEN}✅${NC} ONLYOFFICE_JWT_SECRET"
         echo -e "  ${GREEN}✅${NC} ONLYOFFICE_JWT_ENABLED=true"

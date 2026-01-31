@@ -214,6 +214,14 @@ df -h
   - ✅ **浏览器访问**：通过 Nginx 路径代理（`/minio/`），不需要直接暴露端口
   - ❌ **暴露端口**：会破坏单端口架构的安全性，不推荐
 
+❌ **问题3**：Mixed Content 错误（HTTPS 页面加载 HTTP 资源）
+- **症状**：浏览器控制台显示 "Mixed Content" 警告，图片无法加载
+- **原因**：预签名 URL 包含 IP 地址（如 `http://192.168.50.10:9000/...`），导致 HTTPS 页面加载 HTTP 资源被阻止
+- **解决**：
+  1. 确保 `.env` 文件中配置：`MINIO_BROWSER_ENDPOINT=/minio`
+  2. 重启后端服务应用配置
+  3. 修复后的 URL 格式：`/minio/law-firm/thumbnails/file.jpg?query`（相对路径，自动适配 HTTP/HTTPS）
+
 **验证修复**：
 ```bash
 # 1. 重启后端服务（应用新配置）
