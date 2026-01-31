@@ -12,7 +12,6 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lawfirm.application.finance.command.*;
 import com.lawfirm.application.finance.dto.ContractDTO;
 import com.lawfirm.application.finance.dto.ContractQueryDTO;
-import com.lawfirm.application.finance.service.ContractTemplateVariableService;
 import com.lawfirm.application.system.service.CauseOfActionService;
 import com.lawfirm.application.system.service.SysConfigAppService;
 import com.lawfirm.application.workbench.dto.ApprovalDTO;

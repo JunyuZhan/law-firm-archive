@@ -21,7 +21,6 @@ import com.lawfirm.domain.finance.repository.PaymentRepository;
 import com.lawfirm.domain.hr.entity.*;
 import com.lawfirm.domain.hr.repository.*;
 import com.lawfirm.domain.system.repository.UserRepository;
-import com.lawfirm.application.hr.service.PayrollItemService;
 import com.lawfirm.infrastructure.external.excel.ExcelImportExportService;
 import com.lawfirm.infrastructure.persistence.mapper.PayrollSheetMapper;
 import java.time.LocalDateTime;
@@ -277,21 +276,6 @@ class PayrollAppServiceTest {
       command.setPayrollItemId(TEST_ITEM_ID);
       command.setConfirmStatus(PayrollStatus.ITEM_CONFIRMED);
 
-      PayrollItem item =
-          PayrollItem.builder()
-              .id(TEST_ITEM_ID)
-              .payrollSheetId(TEST_SHEET_ID)
-              .userId(TEST_USER_ID)
-              .confirmStatus(PayrollStatus.ITEM_PENDING)
-              .build();
-
-      PayrollSheet sheet =
-          PayrollSheet.builder()
-              .id(TEST_SHEET_ID)
-              .status(PayrollStatus.PENDING_CONFIRM)
-              .confirmedCount(0)
-              .build();
-
       securityUtilsMock.when(() -> SecurityUtils.getUserId()).thenReturn(TEST_USER_ID);
       doNothing().when(payrollItemService).confirmPayrollItem(any(ConfirmPayrollCommand.class));
 
@@ -308,12 +292,6 @@ class PayrollAppServiceTest {
       // Given
       ConfirmPayrollCommand command = new ConfirmPayrollCommand();
       command.setPayrollItemId(TEST_ITEM_ID);
-
-      PayrollItem item =
-          PayrollItem.builder()
-              .id(TEST_ITEM_ID)
-              .userId(999L) // 其他用户
-              .build();
 
       securityUtilsMock.when(() -> SecurityUtils.getUserId()).thenReturn(TEST_USER_ID);
       doThrow(new BusinessException("只能确认自己的工资"))
