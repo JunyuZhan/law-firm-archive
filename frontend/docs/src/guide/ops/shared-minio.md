@@ -4,6 +4,8 @@
 
 如果服务器上运行多个应用（如 law-firm、pis 等），共享一个 MinIO 实例可以节省资源，避免运行多个 MinIO 容器。
 
+---
+
 ## 💡 为什么共享 MinIO？
 
 ### 资源对比
@@ -21,13 +23,15 @@
 3. **数据隔离**：通过不同 bucket 实现隔离
 4. **易于维护**：只需维护一个 MinIO 实例
 
+---
+
 ## 🚀 部署方案
 
-### 方案1：独立部署共享 MinIO（推荐）
+### 方案 1：独立部署共享 MinIO（推荐）
 
 创建一个独立的共享 MinIO 服务，供多个应用使用。
 
-#### 步骤1：创建共享 MinIO 配置
+#### 步骤 1：创建共享 MinIO 配置
 
 ```bash
 cd /opt
@@ -91,13 +95,13 @@ networks:
     name: shared-network
 ```
 
-#### 步骤2：启动共享 MinIO
+#### 步骤 2：启动共享 MinIO
 
 ```bash
 docker compose up -d
 ```
 
-#### 步骤3：配置应用使用共享 MinIO
+#### 步骤 3：配置应用使用共享 MinIO
 
 在 `law-firm` 项目的 `.env` 文件中：
 
@@ -118,11 +122,13 @@ MINIO_SECRET_KEY=changeme
 MINIO_BUCKET=pis
 ```
 
-### 方案2：在 law-firm 项目中共享 MinIO
+---
+
+### 方案 2：在 law-firm 项目中共享 MinIO
 
 如果 law-firm 项目已经部署了 MinIO，可以让其他应用连接到它。
 
-#### 步骤1：修改 law-firm 的 docker-compose.prod.yml
+#### 步骤 1：修改 law-firm 的 docker-compose.prod.yml
 
 确保 MinIO 容器名称不是 `law-firm-minio`，而是 `shared-minio`：
 
@@ -133,13 +139,13 @@ services:
     # ... 其他配置
 ```
 
-#### 步骤2：创建共享网络
+#### 步骤 2：创建共享网络
 
 ```bash
 docker network create shared-network
 ```
 
-#### 步骤3：将 MinIO 加入共享网络
+#### 步骤 3：将 MinIO 加入共享网络
 
 在 `docker-compose.prod.yml` 中添加：
 
@@ -157,7 +163,7 @@ networks:
     external: true  # 使用外部网络
 ```
 
-#### 步骤4：其他应用连接到共享网络
+#### 步骤 4：其他应用连接到共享网络
 
 在 `pis` 项目的 docker-compose 中：
 
@@ -171,6 +177,8 @@ networks:
   shared-network:
     external: true
 ```
+
+---
 
 ## 🔒 安全配置
 
@@ -207,6 +215,8 @@ mc admin policy attach myminio readwrite --user=pis-user --bucket=pis
 }
 ```
 
+---
+
 ## 📊 监控和维护
 
 ### 监控 MinIO 资源使用
@@ -229,12 +239,16 @@ mc mirror myminio/law-firm /backup/law-firm
 mc mirror myminio/pis /backup/pis
 ```
 
+---
+
 ## ⚠️ 注意事项
 
 1. **数据隔离**：确保不同应用的 bucket 策略正确配置
 2. **性能影响**：如果某个应用负载很高，可能影响其他应用
 3. **清理脚本**：清理脚本不会删除 `shared-minio` 容器
 4. **网络配置**：确保所有应用都能访问共享 MinIO
+
+---
 
 ## 🔄 迁移现有数据
 
@@ -254,8 +268,16 @@ mc mirror /backup/law-firm myminio-new/law-firm
 # 修改 .env 文件中的 MINIO_ENDPOINT
 ```
 
+---
+
 ## 📚 参考
 
 - [MinIO 官方文档](https://min.io/docs/)
 - [MinIO 多租户配置](https://min.io/docs/minio/kubernetes/tenant-management/)
 - [Bucket 策略配置](https://min.io/docs/minio/kubernetes/tenant-management/tenant-policy-management.html)
+- [配置说明](./configuration.md)
+- [单端口架构](./single-port-architecture.md)
+
+---
+
+**最后更新**: 2026-01-31

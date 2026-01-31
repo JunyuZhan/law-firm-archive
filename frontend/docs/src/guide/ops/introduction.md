@@ -76,5 +76,8 @@
 - [数据库维护](/guide/ops/database-maintenance) - 数据库访问与维护
 - [备份恢复](/guide/ops/backup) - 数据库与文件备份策略
 - [监控告警](/guide/ops/monitoring) - Prometheus + Grafana 监控
+- [OnlyOffice 配置](/guide/ops/onlyoffice) - OnlyOffice 文档编辑服务配置
+- [OCR 服务配置](/guide/ops/ocr) - OCR 文字识别服务配置
+- [共享 MinIO 配置](/guide/ops/shared-minio) - 多应用共享 MinIO 存储配置
 - [安全运维](/guide/ops/security) - 安全架构与防护措施
 - [故障排查](/guide/ops/troubleshooting) - 常见问题与解决方案

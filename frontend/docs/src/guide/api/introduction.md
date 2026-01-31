@@ -69,6 +69,10 @@ Authorization: Bearer <access_token>
 | 人力   | /api/hr        | 人力资源               |
 | 知识库 | /api/knowledge | 知识库                 |
 
+## 开发指南
+
+- [开发指南](/guide/api/development) - 前端组件使用和后端工具类使用规范
+
 ## 接口详情
 
 - [认证接口](/guide/api/auth)

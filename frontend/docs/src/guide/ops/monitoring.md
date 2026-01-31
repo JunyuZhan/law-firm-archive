@@ -187,7 +187,7 @@ Grafana 默认已配置 Prometheus 数据源：
 
 ---
 
-**最后更新**: 2026-01-27
+**最后更新**: 2026-01-31
 
 - PostgreSQL：`postgres-exporter:9187`
 - MinIO 集群：`minio:9000/minio/v2/metrics/cluster`

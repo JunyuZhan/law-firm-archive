@@ -116,6 +116,8 @@ function sidebarProtected(): DefaultTheme.SidebarItem[] {
         { link: '/guide/ops/configuration', text: '配置说明' },
         { link: '/guide/ops/database-maintenance', text: '数据库维护' },
         { link: '/guide/ops/onlyoffice', text: 'OnlyOffice 配置' },
+        { link: '/guide/ops/ocr', text: 'OCR 服务配置' },
+        { link: '/guide/ops/shared-minio', text: '共享 MinIO 配置' },
         { link: '/guide/ops/grafana', text: 'Grafana 配置' },
         { link: '/guide/ops/frp', text: 'FRP 内网穿透' },
         { link: '/guide/ops/backup', text: '备份恢复' },
@@ -129,6 +131,7 @@ function sidebarProtected(): DefaultTheme.SidebarItem[] {
       text: 'API 文档',
       items: [
         { link: '/guide/api/introduction', text: '接口概述' },
+        { link: '/guide/api/development', text: '开发指南' },
         { link: '/guide/api/auth', text: '认证接口' },
         { link: '/guide/api/user', text: '用户接口' },
         { link: '/guide/api/case', text: '项目接口' },
