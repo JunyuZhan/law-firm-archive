@@ -118,19 +118,19 @@ fi
 
 echo ""
 echo -e "${YELLOW}[1/4] 停止并删除环境...${NC}"
-./scripts/env-stop.sh "$ENV_TYPE" --remove-volumes
+./scripts/ops/env-stop.sh "$ENV_TYPE" --remove-volumes
 
 echo ""
 echo -e "${YELLOW}[2/4] 重新启动环境...${NC}"
 case "$ENV_TYPE" in
     dev)
-        ./scripts/env-start.sh dev
+        ./scripts/ops/env-start.sh dev
         ;;
     test)
-        ./scripts/env-start.sh test
+        ./scripts/ops/env-start.sh test
         ;;
     prod)
-        ./scripts/env-start.sh prod
+        ./scripts/ops/env-start.sh prod
         ;;
 esac
 
@@ -149,7 +149,7 @@ case "$ENV_TYPE" in
         ;;
     prod)
         echo -e "${RED}警告: 生产环境数据库初始化需要手动执行${NC}"
-        echo "请运行: ./scripts/reset-db.sh --prod --force"
+        echo "请运行: ./scripts/ops/reset-db.sh --prod --force"
         ;;
 esac
 

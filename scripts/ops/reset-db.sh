@@ -15,7 +15,8 @@ set -e
 
 DB_USER="law_admin"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-INIT_DB_DIR="$SCRIPT_DIR/init-db"
+SCRIPTS_DIR="$(dirname "$SCRIPT_DIR")"
+INIT_DB_DIR="$SCRIPTS_DIR/init-db"
 
 # 自动检测 PostgreSQL 容器名（支持多种命名）
 detect_postgres_container() {

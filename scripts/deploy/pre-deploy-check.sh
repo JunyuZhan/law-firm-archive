@@ -10,7 +10,8 @@ set -e
 
 # 获取项目根目录
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+SCRIPTS_DIR="$(dirname "$SCRIPT_DIR")"
+PROJECT_ROOT="$(dirname "$SCRIPTS_DIR")"
 cd "$PROJECT_ROOT"
 
 # 颜色定义
@@ -225,7 +226,7 @@ check_database_scripts() {
 check_backup_config() {
     echo -e "${BOLD}【5/8】检查备份配置...${NC}"
     
-    if [ -f "scripts/db-auto-backup.sh" ] || [ -f "scripts/backup.sh" ]; then
+    if [ -f "scripts/ops/db-auto-backup.sh" ] || [ -f "scripts/ops/backup.sh" ]; then
         check_pass "备份脚本存在"
         check_info "提示: 请在生产服务器上配置定时任务(cron)定期执行备份脚本"
     else
@@ -355,7 +356,7 @@ main() {
         echo -e "${GREEN}✓ 所有检查通过，可以部署生产环境${NC}"
         echo ""
         echo "下一步："
-        echo "  运行部署脚本: ./scripts/deploy.sh"
+        echo "  运行部署脚本: ./scripts/deploy.sh 或 ./scripts/deploy/deploy.sh"
         exit 0
     elif [ $ERRORS -eq 0 ]; then
         echo -e "${YELLOW}⚠ 发现 $WARNINGS 个警告，建议修复后再部署${NC}"

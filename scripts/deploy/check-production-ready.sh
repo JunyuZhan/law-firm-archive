@@ -134,6 +134,12 @@ echo ""
 
 # 4. 检查数据库初始化脚本
 echo "【4/10】检查数据库初始化脚本..."
+# 获取项目根目录
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPTS_DIR="$(dirname "$SCRIPT_DIR")"
+PROJECT_ROOT="$(dirname "$SCRIPTS_DIR")"
+cd "$PROJECT_ROOT"
+
 if [ -f "scripts/init-db/01-system-schema.sql" ]; then
     check_pass "数据库初始化脚本存在"
 else
@@ -144,7 +150,7 @@ echo ""
 
 # 5. 检查备份脚本
 echo "【5/10】检查备份配置..."
-if [ -f "scripts/db-auto-backup.sh" ] || [ -f "scripts/backup.sh" ]; then
+if [ -f "scripts/ops/db-auto-backup.sh" ] || [ -f "scripts/ops/backup.sh" ]; then
     check_pass "备份脚本存在"
     echo "  提示: 请在生产服务器上配置定时任务(cron)定期执行备份脚本"
 else

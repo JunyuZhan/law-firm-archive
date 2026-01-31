@@ -117,8 +117,8 @@ ssh "${SERVER_USER}@${SERVER_IP}" << 'ENDSSH'
         cd ../..
     fi
     
-    # 给脚本执行权限
-    chmod +x scripts/*.sh
+    # 给脚本执行权限（递归所有子目录）
+    find scripts -type f -name "*.sh" -exec chmod +x {} \;
     
     # 执行部署
     echo "开始部署..."

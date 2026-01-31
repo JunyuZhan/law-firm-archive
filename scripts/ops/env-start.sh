@@ -210,18 +210,18 @@ echo ""
 echo "下一步操作:"
 case "$ENV_TYPE" in
     dev)
-        echo "  初始化数据库: ./scripts/reset-db.sh --dev"
+        echo "  初始化数据库: ./scripts/ops/reset-db.sh --dev"
         echo "  查看日志:     cd docker && docker compose -f $COMPOSE_FILE logs -f"
-        echo "  停止服务:     ./scripts/env-stop.sh dev"
+        echo "  停止服务:     ./scripts/ops/env-stop.sh dev"
         ;;
     test)
-        echo "  初始化数据库: ./scripts/reset-db.sh --test"
+        echo "  初始化数据库: ./scripts/ops/reset-db.sh --test"
         echo "  查看日志:     cd docker && docker compose -f $COMPOSE_FILE logs -f"
-        echo "  停止服务:     ./scripts/env-stop.sh test"
+        echo "  停止服务:     ./scripts/ops/env-stop.sh test"
         ;;
     prod)
         echo "  查看日志:     cd docker && docker compose --env-file ../.env -f $COMPOSE_FILE logs -f"
-        echo "  停止服务:     ./scripts/env-stop.sh prod"
+        echo "  停止服务:     ./scripts/ops/env-stop.sh prod"
         ;;
 esac
 echo ""
