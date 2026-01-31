@@ -166,9 +166,12 @@ services:
       TZ: UTC
     volumes:
       - minio_data:/data
-    ports:
-      - "9000:9000"  # API 端口（浏览器访问缩略图需要）
-      - "9001:9001"  # 控制台
+    # 端口映射已移除，通过 Nginx 路径代理访问：
+    # - /minio/ → MinIO API (9000)
+    # - /minio-console/ → MinIO Console (9001)
+    # ports:
+    #   - "9000:9000"  # API 端口（浏览器访问缩略图需要）
+    #   - "9001:9001"  # 控制台
     networks:
       - law-firm-network
     restart: unless-stopped
@@ -243,8 +246,9 @@ services:
       - ALLOW_META_IP_ADDRESS=true
       - DS_EXAMPLE_ENABLED=false
       - TZ=UTC
-    ports:
-      - "8088:80"
+    # 端口映射已移除，通过 Nginx 路径代理访问：/onlyoffice/
+    # ports:
+    #   - "8088:80"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
@@ -279,8 +283,10 @@ services:
       - '--storage.tsdb.path=/prometheus'
       - '--web.console.libraries=/usr/share/prometheus/console_libraries'
       - '--web.console.templates=/usr/share/prometheus/consoles'
-    ports:
-      - "9090:9090"
+      - '--web.external-url=/prometheus/'  # 配置子路径访问
+    # 端口映射已移除，通过 Nginx 路径代理访问：/prometheus/
+    # ports:
+    #   - "9090:9090"
     networks:
       - law-firm-network
     restart: unless-stopped
@@ -292,8 +298,9 @@ services:
     labels:
       - "com.law-firm.group=monitoring"
       - "com.law-firm.service=grafana"
-    ports:
-      - "3000:3000"
+    # 端口映射已移除，通过 Nginx 路径代理访问：/grafana/
+    # ports:
+    #   - "3000:3000"
     volumes:
       - grafana_data:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning
@@ -302,6 +309,8 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=admin
       - GF_USERS_ALLOW_SIGN_UP=false
       - GF_DEFAULT_LANGUAGE=zh-Hans
+      - GF_SERVER_ROOT_URL=/grafana/  # 配置子路径访问
+      - GF_SERVER_SERVE_FROM_SUB_PATH=true  # 启用子路径模式
     networks:
       - law-firm-network
     restart: unless-stopped
