@@ -82,14 +82,17 @@ curl -fsSL https://get.docker.com | sh
 
 ### 5. 部署后验证
 
-部署成功后，默认访问地址：
+部署成功后，默认访问地址（单端口架构）：
 
 - 🌐 **主应用**: `http://localhost/`
 - 📚 **文档站点**: `http://localhost/docs/`
 - 🔧 **API 地址**: `http://localhost/api`
-- 📦 **MinIO 控制台**: `http://localhost:9001`
-- 📊 **Prometheus**: `http://localhost:9090`
-- 📈 **Grafana**: `http://localhost:3000`
+- 📦 **MinIO 控制台**: `http://localhost/minio-console/`
+- 📝 **OnlyOffice**: `http://localhost/onlyoffice/`（通过应用调用）
+- 📊 **Prometheus**: `http://localhost/prometheus/`（可选，需启用监控）
+- 📈 **Grafana**: `http://localhost/grafana/`（可选，需启用监控）
+
+> 📖 关于单端口架构的详细说明，请参考 [单端口架构](/guide/ops/single-port-architecture)
 
 **检查服务状态**：
 

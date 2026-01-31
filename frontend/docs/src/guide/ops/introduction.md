@@ -36,20 +36,44 @@
 - Docker Swarm 分布式：多节点高可用与水平扩展，参考 `docker/DEPLOY-SWARM.md`
 - MinIO 分布式存储集群：文件数据采用纠删码冗余，参考 `docker/DATA-SECURITY.md`
 
-## 端口说明
+## 端口说明（单端口架构）
 
-| 服务       | 端口      | 说明     |
-| ---------- | --------- | -------- |
-| 前端       | 5173      | 开发环境 |
-| 后端       | 5666      | API服务  |
-| PostgreSQL | 5432      | 数据库   |
-| Redis      | 6379      | 缓存     |
-| MinIO      | 9000/9001 | 文件存储 |
+系统采用**单端口架构**，仅暴露 HTTP（80）和 HTTPS（443）端口，其他服务通过 Nginx 路径代理访问。
+
+### 暴露的端口
+
+| 端口 | 服务 | 说明 |
+|------|------|------|
+| **80** | Frontend (Nginx) | HTTP 访问 |
+| **443** | Frontend (Nginx) | HTTPS 访问 |
+
+### 通过路径访问的服务
+
+| 路径 | 服务 | 原端口 | 说明 |
+|------|------|--------|------|
+| `/minio/` | MinIO API | 9000 | 文件存储 API |
+| `/minio-console/` | MinIO Console | 9001 | MinIO 管理控制台 |
+| `/onlyoffice/` | OnlyOffice | 80 | 文档编辑服务 |
+| `/prometheus/` | Prometheus | 9090 | 监控数据收集（可选） |
+| `/grafana/` | Grafana | 3000 | 监控可视化（可选） |
+
+### 不暴露端口的服务
+
+| 服务 | 端口 | 访问方式 | 说明 |
+|------|------|---------|------|
+| PostgreSQL | 5432 | Docker 内部网络 | 通过 `docker exec` 维护 |
+| Redis | 6379 | Docker 内部网络 | Docker 内部访问 |
+
+> 📖 详细说明请参考 [单端口架构](/guide/ops/single-port-architecture)
 
 ## 目录
 
 - [部署指南](/guide/ops/deployment) - 系统部署与环境配置
+- [单端口架构](/guide/ops/single-port-architecture) - 单端口架构说明与配置
+- [单端口架构迁移](/guide/ops/single-port-migration) - 从多端口迁移到单端口
+- [部署检查清单](/guide/ops/deployment-checklist) - 部署前检查项
 - [配置说明](/guide/ops/configuration) - 环境变量与应用配置
+- [数据库维护](/guide/ops/database-maintenance) - 数据库访问与维护
 - [备份恢复](/guide/ops/backup) - 数据库与文件备份策略
 - [监控告警](/guide/ops/monitoring) - Prometheus + Grafana 监控
 - [安全运维](/guide/ops/security) - 安全架构与防护措施

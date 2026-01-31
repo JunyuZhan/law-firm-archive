@@ -110,8 +110,11 @@ function sidebarProtected(): DefaultTheme.SidebarItem[] {
       items: [
         { link: '/guide/ops/introduction', text: '概述' },
         { link: '/guide/ops/deployment', text: '部署指南' },
+        { link: '/guide/ops/single-port-architecture', text: '单端口架构' },
+        { link: '/guide/ops/single-port-migration', text: '单端口架构迁移' },
         { link: '/guide/ops/deployment-checklist', text: '部署检查清单' },
         { link: '/guide/ops/configuration', text: '配置说明' },
+        { link: '/guide/ops/database-maintenance', text: '数据库维护' },
         { link: '/guide/ops/onlyoffice', text: 'OnlyOffice 配置' },
         { link: '/guide/ops/grafana', text: 'Grafana 配置' },
         { link: '/guide/ops/frp', text: 'FRP 内网穿透' },
