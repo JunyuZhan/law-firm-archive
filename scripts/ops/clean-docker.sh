@@ -59,22 +59,14 @@ ENV_FILE="$PROJECT_ROOT/.env"
 # 如果存在.env文件，使用它；否则不使用
 if [ -f "$ENV_FILE" ]; then
     docker compose --env-file "$ENV_FILE" -f docker-compose.yml down -v --remove-orphans 2>/dev/null || true
-    docker compose --env-file "$ENV_FILE" -f docker-compose.dev-full.yml down -v --remove-orphans 2>/dev/null || true
+    docker compose --env-file "$ENV_FILE" -f docker-compose.dev.yml down -v --remove-orphans 2>/dev/null || true
     docker compose --env-file "$ENV_FILE" -f docker-compose.prod.yml down -v --remove-orphans 2>/dev/null || true
     docker compose --env-file "$ENV_FILE" -f docker-compose.swarm.yml down -v --remove-orphans 2>/dev/null || true
-    docker compose --env-file "$ENV_FILE" -f docker-compose.nas.yml down -v --remove-orphans 2>/dev/null || true
-    docker compose --env-file "$ENV_FILE" -f docker-compose.minio-cluster.yml down -v --remove-orphans 2>/dev/null || true
-    docker compose --env-file "$ENV_FILE" -f docker-compose.minio-nas.yml down -v --remove-orphans 2>/dev/null || true
-    docker compose --env-file "$ENV_FILE" -f docker-compose.test.yml down -v --remove-orphans 2>/dev/null || true
 else
     docker compose -f docker-compose.yml down -v --remove-orphans 2>/dev/null || true
-    docker compose -f docker-compose.dev-full.yml down -v --remove-orphans 2>/dev/null || true
+    docker compose -f docker-compose.dev.yml down -v --remove-orphans 2>/dev/null || true
     docker compose -f docker-compose.prod.yml down -v --remove-orphans 2>/dev/null || true
     docker compose -f docker-compose.swarm.yml down -v --remove-orphans 2>/dev/null || true
-    docker compose -f docker-compose.nas.yml down -v --remove-orphans 2>/dev/null || true
-    docker compose -f docker-compose.minio-cluster.yml down -v --remove-orphans 2>/dev/null || true
-    docker compose -f docker-compose.minio-nas.yml down -v --remove-orphans 2>/dev/null || true
-    docker compose -f docker-compose.test.yml down -v --remove-orphans 2>/dev/null || true
 fi
 
 # 强制删除可能残留的容器（只清理 law-firm-* 前缀的容器）

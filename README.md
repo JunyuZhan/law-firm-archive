@@ -145,14 +145,12 @@ cat .env | grep -E "PASSWORD|SECRET"
 # 方式一：使用统一环境管理脚本（推荐）
 ./scripts/env-start.sh dev
 
-# 方式二：启动全量开发环境（包括 OnlyOffice、OCR 等）
-./scripts/env-start.sh dev --full
+# 方式二：启动开发环境（包括 OnlyOffice、OCR 等）
+./scripts/env-start.sh dev
 
 # 方式三：手动启动
 cd docker
 docker compose -f docker-compose.dev.yml up -d
-# 或使用全量配置
-docker compose -f docker-compose.dev-full.yml up -d
 ```
 
 #### 2. 初始化数据库
@@ -174,22 +172,6 @@ cd scripts/init-db
 
 # 重置开发环境（删除所有数据并重新初始化）
 ./scripts/env-reset.sh dev
-```
-
-### 测试环境
-
-```bash
-# 启动测试环境
-./scripts/env-start.sh test
-
-# 初始化数据库
-./scripts/reset-db.sh --test
-
-# 停止测试环境
-./scripts/env-stop.sh test
-
-# 重置测试环境
-./scripts/env-reset.sh test
 ```
 
 > 📖 详细环境配置说明请参考 [环境配置文档](docs/ENVIRONMENT_CONFIGURATION.md)
@@ -246,6 +228,8 @@ pnpm dev
 | 文档 | 说明 |
 |------|------|
 | [Docker 部署指南](./docker/DEPLOY.md) | 生产环境部署说明 |
+| [主从服务器部署](./docker/DEPLOY-MASTER-SLAVE.md) | 💡 最经济实惠的高可用方案（推荐） |
+| [Docker Swarm 部署](./docker/DEPLOY-SWARM.md) | 多节点集群部署 |
 | [GitHub 私有仓库配置](./docs/GITHUB_PRIVATE_REPO_SETUP.md) | 服务器部署私有仓库配置指南 |
 | [开发文档](./docs/README.md) | 开发者参考文档 |
 | [用户手册](./frontend/docs/) | 用户操作手册（VitePress） |

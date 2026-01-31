@@ -34,7 +34,6 @@
 ```bash
 --quick                    # 快速部署，跳过交互
 --mode=standalone          # 单机部署
---mode=nas --nas-ip=192.168.1.100  # NAS 存储分离
 --mode=swarm               # Swarm 集群部署
 --with-demo                # 初始化示例数据
 --no-cache                 # 强制重新构建镜像
@@ -43,7 +42,6 @@
 ### 部署模式
 
 - **单机部署**：适合小型律所或测试环境
-- **NAS 存储分离**：应用服务器 + NAS 存储
 - **Swarm 集群**：多节点高可用部署
 
 ---

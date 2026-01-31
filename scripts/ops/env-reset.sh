@@ -30,11 +30,10 @@ FORCE_FLAG=""
 # 显示使用说明
 show_usage() {
     echo -e "${CYAN}用法:${NC}"
-    echo "  ./env-reset.sh [dev|test|prod] [选项]"
+    echo "  ./env-reset.sh [dev|prod] [选项]"
     echo ""
     echo -e "${CYAN}环境类型:${NC}"
     echo "  dev   - 开发环境"
-    echo "  test  - 测试环境"
     echo "  prod  - 生产环境（不推荐）"
     echo ""
     echo -e "${CYAN}选项:${NC}"
@@ -42,13 +41,13 @@ show_usage() {
     echo ""
     echo -e "${CYAN}示例:${NC}"
     echo "  ./env-reset.sh dev"
-    echo "  ./env-reset.sh test --force"
+    echo "  ./env-reset.sh dev --force"
 }
 
 # 解析参数
 for arg in "$@"; do
     case $arg in
-        dev|test|prod)
+        dev|prod)
             ENV_TYPE="$arg"
             ;;
         --force)
@@ -68,14 +67,14 @@ done
 
 # 检查环境类型
 if [ -z "$ENV_TYPE" ]; then
-    echo -e "${RED}错误: 必须指定环境类型 (dev|test|prod)${NC}"
+    echo -e "${RED}错误: 必须指定环境类型 (dev|prod)${NC}"
     show_usage
     exit 1
 fi
 
 # 验证环境类型
-if [[ ! "$ENV_TYPE" =~ ^(dev|test|prod)$ ]]; then
-    echo -e "${RED}错误: 无效的环境类型 '$ENV_TYPE'，必须是 dev、test 或 prod${NC}"
+if [[ ! "$ENV_TYPE" =~ ^(dev|prod)$ ]]; then
+    echo -e "${RED}错误: 无效的环境类型 '$ENV_TYPE'，必须是 dev 或 prod${NC}"
     exit 1
 fi
 
@@ -126,9 +125,6 @@ case "$ENV_TYPE" in
     dev)
         ./scripts/ops/env-start.sh dev
         ;;
-    test)
-        ./scripts/ops/env-start.sh test
-        ;;
     prod)
         ./scripts/ops/env-start.sh prod
         ;;
@@ -143,9 +139,6 @@ echo -e "${YELLOW}[4/4] 初始化数据库...${NC}"
 case "$ENV_TYPE" in
     dev)
         ./scripts/ops/reset-db.sh --dev --force
-        ;;
-    test)
-        ./scripts/ops/reset-db.sh --test --force
         ;;
     prod)
         echo -e "${RED}警告: 生产环境数据库初始化需要手动执行${NC}"

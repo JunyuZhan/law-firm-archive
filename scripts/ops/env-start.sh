@@ -2,11 +2,9 @@
 # =====================================================
 # 律师事务所管理系统 - 统一环境启动脚本
 # =====================================================
-# 用法: ./env-start.sh [dev|test|prod] [--full] [--services=SERVICE1,SERVICE2]
+# 用法: ./env-start.sh [dev|prod] [--services=SERVICE1,SERVICE2]
 #   dev:  开发环境
-#   test: 测试环境
 #   prod: 生产环境
-#   --full:     启动全量服务（仅 dev/test）
 #   --services: 指定要启动的服务（逗号分隔）
 # =====================================================
 
@@ -32,32 +30,30 @@ SERVICES=""
 # 显示使用说明
 show_usage() {
     echo -e "${CYAN}用法:${NC}"
-    echo "  ./env-start.sh [dev|test|prod] [选项]"
+    echo "  ./env-start.sh [dev|prod] [选项]"
     echo ""
     echo -e "${CYAN}环境类型:${NC}"
     echo "  dev   - 开发环境"
-    echo "  test  - 测试环境"
     echo "  prod  - 生产环境"
     echo ""
     echo -e "${CYAN}选项:${NC}"
-    echo "  --full           启动全量服务（仅 dev/test）"
     echo "  --services=LIST  指定要启动的服务（逗号分隔）"
     echo ""
     echo -e "${CYAN}示例:${NC}"
     echo "  ./env-start.sh dev"
-    echo "  ./env-start.sh dev --full"
-    echo "  ./env-start.sh test --services=postgres,redis"
+    echo "  ./env-start.sh dev --services=postgres,redis"
     echo "  ./env-start.sh prod"
 }
 
 # 解析参数
 for arg in "$@"; do
     case $arg in
-        dev|test|prod)
+        dev|prod)
             ENV_TYPE="$arg"
             ;;
         --full)
             FULL_MODE=true
+            echo -e "${YELLOW}提示: --full 选项已废弃，使用 docker-compose.dev.yml${NC}"
             ;;
         --services=*)
             SERVICES="${arg#*=}"
@@ -76,14 +72,14 @@ done
 
 # 检查环境类型
 if [ -z "$ENV_TYPE" ]; then
-    echo -e "${RED}错误: 必须指定环境类型 (dev|test|prod)${NC}"
+    echo -e "${RED}错误: 必须指定环境类型 (dev|prod)${NC}"
     show_usage
     exit 1
 fi
 
 # 验证环境类型
-if [[ ! "$ENV_TYPE" =~ ^(dev|test|prod)$ ]]; then
-    echo -e "${RED}错误: 无效的环境类型 '$ENV_TYPE'，必须是 dev、test 或 prod${NC}"
+if [[ ! "$ENV_TYPE" =~ ^(dev|prod)$ ]]; then
+    echo -e "${RED}错误: 无效的环境类型 '$ENV_TYPE'，必须是 dev 或 prod${NC}"
     exit 1
 fi
 
@@ -97,19 +93,10 @@ cd "$DOCKER_DIR"
 # 确定使用的 docker-compose 文件
 case "$ENV_TYPE" in
     dev)
+        COMPOSE_FILE="docker-compose.dev.yml"
+        ENV_NAME="开发环境"
         if [ "$FULL_MODE" = true ]; then
-            COMPOSE_FILE="docker-compose.dev-full.yml"
-            ENV_NAME="开发环境（全量）"
-        else
-            COMPOSE_FILE="docker-compose.dev.yml"
-            ENV_NAME="开发环境"
-        fi
-        ;;
-    test)
-        COMPOSE_FILE="docker-compose.test.yml"
-        ENV_NAME="测试环境"
-        if [ "$FULL_MODE" = true ]; then
-            echo -e "${YELLOW}提示: 测试环境不支持 --full 选项${NC}"
+            echo -e "${YELLOW}提示: 开发环境不支持 --full 选项，使用 docker-compose.dev.yml${NC}"
         fi
         ;;
     prod)
@@ -168,10 +155,6 @@ case "$ENV_TYPE" in
         POSTGRES_CONTAINER="law-firm-postgres"
         DB_NAME="law_firm_dev"
         ;;
-    test)
-        POSTGRES_CONTAINER="law-firm-test-postgres"
-        DB_NAME="law_firm_test"
-        ;;
     prod)
         POSTGRES_CONTAINER="law-firm-postgres"
         DB_NAME="law_firm"
@@ -213,11 +196,6 @@ case "$ENV_TYPE" in
         echo "  初始化数据库: ./scripts/ops/reset-db.sh --dev"
         echo "  查看日志:     cd docker && docker compose -f $COMPOSE_FILE logs -f"
         echo "  停止服务:     ./scripts/ops/env-stop.sh dev"
-        ;;
-    test)
-        echo "  初始化数据库: ./scripts/ops/reset-db.sh --test"
-        echo "  查看日志:     cd docker && docker compose -f $COMPOSE_FILE logs -f"
-        echo "  停止服务:     ./scripts/ops/env-stop.sh test"
         ;;
     prod)
         echo "  查看日志:     cd docker && docker compose --env-file ../.env -f $COMPOSE_FILE logs -f"

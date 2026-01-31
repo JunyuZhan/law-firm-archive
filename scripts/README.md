@@ -29,7 +29,9 @@ scripts/
 │   ├── env-stop.sh              # 环境停止
 │   ├── env-reset.sh             # 环境重置
 │   ├── clean-docker.sh          # 清理项目Docker资源（推荐）
-│   └── clean-law-firm-only.sh   # 仅清理律所系统资源
+│   ├── clean-law-firm-only.sh   # 仅清理律所系统资源
+│   ├── setup-master-slave.sh    # 主从服务器配置脚本
+│   └── deploy-master-slave.sh   # 主从服务器全自动部署（推荐）✅
 │
 ├── ssl/                         # 🔐 SSL证书相关脚本
 │   ├── download-ca-cert.sh     # 下载CA证书
@@ -180,6 +182,33 @@ cd /opt/law-firm
 # 仅清理律所系统资源（保留其他容器如frpc）
 ./scripts/ops/clean-law-firm-only.sh
 ```
+
+### 主从服务器部署
+
+| 脚本 | 说明 | 用法 | 推荐 |
+|------|------|------|------|
+| `deploy-master-slave.sh` | 主从服务器全自动部署 | `./scripts/ops/deploy-master-slave.sh` | ✅ **推荐** |
+| `setup-master-slave.sh` | 主从服务器配置脚本 | `./scripts/ops/setup-master-slave.sh` | 手动部署时使用 |
+
+```bash
+# 🎯 全自动部署（推荐，一条命令搞定）
+# 主服务器
+./scripts/ops/deploy-master-slave.sh master --init-db
+
+# 从服务器
+./scripts/ops/deploy-master-slave.sh slave <主服务器IP>
+
+# 📝 手动部署（如需手动控制）
+# 配置主服务器
+./scripts/ops/setup-master-slave.sh master
+docker compose --env-file .env -f docker/docker-compose.master-slave.yml --profile master up -d
+
+# 配置从服务器
+./scripts/ops/setup-master-slave.sh slave <主服务器IP>
+docker compose --env-file .env -f docker/docker-compose.master-slave.yml --profile slave up -d
+```
+
+> 📖 详细说明请参考 [主从服务器部署文档](../../docker/DEPLOY-MASTER-SLAVE.md)
 
 ## 🔐 SSL证书脚本
 

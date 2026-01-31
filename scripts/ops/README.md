@@ -14,6 +14,8 @@
 - `env-reset.sh` - 环境重置
 - `clean-docker.sh` - 清理项目Docker资源（推荐）
 - `clean-law-firm-only.sh` - 仅清理律所系统资源
+- `setup-master-slave.sh` - 主从服务器配置脚本
+- `deploy-master-slave.sh` - 主从服务器全自动部署（推荐）✅
 
 ## 使用方法
 

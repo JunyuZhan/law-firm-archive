@@ -2,9 +2,8 @@
 # =====================================================
 # 律师事务所管理系统 - 统一环境停止脚本
 # =====================================================
-# 用法: ./env-stop.sh [dev|test|prod] [--remove-volumes]
+# 用法: ./env-stop.sh [dev|prod] [--remove-volumes]
 #   dev:  开发环境
-#   test: 测试环境
 #   prod: 生产环境
 #   --remove-volumes: 同时删除数据卷（危险操作）
 # =====================================================
@@ -30,11 +29,10 @@ REMOVE_VOLUMES=false
 # 显示使用说明
 show_usage() {
     echo -e "${CYAN}用法:${NC}"
-    echo "  ./env-stop.sh [dev|test|prod] [选项]"
+    echo "  ./env-stop.sh [dev|prod] [选项]"
     echo ""
     echo -e "${CYAN}环境类型:${NC}"
     echo "  dev   - 开发环境"
-    echo "  test  - 测试环境"
     echo "  prod  - 生产环境"
     echo ""
     echo -e "${CYAN}选项:${NC}"
@@ -42,14 +40,14 @@ show_usage() {
     echo ""
     echo -e "${CYAN}示例:${NC}"
     echo "  ./env-stop.sh dev"
-    echo "  ./env-stop.sh test --remove-volumes"
+    echo "  ./env-stop.sh dev --remove-volumes"
     echo "  ./env-stop.sh prod"
 }
 
 # 解析参数
 for arg in "$@"; do
     case $arg in
-        dev|test|prod)
+        dev|prod)
             ENV_TYPE="$arg"
             ;;
         --remove-volumes)
@@ -69,14 +67,14 @@ done
 
 # 检查环境类型
 if [ -z "$ENV_TYPE" ]; then
-    echo -e "${RED}错误: 必须指定环境类型 (dev|test|prod)${NC}"
+    echo -e "${RED}错误: 必须指定环境类型 (dev|prod)${NC}"
     show_usage
     exit 1
 fi
 
 # 验证环境类型
-if [[ ! "$ENV_TYPE" =~ ^(dev|test|prod)$ ]]; then
-    echo -e "${RED}错误: 无效的环境类型 '$ENV_TYPE'，必须是 dev、test 或 prod${NC}"
+if [[ ! "$ENV_TYPE" =~ ^(dev|prod)$ ]]; then
+    echo -e "${RED}错误: 无效的环境类型 '$ENV_TYPE'，必须是 dev 或 prod${NC}"
     exit 1
 fi
 
@@ -91,12 +89,7 @@ cd "$DOCKER_DIR"
 case "$ENV_TYPE" in
     dev)
         COMPOSE_FILE="docker-compose.dev.yml"
-        COMPOSE_FILE_FULL="docker-compose.dev-full.yml"
         ENV_NAME="开发环境"
-        ;;
-    test)
-        COMPOSE_FILE="docker-compose.test.yml"
-        ENV_NAME="测试环境"
         ;;
     prod)
         COMPOSE_FILE="docker-compose.prod.yml"
@@ -120,11 +113,7 @@ echo ""
 echo -e "${YELLOW}[1/2] 停止服务...${NC}"
 
 # 停止服务
-if [ "$ENV_TYPE" = "dev" ] && [ -f "$COMPOSE_FILE_FULL" ]; then
-    # 开发环境需要检查两个文件
-    docker compose -f "$COMPOSE_FILE" down ${REMOVE_VOLUMES:+-v} --remove-orphans 2>/dev/null || true
-    docker compose -f "$COMPOSE_FILE_FULL" down ${REMOVE_VOLUMES:+-v} --remove-orphans 2>/dev/null || true
-elif [ "$ENV_TYPE" = "prod" ]; then
+if [ "$ENV_TYPE" = "prod" ]; then
     docker compose --env-file "$PROJECT_ROOT/.env" -f "$COMPOSE_FILE" down ${REMOVE_VOLUMES:+-v} --remove-orphans
 else
     docker compose -f "$COMPOSE_FILE" down ${REMOVE_VOLUMES:+-v} --remove-orphans

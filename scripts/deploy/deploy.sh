@@ -103,26 +103,18 @@ show_deploy_menu() {
     echo -e "  ${GREEN}1)${NC} ${BOLD}单机部署${NC} ${DIM}(推荐小型律所/开发测试)${NC}"
     echo -e "     ${DIM}└─ 所有服务运行在一台服务器，最简单的部署方式${NC}"
     echo ""
-    echo -e "  ${YELLOW}2)${NC} ${BOLD}NAS 存储分离部署${NC} ${DIM}(推荐中型律所)${NC}"
-    echo -e "     ${DIM}└─ 应用服务器 + NAS 存储，利用 RAID 保护数据${NC}"
-    echo ""
-    echo -e "  ${MAGENTA}3)${NC} ${BOLD}Docker Swarm 分布式部署${NC} ${DIM}(推荐大型律所)${NC}"
+    echo -e "  ${MAGENTA}2)${NC} ${BOLD}Docker Swarm 分布式部署${NC} ${DIM}(推荐大型律所)${NC}"
     echo -e "     ${DIM}└─ 多节点集群，支持高可用和水平扩展${NC}"
-    echo ""
-    echo -e "  ${CYAN}4)${NC} ${BOLD}MinIO 分布式存储集群${NC} ${DIM}(企业级数据保护)${NC}"
-    echo -e "     ${DIM}└─ 4 节点 MinIO 集群，纠删码冗余${NC}"
     echo ""
     print_divider
     echo -e "  ${DIM}0) 退出${NC}"
     echo ""
     
-    read -p "请输入选项 [1-4]: " choice
+    read -p "请输入选项 [1-2]: " choice
     
     case $choice in
         1) DEPLOY_MODE="standalone" ;;
-        2) DEPLOY_MODE="nas" ;;
-        3) DEPLOY_MODE="swarm" ;;
-        4) DEPLOY_MODE="minio-cluster" ;;
+        2) DEPLOY_MODE="swarm" ;;
         0) echo "已取消部署"; exit 0 ;;
         *) 
             log_error "无效选项，请重新选择"
@@ -151,14 +143,6 @@ show_deploy_summary() {
             echo -e "     - PaddleOCR 服务"
             echo -e "     - OnlyOffice 文档预览"
             ;;
-        nas)
-            echo -e "  ${YELLOW}●${NC} 部署模式：${BOLD}NAS 存储分离部署${NC}"
-            echo -e "  ${YELLOW}●${NC} 配置文件：docker-compose.nas.yml"
-            echo -e "  ${YELLOW}●${NC} NAS 地址：${NAS_IP:-未配置}"
-            echo -e "  ${YELLOW}●${NC} 架构说明："
-            echo -e "     - 应用服务器：运行所有应用服务"
-            echo -e "     - NAS 服务器：运行 MinIO 存储文件"
-            ;;
         swarm)
             echo -e "  ${MAGENTA}●${NC} 部署模式：${BOLD}Docker Swarm 分布式${NC}"
             echo -e "  ${MAGENTA}●${NC} 配置文件：docker-compose.swarm.yml"
@@ -167,14 +151,6 @@ show_deploy_summary() {
             echo -e "     - 服务自动负载均衡"
             echo -e "     - 支持滚动更新"
             echo -e "     - 动态扩缩容"
-            ;;
-        minio-cluster)
-            echo -e "  ${CYAN}●${NC} 部署模式：${BOLD}MinIO 分布式存储集群${NC}"
-            echo -e "  ${CYAN}●${NC} 配置文件：docker-compose.minio-cluster.yml"
-            echo -e "  ${CYAN}●${NC} 集群配置："
-            echo -e "     - 4 个 MinIO 节点"
-            echo -e "     - Nginx 负载均衡"
-            echo -e "     - 纠删码数据保护"
             ;;
     esac
     
@@ -572,61 +548,6 @@ setup_env() {
 }
 
 # =====================================================
-# NAS 部署配置
-# =====================================================
-configure_nas() {
-    print_banner
-    echo -e "${BOLD}NAS 存储配置：${NC}"
-    echo ""
-    echo -e "${DIM}请确保 NAS 已安装 Docker 并运行 MinIO${NC}"
-    echo -e "${DIM}参考文档：docker/DEPLOY-NAS.md${NC}"
-    echo ""
-    print_divider
-    echo ""
-    
-    read -p "请输入 NAS IP 地址: " NAS_IP
-    
-    if [ -z "$NAS_IP" ]; then
-        log_error "NAS IP 不能为空"
-        configure_nas
-        return
-    fi
-    
-    # 验证 IP 格式
-    if ! [[ "$NAS_IP" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-        log_error "无效的 IP 地址格式"
-        configure_nas
-        return
-    fi
-    
-    echo ""
-    log_info "测试 NAS 连接..."
-    
-    if ping -c 1 "$NAS_IP" &> /dev/null; then
-        log_success "NAS 网络连接正常"
-    else
-        log_warn "无法 ping 通 NAS，请确认网络配置"
-        read -p "是否继续？(y/N) " -n 1 -r
-        echo
-        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-            configure_nas
-            return
-        fi
-    fi
-    
-    # 更新 .env 文件中的 NAS 配置
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-        sed -i '' "s|NAS_IP=.*|NAS_IP=$NAS_IP|" "$PROJECT_ROOT/.env" 2>/dev/null || \
-        echo "NAS_IP=$NAS_IP" >> "$PROJECT_ROOT/.env"
-    else
-        sed -i "s|NAS_IP=.*|NAS_IP=$NAS_IP|" "$PROJECT_ROOT/.env" 2>/dev/null || \
-        echo "NAS_IP=$NAS_IP" >> "$PROJECT_ROOT/.env"
-    fi
-    
-    log_success "NAS 配置已保存"
-}
-
-# =====================================================
 # Swarm 部署配置
 # =====================================================
 configure_swarm() {
@@ -677,31 +598,6 @@ configure_swarm() {
             configure_swarm
             ;;
     esac
-}
-
-# =====================================================
-# MinIO 集群部署配置
-# =====================================================
-configure_minio_cluster() {
-    print_banner
-    echo -e "${BOLD}MinIO 分布式存储集群配置：${NC}"
-    echo ""
-    echo -e "${DIM}此模式需要至少 4 个存储驱动器（可跨 2-4 台服务器）${NC}"
-    echo ""
-    print_divider
-    echo ""
-    echo -e "${YELLOW}⚠️  注意事项：${NC}"
-    echo -e "  1. 需要在所有节点上运行相同的配置"
-    echo -e "  2. 所有节点必须网络互通"
-    echo -e "  3. 建议配合 Docker Swarm 使用"
-    echo ""
-    
-    read -p "是否继续部署 MinIO 集群？(y/N) " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        show_deploy_menu
-        return
-    fi
 }
 
 # =====================================================
@@ -802,76 +698,6 @@ init_demo_data_if_needed() {
             fi
         fi
     fi
-}
-
-# =====================================================
-# 执行 NAS 部署
-# =====================================================
-deploy_nas() {
-    configure_nas
-    
-    echo ""
-    log_info "开始 NAS 存储分离部署..."
-    echo ""
-    
-    cd "$DOCKER_DIR"
-    
-    # 先构建镜像（不包含 MinIO，因为 MinIO 在 NAS 上）
-    log_info "构建 Docker 镜像..."
-    DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1 docker compose --env-file "$PROJECT_ROOT/.env" -f docker-compose.nas.yml build
-    
-    # 再启动服务
-    log_info "启动应用服务..."
-    docker compose --env-file "$PROJECT_ROOT/.env" -f docker-compose.nas.yml up -d
-    
-    echo ""
-    log_info "等待服务启动..."
-    sleep 10
-    
-    docker compose --env-file "$PROJECT_ROOT/.env" -f docker-compose.nas.yml ps
-    
-    echo ""
-    print_divider
-    echo ""
-    echo -e "${YELLOW}📌 NAS 端配置提示：${NC}"
-    echo ""
-    echo -e "请在 NAS (${NAS_IP}) 上运行以下命令部署 MinIO："
-    echo ""
-    echo -e "  ${DIM}cd /path/to/law-firm${NC}"
-    echo -e "  ${DIM}docker-compose -f docker/docker-compose.minio-nas.yml up -d${NC}"
-    echo ""
-    
-    show_success_banner
-}
-
-# =====================================================
-# 执行 MinIO 集群部署
-# =====================================================
-deploy_minio_cluster() {
-    configure_minio_cluster
-    
-    echo ""
-    log_info "开始 MinIO 集群部署..."
-    echo ""
-    
-    cd "$DOCKER_DIR"
-    
-    # 先构建镜像
-    DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1 docker compose --env-file "$PROJECT_ROOT/.env" -f docker-compose.minio-cluster.yml build
-    # 再启动服务
-    docker compose --env-file "$PROJECT_ROOT/.env" -f docker-compose.minio-cluster.yml up -d
-    
-    echo ""
-    log_info "等待 MinIO 集群启动..."
-    sleep 15
-    
-    docker compose --env-file "$PROJECT_ROOT/.env" -f docker-compose.minio-cluster.yml ps
-    
-    echo ""
-    log_success "MinIO 集群部署完成！"
-    echo ""
-    echo -e "📦 MinIO 控制台：http://localhost:9001 (默认密码: minioadmin/minioadmin)"
-    echo ""
 }
 
 # =====================================================
@@ -1024,14 +850,8 @@ main() {
         standalone)
             deploy_standalone
             ;;
-        nas)
-            deploy_nas
-            ;;
         swarm)
             configure_swarm
-            ;;
-        minio-cluster)
-            deploy_minio_cluster
             ;;
         *)
             log_error "未知的部署模式: $DEPLOY_MODE"
