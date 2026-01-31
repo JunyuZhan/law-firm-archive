@@ -274,10 +274,23 @@ check_sensitive_info() {
 check_documentation() {
     echo -e "${BOLD}【7/10】检查部署文档...${NC}"
     
-    if [ -f "docs/PRODUCTION_DEPLOYMENT_CHECKLIST.md" ]; then
-        check_pass "部署检查清单文档存在"
+    # 检查前端文档站点中的部署检查清单（已整合）
+    if [ -f "frontend/docs/src/guide/ops/deployment-checklist.md" ]; then
+        check_pass "部署检查清单文档存在（前端文档站点）"
+        check_info "文档位置: frontend/docs/src/guide/ops/deployment-checklist.md"
+    elif [ -f "docs/PRODUCTION_DEPLOYMENT_CHECKLIST.md" ]; then
+        check_pass "部署检查清单文档存在（docs目录）"
     else
         check_warn "未找到部署检查清单文档"
+        check_info "提示: 部署检查清单已整合到前端文档站点"
+    fi
+    
+    # 检查运维手册是否存在
+    if [ -d "frontend/docs/src/guide/ops" ]; then
+        OPS_DOCS=$(find frontend/docs/src/guide/ops -name "*.md" | wc -l | tr -d ' ')
+        if [ "$OPS_DOCS" -gt 0 ]; then
+            check_pass "运维手册存在（${OPS_DOCS} 个文档）"
+        fi
     fi
     
     if [ -f "docs/PRODUCTION_CONFIG_CHECK_REPORT.md" ]; then
@@ -417,16 +430,16 @@ main() {
         echo ""
         echo "建议："
         echo "  1. 查看警告项并修复"
-        echo "  2. 参考文档: docs/PRODUCTION_DEPLOYMENT_CHECKLIST.md"
-        echo "  3. 修复后重新运行检查: ./scripts/pre-deploy-check.sh"
+        echo "  2. 参考文档: frontend/docs/src/guide/ops/deployment-checklist.md"
+        echo "  3. 修复后重新运行检查: ./scripts/deploy/pre-deploy-check.sh"
         exit 0
     else
         echo -e "${RED}✗ 发现 $ERRORS 个错误和 $WARNINGS 个警告，必须修复后才能部署${NC}"
         echo ""
         echo "必须修复的错误："
         echo "  1. 检查上述错误项"
-        echo "  2. 参考文档: docs/PRODUCTION_DEPLOYMENT_CHECKLIST.md"
-        echo "  3. 修复后重新运行检查: ./scripts/pre-deploy-check.sh"
+        echo "  2. 参考文档: frontend/docs/src/guide/ops/deployment-checklist.md"
+        echo "  3. 修复后重新运行检查: ./scripts/deploy/pre-deploy-check.sh"
         exit 1
     fi
 }
