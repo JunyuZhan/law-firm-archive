@@ -4,7 +4,7 @@ import type { DocumentDTO } from '#/api/document/types';
 import type { MatterDTO, MatterSimpleDTO } from '#/api/matter/types';
 import type { OcrResultDTO } from '#/api/ocr';
 
-import { computed, h, nextTick, onMounted, reactive, ref, watch } from 'vue';
+import { computed, h, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
