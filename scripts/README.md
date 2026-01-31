@@ -17,6 +17,8 @@
 |------|------|------|
 | `deploy.sh` | 一键 Docker 部署 | `./deploy.sh` |
 | `deploy-swarm.sh` | Docker Swarm 集群部署 | `./deploy-swarm.sh init` |
+| `deploy-to-server.sh` | 快速部署到服务器 | `./deploy-to-server.sh <IP> [用户]` |
+| `force-update-server.sh` | 强制更新服务器代码 | `./force-update-server.sh [IP] [用户]` |
 
 ### deploy.sh
 
@@ -37,6 +39,33 @@
 # 扩缩容
 ./scripts/deploy-swarm.sh scale backend 4
 ```
+
+### deploy-to-server.sh
+
+快速部署到服务器（使用 rsync 上传代码）。
+
+```bash
+# 部署到服务器
+./scripts/deploy-to-server.sh 192.168.1.100 root
+```
+
+### force-update-server.sh
+
+强制更新服务器代码（使用 git pull，会丢弃本地未提交的更改）。
+
+```bash
+# 方式1: 在服务器上直接运行
+cd /opt/law-firm
+./scripts/force-update-server.sh
+
+# 方式2: 从本地SSH到服务器执行
+./scripts/force-update-server.sh 192.168.1.100 root
+
+# 指定项目路径
+./scripts/force-update-server.sh 192.168.1.100 root /opt/law-firm
+```
+
+**⚠️ 警告**: 此脚本会强制重置到远程分支，**丢弃所有本地未提交的更改**！
 
 ## 版本管理脚本
 
