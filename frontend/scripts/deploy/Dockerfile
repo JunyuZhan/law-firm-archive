@@ -60,7 +60,11 @@ COPY --from=builder /app/apps/web-antd/dist /usr/share/nginx/html
 # 复制文档站点构建产物
 COPY --from=builder /app/docs/.vitepress/dist /usr/share/nginx/html/docs
 
-# 复制 nginx 配置（使用 SSL 版本）
+# 复制 nginx 配置（SSL 版本和纯 HTTP 版本）
+COPY --from=builder /app/scripts/deploy/nginx-ssl.conf /etc/nginx/nginx-ssl.conf
+COPY --from=builder /app/scripts/deploy/nginx.conf /etc/nginx/nginx-http.conf
+
+# 默认使用 SSL 配置（启动脚本会根据证书情况选择）
 COPY --from=builder /app/scripts/deploy/nginx-ssl.conf /etc/nginx/nginx.conf
 
 # 复制启动脚本（自动处理 SSL 证书）

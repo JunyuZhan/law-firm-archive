@@ -29,13 +29,20 @@ else
     echo "       - $KEY_FILE"
     echo ""
     
-    # 注释掉 HTTPS server 块，避免 nginx 启动失败
-    # 使用 sed 将 HTTPS server 块注释掉
-    if grep -q "listen 8443 ssl" "$NGINX_CONF"; then
-        echo "[SSL] 正在禁用 HTTPS 配置..."
-        # 删除整个 HTTPS server 块（从 "# HTTPS 服务器" 到对应的结束大括号）
-        sed -i '/# HTTPS 服务器/,/^  }$/d' "$NGINX_CONF"
-        echo "[SSL] HTTPS 配置已禁用"
+    # 如果没有证书，使用纯 HTTP 配置文件
+    NGINX_HTTP_CONF="/etc/nginx/nginx-http.conf"
+    if [ -f "$NGINX_HTTP_CONF" ]; then
+        echo "[SSL] 使用纯 HTTP 配置文件（无 SSL 证书）..."
+        cp "$NGINX_HTTP_CONF" "$NGINX_CONF"
+    else
+        echo "[SSL] 警告：未找到 nginx-http.conf，尝试修改当前配置..."
+        # 删除 HTTP 到 HTTPS 的重定向
+        sed -i '/return 301 https:\/\//d' "$NGINX_CONF"
+        # 删除 HTTPS server 块
+        if grep -q "listen 8443 ssl" "$NGINX_CONF"; then
+            sed -i '/# HTTPS 服务器/,/^  }$/d' "$NGINX_CONF"
+        fi
+        echo "[SSL] 注意：请确保 HTTP server 块中有完整的服务配置"
     fi
 fi
 

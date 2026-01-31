@@ -1783,7 +1783,7 @@ watch(
   },
 );
 
-// 当选择文件夹时，更新路由参数（避免无限循环和页面刷新）
+// 当选择文件夹时，更新路由参数（使用 history.replaceState 避免重新渲染）
 watch(
   () => selectedFolder.value,
   (newFolder, oldFolder) => {
@@ -1794,17 +1794,45 @@ watch(
     
     if (selectedMatterId.value) {
       const currentFolderId = route.query.folderId as string | undefined;
-      // 只有当路由参数不同时才更新，避免不必要的路由导航导致页面刷新
-      // 注意：router.replace() 更新 query 参数会触发 Vue Router 导航，可能导致组件重新渲染
-      // 这是为了保持 URL 与状态同步（刷新页面后能恢复状态），但会产生视觉上的"刷新"效果
+      // 只有当路由参数不同时才更新
       if (currentFolderId !== newFolder) {
-        router.replace({
-          query: {
-            ...route.query,
-            matterId: String(selectedMatterId.value),
-            folderId: newFolder,
-          },
+        // 使用 history.replaceState 直接更新 URL，不触发 Vue Router 导航
+        // 这样可以保持 URL 与状态同步（刷新页面后能恢复状态），同时避免组件重新渲染
+        const newQuery: Record<string, string> = {};
+        // 保留现有的查询参数
+        Object.keys(route.query).forEach((key) => {
+          const value = route.query[key];
+          if (value !== undefined && value !== null) {
+            let stringValue: string | null | undefined;
+            if (Array.isArray(value)) {
+              stringValue = value[0] ?? null;
+            } else {
+              stringValue = value;
+            }
+            if (stringValue !== undefined && stringValue !== null) {
+              newQuery[key] = String(stringValue);
+            }
+          }
         });
+        // 更新 matterId 和 folderId
+        newQuery.matterId = String(selectedMatterId.value);
+        newQuery.folderId = newFolder;
+        
+        // 构建新的 URL
+        const queryString = new URLSearchParams(newQuery).toString();
+        const newUrl = `${route.path}${queryString ? `?${queryString}` : ''}`;
+        
+        // 使用 history.replaceState 更新 URL，不触发 Vue Router 导航
+        history.replaceState({ ...history.state }, '', newUrl);
+        
+        // 手动更新 route.query，确保刷新页面后能正确恢复状态
+        // 注意：这不会触发 Vue Router 的导航钩子，因此不会导致组件重新渲染
+        Object.keys(route.query).forEach((key) => {
+          if (!(key in newQuery)) {
+            delete (route.query as Record<string, any>)[key];
+          }
+        });
+        Object.assign(route.query, newQuery);
       }
     }
   },
