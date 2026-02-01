@@ -16,6 +16,12 @@ backend/mvnw.cmd
 .kiro/
 .claude
 
+# Eclipse
+.classpath
+.project
+.settings/
+.factorypath
+
 # OS
 .DS_Store
 Thumbs.db
