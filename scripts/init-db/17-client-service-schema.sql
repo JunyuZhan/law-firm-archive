@@ -322,3 +322,99 @@ ALTER TABLE ONLY public.openapi_verification_code
     DROP CONSTRAINT IF EXISTS openapi_verification_code_verification_code_key,
     ADD CONSTRAINT uk_openapi_verification_code_verification_code UNIQUE (verification_code);
 
+-- =====================================================
+-- 6. 客户访问日志表 - 记录客户服务系统回调的客户访问行为
+-- =====================================================
+CREATE TABLE IF NOT EXISTS public.client_access_log (
+    id BIGSERIAL,
+    
+    -- 关联信息
+    matter_id BIGINT NOT NULL,                      -- 项目ID
+    client_id BIGINT NOT NULL,                      -- 客户ID
+    
+    -- 访问信息
+    access_time TIMESTAMP NOT NULL,                 -- 访问时间（客户服务系统的时间）
+    ip_address VARCHAR(50),                         -- IP地址
+    user_agent VARCHAR(500),                        -- 用户代理
+    event_type VARCHAR(20) NOT NULL DEFAULT 'ACCESS', -- 事件类型（固定值：ACCESS）
+    
+    -- 审计字段
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by BIGINT,
+    updated_by BIGINT,
+    deleted BOOLEAN DEFAULT FALSE,
+    version INTEGER DEFAULT 0                        -- 乐观锁版本号
+);
+
+-- 索引
+CREATE INDEX IF NOT EXISTS idx_client_access_log_matter ON public.client_access_log(matter_id);
+CREATE INDEX IF NOT EXISTS idx_client_access_log_client ON public.client_access_log(client_id);
+CREATE INDEX IF NOT EXISTS idx_client_access_log_time ON public.client_access_log(access_time DESC);
+CREATE INDEX IF NOT EXISTS idx_client_access_log_event ON public.client_access_log(event_type);
+
+-- 注释
+COMMENT ON TABLE public.client_access_log IS '客户访问日志表 - 记录客户服务系统回调的客户访问行为';
+COMMENT ON COLUMN public.client_access_log.matter_id IS '项目ID';
+COMMENT ON COLUMN public.client_access_log.client_id IS '客户ID';
+COMMENT ON COLUMN public.client_access_log.access_time IS '访问时间（客户服务系统的时间）';
+COMMENT ON COLUMN public.client_access_log.ip_address IS 'IP地址';
+COMMENT ON COLUMN public.client_access_log.user_agent IS '用户代理';
+COMMENT ON COLUMN public.client_access_log.event_type IS '事件类型（固定值：ACCESS）';
+
+-- =====================================================
+-- 7. 客户下载日志表 - 记录客户服务系统回调的客户下载行为
+-- =====================================================
+CREATE TABLE IF NOT EXISTS public.client_download_log (
+    id BIGSERIAL,
+    
+    -- 关联信息
+    matter_id BIGINT NOT NULL,                      -- 项目ID
+    client_id BIGINT NOT NULL,                      -- 客户ID
+    
+    -- 文件信息
+    file_id VARCHAR(255) NOT NULL,                  -- 客户服务系统的文件ID
+    file_name VARCHAR(255),                         -- 文件名
+    
+    -- 下载信息
+    download_time TIMESTAMP NOT NULL,               -- 下载时间（客户服务系统的时间）
+    ip_address VARCHAR(50),                         -- IP地址
+    user_agent VARCHAR(500),                        -- 用户代理
+    event_type VARCHAR(20) NOT NULL DEFAULT 'DOWNLOAD', -- 事件类型（固定值：DOWNLOAD）
+    
+    -- 审计字段
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by BIGINT,
+    updated_by BIGINT,
+    deleted BOOLEAN DEFAULT FALSE,
+    version INTEGER DEFAULT 0                        -- 乐观锁版本号
+);
+
+-- 索引
+CREATE INDEX IF NOT EXISTS idx_client_download_log_matter ON public.client_download_log(matter_id);
+CREATE INDEX IF NOT EXISTS idx_client_download_log_client ON public.client_download_log(client_id);
+CREATE INDEX IF NOT EXISTS idx_client_download_log_file ON public.client_download_log(file_id);
+CREATE INDEX IF NOT EXISTS idx_client_download_log_time ON public.client_download_log(download_time DESC);
+CREATE INDEX IF NOT EXISTS idx_client_download_log_event ON public.client_download_log(event_type);
+
+-- 注释
+COMMENT ON TABLE public.client_download_log IS '客户下载日志表 - 记录客户服务系统回调的客户下载行为';
+COMMENT ON COLUMN public.client_download_log.matter_id IS '项目ID';
+COMMENT ON COLUMN public.client_download_log.client_id IS '客户ID';
+COMMENT ON COLUMN public.client_download_log.file_id IS '客户服务系统的文件ID';
+COMMENT ON COLUMN public.client_download_log.file_name IS '文件名';
+COMMENT ON COLUMN public.client_download_log.download_time IS '下载时间（客户服务系统的时间）';
+COMMENT ON COLUMN public.client_download_log.ip_address IS 'IP地址';
+COMMENT ON COLUMN public.client_download_log.user_agent IS '用户代理';
+COMMENT ON COLUMN public.client_download_log.event_type IS '事件类型（固定值：DOWNLOAD）';
+
+-- =====================================================
+-- 添加主键约束
+-- =====================================================
+ALTER TABLE ONLY public.client_access_log
+    ADD CONSTRAINT pk_client_access_log PRIMARY KEY (id);
+
+ALTER TABLE ONLY public.client_download_log
+    ADD CONSTRAINT pk_client_download_log PRIMARY KEY (id);
+

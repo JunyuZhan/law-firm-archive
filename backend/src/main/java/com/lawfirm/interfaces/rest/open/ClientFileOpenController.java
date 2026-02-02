@@ -1,7 +1,11 @@
 package com.lawfirm.interfaces.rest.open;
 
+import com.lawfirm.application.clientservice.dto.AccessLogCallbackRequest;
 import com.lawfirm.application.clientservice.dto.ClientFileDTO;
 import com.lawfirm.application.clientservice.dto.ClientFileReceiveRequest;
+import com.lawfirm.application.clientservice.dto.DownloadLogCallbackRequest;
+import com.lawfirm.application.clientservice.service.ClientAccessLogService;
+import com.lawfirm.application.clientservice.service.ClientDownloadLogService;
 import com.lawfirm.application.clientservice.service.ClientFileService;
 import com.lawfirm.common.result.Result;
 import io.swagger.v3.oas.annotations.Operation;
@@ -25,6 +29,12 @@ public class ClientFileOpenController {
 
   /** 客户文件服务. */
   private final ClientFileService clientFileService;
+
+  /** 客户访问日志服务. */
+  private final ClientAccessLogService clientAccessLogService;
+
+  /** 客户下载日志服务. */
+  private final ClientDownloadLogService clientDownloadLogService;
 
   /**
    * 接收客户上传的文件
@@ -52,5 +62,47 @@ public class ClientFileOpenController {
     log.info("收到文件删除回调: {}", externalFileId);
     // 这里可以更新本地记录状态
     return Result.success();
+  }
+
+  /**
+   * 接收访问日志回调
+   *
+   * @param request 访问日志回调请求
+   * @return 接收结果
+   */
+  @Operation(summary = "接收访问日志回调", description = "客户服务系统回调此接口通知客户访问行为")
+  @PostMapping("/access-log")
+  public Result<Void> receiveAccessLog(@Valid @RequestBody final AccessLogCallbackRequest request) {
+    log.info("收到访问日志回调: matterId={}, clientId={}, accessTime={}", 
+        request.getMatterId(), request.getClientId(), request.getAccessTime());
+    try {
+      clientAccessLogService.saveAccessLog(request);
+      return Result.success();
+    } catch (Exception e) {
+      log.error("处理访问日志回调失败: matterId={}", request.getMatterId(), e);
+      return Result.error("处理访问日志回调失败: " + e.getMessage());
+    }
+  }
+
+  /**
+   * 接收下载日志回调
+   *
+   * @param request 下载日志回调请求
+   * @return 接收结果
+   */
+  @Operation(summary = "接收下载日志回调", description = "客户服务系统回调此接口通知客户下载行为")
+  @PostMapping("/download-log")
+  public Result<Void> receiveDownloadLog(@Valid @RequestBody final DownloadLogCallbackRequest request) {
+    log.info("收到下载日志回调: matterId={}, clientId={}, fileId={}, fileName={}, downloadTime={}", 
+        request.getMatterId(), request.getClientId(), request.getFileId(), 
+        request.getFileName(), request.getDownloadTime());
+    try {
+      clientDownloadLogService.saveDownloadLog(request);
+      return Result.success();
+    } catch (Exception e) {
+      log.error("处理下载日志回调失败: matterId={}, fileId={}", 
+          request.getMatterId(), request.getFileId(), e);
+      return Result.error("处理下载日志回调失败: " + e.getMessage());
+    }
   }
 }
