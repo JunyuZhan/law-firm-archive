@@ -1,8 +1,12 @@
 package com.lawfirm.interfaces.rest.matter;
 
+import com.lawfirm.application.clientservice.dto.ClientAccessLogDTO;
+import com.lawfirm.application.clientservice.dto.ClientDownloadLogDTO;
 import com.lawfirm.application.clientservice.dto.PushConfigDTO;
 import com.lawfirm.application.clientservice.dto.PushRecordDTO;
 import com.lawfirm.application.clientservice.dto.PushRequest;
+import com.lawfirm.application.clientservice.service.ClientAccessLogService;
+import com.lawfirm.application.clientservice.service.ClientDownloadLogService;
 import com.lawfirm.application.clientservice.service.DataPushService;
 import com.lawfirm.common.annotation.OperationLog;
 import com.lawfirm.common.annotation.RequirePermission;
@@ -13,9 +17,11 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -34,6 +40,12 @@ public class MatterClientServiceController {
 
   /** 数据推送服务 */
   private final DataPushService dataPushService;
+
+  /** 客户访问日志服务 */
+  private final ClientAccessLogService clientAccessLogService;
+
+  /** 客户下载日志服务 */
+  private final ClientDownloadLogService clientDownloadLogService;
 
   /**
    * 推送项目数据
@@ -163,6 +175,64 @@ public class MatterClientServiceController {
             new ScopeOption("DOCUMENT_LIST", "文书目录", "文档名称列表（仅标题，不含文件）"),
             new ScopeOption("DOCUMENT_FILES", "文书文件", "推送选定的文档文件，客户可下载"),
             new ScopeOption("FEE_INFO", "费用信息", "合同金额、已收款、待收款")));
+  }
+
+  /**
+   * 获取客户访问日志
+   *
+   * @param matterId 项目ID
+   * @param clientId 客户ID（可选）
+   * @param startTime 开始时间（可选）
+   * @param endTime 结束时间（可选）
+   * @param pageNum 页码
+   * @param pageSize 每页数量
+   * @return 分页结果
+   */
+  @Operation(summary = "获取客户访问日志", description = "查询客户访问项目链接的日志记录")
+  @GetMapping("/access-logs")
+  @RequirePermission("matter:clientService:list")
+  public Result<PageResult<ClientAccessLogDTO>> getAccessLogs(
+      @Parameter(description = "项目ID", required = true) @RequestParam final Long matterId,
+      @Parameter(description = "客户ID") @RequestParam(required = false) final Long clientId,
+      @Parameter(description = "开始时间") @RequestParam(required = false)
+          @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") final LocalDateTime startTime,
+      @Parameter(description = "结束时间") @RequestParam(required = false)
+          @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") final LocalDateTime endTime,
+      @Parameter(description = "页码") @RequestParam(defaultValue = "1") final int pageNum,
+      @Parameter(description = "每页数量") @RequestParam(defaultValue = "20") final int pageSize) {
+    return Result.success(
+        clientAccessLogService.getAccessLogs(
+            matterId, clientId, startTime, endTime, pageNum, pageSize));
+  }
+
+  /**
+   * 获取客户下载日志
+   *
+   * @param matterId 项目ID
+   * @param clientId 客户ID（可选）
+   * @param fileId 文件ID（可选）
+   * @param startTime 开始时间（可选）
+   * @param endTime 结束时间（可选）
+   * @param pageNum 页码
+   * @param pageSize 每页数量
+   * @return 分页结果
+   */
+  @Operation(summary = "获取客户下载日志", description = "查询客户下载文件的日志记录")
+  @GetMapping("/download-logs")
+  @RequirePermission("matter:clientService:list")
+  public Result<PageResult<ClientDownloadLogDTO>> getDownloadLogs(
+      @Parameter(description = "项目ID", required = true) @RequestParam final Long matterId,
+      @Parameter(description = "客户ID") @RequestParam(required = false) final Long clientId,
+      @Parameter(description = "文件ID") @RequestParam(required = false) final String fileId,
+      @Parameter(description = "开始时间") @RequestParam(required = false)
+          @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") final LocalDateTime startTime,
+      @Parameter(description = "结束时间") @RequestParam(required = false)
+          @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") final LocalDateTime endTime,
+      @Parameter(description = "页码") @RequestParam(defaultValue = "1") final int pageNum,
+      @Parameter(description = "每页数量") @RequestParam(defaultValue = "20") final int pageSize) {
+    return Result.success(
+        clientDownloadLogService.getDownloadLogs(
+            matterId, clientId, fileId, startTime, endTime, pageNum, pageSize));
   }
 
   /**

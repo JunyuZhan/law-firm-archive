@@ -4,6 +4,8 @@
  * 用于项目详情页的"客户服务"Tab，管理数据推送到客户服务系统
  */
 import type {
+  ClientAccessLogDTO,
+  ClientDownloadLogDTO,
   ClientFileDTO,
   ClientFileSyncRequest,
   PushRecordDTO,
@@ -48,6 +50,8 @@ import { getDocumentsByMatter } from '#/api/document';
 import { getMatterDossierItems } from '#/api/document/dossier';
 import {
   countPendingClientFiles,
+  getClientAccessLogs,
+  getClientDownloadLogs,
   getPendingClientFiles,
   getPushConfig,
   getPushRecords,
@@ -137,6 +141,19 @@ const loading = ref(false);
 const clientFiles = ref<ClientFileDTO[]>([]);
 const clientFilesLoading = ref(false);
 const pendingFileCount = ref(0);
+
+// ========== 客户行为日志 ==========
+const accessLogs = ref<ClientAccessLogDTO[]>([]);
+const accessLogsLoading = ref(false);
+const accessLogsTotal = ref(0);
+const accessLogsPage = ref(1);
+const accessLogsPageSize = ref(10);
+
+const downloadLogs = ref<ClientDownloadLogDTO[]>([]);
+const downloadLogsLoading = ref(false);
+const downloadLogsTotal = ref(0);
+const downloadLogsPage = ref(1);
+const downloadLogsPageSize = ref(10);
 
 // 同步弹窗
 const syncModalVisible = ref(false);
@@ -539,8 +556,54 @@ onMounted(() => {
   if (props.clientId && props.matterId) {
     loadData();
     loadClientFiles();
+    loadAccessLogs();
+    loadDownloadLogs();
   }
 });
+
+// ========== 加载客户行为日志 ==========
+
+// 加载访问日志
+async function loadAccessLogs() {
+  if (!props.matterId) return;
+
+  accessLogsLoading.value = true;
+  try {
+    const res = await getClientAccessLogs({
+      matterId: props.matterId,
+      clientId: props.clientId,
+      pageNum: accessLogsPage.value,
+      pageSize: accessLogsPageSize.value,
+    });
+    accessLogs.value = res.list || [];
+    accessLogsTotal.value = res.total || 0;
+  } catch (error) {
+    console.error('加载访问日志失败', error);
+  } finally {
+    accessLogsLoading.value = false;
+  }
+}
+
+// 加载下载日志
+async function loadDownloadLogs() {
+  if (!props.matterId) return;
+
+  downloadLogsLoading.value = true;
+  try {
+    const res = await getClientDownloadLogs({
+      matterId: props.matterId,
+      clientId: props.clientId,
+      pageNum: downloadLogsPage.value,
+      pageSize: downloadLogsPageSize.value,
+    });
+    downloadLogs.value = res.list || [];
+    downloadLogsTotal.value = res.total || 0;
+  } catch (error) {
+    console.error('加载下载日志失败', error);
+  } finally {
+    downloadLogsLoading.value = false;
+  }
+}
 
 // 监听 props 变化
 watch(
@@ -549,6 +612,8 @@ watch(
     if (props.clientId && props.matterId) {
       loadData();
       loadClientFiles();
+      loadAccessLogs();
+      loadDownloadLogs();
     }
   },
 );
@@ -897,6 +962,152 @@ watch(
                 :image="Empty.PRESENTED_IMAGE_SIMPLE"
               />
             </Card>
+
+            <!-- 客户访问日志 - 精简显示 -->
+            <Card size="small" style="margin-top: 12px">
+              <template #title>
+                <Space>
+                  <span style="font-size: 13px">📊 访问记录</span>
+                  <Badge
+                    v-if="accessLogsTotal > 0"
+                    :count="accessLogsTotal"
+                    :overflow-count="99"
+                    :number-style="{ fontSize: '11px' }"
+                  />
+                </Space>
+              </template>
+              <template #extra>
+                <Button type="link" size="small" @click="loadAccessLogs">刷新</Button>
+              </template>
+
+              <Spin :spinning="accessLogsLoading">
+                <div
+                  v-if="accessLogs.length > 0"
+                  style="max-height: 150px; overflow-y: auto"
+                >
+                  <div
+                    v-for="log in accessLogs.slice(0, 5)"
+                    :key="log.id"
+                    class="log-item"
+                  >
+                    <div
+                      style="
+                        display: flex;
+                        align-items: center;
+                        justify-content: space-between;
+                      "
+                    >
+                      <span style="font-size: 12px; color: #666">
+                        {{ formatTime(log.accessTime) }}
+                      </span>
+                      <Tag color="blue" size="small">访问</Tag>
+                    </div>
+                    <div
+                      v-if="log.ipAddress"
+                      style="margin-top: 4px; font-size: 11px; color: #999"
+                    >
+                      IP: {{ log.ipAddress }}
+                    </div>
+                  </div>
+                  <div
+                    v-if="accessLogsTotal > 5"
+                    style="
+                      margin-top: 8px;
+                      padding-top: 8px;
+                      border-top: 1px solid #f0f0f0;
+                      text-align: center;
+                      font-size: 12px;
+                      color: #999;
+                    "
+                  >
+                    共 {{ accessLogsTotal }} 条记录
+                  </div>
+                </div>
+
+                <Empty
+                  v-else
+                  description="暂无访问记录"
+                  :image="Empty.PRESENTED_IMAGE_SIMPLE"
+                  :image-style="{ height: '40px' }"
+                />
+              </Spin>
+            </Card>
+
+            <!-- 客户下载日志 - 精简显示 -->
+            <Card size="small" style="margin-top: 12px">
+              <template #title>
+                <Space>
+                  <span style="font-size: 13px">📥 下载记录</span>
+                  <Badge
+                    v-if="downloadLogsTotal > 0"
+                    :count="downloadLogsTotal"
+                    :overflow-count="99"
+                    :number-style="{ fontSize: '11px' }"
+                  />
+                </Space>
+              </template>
+              <template #extra>
+                <Button type="link" size="small" @click="loadDownloadLogs">刷新</Button>
+              </template>
+
+              <Spin :spinning="downloadLogsLoading">
+                <div
+                  v-if="downloadLogs.length > 0"
+                  style="max-height: 150px; overflow-y: auto"
+                >
+                  <div
+                    v-for="log in downloadLogs.slice(0, 5)"
+                    :key="log.id"
+                    class="log-item"
+                  >
+                    <div
+                      style="
+                        display: flex;
+                        align-items: center;
+                        justify-content: space-between;
+                      "
+                    >
+                      <span style="font-size: 12px; color: #666">
+                        {{ formatTime(log.downloadTime) }}
+                      </span>
+                      <Tag color="green" size="small">下载</Tag>
+                    </div>
+                    <div
+                      style="margin-top: 4px; font-size: 11px; color: #666"
+                      :title="log.fileName"
+                    >
+                      {{ log.fileName || log.fileId }}
+                    </div>
+                    <div
+                      v-if="log.ipAddress"
+                      style="margin-top: 2px; font-size: 11px; color: #999"
+                    >
+                      IP: {{ log.ipAddress }}
+                    </div>
+                  </div>
+                  <div
+                    v-if="downloadLogsTotal > 5"
+                    style="
+                      margin-top: 8px;
+                      padding-top: 8px;
+                      border-top: 1px solid #f0f0f0;
+                      text-align: center;
+                      font-size: 12px;
+                      color: #999;
+                    "
+                  >
+                    共 {{ downloadLogsTotal }} 条记录
+                  </div>
+                </div>
+
+                <Empty
+                  v-else
+                  description="暂无下载记录"
+                  :image="Empty.PRESENTED_IMAGE_SIMPLE"
+                  :image-style="{ height: '40px' }"
+                />
+              </Spin>
+            </Card>
           </Col>
         </Row>
       </Spin>
@@ -1230,5 +1441,15 @@ watch(
 
 :deep(.doc-item .ant-checkbox-wrapper) {
   width: 100%;
+}
+
+/* 日志项样式 */
+.log-item {
+  padding: 8px 0;
+  border-bottom: 1px solid #f5f5f5;
+}
+
+.log-item:last-child {
+  border-bottom: none;
 }
 </style>

@@ -249,3 +249,66 @@ export function batchSyncClientFiles(requests: ClientFileSyncRequest[]) {
 export function ignoreClientFile(fileId: number) {
   return requestClient.post(`/matter/client-files/${fileId}/ignore`);
 }
+
+// ===================== 客户行为日志 API =====================
+
+/** 客户访问日志 */
+export interface ClientAccessLogDTO {
+  id: number;
+  matterId: number;
+  clientId: number;
+  accessTime: string;
+  ipAddress?: string;
+  userAgent?: string;
+  eventType: string;
+  createdAt: string;
+}
+
+/** 客户下载日志 */
+export interface ClientDownloadLogDTO {
+  id: number;
+  matterId: number;
+  clientId: number;
+  fileId: string;
+  fileName?: string;
+  downloadTime: string;
+  ipAddress?: string;
+  userAgent?: string;
+  eventType: string;
+  createdAt: string;
+}
+
+/**
+ * 获取客户访问日志列表
+ */
+export function getClientAccessLogs(params: {
+  matterId: number;
+  clientId?: number;
+  startTime?: string;
+  endTime?: string;
+  pageNum?: number;
+  pageSize?: number;
+}) {
+  return requestClient.get<{ list: ClientAccessLogDTO[]; total: number }>(
+    '/matter/client-service/access-logs',
+    { params },
+  );
+}
+
+/**
+ * 获取客户下载日志列表
+ */
+export function getClientDownloadLogs(params: {
+  matterId: number;
+  clientId?: number;
+  fileId?: string;
+  startTime?: string;
+  endTime?: string;
+  pageNum?: number;
+  pageSize?: number;
+}) {
+  return requestClient.get<{ list: ClientDownloadLogDTO[]; total: number }>(
+    '/matter/client-service/download-logs',
+    { params },
+  );
+}
