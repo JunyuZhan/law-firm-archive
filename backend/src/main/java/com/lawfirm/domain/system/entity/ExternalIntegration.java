@@ -77,6 +77,9 @@ public class ExternalIntegration extends BaseEntity {
   /** 类型：通知服务 */
   public static final String TYPE_NOTIFICATION = "NOTIFICATION";
 
+  /** 类型：客户服务系统 */
+  public static final String TYPE_CLIENT_SERVICE = "CLIENT_SERVICE";
+
   /** 类型：企业信息 */
   public static final String TYPE_ENTERPRISE_INFO = "ENTERPRISE_INFO";
 

@@ -317,6 +317,12 @@ public class ExternalIntegrationAppService {
         result =
             testResult.success ? ExternalIntegration.TEST_SUCCESS : ExternalIntegration.TEST_FAILED;
         message = testResult.message;
+      } else if (ExternalIntegration.TYPE_CLIENT_SERVICE.equals(integration.getIntegrationType())) {
+        // 客户服务系统：测试 /api/health 端点
+        TestResult testResult = testClientServiceHealth(integration);
+        result =
+            testResult.success ? ExternalIntegration.TEST_SUCCESS : ExternalIntegration.TEST_FAILED;
+        message = testResult.message;
       } else {
         // 其他集成：简单的连通性测试
         String apiUrl = integration.getApiUrl().trim();
@@ -401,6 +407,48 @@ public class ExternalIntegrationAppService {
       }
     } catch (java.net.SocketTimeoutException e) {
       return new TestResult(false, "连接超时，请检查网络");
+    } catch (Exception e) {
+      return new TestResult(false, "连接异常: " + e.getMessage());
+    }
+  }
+
+  /**
+   * 测试客户服务系统健康状态 通过调用 /api/health 接口验证服务可用性
+   *
+   * @param integration 集成配置
+   * @return 测试结果
+   */
+  private TestResult testClientServiceHealth(final ExternalIntegration integration) {
+    String apiUrl = integration.getApiUrl().trim();
+    // 移除末尾的斜杠，避免双斜杠
+    if (apiUrl.endsWith("/")) {
+      apiUrl = apiUrl.substring(0, apiUrl.length() - 1);
+    }
+    // 确保路径以 /api 结尾，然后拼接 /health
+    String healthUrl = apiUrl.endsWith("/api") ? apiUrl + "/health" : apiUrl + "/api/health";
+
+    try {
+      // 调用 health 接口验证服务可用性
+      URL url = URI.create(healthUrl).toURL();
+      HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+      connection.setConnectTimeout(connectTimeoutMs);
+      connection.setReadTimeout(readTimeoutMs);
+      connection.setRequestMethod("HEAD");
+
+      int responseCode = connection.getResponseCode();
+      connection.disconnect();
+
+      if (responseCode == HTTP_STATUS_OK) {
+        return new TestResult(true, "客户服务系统连接成功，响应码: " + responseCode);
+      } else {
+        return new TestResult(false, "客户服务系统连接失败，响应码: " + responseCode);
+      }
+    } catch (java.net.SocketTimeoutException e) {
+      return new TestResult(false, "连接超时，请检查网络和API地址配置");
+    } catch (java.net.UnknownHostException e) {
+      return new TestResult(false, "无法解析主机名，请检查API地址配置");
+    } catch (java.net.ConnectException e) {
+      return new TestResult(false, "无法连接到客户服务系统，请检查服务是否运行");
     } catch (Exception e) {
       return new TestResult(false, "连接异常: " + e.getMessage());
     }
