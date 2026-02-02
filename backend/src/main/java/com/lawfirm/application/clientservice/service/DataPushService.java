@@ -8,6 +8,7 @@ import com.lawfirm.application.clientservice.dto.PushRecordDTO;
 import com.lawfirm.application.clientservice.dto.PushRequest;
 import com.lawfirm.common.exception.BusinessException;
 import com.lawfirm.common.result.PageResult;
+import com.lawfirm.common.security.AesEncryptionService;
 import com.lawfirm.domain.client.entity.Client;
 import com.lawfirm.domain.matter.entity.Matter;
 import com.lawfirm.domain.clientservice.entity.PushConfig;
@@ -77,6 +78,9 @@ public class DataPushService {
 
   /** JSON对象映射器 */
   private final ObjectMapper objectMapper;
+
+  /** 加密服务 */
+  private final AesEncryptionService encryptionService;
 
   /** 客户服务系统的集成类型标识 */
   private static final String CLIENT_SERVICE_TYPE = "CLIENT_SERVICE";
@@ -339,11 +343,22 @@ public class DataPushService {
       final PushRequest request) {
     RestTemplate restTemplate = new RestTemplate();
 
+    // 解密API密钥（API密钥在数据库中加密存储）
+    String apiKey = integration.getApiKey();
+    if (apiKey != null && !apiKey.isEmpty()) {
+      try {
+        apiKey = encryptionService.decrypt(apiKey);
+      } catch (Exception e) {
+        log.warn("API密钥解密失败，尝试使用原值（可能是未加密的历史数据）: {}", e.getMessage());
+        // 如果解密失败，可能是未加密的旧数据，继续使用原值
+      }
+    }
+
     // 构建请求头
     HttpHeaders headers = new HttpHeaders();
     headers.setContentType(MediaType.APPLICATION_JSON);
-    if (integration.getApiKey() != null) {
-      headers.set("Authorization", "Bearer " + integration.getApiKey());
+    if (apiKey != null && !apiKey.isEmpty()) {
+      headers.set("Authorization", "Bearer " + apiKey);
     }
 
     // 构建请求体
@@ -357,11 +372,18 @@ public class DataPushService {
 
     HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
 
-    // 构建API URL
-    String baseUrl = integration.getApiUrl().endsWith("/") 
-        ? integration.getApiUrl().substring(0, integration.getApiUrl().length() - 1)
-        : integration.getApiUrl();
-    String apiUrl = baseUrl + "/api/matter/receive";
+    // 构建API URL（正确处理URL拼接，避免双/api）
+    String baseUrl = integration.getApiUrl();
+    if (baseUrl == null || baseUrl.isEmpty()) {
+      throw new BusinessException("客户服务系统API地址未配置");
+    }
+    // 移除末尾的斜杠，避免双斜杠
+    if (baseUrl.endsWith("/")) {
+      baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
+    }
+    // 如果baseUrl已经以/api结尾，直接拼接/matter/receive；否则拼接/api/matter/receive
+    String apiPath = baseUrl.endsWith("/api") ? "/matter/receive" : "/api/matter/receive";
+    String apiUrl = baseUrl + apiPath;
 
     log.debug("调用客户服务系统API: url={}, clientId={}, matterId={}", 
         apiUrl, client.getId(), matterData.getMatterId());
@@ -407,9 +429,22 @@ public class DataPushService {
 
     } catch (BusinessException e) {
       throw e;
+    } catch (org.springframework.web.client.HttpClientErrorException e) {
+      log.error("调用客户服务系统API失败: url={}, status={}, body={}", 
+          apiUrl, e.getStatusCode(), e.getResponseBodyAsString());
+      if (e.getStatusCode().value() == 401) {
+        throw new BusinessException("客户服务系统认证失败，请检查API密钥配置");
+      } else if (e.getStatusCode().value() == 404) {
+        throw new BusinessException("客户服务系统接口不存在，请检查API地址配置: " + apiUrl);
+      } else {
+        throw new BusinessException("调用客户服务系统失败: " + e.getStatusCode() + " - " + e.getMessage());
+      }
+    } catch (org.springframework.web.client.ResourceAccessException e) {
+      log.error("无法连接到客户服务系统: url={}", apiUrl, e);
+      throw new BusinessException("无法连接到客户服务系统，请检查API地址配置和网络连接: " + apiUrl);
     } catch (Exception e) {
-      log.error("调用客户服务系统API失败: url={}, error={}", apiUrl, e.getMessage(), e);
-      throw new BusinessException("调用客户服务系统API失败: " + e.getMessage(), e);
+      log.error("调用客户服务系统API异常: url={}", apiUrl, e);
+      throw new BusinessException("调用客户服务系统异常: " + e.getMessage(), e);
     }
   }
 
