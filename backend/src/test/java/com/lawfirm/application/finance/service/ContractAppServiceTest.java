@@ -473,7 +473,6 @@ class ContractAppServiceTest {
         approver.setStatus("ACTIVE");
 
         when(contractRepository.getByIdOrThrow(TEST_CONTRACT_ID, "合同不存在")).thenReturn(contract);
-        when(contractNumberGenerator.generate(any(), any(), any())).thenReturn("CT2026001");
         when(approverService.findContractApprover(any())).thenReturn(2L);
         when(userRepository.getById(2L)).thenReturn(approver);
         when(contractRepository.updateById(any(Contract.class))).thenReturn(true);
@@ -483,7 +482,9 @@ class ContractAppServiceTest {
 
         // Then
         assertThat(contract.getStatus()).isEqualTo(ContractStatus.PENDING);
-        assertThat(contract.getContractNo()).isEqualTo("CT2026001");
+        // 注意：合同编号在审批通过时生成，而不是提交审批时
+        // 这样可以避免审批不通过的合同占用编号
+        assertThat(contract.getContractNo()).isNull();
         verify(approvalService)
             .createApproval(any(), anyLong(), any(), any(), anyLong(), any(), any(), any());
       }
