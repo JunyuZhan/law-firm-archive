@@ -67,6 +67,7 @@ __pycache__/
 LOG_PATH_IS_UNDEFINED/
 *.pyc
 backend/logs/
+# Cursor IDE - 忽略整个目录，但保留规则文件
 .cursor/
 !.cursor/rules/
 backend/backups/
