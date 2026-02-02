@@ -408,20 +408,34 @@ public class DataPushService {
         throw new BusinessException("客户服务系统返回空响应体");
       }
 
-      // 解析Result包装格式的响应
-      @SuppressWarnings("unchecked")
-      Map<String, Object> data = (Map<String, Object>) body.get("data");
-      if (data == null) {
-        log.error("客户服务系统返回数据格式错误: 缺少data字段, body={}", body);
-        throw new BusinessException("客户服务系统返回数据格式错误：缺少data字段");
+      // 支持两种响应格式：
+      // 1. 扁平格式：{id: "...", accessUrl: "..."}
+      // 2. 标准格式：{success: true, code: "200", data: {id: "...", accessUrl: "..."}}
+      //    或 {code: 200, data: {id: "...", accessUrl: "..."}}
+      
+      String id = null;
+      String accessUrl = null;
+      
+      // 尝试从扁平格式获取（推荐格式）
+      if (body.containsKey("id") && body.get("id") != null) {
+        id = String.valueOf(body.get("id"));
+        accessUrl = body.get("accessUrl") != null ? String.valueOf(body.get("accessUrl")) : null;
+        log.debug("解析扁平格式响应: id={}, accessUrl={}", id, accessUrl);
+      } 
+      // 尝试从标准格式获取（data对象中）
+      else if (body.containsKey("data") && body.get("data") instanceof Map) {
+        @SuppressWarnings("unchecked")
+        Map<String, Object> data = (Map<String, Object>) body.get("data");
+        if (data.containsKey("id") && data.get("id") != null) {
+          id = String.valueOf(data.get("id"));
+          accessUrl = data.get("accessUrl") != null ? String.valueOf(data.get("accessUrl")) : null;
+          log.debug("解析标准格式响应: id={}, accessUrl={}", id, accessUrl);
+        }
       }
-
-      String id = (String) data.get("id");
-      String accessUrl = (String) data.get("accessUrl");
-
-      if (id == null || accessUrl == null) {
-        log.error("客户服务系统返回数据不完整: id={}, accessUrl={}", id, accessUrl);
-        throw new BusinessException("客户服务系统返回数据不完整");
+      
+      if (id == null) {
+        log.error("客户服务系统返回格式错误：缺少id字段, body={}", body);
+        throw new BusinessException("客户服务系统返回格式错误：缺少id字段");
       }
 
       log.info("客户服务系统调用成功: id={}, accessUrl={}", id, accessUrl);
