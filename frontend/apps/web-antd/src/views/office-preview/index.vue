@@ -248,9 +248,6 @@ function initEditorFromConfig(cfg: OnlyOfficeConfig) {
   // 后端返回的是 Docker 内部地址（如 backend:8080），OnlyOffice 容器可以直接访问
   // 前端不应该转换这个地址！
   if (cfg.document?.url) {
-    // eslint-disable-next-line no-unused-vars
-    const _originalUrl = cfg.document.url as string;
-    // 调试信息已移除
     // 不做任何转换，直接使用后端返回的地址
   }
 

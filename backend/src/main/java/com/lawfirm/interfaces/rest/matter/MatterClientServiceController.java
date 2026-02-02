@@ -242,5 +242,5 @@ public class MatterClientServiceController {
    * @param label 选项标签
    * @param description 选项描述
    */
-  public record ScopeOption(String value, String label, String description) {}
+  public record ScopeOption(String value, String label, String description) { }
 }

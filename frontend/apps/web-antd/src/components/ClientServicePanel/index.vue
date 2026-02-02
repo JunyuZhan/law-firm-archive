@@ -243,8 +243,13 @@ async function loadData() {
       connectionMessage.value = configRes.connectionMessage || '';
     }
   } catch (error: unknown) {
-    const err = error as { message?: string };
-    message.error(err.message || '加载数据失败');
+    const err = error as { code?: string; message?: string };
+    // 检查是否是权限错误
+    if (err.code === '403' || err.message?.includes('权限不足')) {
+      message.error('权限不足：您没有查看客户服务信息的权限');
+    } else {
+      message.error(err.message || '加载数据失败');
+    }
   } finally {
     loading.value = false;
   }

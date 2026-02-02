@@ -92,7 +92,8 @@ public class ClientDownloadLogService {
             final int pageSize) {
 
         LambdaQueryWrapper<ClientDownloadLog> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(ClientDownloadLog::getMatterId, matterId);
+        queryWrapper.eq(ClientDownloadLog::getMatterId, matterId)
+                .eq(ClientDownloadLog::getDeleted, false);
 
         if (clientId != null) {
             queryWrapper.eq(ClientDownloadLog::getClientId, clientId);

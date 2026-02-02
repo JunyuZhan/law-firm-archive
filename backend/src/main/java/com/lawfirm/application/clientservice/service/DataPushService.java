@@ -19,9 +19,10 @@ import com.lawfirm.infrastructure.persistence.mapper.ClientMapper;
 import com.lawfirm.infrastructure.persistence.mapper.DocumentMapper;
 import com.lawfirm.infrastructure.persistence.mapper.ExternalIntegrationMapper;
 import com.lawfirm.infrastructure.persistence.mapper.MatterMapper;
-import com.lawfirm.infrastructure.persistence.mapper.MatterParticipantMapper;
 import com.lawfirm.infrastructure.persistence.mapper.clientservice.PushConfigMapper;
 import com.lawfirm.infrastructure.persistence.mapper.clientservice.PushRecordMapper;
+import com.lawfirm.application.matter.service.MatterAppService;
+import com.lawfirm.common.util.SecurityUtils;
 import com.lawfirm.infrastructure.external.minio.MinioService;
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -61,9 +62,6 @@ public class DataPushService {
   /** 项目Mapper */
   private final MatterMapper matterMapper;
 
-  /** 项目参与者Mapper */
-  private final MatterParticipantMapper participantMapper;
-
   /** 客户Mapper */
   private final ClientMapper clientMapper;
 
@@ -72,6 +70,9 @@ public class DataPushService {
 
   /** 文档Mapper */
   private final DocumentMapper documentMapper;
+
+  /** 项目服务（用于权限验证） */
+  private final MatterAppService matterAppService;
 
   /** MinIO服务 */
   private final MinioService minioService;
@@ -523,8 +524,12 @@ public class DataPushService {
     String connectionMessage = null;
     if (integration == null) {
       connectionMessage = "客户服务系统尚未配置，请在【系统管理→外部系统集成】中配置";
+      log.debug("客户服务系统未配置");
     } else if (!Boolean.TRUE.equals(integration.getEnabled())) {
       connectionMessage = "客户服务系统已配置但未启用";
+      log.debug("客户服务系统已配置但未启用: integrationId={}, enabled={}", integration.getId(), integration.getEnabled());
+    } else {
+      log.debug("客户服务系统已连接: integrationId={}, enabled={}", integration.getId(), integration.getEnabled());
     }
 
     return PushConfigDTO.builder()
@@ -624,7 +629,8 @@ public class DataPushService {
   }
 
   /**
-   * 校验用户对项目的数据权限 只有项目参与者才能操作.
+   * 校验用户对项目的数据权限.
+   * 只有项目负责人、参与者或有项目查看权限的用户才能推送数据
    *
    * @param matterId 项目ID
    * @param userId 用户ID
@@ -634,13 +640,42 @@ public class DataPushService {
       throw new BusinessException("未获取到当前用户信息");
     }
 
-    // 检查是否是项目参与者
-    boolean isParticipant = participantMapper.existsByMatterIdAndUserId(matterId, userId);
-    if (!isParticipant) {
-      // 检查是否是管理员（管理员可以操作所有项目）
-      // 注：这里简化处理，实际可以通过 SecurityUtils 获取用户角色判断
-      log.warn("用户 {} 尝试操作非自己参与的项目 {}", userId, matterId);
-      throw new BusinessException("您没有权限操作此项目");
+    // 管理员可以操作所有项目
+    if (SecurityUtils.isAdmin()) {
+      return;
+    }
+
+    // 先尝试验证项目所有权（项目负责人或参与者）
+    try {
+      matterAppService.validateMatterOwnership(matterId);
+      // 验证成功，直接返回
+      return;
+    } catch (BusinessException e) {
+      // 如果不是项目负责人或参与者，检查是否有项目查看权限（数据权限范围）
+      // 注意：如果异常是"项目不存在"等非权限问题，应该直接抛出
+      String errorMessage = e.getMessage();
+      if (errorMessage != null && errorMessage.contains("项目不存在")) {
+        // 项目不存在，直接抛出异常
+        throw e;
+      }
+
+      // 权限不足，继续检查数据权限范围
+      String dataScope = SecurityUtils.getDataScope();
+      Long currentUserId = SecurityUtils.getUserId();
+      Long deptId = SecurityUtils.getDepartmentId();
+      List<Long> accessibleMatterIds = matterAppService.getAccessibleMatterIds(dataScope, currentUserId, deptId);
+
+      // 如果返回null，表示可以访问所有项目（ALL权限）
+      if (accessibleMatterIds == null) {
+        // ALL权限，允许推送
+        return;
+      }
+
+      // 检查项目是否在可访问列表中
+      if (!accessibleMatterIds.contains(matterId)) {
+        log.warn("用户 {} 尝试推送非自己参与或无权访问的项目 {}", userId, matterId);
+        throw new BusinessException("您没有权限推送此项目的数据");
+      }
     }
   }
 }

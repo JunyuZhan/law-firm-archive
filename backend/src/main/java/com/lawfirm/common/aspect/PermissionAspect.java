@@ -75,9 +75,10 @@ public class PermissionAspect {
 
       if (!hasPermission) {
         log.warn(
-            "权限不足: 用户[{}]缺少权限{}",
+            "权限不足: 用户[{}]缺少权限{}，当前用户权限: {}",
             SecurityUtils.getUsername(),
-            String.join(",", requiredPermissions));
+            String.join(",", requiredPermissions),
+            userPermissions);
         throw new BusinessException("403", "权限不足");
       }
     } catch (BusinessException e) {

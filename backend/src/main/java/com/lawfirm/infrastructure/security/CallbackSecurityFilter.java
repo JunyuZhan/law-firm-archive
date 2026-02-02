@@ -1,0 +1,191 @@
+package com.lawfirm.infrastructure.security;
+
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.annotation.Order;
+import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+/**
+ * 回调接口安全过滤器
+ * 用于验证客户服务系统的回调请求
+ * 
+ * 安全策略：
+ * 1. IP 白名单验证（推荐）：只允许客户服务系统的 IP 访问
+ * 2. 签名验证（可选）：使用 HMAC-SHA256 验证请求签名
+ */
+@Slf4j
+@Component
+public class CallbackSecurityFilter extends OncePerRequestFilter {
+
+  /** 客户服务系统 IP 白名单（多个 IP 用逗号分隔） */
+  @Value("${client-service.callback.ip-whitelist:}")
+  private String ipWhitelist;
+
+  /** 是否启用 IP 白名单验证 */
+  @Value("${client-service.callback.ip-whitelist-enabled:true}")
+  private boolean ipWhitelistEnabled;
+
+  /** 回调接口路径前缀 */
+  private static final String CALLBACK_PATH_PREFIX = "/open/client/";
+
+  @Override
+  protected void doFilterInternal(
+      final HttpServletRequest request,
+      final HttpServletResponse response,
+      final FilterChain filterChain)
+      throws ServletException, IOException {
+
+    String requestPath = request.getRequestURI();
+    
+    // 只处理回调接口
+    if (!requestPath.startsWith(CALLBACK_PATH_PREFIX)) {
+      filterChain.doFilter(request, response);
+      return;
+    }
+
+    // 获取客户端 IP
+    String clientIp = getClientIp(request);
+    log.debug("回调请求: path={}, clientIp={}", requestPath, clientIp);
+
+    // IP 白名单验证
+    if (ipWhitelistEnabled) {
+      if (!isIpAllowed(clientIp)) {
+        log.warn("回调请求被拒绝：IP 不在白名单中 - path={}, clientIp={}", requestPath, clientIp);
+        response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+        response.setContentType("application/json;charset=UTF-8");
+        response.getWriter().write("{\"code\":\"403\",\"message\":\"IP 地址不在白名单中\"}");
+        return;
+      }
+    }
+
+    // 继续处理请求
+    filterChain.doFilter(request, response);
+  }
+
+  /**
+   * 检查 IP 是否在白名单中
+   *
+   * @param clientIp 客户端 IP
+   * @return 是否允许
+   */
+  private boolean isIpAllowed(final String clientIp) {
+    if (clientIp == null || clientIp.isEmpty()) {
+      return false;
+    }
+
+    // 如果没有配置白名单，拒绝所有请求（安全默认值）
+    if (ipWhitelist == null || ipWhitelist.trim().isEmpty()) {
+      log.warn("回调 IP 白名单未配置，拒绝所有回调请求");
+      return false;
+    }
+
+    // 解析白名单（支持多个 IP，用逗号分隔）
+    List<String> allowedIps = Arrays.asList(ipWhitelist.split(","));
+    
+    // 检查 IP 是否在白名单中（支持精确匹配和 CIDR 格式）
+    for (String allowedIp : allowedIps) {
+      String trimmedIp = allowedIp.trim();
+      if (trimmedIp.isEmpty()) {
+        continue;
+      }
+
+      // 精确匹配
+      if (clientIp.equals(trimmedIp)) {
+        return true;
+      }
+
+      // CIDR 格式匹配（如：192.168.1.0/24）
+      if (trimmedIp.contains("/")) {
+        if (isIpInCidr(clientIp, trimmedIp)) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * 检查 IP 是否在 CIDR 网段中
+   *
+   * @param ip IP 地址
+   * @param cidr CIDR 格式（如：192.168.1.0/24）
+   * @return 是否在网段中
+   */
+  private boolean isIpInCidr(final String ip, final String cidr) {
+    try {
+      String[] parts = cidr.split("/");
+      if (parts.length != 2) {
+        return false;
+      }
+
+      String networkIp = parts[0].trim();
+      int prefixLength = Integer.parseInt(parts[1].trim());
+
+      // 简化实现：只支持 IPv4
+      long ipLong = ipToLong(ip);
+      long networkLong = ipToLong(networkIp);
+      long mask = (0xFFFFFFFFL << (32 - prefixLength)) & 0xFFFFFFFFL;
+
+      return (ipLong & mask) == (networkLong & mask);
+    } catch (Exception e) {
+      log.warn("CIDR 格式解析失败: cidr={}, error={}", cidr, e.getMessage());
+      return false;
+    }
+  }
+
+  /**
+   * 将 IP 地址转换为长整型
+   *
+   * @param ip IP 地址
+   * @return 长整型值
+   */
+  private long ipToLong(final String ip) {
+    String[] parts = ip.split("\\.");
+    if (parts.length != 4) {
+      throw new IllegalArgumentException("Invalid IP address: " + ip);
+    }
+    long result = 0;
+    for (int i = 0; i < 4; i++) {
+      result = (result << 8) + Integer.parseInt(parts[i]);
+    }
+    return result;
+  }
+
+  /**
+   * 获取客户端真实 IP 地址
+   *
+   * @param request HTTP 请求
+   * @return IP 地址
+   */
+  private String getClientIp(final HttpServletRequest request) {
+    String ip = request.getHeader("X-Forwarded-For");
+    if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+      ip = request.getHeader("X-Real-IP");
+    }
+    if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+      ip = request.getHeader("Proxy-Client-IP");
+    }
+    if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+      ip = request.getHeader("WL-Proxy-Client-IP");
+    }
+    if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+      ip = request.getRemoteAddr();
+    }
+
+    // 处理多个 IP 的情况（X-Forwarded-For 可能包含多个 IP，取第一个）
+    if (ip != null && ip.contains(",")) {
+      ip = ip.split(",")[0].trim();
+    }
+
+    return ip;
+  }
+}

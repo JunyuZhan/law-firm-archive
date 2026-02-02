@@ -87,7 +87,8 @@ public class ClientAccessLogService {
             final int pageSize) {
 
         LambdaQueryWrapper<ClientAccessLog> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(ClientAccessLog::getMatterId, matterId);
+        queryWrapper.eq(ClientAccessLog::getMatterId, matterId)
+                .eq(ClientAccessLog::getDeleted, false);
 
         if (clientId != null) {
             queryWrapper.eq(ClientAccessLog::getClientId, clientId);

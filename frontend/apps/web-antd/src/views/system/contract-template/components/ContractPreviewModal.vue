@@ -89,9 +89,6 @@ async function open(record: ContractTemplateDTO) {
   try {
     // 调试：记录内容类型和内容预览
     const isStructured = isStructuredContent(content);
-    // eslint-disable-next-line no-unused-vars
-    const _contentPreview =
-      content.slice(0, 100) + (content.length > 100 ? '...' : '');
     // 调试信息已移除
 
     // 如果识别为纯文本但看起来像 JSON，尝试强制解析

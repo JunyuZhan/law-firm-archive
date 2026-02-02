@@ -2,6 +2,7 @@ package com.lawfirm.infrastructure.config;
 
 import com.lawfirm.infrastructure.filter.TraceIdFilter;
 import com.lawfirm.infrastructure.filter.XssFilter;
+import com.lawfirm.infrastructure.security.CallbackSecurityFilter;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -9,7 +10,7 @@ import org.springframework.context.annotation.Configuration;
 /**
  * Filter 配置类
  *
- * <p>注册系统级过滤器： - TraceIdFilter: 请求追踪（优先级最高） - XssFilter: XSS 防护
+ * <p>注册系统级过滤器： - TraceIdFilter: 请求追踪（优先级最高） - XssFilter: XSS 防护 - CallbackSecurityFilter: 回调接口安全验证
  *
  * @author junyuzhan
  */
@@ -43,6 +44,23 @@ public class FilterConfig {
     registration.addUrlPatterns("/*");
     registration.setName("xssFilter");
     registration.setOrder(1);
+    return registration;
+  }
+
+  /**
+   * 注册回调接口安全过滤器 验证客户服务系统的回调请求 IP 白名单.
+   *
+   * @param callbackSecurityFilter 回调安全过滤器实例
+   * @return 回调安全过滤器注册Bean
+   */
+  @Bean
+  public FilterRegistrationBean<CallbackSecurityFilter> callbackSecurityFilterRegistration(
+      final CallbackSecurityFilter callbackSecurityFilter) {
+    FilterRegistrationBean<CallbackSecurityFilter> registration = new FilterRegistrationBean<>();
+    registration.setFilter(callbackSecurityFilter);
+    registration.addUrlPatterns("/open/client/*");
+    registration.setName("callbackSecurityFilter");
+    registration.setOrder(2); // 在 TraceId 和 XSS 过滤器之后，JWT 过滤器之前
     return registration;
   }
 }
