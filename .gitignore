@@ -67,7 +67,8 @@ __pycache__/
 LOG_PATH_IS_UNDEFINED/
 *.pyc
 backend/logs/
-.cursor/rules/
+.cursor/
+!.cursor/rules/
 backend/backups/
 *.jqwik-database
 
