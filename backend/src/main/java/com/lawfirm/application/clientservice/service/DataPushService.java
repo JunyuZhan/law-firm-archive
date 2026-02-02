@@ -357,20 +357,59 @@ public class DataPushService {
 
     HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
 
-    // 发送请求
-    String apiUrl = integration.getApiUrl() + "/matter/receive";
-    ResponseEntity<Map<String, Object>> response =
-        restTemplate.exchange(
-            apiUrl,
-            HttpMethod.POST,
-            entity,
-            new ParameterizedTypeReference<Map<String, Object>>() {});
+    // 构建API URL
+    String baseUrl = integration.getApiUrl().endsWith("/") 
+        ? integration.getApiUrl().substring(0, integration.getApiUrl().length() - 1)
+        : integration.getApiUrl();
+    String apiUrl = baseUrl + "/api/matter/receive";
 
-    if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+    log.debug("调用客户服务系统API: url={}, clientId={}, matterId={}", 
+        apiUrl, client.getId(), matterData.getMatterId());
+
+    try {
+      ResponseEntity<Map<String, Object>> response =
+          restTemplate.exchange(
+              apiUrl,
+              HttpMethod.POST,
+              entity,
+              new ParameterizedTypeReference<Map<String, Object>>() {});
+
+      if (!response.getStatusCode().is2xxSuccessful()) {
+        log.error("客户服务系统返回错误状态码: status={}", response.getStatusCode());
+        throw new BusinessException(
+            "客户服务系统返回错误状态码: " + response.getStatusCode());
+      }
+
       Map<String, Object> body = response.getBody();
-      return new PushResult((String) body.get("id"), (String) body.get("accessUrl"));
-    } else {
-      throw new BusinessException("客户服务系统返回错误");
+      if (body == null) {
+        log.error("客户服务系统返回空响应体");
+        throw new BusinessException("客户服务系统返回空响应体");
+      }
+
+      // 解析Result包装格式的响应
+      @SuppressWarnings("unchecked")
+      Map<String, Object> data = (Map<String, Object>) body.get("data");
+      if (data == null) {
+        log.error("客户服务系统返回数据格式错误: 缺少data字段, body={}", body);
+        throw new BusinessException("客户服务系统返回数据格式错误：缺少data字段");
+      }
+
+      String id = (String) data.get("id");
+      String accessUrl = (String) data.get("accessUrl");
+
+      if (id == null || accessUrl == null) {
+        log.error("客户服务系统返回数据不完整: id={}, accessUrl={}", id, accessUrl);
+        throw new BusinessException("客户服务系统返回数据不完整");
+      }
+
+      log.info("客户服务系统调用成功: id={}, accessUrl={}", id, accessUrl);
+      return new PushResult(id, accessUrl);
+
+    } catch (BusinessException e) {
+      throw e;
+    } catch (Exception e) {
+      log.error("调用客户服务系统API失败: url={}, error={}", apiUrl, e.getMessage(), e);
+      throw new BusinessException("调用客户服务系统API失败: " + e.getMessage(), e);
     }
   }
 

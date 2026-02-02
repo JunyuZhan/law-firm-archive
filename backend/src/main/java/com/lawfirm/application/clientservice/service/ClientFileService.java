@@ -32,7 +32,6 @@ import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -361,19 +360,23 @@ public class ClientFileService {
 
       RestTemplate restTemplate = new RestTemplate();
 
+      // 构建请求头
       HttpHeaders headers = new HttpHeaders();
-      headers.setContentType(MediaType.APPLICATION_JSON);
       if (integration.getApiKey() != null) {
         headers.set("Authorization", "Bearer " + integration.getApiKey());
       }
 
-      Map<String, Object> requestBody = new HashMap<>();
-      requestBody.put("fileId", externalFileId);
-      requestBody.put("action", "DELETE");
+      // 构建API URL（使用Query参数）
+      String baseUrl = integration.getApiUrl().endsWith("/") 
+          ? integration.getApiUrl().substring(0, integration.getApiUrl().length() - 1)
+          : integration.getApiUrl();
+      String apiUrl = baseUrl + "/api/matter/files/delete?fileId=" 
+          + java.net.URLEncoder.encode(externalFileId, java.nio.charset.StandardCharsets.UTF_8);
 
-      HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
+      HttpEntity<Void> entity = new HttpEntity<>(headers);
 
-      String apiUrl = integration.getApiUrl() + "/files/delete";
+      log.debug("通知客服系统删除文件: url={}, fileId={}", apiUrl, externalFileId);
+
       ResponseEntity<Map<String, Object>> response =
           restTemplate.exchange(
               apiUrl,
@@ -382,9 +385,10 @@ public class ClientFileService {
               new ParameterizedTypeReference<Map<String, Object>>() {});
 
       if (response.getStatusCode().is2xxSuccessful()) {
-        log.info("通知客服系统删除文件成功: {}", externalFileId);
+        log.info("通知客服系统删除文件成功: fileId={}", externalFileId);
       } else {
-        log.warn("通知客服系统删除文件失败: {}", externalFileId);
+        log.warn("通知客服系统删除文件失败: fileId={}, status={}", 
+            externalFileId, response.getStatusCode());
       }
     } catch (Exception e) {
       log.error("通知客服系统删除文件异常: {}", e.getMessage());
