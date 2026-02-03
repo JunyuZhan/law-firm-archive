@@ -1,6 +1,6 @@
 package com.lawfirm.interfaces.rest.system;
 
-import com.lawfirm.common.core.api.CommonResult;
+import com.lawfirm.common.result.Result;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -44,12 +44,12 @@ public class VersionController {
      */
     @Operation(summary = "获取当前版本", description = "获取当前系统版本信息")
     @GetMapping
-    public CommonResult<Map<String, Object>> getVersion() {
+    public Result<Map<String, Object>> getVersion() {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("version", currentVersion);
         result.put("name", "律所管理系统");
         result.put("serverTime", LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
-        return CommonResult.success(result);
+        return Result.success(result);
     }
 
     /**
@@ -57,7 +57,7 @@ public class VersionController {
      */
     @Operation(summary = "检查新版本", description = "检查是否有新版本可用")
     @GetMapping("/check")
-    public CommonResult<Map<String, Object>> checkVersion() {
+    public Result<Map<String, Object>> checkVersion() {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("currentVersion", currentVersion);
         result.put("hasUpdate", false);
@@ -86,7 +86,7 @@ public class VersionController {
             result.put("error", "无法获取最新版本信息");
         }
 
-        return CommonResult.success(result);
+        return Result.success(result);
     }
 
     /**
@@ -94,7 +94,7 @@ public class VersionController {
      */
     @Operation(summary = "忽略版本更新", description = "忽略指定版本的更新提示")
     @PostMapping("/ignore")
-    public CommonResult<Void> ignoreVersion(@RequestParam String version) {
+    public Result<Void> ignoreVersion(@RequestParam String version) {
         try {
             String configKey = "system.ignored-version";
             Long exists = jdbcTemplate.queryForObject(
@@ -112,10 +112,10 @@ public class VersionController {
             }
 
             log.info("已忽略版本更新: {}", version);
-            return CommonResult.success(null);
+            return Result.success(null);
         } catch (Exception e) {
             log.error("保存忽略版本失败", e);
-            return CommonResult.error("操作失败");
+            return Result.error("操作失败");
         }
     }
 
