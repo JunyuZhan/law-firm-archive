@@ -29,6 +29,7 @@ import {
   getMyNotifications,
 } from '#/api/system/notification';
 import FloatingTimer from '#/components/timer/FloatingTimer.vue';
+import VersionUpdateBanner from '#/components/VersionUpdateBanner/index.vue';
 import { useIdleTimeout } from '#/hooks/useIdleTimeout';
 import { $t } from '#/locales';
 import { useAuthStore } from '#/store';
@@ -585,4 +586,7 @@ watch(
 
   <!-- 悬浮计时器 -->
   <FloatingTimer />
+
+  <!-- 版本更新提示 -->
+  <VersionUpdateBanner />
 </template>
