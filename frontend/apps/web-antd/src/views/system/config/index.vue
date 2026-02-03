@@ -144,18 +144,17 @@ const updateInfo = ref<{
 } | null>(null);
 
 // 升级相关
-interface UpgradeResult {
-  success: boolean;
-  message: string;
-  manual?: boolean;
-  command?: string;
+interface UpgradeStep {
+  title: string;
+  command: string;
+  description: string;
 }
-const upgradeLoading = ref(false);
-const upgradeStatus = ref<{
-  configured: boolean;
-  webhookUrl?: string;
-} | null>(null);
-const upgradeResult = ref<UpgradeResult | null>(null);
+interface UpgradeGuide {
+  currentVersion: string;
+  steps: UpgradeStep[];
+  quickCommand: string;
+}
+const upgradeGuide = ref<UpgradeGuide | null>(null);
 
 // 邮件通知相关
 const emailStatus = ref({ enabled: false });
@@ -400,57 +399,28 @@ function viewReleaseNotes() {
   }
 }
 
-// 获取升级服务状态
-async function loadUpgradeStatus() {
+// 获取升级指南
+async function loadUpgradeGuide() {
   try {
-    const res = await requestClient.get<typeof upgradeStatus.value>('/system/version/upgrade/status');
-    upgradeStatus.value = res;
+    const res = await requestClient.get<UpgradeGuide>('/system/version/upgrade/guide');
+    upgradeGuide.value = res;
   } catch (error: unknown) {
-    console.error('获取升级状态失败', error);
+    console.error('获取升级指南失败', error);
   }
 }
 
-// 执行升级
-async function triggerUpgrade() {
-  AModal.confirm({
-    title: '确认升级',
-    content: '系统将开始升级，升级过程中服务会短暂中断（约1-3分钟）。确定要继续吗？',
-    okText: '开始升级',
-    cancelText: '取消',
-    okType: 'primary',
-    async onOk() {
-      upgradeLoading.value = true;
-      upgradeResult.value = null;
-      try {
-        const res = await requestClient.post<UpgradeResult>('/system/version/upgrade');
-        upgradeResult.value = res;
-        if (res?.success) {
-          message.success(res.message || '升级指令已发送');
-        } else if (res?.manual) {
-          // 需要手动升级
-          AModal.info({
-            title: '需要手动升级',
-            content: `${res.message}\n\n请在服务器上执行以下命令：\n\n${res.command}`,
-            width: 600,
-          });
-        } else {
-          message.warning(res?.message || '升级失败');
-        }
-      } catch (error: unknown) {
-        console.error('升级失败', error);
-        message.error('升级请求失败');
-      } finally {
-        upgradeLoading.value = false;
-      }
-    },
-  });
+// 复制命令
+function copyCommand(command: string) {
+  navigator.clipboard.writeText(command);
+  message.success('命令已复制到剪贴板');
 }
 
-// 复制升级命令
-function copyUpgradeCommand() {
-  const command = 'cd /path/to/law-firm && git pull origin main && cd docker && docker compose up -d --build';
-  navigator.clipboard.writeText(command);
-  message.success('升级命令已复制到剪贴板');
+// 复制一键升级命令
+function copyQuickUpgradeCommand() {
+  if (upgradeGuide.value?.quickCommand) {
+    navigator.clipboard.writeText(upgradeGuide.value.quickCommand);
+    message.success('一键升级命令已复制');
+  }
 }
 
 // 加载邮件服务状态
@@ -783,7 +753,7 @@ onMounted(async () => {
   handlePreview();
   await loadMaintenanceStatus();
   await loadVersionInfo();
-  await loadUpgradeStatus();
+  await loadUpgradeGuide();
   await loadEmailStatus();
   await loadWecomStatus();
 });
@@ -1105,9 +1075,6 @@ watch(activeTab, (newTab) => {
             <template #description>
               <div style="margin-top: 8px">
                 <Space>
-                  <Button type="primary" size="small" :loading="upgradeLoading" @click="triggerUpgrade">
-                    一键升级
-                  </Button>
                   <Button size="small" @click="viewReleaseNotes">查看更新内容</Button>
                   <Button size="small" type="text" @click="ignoreVersionUpdate">忽略此版本</Button>
                 </Space>
@@ -1227,60 +1194,64 @@ watch(activeTab, (newTab) => {
         <!-- 系统升级 -->
         <Card title="系统升级" :bordered="false" style="margin-top: 16px">
           <Alert
-            v-if="upgradeStatus?.configured"
-            type="success"
-            show-icon
-            message="升级服务已配置"
-            description="点击上方「一键升级」按钮即可自动完成升级"
-            style="margin-bottom: 16px"
-          />
-          <Alert
-            v-else
             type="warning"
             show-icon
-            message="升级服务未配置"
-            style="margin-bottom: 16px"
-          >
-            <template #description>
-              <div>
-                需要在服务器上配置升级服务才能使用一键升级功能。
-                <a href="https://github.com/junyuzhan/law-firm#upgrade" target="_blank">查看配置说明</a>
-              </div>
-            </template>
-          </Alert>
+            message="升级前请务必备份数据"
+            description="升级过程中服务会短暂中断，请选择合适的时间进行"
+            style="margin-bottom: 24px"
+          />
 
-          <Divider orientation="left">手动升级命令</Divider>
-          <div style="background: #f5f5f5; padding: 16px; border-radius: 8px; font-family: monospace; position: relative">
-            <div style="color: #666; font-size: 12px; margin-bottom: 8px"># SSH 登录服务器后执行</div>
-            <div style="color: #333">cd /path/to/law-firm && git pull origin main && cd docker && docker compose up -d --build</div>
+          <!-- 升级步骤 -->
+          <div v-if="upgradeGuide?.steps" style="margin-bottom: 24px">
+            <div v-for="(step, index) in upgradeGuide.steps" :key="index" style="margin-bottom: 16px">
+              <div style="font-weight: 500; margin-bottom: 8px; color: #1890ff">
+                {{ step.title }}
+              </div>
+              <div style="background: #f5f5f5; padding: 12px 16px; border-radius: 8px; font-family: monospace; position: relative">
+                <div style="color: #333; padding-right: 60px">{{ step.command }}</div>
+                <Button
+                  type="text"
+                  size="small"
+                  style="position: absolute; top: 8px; right: 8px"
+                  @click="copyCommand(step.command)"
+                >
+                  复制
+                </Button>
+              </div>
+              <div style="font-size: 12px; color: #888; margin-top: 4px">{{ step.description }}</div>
+            </div>
+          </div>
+
+          <Divider orientation="left">一键升级命令</Divider>
+          <div style="background: #e6f7ff; padding: 16px; border-radius: 8px; border: 1px solid #91d5ff; position: relative">
+            <div style="font-size: 12px; color: #1890ff; margin-bottom: 8px">
+              <strong>提示：</strong>在服务器项目根目录执行以下命令，自动完成备份 → 更新 → 部署
+            </div>
+            <div style="font-family: monospace; color: #333; padding-right: 60px; word-break: break-all">
+              {{ upgradeGuide?.quickCommand || './scripts/ops/backup.sh && git pull origin main && ./scripts/deploy/deploy.sh --quick --no-cache' }}
+            </div>
             <Button
-              type="text"
+              type="primary"
               size="small"
-              style="position: absolute; top: 8px; right: 8px"
-              @click="copyUpgradeCommand"
+              style="position: absolute; top: 12px; right: 12px"
+              @click="copyQuickUpgradeCommand"
             >
               复制
             </Button>
           </div>
 
-          <Divider orientation="left" style="margin-top: 24px">配置一键升级（推荐）</Divider>
+          <Divider style="margin-top: 24px" />
           <Alert type="info" :show-icon="false">
-            <div style="margin-bottom: 8px; font-weight: 500">配置步骤：</div>
-            <ol style="padding-left: 20px; margin: 0; color: #666">
-              <li>在<strong>宿主机</strong>（不是 Docker 容器内）启动升级服务：
-                <div style="background: #f5f5f5; padding: 8px; margin: 8px 0; font-family: monospace; border-radius: 4px">
-                  ./scripts/upgrade-server.sh start
-                </div>
+            <div style="margin-bottom: 8px; font-weight: 500">升级说明：</div>
+            <ul style="padding-left: 20px; margin: 0; color: #666">
+              <li><code>./scripts/ops/backup.sh</code> - 备份数据库和文件到 <code>backups/</code> 目录</li>
+              <li><code>git pull origin main</code> - 拉取最新代码</li>
+              <li><code>./scripts/deploy/deploy.sh --quick --no-cache</code> - 重新构建并部署</li>
+              <li>升级完成后，刷新页面即可使用新版本</li>
+              <li style="margin-top: 8px; color: #ff4d4f">
+                <strong>如需回滚</strong>：使用 <code>./scripts/ops/restore.sh</code> 恢复备份
               </li>
-              <li>在 <code>.env</code> 文件中配置升级服务地址：
-                <div style="background: #f5f5f5; padding: 8px; margin: 8px 0; font-family: monospace; border-radius: 4px">
-                  APP_UPGRADE_WEBHOOK_URL=http://localhost:9999/upgrade<br/>
-                  APP_UPGRADE_WEBHOOK_SECRET=your-secret-key
-                </div>
-              </li>
-              <li>重启后端服务使配置生效</li>
-              <li>之后即可使用「一键升级」功能</li>
-            </ol>
+            </ul>
           </Alert>
         </Card>
       </TabPane>

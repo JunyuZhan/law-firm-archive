@@ -39,12 +39,6 @@ public class VersionController {
     @Value("${app.version.github-repo:}")
     private String githubRepo;
 
-    // 升级服务配置
-    @Value("${app.upgrade.webhook-url:}")
-    private String upgradeWebhookUrl;
-
-    @Value("${app.upgrade.webhook-secret:}")
-    private String upgradeWebhookSecret;
 
     /**
      * 获取当前版本信息
@@ -97,62 +91,40 @@ public class VersionController {
     }
 
     /**
-     * 触发系统升级
+     * 获取升级指南
      */
-    @Operation(summary = "触发系统升级", description = "调用升级服务执行系统升级")
-    @PostMapping("/upgrade")
-    public Result<Map<String, Object>> triggerUpgrade() {
+    @Operation(summary = "获取升级指南", description = "返回系统升级的命令和步骤")
+    @GetMapping("/upgrade/guide")
+    public Result<Map<String, Object>> getUpgradeGuide() {
         Map<String, Object> result = new LinkedHashMap<>();
+        result.put("currentVersion", currentVersion);
         
-        if (upgradeWebhookUrl == null || upgradeWebhookUrl.isEmpty()) {
-            result.put("success", false);
-            result.put("message", "未配置升级服务地址，请在 application.yml 中配置 app.upgrade.webhook-url");
-            result.put("manual", true);
-            result.put("command", "cd /path/to/law-firm && git pull && cd docker && docker compose up -d --build");
-            return Result.success(result);
-        }
+        // 升级步骤
+        List<Map<String, String>> steps = new ArrayList<>();
         
-        try {
-            RestTemplate restTemplate = new RestTemplate();
-            
-            // 创建请求头
-            org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
-            headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
-            if (upgradeWebhookSecret != null && !upgradeWebhookSecret.isEmpty()) {
-                headers.set("X-Upgrade-Secret", upgradeWebhookSecret);
-            }
-            
-            org.springframework.http.HttpEntity<String> entity = 
-                new org.springframework.http.HttpEntity<>("{}", headers);
-            
-            // 调用升级服务
-            restTemplate.postForObject(upgradeWebhookUrl, entity, String.class);
-            
-            result.put("success", true);
-            result.put("message", "升级指令已发送，系统将在几分钟内完成升级并自动重启");
-            
-            log.info("已触发系统升级");
-            return Result.success(result);
-            
-        } catch (Exception e) {
-            log.error("触发升级失败", e);
-            result.put("success", false);
-            result.put("message", "无法连接升级服务: " + e.getMessage());
-            result.put("manual", true);
-            result.put("command", "cd /path/to/law-firm && git pull && cd docker && docker compose up -d --build");
-            return Result.success(result);
-        }
-    }
-
-    /**
-     * 获取升级配置状态
-     */
-    @Operation(summary = "获取升级配置", description = "检查升级服务是否已配置")
-    @GetMapping("/upgrade/status")
-    public Result<Map<String, Object>> getUpgradeStatus() {
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("configured", upgradeWebhookUrl != null && !upgradeWebhookUrl.isEmpty());
-        result.put("webhookUrl", upgradeWebhookUrl != null ? upgradeWebhookUrl.replaceAll("secret=.*", "secret=***") : null);
+        Map<String, String> step1 = new LinkedHashMap<>();
+        step1.put("title", "1. 备份数据");
+        step1.put("command", "./scripts/ops/backup.sh");
+        step1.put("description", "完整备份数据库和文件存储");
+        steps.add(step1);
+        
+        Map<String, String> step2 = new LinkedHashMap<>();
+        step2.put("title", "2. 拉取最新代码");
+        step2.put("command", "git pull origin main");
+        step2.put("description", "从 GitHub 获取最新版本");
+        steps.add(step2);
+        
+        Map<String, String> step3 = new LinkedHashMap<>();
+        step3.put("title", "3. 重新部署");
+        step3.put("command", "./scripts/deploy/deploy.sh --quick --no-cache");
+        step3.put("description", "重新构建并启动服务");
+        steps.add(step3);
+        
+        result.put("steps", steps);
+        
+        // 一键升级命令
+        result.put("quickCommand", "./scripts/ops/backup.sh && git pull origin main && ./scripts/deploy/deploy.sh --quick --no-cache");
+        
         return Result.success(result);
     }
 
