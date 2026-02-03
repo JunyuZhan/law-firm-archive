@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -14,12 +15,21 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -134,6 +144,226 @@ public class VersionController {
         result.put("quickCommand", quickCmd);
         
         return Result.success(result);
+    }
+
+    /**
+     * 执行一键升级
+     */
+    @Operation(summary = "执行一键升级", description = "在服务器上执行升级脚本")
+    @PostMapping("/upgrade/execute")
+    @PreAuthorize("hasRole('ADMIN') or hasAuthority('system:config:edit')")
+    public Result<Map<String, Object>> executeUpgrade(
+            @RequestParam(defaultValue = "true") boolean backup) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        String upgradeId = UUID.randomUUID().toString().substring(0, 8);
+        
+        try {
+            // 检查升级脚本是否存在
+            String workDir = System.getProperty("user.dir");
+            // Docker 容器内的工作目录是 /app，需要找到项目根目录
+            Path projectRoot = findProjectRoot(workDir);
+            if (projectRoot == null) {
+                return Result.error("无法找到项目根目录，请确保在正确的目录下运行");
+            }
+            
+            Path upgradeScript = projectRoot.resolve("scripts/ops/upgrade.sh");
+            if (!Files.exists(upgradeScript)) {
+                return Result.error("升级脚本不存在: " + upgradeScript);
+            }
+            
+            // 创建升级状态文件
+            Path statusFile = projectRoot.resolve(".upgrade-status-" + upgradeId + ".json");
+            writeUpgradeStatus(statusFile, "started", "升级已启动", 0);
+            
+            result.put("upgradeId", upgradeId);
+            result.put("status", "started");
+            result.put("message", "升级任务已启动，请等待...");
+            
+            // 异步执行升级
+            String projectRootStr = projectRoot.toString();
+            CompletableFuture.runAsync(() -> {
+                executeUpgradeScript(projectRootStr, upgradeId, backup);
+            });
+            
+            return Result.success(result);
+        } catch (Exception e) {
+            log.error("启动升级失败", e);
+            return Result.error("启动升级失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 查询升级状态
+     */
+    @Operation(summary = "查询升级状态", description = "查询升级任务的执行状态")
+    @GetMapping("/upgrade/status")
+    public Result<Map<String, Object>> getUpgradeStatus(@RequestParam String upgradeId) {
+        try {
+            String workDir = System.getProperty("user.dir");
+            Path projectRoot = findProjectRoot(workDir);
+            if (projectRoot == null) {
+                // 如果找不到项目根目录，返回一个默认状态
+                Map<String, Object> result = new LinkedHashMap<>();
+                result.put("status", "unknown");
+                result.put("message", "服务已重启，升级可能已完成");
+                result.put("progress", 100);
+                return Result.success(result);
+            }
+            
+            Path statusFile = projectRoot.resolve(".upgrade-status-" + upgradeId + ".json");
+            if (!Files.exists(statusFile)) {
+                // 状态文件不存在，可能升级已完成并清理
+                Map<String, Object> result = new LinkedHashMap<>();
+                result.put("status", "completed");
+                result.put("message", "升级已完成");
+                result.put("progress", 100);
+                return Result.success(result);
+            }
+            
+            String content = Files.readString(statusFile, StandardCharsets.UTF_8);
+            // 简单解析 JSON
+            Map<String, Object> result = parseSimpleJson(content);
+            return Result.success(result);
+        } catch (Exception e) {
+            log.error("查询升级状态失败", e);
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("status", "unknown");
+            result.put("message", "无法获取升级状态");
+            return Result.success(result);
+        }
+    }
+
+    /**
+     * 查找项目根目录
+     */
+    private Path findProjectRoot(String startDir) {
+        Path path = Paths.get(startDir);
+        
+        // 如果在 Docker 容器内（/app），尝试找到挂载的项目目录
+        if (startDir.equals("/app")) {
+            // 检查常见的挂载点
+            Path[] possibleRoots = {
+                Paths.get("/opt/law-firm"),
+                Paths.get("/app"),
+                path
+            };
+            for (Path root : possibleRoots) {
+                if (Files.exists(root.resolve("scripts/ops/upgrade.sh"))) {
+                    return root;
+                }
+            }
+        }
+        
+        // 向上查找包含 scripts/ops/upgrade.sh 的目录
+        while (path != null) {
+            if (Files.exists(path.resolve("scripts/ops/upgrade.sh"))) {
+                return path;
+            }
+            path = path.getParent();
+        }
+        
+        return null;
+    }
+
+    /**
+     * 执行升级脚本
+     */
+    private void executeUpgradeScript(String projectRoot, String upgradeId, boolean backup) {
+        Path statusFile = Paths.get(projectRoot, ".upgrade-status-" + upgradeId + ".json");
+        
+        try {
+            writeUpgradeStatus(statusFile, "running", "正在执行升级...", 10);
+            
+            // 构建升级命令
+            String upgradeScript = projectRoot + "/scripts/ops/upgrade.sh";
+            String command = backup 
+                ? upgradeScript + " --backup" 
+                : upgradeScript + " --no-backup";
+            
+            log.info("执行升级命令: {}", command);
+            writeUpgradeStatus(statusFile, "running", "正在备份数据...", 20);
+            
+            ProcessBuilder pb = new ProcessBuilder("bash", "-c", command);
+            pb.directory(new File(projectRoot));
+            pb.redirectErrorStream(true);
+            
+            Process process = pb.start();
+            
+            // 读取输出
+            StringBuilder output = new StringBuilder();
+            try (BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
+                String line;
+                int progress = 30;
+                while ((line = reader.readLine()) != null) {
+                    output.append(line).append("\n");
+                    log.info("[升级] {}", line);
+                    
+                    // 根据输出更新进度
+                    if (line.contains("备份") || line.contains("backup")) {
+                        writeUpgradeStatus(statusFile, "running", "正在备份数据...", 30);
+                    } else if (line.contains("拉取") || line.contains("pull") || line.contains("fetch")) {
+                        writeUpgradeStatus(statusFile, "running", "正在拉取最新代码...", 50);
+                    } else if (line.contains("构建") || line.contains("build")) {
+                        writeUpgradeStatus(statusFile, "running", "正在构建应用...", 70);
+                    } else if (line.contains("部署") || line.contains("deploy") || line.contains("启动")) {
+                        writeUpgradeStatus(statusFile, "running", "正在重启服务...", 90);
+                    }
+                    
+                    progress = Math.min(progress + 1, 89);
+                }
+            }
+            
+            int exitCode = process.waitFor();
+            
+            if (exitCode == 0) {
+                writeUpgradeStatus(statusFile, "completed", "升级成功！服务即将重启...", 100);
+                log.info("升级成功完成");
+            } else {
+                writeUpgradeStatus(statusFile, "failed", "升级失败，退出码: " + exitCode, -1);
+                log.error("升级失败，退出码: {}, 输出: {}", exitCode, output);
+            }
+            
+        } catch (Exception e) {
+            log.error("升级执行异常", e);
+            try {
+                writeUpgradeStatus(statusFile, "failed", "升级异常: " + e.getMessage(), -1);
+            } catch (Exception ignored) {
+                // 忽略写入状态失败
+            }
+        }
+    }
+
+    /**
+     * 写入升级状态
+     */
+    private void writeUpgradeStatus(Path statusFile, String status, String message, int progress) 
+            throws Exception {
+        String json = String.format(
+            "{\"status\":\"%s\",\"message\":\"%s\",\"progress\":%d,\"timestamp\":\"%s\"}",
+            status, message, progress, 
+            LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+        Files.writeString(statusFile, json, StandardCharsets.UTF_8);
+    }
+
+    /**
+     * 简单解析 JSON
+     */
+    private Map<String, Object> parseSimpleJson(String json) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        // 提取 status
+        java.util.regex.Matcher m = Pattern.compile("\"status\":\"([^\"]+)\"").matcher(json);
+        if (m.find()) result.put("status", m.group(1));
+        // 提取 message
+        m = Pattern.compile("\"message\":\"([^\"]+)\"").matcher(json);
+        if (m.find()) result.put("message", m.group(1));
+        // 提取 progress
+        m = Pattern.compile("\"progress\":(\\d+)").matcher(json);
+        if (m.find()) result.put("progress", Integer.parseInt(m.group(1)));
+        // 提取 timestamp
+        m = Pattern.compile("\"timestamp\":\"([^\"]+)\"").matcher(json);
+        if (m.find()) result.put("timestamp", m.group(1));
+        return result;
     }
 
     /**

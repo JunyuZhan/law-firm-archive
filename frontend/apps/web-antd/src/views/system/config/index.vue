@@ -423,6 +423,123 @@ function copyQuickUpgradeCommand() {
   }
 }
 
+// ==================== 一键升级功能 ====================
+const upgradeLoading = ref(false);
+const upgradeId = ref('');
+const upgradeProgress = ref(0);
+const upgradeStatus = ref<'idle' | 'running' | 'completed' | 'failed'>('idle');
+const upgradeMessage = ref('');
+const upgradeModalVisible = ref(false);
+let upgradePollingTimer: ReturnType<typeof setInterval> | null = null;
+
+// 确认升级对话框
+function confirmUpgrade() {
+  AModal.confirm({
+    title: '确认升级',
+    content: '升级过程中服务会短暂中断，建议在业务低峰期执行。是否继续？',
+    okText: '开始升级',
+    cancelText: '取消',
+    onOk: () => executeUpgrade(true),
+  });
+}
+
+// 执行一键升级
+async function executeUpgrade(withBackup: boolean) {
+  upgradeLoading.value = true;
+  upgradeModalVisible.value = true;
+  upgradeStatus.value = 'running';
+  upgradeProgress.value = 0;
+  upgradeMessage.value = '正在启动升级...';
+  
+  try {
+    const res = await requestClient.post<{ upgradeId: string; status: string; message: string }>(
+      '/system/version/upgrade/execute',
+      null,
+      { params: { backup: withBackup } }
+    );
+    
+    upgradeId.value = res.upgradeId;
+    upgradeMessage.value = res.message;
+    
+    // 开始轮询升级状态
+    startUpgradePolling();
+  } catch (error: unknown) {
+    const err = error as { message?: string };
+    upgradeStatus.value = 'failed';
+    upgradeMessage.value = err.message || '升级启动失败';
+    upgradeLoading.value = false;
+  }
+}
+
+// 轮询升级状态
+function startUpgradePolling() {
+  if (upgradePollingTimer) {
+    clearInterval(upgradePollingTimer);
+  }
+  
+  upgradePollingTimer = setInterval(async () => {
+    try {
+      const res = await requestClient.get<{
+        status: string;
+        message: string;
+        progress: number;
+      }>('/system/version/upgrade/status', { params: { upgradeId: upgradeId.value } });
+      
+      upgradeProgress.value = res.progress;
+      upgradeMessage.value = res.message;
+      
+      if (res.status === 'completed') {
+        upgradeStatus.value = 'completed';
+        stopUpgradePolling();
+        upgradeLoading.value = false;
+        message.success('升级成功！页面将在 5 秒后刷新...');
+        setTimeout(() => window.location.reload(), 5000);
+      } else if (res.status === 'failed') {
+        upgradeStatus.value = 'failed';
+        stopUpgradePolling();
+        upgradeLoading.value = false;
+      }
+    } catch {
+      // 如果请求失败，可能是服务正在重启，继续等待
+      upgradeMessage.value = '服务正在重启，请稍候...';
+    }
+  }, 2000);
+  
+  // 最多轮询 10 分钟
+  setTimeout(() => {
+    if (upgradePollingTimer) {
+      stopUpgradePolling();
+      if (upgradeStatus.value === 'running') {
+        upgradeStatus.value = 'completed';
+        upgradeMessage.value = '升级可能已完成，请刷新页面查看';
+        upgradeLoading.value = false;
+      }
+    }
+  }, 10 * 60 * 1000);
+}
+
+// 停止轮询
+function stopUpgradePolling() {
+  if (upgradePollingTimer) {
+    clearInterval(upgradePollingTimer);
+    upgradePollingTimer = null;
+  }
+}
+
+// 关闭升级模态框
+function closeUpgradeModal() {
+  upgradeModalVisible.value = false;
+  stopUpgradePolling();
+  if (upgradeStatus.value === 'completed') {
+    window.location.reload();
+  }
+}
+
+// 刷新页面
+function reloadPage() {
+  window.location.reload();
+}
+
 // 加载邮件服务状态
 async function loadEmailStatus() {
   try {
@@ -1193,6 +1310,16 @@ watch(activeTab, (newTab) => {
 
         <!-- 系统升级 -->
         <Card title="系统升级" :bordered="false" style="margin-top: 16px">
+          <template #extra>
+            <Button 
+              type="primary" 
+              :loading="upgradeLoading"
+              @click="confirmUpgrade"
+            >
+              一键升级
+            </Button>
+          </template>
+
           <Alert
             type="warning"
             show-icon
@@ -1254,6 +1381,70 @@ watch(activeTab, (newTab) => {
             </ul>
           </Alert>
         </Card>
+
+        <!-- 升级进度模态框 -->
+        <AModal
+          v-model:open="upgradeModalVisible"
+          title="系统升级"
+          :footer="null"
+          :closable="upgradeStatus !== 'running'"
+          :maskClosable="false"
+          width="500px"
+          @cancel="closeUpgradeModal"
+        >
+          <div style="padding: 20px 0">
+            <!-- 进度条 -->
+            <div style="margin-bottom: 24px">
+              <div style="display: flex; justify-content: space-between; margin-bottom: 8px">
+                <span>{{ upgradeMessage }}</span>
+                <span v-if="upgradeProgress >= 0">{{ upgradeProgress }}%</span>
+              </div>
+              <div style="height: 8px; background: #f0f0f0; border-radius: 4px; overflow: hidden">
+                <div 
+                  :style="{ 
+                    width: upgradeProgress + '%', 
+                    height: '100%', 
+                    background: upgradeStatus === 'failed' ? '#ff4d4f' : '#1890ff',
+                    transition: 'width 0.3s ease'
+                  }"
+                />
+              </div>
+            </div>
+
+            <!-- 状态提示 -->
+            <Alert
+              v-if="upgradeStatus === 'running'"
+              type="info"
+              show-icon
+              message="升级进行中"
+              description="请勿关闭页面或浏览器，升级完成后页面将自动刷新"
+            />
+            <Alert
+              v-else-if="upgradeStatus === 'completed'"
+              type="success"
+              show-icon
+              message="升级成功"
+              description="页面将在 5 秒后自动刷新"
+            />
+            <Alert
+              v-else-if="upgradeStatus === 'failed'"
+              type="error"
+              show-icon
+              message="升级失败"
+              :description="upgradeMessage"
+            />
+
+            <!-- 操作按钮 -->
+            <div v-if="upgradeStatus !== 'running'" style="margin-top: 24px; text-align: right">
+              <Button v-if="upgradeStatus === 'completed'" type="primary" @click="reloadPage">
+                立即刷新
+              </Button>
+              <Button v-else @click="closeUpgradeModal">
+                关闭
+              </Button>
+            </div>
+          </div>
+        </AModal>
       </TabPane>
 
       <!-- 邮件通知配置 -->
