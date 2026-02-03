@@ -215,3 +215,7 @@ client-service:
     # 示例: 192.168.1.100,192.168.2.0/24,10.0.0.0/8
     # 开发环境可设置为 127.0.0.1,localhost 或禁用白名单验证
     ip-whitelist: ${CLIENT_SERVICE_IP_WHITELIST:127.0.0.1,localhost}
+    # 回调 API Key（当客户服务系统没有固定公网IP时，使用此密钥替代 IP 白名单验证）
+    # 需要与客户服务系统配置的 callback.api-key 一致
+    # 使用方式：禁用 ip-whitelist-enabled 后，配置此密钥
+    api-key: ${CLIENT_SERVICE_CALLBACK_API_KEY:}

@@ -56,6 +56,8 @@ const callbackSecurityConfig = reactive({
   ipWhitelistEnabledId: undefined as number | undefined,
   ipWhitelist: '',
   ipWhitelistId: undefined as number | undefined,
+  apiKey: '',
+  apiKeyId: undefined as number | undefined,
   loading: false,
   saving: false,
 });
@@ -210,6 +212,15 @@ async function loadCallbackSecurityConfig() {
       callbackSecurityConfig.ipWhitelistId = whitelistRes.id;
       callbackSecurityConfig.ipWhitelist = whitelistRes.configValue || '';
     }
+
+    // 获取 API Key
+    const apiKeyRes = await getConfigValue(
+      'client-service.callback.api-key',
+    );
+    if (apiKeyRes) {
+      callbackSecurityConfig.apiKeyId = apiKeyRes.id;
+      callbackSecurityConfig.apiKey = apiKeyRes.configValue || '';
+    }
   } catch (error) {
     // 配置不存在时忽略错误
     console.warn('加载回调安全配置失败:', error);
@@ -233,6 +244,13 @@ async function saveCallbackSecurityConfig() {
     if (callbackSecurityConfig.ipWhitelistId) {
       await updateConfig(callbackSecurityConfig.ipWhitelistId, {
         configValue: callbackSecurityConfig.ipWhitelist,
+      });
+    }
+
+    // 更新 API Key
+    if (callbackSecurityConfig.apiKeyId) {
+      await updateConfig(callbackSecurityConfig.apiKeyId, {
+        configValue: callbackSecurityConfig.apiKey,
       });
     }
 
@@ -706,25 +724,40 @@ onMounted(() => {
               </Button>
             </template>
 
+            <Alert
+              type="info"
+              style="margin-bottom: 16px"
+              message="两种验证方式二选一：启用 IP 白名单适用于固定 IP 场景；禁用 IP 白名单后使用 API 密钥适用于动态 IP 或内网穿透场景。"
+            />
+
             <Form layout="vertical">
-              <FormItem label="启用 IP 白名单验证">
+              <FormItem label="验证方式">
                 <Switch
                   v-model:checked="callbackSecurityConfig.ipWhitelistEnabled"
                 />
                 <span style="margin-left: 8px; color: #666">
-                  {{ callbackSecurityConfig.ipWhitelistEnabled ? '已启用，仅允许白名单内的 IP 回调' : '已禁用，允许任意 IP 回调（不安全）' }}
+                  {{ callbackSecurityConfig.ipWhitelistEnabled ? 'IP 白名单验证（推荐，需要固定公网 IP）' : 'API 密钥验证（适用于动态 IP）' }}
                 </span>
               </FormItem>
 
-              <FormItem label="IP 白名单">
+              <FormItem v-if="callbackSecurityConfig.ipWhitelistEnabled" label="IP 白名单">
                 <Textarea
                   v-model:value="callbackSecurityConfig.ipWhitelist"
                   :rows="3"
                   placeholder="多个 IP 用逗号分隔，支持 CIDR 格式。如：192.168.1.100,10.0.0.0/8"
-                  :disabled="!callbackSecurityConfig.ipWhitelistEnabled"
                 />
                 <div style="margin-top: 4px; font-size: 12px; color: #999">
-                  填写客户服务系统的服务器 IP 地址。支持格式：单个 IP（192.168.1.100）、CIDR 网段（192.168.1.0/24）
+                  填写客户服务系统的服务器 IP 地址。支持：单个 IP、CIDR 网段
+                </div>
+              </FormItem>
+
+              <FormItem v-else label="回调 API 密钥">
+                <Input
+                  v-model:value="callbackSecurityConfig.apiKey"
+                  placeholder="输入与客户服务系统配置一致的密钥"
+                />
+                <div style="margin-top: 4px; font-size: 12px; color: #999">
+                  需要与客户服务系统的 callback.api-key 配置一致
                 </div>
               </FormItem>
             </Form>
@@ -737,7 +770,12 @@ onMounted(() => {
                 <ol style="margin: 0; padding-left: 20px">
                   <li>在客户服务系统管理后台创建 API 密钥</li>
                   <li>将 API 密钥填写到上方"推送配置"中</li>
-                  <li>在"回调安全配置"中填写客户服务系统的 IP 地址</li>
+                  <li>选择回调验证方式：
+                    <ul style="margin: 4px 0; padding-left: 20px">
+                      <li><b>固定 IP</b>：启用 IP 白名单，填写客户服务系统的 IP</li>
+                      <li><b>动态 IP</b>：禁用 IP 白名单，双方配置相同的回调密钥</li>
+                    </ul>
+                  </li>
                   <li>测试推送功能是否正常</li>
                 </ol>
               </DescriptionsItem>

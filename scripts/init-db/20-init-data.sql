@@ -83,6 +83,7 @@ VALUES
 -- 客户服务系统回调配置
 ('client-service.callback.ip-whitelist-enabled', 'true', '回调IP白名单开关', 'BOOLEAN', '是否启用客户服务系统回调IP白名单验证', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
 ('client-service.callback.ip-whitelist', '127.0.0.1,localhost', '回调IP白名单', 'STRING', '允许回调的客户服务系统IP地址，多个用逗号分隔，支持CIDR格式（如192.168.1.0/24）', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('client-service.callback.api-key', '', '回调API密钥', 'STRING', '当客户服务系统没有固定IP时，使用此密钥验证回调请求（需与客户服务系统配置一致）', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
 
 -- 审批流程配置
 ('approval.autoApprove', 'false', '自动审批', 'BOOLEAN', '是否启用自动审批（仅用于测试环境）', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
