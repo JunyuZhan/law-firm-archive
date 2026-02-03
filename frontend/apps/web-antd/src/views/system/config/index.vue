@@ -432,19 +432,19 @@ const upgradeMessage = ref('');
 const upgradeModalVisible = ref(false);
 let upgradePollingTimer: ReturnType<typeof setInterval> | null = null;
 
-// 确认升级对话框
+// 确认升级
 function confirmUpgrade() {
   AModal.confirm({
     title: '确认升级',
-    content: '升级过程中服务会短暂中断，建议在业务低峰期执行。是否继续？',
+    content: '升级过程中服务会短暂中断（约3-5分钟），建议在业务低峰期执行。是否继续？',
     okText: '开始升级',
     cancelText: '取消',
-    onOk: () => executeUpgrade(true),
+    onOk: () => executeUpgrade(),
   });
 }
 
-// 执行一键升级
-async function executeUpgrade(withBackup: boolean) {
+// 执行升级
+async function executeUpgrade() {
   upgradeLoading.value = true;
   upgradeModalVisible.value = true;
   upgradeStatus.value = 'running';
@@ -452,16 +452,14 @@ async function executeUpgrade(withBackup: boolean) {
   upgradeMessage.value = '正在启动升级...';
   
   try {
-    const res = await requestClient.post<{ upgradeId: string; status: string; message: string }>(
+    const res = await requestClient.post<{ upgradeId: string; message: string }>(
       '/system/version/upgrade/execute',
       null,
-      { params: { backup: withBackup } }
+      { params: { backup: false } }
     );
     
     upgradeId.value = res.upgradeId;
     upgradeMessage.value = res.message;
-    
-    // 开始轮询升级状态
     startUpgradePolling();
   } catch (error: unknown) {
     const err = error as { message?: string };
@@ -473,18 +471,17 @@ async function executeUpgrade(withBackup: boolean) {
 
 // 轮询升级状态
 function startUpgradePolling() {
-  if (upgradePollingTimer) {
-    clearInterval(upgradePollingTimer);
-  }
+  if (upgradePollingTimer) clearInterval(upgradePollingTimer);
   
+  let failCount = 0;
   upgradePollingTimer = setInterval(async () => {
     try {
-      const res = await requestClient.get<{
-        status: string;
-        message: string;
-        progress: number;
-      }>('/system/version/upgrade/status', { params: { upgradeId: upgradeId.value } });
+      const res = await requestClient.get<{ status: string; message: string; progress: number }>(
+        '/system/version/upgrade/status',
+        { params: { upgradeId: upgradeId.value } }
+      );
       
+      failCount = 0;
       upgradeProgress.value = res.progress;
       upgradeMessage.value = res.message;
       
@@ -492,33 +489,37 @@ function startUpgradePolling() {
         upgradeStatus.value = 'completed';
         stopUpgradePolling();
         upgradeLoading.value = false;
-        message.success('升级成功！页面将在 5 秒后刷新...');
-        setTimeout(() => window.location.reload(), 5000);
       } else if (res.status === 'failed') {
         upgradeStatus.value = 'failed';
         stopUpgradePolling();
         upgradeLoading.value = false;
       }
     } catch {
-      // 如果请求失败，可能是服务正在重启，继续等待
+      failCount++;
       upgradeMessage.value = '服务正在重启，请稍候...';
+      // 如果连续失败多次，认为升级完成（服务已重启）
+      if (failCount >= 10) {
+        upgradeStatus.value = 'completed';
+        upgradeMessage.value = '升级完成！请刷新页面';
+        upgradeProgress.value = 100;
+        stopUpgradePolling();
+        upgradeLoading.value = false;
+      }
     }
-  }, 2000);
+  }, 3000);
   
   // 最多轮询 10 分钟
   setTimeout(() => {
-    if (upgradePollingTimer) {
+    if (upgradePollingTimer && upgradeStatus.value === 'running') {
+      upgradeStatus.value = 'completed';
+      upgradeMessage.value = '升级可能已完成，请刷新页面';
+      upgradeProgress.value = 100;
       stopUpgradePolling();
-      if (upgradeStatus.value === 'running') {
-        upgradeStatus.value = 'completed';
-        upgradeMessage.value = '升级可能已完成，请刷新页面查看';
-        upgradeLoading.value = false;
-      }
+      upgradeLoading.value = false;
     }
   }, 10 * 60 * 1000);
 }
 
-// 停止轮询
 function stopUpgradePolling() {
   if (upgradePollingTimer) {
     clearInterval(upgradePollingTimer);
@@ -526,16 +527,11 @@ function stopUpgradePolling() {
   }
 }
 
-// 关闭升级模态框
 function closeUpgradeModal() {
   upgradeModalVisible.value = false;
   stopUpgradePolling();
-  if (upgradeStatus.value === 'completed') {
-    window.location.reload();
-  }
 }
 
-// 刷新页面
 function reloadPage() {
   window.location.reload();
 }
@@ -1417,14 +1413,14 @@ watch(activeTab, (newTab) => {
               type="info"
               show-icon
               message="升级进行中"
-              description="请勿关闭页面或浏览器，升级完成后页面将自动刷新"
+              description="正在拉取代码、构建镜像、重启服务，请耐心等待..."
             />
             <Alert
               v-else-if="upgradeStatus === 'completed'"
               type="success"
               show-icon
-              message="升级成功"
-              description="页面将在 5 秒后自动刷新"
+              message="升级完成"
+              description="请点击下方按钮刷新页面"
             />
             <Alert
               v-else-if="upgradeStatus === 'failed'"
@@ -1436,12 +1432,12 @@ watch(activeTab, (newTab) => {
 
             <!-- 操作按钮 -->
             <div v-if="upgradeStatus !== 'running'" style="margin-top: 24px; text-align: right">
-              <Button v-if="upgradeStatus === 'completed'" type="primary" @click="reloadPage">
-                立即刷新
-              </Button>
-              <Button v-else @click="closeUpgradeModal">
-                关闭
-              </Button>
+              <Space>
+                <Button v-if="upgradeStatus === 'completed'" type="primary" @click="reloadPage">
+                  刷新页面
+                </Button>
+                <Button @click="closeUpgradeModal">关闭</Button>
+              </Space>
             </div>
           </div>
         </AModal>

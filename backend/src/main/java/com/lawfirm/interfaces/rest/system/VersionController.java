@@ -256,72 +256,83 @@ public class VersionController {
     }
 
     /**
-     * 执行升级脚本
+     * 执行升级（使用 git 和 docker compose）
      */
     private void executeUpgradeScript(String projectRoot, String upgradeId, boolean backup) {
-        // 状态文件写到 /tmp 目录
         Path statusFile = Paths.get("/tmp/.upgrade-status-" + upgradeId + ".json");
         
         try {
-            writeUpgradeStatus(statusFile, "running", "正在执行升级...", 10);
+            writeUpgradeStatus(statusFile, "running", "正在拉取最新代码...", 20);
             
-            // 构建升级命令
-            String upgradeScript = projectRoot + "/scripts/ops/upgrade.sh";
-            String command = backup 
-                ? upgradeScript + " --backup" 
-                : upgradeScript + " --no-backup";
+            // 步骤1：git pull
+            log.info("开始升级：拉取最新代码");
+            int gitResult = runCommand(projectRoot, "git", "pull", "origin", "main");
+            if (gitResult != 0) {
+                writeUpgradeStatus(statusFile, "failed", "拉取代码失败", -1);
+                return;
+            }
             
-            log.info("执行升级命令: {}", command);
-            writeUpgradeStatus(statusFile, "running", "正在备份数据...", 20);
+            writeUpgradeStatus(statusFile, "running", "正在构建镜像...", 50);
             
-            ProcessBuilder pb = new ProcessBuilder("bash", "-c", command);
-            pb.directory(new File(projectRoot));
+            // 步骤2：docker compose build
+            log.info("构建 Docker 镜像");
+            String dockerDir = projectRoot + "/docker";
+            int buildResult = runCommand(dockerDir, 
+                "docker", "compose", "-f", "docker-compose.prod.yml", 
+                "build", "backend", "frontend", "--no-cache");
+            if (buildResult != 0) {
+                writeUpgradeStatus(statusFile, "failed", "构建镜像失败", -1);
+                return;
+            }
+            
+            writeUpgradeStatus(statusFile, "running", "正在重启服务...", 90);
+            
+            // 步骤3：docker compose up -d（这会重启当前容器，所以放在最后）
+            log.info("重启服务");
+            // 使用 nohup 确保命令在后台继续执行
+            ProcessBuilder pb = new ProcessBuilder("sh", "-c", 
+                "cd " + dockerDir + " && docker compose -f docker-compose.prod.yml up -d backend frontend");
+            pb.directory(new File(dockerDir));
             pb.redirectErrorStream(true);
+            pb.start(); // 不等待完成，因为这会停止当前容器
             
-            Process process = pb.start();
-            
-            // 读取输出
-            StringBuilder output = new StringBuilder();
-            try (BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
-                String line;
-                int progress = 30;
-                while ((line = reader.readLine()) != null) {
-                    output.append(line).append("\n");
-                    log.info("[升级] {}", line);
-                    
-                    // 根据输出更新进度
-                    if (line.contains("备份") || line.contains("backup")) {
-                        writeUpgradeStatus(statusFile, "running", "正在备份数据...", 30);
-                    } else if (line.contains("拉取") || line.contains("pull") || line.contains("fetch")) {
-                        writeUpgradeStatus(statusFile, "running", "正在拉取最新代码...", 50);
-                    } else if (line.contains("构建") || line.contains("build")) {
-                        writeUpgradeStatus(statusFile, "running", "正在构建应用...", 70);
-                    } else if (line.contains("部署") || line.contains("deploy") || line.contains("启动")) {
-                        writeUpgradeStatus(statusFile, "running", "正在重启服务...", 90);
-                    }
-                    
-                    progress = Math.min(progress + 1, 89);
-                }
-            }
-            
-            int exitCode = process.waitFor();
-            
-            if (exitCode == 0) {
-                writeUpgradeStatus(statusFile, "completed", "升级成功！服务即将重启...", 100);
-                log.info("升级成功完成");
-            } else {
-                writeUpgradeStatus(statusFile, "failed", "升级失败，退出码: " + exitCode, -1);
-                log.error("升级失败，退出码: {}, 输出: {}", exitCode, output);
-            }
+            writeUpgradeStatus(statusFile, "completed", "升级成功！服务正在重启...", 100);
+            log.info("升级命令已发送，服务即将重启");
             
         } catch (Exception e) {
             log.error("升级执行异常", e);
             try {
                 writeUpgradeStatus(statusFile, "failed", "升级异常: " + e.getMessage(), -1);
             } catch (Exception ignored) {
-                // 忽略写入状态失败
+                // 忽略
             }
+        }
+    }
+    
+    /**
+     * 执行命令并等待完成
+     */
+    private int runCommand(String workDir, String... command) {
+        try {
+            ProcessBuilder pb = new ProcessBuilder(command);
+            pb.directory(new File(workDir));
+            pb.redirectErrorStream(true);
+            
+            Process process = pb.start();
+            
+            // 读取输出
+            try (BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    log.info("[升级] {}", line);
+                }
+            }
+            
+            return process.waitFor();
+        } catch (Exception e) {
+            log.error("执行命令失败: {}", String.join(" ", command), e);
+            return -1;
         }
     }
 

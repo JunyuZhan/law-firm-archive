@@ -40,14 +40,15 @@ FROM eclipse-temurin:21-jre-alpine
 LABEL maintainer="lawfirm"
 LABEL description="智慧律所管理系统后端服务"
 
-# 设置时区
+# 设置时区，安装必要工具（git、docker-cli 用于一键升级）
 ENV TZ=Asia/Shanghai
-RUN apk add --no-cache tzdata curl && \
+RUN apk add --no-cache tzdata curl git docker-cli docker-cli-compose && \
     cp /usr/share/zoneinfo/$TZ /etc/localtime && \
     echo $TZ > /etc/timezone
 
-# 创建非 root 用户运行应用
-RUN addgroup -S lawfirm && adduser -S lawfirm -G lawfirm
+# 创建非 root 用户运行应用，并添加到 docker 组
+RUN addgroup -S lawfirm && adduser -S lawfirm -G lawfirm && \
+    addgroup lawfirm docker 2>/dev/null || true
 
 # 创建日志目录并设置权限
 RUN mkdir -p /var/log/law-firm && \
