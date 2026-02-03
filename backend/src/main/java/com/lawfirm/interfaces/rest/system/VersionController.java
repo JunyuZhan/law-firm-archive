@@ -7,7 +7,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
@@ -36,10 +40,10 @@ public class VersionController {
     @Value("${app.version:1.0.0}")
     private String currentVersion;
 
-    @Value("${app.version.check-url:}")
+    @Value("${app.version-check.url:}")
     private String versionCheckUrl;
 
-    @Value("${app.version.github-repo:}")
+    @Value("${app.version-check.github-repo:}")
     private String githubRepo;
 
     /**
@@ -125,7 +129,9 @@ public class VersionController {
         result.put("steps", steps);
         
         // 一键升级命令
-        result.put("quickCommand", "./scripts/ops/backup.sh && git pull origin main && ./scripts/deploy/deploy.sh --quick --no-cache");
+        String quickCmd = "./scripts/ops/backup.sh && git pull origin main "
+            + "&& ./scripts/deploy/deploy.sh --quick --no-cache";
+        result.put("quickCommand", quickCmd);
         
         return Result.success(result);
     }
@@ -146,10 +152,12 @@ public class VersionController {
                     "UPDATE sys_config SET config_value = ?, update_time = CURRENT_TIMESTAMP WHERE config_key = ?",
                     version, configKey);
             } else {
-                jdbcTemplate.update(
-                    "INSERT INTO sys_config (config_key, config_value, config_name, config_type, remark, create_time, update_time) " +
-                    "VALUES (?, ?, '已忽略的版本号', 'Y', '版本更新忽略配置', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
-                    configKey, version);
+                String sql = "INSERT INTO sys_config "
+                    + "(config_key, config_value, config_name, config_type, remark, "
+                    + "create_time, update_time) "
+                    + "VALUES (?, ?, '已忽略的版本号', 'Y', '版本更新忽略配置', "
+                    + "CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)";
+                jdbcTemplate.update(sql, configKey, version);
             }
 
             log.info("已忽略版本更新: {}", version);
@@ -214,7 +222,9 @@ public class VersionController {
             RestTemplate restTemplate = new RestTemplate();
 
             Map<String, Object> release = restTemplate.getForObject(apiUrl, Map.class);
-            if (release == null) return null;
+            if (release == null) {
+                return null;
+            }
 
             Map<String, Object> result = new LinkedHashMap<>();
             String tagName = (String) release.get("tag_name");

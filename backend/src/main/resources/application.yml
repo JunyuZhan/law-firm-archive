@@ -1,9 +1,9 @@
 # 应用版本配置（用于版本检查和升级提示）
 app:
   version: 1.0.0
-  version:
+  version-check:
     # 自定义版本检查 URL（可选）
-    check-url: ${APP_VERSION_CHECK_URL:}
+    url: ${APP_VERSION_CHECK_URL:}
     # GitHub 仓库（可选，格式: owner/repo）
     github-repo: ${APP_VERSION_GITHUB_REPO:junyuzhan/law-firm}
 
