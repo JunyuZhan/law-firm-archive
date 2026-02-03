@@ -17,6 +17,7 @@ import com.lawfirm.common.result.Result;
 import com.lawfirm.common.util.FileHashUtil;
 import com.lawfirm.common.util.FileValidator;
 import com.lawfirm.common.util.MinioPathGenerator;
+import com.lawfirm.infrastructure.config.OnlyOfficeConfig;
 import com.lawfirm.infrastructure.external.document.DocumentContentExtractor;
 import com.lawfirm.infrastructure.external.file.FileTypeService;
 import com.lawfirm.infrastructure.external.file.ThumbnailService;
@@ -77,6 +78,9 @@ public class EvidenceController {
   /** 文件访问服务 */
   @SuppressWarnings("unused")
   private final FileAccessService fileAccessService;
+
+  /** OnlyOffice 配置 */
+  private final OnlyOfficeConfig onlyOfficeConfig;
 
   /**
    * 分页查询证据
@@ -477,9 +481,14 @@ public class EvidenceController {
     FileTypeService.FileTypeInfo typeInfo = fileTypeService.getFileTypeInfo(evidence.getFileName());
 
     Map<String, Object> result = new HashMap<>();
-    // 使用后端代理 URL，OnlyOffice 通过后端下载文件
-    // 后端运行在宿主机，OnlyOffice 通过 host.docker.internal 访问
-    String proxyUrl = "http://host.docker.internal:8080/evidence/" + id + "/file-proxy";
+    // 使用后端代理 URL，OnlyOffice 通过 Docker 内部网络下载文件
+    // 使用配置的 callbackUrl 作为基础（默认为 http://backend:8080/api）
+    String baseUrl = onlyOfficeConfig.getCallbackUrl();
+    // 移除末尾的 /api（如果有）
+    if (baseUrl.endsWith("/api")) {
+      baseUrl = baseUrl.substring(0, baseUrl.length() - 4);
+    }
+    String proxyUrl = baseUrl + "/api/evidence/" + id + "/file-proxy";
     result.put("fileUrl", proxyUrl);
     result.put("fileName", evidence.getFileName());
     result.put("fileType", typeInfo.getType());
