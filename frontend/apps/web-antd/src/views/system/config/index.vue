@@ -209,6 +209,10 @@ const configGroupOrder: Record<string, number> = {
   // 9. 定时报告配置
   'notification.report.daily.enabled': 80,
   'notification.report.weekly.enabled': 81,
+
+  // 10. 客户服务系统回调配置
+  'client-service.callback.ip-whitelist-enabled': 90,
+  'client-service.callback.ip-whitelist': 91,
 };
 
 // 获取配置项的排序权重
@@ -220,6 +224,7 @@ function getConfigSortWeight(key: string): number {
   // 按前缀分组
   if (key.startsWith('sys.')) return 100;
   if (key.startsWith('notification.')) return 150;
+  if (key.startsWith('client-service.')) return 160; // 客户服务系统配置
   if (key.startsWith('ai.')) return 200;
   if (key.startsWith('ocr.')) return 300;
   if (key.startsWith('backup.')) return 400;
