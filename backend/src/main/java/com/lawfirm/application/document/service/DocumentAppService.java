@@ -1105,7 +1105,9 @@ public class DocumentAppService {
       // 3. 构建新的存储路径（保持原来的路径结构）
       String storagePath = buildStoragePath(document.getMatterId(), document.getFolderPath());
       String newFileName = document.getFileName();
-      String objectName = storagePath + System.currentTimeMillis() + "_" + newFileName;
+      // 生成新的物理文件名：时间戳_原文件名
+      String newPhysicalName = System.currentTimeMillis() + "_" + newFileName;
+      String objectName = storagePath + newPhysicalName;
 
       // 4. 上传新文件到 MinIO
       java.io.ByteArrayInputStream uploadStream = new java.io.ByteArrayInputStream(fileContent);
@@ -1117,6 +1119,10 @@ public class DocumentAppService {
       // 只有用户手动"上传新版本"时才增加版本号
       document.setFilePath(newFileUrl);
       document.setFileSize(newFileSize);
+      // ⚠️ 关键修复：同时更新 storagePath 和 physicalName
+      // 文件代理接口优先使用这两个字段构建路径，必须保持同步
+      document.setStoragePath(storagePath);
+      document.setPhysicalName(newPhysicalName);
       // 不改变版本号：document.setVersion(newVersion);
       document.setUpdatedAt(LocalDateTime.now());
       documentRepository.updateById(document);
