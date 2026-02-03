@@ -1,11 +1,8 @@
 package com.lawfirm.domain.clientservice.entity;
 
-import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lawfirm.common.base.BaseEntity;
-import com.lawfirm.infrastructure.persistence.typehandler.PostgresJsonTypeHandler;
 import java.time.LocalDateTime;
-import java.util.Map;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 
@@ -15,7 +12,7 @@ import lombok.experimental.SuperBuilder;
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode(callSuper = true)
-@TableName(value = "openapi_push_record", autoResultMap = true)
+@TableName("openapi_push_record")
 public class PushRecord extends BaseEntity {
 
   /** 项目ID */
@@ -30,9 +27,8 @@ public class PushRecord extends BaseEntity {
   /** 推送范围（逗号分隔） 如：MATTER_INFO,MATTER_PROGRESS,LAWYER_INFO */
   private String scopes;
 
-  /** 推送的数据快照（JSON格式） 保存脱敏后的数据，用于审计 */
-  @TableField(typeHandler = PostgresJsonTypeHandler.class)
-  private Map<String, Object> dataSnapshot;
+  /** 推送的数据快照（JSON字符串） 保存脱敏后的数据，用于审计 */
+  private String dataSnapshot;
 
   /** 客户服务系统返回的数据ID 用于后续更新或撤销 */
   private String externalId;

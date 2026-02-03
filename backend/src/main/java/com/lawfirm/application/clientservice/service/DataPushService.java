@@ -149,13 +149,11 @@ public class DataPushService {
             .createdBy(operatorId)
             .build();
 
-    // 保存数据快照（转换为 Map 类型以匹配 JSONB 字段）
+    // 保存数据快照（JSON字符串）
     try {
-      @SuppressWarnings("unchecked")
-      Map<String, Object> snapshotMap = objectMapper.convertValue(matterData, Map.class);
-      record.setDataSnapshot(snapshotMap);
+      record.setDataSnapshot(objectMapper.writeValueAsString(matterData));
     } catch (Exception e) {
-      log.warn("转换数据快照失败", e);
+      log.warn("序列化数据快照失败", e);
     }
 
     pushRecordMapper.insert(record);
