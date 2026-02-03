@@ -57,9 +57,13 @@ fi
 echo ""
 echo "✅ 版本号已更新为 $NEW_VERSION"
 echo ""
-echo "下一步："
+
+# 获取当前分支
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")
+
+echo "下一步（当前分支: $CURRENT_BRANCH）："
 echo "  git add ."
 echo "  git commit -m \"release: v$NEW_VERSION\""
 echo "  git tag v$NEW_VERSION"
-echo "  git push origin main --tags"
+echo "  git push origin $CURRENT_BRANCH --tags"
 

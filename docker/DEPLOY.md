@@ -28,8 +28,11 @@ cd client-service/client-service
 ### 升级更新（已有仓库）
 
 ```bash
-# 升级律所管理系统
+# 升级律所管理系统（推荐：使用升级脚本，自动备份）
 cd law-firm
+./scripts/ops/upgrade.sh
+
+# 或手动升级
 git pull origin main
 ./scripts/deploy/deploy.sh --quick
 
@@ -38,6 +41,11 @@ cd client-service/client-service
 git pull origin feature/client-service-system
 ./deploy.sh --quick
 ```
+
+升级脚本选项：
+- `./scripts/ops/upgrade.sh` - 交互式升级（带备份确认）
+- `./scripts/ops/upgrade.sh --quick` - 快速升级（自动备份，跳过确认）
+- `./scripts/ops/upgrade.sh --check` - 仅检查更新，不执行
 
 > ⚠️ **注意**：两个系统是独立部署的，可以部署在同一台服务器的不同端口，或部署在不同服务器上。
 
