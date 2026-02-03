@@ -204,3 +204,14 @@ law-firm:
   performance:
     slow-api-threshold: 3000    # 慢接口告警阈值（毫秒）
     warn-api-threshold: 1000    # 性能警告阈值（毫秒）
+
+# 客户服务系统回调安全配置
+# 用于验证来自客户服务系统的回调请求（访问日志、下载日志等）
+client-service:
+  callback:
+    # 是否启用 IP 白名单验证（生产环境建议启用）
+    ip-whitelist-enabled: ${CLIENT_SERVICE_IP_WHITELIST_ENABLED:true}
+    # 客户服务系统的 IP 白名单（多个 IP 用逗号分隔，支持 CIDR 格式）
+    # 示例: 192.168.1.100,192.168.2.0/24,10.0.0.0/8
+    # 开发环境可设置为 127.0.0.1,localhost 或禁用白名单验证
+    ip-whitelist: ${CLIENT_SERVICE_IP_WHITELIST:127.0.0.1,localhost}
