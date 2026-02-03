@@ -1123,7 +1123,7 @@ public class DocumentAppService {
   }
 
   /**
-   * 规范化 OnlyOffice 提供的下载 URL 将 localhost、127.0.0.1 等地址替换为 Docker 内部可访问的地址。
+   * 规范化 OnlyOffice 提供的下载 URL 将外部地址替换为 Docker 内部可访问的地址。
    *
    * @param downloadUrl 原始下载URL
    * @return 规范化后的下载URL
@@ -1133,12 +1133,20 @@ public class DocumentAppService {
       return downloadUrl;
     }
 
-    // OnlyOffice 提供的 URL 通常是它自己服务器上的临时文件
-    // 如果包含 localhost 或 127.0.0.1，需要替换为 Docker 内部服务名
     String normalizedUrl = downloadUrl;
 
+    // 关键修复：将外部 HTTPS/HTTP 地址中的 /onlyoffice/ 路径转换为 Docker 内部地址
+    // 例如: https://192.168.50.10/onlyoffice/cache/... -> http://onlyoffice/cache/...
+    // 例如: https://example.com/onlyoffice/cache/... -> http://onlyoffice/cache/...
+    if (normalizedUrl.contains("/onlyoffice/")) {
+      // 使用正则表达式匹配并替换：协议://任意主机:可选端口/onlyoffice/ -> http://onlyoffice/
+      normalizedUrl = normalizedUrl.replaceFirst(
+          "https?://[^/]+/onlyoffice/",
+          "http://onlyoffice/"
+      );
+    }
+
     // 替换 localhost 和 127.0.0.1 为 onlyoffice（Docker 服务名）
-    // 注意：OnlyOffice 容器在 Docker 网络中可以通过服务名访问
     normalizedUrl =
         normalizedUrl
             .replace("http://localhost/", "http://onlyoffice/")
