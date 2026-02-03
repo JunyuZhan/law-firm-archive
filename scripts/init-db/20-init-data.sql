@@ -80,6 +80,10 @@ VALUES
 ('work.endTime', '18:00', '下班时间', 'STRING', '标准下班时间，格式：HH:mm', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
 ('work.workdays', '1,2,3,4,5', '工作日', 'STRING', '工作日设置，1-7表示周一到周日，多个用逗号分隔', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
 
+-- 客户服务系统回调配置
+('client-service.callback.ip-whitelist-enabled', 'true', '回调IP白名单开关', 'BOOLEAN', '是否启用客户服务系统回调IP白名单验证', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('client-service.callback.ip-whitelist', '127.0.0.1,localhost', '回调IP白名单', 'STRING', '允许回调的客户服务系统IP地址，多个用逗号分隔，支持CIDR格式（如192.168.1.0/24）', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+
 -- 审批流程配置
 ('approval.autoApprove', 'false', '自动审批', 'BOOLEAN', '是否启用自动审批（仅用于测试环境）', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
 ('approval.reminder.enabled', 'true', '审批提醒', 'BOOLEAN', '是否启用审批提醒通知', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),

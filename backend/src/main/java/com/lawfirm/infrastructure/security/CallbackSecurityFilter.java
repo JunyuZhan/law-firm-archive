@@ -1,5 +1,6 @@
 package com.lawfirm.infrastructure.security;
 
+import com.lawfirm.application.system.service.SysConfigAppService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -7,9 +8,9 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -20,18 +21,46 @@ import org.springframework.web.filter.OncePerRequestFilter;
  * 安全策略：
  * 1. IP 白名单验证（推荐）：只允许客户服务系统的 IP 访问
  * 2. 签名验证（可选）：使用 HMAC-SHA256 验证请求签名
+ * 
+ * 配置优先级：数据库 sys_config 表 > 环境变量 > 配置文件默认值
  */
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class CallbackSecurityFilter extends OncePerRequestFilter {
 
-  /** 客户服务系统 IP 白名单（多个 IP 用逗号分隔） */
-  @Value("${client-service.callback.ip-whitelist:}")
-  private String ipWhitelist;
+  /** 系统配置服务 */
+  private final SysConfigAppService sysConfigAppService;
 
-  /** 是否启用 IP 白名单验证 */
+  /** 客户服务系统 IP 白名单（配置文件默认值） */
+  @Value("${client-service.callback.ip-whitelist:}")
+  private String defaultIpWhitelist;
+
+  /** 是否启用 IP 白名单验证（配置文件默认值） */
   @Value("${client-service.callback.ip-whitelist-enabled:true}")
-  private boolean ipWhitelistEnabled;
+  private boolean defaultIpWhitelistEnabled;
+
+  /**
+   * 检查 IP 白名单验证是否启用（优先从数据库读取）
+   */
+  private boolean isIpWhitelistEnabled() {
+    String value = sysConfigAppService.getConfigValue("client-service.callback.ip-whitelist-enabled");
+    if (value != null && !value.isEmpty()) {
+      return Boolean.parseBoolean(value);
+    }
+    return defaultIpWhitelistEnabled;
+  }
+
+  /**
+   * 获取 IP 白名单（优先从数据库读取）
+   */
+  private String getIpWhitelist() {
+    String value = sysConfigAppService.getConfigValue("client-service.callback.ip-whitelist");
+    if (value != null && !value.isEmpty()) {
+      return value;
+    }
+    return defaultIpWhitelist;
+  }
 
   /** 回调接口路径前缀 */
   private static final String CALLBACK_PATH_PREFIX = "/open/client/";
@@ -56,7 +85,7 @@ public class CallbackSecurityFilter extends OncePerRequestFilter {
     log.debug("回调请求: path={}, clientIp={}", requestPath, clientIp);
 
     // IP 白名单验证
-    if (ipWhitelistEnabled) {
+    if (isIpWhitelistEnabled()) {
       if (!isIpAllowed(clientIp)) {
         log.warn("回调请求被拒绝：IP 不在白名单中 - path={}, clientIp={}", requestPath, clientIp);
         response.setStatus(HttpServletResponse.SC_FORBIDDEN);
@@ -81,14 +110,17 @@ public class CallbackSecurityFilter extends OncePerRequestFilter {
       return false;
     }
 
+    // 获取 IP 白名单（优先从数据库读取）
+    String whitelist = getIpWhitelist();
+
     // 如果没有配置白名单，拒绝所有请求（安全默认值）
-    if (ipWhitelist == null || ipWhitelist.trim().isEmpty()) {
+    if (whitelist == null || whitelist.trim().isEmpty()) {
       log.warn("回调 IP 白名单未配置，拒绝所有回调请求");
       return false;
     }
 
     // 解析白名单（支持多个 IP，用逗号分隔）
-    List<String> allowedIps = Arrays.asList(ipWhitelist.split(","));
+    List<String> allowedIps = Arrays.asList(whitelist.split(","));
     
     // 检查 IP 是否在白名单中（支持精确匹配和 CIDR 格式）
     for (String allowedIp : allowedIps) {
