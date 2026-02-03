@@ -833,6 +833,7 @@ public class DocumentAppService {
 
   /**
    * 保存编辑历史（用于 OnlyOffice 自动保存，不作为新版本）记录文件路径变化，但版本号保持不变。
+   * 如果已存在相同版本的记录，则更新而不是插入（避免唯一约束冲突）。
    *
    * @param document 文档实体
    * @param changeNote 变更说明
@@ -845,21 +846,34 @@ public class DocumentAppService {
       log.debug("OnlyOffice 回调获取用户ID失败，这是正常的: {}", e.getMessage());
     }
 
-    // 记录编辑历史，版本号不变，但文件路径可能变化
-    DocumentVersion editRecord =
-        DocumentVersion.builder()
-            .documentId(document.getId())
-            .version(document.getVersion()) // 版本号不变
-            .fileName(document.getFileName())
-            .filePath(document.getFilePath())
-            .fileSize(document.getFileSize())
-            .changeNote(changeNote)
-            .createdBy(userId)
-            .createdAt(LocalDateTime.now())
-            .build();
-    versionMapper.insert(editRecord);
-
-    log.debug("OnlyOffice 编辑历史已记录: docId={}, version={}", document.getId(), document.getVersion());
+    // 检查是否已存在该版本的记录
+    DocumentVersion existingRecord = versionMapper.selectByDocumentIdAndVersion(
+        document.getId(), document.getVersion());
+    
+    if (existingRecord != null) {
+      // 更新已存在的记录（OnlyOffice 多次自动保存场景）
+      existingRecord.setFileName(document.getFileName());
+      existingRecord.setFilePath(document.getFilePath());
+      existingRecord.setFileSize(document.getFileSize());
+      existingRecord.setChangeNote(changeNote);
+      versionMapper.updateById(existingRecord);
+      log.debug("OnlyOffice 编辑历史已更新: docId={}, version={}", document.getId(), document.getVersion());
+    } else {
+      // 记录编辑历史，版本号不变，但文件路径可能变化
+      DocumentVersion editRecord =
+          DocumentVersion.builder()
+              .documentId(document.getId())
+              .version(document.getVersion()) // 版本号不变
+              .fileName(document.getFileName())
+              .filePath(document.getFilePath())
+              .fileSize(document.getFileSize())
+              .changeNote(changeNote)
+              .createdBy(userId)
+              .createdAt(LocalDateTime.now())
+              .build();
+      versionMapper.insert(editRecord);
+      log.debug("OnlyOffice 编辑历史已记录: docId={}, version={}", document.getId(), document.getVersion());
+    }
   }
 
   /**

@@ -28,4 +28,15 @@ public interface DocumentVersionMapper extends BaseMapper<DocumentVersion> {
    */
   @Select("SELECT COALESCE(MAX(version), 0) FROM doc_version WHERE document_id = #{documentId}")
   Integer selectMaxVersion(@Param("documentId") Long documentId);
+
+  /**
+   * 根据文档ID和版本号查询版本记录.
+   *
+   * @param documentId 文档ID
+   * @param version 版本号
+   * @return 文档版本记录，不存在则返回null
+   */
+  @Select("SELECT * FROM doc_version WHERE document_id = #{documentId} AND version = #{version}")
+  DocumentVersion selectByDocumentIdAndVersion(
+      @Param("documentId") Long documentId, @Param("version") Integer version);
 }
