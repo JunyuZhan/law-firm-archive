@@ -2,6 +2,30 @@
 
 > 📖 **分布式部署**：如需多节点集群部署，请参阅 [DEPLOY-SWARM.md](./DEPLOY-SWARM.md)
 
+## 系统分支说明
+
+本项目包含两个独立的系统，分别在不同的 Git 分支：
+
+| 分支 | 系统 | 说明 | 部署目录 |
+|------|------|------|----------|
+| `main` | 律所管理系统 | 律所内部使用的管理系统 | 项目根目录 |
+| `feature/client-service-system` | 客户服务系统 | 面向客户的门户网站 | `client-service/` |
+
+### 部署不同的系统
+
+```bash
+# 部署律所管理系统（main 分支）
+git checkout main
+./scripts/deploy/deploy.sh --quick
+
+# 部署客户服务系统（feature/client-service-system 分支）
+git checkout feature/client-service-system
+cd client-service
+./deploy.sh
+```
+
+> ⚠️ **注意**：两个系统是独立部署的，可以部署在同一台服务器的不同端口，或部署在不同服务器上。
+
 ## 前置要求
 
 - Docker 24.0+
