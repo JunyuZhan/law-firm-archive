@@ -143,6 +143,20 @@ const updateInfo = ref<{
   error?: string;
 } | null>(null);
 
+// 升级相关
+interface UpgradeResult {
+  success: boolean;
+  message: string;
+  manual?: boolean;
+  command?: string;
+}
+const upgradeLoading = ref(false);
+const upgradeStatus = ref<{
+  configured: boolean;
+  webhookUrl?: string;
+} | null>(null);
+const upgradeResult = ref<UpgradeResult | null>(null);
+
 // 邮件通知相关
 const emailStatus = ref({ enabled: false });
 const emailTestLoading = ref(false);
@@ -384,6 +398,59 @@ function viewReleaseNotes() {
   } else {
     message.info('暂无更新说明');
   }
+}
+
+// 获取升级服务状态
+async function loadUpgradeStatus() {
+  try {
+    const res = await requestClient.get<typeof upgradeStatus.value>('/system/version/upgrade/status');
+    upgradeStatus.value = res;
+  } catch (error: unknown) {
+    console.error('获取升级状态失败', error);
+  }
+}
+
+// 执行升级
+async function triggerUpgrade() {
+  AModal.confirm({
+    title: '确认升级',
+    content: '系统将开始升级，升级过程中服务会短暂中断（约1-3分钟）。确定要继续吗？',
+    okText: '开始升级',
+    cancelText: '取消',
+    okType: 'primary',
+    async onOk() {
+      upgradeLoading.value = true;
+      upgradeResult.value = null;
+      try {
+        const res = await requestClient.post<UpgradeResult>('/system/version/upgrade');
+        upgradeResult.value = res;
+        if (res?.success) {
+          message.success(res.message || '升级指令已发送');
+        } else if (res?.manual) {
+          // 需要手动升级
+          AModal.info({
+            title: '需要手动升级',
+            content: `${res.message}\n\n请在服务器上执行以下命令：\n\n${res.command}`,
+            width: 600,
+          });
+        } else {
+          message.warning(res?.message || '升级失败');
+        }
+      } catch (error: unknown) {
+        console.error('升级失败', error);
+        message.error('升级请求失败');
+      } finally {
+        upgradeLoading.value = false;
+      }
+    },
+  });
+}
+
+// 复制升级命令
+function copyUpgradeCommand() {
+  const command = 'cd /path/to/law-firm && git pull origin main && cd docker && docker compose up -d --build';
+  navigator.clipboard.writeText(command);
+  message.success('升级命令已复制到剪贴板');
 }
 
 // 加载邮件服务状态
@@ -716,6 +783,7 @@ onMounted(async () => {
   handlePreview();
   await loadMaintenanceStatus();
   await loadVersionInfo();
+  await loadUpgradeStatus();
   await loadEmailStatus();
   await loadWecomStatus();
 });
@@ -1037,6 +1105,9 @@ watch(activeTab, (newTab) => {
             <template #description>
               <div style="margin-top: 8px">
                 <Space>
+                  <Button type="primary" size="small" :loading="upgradeLoading" @click="triggerUpgrade">
+                    一键升级
+                  </Button>
                   <Button size="small" @click="viewReleaseNotes">查看更新内容</Button>
                   <Button size="small" type="text" @click="ignoreVersionUpdate">忽略此版本</Button>
                 </Space>
@@ -1145,19 +1216,72 @@ watch(activeTab, (newTab) => {
                   <strong>运行环境</strong>：当前 Spring
                   Profile（dev/test/prod）
                 </li>
-                <li style="margin-top: 8px; color: #1890ff">
-                  💡 <strong>提示</strong>：可以在"通用配置"中修改 sys.version
-                  来设置简单的版本号格式（如 0.4）
-                </li>
-                <li style="margin-top: 8px; color: #52c41a">
-                  🔄 <strong>版本检查</strong>：点击右上角"检查更新"可从 GitHub 获取最新版本信息
-                </li>
               </ul>
             </Alert>
           </div>
           <div v-else style="padding: 40px; color: #999; text-align: center">
             无法加载版本信息
           </div>
+        </Card>
+
+        <!-- 系统升级 -->
+        <Card title="系统升级" :bordered="false" style="margin-top: 16px">
+          <Alert
+            v-if="upgradeStatus?.configured"
+            type="success"
+            show-icon
+            message="升级服务已配置"
+            description="点击上方「一键升级」按钮即可自动完成升级"
+            style="margin-bottom: 16px"
+          />
+          <Alert
+            v-else
+            type="warning"
+            show-icon
+            message="升级服务未配置"
+            style="margin-bottom: 16px"
+          >
+            <template #description>
+              <div>
+                需要在服务器上配置升级服务才能使用一键升级功能。
+                <a href="https://github.com/junyuzhan/law-firm#upgrade" target="_blank">查看配置说明</a>
+              </div>
+            </template>
+          </Alert>
+
+          <Divider orientation="left">手动升级命令</Divider>
+          <div style="background: #f5f5f5; padding: 16px; border-radius: 8px; font-family: monospace; position: relative">
+            <div style="color: #666; font-size: 12px; margin-bottom: 8px"># SSH 登录服务器后执行</div>
+            <div style="color: #333">cd /path/to/law-firm && git pull origin main && cd docker && docker compose up -d --build</div>
+            <Button
+              type="text"
+              size="small"
+              style="position: absolute; top: 8px; right: 8px"
+              @click="copyUpgradeCommand"
+            >
+              复制
+            </Button>
+          </div>
+
+          <Divider orientation="left" style="margin-top: 24px">配置一键升级（推荐）</Divider>
+          <Alert type="info" :show-icon="false">
+            <div style="margin-bottom: 8px; font-weight: 500">配置步骤：</div>
+            <ol style="padding-left: 20px; margin: 0; color: #666">
+              <li>在<strong>宿主机</strong>（不是 Docker 容器内）启动升级服务：
+                <div style="background: #f5f5f5; padding: 8px; margin: 8px 0; font-family: monospace; border-radius: 4px">
+                  ./scripts/upgrade-server.sh start
+                </div>
+              </li>
+              <li>在 <code>.env</code> 文件中配置升级服务地址：
+                <div style="background: #f5f5f5; padding: 8px; margin: 8px 0; font-family: monospace; border-radius: 4px">
+                  APP_UPGRADE_WEBHOOK_URL=http://localhost:9999/upgrade<br/>
+                  APP_UPGRADE_WEBHOOK_SECRET=your-secret-key
+                </div>
+              </li>
+              <li>重启后端服务使配置生效</li>
+              <li>之后即可使用「一键升级」功能</li>
+            </ol>
+          </Alert>
         </Card>
       </TabPane>
 

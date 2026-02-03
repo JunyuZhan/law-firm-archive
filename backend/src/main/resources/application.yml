@@ -6,6 +6,11 @@ app:
     check-url: ${APP_VERSION_CHECK_URL:}
     # GitHub 仓库（可选，格式: owner/repo）
     github-repo: ${APP_VERSION_GITHUB_REPO:junyuzhan/law-firm}
+  upgrade:
+    # 升级服务 Webhook URL（宿主机上运行的升级服务地址）
+    webhook-url: ${APP_UPGRADE_WEBHOOK_URL:}
+    # 升级服务密钥（用于验证升级请求）
+    webhook-secret: ${APP_UPGRADE_WEBHOOK_SECRET:}
 
 server:
   port: 8080

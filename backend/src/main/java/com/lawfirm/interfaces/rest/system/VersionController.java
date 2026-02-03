@@ -39,6 +39,13 @@ public class VersionController {
     @Value("${app.version.github-repo:}")
     private String githubRepo;
 
+    // 升级服务配置
+    @Value("${app.upgrade.webhook-url:}")
+    private String upgradeWebhookUrl;
+
+    @Value("${app.upgrade.webhook-secret:}")
+    private String upgradeWebhookSecret;
+
     /**
      * 获取当前版本信息
      */
@@ -86,6 +93,66 @@ public class VersionController {
             result.put("error", "无法获取最新版本信息");
         }
 
+        return Result.success(result);
+    }
+
+    /**
+     * 触发系统升级
+     */
+    @Operation(summary = "触发系统升级", description = "调用升级服务执行系统升级")
+    @PostMapping("/upgrade")
+    public Result<Map<String, Object>> triggerUpgrade() {
+        Map<String, Object> result = new LinkedHashMap<>();
+        
+        if (upgradeWebhookUrl == null || upgradeWebhookUrl.isEmpty()) {
+            result.put("success", false);
+            result.put("message", "未配置升级服务地址，请在 application.yml 中配置 app.upgrade.webhook-url");
+            result.put("manual", true);
+            result.put("command", "cd /path/to/law-firm && git pull && cd docker && docker compose up -d --build");
+            return Result.success(result);
+        }
+        
+        try {
+            RestTemplate restTemplate = new RestTemplate();
+            
+            // 创建请求头
+            org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+            headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+            if (upgradeWebhookSecret != null && !upgradeWebhookSecret.isEmpty()) {
+                headers.set("X-Upgrade-Secret", upgradeWebhookSecret);
+            }
+            
+            org.springframework.http.HttpEntity<String> entity = 
+                new org.springframework.http.HttpEntity<>("{}", headers);
+            
+            // 调用升级服务
+            restTemplate.postForObject(upgradeWebhookUrl, entity, String.class);
+            
+            result.put("success", true);
+            result.put("message", "升级指令已发送，系统将在几分钟内完成升级并自动重启");
+            
+            log.info("已触发系统升级");
+            return Result.success(result);
+            
+        } catch (Exception e) {
+            log.error("触发升级失败", e);
+            result.put("success", false);
+            result.put("message", "无法连接升级服务: " + e.getMessage());
+            result.put("manual", true);
+            result.put("command", "cd /path/to/law-firm && git pull && cd docker && docker compose up -d --build");
+            return Result.success(result);
+        }
+    }
+
+    /**
+     * 获取升级配置状态
+     */
+    @Operation(summary = "获取升级配置", description = "检查升级服务是否已配置")
+    @GetMapping("/upgrade/status")
+    public Result<Map<String, Object>> getUpgradeStatus() {
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("configured", upgradeWebhookUrl != null && !upgradeWebhookUrl.isEmpty());
+        result.put("webhookUrl", upgradeWebhookUrl != null ? upgradeWebhookUrl.replaceAll("secret=.*", "secret=***") : null);
         return Result.success(result);
     }
 
