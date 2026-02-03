@@ -171,8 +171,8 @@ public class VersionController {
                 return Result.error("升级脚本不存在: " + upgradeScript);
             }
             
-            // 创建升级状态文件
-            Path statusFile = projectRoot.resolve(".upgrade-status-" + upgradeId + ".json");
+            // 创建升级状态文件（写到 /tmp 目录，避免只读文件系统问题）
+            Path statusFile = Paths.get("/tmp/.upgrade-status-" + upgradeId + ".json");
             writeUpgradeStatus(statusFile, "started", "升级已启动", 0);
             
             result.put("upgradeId", upgradeId);
@@ -199,18 +199,8 @@ public class VersionController {
     @GetMapping("/upgrade/status")
     public Result<Map<String, Object>> getUpgradeStatus(@RequestParam String upgradeId) {
         try {
-            String workDir = System.getProperty("user.dir");
-            Path projectRoot = findProjectRoot(workDir);
-            if (projectRoot == null) {
-                // 如果找不到项目根目录，返回一个默认状态
-                Map<String, Object> result = new LinkedHashMap<>();
-                result.put("status", "unknown");
-                result.put("message", "服务已重启，升级可能已完成");
-                result.put("progress", 100);
-                return Result.success(result);
-            }
-            
-            Path statusFile = projectRoot.resolve(".upgrade-status-" + upgradeId + ".json");
+            // 状态文件在 /tmp 目录
+            Path statusFile = Paths.get("/tmp/.upgrade-status-" + upgradeId + ".json");
             if (!Files.exists(statusFile)) {
                 // 状态文件不存在，可能升级已完成并清理
                 Map<String, Object> result = new LinkedHashMap<>();
@@ -269,7 +259,8 @@ public class VersionController {
      * 执行升级脚本
      */
     private void executeUpgradeScript(String projectRoot, String upgradeId, boolean backup) {
-        Path statusFile = Paths.get(projectRoot, ".upgrade-status-" + upgradeId + ".json");
+        // 状态文件写到 /tmp 目录
+        Path statusFile = Paths.get("/tmp/.upgrade-status-" + upgradeId + ".json");
         
         try {
             writeUpgradeStatus(statusFile, "running", "正在执行升级...", 10);
