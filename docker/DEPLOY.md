@@ -11,17 +11,32 @@
 | `main` | 律所管理系统 | 律所内部使用的管理系统 | 项目根目录 |
 | `feature/client-service-system` | 客户服务系统 | 面向客户的门户网站 | `client-service/` |
 
-### 部署不同的系统
+### 首次部署（克隆仓库）
 
 ```bash
-# 部署律所管理系统（main 分支）
-git checkout main
+# 部署律所管理系统（默认 main 分支）
+git clone https://github.com/JunyuZhan/law-firm.git
+cd law-firm
+./scripts/deploy/deploy.sh
+
+# 部署客户服务系统（指定分支）
+git clone -b feature/client-service-system https://github.com/JunyuZhan/law-firm.git client-service
+cd client-service/client-service
+./deploy.sh
+```
+
+### 升级更新（已有仓库）
+
+```bash
+# 升级律所管理系统
+cd law-firm
+git pull origin main
 ./scripts/deploy/deploy.sh --quick
 
-# 部署客户服务系统（feature/client-service-system 分支）
-git checkout feature/client-service-system
-cd client-service
-./deploy.sh
+# 升级客户服务系统
+cd client-service/client-service
+git pull origin feature/client-service-system
+./deploy.sh --quick
 ```
 
 > ⚠️ **注意**：两个系统是独立部署的，可以部署在同一台服务器的不同端口，或部署在不同服务器上。
