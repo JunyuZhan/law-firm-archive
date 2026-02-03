@@ -1930,3 +1930,50 @@ ON CONFLICT (id) DO UPDATE SET
 
 -- 更新序列
 SELECT setval('doc_template_id_seq', GREATEST(102, (SELECT MAX(id) FROM doc_template)), true);
+
+-- =====================================================
+-- 文档操作权限（2026-02-03）
+-- =====================================================
+-- 描述: 添加文档上传、查看、下载、编辑、删除、创建等细粒度权限
+-- 这些权限用于控制卷宗管理模块中的文档操作
+
+-- 添加文档操作权限菜单项（BUTTON 类型，parent_id=61 卷宗列表）
+INSERT INTO public.sys_menu (parent_id, name, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, deleted) VALUES
+(61, '上传文档', 'BUTTON', 'doc:upload', 10, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+(61, '查看详情', 'BUTTON', 'doc:detail', 11, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+(61, '下载文档', 'BUTTON', 'doc:download', 12, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+(61, '编辑文档', 'BUTTON', 'doc:edit', 13, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+(61, '删除文档', 'BUTTON', 'doc:delete', 14, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+(61, '创建文档', 'BUTTON', 'doc:create', 15, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+(61, '归档文档', 'BUTTON', 'doc:archive', 16, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
+ON CONFLICT DO NOTHING;
+
+-- 为律师角色 (id=6) 分配文档操作权限
+INSERT INTO public.sys_role_menu (role_id, menu_id)
+SELECT 6, m.id FROM public.sys_menu m 
+WHERE m.permission IN ('doc:upload', 'doc:detail', 'doc:download', 'doc:edit', 'doc:delete', 'doc:create', 'doc:archive')
+  AND NOT EXISTS (SELECT 1 FROM public.sys_role_menu rm WHERE rm.role_id = 6 AND rm.menu_id = m.id);
+
+-- 为实习律师角色 (id=7) 分配文档操作权限（只有上传、查看、下载，不能编辑删除）
+INSERT INTO public.sys_role_menu (role_id, menu_id)
+SELECT 7, m.id FROM public.sys_menu m 
+WHERE m.permission IN ('doc:upload', 'doc:detail', 'doc:download')
+  AND NOT EXISTS (SELECT 1 FROM public.sys_role_menu rm WHERE rm.role_id = 7 AND rm.menu_id = m.id);
+
+-- 为团队负责人角色 (id=4) 分配文档操作权限
+INSERT INTO public.sys_role_menu (role_id, menu_id)
+SELECT 4, m.id FROM public.sys_menu m 
+WHERE m.permission IN ('doc:upload', 'doc:detail', 'doc:download', 'doc:edit', 'doc:delete', 'doc:create', 'doc:archive')
+  AND NOT EXISTS (SELECT 1 FROM public.sys_role_menu rm WHERE rm.role_id = 4 AND rm.menu_id = m.id);
+
+-- 为管理员角色 (id=1) 分配文档操作权限（管理员应该有所有权限）
+INSERT INTO public.sys_role_menu (role_id, menu_id)
+SELECT 1, m.id FROM public.sys_menu m 
+WHERE m.permission IN ('doc:upload', 'doc:detail', 'doc:download', 'doc:edit', 'doc:delete', 'doc:create', 'doc:archive')
+  AND NOT EXISTS (SELECT 1 FROM public.sys_role_menu rm WHERE rm.role_id = 1 AND rm.menu_id = m.id);
+
+-- 为律所主任角色 (id=2) 分配文档操作权限
+INSERT INTO public.sys_role_menu (role_id, menu_id)
+SELECT 2, m.id FROM public.sys_menu m 
+WHERE m.permission IN ('doc:upload', 'doc:detail', 'doc:download', 'doc:edit', 'doc:delete', 'doc:create', 'doc:archive')
+  AND NOT EXISTS (SELECT 1 FROM public.sys_role_menu rm WHERE rm.role_id = 2 AND rm.menu_id = m.id);
