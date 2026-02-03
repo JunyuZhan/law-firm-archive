@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import com.lawfirm.common.base.BaseEntity;
 import com.lawfirm.infrastructure.persistence.typehandler.PostgresJsonTypeHandler;
 import java.time.LocalDateTime;
+import java.util.Map;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 
@@ -31,7 +32,7 @@ public class PushRecord extends BaseEntity {
 
   /** 推送的数据快照（JSON格式） 保存脱敏后的数据，用于审计 */
   @TableField(typeHandler = PostgresJsonTypeHandler.class)
-  private String dataSnapshot;
+  private Map<String, Object> dataSnapshot;
 
   /** 客户服务系统返回的数据ID 用于后续更新或撤销 */
   private String externalId;
