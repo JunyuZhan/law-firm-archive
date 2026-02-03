@@ -71,7 +71,7 @@ services:
       # ⚠️ 注意：使用 Docker Compose 服务名（minio），而不是容器名（law-firm-minio）
       # 后端服务通过 Docker 内部网络直接访问 MinIO，不需要通过 Nginx 代理
       - MINIO_ENDPOINT=http://minio:9000
-      - MINIO_EXTERNAL_ENDPOINT=http://minio:9000
+      - MINIO_EXTERNAL_ENDPOINT=${MINIO_EXTERNAL_ENDPOINT:-http://minio:9000}
       - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY}
       - MINIO_SECRET_KEY=${MINIO_SECRET_KEY}
       - MINIO_BUCKET=law-firm

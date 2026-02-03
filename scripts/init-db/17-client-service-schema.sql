@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS public.openapi_push_record (
     -- 推送信息
     push_type VARCHAR(20) NOT NULL,               -- 推送类型: MANUAL-手动, AUTO-自动, UPDATE-更新
     scopes VARCHAR(500) NOT NULL,                 -- 推送范围（逗号分隔）
-    data_snapshot JSONB,                          -- 推送的数据快照（脱敏后的数据）
+    data_snapshot TEXT,                           -- 推送的数据快照（JSON字符串，脱敏后的数据）
     
     -- 客户服务系统返回
     external_id VARCHAR(100),                     -- 客户服务系统返回的数据ID
@@ -37,10 +37,11 @@ CREATE TABLE IF NOT EXISTS public.openapi_push_record (
     -- 有效期
     expires_at TIMESTAMP,                         -- 数据在客户服务系统中的有效期
     
-    -- 创建信息
+    -- 审计信息
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by BIGINT,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by BIGINT,                            -- 更新人ID
     deleted BOOLEAN DEFAULT FALSE,
     version INTEGER DEFAULT 0                       -- 乐观锁版本号
 );
