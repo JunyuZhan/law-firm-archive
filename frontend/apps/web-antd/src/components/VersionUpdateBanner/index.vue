@@ -60,9 +60,9 @@ function viewReleaseNotes() {
   }
 }
 
-// 前往系统维护页面
+// 前往系统配置-版本信息页面
 function goToMaintenance() {
-  router.push('/system/backup');
+  router.push('/system/config?tab=version');
 }
 
 // 稍后提醒（本次会话不再显示）

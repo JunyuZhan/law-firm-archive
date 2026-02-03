@@ -16,6 +16,7 @@ import {
   ref,
   watch,
 } from 'vue';
+import { useRoute } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
 import { CircleHelp, Copy, Eye } from '@vben/icons';
@@ -64,11 +65,14 @@ import {
   testEmailConfig,
   updateConfig,
 } from '#/api/system';
+import { requestClient } from '#/api/request';
 import { getWecomStatus, testWecomBot } from '#/api/system/wecom';
 
 import ConfigModal from './components/ConfigModal.vue';
 
 defineOptions({ name: 'SysConfig' });
+
+const route = useRoute();
 // 懒加载组件，提高首次加载速度
 const CauseOfActionTab = defineAsyncComponent(
   () => import('./components/CauseOfActionTab.vue'),
@@ -126,6 +130,18 @@ const versionInfo = ref<{
   version: string; // 显示版本号（优先数据库配置，支持简单格式如 0.4）
 } | null>(null);
 const versionLoading = ref(false);
+
+// 版本更新检查相关
+const updateCheckLoading = ref(false);
+const updateInfo = ref<{
+  currentVersion: string;
+  latestVersion?: string;
+  hasUpdate: boolean;
+  releaseNotes?: string;
+  releaseUrl?: string;
+  publishedAt?: string;
+  error?: string;
+} | null>(null);
 
 // 邮件通知相关
 const emailStatus = ref({ enabled: false });
@@ -320,6 +336,53 @@ async function loadVersionInfo() {
     message.error('加载版本信息失败');
   } finally {
     versionLoading.value = false;
+  }
+}
+
+// 检查版本更新
+async function checkVersionUpdate() {
+  updateCheckLoading.value = true;
+  try {
+    const res = await requestClient.get<typeof updateInfo.value>('/system/version/check');
+    updateInfo.value = res;
+    if (res?.hasUpdate) {
+      message.success(`发现新版本 v${res.latestVersion}`);
+    } else {
+      message.info('当前已是最新版本');
+    }
+  } catch (error: unknown) {
+    console.error('检查版本更新失败', error);
+    message.error('检查版本更新失败');
+  } finally {
+    updateCheckLoading.value = false;
+  }
+}
+
+// 忽略版本更新
+async function ignoreVersionUpdate() {
+  if (!updateInfo.value?.latestVersion) return;
+  try {
+    await requestClient.post(`/system/version/ignore?version=${updateInfo.value.latestVersion}`);
+    message.success('已忽略此版本，下次有新版本时会再次提醒');
+    updateInfo.value = { ...updateInfo.value, hasUpdate: false };
+  } catch (error: unknown) {
+    console.error('忽略版本失败', error);
+    message.error('操作失败');
+  }
+}
+
+// 查看更新说明
+function viewReleaseNotes() {
+  if (updateInfo.value?.releaseUrl) {
+    window.open(updateInfo.value.releaseUrl, '_blank');
+  } else if (updateInfo.value?.releaseNotes) {
+    AModal.info({
+      title: `v${updateInfo.value.latestVersion} 更新内容`,
+      content: updateInfo.value.releaseNotes,
+      width: 600,
+    });
+  } else {
+    message.info('暂无更新说明');
   }
 }
 
@@ -642,6 +705,12 @@ async function handleDisableMaintenance() {
 }
 
 onMounted(async () => {
+  // 支持从 URL 参数切换到指定 Tab（如 ?tab=version）
+  const tabParam = route.query.tab as string;
+  if (tabParam && ['contract', 'maintenance', 'version', 'notification', 'wecom', 'cause', 'ai-billing', 'login-log', 'session', 'cache', 'general'].includes(tabParam)) {
+    activeTab.value = tabParam;
+  }
+
   await fetchData();
   await loadContractNumberData();
   handlePreview();
@@ -949,6 +1018,35 @@ watch(activeTab, (newTab) => {
       <!-- 版本信息 -->
       <TabPane key="version" tab="版本信息">
         <Card title="系统版本信息" :bordered="false">
+          <template #extra>
+            <Button type="primary" :loading="updateCheckLoading" @click="checkVersionUpdate">
+              检查更新
+            </Button>
+          </template>
+
+          <!-- 版本更新提示 -->
+          <Alert
+            v-if="updateInfo?.hasUpdate"
+            type="success"
+            show-icon
+            style="margin-bottom: 24px"
+          >
+            <template #message>
+              <span>发现新版本 <strong style="color: #52c41a; font-size: 16px">v{{ updateInfo.latestVersion }}</strong></span>
+            </template>
+            <template #description>
+              <div style="margin-top: 8px">
+                <Space>
+                  <Button size="small" @click="viewReleaseNotes">查看更新内容</Button>
+                  <Button size="small" type="text" @click="ignoreVersionUpdate">忽略此版本</Button>
+                </Space>
+                <div v-if="updateInfo.publishedAt" style="margin-top: 8px; font-size: 12px; color: #888">
+                  发布时间：{{ updateInfo.publishedAt }}
+                </div>
+              </div>
+            </template>
+          </Alert>
+
           <div v-if="versionLoading" style="padding: 40px; text-align: center">
             <span>加载中...</span>
           </div>
@@ -1050,6 +1148,9 @@ watch(activeTab, (newTab) => {
                 <li style="margin-top: 8px; color: #1890ff">
                   💡 <strong>提示</strong>：可以在"通用配置"中修改 sys.version
                   来设置简单的版本号格式（如 0.4）
+                </li>
+                <li style="margin-top: 8px; color: #52c41a">
+                  🔄 <strong>版本检查</strong>：点击右上角"检查更新"可从 GitHub 获取最新版本信息
                 </li>
               </ul>
             </Alert>
