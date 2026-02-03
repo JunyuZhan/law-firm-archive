@@ -39,6 +39,7 @@ import com.lawfirm.domain.system.repository.UserRepository;
 import com.lawfirm.infrastructure.persistence.mapper.DepartmentMapper;
 import com.lawfirm.infrastructure.persistence.mapper.MatterMapper;
 import com.lawfirm.infrastructure.persistence.mapper.MatterParticipantMapper;
+import com.lawfirm.domain.matter.event.MatterUpdatedEvent;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -49,6 +50,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -112,6 +114,9 @@ public class MatterAppService {
 
   /** 卷宗自动归档服务. */
   private final DossierAutoArchiveService dossierAutoArchiveService;
+
+  /** 事件发布器. */
+  private final ApplicationEventPublisher eventPublisher;
 
   /**
    * 分页查询案件 优化：使用批量加载替代N+1查询，显著提升列表查询性能
@@ -648,6 +653,17 @@ public class MatterAppService {
 
     matterRepository.updateById(matter);
     log.info("案件更新成功: {}", matter.getName());
+
+    // 发布项目更新事件，触发自动推送等后续操作
+    try {
+      Long operatorId = SecurityUtils.getCurrentUserId();
+      eventPublisher.publishEvent(
+          new MatterUpdatedEvent(this, matter.getId(), matter.getClientId(), operatorId));
+    } catch (Exception e) {
+      // 事件发布失败不影响主流程
+      log.warn("发布项目更新事件失败: matterId={}, error={}", matter.getId(), e.getMessage());
+    }
+
     return toDTO(matter);
   }
 
