@@ -1977,3 +1977,69 @@ INSERT INTO public.sys_role_menu (role_id, menu_id)
 SELECT 2, m.id FROM public.sys_menu m 
 WHERE m.permission IN ('doc:upload', 'doc:detail', 'doc:download', 'doc:edit', 'doc:delete', 'doc:create', 'doc:archive')
   AND NOT EXISTS (SELECT 1 FROM public.sys_role_menu rm WHERE rm.role_id = 2 AND rm.menu_id = m.id);
+
+-- =====================================================
+-- 补充律师常用权限（2026-02-03）
+-- =====================================================
+-- 添加证据、合同、客户联系人等常用权限
+
+-- 证据列表权限
+INSERT INTO public.sys_menu (parent_id, name, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, deleted) 
+VALUES (0, '证据列表', 'BUTTON', 'evidence:list', 1, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
+ON CONFLICT DO NOTHING;
+
+-- 合同操作权限
+INSERT INTO public.sys_menu (parent_id, name, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, deleted) VALUES
+(0, '创建合同', 'BUTTON', 'matter:contract:create', 1, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+(0, '编辑合同', 'BUTTON', 'matter:contract:edit', 2, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+(0, '删除合同', 'BUTTON', 'matter:contract:delete', 3, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+(0, '提交合同', 'BUTTON', 'matter:contract:submit', 4, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
+ON CONFLICT DO NOTHING;
+
+-- 客户联系人权限
+INSERT INTO public.sys_menu (parent_id, name, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, deleted) VALUES
+(0, '联系人列表', 'BUTTON', 'client:contact:list', 1, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+(0, '创建联系人', 'BUTTON', 'client:contact:create', 2, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+(0, '更新联系人', 'BUTTON', 'client:contact:update', 3, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+(0, '删除联系人', 'BUTTON', 'client:contact:delete', 4, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
+ON CONFLICT DO NOTHING;
+
+-- 客户股东权限
+INSERT INTO public.sys_menu (parent_id, name, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, deleted) VALUES
+(0, '股东列表', 'BUTTON', 'client:shareholder:list', 1, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+(0, '创建股东', 'BUTTON', 'client:shareholder:create', 2, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+(0, '更新股东', 'BUTTON', 'client:shareholder:update', 3, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+(0, '删除股东', 'BUTTON', 'client:shareholder:delete', 4, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
+ON CONFLICT DO NOTHING;
+
+-- 客户联系记录权限
+INSERT INTO public.sys_menu (parent_id, name, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, deleted) VALUES
+(0, '联系记录列表', 'BUTTON', 'client:contact-record:list', 1, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+(0, '创建联系记录', 'BUTTON', 'client:contact-record:create', 2, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+(0, '更新联系记录', 'BUTTON', 'client:contact-record:update', 3, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+(0, '删除联系记录', 'BUTTON', 'client:contact-record:delete', 4, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
+ON CONFLICT DO NOTHING;
+
+-- 为律师角色分配补充权限
+INSERT INTO public.sys_role_menu (role_id, menu_id)
+SELECT 6, m.id FROM public.sys_menu m 
+WHERE m.permission IN (
+  'evidence:list',
+  'matter:contract:create', 'matter:contract:edit', 'matter:contract:delete', 'matter:contract:submit',
+  'client:contact:list', 'client:contact:create', 'client:contact:update', 'client:contact:delete',
+  'client:shareholder:list', 'client:shareholder:create', 'client:shareholder:update', 'client:shareholder:delete',
+  'client:contact-record:list', 'client:contact-record:create', 'client:contact-record:update', 'client:contact-record:delete'
+)
+AND NOT EXISTS (SELECT 1 FROM public.sys_role_menu rm WHERE rm.role_id = 6 AND rm.menu_id = m.id);
+
+-- 为团队负责人角色也分配这些权限
+INSERT INTO public.sys_role_menu (role_id, menu_id)
+SELECT 4, m.id FROM public.sys_menu m 
+WHERE m.permission IN (
+  'evidence:list',
+  'matter:contract:create', 'matter:contract:edit', 'matter:contract:delete', 'matter:contract:submit',
+  'client:contact:list', 'client:contact:create', 'client:contact:update', 'client:contact:delete',
+  'client:shareholder:list', 'client:shareholder:create', 'client:shareholder:update', 'client:shareholder:delete',
+  'client:contact-record:list', 'client:contact-record:create', 'client:contact-record:update', 'client:contact-record:delete'
+)
+AND NOT EXISTS (SELECT 1 FROM public.sys_role_menu rm WHERE rm.role_id = 4 AND rm.menu_id = m.id);
