@@ -1070,7 +1070,7 @@ watch(activeTab, (newTab) => {
             style="margin-bottom: 24px"
           >
             <template #message>
-              <span>发现新版本 <strong style="color: #52c41a; font-size: 16px">v{{ updateInfo.latestVersion }}</strong></span>
+              <span>发现新版本 <strong style="font-size: 16px; color: #52c41a">v{{ updateInfo.latestVersion }}</strong></span>
             </template>
             <template #description>
               <div style="margin-top: 8px">
@@ -1204,11 +1204,11 @@ watch(activeTab, (newTab) => {
           <!-- 升级步骤 -->
           <div v-if="upgradeGuide?.steps" style="margin-bottom: 24px">
             <div v-for="(step, index) in upgradeGuide.steps" :key="index" style="margin-bottom: 16px">
-              <div style="font-weight: 500; margin-bottom: 8px; color: #1890ff">
+              <div style="margin-bottom: 8px; font-weight: 500; color: #1890ff">
                 {{ step.title }}
               </div>
-              <div style="background: #f5f5f5; padding: 12px 16px; border-radius: 8px; font-family: monospace; position: relative">
-                <div style="color: #333; padding-right: 60px">{{ step.command }}</div>
+              <div style="position: relative; padding: 12px 16px; font-family: monospace; background: #f5f5f5; border-radius: 8px">
+                <div style="padding-right: 60px; color: #333">{{ step.command }}</div>
                 <Button
                   type="text"
                   size="small"
@@ -1218,16 +1218,16 @@ watch(activeTab, (newTab) => {
                   复制
                 </Button>
               </div>
-              <div style="font-size: 12px; color: #888; margin-top: 4px">{{ step.description }}</div>
+              <div style="margin-top: 4px; font-size: 12px; color: #888">{{ step.description }}</div>
             </div>
           </div>
 
           <Divider orientation="left">一键升级命令</Divider>
-          <div style="background: #e6f7ff; padding: 16px; border-radius: 8px; border: 1px solid #91d5ff; position: relative">
-            <div style="font-size: 12px; color: #1890ff; margin-bottom: 8px">
+          <div style="position: relative; padding: 16px; background: #e6f7ff; border: 1px solid #91d5ff; border-radius: 8px">
+            <div style="margin-bottom: 8px; font-size: 12px; color: #1890ff">
               <strong>提示：</strong>在服务器项目根目录执行以下命令，自动完成备份 → 更新 → 部署
             </div>
-            <div style="font-family: monospace; color: #333; padding-right: 60px; word-break: break-all">
+            <div style="padding-right: 60px; font-family: monospace; color: #333; word-break: break-all">
               {{ upgradeGuide?.quickCommand || './scripts/ops/backup.sh && git pull origin main && ./scripts/deploy/deploy.sh --quick --no-cache' }}
             </div>
             <Button
