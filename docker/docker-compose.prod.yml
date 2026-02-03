@@ -90,6 +90,10 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    volumes:
+      # 挂载项目目录，用于一键升级功能
+      - ..:/opt/law-firm:ro
+      - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - law-firm-network
     restart: unless-stopped
