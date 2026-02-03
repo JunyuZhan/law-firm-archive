@@ -695,8 +695,13 @@ public class DocumentController {
     String userName = SecurityUtils.getUsername();
 
     // 生成文档唯一标识（用于协同编辑）
-    // 使用 文档ID + 版本号 作为 key，确保不同版本不会冲突
-    String documentKey = "doc_" + id + "_v" + (doc.getVersion() != null ? doc.getVersion() : 1);
+    // 使用 文档ID + 更新时间戳 作为 key
+    // ⚠️ 关键修复：包含 updatedAt 时间戳，确保保存后 OnlyOffice 能加载最新文件
+    // 如果只用版本号，OnlyOffice 会缓存旧文件（因为版本号不变）
+    long updateTimestamp = doc.getUpdatedAt() != null 
+        ? doc.getUpdatedAt().toEpochSecond(java.time.ZoneOffset.UTC) 
+        : System.currentTimeMillis() / 1000;
+    String documentKey = "doc_" + id + "_t" + updateTimestamp;
 
     // 生成带签名的文件访问 URL
     // 使用后端代理接口，确保 OnlyOffice 容器能够访问
