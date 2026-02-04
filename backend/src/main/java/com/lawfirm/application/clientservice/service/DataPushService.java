@@ -171,6 +171,13 @@ public class DataPushService {
             result.externalUrl(),
             null);
 
+        // 同步更新该项目所有历史成功记录的访问链接（因为 token 已更新，旧链接失效）
+        int updatedCount = pushRecordMapper.updateHistoricalExternalUrl(
+            matter.getId(), result.externalUrl());
+        if (updatedCount > 1) {
+          log.info("已同步更新 {} 条历史推送记录的访问链接: matterId={}", updatedCount, matter.getId());
+        }
+
         record.setStatus(PushRecord.STATUS_SUCCESS);
         record.setExternalId(result.externalId());
         record.setExternalUrl(result.externalUrl());

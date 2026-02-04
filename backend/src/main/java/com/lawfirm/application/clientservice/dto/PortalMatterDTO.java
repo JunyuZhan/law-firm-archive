@@ -1,5 +1,10 @@
 package com.lawfirm.application.clientservice.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateTimeDeserializer;
+import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateTimeSerializer;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -46,6 +51,9 @@ public class PortalMatterDTO implements Serializable {
   private String statusName;
 
   /** 委托日期. */
+  @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+  @JsonSerialize(using = LocalDateTimeSerializer.class)
+  @JsonDeserialize(using = LocalDateTimeDeserializer.class)
   private LocalDateTime createDate;
 
   // ========== 项目进度 (MATTER_PROGRESS) ==========
@@ -60,6 +68,9 @@ public class PortalMatterDTO implements Serializable {
   private Integer progress;
 
   /** 最后更新时间. */
+  @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+  @JsonSerialize(using = LocalDateTimeSerializer.class)
+  @JsonDeserialize(using = LocalDateTimeDeserializer.class)
   private LocalDateTime lastUpdateTime;
 
   // ========== 律师信息 (LAWYER_INFO) ==========
@@ -148,6 +159,9 @@ public class PortalMatterDTO implements Serializable {
     /** 进度. */
     private Integer progress;
     /** 截止日期. */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @JsonSerialize(using = LocalDateTimeSerializer.class)
+    @JsonDeserialize(using = LocalDateTimeDeserializer.class)
     private LocalDateTime dueDate;
   }
 
@@ -162,6 +176,9 @@ public class PortalMatterDTO implements Serializable {
     /** 期限标题. */
     private String title;
     /** 截止时间. */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @JsonSerialize(using = LocalDateTimeSerializer.class)
+    @JsonDeserialize(using = LocalDateTimeDeserializer.class)
     private LocalDateTime deadline;
     /** 期限类型. */
     private String type;
@@ -182,6 +199,9 @@ public class PortalMatterDTO implements Serializable {
     /** 文档分类. */
     private String category;
     /** 创建时间. */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @JsonSerialize(using = LocalDateTimeSerializer.class)
+    @JsonDeserialize(using = LocalDateTimeDeserializer.class)
     private LocalDateTime createdAt;
   }
 
@@ -206,6 +226,9 @@ public class PortalMatterDTO implements Serializable {
     /** 临时下载URL（供客服系统下载文件）. */
     private String sourceUrl;
     /** 上传时间. */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @JsonSerialize(using = LocalDateTimeSerializer.class)
+    @JsonDeserialize(using = LocalDateTimeDeserializer.class)
     private LocalDateTime uploadTime;
   }
 }

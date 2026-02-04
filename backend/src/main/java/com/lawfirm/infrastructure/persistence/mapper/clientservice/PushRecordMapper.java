@@ -107,4 +107,24 @@ public interface PushRecordMapper extends BaseMapper<PushRecord> {
       "SELECT COUNT(*) FROM openapi_push_record WHERE matter_id = #{matterId} "
           + "AND status = 'SUCCESS' AND deleted = false")
   int countSuccessByMatterId(@Param("matterId") Long matterId);
+
+  /**
+   * 更新同一项目所有历史成功记录的访问链接（二次推送时同步更新历史记录）.
+   *
+   * @param matterId 项目ID
+   * @param externalUrl 新的外部访问链接
+   * @return 更新数量
+   */
+  @Update(
+      """
+        UPDATE openapi_push_record
+        SET external_url = #{externalUrl},
+            updated_at = CURRENT_TIMESTAMP
+        WHERE matter_id = #{matterId}
+          AND status = 'SUCCESS'
+          AND deleted = false
+        """)
+  int updateHistoricalExternalUrl(
+      @Param("matterId") Long matterId,
+      @Param("externalUrl") String externalUrl);
 }
