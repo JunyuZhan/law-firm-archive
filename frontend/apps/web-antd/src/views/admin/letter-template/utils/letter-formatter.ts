@@ -387,3 +387,103 @@ export function formatStructuredLetterForPreview(
 
   return html;
 }
+
+/**
+ * 检测内容是否为 HTML 格式
+ */
+export function isHtmlContent(content: string): boolean {
+  if (!content) return false;
+  // 检测常见的 HTML 标签
+  return /<(div|p|h[1-6]|span|strong|em|br|table|ul|ol|li)[^>]*>/i.test(
+    content,
+  );
+}
+
+/**
+ * 格式化 HTML 格式的函件模板为预览 HTML
+ * 只替换变量，保持 HTML 结构不变
+ */
+export function formatHtmlLetterForPreview(
+  content: string,
+  variables: Record<string, string> = {},
+): string {
+  if (!content || content.trim() === '') {
+    return '<p>模板内容为空</p>';
+  }
+
+  // 替换变量（带高亮样式）
+  let result = content;
+  Object.entries(variables).forEach(([key, value]) => {
+    const escapedKey = key.replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
+    const displayValue = value || `[${key}]`;
+    result = result.replaceAll(
+      new RegExp(String.raw`\$\{${escapedKey}\}`, 'g'),
+      `<span class="preview-var">${displayValue}</span>`,
+    );
+  });
+
+  return result;
+}
+
+/**
+ * 格式化纯文本函件模板为预览 HTML
+ * 用于传统格式的函件模板（非结构化 JSON、非 HTML）
+ */
+export function formatPlainTextLetterForPreview(
+  content: string,
+  variables: Record<string, string> = {},
+): string {
+  if (!content || content.trim() === '') {
+    return '<p>模板内容为空</p>';
+  }
+
+  // 替换变量（带高亮样式）
+  let result = content;
+  Object.entries(variables).forEach(([key, value]) => {
+    const escapedKey = key.replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
+    const displayValue = value || `[${key}]`;
+    result = result.replaceAll(
+      new RegExp(String.raw`\$\{${escapedKey}\}`, 'g'),
+      `<span class="preview-var">${displayValue}</span>`,
+    );
+  });
+
+  // 将纯文本转换为公文格式的 HTML
+  const lines = result.split('\n');
+  let html = '';
+  let inBody = false;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      html += '<p style="margin: 8px 0;">&nbsp;</p>\n';
+      continue;
+    }
+
+    // 检测是否是标题行
+    if (trimmed.startsWith('致：') || trimmed.startsWith('致:')) {
+      html += `<p style="font-family: FangSong, 仿宋_GB2312, 仿宋, serif; font-size: 16pt; line-height: 28pt; text-indent: 0; margin: 0 0 20px 0;"><strong>${trimmed}</strong></p>\n`;
+      inBody = true;
+      continue;
+    }
+
+    // 检测落款区
+    if (
+      trimmed.includes('律师事务所') ||
+      /^\d{4}年\d{1,2}月\d{1,2}日$/.test(trimmed) ||
+      trimmed.includes('联系电话：') ||
+      trimmed.includes('地址：') ||
+      trimmed.startsWith('承办律师：')
+    ) {
+      html += `<p style="font-family: FangSong, 仿宋_GB2312, 仿宋, serif; font-size: 16pt; line-height: 28pt; text-align: right; text-indent: 0; margin: 4px 0;">${trimmed}</p>\n`;
+      continue;
+    }
+
+    // 正文段落
+    const indent = inBody ? 'text-indent: 2em;' : '';
+    html += `<p style="font-family: FangSong, 仿宋_GB2312, 仿宋, serif; font-size: 16pt; line-height: 28pt; ${indent} margin: 4px 0; text-align: justify;">${trimmed}</p>\n`;
+    inBody = true;
+  }
+
+  return html;
+}

@@ -38,6 +38,8 @@ export const createLetterSampleData = (): Record<string, string> => {
     opposingLawyerFirm: '某某律师事务所',
 
     // ========== 律师/律所信息 ==========
+    // 注意：律师信息（lawyerNames、lawyerLicenseNo）来自项目中的承办律师，此处为示例数据
+    // 律所信息会从系统配置中自动载入，如未配置则使用以下默认值
     lawyerNames: '王明律师、刘强律师',
     lawyerLicenseNo: '15200101912345678',
     firmName: '律师事务所',
@@ -45,6 +47,10 @@ export const createLetterSampleData = (): Record<string, string> => {
     firmPhone: '',
     firmLicense: '',
     firmLegalPerson: '',
+    firmEmail: '',
+    firmFax: '',
+    firmWebsite: '',
+    firmPostcode: '',
 
     // ========== 其他可能用到的字段 ==========
     matterType: '诉讼案件',

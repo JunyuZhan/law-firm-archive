@@ -18,7 +18,7 @@ import {
   Tag,
 } from 'ant-design-vue';
 
-import { decodeHtmlEntities } from '../../contract-template/utils/print-formatter';
+import { decodeHtmlEntities } from '../../../finance/contract-template/utils/print-formatter';
 
 // Props
 const props = defineProps<{

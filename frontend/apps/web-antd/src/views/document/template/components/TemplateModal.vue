@@ -28,7 +28,7 @@ import {
 } from '#/api/document/template';
 import RichTextEditor from '#/components/RichTextEditor/index.vue';
 
-import { decodeHtmlEntities } from '../../../system/contract-template/utils/print-formatter';
+import { decodeHtmlEntities } from '../../../finance/contract-template/utils/print-formatter';
 import PowerOfAttorneyEditor from './PowerOfAttorneyEditor.vue';
 
 const emit = defineEmits<{ success: [] }>();

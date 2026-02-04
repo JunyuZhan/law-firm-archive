@@ -94,7 +94,7 @@ import {
   decodeHtmlEntities,
   formatStructuredForPrint,
   isStructuredContent,
-} from '#/views/system/contract-template/utils/print-formatter';
+} from '#/views/finance/contract-template/utils/print-formatter';
 
 defineOptions({ name: 'MatterContractList' });
 

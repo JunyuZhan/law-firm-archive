@@ -8,12 +8,16 @@ import { OFFICIAL_DOCUMENT_STYLES } from '@vben/utils';
 
 import { Button, message, Space, Tag } from 'ant-design-vue';
 
+import { getProfileInfo } from '#/api/core/profile';
 import { getConfigValue } from '#/api/system';
 
-import { decodeHtmlEntities } from '../../contract-template/utils/print-formatter';
+import { decodeHtmlEntities } from '../../../finance/contract-template/utils/print-formatter';
 import { createLetterSampleData } from '../constants/sample-data';
 import {
+  formatHtmlLetterForPreview,
+  formatPlainTextLetterForPreview,
   formatStructuredLetterForPreview,
+  isHtmlContent,
   isStructuredLetterContent,
 } from '../utils/letter-formatter';
 
@@ -23,21 +27,35 @@ const previewTitle = ref('');
 // 预览示例数据（动态加载律所信息）
 const sampleData = ref<Record<string, string>>(createLetterSampleData());
 
-// 加载律所信息（从系统配置获取）
+// 加载律所信息（从系统配置获取）和当前用户信息（作为律师示例数据）
 async function loadFirmInfo() {
   try {
+    // 并行加载系统配置和当前用户信息
     const [
       firmNameConfig,
       firmAddressConfig,
       firmPhoneConfig,
       firmLicenseConfig,
+      firmEmailConfig,
+      firmLegalRepConfig,
+      firmFaxConfig,
+      firmWebsiteConfig,
+      firmPostcodeConfig,
+      currentUser,
     ] = await Promise.all([
       getConfigValue('firm.name').catch(() => null),
       getConfigValue('firm.address').catch(() => null),
       getConfigValue('firm.phone').catch(() => null),
       getConfigValue('firm.license').catch(() => null),
+      getConfigValue('firm.email').catch(() => null),
+      getConfigValue('firm.legal.rep').catch(() => null),
+      getConfigValue('firm.fax').catch(() => null),
+      getConfigValue('firm.website').catch(() => null),
+      getConfigValue('firm.postcode').catch(() => null),
+      getProfileInfo().catch(() => null), // 获取当前登录用户信息
     ]);
 
+    // 律所信息（从系统配置获取）
     if (firmNameConfig?.configValue) {
       sampleData.value.firmName = firmNameConfig.configValue;
     }
@@ -49,6 +67,35 @@ async function loadFirmInfo() {
     }
     if (firmLicenseConfig?.configValue) {
       sampleData.value.firmLicense = firmLicenseConfig.configValue;
+    }
+    if (firmEmailConfig?.configValue) {
+      sampleData.value.firmEmail = firmEmailConfig.configValue;
+    }
+    if (firmLegalRepConfig?.configValue) {
+      sampleData.value.firmLegalPerson = firmLegalRepConfig.configValue;
+    }
+    if (firmFaxConfig?.configValue) {
+      sampleData.value.firmFax = firmFaxConfig.configValue;
+    }
+    if (firmWebsiteConfig?.configValue) {
+      sampleData.value.firmWebsite = firmWebsiteConfig.configValue;
+    }
+    if (firmPostcodeConfig?.configValue) {
+      sampleData.value.firmPostcode = firmPostcodeConfig.configValue;
+    }
+
+    // 律师信息（从当前登录用户获取，作为示例数据）
+    if (currentUser) {
+      if (currentUser.realName) {
+        sampleData.value.lawyerNames = currentUser.realName + '律师';
+      }
+      if (currentUser.lawyerLicenseNo) {
+        sampleData.value.lawyerLicenseNo = currentUser.lawyerLicenseNo;
+      }
+      if (currentUser.phone) {
+        // 可选：如果当前用户有电话，也可以作为律师联系电话的示例
+        // sampleData.value.lawyerPhone = currentUser.phone;
+      }
     }
   } catch (error) {
     console.warn('加载律所信息失败，使用默认值', error);
@@ -102,29 +149,25 @@ async function open(record: LetterTemplateDTO) {
     await loadFirmInfo();
   }
 
-  // 检查是否为结构化格式
+  // 检查内容格式并使用对应的预览函数
   if (isStructuredLetterContent(content)) {
-    // 结构化格式：使用预览格式化函数（函数内部已处理变量替换和高亮样式）
+    // 结构化格式（JSON）：使用预览格式化函数
     previewContent.value = formatStructuredLetterForPreview(
       content,
       sampleData.value,
     );
+  } else if (isHtmlContent(content)) {
+    // HTML 格式：保持 HTML 结构，只替换变量
+    previewContent.value = formatHtmlLetterForPreview(
+      content,
+      sampleData.value,
+    );
   } else {
-    // 传统格式：直接替换变量
-    Object.entries(sampleData.value).forEach(([key, value]) => {
-      const displayValue = value || `[${key}]`; // 如果值为空，显示变量名
-      content = content.replaceAll(
-        new RegExp(String.raw`\$\{${key}\}`, 'g'),
-        `<span class="preview-var">${displayValue}</span>`,
-      );
-      // 替换带data-variable属性的标签内容
-      content = content.replaceAll(
-        new RegExp(`<span[^>]*data-variable="${key}"[^>]*>[^<]*</span>`, 'g'),
-        `<span class="preview-var">${displayValue}</span>`,
-      );
-    });
-
-    previewContent.value = content;
+    // 纯文本格式：使用公文格式化函数
+    previewContent.value = formatPlainTextLetterForPreview(
+      content,
+      sampleData.value,
+    );
   }
 
   modalApi.setState({ title: `预览 - ${record.name}` });
