@@ -739,11 +739,20 @@ onMounted(() => {
               </DescriptionsItem>
             </Descriptions>
 
-            <Alert
-              type="warning"
-              style="margin-top: 12px"
-              message="API 密钥需要从客户服务系统管理后台获取，请联系客户服务系统管理员。"
-            />
+            <Alert type="info" style="margin-top: 12px">
+              <template #message>
+                <div><strong>推送 API 密钥</strong>（律所 → 客服）</div>
+              </template>
+              <template #description>
+                <div style="font-size: 13px; line-height: 1.8">
+                  <div>1. 在客服系统「API 密钥管理」创建密钥</div>
+                  <div>2. 复制密钥，填写到上方「API 密钥」字段</div>
+                  <div style="margin-top: 4px; color: #1890ff">
+                    💡 提示：可以与下方「回调密钥」使用同一个值，简化管理
+                  </div>
+                </div>
+              </template>
+            </Alert>
           </Card>
 
           <!-- 2. 回调安全配置 -->
@@ -764,11 +773,22 @@ onMounted(() => {
               </Button>
             </template>
 
-            <Alert
-              type="info"
-              style="margin-bottom: 16px"
-              message="两种验证方式二选一：启用 IP 白名单适用于固定 IP 场景；禁用 IP 白名单后使用 API 密钥适用于动态 IP 或内网穿透场景。"
-            />
+            <Alert type="info" style="margin-bottom: 16px">
+              <template #message>
+                <div><strong>回调验证</strong>（客服 → 律所）</div>
+              </template>
+              <template #description>
+                <div style="font-size: 13px">
+                  客服系统回调访问/下载日志时，需要验证请求来源。两种方式二选一：
+                  <ul style="padding: 0; margin: 4px 0 0 20px">
+                    <li><b>IP 白名单</b>：适用于客服系统有固定公网 IP</li>
+                    <li>
+                      <b>API 密钥</b>：适用于动态 IP、内网穿透、Docker 部署
+                    </li>
+                  </ul>
+                </div>
+              </template>
+            </Alert>
 
             <Form layout="vertical">
               <FormItem label="验证方式">
@@ -803,8 +823,13 @@ onMounted(() => {
                   v-model:value="callbackSecurityConfig.apiKey"
                   placeholder="输入与客户服务系统配置一致的密钥"
                 />
-                <div style="margin-top: 4px; font-size: 12px; color: #999">
-                  需要与客户服务系统的 callback.api-key 配置一致
+                <div style="margin-top: 4px; font-size: 12px; color: #666">
+                  <div>
+                    • 此密钥需要与客服系统「系统配置 → callback.api-key」一致
+                  </div>
+                  <div style="color: #1890ff">
+                    • 💡 可以直接使用上方的「推送 API 密钥」，简化管理
+                  </div>
                 </div>
               </FormItem>
             </Form>
@@ -812,24 +837,88 @@ onMounted(() => {
 
           <!-- 3. 配置说明 -->
           <Card title="配置说明" size="small">
+            <Alert type="success" style="margin-bottom: 16px">
+              <template #message>简化配置建议</template>
+              <template #description>
+                <div style="font-size: 13px">
+                  可以让「推送 API 密钥」和「回调 API
+                  密钥」使用<b>同一个值</b>，只需：
+                  <ol style="padding: 0; margin: 8px 0 0 20px">
+                    <li>
+                      在客服系统「API 密钥管理」创建一个密钥（如
+                      <code>abc123</code>）
+                    </li>
+                    <li>上方「推送配置」填 <code>abc123</code></li>
+                    <li>上方「回调安全配置」也填 <code>abc123</code></li>
+                    <li>
+                      客服系统「系统配置 → callback.api-key」也填
+                      <code>abc123</code>
+                    </li>
+                  </ol>
+                </div>
+              </template>
+            </Alert>
             <Descriptions :column="1" size="small" bordered>
-              <DescriptionsItem label="配置步骤">
-                <ol style="padding-left: 20px; margin: 0">
-                  <li>在客户服务系统管理后台创建 API 密钥</li>
-                  <li>将 API 密钥填写到上方"推送配置"中</li>
-                  <li>
-                    选择回调验证方式：
-                    <ul style="padding-left: 20px; margin: 4px 0">
-                      <li>
-                        <b>固定 IP</b>：启用 IP 白名单，填写客户服务系统的 IP
-                      </li>
-                      <li>
-                        <b>动态 IP</b>：禁用 IP 白名单，双方配置相同的回调密钥
-                      </li>
-                    </ul>
-                  </li>
-                  <li>测试推送功能是否正常</li>
-                </ol>
+              <DescriptionsItem label="两个方向说明">
+                <table
+                  style="
+                    width: 100%;
+                    font-size: 13px;
+                    border-collapse: collapse;
+                  "
+                >
+                  <tr style="background: #fafafa">
+                    <th
+                      style="
+                        padding: 8px;
+                        text-align: left;
+                        border: 1px solid #f0f0f0;
+                      "
+                    >
+                      方向
+                    </th>
+                    <th
+                      style="
+                        padding: 8px;
+                        text-align: left;
+                        border: 1px solid #f0f0f0;
+                      "
+                    >
+                      用途
+                    </th>
+                    <th
+                      style="
+                        padding: 8px;
+                        text-align: left;
+                        border: 1px solid #f0f0f0;
+                      "
+                    >
+                      密钥来源
+                    </th>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px; border: 1px solid #f0f0f0">
+                      律所 → 客服
+                    </td>
+                    <td style="padding: 8px; border: 1px solid #f0f0f0">
+                      推送项目数据
+                    </td>
+                    <td style="padding: 8px; border: 1px solid #f0f0f0">
+                      客服系统「API 密钥管理」创建
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px; border: 1px solid #f0f0f0">
+                      客服 → 律所
+                    </td>
+                    <td style="padding: 8px; border: 1px solid #f0f0f0">
+                      回调访问/下载日志
+                    </td>
+                    <td style="padding: 8px; border: 1px solid #f0f0f0">
+                      双方填相同值即可
+                    </td>
+                  </tr>
+                </table>
               </DescriptionsItem>
               <DescriptionsItem label="推送接口">
                 <code>POST {API地址}/api/matter/receive</code>
