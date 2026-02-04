@@ -212,7 +212,14 @@ do_upgrade() {
         }
     else
         log_warn "未找到部署脚本，需要手动部署"
-        log_info "请执行: cd docker && docker compose -f docker-compose.prod.yml up -d --build"
+        # 检查是否存在 .env 文件（在项目根目录或 docker 目录）
+        local env_file=""
+        if [ -f "$PROJECT_ROOT/.env" ]; then
+            env_file="--env-file $PROJECT_ROOT/.env"
+        elif [ -f "$PROJECT_ROOT/docker/.env" ]; then
+            env_file="--env-file $PROJECT_ROOT/docker/.env"
+        fi
+        log_info "请执行: cd $PROJECT_ROOT/docker && docker compose $env_file -f docker-compose.prod.yml up -d --build"
     fi
     
     echo ""

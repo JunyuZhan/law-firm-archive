@@ -1,0 +1,241 @@
+# =====================================================
+# 构建与 Lint 工作流
+# =====================================================
+# 功能：
+# 1. 前端：安装依赖 → Lint → 构建
+# 2. 后端：编译 → 构建 → 测试
+# 3. 全部通过后自动提交并推送（可选）
+# =====================================================
+
+name: Build and Lint
+
+on:
+  push:
+    branches: [main, develop, 'feature/**']
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:  # 允许手动触发
+    inputs:
+      auto_commit:
+        description: '是否自动提交并推送（仅限 main/develop 分支）'
+        required: false
+        default: 'false'
+        type: boolean
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  TZ: Asia/Shanghai
+  CI: true
+
+jobs:
+  # ==================== 前端：Lint 和构建 ====================
+  frontend-build:
+    name: Frontend Build & Lint
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run Lint (ESLint + Stylelint + Prettier)
+        run: pnpm lint
+        continue-on-error: false
+
+      - name: Run TypeCheck
+        run: pnpm check:type
+        continue-on-error: false
+
+      - name: Build frontend
+        run: pnpm build
+        env:
+          NODE_OPTIONS: '--max-old-space-size=8192'
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: frontend-dist
+          path: frontend/apps/web-antd/dist
+          retention-days: 7
+
+  # ==================== 后端：编译和构建 ====================
+  backend-build:
+    name: Backend Build & Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Build with Maven (compile)
+        run: mvn clean compile -DskipTests -B
+
+      - name: Run Tests
+        run: mvn test -B
+        env:
+          SPRING_PROFILES_ACTIVE: test
+        continue-on-error: false
+
+      - name: Package JAR
+        run: mvn clean package -DskipTests -B
+        env:
+          SPRING_PROFILES_ACTIVE: prod
+
+      - name: Upload JAR artifact
+        uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: backend-jar
+          path: backend/target/*.jar
+          retention-days: 7
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-test-results
+          path: backend/target/surefire-reports/
+          retention-days: 7
+
+  # ==================== 质量门禁 ====================
+  quality-gate:
+    name: Quality Gate
+    runs-on: ubuntu-latest
+    needs: [frontend-build, backend-build]
+    if: always()
+
+    steps:
+      - name: Check all jobs status
+        run: |
+          if [[ "${{ needs.frontend-build.result }}" != "success" ]]; then
+            echo "❌ Frontend build failed"
+            exit 1
+          fi
+          if [[ "${{ needs.backend-build.result }}" != "success" ]]; then
+            echo "❌ Backend build failed"
+            exit 1
+          fi
+          echo "✅ All checks passed!"
+
+  # ==================== 自动提交并推送（可选）====================
+  auto-commit:
+    name: Auto Commit & Push
+    runs-on: ubuntu-latest
+    needs: [quality-gate]
+    # 仅在以下情况自动提交：
+    # 1. 手动触发且选择了 auto_commit
+    # 2. 推送到 main/develop 分支（且不是 PR）
+    if: |
+      always() &&
+      needs.quality-gate.result == 'success' &&
+      (
+        (github.event_name == 'workflow_dispatch' && github.event.inputs.auto_commit == 'true') ||
+        (
+          (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop') &&
+          github.event_name == 'push'
+        )
+      )
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Check for changes
+        id: check-changes
+        run: |
+          # 检查是否有未提交的更改（排除构建产物）
+          # 使用 git restore 来恢复构建产物，因为它们已经在 .gitignore 中
+          git add -A
+          
+          # 排除构建产物（使用精确路径，因为 git reset 不支持 glob）
+          git restore --staged frontend/dist/ frontend/apps/web-antd/dist/ frontend/.next/ frontend/.turbo/ frontend/.nuxt/ frontend/.vite/ || true
+          git restore --staged backend/target/ || true
+          git restore --staged node_modules/ frontend/node_modules/ || true
+          git restore --staged dist/ build/ out/ || true
+          
+          # 检查是否有实际更改（排除构建产物）
+          if git diff --staged --quiet && git diff --quiet; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "✅ No changes to commit"
+          else
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "📝 Changes detected:"
+            git status --short
+          fi
+
+      - name: Commit and push
+        if: steps.check-changes.outputs.has_changes == 'true'
+        run: |
+          # 添加所有更改（包括格式化的代码）
+          git add -A
+          
+          # 排除构建产物（使用精确路径）
+          git restore --staged frontend/dist/ frontend/apps/web-antd/dist/ frontend/.next/ frontend/.turbo/ frontend/.nuxt/ frontend/.vite/ || true
+          git restore --staged backend/target/ || true
+          git restore --staged node_modules/ frontend/node_modules/ || true
+          git restore --staged dist/ build/ out/ || true
+          
+          # 检查是否还有更改
+          if ! git diff --staged --quiet || ! git diff --quiet; then
+            COMMIT_MSG="chore: auto-commit after successful build and lint
+
+            - Frontend: lint passed, build successful
+            - Backend: compile passed, tests passed
+            - Auto-committed by GitHub Actions [skip ci]"
+            
+            git commit -m "$COMMIT_MSG"
+            git push origin ${{ github.ref_name }}
+            echo "✅ Changes committed and pushed"
+          else
+            echo "ℹ️ No meaningful changes to commit"
+          fi
+
+      - name: Summary
+        if: steps.check-changes.outputs.has_changes == 'false'
+        run: |
+          echo "✅ No changes to commit, all checks passed!"

@@ -15,11 +15,14 @@ import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -128,5 +131,44 @@ public class MatterClientFileController {
     Long operatorId = SecurityUtils.getCurrentUserId();
     clientFileService.ignoreFile(fileId, operatorId);
     return Result.success();
+  }
+
+  /**
+   * 处理 OPTIONS 预检请求（CORS）
+   *
+   * @param response HTTP响应
+   */
+  @RequestMapping(value = "/{fileId}/proxy", method = RequestMethod.OPTIONS)
+  public void proxyFileOptions(final HttpServletResponse response) {
+    response.setHeader("Access-Control-Allow-Origin", "*");
+    response.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+    response.setHeader("Access-Control-Allow-Headers", "*");
+    response.setHeader("Access-Control-Max-Age", "3600");
+    response.setStatus(HttpServletResponse.SC_OK);
+  }
+
+  /**
+   * 文件代理接口（解决跨域问题）
+   * 代理客户服务系统的文件，用于预览和下载
+   *
+   * @param fileId 文件ID
+   * @param response HTTP响应
+   */
+  @Operation(summary = "文件代理", description = "代理客户服务系统的文件，解决跨域问题")
+  @GetMapping("/{fileId}/proxy")
+  @RequirePermission("matter:clientService:list")
+  public void proxyFile(
+      @Parameter(description = "文件ID", required = true) @PathVariable final Long fileId,
+      final HttpServletResponse response) {
+    try {
+      clientFileService.proxyFile(fileId, response);
+    } catch (IOException e) {
+      try {
+        response.setHeader("Access-Control-Allow-Origin", "*");
+        response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "文件代理失败: " + e.getMessage());
+      } catch (IOException ioException) {
+        // 忽略
+      }
+    }
   }
 }

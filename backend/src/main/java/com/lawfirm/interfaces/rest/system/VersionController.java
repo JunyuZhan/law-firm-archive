@@ -256,48 +256,100 @@ public class VersionController {
     }
 
     /**
-     * 执行升级（使用 git 和 docker compose）
+     * 获取当前Git分支
+     */
+    private String getCurrentBranch(String projectRoot) {
+        try {
+            ProcessBuilder pb = new ProcessBuilder("git", "rev-parse", "--abbrev-ref", "HEAD");
+            pb.directory(new File(projectRoot));
+            pb.redirectErrorStream(true);
+            Process process = pb.start();
+            
+            try (BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
+                String branch = reader.readLine();
+                if (branch != null && !branch.trim().isEmpty()) {
+                    return branch.trim();
+                }
+            }
+            
+            process.waitFor();
+        } catch (Exception e) {
+            log.warn("获取当前分支失败，使用默认分支main: {}", e.getMessage());
+        }
+        return "main"; // 默认分支
+    }
+
+    /**
+     * 执行升级（调用upgrade.sh脚本）
      */
     private void executeUpgradeScript(String projectRoot, String upgradeId, boolean backup) {
         Path statusFile = Paths.get("/tmp/.upgrade-status-" + upgradeId + ".json");
         
         try {
-            writeUpgradeStatus(statusFile, "running", "正在拉取最新代码...", 20);
+            // 获取当前分支
+            String currentBranch = getCurrentBranch(projectRoot);
+            log.info("当前分支: {}", currentBranch);
             
-            // 步骤1：git pull
-            log.info("开始升级：拉取最新代码");
-            int gitResult = runCommand(projectRoot, "git", "pull", "origin", "main");
-            if (gitResult != 0) {
-                writeUpgradeStatus(statusFile, "failed", "拉取代码失败", -1);
+            // 构建升级脚本命令
+            Path upgradeScript = Paths.get(projectRoot, "scripts/ops/upgrade.sh");
+            if (!Files.exists(upgradeScript)) {
+                writeUpgradeStatus(statusFile, "failed", "升级脚本不存在: " + upgradeScript, -1);
                 return;
             }
             
-            writeUpgradeStatus(statusFile, "running", "正在构建镜像...", 50);
+            // 确保脚本有执行权限
+            upgradeScript.toFile().setExecutable(true);
             
-            // 步骤2：docker compose build
-            log.info("构建 Docker 镜像");
-            String dockerDir = projectRoot + "/docker";
-            int buildResult = runCommand(dockerDir, 
-                "docker", "compose", "-f", "docker-compose.prod.yml", 
-                "build", "backend", "frontend", "--no-cache");
-            if (buildResult != 0) {
-                writeUpgradeStatus(statusFile, "failed", "构建镜像失败", -1);
-                return;
+            // 构建命令参数
+            List<String> command = new ArrayList<>();
+            command.add("bash");
+            command.add(upgradeScript.toString());
+            
+            if (backup) {
+                command.add("--quick"); // 快速模式，自动备份
+            } else {
+                command.add("--no-backup"); // 跳过备份
             }
             
-            writeUpgradeStatus(statusFile, "running", "正在重启服务...", 90);
+            writeUpgradeStatus(statusFile, "running", "正在执行升级脚本...", 10);
             
-            // 步骤3：docker compose up -d（这会重启当前容器，所以放在最后）
-            log.info("重启服务");
-            // 使用 nohup 确保命令在后台继续执行
-            ProcessBuilder pb = new ProcessBuilder("sh", "-c", 
-                "cd " + dockerDir + " && docker compose -f docker-compose.prod.yml up -d backend frontend");
-            pb.directory(new File(dockerDir));
+            // 执行升级脚本
+            ProcessBuilder pb = new ProcessBuilder(command);
+            pb.directory(new File(projectRoot));
             pb.redirectErrorStream(true);
-            pb.start(); // 不等待完成，因为这会停止当前容器
             
-            writeUpgradeStatus(statusFile, "completed", "升级成功！服务正在重启...", 100);
-            log.info("升级命令已发送，服务即将重启");
+            Process process = pb.start();
+            
+            // 读取输出并更新进度
+            try (BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    log.info("[升级脚本] {}", line);
+                    
+                    // 根据输出内容更新进度（简单匹配）
+                    if (line.contains("拉取最新代码") || line.contains("pull")) {
+                        writeUpgradeStatus(statusFile, "running", "正在拉取最新代码...", 30);
+                    } else if (line.contains("构建") || line.contains("build")) {
+                        writeUpgradeStatus(statusFile, "running", "正在构建镜像...", 60);
+                    } else if (line.contains("部署") || line.contains("deploy")) {
+                        writeUpgradeStatus(statusFile, "running", "正在部署服务...", 80);
+                    } else if (line.contains("完成") || line.contains("success")) {
+                        writeUpgradeStatus(statusFile, "running", "升级进行中...", 90);
+                    }
+                }
+            }
+            
+            int exitCode = process.waitFor();
+            
+            if (exitCode == 0) {
+                writeUpgradeStatus(statusFile, "completed", "升级成功！服务正在重启...", 100);
+                log.info("升级脚本执行成功，服务即将重启");
+            } else {
+                writeUpgradeStatus(statusFile, "failed", "升级脚本执行失败，退出码: " + exitCode, -1);
+                log.error("升级脚本执行失败，退出码: {}", exitCode);
+            }
             
         } catch (Exception e) {
             log.error("升级执行异常", e);
@@ -306,33 +358,6 @@ public class VersionController {
             } catch (Exception ignored) {
                 // 忽略
             }
-        }
-    }
-    
-    /**
-     * 执行命令并等待完成
-     */
-    private int runCommand(String workDir, String... command) {
-        try {
-            ProcessBuilder pb = new ProcessBuilder(command);
-            pb.directory(new File(workDir));
-            pb.redirectErrorStream(true);
-            
-            Process process = pb.start();
-            
-            // 读取输出
-            try (BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    log.info("[升级] {}", line);
-                }
-            }
-            
-            return process.waitFor();
-        } catch (Exception e) {
-            log.error("执行命令失败: {}", String.join(" ", command), e);
-            return -1;
         }
     }
 

@@ -14,6 +14,7 @@ import type {
 } from '#/api/matter/client-service';
 
 import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { useRouter } from 'vue-router';
 
 import {
   Alert,
@@ -75,6 +76,8 @@ const props = defineProps<{
   /** 是否只读 */
   readonly?: boolean;
 }>();
+
+const router = useRouter();
 
 // 授权范围选项
 const SCOPE_OPTIONS: ScopeOption[] = [
@@ -262,6 +265,19 @@ const connectionMessage = ref('');
 
 // ========== 客户文件相关函数 ==========
 
+// 预览弹窗状态
+const previewModalVisible = ref(false);
+const previewFileInfo = ref<ClientFileDTO | null>(null);
+const previewUrl = ref('');
+const previewWidth = ref(800);
+
+// 文件大小限制（100MB，超过此大小不允许预览）
+const MAX_PREVIEW_SIZE = 100 * 1024 * 1024; // 100MB
+
+// 大文件提示弹窗
+const largeFileModalVisible = ref(false);
+const largeFileInfo = ref<ClientFileDTO | null>(null);
+
 // 加载客户上传的文件
 async function loadClientFiles() {
   if (!props.matterId) return;
@@ -355,6 +371,14 @@ async function openSyncModal(file: ClientFileDTO) {
   syncModalVisible.value = true;
 }
 
+// 从大文件提示弹窗打开同步弹窗
+async function handleOpenSyncModal() {
+  if (largeFileInfo.value) {
+    await openSyncModal(largeFileInfo.value);
+    largeFileModalVisible.value = false;
+  }
+}
+
 // 执行同步
 async function handleSync() {
   if (!syncForm.targetDossierId) {
@@ -388,12 +412,148 @@ async function handleIgnoreFile(file: ClientFileDTO) {
   }
 }
 
+// 判断是否为图片文件
+function isImageFile(file: ClientFileDTO): boolean {
+  const imageTypes = [
+    'image/jpeg',
+    'image/jpg',
+    'image/png',
+    'image/gif',
+    'image/webp',
+    'image/bmp',
+  ];
+  const fileName = file.fileName || file.originalFileName || '';
+  return (
+    imageTypes.includes(file.fileType || '') ||
+    /\.(?:jpg|jpeg|png|gif|webp|bmp)$/i.test(fileName)
+  );
+}
+
+// 判断是否为PDF文件
+function isPdfFile(file: ClientFileDTO): boolean {
+  return (
+    file.fileType === 'application/pdf' ||
+    /\.pdf$/i.test(file.fileName || file.originalFileName || '')
+  );
+}
+
+// 判断是否为Office文档
+function isOfficeFile(file: ClientFileDTO): boolean {
+  const fileName = file.fileName || file.originalFileName || '';
+  return /\.(?:doc|docx|xls|xlsx|ppt|pptx)$/i.test(fileName);
+}
+
+// 获取Office文档类型
+function getOfficeType(file: ClientFileDTO): 'cell' | 'slide' | 'word' | null {
+  const fileName = file.fileName || file.originalFileName || '';
+  if (/\.(?:doc|docx)$/i.test(fileName)) return 'word';
+  if (/\.(?:xls|xlsx)$/i.test(fileName)) return 'cell';
+  if (/\.(?:ppt|pptx)$/i.test(fileName)) return 'slide';
+  return null;
+}
+
+// 获取文件扩展名
+function getFileExtension(file: ClientFileDTO): string {
+  const fileName = file.fileName || file.originalFileName || '';
+  const match = fileName.match(/\.([^.]+)$/);
+  return match ? match[1].toLowerCase() : '';
+}
+
+// 获取文件代理URL（解决跨域问题）
+function getFileProxyUrl(file: ClientFileDTO): string {
+  const relativeUrl = `/api/matter/client-files/${file.id}/proxy`;
+  // 如果是相对路径，转换为完整URL（用于OnlyOffice预览）
+  if (relativeUrl.startsWith('/')) {
+    return window.location.origin + relativeUrl;
+  }
+  return relativeUrl;
+}
+
+// 检查文件是否超过预览大小限制
+function isFileTooLarge(file: ClientFileDTO): boolean {
+  if (!file.fileSize || file.fileSize === 0) {
+    return false; // 如果文件大小未知，允许尝试预览
+  }
+  return file.fileSize > MAX_PREVIEW_SIZE;
+}
+
 // 预览/下载文件
 function handlePreviewFile(file: ClientFileDTO) {
+  if (!file.externalFileUrl) {
+    message.warning('文件链接不可用');
+    return;
+  }
+
+  // 检查文件大小限制
+  if (isFileTooLarge(file)) {
+    largeFileInfo.value = file;
+    largeFileModalVisible.value = true;
+    return;
+  }
+
+  // Office文档：使用OnlyOffice预览
+  if (isOfficeFile(file)) {
+    const officeType = getOfficeType(file);
+    const ext = getFileExtension(file);
+    if (officeType) {
+      // 跳转到OnlyOffice预览页面（使用代理URL）
+      router.push({
+        path: '/office-preview',
+        query: {
+          url: getFileProxyUrl(file),
+          filename: file.fileName || file.originalFileName || '文件',
+          type: officeType,
+          ext,
+          mode: 'view',
+        },
+      });
+      return;
+    }
+  }
+
+  // 图片和PDF：弹窗预览（使用代理URL）
+  if (isImageFile(file) || isPdfFile(file)) {
+    previewFileInfo.value = file;
+    previewUrl.value = getFileProxyUrl(file);
+
+    if (isImageFile(file)) {
+      previewWidth.value = 900;
+    } else if (isPdfFile(file)) {
+      previewWidth.value = 1000;
+    }
+
+    previewModalVisible.value = true;
+    return;
+  }
+
+  // 其他文件类型：使用代理URL下载
+  window.open(getFileProxyUrl(file), '_blank');
+}
+
+// 下载文件
+function handleDownloadFile(file: ClientFileDTO) {
   if (file.externalFileUrl) {
-    window.open(file.externalFileUrl, '_blank');
+    // 使用代理URL下载（解决跨域问题）
+    window.open(getFileProxyUrl(file), '_blank');
   } else {
     message.warning('文件链接不可用');
+  }
+}
+
+// 图片加载错误处理
+function handleImageError(event: Event) {
+  const img = event.target as HTMLImageElement;
+  // 如果图片加载失败，替换为默认图标
+  if (img.parentElement) {
+    img.style.display = 'none';
+    // 检查是否已经有错误图标，避免重复添加
+    if (!img.parentElement.querySelector('.image-error-icon')) {
+      const icon = document.createElement('span');
+      icon.className = 'image-error-icon';
+      icon.style.fontSize = '32px';
+      icon.textContent = '🖼️';
+      img.parentElement.append(icon);
+    }
   }
 }
 
@@ -724,7 +884,24 @@ watch(
                       <ListItemMeta>
                         <template #avatar>
                           <div class="file-avatar">
-                            <span style="font-size: 32px">{{
+                            <!-- 图片：显示缩略图（使用代理URL解决跨域） -->
+                            <img
+                              v-if="isImageFile(item) && item.externalFileUrl"
+                              :src="getFileProxyUrl(item)"
+                              :alt="item.fileName"
+                              class="file-thumbnail"
+                              @error="handleImageError"
+                            />
+                            <!-- PDF：显示PDF图标（可点击预览） -->
+                            <div
+                              v-else-if="isPdfFile(item)"
+                              class="file-thumbnail pdf-thumbnail"
+                              @click="handlePreviewFile(item)"
+                            >
+                              <span style="font-size: 24px">📕</span>
+                            </div>
+                            <!-- 其他文件：显示图标 -->
+                            <span v-else style="font-size: 32px">{{
                               getFileIcon(item.fileType)
                             }}</span>
                           </div>
@@ -767,35 +944,52 @@ watch(
                         </template>
                       </ListItemMeta>
                       <template #actions>
-                        <Button
-                          type="link"
-                          size="small"
-                          @click="handlePreviewFile(item)"
-                        >
-                          预览
-                        </Button>
-                        <Button
-                          v-if="item.status === 'PENDING' && !readonly"
-                          type="primary"
-                          size="small"
-                          @click="openSyncModal(item)"
-                        >
-                          同步到卷宗
-                        </Button>
-                        <Popconfirm
-                          v-if="item.status === 'PENDING' && !readonly"
-                          title="确定忽略此文件？忽略后客服系统将删除该文件。"
-                          @confirm="handleIgnoreFile(item)"
-                        >
-                          <Button type="link" size="small" danger>忽略</Button>
-                        </Popconfirm>
-                        <Tag
-                          v-if="item.status === 'SYNCED'"
-                          color="success"
-                          size="small"
-                        >
-                          已同步
-                        </Tag>
+                        <Space size="small">
+                          <Button
+                            type="link"
+                            size="small"
+                            @click="handlePreviewFile(item)"
+                            :disabled="isFileTooLarge(item)"
+                          >
+                            预览
+                            <template v-if="isFileTooLarge(item)" #icon>
+                              <Tooltip title="文件过大，请下载或同步到卷宗">
+                                <span style="color: #ff4d4f">⚠️</span>
+                              </Tooltip>
+                            </template>
+                          </Button>
+                          <Button
+                            type="link"
+                            size="small"
+                            @click="handleDownloadFile(item)"
+                          >
+                            下载
+                          </Button>
+                          <Button
+                            v-if="item.status === 'PENDING' && !readonly"
+                            type="primary"
+                            size="small"
+                            @click="openSyncModal(item)"
+                          >
+                            同步到卷宗
+                          </Button>
+                          <Popconfirm
+                            v-if="item.status === 'PENDING' && !readonly"
+                            title="确定忽略此文件？忽略后客服系统将删除该文件。"
+                            @confirm="handleIgnoreFile(item)"
+                          >
+                            <Button type="link" size="small" danger>
+                              忽略
+                            </Button>
+                          </Popconfirm>
+                          <Tag
+                            v-if="item.status === 'SYNCED'"
+                            color="success"
+                            size="small"
+                          >
+                            已同步
+                          </Tag>
+                        </Space>
                       </template>
                     </ListItem>
                   </template>
@@ -1334,6 +1528,107 @@ watch(
           </DescriptionsItem>
         </Descriptions>
       </Modal>
+
+      <!-- 文件预览弹窗 -->
+      <Modal
+        v-model:open="previewModalVisible"
+        :title="previewFileInfo?.fileName || '文件预览'"
+        :width="previewWidth"
+        @cancel="previewModalVisible = false"
+      >
+        <template #footer>
+          <Space>
+            <Button @click="previewModalVisible = false">关闭</Button>
+            <Button
+              type="primary"
+              @click="handleDownloadFile(previewFileInfo!)"
+              v-if="previewFileInfo"
+            >
+              下载文件
+            </Button>
+          </Space>
+        </template>
+        <div
+          v-if="previewFileInfo"
+          style="min-height: 400px; text-align: center"
+        >
+          <img
+            v-if="isImageFile(previewFileInfo)"
+            :src="previewUrl"
+            style="max-width: 100%; max-height: 70vh"
+            alt="预览"
+          />
+          <iframe
+            v-else-if="isPdfFile(previewFileInfo)"
+            :src="previewUrl"
+            style="width: 100%; height: 70vh; border: none"
+          ></iframe>
+          <div v-else style="padding: 40px; text-align: center">
+            <div style="margin-bottom: 16px; font-size: 48px">📄</div>
+            <div style="color: #999">此文件类型不支持预览，请下载后查看</div>
+          </div>
+        </div>
+      </Modal>
+
+      <!-- 大文件提示弹窗 -->
+      <Modal
+        v-model:open="largeFileModalVisible"
+        title="文件过大"
+        :width="500"
+        @cancel="largeFileModalVisible = false"
+      >
+        <template #footer>
+          <Space>
+            <Button @click="largeFileModalVisible = false">取消</Button>
+            <Button
+              type="primary"
+              @click="handleDownloadFile(largeFileInfo!)"
+              v-if="largeFileInfo"
+            >
+              下载文件
+            </Button>
+            <Button
+              type="default"
+              @click="handleOpenSyncModal"
+              v-if="
+                largeFileInfo && largeFileInfo.status === 'PENDING' && !readonly
+              "
+            >
+              同步到卷宗
+            </Button>
+          </Space>
+        </template>
+        <div v-if="largeFileInfo">
+          <Alert
+            type="warning"
+            show-icon
+            style="margin-bottom: 16px"
+            message="文件过大，无法预览"
+            :description="`文件大小：${formatFileSize(largeFileInfo.fileSize || 0)}，超过预览限制（${formatFileSize(MAX_PREVIEW_SIZE)}）。请下载文件或同步到卷宗后查看。`"
+          />
+          <Descriptions :column="1" bordered size="small">
+            <DescriptionsItem label="文件名">
+              {{ largeFileInfo.fileName }}
+            </DescriptionsItem>
+            <DescriptionsItem label="文件大小">
+              {{ formatFileSize(largeFileInfo.fileSize || 0) }}
+            </DescriptionsItem>
+            <DescriptionsItem label="文件类型">
+              <Tag
+                :color="
+                  FILE_CATEGORY_MAP[largeFileInfo.fileCategory || 'OTHER']
+                    ?.color || 'default'
+                "
+              >
+                {{
+                  FILE_CATEGORY_MAP[largeFileInfo.fileCategory || 'OTHER']
+                    ?.text || '其他'
+                }}
+              </Tag>
+            </DescriptionsItem>
+          </Descriptions>
+        </div>
+      </Modal>
     </template>
   </div>
 </template>
@@ -1370,12 +1665,34 @@ watch(
 
 .file-avatar {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  width: 48px;
-  height: 48px;
+  width: 64px;
+  height: 90px; /* A4比例：64 * 1.414 ≈ 90px */
+  overflow: hidden;
   background: #f5f7fa;
   border-radius: 8px;
+}
+
+.file-thumbnail {
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+  object-fit: cover;
+  transition: opacity 0.2s;
+}
+
+.file-thumbnail:hover {
+  opacity: 0.8;
+}
+
+.pdf-thumbnail {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  background: #fff5f5;
 }
 
 /* 推送记录项 */

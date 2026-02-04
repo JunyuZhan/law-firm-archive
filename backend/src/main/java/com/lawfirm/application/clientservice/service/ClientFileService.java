@@ -17,7 +17,9 @@ import com.lawfirm.infrastructure.persistence.mapper.ExternalIntegrationMapper;
 import com.lawfirm.infrastructure.persistence.mapper.MatterMapper;
 import com.lawfirm.infrastructure.persistence.mapper.UserMapper;
 import com.lawfirm.infrastructure.persistence.mapper.clientservice.ClientFileMapper;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.time.LocalDateTime;
@@ -328,6 +330,64 @@ public class ClientFileService {
 
     // 通知客服系统删除
     notifyClientServiceToDelete(clientFile.getExternalFileId());
+  }
+
+  /**
+   * 代理文件（解决跨域问题）.
+   *
+   * @param fileId 文件ID
+   * @param response HTTP响应
+   * @throws IOException IO异常
+   */
+  public void proxyFile(final Long fileId, final HttpServletResponse response) throws IOException {
+    // 1. 获取文件信息
+    ClientFile clientFile = clientFileMapper.selectById(fileId);
+    if (clientFile == null || clientFile.getDeleted()) {
+      response.setHeader("Access-Control-Allow-Origin", "*");
+      response.sendError(HttpServletResponse.SC_NOT_FOUND, "文件不存在");
+      return;
+    }
+
+    // 2. 验证外部URL
+    if (clientFile.getExternalFileUrl() == null || clientFile.getExternalFileUrl().trim().isEmpty()) {
+      log.warn("文件外部URL为空: fileId={}", fileId);
+      response.setHeader("Access-Control-Allow-Origin", "*");
+      response.sendError(HttpServletResponse.SC_BAD_REQUEST, "文件URL无效");
+      return;
+    }
+
+    // 3. 从外部URL下载文件
+    byte[] fileContent;
+    try {
+      fileContent = downloadFile(clientFile.getExternalFileUrl());
+      if (fileContent == null || fileContent.length == 0) {
+        response.setHeader("Access-Control-Allow-Origin", "*");
+        response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "文件内容为空");
+        return;
+      }
+    } catch (Exception e) {
+      log.error("代理文件失败: fileId={}, url={}, error={}", fileId, clientFile.getExternalFileUrl(), e.getMessage(), e);
+      response.setHeader("Access-Control-Allow-Origin", "*");
+      response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "下载文件失败: " + e.getMessage());
+      return;
+    }
+
+    // 3. 设置响应头（包括CORS）
+    response.setHeader("Access-Control-Allow-Origin", "*");
+    response.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+    response.setHeader("Access-Control-Allow-Headers", "*");
+    response.setContentType(clientFile.getFileType() != null ? clientFile.getFileType() : "application/octet-stream");
+    response.setContentLength(fileContent.length);
+    
+    // 文件名编码处理（支持中文文件名）
+    String fileName = clientFile.getFileName() != null ? clientFile.getFileName() : "file";
+    String encodedFileName = java.net.URLEncoder.encode(fileName, java.nio.charset.StandardCharsets.UTF_8);
+    response.setHeader("Content-Disposition", 
+        "inline; filename=\"" + encodedFileName + "\"; filename*=UTF-8''" + encodedFileName);
+
+    // 4. 写入文件内容
+    response.getOutputStream().write(fileContent);
+    response.getOutputStream().flush();
   }
 
   /**
