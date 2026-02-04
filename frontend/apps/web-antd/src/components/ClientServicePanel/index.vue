@@ -43,6 +43,7 @@ import {
   Tag,
   Tooltip,
   TreeSelect,
+  Typography,
 } from 'ant-design-vue';
 import dayjs from 'dayjs';
 
@@ -958,6 +959,15 @@ watch(
                     >
                       +{{ record.scopes.length - 2 }}
                     </span>
+                  </div>
+                  <!-- 访问链接（成功的推送记录显示） -->
+                  <div v-if="record.status === 'SUCCESS' && record.externalUrl" style="margin-top: 6px">
+                    <Typography.Text
+                      :copyable="{ text: record.externalUrl }"
+                      style="font-size: 11px; color: #1890ff; word-break: break-all"
+                    >
+                      {{ record.externalUrl.length > 50 ? record.externalUrl.slice(0, 50) + '...' : record.externalUrl }}
+                    </Typography.Text>
                   </div>
                 </div>
               </div>
