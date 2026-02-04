@@ -6,8 +6,6 @@ import type {
   UpdateCauseCommand,
 } from '#/api/system/cause-of-action';
 
-import { createCause, getCauseById, updateCause } from '#/api/system/cause-of-action';
-
 import { computed, ref, watch } from 'vue';
 
 import { useVbenModal } from '@vben/common-ui';
@@ -15,6 +13,11 @@ import { useVbenModal } from '@vben/common-ui';
 import { message } from 'ant-design-vue';
 
 import { useVbenForm } from '#/adapter/form';
+import {
+  createCause,
+  getCauseById,
+  updateCause,
+} from '#/api/system/cause-of-action';
 
 const props = defineProps<{
   causeType: CauseType;

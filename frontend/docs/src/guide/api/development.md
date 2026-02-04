@@ -27,7 +27,7 @@
 ### vben 封装组件（推荐）
 
 | 组件 | 导入方式 | 用途 |
-|------|----------|------|
+| --- | --- | --- |
 | `Page` | `import { Page } from '@vben/common-ui'` | 页面容器，统一标题和描述 |
 | `useVbenForm` | `import { useVbenForm } from '#/adapter/form'` | 表单（支持 schema 配置） |
 | `useVbenVxeGrid` | `import { useVbenVxeGrid } from '#/adapter/vxe-table'` | 高级表格（支持分页、筛选） |
@@ -178,32 +178,31 @@ const { gridRef, gridOptions, reload } = useVbenVxeGrid({
 
 ### 工具清单速查
 
-| 工具 | 用途 | 使用场景 | 是否必须使用 |
-|------|------|----------|-------------|
-| `FileValidator` | 文件上传验证 | 所有文件上传接口 | ✅ 必须 |
-| `IpUtils` | 获取真实IP | 登录、操作日志 | ✅ 必须 |
-| `XssFilter` | XSS过滤 | 自动生效（Filter） | ✅ 自动 |
-| `TraceIdFilter` | 请求追踪 | 自动生效（Filter） | ✅ 自动 |
-| `DeviceFingerprintUtils` | 设备识别 | 登录日志 | 🟡 推荐 |
-| `FieldChangeUtils` | 字段变更对比 | 审计日志 | 🟡 推荐 |
-| `Assert` | 参数校验 | Service层入参 | 🟡 推荐 |
-| `SensitiveUtils` | 数据脱敏 | 日志输出、API返回 | ✅ 必须 |
-| `@RateLimiter` | 接口限流 | 敏感接口 | 🟡 推荐 |
-| `@RepeatSubmit` | 防重复提交 | 表单提交接口 | 🟡 推荐 |
-| `CompressUtils` | 文件压缩 | 批量下载打包 | 🟡 推荐 |
+| 工具                     | 用途         | 使用场景           | 是否必须使用 |
+| ------------------------ | ------------ | ------------------ | ------------ |
+| `FileValidator`          | 文件上传验证 | 所有文件上传接口   | ✅ 必须      |
+| `IpUtils`                | 获取真实IP   | 登录、操作日志     | ✅ 必须      |
+| `XssFilter`              | XSS过滤      | 自动生效（Filter） | ✅ 自动      |
+| `TraceIdFilter`          | 请求追踪     | 自动生效（Filter） | ✅ 自动      |
+| `DeviceFingerprintUtils` | 设备识别     | 登录日志           | 🟡 推荐      |
+| `FieldChangeUtils`       | 字段变更对比 | 审计日志           | 🟡 推荐      |
+| `Assert`                 | 参数校验     | Service层入参      | 🟡 推荐      |
+| `SensitiveUtils`         | 数据脱敏     | 日志输出、API返回  | ✅ 必须      |
+| `@RateLimiter`           | 接口限流     | 敏感接口           | 🟡 推荐      |
+| `@RepeatSubmit`          | 防重复提交   | 表单提交接口       | 🟡 推荐      |
+| `CompressUtils`          | 文件压缩     | 批量下载打包       | 🟡 推荐      |
 
 ---
 
 ### FileValidator - 文件上传验证
 
-**为什么要用？**
-防止恶意文件上传，包括：
+**为什么要用？** 防止恶意文件上传，包括：
+
 - 可执行文件（.exe, .sh, .php）
 - 伪装文件（把 .exe 改成 .jpg）
 - 超大文件攻击
 
-**在哪里使用？**
-**所有文件上传接口**都必须调用！
+**在哪里使用？** **所有文件上传接口**都必须调用！
 
 **使用示例**：
 
@@ -222,7 +221,7 @@ public class FileController {
         if (!result.isValid()) {
             throw new BusinessException(result.getErrorMessage());
         }
-        
+
         // 验证通过，继续处理上传...
         return fileService.upload(file);
     }
@@ -234,6 +233,7 @@ public class FileController {
 ### IpUtils - IP地址工具
 
 **为什么要用？**
+
 - `request.getRemoteAddr()` 在有代理时获取的是代理IP
 - 需要正确获取用户真实IP用于：登录日志、操作审计、限流
 
@@ -248,10 +248,10 @@ public class LoginService {
     public LoginResult login(LoginCommand cmd, HttpServletRequest request) {
         // ⚠️ 必须：使用 IpUtils 获取真实IP
         String clientIp = IpUtils.getClientIp(request);
-        
+
         // 记录登录日志
         loginLogService.recordLogin(cmd.getUsername(), clientIp);
-        
+
         // ... 登录逻辑
     }
 }
@@ -261,8 +261,8 @@ public class LoginService {
 
 ### SensitiveUtils - 数据脱敏
 
-**为什么要用？**
-防止敏感信息泄露到日志或API返回中，包括：
+**为什么要用？** 防止敏感信息泄露到日志或API返回中，包括：
+
 - 手机号、身份证号、银行卡号
 - 密码、Token
 
@@ -277,17 +277,17 @@ public class UserService {
     public UserDTO getUser(Long id) {
         User user = userRepository.findById(id);
         UserDTO dto = convertToDTO(user);
-        
+
         // ⚠️ 必须：脱敏敏感信息
         dto.setPhone(SensitiveUtils.maskPhone(user.getPhone()));
         dto.setIdCard(SensitiveUtils.maskIdCard(user.getIdCard()));
-        
+
         return dto;
     }
-    
+
     public void logUserInfo(User user) {
         // ⚠️ 必须：日志中也要脱敏
-        log.info("用户信息: phone={}, idCard={}", 
+        log.info("用户信息: phone={}, idCard={}",
             SensitiveUtils.maskPhone(user.getPhone()),
             SensitiveUtils.maskIdCard(user.getIdCard()));
     }
@@ -298,8 +298,7 @@ public class UserService {
 
 ### Assert - 参数校验
 
-**为什么要用？**
-在 Service 层进行参数校验，避免空指针异常和业务逻辑错误。
+**为什么要用？** 在 Service 层进行参数校验，避免空指针异常和业务逻辑错误。
 
 **使用示例**：
 
@@ -314,7 +313,7 @@ public class ContractService {
         Assert.notNull(cmd, "合同信息不能为空");
         Assert.notNull(cmd.getClientId(), "客户ID不能为空");
         Assert.notBlank(cmd.getTitle(), "合同标题不能为空");
-        
+
         // ... 业务逻辑
     }
 }
@@ -324,8 +323,7 @@ public class ContractService {
 
 ### @RateLimiter - 接口限流
 
-**为什么要用？**
-防止接口被恶意调用，保护系统资源。
+**为什么要用？** 防止接口被恶意调用，保护系统资源。
 
 **使用示例**：
 
@@ -348,8 +346,7 @@ public class AuthController {
 
 ### @RepeatSubmit - 防重复提交
 
-**为什么要用？**
-防止用户重复点击提交按钮，导致重复操作。
+**为什么要用？** 防止用户重复点击提交按钮，导致重复操作。
 
 **使用示例**：
 
@@ -372,8 +369,7 @@ public class ContractController {
 
 ### FieldChangeUtils - 字段变更对比
 
-**为什么要用？**
-记录字段变更历史，用于审计日志。
+**为什么要用？** 记录字段变更历史，用于审计日志。
 
 **使用示例**：
 
@@ -386,15 +382,15 @@ public class UserService {
     public void updateUser(UserUpdateCommand cmd) {
         User oldUser = userRepository.findById(cmd.getId());
         User newUser = convertToEntity(cmd);
-        
+
         // ⚠️ 推荐：记录字段变更
-        Map<String, FieldChangeUtils.FieldChange> changes = 
+        Map<String, FieldChangeUtils.FieldChange> changes =
             FieldChangeUtils.compare(oldUser, newUser);
-        
+
         if (!changes.isEmpty()) {
             auditLogService.recordFieldChange("User", cmd.getId(), changes);
         }
-        
+
         userRepository.save(newUser);
     }
 }
@@ -404,8 +400,7 @@ public class UserService {
 
 ### DeviceFingerprintUtils - 设备识别
 
-**为什么要用？**
-识别用户设备，用于登录日志和安全审计。
+**为什么要用？** 识别用户设备，用于登录日志和安全审计。
 
 **使用示例**：
 
@@ -418,14 +413,14 @@ public class LoginService {
     public LoginResult login(LoginCommand cmd, HttpServletRequest request) {
         // ⚠️ 推荐：记录设备指纹
         String deviceFingerprint = DeviceFingerprintUtils.generate(request);
-        
+
         // 记录登录日志
         loginLogService.recordLogin(
-            cmd.getUsername(), 
+            cmd.getUsername(),
             IpUtils.getClientIp(request),
             deviceFingerprint
         );
-        
+
         // ... 登录逻辑
     }
 }
@@ -435,8 +430,7 @@ public class LoginService {
 
 ### CompressUtils - 文件压缩
 
-**为什么要用？**
-批量下载时打包多个文件，提高下载效率。
+**为什么要用？** 批量下载时打包多个文件，提高下载效率。
 
 **使用示例**：
 
@@ -448,14 +442,14 @@ import com.lawfirm.common.util.CompressUtils;
 public class FileController {
 
     @GetMapping("/batch-download")
-    public void batchDownload(@RequestParam List<Long> fileIds, 
+    public void batchDownload(@RequestParam List<Long> fileIds,
                               HttpServletResponse response) {
         // ⚠️ 推荐：使用 CompressUtils 打包
         List<File> files = fileService.getFiles(fileIds);
-        
+
         response.setContentType("application/zip");
         response.setHeader("Content-Disposition", "attachment; filename=files.zip");
-        
+
         CompressUtils.compressToZip(files, response.getOutputStream());
     }
 }

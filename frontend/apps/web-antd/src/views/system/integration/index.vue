@@ -214,9 +214,7 @@ async function loadCallbackSecurityConfig() {
     }
 
     // 获取 API Key
-    const apiKeyRes = await getConfigValue(
-      'client-service.callback.api-key',
-    );
+    const apiKeyRes = await getConfigValue('client-service.callback.api-key');
     if (apiKeyRes) {
       callbackSecurityConfig.apiKeyId = apiKeyRes.id;
       callbackSecurityConfig.apiKey = apiKeyRes.configValue || '';
@@ -634,8 +632,9 @@ onMounted(() => {
                   API 地址和密钥）
                 </li>
                 <li>
-                  <b>回调功能</b>：客户服务系统将客户访问日志回调到本系统（需要配置
-                  IP 白名单）
+                  <b>回调功能</b
+                  >：客户服务系统将客户访问日志回调到本系统（需要配置 IP
+                  白名单）
                 </li>
               </ul>
             </template>
@@ -650,37 +649,64 @@ onMounted(() => {
           >
             <template #extra>
               <Space>
-                <Button v-if="clientServiceIntegrations.length === 0" type="primary" size="small" @click="handleAddClientService">
+                <Button
+                  v-if="clientServiceIntegrations.length === 0"
+                  type="primary"
+                  size="small"
+                  @click="handleAddClientService"
+                >
                   添加配置
                 </Button>
                 <Button size="small" @click="fetchData">刷新</Button>
               </Space>
             </template>
 
-            <div v-if="clientServiceIntegrations.length === 0" style="padding: 20px 0; text-align: center; color: #999">
+            <div
+              v-if="clientServiceIntegrations.length === 0"
+              style="padding: 20px 0; color: #999; text-align: center"
+            >
               尚未配置客户服务系统连接，点击右上角"添加配置"
             </div>
 
-            <Descriptions
-              v-else
-              :column="2"
-              size="small"
-              bordered
-            >
+            <Descriptions v-else :column="2" size="small" bordered>
               <DescriptionsItem label="API 地址" :span="2">
-                <code>{{ clientServiceIntegrations[0]?.apiUrl || '未配置' }}</code>
+                <code>{{
+                  clientServiceIntegrations[0]?.apiUrl || '未配置'
+                }}</code>
               </DescriptionsItem>
               <DescriptionsItem label="API 密钥">
-                {{ clientServiceIntegrations[0]?.hasApiSecret ? '******（已配置）' : '未配置' }}
+                {{
+                  clientServiceIntegrations[0]?.hasApiSecret
+                    ? '******（已配置）'
+                    : '未配置'
+                }}
               </DescriptionsItem>
               <DescriptionsItem label="状态">
-                <Tag :color="clientServiceIntegrations[0]?.enabled ? 'success' : 'default'">
-                  {{ clientServiceIntegrations[0]?.enabled ? '已启用' : '未启用' }}
+                <Tag
+                  :color="
+                    clientServiceIntegrations[0]?.enabled
+                      ? 'success'
+                      : 'default'
+                  "
+                >
+                  {{
+                    clientServiceIntegrations[0]?.enabled ? '已启用' : '未启用'
+                  }}
                 </Tag>
               </DescriptionsItem>
               <DescriptionsItem label="测试结果">
-                <Tag :color="formatTestResult(clientServiceIntegrations[0]?.lastTestResult).color">
-                  {{ formatTestResult(clientServiceIntegrations[0]?.lastTestResult).text }}
+                <Tag
+                  :color="
+                    formatTestResult(
+                      clientServiceIntegrations[0]?.lastTestResult,
+                    ).color
+                  "
+                >
+                  {{
+                    formatTestResult(
+                      clientServiceIntegrations[0]?.lastTestResult,
+                    ).text
+                  }}
                 </Tag>
               </DescriptionsItem>
               <DescriptionsItem label="操作">
@@ -688,11 +714,25 @@ onMounted(() => {
                   <a @click="handleEdit(clientServiceIntegrations[0]!)">修改</a>
                   <a @click="handleTest(clientServiceIntegrations[0]!)">测试</a>
                   <Popconfirm
-                    :title="clientServiceIntegrations[0]?.enabled ? '确定要禁用？' : '确定要启用？'"
-                    @confirm="handleToggleEnabled(clientServiceIntegrations[0]!)"
+                    :title="
+                      clientServiceIntegrations[0]?.enabled
+                        ? '确定要禁用？'
+                        : '确定要启用？'
+                    "
+                    @confirm="
+                      handleToggleEnabled(clientServiceIntegrations[0]!)
+                    "
                   >
-                    <a :style="{ color: clientServiceIntegrations[0]?.enabled ? '#ff4d4f' : '#52c41a' }">
-                      {{ clientServiceIntegrations[0]?.enabled ? '禁用' : '启用' }}
+                    <a
+                      :style="{
+                        color: clientServiceIntegrations[0]?.enabled
+                          ? '#ff4d4f'
+                          : '#52c41a',
+                      }"
+                    >
+                      {{
+                        clientServiceIntegrations[0]?.enabled ? '禁用' : '启用'
+                      }}
                     </a>
                   </Popconfirm>
                 </Space>
@@ -736,11 +776,18 @@ onMounted(() => {
                   v-model:checked="callbackSecurityConfig.ipWhitelistEnabled"
                 />
                 <span style="margin-left: 8px; color: #666">
-                  {{ callbackSecurityConfig.ipWhitelistEnabled ? 'IP 白名单验证（推荐，需要固定公网 IP）' : 'API 密钥验证（适用于动态 IP）' }}
+                  {{
+                    callbackSecurityConfig.ipWhitelistEnabled
+                      ? 'IP 白名单验证（推荐，需要固定公网 IP）'
+                      : 'API 密钥验证（适用于动态 IP）'
+                  }}
                 </span>
               </FormItem>
 
-              <FormItem v-if="callbackSecurityConfig.ipWhitelistEnabled" label="IP 白名单">
+              <FormItem
+                v-if="callbackSecurityConfig.ipWhitelistEnabled"
+                label="IP 白名单"
+              >
                 <Textarea
                   v-model:value="callbackSecurityConfig.ipWhitelist"
                   :rows="3"
@@ -767,13 +814,18 @@ onMounted(() => {
           <Card title="配置说明" size="small">
             <Descriptions :column="1" size="small" bordered>
               <DescriptionsItem label="配置步骤">
-                <ol style="margin: 0; padding-left: 20px">
+                <ol style="padding-left: 20px; margin: 0">
                   <li>在客户服务系统管理后台创建 API 密钥</li>
                   <li>将 API 密钥填写到上方"推送配置"中</li>
-                  <li>选择回调验证方式：
-                    <ul style="margin: 4px 0; padding-left: 20px">
-                      <li><b>固定 IP</b>：启用 IP 白名单，填写客户服务系统的 IP</li>
-                      <li><b>动态 IP</b>：禁用 IP 白名单，双方配置相同的回调密钥</li>
+                  <li>
+                    选择回调验证方式：
+                    <ul style="padding-left: 20px; margin: 4px 0">
+                      <li>
+                        <b>固定 IP</b>：启用 IP 白名单，填写客户服务系统的 IP
+                      </li>
+                      <li>
+                        <b>动态 IP</b>：禁用 IP 白名单，双方配置相同的回调密钥
+                      </li>
                     </ul>
                   </li>
                   <li>测试推送功能是否正常</li>
@@ -784,8 +836,13 @@ onMounted(() => {
               </DescriptionsItem>
               <DescriptionsItem label="回调接口（由客户服务系统调用）">
                 <div>
-                  <div><code>POST /api/open/client/access-log</code> - 访问日志回调</div>
-                  <div><code>POST /api/open/client/download-log</code> - 下载日志回调</div>
+                  <div>
+                    <code>POST /api/open/client/access-log</code> - 访问日志回调
+                  </div>
+                  <div>
+                    <code>POST /api/open/client/download-log</code> -
+                    下载日志回调
+                  </div>
                 </div>
               </DescriptionsItem>
             </Descriptions>

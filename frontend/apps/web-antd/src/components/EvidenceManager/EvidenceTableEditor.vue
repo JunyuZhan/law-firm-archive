@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { EvidenceItem } from './types';
 
+import type { MatterDossierItem } from '#/api/document/dossier';
 import type {
   CreateEvidenceCommand,
   EvidenceExportItem,
@@ -31,6 +32,7 @@ import {
   Tooltip,
 } from 'ant-design-vue';
 
+import { getMatterDossierItems } from '#/api/document/dossier';
 import {
   createEvidence,
   deleteEvidence,
@@ -41,10 +43,6 @@ import {
   updateEvidence,
   updateEvidenceList,
 } from '#/api/evidence';
-import {
-  getMatterDossierItems,
-  type MatterDossierItem,
-} from '#/api/document/dossier';
 
 // 列定义
 interface ColumnDef {
@@ -940,7 +938,7 @@ async function loadDossierItems() {
     dossierItems.value = items.filter(
       (item: MatterDossierItem) => item.itemType === 'FOLDER',
     );
-  } catch (error: any) {
+  } catch {
     message.error('加载卷宗目录失败');
   }
 }
@@ -1223,9 +1221,7 @@ const lastColumnKey = computed(() => {
       :confirm-loading="savingToDossier"
       @ok="confirmSaveToDossier"
     >
-      <div style="margin-bottom: 16px">
-        选择要保存到的卷宗文件夹：
-      </div>
+      <div style="margin-bottom: 16px">选择要保存到的卷宗文件夹：</div>
       <Select
         v-model:value="selectedDossierItemId"
         placeholder="请选择目标文件夹"
@@ -1237,7 +1233,7 @@ const lastColumnKey = computed(() => {
           }))
         "
       />
-      <div style="margin-top: 12px; color: #888; font-size: 12px">
+      <div style="margin-top: 12px; font-size: 12px; color: #888">
         将生成证据清单PDF文件并保存到选中的卷宗文件夹中
       </div>
     </Modal>

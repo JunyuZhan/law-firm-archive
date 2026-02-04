@@ -47,7 +47,7 @@
 **实施进度**：
 - [x] 移动前端组件目录
 - [x] 更新初始化脚本 `scripts/init-db/20-init-data.sql`
-- [x] 创建数据库迁移脚本 `scripts/migrations/2026-02-03-move-template-menus.sql`
+- [x] 数据库迁移脚本已应用并清理
 - [ ] 部署到服务器
 
 **状态**：🔄 待部署测试

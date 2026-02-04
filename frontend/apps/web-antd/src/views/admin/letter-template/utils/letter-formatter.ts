@@ -394,7 +394,7 @@ export function formatStructuredLetterForPreview(
 export function isHtmlContent(content: string): boolean {
   if (!content) return false;
   // 检测常见的 HTML 标签
-  return /<(div|p|h[1-6]|span|strong|em|br|table|ul|ol|li)[^>]*>/i.test(
+  return /<(?:div|p|h[1-6]|span|strong|em|br|table|ul|ol|li)[^>]*>/i.test(
     content,
   );
 }

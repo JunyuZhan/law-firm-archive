@@ -961,12 +961,23 @@ watch(
                     </span>
                   </div>
                   <!-- 访问链接（成功的推送记录显示） -->
-                  <div v-if="record.status === 'SUCCESS' && record.externalUrl" style="margin-top: 6px">
+                  <div
+                    v-if="record.status === 'SUCCESS' && record.externalUrl"
+                    style="margin-top: 6px"
+                  >
                     <Typography.Text
                       :copyable="{ text: record.externalUrl }"
-                      style="font-size: 11px; color: #1890ff; word-break: break-all"
+                      style="
+                        font-size: 11px;
+                        color: #1890ff;
+                        word-break: break-all;
+                      "
                     >
-                      {{ record.externalUrl.length > 50 ? record.externalUrl.slice(0, 50) + '...' : record.externalUrl }}
+                      {{
+                        record.externalUrl.length > 50
+                          ? `${record.externalUrl.slice(0, 50)}...`
+                          : record.externalUrl
+                      }}
                     </Typography.Text>
                   </div>
                 </div>
@@ -993,7 +1004,9 @@ watch(
                 </Space>
               </template>
               <template #extra>
-                <Button type="link" size="small" @click="loadAccessLogs">刷新</Button>
+                <Button type="link" size="small" @click="loadAccessLogs">
+                  刷新
+                </Button>
               </template>
 
               <Spin :spinning="accessLogsLoading">
@@ -1028,12 +1041,12 @@ watch(
                   <div
                     v-if="accessLogsTotal > 5"
                     style="
-                      margin-top: 8px;
                       padding-top: 8px;
-                      border-top: 1px solid #f0f0f0;
-                      text-align: center;
+                      margin-top: 8px;
                       font-size: 12px;
                       color: #999;
+                      text-align: center;
+                      border-top: 1px solid #f0f0f0;
                     "
                   >
                     共 {{ accessLogsTotal }} 条记录
@@ -1063,7 +1076,9 @@ watch(
                 </Space>
               </template>
               <template #extra>
-                <Button type="link" size="small" @click="loadDownloadLogs">刷新</Button>
+                <Button type="link" size="small" @click="loadDownloadLogs">
+                  刷新
+                </Button>
               </template>
 
               <Spin :spinning="downloadLogsLoading">
@@ -1104,12 +1119,12 @@ watch(
                   <div
                     v-if="downloadLogsTotal > 5"
                     style="
-                      margin-top: 8px;
                       padding-top: 8px;
-                      border-top: 1px solid #f0f0f0;
-                      text-align: center;
+                      margin-top: 8px;
                       font-size: 12px;
                       color: #999;
+                      text-align: center;
+                      border-top: 1px solid #f0f0f0;
                     "
                   >
                     共 {{ downloadLogsTotal }} 条记录

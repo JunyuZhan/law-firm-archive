@@ -198,23 +198,23 @@ defineExpose({ open });
       <div v-else>
         <div
           style="
+            min-height: 60px;
             padding: 12px;
+            white-space: pre-wrap;
             background: #f5f5f5;
             border-radius: 4px;
-            white-space: pre-wrap;
-            min-height: 60px;
           "
         >
           {{ myNote.content }}
         </div>
         <div
           style="
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
             margin-top: 8px;
             font-size: 12px;
             color: #999;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
           "
         >
           <span>

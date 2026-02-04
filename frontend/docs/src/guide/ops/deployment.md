@@ -125,23 +125,25 @@ curl http://localhost/api/actuator/health
 #### 1. 服务器要求
 
 **最低配置：**
+
 - CPU: 2核
 - 内存: 4GB
 - 磁盘: 20GB
 - 操作系统: Ubuntu 20.04+ / CentOS 7+ / Debian 10+
 
 **推荐配置：**
+
 - CPU: 4核+
 - 内存: 8GB+
 - 磁盘: 50GB+ SSD
 
 #### 2. 需要开放的端口
 
-| 端口 | 协议 | 说明 |
-|------|------|------|
-| 22 | TCP | SSH（远程管理） |
-| 80 | TCP | HTTP |
-| 443 | TCP | HTTPS |
+| 端口 | 协议 | 说明            |
+| ---- | ---- | --------------- |
+| 22   | TCP  | SSH（远程管理） |
+| 80   | TCP  | HTTP            |
+| 443  | TCP  | HTTPS           |
 
 > 📖 单端口架构下，其他端口不暴露，通过 Nginx 路径访问
 
@@ -156,6 +158,7 @@ ssh root@你的服务器IP
 #### 2. 安装 Docker 和 Docker Compose
 
 **Ubuntu/Debian:**
+
 ```bash
 # 更新系统
 apt update && apt upgrade -y
@@ -176,6 +179,7 @@ docker compose version
 ```
 
 **CentOS/RHEL:**
+
 ```bash
 # 更新系统
 yum update -y
@@ -235,6 +239,7 @@ cd law-firm
 ```
 
 脚本会自动：
+
 - ✅ 检查 SSH 连接
 - ✅ 使用 rsync 同步代码
 - ✅ 自动检查并安装 Docker
@@ -351,6 +356,7 @@ chmod +x scripts/deploy.sh
 ```
 
 脚本会自动：
+
 - ✅ 检查环境
 - ✅ 生成安全密钥（如果未配置）
 - ✅ 构建前端和后端

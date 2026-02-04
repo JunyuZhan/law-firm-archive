@@ -10,11 +10,11 @@
 
 ### 资源对比
 
-| 场景 | CPU（空闲） | 内存（空闲） | 磁盘 |
-|------|------------|------------|------|
-| 两个独立 MinIO | ~30% | ~512MB-1GB | 两个数据卷 |
-| 共享 MinIO | ~15% | ~256MB-512MB | 一个数据卷 |
-| **节省** | **50%** | **50%** | **50%** |
+| 场景           | CPU（空闲） | 内存（空闲） | 磁盘       |
+| -------------- | ----------- | ------------ | ---------- |
+| 两个独立 MinIO | ~30%        | ~512MB-1GB   | 两个数据卷 |
+| 共享 MinIO     | ~15%        | ~256MB-512MB | 一个数据卷 |
+| **节省**       | **50%**     | **50%**      | **50%**    |
 
 ### 优势
 
@@ -55,8 +55,8 @@ services:
     volumes:
       - shared_minio_data:/data
     ports:
-      - "9000:9000"  # API 端口
-      - "9001:9001"  # 控制台
+      - '9000:9000' # API 端口
+      - '9001:9001' # 控制台
     networks:
       - shared-network
     restart: unless-stopped
@@ -72,16 +72,9 @@ services:
     depends_on:
       - shared-minio
     entrypoint: >
-      /bin/sh -c "
-      sleep 10;
-      mc alias set myminio http://shared-minio:9000 $${SHARED_MINIO_ROOT_USER:-minioadmin} $${SHARED_MINIO_ROOT_PASSWORD:-changeme};
-      mc mb --ignore-existing myminio/law-firm;
-      mc mb --ignore-existing myminio/pis;
-      mc anonymous set download myminio/law-firm/public;
-      mc anonymous set download myminio/pis/public;
-      echo 'Buckets created successfully';
-      exit 0;
-      "
+      /bin/sh -c " sleep 10; mc alias set myminio http://shared-minio:9000 $${SHARED_MINIO_ROOT_USER:-minioadmin} $${SHARED_MINIO_ROOT_PASSWORD:-changeme}; mc mb --ignore-existing myminio/law-firm; mc mb --ignore-existing myminio/pis; mc anonymous set download myminio/law-firm/public; mc anonymous set download myminio/pis/public; echo 'Buckets created successfully'; exit 0; "
+
+
     networks:
       - shared-network
 
@@ -135,7 +128,7 @@ MINIO_BUCKET=pis
 ```yaml
 services:
   minio:
-    container_name: shared-minio  # 改为共享名称
+    container_name: shared-minio # 改为共享名称
     # ... 其他配置
 ```
 
@@ -154,13 +147,13 @@ services:
   minio:
     networks:
       - law-firm-network
-      - shared-network  # 添加到共享网络
+      - shared-network # 添加到共享网络
 
 networks:
   law-firm-network:
     driver: bridge
   shared-network:
-    external: true  # 使用外部网络
+    external: true # 使用外部网络
 ```
 
 #### 步骤 4：其他应用连接到共享网络

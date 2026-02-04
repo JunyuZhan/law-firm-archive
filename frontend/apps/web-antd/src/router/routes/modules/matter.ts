@@ -15,7 +15,7 @@ const matterRoutes: RouteRecordRaw[] = [
       hideInMenu: true,
       hideInBreadcrumb: false,
       hideInTab: false,
-          activePath: '/matter/list',
+      activePath: '/matter/list',
     },
   },
 ];

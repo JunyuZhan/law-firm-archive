@@ -42,27 +42,27 @@
 
 ### 暴露的端口
 
-| 端口 | 服务 | 说明 |
-|------|------|------|
-| **80** | Frontend (Nginx) | HTTP 访问 |
+| 端口    | 服务             | 说明       |
+| ------- | ---------------- | ---------- |
+| **80**  | Frontend (Nginx) | HTTP 访问  |
 | **443** | Frontend (Nginx) | HTTPS 访问 |
 
 ### 通过路径访问的服务
 
-| 路径 | 服务 | 原端口 | 说明 |
-|------|------|--------|------|
-| `/minio/` | MinIO API | 9000 | 文件存储 API |
-| `/minio-console/` | MinIO Console | 9001 | MinIO 管理控制台 |
-| `/onlyoffice/` | OnlyOffice | 80 | 文档编辑服务 |
-| `/prometheus/` | Prometheus | 9090 | 监控数据收集（可选） |
-| `/grafana/` | Grafana | 3000 | 监控可视化（可选） |
+| 路径              | 服务          | 原端口 | 说明                 |
+| ----------------- | ------------- | ------ | -------------------- |
+| `/minio/`         | MinIO API     | 9000   | 文件存储 API         |
+| `/minio-console/` | MinIO Console | 9001   | MinIO 管理控制台     |
+| `/onlyoffice/`    | OnlyOffice    | 80     | 文档编辑服务         |
+| `/prometheus/`    | Prometheus    | 9090   | 监控数据收集（可选） |
+| `/grafana/`       | Grafana       | 3000   | 监控可视化（可选）   |
 
 ### 不暴露端口的服务
 
-| 服务 | 端口 | 访问方式 | 说明 |
-|------|------|---------|------|
+| 服务       | 端口 | 访问方式        | 说明                    |
+| ---------- | ---- | --------------- | ----------------------- |
 | PostgreSQL | 5432 | Docker 内部网络 | 通过 `docker exec` 维护 |
-| Redis | 6379 | Docker 内部网络 | Docker 内部访问 |
+| Redis      | 6379 | Docker 内部网络 | Docker 内部访问         |
 
 > 📖 详细说明请参考 [单端口架构](/guide/ops/single-port-architecture)
 

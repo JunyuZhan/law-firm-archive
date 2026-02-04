@@ -152,19 +152,16 @@ function useMixedMenu() {
   );
 
   // 监听菜单数据变化，解决页面刷新时菜单还未加载导致侧边栏不显示的问题
-  watch(
-    menus,
-    (newMenus) => {
-      // 当菜单数据加载完成时，重新计算侧边菜单
-      if (newMenus && newMenus.length > 0) {
-        const currentPath =
-          (route?.meta?.activePath as string) ??
-          (route?.meta?.link as string) ??
-          route.path;
-        calcSideMenus(currentPath);
-      }
-    },
-  );
+  watch(menus, (newMenus) => {
+    // 当菜单数据加载完成时，重新计算侧边菜单
+    if (newMenus && newMenus.length > 0) {
+      const currentPath =
+        (route?.meta?.activePath as string) ??
+        (route?.meta?.link as string) ??
+        route.path;
+      calcSideMenus(currentPath);
+    }
+  });
 
   // 初始化计算侧边菜单
   onBeforeMount(() => {

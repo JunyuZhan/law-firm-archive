@@ -42,7 +42,12 @@ const columns = [
   { title: '用户名', dataIndex: 'username', key: 'username', width: 120 },
   { title: '登录时间', dataIndex: 'loginTime', key: 'loginTime', width: 180 },
   { title: 'IP地址', dataIndex: 'loginIp', key: 'loginIp', width: 140 },
-  { title: '登录地点', dataIndex: 'loginLocation', key: 'loginLocation', width: 140 },
+  {
+    title: '登录地点',
+    dataIndex: 'loginLocation',
+    key: 'loginLocation',
+    width: 140,
+  },
   { title: '浏览器', dataIndex: 'browser', key: 'browser', width: 120 },
   { title: '状态', dataIndex: 'status', key: 'status', width: 80 },
   { title: '操作', key: 'action', width: 80 },
@@ -141,8 +146,8 @@ onMounted(() => {
       :loading="loading"
       :pagination="{
         current: currentPage,
-        pageSize: pageSize,
-        total: total,
+        pageSize,
+        total,
         showSizeChanger: true,
         showTotal: (t: number) => `共 ${t} 条`,
         onChange: handlePageChange,
@@ -155,8 +160,16 @@ onMounted(() => {
           {{ formatTime((rawRecord as LoginLogDTO).loginTime) }}
         </template>
         <template v-else-if="column.key === 'status'">
-          <Tag :color="(rawRecord as LoginLogDTO).status === 'SUCCESS' ? 'success' : 'error'">
-            {{ (rawRecord as LoginLogDTO).status === 'SUCCESS' ? '成功' : '失败' }}
+          <Tag
+            :color="
+              (rawRecord as LoginLogDTO).status === 'SUCCESS'
+                ? 'success'
+                : 'error'
+            "
+          >
+            {{
+              (rawRecord as LoginLogDTO).status === 'SUCCESS' ? '成功' : '失败'
+            }}
           </Tag>
         </template>
         <template v-else-if="column.key === 'action'">
@@ -172,19 +185,41 @@ onMounted(() => {
       :footer="null"
       width="600px"
     >
-      <Descriptions v-if="detailData" :column="2" bordered size="small" :loading="detailLoading">
-        <DescriptionsItem label="用户名">{{ detailData.username }}</DescriptionsItem>
+      <Descriptions
+        v-if="detailData"
+        :column="2"
+        bordered
+        size="small"
+        :loading="detailLoading"
+      >
+        <DescriptionsItem label="用户名">
+          {{ detailData.username }}
+        </DescriptionsItem>
         <DescriptionsItem label="状态">
           <Tag :color="detailData.status === 'SUCCESS' ? 'success' : 'error'">
             {{ detailData.status === 'SUCCESS' ? '成功' : '失败' }}
           </Tag>
         </DescriptionsItem>
-        <DescriptionsItem label="登录时间" :span="2">{{ formatTime(detailData.loginTime) }}</DescriptionsItem>
-        <DescriptionsItem label="IP地址">{{ detailData.loginIp || '-' }}</DescriptionsItem>
-        <DescriptionsItem label="登录地点">{{ detailData.loginLocation || '-' }}</DescriptionsItem>
-        <DescriptionsItem label="浏览器">{{ detailData.browser || '-' }}</DescriptionsItem>
-        <DescriptionsItem label="操作系统">{{ detailData.os || '-' }}</DescriptionsItem>
-        <DescriptionsItem v-if="detailData.failReason" label="失败原因" :span="2">
+        <DescriptionsItem label="登录时间" :span="2">
+          {{ formatTime(detailData.loginTime) }}
+        </DescriptionsItem>
+        <DescriptionsItem label="IP地址">
+          {{ detailData.loginIp || '-' }}
+        </DescriptionsItem>
+        <DescriptionsItem label="登录地点">
+          {{ detailData.loginLocation || '-' }}
+        </DescriptionsItem>
+        <DescriptionsItem label="浏览器">
+          {{ detailData.browser || '-' }}
+        </DescriptionsItem>
+        <DescriptionsItem label="操作系统">
+          {{ detailData.os || '-' }}
+        </DescriptionsItem>
+        <DescriptionsItem
+          v-if="detailData.failReason"
+          label="失败原因"
+          :span="2"
+        >
           <span style="color: #ff4d4f">{{ detailData.failReason }}</span>
         </DescriptionsItem>
       </Descriptions>

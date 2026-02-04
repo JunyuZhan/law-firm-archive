@@ -247,20 +247,23 @@ Bootstrap Code 通常是 6 位数字，例如：`123456`
 #### 1. MinIO 容器名称
 
 **docker-compose.prod.yml 中的配置：**
+
 ```yaml
 minio:
-  container_name: law-firm-minio  # ← 容器名称
+  container_name: law-firm-minio # ← 容器名称
 ```
 
 **Backend 环境变量配置：**
+
 ```yaml
 backend:
   environment:
-    - MINIO_ENDPOINT=http://law-firm-minio:9000  # ✅ 使用完整容器名
-    - FILE_SERVER_URL=http://law-firm-minio:9000  # ✅ 使用完整容器名
+    - MINIO_ENDPOINT=http://law-firm-minio:9000 # ✅ 使用完整容器名
+    - FILE_SERVER_URL=http://law-firm-minio:9000 # ✅ 使用完整容器名
 ```
 
 **检查点：**
+
 - ✅ 容器名：`law-firm-minio`
 - ✅ Backend 使用 `http://law-firm-minio:9000` 访问 MinIO
 - ✅ OnlyOffice 配置的 `FILE_SERVER_URL` 也应该使用 `http://law-firm-minio:9000`
@@ -268,13 +271,14 @@ backend:
 #### 2. OnlyOffice 文件获取流程
 
 **关键代码：`buildFileUrlForDocument()`**
+
 ```java
 public String buildFileUrlForDocument(final Long documentId) {
     // 使用 callback-url 构建 baseUrl
     String baseUrl = this.config.getCallbackUrl();  // http://backend:8080/api
     // 移除 /api
     baseUrl = baseUrl.substring(0, baseUrl.length() - 4);  // http://backend:8080
-    
+
     // 生成代理 URL
     String proxyUrl = baseUrl + "/api/document/" + documentId + "/file-proxy?token=...";
     // 结果：http://backend:8080/api/document/{id}/file-proxy?token=...
@@ -283,12 +287,14 @@ public String buildFileUrlForDocument(final Long documentId) {
 ```
 
 **流程：**
+
 1. OnlyOffice 请求：`http://backend:8080/api/document/{id}/file-proxy?token=...`
 2. Backend 验证 token
 3. Backend 从 MinIO 获取文件：`http://law-firm-minio:9000/...`
 4. Backend 返回文件内容给 OnlyOffice
 
 **关键点：**
+
 - ✅ OnlyOffice 通过 Docker 内部网络访问 backend
 - ✅ Backend 通过 Docker 内部网络访问 MinIO
 - ✅ **不依赖端口映射**
@@ -296,27 +302,30 @@ public String buildFileUrlForDocument(final Long documentId) {
 #### 3. OnlyOffice 保存流程
 
 **关键代码：`saveFromOnlyOffice()`**
+
 ```java
 public void saveFromOnlyOffice(final Long documentId, final String downloadUrl) {
     // 1. 规范化 OnlyOffice 提供的下载 URL
     String accessibleUrl = normalizeOnlyOfficeDownloadUrl(downloadUrl);
     // 将 localhost 替换为 onlyoffice（Docker 服务名）
-    
+
     // 2. 从 OnlyOffice 下载文件
     java.net.URL url = new java.net.URI(accessibleUrl).toURL();
     InputStream inputStream = url.openStream();
-    
+
     // 3. 保存到 MinIO
     minioService.uploadFile(inputStream, objectName, mimeType);
 }
 ```
 
 **流程：**
+
 1. OnlyOffice 回调：`http://backend:8080/api/document/{id}/callback`
 2. Backend 从 OnlyOffice 下载文件：`http://onlyoffice/...`（Docker 内部网络）
 3. Backend 保存到 MinIO：`http://law-firm-minio:9000/...`（Docker 内部网络）
 
 **关键点：**
+
 - ✅ OnlyOffice 回调使用 Docker 内部地址
 - ✅ Backend 访问 OnlyOffice 使用 Docker 内部地址
 - ✅ Backend 访问 MinIO 使用 Docker 内部地址
@@ -367,17 +376,20 @@ public void saveFromOnlyOffice(final Long documentId, final String downloadUrl) 
 #### 测试 1：文档编辑 - 获取文件
 
 **步骤：**
+
 1. 登录系统
 2. 进入卷宗管理
 3. 上传一个 DOC 文件（或使用已有 DOC 文件）
 4. 点击"编辑"按钮
 
 **预期结果：**
+
 - ✅ OnlyOffice 编辑器正常加载
 - ✅ 文档内容正确显示
 - ✅ 可以正常编辑
 
 **检查日志：**
+
 ```bash
 # Backend 日志
 docker logs law-firm-backend | grep "OnlyOffice\|file-proxy" | tail -20
@@ -390,16 +402,19 @@ docker logs law-firm-backend | grep "OnlyOffice\|file-proxy" | tail -20
 #### 测试 2：文档编辑 - 保存文件
 
 **步骤：**
+
 1. 在 OnlyOffice 编辑器中修改文档
 2. 点击"保存"按钮
 3. 等待保存完成
 
 **预期结果：**
+
 - ✅ 保存成功提示
 - ✅ 文档已更新
 - ✅ 可以再次打开查看修改内容
 
 **检查日志：**
+
 ```bash
 # Backend 日志
 docker logs law-firm-backend | grep "OnlyOffice.*回调\|saveFromOnlyOffice" | tail -20
@@ -418,6 +433,7 @@ docker logs law-firm-backend | grep "OnlyOffice.*回调\|saveFromOnlyOffice" | t
 ```
 
 测试脚本会检查：
+
 - ✅ 容器状态
 - ✅ 容器间网络连通性
 - ✅ HTTP 连接测试
@@ -454,10 +470,12 @@ docker logs law-firm-backend | grep "OnlyOffice.*回调\|saveFromOnlyOffice" | t
 ### 问题1：OnlyOffice 无法获取文件
 
 **症状：**
+
 - OnlyOffice 编辑器显示"无法加载文档"
 - 浏览器控制台显示错误
 
 **检查：**
+
 ```bash
 # 1. 检查 OnlyOffice 能否访问 backend
 docker exec law-firm-onlyoffice curl -I http://backend:8080/api/actuator/health
@@ -470,6 +488,7 @@ docker logs law-firm-backend | grep "拒绝未授权访问\|token"
 ```
 
 **解决方案：**
+
 - ✅ 确认 `ONLYOFFICE_CALLBACK_URL=http://backend:8080/api`（Docker 内部地址）
 - ✅ 确认 backend 的 `/file-proxy` 接口正常工作
 - ✅ 检查 token 验证逻辑
@@ -477,10 +496,12 @@ docker logs law-firm-backend | grep "拒绝未授权访问\|token"
 ### 问题2：Backend 无法从 MinIO 获取文件
 
 **症状：**
+
 - Backend 日志显示"无法从 MinIO 获取文件"
 - file-proxy 接口返回 404
 
 **检查：**
+
 ```bash
 # 1. 检查 backend 能否访问 MinIO
 docker exec law-firm-backend curl http://law-firm-minio:9000/minio/health/live
@@ -493,6 +514,7 @@ docker exec law-firm-minio mc ls local/law-firm/
 ```
 
 **解决方案：**
+
 - ✅ 确认 `MINIO_ENDPOINT=http://law-firm-minio:9000`（Docker 内部地址）
 - ✅ 确认容器名正确（`law-firm-minio`）
 - ✅ 确认文件路径正确
@@ -500,10 +522,12 @@ docker exec law-firm-minio mc ls local/law-firm/
 ### 问题3：OnlyOffice 保存失败
 
 **症状：**
+
 - 保存后提示错误
 - Backend 日志显示"从 OnlyOffice 保存文档失败"
 
 **检查：**
+
 ```bash
 # 1. 检查 OnlyOffice 回调
 docker logs law-firm-backend | grep "OnlyOffice 回调"
@@ -516,6 +540,7 @@ docker logs law-firm-backend | grep "文件上传\|uploadFile"
 ```
 
 **解决方案：**
+
 - ✅ 确认 `normalizeOnlyOfficeDownloadUrl()` 正确替换 localhost
 - ✅ 确认 backend 能访问 OnlyOffice（Docker 内部网络）
 - ✅ 确认 backend 能访问 MinIO（Docker 内部网络）

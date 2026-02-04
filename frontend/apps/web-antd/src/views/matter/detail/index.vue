@@ -878,7 +878,7 @@ onMounted(() => {
             <!-- 可折叠的详细信息 -->
             <Collapse
               :bordered="false"
-              style="background: transparent; margin-top: 8px"
+              style="margin-top: 8px; background: transparent"
             >
               <CollapsePanel
                 key="detail"

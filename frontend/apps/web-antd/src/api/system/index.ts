@@ -22,9 +22,9 @@ import type {
   DictTypeDTO,
   ExternalIntegrationDTO,
   ExternalIntegrationQuery,
-  LogQuery,
   LoginLogDTO,
   LoginLogQuery,
+  LogQuery,
   MenuDTO,
   MigrationDTO,
   OperationLogDTO,
@@ -810,9 +810,12 @@ export function countLoginFailure(username: string) {
 
 /** 获取会话列表 */
 export function getSessionList(params: SessionQuery) {
-  return requestClient.get<PageResult<UserSessionDTO>>('/system/sessions/list', {
-    params,
-  });
+  return requestClient.get<PageResult<UserSessionDTO>>(
+    '/system/sessions/list',
+    {
+      params,
+    },
+  );
 }
 
 /** 获取我的活跃会话 */

@@ -37,10 +37,12 @@ const pageSize = ref(10);
 
 const forceLogoutReason = ref('');
 const forceLogoutModalVisible = ref(false);
-const forceLogoutTarget = ref<{ id: number; type: 'session' | 'user' } | null>(null);
+const forceLogoutTarget = ref<null | { id: number; type: 'session' | 'user' }>(
+  null,
+);
 const forceLogoutLoading = ref(false);
 
-let autoRefreshTimer: ReturnType<typeof setInterval> | null = null;
+let autoRefreshTimer: null | ReturnType<typeof setInterval> = null;
 
 // 查询条件
 const queryParams = ref({
@@ -54,7 +56,12 @@ const columns = [
   { title: '登录时间', dataIndex: 'loginTime', key: 'loginTime', width: 170 },
   { title: 'IP地址', dataIndex: 'loginIp', key: 'loginIp', width: 130 },
   { title: '浏览器', dataIndex: 'browser', key: 'browser', width: 100 },
-  { title: '最后访问', dataIndex: 'lastAccessTime', key: 'lastAccessTime', width: 170 },
+  {
+    title: '最后访问',
+    dataIndex: 'lastAccessTime',
+    key: 'lastAccessTime',
+    width: 170,
+  },
   { title: '状态', dataIndex: 'status', key: 'status', width: 80 },
   { title: '操作', key: 'action', width: 140 },
 ];
@@ -166,7 +173,11 @@ onUnmounted(() => {
     <Row :gutter="16" style="margin-bottom: 16px">
       <Col :xs="24" :sm="8">
         <Card size="small">
-          <Statistic title="当前在线用户" :value="total" :value-style="{ color: '#1890ff' }" />
+          <Statistic
+            title="当前在线用户"
+            :value="total"
+            :value-style="{ color: '#1890ff' }"
+          />
         </Card>
       </Col>
       <Col :xs="24" :sm="16">
@@ -193,8 +204,8 @@ onUnmounted(() => {
       :loading="loading"
       :pagination="{
         current: currentPage,
-        pageSize: pageSize,
-        total: total,
+        pageSize,
+        total,
         showSizeChanger: true,
         showTotal: (t: number) => `共 ${t} 条`,
         onChange: handlePageChange,
@@ -214,10 +225,17 @@ onUnmounted(() => {
         </template>
         <template v-else-if="column.key === 'action'">
           <Space>
-            <Popconfirm title="确定要强制下线该会话吗？" @confirm="openForceLogoutModal(record.id, 'session')">
+            <Popconfirm
+              title="确定要强制下线该会话吗？"
+              @confirm="openForceLogoutModal(record.id, 'session')"
+            >
               <a style="color: #ff4d4f">下线</a>
             </Popconfirm>
-            <a style="color: #ff4d4f" @click="openForceLogoutModal(record.userId, 'user')">下线全部</a>
+            <a
+              style="color: #ff4d4f"
+              @click="openForceLogoutModal(record.userId, 'user')"
+              >下线全部</a
+            >
           </Space>
         </template>
       </template>
@@ -226,16 +244,30 @@ onUnmounted(() => {
     <!-- 强制下线弹窗 -->
     <Modal
       v-model:open="forceLogoutModalVisible"
-      :title="forceLogoutTarget?.type === 'user' ? '强制下线用户所有会话' : '强制下线会话'"
+      :title="
+        forceLogoutTarget?.type === 'user'
+          ? '强制下线用户所有会话'
+          : '强制下线会话'
+      "
       :confirm-loading="forceLogoutLoading"
       @ok="confirmForceLogout"
     >
       <div style="margin-bottom: 16px">
-        {{ forceLogoutTarget?.type === 'user' ? '确定要强制下线该用户的所有会话吗？' : '确定要强制下线该会话吗？' }}
+        {{
+          forceLogoutTarget?.type === 'user'
+            ? '确定要强制下线该用户的所有会话吗？'
+            : '确定要强制下线该会话吗？'
+        }}
       </div>
       <div>
-        <label style="display: block; margin-bottom: 8px">下线原因（可选）：</label>
-        <Input v-model:value="forceLogoutReason" placeholder="请输入下线原因" allow-clear />
+        <label style="display: block; margin-bottom: 8px"
+          >下线原因（可选）：</label
+        >
+        <Input
+          v-model:value="forceLogoutReason"
+          placeholder="请输入下线原因"
+          allow-clear
+        />
       </div>
     </Modal>
   </div>

@@ -136,22 +136,38 @@ onMounted(() => {
       <Row :gutter="16" style="margin-bottom: 16px">
         <Col :xs="24" :sm="12" :md="6">
           <Card size="small">
-            <Statistic title="缓存键总数" :value="stats?.totalKeys || 0" :value-style="{ color: '#1890ff' }" />
+            <Statistic
+              title="缓存键总数"
+              :value="stats?.totalKeys || 0"
+              :value-style="{ color: '#1890ff' }"
+            />
           </Card>
         </Col>
         <Col :xs="24" :sm="12" :md="6">
           <Card size="small">
-            <Statistic title="已用内存" :value="stats?.usedMemory || '-'" :value-style="{ color: '#52c41a' }" />
+            <Statistic
+              title="已用内存"
+              :value="stats?.usedMemory || '-'"
+              :value-style="{ color: '#52c41a' }"
+            />
           </Card>
         </Col>
         <Col :xs="24" :sm="12" :md="6">
           <Card size="small">
-            <Statistic title="命中率" :value="formatHitRate(stats?.hitRate)" :value-style="{ color: '#722ed1' }" />
+            <Statistic
+              title="命中率"
+              :value="formatHitRate(stats?.hitRate)"
+              :value-style="{ color: '#722ed1' }"
+            />
           </Card>
         </Col>
         <Col :xs="24" :sm="12" :md="6">
           <Card size="small">
-            <Statistic title="命中/未命中" :value="`${stats?.hitCount || 0} / ${stats?.missCount || 0}`" :value-style="{ color: '#fa8c16' }" />
+            <Statistic
+              title="命中/未命中"
+              :value="`${stats?.hitCount || 0} / ${stats?.missCount || 0}`"
+              :value-style="{ color: '#fa8c16' }"
+            />
           </Card>
         </Col>
       </Row>
@@ -159,10 +175,18 @@ onMounted(() => {
       <!-- 分类缓存统计 -->
       <Card title="分类缓存统计" size="small" style="margin-bottom: 16px">
         <Descriptions :column="{ xs: 1, sm: 2, md: 4 }" size="small">
-          <DescriptionsItem label="配置缓存">{{ stats?.configCacheSize || 0 }} 条</DescriptionsItem>
-          <DescriptionsItem label="菜单缓存">{{ stats?.menuCacheSize || 0 }} 条</DescriptionsItem>
-          <DescriptionsItem label="部门缓存">{{ stats?.deptCacheSize || 0 }} 条</DescriptionsItem>
-          <DescriptionsItem label="用户权限缓存">{{ stats?.userPermissionCacheSize || 0 }} 条</DescriptionsItem>
+          <DescriptionsItem label="配置缓存">
+            {{ stats?.configCacheSize || 0 }} 条
+          </DescriptionsItem>
+          <DescriptionsItem label="菜单缓存">
+            {{ stats?.menuCacheSize || 0 }} 条
+          </DescriptionsItem>
+          <DescriptionsItem label="部门缓存">
+            {{ stats?.deptCacheSize || 0 }} 条
+          </DescriptionsItem>
+          <DescriptionsItem label="用户权限缓存">
+            {{ stats?.userPermissionCacheSize || 0 }} 条
+          </DescriptionsItem>
         </Descriptions>
       </Card>
 
@@ -171,32 +195,56 @@ onMounted(() => {
         <Row :gutter="[16, 16]">
           <Col :xs="24" :sm="12" :md="6">
             <Card size="small" title="清除所有缓存">
-              <p style="margin-bottom: 12px; color: #666; font-size: 12px">清除系统中的所有缓存数据</p>
-              <Popconfirm title="确定要清除所有缓存吗？" @confirm="handleClearAll">
-                <Button type="primary" danger :loading="clearLoading.all" block>清除所有</Button>
+              <p style="margin-bottom: 12px; font-size: 12px; color: #666">
+                清除系统中的所有缓存数据
+              </p>
+              <Popconfirm
+                title="确定要清除所有缓存吗？"
+                @confirm="handleClearAll"
+              >
+                <Button type="primary" danger :loading="clearLoading.all" block>
+                  清除所有
+                </Button>
               </Popconfirm>
             </Card>
           </Col>
           <Col :xs="24" :sm="12" :md="6">
             <Card size="small" title="清除配置缓存">
-              <p style="margin-bottom: 12px; color: #666; font-size: 12px">修改系统配置后刷新缓存</p>
-              <Popconfirm title="确定要清除配置缓存吗？" @confirm="handleClearConfig">
-                <Button :loading="clearLoading.config" block>清除配置缓存</Button>
+              <p style="margin-bottom: 12px; font-size: 12px; color: #666">
+                修改系统配置后刷新缓存
+              </p>
+              <Popconfirm
+                title="确定要清除配置缓存吗？"
+                @confirm="handleClearConfig"
+              >
+                <Button :loading="clearLoading.config" block>
+                  清除配置缓存
+                </Button>
               </Popconfirm>
             </Card>
           </Col>
           <Col :xs="24" :sm="12" :md="6">
             <Card size="small" title="清除菜单缓存">
-              <p style="margin-bottom: 12px; color: #666; font-size: 12px">修改菜单/权限后刷新缓存</p>
-              <Popconfirm title="确定要清除菜单缓存吗？" @confirm="handleClearMenu">
+              <p style="margin-bottom: 12px; font-size: 12px; color: #666">
+                修改菜单/权限后刷新缓存
+              </p>
+              <Popconfirm
+                title="确定要清除菜单缓存吗？"
+                @confirm="handleClearMenu"
+              >
                 <Button :loading="clearLoading.menu" block>清除菜单缓存</Button>
               </Popconfirm>
             </Card>
           </Col>
           <Col :xs="24" :sm="12" :md="6">
             <Card size="small" title="清除部门缓存">
-              <p style="margin-bottom: 12px; color: #666; font-size: 12px">修改部门结构后刷新缓存</p>
-              <Popconfirm title="确定要清除部门缓存吗？" @confirm="handleClearDept">
+              <p style="margin-bottom: 12px; font-size: 12px; color: #666">
+                修改部门结构后刷新缓存
+              </p>
+              <Popconfirm
+                title="确定要清除部门缓存吗？"
+                @confirm="handleClearDept"
+              >
                 <Button :loading="clearLoading.dept" block>清除部门缓存</Button>
               </Popconfirm>
             </Card>

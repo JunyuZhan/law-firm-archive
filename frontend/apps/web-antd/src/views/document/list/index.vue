@@ -685,7 +685,7 @@ async function handleSelectMatter(matter: MatterDTO | MatterSimpleDTO) {
 function handleBackToList() {
   // 设置标记，避免 watch 监听器触发路由更新导致页面刷新
   isRestoringFromRoute.value = true;
-  
+
   try {
     // 清除选中状态
     selectedMatterId.value = undefined;
@@ -694,7 +694,7 @@ function handleBackToList() {
     currentPath.value = ['根目录'];
     documents.value = [];
     dossierItems.value = [];
-    
+
     // 手动清除路由参数（避免 watch 触发导致的路由更新）
     const newQuery = { ...route.query };
     delete newQuery.matterId;
@@ -1166,11 +1166,11 @@ async function handlePreview(record: DocumentDTO) {
     const timestamp = Date.now();
     const resolved = router.resolve({
       path: '/office-preview',
-      query: { 
-        documentId: String(record.id), 
-        mode: 'view', 
+      query: {
+        documentId: String(record.id),
+        mode: 'view',
         embed: 'true',
-        _t: String(timestamp) // 添加时间戳防止缓存
+        _t: String(timestamp), // 添加时间戳防止缓存
       },
     });
     // 在弹窗中使用 iframe 预览，而不是新窗口打开
@@ -1677,34 +1677,24 @@ function copyShareUrl() {
 async function restoreStateFromRoute(skipLoadMatters = false) {
   const matterId = route.query.matterId as string | undefined;
   const folderId = route.query.folderId as string | undefined;
-  
+
   if (matterId) {
     const matterIdNum = Number.parseInt(matterId, 10);
-    if (!isNaN(matterIdNum)) {
+    if (!Number.isNaN(matterIdNum)) {
       // 如果项目列表还未加载，先加载
       if (!skipLoadMatters && matters.value.length === 0) {
         await loadMatters();
       }
-      
+
       // 查找对应的项目
       const matter = matters.value.find((m) => m.id === matterIdNum);
       if (matter) {
         // 设置标记，避免 watch 触发循环
         isRestoringFromRoute.value = true;
-        
+
         try {
           // 如果当前选中的项目不同，才切换
-          if (selectedMatterId.value !== matterIdNum) {
-            // 直接设置状态，不调用 handleSelectMatter（避免触发 watch）
-            selectedMatterId.value = matter.id;
-            selectedMatter.value = matter;
-            selectedFolder.value = 'root';
-            currentPath.value = [`${matter.name} 卷宗目录`];
-            
-            // 加载卷宗目录和文档
-            await loadDossierItems();
-            await loadProjectDocuments();
-          } else {
+          if (selectedMatterId.value === matterIdNum) {
             // 项目已选中，但需要确保文档列表已加载（刷新后可能为空）
             if (documents.value.length === 0) {
               await loadProjectDocuments();
@@ -1713,17 +1703,31 @@ async function restoreStateFromRoute(skipLoadMatters = false) {
             if (dossierItems.value.length === 0) {
               await loadDossierItems();
             }
+          } else {
+            // 直接设置状态，不调用 handleSelectMatter（避免触发 watch）
+            selectedMatterId.value = matter.id;
+            selectedMatter.value = matter;
+            selectedFolder.value = 'root';
+            currentPath.value = [`${matter.name} 卷宗目录`];
+
+            // 加载卷宗目录和文档
+            await loadDossierItems();
+            await loadProjectDocuments();
           }
-          
+
           // 如果指定了文件夹，选择对应的文件夹
-          if (folderId && folderId !== 'root' && selectedFolder.value !== folderId) {
+          if (
+            folderId &&
+            folderId !== 'root' &&
+            selectedFolder.value !== folderId
+          ) {
             const folderIdNum = Number.parseInt(folderId, 10);
-            if (!isNaN(folderIdNum)) {
+            if (!Number.isNaN(folderIdNum)) {
               // 等待目录加载完成
               if (dossierItems.value.length === 0) {
                 await loadDossierItems();
               }
-              
+
               // 检查文件夹是否存在
               const folderExists = dossierItems.value.some(
                 (item) => item.id === folderIdNum,
@@ -1731,9 +1735,14 @@ async function restoreStateFromRoute(skipLoadMatters = false) {
               if (folderExists) {
                 selectedFolder.value = folderId;
                 // 更新面包屑路径
-                const item = dossierItems.value.find((i) => i.id === folderIdNum);
+                const item = dossierItems.value.find(
+                  (i) => i.id === folderIdNum,
+                );
                 if (item) {
-                  currentPath.value = [selectedMatter.value?.name || '卷宗', item.name];
+                  currentPath.value = [
+                    selectedMatter.value?.name || '卷宗',
+                    item.name,
+                  ];
                 }
                 // 更新可排序文档列表
                 updateSortableDocuments();
@@ -1763,7 +1772,7 @@ watch(
     if (isRestoringFromRoute.value) return;
     // 避免初始化时的触发
     if (newMatterId === oldMatterId) return;
-    
+
     if (newMatterId) {
       const currentMatterId = route.query.matterId as string | undefined;
       // 只有当路由参数不同时才更新
@@ -1794,7 +1803,7 @@ watch(
     if (isRestoringFromRoute.value) return;
     // 避免初始化时的触发
     if (newFolder === oldFolder) return;
-    
+
     if (selectedMatterId.value) {
       const currentFolderId = route.query.folderId as string | undefined;
       // 只有当路由参数不同时才更新
@@ -1806,12 +1815,9 @@ watch(
         Object.keys(route.query).forEach((key) => {
           const value = route.query[key];
           if (value !== undefined && value !== null) {
-            let stringValue: string | null | undefined;
-            if (Array.isArray(value)) {
-              stringValue = value[0] ?? null;
-            } else {
-              stringValue = value;
-            }
+            const stringValue: null | string | undefined = Array.isArray(value)
+              ? (value[0] ?? null)
+              : value;
             if (stringValue !== undefined && stringValue !== null) {
               newQuery[key] = String(stringValue);
             }
@@ -1820,14 +1826,14 @@ watch(
         // 更新 matterId 和 folderId
         newQuery.matterId = String(selectedMatterId.value);
         newQuery.folderId = newFolder;
-        
+
         // 构建新的 URL
         const queryString = new URLSearchParams(newQuery).toString();
         const newUrl = `${route.path}${queryString ? `?${queryString}` : ''}`;
-        
+
         // 使用 history.replaceState 更新 URL，不触发 Vue Router 导航
         history.replaceState({ ...history.state }, '', newUrl);
-        
+
         // 手动更新 route.query，确保刷新页面后能正确恢复状态
         // 注意：这不会触发 Vue Router 的导航钩子，因此不会导致组件重新渲染
         Object.keys(route.query).forEach((key) => {
@@ -2007,7 +2013,9 @@ watch(
               </div>
               <div class="matter-card-item" v-if="matter.opposingParty">
                 <span class="matter-card-label">对方：</span>
-                <span class="matter-card-value">{{ matter.opposingParty }}</span>
+                <span class="matter-card-value">{{
+                  matter.opposingParty
+                }}</span>
               </div>
               <div class="matter-card-footer">
                 <div>
@@ -3180,8 +3188,8 @@ watch(
 /* 项目卡片样式增强 */
 .matter-card {
   position: relative;
-  transition: all 0.3s ease;
   overflow: hidden;
+  transition: all 0.3s ease;
 }
 
 /* 移除 Card 的默认左边框，使用伪元素替代 */
@@ -3214,8 +3222,12 @@ watch(
 
 /* 根据案件类型设置不同的左侧边框颜色和背景色 */
 .matter-card-CRIMINAL {
-  background: linear-gradient(to right, rgb(211 47 47 / 2%), var(--ant-color-bg-container, #fff));
   color: var(--ant-color-text, #333);
+  background: linear-gradient(
+    to right,
+    rgb(211 47 47 / 2%),
+    var(--ant-color-bg-container, #fff)
+  );
 }
 
 .matter-card-CRIMINAL::before {
@@ -3223,8 +3235,12 @@ watch(
 }
 
 .matter-card-CIVIL {
-  background: linear-gradient(to right, rgb(25 118 210 / 2%), var(--ant-color-bg-container, #fff));
   color: var(--ant-color-text, #333);
+  background: linear-gradient(
+    to right,
+    rgb(25 118 210 / 2%),
+    var(--ant-color-bg-container, #fff)
+  );
 }
 
 .matter-card-CIVIL::before {
@@ -3232,8 +3248,12 @@ watch(
 }
 
 .matter-card-ADMINISTRATIVE {
-  background: linear-gradient(to right, rgb(56 142 60 / 2%), var(--ant-color-bg-container, #fff));
   color: var(--ant-color-text, #333);
+  background: linear-gradient(
+    to right,
+    rgb(56 142 60 / 2%),
+    var(--ant-color-bg-container, #fff)
+  );
 }
 
 .matter-card-ADMINISTRATIVE::before {
@@ -3241,8 +3261,12 @@ watch(
 }
 
 .matter-card-BANKRUPTCY {
-  background: linear-gradient(to right, rgb(245 124 0 / 2%), var(--ant-color-bg-container, #fff));
   color: var(--ant-color-text, #333);
+  background: linear-gradient(
+    to right,
+    rgb(245 124 0 / 2%),
+    var(--ant-color-bg-container, #fff)
+  );
 }
 
 .matter-card-BANKRUPTCY::before {
@@ -3250,8 +3274,12 @@ watch(
 }
 
 .matter-card-IP {
-  background: linear-gradient(to right, rgb(123 31 162 / 2%), var(--ant-color-bg-container, #fff));
   color: var(--ant-color-text, #333);
+  background: linear-gradient(
+    to right,
+    rgb(123 31 162 / 2%),
+    var(--ant-color-bg-container, #fff)
+  );
 }
 
 .matter-card-IP::before {
@@ -3259,8 +3287,12 @@ watch(
 }
 
 .matter-card-ARBITRATION {
-  background: linear-gradient(to right, rgb(2 136 209 / 2%), var(--ant-color-bg-container, #fff));
   color: var(--ant-color-text, #333);
+  background: linear-gradient(
+    to right,
+    rgb(2 136 209 / 2%),
+    var(--ant-color-bg-container, #fff)
+  );
 }
 
 .matter-card-ARBITRATION::before {
@@ -3268,8 +3300,12 @@ watch(
 }
 
 .matter-card-ENFORCEMENT {
-  background: linear-gradient(to right, rgb(93 64 55 / 2%), var(--ant-color-bg-container, #fff));
   color: var(--ant-color-text, #333);
+  background: linear-gradient(
+    to right,
+    rgb(93 64 55 / 2%),
+    var(--ant-color-bg-container, #fff)
+  );
 }
 
 .matter-card-ENFORCEMENT::before {
@@ -3277,28 +3313,39 @@ watch(
 }
 
 /* stylelint-disable-next-line selector-class-pattern -- 类名与后端枚举 CaseType.LEGAL_COUNSEL 一致 */
+/* stylelint-disable-next-line selector-class-pattern -- 类名与后端枚举 CaseType.LEGAL_COUNSEL 一致 */
 .matter-card-LEGAL_COUNSEL {
-  background: linear-gradient(to right, rgb(0 121 107 / 2%), var(--ant-color-bg-container, #fff));
   color: var(--ant-color-text, #333);
+  background: linear-gradient(
+    to right,
+    rgb(0 121 107 / 2%),
+    var(--ant-color-bg-container, #fff)
+  );
 }
 
+/* stylelint-disable-next-line selector-class-pattern -- 类名与后端枚举 CaseType.LEGAL_COUNSEL 一致 */
 .matter-card-LEGAL_COUNSEL::before {
   background: #00796b;
 }
 
 /* stylelint-disable-next-line selector-class-pattern -- 类名与后端枚举 CaseType.SPECIAL_SERVICE 一致 */
 .matter-card-SPECIAL_SERVICE {
-  background: linear-gradient(to right, rgb(230 74 25 / 2%), var(--ant-color-bg-container, #fff));
   color: var(--ant-color-text, #333);
+  background: linear-gradient(
+    to right,
+    rgb(230 74 25 / 2%),
+    var(--ant-color-bg-container, #fff)
+  );
 }
 
+/* stylelint-disable-next-line selector-class-pattern -- 类名与后端枚举 CaseType.SPECIAL_SERVICE 一致 */
 .matter-card-SPECIAL_SERVICE::before {
   background: #e64a19;
 }
 
 .matter-card-default {
-  background: var(--ant-color-bg-container, #fff);
   color: var(--ant-color-text, #333);
+  background: var(--ant-color-bg-container, #fff);
 }
 
 .matter-card-default::before {
@@ -3308,62 +3355,100 @@ watch(
 /* 深色模式适配 */
 [data-theme='dark'] .matter-card-CRIMINAL,
 .dark .matter-card-CRIMINAL {
-  background: linear-gradient(to right, rgb(211 47 47 / 15%), var(--ant-color-bg-container, #1f1f1f));
   color: var(--ant-color-text, #fff);
+  background: linear-gradient(
+    to right,
+    rgb(211 47 47 / 15%),
+    var(--ant-color-bg-container, #1f1f1f)
+  );
 }
 
 [data-theme='dark'] .matter-card-CIVIL,
 .dark .matter-card-CIVIL {
-  background: linear-gradient(to right, rgb(25 118 210 / 15%), var(--ant-color-bg-container, #1f1f1f));
   color: var(--ant-color-text, #fff);
+  background: linear-gradient(
+    to right,
+    rgb(25 118 210 / 15%),
+    var(--ant-color-bg-container, #1f1f1f)
+  );
 }
 
 [data-theme='dark'] .matter-card-ADMINISTRATIVE,
 .dark .matter-card-ADMINISTRATIVE {
-  background: linear-gradient(to right, rgb(56 142 60 / 15%), var(--ant-color-bg-container, #1f1f1f));
   color: var(--ant-color-text, #fff);
+  background: linear-gradient(
+    to right,
+    rgb(56 142 60 / 15%),
+    var(--ant-color-bg-container, #1f1f1f)
+  );
 }
 
 [data-theme='dark'] .matter-card-BANKRUPTCY,
 .dark .matter-card-BANKRUPTCY {
-  background: linear-gradient(to right, rgb(245 124 0 / 15%), var(--ant-color-bg-container, #1f1f1f));
   color: var(--ant-color-text, #fff);
+  background: linear-gradient(
+    to right,
+    rgb(245 124 0 / 15%),
+    var(--ant-color-bg-container, #1f1f1f)
+  );
 }
 
 [data-theme='dark'] .matter-card-IP,
 .dark .matter-card-IP {
-  background: linear-gradient(to right, rgb(123 31 162 / 15%), var(--ant-color-bg-container, #1f1f1f));
   color: var(--ant-color-text, #fff);
+  background: linear-gradient(
+    to right,
+    rgb(123 31 162 / 15%),
+    var(--ant-color-bg-container, #1f1f1f)
+  );
 }
 
 [data-theme='dark'] .matter-card-ARBITRATION,
 .dark .matter-card-ARBITRATION {
-  background: linear-gradient(to right, rgb(2 136 209 / 15%), var(--ant-color-bg-container, #1f1f1f));
   color: var(--ant-color-text, #fff);
+  background: linear-gradient(
+    to right,
+    rgb(2 136 209 / 15%),
+    var(--ant-color-bg-container, #1f1f1f)
+  );
 }
 
 [data-theme='dark'] .matter-card-ENFORCEMENT,
 .dark .matter-card-ENFORCEMENT {
-  background: linear-gradient(to right, rgb(93 64 55 / 15%), var(--ant-color-bg-container, #1f1f1f));
   color: var(--ant-color-text, #fff);
+  background: linear-gradient(
+    to right,
+    rgb(93 64 55 / 15%),
+    var(--ant-color-bg-container, #1f1f1f)
+  );
 }
 
+/* stylelint-disable selector-class-pattern -- 类名与后端枚举一致 */
 [data-theme='dark'] .matter-card-LEGAL_COUNSEL,
 .dark .matter-card-LEGAL_COUNSEL {
-  background: linear-gradient(to right, rgb(0 121 107 / 15%), var(--ant-color-bg-container, #1f1f1f));
   color: var(--ant-color-text, #fff);
+  background: linear-gradient(
+    to right,
+    rgb(0 121 107 / 15%),
+    var(--ant-color-bg-container, #1f1f1f)
+  );
 }
 
 [data-theme='dark'] .matter-card-SPECIAL_SERVICE,
 .dark .matter-card-SPECIAL_SERVICE {
-  background: linear-gradient(to right, rgb(230 74 25 / 15%), var(--ant-color-bg-container, #1f1f1f));
   color: var(--ant-color-text, #fff);
+  background: linear-gradient(
+    to right,
+    rgb(230 74 25 / 15%),
+    var(--ant-color-bg-container, #1f1f1f)
+  );
 }
+/* stylelint-enable selector-class-pattern */
 
 [data-theme='dark'] .matter-card-default,
 .dark .matter-card-default {
-  background: var(--ant-color-bg-container, #1f1f1f);
   color: var(--ant-color-text, #fff);
+  background: var(--ant-color-bg-container, #1f1f1f);
 }
 
 /* 卡片内容样式 */
@@ -3405,86 +3490,90 @@ watch(
 /* 深色模式下的卡片内容 */
 [data-theme='dark'] .matter-card-content,
 .dark .matter-card-content {
-  color: var(--ant-color-text-secondary, rgba(255, 255, 255, 0.65));
+  color: var(--ant-color-text-secondary, rgb(255 255 255 / 65%));
 }
 
 [data-theme='dark'] .matter-card-value,
 .dark .matter-card-value {
-  color: var(--ant-color-text, rgba(255, 255, 255, 0.85));
+  color: var(--ant-color-text, rgb(255 255 255 / 85%));
 }
 
 [data-theme='dark'] .matter-card-footer,
 .dark .matter-card-footer {
-  border-top-color: var(--ant-color-border-secondary, rgba(255, 255, 255, 0.1));
+  border-top-color: var(--ant-color-border-secondary, rgb(255 255 255 / 10%));
 }
 
 /* 深色模式下的网格视图 */
 [data-theme='dark'] .grid-item,
 .dark .grid-item {
   background: var(--ant-color-bg-container, #1f1f1f);
-  border-color: var(--ant-color-border-secondary, rgba(255, 255, 255, 0.1));
+  border-color: var(--ant-color-border-secondary, rgb(255 255 255 / 10%));
 }
 
 [data-theme='dark'] .grid-item:hover,
 .dark .grid-item:hover {
-  background: var(--ant-color-bg-container-hover, rgba(255, 255, 255, 0.08));
+  background: var(--ant-color-bg-container-hover, rgb(255 255 255 / 8%));
 }
 
 [data-theme='dark'] .grid-item-selected,
 .dark .grid-item-selected {
-  background: var(--ant-color-primary-bg, rgba(24, 144, 255, 0.2)) !important;
+  background: var(--ant-color-primary-bg, rgb(24 144 255 / 20%)) !important;
 }
 
 [data-theme='dark'] .select-all-label,
 .dark .select-all-label {
-  color: var(--ant-color-text-secondary, rgba(255, 255, 255, 0.65));
-  background: var(--ant-color-fill-tertiary, rgba(255, 255, 255, 0.08));
+  color: var(--ant-color-text-secondary, rgb(255 255 255 / 65%));
+  background: var(--ant-color-fill-tertiary, rgb(255 255 255 / 8%));
 }
 
 [data-theme='dark'] .select-all-label:hover,
 .dark .select-all-label:hover {
-  background: var(--ant-color-fill-secondary, rgba(255, 255, 255, 0.12));
+  background: var(--ant-color-fill-secondary, rgb(255 255 255 / 12%));
 }
 
 [data-theme='dark'] .grid-thumbnail,
 .dark .grid-thumbnail {
-  background: linear-gradient(145deg, var(--ant-color-fill-tertiary, rgba(255, 255, 255, 0.08)) 0%, var(--ant-color-fill-secondary, rgba(255, 255, 255, 0.12)) 100%);
+  background: linear-gradient(
+    145deg,
+    var(--ant-color-fill-tertiary, rgb(255 255 255 / 8%)) 0%,
+    var(--ant-color-fill-secondary, rgb(255 255 255 / 12%)) 100%
+  );
 }
 
 [data-theme='dark'] .grid-thumbnail-icon .file-ext,
 .dark .grid-thumbnail-icon .file-ext {
-  color: var(--ant-color-text-secondary, rgba(255, 255, 255, 0.65));
-  background: var(--ant-color-fill-quaternary, rgba(255, 255, 255, 0.12));
+  color: var(--ant-color-text-secondary, rgb(255 255 255 / 65%));
+  background: var(--ant-color-fill-quaternary, rgb(255 255 255 / 12%));
 }
 
 [data-theme='dark'] .grid-item-name,
 .dark .grid-item-name {
-  color: var(--ant-color-text, rgba(255, 255, 255, 0.85));
+  color: var(--ant-color-text, rgb(255 255 255 / 85%));
 }
 
 [data-theme='dark'] .grid-item-size,
 .dark .grid-item-size {
-  color: var(--ant-color-text-tertiary, rgba(255, 255, 255, 0.45));
+  color: var(--ant-color-text-tertiary, rgb(255 255 255 / 45%));
 }
 
 [data-theme='dark'] .grid-item-toolbar,
 .dark .grid-item-toolbar {
   background: linear-gradient(
     to top,
-    var(--ant-color-bg-container, rgba(31, 31, 31, 0.95)) 0%,
-    var(--ant-color-bg-container-secondary, rgba(31, 31, 31, 0.85)) 100%
+    var(--ant-color-bg-container, rgb(31 31 31 / 95%)) 0%,
+    var(--ant-color-bg-container-secondary, rgb(31 31 31 / 85%)) 100%
   );
-  border-top-color: var(--ant-color-border-secondary, rgba(255, 255, 255, 0.1));
+  border-top-color: var(--ant-color-border-secondary, rgb(255 255 255 / 10%));
 }
 
 [data-theme='dark'] .grid-item-toolbar :deep(.ant-btn-text),
 .dark .grid-item-toolbar :deep(.ant-btn-text) {
-  color: var(--ant-color-text-secondary, rgba(255, 255, 255, 0.65));
+  color: var(--ant-color-text-secondary, rgb(255 255 255 / 65%));
 }
 
 [data-theme='dark'] .grid-item-toolbar :deep(.ant-btn-text:hover),
 .dark .grid-item-toolbar :deep(.ant-btn-text:hover) {
-  background: var(--ant-color-primary-bg, rgba(24, 144, 255, 0.2));
+  background: var(--ant-color-primary-bg, rgb(24 144 255 / 20%));
 }
 
 /* ==================== 视图切换按钮 ==================== */
@@ -3577,7 +3666,11 @@ watch(
   height: 140px;
   margin-bottom: 12px;
   overflow: hidden;
-  background: linear-gradient(145deg, var(--ant-color-fill-tertiary, #f8f9fa) 0%, var(--ant-color-fill-secondary, #e9ecef) 100%);
+  background: linear-gradient(
+    145deg,
+    var(--ant-color-fill-tertiary, #f8f9fa) 0%,
+    var(--ant-color-fill-secondary, #e9ecef) 100%
+  );
   border-radius: 8px;
 }
 

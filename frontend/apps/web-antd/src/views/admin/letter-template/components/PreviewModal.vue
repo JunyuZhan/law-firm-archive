@@ -87,7 +87,7 @@ async function loadFirmInfo() {
     // 律师信息（从当前登录用户获取，作为示例数据）
     if (currentUser) {
       if (currentUser.realName) {
-        sampleData.value.lawyerNames = currentUser.realName + '律师';
+        sampleData.value.lawyerNames = `${currentUser.realName}律师`;
       }
       if (currentUser.lawyerLicenseNo) {
         sampleData.value.lawyerLicenseNo = currentUser.lawyerLicenseNo;
@@ -142,7 +142,7 @@ function handlePrint() {
 async function open(record: LetterTemplateDTO) {
   previewTitle.value = record.name;
   // 解码可能被 HTML 编码的内容
-  let content = decodeHtmlEntities(record.content || '');
+  const content = decodeHtmlEntities(record.content || '');
 
   // 确保律所信息已加载
   if (!sampleData.value.firmAddress && !sampleData.value.firmPhone) {

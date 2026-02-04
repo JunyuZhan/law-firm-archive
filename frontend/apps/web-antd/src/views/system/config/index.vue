@@ -45,6 +45,7 @@ import {
   Tooltip,
 } from 'ant-design-vue';
 
+import { requestClient } from '#/api/request';
 import {
   createConfig,
   deleteConfig,
@@ -65,7 +66,6 @@ import {
   testEmailConfig,
   updateConfig,
 } from '#/api/system';
-import { requestClient } from '#/api/request';
 import { getWecomStatus, testWecomBot } from '#/api/system/wecom';
 
 import ConfigModal from './components/ConfigModal.vue';
@@ -133,15 +133,15 @@ const versionLoading = ref(false);
 
 // 版本更新检查相关
 const updateCheckLoading = ref(false);
-const updateInfo = ref<{
+const updateInfo = ref<null | {
   currentVersion: string;
-  latestVersion?: string;
+  error?: string;
   hasUpdate: boolean;
+  latestVersion?: string;
+  publishedAt?: string;
   releaseNotes?: string;
   releaseUrl?: string;
-  publishedAt?: string;
-  error?: string;
-} | null>(null);
+}>(null);
 
 // 升级相关
 interface UpgradeStep {
@@ -154,7 +154,7 @@ interface UpgradeGuide {
   steps: UpgradeStep[];
   quickCommand: string;
 }
-const upgradeGuide = ref<UpgradeGuide | null>(null);
+const upgradeGuide = ref<null | UpgradeGuide>(null);
 
 // 邮件通知相关
 const emailStatus = ref({ enabled: false });
@@ -356,7 +356,9 @@ async function loadVersionInfo() {
 async function checkVersionUpdate() {
   updateCheckLoading.value = true;
   try {
-    const res = await requestClient.get<typeof updateInfo.value>('/system/version/check');
+    const res = await requestClient.get<typeof updateInfo.value>(
+      '/system/version/check',
+    );
     updateInfo.value = res;
     if (res?.hasUpdate) {
       message.success(`发现新版本 v${res.latestVersion}`);
@@ -375,7 +377,9 @@ async function checkVersionUpdate() {
 async function ignoreVersionUpdate() {
   if (!updateInfo.value?.latestVersion) return;
   try {
-    await requestClient.post(`/system/version/ignore?version=${updateInfo.value.latestVersion}`);
+    await requestClient.post(
+      `/system/version/ignore?version=${updateInfo.value.latestVersion}`,
+    );
     message.success('已忽略此版本，下次有新版本时会再次提醒');
     updateInfo.value = { ...updateInfo.value, hasUpdate: false };
   } catch (error: unknown) {
@@ -402,7 +406,9 @@ function viewReleaseNotes() {
 // 获取升级指南
 async function loadUpgradeGuide() {
   try {
-    const res = await requestClient.get<UpgradeGuide>('/system/version/upgrade/guide');
+    const res = await requestClient.get<UpgradeGuide>(
+      '/system/version/upgrade/guide',
+    );
     upgradeGuide.value = res;
   } catch (error: unknown) {
     console.error('获取升级指南失败', error);
@@ -427,16 +433,17 @@ function copyQuickUpgradeCommand() {
 const upgradeLoading = ref(false);
 const upgradeId = ref('');
 const upgradeProgress = ref(0);
-const upgradeStatus = ref<'idle' | 'running' | 'completed' | 'failed'>('idle');
+const upgradeStatus = ref<'completed' | 'failed' | 'idle' | 'running'>('idle');
 const upgradeMessage = ref('');
 const upgradeModalVisible = ref(false);
-let upgradePollingTimer: ReturnType<typeof setInterval> | null = null;
+let upgradePollingTimer: null | ReturnType<typeof setInterval> = null;
 
 // 确认升级
 function confirmUpgrade() {
   AModal.confirm({
     title: '确认升级',
-    content: '升级过程中服务会短暂中断（约3-5分钟），建议在业务低峰期执行。是否继续？',
+    content:
+      '升级过程中服务会短暂中断（约3-5分钟），建议在业务低峰期执行。是否继续？',
     okText: '开始升级',
     cancelText: '取消',
     onOk: () => executeUpgrade(),
@@ -450,14 +457,13 @@ async function executeUpgrade() {
   upgradeStatus.value = 'running';
   upgradeProgress.value = 0;
   upgradeMessage.value = '正在启动升级...';
-  
+
   try {
-    const res = await requestClient.post<{ upgradeId: string; message: string }>(
-      '/system/version/upgrade/execute',
-      null,
-      { params: { backup: false } }
-    );
-    
+    const res = await requestClient.post<{
+      message: string;
+      upgradeId: string;
+    }>('/system/version/upgrade/execute', null, { params: { backup: false } });
+
     upgradeId.value = res.upgradeId;
     upgradeMessage.value = res.message;
     startUpgradePolling();
@@ -472,19 +478,22 @@ async function executeUpgrade() {
 // 轮询升级状态
 function startUpgradePolling() {
   if (upgradePollingTimer) clearInterval(upgradePollingTimer);
-  
+
   let failCount = 0;
   upgradePollingTimer = setInterval(async () => {
     try {
-      const res = await requestClient.get<{ status: string; message: string; progress: number }>(
-        '/system/version/upgrade/status',
-        { params: { upgradeId: upgradeId.value } }
-      );
-      
+      const res = await requestClient.get<{
+        message: string;
+        progress: number;
+        status: string;
+      }>('/system/version/upgrade/status', {
+        params: { upgradeId: upgradeId.value },
+      });
+
       failCount = 0;
       upgradeProgress.value = res.progress;
       upgradeMessage.value = res.message;
-      
+
       if (res.status === 'completed') {
         upgradeStatus.value = 'completed';
         stopUpgradePolling();
@@ -507,17 +516,20 @@ function startUpgradePolling() {
       }
     }
   }, 3000);
-  
+
   // 最多轮询 10 分钟
-  setTimeout(() => {
-    if (upgradePollingTimer && upgradeStatus.value === 'running') {
-      upgradeStatus.value = 'completed';
-      upgradeMessage.value = '升级可能已完成，请刷新页面';
-      upgradeProgress.value = 100;
-      stopUpgradePolling();
-      upgradeLoading.value = false;
-    }
-  }, 10 * 60 * 1000);
+  setTimeout(
+    () => {
+      if (upgradePollingTimer && upgradeStatus.value === 'running') {
+        upgradeStatus.value = 'completed';
+        upgradeMessage.value = '升级可能已完成，请刷新页面';
+        upgradeProgress.value = 100;
+        stopUpgradePolling();
+        upgradeLoading.value = false;
+      }
+    },
+    10 * 60 * 1000,
+  );
 }
 
 function stopUpgradePolling() {
@@ -857,7 +869,22 @@ async function handleDisableMaintenance() {
 onMounted(async () => {
   // 支持从 URL 参数切换到指定 Tab（如 ?tab=version）
   const tabParam = route.query.tab as string;
-  if (tabParam && ['contract', 'maintenance', 'version', 'notification', 'wecom', 'cause', 'ai-billing', 'login-log', 'session', 'cache', 'general'].includes(tabParam)) {
+  if (
+    tabParam &&
+    [
+      'ai-billing',
+      'cache',
+      'cause',
+      'contract',
+      'general',
+      'login-log',
+      'maintenance',
+      'notification',
+      'session',
+      'version',
+      'wecom',
+    ].includes(tabParam)
+  ) {
     activeTab.value = tabParam;
   }
 
@@ -1170,7 +1197,11 @@ watch(activeTab, (newTab) => {
       <TabPane key="version" tab="版本信息">
         <Card title="系统版本信息" :bordered="false">
           <template #extra>
-            <Button type="primary" :loading="updateCheckLoading" @click="checkVersionUpdate">
+            <Button
+              type="primary"
+              :loading="updateCheckLoading"
+              @click="checkVersionUpdate"
+            >
               检查更新
             </Button>
           </template>
@@ -1183,15 +1214,27 @@ watch(activeTab, (newTab) => {
             style="margin-bottom: 24px"
           >
             <template #message>
-              <span>发现新版本 <strong style="font-size: 16px; color: #52c41a">v{{ updateInfo.latestVersion }}</strong></span>
+              <span
+                >发现新版本
+                <strong style="font-size: 16px; color: #52c41a"
+                  >v{{ updateInfo.latestVersion }}</strong
+                ></span
+              >
             </template>
             <template #description>
               <div style="margin-top: 8px">
                 <Space>
-                  <Button size="small" @click="viewReleaseNotes">查看更新内容</Button>
-                  <Button size="small" type="text" @click="ignoreVersionUpdate">忽略此版本</Button>
+                  <Button size="small" @click="viewReleaseNotes">
+                    查看更新内容
+                  </Button>
+                  <Button size="small" type="text" @click="ignoreVersionUpdate">
+                    忽略此版本
+                  </Button>
                 </Space>
-                <div v-if="updateInfo.publishedAt" style="margin-top: 8px; font-size: 12px; color: #888">
+                <div
+                  v-if="updateInfo.publishedAt"
+                  style="margin-top: 8px; font-size: 12px; color: #888"
+                >
                   发布时间：{{ updateInfo.publishedAt }}
                 </div>
               </div>
@@ -1307,8 +1350,8 @@ watch(activeTab, (newTab) => {
         <!-- 系统升级 -->
         <Card title="系统升级" :bordered="false" style="margin-top: 16px">
           <template #extra>
-            <Button 
-              type="primary" 
+            <Button
+              type="primary"
               :loading="upgradeLoading"
               @click="confirmUpgrade"
             >
@@ -1326,12 +1369,26 @@ watch(activeTab, (newTab) => {
 
           <!-- 升级步骤 -->
           <div v-if="upgradeGuide?.steps" style="margin-bottom: 24px">
-            <div v-for="(step, index) in upgradeGuide.steps" :key="index" style="margin-bottom: 16px">
+            <div
+              v-for="(step, index) in upgradeGuide.steps"
+              :key="index"
+              style="margin-bottom: 16px"
+            >
               <div style="margin-bottom: 8px; font-weight: 500; color: #1890ff">
                 {{ step.title }}
               </div>
-              <div style="position: relative; padding: 12px 16px; font-family: monospace; background: #f5f5f5; border-radius: 8px">
-                <div style="padding-right: 60px; color: #333">{{ step.command }}</div>
+              <div
+                style="
+                  position: relative;
+                  padding: 12px 16px;
+                  font-family: monospace;
+                  background: #f5f5f5;
+                  border-radius: 8px;
+                "
+              >
+                <div style="padding-right: 60px; color: #333">
+                  {{ step.command }}
+                </div>
                 <Button
                   type="text"
                   size="small"
@@ -1341,17 +1398,38 @@ watch(activeTab, (newTab) => {
                   复制
                 </Button>
               </div>
-              <div style="margin-top: 4px; font-size: 12px; color: #888">{{ step.description }}</div>
+              <div style="margin-top: 4px; font-size: 12px; color: #888">
+                {{ step.description }}
+              </div>
             </div>
           </div>
 
           <Divider orientation="left">一键升级命令</Divider>
-          <div style="position: relative; padding: 16px; background: #e6f7ff; border: 1px solid #91d5ff; border-radius: 8px">
+          <div
+            style="
+              position: relative;
+              padding: 16px;
+              background: #e6f7ff;
+              border: 1px solid #91d5ff;
+              border-radius: 8px;
+            "
+          >
             <div style="margin-bottom: 8px; font-size: 12px; color: #1890ff">
-              <strong>提示：</strong>在服务器项目根目录执行以下命令，自动完成备份 → 更新 → 部署
+              <strong>提示：</strong
+              >在服务器项目根目录执行以下命令，自动完成备份 → 更新 → 部署
             </div>
-            <div style="padding-right: 60px; font-family: monospace; color: #333; word-break: break-all">
-              {{ upgradeGuide?.quickCommand || './scripts/ops/backup.sh && git pull origin main && ./scripts/deploy/deploy.sh --quick --no-cache' }}
+            <div
+              style="
+                padding-right: 60px;
+                font-family: monospace;
+                color: #333;
+                word-break: break-all;
+              "
+            >
+              {{
+                upgradeGuide?.quickCommand ||
+                './scripts/ops/backup.sh && git pull origin main && ./scripts/deploy/deploy.sh --quick --no-cache'
+              }}
             </div>
             <Button
               type="primary"
@@ -1367,12 +1445,19 @@ watch(activeTab, (newTab) => {
           <Alert type="info" :show-icon="false">
             <div style="margin-bottom: 8px; font-weight: 500">升级说明：</div>
             <ul style="padding-left: 20px; margin: 0; color: #666">
-              <li><code>./scripts/ops/backup.sh</code> - 备份数据库和文件到 <code>backups/</code> 目录</li>
+              <li>
+                <code>./scripts/ops/backup.sh</code> - 备份数据库和文件到
+                <code>backups/</code> 目录
+              </li>
               <li><code>git pull origin main</code> - 拉取最新代码</li>
-              <li><code>./scripts/deploy/deploy.sh --quick --no-cache</code> - 重新构建并部署</li>
+              <li>
+                <code>./scripts/deploy/deploy.sh --quick --no-cache</code> -
+                重新构建并部署
+              </li>
               <li>升级完成后，刷新页面即可使用新版本</li>
               <li style="margin-top: 8px; color: #ff4d4f">
-                <strong>如需回滚</strong>：使用 <code>./scripts/ops/restore.sh</code> 恢复备份
+                <strong>如需回滚</strong>：使用
+                <code>./scripts/ops/restore.sh</code> 恢复备份
               </li>
             </ul>
           </Alert>
@@ -1384,26 +1469,40 @@ watch(activeTab, (newTab) => {
           title="系统升级"
           :footer="null"
           :closable="upgradeStatus !== 'running'"
-          :maskClosable="false"
+          :mask-closable="false"
           width="500px"
           @cancel="closeUpgradeModal"
         >
           <div style="padding: 20px 0">
             <!-- 进度条 -->
             <div style="margin-bottom: 24px">
-              <div style="display: flex; justify-content: space-between; margin-bottom: 8px">
+              <div
+                style="
+                  display: flex;
+                  justify-content: space-between;
+                  margin-bottom: 8px;
+                "
+              >
                 <span>{{ upgradeMessage }}</span>
                 <span v-if="upgradeProgress >= 0">{{ upgradeProgress }}%</span>
               </div>
-              <div style="height: 8px; background: #f0f0f0; border-radius: 4px; overflow: hidden">
-                <div 
-                  :style="{ 
-                    width: upgradeProgress + '%', 
-                    height: '100%', 
-                    background: upgradeStatus === 'failed' ? '#ff4d4f' : '#1890ff',
-                    transition: 'width 0.3s ease'
+              <div
+                style="
+                  height: 8px;
+                  overflow: hidden;
+                  background: #f0f0f0;
+                  border-radius: 4px;
+                "
+              >
+                <div
+                  :style="{
+                    width: `${upgradeProgress}%`,
+                    height: '100%',
+                    background:
+                      upgradeStatus === 'failed' ? '#ff4d4f' : '#1890ff',
+                    transition: 'width 0.3s ease',
                   }"
-                />
+                ></div>
               </div>
             </div>
 
@@ -1431,9 +1530,16 @@ watch(activeTab, (newTab) => {
             />
 
             <!-- 操作按钮 -->
-            <div v-if="upgradeStatus !== 'running'" style="margin-top: 24px; text-align: right">
+            <div
+              v-if="upgradeStatus !== 'running'"
+              style="margin-top: 24px; text-align: right"
+            >
               <Space>
-                <Button v-if="upgradeStatus === 'completed'" type="primary" @click="reloadPage">
+                <Button
+                  v-if="upgradeStatus === 'completed'"
+                  type="primary"
+                  @click="reloadPage"
+                >
                   刷新页面
                 </Button>
                 <Button @click="closeUpgradeModal">关闭</Button>

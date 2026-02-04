@@ -282,12 +282,12 @@ export interface ClientDownloadLogDTO {
  * 获取客户访问日志列表
  */
 export function getClientAccessLogs(params: {
-  matterId: number;
   clientId?: number;
-  startTime?: string;
   endTime?: string;
+  matterId: number;
   pageNum?: number;
   pageSize?: number;
+  startTime?: string;
 }) {
   return requestClient.get<{ list: ClientAccessLogDTO[]; total: number }>(
     '/matter/client-service/access-logs',
@@ -299,13 +299,13 @@ export function getClientAccessLogs(params: {
  * 获取客户下载日志列表
  */
 export function getClientDownloadLogs(params: {
-  matterId: number;
   clientId?: number;
-  fileId?: string;
-  startTime?: string;
   endTime?: string;
+  fileId?: string;
+  matterId: number;
   pageNum?: number;
   pageSize?: number;
+  startTime?: string;
 }) {
   return requestClient.get<{ list: ClientDownloadLogDTO[]; total: number }>(
     '/matter/client-service/download-logs',

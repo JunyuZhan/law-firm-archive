@@ -41,7 +41,7 @@ curl http://localhost:8001/health
 
 ```yaml
 ocr:
-  provider: paddle  # 默认使用 PaddleOCR
+  provider: paddle # 默认使用 PaddleOCR
   paddle:
     url: http://localhost:8001
 ```
@@ -59,7 +59,7 @@ export OCR_SERVICE_URL=http://localhost:8001
 
 ```yaml
 ocr:
-  provider: ${OCR_PROVIDER:paddle}  # paddle(默认) | mock(测试用)
+  provider: ${OCR_PROVIDER:paddle} # paddle(默认) | mock(测试用)
   paddle:
     url: ${OCR_SERVICE_URL:http://localhost:8001}
   timeout: 30000
@@ -97,17 +97,20 @@ cd docker && docker compose --env-file ../.env -f docker-compose.prod.yml up -d 
 如果需要使用 Mock 服务进行测试，可以设置：
 
 **通过环境变量**：
+
 ```bash
 export OCR_PROVIDER=mock
 ```
 
 **或修改配置文件**：
+
 ```yaml
 ocr:
-  provider: mock  # 仅用于测试
+  provider: mock # 仅用于测试
 ```
 
 Mock 服务的特点：
+
 - ✅ 无需启动 OCR 容器
 - ✅ 响应速度快
 - ❌ 返回固定数据（"张三"、"北京某某科技有限公司"等）
@@ -150,6 +153,7 @@ curl -X POST http://localhost:8001/ocr/general \
 **原因**：可能是 ARM 架构（Apple Silicon）兼容性问题
 
 **解决**：
+
 - 检查 Docker 镜像是否支持 ARM64
 - 查看 OCR 容器日志：`docker logs law-firm-ocr`
 - 首次启动需要下载模型，可能需要几分钟
@@ -157,10 +161,12 @@ curl -X POST http://localhost:8001/ocr/general \
 ### Q2: OCR 识别很慢？
 
 **原因**：
+
 - 首次识别需要下载模型（约 500MB）
 - CPU 模式识别速度较慢
 
 **解决**：
+
 - 等待首次识别完成（模型会缓存）
 - 后续识别会快很多
 - 如需更快速度，可配置 GPU 模式（需要 NVIDIA GPU）
@@ -168,10 +174,12 @@ curl -X POST http://localhost:8001/ocr/general \
 ### Q3: 识别结果不准确？
 
 **原因**：
+
 - 图片质量差（模糊、倾斜、光线不足）
 - 图片格式不支持
 
 **解决**：
+
 - 使用清晰、正面的图片
 - 支持格式：JPG、PNG、GIF
 - 建议图片大小：1-5MB
@@ -179,6 +187,7 @@ curl -X POST http://localhost:8001/ocr/general \
 ### Q4: OCR 识别结果总是固定的"张三"、"北京某某科技有限公司"等？
 
 **说明**：
+
 1. **OCR 服务未启动**：请先启动 `paddle-ocr` 容器
 2. **使用了 Mock 服务**：检查配置是否为 `ocr.provider: mock`
 
