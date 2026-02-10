@@ -1144,7 +1144,20 @@ public class BackupAppService {
         ArchiveEntry archiveEntry;
         while ((archiveEntry = tais.getNextEntry()) != null) {
           TarArchiveEntry entry = (TarArchiveEntry) archiveEntry;
-          Path entryPath = tempDir.resolve(entry.getName());
+          String entryName = entry.getName();
+
+          // 防止 Zip Slip 路径遍历攻击
+          if (entryName.contains("..") || entryName.startsWith("/")) {
+            log.warn("检测到可疑的归档条目，跳过: {}", entryName);
+            continue;
+          }
+
+          Path entryPath = tempDir.resolve(entryName).normalize();
+          // 二次验证：确保解析后的路径在临时目录内
+          if (!entryPath.startsWith(tempDir)) {
+            log.warn("归档条目路径超出临时目录，跳过: {}", entryName);
+            continue;
+          }
 
           if (entry.isDirectory()) {
             Files.createDirectories(entryPath);

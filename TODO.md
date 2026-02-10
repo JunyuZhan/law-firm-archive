@@ -200,6 +200,208 @@
 
 ---
 
+### 8. 资源泄漏与参数校验问题
+
+**问题描述**：代码审查发现资源管理和参数校验问题。
+
+#### 8.1 后端资源泄漏
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| 🔴高 | InputStream 未关闭 | `MinioService.java:338-353` | uploadFile 方法内使用 try-with-resources 关闭流 |
+| 🔴高 | Workbook 未关闭 | `ExcelImportExportService.java:177-227` | 使用 try-with-resources 包裹 Workbook |
+| 🟡中 | Process 无超时 | `VersionController.java:276-287,332-354` | 使用 waitFor(timeout, unit)，超时后 destroyForcibly() |
+
+#### 8.2 后端参数校验
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| 🔴高 | ids 未校验 | `CommissionController.java:294-298,327-330` | 批量接口添加 @NotEmpty 或判空 |
+| 🟡中 | pageSize 无上限 | `PageQuery.java:37-39` | 添加 pageSize 最大值限制 |
+| 🟡中 | 日期格式未校验 | `CommissionController.java:253-256` | 使用 @DateTimeFormat 或 LocalDate |
+
+#### 8.3 后端并发问题
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| 🟡中 | 锁粒度过大 | `LetterAppService.java:967-970` | synchronized(this) 改为按 matterId 加锁 |
+
+#### 8.4 前端定时器/异步清理
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| 🔴高 | 轮询定时器未清理 | `system/config/index.vue:441,485,523` | onUnmounted 中调用 stopUpgradePolling() |
+| 🔴高 | 异步回调在卸载后执行 | `document/list/index.vue:1536-1558` | 添加 isMounted 检查或取消标记 |
+| 🔴高 | JSON.parse 无 try-catch | `crm/client/index.vue:392-393` | 包裹 try-catch，解析失败用默认值 |
+| 🟡中 | searchTimer 未清理 | `MatterSelector.vue:143-154` | onUnmounted 中 clearTimeout |
+| 🟡中 | setTimeout 未清理 | `finance/report/index.vue:327-332` | onBeforeUnmount 中 clearTimeout |
+| 🟡中 | setTimeout 未清理 | `workbench/report/index.vue:451-454` | onBeforeUnmount 中 clearTimeout |
+
+**实施进度**：
+- [ ] 后端：MinioService InputStream 关闭
+- [ ] 后端：ExcelImportExportService Workbook 关闭
+- [ ] 后端：CommissionController ids 校验
+- [x] 前端：system/config 轮询定时器清理（添加 onUnmounted）
+- [ ] 前端：document/list 异步回调检查
+- [x] 前端：crm/client JSON.parse 错误处理（添加 try-catch）
+
+**状态**：🔄 部分修复
+
+---
+
+### 9. 分页与参数处理问题
+
+**问题描述**：分页参数未统一校验，可能导致 NPE 或性能问题。
+
+#### 9.1 分页参数 NPE 风险
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| 🔴高 | pageNum/pageSize 可能为 null | `DataHandoverService.java:636-646` | new Page<>() 前添加 null 检查 |
+| 🔴高 | getOffset() 未判空 | `DataHandoverQueryDTO.java:33-34` | 添加 null 检查和默认值 |
+| 🟡中 | 未使用 PageUtils | `ScheduledReportAppService.java:95`<br>`CustomReportAppService.java:64` | 改用 PageUtils.createPage() |
+
+#### 9.2 分页 pageSize 无上限
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| 🟡中 | pageSize 可传超大值 | `DocumentController.java:346-347` | 添加最大值限制（如 100） |
+
+**实施进度**：
+- [x] DataHandoverService/DTO 分页参数判空（添加 getSafePageNum/getSafePageSize）
+- [ ] 分页逻辑统一使用 PageUtils.createPage
+
+**状态**：🔄 部分修复
+
+---
+
+### 10. 前端状态管理与竞态问题
+
+**问题描述**：组件间通信和异步请求存在竞态风险。
+
+#### 10.1 watch 无限循环风险
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| 🔴高 | formData ↔ initialData ↔ emit 循环 | `StateCompensationForm.vue:219-241` | 添加标志位区分来源，避免循环 emit |
+
+#### 10.2 异步请求竞态
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| 🟡中 | 并发调用重复请求 | `useCauseOfAction.ts:54-108` | 使用 Promise 缓存正在进行的请求 |
+| 🟡中 | 快速操作覆盖数据 | `HandoverDetailModal.vue:81,121` | 使用 AbortController 或请求版本号 |
+
+**实施进度**：
+- [ ] StateCompensationForm watch 循环修复
+- [ ] useCauseOfAction 并发请求去重
+
+**状态**：⏳ 待修复
+
+---
+
+### 11. 文件处理安全问题
+
+**问题描述**：文件上传、下载、解压等操作存在安全和兼容性问题。
+
+#### 11.1 文件上传验证
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| 🔴高 | 图片上传无校验 | `RichTextEditor/index.vue:136-146` | 添加文件类型、大小、扩展名校验 |
+| 🟡中 | 上传类型不限制 | `EvidenceUploader.vue:95-103` | 添加 accept 属性限制文件类型 |
+
+#### 11.2 路径遍历（Zip Slip）
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| 🔴高 | Zip 解压路径遍历 | `BackupAppService.java:1148-1154` | 校验 entry.getName() 不含 `../` |
+
+#### 11.3 临时文件清理
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| 🟡中 | 升级状态文件未删除 | `VersionController.java:175,297,357` | 升级完成后删除 /tmp/.upgrade-status-*.json |
+
+#### 11.4 下载文件名编码
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| 🟡中 | 中文文件名乱码 | `ClientController.java:229`<br>`EvidenceController.java:552`<br>`BackupController.java:133` | 使用 RFC 5987 的 `filename*=UTF-8''` 格式 |
+
+**实施进度**：
+- [ ] RichTextEditor 图片上传校验
+- [x] BackupAppService Zip Slip 修复（添加路径验证）
+- [ ] 下载文件名 RFC 5987 编码
+
+**状态**：🔄 部分修复
+
+---
+
+### 12. 异常处理与信息泄露
+
+**问题描述**：异常信息直接暴露给前端，存在安全风险。
+
+#### 12.1 异常信息泄露
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| 🔴高 | e.getMessage() 暴露给前端 | `DocumentController.java:802,1172`<br>`VersionController.java:191`<br>`EvidenceController.java:463`<br>`ReportController.java:132` | 记录日志后返回通用错误信息 |
+
+#### 12.2 资源清理缺失
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| 🔴高 | InputStream 未关闭 | `EvidenceController.java:295`<br>`TaskCommentAppService.java:268`<br>`SealApplicationAppService.java:455`<br>`FileAccessService.java:68`<br>`DocumentAppService.java:605` | 使用 try-with-resources 管理流 |
+
+#### 12.3 事务回滚
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| 🟡中 | checked exception 不回滚 | 多个 @Transactional 方法 | 添加 rollbackFor = Exception.class |
+
+**实施进度**：
+- [ ] 异常信息泄露修复
+- [ ] InputStream 资源管理修复
+
+**状态**：⏳ 待修复
+
+---
+
+### 13. 权限与认证安全问题
+
+**问题描述**：部分接口权限检查缺失，存在越权风险。
+
+#### 13.1 权限检查缺失
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| 🔴高 | 无权限即可修改配置 | `VersionController.java:409-411` | POST /ignore 添加 @RequirePermission |
+| 🔴高 | 任意用户可读配置 | `SysConfigController.java:69-72,81-84` | GET /key/{key} 和 POST /batch 添加权限校验 |
+| 🟡中 | 缺少细粒度权限 | `WorkbenchController.java:37-127` | 添加 @RequirePermission 注解 |
+
+#### 13.2 回调接口安全
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| 🔴高 | OnlyOffice 回调无校验 | `DocumentController.java:767-806` | 添加签名或来源 IP 校验 |
+
+#### 13.3 敏感操作
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| 🟡中 | 删除用户无二次确认 | `UserController.java:130-136,144-150` | 考虑添加密码确认或操作确认 |
+| 🟡中 | 重置密码无二次确认 | `UserController.java:158-166` | 添加操作确认机制 |
+
+**实施进度**：
+- [x] VersionController /ignore 权限修复（添加 @PreAuthorize）
+- [x] SysConfigController 配置接口权限修复（添加 @RequirePermission）
+- [ ] OnlyOffice 回调安全校验
+
+**状态**：🔄 部分修复
+
+---
+
 ## ✅ 已完成任务
 
 _（完成后将任务移至此处）_

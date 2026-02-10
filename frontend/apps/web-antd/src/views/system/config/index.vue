@@ -12,6 +12,7 @@ import {
   defineAsyncComponent,
   nextTick,
   onMounted,
+  onUnmounted,
   reactive,
   ref,
   watch,
@@ -439,6 +440,7 @@ const upgradeStatus = ref<'completed' | 'failed' | 'idle' | 'running'>('idle');
 const upgradeMessage = ref('');
 const upgradeModalVisible = ref(false);
 let upgradePollingTimer: null | ReturnType<typeof setInterval> = null;
+let upgradeTimeoutTimer: null | ReturnType<typeof setTimeout> = null;
 
 // 确认升级
 function confirmUpgrade() {
@@ -520,7 +522,7 @@ function startUpgradePolling() {
   }, 3000);
 
   // 最多轮询 10 分钟
-  setTimeout(
+  upgradeTimeoutTimer = setTimeout(
     () => {
       if (upgradePollingTimer && upgradeStatus.value === 'running') {
         upgradeStatus.value = 'completed';
@@ -539,7 +541,16 @@ function stopUpgradePolling() {
     clearInterval(upgradePollingTimer);
     upgradePollingTimer = null;
   }
+  if (upgradeTimeoutTimer) {
+    clearTimeout(upgradeTimeoutTimer);
+    upgradeTimeoutTimer = null;
+  }
 }
+
+// 组件卸载时清理定时器，防止内存泄漏
+onUnmounted(() => {
+  stopUpgradePolling();
+});
 
 function closeUpgradeModal() {
   upgradeModalVisible.value = false;

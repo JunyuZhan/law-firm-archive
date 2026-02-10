@@ -389,9 +389,15 @@ async function handleSave() {
 
       const returnPath = route.query.returnPath as string;
       if (returnPath) {
-        const returnQuery = route.query.returnQuery
-          ? JSON.parse(route.query.returnQuery as string)
-          : {};
+        let returnQuery = {};
+        try {
+          returnQuery = route.query.returnQuery
+            ? JSON.parse(route.query.returnQuery as string)
+            : {};
+        } catch {
+          // JSON 解析失败，使用空对象
+          console.warn('returnQuery 解析失败，使用默认值');
+        }
         router.push({
           path: returnPath,
           query: { ...returnQuery, action: 'created', clientId: newClient.id },

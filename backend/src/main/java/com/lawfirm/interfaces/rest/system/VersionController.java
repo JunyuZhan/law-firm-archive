@@ -408,6 +408,7 @@ public class VersionController {
      */
     @Operation(summary = "忽略版本更新", description = "忽略指定版本的更新提示")
     @PostMapping("/ignore")
+    @PreAuthorize("hasAuthority('sys:config:edit')")
     public Result<Void> ignoreVersion(@RequestParam String version) {
         try {
             String configKey = "system.ignored-version";

@@ -68,6 +68,7 @@ public class SysConfigController {
    */
   @Operation(summary = "根据键获取配置")
   @GetMapping("/key/{key}")
+  @RequirePermission("sys:config:list")
   public Result<SysConfigDTO> getConfigByKey(@PathVariable final String key) {
     return Result.success(configAppService.getConfigByKey(key));
   }
@@ -80,6 +81,7 @@ public class SysConfigController {
    */
   @Operation(summary = "批量获取配置")
   @PostMapping("/batch")
+  @RequirePermission("sys:config:list")
   public Result<Map<String, String>> getConfigBatch(@RequestBody final List<String> keys) {
     return Result.success(configAppService.getConfigMap(keys));
   }

@@ -633,7 +633,7 @@ public class DataHandoverService {
   public PageResult<DataHandoverDTO> listHandovers(final DataHandoverQueryDTO query) {
     IPage<DataHandover> page =
         handoverRepository.findPage(
-            new Page<>(query.getPageNum(), query.getPageSize()),
+            new Page<>(query.getSafePageNum(), query.getSafePageSize()),
             query.getFromUserId(),
             query.getToUserId(),
             query.getHandoverType(),
