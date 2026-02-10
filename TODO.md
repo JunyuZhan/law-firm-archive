@@ -109,7 +109,7 @@
 | 风险 | 问题 | 位置 | 修复方案 |
 |------|------|------|----------|
 | 🔴高 | refreshToken 存 localStorage | `store/auth.ts:86`<br>`api/request.ts:59` | 改用 SecureLS 或 httpOnly cookie |
-| 🔴高 | v-html XSS | 6 处文件 | 使用 DOMPurify 清理 HTML |
+| ✅ | v-html XSS | 6 处文件 | 已添加 sanitizeHtml 包裹 |
 | 🟡中 | 路由守卫异步错误 | `router/guard.ts:106-110` | 添加 try-catch 包裹 |
 | 🟡中 | 全局 Promise 错误 | `main.ts` | 添加 unhandledrejection 监听 |
 
@@ -147,7 +147,7 @@
 | ✅ | 内存泄漏 | `EvidenceUploader.vue:52-61` | 已在 finally 中 clearInterval |
 | ✅ | Blob URL 泄漏 | `office-preview/index.vue` | 已添加定时器跟踪和 onUnmounted 清理 |
 | ✅ | FileReader 无错误处理 | `RichTextEditor/index.vue` | 已添加 error 事件监听 |
-| 🔴高 | 未处理 Promise | `ClientServicePanel/index.vue:776-786` | watch 回调添加错误处理 |
+| ✅ | 未处理 Promise | `ClientServicePanel/index.vue:776-786` | 已使用 Promise.allSettled 和错误日志 |
 | 🟡中 | 类型安全 | `EvidenceUploader.vue:62-64` | 避免使用 `any`，定义明确类型 |
 | 🟡中 | 事件监听泄漏 | `document/list/index.vue:1532-1558` | 使用单例 input 或清理监听器 |
 | 🟡中 | 错误无用户提示 | `ClientServicePanel/index.vue` 多处 | 添加 `message.error` 提示 |
@@ -264,8 +264,8 @@
 
 | 优先级 | 问题 | 位置 | 修复方案 |
 |--------|------|------|----------|
-| 🔴高 | pageNum/pageSize 可能为 null | `DataHandoverService.java:636-646` | new Page<>() 前添加 null 检查 |
-| 🔴高 | getOffset() 未判空 | `DataHandoverQueryDTO.java:33-34` | 添加 null 检查和默认值 |
+| ✅ | pageNum/pageSize 可能为 null | `DataHandoverService.java` | 已添加 getSafePageNum/getSafePageSize |
+| ✅ | getOffset() 未判空 | `DataHandoverQueryDTO.java` | 已添加 null 检查和默认值 |
 | 🟡中 | 未使用 PageUtils | `ScheduledReportAppService.java:95`<br>`CustomReportAppService.java:64` | 改用 PageUtils.createPage() |
 
 #### 9.2 分页 pageSize 无上限
