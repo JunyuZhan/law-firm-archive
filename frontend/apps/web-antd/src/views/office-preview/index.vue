@@ -541,7 +541,9 @@ function goBack() {
     window.close();
     // 如果关闭失败（非 window.open 打开的页面），跳转到首页
     setTimeout(() => {
-      router.push('/');
+      if (isMounted) {
+        router.push('/');
+      }
     }, 100);
   }
 }

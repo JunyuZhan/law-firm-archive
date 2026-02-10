@@ -1,6 +1,7 @@
 package com.lawfirm.infrastructure.filter;
 
 import com.lawfirm.application.common.service.ContractDataPermissionService;
+import com.lawfirm.application.workbench.service.ReportAppService;
 import com.lawfirm.application.workbench.service.StatisticsAppService;
 import jakarta.servlet.Filter;
 import jakarta.servlet.FilterChain;
@@ -60,6 +61,13 @@ public class ThreadLocalCleanupFilter implements Filter {
       ContractDataPermissionService.clearCache();
     } catch (Exception e) {
       log.warn("清理 ContractDataPermissionService ThreadLocal 失败", e);
+    }
+
+    try {
+      // 清理报表服务的 ThreadLocal 缓存
+      ReportAppService.clearCache();
+    } catch (Exception e) {
+      log.warn("清理 ReportAppService ThreadLocal 失败", e);
     }
   }
 

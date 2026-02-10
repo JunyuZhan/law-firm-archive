@@ -296,28 +296,24 @@ public class DataScopeInterceptor implements InnerInterceptor {
    * @return 部门及下级部门ID列表
    */
   private List<Long> getDeptAndChildrenIds(final Long deptId) {
-    // 从缓存获取
-    List<Long> cached = deptChildrenCache.get(deptId);
-    if (cached != null) {
-      // 返回不可变副本，防止调用方修改缓存内容
-      return java.util.Collections.unmodifiableList(cached);
-    }
+    // 使用 computeIfAbsent 保证同一 key 只计算一次（避免并发重复查询）
+    List<Long> cached = deptChildrenCache.computeIfAbsent(deptId, id -> {
+      // 查询部门及下级部门
+      List<Long> deptIds = new ArrayList<>();
+      deptIds.add(id);
 
-    // 查询部门及下级部门
-    List<Long> deptIds = new ArrayList<>();
-    deptIds.add(deptId);
+      try {
+        // 递归查询下级部门
+        collectChildDeptIds(id, deptIds);
+      } catch (Exception e) {
+        log.warn("查询下级部门失败: {}", e.getMessage());
+      }
 
-    try {
-      // 递归查询下级部门
-      collectChildDeptIds(deptId, deptIds);
-    } catch (Exception e) {
-      log.warn("查询下级部门失败: {}", e.getMessage());
-    }
+      return deptIds;
+    });
 
-    // 缓存结果（5分钟后过期，这里简化处理不设过期）
-    deptChildrenCache.put(deptId, deptIds);
-    // 返回不可变副本
-    return java.util.Collections.unmodifiableList(deptIds);
+    // 返回不可变副本，防止调用方修改缓存内容
+    return java.util.Collections.unmodifiableList(cached);
   }
 
   /**

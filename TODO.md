@@ -1220,6 +1220,38 @@
 
 ---
 
+### 61. 并发和线程安全问题
+
+**问题描述**：限流竞态、ThreadLocal 泄漏、静态变量可变性。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| ✅ | 限流 check-then-act 竞态 | `RateLimitAspect.java:47-61` | 使用原子 increment 操作 |
+| ✅ | ReportAppService ThreadLocal 未清理 | `ThreadLocalCleanupFilter.java` | 添加 clearCache 调用 |
+| ✅ | staticTokenSecret 可变静态变量 | `DocumentController.java:83` | 改为 final 常量 |
+| ✅ | 部门缓存 check-then-act | `DataScopeInterceptor.java:298-321` | 使用 computeIfAbsent |
+| 🟡中 | @Async 依赖 SecurityContext | `AiUsageRecorder.java:80-99` | 应在主线程获取用户 |
+
+**状态**：🔄 高优先级已修复
+
+---
+
+### 62. 前端内存泄漏问题
+
+**问题描述**：setTimeout 未在组件卸载时清理。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| ✅ | 打印 setTimeout 未清理 | `matter/contract/index.vue:1927` | 添加 activeTimers 跟踪 |
+| ✅ | goBack setTimeout 未检查挂载状态 | `office-preview/index.vue:543` | 添加 isMounted 检查 |
+| ✅ | emit success setTimeout 未检查 | `ConfigModal.vue:124` | 添加 isMounted 检查 |
+| ✅ | setValues setTimeout 未检查 | `ConfigModal.vue:145` | 添加 isMounted 检查 |
+| ✅ | emit success setTimeout 未检查 | `CauseModal.vue:229` | 添加 isMounted 检查 |
+
+**状态**：✅ 已完成
+
+---
+
 ## ✅ 已完成任务
 
 _（完成后将任务移至此处）_

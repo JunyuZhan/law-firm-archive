@@ -6,7 +6,7 @@ import type {
   UpdateCauseCommand,
 } from '#/api/system/cause-of-action';
 
-import { computed, ref, watch } from 'vue';
+import { computed, onUnmounted, ref, watch } from 'vue';
 
 import { useVbenModal } from '@vben/common-ui';
 
@@ -31,6 +31,12 @@ const emit = defineEmits<{
 
 const isEdit = ref(false);
 const editId = ref<number>();
+
+// 组件挂载状态
+let isMounted = true;
+onUnmounted(() => {
+  isMounted = false;
+});
 
 // 获取代码占位符
 function getCodePlaceholder(): string {
@@ -227,7 +233,9 @@ async function handleSubmit() {
     modalApi.close();
     // 延迟一下再触发 success 事件，确保弹窗关闭后再刷新列表
     setTimeout(() => {
-      emit('success');
+      if (isMounted) {
+        emit('success');
+      }
     }, 300);
   } catch (error: unknown) {
     const err = error as { errorFields?: unknown; message?: string };

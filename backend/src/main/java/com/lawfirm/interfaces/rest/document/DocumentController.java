@@ -79,8 +79,8 @@ public class DocumentController {
   @Value("${law-firm.document.token-secret}")
   private String tokenSecret;
 
-  /** 静态密钥用于向后兼容（测试时使用） */
-  private static String staticTokenSecret = "law-firm-document-access-dev-only";
+  /** 静态密钥用于向后兼容（测试时使用），不可修改 */
+  private static final String STATIC_TOKEN_SECRET = "law-firm-document-access-dev-only";
 
   /** 文件缓冲区大小：8KB */
   private static final int FILE_BUFFER_SIZE = 8192;
@@ -1360,7 +1360,7 @@ public class DocumentController {
    * @return 访问令牌
    */
   public static String generateAccessToken(final Long documentId, final long expires) {
-    return generateAccessToken(documentId, expires, staticTokenSecret);
+    return generateAccessToken(documentId, expires, STATIC_TOKEN_SECRET);
   }
 
   /**

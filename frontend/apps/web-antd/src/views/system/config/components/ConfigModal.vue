@@ -2,7 +2,7 @@
 import type { VbenFormSchema } from '#/adapter/form';
 import type { SysConfigDTO } from '#/api/system/types';
 
-import { computed, ref } from 'vue';
+import { computed, onUnmounted, ref } from 'vue';
 
 import { useVbenModal } from '@vben/common-ui';
 
@@ -17,6 +17,12 @@ const emit = defineEmits<{
 
 const editId = ref<number>();
 const isEdit = ref(false);
+
+// 组件挂载状态
+let isMounted = true;
+onUnmounted(() => {
+  isMounted = false;
+});
 
 // 表单 Schema - 使用 computed 确保响应式更新（符合指南规范）
 const formSchema = computed<VbenFormSchema[]>(() => [
@@ -122,7 +128,9 @@ const [Modal, modalApi] = useVbenModal({
       modalApi.close();
       // 延迟一下再触发 success 事件，确保弹窗关闭后再刷新列表
       setTimeout(() => {
-        emit('success');
+        if (isMounted) {
+          emit('success');
+        }
       }, 300);
     } catch (error: unknown) {
       const err = error as { errorFields?: unknown; message?: string };
@@ -143,6 +151,7 @@ function openEdit(record: SysConfigDTO) {
 
   // 使用 setTimeout 确保弹窗和表单都已渲染完成
   setTimeout(() => {
+    if (!isMounted) return;
     formApi.resetForm();
     formApi.setValues({
       configName: record.configName || '',

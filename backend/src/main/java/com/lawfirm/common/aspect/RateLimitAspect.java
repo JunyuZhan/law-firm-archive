@@ -44,20 +44,23 @@ public class RateLimitAspect {
     // 构建限流Key
     String key = buildRateLimitKey(rateLimit, joinPoint);
 
-    // 获取当前计数
-    Integer count = (Integer) redisTemplate.opsForValue().get(key);
-
-    // 检查是否超过限制
-    if (count != null && count >= rateLimit.limit()) {
-      log.warn("API速率限制: key={}, count={}, limit={}", key, count, rateLimit.limit());
-      throw new BusinessException("429", rateLimit.message());
+    // 使用原子操作：先 increment，再判断是否超限（避免 check-then-act 竞态）
+    Long count = redisTemplate.opsForValue().increment(key);
+    if (count == null) {
+      // Redis 连接问题，允许通过但记录警告
+      log.warn("限流计数失败，允许请求通过: key={}", key);
+      return joinPoint.proceed();
     }
 
-    // 增加计数
-    if (count == null) {
-      redisTemplate.opsForValue().set(key, 1, rateLimit.period(), TimeUnit.SECONDS);
-    } else {
-      redisTemplate.opsForValue().increment(key);
+    // 首次访问时设置过期时间
+    if (count == 1) {
+      redisTemplate.expire(key, rateLimit.period(), TimeUnit.SECONDS);
+    }
+
+    // 检查是否超过限制
+    if (count > rateLimit.limit()) {
+      log.warn("API速率限制: key={}, count={}, limit={}", key, count, rateLimit.limit());
+      throw new BusinessException("429", rateLimit.message());
     }
 
     // 继续执行

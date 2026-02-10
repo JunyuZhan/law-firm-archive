@@ -14,7 +14,7 @@ import type {
 import type { ContractPrintDTO } from '#/api/matter';
 import type { DepartmentDTO } from '#/api/system/types';
 
-import { computed, h, onMounted, reactive, ref, watch } from 'vue';
+import { computed, h, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
@@ -244,6 +244,9 @@ const printOptions = reactive({
   printApprovalForm: true, // 打印收案审批表
 });
 const currentPrintData = ref<ContractPrintDTO | null>(null);
+
+// 用于跟踪活动的定时器，组件卸载时清理
+const activeTimers = new Set<ReturnType<typeof setTimeout>>();
 
 // 审批表编辑弹窗相关
 const approvalFormModalVisible = ref(false);
@@ -1924,9 +1927,12 @@ async function executePrint() {
   printWindow.document.close();
   printModalVisible.value = false;
 
-  setTimeout(() => {
+  // 跟踪定时器以便组件卸载时清理
+  const timerId = setTimeout(() => {
+    activeTimers.delete(timerId);
     printWindow.print();
   }, 500);
+  activeTimers.add(timerId);
 }
 
 // 查询
@@ -2897,6 +2903,14 @@ onMounted(async () => {
   fetchData();
   loadStatistics();
   await loadOptions();
+});
+
+// 组件卸载时清理活动定时器
+onUnmounted(() => {
+  for (const timerId of activeTimers) {
+    clearTimeout(timerId);
+  }
+  activeTimers.clear();
 });
 </script>
 
