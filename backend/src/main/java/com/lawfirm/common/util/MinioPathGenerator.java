@@ -248,7 +248,8 @@ public final class MinioPathGenerator {
     if (folder == null || folder.isEmpty() || "root".equals(folder)) {
       return "others";
     }
-    String clean = folder.replaceAll("[\\\\/:*?\"<>|\\s]", "_");
+    // 防止路径遍历攻击：过滤 .. 和特殊字符
+    String clean = folder.replace("..", "_").replaceAll("[\\\\/:*?\"<>|\\s]", "_");
     if (clean.length() > MAX_FOLDER_NAME_LENGTH) {
       clean = clean.substring(0, MAX_FOLDER_NAME_LENGTH);
     }
@@ -259,7 +260,8 @@ public final class MinioPathGenerator {
     if (filename == null || filename.isEmpty()) {
       return "unknown";
     }
-    String clean = filename.replaceAll("[\\\\/:*?\"<>|]", "_");
+    // 防止路径遍历攻击：过滤 .. 和特殊字符
+    String clean = filename.replace("..", "_").replaceAll("[\\\\/:*?\"<>|]", "_");
     int maxLength = MAX_FILENAME_LENGTH;
     if (clean.length() > maxLength) {
       int lastDot = clean.lastIndexOf('.');
