@@ -21,6 +21,7 @@ import com.lawfirm.common.annotation.RepeatSubmit;
 import com.lawfirm.common.annotation.RequirePermission;
 import com.lawfirm.common.result.PageResult;
 import com.lawfirm.common.result.Result;
+import jakarta.validation.Valid;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.HashMap;
@@ -115,7 +116,7 @@ public class ContractController {
   @RequirePermission("matter:contract:create")
   @OperationLog(module = "合同管理", action = "创建合同")
   @RepeatSubmit(interval = 5000, message = "请勿重复提交合同信息")
-  public Result<ContractDTO> createContract(@RequestBody final CreateContractCommand command) {
+  public Result<ContractDTO> createContract(@Valid @RequestBody final CreateContractCommand command) {
     ContractDTO contract = contractAppService.createContract(command);
     return Result.success(contract);
   }
@@ -131,7 +132,7 @@ public class ContractController {
   @RequirePermission("matter:contract:edit")
   @OperationLog(module = "合同管理", action = "更新合同")
   public Result<ContractDTO> updateContract(
-      @PathVariable final Long id, @RequestBody final UpdateContractCommand command) {
+      @PathVariable final Long id, @Valid @RequestBody final UpdateContractCommand command) {
     command.setId(id);
     ContractDTO contract = contractAppService.updateContract(command);
     return Result.success(contract);

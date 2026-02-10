@@ -9,6 +9,7 @@ import com.lawfirm.common.annotation.RequirePermission;
 import com.lawfirm.common.result.Result;
 import com.lawfirm.common.util.VersionUtils;
 import io.swagger.v3.oas.annotations.Operation;
+import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -96,7 +97,7 @@ public class SysConfigController {
   @PostMapping
   @RequirePermission("sys:config:create")
   @OperationLog(module = "系统配置", action = "创建配置")
-  public Result<SysConfigDTO> createConfig(@RequestBody final UpdateConfigCommand command) {
+  public Result<SysConfigDTO> createConfig(@Valid @RequestBody final UpdateConfigCommand command) {
     return Result.success(configAppService.createConfig(command));
   }
 
@@ -112,7 +113,7 @@ public class SysConfigController {
   @RequirePermission("sys:config:update")
   @OperationLog(module = "系统配置", action = "更新配置")
   public Result<Void> updateConfig(
-      @PathVariable final Long id, @RequestBody final UpdateConfigCommand command) {
+      @PathVariable final Long id, @Valid @RequestBody final UpdateConfigCommand command) {
     command.setId(id);
     configAppService.updateConfig(command);
     return Result.success();
