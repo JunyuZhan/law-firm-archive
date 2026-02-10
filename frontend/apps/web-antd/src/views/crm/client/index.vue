@@ -924,6 +924,7 @@ onMounted(async () => {
               <Input
                 v-model:value="formData.name"
                 placeholder="请输入客户名称"
+                :maxlength="100"
               />
             </FormItem>
           </Col>
@@ -951,6 +952,7 @@ onMounted(async () => {
               <Input
                 v-model:value="formData.creditCode"
                 placeholder="请输入统一社会信用代码"
+                :maxlength="18"
               />
             </FormItem>
             <FormItem
@@ -962,6 +964,7 @@ onMounted(async () => {
               <Input
                 v-model:value="formData.idCard"
                 placeholder="请输入身份证号"
+                :maxlength="18"
               />
             </FormItem>
           </Col>
@@ -975,6 +978,7 @@ onMounted(async () => {
               <Input
                 v-model:value="formData.legalRepresentative"
                 placeholder="请输入法定代表人"
+                :maxlength="50"
               />
             </FormItem>
           </Col>
@@ -991,6 +995,7 @@ onMounted(async () => {
               <Input
                 v-model:value="formData.registeredAddress"
                 placeholder="请输入联系地址（用于合同等法律文书）"
+                :maxlength="200"
               />
             </FormItem>
           </Col>
@@ -1005,6 +1010,7 @@ onMounted(async () => {
               <Input
                 v-model:value="formData.contactPerson"
                 placeholder="请输入联系人"
+                :maxlength="50"
               />
             </FormItem>
           </Col>
@@ -1017,6 +1023,7 @@ onMounted(async () => {
               <Input
                 v-model:value="formData.contactPhone"
                 placeholder="请输入联系电话"
+                :maxlength="20"
               />
             </FormItem>
           </Col>
@@ -1027,6 +1034,7 @@ onMounted(async () => {
               <Input
                 v-model:value="formData.contactEmail"
                 placeholder="请输入联系邮箱"
+                :maxlength="100"
               />
             </FormItem>
           </Col>

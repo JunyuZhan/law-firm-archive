@@ -720,6 +720,7 @@
 | ✅ | progress 无范围限制 | `TaskController.java:155` | 已添加 @Min(0) @Max(100) |
 | ✅ | groupName 无长度限制 | `EvidenceController.java:179` | 已添加 @Size(max=100) |
 | ✅ | folder 路径遍历风险 | `DocumentAppService.java:buildStoragePath` | 已使用 MinioPathGenerator.sanitizeFolderName |
+| ✅ | 事务方法吞异常 | `DocumentAppService.java:updateDossierItemCount` | 已重新抛出异常确保事务回滚 |
 | 🟡中 | version 无格式校验 | `MigrationController.java:83` | 添加版本号格式验证 |
 | 🟡中 | keyword 无长度限制 | `ClientController.java:273` | 添加 @Size(max=100) |
 
@@ -732,6 +733,8 @@
 | ✅ | API 返回未判空 | `user/index.vue:161` | 已添加 ?? [] 和 ?? 0 |
 | ✅ | API 返回未判空 | `contract/index.vue:764` | 已添加 ?? [] 和 ?? 0 |
 | ✅ | 统计失败未提示用户 | `contract/index.vue:777` | 已添加 message.error |
+| ✅ | Input 缺少 maxlength | `crm/client/index.vue:924-1029` | 已添加各字段 maxlength |
+| ✅ | InputNumber 缺少 min/max | `hr/payroll/index.vue:1103-1106` | 已添加 :min="0" :max="9999999.99" |
 | 🟡中 | Promise 无 .catch() | `CauseOfActionTab.vue:482-493` | 添加错误处理 |
 
 **状态**：🔄 高优先级已修复

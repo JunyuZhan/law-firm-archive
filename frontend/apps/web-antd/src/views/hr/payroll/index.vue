@@ -1103,6 +1103,8 @@ onMounted(() => {
               <InputNumber
                 v-model:value="record.amount"
                 :precision="2"
+                :min="0"
+                :max="9999999.99"
                 style="width: 100%"
                 @change="() => updateDeductionAmount(currentItem!)"
               />

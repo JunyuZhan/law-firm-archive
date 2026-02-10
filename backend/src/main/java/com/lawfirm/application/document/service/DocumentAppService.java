@@ -950,10 +950,12 @@ public class DocumentAppService {
    */
   private void updateDossierItemCount(final Long dossierItemId, final int delta) {
     // 通过原生SQL更新计数，避免循环依赖
+    // 异常需重新抛出以确保事务回滚
     try {
       documentMapper.updateDossierItemDocCount(dossierItemId, delta);
     } catch (Exception e) {
-      log.warn("更新目录文件计数失败: itemId={}, delta={}, error={}", dossierItemId, delta, e.getMessage());
+      log.error("更新目录文件计数失败: itemId={}, delta={}", dossierItemId, delta, e);
+      throw new BusinessException("更新目录文件计数失败");
     }
   }
 
