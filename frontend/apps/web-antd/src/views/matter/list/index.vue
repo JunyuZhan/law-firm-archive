@@ -1040,14 +1040,17 @@ function handleReturnFromClient() {
   if (route.query.action === 'created' && route.query.clientId) {
     // 客户创建成功，自动选择新创建的客户
     const clientId = Number(route.query.clientId);
-    formData.clientId = clientId;
-    // 重新加载客户列表
-    loadOptions();
-    // 打开创建项目弹窗
-    modalVisible.value = true;
+    // 校验 clientId 是否为有效数值
+    if (!Number.isNaN(clientId) && clientId > 0) {
+      formData.clientId = clientId;
+      // 重新加载客户列表
+      loadOptions();
+      // 打开创建项目弹窗
+      modalVisible.value = true;
+      message.success('客户创建成功，已自动选择');
+    }
     // 清除查询参数
     router.replace({ path: route.path, query: {} });
-    message.success('客户创建成功，已自动选择');
   }
 }
 

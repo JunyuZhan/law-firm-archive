@@ -388,7 +388,8 @@ async function handleSave() {
       message.success('创建成功');
 
       const returnPath = route.query.returnPath as string;
-      if (returnPath) {
+      // 安全校验：仅允许以 / 开头的相对路径，防止开放重定向
+      if (returnPath && returnPath.startsWith('/') && !returnPath.startsWith('//')) {
         let returnQuery = {};
         try {
           returnQuery = route.query.returnQuery

@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lawfirm.application.system.dto.OperationLogDTO;
 import com.lawfirm.application.system.dto.OperationLogQueryDTO;
 import com.lawfirm.common.result.PageResult;
+import com.lawfirm.common.util.SqlUtils;
 import com.lawfirm.domain.system.entity.OperationLog;
 import com.lawfirm.domain.system.repository.OperationLogRepository;
 import java.util.HashMap;
@@ -22,6 +23,9 @@ import org.springframework.util.StringUtils;
 @Service
 @RequiredArgsConstructor
 public class OperationLogAppService {
+
+  /** 最大导出记录数 */
+  private static final int MAX_EXPORT_RECORDS = 100000;
 
   /** 操作日志仓储 */
   private final OperationLogRepository operationLogRepository;
@@ -45,9 +49,9 @@ public class OperationLogAppService {
       wrapper.eq(OperationLog::getOperationType, query.getOperationType());
     }
 
-    // 用户名模糊查询
+    // 用户名模糊查询（转义 LIKE 通配符）
     if (StringUtils.hasText(query.getUserName())) {
-      wrapper.like(OperationLog::getUserName, query.getUserName());
+      wrapper.like(OperationLog::getUserName, SqlUtils.escapeLike(query.getUserName()));
     }
 
     // 用户ID精确查询
@@ -60,14 +64,14 @@ public class OperationLogAppService {
       wrapper.eq(OperationLog::getStatus, query.getStatus());
     }
 
-    // IP地址模糊查询
+    // IP地址模糊查询（转义 LIKE 通配符）
     if (StringUtils.hasText(query.getIpAddress())) {
-      wrapper.like(OperationLog::getIpAddress, query.getIpAddress());
+      wrapper.like(OperationLog::getIpAddress, SqlUtils.escapeLike(query.getIpAddress()));
     }
 
-    // 请求URL模糊查询
+    // 请求URL模糊查询（转义 LIKE 通配符）
     if (StringUtils.hasText(query.getRequestUrl())) {
-      wrapper.like(OperationLog::getRequestUrl, query.getRequestUrl());
+      wrapper.like(OperationLog::getRequestUrl, SqlUtils.escapeLike(query.getRequestUrl()));
     }
 
     // 时间范围过滤
@@ -221,6 +225,9 @@ public class OperationLogAppService {
    * @return 日志列表
    */
   public List<OperationLogDTO> listForExport(final OperationLogQueryDTO query, final int maxRows) {
+    // 安全校验：限制最大行数范围，防止 SQL 注入和资源耗尽
+    int safeMaxRows = Math.max(1, Math.min(maxRows, MAX_EXPORT_RECORDS));
+
     LambdaQueryWrapper<OperationLog> wrapper = new LambdaQueryWrapper<>();
 
     // 模块过滤
@@ -233,9 +240,9 @@ public class OperationLogAppService {
       wrapper.eq(OperationLog::getOperationType, query.getOperationType());
     }
 
-    // 用户名模糊查询
+    // 用户名模糊查询（转义 LIKE 通配符）
     if (StringUtils.hasText(query.getUserName())) {
-      wrapper.like(OperationLog::getUserName, query.getUserName());
+      wrapper.like(OperationLog::getUserName, SqlUtils.escapeLike(query.getUserName()));
     }
 
     // 用户ID精确查询
@@ -248,9 +255,9 @@ public class OperationLogAppService {
       wrapper.eq(OperationLog::getStatus, query.getStatus());
     }
 
-    // IP地址模糊查询
+    // IP地址模糊查询（转义 LIKE 通配符）
     if (StringUtils.hasText(query.getIpAddress())) {
-      wrapper.like(OperationLog::getIpAddress, query.getIpAddress());
+      wrapper.like(OperationLog::getIpAddress, SqlUtils.escapeLike(query.getIpAddress()));
     }
 
     // 时间范围过滤
@@ -267,8 +274,8 @@ public class OperationLogAppService {
     // 按创建时间倒序
     wrapper.orderByDesc(OperationLog::getCreatedAt);
 
-    // 限制最大行数
-    wrapper.last("LIMIT " + maxRows);
+    // 限制最大行数（使用校验后的安全值）
+    wrapper.last("LIMIT " + safeMaxRows);
 
     return operationLogRepository.list(wrapper).stream()
         .map(this::toDTO)

@@ -20,6 +20,7 @@ import jakarta.validation.constraints.Min;
 import java.io.ByteArrayInputStream;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -37,6 +38,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/hr/payroll")
 @RequiredArgsConstructor
+@Slf4j
 public class PayrollController {
 
   /** 工资服务. */

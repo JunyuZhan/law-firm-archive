@@ -244,7 +244,7 @@ public class DossierAutoArchiveService {
       // 在新事务中执行归档
       doArchiveMatterDocuments(matterId, contractId, operatorId);
     } catch (Exception e) {
-      log.error("异步归档项目文档失败: matterId={}, contractId={}", matterId, contractId, e);
+      LOG.error("异步归档项目文档失败: matterId={}, contractId={}", matterId, contractId, e);
     }
   }
 

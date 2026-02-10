@@ -25,8 +25,6 @@ public class OcrController {
 
   /** OCR应用服务 */
   private final OcrAppService ocrAppService;
-  /** 文件校验工具 */
-  private final FileValidator fileValidator;
 
   /**
    * 通用文字识别
@@ -40,7 +38,7 @@ public class OcrController {
   @OperationLog(module = "OCR识别", action = "通用文字识别")
   public Result<OcrResultDTO> recognizeText(
       @Parameter(description = "图片文件") @RequestParam("file") final MultipartFile file) {
-    fileValidator.validateFile(file);
+    FileValidator.validate(file);
     return Result.success(ocrAppService.recognizeText(file));
   }
 
@@ -71,7 +69,7 @@ public class OcrController {
   @OperationLog(module = "OCR识别", action = "银行回单识别")
   public Result<OcrResultDTO> recognizeBankReceipt(
       @Parameter(description = "银行回单图片") @RequestParam("file") final MultipartFile file) {
-    fileValidator.validateFile(file);
+    FileValidator.validate(file);
     return Result.success(ocrAppService.recognizeBankReceipt(file));
   }
 
@@ -104,7 +102,7 @@ public class OcrController {
   public Result<OcrResultDTO> recognizeIdCard(
       @Parameter(description = "身份证图片") @RequestParam("file") final MultipartFile file,
       @Parameter(description = "是否正面") @RequestParam(defaultValue = "true") final boolean isFront) {
-    fileValidator.validateFile(file);
+    FileValidator.validate(file);
     return Result.success(ocrAppService.recognizeIdCard(file, isFront));
   }
 
@@ -137,7 +135,7 @@ public class OcrController {
   @OperationLog(module = "OCR识别", action = "营业执照识别")
   public Result<OcrResultDTO> recognizeBusinessLicense(
       @Parameter(description = "营业执照图片") @RequestParam("file") final MultipartFile file) {
-    fileValidator.validateFile(file);
+    FileValidator.validate(file);
     return Result.success(ocrAppService.recognizeBusinessLicense(file));
   }
 
@@ -168,7 +166,7 @@ public class OcrController {
   @OperationLog(module = "OCR识别", action = "名片识别")
   public Result<OcrResultDTO> recognizeBusinessCard(
       @Parameter(description = "名片图片") @RequestParam("file") final MultipartFile file) {
-    fileValidator.validateFile(file);
+    FileValidator.validate(file);
     return Result.success(ocrAppService.recognizeBusinessCard(file));
   }
 
@@ -199,7 +197,7 @@ public class OcrController {
   @OperationLog(module = "OCR识别", action = "发票识别")
   public Result<OcrResultDTO> recognizeInvoice(
       @Parameter(description = "发票图片") @RequestParam("file") final MultipartFile file) {
-    fileValidator.validateFile(file);
+    FileValidator.validate(file);
     return Result.success(ocrAppService.recognizeInvoice(file));
   }
 

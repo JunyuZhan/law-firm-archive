@@ -1028,6 +1028,36 @@
 
 ---
 
+### 50. SQL 安全问题
+
+**问题描述**：LIKE 查询未转义通配符，存在注入风险。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| ✅ | wrapper.last() 拼接未校验 | `OperationLogAppService.java:271` | 添加范围校验 |
+| ✅ | LIKE 未转义 % 和 _ | `OperationLogAppService.java` | 添加 SqlUtils.escapeLike |
+| 🟡中 | LIKE 未转义通配符 | `UserMapper.java:48-54` | 服务层转义 |
+| 🟡中 | LIKE 未转义通配符 | `MatterMapper.java:39-42` | 服务层转义 |
+
+**状态**：🔄 高优先级已修复
+
+---
+
+### 51. 路由参数安全
+
+**问题描述**：路由参数未校验可能导致错误或安全问题。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| ✅ | clientId 转换可能为 NaN | `matter/list/index.vue:1042` | 添加 isNaN 检查 |
+| ✅ | returnPath 开放重定向风险 | `crm/client/index.vue:390` | 校验路径以 / 开头 |
+| 🟡中 | route.query 变化未 watch | `document/list/index.vue` | 添加 watch |
+| 🟡中 | route.query 变化未 watch | `office-preview/index.vue` | 添加 watch |
+
+**状态**：🔄 高优先级已修复
+
+---
+
 ### 45. 前端组件卸载时状态更新
 
 **问题描述**：异步操作完成后未检查组件是否仍挂载。
