@@ -216,7 +216,10 @@
 
 | 优先级 | 问题 | 位置 | 修复方案 |
 |--------|------|------|----------|
-| 🔴高 | ids 未校验 | `CommissionController.java:294-298,327-330` | 批量接口添加 @NotEmpty 或判空 |
+| ✅ | ids 未校验 | `CommissionController.java:294-298,327-330` | 已添加 @Size 限制 |
+| ✅ | 批量删除无数量限制 | `UserController.BatchDeleteRequest` | 已添加 @Size(max=100) |
+| ✅ | 批量删除无数量限制 | `ClientController.BatchDeleteRequest` | 已添加 @Size(max=100) |
+| ✅ | 批量审批无数量限制 | `ApprovalController.BatchApproveRequest` | 已添加 @NotEmpty + @Size(max=100) |
 | 🟡中 | pageSize 无上限 | `PageQuery.java:37-39` | 添加 pageSize 最大值限制 |
 | 🟡中 | 日期格式未校验 | `CommissionController.java:253-256` | 使用 @DateTimeFormat 或 LocalDate |
 
@@ -484,7 +487,7 @@
 | 优先级 | 问题 | 位置 | 修复方案 |
 |--------|------|------|----------|
 | ✅ | 异常消息直接暴露 | `EvidenceController.java:335,465`<br>`DocumentController.java:328,802,1172`<br>`VersionController.java:191,367` | 已改为通用错误提示 |
-| ✅ | 空 catch 块无日志 | `SysConfigController.java:290`<br>`VersionController.java:447,368` | 已添加 log.debug/warn |
+| ✅ | 空 catch 块无日志 | `SysConfigController.java:290`<br>`VersionController.java:447,368`<br>`AuditFieldAspect.java:155` | 已添加 log.debug/warn |
 | 🟡中 | @Transactional 未指定 rollbackFor | `DataHandoverService.java`<br>`BackupAppService.java`<br>`UserAppService.java` 等 | 添加 rollbackFor=Exception.class |
 
 **状态**：🔄 部分修复

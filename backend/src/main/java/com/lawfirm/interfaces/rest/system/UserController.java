@@ -320,6 +320,7 @@ public class UserController {
   public static class BatchDeleteRequest {
     /** 用户ID列表 */
     @NotEmpty(message = "用户ID列表不能为空")
+    @jakarta.validation.constraints.Size(max = 100, message = "批量删除数量不能超过100")
     private List<Long> ids;
   }
 

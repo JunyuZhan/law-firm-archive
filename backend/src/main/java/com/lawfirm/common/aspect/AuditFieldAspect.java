@@ -152,7 +152,8 @@ public class AuditFieldAspect {
     try {
       userId = SecurityUtils.getUserId();
       username = SecurityUtils.getUsername();
-    } catch (Exception ignored) {
+    } catch (Exception e) {
+      log.debug("获取当前用户信息失败，使用匿名用户: {}", e.getMessage());
     }
 
     // 构建变更描述

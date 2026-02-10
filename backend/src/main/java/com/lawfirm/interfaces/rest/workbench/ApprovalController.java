@@ -156,6 +156,8 @@ public class ApprovalController {
   @Data
   public static class BatchApproveRequest {
     /** 审批ID列表. */
+    @jakarta.validation.constraints.NotEmpty(message = "审批ID列表不能为空")
+    @jakarta.validation.constraints.Size(max = 100, message = "批量审批数量不能超过100")
     private List<Long> approvalIds;
 
     /** 审批结果（true通过，false拒绝）. */
