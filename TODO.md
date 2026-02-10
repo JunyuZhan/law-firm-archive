@@ -853,12 +853,24 @@
 
 | 优先级 | 问题 | 位置 | 修复方案 |
 |--------|------|------|----------|
-| 🔴高 | deptChildrenCache 无过期限制 | `DataScopeInterceptor.java:66-67` | 添加过期机制或大小限制 |
-| 🔴高 | 部门缓存清理不统一 | `CacheController.java:94-99` | 同时清理 DataScopeInterceptor 缓存 |
+| 🟡中 | deptChildrenCache 无过期限制 | `DataScopeInterceptor.java:66-67` | 部门数量有限，已有 clearDeptCache 方法 |
+| ✅ | 部门缓存清理不统一 | `CacheController.java:94-99` | 同时清理 DataScopeInterceptor 缓存 |
 | 🟡中 | taskRecords 无过期限制 | `ScheduledTaskMonitor.java:25-26` | 任务类型数量有限，影响小 |
 | 🟡中 | taskStatsMap 无过期限制 | `AsyncTaskMonitor.java:26` | 任务类型数量有限，影响小 |
 
-**状态**：⏳ 待处理
+**状态**：🔄 高优先级已修复
+
+---
+
+### 38. Redis 数据类型不匹配
+
+**问题描述**：Redis 操作数据类型不一致导致读写失败。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| ✅ | getTrustedLocations 用 opsForValue 读 Set | `LoginLocationService.java:138-152` | 改用 opsForSet().members() |
+
+**状态**：✅ 已修复
 
 ---
 

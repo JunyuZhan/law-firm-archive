@@ -4,6 +4,7 @@ import com.lawfirm.common.annotation.RequirePermission;
 import com.lawfirm.common.result.Result;
 import com.lawfirm.infrastructure.cache.BusinessCacheService;
 import com.lawfirm.infrastructure.cache.dto.CacheStats;
+import com.lawfirm.infrastructure.persistence.interceptor.DataScopeInterceptor;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +30,9 @@ public class CacheController {
 
   /** 业务缓存服务 */
   private final BusinessCacheService businessCacheService;
+
+  /** 数据权限拦截器（包含部门层级缓存） */
+  private final DataScopeInterceptor dataScopeInterceptor;
 
   /**
    * 获取缓存统计
@@ -95,6 +99,8 @@ public class CacheController {
   public Result<Void> clearDeptCache() {
     log.info("清除部门缓存");
     businessCacheService.evictAllDepartments();
+    // 同时清除数据权限拦截器中的部门层级缓存
+    dataScopeInterceptor.clearDeptCache();
     return Result.success();
   }
 

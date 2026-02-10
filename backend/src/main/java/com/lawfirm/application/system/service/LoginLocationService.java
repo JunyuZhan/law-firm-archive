@@ -139,16 +139,18 @@ public class LoginLocationService {
   private Set<String> getTrustedLocations(final Long userId, final boolean isCityLevel) {
     String suffix = isCityLevel ? ":city" : "";
     String key = TRUSTED_LOCATION_PREFIX + userId + suffix;
-    Object cached = redisTemplate.opsForValue().get(key);
-
-    if (cached instanceof Set) {
-      return (Set<String>) cached;
+    // 使用 opsForSet().members() 读取 Redis Set（与 updateTrustedLocation 的 add 操作匹配）
+    Set<Object> members = redisTemplate.opsForSet().members(key);
+    if (members == null || members.isEmpty()) {
+      return new HashSet<>();
     }
-    if (cached instanceof List) {
-      return new HashSet<>((List<String>) cached);
+    Set<String> result = new HashSet<>();
+    for (Object member : members) {
+      if (member instanceof String) {
+        result.add((String) member);
+      }
     }
-
-    return new HashSet<>();
+    return result;
   }
 
   /**
