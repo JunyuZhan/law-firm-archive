@@ -324,7 +324,7 @@
 
 | 优先级 | 问题 | 位置 | 修复方案 |
 |--------|------|------|----------|
-| 🔴高 | Zip 解压路径遍历 | `BackupAppService.java:1148-1154` | 校验 entry.getName() 不含 `../` |
+| ✅ | Zip 解压路径遍历 | `BackupAppService.java:1148-1160` | 已有路径校验和规范化 |
 
 #### 11.3 临时文件清理
 
@@ -455,7 +455,7 @@
 | 优先级 | 问题 | 位置 | 修复方案 |
 |--------|------|------|----------|
 | ✅ | List 参数无大小限制 | `CommissionController.java:295,329`<br>`EvidenceController.java:177`<br>`TimesheetController.java:136` | 已添加 @Size(max=100) |
-| 🔴高 | AlertWebhook 无签名校验 | `AlertWebhookController.java:36` | 添加来源验证或签名校验 |
+| ✅ | AlertWebhook 无签名校验 | `AlertWebhookController.java` | 已添加 Bearer Token 认证 |
 | 🟡中 | @PathVariable Long 未校验正数 | 多个 Controller | 添加 @Positive 或 @Min(1) |
 | 🟡中 | pageSize 无上限 | `DocumentController.java:346`<br>`NotificationController.java:44` | 添加 @Max(100) |
 

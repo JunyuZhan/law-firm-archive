@@ -7,10 +7,14 @@ import java.util.Map;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 /** Alertmanager Webhook 接口 接收 Prometheus Alertmanager 发送的告警通知 通过系统配置的邮件服务发送告警邮件 */
 @Slf4j
@@ -26,14 +30,29 @@ public class AlertWebhookController {
   @SuppressWarnings("unused")
   private final AlertService alertService;
 
+  /** Webhook 认证令牌（从配置读取） */
+  @Value("${alert.webhook.token:}")
+  private String webhookToken;
+
   /**
    * 接收 Alertmanager Webhook 请求 Alertmanager 会将告警以 JSON 格式 POST 到此端点
    *
+   * @param authorization 认证头（Bearer token）
    * @param payload Alertmanager 告警负载
    * @return 处理结果
    */
   @PostMapping("/webhook")
-  public Map<String, Object> receiveAlert(@RequestBody final AlertmanagerPayload payload) {
+  public Map<String, Object> receiveAlert(
+      @RequestHeader(value = "Authorization", required = false) final String authorization,
+      @RequestBody final AlertmanagerPayload payload) {
+    // 验证 Webhook Token（如果配置了的话）
+    if (webhookToken != null && !webhookToken.isEmpty()) {
+      String expectedToken = "Bearer " + webhookToken;
+      if (authorization == null || !expectedToken.equals(authorization)) {
+        log.warn("Alert webhook 认证失败: 无效的 Authorization 头");
+        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid webhook token");
+      }
+    }
     log.info(
         "收到 Alertmanager 告警: status={}, alertCount={}",
         payload.getStatus(),
