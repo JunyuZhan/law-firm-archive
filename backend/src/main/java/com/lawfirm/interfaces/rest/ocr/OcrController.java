@@ -3,7 +3,9 @@ package com.lawfirm.interfaces.rest.ocr;
 import com.lawfirm.application.ocr.dto.OcrResultDTO;
 import com.lawfirm.application.ocr.service.OcrAppService;
 import com.lawfirm.common.annotation.OperationLog;
+import com.lawfirm.common.annotation.RequirePermission;
 import com.lawfirm.common.result.Result;
+import com.lawfirm.common.util.FileValidator;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -23,6 +25,8 @@ public class OcrController {
 
   /** OCR应用服务 */
   private final OcrAppService ocrAppService;
+  /** 文件校验工具 */
+  private final FileValidator fileValidator;
 
   /**
    * 通用文字识别
@@ -32,9 +36,11 @@ public class OcrController {
    */
   @Operation(summary = "通用文字识别")
   @PostMapping("/text")
+  @RequirePermission("ocr:use")
   @OperationLog(module = "OCR识别", action = "通用文字识别")
   public Result<OcrResultDTO> recognizeText(
       @Parameter(description = "图片文件") @RequestParam("file") final MultipartFile file) {
+    fileValidator.validateFile(file);
     return Result.success(ocrAppService.recognizeText(file));
   }
 
@@ -46,6 +52,7 @@ public class OcrController {
    */
   @Operation(summary = "通用文字识别（URL）")
   @PostMapping("/text/url")
+  @RequirePermission("ocr:use")
   @OperationLog(module = "OCR识别", action = "通用文字识别(URL)")
   public Result<OcrResultDTO> recognizeTextByUrl(
       @Parameter(description = "图片URL") @RequestParam final String imageUrl) {
@@ -60,9 +67,11 @@ public class OcrController {
    */
   @Operation(summary = "银行回单识别")
   @PostMapping("/bank-receipt")
+  @RequirePermission("ocr:use")
   @OperationLog(module = "OCR识别", action = "银行回单识别")
   public Result<OcrResultDTO> recognizeBankReceipt(
       @Parameter(description = "银行回单图片") @RequestParam("file") final MultipartFile file) {
+    fileValidator.validateFile(file);
     return Result.success(ocrAppService.recognizeBankReceipt(file));
   }
 
@@ -74,6 +83,7 @@ public class OcrController {
    */
   @Operation(summary = "银行回单识别（URL）")
   @PostMapping("/bank-receipt/url")
+  @RequirePermission("ocr:use")
   @OperationLog(module = "OCR识别", action = "银行回单识别(URL)")
   public Result<OcrResultDTO> recognizeBankReceiptByUrl(
       @Parameter(description = "图片URL") @RequestParam final String imageUrl) {
@@ -89,10 +99,12 @@ public class OcrController {
    */
   @Operation(summary = "身份证识别")
   @PostMapping("/id-card")
+  @RequirePermission("ocr:use")
   @OperationLog(module = "OCR识别", action = "身份证识别")
   public Result<OcrResultDTO> recognizeIdCard(
       @Parameter(description = "身份证图片") @RequestParam("file") final MultipartFile file,
       @Parameter(description = "是否正面") @RequestParam(defaultValue = "true") final boolean isFront) {
+    fileValidator.validateFile(file);
     return Result.success(ocrAppService.recognizeIdCard(file, isFront));
   }
 
@@ -105,6 +117,7 @@ public class OcrController {
    */
   @Operation(summary = "身份证识别（URL）")
   @PostMapping("/id-card/url")
+  @RequirePermission("ocr:use")
   @OperationLog(module = "OCR识别", action = "身份证识别(URL)")
   public Result<OcrResultDTO> recognizeIdCardByUrl(
       @Parameter(description = "图片URL") @RequestParam final String imageUrl,
@@ -120,9 +133,11 @@ public class OcrController {
    */
   @Operation(summary = "营业执照识别")
   @PostMapping("/business-license")
+  @RequirePermission("ocr:use")
   @OperationLog(module = "OCR识别", action = "营业执照识别")
   public Result<OcrResultDTO> recognizeBusinessLicense(
       @Parameter(description = "营业执照图片") @RequestParam("file") final MultipartFile file) {
+    fileValidator.validateFile(file);
     return Result.success(ocrAppService.recognizeBusinessLicense(file));
   }
 
@@ -134,6 +149,7 @@ public class OcrController {
    */
   @Operation(summary = "营业执照识别（URL）")
   @PostMapping("/business-license/url")
+  @RequirePermission("ocr:use")
   @OperationLog(module = "OCR识别", action = "营业执照识别(URL)")
   public Result<OcrResultDTO> recognizeBusinessLicenseByUrl(
       @Parameter(description = "图片URL") @RequestParam final String imageUrl) {
@@ -148,9 +164,11 @@ public class OcrController {
    */
   @Operation(summary = "名片识别")
   @PostMapping("/business-card")
+  @RequirePermission("ocr:use")
   @OperationLog(module = "OCR识别", action = "名片识别")
   public Result<OcrResultDTO> recognizeBusinessCard(
       @Parameter(description = "名片图片") @RequestParam("file") final MultipartFile file) {
+    fileValidator.validateFile(file);
     return Result.success(ocrAppService.recognizeBusinessCard(file));
   }
 
@@ -162,6 +180,7 @@ public class OcrController {
    */
   @Operation(summary = "名片识别（URL）")
   @PostMapping("/business-card/url")
+  @RequirePermission("ocr:use")
   @OperationLog(module = "OCR识别", action = "名片识别(URL)")
   public Result<OcrResultDTO> recognizeBusinessCardByUrl(
       @Parameter(description = "图片URL") @RequestParam final String imageUrl) {
@@ -176,9 +195,11 @@ public class OcrController {
    */
   @Operation(summary = "发票/票据识别")
   @PostMapping("/invoice")
+  @RequirePermission("ocr:use")
   @OperationLog(module = "OCR识别", action = "发票识别")
   public Result<OcrResultDTO> recognizeInvoice(
       @Parameter(description = "发票图片") @RequestParam("file") final MultipartFile file) {
+    fileValidator.validateFile(file);
     return Result.success(ocrAppService.recognizeInvoice(file));
   }
 
@@ -190,6 +211,7 @@ public class OcrController {
    */
   @Operation(summary = "发票/票据识别（URL）")
   @PostMapping("/invoice/url")
+  @RequirePermission("ocr:use")
   @OperationLog(module = "OCR识别", action = "发票识别(URL)")
   public Result<OcrResultDTO> recognizeInvoiceByUrl(
       @Parameter(description = "图片URL") @RequestParam final String imageUrl) {
