@@ -1252,6 +1252,39 @@
 
 ---
 
+### 63. 后端资源未正确关闭
+
+**问题描述**：InputStream、Process 流未正确关闭。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| ✅ | file.getInputStream() 未关闭 | `FileAccessService.java:68` | 使用 try-with-resources |
+| ✅ | Process 流未消费/关闭 | `BackupAppService.java:369` | 添加 drainStream 和 destroy |
+| 🟡中 | docker cp Process 流未关闭 | `BackupAppService.java:347,680,940` | 需统一 Process 执行工具类 |
+| 🟡中 | 匿名 Process 流未关闭 | `BackupAppService.java:356,684,1249,1274` | 需重构 |
+
+**状态**：🔄 高优先级已修复
+
+---
+
+### 64. 前端错误处理缺失
+
+**问题描述**：API 调用失败后无用户反馈。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| ✅ | 滑块令牌获取失败无反馈 | `login.vue:82-84` | 添加 message.warning |
+| ✅ | 验证码获取失败无反馈 | `login.vue:94-96` | 添加 message.warning |
+| ✅ | 会话列表加载失败空 catch | `SessionTab.vue:82-83` | 添加 message.error |
+| ✅ | 登录日志加载失败空 catch | `LoginLogTab.vue:74-76` | 添加 message.error |
+| ✅ | 登录日志详情失败无提示 | `LoginLogTab.vue:86-88` | 添加 message.warning |
+| 🟡中 | 日程页多个加载仅 console | `schedule/index.vue` | 添加用户反馈 |
+| 🟡中 | 案由详情加载仅 console | `CauseOfActionTab.vue:495` | 添加用户反馈 |
+
+**状态**：🔄 高优先级已修复
+
+---
+
 ## ✅ 已完成任务
 
 _（完成后将任务移至此处）_

@@ -81,6 +81,7 @@ async function fetchSliderToken() {
     sliderVerifyToken.value = '';
   } catch (error) {
     console.error('获取滑块令牌失败:', error);
+    message.warning('验证组件加载失败，请刷新页面重试');
   }
 }
 
@@ -93,6 +94,7 @@ async function fetchImageCaptcha() {
     captchaCode.value = '';
   } catch (error) {
     console.error('获取验证码失败:', error);
+    message.warning('验证码加载失败，请点击刷新');
   }
 }
 

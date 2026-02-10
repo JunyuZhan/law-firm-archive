@@ -63,9 +63,11 @@ public class FileAccessService {
       // 6. 构建完整对象名称
       String objectName = MinioPathGenerator.buildObjectName(standardStoragePath, physicalName);
 
-      // 7. 上传文件到 MinIO
-      String fileUrl =
-          minioService.uploadFile(file.getInputStream(), objectName, file.getContentType());
+      // 7. 上传文件到 MinIO（使用 try-with-resources 确保 InputStream 关闭）
+      String fileUrl;
+      try (java.io.InputStream inputStream = file.getInputStream()) {
+        fileUrl = minioService.uploadFile(inputStream, objectName, file.getContentType());
+      }
 
       // 8. 构建返回信息
       Map<String, String> storageInfo = new HashMap<>();

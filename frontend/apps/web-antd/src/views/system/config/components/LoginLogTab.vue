@@ -8,6 +8,7 @@ import {
   Descriptions,
   DescriptionsItem,
   Input,
+  message,
   Modal,
   Select,
   Space,
@@ -71,8 +72,9 @@ async function fetchData() {
     const res = await getLoginLogList(params);
     dataSource.value = res.list || [];
     total.value = res.total || 0;
-  } catch {
-    // 忽略错误
+  } catch (error) {
+    console.error('获取登录日志失败:', error);
+    message.error('加载登录日志失败，请稍后重试');
   } finally {
     loading.value = false;
   }
@@ -83,8 +85,10 @@ async function handleViewDetail(row: LoginLogDTO) {
   detailVisible.value = true;
   try {
     detailData.value = await getLoginLogDetail(row.id);
-  } catch {
+  } catch (error) {
+    console.error('获取登录日志详情失败:', error);
     detailData.value = row;
+    message.warning('获取详情失败，显示基本信息');
   } finally {
     detailLoading.value = false;
   }

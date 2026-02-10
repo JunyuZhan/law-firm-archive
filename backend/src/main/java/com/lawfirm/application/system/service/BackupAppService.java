@@ -365,13 +365,40 @@ public class BackupAppService {
    * @return 如果Docker可用返回true，否则返回false
    */
   private boolean isDockerAvailable() {
+    Process process = null;
     try {
-      Process process = new ProcessBuilder("docker", "--version").start();
+      process = new ProcessBuilder("docker", "--version").start();
+      // 消费输出流防止管道阻塞
+      drainStream(process.getInputStream());
+      drainStream(process.getErrorStream());
       int exitCode = process.waitFor();
       return exitCode == 0;
     } catch (Exception e) {
       log.debug("Docker 不可用: {}", e.getMessage());
       return false;
+    } finally {
+      if (process != null) {
+        process.destroy();
+      }
+    }
+  }
+
+  /**
+   * 消费流内容防止管道阻塞。
+   *
+   * @param stream 输入流
+   */
+  private void drainStream(final java.io.InputStream stream) {
+    if (stream == null) {
+      return;
+    }
+    try {
+      byte[] buffer = new byte[1024];
+      while (stream.read(buffer) != -1) {
+        // 仅消费，不处理
+      }
+    } catch (Exception e) {
+      // 忽略流读取异常
     }
   }
 

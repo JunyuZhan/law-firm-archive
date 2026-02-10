@@ -79,8 +79,9 @@ async function fetchData() {
     });
     dataSource.value = res.list || [];
     total.value = res.total || 0;
-  } catch {
-    // 忽略错误
+  } catch (error) {
+    console.error('获取会话列表失败:', error);
+    message.error('加载会话列表失败，请稍后重试');
   } finally {
     loading.value = false;
   }
