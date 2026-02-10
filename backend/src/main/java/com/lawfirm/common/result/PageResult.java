@@ -56,7 +56,8 @@ public class PageResult<T> {
     result.total = total;
     result.pageNum = pageNum;
     result.pageSize = pageSize;
-    result.pages = (int) Math.ceil((double) total / pageSize);
+    // 防止除零错误（pageSize <= 0 时返回 0 页或 1 页）
+    result.pages = pageSize > 0 ? (int) Math.ceil((double) total / pageSize) : (total > 0 ? 1 : 0);
     return result;
   }
 

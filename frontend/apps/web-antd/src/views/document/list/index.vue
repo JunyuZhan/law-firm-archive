@@ -941,7 +941,8 @@ async function loadProjectDocuments() {
       pageNum: 1,
       pageSize: 1000,
     });
-    documents.value = res.list;
+    // 安全访问 API 响应
+    documents.value = res?.list ?? [];
     // 更新可排序文档列表
     updateSortableDocuments();
   } catch {

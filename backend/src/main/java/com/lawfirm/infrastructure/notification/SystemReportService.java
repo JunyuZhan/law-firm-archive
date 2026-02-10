@@ -276,11 +276,12 @@ public class SystemReportService {
     MemoryMXBean memoryMXBean = ManagementFactory.getMemoryMXBean();
     long heapUsed = memoryMXBean.getHeapMemoryUsage().getUsed() / BYTES_TO_MB;
     long heapMax = memoryMXBean.getHeapMemoryUsage().getMax() / BYTES_TO_MB;
-    int heapPercent = (int) (heapUsed * PERCENTAGE_BASE / heapMax);
+    // 防止除零（heapMax 为 -1 表示未定义，为 0 表示无限制或错误）
+    int heapPercent = heapMax > 0 ? (int) (heapUsed * PERCENTAGE_BASE / heapMax) : 0;
 
     return new String[][] {
       {"运行时长", formatDuration(duration)},
-      {"堆内存使用", heapUsed + " MB / " + heapMax + " MB (" + heapPercent + "%)"},
+      {"堆内存使用", heapUsed + " MB / " + (heapMax > 0 ? heapMax + " MB" : "未限制") + " (" + heapPercent + "%)"},
       {"线程数", String.valueOf(Thread.activeCount())},
       {"处理器核心", String.valueOf(Runtime.getRuntime().availableProcessors())}
     };
@@ -409,6 +410,11 @@ public class SystemReportService {
     MemoryMXBean memoryMXBean = ManagementFactory.getMemoryMXBean();
     long heapUsed = memoryMXBean.getHeapMemoryUsage().getUsed();
     long heapMax = memoryMXBean.getHeapMemoryUsage().getMax();
+    // 防止除零（heapMax 为 -1 表示未定义，为 0 表示无限制）
+    if (heapMax <= 0) {
+      log.debug("JVM 堆内存上限未定义，跳过内存使用率检查");
+      return;
+    }
     int usedPercent = (int) (heapUsed * PERCENTAGE_BASE / heapMax);
 
     if (usedPercent > MEMORY_ALERT_THRESHOLD) {

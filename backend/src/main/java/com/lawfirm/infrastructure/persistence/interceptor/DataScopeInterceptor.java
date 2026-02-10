@@ -160,8 +160,13 @@ public class DataScopeInterceptor implements InnerInterceptor {
     DataScope dataScope = null;
     try {
       // 解析 Mapper 类和方法
-      String className = id.substring(0, id.lastIndexOf("."));
-      String methodName = id.substring(id.lastIndexOf(".") + 1);
+      int lastDotIndex = id.lastIndexOf(".");
+      if (lastDotIndex < 0) {
+        log.debug("无法解析 Mapper ID: {}（不包含点号）", id);
+        return invocation.proceed();
+      }
+      String className = id.substring(0, lastDotIndex);
+      String methodName = id.substring(lastDotIndex + 1);
 
       Class<?> mapperClass = Class.forName(className);
 

@@ -966,6 +966,37 @@
 
 ---
 
+### 46. API 响应空值保护
+
+**问题描述**：前端直接访问 API 响应字段，未做空值检查。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| ✅ | res.list 直接访问 | `archive/list/index.vue:285-288,331` | 使用 res?.list ?? [] |
+| ✅ | res.list 直接访问 | `document/list/index.vue:944` | 使用 res?.list ?? [] |
+| 🟡中 | res.list/res.total 无检查 | `system/role/index.vue:137-138` | 添加空值保护 |
+| 🟡中 | res.list/res.total 无检查 | `personal/ai-usage/index.vue:241-243` | 添加空值保护 |
+| 🟡中 | res.list 访问前无检查 | `workbench/schedule/index.vue:226` | 使用 res?.list ?? [] |
+
+**状态**：🔄 高优先级已修复
+
+---
+
+### 47. 后端边界条件处理
+
+**问题描述**：除法、字符串操作等边界条件未处理。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| ✅ | pageSize 为 0 导致除零 | `PageResult.java:59` | 添加 pageSize > 0 检查 |
+| ✅ | heapMax 可能为 -1 或 0 | `SystemReportService.java:279,413` | 添加 heapMax > 0 检查 |
+| ✅ | lastIndexOf 为 -1 时 substring 越界 | `DataScopeInterceptor.java:163-164` | 提前检查 lastDotIndex |
+| 🟡中 | get(0) 依赖隐式非空假设 | `TemplateVariableService.java:101,157` | 改用更安全的写法 |
+
+**状态**：🔄 高优先级已修复
+
+---
+
 ### 45. 前端组件卸载时状态更新
 
 **问题描述**：异步操作完成后未检查组件是否仍挂载。

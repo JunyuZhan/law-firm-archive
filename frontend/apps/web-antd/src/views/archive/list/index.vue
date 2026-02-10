@@ -282,10 +282,12 @@ async function fetchData() {
   loading.value = true;
   try {
     const res = await getArchiveList(queryParams);
-    dataSource.value = res.list;
-    total.value = res.total;
+    // 安全访问 API 响应（防止 res 或 res.list 为 undefined）
+    const list = res?.list ?? [];
+    dataSource.value = list;
+    total.value = res?.total ?? 0;
     // 加载项目详情（用于显示封面信息）
-    await loadMatterDetails(res.list);
+    await loadMatterDetails(list);
   } catch (error: any) {
     message.error(error.message || '加载档案列表失败');
   } finally {
@@ -326,7 +328,7 @@ async function loadMatterDetails(archives: ArchiveDTO[]) {
 async function loadMatters() {
   try {
     const res = await getMatterSelectOptions({ pageNum: 1, pageSize: 1000 });
-    matters.value = res.list;
+    matters.value = res?.list ?? [];
   } catch (error: any) {
     console.error('加载项目列表失败:', error);
   }
