@@ -30,6 +30,9 @@ const documentTitle = ref('');
 const showToolbar = ref(true); // 是否显示顶部工具栏（iframe 嵌入时隐藏）
 let editorInstance: any = null;
 
+// 用于跟踪打印窗口检查定时器，以便在组件卸载时清理
+const printIntervals: Set<ReturnType<typeof setInterval>> = new Set();
+
 // 是否支持预览
 const isSupported = computed(() => {
   return config.value?.supported ?? false;
@@ -73,6 +76,12 @@ onUnmounted(() => {
       console.warn('销毁编辑器失败:', error_);
     }
   }
+
+  // 清理打印窗口检查定时器
+  for (const intervalId of printIntervals) {
+    clearInterval(intervalId);
+  }
+  printIntervals.clear();
 });
 
 /**
@@ -431,9 +440,12 @@ async function handleCustomPrint() {
       const checkClosed = setInterval(() => {
         if (printWindow.closed) {
           clearInterval(checkClosed);
+          printIntervals.delete(checkClosed);
           revokeBlobUrl();
         }
       }, 500);
+      // 跟踪定时器，以便组件卸载时清理
+      printIntervals.add(checkClosed);
 
       // 等待文档加载后打印
       printWindow.addEventListener('load', () => {
@@ -443,6 +455,7 @@ async function handleCustomPrint() {
           setTimeout(() => {
             revokeBlobUrl();
             clearInterval(checkClosed);
+            printIntervals.delete(checkClosed);
           }, 1000);
         }, 1000);
       });

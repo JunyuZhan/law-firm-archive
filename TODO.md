@@ -133,9 +133,9 @@
 
 | 优先级 | 问题 | 位置 | 修复方案 |
 |--------|------|------|----------|
-| 🔴高 | 数组越界风险 | `LlmClient.java:664,725,952,1387` | `get(0)` 前检查数组是否为空 |
-| 🔴高 | 空指针风险 | `LlmClient.java` 多处 | `response.getBody()` 判空 |
-| 🔴高 | 空指针风险 | `PayrollController.java:284-287` | `sheet` 判空后再访问属性 |
+| ✅ | 数组越界风险 | `LlmClient.java` | 已有 isEmpty() 检查后再 get(0) |
+| ✅ | 空指针风险 | `LlmClient.java` 多处 | 已有 body == null 检查 |
+| ✅ | 空指针风险 | `PayrollController.java:284-287` | 已有 null 检查并返回 404 |
 | 🟡中 | 调试代码残留 | `ContractController.java:121-125,462-467` | 移除 `System.out.println` |
 | 🟡中 | 异常被吞掉 | `SysConfigController.java:288`<br>`AuthController.java:344`<br>`VersionController.java:368`<br>`MatterClientFileController.java:169`<br>`AiUsageRecorder.java:395` | 空 catch 块添加日志记录 |
 | 🟡中 | 文件名编码 | `PayrollController.java:292` | 使用 `URLEncoder.encode` |
@@ -144,9 +144,9 @@
 
 | 优先级 | 问题 | 位置 | 修复方案 |
 |--------|------|------|----------|
-| 🔴高 | 内存泄漏 | `EvidenceUploader.vue:52-61` | catch/finally 中清理 `setInterval` |
-| 🔴高 | Blob URL 泄漏 | `office-preview/index.vue:415-435` | 监听窗口关闭时释放 URL |
-| 🔴高 | FileReader 无错误处理 | `RichTextEditor/index.vue:136-143` | 添加 `error` 事件监听 |
+| ✅ | 内存泄漏 | `EvidenceUploader.vue:52-61` | 已在 finally 中 clearInterval |
+| ✅ | Blob URL 泄漏 | `office-preview/index.vue` | 已添加定时器跟踪和 onUnmounted 清理 |
+| ✅ | FileReader 无错误处理 | `RichTextEditor/index.vue` | 已添加 error 事件监听 |
 | 🔴高 | 未处理 Promise | `ClientServicePanel/index.vue:776-786` | watch 回调添加错误处理 |
 | 🟡中 | 类型安全 | `EvidenceUploader.vue:62-64` | 避免使用 `any`，定义明确类型 |
 | 🟡中 | 事件监听泄漏 | `document/list/index.vue:1532-1558` | 使用单例 input 或清理监听器 |
