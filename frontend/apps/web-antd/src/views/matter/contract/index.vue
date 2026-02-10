@@ -1427,8 +1427,8 @@ async function handlePreviewApprovalForm() {
       </head>
       <body>
         <div class="no-print" style="margin-bottom: 20px; padding: 12px; background: #e6f7ff; border: 1px solid #91d5ff; border-radius: 4px;">
-          <button onclick="window.print()" style="padding: 8px 16px; cursor: pointer; margin-right: 10px;">打印审批表</button>
-          <button onclick="window.close()" style="padding: 8px 16px; cursor: pointer;">关闭</button>
+          <button type="button" onclick="window.print()" style="padding: 8px 16px; cursor: pointer; margin-right: 10px;">打印审批表</button>
+          <button type="button" onclick="window.close()" style="padding: 8px 16px; cursor: pointer;">关闭</button>
         </div>
         ${approvalFormHtml}
       </body>

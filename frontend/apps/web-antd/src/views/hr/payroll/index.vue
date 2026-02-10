@@ -653,8 +653,8 @@ function handlePrint() {
     <body>
       ${html}
       <div class="no-print">
-        <button onclick="window.print()">打印</button>
-        <button onclick="window.close()">关闭</button>
+        <button type="button" onclick="window.print()">打印</button>
+        <button type="button" onclick="window.close()">关闭</button>
       </div>
     </body>
     </html>

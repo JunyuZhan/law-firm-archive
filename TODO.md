@@ -647,8 +647,8 @@
 | ✅ | 登录密码写入操作日志 | `AuthController.java:167` | 已添加 saveParams=false |
 | ✅ | 验证码答案写入 DEBUG 日志 | `CaptchaService.java:77` | 已移除 answer 参数 |
 | ✅ | 异常信息暴露给前端 | `EvidenceController.java:687,735` | 已改为通用错误提示 |
+| ✅ | 许可码写入日志 | `LoginLocationService.java:411` | 已移除敏感参数 |
 | 🟡中 | Token 写入日志 | `OnlyOfficeService.java:409` | 脱敏处理 |
-| 🟡中 | 许可码写入日志 | `LoginLocationService.java:411` | 移除敏感参数 |
 | 🟡中 | 滑块验证凭证写入日志 | `SliderCaptchaService.java:77,134,156` | 移除敏感参数 |
 
 **状态**：🔄 高优先级已修复

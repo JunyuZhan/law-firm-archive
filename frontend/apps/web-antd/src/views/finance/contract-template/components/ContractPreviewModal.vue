@@ -287,7 +287,7 @@ defineExpose({ open });
 </script>
 
 <template>
-  <Modal class="w-[900px]">
+  <Modal title="合同预览" class="w-[900px]">
     <div class="preview-toolbar">
       <Space>
         <Button type="primary" @click="handlePrint">打印 / 导出PDF</Button>

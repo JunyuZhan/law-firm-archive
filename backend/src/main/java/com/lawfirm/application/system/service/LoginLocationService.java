@@ -408,7 +408,7 @@ public class LoginLocationService {
 
     // 验证许可码
     if (!inputCode.equals(storedCode)) {
-      log.warn("许可码验证失败: requestId={}, userId={}, input={}", requestId, userId, inputCode);
+      log.warn("许可码验证失败: requestId={}, userId={}", requestId, userId);
       return PermitCodeVerifyResult.fail("许可码错误");
     }
 
