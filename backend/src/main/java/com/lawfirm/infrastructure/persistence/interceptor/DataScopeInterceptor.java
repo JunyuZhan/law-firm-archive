@@ -146,9 +146,10 @@ public class DataScopeInterceptor implements InnerInterceptor {
   private DataScope getDataScopeAnnotation(final MappedStatement ms) {
     String id = ms.getId();
 
-    // 从缓存获取
-    if (dataScopeCache.containsKey(id)) {
-      return dataScopeCache.get(id);
+    // 使用 get() 而非 containsKey()+get() 避免竞态
+    DataScope cached = dataScopeCache.get(id);
+    if (cached != null) {
+      return cached;
     }
 
     // 检查是否已确认没有注解
@@ -181,9 +182,10 @@ public class DataScopeInterceptor implements InnerInterceptor {
       log.debug("获取DataScope注解失败: {}", e.getMessage());
     }
 
-    // 缓存结果：ConcurrentHashMap不允许null值，所以需要分开处理
+    // 缓存结果：使用 putIfAbsent 避免覆盖并发写入的值
     if (dataScope != null) {
-      dataScopeCache.put(id, dataScope);
+      DataScope existing = dataScopeCache.putIfAbsent(id, dataScope);
+      return existing != null ? existing : dataScope;
     } else {
       noDataScopeMethods.add(id);
     }

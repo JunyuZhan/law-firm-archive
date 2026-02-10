@@ -447,20 +447,25 @@ public class VersionController {
     public Result<Void> ignoreVersion(@RequestParam String version) {
         try {
             String configKey = "system.ignored-version";
-            Long exists = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM sys_config WHERE config_key = ?", Long.class, configKey);
+            // 先尝试更新，如果没有更新到行则插入（避免 check-then-act 竞态）
+            int updated = jdbcTemplate.update(
+                "UPDATE sys_config SET config_value = ?, update_time = CURRENT_TIMESTAMP WHERE config_key = ?",
+                version, configKey);
 
-            if (exists != null && exists > 0) {
-                jdbcTemplate.update(
-                    "UPDATE sys_config SET config_value = ?, update_time = CURRENT_TIMESTAMP WHERE config_key = ?",
-                    version, configKey);
-            } else {
-                String sql = "INSERT INTO sys_config "
-                    + "(config_key, config_value, config_name, config_type, remark, "
-                    + "create_time, update_time) "
-                    + "VALUES (?, ?, '已忽略的版本号', 'Y', '版本更新忽略配置', "
-                    + "CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)";
-                jdbcTemplate.update(sql, configKey, version);
+            if (updated == 0) {
+                try {
+                    String sql = "INSERT INTO sys_config "
+                        + "(config_key, config_value, config_name, config_type, remark, "
+                        + "create_time, update_time) "
+                        + "VALUES (?, ?, '已忽略的版本号', 'Y', '版本更新忽略配置', "
+                        + "CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)";
+                    jdbcTemplate.update(sql, configKey, version);
+                } catch (org.springframework.dao.DuplicateKeyException e) {
+                    // 并发插入，另一个线程已插入，再次更新
+                    jdbcTemplate.update(
+                        "UPDATE sys_config SET config_value = ?, update_time = CURRENT_TIMESTAMP WHERE config_key = ?",
+                        version, configKey);
+                }
             }
 
             log.info("已忽略版本更新: {}", version);

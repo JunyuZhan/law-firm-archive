@@ -180,7 +180,7 @@ public class CircuitBreaker {
    *
    * @return 如果允许请求通过返回true，否则返回false
    */
-  public boolean isAllowed() {
+  public synchronized boolean isAllowed() {
     if (state == State.CLOSED) {
       return true;
     }
@@ -200,13 +200,13 @@ public class CircuitBreaker {
     return true;
   }
 
-  /** 记录成功 */
-  private void recordSuccess() {
+  /** 记录成功（同步保护状态转换） */
+  private synchronized void recordSuccess() {
     if (state == State.HALF_OPEN) {
       int successCount = halfOpenSuccessCount.incrementAndGet();
       if (successCount >= halfOpenSuccessThreshold) {
         log.info("CircuitBreaker [{}] recovered, transitioning to CLOSED", name);
-        reset();
+        resetInternal();
       }
     } else if (state == State.CLOSED) {
       // 成功时重置失败计数
@@ -214,8 +214,8 @@ public class CircuitBreaker {
     }
   }
 
-  /** 记录失败 */
-  private void recordFailure() {
+  /** 记录失败（同步保护状态转换） */
+  private synchronized void recordFailure() {
     lastFailureTime.set(System.currentTimeMillis());
 
     if (state == State.HALF_OPEN) {
@@ -235,8 +235,13 @@ public class CircuitBreaker {
     }
   }
 
-  /** 重置熔断器 */
-  public void reset() {
+  /** 重置熔断器（同步保护状态转换） */
+  public synchronized void reset() {
+    resetInternal();
+  }
+
+  /** 内部重置方法（必须在同步块内调用） */
+  private void resetInternal() {
     state = State.CLOSED;
     failureCount.set(0);
     halfOpenSuccessCount.set(0);

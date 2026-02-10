@@ -612,7 +612,11 @@
 | ✅ | CompletableFuture 无异常处理 | `VersionController.java:184` | 已添加 exceptionally() |
 | ✅ | @Async 方法无 try-catch | `ContractSyncService.java:74`<br>`DossierAutoArchiveService.java:232` | 已添加全局 try-catch |
 | ✅ | 缓存返回可变引用 | `DataScopeInterceptor.java:256` | 已返回不可变副本 |
+| ✅ | check-then-act 竞态 | `VersionController.java:448-464` | 已改为 update-first + catch DuplicateKey |
+| ✅ | check-then-act 竞态 | `DataScopeInterceptor.java:149-188` | 已改为 get() + putIfAbsent() |
+| ✅ | 状态变更非原子 | `CircuitBreaker.java:183-236` | 已添加 synchronized 保护状态转换 |
 | 🟡中 | get-then-put 非原子 | `CacheDegradationService.java:79` | 使用原子操作 |
+| 🟡中 | 编号生成竞态 | `LetterAppService.java:967-971` | 需扩展同步范围 |
 
 **状态**：🔄 大部分修复
 
