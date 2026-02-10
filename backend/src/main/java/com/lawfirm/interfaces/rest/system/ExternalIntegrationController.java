@@ -107,7 +107,7 @@ public class ExternalIntegrationController {
   @Operation(summary = "创建集成配置")
   @PostMapping
   @RequirePermission("system:integration:edit")
-  @OperationLog(module = "系统管理", action = "创建外部系统集成配置")
+  @OperationLog(module = "系统管理", action = "创建外部系统集成配置", saveParams = false)
   public Result<ExternalIntegrationDTO> create(
       @RequestBody @Validated final UpdateExternalIntegrationCommand command) {
     return Result.success(integrationAppService.createIntegration(command));
@@ -123,7 +123,7 @@ public class ExternalIntegrationController {
   @Operation(summary = "更新集成配置")
   @PutMapping("/{id}")
   @RequirePermission("system:integration:edit")
-  @OperationLog(module = "系统管理", action = "更新外部系统集成配置")
+  @OperationLog(module = "系统管理", action = "更新外部系统集成配置", saveParams = false)
   public Result<Void> update(
       @PathVariable final Long id,
       @RequestBody @Validated final UpdateExternalIntegrationCommand command) {

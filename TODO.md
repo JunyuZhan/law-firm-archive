@@ -593,6 +593,34 @@
 
 ---
 
+### 25. 日志敏感信息泄露
+
+**问题描述**：操作日志记录了密码、API Key 等敏感信息。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| ✅ | 密码写入操作日志 | `ProfileController.java:69`<br>`UserController.java:161` | 已添加 saveParams=false |
+| ✅ | API Key 写入操作日志 | `ExternalIntegrationController.java:110,126` | 已添加 saveParams=false |
+| 🟡中 | Token 写入日志 | `OnlyOfficeService.java:409` | 脱敏处理 |
+
+**状态**：🔄 大部分修复
+
+---
+
+### 26. API 响应数据暴露
+
+**问题描述**：DTO 返回了敏感字段。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| ✅ | LoginUser.password 可被序列化 | `LoginUser.java:39` | 已添加 @JsonIgnore |
+| 🔴高 | 系统配置暴露密码 | `SysConfigAppService.java:254` | 敏感配置脱敏 |
+| 🟡中 | 用户选项返回完整 DTO | `UserController.java:71` | 返回简化 DTO |
+
+**状态**：🔄 部分修复
+
+---
+
 ## ✅ 已完成任务
 
 _（完成后将任务移至此处）_

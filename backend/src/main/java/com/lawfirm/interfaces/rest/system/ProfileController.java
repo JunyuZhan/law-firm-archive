@@ -66,7 +66,7 @@ public class ProfileController {
    */
   @Operation(summary = "修改密码")
   @PostMapping("/change-password")
-  @OperationLog(module = "个人中心", action = "修改密码")
+  @OperationLog(module = "个人中心", action = "修改密码", saveParams = false)
   public Result<Void> changePassword(@RequestBody @Valid final ChangePasswordRequest request) {
     Long userId = SecurityUtils.getCurrentUserId();
     userAppService.changePassword(userId, request.getOldPassword(), request.getNewPassword());

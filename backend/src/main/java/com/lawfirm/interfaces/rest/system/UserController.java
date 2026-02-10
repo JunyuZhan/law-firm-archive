@@ -158,7 +158,7 @@ public class UserController {
    */
   @PostMapping("/{id}/reset-password")
   @RequirePermission("sys:user:update")
-  @OperationLog(module = "用户管理", action = "重置密码")
+  @OperationLog(module = "用户管理", action = "重置密码", saveParams = false)
   public Result<Void> resetPassword(
       @PathVariable final Long id, @RequestBody @Valid final ResetPasswordRequest request) {
     userAppService.resetPassword(id, request.getNewPassword());
