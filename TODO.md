@@ -516,6 +516,8 @@
 | ✅ | watch + emit 循环 | `StructuredTemplateEditor.vue:127` | 已使用标志位防止循环 |
 | ✅ | 并发请求未去重 | `MatterSelector.vue:loadDossierItems` | 已添加 requestId 版本号校验 |
 | ✅ | 卸载后修改 ref | `office-preview/index.vue` | 已添加 isMounted 检查 |
+| ✅ | Modal.confirm 重复提交 | `archive/list/index.vue:466` | 已添加 isSubmitting 标志 |
+| ✅ | Modal.confirm 重复提交 | `hr/payroll/index.vue:347,364` | 已添加 isSubmitting 标志 |
 | 🟡中 | 并发请求未去重 | `document/list/index.vue:671`<br>`matter/detail/index.vue:253` | 需添加请求取消或版本号校验 |
 
 **状态**：🔄 部分修复

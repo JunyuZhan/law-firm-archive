@@ -345,16 +345,22 @@ function getIncomeTypeName(type: string): string {
 
 // 提交工资表
 function handleSubmit(record: PayrollSheetDTO) {
+  let isSubmitting = false;
   Modal.confirm({
     title: '确认提交',
     content: `确定要提交工资表 ${record.payrollNo} 吗？提交后将进入待确认状态。`,
     onOk: async () => {
+      // 防止重复提交
+      if (isSubmitting) return;
+      isSubmitting = true;
       try {
         await submitPayrollSheet(record.id!);
         message.success('提交成功');
         await fetchPayrollItems();
       } catch (error: any) {
         message.error(error.message || '提交失败');
+      } finally {
+        isSubmitting = false;
       }
     },
   });
@@ -362,16 +368,22 @@ function handleSubmit(record: PayrollSheetDTO) {
 
 // 财务确认
 function handleFinanceConfirm(record: PayrollSheetDTO) {
+  let isSubmitting = false;
   Modal.confirm({
     title: '确认财务确认',
     content: `确定要财务确认工资表 ${record.payrollNo} 吗？确认后可以发放工资。`,
     onOk: async () => {
+      // 防止重复提交
+      if (isSubmitting) return;
+      isSubmitting = true;
       try {
         await financeConfirmPayrollSheet(record.id!);
         message.success('财务确认成功');
         await fetchPayrollItems();
       } catch (error: any) {
         message.error(error.message || '财务确认失败');
+      } finally {
+        isSubmitting = false;
       }
     },
   });

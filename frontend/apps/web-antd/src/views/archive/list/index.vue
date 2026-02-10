@@ -464,16 +464,22 @@ async function handleCreateArchive() {
 
 // 提交入库审批
 async function handleSubmitStoreApproval(record: ArchiveDTO) {
+  let isSubmitting = false;
   Modal.confirm({
     title: '提交入库审批',
     content: `确定要提交档案 "${record.archiveName}" 的入库审批吗？`,
     onOk: async () => {
+      // 防止重复提交
+      if (isSubmitting) return;
+      isSubmitting = true;
       try {
         await submitStoreApproval(record.id);
         message.success('已提交入库审批');
         fetchData();
       } catch (error: any) {
         message.error(error.message || '提交失败');
+      } finally {
+        isSubmitting = false;
       }
     },
   });
