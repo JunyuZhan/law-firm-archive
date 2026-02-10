@@ -87,6 +87,10 @@ public class OvertimeController {
   @RequirePermission("admin:overtime:list")
   public Result<List<OvertimeApplicationDTO>> getApplicationsByDateRange(
       @RequestParam final LocalDate startDate, @RequestParam final LocalDate endDate) {
+    // 校验日期范围
+    if (endDate != null && startDate != null && endDate.isBefore(startDate)) {
+      return Result.error("结束日期不能早于开始日期");
+    }
     return Result.success(overtimeAppService.getApplicationsByDateRange(startDate, endDate));
   }
 

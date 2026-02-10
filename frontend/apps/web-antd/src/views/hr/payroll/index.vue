@@ -185,7 +185,7 @@ async function fetchPayrollItems() {
       payrollMonth: queryParams.payrollMonth,
       pageSize: 1,
     });
-    if (res.list.length > 0 && res.list[0]) {
+    if ((res?.list?.length ?? 0) > 0 && res.list[0]) {
       const sheet = res.list[0];
       if (sheet.id) {
         selectedSheetId.value = sheet.id;

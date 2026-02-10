@@ -25,6 +25,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URLEncoder;
@@ -341,10 +343,10 @@ public class DocumentController {
   @GetMapping("/{id}/access-logs")
   @RequirePermission("doc:detail")
   public Result<PageResult<DocAccessLog>> getAccessLogs(
-      @PathVariable final Long id,
+      @PathVariable @Min(1) final Long id,
       @RequestParam(required = false) final String actionType,
-      @RequestParam(defaultValue = "1") final int pageNum,
-      @RequestParam(defaultValue = "20") final int pageSize) {
+      @RequestParam(defaultValue = "1") @Min(1) final int pageNum,
+      @RequestParam(defaultValue = "20") @Min(1) @Max(100) final int pageSize) {
     return Result.success(accessLogService.getAccessLogs(id, null, actionType, pageNum, pageSize));
   }
 

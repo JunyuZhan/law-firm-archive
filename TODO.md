@@ -272,13 +272,19 @@
 
 | 优先级 | 问题 | 位置 | 修复方案 |
 |--------|------|------|----------|
-| 🟡中 | pageSize 可传超大值 | `DocumentController.java:346-347` | 添加最大值限制（如 100） |
+| ✅ | pageSize 可传超大值 | `DocumentController.java:346-347` | 已添加 @Min(1) @Max(100) |
+| ✅ | 日期范围未校验 | `TimesheetController.java:194-196` | 已添加 endDate >= startDate 校验 |
+| ✅ | 日期范围未校验 | `OvertimeController.java:88-90` | 已添加 endDate >= startDate 校验 |
+| ✅ | API 返回未安全访问 | `hr/payroll/index.vue:188` | 已改为 res?.list?.length |
 
 **实施进度**：
 - [x] DataHandoverService/DTO 分页参数判空（添加 getSafePageNum/getSafePageSize）
+- [x] DocumentController pageSize 添加 @Max(100) 限制
+- [x] 日期范围参数校验（TimesheetController, OvertimeController）
+- [x] 前端安全访问 API 返回（payroll/index.vue）
 - [ ] 分页逻辑统一使用 PageUtils.createPage
 
-**状态**：🔄 部分修复
+**状态**：🔄 大部分修复
 
 ---
 

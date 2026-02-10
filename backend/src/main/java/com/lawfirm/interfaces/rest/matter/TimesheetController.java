@@ -193,6 +193,10 @@ public class TimesheetController {
   public Result<List<TimesheetDTO>> getMyTimesheets(
       @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) final LocalDate startDate,
       @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) final LocalDate endDate) {
+    // 校验日期范围
+    if (endDate != null && startDate != null && endDate.isBefore(startDate)) {
+      return Result.error("结束日期不能早于开始日期");
+    }
     return Result.success(timesheetAppService.getMyTimesheets(startDate, endDate));
   }
 
