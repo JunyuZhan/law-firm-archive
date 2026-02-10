@@ -506,6 +506,34 @@
 
 ---
 
+### 19. SQL 注入风险
+
+**问题描述**：动态 SQL 拼接存在潜在注入风险。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| ✅ | 列名未白名单校验 | `PageUtils.java:227` | 已添加列名白名单校验 |
+| 🟡中 | 迁移脚本直接执行 | `MigrationAppService.java:311` | 加强脚本目录权限控制 |
+| 🟢低 | wrapper.last() LIMIT | `OperationLogAppService.java:271` | maxRows 已为固定常量 |
+
+**状态**：🔄 部分修复
+
+---
+
+### 20. 前端安全问题
+
+**问题描述**：打印功能存在 XSS 风险，document.write 未消毒。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| ✅ | document.write 未消毒 | `EvidenceTableEditor.vue:1129,1144`<br>`EvidenceListDisplay.vue:660,681` | 已使用 escapeHtml 转义 |
+| 🔴高 | ContractPreviewModal 打印未消毒 | `ContractPreviewModal.vue:246,277` | 打印内容 sanitize |
+| 🟡中 | URL 跳转未白名单 | `office-preview/index.vue:57`<br>`adapter/component/index.ts:186` | 添加域名白名单校验 |
+
+**状态**：🔄 部分修复
+
+---
+
 ## ✅ 已完成任务
 
 _（完成后将任务移至此处）_

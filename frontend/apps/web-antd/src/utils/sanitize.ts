@@ -46,4 +46,21 @@ export function sanitizeText(dirty: string | null | undefined): string {
   return DOMPurify.sanitize(dirty, { ALLOWED_TAGS: [] });
 }
 
-export default { sanitizeHtml, sanitizeText };
+/**
+ * HTML 字符转义，防止 XSS（用于纯文本显示）
+ * @param text 需要转义的文本
+ * @returns 转义后的安全文本
+ */
+export function escapeHtml(text: string | null | undefined): string {
+  if (!text) return '';
+  const map: Record<string, string> = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;',
+  };
+  return String(text).replaceAll(/[&<>"']/g, (char) => map[char] ?? char);
+}
+
+export default { sanitizeHtml, sanitizeText, escapeHtml };

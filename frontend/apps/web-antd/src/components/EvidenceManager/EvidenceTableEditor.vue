@@ -43,6 +43,7 @@ import {
   updateEvidence,
   updateEvidenceList,
 } from '#/api/evidence';
+import { escapeHtml } from '#/utils/sanitize';
 
 // 列定义
 interface ColumnDef {
@@ -1116,7 +1117,7 @@ function handlePrint() {
 
           // 序号列显示动态生成的序号
           if (col.key === 'order') {
-            printContent += `<td class="col-${col.key}">${row.order}</td>`;
+            printContent += `<td class="col-${escapeHtml(col.key)}">${escapeHtml(String(row.order))}</td>`;
           } else {
             const value = row[col.key] || '';
             const displayValue =
@@ -1126,7 +1127,8 @@ function handlePrint() {
                   value === false
                   ? '否'
                   : String(value);
-            printContent += `<td class="col-${col.key}"${rowSpanAttr}>${displayValue}</td>`;
+            // 使用 escapeHtml 防止 XSS
+            printContent += `<td class="col-${escapeHtml(col.key)}"${rowSpanAttr}>${escapeHtml(displayValue)}</td>`;
           }
         }
       });

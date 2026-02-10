@@ -213,6 +213,10 @@ public final class PageUtils {
     return new CursorPage<>(finalRecords, nextCursor, hasMore);
   }
 
+  /** 允许用于游标分页的列名白名单 */
+  private static final java.util.Set<String> ALLOWED_CURSOR_COLUMNS =
+      java.util.Set.of("id", "created_at", "updated_at", "sort_order", "order_num");
+
   /**
    * 游标分页 SQL 片段生成
    *
@@ -220,14 +224,19 @@ public final class PageUtils {
    * {pageSize + 1}
    *
    * @param cursor 游标值（上一页最后一条记录的 ID）
-   * @param column 游标列名
+   * @param column 游标列名（必须在白名单中）
    * @param ascending 是否升序
    * @return SQL 条件片段
+   * @throws IllegalArgumentException 如果列名不在白名单中
    */
   public static String buildCursorCondition(
       final Long cursor, final String column, final boolean ascending) {
     if (cursor == null) {
       return "";
+    }
+    // SQL 注入防护：校验列名白名单
+    if (column == null || !ALLOWED_CURSOR_COLUMNS.contains(column.toLowerCase())) {
+      throw new IllegalArgumentException("不允许的游标列名: " + column);
     }
     String operator = ascending ? ">" : "<";
     return String.format("AND %s %s %d", column, operator, cursor);

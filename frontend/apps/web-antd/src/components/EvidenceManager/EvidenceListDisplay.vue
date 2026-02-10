@@ -49,6 +49,7 @@ import {
   saveEvidenceListToDossier,
   updateEvidence,
 } from '#/api/evidence';
+import { escapeHtml } from '#/utils/sanitize';
 
 interface EvidenceRow {
   id?: number;
@@ -585,7 +586,7 @@ function handlePrint() {
     <body>
       <div class="print-header">
         <h1>证 据 清 单</h1>
-        ${props.matterName ? `<div class="print-case-info">${props.matterName}</div>` : ''}
+        ${props.matterName ? `<div class="print-case-info">${escapeHtml(props.matterName)}</div>` : ''}
       </div>
   `;
 
@@ -593,7 +594,7 @@ function handlePrint() {
   groupList.value.forEach((group) => {
     printContent += `
       <div class="group-section">
-        <div class="group-title">${group.groupName}</div>
+        <div class="group-title">${escapeHtml(group.groupName)}</div>
         <div class="evidence-list">
     `;
 
@@ -607,11 +608,11 @@ function handlePrint() {
             : '—';
         printContent += `
           <div class="evidence-item">
-            <div class="evidence-name">证据${evidenceIndex}：${evidence.name}</div>
+            <div class="evidence-name">证据${evidenceIndex}：${escapeHtml(evidence.name)}</div>
             <div class="evidence-details">
               <span class="evidence-detail-item">
                 <span class="detail-label">来源：</span>
-                <span class="detail-value">${evidence.source || '—'}</span>
+                <span class="detail-value">${escapeHtml(evidence.source || '—')}</span>
               </span>
               <span class="evidence-detail-item">
                 <span class="detail-label">形式：</span>
@@ -619,7 +620,7 @@ function handlePrint() {
               </span>
               <span class="evidence-detail-item">
                 <span class="detail-label">页码：</span>
-                <span class="detail-value">${pageRange}</span>
+                <span class="detail-value">${escapeHtml(pageRange)}</span>
               </span>
             </div>
           </div>
@@ -640,7 +641,7 @@ function handlePrint() {
         printContent += `
           <div class="proof-item">
             <span class="label">证明内容：</span>
-            <span class="value">${group.proofContent}</span>
+            <span class="value">${escapeHtml(group.proofContent)}</span>
           </div>
         `;
       }
@@ -648,7 +649,7 @@ function handlePrint() {
         printContent += `
           <div class="proof-item">
             <span class="label">证明目的：</span>
-            <span class="value">${group.proofPurpose}</span>
+            <span class="value">${escapeHtml(group.proofPurpose)}</span>
           </div>
         `;
       }
@@ -667,11 +668,11 @@ function handlePrint() {
       <div class="footer-signature">
         <div class="signature-item">
           <span>证据提交人：</span>
-          <span>${submitterName.value || '_______________'}</span>
+          <span>${escapeHtml(submitterName.value) || '_______________'}</span>
         </div>
         <div class="signature-item">
           <span>日期：</span>
-          <span>${submitDateStr.value || '______年____月____日'}</span>
+          <span>${escapeHtml(submitDateStr.value) || '______年____月____日'}</span>
         </div>
       </div>
     </body>
