@@ -30,6 +30,8 @@ import { preferences } from '@vben/preferences';
 import { useUserStore } from '@vben/stores';
 import { openWindow } from '@vben/utils';
 
+import { sanitizeHtml } from '#/utils/sanitize';
+
 import {
   Avatar,
   Card,
@@ -1122,8 +1124,8 @@ onUnmounted(() => {
                   </template>
                   <template #title>{{ item.title }}</template>
                   <template #description>
-                    <!-- eslint-disable-next-line vue/no-v-html -->
-                    <div class="text-xs" v-html="item.content"></div>
+                    <!-- 使用 sanitizeHtml 防止 XSS 攻击 -->
+                    <div class="text-xs" v-html="sanitizeHtml(item.content)"></div>
                     <div class="mt-1 text-xs text-gray-400">
                       {{ item.date }}
                     </div>

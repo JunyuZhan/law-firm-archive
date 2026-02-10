@@ -15,6 +15,8 @@ import { useRoute, useRouter } from 'vue-router';
 import { Page } from '@vben/common-ui';
 import { useUserStore } from '@vben/stores';
 
+import { sanitizeHtml } from '#/utils/sanitize';
+
 import {
   Alert,
   Button,
@@ -1951,7 +1953,7 @@ onMounted(() => {
         </Descriptions>
         <div v-if="letterDetailRecord.content" style="margin-top: 16px">
           <div style="margin-bottom: 8px; font-weight: 500">函件内容：</div>
-          <!-- eslint-disable vue/no-v-html -->
+          <!-- 使用 sanitizeHtml 防止 XSS 攻击 -->
           <div
             style="
               max-height: 300px;
@@ -1960,9 +1962,8 @@ onMounted(() => {
               background: #f5f5f5;
               border-radius: 4px;
             "
-            v-html="letterDetailRecord.content"
+            v-html="sanitizeHtml(letterDetailRecord.content)"
           ></div>
-          <!-- eslint-enable vue/no-v-html -->
         </div>
       </div>
     </Modal>

@@ -3,6 +3,20 @@ import { unmountGlobalLoading } from '@vben/utils';
 
 import { overridesPreferences } from './preferences';
 
+// 全局未捕获 Promise 错误处理
+window.addEventListener('unhandledrejection', (event) => {
+  console.error('[全局错误] 未处理的 Promise 拒绝:', event.reason);
+  // 防止错误信息泄露，生产环境静默处理
+  if (import.meta.env.PROD) {
+    event.preventDefault();
+  }
+});
+
+// 全局 JavaScript 错误处理
+window.addEventListener('error', (event) => {
+  console.error('[全局错误] JavaScript 错误:', event.error);
+});
+
 /**
  * 应用初始化完成之后再进行页面加载渲染
  */

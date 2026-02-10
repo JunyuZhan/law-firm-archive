@@ -54,9 +54,9 @@ function createRequestClient(baseURL: string, options?: RequestClientOptions) {
     // 后端返回的是 LoginResult，包含 accessToken
     const newToken = resp.accessToken;
     accessStore.setAccessToken(newToken);
-    // 同时更新 refreshToken
+    // 同时更新 refreshToken（使用 sessionStorage 提高安全性）
     if (resp.refreshToken) {
-      localStorage.setItem('refreshToken', resp.refreshToken);
+      sessionStorage.setItem('refreshToken', resp.refreshToken);
     }
     return newToken;
   }

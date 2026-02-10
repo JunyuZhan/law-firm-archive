@@ -81,9 +81,10 @@ export const useAuthStore = defineStore('auth', () => {
         // 存储 accessToken
         accessStore.setAccessToken(accessToken);
 
-        // 存储 refreshToken 到 localStorage
+        // 存储 refreshToken 到 sessionStorage（比 localStorage 更安全，浏览器关闭时清除）
+        // TODO: 最佳实践是使用 httpOnly cookie，需要后端配合实现
         if (refreshToken) {
-          localStorage.setItem('refreshToken', refreshToken);
+          sessionStorage.setItem('refreshToken', refreshToken);
         }
 
         // 构建用户信息
@@ -143,7 +144,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     // 清除 refreshToken
-    localStorage.removeItem('refreshToken');
+    sessionStorage.removeItem('refreshToken');
 
     resetAllStores();
     accessStore.setLoginExpired(false);

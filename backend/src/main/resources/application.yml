@@ -211,6 +211,10 @@ law-firm:
   file:
     allowed-types: pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,gif,txt,zip,rar
     max-size-mb: 100
+  # 文档访问 Token 配置
+  document:
+    # 文档访问 Token 密钥（生产环境必须通过环境变量设置强密钥！）
+    token-secret: ${DOCUMENT_TOKEN_SECRET:law-firm-document-access-dev-only}
   # 性能监控配置
   performance:
     slow-api-threshold: 3000    # 慢接口告警阈值（毫秒）

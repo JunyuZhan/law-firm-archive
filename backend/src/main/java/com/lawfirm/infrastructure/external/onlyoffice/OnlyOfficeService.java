@@ -10,6 +10,7 @@ import java.util.UUID;
 import javax.crypto.SecretKey;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 /**
@@ -32,6 +33,10 @@ public class OnlyOfficeService {
 
   /** MinIO文件服务. */
   private final MinioService minioService;
+
+  /** 文档访问 Token 密钥（从配置注入，与 DocumentController 保持一致）. */
+  @Value("${law-firm.document.token-secret}")
+  private String documentTokenSecret;
 
   /** 预签名URL默认过期时间（秒）：2小时. */
   private static final int DEFAULT_PRESIGNED_URL_EXPIRY_SECONDS = 7200;
@@ -410,19 +415,17 @@ public class OnlyOfficeService {
   }
 
   /**
-   * 生成文档访问 token（与 DocumentController 中的方法保持一致）.
+   * 生成文档访问 token.
    *
-   * <p>注意：TOKEN_SECRET 必须与 DocumentController 中的保持一致
+   * <p>使用配置中的密钥，与 DocumentController 保持一致
    *
    * @param documentId 文档ID
    * @param expires 过期时间戳
    * @return 文档访问令牌
    */
   private String generateDocumentAccessToken(final Long documentId, final long expires) {
-    // 使用与 DocumentController 相同的 TOKEN_SECRET
-    // DocumentController.TOKEN_SECRET = "law-firm-document-access-2024"
-    String tokenSecret = "law-firm-document-access-2024";
-    String data = documentId + ":" + expires + ":" + tokenSecret;
+    // 使用从配置注入的密钥（与 DocumentController 共享同一配置）
+    String data = documentId + ":" + expires + ":" + documentTokenSecret;
     try {
       java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
       byte[] hash = md.digest(data.getBytes(java.nio.charset.StandardCharsets.UTF_8));

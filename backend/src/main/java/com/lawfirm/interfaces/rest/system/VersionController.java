@@ -198,6 +198,16 @@ public class VersionController {
     @Operation(summary = "查询升级状态", description = "查询升级任务的执行状态")
     @GetMapping("/upgrade/status")
     public Result<Map<String, Object>> getUpgradeStatus(@RequestParam String upgradeId) {
+        // 安全检查：防止路径遍历攻击
+        if (upgradeId == null || upgradeId.isBlank()) {
+            return Result.error("upgradeId 不能为空");
+        }
+        // upgradeId 应该只包含字母数字和短横线（UUID 格式）
+        if (!upgradeId.matches("^[a-zA-Z0-9\\-]+$")) {
+            log.warn("检测到非法 upgradeId: {}", upgradeId);
+            return Result.error("非法的 upgradeId 格式");
+        }
+        
         try {
             // 状态文件在 /tmp 目录
             Path statusFile = Paths.get("/tmp/.upgrade-status-" + upgradeId + ".json");

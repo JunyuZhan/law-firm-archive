@@ -139,8 +139,8 @@ export async function loginApi(data: AuthApi.LoginParams) {
  * 刷新accessToken
  */
 export async function refreshTokenApi() {
-  // 从localStorage获取refreshToken
-  const refreshToken = localStorage.getItem('refreshToken') || '';
+  // 从sessionStorage获取refreshToken（比localStorage更安全）
+  const refreshToken = sessionStorage.getItem('refreshToken') || '';
 
   return baseRequestClient.post<AuthApi.LoginResult>('/auth/refresh', {
     refreshToken,

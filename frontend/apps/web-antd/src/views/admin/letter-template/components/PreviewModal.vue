@@ -8,6 +8,8 @@ import { OFFICIAL_DOCUMENT_STYLES } from '@vben/utils';
 
 import { Button, message, Space, Tag } from 'ant-design-vue';
 
+import { sanitizeHtml } from '#/utils/sanitize';
+
 import { getProfileInfo } from '#/api/core/profile';
 import { getConfigValue } from '#/api/system';
 
@@ -192,8 +194,8 @@ defineExpose({ open });
 
     <div class="preview-container">
       <div class="preview-paper">
-        <!-- eslint-disable-next-line vue/no-v-html -->
-        <div v-html="previewContent" class="preview-content"></div>
+        <!-- 使用 sanitizeHtml 防止 XSS 攻击 -->
+        <div v-html="sanitizeHtml(previewContent)" class="preview-content"></div>
       </div>
     </div>
 

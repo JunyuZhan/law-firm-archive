@@ -36,6 +36,7 @@ import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -72,8 +73,12 @@ public class DocumentController {
   /** 文件访问服务 */
   private final FileAccessService fileAccessService;
 
-  /** 用于生成临时访问 token 的密钥 */
-  private static final String TOKEN_SECRET = "law-firm-document-access-2024";
+  /** 用于生成临时访问 token 的密钥（从配置注入，生产环境必须设置环境变量 DOCUMENT_TOKEN_SECRET） */
+  @Value("${law-firm.document.token-secret}")
+  private String tokenSecret;
+
+  /** 静态密钥用于向后兼容（测试时使用） */
+  private static String staticTokenSecret = "law-firm-document-access-dev-only";
 
   /** 文件缓冲区大小：8KB */
   private static final int FILE_BUFFER_SIZE = 8192;
@@ -842,7 +847,7 @@ public class DocumentController {
 
     // 生成带签名的访问 URL（2小时有效）
     long expires = System.currentTimeMillis() + TOKEN_EXPIRY_SECONDS * 1000;
-    String token = generateAccessToken(id, expires);
+    String token = generateAccessTokenWithSecret(id, expires);
     String previewUrl = "/api/document/" + id + "/content?token=" + token + "&expires=" + expires;
 
     Map<String, Object> result = new HashMap<>();
@@ -871,7 +876,7 @@ public class DocumentController {
     }
 
     long expires = System.currentTimeMillis() + TOKEN_EXPIRY_7_DAYS_SECONDS * 1000;
-    String token = generateAccessToken(id, expires);
+    String token = generateAccessTokenWithSecret(id, expires);
     String contextPath = WebUtils.getContextPath();
     String shareUrl =
         WebUtils.getBaseUrl()
@@ -1334,14 +1339,38 @@ public class DocumentController {
   }
 
   /**
-   * 生成文档访问 token
+   * 生成文档访问 token（实例方法，使用配置的密钥）
+   *
+   * @param documentId 文档ID
+   * @param expires 过期时间
+   * @return 访问令牌
+   */
+  public String generateAccessTokenWithSecret(final Long documentId, final long expires) {
+    return generateAccessToken(documentId, expires, tokenSecret);
+  }
+
+  /**
+   * 生成文档访问 token（静态方法，用于测试和向后兼容）
    *
    * @param documentId 文档ID
    * @param expires 过期时间
    * @return 访问令牌
    */
   public static String generateAccessToken(final Long documentId, final long expires) {
-    String data = documentId + ":" + expires + ":" + TOKEN_SECRET;
+    return generateAccessToken(documentId, expires, staticTokenSecret);
+  }
+
+  /**
+   * 生成文档访问 token（核心实现）
+   *
+   * @param documentId 文档ID
+   * @param expires 过期时间
+   * @param secret 密钥
+   * @return 访问令牌
+   */
+  public static String generateAccessToken(final Long documentId, final long expires, 
+      final String secret) {
+    String data = documentId + ":" + expires + ":" + secret;
     try {
       MessageDigest md = MessageDigest.getInstance("SHA-256");
       byte[] hash = md.digest(data.getBytes(StandardCharsets.UTF_8));
@@ -1361,7 +1390,7 @@ public class DocumentController {
    */
   private boolean validateAccessToken(
       final Long documentId, final String token, final long expires) {
-    String expectedToken = generateAccessToken(documentId, expires);
+    String expectedToken = generateAccessTokenWithSecret(documentId, expires);
     return expectedToken.equals(token);
   }
 
