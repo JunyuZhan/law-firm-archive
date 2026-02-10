@@ -5,6 +5,8 @@ import { useVbenModal } from '@vben/common-ui';
 
 import { Button, message, Space, Tag } from 'ant-design-vue';
 
+import { sanitizeHtml } from '#/utils/sanitize';
+
 import { getConfigValue } from '#/api/system';
 
 import { createContractSampleData } from '../constants/sample-data';
@@ -294,8 +296,8 @@ defineExpose({ open });
 
     <div class="preview-container">
       <div class="preview-paper">
-        <!-- eslint-disable-next-line vue/no-v-html -->
-        <div v-html="previewContent" class="preview-content"></div>
+        <!-- 使用 sanitizeHtml 防止 XSS 攻击 -->
+        <div v-html="sanitizeHtml(previewContent)" class="preview-content"></div>
       </div>
     </div>
 

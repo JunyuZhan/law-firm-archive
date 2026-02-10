@@ -44,12 +44,15 @@ const fileTypeInfo = computed(() =>
 const customRequest: UploadProps['customRequest'] = async (options) => {
   const { file, onSuccess, onError, onProgress } = options;
 
+  // 在外部声明以便 finally 中清理
+  let progressInterval: ReturnType<typeof setInterval> | null = null;
+
   try {
     uploading.value = true;
     uploadProgress.value = 0;
 
     // 模拟进度
-    const progressInterval = setInterval(() => {
+    progressInterval = setInterval(() => {
       if (uploadProgress.value < 90) {
         uploadProgress.value += 10;
         onProgress?.({ percent: uploadProgress.value });
@@ -57,7 +60,6 @@ const customRequest: UploadProps['customRequest'] = async (options) => {
     }, 200);
 
     const result = await uploadEvidenceFile(file as File);
-    clearInterval(progressInterval);
 
     // 处理响应数据
     const responseData = (result as any)?.data || result;
@@ -76,6 +78,10 @@ const customRequest: UploadProps['customRequest'] = async (options) => {
     message.error(error.message || '文件上传失败');
     onError?.(error);
   } finally {
+    // 确保定时器被清理，防止内存泄漏
+    if (progressInterval) {
+      clearInterval(progressInterval);
+    }
     uploading.value = false;
     uploadProgress.value = 0;
   }

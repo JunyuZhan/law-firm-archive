@@ -414,23 +414,41 @@ async function handleCustomPrint() {
 
     // 创建 blob URL
     const blobUrl = URL.createObjectURL(blob);
+    let blobUrlRevoked = false;
+
+    // 安全释放 blob URL（只执行一次）
+    const revokeBlobUrl = () => {
+      if (!blobUrlRevoked) {
+        blobUrlRevoked = true;
+        URL.revokeObjectURL(blobUrl);
+      }
+    };
 
     // 打开文档在新窗口
     const printWindow = window.open(blobUrl, '_blank');
     if (printWindow) {
+      // 监听窗口关闭，确保释放 blob URL
+      const checkClosed = setInterval(() => {
+        if (printWindow.closed) {
+          clearInterval(checkClosed);
+          revokeBlobUrl();
+        }
+      }, 500);
+
       // 等待文档加载后打印
       printWindow.addEventListener('load', () => {
         setTimeout(() => {
           printWindow.print();
           // 打印后清理 blob URL
           setTimeout(() => {
-            URL.revokeObjectURL(blobUrl);
+            revokeBlobUrl();
+            clearInterval(checkClosed);
           }, 1000);
         }, 1000);
       });
     } else {
       // 如果无法打开新窗口，清理 blob URL
-      URL.revokeObjectURL(blobUrl);
+      revokeBlobUrl();
     }
   } catch (error_: any) {
     console.error('自定义打印失败:', error_);

@@ -15,6 +15,8 @@ import {
   Tag,
 } from 'ant-design-vue';
 
+import { sanitizeHtml } from '#/utils/sanitize';
+
 import { getTemplateDetail, previewTemplate } from '#/api/document/template';
 
 const previewContent = ref('');
@@ -92,13 +94,12 @@ defineExpose({ open });
           style="margin-bottom: 12px"
         />
         <div class="preview-container">
-          <!-- eslint-disable vue/no-v-html -->
+          <!-- 使用 sanitizeHtml 防止 XSS 攻击 -->
           <div
             v-if="currentTemplate?.templateType === 'HTML'"
-            v-html="previewContent"
+            v-html="sanitizeHtml(previewContent)"
             class="html-preview"
           ></div>
-          <!-- eslint-enable vue/no-v-html -->
           <pre v-else class="text-preview">{{ previewContent }}</pre>
         </div>
       </TabPane>

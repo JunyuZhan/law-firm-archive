@@ -125,6 +125,81 @@
 
 ---
 
+### 5. 代码质量问题修复
+
+**问题描述**：代码审查发现多处潜在 Bug 和代码质量问题。
+
+#### 5.1 后端问题
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| 🔴高 | 数组越界风险 | `LlmClient.java:664,725,952,1387` | `get(0)` 前检查数组是否为空 |
+| 🔴高 | 空指针风险 | `LlmClient.java` 多处 | `response.getBody()` 判空 |
+| 🔴高 | 空指针风险 | `PayrollController.java:284-287` | `sheet` 判空后再访问属性 |
+| 🟡中 | 调试代码残留 | `ContractController.java:121-125,462-467` | 移除 `System.out.println` |
+| 🟡中 | 异常被吞掉 | `SysConfigController.java:288`<br>`AuthController.java:344`<br>`VersionController.java:368`<br>`MatterClientFileController.java:169`<br>`AiUsageRecorder.java:395` | 空 catch 块添加日志记录 |
+| 🟡中 | 文件名编码 | `PayrollController.java:292` | 使用 `URLEncoder.encode` |
+
+#### 5.2 前端问题
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| 🔴高 | 内存泄漏 | `EvidenceUploader.vue:52-61` | catch/finally 中清理 `setInterval` |
+| 🔴高 | Blob URL 泄漏 | `office-preview/index.vue:415-435` | 监听窗口关闭时释放 URL |
+| 🔴高 | FileReader 无错误处理 | `RichTextEditor/index.vue:136-143` | 添加 `error` 事件监听 |
+| 🔴高 | 未处理 Promise | `ClientServicePanel/index.vue:776-786` | watch 回调添加错误处理 |
+| 🟡中 | 类型安全 | `EvidenceUploader.vue:62-64` | 避免使用 `any`，定义明确类型 |
+| 🟡中 | 事件监听泄漏 | `document/list/index.vue:1532-1558` | 使用单例 input 或清理监听器 |
+| 🟡中 | 错误无用户提示 | `ClientServicePanel/index.vue` 多处 | 添加 `message.error` 提示 |
+
+**实施进度**：
+- [x] 后端：LlmClient 数组/空指针检查（添加数组为空检查和响应体判空）
+- [x] 后端：PayrollController sheet 判空（先查询再导出，修复 NPE）
+- [x] 后端：移除调试代码 System.out.println
+- [ ] 后端：空 catch 块添加日志（中优先级）
+- [x] 前端：EvidenceUploader setInterval 清理（移到 finally 块）
+- [x] 前端：office-preview Blob URL 释放（添加窗口关闭检测）
+- [x] 前端：RichTextEditor 错误处理（添加 error 事件监听）
+- [x] 前端：ClientServicePanel watch 错误处理（使用 Promise.allSettled）
+
+**状态**：✅ 高优先级已修复
+
+---
+
+### 6. XSS 防护补充
+
+**问题描述**：之前修复了 3 处 v-html XSS 问题，还有 3 处遗漏。
+
+| 文件 | 状态 |
+|------|------|
+| `system/config/index.vue` | ✅ 已修复 |
+| `ContractPreviewModal.vue` | ✅ 已修复 |
+| `document/.../PreviewModal.vue` | ✅ 已修复 |
+
+**实施进度**：
+- [x] 添加 sanitizeHtml 调用
+
+**状态**：✅ 已修复
+
+---
+
+### 7. TypeScript 错误修复
+
+**问题描述**：ClientServicePanel 存在 TypeScript 编译错误。
+
+| 文件 | 行号 | 问题 |
+|------|------|------|
+| `ClientServicePanel/index.vue` | 459 | `match[1]` 可能为 undefined |
+
+**修复方案**：使用可选链 `match?.[1]?.toLowerCase() ?? ''`
+
+**实施进度**：
+- [x] 修复 TypeScript 错误
+
+**状态**：✅ 已修复
+
+---
+
 ## ✅ 已完成任务
 
 _（完成后将任务移至此处）_

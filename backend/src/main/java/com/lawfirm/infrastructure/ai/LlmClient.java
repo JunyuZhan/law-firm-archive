@@ -660,8 +660,15 @@ public class LlmClient {
    */
   private String extractOpenAIContent(final String responseBody) {
     try {
+      if (responseBody == null || responseBody.isBlank()) {
+        throw new RuntimeException("响应体为空");
+      }
       JsonNode json = objectMapper.readTree(responseBody);
-      return json.path("choices").get(0).path("message").path("content").asText();
+      JsonNode choices = json.path("choices");
+      if (!choices.isArray() || choices.isEmpty()) {
+        throw new RuntimeException("响应中 choices 为空");
+      }
+      return choices.get(0).path("message").path("content").asText();
     } catch (Exception e) {
       log.error("解析 OpenAI 响应失败", e);
       throw new RuntimeException("解析 OpenAI 响应失败: " + e.getMessage());
@@ -721,8 +728,16 @@ public class LlmClient {
 
     try {
       ResponseEntity<String> response = executeWithRetry(restTemplate, apiUrl, request, "Claude");
-      JsonNode json = objectMapper.readTree(response.getBody());
-      return json.path("content").get(0).path("text").asText();
+      String body = response.getBody();
+      if (body == null || body.isBlank()) {
+        throw new RuntimeException("Claude API 响应体为空");
+      }
+      JsonNode json = objectMapper.readTree(body);
+      JsonNode content = json.path("content");
+      if (!content.isArray() || content.isEmpty()) {
+        throw new RuntimeException("Claude 响应中 content 为空");
+      }
+      return content.get(0).path("text").asText();
     } catch (Exception e) {
       log.error("调用 Claude API 失败", e);
       throw new RuntimeException("调用 Claude API 失败: " + e.getMessage());
@@ -948,8 +963,20 @@ public class LlmClient {
 
     try {
       ResponseEntity<String> response = executeWithRetry(restTemplate, apiUrl, request, "MiniMax");
-      JsonNode json = objectMapper.readTree(response.getBody());
-      return json.path("choices").get(0).path("messages").get(0).path("text").asText();
+      String body = response.getBody();
+      if (body == null || body.isBlank()) {
+        throw new RuntimeException("MiniMax API 响应体为空");
+      }
+      JsonNode json = objectMapper.readTree(body);
+      JsonNode choices = json.path("choices");
+      if (!choices.isArray() || choices.isEmpty()) {
+        throw new RuntimeException("MiniMax 响应中 choices 为空");
+      }
+      JsonNode messages = choices.get(0).path("messages");
+      if (!messages.isArray() || messages.isEmpty()) {
+        throw new RuntimeException("MiniMax 响应中 messages 为空");
+      }
+      return messages.get(0).path("text").asText();
     } catch (Exception e) {
       log.error("调用 MiniMax API 失败", e);
       throw new RuntimeException("调用 MiniMax API 失败: " + e.getMessage());
@@ -1383,8 +1410,16 @@ public class LlmClient {
 
     try {
       ResponseEntity<String> response = executeWithRetry(restTemplate, apiUrl, request, apiName);
-      JsonNode json = objectMapper.readTree(response.getBody());
-      return json.path("choices").get(0).path("message").path("content").asText();
+      String body = response.getBody();
+      if (body == null || body.isBlank()) {
+        throw new RuntimeException(apiName + " API 响应体为空");
+      }
+      JsonNode json = objectMapper.readTree(body);
+      JsonNode choices = json.path("choices");
+      if (!choices.isArray() || choices.isEmpty()) {
+        throw new RuntimeException(apiName + " 响应中 choices 为空");
+      }
+      return choices.get(0).path("message").path("content").asText();
     } catch (Exception e) {
       log.error("调用 AI API 失败: {}", apiName, e);
       throw new RuntimeException("调用 " + apiName + " API 失败: " + e.getMessage());

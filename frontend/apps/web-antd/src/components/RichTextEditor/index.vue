@@ -139,6 +139,10 @@ const editorConfig: Partial<IEditorConfig> = {
         reader.addEventListener('load', () => {
           insertFn(reader.result as string);
         });
+        reader.addEventListener('error', () => {
+          console.error('读取图片文件失败:', reader.error);
+          // 静默失败，不阻止用户继续编辑
+        });
         reader.readAsDataURL(file);
       },
     },

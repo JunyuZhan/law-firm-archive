@@ -456,7 +456,7 @@ function getOfficeType(file: ClientFileDTO): 'cell' | 'slide' | 'word' | null {
 function getFileExtension(file: ClientFileDTO): string {
   const fileName = file.fileName || file.originalFileName || '';
   const match = fileName.match(/\.([^.]+)$/);
-  return match ? match[1].toLowerCase() : '';
+  return match?.[1]?.toLowerCase() ?? '';
 }
 
 // 获取文件代理URL（解决跨域问题）
@@ -775,12 +775,22 @@ async function loadDownloadLogs() {
 // 监听 props 变化
 watch(
   () => [props.clientId, props.matterId],
-  () => {
+  async () => {
     if (props.clientId && props.matterId) {
-      loadData();
-      loadClientFiles();
-      loadAccessLogs();
-      loadDownloadLogs();
+      // 使用 Promise.allSettled 并行加载，避免单个失败影响其他
+      const results = await Promise.allSettled([
+        loadData(),
+        loadClientFiles(),
+        loadAccessLogs(),
+        loadDownloadLogs(),
+      ]);
+      // 记录失败的请求（用于调试）
+      results.forEach((result, index) => {
+        if (result.status === 'rejected') {
+          const names = ['loadData', 'loadClientFiles', 'loadAccessLogs', 'loadDownloadLogs'];
+          console.error(`${names[index]} 失败:`, result.reason);
+        }
+      });
     }
   },
 );

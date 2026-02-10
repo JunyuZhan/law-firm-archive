@@ -281,21 +281,29 @@ public class PayrollController {
   @RequirePermission("payroll:export")
   public ResponseEntity<InputStreamResource> exportPayrollSheet(@PathVariable final Long id) {
     try {
-      ByteArrayInputStream excelStream = payrollAppService.exportPayrollSheet(id);
+      // 先获取工资表信息用于生成文件名
       PayrollSheetDTO sheet = payrollAppService.getPayrollSheetById(id);
+      if (sheet == null) {
+        log.warn("工资表不存在: id={}", id);
+        return ResponseEntity.notFound().build();
+      }
+
+      ByteArrayInputStream excelStream = payrollAppService.exportPayrollSheet(id);
       String filename =
           String.format("%d年%d月工资表.xlsx", sheet.getPayrollYear(), sheet.getPayrollMonth());
 
       HttpHeaders headers = new HttpHeaders();
       headers.add(
           "Content-Disposition",
-          "attachment; filename=" + new String(filename.getBytes("UTF-8"), "ISO-8859-1"));
+          "attachment; filename="
+              + java.net.URLEncoder.encode(filename, java.nio.charset.StandardCharsets.UTF_8));
 
       return ResponseEntity.ok()
           .headers(headers)
           .contentType(MediaType.APPLICATION_OCTET_STREAM)
           .body(new InputStreamResource(excelStream));
     } catch (Exception e) {
+      log.error("导出工资表失败: id={}", id, e);
       return ResponseEntity.internalServerError().build();
     }
   }

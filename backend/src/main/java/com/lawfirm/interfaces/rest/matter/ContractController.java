@@ -116,15 +116,6 @@ public class ContractController {
   @OperationLog(module = "合同管理", action = "创建合同")
   @RepeatSubmit(interval = 5000, message = "请勿重复提交合同信息")
   public Result<ContractDTO> createContract(@RequestBody final CreateContractCommand command) {
-    // 调试日志：打印接收到的提成方案数据
-    System.out.println("=== 后端接收到的提成方案数据 ===");
-    System.out.println("commissionRuleId: " + command.getCommissionRuleId());
-    System.out.println("firmRate: " + command.getFirmRate());
-    System.out.println("leadLawyerRate: " + command.getLeadLawyerRate());
-    System.out.println("assistLawyerRate: " + command.getAssistLawyerRate());
-    System.out.println("supportStaffRate: " + command.getSupportStaffRate());
-    System.out.println("================================");
-
     ContractDTO contract = contractAppService.createContract(command);
     return Result.success(contract);
   }
@@ -457,16 +448,6 @@ public class ContractController {
   @OperationLog(module = "合同管理", action = "基于模板创建合同")
   public Result<ContractDTO> createFromTemplate(
       @PathVariable final Long templateId, @RequestBody final CreateContractCommand command) {
-    // 调试日志：打印接收到的提成方案数据
-    System.out.println("=== 后端接收到的提成方案数据（基于模板创建） ===");
-    System.out.println("templateId: " + templateId);
-    System.out.println("commissionRuleId: " + command.getCommissionRuleId());
-    System.out.println("firmRate: " + command.getFirmRate());
-    System.out.println("leadLawyerRate: " + command.getLeadLawyerRate());
-    System.out.println("assistLawyerRate: " + command.getAssistLawyerRate());
-    System.out.println("supportStaffRate: " + command.getSupportStaffRate());
-    System.out.println("================================================");
-
     ContractDTO contract = contractTemplateService.createFromTemplate(templateId, command);
     return Result.success(contract);
   }

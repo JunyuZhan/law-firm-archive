@@ -21,6 +21,8 @@ import { useRoute } from 'vue-router';
 import { Page } from '@vben/common-ui';
 import { CircleHelp, Copy, Eye } from '@vben/icons';
 
+import { sanitizeHtml } from '#/utils/sanitize';
+
 import {
   Alert,
   Modal as AModal,
@@ -1805,12 +1807,11 @@ watch(activeTab, (newTab) => {
       :width="800"
       :footer="null"
     >
-      <!-- eslint-disable vue/no-v-html -->
+      <!-- 使用 sanitizeHtml 防止 XSS 攻击 -->
       <div
-        v-html="reportPreviewHtml"
+        v-html="sanitizeHtml(reportPreviewHtml)"
         style="max-height: 600px; overflow: auto"
       ></div>
-      <!-- eslint-enable vue/no-v-html -->
     </AModal>
 
     <!-- 配置弹窗 -->
