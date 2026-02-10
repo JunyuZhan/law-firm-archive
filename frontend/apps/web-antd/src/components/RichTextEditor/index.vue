@@ -135,6 +135,28 @@ const editorConfig: Partial<IEditorConfig> = {
   MENU_CONF: {
     uploadImage: {
       customUpload(file: File, insertFn: (url: string) => void) {
+        // 文件类型校验
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        if (!allowedTypes.includes(file.type)) {
+          console.warn('不支持的图片格式:', file.type);
+          return;
+        }
+
+        // 文件扩展名校验
+        const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+        const ext = file.name.toLowerCase().slice(file.name.lastIndexOf('.'));
+        if (!allowedExtensions.includes(ext)) {
+          console.warn('不支持的图片扩展名:', ext);
+          return;
+        }
+
+        // 文件大小校验（最大 5MB）
+        const maxSize = 5 * 1024 * 1024;
+        if (file.size > maxSize) {
+          console.warn('图片文件过大，最大支持 5MB');
+          return;
+        }
+
         const reader = new FileReader();
         reader.addEventListener('load', () => {
           insertFn(reader.result as string);

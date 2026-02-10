@@ -321,7 +321,7 @@
 
 | 优先级 | 问题 | 位置 | 修复方案 |
 |--------|------|------|----------|
-| 🔴高 | 图片上传无校验 | `RichTextEditor/index.vue:136-146` | 添加文件类型、大小、扩展名校验 |
+| ✅ | 图片上传无校验 | `RichTextEditor/index.vue:136-146` | 已添加文件类型、大小、扩展名校验 |
 | 🟡中 | 上传类型不限制 | `EvidenceUploader.vue:95-103` | 添加 accept 属性限制文件类型 |
 
 #### 11.2 路径遍历（Zip Slip）
@@ -365,7 +365,8 @@
 
 | 优先级 | 问题 | 位置 | 修复方案 |
 |--------|------|------|----------|
-| 🔴高 | InputStream 未关闭 | `EvidenceController.java:295`<br>`FileAccessService.java:68`<br>`DocumentAppService.java:605` | 使用 try-with-resources 管理流 |
+| ✅ | InputStream 未关闭 | `EvidenceController.java:295`<br>`DocumentAppService.java:605` | 已使用 try-with-resources |
+| 🟡中 | InputStream 未关闭 | `FileAccessService.java:68` | 使用 try-with-resources 管理流 |
 | ✅ | InputStream 未关闭 | `TaskCommentAppService.java`<br>`SealApplicationAppService.java` | 已使用 try-with-resources |
 
 #### 12.3 事务回滚
@@ -478,7 +479,7 @@
 | 优先级 | 问题 | 位置 | 修复方案 |
 |--------|------|------|----------|
 | ✅ | searchTimer 未清理 | `MatterSelector.vue:151` | 已添加 onUnmounted 中 clearTimeout |
-| 🔴高 | input 事件监听未清理 | `document/list/index.vue:1536` | 使用单例 input 或清理 |
+| ✅ | input 事件监听未清理 | `document/list/index.vue:1536` | 已在 change 后移除监听器 |
 | 🟡中 | printWindow load 未清理 | `EvidenceListDisplay.vue:685` | 添加卸载检查 |
 | ✅ | setTimeout 未清理 | `finance/report/index.vue:327`<br>`workbench/report/index.vue:451` | 已添加 onBeforeUnmount 清理 |
 

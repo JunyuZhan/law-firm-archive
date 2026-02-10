@@ -294,8 +294,10 @@ public class EvidenceController {
       String objectName = MinioPathGenerator.buildObjectName(standardStoragePath, physicalName);
 
       // 5. 上传文件到 MinIO（使用新路径）
-      String newFileUrl =
-          minioService.uploadFile(file.getInputStream(), objectName, file.getContentType());
+      String newFileUrl;
+      try (java.io.InputStream inputStream = file.getInputStream()) {
+        newFileUrl = minioService.uploadFile(inputStream, objectName, file.getContentType());
+      }
 
       // 6. 构建完整URL（用于file_url字段，双写策略）
       String fileUrl = minioService.buildFileUrl(objectName);
