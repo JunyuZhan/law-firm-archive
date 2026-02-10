@@ -359,7 +359,7 @@
 
 | 优先级 | 问题 | 位置 | 修复方案 |
 |--------|------|------|----------|
-| 🔴高 | e.getMessage() 暴露给前端 | `DocumentController.java:802,1172`<br>`VersionController.java:191`<br>`EvidenceController.java:463`<br>`ReportController.java:132` | 记录日志后返回通用错误信息 |
+| ✅ | e.getMessage() 暴露给前端 | 多个 Controller | 已检查，仅用于日志，未返回给前端 |
 
 #### 12.2 资源清理缺失
 
@@ -391,8 +391,8 @@
 
 | 优先级 | 问题 | 位置 | 修复方案 |
 |--------|------|------|----------|
-| 🔴高 | 无权限即可修改配置 | `VersionController.java:409-411` | POST /ignore 添加 @RequirePermission |
-| 🔴高 | 任意用户可读配置 | `SysConfigController.java:69-72,81-84` | GET /key/{key} 和 POST /batch 添加权限校验 |
+| ✅ | 无权限即可修改配置 | `VersionController.java` | 已有 @PreAuthorize('sys:config:edit') |
+| ✅ | 任意用户可读配置 | `SysConfigController.java` | 已有 @RequirePermission('sys:config:list') |
 | 🟡中 | 缺少细粒度权限 | `WorkbenchController.java:37-127` | 添加 @RequirePermission 注解 |
 
 #### 13.2 回调接口安全
@@ -439,8 +439,8 @@
 
 | 优先级 | 问题 | 位置 | 修复方案 |
 |--------|------|------|----------|
-| 🔴高 | 全表查询+内存分页 | `ExpenseAppService.java:142-158`<br>`ExpenseMapper.java` | SQL 添加 LIMIT/OFFSET |
-| 🔴高 | 全表查询+内存分页 | `LeadAppService.java:74-89`<br>`LeadMapper.java` | SQL 添加 LIMIT/OFFSET |
+| ✅ | 全表查询+内存分页 | `ExpenseMapper.java` | 已添加 LIMIT/OFFSET 和 count 方法 |
+| ✅ | 全表查询+内存分页 | `LeadMapper.java` | 已添加 LIMIT/OFFSET 和 count 方法 |
 
 **实施进度**：
 - [x] ExpenseMapper SQL 分页（添加 LIMIT/OFFSET 和 count 方法）
