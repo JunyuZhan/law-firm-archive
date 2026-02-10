@@ -690,7 +690,8 @@
 | 优先级 | 问题 | 位置 | 修复方案 |
 |--------|------|------|----------|
 | ✅ | N+1 循环内查询 | `PayrollAutoConfirmScheduler.java` | 已重构为批量查询和批量更新 |
-| 🔴高 | N+1 循环内查询 | `ApproverService.java:378-416,457-491` | 批量加载用户和部门 |
+| ✅ | N+1 循环内查询 | `ApproverService.java:getMatterCloseAvailableApprovers` | 已重构为批量查询 |
+| 🟡中 | N+1 循环内查询 | `ApproverService.java` 其他方法 | 需继续使用批量查询重构 |
 | 🟡中 | 全量加载用户 | `ApproverService.java:337` | 添加分页或条件限制 |
 | 🟡中 | 全量加载收款 | `StatisticsAppService.java:590-598` | 使用聚合查询 |
 | 🟡中 | 全量加载员工 | `PayrollAppService.java:194-195,546-547` | 添加分页处理 |

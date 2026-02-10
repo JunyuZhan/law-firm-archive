@@ -9,11 +9,15 @@ import com.lawfirm.domain.system.repository.DepartmentRepository;
 import com.lawfirm.domain.system.repository.UserRepository;
 import com.lawfirm.infrastructure.persistence.mapper.UserMapper;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -254,6 +258,38 @@ public class ApproverService {
   }
 
   /**
+   * 批量加载用户并构建ID到用户的映射.
+   *
+   * @param userIds 用户ID列表
+   * @return 用户ID到用户实体的映射
+   */
+  private Map<Long, User> batchLoadUsers(final List<Long> userIds) {
+    if (userIds == null || userIds.isEmpty()) {
+      return Collections.emptyMap();
+    }
+    List<User> users = userRepository.listByIds(userIds);
+    return users.stream()
+        .filter(Objects::nonNull)
+        .collect(Collectors.toMap(User::getId, Function.identity(), (a, b) -> a));
+  }
+
+  /**
+   * 批量加载部门名称.
+   *
+   * @param deptIds 部门ID集合
+   * @return 部门ID到部门名称的映射
+   */
+  private Map<Long, String> batchLoadDepartmentNames(final Set<Long> deptIds) {
+    if (deptIds == null || deptIds.isEmpty()) {
+      return Collections.emptyMap();
+    }
+    List<Department> depts = departmentRepository.listByIds(new ArrayList<>(deptIds));
+    return depts.stream()
+        .filter(Objects::nonNull)
+        .collect(Collectors.toMap(Department::getId, Department::getName, (a, b) -> a));
+  }
+
+  /**
    * 查找利冲检查审批人.
    *
    * <p>规则：由主任审批（利冲是重要事项） 如果没有主任，降级到团队负责人
@@ -375,17 +411,41 @@ public class ApproverService {
     List<Map<String, Object>> approvers = new ArrayList<>();
     Set<Long> addedUserIds = new HashSet<>();
 
-    // 1. 添加所有团队负责人（TEAM_LEADER角色）- 优先显示
+    // 批量获取所有需要的用户ID
     List<Long> teamLeaderIds = userMapper.selectUserIdsByRoleCode("TEAM_LEADER");
+    List<Long> directorIds = userMapper.selectUserIdsByRoleCode("DIRECTOR");
+
+    // 合并所有用户ID进行批量查询
+    Set<Long> allUserIds = new HashSet<>();
+    if (teamLeaderIds != null) {
+      allUserIds.addAll(teamLeaderIds);
+    }
+    if (directorIds != null) {
+      allUserIds.addAll(directorIds);
+    }
+
+    // 批量加载用户
+    Map<Long, User> userMap = batchLoadUsers(new ArrayList<>(allUserIds));
+
+    // 收集所有部门ID
+    Set<Long> deptIds = userMap.values().stream()
+        .map(User::getDepartmentId)
+        .filter(Objects::nonNull)
+        .collect(Collectors.toSet());
+
+    // 批量加载部门名称
+    Map<Long, String> deptNameMap = batchLoadDepartmentNames(deptIds);
+
+    // 1. 添加所有团队负责人（TEAM_LEADER角色）- 优先显示
     if (teamLeaderIds != null) {
       for (Long leaderId : teamLeaderIds) {
         if (!leaderId.equals(currentUserId) && !addedUserIds.contains(leaderId)) {
-          User leader = userRepository.getById(leaderId);
+          User leader = userMap.get(leaderId);
           if (leader != null && EmployeeStatus.ACTIVE.equals(leader.getStatus())) {
             Map<String, Object> approver = new HashMap<>();
             approver.put("id", leader.getId());
             approver.put("realName", leader.getRealName());
-            approver.put("departmentName", getDepartmentName(leader.getDepartmentId()));
+            approver.put("departmentName", deptNameMap.getOrDefault(leader.getDepartmentId(), ""));
             approver.put("position", "团队负责人");
             approver.put("recommended", true); // 标记为推荐
             approvers.add(approver);
@@ -396,16 +456,15 @@ public class ApproverService {
     }
 
     // 2. 添加所有主任（DIRECTOR角色）
-    List<Long> directorIds = userMapper.selectUserIdsByRoleCode("DIRECTOR");
     if (directorIds != null) {
       for (Long directorId : directorIds) {
         if (!directorId.equals(currentUserId) && !addedUserIds.contains(directorId)) {
-          User director = userRepository.getById(directorId);
+          User director = userMap.get(directorId);
           if (director != null && EmployeeStatus.ACTIVE.equals(director.getStatus())) {
             Map<String, Object> approver = new HashMap<>();
             approver.put("id", director.getId());
             approver.put("realName", director.getRealName());
-            approver.put("departmentName", getDepartmentName(director.getDepartmentId()));
+            approver.put("departmentName", deptNameMap.getOrDefault(director.getDepartmentId(), ""));
             approver.put("position", "主任");
             approver.put("recommended", false);
             approvers.add(approver);
