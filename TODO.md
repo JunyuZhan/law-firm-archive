@@ -98,9 +98,9 @@
 
 | 风险 | 问题 | 位置 | 修复方案 |
 |------|------|------|----------|
-| 🔴高 | 硬编码密钥 | `DocumentController.java:76`<br>`OnlyOfficeService.java:424` | 改用环境变量 `${document.token.secret}` |
-| 🔴高 | 路径遍历 | `VersionController.java:175` | 验证 upgradeId 不含 `../`、`/`、`\` |
-| 🔴高 | ThreadLocal 泄漏 | `StatisticsAppService.java:87-93`<br>`ContractDataPermissionService.java:45-48` | 添加 Filter 在请求结束时调用 clearCache() |
+| ✅ | 硬编码密钥 | `DocumentController.java:76`<br>`OnlyOfficeService.java:424` | 已改用 @Value 从配置注入 |
+| ✅ | 路径遍历 | `VersionController.java:175` | 已添加 UUID 格式正则验证 |
+| ✅ | ThreadLocal 泄漏 | `StatisticsAppService.java`<br>`ContractDataPermissionService.java` | 已添加 ThreadLocalCleanupFilter |
 | 🟡中 | 日志记录 Token | `DocumentController.java:1046` | 仅记录 token hash 或移除 |
 | 🟡中 | IP 验证宽松 | `DocumentController.java:1086` | 使用 CIDR 验证库 |
 
