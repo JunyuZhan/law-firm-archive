@@ -30,6 +30,9 @@ const documentTitle = ref('');
 const showToolbar = ref(true); // 是否显示顶部工具栏（iframe 嵌入时隐藏）
 let editorInstance: any = null;
 
+// 用于跟踪组件是否已挂载，防止卸载后更新状态
+let isMounted = true;
+
 // 用于跟踪打印窗口检查定时器，以便在组件卸载时清理
 const printIntervals: Set<ReturnType<typeof setInterval>> = new Set();
 
@@ -68,6 +71,9 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
+  // 标记组件已卸载
+  isMounted = false;
+
   // 清理编辑器实例
   if (editorInstance) {
     try {
@@ -98,6 +104,9 @@ async function loadFromBackend(documentId: number, mode: 'edit' | 'view') {
         ? await getDocumentEditConfig(documentId)
         : await getDocumentPreviewConfig(documentId);
 
+    // 检查组件是否已卸载
+    if (!isMounted) return;
+
     config.value = response;
 
     if (!response.supported) {
@@ -118,10 +127,15 @@ async function loadFromBackend(documentId: number, mode: 'edit' | 'view') {
     // 加载 OnlyOffice API 并初始化编辑器
     await loadOnlyOfficeApi(apiJsUrl);
 
+    // 再次检查组件是否已卸载
+    if (!isMounted) return;
+
     // 更新 response 中的 documentServerUrl 以便后续使用
     response.documentServerUrl = onlyOfficeUrl;
     initEditorFromConfig(response);
   } catch (error_: any) {
+    // 如果组件已卸载，不更新错误状态
+    if (!isMounted) return;
     console.error('加载文档配置失败:', error_);
     error.value = error_.message || '加载失败';
     loading.value = false;

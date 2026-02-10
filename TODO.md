@@ -514,8 +514,9 @@
 |--------|------|------|----------|
 | ✅ | watch + emit 循环 | `StateCompensationForm.vue:224` | 已使用标志位防止循环 |
 | ✅ | watch + emit 循环 | `StructuredTemplateEditor.vue:127` | 已使用标志位防止循环 |
-| 🔴高 | 并发请求未去重 | `document/list/index.vue:671`<br>`matter/detail/index.vue:253` | 添加请求取消或版本号校验 |
-| 🟡中 | 卸载后修改 ref | 多个组件 | 添加 isMounted 检查 |
+| ✅ | 并发请求未去重 | `MatterSelector.vue:loadDossierItems` | 已添加 requestId 版本号校验 |
+| ✅ | 卸载后修改 ref | `office-preview/index.vue` | 已添加 isMounted 检查 |
+| 🟡中 | 并发请求未去重 | `document/list/index.vue:671`<br>`matter/detail/index.vue:253` | 需添加请求取消或版本号校验 |
 
 **状态**：🔄 部分修复
 
@@ -581,7 +582,11 @@
 | ✅ | 客户文件开放接口无认证 | `ClientFileOpenController.java` | 已添加 X-API-Key 校验 |
 | 🔴高 | 文档接口缺资源归属校验 | `DocumentController.java` | 校验 matter 归属 |
 | ✅ | OCR 接口缺权限 | `OcrController.java` | 已添加 @RequirePermission("ocr:use") |
+| ✅ | 证据文件代理缺权限 | `EvidenceController.java:509` | 已添加 @RequirePermission("evidence:view") |
+| ✅ | Content-Disposition 注入 | `EvidenceController.java:556` | 已添加文件名安全处理和 RFC 5987 编码 |
 | 🟡中 | 批量删除无二次确认 | `ClientController.java:169`<br>`UserController.java:144` | 添加确认码机制 |
+| 🟡中 | 案件选择接口缺权限注解 | `MatterController.java:75,112` | 添加 @RequirePermission("matter:list") |
+| 🟡中 | 个人中心接口缺权限注解 | `ProfileController.java:51,68` | 添加 @PreAuthorize("isAuthenticated()") |
 
 **状态**：🔄 部分修复
 
@@ -705,7 +710,7 @@
 |--------|------|------|----------|
 | ✅ | progress 无范围限制 | `TaskController.java:155` | 已添加 @Min(0) @Max(100) |
 | ✅ | groupName 无长度限制 | `EvidenceController.java:179` | 已添加 @Size(max=100) |
-| 🟡中 | folder 路径遍历风险 | `DocumentController.java:381,413` | 过滤 ../ 等字符 |
+| ✅ | folder 路径遍历风险 | `DocumentAppService.java:buildStoragePath` | 已使用 MinioPathGenerator.sanitizeFolderName |
 | 🟡中 | version 无格式校验 | `MigrationController.java:83` | 添加版本号格式验证 |
 | 🟡中 | keyword 无长度限制 | `ClientController.java:273` | 添加 @Size(max=100) |
 

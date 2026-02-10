@@ -507,6 +507,7 @@ public class EvidenceController {
    * @param response HTTP响应
    */
   @GetMapping("/{id}/file-proxy")
+  @RequirePermission("evidence:view")
   public void fileProxy(@PathVariable final Long id, final HttpServletResponse response) {
     try {
       // 获取证据实体（用于FileAccessService）
@@ -553,8 +554,14 @@ public class EvidenceController {
       String contentType = getContentType(evidenceDTO.getFileName());
       response.setContentType(contentType);
       response.setContentLength(fileBytes.length);
+      // 安全处理文件名，防止 HTTP 响应拆分攻击
+      String safeFileName = evidenceDTO.getFileName()
+          .replaceAll("[\\r\\n\"\\\\]", "_");  // 移除危险字符
+      String encodedFileName = java.net.URLEncoder.encode(safeFileName, 
+          java.nio.charset.StandardCharsets.UTF_8).replace("+", "%20");
       response.setHeader(
-          "Content-Disposition", "inline; filename=\"" + evidenceDTO.getFileName() + "\"");
+          "Content-Disposition", 
+          "inline; filename=\"" + safeFileName + "\"; filename*=UTF-8''" + encodedFileName);
 
       // 写入文件内容
       response.getOutputStream().write(fileBytes);

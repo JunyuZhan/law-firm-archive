@@ -67,6 +67,8 @@ const dossierItems = ref<MatterDossierItem[]>([]);
 const loading = ref(false);
 const dossierLoading = ref(false);
 const searchKeyword = ref('');
+// 用于防止并发请求竞态条件
+let dossierRequestId = 0;
 const searching = ref(false);
 const totalMatters = ref(0);
 const currentPage = ref(1);
@@ -169,6 +171,8 @@ function handlePopupScroll(e: Event) {
 }
 
 async function loadDossierItems(matterId: number) {
+  // 递增请求ID，用于防止竞态条件
+  const currentRequestId = ++dossierRequestId;
   dossierLoading.value = true;
   dossierItems.value = [];
 
@@ -180,16 +184,28 @@ async function loadDossierItems(matterId: number) {
       items = await initMatterDossier(matterId);
     }
 
+    // 检查是否是最新请求，避免旧请求覆盖新数据
+    if (currentRequestId !== dossierRequestId) {
+      return;
+    }
+
     // 过滤出文件夹类型
     dossierItems.value = ((items || []) as MatterDossierItem[]).filter(
       (item) => item.itemType === 'FOLDER',
     );
     emit('dossierLoaded', dossierItems.value);
   } catch (error: any) {
+    // 检查是否是最新请求
+    if (currentRequestId !== dossierRequestId) {
+      return;
+    }
     console.error('[MatterSelector] 加载卷宗目录失败:', error);
     message.error(error.message || '加载卷宗目录失败');
   } finally {
-    dossierLoading.value = false;
+    // 只有最新请求才更新 loading 状态
+    if (currentRequestId === dossierRequestId) {
+      dossierLoading.value = false;
+    }
   }
 }
 

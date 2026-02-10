@@ -774,7 +774,11 @@ public class DocumentAppService {
     }
 
     if (folder != null && !folder.isEmpty() && !"root".equals(folder)) {
-      path.append(folder).append("/");
+      // 安全处理文件夹名称，防止路径遍历攻击
+      String safeFolder = MinioPathGenerator.sanitizeFolderName(folder);
+      if (safeFolder != null && !safeFolder.isEmpty()) {
+        path.append(safeFolder).append("/");
+      }
     }
 
     return path.toString();
