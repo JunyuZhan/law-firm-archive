@@ -453,7 +453,8 @@ public class ClientFileService {
             externalFileId, response.getStatusCode());
       }
     } catch (Exception e) {
-      log.error("通知客服系统删除文件异常: {}", e.getMessage());
+      // 包含堆栈信息以便排查问题
+      log.error("通知客服系统删除文件异常: {}", e.getMessage(), e);
       // 不抛出异常，删除通知失败不影响主流程
     }
   }

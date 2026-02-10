@@ -49,7 +49,8 @@ public final class LogUtils {
       log.info("[性能] {} 执行成功，耗时 {} ms", operation, duration);
     } catch (Exception e) {
       long duration = System.currentTimeMillis() - startTime;
-      log.error("[性能] {} 执行失败，耗时 {} ms，错误: {}", operation, duration, e.getMessage());
+      // 包含堆栈信息以便排查问题
+      log.error("[性能] {} 执行失败，耗时 {} ms，错误: {}", operation, duration, e.getMessage(), e);
       throw e;
     }
   }
@@ -71,7 +72,8 @@ public final class LogUtils {
       return result;
     } catch (Exception e) {
       long duration = System.currentTimeMillis() - startTime;
-      log.error("[性能] {} 执行失败，耗时 {} ms，错误: {}", operation, duration, e.getMessage());
+      // 包含堆栈信息以便排查问题
+      log.error("[性能] {} 执行失败，耗时 {} ms，错误: {}", operation, duration, e.getMessage(), e);
       throw e;
     }
   }

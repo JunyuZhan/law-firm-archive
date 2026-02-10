@@ -98,7 +98,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         log.debug("用户认证成功: {}", username);
       }
     } catch (Exception e) {
-      log.error("JWT认证失败: {}", e.getMessage());
+      // 包含堆栈信息以便排查问题
+      log.error("JWT认证失败: {}", e.getMessage(), e);
     }
 
     filterChain.doFilter(request, response);

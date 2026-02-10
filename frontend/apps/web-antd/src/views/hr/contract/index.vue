@@ -388,6 +388,11 @@ async function handleRenewSubmit() {
     message.warning('请选择新合同结束日期');
     return;
   }
+  // 校验日期范围：开始日期必须早于结束日期
+  if (renewForm.newStartDate >= renewForm.newEndDate) {
+    message.warning('开始日期必须早于结束日期');
+    return;
+  }
 
   renewLoading.value = true;
   try {

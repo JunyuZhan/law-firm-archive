@@ -894,6 +894,8 @@ function getSourceTypeConfig(sourceType: string | undefined): {
 function formatDateTime(dateStr: string | undefined) {
   if (!dateStr) return '-';
   const date = new Date(dateStr);
+  // 校验日期是否有效
+  if (Number.isNaN(date.getTime())) return '-';
   return date.toLocaleDateString('zh-CN', {
     year: 'numeric',
     month: '2-digit',

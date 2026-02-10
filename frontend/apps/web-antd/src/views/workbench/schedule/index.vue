@@ -429,8 +429,10 @@ async function handleDelete(id: number) {
 }
 
 // 格式化时间
-function formatTime(time: string) {
-  return dayjs(time).format('YYYY-MM-DD HH:mm');
+function formatTime(time: string | null | undefined) {
+  if (!time) return '-';
+  const d = dayjs(time);
+  return d.isValid() ? d.format('YYYY-MM-DD HH:mm') : '-';
 }
 
 onMounted(() => {
