@@ -220,10 +220,15 @@ watch(totalClaimAmount, (val) => {
   formData.claimAmount = val;
 });
 
+// 防止 watch 循环的标志
+let isUpdatingFromParent = false;
+
 // 监听表单变化，向外发送数据
 watch(
   formData,
   (val) => {
+    // 如果是从父组件同步过来的数据，不再向上 emit，避免循环
+    if (isUpdatingFromParent) return;
     emit('update:data', { ...val });
   },
   { deep: true },
@@ -234,7 +239,12 @@ watch(
   () => props.initialData,
   (val) => {
     if (val) {
+      isUpdatingFromParent = true;
       Object.assign(formData, val);
+      // 使用 nextTick 确保本轮更新完成后再重置标志
+      setTimeout(() => {
+        isUpdatingFromParent = false;
+      }, 0);
     }
   },
   { immediate: true },

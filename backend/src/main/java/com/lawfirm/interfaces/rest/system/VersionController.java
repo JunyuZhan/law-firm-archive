@@ -188,7 +188,7 @@ public class VersionController {
             return Result.success(result);
         } catch (Exception e) {
             log.error("启动升级失败", e);
-            return Result.error("启动升级失败: " + e.getMessage());
+            return Result.error("启动升级失败，请查看服务器日志了解详情");
         }
     }
 
@@ -364,9 +364,9 @@ public class VersionController {
         } catch (Exception e) {
             log.error("升级执行异常", e);
             try {
-                writeUpgradeStatus(statusFile, "failed", "升级异常: " + e.getMessage(), -1);
-            } catch (Exception ignored) {
-                // 忽略
+                writeUpgradeStatus(statusFile, "failed", "升级执行异常，请查看服务器日志了解详情", -1);
+            } catch (Exception writeEx) {
+                log.warn("写入升级状态文件失败: {}", writeEx.getMessage());
             }
         }
     }
@@ -445,6 +445,7 @@ public class VersionController {
                 "SELECT config_value FROM sys_config WHERE config_key = 'system.ignored-version'",
                 String.class);
         } catch (Exception e) {
+            log.debug("获取已忽略版本配置失败: {}", e.getMessage());
             return null;
         }
     }

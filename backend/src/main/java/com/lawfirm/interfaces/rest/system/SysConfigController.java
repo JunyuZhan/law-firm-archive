@@ -289,6 +289,7 @@ public class SysConfigController {
       dbVersion = configAppService.getConfigValue("sys.version");
     } catch (Exception e) {
       // 忽略错误，使用构建时的版本号
+      log.debug("读取数据库版本配置失败，将使用构建时版本号: {}", e.getMessage());
     }
 
     Map<String, Object> info = new HashMap<>();

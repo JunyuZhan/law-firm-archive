@@ -332,7 +332,7 @@ public class EvidenceController {
       throw e;
     } catch (Exception e) {
       log.error("证据文件上传失败", e);
-      throw new com.lawfirm.common.exception.BusinessException("文件上传失败: " + e.getMessage());
+      throw new com.lawfirm.common.exception.BusinessException("文件上传失败，请稍后重试");
     }
   }
 
@@ -462,7 +462,7 @@ public class EvidenceController {
       log.info("证据批量下载完成: {} 个文件, 大小: {} bytes", filesMap.size(), zipData.length);
     } catch (Exception e) {
       log.error("证据批量下载失败", e);
-      throw new com.lawfirm.common.exception.BusinessException("批量下载失败: " + e.getMessage());
+      throw new com.lawfirm.common.exception.BusinessException("批量下载失败，请稍后重试");
     }
   }
 

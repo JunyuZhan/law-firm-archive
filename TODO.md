@@ -477,6 +477,35 @@
 
 ---
 
+### 17. 异常信息泄露问题（后端）
+
+**问题描述**：`e.getMessage()` 直接返回给前端，可能泄露系统内部信息。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| ✅ | 异常消息直接暴露 | `EvidenceController.java:335,465`<br>`DocumentController.java:328,802,1172`<br>`VersionController.java:191,367` | 已改为通用错误提示 |
+| ✅ | 空 catch 块无日志 | `SysConfigController.java:290`<br>`VersionController.java:447,368` | 已添加 log.debug/warn |
+| 🟡中 | @Transactional 未指定 rollbackFor | `DataHandoverService.java`<br>`BackupAppService.java`<br>`UserAppService.java` 等 | 添加 rollbackFor=Exception.class |
+
+**状态**：🔄 部分修复
+
+---
+
+### 18. 前端竞态条件问题
+
+**问题描述**：异步操作未处理竞态，可能导致数据被旧请求覆盖。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| ✅ | watch + emit 循环 | `StateCompensationForm.vue:224` | 已使用标志位防止循环 |
+| 🔴高 | watch + emit 循环 | `StructuredTemplateEditor.vue:127` | 使用标志位防止循环 |
+| 🔴高 | 并发请求未去重 | `document/list/index.vue:671`<br>`matter/detail/index.vue:253` | 添加请求取消或版本号校验 |
+| 🟡中 | 卸载后修改 ref | 多个组件 | 添加 isMounted 检查 |
+
+**状态**：🔄 部分修复
+
+---
+
 ## ✅ 已完成任务
 
 _（完成后将任务移至此处）_

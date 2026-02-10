@@ -325,7 +325,7 @@ public class DocumentController {
       log.info("批量下载完成: {} 个文档, 大小: {} bytes", filesMap.size(), zipData.length);
     } catch (Exception e) {
       log.error("批量下载失败", e);
-      throw new com.lawfirm.common.exception.BusinessException("批量下载失败: " + e.getMessage());
+      throw new com.lawfirm.common.exception.BusinessException("批量下载失败，请稍后重试");
     }
   }
 
@@ -799,7 +799,7 @@ public class DocumentController {
     } catch (Exception e) {
       log.error("OnlyOffice 回调处理失败: documentId={}", id, e);
       response.put("error", 1);
-      response.put("message", e.getMessage());
+      response.put("message", "回调处理失败");
     }
 
     return response;
@@ -1169,7 +1169,7 @@ public class DocumentController {
         if (!response.isCommitted()) {
           response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
           response.setContentType("application/json;charset=UTF-8");
-          response.getWriter().write("{\"error\":\"获取文档内容失败: " + e.getMessage() + "\"}");
+          response.getWriter().write("{\"error\":\"获取文档内容失败，请稍后重试\"}");
           response.getWriter().flush();
         }
       } catch (Exception sendError) {
