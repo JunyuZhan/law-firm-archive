@@ -17,6 +17,7 @@ import {
   InputNumber,
   message,
   Modal,
+  Popconfirm,
   Space,
   Tag,
 } from 'ant-design-vue';
@@ -316,7 +317,14 @@ onMounted(() => {});
                 >预约</a
               >
               <a @click="handleEditRoom(row)">编辑</a>
-              <a style="color: red" @click="handleDeleteRoom(row)">删除</a>
+              <Popconfirm
+                title="确定删除该会议室吗？"
+                ok-text="确定"
+                cancel-text="取消"
+                @confirm="handleDeleteRoom(row)"
+              >
+                <a style="color: red">删除</a>
+              </Popconfirm>
             </Space>
           </template>
         </RoomGrid>

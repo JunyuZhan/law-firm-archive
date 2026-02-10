@@ -997,6 +997,37 @@
 
 ---
 
+### 48. 事件处理安全问题
+
+**问题描述**：删除操作无确认、表单缺 loading 状态。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| ✅ | 删除会议室无确认对话框 | `hr/meeting-room/index.vue:319` | 添加 Popconfirm |
+| ✅ | 上传文档弹窗无 loading | `document/list/index.vue:2717-2722` | 添加 confirm-loading |
+| ✅ | 报销提交弹窗无 loading | `finance/expense/index.vue:412-417` | 添加 confirm-loading |
+| 🟡中 | 备份导入无文件类型/大小限制 | `system/backup/index.vue:466-469` | 添加 beforeUpload 校验 |
+| 🟡中 | 培训附件无文件类型/大小限制 | `hr/training/index.vue:471-476` | 添加 beforeUpload 校验 |
+
+**状态**：🔄 高优先级已修复
+
+---
+
+### 49. 权限校验缺失
+
+**问题描述**：部分接口缺少资源归属校验。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| 🔴高 | 文档查看/删除未校验项目权限 | `DocumentAppService.java` | 需要验证 matterId 访问权限 |
+| 🔴高 | 批量下载未逐项校验权限 | `DocumentController.java:278-308` | 添加逐项权限检查 |
+| 🟡中 | 删除合同参与人未校验合同权限 | `ContractParticipantService.java:167` | 添加合同归属校验 |
+| 🟡中 | 删除客户未校验数据权限 | `ClientAppService.java:341` | 添加数据范围校验 |
+
+**状态**：⏳ 待修复（架构改动较大）
+
+---
+
 ### 45. 前端组件卸载时状态更新
 
 **问题描述**：异步操作完成后未检查组件是否仍挂载。

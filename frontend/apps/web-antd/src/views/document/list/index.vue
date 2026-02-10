@@ -113,6 +113,7 @@ const imageZoom = ref(1);
 
 // 弹窗状态
 const uploadModalVisible = ref(false);
+const uploadSubmitting = ref(false);
 const folderModalVisible = ref(false);
 const editModalVisible = ref(false);
 const previewModalVisible = ref(false);
@@ -1593,6 +1594,7 @@ async function handleSaveUpload() {
     return;
   }
 
+  uploadSubmitting.value = true;
   try {
     // 提取文件对象
     const files: File[] = fileList.value.map((f) => f.originFileObj || f);
@@ -1613,6 +1615,8 @@ async function handleSaveUpload() {
   } catch (error: any) {
     console.error('上传失败:', error);
     message.error(`上传失败: ${error.message || '未知错误'}`);
+  } finally {
+    uploadSubmitting.value = false;
   }
 }
 
@@ -2718,6 +2722,7 @@ watch(
       v-model:open="uploadModalVisible"
       title="上传文档"
       width="600px"
+      :confirm-loading="uploadSubmitting"
       @ok="handleSaveUpload"
     >
       <Form :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">

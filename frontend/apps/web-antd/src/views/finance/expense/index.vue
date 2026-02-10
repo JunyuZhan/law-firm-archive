@@ -61,6 +61,7 @@ interface ExpenseRecord {
 
 const expenses = ref<ExpenseRecord[]>([]);
 const modalVisible = ref(false);
+const submitLoading = ref(false);
 const formRef = ref();
 const ocrLoading = ref(false);
 const ocrResult = ref<null | OcrResultDTO>(null);
@@ -276,6 +277,7 @@ async function handleSubmit() {
       return;
     }
 
+    submitLoading.value = true;
     await requestClient.post('/finance/expense/apply', {
       expenseType: formData.expenseType,
       amount: formData.amount,
@@ -291,6 +293,8 @@ async function handleSubmit() {
   } catch (error: any) {
     if (error?.errorFields) return;
     message.error(error.message || '提交失败');
+  } finally {
+    submitLoading.value = false;
   }
 }
 
@@ -414,6 +418,7 @@ onMounted(() => {
       title="新增报销"
       :width="isMobile ? '100%' : '500px'"
       :centered="isMobile"
+      :confirm-loading="submitLoading"
       @ok="handleSubmit"
     >
       <Form
