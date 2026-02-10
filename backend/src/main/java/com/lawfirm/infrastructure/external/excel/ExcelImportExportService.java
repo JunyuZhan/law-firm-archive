@@ -174,57 +174,57 @@ public class ExcelImportExportService {
   public ByteArrayInputStream createExcel(
       final List<String> headers, final List<List<Object>> data, final String sheetName)
       throws IOException {
-    Workbook workbook = new XSSFWorkbook();
-    Sheet sheet = workbook.createSheet(sheetName != null ? sheetName : "Sheet1");
+    try (Workbook workbook = new XSSFWorkbook()) {
+      Sheet sheet = workbook.createSheet(sheetName != null ? sheetName : "Sheet1");
 
-    // 创建表头样式
-    CellStyle headerStyle = workbook.createCellStyle();
-    Font headerFont = workbook.createFont();
-    headerFont.setBold(true);
-    headerStyle.setFont(headerFont);
-    headerStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
-    headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-    headerStyle.setAlignment(HorizontalAlignment.CENTER);
+      // 创建表头样式
+      CellStyle headerStyle = workbook.createCellStyle();
+      Font headerFont = workbook.createFont();
+      headerFont.setBold(true);
+      headerStyle.setFont(headerFont);
+      headerStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
+      headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+      headerStyle.setAlignment(HorizontalAlignment.CENTER);
 
-    // 创建表头
-    Row headerRow = sheet.createRow(0);
-    for (int i = 0; i < headers.size(); i++) {
-      Cell cell = headerRow.createCell(i);
-      cell.setCellValue(headers.get(i));
-      cell.setCellStyle(headerStyle);
-    }
-
-    // 创建数据行
-    for (int i = 0; i < data.size(); i++) {
-      Row row = sheet.createRow(i + 1);
-      List<Object> rowData = data.get(i);
-      for (int j = 0; j < headers.size() && j < rowData.size(); j++) {
-        Cell cell = row.createCell(j);
-        Object value = rowData.get(j);
-        setCellValue(cell, value);
+      // 创建表头
+      Row headerRow = sheet.createRow(0);
+      for (int i = 0; i < headers.size(); i++) {
+        Cell cell = headerRow.createCell(i);
+        cell.setCellValue(headers.get(i));
+        cell.setCellStyle(headerStyle);
       }
-    }
 
-    // 自动调整列宽
-    for (int i = 0; i < headers.size(); i++) {
-      sheet.autoSizeColumn(i);
-      // 设置最小列宽
-      final int columnWidth = sheet.getColumnWidth(i);
-      final int minWidth = MIN_COLUMN_WIDTH * COLUMN_WIDTH_UNIT;
-      final int maxWidth = MAX_COLUMN_WIDTH * COLUMN_WIDTH_UNIT;
-      if (columnWidth < minWidth) {
-        sheet.setColumnWidth(i, minWidth);
-      } else if (columnWidth > maxWidth) {
-        sheet.setColumnWidth(i, maxWidth);
+      // 创建数据行
+      for (int i = 0; i < data.size(); i++) {
+        Row row = sheet.createRow(i + 1);
+        List<Object> rowData = data.get(i);
+        for (int j = 0; j < headers.size() && j < rowData.size(); j++) {
+          Cell cell = row.createCell(j);
+          Object value = rowData.get(j);
+          setCellValue(cell, value);
+        }
       }
+
+      // 自动调整列宽
+      for (int i = 0; i < headers.size(); i++) {
+        sheet.autoSizeColumn(i);
+        // 设置最小列宽
+        final int columnWidth = sheet.getColumnWidth(i);
+        final int minWidth = MIN_COLUMN_WIDTH * COLUMN_WIDTH_UNIT;
+        final int maxWidth = MAX_COLUMN_WIDTH * COLUMN_WIDTH_UNIT;
+        if (columnWidth < minWidth) {
+          sheet.setColumnWidth(i, minWidth);
+        } else if (columnWidth > maxWidth) {
+          sheet.setColumnWidth(i, maxWidth);
+        }
+      }
+
+      // 写入ByteArrayOutputStream
+      ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+      workbook.write(outputStream);
+
+      return new ByteArrayInputStream(outputStream.toByteArray());
     }
-
-    // 写入ByteArrayOutputStream
-    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    workbook.write(outputStream);
-    workbook.close();
-
-    return new ByteArrayInputStream(outputStream.toByteArray());
   }
 
   /**

@@ -167,13 +167,14 @@ public class MinioService {
 
       String fileName = dirPath + UUID.randomUUID().toString() + extension;
 
-      // 上传
-      InputStream inputStream = file.getInputStream();
-      minioClient.putObject(
-          PutObjectArgs.builder().bucket(bucketName).object(fileName).stream(
-                  inputStream, file.getSize(), -1)
-              .contentType(file.getContentType())
-              .build());
+      // 上传（使用 try-with-resources 确保流关闭）
+      try (InputStream inputStream = file.getInputStream()) {
+        minioClient.putObject(
+            PutObjectArgs.builder().bucket(bucketName).object(fileName).stream(
+                    inputStream, file.getSize(), -1)
+                .contentType(file.getContentType())
+                .build());
+      }
 
       log.info("文件上传成功: {}", fileName);
       return fileName;

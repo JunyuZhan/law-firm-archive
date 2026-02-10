@@ -208,8 +208,8 @@
 
 | 优先级 | 问题 | 位置 | 修复方案 |
 |--------|------|------|----------|
-| 🔴高 | InputStream 未关闭 | `MinioService.java:338-353` | uploadFile 方法内使用 try-with-resources 关闭流 |
-| 🔴高 | Workbook 未关闭 | `ExcelImportExportService.java:177-227` | 使用 try-with-resources 包裹 Workbook |
+| ✅ | InputStream 未关闭 | `MinioService.java:171` | 已使用 try-with-resources 关闭流 |
+| ✅ | Workbook 未关闭 | `ExcelImportExportService.java:177` | 已使用 try-with-resources 包裹 Workbook |
 | 🟡中 | Process 无超时 | `VersionController.java:276-287,332-354` | 使用 waitFor(timeout, unit)，超时后 destroyForcibly() |
 
 #### 8.2 后端参数校验
@@ -241,9 +241,9 @@
 | 🟡中 | setTimeout 未清理 | `workbench/report/index.vue:451-454` | onBeforeUnmount 中 clearTimeout |
 
 **实施进度**：
-- [ ] 后端：MinioService InputStream 关闭
-- [ ] 后端：ExcelImportExportService Workbook 关闭
-- [ ] 后端：CommissionController ids 校验
+- [x] 后端：MinioService InputStream 关闭（使用 try-with-resources）
+- [x] 后端：ExcelImportExportService Workbook 关闭（使用 try-with-resources）
+- [x] 后端：CommissionController ids 校验（已添加 @Size）
 - [x] 前端：system/config 轮询定时器清理（添加 onUnmounted）
 - [ ] 前端：document/list 异步回调检查
 - [x] 前端：crm/client JSON.parse 错误处理（添加 try-catch）
@@ -723,6 +723,23 @@
 | 🟡中 | 重试参数硬编码 | `ContractSyncService.java:41,112` | 改为配置驱动 |
 
 **状态**：🔄 部分修复
+
+---
+
+### 32. 异步操作优化问题
+
+**问题描述**：前端异步操作存在串行执行和错误处理不完善问题。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| ✅ | Promise 无 .catch() | `CauseOfActionTab.vue:482` | 已添加 .catch() 错误处理 |
+| ✅ | 循环串行 await | `EvidenceListDisplay.vue:317` | 已改用 Promise.allSettled 并行 |
+| ✅ | 数组 index 赋值 | `EvidenceListDisplay.vue:326,343` | 已改用 splice() 方法 |
+| 🟡中 | 多个独立 await 串行 | `contract/index.vue:784-834` | 改为 Promise.all 并行 |
+| 🟡中 | onMounted 串行 await | `config/index.vue:904-911` | 独立请求用 Promise.all |
+| 🟡中 | 循环中重复请求 | `contract/index.vue:2277-2321` | 循环外只请求一次 |
+
+**状态**：🔄 高优先级已修复
 
 ---
 

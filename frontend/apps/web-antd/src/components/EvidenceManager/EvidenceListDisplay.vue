@@ -314,17 +314,24 @@ async function handleSaveAll() {
     return;
   }
 
-  for (const group of dirtyGroups) {
-    await handleSaveGroup(group);
+  // 使用 Promise.allSettled 并行保存，避免串行等待
+  const results = await Promise.allSettled(
+    dirtyGroups.map((group) => handleSaveGroup(group)),
+  );
+  const failed = results.filter((r) => r.status === 'rejected');
+  if (failed.length > 0) {
+    console.error('部分组保存失败:', failed);
   }
 }
 
 // 组上移
 function handleMoveGroupUp(index: number) {
   if (index === 0) return;
-  const temp = groupList.value[index];
-  groupList.value[index] = groupList.value[index - 1]!;
-  groupList.value[index - 1] = temp!;
+  const item = groupList.value[index];
+  if (!item) return;
+  // 使用 splice 交换元素位置
+  groupList.value.splice(index, 1);
+  groupList.value.splice(index - 1, 0, item);
   updateGroupOrder();
   groupList.value[index]!.isDirty = true;
   groupList.value[index - 1]!.isDirty = true;
@@ -333,9 +340,11 @@ function handleMoveGroupUp(index: number) {
 // 组下移
 function handleMoveGroupDown(index: number) {
   if (index === groupList.value.length - 1) return;
-  const temp = groupList.value[index];
-  groupList.value[index] = groupList.value[index + 1]!;
-  groupList.value[index + 1] = temp!;
+  const item = groupList.value[index];
+  if (!item) return;
+  // 使用 splice 交换元素位置
+  groupList.value.splice(index, 1);
+  groupList.value.splice(index + 1, 0, item);
   updateGroupOrder();
   groupList.value[index]!.isDirty = true;
   groupList.value[index + 1]!.isDirty = true;

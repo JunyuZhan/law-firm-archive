@@ -479,18 +479,22 @@ function handleModalSuccess() {
   fetchCauseTree();
   // 如果当前选中的节点被更新，重新加载
   if (selectedCauseId.value) {
-    getCauseById(selectedCauseId.value).then((data) => {
-      selectedCause.value = data;
-      selectedNode.value = {
-        code: data.code,
-        name: data.name,
-        level: data.level,
-        parentCode: data.parentCode,
-        categoryCode: data.categoryCode,
-        categoryName: data.categoryName,
-        isLeaf: true,
-      };
-    });
+    getCauseById(selectedCauseId.value)
+      .then((data) => {
+        selectedCause.value = data;
+        selectedNode.value = {
+          code: data.code,
+          name: data.name,
+          level: data.level,
+          parentCode: data.parentCode,
+          categoryCode: data.categoryCode,
+          categoryName: data.categoryName,
+          isLeaf: true,
+        };
+      })
+      .catch((error) => {
+        console.error('加载案由详情失败:', error);
+      });
   }
 }
 
