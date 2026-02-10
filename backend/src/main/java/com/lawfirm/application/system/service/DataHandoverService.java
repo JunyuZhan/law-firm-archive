@@ -13,6 +13,7 @@ import com.lawfirm.common.constant.DataHandoverStatus;
 import com.lawfirm.common.exception.BusinessException;
 import com.lawfirm.common.result.PageResult;
 import com.lawfirm.common.util.SecurityUtils;
+import java.util.Objects;
 import com.lawfirm.domain.client.entity.Client;
 import com.lawfirm.domain.client.entity.Lead;
 import com.lawfirm.domain.client.repository.ClientRepository;
@@ -215,8 +216,8 @@ public class DataHandoverService {
     User fromUser = userRepository.getByIdOrThrow(command.getFromUserId(), "移交人不存在");
     User toUser = userRepository.getByIdOrThrow(command.getToUserId(), "接收人不存在");
 
-    // 验证不能自己交接给自己
-    if (command.getFromUserId().equals(command.getToUserId())) {
+    // 验证不能自己交接给自己（使用 Objects.equals 避免 NPE）
+    if (Objects.equals(command.getFromUserId(), command.getToUserId())) {
       throw new BusinessException("移交人和接收人不能是同一人");
     }
 

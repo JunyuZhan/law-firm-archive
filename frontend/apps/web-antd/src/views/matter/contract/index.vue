@@ -2422,6 +2422,7 @@ function handleParticipantRoleChange(index: number, role: string | undefined) {
 // 重置表单
 function handleResetForm() {
   causeValue.value = [];
+  criminalChargeValue.value = []; // 重置刑事罪名级联
   contractParticipants.value = []; // 重置参与人列表
   Object.assign(formData, {
     id: undefined,
@@ -2448,6 +2449,21 @@ function handleResetForm() {
     conflictCheckStatus: 'NOT_REQUIRED',
     advanceTravelFee: undefined,
     riskRatio: undefined,
+    // 模板专用扩展字段
+    lawyerNames: '',
+    assistantNames: '',
+    authorizationType: '一般代理',
+    paymentDeadline: '',
+    disputeResolution: '1',
+    arbitrationCommittee: '',
+    specialTerms: '',
+    defendantName: '',
+    criminalCharge: '',
+    defenseStage: [],
+    partnerRate: undefined,
+    seniorRate: undefined,
+    assistantRate: undefined,
+    serviceHours: undefined,
   });
 
   // 重置提成方案为默认

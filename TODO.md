@@ -800,6 +800,38 @@
 
 ---
 
+### 34. equals() 空指针安全问题
+
+**问题描述**：equals() 在可能为 null 的对象上调用导致 NPE 风险。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| ✅ | clientId.equals() 可能 NPE | `PrepaymentAppService.java:275` | 已改用 Objects.equals() |
+| ✅ | fromUserId.equals() 可能 NPE | `DataHandoverService.java:219` | 已改用 Objects.equals() |
+| ✅ | getVersion().equals() 可能 NPE | `DocumentAppService.java:421` | 已改用 Objects.equals() |
+| 🟡中 | userId.equals() 未判空 | `LoginLocationService.java:405-406` | 方法参数校验 |
+| 🟡中 | sourceModule.equals() 可能 NPE | `DossierAutoArchiveService.java:777-781` | 使用 Objects.equals() |
+
+**状态**：🔄 高优先级已修复
+
+---
+
+### 35. 表单处理问题
+
+**问题描述**：前端表单重置和数值处理存在问题。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| ✅ | 天数/日赔偿金清空后金额未重置 | `StateCompensationForm.vue:202-206` | else 分支设 amount=0 |
+| ✅ | 表单重置未清空所有字段 | `contract/index.vue:2426-2451` | 补全缺失字段 |
+| ✅ | 刑事罪名级联未重置 | `contract/index.vue:2423-2424` | 重置 criminalChargeValue |
+| 🟡中 | NaN 风险 | `hr/payroll/index.vue:288-302` | parseFloat 返回 NaN 未处理 |
+| 🟡中 | 表单校验与后端不一致 | `UserModal.vue:57,69` | 前端未强制用户名/密码长度 |
+
+**状态**：🔄 高优先级已修复
+
+---
+
 ## ✅ 已完成任务
 
 _（完成后将任务移至此处）_

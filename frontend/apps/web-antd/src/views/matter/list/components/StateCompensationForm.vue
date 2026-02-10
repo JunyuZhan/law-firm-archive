@@ -201,8 +201,13 @@ function removeCompensationItem(index: number) {
 
 // 计算赔偿项目金额
 function calculateItemAmount(item: CompensationItem) {
-  if (item.type === '人身自由赔偿' && item.days && item.dailyAmount) {
-    item.amount = Number((item.days * item.dailyAmount).toFixed(2));
+  if (item.type === '人身自由赔偿') {
+    // 当天数或日赔偿金被清空时，金额重置为 0
+    if (item.days && item.dailyAmount) {
+      item.amount = Number((item.days * item.dailyAmount).toFixed(2));
+    } else {
+      item.amount = 0;
+    }
   }
 }
 

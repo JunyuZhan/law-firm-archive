@@ -22,6 +22,7 @@ import com.lawfirm.domain.finance.repository.PrepaymentRepository;
 import com.lawfirm.domain.finance.repository.PrepaymentUsageRepository;
 import com.lawfirm.domain.matter.entity.Matter;
 import com.lawfirm.domain.matter.repository.MatterRepository;
+import java.util.Objects;
 import com.lawfirm.domain.system.entity.User;
 import com.lawfirm.domain.system.repository.UserRepository;
 import com.lawfirm.infrastructure.persistence.mapper.PrepaymentMapper;
@@ -271,8 +272,8 @@ public class PrepaymentAppService {
       throw new BusinessException("核销金额超过收费记录待收金额");
     }
 
-    // 验证客户一致性
-    if (!prepayment.getClientId().equals(fee.getClientId())) {
+    // 验证客户一致性（使用 Objects.equals 避免 NPE）
+    if (!Objects.equals(prepayment.getClientId(), fee.getClientId())) {
       throw new BusinessException("预收款客户与收费记录客户不一致");
     }
 

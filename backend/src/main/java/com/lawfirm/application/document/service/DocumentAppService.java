@@ -28,6 +28,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Objects;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -414,11 +415,11 @@ public class DocumentAppService {
     Long rootId =
         currentDoc.getParentDocId() != null ? currentDoc.getParentDocId() : currentDoc.getId();
 
-    // 查找目标版本
+    // 查找目标版本（使用 Objects.equals 避免 NPE）
     List<Document> allVersions = documentRepository.findAllVersions(rootId);
     Document targetDoc =
         allVersions.stream()
-            .filter(d -> d.getVersion().equals(targetVersion))
+            .filter(d -> Objects.equals(d.getVersion(), targetVersion))
             .findFirst()
             .orElseThrow(() -> new BusinessException("目标版本不存在: v" + targetVersion));
 
