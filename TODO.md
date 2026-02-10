@@ -743,6 +743,22 @@
 
 ---
 
+### 33. 空指针和类型安全问题
+
+**问题描述**：Map.get() 返回值和类型断言使用不当导致的潜在错误。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| ✅ | Map.get("userId") 未判空 | `FinanceContractAmendmentService.java:270` | 已添加 null 检查 |
+| ✅ | Map.get("amount") 未判空 | `FinanceContractAmendmentService.java:330,377` | 已添加 null 检查 |
+| ✅ | value! 非空断言错误 | `hr/contract/index.vue:700,715,730` | 已改用 value?.replace() ?? '' |
+| 🟡中 | else 分支未判空 | `PdfReportGenerator.java:445,679,826` | 添加 Objects.toString() |
+| 🟡中 | detail as any 类型绕过 | `contract/index.vue:2064` | 定义 DTO 接口 |
+
+**状态**：🔄 高优先级已修复
+
+---
+
 ## ✅ 已完成任务
 
 _（完成后将任务移至此处）_

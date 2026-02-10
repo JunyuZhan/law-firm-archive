@@ -264,10 +264,15 @@ public class FinanceContractAmendmentService {
 
       // 创建新参与人
       for (Map<String, Object> pData : afterParticipants) {
+        Object userIdObj = pData.get("userId");
+        if (userIdObj == null) {
+          log.warn("参与人数据缺少 userId，跳过: {}", pData);
+          continue;
+        }
         ContractParticipant participant =
             ContractParticipant.builder()
                 .contractId(amendment.getContractId())
-                .userId(Long.valueOf(pData.get("userId").toString()))
+                .userId(Long.valueOf(userIdObj.toString()))
                 .role((String) pData.get("role"))
                 .commissionRate(
                     pData.get("commissionRate") != null
@@ -318,11 +323,16 @@ public class FinanceContractAmendmentService {
         scheduleRepository.deleteByContractId(amendment.getContractId());
 
         for (Map<String, Object> sData : afterSchedules) {
+          Object amountObj = sData.get("amount");
+          if (amountObj == null) {
+            log.warn("付款计划数据缺少 amount，跳过: {}", sData);
+            continue;
+          }
           ContractPaymentSchedule schedule =
               ContractPaymentSchedule.builder()
                   .contractId(amendment.getContractId())
                   .phaseName((String) sData.get("phaseName"))
-                  .amount(new java.math.BigDecimal(sData.get("amount").toString()))
+                  .amount(new java.math.BigDecimal(amountObj.toString()))
                   .status("PENDING")
                   .build();
           scheduleRepository.save(schedule);
@@ -365,11 +375,16 @@ public class FinanceContractAmendmentService {
 
     // 创建新的付款计划
     for (Map<String, Object> sData : afterSchedules) {
+      Object amountObj = sData.get("amount");
+      if (amountObj == null) {
+        log.warn("付款计划数据缺少 amount，跳过: {}", sData);
+        continue;
+      }
       ContractPaymentSchedule schedule =
           ContractPaymentSchedule.builder()
               .contractId(amendment.getContractId())
               .phaseName((String) sData.get("phaseName"))
-              .amount(new java.math.BigDecimal(sData.get("amount").toString()))
+              .amount(new java.math.BigDecimal(amountObj.toString()))
               .status("PENDING")
               .build();
       scheduleRepository.save(schedule);
