@@ -199,10 +199,11 @@ async function handleRefreshList(listId: number) {
     const detail = await getEvidenceListDetail(listId);
     const index = evidenceLists.value.findIndex((l) => l.id === listId);
     if (index !== -1) {
-      evidenceLists.value[index] = detail;
+      evidenceLists.value.splice(index, 1, detail);
     }
   } catch (error: any) {
     console.error('刷新清单失败:', error);
+    message.error('刷新清单失败');
   }
   // 同时刷新证据数据
   const evidences = await getEvidenceByMatter(props.matterId);

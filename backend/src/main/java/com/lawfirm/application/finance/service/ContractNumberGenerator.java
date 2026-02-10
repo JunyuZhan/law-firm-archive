@@ -60,6 +60,9 @@ public class ContractNumberGenerator {
   /** 默认序号长度. */
   private static final int DEFAULT_SEQUENCE_LENGTH = 4;
 
+  /** 编号冲突时最大重试次数. */
+  private static final int MAX_CONTRACT_NUMBER_RETRY = 10;
+
   /** 案件类型映射 - 中文简称. */
   private static final Map<String, String> CASE_TYPE_CN_MAP = new LinkedHashMap<>();
 
@@ -156,9 +159,9 @@ public class ContractNumberGenerator {
         buildContractNumber(
             pattern, prefix, sequenceLength, caseType, feeType, contractType, false);
 
-    // 检查编号是否已存在，如果存在则重新生成（最多重试10次）
+    // 检查编号是否已存在，如果存在则重新生成
     int retryCount = 0;
-    while (contractRepository.existsByContractNo(contractNo) && retryCount < 10) {
+    while (contractRepository.existsByContractNo(contractNo) && retryCount < MAX_CONTRACT_NUMBER_RETRY) {
       log.warn("合同编号已存在，重新生成: {}", contractNo);
       contractNo =
           buildContractNumber(
@@ -166,7 +169,7 @@ public class ContractNumberGenerator {
       retryCount++;
     }
 
-    if (retryCount >= 10) {
+    if (retryCount >= MAX_CONTRACT_NUMBER_RETRY) {
       throw new BusinessException("生成合同编号失败，请检查编号规则配置");
     }
 

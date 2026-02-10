@@ -710,6 +710,22 @@
 
 ---
 
+### 31. 代码质量改进（魔法数字和最佳实践）
+
+**问题描述**：硬编码值和不佳的编码实践。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| ✅ | 魔法数字 10 | `ContractNumberGenerator.java:161,169` | 已定义 MAX_CONTRACT_NUMBER_RETRY 常量 |
+| ✅ | 数组 index 赋值 | `EvidenceListManager.vue:202` | 已改用 splice() 方法 |
+| 🟡中 | 硬编码超时参数 | `LlmClient.java:51-81` | 改为配置驱动 |
+| 🟡中 | 硬编码路径 /tmp | `VersionController.java:175,222` | 使用环境变量 |
+| 🟡中 | 重试参数硬编码 | `ContractSyncService.java:41,112` | 改为配置驱动 |
+
+**状态**：🔄 部分修复
+
+---
+
 ## ✅ 已完成任务
 
 _（完成后将任务移至此处）_
