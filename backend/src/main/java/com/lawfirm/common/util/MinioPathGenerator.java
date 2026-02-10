@@ -244,7 +244,13 @@ public final class MinioPathGenerator {
     }
   }
 
-  private static String sanitizeFolderName(final String folder) {
+  /**
+   * 清理文件夹名称，防止路径遍历攻击.
+   *
+   * @param folder 原始文件夹名称
+   * @return 清理后的文件夹名称
+   */
+  public static String sanitizeFolderName(final String folder) {
     if (folder == null || folder.isEmpty() || "root".equals(folder)) {
       return "others";
     }
@@ -256,7 +262,13 @@ public final class MinioPathGenerator {
     return clean;
   }
 
-  private static String sanitizeFilename(final String filename) {
+  /**
+   * 清理文件名，防止路径遍历攻击.
+   *
+   * @param filename 原始文件名
+   * @return 清理后的文件名
+   */
+  public static String sanitizeFilename(final String filename) {
     if (filename == null || filename.isEmpty()) {
       return "unknown";
     }

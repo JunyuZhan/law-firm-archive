@@ -5,6 +5,7 @@ import com.lawfirm.application.clientservice.dto.ClientFileDTO;
 import com.lawfirm.application.clientservice.dto.ClientFileReceiveRequest;
 import com.lawfirm.application.clientservice.dto.ClientFileSyncRequest;
 import com.lawfirm.common.exception.BusinessException;
+import com.lawfirm.common.util.MinioPathGenerator;
 import com.lawfirm.common.result.PageResult;
 import com.lawfirm.domain.document.entity.Document;
 import com.lawfirm.domain.document.repository.DocumentRepository;
@@ -204,9 +205,10 @@ public class ClientFileService {
         throw new BusinessException("下载文件失败：文件内容为空");
       }
 
-      // 3. 构建存储路径并上传到MinIO
+      // 3. 构建存储路径并上传到MinIO（防止路径遍历攻击）
       String storagePath = String.format("matters/%d/client_uploads/", clientFile.getMatterId());
-      String fileName = UUID.randomUUID().toString() + "_" + clientFile.getFileName();
+      String safeFileName = MinioPathGenerator.sanitizeFilename(clientFile.getFileName());
+      String fileName = UUID.randomUUID().toString() + "_" + safeFileName;
       String objectName = storagePath + fileName;
 
       String fileUrl =

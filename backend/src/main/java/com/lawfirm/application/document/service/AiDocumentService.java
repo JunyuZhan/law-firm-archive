@@ -4,6 +4,7 @@ import com.lawfirm.application.document.command.AiGenerateDocumentCommand;
 import com.lawfirm.application.document.dto.DocumentDTO;
 import com.lawfirm.application.system.service.ExternalIntegrationAppService;
 import com.lawfirm.common.exception.BusinessException;
+import com.lawfirm.common.util.MinioPathGenerator;
 import com.lawfirm.common.util.SecurityUtils;
 import com.lawfirm.domain.client.entity.Client;
 import com.lawfirm.domain.client.repository.ClientRepository;
@@ -291,7 +292,7 @@ public class AiDocumentService {
    * @return 保存的文档DTO
    */
   private DocumentDTO saveDocument(final AiGenerateDocumentCommand command, final String content) {
-    // 生成文件名
+    // 生成文件名（防止路径遍历攻击）
     String fileName = command.getFileName();
     if (fileName == null || fileName.isEmpty()) {
       fileName =
@@ -300,6 +301,9 @@ public class AiDocumentService {
               + LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"))
               + "_"
               + UUID.randomUUID().toString().substring(0, 4).toUpperCase();
+    } else {
+      // 清理用户输入的文件名，防止路径遍历
+      fileName = MinioPathGenerator.sanitizeFilename(fileName);
     }
 
     // 生成文档编号

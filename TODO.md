@@ -335,6 +335,9 @@
 | 优先级 | 问题 | 位置 | 修复方案 |
 |--------|------|------|----------|
 | ✅ | Zip 解压路径遍历 | `BackupAppService.java:1148-1160` | 已有路径校验和规范化 |
+| ✅ | AI 文档文件名路径遍历 | `AiDocumentService.java:295-304` | 已使用 MinioPathGenerator.sanitizeFilename |
+| ✅ | 客户文件名路径遍历 | `ClientFileService.java:208-210` | 已使用 MinioPathGenerator.sanitizeFilename |
+| 🟡中 | MinioService 路径参数未校验 | `MinioService.java:311` | 调用方需确保参数安全 |
 
 #### 11.3 临时文件清理
 
@@ -521,7 +524,7 @@
 | ✅ | watch + emit 循环 | `StateCompensationForm.vue:224` | 已使用标志位防止循环 |
 | ✅ | watch + emit 循环 | `StructuredTemplateEditor.vue:127` | 已使用标志位防止循环 |
 | ✅ | 并发请求未去重 | `MatterSelector.vue:loadDossierItems` | 已添加 requestId 版本号校验 |
-| ✅ | 卸载后修改 ref | `office-preview/index.vue` | 已添加 isMounted 检查 |
+| ✅ | 卸载后修改 ref | `office-preview/index.vue` | 已添加 isMounted 检查（loadFromBackend 和 loadDirectUrl）|
 | ✅ | Modal.confirm 重复提交 | `archive/list/index.vue:466` | 已添加 isSubmitting 标志 |
 | ✅ | Modal.confirm 重复提交 | `hr/payroll/index.vue:347,364` | 已添加 isSubmitting 标志 |
 | 🟡中 | 并发请求未去重 | `document/list/index.vue:671`<br>`matter/detail/index.vue:253` | 需添加请求取消或版本号校验 |

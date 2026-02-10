@@ -186,6 +186,7 @@ async function loadDirectUrl(
 
     initEditor(directConfig);
   } catch (error_: any) {
+    if (!isMounted) return; // 组件已卸载，跳过状态更新
     error.value = error_.message || '加载失败';
     loading.value = false;
   }
