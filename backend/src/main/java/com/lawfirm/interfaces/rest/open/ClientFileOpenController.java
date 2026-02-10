@@ -47,14 +47,19 @@ public class ClientFileOpenController {
   /**
    * 验证 API Key.
    *
+   * <p>如果 API Key 未配置，则拒绝所有请求（安全默认行为）。
+   *
    * @param providedApiKey 提供的 API Key
    */
   private void validateApiKey(final String providedApiKey) {
-    if (apiKey != null && !apiKey.isEmpty()) {
-      if (providedApiKey == null || !apiKey.equals(providedApiKey)) {
-        log.warn("客户文件开放接口认证失败: 无效的 API Key");
-        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid API Key");
-      }
+    // API Key 未配置时，拒绝所有请求（安全默认行为）
+    if (apiKey == null || apiKey.isEmpty()) {
+      log.error("客户文件开放接口 API Key 未配置，拒绝请求");
+      throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "API Key not configured");
+    }
+    if (providedApiKey == null || !apiKey.equals(providedApiKey)) {
+      log.warn("客户文件开放接口认证失败: 无效的 API Key");
+      throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid API Key");
     }
   }
 

@@ -1059,7 +1059,8 @@ onMounted(async () => {
   const id = route.query.id;
   if (id) {
     const matterId = Number(id);
-    if (!Number.isNaN(matterId)) {
+    // 校验 matterId 是否为有效正整数
+    if (!Number.isNaN(matterId) && matterId > 0) {
       try {
         const matter = await getMatterDetail(matterId);
         handleEdit(matter);

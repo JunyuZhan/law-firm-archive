@@ -1199,6 +1199,27 @@
 
 ---
 
+### 60. 数据验证与安全配置问题
+
+**问题描述**：URL参数未校验、API开放接口缺认证保护。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| ✅ | documentId 未校验即用于 API 请求 | `office-preview/index.vue:61-62` | 添加正整数校验 |
+| ✅ | URL 参数未校验即加载（SSRF 风险） | `office-preview/index.vue:65-66` | 添加 http/https 协议校验 |
+| ✅ | 打印时 documentId 未校验 | `office-preview/index.vue:410-464` | 添加正整数校验 |
+| ✅ | archive/list matterId 未校验 > 0 | `archive/list/index.vue:872-873` | 添加正整数校验 |
+| ✅ | matter/list id 未校验 > 0 | `matter/list/index.vue:1061-1062` | 添加正整数校验 |
+| ✅ | returnQuery JSON 解析未校验结构 | `crm/client/index.vue:393-401` | 添加白名单校验防原型污染 |
+| ✅ | 开放接口无 API Key 时直接放行 | `ClientFileOpenController.java:52-59` | 未配置时拒绝请求 |
+| 🟡中 | CORS 配置过于宽松 | `WebMvcConfig.java:39` | 生产环境限定可信域名 |
+| 🟡中 | 静态 token 密钥硬编码 | `DocumentController.java:83` | 应使用配置注入 |
+| 🟡中 | JWT/OnlyOffice 默认密钥风险 | `application.yml:89,145` | 生产环境强制配置 |
+
+**状态**：🔄 高优先级已修复
+
+---
+
 ## ✅ 已完成任务
 
 _（完成后将任务移至此处）_

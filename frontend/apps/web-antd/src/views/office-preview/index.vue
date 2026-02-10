@@ -59,10 +59,22 @@ onMounted(async () => {
 
   // 如果有 documentId，从后端获取配置
   if (documentId) {
-    await loadFromBackend(Number.parseInt(documentId), currentMode.value);
+    const docId = Number.parseInt(documentId);
+    // 校验 documentId 是否为有效正整数
+    if (Number.isNaN(docId) || docId <= 0) {
+      error.value = '无效的文档 ID';
+      loading.value = false;
+      return;
+    }
+    await loadFromBackend(docId, currentMode.value);
   }
-  // 兼容旧版直接 URL 模式
+  // 兼容旧版直接 URL 模式（仅允许 http/https URL）
   else if (url && filename) {
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      error.value = '不支持的 URL 协议';
+      loading.value = false;
+      return;
+    }
     await loadDirectUrl(url, filename, type || 'word', ext || 'docx');
   } else {
     error.value = '缺少必要参数：documentId 或 url';
@@ -401,6 +413,11 @@ async function handleCustomPrint() {
       // 允许默认打印行为
       return;
     }
+    const docIdNum = Number.parseInt(documentId);
+    if (Number.isNaN(docIdNum) || docIdNum <= 0) {
+      console.warn('无法打印：documentId 格式无效');
+      return;
+    }
 
     // 方法1：尝试通过 OnlyOffice API 下载为 PDF
     // OnlyOffice 支持通过 downloadAs 方法下载为 PDF
@@ -449,7 +466,7 @@ async function handleCustomPrint() {
     // 方法2：通过后端 API 下载文档
     // 下载文档后在新窗口中打开并打印
     const { downloadDocument } = await import('#/api/document');
-    const blob = await downloadDocument(Number.parseInt(documentId));
+    const blob = await downloadDocument(docIdNum);
 
     // 创建 blob URL
     const blobUrl = URL.createObjectURL(blob);

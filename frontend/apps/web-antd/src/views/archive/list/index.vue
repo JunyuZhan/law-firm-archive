@@ -870,7 +870,8 @@ async function handleRouteQuery() {
   const matterId = route.query.matterId;
   if (matterId) {
     const id = Number(matterId);
-    if (!Number.isNaN(id)) {
+    // 校验 id 是否为有效正整数
+    if (!Number.isNaN(id) && id > 0) {
       // 清除查询参数
       router.replace({ path: '/archive/list', query: {} });
 
