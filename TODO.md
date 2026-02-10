@@ -890,6 +890,21 @@
 
 ---
 
+### 40. 文件上传安全问题
+
+**问题描述**：文件名未清理或类型校验不完善。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| ✅ | 证据清单名称未 sanitize | `EvidenceListAppService.java:374-396` | 使用 MinioPathGenerator.sanitizeFilename |
+| 🟡中 | FileTypeService 仅扩展名校验 | `FileTypeService.java:200-221` | 需增加 MIME 和内容校验 |
+| 🟡中 | 备份导入仅扩展名校验 | `BackupAppService.java:1419-1446` | 已限制为 .sql/.dump |
+| 🟢低 | OcrController 校验逻辑 | `OcrController.java` | 检查 FileValidator 注入 |
+
+**状态**：🔄 高优先级已修复
+
+---
+
 ## ✅ 已完成任务
 
 _（完成后将任务移至此处）_

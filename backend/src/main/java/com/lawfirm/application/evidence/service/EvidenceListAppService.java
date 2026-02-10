@@ -12,6 +12,7 @@ import com.lawfirm.application.evidence.dto.EvidenceListDTO;
 import com.lawfirm.application.matter.service.MatterAppService;
 import com.lawfirm.common.exception.BusinessException;
 import com.lawfirm.common.result.PageResult;
+import com.lawfirm.common.util.MinioPathGenerator;
 import com.lawfirm.common.util.SecurityUtils;
 import com.lawfirm.domain.evidence.entity.Evidence;
 import com.lawfirm.domain.evidence.entity.EvidenceList;
@@ -371,12 +372,11 @@ public class EvidenceListAppService {
     // 生成PDF
     byte[] pdfBytes = exportToPdf(id);
 
-    // 构建文件名
+    // 构建文件名（对用户输入的名称进行清理，防止路径遍历攻击）
+    String baseName =
+        MinioPathGenerator.sanitizeFilename(list.getName() != null ? list.getName() : "证据清单");
     String fileName =
-        (list.getName() != null ? list.getName() : "证据清单")
-            + "_"
-            + LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"))
-            + ".pdf";
+        baseName + "_" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd")) + ".pdf";
 
     // 构建存储路径
     String storagePath =
