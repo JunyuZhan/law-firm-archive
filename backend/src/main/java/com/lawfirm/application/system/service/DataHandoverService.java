@@ -664,7 +664,16 @@ public class DataHandoverService {
    * @param detail 交接明细
    */
   private void executeHandover(final DataHandoverDetail detail) {
-    Long newUserId = Long.parseLong(detail.getNewValue());
+    // 安全解析新用户 ID
+    if (detail.getNewValue() == null || detail.getNewValue().trim().isEmpty()) {
+      throw new BusinessException("新接收人 ID 不能为空");
+    }
+    Long newUserId;
+    try {
+      newUserId = Long.parseLong(detail.getNewValue().trim());
+    } catch (NumberFormatException e) {
+      throw new BusinessException("新接收人 ID 格式无效: " + detail.getNewValue());
+    }
 
     switch (detail.getDataType()) {
       case "MATTER" -> executeMatterHandover(detail, newUserId);

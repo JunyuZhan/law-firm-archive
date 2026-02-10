@@ -383,13 +383,18 @@ public class ScheduledReportAppService {
         userIds.add(task.getCreatedBy());
       }
 
-      // 添加指定的通知用户
+      // 添加指定的通知用户（安全解析，跳过无效 ID）
       if (task.getNotifyUserIds() != null && !task.getNotifyUserIds().isEmpty()) {
         Arrays.stream(task.getNotifyUserIds().split(","))
             .map(String::trim)
             .filter(s -> !s.isEmpty())
-            .map(Long::parseLong)
-            .forEach(userIds::add);
+            .forEach(s -> {
+              try {
+                userIds.add(Long.parseLong(s));
+              } catch (NumberFormatException e) {
+                log.warn("跳过无效的通知用户 ID: {}", s);
+              }
+            });
       }
 
       // 去重
@@ -744,10 +749,16 @@ public class ScheduledReportAppService {
       dto.setNotifyEmails(Arrays.asList(task.getNotifyEmails().split(",")));
     }
     if (task.getNotifyUserIds() != null && !task.getNotifyUserIds().isEmpty()) {
-      dto.setNotifyUserIds(
-          Arrays.stream(task.getNotifyUserIds().split(","))
-              .map(Long::parseLong)
-              .collect(Collectors.toList()));
+      // 安全解析，跳过无效 ID
+      List<Long> notifyIds = new java.util.ArrayList<>();
+      for (String idStr : task.getNotifyUserIds().split(",")) {
+        try {
+          notifyIds.add(Long.parseLong(idStr.trim()));
+        } catch (NumberFormatException e) {
+          log.warn("跳过无效的通知用户 ID: {}", idStr);
+        }
+      }
+      dto.setNotifyUserIds(notifyIds);
     }
 
     dto.setStatus(task.getStatus());

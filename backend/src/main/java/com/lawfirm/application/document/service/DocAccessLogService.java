@@ -116,10 +116,13 @@ public class DocAccessLogService {
             command.getEndTime());
     statistics.setByDate(byDate);
 
-    // 计算总访问次数
+    // 计算总访问次数（安全处理 null 值）
     long totalCount =
         byActionType.stream()
-            .mapToLong(item -> ((Number) item.get("access_count")).longValue())
+            .mapToLong(item -> {
+              Object count = item.get("access_count");
+              return count instanceof Number ? ((Number) count).longValue() : 0L;
+            })
             .sum();
     statistics.setTotalAccessCount(totalCount);
 

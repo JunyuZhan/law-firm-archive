@@ -1617,11 +1617,10 @@ public class ContractAppService {
     dto.setFeeTypeName(contractTemplateVariableService.getFeeTypeName(contract.getFeeType()));
     dto.setTotalAmount(contract.getTotalAmount());
     dto.setPaidAmount(contract.getPaidAmount());
-    dto.setUnpaidAmount(
-        contract
-            .getTotalAmount()
-            .subtract(
-                contract.getPaidAmount() != null ? contract.getPaidAmount() : BigDecimal.ZERO));
+    // 安全计算未付金额，处理 totalAmount 为 null 的情况
+    BigDecimal totalAmount = contract.getTotalAmount() != null ? contract.getTotalAmount() : BigDecimal.ZERO;
+    BigDecimal paidAmount = contract.getPaidAmount() != null ? contract.getPaidAmount() : BigDecimal.ZERO;
+    dto.setUnpaidAmount(totalAmount.subtract(paidAmount));
     dto.setCurrency(contract.getCurrency());
     dto.setSignDate(contract.getSignDate());
     dto.setEffectiveDate(contract.getEffectiveDate());
@@ -1706,11 +1705,10 @@ public class ContractAppService {
     dto.setFeeTypeName(contractTemplateVariableService.getFeeTypeName(contract.getFeeType()));
     dto.setTotalAmount(contract.getTotalAmount());
     dto.setPaidAmount(contract.getPaidAmount());
-    dto.setUnpaidAmount(
-        contract
-            .getTotalAmount()
-            .subtract(
-                contract.getPaidAmount() != null ? contract.getPaidAmount() : BigDecimal.ZERO));
+    // 安全计算未付金额，处理 totalAmount 为 null 的情况
+    BigDecimal totalAmount = contract.getTotalAmount() != null ? contract.getTotalAmount() : BigDecimal.ZERO;
+    BigDecimal paidAmount = contract.getPaidAmount() != null ? contract.getPaidAmount() : BigDecimal.ZERO;
+    dto.setUnpaidAmount(totalAmount.subtract(paidAmount));
     dto.setCurrency(contract.getCurrency());
     dto.setSignDate(contract.getSignDate());
     dto.setEffectiveDate(contract.getEffectiveDate());

@@ -1074,6 +1074,38 @@
 
 ---
 
+### 54. 数据转换安全问题
+
+**问题描述**：数据转换未处理 null 和异常情况。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| ✅ | getTotalAmount() 可能为 null | `ContractAppService.java:1709-1713` | 添加 null 检查 |
+| ✅ | Long.parseLong 无异常处理 | `DataHandoverService.java:667` | 添加 try-catch |
+| ✅ | Long.parseLong 无异常处理 | `ScheduledReportAppService.java:391,754` | 添加 try-catch |
+| ✅ | Map.get 结果转 Number 无检查 | `DocAccessLogService.java:122` | 添加 instanceof 检查 |
+| 🟡中 | 报表参数解析未用工具类 | `ReportAppService.java:1163` | 使用 ReportParameterUtils |
+
+**状态**：🔄 高优先级已修复
+
+---
+
+### 55. 表单验证缺失
+
+**问题描述**：表单未使用 Form 校验或缺少格式校验。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| 🟡中 | 劳动合同表单无 Form 校验 | `hr/contract/index.vue` | 添加 rules 和 validate |
+| 🟡中 | 离职表单无 Form 校验 | `hr/resignation/index.vue` | 添加 rules 和 validate |
+| 🟡中 | 联系电话/邮箱无格式校验 | `crm/client/index.vue` | 添加格式验证规则 |
+| 🟡中 | 邮箱/手机号无格式校验 | `system/user/components/UserModal.vue` | 添加格式验证规则 |
+| 🟡中 | 会议室表单无 Form 校验 | `hr/meeting-room/index.vue` | 添加 rules 和 validate |
+
+**状态**：⏳ 待修复
+
+---
+
 ### 53. 日志记录问题
 
 **问题描述**：异常日志缺少堆栈信息，不利于排查。
