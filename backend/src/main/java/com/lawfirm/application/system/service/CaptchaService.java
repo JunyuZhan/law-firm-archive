@@ -74,7 +74,7 @@ public class CaptchaService {
       // 转换为Base64图片
       String base64Image = captchaToBase64(captcha);
 
-      log.debug("生成验证码: captchaId={}, answer={}", captchaId, answer);
+      log.debug("生成验证码: captchaId={}", captchaId);
 
       return CaptchaResult.builder()
           .captchaId(captchaId)

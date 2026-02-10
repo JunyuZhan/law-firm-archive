@@ -164,7 +164,7 @@ public class AuthController {
    * @return 登录结果
    */
   @PostMapping("/login")
-  @OperationLog(module = "认证", action = "用户登录", saveResult = false)
+  @OperationLog(module = "认证", action = "用户登录", saveResult = false, saveParams = false)
   @Operation(summary = "用户登录")
   @RateLimiter(
       key = "login",

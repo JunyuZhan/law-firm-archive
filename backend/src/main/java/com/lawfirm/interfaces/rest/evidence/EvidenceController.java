@@ -684,7 +684,7 @@ public class EvidenceController {
       }
     } catch (Exception e) {
       log.error("提取文件内容失败", e);
-      result.put("content", "文档内容提取失败: " + e.getMessage());
+      result.put("content", "文档内容提取失败，请稍后重试");
       result.put("supported", false);
     }
 
@@ -732,7 +732,7 @@ public class EvidenceController {
       try {
         response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         response.setContentType("application/json;charset=UTF-8");
-        response.getWriter().write("{\"message\":\"导出失败: " + e.getMessage() + "\"}");
+        response.getWriter().write("{\"message\":\"导出失败，请稍后重试\"}");
       } catch (Exception writeError) {
         log.debug("写入错误响应失败", writeError);
       }
