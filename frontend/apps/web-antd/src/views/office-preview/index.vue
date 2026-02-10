@@ -244,9 +244,8 @@ function loadOnlyOfficeApi(apiUrl: string): Promise<void> {
 
     const script = document.createElement('script');
     script.src = apiUrl;
-    script.addEventListener('load', () => {
-      resolve();
-    });
+    // 使用 { once: true } 自动移除监听器
+    script.addEventListener('load', () => resolve(), { once: true });
     // eslint-disable-next-line unicorn/prefer-add-event-listener
     script.onerror = (e) => {
       console.error('OnlyOffice API load error:', e);
@@ -416,11 +415,16 @@ async function handleCustomPrint() {
             // 打开 PDF 在新窗口并打印
             const printWindow = window.open(url, '_blank');
             if (printWindow) {
-              printWindow.addEventListener('load', () => {
-                setTimeout(() => {
-                  printWindow.print();
-                }, 500);
-              });
+              // 使用 { once: true } 自动移除监听器，防止内存泄漏
+              printWindow.addEventListener(
+                'load',
+                () => {
+                  setTimeout(() => {
+                    printWindow.print();
+                  }, 500);
+                },
+                { once: true },
+              );
               // 监听窗口关闭，释放 Blob URL（如果是 blob: 协议）
               const checkClosed = setInterval(() => {
                 if (printWindow.closed) {
@@ -473,18 +477,22 @@ async function handleCustomPrint() {
       // 跟踪定时器，以便组件卸载时清理
       printIntervals.add(checkClosed);
 
-      // 等待文档加载后打印
-      printWindow.addEventListener('load', () => {
-        setTimeout(() => {
-          printWindow.print();
-          // 打印后清理 blob URL
+      // 等待文档加载后打印（使用 { once: true } 自动移除监听器）
+      printWindow.addEventListener(
+        'load',
+        () => {
           setTimeout(() => {
-            revokeBlobUrl();
-            clearInterval(checkClosed);
-            printIntervals.delete(checkClosed);
+            printWindow.print();
+            // 打印后清理 blob URL
+            setTimeout(() => {
+              revokeBlobUrl();
+              clearInterval(checkClosed);
+              printIntervals.delete(checkClosed);
+            }, 1000);
           }, 1000);
-        }, 1000);
-      });
+        },
+        { once: true },
+      );
     } else {
       // 如果无法打开新窗口，清理 blob URL
       revokeBlobUrl();

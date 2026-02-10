@@ -4,7 +4,7 @@ import type { DocumentDTO } from '#/api/document/types';
 import type { MatterDTO, MatterSimpleDTO } from '#/api/matter/types';
 import type { OcrResultDTO } from '#/api/ocr';
 
-import { computed, h, onMounted, reactive, ref, watch } from 'vue';
+import { computed, h, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
@@ -84,6 +84,11 @@ const router = useRouter();
 
 // 状态管理
 const loading = ref(false);
+// 跟踪文件输入元素，用于清理（防止内存泄漏）
+const activeFileInputs = new Set<{
+  input: HTMLInputElement;
+  handler: (e: Event) => void;
+}>();
 const selectedMatterId = ref<number | undefined>(undefined);
 const selectedMatter = ref<MatterDTO | MatterSimpleDTO | null>(null);
 const selectedFolder = ref<string>('root');
@@ -1534,10 +1539,21 @@ function handleUploadSignedVersion(record: DocumentDTO) {
   input.type = 'file';
   input.accept = '.pdf,.jpg,.jpeg,.png';
 
+  // 用于跟踪和清理的引用
+  let inputRef: {
+    input: HTMLInputElement;
+    handler: (e: Event) => void;
+  } | null = null;
+
   // 定义处理函数，便于移除监听器
   const handleChange = async (e: Event) => {
     // 移除监听器，防止内存泄漏
     input.removeEventListener('change', handleChange);
+    // 从跟踪集合中移除
+    if (inputRef) {
+      activeFileInputs.delete(inputRef);
+      inputRef = null;
+    }
 
     const file = (e.target as HTMLInputElement).files?.[0];
     if (!file) return;
@@ -1560,6 +1576,10 @@ function handleUploadSignedVersion(record: DocumentDTO) {
       loading.value = false;
     }
   };
+
+  // 跟踪输入元素和处理函数，以便在组件卸载时清理
+  inputRef = { input, handler: handleChange };
+  activeFileInputs.add(inputRef);
 
   input.addEventListener('change', handleChange);
   input.click();
@@ -1769,6 +1789,14 @@ onMounted(async () => {
   await loadMatters();
   // 尝试从路由参数恢复状态（跳过重复加载项目列表）
   await restoreStateFromRoute(true);
+});
+
+// 清理未完成的文件输入监听器（防止内存泄漏）
+onUnmounted(() => {
+  activeFileInputs.forEach(({ input, handler }) => {
+    input.removeEventListener('change', handler);
+  });
+  activeFileInputs.clear();
 });
 
 // 当选择项目时，更新路由参数（避免无限循环）

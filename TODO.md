@@ -832,6 +832,36 @@
 
 ---
 
+### 36. 前端内存泄漏问题
+
+**问题描述**：事件监听器未正确清理导致内存泄漏。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| ✅ | 文件选择取消后监听器未移除 | `document/list/index.vue:1564` | 跟踪输入并在 onUnmounted 清理 |
+| ✅ | 打印窗口 load 监听器未移除 | `office-preview/index.vue:419,477` | 使用 { once: true } |
+| ✅ | OnlyOffice 脚本 load 监听器未移除 | `office-preview/index.vue:247` | 使用 { once: true } |
+| 🟡中 | 打印窗口生命周期与组件不同步 | `office-preview/index.vue:464-488` | 添加 isMounted 检查 |
+
+**状态**：🔄 高优先级已修复
+
+---
+
+### 37. 后端缓存问题
+
+**问题描述**：缓存无过期或大小限制，可能导致内存增长。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| 🔴高 | deptChildrenCache 无过期限制 | `DataScopeInterceptor.java:66-67` | 添加过期机制或大小限制 |
+| 🔴高 | 部门缓存清理不统一 | `CacheController.java:94-99` | 同时清理 DataScopeInterceptor 缓存 |
+| 🟡中 | taskRecords 无过期限制 | `ScheduledTaskMonitor.java:25-26` | 任务类型数量有限，影响小 |
+| 🟡中 | taskStatsMap 无过期限制 | `AsyncTaskMonitor.java:26` | 任务类型数量有限，影响小 |
+
+**状态**：⏳ 待处理
+
+---
+
 ## ✅ 已完成任务
 
 _（完成后将任务移至此处）_
