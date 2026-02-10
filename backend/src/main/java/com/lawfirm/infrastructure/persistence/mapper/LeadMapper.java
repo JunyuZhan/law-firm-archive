@@ -22,6 +22,8 @@ public interface LeadMapper extends BaseMapper<Lead> {
    * @param sourceChannel 来源渠道
    * @param responsibleUserIds 负责人ID列表
    * @param originatorIds 案源人ID列表
+   * @param offset 偏移量
+   * @param limit 每页大小
    * @return 案源列表
    */
   @Select(
@@ -60,9 +62,68 @@ public interface LeadMapper extends BaseMapper<Lead> {
             </foreach>
         </if>
         ORDER BY l.created_at DESC
+        LIMIT #{limit} OFFSET #{offset}
         </script>
         """)
   List<Lead> selectLeadPage(
+      @Param("leadName") String leadName,
+      @Param("status") String status,
+      @Param("originatorId") Long originatorId,
+      @Param("responsibleUserId") Long responsibleUserId,
+      @Param("sourceChannel") String sourceChannel,
+      @Param("responsibleUserIds") java.util.List<Long> responsibleUserIds,
+      @Param("originatorIds") java.util.List<Long> originatorIds,
+      @Param("offset") int offset,
+      @Param("limit") int limit);
+
+  /**
+   * 统计案源总数.
+   *
+   * @param leadName 案源名称
+   * @param status 状态
+   * @param originatorId 案源人ID
+   * @param responsibleUserId 负责人ID
+   * @param sourceChannel 来源渠道
+   * @param responsibleUserIds 负责人ID列表
+   * @param originatorIds 案源人ID列表
+   * @return 总数
+   */
+  @Select(
+      """
+        <script>
+        SELECT COUNT(*)
+        FROM crm_lead l
+        WHERE l.deleted = false
+        <if test="leadName != null and leadName != ''">
+            AND l.lead_name LIKE CONCAT('%', #{leadName}, '%')
+        </if>
+        <if test="status != null and status != ''">
+            AND l.status = #{status}
+        </if>
+        <if test="originatorId != null">
+            AND l.originator_id = #{originatorId}
+        </if>
+        <if test="responsibleUserId != null">
+            AND l.responsible_user_id = #{responsibleUserId}
+        </if>
+        <if test="sourceChannel != null and sourceChannel != ''">
+            AND l.source_channel = #{sourceChannel}
+        </if>
+        <if test="responsibleUserIds != null and responsibleUserIds.size() > 0">
+            AND l.responsible_user_id IN
+            <foreach collection="responsibleUserIds" item="id" open="(" separator="," close=")">
+                #{id}
+            </foreach>
+        </if>
+        <if test="originatorIds != null and originatorIds.size() > 0">
+            AND l.originator_id IN
+            <foreach collection="originatorIds" item="id" open="(" separator="," close=")">
+                #{id}
+            </foreach>
+        </if>
+        </script>
+        """)
+  long countLeadPage(
       @Param("leadName") String leadName,
       @Param("status") String status,
       @Param("originatorId") Long originatorId,

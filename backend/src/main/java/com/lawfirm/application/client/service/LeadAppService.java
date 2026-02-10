@@ -71,6 +71,22 @@ public class LeadAppService {
     // 只查询当前用户创建的案源
     List<Long> myUserIds = Collections.singletonList(currentUserId);
 
+    // 数据库分页查询
+    int offset = query.getOffset();
+    int limit = query.getPageSize();
+
+    // 先查询总数
+    long total =
+        leadMapper.countLeadPage(
+            query.getLeadName(),
+            query.getStatus(),
+            query.getOriginatorId(),
+            query.getResponsibleUserId(),
+            query.getSourceChannel(),
+            myUserIds,
+            myUserIds);
+
+    // 再查询当前页数据
     List<Lead> leads =
         leadMapper.selectLeadPage(
             query.getLeadName(),
@@ -78,17 +94,12 @@ public class LeadAppService {
             query.getOriginatorId(),
             query.getResponsibleUserId(),
             query.getSourceChannel(),
-            myUserIds, // 过滤：我是负责用户
-            myUserIds // 过滤：我是案源人
-            );
+            myUserIds,
+            myUserIds,
+            offset,
+            limit);
 
-    // 手动分页
-    int offset = query.getOffset();
-    int limit = query.getPageSize();
-    int total = leads.size();
-    List<Lead> pagedLeads = leads.stream().skip(offset).limit(limit).collect(Collectors.toList());
-
-    List<LeadDTO> records = pagedLeads.stream().map(this::toDTO).collect(Collectors.toList());
+    List<LeadDTO> records = leads.stream().map(this::toDTO).collect(Collectors.toList());
 
     return PageResult.of(records, total, query.getPageNum(), query.getPageSize());
   }

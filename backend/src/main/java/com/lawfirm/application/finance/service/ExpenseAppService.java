@@ -139,6 +139,22 @@ public class ExpenseAppService {
       applicantId = currentUserId;
     }
 
+    // 数据库分页查询
+    int offset = query.getOffset();
+    int limit = query.getPageSize();
+
+    // 先查询总数
+    long total =
+        expenseMapper.countExpensePage(
+            query.getExpenseNo(),
+            query.getMatterId(),
+            applicantId,
+            query.getStatus(),
+            query.getExpenseType(),
+            query.getExpenseCategory(),
+            accessibleMatterIds);
+
+    // 再查询当前页数据
     List<Expense> expenses =
         expenseMapper.selectExpensePage(
             query.getExpenseNo(),
@@ -147,18 +163,12 @@ public class ExpenseAppService {
             query.getStatus(),
             query.getExpenseType(),
             query.getExpenseCategory(),
-            accessibleMatterIds // null表示可以访问所有项目的费用（ALL权限）
-            );
-
-    // 手动分页
-    int offset = query.getOffset();
-    int limit = query.getPageSize();
-    int total = expenses.size();
-    List<Expense> pagedExpenses =
-        expenses.stream().skip(offset).limit(limit).collect(Collectors.toList());
+            accessibleMatterIds,
+            offset,
+            limit);
 
     // 批量转换DTO（避免N+1查询）
-    List<ExpenseDTO> records = batchConvertToDTO(pagedExpenses);
+    List<ExpenseDTO> records = batchConvertToDTO(expenses);
 
     return PageResult.of(records, total, query.getPageNum(), query.getPageSize());
   }

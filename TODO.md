@@ -402,6 +402,40 @@
 
 ---
 
+### 14. 数据库与事务问题
+
+**问题描述**：事务边界不当和批量操作性能问题。
+
+#### 14.1 事务边界问题
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| 🟡中 | 事务内执行 HTTP 调用 | `DataPushService.java:98-198` | 将 HTTP 调用移到事务外或改为异步 |
+| 🟡中 | getOrCreateConfig 无事务 | `DataPushService.java:261-276` | 添加 @Transactional 和唯一约束处理 |
+
+#### 14.2 批量操作性能
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| 🟡中 | 循环内逐条 insert | `DataHandoverService.java:779-935,973` | 改为 saveBatch 批量插入 |
+| 🟡中 | 循环内逐条 update | `DataHandoverService.java:501-513` | 改为批量更新 |
+
+#### 14.3 内存分页问题
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| 🔴高 | 全表查询+内存分页 | `ExpenseAppService.java:142-158`<br>`ExpenseMapper.java` | SQL 添加 LIMIT/OFFSET |
+| 🔴高 | 全表查询+内存分页 | `LeadAppService.java:74-89`<br>`LeadMapper.java` | SQL 添加 LIMIT/OFFSET |
+
+**实施进度**：
+- [x] ExpenseMapper SQL 分页（添加 LIMIT/OFFSET 和 count 方法）
+- [x] LeadMapper SQL 分页（添加 LIMIT/OFFSET 和 count 方法）
+- [ ] DataHandoverService 批量操作优化
+
+**状态**：🔄 部分修复
+
+---
+
 ## ✅ 已完成任务
 
 _（完成后将任务移至此处）_
