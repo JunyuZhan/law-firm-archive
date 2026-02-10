@@ -255,7 +255,8 @@ public class DataScopeInterceptor implements InnerInterceptor {
     // 从缓存获取
     List<Long> cached = deptChildrenCache.get(deptId);
     if (cached != null) {
-      return cached;
+      // 返回不可变副本，防止调用方修改缓存内容
+      return java.util.Collections.unmodifiableList(cached);
     }
 
     // 查询部门及下级部门
@@ -271,7 +272,8 @@ public class DataScopeInterceptor implements InnerInterceptor {
 
     // 缓存结果（5分钟后过期，这里简化处理不设过期）
     deptChildrenCache.put(deptId, deptIds);
-    return deptIds;
+    // 返回不可变副本
+    return java.util.Collections.unmodifiableList(deptIds);
   }
 
   /**

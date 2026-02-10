@@ -73,14 +73,18 @@ public class ContractSyncService {
   @EventListener
   @Async
   public void onContractApproved(final ContractApprovedEvent event) {
-    log.info(
-        "收到合同审批通过事件: contractId={}, approverId={}", event.getContractId(), event.getApproverId());
+    try {
+      log.info(
+          "收到合同审批通过事件: contractId={}, approverId={}", event.getContractId(), event.getApproverId());
 
-    // 同步到财务模块
-    syncToFinanceModule(event.getContractId());
+      // 同步到财务模块
+      syncToFinanceModule(event.getContractId());
 
-    // 同步到行政模块
-    syncToAdminModule(event.getContractId());
+      // 同步到行政模块
+      syncToAdminModule(event.getContractId());
+    } catch (Exception e) {
+      log.error("合同审批事件处理失败: contractId={}", event.getContractId(), e);
+    }
   }
 
   /**

@@ -181,8 +181,17 @@ public class VersionController {
             
             // 异步执行升级
             String projectRootStr = projectRoot.toString();
+            Path statusFileFinal = statusFile;
             CompletableFuture.runAsync(() -> {
                 executeUpgradeScript(projectRootStr, upgradeId, backup);
+            }).exceptionally(ex -> {
+                log.error("异步升级任务执行失败: upgradeId={}", upgradeId, ex);
+                try {
+                    writeUpgradeStatus(statusFileFinal, "failed", "升级任务异常终止，请查看服务器日志", -1);
+                } catch (Exception writeEx) {
+                    log.warn("写入升级状态失败", writeEx);
+                }
+                return null;
             });
             
             return Result.success(result);

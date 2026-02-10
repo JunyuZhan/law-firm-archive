@@ -232,15 +232,20 @@ public class DossierAutoArchiveService {
   @Async
   public void archiveMatterDocumentsAsync(
       final Long matterId, final Long contractId, final Long operatorId) {
-    // 等待一小段时间确保主事务已提交
     try {
-      Thread.sleep(ASYNC_ARCHIVE_DELAY_MS);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-    }
+      // 等待一小段时间确保主事务已提交
+      try {
+        Thread.sleep(ASYNC_ARCHIVE_DELAY_MS);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        return;
+      }
 
-    // 在新事务中执行归档
-    doArchiveMatterDocuments(matterId, contractId, operatorId);
+      // 在新事务中执行归档
+      doArchiveMatterDocuments(matterId, contractId, operatorId);
+    } catch (Exception e) {
+      log.error("异步归档项目文档失败: matterId={}, contractId={}", matterId, contractId, e);
+    }
   }
 
   /**

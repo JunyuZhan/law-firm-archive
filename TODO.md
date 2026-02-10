@@ -564,6 +564,35 @@
 
 ---
 
+### 23. 并发与线程安全问题
+
+**问题描述**：异步操作异常处理不足，缓存操作非原子。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| ✅ | CompletableFuture 无异常处理 | `VersionController.java:184` | 已添加 exceptionally() |
+| ✅ | @Async 方法无 try-catch | `ContractSyncService.java:74`<br>`DossierAutoArchiveService.java:232` | 已添加全局 try-catch |
+| ✅ | 缓存返回可变引用 | `DataScopeInterceptor.java:256` | 已返回不可变副本 |
+| 🟡中 | get-then-put 非原子 | `CacheDegradationService.java:79` | 使用原子操作 |
+
+**状态**：🔄 大部分修复
+
+---
+
+### 24. Vue watch deep 性能问题
+
+**问题描述**：watch deep:true 监听大对象可能影响性能。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| 🟡中 | 配置列表 deep watch | `system/config/index.vue:826` | 监听具体字段 |
+| 🟡中 | 菜单树 deep watch | `MenuModal.vue:193` | 监听具体字段 |
+| 🟢低 | props 初始化后未同步 | `EvidenceListDisplay.vue:99` | 添加 watch 同步 |
+
+**状态**：⏳ 待修复（性能优化）
+
+---
+
 ## ✅ 已完成任务
 
 _（完成后将任务移至此处）_
