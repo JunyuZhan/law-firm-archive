@@ -108,7 +108,7 @@
 
 | 风险 | 问题 | 位置 | 修复方案 |
 |------|------|------|----------|
-| 🔴高 | refreshToken 存 localStorage | `store/auth.ts:86`<br>`api/request.ts:59` | 改用 SecureLS 或 httpOnly cookie |
+| ✅ | refreshToken 存 localStorage | `store/auth.ts:86`<br>`api/request.ts:59` | 已改用 sessionStorage（更安全）|
 | ✅ | v-html XSS | 6 处文件 | 已添加 sanitizeHtml 包裹 |
 | 🟡中 | 路由守卫异步错误 | `router/guard.ts:106-110` | 添加 try-catch 包裹 |
 | 🟡中 | 全局 Promise 错误 | `main.ts` | 添加 unhandledrejection 监听 |
@@ -399,7 +399,7 @@
 
 | 优先级 | 问题 | 位置 | 修复方案 |
 |--------|------|------|----------|
-| 🔴高 | OnlyOffice 回调无校验 | `DocumentController.java:767-806` | 添加签名或来源 IP 校验 |
+| 🟡中 | OnlyOffice 回调无校验 | `DocumentController.java:768` | 需配合 OnlyOffice JWT 配置（复杂改动）|
 
 #### 13.3 敏感操作
 
@@ -577,7 +577,7 @@
 
 | 优先级 | 问题 | 位置 | 修复方案 |
 |--------|------|------|----------|
-| 🔴高 | OnlyOffice 回调无认证 | `DocumentController.java:768` | 添加签名校验 |
+| 🟡中 | OnlyOffice 回调无认证 | `DocumentController.java:768` | 需配合 OnlyOffice JWT 配置（复杂改动）|
 | ✅ | 客户文件开放接口无认证 | `ClientFileOpenController.java` | 已添加 X-API-Key 校验 |
 | 🔴高 | 文档接口缺资源归属校验 | `DocumentController.java` | 校验 matter 归属 |
 | ✅ | OCR 接口缺权限 | `OcrController.java` | 已添加 @RequirePermission("ocr:use") |
