@@ -905,6 +905,21 @@
 
 ---
 
+### 41. 日期时间处理问题
+
+**问题描述**：时区处理不当或格式不一致。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| ✅ | LocalDateTime 被当作 UTC 转换 | `DocumentController.java:708-710` | 改用系统默认时区 |
+| 🟡中 | JWT 使用 new Date() 未注入 Clock | `JwtTokenProvider.java:100-101` | 影响测试可控性 |
+| 🟡中 | 时间格式不统一 | `VersionController.java` | 同一控制器格式不同 |
+| 🟢低 | BackupAppService 多种格式混用 | `BackupAppService.java` | 统一为常量 |
+
+**状态**：🔄 高优先级已修复
+
+---
+
 ## ✅ 已完成任务
 
 _（完成后将任务移至此处）_

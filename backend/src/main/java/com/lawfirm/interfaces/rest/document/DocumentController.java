@@ -705,8 +705,9 @@ public class DocumentController {
     // 使用 文档ID + 更新时间戳 作为 key
     // ⚠️ 关键修复：包含 updatedAt 时间戳，确保保存后 OnlyOffice 能加载最新文件
     // 如果只用版本号，OnlyOffice 会缓存旧文件（因为版本号不变）
-    long updateTimestamp = doc.getUpdatedAt() != null 
-        ? doc.getUpdatedAt().toEpochSecond(java.time.ZoneOffset.UTC) 
+    // 使用系统默认时区转换（LocalDateTime 无时区信息，应按本地时间解析）
+    long updateTimestamp = doc.getUpdatedAt() != null
+        ? doc.getUpdatedAt().atZone(java.time.ZoneId.systemDefault()).toEpochSecond()
         : System.currentTimeMillis() / 1000;
     String documentKey = "doc_" + id + "_t" + updateTimestamp;
 
