@@ -578,7 +578,7 @@
 | 优先级 | 问题 | 位置 | 修复方案 |
 |--------|------|------|----------|
 | 🔴高 | OnlyOffice 回调无认证 | `DocumentController.java:768` | 添加签名校验 |
-| 🔴高 | 客户文件开放接口无认证 | `ClientFileOpenController.java` | 添加 API Key 校验 |
+| ✅ | 客户文件开放接口无认证 | `ClientFileOpenController.java` | 已添加 X-API-Key 校验 |
 | 🔴高 | 文档接口缺资源归属校验 | `DocumentController.java` | 校验 matter 归属 |
 | ✅ | OCR 接口缺权限 | `OcrController.java` | 已添加 @RequirePermission("ocr:use") |
 | 🟡中 | 批量删除无二次确认 | `ClientController.java:169`<br>`UserController.java:144` | 添加确认码机制 |
