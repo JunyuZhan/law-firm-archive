@@ -38,7 +38,8 @@ public class PayrollAutoConfirmScheduler {
   @Scheduled(cron = "0 0 2 * * ?")
   @Transactional
   public void autoConfirmPayrollItems() {
-    log.info("开始执行工资表自动确认任务...");
+    try {
+      log.info("开始执行工资表自动确认任务...");
 
     LocalDateTime now = LocalDateTime.now();
 
@@ -136,6 +137,10 @@ public class PayrollAutoConfirmScheduler {
       payrollSheetRepository.updateBatchById(sheetsToUpdate);
     }
 
-    log.info("工资表自动确认任务完成，共自动确认 {} 条工资明细", totalAutoConfirmed);
+      log.info("工资表自动确认任务完成，共自动确认 {} 条工资明细", totalAutoConfirmed);
+    } catch (Exception e) {
+      log.error("工资表自动确认任务执行失败", e);
+      // 不重新抛出异常，避免影响调度器后续任务执行
+    }
   }
 }

@@ -274,12 +274,17 @@ public class BackupAppService {
 
     } catch (Exception e) {
       log.error("备份执行失败: backupNo={}", backup.getBackupNo(), e);
-      backup.setStatus("FAILED");
-      backup.setDescription(
-          (backup.getDescription() != null ? backup.getDescription() : "")
-              + " - "
-              + e.getMessage());
-      backupRepository.updateById(backup);
+      // 更新状态时也要处理可能的异常，避免状态永远停留在 IN_PROGRESS
+      try {
+        backup.setStatus("FAILED");
+        backup.setDescription(
+            (backup.getDescription() != null ? backup.getDescription() : "")
+                + " - "
+                + e.getMessage());
+        backupRepository.updateById(backup);
+      } catch (Exception updateEx) {
+        log.error("更新备份失败状态失败: backupNo={}", backup.getBackupNo(), updateEx);
+      }
     }
   }
 
@@ -881,12 +886,17 @@ public class BackupAppService {
 
     } catch (Exception e) {
       log.error("备份恢复失败: backupNo={}", backup.getBackupNo(), e);
-      backup.setStatus("FAILED");
-      backup.setDescription(
-          (backup.getDescription() != null ? backup.getDescription() : "")
-              + " - 恢复失败: "
-              + e.getMessage());
-      backupRepository.updateById(backup);
+      // 更新状态时也要处理可能的异常，避免状态永远停留在 RESTORING
+      try {
+        backup.setStatus("FAILED");
+        backup.setDescription(
+            (backup.getDescription() != null ? backup.getDescription() : "")
+                + " - 恢复失败: "
+                + e.getMessage());
+        backupRepository.updateById(backup);
+      } catch (Exception updateEx) {
+        log.error("更新恢复失败状态失败: backupNo={}", backup.getBackupNo(), updateEx);
+      }
     }
   }
 

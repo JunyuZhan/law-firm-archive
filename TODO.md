@@ -951,6 +951,36 @@
 
 ---
 
+### 44. 异步错误处理问题
+
+**问题描述**：@Async/@Scheduled 方法异常处理不完善。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| ✅ | findById 在 try 外导致异常时状态不更新 | `ReportAppService.java:360-364` | 移入 try 块内 |
+| ✅ | catch 中 updateById 可能抛异常 | `BackupAppService.java:275-282,883-890` | 包装在 try-catch 中 |
+| ✅ | @Scheduled 无 try-catch 异常会中断 | `PayrollAutoConfirmScheduler.java:38-140` | 添加全局 try-catch |
+| 🟡中 | 健康检查无异常处理 | `SystemReportService.java:107-116` | 添加 try-catch |
+
+**状态**：🔄 高优先级已修复
+
+---
+
+### 45. 前端组件卸载时状态更新
+
+**问题描述**：异步操作完成后未检查组件是否仍挂载。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| ✅ | 首页数据加载无 isMounted 检查 | `dashboard/index/index.vue` | 添加 isMounted 跟踪 |
+| 🟡中 | 工作台数据加载无检查 | `dashboard/workspace/index.vue` | 添加 isMounted 跟踪 |
+| 🟡中 | 文档列表加载无检查 | `document/list/index.vue` | 添加 isMounted 跟踪 |
+| 🟡中 | 档案列表加载无检查 | `archive/list/index.vue` | 添加 isMounted 跟踪 |
+
+**状态**：🔄 高优先级已修复
+
+---
+
 ## ✅ 已完成任务
 
 _（完成后将任务移至此处）_

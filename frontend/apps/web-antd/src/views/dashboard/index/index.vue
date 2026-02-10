@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
@@ -63,10 +63,17 @@ const formattedDate = computed(() => {
   });
 });
 
+// 组件挂载状态跟踪（防止异步更新已卸载组件）
+let isMounted = true;
+onUnmounted(() => {
+  isMounted = false;
+});
+
 // 加载统计数据
 async function loadStats(): Promise<boolean> {
   try {
     const res = await requestClient.get('/workbench/stats');
+    if (!isMounted) return false;
     stats.value = {
       matterCount: res.matterCount || 0,
       clientCount: res.clientCount || 0,
@@ -86,6 +93,7 @@ async function loadPendingTasks(): Promise<boolean> {
     const res = await requestClient.get('/tasks/my', {
       params: { status: 'PENDING', pageSize: 5 },
     });
+    if (!isMounted) return false;
     pendingTasks.value = res.list || [];
     return true;
   } catch (error) {
@@ -100,6 +108,7 @@ async function loadRecentMatters(): Promise<boolean> {
     const res = await requestClient.get('/matter/my', {
       params: { pageSize: 5 },
     });
+    if (!isMounted) return false;
     recentMatters.value = res.list || [];
     return true;
   } catch (error) {
@@ -112,6 +121,7 @@ async function loadRecentMatters(): Promise<boolean> {
 async function loadPendingApprovals(): Promise<boolean> {
   try {
     const data = await getPendingApprovals();
+    if (!isMounted) return false;
     pendingApprovalCount.value = data?.length || 0;
     return true;
   } catch (error) {

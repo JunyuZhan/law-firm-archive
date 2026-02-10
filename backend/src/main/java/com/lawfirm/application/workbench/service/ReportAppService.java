@@ -357,13 +357,13 @@ public class ReportAppService {
       final GenerateReportCommand command,
       final Long userId,
       final String userName) {
-    Report report = reportRepository.findById(reportId);
-    if (report == null) {
-      log.error("报表记录不存在: id={}", reportId);
-      return;
-    }
-
+    Report report = null;
     try {
+      report = reportRepository.findById(reportId);
+      if (report == null) {
+        log.error("报表记录不存在: id={}", reportId);
+        return;
+      }
       // 更新状态为生成中
       report.setStatus("GENERATING");
       reportRepository.updateById(report);
@@ -393,16 +393,24 @@ public class ReportAppService {
       }
 
     } catch (Exception e) {
-      log.error("报表异步生成失败: reportNo={}", report.getReportNo(), e);
-      report.setStatus("FAILED");
-      reportRepository.updateById(report);
+      log.error("报表异步生成失败: reportId={}", reportId, e);
+      // 仅当 report 不为 null 时才更新状态
+      if (report != null) {
+        try {
+          report.setStatus("FAILED");
+          reportRepository.updateById(report);
+        } catch (Exception updateEx) {
+          log.error("更新报表失败状态失败: reportId={}", reportId, updateEx);
+        }
+      }
 
       // 发送报表生成失败通知
       try {
+        String reportName = report != null ? report.getReportName() : "报表";
         notificationAppService.sendSystemNotification(
             userId,
             "报表生成失败",
-            report.getReportName() + " 生成失败: " + e.getMessage(),
+            reportName + " 生成失败: " + e.getMessage(),
             "REPORT",
             reportId);
       } catch (Exception notifyEx) {
