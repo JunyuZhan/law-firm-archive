@@ -1106,6 +1106,37 @@
 
 ---
 
+### 56. 前端性能和循环风险
+
+**问题描述**：watch 重复监听、深度监听等性能问题。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| ✅ | 同一变量被两个 watch 监听 | `matter/list/index.vue:261-289` | 合并为单个 watch |
+| 🟡中 | 直接修改 route.query | `document/list/index.vue:1879-1886` | 使用 router.replace |
+| 🟡中 | watch deep:true 频繁更新 | `system/config/index.vue:819-827` | 改用浅比较 |
+| 🟡中 | 模板中直接 filter | `StructuredLetterEditor.vue:409-412` | 改用 computed |
+| 🟡中 | watch 循环依赖风险 | `StateCompensationForm.vue:224-241` | 优化数据流 |
+
+**状态**：🔄 高优先级已修复
+
+---
+
+### 57. 后端事务管理问题
+
+**问题描述**：事务内异常处理和长事务问题。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| 🟡中 | try-catch 吞异常不回滚 | `DossierAutoArchiveService.java:298-301` | 重新抛出异常 |
+| 🟡中 | 事务内 HTTP 调用 | `ClientFileService.java:201-203` | 事务外执行网络 IO |
+| 🟡中 | 事务内 LLM API 调用 | `AiDocumentService.java:98-101` | 事务外调用 API |
+| 🟡中 | 批量操作长事务 | `ClientFileService.java:299-316` | 拆分为多个小事务 |
+
+**状态**：⏳ 待修复（架构改动较大）
+
+---
+
 ### 53. 日志记录问题
 
 **问题描述**：异常日志缺少堆栈信息，不利于排查。

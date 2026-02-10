@@ -267,25 +267,23 @@ watch(
   },
 );
 
-// 监听案件类型变化，加载案由选项
+// 监听案件类型变化，加载案由选项、清空案由和代理阶段、加载代理阶段选项
+// 合并为单个 watch 避免重复执行
 watch(
   () => formData.caseType,
-  () => {
+  (newCaseType, oldCaseType) => {
+    // 加载案由选项
     loadCauseOptions();
-  },
-  { immediate: true },
-);
-
-// 监听案件类型变化，清空案由和代理阶段，并重新加载代理阶段选项
-watch(
-  () => formData.caseType,
-  (newCaseType) => {
-    formData.causeOfAction = undefined;
-    formData.litigationStage = []; // 案件类型改变时清空代理阶段（支持多选，使用空数组）
-    causeValue.value = [];
+    // 仅在值实际变化时清空（避免 immediate 时清空初始值）
+    if (oldCaseType !== undefined) {
+      formData.causeOfAction = undefined;
+      formData.litigationStage = []; // 案件类型改变时清空代理阶段（支持多选，使用空数组）
+      causeValue.value = [];
+    }
     // 从字典加载代理阶段选项
     loadLitigationStageOptions(newCaseType);
   },
+  { immediate: true },
 );
 
 // 监听案由级联选择变化
