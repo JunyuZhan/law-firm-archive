@@ -336,7 +336,7 @@ watch([revenueData, () => agingData.value], () => {
   }, 100);
 });
 
-async function loadContractStats() {
+async function loadContractStats(): Promise<boolean> {
   try {
     const [startDate, endDate] = dateRange.value;
     const res = await getContractStatistics({
@@ -344,21 +344,25 @@ async function loadContractStats() {
       endDate: endDate.format('YYYY-MM-DD'),
     });
     contractStats.value = res || {};
+    return true;
   } catch (error) {
     console.error('加载合同统计失败', error);
+    return false;
   }
 }
 
-async function loadInvoiceStats() {
+async function loadInvoiceStats(): Promise<boolean> {
   try {
     const res = await getInvoiceStatistics();
     invoiceStats.value = res || {};
+    return true;
   } catch (error) {
     console.error('加载发票统计失败', error);
+    return false;
   }
 }
 
-async function loadCommissionSummary() {
+async function loadCommissionSummary(): Promise<boolean> {
   try {
     const [startDate, endDate] = dateRange.value;
     const res = await getCommissionSummary(
@@ -366,12 +370,14 @@ async function loadCommissionSummary() {
       endDate.format('YYYY-MM-DD'),
     );
     commissionSummary.value = res || {};
+    return true;
   } catch (error) {
     console.error('加载提成汇总失败', error);
+    return false;
   }
 }
 
-async function loadCommissionReport() {
+async function loadCommissionReport(): Promise<boolean> {
   try {
     const [startDate, endDate] = dateRange.value;
     const res = await getCommissionReport(
@@ -379,35 +385,43 @@ async function loadCommissionReport() {
       endDate.format('YYYY-MM-DD'),
     );
     commissionReport.value = Array.isArray(res) ? res : [];
+    return true;
   } catch (error) {
     console.error('加载提成报表失败', error);
+    return false;
   }
 }
 
-async function loadFeeData() {
+async function loadFeeData(): Promise<boolean> {
   try {
     const res = await getFeeList({ pageNum: 1, pageSize: 100 });
     feeData.value = res.list || [];
+    return true;
   } catch (error) {
     console.error('加载收费数据失败', error);
+    return false;
   }
 }
 
-async function loadExpenseData() {
+async function loadExpenseData(): Promise<boolean> {
   try {
     const res = await getExpenseList({ pageNum: 1, pageSize: 100 });
     expenseData.value = res.list || [];
+    return true;
   } catch (error) {
     console.error('加载费用数据失败', error);
+    return false;
   }
 }
 
-async function loadRevenueTrends() {
+async function loadRevenueTrends(): Promise<boolean> {
   try {
     const res = await getRevenueStats();
     revenueTrends.value = res.trends || [];
+    return true;
   } catch (error) {
     console.error('加载收入趋势失败', error);
+    return false;
   }
 }
 
@@ -520,7 +534,7 @@ function handleMonthFilterChange(value: any) {
 async function loadAllData() {
   loading.value = true;
   try {
-    await Promise.all([
+    const results = await Promise.all([
       loadContractStats(),
       loadInvoiceStats(),
       loadCommissionSummary(),
@@ -530,6 +544,13 @@ async function loadAllData() {
       loadRevenueTrends(),
     ]);
     generateMonthlyData();
+    // 统计失败次数并给出用户提示
+    const failedCount = results.filter((r) => !r).length;
+    if (failedCount === results.length) {
+      message.error('加载报表数据失败，请检查网络连接');
+    } else if (failedCount > 0) {
+      message.warning('部分报表数据加载失败');
+    }
   } finally {
     loading.value = false;
   }

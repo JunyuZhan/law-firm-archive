@@ -12,6 +12,7 @@ import {
   Col,
   Empty,
   List,
+  message,
   Row,
   Tag,
 } from 'ant-design-vue';
@@ -63,7 +64,7 @@ const formattedDate = computed(() => {
 });
 
 // 加载统计数据
-async function loadStats() {
+async function loadStats(): Promise<boolean> {
   try {
     const res = await requestClient.get('/workbench/stats');
     stats.value = {
@@ -72,42 +73,50 @@ async function loadStats() {
       timesheetHours: res.timesheetHours || 0,
       taskCount: res.taskCount || 0,
     };
+    return true;
   } catch (error) {
     console.error('加载统计数据失败:', error);
+    return false;
   }
 }
 
 // 加载待办任务
-async function loadPendingTasks() {
+async function loadPendingTasks(): Promise<boolean> {
   try {
     const res = await requestClient.get('/tasks/my', {
       params: { status: 'PENDING', pageSize: 5 },
     });
     pendingTasks.value = res.list || [];
+    return true;
   } catch (error) {
     console.error('加载待办任务失败:', error);
+    return false;
   }
 }
 
 // 加载最近项目
-async function loadRecentMatters() {
+async function loadRecentMatters(): Promise<boolean> {
   try {
     const res = await requestClient.get('/matter/my', {
       params: { pageSize: 5 },
     });
     recentMatters.value = res.list || [];
+    return true;
   } catch (error) {
     console.error('加载最近项目失败:', error);
+    return false;
   }
 }
 
 // 加载待审批数量
-async function loadPendingApprovals() {
+async function loadPendingApprovals(): Promise<boolean> {
   try {
     const data = await getPendingApprovals();
     pendingApprovalCount.value = data?.length || 0;
+    return true;
   } catch (error) {
     console.error('加载待审批数据失败:', error);
+    return false;
   }
 }
 
@@ -127,11 +136,21 @@ function getStatusColor(status: string) {
   return map[status] || '#1890ff';
 }
 
-onMounted(() => {
-  loadStats();
-  loadPendingTasks();
-  loadRecentMatters();
-  loadPendingApprovals();
+onMounted(async () => {
+  // 并行加载所有数据，统计失败次数
+  const results = await Promise.all([
+    loadStats(),
+    loadPendingTasks(),
+    loadRecentMatters(),
+    loadPendingApprovals(),
+  ]);
+  const failedCount = results.filter((r) => !r).length;
+  // 如果全部失败，提示用户
+  if (failedCount === results.length) {
+    message.error('加载数据失败，请检查网络连接或刷新页面重试');
+  } else if (failedCount > 0) {
+    message.warning('部分数据加载失败');
+  }
 });
 </script>
 

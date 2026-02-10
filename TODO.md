@@ -874,6 +874,22 @@
 
 ---
 
+### 39. API 错误处理不完善
+
+**问题描述**：API 调用失败时缺少用户提示。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| ✅ | 首页统计加载失败无提示 | `dashboard/index/index.vue` | 统计失败次数，全部/部分失败时提示 |
+| ✅ | 财务报表加载失败无提示 | `finance/report/index.vue` | 统计失败次数，全部/部分失败时提示 |
+| 🟡中 | 客户列表无 try-catch | `crm/client/index.vue:242-254` | 依赖 grid 默认处理 |
+| 🟡中 | 合同详情加载失败无提示 | `matter/contract/index.vue` | catch 中只有 console.error |
+| 🟡中 | 批量审批无 loading | `workbench/approval/index.vue` | Modal.confirm 无 confirmLoading |
+
+**状态**：🔄 高优先级已修复
+
+---
+
 ## ✅ 已完成任务
 
 _（完成后将任务移至此处）_
