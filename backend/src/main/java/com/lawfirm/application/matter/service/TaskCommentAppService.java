@@ -6,6 +6,7 @@ import com.lawfirm.application.system.command.SendNotificationCommand;
 import com.lawfirm.application.system.service.NotificationAppService;
 import com.lawfirm.common.exception.BusinessException;
 import com.lawfirm.common.util.FileHashUtil;
+import com.lawfirm.common.util.FileValidator;
 import com.lawfirm.common.util.MinioPathGenerator;
 import com.lawfirm.common.util.SecurityUtils;
 import com.lawfirm.domain.matter.entity.Task;
@@ -246,6 +247,12 @@ public class TaskCommentAppService {
    */
   @Transactional
   public Map<String, Object> uploadAttachmentFile(final MultipartFile file, final Long taskId) {
+    // 文件安全校验
+    FileValidator.ValidationResult validationResult = FileValidator.validate(file);
+    if (!validationResult.isValid()) {
+      throw new BusinessException(validationResult.getErrorMessage());
+    }
+
     // 验证任务存在
     Task task = taskRepository.getByIdOrThrow(taskId, "任务不存在");
 

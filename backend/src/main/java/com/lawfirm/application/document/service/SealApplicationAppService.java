@@ -10,6 +10,7 @@ import com.lawfirm.application.workbench.service.ApproverService;
 import com.lawfirm.common.constant.SealApplicationStatus;
 import com.lawfirm.common.exception.BusinessException;
 import com.lawfirm.common.result.PageResult;
+import com.lawfirm.common.util.FileValidator;
 import com.lawfirm.common.util.MinioPathGenerator;
 import com.lawfirm.common.util.SecurityUtils;
 import com.lawfirm.domain.document.entity.Seal;
@@ -434,6 +435,12 @@ public class SealApplicationAppService {
    */
   @Transactional
   public String uploadAttachmentFile(final MultipartFile file, final Long applicationId) {
+    // 文件安全校验
+    FileValidator.ValidationResult validationResult = FileValidator.validate(file);
+    if (!validationResult.isValid()) {
+      throw new BusinessException(validationResult.getErrorMessage());
+    }
+
     SealApplication application = applicationRepository.getByIdOrThrow(applicationId, "用印申请不存在");
 
     // 使用FileAccessService上传文件

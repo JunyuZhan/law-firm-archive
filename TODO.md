@@ -557,7 +557,8 @@
 | 优先级 | 问题 | 位置 | 修复方案 |
 |--------|------|------|----------|
 | ✅ | OCR 接口无文件校验 | `OcrController.java` | 已添加 FileValidator 校验 |
-| 🔴高 | 任务评论附件无校验 | `TaskCommentAppService.java:248` | 添加 FileValidator 校验 |
+| ✅ | 任务评论附件无校验 | `TaskCommentAppService.java` | 已添加 FileValidator 校验 |
+| ✅ | 用印申请附件无校验 | `SealApplicationAppService.java` | 已添加 FileValidator 校验 |
 | 🟡中 | MinIO 文件名未过滤 .. | `MinioPathGenerator.java:257` | 添加路径遍历过滤 |
 
 **状态**：🔄 部分修复
