@@ -683,13 +683,17 @@ function handlePrint() {
   printWindow.document.close();
 
   // 等待内容加载后打印
-  printWindow.addEventListener('load', () => {
-    setTimeout(() => {
-      printWindow.print();
-      // 打印后关闭窗口（可选）
-      // printWindow.close();
-    }, 250);
-  });
+  printWindow.addEventListener(
+    'load',
+    () => {
+      setTimeout(() => {
+        printWindow.print();
+        // 打印后关闭窗口（可选）
+        // printWindow.close();
+      }, 250);
+    },
+    { once: true },
+  );
 }
 </script>
 

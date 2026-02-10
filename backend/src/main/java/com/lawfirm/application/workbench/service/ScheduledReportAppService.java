@@ -679,7 +679,9 @@ public class ScheduledReportAppService {
         yield now.toLocalDate().plusDays(daysToAdd).atTime(executeTime);
       }
       case "MONTHLY" -> {
-        int targetDay = Math.min(task.getExecuteDayOfMonth(), now.toLocalDate().lengthOfMonth());
+        Integer executeDayOfMonth = task.getExecuteDayOfMonth();
+        int targetDay = Math.min(
+            executeDayOfMonth != null ? executeDayOfMonth : 1, now.toLocalDate().lengthOfMonth());
         LocalDateTime next = now.toLocalDate().withDayOfMonth(targetDay).atTime(executeTime);
         yield next.isAfter(now) ? next : next.plusMonths(1);
       }

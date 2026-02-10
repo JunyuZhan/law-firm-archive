@@ -621,6 +621,33 @@
 
 ---
 
+### 27. 日期时间处理问题
+
+**问题描述**：日期解析和计算存在潜在问题。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| ✅ | executeDayOfMonth 为 null 时 NPE | `ScheduledReportAppService.java:682` | 已添加 null 检查，默认值 1 |
+| 🟡中 | Excel 导入日期格式支持不足 | `UserAppService.java:749`<br>`ClientAppService.java:762` | 添加多格式解析支持 |
+| 🟢低 | parseDate 单数月/日解析 | `PaddleOcrService.java:474-481` | 已有多格式尝试，影响小 |
+
+**状态**：🔄 高优先级已修复
+
+---
+
+### 28. 事件监听器清理问题
+
+**问题描述**：printWindow 上的 load 事件监听未使用 `{ once: true }`。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| ✅ | printWindow load 监听未自动移除 | `EvidenceListDisplay.vue:686` | 已添加 { once: true } |
+| ✅ | printWindow load 监听未自动移除 | `EvidenceTableEditor.vue:1150` | 已添加 { once: true } |
+
+**状态**：✅ 已修复
+
+---
+
 ## ✅ 已完成任务
 
 _（完成后将任务移至此处）_

@@ -1147,11 +1147,15 @@ function handlePrint() {
   printWindow.document.close();
 
   // 等待内容加载后打印
-  printWindow.addEventListener('load', () => {
-    setTimeout(() => {
-      printWindow.print();
-    }, 250);
-  });
+  printWindow.addEventListener(
+    'load',
+    () => {
+      setTimeout(() => {
+        printWindow.print();
+      }, 250);
+    },
+    { once: true },
+  );
 }
 
 // 计算是否有未保存的修改
