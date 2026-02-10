@@ -232,6 +232,7 @@ setup_env() {
         NEW_ONLYOFFICE_SECRET=$(openssl rand -hex 32 2>/dev/null || head -c 32 /dev/urandom | xxd -p)
         NEW_OCR_API_KEY=$(openssl rand -hex 32 2>/dev/null || head -c 32 /dev/urandom | xxd -p)
         NEW_DOCS_PASSWORD=$(generate_password)
+        NEW_DOCUMENT_TOKEN_SECRET=$(generate_secret)
         # Grafana 使用默认密码 admin（可共享）
         
         if [[ "$OSTYPE" == "darwin"* ]]; then
@@ -274,6 +275,12 @@ setup_env() {
             else
                 sed -i '' "s|DOCS_PASSWORD=.*|DOCS_PASSWORD=$NEW_DOCS_PASSWORD|" "$ENV_FILE"
             fi
+            # 如果 DOCUMENT_TOKEN_SECRET 不存在，添加它；如果存在，更新它
+            if ! grep -q "^DOCUMENT_TOKEN_SECRET=" "$ENV_FILE"; then
+                echo "DOCUMENT_TOKEN_SECRET=$NEW_DOCUMENT_TOKEN_SECRET" >> "$ENV_FILE"
+            else
+                sed -i '' "s|DOCUMENT_TOKEN_SECRET=.*|DOCUMENT_TOKEN_SECRET=$NEW_DOCUMENT_TOKEN_SECRET|" "$ENV_FILE"
+            fi
             # Grafana 使用默认密码 admin，不需要在 .env 中配置
         else
             sed -i "s|JWT_SECRET=.*|JWT_SECRET=$NEW_JWT_SECRET|" "$ENV_FILE"
@@ -314,6 +321,12 @@ setup_env() {
                 echo "DOCS_PASSWORD=$NEW_DOCS_PASSWORD" >> "$ENV_FILE"
             else
                 sed -i "s|DOCS_PASSWORD=.*|DOCS_PASSWORD=$NEW_DOCS_PASSWORD|" "$ENV_FILE"
+            fi
+            # 如果 DOCUMENT_TOKEN_SECRET 不存在，添加它；如果存在，更新它
+            if ! grep -q "^DOCUMENT_TOKEN_SECRET=" "$ENV_FILE"; then
+                echo "DOCUMENT_TOKEN_SECRET=$NEW_DOCUMENT_TOKEN_SECRET" >> "$ENV_FILE"
+            else
+                sed -i "s|DOCUMENT_TOKEN_SECRET=.*|DOCUMENT_TOKEN_SECRET=$NEW_DOCUMENT_TOKEN_SECRET|" "$ENV_FILE"
             fi
             # Grafana 使用默认密码 admin，不需要在 .env 中配置
         fi
@@ -380,6 +393,7 @@ setup_env() {
         echo -e "  ${GREEN}✅${NC} ONLYOFFICE_URL=/onlyoffice (相对路径，通过 Nginx 代理)"
         echo -e "  ${GREEN}✅${NC} OCR_API_KEY"
         echo -e "  ${GREEN}✅${NC} DOCS_PASSWORD"
+        echo -e "  ${GREEN}✅${NC} DOCUMENT_TOKEN_SECRET"
         echo -e "  ${GREEN}✅${NC} Grafana 使用默认密码: admin"
         
         echo ""
