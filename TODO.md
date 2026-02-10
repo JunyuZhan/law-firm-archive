@@ -361,7 +361,8 @@
 
 | 优先级 | 问题 | 位置 | 修复方案 |
 |--------|------|------|----------|
-| 🔴高 | InputStream 未关闭 | `EvidenceController.java:295`<br>`TaskCommentAppService.java:268`<br>`SealApplicationAppService.java:455`<br>`FileAccessService.java:68`<br>`DocumentAppService.java:605` | 使用 try-with-resources 管理流 |
+| 🔴高 | InputStream 未关闭 | `EvidenceController.java:295`<br>`FileAccessService.java:68`<br>`DocumentAppService.java:605` | 使用 try-with-resources 管理流 |
+| ✅ | InputStream 未关闭 | `TaskCommentAppService.java`<br>`SealApplicationAppService.java` | 已使用 try-with-resources |
 
 #### 12.3 事务回滚
 

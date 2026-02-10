@@ -270,9 +270,11 @@ public class TaskCommentAppService {
       // 计算文件Hash
       String fileHash = FileHashUtil.calculateHash(file);
 
-      // 上传到MinIO
-      String fileUrl =
-          minioService.uploadFile(file.getInputStream(), objectName, file.getContentType());
+      // 上传到MinIO（使用 try-with-resources 确保流关闭）
+      String fileUrl;
+      try (java.io.InputStream inputStream = file.getInputStream()) {
+        fileUrl = minioService.uploadFile(inputStream, objectName, file.getContentType());
+      }
 
       // 构建标准化的JSONB格式附件信息
       Map<String, Object> attachmentInfo = new HashMap<>();
@@ -296,7 +298,7 @@ public class TaskCommentAppService {
       return attachmentInfo;
     } catch (Exception e) {
       log.error("任务评论附件文件上传失败", e);
-      throw new BusinessException("文件上传失败: " + e.getMessage());
+      throw new BusinessException("文件上传失败，请稍后重试");
     }
   }
 }

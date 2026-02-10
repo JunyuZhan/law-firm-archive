@@ -457,9 +457,11 @@ public class SealApplicationAppService {
       // 计算文件Hash
       String fileHash = com.lawfirm.common.util.FileHashUtil.calculateHash(file);
 
-      // 上传到MinIO
-      String fileUrl =
-          minioService.uploadFile(file.getInputStream(), objectName, file.getContentType());
+      // 上传到MinIO（使用 try-with-resources 确保流关闭）
+      String fileUrl;
+      try (java.io.InputStream inputStream = file.getInputStream()) {
+        fileUrl = minioService.uploadFile(inputStream, objectName, file.getContentType());
+      }
 
       // 设置存储信息
       application.setAttachmentUrl(fileUrl);
@@ -479,7 +481,7 @@ public class SealApplicationAppService {
       return fileUrl;
     } catch (Exception e) {
       log.error("用印附件文件上传失败", e);
-      throw new BusinessException("文件上传失败: " + e.getMessage());
+      throw new BusinessException("文件上传失败，请稍后重试");
     }
   }
 }
