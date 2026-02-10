@@ -176,7 +176,8 @@ public class EvidenceController {
   public Result<Void> batchUpdateGroup(
       @RequestBody @jakarta.validation.constraints.Size(min = 1, max = 100, message = "批量操作数量需在1-100之间")
           final List<Long> ids,
-      @RequestParam final String groupName) {
+      @RequestParam @jakarta.validation.constraints.Size(max = 100, message = "分组名称不能超过100个字符")
+          final String groupName) {
     evidenceAppService.batchUpdateGroup(ids, groupName);
     return Result.success();
   }

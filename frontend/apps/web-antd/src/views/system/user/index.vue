@@ -158,8 +158,8 @@ async function loadData(
     status: params.status,
   });
   return {
-    items: res.list,
-    total: res.total,
+    items: res?.list ?? [],
+    total: res?.total ?? 0,
   };
 }
 

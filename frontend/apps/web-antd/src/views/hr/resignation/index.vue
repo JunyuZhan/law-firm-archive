@@ -406,7 +406,7 @@ onMounted(() => {
               style="width: 100%"
               :filter-option="
                 (input: string, option: any) =>
-                  option.children[0].children
+                  (option?.children?.[0]?.children ?? '')
                     .toLowerCase()
                     .includes(input.toLowerCase())
               "

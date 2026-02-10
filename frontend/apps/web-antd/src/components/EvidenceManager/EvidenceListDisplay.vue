@@ -117,15 +117,15 @@ watch(
     // 转换为分组数据
     let order = 1;
     groupList.value = [...groupMap.entries()].map(([groupName, items]) => {
-      const firstItem = items[0]!;
+      const firstItem = items[0];
       return {
         key: `group-${order}`,
         groupName: groupName.startsWith('group-')
           ? `第 ${order} 组`
           : groupName,
         order: order++,
-        proofContent: firstItem.description || '',
-        proofPurpose: firstItem.provePurpose || '',
+        proofContent: firstItem?.description || '',
+        proofPurpose: firstItem?.provePurpose || '',
         evidences: items.map((e) => ({
           id: e.id,
           key: `evidence-${e.id}`,

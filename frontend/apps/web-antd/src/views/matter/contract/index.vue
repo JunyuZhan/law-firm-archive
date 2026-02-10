@@ -761,8 +761,8 @@ async function fetchData() {
   loading.value = true;
   try {
     const res = await getMatterContractList(queryParams);
-    dataSource.value = res.list;
-    total.value = res.total;
+    dataSource.value = res?.list ?? [];
+    total.value = res?.total ?? 0;
   } catch (error: any) {
     message.error(error.message || '加载合同列表失败');
   } finally {
@@ -776,6 +776,7 @@ async function loadStatistics() {
     statistics.value = await getMatterContractStatistics();
   } catch (error: any) {
     console.error('加载统计数据失败', error);
+    message.error('加载统计数据失败');
   }
 }
 

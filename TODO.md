@@ -676,6 +676,35 @@
 
 ---
 
+### 30. 输入验证与错误处理问题
+
+**问题描述**：参数校验和错误处理不完善。
+
+#### 30.1 后端参数校验
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| ✅ | progress 无范围限制 | `TaskController.java:155` | 已添加 @Min(0) @Max(100) |
+| ✅ | groupName 无长度限制 | `EvidenceController.java:179` | 已添加 @Size(max=100) |
+| 🟡中 | folder 路径遍历风险 | `DocumentController.java:381,413` | 过滤 ../ 等字符 |
+| 🟡中 | version 无格式校验 | `MigrationController.java:83` | 添加版本号格式验证 |
+| 🟡中 | keyword 无长度限制 | `ClientController.java:273` | 添加 @Size(max=100) |
+
+#### 30.2 前端错误处理
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| ✅ | 数组访问无边界检查 | `EvidenceListDisplay.vue:120` | 已改用可选链 |
+| ✅ | 可选链使用不当 | `resignation/index.vue:409` | 已改为 option?.children?.[0] |
+| ✅ | API 返回未判空 | `user/index.vue:161` | 已添加 ?? [] 和 ?? 0 |
+| ✅ | API 返回未判空 | `contract/index.vue:764` | 已添加 ?? [] 和 ?? 0 |
+| ✅ | 统计失败未提示用户 | `contract/index.vue:777` | 已添加 message.error |
+| 🟡中 | Promise 无 .catch() | `CauseOfActionTab.vue:482-493` | 添加错误处理 |
+
+**状态**：🔄 高优先级已修复
+
+---
+
 ## ✅ 已完成任务
 
 _（完成后将任务移至此处）_
