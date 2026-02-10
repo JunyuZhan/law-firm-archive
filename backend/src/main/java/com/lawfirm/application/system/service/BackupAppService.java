@@ -628,8 +628,12 @@ public class BackupAppService {
       return backupFile.toString();
 
     } finally {
-      // 清理临时目录
-      deleteDirectory(tempDir.toFile());
+      // 清理临时目录（不抛出异常，避免覆盖原异常）
+      try {
+        deleteDirectory(tempDir.toFile());
+      } catch (Exception cleanupEx) {
+        log.warn("清理临时目录失败: {}", tempDir, cleanupEx);
+      }
     }
   }
 
@@ -1208,8 +1212,12 @@ public class BackupAppService {
       log.info("全量备份恢复完成");
 
     } finally {
-      // 清理临时目录
-      deleteDirectory(tempDir.toFile());
+      // 清理临时目录（不抛出异常，避免覆盖原异常）
+      try {
+        deleteDirectory(tempDir.toFile());
+      } catch (Exception cleanupEx) {
+        log.warn("清理临时目录失败: {}", tempDir, cleanupEx);
+      }
     }
   }
 

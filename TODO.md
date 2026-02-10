@@ -1137,6 +1137,37 @@
 
 ---
 
+### 58. 可访问性问题
+
+**问题描述**：键盘无法访问、缺少 aria-label 等可访问性问题。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| ✅ | 验证码图片键盘无法刷新 | `login.vue:327-334` | 包裹在 button 中 |
+| ✅ | 图标按钮无 aria-label | `archive/list/index.vue:1075-1078` | 添加 aria-label |
+| ✅ | 图标按钮无 aria-label | `document/list/index.vue:2516-2518` | 添加 aria-label |
+| 🟡中 | 快捷操作 div 无法聚焦 | `dashboard/index/index.vue:383-420` | 改用 button 或添加 tabindex |
+| 🟡中 | 输入框缺少 label | `login.vue:320-326` | 添加 aria-label |
+
+**状态**：🔄 高优先级已修复
+
+---
+
+### 59. 异常信息泄露
+
+**问题描述**：异常消息暴露给客户端或存入数据库。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| ✅ | 异常消息返回客户端 | `ClientFileService.java:373` | 使用通用错误文案 |
+| ✅ | 异常消息存入同步状态 | `ClientFileService.java:274` | 使用通用错误文案 |
+| ✅ | finally 可能覆盖原异常 | `BackupAppService.java:630-633,1214-1217` | try-catch 包裹 |
+| 🟡中 | 异常消息存入交接记录 | `DataHandoverService.java:510` | 使用业务化错误文案 |
+
+**状态**：🔄 高优先级已修复
+
+---
+
 ### 53. 日志记录问题
 
 **问题描述**：异常日志缺少堆栈信息，不利于排查。

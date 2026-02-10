@@ -2513,7 +2513,7 @@ watch(
                               </MenuItem>
                             </Menu>
                           </template>
-                          <Button type="text" size="small" class="action-btn">
+                          <Button type="text" size="small" class="action-btn" aria-label="更多操作">
                             <Ellipsis :size="15" />
                           </Button>
                         </Dropdown>

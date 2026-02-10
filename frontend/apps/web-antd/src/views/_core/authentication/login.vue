@@ -324,14 +324,20 @@ onMounted(() => {
               allow-clear
               class="captcha-input"
             />
-            <img
+            <button
               v-if="captchaUrl"
-              :src="captchaUrl"
-              alt="验证码"
-              class="captcha-image"
-              title="点击刷新"
+              type="button"
+              class="captcha-image-btn"
+              title="点击刷新验证码"
+              aria-label="刷新验证码"
               @click="fetchImageCaptcha"
-            />
+            >
+              <img
+                :src="captchaUrl"
+                alt="验证码图片"
+                class="captcha-image"
+              />
+            </button>
           </div>
           <Alert
             message="登录失败次数过多，请完成图形验证"
@@ -425,9 +431,15 @@ onMounted(() => {
   flex: 1;
 }
 
+.captcha-image-btn {
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
 .captcha-image {
   height: 40px;
-  cursor: pointer;
   border-radius: 6px;
 }
 

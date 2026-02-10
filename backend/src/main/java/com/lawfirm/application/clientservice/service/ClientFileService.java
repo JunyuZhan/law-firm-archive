@@ -265,14 +265,16 @@ public class ClientFileService {
 
     } catch (BusinessException e) {
       log.error("文件同步失败: {}", e.getMessage());
+      // 业务异常消息可以存储（已脱敏）
       clientFileMapper.updateSyncStatus(
           clientFile.getId(), ClientFile.STATUS_FAILED, null, null, operatorId, e.getMessage());
       throw e;
     } catch (Exception e) {
       log.error("文件同步失败: {}", e.getMessage(), e);
+      // 不存储原始异常消息，使用通用错误文案
       clientFileMapper.updateSyncStatus(
-          clientFile.getId(), ClientFile.STATUS_FAILED, null, null, operatorId, e.getMessage());
-      throw new BusinessException("文件同步失败: " + e.getMessage());
+          clientFile.getId(), ClientFile.STATUS_FAILED, null, null, operatorId, "文件同步失败");
+      throw new BusinessException("文件同步失败，请稍后重试");
     }
   }
 
@@ -370,7 +372,8 @@ public class ClientFileService {
     } catch (Exception e) {
       log.error("代理文件失败: fileId={}, url={}, error={}", fileId, clientFile.getExternalFileUrl(), e.getMessage(), e);
       response.setHeader("Access-Control-Allow-Origin", "*");
-      response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "下载文件失败: " + e.getMessage());
+      // 不暴露内部异常消息，使用通用错误文案
+      response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "下载文件失败，请稍后重试");
       return;
     }
 
