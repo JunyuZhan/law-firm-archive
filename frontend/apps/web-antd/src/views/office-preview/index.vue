@@ -421,6 +421,17 @@ async function handleCustomPrint() {
                   printWindow.print();
                 }, 500);
               });
+              // 监听窗口关闭，释放 Blob URL（如果是 blob: 协议）
+              const checkClosed = setInterval(() => {
+                if (printWindow.closed) {
+                  clearInterval(checkClosed);
+                  if (url.startsWith('blob:')) {
+                    URL.revokeObjectURL(url);
+                  }
+                }
+              }, 1000);
+              // 在组件卸载时也清理 interval
+              printIntervals.add(checkClosed);
             }
           }
         });

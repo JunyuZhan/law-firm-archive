@@ -201,9 +201,10 @@ const withPreviewUpload = () => {
     const getBase64 = (file: File) => {
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
+        // 使用 onload/onerror 赋值代替 addEventListener，避免需要手动移除监听器
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = (error) => reject(error);
         reader.readAsDataURL(file);
-        reader.addEventListener('load', () => resolve(reader.result));
-        reader.addEventListener('error', (error) => reject(error));
       });
     };
     // 从fileList中过滤出所有图片文件

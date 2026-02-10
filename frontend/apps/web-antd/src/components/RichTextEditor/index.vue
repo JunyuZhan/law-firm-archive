@@ -158,13 +158,14 @@ const editorConfig: Partial<IEditorConfig> = {
         }
 
         const reader = new FileReader();
-        reader.addEventListener('load', () => {
+        // 使用 onload/onerror 赋值代替 addEventListener，避免需要手动移除监听器
+        reader.onload = () => {
           insertFn(reader.result as string);
-        });
-        reader.addEventListener('error', () => {
+        };
+        reader.onerror = () => {
           console.error('读取图片文件失败:', reader.error);
           // 静默失败，不阻止用户继续编辑
-        });
+        };
         reader.readAsDataURL(file);
       },
     },

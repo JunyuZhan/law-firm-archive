@@ -328,19 +328,22 @@ public class ExternalIntegrationAppService {
         String apiUrl = integration.getApiUrl().trim();
         URL url = URI.create(apiUrl).toURL();
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-        connection.setConnectTimeout(connectTimeoutMs);
-        connection.setReadTimeout(readTimeoutMs);
-        connection.setRequestMethod("HEAD");
+        try {
+          connection.setConnectTimeout(connectTimeoutMs);
+          connection.setReadTimeout(readTimeoutMs);
+          connection.setRequestMethod("HEAD");
 
-        int responseCode = connection.getResponseCode();
-        if (responseCode >= HTTP_SUCCESS_START && responseCode < HTTP_SUCCESS_END) {
-          result = ExternalIntegration.TEST_SUCCESS;
-          message = "连接成功，响应码: " + responseCode;
-        } else {
-          result = ExternalIntegration.TEST_FAILED;
-          message = "连接失败，响应码: " + responseCode;
+          int responseCode = connection.getResponseCode();
+          if (responseCode >= HTTP_SUCCESS_START && responseCode < HTTP_SUCCESS_END) {
+            result = ExternalIntegration.TEST_SUCCESS;
+            message = "连接成功，响应码: " + responseCode;
+          } else {
+            result = ExternalIntegration.TEST_FAILED;
+            message = "连接失败，响应码: " + responseCode;
+          }
+        } finally {
+          connection.disconnect();
         }
-        connection.disconnect();
       }
     } catch (Exception e) {
       result = ExternalIntegration.TEST_FAILED;
@@ -381,10 +384,11 @@ public class ExternalIntegrationAppService {
       return new TestResult(false, "API Key 未配置");
     }
 
+    HttpURLConnection connection = null;
     try {
       // 调用 models 接口验证 API Key
       URL url = URI.create(apiUrl + "models").toURL();
-      HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+      connection = (HttpURLConnection) url.openConnection();
       connection.setConnectTimeout(connectTimeoutMs);
       connection.setReadTimeout(readTimeoutMs);
       connection.setRequestMethod("GET");
@@ -392,7 +396,6 @@ public class ExternalIntegrationAppService {
       connection.setRequestProperty("Content-Type", "application/json");
 
       int responseCode = connection.getResponseCode();
-      connection.disconnect();
 
       if (responseCode == HTTP_STATUS_OK) {
         return new TestResult(true, "API Key 验证成功");
@@ -409,6 +412,10 @@ public class ExternalIntegrationAppService {
       return new TestResult(false, "连接超时，请检查网络");
     } catch (Exception e) {
       return new TestResult(false, "连接异常: " + e.getMessage());
+    } finally {
+      if (connection != null) {
+        connection.disconnect();
+      }
     }
   }
 
@@ -427,16 +434,16 @@ public class ExternalIntegrationAppService {
     // 确保路径以 /api 结尾，然后拼接 /health
     String healthUrl = apiUrl.endsWith("/api") ? apiUrl + "/health" : apiUrl + "/api/health";
 
+    HttpURLConnection connection = null;
     try {
       // 调用 health 接口验证服务可用性
       URL url = URI.create(healthUrl).toURL();
-      HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+      connection = (HttpURLConnection) url.openConnection();
       connection.setConnectTimeout(connectTimeoutMs);
       connection.setReadTimeout(readTimeoutMs);
       connection.setRequestMethod("HEAD");
 
       int responseCode = connection.getResponseCode();
-      connection.disconnect();
 
       if (responseCode == HTTP_STATUS_OK) {
         return new TestResult(true, "客户服务系统连接成功，响应码: " + responseCode);
@@ -451,6 +458,10 @@ public class ExternalIntegrationAppService {
       return new TestResult(false, "无法连接到客户服务系统，请检查服务是否运行");
     } catch (Exception e) {
       return new TestResult(false, "连接异常: " + e.getMessage());
+    } finally {
+      if (connection != null) {
+        connection.disconnect();
+      }
     }
   }
 

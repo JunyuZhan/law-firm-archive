@@ -213,7 +213,7 @@
 | ✅ | Process 无超时 | `VersionController.java` | 已添加 waitFor(timeout) 和 destroyForcibly() |
 | 🔄 | Workbook 未 try-with-resources | `ExcelReportGenerator.java` (13处) | 部分修复（generateRevenueReport），需继续修复 |
 | 🟡中 | PDF 资源未 try-with-resources | `PdfReportGenerator.java` | 使用 try-finally 确保关闭 |
-| 🟡中 | HttpURLConnection 未在异常时关闭 | `ExternalIntegrationAppService.java` | 添加 try-finally disconnect() |
+| ✅ | HttpURLConnection 未在异常时关闭 | `ExternalIntegrationAppService.java` | 已添加 try-finally disconnect() |
 
 #### 8.2 后端参数校验
 
@@ -240,6 +240,9 @@
 | ✅ | input 监听器未清理 | `document/list/index.vue:1536-1558` | 已在 change 后移除监听器 |
 | ✅ | JSON.parse 无 try-catch | `crm/client/index.vue:392-393` | 已包裹 try-catch |
 | ✅ | watch 异步无 catch | `matter/contract/index.vue:1208` | 已添加 .catch() |
+| ✅ | FileReader addEventListener 未移除 | `RichTextEditor/index.vue:160-167` | 已改用 onload/onerror 赋值 |
+| ✅ | FileReader addEventListener 未移除 | `adapter/component/index.ts:203-207` | 已改用 onload/onerror 赋值 |
+| ✅ | Blob URL 未释放 | `office-preview/index.vue:414-424` | 已在窗口关闭时调用 revokeObjectURL |
 | 🟡中 | searchTimer 未清理 | `MatterSelector.vue:143-154` | onUnmounted 中 clearTimeout |
 | 🟡中 | setTimeout 未清理 | `finance/report/index.vue:327-332` | onBeforeUnmount 中 clearTimeout |
 | 🟡中 | setTimeout 未清理 | `workbench/report/index.vue:451-454` | onBeforeUnmount 中 clearTimeout |
