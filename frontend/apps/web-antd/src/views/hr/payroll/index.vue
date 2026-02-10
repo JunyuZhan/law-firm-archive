@@ -10,6 +10,7 @@ import type {
 import { computed, onMounted, reactive, ref } from 'vue';
 
 import { Page } from '@vben/common-ui';
+import { escapeHtml } from '#/utils/sanitize';
 
 import {
   AutoComplete,
@@ -678,11 +679,11 @@ function generatePrintHtml(): string {
     </div>
   `;
 
-  // 汇总信息
+  // 汇总信息（使用 escapeHtml 防止 XSS）
   html += `
     <div class="summary">
-      <div class="summary-item"><strong>工资表编号：</strong>${sheet.payrollNo || '-'}</div>
-      <div class="summary-item"><strong>状态：</strong>${sheet.statusName || '-'}</div>
+      <div class="summary-item"><strong>工资表编号：</strong>${escapeHtml(sheet.payrollNo || '-')}</div>
+      <div class="summary-item"><strong>状态：</strong>${escapeHtml(sheet.statusName || '-')}</div>
       <div class="summary-item"><strong>总人数：</strong>${sheet.totalEmployees || 0}人</div>
       <div class="summary-item"><strong>应发总额：</strong>${formatCurrency(sheet.totalGrossAmount)}</div>
       <div class="summary-item"><strong>扣减总额：</strong>${formatCurrency(sheet.totalDeductionAmount)}</div>
@@ -726,14 +727,14 @@ function generatePrintHtml(): string {
     html += `
       <tr>
         <td>${index + 1}</td>
-        <td>${item.employeeNo || '-'}</td>
-        <td>${item.employeeName || '-'}</td>
+        <td>${escapeHtml(item.employeeNo || '-')}</td>
+        <td>${escapeHtml(item.employeeName || '-')}</td>
         <td>${formatCurrency(income)}</td>
         <td>${formatCurrency(taxDeduction)}</td>
         <td>${formatCurrency(grossAmount)}</td>
         <td>${formatCurrency(otherDeduction)}</td>
         <td>${formatCurrency(netAmount)}</td>
-        <td>${item.confirmStatusName || '-'}</td>
+        <td>${escapeHtml(item.confirmStatusName || '-')}</td>
       </tr>
     `;
   });

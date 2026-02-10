@@ -610,7 +610,7 @@ function handlePrintCover(record: ArchiveDTO) {
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>卷宗封面 - ${record.archiveName || record.matterName || '档案'}</title>
+  <title>卷宗封面 - ${escapeHtml(record.archiveName || record.matterName || '档案')}</title>
   <style>
     @page {
       size: A4;
@@ -723,7 +723,7 @@ function handlePrintCover(record: ArchiveDTO) {
 <body>
   <div class="cover">
     <div class="cover-inner">
-      <div class="firm-name">${systemFirmName.value}</div>
+      <div class="firm-name">${escapeHtml(systemFirmName.value)}</div>
       <div class="main-title">业 务 档 案 卷 宗</div>
       ${(() => {
         return isCriminal

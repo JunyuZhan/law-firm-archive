@@ -1855,45 +1855,45 @@ async function executePrint() {
 
     htmlContent += `
       <div class="approval-form-page" style="font-family: 'SimSun', '宋体', serif; font-size: 12pt;">
-        <h1 style="font-family: 'SimSun', '宋体', serif; font-size: 16pt; margin-bottom: 5px;">${data.firmName || ''}</h1>
+        <h1 style="font-family: 'SimSun', '宋体', serif; font-size: 16pt; margin-bottom: 5px;">${escapeHtml(data.firmName || '')}</h1>
         <h2 style="font-family: 'SimSun', '宋体', serif; font-size: 16pt; margin-bottom: 5px;">收案审批表</h2>
-        <p style="text-align: right; font-size: 11pt; margin-bottom: 10px; color: #333;">合同编号：${data.contractNo || ''}</p>
+        <p style="text-align: right; font-size: 11pt; margin-bottom: 10px; color: #333;">合同编号：${escapeHtml(data.contractNo || '')}</p>
         <table style="font-family: 'SimSun', '宋体', serif; font-size: 12pt;">
           <tr>
             <th style="width: 90px;">委托人</th>
-            <td colspan="3">${data.clientName || ''}</td>
+            <td colspan="3">${escapeHtml(data.clientName || '')}</td>
           </tr>
           <tr>
             <th style="width: 90px;">案由</th>
-            <td colspan="3">${causeOfActionDisplay}</td>
+            <td colspan="3">${escapeHtml(causeOfActionDisplay)}</td>
           </tr>
           <tr>
             <th style="width: 90px;">关联当事人</th>
-            <td colspan="3">${data.opposingParty || ''}</td>
+            <td colspan="3">${escapeHtml(data.opposingParty || '')}</td>
           </tr>
           <tr>
             <th style="width: 90px;">委托程序</th>
-            <td colspan="3">${data.trialStageName || ''}</td>
+            <td colspan="3">${escapeHtml(data.trialStageName || '')}</td>
           </tr>
           <tr>
             <th style="width: 90px;">有无利益冲突</th>
-            <td colspan="3">${data.conflictCheckResult || '待审查'}</td>
+            <td colspan="3">${escapeHtml(data.conflictCheckResult || '待审查')}</td>
           </tr>
           <tr>
             <th style="width: 90px;">代理/辩护费</th>
             <td>${data.totalAmount ? `¥${data.totalAmount.toLocaleString()}` : ''}</td>
             <th style="width: 70px;">委托时间</th>
-            <td style="width: 130px;">${signDateStr}</td>
+            <td style="width: 130px;">${escapeHtml(signDateStr)}</td>
           </tr>
           <tr>
             <th style="width: 90px;">接待人</th>
-            <td>${data.originatorName || data.signerName || ''}</td>
+            <td>${escapeHtml(data.originatorName || data.signerName || '')}</td>
             <th style="width: 70px;">办案单位</th>
-            <td>${data.jurisdictionCourt || ''}</td>
+            <td>${escapeHtml(data.jurisdictionCourt || '')}</td>
           </tr>
           <tr>
             <th style="width: 90px; font-family: 'SimSun', '宋体', serif; font-size: 12pt;">案情摘要<br/><span style="font-weight: normal; font-size: 10pt; font-family: 'SimSun', '宋体', serif;">（附接待笔录）</span></th>
-            <td colspan="3" style="height: 140px; vertical-align: top; font-family: 'SimSun', '宋体', serif; font-size: 12pt;">${data.description || ''}</td>
+            <td colspan="3" style="height: 140px; vertical-align: top; font-family: 'SimSun', '宋体', serif; font-size: 12pt;">${escapeHtml(data.description || '')}</td>
           </tr>
         </table>
         

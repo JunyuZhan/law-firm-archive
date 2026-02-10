@@ -920,6 +920,37 @@
 
 ---
 
+### 42. 输入验证缺失
+
+**问题描述**：@RequestBody 缺少 @Valid 或参数无范围限制。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| ✅ | 付款计划/参与人/变更命令缺 @Valid | `ContractController.java` | 添加 @Valid |
+| ✅ | 工资表相关命令缺 @Valid | `PayrollController.java` | 添加 @Valid |
+| ✅ | year/month 参数无范围限制 | `PayrollController.java:106` | 添加 @Min/@Max |
+| 🟡中 | List 参数无大小限制 | `SysConfigController/DocumentController` | 添加 @Size(max=...) |
+
+**状态**：🔄 高优先级已修复
+
+---
+
+### 43. XSS 风险修复
+
+**问题描述**：HTML 拼接未转义用户输入。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| ✅ | 收案审批表打印未转义 | `matter/contract/index.vue:1856-1896` | 使用 escapeHtml |
+| ✅ | 卷宗封面标题未转义 | `archive/list/index.vue:613` | 使用 escapeHtml |
+| ✅ | 系统名称未转义 | `archive/list/index.vue:725` | 使用 escapeHtml |
+| ✅ | 工资表打印未转义 | `hr/payroll/index.vue:684-737` | 使用 escapeHtml |
+| 🟡中 | URL 未做协议校验 | `document/list/index.vue` | 添加协议白名单 |
+
+**状态**：🔄 高优先级已修复
+
+---
+
 ## ✅ 已完成任务
 
 _（完成后将任务移至此处）_

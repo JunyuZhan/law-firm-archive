@@ -219,7 +219,7 @@ public class ContractController {
   @RequirePermission("matter:contract:edit")
   @OperationLog(module = "合同管理", action = "创建付款计划")
   public Result<ContractPaymentScheduleDTO> createPaymentSchedule(
-      @PathVariable final Long id, @RequestBody final CreatePaymentScheduleCommand command) {
+      @PathVariable final Long id, @Valid @RequestBody final CreatePaymentScheduleCommand command) {
     command.setContractId(id);
     ContractPaymentScheduleDTO schedule =
         contractPaymentScheduleService.createPaymentSchedule(command);
@@ -240,7 +240,7 @@ public class ContractController {
   public Result<ContractPaymentScheduleDTO> updatePaymentSchedule(
       @PathVariable final Long contractId,
       @PathVariable final Long scheduleId,
-      @RequestBody final UpdatePaymentScheduleCommand command) {
+      @Valid @RequestBody final UpdatePaymentScheduleCommand command) {
     command.setId(scheduleId);
     ContractPaymentScheduleDTO schedule =
         contractPaymentScheduleService.updatePaymentSchedule(command);
@@ -289,7 +289,7 @@ public class ContractController {
   @RequirePermission("matter:contract:edit")
   @OperationLog(module = "合同管理", action = "添加参与人")
   public Result<ContractParticipantDTO> createParticipant(
-      @PathVariable final Long id, @RequestBody final CreateParticipantCommand command) {
+      @PathVariable final Long id, @Valid @RequestBody final CreateParticipantCommand command) {
     command.setContractId(id);
     ContractParticipantDTO participant = contractParticipantService.createParticipant(command);
     return Result.success(participant);
@@ -309,7 +309,7 @@ public class ContractController {
   public Result<ContractParticipantDTO> updateParticipant(
       @PathVariable final Long contractId,
       @PathVariable final Long participantId,
-      @RequestBody final UpdateParticipantCommand command) {
+      @Valid @RequestBody final UpdateParticipantCommand command) {
     command.setId(participantId);
     ContractParticipantDTO participant = contractParticipantService.updateParticipant(command);
     return Result.success(participant);
@@ -490,7 +490,7 @@ public class ContractController {
   @PostMapping("/change")
   @RequirePermission("matter:contract:edit")
   @OperationLog(module = "合同管理", action = "申请合同变更")
-  public Result<Void> applyContractChange(@RequestBody final ContractChangeCommand command) {
+  public Result<Void> applyContractChange(@Valid @RequestBody final ContractChangeCommand command) {
     contractAppService.applyContractChange(command);
     return Result.success();
   }

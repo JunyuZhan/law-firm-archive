@@ -14,6 +14,9 @@ import com.lawfirm.application.hr.service.PayrollAppService;
 import com.lawfirm.common.annotation.RequirePermission;
 import com.lawfirm.common.result.PageResult;
 import com.lawfirm.common.result.Result;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import java.io.ByteArrayInputStream;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -48,7 +51,7 @@ public class PayrollController {
   @PostMapping
   @RequirePermission("payroll:create")
   public Result<PayrollSheetDTO> createPayrollSheet(
-      @RequestBody final CreatePayrollSheetCommand command) {
+      @Valid @RequestBody final CreatePayrollSheetCommand command) {
     // 权限检查在Service层进行
     PayrollSheetDTO dto = payrollAppService.createPayrollSheet(command);
     return Result.success(dto);
@@ -103,7 +106,8 @@ public class PayrollController {
   @GetMapping("/items")
   @RequirePermission("payroll:view")
   public Result<List<PayrollItemDTO>> getPayrollItemsByYearMonth(
-      @RequestParam final Integer year, @RequestParam final Integer month) {
+      @RequestParam @Min(1900) @Max(2100) final Integer year,
+      @RequestParam @Min(1) @Max(12) final Integer month) {
     List<PayrollItemDTO> items = payrollAppService.getPayrollItemsByYearMonth(year, month);
     return Result.success(items);
   }
@@ -118,7 +122,7 @@ public class PayrollController {
   @PostMapping("/{id}/add-item")
   @RequirePermission("payroll:edit")
   public Result<PayrollItemDTO> addPayrollItem(
-      @PathVariable final Long id, @RequestBody final AddPayrollItemCommand command) {
+      @PathVariable final Long id, @Valid @RequestBody final AddPayrollItemCommand command) {
     PayrollItemDTO dto = payrollAppService.addPayrollItemForEmployee(id, command);
     return Result.success(dto);
   }
@@ -133,7 +137,7 @@ public class PayrollController {
   @PutMapping("/item/{itemId}")
   @RequirePermission("payroll:edit")
   public Result<PayrollItemDTO> updatePayrollItem(
-      @PathVariable final Long itemId, @RequestBody final UpdatePayrollItemCommand command) {
+      @PathVariable final Long itemId, @Valid @RequestBody final UpdatePayrollItemCommand command) {
     command.setPayrollItemId(itemId);
     PayrollItemDTO dto = payrollAppService.updatePayrollItem(command);
     return Result.success(dto);
