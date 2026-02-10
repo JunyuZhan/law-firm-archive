@@ -47,8 +47,8 @@ public class ExcelReportGenerator {
    */
   public ByteArrayInputStream generateRevenueReport(final List<Map<String, Object>> data)
       throws IOException {
-    Workbook workbook = new XSSFWorkbook();
-    Sheet sheet = workbook.createSheet("收入报表");
+    try (Workbook workbook = new XSSFWorkbook()) {
+      Sheet sheet = workbook.createSheet("收入报表");
 
     // 创建标题样式
     CellStyle titleStyle = workbook.createCellStyle();
@@ -148,12 +148,11 @@ public class ExcelReportGenerator {
       sheet.setColumnWidth(i, sheet.getColumnWidth(i) + 1000); // 增加一些宽度
     }
 
-    // 写入到ByteArrayOutputStream
-    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    workbook.write(outputStream);
-    workbook.close();
-
-    return new ByteArrayInputStream(outputStream.toByteArray());
+      // 写入到ByteArrayOutputStream
+      ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+      workbook.write(outputStream);
+      return new ByteArrayInputStream(outputStream.toByteArray());
+    }
   }
 
   /**

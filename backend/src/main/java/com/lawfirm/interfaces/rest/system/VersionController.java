@@ -278,11 +278,12 @@ public class VersionController {
      * 获取当前Git分支
      */
     private String getCurrentBranch(String projectRoot) {
+        Process process = null;
         try {
             ProcessBuilder pb = new ProcessBuilder("git", "rev-parse", "--abbrev-ref", "HEAD");
             pb.directory(new File(projectRoot));
             pb.redirectErrorStream(true);
-            Process process = pb.start();
+            process = pb.start();
             
             try (BufferedReader reader = new BufferedReader(
                     new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
@@ -292,9 +293,18 @@ public class VersionController {
                 }
             }
             
-            process.waitFor();
+            // 设置超时，防止无限等待
+            boolean finished = process.waitFor(30, java.util.concurrent.TimeUnit.SECONDS);
+            if (!finished) {
+                log.warn("获取分支超时，强制终止进程");
+                process.destroyForcibly();
+            }
         } catch (Exception e) {
             log.warn("获取当前分支失败，使用默认分支main: {}", e.getMessage());
+        } finally {
+            if (process != null) {
+                process.destroyForcibly();
+            }
         }
         return "main"; // 默认分支
     }
@@ -340,34 +350,50 @@ public class VersionController {
             
             Process process = pb.start();
             
-            // 读取输出并更新进度
-            try (BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    log.info("[升级脚本] {}", line);
-                    
-                    // 根据输出内容更新进度（简单匹配）
-                    if (line.contains("拉取最新代码") || line.contains("pull")) {
-                        writeUpgradeStatus(statusFile, "running", "正在拉取最新代码...", 30);
-                    } else if (line.contains("构建") || line.contains("build")) {
-                        writeUpgradeStatus(statusFile, "running", "正在构建镜像...", 60);
-                    } else if (line.contains("部署") || line.contains("deploy")) {
-                        writeUpgradeStatus(statusFile, "running", "正在部署服务...", 80);
-                    } else if (line.contains("完成") || line.contains("success")) {
-                        writeUpgradeStatus(statusFile, "running", "升级进行中...", 90);
+            try {
+                // 读取输出并更新进度
+                try (BufferedReader reader = new BufferedReader(
+                        new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        log.info("[升级脚本] {}", line);
+                        
+                        // 根据输出内容更新进度（简单匹配）
+                        if (line.contains("拉取最新代码") || line.contains("pull")) {
+                            writeUpgradeStatus(statusFile, "running", "正在拉取最新代码...", 30);
+                        } else if (line.contains("构建") || line.contains("build")) {
+                            writeUpgradeStatus(statusFile, "running", "正在构建镜像...", 60);
+                        } else if (line.contains("部署") || line.contains("deploy")) {
+                            writeUpgradeStatus(statusFile, "running", "正在部署服务...", 80);
+                        } else if (line.contains("完成") || line.contains("success")) {
+                            writeUpgradeStatus(statusFile, "running", "升级进行中...", 90);
+                        }
                     }
                 }
-            }
-            
-            int exitCode = process.waitFor();
-            
-            if (exitCode == 0) {
-                writeUpgradeStatus(statusFile, "completed", "升级成功！服务正在重启...", 100);
-                log.info("升级脚本执行成功，服务即将重启");
-            } else {
-                writeUpgradeStatus(statusFile, "failed", "升级脚本执行失败，退出码: " + exitCode, -1);
-                log.error("升级脚本执行失败，退出码: {}", exitCode);
+                
+                // 设置超时（30分钟），防止无限等待
+                boolean finished = process.waitFor(30, java.util.concurrent.TimeUnit.MINUTES);
+                if (!finished) {
+                    log.error("升级脚本执行超时（30分钟），强制终止");
+                    process.destroyForcibly();
+                    writeUpgradeStatus(statusFile, "failed", "升级执行超时，请手动检查服务状态", -1);
+                    return;
+                }
+                
+                int exitCode = process.exitValue();
+                
+                if (exitCode == 0) {
+                    writeUpgradeStatus(statusFile, "completed", "升级成功！服务正在重启...", 100);
+                    log.info("升级脚本执行成功，服务即将重启");
+                } else {
+                    writeUpgradeStatus(statusFile, "failed", "升级脚本执行失败，退出码: " + exitCode, -1);
+                    log.error("升级脚本执行失败，退出码: {}", exitCode);
+                }
+            } finally {
+                // 确保进程被清理
+                if (process.isAlive()) {
+                    process.destroyForcibly();
+                }
             }
             
         } catch (Exception e) {

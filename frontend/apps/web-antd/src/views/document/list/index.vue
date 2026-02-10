@@ -1533,7 +1533,12 @@ function handleUploadSignedVersion(record: DocumentDTO) {
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = '.pdf,.jpg,.jpeg,.png';
-  input.addEventListener('change', async (e: Event) => {
+
+  // 定义处理函数，便于移除监听器
+  const handleChange = async (e: Event) => {
+    // 移除监听器，防止内存泄漏
+    input.removeEventListener('change', handleChange);
+
     const file = (e.target as HTMLInputElement).files?.[0];
     if (!file) return;
 
@@ -1554,7 +1559,9 @@ function handleUploadSignedVersion(record: DocumentDTO) {
     } finally {
       loading.value = false;
     }
-  });
+  };
+
+  input.addEventListener('change', handleChange);
   input.click();
 }
 

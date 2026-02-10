@@ -1205,7 +1205,9 @@ watch(
   },
   (shouldLoad) => {
     if (shouldLoad && criminalChargeOptions.value.length === 0) {
-      loadCriminalChargeOptions();
+      loadCriminalChargeOptions().catch((error) => {
+        console.error('加载刑事罪名选项失败:', error);
+      });
     }
   },
 );
