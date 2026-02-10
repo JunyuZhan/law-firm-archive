@@ -11,6 +11,8 @@ import type {
 import type { MatterDTO, MatterSimpleDTO } from '#/api/matter/types';
 
 import { computed, onMounted, reactive, ref } from 'vue';
+
+import { escapeHtml } from '#/utils/sanitize';
 import { useRoute, useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
@@ -737,15 +739,15 @@ function handlePrintCover(record: ArchiveDTO) {
           <col style="width: 18%">
           <col style="width: 32%">
         </colgroup>
-        <tr><td class="label">项目编号</td><td class="value" colspan="3">${matterNo}</td></tr>
-        <tr><td class="label">被 告 人</td><td class="value" colspan="3">${matter?.opposingParty || ''}</td></tr>
-        <tr><td class="label">罪    名</td><td class="value" colspan="3">${matter?.causeOfAction || ''}</td></tr>
-        <tr><td class="label">委 托 人</td><td class="value">${record.clientName || ''}</td><td class="label">承办律师</td><td class="value">${record.mainLawyerName || ''}</td></tr>
+        <tr><td class="label">项目编号</td><td class="value" colspan="3">${escapeHtml(matterNo)}</td></tr>
+        <tr><td class="label">被 告 人</td><td class="value" colspan="3">${escapeHtml(matter?.opposingParty || '')}</td></tr>
+        <tr><td class="label">罪    名</td><td class="value" colspan="3">${escapeHtml(matter?.causeOfAction || '')}</td></tr>
+        <tr><td class="label">委 托 人</td><td class="value">${escapeHtml(record.clientName || '')}</td><td class="label">承办律师</td><td class="value">${escapeHtml(record.mainLawyerName || '')}</td></tr>
         <tr><td class="label">审理法院</td><td class="value" colspan="3"></td></tr>
         <tr><td class="label">收案日期</td><td class="value">${formatDate(matter?.filingDate)}</td><td class="label">结案日期</td><td class="value">${formatDate(record.caseCloseDate)}</td></tr>
-        <tr><td class="label">${resultLabel}</td><td class="value">${matter?.outcome || ''}</td><td class="label">代理阶段</td><td class="value">${stageName}</td></tr>
+        <tr><td class="label">${escapeHtml(resultLabel)}</td><td class="value">${escapeHtml(matter?.outcome || '')}</td><td class="label">代理阶段</td><td class="value">${escapeHtml(stageName)}</td></tr>
         <tr><td class="label">归档日期</td><td class="value">${archiveDate}</td><td class="label">保存期限</td><td class="value">${retentionPeriod}</td></tr>
-        <tr><td class="label">立 卷 人</td><td class="value">${record.mainLawyerName || ''}</td><td class="label">备    注</td><td class="value">${record.remarks || ''}</td></tr>
+        <tr><td class="label">立 卷 人</td><td class="value">${escapeHtml(record.mainLawyerName || '')}</td><td class="label">备    注</td><td class="value">${escapeHtml(record.remarks || '')}</td></tr>
       </table>`
           : `
       <table>
@@ -755,21 +757,21 @@ function handlePrintCover(record: ArchiveDTO) {
           <col style="width: 18%">
           <col style="width: 32%">
         </colgroup>
-        <tr><td class="label">项目编号</td><td class="value" colspan="3">${matterNo}</td></tr>
-        <tr><td class="label">案    由</td><td class="value" colspan="3">${matter?.causeOfAction || ''}</td></tr>
-        <tr><td class="label">委 托 人</td><td class="value">${record.clientName || ''}</td><td class="label">承 办 人</td><td class="value">${record.mainLawyerName || ''}</td></tr>
+        <tr><td class="label">项目编号</td><td class="value" colspan="3">${escapeHtml(matterNo)}</td></tr>
+        <tr><td class="label">案    由</td><td class="value" colspan="3">${escapeHtml(matter?.causeOfAction || '')}</td></tr>
+        <tr><td class="label">委 托 人</td><td class="value">${escapeHtml(record.clientName || '')}</td><td class="label">承 办 人</td><td class="value">${escapeHtml(record.mainLawyerName || '')}</td></tr>
         <tr>
           <td class="label-vertical" rowspan="3">当<br/>事<br/>人</td>
           <td class="label-small">${isArbitration ? '申请人' : '原告'}</td>
-          <td class="value" colspan="2">${record.clientName || ''}</td>
+          <td class="value" colspan="2">${escapeHtml(record.clientName || '')}</td>
         </tr>
-        <tr><td class="label-small">${isArbitration ? '被申请人' : '被告'}</td><td class="value" colspan="2">${matter?.opposingParty || ''}</td></tr>
+        <tr><td class="label-small">${isArbitration ? '被申请人' : '被告'}</td><td class="value" colspan="2">${escapeHtml(matter?.opposingParty || '')}</td></tr>
         <tr><td class="label-small">第三人</td><td class="value" colspan="2"></td></tr>
         <tr><td class="label">${isArbitration ? '仲裁机构' : '审理法院'}</td><td class="value" colspan="3"></td></tr>
         <tr><td class="label">收案日期</td><td class="value">${formatDate(matter?.filingDate)}</td><td class="label">结案日期</td><td class="value">${formatDate(record.caseCloseDate)}</td></tr>
-        <tr><td class="label">${resultLabel}</td><td class="value">${matter?.outcome || ''}</td><td class="label">代理阶段</td><td class="value">${stageName}</td></tr>
+        <tr><td class="label">${escapeHtml(resultLabel)}</td><td class="value">${escapeHtml(matter?.outcome || '')}</td><td class="label">代理阶段</td><td class="value">${escapeHtml(stageName)}</td></tr>
         <tr><td class="label">归档日期</td><td class="value">${archiveDate}</td><td class="label">保存期限</td><td class="value">${retentionPeriod}</td></tr>
-        <tr><td class="label">立 卷 人</td><td class="value">${record.mainLawyerName || ''}</td><td class="label">备    注</td><td class="value">${record.remarks || ''}</td></tr>
+        <tr><td class="label">立 卷 人</td><td class="value">${escapeHtml(record.mainLawyerName || '')}</td><td class="label">备    注</td><td class="value">${escapeHtml(record.remarks || '')}</td></tr>
       </table>`
       }
     </div>

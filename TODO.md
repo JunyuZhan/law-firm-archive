@@ -522,8 +522,12 @@
 | 优先级 | 问题 | 位置 | 修复方案 |
 |--------|------|------|----------|
 | ✅ | 列名未白名单校验 | `PageUtils.java:227` | 已添加列名白名单校验 |
+| 🟡中 | DataScope 动态列名无白名单 | `DataScopeInterceptor.java:214,228,239` | 对 alias/field 添加白名单校验 |
+| 🟡中 | DataScopeHelper 列名无白名单 | `DataScopeHelper.java:116,123,131` | 对列名参数添加白名单校验 |
 | 🟡中 | 迁移脚本直接执行 | `MigrationAppService.java:311` | 加强脚本目录权限控制 |
 | 🟢低 | wrapper.last() LIMIT | `OperationLogAppService.java:271` | maxRows 已为固定常量 |
+| 🟢低 | wrapper.last() LIMIT | `ClientAppService.java:178` | safeLimit 已有范围限制 |
+| 🟢低 | URL 拼接 repo 参数 | `VersionController.java:499` | 对 repo 添加格式校验 |
 
 **状态**：🔄 部分修复
 
@@ -536,7 +540,9 @@
 | 优先级 | 问题 | 位置 | 修复方案 |
 |--------|------|------|----------|
 | ✅ | document.write 未消毒 | `EvidenceTableEditor.vue:1129,1144`<br>`EvidenceListDisplay.vue:660,681` | 已使用 escapeHtml 转义 |
-| 🔴高 | ContractPreviewModal 打印未消毒 | `ContractPreviewModal.vue:246,277` | 打印内容 sanitize |
+| ✅ | ContractPreviewModal 打印未消毒 | `ContractPreviewModal.vue:278` | 已添加 sanitizeHtml |
+| ✅ | PreviewModal 打印未消毒 | `letter-template/PreviewModal.vue:135` | 已添加 sanitizeHtml |
+| ✅ | 卷宗封面打印未转义 | `archive/list/index.vue:740-774` | 已添加 escapeHtml |
 | 🟡中 | URL 跳转未白名单 | `office-preview/index.vue:57`<br>`adapter/component/index.ts:186` | 添加域名白名单校验 |
 
 **状态**：🔄 部分修复

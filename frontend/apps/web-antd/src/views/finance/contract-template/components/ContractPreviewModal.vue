@@ -275,7 +275,7 @@ function handlePrint() {
       </style>
     </head>
     <body>
-      ${previewContent.value}
+      ${sanitizeHtml(previewContent.value)}
     </body>
     </html>
   `);
