@@ -191,6 +191,42 @@ public class DataScopeInterceptor implements InnerInterceptor {
   }
 
   /**
+   * 验证标识符是否安全（仅允许字母、数字、下划线）
+   *
+   * @param identifier SQL 标识符（表别名或字段名）
+   * @return 验证通过返回 true，否则返回 false
+   */
+  private boolean isValidIdentifier(final String identifier) {
+    if (!StringUtils.hasText(identifier)) {
+      return false;
+    }
+    // 只允许字母、数字和下划线，且必须以字母或下划线开头
+    return identifier.matches("^[a-zA-Z_][a-zA-Z0-9_]*$");
+  }
+
+  /**
+   * 构建安全的列名
+   *
+   * @param alias 表别名
+   * @param field 字段名
+   * @return 安全的列名，验证失败返回 null
+   */
+  private String buildSafeColumn(final String alias, final String field) {
+    if (!isValidIdentifier(field)) {
+      log.warn("字段名校验失败: {}", field);
+      return null;
+    }
+    if (StringUtils.hasText(alias)) {
+      if (!isValidIdentifier(alias)) {
+        log.warn("表别名校验失败: {}", alias);
+        return null;
+      }
+      return alias + "." + field;
+    }
+    return field;
+  }
+
+  /**
    * 构建数据权限SQL条件
    *
    * @param dataScope DataScope注解
@@ -209,13 +245,13 @@ public class DataScopeInterceptor implements InnerInterceptor {
         if (deptId != null && StringUtils.hasText(dataScope.deptAlias())) {
           List<Long> deptIds = getDeptAndChildrenIds(deptId);
           if (!deptIds.isEmpty()) {
-            String alias = dataScope.deptAlias();
-            String field = dataScope.deptField();
-            String column = StringUtils.hasText(alias) ? alias + "." + field : field;
-            sql.append(column)
-                .append(" IN (")
-                .append(deptIds.stream().map(String::valueOf).collect(Collectors.joining(",")))
-                .append(")");
+            String column = buildSafeColumn(dataScope.deptAlias(), dataScope.deptField());
+            if (column != null) {
+              sql.append(column)
+                  .append(" IN (")
+                  .append(deptIds.stream().map(String::valueOf).collect(Collectors.joining(",")))
+                  .append(")");
+            }
           }
         }
         break;
@@ -223,10 +259,10 @@ public class DataScopeInterceptor implements InnerInterceptor {
       case "DEPT":
         // 本部门
         if (deptId != null && StringUtils.hasText(dataScope.deptAlias())) {
-          String alias = dataScope.deptAlias();
-          String field = dataScope.deptField();
-          String column = StringUtils.hasText(alias) ? alias + "." + field : field;
-          sql.append(column).append(" = ").append(deptId);
+          String column = buildSafeColumn(dataScope.deptAlias(), dataScope.deptField());
+          if (column != null) {
+            sql.append(column).append(" = ").append(deptId);
+          }
         }
         break;
 
@@ -234,10 +270,10 @@ public class DataScopeInterceptor implements InnerInterceptor {
       default:
         // 仅本人
         if (userId != null && StringUtils.hasText(dataScope.userAlias())) {
-          String alias = dataScope.userAlias();
-          String field = dataScope.userField();
-          String column = StringUtils.hasText(alias) ? alias + "." + field : field;
-          sql.append(column).append(" = ").append(userId);
+          String column = buildSafeColumn(dataScope.userAlias(), dataScope.userField());
+          if (column != null) {
+            sql.append(column).append(" = ").append(userId);
+          }
         }
         break;
     }

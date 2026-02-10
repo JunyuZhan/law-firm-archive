@@ -522,8 +522,8 @@
 | 优先级 | 问题 | 位置 | 修复方案 |
 |--------|------|------|----------|
 | ✅ | 列名未白名单校验 | `PageUtils.java:227` | 已添加列名白名单校验 |
-| 🟡中 | DataScope 动态列名无白名单 | `DataScopeInterceptor.java:214,228,239` | 对 alias/field 添加白名单校验 |
-| 🟡中 | DataScopeHelper 列名无白名单 | `DataScopeHelper.java:116,123,131` | 对列名参数添加白名单校验 |
+| ✅ | DataScope 动态列名无白名单 | `DataScopeInterceptor.java` | 已添加 isValidIdentifier 校验 |
+| ✅ | DataScopeHelper 列名无白名单 | `DataScopeHelper.java` | 已添加 validateColumnName 校验 |
 | 🟡中 | 迁移脚本直接执行 | `MigrationAppService.java:311` | 加强脚本目录权限控制 |
 | 🟢低 | wrapper.last() LIMIT | `OperationLogAppService.java:271` | maxRows 已为固定常量 |
 | 🟢低 | wrapper.last() LIMIT | `ClientAppService.java:178` | safeLimit 已有范围限制 |

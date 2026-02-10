@@ -92,6 +92,24 @@ public class DataScopeHelper {
   }
 
   /**
+   * 验证列名是否安全（仅允许字母、数字、下划线）
+   *
+   * @param columnName 列名
+   * @return 验证通过返回原列名，否则返回 null
+   */
+  private String validateColumnName(final String columnName) {
+    if (columnName == null || columnName.isEmpty()) {
+      return null;
+    }
+    // 只允许字母、数字和下划线
+    if (!columnName.matches("^[a-zA-Z_][a-zA-Z0-9_]*$")) {
+      log.warn("列名校验失败，包含非法字符: {}", columnName);
+      return null;
+    }
+    return columnName;
+  }
+
+  /**
    * 应用数据权限过滤（QueryWrapper，指定字段名）
    *
    * @param wrapper 查询条件包装器
@@ -101,6 +119,10 @@ public class DataScopeHelper {
    */
   public <T> void applyDataScope(
       final QueryWrapper<T> wrapper, final String deptFieldName, final String userFieldName) {
+    // 验证列名安全性
+    String safeDeptField = validateColumnName(deptFieldName);
+    String safeUserField = validateColumnName(userFieldName);
+
     String dataScope = getDataScope();
     Long userId = getUserId();
     Long deptId = getDeptId();
@@ -111,24 +133,24 @@ public class DataScopeHelper {
         break;
 
       case "DEPT_AND_CHILD":
-        if (deptId != null && deptFieldName != null) {
+        if (deptId != null && safeDeptField != null) {
           List<Long> deptIds = getDeptAndChildrenIds(deptId);
-          wrapper.in(deptFieldName, deptIds);
+          wrapper.in(safeDeptField, deptIds);
           log.debug("数据权限: DEPT_AND_CHILD - 部门ID列表: {}", deptIds);
         }
         break;
 
       case "DEPT":
-        if (deptId != null && deptFieldName != null) {
-          wrapper.eq(deptFieldName, deptId);
+        if (deptId != null && safeDeptField != null) {
+          wrapper.eq(safeDeptField, deptId);
           log.debug("数据权限: DEPT - 部门ID: {}", deptId);
         }
         break;
 
       case "SELF":
       default:
-        if (userId != null && userFieldName != null) {
-          wrapper.eq(userFieldName, userId);
+        if (userId != null && safeUserField != null) {
+          wrapper.eq(safeUserField, userId);
           log.debug("数据权限: SELF - 用户ID: {}", userId);
         }
         break;
