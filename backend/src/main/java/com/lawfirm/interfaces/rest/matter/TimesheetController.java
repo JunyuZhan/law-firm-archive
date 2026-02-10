@@ -133,7 +133,9 @@ public class TimesheetController {
   @PostMapping("/batch-submit")
   @RequirePermission("timesheet:record")
   @OperationLog(module = "工时管理", action = "批量提交工时")
-  public Result<Void> batchSubmit(@RequestBody final List<Long> ids) {
+  public Result<Void> batchSubmit(
+      @RequestBody @jakarta.validation.constraints.Size(min = 1, max = 100, message = "批量操作数量需在1-100之间")
+          final List<Long> ids) {
     timesheetAppService.batchSubmit(ids);
     return Result.success();
   }

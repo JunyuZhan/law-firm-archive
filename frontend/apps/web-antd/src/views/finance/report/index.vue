@@ -324,10 +324,15 @@ const feeStats = computed(() => {
 });
 
 // 监听数据变化重新渲染图表
+let chartRenderTimer: null | ReturnType<typeof setTimeout> = null;
 watch([revenueData, () => agingData.value], () => {
-  setTimeout(() => {
+  if (chartRenderTimer) {
+    clearTimeout(chartRenderTimer);
+  }
+  chartRenderTimer = setTimeout(() => {
     renderTrendChart();
     renderAgingChart();
+    chartRenderTimer = null;
   }, 100);
 });
 
@@ -589,6 +594,11 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   disposeCharts();
+  // 清理定时器
+  if (chartRenderTimer) {
+    clearTimeout(chartRenderTimer);
+    chartRenderTimer = null;
+  }
 });
 </script>
 

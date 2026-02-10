@@ -174,7 +174,9 @@ public class EvidenceController {
   @RequirePermission("evidence:edit")
   @OperationLog(module = "证据管理", action = "批量调整分组")
   public Result<Void> batchUpdateGroup(
-      @RequestBody final List<Long> ids, @RequestParam final String groupName) {
+      @RequestBody @jakarta.validation.constraints.Size(min = 1, max = 100, message = "批量操作数量需在1-100之间")
+          final List<Long> ids,
+      @RequestParam final String groupName) {
     evidenceAppService.batchUpdateGroup(ids, groupName);
     return Result.success();
   }

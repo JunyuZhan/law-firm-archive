@@ -445,11 +445,16 @@ function getOrCreateChart(dom: HTMLElement | null): echarts.ECharts | null {
 }
 
 // Tab切换
+let tabChangeTimer: null | ReturnType<typeof setTimeout> = null;
 function handleTabChange(key: number | string) {
   activeTab.value = String(key);
   if (key === 'overview') {
-    setTimeout(() => {
+    if (tabChangeTimer) {
+      clearTimeout(tabChangeTimer);
+    }
+    tabChangeTimer = setTimeout(() => {
       loadAllStats();
+      tabChangeTimer = null;
     }, 100);
   }
 }
@@ -479,9 +484,13 @@ onMounted(() => {
   loadAllStats();
 });
 
-// 组件卸载时清理图表实例
+// 组件卸载时清理图表实例和定时器
 onBeforeUnmount(() => {
   disposeAllCharts();
+  if (tabChangeTimer) {
+    clearTimeout(tabChangeTimer);
+    tabChangeTimer = null;
+  }
 });
 </script>
 

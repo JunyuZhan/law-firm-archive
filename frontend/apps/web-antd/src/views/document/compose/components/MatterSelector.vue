@@ -8,7 +8,7 @@ import type { MatterDTO } from '#/api/matter/types';
  * 用于选择关联项目和卷宗目录
  * 支持远程搜索大量项目
  */
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
 import {
   Alert,
@@ -234,6 +234,14 @@ watch(
 
 onMounted(() => {
   loadMatters();
+});
+
+// 组件卸载时清理定时器
+onUnmounted(() => {
+  if (searchTimer) {
+    clearTimeout(searchTimer);
+    searchTimer = null;
+  }
 });
 
 // 暴露方法

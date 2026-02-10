@@ -436,6 +436,47 @@
 
 ---
 
+### 15. 输入验证问题（后端）
+
+**问题描述**：大量接口参数未做校验，存在安全风险。
+
+#### 15.1 高风险问题
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| ✅ | List 参数无大小限制 | `CommissionController.java:295,329`<br>`EvidenceController.java:177`<br>`TimesheetController.java:136` | 已添加 @Size(max=100) |
+| 🔴高 | AlertWebhook 无签名校验 | `AlertWebhookController.java:36` | 添加来源验证或签名校验 |
+| 🟡中 | @PathVariable Long 未校验正数 | 多个 Controller | 添加 @Positive 或 @Min(1) |
+| 🟡中 | pageSize 无上限 | `DocumentController.java:346`<br>`NotificationController.java:44` | 添加 @Max(100) |
+
+**实施进度**：
+- [x] 批量接口 List 参数添加 @Size
+- [ ] 分页参数添加 @Max 限制
+
+**状态**：🔄 部分修复
+
+---
+
+### 16. 前端生命周期问题
+
+**问题描述**：定时器和事件监听未在组件卸载时清理。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| ✅ | searchTimer 未清理 | `MatterSelector.vue:151` | 已添加 onUnmounted 中 clearTimeout |
+| 🔴高 | input 事件监听未清理 | `document/list/index.vue:1536` | 使用单例 input 或清理 |
+| 🟡中 | printWindow load 未清理 | `EvidenceListDisplay.vue:685` | 添加卸载检查 |
+| ✅ | setTimeout 未清理 | `finance/report/index.vue:327`<br>`workbench/report/index.vue:451` | 已添加 onBeforeUnmount 清理 |
+
+**实施进度**：
+- [x] MatterSelector searchTimer 清理
+- [x] finance/report setTimeout 清理
+- [x] workbench/report setTimeout 清理
+
+**状态**：🔄 部分修复
+
+---
+
 ## ✅ 已完成任务
 
 _（完成后将任务移至此处）_
