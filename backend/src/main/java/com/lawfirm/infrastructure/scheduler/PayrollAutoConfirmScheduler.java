@@ -5,7 +5,10 @@ import com.lawfirm.domain.hr.entity.PayrollSheet;
 import com.lawfirm.domain.hr.repository.PayrollItemRepository;
 import com.lawfirm.domain.hr.repository.PayrollSheetRepository;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -47,64 +50,90 @@ public class PayrollAutoConfirmScheduler {
             .eq(PayrollSheet::getDeleted, false)
             .list();
 
+    if (sheets.isEmpty()) {
+      log.info("没有待确认的工资表");
+      return;
+    }
+
+    // 批量获取所有工资表的ID
+    List<Long> sheetIds = sheets.stream().map(PayrollSheet::getId).collect(Collectors.toList());
+    Map<Long, PayrollSheet> sheetMap = sheets.stream()
+        .collect(Collectors.toMap(PayrollSheet::getId, s -> s));
+
+    // 一次性查询所有待确认的工资明细（避免N+1查询）
+    List<PayrollItem> allPendingItems =
+        payrollItemRepository
+            .lambdaQuery()
+            .in(PayrollItem::getPayrollSheetId, sheetIds)
+            .eq(PayrollItem::getConfirmStatus, "PENDING")
+            .eq(PayrollItem::getDeleted, false)
+            .list();
+
+    // 按工资表ID分组
+    Map<Long, List<PayrollItem>> itemsBySheetId = allPendingItems.stream()
+        .collect(Collectors.groupingBy(PayrollItem::getPayrollSheetId));
+
+    // 收集需要更新的工资明细
+    List<PayrollItem> itemsToUpdate = new ArrayList<>();
     int totalAutoConfirmed = 0;
 
     for (PayrollSheet sheet : sheets) {
-      try {
-        // 查询该工资表中所有待确认的工资明细
-        List<PayrollItem> pendingItems =
-            payrollItemRepository
-                .lambdaQuery()
-                .eq(PayrollItem::getPayrollSheetId, sheet.getId())
-                .eq(PayrollItem::getConfirmStatus, "PENDING")
-                .eq(PayrollItem::getDeleted, false)
-                .list();
-
-        if (pendingItems.isEmpty()) {
-          continue;
-        }
-
-        // 自动确认超过确认截止时间的工资明细
-        // 每个员工有独立的确认截止时间，如果没有设置则使用工资表的autoConfirmDeadline
-        for (PayrollItem item : pendingItems) {
-          LocalDateTime confirmDeadline = item.getConfirmDeadline();
-          if (confirmDeadline == null) {
-            // 如果没有设置员工单独的确认截止时间，使用工资表的默认截止时间
-            confirmDeadline = sheet.getAutoConfirmDeadline();
-          }
-
-          // 如果确认截止时间已过，自动确认
-          if (confirmDeadline != null && now.isAfter(confirmDeadline)) {
-            item.setConfirmStatus("CONFIRMED");
-            item.setConfirmedAt(now);
-            item.setConfirmComment("系统自动确认（超过截止时间未确认）");
-            payrollItemRepository.updateById(item);
-            totalAutoConfirmed++;
-          }
-        }
-
-        // 重新计算已确认人数
-        List<PayrollItem> allItems = payrollItemRepository.findByPayrollSheetId(sheet.getId());
-        long confirmedCount =
-            allItems.stream().filter(i -> "CONFIRMED".equals(i.getConfirmStatus())).count();
-
-        sheet.setConfirmedCount((int) confirmedCount);
-
-        // 如果所有员工都已确认，自动更新工资表状态为已确认
-        if (confirmedCount == allItems.size() && allItems.size() > 0) {
-          sheet.setStatus("CONFIRMED");
-        }
-
-        payrollSheetRepository.updateById(sheet);
-
-        log.info(
-            "自动确认工资表: payrollNo={}, autoConfirmedCount={}",
-            sheet.getPayrollNo(),
-            pendingItems.size());
-
-      } catch (Exception e) {
-        log.error("自动确认工资表失败: payrollNo={}", sheet.getPayrollNo(), e);
+      List<PayrollItem> pendingItems = itemsBySheetId.getOrDefault(sheet.getId(), List.of());
+      if (pendingItems.isEmpty()) {
+        continue;
       }
+
+      // 自动确认超过确认截止时间的工资明细
+      for (PayrollItem item : pendingItems) {
+        LocalDateTime confirmDeadline = item.getConfirmDeadline();
+        if (confirmDeadline == null) {
+          confirmDeadline = sheet.getAutoConfirmDeadline();
+        }
+
+        if (confirmDeadline != null && now.isAfter(confirmDeadline)) {
+          item.setConfirmStatus("CONFIRMED");
+          item.setConfirmedAt(now);
+          item.setConfirmComment("系统自动确认（超过截止时间未确认）");
+          itemsToUpdate.add(item);
+          totalAutoConfirmed++;
+        }
+      }
+    }
+
+    // 批量更新工资明细
+    if (!itemsToUpdate.isEmpty()) {
+      payrollItemRepository.updateBatchById(itemsToUpdate);
+    }
+
+    // 一次性查询所有工资明细用于统计（避免N+1查询）
+    List<PayrollItem> allItems =
+        payrollItemRepository
+            .lambdaQuery()
+            .in(PayrollItem::getPayrollSheetId, sheetIds)
+            .eq(PayrollItem::getDeleted, false)
+            .list();
+
+    Map<Long, List<PayrollItem>> allItemsBySheetId = allItems.stream()
+        .collect(Collectors.groupingBy(PayrollItem::getPayrollSheetId));
+
+    // 更新工资表统计
+    List<PayrollSheet> sheetsToUpdate = new ArrayList<>();
+    for (PayrollSheet sheet : sheets) {
+      List<PayrollItem> sheetItems = allItemsBySheetId.getOrDefault(sheet.getId(), List.of());
+      long confirmedCount =
+          sheetItems.stream().filter(i -> "CONFIRMED".equals(i.getConfirmStatus())).count();
+
+      sheet.setConfirmedCount((int) confirmedCount);
+
+      if (confirmedCount == sheetItems.size() && !sheetItems.isEmpty()) {
+        sheet.setStatus("CONFIRMED");
+      }
+      sheetsToUpdate.add(sheet);
+    }
+
+    // 批量更新工资表
+    if (!sheetsToUpdate.isEmpty()) {
+      payrollSheetRepository.updateBatchById(sheetsToUpdate);
     }
 
     log.info("工资表自动确认任务完成，共自动确认 {} 条工资明细", totalAutoConfirmed);

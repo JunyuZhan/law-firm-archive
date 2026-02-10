@@ -682,7 +682,7 @@
 
 | 优先级 | 问题 | 位置 | 修复方案 |
 |--------|------|------|----------|
-| 🔴高 | N+1 循环内查询 | `PayrollAutoConfirmScheduler.java:51-61,86` | 批量查询替代循环查询 |
+| ✅ | N+1 循环内查询 | `PayrollAutoConfirmScheduler.java` | 已重构为批量查询和批量更新 |
 | 🔴高 | N+1 循环内查询 | `ApproverService.java:378-416,457-491` | 批量加载用户和部门 |
 | 🟡中 | 全量加载用户 | `ApproverService.java:337` | 添加分页或条件限制 |
 | 🟡中 | 全量加载收款 | `StatisticsAppService.java:590-598` | 使用聚合查询 |
