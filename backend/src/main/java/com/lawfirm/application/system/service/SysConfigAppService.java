@@ -246,11 +246,32 @@ public class SysConfigAppService {
    * @param config 配置实体
    * @return 配置DTO
    */
+  /**
+   * 检查配置键是否为敏感配置
+   */
+  private boolean isSensitiveConfig(final String configKey) {
+    if (configKey == null) {
+      return false;
+    }
+    String lowerKey = configKey.toLowerCase();
+    return lowerKey.contains("password")
+        || lowerKey.contains("secret")
+        || lowerKey.contains("token")
+        || lowerKey.contains("key")
+        || lowerKey.contains("credential")
+        || lowerKey.contains("apikey");
+  }
+
   private SysConfigDTO toDTO(final SysConfig config) {
     SysConfigDTO dto = new SysConfigDTO();
     dto.setId(config.getId());
     dto.setConfigKey(config.getConfigKey());
-    dto.setConfigValue(config.getConfigValue());
+    // 敏感配置值脱敏处理
+    if (isSensitiveConfig(config.getConfigKey())) {
+      dto.setConfigValue("******");
+    } else {
+      dto.setConfigValue(config.getConfigValue());
+    }
     dto.setConfigName(config.getConfigName());
     dto.setConfigType(config.getConfigType());
     dto.setDescription(config.getDescription());

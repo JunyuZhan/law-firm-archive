@@ -233,9 +233,9 @@
 
 | 优先级 | 问题 | 位置 | 修复方案 |
 |--------|------|------|----------|
-| 🔴高 | 轮询定时器未清理 | `system/config/index.vue:441,485,523` | onUnmounted 中调用 stopUpgradePolling() |
+| ✅ | 轮询定时器未清理 | `system/config/index.vue` | onUnmounted 中已调用 stopUpgradePolling() |
 | 🔴高 | 异步回调在卸载后执行 | `document/list/index.vue:1536-1558` | 添加 isMounted 检查或取消标记 |
-| 🔴高 | JSON.parse 无 try-catch | `crm/client/index.vue:392-393` | 包裹 try-catch，解析失败用默认值 |
+| ✅ | JSON.parse 无 try-catch | `crm/client/index.vue:392-393` | 已包裹 try-catch |
 | 🟡中 | searchTimer 未清理 | `MatterSelector.vue:143-154` | onUnmounted 中 clearTimeout |
 | 🟡中 | setTimeout 未清理 | `finance/report/index.vue:327-332` | onBeforeUnmount 中 clearTimeout |
 | 🟡中 | setTimeout 未清理 | `workbench/report/index.vue:451-454` | onBeforeUnmount 中 clearTimeout |
@@ -508,7 +508,7 @@
 | 优先级 | 问题 | 位置 | 修复方案 |
 |--------|------|------|----------|
 | ✅ | watch + emit 循环 | `StateCompensationForm.vue:224` | 已使用标志位防止循环 |
-| 🔴高 | watch + emit 循环 | `StructuredTemplateEditor.vue:127` | 使用标志位防止循环 |
+| ✅ | watch + emit 循环 | `StructuredTemplateEditor.vue:127` | 已使用标志位防止循环 |
 | 🔴高 | 并发请求未去重 | `document/list/index.vue:671`<br>`matter/detail/index.vue:253` | 添加请求取消或版本号校验 |
 | 🟡中 | 卸载后修改 ref | 多个组件 | 添加 isMounted 检查 |
 
@@ -637,7 +637,7 @@
 | 优先级 | 问题 | 位置 | 修复方案 |
 |--------|------|------|----------|
 | ✅ | LoginUser.password 可被序列化 | `LoginUser.java:39` | 已添加 @JsonIgnore |
-| 🔴高 | 系统配置暴露密码 | `SysConfigAppService.java:254` | 敏感配置脱敏 |
+| ✅ | 系统配置暴露密码 | `SysConfigAppService.java` | 已添加敏感配置脱敏 |
 | 🟡中 | 用户选项返回完整 DTO | `UserController.java:71` | 返回简化 DTO |
 
 **状态**：🔄 部分修复
