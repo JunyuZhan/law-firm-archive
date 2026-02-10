@@ -136,12 +136,19 @@ function blocksToContent(): string {
   });
 }
 
+// 防止 watch 和 emit 循环
+let isUpdatingFromParent = false;
+
 // 监听 modelValue 变化
 watch(
   () => props.modelValue,
   (newVal) => {
     if (newVal) {
+      isUpdatingFromParent = true;
       parseContent(newVal);
+      setTimeout(() => {
+        isUpdatingFromParent = false;
+      }, 0);
     }
   },
   { immediate: true },
@@ -151,6 +158,7 @@ watch(
 watch(
   blocks,
   () => {
+    if (isUpdatingFromParent) return;
     emit('update:modelValue', blocksToContent());
   },
   { deep: true },

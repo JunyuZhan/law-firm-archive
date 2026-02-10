@@ -286,7 +286,10 @@
 
 | 优先级 | 问题 | 位置 | 修复方案 |
 |--------|------|------|----------|
-| 🔴高 | formData ↔ initialData ↔ emit 循环 | `StateCompensationForm.vue:219-241` | 添加标志位区分来源，避免循环 emit |
+| ✅ | formData ↔ initialData ↔ emit 循环 | `StateCompensationForm.vue:219-241` | 已添加标志位区分来源 |
+| ✅ | blocks ↔ modelValue ↔ emit 循环 | `StructuredTemplateEditor.vue:127-144` | 已添加 isUpdatingFromParent 标志 |
+| ✅ | blocks ↔ modelValue ↔ emit 循环 | `PowerOfAttorneyEditor.vue:140-157` | 已添加 isUpdatingFromParent 标志 |
+| ✅ | blocks ↔ modelValue ↔ emit 循环 | `StructuredLetterEditor.vue:132-149` | 已添加 isUpdatingFromParent 标志 |
 
 #### 10.2 异步请求竞态
 
@@ -296,10 +299,13 @@
 | 🟡中 | 快速操作覆盖数据 | `HandoverDetailModal.vue:81,121` | 使用 AbortController 或请求版本号 |
 
 **实施进度**：
-- [ ] StateCompensationForm watch 循环修复
+- [x] StateCompensationForm watch 循环修复
+- [x] StructuredTemplateEditor watch 循环修复
+- [x] PowerOfAttorneyEditor watch 循环修复
+- [x] StructuredLetterEditor watch 循环修复
 - [ ] useCauseOfAction 并发请求去重
 
-**状态**：⏳ 待修复
+**状态**：🔄 高优先级已修复
 
 ---
 
@@ -648,6 +654,25 @@
 | ✅ | printWindow load 监听未自动移除 | `EvidenceTableEditor.vue:1150` | 已添加 { once: true } |
 
 **状态**：✅ 已修复
+
+---
+
+### 29. Service 层性能问题
+
+**问题描述**：Service 层存在 N+1 查询和大集合加载问题。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| 🔴高 | N+1 循环内查询 | `PayrollAutoConfirmScheduler.java:51-61,86` | 批量查询替代循环查询 |
+| 🔴高 | N+1 循环内查询 | `ApproverService.java:378-416,457-491` | 批量加载用户和部门 |
+| 🟡中 | 全量加载用户 | `ApproverService.java:337` | 添加分页或条件限制 |
+| 🟡中 | 全量加载收款 | `StatisticsAppService.java:590-598` | 使用聚合查询 |
+| 🟡中 | 全量加载员工 | `PayrollAppService.java:194-195,546-547` | 添加分页处理 |
+| 🟡中 | 全量加载资产 | `AssetInventoryAppService.java:94` | 分批处理 |
+| 🟡中 | 全量加载交接数据 | `DataHandoverService.java:777-921` | 分批处理 |
+| 🟢低 | 递归查询父部门 | `DepartmentAppService.java:176-182` | 一次性加载部门树 |
+
+**状态**：⏳ 待修复
 
 ---
 
