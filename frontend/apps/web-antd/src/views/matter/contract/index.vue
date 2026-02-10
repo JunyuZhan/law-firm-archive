@@ -50,6 +50,7 @@ import {
 import dayjs from 'dayjs';
 
 import { getClientSelectOptions } from '#/api/client';
+import { escapeHtml, sanitizeHtml } from '#/utils/sanitize';
 // UpdateContractCommand 用于类型推断
 import {
   createContractFromTemplate,
@@ -1459,61 +1460,61 @@ function generateApprovalFormHtml(data: ContractPrintDTO): string {
 
   return `
     <div style="max-width: 800px; margin: 0 auto; font-family: 'SimSun', '宋体', serif; font-size: 12pt;">
-      <h2 style="text-align: center; margin-bottom: 5px; font-family: 'SimSun', '宋体', serif; font-size: 16pt;">${data.firmName || ''}</h2>
+      <h2 style="text-align: center; margin-bottom: 5px; font-family: 'SimSun', '宋体', serif; font-size: 16pt;">${escapeHtml(data.firmName || '')}</h2>
       <h2 style="text-align: center; margin-bottom: 10px; letter-spacing: 6px; font-family: 'SimSun', '宋体', serif; font-size: 16pt;">收案审批表</h2>
-      <p style="text-align: right; font-size: 11pt; margin-bottom: 10px; color: #333;">合同编号：${data.contractNo || ''}</p>
+      <p style="text-align: right; font-size: 11pt; margin-bottom: 10px; color: #333;">合同编号：${escapeHtml(data.contractNo || '')}</p>
       
       <table border="1" cellpadding="8" cellspacing="0" style="width: 100%; border-collapse: collapse; font-family: 'SimSun', '宋体', serif; font-size: 12pt;">
         <tr>
           <th style="width: 90px; background: #f5f5f5;">委托人</th>
-          <td colspan="3">${data.clientName || ''}</td>
+          <td colspan="3">${escapeHtml(data.clientName || '')}</td>
         </tr>
         <tr>
           <th style="width: 90px; background: #f5f5f5;">案由</th>
-          <td colspan="3">${causeOfActionDisplay}</td>
+          <td colspan="3">${escapeHtml(causeOfActionDisplay)}</td>
         </tr>
         <tr>
           <th style="width: 90px; background: #f5f5f5;">关联当事人</th>
-          <td colspan="3">${data.opposingParty || ''}</td>
+          <td colspan="3">${escapeHtml(data.opposingParty || '')}</td>
         </tr>
         <tr>
           <th style="width: 90px; background: #f5f5f5;">委托程序</th>
-          <td colspan="3">${data.trialStageName || ''}</td>
+          <td colspan="3">${escapeHtml(data.trialStageName || '')}</td>
         </tr>
         <tr>
           <th style="width: 90px; background: #f5f5f5;">有无利益冲突</th>
-          <td colspan="3">${data.conflictCheckResult || '待审查'}</td>
+          <td colspan="3">${escapeHtml(data.conflictCheckResult || '待审查')}</td>
         </tr>
         <tr>
           <th style="width: 90px; background: #f5f5f5;">代理/辩护费</th>
           <td>${data.totalAmount ? `¥${data.totalAmount.toLocaleString()}` : ''}</td>
           <th style="width: 70px; background: #f5f5f5;">委托时间</th>
-          <td style="width: 130px;">${data.signDate || ''}</td>
+          <td style="width: 130px;">${escapeHtml(data.signDate || '')}</td>
         </tr>
         <tr>
           <th style="width: 90px; background: #f5f5f5;">接待人</th>
-          <td>${data.originatorName || data.leadLawyerName || ''}</td>
+          <td>${escapeHtml(data.originatorName || data.leadLawyerName || '')}</td>
           <th style="width: 70px; background: #f5f5f5;">办案单位</th>
-          <td>${data.jurisdictionCourt || ''}</td>
+          <td>${escapeHtml(data.jurisdictionCourt || '')}</td>
         </tr>
         <tr>
           <th style="width: 90px; background: #f5f5f5; font-size: 12pt;">案情摘要<br/><span style="font-weight: normal; font-size: 10pt;">（附接待笔录）</span></th>
-          <td colspan="3" style="height: 140px; vertical-align: top;">${data.description || '<span style="color: #999;">暂无案情摘要</span>'}</td>
+          <td colspan="3" style="height: 140px; vertical-align: top;">${escapeHtml(data.description || '') || '<span style="color: #999;">暂无案情摘要</span>'}</td>
         </tr>
         <tr>
           <th rowspan="2" style="width: 90px; background: #f5f5f5;">审查意见</th>
           <td colspan="3" style="height: 50px; vertical-align: top;">
             <div><strong>接待律师意见：</strong>拟接受委托</div>
             <div style="text-align: right; margin-top: 8px;">
-              签名：${data.originatorName || data.signerName || '________'} 日期：${data.signDate || '____年__月__日'}
+              签名：${escapeHtml(data.originatorName || data.signerName || '________')} 日期：${escapeHtml(data.signDate || '____年__月__日')}
             </div>
           </td>
         </tr>
         <tr>
           <td colspan="3" style="height: 50px; vertical-align: top;">
-            <div><strong>律所领导意见：</strong>${(data.approvals && data.approvals[0]?.comment) || ''}</div>
+            <div><strong>律所领导意见：</strong>${escapeHtml((data.approvals && data.approvals[0]?.comment) || '')}</div>
             <div style="text-align: right; margin-top: 8px;">
-              签名：${(data.approvals && data.approvals[0]?.approverName) || '________'} 日期：${(data.approvals && data.approvals[0]?.approvedAt?.slice(0, 10)) || '____年__月__日'}
+              签名：${escapeHtml((data.approvals && data.approvals[0]?.approverName) || '________')} 日期：${escapeHtml((data.approvals && data.approvals[0]?.approvedAt?.slice(0, 10)) || '____年__月__日')}
             </div>
           </td>
         </tr>
@@ -1708,15 +1709,15 @@ async function executePrint() {
     if (!contractContent) {
       // 如果没有模板内容，生成基本合同信息
       contractContent = `
-        <div class="info"><strong>委托人（甲方）：</strong>${data.clientName || ''}</div>
-        <div class="info"><strong>受托人（乙方）：</strong>${data.firmName || ''}</div>
-        <div class="info"><strong>合同类型：</strong>${data.contractTypeName || ''}</div>
-        <div class="info"><strong>收费方式：</strong>${data.feeTypeName || ''}</div>
+        <div class="info"><strong>委托人（甲方）：</strong>${escapeHtml(data.clientName || '')}</div>
+        <div class="info"><strong>受托人（乙方）：</strong>${escapeHtml(data.firmName || '')}</div>
+        <div class="info"><strong>合同类型：</strong>${escapeHtml(data.contractTypeName || '')}</div>
+        <div class="info"><strong>收费方式：</strong>${escapeHtml(data.feeTypeName || '')}</div>
         <div class="info"><strong>合同金额：</strong>¥${data.totalAmount?.toLocaleString() || ''}</div>
-        <div class="info"><strong>签约日期：</strong>${data.signDate || ''}</div>
-        ${data.opposingParty ? `<div class="info"><strong>对方当事人：</strong>${data.opposingParty}</div>` : ''}
+        <div class="info"><strong>签约日期：</strong>${escapeHtml(data.signDate || '')}</div>
+        ${data.opposingParty ? `<div class="info"><strong>对方当事人：</strong>${escapeHtml(data.opposingParty)}</div>` : ''}
         ${data.claimAmount ? `<div class="info"><strong>标的金额：</strong>¥${data.claimAmount.toLocaleString()}</div>` : ''}
-        ${data.jurisdictionCourt ? `<div class="info"><strong>管辖法院：</strong>${data.jurisdictionCourt}</div>` : ''}
+        ${data.jurisdictionCourt ? `<div class="info"><strong>管辖法院：</strong>${escapeHtml(data.jurisdictionCourt)}</div>` : ''}
       `;
     }
 
@@ -1727,8 +1728,8 @@ async function executePrint() {
 
     htmlContent += `
       <div class="contract-page" style="font-family: 'SimSun', '宋体', serif; font-size: 12pt;">
-        ${contractNoInContent ? '' : `<div class="header-info">合同编号：${data.contractNo}</div>`}
-        <div style="font-family: 'SimSun', '宋体', serif; font-size: 12pt;">${contractContent}</div>
+        ${contractNoInContent ? '' : `<div class="header-info">合同编号：${escapeHtml(data.contractNo || '')}</div>`}
+        <div style="font-family: 'SimSun', '宋体', serif; font-size: 12pt;">${sanitizeHtml(contractContent)}</div>
         ${
           hasSignature
             ? ''
@@ -1799,7 +1800,7 @@ async function executePrint() {
       </tr>
       <tr>
         <td class="no-border text-right" colspan="2" style="font-family: 'SimSun', '宋体', serif; font-size: 12pt;">签名：</td>
-        <td class="no-border" style="width: 130px; font-family: 'SimSun', '宋体', serif; font-size: 12pt;">${receptionLawyerName}</td>
+        <td class="no-border" style="width: 130px; font-family: 'SimSun', '宋体', serif; font-size: 12pt;">${escapeHtml(receptionLawyerName)}</td>
       </tr>
       <tr>
         <td class="no-border text-right" colspan="2" style="font-family: 'SimSun', '宋体', serif; font-size: 12pt;">日期：</td>
@@ -1821,11 +1822,11 @@ async function executePrint() {
       approvalRows += `
         <tr>
           <th rowspan="3" style="width: 90px; font-family: 'SimSun', '宋体', serif; font-size: 12pt;">律所领导意见</th>
-          <td colspan="3" style="height: 50px; font-family: 'SimSun', '宋体', serif; font-size: 12pt;">${leaderApproval?.comment || ''}</td>
+          <td colspan="3" style="height: 50px; font-family: 'SimSun', '宋体', serif; font-size: 12pt;">${escapeHtml(leaderApproval?.comment || '')}</td>
         </tr>
         <tr>
           <td class="no-border text-right" colspan="2" style="font-family: 'SimSun', '宋体', serif; font-size: 12pt;">签名：</td>
-          <td class="no-border" style="font-family: 'SimSun', '宋体', serif; font-size: 12pt;">${leaderApproval?.approverName || ''}</td>
+          <td class="no-border" style="font-family: 'SimSun', '宋体', serif; font-size: 12pt;">${escapeHtml(leaderApproval?.approverName || '')}</td>
         </tr>
         <tr>
           <td class="no-border text-right" colspan="2" style="font-family: 'SimSun', '宋体', serif; font-size: 12pt;">日期：</td>
@@ -1909,7 +1910,7 @@ async function executePrint() {
     <!DOCTYPE html>
     <html>
     <head>
-      <title>${data.name} - ${data.contractNo}</title>
+      <title>${escapeHtml(data.name || '')} - ${escapeHtml(data.contractNo || '')}</title>
       <style>${commonStyles}</style>
     </head>
     <body>

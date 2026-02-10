@@ -543,6 +543,7 @@
 | ✅ | ContractPreviewModal 打印未消毒 | `ContractPreviewModal.vue:278` | 已添加 sanitizeHtml |
 | ✅ | PreviewModal 打印未消毒 | `letter-template/PreviewModal.vue:135` | 已添加 sanitizeHtml |
 | ✅ | 卷宗封面打印未转义 | `archive/list/index.vue:740-774` | 已添加 escapeHtml |
+| ✅ | 合同打印 XSS | `matter/contract/index.vue` | 已添加 escapeHtml/sanitizeHtml |
 | 🟡中 | URL 跳转未白名单 | `office-preview/index.vue:57`<br>`adapter/component/index.ts:186` | 添加域名白名单校验 |
 
 **状态**：🔄 部分修复
