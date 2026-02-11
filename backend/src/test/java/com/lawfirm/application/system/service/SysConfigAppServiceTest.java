@@ -45,16 +45,16 @@ class SysConfigAppServiceTest {
   @Test
   @DisplayName("应该获取所有配置")
   void listConfigs_shouldReturnAllConfigs() {
-    SysConfig config1 = createTestConfig(1L, "key1", "value1", "配置1");
-    SysConfig config2 = createTestConfig(2L, "key2", "value2", "配置2");
+    SysConfig config1 = createTestConfig(1L, "config1", "value1", "配置1");
+    SysConfig config2 = createTestConfig(2L, "config2", "value2", "配置2");
 
     when(configMapper.selectAllConfigs()).thenReturn(List.of(config1, config2));
 
     List<SysConfigDTO> result = service.listConfigs();
 
     assertThat(result).hasSize(2);
-    assertThat(result.get(0).getConfigKey()).isEqualTo("key1");
-    assertThat(result.get(1).getConfigKey()).isEqualTo("key2");
+    assertThat(result.get(0).getConfigKey()).isEqualTo("config1");
+    assertThat(result.get(1).getConfigKey()).isEqualTo("config2");
   }
 
   @Test
@@ -62,7 +62,7 @@ class SysConfigAppServiceTest {
   void listConfigsByPrefix_shouldReturnFilteredConfigs() {
     SysConfig config1 = createTestConfig(1L, "firm.name", "测试律所", "律所名称");
     SysConfig config2 = createTestConfig(2L, "firm.address", "北京市", "律所地址");
-    SysConfig config3 = createTestConfig(3L, "other.key", "value", "其他配置");
+    SysConfig config3 = createTestConfig(3L, "other.config", "value", "其他配置");
 
     when(configMapper.selectAllConfigs()).thenReturn(List.of(config1, config2, config3));
 
@@ -75,7 +75,7 @@ class SysConfigAppServiceTest {
   @Test
   @DisplayName("应该根据键获取配置值")
   void getConfigValue_shouldReturnValue() {
-    SysConfig config = createTestConfig(1L, "test.key", "test.value", "测试配置");
+    SysConfig config = createTestConfig(1L, "test.config", "test.value", "测试配置");
 
     when(businessCacheService.getConfig(anyString(), any()))
         .thenAnswer(
@@ -83,9 +83,9 @@ class SysConfigAppServiceTest {
               var supplier = invocation.getArgument(1);
               return (String) ((java.util.function.Supplier<?>) supplier).get();
             });
-    when(configMapper.selectByKey("test.key")).thenReturn(config);
+    when(configMapper.selectByKey("test.config")).thenReturn(config);
 
-    String result = service.getConfigValue("test.key");
+    String result = service.getConfigValue("test.config");
 
     assertThat(result).isEqualTo("test.value");
   }
@@ -109,30 +109,30 @@ class SysConfigAppServiceTest {
   @Test
   @DisplayName("应该根据键获取配置")
   void getConfigByKey_shouldReturnConfig() {
-    SysConfig config = createTestConfig(1L, "test.key", "test.value", "测试配置");
+    SysConfig config = createTestConfig(1L, "test.config", "test.value", "测试配置");
 
-    when(configMapper.selectByKey("test.key")).thenReturn(config);
+    when(configMapper.selectByKey("test.config")).thenReturn(config);
 
-    SysConfigDTO result = service.getConfigByKey("test.key");
+    SysConfigDTO result = service.getConfigByKey("test.config");
 
     assertThat(result).isNotNull();
-    assertThat(result.getConfigKey()).isEqualTo("test.key");
+    assertThat(result.getConfigKey()).isEqualTo("test.config");
     assertThat(result.getConfigValue()).isEqualTo("test.value");
   }
 
   @Test
   @DisplayName("应该批量获取配置")
   void getConfigMap_shouldReturnConfigMap() {
-    SysConfig config1 = createTestConfig(1L, "key1", "value1", "配置1");
-    SysConfig config2 = createTestConfig(2L, "key2", "value2", "配置2");
+    SysConfig config1 = createTestConfig(1L, "config1", "value1", "配置1");
+    SysConfig config2 = createTestConfig(2L, "config2", "value2", "配置2");
 
     when(configMapper.selectAllConfigs()).thenReturn(List.of(config1, config2));
 
-    Map<String, String> result = service.getConfigMap(List.of("key1", "key2"));
+    Map<String, String> result = service.getConfigMap(List.of("config1", "config2"));
 
     assertThat(result).hasSize(2);
-    assertThat(result.get("key1")).isEqualTo("value1");
-    assertThat(result.get("key2")).isEqualTo("value2");
+    assertThat(result.get("config1")).isEqualTo("value1");
+    assertThat(result.get("config2")).isEqualTo("value2");
   }
 
   // ========== 更新测试 ==========
@@ -140,7 +140,7 @@ class SysConfigAppServiceTest {
   @Test
   @DisplayName("应该成功更新配置")
   void updateConfig_shouldUpdateSuccessfully() {
-    SysConfig config = createTestConfig(1L, "test.key", "old.value", "测试配置");
+    SysConfig config = createTestConfig(1L, "test.config", "old.value", "测试配置");
 
     when(configRepository.getByIdOrThrow(eq(1L), anyString())).thenReturn(config);
     when(configRepository.updateById(any(SysConfig.class)))
@@ -163,7 +163,7 @@ class SysConfigAppServiceTest {
   @Test
   @DisplayName("应该只更新非null字段")
   void updateConfig_shouldOnlyUpdateNonNullFields() {
-    SysConfig config = createTestConfig(1L, "test.key", "value", "测试配置");
+    SysConfig config = createTestConfig(1L, "test.config", "value", "测试配置");
     config.setConfigName("旧名称");
     config.setDescription("旧描述");
 
@@ -190,27 +190,27 @@ class SysConfigAppServiceTest {
   @Test
   @DisplayName("应该根据键更新配置值")
   void updateConfigByKey_shouldUpdateExistingConfig() {
-    SysConfig config = createTestConfig(1L, "test.key", "old.value", "测试配置");
+    SysConfig config = createTestConfig(1L, "test.config", "old.value", "测试配置");
     config.setIsSystem(false);
 
-    when(configMapper.selectByKey("test.key")).thenReturn(config);
-    when(configMapper.updateValueByKey("test.key", "new.value")).thenReturn(1);
+    when(configMapper.selectByKey("test.config")).thenReturn(config);
+    when(configMapper.updateValueByKey("test.config", "new.value")).thenReturn(1);
 
-    service.updateConfigByKey("test.key", "new.value");
+    service.updateConfigByKey("test.config", "new.value");
 
-    verify(configMapper).updateValueByKey("test.key", "new.value");
+    verify(configMapper).updateValueByKey("test.config", "new.value");
     verify(businessCacheService).evictAllConfigs();
   }
 
   @Test
   @DisplayName("系统内置配置不允许修改")
   void updateConfigByKey_shouldThrowExceptionForSystemConfig() {
-    SysConfig config = createTestConfig(1L, "sys.key", "value", "系统配置");
+    SysConfig config = createTestConfig(1L, "sys.config", "value", "系统配置");
     config.setIsSystem(true);
 
-    when(configMapper.selectByKey("sys.key")).thenReturn(config);
+    when(configMapper.selectByKey("sys.config")).thenReturn(config);
 
-    assertThatThrownBy(() -> service.updateConfigByKey("sys.key", "new.value"))
+    assertThatThrownBy(() -> service.updateConfigByKey("sys.config", "new.value"))
         .isInstanceOf(BusinessException.class)
         .hasMessageContaining("系统内置配置不允许修改");
   }
@@ -218,7 +218,7 @@ class SysConfigAppServiceTest {
   @Test
   @DisplayName("配置不存在时应该自动创建")
   void updateConfigByKey_shouldCreateWhenNotExists() {
-    when(configMapper.selectByKey("new.key")).thenReturn(null);
+    when(configMapper.selectByKey("new.config")).thenReturn(null);
     when(configRepository.save(any(SysConfig.class)))
         .thenAnswer(
             invocation -> {
@@ -227,7 +227,7 @@ class SysConfigAppServiceTest {
               return true;
             });
 
-    service.updateConfigByKey("new.key", "new.value");
+    service.updateConfigByKey("new.config", "new.value");
 
     verify(configRepository).save(any(SysConfig.class));
     verify(businessCacheService).evictAllConfigs();
@@ -238,7 +238,7 @@ class SysConfigAppServiceTest {
   @Test
   @DisplayName("应该成功创建配置")
   void createConfig_shouldCreateSuccessfully() {
-    when(configMapper.selectByKey("new.key")).thenReturn(null);
+    when(configMapper.selectByKey("new.config")).thenReturn(null);
     when(configRepository.save(any(SysConfig.class)))
         .thenAnswer(
             invocation -> {
@@ -248,26 +248,26 @@ class SysConfigAppServiceTest {
             });
 
     UpdateConfigCommand command = new UpdateConfigCommand();
-    command.setConfigKey("new.key");
+    command.setConfigKey("new.config");
     command.setConfigValue("new.value");
     command.setConfigName("新配置");
     command.setDescription("配置描述");
 
     SysConfigDTO result = service.createConfig(command);
 
-    assertThat(result.getConfigKey()).isEqualTo("new.key");
+    assertThat(result.getConfigKey()).isEqualTo("new.config");
     assertThat(result.getConfigValue()).isEqualTo("new.value");
   }
 
   @Test
   @DisplayName("配置键已存在时应该抛出异常")
   void createConfig_shouldThrowExceptionWhenKeyExists() {
-    SysConfig existingConfig = createTestConfig(1L, "existing.key", "value", "已存在的配置");
+    SysConfig existingConfig = createTestConfig(1L, "existing.config", "value", "已存在的配置");
 
-    when(configMapper.selectByKey("existing.key")).thenReturn(existingConfig);
+    when(configMapper.selectByKey("existing.config")).thenReturn(existingConfig);
 
     UpdateConfigCommand command = new UpdateConfigCommand();
-    command.setConfigKey("existing.key");
+    command.setConfigKey("existing.config");
     command.setConfigValue("value");
     command.setConfigName("配置");
 
@@ -279,7 +279,7 @@ class SysConfigAppServiceTest {
   @Test
   @DisplayName("创建配置时应该使用默认类型")
   void createConfig_shouldUseDefaultType() {
-    when(configMapper.selectByKey("new.key")).thenReturn(null);
+    when(configMapper.selectByKey("new.config")).thenReturn(null);
     when(configRepository.save(any(SysConfig.class)))
         .thenAnswer(
             invocation -> {
@@ -289,7 +289,7 @@ class SysConfigAppServiceTest {
             });
 
     UpdateConfigCommand command = new UpdateConfigCommand();
-    command.setConfigKey("new.key");
+    command.setConfigKey("new.config");
     command.setConfigValue("value");
     command.setConfigName("配置");
     command.setConfigType(null); // 不设置类型，应该使用默认值
@@ -304,7 +304,7 @@ class SysConfigAppServiceTest {
   @Test
   @DisplayName("应该成功删除配置")
   void deleteConfig_shouldDeleteSuccessfully() {
-    SysConfig config = createTestConfig(1L, "test.key", "value", "测试配置");
+    SysConfig config = createTestConfig(1L, "test.config", "value", "测试配置");
     config.setIsSystem(false);
 
     when(configRepository.getByIdOrThrow(eq(1L), anyString())).thenReturn(config);
@@ -318,7 +318,7 @@ class SysConfigAppServiceTest {
   @Test
   @DisplayName("系统内置配置不允许删除")
   void deleteConfig_shouldThrowExceptionForSystemConfig() {
-    SysConfig config = createTestConfig(1L, "sys.key", "value", "系统配置");
+    SysConfig config = createTestConfig(1L, "sys.config", "value", "系统配置");
     config.setIsSystem(true);
 
     when(configRepository.getByIdOrThrow(eq(1L), anyString())).thenReturn(config);

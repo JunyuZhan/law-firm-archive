@@ -282,7 +282,7 @@ class DocumentControllerTest {
                   .content(objectMapper.writeValueAsString(payload)))
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.error").value(1))
-          .andExpect(jsonPath("$.message").value("保存失败"));
+          .andExpect(jsonPath("$.message").value("回调处理失败"));
     }
   }
 

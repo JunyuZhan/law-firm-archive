@@ -126,6 +126,8 @@ class ExpenseAppServiceTest {
 
       when(matterAppService.getAccessibleMatterIds(eq("ALL"), eq(1L), eq(100L)))
           .thenReturn(null); // null表示所有项目都可访问
+      when(expenseMapper.countExpensePage(any(), any(), any(), any(), any(), any(), any()))
+          .thenReturn(1L);
       when(expenseMapper.selectExpensePage(any(), any(), any(), any(), any(), any(), any(), anyInt(), anyInt()))
           .thenReturn(expenses);
       when(userRepository.listByIds(any())).thenReturn(Collections.emptyList());
@@ -166,6 +168,8 @@ class ExpenseAppServiceTest {
       // 我们需要测试SELF权限逻辑，所以需要模拟返回null（表示所有项目可访问）或者有数据的列表
       when(matterAppService.getAccessibleMatterIds(eq("SELF"), eq(1L), eq(100L)))
           .thenReturn(null); // 改为null，让逻辑继续执行
+      when(expenseMapper.countExpensePage(any(), any(), eq(1L), any(), any(), any(), any()))
+          .thenReturn(1L);
       when(expenseMapper.selectExpensePage(any(), any(), eq(1L), any(), any(), any(), any(), anyInt(), anyInt()))
           .thenReturn(expenses);
       when(userRepository.listByIds(any())).thenReturn(Collections.emptyList());
@@ -647,6 +651,8 @@ class ExpenseAppServiceTest {
       query.setPageSize(10);
 
       when(matterAppService.getAccessibleMatterIds(eq("ALL"), eq(1L), eq(100L))).thenReturn(null);
+      when(expenseMapper.countExpensePage(any(), any(), any(), any(), any(), any(), any()))
+          .thenReturn(0L);
       when(expenseMapper.selectExpensePage(any(), any(), any(), any(), any(), any(), any(), anyInt(), anyInt()))
           .thenReturn(Collections.emptyList());
 
