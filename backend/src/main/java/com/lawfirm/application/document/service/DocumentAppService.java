@@ -550,7 +550,7 @@ public class DocumentAppService {
    * @param dossierItemId 卷宗目录项ID
    * @return 上传成功的文档DTO
    */
-  @Transactional
+  @Transactional(rollbackFor = Exception.class)
   public DocumentDTO uploadFile(
       final MultipartFile file,
       final Long matterId,
@@ -571,7 +571,7 @@ public class DocumentAppService {
    * @param sourceType 来源类型
    * @return 上传成功的文档DTO
    */
-  @Transactional
+  @Transactional(rollbackFor = Exception.class)
   public DocumentDTO uploadFile(
       final MultipartFile file,
       final Long matterId,
@@ -1093,7 +1093,7 @@ public class DocumentAppService {
    * @param documentId 文档ID
    * @param downloadUrl OnlyOffice 提供的编辑后文档下载URL
    */
-  @Transactional
+  @Transactional(rollbackFor = Exception.class)
   public void saveFromOnlyOffice(final Long documentId, final String downloadUrl) {
     Document document = documentRepository.getById(documentId);
     if (document == null) {

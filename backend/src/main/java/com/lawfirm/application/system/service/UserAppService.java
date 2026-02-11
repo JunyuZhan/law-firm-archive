@@ -653,7 +653,7 @@ public class UserAppService {
    * @return 导入结果
    * @throws IOException IO异常
    */
-  @Transactional
+  @Transactional(rollbackFor = Exception.class)
   public Map<String, Object> importUsers(final MultipartFile file) throws IOException {
     List<Map<String, Object>> excelData = excelImportExportService.readExcel(file);
 

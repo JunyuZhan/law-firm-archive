@@ -2,6 +2,7 @@ package com.lawfirm.infrastructure.ai;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.lawfirm.common.util.SecurityUtils;
 import com.lawfirm.domain.system.entity.ExternalIntegration;
 import java.io.IOException;
 import java.util.HashMap;
@@ -237,6 +238,14 @@ public class LlmClient {
     boolean success = true;
     String errorMessage = null;
 
+    // 在主线程获取用户ID，避免 @Async 线程中 SecurityContext 丢失
+    Long currentUserId = null;
+    try {
+      currentUserId = SecurityUtils.getUserId();
+    } catch (Exception e) {
+      log.debug("获取当前用户ID失败（可能是系统调用）: {}", e.getMessage());
+    }
+
     log.info(
         "调用大模型: code={}, name={}, requestType={}",
         code,
@@ -294,7 +303,8 @@ public class LlmClient {
             responseBody,
             duration,
             success,
-            errorMessage);
+            errorMessage,
+            currentUserId);
       }
     }
   }

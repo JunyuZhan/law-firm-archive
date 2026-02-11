@@ -77,6 +77,7 @@ public class AiUsageRecorder {
    * @param durationMs 响应时间
    * @param success 是否成功
    * @param errorMessage 错误信息
+   * @param callerUserId 调用者用户ID（在主线程获取，解决 @Async SecurityContext 传递问题）
    */
   @Async
   public void recordUsage(
@@ -87,17 +88,24 @@ public class AiUsageRecorder {
       final String responseBody,
       final long durationMs,
       final boolean success,
-      final String errorMessage) {
+      final String errorMessage,
+      final Long callerUserId) {
 
     try {
-      // 获取当前用户信息
-      LoginUser loginUser = getLoginUserSafely();
-      if (loginUser == null) {
+      // 优先使用调用方传入的用户ID（解决 @Async 线程中 SecurityContext 丢失问题）
+      Long userId = callerUserId;
+      if (userId == null) {
+        // 兜底：尝试从 SecurityContext 获取（仅在同步调用或特殊配置时有效）
+        LoginUser loginUser = getLoginUserSafely();
+        if (loginUser != null) {
+          userId = loginUser.getUserId();
+        }
+      }
+
+      if (userId == null) {
         log.warn("无法记录AI使用量：用户未登录");
         return;
       }
-
-      Long userId = loginUser.getUserId();
 
       // 1. 检查用户是否免计费
       if (isUserExempt(userId)) {

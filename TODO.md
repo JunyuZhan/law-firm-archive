@@ -1036,8 +1036,8 @@
 |--------|------|------|----------|
 | ✅ | wrapper.last() 拼接未校验 | `OperationLogAppService.java:271` | 添加范围校验 |
 | ✅ | LIKE 未转义 % 和 _ | `OperationLogAppService.java` | 添加 SqlUtils.escapeLike |
-| 🟡中 | LIKE 未转义通配符 | `UserMapper.java:48-54` | 服务层转义 |
-| 🟡中 | LIKE 未转义通配符 | `MatterMapper.java:39-42` | 服务层转义 |
+| ✅ | LIKE 未转义通配符 | `UserMapper.java:48-54` | UserAppService 添加转义 |
+| ✅ | LIKE 未转义通配符 | `MatterMapper.java:39-42` | MatterAppService 添加转义 |
 
 **状态**：🔄 高优先级已修复
 
