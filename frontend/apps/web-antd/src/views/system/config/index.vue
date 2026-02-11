@@ -439,15 +439,20 @@ const upgradeProgress = ref(0);
 const upgradeStatus = ref<'completed' | 'failed' | 'idle' | 'running'>('idle');
 const upgradeMessage = ref('');
 const upgradeModalVisible = ref(false);
+const targetVersion = ref(''); // 目标版本
 let upgradePollingTimer: null | ReturnType<typeof setInterval> = null;
 let upgradeTimeoutTimer: null | ReturnType<typeof setTimeout> = null;
 
 // 确认升级
 function confirmUpgrade() {
+  // 获取目标版本（优先使用检测到的最新版本）
+  const latestVer = updateInfo.value?.latestVersion;
+  const versionText = latestVer ? `v${latestVer}` : 'main 分支最新代码';
+  targetVersion.value = latestVer ? `v${latestVer}` : 'main';
+
   AModal.confirm({
     title: '确认升级',
-    content:
-      '升级过程中服务会短暂中断（约3-5分钟），建议在业务低峰期执行。是否继续？',
+    content: `即将升级到 ${versionText}。升级过程中服务会短暂中断（约3-5分钟），建议在业务低峰期执行。是否继续？`,
     okText: '开始升级',
     cancelText: '取消',
     onOk: () => executeUpgrade(),
@@ -465,8 +470,14 @@ async function executeUpgrade() {
   try {
     const res = await requestClient.post<{
       message: string;
+      targetVersion: string;
       upgradeId: string;
-    }>('/system/version/upgrade/execute', null, { params: { backup: false } });
+    }>('/system/version/upgrade/execute', null, {
+      params: {
+        backup: false,
+        targetVersion: targetVersion.value || undefined,
+      },
+    });
 
     upgradeId.value = res.upgradeId;
     upgradeMessage.value = res.message;
