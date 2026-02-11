@@ -95,7 +95,7 @@ public class ScheduledReportController {
    */
   @Operation(summary = "更新定时报表任务")
   @PutMapping("/{id}")
-  @RequirePermission("report:scheduled:edit")
+  @RequirePermission("report:scheduled:update")
   @OperationLog(module = "定时报表", action = "更新任务")
   public Result<ScheduledReportDTO> update(
       @PathVariable final Long id, @RequestBody @Valid final CreateScheduledReportCommand command) {
@@ -126,7 +126,7 @@ public class ScheduledReportController {
    */
   @Operation(summary = "启用任务")
   @PostMapping("/{id}/enable")
-  @RequirePermission("report:scheduled:edit")
+  @RequirePermission("report:scheduled:update")
   @OperationLog(module = "定时报表", action = "启用任务")
   public Result<Void> enable(@PathVariable final Long id) {
     scheduledReportAppService.changeTaskStatus(id, "ACTIVE");
@@ -141,7 +141,7 @@ public class ScheduledReportController {
    */
   @Operation(summary = "暂停任务")
   @PostMapping("/{id}/pause")
-  @RequirePermission("report:scheduled:edit")
+  @RequirePermission("report:scheduled:update")
   @OperationLog(module = "定时报表", action = "暂停任务")
   public Result<Void> pause(@PathVariable final Long id) {
     scheduledReportAppService.changeTaskStatus(id, "PAUSED");

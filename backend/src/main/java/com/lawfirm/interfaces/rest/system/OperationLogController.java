@@ -126,7 +126,7 @@ public class OperationLogController {
    * @return 分页结果
    */
   @GetMapping
-  @RequirePermission("system:log:list")
+  @RequirePermission("sys:log:list")
   @Operation(summary = "分页查询操作日志")
   public Result<PageResult<OperationLogDTO>> listOperationLogs(
       @Parameter(description = "查询条件") @org.springframework.web.bind.annotation.ModelAttribute
@@ -148,7 +148,7 @@ public class OperationLogController {
    * @return 操作日志信息
    */
   @GetMapping("/{id}")
-  @RequirePermission("system:log:list")
+  @RequirePermission("sys:log:list")
   @Operation(summary = "获取操作日志详情")
   public Result<OperationLogDTO> getOperationLog(@PathVariable final Long id) {
     OperationLogDTO log = operationLogAppService.getOperationLogById(id);
@@ -164,7 +164,7 @@ public class OperationLogController {
    * @return 模块列表
    */
   @GetMapping("/modules")
-  @RequirePermission("system:log:list")
+  @RequirePermission("sys:log:list")
   @Operation(summary = "获取所有模块列表", description = "用于下拉选择")
   public Result<List<String>> listModules() {
     return Result.success(operationLogAppService.listModules());
@@ -176,7 +176,7 @@ public class OperationLogController {
    * @return 操作类型列表
    */
   @GetMapping("/operation-types")
-  @RequirePermission("system:log:list")
+  @RequirePermission("sys:log:list")
   @Operation(summary = "获取所有操作类型列表", description = "用于下拉选择")
   public Result<List<String>> listOperationTypes() {
     return Result.success(operationLogAppService.listOperationTypes());
@@ -190,7 +190,7 @@ public class OperationLogController {
    * @return 统计信息
    */
   @GetMapping("/statistics")
-  @RequirePermission("system:log:list")
+  @RequirePermission("sys:log:list")
   @Operation(summary = "获取操作日志统计")
   public Result<Map<String, Object>> getStatistics(
       @Parameter(description = "开始时间")
@@ -216,7 +216,7 @@ public class OperationLogController {
    * @return 删除的记录数
    */
   @DeleteMapping("/clean")
-  @RequirePermission("system:log:delete")
+  @RequirePermission("sys:log:delete")
   @Operation(summary = "清理历史日志", description = "清理指定天数之前的日志，最少保留7天")
   public Result<Integer> cleanHistoryLogs(
       @Parameter(description = "保留天数", example = "30")
@@ -237,7 +237,7 @@ public class OperationLogController {
    * @return 分页结果
    */
   @GetMapping("/slow-requests")
-  @RequirePermission("system:log:list")
+  @RequirePermission("sys:log:list")
   @Operation(summary = "查询慢请求日志", description = "查询执行时间超过指定阈值的请求")
   public Result<PageResult<OperationLogDTO>> listSlowRequests(
       @Parameter(description = "执行时长阈值(ms)", example = "1000")
@@ -277,7 +277,7 @@ public class OperationLogController {
    * @return 分页结果
    */
   @GetMapping("/errors")
-  @RequirePermission("system:log:list")
+  @RequirePermission("sys:log:list")
   @Operation(summary = "查询错误日志", description = "查询执行失败的请求")
   public Result<PageResult<OperationLogDTO>> listErrorLogs(
       @Parameter(description = "操作模块") @RequestParam(required = false) final String module,
@@ -312,7 +312,7 @@ public class OperationLogController {
    * @param response HTTP响应
    */
   @PostMapping("/export")
-  @RequirePermission("system:log:list")
+  @RequirePermission("sys:log:list")
   @Operation(summary = "导出操作日志", description = "导出操作日志为Excel文件，最多导出10000条")
   public void exportOperationLogs(
       @RequestBody(required = false) final OperationLogQueryDTO query,

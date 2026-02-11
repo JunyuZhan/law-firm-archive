@@ -33,7 +33,7 @@ public class LoginLogController {
    * @return 登录日志分页结果
    */
   @GetMapping
-  @RequirePermission("system:loginlog:list")
+  @RequirePermission("sys:loginlog:list")
   @Operation(summary = "查询登录日志列表")
   public Result<PageResult<LoginLogDTO>> listLoginLogs(final LoginLogQueryDTO query) {
     PageResult<LoginLogDTO> result = loginLogAppService.listLoginLogs(query);
@@ -47,7 +47,7 @@ public class LoginLogController {
    * @return 登录日志详情
    */
   @GetMapping("/{id}")
-  @RequirePermission("system:loginlog:view")
+  @RequirePermission("sys:loginlog:view")
   @Operation(summary = "获取登录日志详情")
   public Result<LoginLogDTO> getLoginLog(@PathVariable final Long id) {
     LoginLogDTO log = loginLogAppService.getLoginLog(id);
@@ -65,7 +65,7 @@ public class LoginLogController {
    * @return 最近登录记录列表
    */
   @GetMapping("/users/{userId}/recent")
-  @RequirePermission("system:loginlog:view")
+  @RequirePermission("sys:loginlog:view")
   @Operation(summary = "查询用户最近登录记录")
   public Result<List<LoginLogDTO>> getRecentLogs(
       @PathVariable final Long userId, @RequestParam(defaultValue = "10") final int limit) {
@@ -80,7 +80,7 @@ public class LoginLogController {
    * @return 失败次数
    */
   @GetMapping("/failure-count")
-  @RequirePermission("system:loginlog:view")
+  @RequirePermission("sys:loginlog:view")
   @Operation(summary = "统计登录失败次数")
   public Result<Integer> countFailure(@RequestParam final String username) {
     int count = loginLogAppService.countFailureByUsername(username);

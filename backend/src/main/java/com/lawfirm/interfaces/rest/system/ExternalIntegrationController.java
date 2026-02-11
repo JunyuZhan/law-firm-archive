@@ -41,7 +41,7 @@ public class ExternalIntegrationController {
    */
   @Operation(summary = "分页查询集成配置")
   @GetMapping
-  @RequirePermission("system:integration:list")
+  @RequirePermission("sys:integration:list")
   public Result<PageResult<ExternalIntegrationDTO>> list(final ExternalIntegrationQueryDTO query) {
     return Result.success(integrationAppService.listIntegrations(query));
   }
@@ -53,7 +53,7 @@ public class ExternalIntegrationController {
    */
   @Operation(summary = "获取所有集成配置")
   @GetMapping("/all")
-  @RequirePermission("system:integration:list")
+  @RequirePermission("sys:integration:list")
   public Result<List<ExternalIntegrationDTO>> listAll() {
     return Result.success(integrationAppService.listAllIntegrations());
   }
@@ -66,7 +66,7 @@ public class ExternalIntegrationController {
    */
   @Operation(summary = "获取指定类型的启用集成")
   @GetMapping("/enabled")
-  @RequirePermission("system:integration:list")
+  @RequirePermission("sys:integration:list")
   public Result<List<ExternalIntegrationDTO>> listEnabled(
       @Parameter(description = "集成类型：ARCHIVE/AI/OTHER") @RequestParam final String type) {
     return Result.success(integrationAppService.listEnabledByType(type));
@@ -80,7 +80,7 @@ public class ExternalIntegrationController {
    */
   @Operation(summary = "获取集成详情")
   @GetMapping("/{id}")
-  @RequirePermission("system:integration:list")
+  @RequirePermission("sys:integration:list")
   public Result<ExternalIntegrationDTO> getById(@PathVariable final Long id) {
     return Result.success(integrationAppService.getIntegrationById(id));
   }
@@ -93,7 +93,7 @@ public class ExternalIntegrationController {
    */
   @Operation(summary = "根据编码获取集成详情")
   @GetMapping("/code/{code}")
-  @RequirePermission("system:integration:list")
+  @RequirePermission("sys:integration:list")
   public Result<ExternalIntegrationDTO> getByCode(@PathVariable final String code) {
     return Result.success(integrationAppService.getIntegrationByCode(code));
   }
@@ -106,7 +106,7 @@ public class ExternalIntegrationController {
    */
   @Operation(summary = "创建集成配置")
   @PostMapping
-  @RequirePermission("system:integration:edit")
+  @RequirePermission("sys:integration:update")
   @OperationLog(module = "系统管理", action = "创建外部系统集成配置", saveParams = false)
   public Result<ExternalIntegrationDTO> create(
       @RequestBody @Validated final UpdateExternalIntegrationCommand command) {
@@ -122,7 +122,7 @@ public class ExternalIntegrationController {
    */
   @Operation(summary = "更新集成配置")
   @PutMapping("/{id}")
-  @RequirePermission("system:integration:edit")
+  @RequirePermission("sys:integration:update")
   @OperationLog(module = "系统管理", action = "更新外部系统集成配置", saveParams = false)
   public Result<Void> update(
       @PathVariable final Long id,
@@ -140,7 +140,7 @@ public class ExternalIntegrationController {
    */
   @Operation(summary = "启用集成")
   @PostMapping("/{id}/enable")
-  @RequirePermission("system:integration:edit")
+  @RequirePermission("sys:integration:update")
   @OperationLog(module = "系统管理", action = "启用外部系统集成")
   public Result<Void> enable(@PathVariable final Long id) {
     integrationAppService.enableIntegration(id);
@@ -155,7 +155,7 @@ public class ExternalIntegrationController {
    */
   @Operation(summary = "禁用集成")
   @PostMapping("/{id}/disable")
-  @RequirePermission("system:integration:edit")
+  @RequirePermission("sys:integration:update")
   @OperationLog(module = "系统管理", action = "禁用外部系统集成")
   public Result<Void> disable(@PathVariable final Long id) {
     integrationAppService.disableIntegration(id);
@@ -170,7 +170,7 @@ public class ExternalIntegrationController {
    */
   @Operation(summary = "测试连接")
   @PostMapping("/{id}/test")
-  @RequirePermission("system:integration:edit")
+  @RequirePermission("sys:integration:update")
   @OperationLog(module = "系统管理", action = "测试外部系统连接")
   public Result<ExternalIntegrationDTO> testConnection(@PathVariable final Long id) {
     return Result.success(integrationAppService.testConnection(id));

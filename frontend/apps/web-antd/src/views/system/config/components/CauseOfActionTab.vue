@@ -52,13 +52,13 @@ const { hasPermission } = usePermission();
 // 检查是否有系统配置权限（sys:config:list），有则可以管理案由
 const hasSystemConfigAccess = computed(() => hasPermission('sys:config:list'));
 const canCreate = computed(
-  () => hasSystemConfigAccess.value || hasPermission('system:cause:create'),
+  () => hasSystemConfigAccess.value || hasPermission('sys:cause:create'),
 );
 const canUpdate = computed(
-  () => hasSystemConfigAccess.value || hasPermission('system:cause:update'),
+  () => hasSystemConfigAccess.value || hasPermission('sys:cause:update'),
 );
 const canDelete = computed(
-  () => hasSystemConfigAccess.value || hasPermission('system:cause:delete'),
+  () => hasSystemConfigAccess.value || hasPermission('sys:cause:delete'),
 );
 
 // ==================== 状态定义 ====================

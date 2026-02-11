@@ -90,7 +90,7 @@ public class CaseLibraryController {
    */
   @Operation(summary = "更新案例")
   @PutMapping("/{id}")
-  @RequirePermission("knowledge:case:edit")
+  @RequirePermission("knowledge:case:update")
   @OperationLog(module = "案例库", action = "更新案例")
   public Result<CaseLibraryDTO> updateCase(
       @PathVariable final Long id, @RequestBody final CreateCaseLibraryCommand command) {

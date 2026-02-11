@@ -108,7 +108,7 @@ public class DepartmentController {
    */
   @Operation(summary = "更新部门")
   @PutMapping
-  @RequirePermission("sys:dept:edit")
+  @RequirePermission("sys:dept:update")
   @OperationLog(module = "部门管理", action = "更新部门")
   public Result<DepartmentDTO> updateDepartment(
       @RequestBody @Valid final UpdateDepartmentCommand command) {
@@ -140,7 +140,7 @@ public class DepartmentController {
    */
   @Operation(summary = "设置部门负责人")
   @PutMapping("/{id}/leader")
-  @RequirePermission("sys:dept:edit")
+  @RequirePermission("sys:dept:update")
   @OperationLog(module = "部门管理", action = "设置部门负责人")
   public Result<Void> setLeader(
       @PathVariable final Long id, @RequestBody @Valid final SetLeaderRequest request) {

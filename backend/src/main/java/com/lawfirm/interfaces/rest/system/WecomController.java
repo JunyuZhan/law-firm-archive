@@ -101,7 +101,7 @@ public class WecomController {
    */
   @Operation(summary = "测试企业微信机器人连接")
   @PostMapping("/test")
-  @PreAuthorize("hasAuthority('system:config:manage')")
+  @PreAuthorize("hasAuthority('sys:config:manage')")
   public Result<Map<String, Object>> testWecomBot() {
     Map<String, Object> result = new HashMap<>();
 

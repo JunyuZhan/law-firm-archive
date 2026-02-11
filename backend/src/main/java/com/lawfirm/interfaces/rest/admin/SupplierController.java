@@ -92,7 +92,7 @@ public class SupplierController {
    */
   @Operation(summary = "更新供应商")
   @PutMapping("/{id}")
-  @RequirePermission("admin:supplier:edit")
+  @RequirePermission("admin:supplier:update")
   @OperationLog(module = "供应商管理", action = "更新供应商")
   public Result<SupplierDTO> update(
       @PathVariable final Long id, @RequestBody final CreateSupplierCommand command) {
@@ -123,7 +123,7 @@ public class SupplierController {
    */
   @Operation(summary = "启用/停用供应商")
   @PutMapping("/{id}/status")
-  @RequirePermission("admin:supplier:edit")
+  @RequirePermission("admin:supplier:update")
   @OperationLog(module = "供应商管理", action = "变更供应商状态")
   public Result<Void> changeStatus(
       @PathVariable final Long id,

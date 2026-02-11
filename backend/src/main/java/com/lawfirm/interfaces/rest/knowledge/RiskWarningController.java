@@ -49,7 +49,7 @@ public class RiskWarningController {
    */
   @Operation(summary = "确认预警")
   @PostMapping("/{id}/acknowledge")
-  @RequirePermission("knowledge:quality:edit")
+  @RequirePermission("knowledge:quality:update")
   @OperationLog(module = "质量管理", action = "确认风险预警")
   public Result<RiskWarningDTO> acknowledgeWarning(@PathVariable final Long id) {
     return Result.success(warningAppService.acknowledgeWarning(id));
@@ -63,7 +63,7 @@ public class RiskWarningController {
    */
   @Operation(summary = "解决预警")
   @PostMapping("/{id}/resolve")
-  @RequirePermission("knowledge:quality:edit")
+  @RequirePermission("knowledge:quality:update")
   @OperationLog(module = "质量管理", action = "解决风险预警")
   public Result<RiskWarningDTO> resolveWarning(@PathVariable final Long id) {
     return Result.success(warningAppService.resolveWarning(id));
@@ -77,7 +77,7 @@ public class RiskWarningController {
    */
   @Operation(summary = "关闭预警")
   @PostMapping("/{id}/close")
-  @RequirePermission("knowledge:quality:edit")
+  @RequirePermission("knowledge:quality:update")
   @OperationLog(module = "质量管理", action = "关闭风险预警")
   public Result<RiskWarningDTO> closeWarning(@PathVariable final Long id) {
     return Result.success(warningAppService.closeWarning(id));

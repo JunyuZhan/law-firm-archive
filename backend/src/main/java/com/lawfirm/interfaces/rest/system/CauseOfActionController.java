@@ -118,7 +118,7 @@ public class CauseOfActionController {
    */
   @Operation(summary = "创建案由/罪名")
   @PostMapping
-  @RequirePermission("system:cause:create")
+  @RequirePermission("sys:cause:create")
   @OperationLog(module = "案由管理", action = "创建案由")
   public Result<CauseOfAction> createCause(@RequestBody final CreateCauseCommand command) {
     return Result.success(causeOfActionService.createCause(command));
@@ -133,7 +133,7 @@ public class CauseOfActionController {
    */
   @Operation(summary = "更新案由/罪名")
   @PutMapping("/{id}")
-  @RequirePermission("system:cause:update")
+  @RequirePermission("sys:cause:update")
   @OperationLog(module = "案由管理", action = "更新案由")
   public Result<CauseOfAction> updateCause(
       @PathVariable final Long id, @RequestBody final UpdateCauseCommand command) {
@@ -148,7 +148,7 @@ public class CauseOfActionController {
    */
   @Operation(summary = "删除案由/罪名")
   @DeleteMapping("/{id}")
-  @RequirePermission("system:cause:delete")
+  @RequirePermission("sys:cause:delete")
   @OperationLog(module = "案由管理", action = "删除案由")
   public Result<Void> deleteCause(@PathVariable final Long id) {
     causeOfActionService.deleteCause(id);
@@ -163,7 +163,7 @@ public class CauseOfActionController {
    */
   @Operation(summary = "启用/禁用案由")
   @PostMapping("/{id}/toggle")
-  @RequirePermission("system:cause:update")
+  @RequirePermission("sys:cause:update")
   @OperationLog(module = "案由管理", action = "切换案由状态")
   public Result<Void> toggleCauseStatus(@PathVariable final Long id) {
     causeOfActionService.toggleCauseStatus(id);

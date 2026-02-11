@@ -117,7 +117,7 @@ public class PromotionController {
    */
   @Operation(summary = "更新职级")
   @PutMapping("/levels/{id}")
-  @RequirePermission("hr:promotion:edit")
+  @RequirePermission("hr:promotion:update")
   @OperationLog(module = "晋升管理", action = "更新职级")
   public Result<CareerLevelDTO> updateCareerLevel(
       @PathVariable final Long id, @RequestBody @Valid final CreateCareerLevelCommand command) {
@@ -147,7 +147,7 @@ public class PromotionController {
    */
   @Operation(summary = "启用职级")
   @PostMapping("/levels/{id}/enable")
-  @RequirePermission("hr:promotion:edit")
+  @RequirePermission("hr:promotion:update")
   @OperationLog(module = "晋升管理", action = "启用职级")
   public Result<Void> enableCareerLevel(@PathVariable final Long id) {
     promotionAppService.enableCareerLevel(id);
@@ -162,7 +162,7 @@ public class PromotionController {
    */
   @Operation(summary = "停用职级")
   @PostMapping("/levels/{id}/disable")
-  @RequirePermission("hr:promotion:edit")
+  @RequirePermission("hr:promotion:update")
   @OperationLog(module = "晋升管理", action = "停用职级")
   public Result<Void> disableCareerLevel(@PathVariable final Long id) {
     promotionAppService.disableCareerLevel(id);

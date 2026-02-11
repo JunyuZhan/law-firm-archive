@@ -101,7 +101,7 @@ public class RoleController {
    */
   @Operation(summary = "更新角色")
   @PutMapping
-  @RequirePermission("sys:role:edit")
+  @RequirePermission("sys:role:update")
   @OperationLog(module = "角色管理", action = "更新角色")
   public Result<RoleDTO> updateRole(@RequestBody @Valid final UpdateRoleCommand command) {
     RoleDTO role = roleAppService.updateRole(command);
@@ -132,7 +132,7 @@ public class RoleController {
    */
   @Operation(summary = "修改角色状态")
   @PutMapping("/{id}/status")
-  @RequirePermission("sys:role:edit")
+  @RequirePermission("sys:role:update")
   @OperationLog(module = "角色管理", action = "修改角色状态")
   public Result<Void> changeStatus(
       @PathVariable final Long id, @RequestBody @Valid final ChangeStatusRequest request) {
@@ -149,7 +149,7 @@ public class RoleController {
    */
   @Operation(summary = "分配角色菜单")
   @PostMapping("/{id}/menus")
-  @RequirePermission("sys:role:edit")
+  @RequirePermission("sys:role:update")
   @OperationLog(module = "角色管理", action = "分配角色菜单")
   public Result<Void> assignMenus(
       @PathVariable final Long id, @RequestBody @Valid final AssignMenusRequest request) {

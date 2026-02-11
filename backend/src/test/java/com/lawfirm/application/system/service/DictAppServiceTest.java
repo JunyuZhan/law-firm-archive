@@ -63,7 +63,7 @@ class DictAppServiceTest {
     adminUser.setUserId(1L);
     adminUser.setUsername("admin");
     adminUser.setRoles(Set.of("ADMIN", "SYSTEM_MANAGER"));
-    adminUser.setPermissions(Set.of("system:dict:edit"));
+    adminUser.setPermissions(Set.of("sys:dict:update"));
   }
 
   @AfterEach

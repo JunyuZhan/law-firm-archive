@@ -110,7 +110,7 @@ public class DevelopmentPlanController {
    */
   @Operation(summary = "更新发展规划")
   @PutMapping("/{id}")
-  @RequirePermission("hr:development:edit")
+  @RequirePermission("hr:development:update")
   @OperationLog(module = "发展规划", action = "更新规划")
   public Result<DevelopmentPlanDTO> update(
       @PathVariable final Long id, @RequestBody @Valid final CreateDevelopmentPlanCommand command) {
@@ -141,7 +141,7 @@ public class DevelopmentPlanController {
    */
   @Operation(summary = "提交规划")
   @PostMapping("/{id}/submit")
-  @RequirePermission("hr:development:edit")
+  @RequirePermission("hr:development:update")
   @OperationLog(module = "发展规划", action = "提交规划")
   public Result<Void> submit(@PathVariable final Long id) {
     developmentPlanAppService.submitPlan(id);
@@ -175,7 +175,7 @@ public class DevelopmentPlanController {
    */
   @Operation(summary = "更新里程碑状态")
   @PostMapping("/milestones/{milestoneId}/status")
-  @RequirePermission("hr:development:edit")
+  @RequirePermission("hr:development:update")
   @OperationLog(module = "发展规划", action = "更新里程碑")
   public Result<Void> updateMilestoneStatus(
       @PathVariable final Long milestoneId,

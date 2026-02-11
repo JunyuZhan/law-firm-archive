@@ -156,7 +156,7 @@ public class VersionController {
      */
     @Operation(summary = "执行一键升级", description = "拉取指定版本的代码并重新部署")
     @PostMapping("/upgrade/execute")
-    @PreAuthorize("hasRole('ADMIN') or hasAuthority('system:config:edit')")
+    @PreAuthorize("hasRole('ADMIN') or hasAuthority('sys:config:update')")
     public Result<Map<String, Object>> executeUpgrade(
             @RequestParam(required = false) String targetVersion,
             @RequestParam(defaultValue = "true") boolean backup) {
@@ -252,7 +252,7 @@ public class VersionController {
      */
     @Operation(summary = "离线升级", description = "上传从 GitHub 下载的升级包进行升级")
     @PostMapping("/upgrade/offline")
-    @PreAuthorize("hasRole('ADMIN') or hasAuthority('system:config:edit')")
+    @PreAuthorize("hasRole('ADMIN') or hasAuthority('sys:config:update')")
     public Result<Map<String, Object>> offlineUpgrade(@RequestParam("file") MultipartFile file) {
         Map<String, Object> result = new LinkedHashMap<>();
         String upgradeId = UUID.randomUUID().toString().substring(0, 8);
@@ -875,7 +875,7 @@ public class VersionController {
      */
     @Operation(summary = "忽略版本更新", description = "忽略指定版本的更新提示")
     @PostMapping("/ignore")
-    @PreAuthorize("hasAuthority('sys:config:edit')")
+    @PreAuthorize("hasAuthority('sys:config:update')")
     public Result<Void> ignoreVersion(@RequestParam String version) {
         try {
             String configKey = "system.ignored-version";

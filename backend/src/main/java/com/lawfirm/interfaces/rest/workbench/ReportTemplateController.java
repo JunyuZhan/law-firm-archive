@@ -98,7 +98,7 @@ public class ReportTemplateController {
    */
   @Operation(summary = "更新报表模板")
   @PutMapping("/{id}")
-  @RequirePermission("report:template:edit")
+  @RequirePermission("report:template:update")
   @OperationLog(module = "报表模板", action = "更新模板")
   public Result<ReportTemplateDTO> update(
       @PathVariable final Long id, @RequestBody @Valid final CreateReportTemplateCommand command) {
@@ -129,7 +129,7 @@ public class ReportTemplateController {
    */
   @Operation(summary = "启用模板")
   @PostMapping("/{id}/enable")
-  @RequirePermission("report:template:edit")
+  @RequirePermission("report:template:update")
   @OperationLog(module = "报表模板", action = "启用模板")
   public Result<Void> enable(@PathVariable final Long id) {
     customReportAppService.changeTemplateStatus(id, "ACTIVE");
@@ -144,7 +144,7 @@ public class ReportTemplateController {
    */
   @Operation(summary = "停用模板")
   @PostMapping("/{id}/disable")
-  @RequirePermission("report:template:edit")
+  @RequirePermission("report:template:update")
   @OperationLog(module = "报表模板", action = "停用模板")
   public Result<Void> disable(@PathVariable final Long id) {
     customReportAppService.changeTemplateStatus(id, "INACTIVE");

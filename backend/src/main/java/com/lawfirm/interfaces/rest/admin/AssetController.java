@@ -95,7 +95,7 @@ public class AssetController {
    */
   @Operation(summary = "更新资产")
   @PutMapping("/{id}")
-  @RequirePermission("admin:asset:edit")
+  @RequirePermission("admin:asset:update")
   @OperationLog(module = "资产管理", action = "更新资产")
   public Result<AssetDTO> update(
       @PathVariable final Long id, @RequestBody final CreateAssetCommand command) {

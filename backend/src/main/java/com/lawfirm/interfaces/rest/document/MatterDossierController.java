@@ -99,7 +99,7 @@ public class MatterDossierController {
    */
   @Operation(summary = "更新目录项")
   @PutMapping("/item/{itemId}")
-  @RequirePermission("doc:edit")
+  @RequirePermission("doc:update")
   @OperationLog(module = "卷宗管理", action = "更新目录项")
   public Result<MatterDossierItem> updateDossierItem(
       @PathVariable final Long matterId,
@@ -140,7 +140,7 @@ public class MatterDossierController {
    */
   @Operation(summary = "调整目录项排序")
   @PutMapping("/reorder")
-  @RequirePermission("doc:edit")
+  @RequirePermission("doc:update")
   @OperationLog(module = "卷宗管理", action = "调整目录排序")
   public Result<Void> reorderDossierItems(
       @PathVariable final Long matterId, @RequestBody final List<Long> itemIds) {

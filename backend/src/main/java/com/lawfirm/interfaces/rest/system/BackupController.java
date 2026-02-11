@@ -45,7 +45,7 @@ public class BackupController {
    * @return 分页结果
    */
   @GetMapping("/list")
-  @RequirePermission("system:backup:list")
+  @RequirePermission("sys:backup:list")
   @Operation(summary = "查询备份记录列表")
   public Result<PageResult<BackupDTO>> listBackups(final BackupQueryDTO query) {
     PageResult<BackupDTO> result = backupAppService.listBackups(query);
@@ -59,7 +59,7 @@ public class BackupController {
    * @return 备份详情
    */
   @GetMapping("/{id}")
-  @RequirePermission("system:backup:view")
+  @RequirePermission("sys:backup:view")
   @Operation(summary = "获取备份详情")
   public Result<BackupDTO> getBackup(@PathVariable final Long id) {
     BackupDTO backup = backupAppService.getBackupById(id);
@@ -73,7 +73,7 @@ public class BackupController {
    * @return 备份详情
    */
   @PostMapping
-  @RequirePermission("system:backup:create")
+  @RequirePermission("sys:backup:create")
   @OperationLog(module = "系统备份", action = "创建备份")
   @Operation(summary = "创建备份")
   public Result<BackupDTO> createBackup(@RequestBody @Valid final BackupCommand command) {
@@ -88,7 +88,7 @@ public class BackupController {
    * @return 无返回
    */
   @PostMapping("/restore")
-  @RequirePermission("system:backup:restore")
+  @RequirePermission("sys:backup:restore")
   @OperationLog(module = "系统备份", action = "恢复备份")
   @Operation(summary = "恢复备份")
   public Result<Void> restoreBackup(@RequestBody @Valid final RestoreCommand command) {
@@ -103,7 +103,7 @@ public class BackupController {
    * @return 无返回
    */
   @DeleteMapping("/{id}")
-  @RequirePermission("system:backup:delete")
+  @RequirePermission("sys:backup:delete")
   @OperationLog(module = "系统备份", action = "删除备份")
   @Operation(summary = "删除备份")
   public Result<Void> deleteBackup(@PathVariable final Long id) {
@@ -118,7 +118,7 @@ public class BackupController {
    * @return 备份文件
    */
   @GetMapping("/{id}/download")
-  @RequirePermission("system:backup:download")
+  @RequirePermission("sys:backup:download")
   @Operation(summary = "下载备份文件")
   public ResponseEntity<Resource> downloadBackup(@PathVariable final Long id) {
     Resource resource = backupAppService.downloadBackup(id);
@@ -143,7 +143,7 @@ public class BackupController {
    * @return 备份详情
    */
   @PostMapping("/import")
-  @RequirePermission("system:backup:create")
+  @RequirePermission("sys:backup:create")
   @OperationLog(module = "系统备份", action = "导入备份")
   @Operation(summary = "导入外部备份文件", description = "上传外部备份文件（.sql 或 pg_dump 自定义格式），导入后可用于恢复")
   public Result<BackupDTO> importBackup(

@@ -254,19 +254,19 @@ INSERT INTO public.sys_menu VALUES (178, 92, '请假审批', NULL, NULL, NULL, N
 INSERT INTO public.sys_menu VALUES (179, 92, '假期管理', NULL, NULL, NULL, NULL, 'BUTTON', 'admin:leave:manage', 2, true, 'ENABLED', false, false, '2026-01-06 04:13:09.944811', '2026-01-06 04:13:09.944811', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (180, 94, '资产详情', NULL, NULL, NULL, NULL, 'BUTTON', 'admin:asset:detail', 1, true, 'ENABLED', false, false, '2026-01-06 04:13:09.945093', '2026-01-06 04:13:09.945093', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (181, 94, '资产创建', NULL, NULL, NULL, NULL, 'BUTTON', 'admin:asset:create', 2, true, 'ENABLED', false, false, '2026-01-06 04:13:09.945093', '2026-01-06 04:13:09.945093', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
-INSERT INTO public.sys_menu VALUES (182, 94, '资产编辑', NULL, NULL, NULL, NULL, 'BUTTON', 'admin:asset:edit', 3, true, 'ENABLED', false, false, '2026-01-06 04:13:09.945093', '2026-01-06 04:13:09.945093', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_menu VALUES (182, 94, '资产编辑', NULL, NULL, NULL, NULL, 'BUTTON', 'admin:asset:update', 3, true, 'ENABLED', false, false, '2026-01-06 04:13:09.945093', '2026-01-06 04:13:09.945093', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (183, 94, '资产删除', NULL, NULL, NULL, NULL, 'BUTTON', 'admin:asset:delete', 4, true, 'ENABLED', false, false, '2026-01-06 04:13:09.945093', '2026-01-06 04:13:09.945093', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (184, 94, '资产领用', NULL, NULL, NULL, NULL, 'BUTTON', 'admin:asset:receive', 5, true, 'ENABLED', false, false, '2026-01-06 04:13:09.945093', '2026-01-06 04:13:09.945093', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (185, 94, '资产归还', NULL, NULL, NULL, NULL, 'BUTTON', 'admin:asset:return', 6, true, 'ENABLED', false, false, '2026-01-06 04:13:09.945093', '2026-01-06 04:13:09.945093', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (186, 94, '资产报废', NULL, NULL, NULL, NULL, 'BUTTON', 'admin:asset:scrap', 7, true, 'ENABLED', false, false, '2026-01-06 04:13:09.945093', '2026-01-06 04:13:09.945093', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (187, 95, '采购详情', NULL, NULL, NULL, NULL, 'BUTTON', 'admin:purchase:detail', 1, true, 'ENABLED', false, false, '2026-01-06 04:13:09.945586', '2026-01-06 04:13:09.945586', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (188, 95, '采购创建', NULL, NULL, NULL, NULL, 'BUTTON', 'admin:purchase:create', 2, true, 'ENABLED', false, false, '2026-01-06 04:13:09.945586', '2026-01-06 04:13:09.945586', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
-INSERT INTO public.sys_menu VALUES (189, 95, '采购编辑', NULL, NULL, NULL, NULL, 'BUTTON', 'admin:purchase:edit', 3, true, 'ENABLED', false, false, '2026-01-06 04:13:09.945586', '2026-01-06 04:13:09.945586', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_menu VALUES (189, 95, '采购编辑', NULL, NULL, NULL, NULL, 'BUTTON', 'admin:purchase:update', 3, true, 'ENABLED', false, false, '2026-01-06 04:13:09.945586', '2026-01-06 04:13:09.945586', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (190, 95, '采购审批', NULL, NULL, NULL, NULL, 'BUTTON', 'admin:purchase:approve', 4, true, 'ENABLED', false, false, '2026-01-06 04:13:09.945586', '2026-01-06 04:13:09.945586', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (191, 95, '采购入库', NULL, NULL, NULL, NULL, 'BUTTON', 'admin:purchase:receive', 5, true, 'ENABLED', false, false, '2026-01-06 04:13:09.945586', '2026-01-06 04:13:09.945586', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (192, 96, '供应商详情', NULL, NULL, NULL, NULL, 'BUTTON', 'admin:supplier:detail', 1, true, 'ENABLED', false, false, '2026-01-06 04:13:09.945853', '2026-01-06 04:13:09.945853', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (193, 96, '供应商创建', NULL, NULL, NULL, NULL, 'BUTTON', 'admin:supplier:create', 2, true, 'ENABLED', false, false, '2026-01-06 04:13:09.945853', '2026-01-06 04:13:09.945853', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
-INSERT INTO public.sys_menu VALUES (194, 96, '供应商编辑', NULL, NULL, NULL, NULL, 'BUTTON', 'admin:supplier:edit', 3, true, 'ENABLED', false, false, '2026-01-06 04:13:09.945853', '2026-01-06 04:13:09.945853', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_menu VALUES (194, 96, '供应商编辑', NULL, NULL, NULL, NULL, 'BUTTON', 'admin:supplier:update', 3, true, 'ENABLED', false, false, '2026-01-06 04:13:09.945853', '2026-01-06 04:13:09.945853', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (195, 96, '供应商删除', NULL, NULL, NULL, NULL, 'BUTTON', 'admin:supplier:delete', 4, true, 'ENABLED', false, false, '2026-01-06 04:13:09.945853', '2026-01-06 04:13:09.945853', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (196, 121, '合同导出', NULL, NULL, NULL, NULL, 'BUTTON', 'admin:contract:export', 1, true, 'ENABLED', false, false, '2026-01-06 04:13:09.94617', '2026-01-06 04:13:09.94617', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (197, 91, '考勤记录', NULL, NULL, NULL, NULL, 'BUTTON', 'admin:attendance:record', 1, true, 'ENABLED', false, false, '2026-01-06 04:13:09.946385', '2026-01-06 04:13:09.946385', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
@@ -277,7 +277,7 @@ INSERT INTO public.sys_menu VALUES (204, 200, '下载报表', NULL, NULL, NULL, 
 INSERT INTO public.sys_menu VALUES (205, 200, '删除报表', NULL, NULL, NULL, NULL, 'BUTTON', 'report:delete', 5, true, 'ENABLED', false, true, '2026-01-06 14:00:00', '2026-01-06 14:00:00', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (210, 107, '创建工资表', NULL, NULL, NULL, NULL, 'BUTTON', 'payroll:create', 1, true, 'ENABLED', false, true, '2026-01-06 07:38:37.94416', '2026-01-06 07:38:37.94416', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (211, 107, '查看工资表', NULL, NULL, NULL, NULL, 'BUTTON', 'payroll:view', 2, true, 'ENABLED', false, true, '2026-01-06 07:38:37.94416', '2026-01-06 07:38:37.94416', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
-INSERT INTO public.sys_menu VALUES (212, 107, '编辑工资表', NULL, NULL, NULL, NULL, 'BUTTON', 'payroll:edit', 3, true, 'ENABLED', false, true, '2026-01-06 07:38:37.94416', '2026-01-06 07:38:37.94416', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_menu VALUES (212, 107, '编辑工资表', NULL, NULL, NULL, NULL, 'BUTTON', 'payroll:update', 3, true, 'ENABLED', false, true, '2026-01-06 07:38:37.94416', '2026-01-06 07:38:37.94416', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (213, 107, '提交工资表', NULL, NULL, NULL, NULL, 'BUTTON', 'payroll:submit', 4, true, 'ENABLED', false, true, '2026-01-06 07:38:37.94416', '2026-01-06 07:38:37.94416', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (214, 107, '财务确认', NULL, NULL, NULL, NULL, 'BUTTON', 'payroll:finance:confirm', 5, true, 'ENABLED', false, true, '2026-01-06 07:38:37.94416', '2026-01-06 07:38:37.94416', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (215, 107, '发放工资', NULL, NULL, NULL, NULL, 'BUTTON', 'payroll:issue', 6, true, 'ENABLED', false, true, '2026-01-06 07:38:37.94416', '2026-01-06 07:38:37.94416', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
@@ -285,7 +285,7 @@ INSERT INTO public.sys_menu VALUES (216, 108, '确认工资', NULL, NULL, NULL, 
 INSERT INTO public.sys_menu VALUES (152, 2, '期限列表', NULL, NULL, NULL, NULL, 'BUTTON', 'deadline:list', 11, true, 'ENABLED', false, true, '2026-01-06 04:02:22.669342', '2026-01-06 11:40:43.86229', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (153, 2, '期限查看', NULL, NULL, NULL, NULL, 'BUTTON', 'deadline:view', 12, true, 'ENABLED', false, true, '2026-01-06 04:02:22.669621', '2026-01-06 11:40:43.86229', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (154, 2, '期限创建', NULL, NULL, NULL, NULL, 'BUTTON', 'deadline:create', 13, true, 'ENABLED', false, true, '2026-01-06 04:02:22.669923', '2026-01-06 11:40:43.86229', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
-INSERT INTO public.sys_menu VALUES (155, 2, '期限编辑', NULL, NULL, NULL, NULL, 'BUTTON', 'deadline:edit', 14, true, 'ENABLED', false, true, '2026-01-06 04:02:22.670256', '2026-01-06 11:40:43.86229', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_menu VALUES (155, 2, '期限编辑', NULL, NULL, NULL, NULL, 'BUTTON', 'deadline:update', 14, true, 'ENABLED', false, true, '2026-01-06 04:02:22.670256', '2026-01-06 11:40:43.86229', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (200, 0, '报表中心', '/workbench/report', 'workbench/report/index', NULL, 'BarChartOutlined', 'MENU', 'report:list', 12, true, 'ENABLED', false, true, '2026-01-06 14:00:00', '2026-01-06 14:00:00', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (23, 2, '部门管理', '/system/dept', 'system/dept/index', NULL, 'ApartmentOutlined', 'MENU', 'sys:dept:list', 3, true, 'ENABLED', false, true, '2026-01-04 16:14:15.896441', '2026-01-06 11:40:43.86229', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (24, 2, '菜单管理', '/system/menu', 'system/menu/index', NULL, 'MenuOutlined', 'MENU', 'sys:menu:list', 4, true, 'ENABLED', false, true, '2026-01-04 16:14:15.896441', '2026-01-06 11:40:43.86229', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
@@ -293,21 +293,21 @@ INSERT INTO public.sys_menu VALUES (30, 2, '字典管理', '/system/dict', 'syst
 -- 案由管理已合并到系统配置模块，删除独立菜单（160）
 -- 但保留按钮权限菜单（161, 162, 163），用于权限控制
 -- 按钮权限的 parent_id 改为系统配置菜单（25）
-INSERT INTO public.sys_menu VALUES (161, 25, '创建案由', NULL, NULL, NULL, NULL, 'BUTTON', 'system:cause:create', 1, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL, NULL, false) 
+INSERT INTO public.sys_menu VALUES (161, 25, '创建案由', NULL, NULL, NULL, NULL, 'BUTTON', 'sys:cause:create', 1, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL, NULL, false) 
 ON CONFLICT (id) DO UPDATE SET 
   name = EXCLUDED.name,
   parent_id = 25,
   permission = EXCLUDED.permission,
   status = 'ENABLED',
   updated_at = CURRENT_TIMESTAMP;
-INSERT INTO public.sys_menu VALUES (162, 25, '更新案由', NULL, NULL, NULL, NULL, 'BUTTON', 'system:cause:update', 2, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL, NULL, false) 
+INSERT INTO public.sys_menu VALUES (162, 25, '更新案由', NULL, NULL, NULL, NULL, 'BUTTON', 'sys:cause:update', 2, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL, NULL, false) 
 ON CONFLICT (id) DO UPDATE SET 
   name = EXCLUDED.name,
   parent_id = 25,
   permission = EXCLUDED.permission,
   status = 'ENABLED',
   updated_at = CURRENT_TIMESTAMP;
-INSERT INTO public.sys_menu VALUES (163, 25, '删除案由', NULL, NULL, NULL, NULL, 'BUTTON', 'system:cause:delete', 3, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL, NULL, false) 
+INSERT INTO public.sys_menu VALUES (163, 25, '删除案由', NULL, NULL, NULL, NULL, 'BUTTON', 'sys:cause:delete', 3, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL, NULL, false) 
 ON CONFLICT (id) DO UPDATE SET 
   name = EXCLUDED.name,
   parent_id = 25,
@@ -344,11 +344,11 @@ INSERT INTO public.sys_menu VALUES (2, 0, '系统管理', '/system', 'LAYOUT', N
 INSERT INTO public.sys_menu VALUES (21, 2, '用户管理', '/system/user', 'system/user/index', NULL, 'UserOutlined', 'MENU', 'sys:user:list', 1, true, 'ENABLED', false, true, '2026-01-04 16:14:15.896441', '2026-01-04 16:14:15.896441', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (25, 2, '系统配置', '/system/config', 'system/config/index', NULL, 'ToolOutlined', 'MENU', 'sys:config:list', 7, true, 'ENABLED', false, true, '2026-01-04 16:14:15.896441', '2026-01-06 11:40:43.86229', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (26, 2, '操作日志', '/system/log', 'system/log/index', NULL, 'FileSearchOutlined', 'MENU', 'sys:log:list', 8, true, 'ENABLED', false, true, '2026-01-04 16:14:15.896441', '2026-01-06 11:40:43.86229', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
-INSERT INTO public.sys_menu VALUES (29, 2, '数据库备份', '/system/backup', 'system/backup/index', NULL, 'DatabaseOutlined', 'MENU', 'system:backup:list', 9, true, 'ENABLED', false, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_menu VALUES (29, 2, '数据库备份', '/system/backup', 'system/backup/index', NULL, 'DatabaseOutlined', 'MENU', 'sys:backup:list', 9, true, 'ENABLED', false, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (27, 9, '出函模板', '/admin/letter-template', 'admin/letter-template/index', NULL, 'MailOutlined', 'MENU', 'sys:letter-template:list', 20, true, 'ENABLED', false, true, '2026-01-04 16:14:15.896441', '2026-01-06 11:40:43.86229', NULL, NULL, false) ON CONFLICT (id) DO UPDATE SET parent_id = 9, path = '/admin/letter-template', component = 'admin/letter-template/index', sort_order = 20, updated_at = CURRENT_TIMESTAMP;
 INSERT INTO public.sys_menu VALUES (28, 5, '合同模板', '/finance/contract-template', 'finance/contract-template/index', NULL, 'FileProtectOutlined', 'MENU', 'sys:contract-template:list', 20, true, 'ENABLED', false, true, '2026-01-04 16:14:15.896441', '2026-01-06 11:40:43.86229', NULL, NULL, false) ON CONFLICT (id) DO UPDATE SET parent_id = 5, path = '/finance/contract-template', component = 'finance/contract-template/index', sort_order = 20, updated_at = CURRENT_TIMESTAMP;
-INSERT INTO public.sys_menu VALUES (140, 2, '提成规则配置', '/system/commission-config', 'system/commission-config/index', NULL, 'ant-design:percentage-outlined', 'MENU', 'system:config:list', 12, true, 'ENABLED', false, true, '2026-01-05 18:00:00', '2026-01-06 11:40:43.86229', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
-INSERT INTO public.sys_menu VALUES (159, 2, '外部系统集成', '/system/integration', 'system/integration/index', NULL, 'CloudOutlined', 'MENU', 'system:integration:list', 99, true, 'ENABLED', false, true, '2026-01-08 04:48:25.443502', '2026-01-08 04:48:25.443502', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_menu VALUES (140, 2, '提成规则配置', '/system/commission-config', 'system/commission-config/index', NULL, 'ant-design:percentage-outlined', 'MENU', 'sys:config:list', 12, true, 'ENABLED', false, true, '2026-01-05 18:00:00', '2026-01-06 11:40:43.86229', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_menu VALUES (159, 2, '外部系统集成', '/system/integration', 'system/integration/index', NULL, 'CloudOutlined', 'MENU', 'sys:integration:list', 99, true, 'ENABLED', false, true, '2026-01-08 04:48:25.443502', '2026-01-08 04:48:25.443502', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (41, 4, '项目列表', '/matter/list', 'matter/list/index', NULL, 'ProjectOutlined', 'MENU', 'matter:list', 1, true, 'ENABLED', false, true, '2026-01-04 16:14:15.896878', '2026-01-04 16:14:15.896878', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (42, 4, '我的项目', '/matter/my', 'matter/my/index', NULL, 'SolutionOutlined', 'MENU', 'matter:list', 2, true, 'ENABLED', false, true, '2026-01-04 16:14:15.896878', '2026-01-04 16:14:15.896878', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (45, 4, '合同管理', '/matter/contract', 'matter/contract/index', NULL, 'FileProtectOutlined', 'MENU', 'matter:contract:list', 3, true, 'ENABLED', false, true, '2026-01-04 16:14:15.896878', '2026-01-04 16:14:15.896878', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
@@ -407,7 +407,7 @@ INSERT INTO public.sys_menu VALUES (1822, 120, '模板管理', '', '', NULL, NUL
 -- 证据管理权限（项目详情页中使用）
 INSERT INTO public.sys_menu VALUES (1823, 4, '证据查看', '', '', NULL, NULL, 'BUTTON', 'evidence:view', 20, true, 'ENABLED', false, false, '2026-01-13 00:00:00', '2026-01-13 00:00:00', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (1824, 4, '证据创建', '', '', NULL, NULL, 'BUTTON', 'evidence:create', 21, true, 'ENABLED', false, false, '2026-01-13 00:00:00', '2026-01-13 00:00:00', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
-INSERT INTO public.sys_menu VALUES (1825, 4, '证据编辑', '', '', NULL, NULL, 'BUTTON', 'evidence:edit', 22, true, 'ENABLED', false, false, '2026-01-13 00:00:00', '2026-01-13 00:00:00', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_menu VALUES (1825, 4, '证据编辑', '', '', NULL, NULL, 'BUTTON', 'evidence:update', 22, true, 'ENABLED', false, false, '2026-01-13 00:00:00', '2026-01-13 00:00:00', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (1826, 4, '证据删除', '', '', NULL, NULL, 'BUTTON', 'evidence:delete', 23, true, 'ENABLED', false, false, '2026-01-13 00:00:00', '2026-01-13 00:00:00', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 --
 -- Data for Name: sys_role; Type: TABLE DATA; Schema: public; Owner: -
@@ -668,7 +668,7 @@ INSERT INTO public.sys_role_menu VALUES (2152, 2, 1824, '2026-01-13 00:00:00') O
 INSERT INTO public.sys_role_menu VALUES (2153, 3, 1824, '2026-01-13 00:00:00') ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_role_menu VALUES (2154, 6, 1824, '2026-01-13 00:00:00') ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_role_menu VALUES (2155, 9, 1824, '2026-01-13 00:00:00') ON CONFLICT (id) DO NOTHING;
--- evidence:edit: 管理员(1)、律所主任(2)、团队负责人(3)、律师(6)
+-- evidence:update: 管理员(1)、律所主任(2)、团队负责人(3)、律师(6)
 INSERT INTO public.sys_role_menu VALUES (2156, 1, 1825, '2026-01-13 00:00:00') ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_role_menu VALUES (2157, 2, 1825, '2026-01-13 00:00:00') ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_role_menu VALUES (2158, 3, 1825, '2026-01-13 00:00:00') ON CONFLICT (id) DO NOTHING;
@@ -1199,7 +1199,7 @@ INSERT INTO public.sys_menu (id, parent_id, name, path, component, redirect, ico
 VALUES 
 (730, 103, '职级查看', NULL, NULL, NULL, NULL, 'BUTTON', 'hr:promotion:view', 1, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL, NULL, false),
 (731, 103, '职级创建', NULL, NULL, NULL, NULL, 'BUTTON', 'hr:promotion:create', 2, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL, NULL, false),
-(732, 103, '职级编辑', NULL, NULL, NULL, NULL, 'BUTTON', 'hr:promotion:edit', 3, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL, NULL, false),
+(732, 103, '职级编辑', NULL, NULL, NULL, NULL, 'BUTTON', 'hr:promotion:update', 3, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL, NULL, false),
 (733, 103, '职级删除', NULL, NULL, NULL, NULL, 'BUTTON', 'hr:promotion:delete', 4, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL, NULL, false),
 (734, 103, '晋升审批', NULL, NULL, NULL, NULL, 'BUTTON', 'hr:promotion:approve', 5, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL, NULL, false)
 ON CONFLICT (id) DO NOTHING;
@@ -1235,7 +1235,7 @@ SELECT 1, id FROM public.sys_menu WHERE id = 29
 -- =====================================================
 INSERT INTO public.sys_menu (id, parent_id, name, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, deleted) VALUES
 (1020, 21, '新增用户', 'BUTTON', 'user:create', 1, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
-(1021, 21, '编辑用户', 'BUTTON', 'user:edit', 2, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+(1021, 21, '编辑用户', 'BUTTON', 'sys:user:update', 2, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
 (1022, 21, '删除用户', 'BUTTON', 'user:delete', 3, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
 (1023, 21, '重置密码', 'BUTTON', 'user:reset-password', 4, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
 ON CONFLICT (id) DO NOTHING;
@@ -1252,8 +1252,8 @@ WHERE r.role_code IN ('ADMIN', 'DIRECTOR')
 -- 其他模块按钮权限（项目、客户、归档、收款）
 -- =====================================================
 INSERT INTO public.sys_menu (id, parent_id, name, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, deleted) VALUES
-(1024, 41, '项目编辑', 'BUTTON', 'matter:edit', 2, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
-(1025, 31, '客户编辑', 'BUTTON', 'client:edit', 2, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+(1024, 41, '项目编辑', 'BUTTON', 'matter:update', 2, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+(1025, 31, '客户编辑', 'BUTTON', 'client:update', 2, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
 (1026, 71, '创建归档', 'BUTTON', 'archive:create', 1, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
 (1027, 52, '登记收款', 'BUTTON', 'fee:payment', 1, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
 ON CONFLICT (id) DO NOTHING;
@@ -1460,7 +1460,7 @@ INSERT INTO public.sys_menu VALUES (765, 2, '系统公告', '/system/announcemen
 -- =====================================================
 INSERT INTO public.sys_menu VALUES (775, 200, '报表模板', '/workbench/report-template', 'workbench/report-template/index', NULL, 'FileTextOutlined', 'MENU', 'report:template:list', 10, true, 'ENABLED', false, true, '2026-01-12 10:00:00', '2026-01-12 10:00:00', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (776, 775, '创建模板', NULL, NULL, NULL, NULL, 'BUTTON', 'report:template:create', 1, true, 'ENABLED', false, false, '2026-01-12 10:00:00', '2026-01-12 10:00:00', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
-INSERT INTO public.sys_menu VALUES (777, 775, '编辑模板', NULL, NULL, NULL, NULL, 'BUTTON', 'report:template:edit', 2, true, 'ENABLED', false, false, '2026-01-12 10:00:00', '2026-01-12 10:00:00', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_menu VALUES (777, 775, '编辑模板', NULL, NULL, NULL, NULL, 'BUTTON', 'report:template:update', 2, true, 'ENABLED', false, false, '2026-01-12 10:00:00', '2026-01-12 10:00:00', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (778, 775, '删除模板', NULL, NULL, NULL, NULL, 'BUTTON', 'report:template:delete', 3, true, 'ENABLED', false, false, '2026-01-12 10:00:00', '2026-01-12 10:00:00', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 
 -- =====================================================
@@ -1468,7 +1468,7 @@ INSERT INTO public.sys_menu VALUES (778, 775, '删除模板', NULL, NULL, NULL, 
 -- =====================================================
 INSERT INTO public.sys_menu VALUES (780, 200, '定时报表', '/workbench/scheduled-report', 'workbench/scheduled-report/index', NULL, 'ScheduleOutlined', 'MENU', 'report:scheduled:list', 11, true, 'ENABLED', false, true, '2026-01-12 10:00:00', '2026-01-12 10:00:00', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (781, 780, '创建任务', NULL, NULL, NULL, NULL, 'BUTTON', 'report:scheduled:create', 1, true, 'ENABLED', false, false, '2026-01-12 10:00:00', '2026-01-12 10:00:00', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
-INSERT INTO public.sys_menu VALUES (782, 780, '编辑任务', NULL, NULL, NULL, NULL, 'BUTTON', 'report:scheduled:edit', 2, true, 'ENABLED', false, false, '2026-01-12 10:00:00', '2026-01-12 10:00:00', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_menu VALUES (782, 780, '编辑任务', NULL, NULL, NULL, NULL, 'BUTTON', 'report:scheduled:update', 2, true, 'ENABLED', false, false, '2026-01-12 10:00:00', '2026-01-12 10:00:00', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (783, 780, '删除任务', NULL, NULL, NULL, NULL, 'BUTTON', 'report:scheduled:delete', 3, true, 'ENABLED', false, false, '2026-01-12 10:00:00', '2026-01-12 10:00:00', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (784, 780, '执行任务', NULL, NULL, NULL, NULL, 'BUTTON', 'report:scheduled:execute', 4, true, 'ENABLED', false, false, '2026-01-12 10:00:00', '2026-01-12 10:00:00', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 
@@ -1477,11 +1477,11 @@ INSERT INTO public.sys_menu VALUES (784, 780, '执行任务', NULL, NULL, NULL, 
 -- =====================================================
 INSERT INTO public.sys_menu VALUES (785, 11, '质量管理', '/knowledge/quality', 'knowledge/quality/index', NULL, 'SafetyCertificateOutlined', 'MENU', 'knowledge:quality:list', 10, true, 'ENABLED', false, true, '2026-01-12 10:00:00', '2026-01-12 10:00:00', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (786, 785, '质量检查', NULL, NULL, NULL, NULL, 'BUTTON', 'knowledge:quality:create', 1, true, 'ENABLED', false, false, '2026-01-12 10:00:00', '2026-01-12 10:00:00', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
-INSERT INTO public.sys_menu VALUES (787, 785, '标准管理', NULL, NULL, NULL, NULL, 'BUTTON', 'knowledge:quality:edit', 2, true, 'ENABLED', false, false, '2026-01-12 10:00:00', '2026-01-12 10:00:00', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_menu VALUES (787, 785, '标准管理', NULL, NULL, NULL, NULL, 'BUTTON', 'knowledge:quality:update', 2, true, 'ENABLED', false, false, '2026-01-12 10:00:00', '2026-01-12 10:00:00', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (788, 785, '问题整改', NULL, NULL, NULL, NULL, 'BUTTON', 'knowledge:quality:detail', 3, true, 'ENABLED', false, false, '2026-01-12 10:00:00', '2026-01-12 10:00:00', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (789, 785, '删除标准', NULL, NULL, NULL, NULL, 'BUTTON', 'knowledge:quality:delete', 4, true, 'ENABLED', false, false, '2026-01-12 10:00:00', '2026-01-12 10:00:00', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (766, 765, '创建公告', NULL, NULL, NULL, NULL, 'BUTTON', 'sys:announcement:create', 1, true, 'ENABLED', false, false, '2026-01-12 10:00:00', '2026-01-12 10:00:00', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
-INSERT INTO public.sys_menu VALUES (767, 765, '编辑公告', NULL, NULL, NULL, NULL, 'BUTTON', 'sys:announcement:edit', 2, true, 'ENABLED', false, false, '2026-01-12 10:00:00', '2026-01-12 10:00:00', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.sys_menu VALUES (767, 765, '编辑公告', NULL, NULL, NULL, NULL, 'BUTTON', 'sys:announcement:update', 2, true, 'ENABLED', false, false, '2026-01-12 10:00:00', '2026-01-12 10:00:00', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (768, 765, '发布公告', NULL, NULL, NULL, NULL, 'BUTTON', 'sys:announcement:publish', 3, true, 'ENABLED', false, false, '2026-01-12 10:00:00', '2026-01-12 10:00:00', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.sys_menu VALUES (769, 765, '删除公告', NULL, NULL, NULL, NULL, 'BUTTON', 'sys:announcement:delete', 4, true, 'ENABLED', false, false, '2026-01-12 10:00:00', '2026-01-12 10:00:00', NULL, NULL, false) ON CONFLICT (id) DO NOTHING;
 
@@ -2049,7 +2049,7 @@ INSERT INTO public.sys_menu (parent_id, name, menu_type, permission, sort_order,
 (61, '上传文档', 'BUTTON', 'doc:upload', 10, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
 (61, '查看详情', 'BUTTON', 'doc:detail', 11, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
 (61, '下载文档', 'BUTTON', 'doc:download', 12, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
-(61, '编辑文档', 'BUTTON', 'doc:edit', 13, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+(61, '编辑文档', 'BUTTON', 'doc:update', 13, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
 (61, '删除文档', 'BUTTON', 'doc:delete', 14, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
 (61, '创建文档', 'BUTTON', 'doc:create', 15, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
 (61, '归档文档', 'BUTTON', 'doc:archive', 16, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
@@ -2058,7 +2058,7 @@ ON CONFLICT DO NOTHING;
 -- 为律师角色 (id=6) 分配文档操作权限
 INSERT INTO public.sys_role_menu (role_id, menu_id)
 SELECT 6, m.id FROM public.sys_menu m 
-WHERE m.permission IN ('doc:upload', 'doc:detail', 'doc:download', 'doc:edit', 'doc:delete', 'doc:create', 'doc:archive')
+WHERE m.permission IN ('doc:upload', 'doc:detail', 'doc:download', 'doc:update', 'doc:delete', 'doc:create', 'doc:archive')
   AND NOT EXISTS (SELECT 1 FROM public.sys_role_menu rm WHERE rm.role_id = 6 AND rm.menu_id = m.id);
 
 -- 为实习律师角色 (id=7) 分配文档操作权限（只有上传、查看、下载，不能编辑删除）
@@ -2070,19 +2070,19 @@ WHERE m.permission IN ('doc:upload', 'doc:detail', 'doc:download')
 -- 为团队负责人角色 (id=4) 分配文档操作权限
 INSERT INTO public.sys_role_menu (role_id, menu_id)
 SELECT 4, m.id FROM public.sys_menu m 
-WHERE m.permission IN ('doc:upload', 'doc:detail', 'doc:download', 'doc:edit', 'doc:delete', 'doc:create', 'doc:archive')
+WHERE m.permission IN ('doc:upload', 'doc:detail', 'doc:download', 'doc:update', 'doc:delete', 'doc:create', 'doc:archive')
   AND NOT EXISTS (SELECT 1 FROM public.sys_role_menu rm WHERE rm.role_id = 4 AND rm.menu_id = m.id);
 
 -- 为管理员角色 (id=1) 分配文档操作权限（管理员应该有所有权限）
 INSERT INTO public.sys_role_menu (role_id, menu_id)
 SELECT 1, m.id FROM public.sys_menu m 
-WHERE m.permission IN ('doc:upload', 'doc:detail', 'doc:download', 'doc:edit', 'doc:delete', 'doc:create', 'doc:archive')
+WHERE m.permission IN ('doc:upload', 'doc:detail', 'doc:download', 'doc:update', 'doc:delete', 'doc:create', 'doc:archive')
   AND NOT EXISTS (SELECT 1 FROM public.sys_role_menu rm WHERE rm.role_id = 1 AND rm.menu_id = m.id);
 
 -- 为律所主任角色 (id=2) 分配文档操作权限
 INSERT INTO public.sys_role_menu (role_id, menu_id)
 SELECT 2, m.id FROM public.sys_menu m 
-WHERE m.permission IN ('doc:upload', 'doc:detail', 'doc:download', 'doc:edit', 'doc:delete', 'doc:create', 'doc:archive')
+WHERE m.permission IN ('doc:upload', 'doc:detail', 'doc:download', 'doc:update', 'doc:delete', 'doc:create', 'doc:archive')
   AND NOT EXISTS (SELECT 1 FROM public.sys_role_menu rm WHERE rm.role_id = 2 AND rm.menu_id = m.id);
 
 -- =====================================================
@@ -2098,7 +2098,7 @@ ON CONFLICT DO NOTHING;
 -- 合同操作权限
 INSERT INTO public.sys_menu (parent_id, name, menu_type, permission, sort_order, visible, status, is_external, is_cache, created_at, updated_at, deleted) VALUES
 (0, '创建合同', 'BUTTON', 'matter:contract:create', 1, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
-(0, '编辑合同', 'BUTTON', 'matter:contract:edit', 2, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+(0, '编辑合同', 'BUTTON', 'matter:contract:update', 2, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
 (0, '删除合同', 'BUTTON', 'matter:contract:delete', 3, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
 (0, '提交合同', 'BUTTON', 'matter:contract:submit', 4, true, 'ENABLED', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
 ON CONFLICT DO NOTHING;
@@ -2132,7 +2132,7 @@ INSERT INTO public.sys_role_menu (role_id, menu_id)
 SELECT 6, m.id FROM public.sys_menu m 
 WHERE m.permission IN (
   'evidence:list',
-  'matter:contract:create', 'matter:contract:edit', 'matter:contract:delete', 'matter:contract:submit',
+  'matter:contract:create', 'matter:contract:update', 'matter:contract:delete', 'matter:contract:submit',
   'client:contact:list', 'client:contact:create', 'client:contact:update', 'client:contact:delete',
   'client:shareholder:list', 'client:shareholder:create', 'client:shareholder:update', 'client:shareholder:delete',
   'client:contact-record:list', 'client:contact-record:create', 'client:contact-record:update', 'client:contact-record:delete'
@@ -2144,7 +2144,7 @@ INSERT INTO public.sys_role_menu (role_id, menu_id)
 SELECT 4, m.id FROM public.sys_menu m 
 WHERE m.permission IN (
   'evidence:list',
-  'matter:contract:create', 'matter:contract:edit', 'matter:contract:delete', 'matter:contract:submit',
+  'matter:contract:create', 'matter:contract:update', 'matter:contract:delete', 'matter:contract:submit',
   'client:contact:list', 'client:contact:create', 'client:contact:update', 'client:contact:delete',
   'client:shareholder:list', 'client:shareholder:create', 'client:shareholder:update', 'client:shareholder:delete',
   'client:contact-record:list', 'client:contact-record:create', 'client:contact-record:update', 'client:contact-record:delete'

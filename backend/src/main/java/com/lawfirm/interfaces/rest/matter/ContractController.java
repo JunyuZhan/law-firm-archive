@@ -129,7 +129,7 @@ public class ContractController {
    * @return 合同信息
    */
   @PutMapping("/{id}")
-  @RequirePermission("matter:contract:edit")
+  @RequirePermission("matter:contract:update")
   @OperationLog(module = "合同管理", action = "更新合同")
   public Result<ContractDTO> updateContract(
       @PathVariable final Long id, @Valid @RequestBody final UpdateContractCommand command) {
@@ -216,7 +216,7 @@ public class ContractController {
    * @return 付款计划信息
    */
   @PostMapping("/{id}/payment-schedules")
-  @RequirePermission("matter:contract:edit")
+  @RequirePermission("matter:contract:update")
   @OperationLog(module = "合同管理", action = "创建付款计划")
   public Result<ContractPaymentScheduleDTO> createPaymentSchedule(
       @PathVariable final Long id, @Valid @RequestBody final CreatePaymentScheduleCommand command) {
@@ -235,7 +235,7 @@ public class ContractController {
    * @return 付款计划信息
    */
   @PutMapping("/{contractId}/payment-schedules/{scheduleId}")
-  @RequirePermission("matter:contract:edit")
+  @RequirePermission("matter:contract:update")
   @OperationLog(module = "合同管理", action = "更新付款计划")
   public Result<ContractPaymentScheduleDTO> updatePaymentSchedule(
       @PathVariable final Long contractId,
@@ -255,7 +255,7 @@ public class ContractController {
    * @return 空结果
    */
   @DeleteMapping("/{contractId}/payment-schedules/{scheduleId}")
-  @RequirePermission("matter:contract:edit")
+  @RequirePermission("matter:contract:update")
   @OperationLog(module = "合同管理", action = "删除付款计划")
   public Result<Void> deletePaymentSchedule(
       @PathVariable final Long contractId, @PathVariable final Long scheduleId) {
@@ -286,7 +286,7 @@ public class ContractController {
    * @return 参与人信息
    */
   @PostMapping("/{id}/participants")
-  @RequirePermission("matter:contract:edit")
+  @RequirePermission("matter:contract:update")
   @OperationLog(module = "合同管理", action = "添加参与人")
   public Result<ContractParticipantDTO> createParticipant(
       @PathVariable final Long id, @Valid @RequestBody final CreateParticipantCommand command) {
@@ -304,7 +304,7 @@ public class ContractController {
    * @return 参与人信息
    */
   @PutMapping("/{contractId}/participants/{participantId}")
-  @RequirePermission("matter:contract:edit")
+  @RequirePermission("matter:contract:update")
   @OperationLog(module = "合同管理", action = "更新参与人")
   public Result<ContractParticipantDTO> updateParticipant(
       @PathVariable final Long contractId,
@@ -323,7 +323,7 @@ public class ContractController {
    * @return 空结果
    */
   @DeleteMapping("/{contractId}/participants/{participantId}")
-  @RequirePermission("matter:contract:edit")
+  @RequirePermission("matter:contract:update")
   @OperationLog(module = "合同管理", action = "删除参与人")
   public Result<Void> deleteParticipant(
       @PathVariable final Long contractId, @PathVariable final Long participantId) {
@@ -488,7 +488,7 @@ public class ContractController {
    * @return 空结果
    */
   @PostMapping("/change")
-  @RequirePermission("matter:contract:edit")
+  @RequirePermission("matter:contract:update")
   @OperationLog(module = "合同管理", action = "申请合同变更")
   public Result<Void> applyContractChange(@Valid @RequestBody final ContractChangeCommand command) {
     contractAppService.applyContractChange(command);

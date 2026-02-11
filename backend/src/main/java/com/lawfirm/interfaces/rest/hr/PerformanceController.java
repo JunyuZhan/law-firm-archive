@@ -96,7 +96,7 @@ public class PerformanceController {
    */
   @Operation(summary = "启动考核任务")
   @PostMapping("/tasks/{id}/start")
-  @RequirePermission("hr:performance:edit")
+  @RequirePermission("hr:performance:update")
   @OperationLog(module = "绩效考核", action = "启动考核任务")
   public Result<Void> startTask(@PathVariable final Long id) {
     performanceAppService.startTask(id);
@@ -111,7 +111,7 @@ public class PerformanceController {
    */
   @Operation(summary = "完成考核任务")
   @PostMapping("/tasks/{id}/complete")
-  @RequirePermission("hr:performance:edit")
+  @RequirePermission("hr:performance:update")
   @OperationLog(module = "绩效考核", action = "完成考核任务")
   public Result<Void> completeTask(@PathVariable final Long id) {
     performanceAppService.completeTask(id);
@@ -174,7 +174,7 @@ public class PerformanceController {
    */
   @Operation(summary = "更新考核指标")
   @PutMapping("/indicators/{id}")
-  @RequirePermission("hr:performance:edit")
+  @RequirePermission("hr:performance:update")
   @OperationLog(module = "绩效考核", action = "更新考核指标")
   public Result<PerformanceIndicatorDTO> updateIndicator(
       @PathVariable final Long id, @RequestBody final CreateIndicatorCommand command) {

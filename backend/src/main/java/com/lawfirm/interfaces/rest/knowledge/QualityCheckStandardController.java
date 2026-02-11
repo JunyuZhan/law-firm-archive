@@ -104,7 +104,7 @@ public class QualityCheckStandardController {
    */
   @Operation(summary = "更新检查标准")
   @PutMapping("/{id}")
-  @RequirePermission("knowledge:quality:edit")
+  @RequirePermission("knowledge:quality:update")
   @OperationLog(module = "质量管理", action = "更新检查标准")
   public Result<QualityCheckStandardDTO> updateStandard(
       @PathVariable final Long id, @RequestBody final CreateQualityCheckStandardCommand command) {

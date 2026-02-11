@@ -132,7 +132,7 @@ public class PurchaseController {
    */
   @Operation(summary = "开始采购")
   @PostMapping("/{id}/start")
-  @RequirePermission("admin:purchase:edit")
+  @RequirePermission("admin:purchase:update")
   @OperationLog(module = "采购管理", action = "开始采购")
   public Result<Void> startPurchasing(
       @PathVariable final Long id,
@@ -163,7 +163,7 @@ public class PurchaseController {
    */
   @Operation(summary = "取消采购申请")
   @PostMapping("/{id}/cancel")
-  @RequirePermission("admin:purchase:edit")
+  @RequirePermission("admin:purchase:update")
   @OperationLog(module = "采购管理", action = "取消采购申请")
   public Result<Void> cancel(@PathVariable final Long id) {
     purchaseAppService.cancelRequest(id);

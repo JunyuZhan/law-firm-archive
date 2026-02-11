@@ -97,7 +97,7 @@ public class EvidenceListController {
    */
   @Operation(summary = "更新证据清单")
   @PutMapping("/{id}")
-  @RequirePermission("evidence:edit")
+  @RequirePermission("evidence:update")
   @OperationLog(module = "证据清单", action = "更新证据清单")
   public Result<EvidenceListDTO> update(
       @PathVariable final Long id,
@@ -131,7 +131,7 @@ public class EvidenceListController {
    */
   @Operation(summary = "生成清单文件")
   @PostMapping("/{id}/generate")
-  @RequirePermission("evidence:edit")
+  @RequirePermission("evidence:update")
   @OperationLog(module = "证据清单", action = "生成证据清单文件")
   public Result<String> generate(
       @PathVariable final Long id, @RequestParam(defaultValue = "docx") final String format) {
@@ -238,7 +238,7 @@ public class EvidenceListController {
    */
   @Operation(summary = "保存证据清单到卷宗", description = "将证据清单导出为PDF并保存到指定的卷宗目录")
   @PostMapping("/{id}/save-to-dossier")
-  @RequirePermission("evidence:edit")
+  @RequirePermission("evidence:update")
   @OperationLog(module = "证据清单", action = "保存证据清单到卷宗")
   public Result<Long> saveToDossier(
       @PathVariable final Long id, @RequestParam final Long dossierItemId) {

@@ -127,7 +127,7 @@ public class EvidenceController {
    * @return 证据信息
    */
   @PutMapping("/{id}")
-  @RequirePermission("evidence:edit")
+  @RequirePermission("evidence:update")
   @OperationLog(module = "证据管理", action = "更新证据")
   public Result<EvidenceDTO> update(
       @PathVariable final Long id, @Valid @RequestBody final UpdateEvidenceCommand command) {
@@ -156,7 +156,7 @@ public class EvidenceController {
    * @return 空结果
    */
   @PutMapping("/{id}/sort")
-  @RequirePermission("evidence:edit")
+  @RequirePermission("evidence:update")
   public Result<Void> updateSort(
       @PathVariable final Long id, @RequestParam final Integer sortOrder) {
     evidenceAppService.updateSortOrder(id, sortOrder);
@@ -171,7 +171,7 @@ public class EvidenceController {
    * @return 空结果
    */
   @PostMapping("/batch-group")
-  @RequirePermission("evidence:edit")
+  @RequirePermission("evidence:update")
   @OperationLog(module = "证据管理", action = "批量调整分组")
   public Result<Void> batchUpdateGroup(
       @RequestBody @jakarta.validation.constraints.Size(min = 1, max = 100, message = "批量操作数量需在1-100之间")

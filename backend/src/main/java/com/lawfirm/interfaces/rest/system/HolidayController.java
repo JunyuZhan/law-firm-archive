@@ -255,7 +255,7 @@ public class HolidayController {
    */
   @Operation(summary = "同步节假日数据", description = "管理员手动触发同步指定年份的节假日数据到本地缓存")
   @PostMapping("/sync/{year}")
-  @RequirePermission("system:config:manage")
+  @RequirePermission("sys:config:manage")
   public Result<Map<String, Object>> syncHolidays(
       @Parameter(description = "年份") @PathVariable final int year) {
 

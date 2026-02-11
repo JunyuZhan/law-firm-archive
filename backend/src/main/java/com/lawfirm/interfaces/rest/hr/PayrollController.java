@@ -122,7 +122,7 @@ public class PayrollController {
    * @return 工资明细
    */
   @PostMapping("/{id}/add-item")
-  @RequirePermission("payroll:edit")
+  @RequirePermission("payroll:update")
   public Result<PayrollItemDTO> addPayrollItem(
       @PathVariable final Long id, @Valid @RequestBody final AddPayrollItemCommand command) {
     PayrollItemDTO dto = payrollAppService.addPayrollItemForEmployee(id, command);
@@ -137,7 +137,7 @@ public class PayrollController {
    * @return 更新结果
    */
   @PutMapping("/item/{itemId}")
-  @RequirePermission("payroll:edit")
+  @RequirePermission("payroll:update")
   public Result<PayrollItemDTO> updatePayrollItem(
       @PathVariable final Long itemId, @Valid @RequestBody final UpdatePayrollItemCommand command) {
     command.setPayrollItemId(itemId);
@@ -155,7 +155,7 @@ public class PayrollController {
    * @return 更新结果
    */
   @PutMapping("/item/by-employee")
-  @RequirePermission("payroll:edit")
+  @RequirePermission("payroll:update")
   public Result<PayrollItemDTO> updatePayrollItemByEmployee(
       @RequestParam final Integer year,
       @RequestParam final Integer month,

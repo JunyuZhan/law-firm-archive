@@ -91,7 +91,7 @@ public class DictController {
    */
   @Operation(summary = "更新字典类型")
   @PutMapping("/types/{id}")
-  @RequirePermission("sys:dict:edit")
+  @RequirePermission("sys:dict:update")
   @OperationLog(module = "数据字典", action = "更新字典类型")
   public Result<DictTypeDTO> updateDictType(
       @PathVariable final Long id, @RequestBody final CreateDictTypeCommand command) {
@@ -150,7 +150,7 @@ public class DictController {
    */
   @Operation(summary = "更新字典项")
   @PutMapping("/items/{id}")
-  @RequirePermission("sys:dict:edit")
+  @RequirePermission("sys:dict:update")
   @OperationLog(module = "数据字典", action = "更新字典项")
   public Result<DictItemDTO> updateDictItem(
       @PathVariable final Long id, @RequestBody final CreateDictItemCommand command) {
@@ -180,7 +180,7 @@ public class DictController {
    */
   @Operation(summary = "启用/禁用字典项")
   @PostMapping("/items/{id}/toggle")
-  @RequirePermission("sys:dict:edit")
+  @RequirePermission("sys:dict:update")
   public Result<Void> toggleDictItemStatus(@PathVariable final Long id) {
     dictAppService.toggleDictItemStatus(id);
     return Result.success();

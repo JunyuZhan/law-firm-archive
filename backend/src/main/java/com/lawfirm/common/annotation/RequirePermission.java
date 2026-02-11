@@ -9,7 +9,7 @@ import java.lang.annotation.Target;
 /**
  * 权限校验注解
  *
- * <p>使用示例： @RequirePermission("sys:user:create") @RequirePermission(value = {"sys:user:edit",
+ * <p>使用示例： @RequirePermission("sys:user:create") @RequirePermission(value = {"sys:user:update",
  * "sys:user:delete"}, logical = Logical.OR)
  */
 @Target({ElementType.METHOD, ElementType.TYPE})

@@ -92,7 +92,7 @@ public class LawRegulationController {
    */
   @Operation(summary = "更新法规")
   @PutMapping("/{id}")
-  @RequirePermission("knowledge:law:edit")
+  @RequirePermission("knowledge:law:update")
   @OperationLog(module = "法规库", action = "更新法规")
   public Result<LawRegulationDTO> updateRegulation(
       @PathVariable final Long id, @RequestBody final CreateLawRegulationCommand command) {
@@ -160,7 +160,7 @@ public class LawRegulationController {
    */
   @Operation(summary = "标注法规失效")
   @PostMapping("/{id}/mark-repealed")
-  @RequirePermission("knowledge:law:edit")
+  @RequirePermission("knowledge:law:update")
   @OperationLog(module = "法规库", action = "标注法规失效")
   public Result<LawRegulationDTO> markAsRepealed(
       @PathVariable final Long id, @RequestParam(required = false) final String reason) {

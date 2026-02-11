@@ -115,7 +115,7 @@ public class DeadlineController {
    */
   @Operation(summary = "更新期限提醒")
   @PutMapping
-  @RequirePermission("deadline:edit")
+  @RequirePermission("deadline:update")
   @OperationLog(module = "期限提醒管理", action = "更新期限提醒")
   public Result<DeadlineDTO> updateDeadline(
       @RequestBody @Valid final UpdateDeadlineCommand command) {
@@ -131,7 +131,7 @@ public class DeadlineController {
    */
   @Operation(summary = "完成期限")
   @PostMapping("/{id}/complete")
-  @RequirePermission("deadline:edit")
+  @RequirePermission("deadline:update")
   @OperationLog(module = "期限提醒管理", action = "完成期限")
   public Result<DeadlineDTO> completeDeadline(@PathVariable final Long id) {
     DeadlineDTO dto = deadlineAppService.completeDeadline(id);

@@ -437,7 +437,7 @@ public class DocumentController {
    * @return 文档信息
    */
   @PutMapping("/{id}")
-  @RequirePermission("doc:edit")
+  @RequirePermission("doc:update")
   @OperationLog(module = "文档管理", action = "更新文档")
   public Result<DocumentDTO> update(
       @PathVariable final Long id, @Valid @RequestBody final UpdateDocumentCommand command) {
@@ -453,7 +453,7 @@ public class DocumentController {
    * @return 文档信息
    */
   @PutMapping("/{id}/move")
-  @RequirePermission("doc:edit")
+  @RequirePermission("doc:update")
   @OperationLog(module = "文档管理", action = "移动文件")
   @Operation(summary = "移动文件", description = "将文件移动到指定的卷宗目录")
   public Result<DocumentDTO> moveDocument(
@@ -469,7 +469,7 @@ public class DocumentController {
    * @return 空结果
    */
   @PutMapping("/reorder")
-  @RequirePermission("doc:edit")
+  @RequirePermission("doc:update")
   @OperationLog(module = "文档管理", action = "重新排序文档")
   @Operation(summary = "重新排序文档", description = "按指定顺序重新排列文档")
   public Result<Void> reorderDocuments(@RequestBody final List<Long> documentIds) {
@@ -513,7 +513,7 @@ public class DocumentController {
    * @return 文档信息
    */
   @PostMapping("/{id}/versions/{version}/rollback")
-  @RequirePermission("doc:edit")
+  @RequirePermission("doc:update")
   @OperationLog(module = "文档管理", action = "版本回退")
   @Operation(summary = "回退到指定版本", description = "将文档回退到指定的历史版本，会创建一个新版本")
   public Result<DocumentDTO> rollbackToVersion(
@@ -676,7 +676,7 @@ public class DocumentController {
    * @return 编辑配置
    */
   @GetMapping("/{id}/edit")
-  @RequirePermission("doc:edit")
+  @RequirePermission("doc:update")
   @Operation(summary = "获取文档编辑配置", description = "获取 OnlyOffice 文档编辑配置，用于在线编辑文档")
   public Result<Map<String, Object>> getEditConfig(
       @PathVariable final Long id, final HttpServletRequest request) {

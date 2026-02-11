@@ -98,7 +98,7 @@ public class AnnouncementController {
    */
   @Operation(summary = "更新公告")
   @PutMapping("/{id}")
-  @RequirePermission("sys:announcement:edit")
+  @RequirePermission("sys:announcement:update")
   @OperationLog(module = "系统公告", action = "更新公告")
   public Result<AnnouncementDTO> updateAnnouncement(
       @PathVariable final Long id, @RequestBody final CreateAnnouncementCommand command) {

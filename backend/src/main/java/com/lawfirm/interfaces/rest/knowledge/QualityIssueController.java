@@ -65,7 +65,7 @@ public class QualityIssueController {
    */
   @Operation(summary = "更新问题状态")
   @PutMapping("/{id}/status")
-  @RequirePermission("knowledge:quality:edit")
+  @RequirePermission("knowledge:quality:update")
   @OperationLog(module = "质量管理", action = "更新问题状态")
   public Result<QualityIssueDTO> updateIssueStatus(
       @PathVariable final Long id,
