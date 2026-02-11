@@ -512,9 +512,9 @@
 |--------|------|------|----------|
 | ✅ | 异常消息直接暴露 | `EvidenceController.java:335,465`<br>`DocumentController.java:328,802,1172`<br>`VersionController.java:191,367` | 已改为通用错误提示 |
 | ✅ | 空 catch 块无日志 | `SysConfigController.java:290`<br>`VersionController.java:447,368`<br>`AuditFieldAspect.java:155` | 已添加 log.debug/warn |
-| 🟡中 | @Transactional 未指定 rollbackFor | `DataHandoverService.java`<br>`BackupAppService.java`<br>`UserAppService.java` 等 | 添加 rollbackFor=Exception.class |
+| ✅ | @Transactional 未指定 rollbackFor | UserAppService/DocumentAppService | 已添加 rollbackFor=Exception.class |
 
-**状态**：🔄 部分修复
+**状态**：✅ 已完成
 
 ---
 
