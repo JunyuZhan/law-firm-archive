@@ -109,6 +109,8 @@ public class SecurityConfig {
                         "/auth/captcha",
                         "/auth/slider/**", // 滑块验证接口
                         "/auth/login/status", // 登录状态检查接口
+                        "/system/config/public", // 公共配置接口（ICP备案号等）
+                        "/system/config/version", // 版本信息接口
                         "/swagger-ui/**",
                         "/swagger-ui.html",
                         "/v3/api-docs/**",
@@ -131,6 +133,8 @@ public class SecurityConfig {
                         "/auth/captcha",
                         "/auth/slider/**", // 滑块验证接口
                         "/auth/login/status", // 登录状态检查接口
+                        "/system/config/public", // 公共配置接口（ICP备案号等）
+                        "/system/config/version", // 版本信息接口
                         "/actuator/health",
                         "/error",
                         "/document/*/callback", // OnlyOffice 回调接口（无需认证）
