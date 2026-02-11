@@ -576,7 +576,7 @@ onMounted(() => {
           <Space>
             <a
               v-if="row.status !== 'PAID'"
-              v-access:code="'fee:payment'"
+              v-access:code="'finance:payment:manage'"
               @click="handleAdd(row)"
               >登记收款</a
             >
