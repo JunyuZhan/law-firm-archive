@@ -494,6 +494,7 @@ function handleModalSuccess() {
       })
       .catch((error) => {
         console.error('加载案由详情失败:', error);
+        message.error('刷新案由详情失败');
       });
   }
 }

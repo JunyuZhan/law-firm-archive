@@ -193,6 +193,7 @@ async function loadTodaySchedules() {
     todaySchedules.value = res || [];
   } catch (error) {
     console.error('加载今日日程失败', error);
+    message.error('加载今日日程失败');
   }
 }
 
@@ -207,6 +208,7 @@ async function loadOffDays() {
     offDays.value = new Set(res.offDays || []);
   } catch (error) {
     console.error('加载休息日数据失败', error);
+    // 不提示用户，休息日数据不影响核心功能
   }
 }
 
@@ -230,6 +232,7 @@ async function loadMatters() {
     }));
   } catch (error) {
     console.error('加载项目列表失败', error);
+    message.error('加载项目列表失败');
   }
 }
 

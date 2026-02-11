@@ -884,9 +884,9 @@
 | ✅ | 财务报表加载失败无提示 | `finance/report/index.vue` | 统计失败次数，全部/部分失败时提示 |
 | 🟡中 | 客户列表无 try-catch | `crm/client/index.vue:242-254` | 依赖 grid 默认处理 |
 | 🟡中 | 合同详情加载失败无提示 | `matter/contract/index.vue` | catch 中只有 console.error |
-| 🟡中 | 批量审批无 loading | `workbench/approval/index.vue` | Modal.confirm 无 confirmLoading |
+| ✅ | 批量审批无 loading | `workbench/approval/index.vue` | onOk 返回 Promise，失败时 throw |
 
-**状态**：🔄 高优先级已修复
+**状态**：✅ 已完成
 
 ---
 
@@ -1019,12 +1019,12 @@
 
 | 优先级 | 问题 | 位置 | 修复方案 |
 |--------|------|------|----------|
-| 🔴高 | 文档查看/删除未校验项目权限 | `DocumentAppService.java` | 需要验证 matterId 访问权限 |
-| 🔴高 | 批量下载未逐项校验权限 | `DocumentController.java:278-308` | 添加逐项权限检查 |
+| ✅ | 文档查看/删除未校验项目权限 | `DocumentAppService.java` | 添加 validateDocumentAccess |
+| ✅ | 批量下载未逐项校验权限 | `DocumentController.java:278-308` | getDocumentById 已含权限检查 |
 | 🟡中 | 删除合同参与人未校验合同权限 | `ContractParticipantService.java:167` | 添加合同归属校验 |
 | 🟡中 | 删除客户未校验数据权限 | `ClientAppService.java:341` | 添加数据范围校验 |
 
-**状态**：⏳ 待修复（架构改动较大）
+**状态**：🔄 高优先级已修复
 
 ---
 
@@ -1278,10 +1278,10 @@
 | ✅ | 会话列表加载失败空 catch | `SessionTab.vue:82-83` | 添加 message.error |
 | ✅ | 登录日志加载失败空 catch | `LoginLogTab.vue:74-76` | 添加 message.error |
 | ✅ | 登录日志详情失败无提示 | `LoginLogTab.vue:86-88` | 添加 message.warning |
-| 🟡中 | 日程页多个加载仅 console | `schedule/index.vue` | 添加用户反馈 |
-| 🟡中 | 案由详情加载仅 console | `CauseOfActionTab.vue:495` | 添加用户反馈 |
+| ✅ | 日程页多个加载仅 console | `schedule/index.vue` | 添加 message.error |
+| ✅ | 案由详情加载仅 console | `CauseOfActionTab.vue:495` | 添加 message.error |
 
-**状态**：🔄 高优先级已修复
+**状态**：✅ 已完成
 
 ---
 

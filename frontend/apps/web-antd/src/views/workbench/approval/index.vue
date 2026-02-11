@@ -182,6 +182,7 @@ function handleApprove(row: ApprovalDTO) {
     okType: 'primary',
     cancelText: '取消',
     onOk: async () => {
+      // 返回 Promise，Modal 会自动显示 loading 状态
       try {
         await approveApproval({
           approvalId: row.id,
@@ -193,6 +194,8 @@ function handleApprove(row: ApprovalDTO) {
       } catch (error: unknown) {
         const err = error as { message?: string };
         message.error(err.message || '审批失败');
+        // 重新抛出错误，阻止 Modal 关闭
+        throw error;
       }
     },
   });
@@ -268,6 +271,7 @@ async function handleBatchApprove() {
       } catch (error: unknown) {
         const err = error as { message?: string };
         message.error(err.message || '批量审批失败');
+        throw error;
       }
     },
   });

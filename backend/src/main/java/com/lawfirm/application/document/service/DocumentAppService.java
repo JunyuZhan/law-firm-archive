@@ -373,6 +373,8 @@ public class DocumentAppService {
    */
   public DocumentDTO getDocumentById(final Long id) {
     Document document = documentRepository.getByIdOrThrow(id, "文档不存在");
+    // 校验用户是否有权访问该文档所属项目
+    validateDocumentAccess(document);
     return toDTO(document);
   }
 
@@ -383,7 +385,10 @@ public class DocumentAppService {
    * @return 文档实体
    */
   public Document getDocumentEntityById(final Long id) {
-    return documentRepository.getByIdOrThrow(id, "文档不存在");
+    Document document = documentRepository.getByIdOrThrow(id, "文档不存在");
+    // 校验用户是否有权访问该文档所属项目
+    validateDocumentAccess(document);
+    return document;
   }
 
   /**
@@ -394,6 +399,8 @@ public class DocumentAppService {
    */
   public List<DocumentDTO> getDocumentVersions(final Long id) {
     Document document = documentRepository.getByIdOrThrow(id, "文档不存在");
+    // 校验用户是否有权访问该文档所属项目
+    validateDocumentAccess(document);
     Long rootId = document.getParentDocId() != null ? document.getParentDocId() : document.getId();
 
     List<Document> versions = documentRepository.findAllVersions(rootId);
@@ -478,6 +485,8 @@ public class DocumentAppService {
   @Transactional
   public void deleteDocument(final Long id) {
     Document document = documentRepository.getByIdOrThrow(id, "文档不存在");
+    // 校验用户是否有权删除该文档
+    validateDocumentAccess(document);
     String title = document.getTitle();
     // 使用 softDelete 方法，它会调用 MyBatis-Plus 的 removeById
     // 这会自动将 deleted 字段设置为 true
@@ -493,6 +502,8 @@ public class DocumentAppService {
   @Transactional
   public void archiveDocument(final Long id) {
     Document document = documentRepository.getByIdOrThrow(id, "文档不存在");
+    // 校验用户是否有权归档该文档
+    validateDocumentAccess(document);
     document.setStatus("ARCHIVED");
     documentRepository.updateById(document);
     log.info("文档归档成功: {}", document.getTitle());
@@ -1193,6 +1204,19 @@ public class DocumentAppService {
             .replace("http://host.docker.internal:8088/", "http://onlyoffice/");
 
     return normalizedUrl;
+  }
+
+  /**
+   * 校验用户是否有权访问文档.
+   *
+   * <p>如果文档关联了项目（matterId 不为空），则校验用户是否是项目成员。
+   *
+   * @param document 文档实体
+   */
+  private void validateDocumentAccess(final Document document) {
+    if (document.getMatterId() != null) {
+      matterAppService.validateMatterOwnership(document.getMatterId());
+    }
   }
 
   /**
