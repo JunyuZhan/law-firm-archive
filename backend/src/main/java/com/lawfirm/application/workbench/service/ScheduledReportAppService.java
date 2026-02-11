@@ -375,12 +375,12 @@ public class ScheduledReportAppService {
   private void sendNotification(
       final ScheduledReport task, final ReportDTO report, final ScheduledReportLog logRecord) {
     try {
-      // 解析接收人
-      List<Long> userIds = new ArrayList<>();
+      // 解析接收人（使用 Set 自动去重）
+      Set<Long> userIdSet = new HashSet<>();
 
       // 添加任务创建者
       if (task.getCreatedBy() != null) {
-        userIds.add(task.getCreatedBy());
+        userIdSet.add(task.getCreatedBy());
       }
 
       // 添加指定的通知用户（安全解析，跳过无效 ID）
@@ -390,15 +390,15 @@ public class ScheduledReportAppService {
             .filter(s -> !s.isEmpty())
             .forEach(s -> {
               try {
-                userIds.add(Long.parseLong(s));
+                userIdSet.add(Long.parseLong(s));
               } catch (NumberFormatException e) {
                 log.warn("跳过无效的通知用户 ID: {}", s);
               }
             });
       }
 
-      // 去重
-      userIds = userIds.stream().distinct().collect(Collectors.toList());
+      // 转换为 List
+      List<Long> userIds = new ArrayList<>(userIdSet);
 
       if (userIds.isEmpty()) {
         logRecord.setNotifyStatus("SKIPPED");
