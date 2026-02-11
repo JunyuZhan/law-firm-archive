@@ -119,6 +119,7 @@ function setupAccessGuard(router: Router) {
       accessStore.setAccessMenus(accessibleMenus);
       accessStore.setAccessRoutes(accessibleRoutes);
       accessStore.setIsAccessChecked(true);
+
       const redirectPath = (from.query.redirect ??
         (to.path === preferences.app.defaultHomePath
           ? userInfo?.homePath || preferences.app.defaultHomePath

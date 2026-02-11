@@ -21,6 +21,10 @@ export const overridesPreferences = defineOverridesPreferences({
     fit: 'contain',
     source: '/logo.png',
   },
+  footer: {
+    enable: true, // 启用页脚，显示版权和 ICP 备案信息
+    fixed: false,
+  },
   copyright: {
     companyName: '智慧律所管理系统',
     companySiteLink: '',
@@ -28,7 +32,7 @@ export const overridesPreferences = defineOverridesPreferences({
     enable: true,
     icp: '',
     icpLink: '',
-    settingShow: true,
+    settingShow: false, // 版权配置由后台系统配置管理，不在偏好设置中显示
   },
   theme: {
     mode: 'light', // 默认浅色主题

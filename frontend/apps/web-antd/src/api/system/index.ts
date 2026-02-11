@@ -50,7 +50,7 @@ import type {
 /**
  * 系统管理模块 API
  */
-import { requestClient } from '#/api/request';
+import { baseRequestClient, requestClient } from '#/api/request';
 
 // ========== 用户管理 API ==========
 
@@ -325,6 +325,23 @@ export function toggleDictItemStatus(id: number) {
 }
 
 // ========== 系统配置 API ==========
+
+/** 前端公共配置类型 */
+export interface PublicConfigDTO {
+  /** 系统名称 */
+  name?: string;
+  /** 版权信息 */
+  copyright?: string;
+  /** ICP 备案号 */
+  icp?: string;
+  /** ICP 链接 */
+  icpLink?: string;
+}
+
+/** 获取前端公共配置（无需登录，使用 baseRequestClient 避免 store 依赖） */
+export function getPublicConfig() {
+  return baseRequestClient.get<PublicConfigDTO>('/system/config/public');
+}
 
 /** 获取系统配置列表 */
 export function getSysConfigList() {

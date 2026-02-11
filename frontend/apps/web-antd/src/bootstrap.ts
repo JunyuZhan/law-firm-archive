@@ -2,13 +2,14 @@ import { createApp, watchEffect } from 'vue';
 
 import { registerAccessDirective } from '@vben/access';
 import { registerLoadingDirective } from '@vben/common-ui/es/loading';
-import { preferences } from '@vben/preferences';
+import { preferences, updatePreferences } from '@vben/preferences';
 import { initStores } from '@vben/stores';
 import '@vben/styles';
 import '@vben/styles/antd';
 
 import { useTitle } from '@vueuse/core';
 
+import { getPublicConfig } from '#/api/system';
 import { $t, setupI18n } from '#/locales';
 
 import { initComponentAdapter } from './adapter/component';
@@ -48,6 +49,22 @@ async function bootstrap(namespace: string) {
 
   // 配置 pinia-tore
   await initStores(app, { namespace });
+
+  // 从后台获取公共配置（ICP 备案号等）并更新到 preferences
+  try {
+    const publicConfig = await getPublicConfig();
+    if (publicConfig) {
+      updatePreferences({
+        copyright: {
+          icp: publicConfig.icp || '',
+          icpLink: publicConfig.icpLink || '',
+        },
+      });
+    }
+  } catch (error) {
+    // 静默处理错误，不影响应用启动
+    console.warn('获取公共配置失败:', error);
+  }
 
   // 安装权限指令
   registerAccessDirective(app);

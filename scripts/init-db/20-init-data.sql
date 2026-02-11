@@ -41,6 +41,8 @@ VALUES
 ('sys.name', '智慧律所管理系统', '系统名称', 'STRING', '系统显示名称，用于页面标题等', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
 ('sys.version', '1.0.0-alpha.2', '系统版本', 'STRING', '当前系统版本号', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
 ('sys.copyright', '© 2026 智慧律所', '版权信息', 'STRING', '页面底部版权信息', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('sys.icp', '', 'ICP备案号', 'STRING', 'ICP备案号，如：黔ICP备2024XXXXXX号', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
+('sys.icpLink', 'https://beian.miit.gov.cn/', 'ICP备案链接', 'STRING', 'ICP备案查询链接，默认为工信部备案系统', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
 
 -- 系统维护模式配置
 ('sys.maintenance.enabled', 'false', '维护模式开关', 'BOOLEAN', '是否启用系统维护模式，启用后将阻止非管理员用户访问', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false),
@@ -2155,3 +2157,4 @@ WHERE m.permission IN (
   'client:contact-record:list', 'client:contact-record:create', 'client:contact-record:update', 'client:contact-record:delete'
 )
 AND NOT EXISTS (SELECT 1 FROM public.sys_role_menu rm WHERE rm.role_id = 4 AND rm.menu_id = m.id);
+

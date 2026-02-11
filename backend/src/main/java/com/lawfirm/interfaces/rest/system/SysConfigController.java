@@ -272,6 +272,29 @@ public class SysConfigController {
     return Result.success();
   }
 
+  // ============ 前端公共配置接口（无需认证） ============
+
+  /**
+   * 获取前端公共配置（无需登录）
+   * 用于获取 ICP 备案号、系统名称等公开信息
+   *
+   * @return 公共配置
+   */
+  @Operation(summary = "获取前端公共配置")
+  @GetMapping("/public")
+  public Result<Map<String, String>> getPublicConfig() {
+    Map<String, String> config = new HashMap<>();
+    // 系统名称
+    config.put("name", configAppService.getConfigValue("sys.name"));
+    // 版权信息
+    config.put("copyright", configAppService.getConfigValue("sys.copyright"));
+    // ICP 备案号
+    config.put("icp", configAppService.getConfigValue("sys.icp"));
+    // ICP 链接
+    config.put("icpLink", configAppService.getConfigValue("sys.icpLink"));
+    return Result.success(config);
+  }
+
   // ============ 系统版本信息相关接口 ============
 
   /**

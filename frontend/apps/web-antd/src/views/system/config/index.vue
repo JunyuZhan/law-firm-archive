@@ -194,6 +194,8 @@ const configGroupOrder: Record<string, number> = {
   'sys.name': 1,
   'sys.version': 2,
   'sys.copyright': 3,
+  'sys.icp': 4,
+  'sys.icpLink': 5,
 
   // 2. 登录安全配置
   'sys.login.captcha': 10,
