@@ -10,7 +10,6 @@ import {
   Plus,
   UploadOutlined,
 } from '@vben/icons';
-import { useUserStore } from '@vben/stores';
 
 import {
   Button,
@@ -30,17 +29,14 @@ import {
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import { uploadFile } from '#/api/document';
 import { requestClient } from '#/api/request';
+import { usePermission } from '#/hooks/usePermission';
 
 defineOptions({ name: 'HrTraining' });
 
-const userStore = useUserStore();
-const isAdmin = computed(() => {
-  const roles = userStore.userInfo?.roles ?? [];
-  // 管理员(ADMIN)、律所主任(DIRECTOR)、行政(ADMIN_STAFF) 可以发布和管理培训通知
-  return roles.some((role) =>
-    ['ADMIN', 'ADMIN_STAFF', 'DIRECTOR'].includes(String(role).toUpperCase()),
-  );
-});
+const { hasPermission } = usePermission();
+
+// 是否有培训管理权限（可发布、删除培训通知，查看完成情况）
+const isAdmin = computed(() => hasPermission('hr:training:list'));
 
 // ==================== 类型定义 ====================
 
