@@ -46,7 +46,9 @@ import {
   Tag,
   Textarea,
   Tooltip,
+  Upload,
 } from 'ant-design-vue';
+import { UploadOutlined } from '@vben/icons';
 
 import { requestClient } from '#/api/request';
 import {
@@ -146,18 +148,10 @@ const updateInfo = ref<null | {
   releaseUrl?: string;
 }>(null);
 
-// 升级相关
-interface UpgradeStep {
-  title: string;
-  command: string;
-  description: string;
-}
-interface UpgradeGuide {
-  currentVersion: string;
-  steps: UpgradeStep[];
-  quickCommand: string;
-}
-const upgradeGuide = ref<null | UpgradeGuide>(null);
+// 离线升级相关
+const offlineUpgradeVisible = ref(false);
+const offlineUploadLoading = ref(false);
+const offlineUpgradeFile = ref<File | null>(null);
 
 // 邮件通知相关
 const emailStatus = ref({ enabled: false });
@@ -406,29 +400,51 @@ function viewReleaseNotes() {
   }
 }
 
-// 获取升级指南
-async function loadUpgradeGuide() {
-  try {
-    const res = await requestClient.get<UpgradeGuide>(
-      '/system/version/upgrade/guide',
-    );
-    upgradeGuide.value = res;
-  } catch (error: unknown) {
-    console.error('获取升级指南失败', error);
+// 打开离线升级对话框
+function openOfflineUpgrade() {
+  offlineUpgradeVisible.value = true;
+  offlineUpgradeFile.value = null;
+}
+
+// 处理离线升级文件选择
+function handleOfflineFileChange(info: { file: { originFileObj?: File } }) {
+  offlineUpgradeFile.value = info.file.originFileObj || null;
+}
+
+// 执行离线升级
+async function executeOfflineUpgrade() {
+  if (!offlineUpgradeFile.value) {
+    message.warning('请先选择升级包文件');
+    return;
   }
-}
 
-// 复制命令
-function copyCommand(command: string) {
-  navigator.clipboard.writeText(command);
-  message.success('命令已复制到剪贴板');
-}
+  offlineUploadLoading.value = true;
+  upgradeModalVisible.value = true;
+  upgradeStatus.value = 'running';
+  upgradeProgress.value = 0;
+  upgradeMessage.value = '正在上传升级包...';
 
-// 复制一键升级命令
-function copyQuickUpgradeCommand() {
-  if (upgradeGuide.value?.quickCommand) {
-    navigator.clipboard.writeText(upgradeGuide.value.quickCommand);
-    message.success('一键升级命令已复制');
+  try {
+    const formData = new FormData();
+    formData.append('file', offlineUpgradeFile.value);
+
+    const res = await requestClient.post<{
+      message: string;
+      upgradeId: string;
+    }>('/system/version/upgrade/offline', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+
+    upgradeId.value = res.upgradeId;
+    upgradeMessage.value = res.message;
+    offlineUpgradeVisible.value = false;
+    startUpgradePolling();
+  } catch (error: unknown) {
+    const err = error as { message?: string };
+    upgradeStatus.value = 'failed';
+    upgradeMessage.value = err.message || '离线升级失败';
+  } finally {
+    offlineUploadLoading.value = false;
   }
 }
 
@@ -917,7 +933,6 @@ onMounted(async () => {
   handlePreview();
   await loadMaintenanceStatus();
   await loadVersionInfo();
-  await loadUpgradeGuide();
   await loadEmailStatus();
   await loadWecomStatus();
 });
@@ -1373,119 +1388,115 @@ watch(activeTab, (newTab) => {
 
         <!-- 系统升级 -->
         <Card title="系统升级" :bordered="false" style="margin-top: 16px">
-          <template #extra>
-            <Button
-              type="primary"
-              :loading="upgradeLoading"
-              @click="confirmUpgrade"
-            >
-              一键升级
-            </Button>
-          </template>
-
           <Alert
             type="warning"
             show-icon
             message="升级前请务必备份数据"
-            description="升级过程中服务会短暂中断，请选择合适的时间进行"
+            description="升级过程中服务会短暂中断（约3-5分钟），请选择合适的时间进行"
             style="margin-bottom: 24px"
           />
 
-          <!-- 升级步骤 -->
-          <div v-if="upgradeGuide?.steps" style="margin-bottom: 24px">
-            <div
-              v-for="(step, index) in upgradeGuide.steps"
-              :key="index"
-              style="margin-bottom: 16px"
-            >
-              <div style="margin-bottom: 8px; font-weight: 500; color: #1890ff">
-                {{ step.title }}
-              </div>
-              <div
-                style="
-                  position: relative;
-                  padding: 12px 16px;
-                  font-family: monospace;
-                  background: #f5f5f5;
-                  border-radius: 8px;
-                "
-              >
-                <div style="padding-right: 60px; color: #333">
-                  {{ step.command }}
+          <Row :gutter="[24, 24]">
+            <!-- 在线升级 -->
+            <Col :span="12">
+              <Card size="small" title="在线升级（推荐）">
+                <template #extra>
+                  <Tag color="green">自动</Tag>
+                </template>
+                <div style="min-height: 80px; color: #666">
+                  <p>自动从 GitHub 拉取最新版本并部署。</p>
+                  <p style="font-size: 12px; color: #999">
+                    要求服务器能够访问 GitHub
+                  </p>
                 </div>
                 <Button
-                  type="text"
-                  size="small"
-                  style="position: absolute; top: 8px; right: 8px"
-                  @click="copyCommand(step.command)"
+                  type="primary"
+                  block
+                  :loading="upgradeLoading"
+                  @click="confirmUpgrade"
                 >
-                  复制
+                  一键升级
                 </Button>
-              </div>
-              <div style="margin-top: 4px; font-size: 12px; color: #888">
-                {{ step.description }}
-              </div>
-            </div>
-          </div>
+              </Card>
+            </Col>
 
-          <Divider orientation="left">一键升级命令</Divider>
-          <div
-            style="
-              position: relative;
-              padding: 16px;
-              background: #e6f7ff;
-              border: 1px solid #91d5ff;
-              border-radius: 8px;
-            "
-          >
-            <div style="margin-bottom: 8px; font-size: 12px; color: #1890ff">
-              <strong>提示：</strong
-              >在服务器项目根目录执行以下命令，自动完成备份 → 更新 → 部署
-            </div>
-            <div
-              style="
-                padding-right: 60px;
-                font-family: monospace;
-                color: #333;
-                word-break: break-all;
-              "
-            >
-              {{
-                upgradeGuide?.quickCommand ||
-                './scripts/ops/backup.sh && git pull origin main && ./scripts/deploy/deploy.sh --quick --no-cache'
-              }}
-            </div>
-            <Button
-              type="primary"
-              size="small"
-              style="position: absolute; top: 12px; right: 12px"
-              @click="copyQuickUpgradeCommand"
-            >
-              复制
-            </Button>
-          </div>
+            <!-- 离线升级 -->
+            <Col :span="12">
+              <Card size="small" title="离线升级">
+                <template #extra>
+                  <Tag color="blue">手动</Tag>
+                </template>
+                <div style="min-height: 80px; color: #666">
+                  <p>上传从 GitHub Releases 下载的升级包。</p>
+                  <p style="font-size: 12px; color: #999">
+                    适用于服务器无法访问外网的情况
+                  </p>
+                </div>
+                <Button block @click="openOfflineUpgrade">
+                  上传升级包
+                </Button>
+              </Card>
+            </Col>
+          </Row>
 
           <Divider style="margin-top: 24px" />
           <Alert type="info" :show-icon="false">
             <div style="margin-bottom: 8px; font-weight: 500">升级说明：</div>
             <ul style="padding-left: 20px; margin: 0; color: #666">
-              <li>
-                <code>./scripts/ops/backup.sh</code> - 备份数据库和文件到
-                <code>backups/</code> 目录
-              </li>
-              <li><code>git pull origin main</code> - 拉取最新代码</li>
-              <li>
-                <code>./scripts/deploy/deploy.sh --quick --no-cache</code> -
-                重新构建并部署
-              </li>
-              <li>升级完成后，刷新页面即可使用新版本</li>
+              <li><strong>在线升级</strong>：系统自动从 GitHub 拉取指定版本代码并重新部署</li>
+              <li><strong>离线升级</strong>：手动下载 GitHub Release 中的 Source code (zip) 文件并上传</li>
+              <li>升级完成后，请刷新页面以使用新版本</li>
               <li style="margin-top: 8px; color: #ff4d4f">
-                <strong>如需回滚</strong>：使用
-                <code>./scripts/ops/restore.sh</code> 恢复备份
+                <strong>如需回滚</strong>：在服务器执行
+                <code>./scripts/ops/restore.sh</code>
               </li>
             </ul>
           </Alert>
         </Card>
+
+        <!-- 离线升级对话框 -->
+        <AModal
+          v-model:open="offlineUpgradeVisible"
+          title="离线升级"
+          :confirm-loading="offlineUploadLoading"
+          ok-text="开始升级"
+          cancel-text="取消"
+          @ok="executeOfflineUpgrade"
+        >
+          <Alert
+            type="info"
+            show-icon
+            style="margin-bottom: 16px"
+          >
+            <template #message>下载升级包</template>
+            <template #description>
+              请前往
+              <a
+                href="https://github.com/JunyuZhan/law-firm/releases"
+                target="_blank"
+              >
+                GitHub Releases
+              </a>
+              下载对应版本的 <strong>Source code (zip)</strong> 文件
+            </template>
+          </Alert>
+
+          <Upload
+            :max-count="1"
+            :before-upload="() => false"
+            accept=".zip"
+            @change="handleOfflineFileChange"
+          >
+            <Button>
+              <UploadOutlined class="mr-1 size-4" />
+              选择升级包文件 (.zip)
+            </Button>
+          </Upload>
+
+          <div v-if="offlineUpgradeFile" style="margin-top: 12px; color: #52c41a">
+            已选择: {{ offlineUpgradeFile.name }}
+          </div>
+        </AModal>
 
         <!-- 升级进度模态框 -->
         <AModal

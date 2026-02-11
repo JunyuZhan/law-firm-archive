@@ -14,6 +14,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -239,6 +244,243 @@ public class VersionController {
         } catch (Exception e) {
             log.warn("获取 GitHub tags 失败: {}", e.getMessage());
             return Result.error("获取版本列表失败: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * 离线升级（上传升级包）
+     */
+    @Operation(summary = "离线升级", description = "上传从 GitHub 下载的升级包进行升级")
+    @PostMapping("/upgrade/offline")
+    @PreAuthorize("hasRole('ADMIN') or hasAuthority('system:config:edit')")
+    public Result<Map<String, Object>> offlineUpgrade(@RequestParam("file") MultipartFile file) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        String upgradeId = UUID.randomUUID().toString().substring(0, 8);
+        
+        try {
+            // 验证文件
+            if (file.isEmpty()) {
+                return Result.error("升级包文件不能为空");
+            }
+            String filename = file.getOriginalFilename();
+            if (filename == null || !filename.endsWith(".zip")) {
+                return Result.error("请上传 .zip 格式的升级包");
+            }
+            
+            // 查找项目根目录
+            String workDir = System.getProperty("user.dir");
+            Path projectRoot = findProjectRoot(workDir);
+            if (projectRoot == null) {
+                return Result.error("无法找到项目根目录");
+            }
+            
+            // 创建临时目录存放上传的文件
+            Path tempDir = Paths.get("/tmp/upgrade-" + upgradeId);
+            Files.createDirectories(tempDir);
+            
+            // 保存上传的文件
+            Path uploadedFile = tempDir.resolve("upgrade.zip");
+            file.transferTo(uploadedFile.toFile());
+            
+            // 创建升级状态文件
+            Path statusFile = Paths.get("/tmp/.upgrade-status-" + upgradeId + ".json");
+            writeUpgradeStatus(statusFile, "started", "升级包已上传，正在处理...", 10);
+            
+            result.put("upgradeId", upgradeId);
+            result.put("status", "started");
+            result.put("message", "升级包已上传，正在处理...");
+            
+            // 异步执行离线升级
+            String projectRootStr = projectRoot.toString();
+            Path tempDirFinal = tempDir;
+            CompletableFuture.runAsync(() -> {
+                executeOfflineUpgrade(projectRootStr, upgradeId, tempDirFinal);
+            }).exceptionally(ex -> {
+                log.error("离线升级任务执行失败: upgradeId={}", upgradeId, ex);
+                try {
+                    writeUpgradeStatus(statusFile, "failed", "升级任务异常: " + ex.getMessage(), -1);
+                } catch (Exception writeEx) {
+                    log.warn("写入升级状态失败", writeEx);
+                }
+                return null;
+            });
+            
+            return Result.success(result);
+        } catch (Exception e) {
+            log.error("离线升级失败", e);
+            return Result.error("离线升级失败: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * 执行离线升级
+     */
+    private void executeOfflineUpgrade(String projectRoot, String upgradeId, Path tempDir) {
+        Path statusFile = Paths.get("/tmp/.upgrade-status-" + upgradeId + ".json");
+        Path uploadedFile = tempDir.resolve("upgrade.zip");
+        
+        try {
+            log.info("开始离线升级: upgradeId={}, projectRoot={}", upgradeId, projectRoot);
+            
+            // 1. 解压升级包
+            writeUpgradeStatus(statusFile, "running", "正在解压升级包...", 20);
+            Path extractDir = tempDir.resolve("extracted");
+            Files.createDirectories(extractDir);
+            
+            unzip(uploadedFile, extractDir);
+            
+            // 2. 找到解压后的项目目录（GitHub zip 通常包含一层目录）
+            Path sourceDir = findExtractedProjectDir(extractDir);
+            if (sourceDir == null) {
+                writeUpgradeStatus(statusFile, "failed", "无效的升级包格式", -1);
+                return;
+            }
+            
+            // 3. 备份当前代码
+            writeUpgradeStatus(statusFile, "running", "正在备份当前版本...", 30);
+            // 可选：执行 git stash 或其他备份操作
+            executeCommand(projectRoot, "git", "stash", "push", "-m", "offline-upgrade-" + upgradeId);
+            
+            // 4. 复制新文件到项目目录
+            writeUpgradeStatus(statusFile, "running", "正在更新代码文件...", 50);
+            copyDirectory(sourceDir, Paths.get(projectRoot));
+            
+            // 5. 重新构建和部署
+            writeUpgradeStatus(statusFile, "running", "正在重新构建服务（这可能需要几分钟）...", 60);
+            
+            Path dockerCompose = Paths.get(projectRoot, "docker/docker-compose.prod.yml");
+            if (!Files.exists(dockerCompose)) {
+                dockerCompose = Paths.get(projectRoot, "docker-compose.yml");
+            }
+            
+            if (Files.exists(dockerCompose)) {
+                String dockerDir = dockerCompose.getParent().toString();
+                String composeFile = dockerCompose.getFileName().toString();
+                
+                // 重新构建
+                executeCommand(dockerDir, "docker-compose", "-f", composeFile, "build", "--no-cache", "backend", "frontend");
+                
+                writeUpgradeStatus(statusFile, "running", "正在重启服务...", 80);
+                
+                // 重启服务
+                executeCommand(dockerDir, "docker-compose", "-f", composeFile, "up", "-d", "--force-recreate", "backend", "frontend");
+                
+                writeUpgradeStatus(statusFile, "completed", "离线升级完成！请刷新页面。", 100);
+            } else {
+                writeUpgradeStatus(statusFile, "completed", "代码已更新。请手动重启服务以完成升级。", 100);
+            }
+            
+            // 6. 清理临时文件
+            deleteDirectory(tempDir);
+            log.info("离线升级完成: upgradeId={}", upgradeId);
+            
+        } catch (Exception e) {
+            log.error("离线升级执行异常", e);
+            try {
+                writeUpgradeStatus(statusFile, "failed", "升级失败: " + e.getMessage(), -1);
+            } catch (Exception writeEx) {
+                log.warn("写入升级状态文件失败", writeEx);
+            }
+        }
+    }
+    
+    /**
+     * 解压 ZIP 文件
+     */
+    private void unzip(Path zipFile, Path targetDir) throws IOException {
+        try (ZipInputStream zis = new ZipInputStream(Files.newInputStream(zipFile), StandardCharsets.UTF_8)) {
+            ZipEntry entry;
+            while ((entry = zis.getNextEntry()) != null) {
+                Path targetPath = targetDir.resolve(entry.getName()).normalize();
+                
+                // 安全检查：防止 zip slip 攻击
+                if (!targetPath.startsWith(targetDir)) {
+                    throw new IOException("ZIP 文件包含非法路径: " + entry.getName());
+                }
+                
+                if (entry.isDirectory()) {
+                    Files.createDirectories(targetPath);
+                } else {
+                    Files.createDirectories(targetPath.getParent());
+                    Files.copy(zis, targetPath);
+                }
+                zis.closeEntry();
+            }
+        }
+    }
+    
+    /**
+     * 找到解压后的项目目录
+     */
+    private Path findExtractedProjectDir(Path extractDir) throws IOException {
+        // GitHub 的 zip 文件通常包含一层目录，如 law-firm-main/
+        try (var stream = Files.list(extractDir)) {
+            return stream
+                .filter(Files::isDirectory)
+                .filter(p -> {
+                    // 检查是否包含项目标志文件
+                    return Files.exists(p.resolve("pom.xml")) 
+                        || Files.exists(p.resolve("backend/pom.xml"))
+                        || Files.exists(p.resolve("docker"));
+                })
+                .findFirst()
+                .orElse(null);
+        }
+    }
+    
+    /**
+     * 递归复制目录
+     */
+    private void copyDirectory(Path source, Path target) throws IOException {
+        try (var stream = Files.walk(source)) {
+            stream.forEach(sourcePath -> {
+                try {
+                    Path targetPath = target.resolve(source.relativize(sourcePath));
+                    
+                    // 跳过一些不需要覆盖的目录
+                    String relativePath = source.relativize(sourcePath).toString();
+                    if (relativePath.startsWith(".git") 
+                        || relativePath.contains("node_modules")
+                        || relativePath.contains("target")
+                        || relativePath.contains("dist")
+                        || relativePath.endsWith(".env")
+                        || relativePath.endsWith(".env.local")) {
+                        return;
+                    }
+                    
+                    if (Files.isDirectory(sourcePath)) {
+                        Files.createDirectories(targetPath);
+                    } else {
+                        Files.createDirectories(targetPath.getParent());
+                        Files.copy(sourcePath, targetPath, 
+                            java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                    }
+                } catch (IOException e) {
+                    log.warn("复制文件失败: {}", sourcePath, e);
+                }
+            });
+        }
+    }
+    
+    /**
+     * 递归删除目录
+     */
+    private void deleteDirectory(Path dir) {
+        try {
+            if (Files.exists(dir)) {
+                try (var stream = Files.walk(dir)) {
+                    stream.sorted((a, b) -> b.compareTo(a))
+                        .forEach(path -> {
+                            try {
+                                Files.delete(path);
+                            } catch (IOException e) {
+                                log.warn("删除临时文件失败: {}", path);
+                            }
+                        });
+                }
+            }
+        } catch (IOException e) {
+            log.warn("清理临时目录失败: {}", dir, e);
         }
     }
 
