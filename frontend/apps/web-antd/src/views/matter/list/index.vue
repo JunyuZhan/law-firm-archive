@@ -1091,7 +1091,7 @@ onMounted(async () => {
             新增项目
           </Button>
           <Button
-            v-access:code="['contract:create', 'matter:contract:create']"
+            v-access:code="'matter:contract:create'"
             @click="handleCreateContract"
           >
             创建合同
