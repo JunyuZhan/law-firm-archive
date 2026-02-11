@@ -94,12 +94,17 @@ public class AiUsageRecorder {
     try {
       // 优先使用调用方传入的用户ID（解决 @Async 线程中 SecurityContext 丢失问题）
       Long userId = callerUserId;
-      if (userId == null) {
-        // 兜底：尝试从 SecurityContext 获取（仅在同步调用或特殊配置时有效）
-        LoginUser loginUser = getLoginUserSafely();
-        if (loginUser != null) {
+      String userName = null;
+      Long departmentId = null;
+      
+      // 尝试从 SecurityContext 获取用户信息
+      LoginUser loginUser = getLoginUserSafely();
+      if (loginUser != null) {
+        if (userId == null) {
           userId = loginUser.getUserId();
         }
+        userName = loginUser.getRealName();
+        departmentId = loginUser.getDepartmentId();
       }
 
       if (userId == null) {
@@ -129,8 +134,8 @@ public class AiUsageRecorder {
       AiUsageLog usageLog =
           AiUsageLog.builder()
               .userId(userId)
-              .userName(loginUser.getRealName())
-              .departmentId(loginUser.getDepartmentId())
+              .userName(userName)
+              .departmentId(departmentId)
               .departmentName(null) // 可从缓存或数据库获取
               .integrationId(integration.getId())
               .integrationCode(integration.getIntegrationCode())
@@ -194,7 +199,8 @@ public class AiUsageRecorder {
         responseBody,
         durationMs,
         success,
-        errorMessage);
+        errorMessage,
+        null);
   }
 
   /**

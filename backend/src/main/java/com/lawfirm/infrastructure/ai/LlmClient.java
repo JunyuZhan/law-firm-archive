@@ -738,11 +738,11 @@ public class LlmClient {
 
     try {
       ResponseEntity<String> response = executeWithRetry(restTemplate, apiUrl, request, "Claude");
-      String body = response.getBody();
-      if (body == null || body.isBlank()) {
+      String responseBody = response.getBody();
+      if (responseBody == null || responseBody.isBlank()) {
         throw new RuntimeException("Claude API 响应体为空");
       }
-      JsonNode json = objectMapper.readTree(body);
+      JsonNode json = objectMapper.readTree(responseBody);
       JsonNode content = json.path("content");
       if (!content.isArray() || content.isEmpty()) {
         throw new RuntimeException("Claude 响应中 content 为空");
@@ -973,11 +973,11 @@ public class LlmClient {
 
     try {
       ResponseEntity<String> response = executeWithRetry(restTemplate, apiUrl, request, "MiniMax");
-      String body = response.getBody();
-      if (body == null || body.isBlank()) {
+      String responseBody = response.getBody();
+      if (responseBody == null || responseBody.isBlank()) {
         throw new RuntimeException("MiniMax API 响应体为空");
       }
-      JsonNode json = objectMapper.readTree(body);
+      JsonNode json = objectMapper.readTree(responseBody);
       JsonNode choices = json.path("choices");
       if (!choices.isArray() || choices.isEmpty()) {
         throw new RuntimeException("MiniMax 响应中 choices 为空");
@@ -1420,11 +1420,11 @@ public class LlmClient {
 
     try {
       ResponseEntity<String> response = executeWithRetry(restTemplate, apiUrl, request, apiName);
-      String body = response.getBody();
-      if (body == null || body.isBlank()) {
+      String responseBody = response.getBody();
+      if (responseBody == null || responseBody.isBlank()) {
         throw new RuntimeException(apiName + " API 响应体为空");
       }
-      JsonNode json = objectMapper.readTree(body);
+      JsonNode json = objectMapper.readTree(responseBody);
       JsonNode choices = json.path("choices");
       if (!choices.isArray() || choices.isEmpty()) {
         throw new RuntimeException(apiName + " 响应中 choices 为空");
