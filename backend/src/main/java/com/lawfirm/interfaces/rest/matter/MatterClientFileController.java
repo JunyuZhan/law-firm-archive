@@ -15,6 +15,7 @@ import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -28,6 +29,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /** 项目客户文件控制器 管理客户通过客服系统上传的文件 */
 @Tag(name = "项目客户文件", description = "管理客户通过客服系统上传的文件")
+@Slf4j
 @RestController
 @RequestMapping("/matter/client-files")
 @RequiredArgsConstructor
@@ -167,7 +169,7 @@ public class MatterClientFileController {
         response.setHeader("Access-Control-Allow-Origin", "*");
         response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "文件代理失败: " + e.getMessage());
       } catch (IOException ioException) {
-        // 忽略
+        log.warn("发送文件代理错误响应失败: {}", ioException.getMessage());
       }
     }
   }

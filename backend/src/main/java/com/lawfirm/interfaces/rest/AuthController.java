@@ -343,6 +343,7 @@ public class AuthController {
       userId = SecurityUtils.getUserId();
     } catch (Exception e) {
       // 用户未登录，允许继续执行（可能是token已过期的情况）
+      log.debug("登出时获取用户ID失败，可能是token已过期: {}", e.getMessage());
     }
 
     String token = httpRequest.getHeader("Authorization");

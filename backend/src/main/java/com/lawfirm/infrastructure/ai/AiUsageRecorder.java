@@ -393,7 +393,7 @@ public class AiUsageRecorder {
         return quota.getCustomChargeRatio();
       }
     } catch (Exception e) {
-      // 忽略
+      log.debug("获取用户自定义收费比例失败，使用默认值: {}", e.getMessage());
     }
 
     // 2. 使用默认配置

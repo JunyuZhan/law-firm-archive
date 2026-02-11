@@ -238,8 +238,8 @@ async function fetchUsageLogs() {
       createdAtTo: m.endOf('month').format('YYYY-MM-DD 23:59:59'),
     };
     const res = await getMyUsageLogs(params);
-    usageLogs.value = res.list;
-    pagination.total = res.total;
+    usageLogs.value = res?.list ?? [];
+    pagination.total = res?.total ?? 0;
   } catch (error: any) {
     message.error(error.message || '加载使用记录失败');
   } finally {

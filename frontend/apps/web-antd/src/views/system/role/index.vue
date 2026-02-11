@@ -134,8 +134,8 @@ async function fetchData() {
   loading.value = true;
   try {
     const res = await getRoleList(queryParams);
-    dataSource.value = res.list;
-    total.value = res.total;
+    dataSource.value = res?.list ?? [];
+    total.value = res?.total ?? 0;
   } catch (error: unknown) {
     const err = error as { message?: string };
     message.error(err.message || '加载角色列表失败');
