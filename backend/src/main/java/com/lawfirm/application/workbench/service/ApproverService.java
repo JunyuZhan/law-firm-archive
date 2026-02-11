@@ -117,9 +117,11 @@ public class ApproverService {
     // 2. 如果没有找到部门负责人，查找团队负责人
     List<Long> partnerIds = userMapper.selectUserIdsByRoleCode("TEAM_LEADER");
     if (partnerIds != null && !partnerIds.isEmpty()) {
+      // 批量加载用户，避免N+1查询
+      Map<Long, User> partnerMap = batchLoadUsers(partnerIds);
       for (Long partnerId : partnerIds) {
         if (!partnerId.equals(applicantId)) {
-          User partner = userRepository.getById(partnerId);
+          User partner = partnerMap.get(partnerId);
           if (partner != null && EmployeeStatus.ACTIVE.equals(partner.getStatus())) {
             log.info("找到用印申请审批人（团队负责人）: userId={}", partnerId);
             return partnerId;
@@ -131,9 +133,11 @@ public class ApproverService {
     // 3. 如果没有团队负责人，查找主任
     List<Long> directorIds = userMapper.selectUserIdsByRoleCode("DIRECTOR");
     if (directorIds != null && !directorIds.isEmpty()) {
+      // 批量加载用户，避免N+1查询
+      Map<Long, User> directorMap = batchLoadUsers(directorIds);
       for (Long directorId : directorIds) {
         if (!directorId.equals(applicantId)) {
-          User director = userRepository.getById(directorId);
+          User director = directorMap.get(directorId);
           if (director != null && EmployeeStatus.ACTIVE.equals(director.getStatus())) {
             log.info("找到用印申请审批人（主任）: userId={}", directorId);
             return directorId;
@@ -202,17 +206,41 @@ public class ApproverService {
       }
     }
 
-    // 2. 添加所有团队负责人（TEAM_LEADER角色）
+    // 2. 批量获取所有团队负责人和主任的ID
     List<Long> partnerIds = userMapper.selectUserIdsByRoleCode("TEAM_LEADER");
+    List<Long> directorIds = userMapper.selectUserIdsByRoleCode("DIRECTOR");
+
+    // 合并所有用户ID进行批量查询
+    Set<Long> allUserIds = new HashSet<>();
+    if (partnerIds != null) {
+      allUserIds.addAll(partnerIds);
+    }
+    if (directorIds != null) {
+      allUserIds.addAll(directorIds);
+    }
+
+    // 批量加载用户
+    Map<Long, User> userMap = batchLoadUsers(new ArrayList<>(allUserIds));
+
+    // 收集所有部门ID
+    Set<Long> deptIds = userMap.values().stream()
+        .map(User::getDepartmentId)
+        .filter(Objects::nonNull)
+        .collect(Collectors.toSet());
+
+    // 批量加载部门名称
+    Map<Long, String> deptNameMap = batchLoadDepartmentNames(deptIds);
+
+    // 添加所有团队负责人（TEAM_LEADER角色）
     if (partnerIds != null) {
       for (Long partnerId : partnerIds) {
         if (!partnerId.equals(applicantId) && !addedUserIds.contains(partnerId)) {
-          User partner = userRepository.getById(partnerId);
+          User partner = userMap.get(partnerId);
           if (partner != null && EmployeeStatus.ACTIVE.equals(partner.getStatus())) {
             Map<String, Object> approver = new HashMap<>();
             approver.put("id", partner.getId());
             approver.put("realName", partner.getRealName());
-            approver.put("departmentName", getDepartmentName(partner.getDepartmentId()));
+            approver.put("departmentName", deptNameMap.getOrDefault(partner.getDepartmentId(), ""));
             approver.put("position", "团队负责人");
             approvers.add(approver);
             addedUserIds.add(partner.getId());
@@ -222,16 +250,15 @@ public class ApproverService {
     }
 
     // 3. 添加主任（DIRECTOR角色）
-    List<Long> directorIds = userMapper.selectUserIdsByRoleCode("DIRECTOR");
     if (directorIds != null) {
       for (Long directorId : directorIds) {
         if (!directorId.equals(applicantId) && !addedUserIds.contains(directorId)) {
-          User director = userRepository.getById(directorId);
+          User director = userMap.get(directorId);
           if (director != null && EmployeeStatus.ACTIVE.equals(director.getStatus())) {
             Map<String, Object> approver = new HashMap<>();
             approver.put("id", director.getId());
             approver.put("realName", director.getRealName());
-            approver.put("departmentName", getDepartmentName(director.getDepartmentId()));
+            approver.put("departmentName", deptNameMap.getOrDefault(director.getDepartmentId(), ""));
             approver.put("position", "主任");
             approvers.add(approver);
             addedUserIds.add(director.getId());
@@ -510,17 +537,41 @@ public class ApproverService {
     List<Map<String, Object>> approvers = new ArrayList<>();
     Set<Long> addedUserIds = new HashSet<>();
 
-    // 1. 添加所有主任（DIRECTOR角色）- 优先显示
+    // 批量获取所有主任和团队负责人的ID
     List<Long> directorIds = userMapper.selectUserIdsByRoleCode("DIRECTOR");
+    List<Long> teamLeaderIds = userMapper.selectUserIdsByRoleCode("TEAM_LEADER");
+
+    // 合并所有用户ID进行批量查询
+    Set<Long> allUserIds = new HashSet<>();
+    if (directorIds != null) {
+      allUserIds.addAll(directorIds);
+    }
+    if (teamLeaderIds != null) {
+      allUserIds.addAll(teamLeaderIds);
+    }
+
+    // 批量加载用户
+    Map<Long, User> userMap = batchLoadUsers(new ArrayList<>(allUserIds));
+
+    // 收集所有部门ID
+    Set<Long> deptIds = userMap.values().stream()
+        .map(User::getDepartmentId)
+        .filter(Objects::nonNull)
+        .collect(Collectors.toSet());
+
+    // 批量加载部门名称
+    Map<Long, String> deptNameMap = batchLoadDepartmentNames(deptIds);
+
+    // 1. 添加所有主任（DIRECTOR角色）- 优先显示
     if (directorIds != null) {
       for (Long directorId : directorIds) {
         if (!directorId.equals(currentUserId) && !addedUserIds.contains(directorId)) {
-          User director = userRepository.getById(directorId);
+          User director = userMap.get(directorId);
           if (director != null && EmployeeStatus.ACTIVE.equals(director.getStatus())) {
             Map<String, Object> approver = new HashMap<>();
             approver.put("id", director.getId());
             approver.put("realName", director.getRealName());
-            approver.put("departmentName", getDepartmentName(director.getDepartmentId()));
+            approver.put("departmentName", deptNameMap.getOrDefault(director.getDepartmentId(), ""));
             approver.put("position", "主任");
             approver.put("recommended", true); // 标记为推荐
             approvers.add(approver);
@@ -531,16 +582,15 @@ public class ApproverService {
     }
 
     // 2. 添加所有团队负责人（TEAM_LEADER角色）
-    List<Long> teamLeaderIds = userMapper.selectUserIdsByRoleCode("TEAM_LEADER");
     if (teamLeaderIds != null) {
       for (Long leaderId : teamLeaderIds) {
         if (!leaderId.equals(currentUserId) && !addedUserIds.contains(leaderId)) {
-          User leader = userRepository.getById(leaderId);
+          User leader = userMap.get(leaderId);
           if (leader != null && EmployeeStatus.ACTIVE.equals(leader.getStatus())) {
             Map<String, Object> approver = new HashMap<>();
             approver.put("id", leader.getId());
             approver.put("realName", leader.getRealName());
-            approver.put("departmentName", getDepartmentName(leader.getDepartmentId()));
+            approver.put("departmentName", deptNameMap.getOrDefault(leader.getDepartmentId(), ""));
             approver.put("position", "团队负责人");
             approver.put("recommended", false);
             approvers.add(approver);

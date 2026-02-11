@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lawfirm.application.system.command.SendNotificationCommand;
 import com.lawfirm.application.system.dto.NotificationDTO;
 import com.lawfirm.application.system.dto.NotificationQueryDTO;
+import com.lawfirm.common.exception.BusinessException;
 import com.lawfirm.common.result.PageResult;
 import com.lawfirm.common.util.SecurityUtils;
 import com.lawfirm.domain.system.entity.Notification;
@@ -89,9 +90,22 @@ public class NotificationAppService {
    * 标记为已读
    *
    * @param id 通知ID
+   * @throws BusinessException 如果通知不存在或不属于当前用户
    */
   @Transactional
   public void markAsRead(final Long id) {
+    Long userId = SecurityUtils.getUserId();
+
+    // 验证通知存在且属于当前用户
+    Notification notification = notificationMapper.selectById(id);
+    if (notification == null) {
+      throw new BusinessException("通知不存在");
+    }
+
+    if (!userId.equals(notification.getReceiverId())) {
+      throw new BusinessException("无权操作该通知");
+    }
+
     notificationMapper.markAsRead(id);
   }
 

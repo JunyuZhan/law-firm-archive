@@ -92,12 +92,74 @@ public class DataPushService {
   /**
    * 推送项目数据到客户服务系统.
    *
+   * <p>优化：将事务和HTTP调用分离，避免数据库连接在HTTP调用期间被阻塞
+   *
    * @param request 推送请求
    * @param operatorId 操作人ID
    * @return 推送记录DTO
    */
-  @Transactional
   public PushRecordDTO pushMatterData(final PushRequest request, final Long operatorId) {
+    // 1. 在事务内完成数据验证和记录保存
+    PushContext context = savePushRecordInTransaction(request, operatorId);
+
+    // 2. 在事务外执行HTTP调用（避免阻塞数据库连接）
+    if (context.integration != null && Boolean.TRUE.equals(context.integration.getEnabled())) {
+      try {
+        PushResult result = callClientServiceApi(
+            context.integration, context.matterData, context.client, request);
+
+        // 更新推送结果（独立事务）
+        updatePushResultInTransaction(
+            context.record.getId(),
+            context.matter.getId(),
+            PushRecord.STATUS_SUCCESS,
+            result.externalId(),
+            result.externalUrl(),
+            null);
+
+        context.record.setStatus(PushRecord.STATUS_SUCCESS);
+        context.record.setExternalId(result.externalId());
+        context.record.setExternalUrl(result.externalUrl());
+
+      } catch (Exception e) {
+        log.error("推送到客户服务系统失败", e);
+        // 更新失败状态（独立事务）
+        updatePushResultInTransaction(
+            context.record.getId(),
+            null,
+            PushRecord.STATUS_FAILED,
+            null,
+            null,
+            e.getMessage());
+        context.record.setStatus(PushRecord.STATUS_FAILED);
+        context.record.setErrorMessage(e.getMessage());
+      }
+    } else {
+      // 客户服务系统未配置，标记为待推送
+      log.info("客户服务系统未配置或未启用，推送记录已保存，待后续处理");
+      context.record.setErrorMessage("客户服务系统未配置或未启用");
+    }
+
+    return convertToDTO(context.record, context.matter, context.client);
+  }
+
+  /**
+   * 推送上下文，用于在事务外传递数据.
+   */
+  private static class PushContext {
+    PushRecord record;
+    Matter matter;
+    Client client;
+    ExternalIntegration integration;
+    PortalMatterDTO matterData;
+  }
+
+  /**
+   * 在事务内保存推送记录.
+   */
+  @Transactional
+  protected PushContext savePushRecordInTransaction(
+      final PushRequest request, final Long operatorId) {
     // 1. 验证项目
     Matter matter = matterMapper.selectById(request.getMatterId());
     if (matter == null || matter.getDeleted()) {
@@ -123,14 +185,14 @@ public class DataPushService {
       throw new BusinessException("客户不存在");
     }
 
-    // 2. 获取客户服务系统配置
+    // 5. 获取客户服务系统配置
     ExternalIntegration integration = getClientServiceIntegration();
 
-    // 3. 组装推送数据（脱敏）
+    // 6. 组装推送数据（脱敏）
     PortalMatterDTO matterData =
         buildMatterData(matter, new HashSet<>(request.getScopes()), request.getDocumentIds());
 
-    // 4. 创建推送记录
+    // 7. 创建推送记录
     PushRecord record =
         PushRecord.builder()
             .matterId(matter.getId())
@@ -158,44 +220,36 @@ public class DataPushService {
 
     pushRecordMapper.insert(record);
 
-    // 5. 调用客户服务系统API
-    if (integration != null && Boolean.TRUE.equals(integration.getEnabled())) {
-      try {
-        PushResult result = callClientServiceApi(integration, matterData, client, request);
+    // 返回上下文供事务外使用
+    PushContext context = new PushContext();
+    context.record = record;
+    context.matter = matter;
+    context.client = client;
+    context.integration = integration;
+    context.matterData = matterData;
+    return context;
+  }
 
-        // 更新推送结果
-        pushRecordMapper.updatePushResult(
-            record.getId(),
-            PushRecord.STATUS_SUCCESS,
-            result.externalId(),
-            result.externalUrl(),
-            null);
+  /**
+   * 在独立事务中更新推送结果.
+   */
+  @Transactional
+  protected void updatePushResultInTransaction(
+      final Long recordId,
+      final Long matterId,
+      final String status,
+      final String externalId,
+      final String externalUrl,
+      final String errorMessage) {
+    pushRecordMapper.updatePushResult(recordId, status, externalId, externalUrl, errorMessage);
 
-        // 同步更新该项目所有历史成功记录的访问链接（因为 token 已更新，旧链接失效）
-        int updatedCount = pushRecordMapper.updateHistoricalExternalUrl(
-            matter.getId(), result.externalUrl());
-        if (updatedCount > 1) {
-          log.info("已同步更新 {} 条历史推送记录的访问链接: matterId={}", updatedCount, matter.getId());
-        }
-
-        record.setStatus(PushRecord.STATUS_SUCCESS);
-        record.setExternalId(result.externalId());
-        record.setExternalUrl(result.externalUrl());
-
-      } catch (Exception e) {
-        log.error("推送到客户服务系统失败", e);
-        pushRecordMapper.updatePushResult(
-            record.getId(), PushRecord.STATUS_FAILED, null, null, e.getMessage());
-        record.setStatus(PushRecord.STATUS_FAILED);
-        record.setErrorMessage(e.getMessage());
+    // 同步更新历史记录的访问链接
+    if (matterId != null && externalUrl != null && PushRecord.STATUS_SUCCESS.equals(status)) {
+      int updatedCount = pushRecordMapper.updateHistoricalExternalUrl(matterId, externalUrl);
+      if (updatedCount > 1) {
+        log.info("已同步更新 {} 条历史推送记录的访问链接: matterId={}", updatedCount, matterId);
       }
-    } else {
-      // 客户服务系统未配置，标记为待推送
-      log.info("客户服务系统未配置或未启用，推送记录已保存，待后续处理");
-      record.setErrorMessage("客户服务系统未配置或未启用");
     }
-
-    return convertToDTO(record, matter, client);
   }
 
   /**

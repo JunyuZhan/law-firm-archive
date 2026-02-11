@@ -804,17 +804,39 @@ public class ContractAppService {
       }
     }
 
-    // 2. 添加所有团队负责人（TEAM_LEADER角色）
+    // 2. 批量获取所有团队负责人和主任的ID
     List<Long> partnerIds = userMapper.selectUserIdsByRoleCode("TEAM_LEADER");
+    List<Long> directorIds = userMapper.selectUserIdsByRoleCode("DIRECTOR");
+
+    // 合并所有用户ID进行批量查询（避免N+1查询）
+    Set<Long> allUserIds = new HashSet<>();
+    if (partnerIds != null) {
+      allUserIds.addAll(partnerIds);
+    }
+    if (directorIds != null) {
+      allUserIds.addAll(directorIds);
+    }
+
+    // 批量加载用户
+    Map<Long, User> userMap = batchLoadUsers(new ArrayList<>(allUserIds));
+
+    // 收集所有部门ID并批量加载部门名称
+    Set<Long> deptIds = userMap.values().stream()
+        .map(User::getDepartmentId)
+        .filter(Objects::nonNull)
+        .collect(Collectors.toSet());
+    Map<Long, String> deptNameMap = batchLoadDepartmentNames(deptIds);
+
+    // 添加所有团队负责人（TEAM_LEADER角色）
     if (partnerIds != null) {
       for (Long partnerId : partnerIds) {
         if (!partnerId.equals(currentUserId) && !addedUserIds.contains(partnerId)) {
-          User partner = userRepository.getById(partnerId);
+          User partner = userMap.get(partnerId);
           if (partner != null && "ACTIVE".equals(partner.getStatus())) {
             Map<String, Object> approver = new HashMap<>();
             approver.put("id", partner.getId());
             approver.put("realName", partner.getRealName());
-            approver.put("departmentName", getDepartmentName(partner.getDepartmentId()));
+            approver.put("departmentName", deptNameMap.getOrDefault(partner.getDepartmentId(), ""));
             approver.put("position", "团队负责人");
             approvers.add(approver);
             addedUserIds.add(partner.getId());
@@ -824,16 +846,15 @@ public class ContractAppService {
     }
 
     // 3. 添加主任（DIRECTOR角色）
-    List<Long> directorIds = userMapper.selectUserIdsByRoleCode("DIRECTOR");
     if (directorIds != null) {
       for (Long directorId : directorIds) {
         if (!directorId.equals(currentUserId) && !addedUserIds.contains(directorId)) {
-          User director = userRepository.getById(directorId);
+          User director = userMap.get(directorId);
           if (director != null && "ACTIVE".equals(director.getStatus())) {
             Map<String, Object> approver = new HashMap<>();
             approver.put("id", director.getId());
             approver.put("realName", director.getRealName());
-            approver.put("departmentName", getDepartmentName(director.getDepartmentId()));
+            approver.put("departmentName", deptNameMap.getOrDefault(director.getDepartmentId(), ""));
             approver.put("position", "主任");
             approvers.add(approver);
             addedUserIds.add(director.getId());
@@ -857,6 +878,38 @@ public class ContractAppService {
     }
     Department dept = departmentRepository.getById(deptId);
     return dept != null ? dept.getName() : "";
+  }
+
+  /**
+   * 批量加载用户并构建ID到用户的映射（避免N+1查询）.
+   *
+   * @param userIds 用户ID列表
+   * @return 用户ID到用户实体的映射
+   */
+  private Map<Long, User> batchLoadUsers(final List<Long> userIds) {
+    if (userIds == null || userIds.isEmpty()) {
+      return Collections.emptyMap();
+    }
+    List<User> users = userRepository.listByIds(userIds);
+    return users.stream()
+        .filter(Objects::nonNull)
+        .collect(Collectors.toMap(User::getId, u -> u, (a, b) -> a));
+  }
+
+  /**
+   * 批量加载部门名称（避免N+1查询）.
+   *
+   * @param deptIds 部门ID集合
+   * @return 部门ID到部门名称的映射
+   */
+  private Map<Long, String> batchLoadDepartmentNames(final Set<Long> deptIds) {
+    if (deptIds == null || deptIds.isEmpty()) {
+      return Collections.emptyMap();
+    }
+    List<Department> depts = departmentRepository.listByIds(new ArrayList<>(deptIds));
+    return depts.stream()
+        .filter(Objects::nonNull)
+        .collect(Collectors.toMap(Department::getId, Department::getName, (a, b) -> a));
   }
 
   /**

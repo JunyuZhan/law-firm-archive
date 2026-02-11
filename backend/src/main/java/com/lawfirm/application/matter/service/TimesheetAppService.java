@@ -292,20 +292,27 @@ public class TimesheetAppService {
       throw new BusinessException("请选择要提交的工时记录");
     }
 
-    // 第1阶段：验证所有工时记录
-    List<Timesheet> timesheets = new ArrayList<>();
-    for (Long id : ids) {
-      Timesheet timesheet = timesheetRepository.findById(id);
-      if (timesheet == null) {
-        throw new BusinessException(String.format("工时记录%d不存在", id));
-      }
+    // 第1阶段：批量查询所有工时记录（避免N+1查询）
+    List<Timesheet> timesheets = timesheetRepository.listByIds(ids);
+    if (timesheets.size() != ids.size()) {
+      // 找出缺失的工时记录ID
+      java.util.Set<Long> foundIds = timesheets.stream()
+          .map(Timesheet::getId)
+          .collect(java.util.stream.Collectors.toSet());
+      java.util.List<Long> missingIds = ids.stream()
+          .filter(id -> !foundIds.contains(id))
+          .toList();
+      throw new BusinessException("工时记录不存在: " + missingIds);
+    }
+
+    // 验证所有工时记录的状态和权限
+    for (Timesheet timesheet : timesheets) {
       if (!TimesheetStatus.canSubmit(timesheet.getStatus())) {
-        throw new BusinessException(String.format("工时记录%d状态不是草稿，无法提交", id));
+        throw new BusinessException(String.format("工时记录%d状态不是草稿，无法提交", timesheet.getId()));
       }
       if (!timesheet.getUserId().equals(userId)) {
-        throw new BusinessException(String.format("工时记录%d不属于当前用户，无法提交", id));
+        throw new BusinessException(String.format("工时记录%d不属于当前用户，无法提交", timesheet.getId()));
       }
-      timesheets.add(timesheet);
     }
 
     // 第2阶段：批量更新（所有验证通过后）

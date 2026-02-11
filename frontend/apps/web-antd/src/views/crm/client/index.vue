@@ -1040,7 +1040,13 @@ onMounted(async () => {
             <FormItem
               label="联系电话"
               name="contactPhone"
-              :rules="[{ required: true, message: '请输入联系电话' }]"
+              :rules="[
+                { required: true, message: '请输入联系电话' },
+                {
+                  pattern: /^[\d\-+() ]{7,20}$/,
+                  message: '请输入有效的电话号码',
+                },
+              ]"
             >
               <Input
                 v-model:value="formData.contactPhone"
@@ -1052,7 +1058,16 @@ onMounted(async () => {
         </Row>
         <Row :gutter="16">
           <Col :span="12">
-            <FormItem label="联系邮箱" name="contactEmail">
+            <FormItem
+              label="联系邮箱"
+              name="contactEmail"
+              :rules="[
+                {
+                  type: 'email',
+                  message: '请输入有效的邮箱地址',
+                },
+              ]"
+            >
               <Input
                 v-model:value="formData.contactEmail"
                 placeholder="请输入联系邮箱"

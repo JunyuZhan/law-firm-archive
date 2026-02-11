@@ -261,16 +261,23 @@ public class UserAppService {
       throw new BusinessException("请选择要删除的用户");
     }
 
-    // 1. 先验证所有用户
+    // 1. 批量查询所有用户（避免N+1查询）
+    List<User> users = userRepository.listByIds(ids);
     List<User> usersToDelete = new java.util.ArrayList<>();
     List<String> errors = new java.util.ArrayList<>();
 
+    // 找出缺失的用户ID
+    java.util.Set<Long> foundIds = users.stream()
+        .map(User::getId)
+        .collect(java.util.stream.Collectors.toSet());
     for (Long id : ids) {
-      User user = userRepository.findById(id);
-      if (user == null) {
+      if (!foundIds.contains(id)) {
         errors.add("用户ID " + id + " 不存在");
-        continue;
       }
+    }
+
+    // 验证用户是否可删除
+    for (User user : users) {
       if ("admin".equals(user.getUsername())) {
         errors.add("系统管理员不能删除");
         continue;

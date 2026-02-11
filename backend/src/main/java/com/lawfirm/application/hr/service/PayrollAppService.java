@@ -322,25 +322,23 @@ public class PayrollAppService {
             .distinct()
             .collect(Collectors.toList());
 
-    // 3. 批量获取所有用户的提成 - 使用现有方法，按用户分组
-    // 注意：Commission通过CommissionDetail与用户关联，需使用Repository方法
-    Map<Long, List<Commission>> commissionsByUser = new java.util.HashMap<>();
-    for (Long userId : userIds) {
-      List<Commission> userCommissions = commissionRepository.findByUserId(userId);
-      if (userCommissions != null && !userCommissions.isEmpty()) {
-        // 过滤只保留已审批或已发放状态
-        userCommissions =
-            userCommissions.stream()
-                .filter(
-                    c ->
-                        CommissionStatus.APPROVED.equals(c.getStatus())
-                            || CommissionStatus.PAID.equals(c.getStatus()))
-                .collect(Collectors.toList());
-        if (!userCommissions.isEmpty()) {
-          commissionsByUser.put(userId, userCommissions);
-        }
-      }
+    // 3. 批量获取所有用户的提成（避免N+1查询）
+    // 注意：Commission通过CommissionDetail与用户关联，使用批量查询方法
+    Map<Long, List<Commission>> commissionsByUser = commissionRepository.findByUserIdsGrouped(userIds);
+
+    // 过滤只保留已审批或已发放状态
+    for (Map.Entry<Long, List<Commission>> entry : commissionsByUser.entrySet()) {
+      List<Commission> filtered =
+          entry.getValue().stream()
+              .filter(
+                  c ->
+                      CommissionStatus.APPROVED.equals(c.getStatus())
+                          || CommissionStatus.PAID.equals(c.getStatus()))
+              .collect(Collectors.toList());
+      entry.setValue(filtered);
     }
+    // 移除空列表的条目
+    commissionsByUser.entrySet().removeIf(e -> e.getValue().isEmpty());
 
     // 收集所有提成记录
     List<Commission> allCommissions =
@@ -1188,6 +1186,15 @@ public class PayrollAppService {
 
     List<PayrollItem> items = payrollItemRepository.findByPayrollSheetId(id);
 
+    // 批量获取所有工资明细的ID
+    List<Long> itemIds = items.stream().map(PayrollItem::getId).collect(Collectors.toList());
+
+    // 批量查询所有扣减项和收入项（避免N+1查询）
+    Map<Long, List<PayrollDeduction>> deductionsByItemId =
+        payrollDeductionRepository.findByPayrollItemIdsGrouped(itemIds);
+    Map<Long, List<PayrollIncome>> incomesByItemId =
+        payrollIncomeRepository.findByPayrollItemIdsGrouped(itemIds);
+
     // 构建表头
     List<String> headers =
         List.of("工号", "姓名", "收入（提成总额）", "税费扣减", "应发工资（税后）", "其他扣减", "实发工资", "确认状态", "确认时间", "确认意见");
@@ -1195,9 +1202,9 @@ public class PayrollAppService {
     // 构建数据
     List<List<Object>> data = new ArrayList<>();
     for (PayrollItem item : items) {
-      // 计算税费扣减和其他扣减
+      // 从批量查询结果中获取扣减项
       List<PayrollDeduction> deductions =
-          payrollDeductionRepository.findByPayrollItemId(item.getId());
+          deductionsByItemId.getOrDefault(item.getId(), java.util.Collections.emptyList());
       BigDecimal taxDeductionAmount =
           deductions.stream()
               .filter(d -> isTaxDeduction(d.getDeductionType()))
@@ -1209,8 +1216,9 @@ public class PayrollAppService {
               .map(PayrollDeduction::getAmount)
               .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-      // 计算收入（提成总额）
-      List<PayrollIncome> incomes = payrollIncomeRepository.findByPayrollItemId(item.getId());
+      // 从批量查询结果中获取收入项
+      List<PayrollIncome> incomes =
+          incomesByItemId.getOrDefault(item.getId(), java.util.Collections.emptyList());
       BigDecimal incomeTotal =
           incomes.stream().map(PayrollIncome::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
 

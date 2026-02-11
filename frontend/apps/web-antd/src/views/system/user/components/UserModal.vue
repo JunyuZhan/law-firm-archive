@@ -54,10 +54,15 @@ function getFormSchema(): VbenFormSchema[] {
       fieldName: 'username',
       label: '用户名',
       component: 'Input',
-      rules: z.string().min(1, '请输入用户名'),
+      rules: z
+        .string()
+        .min(4, '用户名长度至少4个字符')
+        .max(20, '用户名长度不能超过20个字符')
+        .regex(/^[\w-]+$/, '用户名只能包含字母、数字、下划线和连字符'),
       componentProps: {
-        placeholder: '请输入用户名',
+        placeholder: '请输入用户名（4-20个字符）',
         disabled: isEdit.value,
+        maxlength: 20,
       },
     },
     {
@@ -66,10 +71,14 @@ function getFormSchema(): VbenFormSchema[] {
       component: 'InputPassword',
       rules: isEdit.value
         ? z.string().optional()
-        : z.string().min(1, '请输入密码'),
+        : z
+            .string()
+            .min(6, '密码长度至少6个字符')
+            .max(20, '密码长度不能超过20个字符'),
       hide: isEdit.value,
       componentProps: {
-        placeholder: '请输入密码',
+        placeholder: '请输入密码（6-20个字符）',
+        maxlength: 20,
       },
     },
     {

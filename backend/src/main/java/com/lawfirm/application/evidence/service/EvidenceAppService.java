@@ -23,7 +23,6 @@ import com.lawfirm.infrastructure.external.minio.MinioService;
 import com.lawfirm.infrastructure.persistence.mapper.EvidenceCrossExamMapper;
 import com.lawfirm.infrastructure.persistence.mapper.EvidenceMapper;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -340,12 +339,22 @@ public class EvidenceAppService {
       throw new BusinessException("请选择要分组的证据");
     }
 
-    // 第1阶段：验证所有证据存在且有权限
-    List<Evidence> evidences = new ArrayList<>();
-    for (Long id : ids) {
-      Evidence evidence = evidenceRepository.getByIdOrThrow(id, "证据不存在: " + id);
-      checkMatterEditPermission(evidence.getMatterId());
-      evidences.add(evidence);
+    // 第1阶段：批量查询所有证据（避免N+1查询）
+    List<Evidence> evidences = evidenceRepository.listByIds(ids);
+    if (evidences.size() != ids.size()) {
+      // 找出缺失的证据ID
+      Set<Long> foundIds = evidences.stream().map(Evidence::getId).collect(java.util.stream.Collectors.toSet());
+      List<Long> missingIds = ids.stream().filter(id -> !foundIds.contains(id)).toList();
+      throw new BusinessException("证据不存在: " + missingIds);
+    }
+
+    // 验证所有证据的项目权限（批量收集项目ID，减少重复检查）
+    Set<Long> checkedMatterIds = new java.util.HashSet<>();
+    for (Evidence evidence : evidences) {
+      if (!checkedMatterIds.contains(evidence.getMatterId())) {
+        checkMatterEditPermission(evidence.getMatterId());
+        checkedMatterIds.add(evidence.getMatterId());
+      }
     }
 
     // 第2阶段：批量更新（验证全部通过后）

@@ -322,20 +322,27 @@ public class ApprovalAppService {
       throw new BusinessException("请选择要审批的记录");
     }
 
-    // 第1阶段：验证所有审批记录
-    List<Approval> approvals = new java.util.ArrayList<>();
-    for (Long approvalId : approvalIds) {
-      Approval approval = approvalRepository.findById(approvalId);
-      if (approval == null) {
-        throw new BusinessException("审批记录不存在: " + approvalId);
-      }
+    // 第1阶段：批量查询所有审批记录（避免N+1查询）
+    List<Approval> approvals = approvalRepository.listByIds(approvalIds);
+    if (approvals.size() != approvalIds.size()) {
+      // 找出缺失的审批记录ID
+      java.util.Set<Long> foundIds = approvals.stream()
+          .map(Approval::getId)
+          .collect(java.util.stream.Collectors.toSet());
+      java.util.List<Long> missingIds = approvalIds.stream()
+          .filter(id -> !foundIds.contains(id))
+          .toList();
+      throw new BusinessException("审批记录不存在: " + missingIds);
+    }
+
+    // 验证所有审批记录的权限和状态
+    for (Approval approval : approvals) {
       if (!approval.getApproverId().equals(currentUserId)) {
         throw new BusinessException("无权审批此记录: " + approval.getApprovalNo());
       }
       if (!ApprovalStatus.canApprove(approval.getStatus())) {
         throw new BusinessException("该审批记录已处理: " + approval.getApprovalNo());
       }
-      approvals.add(approval);
     }
 
     // 第2阶段：批量更新（所有验证通过后）

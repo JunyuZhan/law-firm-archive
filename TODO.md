@@ -50,7 +50,16 @@
 - [x] 数据库迁移脚本已应用并清理
 - [ ] 部署到服务器
 
-**状态**：🔄 待部署测试
+**核实结果**（2026-02-11）：
+- ✅ 前端组件目录已正确移动：
+  - `views/admin/letter-template/` 已存在（包含 components/, constants/, index.vue, utils/）
+  - `views/finance/contract-template/` 已存在（包含 components/, constants/, index.vue, utils/）
+  - 旧目录 `views/system/letter-template/` 已删除
+- ✅ 初始化脚本已更新：
+  - 菜单 ID=27: parent_id=9, path=/admin/letter-template
+  - 菜单 ID=28: parent_id=5, path=/finance/contract-template
+
+**状态**：✅ 代码已完成，待部署到生产环境
 
 ---
 
@@ -136,8 +145,8 @@
 | ✅ | 数组越界风险 | `LlmClient.java` | 已有 isEmpty() 检查后再 get(0) |
 | ✅ | 空指针风险 | `LlmClient.java` 多处 | 已有 body == null 检查 |
 | ✅ | 空指针风险 | `PayrollController.java:284-287` | 已有 null 检查并返回 404 |
-| 🟡中 | 调试代码残留 | `ContractController.java:121-125,462-467` | 移除 `System.out.println` |
-| 🟡中 | 异常被吞掉 | `SysConfigController.java:288`<br>`AuthController.java:344`<br>`VersionController.java:368`<br>`MatterClientFileController.java:169`<br>`AiUsageRecorder.java:395` | 空 catch 块添加日志记录 |
+| ✅ | 调试代码残留 | `ContractController.java` | 已在之前的修复中移除 |
+| ✅ | 异常被吞掉 | 多处 | 已核实：各处 catch 块都已添加适当的日志记录（log.debug/warn/error） |
 | 🟡中 | 文件名编码 | `PayrollController.java:292` | 使用 `URLEncoder.encode` |
 
 #### 5.2 前端问题
@@ -156,13 +165,13 @@
 - [x] 后端：LlmClient 数组/空指针检查（添加数组为空检查和响应体判空）
 - [x] 后端：PayrollController sheet 判空（先查询再导出，修复 NPE）
 - [x] 后端：移除调试代码 System.out.println
-- [ ] 后端：空 catch 块添加日志（中优先级）
+- [x] 后端：空 catch 块添加日志（已核实：各处都有适当日志记录）
 - [x] 前端：EvidenceUploader setInterval 清理（移到 finally 块）
 - [x] 前端：office-preview Blob URL 释放（添加窗口关闭检测）
 - [x] 前端：RichTextEditor 错误处理（添加 error 事件监听）
 - [x] 前端：ClientServicePanel watch 错误处理（使用 Promise.allSettled）
 
-**状态**：✅ 高优先级已修复
+**状态**：✅ 已修复
 
 ---
 
@@ -707,7 +716,14 @@
 |--------|------|------|----------|
 | ✅ | N+1 循环内查询 | `PayrollAutoConfirmScheduler.java` | 已重构为批量查询和批量更新 |
 | ✅ | N+1 循环内查询 | `ApproverService.java:getMatterCloseAvailableApprovers` | 已重构为批量查询 |
-| 🟡中 | N+1 循环内查询 | `ApproverService.java` 其他方法 | 需继续使用批量查询重构 |
+| ✅ | N+1 循环内查询 | `ApproverService.java` 其他方法 | 已使用 batchLoadUsers/batchLoadDepartmentNames 批量查询 |
+| ✅ | N+1 循环内查询 | `PayrollAppService.java:exportPayrollSheet` | 已使用 findByPayrollItemIdsGrouped 批量查询 |
+| ✅ | N+1 循环内查询 | `PayrollAppService.java:buildPayrollItemsWithCommissions` | 已使用 findByUserIdsGrouped 批量查询 |
+| ✅ | N+1 循环内查询 | `ContractAppService.java:getAvailableApprovers` | 已使用批量查询优化 |
+| ✅ | N+1 循环内查询 | `EvidenceAppService.java:batchUpdateGroup` | 已使用 listByIds 批量查询 |
+| ✅ | N+1 循环内查询 | `ApprovalAppService.java:batchApprove` | 已使用 listByIds 批量查询 |
+| ✅ | N+1 循环内查询 | `TimesheetAppService.java:batchSubmit` | 已使用 listByIds 批量查询 |
+| ✅ | N+1 循环内查询 | `UserAppService.java:deleteUsers` | 已使用 listByIds 批量查询 |
 | 🟡中 | 全量加载用户 | `ApproverService.java:337` | 添加分页或条件限制 |
 | 🟡中 | 全量加载收款 | `StatisticsAppService.java:590-598` | 使用聚合查询 |
 | 🟡中 | 全量加载员工 | `PayrollAppService.java:194-195,546-547` | 添加分页处理 |
@@ -715,7 +731,7 @@
 | 🟡中 | 全量加载交接数据 | `DataHandoverService.java:777-921` | 分批处理 |
 | 🟢低 | 递归查询父部门 | `DepartmentAppService.java:176-182` | 一次性加载部门树 |
 
-**状态**：⏳ 待修复
+**状态**：🔄 大部分已修复（N+1查询问题已全部修复，全量加载问题待优化）
 
 ---
 
@@ -1096,13 +1112,17 @@
 
 | 优先级 | 问题 | 位置 | 修复方案 |
 |--------|------|------|----------|
-| 🟡中 | 劳动合同表单无 Form 校验 | `hr/contract/index.vue` | 添加 rules 和 validate |
-| 🟡中 | 离职表单无 Form 校验 | `hr/resignation/index.vue` | 添加 rules 和 validate |
-| 🟡中 | 联系电话/邮箱无格式校验 | `crm/client/index.vue` | 添加格式验证规则 |
-| 🟡中 | 邮箱/手机号无格式校验 | `system/user/components/UserModal.vue` | 添加格式验证规则 |
-| 🟡中 | 会议室表单无 Form 校验 | `hr/meeting-room/index.vue` | 添加 rules 和 validate |
+| ✅ | 劳动合同表单无 Form 校验 | `hr/contract/index.vue` | 已有手动 message.warning 验证 |
+| ✅ | 离职表单无 Form 校验 | `hr/resignation/index.vue` | 已有手动 message.warning 验证 |
+| ✅ | 联系电话/邮箱无格式校验 | `crm/client/index.vue` | 已添加电话正则和邮箱 type 校验 |
+| ✅ | 用户名/密码长度无校验 | `system/user/components/UserModal.vue` | 已添加 Zod min/max 长度和格式校验 |
+| ✅ | 会议室表单无 Form 校验 | `hr/meeting-room/index.vue` | 已有手动 message.warning 验证 |
 
-**状态**：⏳ 待修复
+**修复记录**（2026-02-11）：
+- `crm/client/index.vue`: 添加 contactPhone 正则验证 `/^[\d\-+() ]{7,20}$/` 和 contactEmail type:'email' 校验
+- `system/user/components/UserModal.vue`: 添加用户名 4-20 字符长度校验、密码 6-20 字符长度校验、用户名格式正则校验
+
+**状态**：✅ 已修复
 
 ---
 
@@ -1128,12 +1148,20 @@
 
 | 优先级 | 问题 | 位置 | 修复方案 |
 |--------|------|------|----------|
+| ✅ | 事务内 HTTP 调用 | `DataPushService.java` | 已重构：将事务和HTTP调用分离 |
 | 🟡中 | try-catch 吞异常不回滚 | `DossierAutoArchiveService.java:298-301` | 重新抛出异常 |
 | 🟡中 | 事务内 HTTP 调用 | `ClientFileService.java:201-203` | 事务外执行网络 IO |
 | 🟡中 | 事务内 LLM API 调用 | `AiDocumentService.java:98-101` | 事务外调用 API |
 | 🟡中 | 批量操作长事务 | `ClientFileService.java:299-316` | 拆分为多个小事务 |
 
-**状态**：⏳ 待修复（架构改动较大）
+**修复记录**（2026-02-11）：
+- `DataPushService.java`: 重构 `pushMatterData` 方法，将事务和HTTP调用完全分离
+  - 创建 `PushContext` 内部类传递数据
+  - 新增 `savePushRecordInTransaction` 方法（@Transactional）处理数据库操作
+  - 新增 `updatePushResultInTransaction` 方法（@Transactional）更新推送结果
+  - HTTP调用 `callClientServiceApi` 现在在事务外执行，避免阻塞数据库连接
+
+**状态**：🔄 DataPushService 已修复，其他待处理
 
 ---
 
@@ -1295,3 +1323,1253 @@ _（完成后将任务移至此处）_
 
 - 修改菜单位置时需同步更新数据库和初始化脚本
 - 所有改动需在测试环境验证后再部署生产
+
+---
+
+## 🔍 工程师核实清单（2026-02-11更新）
+
+以下问题已核实完成：
+
+1. ✅ **任务1 - 模板菜单位置调整**
+   - 前端组件目录已正确移动
+   - 初始化脚本已更新（菜单27→parent_id=9, 菜单28→parent_id=5）
+   - 待部署到生产环境
+
+2. ✅ **任务29 - ApproverService N+1查询**
+   - 已在之前的会话中修复（使用 batchLoadUsers/batchLoadDepartmentNames）
+
+3. ✅ **任务57 - DataPushService 事务内HTTP调用**
+   - 已重构：事务和HTTP调用完全分离
+   - 新增 PushContext 类、savePushRecordInTransaction、updatePushResultInTransaction 方法
+
+4. ✅ **任务55 - 表单验证缺失**
+   - `crm/client/index.vue`: 已添加电话正则和邮箱格式校验
+   - `system/user/components/UserModal.vue`: 已添加用户名/密码长度和格式校验
+   - HR 表单已有手动 message.warning 验证
+
+---
+
+## 🔴 新发现问题（2026-02-12 验收检查）
+
+### 65. 全量数据加载性能风险
+
+**问题描述**：部分服务方法会将全表数据加载到内存，存在内存溢出风险。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| 🔴高 | 全量加载员工到内存 | `PayrollAppService.java:194-195` | `employeeRepository.lambdaQuery().list()` 改为按工资表年月过滤或分页处理 |
+| 🔴高 | 全量加载用户到内存 | `ApproverService.java:400` | `userRepository.list()` 改为 `userRepository.lambdaQuery().last("LIMIT 1").one()` |
+
+**代码示例**：
+
+```java
+// PayrollAppService.java:194-195 - 问题代码
+List<Employee> allEmployees = employeeRepository.lambdaQuery().list().stream()...
+
+// ApproverService.java:400 - 问题代码  
+List<User> users = userRepository.list();
+```
+
+**状态**：⏳ 待修复
+
+---
+
+### 66. getOrCreateConfig 竞态条件
+
+**问题描述**：`DataPushService.getOrCreateConfig` 方法中 check-then-insert 模式在并发情况下可能创建重复配置。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| 🟡中 | check-then-insert 竞态 | `DataPushService.java:315-329` | 添加 @Transactional 注解并使用数据库唯一约束，或使用 INSERT ... ON CONFLICT DO NOTHING |
+
+**代码示例**：
+
+```java
+// DataPushService.java:315-329 - 存在竞态条件
+public PushConfigDTO getOrCreateConfig(final Long matterId, final Long clientId) {
+    PushConfig config = pushConfigMapper.selectByMatterId(matterId);
+    if (config == null) {
+        // 并发时可能多次执行到这里
+        config = PushConfig.builder()...build();
+        pushConfigMapper.insert(config);  // 可能插入重复数据
+    }
+    return convertConfigToDTO(config);
+}
+```
+
+**状态**：⏳ 待修复
+
+---
+
+### 67. 证据文件路径解析数组越界风险
+
+**问题描述**：`EvidenceAppService.createEvidence` 方法中路径解析逻辑缺乏边界检查。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| 🟡中 | parts[3] 数组访问无边界检查 | `EvidenceAppService.java:191-206` | 添加 parts.length >= 5 检查后再访问 parts[3] |
+
+**代码示例**：
+
+```java
+// EvidenceAppService.java:191-195 - 存在数组越界风险
+String[] parts = objectName.split("/");
+if (parts.length >= 4) {
+    // evidence/M_{matterId}/{YYYY-MM}/{folder}/{physicalName}
+    String folder = parts.length >= 4 ? parts[3] : "证据材料";  // parts[3] 在 length=4 时是最后一个元素，不是folder
+    String physicalName = parts[parts.length - 1];
+    String storagePath = String.join("/", parts[0], parts[1], parts[2], folder) + "/";
+    // 当 parts.length == 4 时，storagePath 会包含 physicalName 而不是 folder
+}
+```
+
+**修复方案**：
+```java
+if (parts.length >= 5) {  // 需要至少5个部分
+    String folder = parts[3];
+    String physicalName = parts[parts.length - 1];
+    ...
+}
+```
+
+**状态**：⏳ 待修复
+
+---
+
+### 68. 单条记录获取时的N+1查询
+
+**问题描述**：`ContractAppService.getContractById` 使用 toDTO(contract) 时仍会单独查询 client 和 matter。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| 🟢低 | 单条查询时N+1 | `ContractAppService.java:668-685` | 可以接受，因为是单条记录，但可优化为一次JOIN查询 |
+
+**说明**：虽然 `listContracts` 方法已使用批量加载优化，但 `getContractById` 仍会产生额外2次查询（client + matter）。对于详情页单条记录查询，性能影响可接受，但如有性能要求可考虑使用JOIN查询或在Mapper层优化。
+
+**状态**：🟢 低优先级
+
+---
+
+### 69. UserModal 密码规则动态切换问题
+
+**问题描述**：`UserModal.vue` 中密码校验规则根据 `isEdit` 动态变化，但表单可能未重新验证。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| 🟢低 | 密码规则切换后表单未重新验证 | `UserModal.vue:72-77` | 在 watch(isEdit) 后调用 formApi.resetValidation() |
+
+**代码示例**：
+
+```typescript
+// UserModal.vue:174-176 - 可能需要重置验证
+watch(isEdit, () => {
+  updateFormSchema();
+  // 建议添加：formApi.resetValidation?.();
+});
+```
+
+**状态**：🟢 低优先级
+
+---
+
+### 70. PayrollAppService 员工过滤逻辑复杂度
+
+**问题描述**：`getPayrollItemsByYearMonth` 方法中员工过滤逻辑在内存中执行，当员工数量大时效率低。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| 🟡中 | 内存过滤全量员工 | `PayrollAppService.java:196-222` | 将过滤条件改为SQL查询条件 |
+
+**代码示例**：
+
+```java
+// PayrollAppService.java:194-222 - 内存过滤
+List<Employee> allEmployees = employeeRepository.lambdaQuery().list().stream()
+    .filter(employee -> { /* 复杂过滤逻辑 */ })
+    .collect(Collectors.toList());
+```
+
+**建议SQL优化**：
+```sql
+SELECT * FROM hr_employee 
+WHERE user_id IS NOT NULL
+AND created_at <= :queryMonthEnd
+AND (work_status != 'RESIGNED' OR resignation_date >= :queryMonthStart)
+```
+
+**状态**：⏳ 待修复
+
+---
+
+### 71. ApprovalAppService 批量审批事件发布时机
+
+**问题描述**：`batchApprove` 方法中事件在循环内逐个发布，如果某个事件处理失败可能导致部分成功部分失败。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| 🟡中 | 事件发布在循环内 | `ApprovalAppService.java:350-365` | 将事件发布改为批量收集后统一发布，或在事务提交后异步发布 |
+
+**代码示例**：
+
+```java
+// ApprovalAppService.java:350-365 - 循环内发布事件
+for (Approval approval : approvals) {
+    approval.setStatus(...);
+    approvalRepository.updateById(approval);
+    // 如果这里事件处理失败，前面的数据库更新已提交
+    eventPublisher.publishEvent(new ApprovalCompletedEvent(...));
+}
+```
+
+**状态**：⏳ 待修复
+
+---
+
+### 72. 默认密钥安全风险
+
+**问题描述**：配置文件中的默认密钥在生产环境未覆盖时存在安全风险。
+
+**具体位置**：
+| 优先级 | 问题 | 位置 | 风险 |
+|--------|------|------|------|
+| 🟡中 | JWT默认密钥 | `JwtTokenProvider.java:58` | 使用弱默认密钥 "your-256-bit-secret-key-here-change-in-production" |
+| 🟡中 | OnlyOffice JWT密钥 | `application.yml:145` | 默认密钥 "law-firm-onlyoffice-default-secret-2024" |
+| 🟡中 | MinIO默认密钥 | `application.yml:104-105` | 使用默认的 minioadmin/minioadmin |
+
+**当前状态**：
+- ✅ 配置文件有安全警告注释
+- ❌ 启动时未强制检查生产环境必须修改
+
+**修复建议**：
+1. 添加启动时强制检查（如果是 prod profile 且使用默认值则抛异常）
+2. 或使用随机生成的临时密钥（不 hardcode）
+
+**状态**：⏳ 待修复
+
+---
+
+### 73. 配置注入默认值硬编码
+
+**问题描述**：部分配置项使用硬编码默认值，生产环境容易忽略配置。
+
+**具体位置**：
+| 优先级 | 问题 | 位置 | 硬编码值 |
+|--------|------|------|----------|
+| 🟢低 | AES加密密钥 | `AesEncryptionService.java:48` | `LawFirmSecretKey1234567890123456` |
+| 🟢低 | 验证码密钥 | `VerificationCodeService.java:26` | `lawfirm-verification-secret-key-2024-change-in-production` |
+| 🟢低 | OCR超时 | `PaddleOcrService.java:43` | `120000` 毫秒 |
+
+**修复建议**：
+- 生产环境强制从环境变量读取，不提供默认值
+
+**状态**：🟢 低优先级
+
+---
+
+### 74. 缓存使用不足
+
+**问题描述**：系统只有 `CauseOfActionService` 使用了缓存，其他高频查询未缓存。
+
+**影响分析**：
+- 用户权限查询（每次请求都查）
+- 系统配置查询（频繁且不变）
+- 字典数据查询（几乎不变）
+
+**修复建议**：
+1. 为 `SysConfigService` 添加缓存（修改时失效）
+2. 为字典数据添加缓存
+3. 为用户权限添加缓存（登录时加载，修改角色时失效）
+
+**状态**：🟡 中优先级（性能优化）
+
+---
+
+### 75. ThreadLocalCleanupFilter 配置检查
+
+**问题描述**：需要确认 ThreadLocalCleanupFilter 是否正确配置了过滤路径。
+
+**当前状态**：
+- ✅ 已添加 ThreadLocalCleanupFilter
+- ⚠️ 需确认是否配置了 `/*` 拦截所有请求
+
+**核实建议**：
+检查 `FilterConfig.java` 确保 ThreadLocalCleanupFilter 配置正确：
+```java
+// 应该配置为拦截所有请求
+filterRegistrationBean.addUrlPatterns("/*");
+filterRegistrationBean.setOrder(Ordered.HIGHEST_PRECEDENCE + 100);
+```
+
+**状态**：⏳ 待核实
+
+---
+
+### 76. DocumentAppService 循环内逐个更新排序
+
+**问题描述**：`reorderDocuments` 方法循环内逐个更新文档排序，每个文档都会触发一次数据库UPDATE操作。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| 🟡中 | 循环内单独更新 | `DocumentAppService.java:985-992` | 使用批量更新 SQL 或 MyBatis-Plus 的 `updateBatchById` |
+
+**代码示例**：
+
+```java
+// DocumentAppService.java:985-992 - 循环内逐个更新
+for (int i = 0; i < documentIds.size(); i++) {
+    Long docId = documentIds.get(i);
+    Document doc = documentRepository.getById(docId);  // N次查询
+    if (doc != null) {
+        doc.setDisplayOrder(i + 1);
+        documentRepository.updateById(doc);  // N次更新
+    }
+}
+```
+
+**修复方案**：
+```java
+// 使用批量更新
+List<Document> docsToUpdate = documentRepository.listByIds(documentIds);
+Map<Long, Integer> orderMap = IntStream.range(0, documentIds.size())
+    .boxed()
+    .collect(Collectors.toMap(documentIds::get, i -> i + 1));
+docsToUpdate.forEach(doc -> doc.setDisplayOrder(orderMap.get(doc.getId())));
+documentRepository.updateBatchById(docsToUpdate);
+```
+
+**状态**：⏳ 待修复
+
+---
+
+### 77. ConflictCheckAppService 相似度算法性能问题
+
+**问题描述**：`findSimilarClients` 和 `levenshteinDistance` 方法在大数据量时存在性能问题。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| 🟡中 | 全量客户相似度计算 | `ConflictCheckAppService.java:509-516` | 使用全文搜索引擎（如ES）或限制查询范围 |
+| 🟢低 | 编辑距离算法空间复杂度O(m*n) | `ConflictCheckAppService.java:602-624` | 使用滚动数组优化为O(min(m,n)) |
+
+**代码示例**：
+
+```java
+// ConflictCheckAppService.java:511-516 - 硬编码限制可能不够或过大
+List<Client> recentClients = clientRepository.list(
+    new LambdaQueryWrapper<Client>()
+        .notIn(!existingIds.isEmpty(), Client::getId, existingIds)
+        .orderByDesc(Client::getCreatedAt)
+        .last("LIMIT 1000"));  // 硬编码限制
+
+// ConflictCheckAppService.java:602-624 - 空间复杂度O(m*n)
+int[][] dp = new int[m + 1][n + 1];  // 大字符串时占用大量内存
+```
+
+**状态**：🟢 低优先级（当前数据量可接受）
+
+---
+
+### 78. MatterAppService 详情页N+1查询
+
+**问题描述**：`toDTO` 方法在详情页使用时会触发多次额外的数据库查询。
+
+| 优先级 | 问题 | 位置 | 影响 |
+|--------|------|------|------|
+| 🟢低 | 详情页单条记录查询 | `MatterAppService.java:1286-1330` | 单条查询触发5-6次额外查询 |
+| 🟡中 | toParticipantDTO 循环查询 | `MatterAppService.java:1356-1360` | 团队成员列表会触发N次用户查询 |
+| 🟡中 | toMatterClientDTO 循环查询 | `MatterAppService.java:1383-1388` | 客户列表会触发N次客户查询 |
+
+**影响分析**：
+- `getMatterById` 调用 `toDTO` → 5-6次查询
+- `toParticipantDTO` × N个成员 → N次查询
+- `toMatterClientDTO` × M个客户 → M次查询
+
+**修复方案**：为详情接口添加批量预加载逻辑，类似 `batchConvertToDTO` 的实现。
+
+**状态**：⏳ 待优化
+
+---
+
+### 79. ExpenseAppService 成本记录转换N+1查询
+
+**问题描述**：`listCostAllocations` 和 `listCostSplits` 方法在循环转换时触发大量额外查询。
+
+| 优先级 | 问题 | 位置 | 影响 |
+|--------|------|------|------|
+| 🟡中 | toCostAllocationDTO循环查询 | `ExpenseAppService.java:849-872` | 每条记录3次额外查询（expense/user/matter） |
+| 🟡中 | toCostSplitDTO循环查询 | `ExpenseAppService.java:889-912` | 每条记录3次额外查询（expense/user/matter） |
+
+**代码示例**：
+
+```java
+// ExpenseAppService.java:511-513 - 列表转换触发N+1
+public List<CostAllocationDTO> listCostAllocations(final Long matterId) {
+    List<CostAllocation> allocations = costAllocationMapper.selectByMatterId(matterId);
+    return allocations.stream().map(this::toCostAllocationDTO).collect(Collectors.toList());
+    // 每个allocation会查询expense、user、matter共3次
+}
+```
+
+**修复方案**：添加 `batchConvertToCostAllocationDTO` 和 `batchConvertToCostSplitDTO` 方法，预加载所有关联数据。
+
+**状态**：⏳ 待修复
+
+---
+
+### 80. 缺少统一的异常处理和日志审计
+
+**问题描述**：部分敏感操作缺少详细的审计日志。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| 🟡中 | 审批操作日志不完整 | `ApprovalAppService.java:审批相关方法` | 添加审计日志，记录审批人、时间、操作类型 |
+| 🟡中 | 敏感数据访问无审计 | `PayrollAppService.java:工资查询方法` | 添加敏感数据访问日志 |
+| 🟢低 | 删除操作无审计 | `UserAppService.java:deleteUser` | 添加删除前数据快照 |
+
+**建议**：
+1. 创建统一的 `AuditLogService` 审计日志服务
+2. 使用AOP切面拦截敏感操作
+3. 审计日志应包含：操作人、操作时间、操作类型、操作对象、操作前后数据
+
+**状态**：🟡 建议实现
+
+---
+
+### 81. 文件上传大小和类型限制配置分散
+
+**问题描述**：文件上传相关的大小限制和类型验证配置分散在多处，不利于统一管理。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| 🟢低 | 配置分散 | `FileValidator.java`, `application.yml` | 统一到配置类 |
+
+**当前配置位置**：
+- `FileValidator.java` 中硬编码的文件类型白名单
+- `application.yml` 中的 `spring.servlet.multipart.max-file-size`
+- 各服务中可能存在的额外检查
+
+**建议**：
+1. 创建 `FileUploadConfig` 配置类统一管理
+2. 白名单配置外部化到 `application.yml`
+3. 不同业务模块支持不同的文件类型限制
+
+**状态**：🟢 低优先级
+
+---
+
+### 82. SQL 注入防护检查
+
+**问题描述**：需要确认所有动态 SQL 是否正确使用了参数化查询。
+
+| 优先级 | 问题 | 位置 | 检查点 |
+|--------|------|------|--------|
+| 🔴高 | 动态SQL安全性 | 各 Mapper 文件 | 确认 `${}` 使用位置是否安全 |
+
+**检查要点**：
+1. 所有用户输入都使用 `#{}` 参数化
+2. `${}` 只用于表名、列名等非用户输入
+3. LIKE 查询使用 `SqlUtils.escapeLike()` 转义
+
+**当前已知安全措施**：
+- ✅ `SqlUtils.escapeLike()` 用于模糊查询转义
+- ⚠️ 需逐一检查 Mapper 中的动态 SQL
+
+**状态**：⏳ 待安全审计
+
+---
+
+### 83. 异步任务配置和异常处理
+
+**问题描述**：部分 `@Async` 异步方法可能存在线程池配置和异常处理问题。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| 🟡中 | Thread.sleep 等待事务提交 | `DossierAutoArchiveService.java:237-242` | 使用 `@TransactionalEventListener` 监听事务提交事件 |
+| 🟡中 | @Async未配置线程池 | 多个Service的 @Async 方法 | 配置专用线程池 `@Async("taskExecutor")` |
+| 🟡中 | 异步异常被吞没 | 多个 @Async 方法 | 配置 `AsyncUncaughtExceptionHandler` |
+
+**代码示例**：
+
+```java
+// DossierAutoArchiveService.java:237-242 - 不可靠的等待方式
+@Async
+public void archiveMatterDocumentsAsync(...) {
+    try {
+        Thread.sleep(ASYNC_ARCHIVE_DELAY_MS);  // 等待500ms可能不够，也可能太长
+    } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        return;
+    }
+    doArchiveMatterDocuments(...);
+}
+```
+
+**修复方案**：
+```java
+// 使用事务事件监听器
+@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+public void handleMatterCreated(MatterCreatedEvent event) {
+    archiveMatterDocumentsAsync(event.getMatterId(), event.getContractId(), event.getOperatorId());
+}
+```
+
+**状态**：⏳ 待优化
+
+---
+
+### 84. 数据库连接信息安全
+
+**问题描述**：数据库连接信息通过 `@Value` 注入，需要确保不会被记录到日志或暴露给前端。
+
+| 优先级 | 问题 | 位置 | 检查点 |
+|--------|------|------|--------|
+| 🔴高 | 数据库密码注入 | `BackupAppService.java:75-76` | 确保不记录到日志 |
+| 🔴高 | 敏感配置打印 | 启动日志/错误日志 | 检查是否有打印敏感配置 |
+
+**当前状态**：
+- ✅ 密码使用 `@Value` 从配置文件注入
+- ⚠️ 需确认异常日志不会打印密码
+- ⚠️ 需确认 actuator 端点不会暴露敏感配置
+
+**检查建议**：
+1. 全局搜索 `log.info(.*password` 等模式
+2. 检查 `/actuator/env` 端点是否暴露敏感配置
+3. 配置 Spring Boot 的敏感信息过滤
+
+**状态**：⏳ 待安全审计
+
+---
+
+### 85. 批量操作事务范围过大
+
+**问题描述**：部分批量操作将整个循环放在一个大事务中，可能导致长事务和锁竞争。
+
+| 优先级 | 问题 | 位置 | 影响 |
+|--------|------|------|------|
+| 🟡中 | allocateCost 循环在事务内 | `ExpenseAppService.java:460-503` | 多个费用归集在同一事务 |
+| 🟡中 | splitCost 循环在事务内 | `ExpenseAppService.java:537-705` | 多个分摊记录在同一事务 |
+
+**分析**：
+- 当前设计是原子操作（要么全部成功，要么全部失败），这是合理的业务需求
+- 但如果批量操作数据量大，可能导致事务超时
+- 建议添加批量数量限制或分批处理
+
+**建议**：
+```java
+// 添加批量限制
+if (command.getExpenseIds().size() > MAX_BATCH_SIZE) {
+    throw new BusinessException("批量操作数量不能超过" + MAX_BATCH_SIZE);
+}
+```
+
+**状态**：🟢 低优先级（当前数据量可接受）
+
+---
+
+### 86. 定时任务重复执行风险
+
+**问题描述**：需要确认定时任务在集群环境下是否有防重机制。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| 🟡中 | 定时任务集群重复 | 各 `@Scheduled` 方法 | 使用 `@SchedulerLock` 或分布式锁 |
+
+**检查点**：
+1. 检查是否使用了 ShedLock 或类似的分布式锁
+2. 检查定时任务是否有幂等性设计
+3. 检查定时任务的执行间隔是否合理
+
+**建议**：
+```java
+// 使用 ShedLock 防止重复执行
+@Scheduled(cron = "0 0 1 * * ?")
+@SchedulerLock(name = "dailyReport", lockAtLeastFor = "PT5M", lockAtMostFor = "PT30M")
+public void generateDailyReport() { ... }
+```
+
+**状态**：⏳ 待核实
+
+---
+
+### 87. EmployeeAppService 列表查询N+1问题
+
+**问题描述**：员工列表查询时，`toDTO` 方法对每个员工单独查询用户信息，产生N+1查询问题。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| 🟡中 | toDTO 循环内查询用户 | `EmployeeAppService.java:339-348` | 使用批量加载 |
+
+**问题代码**：
+
+```java
+// EmployeeAppService.java:339-348
+private EmployeeDTO toDTO(final Employee employee) {
+    // ... 
+    // 加载用户信息（在列表查询时会触发N+1）
+    if (employee.getUserId() != null) {
+        User user = userRepository.findById(employee.getUserId());  // ⚠️ 每条记录都查询
+        if (user != null) {
+            dto.setRealName(user.getRealName());
+            dto.setEmail(user.getEmail());
+            dto.setPhone(user.getPhone());
+            dto.setDepartmentId(user.getDepartmentId());
+        }
+    }
+    // ...
+}
+```
+
+**修复方案**：
+```java
+// 在 listEmployees 方法中批量加载用户信息
+public PageResult<EmployeeDTO> listEmployees(final EmployeeQueryDTO query) {
+    IPage<Employee> page = employeeMapper.selectEmployeePage(...);
+    
+    // 批量加载用户信息
+    Set<Long> userIds = page.getRecords().stream()
+        .map(Employee::getUserId)
+        .filter(Objects::nonNull)
+        .collect(Collectors.toSet());
+    Map<Long, User> userMap = userIds.isEmpty() 
+        ? Collections.emptyMap()
+        : userRepository.listByIds(userIds).stream()
+            .collect(Collectors.toMap(User::getId, u -> u));
+    
+    // 使用 Map 转换 DTO
+    return PageResult.of(
+        page.getRecords().stream()
+            .map(e -> toDTO(e, userMap))
+            .collect(Collectors.toList()),
+        page.getTotal(), query.getPageNum(), query.getPageSize());
+}
+```
+
+**状态**：⏳ 待修复
+
+---
+
+### 88. EmployeeAppService 工号生成并发风险
+
+**问题描述**：`generateEmployeeNo` 使用时间戳后6位生成工号，高并发下可能产生重复工号。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| 🟡中 | 工号生成并发重复 | `EmployeeAppService.java:369-373` | 使用数据库序列或分布式ID |
+
+**问题代码**：
+
+```java
+// EmployeeAppService.java:369-373
+private String generateEmployeeNo() {
+    String prefix = "EMP";
+    String timestamp = String.valueOf(System.currentTimeMillis()).substring(7);  // 取后6位
+    return prefix + timestamp;  // ⚠️ 高并发下可能重复
+}
+```
+
+**风险分析**：
+- 取时间戳后6位，约16秒内可能重复
+- 高并发创建员工时可能生成相同工号
+- 虽然数据库有唯一约束会报错，但用户体验差
+
+**修复方案**：
+```java
+// 方案1：使用数据库序列
+private String generateEmployeeNo() {
+    Integer seq = employeeMapper.getNextSequence();
+    return String.format("EMP%06d", seq);
+}
+
+// 方案2：使用 UUID 短码
+private String generateEmployeeNo() {
+    return "EMP" + UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
+}
+
+// 方案3：年份+序号
+private String generateEmployeeNo() {
+    int year = LocalDate.now().getYear();
+    Integer maxSeq = employeeMapper.selectMaxSeqByYear(year);
+    return String.format("EMP%d%04d", year, (maxSeq == null ? 1 : maxSeq + 1));
+}
+```
+
+**状态**：⏳ 待修复
+
+---
+
+### 89. CaseLibraryAppService 收藏列表N+1查询
+
+**问题描述**：获取用户收藏的案例时，循环内逐个查询案例详情，产生N+1查询问题。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| 🟡中 | 循环内查询案例 | `CaseLibraryAppService.java:302-315` | 使用批量查询 |
+
+**问题代码**：
+
+```java
+// CaseLibraryAppService.java:302-315
+public List<CaseLibraryDTO> getMyCollectedCases() {
+    Long userId = SecurityUtils.getUserId();
+    List<KnowledgeCollection> collections =
+        knowledgeCollectionMapper.selectByUserAndType(userId, KnowledgeCollection.TYPE_CASE);
+
+    return collections.stream()
+        .map(c -> {
+            CaseLibrary caseLib = caseLibraryRepository.getById(c.getTargetId());  // ⚠️ 循环内查询
+            return caseLib != null ? toCaseDTO(caseLib, userId) : null;
+        })
+        .filter(dto -> dto != null)
+        .collect(Collectors.toList());
+}
+```
+
+**修复方案**：
+```java
+public List<CaseLibraryDTO> getMyCollectedCases() {
+    Long userId = SecurityUtils.getUserId();
+    List<KnowledgeCollection> collections =
+        knowledgeCollectionMapper.selectByUserAndType(userId, KnowledgeCollection.TYPE_CASE);
+    
+    if (collections.isEmpty()) {
+        return Collections.emptyList();
+    }
+    
+    // 批量加载案例
+    List<Long> caseIds = collections.stream()
+        .map(KnowledgeCollection::getTargetId)
+        .collect(Collectors.toList());
+    Map<Long, CaseLibrary> caseMap = caseLibraryRepository.listByIds(caseIds).stream()
+        .collect(Collectors.toMap(CaseLibrary::getId, c -> c));
+    
+    // 批量加载分类信息
+    Set<Long> categoryIds = caseMap.values().stream()
+        .map(CaseLibrary::getCategoryId)
+        .filter(Objects::nonNull)
+        .collect(Collectors.toSet());
+    Map<Long, CaseCategory> categoryMap = categoryIds.isEmpty()
+        ? Collections.emptyMap()
+        : caseCategoryRepository.listByIds(categoryIds).stream()
+            .collect(Collectors.toMap(CaseCategory::getId, c -> c));
+    
+    // 构建收藏状态Map（全部为true）
+    Map<Long, Boolean> collectedMap = caseIds.stream()
+        .collect(Collectors.toMap(id -> id, id -> true));
+    
+    return caseIds.stream()
+        .map(caseMap::get)
+        .filter(Objects::nonNull)
+        .map(c -> toCaseDTO(c, userId, categoryMap, collectedMap))
+        .collect(Collectors.toList());
+}
+```
+
+**状态**：⏳ 待修复
+
+---
+
+### 90. CaseLibraryAppService 删除案例未清理收藏记录
+
+**问题描述**：删除案例时没有清理关联的 `KnowledgeCollection` 收藏记录，导致数据不一致。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| 🟡中 | 删除未清理关联 | `CaseLibraryAppService.java:246-250` | 同时删除收藏记录 |
+
+**问题代码**：
+
+```java
+// CaseLibraryAppService.java:246-250
+@Transactional
+public void deleteCase(final Long id) {
+    CaseLibrary caseLib = caseLibraryRepository.getByIdOrThrow(id, "案例不存在");
+    caseLibraryMapper.deleteById(id);  // 只删除了案例
+    log.info("案例删除成功: {}", caseLib.getTitle());
+    // ⚠️ 没有删除 KnowledgeCollection 中的收藏记录
+}
+```
+
+**影响**：
+- 用户的收藏列表可能返回已删除的案例（返回null被过滤）
+- 收藏数据冗余，无法清理
+- `collectCount` 计数可能不准确
+
+**修复方案**：
+```java
+@Transactional
+public void deleteCase(final Long id) {
+    CaseLibrary caseLib = caseLibraryRepository.getByIdOrThrow(id, "案例不存在");
+    
+    // 先删除关联的收藏记录
+    int deletedCollections = knowledgeCollectionMapper.deleteByTargetTypeAndTargetId(
+        KnowledgeCollection.TYPE_CASE, id);
+    log.info("删除案例收藏记录: caseId={}, count={}", id, deletedCollections);
+    
+    // 再删除案例
+    caseLibraryMapper.deleteById(id);
+    log.info("案例删除成功: {}", caseLib.getTitle());
+}
+```
+
+**状态**：⏳ 待修复
+
+---
+
+### 91. NotificationAppService 紧急通知未批量插入
+
+**问题描述**：`sendUrgentNotification` 方法循环内单条插入通知，与 `sendNotification` 的批量优化不一致。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| 🟡中 | 循环内单条插入 | `NotificationAppService.java:237-249` | 使用批量插入 |
+
+**问题代码**：
+
+```java
+// NotificationAppService.java:237-249
+@Transactional
+public void sendUrgentNotification(
+    final List<Long> receiverIds, ...) {
+    // 保存到数据库
+    for (Long receiverId : receiverIds) {  // ⚠️ 循环内单条插入
+        Notification notification = Notification.builder()
+            .title(title)
+            .content(content)
+            .type(Notification.TYPE_REMINDER)
+            .receiverId(receiverId)
+            .isRead(false)
+            .businessType(businessType)
+            .businessId(businessId)
+            .build();
+        notificationRepository.save(notification);  // 每次循环都执行insert
+    }
+    // 推送紧急通知到企业微信
+    if (wecomChannel != null) {
+        wecomChannel.sendUrgentNotification(title, content, receiverIds);
+    }
+}
+```
+
+**修复方案**：
+```java
+@Transactional
+public void sendUrgentNotification(
+    final List<Long> receiverIds, ...) {
+    if (receiverIds == null || receiverIds.isEmpty()) {
+        return;
+    }
+    
+    // 批量构建通知
+    List<Notification> notifications = receiverIds.stream()
+        .map(receiverId -> Notification.builder()
+            .title(title)
+            .content(content)
+            .type(Notification.TYPE_REMINDER)
+            .receiverId(receiverId)
+            .isRead(false)
+            .businessType(businessType)
+            .businessId(businessId)
+            .build())
+        .collect(Collectors.toList());
+    
+    // 批量插入
+    notificationRepository.saveBatch(notifications);
+    
+    // 推送紧急通知到企业微信
+    if (wecomChannel != null) {
+        wecomChannel.sendUrgentNotification(title, content, receiverIds);
+    }
+    
+    log.info("紧急通知发送成功: title={}, receivers={}", title, receiverIds.size());
+}
+```
+
+**状态**：⏳ 待修复
+
+---
+
+### 92. NotificationAppService 通知已读权限校验缺失
+
+**问题描述**：`markAsRead` 方法没有校验通知是否属于当前用户，可能导致越权操作。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| 🔴高 | 缺少权限校验 | `NotificationAppService.java:94-96` | 添加用户归属验证 |
+
+**问题代码**：
+
+```java
+// NotificationAppService.java:94-96
+@Transactional
+public void markAsRead(final Long id) {
+    notificationMapper.markAsRead(id);  // ⚠️ 没有验证通知属于当前用户
+}
+```
+
+**安全风险**：
+- 攻击者可以通过遍历ID标记其他用户的通知为已读
+- 虽然不会泄露敏感数据，但影响用户体验
+
+**修复方案**：
+```java
+@Transactional
+public void markAsRead(final Long id) {
+    Long userId = SecurityUtils.getUserId();
+    
+    // 方案1：使用带条件的更新
+    int updated = notificationMapper.markAsReadByIdAndReceiver(id, userId);
+    if (updated == 0) {
+        log.warn("标记通知已读失败，通知不存在或不属于当前用户: notificationId={}, userId={}", id, userId);
+    }
+    
+    // 方案2：先查询再验证
+    // Notification notification = notificationMapper.selectById(id);
+    // if (notification == null || !userId.equals(notification.getReceiverId())) {
+    //     throw new BusinessException("通知不存在或无权限");
+    // }
+    // notificationMapper.markAsRead(id);
+}
+```
+
+**SQL修改**：
+```xml
+<!-- NotificationMapper.xml 添加 -->
+<update id="markAsReadByIdAndReceiver">
+    UPDATE notification 
+    SET is_read = true, read_at = NOW() 
+    WHERE id = #{id} AND receiver_id = #{receiverId} AND is_read = false
+</update>
+```
+
+**状态**：⏳ 待修复
+
+---
+
+### 93. 前端滑块验证轨迹传空数组
+
+**问题描述**：登录页面滑块验证时，滑动轨迹传空数组，简化处理可能影响安全防护效果。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| 🟢低 | 验证轨迹为空 | `login.vue:120` | 采集实际滑动轨迹 |
+
+**问题代码**：
+
+```typescript
+// login.vue:117-121
+const result = await verifySliderApi({
+    tokenId: sliderTokenId.value,
+    slideTime,
+    slideTrack: [], // ⚠️ 简化处理，不传轨迹
+});
+```
+
+**影响分析**：
+- 滑块验证主要依赖滑动时间，缺少轨迹使验证效果降低
+- 机器人可以通过模拟固定时间绕过验证
+- 当前有图形验证码作为后备，风险可控
+
+**建议**：
+1. 后端已有 `slideTime` 验证（过快或过慢拒绝），基本安全
+2. 如需增强，可采集滑动轨迹点（x, y, timestamp）
+3. 或添加鼠标移动行为分析
+
+**状态**：🟢 低优先级（有图形验证码后备）
+
+---
+
+### 94. 定时任务清单补充（任务86扩展）
+
+**问题描述**：补充系统中所有定时任务的详细清单，便于核查分布式锁配置。
+
+**定时任务清单**：
+
+| 任务名称 | 类名 | Cron表达式 | 执行频率 | 分布式锁需求 |
+|----------|------|------------|----------|--------------|
+| 工资表自动确认 | `PayrollAutoConfirmScheduler` | `0 0 2 * * ?` | 每天凌晨2点 | 需要 |
+| 系统日报 | `SystemReportService` | `0 0 8 * * ?` | 每天早上8点 | 需要 |
+| 系统周报 | `SystemReportService` | `0 0 9 ? * MON` | 每周一早上9点 | 需要 |
+| 系统健康检查 | `SystemReportService` | `0 0 * * * ?` | 每小时 | 建议 |
+| 任务到期提醒 | `TaskReminderScheduler` | `0 0 9 * * ?` | 每天上午9点 | 需要 |
+| 逾期任务警告 | `TaskReminderScheduler` | `0 0 10 * * ?` | 每天上午10点 | 需要 |
+| 自定义提醒检查 | `TaskReminderScheduler` | `0 0 * * * ?` | 每小时 | 建议 |
+| 定时报表执行 | `ScheduledReportScheduler` | `0 * * * * ?` | 每分钟 | 需要 |
+| 日程提醒 | `ScheduleReminderScheduler` | `0 */5 * * * ?` | 每5分钟 | 建议 |
+| 节假日年度同步 | `HolidaySyncScheduler` | `0 0 1 1 1 ?` | 每年1月1日 | 需要 |
+| 节假日月度检查 | `HolidaySyncScheduler` | `0 0 2 1 * ?` | 每月1日 | 需要 |
+| 合同到期提醒 | `ContractExpiryReminderScheduler` | `0 0 9 * * ?` | 每天上午9点 | 需要 |
+| 合同逾期警告 | `ContractExpiryReminderScheduler` | `0 0 10 * * ?` | 每天上午10点 | 需要 |
+| AI账单生成 | `AiBillingScheduler` | `0 0 2 1 * ?` | 每月1日 | 需要 |
+| AI账单提醒 | `AiBillingScheduler` | `0 0 10 5 * ?` | 每月5日 | 需要 |
+| 会话过期清理 | `SessionAppService` | `0 0 * * * ?` | 每小时 | 建议 |
+| 期限提醒 | `DeadlineAppService` | `0 0 9 * * ?` | 每天上午9点 | 需要 |
+| 过期期限更新 | `DeadlineAppService` | `0 0 1 * * ?` | 每天凌晨1点 | 需要 |
+
+**核查建议**：
+1. 检查是否引入了 ShedLock 或 Quartz 集群模式
+2. 标记"需要"的任务必须有分布式锁保护
+3. 标记"建议"的任务最好有锁保护，或设计为幂等
+
+**状态**：⏳ 待核实
+
+---
+
+### 95. TimesheetAppService toDTO方法N+1查询
+
+**问题描述**：工时管理 `toDTO` 方法对每条记录单独查询 Matter 和 User 信息，在列表查询时产生N+1问题。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| 🟡中 | toDTO 循环内单独查询 | `TimesheetAppService.java:672-686` | 使用批量加载 |
+
+**问题代码**：
+
+```java
+// TimesheetAppService.java:672-686
+private TimesheetDTO toDTO(final Timesheet timesheet) {
+    // ...
+    // 填充项目名称
+    if (timesheet.getMatterId() != null) {
+        Matter matter = matterRepository.findById(timesheet.getMatterId());  // ⚠️ N+1
+        if (matter != null) {
+            dto.setMatterName(matter.getName());
+        }
+    }
+
+    // 填充用户名称
+    if (timesheet.getUserId() != null) {
+        User user = userRepository.findById(timesheet.getUserId());  // ⚠️ N+1
+        if (user != null) {
+            dto.setUserName(user.getRealName() != null ? user.getRealName() : user.getUsername());
+        }
+    }
+    // ...
+}
+```
+
+**修复方案**：参考其他服务的批量加载模式，在列表查询方法中预加载 Matter 和 User Map。
+
+**状态**：⏳ 待修复
+
+---
+
+### 96. CaseStudyNoteAppService toDTO方法N+1查询
+
+**问题描述**：案例研读笔记 `toDTO` 方法对每条记录单独查询案例和用户信息。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| 🟡中 | toDTO 循环内单独查询 | `CaseStudyNoteAppService.java:146-157` | 使用批量加载 |
+
+**问题代码**：
+
+```java
+// CaseStudyNoteAppService.java:146-157
+private CaseStudyNoteDTO toDTO(CaseStudyNote note) {
+    // ...
+    // 获取案例信息
+    CaseLibrary caseLib = caseLibraryRepository.getById(note.getCaseId());  // ⚠️ N+1
+    if (caseLib != null) {
+        dto.setCaseTitle(caseLib.getTitle());
+    }
+
+    // 获取用户信息
+    User user = userRepository.getById(note.getUserId());  // ⚠️ N+1
+    if (user != null) {
+        dto.setUserName(user.getRealName());
+    }
+    // ...
+}
+```
+
+**状态**：⏳ 待修复
+
+---
+
+### 97. QualityCheckAppService toDTO方法N+1查询
+
+**问题描述**：质量检查 `toDTO` 方法对每条记录单独查询项目和检查人信息。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| 🟡中 | toDTO 循环内单独查询 | `QualityCheckAppService.java:245-256` | 使用批量加载 |
+
+**问题代码**：
+
+```java
+// QualityCheckAppService.java:245-256
+private QualityCheckDTO toDTO(QualityCheck check) {
+    // ...
+    // 获取项目信息
+    Matter matter = matterRepository.getById(check.getMatterId());  // ⚠️ N+1
+    if (matter != null) {
+        dto.setMatterName(matter.getName());
+    }
+
+    // 获取检查人信息
+    User checker = userRepository.getById(check.getCheckerId());  // ⚠️ N+1
+    if (checker != null) {
+        dto.setCheckerName(checker.getRealName());
+    }
+    // ...
+}
+```
+
+**状态**：⏳ 待修复
+
+---
+
+### 98. ScheduledReportAppService toDTO方法N+1查询
+
+**问题描述**：定时报表任务 `toDTO` 方法对每条记录单独查询模板信息。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| 🟡中 | toDTO 循环内单独查询 | `ScheduledReportAppService.java:728-733` | 使用批量加载 |
+
+**问题代码**：
+
+```java
+// ScheduledReportAppService.java:728-733
+private ScheduledReportTaskDTO toDTO(ScheduledReportTask task) {
+    // ...
+    dto.setTemplateId(task.getTemplateId());
+
+    // 获取模板名称
+    ReportTemplate template = templateRepository.findById(task.getTemplateId());  // ⚠️ N+1
+    if (template != null) {
+        dto.setTemplateName(template.getTemplateName());
+    }
+    // ...
+}
+```
+
+**状态**：⏳ 待修复
+
+---
+
+### 99. PayrollAppService toSheetDTO方法N+1查询
+
+**问题描述**：工资表 `toSheetDTO` 方法对每条记录单独查询审批人和审核人信息。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| 🟡中 | toDTO 循环内单独查询 | `PayrollAppService.java:1105-1124` | 使用批量加载 |
+
+**问题代码**：
+
+```java
+// PayrollAppService.java:1105-1124
+private PayrollSheetDTO toSheetDTO(PayrollSheet sheet) {
+    // ...
+    dto.setApproverId(sheet.getApproverId());
+    if (sheet.getApproverId() != null) {
+        try {
+            User approver = userRepository.getById(sheet.getApproverId());  // ⚠️ N+1
+            if (approver != null) {
+                dto.setApproverName(...);
+            }
+        }
+    }
+
+    dto.setApprovedBy(sheet.getApprovedBy());
+    if (sheet.getApprovedBy() != null) {
+        try {
+            User approvedByUser = userRepository.getById(sheet.getApprovedBy());  // ⚠️ N+1
+            if (approvedByUser != null) {
+                dto.setApprovedByName(...);
+            }
+        }
+    }
+    // ...
+}
+```
+
+**状态**：⏳ 待修复
+
+---
+
+### 100. ContractAppService toDTO方法N+1查询（合同服务）
+
+**问题描述**：合同服务 `toDTO` 和 `toParticipantDTO` 方法对每条记录单独查询客户、项目、用户信息。
+
+| 优先级 | 问题 | 位置 | 修复方案 |
+|--------|------|------|----------|
+| 🟡中 | toDTO 循环内单独查询 | `ContractAppService.java:1646-1663, 2015-2020` | 使用批量加载 |
+
+**问题代码**：
+
+```java
+// ContractAppService.java:1646-1663
+private ContractDTO toDTO(Contract contract) {
+    // ...
+    if (contract.getClientId() != null) {
+        try {
+            var client = clientRepository.getById(contract.getClientId());  // ⚠️ N+1
+            if (client != null) {
+                dto.setClientName(client.getName());
+            }
+        }
+    }
+    if (contract.getMatterId() != null) {
+        try {
+            var matter = matterRepository.getById(contract.getMatterId());  // ⚠️ N+1
+            if (matter != null) {
+                dto.setMatterName(matter.getName());
+            }
+        }
+    }
+    // ...
+}
+
+// ContractAppService.java:2015-2020
+private ContractParticipantDTO toParticipantDTO(ContractParticipant participant) {
+    // ...
+    if (participant.getUserId() != null) {
+        try {
+            var user = userRepository.getById(participant.getUserId());  // ⚠️ N+1
+            if (user != null) {
+                dto.setUserName(user.getRealName());
+            }
+        }
+    }
+    // ...
+}
+```
+
+**状态**：⏳ 待修复
+
+---
+
+## 📊 问题统计汇总
+
+| 优先级 | 数量 | 状态 |
+|--------|------|------|
+| 🔴高 | 5 | 需要尽快修复 |
+| 🟡中 | 27 | 建议优化 |
+| 🟢低 | 9 | 低优先级/可接受 |
+| ⏳待核实 | 7 | 需要进一步确认 |
+
+### 高优先级问题（需尽快处理）
+
+1. **任务65**: 全量数据加载性能风险（PayrollAppService, ApproverService）
+2. **任务82**: SQL注入防护检查（待安全审计）
+3. **任务84**: 数据库连接信息安全（待安全审计）
+4. **任务92**: 通知已读权限校验缺失（越权风险）
+
+### 中优先级问题（建议近期处理）
+
+1. **任务66**: getOrCreateConfig 竞态条件
+2. **任务67**: 证据文件路径解析数组越界风险
+3. **任务70**: PayrollAppService 员工过滤逻辑复杂度
+4. **任务71**: ApprovalAppService 批量审批事件发布时机
+5. **任务72**: 默认密钥安全风险
+6. **任务74**: 缓存使用不足
+7. **任务76-79**: 各服务的N+1查询优化
+8. **任务80**: 缺少统一的审计日志
+9. **任务83**: 异步任务配置优化
+10. **任务87**: EmployeeAppService 列表查询N+1问题
+11. **任务88**: EmployeeAppService 工号生成并发风险
+12. **任务89**: CaseLibraryAppService 收藏列表N+1查询
+13. **任务90**: CaseLibraryAppService 删除案例未清理收藏
+14. **任务91**: NotificationAppService 紧急通知未批量插入
+15. **任务95-100**: 多个AppService的toDTO方法N+1查询问题

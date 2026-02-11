@@ -181,4 +181,68 @@ public class CommissionRepository extends AbstractRepository<CommissionMapper, C
     }
     return commissionMap;
   }
+
+  /**
+   * 批量查询多个用户的提成记录并按用户分组（避免N+1查询）.
+   *
+   * @param userIds 用户ID列表
+   * @return Map<用户ID, 提成记录列表>
+   */
+  public java.util.Map<Long, List<Commission>> findByUserIdsGrouped(final List<Long> userIds) {
+    if (userIds == null || userIds.isEmpty()) {
+      return java.util.Collections.emptyMap();
+    }
+
+    List<java.util.Map<String, Object>> results = baseMapper.selectAllByUserIds(userIds);
+
+    java.util.Map<Long, List<Commission>> commissionMap = new java.util.HashMap<>();
+    for (java.util.Map<String, Object> item : results) {
+      if (item == null) {
+        continue;
+      }
+      Object userIdObj = item.get("detail_user_id");
+      if (userIdObj == null) {
+        continue;
+      }
+      Long userId = ((Number) userIdObj).longValue();
+
+      Commission commission = mapToCommission(item);
+      if (commission != null) {
+        commissionMap.computeIfAbsent(userId, k -> new java.util.ArrayList<>()).add(commission);
+      }
+    }
+    return commissionMap;
+  }
+
+  /**
+   * 将 Map 转换为 Commission 对象.
+   */
+  private Commission mapToCommission(final java.util.Map<String, Object> item) {
+    if (item == null) {
+      return null;
+    }
+    Commission commission = new Commission();
+    if (item.get("id") != null) {
+      commission.setId(((Number) item.get("id")).longValue());
+    }
+    if (item.get("contract_id") != null) {
+      commission.setContractId(((Number) item.get("contract_id")).longValue());
+    }
+    if (item.get("matter_id") != null) {
+      commission.setMatterId(((Number) item.get("matter_id")).longValue());
+    }
+    if (item.get("payment_id") != null) {
+      commission.setPaymentId(((Number) item.get("payment_id")).longValue());
+    }
+    if (item.get("commission_amount") != null) {
+      commission.setCommissionAmount(
+          item.get("commission_amount") instanceof BigDecimal
+              ? (BigDecimal) item.get("commission_amount")
+              : new BigDecimal(item.get("commission_amount").toString()));
+    }
+    if (item.get("status") != null) {
+      commission.setStatus((String) item.get("status"));
+    }
+    return commission;
+  }
 }

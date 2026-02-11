@@ -287,4 +287,25 @@ public interface CommissionMapper extends BaseMapper<Commission> {
         """)
   List<java.util.Map<String, Object>> sumCommissionGroupByUserId(
       @Param("userIds") List<Long> userIds);
+
+  /**
+   * 批量根据多个用户ID查询所有提成记录（避免N+1查询）.
+   *
+   * @param userIds 用户ID列表
+   * @return 提成记录列表（包含user_id字段用于分组）
+   */
+  @Select(
+      """
+        <script>
+        SELECT DISTINCT c.*, cd.user_id as detail_user_id FROM finance_commission c
+        INNER JOIN finance_commission_detail cd ON c.id = cd.commission_id
+        WHERE c.deleted = false AND cd.deleted = false
+        AND cd.user_id IN
+        <foreach collection="userIds" item="userId" open="(" separator="," close=")">
+            #{userId}
+        </foreach>
+        ORDER BY c.created_at DESC
+        </script>
+        """)
+  List<java.util.Map<String, Object>> selectAllByUserIds(@Param("userIds") List<Long> userIds);
 }
