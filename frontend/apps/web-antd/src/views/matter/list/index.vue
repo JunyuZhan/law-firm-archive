@@ -1117,7 +1117,7 @@ onMounted(async () => {
           <a @click="handleView(row)">详情</a>
           <a
             v-if="!['ARCHIVED', 'CLOSED', 'PENDING_CLOSE'].includes(row.status)"
-            v-access:code="'matter:edit'"
+            v-access:code="'matter:update'"
             @click="handleEdit(row)"
             >编辑</a
           >

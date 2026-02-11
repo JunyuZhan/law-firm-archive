@@ -329,13 +329,13 @@ function getStatusColor(status: string) {
       <template #toolbar-buttons>
         <Space>
           <Button
-            v-access:code="'user:create'"
+            v-access:code="'sys:user:create'"
             type="primary"
             @click="handleAdd"
           >
             新增用户
           </Button>
-          <span v-access:code="'user:create'">
+          <span v-access:code="'sys:user:create'">
             <Dropdown>
               <Button>
                 更多操作
@@ -375,17 +375,17 @@ function getStatusColor(status: string) {
       <!-- 操作列 -->
       <template #action="{ row }">
         <Space>
-          <a v-access:code="'user:edit'" @click="handleEdit(row)">编辑</a>
+          <a v-access:code="'sys:user:update'" @click="handleEdit(row)">编辑</a>
           <a
-            v-access:code="'user:reset-password'"
+            v-access:code="'sys:user:update'"
             @click="handleResetPassword(row)"
             >重置密码</a
           >
-          <a v-access:code="'user:edit'" @click="handleStatusChange(row)">
+          <a v-access:code="'sys:user:update'" @click="handleStatusChange(row)">
             {{ row.status === 'ACTIVE' ? '禁用' : '启用' }}
           </a>
           <a
-            v-access:code="'user:delete'"
+            v-access:code="'sys:user:delete'"
             style="color: #ff4d4f"
             @click="handleDelete(row)"
             >删除</a

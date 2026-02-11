@@ -821,9 +821,9 @@ onMounted(async () => {
         <!-- 操作列 -->
         <template #action="{ row }">
           <Space>
-            <a v-access:code="'client:edit'" @click="handleEdit(row)">编辑</a>
+            <a v-access:code="'client:update'" @click="handleEdit(row)">编辑</a>
             <template v-if="row.status === 'POTENTIAL'">
-              <a v-access:code="'client:edit'" @click="handleConvert(row)"
+              <a v-access:code="'client:update'" @click="handleConvert(row)"
                 >转正式</a
               >
             </template>
