@@ -268,12 +268,12 @@ async function refreshAll() {
   renderPieChart();
 }
 
+// 监听数据变化渲染图表（数据整体替换时触发，无需 deep）
 watch(
   () => usageLogs.value,
   () => {
     renderTrendChart();
   },
-  { deep: true },
 );
 
 watch(
@@ -281,7 +281,6 @@ watch(
   () => {
     renderPieChart();
   },
-  { deep: true },
 );
 
 onMounted(() => {

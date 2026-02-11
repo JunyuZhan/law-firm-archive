@@ -815,7 +815,7 @@ async function handleModalSuccess() {
 
 // ==================== 生命周期 ====================
 
-// 监听 dataSource 变化，强制更新表格
+// 监听 dataSource 变化，强制更新表格（数据整体替换时触发，无需 deep）
 watch(
   () => dataSource.value,
   () => {
@@ -823,7 +823,7 @@ watch(
       tableKey.value = Date.now();
     });
   },
-  { deep: true, flush: 'post' },
+  { flush: 'post' },
 );
 
 watch(
