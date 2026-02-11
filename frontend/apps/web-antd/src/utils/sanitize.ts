@@ -9,28 +9,65 @@ import DOMPurify from 'dompurify';
  * @param dirty 需要清理的 HTML 字符串
  * @returns 安全的 HTML 字符串
  */
-export function sanitizeHtml(dirty: string | null | undefined): string {
+export function sanitizeHtml(dirty: null | string | undefined): string {
   if (!dirty) return '';
   return DOMPurify.sanitize(dirty, {
     // 允许的标签
     ALLOWED_TAGS: [
-      'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-      'p', 'div', 'span', 'br', 'hr',
-      'strong', 'b', 'em', 'i', 'u', 's', 'del', 'ins',
-      'ul', 'ol', 'li',
-      'table', 'thead', 'tbody', 'tr', 'th', 'td',
-      'a', 'img',
-      'blockquote', 'pre', 'code',
-      'sub', 'sup',
+      'h1',
+      'h2',
+      'h3',
+      'h4',
+      'h5',
+      'h6',
+      'p',
+      'div',
+      'span',
+      'br',
+      'hr',
+      'strong',
+      'b',
+      'em',
+      'i',
+      'u',
+      's',
+      'del',
+      'ins',
+      'ul',
+      'ol',
+      'li',
+      'table',
+      'thead',
+      'tbody',
+      'tr',
+      'th',
+      'td',
+      'a',
+      'img',
+      'blockquote',
+      'pre',
+      'code',
+      'sub',
+      'sup',
     ],
     // 允许的属性
     ALLOWED_ATTR: [
-      'href', 'src', 'alt', 'title', 'class', 'style',
-      'width', 'height', 'colspan', 'rowspan',
-      'target', 'rel',
+      'href',
+      'src',
+      'alt',
+      'title',
+      'class',
+      'style',
+      'width',
+      'height',
+      'colspan',
+      'rowspan',
+      'target',
+      'rel',
     ],
     // 允许的 URI 协议
-    ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|tel):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
+    ALLOWED_URI_REGEXP:
+      /^(?:(?:https?|mailto|tel):|[^a-z]|[a-z.+-]+(?:[^a-z.:+-]|$))/i,
     // 强制链接在新窗口打开时添加 noopener
     ADD_ATTR: ['target'],
   });
@@ -41,7 +78,7 @@ export function sanitizeHtml(dirty: string | null | undefined): string {
  * @param dirty 需要清理的字符串
  * @returns 纯文本
  */
-export function sanitizeText(dirty: string | null | undefined): string {
+export function sanitizeText(dirty: null | string | undefined): string {
   if (!dirty) return '';
   return DOMPurify.sanitize(dirty, { ALLOWED_TAGS: [] });
 }
@@ -51,7 +88,7 @@ export function sanitizeText(dirty: string | null | undefined): string {
  * @param text 需要转义的文本
  * @returns 转义后的安全文本
  */
-export function escapeHtml(text: string | null | undefined): string {
+export function escapeHtml(text: null | string | undefined): string {
   if (!text) return '';
   const map: Record<string, string> = {
     '&': '&amp;',

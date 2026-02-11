@@ -136,7 +136,12 @@ const editorConfig: Partial<IEditorConfig> = {
     uploadImage: {
       customUpload(file: File, insertFn: (url: string) => void) {
         // 文件类型校验
-        const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        const allowedTypes = [
+          'image/jpeg',
+          'image/png',
+          'image/gif',
+          'image/webp',
+        ];
         if (!allowedTypes.includes(file.type)) {
           console.warn('不支持的图片格式:', file.type);
           return;
@@ -159,13 +164,13 @@ const editorConfig: Partial<IEditorConfig> = {
 
         const reader = new FileReader();
         // 使用 onload/onerror 赋值代替 addEventListener，避免需要手动移除监听器
-        reader.onload = () => {
+        reader.addEventListener('load', () => {
           insertFn(reader.result as string);
-        };
-        reader.onerror = () => {
+        });
+        reader.addEventListener('error', () => {
           console.error('读取图片文件失败:', reader.error);
           // 静默失败，不阻止用户继续编辑
-        };
+        });
         reader.readAsDataURL(file);
       },
     },

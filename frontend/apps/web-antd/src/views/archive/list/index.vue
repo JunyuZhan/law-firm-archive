@@ -11,8 +11,6 @@ import type {
 import type { MatterDTO, MatterSimpleDTO } from '#/api/matter/types';
 
 import { computed, onMounted, reactive, ref } from 'vue';
-
-import { escapeHtml } from '#/utils/sanitize';
 import { useRoute, useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
@@ -71,6 +69,7 @@ import {
   getCaseCategoryByMatterType,
   MATTER_TYPE_OPTIONS,
 } from '#/composables/useCauseOfAction';
+import { escapeHtml } from '#/utils/sanitize';
 
 import ArchiveCoverPreview from '../components/ArchiveCoverPreview.vue';
 

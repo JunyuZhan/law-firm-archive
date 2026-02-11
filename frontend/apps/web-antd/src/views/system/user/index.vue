@@ -376,9 +376,7 @@ function getStatusColor(status: string) {
       <template #action="{ row }">
         <Space>
           <a v-access:code="'sys:user:update'" @click="handleEdit(row)">编辑</a>
-          <a
-            v-access:code="'sys:user:update'"
-            @click="handleResetPassword(row)"
+          <a v-access:code="'sys:user:update'" @click="handleResetPassword(row)"
             >重置密码</a
           >
           <a v-access:code="'sys:user:update'" @click="handleStatusChange(row)">

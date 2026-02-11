@@ -334,11 +334,7 @@ onMounted(() => {
               aria-label="刷新验证码"
               @click="fetchImageCaptcha"
             >
-              <img
-                :src="captchaUrl"
-                alt="验证码图片"
-                class="captcha-image"
-              />
+              <img :src="captchaUrl" alt="验证码图片" class="captcha-image" />
             </button>
           </div>
           <Alert
@@ -435,9 +431,9 @@ onMounted(() => {
 
 .captcha-image-btn {
   padding: 0;
-  border: none;
-  background: transparent;
   cursor: pointer;
+  background: transparent;
+  border: none;
 }
 
 .captcha-image {

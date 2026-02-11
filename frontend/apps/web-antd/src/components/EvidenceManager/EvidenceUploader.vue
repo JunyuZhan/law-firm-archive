@@ -45,7 +45,7 @@ const customRequest: UploadProps['customRequest'] = async (options) => {
   const { file, onSuccess, onError, onProgress } = options;
 
   // 在外部声明以便 finally 中清理
-  let progressInterval: ReturnType<typeof setInterval> | null = null;
+  let progressInterval: null | ReturnType<typeof setInterval> = null;
 
   try {
     uploading.value = true;

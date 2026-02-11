@@ -50,7 +50,6 @@ import {
 import dayjs from 'dayjs';
 
 import { getClientSelectOptions } from '#/api/client';
-import { escapeHtml, sanitizeHtml } from '#/utils/sanitize';
 // UpdateContractCommand 用于类型推断
 import {
   createContractFromTemplate,
@@ -91,6 +90,7 @@ import {
 } from '#/composables/useCauseOfAction';
 import { getStageDictCode } from '#/composables/useStageDict';
 import { useResponsive } from '#/hooks/useResponsive';
+import { escapeHtml, sanitizeHtml } from '#/utils/sanitize';
 import {
   decodeHtmlEntities,
   formatStructuredForPrint,

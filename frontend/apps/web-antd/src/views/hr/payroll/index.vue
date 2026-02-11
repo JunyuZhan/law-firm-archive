@@ -10,7 +10,6 @@ import type {
 import { computed, onMounted, reactive, ref } from 'vue';
 
 import { Page } from '@vben/common-ui';
-import { escapeHtml } from '#/utils/sanitize';
 
 import {
   AutoComplete,
@@ -46,6 +45,7 @@ import {
   updatePayrollItem,
   updatePayrollItemByEmployee,
 } from '#/api/hr/payroll';
+import { escapeHtml } from '#/utils/sanitize';
 
 defineOptions({ name: 'PayrollManagement' });
 

@@ -787,7 +787,12 @@ watch(
       // 记录失败的请求（用于调试）
       results.forEach((result, index) => {
         if (result.status === 'rejected') {
-          const names = ['loadData', 'loadClientFiles', 'loadAccessLogs', 'loadDownloadLogs'];
+          const names = [
+            'loadData',
+            'loadClientFiles',
+            'loadAccessLogs',
+            'loadDownloadLogs',
+          ];
           console.error(`${names[index]} 失败:`, result.reason);
         }
       });

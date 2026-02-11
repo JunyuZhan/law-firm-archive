@@ -15,8 +15,6 @@ import { useRoute, useRouter } from 'vue-router';
 import { Page } from '@vben/common-ui';
 import { useUserStore } from '@vben/stores';
 
-import { sanitizeHtml } from '#/utils/sanitize';
-
 import {
   Alert,
   Button,
@@ -77,6 +75,7 @@ import {
 import { getStateCompensation } from '#/api/matter/state-compensation';
 import { UserTreeSelect } from '#/components/UserTreeSelect';
 import { useResponsive } from '#/hooks/useResponsive';
+import { sanitizeHtml } from '#/utils/sanitize';
 
 defineOptions({ name: 'MatterDetail' });
 // 异步加载重型Tab组件，减少首屏加载时间

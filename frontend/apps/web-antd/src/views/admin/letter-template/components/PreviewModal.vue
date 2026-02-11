@@ -8,10 +8,9 @@ import { OFFICIAL_DOCUMENT_STYLES } from '@vben/utils';
 
 import { Button, message, Space, Tag } from 'ant-design-vue';
 
-import { sanitizeHtml } from '#/utils/sanitize';
-
 import { getProfileInfo } from '#/api/core/profile';
 import { getConfigValue } from '#/api/system';
+import { sanitizeHtml } from '#/utils/sanitize';
 
 import { decodeHtmlEntities } from '../../../finance/contract-template/utils/print-formatter';
 import { createLetterSampleData } from '../constants/sample-data';
@@ -195,7 +194,10 @@ defineExpose({ open });
     <div class="preview-container">
       <div class="preview-paper">
         <!-- 使用 sanitizeHtml 防止 XSS 攻击 -->
-        <div v-html="sanitizeHtml(previewContent)" class="preview-content"></div>
+        <div
+          v-html="sanitizeHtml(previewContent)"
+          class="preview-content"
+        ></div>
       </div>
     </div>
 

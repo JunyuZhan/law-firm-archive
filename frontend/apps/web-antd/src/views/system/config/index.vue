@@ -20,9 +20,7 @@ import {
 import { useRoute } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
-import { CircleHelp, Copy, Eye } from '@vben/icons';
-
-import { sanitizeHtml } from '#/utils/sanitize';
+import { CircleHelp, Copy, Eye, UploadOutlined } from '@vben/icons';
 
 import {
   Alert,
@@ -48,7 +46,6 @@ import {
   Tooltip,
   Upload,
 } from 'ant-design-vue';
-import { UploadOutlined } from '@vben/icons';
 
 import { requestClient } from '#/api/request';
 import {
@@ -72,6 +69,7 @@ import {
   updateConfig,
 } from '#/api/system';
 import { getWecomStatus, testWecomBot } from '#/api/system/wecom';
+import { sanitizeHtml } from '#/utils/sanitize';
 
 import ConfigModal from './components/ConfigModal.vue';
 
@@ -1432,9 +1430,7 @@ watch(activeTab, (newTab) => {
                     适用于服务器无法访问外网的情况
                   </p>
                 </div>
-                <Button block @click="openOfflineUpgrade">
-                  上传升级包
-                </Button>
+                <Button block @click="openOfflineUpgrade"> 上传升级包 </Button>
               </Card>
             </Col>
           </Row>
@@ -1443,8 +1439,14 @@ watch(activeTab, (newTab) => {
           <Alert type="info" :show-icon="false">
             <div style="margin-bottom: 8px; font-weight: 500">升级说明：</div>
             <ul style="padding-left: 20px; margin: 0; color: #666">
-              <li><strong>在线升级</strong>：系统自动从 GitHub 拉取指定版本代码并重新部署</li>
-              <li><strong>离线升级</strong>：手动下载 GitHub Release 中的 Source code (zip) 文件并上传</li>
+              <li>
+                <strong>在线升级</strong>：系统自动从 GitHub
+                拉取指定版本代码并重新部署
+              </li>
+              <li>
+                <strong>离线升级</strong>：手动下载 GitHub Release 中的 Source
+                code (zip) 文件并上传
+              </li>
               <li>升级完成后，请刷新页面以使用新版本</li>
               <li style="margin-top: 8px; color: #ff4d4f">
                 <strong>如需回滚</strong>：在服务器执行
@@ -1463,11 +1465,7 @@ watch(activeTab, (newTab) => {
           cancel-text="取消"
           @ok="executeOfflineUpgrade"
         >
-          <Alert
-            type="info"
-            show-icon
-            style="margin-bottom: 16px"
-          >
+          <Alert type="info" show-icon style="margin-bottom: 16px">
             <template #message>下载升级包</template>
             <template #description>
               请前往
@@ -1493,7 +1491,10 @@ watch(activeTab, (newTab) => {
             </Button>
           </Upload>
 
-          <div v-if="offlineUpgradeFile" style="margin-top: 12px; color: #52c41a">
+          <div
+            v-if="offlineUpgradeFile"
+            style="margin-top: 12px; color: #52c41a"
+          >
             已选择: {{ offlineUpgradeFile.name }}
           </div>
         </AModal>

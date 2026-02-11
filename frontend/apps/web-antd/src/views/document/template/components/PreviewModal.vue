@@ -15,9 +15,8 @@ import {
   Tag,
 } from 'ant-design-vue';
 
-import { sanitizeHtml } from '#/utils/sanitize';
-
 import { getTemplateDetail, previewTemplate } from '#/api/document/template';
+import { sanitizeHtml } from '#/utils/sanitize';
 
 const previewContent = ref('');
 const currentTemplate = ref<DocumentTemplateDTO | null>(null);

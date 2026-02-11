@@ -30,8 +30,6 @@ import { preferences } from '@vben/preferences';
 import { useUserStore } from '@vben/stores';
 import { openWindow } from '@vben/utils';
 
-import { sanitizeHtml } from '#/utils/sanitize';
-
 import {
   Avatar,
   Card,
@@ -66,6 +64,7 @@ import {
   getWorkbenchStats,
 } from '#/api/workbench';
 import { useResponsive } from '#/hooks/useResponsive';
+import { sanitizeHtml } from '#/utils/sanitize';
 
 // HTML转义函数，防止XSS攻击
 function escapeHtml(text: string): string {
@@ -1125,7 +1124,10 @@ onUnmounted(() => {
                   <template #title>{{ item.title }}</template>
                   <template #description>
                     <!-- 使用 sanitizeHtml 防止 XSS 攻击 -->
-                    <div class="text-xs" v-html="sanitizeHtml(item.content)"></div>
+                    <div
+                      class="text-xs"
+                      v-html="sanitizeHtml(item.content)"
+                    ></div>
                     <div class="mt-1 text-xs text-gray-400">
                       {{ item.date }}
                     </div>

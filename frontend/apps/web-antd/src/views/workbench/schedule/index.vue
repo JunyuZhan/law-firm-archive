@@ -432,7 +432,7 @@ async function handleDelete(id: number) {
 }
 
 // 格式化时间
-function formatTime(time: string | null | undefined) {
+function formatTime(time: null | string | undefined) {
   if (!time) return '-';
   const d = dayjs(time);
   return d.isValid() ? d.format('YYYY-MM-DD HH:mm') : '-';
@@ -536,9 +536,11 @@ onMounted(() => {
                     :style="{ backgroundColor: getTypeColor(s.scheduleType) }"
                     @click.stop="handleEdit(s)"
                   >
-                    <span v-if="!s.allDay && s.startTime" class="schedule-time">{{
-                      dayjs(s.startTime).format('HH:mm')
-                    }}</span>
+                    <span
+                      v-if="!s.allDay && s.startTime"
+                      class="schedule-time"
+                      >{{ dayjs(s.startTime).format('HH:mm') }}</span
+                    >
                     {{ s.title }}
                   </div>
                   <div

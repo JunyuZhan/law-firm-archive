@@ -389,14 +389,22 @@ async function handleSave() {
 
       const returnPath = route.query.returnPath as string;
       // 安全校验：仅允许以 / 开头的相对路径，防止开放重定向
-      if (returnPath && returnPath.startsWith('/') && !returnPath.startsWith('//')) {
-        let returnQuery: Record<string, string> = {};
+      if (
+        returnPath &&
+        returnPath.startsWith('/') &&
+        !returnPath.startsWith('//')
+      ) {
+        const returnQuery: Record<string, string> = {};
         try {
           const parsedQuery = route.query.returnQuery
             ? JSON.parse(route.query.returnQuery as string)
             : {};
           // 白名单校验：仅保留基本类型的值，防止原型污染
-          if (parsedQuery && typeof parsedQuery === 'object' && !Array.isArray(parsedQuery)) {
+          if (
+            parsedQuery &&
+            typeof parsedQuery === 'object' &&
+            !Array.isArray(parsedQuery)
+          ) {
             for (const key of Object.keys(parsedQuery)) {
               const value = parsedQuery[key];
               // 仅保留字符串和数字类型的值，跳过 __proto__ 等危险属性

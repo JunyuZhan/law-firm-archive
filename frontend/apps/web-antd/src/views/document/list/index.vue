@@ -86,8 +86,8 @@ const router = useRouter();
 const loading = ref(false);
 // 跟踪文件输入元素，用于清理（防止内存泄漏）
 const activeFileInputs = new Set<{
-  input: HTMLInputElement;
   handler: (e: Event) => void;
+  input: HTMLInputElement;
 }>();
 const selectedMatterId = ref<number | undefined>(undefined);
 const selectedMatter = ref<MatterDTO | MatterSimpleDTO | null>(null);
@@ -1546,10 +1546,10 @@ function handleUploadSignedVersion(record: DocumentDTO) {
   input.accept = '.pdf,.jpg,.jpeg,.png';
 
   // 用于跟踪和清理的引用
-  let inputRef: {
-    input: HTMLInputElement;
+  let inputRef: null | {
     handler: (e: Event) => void;
-  } | null = null;
+    input: HTMLInputElement;
+  } = null;
 
   // 定义处理函数，便于移除监听器
   const handleChange = async (e: Event) => {
@@ -2515,7 +2515,12 @@ watch(
                               </MenuItem>
                             </Menu>
                           </template>
-                          <Button type="text" size="small" class="action-btn" aria-label="更多操作">
+                          <Button
+                            type="text"
+                            size="small"
+                            class="action-btn"
+                            aria-label="更多操作"
+                          >
                             <Ellipsis :size="15" />
                           </Button>
                         </Dropdown>
