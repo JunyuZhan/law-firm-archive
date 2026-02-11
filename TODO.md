@@ -385,7 +385,7 @@
 
 | 优先级 | 问题 | 位置 | 修复方案 |
 |--------|------|------|----------|
-| 🟡中 | checked exception 不回滚 | 多个 @Transactional 方法 | 添加 rollbackFor = Exception.class |
+| ✅ | checked exception 不回滚 | 多个 @Transactional 方法 | UserAppService/DocumentAppService 已添加 rollbackFor |
 
 **实施进度**：
 - [ ] 异常信息泄露修复

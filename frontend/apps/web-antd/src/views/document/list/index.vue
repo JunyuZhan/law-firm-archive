@@ -199,10 +199,11 @@ async function loadDossierItems() {
 
   try {
     const items = await getMatterDossierItems(selectedMatter.value.id);
-    dossierItems.value = items;
+    dossierItems.value = items || [];
   } catch (error) {
     console.error('加载卷宗目录失败:', error);
     dossierItems.value = [];
+    message.error('加载卷宗目录失败');
   }
 }
 
@@ -1027,6 +1028,7 @@ async function handleUpload() {
   } catch (error) {
     console.error('获取卷宗目录失败:', error);
     dossierItems.value = [];
+    message.error('获取卷宗目录失败');
   }
 
   // 设置默认的存储位置为第一个可用的文件夹

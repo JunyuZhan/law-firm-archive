@@ -205,10 +205,11 @@ async function fetchData() {
 async function fetchEmployees() {
   try {
     const res = await getEmployeeList({ pageNum: 1, pageSize: 10_000 });
-    employeeList.value = res.list || [];
+    employeeList.value = res?.list || [];
   } catch (error) {
     console.error('获取员工列表失败:', error);
     employeeList.value = [];
+    message.error('获取员工列表失败');
   }
 }
 
