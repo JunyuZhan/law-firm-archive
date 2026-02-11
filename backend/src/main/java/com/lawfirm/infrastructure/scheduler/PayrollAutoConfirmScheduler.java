@@ -58,8 +58,6 @@ public class PayrollAutoConfirmScheduler {
 
     // 批量获取所有工资表的ID
     List<Long> sheetIds = sheets.stream().map(PayrollSheet::getId).collect(Collectors.toList());
-    Map<Long, PayrollSheet> sheetMap = sheets.stream()
-        .collect(Collectors.toMap(PayrollSheet::getId, s -> s));
 
     // 一次性查询所有待确认的工资明细（避免N+1查询）
     List<PayrollItem> allPendingItems =

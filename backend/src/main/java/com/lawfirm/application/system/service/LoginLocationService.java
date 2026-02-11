@@ -135,7 +135,6 @@ public class LoginLocationService {
    * @param isCityLevel 是否市级
    * @return 常用位置集合
    */
-  @SuppressWarnings("unchecked")
   private Set<String> getTrustedLocations(final Long userId, final boolean isCityLevel) {
     String suffix = isCityLevel ? ":city" : "";
     String key = TRUSTED_LOCATION_PREFIX + userId + suffix;

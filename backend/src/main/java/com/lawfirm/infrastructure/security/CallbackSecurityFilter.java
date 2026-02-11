@@ -132,7 +132,7 @@ public class CallbackSecurityFilter extends OncePerRequestFilter {
         response.getWriter().write("{\"code\":\"401\",\"message\":\"缺少回调认证密钥\"}");
         return;
       }
-      if (!configuredApiKey.equals(requestApiKey)) {
+      if (!java.util.Objects.equals(configuredApiKey, requestApiKey)) {
         log.warn("回调请求被拒绝：API Key 不匹配 - path={}, clientIp={}", requestPath, clientIp);
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         response.setContentType("application/json;charset=UTF-8");
