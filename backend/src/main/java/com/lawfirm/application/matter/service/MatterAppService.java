@@ -20,6 +20,7 @@ import com.lawfirm.common.constant.MatterConstants;
 import com.lawfirm.common.exception.BusinessException;
 import com.lawfirm.common.result.PageResult;
 import com.lawfirm.common.util.SecurityUtils;
+import com.lawfirm.common.util.SqlUtils;
 import com.lawfirm.domain.client.entity.Client;
 import com.lawfirm.domain.client.repository.ClientRepository;
 import com.lawfirm.domain.finance.entity.Contract;
@@ -127,6 +128,10 @@ public class MatterAppService {
   public PageResult<MatterDTO> listMatters(final MatterQueryDTO query) {
     IPage<Matter> page;
 
+    // 转义 LIKE 查询中的通配符
+    String escapedName = SqlUtils.escapeLike(query.getName());
+    String escapedMatterNo = SqlUtils.escapeLike(query.getMatterNo());
+
     if (Boolean.TRUE.equals(query.getMyMatters())) {
       // 查询我参与的案件（已经按用户过滤，不需要额外权限过滤）
       Long userId = SecurityUtils.getUserId();
@@ -134,7 +139,7 @@ public class MatterAppService {
           matterMapper.selectByParticipantUserId(
               new Page<>(query.getPageNum(), query.getPageSize()),
               userId,
-              query.getName(),
+              escapedName,
               query.getStatus(),
               query.getCreatedAtFrom(),
               query.getCreatedAtTo());
@@ -159,6 +164,9 @@ public class MatterAppService {
 
       // 设置权限过滤的案件ID列表
       query.setMatterIds(accessibleMatterIds); // null表示可以访问所有项目（ALL权限）
+      // 设置转义后的 LIKE 查询参数
+      query.setName(escapedName);
+      query.setMatterNo(escapedMatterNo);
       page =
           matterMapper.selectMatterPage(new Page<>(query.getPageNum(), query.getPageSize()), query);
 

@@ -464,7 +464,7 @@ onMounted(() => {
               {{ s.scheduleTypeName || s.scheduleType }}
             </Tag>
             <span class="today-time">{{
-              dayjs(s.startTime).format('HH:mm')
+              s.startTime ? dayjs(s.startTime).format('HH:mm') : '--:--'
             }}</span>
             <span class="today-title">{{ s.title }}</span>
             <span v-if="s.location" class="today-location"
@@ -536,7 +536,7 @@ onMounted(() => {
                     :style="{ backgroundColor: getTypeColor(s.scheduleType) }"
                     @click.stop="handleEdit(s)"
                   >
-                    <span v-if="!s.allDay" class="schedule-time">{{
+                    <span v-if="!s.allDay && s.startTime" class="schedule-time">{{
                       dayjs(s.startTime).format('HH:mm')
                     }}</span>
                     {{ s.title }}

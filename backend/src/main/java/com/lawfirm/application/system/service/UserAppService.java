@@ -8,6 +8,7 @@ import com.lawfirm.application.system.dto.UserDTO;
 import com.lawfirm.application.system.dto.UserQueryDTO;
 import com.lawfirm.common.exception.BusinessException;
 import com.lawfirm.common.result.PageResult;
+import com.lawfirm.common.util.SqlUtils;
 import com.lawfirm.domain.system.entity.User;
 import com.lawfirm.domain.system.repository.UserRepository;
 import com.lawfirm.infrastructure.external.excel.ExcelImportExportService;
@@ -61,12 +62,17 @@ public class UserAppService {
    * @return 分页结果对象，包含用户DTO列表和分页信息
    */
   public PageResult<UserDTO> listUsers(final UserQueryDTO query) {
+    // 转义 LIKE 查询中的通配符
+    String escapedUsername = SqlUtils.escapeLike(query.getUsername());
+    String escapedRealName = SqlUtils.escapeLike(query.getRealName());
+    String escapedPhone = SqlUtils.escapeLike(query.getPhone());
+
     IPage<User> page =
         userMapper.selectUserPage(
             new Page<>(query.getPageNum(), query.getPageSize()),
-            query.getUsername(),
-            query.getRealName(),
-            query.getPhone(),
+            escapedUsername,
+            escapedRealName,
+            escapedPhone,
             query.getDepartmentId(),
             query.getStatus(),
             query.getCompensationType());
