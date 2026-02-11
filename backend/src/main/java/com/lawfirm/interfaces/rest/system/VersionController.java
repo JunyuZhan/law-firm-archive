@@ -147,47 +147,55 @@ public class VersionController {
     }
 
     /**
-     * 执行一键升级
+     * 执行一键升级（基于 GitHub Tag）
      */
-    @Operation(summary = "执行一键升级", description = "在服务器上执行升级脚本")
+    @Operation(summary = "执行一键升级", description = "拉取指定版本的代码并重新部署")
     @PostMapping("/upgrade/execute")
     @PreAuthorize("hasRole('ADMIN') or hasAuthority('system:config:edit')")
     public Result<Map<String, Object>> executeUpgrade(
+            @RequestParam(required = false) String targetVersion,
             @RequestParam(defaultValue = "true") boolean backup) {
         Map<String, Object> result = new LinkedHashMap<>();
         String upgradeId = UUID.randomUUID().toString().substring(0, 8);
         
         try {
-            // 检查升级脚本是否存在
+            // 查找项目根目录
             String workDir = System.getProperty("user.dir");
-            // Docker 容器内的工作目录是 /app，需要找到项目根目录
             Path projectRoot = findProjectRoot(workDir);
             if (projectRoot == null) {
-                return Result.error("无法找到项目根目录，请确保在正确的目录下运行");
+                return Result.error("无法找到项目根目录，请确保项目目录已挂载到容器");
             }
             
-            Path upgradeScript = projectRoot.resolve("scripts/ops/upgrade.sh");
-            if (!Files.exists(upgradeScript)) {
-                return Result.error("升级脚本不存在: " + upgradeScript);
+            // 如果未指定版本，获取最新版本
+            String finalTargetVersion = targetVersion;
+            if (finalTargetVersion == null || finalTargetVersion.isBlank()) {
+                Map<String, Object> latestInfo = fetchLatestVersion();
+                if (latestInfo != null && latestInfo.get("version") != null) {
+                    finalTargetVersion = "v" + latestInfo.get("version");
+                } else {
+                    // 没有 release，使用 main 分支最新代码
+                    finalTargetVersion = "main";
+                }
             }
             
-            // 创建升级状态文件（写到 /tmp 目录，避免只读文件系统问题）
+            // 创建升级状态文件
             Path statusFile = Paths.get("/tmp/.upgrade-status-" + upgradeId + ".json");
-            writeUpgradeStatus(statusFile, "started", "升级已启动", 0);
+            writeUpgradeStatus(statusFile, "started", "升级已启动，目标版本: " + finalTargetVersion, 0);
             
             result.put("upgradeId", upgradeId);
+            result.put("targetVersion", finalTargetVersion);
             result.put("status", "started");
-            result.put("message", "升级任务已启动，请等待...");
+            result.put("message", "升级任务已启动，目标版本: " + finalTargetVersion);
             
             // 异步执行升级
             String projectRootStr = projectRoot.toString();
-            Path statusFileFinal = statusFile;
+            String versionToUpgrade = finalTargetVersion;
             CompletableFuture.runAsync(() -> {
-                executeUpgradeScript(projectRootStr, upgradeId, backup);
+                executeGitUpgrade(projectRootStr, upgradeId, versionToUpgrade, backup);
             }).exceptionally(ex -> {
                 log.error("异步升级任务执行失败: upgradeId={}", upgradeId, ex);
                 try {
-                    writeUpgradeStatus(statusFileFinal, "failed", "升级任务异常终止，请查看服务器日志", -1);
+                    writeUpgradeStatus(statusFile, "failed", "升级任务异常终止: " + ex.getMessage(), -1);
                 } catch (Exception writeEx) {
                     log.warn("写入升级状态失败", writeEx);
                 }
@@ -197,7 +205,40 @@ public class VersionController {
             return Result.success(result);
         } catch (Exception e) {
             log.error("启动升级失败", e);
-            return Result.error("启动升级失败，请查看服务器日志了解详情");
+            return Result.error("启动升级失败: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * 获取可用的版本列表（GitHub Tags）
+     */
+    @Operation(summary = "获取版本列表", description = "获取 GitHub 上可用的版本标签")
+    @GetMapping("/tags")
+    public Result<List<Map<String, Object>>> getAvailableTags() {
+        List<Map<String, Object>> tags = new ArrayList<>();
+        
+        if (githubRepo == null || githubRepo.isEmpty()) {
+            return Result.error("未配置 GitHub 仓库");
+        }
+        
+        try {
+            String apiUrl = "https://api.github.com/repos/" + githubRepo + "/tags?per_page=10";
+            RestTemplate restTemplate = new RestTemplate();
+            
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> tagList = restTemplate.getForObject(apiUrl, List.class);
+            if (tagList != null) {
+                for (Map<String, Object> tag : tagList) {
+                    Map<String, Object> tagInfo = new LinkedHashMap<>();
+                    tagInfo.put("name", tag.get("name"));
+                    tagInfo.put("commit", ((Map<?, ?>) tag.get("commit")).get("sha"));
+                    tags.add(tagInfo);
+                }
+            }
+            return Result.success(tags);
+        } catch (Exception e) {
+            log.warn("获取 GitHub tags 失败: {}", e.getMessage());
+            return Result.error("获取版本列表失败: " + e.getMessage());
         }
     }
 
@@ -310,8 +351,157 @@ public class VersionController {
     }
 
     /**
-     * 执行升级（调用upgrade.sh脚本）
+     * 执行基于 Git 的升级（拉取指定版本并重新部署）
      */
+    private void executeGitUpgrade(String projectRoot, String upgradeId, String targetVersion, boolean backup) {
+        Path statusFile = Paths.get("/tmp/.upgrade-status-" + upgradeId + ".json");
+        
+        try {
+            log.info("开始升级到版本: {}, 项目目录: {}", targetVersion, projectRoot);
+            
+            // 1. 获取当前分支/tag
+            String currentBranch = getCurrentBranch(projectRoot);
+            log.info("当前分支: {}", currentBranch);
+            writeUpgradeStatus(statusFile, "running", "当前版本: " + currentBranch, 5);
+            
+            // 2. 拉取最新的 tags 和代码
+            writeUpgradeStatus(statusFile, "running", "正在获取最新版本信息...", 10);
+            int fetchResult = executeCommand(projectRoot, "git", "fetch", "--tags", "--prune");
+            if (fetchResult != 0) {
+                writeUpgradeStatus(statusFile, "failed", "获取版本信息失败，请检查网络连接", -1);
+                return;
+            }
+            
+            // 3. 检查目标版本是否存在
+            writeUpgradeStatus(statusFile, "running", "正在验证目标版本...", 20);
+            boolean isTag = targetVersion.startsWith("v");
+            boolean isBranch = targetVersion.equals("main") || targetVersion.equals("master") 
+                || targetVersion.startsWith("feature/");
+            
+            if (isTag) {
+                // 检查 tag 是否存在
+                int tagCheck = executeCommand(projectRoot, "git", "rev-parse", targetVersion);
+                if (tagCheck != 0) {
+                    writeUpgradeStatus(statusFile, "failed", "版本不存在: " + targetVersion, -1);
+                    return;
+                }
+            }
+            
+            // 4. 备份当前状态（可选）
+            if (backup) {
+                writeUpgradeStatus(statusFile, "running", "正在保存当前状态...", 25);
+                executeCommand(projectRoot, "git", "stash", "push", "-m", "upgrade-backup-" + upgradeId);
+            }
+            
+            // 5. 切换到目标版本
+            writeUpgradeStatus(statusFile, "running", "正在切换到版本: " + targetVersion, 30);
+            int checkoutResult;
+            if (isBranch) {
+                // 对于分支，使用 pull
+                checkoutResult = executeCommand(projectRoot, "git", "checkout", targetVersion);
+                if (checkoutResult == 0) {
+                    executeCommand(projectRoot, "git", "pull", "origin", targetVersion);
+                }
+            } else {
+                // 对于 tag，直接 checkout
+                checkoutResult = executeCommand(projectRoot, "git", "checkout", targetVersion);
+            }
+            
+            if (checkoutResult != 0) {
+                writeUpgradeStatus(statusFile, "failed", "切换版本失败: " + targetVersion, -1);
+                return;
+            }
+            
+            // 6. 检查是否有 docker-compose 文件
+            writeUpgradeStatus(statusFile, "running", "正在准备重新部署...", 50);
+            Path dockerCompose = Paths.get(projectRoot, "docker/docker-compose.prod.yml");
+            if (!Files.exists(dockerCompose)) {
+                // 尝试其他位置
+                dockerCompose = Paths.get(projectRoot, "docker-compose.yml");
+            }
+            
+            if (Files.exists(dockerCompose)) {
+                // 7. 重新构建并启动容器
+                writeUpgradeStatus(statusFile, "running", "正在重新构建服务（这可能需要几分钟）...", 60);
+                
+                String dockerDir = dockerCompose.getParent().toString();
+                String composeFile = dockerCompose.getFileName().toString();
+                
+                // 重新构建
+                int buildResult = executeCommand(dockerDir, 
+                    "docker-compose", "-f", composeFile, "build", "--no-cache", "backend", "frontend");
+                
+                if (buildResult != 0) {
+                    log.warn("构建可能有警告，继续部署...");
+                }
+                
+                writeUpgradeStatus(statusFile, "running", "正在重启服务...", 80);
+                
+                // 重启服务（backend 和 frontend）
+                int restartResult = executeCommand(dockerDir,
+                    "docker-compose", "-f", composeFile, "up", "-d", "--force-recreate", "backend", "frontend");
+                
+                if (restartResult != 0) {
+                    writeUpgradeStatus(statusFile, "failed", "重启服务失败，请手动检查", -1);
+                    return;
+                }
+                
+                writeUpgradeStatus(statusFile, "completed", 
+                    "升级成功！已更新到版本: " + targetVersion + "。服务正在重启，请等待约30秒后刷新页面。", 100);
+                log.info("升级完成: {} -> {}", currentBranch, targetVersion);
+            } else {
+                // 没有 docker-compose，只完成代码更新
+                writeUpgradeStatus(statusFile, "completed", 
+                    "代码已更新到版本: " + targetVersion + "。请手动重启服务以完成升级。", 100);
+                log.info("代码更新完成: {} -> {}，需要手动重启服务", currentBranch, targetVersion);
+            }
+            
+        } catch (Exception e) {
+            log.error("升级执行异常", e);
+            try {
+                writeUpgradeStatus(statusFile, "failed", "升级执行异常: " + e.getMessage(), -1);
+            } catch (Exception writeEx) {
+                log.warn("写入升级状态文件失败: {}", writeEx.getMessage());
+            }
+        }
+    }
+    
+    /**
+     * 执行命令并返回退出码
+     */
+    private int executeCommand(String workDir, String... command) {
+        try {
+            ProcessBuilder pb = new ProcessBuilder(command);
+            pb.directory(new File(workDir));
+            pb.redirectErrorStream(true);
+            
+            Process process = pb.start();
+            
+            // 消费输出流
+            try (BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    log.info("[CMD] {}", line);
+                }
+            }
+            
+            boolean finished = process.waitFor(10, java.util.concurrent.TimeUnit.MINUTES);
+            if (!finished) {
+                process.destroyForcibly();
+                return -1;
+            }
+            return process.exitValue();
+        } catch (Exception e) {
+            log.error("执行命令失败: {}", String.join(" ", command), e);
+            return -1;
+        }
+    }
+
+    /**
+     * 执行升级（调用upgrade.sh脚本）- 保留作为备用方案
+     */
+    @SuppressWarnings("unused")
     private void executeUpgradeScript(String projectRoot, String upgradeId, boolean backup) {
         Path statusFile = Paths.get("/tmp/.upgrade-status-" + upgradeId + ".json");
         
