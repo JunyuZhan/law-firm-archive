@@ -201,6 +201,7 @@ setup_env() {
     cd "$PROJECT_ROOT"
     
     ENV_FILE=".env"
+    SECRETS_DIR="docker/secrets"
     # 优先查找项目根目录的 env.example，如果没有则查找 docker/env.example
     if [ -f ".env.example" ]; then
         ENV_EXAMPLE=".env.example"
@@ -210,6 +211,13 @@ setup_env() {
         ENV_EXAMPLE=".env.example"
     fi
     FIRST_TIME=false
+    USE_SECRETS=false
+
+    # 检测是否已有 secrets 文件（表示之前使用 Secrets 方式）
+    if [ -f "$SECRETS_DIR/db_password" ] && [ -f "$SECRETS_DIR/jwt_secret" ]; then
+        USE_SECRETS=true
+        log_info "检测到 Docker Secrets 配置，使用安全模式"
+    fi
 
     if [ ! -f "$ENV_FILE" ]; then
         log_warn "未找到 .env 文件，正在自动创建..."
@@ -219,9 +227,53 @@ setup_env() {
 
     source "$ENV_FILE"
 
+    # 首次部署：让用户选择密钥管理方式
+    if [ "$FIRST_TIME" = true ] && [ "$USE_SECRETS" = false ]; then
+        echo ""
+        echo "======================================"
+        echo "🔐 选择密钥管理方式"
+        echo "======================================"
+        echo ""
+        echo "  1) Docker Secrets（推荐，更安全）"
+        echo "     - 密钥存储在文件中，docker inspect 无法查看"
+        echo "     - 需要运行 init-secrets.sh 初始化"
+        echo ""
+        echo "  2) 环境变量（传统方式）"
+        echo "     - 密钥存储在 .env 文件中"
+        echo "     - docker inspect 可以看到密钥"
+        echo ""
+        read -p "请选择 [1/2，默认 1]: " secret_choice
+        secret_choice=${secret_choice:-1}
+        
+        if [ "$secret_choice" = "1" ]; then
+            USE_SECRETS=true
+            log_info "使用 Docker Secrets 方式..."
+            
+            # 运行 init-secrets.sh
+            if [ -f "$SECRETS_DIR/init-secrets.sh" ]; then
+                chmod +x "$SECRETS_DIR/init-secrets.sh"
+                cd "$SECRETS_DIR"
+                ./init-secrets.sh
+                cd "$PROJECT_ROOT"
+                log_success "Docker Secrets 初始化完成"
+            else
+                log_error "找不到 $SECRETS_DIR/init-secrets.sh"
+                exit 1
+            fi
+        else
+            log_info "使用传统环境变量方式..."
+        fi
+    fi
+
+    # 如果使用 Secrets 方式，跳过 .env 密钥生成
+    if [ "$USE_SECRETS" = true ]; then
+        log_info "密钥由 Docker Secrets 管理，跳过 .env 密钥生成"
+        return
+    fi
+
     if [ "$FIRST_TIME" = true ]; then
         echo ""
-        log_info "首次部署，自动生成安全密钥..."
+        log_info "首次部署，自动生成安全密钥到 .env..."
         
         # 生成所有密钥
         NEW_JWT_SECRET=$(generate_secret)
