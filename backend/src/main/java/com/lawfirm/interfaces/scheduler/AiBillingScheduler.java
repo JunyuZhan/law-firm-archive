@@ -3,6 +3,7 @@ package com.lawfirm.interfaces.scheduler;
 import com.lawfirm.application.ai.service.AiBillingAppService;
 import com.lawfirm.application.system.service.NotificationAppService;
 import com.lawfirm.domain.system.entity.User;
+import com.lawfirm.infrastructure.lock.DistributedLockService;
 import com.lawfirm.infrastructure.notification.AlertService;
 import com.lawfirm.infrastructure.persistence.mapper.UserMapper;
 import java.io.PrintWriter;
@@ -33,9 +34,28 @@ public class AiBillingScheduler {
   /** 通知应用服务 */
   private final NotificationAppService notificationAppService;
 
+  /** 分布式锁服务 */
+  private final DistributedLockService distributedLockService;
+
+  /** 锁过期时间（秒）：10分钟 */
+  private static final long LOCK_EXPIRE_SECONDS = 600;
+
   /** 自动生成上月账单 每月1日凌晨2点执行 */
   @Scheduled(cron = "0 0 2 1 * ?")
   public void generateLastMonthBills() {
+    if (!distributedLockService.trySchedulerLock(
+        "AiBillingScheduler:generate", LOCK_EXPIRE_SECONDS)) {
+      return;
+    }
+    try {
+      doGenerateLastMonthBills();
+    } finally {
+      distributedLockService.unlockScheduler("AiBillingScheduler:generate");
+    }
+  }
+
+  /** 执行生成上月账单 */
+  private void doGenerateLastMonthBills() {
     log.info("开始执行AI账单自动生成任务");
 
     try {
@@ -63,6 +83,19 @@ public class AiBillingScheduler {
   /** 账单提醒（可选） 每月5日上午10点执行，提醒财务处理待扣减账单 */
   @Scheduled(cron = "0 0 10 5 * ?")
   public void remindPendingBills() {
+    if (!distributedLockService.trySchedulerLock(
+        "AiBillingScheduler:remind", LOCK_EXPIRE_SECONDS)) {
+      return;
+    }
+    try {
+      doRemindPendingBills();
+    } finally {
+      distributedLockService.unlockScheduler("AiBillingScheduler:remind");
+    }
+  }
+
+  /** 执行账单提醒 */
+  private void doRemindPendingBills() {
     log.info("执行AI账单提醒任务");
 
     try {

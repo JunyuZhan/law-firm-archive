@@ -96,7 +96,7 @@ public class AiUsageRecorder {
       Long userId = callerUserId;
       String userName = null;
       Long departmentId = null;
-      
+
       // 尝试从 SecurityContext 获取用户信息
       LoginUser loginUser = getLoginUserSafely();
       if (loginUser != null) {

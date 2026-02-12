@@ -223,10 +223,11 @@ public class ApproverService {
     Map<Long, User> userMap = batchLoadUsers(new ArrayList<>(allUserIds));
 
     // 收集所有部门ID
-    Set<Long> deptIds = userMap.values().stream()
-        .map(User::getDepartmentId)
-        .filter(Objects::nonNull)
-        .collect(Collectors.toSet());
+    Set<Long> deptIds =
+        userMap.values().stream()
+            .map(User::getDepartmentId)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toSet());
 
     // 批量加载部门名称
     Map<Long, String> deptNameMap = batchLoadDepartmentNames(deptIds);
@@ -258,7 +259,8 @@ public class ApproverService {
             Map<String, Object> approver = new HashMap<>();
             approver.put("id", director.getId());
             approver.put("realName", director.getRealName());
-            approver.put("departmentName", deptNameMap.getOrDefault(director.getDepartmentId(), ""));
+            approver.put(
+                "departmentName", deptNameMap.getOrDefault(director.getDepartmentId(), ""));
             approver.put("position", "主任");
             approvers.add(approver);
             addedUserIds.add(director.getId());
@@ -456,10 +458,11 @@ public class ApproverService {
     Map<Long, User> userMap = batchLoadUsers(new ArrayList<>(allUserIds));
 
     // 收集所有部门ID
-    Set<Long> deptIds = userMap.values().stream()
-        .map(User::getDepartmentId)
-        .filter(Objects::nonNull)
-        .collect(Collectors.toSet());
+    Set<Long> deptIds =
+        userMap.values().stream()
+            .map(User::getDepartmentId)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toSet());
 
     // 批量加载部门名称
     Map<Long, String> deptNameMap = batchLoadDepartmentNames(deptIds);
@@ -492,7 +495,8 @@ public class ApproverService {
             Map<String, Object> approver = new HashMap<>();
             approver.put("id", director.getId());
             approver.put("realName", director.getRealName());
-            approver.put("departmentName", deptNameMap.getOrDefault(director.getDepartmentId(), ""));
+            approver.put(
+                "departmentName", deptNameMap.getOrDefault(director.getDepartmentId(), ""));
             approver.put("position", "主任");
             approver.put("recommended", false);
             approvers.add(approver);
@@ -555,10 +559,11 @@ public class ApproverService {
     Map<Long, User> userMap = batchLoadUsers(new ArrayList<>(allUserIds));
 
     // 收集所有部门ID
-    Set<Long> deptIds = userMap.values().stream()
-        .map(User::getDepartmentId)
-        .filter(Objects::nonNull)
-        .collect(Collectors.toSet());
+    Set<Long> deptIds =
+        userMap.values().stream()
+            .map(User::getDepartmentId)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toSet());
 
     // 批量加载部门名称
     Map<Long, String> deptNameMap = batchLoadDepartmentNames(deptIds);
@@ -572,7 +577,8 @@ public class ApproverService {
             Map<String, Object> approver = new HashMap<>();
             approver.put("id", director.getId());
             approver.put("realName", director.getRealName());
-            approver.put("departmentName", deptNameMap.getOrDefault(director.getDepartmentId(), ""));
+            approver.put(
+                "departmentName", deptNameMap.getOrDefault(director.getDepartmentId(), ""));
             approver.put("position", "主任");
             approver.put("recommended", true); // 标记为推荐
             approvers.add(approver);

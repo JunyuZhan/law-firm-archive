@@ -4,11 +4,7 @@ import java.time.LocalDateTime;
 import lombok.Getter;
 import org.springframework.context.ApplicationEvent;
 
-/**
- * 项目更新事件
- * 触发时机：MatterAppService.updateMatter() 方法执行成功后
- * 用于触发自动推送等后续操作
- */
+/** 项目更新事件 触发时机：MatterAppService.updateMatter() 方法执行成功后 用于触发自动推送等后续操作 */
 @Getter
 public class MatterUpdatedEvent extends ApplicationEvent {
 
@@ -33,10 +29,7 @@ public class MatterUpdatedEvent extends ApplicationEvent {
    * @param operatorId 操作人ID
    */
   public MatterUpdatedEvent(
-      final Object source,
-      final Long matterId,
-      final Long clientId,
-      final Long operatorId) {
+      final Object source, final Long matterId, final Long clientId, final Long operatorId) {
     super(source);
     this.matterId = matterId;
     this.clientId = clientId;

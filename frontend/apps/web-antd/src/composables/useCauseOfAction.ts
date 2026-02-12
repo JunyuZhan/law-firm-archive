@@ -33,7 +33,7 @@ const civilCausesCache = shallowRef<CauseTreeNode[]>([]);
 const criminalChargesCache = shallowRef<CauseTreeNode[]>([]);
 const adminCausesCache = shallowRef<CauseTreeNode[]>([]);
 // 正在进行的请求 Promise 缓存（用于防止并发重复请求）
-const pendingRequests: Record<string, Promise<CauseTreeNode[]> | null> = {
+const pendingRequests: Record<string, null | Promise<CauseTreeNode[]>> = {
   admin: null,
   civil: null,
   criminal: null,
@@ -63,12 +63,14 @@ export async function getCivilCauses(): Promise<CauseTreeNode[]> {
     return pendingRequests.civil;
   }
   // 创建新请求并缓存 Promise
-  pendingRequests.civil = fetchCauseTree('civil').then((data) => {
-    civilCausesCache.value = data;
-    return data;
-  }).finally(() => {
-    pendingRequests.civil = null;
-  });
+  pendingRequests.civil = fetchCauseTree('civil')
+    .then((data) => {
+      civilCausesCache.value = data;
+      return data;
+    })
+    .finally(() => {
+      pendingRequests.civil = null;
+    });
   return pendingRequests.civil;
 }
 
@@ -84,12 +86,14 @@ export async function getCriminalCharges(): Promise<CauseTreeNode[]> {
     return pendingRequests.criminal;
   }
   // 创建新请求并缓存 Promise
-  pendingRequests.criminal = fetchCauseTree('criminal').then((data) => {
-    criminalChargesCache.value = data;
-    return data;
-  }).finally(() => {
-    pendingRequests.criminal = null;
-  });
+  pendingRequests.criminal = fetchCauseTree('criminal')
+    .then((data) => {
+      criminalChargesCache.value = data;
+      return data;
+    })
+    .finally(() => {
+      pendingRequests.criminal = null;
+    });
   return pendingRequests.criminal;
 }
 
@@ -105,12 +109,14 @@ export async function getAdminCauses(): Promise<CauseTreeNode[]> {
     return pendingRequests.admin;
   }
   // 创建新请求并缓存 Promise
-  pendingRequests.admin = fetchCauseTree('admin').then((data) => {
-    adminCausesCache.value = data;
-    return data;
-  }).finally(() => {
-    pendingRequests.admin = null;
-  });
+  pendingRequests.admin = fetchCauseTree('admin')
+    .then((data) => {
+      adminCausesCache.value = data;
+      return data;
+    })
+    .finally(() => {
+      pendingRequests.admin = null;
+    });
   return pendingRequests.admin;
 }
 

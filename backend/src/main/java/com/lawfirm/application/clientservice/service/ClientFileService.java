@@ -5,12 +5,12 @@ import com.lawfirm.application.clientservice.dto.ClientFileDTO;
 import com.lawfirm.application.clientservice.dto.ClientFileReceiveRequest;
 import com.lawfirm.application.clientservice.dto.ClientFileSyncRequest;
 import com.lawfirm.common.exception.BusinessException;
-import com.lawfirm.common.util.MinioPathGenerator;
 import com.lawfirm.common.result.PageResult;
+import com.lawfirm.common.util.MinioPathGenerator;
+import com.lawfirm.domain.clientservice.entity.ClientFile;
 import com.lawfirm.domain.document.entity.Document;
 import com.lawfirm.domain.document.repository.DocumentRepository;
 import com.lawfirm.domain.matter.entity.Matter;
-import com.lawfirm.domain.clientservice.entity.ClientFile;
 import com.lawfirm.domain.system.entity.ExternalIntegration;
 import com.lawfirm.domain.system.entity.User;
 import com.lawfirm.infrastructure.external.minio.MinioService;
@@ -352,7 +352,8 @@ public class ClientFileService {
     }
 
     // 2. 验证外部URL
-    if (clientFile.getExternalFileUrl() == null || clientFile.getExternalFileUrl().trim().isEmpty()) {
+    if (clientFile.getExternalFileUrl() == null
+        || clientFile.getExternalFileUrl().trim().isEmpty()) {
       log.warn("文件外部URL为空: fileId={}", fileId);
       response.setHeader("Access-Control-Allow-Origin", "*");
       response.sendError(HttpServletResponse.SC_BAD_REQUEST, "文件URL无效");
@@ -369,7 +370,12 @@ public class ClientFileService {
         return;
       }
     } catch (Exception e) {
-      log.error("代理文件失败: fileId={}, url={}, error={}", fileId, clientFile.getExternalFileUrl(), e.getMessage(), e);
+      log.error(
+          "代理文件失败: fileId={}, url={}, error={}",
+          fileId,
+          clientFile.getExternalFileUrl(),
+          e.getMessage(),
+          e);
       response.setHeader("Access-Control-Allow-Origin", "*");
       // 不暴露内部异常消息，使用通用错误文案
       response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "下载文件失败，请稍后重试");
@@ -380,13 +386,16 @@ public class ClientFileService {
     response.setHeader("Access-Control-Allow-Origin", "*");
     response.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
     response.setHeader("Access-Control-Allow-Headers", "*");
-    response.setContentType(clientFile.getFileType() != null ? clientFile.getFileType() : "application/octet-stream");
+    response.setContentType(
+        clientFile.getFileType() != null ? clientFile.getFileType() : "application/octet-stream");
     response.setContentLength(fileContent.length);
-    
+
     // 文件名编码处理（支持中文文件名）
     String fileName = clientFile.getFileName() != null ? clientFile.getFileName() : "file";
-    String encodedFileName = java.net.URLEncoder.encode(fileName, java.nio.charset.StandardCharsets.UTF_8);
-    response.setHeader("Content-Disposition", 
+    String encodedFileName =
+        java.net.URLEncoder.encode(fileName, java.nio.charset.StandardCharsets.UTF_8);
+    response.setHeader(
+        "Content-Disposition",
         "inline; filename=\"" + encodedFileName + "\"; filename*=UTF-8''" + encodedFileName);
 
     // 4. 写入文件内容
@@ -431,11 +440,14 @@ public class ClientFileService {
       }
 
       // 构建API URL（使用Query参数）
-      String baseUrl = integration.getApiUrl().endsWith("/") 
-          ? integration.getApiUrl().substring(0, integration.getApiUrl().length() - 1)
-          : integration.getApiUrl();
-      String apiUrl = baseUrl + "/api/matter/files/delete?fileId=" 
-          + java.net.URLEncoder.encode(externalFileId, java.nio.charset.StandardCharsets.UTF_8);
+      String baseUrl =
+          integration.getApiUrl().endsWith("/")
+              ? integration.getApiUrl().substring(0, integration.getApiUrl().length() - 1)
+              : integration.getApiUrl();
+      String apiUrl =
+          baseUrl
+              + "/api/matter/files/delete?fileId="
+              + java.net.URLEncoder.encode(externalFileId, java.nio.charset.StandardCharsets.UTF_8);
 
       HttpEntity<Void> entity = new HttpEntity<>(headers);
 
@@ -451,8 +463,7 @@ public class ClientFileService {
       if (response.getStatusCode().is2xxSuccessful()) {
         log.info("通知客服系统删除文件成功: fileId={}", externalFileId);
       } else {
-        log.warn("通知客服系统删除文件失败: fileId={}, status={}", 
-            externalFileId, response.getStatusCode());
+        log.warn("通知客服系统删除文件失败: fileId={}, status={}", externalFileId, response.getStatusCode());
       }
     } catch (Exception e) {
       // 包含堆栈信息以便排查问题

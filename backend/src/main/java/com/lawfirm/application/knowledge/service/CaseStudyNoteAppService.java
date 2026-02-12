@@ -11,7 +11,11 @@ import com.lawfirm.domain.knowledge.repository.CaseStudyNoteRepository;
 import com.lawfirm.domain.system.entity.User;
 import com.lawfirm.domain.system.repository.UserRepository;
 import com.lawfirm.infrastructure.persistence.mapper.CaseStudyNoteMapper;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -98,7 +102,7 @@ public class CaseStudyNoteAppService {
    */
   public List<CaseStudyNoteDTO> getCaseNotes(final Long caseId) {
     List<CaseStudyNote> notes = noteMapper.selectByCaseId(caseId);
-    return notes.stream().map(this::toDTO).collect(Collectors.toList());
+    return batchConvertToDTO(notes);
   }
 
   /**
@@ -109,7 +113,82 @@ public class CaseStudyNoteAppService {
   public List<CaseStudyNoteDTO> getMyNotes() {
     Long userId = SecurityUtils.getUserId();
     List<CaseStudyNote> notes = noteMapper.selectByUserId(userId);
-    return notes.stream().map(this::toDTO).collect(Collectors.toList());
+    return batchConvertToDTO(notes);
+  }
+
+  /**
+   * 批量转换笔记列表为DTO（避免N+1查询）.
+   *
+   * @param notes 笔记列表
+   * @return DTO列表
+   */
+  private List<CaseStudyNoteDTO> batchConvertToDTO(final List<CaseStudyNote> notes) {
+    if (notes == null || notes.isEmpty()) {
+      return Collections.emptyList();
+    }
+
+    // 批量加载案例信息
+    Set<Long> caseIds =
+        notes.stream()
+            .map(CaseStudyNote::getCaseId)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toSet());
+    Map<Long, CaseLibrary> caseMap =
+        caseIds.isEmpty()
+            ? Collections.emptyMap()
+            : caseLibraryRepository.listByIds(caseIds).stream()
+                .collect(Collectors.toMap(CaseLibrary::getId, c -> c, (a, b) -> a));
+
+    // 批量加载用户信息
+    Set<Long> userIds =
+        notes.stream()
+            .map(CaseStudyNote::getUserId)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toSet());
+    Map<Long, User> userMap =
+        userIds.isEmpty()
+            ? Collections.emptyMap()
+            : userRepository.listByIds(userIds).stream()
+                .collect(Collectors.toMap(User::getId, u -> u, (a, b) -> a));
+
+    return notes.stream().map(note -> toDTO(note, caseMap, userMap)).collect(Collectors.toList());
+  }
+
+  /**
+   * Entity转DTO（批量版本，使用预加载的Map）.
+   *
+   * @param note 案例学习笔记实体
+   * @param caseMap 案例Map
+   * @param userMap 用户Map
+   * @return 案例学习笔记DTO
+   */
+  private CaseStudyNoteDTO toDTO(
+      final CaseStudyNote note,
+      final Map<Long, CaseLibrary> caseMap,
+      final Map<Long, User> userMap) {
+    CaseStudyNoteDTO dto = new CaseStudyNoteDTO();
+    dto.setId(note.getId());
+    dto.setCaseId(note.getCaseId());
+    dto.setUserId(note.getUserId());
+    dto.setNoteContent(note.getNoteContent());
+    dto.setKeyPoints(note.getKeyPoints());
+    dto.setPersonalInsights(note.getPersonalInsights());
+    dto.setCreatedAt(note.getCreatedAt());
+    dto.setUpdatedAt(note.getUpdatedAt());
+
+    // 从Map获取案例信息
+    CaseLibrary caseLib = caseMap.get(note.getCaseId());
+    if (caseLib != null) {
+      dto.setCaseTitle(caseLib.getTitle());
+    }
+
+    // 从Map获取用户信息
+    User user = userMap.get(note.getUserId());
+    if (user != null) {
+      dto.setUserName(user.getRealName());
+    }
+
+    return dto;
   }
 
   /**

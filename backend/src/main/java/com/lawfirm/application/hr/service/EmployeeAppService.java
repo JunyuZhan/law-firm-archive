@@ -54,8 +54,7 @@ public class EmployeeAppService {
   private final ContractRepository hrContractRepository;
 
   /**
-   * 分页查询员工档案
-   * 优化：使用批量加载用户信息，避免N+1查询
+   * 分页查询员工档案 优化：使用批量加载用户信息，避免N+1查询
    *
    * @param query 查询条件
    * @return 分页结果
@@ -415,8 +414,7 @@ public class EmployeeAppService {
   }
 
   /**
-   * 生成工号
-   * 使用年份+UUID短码，避免并发冲突
+   * 生成工号 使用年份+UUID短码，避免并发冲突
    *
    * @return 工号
    */

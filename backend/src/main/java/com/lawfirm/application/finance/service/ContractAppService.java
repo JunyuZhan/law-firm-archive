@@ -737,9 +737,7 @@ public class ContractAppService {
 
       // 注意：此时合同编号为空（编号在审批通过时生成），使用合同ID作为业务编号
       String businessNo =
-          contract.getContractNo() != null
-              ? contract.getContractNo()
-              : "DRAFT-" + contract.getId();
+          contract.getContractNo() != null ? contract.getContractNo() : "DRAFT-" + contract.getId();
       approvalService.createApproval(
           "CONTRACT",
           contract.getId(),
@@ -821,10 +819,11 @@ public class ContractAppService {
     Map<Long, User> userMap = batchLoadUsers(new ArrayList<>(allUserIds));
 
     // 收集所有部门ID并批量加载部门名称
-    Set<Long> deptIds = userMap.values().stream()
-        .map(User::getDepartmentId)
-        .filter(Objects::nonNull)
-        .collect(Collectors.toSet());
+    Set<Long> deptIds =
+        userMap.values().stream()
+            .map(User::getDepartmentId)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toSet());
     Map<Long, String> deptNameMap = batchLoadDepartmentNames(deptIds);
 
     // 添加所有团队负责人（TEAM_LEADER角色）
@@ -854,7 +853,8 @@ public class ContractAppService {
             Map<String, Object> approver = new HashMap<>();
             approver.put("id", director.getId());
             approver.put("realName", director.getRealName());
-            approver.put("departmentName", deptNameMap.getOrDefault(director.getDepartmentId(), ""));
+            approver.put(
+                "departmentName", deptNameMap.getOrDefault(director.getDepartmentId(), ""));
             approver.put("position", "主任");
             approvers.add(approver);
             addedUserIds.add(director.getId());
@@ -940,16 +940,13 @@ public class ContractAppService {
 
     // 审批通过时生成合同编号（如果还没有编号）
     // 这样只有审批通过的合同才会真正占用编号，被拒绝的不会占用
-    if (!isAmendment
-        && (contract.getContractNo() == null || contract.getContractNo().isBlank())) {
+    if (!isAmendment && (contract.getContractNo() == null || contract.getContractNo().isBlank())) {
       String contractNo =
           contractNumberGenerator.generate(
               contract.getCaseType(), contract.getFeeType(), contract.getContractType());
       contract.setContractNo(contractNo);
       log.info(
-          "审批通过时生成合同编号: contractId={}, contractNo={}",
-          contract.getId(),
-          contract.getContractNo());
+          "审批通过时生成合同编号: contractId={}, contractNo={}", contract.getId(), contract.getContractNo());
     }
 
     contract.setStatus(ContractStatus.ACTIVE);
@@ -1210,8 +1207,7 @@ public class ContractAppService {
   /**
    * 获取已审批的合同列表（用于创建项目时选择）
    *
-   * <p>包含参与人信息，便于创建项目时自动填充 注意：一个合同可以创建多个项目，所以不再检查 matterId
-   * 优化：使用批量加载避免N+1查询
+   * <p>包含参与人信息，便于创建项目时自动填充 注意：一个合同可以创建多个项目，所以不再检查 matterId 优化：使用批量加载避免N+1查询
    *
    * @return 已审批的合同列表
    */
@@ -1233,8 +1229,7 @@ public class ContractAppService {
 
     // 批量加载所有参与人信息
     List<Long> contractIds = contracts.stream().map(Contract::getId).collect(Collectors.toList());
-    Map<Long, List<ContractParticipant>> participantMap =
-        batchLoadParticipants(contractIds);
+    Map<Long, List<ContractParticipant>> participantMap = batchLoadParticipants(contractIds);
 
     // 批量加载参与人对应的用户信息
     Set<Long> allUserIds = new HashSet<>();
@@ -1243,10 +1238,11 @@ public class ContractAppService {
         .map(ContractParticipant::getUserId)
         .filter(Objects::nonNull)
         .forEach(allUserIds::add);
-    Map<Long, User> userMap = allUserIds.isEmpty()
-        ? Collections.emptyMap()
-        : userRepository.listByIds(new ArrayList<>(allUserIds)).stream()
-            .collect(Collectors.toMap(User::getId, u -> u, (a, b) -> a));
+    Map<Long, User> userMap =
+        allUserIds.isEmpty()
+            ? Collections.emptyMap()
+            : userRepository.listByIds(new ArrayList<>(allUserIds)).stream()
+                .collect(Collectors.toMap(User::getId, u -> u, (a, b) -> a));
 
     return contracts.stream()
         .map(
@@ -1272,8 +1268,7 @@ public class ContractAppService {
    * @param contractIds 合同ID列表
    * @return 合同ID到参与人列表的Map
    */
-  private Map<Long, List<ContractParticipant>> batchLoadParticipants(
-      final List<Long> contractIds) {
+  private Map<Long, List<ContractParticipant>> batchLoadParticipants(final List<Long> contractIds) {
     if (contractIds.isEmpty()) {
       return Collections.emptyMap();
     }
@@ -1675,7 +1670,8 @@ public class ContractAppService {
       return Collections.emptyMap();
     }
     return matterRepository.listByIds(matterIds).stream()
-        .collect(Collectors.toMap(com.lawfirm.domain.matter.entity.Matter::getId, m -> m, (a, b) -> a));
+        .collect(
+            Collectors.toMap(com.lawfirm.domain.matter.entity.Matter::getId, m -> m, (a, b) -> a));
   }
 
   /**
@@ -1755,8 +1751,10 @@ public class ContractAppService {
     dto.setTotalAmount(contract.getTotalAmount());
     dto.setPaidAmount(contract.getPaidAmount());
     // 安全计算未付金额，处理 totalAmount 为 null 的情况
-    BigDecimal totalAmount = contract.getTotalAmount() != null ? contract.getTotalAmount() : BigDecimal.ZERO;
-    BigDecimal paidAmount = contract.getPaidAmount() != null ? contract.getPaidAmount() : BigDecimal.ZERO;
+    BigDecimal totalAmount =
+        contract.getTotalAmount() != null ? contract.getTotalAmount() : BigDecimal.ZERO;
+    BigDecimal paidAmount =
+        contract.getPaidAmount() != null ? contract.getPaidAmount() : BigDecimal.ZERO;
     dto.setUnpaidAmount(totalAmount.subtract(paidAmount));
     dto.setCurrency(contract.getCurrency());
     dto.setSignDate(contract.getSignDate());
@@ -1843,8 +1841,10 @@ public class ContractAppService {
     dto.setTotalAmount(contract.getTotalAmount());
     dto.setPaidAmount(contract.getPaidAmount());
     // 安全计算未付金额，处理 totalAmount 为 null 的情况
-    BigDecimal totalAmount = contract.getTotalAmount() != null ? contract.getTotalAmount() : BigDecimal.ZERO;
-    BigDecimal paidAmount = contract.getPaidAmount() != null ? contract.getPaidAmount() : BigDecimal.ZERO;
+    BigDecimal totalAmount =
+        contract.getTotalAmount() != null ? contract.getTotalAmount() : BigDecimal.ZERO;
+    BigDecimal paidAmount =
+        contract.getPaidAmount() != null ? contract.getPaidAmount() : BigDecimal.ZERO;
     dto.setUnpaidAmount(totalAmount.subtract(paidAmount));
     dto.setCurrency(contract.getCurrency());
     dto.setSignDate(contract.getSignDate());

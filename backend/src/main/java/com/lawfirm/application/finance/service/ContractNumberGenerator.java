@@ -161,7 +161,8 @@ public class ContractNumberGenerator {
 
     // 检查编号是否已存在，如果存在则重新生成
     int retryCount = 0;
-    while (contractRepository.existsByContractNo(contractNo) && retryCount < MAX_CONTRACT_NUMBER_RETRY) {
+    while (contractRepository.existsByContractNo(contractNo)
+        && retryCount < MAX_CONTRACT_NUMBER_RETRY) {
       log.warn("合同编号已存在，重新生成: {}", contractNo);
       contractNo =
           buildContractNumber(

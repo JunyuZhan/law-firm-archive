@@ -153,7 +153,8 @@ public class TaskController {
   @RequirePermission("task:manage")
   public Result<TaskDTO> updateProgress(
       @PathVariable final Long id,
-      @RequestParam @jakarta.validation.constraints.Min(value = 0, message = "进度不能小于0")
+      @RequestParam
+          @jakarta.validation.constraints.Min(value = 0, message = "进度不能小于0")
           @jakarta.validation.constraints.Max(value = 100, message = "进度不能大于100")
           final Integer progress) {
     return Result.success(taskAppService.updateProgress(id, progress));

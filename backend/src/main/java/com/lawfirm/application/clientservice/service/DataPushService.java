@@ -6,24 +6,24 @@ import com.lawfirm.application.clientservice.dto.PortalMatterDTO;
 import com.lawfirm.application.clientservice.dto.PushConfigDTO;
 import com.lawfirm.application.clientservice.dto.PushRecordDTO;
 import com.lawfirm.application.clientservice.dto.PushRequest;
+import com.lawfirm.application.matter.service.MatterAppService;
 import com.lawfirm.common.exception.BusinessException;
 import com.lawfirm.common.result.PageResult;
 import com.lawfirm.common.security.AesEncryptionService;
+import com.lawfirm.common.util.SecurityUtils;
 import com.lawfirm.domain.client.entity.Client;
-import com.lawfirm.domain.matter.entity.Matter;
 import com.lawfirm.domain.clientservice.entity.PushConfig;
 import com.lawfirm.domain.clientservice.entity.PushRecord;
-import com.lawfirm.domain.system.entity.ExternalIntegration;
 import com.lawfirm.domain.document.entity.Document;
+import com.lawfirm.domain.matter.entity.Matter;
+import com.lawfirm.domain.system.entity.ExternalIntegration;
+import com.lawfirm.infrastructure.external.minio.MinioService;
 import com.lawfirm.infrastructure.persistence.mapper.ClientMapper;
 import com.lawfirm.infrastructure.persistence.mapper.DocumentMapper;
 import com.lawfirm.infrastructure.persistence.mapper.ExternalIntegrationMapper;
 import com.lawfirm.infrastructure.persistence.mapper.MatterMapper;
 import com.lawfirm.infrastructure.persistence.mapper.clientservice.PushConfigMapper;
 import com.lawfirm.infrastructure.persistence.mapper.clientservice.PushRecordMapper;
-import com.lawfirm.application.matter.service.MatterAppService;
-import com.lawfirm.common.util.SecurityUtils;
-import com.lawfirm.infrastructure.external.minio.MinioService;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -106,8 +106,8 @@ public class DataPushService {
     // 2. 在事务外执行HTTP调用（避免阻塞数据库连接）
     if (context.integration != null && Boolean.TRUE.equals(context.integration.getEnabled())) {
       try {
-        PushResult result = callClientServiceApi(
-            context.integration, context.matterData, context.client, request);
+        PushResult result =
+            callClientServiceApi(context.integration, context.matterData, context.client, request);
 
         // 更新推送结果（独立事务）
         updatePushResultInTransaction(
@@ -126,12 +126,7 @@ public class DataPushService {
         log.error("推送到客户服务系统失败", e);
         // 更新失败状态（独立事务）
         updatePushResultInTransaction(
-            context.record.getId(),
-            null,
-            PushRecord.STATUS_FAILED,
-            null,
-            null,
-            e.getMessage());
+            context.record.getId(), null, PushRecord.STATUS_FAILED, null, null, e.getMessage());
         context.record.setStatus(PushRecord.STATUS_FAILED);
         context.record.setErrorMessage(e.getMessage());
       }
@@ -144,9 +139,7 @@ public class DataPushService {
     return convertToDTO(context.record, context.matter, context.client);
   }
 
-  /**
-   * 推送上下文，用于在事务外传递数据.
-   */
+  /** 推送上下文，用于在事务外传递数据. */
   private static class PushContext {
     PushRecord record;
     Matter matter;
@@ -155,9 +148,7 @@ public class DataPushService {
     PortalMatterDTO matterData;
   }
 
-  /**
-   * 在事务内保存推送记录.
-   */
+  /** 在事务内保存推送记录. */
   @Transactional
   protected PushContext savePushRecordInTransaction(
       final PushRequest request, final Long operatorId) {
@@ -231,9 +222,7 @@ public class DataPushService {
     return context;
   }
 
-  /**
-   * 在独立事务中更新推送结果.
-   */
+  /** 在独立事务中更新推送结果. */
   @Transactional
   protected void updatePushResultInTransaction(
       final Long recordId,
@@ -457,8 +446,11 @@ public class DataPushService {
     String apiPath = baseUrl.endsWith("/api") ? "/matter/receive" : "/api/matter/receive";
     String apiUrl = baseUrl + apiPath;
 
-    log.debug("调用客户服务系统API: url={}, clientId={}, matterId={}", 
-        apiUrl, client.getId(), matterData.getMatterId());
+    log.debug(
+        "调用客户服务系统API: url={}, clientId={}, matterId={}",
+        apiUrl,
+        client.getId(),
+        matterData.getMatterId());
 
     try {
       ResponseEntity<Map<String, Object>> response =
@@ -470,8 +462,7 @@ public class DataPushService {
 
       if (!response.getStatusCode().is2xxSuccessful()) {
         log.error("客户服务系统返回错误状态码: status={}", response.getStatusCode());
-        throw new BusinessException(
-            "客户服务系统返回错误状态码: " + response.getStatusCode());
+        throw new BusinessException("客户服务系统返回错误状态码: " + response.getStatusCode());
       }
 
       Map<String, Object> body = response.getBody();
@@ -484,16 +475,16 @@ public class DataPushService {
       // 1. 扁平格式：{id: "...", accessUrl: "..."}
       // 2. 标准格式：{success: true, code: "200", data: {id: "...", accessUrl: "..."}}
       //    或 {code: 200, data: {id: "...", accessUrl: "..."}}
-      
+
       String id = null;
       String accessUrl = null;
-      
+
       // 尝试从扁平格式获取（推荐格式）
       if (body.containsKey("id") && body.get("id") != null) {
         id = String.valueOf(body.get("id"));
         accessUrl = body.get("accessUrl") != null ? String.valueOf(body.get("accessUrl")) : null;
         log.debug("解析扁平格式响应: id={}, accessUrl={}", id, accessUrl);
-      } 
+      }
       // 尝试从标准格式获取（data对象中）
       else if (body.containsKey("data") && body.get("data") instanceof Map) {
         @SuppressWarnings("unchecked")
@@ -504,7 +495,7 @@ public class DataPushService {
           log.debug("解析标准格式响应: id={}, accessUrl={}", id, accessUrl);
         }
       }
-      
+
       if (id == null) {
         log.error("客户服务系统返回格式错误：缺少id字段, body={}", body);
         throw new BusinessException("客户服务系统返回格式错误：缺少id字段");
@@ -516,8 +507,11 @@ public class DataPushService {
     } catch (BusinessException e) {
       throw e;
     } catch (org.springframework.web.client.HttpClientErrorException e) {
-      log.error("调用客户服务系统API失败: url={}, status={}, body={}", 
-          apiUrl, e.getStatusCode(), e.getResponseBodyAsString());
+      log.error(
+          "调用客户服务系统API失败: url={}, status={}, body={}",
+          apiUrl,
+          e.getStatusCode(),
+          e.getResponseBodyAsString());
       if (e.getStatusCode().value() == 401) {
         throw new BusinessException("客户服务系统认证失败，请检查API密钥配置");
       } else if (e.getStatusCode().value() == 404) {
@@ -598,9 +592,13 @@ public class DataPushService {
       log.debug("客户服务系统未配置");
     } else if (!Boolean.TRUE.equals(integration.getEnabled())) {
       connectionMessage = "客户服务系统已配置但未启用";
-      log.debug("客户服务系统已配置但未启用: integrationId={}, enabled={}", integration.getId(), integration.getEnabled());
+      log.debug(
+          "客户服务系统已配置但未启用: integrationId={}, enabled={}",
+          integration.getId(),
+          integration.getEnabled());
     } else {
-      log.debug("客户服务系统已连接: integrationId={}, enabled={}", integration.getId(), integration.getEnabled());
+      log.debug(
+          "客户服务系统已连接: integrationId={}, enabled={}", integration.getId(), integration.getEnabled());
     }
 
     return PushConfigDTO.builder()
@@ -642,9 +640,7 @@ public class DataPushService {
 
     // 进度信息
     if (scopes.contains("MATTER_PROGRESS")) {
-      builder
-          .currentStage(matter.getLitigationStage())
-          .lastUpdateTime(matter.getUpdatedAt());
+      builder.currentStage(matter.getLitigationStage()).lastUpdateTime(matter.getUpdatedAt());
     }
 
     // 可下载文件
@@ -700,8 +696,7 @@ public class DataPushService {
   }
 
   /**
-   * 校验用户对项目的数据权限.
-   * 只有项目负责人、参与者或有项目查看权限的用户才能推送数据
+   * 校验用户对项目的数据权限. 只有项目负责人、参与者或有项目查看权限的用户才能推送数据
    *
    * @param matterId 项目ID
    * @param userId 用户ID
@@ -734,7 +729,8 @@ public class DataPushService {
       String dataScope = SecurityUtils.getDataScope();
       Long currentUserId = SecurityUtils.getUserId();
       Long deptId = SecurityUtils.getDepartmentId();
-      List<Long> accessibleMatterIds = matterAppService.getAccessibleMatterIds(dataScope, currentUserId, deptId);
+      List<Long> accessibleMatterIds =
+          matterAppService.getAccessibleMatterIds(dataScope, currentUserId, deptId);
 
       // 如果返回null，表示可以访问所有项目（ALL权限）
       if (accessibleMatterIds == null) {

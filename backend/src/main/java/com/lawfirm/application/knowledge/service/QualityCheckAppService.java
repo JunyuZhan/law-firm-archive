@@ -16,7 +16,11 @@ import com.lawfirm.infrastructure.persistence.mapper.QualityCheckDetailMapper;
 import com.lawfirm.infrastructure.persistence.mapper.QualityCheckMapper;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -164,7 +168,7 @@ public class QualityCheckAppService {
    */
   public List<QualityCheckDTO> getChecksByMatterId(final Long matterId) {
     List<QualityCheck> checks = checkMapper.selectByMatterId(matterId);
-    return checks.stream().map(this::toDTO).collect(Collectors.toList());
+    return batchConvertToDTO(checks);
   }
 
   /**
@@ -174,7 +178,88 @@ public class QualityCheckAppService {
    */
   public List<QualityCheckDTO> getInProgressChecks() {
     List<QualityCheck> checks = checkMapper.selectInProgress();
-    return checks.stream().map(this::toDTO).collect(Collectors.toList());
+    return batchConvertToDTO(checks);
+  }
+
+  /**
+   * 批量转换检查列表为DTO（避免N+1查询）.
+   *
+   * @param checks 检查列表
+   * @return DTO列表
+   */
+  private List<QualityCheckDTO> batchConvertToDTO(final List<QualityCheck> checks) {
+    if (checks == null || checks.isEmpty()) {
+      return Collections.emptyList();
+    }
+
+    // 批量加载项目信息
+    Set<Long> matterIds =
+        checks.stream()
+            .map(QualityCheck::getMatterId)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toSet());
+    Map<Long, Matter> matterMap =
+        matterIds.isEmpty()
+            ? Collections.emptyMap()
+            : matterRepository.listByIds(matterIds).stream()
+                .collect(Collectors.toMap(Matter::getId, m -> m, (a, b) -> a));
+
+    // 批量加载检查人信息
+    Set<Long> checkerIds =
+        checks.stream()
+            .map(QualityCheck::getCheckerId)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toSet());
+    Map<Long, User> userMap =
+        checkerIds.isEmpty()
+            ? Collections.emptyMap()
+            : userRepository.listByIds(checkerIds).stream()
+                .collect(Collectors.toMap(User::getId, u -> u, (a, b) -> a));
+
+    return checks.stream()
+        .map(check -> toDTO(check, matterMap, userMap))
+        .collect(Collectors.toList());
+  }
+
+  /**
+   * Entity转DTO（批量版本，使用预加载的Map）.
+   *
+   * @param check 质量检查实体
+   * @param matterMap 项目Map
+   * @param userMap 用户Map
+   * @return 质量检查DTO
+   */
+  private QualityCheckDTO toDTO(
+      final QualityCheck check, final Map<Long, Matter> matterMap, final Map<Long, User> userMap) {
+    QualityCheckDTO dto = new QualityCheckDTO();
+    dto.setId(check.getId());
+    dto.setCheckNo(check.getCheckNo());
+    dto.setMatterId(check.getMatterId());
+    dto.setCheckerId(check.getCheckerId());
+    dto.setCheckDate(check.getCheckDate());
+    dto.setCheckType(check.getCheckType());
+    dto.setCheckTypeName(getCheckTypeName(check.getCheckType()));
+    dto.setStatus(check.getStatus());
+    dto.setStatusName(getStatusName(check.getStatus()));
+    dto.setTotalScore(check.getTotalScore());
+    dto.setQualified(check.getQualified());
+    dto.setCheckSummary(check.getCheckSummary());
+    dto.setCreatedAt(check.getCreatedAt());
+    dto.setUpdatedAt(check.getUpdatedAt());
+
+    // 从Map获取项目信息
+    Matter matter = matterMap.get(check.getMatterId());
+    if (matter != null) {
+      dto.setMatterName(matter.getName());
+    }
+
+    // 从Map获取检查人信息
+    User checker = userMap.get(check.getCheckerId());
+    if (checker != null) {
+      dto.setCheckerName(checker.getRealName());
+    }
+
+    return dto;
   }
 
   /**

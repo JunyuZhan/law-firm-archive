@@ -108,8 +108,11 @@ public class ClientFileOpenController {
       @RequestHeader(value = "X-API-Key", required = false) final String providedApiKey,
       @Valid @RequestBody final AccessLogCallbackRequest request) {
     validateApiKey(providedApiKey);
-    log.info("收到访问日志回调: matterId={}, clientId={}, accessTime={}", 
-        request.getMatterId(), request.getClientId(), request.getAccessTime());
+    log.info(
+        "收到访问日志回调: matterId={}, clientId={}, accessTime={}",
+        request.getMatterId(),
+        request.getClientId(),
+        request.getAccessTime());
     try {
       clientAccessLogService.saveAccessLog(request);
       return Result.success();
@@ -131,15 +134,19 @@ public class ClientFileOpenController {
       @RequestHeader(value = "X-API-Key", required = false) final String providedApiKey,
       @Valid @RequestBody final DownloadLogCallbackRequest request) {
     validateApiKey(providedApiKey);
-    log.info("收到下载日志回调: matterId={}, clientId={}, fileId={}, fileName={}, downloadTime={}", 
-        request.getMatterId(), request.getClientId(), request.getFileId(), 
-        request.getFileName(), request.getDownloadTime());
+    log.info(
+        "收到下载日志回调: matterId={}, clientId={}, fileId={}, fileName={}, downloadTime={}",
+        request.getMatterId(),
+        request.getClientId(),
+        request.getFileId(),
+        request.getFileName(),
+        request.getDownloadTime());
     try {
       clientDownloadLogService.saveDownloadLog(request);
       return Result.success();
     } catch (Exception e) {
-      log.error("处理下载日志回调失败: matterId={}, fileId={}", 
-          request.getMatterId(), request.getFileId(), e);
+      log.error(
+          "处理下载日志回调失败: matterId={}, fileId={}", request.getMatterId(), request.getFileId(), e);
       return Result.error("处理下载日志回调失败");
     }
   }

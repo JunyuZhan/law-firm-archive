@@ -238,8 +238,7 @@ public class CaseLibraryAppService {
   }
 
   /**
-   * 删除案例.
-   * 同时清理关联的收藏记录，保证数据一致性
+   * 删除案例. 同时清理关联的收藏记录，保证数据一致性
    *
    * @param id 案例ID
    */
@@ -305,8 +304,7 @@ public class CaseLibraryAppService {
   }
 
   /**
-   * 获取我的收藏案例
-   * 优化：使用批量加载避免N+1查询
+   * 获取我的收藏案例 优化：使用批量加载避免N+1查询
    *
    * @return 案例列表
    */
@@ -321,9 +319,7 @@ public class CaseLibraryAppService {
 
     // 批量加载案例信息
     java.util.List<Long> caseIds =
-        collections.stream()
-            .map(KnowledgeCollection::getTargetId)
-            .collect(Collectors.toList());
+        collections.stream().map(KnowledgeCollection::getTargetId).collect(Collectors.toList());
     java.util.Map<Long, CaseLibrary> caseMap =
         caseLibraryRepository.listByIds(caseIds).stream()
             .collect(Collectors.toMap(CaseLibrary::getId, c -> c, (a, b) -> a));

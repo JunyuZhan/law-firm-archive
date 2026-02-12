@@ -2,6 +2,7 @@ package com.lawfirm.interfaces.scheduler;
 
 import com.lawfirm.application.system.service.NotificationAppService;
 import com.lawfirm.domain.matter.entity.Schedule;
+import com.lawfirm.infrastructure.lock.DistributedLockService;
 import com.lawfirm.infrastructure.persistence.mapper.ScheduleMapper;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -26,10 +27,29 @@ public class ScheduleReminderScheduler {
   /** 通知应用服务 */
   private final NotificationAppService notificationAppService;
 
+  /** 分布式锁服务 */
+  private final DistributedLockService distributedLockService;
+
+  /** 锁过期时间（秒）：3分钟 */
+  private static final long LOCK_EXPIRE_SECONDS = 180;
+
   /** 日程提醒 每5分钟执行一次，检查需要提醒的日程 */
   @Scheduled(cron = "0 */5 * * * ?")
   @Transactional
   public void sendScheduleReminders() {
+    if (!distributedLockService.trySchedulerLock(
+        "ScheduleReminderScheduler", LOCK_EXPIRE_SECONDS)) {
+      return;
+    }
+    try {
+      doSendScheduleReminders();
+    } finally {
+      distributedLockService.unlockScheduler("ScheduleReminderScheduler");
+    }
+  }
+
+  /** 执行日程提醒 */
+  private void doSendScheduleReminders() {
     log.debug("开始执行日程提醒定时任务");
 
     List<Schedule> schedules = scheduleMapper.selectNeedReminder();

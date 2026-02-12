@@ -187,9 +187,7 @@ public class MinioService {
   /**
    * 将 MinIO URL 转换为浏览器可访问的 URL 如果 URL 包含 Docker 内部地址（如 minio:9000），则生成预签名 URL
    *
-   * <p>实现策略： 
-   * 1. 使用内部 minioClient（minio:9000）生成预签名 URL
-   * 2. 将绝对 URL 转换为相对路径 /minio/...，通过 nginx 代理访问
+   * <p>实现策略： 1. 使用内部 minioClient（minio:9000）生成预签名 URL 2. 将绝对 URL 转换为相对路径 /minio/...，通过 nginx 代理访问
    * 3. 这样可以自动适配 HTTP/HTTPS，避免 Mixed Content 问题
    *
    * @param fileUrl 原始文件 URL
@@ -202,12 +200,13 @@ public class MinioService {
 
     // 检查是否是 Docker 内部地址或 IP 地址（需要转换为相对路径）
     // 匹配模式：http://host:port/ 或 https://host:port/
-    boolean needsConversion = fileUrl.contains("minio:9000")
-        || fileUrl.contains("localhost:9000")
-        || fileUrl.contains("127.0.0.1:9000")
-        || fileUrl.contains("backend:8080")
-        || fileUrl.matches("https?://\\d+\\.\\d+\\.\\d+\\.\\d+:\\d+"); // IP 地址模式（不需要以 / 结尾）
-    
+    boolean needsConversion =
+        fileUrl.contains("minio:9000")
+            || fileUrl.contains("localhost:9000")
+            || fileUrl.contains("127.0.0.1:9000")
+            || fileUrl.contains("backend:8080")
+            || fileUrl.matches("https?://\\d+\\.\\d+\\.\\d+\\.\\d+:\\d+"); // IP 地址模式（不需要以 / 结尾）
+
     if (needsConversion) {
       try {
         // 提取对象名称（去除查询参数）
@@ -236,14 +235,14 @@ public class MinioService {
               java.net.URI uri = new java.net.URI(presignedUrl);
               String path = uri.getPath(); // 例如：/law-firm/thumbnails/file.jpg
               String query = uri.getQuery(); // 例如：X-Amz-Algorithm=...
-              
+
               // 构建相对路径 URL：/minio/path?query
               if (query != null && !query.isEmpty()) {
                 presignedUrl = "/minio" + path + "?" + query;
               } else {
                 presignedUrl = "/minio" + path;
               }
-              
+
               log.debug("使用相对路径模式: {} -> {}", presignedUrl, presignedUrl);
             } catch (Exception e) {
               // 如果 URI 解析失败，回退到简单的字符串替换
@@ -260,14 +259,14 @@ public class MinioService {
               java.net.URI uri = new java.net.URI(presignedUrl);
               String path = uri.getPath();
               String query = uri.getQuery();
-              
+
               // 构建新的 URL
               if (query != null && !query.isEmpty()) {
                 presignedUrl = browserEndpoint + path + "?" + query;
               } else {
                 presignedUrl = browserEndpoint + path;
               }
-              
+
               log.debug(
                   "将内部预签名 URL 替换为浏览器可访问地址: {} -> browserEndpoint={}",
                   presignedUrl,

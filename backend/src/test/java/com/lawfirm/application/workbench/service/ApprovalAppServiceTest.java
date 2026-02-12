@@ -378,7 +378,8 @@ class ApprovalAppServiceTest {
               .status(ApprovalStatus.PENDING)
               .build();
 
-      when(approvalRepository.listByIds(Arrays.asList(1L, 2L))).thenReturn(Arrays.asList(approval1, approval2));
+      when(approvalRepository.listByIds(Arrays.asList(1L, 2L)))
+          .thenReturn(Arrays.asList(approval1, approval2));
       when(approvalRepository.updateById(any(Approval.class))).thenReturn(true);
 
       // When
@@ -398,7 +399,12 @@ class ApprovalAppServiceTest {
     void batchApprove_shouldFail_whenOneInvalid() {
       // Given
       Approval approval1 =
-          Approval.builder().id(1L).approvalNo("APP2024001").approverId(TEST_USER_ID).status(ApprovalStatus.PENDING).build();
+          Approval.builder()
+              .id(1L)
+              .approvalNo("APP2024001")
+              .approverId(TEST_USER_ID)
+              .status(ApprovalStatus.PENDING)
+              .build();
       Approval approval2 =
           Approval.builder()
               .id(2L)
@@ -407,7 +413,8 @@ class ApprovalAppServiceTest {
               .status(ApprovalStatus.PENDING)
               .build();
 
-      when(approvalRepository.listByIds(Arrays.asList(1L, 2L))).thenReturn(Arrays.asList(approval1, approval2));
+      when(approvalRepository.listByIds(Arrays.asList(1L, 2L)))
+          .thenReturn(Arrays.asList(approval1, approval2));
 
       // When & Then
       BusinessException exception =

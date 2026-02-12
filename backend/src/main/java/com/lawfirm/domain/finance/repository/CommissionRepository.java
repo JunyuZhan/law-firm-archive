@@ -214,9 +214,7 @@ public class CommissionRepository extends AbstractRepository<CommissionMapper, C
     return commissionMap;
   }
 
-  /**
-   * 将 Map 转换为 Commission 对象.
-   */
+  /** 将 Map 转换为 Commission 对象. */
   private Commission mapToCommission(final java.util.Map<String, Object> item) {
     if (item == null) {
       return null;

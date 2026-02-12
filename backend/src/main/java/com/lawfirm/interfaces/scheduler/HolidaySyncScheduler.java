@@ -1,6 +1,7 @@
 package com.lawfirm.interfaces.scheduler;
 
 import com.lawfirm.infrastructure.external.holiday.HolidayService;
+import com.lawfirm.infrastructure.lock.DistributedLockService;
 import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +22,12 @@ public class HolidaySyncScheduler {
 
   /** 节假日服务 */
   private final HolidayService holidayService;
+
+  /** 分布式锁服务 */
+  private final DistributedLockService distributedLockService;
+
+  /** 锁过期时间（秒）：10分钟 */
+  private static final long LOCK_EXPIRE_SECONDS = 600;
 
   /** 应用启动时同步节假日数据 */
   @EventListener(ApplicationReadyEvent.class)
@@ -50,6 +57,19 @@ public class HolidaySyncScheduler {
   /** 每年1月1日凌晨1点同步节假日数据 同步当年和下一年的数据 */
   @Scheduled(cron = "0 0 1 1 1 ?")
   public void syncYearlyHolidays() {
+    if (!distributedLockService.trySchedulerLock(
+        "HolidaySyncScheduler:yearly", LOCK_EXPIRE_SECONDS)) {
+      return;
+    }
+    try {
+      doSyncYearlyHolidays();
+    } finally {
+      distributedLockService.unlockScheduler("HolidaySyncScheduler:yearly");
+    }
+  }
+
+  /** 执行每年节假日同步 */
+  private void doSyncYearlyHolidays() {
     int currentYear = LocalDate.now().getYear();
     int nextYear = currentYear + 1;
 
@@ -68,6 +88,19 @@ public class HolidaySyncScheduler {
   /** 每月1日凌晨2点检查并补充缺失数据 */
   @Scheduled(cron = "0 0 2 1 * ?")
   public void checkAndSyncMissingData() {
+    if (!distributedLockService.trySchedulerLock(
+        "HolidaySyncScheduler:monthly", LOCK_EXPIRE_SECONDS)) {
+      return;
+    }
+    try {
+      doCheckAndSyncMissingData();
+    } finally {
+      distributedLockService.unlockScheduler("HolidaySyncScheduler:monthly");
+    }
+  }
+
+  /** 执行每月数据完整性检查 */
+  private void doCheckAndSyncMissingData() {
     int currentYear = LocalDate.now().getYear();
 
     log.debug("定时任务：检查节假日数据完整性");

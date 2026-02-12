@@ -11,6 +11,7 @@ import com.lawfirm.domain.system.entity.User;
 import com.lawfirm.domain.system.entity.UserSession;
 import com.lawfirm.domain.system.repository.UserRepository;
 import com.lawfirm.domain.system.repository.UserSessionRepository;
+import com.lawfirm.infrastructure.lock.DistributedLockService;
 import com.lawfirm.infrastructure.persistence.mapper.UserSessionMapper;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -42,6 +43,12 @@ public class SessionAppService {
 
   /** 用户仓储 */
   private final UserRepository userRepository;
+
+  /** 分布式锁服务 */
+  private final DistributedLockService distributedLockService;
+
+  /** 锁过期时间（秒）：5分钟 */
+  private static final long LOCK_EXPIRE_SECONDS = 300;
 
   /** ✅ 会话过期时间可配置（默认24小时） */
   @Value("${law-firm.security.session-expire-hours:24}")
@@ -290,10 +297,18 @@ public class SessionAppService {
   @Scheduled(cron = "0 0 * * * ?")
   @Transactional
   public void cleanupExpiredSessions() {
-    log.info("开始清理过期会话");
-    int count = sessionRepository.updateExpiredSessions(LocalDateTime.now());
-    if (count > 0) {
-      log.info("清理过期会话完成，共清理{}条", count);
+    if (!distributedLockService.trySchedulerLock(
+        "SessionAppService:cleanup", LOCK_EXPIRE_SECONDS)) {
+      return;
+    }
+    try {
+      log.info("开始清理过期会话");
+      int count = sessionRepository.updateExpiredSessions(LocalDateTime.now());
+      if (count > 0) {
+        log.info("清理过期会话完成，共清理{}条", count);
+      }
+    } finally {
+      distributedLockService.unlockScheduler("SessionAppService:cleanup");
     }
   }
 

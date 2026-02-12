@@ -240,10 +240,9 @@ public class DocumentController {
         mimeType = DEFAULT_MIME_TYPE;
       }
       response.setContentType(mimeType);
-      String encodedFileName = URLEncoder.encode(doc.getFileName(), StandardCharsets.UTF_8).replace("+", "%20");
-      response.setHeader(
-          "Content-Disposition",
-          "attachment; filename*=UTF-8''" + encodedFileName);
+      String encodedFileName =
+          URLEncoder.encode(doc.getFileName(), StandardCharsets.UTF_8).replace("+", "%20");
+      response.setHeader("Content-Disposition", "attachment; filename*=UTF-8''" + encodedFileName);
       if (doc.getFileSize() != null && doc.getFileSize() > 0) {
         response.setContentLengthLong(doc.getFileSize());
       }
@@ -705,9 +704,10 @@ public class DocumentController {
     // ⚠️ 关键修复：包含 updatedAt 时间戳，确保保存后 OnlyOffice 能加载最新文件
     // 如果只用版本号，OnlyOffice 会缓存旧文件（因为版本号不变）
     // 使用系统默认时区转换（LocalDateTime 无时区信息，应按本地时间解析）
-    long updateTimestamp = doc.getUpdatedAt() != null
-        ? doc.getUpdatedAt().atZone(java.time.ZoneId.systemDefault()).toEpochSecond()
-        : System.currentTimeMillis() / 1000;
+    long updateTimestamp =
+        doc.getUpdatedAt() != null
+            ? doc.getUpdatedAt().atZone(java.time.ZoneId.systemDefault()).toEpochSecond()
+            : System.currentTimeMillis() / 1000;
     String documentKey = "doc_" + id + "_t" + updateTimestamp;
 
     // 生成带签名的文件访问 URL
@@ -1370,8 +1370,8 @@ public class DocumentController {
    * @param secret 密钥
    * @return 访问令牌
    */
-  public static String generateAccessToken(final Long documentId, final long expires, 
-      final String secret) {
+  public static String generateAccessToken(
+      final Long documentId, final long expires, final String secret) {
     String data = documentId + ":" + expires + ":" + secret;
     try {
       MessageDigest md = MessageDigest.getInstance("SHA-256");

@@ -226,7 +226,8 @@ public class ClientController {
         "客户信息_"
             + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"))
             + ".xlsx";
-    String encodedFileName = URLEncoder.encode(fileName, StandardCharsets.UTF_8).replace("+", "%20");
+    String encodedFileName =
+        URLEncoder.encode(fileName, StandardCharsets.UTF_8).replace("+", "%20");
 
     HttpHeaders headers = new HttpHeaders();
     headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + encodedFileName);

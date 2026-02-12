@@ -297,20 +297,23 @@ public class DataScopeInterceptor implements InnerInterceptor {
    */
   private List<Long> getDeptAndChildrenIds(final Long deptId) {
     // 使用 computeIfAbsent 保证同一 key 只计算一次（避免并发重复查询）
-    List<Long> cached = deptChildrenCache.computeIfAbsent(deptId, id -> {
-      // 查询部门及下级部门
-      List<Long> deptIds = new ArrayList<>();
-      deptIds.add(id);
+    List<Long> cached =
+        deptChildrenCache.computeIfAbsent(
+            deptId,
+            id -> {
+              // 查询部门及下级部门
+              List<Long> deptIds = new ArrayList<>();
+              deptIds.add(id);
 
-      try {
-        // 递归查询下级部门
-        collectChildDeptIds(id, deptIds);
-      } catch (Exception e) {
-        log.warn("查询下级部门失败: {}", e.getMessage());
-      }
+              try {
+                // 递归查询下级部门
+                collectChildDeptIds(id, deptIds);
+              } catch (Exception e) {
+                log.warn("查询下级部门失败: {}", e.getMessage());
+              }
 
-      return deptIds;
-    });
+              return deptIds;
+            });
 
     // 返回不可变副本，防止调用方修改缓存内容
     return java.util.Collections.unmodifiableList(cached);

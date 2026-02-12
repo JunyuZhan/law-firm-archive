@@ -16,10 +16,8 @@ import lombok.extern.slf4j.Slf4j;
  * ThreadLocal 清理过滤器.
  *
  * <p>确保每个请求结束后清理 ThreadLocal 缓存，防止内存泄漏。
- * 
- * <p>安全增强：修复 ThreadLocal 内存泄漏问题。
- * 当使用线程池时，线程会被复用，如果 ThreadLocal 没有被清理，
- * 会导致内存泄漏和数据污染。
+ *
+ * <p>安全增强：修复 ThreadLocal 内存泄漏问题。 当使用线程池时，线程会被复用，如果 ThreadLocal 没有被清理， 会导致内存泄漏和数据污染。
  *
  * @author system
  * @since 2026-02-10
@@ -45,9 +43,7 @@ public class ThreadLocalCleanupFilter implements Filter {
     }
   }
 
-  /**
-   * 清理所有 ThreadLocal 缓存.
-   */
+  /** 清理所有 ThreadLocal 缓存. */
   private void cleanupThreadLocals() {
     try {
       // 清理统计服务的 ThreadLocal 缓存

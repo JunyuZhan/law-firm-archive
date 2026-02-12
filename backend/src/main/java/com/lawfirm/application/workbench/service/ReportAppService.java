@@ -408,11 +408,7 @@ public class ReportAppService {
       try {
         String reportName = report != null ? report.getReportName() : "报表";
         notificationAppService.sendSystemNotification(
-            userId,
-            "报表生成失败",
-            reportName + " 生成失败: " + e.getMessage(),
-            "REPORT",
-            reportId);
+            userId, "报表生成失败", reportName + " 生成失败: " + e.getMessage(), "REPORT", reportId);
       } catch (Exception notifyEx) {
         log.warn("发送报表失败通知失败: {}", notifyEx.getMessage());
       }

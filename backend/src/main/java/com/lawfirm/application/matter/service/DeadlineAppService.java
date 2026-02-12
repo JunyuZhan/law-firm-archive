@@ -16,6 +16,7 @@ import com.lawfirm.domain.matter.repository.DeadlineRepository;
 import com.lawfirm.domain.matter.repository.MatterRepository;
 import com.lawfirm.domain.system.entity.User;
 import com.lawfirm.domain.system.repository.UserRepository;
+import com.lawfirm.infrastructure.lock.DistributedLockService;
 import com.lawfirm.infrastructure.persistence.mapper.DeadlineMapper;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -58,6 +59,12 @@ public class DeadlineAppService {
 
   /** 通知应用服务. */
   private final NotificationAppService notificationAppService;
+
+  /** 分布式锁服务. */
+  private final DistributedLockService distributedLockService;
+
+  /** 锁过期时间（秒）：5分钟 */
+  private static final long LOCK_EXPIRE_SECONDS = 300;
 
   /** 项目应用服务. */
   private MatterAppService matterAppService;
@@ -315,6 +322,19 @@ public class DeadlineAppService {
   @Scheduled(cron = "0 0 9 * * ?")
   @Transactional
   public void sendDeadlineReminders() {
+    if (!distributedLockService.trySchedulerLock(
+        "DeadlineAppService:reminder", LOCK_EXPIRE_SECONDS)) {
+      return;
+    }
+    try {
+      doSendDeadlineReminders();
+    } finally {
+      distributedLockService.unlockScheduler("DeadlineAppService:reminder");
+    }
+  }
+
+  /** 执行发送期限提醒. */
+  private void doSendDeadlineReminders() {
     log.info("开始执行期限提醒定时任务");
     List<Deadline> deadlines = deadlineRepository.findNeedReminder();
 
@@ -360,6 +380,19 @@ public class DeadlineAppService {
   @Scheduled(cron = "0 0 1 * * ?")
   @Transactional
   public void updateExpiredDeadlines() {
+    if (!distributedLockService.trySchedulerLock(
+        "DeadlineAppService:expired", LOCK_EXPIRE_SECONDS)) {
+      return;
+    }
+    try {
+      doUpdateExpiredDeadlines();
+    } finally {
+      distributedLockService.unlockScheduler("DeadlineAppService:expired");
+    }
+  }
+
+  /** 执行更新过期期限状态. */
+  private void doUpdateExpiredDeadlines() {
     log.info("开始执行过期期限更新任务");
     List<Deadline> expiredDeadlines = deadlineRepository.findUpcomingDeadlines();
 

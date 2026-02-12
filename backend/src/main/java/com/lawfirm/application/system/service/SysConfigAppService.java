@@ -246,9 +246,7 @@ public class SysConfigAppService {
    * @param config 配置实体
    * @return 配置DTO
    */
-  /**
-   * 检查配置键是否为敏感配置
-   */
+  /** 检查配置键是否为敏感配置 */
   private boolean isSensitiveConfig(final String configKey) {
     if (configKey == null) {
       return false;

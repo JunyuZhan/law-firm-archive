@@ -267,9 +267,8 @@ public class UserAppService {
     List<String> errors = new java.util.ArrayList<>();
 
     // 找出缺失的用户ID
-    java.util.Set<Long> foundIds = users.stream()
-        .map(User::getId)
-        .collect(java.util.stream.Collectors.toSet());
+    java.util.Set<Long> foundIds =
+        users.stream().map(User::getId).collect(java.util.stream.Collectors.toSet());
     for (Long id : ids) {
       if (!foundIds.contains(id)) {
         errors.add("用户ID " + id + " 不存在");

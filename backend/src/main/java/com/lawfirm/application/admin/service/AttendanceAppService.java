@@ -217,7 +217,8 @@ public class AttendanceAppService {
             .absentDays(0)
             .leaveDays(0);
 
-    List<Object[]> stats = attendanceMapper.countMonthlyAttendance(targetUserId, startDate, endDate);
+    List<Object[]> stats =
+        attendanceMapper.countMonthlyAttendance(targetUserId, startDate, endDate);
     for (Object[] stat : stats) {
       String status = (String) stat[0];
       Long count = (Long) stat[1];

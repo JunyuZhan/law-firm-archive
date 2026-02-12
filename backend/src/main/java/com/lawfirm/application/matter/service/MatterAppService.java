@@ -30,6 +30,7 @@ import com.lawfirm.domain.finance.repository.ContractRepository;
 import com.lawfirm.domain.matter.entity.Matter;
 import com.lawfirm.domain.matter.entity.MatterClient;
 import com.lawfirm.domain.matter.entity.MatterParticipant;
+import com.lawfirm.domain.matter.event.MatterUpdatedEvent;
 import com.lawfirm.domain.matter.repository.MatterClientRepository;
 import com.lawfirm.domain.matter.repository.MatterParticipantRepository;
 import com.lawfirm.domain.matter.repository.MatterRepository;
@@ -40,7 +41,6 @@ import com.lawfirm.domain.system.repository.UserRepository;
 import com.lawfirm.infrastructure.persistence.mapper.DepartmentMapper;
 import com.lawfirm.infrastructure.persistence.mapper.MatterMapper;
 import com.lawfirm.infrastructure.persistence.mapper.MatterParticipantMapper;
-import com.lawfirm.domain.matter.event.MatterUpdatedEvent;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -1610,16 +1610,14 @@ public class MatterAppService {
   /**
    * 发送档案入库提醒通知
    *
-   * <p>结案审批通过后，通知主办律师完善卷宗并提交档案入库。
-   * 律师需要：1. 检查并完善卷宗材料 2. 到档案管理创建档案 3. 提交入库审批
+   * <p>结案审批通过后，通知主办律师完善卷宗并提交档案入库。 律师需要：1. 检查并完善卷宗材料 2. 到档案管理创建档案 3. 提交入库审批
    *
    * @param matter 案件实体
    */
   private void sendArchiveReminderNotification(final Matter matter) {
     String content =
         String.format(
-            "项目【%s】（%s）已结案，请完善卷宗材料后到档案管理创建档案并提交入库审批。",
-            matter.getName(), matter.getMatterNo());
+            "项目【%s】（%s）已结案，请完善卷宗材料后到档案管理创建档案并提交入库审批。", matter.getName(), matter.getMatterNo());
 
     try {
       // 通知主办律师

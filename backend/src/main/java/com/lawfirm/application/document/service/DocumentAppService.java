@@ -28,9 +28,9 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Objects;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -850,8 +850,7 @@ public class DocumentAppService {
   }
 
   /**
-   * 保存编辑历史（用于 OnlyOffice 自动保存，不作为新版本）记录文件路径变化，但版本号保持不变。
-   * 如果已存在相同版本的记录，则更新而不是插入（避免唯一约束冲突）。
+   * 保存编辑历史（用于 OnlyOffice 自动保存，不作为新版本）记录文件路径变化，但版本号保持不变。 如果已存在相同版本的记录，则更新而不是插入（避免唯一约束冲突）。
    *
    * @param document 文档实体
    * @param changeNote 变更说明
@@ -865,9 +864,9 @@ public class DocumentAppService {
     }
 
     // 检查是否已存在该版本的记录
-    DocumentVersion existingRecord = versionMapper.selectByDocumentIdAndVersion(
-        document.getId(), document.getVersion());
-    
+    DocumentVersion existingRecord =
+        versionMapper.selectByDocumentIdAndVersion(document.getId(), document.getVersion());
+
     if (existingRecord != null) {
       // 更新已存在的记录（OnlyOffice 多次自动保存场景）
       existingRecord.setFileName(document.getFileName());
@@ -875,7 +874,8 @@ public class DocumentAppService {
       existingRecord.setFileSize(document.getFileSize());
       existingRecord.setChangeNote(changeNote);
       versionMapper.updateById(existingRecord);
-      log.debug("OnlyOffice 编辑历史已更新: docId={}, version={}", document.getId(), document.getVersion());
+      log.debug(
+          "OnlyOffice 编辑历史已更新: docId={}, version={}", document.getId(), document.getVersion());
     } else {
       // 记录编辑历史，版本号不变，但文件路径可能变化
       DocumentVersion editRecord =
@@ -890,7 +890,8 @@ public class DocumentAppService {
               .createdAt(LocalDateTime.now())
               .build();
       versionMapper.insert(editRecord);
-      log.debug("OnlyOffice 编辑历史已记录: docId={}, version={}", document.getId(), document.getVersion());
+      log.debug(
+          "OnlyOffice 编辑历史已记录: docId={}, version={}", document.getId(), document.getVersion());
     }
   }
 
@@ -982,16 +983,33 @@ public class DocumentAppService {
       return;
     }
 
+    // ✅ 优化：批量查询所有文档，避免N次查询
+    List<Document> documents = documentRepository.listByIds(documentIds);
+    if (documents.isEmpty()) {
+      return;
+    }
+
+    // 创建ID到文档的映射
+    java.util.Map<Long, Document> docMap =
+        documents.stream().collect(java.util.stream.Collectors.toMap(Document::getId, doc -> doc));
+
+    // 设置排序顺序
+    java.util.List<Document> docsToUpdate = new java.util.ArrayList<>();
     for (int i = 0; i < documentIds.size(); i++) {
       Long docId = documentIds.get(i);
-      Document doc = documentRepository.getById(docId);
+      Document doc = docMap.get(docId);
       if (doc != null) {
         doc.setDisplayOrder(i + 1);
-        documentRepository.updateById(doc);
+        docsToUpdate.add(doc);
       }
     }
 
-    log.info("文档排序更新成功: count={}", documentIds.size());
+    // ✅ 优化：使用批量更新，避免N次更新
+    if (!docsToUpdate.isEmpty()) {
+      documentRepository.updateBatchById(docsToUpdate);
+    }
+
+    log.info("文档排序更新成功: count={}", docsToUpdate.size());
   }
 
   /**
@@ -1180,10 +1198,8 @@ public class DocumentAppService {
     // 例如: https://example.com/onlyoffice/cache/... -> http://onlyoffice/cache/...
     if (normalizedUrl.contains("/onlyoffice/")) {
       // 使用正则表达式匹配并替换：协议://任意主机:可选端口/onlyoffice/ -> http://onlyoffice/
-      normalizedUrl = normalizedUrl.replaceFirst(
-          "https?://[^/]+/onlyoffice/",
-          "http://onlyoffice/"
-      );
+      normalizedUrl =
+          normalizedUrl.replaceFirst("https?://[^/]+/onlyoffice/", "http://onlyoffice/");
     }
 
     // 替换 localhost 和 127.0.0.1 为 onlyoffice（Docker 服务名）

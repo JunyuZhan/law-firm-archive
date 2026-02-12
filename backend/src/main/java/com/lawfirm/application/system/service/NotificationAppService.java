@@ -232,8 +232,7 @@ public class NotificationAppService {
   }
 
   /**
-   * 发送紧急通知（会推送到企业微信，更醒目）
-   * 优化：使用批量插入替代循环单条插入
+   * 发送紧急通知（会推送到企业微信，更醒目） 优化：使用批量插入替代循环单条插入
    *
    * @param receiverIds 接收人ID列表
    * @param title 标题

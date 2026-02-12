@@ -344,7 +344,8 @@ public class EvidenceAppService {
     List<Evidence> evidences = evidenceRepository.listByIds(ids);
     if (evidences.size() != ids.size()) {
       // 找出缺失的证据ID
-      Set<Long> foundIds = evidences.stream().map(Evidence::getId).collect(java.util.stream.Collectors.toSet());
+      Set<Long> foundIds =
+          evidences.stream().map(Evidence::getId).collect(java.util.stream.Collectors.toSet());
       List<Long> missingIds = ids.stream().filter(id -> !foundIds.contains(id)).toList();
       throw new BusinessException("证据不存在: " + missingIds);
     }

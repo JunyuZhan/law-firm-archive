@@ -15,19 +15,15 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
- * 回调接口安全过滤器
- * 用于验证客户服务系统的回调请求
- * 
- * 安全策略（二选一）：
- * 1. IP 白名单验证（推荐）：只允许客户服务系统的 IP 访问，适用于固定 IP 场景
- * 2. API Key 验证：使用共享密钥验证，适用于动态 IP 或内网穿透场景
- * 
- * 验证逻辑：
- * - 如果启用 IP 白名单验证，则验证 IP
- * - 如果禁用 IP 白名单但配置了 API Key，则验证请求头中的 X-Callback-Key
- * - 如果两者都禁用/未配置，则拒绝所有请求
- * 
- * 配置优先级：数据库 sys_config 表 > 环境变量 > 配置文件默认值
+ * 回调接口安全过滤器 用于验证客户服务系统的回调请求
+ *
+ * <p>安全策略（二选一）： 1. IP 白名单验证（推荐）：只允许客户服务系统的 IP 访问，适用于固定 IP 场景 2. API Key 验证：使用共享密钥验证，适用于动态 IP
+ * 或内网穿透场景
+ *
+ * <p>验证逻辑： - 如果启用 IP 白名单验证，则验证 IP - 如果禁用 IP 白名单但配置了 API Key，则验证请求头中的 X-Callback-Key -
+ * 如果两者都禁用/未配置，则拒绝所有请求
+ *
+ * <p>配置优先级：数据库 sys_config 表 > 环境变量 > 配置文件默认值
  */
 @Slf4j
 @Component
@@ -49,20 +45,17 @@ public class CallbackSecurityFilter extends OncePerRequestFilter {
   @Value("${client-service.callback.api-key:}")
   private String defaultApiKey;
 
-  /**
-   * 检查 IP 白名单验证是否启用（优先从数据库读取）
-   */
+  /** 检查 IP 白名单验证是否启用（优先从数据库读取） */
   private boolean isIpWhitelistEnabled() {
-    String value = sysConfigAppService.getConfigValue("client-service.callback.ip-whitelist-enabled");
+    String value =
+        sysConfigAppService.getConfigValue("client-service.callback.ip-whitelist-enabled");
     if (value != null && !value.isEmpty()) {
       return Boolean.parseBoolean(value);
     }
     return defaultIpWhitelistEnabled;
   }
 
-  /**
-   * 获取 IP 白名单（优先从数据库读取）
-   */
+  /** 获取 IP 白名单（优先从数据库读取） */
   private String getIpWhitelist() {
     String value = sysConfigAppService.getConfigValue("client-service.callback.ip-whitelist");
     if (value != null && !value.isEmpty()) {
@@ -71,9 +64,7 @@ public class CallbackSecurityFilter extends OncePerRequestFilter {
     return defaultIpWhitelist;
   }
 
-  /**
-   * 获取回调 API Key（优先从数据库读取）
-   */
+  /** 获取回调 API Key（优先从数据库读取） */
   private String getApiKey() {
     String value = sysConfigAppService.getConfigValue("client-service.callback.api-key");
     if (value != null && !value.isEmpty()) {
@@ -96,7 +87,7 @@ public class CallbackSecurityFilter extends OncePerRequestFilter {
       throws ServletException, IOException {
 
     String requestPath = request.getRequestURI();
-    
+
     // 只处理回调接口
     if (!requestPath.startsWith(CALLBACK_PATH_PREFIX)) {
       filterChain.doFilter(request, response);
@@ -106,8 +97,11 @@ public class CallbackSecurityFilter extends OncePerRequestFilter {
     // 获取客户端 IP 和请求头中的 API Key
     String clientIp = getClientIp(request);
     String requestApiKey = request.getHeader(API_KEY_HEADER);
-    log.debug("回调请求: path={}, clientIp={}, hasApiKey={}", 
-        requestPath, clientIp, requestApiKey != null && !requestApiKey.isEmpty());
+    log.debug(
+        "回调请求: path={}, clientIp={}, hasApiKey={}",
+        requestPath,
+        clientIp,
+        requestApiKey != null && !requestApiKey.isEmpty());
 
     // 安全验证（IP 白名单 或 API Key，二选一）
     boolean ipWhitelistEnabled = isIpWhitelistEnabled();
@@ -145,7 +139,9 @@ public class CallbackSecurityFilter extends OncePerRequestFilter {
       log.warn("回调请求被拒绝：未配置任何安全验证方式 - path={}, clientIp={}", requestPath, clientIp);
       response.setStatus(HttpServletResponse.SC_FORBIDDEN);
       response.setContentType("application/json;charset=UTF-8");
-      response.getWriter().write("{\"code\":\"403\",\"message\":\"回调安全验证未配置，请配置 IP 白名单或 API Key\"}");
+      response
+          .getWriter()
+          .write("{\"code\":\"403\",\"message\":\"回调安全验证未配置，请配置 IP 白名单或 API Key\"}");
       return;
     }
 
@@ -175,7 +171,7 @@ public class CallbackSecurityFilter extends OncePerRequestFilter {
 
     // 解析白名单（支持多个 IP，用逗号分隔）
     List<String> allowedIps = Arrays.asList(whitelist.split(","));
-    
+
     // 检查 IP 是否在白名单中（支持精确匹配和 CIDR 格式）
     for (String allowedIp : allowedIps) {
       String trimmedIp = allowedIp.trim();

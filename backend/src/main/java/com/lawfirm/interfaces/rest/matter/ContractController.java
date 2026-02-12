@@ -116,7 +116,8 @@ public class ContractController {
   @RequirePermission("matter:contract:create")
   @OperationLog(module = "合同管理", action = "创建合同")
   @RepeatSubmit(interval = 5000, message = "请勿重复提交合同信息")
-  public Result<ContractDTO> createContract(@Valid @RequestBody final CreateContractCommand command) {
+  public Result<ContractDTO> createContract(
+      @Valid @RequestBody final CreateContractCommand command) {
     ContractDTO contract = contractAppService.createContract(command);
     return Result.success(contract);
   }

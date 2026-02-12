@@ -12,11 +12,12 @@ import org.springframework.context.annotation.Configuration;
  * Filter 配置类
  *
  * <p>注册系统级过滤器：
+ *
  * <ul>
- *   <li>TraceIdFilter: 请求追踪（优先级最高）</li>
- *   <li>XssFilter: XSS 防护</li>
- *   <li>CallbackSecurityFilter: 回调接口安全验证</li>
- *   <li>ThreadLocalCleanupFilter: ThreadLocal 清理（优先级最低）</li>
+ *   <li>TraceIdFilter: 请求追踪（优先级最高）
+ *   <li>XssFilter: XSS 防护
+ *   <li>CallbackSecurityFilter: 回调接口安全验证
+ *   <li>ThreadLocalCleanupFilter: ThreadLocal 清理（优先级最低）
  * </ul>
  *
  * @author junyuzhan
@@ -73,9 +74,8 @@ public class FilterConfig {
 
   /**
    * 注册 ThreadLocal 清理过滤器.
-   * 
-   * <p>确保每个请求结束后清理 ThreadLocal 缓存，防止内存泄漏。
-   * 优先级最低，确保在所有业务逻辑执行完毕后清理。
+   *
+   * <p>确保每个请求结束后清理 ThreadLocal 缓存，防止内存泄漏。 优先级最低，确保在所有业务逻辑执行完毕后清理。
    *
    * @return ThreadLocal 清理过滤器注册Bean
    */

@@ -14,10 +14,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
-/**
- * 客户服务事件监听器
- * 监听项目更新等事件，触发自动推送
- */
+/** 客户服务事件监听器 监听项目更新等事件，触发自动推送 */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -38,8 +35,7 @@ public class ClientServiceEventListener {
     Long clientId = event.getClientId();
     Long operatorId = event.getOperatorId();
 
-    log.debug("收到项目更新事件: matterId={}, clientId={}, operatorId={}", 
-        matterId, clientId, operatorId);
+    log.debug("收到项目更新事件: matterId={}, clientId={}, operatorId={}", matterId, clientId, operatorId);
 
     // 客户ID为空，无法推送
     if (clientId == null) {
@@ -71,9 +67,10 @@ public class ClientServiceEventListener {
       log.info("触发自动推送: matterId={}, clientId={}", matterId, clientId);
 
       // 构建推送请求
-      List<String> scopes = config.getScopes() != null 
-          ? Arrays.asList(config.getScopes().split(","))
-          : List.of("MATTER_INFO", "MATTER_PROGRESS");
+      List<String> scopes =
+          config.getScopes() != null
+              ? Arrays.asList(config.getScopes().split(","))
+              : List.of("MATTER_INFO", "MATTER_PROGRESS");
 
       PushRequest request = new PushRequest();
       request.setMatterId(matterId);

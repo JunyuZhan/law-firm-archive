@@ -125,6 +125,5 @@ public interface PushRecordMapper extends BaseMapper<PushRecord> {
           AND deleted = false
         """)
   int updateHistoricalExternalUrl(
-      @Param("matterId") Long matterId,
-      @Param("externalUrl") String externalUrl);
+      @Param("matterId") Long matterId, @Param("externalUrl") String externalUrl);
 }

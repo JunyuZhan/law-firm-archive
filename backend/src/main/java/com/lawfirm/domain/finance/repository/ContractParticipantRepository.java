@@ -117,8 +117,6 @@ public class ContractParticipantRepository
     if (contractIds == null || contractIds.isEmpty()) {
       return java.util.Collections.emptyList();
     }
-    return lambdaQuery()
-        .in(ContractParticipant::getContractId, contractIds)
-        .list();
+    return lambdaQuery().in(ContractParticipant::getContractId, contractIds).list();
   }
 }

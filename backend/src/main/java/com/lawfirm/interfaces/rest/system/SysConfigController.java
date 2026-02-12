@@ -9,8 +9,8 @@ import com.lawfirm.common.annotation.RequirePermission;
 import com.lawfirm.common.result.Result;
 import com.lawfirm.common.util.VersionUtils;
 import io.swagger.v3.oas.annotations.Operation;
-import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
@@ -275,8 +275,7 @@ public class SysConfigController {
   // ============ 前端公共配置接口（无需认证） ============
 
   /**
-   * 获取前端公共配置（无需登录）
-   * 用于获取 ICP 备案号、系统名称等公开信息
+   * 获取前端公共配置（无需登录） 用于获取 ICP 备案号、系统名称等公开信息
    *
    * @return 公共配置
    */

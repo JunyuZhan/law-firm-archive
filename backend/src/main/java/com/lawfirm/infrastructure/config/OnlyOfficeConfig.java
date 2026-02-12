@@ -13,15 +13,13 @@ public class OnlyOfficeConfig {
   /** OnlyOffice Document Server 地址 */
   private String documentServerUrl = "http://localhost:8088";
 
-  /** 后端回调地址（OnlyOffice 保存文档时调用）
-   * 注意：必须使用 Docker 内部服务名（如 backend:8080），
-   * 不能使用 host.docker.internal（Linux 上不可用）
+  /**
+   * 后端回调地址（OnlyOffice 保存文档时调用） 注意：必须使用 Docker 内部服务名（如 backend:8080）， 不能使用
+   * host.docker.internal（Linux 上不可用）
    */
   private String callbackUrl = "http://backend:8080/api";
 
-  /** 文件服务地址（OnlyOffice 获取文件时使用）
-   * 注意：必须使用 Docker 内部服务名（如 minio:9000）
-   */
+  /** 文件服务地址（OnlyOffice 获取文件时使用） 注意：必须使用 Docker 内部服务名（如 minio:9000） */
   private String fileServerUrl = "http://minio:9000";
 
   /**

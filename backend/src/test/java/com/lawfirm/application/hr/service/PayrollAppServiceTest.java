@@ -81,13 +81,12 @@ class PayrollAppServiceTest {
     securityUtilsMock = mockStatic(SecurityUtils.class);
     securityUtilsMock.when(SecurityUtils::getUserId).thenReturn(TEST_USER_ID);
     securityUtilsMock.when(SecurityUtils::getRoles).thenReturn(Set.of("FINANCE", "ADMIN"));
-    
+
     // Mock PayrollItemRepository.lambdaQuery() for toSheetDTO method
     @SuppressWarnings("unchecked")
     com.baomidou.mybatisplus.extension.conditions.query.LambdaQueryChainWrapper<PayrollItem>
         payrollItemQueryWrapper =
-            mock(
-                com.baomidou.mybatisplus.extension.conditions.query.LambdaQueryChainWrapper.class);
+            mock(com.baomidou.mybatisplus.extension.conditions.query.LambdaQueryChainWrapper.class);
     lenient().when(payrollItemRepository.lambdaQuery()).thenReturn(payrollItemQueryWrapper);
     lenient().when(payrollItemQueryWrapper.eq(any(), any())).thenReturn(payrollItemQueryWrapper);
     lenient().when(payrollItemQueryWrapper.list()).thenReturn(Collections.emptyList());
@@ -144,7 +143,8 @@ class PayrollAppServiceTest {
               });
       when(payrollSheetRepository.updateById(any(PayrollSheet.class))).thenReturn(true);
       // Mock PayrollItemService.createPayrollItemForEmployee - 返回null表示没有生成工资明细
-      lenient().when(payrollItemService.createPayrollItemForEmployee(any(), any(), any(), any()))
+      lenient()
+          .when(payrollItemService.createPayrollItemForEmployee(any(), any(), any(), any()))
           .thenReturn(null);
 
       // When

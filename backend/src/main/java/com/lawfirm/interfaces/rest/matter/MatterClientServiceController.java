@@ -194,10 +194,14 @@ public class MatterClientServiceController {
   public Result<PageResult<ClientAccessLogDTO>> getAccessLogs(
       @Parameter(description = "项目ID", required = true) @RequestParam final Long matterId,
       @Parameter(description = "客户ID") @RequestParam(required = false) final Long clientId,
-      @Parameter(description = "开始时间") @RequestParam(required = false)
-          @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") final LocalDateTime startTime,
-      @Parameter(description = "结束时间") @RequestParam(required = false)
-          @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") final LocalDateTime endTime,
+      @Parameter(description = "开始时间")
+          @RequestParam(required = false)
+          @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+          final LocalDateTime startTime,
+      @Parameter(description = "结束时间")
+          @RequestParam(required = false)
+          @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+          final LocalDateTime endTime,
       @Parameter(description = "页码") @RequestParam(defaultValue = "1") final int pageNum,
       @Parameter(description = "每页数量") @RequestParam(defaultValue = "20") final int pageSize) {
     return Result.success(
@@ -224,10 +228,14 @@ public class MatterClientServiceController {
       @Parameter(description = "项目ID", required = true) @RequestParam final Long matterId,
       @Parameter(description = "客户ID") @RequestParam(required = false) final Long clientId,
       @Parameter(description = "文件ID") @RequestParam(required = false) final String fileId,
-      @Parameter(description = "开始时间") @RequestParam(required = false)
-          @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") final LocalDateTime startTime,
-      @Parameter(description = "结束时间") @RequestParam(required = false)
-          @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") final LocalDateTime endTime,
+      @Parameter(description = "开始时间")
+          @RequestParam(required = false)
+          @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+          final LocalDateTime startTime,
+      @Parameter(description = "结束时间")
+          @RequestParam(required = false)
+          @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+          final LocalDateTime endTime,
       @Parameter(description = "页码") @RequestParam(defaultValue = "1") final int pageNum,
       @Parameter(description = "每页数量") @RequestParam(defaultValue = "20") final int pageSize) {
     return Result.success(
@@ -242,5 +250,5 @@ public class MatterClientServiceController {
    * @param label 选项标签
    * @param description 选项描述
    */
-  public record ScopeOption(String value, String label, String description) { }
+  public record ScopeOption(String value, String label, String description) {}
 }

@@ -397,10 +397,7 @@ public class EvidenceListAppService {
     try {
       // 上传到MinIO
       minioService.uploadFile(
-          new ByteArrayInputStream(pdfBytes),
-          physicalName,
-          storagePath,
-          "application/pdf");
+          new ByteArrayInputStream(pdfBytes), physicalName, storagePath, "application/pdf");
 
       // 创建文档记录
       com.lawfirm.domain.document.entity.Document document =

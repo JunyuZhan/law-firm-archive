@@ -5,6 +5,7 @@ import com.lawfirm.domain.finance.entity.Contract;
 import com.lawfirm.domain.finance.entity.ContractParticipant;
 import com.lawfirm.domain.finance.repository.ContractParticipantRepository;
 import com.lawfirm.domain.finance.repository.ContractRepository;
+import com.lawfirm.infrastructure.lock.DistributedLockService;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -33,6 +34,12 @@ public class ContractExpiryReminderScheduler {
   /** 通知应用服务 */
   private final NotificationAppService notificationAppService;
 
+  /** 分布式锁服务 */
+  private final DistributedLockService distributedLockService;
+
+  /** 锁过期时间（秒）：5分钟 */
+  private static final long LOCK_EXPIRE_SECONDS = 300;
+
   /** 提前提醒天数：30天 */
   private static final int REMINDER_DAYS_30 = 30;
 
@@ -46,6 +53,19 @@ public class ContractExpiryReminderScheduler {
   @Scheduled(cron = "0 0 9 * * ?")
   @Transactional
   public void sendUpcomingContractReminders() {
+    if (!distributedLockService.trySchedulerLock(
+        "ContractExpiryReminderScheduler:upcoming", LOCK_EXPIRE_SECONDS)) {
+      return;
+    }
+    try {
+      doSendUpcomingContractReminders();
+    } finally {
+      distributedLockService.unlockScheduler("ContractExpiryReminderScheduler:upcoming");
+    }
+  }
+
+  /** 执行即将到期合同提醒 */
+  private void doSendUpcomingContractReminders() {
     log.info("开始执行合同到期提醒定时任务");
 
     LocalDate today = LocalDate.now();
@@ -74,6 +94,19 @@ public class ContractExpiryReminderScheduler {
   @Scheduled(cron = "0 0 10 * * ?")
   @Transactional
   public void sendExpiredContractWarnings() {
+    if (!distributedLockService.trySchedulerLock(
+        "ContractExpiryReminderScheduler:expired", LOCK_EXPIRE_SECONDS)) {
+      return;
+    }
+    try {
+      doSendExpiredContractWarnings();
+    } finally {
+      distributedLockService.unlockScheduler("ContractExpiryReminderScheduler:expired");
+    }
+  }
+
+  /** 执行逾期合同警告 */
+  private void doSendExpiredContractWarnings() {
     log.info("开始执行合同逾期警告定时任务");
 
     LocalDate today = LocalDate.now();

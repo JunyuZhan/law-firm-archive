@@ -2,6 +2,7 @@ package com.lawfirm.infrastructure.notification;
 
 import com.lawfirm.application.system.service.SysConfigAppService;
 import com.lawfirm.common.util.VersionUtils;
+import com.lawfirm.infrastructure.lock.DistributedLockService;
 import java.io.File;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
@@ -37,6 +38,9 @@ public class SystemReportService {
   /** JDBC模板 */
   private final JdbcTemplate jdbcTemplate;
 
+  /** 分布式锁服务 */
+  private final DistributedLockService distributedLockService;
+
   /** 日期时间格式化器 */
   private static final DateTimeFormatter DATE_FORMAT =
       DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -63,9 +67,25 @@ public class SystemReportService {
   /** 小时数（一天） */
   private static final int HOURS_PER_DAY = 24;
 
+  /** 锁过期时间（秒）：5分钟 */
+  private static final long LOCK_EXPIRE_SECONDS = 300;
+
   /** 每天早上8点发送日报. */
   @Scheduled(cron = "0 0 8 * * ?")
   public void sendDailyReport() {
+    if (!distributedLockService.trySchedulerLock(
+        "SystemReportService:daily", LOCK_EXPIRE_SECONDS)) {
+      return;
+    }
+    try {
+      doSendDailyReport();
+    } finally {
+      distributedLockService.unlockScheduler("SystemReportService:daily");
+    }
+  }
+
+  /** 执行发送日报 */
+  private void doSendDailyReport() {
     String enabled = configAppService.getConfigValue("notification.report.daily.enabled");
     if (!"true".equalsIgnoreCase(enabled)) {
       log.debug("每日报告未启用");
@@ -86,6 +106,19 @@ public class SystemReportService {
   /** 每周一早上9点发送周报. */
   @Scheduled(cron = "0 0 9 ? * MON")
   public void sendWeeklyReport() {
+    if (!distributedLockService.trySchedulerLock(
+        "SystemReportService:weekly", LOCK_EXPIRE_SECONDS)) {
+      return;
+    }
+    try {
+      doSendWeeklyReport();
+    } finally {
+      distributedLockService.unlockScheduler("SystemReportService:weekly");
+    }
+  }
+
+  /** 执行发送周报 */
+  private void doSendWeeklyReport() {
     String enabled = configAppService.getConfigValue("notification.report.weekly.enabled");
     if (!"true".equalsIgnoreCase(enabled)) {
       log.debug("每周报告未启用");
@@ -106,6 +139,19 @@ public class SystemReportService {
   /** 每小时检查系统健康状态 */
   @Scheduled(cron = "0 0 * * * ?")
   public void checkSystemHealth() {
+    if (!distributedLockService.trySchedulerLock(
+        "SystemReportService:health", LOCK_EXPIRE_SECONDS)) {
+      return;
+    }
+    try {
+      doCheckSystemHealth();
+    } finally {
+      distributedLockService.unlockScheduler("SystemReportService:health");
+    }
+  }
+
+  /** 执行系统健康检查 */
+  private void doCheckSystemHealth() {
     log.debug("检查系统健康状态...");
 
     // 检查磁盘空间
@@ -281,7 +327,10 @@ public class SystemReportService {
 
     return new String[][] {
       {"运行时长", formatDuration(duration)},
-      {"堆内存使用", heapUsed + " MB / " + (heapMax > 0 ? heapMax + " MB" : "未限制") + " (" + heapPercent + "%)"},
+      {
+        "堆内存使用",
+        heapUsed + " MB / " + (heapMax > 0 ? heapMax + " MB" : "未限制") + " (" + heapPercent + "%)"
+      },
       {"线程数", String.valueOf(Thread.activeCount())},
       {"处理器核心", String.valueOf(Runtime.getRuntime().availableProcessors())}
     };

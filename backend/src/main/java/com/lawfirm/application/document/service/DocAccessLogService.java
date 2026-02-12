@@ -119,10 +119,11 @@ public class DocAccessLogService {
     // 计算总访问次数（安全处理 null 值）
     long totalCount =
         byActionType.stream()
-            .mapToLong(item -> {
-              Object count = item.get("access_count");
-              return count instanceof Number ? ((Number) count).longValue() : 0L;
-            })
+            .mapToLong(
+                item -> {
+                  Object count = item.get("access_count");
+                  return count instanceof Number ? ((Number) count).longValue() : 0L;
+                })
             .sum();
     statistics.setTotalAccessCount(totalCount);
 

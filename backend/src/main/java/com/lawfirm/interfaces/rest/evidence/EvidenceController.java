@@ -174,7 +174,8 @@ public class EvidenceController {
   @RequirePermission("evidence:update")
   @OperationLog(module = "证据管理", action = "批量调整分组")
   public Result<Void> batchUpdateGroup(
-      @RequestBody @jakarta.validation.constraints.Size(min = 1, max = 100, message = "批量操作数量需在1-100之间")
+      @RequestBody
+          @jakarta.validation.constraints.Size(min = 1, max = 100, message = "批量操作数量需在1-100之间")
           final List<Long> ids,
       @RequestParam @jakarta.validation.constraints.Size(max = 100, message = "分组名称不能超过100个字符")
           final String groupName) {
@@ -555,12 +556,12 @@ public class EvidenceController {
       response.setContentType(contentType);
       response.setContentLength(fileBytes.length);
       // 安全处理文件名，防止 HTTP 响应拆分攻击
-      String safeFileName = evidenceDTO.getFileName()
-          .replaceAll("[\\r\\n\"\\\\]", "_");  // 移除危险字符
-      String encodedFileName = java.net.URLEncoder.encode(safeFileName, 
-          java.nio.charset.StandardCharsets.UTF_8).replace("+", "%20");
+      String safeFileName = evidenceDTO.getFileName().replaceAll("[\\r\\n\"\\\\]", "_"); // 移除危险字符
+      String encodedFileName =
+          java.net.URLEncoder.encode(safeFileName, java.nio.charset.StandardCharsets.UTF_8)
+              .replace("+", "%20");
       response.setHeader(
-          "Content-Disposition", 
+          "Content-Disposition",
           "inline; filename=\"" + safeFileName + "\"; filename*=UTF-8''" + encodedFileName);
 
       // 写入文件内容
@@ -752,11 +753,11 @@ public class EvidenceController {
     try {
       String fileName = evidenceExportService.getExportFileName(matterId, extension);
 
-      String encodedFileName = java.net.URLEncoder.encode(fileName, java.nio.charset.StandardCharsets.UTF_8).replace("+", "%20");
+      String encodedFileName =
+          java.net.URLEncoder.encode(fileName, java.nio.charset.StandardCharsets.UTF_8)
+              .replace("+", "%20");
       response.setContentType(contentType);
-      response.setHeader(
-          "Content-Disposition",
-          "attachment; filename*=UTF-8''" + encodedFileName);
+      response.setHeader("Content-Disposition", "attachment; filename*=UTF-8''" + encodedFileName);
       response.setContentLength(content.length);
       response.getOutputStream().write(content);
       response.getOutputStream().flush();

@@ -128,7 +128,8 @@ class ExpenseAppServiceTest {
           .thenReturn(null); // null表示所有项目都可访问
       when(expenseMapper.countExpensePage(any(), any(), any(), any(), any(), any(), any()))
           .thenReturn(1L);
-      when(expenseMapper.selectExpensePage(any(), any(), any(), any(), any(), any(), any(), anyInt(), anyInt()))
+      when(expenseMapper.selectExpensePage(
+              any(), any(), any(), any(), any(), any(), any(), anyInt(), anyInt()))
           .thenReturn(expenses);
       when(userRepository.listByIds(any())).thenReturn(Collections.emptyList());
       when(matterRepository.listByIds(any())).thenReturn(Collections.emptyList());
@@ -146,7 +147,8 @@ class ExpenseAppServiceTest {
       assertEquals(new BigDecimal("5000.00"), dto.getAmount());
       assertEquals(ExpenseStatus.PENDING, dto.getStatus());
 
-      verify(expenseMapper).selectExpensePage(any(), any(), any(), any(), any(), any(), any(), anyInt(), anyInt());
+      verify(expenseMapper)
+          .selectExpensePage(any(), any(), any(), any(), any(), any(), any(), anyInt(), anyInt());
     }
 
     @Test
@@ -170,7 +172,8 @@ class ExpenseAppServiceTest {
           .thenReturn(null); // 改为null，让逻辑继续执行
       when(expenseMapper.countExpensePage(any(), any(), eq(1L), any(), any(), any(), any()))
           .thenReturn(1L);
-      when(expenseMapper.selectExpensePage(any(), any(), eq(1L), any(), any(), any(), any(), anyInt(), anyInt()))
+      when(expenseMapper.selectExpensePage(
+              any(), any(), eq(1L), any(), any(), any(), any(), anyInt(), anyInt()))
           .thenReturn(expenses);
       when(userRepository.listByIds(any())).thenReturn(Collections.emptyList());
       when(matterRepository.listByIds(any())).thenReturn(Collections.emptyList());
@@ -181,7 +184,8 @@ class ExpenseAppServiceTest {
       // Then
       assertNotNull(result);
       // 验证查询时传入了正确的applicantId
-      verify(expenseMapper).selectExpensePage(any(), any(), eq(1L), any(), any(), any(), any(), anyInt(), anyInt());
+      verify(expenseMapper)
+          .selectExpensePage(any(), any(), eq(1L), any(), any(), any(), any(), anyInt(), anyInt());
     }
   }
 
@@ -653,7 +657,8 @@ class ExpenseAppServiceTest {
       when(matterAppService.getAccessibleMatterIds(eq("ALL"), eq(1L), eq(100L))).thenReturn(null);
       when(expenseMapper.countExpensePage(any(), any(), any(), any(), any(), any(), any()))
           .thenReturn(0L);
-      when(expenseMapper.selectExpensePage(any(), any(), any(), any(), any(), any(), any(), anyInt(), anyInt()))
+      when(expenseMapper.selectExpensePage(
+              any(), any(), any(), any(), any(), any(), any(), anyInt(), anyInt()))
           .thenReturn(Collections.emptyList());
 
       // When (不传任何过滤条件)

@@ -24,10 +24,7 @@ public final class SqlUtils {
       return null;
     }
     // 先转义反斜杠，再转义 % 和 _
-    return value
-        .replace("\\", "\\\\")
-        .replace("%", "\\%")
-        .replace("_", "\\_");
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
   }
 
   /**

@@ -292,7 +292,8 @@ public class CommissionController {
   @Operation(summary = "批量审批提成", description = "仅主任可以审批")
   @OperationLog(module = "提成管理", action = "批量审批提成")
   public Result<Void> batchApproveCommissions(
-      @RequestBody @jakarta.validation.constraints.Size(min = 1, max = 100, message = "批量操作数量需在1-100之间")
+      @RequestBody
+          @jakarta.validation.constraints.Size(min = 1, max = 100, message = "批量操作数量需在1-100之间")
           final List<Long> ids,
       @RequestParam final Boolean approved,
       @RequestParam(required = false) final String comment) {
@@ -328,7 +329,8 @@ public class CommissionController {
   @Operation(summary = "批量确认提成发放", description = "仅财务人员可以确认")
   @OperationLog(module = "提成管理", action = "批量确认提成发放")
   public Result<Void> batchIssueCommissions(
-      @RequestBody @jakarta.validation.constraints.Size(min = 1, max = 100, message = "批量操作数量需在1-100之间")
+      @RequestBody
+          @jakarta.validation.constraints.Size(min = 1, max = 100, message = "批量操作数量需在1-100之间")
           final List<Long> ids) {
     commissionAppService.batchIssueCommissions(ids);
     return Result.success();

@@ -326,12 +326,10 @@ public class ApprovalAppService {
     List<Approval> approvals = approvalRepository.listByIds(approvalIds);
     if (approvals.size() != approvalIds.size()) {
       // 找出缺失的审批记录ID
-      java.util.Set<Long> foundIds = approvals.stream()
-          .map(Approval::getId)
-          .collect(java.util.stream.Collectors.toSet());
-      java.util.List<Long> missingIds = approvalIds.stream()
-          .filter(id -> !foundIds.contains(id))
-          .toList();
+      java.util.Set<Long> foundIds =
+          approvals.stream().map(Approval::getId).collect(java.util.stream.Collectors.toSet());
+      java.util.List<Long> missingIds =
+          approvalIds.stream().filter(id -> !foundIds.contains(id)).toList();
       throw new BusinessException("审批记录不存在: " + missingIds);
     }
 

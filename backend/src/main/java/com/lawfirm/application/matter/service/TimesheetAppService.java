@@ -126,9 +126,7 @@ public class TimesheetAppService {
     Map<Long, User> userMap = batchLoadTimesheetUsers(timesheets);
 
     List<TimesheetDTO> records =
-        timesheets.stream()
-            .map(t -> toDTO(t, matterMap, userMap))
-            .collect(Collectors.toList());
+        timesheets.stream().map(t -> toDTO(t, matterMap, userMap)).collect(Collectors.toList());
 
     return PageResult.of(records, page.getTotal(), query.getPageNum(), query.getPageSize());
   }
@@ -348,12 +346,9 @@ public class TimesheetAppService {
     List<Timesheet> timesheets = timesheetRepository.listByIds(ids);
     if (timesheets.size() != ids.size()) {
       // 找出缺失的工时记录ID
-      java.util.Set<Long> foundIds = timesheets.stream()
-          .map(Timesheet::getId)
-          .collect(java.util.stream.Collectors.toSet());
-      java.util.List<Long> missingIds = ids.stream()
-          .filter(id -> !foundIds.contains(id))
-          .toList();
+      java.util.Set<Long> foundIds =
+          timesheets.stream().map(Timesheet::getId).collect(java.util.stream.Collectors.toSet());
+      java.util.List<Long> missingIds = ids.stream().filter(id -> !foundIds.contains(id)).toList();
       throw new BusinessException("工时记录不存在: " + missingIds);
     }
 
@@ -744,9 +739,7 @@ public class TimesheetAppService {
    * @return DTO
    */
   private TimesheetDTO toDTO(
-      final Timesheet timesheet,
-      final Map<Long, Matter> matterMap,
-      final Map<Long, User> userMap) {
+      final Timesheet timesheet, final Map<Long, Matter> matterMap, final Map<Long, User> userMap) {
     TimesheetDTO dto = new TimesheetDTO();
     dto.setId(timesheet.getId());
     dto.setTimesheetNo(timesheet.getTimesheetNo());

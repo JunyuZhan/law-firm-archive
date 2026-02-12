@@ -319,7 +319,8 @@ class TimesheetAppServiceTest {
       Timesheet timesheet2 =
           Timesheet.builder().id(2L).userId(TEST_USER_ID).status(TimesheetStatus.DRAFT).build();
 
-      when(timesheetRepository.listByIds(Arrays.asList(1L, 2L))).thenReturn(Arrays.asList(timesheet1, timesheet2));
+      when(timesheetRepository.listByIds(Arrays.asList(1L, 2L)))
+          .thenReturn(Arrays.asList(timesheet1, timesheet2));
       when(timesheetRepository.updateById(any(Timesheet.class))).thenReturn(true);
 
       // When
@@ -347,7 +348,8 @@ class TimesheetAppServiceTest {
               .status(TimesheetStatus.APPROVED) // 已审批，不能提交
               .build();
 
-      when(timesheetRepository.listByIds(Arrays.asList(1L, 2L))).thenReturn(Arrays.asList(timesheet1, timesheet2));
+      when(timesheetRepository.listByIds(Arrays.asList(1L, 2L)))
+          .thenReturn(Arrays.asList(timesheet1, timesheet2));
 
       // When & Then
       BusinessException exception =

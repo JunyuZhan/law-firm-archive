@@ -11,13 +11,13 @@ import com.lawfirm.common.util.SecurityUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import jakarta.servlet.http.HttpServletResponse;
-import java.io.IOException;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -150,8 +150,7 @@ public class MatterClientFileController {
   }
 
   /**
-   * 文件代理接口（解决跨域问题）
-   * 代理客户服务系统的文件，用于预览和下载
+   * 文件代理接口（解决跨域问题） 代理客户服务系统的文件，用于预览和下载
    *
    * @param fileId 文件ID
    * @param response HTTP响应
@@ -167,7 +166,8 @@ public class MatterClientFileController {
     } catch (IOException e) {
       try {
         response.setHeader("Access-Control-Allow-Origin", "*");
-        response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "文件代理失败: " + e.getMessage());
+        response.sendError(
+            HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "文件代理失败: " + e.getMessage());
       } catch (IOException ioException) {
         log.warn("发送文件代理错误响应失败: {}", ioException.getMessage());
       }

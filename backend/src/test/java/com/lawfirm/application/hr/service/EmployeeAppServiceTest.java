@@ -135,7 +135,8 @@ class EmployeeAppServiceTest {
       when(employeeMapper.selectEmployeePage(any(Page.class), any(), any(), any(), any(), any()))
           .thenReturn(page);
 
-      when(userRepository.listByIds(anyList())).thenReturn(Collections.singletonList(createTestUser()));
+      when(userRepository.listByIds(anyList()))
+          .thenReturn(Collections.singletonList(createTestUser()));
 
       // When
       PageResult<EmployeeDTO> result = employeeAppService.listEmployees(query);

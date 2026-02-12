@@ -44,8 +44,10 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -134,11 +136,38 @@ public class PayrollAppService {
             query.getStatus(),
             query.getPayrollNo());
 
+    // 批量加载用户信息，避免 N+1 查询
+    List<PayrollSheet> records = page.getRecords();
+    Map<Long, User> userMap = batchLoadSheetUsers(records);
+
     return PageResult.of(
-        page.getRecords().stream().map(this::toSheetDTO).collect(Collectors.toList()),
+        records.stream().map(sheet -> toSheetDTO(sheet, userMap)).collect(Collectors.toList()),
         page.getTotal(),
         query.getPageNum(),
         query.getPageSize());
+  }
+
+  /**
+   * 批量加载工资表相关用户信息.
+   *
+   * @param sheets 工资表列表
+   * @return 用户Map
+   */
+  private Map<Long, User> batchLoadSheetUsers(final List<PayrollSheet> sheets) {
+    if (sheets == null || sheets.isEmpty()) {
+      return Collections.emptyMap();
+    }
+    Set<Long> userIds =
+        sheets.stream()
+            .flatMap(
+                sheet -> java.util.stream.Stream.of(sheet.getApproverId(), sheet.getApprovedBy()))
+            .filter(Objects::nonNull)
+            .collect(Collectors.toSet());
+    if (userIds.isEmpty()) {
+      return Collections.emptyMap();
+    }
+    return userRepository.listByIds(userIds).stream()
+        .collect(Collectors.toMap(User::getId, u -> u, (a, b) -> a));
   }
 
   /**
@@ -193,16 +222,20 @@ public class PayrollAppService {
 
     // 1. 批量获取符合条件的员工（使用SQL条件过滤，避免全表加载到内存）
     // 条件：员工创建时间在查询月末之前，且非已离职（或离职日期在查询月初之后）
-    List<Employee> allEmployees = employeeRepository.lambdaQuery()
-        .isNotNull(Employee::getUserId)
-        .le(Employee::getCreatedAt, queryMonthEnd.atTime(LocalTime.MAX))
-        .and(wrapper -> wrapper
-            .ne(Employee::getWorkStatus, EmployeeStatus.RESIGNED)
-            .or()
-            .isNull(Employee::getResignationDate)
-            .or()
-            .ge(Employee::getResignationDate, queryMonthStart))
-        .list();
+    List<Employee> allEmployees =
+        employeeRepository
+            .lambdaQuery()
+            .isNotNull(Employee::getUserId)
+            .le(Employee::getCreatedAt, queryMonthEnd.atTime(LocalTime.MAX))
+            .and(
+                wrapper ->
+                    wrapper
+                        .ne(Employee::getWorkStatus, EmployeeStatus.RESIGNED)
+                        .or()
+                        .isNull(Employee::getResignationDate)
+                        .or()
+                        .ge(Employee::getResignationDate, queryMonthStart))
+            .list();
 
     if (allEmployees.isEmpty()) {
       return new ArrayList<>();
@@ -307,7 +340,8 @@ public class PayrollAppService {
 
     // 3. 批量获取所有用户的提成（避免N+1查询）
     // 注意：Commission通过CommissionDetail与用户关联，使用批量查询方法
-    Map<Long, List<Commission>> commissionsByUser = commissionRepository.findByUserIdsGrouped(userIds);
+    Map<Long, List<Commission>> commissionsByUser =
+        commissionRepository.findByUserIdsGrouped(userIds);
 
     // 过滤只保留已审批或已发放状态
     for (Map.Entry<Long, List<Commission>> entry : commissionsByUser.entrySet()) {
@@ -1084,34 +1118,9 @@ public class PayrollAppService {
     dto.setIssuedAt(sheet.getIssuedAt());
     dto.setIssuedBy(sheet.getIssuedBy());
 
-    // 审批相关字段
-    dto.setApproverId(sheet.getApproverId());
-    if (sheet.getApproverId() != null) {
-      try {
-        User approver = userRepository.getById(sheet.getApproverId());
-        if (approver != null) {
-          dto.setApproverName(
-              approver.getRealName() != null ? approver.getRealName() : approver.getUsername());
-        }
-      } catch (Exception e) {
-        log.warn("获取审批人信息失败: approverId={}", sheet.getApproverId(), e);
-      }
-    }
-    dto.setApprovedAt(sheet.getApprovedAt());
-    dto.setApprovedBy(sheet.getApprovedBy());
-    if (sheet.getApprovedBy() != null) {
-      try {
-        User approvedByUser = userRepository.getById(sheet.getApprovedBy());
-        if (approvedByUser != null) {
-          dto.setApprovedByName(
-              approvedByUser.getRealName() != null
-                  ? approvedByUser.getRealName()
-                  : approvedByUser.getUsername());
-        }
-      } catch (Exception e) {
-        log.warn("获取审批人信息失败: approvedBy={}", sheet.getApprovedBy(), e);
-      }
-    }
+    // 审批相关字段 - 使用批量加载的用户信息
+    Map<Long, User> userMap = batchLoadSheetUsers(List.of(sheet));
+    fillApprovalInfo(dto, sheet, userMap);
     dto.setApprovalComment(sheet.getApprovalComment());
     dto.setPaymentMethod(sheet.getPaymentMethod());
     dto.setPaymentMethodName(getPaymentMethodName(sheet.getPaymentMethod()));
@@ -1143,6 +1152,85 @@ public class PayrollAppService {
             .collect(Collectors.toList()));
 
     return dto;
+  }
+
+  /**
+   * 转换为工资表DTO（批量版本，使用预加载的用户Map）。
+   *
+   * @param sheet 工资表实体
+   * @param userMap 用户Map
+   * @return 工资表DTO
+   */
+  private PayrollSheetDTO toSheetDTO(final PayrollSheet sheet, final Map<Long, User> userMap) {
+    if (sheet == null) {
+      return null;
+    }
+
+    PayrollSheetDTO dto = new PayrollSheetDTO();
+    dto.setId(sheet.getId());
+    dto.setPayrollNo(sheet.getPayrollNo());
+    dto.setPayrollYear(sheet.getPayrollYear());
+    dto.setPayrollMonth(sheet.getPayrollMonth());
+    dto.setStatus(sheet.getStatus());
+    dto.setStatusName(getStatusName(sheet.getStatus()));
+    dto.setTotalEmployees(sheet.getTotalEmployees());
+    dto.setTotalGrossAmount(sheet.getTotalGrossAmount());
+    dto.setTotalDeductionAmount(sheet.getTotalDeductionAmount());
+    dto.setTotalNetAmount(sheet.getTotalNetAmount());
+    dto.setConfirmedCount(sheet.getConfirmedCount());
+    dto.setSubmittedAt(sheet.getSubmittedAt());
+    dto.setSubmittedBy(sheet.getSubmittedBy());
+    dto.setFinanceConfirmedAt(sheet.getFinanceConfirmedAt());
+    dto.setFinanceConfirmedBy(sheet.getFinanceConfirmedBy());
+    dto.setIssuedAt(sheet.getIssuedAt());
+    dto.setIssuedBy(sheet.getIssuedBy());
+
+    // 审批相关字段 - 使用预加载的用户信息
+    fillApprovalInfo(dto, sheet, userMap);
+
+    dto.setApprovalComment(sheet.getApprovalComment());
+    dto.setPaymentMethod(sheet.getPaymentMethod());
+    dto.setPaymentMethodName(getPaymentMethodName(sheet.getPaymentMethod()));
+    dto.setPaymentVoucherUrl(sheet.getPaymentVoucherUrl());
+    dto.setRemark(sheet.getRemark());
+    dto.setAutoConfirmDeadline(sheet.getAutoConfirmDeadline());
+    dto.setCreatedAt(sheet.getCreatedAt());
+    dto.setUpdatedAt(sheet.getUpdatedAt());
+
+    // 列表场景不加载被拒绝的工资明细，提高性能
+    dto.setRejectedItems(Collections.emptyList());
+
+    return dto;
+  }
+
+  /**
+   * 填充审批相关信息。
+   *
+   * @param dto 工资表DTO
+   * @param sheet 工资表实体
+   * @param userMap 用户Map
+   */
+  private void fillApprovalInfo(
+      final PayrollSheetDTO dto, final PayrollSheet sheet, final Map<Long, User> userMap) {
+    dto.setApproverId(sheet.getApproverId());
+    if (sheet.getApproverId() != null) {
+      User approver = userMap.get(sheet.getApproverId());
+      if (approver != null) {
+        dto.setApproverName(
+            approver.getRealName() != null ? approver.getRealName() : approver.getUsername());
+      }
+    }
+    dto.setApprovedAt(sheet.getApprovedAt());
+    dto.setApprovedBy(sheet.getApprovedBy());
+    if (sheet.getApprovedBy() != null) {
+      User approvedByUser = userMap.get(sheet.getApprovedBy());
+      if (approvedByUser != null) {
+        dto.setApprovedByName(
+            approvedByUser.getRealName() != null
+                ? approvedByUser.getRealName()
+                : approvedByUser.getUsername());
+      }
+    }
   }
 
   // toItemDTO、toIncomeDTO、toDeductionDTO 已迁移到 PayrollItemService

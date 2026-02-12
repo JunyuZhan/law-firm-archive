@@ -510,7 +510,8 @@ public class ExpenseAppService {
    */
   public List<CostAllocationDTO> listCostAllocations(final Long matterId) {
     List<CostAllocation> allocations = costAllocationMapper.selectByMatterId(matterId);
-    return allocations.stream().map(this::toCostAllocationDTO).collect(Collectors.toList());
+    // ✅ 优化：使用批量转换避免N+1查询
+    return batchConvertToCostAllocationDTO(allocations);
   }
 
   /**
@@ -713,7 +714,8 @@ public class ExpenseAppService {
   public List<com.lawfirm.application.finance.dto.CostSplitDTO> listCostSplits(
       final Long matterId) {
     List<CostSplit> splits = costSplitRepository.findByMatterId(matterId);
-    return splits.stream().map(this::toCostSplitDTO).collect(Collectors.toList());
+    // ✅ 优化：使用批量转换避免N+1查询
+    return batchConvertToCostSplitDTO(splits);
   }
 
   /**
@@ -836,82 +838,164 @@ public class ExpenseAppService {
   }
 
   /**
-   * 转换为成本归集DTO
+   * 批量转换为成本归集DTO（避免N+1查询）
    *
-   * @param allocation 成本归集实体
-   * @return 成本归集DTO
+   * @param allocations 成本归集实体列表
+   * @return 成本归集DTO列表
    */
-  private CostAllocationDTO toCostAllocationDTO(final CostAllocation allocation) {
-    CostAllocationDTO dto = new CostAllocationDTO();
-    BeanUtils.copyProperties(allocation, dto);
-
-    // 查询费用信息
-    Expense expense = expenseRepository.findById(allocation.getExpenseId());
-    if (expense != null) {
-      dto.setExpenseNo(expense.getExpenseNo());
-      dto.setExpenseDescription(expense.getDescription());
-      dto.setExpenseType(expense.getExpenseType());
-      dto.setExpenseDate(expense.getExpenseDate());
+  private List<CostAllocationDTO> batchConvertToCostAllocationDTO(
+      final List<CostAllocation> allocations) {
+    if (allocations == null || allocations.isEmpty()) {
+      return Collections.emptyList();
     }
 
-    // 查询操作人
-    if (allocation.getAllocatedBy() != null) {
-      User user = userRepository.findById(allocation.getAllocatedBy());
-      if (user != null) {
-        dto.setAllocatedByName(user.getRealName());
+    // ✅ 批量收集所有需要查询的ID
+    Set<Long> expenseIds = new HashSet<>();
+    Set<Long> userIds = new HashSet<>();
+    Set<Long> matterIds = new HashSet<>();
+
+    for (CostAllocation allocation : allocations) {
+      if (allocation.getExpenseId() != null) {
+        expenseIds.add(allocation.getExpenseId());
+      }
+      if (allocation.getAllocatedBy() != null) {
+        userIds.add(allocation.getAllocatedBy());
+      }
+      if (allocation.getMatterId() != null) {
+        matterIds.add(allocation.getMatterId());
       }
     }
 
-    // 查询项目名称
-    if (allocation.getMatterId() != null) {
-      com.lawfirm.domain.matter.entity.Matter matter =
-          matterRepository.findById(allocation.getMatterId());
-      if (matter != null) {
-        dto.setMatterName(matter.getName());
-      }
-    }
+    // ✅ 批量查询关联数据
+    Map<Long, Expense> expenseMap =
+        expenseIds.isEmpty()
+            ? Collections.emptyMap()
+            : expenseRepository.listByIds(new ArrayList<>(expenseIds)).stream()
+                .collect(Collectors.toMap(Expense::getId, e -> e));
+    Map<Long, User> userMap =
+        userIds.isEmpty()
+            ? Collections.emptyMap()
+            : userRepository.listByIds(new ArrayList<>(userIds)).stream()
+                .collect(Collectors.toMap(User::getId, u -> u));
+    Map<Long, Matter> matterMap =
+        matterIds.isEmpty()
+            ? Collections.emptyMap()
+            : matterRepository.listByIds(new ArrayList<>(matterIds)).stream()
+                .collect(Collectors.toMap(Matter::getId, m -> m));
 
-    return dto;
+    // ✅ 转换DTO
+    return allocations.stream()
+        .map(
+            allocation -> {
+              CostAllocationDTO dto = new CostAllocationDTO();
+              BeanUtils.copyProperties(allocation, dto);
+
+              Expense expense = expenseMap.get(allocation.getExpenseId());
+              if (expense != null) {
+                dto.setExpenseNo(expense.getExpenseNo());
+                dto.setExpenseDescription(expense.getDescription());
+                dto.setExpenseType(expense.getExpenseType());
+                dto.setExpenseDate(expense.getExpenseDate());
+              }
+
+              if (allocation.getAllocatedBy() != null) {
+                User user = userMap.get(allocation.getAllocatedBy());
+                if (user != null) {
+                  dto.setAllocatedByName(user.getRealName());
+                }
+              }
+
+              if (allocation.getMatterId() != null) {
+                Matter matter = matterMap.get(allocation.getMatterId());
+                if (matter != null) {
+                  dto.setMatterName(matter.getName());
+                }
+              }
+
+              return dto;
+            })
+        .collect(Collectors.toList());
   }
 
   /**
-   * 转换为成本分摊DTO
+   * 批量转换为成本分摊DTO（避免N+1查询）
    *
-   * @param split 成本分摊实体
-   * @return 成本分摊DTO
+   * @param splits 成本分摊实体列表
+   * @return 成本分摊DTO列表
    */
-  private com.lawfirm.application.finance.dto.CostSplitDTO toCostSplitDTO(final CostSplit split) {
-    com.lawfirm.application.finance.dto.CostSplitDTO dto =
-        new com.lawfirm.application.finance.dto.CostSplitDTO();
-    BeanUtils.copyProperties(split, dto);
-
-    // 查询费用信息
-    Expense expense = expenseRepository.findById(split.getExpenseId());
-    if (expense != null) {
-      dto.setExpenseNo(expense.getExpenseNo());
-      dto.setExpenseDescription(expense.getDescription());
-      dto.setExpenseType(expense.getExpenseType());
-      dto.setExpenseDate(expense.getExpenseDate());
+  private List<com.lawfirm.application.finance.dto.CostSplitDTO> batchConvertToCostSplitDTO(
+      final List<CostSplit> splits) {
+    if (splits == null || splits.isEmpty()) {
+      return Collections.emptyList();
     }
 
-    // 查询操作人
-    if (split.getSplitBy() != null) {
-      User user = userRepository.findById(split.getSplitBy());
-      if (user != null) {
-        dto.setSplitByName(user.getRealName());
+    // ✅ 批量收集所有需要查询的ID
+    Set<Long> expenseIds = new HashSet<>();
+    Set<Long> userIds = new HashSet<>();
+    Set<Long> matterIds = new HashSet<>();
+
+    for (CostSplit split : splits) {
+      if (split.getExpenseId() != null) {
+        expenseIds.add(split.getExpenseId());
+      }
+      if (split.getSplitBy() != null) {
+        userIds.add(split.getSplitBy());
+      }
+      if (split.getMatterId() != null) {
+        matterIds.add(split.getMatterId());
       }
     }
 
-    // 查询项目名称
-    if (split.getMatterId() != null) {
-      com.lawfirm.domain.matter.entity.Matter matter =
-          matterRepository.findById(split.getMatterId());
-      if (matter != null) {
-        dto.setMatterName(matter.getName());
-      }
-    }
+    // ✅ 批量查询关联数据
+    Map<Long, Expense> expenseMap =
+        expenseIds.isEmpty()
+            ? Collections.emptyMap()
+            : expenseRepository.listByIds(new ArrayList<>(expenseIds)).stream()
+                .collect(Collectors.toMap(Expense::getId, e -> e));
+    Map<Long, User> userMap =
+        userIds.isEmpty()
+            ? Collections.emptyMap()
+            : userRepository.listByIds(new ArrayList<>(userIds)).stream()
+                .collect(Collectors.toMap(User::getId, u -> u));
+    Map<Long, Matter> matterMap =
+        matterIds.isEmpty()
+            ? Collections.emptyMap()
+            : matterRepository.listByIds(new ArrayList<>(matterIds)).stream()
+                .collect(Collectors.toMap(Matter::getId, m -> m));
 
-    return dto;
+    // ✅ 转换DTO
+    return splits.stream()
+        .map(
+            split -> {
+              com.lawfirm.application.finance.dto.CostSplitDTO dto =
+                  new com.lawfirm.application.finance.dto.CostSplitDTO();
+              BeanUtils.copyProperties(split, dto);
+
+              Expense expense = expenseMap.get(split.getExpenseId());
+              if (expense != null) {
+                dto.setExpenseNo(expense.getExpenseNo());
+                dto.setExpenseDescription(expense.getDescription());
+                dto.setExpenseType(expense.getExpenseType());
+                dto.setExpenseDate(expense.getExpenseDate());
+              }
+
+              if (split.getSplitBy() != null) {
+                User user = userMap.get(split.getSplitBy());
+                if (user != null) {
+                  dto.setSplitByName(user.getRealName());
+                }
+              }
+
+              if (split.getMatterId() != null) {
+                Matter matter = matterMap.get(split.getMatterId());
+                if (matter != null) {
+                  dto.setMatterName(matter.getName());
+                }
+              }
+
+              return dto;
+            })
+        .collect(Collectors.toList());
   }
 
   /**

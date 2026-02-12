@@ -238,7 +238,8 @@ public class UserController {
     java.io.InputStream inputStream = userAppService.exportUsers(query);
     InputStreamResource resource = new InputStreamResource(inputStream);
 
-    String encodedFileName = URLEncoder.encode("用户列表.xlsx", StandardCharsets.UTF_8).replace("+", "%20");
+    String encodedFileName =
+        URLEncoder.encode("用户列表.xlsx", StandardCharsets.UTF_8).replace("+", "%20");
     return ResponseEntity.ok()
         .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + encodedFileName)
         .contentType(MediaType.APPLICATION_OCTET_STREAM)

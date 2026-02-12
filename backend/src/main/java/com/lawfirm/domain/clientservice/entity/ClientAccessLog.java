@@ -9,10 +9,7 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
-/**
- * 客户访问日志实体
- * 记录客户服务系统回调的客户访问行为
- */
+/** 客户访问日志实体 记录客户服务系统回调的客户访问行为 */
 @Data
 @SuperBuilder
 @NoArgsConstructor

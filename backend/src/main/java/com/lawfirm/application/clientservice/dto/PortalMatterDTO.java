@@ -134,10 +134,13 @@ public class PortalMatterDTO implements Serializable {
   public static class TeamMemberDTO implements Serializable {
     /** 序列化版本号. */
     private static final long serialVersionUID = 1L;
+
     /** 成员姓名. */
     private String name;
+
     /** 成员角色. */
     private String role;
+
     /** 联系方式. */
     private String contact;
   }
@@ -150,14 +153,19 @@ public class PortalMatterDTO implements Serializable {
   public static class TaskDTO implements Serializable {
     /** 序列化版本号. */
     private static final long serialVersionUID = 1L;
+
     /** 任务标题. */
     private String title;
+
     /** 任务状态. */
     private String status;
+
     /** 状态名称. */
     private String statusName;
+
     /** 进度. */
     private Integer progress;
+
     /** 截止日期. */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     @JsonSerialize(using = LocalDateTimeSerializer.class)
@@ -173,15 +181,19 @@ public class PortalMatterDTO implements Serializable {
   public static class DeadlineDTO implements Serializable {
     /** 序列化版本号. */
     private static final long serialVersionUID = 1L;
+
     /** 期限标题. */
     private String title;
+
     /** 截止时间. */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     @JsonSerialize(using = LocalDateTimeSerializer.class)
     @JsonDeserialize(using = LocalDateTimeDeserializer.class)
     private LocalDateTime deadline;
+
     /** 期限类型. */
     private String type;
+
     /** 是否逾期. */
     private Boolean isOverdue;
   }
@@ -194,10 +206,13 @@ public class PortalMatterDTO implements Serializable {
   public static class DocumentDTO implements Serializable {
     /** 序列化版本号. */
     private static final long serialVersionUID = 1L;
+
     /** 文档标题. */
     private String title;
+
     /** 文档分类. */
     private String category;
+
     /** 创建时间. */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     @JsonSerialize(using = LocalDateTimeSerializer.class)
@@ -213,18 +228,25 @@ public class PortalMatterDTO implements Serializable {
   public static class DownloadableFileDTO implements Serializable {
     /** 序列化版本号. */
     private static final long serialVersionUID = 1L;
+
     /** 文档ID（管理系统内部ID）. */
     private Long documentId;
+
     /** 文件名. */
     private String fileName;
+
     /** 文件类型. */
     private String fileType;
+
     /** 文件大小（字节）. */
     private Long fileSize;
+
     /** 文件分类. */
     private String category;
+
     /** 临时下载URL（供客服系统下载文件）. */
     private String sourceUrl;
+
     /** 上传时间. */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     @JsonSerialize(using = LocalDateTimeSerializer.class)

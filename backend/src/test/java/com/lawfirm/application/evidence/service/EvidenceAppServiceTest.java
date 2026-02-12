@@ -405,7 +405,8 @@ class EvidenceAppServiceTest {
 
       Matter matter = Matter.builder().id(TEST_MATTER_ID).status("ACTIVE").build();
 
-      when(evidenceRepository.listByIds(Arrays.asList(1L, 2L))).thenReturn(Arrays.asList(evidence1, evidence2));
+      when(evidenceRepository.listByIds(Arrays.asList(1L, 2L)))
+          .thenReturn(Arrays.asList(evidence1, evidence2));
       doNothing().when(matterAppService).validateMatterOwnership(TEST_MATTER_ID);
       lenient().when(matterRepository.findById(TEST_MATTER_ID)).thenReturn(matter);
       when(evidenceRepository.updateBatchById(anyList())).thenReturn(true);

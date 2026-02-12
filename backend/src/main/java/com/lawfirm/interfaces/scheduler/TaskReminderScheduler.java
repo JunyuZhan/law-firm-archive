@@ -3,6 +3,7 @@ package com.lawfirm.interfaces.scheduler;
 import com.lawfirm.application.system.service.NotificationAppService;
 import com.lawfirm.domain.matter.entity.Task;
 import com.lawfirm.domain.matter.repository.TaskRepository;
+import com.lawfirm.infrastructure.lock.DistributedLockService;
 import com.lawfirm.infrastructure.persistence.mapper.TaskMapper;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -33,10 +34,29 @@ public class TaskReminderScheduler {
   /** 通知应用服务 */
   private final NotificationAppService notificationAppService;
 
+  /** 分布式锁服务 */
+  private final DistributedLockService distributedLockService;
+
+  /** 锁过期时间（秒）：5分钟 */
+  private static final long LOCK_EXPIRE_SECONDS = 300;
+
   /** 即将到期任务提醒 每天上午9点执行，提醒3天内到期的任务 */
   @Scheduled(cron = "0 0 9 * * ?")
   @Transactional
   public void sendUpcomingTaskReminders() {
+    if (!distributedLockService.trySchedulerLock(
+        "TaskReminderScheduler:upcoming", LOCK_EXPIRE_SECONDS)) {
+      return;
+    }
+    try {
+      doSendUpcomingTaskReminders();
+    } finally {
+      distributedLockService.unlockScheduler("TaskReminderScheduler:upcoming");
+    }
+  }
+
+  /** 执行即将到期任务提醒 */
+  private void doSendUpcomingTaskReminders() {
     log.info("开始执行任务到期提醒定时任务");
 
     LocalDate today = LocalDate.now();
@@ -93,6 +113,19 @@ public class TaskReminderScheduler {
   @Scheduled(cron = "0 0 10 * * ?")
   @Transactional
   public void sendOverdueTaskWarnings() {
+    if (!distributedLockService.trySchedulerLock(
+        "TaskReminderScheduler:overdue", LOCK_EXPIRE_SECONDS)) {
+      return;
+    }
+    try {
+      doSendOverdueTaskWarnings();
+    } finally {
+      distributedLockService.unlockScheduler("TaskReminderScheduler:overdue");
+    }
+  }
+
+  /** 执行逾期任务警告 */
+  private void doSendOverdueTaskWarnings() {
     log.info("开始执行逾期任务警告定时任务");
 
     List<Task> overdueTasks = taskRepository.findOverdueTasks(LocalDate.now());
@@ -133,6 +166,19 @@ public class TaskReminderScheduler {
   @Scheduled(cron = "0 0 * * * ?")
   @Transactional
   public void sendScheduledReminders() {
+    if (!distributedLockService.trySchedulerLock(
+        "TaskReminderScheduler:scheduled", LOCK_EXPIRE_SECONDS)) {
+      return;
+    }
+    try {
+      doSendScheduledReminders();
+    } finally {
+      distributedLockService.unlockScheduler("TaskReminderScheduler:scheduled");
+    }
+  }
+
+  /** 执行自定义提醒时间检查 */
+  private void doSendScheduledReminders() {
     log.debug("开始检查自定义提醒任务");
 
     LocalDateTime now = LocalDateTime.now();

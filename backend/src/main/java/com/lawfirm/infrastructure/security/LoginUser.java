@@ -36,8 +36,7 @@ public class LoginUser implements UserDetails {
   private String username;
 
   /** 密码（序列化时忽略，防止泄露）. */
-  @JsonIgnore
-  private String password;
+  @JsonIgnore private String password;
 
   /** 真实姓名. */
   private String realName;

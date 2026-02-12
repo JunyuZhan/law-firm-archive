@@ -31,10 +31,12 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -94,8 +96,14 @@ public class ScheduledReportAppService {
         scheduledReportMapper.selectScheduledReportPage(
             new Page<>(pageNum, pageSize), keyword, status, SecurityUtils.getUserId());
 
+    // 批量加载模板信息，避免 N+1 查询
+    List<ScheduledReport> records = page.getRecords();
+    Map<Long, ReportTemplate> templateMap = batchLoadTemplates(records);
+
     return PageResult.of(
-        page.getRecords().stream().map(this::toScheduledReportDTO).collect(Collectors.toList()),
+        records.stream()
+            .map(task -> toScheduledReportDTO(task, templateMap))
+            .collect(Collectors.toList()),
         page.getTotal(),
         pageNum,
         pageSize);
@@ -388,13 +396,14 @@ public class ScheduledReportAppService {
         Arrays.stream(task.getNotifyUserIds().split(","))
             .map(String::trim)
             .filter(s -> !s.isEmpty())
-            .forEach(s -> {
-              try {
-                userIdSet.add(Long.parseLong(s));
-              } catch (NumberFormatException e) {
-                log.warn("跳过无效的通知用户 ID: {}", s);
-              }
-            });
+            .forEach(
+                s -> {
+                  try {
+                    userIdSet.add(Long.parseLong(s));
+                  } catch (NumberFormatException e) {
+                    log.warn("跳过无效的通知用户 ID: {}", s);
+                  }
+                });
       }
 
       // 转换为 List
@@ -685,8 +694,10 @@ public class ScheduledReportAppService {
       }
       case "MONTHLY" -> {
         Integer executeDayOfMonth = task.getExecuteDayOfMonth();
-        int targetDay = Math.min(
-            executeDayOfMonth != null ? executeDayOfMonth : 1, now.toLocalDate().lengthOfMonth());
+        int targetDay =
+            Math.min(
+                executeDayOfMonth != null ? executeDayOfMonth : 1,
+                now.toLocalDate().lengthOfMonth());
         LocalDateTime next = now.toLocalDate().withDayOfMonth(targetDay).atTime(executeTime);
         yield next.isAfter(now) ? next : next.plusMonths(1);
       }
@@ -714,12 +725,36 @@ public class ScheduledReportAppService {
   }
 
   /**
-   * Entity转DTO.
+   * 批量加载模板信息.
+   *
+   * @param tasks 定时报表任务列表
+   * @return 模板Map
+   */
+  private Map<Long, ReportTemplate> batchLoadTemplates(final List<ScheduledReport> tasks) {
+    if (tasks == null || tasks.isEmpty()) {
+      return Collections.emptyMap();
+    }
+    Set<Long> templateIds =
+        tasks.stream()
+            .map(ScheduledReport::getTemplateId)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toSet());
+    if (templateIds.isEmpty()) {
+      return Collections.emptyMap();
+    }
+    return templateRepository.listByIds(templateIds).stream()
+        .collect(Collectors.toMap(ReportTemplate::getId, t -> t, (a, b) -> a));
+  }
+
+  /**
+   * Entity转DTO（批量版本，使用预加载的Map）.
    *
    * @param task 定时报表任务实体
+   * @param templateMap 模板Map
    * @return 定时报表DTO
    */
-  private ScheduledReportDTO toScheduledReportDTO(final ScheduledReport task) {
+  private ScheduledReportDTO toScheduledReportDTO(
+      final ScheduledReport task, final Map<Long, ReportTemplate> templateMap) {
     ScheduledReportDTO dto = new ScheduledReportDTO();
     dto.setId(task.getId());
     dto.setTaskNo(task.getTaskNo());
@@ -727,8 +762,8 @@ public class ScheduledReportAppService {
     dto.setDescription(task.getDescription());
     dto.setTemplateId(task.getTemplateId());
 
-    // 获取模板名称
-    ReportTemplate template = templateRepository.findById(task.getTemplateId());
+    // 从Map获取模板名称
+    ReportTemplate template = templateMap.get(task.getTemplateId());
     if (template != null) {
       dto.setTemplateName(template.getTemplateName());
     }
@@ -779,6 +814,17 @@ public class ScheduledReportAppService {
     dto.setUpdatedAt(task.getUpdatedAt());
 
     return dto;
+  }
+
+  /**
+   * Entity转DTO（单条，用于详情查询）.
+   *
+   * @param task 定时报表任务实体
+   * @return 定时报表DTO
+   */
+  private ScheduledReportDTO toScheduledReportDTO(final ScheduledReport task) {
+    Map<Long, ReportTemplate> templateMap = batchLoadTemplates(List.of(task));
+    return toScheduledReportDTO(task, templateMap);
   }
 
   /**

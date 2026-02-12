@@ -36,6 +36,5 @@ public interface PayrollDeductionMapper extends BaseMapper<PayrollDeduction> {
           + "</foreach>"
           + " AND deleted = false ORDER BY payroll_item_id, deduction_type"
           + "</script>")
-  List<PayrollDeduction> selectByPayrollItemIds(
-      @Param("payrollItemIds") List<Long> payrollItemIds);
+  List<PayrollDeduction> selectByPayrollItemIds(@Param("payrollItemIds") List<Long> payrollItemIds);
 }

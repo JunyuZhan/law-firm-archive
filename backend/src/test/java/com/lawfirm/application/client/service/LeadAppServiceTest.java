@@ -448,7 +448,8 @@ class LeadAppServiceTest {
 
       Lead lead = Lead.builder().id(TEST_LEAD_ID).leadName("案源1").status("PENDING").build();
 
-      when(leadMapper.selectLeadPage(any(), any(), any(), any(), any(), anyList(), anyList(), anyInt(), anyInt()))
+      when(leadMapper.selectLeadPage(
+              any(), any(), any(), any(), any(), anyList(), anyList(), anyInt(), anyInt()))
           .thenReturn(Collections.singletonList(lead));
 
       // When

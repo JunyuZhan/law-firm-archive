@@ -50,103 +50,103 @@ public class ExcelReportGenerator {
     try (Workbook workbook = new XSSFWorkbook()) {
       Sheet sheet = workbook.createSheet("收入报表");
 
-    // 创建标题样式
-    CellStyle titleStyle = workbook.createCellStyle();
-    Font titleFont = workbook.createFont();
-    titleFont.setBold(true);
-    titleFont.setFontHeightInPoints((short) 16);
-    titleStyle.setFont(titleFont);
-    titleStyle.setAlignment(HorizontalAlignment.CENTER);
+      // 创建标题样式
+      CellStyle titleStyle = workbook.createCellStyle();
+      Font titleFont = workbook.createFont();
+      titleFont.setBold(true);
+      titleFont.setFontHeightInPoints((short) 16);
+      titleStyle.setFont(titleFont);
+      titleStyle.setAlignment(HorizontalAlignment.CENTER);
 
-    // 创建表头样式
-    CellStyle headerStyle = workbook.createCellStyle();
-    Font headerFont = workbook.createFont();
-    headerFont.setBold(true);
-    headerStyle.setFont(headerFont);
-    headerStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
-    headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-    headerStyle.setAlignment(HorizontalAlignment.CENTER);
+      // 创建表头样式
+      CellStyle headerStyle = workbook.createCellStyle();
+      Font headerFont = workbook.createFont();
+      headerFont.setBold(true);
+      headerStyle.setFont(headerFont);
+      headerStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
+      headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+      headerStyle.setAlignment(HorizontalAlignment.CENTER);
 
-    // 创建数据样式
-    CellStyle dataStyle = workbook.createCellStyle();
-    dataStyle.setAlignment(HorizontalAlignment.LEFT);
+      // 创建数据样式
+      CellStyle dataStyle = workbook.createCellStyle();
+      dataStyle.setAlignment(HorizontalAlignment.LEFT);
 
-    // 创建数字样式
-    CellStyle numberStyle = workbook.createCellStyle();
-    DataFormat format = workbook.createDataFormat();
-    numberStyle.setDataFormat(format.getFormat("#,##0.00"));
+      // 创建数字样式
+      CellStyle numberStyle = workbook.createCellStyle();
+      DataFormat format = workbook.createDataFormat();
+      numberStyle.setDataFormat(format.getFormat("#,##0.00"));
 
-    int rowNum = 0;
+      int rowNum = 0;
 
-    // 标题行
-    Row titleRow = sheet.createRow(rowNum++);
-    Cell titleCell = titleRow.createCell(0);
-    titleCell.setCellValue("收入报表");
-    titleCell.setCellStyle(titleStyle);
-    sheet.addMergedRegion(new org.apache.poi.ss.util.CellRangeAddress(0, 0, 0, 4));
+      // 标题行
+      Row titleRow = sheet.createRow(rowNum++);
+      Cell titleCell = titleRow.createCell(0);
+      titleCell.setCellValue("收入报表");
+      titleCell.setCellStyle(titleStyle);
+      sheet.addMergedRegion(new org.apache.poi.ss.util.CellRangeAddress(0, 0, 0, 4));
 
-    // 空行
-    rowNum++;
+      // 空行
+      rowNum++;
 
-    // 表头
-    Row headerRow = sheet.createRow(rowNum++);
-    String[] headers = {"日期", "客户名称", "案件名称", "收费金额", "收款状态"};
-    for (int i = 0; i < headers.length; i++) {
-      Cell cell = headerRow.createCell(i);
-      cell.setCellValue(headers[i]);
-      cell.setCellStyle(headerStyle);
-    }
-
-    // 数据行
-    for (Map<String, Object> row : data) {
-      Row dataRow = sheet.createRow(rowNum++);
-      int colNum = 0;
-
-      // 日期
-      Cell dateCell = dataRow.createCell(colNum++);
-      if (row.get("date") != null) {
-        dateCell.setCellValue(row.get("date").toString());
+      // 表头
+      Row headerRow = sheet.createRow(rowNum++);
+      String[] headers = {"日期", "客户名称", "案件名称", "收费金额", "收款状态"};
+      for (int i = 0; i < headers.length; i++) {
+        Cell cell = headerRow.createCell(i);
+        cell.setCellValue(headers[i]);
+        cell.setCellStyle(headerStyle);
       }
-      dateCell.setCellStyle(dataStyle);
 
-      // 客户名称
-      Cell clientCell = dataRow.createCell(colNum++);
-      if (row.get("clientName") != null) {
-        clientCell.setCellValue(row.get("clientName").toString());
-      }
-      clientCell.setCellStyle(dataStyle);
+      // 数据行
+      for (Map<String, Object> row : data) {
+        Row dataRow = sheet.createRow(rowNum++);
+        int colNum = 0;
 
-      // 案件名称
-      Cell matterCell = dataRow.createCell(colNum++);
-      if (row.get("matterName") != null) {
-        matterCell.setCellValue(row.get("matterName").toString());
-      }
-      matterCell.setCellStyle(dataStyle);
-
-      // 收费金额
-      Cell amountCell = dataRow.createCell(colNum++);
-      if (row.get("amount") != null) {
-        if (row.get("amount") instanceof Number) {
-          amountCell.setCellValue(((Number) row.get("amount")).doubleValue());
-        } else {
-          amountCell.setCellValue(row.get("amount").toString());
+        // 日期
+        Cell dateCell = dataRow.createCell(colNum++);
+        if (row.get("date") != null) {
+          dateCell.setCellValue(row.get("date").toString());
         }
-      }
-      amountCell.setCellStyle(numberStyle);
+        dateCell.setCellStyle(dataStyle);
 
-      // 收款状态
-      Cell statusCell = dataRow.createCell(colNum++);
-      if (row.get("status") != null) {
-        statusCell.setCellValue(row.get("status").toString());
-      }
-      statusCell.setCellStyle(dataStyle);
-    }
+        // 客户名称
+        Cell clientCell = dataRow.createCell(colNum++);
+        if (row.get("clientName") != null) {
+          clientCell.setCellValue(row.get("clientName").toString());
+        }
+        clientCell.setCellStyle(dataStyle);
 
-    // 自动调整列宽
-    for (int i = 0; i < headers.length; i++) {
-      sheet.autoSizeColumn(i);
-      sheet.setColumnWidth(i, sheet.getColumnWidth(i) + 1000); // 增加一些宽度
-    }
+        // 案件名称
+        Cell matterCell = dataRow.createCell(colNum++);
+        if (row.get("matterName") != null) {
+          matterCell.setCellValue(row.get("matterName").toString());
+        }
+        matterCell.setCellStyle(dataStyle);
+
+        // 收费金额
+        Cell amountCell = dataRow.createCell(colNum++);
+        if (row.get("amount") != null) {
+          if (row.get("amount") instanceof Number) {
+            amountCell.setCellValue(((Number) row.get("amount")).doubleValue());
+          } else {
+            amountCell.setCellValue(row.get("amount").toString());
+          }
+        }
+        amountCell.setCellStyle(numberStyle);
+
+        // 收款状态
+        Cell statusCell = dataRow.createCell(colNum++);
+        if (row.get("status") != null) {
+          statusCell.setCellValue(row.get("status").toString());
+        }
+        statusCell.setCellStyle(dataStyle);
+      }
+
+      // 自动调整列宽
+      for (int i = 0; i < headers.length; i++) {
+        sheet.autoSizeColumn(i);
+        sheet.setColumnWidth(i, sheet.getColumnWidth(i) + 1000); // 增加一些宽度
+      }
 
       // 写入到ByteArrayOutputStream
       ByteArrayOutputStream outputStream = new ByteArrayOutputStream();

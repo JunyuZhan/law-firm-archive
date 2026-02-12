@@ -151,10 +151,11 @@ public class OnlyOfficeService {
     String documentServerUrl = this.config.getDocumentServerUrl();
     if (documentServerUrl != null) {
       // 检测是否是无效地址（localhost、127.0.0.1、IP 地址）
-      boolean isInvalidUrl = documentServerUrl.contains("localhost")
-          || documentServerUrl.contains("127.0.0.1")
-          || documentServerUrl.matches("https?://\\d+\\.\\d+\\.\\d+\\.\\d+"); // IP 地址模式
-      
+      boolean isInvalidUrl =
+          documentServerUrl.contains("localhost")
+              || documentServerUrl.contains("127.0.0.1")
+              || documentServerUrl.matches("https?://\\d+\\.\\d+\\.\\d+\\.\\d+"); // IP 地址模式
+
       if (isInvalidUrl) {
         // 返回相对路径，前端会自动转换为当前域名 + /onlyoffice
         documentServerUrl = "/onlyoffice";
