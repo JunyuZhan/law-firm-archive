@@ -954,7 +954,8 @@ public class DocumentController {
         return;
       }
 
-      DocumentDTO doc = documentAppService.getDocumentById(id);
+      // 使用不检查用户登录的方法，因为 token 已验证
+      DocumentDTO doc = documentAppService.getDocumentByIdForProxy(id);
       if (doc == null) {
         response.sendError(HttpServletResponse.SC_NOT_FOUND, "文档不存在");
         return;
