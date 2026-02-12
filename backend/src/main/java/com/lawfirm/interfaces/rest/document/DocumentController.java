@@ -240,11 +240,10 @@ public class DocumentController {
         mimeType = DEFAULT_MIME_TYPE;
       }
       response.setContentType(mimeType);
+      String encodedFileName = URLEncoder.encode(doc.getFileName(), StandardCharsets.UTF_8).replace("+", "%20");
       response.setHeader(
           "Content-Disposition",
-          "attachment; filename=\""
-              + URLEncoder.encode(doc.getFileName(), StandardCharsets.UTF_8)
-              + "\"");
+          "attachment; filename*=UTF-8''" + encodedFileName);
       if (doc.getFileSize() != null && doc.getFileSize() > 0) {
         response.setContentLengthLong(doc.getFileSize());
       }

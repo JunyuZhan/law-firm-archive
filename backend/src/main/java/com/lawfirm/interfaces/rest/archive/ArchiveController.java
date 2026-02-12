@@ -443,9 +443,10 @@ public class ArchiveController {
       String fileName =
           (archive.getArchiveName() != null ? archive.getArchiveName() : DEFAULT_ARCHIVE_NAME)
               + COVER_SUFFIX;
+      String encodedFileName = URLEncoder.encode(fileName, StandardCharsets.UTF_8).replace("+", "%20");
       response.setHeader(
           "Content-Disposition",
-          "attachment; filename=\"" + URLEncoder.encode(fileName, StandardCharsets.UTF_8) + "\"");
+          "attachment; filename*=UTF-8''" + encodedFileName);
 
       // 写入文件内容
       response.getOutputStream().write(coverBytes);

@@ -233,6 +233,7 @@ public class NotificationAppService {
 
   /**
    * 发送紧急通知（会推送到企业微信，更醒目）
+   * 优化：使用批量插入替代循环单条插入
    *
    * @param receiverIds 接收人ID列表
    * @param title 标题
@@ -247,20 +248,29 @@ public class NotificationAppService {
       final String content,
       final String businessType,
       final Long businessId) {
-    // 保存到数据库
-    for (Long receiverId : receiverIds) {
-      Notification notification =
-          Notification.builder()
-              .title(title)
-              .content(content)
-              .type(Notification.TYPE_REMINDER)
-              .receiverId(receiverId)
-              .isRead(false)
-              .businessType(businessType)
-              .businessId(businessId)
-              .build();
-      notificationRepository.save(notification);
+    if (receiverIds == null || receiverIds.isEmpty()) {
+      return;
     }
+
+    // 批量构建通知对象
+    List<Notification> notifications =
+        receiverIds.stream()
+            .map(
+                receiverId ->
+                    Notification.builder()
+                        .title(title)
+                        .content(content)
+                        .type(Notification.TYPE_REMINDER)
+                        .receiverId(receiverId)
+                        .isRead(false)
+                        .businessType(businessType)
+                        .businessId(businessId)
+                        .build())
+            .collect(Collectors.toList());
+
+    // 批量插入
+    notificationRepository.saveBatch(notifications);
+    log.info("紧急通知发送成功: title={}, receivers={}", title, receiverIds.size());
 
     // 推送紧急通知到企业微信
     if (wecomChannel != null) {
@@ -296,9 +306,22 @@ public class NotificationAppService {
    * 删除通知
    *
    * @param id 通知ID
+   * @throws BusinessException 如果通知不存在或不属于当前用户
    */
   @Transactional
   public void deleteNotification(final Long id) {
+    Long userId = SecurityUtils.getUserId();
+
+    // 验证通知存在且属于当前用户
+    Notification notification = notificationMapper.selectById(id);
+    if (notification == null) {
+      throw new BusinessException("通知不存在");
+    }
+
+    if (!userId.equals(notification.getReceiverId())) {
+      throw new BusinessException("无权删除该通知");
+    }
+
     notificationMapper.deleteById(id);
   }
 

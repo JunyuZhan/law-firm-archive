@@ -24,6 +24,7 @@ import com.lawfirm.infrastructure.persistence.mapper.UserMapper;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -366,8 +367,7 @@ class UserAppServiceTest {
       User user2 = createTestUser(2L, "user2", "用户2");
       List<Long> ids = List.of(1L, 2L);
 
-      when(userRepository.findById(1L)).thenReturn(user1);
-      when(userRepository.findById(2L)).thenReturn(user2);
+      when(userRepository.listByIds(ids)).thenReturn(Arrays.asList(user1, user2));
       doNothing().when(userMapper).batchDeleteUserRoles(anyList());
       when(userMapper.deleteBatchIds(anyList())).thenReturn(2);
 
@@ -398,8 +398,7 @@ class UserAppServiceTest {
       User adminUser = createTestUser(2L, "admin", "管理员");
       List<Long> ids = List.of(1L, 2L);
 
-      when(userRepository.findById(1L)).thenReturn(user1);
-      when(userRepository.findById(2L)).thenReturn(adminUser);
+      when(userRepository.listByIds(ids)).thenReturn(Arrays.asList(user1, adminUser));
 
       // When & Then
       assertThatThrownBy(() -> userAppService.deleteUsers(ids))

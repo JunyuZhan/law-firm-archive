@@ -32,7 +32,12 @@ export interface CascaderOption {
 const civilCausesCache = shallowRef<CauseTreeNode[]>([]);
 const criminalChargesCache = shallowRef<CauseTreeNode[]>([]);
 const adminCausesCache = shallowRef<CauseTreeNode[]>([]);
-const loadingMap = ref<Record<string, boolean>>({});
+// 正在进行的请求 Promise 缓存（用于防止并发重复请求）
+const pendingRequests: Record<string, Promise<CauseTreeNode[]> | null> = {
+  admin: null,
+  civil: null,
+  criminal: null,
+};
 
 /**
  * 从后端获取案由树
@@ -53,18 +58,18 @@ export async function getCivilCauses(): Promise<CauseTreeNode[]> {
   if (civilCausesCache.value.length > 0) {
     return civilCausesCache.value;
   }
-  if (loadingMap.value.civil) {
-    // 等待加载完成
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    return getCivilCauses();
+  // 如果有正在进行的请求，复用它（避免并发重复请求）
+  if (pendingRequests.civil) {
+    return pendingRequests.civil;
   }
-  loadingMap.value.civil = true;
-  try {
-    civilCausesCache.value = await fetchCauseTree('civil');
-    return civilCausesCache.value;
-  } finally {
-    loadingMap.value.civil = false;
-  }
+  // 创建新请求并缓存 Promise
+  pendingRequests.civil = fetchCauseTree('civil').then((data) => {
+    civilCausesCache.value = data;
+    return data;
+  }).finally(() => {
+    pendingRequests.civil = null;
+  });
+  return pendingRequests.civil;
 }
 
 /**
@@ -74,17 +79,18 @@ export async function getCriminalCharges(): Promise<CauseTreeNode[]> {
   if (criminalChargesCache.value.length > 0) {
     return criminalChargesCache.value;
   }
-  if (loadingMap.value.criminal) {
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    return getCriminalCharges();
+  // 如果有正在进行的请求，复用它（避免并发重复请求）
+  if (pendingRequests.criminal) {
+    return pendingRequests.criminal;
   }
-  loadingMap.value.criminal = true;
-  try {
-    criminalChargesCache.value = await fetchCauseTree('criminal');
-    return criminalChargesCache.value;
-  } finally {
-    loadingMap.value.criminal = false;
-  }
+  // 创建新请求并缓存 Promise
+  pendingRequests.criminal = fetchCauseTree('criminal').then((data) => {
+    criminalChargesCache.value = data;
+    return data;
+  }).finally(() => {
+    pendingRequests.criminal = null;
+  });
+  return pendingRequests.criminal;
 }
 
 /**
@@ -94,17 +100,18 @@ export async function getAdminCauses(): Promise<CauseTreeNode[]> {
   if (adminCausesCache.value.length > 0) {
     return adminCausesCache.value;
   }
-  if (loadingMap.value.admin) {
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    return getAdminCauses();
+  // 如果有正在进行的请求，复用它（避免并发重复请求）
+  if (pendingRequests.admin) {
+    return pendingRequests.admin;
   }
-  loadingMap.value.admin = true;
-  try {
-    adminCausesCache.value = await fetchCauseTree('admin');
-    return adminCausesCache.value;
-  } finally {
-    loadingMap.value.admin = false;
-  }
+  // 创建新请求并缓存 Promise
+  pendingRequests.admin = fetchCauseTree('admin').then((data) => {
+    adminCausesCache.value = data;
+    return data;
+  }).finally(() => {
+    pendingRequests.admin = null;
+  });
+  return pendingRequests.admin;
 }
 
 /**

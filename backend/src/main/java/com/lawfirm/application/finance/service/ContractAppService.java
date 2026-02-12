@@ -1211,6 +1211,7 @@ public class ContractAppService {
    * 获取已审批的合同列表（用于创建项目时选择）
    *
    * <p>包含参与人信息，便于创建项目时自动填充 注意：一个合同可以创建多个项目，所以不再检查 matterId
+   * 优化：使用批量加载避免N+1查询
    *
    * @return 已审批的合同列表
    */
@@ -1222,20 +1223,64 @@ public class ContractAppService {
     wrapper.orderByDesc(Contract::getCreatedAt);
 
     List<Contract> contracts = contractRepository.list(wrapper);
+    if (contracts.isEmpty()) {
+      return Collections.emptyList();
+    }
+
+    // 批量加载客户和项目信息
+    Map<Long, Client> clientMap = batchLoadClients(contracts);
+    Map<Long, com.lawfirm.domain.matter.entity.Matter> matterMap = batchLoadMatters(contracts);
+
+    // 批量加载所有参与人信息
+    List<Long> contractIds = contracts.stream().map(Contract::getId).collect(Collectors.toList());
+    Map<Long, List<ContractParticipant>> participantMap =
+        batchLoadParticipants(contractIds);
+
+    // 批量加载参与人对应的用户信息
+    Set<Long> allUserIds = new HashSet<>();
+    participantMap.values().stream()
+        .flatMap(List::stream)
+        .map(ContractParticipant::getUserId)
+        .filter(Objects::nonNull)
+        .forEach(allUserIds::add);
+    Map<Long, User> userMap = allUserIds.isEmpty()
+        ? Collections.emptyMap()
+        : userRepository.listByIds(new ArrayList<>(allUserIds)).stream()
+            .collect(Collectors.toMap(User::getId, u -> u, (a, b) -> a));
+
     return contracts.stream()
         .map(
             contract -> {
-              ContractDTO dto = toDTO(contract);
-              // 加载参与人信息
+              ContractDTO dto = toDTO(contract, clientMap, matterMap);
+              // 使用预加载的参与人信息
               List<ContractParticipant> participants =
-                  participantRepository.findByContractId(contract.getId());
-              if (participants != null && !participants.isEmpty()) {
+                  participantMap.getOrDefault(contract.getId(), Collections.emptyList());
+              if (!participants.isEmpty()) {
                 dto.setParticipants(
-                    participants.stream().map(this::toParticipantDTO).collect(Collectors.toList()));
+                    participants.stream()
+                        .map(p -> toParticipantDTO(p, userMap))
+                        .collect(Collectors.toList()));
               }
               return dto;
             })
         .collect(Collectors.toList());
+  }
+
+  /**
+   * 批量加载合同参与人
+   *
+   * @param contractIds 合同ID列表
+   * @return 合同ID到参与人列表的Map
+   */
+  private Map<Long, List<ContractParticipant>> batchLoadParticipants(
+      final List<Long> contractIds) {
+    if (contractIds.isEmpty()) {
+      return Collections.emptyMap();
+    }
+    List<ContractParticipant> allParticipants =
+        participantRepository.findByContractIds(contractIds);
+    return allParticipants.stream()
+        .collect(Collectors.groupingBy(ContractParticipant::getContractId));
   }
 
   /**
@@ -1592,6 +1637,45 @@ public class ContractAppService {
    */
   private List<Long> getParticipatingContractIds(final Long userId) {
     return participantRepository.findContractIdsByUserId(userId);
+  }
+
+  /**
+   * 批量加载客户信息（避免N+1查询）
+   *
+   * @param contracts 合同列表
+   * @return 客户ID到客户实体的Map
+   */
+  private Map<Long, Client> batchLoadClients(final List<Contract> contracts) {
+    Set<Long> clientIds =
+        contracts.stream()
+            .map(Contract::getClientId)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toSet());
+    if (clientIds.isEmpty()) {
+      return Collections.emptyMap();
+    }
+    return clientRepository.listByIds(clientIds).stream()
+        .collect(Collectors.toMap(Client::getId, c -> c, (a, b) -> a));
+  }
+
+  /**
+   * 批量加载项目信息（避免N+1查询）
+   *
+   * @param contracts 合同列表
+   * @return 项目ID到项目实体的Map
+   */
+  private Map<Long, com.lawfirm.domain.matter.entity.Matter> batchLoadMatters(
+      final List<Contract> contracts) {
+    Set<Long> matterIds =
+        contracts.stream()
+            .map(Contract::getMatterId)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toSet());
+    if (matterIds.isEmpty()) {
+      return Collections.emptyMap();
+    }
+    return matterRepository.listByIds(matterIds).stream()
+        .collect(Collectors.toMap(com.lawfirm.domain.matter.entity.Matter::getId, m -> m, (a, b) -> a));
   }
 
   /**
@@ -2002,26 +2086,38 @@ public class ContractAppService {
   }
 
   /**
-   * 参与人 Entity 转 DTO
+   * 参与人 Entity 转 DTO（单条查询用）
    *
    * @param participant 参与人实体
    * @return 参与人DTO
    */
   private ContractParticipantDTO toParticipantDTO(final ContractParticipant participant) {
+    Map<Long, User> userMap = Collections.emptyMap();
+    if (participant.getUserId() != null) {
+      User user = userRepository.getById(participant.getUserId());
+      if (user != null) {
+        userMap = Collections.singletonMap(user.getId(), user);
+      }
+    }
+    return toParticipantDTO(participant, userMap);
+  }
+
+  /**
+   * 参与人 Entity 转 DTO（批量查询用，使用预加载的用户Map避免N+1查询）
+   *
+   * @param participant 参与人实体
+   * @param userMap 用户Map
+   * @return 参与人DTO
+   */
+  private ContractParticipantDTO toParticipantDTO(
+      final ContractParticipant participant, final Map<Long, User> userMap) {
     ContractParticipantDTO dto = new ContractParticipantDTO();
     dto.setId(participant.getId());
     dto.setContractId(participant.getContractId());
     dto.setUserId(participant.getUserId());
-    // 填充用户名称
-    if (participant.getUserId() != null) {
-      try {
-        var user = userRepository.getById(participant.getUserId());
-        if (user != null) {
-          dto.setUserName(user.getRealName());
-        }
-      } catch (Exception e) {
-        log.warn("获取用户名称失败，userId: {}", participant.getUserId(), e);
-      }
+    // 从预加载Map填充用户名称
+    if (participant.getUserId() != null && userMap.containsKey(participant.getUserId())) {
+      dto.setUserName(userMap.get(participant.getUserId()).getRealName());
     }
     dto.setRole(participant.getRole());
     dto.setRoleName(getParticipantRoleName(participant.getRole()));

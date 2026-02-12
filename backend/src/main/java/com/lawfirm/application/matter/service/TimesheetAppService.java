@@ -28,6 +28,9 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -113,10 +116,59 @@ public class TimesheetAppService {
             accessibleMatterIds // null表示可以访问所有项目的工时（ALL权限）
             );
 
+    List<Timesheet> timesheets = page.getRecords();
+    if (timesheets.isEmpty()) {
+      return PageResult.of(Collections.emptyList(), 0L, query.getPageNum(), query.getPageSize());
+    }
+
+    // 批量加载关联数据，避免N+1查询
+    Map<Long, Matter> matterMap = batchLoadMatters(timesheets);
+    Map<Long, User> userMap = batchLoadTimesheetUsers(timesheets);
+
     List<TimesheetDTO> records =
-        page.getRecords().stream().map(this::toDTO).collect(Collectors.toList());
+        timesheets.stream()
+            .map(t -> toDTO(t, matterMap, userMap))
+            .collect(Collectors.toList());
 
     return PageResult.of(records, page.getTotal(), query.getPageNum(), query.getPageSize());
+  }
+
+  /**
+   * 批量加载项目信息.
+   *
+   * @param timesheets 工时列表
+   * @return 项目Map
+   */
+  private Map<Long, Matter> batchLoadMatters(final List<Timesheet> timesheets) {
+    Set<Long> matterIds =
+        timesheets.stream()
+            .map(Timesheet::getMatterId)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toSet());
+    if (matterIds.isEmpty()) {
+      return Collections.emptyMap();
+    }
+    return matterRepository.listByIds(new ArrayList<>(matterIds)).stream()
+        .collect(Collectors.toMap(Matter::getId, m -> m, (a, b) -> a));
+  }
+
+  /**
+   * 批量加载用户信息.
+   *
+   * @param timesheets 工时列表
+   * @return 用户Map
+   */
+  private Map<Long, User> batchLoadTimesheetUsers(final List<Timesheet> timesheets) {
+    Set<Long> userIds =
+        timesheets.stream()
+            .map(Timesheet::getUserId)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toSet());
+    if (userIds.isEmpty()) {
+      return Collections.emptyMap();
+    }
+    return userRepository.listByIds(new ArrayList<>(userIds)).stream()
+        .collect(Collectors.toMap(User::getId, u -> u, (a, b) -> a));
   }
 
   /**
@@ -658,33 +710,60 @@ public class TimesheetAppService {
   }
 
   /**
-   * Entity 转 DTO.
+   * Entity 转 DTO（单条查询用）.
    *
    * @param timesheet 工时记录
    * @return DTO
    */
   private TimesheetDTO toDTO(final Timesheet timesheet) {
+    // 单条查询时构建Map
+    Map<Long, Matter> matterMap = Collections.emptyMap();
+    Map<Long, User> userMap = Collections.emptyMap();
+
+    if (timesheet.getMatterId() != null) {
+      Matter matter = matterRepository.findById(timesheet.getMatterId());
+      if (matter != null) {
+        matterMap = Collections.singletonMap(matter.getId(), matter);
+      }
+    }
+    if (timesheet.getUserId() != null) {
+      User user = userRepository.findById(timesheet.getUserId());
+      if (user != null) {
+        userMap = Collections.singletonMap(user.getId(), user);
+      }
+    }
+    return toDTO(timesheet, matterMap, userMap);
+  }
+
+  /**
+   * Entity 转 DTO（批量查询用，使用预加载的Map避免N+1查询）.
+   *
+   * @param timesheet 工时记录
+   * @param matterMap 项目Map
+   * @param userMap 用户Map
+   * @return DTO
+   */
+  private TimesheetDTO toDTO(
+      final Timesheet timesheet,
+      final Map<Long, Matter> matterMap,
+      final Map<Long, User> userMap) {
     TimesheetDTO dto = new TimesheetDTO();
     dto.setId(timesheet.getId());
     dto.setTimesheetNo(timesheet.getTimesheetNo());
     dto.setMatterId(timesheet.getMatterId());
     dto.setUserId(timesheet.getUserId());
 
-    // 填充项目名称
-    if (timesheet.getMatterId() != null) {
-      Matter matter = matterRepository.findById(timesheet.getMatterId());
-      if (matter != null) {
-        dto.setMatterName(matter.getName());
-        dto.setMatterNo(matter.getMatterNo());
-      }
+    // 填充项目名称（从预加载Map）
+    if (timesheet.getMatterId() != null && matterMap.containsKey(timesheet.getMatterId())) {
+      Matter matter = matterMap.get(timesheet.getMatterId());
+      dto.setMatterName(matter.getName());
+      dto.setMatterNo(matter.getMatterNo());
     }
 
-    // 填充用户名称
-    if (timesheet.getUserId() != null) {
-      User user = userRepository.findById(timesheet.getUserId());
-      if (user != null) {
-        dto.setUserName(user.getRealName() != null ? user.getRealName() : user.getUsername());
-      }
+    // 填充用户名称（从预加载Map）
+    if (timesheet.getUserId() != null && userMap.containsKey(timesheet.getUserId())) {
+      User user = userMap.get(timesheet.getUserId());
+      dto.setUserName(user.getRealName() != null ? user.getRealName() : user.getUsername());
     }
 
     dto.setWorkDate(timesheet.getWorkDate());

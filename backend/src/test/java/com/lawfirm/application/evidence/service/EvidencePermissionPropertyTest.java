@@ -4,8 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 import com.lawfirm.application.evidence.command.CreateEvidenceCommand;
@@ -253,8 +251,8 @@ class EvidencePermissionPropertyTest {
             .name("Test Evidence")
             .evidenceType("DOCUMENTARY")
             .build();
-    // 修复：batchUpdateGroup 实际调用的是 getByIdOrThrow 而不是 findById
-    when(evidenceRepository.getByIdOrThrow(eq(1L), anyString())).thenReturn(evidence);
+    // 修复：batchUpdateGroup 使用 listByIds 批量查询
+    when(evidenceRepository.listByIds(List.of(1L))).thenReturn(List.of(evidence));
 
     Matter matter = new Matter();
     matter.setId(1L);

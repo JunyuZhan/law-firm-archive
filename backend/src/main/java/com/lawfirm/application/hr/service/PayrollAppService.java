@@ -42,6 +42,7 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -190,36 +191,18 @@ public class PayrollAppService {
     LocalDate queryMonthStart = LocalDate.of(year, month, 1);
     LocalDate queryMonthEnd = queryMonthStart.withDayOfMonth(queryMonthStart.lengthOfMonth());
 
-    // 1. 批量获取符合条件的员工（1次查询）
-    List<Employee> allEmployees =
-        employeeRepository.lambdaQuery().list().stream()
-            .filter(
-                employee -> {
-                  if (employee == null || employee.getUserId() == null) {
-                    return false;
-                  }
-
-                  LocalDateTime createdAt = employee.getCreatedAt();
-                  if (createdAt == null) {
-                    return false;
-                  }
-                  LocalDate employeeCreatedDate = createdAt.toLocalDate();
-
-                  if (employeeCreatedDate.isAfter(queryMonthEnd)) {
-                    return false;
-                  }
-
-                  if (EmployeeStatus.RESIGNED.equals(employee.getWorkStatus())
-                      && employee.getResignationDate() != null) {
-                    LocalDate resignationDate = employee.getResignationDate();
-                    if (resignationDate.isBefore(queryMonthStart)) {
-                      return false;
-                    }
-                  }
-
-                  return true;
-                })
-            .collect(Collectors.toList());
+    // 1. 批量获取符合条件的员工（使用SQL条件过滤，避免全表加载到内存）
+    // 条件：员工创建时间在查询月末之前，且非已离职（或离职日期在查询月初之后）
+    List<Employee> allEmployees = employeeRepository.lambdaQuery()
+        .isNotNull(Employee::getUserId)
+        .le(Employee::getCreatedAt, queryMonthEnd.atTime(LocalTime.MAX))
+        .and(wrapper -> wrapper
+            .ne(Employee::getWorkStatus, EmployeeStatus.RESIGNED)
+            .or()
+            .isNull(Employee::getResignationDate)
+            .or()
+            .ge(Employee::getResignationDate, queryMonthStart))
+        .list();
 
     if (allEmployees.isEmpty()) {
       return new ArrayList<>();

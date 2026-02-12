@@ -188,9 +188,10 @@ public class EvidenceAppService {
         if (objectName.startsWith("evidence/M_")) {
           // 解析新路径
           String[] parts = objectName.split("/");
-          if (parts.length >= 4) {
-            // evidence/M_{matterId}/{YYYY-MM}/{folder}/{physicalName}
-            String folder = parts.length >= 4 ? parts[3] : "证据材料";
+          // 路径格式: evidence/M_{matterId}/{YYYY-MM}/{folder}/{physicalName}
+          // 需要至少5个部分才能正确解析
+          if (parts.length >= 5) {
+            String folder = parts[3];
             String physicalName = parts[parts.length - 1];
             String storagePath = String.join("/", parts[0], parts[1], parts[2], folder) + "/";
 

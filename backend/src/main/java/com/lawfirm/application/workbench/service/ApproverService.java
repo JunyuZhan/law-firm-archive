@@ -397,9 +397,10 @@ public class ApproverService {
     }
 
     // 如果找不到管理员，返回第一个用户（通常是超级管理员）
-    List<User> users = userRepository.list();
-    if (users != null && !users.isEmpty()) {
-      return users.get(0).getId();
+    // 优化：只查询一条记录，避免全表加载
+    User firstUser = userRepository.lambdaQuery().last("LIMIT 1").one();
+    if (firstUser != null) {
+      return firstUser.getId();
     }
 
     throw new BusinessException("系统中没有可用的审批人");

@@ -35,6 +35,7 @@ import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -324,7 +325,16 @@ public class DataPushService {
               .autoPushOnUpdate(false)
               .validDays(DEFAULT_VALID_DAYS)
               .build();
-      pushConfigMapper.insert(config);
+      try {
+        pushConfigMapper.insert(config);
+      } catch (DuplicateKeyException e) {
+        // 处理并发竞态条件：其他线程已创建配置，重新查询
+        log.warn("配置已存在（并发创建）: matterId={}", matterId);
+        config = pushConfigMapper.selectByMatterId(matterId);
+        if (config == null) {
+          throw new BusinessException("获取配置失败，请重试");
+        }
+      }
     }
     return convertConfigToDTO(config);
   }

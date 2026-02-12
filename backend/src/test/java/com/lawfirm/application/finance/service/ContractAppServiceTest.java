@@ -703,7 +703,7 @@ class ContractAppServiceTest {
       @SuppressWarnings("unchecked")
       LambdaQueryWrapper<Contract> wrapper5 = any(LambdaQueryWrapper.class);
       when(contractRepository.list(wrapper5)).thenReturn(List.of(contract));
-      when(participantRepository.findByContractId(TEST_CONTRACT_ID)).thenReturn(new ArrayList<>());
+      when(participantRepository.findByContractIds(anyList())).thenReturn(new ArrayList<>());
 
       // When
       List<ContractDTO> result = contractAppService.getApprovedContracts();

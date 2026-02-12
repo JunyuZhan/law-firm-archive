@@ -17,6 +17,8 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import lombok.Data;
@@ -236,8 +238,9 @@ public class UserController {
     java.io.InputStream inputStream = userAppService.exportUsers(query);
     InputStreamResource resource = new InputStreamResource(inputStream);
 
+    String encodedFileName = URLEncoder.encode("用户列表.xlsx", StandardCharsets.UTF_8).replace("+", "%20");
     return ResponseEntity.ok()
-        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=用户列表.xlsx")
+        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + encodedFileName)
         .contentType(MediaType.APPLICATION_OCTET_STREAM)
         .body(resource);
   }

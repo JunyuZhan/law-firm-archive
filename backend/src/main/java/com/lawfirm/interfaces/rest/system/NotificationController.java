@@ -9,7 +9,10 @@ import com.lawfirm.common.result.PageResult;
 import com.lawfirm.common.result.Result;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -24,6 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/system/notification")
 @RequiredArgsConstructor
+@Validated
 public class NotificationController {
 
   /** 通知应用服务 */
@@ -41,8 +45,8 @@ public class NotificationController {
   @Operation(summary = "分页查询我的通知")
   @GetMapping
   public Result<PageResult<NotificationDTO>> listMyNotifications(
-      @RequestParam(required = false) final Integer pageNum,
-      @RequestParam(required = false) final Integer pageSize,
+      @RequestParam(required = false) @Min(1) final Integer pageNum,
+      @RequestParam(required = false) @Min(1) @Max(100) final Integer pageSize,
       @RequestParam(required = false) final String type,
       @RequestParam(required = false) final Boolean isRead) {
     NotificationQueryDTO query = new NotificationQueryDTO();

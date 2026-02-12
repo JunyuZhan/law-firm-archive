@@ -110,11 +110,18 @@ class NotificationAppServiceTest {
   @Test
   @DisplayName("应该标记通知为已读")
   void markAsRead_shouldMarkNotification() {
-    when(notificationMapper.markAsRead(1L)).thenReturn(1);
+    try (var mockedSecurity = mockStatic(SecurityUtils.class)) {
+      mockedSecurity.when(SecurityUtils::getUserId).thenReturn(TEST_USER_ID);
 
-    service.markAsRead(1L);
+      Notification notification = createTestNotification(1L, "测试通知", "测试内容");
+      notification.setReceiverId(TEST_USER_ID);
+      when(notificationMapper.selectById(1L)).thenReturn(notification);
+      when(notificationMapper.markAsRead(1L)).thenReturn(1);
 
-    verify(notificationMapper).markAsRead(1L);
+      service.markAsRead(1L);
+
+      verify(notificationMapper).markAsRead(1L);
+    }
   }
 
   @Test
@@ -212,12 +219,12 @@ class NotificationAppServiceTest {
   @DisplayName("应该发送紧急通知")
   void sendUrgentNotification_shouldSendUrgentNotification() {
     List<Long> receiverIds = List.of(1L, 2L);
-    when(notificationRepository.save(any(Notification.class))).thenReturn(true);
+    when(notificationRepository.saveBatch(anyList())).thenReturn(true);
 
     service.sendUrgentNotification(receiverIds, "紧急通知", "需要立即处理", "URGENT", 1L);
 
-    // 验证每个接收人都收到了通知
-    verify(notificationRepository, times(2)).save(any(Notification.class));
+    // 验证批量保存通知
+    verify(notificationRepository).saveBatch(anyList());
   }
 
   // ========== 企业微信测试 ==========
@@ -248,11 +255,18 @@ class NotificationAppServiceTest {
   @Test
   @DisplayName("应该删除通知")
   void deleteNotification_shouldDelete() {
-    when(notificationMapper.deleteById(1L)).thenReturn(1);
+    try (var mockedSecurity = mockStatic(SecurityUtils.class)) {
+      mockedSecurity.when(SecurityUtils::getUserId).thenReturn(TEST_USER_ID);
 
-    service.deleteNotification(1L);
+      Notification notification = createTestNotification(1L, "测试通知", "测试内容");
+      notification.setReceiverId(TEST_USER_ID);
+      when(notificationMapper.selectById(1L)).thenReturn(notification);
+      when(notificationMapper.deleteById(1L)).thenReturn(1);
 
-    verify(notificationMapper).deleteById(1L);
+      service.deleteNotification(1L);
+
+      verify(notificationMapper).deleteById(1L);
+    }
   }
 
   @Test

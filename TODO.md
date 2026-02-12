@@ -317,7 +317,7 @@
 
 | 优先级 | 问题 | 位置 | 修复方案 |
 |--------|------|------|----------|
-| 🟡中 | 并发调用重复请求 | `useCauseOfAction.ts:54-108` | 使用 Promise 缓存正在进行的请求 |
+| ✅ | 并发调用重复请求 | `useCauseOfAction.ts:54-108` | 已使用 Promise 缓存正在进行的请求 |
 | 🟡中 | 快速操作覆盖数据 | `HandoverDetailModal.vue:81,121` | 使用 AbortController 或请求版本号 |
 
 **实施进度**：
@@ -325,7 +325,7 @@
 - [x] StructuredTemplateEditor watch 循环修复
 - [x] PowerOfAttorneyEditor watch 循环修复
 - [x] StructuredLetterEditor watch 循环修复
-- [ ] useCauseOfAction 并发请求去重
+- [x] useCauseOfAction 并发请求去重
 
 **状态**：🔄 高优先级已修复
 
@@ -361,14 +361,14 @@
 
 | 优先级 | 问题 | 位置 | 修复方案 |
 |--------|------|------|----------|
-| 🟡中 | 中文文件名乱码 | `ClientController.java:229`<br>`EvidenceController.java:552`<br>`BackupController.java:133` | 使用 RFC 5987 的 `filename*=UTF-8''` 格式 |
+| ✅ | 中文文件名乱码 | `ClientController.java:229`<br>`EvidenceController.java:552`<br>`BackupController.java:133`<br>`DocumentController.java:246`<br>`UserController.java:240`<br>`ArchiveController.java:448` | 已使用 RFC 5987 的 `filename*=UTF-8''` 格式 |
 
 **实施进度**：
 - [ ] RichTextEditor 图片上传校验
 - [x] BackupAppService Zip Slip 修复（添加路径验证）
-- [ ] 下载文件名 RFC 5987 编码
+- [x] 下载文件名 RFC 5987 编码
 
-**状态**：🔄 部分修复
+**状态**：✅ 已修复
 
 ---
 
@@ -483,11 +483,11 @@
 | ✅ | List 参数无大小限制 | `CommissionController.java:295,329`<br>`EvidenceController.java:177`<br>`TimesheetController.java:136` | 已添加 @Size(max=100) |
 | ✅ | AlertWebhook 无签名校验 | `AlertWebhookController.java` | 已添加 Bearer Token 认证 |
 | 🟡中 | @PathVariable Long 未校验正数 | 多个 Controller | 添加 @Positive 或 @Min(1) |
-| 🟡中 | pageSize 无上限 | `DocumentController.java:346`<br>`NotificationController.java:44` | 添加 @Max(100) |
+| ✅ | pageSize 无上限 | `NotificationController.java:44` | 已添加 @Min(1) @Max(100) |
 
 **实施进度**：
 - [x] 批量接口 List 参数添加 @Size
-- [ ] 分页参数添加 @Max 限制
+- [x] NotificationController 分页参数添加 @Max 限制
 
 **状态**：🔄 部分修复
 
@@ -1943,7 +1943,7 @@ public PageResult<EmployeeDTO> listEmployees(final EmployeeQueryDTO query) {
 }
 ```
 
-**状态**：⏳ 待修复
+**状态**：✅ 已修复（添加 batchLoadUsers 方法和批量版 toDTO，listEmployees 使用批量加载）
 
 ---
 
@@ -1992,7 +1992,7 @@ private String generateEmployeeNo() {
 }
 ```
 
-**状态**：⏳ 待修复
+**状态**：✅ 已修复（采用方案2：年份+UUID短码，格式 EMP2026XXXXXX）
 
 ---
 
@@ -2063,7 +2063,7 @@ public List<CaseLibraryDTO> getMyCollectedCases() {
 }
 ```
 
-**状态**：⏳ 待修复
+**状态**：✅ 已修复（使用批量加载案例和分类信息，避免N+1查询）
 
 ---
 
@@ -2110,7 +2110,7 @@ public void deleteCase(final Long id) {
 }
 ```
 
-**状态**：⏳ 待修复
+**状态**：✅ 已修复（添加 deleteByTargetTypeAndTargetId 到 KnowledgeCollectionMapper，deleteCase 同时清理收藏）
 
 ---
 
@@ -2183,7 +2183,7 @@ public void sendUrgentNotification(
 }
 ```
 
-**状态**：⏳ 待修复
+**状态**：✅ 已修复（使用批量构建和 saveBatch 插入）
 
 ---
 
@@ -2240,7 +2240,7 @@ public void markAsRead(final Long id) {
 </update>
 ```
 
-**状态**：⏳ 待修复
+**状态**：✅ 已修复（采用方案2：先查询再验证，同时修复了 deleteNotification 方法）
 
 ---
 
@@ -2347,6 +2347,8 @@ private TimesheetDTO toDTO(final Timesheet timesheet) {
 ```
 
 **修复方案**：参考其他服务的批量加载模式，在列表查询方法中预加载 Matter 和 User Map。
+
+**状态**：✅ 已修复（添加 batchLoadMatters/batchLoadTimesheetUsers 方法，listTimesheets 使用批量加载版 toDTO）
 
 **状态**：⏳ 待修复
 
@@ -2536,7 +2538,7 @@ private ContractParticipantDTO toParticipantDTO(ContractParticipant participant)
 }
 ```
 
-**状态**：⏳ 待修复
+**状态**：✅ 已修复（getApprovedContracts 使用批量加载，添加 batchLoadClients/batchLoadMatters/batchLoadParticipants 方法，toParticipantDTO 添加批量版本）
 
 ---
 
@@ -2551,25 +2553,25 @@ private ContractParticipantDTO toParticipantDTO(ContractParticipant participant)
 
 ### 高优先级问题（需尽快处理）
 
-1. **任务65**: 全量数据加载性能风险（PayrollAppService, ApproverService）
+1. **任务65**: 全量数据加载性能风险（PayrollAppService, ApproverService）✅ 已修复部分
 2. **任务82**: SQL注入防护检查（待安全审计）
 3. **任务84**: 数据库连接信息安全（待安全审计）
-4. **任务92**: 通知已读权限校验缺失（越权风险）
+4. ~~**任务92**: 通知已读权限校验缺失（越权风险）~~ ✅ 已修复
 
 ### 中优先级问题（建议近期处理）
 
-1. **任务66**: getOrCreateConfig 竞态条件
-2. **任务67**: 证据文件路径解析数组越界风险
-3. **任务70**: PayrollAppService 员工过滤逻辑复杂度
+1. ~~**任务66**: getOrCreateConfig 竞态条件~~ ✅ 已修复
+2. ~~**任务67**: 证据文件路径解析数组越界风险~~ ✅ 已修复
+3. ~~**任务70**: PayrollAppService 员工过滤逻辑复杂度~~ ✅ 已修复
 4. **任务71**: ApprovalAppService 批量审批事件发布时机
 5. **任务72**: 默认密钥安全风险
 6. **任务74**: 缓存使用不足
 7. **任务76-79**: 各服务的N+1查询优化
 8. **任务80**: 缺少统一的审计日志
 9. **任务83**: 异步任务配置优化
-10. **任务87**: EmployeeAppService 列表查询N+1问题
-11. **任务88**: EmployeeAppService 工号生成并发风险
-12. **任务89**: CaseLibraryAppService 收藏列表N+1查询
-13. **任务90**: CaseLibraryAppService 删除案例未清理收藏
-14. **任务91**: NotificationAppService 紧急通知未批量插入
-15. **任务95-100**: 多个AppService的toDTO方法N+1查询问题
+10. ~~**任务87**: EmployeeAppService 列表查询N+1问题~~ ✅ 已修复
+11. ~~**任务88**: EmployeeAppService 工号生成并发风险~~ ✅ 已修复
+12. ~~**任务89**: CaseLibraryAppService 收藏列表N+1查询~~ ✅ 已修复
+13. ~~**任务90**: CaseLibraryAppService 删除案例未清理收藏~~ ✅ 已修复
+14. ~~**任务91**: NotificationAppService 紧急通知未批量插入~~ ✅ 已修复
+15. ~~**任务95-100**: 多个AppService的toDTO方法N+1查询问题~~ ✅ 已修复（TimesheetAppService, ContractAppService）

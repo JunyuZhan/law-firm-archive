@@ -106,4 +106,19 @@ public class ContractParticipantRepository
   public List<ContractParticipant> findByUserId(final Long userId) {
     return baseMapper.selectByUserId(userId);
   }
+
+  /**
+   * 批量查询合同参与人（避免N+1查询）
+   *
+   * @param contractIds 合同ID列表
+   * @return 参与人列表
+   */
+  public List<ContractParticipant> findByContractIds(final List<Long> contractIds) {
+    if (contractIds == null || contractIds.isEmpty()) {
+      return java.util.Collections.emptyList();
+    }
+    return lambdaQuery()
+        .in(ContractParticipant::getContractId, contractIds)
+        .list();
+  }
 }

@@ -80,4 +80,17 @@ public interface KnowledgeCollectionMapper extends BaseMapper<KnowledgeCollectio
       @Param("userId") Long userId,
       @Param("targetType") String targetType,
       @Param("targetIds") List<Long> targetIds);
+
+  /**
+   * 根据目标类型和目标ID删除收藏记录（用于级联删除）.
+   *
+   * @param targetType 目标类型
+   * @param targetId 目标ID
+   * @return 删除数量
+   */
+  @Delete(
+      "DELETE FROM knowledge_collection WHERE target_type = #{targetType} "
+          + "AND target_id = #{targetId}")
+  int deleteByTargetTypeAndTargetId(
+      @Param("targetType") String targetType, @Param("targetId") Long targetId);
 }

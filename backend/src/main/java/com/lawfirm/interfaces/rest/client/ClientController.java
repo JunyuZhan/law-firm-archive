@@ -19,6 +19,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -224,9 +226,10 @@ public class ClientController {
         "客户信息_"
             + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"))
             + ".xlsx";
+    String encodedFileName = URLEncoder.encode(fileName, StandardCharsets.UTF_8).replace("+", "%20");
 
     HttpHeaders headers = new HttpHeaders();
-    headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + fileName);
+    headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + encodedFileName);
     headers.add(
         HttpHeaders.CONTENT_TYPE,
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");

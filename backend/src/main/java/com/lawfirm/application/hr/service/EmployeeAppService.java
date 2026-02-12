@@ -17,7 +17,13 @@ import com.lawfirm.domain.system.entity.User;
 import com.lawfirm.domain.system.repository.UserRepository;
 import com.lawfirm.infrastructure.persistence.mapper.EmployeeMapper;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -49,6 +55,7 @@ public class EmployeeAppService {
 
   /**
    * 分页查询员工档案
+   * 优化：使用批量加载用户信息，避免N+1查询
    *
    * @param query 查询条件
    * @return 分页结果
@@ -63,11 +70,40 @@ public class EmployeeAppService {
             query.getWorkStatus(),
             query.getPosition());
 
+    List<Employee> employees = page.getRecords();
+    if (employees.isEmpty()) {
+      return PageResult.of(Collections.emptyList(), 0L, query.getPageNum(), query.getPageSize());
+    }
+
+    // 批量加载用户信息，避免N+1查询
+    Map<Long, User> userMap = batchLoadUsers(employees);
+
     return PageResult.of(
-        page.getRecords().stream().map(this::toDTO).collect(Collectors.toList()),
+        employees.stream().map(e -> toDTO(e, userMap)).collect(Collectors.toList()),
         page.getTotal(),
         query.getPageNum(),
         query.getPageSize());
+  }
+
+  /**
+   * 批量加载用户信息
+   *
+   * @param employees 员工列表
+   * @return 用户ID到用户实体的Map
+   */
+  private Map<Long, User> batchLoadUsers(final List<Employee> employees) {
+    Set<Long> userIds =
+        employees.stream()
+            .map(Employee::getUserId)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toSet());
+
+    if (userIds.isEmpty()) {
+      return Collections.emptyMap();
+    }
+
+    return userRepository.listByIds(new ArrayList<>(userIds)).stream()
+        .collect(Collectors.toMap(User::getId, u -> u, (a, b) -> a));
   }
 
   /**
@@ -295,12 +331,31 @@ public class EmployeeAppService {
   }
 
   /**
-   * 转换为DTO
+   * 转换为DTO（单条查询用，会触发额外的用户查询）
    *
    * @param employee 员工实体
    * @return 员工DTO
    */
   private EmployeeDTO toDTO(final Employee employee) {
+    // 单条查询时构建Map
+    Map<Long, User> userMap = Collections.emptyMap();
+    if (employee.getUserId() != null) {
+      User user = userRepository.findById(employee.getUserId());
+      if (user != null) {
+        userMap = Collections.singletonMap(user.getId(), user);
+      }
+    }
+    return toDTO(employee, userMap);
+  }
+
+  /**
+   * 转换为DTO（批量查询用，使用预加载的用户Map避免N+1查询）
+   *
+   * @param employee 员工实体
+   * @param userMap 用户ID到用户实体的Map
+   * @return 员工DTO
+   */
+  private EmployeeDTO toDTO(final Employee employee, final Map<Long, User> userMap) {
     EmployeeDTO dto = new EmployeeDTO();
     dto.setId(employee.getId());
     dto.setUserId(employee.getUserId());
@@ -336,15 +391,13 @@ public class EmployeeAppService {
     dto.setCreatedAt(employee.getCreatedAt());
     dto.setUpdatedAt(employee.getUpdatedAt());
 
-    // 加载用户信息
-    if (employee.getUserId() != null) {
-      User user = userRepository.findById(employee.getUserId());
-      if (user != null) {
-        dto.setRealName(user.getRealName());
-        dto.setEmail(user.getEmail());
-        dto.setPhone(user.getPhone());
-        dto.setDepartmentId(user.getDepartmentId());
-      }
+    // 从预加载的Map获取用户信息（避免N+1）
+    if (employee.getUserId() != null && userMap.containsKey(employee.getUserId())) {
+      User user = userMap.get(employee.getUserId());
+      dto.setRealName(user.getRealName());
+      dto.setEmail(user.getEmail());
+      dto.setPhone(user.getPhone());
+      dto.setDepartmentId(user.getDepartmentId());
     }
 
     // 设置状态名称
@@ -363,12 +416,13 @@ public class EmployeeAppService {
 
   /**
    * 生成工号
+   * 使用年份+UUID短码，避免并发冲突
    *
    * @return 工号
    */
   private String generateEmployeeNo() {
-    String prefix = "EMP";
-    String timestamp = String.valueOf(System.currentTimeMillis()).substring(7);
-    return prefix + timestamp;
+    int year = LocalDate.now().getYear();
+    String random = UUID.randomUUID().toString().replace("-", "").substring(0, 6).toUpperCase();
+    return "EMP" + year + random;
   }
 }

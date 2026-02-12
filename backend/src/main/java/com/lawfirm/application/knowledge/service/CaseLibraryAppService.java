@@ -239,12 +239,22 @@ public class CaseLibraryAppService {
 
   /**
    * 删除案例.
+   * 同时清理关联的收藏记录，保证数据一致性
    *
    * @param id 案例ID
    */
   @Transactional
   public void deleteCase(final Long id) {
     CaseLibrary caseLib = caseLibraryRepository.getByIdOrThrow(id, "案例不存在");
+
+    // 先删除关联的收藏记录
+    int deletedCollections =
+        knowledgeCollectionMapper.deleteByTargetTypeAndTargetId(KnowledgeCollection.TYPE_CASE, id);
+    if (deletedCollections > 0) {
+      log.info("删除案例收藏记录: caseId={}, count={}", id, deletedCollections);
+    }
+
+    // 再删除案例
     caseLibraryMapper.deleteById(id);
     log.info("案例删除成功: {}", caseLib.getTitle());
   }
@@ -296,6 +306,7 @@ public class CaseLibraryAppService {
 
   /**
    * 获取我的收藏案例
+   * 优化：使用批量加载避免N+1查询
    *
    * @return 案例列表
    */
@@ -304,13 +315,40 @@ public class CaseLibraryAppService {
     List<KnowledgeCollection> collections =
         knowledgeCollectionMapper.selectByUserAndType(userId, KnowledgeCollection.TYPE_CASE);
 
-    return collections.stream()
-        .map(
-            c -> {
-              CaseLibrary caseLib = caseLibraryRepository.getById(c.getTargetId());
-              return caseLib != null ? toCaseDTO(caseLib, userId) : null;
-            })
-        .filter(dto -> dto != null)
+    if (collections.isEmpty()) {
+      return java.util.Collections.emptyList();
+    }
+
+    // 批量加载案例信息
+    java.util.List<Long> caseIds =
+        collections.stream()
+            .map(KnowledgeCollection::getTargetId)
+            .collect(Collectors.toList());
+    java.util.Map<Long, CaseLibrary> caseMap =
+        caseLibraryRepository.listByIds(caseIds).stream()
+            .collect(Collectors.toMap(CaseLibrary::getId, c -> c, (a, b) -> a));
+
+    // 批量加载分类信息
+    java.util.Set<Long> categoryIds =
+        caseMap.values().stream()
+            .map(CaseLibrary::getCategoryId)
+            .filter(java.util.Objects::nonNull)
+            .collect(Collectors.toSet());
+    java.util.Map<Long, CaseCategory> categoryMap =
+        categoryIds.isEmpty()
+            ? java.util.Collections.emptyMap()
+            : caseCategoryRepository.listByIds(new java.util.ArrayList<>(categoryIds)).stream()
+                .collect(Collectors.toMap(CaseCategory::getId, c -> c, (a, b) -> a));
+
+    // 所有收藏的案例都标记为已收藏
+    java.util.Map<Long, Boolean> collectedMap =
+        caseIds.stream().collect(Collectors.toMap(id -> id, id -> true));
+
+    // 按原始收藏顺序返回
+    return caseIds.stream()
+        .map(caseMap::get)
+        .filter(java.util.Objects::nonNull)
+        .map(c -> toCaseDTO(c, userId, categoryMap, collectedMap))
         .collect(Collectors.toList());
   }
 

@@ -752,10 +752,11 @@ public class EvidenceController {
     try {
       String fileName = evidenceExportService.getExportFileName(matterId, extension);
 
+      String encodedFileName = java.net.URLEncoder.encode(fileName, java.nio.charset.StandardCharsets.UTF_8).replace("+", "%20");
       response.setContentType(contentType);
       response.setHeader(
           "Content-Disposition",
-          "attachment; filename=\"" + java.net.URLEncoder.encode(fileName, "UTF-8") + "\"");
+          "attachment; filename*=UTF-8''" + encodedFileName);
       response.setContentLength(content.length);
       response.getOutputStream().write(content);
       response.getOutputStream().flush();
