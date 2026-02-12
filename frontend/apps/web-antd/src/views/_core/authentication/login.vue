@@ -402,10 +402,10 @@ onMounted(() => {
   </div>
 </template>
 <style scoped>
-/* 移动端响应式 */
+/* 移动端响应式 - 隐藏版本号避免与版权信息重叠 */
 @media (max-width: 768px) {
   .version-info {
-    right: 16px;
+    display: none;
   }
 }
 

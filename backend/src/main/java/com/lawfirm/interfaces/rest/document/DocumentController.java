@@ -1118,10 +1118,11 @@ public class DocumentController {
         }
       }
 
-      // 获取文档实体（用于FileAccessService）
+      // 获取文档实体（使用不检查用户登录的方法，因为 OnlyOffice 请求没有 JWT）
+      // 访问权限已通过 token 或 IP 白名单在上面验证
       com.lawfirm.domain.document.entity.Document document =
-          documentAppService.getDocumentEntityById(id);
-      DocumentDTO doc = documentAppService.getDocumentById(id);
+          documentAppService.getDocumentEntityByIdForProxy(id);
+      DocumentDTO doc = documentAppService.getDocumentByIdForProxy(id);
       if (doc == null) {
         response.sendError(HttpServletResponse.SC_NOT_FOUND, "文档不存在");
         return;

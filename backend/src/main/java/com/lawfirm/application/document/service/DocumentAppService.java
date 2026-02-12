@@ -392,6 +392,31 @@ public class DocumentAppService {
   }
 
   /**
+   * 获取文档实体（供 OnlyOffice file-proxy 使用，不检查用户登录状态）
+   *
+   * <p>注意：此方法仅供内部代理接口使用，调用方必须自行验证访问权限（如 token 或 IP 白名单）
+   *
+   * @param id 文档ID
+   * @return 文档实体
+   */
+  public Document getDocumentEntityByIdForProxy(final Long id) {
+    return documentRepository.getByIdOrThrow(id, "文档不存在");
+  }
+
+  /**
+   * 获取文档DTO（供 OnlyOffice file-proxy 使用，不检查用户登录状态）
+   *
+   * <p>注意：此方法仅供内部代理接口使用，调用方必须自行验证访问权限（如 token 或 IP 白名单）
+   *
+   * @param id 文档ID
+   * @return 文档DTO
+   */
+  public DocumentDTO getDocumentByIdForProxy(final Long id) {
+    Document document = documentRepository.getByIdOrThrow(id, "文档不存在");
+    return toDTO(document);
+  }
+
+  /**
    * 获取文档所有版本。
    *
    * @param id 文档ID

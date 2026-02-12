@@ -304,6 +304,8 @@ services:
     labels:
       - "com.law-firm.group=monitoring"
       - "com.law-firm.service=grafana"
+    ports:
+      - "127.0.0.1:3000:3000"  # 仅本地访问，供 frpc 代理
     secrets:
       - grafana_password
     entrypoint: ["/bin/sh", "-c"]
