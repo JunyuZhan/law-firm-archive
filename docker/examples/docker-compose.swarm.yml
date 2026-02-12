@@ -83,15 +83,17 @@ services:
       - REDIS_PASSWORD=${REDIS_PASSWORD:-}
       - JWT_SECRET=${JWT_SECRET}
       - MINIO_ENDPOINT=http://minio:9000
-      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minioadmin}
-      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-minioadmin}
+      # ⚠️ 必须在 .env 文件中配置 MINIO 密钥
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:?请在 .env 文件中配置 MINIO_ACCESS_KEY}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:?请在 .env 文件中配置 MINIO_SECRET_KEY}
       - MINIO_BUCKET=law-firm
       - OCR_SERVICE_URL=http://paddle-ocr:8000
       - SPRING_PROFILES_ACTIVE=prod
       - SWAGGER_ENABLED=${SWAGGER_ENABLED:-false}
       # OnlyOffice JWT 配置（与 OnlyOffice 容器保持一致）
       - ONLYOFFICE_JWT_ENABLED=${ONLYOFFICE_JWT_ENABLED:-true}
-      - ONLYOFFICE_JWT_SECRET=${ONLYOFFICE_JWT_SECRET:-your-onlyoffice-jwt-secret-change-in-production}
+      # ⚠️ 必须在 .env 文件中配置 ONLYOFFICE_JWT_SECRET
+      - ONLYOFFICE_JWT_SECRET=${ONLYOFFICE_JWT_SECRET:?请在 .env 文件中配置 ONLYOFFICE_JWT_SECRET}
       - ONLYOFFICE_CALLBACK_URL=http://frontend:8080/api
       - FILE_SERVER_URL=http://minio:9000
     networks:
@@ -172,8 +174,9 @@ services:
         condition: on-failure
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin}
+      # ⚠️ 必须在 .env 文件中配置 MINIO 密钥
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:?请在 .env 文件中配置 MINIO_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:?请在 .env 文件中配置 MINIO_SECRET_KEY}
     volumes:
       - minio_data:/data
     ports:

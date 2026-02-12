@@ -1,0 +1,360 @@
+# =====================================================
+# 生产环境配置（默认使用 Docker Secrets）
+# =====================================================
+# 
+# 🔐 安全特性：
+#   - 密钥存储在文件中，docker inspect 无法查看
+#   - 密钥不会出现在进程列表或日志中
+#
+# 使用方法:
+#   1. 初始化密钥: cd docker/secrets && ./init-secrets.sh
+#   2. 启动服务:    docker compose -f docker/docker-compose.yml up -d
+#
+# 其他配置见 examples/ 目录
+# =====================================================
+name: law-firm
+
+services:
+  # ============================================
+  # 前端服务（Nginx + Vue3 静态文件）
+  # ============================================
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: scripts/deploy/Dockerfile
+      args:
+        - DOCS_USERNAME=${DOCS_USERNAME:-admin}
+        - DOCS_PASSWORD=${DOCS_PASSWORD:-}
+    container_name: law-firm-frontend
+    labels:
+      - "com.law-firm.group=core"
+      - "com.law-firm.service=frontend"
+    ports:
+      - "80:8080"
+      - "443:8443"
+    volumes:
+      - ./ssl:/etc/nginx/ssl:ro
+      # Prometheus Basic Auth 密码文件（可选，启用监控时需要）
+      - ./secrets/htpasswd:/etc/nginx/.htpasswd:ro
+    environment:
+      - API_HOST=backend
+      - API_PORT=8080
+    depends_on:
+      - backend
+    networks:
+      - law-firm-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  # ============================================
+  # 后端服务（Spring Boot）- 使用 Secrets
+  # ============================================
+  backend:
+    build:
+      context: ../backend
+      dockerfile: ../docker/Dockerfile.prod
+    container_name: law-firm-backend
+    labels:
+      - "com.law-firm.group=core"
+      - "com.law-firm.service=backend"
+    environment:
+      - TZ=UTC
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=law_firm
+      - DB_USERNAME=law_admin
+      - REDIS_HOST=law-firm-redis
+      - REDIS_PORT=6379
+      - MINIO_ENDPOINT=http://minio:9000
+      - MINIO_EXTERNAL_ENDPOINT=${MINIO_EXTERNAL_ENDPOINT:-http://minio:9000}
+      - MINIO_BUCKET=law-firm
+      - MINIO_BROWSER_ENDPOINT=${MINIO_BROWSER_ENDPOINT:-}
+      - OCR_SERVICE_URL=http://paddle-ocr:8000
+      - SPRING_PROFILES_ACTIVE=prod
+      - SWAGGER_ENABLED=false
+      - ONLYOFFICE_JWT_ENABLED=${ONLYOFFICE_JWT_ENABLED:-true}
+      - ONLYOFFICE_CALLBACK_URL=http://backend:8080/api
+      - ONLYOFFICE_URL=${ONLYOFFICE_URL:-/onlyoffice}
+      - FILE_SERVER_URL=http://minio:9000
+    secrets:
+      - db_password
+      - jwt_secret
+      - minio_access_key
+      - minio_secret_key
+      - onlyoffice_jwt_secret
+      - redis_password
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        # 从 secrets 文件读取密钥并设置环境变量
+        export DB_PASSWORD=$$(cat /run/secrets/db_password)
+        export JWT_SECRET=$$(cat /run/secrets/jwt_secret)
+        export MINIO_ACCESS_KEY=$$(cat /run/secrets/minio_access_key)
+        export MINIO_SECRET_KEY=$$(cat /run/secrets/minio_secret_key)
+        export ONLYOFFICE_JWT_SECRET=$$(cat /run/secrets/onlyoffice_jwt_secret)
+        [ -f /run/secrets/redis_password ] && export REDIS_PASSWORD=$$(cat /run/secrets/redis_password)
+        # 启动应用
+        exec java -jar /app/app.jar
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ..:/opt/law-firm
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - law-firm-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+
+  # ============================================
+  # PostgreSQL 数据库 - 使用 Secrets
+  # ============================================
+  postgres:
+    image: postgres:15-alpine
+    container_name: law-firm-postgres
+    labels:
+      - "com.law-firm.group=infrastructure"
+      - "com.law-firm.service=postgres"
+    environment:
+      POSTGRES_DB: law_firm
+      POSTGRES_USER: law_admin
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+    secrets:
+      - db_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../scripts/init-db:/docker-entrypoint-initdb.d:ro
+    networks:
+      - law-firm-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U law_admin -d law_firm"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================
+  # Redis 缓存服务
+  # ============================================
+  redis:
+    image: redis:7-alpine
+    container_name: law-firm-redis
+    labels:
+      - "com.law-firm.group=cache"
+      - "com.law-firm.service=redis"
+    secrets:
+      - redis_password
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        if [ -f /run/secrets/redis_password ] && [ -s /run/secrets/redis_password ]; then
+          REDIS_PWD=$$(cat /run/secrets/redis_password)
+          exec redis-server --appendonly yes --requirepass "$$REDIS_PWD"
+        else
+          exec redis-server --appendonly yes
+        fi
+    volumes:
+      - redis_data:/data
+    networks:
+      - law-firm-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================
+  # MinIO 对象存储 - 使用 Secrets
+  # ============================================
+  minio:
+    image: minio/minio:${MINIO_VERSION:-RELEASE.2024-07-15T19-02-30Z}
+    container_name: law-firm-minio
+    labels:
+      - "com.law-firm.group=storage"
+      - "com.law-firm.service=minio"
+    secrets:
+      - minio_access_key
+      - minio_secret_key
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        export MINIO_ROOT_USER=$$(cat /run/secrets/minio_access_key)
+        export MINIO_ROOT_PASSWORD=$$(cat /run/secrets/minio_secret_key)
+        exec minio server /data --console-address ":9001"
+    environment:
+      TZ: UTC
+    volumes:
+      - minio_data:/data
+    networks:
+      - law-firm-network
+    restart: unless-stopped
+
+  minio-init:
+    image: minio/mc:${MINIO_MC_VERSION:-latest}
+    container_name: law-firm-minio-init
+    labels:
+      - "com.law-firm.group=storage"
+      - "com.law-firm.service=minio-init"
+    secrets:
+      - minio_access_key
+      - minio_secret_key
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        sleep 5
+        MINIO_USER=$$(cat /run/secrets/minio_access_key)
+        MINIO_PASS=$$(cat /run/secrets/minio_secret_key)
+        mc alias set local http://minio:9000 "$$MINIO_USER" "$$MINIO_PASS"
+        mc mb local/law-firm --ignore-existing
+        mc anonymous set public local/law-firm
+        exit 0
+    depends_on:
+      - minio
+    networks:
+      - law-firm-network
+
+  # ============================================
+  # OnlyOffice 文档服务（可选）
+  # ============================================
+  onlyoffice:
+    profiles: ["docs"]
+    build:
+      context: ./onlyoffice
+      dockerfile: Dockerfile
+    image: law-firm-onlyoffice:latest
+    container_name: law-firm-onlyoffice
+    labels:
+      - "com.law-firm.group=docs"
+      - "com.law-firm.service=onlyoffice"
+    secrets:
+      - onlyoffice_jwt_secret
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        export JWT_SECRET=$$(cat /run/secrets/onlyoffice_jwt_secret)
+        export JWT_ENABLED=${ONLYOFFICE_JWT_ENABLED:-true}
+        export JWT_HEADER=Authorization
+        export JWT_IN_BODY=true
+        export ALLOW_PRIVATE_IP_ADDRESS=true
+        export ALLOW_META_IP_ADDRESS=true
+        export DS_EXAMPLE_ENABLED=false
+        export TZ=UTC
+        export USE_UNAUTHORIZED_STORAGE=true
+        export CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-*}
+        export DS_WOPI_ENABLED=false
+        exec /app/ds/run-document-server.sh
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - onlyoffice_data:/var/www/onlyoffice/Data
+      - onlyoffice_logs:/var/log/onlyoffice
+      - onlyoffice_cache:/var/www/onlyoffice/documentserver/.cache
+    networks:
+      - law-firm-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # ============================================
+  # 监控服务（可选）
+  # ============================================
+  prometheus:
+    profiles: ["monitoring"]
+    image: prom/prometheus:latest
+    container_name: law-firm-prometheus
+    labels:
+      - "com.law-firm.group=monitoring"
+      - "com.law-firm.service=prometheus"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.external-url=/prometheus/'
+    networks:
+      - law-firm-network
+    restart: unless-stopped
+
+  grafana:
+    profiles: ["monitoring"]
+    image: grafana/grafana:latest
+    container_name: law-firm-grafana
+    labels:
+      - "com.law-firm.group=monitoring"
+      - "com.law-firm.service=grafana"
+    secrets:
+      - grafana_password
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        export GF_SECURITY_ADMIN_PASSWORD=$$(cat /run/secrets/grafana_password)
+        export GF_USERS_ALLOW_SIGN_UP=false
+        # 禁用匿名访问
+        export GF_AUTH_ANONYMOUS_ENABLED=false
+        export GF_DEFAULT_LANGUAGE=zh-Hans
+        export GF_SERVER_ROOT_URL=/grafana/
+        export GF_SERVER_SERVE_FROM_SUB_PATH=true
+        exec /run.sh
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    networks:
+      - law-firm-network
+    restart: unless-stopped
+
+# ============================================
+# Secrets 定义（文件模式）
+# ============================================
+secrets:
+  db_password:
+    file: ./secrets/db_password
+  jwt_secret:
+    file: ./secrets/jwt_secret
+  minio_access_key:
+    file: ./secrets/minio_access_key
+  minio_secret_key:
+    file: ./secrets/minio_secret_key
+  onlyoffice_jwt_secret:
+    file: ./secrets/onlyoffice_jwt_secret
+  redis_password:
+    file: ./secrets/redis_password
+  grafana_password:
+    file: ./secrets/grafana_password
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+  ocr_models:
+  ocr_cache:
+  onlyoffice_data:
+  onlyoffice_logs:
+  onlyoffice_cache:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  law-firm-network:
+    driver: bridge

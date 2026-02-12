@@ -123,7 +123,7 @@ ssh "${SERVER_USER}@${SERVER_IP}" << 'ENDSSH'
     # 执行部署
     echo "开始部署..."
     cd docker
-    docker compose -f docker-compose.prod.yml up -d --build
+    docker compose -f docker-compose.yml up -d --build
     
     echo ""
     echo "✅ 部署完成！"
@@ -133,11 +133,11 @@ ssh "${SERVER_USER}@${SERVER_IP}" << 'ENDSSH'
     echo "  - HTTPS: https://${SERVER_IP}/ (如果配置了SSL)"
     echo ""
     echo "查看日志:"
-    echo "  docker compose -f docker-compose.prod.yml logs -f"
+    echo "  docker compose -f docker-compose.yml logs -f"
     echo ""
     echo "默认账号: admin / admin123"
 ENDSSH
 
 log_success "部署完成！"
 log_info "访问地址: http://${SERVER_IP}/"
-log_info "查看日志: ssh ${SERVER_USER}@${SERVER_IP} 'cd /opt/law-firm/docker && docker compose -f docker-compose.prod.yml logs -f'"
+log_info "查看日志: ssh ${SERVER_USER}@${SERVER_IP} 'cd /opt/law-firm/docker && docker compose -f docker-compose.yml logs -f'"

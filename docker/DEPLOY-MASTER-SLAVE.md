@@ -197,7 +197,8 @@ docker restart law-firm-postgres-master
 
 # 5. 创建复制用户
 docker exec -it law-firm-postgres-master psql -U law_admin -d law_firm
-CREATE USER replicator WITH REPLICATION PASSWORD 'replicator_password';
+-- ⚠️ 请使用强密码替换下面的示例密码
+CREATE USER replicator WITH REPLICATION PASSWORD '<你的强密码>';
 \q
 ```
 
@@ -212,9 +213,10 @@ docker stop law-firm-postgres-slave
 
 # 3. 从主服务器复制数据（PostgreSQL 15 方式）
 # ⚠️ 注意：请将 <主服务器IP> 替换为实际的主服务器IP地址
+# ⚠️ 请将 <你的复制密码> 替换为实际配置的密码
 docker run --rm -v law-firm-master-slave_postgres_slave_data:/data \
   -e PGHOST=<主服务器IP> -e PGPORT=5432 -e PGUSER=replicator \
-  -e PGPASSWORD=replicator_password \
+  -e PGPASSWORD=<你的复制密码> \
   postgres:15-alpine pg_basebackup -D /data -R -X stream -P -U replicator
 
 # 4. 启动从服务器服务
@@ -294,7 +296,8 @@ SLAVE_IP=<从服务器IP>   # 需要手动设置
 
 # PostgreSQL 主从复制
 POSTGRES_REPLICATION_USER=replicator
-POSTGRES_REPLICATION_PASSWORD=replicator_password  # 请修改为强密码
+# ⚠️ 必须修改：生成命令 openssl rand -base64 32
+POSTGRES_REPLICATION_PASSWORD=<你的强密码>
 
 # Redis 主从配置（从服务器需要设置）
 REDIS_MASTER_HOST=<主服务器IP>  # 仅在从服务器需要设置

@@ -158,7 +158,7 @@ cd /opt/law-firm
 
 # 2. 重新构建并启动
 cd docker
-docker compose --env-file ../.env -f docker-compose.prod.yml up -d --build
+docker compose --env-file ../.env -f docker-compose.yml up -d --build
 ```
 
 ### 远程部署

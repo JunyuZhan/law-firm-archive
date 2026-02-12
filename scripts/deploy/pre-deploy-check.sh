@@ -181,22 +181,22 @@ check_config_files() {
         check_fail "未找到 application-prod.yml 配置文件"
     fi
     
-    if [ -f "docker/docker-compose.prod.yml" ]; then
+    if [ -f "docker/docker-compose.yml" ]; then
         check_pass "Docker Compose 生产配置文件存在"
         
-        if grep -q "restart: unless-stopped" docker/docker-compose.prod.yml; then
+        if grep -q "restart: unless-stopped" docker/docker-compose.yml; then
             check_pass "容器重启策略已配置"
         else
             check_warn "容器重启策略未配置"
         fi
         
-        if grep -q "healthcheck:" docker/docker-compose.prod.yml; then
+        if grep -q "healthcheck:" docker/docker-compose.yml; then
             check_pass "容器健康检查已配置"
         else
             check_warn "容器健康检查未配置"
         fi
     else
-        check_fail "未找到 docker-compose.prod.yml 文件"
+        check_fail "未找到 docker-compose.yml 文件"
     fi
     
     echo ""

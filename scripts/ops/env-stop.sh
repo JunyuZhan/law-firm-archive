@@ -92,7 +92,7 @@ case "$ENV_TYPE" in
         ENV_NAME="开发环境"
         ;;
     prod)
-        COMPOSE_FILE="docker-compose.prod.yml"
+        COMPOSE_FILE="docker-compose.yml"
         ENV_NAME="生产环境"
         ;;
 esac

@@ -152,7 +152,7 @@ cmd_deploy() {
     source .env
     set +a
     
-    docker stack deploy -c docker-compose.swarm.yml "$STACK_NAME"
+    docker stack deploy -c examples/docker-compose.swarm.yml "$STACK_NAME"
     
     echo ""
     log_success "服务栈部署完成！"

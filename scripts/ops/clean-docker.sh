@@ -60,12 +60,12 @@ ENV_FILE="$PROJECT_ROOT/.env"
 if [ -f "$ENV_FILE" ]; then
     docker compose --env-file "$ENV_FILE" -f docker-compose.yml down -v --remove-orphans 2>/dev/null || true
     docker compose --env-file "$ENV_FILE" -f docker-compose.dev.yml down -v --remove-orphans 2>/dev/null || true
-    docker compose --env-file "$ENV_FILE" -f docker-compose.prod.yml down -v --remove-orphans 2>/dev/null || true
+    docker compose --env-file "$ENV_FILE" -f docker-compose.yml down -v --remove-orphans 2>/dev/null || true
     docker compose --env-file "$ENV_FILE" -f docker-compose.swarm.yml down -v --remove-orphans 2>/dev/null || true
 else
     docker compose -f docker-compose.yml down -v --remove-orphans 2>/dev/null || true
     docker compose -f docker-compose.dev.yml down -v --remove-orphans 2>/dev/null || true
-    docker compose -f docker-compose.prod.yml down -v --remove-orphans 2>/dev/null || true
+    docker compose -f docker-compose.yml down -v --remove-orphans 2>/dev/null || true
     docker compose -f docker-compose.swarm.yml down -v --remove-orphans 2>/dev/null || true
 fi
 

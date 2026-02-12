@@ -100,7 +100,7 @@ case "$ENV_TYPE" in
         fi
         ;;
     prod)
-        COMPOSE_FILE="docker-compose.prod.yml"
+        COMPOSE_FILE="docker-compose.yml"
         ENV_NAME="生产环境"
         if [ "$FULL_MODE" = true ]; then
             echo -e "${YELLOW}提示: 生产环境不支持 --full 选项${NC}"

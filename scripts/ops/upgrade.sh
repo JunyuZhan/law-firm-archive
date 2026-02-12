@@ -219,7 +219,7 @@ do_upgrade() {
         elif [ -f "$PROJECT_ROOT/docker/.env" ]; then
             env_file="--env-file $PROJECT_ROOT/docker/.env"
         fi
-        log_info "请执行: cd $PROJECT_ROOT/docker && docker compose $env_file -f docker-compose.prod.yml up -d --build"
+        log_info "请执行: cd $PROJECT_ROOT/docker && docker compose $env_file -f docker-compose.yml up -d --build"
     fi
     
     echo ""

@@ -42,7 +42,7 @@ chmod 600 docker/ssl/privkey.pem
 
 # 3. 重启服务
 cd docker
-docker compose -f docker-compose.prod.yml restart frontend
+docker compose -f docker-compose.yml restart frontend
 ```
 
 ---
@@ -115,7 +115,7 @@ openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
 
 ### 1. 修改 docker-compose 文件
 
-在 `docker-compose.prod.yml` 的 `frontend` 服务中添加：
+在 `docker-compose.yml` 的 `frontend` 服务中添加：
 
 ```yaml
 frontend:
@@ -290,7 +290,7 @@ git pull
 
 # 3. 重新部署
 cd docker
-docker compose -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.yml up -d --build
 ```
 
 ---

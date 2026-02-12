@@ -133,7 +133,7 @@ show_deploy_summary() {
     case $DEPLOY_MODE in
         standalone)
             echo -e "  ${GREEN}●${NC} 部署模式：${BOLD}单机部署${NC}"
-            echo -e "  ${GREEN}●${NC} 配置文件：docker-compose.prod.yml"
+            echo -e "  ${GREEN}●${NC} 配置文件：docker-compose.yml（安全模式）"
             echo -e "  ${GREEN}●${NC} 服务列表："
             echo -e "     - Frontend (Nginx + Vue)"
             echo -e "     - Backend (Spring Boot)"
@@ -145,7 +145,7 @@ show_deploy_summary() {
             ;;
         swarm)
             echo -e "  ${MAGENTA}●${NC} 部署模式：${BOLD}Docker Swarm 分布式${NC}"
-            echo -e "  ${MAGENTA}●${NC} 配置文件：docker-compose.swarm.yml"
+            echo -e "  ${MAGENTA}●${NC} 配置文件：examples/docker-compose.swarm.yml"
             echo -e "  ${MAGENTA}●${NC} 集群特性："
             echo -e "     - 多节点高可用"
             echo -e "     - 服务自动负载均衡"
@@ -642,20 +642,37 @@ deploy_standalone() {
         fi
     fi
     
+    # 选择配置文件：优先使用 Secrets 方式，回退到环境变量方式
+    COMPOSE_FILE="docker-compose.yml"
+    COMPOSE_OPTS=""
+    
+    if [ -f "secrets/db_password" ] && [ -f "secrets/jwt_secret" ]; then
+        log_info "检测到 secrets 文件，使用安全模式（docker inspect 无法查看密钥）"
+        COMPOSE_FILE="docker-compose.yml"
+    elif [ -f "$PROJECT_ROOT/.env" ]; then
+        log_warn "未找到 secrets 文件，回退到环境变量模式"
+        log_warn "提示：运行 cd docker/secrets && ./init-secrets.sh 初始化密钥文件"
+        COMPOSE_FILE="examples/docker-compose.env-vars.yml"
+        COMPOSE_OPTS="--env-file $PROJECT_ROOT/.env"
+    else
+        log_error "请先初始化配置：cd docker/secrets && ./init-secrets.sh"
+        exit 1
+    fi
+    
     # 先构建镜像（避免 BuildKit 问题）
     # 如果指定了 --no-cache 或者不是首次部署，则强制重新构建
     if [ "$NO_CACHE" = true ]; then
         log_info "构建 Docker 镜像（强制重新构建，不使用缓存）..."
-        DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1 docker compose --env-file "$PROJECT_ROOT/.env" -f docker-compose.prod.yml build --no-cache
+        DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1 docker compose $COMPOSE_OPTS -f $COMPOSE_FILE build --no-cache
     else
         log_info "构建 Docker 镜像..."
-        DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1 docker compose --env-file "$PROJECT_ROOT/.env" -f docker-compose.prod.yml build
+        DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1 docker compose $COMPOSE_OPTS -f $COMPOSE_FILE build
     fi
     
     # 启动服务（每个项目运行自己的容器）
     # 默认启动核心服务 + 文档服务 + 监控服务
     log_info "启动服务..."
-    docker compose --env-file "$PROJECT_ROOT/.env" -f docker-compose.prod.yml --profile docs --profile monitoring up -d
+    docker compose $COMPOSE_OPTS -f $COMPOSE_FILE --profile docs --profile monitoring up -d
     
     echo ""
     log_info "等待服务启动..."
@@ -664,7 +681,7 @@ deploy_standalone() {
     # 检查服务状态
     echo ""
     log_info "服务状态："
-    docker compose --env-file "$PROJECT_ROOT/.env" -f docker-compose.prod.yml ps
+    docker compose $COMPOSE_OPTS -f $COMPOSE_FILE ps
     
     show_success_banner
     
@@ -744,9 +761,9 @@ show_success_banner() {
     print_divider
     echo ""
     echo -e "${BOLD}常用命令：${NC}"
-    echo -e "  📋 查看日志：${DIM}cd docker && docker compose --env-file ../.env -f docker-compose.prod.yml logs -f${NC}"
-    echo -e "  🛑 停止服务：${DIM}cd docker && docker compose --env-file ../.env -f docker-compose.prod.yml down${NC}"
-    echo -e "  🔄 重启服务：${DIM}cd docker && docker compose --env-file ../.env -f docker-compose.prod.yml restart${NC}"
+    echo -e "  📋 查看日志：${DIM}cd docker && docker compose -f docker-compose.yml logs -f${NC}"
+    echo -e "  🛑 停止服务：${DIM}cd docker && docker compose -f docker-compose.yml down${NC}"
+    echo -e "  🔄 重启服务：${DIM}cd docker && docker compose -f docker-compose.yml restart${NC}"
     echo ""
 }
 

@@ -81,10 +81,10 @@ cd docker
 cp env.example .env
 
 # 2. 构建并启动
-docker compose -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.yml up -d --build
 
 # 3. 查看日志
-docker compose -f docker-compose.prod.yml logs -f
+docker compose -f docker-compose.yml logs -f
 ```
 
 ## 服务列表
@@ -127,13 +127,13 @@ docker compose -f docker-compose.prod.yml logs -f
 
 ```bash
 # 停止所有服务
-docker compose -f docker-compose.prod.yml down
+docker compose -f docker-compose.yml down
 
 # 重启单个服务
-docker compose -f docker-compose.prod.yml restart backend
+docker compose -f docker-compose.yml restart backend
 
 # 查看日志
-docker compose -f docker-compose.prod.yml logs -f backend
+docker compose -f docker-compose.yml logs -f backend
 
 # 进入容器
 docker exec -it law-firm-backend sh

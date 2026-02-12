@@ -129,14 +129,14 @@ check_docker_config() {
     echo "🐳 检查 Docker 配置..."
     
     # 检查生产配置文件
-    if [ ! -f "docker/docker-compose.prod.yml" ]; then
-        echo -e "${RED}❌ docker-compose.prod.yml 不存在${NC}"
+    if [ ! -f "docker/docker-compose.yml" ]; then
+        echo -e "${RED}❌ docker-compose.yml 不存在${NC}"
         ((ERRORS++))
     else
-        echo -e "${GREEN}✓ docker-compose.prod.yml 存在${NC}"
+        echo -e "${GREEN}✓ docker-compose.yml 存在${NC}"
         
         # 检查是否使用了健康检查
-        if grep -q "healthcheck:" docker/docker-compose.prod.yml; then
+        if grep -q "healthcheck:" docker/docker-compose.yml; then
             echo -e "${GREEN}✓ 配置了健康检查${NC}"
         else
             echo -e "${YELLOW}⚠️  建议配置容器健康检查${NC}"

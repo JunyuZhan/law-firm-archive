@@ -80,8 +80,9 @@
    
    # MinIO（指向 NAS）
    NAS_IP=192.168.50.20
-   MINIO_ACCESS_KEY=minioadmin
-   MINIO_SECRET_KEY=<强密码>
+   # ⚠️ 请修改为你自己的密钥
+   MINIO_ACCESS_KEY=<你的访问密钥>
+   MINIO_SECRET_KEY=<你的强密码>
    ```
 
 2. **部署应用**

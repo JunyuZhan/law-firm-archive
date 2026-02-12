@@ -24,7 +24,8 @@ services:
       dockerfile: scripts/deploy/Dockerfile
       args:
         - DOCS_USERNAME=${DOCS_USERNAME:-admin}
-        - DOCS_PASSWORD=${DOCS_PASSWORD:-lawfirm@2026}
+        # ⚠️ 必须在 .env 文件中配置 DOCS_PASSWORD
+        - DOCS_PASSWORD=${DOCS_PASSWORD:?请在 .env 文件中配置 DOCS_PASSWORD}
     container_name: law-firm-frontend-${NODE_ROLE:-master}
     labels:
       - "com.law-firm.group=core"
@@ -68,7 +69,8 @@ services:
       - DB_PORT=5432
       - DB_NAME=law_firm
       - DB_USERNAME=law_admin
-      - DB_PASSWORD=${DB_PASSWORD:-changeme}
+      # ⚠️ 必须在 .env 文件中配置 DB_PASSWORD
+      - DB_PASSWORD=${DB_PASSWORD:?请在 .env 文件中配置 DB_PASSWORD}
       # Redis 配置：主服务器连接主库，从服务器连接从库
       # 注意：主服务器使用 redis-master，从服务器使用 redis-slave
       - REDIS_HOST=${REDIS_HOST:-redis-${NODE_ROLE:-master}}
@@ -137,10 +139,11 @@ services:
     environment:
       POSTGRES_DB: law_firm
       POSTGRES_USER: law_admin
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?请在 .env 文件中配置 DB_PASSWORD}
       # 主从复制配置
       POSTGRES_REPLICATION_USER: ${POSTGRES_REPLICATION_USER:-replicator}
-      POSTGRES_REPLICATION_PASSWORD: ${POSTGRES_REPLICATION_PASSWORD:-replicator_password}
+      # ⚠️ 必须在 .env 文件中配置复制密码
+      POSTGRES_REPLICATION_PASSWORD: ${POSTGRES_REPLICATION_PASSWORD:?请在 .env 文件中配置 POSTGRES_REPLICATION_PASSWORD}
     volumes:
       - postgres_master_data:/var/lib/postgresql/data
       - ../scripts/init-db:/docker-entrypoint-initdb.d:ro
@@ -184,12 +187,13 @@ services:
     environment:
       POSTGRES_DB: law_firm
       POSTGRES_USER: law_admin
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?请在 .env 文件中配置 DB_PASSWORD}
       # 主从复制配置
       POSTGRES_MASTER_HOST: ${POSTGRES_MASTER_HOST:-192.168.50.10}
       POSTGRES_MASTER_PORT: ${POSTGRES_MASTER_PORT:-5432}
       POSTGRES_REPLICATION_USER: ${POSTGRES_REPLICATION_USER:-replicator}
-      POSTGRES_REPLICATION_PASSWORD: ${POSTGRES_REPLICATION_PASSWORD:-replicator_password}
+      # ⚠️ 必须在 .env 文件中配置复制密码
+      POSTGRES_REPLICATION_PASSWORD: ${POSTGRES_REPLICATION_PASSWORD:?请在 .env 文件中配置 POSTGRES_REPLICATION_PASSWORD}
     volumes:
       - postgres_slave_data:/var/lib/postgresql/data
       # PostgreSQL 从库配置
@@ -202,7 +206,8 @@ services:
       - "hot_standby=on"
       # PostgreSQL 15 使用 primary_conninfo 而不是 recovery.conf
       - "-c"
-      - "primary_conninfo=host=${POSTGRES_MASTER_HOST:-192.168.50.10} port=${POSTGRES_MASTER_PORT:-5432} user=${POSTGRES_REPLICATION_USER:-replicator} password=${POSTGRES_REPLICATION_PASSWORD:-replicator_password}"
+      # ⚠️ 复制密码从环境变量读取
+      - "primary_conninfo=host=${POSTGRES_MASTER_HOST:-192.168.50.10} port=${POSTGRES_MASTER_PORT:-5432} user=${POSTGRES_REPLICATION_USER:-replicator} password=${POSTGRES_REPLICATION_PASSWORD}"
       - "-c"
       - "primary_slot_name="
     networks:
@@ -320,8 +325,9 @@ services:
       - "com.law-firm.group=storage"
       - "com.law-firm.service=minio-init"
     environment:
-      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minioadmin}
-      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-minioadmin}
+      # ⚠️ 必须在 .env 文件中配置 MINIO 密钥
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:?请在 .env 文件中配置 MINIO_ACCESS_KEY}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:?请在 .env 文件中配置 MINIO_SECRET_KEY}
     entrypoint: >
       /bin/sh -c "
       sleep 10;

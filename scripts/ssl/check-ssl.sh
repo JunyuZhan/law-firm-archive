@@ -75,7 +75,7 @@ if docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
     log_success "容器正在运行: $CONTAINER_NAME"
 else
     log_error "容器未运行: $CONTAINER_NAME"
-    log_warn "请先启动容器: cd docker && docker compose -f docker-compose.prod.yml up -d"
+    log_warn "请先启动容器: cd docker && docker compose -f docker-compose.yml up -d"
     exit 1
 fi
 

@@ -59,7 +59,7 @@ openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
 
 ### 1. 修改 docker-compose 文件
 
-在 `docker-compose.prod.yml` 或 `docker-compose.swarm.yml` 的 `frontend` 服务中添加 volume 挂载：
+在 `docker-compose.yml` 或 `docker-compose.swarm.yml` 的 `frontend` 服务中添加 volume 挂载：
 
 ```yaml
 frontend:
