@@ -18,7 +18,7 @@ import com.archivesystem.dto.archive.ArchiveSearchResult;
 import com.archivesystem.entity.Archive;
 import com.archivesystem.entity.DigitalFile;
 import com.archivesystem.repository.ArchiveMapper;
-import com.archivesystem.repository.ArchiveSearchRepository;
+import com.archivesystem.elasticsearch.ArchiveSearchRepository;
 import com.archivesystem.repository.DigitalFileMapper;
 import com.archivesystem.service.ArchiveIndexService;
 import lombok.RequiredArgsConstructor;

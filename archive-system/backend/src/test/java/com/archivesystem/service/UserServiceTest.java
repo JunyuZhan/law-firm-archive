@@ -195,4 +195,117 @@ class UserServiceTest {
         assertTrue(result.contains(1L));
         assertTrue(result.contains(2L));
     }
+
+    @Test
+    void testUpdateUser_Success() {
+        User updateData = new User();
+        updateData.setUsername("testuser"); // 同一用户名
+        updateData.setRealName("更新用户名");
+        updateData.setEmail("update@example.com");
+        updateData.setPhone("13900139000");
+        updateData.setUserType("ADMIN");
+        updateData.setDepartment("管理部");
+        
+        when(userMapper.selectById(1L)).thenReturn(testUser);
+        when(userMapper.updateById(any(User.class))).thenReturn(1);
+
+        User result = userService.update(1L, updateData);
+
+        assertNotNull(result);
+        verify(userMapper).updateById(any(User.class));
+    }
+
+    @Test
+    void testUpdateUser_NotFound() {
+        when(userMapper.selectById(999L)).thenReturn(null);
+
+        assertThrows(NotFoundException.class, () -> userService.update(999L, testUser));
+    }
+
+    @Test
+    void testUpdateUser_UsernameExistsForOther() {
+        User otherUser = new User();
+        otherUser.setId(2L);
+        otherUser.setUsername("otherusername");
+        
+        User updateData = new User();
+        updateData.setUsername("otherusername");
+        
+        when(userMapper.selectById(1L)).thenReturn(testUser);
+        when(userMapper.selectByUsername("otherusername")).thenReturn(otherUser);
+
+        assertThrows(BusinessException.class, () -> userService.update(1L, updateData));
+    }
+
+    @Test
+    void testUpdateUser_ChangeUsernameSameId() {
+        User sameUser = new User();
+        sameUser.setId(1L);
+        sameUser.setUsername("newusername");
+        
+        User updateData = new User();
+        updateData.setUsername("newusername");
+        updateData.setRealName("测试");
+        
+        when(userMapper.selectById(1L)).thenReturn(testUser);
+        when(userMapper.selectByUsername("newusername")).thenReturn(sameUser);
+        when(userMapper.updateById(any(User.class))).thenReturn(1);
+
+        User result = userService.update(1L, updateData);
+
+        assertNotNull(result);
+    }
+
+    @Test
+    void testDeleteUser_NotFound() {
+        when(userMapper.selectById(999L)).thenReturn(null);
+
+        // 不应该抛出异常，直接返回
+        assertDoesNotThrow(() -> userService.delete(999L));
+        
+        verify(userRoleMapper, never()).deleteByUserId(anyLong());
+    }
+
+    @Test
+    void testUpdateStatus_NotFound() {
+        when(userMapper.selectById(999L)).thenReturn(null);
+
+        assertThrows(NotFoundException.class, () -> userService.updateStatus(999L, User.STATUS_DISABLED));
+    }
+
+    @Test
+    void testChangePassword_UserNotFound() {
+        when(userMapper.selectById(999L)).thenReturn(null);
+
+        assertThrows(NotFoundException.class, () -> userService.changePassword(999L, "old", "new"));
+    }
+
+    @Test
+    void testAssignRoles_EmptyList() {
+        when(userRoleMapper.deleteByUserId(1L)).thenReturn(1);
+
+        assertDoesNotThrow(() -> userService.assignRoles(1L, Collections.emptyList()));
+
+        verify(userRoleMapper).deleteByUserId(1L);
+        verify(userRoleMapper, never()).insert(any(UserRole.class));
+    }
+
+    @Test
+    void testAssignRoles_NullList() {
+        when(userRoleMapper.deleteByUserId(1L)).thenReturn(1);
+
+        assertDoesNotThrow(() -> userService.assignRoles(1L, null));
+
+        verify(userRoleMapper).deleteByUserId(1L);
+        verify(userRoleMapper, never()).insert(any(UserRole.class));
+    }
+
+    @Test
+    void testGetByUsername_NotFound() {
+        when(userMapper.selectByUsername("nonexistent")).thenReturn(null);
+
+        User result = userService.getByUsername("nonexistent");
+
+        assertNull(result);
+    }
 }

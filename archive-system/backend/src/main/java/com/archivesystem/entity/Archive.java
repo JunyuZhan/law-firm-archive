@@ -169,7 +169,7 @@ public class Archive extends BaseEntity {
     private String keywords;
     
     /** 摘要 */
-    @TableField("`abstract`")
+    @TableField("\"abstract\"")
     private String archiveAbstract;
     
     /** 备注 */

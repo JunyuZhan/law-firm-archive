@@ -1,4 +1,4 @@
-package com.archivesystem.repository;
+package com.archivesystem.elasticsearch;
 
 import com.archivesystem.document.ArchiveDocument;
 import org.springframework.data.elasticsearch.repository.ElasticsearchRepository;
