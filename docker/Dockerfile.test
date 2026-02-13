@@ -47,9 +47,19 @@ RUN apk add --no-cache tzdata curl && \
 
 # 创建非 root 用户运行应用
 RUN addgroup -S lawfirm && adduser -S lawfirm -G lawfirm
-USER lawfirm
 
+# 创建应用目录
 WORKDIR /app
+
+# 创建所需目录并设置权限
+RUN mkdir -p /var/log/law-firm && \
+    mkdir -p /app/backups && \
+    mkdir -p /app/logs && \
+    mkdir -p /app/temp && \
+    chown -R lawfirm:lawfirm /var/log/law-firm && \
+    chown -R lawfirm:lawfirm /app
+
+USER lawfirm
 
 # 从构建阶段复制 JAR 文件
 COPY --from=builder /app/target/*.jar app.jar

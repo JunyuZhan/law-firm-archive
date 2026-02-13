@@ -50,13 +50,18 @@ RUN apk add --no-cache tzdata curl git docker-cli docker-cli-compose && \
 RUN addgroup -S lawfirm && adduser -S lawfirm -G lawfirm && \
     addgroup lawfirm docker 2>/dev/null || true
 
-# 创建日志目录并设置权限
+# 创建应用目录
+WORKDIR /app
+
+# 创建所需目录并设置权限
 RUN mkdir -p /var/log/law-firm && \
-    chown -R lawfirm:lawfirm /var/log/law-firm
+    mkdir -p /app/backups && \
+    mkdir -p /app/logs && \
+    mkdir -p /app/temp && \
+    chown -R lawfirm:lawfirm /var/log/law-firm && \
+    chown -R lawfirm:lawfirm /app
 
 USER lawfirm
-
-WORKDIR /app
 
 # 从构建阶段复制 JAR 文件
 COPY --from=builder /app/target/*.jar app.jar
