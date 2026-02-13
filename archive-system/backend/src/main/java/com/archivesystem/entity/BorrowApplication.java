@@ -27,6 +27,12 @@ public class BorrowApplication extends BaseEntity {
     
     /** 档案ID */
     private Long archiveId;
+    
+    /** 档案号（冗余） */
+    private String archiveNo;
+    
+    /** 档案题名（冗余） */
+    private String archiveTitle;
 
     // ===== 申请人信息 =====
     
@@ -41,6 +47,9 @@ public class BorrowApplication extends BaseEntity {
     
     /** 联系电话 */
     private String applicantPhone;
+    
+    /** 申请时间 */
+    private LocalDateTime applyTime;
 
     // ===== 借阅信息 =====
     
@@ -56,6 +65,13 @@ public class BorrowApplication extends BaseEntity {
     
     /** 实际归还日期 */
     private LocalDate actualReturnDate;
+    
+    /** 借出时间 */
+    private LocalDateTime borrowTime;
+    
+    /** 续借次数 */
+    @Builder.Default
+    private Integer renewCount = 0;
 
     // ===== 审批信息 =====
     
@@ -70,10 +86,16 @@ public class BorrowApplication extends BaseEntity {
     private String approverName;
     
     /** 审批时间 */
-    private LocalDateTime approvedAt;
+    private LocalDateTime approveTime;
     
     /** 审批意见 */
-    private String approvalComment;
+    private String approveRemarks;
+    
+    /** 拒绝原因 */
+    private String rejectReason;
+    
+    /** 归还备注 */
+    private String returnRemarks;
 
     // ===== 使用记录 =====
     
