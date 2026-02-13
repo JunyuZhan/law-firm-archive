@@ -60,6 +60,7 @@
           </template>
           <el-menu-item index="/system/users">用户管理</el-menu-item>
           <el-menu-item index="/system/roles">角色管理</el-menu-item>
+          <el-menu-item index="/system/config">系统配置</el-menu-item>
           <el-menu-item index="/system/logs">操作日志</el-menu-item>
         </el-sub-menu>
       </el-menu>

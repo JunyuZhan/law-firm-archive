@@ -1,7 +1,7 @@
 # 档案管理系统 Docker Compose 配置
 # 包含后端服务、前端服务、数据库、Redis、MinIO
 
-version: '3.8'
+name: archive-system
 
 services:
   # PostgreSQL 数据库
@@ -83,9 +83,11 @@ services:
     networks:
       - archive-network
 
-  # Elasticsearch 全文检索
+  # Elasticsearch 全文检索（带 IK 分词器）
   elasticsearch:
-    image: elasticsearch:8.12.0
+    build:
+      context: .
+      dockerfile: Dockerfile.elasticsearch
     container_name: archive-elasticsearch
     environment:
       - discovery.type=single-node

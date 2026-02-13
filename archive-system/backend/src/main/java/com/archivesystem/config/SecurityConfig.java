@@ -65,6 +65,8 @@ public class SecurityConfig {
                         .requestMatchers("/auth/**").permitAll()
                         // 健康检查
                         .requestMatchers("/actuator/**").permitAll()
+                        // 公共基础数据
+                        .requestMatchers("/retention-periods/**").permitAll()
                         // API文档
                         .requestMatchers("/doc.html", "/swagger-ui/**", "/v3/api-docs/**", "/webjars/**").permitAll()
                         // 其他接口需要认证
