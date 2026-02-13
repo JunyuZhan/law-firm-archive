@@ -7,6 +7,7 @@ import com.archivesystem.repository.DigitalFileMapper;
 import com.archivesystem.security.SecurityUtils;
 import com.archivesystem.service.FileStorageService;
 import com.archivesystem.service.MinioService;
+import com.archivesystem.util.FileTypeValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -227,6 +228,25 @@ public class FileStorageServiceImpl implements FileStorageService {
         if (!isAllowedType(extension)) {
             throw new BusinessException("4003", "不支持的文件类型: " + extension);
         }
+        
+        // 魔数验证：检查文件真实类型是否与扩展名匹配
+        FileTypeValidator.ValidationResult validationResult = FileTypeValidator.validate(file, extension);
+        if (!validationResult.isValid()) {
+            log.warn("文件魔数验证失败: filename={}, extension={}, reason={}", 
+                    file.getOriginalFilename(), extension, validationResult.getMessage());
+            throw new BusinessException("4005", "文件安全校验失败: " + validationResult.getMessage());
+        }
+        
+        // MIME类型验证
+        String mimeType = file.getContentType();
+        if (!FileTypeValidator.validateMimeType(extension, mimeType)) {
+            log.warn("MIME类型验证失败: filename={}, extension={}, mimeType={}", 
+                    file.getOriginalFilename(), extension, mimeType);
+            throw new BusinessException("4006", "文件MIME类型与扩展名不匹配");
+        }
+        
+        log.debug("文件验证通过: filename={}, extension={}, size={}", 
+                file.getOriginalFilename(), extension, file.getSize());
     }
 
     private boolean isAllowedType(String extension) {

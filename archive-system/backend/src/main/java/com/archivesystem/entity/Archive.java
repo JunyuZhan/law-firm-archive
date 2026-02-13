@@ -99,6 +99,9 @@ public class Archive extends BaseEntity {
     
     /** 来源系统编号 */
     private String sourceNo;
+    
+    /** 回调URL（处理完成后通知） */
+    private String callbackUrl;
 
     // ===== 业务关联（律所业务） =====
     
@@ -185,6 +188,9 @@ public class Archive extends BaseEntity {
     public static final String STATUS_BORROWED = "BORROWED";
     public static final String STATUS_APPRAISAL = "APPRAISAL";
     public static final String STATUS_DESTROYED = "DESTROYED";
+    public static final String STATUS_PROCESSING = "PROCESSING";
+    public static final String STATUS_PARTIAL = "PARTIAL";
+    public static final String STATUS_FAILED = "FAILED";
 
     // ===== 来源类型常量 =====
     

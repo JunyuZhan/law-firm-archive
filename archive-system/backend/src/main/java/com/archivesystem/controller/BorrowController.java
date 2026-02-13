@@ -19,7 +19,7 @@ import java.util.Map;
  * 借阅管理控制器.
  */
 @RestController
-@RequestMapping("/api/borrows")
+@RequestMapping("/borrows")
 @RequiredArgsConstructor
 @Tag(name = "借阅管理", description = "借阅申请、审批、归还")
 public class BorrowController {

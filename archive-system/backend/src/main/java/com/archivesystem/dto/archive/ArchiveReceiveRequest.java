@@ -28,6 +28,12 @@ public class ArchiveReceiveRequest {
     /** 来源系统编号 */
     private String sourceNo;
 
+    /** 回调URL（处理完成后通知外部系统） */
+    private String callbackUrl;
+    
+    /** 是否异步处理（默认true） */
+    private Boolean async = true;
+
     /** 档案题名 */
     @NotBlank(message = "档案题名不能为空")
     @Size(max = 500, message = "档案题名不能超过500个字符")

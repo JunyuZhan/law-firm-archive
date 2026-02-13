@@ -17,7 +17,7 @@ import java.util.Map;
  * 分类管理控制器.
  */
 @RestController
-@RequestMapping("/api/categories")
+@RequestMapping("/categories")
 @RequiredArgsConstructor
 @Tag(name = "分类管理", description = "档案分类CRUD接口")
 public class CategoryController {

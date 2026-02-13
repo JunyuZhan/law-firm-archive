@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/open")
+@RequestMapping("/open")
 @RequiredArgsConstructor
 @Tag(name = "开放接口", description = "供外部系统调用的接口")
 public class OpenApiController {

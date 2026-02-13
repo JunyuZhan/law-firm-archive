@@ -1,11 +1,11 @@
-import request from '@/utils/request'
+import request from './index'
 
 /**
  * 查询操作日志
  */
 export function getOperationLogs(params) {
   return request({
-    url: '/api/operation-logs',
+    url: '/operation-logs',
     method: 'get',
     params
   })
@@ -16,7 +16,7 @@ export function getOperationLogs(params) {
  */
 export function getLogsByArchive(archiveId) {
   return request({
-    url: `/api/operation-logs/archive/${archiveId}`,
+    url: `/operation-logs/archive/${archiveId}`,
     method: 'get'
   })
 }
@@ -26,7 +26,7 @@ export function getLogsByArchive(archiveId) {
  */
 export function getLogsByObject(objectType, objectId) {
   return request({
-    url: `/api/operation-logs/object/${objectType}/${objectId}`,
+    url: `/operation-logs/object/${objectType}/${objectId}`,
     method: 'get'
   })
 }
@@ -36,7 +36,7 @@ export function getLogsByObject(objectType, objectId) {
  */
 export function getLogStatistics(params) {
   return request({
-    url: '/api/operation-logs/statistics',
+    url: '/operation-logs/statistics',
     method: 'get',
     params
   })
@@ -47,7 +47,7 @@ export function getLogStatistics(params) {
  */
 export function exportLogs(params) {
   return request({
-    url: '/api/operation-logs/export',
+    url: '/operation-logs/export',
     method: 'get',
     params,
     responseType: 'blob'

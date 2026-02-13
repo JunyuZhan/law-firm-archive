@@ -49,9 +49,22 @@ public class AccessLog implements Serializable {
     /** 访问时间 */
     @Builder.Default
     private LocalDateTime accessedAt = LocalDateTime.now();
+    
+    /** 搜索关键词（搜索类型专用） */
+    private String searchKeyword;
+    
+    /** 搜索结果数（搜索类型专用） */
+    private Integer searchResultCount;
+    
+    /** 请求耗时（毫秒） */
+    private Long duration;
+    
+    /** 额外数据（JSON格式） */
+    private String extraData;
 
     public static final String TYPE_VIEW = "VIEW";
     public static final String TYPE_DOWNLOAD = "DOWNLOAD";
     public static final String TYPE_PRINT = "PRINT";
     public static final String TYPE_PREVIEW = "PREVIEW";
+    public static final String TYPE_SEARCH = "SEARCH";
 }

@@ -54,4 +54,29 @@ public class AccessLogServiceImpl implements AccessLogService {
     public void logPreview(Long archiveId, Long fileId, String accessIp) {
         logAccess(archiveId, fileId, AccessLog.TYPE_PREVIEW, accessIp);
     }
+
+    @Override
+    @Async
+    public void logSearch(String keyword, int resultCount, long duration, String accessIp) {
+        try {
+            Long userId = SecurityUtils.getCurrentUserId();
+            String userName = SecurityUtils.getCurrentRealName();
+            
+            AccessLog accessLog = AccessLog.builder()
+                    .accessType(AccessLog.TYPE_SEARCH)
+                    .accessIp(accessIp)
+                    .userId(userId)
+                    .userName(userName)
+                    .searchKeyword(keyword)
+                    .searchResultCount(resultCount)
+                    .duration(duration)
+                    .accessedAt(LocalDateTime.now())
+                    .build();
+            
+            accessLogMapper.insert(accessLog);
+            log.debug("记录搜索日志: keyword={}, resultCount={}, duration={}ms", keyword, resultCount, duration);
+        } catch (Exception e) {
+            log.error("记录搜索日志失败", e);
+        }
+    }
 }

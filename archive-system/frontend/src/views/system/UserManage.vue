@@ -161,7 +161,8 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Search, Refresh, Plus } from '@element-plus/icons-vue'
-import { getUserList, createUser, updateUser, deleteUser, resetPassword, updateUserStatus, getRoleList, getUserRoles, assignRoles } from '@/api/user'
+import { getUserList, createUser, updateUser, deleteUser, resetPassword, updateUserStatus, getUserRoles, assignRoles } from '@/api/user'
+import { getRoleList } from '@/api/role'
 
 // 查询参数
 const queryParams = reactive({

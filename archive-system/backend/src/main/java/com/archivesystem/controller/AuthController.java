@@ -31,7 +31,7 @@ import java.time.LocalDateTime;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping("/auth")
 @RequiredArgsConstructor
 @Tag(name = "认证管理", description = "登录、登出、刷新令牌等")
 public class AuthController {

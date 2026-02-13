@@ -63,6 +63,48 @@ services:
     networks:
       - archive-network
 
+  # RabbitMQ 消息队列
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: archive-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin123
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_running"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - archive-network
+
+  # Elasticsearch 全文检索
+  elasticsearch:
+    image: elasticsearch:8.12.0
+    container_name: archive-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - cluster.name=archive-cluster
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - es-data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - archive-network
+
   # 后端服务
   backend:
     build:
@@ -80,6 +122,11 @@ services:
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: minioadmin
       JWT_SECRET: your-256-bit-secret-key-for-archive-system-production-2026
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: admin
+      SPRING_RABBITMQ_PASSWORD: admin123
+      SPRING_ELASTICSEARCH_URIS: http://elasticsearch:9200
     ports:
       - "8090:8090"
     depends_on:
@@ -89,8 +136,12 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8090/actuator/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8090/api/actuator/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -105,12 +156,12 @@ services:
       dockerfile: docker/Dockerfile.frontend
     container_name: archive-frontend
     ports:
-      - "3001:80"
+      - "3001:8080"
     depends_on:
       backend:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:80/"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -121,6 +172,8 @@ volumes:
   postgres-data:
   redis-data:
   minio-data:
+  rabbitmq-data:
+  es-data:
 
 networks:
   archive-network:

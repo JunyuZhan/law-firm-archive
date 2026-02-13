@@ -2,12 +2,16 @@ package com.archivesystem.controller;
 
 import com.archivesystem.common.PageResult;
 import com.archivesystem.common.Result;
+import com.archivesystem.config.MetricsConfig;
 import com.archivesystem.dto.archive.*;
+import com.archivesystem.service.AccessLogService;
+import com.archivesystem.service.ArchiveIndexService;
 import com.archivesystem.service.ArchiveService;
 import com.archivesystem.service.FileStorageService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,13 +26,16 @@ import java.util.Map;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/archives")
+@RequestMapping("/archives")
 @RequiredArgsConstructor
 @Tag(name = "档案管理", description = "档案CRUD、文件上传下载")
 public class ArchiveController {
 
     private final ArchiveService archiveService;
     private final FileStorageService fileStorageService;
+    private final ArchiveIndexService archiveIndexService;
+    private final MetricsConfig metricsConfig;
+    private final AccessLogService accessLogService;
 
     /**
      * 创建档案.
@@ -159,5 +166,73 @@ public class ArchiveController {
     public Result<Void> deleteFile(@PathVariable Long fileId) {
         fileStorageService.delete(fileId);
         return Result.success("删除成功", null);
+    }
+
+    // ===== 全文检索接口 =====
+
+    /**
+     * 全文检索档案.
+     */
+    @GetMapping("/search")
+    @Operation(summary = "全文检索", description = "支持关键词搜索、筛选、高亮、聚合统计")
+    public Result<ArchiveSearchResult> search(ArchiveSearchRequest request, HttpServletRequest httpRequest) {
+        metricsConfig.recordSearchRequest();
+        long startTime = System.currentTimeMillis();
+        
+        ArchiveSearchResult result = archiveIndexService.search(request);
+        
+        // 记录搜索审计日志
+        long duration = System.currentTimeMillis() - startTime;
+        String clientIp = getClientIp(httpRequest);
+        accessLogService.logSearch(request.getKeyword(), (int) result.getTotal(), duration, clientIp);
+        
+        return Result.success(result);
+    }
+    
+    /**
+     * 获取客户端IP.
+     */
+    private String getClientIp(HttpServletRequest request) {
+        String ip = request.getHeader("X-Forwarded-For");
+        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getHeader("X-Real-IP");
+        }
+        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getRemoteAddr();
+        }
+        if (ip != null && ip.contains(",")) {
+            ip = ip.split(",")[0].trim();
+        }
+        return ip;
+    }
+
+    /**
+     * 获取搜索聚合统计.
+     */
+    @GetMapping("/search/aggregations")
+    @Operation(summary = "获取搜索聚合统计", description = "按档案类型、年份、状态等维度统计")
+    public Result<Map<String, Object>> getSearchAggregations() {
+        Map<String, Object> aggregations = archiveIndexService.getAggregations();
+        return Result.success(aggregations);
+    }
+
+    /**
+     * 重建搜索索引.
+     */
+    @PostMapping("/search/reindex")
+    @Operation(summary = "重建搜索索引", description = "全量重建Elasticsearch索引（管理员操作）")
+    public Result<Void> rebuildIndex() {
+        archiveIndexService.rebuildAllIndexes();
+        return Result.success("索引重建已启动", null);
+    }
+
+    /**
+     * 索引单个档案.
+     */
+    @PostMapping("/{id}/index")
+    @Operation(summary = "索引档案", description = "将指定档案同步到搜索索引")
+    public Result<Void> indexArchive(@PathVariable Long id) {
+        archiveIndexService.indexArchive(id);
+        return Result.success("索引已更新", null);
     }
 }

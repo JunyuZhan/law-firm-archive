@@ -67,6 +67,8 @@ CREATE TABLE IF NOT EXISTS arc_fonds (
     status VARCHAR(20) DEFAULT 'ACTIVE',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by BIGINT,
+    updated_by BIGINT,
     deleted BOOLEAN DEFAULT FALSE
 );
 
@@ -89,6 +91,8 @@ CREATE TABLE IF NOT EXISTS arc_category (
     full_path VARCHAR(500),                      -- 完整路径（如：01/01-01/01-01-01）
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by BIGINT,
+    updated_by BIGINT,
     deleted BOOLEAN DEFAULT FALSE,
     UNIQUE(parent_id, category_code)
 );
@@ -146,6 +150,7 @@ CREATE TABLE IF NOT EXISTS arc_archive (
     source_system VARCHAR(100),                  -- 来源系统名称
     source_id VARCHAR(100),                      -- 来源系统ID
     source_no VARCHAR(100),                      -- 来源系统编号
+    callback_url VARCHAR(500),                   -- 回调URL（处理完成后通知）
     
     -- ===== 业务关联（律所业务）=====
     case_no VARCHAR(100),                        -- 案件编号
@@ -278,26 +283,33 @@ CREATE TABLE IF NOT EXISTS arc_borrow_application (
     id BIGSERIAL PRIMARY KEY,
     application_no VARCHAR(50) NOT NULL UNIQUE,  -- 申请编号
     archive_id BIGINT NOT NULL REFERENCES arc_archive(id),
+    archive_no VARCHAR(100),                     -- 档案号（冗余）
+    archive_title VARCHAR(500),                  -- 档案题名（冗余）
     
     -- ===== 申请人信息 =====
     applicant_id BIGINT,                         -- 申请人ID
     applicant_name VARCHAR(100) NOT NULL,        -- 申请人姓名
     applicant_dept VARCHAR(100),                 -- 申请人部门
     applicant_phone VARCHAR(50),                 -- 联系电话
+    apply_time TIMESTAMP,                        -- 申请时间
     
     -- ===== 借阅信息 =====
     borrow_purpose TEXT NOT NULL,                -- 借阅目的
     borrow_type VARCHAR(20) DEFAULT 'ONLINE',    -- 借阅方式：ONLINE-在线阅览, DOWNLOAD-下载, COPY-复制
     expected_return_date DATE,                   -- 预计归还日期
     actual_return_date DATE,                     -- 实际归还日期
+    borrow_time TIMESTAMP,                       -- 借出时间
+    renew_count INTEGER DEFAULT 0,               -- 续借次数
     
     -- ===== 审批信息 =====
     -- PENDING-待审批, APPROVED-已批准, REJECTED-已拒绝, BORROWED-借出中, RETURNED-已归还, CANCELLED-已取消
     status VARCHAR(30) DEFAULT 'PENDING',
     approver_id BIGINT,                          -- 审批人ID
     approver_name VARCHAR(100),                  -- 审批人姓名
-    approved_at TIMESTAMP,                       -- 审批时间
-    approval_comment TEXT,                       -- 审批意见
+    approve_time TIMESTAMP,                      -- 审批时间
+    approve_remarks TEXT,                        -- 审批意见
+    reject_reason TEXT,                          -- 拒绝原因
+    return_remarks TEXT,                         -- 归还备注
     
     -- ===== 使用记录 =====
     download_count INTEGER DEFAULT 0,            -- 下载次数
@@ -307,6 +319,8 @@ CREATE TABLE IF NOT EXISTS arc_borrow_application (
     remarks TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by BIGINT,
+    updated_by BIGINT,
     deleted BOOLEAN DEFAULT FALSE
 );
 
@@ -404,19 +418,55 @@ COMMENT ON TABLE arc_operation_log IS '操作日志表 - 记录所有档案操�
 -- 5.2 访问日志表
 CREATE TABLE IF NOT EXISTS arc_access_log (
     id BIGSERIAL PRIMARY KEY,
-    archive_id BIGINT NOT NULL,
+    archive_id BIGINT,
     file_id BIGINT,
     
-    access_type VARCHAR(30) NOT NULL,            -- 访问类型：VIEW, DOWNLOAD, PRINT, PREVIEW
+    access_type VARCHAR(30) NOT NULL,            -- 访问类型：VIEW, DOWNLOAD, PRINT, PREVIEW, SEARCH
     access_ip VARCHAR(50),
     access_ua TEXT,
     
     user_id BIGINT,
     user_name VARCHAR(100),
-    accessed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    accessed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    -- ===== 搜索专用字段 =====
+    search_keyword VARCHAR(500),                 -- 搜索关键词
+    search_result_count INTEGER,                 -- 搜索结果数量
+    duration BIGINT,                             -- 请求耗时（毫秒）
+    extra_data JSONB                             -- 额外数据
 );
 
 COMMENT ON TABLE arc_access_log IS '档案访问日志表';
+CREATE INDEX idx_access_log_type ON arc_access_log(access_type);
+CREATE INDEX idx_access_log_user ON arc_access_log(user_id);
+CREATE INDEX idx_access_log_time ON arc_access_log(accessed_at);
+
+-- =====================================================
+-- 5.2 系统配置表
+-- =====================================================
+
+CREATE TABLE IF NOT EXISTS sys_config (
+    id BIGSERIAL PRIMARY KEY,
+    config_key VARCHAR(100) NOT NULL UNIQUE,     -- 配置键
+    config_value TEXT,                           -- 配置值
+    config_type VARCHAR(50) DEFAULT 'STRING',    -- 值类型：STRING, NUMBER, BOOLEAN, JSON
+    config_group VARCHAR(50),                    -- 配置分组
+    description VARCHAR(500),                    -- 配置描述
+    editable BOOLEAN DEFAULT TRUE,               -- 是否可编辑
+    sort_order INTEGER DEFAULT 0,                -- 排序
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by BIGINT,
+    updated_by BIGINT
+);
+
+COMMENT ON TABLE sys_config IS '系统配置表';
+COMMENT ON COLUMN sys_config.config_key IS '配置键，全局唯一';
+COMMENT ON COLUMN sys_config.config_type IS '值类型：STRING-字符串, NUMBER-数字, BOOLEAN-布尔, JSON-JSON对象';
+COMMENT ON COLUMN sys_config.config_group IS '配置分组：ARCHIVE_NO-档案号规则, RETENTION-保管期限, SYSTEM-系统参数';
+
+CREATE INDEX idx_config_group ON sys_config(config_group);
+CREATE INDEX idx_config_key ON sys_config(config_key);
 
 -- =====================================================
 -- 六、外部集成表
@@ -444,6 +494,8 @@ CREATE TABLE IF NOT EXISTS arc_external_source (
     
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by BIGINT,
+    updated_by BIGINT,
     deleted BOOLEAN DEFAULT FALSE
 );
 
@@ -510,10 +562,32 @@ ON CONFLICT DO NOTHING;
 
 -- 初始化系统管理员（密码：admin123）
 INSERT INTO sys_user (username, password, real_name, user_type, status) VALUES
-('admin', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6zX32', '系统管理员', 'SYSTEM_ADMIN', 'ACTIVE')
+('admin', '$2a$10$24PbD0PuBiLhmIKtNLy7e.I.pmmsTTrWqFsfqzo3FmCwzE4bbUTdG', '系统管理员', 'SYSTEM_ADMIN', 'ACTIVE')
 ON CONFLICT (username) DO NOTHING;
 
 -- 初始化律所系统来源
 INSERT INTO arc_external_source (source_code, source_name, source_type, description, auth_type, enabled) VALUES
 ('LAW_FIRM_MAIN', '律所管理系统', 'LAW_FIRM', '接收律所管理系统推送的归档档案', 'API_KEY', true)
 ON CONFLICT (source_code) DO NOTHING;
+
+-- 初始化系统配置
+INSERT INTO sys_config (config_key, config_value, config_type, config_group, description, editable, sort_order) VALUES
+-- 档案号规则配置
+('archive.no.prefix.DOCUMENT', 'WS', 'STRING', 'ARCHIVE_NO', '文书档案号前缀', true, 1),
+('archive.no.prefix.SCIENCE', 'KJ', 'STRING', 'ARCHIVE_NO', '科技档案号前缀', true, 2),
+('archive.no.prefix.ACCOUNTING', 'CW', 'STRING', 'ARCHIVE_NO', '会计档案号前缀', true, 3),
+('archive.no.prefix.PERSONNEL', 'RS', 'STRING', 'ARCHIVE_NO', '人事档案号前缀', true, 4),
+('archive.no.prefix.SPECIAL', 'ZY', 'STRING', 'ARCHIVE_NO', '专业档案号前缀', true, 5),
+('archive.no.prefix.AUDIOVISUAL', 'SX', 'STRING', 'ARCHIVE_NO', '声像档案号前缀', true, 6),
+('archive.no.prefix.DEFAULT', 'ARC', 'STRING', 'ARCHIVE_NO', '默认档案号前缀', true, 7),
+('archive.no.date.format', 'yyyyMMdd', 'STRING', 'ARCHIVE_NO', '档案号日期格式', true, 8),
+('archive.no.seq.digits', '4', 'NUMBER', 'ARCHIVE_NO', '档案号序号位数', true, 9),
+-- 保管期限配置
+('retention.default.code', 'Y10', 'STRING', 'RETENTION', '默认保管期限代码', true, 10),
+('retention.warn.days', '90', 'NUMBER', 'RETENTION', '到期预警天数', true, 11),
+-- 系统参数
+('system.upload.max.size', '104857600', 'NUMBER', 'SYSTEM', '上传文件最大大小（字节）', true, 20),
+('system.upload.allowed.types', 'pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,gif,zip,rar,txt,ofd', 'STRING', 'SYSTEM', '允许上传的文件类型', true, 21),
+('system.borrow.max.days', '30', 'NUMBER', 'SYSTEM', '最大借阅天数', true, 22),
+('system.search.max.results', '10000', 'NUMBER', 'SYSTEM', '搜索最大结果数', true, 23)
+ON CONFLICT (config_key) DO NOTHING;

@@ -59,10 +59,22 @@ const router = createRouter({
           meta: { title: '统计分析', requiresAuth: true }
         },
         {
+          path: 'reports',
+          name: 'Reports',
+          component: () => import('@/views/statistics/ReportPage.vue'),
+          meta: { title: '报表导出', requiresAuth: true }
+        },
+        {
           path: 'sources',
           name: 'SourceList',
           component: () => import('@/views/source/SourceList.vue'),
           meta: { title: '来源管理', requiresAuth: true }
+        },
+        {
+          path: 'fonds',
+          name: 'FondsManage',
+          component: () => import('@/views/fonds/FondsManage.vue'),
+          meta: { title: '全宗管理', requiresAuth: true }
         },
         // 系统管理
         {
@@ -72,10 +84,22 @@ const router = createRouter({
           meta: { title: '用户管理', requiresAuth: true }
         },
         {
+          path: 'system/roles',
+          name: 'RoleManage',
+          component: () => import('@/views/system/RoleManage.vue'),
+          meta: { title: '角色管理', requiresAuth: true }
+        },
+        {
           path: 'system/logs',
           name: 'OperationLog',
           component: () => import('@/views/system/OperationLog.vue'),
           meta: { title: '操作日志', requiresAuth: true }
+        },
+        {
+          path: 'system/config',
+          name: 'SystemConfig',
+          component: () => import('@/views/system/SystemConfig.vue'),
+          meta: { title: '系统配置', requiresAuth: true }
         }
       ]
     },

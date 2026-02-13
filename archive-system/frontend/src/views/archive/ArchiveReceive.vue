@@ -15,36 +15,19 @@
 
       <!-- 步骤1：上传文件 -->
       <div v-show="currentStep === 0" class="step-content">
-        <el-upload
-          ref="uploadRef"
-          class="file-uploader"
-          drag
-          multiple
+        <BatchUpload
+          ref="batchUploadRef"
+          :allowed-types="allowedFileTypes"
+          :max-file-size="maxFileSize"
+          :max-files="20"
+          :concurrent="3"
           :auto-upload="false"
-          :on-change="handleFileChange"
-          :on-remove="handleFileRemove"
-          :file-list="fileList"
-        >
-          <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
-          <div class="el-upload__text">
-            拖拽文件到此处，或 <em>点击选择文件</em>
-          </div>
-          <template #tip>
-            <div class="el-upload__tip">
-              支持 PDF、Word、Excel、图片等格式，单文件不超过100MB
-            </div>
-          </template>
-        </el-upload>
-
-        <div class="file-list" v-if="fileList.length > 0">
-          <div class="file-list-header">
-            <span>已选择 {{ fileList.length }} 个文件</span>
-            <el-button type="danger" link size="small" @click="clearFiles">清空</el-button>
-          </div>
-        </div>
+          @change="handleUploadChange"
+          @complete="handleUploadComplete"
+        />
 
         <div class="step-actions">
-          <el-button type="primary" @click="nextStep" :disabled="fileList.length === 0">
+          <el-button type="primary" @click="nextStep" :disabled="uploadedFileIds.length === 0 && !hasSelectedFiles">
             下一步
           </el-button>
           <el-button @click="skipUpload">跳过上传</el-button>
@@ -202,13 +185,13 @@
           <el-descriptions-item label="题名" :span="2">{{ form.title }}</el-descriptions-item>
           <el-descriptions-item label="责任者">{{ form.responsibility || '-' }}</el-descriptions-item>
           <el-descriptions-item label="文件日期">{{ form.documentDate || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="密级">{{ form.securityLevel || '内部' }}</el-descriptions-item>
-          <el-descriptions-item label="上传文件">{{ fileList.length }} 个</el-descriptions-item>
+          <el-descriptions-item label="密级">{{ getSecurityLevelName(form.securityLevel) }}</el-descriptions-item>
+          <el-descriptions-item label="上传文件">{{ uploadedFileIds.length }} 个</el-descriptions-item>
         </el-descriptions>
 
-        <div class="file-preview" v-if="fileList.length > 0">
-          <h4>待上传文件：</h4>
-          <el-tag v-for="file in fileList" :key="file.uid" class="file-tag">
+        <div class="file-preview" v-if="uploadedFiles.length > 0">
+          <h4>已上传文件：</h4>
+          <el-tag v-for="file in uploadedFiles" :key="file.id" class="file-tag" type="success">
             {{ file.name }}
           </el-tag>
         </div>
@@ -225,19 +208,23 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { UploadFilled } from '@element-plus/icons-vue'
-import { createArchive, uploadFile } from '@/api/archive'
+import { createArchive } from '@/api/archive'
+import BatchUpload from '@/components/BatchUpload.vue'
 
 const router = useRouter()
 
 const currentStep = ref(0)
-const uploadRef = ref(null)
+const batchUploadRef = ref(null)
 const formRef = ref(null)
-const fileList = ref([])
 const submitting = ref(false)
+const uploadedFileIds = ref([])
+
+// 允许的文件类型
+const allowedFileTypes = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'jpg', 'jpeg', 'png', 'gif', 'zip', 'rar', 'ofd', 'tif', 'tiff']
+const maxFileSize = 100 * 1024 * 1024 // 100MB
 
 const form = reactive({
   archiveType: 'DOCUMENT',
@@ -263,43 +250,73 @@ const rules = {
   title: [{ required: true, message: '请输入档案题名', trigger: 'blur' }]
 }
 
+// 计算是否有选中的文件（待上传或已上传）
+const hasSelectedFiles = computed(() => {
+  return batchUploadRef.value?.fileQueue?.length > 0
+})
+
 // 返回
 const goBack = () => {
   router.push('/archives')
 }
 
-// 文件选择变化
-const handleFileChange = (file, files) => {
-  fileList.value = files
+// 上传状态变化
+const handleUploadChange = (ids) => {
+  uploadedFileIds.value = ids
 }
 
-// 文件移除
-const handleFileRemove = (file, files) => {
-  fileList.value = files
-}
-
-// 清空文件
-const clearFiles = () => {
-  fileList.value = []
-  uploadRef.value?.clearFiles()
+// 上传完成
+const handleUploadComplete = (result) => {
+  if (result.error > 0) {
+    ElMessage.warning(`${result.success} 个文件上传成功，${result.error} 个文件上传失败`)
+  } else {
+    ElMessage.success(`${result.success} 个文件上传成功`)
+  }
 }
 
 // 跳过上传
 const skipUpload = () => {
-  fileList.value = []
+  batchUploadRef.value?.clearAll()
+  uploadedFileIds.value = []
   currentStep.value = 1
 }
 
 // 下一步
 const nextStep = async () => {
+  // 步骤0：上传文件
+  if (currentStep.value === 0) {
+    // 检查是否有待上传的文件
+    const pendingFiles = batchUploadRef.value?.fileQueue?.filter(f => f.status === 'pending') || []
+    if (pendingFiles.length > 0) {
+      // 开始上传
+      await batchUploadRef.value.startUpload()
+      
+      // 等待上传完成
+      await new Promise(resolve => {
+        const checkComplete = setInterval(() => {
+          const queue = batchUploadRef.value?.fileQueue || []
+          const uploading = queue.some(f => f.status === 'pending' || f.status === 'uploading')
+          if (!uploading) {
+            clearInterval(checkComplete)
+            resolve()
+          }
+        }, 500)
+      })
+      
+      // 更新已上传文件ID
+      uploadedFileIds.value = batchUploadRef.value?.uploadedFileIds || []
+    }
+  }
+  
+  // 步骤1：验证表单
   if (currentStep.value === 1) {
-    // 验证表单
     try {
       await formRef.value.validate()
     } catch (e) {
       return
     }
   }
+  
   currentStep.value++
 }
 
@@ -313,25 +330,10 @@ const handleSubmit = async () => {
   submitting.value = true
   
   try {
-    // 1. 先上传文件（如果有）
-    const uploadedFileIds = []
-    if (fileList.value.length > 0) {
-      for (const file of fileList.value) {
-        try {
-          const res = await uploadFile(file.raw, null, null)
-          if (res.data?.id) {
-            uploadedFileIds.push(res.data.id)
-          }
-        } catch (e) {
-          console.error('文件上传失败:', file.name, e)
-        }
-      }
-    }
-
-    // 2. 创建档案
+    // 创建档案
     const archiveData = {
       ...form,
-      fileIds: uploadedFileIds
+      fileIds: uploadedFileIds.value
     }
     
     const res = await createArchive(archiveData)
@@ -346,6 +348,12 @@ const handleSubmit = async () => {
     submitting.value = false
   }
 }
+
+// 已上传的文件列表
+const uploadedFiles = computed(() => {
+  return (batchUploadRef.value?.fileQueue || [])
+    .filter(f => f.status === 'success')
+})
 
 // 格式化函数
 const getArchiveTypeName = (type) => {
@@ -368,6 +376,16 @@ const getRetentionName = (code) => {
     Y5: '5年'
   }
   return map[code] || code
+}
+
+const getSecurityLevelName = (level) => {
+  const map = {
+    PUBLIC: '公开',
+    INTERNAL: '内部',
+    CONFIDENTIAL: '秘密',
+    SECRET: '机密'
+  }
+  return map[level] || '内部'
 }
 </script>
 
@@ -393,23 +411,6 @@ const getRetentionName = (code) => {
   min-height: 400px;
 }
 
-.file-uploader {
-  :deep(.el-upload-dragger) {
-    width: 100%;
-    padding: 40px;
-  }
-}
-
-.file-list {
-  margin-top: 20px;
-  
-  &-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    color: #666;
-  }
-}
 
 .archive-form {
   max-width: 900px;

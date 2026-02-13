@@ -1,4 +1,4 @@
-import request from '@/utils/request'
+import request from './index'
 
 // ========== 用户管理 ==========
 
@@ -7,7 +7,7 @@ import request from '@/utils/request'
  */
 export function getUserList(params) {
   return request({
-    url: '/api/users',
+    url: '/users',
     method: 'get',
     params
   })
@@ -18,7 +18,7 @@ export function getUserList(params) {
  */
 export function getUserDetail(id) {
   return request({
-    url: `/api/users/${id}`,
+    url: `/users/${id}`,
     method: 'get'
   })
 }
@@ -28,7 +28,7 @@ export function getUserDetail(id) {
  */
 export function createUser(data) {
   return request({
-    url: '/api/users',
+    url: '/users',
     method: 'post',
     data
   })
@@ -39,7 +39,7 @@ export function createUser(data) {
  */
 export function updateUser(id, data) {
   return request({
-    url: `/api/users/${id}`,
+    url: `/users/${id}`,
     method: 'put',
     data
   })
@@ -50,7 +50,7 @@ export function updateUser(id, data) {
  */
 export function deleteUser(id) {
   return request({
-    url: `/api/users/${id}`,
+    url: `/users/${id}`,
     method: 'delete'
   })
 }
@@ -60,7 +60,7 @@ export function deleteUser(id) {
  */
 export function resetPassword(id, newPassword) {
   return request({
-    url: `/api/users/${id}/reset-password`,
+    url: `/users/${id}/reset-password`,
     method: 'put',
     data: { newPassword }
   })
@@ -71,7 +71,7 @@ export function resetPassword(id, newPassword) {
  */
 export function changePassword(oldPassword, newPassword) {
   return request({
-    url: '/api/users/change-password',
+    url: '/users/change-password',
     method: 'put',
     data: { oldPassword, newPassword }
   })
@@ -82,7 +82,7 @@ export function changePassword(oldPassword, newPassword) {
  */
 export function updateUserStatus(id, status) {
   return request({
-    url: `/api/users/${id}/status`,
+    url: `/users/${id}/status`,
     method: 'put',
     data: { status }
   })
@@ -93,7 +93,7 @@ export function updateUserStatus(id, status) {
  */
 export function assignRoles(id, roleIds) {
   return request({
-    url: `/api/users/${id}/roles`,
+    url: `/users/${id}/roles`,
     method: 'put',
     data: { roleIds }
   })
@@ -104,7 +104,7 @@ export function assignRoles(id, roleIds) {
  */
 export function getUserRoles(id) {
   return request({
-    url: `/api/users/${id}/roles`,
+    url: `/users/${id}/roles`,
     method: 'get'
   })
 }
@@ -114,61 +114,9 @@ export function getUserRoles(id) {
  */
 export function getCurrentUser() {
   return request({
-    url: '/api/users/current',
+    url: '/users/current',
     method: 'get'
   })
 }
 
-// ========== 角色管理 ==========
-
-/**
- * 获取角色列表
- */
-export function getRoleList() {
-  return request({
-    url: '/api/roles',
-    method: 'get'
-  })
-}
-
-/**
- * 获取角色详情
- */
-export function getRoleDetail(id) {
-  return request({
-    url: `/api/roles/${id}`,
-    method: 'get'
-  })
-}
-
-/**
- * 创建角色
- */
-export function createRole(data) {
-  return request({
-    url: '/api/roles',
-    method: 'post',
-    data
-  })
-}
-
-/**
- * 更新角色
- */
-export function updateRole(id, data) {
-  return request({
-    url: `/api/roles/${id}`,
-    method: 'put',
-    data
-  })
-}
-
-/**
- * 删除角色
- */
-export function deleteRole(id) {
-  return request({
-    url: `/api/roles/${id}`,
-    method: 'delete'
-  })
-}
+// ========== 角色管理（已移至 role.js）==========

@@ -76,6 +76,10 @@ export function updateArchiveStatus(id, status) {
 
 /**
  * 上传文件
+ * @param {File} file - 文件对象
+ * @param {number|null} archiveId - 档案ID（可选）
+ * @param {string|null} fileCategory - 文件分类（可选）
+ * @param {function|null} onProgress - 进度回调，接收 progressEvent 对象
  */
 export function uploadFile(file, archiveId, fileCategory, onProgress) {
   const formData = new FormData()
@@ -93,12 +97,7 @@ export function uploadFile(file, archiveId, fileCategory, onProgress) {
     headers: {
       'Content-Type': 'multipart/form-data'
     },
-    onUploadProgress: (progressEvent) => {
-      if (onProgress) {
-        const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total)
-        onProgress(percent)
-      }
-    }
+    onUploadProgress: onProgress
   })
 }
 
@@ -152,4 +151,127 @@ export function deleteFile(fileId) {
     url: `/archives/files/${fileId}`,
     method: 'delete'
   })
+}
+
+// ========== 存放位置管理 ==========
+export const locationApi = {
+  /**
+   * 获取位置列表
+   */
+  list(params) {
+    return request({
+      url: '/locations',
+      method: 'get',
+      params
+    })
+  },
+
+  /**
+   * 获取位置详情
+   */
+  get(id) {
+    return request({
+      url: `/locations/${id}`,
+      method: 'get'
+    })
+  },
+
+  /**
+   * 创建位置
+   */
+  create(data) {
+    return request({
+      url: '/locations',
+      method: 'post',
+      data
+    })
+  },
+
+  /**
+   * 更新位置
+   */
+  update(id, data) {
+    return request({
+      url: `/locations/${id}`,
+      method: 'put',
+      data
+    })
+  },
+
+  /**
+   * 删除位置
+   */
+  delete(id) {
+    return request({
+      url: `/locations/${id}`,
+      method: 'delete'
+    })
+  }
+}
+
+// ========== 档案来源管理 ==========
+export const sourceApi = {
+  /**
+   * 获取来源列表
+   */
+  list(params) {
+    return request({
+      url: '/sources',
+      method: 'get',
+      params
+    })
+  },
+
+  /**
+   * 获取来源详情
+   */
+  get(id) {
+    return request({
+      url: `/sources/${id}`,
+      method: 'get'
+    })
+  },
+
+  /**
+   * 创建来源
+   */
+  create(data) {
+    return request({
+      url: '/sources',
+      method: 'post',
+      data
+    })
+  },
+
+  /**
+   * 更新来源
+   */
+  update(id, data) {
+    return request({
+      url: `/sources/${id}`,
+      method: 'put',
+      data
+    })
+  },
+
+  /**
+   * 切换启用状态
+   */
+  toggle(id, enabled) {
+    return request({
+      url: `/sources/${id}/toggle`,
+      method: 'put',
+      params: { enabled }
+    })
+  },
+
+  /**
+   * 测试连接
+   */
+  test(id) {
+    return request({
+      url: `/sources/${id}/test`,
+      method: 'post'
+    })
+  }
 }

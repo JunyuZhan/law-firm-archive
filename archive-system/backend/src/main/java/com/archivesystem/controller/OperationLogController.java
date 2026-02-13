@@ -23,7 +23,7 @@ import java.util.Map;
  */
 @Tag(name = "操作日志", description = "操作日志查询与导出")
 @RestController
-@RequestMapping("/api/operation-logs")
+@RequestMapping("/operation-logs")
 @RequiredArgsConstructor
 public class OperationLogController {
 

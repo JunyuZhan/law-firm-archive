@@ -60,9 +60,9 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         // 开放API接口（供外部系统调用）
-                        .requestMatchers("/api/open/**").permitAll()
-                        // 认证接口
-                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/open/**").permitAll()
+                        // 认证接口（注意：这里不包含context-path）
+                        .requestMatchers("/auth/**").permitAll()
                         // 健康检查
                         .requestMatchers("/actuator/**").permitAll()
                         // API文档

@@ -21,4 +21,13 @@ public interface AccessLogService {
      * 记录文件预览.
      */
     void logPreview(Long archiveId, Long fileId, String accessIp);
+
+    /**
+     * 记录搜索操作.
+     * @param keyword 搜索关键词
+     * @param resultCount 结果数量
+     * @param duration 耗时（毫秒）
+     * @param accessIp 访问IP
+     */
+    void logSearch(String keyword, int resultCount, long duration, String accessIp);
 }

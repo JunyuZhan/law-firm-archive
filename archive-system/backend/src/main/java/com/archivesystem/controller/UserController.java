@@ -20,7 +20,7 @@ import java.util.List;
  */
 @Tag(name = "用户管理", description = "用户CRUD、角色分配等接口")
 @RestController
-@RequestMapping("/api/users")
+@RequestMapping("/users")
 @RequiredArgsConstructor
 public class UserController {
 

@@ -186,11 +186,11 @@ public class StatisticsServiceImpl implements StatisticsService {
                         .eq(BorrowApplication::getDeleted, false));
         result.put("totalBorrows", totalBorrows);
 
-        // 本月借阅
+        // 本月借阅 (使用 created_at 作为申请时间)
         LocalDateTime monthStart = LocalDate.now().withDayOfMonth(1).atStartOfDay();
         long monthlyBorrows = borrowMapper.selectCount(
                 new LambdaQueryWrapper<BorrowApplication>()
-                        .ge(BorrowApplication::getApplyTime, monthStart)
+                        .ge(BorrowApplication::getCreatedAt, monthStart)
                         .eq(BorrowApplication::getDeleted, false));
         result.put("monthlyBorrows", monthlyBorrows);
 

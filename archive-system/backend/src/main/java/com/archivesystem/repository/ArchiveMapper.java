@@ -37,4 +37,10 @@ public interface ArchiveMapper extends BaseMapper<Archive> {
      */
     @Select("SELECT * FROM arc_archive WHERE fonds_id = #{fondsId} AND deleted = false ORDER BY created_at DESC")
     List<Archive> selectByFondsId(@Param("fondsId") Long fondsId);
+
+    /**
+     * 分页查询用于索引重建.
+     */
+    @Select("SELECT * FROM arc_archive WHERE deleted = false ORDER BY id LIMIT #{limit} OFFSET #{offset}")
+    List<Archive> selectPageForIndex(@Param("offset") int offset, @Param("limit") int limit);
 }

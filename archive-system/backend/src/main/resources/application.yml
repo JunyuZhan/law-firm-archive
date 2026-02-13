@@ -28,6 +28,30 @@ spring:
       password: ""
       database: 1
   
+  # RabbitMQ配置
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: admin
+    password: admin123
+    virtual-host: /
+    listener:
+      simple:
+        acknowledge-mode: manual
+        prefetch: 10
+        retry:
+          enabled: true
+          initial-interval: 1000
+          max-attempts: 3
+          max-interval: 10000
+          multiplier: 2
+  
+  # Elasticsearch配置
+  elasticsearch:
+    uris: http://localhost:9200
+    connection-timeout: 5s
+    socket-timeout: 30s
+  
   # Jackson配置
   jackson:
     date-format: yyyy-MM-dd HH:mm:ss
@@ -35,21 +59,29 @@ spring:
     serialization:
       write-dates-as-timestamps: false
 
-# Actuator健康检查配置
+# Actuator健康检查与监控配置
 management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,metrics,prometheus
       base-path: /actuator
   endpoint:
     health:
       show-details: when-authorized
+    prometheus:
+      enabled: true
   health:
     db:
       enabled: true
     redis:
       enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
 
 # MyBatis-Plus配置
 mybatis-plus:
@@ -110,3 +142,5 @@ logging:
   level:
     com.archivesystem: debug
     org.springframework.security: info
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{traceId:-}] %-5level %logger{36} - %msg%n"

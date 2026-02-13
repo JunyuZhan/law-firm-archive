@@ -18,7 +18,7 @@ import java.util.Map;
  * 全宗管理控制器.
  */
 @RestController
-@RequestMapping("/api/fonds")
+@RequestMapping("/fonds")
 @RequiredArgsConstructor
 @Tag(name = "全宗管理", description = "全宗CRUD接口")
 public class FondsController {

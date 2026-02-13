@@ -3,20 +3,26 @@ package com.archivesystem.service.impl;
 import com.archivesystem.common.PageResult;
 import com.archivesystem.common.exception.BusinessException;
 import com.archivesystem.common.exception.NotFoundException;
+import com.archivesystem.config.MetricsConfig;
+import com.archivesystem.config.RabbitMQConfig;
 import com.archivesystem.dto.archive.*;
 import com.archivesystem.entity.Archive;
 import com.archivesystem.entity.Category;
 import com.archivesystem.entity.DigitalFile;
 import com.archivesystem.entity.Fonds;
+import com.archivesystem.mq.ArchiveReceiveMessage;
 import com.archivesystem.repository.*;
 import com.archivesystem.security.SecurityUtils;
 import com.archivesystem.service.ArchiveService;
+import com.archivesystem.service.ConfigService;
 import com.archivesystem.service.FileStorageService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -42,14 +48,22 @@ public class ArchiveServiceImpl implements ArchiveService {
     private final CategoryMapper categoryMapper;
     private final RetentionPeriodMapper retentionPeriodMapper;
     private final FileStorageService fileStorageService;
+    private final RabbitTemplate rabbitTemplate;
+    private final StringRedisTemplate stringRedisTemplate;
+    private final MetricsConfig metricsConfig;
+    private final ConfigService configService;
 
-    // 档案号计数器（生产环境应使用Redis或数据库序列）
+    // 档案号计数器（仅作为Redis不可用时的备用）
     private static final AtomicInteger archiveNoCounter = new AtomicInteger(1);
+    
+    // Redis档案号序列键前缀
+    private static final String ARCHIVE_NO_SEQ_PREFIX = "archive:seq:";
 
     @Override
     @Transactional
     public ArchiveReceiveResponse receive(ArchiveReceiveRequest request) {
-        log.info("接收档案: sourceType={}, sourceId={}", request.getSourceType(), request.getSourceId());
+        log.info("接收档案: sourceType={}, sourceId={}, async={}", 
+                request.getSourceType(), request.getSourceId(), request.getAsync());
 
         // 检查是否已存在（幂等）
         Archive existingArchive = archiveMapper.selectBySourceId(request.getSourceType(), request.getSourceId());
@@ -71,6 +85,10 @@ public class ArchiveServiceImpl implements ArchiveService {
         // 获取默认全宗
         Fonds defaultFonds = fondsMapper.selectByFondsNo("QZ001");
 
+        // 确定初始状态：异步处理时为PENDING，同步处理时直接RECEIVED
+        boolean isAsync = request.getAsync() == null || request.getAsync();
+        String initialStatus = isAsync && hasFiles(request) ? Archive.STATUS_PROCESSING : Archive.STATUS_RECEIVED;
+
         // 创建档案记录
         Archive archive = Archive.builder()
                 .archiveNo(archiveNo)
@@ -85,6 +103,7 @@ public class ArchiveServiceImpl implements ArchiveService {
                 .sourceType(request.getSourceType())
                 .sourceId(request.getSourceId())
                 .sourceNo(request.getSourceNo())
+                .callbackUrl(request.getCallbackUrl())
                 .caseNo(request.getCaseNo())
                 .caseName(request.getCaseName())
                 .clientName(request.getClientName())
@@ -93,9 +112,9 @@ public class ArchiveServiceImpl implements ArchiveService {
                 .keywords(request.getKeywords())
                 .archiveAbstract(request.getArchiveAbstract())
                 .remarks(request.getRemarks())
-                .status(Archive.STATUS_RECEIVED)
+                .status(initialStatus)
                 .receivedAt(LocalDateTime.now())
-                .hasElectronic(request.getFiles() != null && !request.getFiles().isEmpty())
+                .hasElectronic(hasFiles(request))
                 .build();
 
         // 计算保管到期日期
@@ -112,31 +131,56 @@ public class ArchiveServiceImpl implements ArchiveService {
         // 处理文件
         int fileCount = 0;
         long totalSize = 0;
-        if (request.getFiles() != null && !request.getFiles().isEmpty()) {
-            for (int i = 0; i < request.getFiles().size(); i++) {
-                ArchiveReceiveRequest.FileInfo fileInfo = request.getFiles().get(i);
-                try {
-                    // 下载并存储文件
-                    DigitalFile digitalFile = fileStorageService.downloadAndStore(
-                            archive.getId(),
-                            fileInfo.getDownloadUrl(),
-                            fileInfo.getFileName(),
-                            fileInfo.getFileCategory(),
-                            i + 1
-                    );
-                    if (digitalFile != null) {
-                        fileCount++;
-                        totalSize += digitalFile.getFileSize() != null ? digitalFile.getFileSize() : 0;
+        
+        if (hasFiles(request)) {
+            if (isAsync) {
+                // 异步处理：发送消息到RabbitMQ
+                ArchiveReceiveMessage message = ArchiveReceiveMessage.fromRequest(
+                        archive.getId(), archiveNo, request, request.getCallbackUrl());
+                
+                rabbitTemplate.convertAndSend(
+                        RabbitMQConfig.ARCHIVE_EXCHANGE,
+                        RabbitMQConfig.ARCHIVE_RECEIVE_ROUTING_KEY,
+                        message
+                );
+                
+                log.info("已发送异步处理消息: archiveId={}, messageId={}", archive.getId(), message.getMessageId());
+                
+                return ArchiveReceiveResponse.builder()
+                        .archiveId(archive.getId())
+                        .archiveNo(archiveNo)
+                        .status(Archive.STATUS_PROCESSING)
+                        .receivedAt(archive.getReceivedAt())
+                        .fileCount(request.getFiles().size())
+                        .message("接收成功，文件正在异步处理中")
+                        .build();
+            } else {
+                // 同步处理（向后兼容）
+                for (int i = 0; i < request.getFiles().size(); i++) {
+                    ArchiveReceiveRequest.FileInfo fileInfo = request.getFiles().get(i);
+                    try {
+                        DigitalFile digitalFile = fileStorageService.downloadAndStore(
+                                archive.getId(),
+                                fileInfo.getDownloadUrl(),
+                                fileInfo.getFileName(),
+                                fileInfo.getFileCategory(),
+                                i + 1
+                        );
+                        if (digitalFile != null) {
+                            fileCount++;
+                            totalSize += digitalFile.getFileSize() != null ? digitalFile.getFileSize() : 0;
+                        }
+                    } catch (Exception e) {
+                        log.error("文件下载失败: {}", fileInfo.getFileName(), e);
                     }
-                } catch (Exception e) {
-                    log.error("文件下载失败: {}", fileInfo.getFileName(), e);
                 }
-            }
 
-            // 更新档案的文件统计
-            archive.setFileCount(fileCount);
-            archive.setTotalFileSize(totalSize);
-            archiveMapper.updateById(archive);
+                // 更新档案的文件统计
+                archive.setFileCount(fileCount);
+                archive.setTotalFileSize(totalSize);
+                archive.setStatus(Archive.STATUS_RECEIVED);
+                archiveMapper.updateById(archive);
+            }
         }
 
         return ArchiveReceiveResponse.builder()
@@ -147,6 +191,10 @@ public class ArchiveServiceImpl implements ArchiveService {
                 .fileCount(fileCount)
                 .message("接收成功")
                 .build();
+    }
+    
+    private boolean hasFiles(ArchiveReceiveRequest request) {
+        return request.getFiles() != null && !request.getFiles().isEmpty();
     }
 
     @Override
@@ -355,19 +403,37 @@ public class ArchiveServiceImpl implements ArchiveService {
 
     @Override
     public String generateArchiveNo(String archiveType) {
-        String prefix = switch (archiveType) {
-            case Archive.TYPE_DOCUMENT -> "WS";
-            case Archive.TYPE_SCIENCE -> "KJ";
-            case Archive.TYPE_ACCOUNTING -> "KJ";
-            case Archive.TYPE_PERSONNEL -> "RS";
-            case Archive.TYPE_SPECIAL -> "ZY";
-            case Archive.TYPE_AUDIOVISUAL -> "SX";
-            default -> "ARC";
-        };
+        // 从配置服务获取前缀
+        String prefix = configService.getArchiveNoPrefix(archiveType);
+        
+        // 从配置获取日期格式和序号位数
+        String dateFormat = configService.getValue("archive.no.date.format", "yyyyMMdd");
+        int seqDigits = configService.getIntValue("archive.no.seq.digits", 4);
 
-        String date = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
-        int seq = archiveNoCounter.getAndIncrement();
-        return String.format("%s-%s-%04d", prefix, date, seq);
+        String date = LocalDate.now().format(DateTimeFormatter.ofPattern(dateFormat));
+        
+        // 使用Redis生成序号（保证高并发下的唯一性）
+        long seq;
+        try {
+            String seqKey = ARCHIVE_NO_SEQ_PREFIX + prefix + ":" + date;
+            Long increment = stringRedisTemplate.opsForValue().increment(seqKey);
+            seq = increment != null ? increment : 1;
+            
+            // 设置过期时间（次日凌晨过期）
+            if (seq == 1) {
+                stringRedisTemplate.expireAt(seqKey, 
+                        java.util.Date.from(LocalDate.now().plusDays(1)
+                                .atStartOfDay(java.time.ZoneId.systemDefault()).toInstant()));
+            }
+        } catch (Exception e) {
+            // Redis不可用时，降级使用内存计数器
+            log.warn("Redis不可用，降级使用内存计数器: {}", e.getMessage());
+            seq = archiveNoCounter.getAndIncrement();
+        }
+        
+        // 动态格式化序号位数
+        String format = "%s-%s-%0" + seqDigits + "d";
+        return String.format(format, prefix, date, seq);
     }
 
     private void fillFondsAndCategory(Archive archive) {
