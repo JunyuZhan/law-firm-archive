@@ -194,12 +194,13 @@ const handleLogout = async () => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.9);
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
   z-index: 9999;
+  backdrop-filter: blur(4px);
   
   .loading-icon {
     font-size: 48px;
@@ -210,6 +211,7 @@ const handleLogout = async () => {
   span {
     margin-top: 16px;
     color: #606266;
+    font-size: 14px;
   }
 }
 
@@ -219,9 +221,10 @@ const handleLogout = async () => {
 }
 
 .sidebar {
-  background-color: #304156;
-  transition: width 0.3s;
+  background: linear-gradient(180deg, #243447 0%, #304156 100%);
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.15);
   
   .logo {
     height: 60px;
@@ -229,22 +232,68 @@ const handleLogout = async () => {
     align-items: center;
     justify-content: center;
     color: #fff;
-    font-size: 18px;
-    font-weight: bold;
+    font-size: 16px;
+    font-weight: 600;
     white-space: nowrap;
+    background: rgba(0, 0, 0, 0.15);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    letter-spacing: 1px;
     
     .el-icon {
-      margin-right: 8px;
+      margin-right: 10px;
       flex-shrink: 0;
+      color: #409eff;
     }
   }
   
   .el-menu {
     border-right: none;
+    
+    // 菜单项 hover 效果
+    :deep(.el-menu-item) {
+      margin: 4px 8px;
+      border-radius: 6px;
+      transition: all 0.2s ease;
+      
+      &:hover {
+        background-color: rgba(64, 158, 255, 0.15) !important;
+      }
+      
+      &.is-active {
+        background-color: rgba(64, 158, 255, 0.2) !important;
+        
+        &::before {
+          content: '';
+          position: absolute;
+          left: 0;
+          top: 50%;
+          transform: translateY(-50%);
+          width: 3px;
+          height: 60%;
+          background: #409eff;
+          border-radius: 0 2px 2px 0;
+        }
+      }
+    }
+    
+    :deep(.el-sub-menu__title) {
+      margin: 4px 8px;
+      border-radius: 6px;
+      transition: all 0.2s ease;
+      
+      &:hover {
+        background-color: rgba(64, 158, 255, 0.15) !important;
+      }
+    }
   }
   
   .el-menu--collapse {
     width: 64px;
+    
+    :deep(.el-menu-item),
+    :deep(.el-sub-menu__title) {
+      margin: 4px;
+    }
   }
 }
 
@@ -254,21 +303,42 @@ const handleLogout = async () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0 20px;
+  padding: 0 24px;
+  border-bottom: 1px solid #f0f0f0;
   
   .header-left {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 20px;
     
     .collapse-btn {
       font-size: 20px;
       cursor: pointer;
       color: #606266;
-      transition: color 0.3s;
+      transition: all 0.2s ease;
+      padding: 6px;
+      border-radius: 4px;
       
       &:hover {
         color: #409eff;
+        background: rgba(64, 158, 255, 0.1);
+      }
+    }
+    
+    :deep(.el-breadcrumb) {
+      font-size: 14px;
+      
+      .el-breadcrumb__inner {
+        color: #909399;
+        
+        &.is-link:hover {
+          color: #409eff;
+        }
+      }
+      
+      .el-breadcrumb__item:last-child .el-breadcrumb__inner {
+        color: #303133;
+        font-weight: 500;
       }
     }
   }
@@ -286,12 +356,25 @@ const handleLogout = async () => {
       display: flex;
       align-items: center;
       cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 6px;
+      transition: background 0.2s ease;
+      
+      &:hover {
+        background: #f5f7fa;
+      }
+      
+      span {
+        margin-left: 8px;
+        color: #606266;
+        font-size: 14px;
+      }
     }
   }
 }
 
 .main-content {
-  background-color: #f0f2f5;
+  background-color: #f5f7fa;
   padding: 20px;
   overflow-y: auto;
 }
@@ -300,6 +383,11 @@ const handleLogout = async () => {
   .upload-item {
     padding: 12px;
     border-bottom: 1px solid #ebeef5;
+    transition: background 0.2s ease;
+    
+    &:hover {
+      background: #fafafa;
+    }
     
     .upload-item-info {
       display: flex;
@@ -307,11 +395,16 @@ const handleLogout = async () => {
       gap: 8px;
       margin-bottom: 8px;
       
+      .el-icon {
+        color: #909399;
+      }
+      
       .file-name {
         flex: 1;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+        font-size: 14px;
       }
     }
     

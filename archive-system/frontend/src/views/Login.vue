@@ -111,32 +111,59 @@ const handleLogin = async () => {
   display: flex;
   justify-content: center;
   align-items: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #1e3a5f 0%, #2c5282 50%, #3182ce 100%);
+  position: relative;
+  
+  // 简单的背景纹理
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: 
+      radial-gradient(circle at 20% 80%, rgba(255, 255, 255, 0.05) 0%, transparent 50%),
+      radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.05) 0%, transparent 50%);
+    pointer-events: none;
+  }
 }
 
 .login-box {
   width: 400px;
   padding: 40px;
   background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  position: relative;
+  z-index: 1;
 }
 
 .login-header {
   text-align: center;
-  margin-bottom: 30px;
+  margin-bottom: 32px;
+  
+  .el-icon {
+    background: linear-gradient(135deg, #409eff 0%, #2563eb 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
   
   h1 {
-    margin-top: 12px;
-    margin-bottom: 4px;
-    font-size: 24px;
-    color: #303133;
+    margin-top: 16px;
+    margin-bottom: 6px;
+    font-size: 22px;
+    color: #1f2937;
+    font-weight: 600;
+    letter-spacing: 1px;
   }
   
   .subtitle {
     margin: 0;
     font-size: 12px;
-    color: #909399;
+    color: #9ca3af;
+    letter-spacing: 0.5px;
   }
 }
 
@@ -144,16 +171,32 @@ const handleLogin = async () => {
   .el-form-item {
     margin-bottom: 24px;
   }
+  
+  :deep(.el-input__wrapper) {
+    border-radius: 6px;
+    
+    &:hover {
+      box-shadow: 0 0 0 1px #409eff inset;
+    }
+  }
+  
+  :deep(.el-button--primary) {
+    border-radius: 6px;
+    font-weight: 500;
+    letter-spacing: 2px;
+  }
 }
 
 .login-footer {
   text-align: center;
-  margin-top: 20px;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #f0f0f0;
   
   p {
     margin: 0;
     font-size: 12px;
-    color: #909399;
+    color: #9ca3af;
   }
 }
 </style>

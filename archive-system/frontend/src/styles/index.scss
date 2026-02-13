@@ -9,24 +9,104 @@
 html, body {
   height: 100%;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 // 覆盖Element Plus样式
 .el-card {
   border-radius: 8px;
+  border: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  transition: box-shadow 0.2s ease;
+  
+  &:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  }
   
   .el-card__header {
-    padding: 15px 20px;
-    border-bottom: 1px solid #ebeef5;
+    padding: 16px 20px;
+    border-bottom: 1px solid #f0f0f0;
     font-weight: 500;
+    color: #1f2937;
+  }
+  
+  .el-card__body {
+    padding: 20px;
   }
 }
 
 .el-table {
+  border-radius: 8px;
+  overflow: hidden;
+  
   .el-table__header th {
-    background-color: #fafafa;
+    background-color: #fafbfc;
     font-weight: 500;
+    color: #374151;
+    font-size: 13px;
   }
+  
+  .el-table__row {
+    transition: background 0.2s ease;
+    
+    &:hover > td {
+      background-color: #f8fafc !important;
+    }
+  }
+  
+  // 表格行点击效果
+  .el-table__row {
+    cursor: pointer;
+  }
+}
+
+// 按钮优化
+.el-button {
+  border-radius: 6px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+// 输入框优化
+.el-input__wrapper {
+  border-radius: 6px;
+}
+
+// 选择器优化
+.el-select__wrapper {
+  border-radius: 6px;
+}
+
+// 标签优化
+.el-tag {
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+// 对话框优化
+.el-dialog {
+  border-radius: 12px;
+  
+  .el-dialog__header {
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  
+  .el-dialog__body {
+    padding: 24px;
+  }
+  
+  .el-dialog__footer {
+    padding: 16px 24px 20px;
+    border-top: 1px solid #f0f0f0;
+  }
+}
+
+// 分页优化
+.el-pagination {
+  margin-top: 16px;
+  justify-content: flex-end;
 }
 
 // 通用工具类
@@ -50,4 +130,28 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+// 页面标题样式
+.page-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 16px;
+}
+
+// 搜索卡片样式
+.search-card {
+  margin-bottom: 16px;
+  
+  .el-card__body {
+    padding: 16px 20px;
+  }
+}
+
+// 工具栏样式
+.toolbar {
+  margin-bottom: 16px;
+  display: flex;
+  gap: 12px;
 }
