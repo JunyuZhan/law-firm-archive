@@ -7,13 +7,14 @@
 ## 项目结构
 
 ```
-archive-system/
-├── backend/          # Spring Boot 后端
-├── frontend/         # Vue 3 前端
-├── docker/           # Docker 配置
-├── scripts/          # 数据库脚本
-├── README.md         # 项目说明
-└── TODO.md           # 开发计划
+├── archive-system/          # 📦 档案管理系统（开发中）
+│   ├── backend/             # 后端服务
+│   ├── frontend/            # 前端应用
+│   ├── docker/              # Docker配置
+│   ├── scripts/             # 数据库脚本
+│   └── TODO.md              # 开发计划
+│
+└── backend/                 # 📚 主系统后端（仅参考，对接完成后删除）
 ```
 
 ## 快速开始
@@ -32,6 +33,16 @@ docker-compose up -d
 | `main` | 律所管理系统 | 8080/3000 |
 | `feature/client-service-system` | 客户服务系统 | 8081/3001 |
 | `feature/archive-management-system` | 档案管理系统（当前） | 8090/3002 |
+
+## 系统对接
+
+档案管理系统通过 API 接收律所主系统推送的归档档案：
+
+```
+律所管理系统 (main)  --[HTTP API]--> 档案管理系统 (本分支)
+     ↓
+POST /api/open/law-firm/archive/receive
+```
 
 ## 文档
 

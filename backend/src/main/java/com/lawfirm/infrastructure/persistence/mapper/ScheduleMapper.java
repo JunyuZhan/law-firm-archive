@@ -1,0 +1,87 @@
+package com.lawfirm.infrastructure.persistence.mapper;
+
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.lawfirm.domain.matter.entity.Schedule;
+import java.time.LocalDateTime;
+import java.util.List;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
+
+/** 日程Mapper */
+@Mapper
+public interface ScheduleMapper extends BaseMapper<Schedule> {
+
+  /**
+   * 查询用户日程.
+   *
+   * @param page 分页对象
+   * @param userId 用户ID
+   * @param matterId 项目ID
+   * @param scheduleType 日程类型
+   * @param startTime 开始时间
+   * @param endTime 结束时间
+   * @return 日程分页结果
+   */
+  @Select(
+      "<script>"
+          + "SELECT * FROM schedule WHERE deleted = false "
+          + "<if test='userId != null'> AND user_id = #{userId} </if>"
+          + "<if test='matterId != null'> AND matter_id = #{matterId} </if>"
+          + "<if test='scheduleType != null and scheduleType != \"\"'> AND schedule_type = #{scheduleType} </if>"
+          + "<if test='startTime != null'> AND start_time &gt;= #{startTime} </if>"
+          + "<if test='endTime != null'> AND end_time &lt;= #{endTime} </if>"
+          + "ORDER BY start_time ASC"
+          + "</script>")
+  IPage<Schedule> selectSchedulePage(
+      Page<Schedule> page,
+      @Param("userId") Long userId,
+      @Param("matterId") Long matterId,
+      @Param("scheduleType") String scheduleType,
+      @Param("startTime") LocalDateTime startTime,
+      @Param("endTime") LocalDateTime endTime);
+
+  /**
+   * 查询用户某天的日程.
+   *
+   * @param userId 用户ID
+   * @param date 日期
+   * @return 日程列表
+   */
+  @Select(
+      "SELECT * FROM schedule WHERE user_id = #{userId} "
+          + "AND DATE(start_time) = #{date} AND deleted = false ORDER BY start_time")
+  List<Schedule> selectByUserAndDate(
+      @Param("userId") Long userId, @Param("date") java.time.LocalDate date);
+
+  /**
+   * 查询需要提醒的日程.
+   *
+   * @return 需要提醒的日程列表
+   */
+  @Select(
+      "SELECT * FROM schedule WHERE reminder_sent = false AND reminder_minutes IS NOT NULL "
+          + "AND start_time - (reminder_minutes || ' minutes')::interval <= NOW() "
+          + "AND start_time > NOW() AND deleted = false")
+  List<Schedule> selectNeedReminder();
+
+  /**
+   * 查询用户未来几天的日程.
+   *
+   * @param userId 用户ID
+   * @param endTime 结束时间
+   * @param limit 限制数量
+   * @return 未来日程列表
+   */
+  @Select(
+      "SELECT * FROM schedule WHERE user_id = #{userId} "
+          + "AND start_time >= NOW() AND start_time <= #{endTime} "
+          + "AND status != 'CANCELLED' AND deleted = false "
+          + "ORDER BY start_time ASC LIMIT #{limit}")
+  List<Schedule> selectUpcomingSchedules(
+      @Param("userId") Long userId,
+      @Param("endTime") LocalDateTime endTime,
+      @Param("limit") int limit);
+}

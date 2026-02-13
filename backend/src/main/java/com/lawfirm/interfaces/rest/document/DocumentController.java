@@ -1,0 +1,1433 @@
+package com.lawfirm.interfaces.rest.document;
+
+import com.lawfirm.application.document.command.CreateDocumentCommand;
+import com.lawfirm.application.document.command.DocumentAuditQueryCommand;
+import com.lawfirm.application.document.command.UpdateDocumentCommand;
+import com.lawfirm.application.document.command.UploadNewVersionCommand;
+import com.lawfirm.application.document.dto.DocumentAuditStatisticsDTO;
+import com.lawfirm.application.document.dto.DocumentDTO;
+import com.lawfirm.application.document.dto.DocumentQueryDTO;
+import com.lawfirm.application.document.service.DocAccessLogService;
+import com.lawfirm.application.document.service.DocumentAppService;
+import com.lawfirm.application.document.service.FileAccessService;
+import com.lawfirm.common.annotation.OperationLog;
+import com.lawfirm.common.annotation.RequirePermission;
+import com.lawfirm.common.result.PageResult;
+import com.lawfirm.common.result.Result;
+import com.lawfirm.common.util.FileValidator;
+import com.lawfirm.common.util.SecurityUtils;
+import com.lawfirm.common.util.WebUtils;
+import com.lawfirm.domain.document.entity.DocAccessLog;
+import com.lawfirm.infrastructure.external.minio.MinioService;
+import com.lawfirm.infrastructure.external.onlyoffice.OnlyOfficeService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.HashMap;
+import java.util.HexFormat;
+import java.util.List;
+import java.util.Map;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
+
+/** 文档管理接口 */
+@Slf4j
+@Tag(name = "文档管理", description = "文档管理相关接口")
+@RestController
+@RequestMapping("/document")
+@RequiredArgsConstructor
+public class DocumentController {
+
+  /** 文档应用服务 */
+  private final DocumentAppService documentAppService;
+
+  /** 文档访问日志服务 */
+  private final DocAccessLogService accessLogService;
+
+  /** OnlyOffice服务 */
+  private final OnlyOfficeService onlyOfficeService;
+
+  /** MinIO服务 */
+  private final MinioService minioService;
+
+  /** 文件访问服务 */
+  private final FileAccessService fileAccessService;
+
+  /** 用于生成临时访问 token 的密钥（从配置注入，生产环境必须设置环境变量 DOCUMENT_TOKEN_SECRET） */
+  @Value("${law-firm.document.token-secret}")
+  private String tokenSecret;
+
+  /** 静态密钥用于向后兼容（测试时使用），不可修改 */
+  private static final String STATIC_TOKEN_SECRET = "law-firm-document-access-dev-only";
+
+  /** 文件缓冲区大小：8KB */
+  private static final int FILE_BUFFER_SIZE = 8192;
+
+  /** Token过期时间：2小时（秒） */
+  private static final long TOKEN_EXPIRY_SECONDS = 7200;
+
+  /** Token过期时间：7天（秒） */
+  private static final long TOKEN_EXPIRY_7_DAYS_SECONDS = 7L * 24 * 3600;
+
+  /** Access-Control-Max-Age：1小时（秒） */
+  private static final int ACCESS_CONTROL_MAX_AGE_SECONDS = 3600;
+
+  /** Token最小长度：8 */
+  private static final int MIN_TOKEN_LENGTH = 8;
+
+  /** Token显示长度：20 */
+  private static final int TOKEN_DISPLAY_LENGTH = 20;
+
+  /** Token显示前缀长度：8 */
+  private static final int TOKEN_PREFIX_LENGTH = 8;
+
+  /** ZIP文件头第1字节：0x50 */
+  private static final byte ZIP_HEADER_BYTE_1 = 0x50;
+
+  /** ZIP文件头第2字节：0x4B */
+  private static final byte ZIP_HEADER_BYTE_2 = 0x4B;
+
+  /** ZIP文件头第3字节：0x03 */
+  private static final byte ZIP_HEADER_BYTE_3 = 0x03;
+
+  /** ZIP文件头第4字节：0x04 */
+  private static final byte ZIP_HEADER_BYTE_4 = 0x04;
+
+  /** MS Office文件头第1字节：0xD0 */
+  private static final byte MS_OFFICE_HEADER_BYTE_1 = (byte) 0xD0;
+
+  /** MS Office文件头第2字节：0xCF */
+  private static final byte MS_OFFICE_HEADER_BYTE_2 = (byte) 0xCF;
+
+  /** MS Office文件头第3字节：0x11 */
+  private static final byte MS_OFFICE_HEADER_BYTE_3 = 0x11;
+
+  /** MS Office文件头第4字节：0xE0 */
+  private static final byte MS_OFFICE_HEADER_BYTE_4 = (byte) 0xE0;
+
+  /** 默认文件夹名称 */
+  private static final String DEFAULT_FOLDER_NAME = "documents";
+
+  /** 批量下载最大数量 */
+  private static final int MAX_BATCH_DOWNLOAD_SIZE = 100;
+
+  /** ZIP文件扩展名 */
+  private static final String ZIP_EXTENSION = ".zip";
+
+  /** ZIP文件前缀 */
+  private static final String ZIP_PREFIX = "documents_";
+
+  /** 默认MIME类型 */
+  private static final String DEFAULT_MIME_TYPE = "application/octet-stream";
+
+  /** ZIP MIME类型 */
+  private static final String ZIP_MIME_TYPE = "application/zip";
+
+  /** 文件类型检测缓冲区大小：8 */
+  private static final int FILE_TYPE_CHECK_BUFFER_SIZE = 8;
+
+  /** 文件类型检测最小字节数：4 */
+  private static final int MIN_FILE_TYPE_CHECK_BYTES = 4;
+
+  /** Token 哈希长度：32 */
+  private static final int TOKEN_HASH_LENGTH = 32;
+
+  /**
+   * 分页查询文档
+   *
+   * @param query 查询条件
+   * @return 分页结果
+   */
+  @GetMapping
+  @RequirePermission("doc:list")
+  public Result<PageResult<DocumentDTO>> list(final DocumentQueryDTO query) {
+    return Result.success(documentAppService.listDocuments(query));
+  }
+
+  /**
+   * 获取文档详情
+   *
+   * @param id 文档ID
+   * @param request HTTP请求
+   * @return 文档详情
+   */
+  @GetMapping("/{id}")
+  @RequirePermission("doc:detail")
+  public Result<DocumentDTO> getById(
+      @PathVariable final Long id, final HttpServletRequest request) {
+    // 记录查看日志
+    accessLogService.logAccess(id, DocAccessLog.ACTION_VIEW, request);
+    return Result.success(documentAppService.getDocumentById(id));
+  }
+
+  /**
+   * 下载文档（记录日志）
+   *
+   * @param id 文档ID
+   * @param request HTTP请求
+   * @return 文档信息
+   */
+  @PostMapping("/{id}/download")
+  @RequirePermission("doc:download")
+  public Result<DocumentDTO> download(
+      @PathVariable final Long id, final HttpServletRequest request) {
+    accessLogService.logAccess(id, DocAccessLog.ACTION_DOWNLOAD, request);
+    return Result.success(documentAppService.getDocumentById(id));
+  }
+
+  /**
+   * 下载文件
+   *
+   * @param id 文档ID
+   * @param request HTTP请求
+   * @param response HTTP响应
+   */
+  @GetMapping("/{id}/download")
+  @RequirePermission("doc:download")
+  public void downloadFile(
+      @PathVariable final Long id,
+      final HttpServletRequest request,
+      final HttpServletResponse response) {
+    accessLogService.logAccess(id, DocAccessLog.ACTION_DOWNLOAD, request);
+    try {
+      DocumentDTO doc = documentAppService.getDocumentById(id);
+      if (doc == null) {
+        response.sendError(HttpServletResponse.SC_NOT_FOUND, "文档不存在");
+        return;
+      }
+
+      // 使用统一访问服务获取文件访问URL（优先使用新字段，回退到file_path）
+      // 需要获取Document实体，而不是DTO
+      com.lawfirm.domain.document.entity.Document document =
+          documentAppService.getDocumentEntityById(id);
+      String fileAccessUrl = fileAccessService.getDocumentAccessUrl(document, "DOWNLOAD");
+
+      // 从URL提取对象名称（预签名URL可能包含查询参数，需要处理）
+      String objectName = minioService.extractObjectName(fileAccessUrl);
+      if (objectName == null) {
+        // 如果无法提取对象名，尝试从file_path提取（兼容旧数据）
+        objectName = minioService.extractObjectName(doc.getFilePath());
+        if (objectName == null) {
+          response.sendError(HttpServletResponse.SC_NOT_FOUND, "文件不存在");
+          return;
+        }
+      }
+
+      String mimeType = doc.getMimeType();
+      if (mimeType == null || mimeType.isEmpty()) {
+        mimeType = DEFAULT_MIME_TYPE;
+      }
+      response.setContentType(mimeType);
+      String encodedFileName =
+          URLEncoder.encode(doc.getFileName(), StandardCharsets.UTF_8).replace("+", "%20");
+      response.setHeader("Content-Disposition", "attachment; filename*=UTF-8''" + encodedFileName);
+      if (doc.getFileSize() != null && doc.getFileSize() > 0) {
+        response.setContentLengthLong(doc.getFileSize());
+      }
+
+      try (InputStream inputStream = minioService.downloadFile(objectName);
+          OutputStream outputStream = response.getOutputStream()) {
+        byte[] buffer = new byte[FILE_BUFFER_SIZE];
+        int bytesRead;
+        while ((bytesRead = inputStream.read(buffer)) != -1) {
+          outputStream.write(buffer, 0, bytesRead);
+        }
+        outputStream.flush();
+      }
+    } catch (Exception e) {
+      log.error("下载文档失败: id={}", id, e);
+      try {
+        response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "下载文件失败");
+      } catch (Exception sendError) {
+        log.debug("发送错误响应失败", sendError);
+      }
+    }
+  }
+
+  /**
+   * 批量下载文档（打包为 ZIP）
+   *
+   * @param ids 文档ID列表
+   * @param request HTTP请求
+   * @param response HTTP响应
+   */
+  @PostMapping("/batch-download")
+  @RequirePermission("doc:download")
+  @OperationLog(module = "文档管理", action = "批量下载文档")
+  @Operation(summary = "批量下载文档", description = "将多个文档打包为 ZIP 文件下载")
+  public void batchDownload(
+      @RequestBody final List<Long> ids,
+      final HttpServletRequest request,
+      final HttpServletResponse response) {
+    if (ids == null || ids.isEmpty()) {
+      throw new com.lawfirm.common.exception.BusinessException("请选择要下载的文档");
+    }
+    if (ids.size() > MAX_BATCH_DOWNLOAD_SIZE) {
+      throw new com.lawfirm.common.exception.BusinessException(
+          "单次最多下载" + MAX_BATCH_DOWNLOAD_SIZE + "个文档");
+    }
+
+    try {
+      // 收集文件数据
+      Map<String, byte[]> filesMap = new java.util.LinkedHashMap<>();
+      for (Long id : ids) {
+        DocumentDTO doc = documentAppService.getDocumentById(id);
+        if (doc != null && doc.getFilePath() != null) {
+          String objectName = minioService.extractObjectName(doc.getFilePath());
+          try (InputStream is = minioService.downloadFile(objectName)) {
+            filesMap.put(doc.getFileName(), is.readAllBytes());
+            // 记录下载日志
+            accessLogService.logAccess(id, DocAccessLog.ACTION_DOWNLOAD, request);
+          }
+        }
+      }
+
+      if (filesMap.isEmpty()) {
+        throw new com.lawfirm.common.exception.BusinessException("没有找到可下载的文档");
+      }
+
+      // 压缩并输出
+      byte[] zipData = com.lawfirm.common.util.CompressUtils.zipDataToBytes(filesMap);
+
+      String zipFileName = ZIP_PREFIX + System.currentTimeMillis() + ZIP_EXTENSION;
+      response.setContentType(ZIP_MIME_TYPE);
+      response.setHeader(
+          "Content-Disposition",
+          "attachment; filename=\""
+              + URLEncoder.encode(zipFileName, StandardCharsets.UTF_8)
+              + "\"");
+      response.setContentLength(zipData.length);
+      response.getOutputStream().write(zipData);
+      response.getOutputStream().flush();
+
+      log.info("批量下载完成: {} 个文档, 大小: {} bytes", filesMap.size(), zipData.length);
+    } catch (Exception e) {
+      log.error("批量下载失败", e);
+      throw new com.lawfirm.common.exception.BusinessException("批量下载失败，请稍后重试");
+    }
+  }
+
+  /**
+   * 获取文档访问日志
+   *
+   * @param id 文档ID
+   * @param actionType 操作类型
+   * @param pageNum 页码
+   * @param pageSize 每页大小
+   * @return 访问日志分页结果
+   */
+  @GetMapping("/{id}/access-logs")
+  @RequirePermission("doc:detail")
+  public Result<PageResult<DocAccessLog>> getAccessLogs(
+      @PathVariable @Min(1) final Long id,
+      @RequestParam(required = false) final String actionType,
+      @RequestParam(defaultValue = "1") @Min(1) final int pageNum,
+      @RequestParam(defaultValue = "20") @Min(1) @Max(100) final int pageSize) {
+    return Result.success(accessLogService.getAccessLogs(id, null, actionType, pageNum, pageSize));
+  }
+
+  /**
+   * 创建文档（仅元数据，文件已在其他地方上传）
+   *
+   * @param command 创建文档命令
+   * @return 文档信息
+   */
+  @PostMapping
+  @RequirePermission("doc:upload")
+  @OperationLog(module = "文档管理", action = "创建文档")
+  public Result<DocumentDTO> create(@Valid @RequestBody final CreateDocumentCommand command) {
+    return Result.success(documentAppService.createDocument(command));
+  }
+
+  /**
+   * 上传文件并创建文档记录
+   *
+   * @param file 文件
+   * @param matterId 案件ID
+   * @param folder 文件夹
+   * @param description 描述
+   * @param dossierItemId 卷宗项ID
+   * @return 文档信息
+   */
+  @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  @RequirePermission("doc:upload")
+  @OperationLog(module = "文档管理", action = "上传文件")
+  @Operation(summary = "上传文件", description = "上传文件到 MinIO 并创建文档记录")
+  public Result<DocumentDTO> uploadFile(
+      @RequestParam("file") final MultipartFile file,
+      @RequestParam(value = "matterId", required = false) final Long matterId,
+      @RequestParam(value = "folder", required = false, defaultValue = DEFAULT_FOLDER_NAME)
+          final String folder,
+      @RequestParam(value = "description", required = false) final String description,
+      @RequestParam(value = "dossierItemId", required = false) final Long dossierItemId) {
+    // ✅ 安全验证：使用 FileValidator 验证文件
+    FileValidator.ValidationResult validationResult = FileValidator.validate(file);
+    if (!validationResult.isValid()) {
+      return Result.error(validationResult.getErrorMessage());
+    }
+    return Result.success(
+        documentAppService.uploadFile(file, matterId, folder, description, dossierItemId));
+  }
+
+  /**
+   * 批量上传文件
+   *
+   * @param files 文件数组
+   * @param matterId 案件ID
+   * @param folder 文件夹
+   * @param description 描述
+   * @param dossierItemId 卷宗项ID
+   * @param sourceType 来源类型
+   * @return 文档信息列表
+   */
+  @PostMapping(value = "/upload/batch", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  @RequirePermission("doc:upload")
+  @OperationLog(module = "文档管理", action = "批量上传文件")
+  @Operation(summary = "批量上传文件", description = "批量上传多个文件")
+  public Result<List<DocumentDTO>> uploadFiles(
+      @RequestParam("files") final MultipartFile[] files,
+      @RequestParam(value = "matterId", required = false) final Long matterId,
+      @RequestParam(value = "folder", required = false, defaultValue = DEFAULT_FOLDER_NAME)
+          final String folder,
+      @RequestParam(value = "description", required = false) final String description,
+      @RequestParam(value = "dossierItemId", required = false) final Long dossierItemId,
+      @RequestParam(value = "sourceType", required = false) final String sourceType) {
+    // ✅ 安全验证：批量验证所有文件
+    for (MultipartFile file : files) {
+      FileValidator.ValidationResult validationResult = FileValidator.validate(file);
+      if (!validationResult.isValid()) {
+        return Result.error(
+            "文件 " + file.getOriginalFilename() + " 验证失败: " + validationResult.getErrorMessage());
+      }
+    }
+    return Result.success(
+        documentAppService.uploadFiles(
+            files, matterId, folder, description, dossierItemId, sourceType));
+  }
+
+  /**
+   * 更新文档信息
+   *
+   * @param id 文档ID
+   * @param command 更新文档命令
+   * @return 文档信息
+   */
+  @PutMapping("/{id}")
+  @RequirePermission("doc:update")
+  @OperationLog(module = "文档管理", action = "更新文档")
+  public Result<DocumentDTO> update(
+      @PathVariable final Long id, @Valid @RequestBody final UpdateDocumentCommand command) {
+    command.setId(id);
+    return Result.success(documentAppService.updateDocument(command));
+  }
+
+  /**
+   * 移动文件到指定目录
+   *
+   * @param id 文档ID
+   * @param targetDossierItemId 目标卷宗项ID
+   * @return 文档信息
+   */
+  @PutMapping("/{id}/move")
+  @RequirePermission("doc:update")
+  @OperationLog(module = "文档管理", action = "移动文件")
+  @Operation(summary = "移动文件", description = "将文件移动到指定的卷宗目录")
+  public Result<DocumentDTO> moveDocument(
+      @PathVariable final Long id,
+      @RequestParam("targetDossierItemId") final Long targetDossierItemId) {
+    return Result.success(documentAppService.moveDocument(id, targetDossierItemId));
+  }
+
+  /**
+   * 重新排序文档
+   *
+   * @param documentIds 文档ID列表
+   * @return 空结果
+   */
+  @PutMapping("/reorder")
+  @RequirePermission("doc:update")
+  @OperationLog(module = "文档管理", action = "重新排序文档")
+  @Operation(summary = "重新排序文档", description = "按指定顺序重新排列文档")
+  public Result<Void> reorderDocuments(@RequestBody final List<Long> documentIds) {
+    documentAppService.reorderDocuments(documentIds);
+    return Result.success();
+  }
+
+  /**
+   * 上传新版本
+   *
+   * @param id 文档ID
+   * @param command 上传新版本命令
+   * @return 文档信息
+   */
+  @PostMapping("/{id}/versions")
+  @RequirePermission("doc:upload")
+  @OperationLog(module = "文档管理", action = "上传新版本")
+  public Result<DocumentDTO> uploadNewVersion(
+      @PathVariable final Long id, @Valid @RequestBody final UploadNewVersionCommand command) {
+    command.setDocumentId(id);
+    return Result.success(documentAppService.uploadNewVersion(command));
+  }
+
+  /**
+   * 获取文档所有版本
+   *
+   * @param id 文档ID
+   * @return 文档版本列表
+   */
+  @GetMapping("/{id}/versions")
+  @RequirePermission("doc:detail")
+  public Result<List<DocumentDTO>> getVersions(@PathVariable final Long id) {
+    return Result.success(documentAppService.getDocumentVersions(id));
+  }
+
+  /**
+   * 回退到指定版本
+   *
+   * @param id 文档ID
+   * @param version 版本号
+   * @return 文档信息
+   */
+  @PostMapping("/{id}/versions/{version}/rollback")
+  @RequirePermission("doc:update")
+  @OperationLog(module = "文档管理", action = "版本回退")
+  @Operation(summary = "回退到指定版本", description = "将文档回退到指定的历史版本，会创建一个新版本")
+  public Result<DocumentDTO> rollbackToVersion(
+      @PathVariable final Long id, @PathVariable final Integer version) {
+    return Result.success(documentAppService.rollbackToVersion(id, version));
+  }
+
+  /**
+   * 删除文档
+   *
+   * @param id 文档ID
+   * @return 空结果
+   */
+  @DeleteMapping("/{id}")
+  @RequirePermission("doc:delete")
+  @OperationLog(module = "文档管理", action = "删除文档")
+  public Result<Void> delete(@PathVariable final Long id) {
+    documentAppService.deleteDocument(id);
+    return Result.success();
+  }
+
+  /**
+   * 归档文档
+   *
+   * @param id 文档ID
+   * @return 空结果
+   */
+  @PostMapping("/{id}/archive")
+  @RequirePermission("doc:archive")
+  @OperationLog(module = "文档管理", action = "归档文档")
+  public Result<Void> archive(@PathVariable final Long id) {
+    documentAppService.archiveDocument(id);
+    return Result.success();
+  }
+
+  /**
+   * 按案件查询文档
+   *
+   * @param matterId 案件ID
+   * @return 文档列表
+   */
+  @GetMapping("/matter/{matterId}")
+  @RequirePermission("doc:list")
+  public Result<List<DocumentDTO>> getByMatter(@PathVariable final Long matterId) {
+    return Result.success(documentAppService.getDocumentsByMatter(matterId));
+  }
+
+  /**
+   * 获取文档审计统计（M5-044）
+   *
+   * @param command 审计查询命令
+   * @return 审计统计结果
+   */
+  @PostMapping("/audit/statistics")
+  @RequirePermission("doc:audit:view")
+  @Operation(summary = "获取文档审计统计", description = "统计文档访问情况，包括按用户、文档、操作类型、时间等维度")
+  public Result<DocumentAuditStatisticsDTO> getAuditStatistics(
+      @RequestBody final DocumentAuditQueryCommand command) {
+    return Result.success(accessLogService.getAuditStatistics(command));
+  }
+
+  /**
+   * 查询文档审计报告（M5-045）
+   *
+   * @param command 审计查询命令
+   * @return 审计报告数据列表
+   */
+  @PostMapping("/audit/report")
+  @RequirePermission("doc:audit:view")
+  @Operation(summary = "查询文档审计报告", description = "查询详细的文档访问审计报告数据")
+  public Result<List<Map<String, Object>>> queryAuditReport(
+      @RequestBody final DocumentAuditQueryCommand command) {
+    return Result.success(accessLogService.queryAuditReport(command));
+  }
+
+  // ==================== OnlyOffice 在线编辑相关接口 ====================
+
+  /**
+   * 获取文档预览配置（只读模式）
+   *
+   * @param id 文档ID
+   * @param request HTTP请求
+   * @return 预览配置
+   */
+  @GetMapping("/{id}/preview")
+  @RequirePermission("doc:detail")
+  @Operation(summary = "获取文档预览配置", description = "获取 OnlyOffice 文档预览配置，用于在线预览文档")
+  public Result<Map<String, Object>> getPreviewConfig(
+      @PathVariable final Long id, final HttpServletRequest request) {
+    DocumentDTO doc = documentAppService.getDocumentById(id);
+    if (doc == null) {
+      return Result.error("文档不存在");
+    }
+
+    // 检查文件是否支持预览
+    if (!onlyOfficeService.isPreviewSupported(doc.getFileName())) {
+      Map<String, Object> result = new HashMap<>();
+      result.put("supported", false);
+      result.put("message", "该文件类型不支持在线预览");
+      result.put("fileName", doc.getFileName());
+      result.put("fileUrl", doc.getFilePath());
+      return Result.success(result);
+    }
+
+    // 记录查看日志
+    accessLogService.logAccess(id, DocAccessLog.ACTION_VIEW, request);
+
+    // 获取当前用户信息
+    Long userId = SecurityUtils.getUserId();
+    String userName = SecurityUtils.getUsername();
+
+    // 生成带签名的文件访问 URL
+    // 优先使用后端代理接口，确保 OnlyOffice 容器能够访问
+    // 使用文档ID构建代理URL，OnlyOffice 通过 Docker 网络访问 backend 服务
+    String fileUrl = onlyOfficeService.buildFileUrlForDocument(id);
+
+    // 关键修复：检测文件的真实 MIME 类型（根据文件内容，而非扩展名）
+    // 这解决了 "文件内容与文件扩展名不匹配" 的问题
+    String objectName = minioService.extractObjectName(doc.getFilePath());
+    String detectedMimeType = null;
+    if (objectName != null) {
+      detectedMimeType = detectMimeTypeFromContent(doc, objectName);
+    }
+    String actualMimeType = detectedMimeType != null ? detectedMimeType : doc.getMimeType();
+
+    // 根据真实 MIME 类型修正文件名扩展名
+    String correctedFileName = correctFileNameByMimeType(doc.getFileName(), actualMimeType);
+
+    log.info(
+        "文档预览 MIME 类型检测: id={}, fileName={}, dbMimeType={}, "
+            + "detectedMimeType={}, actualMimeType={}, correctedFileName={}",
+        id,
+        doc.getFileName(),
+        doc.getMimeType(),
+        detectedMimeType,
+        actualMimeType,
+        correctedFileName);
+
+    // 生成 OnlyOffice 预览配置
+    Map<String, Object> config =
+        onlyOfficeService.generateViewConfig(fileUrl, correctedFileName, userId, userName);
+    config.put("supported", true);
+    config.put("documentId", id);
+
+    log.info(
+        "用户 {} 预览文档: id={}, originalFileName={}, correctedFileName={}, mimeType={}",
+        userName,
+        id,
+        doc.getFileName(),
+        correctedFileName,
+        actualMimeType);
+    return Result.success(config);
+  }
+
+  /**
+   * 获取文档编辑配置（可编辑模式）
+   *
+   * @param id 文档ID
+   * @param request HTTP请求
+   * @return 编辑配置
+   */
+  @GetMapping("/{id}/edit")
+  @RequirePermission("doc:update")
+  @Operation(summary = "获取文档编辑配置", description = "获取 OnlyOffice 文档编辑配置，用于在线编辑文档")
+  public Result<Map<String, Object>> getEditConfig(
+      @PathVariable final Long id, final HttpServletRequest request) {
+    DocumentDTO doc = documentAppService.getDocumentById(id);
+    if (doc == null) {
+      return Result.error("文档不存在");
+    }
+
+    // 检查文件是否支持编辑
+    if (!onlyOfficeService.isSupported(doc.getFileName())) {
+      Map<String, Object> result = new HashMap<>();
+      result.put("supported", false);
+      result.put("message", "该文件类型不支持在线编辑");
+      result.put("fileName", doc.getFileName());
+      return Result.success(result);
+    }
+
+    // 记录编辑日志
+    accessLogService.logAccess(id, "EDIT", request);
+
+    // 获取当前用户信息
+    Long userId = SecurityUtils.getUserId();
+    String userName = SecurityUtils.getUsername();
+
+    // 生成文档唯一标识（用于协同编辑）
+    // 使用 文档ID + 更新时间戳 作为 key
+    // ⚠️ 关键修复：包含 updatedAt 时间戳，确保保存后 OnlyOffice 能加载最新文件
+    // 如果只用版本号，OnlyOffice 会缓存旧文件（因为版本号不变）
+    // 使用系统默认时区转换（LocalDateTime 无时区信息，应按本地时间解析）
+    long updateTimestamp =
+        doc.getUpdatedAt() != null
+            ? doc.getUpdatedAt().atZone(java.time.ZoneId.systemDefault()).toEpochSecond()
+            : System.currentTimeMillis() / 1000;
+    String documentKey = "doc_" + id + "_t" + updateTimestamp;
+
+    // 生成带签名的文件访问 URL
+    // 使用后端代理接口，确保 OnlyOffice 容器能够访问
+    String fileUrl = onlyOfficeService.buildFileUrlForDocument(id);
+
+    // 关键修复：检测文件的真实 MIME 类型（根据文件内容，而非扩展名）
+    // 这解决了 "文件内容与文件扩展名不匹配" 的问题
+    String objectName = minioService.extractObjectName(doc.getFilePath());
+    String detectedMimeType = null;
+    if (objectName != null) {
+      detectedMimeType = detectMimeTypeFromContent(doc, objectName);
+    }
+    String actualMimeType = detectedMimeType != null ? detectedMimeType : doc.getMimeType();
+
+    // 根据真实 MIME 类型修正文件名扩展名
+    String correctedFileName = correctFileNameByMimeType(doc.getFileName(), actualMimeType);
+
+    log.info(
+        "文档编辑 MIME 类型检测: id={}, fileName={}, dbMimeType={}, "
+            + "detectedMimeType={}, actualMimeType={}, correctedFileName={}",
+        id,
+        doc.getFileName(),
+        doc.getMimeType(),
+        detectedMimeType,
+        actualMimeType,
+        correctedFileName);
+
+    // 生成 OnlyOffice 编辑配置
+    Map<String, Object> config =
+        onlyOfficeService.generateEditConfig(
+            fileUrl,
+            correctedFileName,
+            documentKey,
+            userId,
+            userName,
+            "/document/" + id + "/callback" // 回调路径
+            );
+    config.put("supported", true);
+    config.put("documentId", id);
+
+    log.info(
+        "用户 {} 开始编辑文档: id={}, originalFileName={}, correctedFileName={}, documentKey={}, mimeType={}",
+        userName,
+        id,
+        doc.getFileName(),
+        correctedFileName,
+        documentKey,
+        actualMimeType);
+    return Result.success(config);
+  }
+
+  /**
+   * OnlyOffice 回调接口（保存编辑后的文档） OnlyOffice 会在文档关闭或保存时调用此接口
+   *
+   * @param id 文档ID
+   * @param payload 回调数据
+   * @return 回调响应
+   */
+  @PostMapping("/{id}/callback")
+  @Operation(summary = "OnlyOffice 回调", description = "OnlyOffice 文档保存回调接口，不需要认证")
+  public Map<String, Object> onlyOfficeCallback(
+      @PathVariable final Long id, @RequestBody final Map<String, Object> payload) {
+
+    Map<String, Object> response = new HashMap<>();
+
+    try {
+      // OnlyOffice 回调状态
+      // 0 - 无错误
+      // 1 - 文档已保存
+      // 2 - 文档已准备好保存（用户关闭了编辑器）
+      // 3 - 发生错误
+      // 4 - 没有变化
+      // 6 - 正在编辑（强制保存）
+      // 7 - 发生错误（强制保存）
+      Integer status = (Integer) payload.get("status");
+      String downloadUrl = (String) payload.get("url");
+
+      log.info("OnlyOffice 回调: documentId={}, status={}, url={}", id, status, downloadUrl);
+
+      if (status == 2 || status == 6) {
+        // 需要保存文档
+        if (downloadUrl != null && !downloadUrl.isEmpty()) {
+          // 下载编辑后的文档并保存到 MinIO
+          documentAppService.saveFromOnlyOffice(id, downloadUrl);
+          log.info("文档保存成功: id={}", id);
+        }
+      }
+
+      response.put("error", 0);
+    } catch (Exception e) {
+      log.error("OnlyOffice 回调处理失败: documentId={}", id, e);
+      response.put("error", 1);
+      response.put("message", "回调处理失败");
+    }
+
+    return response;
+  }
+
+  /**
+   * 检查文件是否支持在线编辑
+   *
+   * @param id 文档ID
+   * @return 编辑支持信息
+   */
+  @GetMapping("/{id}/edit-support")
+  @RequirePermission("doc:detail")
+  @Operation(summary = "检查编辑支持", description = "检查文件是否支持在线编辑")
+  public Result<Map<String, Object>> checkEditSupport(@PathVariable final Long id) {
+    DocumentDTO doc = documentAppService.getDocumentById(id);
+    if (doc == null) {
+      return Result.error("文档不存在");
+    }
+
+    Map<String, Object> result = new HashMap<>();
+    result.put("documentId", id);
+    result.put("fileName", doc.getFileName());
+    result.put("fileType", doc.getFileType());
+    result.put("canEdit", onlyOfficeService.isSupported(doc.getFileName()));
+    result.put("canPreview", onlyOfficeService.isPreviewSupported(doc.getFileName()));
+
+    return Result.success(result);
+  }
+
+  /**
+   * 获取文档预览 URL（带签名的临时访问链接）
+   *
+   * @param id 文档ID
+   * @return 预览URL信息
+   */
+  @GetMapping("/{id}/preview-url")
+  @RequirePermission("doc:detail")
+  @Operation(summary = "获取预览URL", description = "获取文档的临时预览URL，支持所有文件类型")
+  public Result<Map<String, Object>> getPreviewUrl(@PathVariable final Long id) {
+    DocumentDTO doc = documentAppService.getDocumentById(id);
+    if (doc == null) {
+      return Result.error("文档不存在");
+    }
+
+    // 生成带签名的访问 URL（2小时有效）
+    long expires = System.currentTimeMillis() + TOKEN_EXPIRY_SECONDS * 1000;
+    String token = generateAccessTokenWithSecret(id, expires);
+    String previewUrl = "/api/document/" + id + "/content?token=" + token + "&expires=" + expires;
+
+    Map<String, Object> result = new HashMap<>();
+    result.put("documentId", id);
+    result.put("fileName", doc.getFileName());
+    result.put("fileType", doc.getFileType());
+    result.put("mimeType", doc.getMimeType());
+    result.put("previewUrl", previewUrl);
+    result.put("expires", expires);
+
+    return Result.success(result);
+  }
+
+  /**
+   * 分享文档
+   *
+   * @param id 文档ID
+   * @return 分享链接
+   */
+  @PostMapping("/{id}/share")
+  @RequirePermission("doc:detail")
+  public Result<String> shareDocument(@PathVariable final Long id) {
+    DocumentDTO doc = documentAppService.getDocumentById(id);
+    if (doc == null) {
+      return Result.error("文档不存在");
+    }
+
+    long expires = System.currentTimeMillis() + TOKEN_EXPIRY_7_DAYS_SECONDS * 1000;
+    String token = generateAccessTokenWithSecret(id, expires);
+    String contextPath = WebUtils.getContextPath();
+    String shareUrl =
+        WebUtils.getBaseUrl()
+            + (contextPath != null ? contextPath : "")
+            + "/document/"
+            + id
+            + "/content?token="
+            + token
+            + "&expires="
+            + expires;
+
+    return Result.success(shareUrl);
+  }
+
+  /**
+   * 获取文档缩略图URL
+   *
+   * @param id 文档ID
+   * @return 缩略图URL信息
+   */
+  @GetMapping("/{id}/thumbnail")
+  @RequirePermission("doc:detail")
+  @Operation(summary = "获取缩略图URL", description = "获取文档的缩略图URL，支持图片和PDF文件")
+  public Result<Map<String, Object>> getThumbnailUrl(@PathVariable final Long id) {
+    DocumentDTO doc = documentAppService.getDocumentById(id);
+    if (doc == null) {
+      return Result.error("文档不存在");
+    }
+
+    Map<String, Object> result = new HashMap<>();
+    result.put("documentId", id);
+    result.put("fileName", doc.getFileName());
+    result.put("fileType", doc.getFileType());
+
+    // 获取或生成缩略图
+    String thumbnailUrl = documentAppService.getThumbnailUrl(id);
+    if (thumbnailUrl != null) {
+      result.put("thumbnailUrl", thumbnailUrl);
+      result.put("hasThumbnail", true);
+    } else {
+      result.put("hasThumbnail", false);
+      result.put("message", "该文件类型不支持缩略图");
+    }
+
+    return Result.success(result);
+  }
+
+  /**
+   * 获取文档原始内容（供 OnlyOffice 访问） 使用临时 token 验证，token 包含文档ID、过期时间和签名
+   *
+   * @param id 文档ID
+   * @param token 访问令牌
+   * @param expires 过期时间
+   * @param response HTTP响应
+   */
+  @GetMapping("/{id}/content")
+  @Operation(summary = "获取文档内容", description = "获取文档原始内容，供 OnlyOffice 使用，需要有效的访问 token")
+  public void getDocumentContent(
+      @PathVariable final Long id,
+      @RequestParam final String token,
+      @RequestParam final long expires,
+      final HttpServletResponse response) {
+    try {
+      // 验证 token
+      if (!validateAccessToken(id, token, expires)) {
+        response.sendError(HttpServletResponse.SC_FORBIDDEN, "无效的访问令牌");
+        return;
+      }
+
+      // 检查是否过期
+      if (System.currentTimeMillis() > expires) {
+        response.sendError(HttpServletResponse.SC_FORBIDDEN, "访问令牌已过期");
+        return;
+      }
+
+      // 使用不检查用户登录的方法，因为 token 已验证
+      DocumentDTO doc = documentAppService.getDocumentByIdForProxy(id);
+      if (doc == null) {
+        response.sendError(HttpServletResponse.SC_NOT_FOUND, "文档不存在");
+        return;
+      }
+
+      // 从 MinIO 获取文件
+      String objectName = minioService.extractObjectName(doc.getFilePath());
+      if (objectName == null) {
+        response.sendError(HttpServletResponse.SC_NOT_FOUND, "文件不存在");
+        return;
+      }
+
+      // 设置响应头及输出内容
+      serveFileContent(doc, objectName, response);
+
+      log.debug("文档内容请求成功: id={}, fileName={}", id, doc.getFileName());
+
+    } catch (Exception e) {
+      log.error("获取文档内容失败: id={}", id, e);
+      try {
+        response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "获取文件失败");
+      } catch (Exception sendError) {
+        log.debug("发送错误响应失败", sendError);
+      }
+    }
+  }
+
+  /**
+   * 处理 OPTIONS 预检请求（CORS）
+   *
+   * @param response HTTP响应
+   */
+  @RequestMapping(value = "/{id}/file-proxy", method = RequestMethod.OPTIONS)
+  public void fileProxyOptions(final HttpServletResponse response) {
+    response.setHeader("Access-Control-Allow-Origin", "*");
+    response.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+    response.setHeader("Access-Control-Allow-Headers", "*");
+    response.setHeader("Access-Control-Max-Age", String.valueOf(ACCESS_CONTROL_MAX_AGE_SECONDS));
+    response.setStatus(HttpServletResponse.SC_OK);
+  }
+
+  /**
+   * 文档文件代理接口（供 OnlyOffice 容器下载文件） 安全措施： 1. 使用临时 token 验证（防止未授权访问） 2. 验证请求来源（只允许 Docker 内部网络或
+   * OnlyOffice 容器） 3. Token 有时效性（2小时）
+   *
+   * @param id 文档ID
+   * @param token 访问令牌
+   * @param expiresStr 过期时间字符串
+   * @param request HTTP请求
+   * @param response HTTP响应
+   */
+  @GetMapping("/{id}/file-proxy")
+  @Operation(summary = "文档文件代理", description = "供 OnlyOffice 容器下载文档文件，需要有效的访问 token")
+  public void fileProxy(
+      @PathVariable final Long id,
+      @RequestParam(required = false) final String token,
+      @RequestParam(required = false) final String expiresStr,
+      final HttpServletRequest request,
+      final HttpServletResponse response) {
+    try {
+      // 解析 expires 参数
+      Long expires = null;
+      if (expiresStr != null && !expiresStr.isEmpty()) {
+        try {
+          expires = Long.parseLong(expiresStr);
+        } catch (NumberFormatException e) {
+          log.warn("无效的 expires 参数: documentId={}, expiresStr={}", id, expiresStr);
+          response.setHeader("Access-Control-Allow-Origin", "*");
+          response.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+          response.setHeader("Access-Control-Allow-Headers", "*");
+          response.sendError(HttpServletResponse.SC_BAD_REQUEST, "无效的 expires 参数");
+          return;
+        }
+      }
+
+      // 安全验证：检查 token（如果提供）
+      // 注意：OnlyOffice 容器可能无法传递 token，所以这里允许无 token 访问
+      // 但会验证请求来源（通过 IP 或 User-Agent）
+      boolean useTokenAuth = false;
+      if (token != null && !token.isEmpty() && expires != null) {
+        try {
+          // URL 解码 token（如果被编码了）
+          String decodedToken = token;
+          try {
+            decodedToken = java.net.URLDecoder.decode(token, StandardCharsets.UTF_8);
+          } catch (Exception e) {
+            // 如果解码失败，使用原始 token
+            log.debug("Token URL 解码失败，使用原始 token: {}", e.getMessage());
+          }
+
+          // 检查 token 是否包含无效字符（可能是双重编码或其他问题）
+          if (decodedToken.length() < MIN_TOKEN_LENGTH
+              || decodedToken.contains("token")
+              || decodedToken.contains("expires")) {
+            log.warn(
+                "Token 格式异常，回退到 IP 验证: documentId={}, token={}",
+                id,
+                decodedToken.substring(0, Math.min(TOKEN_DISPLAY_LENGTH, decodedToken.length())));
+            useTokenAuth = false;
+          } else {
+            log.info(
+                "OnlyOffice 文件代理请求（带token）: documentId={}, token={}, expires={}",
+                id,
+                decodedToken.substring(0, Math.min(TOKEN_PREFIX_LENGTH, decodedToken.length()))
+                    + "...",
+                expires);
+
+            if (!validateAccessToken(id, decodedToken, expires)) {
+              log.warn("Token 验证失败，回退到 IP 验证: documentId={}", id);
+              useTokenAuth = false;
+            } else if (System.currentTimeMillis() > expires) {
+              log.warn("Token 已过期，回退到 IP 验证: documentId={}, expires={}", id, expires);
+              useTokenAuth = false;
+            } else {
+              useTokenAuth = true;
+            }
+          }
+        } catch (Exception e) {
+          log.warn("Token 验证过程出错，回退到 IP 验证: documentId={}, error={}", id, e.getMessage());
+          useTokenAuth = false;
+        }
+      }
+
+      // 如果没有使用 token 验证，则使用 IP 验证
+      if (!useTokenAuth) {
+        // 无 token 时，验证请求来源（只允许 Docker 内部网络）
+        // OnlyOffice 容器在 Docker 网络中，可以通过服务名访问
+        String clientIp = getClientIp(request);
+        String userAgent =
+            request.getHeader("User-Agent") != null
+                ? request.getHeader("User-Agent").toLowerCase()
+                : "";
+
+        // 允许 Docker 内部网络访问（172.x.x.x, 10.x.x.x, 192.168.x.x）
+        // 或者请求来自 OnlyOffice 容器（通过服务名 onlyoffice）
+        boolean isInternalNetwork =
+            clientIp != null
+                && (clientIp.startsWith("172.")
+                    || clientIp.startsWith("10.")
+                    || clientIp.startsWith("192.168.")
+                    || clientIp.equals("127.0.0.1")
+                    || clientIp.equals("::1"));
+
+        // 记录安全日志
+        log.info(
+            "OnlyOffice 文件代理请求（无token）: documentId={}, clientIp={}, userAgent={}, isInternal={}",
+            id,
+            clientIp,
+            userAgent,
+            isInternalNetwork);
+
+        // 如果没有 token 且不是内部网络，拒绝访问
+        // 注意：在生产环境中，建议始终使用 token
+        if (!isInternalNetwork) {
+          log.warn("拒绝未授权访问: documentId={}, clientIp={}", id, clientIp);
+          response.setHeader("Access-Control-Allow-Origin", "*");
+          response.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+          response.setHeader("Access-Control-Allow-Headers", "*");
+          response.sendError(HttpServletResponse.SC_FORBIDDEN, "访问被拒绝：需要有效的访问令牌或内部网络访问");
+          return;
+        }
+      }
+
+      // 获取文档实体（使用不检查用户登录的方法，因为 OnlyOffice 请求没有 JWT）
+      // 访问权限已通过 token 或 IP 白名单在上面验证
+      com.lawfirm.domain.document.entity.Document document =
+          documentAppService.getDocumentEntityByIdForProxy(id);
+      DocumentDTO doc = documentAppService.getDocumentByIdForProxy(id);
+      if (doc == null) {
+        response.sendError(HttpServletResponse.SC_NOT_FOUND, "文档不存在");
+        return;
+      }
+
+      // 从 MinIO 获取文件（优先使用新字段，回退到file_path）
+      String objectName = null;
+      if (document.getStoragePath() != null && document.getPhysicalName() != null) {
+        // 使用新字段构建对象名
+        objectName =
+            com.lawfirm.common.util.MinioPathGenerator.buildObjectName(
+                document.getStoragePath(), document.getPhysicalName());
+        log.info(
+            "OnlyOffice 文件代理（使用新字段）: documentId={}, storagePath={}, physicalName={}, objectName={}",
+            id,
+            document.getStoragePath(),
+            document.getPhysicalName(),
+            objectName);
+      } else {
+        // 回退到file_path
+        objectName = minioService.extractObjectName(doc.getFilePath());
+        log.info(
+            "OnlyOffice 文件代理（使用file_path）: documentId={}, filePath={}, objectName={}",
+            id,
+            doc.getFilePath(),
+            objectName);
+      }
+
+      if (objectName == null) {
+        log.error(
+            "无法解析 objectName: documentId={}, filePath={}, bucketName={}",
+            id,
+            doc.getFilePath(),
+            minioService.getBucketName());
+        response.sendError(HttpServletResponse.SC_NOT_FOUND, "文件不存在");
+        return;
+      }
+
+      // 设置响应头
+      serveFileContent(doc, objectName, response);
+    } catch (Exception e) {
+      log.error("OnlyOffice 文件代理失败: id={}, error={}", id, e.getMessage(), e);
+      // 确保在错误时也设置 CORS 头
+      response.setHeader("Access-Control-Allow-Origin", "*");
+      try {
+        // 如果响应还没有提交，发送错误响应
+        if (!response.isCommitted()) {
+          response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+          response.setContentType("application/json;charset=UTF-8");
+          response.getWriter().write("{\"error\":\"获取文档内容失败，请稍后重试\"}");
+          response.getWriter().flush();
+        }
+      } catch (Exception sendError) {
+        log.error("发送错误响应失败", sendError);
+      }
+    }
+  }
+
+  /**
+   * 根据文件内容检测实际的 MIME 类型 通过读取文件头（魔数）来判断文件类型，而不是依赖数据库中的 MIME 类型
+   *
+   * @param doc 文档DTO
+   * @param objectName 对象名称
+   * @return 检测到的MIME类型
+   */
+  private String detectMimeTypeFromContent(final DocumentDTO doc, final String objectName) {
+    try {
+      // 读取文件的前几个字节来检测文件类型
+      byte[] header = new byte[FILE_TYPE_CHECK_BUFFER_SIZE];
+      try (InputStream inputStream = minioService.downloadFile(objectName)) {
+        int bytesRead = inputStream.read(header);
+        if (bytesRead < MIN_FILE_TYPE_CHECK_BYTES) {
+          log.warn("文件太小，无法检测类型: documentId={}", doc.getId());
+          return null;
+        }
+      }
+
+      // 检测 ZIP 格式（docx, xlsx, pptx 都是 ZIP 格式）
+      // ZIP 文件头：50 4B 03 04
+      if (header[0] == ZIP_HEADER_BYTE_1
+          && header[1] == ZIP_HEADER_BYTE_2
+          && header[2] == ZIP_HEADER_BYTE_3
+          && header[3] == ZIP_HEADER_BYTE_4) {
+        // 这是 ZIP 格式，可能是 docx, xlsx, pptx
+        // 根据文件名扩展名判断
+        String fileExt = doc.getFileType() != null ? doc.getFileType().toLowerCase() : "";
+        String fileName = doc.getFileName() != null ? doc.getFileName().toLowerCase() : "";
+        if (fileExt.equals("doc")
+            || fileExt.equals("docx")
+            || fileName.endsWith(".doc")
+            || fileName.endsWith(".docx")) {
+          log.info(
+              "检测到文件实际为 docx 格式（ZIP）: documentId={}, fileName={}", doc.getId(), doc.getFileName());
+          return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+        } else if (fileExt.equals("xls")
+            || fileExt.equals("xlsx")
+            || fileName.endsWith(".xls")
+            || fileName.endsWith(".xlsx")) {
+          log.info(
+              "检测到文件实际为 xlsx 格式（ZIP）: documentId={}, fileName={}", doc.getId(), doc.getFileName());
+          return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+        } else if (fileExt.equals("ppt")
+            || fileExt.equals("pptx")
+            || fileName.endsWith(".ppt")
+            || fileName.endsWith(".pptx")) {
+          log.info(
+              "检测到文件实际为 pptx 格式（ZIP）: documentId={}, fileName={}", doc.getId(), doc.getFileName());
+          return "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+        }
+      }
+
+      // 检测旧的 Office 格式（doc, xls, ppt）
+      // MS Office 97-2003 文件头：D0 CF 11 E0 A1 B1 1A E1
+      if (header[0] == MS_OFFICE_HEADER_BYTE_1
+          && header[1] == MS_OFFICE_HEADER_BYTE_2
+          && header[2] == MS_OFFICE_HEADER_BYTE_3
+          && header[3] == MS_OFFICE_HEADER_BYTE_4) {
+        String fileExt = doc.getFileType() != null ? doc.getFileType().toLowerCase() : "";
+        String fileName = doc.getFileName() != null ? doc.getFileName().toLowerCase() : "";
+        if (fileExt.equals("doc") || fileName.endsWith(".doc")) {
+          log.info(
+              "检测到文件实际为 doc 格式（MS Office 97-2003）: documentId={}, fileName={}",
+              doc.getId(),
+              doc.getFileName());
+          return "application/msword";
+        } else if (fileExt.equals("xls") || fileName.endsWith(".xls")) {
+          return "application/vnd.ms-excel";
+        } else if (fileExt.equals("ppt") || fileName.endsWith(".ppt")) {
+          return "application/vnd.ms-powerpoint";
+        }
+      }
+
+      log.debug("无法从文件内容检测 MIME 类型，使用数据库中的值: documentId={}", doc.getId());
+      return null;
+    } catch (Exception e) {
+      log.warn("检测文件 MIME 类型失败: documentId={}, error={}", doc.getId(), e.getMessage());
+      return null;
+    }
+  }
+
+  /**
+   * 根据 MIME 类型修正文件名扩展名 如果文件名扩展名与实际 MIME 类型不匹配，修正为正确的扩展名
+   *
+   * @param fileName 文件名
+   * @param mimeType MIME类型
+   * @return 修正后的文件名
+   */
+  private String correctFileNameByMimeType(final String fileName, final String mimeType) {
+    if (fileName == null || mimeType == null) {
+      return fileName;
+    }
+
+    // MIME 类型到扩展名的映射
+    String correctExt = null;
+    if (mimeType.contains("wordprocessingml.document")) {
+      // docx 格式
+      correctExt = "docx";
+    } else if (mimeType.contains("spreadsheetml.sheet")) {
+      // xlsx 格式
+      correctExt = "xlsx";
+    } else if (mimeType.contains("presentationml.presentation")) {
+      // pptx 格式
+      correctExt = "pptx";
+    } else if (mimeType.contains("msword")) {
+      // 旧的 doc 格式
+      correctExt = "doc";
+    } else if (mimeType.contains("ms-excel")) {
+      // 旧的 xls 格式
+      correctExt = "xls";
+    } else if (mimeType.contains("ms-powerpoint")) {
+      // 旧的 ppt 格式
+      correctExt = "ppt";
+    }
+
+    if (correctExt != null) {
+      // 检查当前文件名扩展名
+      String currentExt = "";
+      if (fileName.contains(".")) {
+        currentExt = fileName.substring(fileName.lastIndexOf(".") + 1).toLowerCase();
+      }
+
+      // 如果扩展名不匹配，修正文件名
+      if (!currentExt.equals(correctExt)) {
+        String baseName =
+            fileName.contains(".") ? fileName.substring(0, fileName.lastIndexOf(".")) : fileName;
+        String corrected = baseName + "." + correctExt;
+        log.info("修正文件名扩展名: original={}, mimeType={}, corrected={}", fileName, mimeType, corrected);
+        return corrected;
+      }
+    }
+
+    return fileName;
+  }
+
+  /**
+   * 获取客户端 IP 地址
+   *
+   * @param request HTTP请求
+   * @return 客户端IP地址
+   */
+  private String getClientIp(final HttpServletRequest request) {
+    String ip = request.getHeader("X-Forwarded-For");
+    if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+      ip = request.getHeader("Proxy-Client-IP");
+    }
+    if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+      ip = request.getHeader("WL-Proxy-Client-IP");
+    }
+    if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+      ip = request.getRemoteAddr();
+    }
+    // 处理多个 IP 的情况（X-Forwarded-For 可能包含多个 IP）
+    if (ip != null && ip.contains(",")) {
+      ip = ip.split(",")[0].trim();
+    }
+    return ip;
+  }
+
+  /**
+   * 生成文档访问 token（实例方法，使用配置的密钥）
+   *
+   * @param documentId 文档ID
+   * @param expires 过期时间
+   * @return 访问令牌
+   */
+  public String generateAccessTokenWithSecret(final Long documentId, final long expires) {
+    return generateAccessToken(documentId, expires, tokenSecret);
+  }
+
+  /**
+   * 生成文档访问 token（静态方法，用于测试和向后兼容）
+   *
+   * @param documentId 文档ID
+   * @param expires 过期时间
+   * @return 访问令牌
+   */
+  public static String generateAccessToken(final Long documentId, final long expires) {
+    return generateAccessToken(documentId, expires, STATIC_TOKEN_SECRET);
+  }
+
+  /**
+   * 生成文档访问 token（核心实现）
+   *
+   * @param documentId 文档ID
+   * @param expires 过期时间
+   * @param secret 密钥
+   * @return 访问令牌
+   */
+  public static String generateAccessToken(
+      final Long documentId, final long expires, final String secret) {
+    String data = documentId + ":" + expires + ":" + secret;
+    try {
+      MessageDigest md = MessageDigest.getInstance("SHA-256");
+      byte[] hash = md.digest(data.getBytes(StandardCharsets.UTF_8));
+      return HexFormat.of().formatHex(hash).substring(0, TOKEN_HASH_LENGTH);
+    } catch (Exception e) {
+      throw new RuntimeException("生成 token 失败", e);
+    }
+  }
+
+  /**
+   * 验证文档访问 token
+   *
+   * @param documentId 文档ID
+   * @param token 访问令牌
+   * @param expires 过期时间
+   * @return 是否有效
+   */
+  private boolean validateAccessToken(
+      final Long documentId, final String token, final long expires) {
+    String expectedToken = generateAccessTokenWithSecret(documentId, expires);
+    return expectedToken.equals(token);
+  }
+
+  /**
+   * 向响应中写入文件内容
+   *
+   * @param doc 文档DTO
+   * @param objectName 对象名称
+   * @param response HTTP响应
+   * @throws java.io.IOException IO异常
+   */
+  private void serveFileContent(
+      final DocumentDTO doc, final String objectName, final HttpServletResponse response)
+      throws Exception {
+    String mimeType = doc.getMimeType();
+    if (mimeType == null || mimeType.isEmpty()) {
+      mimeType = DEFAULT_MIME_TYPE;
+    }
+    response.setContentType(mimeType);
+    response.setHeader(
+        "Content-Disposition",
+        "inline; filename=\""
+            + URLEncoder.encode(doc.getFileName(), StandardCharsets.UTF_8)
+            + "\"");
+
+    try (InputStream inputStream = minioService.downloadFile(objectName);
+        OutputStream outputStream = response.getOutputStream()) {
+      byte[] buffer = new byte[FILE_BUFFER_SIZE];
+      int bytesRead;
+      while ((bytesRead = inputStream.read(buffer)) != -1) {
+        outputStream.write(buffer, 0, bytesRead);
+      }
+      outputStream.flush();
+    }
+  }
+}
