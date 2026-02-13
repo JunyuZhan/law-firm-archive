@@ -7,6 +7,7 @@ import com.archivesystem.entity.User;
 import com.archivesystem.entity.UserRole;
 import com.archivesystem.repository.UserMapper;
 import com.archivesystem.repository.UserRoleMapper;
+import com.archivesystem.security.PasswordValidator;
 import com.archivesystem.service.UserService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -31,6 +32,7 @@ public class UserServiceImpl implements UserService {
     private final UserMapper userMapper;
     private final UserRoleMapper userRoleMapper;
     private final PasswordEncoder passwordEncoder;
+    private final PasswordValidator passwordValidator;
 
     @Override
     @Transactional
@@ -38,6 +40,12 @@ public class UserServiceImpl implements UserService {
         // 检查用户名是否存在
         if (userMapper.selectByUsername(user.getUsername()) != null) {
             throw new BusinessException("用户名已存在: " + user.getUsername());
+        }
+
+        // 验证密码强度
+        PasswordValidator.ValidationResult passwordResult = passwordValidator.validate(user.getPassword());
+        if (!passwordResult.isValid()) {
+            throw new BusinessException(passwordResult.getFirstError());
         }
 
         // 加密密码
@@ -148,6 +156,12 @@ public class UserServiceImpl implements UserService {
             throw NotFoundException.of("用户", id);
         }
 
+        // 验证密码强度
+        PasswordValidator.ValidationResult passwordResult = passwordValidator.validate(newPassword);
+        if (!passwordResult.isValid()) {
+            throw new BusinessException(passwordResult.getFirstError());
+        }
+
         user.setPassword(passwordEncoder.encode(newPassword));
         userMapper.updateById(user);
         log.info("重置用户密码: id={}", id);
@@ -161,8 +175,20 @@ public class UserServiceImpl implements UserService {
             throw NotFoundException.of("用户", id);
         }
 
+        // 验证原密码
         if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
             throw new BusinessException("原密码错误");
+        }
+
+        // 新密码不能与原密码相同
+        if (passwordEncoder.matches(newPassword, user.getPassword())) {
+            throw new BusinessException("新密码不能与原密码相同");
+        }
+
+        // 验证密码强度
+        PasswordValidator.ValidationResult passwordResult = passwordValidator.validate(newPassword);
+        if (!passwordResult.isValid()) {
+            throw new BusinessException(passwordResult.getFirstError());
         }
 
         user.setPassword(passwordEncoder.encode(newPassword));

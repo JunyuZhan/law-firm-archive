@@ -88,6 +88,18 @@ public class BorrowController {
     }
 
     /**
+     * 获取待借出列表（已审批通过，待借出）.
+     */
+    @GetMapping("/approved")
+    @Operation(summary = "获取待借出列表")
+    public Result<PageResult<BorrowApplication>> getApprovedList(
+            @RequestParam(defaultValue = "1") Integer pageNum,
+            @RequestParam(defaultValue = "20") Integer pageSize) {
+        PageResult<BorrowApplication> result = borrowService.getApprovedList(pageNum, pageSize);
+        return Result.success(result);
+    }
+
+    /**
      * 审批通过.
      */
     @PutMapping("/{id}/approve")

@@ -7,8 +7,12 @@ import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 
 import App from './App.vue'
 import router from './router'
+import { initSecurity } from './utils/security'
 
 import './styles/index.scss'
+
+// 初始化安全模块
+initSecurity()
 
 const app = createApp(App)
 

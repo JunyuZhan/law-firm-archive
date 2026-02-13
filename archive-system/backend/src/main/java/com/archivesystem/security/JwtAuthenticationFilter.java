@@ -1,5 +1,6 @@
 package com.archivesystem.security;
 
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -28,6 +29,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtUtils jwtUtils;
     private final UserDetailsService userDetailsService;
+    private final TokenBlacklistService tokenBlacklistService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
@@ -36,6 +38,24 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String token = extractToken(request);
             
             if (StringUtils.hasText(token) && jwtUtils.validateToken(token)) {
+                // 检查Token是否在黑名单中
+                if (tokenBlacklistService.isBlacklisted(token)) {
+                    log.warn("Token已在黑名单中，拒绝访问");
+                    filterChain.doFilter(request, response);
+                    return;
+                }
+                
+                // 检查用户Token是否被全部吊销
+                Claims claims = jwtUtils.parseToken(token);
+                Long userId = claims.get("userId", Long.class);
+                long issuedAt = claims.getIssuedAt().getTime();
+                
+                if (tokenBlacklistService.isUserBlacklisted(userId, issuedAt)) {
+                    log.warn("用户Token已被全部吊销，拒绝访问: userId={}", userId);
+                    filterChain.doFilter(request, response);
+                    return;
+                }
+                
                 String username = jwtUtils.getUsernameFromToken(token);
                 
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);

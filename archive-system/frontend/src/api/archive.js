@@ -206,6 +206,26 @@ export const locationApi = {
       url: `/locations/${id}`,
       method: 'delete'
     })
+  },
+
+  /**
+   * 获取所有库房
+   */
+  getRooms() {
+    return request({
+      url: '/locations/rooms',
+      method: 'get'
+    })
+  },
+
+  /**
+   * 获取可用位置
+   */
+  getAvailable() {
+    return request({
+      url: '/locations/available',
+      method: 'get'
+    })
   }
 }
 

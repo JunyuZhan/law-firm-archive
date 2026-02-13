@@ -37,6 +37,11 @@ public interface BorrowService {
     PageResult<BorrowApplication> getPendingList(Integer pageNum, Integer pageSize);
 
     /**
+     * 获取待借出列表（已审批通过）.
+     */
+    PageResult<BorrowApplication> getApprovedList(Integer pageNum, Integer pageSize);
+
+    /**
      * 审批通过.
      */
     void approve(Long id, String remarks);

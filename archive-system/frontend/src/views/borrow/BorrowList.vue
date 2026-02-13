@@ -4,6 +4,7 @@
     <el-tabs v-model="activeTab" @tab-change="handleTabChange">
       <el-tab-pane label="我的借阅" name="my" />
       <el-tab-pane label="待审批" name="pending" />
+      <el-tab-pane label="待借出" name="lend" />
       <el-tab-pane label="逾期提醒" name="overdue" />
     </el-tabs>
 
@@ -84,6 +85,11 @@
                 拒绝
               </el-button>
             </template>
+            <template v-if="activeTab === 'lend'">
+              <el-button type="primary" link size="small" @click="handleLend(row)">
+                借出
+              </el-button>
+            </template>
             <template v-if="activeTab === 'overdue'">
               <el-button type="primary" link size="small" @click="handleReturn(row)">
                 归还
@@ -97,7 +103,7 @@
       </el-table>
 
       <!-- 分页 -->
-      <div class="pagination" v-if="activeTab !== 'overdue'">
+      <div class="pagination" v-if="activeTab !== 'overdue' && pagination.total > pagination.pageSize">
         <el-pagination
           v-model:current-page="pagination.pageNum"
           v-model:page-size="pagination.pageSize"
@@ -152,6 +158,39 @@
         <el-button type="primary" @click="confirmRenew">确认续借</el-button>
       </template>
     </el-dialog>
+
+    <!-- 借阅详情弹窗 -->
+    <el-dialog v-model="detailDialogVisible" title="借阅详情" width="600px">
+      <div v-loading="detailLoading">
+        <el-descriptions v-if="detailData" :column="2" border>
+          <el-descriptions-item label="申请编号">{{ detailData.applicationNo }}</el-descriptions-item>
+          <el-descriptions-item label="状态">
+            <el-tag :type="getStatusType(detailData.status)" size="small">
+              {{ getStatusName(detailData.status) }}
+            </el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="档案号">{{ detailData.archiveNo }}</el-descriptions-item>
+          <el-descriptions-item label="档案题名" :span="2">{{ detailData.archiveTitle }}</el-descriptions-item>
+          <el-descriptions-item label="申请人">{{ detailData.applicantName }}</el-descriptions-item>
+          <el-descriptions-item label="申请时间">{{ formatDateTime(detailData.applyTime) }}</el-descriptions-item>
+          <el-descriptions-item label="借阅目的" :span="2">{{ detailData.borrowPurpose || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="预计归还">{{ detailData.expectedReturnDate }}</el-descriptions-item>
+          <el-descriptions-item label="实际归还">{{ detailData.actualReturnDate || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="审批人" v-if="detailData.approverName">{{ detailData.approverName }}</el-descriptions-item>
+          <el-descriptions-item label="审批时间" v-if="detailData.approveTime">{{ formatDateTime(detailData.approveTime) }}</el-descriptions-item>
+          <el-descriptions-item label="审批意见" :span="2" v-if="detailData.approveRemarks">{{ detailData.approveRemarks }}</el-descriptions-item>
+          <el-descriptions-item label="拒绝原因" :span="2" v-if="detailData.rejectReason">
+            <span class="text-danger">{{ detailData.rejectReason }}</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="借出时间" v-if="detailData.borrowTime">{{ formatDateTime(detailData.borrowTime) }}</el-descriptions-item>
+          <el-descriptions-item label="续借次数" v-if="detailData.renewCount">{{ detailData.renewCount }} 次</el-descriptions-item>
+          <el-descriptions-item label="备注" :span="2" v-if="detailData.remarks">{{ detailData.remarks }}</el-descriptions-item>
+        </el-descriptions>
+      </div>
+      <template #footer>
+        <el-button @click="detailDialogVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -159,8 +198,9 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { 
-  getMyBorrows, getPendingBorrows, getOverdueBorrows,
-  cancelBorrow, approveBorrow, rejectBorrow, returnArchive, renewBorrow
+  getMyBorrows, getPendingBorrows, getApprovedBorrows, getOverdueBorrows,
+  cancelBorrow, approveBorrow, rejectBorrow, returnArchive, renewBorrow,
+  lendArchive, getBorrowDetail
 } from '@/api/borrow'
 
 const activeTab = ref('my')
@@ -201,6 +241,13 @@ const fetchData = async () => {
       pagination.total = res.data.total
     } else if (activeTab.value === 'pending') {
       res = await getPendingBorrows({
+        pageNum: pagination.pageNum,
+        pageSize: pagination.pageSize
+      })
+      tableData.value = res.data.records
+      pagination.total = res.data.total
+    } else if (activeTab.value === 'lend') {
+      res = await getApprovedBorrows({
         pageNum: pagination.pageNum,
         pageSize: pagination.pageSize
       })
@@ -315,10 +362,39 @@ const disabledRenewDate = (date) => {
   return date <= expected
 }
 
+// 借出
+const handleLend = async (row) => {
+  try {
+    await ElMessageBox.confirm(
+      `确认将档案【${row.archiveTitle}】借出给【${row.applicantName}】？`, 
+      '确认借出',
+      { type: 'warning' }
+    )
+    await lendArchive(row.id)
+    ElMessage.success('借出成功')
+    fetchData()
+  } catch (e) {
+    if (e !== 'cancel') console.error(e)
+  }
+}
+
 // 查看详情
-const handleView = (row) => {
-  // TODO: 弹窗显示详情
-  console.log('查看详情', row)
+const detailDialogVisible = ref(false)
+const detailData = ref(null)
+const detailLoading = ref(false)
+
+const handleView = async (row) => {
+  detailLoading.value = true
+  detailDialogVisible.value = true
+  try {
+    const res = await getBorrowDetail(row.id)
+    detailData.value = res.data
+  } catch (e) {
+    console.error('获取详情失败', e)
+    ElMessage.error('获取详情失败')
+  } finally {
+    detailLoading.value = false
+  }
 }
 
 // 工具函数

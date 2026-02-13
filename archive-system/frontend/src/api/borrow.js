@@ -54,6 +54,17 @@ export function getPendingBorrows(params) {
 }
 
 /**
+ * 获取待借出列表（已审批通过）
+ */
+export function getApprovedBorrows(params) {
+  return request({
+    url: '/borrows/approved',
+    method: 'get',
+    params
+  })
+}
+
+/**
  * 审批通过
  */
 export function approveBorrow(id, remarks) {

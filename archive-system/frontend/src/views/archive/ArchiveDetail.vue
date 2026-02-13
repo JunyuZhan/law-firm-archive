@@ -10,6 +10,10 @@
         </template>
         <template #extra>
           <el-button-group>
+            <el-button type="warning" @click="handleApplyBorrow" v-if="!isEditing && canBorrow">
+              <el-icon><Reading /></el-icon>
+              申请借阅
+            </el-button>
             <el-button type="primary" @click="handleEdit" v-if="!isEditing">
               <el-icon><Edit /></el-icon>
               编辑
@@ -161,6 +165,49 @@
       <iframe v-if="previewUrl" :src="previewUrl" class="preview-iframe" />
       <el-empty v-else description="该文件不支持预览" />
     </el-dialog>
+
+    <!-- 申请借阅弹窗 -->
+    <el-dialog v-model="borrowDialogVisible" title="申请借阅" width="500px" destroy-on-close>
+      <el-form ref="borrowFormRef" :model="borrowForm" :rules="borrowRules" label-width="100px">
+        <el-form-item label="档案信息">
+          <div class="borrow-archive-info">
+            <span class="archive-no">{{ archive?.archiveNo }}</span>
+            <span class="archive-title">{{ archive?.title }}</span>
+          </div>
+        </el-form-item>
+        <el-form-item label="借阅目的" prop="purpose">
+          <el-input 
+            v-model="borrowForm.purpose" 
+            type="textarea" 
+            :rows="3" 
+            placeholder="请输入借阅目的"
+          />
+        </el-form-item>
+        <el-form-item label="预计归还" prop="expectedReturnDate">
+          <el-date-picker
+            v-model="borrowForm.expectedReturnDate"
+            type="date"
+            placeholder="选择预计归还日期"
+            :disabled-date="disablePastDate"
+            style="width: 100%"
+          />
+        </el-form-item>
+        <el-form-item label="备注">
+          <el-input 
+            v-model="borrowForm.remarks" 
+            type="textarea" 
+            :rows="2" 
+            placeholder="备注信息（可选）"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="borrowDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="submitBorrowApply" :loading="borrowSubmitting">
+          提交申请
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -170,9 +217,10 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { 
   Document, Edit, Check, Folder, Clock, Briefcase, 
-  UploadFilled, Picture, VideoPlay, Headset, FolderOpened 
+  UploadFilled, Picture, VideoPlay, Headset, FolderOpened, Reading 
 } from '@element-plus/icons-vue'
 import { getArchiveDetail, getFileDownloadUrl, getFilePreviewUrl, deleteFile } from '@/api/archive'
+import { checkBorrowAvailable, applyBorrow } from '@/api/borrow'
 
 const route = useRoute()
 const router = useRouter()
@@ -183,6 +231,21 @@ const files = ref([])
 const isEditing = ref(false)
 const previewVisible = ref(false)
 const previewUrl = ref('')
+
+// 借阅相关
+const canBorrow = ref(false)
+const borrowDialogVisible = ref(false)
+const borrowSubmitting = ref(false)
+const borrowFormRef = ref(null)
+const borrowForm = ref({
+  purpose: '',
+  expectedReturnDate: null,
+  remarks: ''
+})
+const borrowRules = {
+  purpose: [{ required: true, message: '请输入借阅目的', trigger: 'blur' }],
+  expectedReturnDate: [{ required: true, message: '请选择预计归还日期', trigger: 'change' }]
+}
 
 // 上传配置
 const uploadUrl = computed(() => {
@@ -200,11 +263,68 @@ const fetchData = async () => {
     const res = await getArchiveDetail(route.params.id)
     archive.value = res.data
     files.value = res.data.files || []
+    // 检查是否可借阅
+    checkCanBorrow()
   } catch (e) {
     console.error('获取档案详情失败', e)
     ElMessage.error('获取档案详情失败')
   } finally {
     loading.value = false
+  }
+}
+
+// 检查档案是否可借阅
+const checkCanBorrow = async () => {
+  try {
+    const res = await checkBorrowAvailable(route.params.id)
+    canBorrow.value = res.data?.available === true
+  } catch (e) {
+    canBorrow.value = false
+  }
+}
+
+// 申请借阅
+const handleApplyBorrow = () => {
+  borrowForm.value = {
+    purpose: '',
+    expectedReturnDate: null,
+    remarks: ''
+  }
+  borrowDialogVisible.value = true
+}
+
+// 禁用过去日期
+const disablePastDate = (time) => {
+  return time.getTime() < Date.now() - 8.64e7 // 禁用今天之前的日期
+}
+
+// 提交借阅申请
+const submitBorrowApply = async () => {
+  if (!borrowFormRef.value) return
+  
+  try {
+    await borrowFormRef.value.validate()
+    borrowSubmitting.value = true
+    
+    const data = {
+      archiveId: route.params.id,
+      purpose: borrowForm.value.purpose,
+      expectedReturnDate: borrowForm.value.expectedReturnDate.toISOString().split('T')[0],
+      remarks: borrowForm.value.remarks
+    }
+    
+    await applyBorrow(data)
+    ElMessage.success('借阅申请已提交，请等待审批')
+    borrowDialogVisible.value = false
+    // 刷新数据，更新可借阅状态
+    checkCanBorrow()
+  } catch (e) {
+    if (e !== 'cancel' && e !== false) {
+      console.error('提交借阅申请失败', e)
+      ElMessage.error(e.response?.data?.message || '提交申请失败')
+    }
+  } finally {
+    borrowSubmitting.value = false
   }
 }
 
@@ -453,5 +573,21 @@ onMounted(() => {
   width: 100%;
   height: 70vh;
   border: none;
+}
+
+.borrow-archive-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  
+  .archive-no {
+    font-size: 12px;
+    color: #909399;
+  }
+  
+  .archive-title {
+    font-weight: 500;
+    color: #303133;
+  }
 }
 </style>

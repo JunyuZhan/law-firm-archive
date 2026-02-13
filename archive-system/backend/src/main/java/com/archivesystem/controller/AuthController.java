@@ -6,10 +6,13 @@ import com.archivesystem.dto.auth.LoginResponse;
 import com.archivesystem.entity.User;
 import com.archivesystem.repository.UserMapper;
 import com.archivesystem.security.JwtUtils;
+import com.archivesystem.security.LoginSecurityService;
 import com.archivesystem.security.SecurityUtils;
+import com.archivesystem.security.TokenBlacklistService;
 import com.archivesystem.security.UserDetailsImpl;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +24,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -39,20 +43,42 @@ public class AuthController {
     private final AuthenticationManager authenticationManager;
     private final JwtUtils jwtUtils;
     private final UserMapper userMapper;
+    private final LoginSecurityService loginSecurityService;
+    private final TokenBlacklistService tokenBlacklistService;
 
     /**
      * 用户登录.
      */
     @PostMapping("/login")
     @Operation(summary = "用户登录", description = "使用用户名密码登录")
-    public Result<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
+    public Result<LoginResponse> login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpRequest) {
+        String username = request.getUsername();
+        String clientIp = getClientIp(httpRequest);
+        
+        // 检查IP是否被锁定
+        if (loginSecurityService.isIpLocked(clientIp)) {
+            log.warn("IP被锁定，拒绝登录: ip={}", clientIp);
+            return Result.error("1005", "当前IP因多次登录失败已被临时锁定，请稍后重试");
+        }
+        
+        // 检查账号是否被锁定
+        if (loginSecurityService.isAccountLocked(username)) {
+            long remainingSeconds = loginSecurityService.getRemainingLockoutTime(username);
+            long remainingMinutes = (remainingSeconds + 59) / 60;
+            log.warn("账号被锁定，拒绝登录: username={}, remainingMinutes={}", username, remainingMinutes);
+            return Result.error("1006", String.format("账号因多次登录失败已被锁定，请%d分钟后重试", remainingMinutes));
+        }
+        
         try {
             // 认证
             Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
+                    new UsernamePasswordAuthenticationToken(username, request.getPassword())
             );
 
             UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
+            
+            // 登录成功，清除失败记录
+            loginSecurityService.clearFailedAttempts(username);
 
             // 生成Token
             String accessToken = jwtUtils.generateAccessToken(
@@ -62,9 +88,10 @@ public class AuthController {
             );
             String refreshToken = jwtUtils.generateRefreshToken(userDetails.getId());
 
-            // 更新最后登录时间
+            // 更新最后登录时间和IP
             User user = userMapper.selectById(userDetails.getId());
             user.setLastLoginAt(LocalDateTime.now());
+            user.setLastLoginIp(clientIp);
             userMapper.updateById(user);
 
             LoginResponse response = LoginResponse.builder()
@@ -77,16 +104,38 @@ public class AuthController {
                     .userType(userDetails.getUserType())
                     .build();
 
-            log.info("用户登录成功: {}", request.getUsername());
+            log.info("用户登录成功: username={}, ip={}", username, clientIp);
             return Result.success("登录成功", response);
 
         } catch (DisabledException e) {
-            log.warn("用户已禁用: {}", request.getUsername());
+            log.warn("用户已禁用: {}", username);
             return Result.error("1003", "用户已被禁用");
         } catch (BadCredentialsException e) {
-            log.warn("登录失败，密码错误: {}", request.getUsername());
-            return Result.error("1004", "用户名或密码错误");
+            // 记录失败尝试
+            int failedCount = loginSecurityService.recordFailedAttempt(username, clientIp);
+            int remaining = loginSecurityService.getRemainingAttempts(username);
+            
+            if (remaining > 0) {
+                return Result.error("1004", String.format("用户名或密码错误，还剩%d次尝试机会", remaining));
+            } else {
+                return Result.error("1006", "账号因多次登录失败已被锁定，请30分钟后重试");
+            }
         }
+    }
+    
+    /**
+     * 获取客户端IP.
+     */
+    private String getClientIp(HttpServletRequest request) {
+        String[] headers = {"X-Forwarded-For", "X-Real-IP", "Proxy-Client-IP", "WL-Proxy-Client-IP"};
+        for (String header : headers) {
+            String ip = request.getHeader(header);
+            if (ip != null && !ip.isEmpty() && !"unknown".equalsIgnoreCase(ip)) {
+                int index = ip.indexOf(',');
+                return index != -1 ? ip.substring(0, index).trim() : ip;
+            }
+        }
+        return request.getRemoteAddr();
     }
 
     /**
@@ -153,13 +202,17 @@ public class AuthController {
     }
 
     /**
-     * 登出（客户端清除Token即可）.
+     * 用户登出.
+     * 将当前Token加入黑名单
      */
     @PostMapping("/logout")
     @Operation(summary = "用户登出")
-    public Result<Void> logout() {
-        // JWT是无状态的，登出只需要客户端清除Token
-        // 如果需要服务端控制，可以维护Token黑名单
+    public Result<Void> logout(@RequestHeader(value = "Authorization", required = false) String authHeader) {
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7);
+            tokenBlacklistService.addToBlacklist(token);
+            log.info("用户登出，Token已加入黑名单");
+        }
         return Result.success("登出成功", null);
     }
 }

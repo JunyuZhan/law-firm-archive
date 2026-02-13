@@ -139,6 +139,18 @@ public class BorrowServiceImpl implements BorrowService {
     }
 
     @Override
+    public PageResult<BorrowApplication> getApprovedList(Integer pageNum, Integer pageSize) {
+        Page<BorrowApplication> page = new Page<>(pageNum, pageSize);
+        Page<BorrowApplication> result = borrowMapper.selectPage(page,
+                new LambdaQueryWrapper<BorrowApplication>()
+                        .eq(BorrowApplication::getStatus, BorrowApplication.STATUS_APPROVED)
+                        .eq(BorrowApplication::getDeleted, false)
+                        .orderByAsc(BorrowApplication::getApproveTime));
+
+        return PageResult.of(result.getCurrent(), result.getSize(), result.getTotal(), result.getRecords());
+    }
+
+    @Override
     @Transactional
     public void approve(Long id, String remarks) {
         BorrowApplication application = getById(id);

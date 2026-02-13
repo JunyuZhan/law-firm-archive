@@ -37,6 +37,14 @@
           <el-icon><Reading /></el-icon>
           <span>借阅管理</span>
         </el-menu-item>
+        <el-menu-item index="/appraisals">
+          <el-icon><Stamp /></el-icon>
+          <span>鉴定管理</span>
+        </el-menu-item>
+        <el-menu-item index="/destructions">
+          <el-icon><Delete /></el-icon>
+          <span>销毁管理</span>
+        </el-menu-item>
         <el-menu-item index="/statistics">
           <el-icon><DataAnalysis /></el-icon>
           <span>统计分析</span>
@@ -161,7 +169,9 @@ import {
   Files,
   Fold,
   Expand,
-  Loading
+  Loading,
+  Stamp,
+  Delete
 } from '@element-plus/icons-vue'
 import { useUserStore, useAppStore } from '@/stores'
 

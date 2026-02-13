@@ -50,6 +50,9 @@ public class User extends BaseEntity {
     /** 最后登录时间 */
     private LocalDateTime lastLoginAt;
 
+    /** 最后登录IP */
+    private String lastLoginIp;
+
     // ===== 用户类型常量（三员分立） =====
     
     public static final String TYPE_SYSTEM_ADMIN = "SYSTEM_ADMIN";

@@ -1,0 +1,147 @@
+package com.archivesystem.security;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.http.MediaType;
+import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+import java.io.IOException;
+import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * 速率限制过滤器.
+ * 防止暴力攻击和DoS攻击
+ */
+@Slf4j
+@Component
+@RequiredArgsConstructor
+public class RateLimitFilter extends OncePerRequestFilter {
+
+    private final StringRedisTemplate redisTemplate;
+    private final ObjectMapper objectMapper;
+
+    // 通用接口限制：每分钟100次请求
+    private static final int GENERAL_RATE_LIMIT = 100;
+    private static final int GENERAL_WINDOW_SECONDS = 60;
+
+    // 登录接口限制：每分钟10次
+    private static final int LOGIN_RATE_LIMIT = 10;
+    private static final int LOGIN_WINDOW_SECONDS = 60;
+
+    // 文件上传限制：每分钟20次
+    private static final int UPLOAD_RATE_LIMIT = 20;
+    private static final int UPLOAD_WINDOW_SECONDS = 60;
+
+    // Open API限制：每分钟30次
+    private static final int OPEN_API_RATE_LIMIT = 30;
+    private static final int OPEN_API_WINDOW_SECONDS = 60;
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
+                                    FilterChain filterChain) throws ServletException, IOException {
+        String clientIp = getClientIp(request);
+        String requestUri = request.getRequestURI();
+        
+        // 确定适用的速率限制
+        RateLimitConfig config = getRateLimitConfig(requestUri);
+        
+        String key = "rate_limit:" + config.keyPrefix + ":" + clientIp;
+        
+        try {
+            Long count = redisTemplate.opsForValue().increment(key);
+            
+            if (count != null && count == 1) {
+                // 第一次请求，设置过期时间
+                redisTemplate.expire(key, Duration.ofSeconds(config.windowSeconds));
+            }
+            
+            // 设置速率限制响应头
+            response.setHeader("X-RateLimit-Limit", String.valueOf(config.limit));
+            response.setHeader("X-RateLimit-Remaining", String.valueOf(Math.max(0, config.limit - (count != null ? count : 0))));
+            
+            if (count != null && count > config.limit) {
+                log.warn("速率限制触发: IP={}, URI={}, Count={}", clientIp, requestUri, count);
+                sendRateLimitResponse(response, config.limit, config.windowSeconds);
+                return;
+            }
+        } catch (Exception e) {
+            // Redis异常时不阻止请求，但记录日志
+            log.error("速率限制检查失败", e);
+        }
+
+        filterChain.doFilter(request, response);
+    }
+
+    /**
+     * 根据请求URI获取速率限制配置.
+     */
+    private RateLimitConfig getRateLimitConfig(String uri) {
+        if (uri.contains("/auth/login")) {
+            return new RateLimitConfig("login", LOGIN_RATE_LIMIT, LOGIN_WINDOW_SECONDS);
+        } else if (uri.contains("/files/upload")) {
+            return new RateLimitConfig("upload", UPLOAD_RATE_LIMIT, UPLOAD_WINDOW_SECONDS);
+        } else if (uri.startsWith("/api/open/") || uri.startsWith("/open/")) {
+            return new RateLimitConfig("open", OPEN_API_RATE_LIMIT, OPEN_API_WINDOW_SECONDS);
+        }
+        return new RateLimitConfig("general", GENERAL_RATE_LIMIT, GENERAL_WINDOW_SECONDS);
+    }
+
+    /**
+     * 获取客户端真实IP.
+     */
+    private String getClientIp(HttpServletRequest request) {
+        String[] headers = {
+            "X-Forwarded-For",
+            "X-Real-IP",
+            "Proxy-Client-IP",
+            "WL-Proxy-Client-IP",
+            "HTTP_CLIENT_IP",
+            "HTTP_X_FORWARDED_FOR"
+        };
+        
+        for (String header : headers) {
+            String ip = request.getHeader(header);
+            if (ip != null && !ip.isEmpty() && !"unknown".equalsIgnoreCase(ip)) {
+                // X-Forwarded-For可能包含多个IP，取第一个
+                int index = ip.indexOf(',');
+                if (index != -1) {
+                    ip = ip.substring(0, index).trim();
+                }
+                return ip;
+            }
+        }
+        return request.getRemoteAddr();
+    }
+
+    /**
+     * 发送速率限制响应.
+     */
+    private void sendRateLimitResponse(HttpServletResponse response, int limit, int windowSeconds) throws IOException {
+        response.setStatus(429);
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.setCharacterEncoding("UTF-8");
+        
+        Map<String, Object> body = new HashMap<>();
+        body.put("success", false);
+        body.put("code", "429");
+        body.put("message", String.format("请求过于频繁，请%d秒后重试。限制：每%d秒%d次请求", 
+                windowSeconds, windowSeconds, limit));
+        body.put("timestamp", System.currentTimeMillis());
+        
+        response.getWriter().write(objectMapper.writeValueAsString(body));
+    }
+
+    /**
+     * 速率限制配置.
+     */
+    private record RateLimitConfig(String keyPrefix, int limit, int windowSeconds) {}
+}

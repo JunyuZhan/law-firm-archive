@@ -20,16 +20,16 @@
               <el-input v-model="profileForm.username" disabled />
             </el-form-item>
             <el-form-item label="姓名" prop="realName">
-              <el-input v-model="profileForm.realName" placeholder="请输入姓名" />
+              <el-input v-model="profileForm.realName" placeholder="请输入姓名" maxlength="50" />
             </el-form-item>
             <el-form-item label="邮箱" prop="email">
-              <el-input v-model="profileForm.email" placeholder="请输入邮箱" />
+              <el-input v-model="profileForm.email" placeholder="请输入邮箱" maxlength="100" />
             </el-form-item>
             <el-form-item label="手机号" prop="phone">
-              <el-input v-model="profileForm.phone" placeholder="请输入手机号" />
+              <el-input v-model="profileForm.phone" placeholder="请输入手机号" maxlength="11" />
             </el-form-item>
             <el-form-item label="部门">
-              <el-input v-model="profileForm.department" placeholder="请输入部门" />
+              <el-input v-model="profileForm.department" placeholder="请输入部门" maxlength="100" />
             </el-form-item>
             <el-form-item>
               <el-button type="primary" @click="handleUpdateProfile" :loading="profileLoading">
@@ -61,6 +61,7 @@
                 type="password"
                 placeholder="请输入当前密码"
                 show-password
+                maxlength="50"
               />
             </el-form-item>
             <el-form-item label="新密码" prop="newPassword">
@@ -69,7 +70,41 @@
                 type="password"
                 placeholder="请输入新密码"
                 show-password
+                maxlength="50"
+                @input="checkPasswordStrength"
               />
+              <!-- 密码强度指示器 -->
+              <div class="password-strength" v-if="passwordForm.newPassword">
+                <div class="strength-bar">
+                  <div 
+                    class="strength-level" 
+                    :class="passwordStrength.level"
+                    :style="{ width: passwordStrength.percent + '%' }"
+                  ></div>
+                </div>
+                <span class="strength-text" :class="passwordStrength.level">
+                  {{ passwordStrength.text }}
+                </span>
+              </div>
+              <!-- 密码要求提示 -->
+              <div class="password-requirements" v-if="passwordForm.newPassword">
+                <div :class="{ met: hasMinLength }">
+                  <el-icon><component :is="hasMinLength ? 'Check' : 'Close'" /></el-icon>
+                  至少8位字符
+                </div>
+                <div :class="{ met: hasLetter }">
+                  <el-icon><component :is="hasLetter ? 'Check' : 'Close'" /></el-icon>
+                  包含字母
+                </div>
+                <div :class="{ met: hasNumber }">
+                  <el-icon><component :is="hasNumber ? 'Check' : 'Close'" /></el-icon>
+                  包含数字
+                </div>
+                <div :class="{ met: hasSpecial }">
+                  <el-icon><component :is="hasSpecial ? 'Check' : 'Close'" /></el-icon>
+                  包含特殊字符
+                </div>
+              </div>
             </el-form-item>
             <el-form-item label="确认新密码" prop="confirmPassword">
               <el-input 
@@ -77,24 +112,20 @@
                 type="password"
                 placeholder="请再次输入新密码"
                 show-password
+                maxlength="50"
               />
             </el-form-item>
             <el-form-item>
-              <el-button type="primary" @click="handleChangePassword" :loading="passwordLoading">
+              <el-button 
+                type="primary" 
+                @click="handleChangePassword" 
+                :loading="passwordLoading"
+                :disabled="!isPasswordValid"
+              >
                 修改密码
               </el-button>
             </el-form-item>
           </el-form>
-          
-          <el-alert 
-            type="info" 
-            :closable="false"
-            style="margin-top: 16px"
-          >
-            <template #title>
-              密码要求：至少8位，建议包含字母、数字和特殊字符
-            </template>
-          </el-alert>
         </el-card>
       </el-col>
     </el-row>
@@ -123,10 +154,11 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ref, reactive, computed, onMounted } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 import { changePassword, updateUser, getCurrentUser } from '@/api/user'
+import { validatePasswordStrength } from '@/utils/security'
 
 const userStore = useUserStore()
 const profileFormRef = ref()
@@ -150,6 +182,53 @@ const passwordForm = reactive({
   confirmPassword: ''
 })
 
+// 密码强度
+const passwordStrength = reactive({
+  level: '',
+  text: '',
+  percent: 0
+})
+
+// 密码要求检查
+const hasMinLength = computed(() => passwordForm.newPassword.length >= 8)
+const hasLetter = computed(() => /[a-zA-Z]/.test(passwordForm.newPassword))
+const hasNumber = computed(() => /\d/.test(passwordForm.newPassword))
+const hasSpecial = computed(() => /[!@#$%^&*(),.?":{}|<>]/.test(passwordForm.newPassword))
+
+// 密码是否有效
+const isPasswordValid = computed(() => {
+  return hasMinLength.value && hasLetter.value && hasNumber.value &&
+         passwordForm.oldPassword && 
+         passwordForm.newPassword === passwordForm.confirmPassword
+})
+
+// 检查密码强度
+const checkPasswordStrength = () => {
+  const password = passwordForm.newPassword
+  if (!password) {
+    passwordStrength.level = ''
+    passwordStrength.text = ''
+    passwordStrength.percent = 0
+    return
+  }
+  
+  const result = validatePasswordStrength(password)
+  
+  if (result.score <= 2) {
+    passwordStrength.level = 'weak'
+    passwordStrength.text = '弱'
+    passwordStrength.percent = 33
+  } else if (result.score <= 3) {
+    passwordStrength.level = 'medium'
+    passwordStrength.text = '中'
+    passwordStrength.percent = 66
+  } else {
+    passwordStrength.level = 'strong'
+    passwordStrength.text = '强'
+    passwordStrength.percent = 100
+  }
+}
+
 // 个人信息校验规则
 const profileRules = {
   realName: [
@@ -164,6 +243,22 @@ const profileRules = {
 }
 
 // 密码校验规则
+const validateNewPassword = (rule, value, callback) => {
+  if (!value) {
+    callback(new Error('请输入新密码'))
+  } else if (value.length < 8) {
+    callback(new Error('密码长度至少8位'))
+  } else if (!/[a-zA-Z]/.test(value)) {
+    callback(new Error('密码必须包含字母'))
+  } else if (!/\d/.test(value)) {
+    callback(new Error('密码必须包含数字'))
+  } else if (value === passwordForm.oldPassword) {
+    callback(new Error('新密码不能与原密码相同'))
+  } else {
+    callback()
+  }
+}
+
 const validateConfirmPassword = (rule, value, callback) => {
   if (value !== passwordForm.newPassword) {
     callback(new Error('两次输入的密码不一致'))
@@ -178,7 +273,7 @@ const passwordRules = {
   ],
   newPassword: [
     { required: true, message: '请输入新密码', trigger: 'blur' },
-    { min: 8, message: '密码长度至少8位', trigger: 'blur' }
+    { validator: validateNewPassword, trigger: 'blur' }
   ],
   confirmPassword: [
     { required: true, message: '请确认新密码', trigger: 'blur' },
@@ -241,6 +336,18 @@ const handleUpdateProfile = async () => {
 const handleChangePassword = async () => {
   try {
     await passwordFormRef.value.validate()
+    
+    // 二次确认
+    await ElMessageBox.confirm(
+      '修改密码后需要重新登录，确定要修改吗？',
+      '安全提示',
+      {
+        confirmButtonText: '确定修改',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+    
     passwordLoading.value = true
     
     await changePassword(passwordForm.oldPassword, passwordForm.newPassword)
@@ -251,13 +358,18 @@ const handleChangePassword = async () => {
     passwordForm.oldPassword = ''
     passwordForm.newPassword = ''
     passwordForm.confirmPassword = ''
+    passwordStrength.level = ''
+    passwordStrength.text = ''
+    passwordStrength.percent = 0
     
     // 退出登录
     setTimeout(() => {
       userStore.logout()
     }, 1500)
   } catch (e) {
-    console.error('修改密码失败', e)
+    if (e !== 'cancel') {
+      console.error('修改密码失败', e)
+    }
   } finally {
     passwordLoading.value = false
   }
@@ -276,6 +388,67 @@ onMounted(() => {
   
   .el-form {
     max-width: 400px;
+  }
+}
+
+// 密码强度指示器
+.password-strength {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+  
+  .strength-bar {
+    flex: 1;
+    height: 4px;
+    background: #e5e7eb;
+    border-radius: 2px;
+    overflow: hidden;
+    
+    .strength-level {
+      height: 100%;
+      transition: width 0.3s, background-color 0.3s;
+      
+      &.weak { background: #ef4444; }
+      &.medium { background: #f59e0b; }
+      &.strong { background: #10b981; }
+    }
+  }
+  
+  .strength-text {
+    font-size: 12px;
+    min-width: 20px;
+    
+    &.weak { color: #ef4444; }
+    &.medium { color: #f59e0b; }
+    &.strong { color: #10b981; }
+  }
+}
+
+// 密码要求提示
+.password-requirements {
+  margin-top: 10px;
+  font-size: 12px;
+  
+  > div {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: #9ca3af;
+    margin-bottom: 4px;
+    
+    .el-icon {
+      font-size: 14px;
+      color: #ef4444;
+    }
+    
+    &.met {
+      color: #10b981;
+      
+      .el-icon {
+        color: #10b981;
+      }
+    }
   }
 }
 </style>

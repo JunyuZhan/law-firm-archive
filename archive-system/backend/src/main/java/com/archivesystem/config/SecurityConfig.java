@@ -1,7 +1,11 @@
 package com.archivesystem.config;
 
+import com.archivesystem.security.ApiKeyAuthFilter;
 import com.archivesystem.security.JwtAuthenticationFilter;
+import com.archivesystem.security.RateLimitFilter;
+import com.archivesystem.security.SecurityHeadersFilter;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -15,6 +19,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -32,6 +37,12 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final RateLimitFilter rateLimitFilter;
+    private final SecurityHeadersFilter securityHeadersFilter;
+    private final ApiKeyAuthFilter apiKeyAuthFilter;
+    
+    @Value("${security.cors.allowed-origins:http://localhost:3001}")
+    private String allowedOrigins;
 
     /**
      * 密码编码器.
@@ -58,20 +69,36 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                // 配置安全响应头
+                .headers(headers -> headers
+                        .frameOptions(frame -> frame.sameOrigin())
+                        .xssProtection(xss -> xss.headerValue(
+                                org.springframework.security.web.header.writers.XXssProtectionHeaderWriter.HeaderValue.ENABLED_MODE_BLOCK))
+                        .contentTypeOptions(contentType -> {})
+                        .referrerPolicy(referrer -> referrer.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
+                        .permissionsPolicy(permissions -> permissions.policy(
+                                "camera=(), microphone=(), geolocation=(), payment=()"))
+                )
                 .authorizeHttpRequests(auth -> auth
-                        // 开放API接口（供外部系统调用）
+                        // 开放API接口（需要API Key认证，在ApiKeyAuthFilter中处理）
                         .requestMatchers("/open/**").permitAll()
-                        // 认证接口（注意：这里不包含context-path）
+                        // 认证接口
                         .requestMatchers("/auth/**").permitAll()
-                        // 健康检查
-                        .requestMatchers("/actuator/**").permitAll()
+                        // 健康检查 - 只允许基本健康检查，限制敏感端点
+                        .requestMatchers("/actuator/health", "/actuator/info").permitAll()
+                        .requestMatchers("/actuator/prometheus").hasRole("SYSTEM_ADMIN")
+                        .requestMatchers("/actuator/**").hasRole("SYSTEM_ADMIN")
                         // 公共基础数据
                         .requestMatchers("/retention-periods/**").permitAll()
-                        // API文档
+                        // API文档（生产环境应禁用）
                         .requestMatchers("/doc.html", "/swagger-ui/**", "/v3/api-docs/**", "/webjars/**").permitAll()
                         // 其他接口需要认证
                         .anyRequest().authenticated()
                 )
+                // 添加过滤器链：安全头 -> 速率限制 -> API Key -> JWT
+                .addFilterBefore(securityHeadersFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(apiKeyAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
@@ -79,13 +106,37 @@ public class SecurityConfig {
 
     /**
      * CORS配置.
+     * 严格限制允许的来源，防止CSRF攻击
      */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(List.of("*"));
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("*"));
+        
+        // 从配置中读取允许的来源，不再使用通配符
+        List<String> origins = Arrays.asList(allowedOrigins.split(","));
+        configuration.setAllowedOrigins(origins);
+        
+        // 只允许必要的HTTP方法
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
+        
+        // 允许的请求头
+        configuration.setAllowedHeaders(Arrays.asList(
+                "Authorization",
+                "Content-Type",
+                "X-Requested-With",
+                "Accept",
+                "Origin",
+                "X-API-Key",
+                "X-CSRF-Token"
+        ));
+        
+        // 允许暴露的响应头
+        configuration.setExposedHeaders(Arrays.asList(
+                "X-RateLimit-Limit",
+                "X-RateLimit-Remaining",
+                "X-Request-Id"
+        ));
+        
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);
 

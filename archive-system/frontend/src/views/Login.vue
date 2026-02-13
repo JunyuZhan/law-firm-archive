@@ -7,14 +7,26 @@
         <p class="subtitle">Archive Management System</p>
       </div>
       
+      <!-- 安全提示 -->
+      <el-alert
+        v-if="securityAlert.show"
+        :title="securityAlert.message"
+        :type="securityAlert.type"
+        show-icon
+        :closable="false"
+        class="security-alert"
+      />
+      
       <el-form ref="formRef" :model="form" :rules="rules" class="login-form">
         <el-form-item prop="username">
           <el-input
-            v-model="form.username"
+            v-model.trim="form.username"
             prefix-icon="User"
             placeholder="用户名"
             size="large"
             clearable
+            maxlength="50"
+            @input="onInputChange"
           />
         </el-form-item>
         <el-form-item prop="password">
@@ -25,80 +37,337 @@
             placeholder="密码"
             size="large"
             show-password
+            maxlength="50"
             @keyup.enter="handleLogin"
+            @input="onInputChange"
           />
         </el-form-item>
+        
+        <!-- 验证码（失败多次后显示） -->
+        <el-form-item v-if="showCaptcha" prop="captcha">
+          <div class="captcha-row">
+            <el-input
+              v-model="form.captcha"
+              placeholder="请输入验证码"
+              size="large"
+              maxlength="4"
+              class="captcha-input"
+              @keyup.enter="handleLogin"
+            />
+            <div class="captcha-img" @click="refreshCaptcha" :title="captchaText">
+              <canvas ref="captchaCanvas" width="120" height="40"></canvas>
+            </div>
+          </div>
+        </el-form-item>
+        
         <el-form-item>
           <el-button
             type="primary"
             size="large"
             :loading="loading"
+            :disabled="isLocked"
             @click="handleLogin"
             style="width: 100%"
           >
-            {{ loading ? '登录中...' : '登 录' }}
+            {{ loginButtonText }}
           </el-button>
         </el-form-item>
       </el-form>
       
       <div class="login-footer">
-        <p>默认管理员: admin / admin123</p>
+        <p v-if="isDev">开发环境：admin / admin123</p>
+        <p v-else>请使用分配的账号登录</p>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
+import { isValidUrl } from '@/utils/security'
 
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
 const formRef = ref()
 const loading = ref(false)
+const captchaCanvas = ref()
+
+// 是否开发环境
+const isDev = import.meta.env.DEV
+
+// 登录失败计数
+const failedAttempts = ref(0)
+const isLocked = ref(false)
+const lockEndTime = ref(0)
+const lockCountdown = ref(0)
+let lockTimer = null
+
+// 验证码相关
+const showCaptcha = computed(() => failedAttempts.value >= 3)
+const captchaText = ref('')
+
+// 安全提示
+const securityAlert = reactive({
+  show: false,
+  type: 'warning',
+  message: ''
+})
 
 const form = reactive({
   username: '',
-  password: ''
+  password: '',
+  captcha: ''
 })
 
 const rules = {
   username: [
-    { required: true, message: '请输入用户名', trigger: 'blur' }
+    { required: true, message: '请输入用户名', trigger: 'blur' },
+    { pattern: /^[a-zA-Z0-9_]{3,50}$/, message: '用户名只能包含字母、数字和下划线', trigger: 'blur' }
   ],
   password: [
     { required: true, message: '请输入密码', trigger: 'blur' },
-    { min: 6, message: '密码长度至少6位', trigger: 'blur' }
+    { min: 6, max: 50, message: '密码长度6-50位', trigger: 'blur' }
+  ],
+  captcha: [
+    { required: true, message: '请输入验证码', trigger: 'blur' },
+    { len: 4, message: '验证码为4位', trigger: 'blur' }
   ]
 }
+
+// 登录按钮文字
+const loginButtonText = computed(() => {
+  if (loading.value) return '登录中...'
+  if (isLocked.value) return `请等待 ${lockCountdown.value} 秒`
+  return '登 录'
+})
 
 // 检查是否已登录
 onMounted(() => {
   userStore.init()
   if (userStore.isLoggedIn) {
-    router.push(route.query.redirect || '/')
+    safeRedirect()
   }
+  
+  // 恢复锁定状态
+  restoreLockState()
 })
 
+// 安全重定向（防止开放重定向漏洞）
+const safeRedirect = () => {
+  const redirect = route.query.redirect
+  
+  // 验证重定向URL安全性
+  if (redirect) {
+    // 只允许相对路径或同源URL
+    if (redirect.startsWith('/') && !redirect.startsWith('//')) {
+      router.push(redirect)
+      return
+    }
+    // 检查是否同源
+    if (isValidUrl(redirect)) {
+      try {
+        const url = new URL(redirect, window.location.origin)
+        if (url.origin === window.location.origin) {
+          router.push(redirect)
+          return
+        }
+      } catch (e) {
+        // URL解析失败，使用默认
+      }
+    }
+  }
+  
+  // 默认跳转首页
+  router.push('/')
+}
+
+// 恢复锁定状态
+const restoreLockState = () => {
+  const savedLockEnd = localStorage.getItem('loginLockEndTime')
+  if (savedLockEnd) {
+    const endTime = parseInt(savedLockEnd, 10)
+    if (endTime > Date.now()) {
+      lockEndTime.value = endTime
+      isLocked.value = true
+      startLockCountdown()
+    } else {
+      localStorage.removeItem('loginLockEndTime')
+    }
+  }
+  
+  const savedAttempts = sessionStorage.getItem('loginFailedAttempts')
+  if (savedAttempts) {
+    failedAttempts.value = parseInt(savedAttempts, 10)
+    if (failedAttempts.value >= 3) {
+      nextTick(() => refreshCaptcha())
+    }
+  }
+}
+
+// 开始锁定倒计时
+const startLockCountdown = () => {
+  const updateCountdown = () => {
+    const remaining = Math.ceil((lockEndTime.value - Date.now()) / 1000)
+    if (remaining > 0) {
+      lockCountdown.value = remaining
+      lockTimer = setTimeout(updateCountdown, 1000)
+    } else {
+      isLocked.value = false
+      lockCountdown.value = 0
+      localStorage.removeItem('loginLockEndTime')
+    }
+  }
+  updateCountdown()
+}
+
+// 生成验证码
+const refreshCaptcha = () => {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+  let code = ''
+  for (let i = 0; i < 4; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length))
+  }
+  captchaText.value = code
+  form.captcha = ''
+  
+  nextTick(() => {
+    drawCaptcha(code)
+  })
+}
+
+// 绘制验证码
+const drawCaptcha = (code) => {
+  const canvas = captchaCanvas.value
+  if (!canvas) return
+  
+  const ctx = canvas.getContext('2d')
+  const width = canvas.width
+  const height = canvas.height
+  
+  // 背景
+  ctx.fillStyle = '#f0f0f0'
+  ctx.fillRect(0, 0, width, height)
+  
+  // 干扰线
+  for (let i = 0; i < 4; i++) {
+    ctx.strokeStyle = `rgb(${Math.random() * 150}, ${Math.random() * 150}, ${Math.random() * 150})`
+    ctx.beginPath()
+    ctx.moveTo(Math.random() * width, Math.random() * height)
+    ctx.lineTo(Math.random() * width, Math.random() * height)
+    ctx.stroke()
+  }
+  
+  // 干扰点
+  for (let i = 0; i < 30; i++) {
+    ctx.fillStyle = `rgb(${Math.random() * 255}, ${Math.random() * 255}, ${Math.random() * 255})`
+    ctx.beginPath()
+    ctx.arc(Math.random() * width, Math.random() * height, 1, 0, 2 * Math.PI)
+    ctx.fill()
+  }
+  
+  // 文字
+  ctx.font = 'bold 28px Arial'
+  ctx.textBaseline = 'middle'
+  for (let i = 0; i < code.length; i++) {
+    ctx.fillStyle = `rgb(${Math.random() * 100}, ${Math.random() * 100}, ${Math.random() * 100})`
+    const x = 15 + i * 26
+    const y = height / 2 + (Math.random() - 0.5) * 10
+    const rotation = (Math.random() - 0.5) * 0.4
+    ctx.save()
+    ctx.translate(x, y)
+    ctx.rotate(rotation)
+    ctx.fillText(code[i], 0, 0)
+    ctx.restore()
+  }
+}
+
+// 输入变化时清除安全提示
+const onInputChange = () => {
+  if (securityAlert.show && securityAlert.type === 'error') {
+    securityAlert.show = false
+  }
+}
+
+// 处理登录失败
+const handleLoginFailed = (error) => {
+  failedAttempts.value++
+  sessionStorage.setItem('loginFailedAttempts', failedAttempts.value.toString())
+  
+  // 解析错误信息
+  const errorMsg = error?.response?.data?.message || error?.message || '登录失败'
+  
+  // 检查是否账号被锁定
+  if (errorMsg.includes('锁定') || error?.response?.data?.code === '1006') {
+    securityAlert.show = true
+    securityAlert.type = 'error'
+    securityAlert.message = errorMsg
+    
+    // 前端也锁定，防止继续尝试
+    const lockDuration = 30 * 60 * 1000 // 30分钟
+    lockEndTime.value = Date.now() + lockDuration
+    localStorage.setItem('loginLockEndTime', lockEndTime.value.toString())
+    isLocked.value = true
+    startLockCountdown()
+    return
+  }
+  
+  // 显示剩余尝试次数
+  if (errorMsg.includes('还剩')) {
+    securityAlert.show = true
+    securityAlert.type = 'warning'
+    securityAlert.message = errorMsg
+  } else {
+    securityAlert.show = true
+    securityAlert.type = 'error'
+    securityAlert.message = errorMsg
+  }
+  
+  // 3次失败后显示验证码
+  if (failedAttempts.value >= 3) {
+    nextTick(() => refreshCaptcha())
+  }
+}
+
 const handleLogin = async () => {
+  if (isLocked.value) {
+    ElMessage.warning('账号已被临时锁定，请稍后再试')
+    return
+  }
+  
   try {
     await formRef.value.validate()
-    loading.value = true
     
-    await userStore.login(form)
+    // 验证码校验
+    if (showCaptcha.value) {
+      if (form.captcha.toUpperCase() !== captchaText.value) {
+        ElMessage.error('验证码错误')
+        refreshCaptcha()
+        return
+      }
+    }
+    
+    loading.value = true
+    securityAlert.show = false
+    
+    await userStore.login({
+      username: form.username,
+      password: form.password
+    })
+    
+    // 登录成功，清除失败记录
+    failedAttempts.value = 0
+    sessionStorage.removeItem('loginFailedAttempts')
     
     ElMessage.success('登录成功')
-    
-    // 跳转到之前的页面或首页
-    const redirect = route.query.redirect || '/'
-    router.push(redirect)
+    safeRedirect()
     
   } catch (e) {
     console.error('登录失败', e)
-    // 错误消息已在API拦截器中处理
+    handleLoginFailed(e)
   } finally {
     loading.value = false
   }
@@ -167,6 +436,14 @@ const handleLogin = async () => {
   }
 }
 
+.security-alert {
+  margin-bottom: 20px;
+  
+  :deep(.el-alert__title) {
+    font-size: 13px;
+  }
+}
+
 .login-form {
   .el-form-item {
     margin-bottom: 24px;
@@ -184,6 +461,37 @@ const handleLogin = async () => {
     border-radius: 6px;
     font-weight: 500;
     letter-spacing: 2px;
+    
+    &.is-disabled {
+      background-color: #a0cfff;
+      border-color: #a0cfff;
+    }
+  }
+}
+
+.captcha-row {
+  display: flex;
+  gap: 12px;
+  
+  .captcha-input {
+    flex: 1;
+  }
+  
+  .captcha-img {
+    width: 120px;
+    height: 40px;
+    border-radius: 4px;
+    overflow: hidden;
+    cursor: pointer;
+    border: 1px solid #dcdfe6;
+    
+    &:hover {
+      border-color: #409eff;
+    }
+    
+    canvas {
+      display: block;
+    }
   }
 }
 

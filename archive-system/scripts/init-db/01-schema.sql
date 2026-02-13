@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS sys_user (
     user_type VARCHAR(30) DEFAULT 'USER',
     status VARCHAR(20) DEFAULT 'ACTIVE',
     last_login_at TIMESTAMP,
+    last_login_ip VARCHAR(45),                   -- 最后登录IP地址
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by BIGINT,
@@ -30,6 +31,7 @@ CREATE TABLE IF NOT EXISTS sys_user (
 
 COMMENT ON TABLE sys_user IS '用户表';
 COMMENT ON COLUMN sys_user.user_type IS '用户类型（三员分立）: SYSTEM_ADMIN, SECURITY_ADMIN, AUDIT_ADMIN, ARCHIVIST, USER';
+COMMENT ON COLUMN sys_user.last_login_ip IS '最后登录IP地址';
 
 -- 1.2 角色表
 CREATE TABLE IF NOT EXISTS sys_role (
@@ -50,6 +52,58 @@ CREATE TABLE IF NOT EXISTS sys_user_role (
     role_id BIGINT NOT NULL,
     UNIQUE(user_id, role_id)
 );
+
+-- 1.4 API Key管理表（用于Open API认证）
+CREATE TABLE IF NOT EXISTS sys_api_key (
+    id BIGSERIAL PRIMARY KEY,
+    api_key VARCHAR(64) NOT NULL UNIQUE,
+    source_name VARCHAR(100) NOT NULL,           -- 来源名称（如：律所管理系统）
+    description TEXT,
+    status VARCHAR(20) DEFAULT 'ACTIVE',         -- ACTIVE, DISABLED, EXPIRED
+    expire_at TIMESTAMP,                          -- 过期时间（NULL表示永不过期）
+    last_used_at TIMESTAMP,
+    total_calls BIGINT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by BIGINT,
+    deleted BOOLEAN DEFAULT FALSE
+);
+
+COMMENT ON TABLE sys_api_key IS 'API Key管理表 - 用于Open API接口认证';
+CREATE INDEX IF NOT EXISTS idx_api_key_key ON sys_api_key(api_key);
+CREATE INDEX IF NOT EXISTS idx_api_key_status ON sys_api_key(status);
+
+-- 1.5 安全审计日志表
+CREATE TABLE IF NOT EXISTS sys_security_audit (
+    id BIGSERIAL PRIMARY KEY,
+    event_type VARCHAR(50) NOT NULL,             -- LOGIN_SUCCESS, LOGIN_FAILED, LOGOUT, PASSWORD_CHANGE, ACCOUNT_LOCKED, etc.
+    user_id BIGINT,
+    username VARCHAR(50),
+    ip_address VARCHAR(45),
+    user_agent TEXT,
+    details JSONB,                                -- 详细信息（JSON格式）
+    event_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+COMMENT ON TABLE sys_security_audit IS '安全审计日志表 - 记录登录、密码修改等安全事件';
+CREATE INDEX IF NOT EXISTS idx_security_audit_event_type ON sys_security_audit(event_type);
+CREATE INDEX IF NOT EXISTS idx_security_audit_user_id ON sys_security_audit(user_id);
+CREATE INDEX IF NOT EXISTS idx_security_audit_ip ON sys_security_audit(ip_address);
+CREATE INDEX IF NOT EXISTS idx_security_audit_time ON sys_security_audit(event_time);
+
+-- 1.6 IP黑名单表
+CREATE TABLE IF NOT EXISTS sys_ip_blacklist (
+    id BIGSERIAL PRIMARY KEY,
+    ip_address VARCHAR(45) NOT NULL,
+    ip_range VARCHAR(45),                        -- IP范围（如：192.168.1.0/24）
+    reason TEXT,
+    blocked_until TIMESTAMP,                      -- 解封时间（NULL表示永久封禁）
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by BIGINT
+);
+
+COMMENT ON TABLE sys_ip_blacklist IS 'IP黑名单表 - 用于封禁恶意IP';
+CREATE INDEX IF NOT EXISTS idx_ip_blacklist_ip ON sys_ip_blacklist(ip_address);
 
 -- =====================================================
 -- 二、档案分类体系表
@@ -386,6 +440,38 @@ CREATE TABLE IF NOT EXISTS arc_destruction_record (
 
 COMMENT ON TABLE arc_destruction_record IS '档案销毁记录表';
 
+-- 4.4 存放位置表
+CREATE TABLE IF NOT EXISTS archive_location (
+    id BIGSERIAL PRIMARY KEY,
+    location_code VARCHAR(50) NOT NULL UNIQUE,       -- 位置编码
+    location_name VARCHAR(200) NOT NULL,             -- 位置名称
+    room_name VARCHAR(100),                          -- 库房名称
+    area VARCHAR(50),                                -- 区域
+    shelf_no VARCHAR(50),                            -- 架号
+    layer_no VARCHAR(50),                            -- 层号
+    
+    -- ===== 容量信息 =====
+    total_capacity INTEGER DEFAULT 0,                -- 总容量
+    used_capacity INTEGER DEFAULT 0,                 -- 已用容量
+    
+    -- ===== 状态 =====
+    status VARCHAR(30) DEFAULT 'AVAILABLE',          -- AVAILABLE-可用, FULL-已满, DISABLED-停用
+    remarks TEXT,                                    -- 备注
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by BIGINT,
+    updated_by BIGINT,
+    deleted BOOLEAN DEFAULT FALSE
+);
+
+COMMENT ON TABLE archive_location IS '存放位置表';
+COMMENT ON COLUMN archive_location.status IS '状态: AVAILABLE-可用, FULL-已满, DISABLED-停用';
+
+CREATE INDEX IF NOT EXISTS idx_location_code ON archive_location(location_code);
+CREATE INDEX IF NOT EXISTS idx_location_room ON archive_location(room_name);
+CREATE INDEX IF NOT EXISTS idx_location_status ON archive_location(status);
+
 -- =====================================================
 -- 五、日志审计表
 -- =====================================================
@@ -560,15 +646,50 @@ INSERT INTO arc_category (parent_id, category_code, category_name, archive_type,
 (NULL, '05', '人事档案', 'PERSONNEL', 1, 5, 'PERMANENT', '05')
 ON CONFLICT DO NOTHING;
 
--- 初始化系统管理员（密码：admin123）
-INSERT INTO sys_user (username, password, real_name, user_type, status) VALUES
-('admin', '$2a$10$24PbD0PuBiLhmIKtNLy7e.I.pmmsTTrWqFsfqzo3FmCwzE4bbUTdG', '系统管理员', 'SYSTEM_ADMIN', 'ACTIVE')
+-- =====================================================
+-- 初始化用户（三员分立 + 业务用户）
+-- 默认密码均为：Admin@123
+-- 密码BCrypt哈希（cost=10）
+-- 注意：生产环境部署后请立即修改所有默认密码！
+-- =====================================================
+
+-- 1. 系统管理员（SYSTEM_ADMIN）- 负责系统配置、用户管理、系统维护
+INSERT INTO sys_user (username, password, real_name, email, phone, department, user_type, status) VALUES
+('admin', '$2a$10$rDkPvvAFV8kqwvKJzwlCv.mfMXcLHb0Ux9Nl1g/uGVcCbLVPgKzZy', '系统管理员', 'admin@archive.com', '13800000001', '信息技术部', 'SYSTEM_ADMIN', 'ACTIVE')
+ON CONFLICT (username) DO NOTHING;
+
+-- 2. 安全保密员（SECURITY_ADMIN）- 负责权限管理、密级管理、安全策略
+INSERT INTO sys_user (username, password, real_name, email, phone, department, user_type, status) VALUES
+('security', '$2a$10$rDkPvvAFV8kqwvKJzwlCv.mfMXcLHb0Ux9Nl1g/uGVcCbLVPgKzZy', '安全保密员', 'security@archive.com', '13800000002', '安全保密部', 'SECURITY_ADMIN', 'ACTIVE')
+ON CONFLICT (username) DO NOTHING;
+
+-- 3. 安全审计员（AUDIT_ADMIN）- 负责日志审计、安全审查、合规检查
+INSERT INTO sys_user (username, password, real_name, email, phone, department, user_type, status) VALUES
+('auditor', '$2a$10$rDkPvvAFV8kqwvKJzwlCv.mfMXcLHb0Ux9Nl1g/uGVcCbLVPgKzZy', '安全审计员', 'auditor@archive.com', '13800000003', '审计部', 'AUDIT_ADMIN', 'ACTIVE')
+ON CONFLICT (username) DO NOTHING;
+
+-- 4. 档案员（ARCHIVIST）- 核心业务人员，负责档案接收、整理、归档、借阅审批
+INSERT INTO sys_user (username, password, real_name, email, phone, department, user_type, status) VALUES
+('archivist1', '$2a$10$rDkPvvAFV8kqwvKJzwlCv.mfMXcLHb0Ux9Nl1g/uGVcCbLVPgKzZy', '张档案', 'archivist1@archive.com', '13800000004', '档案管理部', 'ARCHIVIST', 'ACTIVE'),
+('archivist2', '$2a$10$rDkPvvAFV8kqwvKJzwlCv.mfMXcLHb0Ux9Nl1g/uGVcCbLVPgKzZy', '李档案', 'archivist2@archive.com', '13800000005', '档案管理部', 'ARCHIVIST', 'ACTIVE')
+ON CONFLICT (username) DO NOTHING;
+
+-- 5. 普通用户（USER）- 档案查阅人员，如律师、员工等，可申请借阅
+INSERT INTO sys_user (username, password, real_name, email, phone, department, user_type, status) VALUES
+('lawyer1', '$2a$10$rDkPvvAFV8kqwvKJzwlCv.mfMXcLHb0Ux9Nl1g/uGVcCbLVPgKzZy', '王律师', 'lawyer1@lawfirm.com', '13800000006', '诉讼部', 'USER', 'ACTIVE'),
+('lawyer2', '$2a$10$rDkPvvAFV8kqwvKJzwlCv.mfMXcLHb0Ux9Nl1g/uGVcCbLVPgKzZy', '赵律师', 'lawyer2@lawfirm.com', '13800000007', '非诉部', 'USER', 'ACTIVE'),
+('assistant', '$2a$10$rDkPvvAFV8kqwvKJzwlCv.mfMXcLHb0Ux9Nl1g/uGVcCbLVPgKzZy', '陈助理', 'assistant@lawfirm.com', '13800000008', '综合部', 'USER', 'ACTIVE')
 ON CONFLICT (username) DO NOTHING;
 
 -- 初始化律所系统来源
 INSERT INTO arc_external_source (source_code, source_name, source_type, description, auth_type, enabled) VALUES
 ('LAW_FIRM_MAIN', '律所管理系统', 'LAW_FIRM', '接收律所管理系统推送的归档档案', 'API_KEY', true)
 ON CONFLICT (source_code) DO NOTHING;
+
+-- 初始化测试用API Key（生产环境请删除或更换）
+INSERT INTO sys_api_key (api_key, source_name, description, status) VALUES
+('test-api-key-for-development-only', '测试系统', '开发测试用API Key，生产环境请删除', 'ACTIVE')
+ON CONFLICT (api_key) DO NOTHING;
 
 -- 初始化系统配置
 INSERT INTO sys_config (config_key, config_value, config_type, config_group, description, editable, sort_order) VALUES
