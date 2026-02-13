@@ -1,255 +1,330 @@
 <template>
   <div class="archive-list">
-    <!-- 搜索区 -->
-    <el-card class="search-card">
-      <el-form :model="queryForm" inline>
+    <!-- 搜索区域 -->
+    <el-card class="search-card" shadow="never">
+      <el-form :model="searchForm" inline>
         <el-form-item label="关键词">
-          <el-input v-model="queryForm.keyword" placeholder="档案编号/名称/客户" clearable />
+          <el-input
+            v-model="searchForm.keyword"
+            placeholder="档案号/题名/案件编号"
+            clearable
+            style="width: 200px"
+            @keyup.enter="handleSearch"
+          />
         </el-form-item>
-        <el-form-item label="来源类型">
-          <el-select v-model="queryForm.sourceType" placeholder="请选择" clearable>
-            <el-option label="律所系统" value="LAW_FIRM" />
-            <el-option label="手动录入" value="MANUAL" />
-            <el-option label="批量导入" value="IMPORT" />
-            <el-option label="外部系统" value="EXTERNAL" />
+        <el-form-item label="档案类型">
+          <el-select v-model="searchForm.archiveType" placeholder="全部" clearable style="width: 120px">
+            <el-option label="文书档案" value="DOCUMENT" />
+            <el-option label="科技档案" value="SCIENCE" />
+            <el-option label="会计档案" value="ACCOUNTING" />
+            <el-option label="人事档案" value="PERSONNEL" />
+            <el-option label="专业档案" value="SPECIAL" />
           </el-select>
         </el-form-item>
         <el-form-item label="状态">
-          <el-select v-model="queryForm.status" placeholder="请选择" clearable>
+          <el-select v-model="searchForm.status" placeholder="全部" clearable style="width: 120px">
             <el-option label="已接收" value="RECEIVED" />
-            <el-option label="待入库" value="PENDING" />
-            <el-option label="已入库" value="STORED" />
+            <el-option label="整理中" value="CATALOGING" />
+            <el-option label="已归档" value="STORED" />
             <el-option label="借出中" value="BORROWED" />
           </el-select>
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSearch">
-            <el-icon><Search /></el-icon> 查询
+            <el-icon><Search /></el-icon>
+            搜索
           </el-button>
-          <el-button @click="handleReset">
-            <el-icon><Refresh /></el-icon> 重置
-          </el-button>
+          <el-button @click="resetSearch">重置</el-button>
         </el-form-item>
       </el-form>
     </el-card>
 
-    <!-- 列表区 -->
-    <el-card class="list-card">
-      <template #header>
-        <div class="card-header">
-          <span>档案列表</span>
-          <el-button type="primary" @click="$router.push('/receive')">
-            <el-icon><Plus /></el-icon> 手动录入
-          </el-button>
-        </div>
-      </template>
+    <!-- 工具栏 -->
+    <div class="toolbar">
+      <el-button type="primary" @click="handleCreate">
+        <el-icon><Plus /></el-icon>
+        新建档案
+      </el-button>
+      <el-button @click="handleRefresh">
+        <el-icon><Refresh /></el-icon>
+        刷新
+      </el-button>
+    </div>
 
-      <el-table :data="archiveList" v-loading="loading" stripe>
-        <el-table-column prop="archiveNo" label="档案编号" width="140" />
-        <el-table-column prop="archiveName" label="档案名称" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="sourceTypeName" label="来源" width="100" />
-        <el-table-column prop="clientName" label="客户" width="120" show-overflow-tooltip />
-        <el-table-column prop="archiveTypeName" label="类型" width="100" />
-        <el-table-column prop="statusName" label="状态" width="100">
+    <!-- 表格 -->
+    <el-card shadow="never">
+      <el-table
+        v-loading="loading"
+        :data="tableData"
+        stripe
+        border
+        style="width: 100%"
+        @row-click="handleRowClick"
+      >
+        <el-table-column prop="archiveNo" label="档案号" width="180" fixed />
+        <el-table-column prop="title" label="题名" min-width="250" show-overflow-tooltip />
+        <el-table-column prop="archiveType" label="类型" width="100">
           <template #default="{ row }">
-            <el-tag :type="getStatusType(row.status)">{{ row.statusName }}</el-tag>
+            <el-tag size="small">{{ getArchiveTypeName(row.archiveType) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="hasElectronic" label="电子档案" width="100" align="center">
+        <el-table-column prop="status" label="状态" width="100">
           <template #default="{ row }">
-            <el-icon v-if="row.hasElectronic" color="#67c23a"><Check /></el-icon>
-            <el-icon v-else color="#909399"><Close /></el-icon>
+            <el-tag :type="getStatusType(row.status)" size="small">
+              {{ getStatusName(row.status) }}
+            </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="receivedAt" label="接收时间" width="160" />
-        <el-table-column label="操作" width="180" fixed="right">
+        <el-table-column prop="retentionPeriod" label="保管期限" width="100">
           <template #default="{ row }">
-            <el-button type="primary" link @click="handleView(row)">查看</el-button>
-            <el-button 
-              v-if="row.status === 'RECEIVED'" 
-              type="success" 
-              link 
-              @click="handleStore(row)"
-            >
-              入库
+            {{ getRetentionName(row.retentionPeriod) }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="fileCount" label="文件数" width="80" align="center" />
+        <el-table-column prop="sourceType" label="来源" width="100">
+          <template #default="{ row }">
+            {{ getSourceName(row.sourceType) }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="receivedAt" label="接收时间" width="170">
+          <template #default="{ row }">
+            {{ formatDateTime(row.receivedAt) }}
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="150" fixed="right">
+          <template #default="{ row }">
+            <el-button type="primary" link size="small" @click.stop="handleView(row)">
+              查看
             </el-button>
-            <el-button 
-              v-if="row.status === 'STORED'" 
-              type="warning" 
-              link 
-              @click="handleBorrow(row)"
-            >
-              借阅
+            <el-button type="primary" link size="small" @click.stop="handleEdit(row)">
+              编辑
             </el-button>
+            <el-popconfirm
+              title="确定要删除该档案吗？"
+              @confirm="handleDelete(row)"
+            >
+              <template #reference>
+                <el-button type="danger" link size="small" @click.stop>
+                  删除
+                </el-button>
+              </template>
+            </el-popconfirm>
           </template>
         </el-table-column>
       </el-table>
 
+      <!-- 分页 -->
       <div class="pagination">
         <el-pagination
-          v-model:current-page="queryForm.pageNum"
-          v-model:page-size="queryForm.pageSize"
+          v-model:current-page="pagination.pageNum"
+          v-model:page-size="pagination.pageSize"
           :page-sizes="[10, 20, 50, 100]"
-          :total="total"
+          :total="pagination.total"
           layout="total, sizes, prev, pager, next, jumper"
-          @size-change="loadData"
-          @current-change="loadData"
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
         />
       </div>
     </el-card>
-
-    <!-- 入库对话框 -->
-    <el-dialog v-model="storeDialogVisible" title="档案入库" width="500px">
-      <el-form :model="storeForm" label-width="100px">
-        <el-form-item label="存放位置" required>
-          <el-select v-model="storeForm.locationId" placeholder="请选择存放位置">
-            <el-option
-              v-for="loc in locations"
-              :key="loc.id"
-              :label="loc.locationName"
-              :value="loc.id"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="盒号">
-          <el-input v-model="storeForm.boxNo" placeholder="请输入盒号" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="storeDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="confirmStore">确认入库</el-button>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { archiveApi, locationApi } from '@/api/archive'
 import { ElMessage } from 'element-plus'
+import { getArchiveList, deleteArchive } from '@/api/archive'
 
 const router = useRouter()
-
 const loading = ref(false)
-const archiveList = ref([])
-const total = ref(0)
-const locations = ref([])
+const tableData = ref([])
 
-const queryForm = reactive({
+const searchForm = reactive({
   keyword: '',
-  sourceType: '',
-  status: '',
+  archiveType: '',
+  status: ''
+})
+
+const pagination = reactive({
   pageNum: 1,
-  pageSize: 20
+  pageSize: 20,
+  total: 0
 })
 
-const storeDialogVisible = ref(false)
-const storeForm = reactive({
-  archiveId: null,
-  locationId: null,
-  boxNo: ''
-})
-
-const getStatusType = (status) => {
-  const map = {
-    RECEIVED: 'info',
-    PENDING: 'warning',
-    STORED: 'success',
-    BORROWED: 'danger'
-  }
-  return map[status] || 'info'
-}
-
-const loadData = async () => {
+// 获取列表数据
+const fetchData = async () => {
   loading.value = true
   try {
-    const res = await archiveApi.list(queryForm)
-    archiveList.value = res.data.list
-    total.value = res.data.total
+    const params = {
+      ...searchForm,
+      pageNum: pagination.pageNum,
+      pageSize: pagination.pageSize
+    }
+    const res = await getArchiveList(params)
+    tableData.value = res.data.records
+    pagination.total = res.data.total
   } catch (e) {
-    console.error(e)
+    console.error('获取档案列表失败', e)
   } finally {
     loading.value = false
   }
 }
 
-const loadLocations = async () => {
-  try {
-    const res = await locationApi.getAvailable()
-    locations.value = res.data || []
-  } catch (e) {
-    console.error(e)
-  }
-}
-
+// 搜索
 const handleSearch = () => {
-  queryForm.pageNum = 1
-  loadData()
+  pagination.pageNum = 1
+  fetchData()
 }
 
-const handleReset = () => {
-  Object.assign(queryForm, {
-    keyword: '',
-    sourceType: '',
-    status: '',
-    pageNum: 1
-  })
-  loadData()
+// 重置搜索
+const resetSearch = () => {
+  searchForm.keyword = ''
+  searchForm.archiveType = ''
+  searchForm.status = ''
+  pagination.pageNum = 1
+  fetchData()
 }
 
+// 刷新
+const handleRefresh = () => {
+  fetchData()
+}
+
+// 新建
+const handleCreate = () => {
+  router.push('/receive')
+}
+
+// 查看
 const handleView = (row) => {
   router.push(`/archives/${row.id}`)
 }
 
-const handleStore = (row) => {
-  storeForm.archiveId = row.id
-  storeForm.locationId = null
-  storeForm.boxNo = ''
-  storeDialogVisible.value = true
+// 编辑
+const handleEdit = (row) => {
+  router.push(`/archives/${row.id}?edit=true`)
 }
 
-const confirmStore = async () => {
-  if (!storeForm.locationId) {
-    ElMessage.warning('请选择存放位置')
-    return
-  }
+// 删除
+const handleDelete = async (row) => {
   try {
-    await archiveApi.store(storeForm.archiveId, storeForm.locationId, storeForm.boxNo)
-    ElMessage.success('入库成功')
-    storeDialogVisible.value = false
-    loadData()
+    await deleteArchive(row.id)
+    ElMessage.success('删除成功')
+    fetchData()
   } catch (e) {
-    console.error(e)
+    console.error('删除失败', e)
   }
 }
 
-const handleBorrow = (row) => {
-  ElMessage.info('借阅功能开发中')
+// 行点击
+const handleRowClick = (row) => {
+  router.push(`/archives/${row.id}`)
+}
+
+// 分页
+const handleSizeChange = () => {
+  pagination.pageNum = 1
+  fetchData()
+}
+
+const handleCurrentChange = () => {
+  fetchData()
+}
+
+// 格式化函数
+const formatDateTime = (dateStr) => {
+  if (!dateStr) return '-'
+  return dateStr.replace('T', ' ').substring(0, 19)
+}
+
+const getArchiveTypeName = (type) => {
+  const map = {
+    DOCUMENT: '文书',
+    SCIENCE: '科技',
+    ACCOUNTING: '会计',
+    PERSONNEL: '人事',
+    SPECIAL: '专业',
+    AUDIOVISUAL: '声像'
+  }
+  return map[type] || type
+}
+
+const getStatusName = (status) => {
+  const map = {
+    DRAFT: '草稿',
+    RECEIVED: '已接收',
+    CATALOGING: '整理中',
+    STORED: '已归档',
+    BORROWED: '借出中',
+    APPRAISAL: '鉴定中',
+    DESTROYED: '已销毁'
+  }
+  return map[status] || status
+}
+
+const getStatusType = (status) => {
+  const map = {
+    DRAFT: 'info',
+    RECEIVED: 'warning',
+    CATALOGING: '',
+    STORED: 'success',
+    BORROWED: 'danger',
+    APPRAISAL: 'warning',
+    DESTROYED: 'info'
+  }
+  return map[status] || ''
+}
+
+const getRetentionName = (code) => {
+  const map = {
+    PERMANENT: '永久',
+    Y30: '30年',
+    Y15: '15年',
+    Y10: '10年',
+    Y5: '5年'
+  }
+  return map[code] || code
+}
+
+const getSourceName = (source) => {
+  const map = {
+    LAW_FIRM: '律所系统',
+    MANUAL: '手动录入',
+    IMPORT: '批量导入',
+    TRANSFER: '移交'
+  }
+  return map[source] || source
 }
 
 onMounted(() => {
-  loadData()
-  loadLocations()
+  fetchData()
 })
 </script>
 
 <style lang="scss" scoped>
 .archive-list {
-  .search-card {
-    margin-bottom: 20px;
-  }
+  padding: 20px;
+}
 
-  .card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+.search-card {
+  margin-bottom: 16px;
+  
+  :deep(.el-card__body) {
+    padding-bottom: 0;
   }
+}
 
-  .pagination {
-    margin-top: 20px;
-    display: flex;
-    justify-content: flex-end;
-  }
+.toolbar {
+  margin-bottom: 16px;
+}
+
+.pagination {
+  margin-top: 16px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+:deep(.el-table) {
+  cursor: pointer;
 }
 </style>

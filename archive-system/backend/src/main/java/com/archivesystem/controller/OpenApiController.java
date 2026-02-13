@@ -1,8 +1,8 @@
 package com.archivesystem.controller;
 
 import com.archivesystem.common.Result;
-import com.archivesystem.dto.ArchiveDTO;
-import com.archivesystem.dto.ArchiveReceiveDTO;
+import com.archivesystem.dto.archive.ArchiveReceiveRequest;
+import com.archivesystem.dto.archive.ArchiveReceiveResponse;
 import com.archivesystem.service.ArchiveService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -11,88 +11,38 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Map;
-
 /**
  * 开放API控制器.
- * 提供给外部系统调用的接口。
+ * 供外部系统（如律所管理系统）调用，无需登录认证
  */
 @Slf4j
-@Tag(name = "开放API", description = "供外部系统调用的接口")
 @RestController
-@RequestMapping("/open")
+@RequestMapping("/api/open")
 @RequiredArgsConstructor
+@Tag(name = "开放接口", description = "供外部系统调用的接口")
 public class OpenApiController {
 
     private final ArchiveService archiveService;
 
     /**
-     * 接收律所系统的档案.
-     * 这是专门给律所管理系统调用的接口。
+     * 接收档案.
      */
-    @Operation(summary = "接收律所档案", description = "接收律所管理系统推送的归档档案")
-    @PostMapping("/law-firm/archive/receive")
-    public Result<Map<String, Object>> receiveLawFirmArchive(
-            @RequestHeader(value = "Authorization", required = false) String authorization,
-            @Valid @RequestBody ArchiveReceiveDTO dto) {
+    @PostMapping("/archive/receive")
+    @Operation(summary = "接收档案", description = "接收外部系统推送的归档档案")
+    public Result<ArchiveReceiveResponse> receive(@Valid @RequestBody ArchiveReceiveRequest request) {
+        log.info("接收档案请求: sourceType={}, sourceId={}, title={}", 
+                request.getSourceType(), request.getSourceId(), request.getTitle());
         
-        log.info("接收律所系统档案: sourceId={}, archiveName={}", dto.getSourceId(), dto.getArchiveName());
-        
-        // TODO: 验证API密钥
-        // validateApiKey(authorization);
-        
-        try {
-            // 设置来源类型为律所系统
-            dto.setSourceType("LAW_FIRM");
-            
-            ArchiveDTO result = archiveService.receiveArchive(dto);
-            
-            // 返回扁平格式响应（与客户服务系统对接格式一致）
-            return Result.success(Map.of(
-                    "id", result.getId().toString(),
-                    "archiveNo", result.getArchiveNo(),
-                    "status", result.getStatus(),
-                    "receivedAt", result.getReceivedAt().toString()
-            ));
-        } catch (Exception e) {
-            log.error("接收律所档案失败", e);
-            return Result.error(e.getMessage());
-        }
+        ArchiveReceiveResponse response = archiveService.receive(request);
+        return Result.success("档案接收成功", response);
     }
 
     /**
-     * 健康检查接口.
+     * 健康检查.
      */
-    @Operation(summary = "健康检查", description = "用于检测系统是否正常运行")
     @GetMapping("/health")
-    public Result<Map<String, Object>> healthCheck() {
-        return Result.success(Map.of(
-                "status", "UP",
-                "system", "Archive Management System",
-                "version", "1.0.0"
-        ));
-    }
-
-    /**
-     * 查询档案状态.
-     * 供外部系统查询档案接收状态。
-     */
-    @Operation(summary = "查询档案状态", description = "根据来源ID查询档案状态")
-    @GetMapping("/archive/status")
-    public Result<Map<String, Object>> getArchiveStatus(
-            @RequestParam String sourceType,
-            @RequestParam String sourceId) {
-        
-        try {
-            // TODO: 实现根据来源ID查询档案
-            return Result.success(Map.of(
-                    "sourceType", sourceType,
-                    "sourceId", sourceId,
-                    "found", false,
-                    "message", "功能开发中"
-            ));
-        } catch (Exception e) {
-            return Result.error(e.getMessage());
-        }
+    @Operation(summary = "健康检查")
+    public Result<String> health() {
+        return Result.success("ok");
     }
 }

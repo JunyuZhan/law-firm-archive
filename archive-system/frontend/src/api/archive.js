@@ -1,88 +1,155 @@
 import request from './index'
 
 /**
- * 档案相关API
+ * 查询档案列表
  */
-export const archiveApi = {
-  // 获取档案列表
-  list(params) {
-    return request.get('/archives', { params })
-  },
-
-  // 获取档案详情
-  getById(id) {
-    return request.get(`/archives/${id}`)
-  },
-
-  // 接收档案
-  receive(data) {
-    return request.post('/archives/receive', data)
-  },
-
-  // 档案入库
-  store(id, locationId, boxNo) {
-    return request.post(`/archives/${id}/store`, null, { 
-      params: { locationId, boxNo } 
-    })
-  },
-
-  // 获取统计数据
-  getStatistics() {
-    return request.get('/archives/statistics')
-  }
+export function getArchiveList(params) {
+  return request({
+    url: '/archives',
+    method: 'get',
+    params
+  })
 }
 
 /**
- * 存放位置API
+ * 获取档案详情
  */
-export const locationApi = {
-  // 获取位置列表
-  list() {
-    return request.get('/locations')
-  },
-
-  // 获取可用位置
-  getAvailable() {
-    return request.get('/locations/available')
-  }
+export function getArchiveDetail(id) {
+  return request({
+    url: `/archives/${id}`,
+    method: 'get'
+  })
 }
 
 /**
- * 借阅API
+ * 根据档案号获取详情
  */
-export const borrowApi = {
-  // 获取借阅列表
-  list(params) {
-    return request.get('/borrows', { params })
-  },
-
-  // 申请借阅
-  apply(data) {
-    return request.post('/borrows/apply', data)
-  },
-
-  // 审批借阅
-  approve(id, approved, comment) {
-    return request.post(`/borrows/${id}/approve`, { approved, comment })
-  },
-
-  // 归还
-  return(id, condition) {
-    return request.post(`/borrows/${id}/return`, { condition })
-  }
+export function getArchiveByNo(archiveNo) {
+  return request({
+    url: `/archives/no/${archiveNo}`,
+    method: 'get'
+  })
 }
 
 /**
- * 来源配置API
+ * 创建档案
  */
-export const sourceApi = {
-  // 获取来源列表
-  list() {
-    return request.get('/sources')
-  },
+export function createArchive(data) {
+  return request({
+    url: '/archives',
+    method: 'post',
+    data
+  })
+}
 
-  // 启用/禁用来源
-  toggle(id, enabled) {
-    return request.put(`/sources/${id}/toggle`, { enabled })
+/**
+ * 更新档案
+ */
+export function updateArchive(id, data) {
+  return request({
+    url: `/archives/${id}`,
+    method: 'put',
+    data
+  })
+}
+
+/**
+ * 删除档案
+ */
+export function deleteArchive(id) {
+  return request({
+    url: `/archives/${id}`,
+    method: 'delete'
+  })
+}
+
+/**
+ * 更新档案状态
+ */
+export function updateArchiveStatus(id, status) {
+  return request({
+    url: `/archives/${id}/status`,
+    method: 'put',
+    params: { status }
+  })
+}
+
+/**
+ * 上传文件
+ */
+export function uploadFile(file, archiveId, fileCategory, onProgress) {
+  const formData = new FormData()
+  formData.append('file', file)
+  if (fileCategory) {
+    formData.append('fileCategory', fileCategory)
   }
+
+  const url = archiveId ? `/archives/${archiveId}/files` : '/files/upload'
+
+  return request({
+    url,
+    method: 'post',
+    data: formData,
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    },
+    onUploadProgress: (progressEvent) => {
+      if (onProgress) {
+        const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total)
+        onProgress(percent)
+      }
+    }
+  })
+}
+
+/**
+ * 批量上传文件
+ */
+export function uploadFiles(files, fileCategory) {
+  const formData = new FormData()
+  files.forEach(file => {
+    formData.append('files', file)
+  })
+  if (fileCategory) {
+    formData.append('fileCategory', fileCategory)
+  }
+
+  return request({
+    url: '/files/upload/batch',
+    method: 'post',
+    data: formData,
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  })
+}
+
+/**
+ * 获取文件下载链接
+ */
+export function getFileDownloadUrl(fileId) {
+  return request({
+    url: `/archives/files/${fileId}/download-url`,
+    method: 'get'
+  })
+}
+
+/**
+ * 获取文件预览链接
+ */
+export function getFilePreviewUrl(fileId) {
+  return request({
+    url: `/archives/files/${fileId}/preview-url`,
+    method: 'get'
+  })
+}
+
+/**
+ * 删除文件
+ */
+export function deleteFile(fileId) {
+  return request({
+    url: `/archives/files/${fileId}`,
+    method: 'delete'
+  })
 }

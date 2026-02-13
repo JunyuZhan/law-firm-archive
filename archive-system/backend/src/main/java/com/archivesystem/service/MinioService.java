@@ -49,12 +49,37 @@ public class MinioService {
                 log.info("创建MinIO bucket: {}", bucketName);
             }
         } catch (Exception e) {
-            log.error("初始化MinIO失败", e);
+            log.warn("初始化MinIO失败（MinIO服务可能未启动）: {}", e.getMessage());
         }
     }
 
     /**
+     * 获取bucket名称.
+     */
+    public String getBucketName() {
+        return bucketName;
+    }
+
+    /**
      * 上传文件.
+     */
+    public void upload(String objectName, InputStream inputStream, long size, String contentType) {
+        try {
+            minioClient.putObject(PutObjectArgs.builder()
+                    .bucket(bucketName)
+                    .object(objectName)
+                    .stream(inputStream, size, -1)
+                    .contentType(contentType != null ? contentType : "application/octet-stream")
+                    .build());
+            log.info("文件上传成功: {}", objectName);
+        } catch (Exception e) {
+            log.error("文件上传失败: {}", objectName, e);
+            throw new RuntimeException("文件上传失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 上传MultipartFile.
      */
     public String uploadFile(MultipartFile file, String objectName) {
         try {
@@ -127,7 +152,7 @@ public class MinioService {
      * 获取预签名URL（用于下载）.
      */
     public String getPresignedUrl(String objectName) {
-        return getPresignedUrl(objectName, 3600); // 默认1小时有效期
+        return getPresignedUrl(objectName, 3600);
     }
 
     /**
@@ -150,7 +175,7 @@ public class MinioService {
     /**
      * 删除文件.
      */
-    public void deleteFile(String objectName) {
+    public void delete(String objectName) {
         try {
             minioClient.removeObject(RemoveObjectArgs.builder()
                     .bucket(bucketName)
@@ -159,8 +184,14 @@ public class MinioService {
             log.info("文件删除成功: {}", objectName);
         } catch (Exception e) {
             log.error("文件删除失败: {}", objectName, e);
-            throw new RuntimeException("文件删除失败: " + e.getMessage());
         }
+    }
+
+    /**
+     * 删除文件（别名）.
+     */
+    public void deleteFile(String objectName) {
+        delete(objectName);
     }
 
     /**

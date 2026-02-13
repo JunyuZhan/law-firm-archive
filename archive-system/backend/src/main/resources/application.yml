@@ -7,6 +7,12 @@ spring:
   application:
     name: archive-system
   
+  # 文件上传配置
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 500MB
+  
   # 数据源配置
   datasource:
     url: jdbc:postgresql://localhost:5433/archive_system
@@ -81,7 +87,7 @@ archive-system:
   # 档案存储配置
   storage:
     max-file-size: 104857600  # 100MB
-    allowed-types: pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,gif,zip,rar
+    allowed-types: pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,gif,zip,rar,txt,ofd
   # 档案保管期限默认值（年）
   retention:
     default-years: 10
