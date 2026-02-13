@@ -1,0 +1,89 @@
+server:
+  port: 8090
+  servlet:
+    context-path: /api
+
+spring:
+  application:
+    name: archive-system
+  
+  # 数据源配置
+  datasource:
+    url: jdbc:postgresql://localhost:5432/archive_system
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+  
+  # Redis配置
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: ""
+      database: 1
+  
+  # Jackson配置
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+    serialization:
+      write-dates-as-timestamps: false
+
+# MyBatis-Plus配置
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  type-aliases-package: com.archivesystem.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: true
+      logic-not-delete-value: false
+
+# MinIO配置
+minio:
+  endpoint: http://localhost:9000
+  access-key: minioadmin
+  secret-key: minioadmin
+  bucket-name: archive-system
+
+# JWT配置
+jwt:
+  secret: archive-system-secret-key-must-be-at-least-256-bits-long-for-hs256
+  expiration: 86400000  # 24小时
+
+# 档案系统配置
+archive-system:
+  # 主系统对接配置
+  law-firm:
+    api-url: http://localhost:8080/api
+    api-key: ""  # 需要配置主系统提供的API密钥
+  # 档案存储配置
+  storage:
+    max-file-size: 104857600  # 100MB
+    allowed-types: pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,gif,zip,rar
+  # 档案保管期限默认值（年）
+  retention:
+    default-years: 10
+
+# Knife4j配置
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+  api-docs:
+    path: /v3/api-docs
+knife4j:
+  enable: true
+  setting:
+    language: zh_cn
+
+# 日志配置
+logging:
+  level:
+    com.archivesystem: debug
+    org.springframework.security: info
