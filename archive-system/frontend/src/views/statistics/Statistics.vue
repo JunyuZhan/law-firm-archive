@@ -1,93 +1,125 @@
 <template>
-  <div class="statistics">
-    <el-row :gutter="20">
+  <div class="statistics-page">
+    <!-- 概览卡片 -->
+    <el-row :gutter="16" class="overview-row">
       <el-col :span="6">
-        <el-card class="stat-card">
-          <div class="stat-icon" style="background: #409eff;">
-            <el-icon :size="32"><Document /></el-icon>
-          </div>
+        <el-card shadow="hover" class="stat-card">
           <div class="stat-content">
-            <div class="stat-value">{{ stats.totalCount || 0 }}</div>
-            <div class="stat-label">档案总数</div>
+            <div class="stat-icon" style="background: #409eff;">
+              <el-icon :size="28"><Folder /></el-icon>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value">{{ overview.totalArchives || 0 }}</div>
+              <div class="stat-label">档案总数</div>
+            </div>
           </div>
         </el-card>
       </el-col>
       <el-col :span="6">
-        <el-card class="stat-card">
-          <div class="stat-icon" style="background: #67c23a;">
-            <el-icon :size="32"><FolderChecked /></el-icon>
-          </div>
+        <el-card shadow="hover" class="stat-card">
           <div class="stat-content">
-            <div class="stat-value">{{ getStatusCount('STORED') }}</div>
-            <div class="stat-label">已入库</div>
+            <div class="stat-icon" style="background: #67c23a;">
+              <el-icon :size="28"><Document /></el-icon>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value">{{ overview.totalFiles || 0 }}</div>
+              <div class="stat-label">电子文件</div>
+            </div>
           </div>
         </el-card>
       </el-col>
       <el-col :span="6">
-        <el-card class="stat-card">
-          <div class="stat-icon" style="background: #e6a23c;">
-            <el-icon :size="32"><Clock /></el-icon>
-          </div>
+        <el-card shadow="hover" class="stat-card">
           <div class="stat-content">
-            <div class="stat-value">{{ getStatusCount('RECEIVED') }}</div>
-            <div class="stat-label">待入库</div>
+            <div class="stat-icon" style="background: #e6a23c;">
+              <el-icon :size="28"><Reading /></el-icon>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value">{{ overview.borrowing || 0 }}</div>
+              <div class="stat-label">借阅中</div>
+            </div>
           </div>
         </el-card>
       </el-col>
       <el-col :span="6">
-        <el-card class="stat-card">
-          <div class="stat-icon" style="background: #f56c6c;">
-            <el-icon :size="32"><Reading /></el-icon>
-          </div>
+        <el-card shadow="hover" class="stat-card">
           <div class="stat-content">
-            <div class="stat-value">{{ getStatusCount('BORROWED') }}</div>
-            <div class="stat-label">借出中</div>
+            <div class="stat-icon" style="background: #f56c6c;">
+              <el-icon :size="28"><Bell /></el-icon>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value">{{ overview.pendingApproval || 0 }}</div>
+              <div class="stat-label">待审批</div>
+            </div>
           </div>
         </el-card>
       </el-col>
     </el-row>
 
-    <el-row :gutter="20" style="margin-top: 20px;">
+    <!-- 图表区域 -->
+    <el-row :gutter="16" class="chart-row">
       <el-col :span="12">
-        <el-card>
-          <template #header>
-            <span>按状态统计</span>
-          </template>
-          <div class="chart-placeholder">
-            <el-table :data="statusStats" stripe>
-              <el-table-column prop="statusName" label="状态" />
-              <el-table-column prop="count" label="数量" width="100" />
-              <el-table-column label="占比" width="150">
-                <template #default="{ row }">
-                  <el-progress
-                    :percentage="Math.round(row.count / stats.totalCount * 100) || 0"
-                    :stroke-width="10"
-                  />
-                </template>
-              </el-table-column>
-            </el-table>
-          </div>
+        <el-card shadow="never">
+          <template #header>档案类型分布</template>
+          <div ref="typeChartRef" class="chart-container"></div>
         </el-card>
       </el-col>
       <el-col :span="12">
-        <el-card>
+        <el-card shadow="never">
+          <template #header>保管期限分布</template>
+          <div ref="retentionChartRef" class="chart-container"></div>
+        </el-card>
+      </el-col>
+    </el-row>
+
+    <el-row :gutter="16" class="chart-row">
+      <el-col :span="16">
+        <el-card shadow="never">
           <template #header>
-            <span>按来源统计</span>
+            <div class="chart-header">
+              <span>月度接收趋势</span>
+              <el-date-picker
+                v-model="trendYear"
+                type="year"
+                placeholder="选择年份"
+                value-format="YYYY"
+                style="width: 120px"
+                @change="loadTrend"
+              />
+            </div>
           </template>
-          <div class="chart-placeholder">
-            <el-table :data="sourceStats" stripe>
-              <el-table-column prop="sourceTypeName" label="来源" />
-              <el-table-column prop="count" label="数量" width="100" />
-              <el-table-column label="占比" width="150">
-                <template #default="{ row }">
-                  <el-progress
-                    :percentage="Math.round(row.count / stats.totalCount * 100) || 0"
-                    :stroke-width="10"
-                    color="#67c23a"
-                  />
-                </template>
-              </el-table-column>
-            </el-table>
+          <div ref="trendChartRef" class="chart-container"></div>
+        </el-card>
+      </el-col>
+      <el-col :span="8">
+        <el-card shadow="never">
+          <template #header>存储统计</template>
+          <div class="storage-stats">
+            <div class="storage-item">
+              <div class="storage-label">文件总数</div>
+              <div class="storage-value">{{ storage.fileCount || 0 }} 个</div>
+            </div>
+            <div class="storage-item">
+              <div class="storage-label">存储空间</div>
+              <div class="storage-value">{{ storage.totalSizeFormatted || '0 B' }}</div>
+            </div>
+          </div>
+        </el-card>
+        <el-card shadow="never" style="margin-top: 16px;">
+          <template #header>借阅统计</template>
+          <div class="borrow-stats">
+            <div class="borrow-item">
+              <span class="label">总借阅次数</span>
+              <span class="value">{{ borrowStats.totalBorrows || 0 }}</span>
+            </div>
+            <div class="borrow-item">
+              <span class="label">本月借阅</span>
+              <span class="value">{{ borrowStats.monthlyBorrows || 0 }}</span>
+            </div>
+            <div class="borrow-item">
+              <span class="label">逾期未还</span>
+              <span class="value text-danger">{{ borrowStats.overdue || 0 }}</span>
+            </div>
           </div>
         </el-card>
       </el-col>
@@ -96,94 +128,277 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { archiveApi } from '@/api/archive'
+import { ref, reactive, onMounted, onUnmounted } from 'vue'
+import { Folder, Document, Reading, Bell } from '@element-plus/icons-vue'
+import * as echarts from 'echarts'
+import { getOverview, countByType, countByRetention, getTrend, getBorrowStats, getStorageStats } from '@/api/statistics'
 
-const stats = ref({})
+const overview = reactive({})
+const storage = reactive({})
+const borrowStats = reactive({})
+const trendYear = ref(new Date().getFullYear().toString())
 
-const statusNameMap = {
-  RECEIVED: '已接收',
-  PENDING: '待入库',
-  STORED: '已入库',
-  BORROWED: '借出中',
-  PENDING_DESTROY: '待销毁',
-  DESTROYED: '已销毁'
-}
+const typeChartRef = ref(null)
+const retentionChartRef = ref(null)
+const trendChartRef = ref(null)
 
-const sourceNameMap = {
-  LAW_FIRM: '律所系统',
-  MANUAL: '手动录入',
-  IMPORT: '批量导入',
-  EXTERNAL: '外部系统'
-}
+let typeChart = null
+let retentionChart = null
+let trendChart = null
 
-const statusStats = computed(() => {
-  return (stats.value.byStatus || []).map(item => ({
-    ...item,
-    statusName: statusNameMap[item.status] || item.status
-  }))
-})
-
-const sourceStats = computed(() => {
-  return (stats.value.bySourceType || []).map(item => ({
-    ...item,
-    sourceTypeName: sourceNameMap[item.source_type] || item.source_type
-  }))
-})
-
-const getStatusCount = (status) => {
-  const item = (stats.value.byStatus || []).find(s => s.status === status)
-  return item?.count || 0
-}
-
-const loadData = async () => {
+// 加载概览数据
+const loadOverview = async () => {
   try {
-    const res = await archiveApi.getStatistics()
-    stats.value = res.data
+    const res = await getOverview()
+    Object.assign(overview, res.data)
   } catch (e) {
-    console.error(e)
+    console.error('加载概览失败', e)
   }
 }
 
+// 加载存储统计
+const loadStorage = async () => {
+  try {
+    const res = await getStorageStats()
+    Object.assign(storage, res.data)
+  } catch (e) {
+    console.error('加载存储统计失败', e)
+  }
+}
+
+// 加载借阅统计
+const loadBorrowStats = async () => {
+  try {
+    const res = await getBorrowStats()
+    Object.assign(borrowStats, res.data)
+  } catch (e) {
+    console.error('加载借阅统计失败', e)
+  }
+}
+
+// 加载档案类型图表
+const loadTypeChart = async () => {
+  try {
+    const res = await countByType()
+    const data = res.data.map(item => ({
+      name: item.name,
+      value: item.count
+    }))
+
+    typeChart = echarts.init(typeChartRef.value)
+    typeChart.setOption({
+      tooltip: { trigger: 'item' },
+      series: [{
+        type: 'pie',
+        radius: ['40%', '70%'],
+        data: data,
+        emphasis: {
+          itemStyle: {
+            shadowBlur: 10,
+            shadowOffsetX: 0,
+            shadowColor: 'rgba(0, 0, 0, 0.5)'
+          }
+        }
+      }]
+    })
+  } catch (e) {
+    console.error('加载类型图表失败', e)
+  }
+}
+
+// 加载保管期限图表
+const loadRetentionChart = async () => {
+  try {
+    const res = await countByRetention()
+    const data = res.data.map(item => ({
+      name: item.name,
+      value: item.count
+    }))
+
+    retentionChart = echarts.init(retentionChartRef.value)
+    retentionChart.setOption({
+      tooltip: { trigger: 'item' },
+      series: [{
+        type: 'pie',
+        radius: '70%',
+        data: data,
+        emphasis: {
+          itemStyle: {
+            shadowBlur: 10,
+            shadowOffsetX: 0,
+            shadowColor: 'rgba(0, 0, 0, 0.5)'
+          }
+        }
+      }]
+    })
+  } catch (e) {
+    console.error('加载保管期限图表失败', e)
+  }
+}
+
+// 加载趋势图表
+const loadTrend = async () => {
+  try {
+    const res = await getTrend(parseInt(trendYear.value))
+    const months = res.data.map(item => item.monthName)
+    const counts = res.data.map(item => item.count)
+
+    if (!trendChart) {
+      trendChart = echarts.init(trendChartRef.value)
+    }
+    
+    trendChart.setOption({
+      tooltip: { trigger: 'axis' },
+      xAxis: {
+        type: 'category',
+        data: months
+      },
+      yAxis: {
+        type: 'value'
+      },
+      series: [{
+        data: counts,
+        type: 'bar',
+        itemStyle: {
+          color: '#409eff'
+        }
+      }]
+    })
+  } catch (e) {
+    console.error('加载趋势图表失败', e)
+  }
+}
+
+// 窗口大小变化时重绘图表
+const handleResize = () => {
+  typeChart?.resize()
+  retentionChart?.resize()
+  trendChart?.resize()
+}
+
 onMounted(() => {
-  loadData()
+  loadOverview()
+  loadStorage()
+  loadBorrowStats()
+  loadTypeChart()
+  loadRetentionChart()
+  loadTrend()
+  
+  window.addEventListener('resize', handleResize)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
+  typeChart?.dispose()
+  retentionChart?.dispose()
+  trendChart?.dispose()
 })
 </script>
 
 <style lang="scss" scoped>
-.statistics {
-  .stat-card {
-    display: flex;
-    align-items: center;
+.statistics-page {
+  padding: 20px;
+}
+
+.overview-row {
+  margin-bottom: 16px;
+}
+
+.stat-card {
+  :deep(.el-card__body) {
     padding: 20px;
+  }
+}
 
-    .stat-icon {
-      width: 64px;
-      height: 64px;
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #fff;
-      margin-right: 20px;
+.stat-content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.stat-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+}
+
+.stat-info {
+  .stat-value {
+    font-size: 28px;
+    font-weight: 600;
+    color: #303133;
+  }
+  
+  .stat-label {
+    font-size: 14px;
+    color: #909399;
+    margin-top: 4px;
+  }
+}
+
+.chart-row {
+  margin-bottom: 16px;
+}
+
+.chart-container {
+  height: 300px;
+}
+
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.storage-stats {
+  .storage-item {
+    padding: 16px 0;
+    border-bottom: 1px solid #eee;
+    
+    &:last-child {
+      border-bottom: none;
     }
-
-    .stat-content {
-      .stat-value {
-        font-size: 28px;
-        font-weight: bold;
-        color: #303133;
-      }
-      .stat-label {
-        font-size: 14px;
-        color: #909399;
-        margin-top: 5px;
-      }
+    
+    .storage-label {
+      color: #909399;
+      font-size: 14px;
+    }
+    
+    .storage-value {
+      font-size: 24px;
+      font-weight: 600;
+      color: #303133;
+      margin-top: 8px;
     }
   }
+}
 
-  .chart-placeholder {
-    min-height: 200px;
+.borrow-stats {
+  .borrow-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid #eee;
+    
+    &:last-child {
+      border-bottom: none;
+    }
+    
+    .label {
+      color: #606266;
+    }
+    
+    .value {
+      font-weight: 600;
+      
+      &.text-danger {
+        color: #f56c6c;
+      }
+    }
   }
 }
 </style>
