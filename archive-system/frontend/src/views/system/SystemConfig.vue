@@ -280,6 +280,32 @@
             </div>
           </div>
         </el-tab-pane>
+
+        <!-- 站点信息 -->
+        <el-tab-pane label="站点信息" name="SITE">
+          <div class="config-section">
+            <p class="section-desc">配置系统基础信息，如名称、备案号、版权等。</p>
+            <el-form label-width="180px" class="config-form">
+              <el-form-item 
+                v-for="config in siteConfigs" 
+                :key="config.configKey"
+                :label="config.description || config.configKey">
+                <el-input 
+                  v-model="editedConfigs[config.configKey]"
+                  :placeholder="config.configValue || '未设置'"
+                  :disabled="!config.editable"
+                  style="width: 400px"
+                  @input="markChanged(config.configKey)"
+                />
+              </el-form-item>
+            </el-form>
+            <el-alert type="info" :closable="false" style="margin-top: 20px">
+              <template #title>
+                提示：ICP备案号将显示在登录页和页面底部；系统名称将显示在侧边栏和浏览器标题。
+              </template>
+            </el-alert>
+          </div>
+        </el-tab-pane>
       </el-tabs>
     </el-card>
 
@@ -312,7 +338,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Refresh, Check, Upload, Document, Picture, Connection, Lock, Bell, Search } from '@element-plus/icons-vue'
+import { Refresh, Check, Upload, Document, Picture, Connection, Lock, Bell, Search, InfoFilled } from '@element-plus/icons-vue'
 import { 
   getConfigsGrouped, 
   batchUpdateConfigs, 
@@ -361,6 +387,9 @@ const notifyConfigs = computed(() =>
 const searchConfigs = computed(() => 
   systemConfigs.value.filter(c => c.configKey.includes('search'))
 )
+
+// 站点信息配置
+const siteConfigs = computed(() => allConfigs.value['SITE'] || [])
 
 // 是否有修改
 const hasChanges = computed(() => changedKeys.value.size > 0)

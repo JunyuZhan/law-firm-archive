@@ -611,5 +611,11 @@ INSERT INTO sys_config (config_key, config_value, config_type, config_group, des
 ('system.login.lock.minutes', '30', 'NUMBER', 'SYSTEM', '账户锁定时间(分钟)', true, 53),
 -- 系统参数 - 通知
 ('system.notify.email.enabled', 'false', 'BOOLEAN', 'SYSTEM', '启用邮件通知', true, 60),
-('system.notify.expire.days', '30', 'NUMBER', 'SYSTEM', '到期提醒提前天数', true, 61)
+('system.notify.expire.days', '30', 'NUMBER', 'SYSTEM', '到期提醒提前天数', true, 61),
+-- 系统参数 - 站点信息
+('system.site.name', '档案管理系统', 'STRING', 'SITE', '系统名称', true, 1),
+('system.site.name.en', 'Archive Management System', 'STRING', 'SITE', '系统英文名称', true, 2),
+('system.site.icp', '', 'STRING', 'SITE', 'ICP备案号', true, 3),
+('system.site.copyright', '© 2024 档案管理系统', 'STRING', 'SITE', '版权信息', true, 4),
+('system.site.logo', '', 'STRING', 'SITE', 'Logo URL', true, 5)
 ON CONFLICT (config_key) DO NOTHING;

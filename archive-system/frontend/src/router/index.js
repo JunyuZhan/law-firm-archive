@@ -100,6 +100,13 @@ const router = createRouter({
           name: 'SystemConfig',
           component: () => import('@/views/system/SystemConfig.vue'),
           meta: { title: '系统配置', requiresAuth: true }
+        },
+        // 个人设置
+        {
+          path: 'profile',
+          name: 'Profile',
+          component: () => import('@/views/user/Profile.vue'),
+          meta: { title: '个人设置', requiresAuth: true }
         }
       ]
     },
