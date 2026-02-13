@@ -223,11 +223,29 @@ const handleLogout = async () => {
 .sidebar {
   background: linear-gradient(180deg, #243447 0%, #304156 100%);
   transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   box-shadow: 2px 0 8px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  
+  // 自定义滚动条
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
   
   .logo {
     height: 60px;
+    min-height: 60px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -248,6 +266,7 @@ const handleLogout = async () => {
   
   .el-menu {
     border-right: none;
+    flex: 1;
     
     // 菜单项 hover 效果
     :deep(.el-menu-item) {
