@@ -1,8 +1,12 @@
+# =====================================================
+# 档案管理系统 .gitignore
+# =====================================================
+
 # Maven
 **/target/
-backend/.mvn/
-backend/mvnw
-backend/mvnw.cmd
+**/.mvn/
+**/mvnw
+**/mvnw.cmd
 
 # IDE
 .idea/
@@ -14,7 +18,7 @@ backend/mvnw.cmd
 *.swo
 *~
 .kiro/
-.claude
+.claude/
 
 # Eclipse
 .classpath
@@ -28,33 +32,27 @@ Thumbs.db
 
 # Logs
 *.log
-logs/
+**/logs/
 
 # Environment
 .env
 .env.local
 .env.*.local
 
-# Node modules (if any)
-node_modules/
-frontend/node_modules/
-frontend/dist/
-frontend/.next/
-frontend/.nuxt/
+# Node modules
+**/node_modules/
 **/.vite/
 
 # Build outputs
-dist/
-build/
-out/
+**/dist/
+**/build/
+**/out/
 
 # Temporary files
 *.tmp
 *.temp
 *.bak
 *.backup
-test*.txt
-test-*.txt
 
 # Database
 *.db
@@ -62,26 +60,23 @@ test-*.txt
 *.sqlite3
 
 # Backup files
-backups/
+**/backups/
 __pycache__/
-LOG_PATH_IS_UNDEFINED/
 *.pyc
-backend/logs/
-# Cursor IDE - 忽略整个目录，但保留规则文件
-.cursor/
-!.cursor/rules/
-backend/backups/
 *.jqwik-database
 
 # SSL Certificates
-docker/ssl/*.pem
-docker/ssl/*.key
-docker/ssl/*.crt
-docker/ssl/*.p12
-docker/ssl/*.pfx
-!docker/ssl/README.md
+**/*.pem
+**/*.key
+**/*.crt
+**/*.p12
+**/*.pfx
 
-# Docker Secrets（敏感信息）
-docker/secrets/*
-!docker/secrets/README.md
-!docker/secrets/.gitkeep
+# Secrets
+**/secrets/*
+!**/secrets/README.md
+!**/secrets/.gitkeep
+
+# Cursor IDE
+.cursor/
+!.cursor/rules/
