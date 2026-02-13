@@ -34,6 +34,17 @@ public final class SecurityUtils {
     }
 
     /**
+     * 获取当前登录用户真实姓名.
+     */
+    public static String getCurrentRealName() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.getPrincipal() instanceof UserDetailsImpl userDetails) {
+            return userDetails.getRealName();
+        }
+        return null;
+    }
+
+    /**
      * 获取当前登录用户详情.
      */
     public static UserDetailsImpl getCurrentUser() {
@@ -59,5 +70,13 @@ public final class SecurityUtils {
     public static boolean isSystemAdmin() {
         UserDetailsImpl user = getCurrentUser();
         return user != null && "SYSTEM_ADMIN".equals(user.getUserType());
+    }
+
+    /**
+     * 获取当前用户类型.
+     */
+    public static String getCurrentUserType() {
+        UserDetailsImpl user = getCurrentUser();
+        return user != null ? user.getUserType() : null;
     }
 }
