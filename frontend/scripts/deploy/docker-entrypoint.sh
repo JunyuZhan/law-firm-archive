@@ -2,6 +2,7 @@
 # =====================================================
 # 前端容器启动脚本
 # SSL 证书可选：有证书用 HTTPS，没证书用纯 HTTP
+# 支持非 root 用户运行（nginx-unprivileged 镜像）
 # =====================================================
 
 set -e
@@ -9,10 +10,14 @@ set -e
 SSL_DIR="/etc/nginx/ssl"
 CERT_FILE="$SSL_DIR/fullchain.pem"
 KEY_FILE="$SSL_DIR/privkey.pem"
-NGINX_CONF="/etc/nginx/nginx.conf"
 
-# 确保 SSL 目录存在
-mkdir -p "$SSL_DIR"
+# 使用临时目录存放运行时配置（非 root 用户可写）
+NGINX_CONF="/tmp/nginx.conf"
+NGINX_CONF_ORIG="/etc/nginx/nginx.conf"
+NGINX_HTTP_CONF="/etc/nginx/nginx-http.conf"
+
+# 复制配置文件到可写目录
+cp "$NGINX_CONF_ORIG" "$NGINX_CONF"
 
 # 检查是否有 SSL 证书
 if [ -f "$CERT_FILE" ] && [ -f "$KEY_FILE" ]; then
@@ -30,7 +35,6 @@ else
     echo ""
     
     # 如果没有证书，使用纯 HTTP 配置文件
-    NGINX_HTTP_CONF="/etc/nginx/nginx-http.conf"
     if [ -f "$NGINX_HTTP_CONF" ]; then
         echo "[SSL] 使用纯 HTTP 配置文件（无 SSL 证书）..."
         cp "$NGINX_HTTP_CONF" "$NGINX_CONF"
@@ -46,6 +50,6 @@ else
     fi
 fi
 
-# 启动 nginx
+# 启动 nginx（使用临时配置文件）
 echo "[Nginx] 启动 nginx..."
-exec nginx -g "daemon off;"
+exec nginx -c "$NGINX_CONF" -g "daemon off;"
