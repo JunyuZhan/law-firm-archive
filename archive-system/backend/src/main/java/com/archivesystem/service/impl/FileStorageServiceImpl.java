@@ -5,12 +5,12 @@ import com.archivesystem.common.exception.NotFoundException;
 import com.archivesystem.entity.DigitalFile;
 import com.archivesystem.repository.DigitalFileMapper;
 import com.archivesystem.security.SecurityUtils;
+import com.archivesystem.service.ConfigService;
 import com.archivesystem.service.FileStorageService;
 import com.archivesystem.service.MinioService;
 import com.archivesystem.util.FileTypeValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -37,12 +37,13 @@ public class FileStorageServiceImpl implements FileStorageService {
 
     private final MinioService minioService;
     private final DigitalFileMapper digitalFileMapper;
+    private final ConfigService configService;
 
-    @Value("${archive-system.storage.max-file-size:104857600}")
-    private long maxFileSize;
-
-    @Value("${archive-system.storage.allowed-types:pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,gif,zip,rar}")
-    private String allowedTypes;
+    // 配置键常量
+    private static final String CONFIG_MAX_FILE_SIZE = "system.upload.max.size";
+    private static final String CONFIG_ALLOWED_TYPES = "system.upload.allowed.types";
+    private static final long DEFAULT_MAX_FILE_SIZE = 104857600L; // 100MB
+    private static final String DEFAULT_ALLOWED_TYPES = "pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,gif,zip,rar,txt,ofd";
 
     private static final Set<String> IMAGE_EXTENSIONS = Set.of("jpg", "jpeg", "png", "gif", "bmp", "webp");
     private static final Set<String> LONG_TERM_FORMATS = Set.of("pdf", "ofd", "tif", "tiff");
@@ -220,6 +221,7 @@ public class FileStorageServiceImpl implements FileStorageService {
             throw new BusinessException("4001", "请选择要上传的文件");
         }
 
+        long maxFileSize = getMaxFileSize();
         if (file.getSize() > maxFileSize) {
             throw new BusinessException("4004", "文件大小超出限制（最大" + (maxFileSize / 1024 / 1024) + "MB）");
         }
@@ -249,11 +251,20 @@ public class FileStorageServiceImpl implements FileStorageService {
                 file.getOriginalFilename(), extension, file.getSize());
     }
 
+    private long getMaxFileSize() {
+        Integer maxSize = configService.getIntValue(CONFIG_MAX_FILE_SIZE, null);
+        return maxSize != null ? maxSize.longValue() : DEFAULT_MAX_FILE_SIZE;
+    }
+
+    private String getAllowedTypes() {
+        return configService.getValue(CONFIG_ALLOWED_TYPES, DEFAULT_ALLOWED_TYPES);
+    }
+
     private boolean isAllowedType(String extension) {
         if (!StringUtils.hasText(extension)) {
             return false;
         }
-        String[] allowed = allowedTypes.split(",");
+        String[] allowed = getAllowedTypes().split(",");
         for (String type : allowed) {
             if (type.trim().equalsIgnoreCase(extension)) {
                 return true;

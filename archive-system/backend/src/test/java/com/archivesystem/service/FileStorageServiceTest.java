@@ -33,6 +33,9 @@ class FileStorageServiceTest {
     private DigitalFileMapper digitalFileMapper;
 
     @Mock
+    private ConfigService configService;
+
+    @Mock
     private MultipartFile mockFile;
 
     @InjectMocks
@@ -42,9 +45,11 @@ class FileStorageServiceTest {
 
     @BeforeEach
     void setUp() {
-        // 设置配置值
-        ReflectionTestUtils.setField(fileStorageService, "maxFileSize", 104857600L);
-        ReflectionTestUtils.setField(fileStorageService, "allowedTypes", "pdf,doc,docx,jpg,jpeg,png");
+        // 通过 ConfigService mock 配置值
+        lenient().when(configService.getIntValue(eq("system.upload.max.size"), any()))
+            .thenReturn(104857600);
+        lenient().when(configService.getValue(eq("system.upload.allowed.types"), anyString()))
+            .thenReturn("pdf,doc,docx,jpg,jpeg,png");
 
         testFile = new DigitalFile();
         testFile.setId(1L);

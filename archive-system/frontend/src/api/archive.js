@@ -273,5 +273,15 @@ export const sourceApi = {
       url: `/sources/${id}/test`,
       method: 'post'
     })
+  },
+
+  /**
+   * 删除来源
+   */
+  delete(id) {
+    return request({
+      url: `/sources/${id}`,
+      method: 'delete'
+    })
   }
 }

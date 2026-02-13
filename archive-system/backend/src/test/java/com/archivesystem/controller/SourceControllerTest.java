@@ -121,6 +121,7 @@ class SourceControllerTest {
         updateSource.setSourceName("更新后的名称");
         updateSource.setApiUrl("http://new-url.example.com");
 
+        when(externalSourceMapper.selectById(1L)).thenReturn(testSource);
         when(externalSourceMapper.updateById(any(ExternalSource.class))).thenReturn(1);
 
         mockMvc.perform(put("/sources/1")
@@ -131,6 +132,21 @@ class SourceControllerTest {
                 .andExpect(jsonPath("$.message").value("更新成功"));
 
         verify(externalSourceMapper).updateById(argThat(source -> source.getId().equals(1L)));
+    }
+
+    @Test
+    void testUpdate_NotFound() throws Exception {
+        ExternalSource updateSource = new ExternalSource();
+        updateSource.setSourceName("更新后的名称");
+
+        when(externalSourceMapper.selectById(999L)).thenReturn(null);
+
+        mockMvc.perform(put("/sources/999")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateSource)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("404"))
+                .andExpect(jsonPath("$.message").value("来源不存在"));
     }
 
     @Test
@@ -172,10 +188,24 @@ class SourceControllerTest {
 
     @Test
     void testTestConnection() throws Exception {
+        // 没有API URL时，返回"配置有效"
+        testSource.setApiUrl(null);
+        when(externalSourceMapper.selectById(1L)).thenReturn(testSource);
+        when(externalSourceMapper.updateById(any(ExternalSource.class))).thenReturn(1);
+
         mockMvc.perform(post("/sources/1/test"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value("200"))
-                .andExpect(jsonPath("$.message").value("连接测试成功"));
+                .andExpect(jsonPath("$.code").value("200"));
+    }
+
+    @Test
+    void testTestConnection_NotFound() throws Exception {
+        when(externalSourceMapper.selectById(999L)).thenReturn(null);
+
+        mockMvc.perform(post("/sources/999/test"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("404"))
+                .andExpect(jsonPath("$.message").value("来源不存在"));
     }
 
     @Test

@@ -111,18 +111,14 @@ jwt:
   refresh-expiration: 604800000  # 7天
 
 # 档案系统配置
-archive-system:
-  # 主系统对接配置
-  law-firm:
-    api-url: http://localhost:8080/api
-    api-key: ""
-  # 档案存储配置
-  storage:
-    max-file-size: 104857600  # 100MB
-    allowed-types: pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,gif,zip,rar,txt,ofd
-  # 档案保管期限默认值（年）
-  retention:
-    default-years: 10
+# 注意：以下业务配置已迁移到数据库 sys_config 表，可在后台"系统配置"页面管理
+# - 文件上传限制 (system.upload.max.size, system.upload.allowed.types)
+# - 借阅参数 (system.borrow.*)
+# - 水印设置 (system.watermark.*)
+# - 安全策略 (system.password.*, system.login.*)
+# - 通知设置 (system.notify.*)
+# - 档案号规则 (archive.no.*)
+# - 保管期限 (retention.*)
 
 # Knife4j配置
 springdoc:

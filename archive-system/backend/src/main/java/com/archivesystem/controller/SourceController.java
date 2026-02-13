@@ -7,13 +7,19 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestTemplate;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
  * 档案来源控制器.
  */
+@Slf4j
 @RestController
 @RequestMapping("/sources")
 @RequiredArgsConstructor
@@ -21,6 +27,7 @@ import java.util.List;
 public class SourceController {
 
     private final ExternalSourceMapper externalSourceMapper;
+    private final RestTemplate restTemplate = new RestTemplate();
 
     @GetMapping
     @Operation(summary = "获取来源列表")
@@ -29,6 +36,8 @@ public class SourceController {
                 new LambdaQueryWrapper<ExternalSource>()
                         .eq(ExternalSource::getDeleted, false)
                         .orderByDesc(ExternalSource::getCreatedAt));
+        // 不返回敏感信息
+        sources.forEach(s -> s.setApiKey(null));
         return Result.success(sources);
     }
 
@@ -39,20 +48,39 @@ public class SourceController {
         if (source == null || source.getDeleted()) {
             return Result.error("404", "来源不存在");
         }
+        // 不返回敏感信息
+        source.setApiKey(null);
         return Result.success(source);
     }
 
     @PostMapping
     @Operation(summary = "创建来源")
     public Result<ExternalSource> create(@RequestBody ExternalSource source) {
+        // 检查编码是否重复
+        ExternalSource existing = externalSourceMapper.selectOne(
+                new LambdaQueryWrapper<ExternalSource>()
+                        .eq(ExternalSource::getSourceCode, source.getSourceCode())
+                        .eq(ExternalSource::getDeleted, false));
+        if (existing != null) {
+            return Result.error("400", "来源编码已存在");
+        }
         externalSourceMapper.insert(source);
+        source.setApiKey(null);
         return Result.success("创建成功", source);
     }
 
     @PutMapping("/{id}")
     @Operation(summary = "更新来源")
     public Result<Void> update(@PathVariable Long id, @RequestBody ExternalSource source) {
+        ExternalSource existing = externalSourceMapper.selectById(id);
+        if (existing == null || existing.getDeleted()) {
+            return Result.error("404", "来源不存在");
+        }
         source.setId(id);
+        // 如果没有传入新密钥，保留原密钥
+        if (source.getApiKey() == null || source.getApiKey().isEmpty()) {
+            source.setApiKey(existing.getApiKey());
+        }
         externalSourceMapper.updateById(source);
         return Result.success("更新成功", null);
     }
@@ -72,8 +100,53 @@ public class SourceController {
     @PostMapping("/{id}/test")
     @Operation(summary = "测试连接")
     public Result<Void> test(@PathVariable Long id) {
-        // TODO: 实现连接测试
-        return Result.success("连接测试成功", null);
+        ExternalSource source = externalSourceMapper.selectById(id);
+        if (source == null || source.getDeleted()) {
+            return Result.error("404", "来源不存在");
+        }
+        
+        String apiUrl = source.getApiUrl();
+        LocalDateTime now = LocalDateTime.now();
+        
+        // 如果没有配置API URL，直接标记为成功（仅接收档案场景）
+        if (apiUrl == null || apiUrl.isEmpty()) {
+            source.setLastSyncAt(now);
+            source.setLastSyncStatus("SUCCESS");
+            source.setLastSyncMessage("无需测试（仅接收模式）");
+            externalSourceMapper.updateById(source);
+            return Result.success("配置有效（仅接收模式）", null);
+        }
+        
+        try {
+            // 尝试访问API URL（HEAD请求，减少流量）
+            log.info("测试来源连接: id={}, url={}", id, apiUrl);
+            ResponseEntity<String> response = restTemplate.exchange(
+                    apiUrl, 
+                    HttpMethod.HEAD, 
+                    null, 
+                    String.class);
+            
+            boolean success = response.getStatusCode().is2xxSuccessful() 
+                    || response.getStatusCode().is3xxRedirection();
+            
+            source.setLastSyncAt(now);
+            source.setLastSyncStatus(success ? "SUCCESS" : "FAILED");
+            source.setLastSyncMessage(success ? "连接成功" : "HTTP " + response.getStatusCode());
+            externalSourceMapper.updateById(source);
+            
+            if (success) {
+                return Result.success("连接测试成功", null);
+            } else {
+                return Result.error("500", "连接返回状态: " + response.getStatusCode());
+            }
+        } catch (Exception e) {
+            log.warn("测试来源连接失败: id={}, error={}", id, e.getMessage());
+            source.setLastSyncAt(now);
+            source.setLastSyncStatus("FAILED");
+            source.setLastSyncMessage(e.getMessage());
+            externalSourceMapper.updateById(source);
+            return Result.error("500", "连接失败: " + e.getMessage());
+        }
     }
 
     @DeleteMapping("/{id}")

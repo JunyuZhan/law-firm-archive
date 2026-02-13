@@ -585,9 +585,31 @@ INSERT INTO sys_config (config_key, config_value, config_type, config_group, des
 -- 保管期限配置
 ('retention.default.code', 'Y10', 'STRING', 'RETENTION', '默认保管期限代码', true, 10),
 ('retention.warn.days', '90', 'NUMBER', 'RETENTION', '到期预警天数', true, 11),
--- 系统参数
+-- 系统参数 - 文件上传
 ('system.upload.max.size', '104857600', 'NUMBER', 'SYSTEM', '上传文件最大大小（字节）', true, 20),
 ('system.upload.allowed.types', 'pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,gif,zip,rar,txt,ofd', 'STRING', 'SYSTEM', '允许上传的文件类型', true, 21),
+-- 系统参数 - 借阅
 ('system.borrow.max.days', '30', 'NUMBER', 'SYSTEM', '最大借阅天数', true, 22),
-('system.search.max.results', '10000', 'NUMBER', 'SYSTEM', '搜索最大结果数', true, 23)
+('system.borrow.renew.max.times', '2', 'NUMBER', 'SYSTEM', '最大续借次数', true, 23),
+('system.borrow.renew.days', '15', 'NUMBER', 'SYSTEM', '每次续借天数', true, 24),
+-- 系统参数 - 搜索
+('system.search.max.results', '10000', 'NUMBER', 'SYSTEM', '搜索最大结果数', true, 25),
+('system.search.page.size', '20', 'NUMBER', 'SYSTEM', '默认分页大小', true, 26),
+-- 系统参数 - 水印
+('system.watermark.enabled', 'true', 'BOOLEAN', 'SYSTEM', '启用水印', true, 30),
+('system.watermark.text', '档案管理系统', 'STRING', 'SYSTEM', '水印文字', true, 31),
+('system.watermark.opacity', '0.3', 'STRING', 'SYSTEM', '水印透明度(0-1)', true, 32),
+('system.watermark.font.size', '20', 'NUMBER', 'SYSTEM', '水印字体大小', true, 33),
+-- 系统参数 - 回调
+('system.callback.retry.max', '3', 'NUMBER', 'SYSTEM', '回调最大重试次数', true, 40),
+('system.callback.retry.interval', '5000', 'NUMBER', 'SYSTEM', '回调重试间隔(毫秒)', true, 41),
+('system.callback.timeout', '30000', 'NUMBER', 'SYSTEM', '回调超时时间(毫秒)', true, 42),
+-- 系统参数 - 安全
+('system.password.min.length', '8', 'NUMBER', 'SYSTEM', '密码最小长度', true, 50),
+('system.password.require.special', 'true', 'BOOLEAN', 'SYSTEM', '密码需要特殊字符', true, 51),
+('system.login.max.attempts', '5', 'NUMBER', 'SYSTEM', '登录最大尝试次数', true, 52),
+('system.login.lock.minutes', '30', 'NUMBER', 'SYSTEM', '账户锁定时间(分钟)', true, 53),
+-- 系统参数 - 通知
+('system.notify.email.enabled', 'false', 'BOOLEAN', 'SYSTEM', '启用邮件通知', true, 60),
+('system.notify.expire.days', '30', 'NUMBER', 'SYSTEM', '到期提醒提前天数', true, 61)
 ON CONFLICT (config_key) DO NOTHING;

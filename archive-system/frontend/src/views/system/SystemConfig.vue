@@ -65,45 +65,219 @@
         <!-- 系统参数 -->
         <el-tab-pane label="系统参数" name="SYSTEM">
           <div class="config-section">
-            <p class="section-desc">配置系统运行参数，如文件上传限制、借阅期限等。</p>
-            <el-form label-width="180px" class="config-form">
-              <el-form-item 
-                v-for="config in systemConfigs" 
-                :key="config.configKey"
-                :label="config.description || config.configKey">
-                <template v-if="config.configType === 'BOOLEAN'">
-                  <el-switch 
-                    v-model="editedConfigs[config.configKey]"
-                    :disabled="!config.editable"
-                    active-value="true"
-                    inactive-value="false"
-                    @change="markChanged(config.configKey)"
-                  />
-                </template>
-                <template v-else-if="config.configType === 'NUMBER'">
+            <p class="section-desc">配置系统运行参数。</p>
+            
+            <!-- 文件上传配置 -->
+            <div class="config-group">
+              <h4 class="group-title">
+                <el-icon><Upload /></el-icon> 文件上传
+              </h4>
+              <el-form label-width="180px" class="config-form">
+                <el-form-item 
+                  v-for="config in uploadConfigs" 
+                  :key="config.configKey"
+                  :label="config.description || config.configKey">
+                  <template v-if="config.configType === 'NUMBER' && config.configKey.includes('size')">
+                    <el-input-number
+                      v-model.number="editedConfigs[config.configKey]"
+                      :disabled="!config.editable"
+                      :min="0"
+                      :step="1048576"
+                      style="width: 200px"
+                      @change="markChanged(config.configKey)"
+                    />
+                    <span class="config-hint">({{ formatBytes(editedConfigs[config.configKey]) }})</span>
+                  </template>
+                  <template v-else>
+                    <el-input 
+                      v-model="editedConfigs[config.configKey]"
+                      :placeholder="config.configValue"
+                      :disabled="!config.editable"
+                      style="width: 400px"
+                      @input="markChanged(config.configKey)"
+                    />
+                  </template>
+                </el-form-item>
+              </el-form>
+            </div>
+
+            <!-- 借阅配置 -->
+            <div class="config-group">
+              <h4 class="group-title">
+                <el-icon><Document /></el-icon> 借阅管理
+              </h4>
+              <el-form label-width="180px" class="config-form">
+                <el-form-item 
+                  v-for="config in borrowConfigs" 
+                  :key="config.configKey"
+                  :label="config.description || config.configKey">
                   <el-input-number
                     v-model.number="editedConfigs[config.configKey]"
                     :disabled="!config.editable"
-                    :min="0"
+                    :min="1"
                     style="width: 200px"
                     @change="markChanged(config.configKey)"
                   />
-                  <span v-if="config.configKey.includes('size')" class="config-hint">
-                    ({{ formatBytes(editedConfigs[config.configKey]) }})
-                  </span>
-                </template>
-                <template v-else>
-                  <el-input 
-                    v-model="editedConfigs[config.configKey]"
-                    :placeholder="config.configValue"
+                  <span v-if="config.configKey.includes('days')" class="config-hint">天</span>
+                  <span v-if="config.configKey.includes('times')" class="config-hint">次</span>
+                </el-form-item>
+              </el-form>
+            </div>
+
+            <!-- 水印配置 -->
+            <div class="config-group">
+              <h4 class="group-title">
+                <el-icon><Picture /></el-icon> 水印设置
+              </h4>
+              <el-form label-width="180px" class="config-form">
+                <el-form-item 
+                  v-for="config in watermarkConfigs" 
+                  :key="config.configKey"
+                  :label="config.description || config.configKey">
+                  <template v-if="config.configType === 'BOOLEAN'">
+                    <el-switch 
+                      v-model="editedConfigs[config.configKey]"
+                      :disabled="!config.editable"
+                      active-value="true"
+                      inactive-value="false"
+                      @change="markChanged(config.configKey)"
+                    />
+                  </template>
+                  <template v-else-if="config.configType === 'NUMBER'">
+                    <el-input-number
+                      v-model.number="editedConfigs[config.configKey]"
+                      :disabled="!config.editable"
+                      :min="1"
+                      style="width: 200px"
+                      @change="markChanged(config.configKey)"
+                    />
+                  </template>
+                  <template v-else>
+                    <el-input 
+                      v-model="editedConfigs[config.configKey]"
+                      :placeholder="config.configValue"
+                      :disabled="!config.editable"
+                      style="width: 200px"
+                      @input="markChanged(config.configKey)"
+                    />
+                  </template>
+                </el-form-item>
+              </el-form>
+            </div>
+
+            <!-- 回调配置 -->
+            <div class="config-group">
+              <h4 class="group-title">
+                <el-icon><Connection /></el-icon> 回调通知
+              </h4>
+              <el-form label-width="180px" class="config-form">
+                <el-form-item 
+                  v-for="config in callbackConfigs" 
+                  :key="config.configKey"
+                  :label="config.description || config.configKey">
+                  <el-input-number
+                    v-model.number="editedConfigs[config.configKey]"
                     :disabled="!config.editable"
-                    style="width: 300px"
-                    @input="markChanged(config.configKey)"
+                    :min="1"
+                    style="width: 200px"
+                    @change="markChanged(config.configKey)"
                   />
-                </template>
-                <span class="config-key">{{ config.configKey }}</span>
-              </el-form-item>
-            </el-form>
+                  <span v-if="config.configKey.includes('interval') || config.configKey.includes('timeout')" class="config-hint">毫秒</span>
+                  <span v-if="config.configKey.includes('max') && !config.configKey.includes('timeout')" class="config-hint">次</span>
+                </el-form-item>
+              </el-form>
+            </div>
+
+            <!-- 安全配置 -->
+            <div class="config-group">
+              <h4 class="group-title">
+                <el-icon><Lock /></el-icon> 安全设置
+              </h4>
+              <el-form label-width="180px" class="config-form">
+                <el-form-item 
+                  v-for="config in securityConfigs" 
+                  :key="config.configKey"
+                  :label="config.description || config.configKey">
+                  <template v-if="config.configType === 'BOOLEAN'">
+                    <el-switch 
+                      v-model="editedConfigs[config.configKey]"
+                      :disabled="!config.editable"
+                      active-value="true"
+                      inactive-value="false"
+                      @change="markChanged(config.configKey)"
+                    />
+                  </template>
+                  <template v-else>
+                    <el-input-number
+                      v-model.number="editedConfigs[config.configKey]"
+                      :disabled="!config.editable"
+                      :min="1"
+                      style="width: 200px"
+                      @change="markChanged(config.configKey)"
+                    />
+                    <span v-if="config.configKey.includes('minutes')" class="config-hint">分钟</span>
+                    <span v-if="config.configKey.includes('length')" class="config-hint">位</span>
+                    <span v-if="config.configKey.includes('attempts')" class="config-hint">次</span>
+                  </template>
+                </el-form-item>
+              </el-form>
+            </div>
+
+            <!-- 通知配置 -->
+            <div class="config-group">
+              <h4 class="group-title">
+                <el-icon><Bell /></el-icon> 通知设置
+              </h4>
+              <el-form label-width="180px" class="config-form">
+                <el-form-item 
+                  v-for="config in notifyConfigs" 
+                  :key="config.configKey"
+                  :label="config.description || config.configKey">
+                  <template v-if="config.configType === 'BOOLEAN'">
+                    <el-switch 
+                      v-model="editedConfigs[config.configKey]"
+                      :disabled="!config.editable"
+                      active-value="true"
+                      inactive-value="false"
+                      @change="markChanged(config.configKey)"
+                    />
+                  </template>
+                  <template v-else>
+                    <el-input-number
+                      v-model.number="editedConfigs[config.configKey]"
+                      :disabled="!config.editable"
+                      :min="1"
+                      style="width: 200px"
+                      @change="markChanged(config.configKey)"
+                    />
+                    <span v-if="config.configKey.includes('days')" class="config-hint">天</span>
+                  </template>
+                </el-form-item>
+              </el-form>
+            </div>
+
+            <!-- 搜索配置 -->
+            <div class="config-group">
+              <h4 class="group-title">
+                <el-icon><Search /></el-icon> 搜索设置
+              </h4>
+              <el-form label-width="180px" class="config-form">
+                <el-form-item 
+                  v-for="config in searchConfigs" 
+                  :key="config.configKey"
+                  :label="config.description || config.configKey">
+                  <el-input-number
+                    v-model.number="editedConfigs[config.configKey]"
+                    :disabled="!config.editable"
+                    :min="1"
+                    style="width: 200px"
+                    @change="markChanged(config.configKey)"
+                  />
+                  <span v-if="config.configKey.includes('size')" class="config-hint">条/页</span>
+                  <span v-if="config.configKey.includes('results')" class="config-hint">条</span>
+                </el-form-item>
+              </el-form>
+            </div>
           </div>
         </el-tab-pane>
       </el-tabs>
@@ -138,7 +312,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Refresh, Check } from '@element-plus/icons-vue'
+import { Refresh, Check, Upload, Document, Picture, Connection, Lock, Bell, Search } from '@element-plus/icons-vue'
 import { 
   getConfigsGrouped, 
   batchUpdateConfigs, 
@@ -162,7 +336,31 @@ const retentionPeriods = ref([])
 // 计算属性：分组配置
 const archiveNoConfigs = computed(() => allConfigs.value['ARCHIVE_NO'] || [])
 const retentionConfigs = computed(() => allConfigs.value['RETENTION'] || [])
+
+// 系统参数分组
 const systemConfigs = computed(() => allConfigs.value['SYSTEM'] || [])
+
+const uploadConfigs = computed(() => 
+  systemConfigs.value.filter(c => c.configKey.includes('upload'))
+)
+const borrowConfigs = computed(() => 
+  systemConfigs.value.filter(c => c.configKey.includes('borrow'))
+)
+const watermarkConfigs = computed(() => 
+  systemConfigs.value.filter(c => c.configKey.includes('watermark'))
+)
+const callbackConfigs = computed(() => 
+  systemConfigs.value.filter(c => c.configKey.includes('callback'))
+)
+const securityConfigs = computed(() => 
+  systemConfigs.value.filter(c => c.configKey.includes('password') || c.configKey.includes('login'))
+)
+const notifyConfigs = computed(() => 
+  systemConfigs.value.filter(c => c.configKey.includes('notify'))
+)
+const searchConfigs = computed(() => 
+  systemConfigs.value.filter(c => c.configKey.includes('search'))
+)
 
 // 是否有修改
 const hasChanges = computed(() => changedKeys.value.size > 0)
@@ -302,6 +500,23 @@ onMounted(() => {
   margin-bottom: 20px;
   color: #606266;
   font-size: 14px;
+}
+
+.config-group {
+  margin-bottom: 32px;
+  padding: 20px;
+  background: #fafafa;
+  border-radius: 8px;
+}
+
+.group-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 20px 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #303133;
 }
 
 .config-form {
