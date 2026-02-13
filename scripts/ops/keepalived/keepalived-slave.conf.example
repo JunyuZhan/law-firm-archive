@@ -1,0 +1,63 @@
+# =====================================================
+# Keepalived 配置文件（从服务器）
+# =====================================================
+# 安装位置：/etc/keepalived/keepalived.conf
+# 
+# 配置说明：
+#   1. 复制此文件到 /etc/keepalived/keepalived.conf
+#   2. 修改以下参数：
+#      - interface: 改为你的实际网卡名称（ip addr 查看）
+#      - auth_pass: 改成强密码（必须和主服务器一致）
+#      - virtual_ipaddress: 改成你的虚拟IP（必须和主服务器一致）
+#      - priority: 应该低于主服务器（例如 90）
+#   3. 确保脚本路径正确
+# =====================================================
+
+# PostgreSQL 健康检查脚本配置
+vrrp_script chk_postgres {
+    script "/usr/local/bin/check-postgres.sh"
+    interval 2        # 每2秒检查一次
+    weight -5        # 检查失败时优先级减5
+    fall 3           # 连续3次失败才认为故障
+    rise 2           # 连续2次成功才认为恢复
+    timeout 5        # 脚本超时时间（秒）
+}
+
+# VRRP 实例配置
+vrrp_instance VI_1 {
+    state BACKUP                   # 从服务器是 BACKUP
+    interface eth0                 # ⚠️ 改成你的实际网卡名称（ip addr 查看）
+    virtual_router_id 51           # 虚拟路由器ID（必须和主服务器一致）
+    priority 90                     # 优先级（必须低于主服务器）
+    advert_int 1                   # 心跳间隔（秒）
+    
+    # 认证配置（必须和主服务器一致）
+    authentication {
+        auth_type PASS
+        auth_pass your_secure_password_here  # ⚠️ 必须和主服务器一样
+    }
+    
+    # 虚拟IP配置（必须和主服务器一致）
+    virtual_ipaddress {
+        192.168.50.100/24          # ⚠️ 必须和主服务器一样
+    }
+    
+    # 跟踪健康检查脚本
+    track_script {
+        chk_postgres
+    }
+    
+    # 状态变化时执行的脚本
+    notify_master "/usr/local/bin/postgres-master.sh"
+    notify_backup "/usr/local/bin/postgres-slave.sh"
+    notify_fault "/usr/local/bin/postgres-fault.sh"
+}
+
+# =====================================================
+# 配置完成后：
+#   1. 检查配置：sudo keepalived -t
+#   2. 启动服务：sudo systemctl start keepalived
+#   3. 设置开机自启：sudo systemctl enable keepalived
+#   4. 查看状态：sudo systemctl status keepalived
+#   5. 查看日志：sudo journalctl -u keepalived -f
+# =====================================================
