@@ -29,6 +29,18 @@ const router = createRouter({
           meta: { title: '档案接收', requiresAuth: true }
         },
         {
+          path: 'search',
+          name: 'ArchiveSearch',
+          component: () => import('@/views/archive/ArchiveSearch.vue'),
+          meta: { title: '档案检索', requiresAuth: true }
+        },
+        {
+          path: 'categories',
+          name: 'CategoryManage',
+          component: () => import('@/views/category/CategoryManage.vue'),
+          meta: { title: '分类管理', requiresAuth: true }
+        },
+        {
           path: 'locations',
           name: 'LocationList',
           component: () => import('@/views/location/LocationList.vue'),

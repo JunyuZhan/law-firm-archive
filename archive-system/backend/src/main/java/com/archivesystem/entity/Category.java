@@ -1,11 +1,14 @@
 package com.archivesystem.entity;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+
+import java.util.List;
 
 /**
  * 档案分类实体类.
@@ -51,6 +54,10 @@ public class Category extends BaseEntity {
     
     /** 完整路径 */
     private String fullPath;
+
+    /** 子分类列表（非数据库字段） */
+    @TableField(exist = false)
+    private List<Category> children;
 
     public static final String STATUS_ACTIVE = "ACTIVE";
     public static final String STATUS_INACTIVE = "INACTIVE";
