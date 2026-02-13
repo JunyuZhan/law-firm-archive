@@ -4,6 +4,7 @@
       <div class="login-header">
         <el-icon :size="48" color="#409eff"><Files /></el-icon>
         <h1>档案管理系统</h1>
+        <p class="subtitle">Archive Management System</p>
       </div>
       
       <el-form ref="formRef" :model="form" :rules="rules" class="login-form">
@@ -13,6 +14,7 @@
             prefix-icon="User"
             placeholder="用户名"
             size="large"
+            clearable
           />
         </el-form-item>
         <el-form-item prop="password">
@@ -34,20 +36,27 @@
             @click="handleLogin"
             style="width: 100%"
           >
-            登 录
+            {{ loading ? '登录中...' : '登 录' }}
           </el-button>
         </el-form-item>
       </el-form>
+      
+      <div class="login-footer">
+        <p>默认管理员: admin / admin123</p>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, reactive, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
+const route = useRoute()
+const userStore = useUserStore()
 const formRef = ref()
 const loading = ref(false)
 
@@ -61,26 +70,35 @@ const rules = {
     { required: true, message: '请输入用户名', trigger: 'blur' }
   ],
   password: [
-    { required: true, message: '请输入密码', trigger: 'blur' }
+    { required: true, message: '请输入密码', trigger: 'blur' },
+    { min: 6, message: '密码长度至少6位', trigger: 'blur' }
   ]
 }
+
+// 检查是否已登录
+onMounted(() => {
+  userStore.init()
+  if (userStore.isLoggedIn) {
+    router.push(route.query.redirect || '/')
+  }
+})
 
 const handleLogin = async () => {
   try {
     await formRef.value.validate()
     loading.value = true
     
-    // TODO: 调用登录接口
-    // 临时模拟登录
-    if (form.username === 'admin' && form.password === 'admin123') {
-      localStorage.setItem('token', 'mock-token')
-      ElMessage.success('登录成功')
-      router.push('/')
-    } else {
-      ElMessage.error('用户名或密码错误')
-    }
+    await userStore.login(form)
+    
+    ElMessage.success('登录成功')
+    
+    // 跳转到之前的页面或首页
+    const redirect = route.query.redirect || '/'
+    router.push(redirect)
+    
   } catch (e) {
-    console.error(e)
+    console.error('登录失败', e)
+    // 错误消息已在API拦截器中处理
   } finally {
     loading.value = false
   }
@@ -100,8 +118,8 @@ const handleLogin = async () => {
   width: 400px;
   padding: 40px;
   background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
 }
 
 .login-header {
@@ -109,15 +127,33 @@ const handleLogin = async () => {
   margin-bottom: 30px;
   
   h1 {
-    margin-top: 10px;
+    margin-top: 12px;
+    margin-bottom: 4px;
     font-size: 24px;
     color: #303133;
+  }
+  
+  .subtitle {
+    margin: 0;
+    font-size: 12px;
+    color: #909399;
   }
 }
 
 .login-form {
   .el-form-item {
-    margin-bottom: 25px;
+    margin-bottom: 24px;
+  }
+}
+
+.login-footer {
+  text-align: center;
+  margin-top: 20px;
+  
+  p {
+    margin: 0;
+    font-size: 12px;
+    color: #909399;
   }
 }
 </style>

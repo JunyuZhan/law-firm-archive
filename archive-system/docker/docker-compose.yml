@@ -1,5 +1,5 @@
 # 档案管理系统 Docker Compose 配置
-# 包含后端服务、数据库、Redis、MinIO
+# 包含后端服务、前端服务、数据库、Redis、MinIO
 
 version: '3.8'
 
@@ -13,7 +13,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
-      - "5433:5432"  # 使用5433避免与主系统冲突
+      - "5433:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ../scripts/init-db:/docker-entrypoint-initdb.d
@@ -31,7 +31,7 @@ services:
     container_name: archive-redis
     command: redis-server --appendonly yes
     ports:
-      - "6380:6379"  # 使用6380避免与主系统冲突
+      - "6380:6379"
     volumes:
       - redis-data:/data
     healthcheck:
@@ -51,8 +51,8 @@ services:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
     ports:
-      - "9002:9000"  # 使用9002避免与主系统冲突
-      - "9003:9001"  # MinIO控制台
+      - "9002:9000"
+      - "9003:9001"
     volumes:
       - minio-data:/data
     healthcheck:
@@ -79,6 +79,7 @@ services:
       MINIO_ENDPOINT: http://minio:9000
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: minioadmin
+      JWT_SECRET: your-256-bit-secret-key-for-archive-system-production-2026
     ports:
       - "8090:8090"
     depends_on:
@@ -88,6 +89,31 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8090/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - archive-network
+
+  # 前端服务（Nginx）
+  frontend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.frontend
+    container_name: archive-frontend
+    ports:
+      - "3001:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     networks:
       - archive-network
 

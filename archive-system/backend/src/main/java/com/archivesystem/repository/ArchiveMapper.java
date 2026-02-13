@@ -2,63 +2,39 @@ package com.archivesystem.repository;
 
 import com.archivesystem.entity.Archive;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
-import java.time.LocalDate;
 import java.util.List;
 
 /**
- * 档案Mapper.
+ * 档案Mapper接口.
  */
 @Mapper
 public interface ArchiveMapper extends BaseMapper<Archive> {
 
     /**
-     * 分页查询档案.
+     * 根据档案号查询.
      */
-    IPage<Archive> selectArchivePage(
-            Page<Archive> page,
-            @Param("archiveNo") String archiveNo,
-            @Param("archiveName") String archiveName,
-            @Param("archiveType") String archiveType,
-            @Param("category") String category,
-            @Param("sourceType") String sourceType,
-            @Param("status") String status,
-            @Param("locationId") Long locationId,
-            @Param("keyword") String keyword
-    );
+    @Select("SELECT * FROM arc_archive WHERE archive_no = #{archiveNo} AND deleted = false")
+    Archive selectByArchiveNo(@Param("archiveNo") String archiveNo);
 
     /**
-     * 根据来源ID和来源类型查询.
+     * 根据来源ID查询.
      */
-    @Select("SELECT * FROM archive WHERE source_id = #{sourceId} AND source_type = #{sourceType} AND deleted = false")
-    Archive selectBySourceIdAndType(@Param("sourceId") String sourceId, @Param("sourceType") String sourceType);
+    @Select("SELECT * FROM arc_archive WHERE source_type = #{sourceType} AND source_id = #{sourceId} AND deleted = false")
+    Archive selectBySourceId(@Param("sourceType") String sourceType, @Param("sourceId") String sourceId);
 
     /**
-     * 查询即将到期的档案.
+     * 根据分类ID查询档案列表.
      */
-    @Select("SELECT * FROM archive WHERE retention_expire_date <= #{deadline} AND status = 'STORED' AND deleted = false")
-    List<Archive> selectExpiringArchives(@Param("deadline") LocalDate deadline);
+    @Select("SELECT * FROM arc_archive WHERE category_id = #{categoryId} AND deleted = false ORDER BY created_at DESC")
+    List<Archive> selectByCategoryId(@Param("categoryId") Long categoryId);
 
     /**
-     * 按位置查询档案.
+     * 根据全宗ID查询档案列表.
      */
-    @Select("SELECT * FROM archive WHERE location_id = #{locationId} AND deleted = false ORDER BY box_no")
-    List<Archive> selectByLocationId(@Param("locationId") Long locationId);
-
-    /**
-     * 统计各状态档案数量.
-     */
-    @Select("SELECT status, COUNT(*) as count FROM archive WHERE deleted = false GROUP BY status")
-    List<java.util.Map<String, Object>> countByStatus();
-
-    /**
-     * 统计各来源类型档案数量.
-     */
-    @Select("SELECT source_type, COUNT(*) as count FROM archive WHERE deleted = false GROUP BY source_type")
-    List<java.util.Map<String, Object>> countBySourceType();
+    @Select("SELECT * FROM arc_archive WHERE fonds_id = #{fondsId} AND deleted = false ORDER BY created_at DESC")
+    List<Archive> selectByFondsId(@Param("fondsId") Long fondsId);
 }

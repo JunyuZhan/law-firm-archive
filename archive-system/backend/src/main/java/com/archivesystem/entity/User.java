@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 
 /**
  * 用户实体类.
+ * 对应数据库表: sys_user
  */
 @Data
 @Builder
@@ -26,7 +27,7 @@ public class User extends BaseEntity {
     /** 密码（加密存储） */
     private String password;
 
-    /** 姓名 */
+    /** 真实姓名 */
     private String realName;
 
     /** 邮箱 */
@@ -38,20 +39,24 @@ public class User extends BaseEntity {
     /** 部门 */
     private String department;
 
-    /** 角色：ADMIN-管理员, ARCHIVIST-档案员, USER-普通用户 */
-    private String role;
+    /** 用户类型（三员分立） */
+    @Builder.Default
+    private String userType = TYPE_USER;
 
-    /** 状态：ACTIVE-正常, DISABLED-禁用 */
-    private String status;
+    /** 状态 */
+    @Builder.Default
+    private String status = STATUS_ACTIVE;
 
     /** 最后登录时间 */
     private LocalDateTime lastLoginAt;
 
-    // ===== 角色常量 =====
+    // ===== 用户类型常量（三员分立） =====
     
-    public static final String ROLE_ADMIN = "ADMIN";
-    public static final String ROLE_ARCHIVIST = "ARCHIVIST";
-    public static final String ROLE_USER = "USER";
+    public static final String TYPE_SYSTEM_ADMIN = "SYSTEM_ADMIN";
+    public static final String TYPE_SECURITY_ADMIN = "SECURITY_ADMIN";
+    public static final String TYPE_AUDIT_ADMIN = "AUDIT_ADMIN";
+    public static final String TYPE_ARCHIVIST = "ARCHIVIST";
+    public static final String TYPE_USER = "USER";
 
     // ===== 状态常量 =====
     

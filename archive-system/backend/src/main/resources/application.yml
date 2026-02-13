@@ -9,7 +9,7 @@ spring:
   
   # 数据源配置
   datasource:
-    url: jdbc:postgresql://localhost:5432/archive_system
+    url: jdbc:postgresql://localhost:5433/archive_system
     username: postgres
     password: postgres
     driver-class-name: org.postgresql.Driver
@@ -18,7 +18,7 @@ spring:
   data:
     redis:
       host: localhost
-      port: 6379
+      port: 6380
       password: ""
       database: 1
   
@@ -28,6 +28,22 @@ spring:
     time-zone: Asia/Shanghai
     serialization:
       write-dates-as-timestamps: false
+
+# Actuator健康检查配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when-authorized
+  health:
+    db:
+      enabled: true
+    redis:
+      enabled: true
 
 # MyBatis-Plus配置
 mybatis-plus:
@@ -45,22 +61,23 @@ mybatis-plus:
 
 # MinIO配置
 minio:
-  endpoint: http://localhost:9000
+  endpoint: http://localhost:9002
   access-key: minioadmin
   secret-key: minioadmin
   bucket-name: archive-system
 
 # JWT配置
 jwt:
-  secret: archive-system-secret-key-must-be-at-least-256-bits-long-for-hs256
+  secret: ${JWT_SECRET:your-256-bit-secret-key-for-archive-system-2026}
   expiration: 86400000  # 24小时
+  refresh-expiration: 604800000  # 7天
 
 # 档案系统配置
 archive-system:
   # 主系统对接配置
   law-firm:
     api-url: http://localhost:8080/api
-    api-key: ""  # 需要配置主系统提供的API密钥
+    api-key: ""
   # 档案存储配置
   storage:
     max-file-size: 104857600  # 100MB
