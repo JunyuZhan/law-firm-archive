@@ -63,6 +63,19 @@ const router = createRouter({
           name: 'SourceList',
           component: () => import('@/views/source/SourceList.vue'),
           meta: { title: '来源管理', requiresAuth: true }
+        },
+        // 系统管理
+        {
+          path: 'system/users',
+          name: 'UserManage',
+          component: () => import('@/views/system/UserManage.vue'),
+          meta: { title: '用户管理', requiresAuth: true }
+        },
+        {
+          path: 'system/logs',
+          name: 'OperationLog',
+          component: () => import('@/views/system/OperationLog.vue'),
+          meta: { title: '操作日志', requiresAuth: true }
         }
       ]
     },
