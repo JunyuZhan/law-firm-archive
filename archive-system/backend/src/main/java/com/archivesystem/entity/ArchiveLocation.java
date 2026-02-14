@@ -1,6 +1,8 @@
 package com.archivesystem.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -19,9 +21,13 @@ import lombok.NoArgsConstructor;
 public class ArchiveLocation extends BaseEntity {
 
     /** 位置编码 */
+    @NotBlank(message = "位置编码不能为空")
+    @Size(max = 50, message = "位置编码长度不能超过50个字符")
     private String locationCode;
 
     /** 位置名称 */
+    @NotBlank(message = "位置名称不能为空")
+    @Size(max = 100, message = "位置名称长度不能超过100个字符")
     private String locationName;
 
     /** 库房名称 */

@@ -3,6 +3,8 @@ package com.archivesystem.entity;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -25,15 +27,21 @@ import java.util.Map;
 public class ExternalSource extends BaseEntity {
 
     /** 来源编码 */
+    @NotBlank(message = "来源编码不能为空")
+    @Size(max = 50, message = "来源编码长度不能超过50个字符")
     private String sourceCode;
     
     /** 来源名称 */
+    @NotBlank(message = "来源名称不能为空")
+    @Size(max = 100, message = "来源名称长度不能超过100个字符")
     private String sourceName;
     
     /** 来源类型 */
+    @NotBlank(message = "来源类型不能为空")
     private String sourceType;
     
     /** 说明 */
+    @Size(max = 500, message = "说明长度不能超过500个字符")
     private String description;
 
     // ===== 接口配置 =====

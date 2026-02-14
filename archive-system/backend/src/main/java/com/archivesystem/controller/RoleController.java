@@ -9,6 +9,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -26,6 +27,7 @@ public class RoleController {
 
     @Operation(summary = "创建角色")
     @PostMapping
+    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
     public Result<Role> create(@Valid @RequestBody CreateRoleRequest request) {
         Role role = new Role();
         role.setRoleCode(request.getRoleCode());
@@ -38,6 +40,7 @@ public class RoleController {
 
     @Operation(summary = "更新角色")
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
     public Result<Role> update(@PathVariable Long id, @Valid @RequestBody UpdateRoleRequest request) {
         Role role = new Role();
         role.setRoleCode(request.getRoleCode());
@@ -51,18 +54,21 @@ public class RoleController {
 
     @Operation(summary = "获取角色详情")
     @GetMapping("/{id}")
+    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
     public Result<Role> getById(@PathVariable Long id) {
         return Result.success(roleService.getById(id));
     }
 
     @Operation(summary = "获取角色列表")
     @GetMapping
+    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
     public Result<List<Role>> list() {
         return Result.success(roleService.list());
     }
 
     @Operation(summary = "删除角色")
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
     public Result<Void> delete(@PathVariable Long id) {
         roleService.delete(id);
         return Result.success();

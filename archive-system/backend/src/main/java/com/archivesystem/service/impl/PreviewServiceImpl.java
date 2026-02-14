@@ -68,9 +68,10 @@ public class PreviewServiceImpl implements PreviewService {
 
         try {
             // 下载原图
-            InputStream inputStream = minioService.getFile(file.getStoragePath());
-            BufferedImage originalImage = ImageIO.read(inputStream);
-            inputStream.close();
+            BufferedImage originalImage;
+            try (InputStream inputStream = minioService.getFile(file.getStoragePath())) {
+                originalImage = ImageIO.read(inputStream);
+            }
 
             if (originalImage == null) {
                 log.error("无法读取图片: {}", file.getStoragePath());

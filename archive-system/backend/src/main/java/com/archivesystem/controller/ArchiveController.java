@@ -15,6 +15,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -42,6 +43,7 @@ public class ArchiveController {
      */
     @PostMapping
     @Operation(summary = "创建档案")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
     public Result<ArchiveDTO> create(@Valid @RequestBody ArchiveCreateRequest request) {
         ArchiveDTO archive = archiveService.create(request);
         return Result.success("创建成功", archive);
@@ -52,6 +54,7 @@ public class ArchiveController {
      */
     @PutMapping("/{id}")
     @Operation(summary = "更新档案")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
     public Result<ArchiveDTO> update(
             @PathVariable Long id,
             @Valid @RequestBody ArchiveCreateRequest request) {
@@ -64,6 +67,7 @@ public class ArchiveController {
      */
     @GetMapping("/{id}")
     @Operation(summary = "获取档案详情")
+    @PreAuthorize("isAuthenticated()")
     public Result<ArchiveDTO> getById(@PathVariable Long id) {
         ArchiveDTO archive = archiveService.getById(id);
         return Result.success(archive);
@@ -74,6 +78,7 @@ public class ArchiveController {
      */
     @GetMapping("/no/{archiveNo}")
     @Operation(summary = "根据档案号获取详情")
+    @PreAuthorize("isAuthenticated()")
     public Result<ArchiveDTO> getByArchiveNo(@PathVariable String archiveNo) {
         ArchiveDTO archive = archiveService.getByArchiveNo(archiveNo);
         return Result.success(archive);
@@ -84,6 +89,7 @@ public class ArchiveController {
      */
     @GetMapping
     @Operation(summary = "查询档案列表")
+    @PreAuthorize("isAuthenticated()")
     public Result<PageResult<ArchiveDTO>> query(ArchiveQueryRequest request) {
         PageResult<ArchiveDTO> result = archiveService.query(request);
         return Result.success(result);
@@ -94,6 +100,7 @@ public class ArchiveController {
      */
     @DeleteMapping("/{id}")
     @Operation(summary = "删除档案")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
     public Result<Void> delete(@PathVariable Long id) {
         archiveService.delete(id);
         return Result.success("删除成功", null);
@@ -104,11 +111,29 @@ public class ArchiveController {
      */
     @PutMapping("/{id}/status")
     @Operation(summary = "更新档案状态")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
     public Result<Void> updateStatus(
             @PathVariable Long id,
-            @RequestParam String status) {
+            @RequestParam @Parameter(description = "状态：DRAFT/RECEIVED/CATALOGING/STORED/BORROWED") String status) {
+        // 校验状态值
+        if (!isValidStatus(status)) {
+            return Result.error("无效的状态值: " + status);
+        }
         archiveService.updateStatus(id, status);
         return Result.success("状态更新成功", null);
+    }
+    
+    /**
+     * 校验档案状态值是否合法.
+     */
+    private boolean isValidStatus(String status) {
+        return status != null && (
+            "DRAFT".equals(status) || 
+            "RECEIVED".equals(status) || 
+            "CATALOGING".equals(status) || 
+            "STORED".equals(status) || 
+            "BORROWED".equals(status)
+        );
     }
 
     /**
@@ -116,10 +141,19 @@ public class ArchiveController {
      */
     @PostMapping("/{archiveId}/files")
     @Operation(summary = "上传文件到档案")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
     public Result<DigitalFileDTO> uploadFile(
             @PathVariable Long archiveId,
             @RequestParam("file") MultipartFile file,
             @Parameter(description = "文件分类") @RequestParam(required = false) String fileCategory) {
+        // 校验文件
+        if (file == null || file.isEmpty()) {
+            return Result.error("文件不能为空");
+        }
+        if (file.getSize() > 100 * 1024 * 1024) { // 100MB
+            return Result.error("文件大小不能超过100MB");
+        }
+        
         var digitalFile = fileStorageService.upload(file, archiveId, fileCategory);
         
         DigitalFileDTO dto = DigitalFileDTO.builder()
@@ -139,6 +173,7 @@ public class ArchiveController {
      */
     @GetMapping("/files/{fileId}/download-url")
     @Operation(summary = "获取文件下载链接")
+    @PreAuthorize("isAuthenticated()")
     public Result<Map<String, String>> getDownloadUrl(@PathVariable Long fileId) {
         String url = fileStorageService.getDownloadUrl(fileId);
         Map<String, String> result = new HashMap<>();
@@ -151,6 +186,7 @@ public class ArchiveController {
      */
     @GetMapping("/files/{fileId}/preview-url")
     @Operation(summary = "获取文件预览链接")
+    @PreAuthorize("isAuthenticated()")
     public Result<Map<String, String>> getPreviewUrl(@PathVariable Long fileId) {
         String url = fileStorageService.getPreviewUrl(fileId);
         Map<String, String> result = new HashMap<>();
@@ -163,6 +199,7 @@ public class ArchiveController {
      */
     @DeleteMapping("/files/{fileId}")
     @Operation(summary = "删除文件")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
     public Result<Void> deleteFile(@PathVariable Long fileId) {
         fileStorageService.delete(fileId);
         return Result.success("删除成功", null);
@@ -175,6 +212,7 @@ public class ArchiveController {
      */
     @GetMapping("/search")
     @Operation(summary = "全文检索", description = "支持关键词搜索、筛选、高亮、聚合统计")
+    @PreAuthorize("isAuthenticated()")
     public Result<ArchiveSearchResult> search(ArchiveSearchRequest request, HttpServletRequest httpRequest) {
         metricsConfig.recordSearchRequest();
         long startTime = System.currentTimeMillis();
@@ -211,6 +249,7 @@ public class ArchiveController {
      */
     @GetMapping("/search/aggregations")
     @Operation(summary = "获取搜索聚合统计", description = "按档案类型、年份、状态等维度统计")
+    @PreAuthorize("isAuthenticated()")
     public Result<Map<String, Object>> getSearchAggregations() {
         Map<String, Object> aggregations = archiveIndexService.getAggregations();
         return Result.success(aggregations);
@@ -221,6 +260,7 @@ public class ArchiveController {
      */
     @PostMapping("/search/reindex")
     @Operation(summary = "重建搜索索引", description = "全量重建Elasticsearch索引（管理员操作）")
+    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
     public Result<Void> rebuildIndex() {
         archiveIndexService.rebuildAllIndexes();
         return Result.success("索引重建已启动", null);
@@ -231,6 +271,7 @@ public class ArchiveController {
      */
     @PostMapping("/{id}/index")
     @Operation(summary = "索引档案", description = "将指定档案同步到搜索索引")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
     public Result<Void> indexArchive(@PathVariable Long id) {
         archiveIndexService.indexArchive(id);
         return Result.success("索引已更新", null);

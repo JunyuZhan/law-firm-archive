@@ -2,10 +2,12 @@ package com.archivesystem.service.impl;
 
 import com.archivesystem.common.exception.BusinessException;
 import com.archivesystem.common.exception.NotFoundException;
+import com.archivesystem.dto.file.FilePreviewInfo;
 import com.archivesystem.entity.DigitalFile;
 import com.archivesystem.repository.DigitalFileMapper;
 import com.archivesystem.security.SecurityUtils;
 import com.archivesystem.service.ConfigService;
+import com.archivesystem.service.DocumentConversionService;
 import com.archivesystem.service.FileStorageService;
 import com.archivesystem.service.MinioService;
 import com.archivesystem.util.FileTypeValidator;
@@ -38,6 +40,7 @@ public class FileStorageServiceImpl implements FileStorageService {
     private final MinioService minioService;
     private final DigitalFileMapper digitalFileMapper;
     private final ConfigService configService;
+    private final DocumentConversionService documentConversionService;
 
     // 配置键常量
     private static final String CONFIG_MAX_FILE_SIZE = "system.upload.max.size";
@@ -54,7 +57,7 @@ public class FileStorageServiceImpl implements FileStorageService {
         // 校验文件
         validateFile(file);
 
-        String originalName = file.getOriginalFilename();
+        String originalName = sanitizeFileName(file.getOriginalFilename());
         String extension = getFileExtension(originalName);
         String mimeType = file.getContentType();
 
@@ -62,15 +65,15 @@ public class FileStorageServiceImpl implements FileStorageService {
         String storagePath = generateStoragePath(archiveId, extension);
 
         try {
-            // 计算文件哈希
+            // 读取文件内容
             byte[] content = file.getBytes();
             String hashValue = calculateHash(content);
 
-            // 上传到MinIO
+            // 上传原文件到MinIO
             minioService.upload(storagePath, file.getInputStream(), file.getSize(), mimeType);
 
-            // 保存文件记录
-            DigitalFile digitalFile = DigitalFile.builder()
+            // 构建文件记录
+            DigitalFile.DigitalFileBuilder fileBuilder = DigitalFile.builder()
                     .archiveId(archiveId)
                     .fileName(generateFileName(originalName))
                     .originalName(originalName)
@@ -80,16 +83,43 @@ public class FileStorageServiceImpl implements FileStorageService {
                     .storagePath(storagePath)
                     .storageBucket(minioService.getBucketName())
                     .formatName(getFormatName(extension))
-                    .isLongTermFormat(LONG_TERM_FORMATS.contains(extension.toLowerCase()))
                     .hashAlgorithm("SHA-256")
                     .hashValue(hashValue)
                     .fileCategory(fileCategory != null ? fileCategory : DigitalFile.CATEGORY_MAIN)
                     .uploadAt(LocalDateTime.now())
-                    .uploadBy(SecurityUtils.getCurrentUserId())
-                    .build();
+                    .uploadBy(SecurityUtils.getCurrentUserId());
 
+            // 检查是否需要转换为PDF（Office文档 -> PDF）
+            String convertedPath = null;
+            if (documentConversionService.needsConversion(extension)) {
+                log.info("检测到Office文档，开始转换为PDF: {}", originalName);
+                byte[] pdfContent = documentConversionService.convertToPdf(content, extension);
+                
+                if (pdfContent != null) {
+                    // 生成PDF存储路径
+                    convertedPath = generateStoragePath(archiveId, "pdf");
+                    minioService.upload(convertedPath, 
+                            new java.io.ByteArrayInputStream(pdfContent), 
+                            pdfContent.length, 
+                            "application/pdf");
+                    
+                    fileBuilder.convertedPath(convertedPath)
+                              .isLongTermFormat(true);  // 转换后视为长期保存格式
+                    log.info("Office文档转换PDF成功: {} -> {}", originalName, convertedPath);
+                } else {
+                    // 转换失败，保留原文件但标记为非长期保存格式
+                    fileBuilder.isLongTermFormat(false);
+                    log.warn("Office文档转换PDF失败，保留原文件: {}", originalName);
+                }
+            } else {
+                // 非Office格式，检查是否为长期保存格式
+                fileBuilder.isLongTermFormat(documentConversionService.isLongTermFormat(extension));
+            }
+
+            DigitalFile digitalFile = fileBuilder.build();
             digitalFileMapper.insert(digitalFile);
-            log.info("文件上传成功: id={}, path={}", digitalFile.getId(), storagePath);
+            log.info("文件上传成功: id={}, path={}, convertedPath={}", 
+                    digitalFile.getId(), storagePath, convertedPath);
 
             return digitalFile;
 
@@ -99,63 +129,199 @@ public class FileStorageServiceImpl implements FileStorageService {
         }
     }
 
+    // 下载重试次数
+    private static final int DOWNLOAD_MAX_RETRIES = 3;
+    // 下载重试间隔（毫秒）
+    private static final long DOWNLOAD_RETRY_DELAY = 2000;
+
     @Override
     @Transactional
     public DigitalFile downloadAndStore(Long archiveId, String downloadUrl, String fileName, 
                                         String fileCategory, int sortOrder) {
         log.info("下载文件: archiveId={}, url={}", archiveId, downloadUrl);
 
-        try {
-            URL url = new URL(downloadUrl);
-            URLConnection conn = url.openConnection();
-            conn.setConnectTimeout(30000);
-            conn.setReadTimeout(60000);
-
-            String mimeType = conn.getContentType();
-            long fileSize = conn.getContentLengthLong();
-            String extension = getFileExtension(fileName);
-
-            // 生成存储路径
-            String storagePath = generateStoragePath(archiveId, extension);
-
-            try (InputStream inputStream = conn.getInputStream()) {
-                // 读取内容用于计算哈希
-                byte[] content = inputStream.readAllBytes();
-                String hashValue = calculateHash(content);
-
-                // 上传到MinIO
-                minioService.upload(storagePath, new java.io.ByteArrayInputStream(content), content.length, mimeType);
-
-                // 保存文件记录
-                DigitalFile digitalFile = DigitalFile.builder()
-                        .archiveId(archiveId)
-                        .fileName(generateFileName(fileName))
-                        .originalName(fileName)
-                        .fileExtension(extension)
-                        .mimeType(mimeType)
-                        .fileSize((long) content.length)
-                        .storagePath(storagePath)
-                        .storageBucket(minioService.getBucketName())
-                        .formatName(getFormatName(extension))
-                        .isLongTermFormat(LONG_TERM_FORMATS.contains(extension.toLowerCase()))
-                        .hashAlgorithm("SHA-256")
-                        .hashValue(hashValue)
-                        .fileCategory(fileCategory != null ? fileCategory : DigitalFile.CATEGORY_MAIN)
-                        .sortOrder(sortOrder)
-                        .sourceUrl(downloadUrl)
-                        .uploadAt(LocalDateTime.now())
-                        .build();
-
-                digitalFileMapper.insert(digitalFile);
-                log.info("文件下载存储成功: id={}, path={}", digitalFile.getId(), storagePath);
-
-                return digitalFile;
-            }
-
-        } catch (Exception e) {
-            log.error("文件下载失败: {}", downloadUrl, e);
+        String extension = getFileExtension(fileName);
+        
+        // 检查文件类型是否允许
+        if (!isAllowedType(extension)) {
+            log.warn("不支持的文件类型，拒绝下载: extension={}, fileName={}", extension, fileName);
             return null;
         }
+        
+        // 带重试的下载
+        byte[] content = downloadWithRetry(downloadUrl, fileName);
+        if (content == null) {
+            log.error("文件下载失败，已重试{}次: {}", DOWNLOAD_MAX_RETRIES, downloadUrl);
+            return null;
+        }
+
+        // 验证下载内容的文件类型（魔数验证）
+        if (!validateDownloadedContent(content, extension, fileName)) {
+            log.warn("下载内容安全验证失败: fileName={}", fileName);
+            return null;
+        }
+
+        String mimeType = getMimeType(extension);
+        
+        // 生成存储路径
+        String storagePath = generateStoragePath(archiveId, extension);
+
+        try {
+            String hashValue = calculateHash(content);
+
+            // 上传原文件到MinIO
+            minioService.upload(storagePath, new java.io.ByteArrayInputStream(content), content.length, mimeType);
+
+            // 构建文件记录
+            DigitalFile.DigitalFileBuilder fileBuilder = DigitalFile.builder()
+                    .archiveId(archiveId)
+                    .fileName(generateFileName(fileName))
+                    .originalName(fileName)
+                    .fileExtension(extension)
+                    .mimeType(mimeType)
+                    .fileSize((long) content.length)
+                    .storagePath(storagePath)
+                    .storageBucket(minioService.getBucketName())
+                    .formatName(getFormatName(extension))
+                    .hashAlgorithm("SHA-256")
+                    .hashValue(hashValue)
+                    .fileCategory(fileCategory != null ? fileCategory : DigitalFile.CATEGORY_MAIN)
+                    .sortOrder(sortOrder)
+                    .sourceUrl(downloadUrl)
+                    .uploadAt(LocalDateTime.now());
+
+            // 检查是否需要转换为PDF（Office文档 -> PDF）
+            String convertedPath = null;
+            if (documentConversionService.needsConversion(extension)) {
+                log.info("检测到Office文档，开始转换为PDF: {}", fileName);
+                byte[] pdfContent = documentConversionService.convertToPdf(content, extension);
+                
+                if (pdfContent != null) {
+                    // 生成PDF存储路径
+                    convertedPath = generateStoragePath(archiveId, "pdf");
+                    minioService.upload(convertedPath, 
+                            new java.io.ByteArrayInputStream(pdfContent), 
+                            pdfContent.length, 
+                            "application/pdf");
+                    
+                    fileBuilder.convertedPath(convertedPath)
+                              .isLongTermFormat(true);  // 转换后视为长期保存格式
+                    log.info("Office文档转换PDF成功: {} -> {}", fileName, convertedPath);
+                } else {
+                    // 转换失败，保留原文件但标记为非长期保存格式
+                    fileBuilder.isLongTermFormat(false);
+                    log.warn("Office文档转换PDF失败，保留原文件: {}", fileName);
+                }
+            } else {
+                // 非Office格式，检查是否为长期保存格式
+                fileBuilder.isLongTermFormat(documentConversionService.isLongTermFormat(extension));
+            }
+
+            DigitalFile digitalFile = fileBuilder.build();
+            digitalFileMapper.insert(digitalFile);
+            log.info("文件下载存储成功: id={}, path={}, convertedPath={}", 
+                    digitalFile.getId(), storagePath, convertedPath);
+
+            return digitalFile;
+
+        } catch (Exception e) {
+            log.error("文件存储失败: {}", downloadUrl, e);
+            // 清理已上传到MinIO的文件
+            cleanupMinioFile(storagePath);
+            throw new BusinessException("文件存储失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 带重试的文件下载.
+     */
+    private byte[] downloadWithRetry(String downloadUrl, String fileName) {
+        long maxFileSize = getMaxFileSize();
+        
+        for (int retry = 0; retry < DOWNLOAD_MAX_RETRIES; retry++) {
+            try {
+                URL url = new URL(downloadUrl);
+                URLConnection conn = url.openConnection();
+                conn.setConnectTimeout(30000);
+                conn.setReadTimeout(60000);
+                
+                // 检查文件大小
+                long contentLength = conn.getContentLengthLong();
+                if (contentLength > 0 && contentLength > maxFileSize) {
+                    log.error("文件大小超出限制: {} > {} bytes, file={}", contentLength, maxFileSize, fileName);
+                    return null;
+                }
+                
+                try (InputStream inputStream = conn.getInputStream()) {
+                    // 流式读取，限制最大大小
+                    java.io.ByteArrayOutputStream buffer = new java.io.ByteArrayOutputStream();
+                    byte[] chunk = new byte[8192];
+                    int bytesRead;
+                    long totalRead = 0;
+                    
+                    while ((bytesRead = inputStream.read(chunk)) != -1) {
+                        totalRead += bytesRead;
+                        if (totalRead > maxFileSize) {
+                            log.error("文件下载超出大小限制: {} bytes, file={}", totalRead, fileName);
+                            return null;
+                        }
+                        buffer.write(chunk, 0, bytesRead);
+                    }
+                    
+                    log.info("文件下载成功: file={}, size={} bytes", fileName, totalRead);
+                    return buffer.toByteArray();
+                }
+                
+            } catch (Exception e) {
+                log.warn("文件下载失败，第{}次重试: file={}, error={}", retry + 1, fileName, e.getMessage());
+                if (retry < DOWNLOAD_MAX_RETRIES - 1) {
+                    try {
+                        Thread.sleep(DOWNLOAD_RETRY_DELAY * (retry + 1)); // 指数退避
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        return null;
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 清理MinIO上的孤儿文件.
+     */
+    private void cleanupMinioFile(String storagePath) {
+        if (storagePath != null) {
+            try {
+                minioService.delete(storagePath);
+                log.info("已清理孤儿文件: {}", storagePath);
+            } catch (Exception e) {
+                log.warn("清理孤儿文件失败: {}", storagePath, e);
+            }
+        }
+    }
+
+    /**
+     * 根据扩展名获取MIME类型.
+     */
+    private String getMimeType(String extension) {
+        if (extension == null) return "application/octet-stream";
+        return switch (extension.toLowerCase()) {
+            case "pdf" -> "application/pdf";
+            case "doc" -> "application/msword";
+            case "docx" -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+            case "xls" -> "application/vnd.ms-excel";
+            case "xlsx" -> "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+            case "ppt" -> "application/vnd.ms-powerpoint";
+            case "pptx" -> "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+            case "jpg", "jpeg" -> "image/jpeg";
+            case "png" -> "image/png";
+            case "gif" -> "image/gif";
+            case "txt" -> "text/plain";
+            case "zip" -> "application/zip";
+            case "rar" -> "application/x-rar-compressed";
+            default -> "application/octet-stream";
+        };
     }
 
     @Override
@@ -174,18 +340,90 @@ public class FileStorageServiceImpl implements FileStorageService {
             throw NotFoundException.of("文件", fileId);
         }
 
+        // 优先返回转换后的PDF（对于Office文档）
+        if (StringUtils.hasText(file.getConvertedPath())) {
+            log.debug("返回转换后的PDF预览URL: fileId={}, convertedPath={}", fileId, file.getConvertedPath());
+            return minioService.getPresignedUrl(file.getConvertedPath(), 3600);
+        }
+
         // 如果有预览文件，返回预览文件URL
         if (StringUtils.hasText(file.getPreviewPath())) {
             return minioService.getPresignedUrl(file.getPreviewPath(), 3600);
         }
 
         // 对于图片和PDF，直接返回原文件URL
-        String ext = file.getFileExtension().toLowerCase();
-        if (IMAGE_EXTENSIONS.contains(ext) || "pdf".equals(ext)) {
+        String ext = file.getFileExtension();
+        if (ext == null || ext.isEmpty()) {
+            log.warn("文件扩展名为空，无法预览: fileId={}", fileId);
+            return null;
+        }
+        ext = ext.toLowerCase();
+        if (IMAGE_EXTENSIONS.contains(ext) || "pdf".equals(ext) || "ofd".equals(ext)) {
             return minioService.getPresignedUrl(file.getStoragePath(), 3600);
         }
 
+        // 其他格式不支持预览
+        log.debug("文件不支持预览: fileId={}, extension={}", fileId, ext);
         return null;
+    }
+
+    @Override
+    public FilePreviewInfo getPreviewInfo(Long fileId) {
+        DigitalFile file = digitalFileMapper.selectById(fileId);
+        if (file == null) {
+            throw NotFoundException.of("文件", fileId);
+        }
+
+        String ext = file.getFileExtension();
+        if (ext == null) {
+            ext = "";
+        } else {
+            ext = ext.toLowerCase();
+        }
+        
+        String previewUrl = null;
+        String previewType = "unsupported";
+        boolean isConverted = false;
+
+        // 优先使用转换后的PDF
+        if (StringUtils.hasText(file.getConvertedPath())) {
+            previewUrl = minioService.getPresignedUrl(file.getConvertedPath(), 3600);
+            previewType = "pdf";
+            isConverted = true;
+            log.debug("返回转换后的PDF预览: fileId={}, convertedPath={}", fileId, file.getConvertedPath());
+        }
+        // 有预览文件
+        else if (StringUtils.hasText(file.getPreviewPath())) {
+            previewUrl = minioService.getPresignedUrl(file.getPreviewPath(), 3600);
+            previewType = "pdf";
+        }
+        // 原生PDF或OFD
+        else if ("pdf".equals(ext) || "ofd".equals(ext)) {
+            previewUrl = minioService.getPresignedUrl(file.getStoragePath(), 3600);
+            previewType = "pdf";
+        }
+        // 图片
+        else if (IMAGE_EXTENSIONS.contains(ext) || "tif".equals(ext) || "tiff".equals(ext)) {
+            previewUrl = minioService.getPresignedUrl(file.getStoragePath(), 3600);
+            previewType = "image";
+        }
+        // 视频
+        else if (Set.of("mp4", "webm", "ogg", "mov").contains(ext)) {
+            previewUrl = minioService.getPresignedUrl(file.getStoragePath(), 3600);
+            previewType = "video";
+        }
+        // 音频
+        else if (Set.of("mp3", "wav", "ogg", "flac", "m4a").contains(ext)) {
+            previewUrl = minioService.getPresignedUrl(file.getStoragePath(), 3600);
+            previewType = "audio";
+        }
+
+        return FilePreviewInfo.builder()
+                .url(previewUrl)
+                .previewType(previewType)
+                .isConverted(isConverted)
+                .originalExtension(ext)
+                .build();
     }
 
     @Override
@@ -273,6 +511,23 @@ public class FileStorageServiceImpl implements FileStorageService {
         return false;
     }
 
+    /**
+     * 验证下载内容的安全性（魔数验证）.
+     */
+    private boolean validateDownloadedContent(byte[] content, String extension, String fileName) {
+        if (content == null || content.length == 0) {
+            return false;
+        }
+        
+        // 使用字节数组直接进行魔数验证
+        FileTypeValidator.ValidationResult result = FileTypeValidator.validate(content, extension);
+        if (!result.isValid()) {
+            log.warn("下载内容魔数验证失败: fileName={}, reason={}", fileName, result.getMessage());
+            return false;
+        }
+        return true;
+    }
+
     private String getFileExtension(String fileName) {
         if (!StringUtils.hasText(fileName)) {
             return "";
@@ -290,14 +545,54 @@ public class FileStorageServiceImpl implements FileStorageService {
     private String generateFileName(String originalName) {
         String uuid = UUID.randomUUID().toString().substring(0, 8);
         String extension = getFileExtension(originalName);
-        String baseName = originalName;
+        String baseName = sanitizeFileName(originalName);
         if (StringUtils.hasText(extension)) {
-            baseName = originalName.substring(0, originalName.length() - extension.length() - 1);
+            int extLength = extension.length() + 1;
+            if (baseName.length() > extLength) {
+                baseName = baseName.substring(0, baseName.length() - extLength);
+            }
         }
         if (baseName.length() > 50) {
             baseName = baseName.substring(0, 50);
         }
         return baseName + "_" + uuid + (StringUtils.hasText(extension) ? "." + extension : "");
+    }
+    
+    /**
+     * 清理文件名，防止路径穿越和XSS攻击
+     */
+    private String sanitizeFileName(String fileName) {
+        if (fileName == null || fileName.isEmpty()) {
+            return "unnamed";
+        }
+        
+        // 移除路径穿越字符和危险字符
+        String sanitized = fileName
+                .replace("..", "")           // 路径穿越
+                .replace("/", "_")           // Unix路径分隔符
+                .replace("\\", "_")          // Windows路径分隔符
+                .replace("\0", "")           // 空字节
+                .replace("<", "_")           // HTML标签（XSS）
+                .replace(">", "_")           // HTML标签（XSS）
+                .replace("\"", "_")          // 引号
+                .replace("'", "_")           // 单引号
+                .replace("&", "_")           // HTML实体
+                .replace("|", "_")           // 管道符
+                .replace(":", "_")           // 冒号（Windows路径）
+                .replace("*", "_")           // 通配符
+                .replace("?", "_");          // 通配符
+        
+        // 限制长度
+        if (sanitized.length() > 255) {
+            sanitized = sanitized.substring(0, 255);
+        }
+        
+        // 确保不为空
+        if (sanitized.trim().isEmpty()) {
+            return "unnamed";
+        }
+        
+        return sanitized.trim();
     }
 
     private String calculateHash(byte[] content) {

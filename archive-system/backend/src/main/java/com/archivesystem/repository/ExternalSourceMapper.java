@@ -17,4 +17,10 @@ public interface ExternalSourceMapper extends BaseMapper<ExternalSource> {
      */
     @Select("SELECT * FROM arc_external_source WHERE source_code = #{sourceCode} AND deleted = false")
     ExternalSource selectBySourceCode(@Param("sourceCode") String sourceCode);
+
+    /**
+     * 根据来源类型查询（取第一个启用的来源）.
+     */
+    @Select("SELECT * FROM arc_external_source WHERE source_type = #{sourceType} AND enabled = true AND deleted = false LIMIT 1")
+    ExternalSource selectBySourceType(@Param("sourceType") String sourceType);
 }

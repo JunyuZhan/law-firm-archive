@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -27,6 +28,7 @@ public class FondsController {
 
     @PostMapping
     @Operation(summary = "创建全宗")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
     public Result<Fonds> create(@Valid @RequestBody Fonds fonds) {
         Fonds created = fondsService.create(fonds);
         return Result.success("创建成功", created);
@@ -34,6 +36,7 @@ public class FondsController {
 
     @PutMapping("/{id}")
     @Operation(summary = "更新全宗")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
     public Result<Fonds> update(@PathVariable Long id, @Valid @RequestBody Fonds fonds) {
         Fonds updated = fondsService.update(id, fonds);
         return Result.success("更新成功", updated);
@@ -41,6 +44,7 @@ public class FondsController {
 
     @GetMapping("/{id}")
     @Operation(summary = "获取全宗详情")
+    @PreAuthorize("isAuthenticated()")
     public Result<Fonds> getById(@PathVariable Long id) {
         Fonds fonds = fondsService.getById(id);
         return Result.success(fonds);
@@ -48,6 +52,7 @@ public class FondsController {
 
     @GetMapping
     @Operation(summary = "获取全宗列表")
+    @PreAuthorize("isAuthenticated()")
     public Result<List<Fonds>> list() {
         List<Fonds> list = fondsService.list();
         return Result.success(list);
@@ -55,6 +60,7 @@ public class FondsController {
 
     @GetMapping("/page")
     @Operation(summary = "分页查询全宗")
+    @PreAuthorize("isAuthenticated()")
     public Result<PageResult<Fonds>> query(
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "1") Integer pageNum,
@@ -65,6 +71,7 @@ public class FondsController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "删除全宗")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
     public Result<Void> delete(@PathVariable Long id) {
         fondsService.delete(id);
         return Result.success("删除成功", null);
@@ -72,6 +79,7 @@ public class FondsController {
 
     @GetMapping("/{id}/statistics")
     @Operation(summary = "获取全宗统计")
+    @PreAuthorize("isAuthenticated()")
     public Result<Map<String, Object>> statistics(@PathVariable Long id) {
         Fonds fonds = fondsService.getById(id);
         long archiveCount = fondsService.countArchives(id);

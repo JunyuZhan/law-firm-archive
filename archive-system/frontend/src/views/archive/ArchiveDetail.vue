@@ -15,34 +15,21 @@
         <template #extra>
           <el-button-group>
             <el-button
-              v-if="!isEditing && canBorrow"
+              v-if="files.length > 0"
+              type="success"
+              :loading="isDownloading"
+              @click="handleDownloadAll"
+            >
+              <el-icon><Download /></el-icon>
+              打包下载
+            </el-button>
+            <el-button
+              v-if="canBorrow"
               type="warning"
               @click="handleApplyBorrow"
             >
               <el-icon><Reading /></el-icon>
               申请借阅
-            </el-button>
-            <el-button
-              v-if="!isEditing"
-              type="primary"
-              @click="handleEdit"
-            >
-              <el-icon><Edit /></el-icon>
-              编辑
-            </el-button>
-            <el-button
-              v-if="isEditing"
-              type="success"
-              @click="handleSave"
-            >
-              <el-icon><Check /></el-icon>
-              保存
-            </el-button>
-            <el-button
-              v-if="isEditing"
-              @click="handleCancel"
-            >
-              取消
             </el-button>
           </el-button-group>
         </template>
@@ -152,7 +139,7 @@
           <!-- 电子文件 -->
           <el-card
             shadow="never"
-            class="info-card"
+            class="info-card files-card"
           >
             <template #header>
               <div class="card-header">
@@ -167,96 +154,83 @@
               </div>
             </template>
             
-            <el-upload
-              v-if="isEditing"
-              class="file-upload"
-              drag
-              :action="uploadUrl"
-              :headers="uploadHeaders"
-              :on-success="handleUploadSuccess"
-              :on-error="handleUploadError"
-              :show-file-list="false"
-              multiple
+            <!-- 按分类分组展示文件 -->
+            <el-collapse
+              v-if="groupedFiles.length > 0"
+              v-model="activeCategories"
+              class="file-categories"
             >
-              <el-icon class="el-icon--upload">
-                <UploadFilled />
-              </el-icon>
-              <div class="el-upload__text">
-                拖拽文件到此处，或 <em>点击上传</em>
-              </div>
-              <template #tip>
-                <div class="el-upload__tip">
-                  支持 PDF、Word、Excel、图片等格式，单文件不超过100MB
-                </div>
-              </template>
-            </el-upload>
-
-            <el-table
-              v-if="files.length > 0"
-              :data="files"
-              class="file-table"
-            >
-              <el-table-column
-                type="index"
-                width="50"
-              />
-              <el-table-column
-                label="文件名"
-                min-width="200"
+              <el-collapse-item
+                v-for="group in groupedFiles"
+                :key="group.category"
+                :name="group.category"
               >
-                <template #default="{ row }">
-                  <div class="file-name">
-                    <el-icon :class="getFileIconClass(row.fileExtension)">
-                      <component :is="getFileIcon(row.fileExtension)" />
-                    </el-icon>
-                    <span>{{ row.originalName || row.fileName }}</span>
+                <template #title>
+                  <div class="category-header">
+                    <span
+                      class="category-icon"
+                      :style="{ backgroundColor: group.color + '20', color: group.color }"
+                    >
+                      <el-icon v-if="group.category === 'COVER'"><Picture /></el-icon>
+                      <el-icon v-else-if="group.category === 'CATALOG'"><Document /></el-icon>
+                      <el-icon v-else-if="group.category === 'MAIN'"><Document /></el-icon>
+                      <el-icon v-else><Folder /></el-icon>
+                    </span>
+                    <span class="category-name">{{ group.name }}</span>
+                    <el-tag
+                      size="small"
+                      :color="group.color + '20'"
+                      :style="{ color: group.color, borderColor: group.color }"
+                    >
+                      {{ group.files.length }} 个
+                    </el-tag>
                   </div>
                 </template>
-              </el-table-column>
-              <el-table-column
-                prop="fileSizeFormatted"
-                label="大小"
-                width="100"
-              />
-              <el-table-column
-                prop="formatName"
-                label="格式"
-                width="150"
-              />
-              <el-table-column
-                label="操作"
-                width="150"
-                fixed="right"
-              >
-                <template #default="{ row }">
-                  <el-button
-                    type="primary"
-                    link
-                    size="small"
-                    @click="handlePreview(row)"
+                
+                <div class="file-list">
+                  <div
+                    v-for="(file, index) in group.files"
+                    :key="file.id"
+                    class="file-item"
                   >
-                    预览
-                  </el-button>
-                  <el-button
-                    type="primary"
-                    link
-                    size="small"
-                    @click="handleDownload(row)"
-                  >
-                    下载
-                  </el-button>
-                  <el-button
-                    v-if="isEditing"
-                    type="danger"
-                    link
-                    size="small"
-                    @click="handleDeleteFile(row)"
-                  >
-                    删除
-                  </el-button>
-                </template>
-              </el-table-column>
-            </el-table>
+                    <div class="file-index">{{ index + 1 }}</div>
+                    <div class="file-icon-wrapper">
+                      <el-icon :class="getFileIconClass(file.fileExtension)">
+                        <component :is="getFileIcon(file.fileExtension)" />
+                      </el-icon>
+                    </div>
+                    <div class="file-info">
+                      <div class="file-name-text">{{ file.originalName || file.fileName }}</div>
+                      <div class="file-meta">
+                        <span class="file-size">{{ formatFileSize(file.fileSize) }}</span>
+                        <span
+                          v-if="file.isLongTermFormat"
+                          class="long-term-badge"
+                        >长期保存格式</span>
+                      </div>
+                    </div>
+                    <div class="file-actions">
+                      <el-button
+                        type="primary"
+                        link
+                        size="small"
+                        @click="handlePreview(file)"
+                      >
+                        预览
+                      </el-button>
+                      <el-button
+                        type="primary"
+                        link
+                        size="small"
+                        @click="handleDownload(file)"
+                      >
+                        下载
+                      </el-button>
+                    </div>
+                  </div>
+                </div>
+              </el-collapse-item>
+            </el-collapse>
             
             <el-empty
               v-else
@@ -303,23 +277,13 @@
       </template>
     </el-skeleton>
 
-    <!-- 文件预览弹窗 -->
-    <el-dialog
+    <!-- 文件预览组件 -->
+    <FilePreview
       v-model="previewVisible"
-      title="文件预览"
-      width="80%"
-      destroy-on-close
-    >
-      <iframe
-        v-if="previewUrl"
-        :src="previewUrl"
-        class="preview-iframe"
-      />
-      <el-empty
-        v-else
-        description="该文件不支持预览"
-      />
-    </el-dialog>
+      :file-id="previewFileId"
+      :file-name="previewFileName"
+      :file-extension="previewFileExtension"
+    />
 
     <!-- 申请借阅弹窗 -->
     <el-dialog
@@ -391,13 +355,25 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { 
-  Document, Edit, Check, Folder, Clock, Briefcase, 
-  UploadFilled, Picture, VideoPlay, Headset, FolderOpened, Reading 
+  Document, Folder, Clock, Briefcase, Download,
+  Picture, VideoPlay, Headset, FolderOpened, Reading 
 } from '@element-plus/icons-vue'
-import { getArchiveDetail, getFileDownloadUrl, getFilePreviewUrl, deleteFile } from '@/api/archive'
+import { getArchiveDetail, getFileDownloadUrl, getArchiveDownloadUrl } from '@/api/archive'
+import FilePreview from '@/components/FilePreview.vue'
 import { checkBorrowAvailable, applyBorrow } from '@/api/borrow'
+import {
+  getArchiveTypeName,
+  getStatusName,
+  getStatusType,
+  getRetentionName,
+  getSecurityName,
+  getSourceName,
+  FILE_CATEGORY_ORDER,
+  getFileCategoryName,
+  getFileCategoryColor
+} from '@/utils/archiveEnums'
 
 const route = useRoute()
 const router = useRouter()
@@ -405,9 +381,11 @@ const router = useRouter()
 const loading = ref(true)
 const archive = ref(null)
 const files = ref([])
-const isEditing = ref(false)
 const previewVisible = ref(false)
-const previewUrl = ref('')
+const previewFileId = ref(null)
+const previewFileName = ref('')
+const previewFileExtension = ref('')
+const isDownloading = ref(false)
 
 // 借阅相关
 const canBorrow = ref(false)
@@ -424,14 +402,56 @@ const borrowRules = {
   expectedReturnDate: [{ required: true, message: '请选择预计归还日期', trigger: 'change' }]
 }
 
-// 上传配置
-const uploadUrl = computed(() => {
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || '/api'
-  return `${baseUrl}/archives/${route.params.id}/files`
+// 按分类分组的文件列表
+const groupedFiles = computed(() => {
+  const groups = {}
+  
+  // 初始化所有分类
+  FILE_CATEGORY_ORDER.forEach(category => {
+    groups[category] = []
+  })
+  // 添加"其他"分类用于未分类的文件
+  groups['OTHER'] = []
+  
+  // 将文件分组
+  files.value.forEach(file => {
+    const category = file.fileCategory || 'MAIN' // 默认归类为正文
+    if (groups[category]) {
+      groups[category].push(file)
+    } else {
+      groups['OTHER'].push(file)
+    }
+  })
+  
+  // 返回有文件的分类，按顺序排列
+  const result = []
+  FILE_CATEGORY_ORDER.forEach(category => {
+    if (groups[category].length > 0) {
+      result.push({
+        category,
+        name: getFileCategoryName(category),
+        color: getFileCategoryColor(category),
+        files: groups[category]
+      })
+    }
+  })
+  // 如果有"其他"分类的文件，添加到最后
+  if (groups['OTHER'].length > 0) {
+    result.push({
+      category: 'OTHER',
+      name: '其他',
+      color: '#909399',
+      files: groups['OTHER']
+    })
+  }
+  
+  return result
 })
-const uploadHeaders = computed(() => ({
-  Authorization: `Bearer ${localStorage.getItem('accessToken')}`
-}))
+
+// 默认展开的分类
+const activeCategories = computed(() => {
+  return groupedFiles.value.map(g => g.category)
+})
 
 // 获取档案详情
 const fetchData = async () => {
@@ -485,7 +505,7 @@ const submitBorrowApply = async () => {
     
     const data = {
       archiveId: route.params.id,
-      purpose: borrowForm.value.purpose,
+      borrowPurpose: borrowForm.value.purpose,
       expectedReturnDate: borrowForm.value.expectedReturnDate.toISOString().split('T')[0],
       remarks: borrowForm.value.remarks
     }
@@ -510,51 +530,37 @@ const goBack = () => {
   router.push('/archives')
 }
 
-// 编辑
-const handleEdit = () => {
-  isEditing.value = true
-}
-
-// 保存
-const handleSave = async () => {
-  // TODO: 实现保存逻辑
-  isEditing.value = false
-  ElMessage.success('保存成功')
-}
-
-// 取消编辑
-const handleCancel = () => {
-  isEditing.value = false
-}
-
-// 上传成功
-const handleUploadSuccess = (response) => {
-  if (response.success) {
-    ElMessage.success('上传成功')
-    fetchData()
-  } else {
-    ElMessage.error(response.message || '上传失败')
+// 打包下载所有文件
+const handleDownloadAll = async () => {
+  if (files.value.length === 0) {
+    ElMessage.warning('该档案暂无文件可下载')
+    return
   }
-}
-
-// 上传失败
-const handleUploadError = () => {
-  ElMessage.error('上传失败')
+  
+  isDownloading.value = true
+  try {
+    const res = await getArchiveDownloadUrl(route.params.id)
+    if (res.data?.url) {
+      // 打开下载链接
+      window.open(res.data.url, '_blank')
+      ElMessage.success('开始下载档案文件包')
+    } else {
+      ElMessage.error('获取下载链接失败')
+    }
+  } catch (e) {
+    console.error('打包下载失败', e)
+    ElMessage.error(e.response?.data?.message || '打包下载失败')
+  } finally {
+    isDownloading.value = false
+  }
 }
 
 // 预览文件
-const handlePreview = async (file) => {
-  try {
-    const res = await getFilePreviewUrl(file.id)
-    if (res.data?.url) {
-      previewUrl.value = res.data.url
-      previewVisible.value = true
-    } else {
-      ElMessage.warning('该文件不支持预览')
-    }
-  } catch (e) {
-    console.error('获取预览链接失败', e)
-  }
+const handlePreview = (file) => {
+  previewFileId.value = file.id
+  previewFileName.value = file.originalName || file.fileName
+  previewFileExtension.value = file.fileExtension || ''
+  previewVisible.value = true
 }
 
 // 下载文件
@@ -563,25 +569,12 @@ const handleDownload = async (file) => {
     const res = await getFileDownloadUrl(file.id)
     if (res.data?.url) {
       window.open(res.data.url, '_blank')
+    } else {
+      ElMessage.error('获取下载链接失败')
     }
   } catch (e) {
     console.error('获取下载链接失败', e)
-  }
-}
-
-// 删除文件
-const handleDeleteFile = async (file) => {
-  try {
-    await ElMessageBox.confirm('确定要删除该文件吗？', '提示', {
-      type: 'warning'
-    })
-    await deleteFile(file.id)
-    ElMessage.success('删除成功')
-    fetchData()
-  } catch (e) {
-    if (e !== 'cancel') {
-      console.error('删除失败', e)
-    }
+    ElMessage.error(e.response?.data?.message || '获取下载链接失败')
   }
 }
 
@@ -591,70 +584,16 @@ const formatDateTime = (dateStr) => {
   return dateStr.replace('T', ' ').substring(0, 19)
 }
 
-const getArchiveTypeName = (type) => {
-  const map = {
-    DOCUMENT: '文书档案',
-    SCIENCE: '科技档案',
-    ACCOUNTING: '会计档案',
-    PERSONNEL: '人事档案',
-    SPECIAL: '专业档案',
-    AUDIOVISUAL: '声像档案'
-  }
-  return map[type] || type
+// 格式化文件大小
+const formatFileSize = (bytes) => {
+  if (!bytes || bytes === 0) return '0 B'
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
-
-const getStatusName = (status) => {
-  const map = {
-    DRAFT: '草稿',
-    RECEIVED: '已接收',
-    CATALOGING: '整理中',
-    STORED: '已归档',
-    BORROWED: '借出中'
-  }
-  return map[status] || status
-}
-
-const getStatusType = (status) => {
-  const map = {
-    DRAFT: 'info',
-    RECEIVED: 'warning',
-    CATALOGING: '',
-    STORED: 'success',
-    BORROWED: 'danger'
-  }
-  return map[status] || ''
-}
-
-const getRetentionName = (code) => {
-  const map = {
-    PERMANENT: '永久',
-    Y30: '30年',
-    Y15: '15年',
-    Y10: '10年',
-    Y5: '5年'
-  }
-  return map[code] || code
-}
-
-const getSecurityName = (level) => {
-  const map = {
-    PUBLIC: '公开',
-    INTERNAL: '内部',
-    CONFIDENTIAL: '秘密',
-    SECRET: '机密'
-  }
-  return map[level] || level || '内部'
-}
-
-const getSourceName = (source) => {
-  const map = {
-    LAW_FIRM: '律所系统',
-    MANUAL: '手动录入',
-    IMPORT: '批量导入',
-    TRANSFER: '移交'
-  }
-  return map[source] || source
-}
+// 注：getArchiveTypeName, getStatusName, getStatusType, getRetentionName, 
+// getSecurityName, getSourceName 已从 archiveEnums.js 导入
 
 const getFileIcon = (ext) => {
   if (!ext) return Document
@@ -683,9 +622,6 @@ const getFileIconClass = (ext) => {
 
 onMounted(() => {
   fetchData()
-  if (route.query.edit === 'true') {
-    isEditing.value = true
-  }
 })
 </script>
 
@@ -722,27 +658,161 @@ onMounted(() => {
   }
 }
 
-.file-upload {
-  margin-bottom: 16px;
+.files-card {
+  :deep(.el-card__body) {
+    padding: 16px;
+  }
 }
 
-.file-table {
-  margin-top: 16px;
+// 文件分类折叠面板
+.file-categories {
+  border: none;
+  
+  :deep(.el-collapse-item__header) {
+    height: 52px;
+    background: #fafafa;
+    border-radius: 6px;
+    margin-bottom: 8px;
+    padding: 0 16px;
+    border: 1px solid #ebeef5;
+    
+    &:hover {
+      background: #f5f7fa;
+    }
+  }
+  
+  :deep(.el-collapse-item__wrap) {
+    border: none;
+  }
+  
+  :deep(.el-collapse-item__content) {
+    padding: 0 0 16px 0;
+  }
 }
 
-.file-name {
+.category-header {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
+  width: 100%;
   
-  .file-icon {
-    font-size: 18px;
-    color: #909399;
+  .category-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+  }
+  
+  .category-name {
+    font-weight: 500;
+    font-size: 15px;
+    color: #303133;
+  }
+}
+
+// 文件列表
+.file-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 8px;
+}
+
+.file-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  background: #fff;
+  border: 1px solid #ebeef5;
+  border-radius: 8px;
+  transition: all 0.2s;
+  
+  &:hover {
+    border-color: #409eff;
+    box-shadow: 0 2px 8px rgba(64, 158, 255, 0.1);
     
-    &-image { color: #67c23a; }
-    &-pdf { color: #f56c6c; }
-    &-word { color: #409eff; }
-    &-excel { color: #67c23a; }
+    .file-actions {
+      opacity: 1;
+    }
+  }
+  
+  .file-index {
+    width: 24px;
+    height: 24px;
+    background: #f0f2f5;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    color: #909399;
+    margin-right: 12px;
+    flex-shrink: 0;
+  }
+  
+  .file-icon-wrapper {
+    width: 40px;
+    height: 40px;
+    background: #f5f7fa;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 12px;
+    flex-shrink: 0;
+    
+    .file-icon {
+      font-size: 20px;
+      color: #909399;
+      
+      &-image { color: #67c23a; }
+      &-pdf { color: #f56c6c; }
+      &-word { color: #409eff; }
+      &-excel { color: #67c23a; }
+    }
+  }
+  
+  .file-info {
+    flex: 1;
+    min-width: 0;
+    
+    .file-name-text {
+      font-size: 14px;
+      color: #303133;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      margin-bottom: 4px;
+    }
+    
+    .file-meta {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      
+      .file-size {
+        font-size: 12px;
+        color: #909399;
+      }
+      
+      .long-term-badge {
+        font-size: 11px;
+        color: #67c23a;
+        background: #f0f9eb;
+        padding: 2px 6px;
+        border-radius: 4px;
+      }
+    }
+  }
+  
+  .file-actions {
+    display: flex;
+    gap: 4px;
+    opacity: 0.6;
+    transition: opacity 0.2s;
   }
 }
 

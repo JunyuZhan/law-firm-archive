@@ -241,6 +241,7 @@
 <script setup>
 import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { Folder, Document, Reading, Bell } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
 import { getOverview, countByType, countByRetention, getTrend, getBorrowStats, getStorageStats } from '@/api/statistics'
 import { getPushRecordStatistics } from '@/api/pushRecord'
@@ -250,6 +251,17 @@ const storage = reactive({})
 const borrowStats = reactive({})
 const pushStats = reactive({})
 const trendYear = ref(new Date().getFullYear().toString())
+
+// Loading 状态
+const loading = reactive({
+  overview: false,
+  storage: false,
+  borrow: false,
+  push: false,
+  typeChart: false,
+  retentionChart: false,
+  trend: false
+})
 
 const typeChartRef = ref(null)
 const retentionChartRef = ref(null)
@@ -261,36 +273,49 @@ let trendChart = null
 
 // 加载概览数据
 const loadOverview = async () => {
+  loading.overview = true
   try {
     const res = await getOverview()
     Object.assign(overview, res.data)
   } catch (e) {
     console.error('加载概览失败', e)
+    ElMessage.error('加载概览数据失败')
+  } finally {
+    loading.overview = false
   }
 }
 
 // 加载存储统计
 const loadStorage = async () => {
+  loading.storage = true
   try {
     const res = await getStorageStats()
     Object.assign(storage, res.data)
   } catch (e) {
     console.error('加载存储统计失败', e)
+    ElMessage.error('加载存储统计失败')
+  } finally {
+    loading.storage = false
   }
 }
 
 // 加载借阅统计
 const loadBorrowStats = async () => {
+  loading.borrow = true
   try {
     const res = await getBorrowStats()
     Object.assign(borrowStats, res.data)
   } catch (e) {
     console.error('加载借阅统计失败', e)
+    ElMessage.error('加载借阅统计失败')
+  } finally {
+    loading.borrow = false
   }
 }
 
 // 加载推送统计
 const loadPushStats = async () => {
+  loading.push = true
   try {
     const res = await getPushRecordStatistics()
     if (res.code === 200) {
@@ -298,11 +323,15 @@ const loadPushStats = async () => {
     }
   } catch (e) {
     console.error('加载推送统计失败', e)
+    ElMessage.error('加载推送统计失败')
+  } finally {
+    loading.push = false
   }
 }
 
 // 加载档案类型图表
 const loadTypeChart = async () => {
+  loading.typeChart = true
   try {
     const res = await countByType()
     const data = res.data.map(item => ({
@@ -328,11 +357,15 @@ const loadTypeChart = async () => {
     })
   } catch (e) {
     console.error('加载类型图表失败', e)
+    ElMessage.error('加载档案类型分布失败')
+  } finally {
+    loading.typeChart = false
   }
 }
 
 // 加载保管期限图表
 const loadRetentionChart = async () => {
+  loading.retentionChart = true
   try {
     const res = await countByRetention()
     const data = res.data.map(item => ({
@@ -358,11 +391,15 @@ const loadRetentionChart = async () => {
     })
   } catch (e) {
     console.error('加载保管期限图表失败', e)
+    ElMessage.error('加载保管期限分布失败')
+  } finally {
+    loading.retentionChart = false
   }
 }
 
 // 加载趋势图表
 const loadTrend = async () => {
+  loading.trend = true
   try {
     const res = await getTrend(parseInt(trendYear.value))
     const months = res.data.map(item => item.monthName)
@@ -391,6 +428,9 @@ const loadTrend = async () => {
     })
   } catch (e) {
     console.error('加载趋势图表失败', e)
+    ElMessage.error('加载月度趋势失败')
+  } finally {
+    loading.trend = false
   }
 }
 

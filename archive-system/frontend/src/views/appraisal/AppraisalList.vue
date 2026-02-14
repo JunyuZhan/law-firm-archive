@@ -428,24 +428,10 @@
             style="width: 100%"
           >
             <el-option
-              label="永久"
-              value="PERMANENT"
-            />
-            <el-option
-              label="30年"
-              value="Y30"
-            />
-            <el-option
-              label="15年"
-              value="Y15"
-            />
-            <el-option
-              label="10年"
-              value="Y10"
-            />
-            <el-option
-              label="5年"
-              value="Y5"
+              v-for="item in retentionOptions"
+              :key="item.value"
+              :label="item.label"
+              :value="item.value"
             />
           </el-select>
           <el-select
@@ -520,6 +506,7 @@
         </el-button>
         <el-button
           type="primary"
+          :loading="approveSubmitting"
           @click="confirmApprove"
         >
           确认通过
@@ -545,7 +532,7 @@
             v-model="rejectForm.comment"
             type="textarea"
             :rows="3"
-            placeholder="请输入拒绝原因"
+            placeholder="请输入拒绝原因（至少2个字）"
           />
         </el-form-item>
       </el-form>
@@ -555,6 +542,7 @@
         </el-button>
         <el-button
           type="danger"
+          :loading="rejectSubmitting"
           @click="confirmReject"
         >
           确认拒绝
@@ -588,24 +576,10 @@
             style="width: 100%"
           >
             <el-option
-              label="永久"
-              value="PERMANENT"
-            />
-            <el-option
-              label="30年"
-              value="Y30"
-            />
-            <el-option
-              label="15年"
-              value="Y15"
-            />
-            <el-option
-              label="10年"
-              value="Y10"
-            />
-            <el-option
-              label="5年"
-              value="Y5"
+              v-for="item in retentionOptions"
+              :key="item.value"
+              :label="item.label"
+              :value="item.value"
             />
           </el-select>
         </el-form-item>
@@ -627,6 +601,7 @@
         </el-button>
         <el-button
           type="primary"
+          :loading="extendSubmitting"
           @click="confirmExtend"
         >
           确认延期
@@ -723,6 +698,17 @@ import {
   createAppraisal, approveAppraisal, rejectAppraisal,
   getExpiringArchives, getExpiredArchives, extendRetention
 } from '@/api/appraisal'
+import {
+  getRetentionName,
+  getRetentionOptions,
+  getSecurityOptions,
+  getAppraisalStatusName,
+  APPRAISAL_STATUS
+} from '@/utils/archiveEnums'
+
+// 下拉选项
+const retentionOptions = getRetentionOptions()
+const securityOptions = getSecurityOptions()
 
 const activeTab = ref('all')
 const loading = ref(false)
@@ -767,6 +753,11 @@ const currentRow = ref(null)
 const approveForm = reactive({ comment: '' })
 const rejectForm = reactive({ comment: '' })
 
+// 操作 loading 状态
+const approveSubmitting = ref(false)
+const rejectSubmitting = ref(false)
+const extendSubmitting = ref(false)
+
 // 延期
 const extendDialogVisible = ref(false)
 const currentArchive = ref(null)
@@ -803,6 +794,7 @@ const fetchData = async () => {
     }
   } catch (e) {
     console.error('获取数据失败', e)
+    ElMessage.error(e.response?.data?.message || '获取数据失败')
   } finally {
     loading.value = false
   }
@@ -821,6 +813,7 @@ const fetchExpiringData = async () => {
     expiringData.value = res.data || []
   } catch (e) {
     console.error('获取到期预警数据失败', e)
+    ElMessage.error(e.response?.data?.message || '获取到期预警数据失败')
   } finally {
     loading.value = false
   }
@@ -880,13 +873,17 @@ const handleApprove = (row) => {
 }
 
 const confirmApprove = async () => {
+  approveSubmitting.value = true
   try {
     await approveAppraisal(currentRow.value.id, approveForm.comment)
     ElMessage.success('审批通过')
     approveDialogVisible.value = false
     fetchData()
   } catch (e) {
-    console.error(e)
+    console.error('审批失败', e)
+    ElMessage.error(e.response?.data?.message || '审批失败')
+  } finally {
+    approveSubmitting.value = false
   }
 }
 
@@ -897,17 +894,21 @@ const handleReject = (row) => {
 }
 
 const confirmReject = async () => {
-  if (!rejectForm.comment) {
+  if (!rejectForm.comment?.trim()) {
     ElMessage.warning('请输入拒绝原因')
     return
   }
+  rejectSubmitting.value = true
   try {
-    await rejectAppraisal(currentRow.value.id, rejectForm.comment)
+    await rejectAppraisal(currentRow.value.id, { comment: rejectForm.comment })
     ElMessage.success('已拒绝')
     rejectDialogVisible.value = false
     fetchData()
   } catch (e) {
-    console.error(e)
+    console.error('拒绝失败', e)
+    ElMessage.error(e.response?.data?.message || '操作失败')
+  } finally {
+    rejectSubmitting.value = false
   }
 }
 
@@ -918,7 +919,8 @@ const handleView = async (row) => {
     detailData.value = res.data
     detailDialogVisible.value = true
   } catch (e) {
-    console.error(e)
+    console.error('获取详情失败', e)
+    ElMessage.error(e.response?.data?.message || '获取详情失败')
   }
 }
 
@@ -931,18 +933,21 @@ const handleExtend = (archive) => {
 }
 
 const confirmExtend = async () => {
-  if (!extendForm.newRetentionPeriod || !extendForm.reason) {
+  if (!extendForm.newRetentionPeriod || !extendForm.reason?.trim()) {
     ElMessage.warning('请填写完整信息')
     return
   }
+  extendSubmitting.value = true
   try {
     await extendRetention(currentArchive.value.id, extendForm)
     ElMessage.success('保管期限已延长')
     extendDialogVisible.value = false
     fetchExpiringData()
   } catch (e) {
-    console.error(e)
+    console.error('延期失败', e)
     ElMessage.error(e.response?.data?.message || '操作失败')
+  } finally {
+    extendSubmitting.value = false
   }
 }
 
@@ -984,14 +989,8 @@ const getTypeTagType = (type) => {
   return map[type] || ''
 }
 
-const getStatusName = (status) => {
-  const map = {
-    PENDING: '待审批',
-    APPROVED: '已通过',
-    REJECTED: '已拒绝'
-  }
-  return map[status] || status
-}
+// 注：getRetentionName, getAppraisalStatusName 已从 archiveEnums.js 导入
+const getStatusName = getAppraisalStatusName
 
 const getStatusType = (status) => {
   const map = {
@@ -1000,17 +999,6 @@ const getStatusType = (status) => {
     REJECTED: 'danger'
   }
   return map[status] || ''
-}
-
-const getRetentionName = (code) => {
-  const map = {
-    PERMANENT: '永久',
-    Y30: '30年',
-    Y15: '15年',
-    Y10: '10年',
-    Y5: '5年'
-  }
-  return map[code] || code
 }
 
 const isExpired = (dateStr) => {

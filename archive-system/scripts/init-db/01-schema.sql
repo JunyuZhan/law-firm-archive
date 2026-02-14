@@ -697,6 +697,10 @@ CREATE INDEX IF NOT EXISTS idx_archive_case_no ON arc_archive(case_no);
 CREATE INDEX IF NOT EXISTS idx_archive_retention_expire ON arc_archive(retention_expire_date);
 CREATE INDEX IF NOT EXISTS idx_archive_created_at ON arc_archive(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_archive_title_gin ON arc_archive USING gin(to_tsvector('simple', title));
+-- 来源幂等唯一索引（同一来源系统的同一业务ID只能有一条有效档案）
+CREATE UNIQUE INDEX IF NOT EXISTS idx_archive_source_unique 
+    ON arc_archive(source_type, source_id) 
+    WHERE source_id IS NOT NULL AND deleted = false;
 
 -- 文件表索引
 CREATE INDEX IF NOT EXISTS idx_file_archive_id ON arc_digital_file(archive_id);

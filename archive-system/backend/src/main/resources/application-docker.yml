@@ -15,6 +15,13 @@ minio:
   access-key: ${MINIO_ACCESS_KEY:minioadmin}
   secret-key: ${MINIO_SECRET_KEY:minioadmin}
 
+# JODConverter Docker环境配置
+jodconverter:
+  local:
+    enabled: ${JODCONVERTER_LOCAL_ENABLED:true}
+    office-home: ${JODCONVERTER_LOCAL_OFFICE_HOME:/usr/lib/libreoffice}
+    port-numbers: ${JODCONVERTER_LOCAL_PORT_NUMBERS:2002}
+
 # Actuator开放健康检查
 management:
   endpoints:

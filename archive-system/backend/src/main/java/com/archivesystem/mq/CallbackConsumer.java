@@ -8,9 +8,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 回调消息消费者
@@ -23,19 +25,61 @@ public class CallbackConsumer {
 
     private final CallbackService callbackService;
     private final RabbitTemplate rabbitTemplate;
+    private final StringRedisTemplate stringRedisTemplate;
+
+    // 回调消息幂等性检查的 Redis Key 前缀
+    private static final String CALLBACK_PROCESSED_PREFIX = "mq:processed:callback:";
+    // 回调处理标记过期时间（7天）
+    private static final long CALLBACK_PROCESSED_TTL_DAYS = 7;
 
     /**
      * 消费回调消息
      */
     @RabbitListener(queues = RabbitMQConfig.ARCHIVE_CALLBACK_QUEUE)
     public void handleCallback(CallbackMessage message, Message amqpMessage, Channel channel) {
+        // 消息对象 null 检查
+        if (message == null || amqpMessage == null || amqpMessage.getMessageProperties() == null) {
+            log.error("回调消息对象为空或格式异常");
+            try {
+                if (amqpMessage != null && amqpMessage.getMessageProperties() != null) {
+                    channel.basicReject(amqpMessage.getMessageProperties().getDeliveryTag(), false);
+                }
+            } catch (Exception e) {
+                log.error("拒绝异常消息失败", e);
+            }
+            return;
+        }
+        
         long deliveryTag = amqpMessage.getMessageProperties().getDeliveryTag();
         String messageId = message.getMessageId();
+        
+        // 关键字段 null 检查
+        if (messageId == null || message.getCallbackUrl() == null) {
+            log.error("回调消息关键字段为空: messageId={}, callbackUrl={}", messageId, message.getCallbackUrl());
+            try {
+                channel.basicReject(deliveryTag, false);
+            } catch (Exception e) {
+                log.error("拒绝异常消息失败", e);
+            }
+            return;
+        }
         
         log.info("开始处理回调消息: messageId={}, archiveId={}, callbackUrl={}", 
                 messageId, message.getArchiveId(), message.getCallbackUrl());
         
         try {
+            // 幂等性检查（仅对成功的回调进行幂等检查，失败重试时不检查）
+            String processedKey = CALLBACK_PROCESSED_PREFIX + messageId;
+            if (message.getRetryCount() == 0) {
+                Boolean isNew = stringRedisTemplate.opsForValue()
+                        .setIfAbsent(processedKey, "processing", CALLBACK_PROCESSED_TTL_DAYS, TimeUnit.DAYS);
+                if (Boolean.FALSE.equals(isNew)) {
+                    log.warn("回调消息已处理过，跳过: messageId={}", messageId);
+                    channel.basicAck(deliveryTag, false);
+                    return;
+                }
+            }
+            
             // 执行回调
             boolean success = callbackService.sendCallback(message);
             

@@ -4,20 +4,25 @@ import com.archivesystem.config.MetricsConfig;
 import com.archivesystem.config.RabbitMQConfig;
 import com.archivesystem.entity.Archive;
 import com.archivesystem.entity.DigitalFile;
+import com.archivesystem.entity.PushRecord;
 import com.archivesystem.repository.ArchiveMapper;
+import com.archivesystem.repository.PushRecordMapper;
 import com.archivesystem.service.FileStorageService;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.rabbitmq.client.Channel;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 档案接收消息消费者
@@ -29,21 +34,54 @@ import java.util.List;
 public class ArchiveReceiveConsumer {
 
     private final ArchiveMapper archiveMapper;
+    private final PushRecordMapper pushRecordMapper;
     private final FileStorageService fileStorageService;
     private final RabbitTemplate rabbitTemplate;
     private final MetricsConfig metricsConfig;
+    private final StringRedisTemplate stringRedisTemplate;
+
+    // 消息幂等性检查的 Redis Key 前缀
+    private static final String MESSAGE_PROCESSED_PREFIX = "mq:processed:archive:";
+    // 消息处理标记过期时间（7天）
+    private static final long MESSAGE_PROCESSED_TTL_DAYS = 7;
 
     /**
      * 消费档案接收消息
      */
     @RabbitListener(queues = RabbitMQConfig.ARCHIVE_RECEIVE_QUEUE)
     public void handleArchiveReceive(ArchiveReceiveMessage message, Message amqpMessage, Channel channel) {
+        // 消息对象 null 检查
+        if (message == null || amqpMessage == null || amqpMessage.getMessageProperties() == null) {
+            log.error("消息对象为空或格式异常");
+            try {
+                if (amqpMessage != null && amqpMessage.getMessageProperties() != null) {
+                    channel.basicReject(amqpMessage.getMessageProperties().getDeliveryTag(), false);
+                }
+            } catch (Exception e) {
+                log.error("拒绝异常消息失败", e);
+            }
+            return;
+        }
+        
         long deliveryTag = amqpMessage.getMessageProperties().getDeliveryTag();
         String messageId = message.getMessageId();
         Long archiveId = message.getArchiveId();
         
+        // 关键字段 null 检查
+        if (messageId == null || archiveId == null) {
+            log.error("消息关键字段为空: messageId={}, archiveId={}", messageId, archiveId);
+            try {
+                channel.basicReject(deliveryTag, false);
+            } catch (Exception e) {
+                log.error("拒绝异常消息失败", e);
+            }
+            return;
+        }
+        
         log.info("开始处理档案接收消息: messageId={}, archiveId={}", messageId, archiveId);
         metricsConfig.recordArchiveReceiveStart();
+        
+        String processedKey = MESSAGE_PROCESSED_PREFIX + messageId;
         
         try {
             // 检查档案是否存在
@@ -53,6 +91,35 @@ public class ArchiveReceiveConsumer {
                 channel.basicReject(deliveryTag, false);
                 metricsConfig.recordArchiveReceiveFailed();
                 return;
+            }
+            
+            // 基于档案状态的幂等性检查（比消息幂等更可靠）
+            // 只有最终状态（RECEIVED、FAILED、PARTIAL）才跳过处理
+            if (Archive.STATUS_RECEIVED.equals(archive.getStatus()) || 
+                Archive.STATUS_FAILED.equals(archive.getStatus()) ||
+                Archive.STATUS_PARTIAL.equals(archive.getStatus())) {
+                log.info("档案已处理完成，跳过: archiveId={}, status={}", archiveId, archive.getStatus());
+                channel.basicAck(deliveryTag, false);
+                return;
+            }
+            
+            // 消息幂等性检查（防止短时间内重复处理）
+            // 注意：如果档案仍为 PROCESSING，说明之前可能处理中断，允许重新处理
+            Boolean isNewMessage = stringRedisTemplate.opsForValue()
+                    .setIfAbsent(processedKey, "processing", MESSAGE_PROCESSED_TTL_DAYS, TimeUnit.DAYS);
+            
+            if (Boolean.FALSE.equals(isNewMessage)) {
+                // 消息已处理过，但档案仍为 PROCESSING 状态，说明之前处理可能中断
+                if (Archive.STATUS_PROCESSING.equals(archive.getStatus())) {
+                    log.warn("检测到之前处理可能中断，重新处理: messageId={}, archiveId={}", messageId, archiveId);
+                    // 删除旧的幂等标记，重新设置
+                    stringRedisTemplate.delete(processedKey);
+                    stringRedisTemplate.opsForValue().set(processedKey, "reprocessing", MESSAGE_PROCESSED_TTL_DAYS, TimeUnit.DAYS);
+                } else {
+                    log.warn("消息已处理过，跳过: messageId={}", messageId);
+                    channel.basicAck(deliveryTag, false);
+                    return;
+                }
             }
             
             // 更新状态为处理中
@@ -67,6 +134,14 @@ public class ArchiveReceiveConsumer {
             
             if (message.getFiles() != null && !message.getFiles().isEmpty()) {
                 for (ArchiveReceiveMessage.FileInfo fileInfo : message.getFiles()) {
+                    // 跳过空的文件信息
+                    if (fileInfo == null || fileInfo.getDownloadUrl() == null) {
+                        log.warn("文件信息为空或缺少下载URL，跳过");
+                        failedCount++;
+                        failedFiles.add("空文件信息");
+                        continue;
+                    }
+                    
                     try {
                         DigitalFile digitalFile = fileStorageService.downloadAndStore(
                                 archiveId,
@@ -89,20 +164,27 @@ public class ArchiveReceiveConsumer {
                 }
             }
             
+            // 确定最终状态
+            String finalStatus;
+            if (failedCount == 0) {
+                finalStatus = Archive.STATUS_RECEIVED;
+            } else if (successCount > 0) {
+                finalStatus = Archive.STATUS_PARTIAL;
+            } else {
+                finalStatus = Archive.STATUS_FAILED;
+            }
+            
             // 更新档案状态和统计
             archive.setFileCount(successCount);
             archive.setTotalFileSize(totalSize);
             archive.setHasElectronic(successCount > 0);
-            
-            if (failedCount == 0) {
-                archive.setStatus(Archive.STATUS_RECEIVED);
-            } else if (successCount > 0) {
-                archive.setStatus(Archive.STATUS_PARTIAL);
-            } else {
-                archive.setStatus(Archive.STATUS_FAILED);
-            }
-            
+            archive.setStatus(finalStatus);
             archiveMapper.updateById(archive);
+            
+            // 同步更新推送记录状态
+            updatePushRecord(message.getSourceType(), message.getSourceId(), 
+                    finalStatus, successCount, failedCount, 
+                    failedFiles.isEmpty() ? null : String.join(", ", failedFiles));
             
             // 发送回调通知
             if (message.getCallbackUrl() != null && !message.getCallbackUrl().isEmpty()) {
@@ -120,6 +202,13 @@ public class ArchiveReceiveConsumer {
         } catch (Exception e) {
             log.error("档案接收处理异常: messageId={}, archiveId={}", messageId, archiveId, e);
             metricsConfig.recordArchiveReceiveFailed();
+            
+            // 删除幂等标记，允许重试
+            try {
+                stringRedisTemplate.delete(processedKey);
+            } catch (Exception redisEx) {
+                log.warn("删除幂等标记失败: {}", redisEx.getMessage());
+            }
             
             try {
                 // 检查是否需要重试
@@ -218,5 +307,40 @@ public class ArchiveReceiveConsumer {
                 RabbitMQConfig.ARCHIVE_CALLBACK_ROUTING_KEY,
                 callback
         );
+        
+        // 同步更新推送记录状态为失败
+        updatePushRecord(original.getSourceType(), original.getSourceId(),
+                PushRecord.STATUS_FAILED, 0, 
+                original.getFiles() != null ? original.getFiles().size() : 0,
+                errorMessage);
+    }
+    
+    /**
+     * 更新推送记录状态
+     */
+    private void updatePushRecord(String sourceType, String sourceId, String status,
+                                   int successCount, int failedCount, String errorMessage) {
+        try {
+            PushRecord pushRecord = pushRecordMapper.selectOne(
+                    new LambdaQueryWrapper<PushRecord>()
+                            .eq(PushRecord::getSourceType, sourceType)
+                            .eq(PushRecord::getSourceId, sourceId)
+                            .orderByDesc(PushRecord::getCreatedAt)
+                            .last("LIMIT 1"));
+            
+            if (pushRecord != null) {
+                pushRecord.setPushStatus(status);
+                pushRecord.setSuccessFiles(successCount);
+                pushRecord.setFailedFiles(failedCount);
+                pushRecord.setProcessedAt(LocalDateTime.now());
+                if (errorMessage != null) {
+                    pushRecord.setErrorMessage(errorMessage);
+                }
+                pushRecordMapper.updateById(pushRecord);
+                log.info("推送记录状态已更新: sourceId={}, status={}", sourceId, status);
+            }
+        } catch (Exception e) {
+            log.error("更新推送记录状态失败: sourceId={}, error={}", sourceId, e.getMessage());
+        }
     }
 }

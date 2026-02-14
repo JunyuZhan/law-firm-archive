@@ -187,16 +187,10 @@
             style="width: 100%"
           >
             <el-option
-              label="内部全宗"
-              value="INTERNAL"
-            />
-            <el-option
-              label="外部全宗"
-              value="EXTERNAL"
-            />
-            <el-option
-              label="历史全宗"
-              value="HISTORICAL"
+              v-for="item in fondsTypeOptions"
+              :key="item.value"
+              :label="item.label"
+              :value="item.value"
             />
           </el-select>
         </el-form-item>
@@ -293,6 +287,14 @@ import {
   deleteFonds,
   getFondsStatistics
 } from '@/api/fonds'
+import {
+  getFondsTypeName,
+  getFondsTypeTag,
+  getFondsTypeOptions
+} from '@/utils/archiveEnums'
+
+// 下拉选项
+const fondsTypeOptions = getFondsTypeOptions()
 
 // 状态
 const loading = ref(false)
@@ -325,24 +327,9 @@ const rules = {
   fondsType: [{ required: true, message: '请选择全宗类型', trigger: 'change' }]
 }
 
-// 类型映射
-const getTypeName = (type) => {
-  const map = {
-    INTERNAL: '内部全宗',
-    EXTERNAL: '外部全宗',
-    HISTORICAL: '历史全宗'
-  }
-  return map[type] || type
-}
-
-const getTypeTag = (type) => {
-  const map = {
-    INTERNAL: 'primary',
-    EXTERNAL: 'success',
-    HISTORICAL: 'info'
-  }
-  return map[type] || 'default'
-}
+// 注：getFondsTypeName, getFondsTypeTag 已从 archiveEnums.js 导入
+const getTypeName = getFondsTypeName
+const getTypeTag = getFondsTypeTag
 
 // 加载数据
 const loadData = async () => {

@@ -88,12 +88,16 @@ export function approveDestruction(id, comment) {
 
 /**
  * 审批拒绝
+ * @param {number} id - 销毁记录ID
+ * @param {object|string} data - 拒绝原因对象 { comment: string } 或字符串
  */
-export function rejectDestruction(id, comment) {
+export function rejectDestruction(id, data) {
+  // 兼容字符串参数
+  const requestData = typeof data === 'string' ? { comment: data } : data
   return request({
     url: `/destructions/${id}/reject`,
     method: 'put',
-    params: { comment }
+    data: requestData
   })
 }
 

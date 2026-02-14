@@ -11,9 +11,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 
+import jakarta.validation.Valid;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -33,6 +35,7 @@ public class SourceController {
 
     @GetMapping
     @Operation(summary = "获取来源列表")
+    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
     public Result<List<ExternalSource>> list() {
         List<ExternalSource> sources = externalSourceMapper.selectList(
                 new LambdaQueryWrapper<ExternalSource>()
@@ -45,6 +48,7 @@ public class SourceController {
 
     @GetMapping("/{id}")
     @Operation(summary = "获取来源详情")
+    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
     public Result<ExternalSource> getById(@PathVariable Long id) {
         ExternalSource source = externalSourceMapper.selectById(id);
         if (source == null || source.getDeleted()) {
@@ -57,7 +61,8 @@ public class SourceController {
 
     @PostMapping
     @Operation(summary = "创建来源")
-    public Result<ExternalSource> create(@RequestBody ExternalSource source) {
+    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+    public Result<ExternalSource> create(@Valid @RequestBody ExternalSource source) {
         // 检查编码是否重复
         ExternalSource existing = externalSourceMapper.selectOne(
                 new LambdaQueryWrapper<ExternalSource>()
@@ -77,7 +82,8 @@ public class SourceController {
 
     @PutMapping("/{id}")
     @Operation(summary = "更新来源")
-    public Result<Void> update(@PathVariable Long id, @RequestBody ExternalSource source) {
+    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+    public Result<Void> update(@PathVariable Long id, @Valid @RequestBody ExternalSource source) {
         ExternalSource existing = externalSourceMapper.selectById(id);
         if (existing == null || existing.getDeleted()) {
             return Result.error("404", "来源不存在");
@@ -98,6 +104,7 @@ public class SourceController {
 
     @PostMapping("/{id}/regenerate-key")
     @Operation(summary = "重新生成API Key")
+    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
     public Result<String> regenerateApiKey(@PathVariable Long id) {
         ExternalSource source = externalSourceMapper.selectById(id);
         if (source == null || source.getDeleted()) {
@@ -115,6 +122,7 @@ public class SourceController {
 
     @PutMapping("/{id}/toggle")
     @Operation(summary = "切换启用状态")
+    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
     public Result<Void> toggle(@PathVariable Long id, @RequestParam Boolean enabled) {
         ExternalSource source = externalSourceMapper.selectById(id);
         if (source == null) {
@@ -127,6 +135,7 @@ public class SourceController {
 
     @PostMapping("/{id}/test")
     @Operation(summary = "测试连接")
+    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
     public Result<Void> test(@PathVariable Long id) {
         ExternalSource source = externalSourceMapper.selectById(id);
         if (source == null || source.getDeleted()) {
@@ -179,6 +188,7 @@ public class SourceController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "删除来源")
+    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
     public Result<Void> delete(@PathVariable Long id) {
         ExternalSource source = externalSourceMapper.selectById(id);
         if (source != null) {

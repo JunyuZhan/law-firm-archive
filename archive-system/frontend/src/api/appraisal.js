@@ -66,12 +66,14 @@ export function approveAppraisal(id, comment) {
 
 /**
  * 审批拒绝
+ * @param {number} id - 鉴定记录ID
+ * @param {object} data - 拒绝原因对象 { comment: string }
  */
-export function rejectAppraisal(id, comment) {
+export function rejectAppraisal(id, data) {
   return request({
     url: `/appraisals/${id}/reject`,
     method: 'put',
-    params: { comment }
+    data
   })
 }
 

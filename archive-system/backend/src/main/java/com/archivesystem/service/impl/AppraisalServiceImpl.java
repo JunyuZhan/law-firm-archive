@@ -10,6 +10,7 @@ import com.archivesystem.repository.ArchiveMapper;
 import com.archivesystem.security.SecurityUtils;
 import com.archivesystem.service.AppraisalService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -117,20 +118,31 @@ public class AppraisalServiceImpl implements AppraisalService {
     @Override
     @Transactional
     public void approve(Long id, String comment) {
+        // 检查记录是否存在
         AppraisalRecord record = getById(id);
 
-        if (!AppraisalRecord.STATUS_PENDING.equals(record.getStatus())) {
-            throw new BusinessException("该鉴定记录不是待审批状态");
+        // 使用条件更新防止并发重复审批
+        LambdaUpdateWrapper<AppraisalRecord> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(AppraisalRecord::getId, id)
+                .eq(AppraisalRecord::getStatus, AppraisalRecord.STATUS_PENDING)
+                .set(AppraisalRecord::getStatus, AppraisalRecord.STATUS_APPROVED)
+                .set(AppraisalRecord::getApproverId, SecurityUtils.getCurrentUserId())
+                .set(AppraisalRecord::getApproverName, SecurityUtils.getCurrentRealName())
+                .set(AppraisalRecord::getApprovedAt, LocalDateTime.now())
+                .set(AppraisalRecord::getApprovalComment, comment);
+        
+        int affected = appraisalMapper.update(null, updateWrapper);
+        if (affected == 0) {
+            AppraisalRecord current = appraisalMapper.selectById(id);
+            if (current == null) {
+                throw new NotFoundException("鉴定记录不存在");
+            }
+            throw new BusinessException("该鉴定记录不是待审批状态，当前状态：" + current.getStatus());
         }
 
-        record.setStatus(AppraisalRecord.STATUS_APPROVED);
-        record.setApproverId(SecurityUtils.getCurrentUserId());
-        record.setApproverName(SecurityUtils.getCurrentRealName());
-        record.setApprovedAt(LocalDateTime.now());
-        record.setApprovalComment(comment);
-
-        appraisalMapper.updateById(record);
-
+        // 重新查询更新后的记录以获取最新状态
+        record = appraisalMapper.selectById(id);
+        
         // 根据鉴定类型更新档案
         applyAppraisalResult(record);
 
@@ -140,19 +152,27 @@ public class AppraisalServiceImpl implements AppraisalService {
     @Override
     @Transactional
     public void reject(Long id, String comment) {
+        // 检查记录是否存在
         AppraisalRecord record = getById(id);
 
-        if (!AppraisalRecord.STATUS_PENDING.equals(record.getStatus())) {
-            throw new BusinessException("该鉴定记录不是待审批状态");
+        // 使用条件更新防止并发重复审批
+        LambdaUpdateWrapper<AppraisalRecord> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(AppraisalRecord::getId, id)
+                .eq(AppraisalRecord::getStatus, AppraisalRecord.STATUS_PENDING)
+                .set(AppraisalRecord::getStatus, AppraisalRecord.STATUS_REJECTED)
+                .set(AppraisalRecord::getApproverId, SecurityUtils.getCurrentUserId())
+                .set(AppraisalRecord::getApproverName, SecurityUtils.getCurrentRealName())
+                .set(AppraisalRecord::getApprovedAt, LocalDateTime.now())
+                .set(AppraisalRecord::getApprovalComment, comment);
+        
+        int affected = appraisalMapper.update(null, updateWrapper);
+        if (affected == 0) {
+            AppraisalRecord current = appraisalMapper.selectById(id);
+            if (current == null) {
+                throw new NotFoundException("鉴定记录不存在");
+            }
+            throw new BusinessException("该鉴定记录不是待审批状态，当前状态：" + current.getStatus());
         }
-
-        record.setStatus(AppraisalRecord.STATUS_REJECTED);
-        record.setApproverId(SecurityUtils.getCurrentUserId());
-        record.setApproverName(SecurityUtils.getCurrentRealName());
-        record.setApprovedAt(LocalDateTime.now());
-        record.setApprovalComment(comment);
-
-        appraisalMapper.updateById(record);
         log.info("鉴定审批拒绝: id={}", id);
     }
 

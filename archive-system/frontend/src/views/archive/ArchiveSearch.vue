@@ -44,24 +44,10 @@
                 clearable
               >
                 <el-option
-                  label="文书档案"
-                  value="DOCUMENT"
-                />
-                <el-option
-                  label="科技档案"
-                  value="SCIENCE"
-                />
-                <el-option
-                  label="会计档案"
-                  value="ACCOUNTING"
-                />
-                <el-option
-                  label="人事档案"
-                  value="PERSONNEL"
-                />
-                <el-option
-                  label="专业档案"
-                  value="SPECIAL"
+                  v-for="item in archiveTypeOptions"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
                 />
               </el-select>
             </el-form-item>
@@ -72,20 +58,10 @@
                 clearable
               >
                 <el-option
-                  label="永久"
-                  value="PERMANENT"
-                />
-                <el-option
-                  label="30年"
-                  value="Y30"
-                />
-                <el-option
-                  label="15年"
-                  value="Y15"
-                />
-                <el-option
-                  label="10年"
-                  value="Y10"
+                  v-for="item in retentionOptions"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
                 />
               </el-select>
             </el-form-item>
@@ -96,16 +72,10 @@
                 clearable
               >
                 <el-option
-                  label="已接收"
-                  value="RECEIVED"
-                />
-                <el-option
-                  label="已归档"
-                  value="STORED"
-                />
-                <el-option
-                  label="借出中"
-                  value="BORROWED"
+                  v-for="item in statusOptions"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
                 />
               </el-select>
             </el-form-item>
@@ -224,10 +194,27 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { Search, Loading, Briefcase, User, Avatar, Clock } from '@element-plus/icons-vue'
 import { searchArchives } from '@/api/archive'
+import {
+  getArchiveTypeName,
+  getStatusName,
+  getStatusType,
+  getArchiveTypeOptions,
+  getRetentionOptions,
+  ARCHIVE_STATUS
+} from '@/utils/archiveEnums'
+import { escapeHtml, escapeRegExp } from '@/utils/security'
 
 const router = useRouter()
+
+// 下拉选项
+const archiveTypeOptions = getArchiveTypeOptions()
+const retentionOptions = getRetentionOptions()
+const statusOptions = Object.entries(ARCHIVE_STATUS)
+  .filter(([key]) => ['RECEIVED', 'STORED', 'BORROWED'].includes(key))
+  .map(([value, label]) => ({ value, label }))
 const keyword = ref('')
 const showAdvanced = ref([])
 const loading = ref(false)
@@ -289,6 +276,7 @@ const fetchResults = async () => {
     total.value = res.data.total || 0
   } catch (e) {
     console.error('搜索失败', e)
+    ElMessage.error(e.response?.data?.message || '搜索失败，请重试')
   } finally {
     loading.value = false
   }
@@ -304,17 +292,41 @@ const goToDetail = (item) => {
   router.push(`/archives/${item.id}`)
 }
 
-// 高亮关键词
+// 高亮关键词 (安全版本：防止正则注入和 XSS)
 const highlightKeyword = (text) => {
-  if (!keyword.value || !text) return text
-  const regex = new RegExp(`(${keyword.value})`, 'gi')
-  return text.replace(regex, '<mark>$1</mark>')
+  if (!keyword.value || !text) return escapeHtml(text)
+  // 1. 先对文本进行 HTML 转义，防止 XSS
+  const safeText = escapeHtml(text)
+  // 2. 对关键词进行正则转义，防止正则注入
+  const safeKeyword = escapeRegExp(keyword.value)
+  // 3. 执行高亮替换
+  const regex = new RegExp(`(${safeKeyword})`, 'gi')
+  return safeText.replace(regex, '<mark>$1</mark>')
+}
+
+// 清理后端高亮结果，只保留安全的 <mark> 标签
+const sanitizeHighlight = (html) => {
+  if (!html) return ''
+  // 先提取 <em> 或 <mark> 标签内的内容及位置
+  // ES 默认使用 <em> 高亮，替换为 <mark>
+  const processed = html
+    .replace(/<em>/gi, '\x00MARK_START\x00')
+    .replace(/<\/em>/gi, '\x00MARK_END\x00')
+    .replace(/<mark>/gi, '\x00MARK_START\x00')
+    .replace(/<\/mark>/gi, '\x00MARK_END\x00')
+  // 转义所有 HTML
+  const escaped = escapeHtml(processed)
+  // 恢复 mark 标签
+  return escaped
+    .replace(/\x00MARK_START\x00/g, '<mark>')
+    .replace(/\x00MARK_END\x00/g, '</mark>')
 }
 
 const getHighlightedTitle = (item) => {
   const highlight = item?.highlights?.title
   if (highlight && highlight.length > 0) {
-    return highlight[0]
+    // 后端返回的高亮结果需要清理，只保留安全的 mark 标签
+    return sanitizeHighlight(highlight[0])
   }
   return highlightKeyword(item?.title)
 }
@@ -325,16 +337,8 @@ const formatDate = (dateStr) => {
   return dateStr.substring(0, 10)
 }
 
-const getTypeName = (type) => {
-  const map = {
-    DOCUMENT: '文书',
-    SCIENCE: '科技',
-    ACCOUNTING: '会计',
-    PERSONNEL: '人事',
-    SPECIAL: '专业'
-  }
-  return map[type] || type
-}
+// 使用 archiveEnums 中导入的 getArchiveTypeName 和 getStatusName
+const getTypeName = getArchiveTypeName
 
 const getTypeColor = (type) => {
   const map = {
@@ -347,25 +351,7 @@ const getTypeColor = (type) => {
   return map[type] || ''
 }
 
-const getStatusName = (status) => {
-  const map = {
-    RECEIVED: '已接收',
-    STORED: '已归档',
-    BORROWED: '借出中',
-    CATALOGING: '整理中'
-  }
-  return map[status] || status
-}
-
-const getStatusColor = (status) => {
-  const map = {
-    RECEIVED: 'warning',
-    STORED: 'success',
-    BORROWED: 'danger',
-    CATALOGING: ''
-  }
-  return map[status] || ''
-}
+const getStatusColor = getStatusType
 </script>
 
 <style lang="scss" scoped>

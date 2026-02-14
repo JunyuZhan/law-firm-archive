@@ -124,12 +124,13 @@ export const useUserStore = defineStore('user', () => {
       const res = await getCurrentUser()
       const data = res.data
       userId.value = data.userId
-      username.value = data.username
-      realName.value = data.realName
+      // 安全处理：与 login 保持一致，防止 XSS
+      username.value = escapeHtml(data.username)
+      realName.value = escapeHtml(data.realName)
       userType.value = data.userType
       isLoggedIn.value = true
       
-      // 更新localStorage
+      // 更新localStorage（存储原始值用于回显，展示时会再次转义）
       const userInfo = {
         userId: data.userId,
         username: data.username,

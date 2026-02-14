@@ -88,12 +88,12 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                         .requestMatchers("/actuator/prometheus").hasRole("SYSTEM_ADMIN")
                         .requestMatchers("/actuator/**").hasRole("SYSTEM_ADMIN")
-                        // 公共基础数据
-                        .requestMatchers("/retention-periods/**").permitAll()
+                        // 公共基础数据（已通过 @PreAuthorize 控制，这里移除 permitAll）
+                        // .requestMatchers("/retention-periods/**").permitAll()
                         // 公开的配置接口（登录前需要加载站点配置）
                         .requestMatchers("/api/configs/group/**").permitAll()
                         .requestMatchers("/configs/group/**").permitAll()
-                        // API文档（生产环境应禁用）
+                        // API文档（生产环境通过 application-prod.yml 禁用 springdoc）
                         .requestMatchers("/doc.html", "/swagger-ui/**", "/v3/api-docs/**", "/webjars/**").permitAll()
                         // 其他接口需要认证
                         .anyRequest().authenticated()

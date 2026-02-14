@@ -208,7 +208,7 @@ import {
   Loading, Document, Download, 
   ZoomIn, ZoomOut, FullScreen, RefreshLeft, RefreshRight 
 } from '@element-plus/icons-vue'
-import { getFilePreviewUrl, getFileDownloadUrl } from '@/api/archive'
+import { getFilePreviewInfo, getFileDownloadUrl } from '@/api/archive'
 
 const props = defineProps({
   modelValue: {
@@ -255,8 +255,17 @@ const imagePosition = ref({ x: 0, y: 0 })
 const isDragging = ref(false)
 const dragStart = ref({ x: 0, y: 0 })
 
-// 根据扩展名判断预览类型
+// 预览类型（从后端获取，支持 Office 转 PDF 后正确显示）
+const actualPreviewType = ref('unsupported')
+
+// 根据扩展名判断预览类型（仅当直接传入 URL 时使用）
 const previewType = computed(() => {
+  // 如果从后端获取了预览类型，使用后端返回的类型
+  if (actualPreviewType.value !== 'unsupported') {
+    return actualPreviewType.value
+  }
+  
+  // 回退到基于扩展名的判断（仅当直接传入 URL 时使用）
   const ext = props.fileExtension?.toLowerCase() || ''
   
   if (ext === 'pdf' || ext === 'ofd') return 'pdf'
@@ -320,12 +329,25 @@ const loadPreview = async () => {
   if (!props.fileId) return
   
   loading.value = true
+  // 重置预览类型
+  actualPreviewType.value = 'unsupported'
+  
   try {
-    // 获取预览URL
-    const previewRes = await getFilePreviewUrl(props.fileId)
-    previewUrl.value = previewRes.data || ''
+    // 获取预览信息（包含URL和预览类型）
+    const previewRes = await getFilePreviewInfo(props.fileId)
+    const previewInfo = previewRes.data
     
-    // 获取下载URL
+    if (previewInfo) {
+      previewUrl.value = previewInfo.url || ''
+      actualPreviewType.value = previewInfo.previewType || 'unsupported'
+      
+      // 如果是转换后的文件，显示提示
+      if (previewInfo.isConverted) {
+        console.log(`文件已从 ${previewInfo.originalExtension} 转换为 PDF`)
+      }
+    }
+    
+    // 获取下载URL（始终返回原始文件）
     const downloadRes = await getFileDownloadUrl(props.fileId)
     downloadUrl.value = downloadRes.data || ''
   } catch (e) {

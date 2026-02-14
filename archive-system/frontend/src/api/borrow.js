@@ -77,12 +77,14 @@ export function approveBorrow(id, remarks) {
 
 /**
  * 审批拒绝
+ * @param {number} id - 借阅申请ID
+ * @param {object} data - 拒绝原因对象 { reason: string }
  */
-export function rejectBorrow(id, reason) {
+export function rejectBorrow(id, data) {
   return request({
     url: `/borrows/${id}/reject`,
     method: 'put',
-    params: { reason }
+    data
   })
 }
 

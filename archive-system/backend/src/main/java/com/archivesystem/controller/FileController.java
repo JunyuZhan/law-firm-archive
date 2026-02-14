@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -17,6 +18,10 @@ import java.util.List;
 
 /**
  * 文件上传控制器.
+ * 
+ * 权限说明：
+ * - 上传/删除：仅管理员和档案员
+ * - 下载/预览：所有已认证用户
  */
 @Slf4j
 @RestController
@@ -32,6 +37,7 @@ public class FileController {
      */
     @PostMapping("/upload")
     @Operation(summary = "上传文件", description = "上传文件，返回文件ID，后续可关联到档案")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
     public Result<DigitalFileDTO> upload(
             @RequestParam("file") MultipartFile file,
             @Parameter(description = "文件分类") @RequestParam(required = false) String fileCategory) {
@@ -57,6 +63,7 @@ public class FileController {
      */
     @PostMapping("/upload/batch")
     @Operation(summary = "批量上传文件")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
     public Result<List<DigitalFileDTO>> uploadBatch(
             @RequestParam("files") MultipartFile[] files,
             @Parameter(description = "文件分类") @RequestParam(required = false) String fileCategory) {
@@ -89,6 +96,7 @@ public class FileController {
      */
     @GetMapping("/{id}/download")
     @Operation(summary = "获取下载链接")
+    @PreAuthorize("isAuthenticated()")
     public Result<String> getDownloadUrl(@PathVariable Long id) {
         String url = fileStorageService.getDownloadUrl(id);
         return Result.success(url);
@@ -99,9 +107,20 @@ public class FileController {
      */
     @GetMapping("/{id}/preview")
     @Operation(summary = "获取预览链接")
+    @PreAuthorize("isAuthenticated()")
     public Result<String> getPreviewUrl(@PathVariable Long id) {
         String url = fileStorageService.getPreviewUrl(id);
         return Result.success(url);
+    }
+
+    /**
+     * 获取文件预览信息（包含URL和预览类型）.
+     */
+    @GetMapping("/{id}/preview-info")
+    @Operation(summary = "获取预览信息")
+    @PreAuthorize("isAuthenticated()")
+    public Result<com.archivesystem.dto.file.FilePreviewInfo> getPreviewInfo(@PathVariable Long id) {
+        return Result.success(fileStorageService.getPreviewInfo(id));
     }
 
     /**
@@ -109,6 +128,7 @@ public class FileController {
      */
     @DeleteMapping("/{id}")
     @Operation(summary = "删除文件")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
     public Result<Void> delete(@PathVariable Long id) {
         fileStorageService.delete(id);
         return Result.success("删除成功", null);

@@ -11,6 +11,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -20,11 +21,13 @@ import java.util.Map;
 
 /**
  * 操作日志控制器.
+ * 操作日志属于敏感审计信息，仅管理员和档案员可访问
  */
 @Tag(name = "操作日志", description = "操作日志查询与导出")
 @RestController
 @RequestMapping("/operation-logs")
 @RequiredArgsConstructor
+@PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
 public class OperationLogController {
 
     private final OperationLogService operationLogService;

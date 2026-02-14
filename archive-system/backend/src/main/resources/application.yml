@@ -1,3 +1,15 @@
+# ============================================================================
+# 开发环境配置文件
+# ============================================================================
+# ⚠️ 安全警告：
+# 本文件包含开发环境的默认密码和密钥，仅用于本地开发测试！
+# 
+# 🔴 生产环境部署时必须：
+#   1. 使用 --spring.profiles.active=prod 启动
+#   2. 通过环境变量配置所有敏感信息（参见 application-prod.yml）
+#   3. 切勿将生产密码提交到代码仓库
+# ============================================================================
+
 server:
   port: 8090
   servlet:
@@ -13,27 +25,27 @@ spring:
       max-file-size: 100MB
       max-request-size: 500MB
   
-  # 数据源配置
+  # 数据源配置（⚠️ 仅开发环境使用默认值）
   datasource:
     url: jdbc:postgresql://localhost:5433/archive_system
     username: postgres
-    password: postgres
+    password: postgres  # ⚠️ 生产环境必须使用环境变量 SPRING_DATASOURCE_PASSWORD
     driver-class-name: org.postgresql.Driver
   
-  # Redis配置
+  # Redis配置（⚠️ 仅开发环境使用默认值）
   data:
     redis:
       host: localhost
       port: 6380
-      password: ""
+      password: ""  # ⚠️ 生产环境必须使用环境变量 REDIS_PASSWORD
       database: 1
   
-  # RabbitMQ配置
+  # RabbitMQ配置（⚠️ 仅开发环境使用默认值）
   rabbitmq:
     host: localhost
     port: 5672
     username: admin
-    password: admin123
+    password: admin123  # ⚠️ 生产环境必须使用环境变量 RABBITMQ_PASSWORD
     virtual-host: /
     listener:
       simple:
@@ -120,18 +132,19 @@ mybatis-plus:
       logic-delete-value: true
       logic-not-delete-value: false
 
-# MinIO配置
+# MinIO配置（⚠️ 仅开发环境使用默认值）
 minio:
   endpoint: http://localhost:9002
-  access-key: minioadmin
-  secret-key: minioadmin
+  access-key: minioadmin  # ⚠️ 生产环境必须使用环境变量 MINIO_ACCESS_KEY
+  secret-key: minioadmin  # ⚠️ 生产环境必须使用环境变量 MINIO_SECRET_KEY
   bucket-name: archive-system
 
-# JWT配置
+# JWT配置（⚠️ 生产环境必须配置强密钥）
 jwt:
-  secret: ${JWT_SECRET:your-256-bit-secret-key-for-archive-system-2026}
-  expiration: 86400000  # 24小时
-  refresh-expiration: 604800000  # 7天
+  secret: ${JWT_SECRET:your-256-bit-secret-key-for-archive-system-2026}  # ⚠️ 生产环境必须设置 JWT_SECRET 环境变量
+  # ⚠️ Token 过期时间：开发环境较长便于调试，生产环境建议缩短
+  expiration: ${JWT_EXPIRATION:7200000}      # Access Token 过期时间，默认2小时（生产环境建议1-2小时）
+  refresh-expiration: ${JWT_REFRESH_EXPIRATION:259200000}  # Refresh Token 过期时间，默认3天（生产环境建议1-3天）
 
 # 安全配置
 security:
@@ -166,10 +179,21 @@ knife4j:
   setting:
     language: zh_cn
 
+# JODConverter 文档转换配置（Office -> PDF）
+jodconverter:
+  local:
+    enabled: ${JODCONVERTER_LOCAL_ENABLED:false}
+    office-home: ${JODCONVERTER_LOCAL_OFFICE_HOME:/usr/lib/libreoffice}
+    port-numbers: ${JODCONVERTER_LOCAL_PORT_NUMBERS:2002}
+    max-tasks-per-process: 100
+    task-execution-timeout: 120000
+    task-queue-timeout: 30000
+
 # 日志配置
 logging:
   level:
     com.archivesystem: debug
     org.springframework.security: info
+    org.jodconverter: info
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{traceId:-}] %-5level %logger{36} - %msg%n"

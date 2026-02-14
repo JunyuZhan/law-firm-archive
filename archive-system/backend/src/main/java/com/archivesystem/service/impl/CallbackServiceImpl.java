@@ -1,11 +1,12 @@
 package com.archivesystem.service.impl;
 
+import com.archivesystem.entity.CallbackRecord;
 import com.archivesystem.entity.ExternalSource;
 import com.archivesystem.mq.CallbackMessage;
+import com.archivesystem.repository.CallbackRecordMapper;
 import com.archivesystem.repository.ExternalSourceMapper;
 import com.archivesystem.service.CallbackService;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
@@ -15,7 +16,6 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
-import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -24,20 +24,36 @@ import java.util.Map;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class CallbackServiceImpl implements CallbackService {
 
     private final ObjectMapper objectMapper;
     private final ExternalSourceMapper externalSourceMapper;
+    private final CallbackRecordMapper callbackRecordMapper;
     
-    // 使用共享的RestTemplate（生产环境建议配置连接池）
-    private final RestTemplate restTemplate = new RestTemplate();
+    // 配置了超时的 RestTemplate
+    private final RestTemplate restTemplate;
     
-    // 回调超时时间（秒）
-    private static final int CALLBACK_TIMEOUT = 30;
+    // 回调超时时间（毫秒）
+    private static final int CALLBACK_CONNECT_TIMEOUT = 5000;  // 连接超时 5 秒
+    private static final int CALLBACK_READ_TIMEOUT = 30000;    // 读取超时 30 秒
     
-    // 默认回调密钥（当无法获取配置时使用）
+    // 默认回调密钥（当无法获取配置时使用，生产环境应配置具体密钥）
     private static final String DEFAULT_CALLBACK_SECRET = "archive-callback-secret";
+
+    public CallbackServiceImpl(ObjectMapper objectMapper, 
+                               ExternalSourceMapper externalSourceMapper,
+                               CallbackRecordMapper callbackRecordMapper) {
+        this.objectMapper = objectMapper;
+        this.externalSourceMapper = externalSourceMapper;
+        this.callbackRecordMapper = callbackRecordMapper;
+        
+        // 配置 RestTemplate 超时
+        org.springframework.http.client.SimpleClientHttpRequestFactory factory = 
+                new org.springframework.http.client.SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(CALLBACK_CONNECT_TIMEOUT);
+        factory.setReadTimeout(CALLBACK_READ_TIMEOUT);
+        this.restTemplate = new RestTemplate(factory);
+    }
 
     @Override
     public boolean sendCallback(CallbackMessage message) {
@@ -95,25 +111,32 @@ public class CallbackServiceImpl implements CallbackService {
     
     /**
      * 获取回调密钥
-     * 优先从外部来源配置获取，否则使用默认密钥
+     * 按 sourceType 查询外部来源配置，否则使用默认密钥
      */
     private String getCallbackSecret(String sourceType) {
         if (sourceType != null) {
             try {
+                // 先按 sourceCode 查，再按 sourceType 查
                 ExternalSource source = externalSourceMapper.selectBySourceCode(sourceType);
+                if (source == null) {
+                    source = externalSourceMapper.selectBySourceType(sourceType);
+                }
                 if (source != null && source.getApiKey() != null && !source.getApiKey().isEmpty()) {
+                    log.debug("使用外部来源密钥: sourceType={}, sourceCode={}", sourceType, source.getSourceCode());
                     return source.getApiKey();
                 }
             } catch (Exception e) {
                 log.warn("获取外部来源配置失败，使用默认密钥: sourceType={}, error={}", sourceType, e.getMessage());
             }
         }
+        log.warn("未找到外部来源配置，使用默认密钥: sourceType={}", sourceType);
         return DEFAULT_CALLBACK_SECRET;
     }
     
     /**
      * 使用 HMAC-SHA256 生成签名（与律所系统保持一致）
      * 签名格式：HMAC-SHA256(timestamp + "\n" + body, secret)
+     * 输出格式：十六进制字符串（与律所系统 hexDecode 兼容）
      */
     private String generateHmacSignature(String timestamp, String body, String secret) {
         try {
@@ -122,11 +145,23 @@ public class CallbackServiceImpl implements CallbackService {
             SecretKeySpec secretKeySpec = new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
             mac.init(secretKeySpec);
             byte[] hmacBytes = mac.doFinal(data.getBytes(StandardCharsets.UTF_8));
-            return Base64.getEncoder().encodeToString(hmacBytes);
+            // 使用十六进制编码（与律所系统 hexDecode 保持一致）
+            return bytesToHex(hmacBytes);
         } catch (Exception e) {
             log.error("生成HMAC签名失败: {}", e.getMessage());
             return "";
         }
+    }
+    
+    /**
+     * 字节数组转十六进制字符串
+     */
+    private String bytesToHex(byte[] bytes) {
+        StringBuilder sb = new StringBuilder();
+        for (byte b : bytes) {
+            sb.append(String.format("%02x", b));
+        }
+        return sb.toString();
     }
 
     @Override
@@ -137,13 +172,27 @@ public class CallbackServiceImpl implements CallbackService {
                 message.getCallbackUrl(),
                 errorMessage);
         
-        // TODO: 可扩展为持久化到数据库，用于后续人工处理或重试
-        // callbackFailureRepository.save(CallbackFailure.builder()
-        //         .archiveId(message.getArchiveId())
-        //         .callbackUrl(message.getCallbackUrl())
-        //         .errorMessage(errorMessage)
-        //         .failedAt(LocalDateTime.now())
-        //         .build());
+        // 持久化失败的回调记录，便于后续人工处理或重试
+        try {
+            CallbackRecord record = CallbackRecord.builder()
+                    .archiveId(message.getArchiveId())
+                    .archiveNo(message.getArchiveNo())
+                    .callbackUrl(message.getCallbackUrl())
+                    .callbackType(CallbackRecord.TYPE_FILE_TRANSFERRED)
+                    .callbackStatus(CallbackRecord.STATUS_FAILED)
+                    .requestBody(buildCallbackPayload(message))
+                    .retryCount(message.getRetryCount())
+                    .maxRetries(message.getMaxRetries())
+                    .errorMessage(errorMessage)
+                    .callbackAt(message.getCompletedAt())
+                    .completedAt(LocalDateTime.now())
+                    .build();
+            
+            callbackRecordMapper.insert(record);
+            log.info("失败回调记录已保存: recordId={}, archiveId={}", record.getId(), message.getArchiveId());
+        } catch (Exception e) {
+            log.error("保存失败回调记录异常: archiveId={}, error={}", message.getArchiveId(), e.getMessage());
+        }
     }
     
     /**

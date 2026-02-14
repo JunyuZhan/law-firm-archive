@@ -1,5 +1,6 @@
 package com.archivesystem.service;
 
+import com.archivesystem.dto.file.FilePreviewInfo;
 import com.archivesystem.entity.DigitalFile;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -27,6 +28,11 @@ public interface FileStorageService {
      * 获取文件预览URL.
      */
     String getPreviewUrl(Long fileId);
+
+    /**
+     * 获取文件预览信息（包含URL和预览类型）.
+     */
+    FilePreviewInfo getPreviewInfo(Long fileId);
 
     /**
      * 删除文件.

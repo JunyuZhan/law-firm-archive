@@ -159,6 +159,9 @@ public class MinioService {
      * 获取预签名URL（指定有效期）.
      */
     public String getPresignedUrl(String objectName, int expirySeconds) {
+        // 验证 objectName 防止路径穿越攻击
+        validateObjectName(objectName);
+        
         try {
             return minioClient.getPresignedObjectUrl(GetPresignedObjectUrlArgs.builder()
                     .bucket(bucketName)
@@ -169,6 +172,25 @@ public class MinioService {
         } catch (Exception e) {
             log.error("获取预签名URL失败: {}", objectName, e);
             throw new RuntimeException("获取下载链接失败: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * 验证 objectName 防止路径穿越攻击
+     */
+    private void validateObjectName(String objectName) {
+        if (objectName == null || objectName.isEmpty()) {
+            throw new IllegalArgumentException("对象名称不能为空");
+        }
+        // 检查路径穿越字符
+        if (objectName.contains("..") || objectName.contains("//") || objectName.startsWith("/")) {
+            log.warn("检测到可疑的对象名称: {}", objectName);
+            throw new IllegalArgumentException("非法的对象名称");
+        }
+        // 检查空字节注入
+        if (objectName.contains("\0")) {
+            log.warn("检测到空字节注入: {}", objectName);
+            throw new IllegalArgumentException("非法的对象名称");
         }
     }
 

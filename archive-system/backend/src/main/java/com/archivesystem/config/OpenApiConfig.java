@@ -7,13 +7,16 @@ import io.swagger.v3.oas.models.info.License;
 import io.swagger.v3.oas.models.servers.Server;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 
 import java.util.List;
 
 /**
  * OpenAPI配置.
+ * 仅在非生产环境启用，生产环境禁用 Swagger 文档
  */
 @Configuration
+@Profile("!prod")
 public class OpenApiConfig {
 
     @Bean

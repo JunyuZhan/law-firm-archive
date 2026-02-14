@@ -26,6 +26,16 @@ export function escapeHtml(str) {
 }
 
 /**
+ * 转义正则表达式特殊字符，防止正则注入
+ * @param {string} str - 需要转义的字符串
+ * @returns {string} 转义后的安全字符串
+ */
+export function escapeRegExp(str) {
+  if (!str) return ''
+  return String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+/**
  * 检测字符串是否包含XSS攻击代码
  * @param {string} str - 需要检测的字符串
  * @returns {boolean} 是否包含危险内容
@@ -339,6 +349,7 @@ export function initSecurity() {
 
 export default {
   escapeHtml,
+  escapeRegExp,
   containsXss,
   sanitizeInput,
   secureStorage,

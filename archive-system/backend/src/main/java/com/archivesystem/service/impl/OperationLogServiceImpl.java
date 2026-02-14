@@ -47,7 +47,8 @@ public class OperationLogServiceImpl implements OperationLogService {
             try {
                 operationLog.setOperatorId(SecurityUtils.getCurrentUserId());
                 operationLog.setOperatorName(SecurityUtils.getCurrentRealName());
-            } catch (Exception ignored) {
+            } catch (Exception e) {
+                log.debug("获取操作人信息失败（可能是非登录场景）: {}", e.getMessage());
             }
         }
         
@@ -59,7 +60,8 @@ public class OperationLogServiceImpl implements OperationLogService {
                 operationLog.setOperatorIp(getClientIp(request));
                 operationLog.setOperatorUa(request.getHeader("User-Agent"));
             }
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            log.debug("获取请求信息失败（可能是非 HTTP 场景）: {}", e.getMessage());
         }
         
         operationLogMapper.insert(operationLog);
@@ -185,29 +187,28 @@ public class OperationLogServiceImpl implements OperationLogService {
         
         // 生成CSV
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        PrintWriter writer = new PrintWriter(baos);
-        
-        // BOM for Excel
-        writer.print('\ufeff');
-        // Header
-        writer.println("ID,对象类型,对象ID,操作类型,操作描述,操作人,操作人ID,操作IP,操作时间");
-        
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-        for (OperationLog logItem : logs) {
-            writer.printf("%d,%s,%s,%s,\"%s\",%s,%d,%s,%s%n",
-                    logItem.getId(),
-                    logItem.getObjectType() != null ? logItem.getObjectType() : "",
-                    logItem.getObjectId() != null ? logItem.getObjectId() : "",
-                    logItem.getOperationType() != null ? logItem.getOperationType() : "",
-                    logItem.getOperationDesc() != null ? logItem.getOperationDesc().replace("\"", "\"\"") : "",
-                    logItem.getOperatorName() != null ? logItem.getOperatorName() : "",
-                    logItem.getOperatorId() != null ? logItem.getOperatorId() : 0,
-                    logItem.getOperatorIp() != null ? logItem.getOperatorIp() : "",
-                    logItem.getOperatedAt() != null ? logItem.getOperatedAt().format(formatter) : ""
-            );
+        try (PrintWriter writer = new PrintWriter(baos)) {
+            // BOM for Excel
+            writer.print('\ufeff');
+            // Header
+            writer.println("ID,对象类型,对象ID,操作类型,操作描述,操作人,操作人ID,操作IP,操作时间");
+            
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+            for (OperationLog logItem : logs) {
+                writer.printf("%d,%s,%s,%s,\"%s\",%s,%d,%s,%s%n",
+                        logItem.getId(),
+                        logItem.getObjectType() != null ? logItem.getObjectType() : "",
+                        logItem.getObjectId() != null ? logItem.getObjectId() : "",
+                        logItem.getOperationType() != null ? logItem.getOperationType() : "",
+                        logItem.getOperationDesc() != null ? logItem.getOperationDesc().replace("\"", "\"\"") : "",
+                        logItem.getOperatorName() != null ? logItem.getOperatorName() : "",
+                        logItem.getOperatorId() != null ? logItem.getOperatorId() : 0,
+                        logItem.getOperatorIp() != null ? logItem.getOperatorIp() : "",
+                        logItem.getOperatedAt() != null ? logItem.getOperatedAt().format(formatter) : ""
+                );
+            }
+            writer.flush();
         }
-        
-        writer.flush();
         return baos.toByteArray();
     }
 

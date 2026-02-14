@@ -88,24 +88,10 @@
                   style="width: 100%"
                 >
                   <el-option
-                    label="文书档案"
-                    value="DOCUMENT"
-                  />
-                  <el-option
-                    label="科技档案"
-                    value="SCIENCE"
-                  />
-                  <el-option
-                    label="会计档案"
-                    value="ACCOUNTING"
-                  />
-                  <el-option
-                    label="人事档案"
-                    value="PERSONNEL"
-                  />
-                  <el-option
-                    label="专业档案"
-                    value="SPECIAL"
+                    v-for="item in archiveTypeOptions"
+                    :key="item.value"
+                    :label="item.label"
+                    :value="item.value"
                   />
                 </el-select>
               </el-form-item>
@@ -121,24 +107,10 @@
                   style="width: 100%"
                 >
                   <el-option
-                    label="永久"
-                    value="PERMANENT"
-                  />
-                  <el-option
-                    label="30年"
-                    value="Y30"
-                  />
-                  <el-option
-                    label="15年"
-                    value="Y15"
-                  />
-                  <el-option
-                    label="10年"
-                    value="Y10"
-                  />
-                  <el-option
-                    label="5年"
-                    value="Y5"
+                    v-for="item in retentionOptions"
+                    :key="item.value"
+                    :label="item.label"
+                    :value="item.value"
                   />
                 </el-select>
               </el-form-item>
@@ -387,8 +359,19 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { createArchive } from '@/api/archive'
 import BatchUpload from '@/components/BatchUpload.vue'
+import {
+  getArchiveTypeName,
+  getRetentionName,
+  getSecurityName,
+  getArchiveTypeOptions,
+  getRetentionOptions
+} from '@/utils/archiveEnums'
 
 const router = useRouter()
+
+// 下拉选项
+const archiveTypeOptions = getArchiveTypeOptions()
+const retentionOptions = getRetentionOptions()
 
 const currentStep = ref(0)
 const batchUploadRef = ref(null)
@@ -529,38 +512,9 @@ const uploadedFiles = computed(() => {
     .filter(f => f.status === 'success')
 })
 
-// 格式化函数
-const getArchiveTypeName = (type) => {
-  const map = {
-    DOCUMENT: '文书档案',
-    SCIENCE: '科技档案',
-    ACCOUNTING: '会计档案',
-    PERSONNEL: '人事档案',
-    SPECIAL: '专业档案'
-  }
-  return map[type] || type
-}
-
-const getRetentionName = (code) => {
-  const map = {
-    PERMANENT: '永久',
-    Y30: '30年',
-    Y15: '15年',
-    Y10: '10年',
-    Y5: '5年'
-  }
-  return map[code] || code
-}
-
-const getSecurityLevelName = (level) => {
-  const map = {
-    PUBLIC: '公开',
-    INTERNAL: '内部',
-    CONFIDENTIAL: '秘密',
-    SECRET: '机密'
-  }
-  return map[level] || '内部'
-}
+// 注：getArchiveTypeName, getRetentionName, getSecurityName 已从 archiveEnums.js 导入
+// 为兼容模板中的调用，保留别名
+const getSecurityLevelName = getSecurityName
 </script>
 
 <style lang="scss" scoped>

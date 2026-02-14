@@ -158,10 +158,90 @@ GET /api/open/health
 
 ### 环境变量
 ```bash
+# 数据库配置
 SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5433/archive_system
 SPRING_DATASOURCE_USERNAME=postgres
 SPRING_DATASOURCE_PASSWORD=postgres
+
+# Redis配置
+SPRING_REDIS_HOST=localhost
+SPRING_REDIS_PORT=6380
+
+# MinIO配置
 MINIO_ENDPOINT=http://localhost:9002
+MINIO_ACCESS_KEY=minioadmin
+MINIO_SECRET_KEY=minioadmin
+MINIO_BUCKET=archives
+
+# JWT配置
+JWT_SECRET=your-secret-key
+JWT_EXPIRATION=86400000
+
+# Elasticsearch配置（可选）
+ELASTICSEARCH_HOST=localhost
+ELASTICSEARCH_PORT=9200
+
+# RabbitMQ配置（可选）
+RABBITMQ_HOST=localhost
+RABBITMQ_PORT=5672
+RABBITMQ_USERNAME=guest
+RABBITMQ_PASSWORD=guest
+```
+
+## 开发指南
+
+### 后端开发
+
+#### 运行测试
+```bash
+cd backend
+# 运行所有测试
+mvn test
+
+# 运行单个测试类
+mvn test -Dtest=ArchiveServiceTest
+
+# 生成测试覆盖率报告
+mvn jacoco:report
+```
+
+#### 代码规范
+- 使用 Checkstyle 检查代码规范
+- Controller 需添加 `@PreAuthorize` 权限控制
+- 使用 DTO 进行请求/响应数据传输
+- 添加 Swagger 注解用于 API 文档
+
+### 前端开发
+
+#### 运行测试
+```bash
+cd frontend
+# 运行单元测试
+npm run test
+
+# 运行 ESLint 检查
+npm run lint
+
+# 修复 ESLint 问题
+npm run lint:fix
+```
+
+#### 代码规范
+- 使用 `@/utils/archiveEnums.js` 统一管理枚举映射
+- API 调用需添加错误处理和用户提示
+- 按钮操作需添加 loading 状态
+
+### 构建部署
+```bash
+# 后端构建
+cd backend
+mvn clean package -DskipTests
+# 生成 target/archive-system-0.0.1-SNAPSHOT.jar
+
+# 前端构建
+cd frontend
+npm run build
+# 生成 dist/ 目录
 ```
 
 ## 分支管理

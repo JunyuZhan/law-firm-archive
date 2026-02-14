@@ -1,5 +1,6 @@
 package com.archivesystem.config;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.*;
 import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
@@ -17,6 +18,7 @@ import org.springframework.context.annotation.Configuration;
  * - archive.receive.dlq: 死信队列（处理失败的消息）
  * - archive.callback.queue: 回调通知队列
  */
+@Slf4j
 @Configuration
 public class RabbitMQConfig {
 
@@ -132,7 +134,8 @@ public class RabbitMQConfig {
         template.setConfirmCallback((correlationData, ack, cause) -> {
             if (!ack) {
                 // 消息发送失败处理
-                System.err.println("消息发送失败: " + cause);
+                log.error("RabbitMQ 消息发送失败: correlationData={}, cause={}", 
+                        correlationData != null ? correlationData.getId() : "null", cause);
             }
         });
         return template;

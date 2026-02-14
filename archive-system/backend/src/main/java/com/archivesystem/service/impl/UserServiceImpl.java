@@ -3,11 +3,14 @@ package com.archivesystem.service.impl;
 import com.archivesystem.common.PageResult;
 import com.archivesystem.common.exception.BusinessException;
 import com.archivesystem.common.exception.NotFoundException;
+import com.archivesystem.entity.OperationLog;
 import com.archivesystem.entity.User;
 import com.archivesystem.entity.UserRole;
 import com.archivesystem.repository.UserMapper;
 import com.archivesystem.repository.UserRoleMapper;
 import com.archivesystem.security.PasswordValidator;
+import com.archivesystem.security.SecurityUtils;
+import com.archivesystem.service.OperationLogService;
 import com.archivesystem.service.UserService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -33,6 +36,7 @@ public class UserServiceImpl implements UserService {
     private final UserRoleMapper userRoleMapper;
     private final PasswordEncoder passwordEncoder;
     private final PasswordValidator passwordValidator;
+    private final OperationLogService operationLogService;
 
     @Override
     @Transactional
@@ -55,6 +59,7 @@ public class UserServiceImpl implements UserService {
         userMapper.insert(user);
         log.info("创建用户: id={}, username={}", user.getId(), user.getUsername());
 
+        user.setPassword(null); // 不返回密码哈希
         return user;
     }
 
@@ -82,6 +87,7 @@ public class UserServiceImpl implements UserService {
         existing.setDepartment(user.getDepartment());
 
         userMapper.updateById(existing);
+        existing.setPassword(null); // 不返回密码哈希
         return existing;
     }
 
@@ -165,6 +171,14 @@ public class UserServiceImpl implements UserService {
         user.setPassword(passwordEncoder.encode(newPassword));
         userMapper.updateById(user);
         log.info("重置用户密码: id={}", id);
+        
+        // 记录安全审计日志
+        operationLogService.log(OperationLog.builder()
+                .objectType("USER")
+                .objectId(String.valueOf(id))
+                .operationType("PASSWORD_RESET")
+                .operationDesc(String.format("管理员重置用户[%s]的密码", user.getUsername()))
+                .build());
     }
 
     @Override
@@ -194,6 +208,14 @@ public class UserServiceImpl implements UserService {
         user.setPassword(passwordEncoder.encode(newPassword));
         userMapper.updateById(user);
         log.info("修改用户密码: id={}", id);
+        
+        // 记录安全审计日志
+        operationLogService.log(OperationLog.builder()
+                .objectType("USER")
+                .objectId(String.valueOf(id))
+                .operationType("PASSWORD_CHANGE")
+                .operationDesc(String.format("用户[%s]修改了自己的密码", user.getUsername()))
+                .build());
     }
 
     @Override

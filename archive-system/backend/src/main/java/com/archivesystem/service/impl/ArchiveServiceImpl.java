@@ -19,6 +19,7 @@ import com.archivesystem.service.ArchiveService;
 import com.archivesystem.service.ConfigService;
 import com.archivesystem.service.FileStorageService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
@@ -32,7 +33,9 @@ import org.springframework.util.StringUtils;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -128,8 +131,27 @@ public class ArchiveServiceImpl implements ArchiveService {
             }
         }
 
-        archiveMapper.insert(archive);
-        log.info("档案创建成功: id={}, archiveNo={}", archive.getId(), archiveNo);
+        // 插入档案记录（处理并发下的唯一键冲突）
+        try {
+            archiveMapper.insert(archive);
+            log.info("档案创建成功: id={}, archiveNo={}", archive.getId(), archiveNo);
+        } catch (org.springframework.dao.DuplicateKeyException e) {
+            // 并发情况下，另一个请求已经创建了档案，返回已有档案
+            log.info("并发创建检测到重复档案，返回已有档案: sourceType={}, sourceId={}", 
+                    request.getSourceType(), request.getSourceId());
+            Archive concurrentArchive = archiveMapper.selectBySourceId(request.getSourceType(), request.getSourceId());
+            if (concurrentArchive != null) {
+                return ArchiveReceiveResponse.builder()
+                        .archiveId(concurrentArchive.getId())
+                        .archiveNo(concurrentArchive.getArchiveNo())
+                        .status(concurrentArchive.getStatus())
+                        .receivedAt(concurrentArchive.getReceivedAt())
+                        .fileCount(concurrentArchive.getFileCount())
+                        .message("档案已存在（并发检测）")
+                        .build();
+            }
+            throw e; // 如果不是来源ID唯一约束冲突，重新抛出异常
+        }
 
         // 创建推送记录
         PushRecord pushRecord = PushRecord.builder()
@@ -176,6 +198,7 @@ public class ArchiveServiceImpl implements ArchiveService {
                         .build();
             } else {
                 // 同步处理（向后兼容）
+                List<String> failedFileNames = new ArrayList<>();
                 for (int i = 0; i < request.getFiles().size(); i++) {
                     ArchiveReceiveRequest.FileInfo fileInfo = request.getFiles().get(i);
                     try {
@@ -189,22 +212,39 @@ public class ArchiveServiceImpl implements ArchiveService {
                         if (digitalFile != null) {
                             fileCount++;
                             totalSize += digitalFile.getFileSize() != null ? digitalFile.getFileSize() : 0;
+                        } else {
+                            failedFileNames.add(fileInfo.getFileName());
                         }
                     } catch (Exception e) {
-                        log.error("文件下载失败: {}", fileInfo.getFileName(), e);
+                        log.error("文件下载失败: fileName={}, error={}", fileInfo.getFileName(), e.getMessage());
+                        failedFileNames.add(fileInfo.getFileName());
                     }
+                }
+                
+                if (!failedFileNames.isEmpty()) {
+                    log.warn("部分文件下载失败: archiveId={}, failedFiles={}", archive.getId(), failedFileNames);
                 }
 
                 // 更新档案的文件统计
+                int totalCount = request.getFiles().size();
+                int failedCount = totalCount - fileCount;
+                String finalStatus = failedCount == 0 ? Archive.STATUS_RECEIVED 
+                        : (fileCount > 0 ? Archive.STATUS_PARTIAL : Archive.STATUS_FAILED);
+                
                 archive.setFileCount(fileCount);
                 archive.setTotalFileSize(totalSize);
-                archive.setStatus(Archive.STATUS_RECEIVED);
+                archive.setStatus(finalStatus);
                 archiveMapper.updateById(archive);
+                
+                // 同步更新推送记录状态
+                pushRecord.setPushStatus(finalStatus);
+                pushRecord.setSuccessFiles(fileCount);
+                pushRecord.setFailedFiles(failedCount);
+                pushRecord.setProcessedAt(LocalDateTime.now());
+                pushRecordMapper.updateById(pushRecord);
 
                 // 同步路径：文件转移完成后发送回调（与异步路径一致，便于律所系统开始90天清理倒计时）
                 if (request.getCallbackUrl() != null && !request.getCallbackUrl().isEmpty()) {
-                    int totalCount = request.getFiles().size();
-                    int failedCount = totalCount - fileCount;
                     String status = failedCount == 0 ? CallbackMessage.STATUS_SUCCESS
                             : (fileCount > 0 ? CallbackMessage.STATUS_PARTIAL : CallbackMessage.STATUS_FAILED);
                     CallbackMessage callback = CallbackMessage.builder()
@@ -235,7 +275,7 @@ public class ArchiveServiceImpl implements ArchiveService {
         return ArchiveReceiveResponse.builder()
                 .archiveId(archive.getId())
                 .archiveNo(archiveNo)
-                .status(Archive.STATUS_RECEIVED)
+                .status(archive.getStatus())
                 .receivedAt(archive.getReceivedAt())
                 .fileCount(fileCount)
                 .message("接收成功")
@@ -331,7 +371,39 @@ public class ArchiveServiceImpl implements ArchiveService {
 
         archiveMapper.updateById(archive);
 
+        // 处理文件关联更新（如果提供了fileIds）
+        if (request.getFileIds() != null) {
+            updateFileAssociations(id, request.getFileIds());
+        }
+
         return getById(id);
+    }
+
+    /**
+     * 更新档案文件关联.
+     * 将传入的fileIds与档案关联，已关联的保持不变，新增的进行关联。
+     */
+    private void updateFileAssociations(Long archiveId, List<Long> newFileIds) {
+        if (newFileIds == null || newFileIds.isEmpty()) {
+            return;
+        }
+        
+        // 获取当前已关联的文件
+        LambdaQueryWrapper<DigitalFile> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(DigitalFile::getArchiveId, archiveId);
+        List<DigitalFile> existingFiles = digitalFileMapper.selectList(queryWrapper);
+        Set<Long> existingFileIds = existingFiles.stream()
+                .map(DigitalFile::getId)
+                .collect(Collectors.toSet());
+        
+        // 找出需要新增关联的文件ID
+        List<Long> toAssociate = newFileIds.stream()
+                .filter(fileId -> !existingFileIds.contains(fileId))
+                .toList();
+        
+        if (!toAssociate.isEmpty()) {
+            associateFiles(archiveId, toAssociate);
+        }
     }
 
     @Override
@@ -435,6 +507,17 @@ public class ArchiveServiceImpl implements ArchiveService {
         if (archive == null) {
             throw NotFoundException.of("档案", id);
         }
+        
+        // 同步逻辑删除关联的电子文件（防止孤儿数据）
+        LambdaUpdateWrapper<DigitalFile> fileDeleteWrapper = new LambdaUpdateWrapper<>();
+        fileDeleteWrapper.eq(DigitalFile::getArchiveId, id)
+                .set(DigitalFile::getDeleted, true);
+        int deletedFiles = digitalFileMapper.update(null, fileDeleteWrapper);
+        if (deletedFiles > 0) {
+            log.info("同步删除电子文件: archiveId={}, 数量={}", id, deletedFiles);
+        }
+        
+        // 删除主档案（MyBatis-Plus 会自动执行逻辑删除）
         archiveMapper.deleteById(id);
         log.info("档案删除: id={}, archiveNo={}", id, archive.getArchiveNo());
     }
@@ -513,6 +596,8 @@ public class ArchiveServiceImpl implements ArchiveService {
     private void associateFiles(Long archiveId, List<Long> fileIds) {
         long totalSize = 0;
         int sortOrder = 1;
+        int associatedCount = 0;
+        
         for (Long fileId : fileIds) {
             DigitalFile file = digitalFileMapper.selectById(fileId);
             if (file != null && file.getArchiveId() == null) {
@@ -520,13 +605,18 @@ public class ArchiveServiceImpl implements ArchiveService {
                 file.setSortOrder(sortOrder++);
                 digitalFileMapper.updateById(file);
                 totalSize += file.getFileSize() != null ? file.getFileSize() : 0;
+                associatedCount++;
             }
         }
 
         Archive archive = archiveMapper.selectById(archiveId);
-        archive.setFileCount(fileIds.size());
+        if (archive == null) {
+            log.error("关联文件失败，档案不存在: archiveId={}", archiveId);
+            return;
+        }
+        archive.setFileCount(associatedCount);
         archive.setTotalFileSize(totalSize);
-        archive.setHasElectronic(true);
+        archive.setHasElectronic(associatedCount > 0);
         archiveMapper.updateById(archive);
     }
 

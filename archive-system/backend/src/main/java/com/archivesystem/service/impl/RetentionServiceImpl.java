@@ -7,15 +7,19 @@ import com.archivesystem.entity.DestructionRecord;
 import com.archivesystem.entity.OperationLog;
 import com.archivesystem.entity.RetentionPeriod;
 import com.archivesystem.repository.ArchiveMapper;
+import com.archivesystem.repository.DestructionRecordMapper;
 import com.archivesystem.repository.OperationLogMapper;
 import com.archivesystem.repository.RetentionPeriodMapper;
 import com.archivesystem.security.SecurityUtils;
 import com.archivesystem.service.RetentionService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -33,6 +37,7 @@ public class RetentionServiceImpl implements RetentionService {
     private final ArchiveMapper archiveMapper;
     private final RetentionPeriodMapper retentionPeriodMapper;
     private final OperationLogMapper operationLogMapper;
+    private final DestructionRecordMapper destructionRecordMapper;
 
     @Override
     public List<Archive> findExpiringArchives(int daysBeforeExpiry) {
@@ -99,7 +104,7 @@ public class RetentionServiceImpl implements RetentionService {
                 .operationType("EXTEND_RETENTION")
                 .operatorId(SecurityUtils.getCurrentUserId())
                 .operatorName(SecurityUtils.getCurrentRealName())
-                .operatorIp("") // TODO: 从请求中获取
+                .operatorIp(getClientIp())
                 .operationDetail(Map.of(
                         "oldRetentionPeriod", oldRetentionPeriod,
                         "newRetentionPeriod", newRetentionPeriod,
@@ -156,9 +161,26 @@ public class RetentionServiceImpl implements RetentionService {
             throw new BusinessException("只有鉴定中的档案才能执行销毁");
         }
 
+        // 【安全检查】必须有审批通过的销毁记录才能执行销毁
+        LambdaQueryWrapper<DestructionRecord> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(DestructionRecord::getArchiveId, archiveId)
+               .eq(DestructionRecord::getStatus, DestructionRecord.STATUS_APPROVED);
+        DestructionRecord approvedRecord = destructionRecordMapper.selectOne(wrapper);
+        
+        if (approvedRecord == null) {
+            throw new BusinessException("档案销毁必须先通过审批流程（请通过销毁管理模块申请并获得审批）");
+        }
+
         // 更新状态为已销毁
         archive.setStatus(Archive.STATUS_DESTROYED);
         archiveMapper.updateById(archive);
+        
+        // 更新销毁记录状态为已执行
+        approvedRecord.setStatus(DestructionRecord.STATUS_EXECUTED);
+        approvedRecord.setExecutedAt(LocalDateTime.now());
+        approvedRecord.setExecutorId(SecurityUtils.getCurrentUserId());
+        approvedRecord.setExecutorName(SecurityUtils.getCurrentRealName());
+        destructionRecordMapper.updateById(approvedRecord);
 
         // 记录操作日志
         OperationLog operationLog = OperationLog.builder()
@@ -176,5 +198,43 @@ public class RetentionServiceImpl implements RetentionService {
         operationLogMapper.insert(operationLog);
 
         log.info("执行档案销毁: archiveId={}", archiveId);
+    }
+    
+    /**
+     * 从当前请求中获取客户端IP
+     */
+    private String getClientIp() {
+        try {
+            ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+            if (attributes == null) {
+                return "";
+            }
+            HttpServletRequest request = attributes.getRequest();
+            
+            // 优先从X-Forwarded-For获取（代理场景）
+            String ip = request.getHeader("X-Forwarded-For");
+            if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+                ip = request.getHeader("X-Real-IP");
+            }
+            if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+                ip = request.getHeader("Proxy-Client-IP");
+            }
+            if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+                ip = request.getHeader("WL-Proxy-Client-IP");
+            }
+            if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+                ip = request.getRemoteAddr();
+            }
+            
+            // 如果有多个IP（经过多个代理），取第一个
+            if (ip != null && ip.contains(",")) {
+                ip = ip.split(",")[0].trim();
+            }
+            
+            return ip != null ? ip : "";
+        } catch (Exception e) {
+            log.warn("获取客户端IP失败: {}", e.getMessage());
+            return "";
+        }
     }
 }

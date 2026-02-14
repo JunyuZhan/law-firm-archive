@@ -74,28 +74,10 @@
                       clearable
                     >
                       <el-option
-                        label="文书档案"
-                        value="DOCUMENT"
-                      />
-                      <el-option
-                        label="科技档案"
-                        value="SCIENCE"
-                      />
-                      <el-option
-                        label="会计档案"
-                        value="ACCOUNTING"
-                      />
-                      <el-option
-                        label="人事档案"
-                        value="PERSONNEL"
-                      />
-                      <el-option
-                        label="专业档案"
-                        value="SPECIAL"
-                      />
-                      <el-option
-                        label="声像档案"
-                        value="AUDIOVISUAL"
+                        v-for="item in archiveTypeOptions"
+                        :key="item.value"
+                        :label="item.label"
+                        :value="item.value"
                       />
                     </el-select>
                   </el-form-item>
@@ -108,16 +90,10 @@
                       clearable
                     >
                       <el-option
-                        label="已接收"
-                        value="RECEIVED"
-                      />
-                      <el-option
-                        label="已归档"
-                        value="STORED"
-                      />
-                      <el-option
-                        label="借出中"
-                        value="BORROWED"
+                        v-for="item in statusOptions"
+                        :key="item.value"
+                        :label="item.label"
+                        :value="item.value"
                       />
                     </el-select>
                   </el-form-item>
@@ -249,6 +225,16 @@ import { ref, reactive } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Download } from '@element-plus/icons-vue'
 import request from '@/utils/request'
+import {
+  getArchiveTypeOptions,
+  ARCHIVE_STATUS
+} from '@/utils/archiveEnums'
+
+// 下拉选项
+const archiveTypeOptions = getArchiveTypeOptions()
+const statusOptions = Object.entries(ARCHIVE_STATUS)
+  .filter(([key]) => ['RECEIVED', 'STORED', 'BORROWED'].includes(key))
+  .map(([value, label]) => ({ value, label }))
 
 const activeTab = ref('overview')
 

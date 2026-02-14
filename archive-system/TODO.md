@@ -268,15 +268,34 @@ Response:
 | | - PDF预览URL生成 | | | | |
 | | - 图片缩略图生成 | | | | |
 | | - Office预览（集成OnlyOffice或类似服务） | | | | |
+| BE-3.3.1 | **文档格式转换服务（Office→PDF）** | BE | 1.5天 | BE-3.1 | ✅ |
+| | - DocumentConversionService 接口与实现 | | | | |
+| | - JODConverter + LibreOffice 集成 | | | | |
+| | - 自动转换为长期保存格式（PDF） | | | | |
+| | - 在文件上传/接收时自动触发转换 | | | | |
+| | - 转换后文件存储到 MinIO (convertedPath) | | | | |
+| | - 更新 docker-compose 添加 LibreOffice 容器 | | | | |
 | FE-3.1 | **文件预览组件** | FE | 2天 | BE-3.3 | ✅ |
 | | - FilePreview.vue | | | | |
 | | - PDF.js集成 | | | | |
 | | - 图片查看器 | | | | |
 | | - 预览弹窗 | | | | |
+| | - 支持Office转PDF后预览 | | | | |
 | FE-3.2 | **文件列表组件** | FE | 1天 | FE-3.1 | ✅ |
 | | - FileList.vue | | | | |
 | | - 文件图标显示 | | | | |
 | | - 预览/下载操作 | | | | |
+| | - 显示长期保存格式标识 | | | | |
+
+**BE-3.3.1 验收标准**：
+```java
+// 文档转换服务需满足：
+// 1. Office文档（doc/docx/xls/xlsx/ppt/pptx）自动转换为PDF
+// 2. 转换后的PDF存储到MinIO的convertedPath路径
+// 3. DigitalFile实体的isLongTermFormat标记为true
+// 4. 预览API优先返回转换后的PDF URL
+// 5. 下载API仍返回原始文件（保留可编辑原件）
+```
 
 ### 3.3 水印服务
 
@@ -603,6 +622,86 @@ Sprint 7: ██████████ 100% ✅
 - `completedAt`: 处理完成时间
 
 **当前状态**：档案系统已有完整回调功能，消息格式符合需求。
+
+---
+
+## 十二、代码质量完善（Sprint 8）
+
+> 🎯 **目标**：提升代码质量、安全性和可维护性
+
+**GPT工程师修改记录**：
+- 2026-02-15：新增代码质量完善任务
+
+### 12.1 后端权限控制完善
+
+| 任务ID | 任务名称 | 说明 | 工时 | 状态 |
+|--------|----------|------|------|------|
+| BE-8.1 | **StatisticsController 权限控制** | 添加 @PreAuthorize，统计接口限制为 SYSTEM_ADMIN/ARCHIVIST | 0.5天 | ✅ |
+| BE-8.2 | **ConfigController 权限控制** | 配置读写限制为 SYSTEM_ADMIN | 0.5天 | ✅ |
+| BE-8.3 | **CategoryController 权限控制** | 分类管理限制为 SYSTEM_ADMIN/ARCHIVIST | 0.5天 | ✅ |
+| BE-8.4 | **FondsController 权限控制** | 全宗管理限制为 SYSTEM_ADMIN/ARCHIVIST | 0.5天 | ✅ |
+| BE-8.5 | **UserController 权限控制** | 用户管理限制为 SYSTEM_ADMIN，修改密码保留当前用户 | 0.5天 | ✅ |
+| BE-8.6 | **RoleController 权限控制** | 角色管理限制为 SYSTEM_ADMIN | 0.5天 | ✅ |
+| BE-8.7 | **SourceController 权限控制** | 来源管理限制为 SYSTEM_ADMIN | 0.5天 | ✅ |
+
+**验收标准**：
+```java
+// 写操作示例
+@PreAuthorize("hasRole('SYSTEM_ADMIN')")
+public Result<Config> update(...) { }
+
+// 只读操作可放宽
+@PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
+public Result<List<Statistics>> getOverview(...) { }
+```
+
+### 12.2 后端 TODO 注释完成
+
+| 任务ID | 任务名称 | 说明 | 工时 | 状态 |
+|--------|----------|------|------|------|
+| BE-8.8 | **MyMetaObjectHandler 审计字段** | 从 SecurityContext 获取当前用户 ID，填充 createdBy/updatedBy | 0.5天 | ✅ |
+| BE-8.9 | **RetentionServiceImpl 操作人IP** | 从 HttpServletRequest 获取操作人 IP | 0.3天 | ✅ |
+
+### 12.3 前端错误处理与用户体验
+
+| 任务ID | 任务名称 | 说明 | 工时 | 状态 |
+|--------|----------|------|------|------|
+| FE-8.1 | **Statistics.vue 错误处理** | 添加 ElMessage.error 提示、loading 状态、统一响应处理 | 0.5天 | ✅ |
+| FE-8.2 | **archiveEnums.js 补充** | 添加 FONDS_TYPES 全宗类型枚举 | 0.2天 | ✅ |
+| FE-8.3 | **ArchiveList.vue 使用枚举** | 替换硬编码映射，使用 archiveEnums.js | 0.3天 | ✅ |
+| FE-8.4 | **ArchiveDetail.vue 使用枚举** | 替换硬编码映射，使用 archiveEnums.js | 0.3天 | ✅ |
+| FE-8.5 | **ArchiveSearch.vue 使用枚举** | 替换硬编码映射，使用 archiveEnums.js | 0.3天 | ✅ |
+| FE-8.6 | **ArchiveReceive.vue 使用枚举** | 替换硬编码映射，使用 archiveEnums.js | 0.3天 | ✅ |
+| FE-8.7 | **AppraisalList.vue 使用枚举** | 替换硬编码映射，使用 archiveEnums.js | 0.3天 | ✅ |
+| FE-8.8 | **DestructionList.vue 使用枚举** | 替换硬编码映射，使用 archiveEnums.js | 0.3天 | ✅ |
+| FE-8.9 | **BorrowList.vue 使用枚举** | 替换硬编码映射，使用 archiveEnums.js | 0.3天 | ✅ |
+| FE-8.10 | **PushRecordList.vue 使用枚举** | 替换硬编码映射，使用 archiveEnums.js | 0.3天 | ✅ |
+| FE-8.11 | **ReportPage.vue 使用枚举** | 替换硬编码映射，使用 archiveEnums.js | 0.3天 | ✅ |
+| FE-8.12 | **CategoryManage.vue 使用枚举** | 替换硬编码映射，使用 archiveEnums.js | 0.3天 | ✅ |
+| FE-8.13 | **FondsManage.vue 使用枚举** | 替换硬编码映射，使用 archiveEnums.js | 0.3天 | ✅ |
+
+### 12.4 文档完善
+
+| 任务ID | 任务名称 | 说明 | 工时 | 状态 |
+|--------|----------|------|------|------|
+| DOC-8.1 | **README 完善** | 补充环境变量说明、开发指南、测试命令 | 0.5天 | ✅ |
+
+### Sprint 8 验收检查清单
+
+- [x] 7个 Controller 均已添加 @PreAuthorize 权限控制
+- [x] MyMetaObjectHandler 正确填充审计字段
+- [x] Statistics.vue 有完善的错误处理和 loading 状态
+- [x] 所有前端组件统一使用 archiveEnums.js（全部完成）
+- [x] README 包含完整的开发指南
+
+### Sprint 8 工作量汇总
+
+| 角色 | 工时 |
+|------|------|
+| BE | 4.3天 |
+| FE | 3.9天 |
+| DOC | 0.5天 |
+| **合计** | **8.7天** |
 
 ---
 

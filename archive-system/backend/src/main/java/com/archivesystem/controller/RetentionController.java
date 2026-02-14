@@ -6,7 +6,10 @@ import com.archivesystem.service.RetentionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
+import org.springframework.util.StringUtils;
 
 import java.util.List;
 import java.util.Map;
@@ -18,6 +21,7 @@ import java.util.Map;
 @RequestMapping("/retention")
 @RequiredArgsConstructor
 @Tag(name = "保管期限管理", description = "到期预警、期限延长")
+@PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
 public class RetentionController {
 
     private final RetentionService retentionService;
@@ -51,7 +55,13 @@ public class RetentionController {
     public Result<Void> extendRetention(
             @PathVariable Long archiveId,
             @RequestBody Map<String, String> params) {
+        if (params == null) {
+            return Result.error("请求参数不能为空");
+        }
         String newRetentionPeriod = params.get("newRetentionPeriod");
+        if (!StringUtils.hasText(newRetentionPeriod)) {
+            return Result.error("新保管期限不能为空");
+        }
         String reason = params.get("reason");
         retentionService.extendRetention(archiveId, newRetentionPeriod, reason);
         return Result.success("保管期限已延长", null);
@@ -65,7 +75,10 @@ public class RetentionController {
     public Result<Void> applyForDestruction(
             @PathVariable Long archiveId,
             @RequestBody Map<String, String> params) {
-        String reason = params.get("reason");
+        String reason = params != null ? params.get("reason") : null;
+        if (!StringUtils.hasText(reason)) {
+            return Result.error("销毁原因不能为空");
+        }
         retentionService.applyForDestruction(archiveId, reason);
         return Result.success("销毁申请已提交", null);
     }
@@ -78,10 +91,21 @@ public class RetentionController {
     public Result<Void> executeDestruction(
             @PathVariable Long archiveId,
             @RequestBody Map<String, Object> params) {
-        Long approverId = params.get("approverId") != null 
-            ? Long.valueOf(params.get("approverId").toString()) 
-            : null;
-        String remarks = (String) params.get("remarks");
+        if (params == null) {
+            return Result.error("请求参数不能为空");
+        }
+        
+        Long approverId = null;
+        Object approverIdObj = params.get("approverId");
+        if (approverIdObj != null) {
+            try {
+                approverId = Long.valueOf(approverIdObj.toString());
+            } catch (NumberFormatException e) {
+                return Result.error("approverId 格式错误");
+            }
+        }
+        
+        String remarks = params.get("remarks") != null ? params.get("remarks").toString() : null;
         retentionService.executeDestruction(archiveId, approverId, remarks);
         return Result.success("档案已销毁", null);
     }

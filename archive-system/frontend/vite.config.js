@@ -27,7 +27,9 @@ export default defineConfig({
     port: 3001,
     proxy: {
       '/api': {
-        target: 'http://192.168.50.10:8090',
+        // 使用环境变量配置后端地址，默认为本地开发地址
+        // 生产环境通过 .env.production 配置
+        target: process.env.VITE_API_PROXY_TARGET || 'http://localhost:8090',
         changeOrigin: true
       }
     }

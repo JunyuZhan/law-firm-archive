@@ -2,6 +2,8 @@ package com.archivesystem.entity;
 
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -26,12 +28,17 @@ public class Category extends BaseEntity {
     private Long parentId;
     
     /** 分类号 */
+    @NotBlank(message = "分类号不能为空")
+    @Size(max = 50, message = "分类号长度不能超过50个字符")
     private String categoryCode;
     
     /** 分类名称 */
+    @NotBlank(message = "分类名称不能为空")
+    @Size(max = 100, message = "分类名称长度不能超过100个字符")
     private String categoryName;
     
     /** 档案门类 */
+    @NotBlank(message = "档案门类不能为空")
     private String archiveType;
     
     /** 层级 */

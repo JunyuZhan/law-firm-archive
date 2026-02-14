@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -26,6 +27,7 @@ public class CategoryController {
 
     @PostMapping
     @Operation(summary = "创建分类")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
     public Result<Category> create(@Valid @RequestBody Category category) {
         Category created = categoryService.create(category);
         return Result.success("创建成功", created);
@@ -33,6 +35,7 @@ public class CategoryController {
 
     @PutMapping("/{id}")
     @Operation(summary = "更新分类")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
     public Result<Category> update(@PathVariable Long id, @Valid @RequestBody Category category) {
         Category updated = categoryService.update(id, category);
         return Result.success("更新成功", updated);
@@ -40,6 +43,7 @@ public class CategoryController {
 
     @GetMapping("/{id}")
     @Operation(summary = "获取分类详情")
+    @PreAuthorize("isAuthenticated()")
     public Result<Category> getById(@PathVariable Long id) {
         Category category = categoryService.getById(id);
         return Result.success(category);
@@ -47,6 +51,7 @@ public class CategoryController {
 
     @GetMapping("/tree")
     @Operation(summary = "获取分类树")
+    @PreAuthorize("isAuthenticated()")
     public Result<List<Category>> getTree(
             @RequestParam(required = false) String archiveType) {
         List<Category> tree;
@@ -60,6 +65,7 @@ public class CategoryController {
 
     @GetMapping("/{id}/children")
     @Operation(summary = "获取子分类")
+    @PreAuthorize("isAuthenticated()")
     public Result<List<Category>> getChildren(@PathVariable Long id) {
         List<Category> children = categoryService.getChildren(id);
         return Result.success(children);
@@ -67,6 +73,7 @@ public class CategoryController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "删除分类")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
     public Result<Void> delete(@PathVariable Long id) {
         categoryService.delete(id);
         return Result.success("删除成功", null);
@@ -74,6 +81,7 @@ public class CategoryController {
 
     @PutMapping("/{id}/move")
     @Operation(summary = "移动分类")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
     public Result<Void> move(@PathVariable Long id, @RequestParam(required = false) Long newParentId) {
         categoryService.move(id, newParentId);
         return Result.success("移动成功", null);
@@ -81,6 +89,7 @@ public class CategoryController {
 
     @GetMapping("/{id}/statistics")
     @Operation(summary = "获取分类统计")
+    @PreAuthorize("isAuthenticated()")
     public Result<Map<String, Object>> statistics(@PathVariable Long id) {
         Category category = categoryService.getById(id);
         long archiveCount = categoryService.countArchives(id);

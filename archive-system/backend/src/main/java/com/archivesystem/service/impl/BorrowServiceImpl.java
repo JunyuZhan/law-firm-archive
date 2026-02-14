@@ -10,6 +10,7 @@ import com.archivesystem.repository.BorrowApplicationMapper;
 import com.archivesystem.security.SecurityUtils;
 import com.archivesystem.service.BorrowService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +22,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -85,6 +87,16 @@ public class BorrowServiceImpl implements BorrowService {
         if (application == null) {
             throw NotFoundException.of("借阅申请", id);
         }
+        
+        // 权限校验：只有申请人本人或管理员/档案员可以查看
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        boolean isOwner = Objects.equals(application.getApplicantId(), currentUserId);
+        boolean isAdmin = SecurityUtils.hasAnyRole("SYSTEM_ADMIN", "ARCHIVIST");
+        
+        if (!isOwner && !isAdmin) {
+            throw new BusinessException("无权查看此借阅申请");
+        }
+        
         return application;
     }
 
@@ -116,7 +128,7 @@ public class BorrowServiceImpl implements BorrowService {
         }
 
         Long currentUserId = SecurityUtils.getCurrentUserId();
-        if (!application.getApplicantId().equals(currentUserId)) {
+        if (!Objects.equals(application.getApplicantId(), currentUserId)) {
             throw new BusinessException("只能取消自己的申请");
         }
 
@@ -153,60 +165,88 @@ public class BorrowServiceImpl implements BorrowService {
     @Override
     @Transactional
     public void approve(Long id, String remarks) {
+        // 检查申请是否存在
         BorrowApplication application = getById(id);
-
-        if (!BorrowApplication.STATUS_PENDING.equals(application.getStatus())) {
-            throw new BusinessException("该申请不是待审批状态");
+        
+        // 使用条件更新防止并发重复审批
+        // UPDATE ... SET status = 'APPROVED' WHERE id = ? AND status = 'PENDING'
+        LambdaUpdateWrapper<BorrowApplication> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(BorrowApplication::getId, id)
+                .eq(BorrowApplication::getStatus, BorrowApplication.STATUS_PENDING)
+                .set(BorrowApplication::getStatus, BorrowApplication.STATUS_APPROVED)
+                .set(BorrowApplication::getApproverId, SecurityUtils.getCurrentUserId())
+                .set(BorrowApplication::getApproverName, SecurityUtils.getCurrentRealName())
+                .set(BorrowApplication::getApproveTime, LocalDateTime.now())
+                .set(BorrowApplication::getApproveRemarks, remarks);
+        
+        int affected = borrowMapper.update(null, updateWrapper);
+        if (affected == 0) {
+            // 重新查询确认当前状态
+            BorrowApplication current = borrowMapper.selectById(id);
+            if (current == null) {
+                throw new NotFoundException("借阅申请不存在");
+            }
+            throw new BusinessException("该申请不是待审批状态，当前状态：" + current.getStatus());
         }
-
-        application.setStatus(BorrowApplication.STATUS_APPROVED);
-        application.setApproverId(SecurityUtils.getCurrentUserId());
-        application.setApproverName(SecurityUtils.getCurrentRealName());
-        application.setApproveTime(LocalDateTime.now());
-        application.setApproveRemarks(remarks);
-
-        borrowMapper.updateById(application);
         log.info("借阅申请审批通过: id={}", id);
     }
 
     @Override
     @Transactional
     public void reject(Long id, String rejectReason) {
+        // 检查申请是否存在
         BorrowApplication application = getById(id);
-
-        if (!BorrowApplication.STATUS_PENDING.equals(application.getStatus())) {
-            throw new BusinessException("该申请不是待审批状态");
+        
+        // 使用条件更新防止并发重复审批
+        LambdaUpdateWrapper<BorrowApplication> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(BorrowApplication::getId, id)
+                .eq(BorrowApplication::getStatus, BorrowApplication.STATUS_PENDING)
+                .set(BorrowApplication::getStatus, BorrowApplication.STATUS_REJECTED)
+                .set(BorrowApplication::getApproverId, SecurityUtils.getCurrentUserId())
+                .set(BorrowApplication::getApproverName, SecurityUtils.getCurrentRealName())
+                .set(BorrowApplication::getApproveTime, LocalDateTime.now())
+                .set(BorrowApplication::getRejectReason, rejectReason);
+        
+        int affected = borrowMapper.update(null, updateWrapper);
+        if (affected == 0) {
+            BorrowApplication current = borrowMapper.selectById(id);
+            if (current == null) {
+                throw new NotFoundException("借阅申请不存在");
+            }
+            throw new BusinessException("该申请不是待审批状态，当前状态：" + current.getStatus());
         }
-
-        application.setStatus(BorrowApplication.STATUS_REJECTED);
-        application.setApproverId(SecurityUtils.getCurrentUserId());
-        application.setApproverName(SecurityUtils.getCurrentRealName());
-        application.setApproveTime(LocalDateTime.now());
-        application.setRejectReason(rejectReason);
-
-        borrowMapper.updateById(application);
         log.info("借阅申请被拒绝: id={}", id);
     }
 
     @Override
     @Transactional
     public void lend(Long id) {
+        // 检查申请是否存在
         BorrowApplication application = getById(id);
-
-        if (!BorrowApplication.STATUS_APPROVED.equals(application.getStatus())) {
-            throw new BusinessException("该申请未审批通过");
+        
+        // 使用条件更新防止重复借出
+        LambdaUpdateWrapper<BorrowApplication> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(BorrowApplication::getId, id)
+                .eq(BorrowApplication::getStatus, BorrowApplication.STATUS_APPROVED)
+                .set(BorrowApplication::getStatus, BorrowApplication.STATUS_BORROWED)
+                .set(BorrowApplication::getBorrowTime, LocalDateTime.now());
+        
+        int affected = borrowMapper.update(null, updateWrapper);
+        if (affected == 0) {
+            BorrowApplication current = borrowMapper.selectById(id);
+            if (current == null) {
+                throw new NotFoundException("借阅申请不存在");
+            }
+            throw new BusinessException("该申请不是已审批状态或已被借出，当前状态：" + current.getStatus());
         }
 
-        application.setStatus(BorrowApplication.STATUS_BORROWED);
-        application.setBorrowTime(LocalDateTime.now());
-        borrowMapper.updateById(application);
-
-        // 更新档案状态
-        Archive archive = archiveMapper.selectById(application.getArchiveId());
-        if (archive != null) {
-            archive.setStatus(Archive.STATUS_BORROWED);
-            archiveMapper.updateById(archive);
-        }
+        // 使用条件更新档案状态（只有当档案状态为 STORED 时才更新为 BORROWED）
+        com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<Archive> archiveUpdateWrapper = 
+                new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<>();
+        archiveUpdateWrapper.eq(Archive::getId, application.getArchiveId())
+                .eq(Archive::getStatus, Archive.STATUS_STORED)
+                .set(Archive::getStatus, Archive.STATUS_BORROWED);
+        archiveMapper.update(null, archiveUpdateWrapper);
 
         log.info("档案借出: applicationId={}, archiveId={}", id, application.getArchiveId());
     }
@@ -214,23 +254,33 @@ public class BorrowServiceImpl implements BorrowService {
     @Override
     @Transactional
     public void returnArchive(Long id, String remarks) {
+        // 检查申请是否存在
         BorrowApplication application = getById(id);
-
-        if (!BorrowApplication.STATUS_BORROWED.equals(application.getStatus())) {
-            throw new BusinessException("该申请不是借出状态");
+        
+        // 使用条件更新防止重复归还
+        LambdaUpdateWrapper<BorrowApplication> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(BorrowApplication::getId, id)
+                .eq(BorrowApplication::getStatus, BorrowApplication.STATUS_BORROWED)
+                .set(BorrowApplication::getStatus, BorrowApplication.STATUS_RETURNED)
+                .set(BorrowApplication::getActualReturnDate, LocalDate.now())
+                .set(BorrowApplication::getReturnRemarks, remarks);
+        
+        int affected = borrowMapper.update(null, updateWrapper);
+        if (affected == 0) {
+            BorrowApplication current = borrowMapper.selectById(id);
+            if (current == null) {
+                throw new NotFoundException("借阅申请不存在");
+            }
+            throw new BusinessException("该申请不是借出状态或已归还，当前状态：" + current.getStatus());
         }
 
-        application.setStatus(BorrowApplication.STATUS_RETURNED);
-        application.setActualReturnDate(LocalDate.now());
-        application.setReturnRemarks(remarks);
-        borrowMapper.updateById(application);
-
-        // 恢复档案状态
-        Archive archive = archiveMapper.selectById(application.getArchiveId());
-        if (archive != null) {
-            archive.setStatus(Archive.STATUS_STORED);
-            archiveMapper.updateById(archive);
-        }
+        // 使用条件更新恢复档案状态（只有当档案状态为 BORROWED 时才更新为 STORED）
+        com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<Archive> archiveUpdateWrapper = 
+                new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<>();
+        archiveUpdateWrapper.eq(Archive::getId, application.getArchiveId())
+                .eq(Archive::getStatus, Archive.STATUS_BORROWED)
+                .set(Archive::getStatus, Archive.STATUS_STORED);
+        archiveMapper.update(null, archiveUpdateWrapper);
 
         log.info("档案归还: applicationId={}, archiveId={}", id, application.getArchiveId());
     }
@@ -239,6 +289,13 @@ public class BorrowServiceImpl implements BorrowService {
     @Transactional
     public void renew(Long id, LocalDate newReturnDate) {
         BorrowApplication application = getById(id);
+
+        // 【安全检查】只有申请人本人或管理员可以续借
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        boolean isAdmin = SecurityUtils.hasAnyRole("SYSTEM_ADMIN", "ARCHIVIST");
+        if (!isAdmin && !Objects.equals(application.getApplicantId(), currentUserId)) {
+            throw new BusinessException("只能续借自己的借阅申请");
+        }
 
         if (!BorrowApplication.STATUS_BORROWED.equals(application.getStatus())) {
             throw new BusinessException("只有借出中的档案可以续借");
@@ -252,7 +309,7 @@ public class BorrowServiceImpl implements BorrowService {
         application.setRenewCount(application.getRenewCount() != null ? application.getRenewCount() + 1 : 1);
         borrowMapper.updateById(application);
 
-        log.info("档案续借: id={}, newReturnDate={}", id, newReturnDate);
+        log.info("档案续借: id={}, newReturnDate={}, operator={}", id, newReturnDate, currentUserId);
     }
 
     @Override

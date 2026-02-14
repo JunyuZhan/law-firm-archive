@@ -71,11 +71,12 @@
             clearable
             style="width: 120px"
           >
-            <el-option label="待处理" value="PENDING" />
-            <el-option label="处理中" value="PROCESSING" />
-            <el-option label="成功" value="SUCCESS" />
-            <el-option label="失败" value="FAILED" />
-            <el-option label="部分成功" value="PARTIAL" />
+            <el-option
+              v-for="item in pushStatusOptions"
+              :key="item.value"
+              :label="item.label"
+              :value="item.value"
+            />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -208,8 +209,16 @@ import {
   getPushRecordDetail,
   retryPushRecord
 } from '@/api/pushRecord'
+import {
+  getPushStatusName,
+  getPushStatusType,
+  getPushStatusOptions
+} from '@/utils/archiveEnums'
 
 const router = useRouter()
+
+// 下拉选项
+const pushStatusOptions = getPushStatusOptions()
 
 // 统计数据
 const statistics = ref({})
@@ -344,29 +353,9 @@ const formatDateTime = (dateStr) => {
   return date.toLocaleString('zh-CN')
 }
 
-// 获取状态类型
-const getStatusType = (status) => {
-  const types = {
-    SUCCESS: 'success',
-    FAILED: 'danger',
-    PENDING: 'info',
-    PROCESSING: 'warning',
-    PARTIAL: 'warning'
-  }
-  return types[status] || 'info'
-}
-
-// 获取状态文本
-const getStatusText = (status) => {
-  const texts = {
-    SUCCESS: '成功',
-    FAILED: '失败',
-    PENDING: '待处理',
-    PROCESSING: '处理中',
-    PARTIAL: '部分成功'
-  }
-  return texts[status] || status
-}
+// 注：getPushStatusType, getPushStatusName 已从 archiveEnums.js 导入
+const getStatusType = getPushStatusType
+const getStatusText = getPushStatusName
 
 onMounted(() => {
   loadStatistics()

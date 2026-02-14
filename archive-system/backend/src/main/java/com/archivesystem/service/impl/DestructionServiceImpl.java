@@ -12,6 +12,7 @@ import com.archivesystem.repository.OperationLogMapper;
 import com.archivesystem.security.SecurityUtils;
 import com.archivesystem.service.DestructionService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -97,6 +98,7 @@ public class DestructionServiceImpl implements DestructionService {
     @Transactional
     public List<DestructionRecord> batchApply(List<Long> archiveIds, String destructionReason, String destructionMethod) {
         List<DestructionRecord> records = new ArrayList<>();
+        List<Long> failedIds = new ArrayList<>();
         String batchNo = generateBatchNo();
 
         for (Long archiveId : archiveIds) {
@@ -127,7 +129,13 @@ public class DestructionServiceImpl implements DestructionService {
                 archiveMapper.updateById(archive);
             } catch (Exception e) {
                 log.error("批量申请销毁失败: archiveId={}", archiveId, e);
+                failedIds.add(archiveId);
             }
+        }
+
+        // 如果有失败的记录，抛出异常回滚事务
+        if (!failedIds.isEmpty()) {
+            throw new BusinessException(String.format("部分档案申请销毁失败，已回滚。失败的档案ID: %s", failedIds));
         }
 
         log.info("批量申请销毁: batchNo={}, count={}", batchNo, records.size());
@@ -189,45 +197,61 @@ public class DestructionServiceImpl implements DestructionService {
     @Override
     @Transactional
     public void approve(Long id, String comment) {
+        // 检查记录是否存在
         DestructionRecord record = getById(id);
-
-        if (!DestructionRecord.STATUS_PENDING.equals(record.getStatus())) {
-            throw new BusinessException("该记录不是待审批状态");
+        
+        // 使用条件更新防止并发重复审批
+        LambdaUpdateWrapper<DestructionRecord> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(DestructionRecord::getId, id)
+                .eq(DestructionRecord::getStatus, DestructionRecord.STATUS_PENDING)
+                .set(DestructionRecord::getStatus, DestructionRecord.STATUS_APPROVED)
+                .set(DestructionRecord::getApproverId, SecurityUtils.getCurrentUserId())
+                .set(DestructionRecord::getApproverName, SecurityUtils.getCurrentRealName())
+                .set(DestructionRecord::getApprovedAt, LocalDateTime.now())
+                .set(DestructionRecord::getApprovalComment, comment);
+        
+        int affected = destructionMapper.update(null, updateWrapper);
+        if (affected == 0) {
+            DestructionRecord current = destructionMapper.selectById(id);
+            if (current == null) {
+                throw new NotFoundException("销毁记录不存在");
+            }
+            throw new BusinessException("该记录不是待审批状态，当前状态：" + current.getStatus());
         }
-
-        record.setStatus(DestructionRecord.STATUS_APPROVED);
-        record.setApproverId(SecurityUtils.getCurrentUserId());
-        record.setApproverName(SecurityUtils.getCurrentRealName());
-        record.setApprovedAt(LocalDateTime.now());
-        record.setApprovalComment(comment);
-
-        destructionMapper.updateById(record);
         log.info("销毁申请审批通过: id={}", id);
     }
 
     @Override
     @Transactional
     public void reject(Long id, String comment) {
+        // 检查记录是否存在
         DestructionRecord record = getById(id);
-
-        if (!DestructionRecord.STATUS_PENDING.equals(record.getStatus())) {
-            throw new BusinessException("该记录不是待审批状态");
+        
+        // 使用条件更新防止并发重复审批
+        LambdaUpdateWrapper<DestructionRecord> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(DestructionRecord::getId, id)
+                .eq(DestructionRecord::getStatus, DestructionRecord.STATUS_PENDING)
+                .set(DestructionRecord::getStatus, DestructionRecord.STATUS_REJECTED)
+                .set(DestructionRecord::getApproverId, SecurityUtils.getCurrentUserId())
+                .set(DestructionRecord::getApproverName, SecurityUtils.getCurrentRealName())
+                .set(DestructionRecord::getApprovedAt, LocalDateTime.now())
+                .set(DestructionRecord::getApprovalComment, comment);
+        
+        int affected = destructionMapper.update(null, updateWrapper);
+        if (affected == 0) {
+            DestructionRecord current = destructionMapper.selectById(id);
+            if (current == null) {
+                throw new NotFoundException("销毁记录不存在");
+            }
+            throw new BusinessException("该记录不是待审批状态，当前状态：" + current.getStatus());
         }
 
-        record.setStatus(DestructionRecord.STATUS_REJECTED);
-        record.setApproverId(SecurityUtils.getCurrentUserId());
-        record.setApproverName(SecurityUtils.getCurrentRealName());
-        record.setApprovedAt(LocalDateTime.now());
-        record.setApprovalComment(comment);
-
-        destructionMapper.updateById(record);
-
-        // 恢复档案状态
-        Archive archive = archiveMapper.selectById(record.getArchiveId());
-        if (archive != null && Archive.STATUS_APPRAISAL.equals(archive.getStatus())) {
-            archive.setStatus(Archive.STATUS_STORED);
-            archiveMapper.updateById(archive);
-        }
+        // 使用条件更新恢复档案状态（只有当档案状态为 APPRAISAL 时才更新）
+        LambdaUpdateWrapper<Archive> archiveUpdateWrapper = new LambdaUpdateWrapper<>();
+        archiveUpdateWrapper.eq(Archive::getId, record.getArchiveId())
+                .eq(Archive::getStatus, Archive.STATUS_APPRAISAL)
+                .set(Archive::getStatus, Archive.STATUS_STORED);
+        archiveMapper.update(null, archiveUpdateWrapper);
 
         log.info("销毁申请被拒绝: id={}", id);
     }

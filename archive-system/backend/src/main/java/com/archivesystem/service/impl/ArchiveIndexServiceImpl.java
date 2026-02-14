@@ -47,6 +47,18 @@ public class ArchiveIndexServiceImpl implements ArchiveIndexService {
     private static final String INDEX_NAME = "archives";
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
+    // 【安全】允许搜索的字段白名单
+    private static final Set<String> ALLOWED_SEARCH_FIELDS = Set.of(
+            "title", "archiveNo", "caseNo", "caseName", "clientName", 
+            "lawyerName", "keywords", "archiveAbstract", "fileContent", "remarks"
+    );
+    
+    // 【安全】允许排序的字段白名单
+    private static final Set<String> ALLOWED_SORT_FIELDS = Set.of(
+            "receivedAt", "archiveDate", "createdAt", "updatedAt", 
+            "retentionExpireDate", "archiveNo", "title"
+    );
+
     @Override
     @Async
     public void indexArchive(Long archiveId) {
@@ -131,6 +143,14 @@ public class ArchiveIndexServiceImpl implements ArchiveIndexService {
                 if (searchFields == null || searchFields.isEmpty()) {
                     searchFields = Arrays.asList("title", "archiveNo", "caseNo", "caseName", 
                             "clientName", "keywords", "archiveAbstract", "fileContent", "remarks");
+                } else {
+                    // 【安全】过滤搜索字段，只保留白名单中的字段
+                    searchFields = searchFields.stream()
+                            .filter(ALLOWED_SEARCH_FIELDS::contains)
+                            .collect(Collectors.toList());
+                    if (searchFields.isEmpty()) {
+                        searchFields = Arrays.asList("title", "archiveNo", "caseNo", "caseName");
+                    }
                 }
 
                 List<Query> shouldQueries = new ArrayList<>();
@@ -167,10 +187,15 @@ public class ArchiveIndexServiceImpl implements ArchiveIndexService {
                     .from(request.getFrom())
                     .size(request.getPageSize());
 
-            // 排序
-            String sortField = StringUtils.hasText(request.getSortField()) ? request.getSortField() : "receivedAt";
+            // 排序 - 【安全】白名单校验
+            String sortField = "receivedAt"; // 默认排序字段
+            if (StringUtils.hasText(request.getSortField()) && ALLOWED_SORT_FIELDS.contains(request.getSortField())) {
+                sortField = request.getSortField();
+            }
+            // 【安全】sortOrder 只允许 asc 或 desc
             SortOrder sortOrder = "asc".equalsIgnoreCase(request.getSortOrder()) ? SortOrder.Asc : SortOrder.Desc;
-            searchBuilder.sort(s -> s.field(f -> f.field(sortField).order(sortOrder)));
+            final String finalSortField = sortField;
+            searchBuilder.sort(s -> s.field(f -> f.field(finalSortField).order(sortOrder)));
 
             if (finalHighlight != null) {
                 searchBuilder.highlight(finalHighlight);
@@ -291,6 +316,7 @@ public class ArchiveIndexServiceImpl implements ArchiveIndexService {
         if (files != null && !files.isEmpty()) {
             document.setFileNames(files.stream()
                     .map(DigitalFile::getFileName)
+                    .filter(java.util.Objects::nonNull)
                     .collect(Collectors.toList()));
         }
 

@@ -90,9 +90,13 @@ public class AuthController {
 
             // 更新最后登录时间和IP
             User user = userMapper.selectById(userDetails.getId());
-            user.setLastLoginAt(LocalDateTime.now());
-            user.setLastLoginIp(clientIp);
-            userMapper.updateById(user);
+            if (user != null) {
+                user.setLastLoginAt(LocalDateTime.now());
+                user.setLastLoginIp(clientIp);
+                userMapper.updateById(user);
+            } else {
+                log.warn("登录成功但用户信息未找到: userId={}", userDetails.getId());
+            }
 
             LoginResponse response = LoginResponse.builder()
                     .accessToken(accessToken)

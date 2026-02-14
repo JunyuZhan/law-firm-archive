@@ -152,12 +152,32 @@ export function getFilePreviewUrl(fileId) {
 }
 
 /**
+ * 获取文件预览信息（包含URL、预览类型、是否转换等）
+ */
+export function getFilePreviewInfo(fileId) {
+  return request({
+    url: `/files/${fileId}/preview-info`,
+    method: 'get'
+  })
+}
+
+/**
  * 删除文件
  */
 export function deleteFile(fileId) {
   return request({
     url: `/archives/files/${fileId}`,
     method: 'delete'
+  })
+}
+
+/**
+ * 获取档案打包下载链接（下载所有文件为ZIP）
+ */
+export function getArchiveDownloadUrl(archiveId) {
+  return request({
+    url: `/archives/${archiveId}/download-zip`,
+    method: 'get'
   })
 }
 

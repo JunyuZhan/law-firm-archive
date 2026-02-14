@@ -5,8 +5,14 @@ import com.archivesystem.common.Result;
 import com.archivesystem.entity.ArchiveLocation;
 import com.archivesystem.service.LocationService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -17,6 +23,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/locations")
 @RequiredArgsConstructor
+@Validated
 @Tag(name = "存放位置管理", description = "管理档案存放位置")
 public class LocationController {
 
@@ -27,6 +34,7 @@ public class LocationController {
      */
     @GetMapping
     @Operation(summary = "获取位置列表")
+    @PreAuthorize("isAuthenticated()")
     public Result<PageResult<ArchiveLocation>> list(
             @RequestParam(required = false) String roomName,
             @RequestParam(required = false) String status,
@@ -41,6 +49,7 @@ public class LocationController {
      */
     @GetMapping("/all")
     @Operation(summary = "获取所有位置")
+    @PreAuthorize("isAuthenticated()")
     public Result<List<ArchiveLocation>> getAll() {
         List<ArchiveLocation> locations = locationService.getAll();
         return Result.success(locations);
@@ -51,6 +60,7 @@ public class LocationController {
      */
     @GetMapping("/available")
     @Operation(summary = "获取可用位置")
+    @PreAuthorize("isAuthenticated()")
     public Result<List<ArchiveLocation>> getAvailable() {
         List<ArchiveLocation> locations = locationService.getAvailable();
         return Result.success(locations);
@@ -61,6 +71,7 @@ public class LocationController {
      */
     @GetMapping("/rooms")
     @Operation(summary = "获取库房列表")
+    @PreAuthorize("isAuthenticated()")
     public Result<List<String>> getRooms() {
         List<String> rooms = locationService.getRoomNames();
         return Result.success(rooms);
@@ -71,6 +82,7 @@ public class LocationController {
      */
     @GetMapping("/room/{roomName}")
     @Operation(summary = "根据库房获取位置")
+    @PreAuthorize("isAuthenticated()")
     public Result<List<ArchiveLocation>> getByRoom(@PathVariable String roomName) {
         List<ArchiveLocation> locations = locationService.getByRoom(roomName);
         return Result.success(locations);
@@ -81,6 +93,7 @@ public class LocationController {
      */
     @GetMapping("/{id}")
     @Operation(summary = "获取位置详情")
+    @PreAuthorize("isAuthenticated()")
     public Result<ArchiveLocation> getById(@PathVariable Long id) {
         ArchiveLocation location = locationService.getById(id);
         return Result.success(location);
@@ -91,7 +104,8 @@ public class LocationController {
      */
     @PostMapping
     @Operation(summary = "创建位置")
-    public Result<ArchiveLocation> create(@RequestBody ArchiveLocation location) {
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
+    public Result<ArchiveLocation> create(@Valid @RequestBody ArchiveLocation location) {
         ArchiveLocation created = locationService.create(location);
         return Result.success("创建成功", created);
     }
@@ -101,7 +115,10 @@ public class LocationController {
      */
     @PutMapping("/{id}")
     @Operation(summary = "更新位置")
-    public Result<ArchiveLocation> update(@PathVariable Long id, @RequestBody ArchiveLocation location) {
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
+    public Result<ArchiveLocation> update(
+            @PathVariable @Parameter(description = "位置ID") Long id, 
+            @Valid @RequestBody ArchiveLocation location) {
         ArchiveLocation updated = locationService.update(id, location);
         return Result.success("更新成功", updated);
     }
@@ -111,7 +128,8 @@ public class LocationController {
      */
     @DeleteMapping("/{id}")
     @Operation(summary = "删除位置")
-    public Result<Void> delete(@PathVariable Long id) {
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
+    public Result<Void> delete(@PathVariable @Parameter(description = "位置ID") Long id) {
         locationService.delete(id);
         return Result.success("删除成功", null);
     }

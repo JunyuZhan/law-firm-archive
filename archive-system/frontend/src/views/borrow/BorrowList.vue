@@ -254,6 +254,7 @@
         </el-button>
         <el-button
           type="primary"
+          :loading="approveSubmitting"
           @click="confirmApprove"
         >
           确认通过
@@ -279,7 +280,7 @@
             v-model="rejectForm.reason"
             type="textarea"
             :rows="3"
-            placeholder="请输入拒绝原因"
+            placeholder="请输入拒绝原因（至少2个字）"
           />
         </el-form-item>
       </el-form>
@@ -289,6 +290,7 @@
         </el-button>
         <el-button
           type="danger"
+          :loading="rejectSubmitting"
           @click="confirmReject"
         >
           确认拒绝
@@ -325,6 +327,7 @@
         </el-button>
         <el-button
           type="primary"
+          :loading="renewSubmitting"
           @click="confirmRenew"
         >
           确认续借
@@ -446,6 +449,10 @@ import {
   cancelBorrow, approveBorrow, rejectBorrow, returnArchive, renewBorrow,
   lendArchive, getBorrowDetail
 } from '@/api/borrow'
+import {
+  getBorrowStatusName,
+  getBorrowStatusType
+} from '@/utils/archiveEnums'
 
 const activeTab = ref('my')
 const loading = ref(false)
@@ -465,6 +472,12 @@ const approveDialogVisible = ref(false)
 const rejectDialogVisible = ref(false)
 const renewDialogVisible = ref(false)
 const currentRow = ref(null)
+
+// 操作 loading 状态
+const approveSubmitting = ref(false)
+const rejectSubmitting = ref(false)
+const renewSubmitting = ref(false)
+const lendSubmitting = ref(false)
 
 const approveForm = reactive({ remarks: '' })
 const rejectForm = reactive({ reason: '' })
@@ -503,6 +516,7 @@ const fetchData = async () => {
     }
   } catch (e) {
     console.error('获取数据失败', e)
+    ElMessage.error(e.response?.data?.message || '获取数据失败')
   } finally {
     loading.value = false
   }
@@ -534,13 +548,17 @@ const handleApprove = (row) => {
 }
 
 const confirmApprove = async () => {
+  approveSubmitting.value = true
   try {
     await approveBorrow(currentRow.value.id, approveForm.remarks)
     ElMessage.success('审批通过')
     approveDialogVisible.value = false
     fetchData()
   } catch (e) {
-    console.error(e)
+    console.error('审批失败', e)
+    ElMessage.error(e.response?.data?.message || '审批失败')
+  } finally {
+    approveSubmitting.value = false
   }
 }
 
@@ -552,17 +570,25 @@ const handleReject = (row) => {
 }
 
 const confirmReject = async () => {
-  if (!rejectForm.reason) {
+  if (!rejectForm.reason?.trim()) {
     ElMessage.warning('请输入拒绝原因')
     return
   }
+  if (rejectForm.reason.length < 2) {
+    ElMessage.warning('拒绝原因至少2个字')
+    return
+  }
+  rejectSubmitting.value = true
   try {
-    await rejectBorrow(currentRow.value.id, rejectForm.reason)
+    await rejectBorrow(currentRow.value.id, { reason: rejectForm.reason })
     ElMessage.success('已拒绝')
     rejectDialogVisible.value = false
     fetchData()
   } catch (e) {
-    console.error(e)
+    console.error('拒绝失败', e)
+    ElMessage.error(e.response?.data?.message || '操作失败')
+  } finally {
+    rejectSubmitting.value = false
   }
 }
 
@@ -574,7 +600,10 @@ const handleReturn = async (row) => {
     ElMessage.success('归还成功')
     fetchData()
   } catch (e) {
-    if (e !== 'cancel') console.error(e)
+    if (e !== 'cancel') {
+      console.error('归还失败', e)
+      ElMessage.error(e.response?.data?.message || '归还失败')
+    }
   }
 }
 
@@ -590,13 +619,17 @@ const confirmRenew = async () => {
     ElMessage.warning('请选择新的归还日期')
     return
   }
+  renewSubmitting.value = true
   try {
     await renewBorrow(currentRow.value.id, renewForm.newReturnDate)
     ElMessage.success('续借成功')
     renewDialogVisible.value = false
     fetchData()
   } catch (e) {
-    console.error(e)
+    console.error('续借失败', e)
+    ElMessage.error(e.response?.data?.message || '续借失败')
+  } finally {
+    renewSubmitting.value = false
   }
 }
 
@@ -614,11 +647,17 @@ const handleLend = async (row) => {
       '确认借出',
       { type: 'warning' }
     )
+    lendSubmitting.value = true
     await lendArchive(row.id)
     ElMessage.success('借出成功')
     fetchData()
   } catch (e) {
-    if (e !== 'cancel') console.error(e)
+    if (e !== 'cancel') {
+      console.error('借出失败', e)
+      ElMessage.error(e.response?.data?.message || '借出失败')
+    }
+  } finally {
+    lendSubmitting.value = false
   }
 }
 
@@ -647,29 +686,9 @@ const formatDateTime = (dateStr) => {
   return dateStr.replace('T', ' ').substring(0, 16)
 }
 
-const getStatusName = (status) => {
-  const map = {
-    PENDING: '待审批',
-    APPROVED: '已通过',
-    REJECTED: '已拒绝',
-    BORROWED: '借出中',
-    RETURNED: '已归还',
-    CANCELLED: '已取消'
-  }
-  return map[status] || status
-}
-
-const getStatusType = (status) => {
-  const map = {
-    PENDING: 'warning',
-    APPROVED: 'success',
-    REJECTED: 'danger',
-    BORROWED: '',
-    RETURNED: 'info',
-    CANCELLED: 'info'
-  }
-  return map[status] || ''
-}
+// 注：getBorrowStatusName, getBorrowStatusType 已从 archiveEnums.js 导入
+const getStatusName = getBorrowStatusName
+const getStatusType = getBorrowStatusType
 
 const isOverdue = (row) => {
   if (row.status !== 'BORROWED') return false

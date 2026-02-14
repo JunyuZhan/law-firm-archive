@@ -26,24 +26,10 @@
             style="width: 120px"
           >
             <el-option
-              label="文书档案"
-              value="DOCUMENT"
-            />
-            <el-option
-              label="科技档案"
-              value="SCIENCE"
-            />
-            <el-option
-              label="会计档案"
-              value="ACCOUNTING"
-            />
-            <el-option
-              label="人事档案"
-              value="PERSONNEL"
-            />
-            <el-option
-              label="专业档案"
-              value="SPECIAL"
+              v-for="item in archiveTypeOptions"
+              :key="item.value"
+              :label="item.label"
+              :value="item.value"
             />
           </el-select>
         </el-form-item>
@@ -55,20 +41,10 @@
             style="width: 120px"
           >
             <el-option
-              label="已接收"
-              value="RECEIVED"
-            />
-            <el-option
-              label="整理中"
-              value="CATALOGING"
-            />
-            <el-option
-              label="已归档"
-              value="STORED"
-            />
-            <el-option
-              label="借出中"
-              value="BORROWED"
+              v-for="item in statusOptions"
+              :key="item.value"
+              :label="item.label"
+              :value="item.value"
             />
           </el-select>
         </el-form-item>
@@ -244,8 +220,22 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getArchiveList, deleteArchive } from '@/api/archive'
+import { 
+  getArchiveTypeName, 
+  getStatusName, 
+  getStatusType, 
+  getRetentionName,
+  getArchiveTypeOptions,
+  ARCHIVE_STATUS 
+} from '@/utils/archiveEnums'
 
 const router = useRouter()
+
+// 下拉选项
+const archiveTypeOptions = getArchiveTypeOptions()
+const statusOptions = Object.entries(ARCHIVE_STATUS)
+  .filter(([key]) => ['RECEIVED', 'CATALOGING', 'STORED', 'BORROWED'].includes(key))
+  .map(([value, label]) => ({ value, label }))
 const loading = ref(false)
 const tableData = ref([])
 
@@ -275,6 +265,7 @@ const fetchData = async () => {
     pagination.total = res.data.total
   } catch (e) {
     console.error('获取档案列表失败', e)
+    ElMessage.error(e.response?.data?.message || '获取档案列表失败')
   } finally {
     loading.value = false
   }
@@ -323,6 +314,7 @@ const handleDelete = async (row) => {
     fetchData()
   } catch (e) {
     console.error('删除失败', e)
+    ElMessage.error(e.response?.data?.message || '删除失败')
   }
 }
 
@@ -346,55 +338,8 @@ const formatDateTime = (dateStr) => {
   if (!dateStr) return '-'
   return dateStr.replace('T', ' ').substring(0, 19)
 }
-
-const getArchiveTypeName = (type) => {
-  const map = {
-    DOCUMENT: '文书',
-    SCIENCE: '科技',
-    ACCOUNTING: '会计',
-    PERSONNEL: '人事',
-    SPECIAL: '专业',
-    AUDIOVISUAL: '声像'
-  }
-  return map[type] || type
-}
-
-const getStatusName = (status) => {
-  const map = {
-    DRAFT: '草稿',
-    RECEIVED: '已接收',
-    CATALOGING: '整理中',
-    STORED: '已归档',
-    BORROWED: '借出中',
-    APPRAISAL: '鉴定中',
-    DESTROYED: '已销毁'
-  }
-  return map[status] || status
-}
-
-const getStatusType = (status) => {
-  const map = {
-    DRAFT: 'info',
-    RECEIVED: 'warning',
-    CATALOGING: '',
-    STORED: 'success',
-    BORROWED: 'danger',
-    APPRAISAL: 'warning',
-    DESTROYED: 'info'
-  }
-  return map[status] || ''
-}
-
-const getRetentionName = (code) => {
-  const map = {
-    PERMANENT: '永久',
-    Y30: '30年',
-    Y15: '15年',
-    Y10: '10年',
-    Y5: '5年'
-  }
-  return map[code] || code
-}
+// 注：getArchiveTypeName, getStatusName, getStatusType, getRetentionName 
+// 已从 archiveEnums.js 导入
 
 const getSourceName = (source) => {
   const map = {

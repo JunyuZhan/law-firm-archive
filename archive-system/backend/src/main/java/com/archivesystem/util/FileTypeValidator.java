@@ -157,8 +157,17 @@ public class FileTypeValidator {
         
         String ext = extension.toLowerCase();
         
-        // 文本文件不做魔数验证
+        // 文本文件进行二进制内容检查（防止伪装攻击）
         if ("txt".equals(ext) || "csv".equals(ext) || "xml".equals(ext) || "json".equals(ext)) {
+            try {
+                byte[] header = readFileHeader(file, 512);
+                if (header != null && containsBinaryContent(header)) {
+                    log.warn("文本文件包含二进制内容，可能是伪装文件: extension={}", ext);
+                    return ValidationResult.fail("文件内容与文本格式不匹配，可能是伪装文件");
+                }
+            } catch (IOException e) {
+                log.warn("无法验证文本文件: {}", e.getMessage());
+            }
             return ValidationResult.success();
         }
         
@@ -197,6 +206,64 @@ public class FileTypeValidator {
             log.error("文件验证异常", e);
             return ValidationResult.fail("文件验证异常: " + e.getMessage());
         }
+    }
+
+    /**
+     * 验证字节数组内容类型是否匹配扩展名.
+     *
+     * @param content   文件字节内容
+     * @param extension 文件扩展名
+     * @return 验证结果
+     */
+    public static ValidationResult validate(byte[] content, String extension) {
+        if (content == null || content.length == 0) {
+            return ValidationResult.fail("文件内容为空");
+        }
+        
+        if (extension == null || extension.isBlank()) {
+            return ValidationResult.fail("文件扩展名为空");
+        }
+        
+        String ext = extension.toLowerCase();
+        
+        // 文本文件进行二进制内容检查（防止伪装攻击）
+        if ("txt".equals(ext) || "csv".equals(ext) || "xml".equals(ext) || "json".equals(ext)) {
+            byte[] header = new byte[Math.min(content.length, 512)];
+            System.arraycopy(content, 0, header, 0, header.length);
+            if (containsBinaryContent(header)) {
+                log.warn("文本文件包含二进制内容，可能是伪装文件: extension={}", ext);
+                return ValidationResult.fail("文件内容与文本格式不匹配，可能是伪装文件");
+            }
+            return ValidationResult.success();
+        }
+        
+        // 获取该扩展名对应的魔数
+        byte[][] magicNumbers = MAGIC_NUMBERS.get(ext);
+        if (magicNumbers == null) {
+            // 没有配置魔数的类型，仅通过扩展名验证
+            log.debug("未配置魔数验证: {}", ext);
+            return ValidationResult.success();
+        }
+        
+        // 读取文件头部（最多16字节）
+        byte[] header = new byte[Math.min(content.length, 16)];
+        System.arraycopy(content, 0, header, 0, header.length);
+        
+        // 验证魔数
+        boolean matched = false;
+        for (byte[] magic : magicNumbers) {
+            if (startsWith(header, magic)) {
+                matched = true;
+                break;
+            }
+        }
+        
+        if (!matched) {
+            log.warn("文件魔数验证失败: extension={}, header={}", ext, bytesToHex(header));
+            return ValidationResult.fail("文件类型与扩展名不匹配，可能是伪装文件");
+        }
+        
+        return ValidationResult.success();
     }
 
     /**
@@ -240,6 +307,29 @@ public class FileTypeValidator {
         }
     }
 
+    /**
+     * 检查内容是否包含二进制数据（非文本内容）.
+     * 用于验证文本文件是否被伪装。
+     */
+    private static boolean containsBinaryContent(byte[] data) {
+        if (data == null || data.length == 0) {
+            return false;
+        }
+        
+        int binaryCount = 0;
+        for (byte b : data) {
+            // 允许的字符：可打印ASCII (0x20-0x7E)、换行(0x0A)、回车(0x0D)、制表符(0x09)
+            // UTF-8 高位字节 (0x80-0xFF) 也允许
+            if (b < 0x09 || (b > 0x0D && b < 0x20) || b == 0x7F) {
+                binaryCount++;
+            }
+        }
+        
+        // 如果二进制字符超过 5%，认为是二进制文件
+        double binaryRatio = (double) binaryCount / data.length;
+        return binaryRatio > 0.05;
+    }
+    
     /**
      * 检查字节数组是否以指定前缀开头.
      */

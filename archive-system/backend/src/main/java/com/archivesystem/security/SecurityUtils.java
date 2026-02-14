@@ -79,4 +79,26 @@ public final class SecurityUtils {
         UserDetailsImpl user = getCurrentUser();
         return user != null ? user.getUserType() : null;
     }
+
+    /**
+     * 判断当前用户是否拥有指定角色之一.
+     * @param roles 角色列表（不含 ROLE_ 前缀）
+     */
+    public static boolean hasAnyRole(String... roles) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || authentication.getAuthorities() == null) {
+            return false;
+        }
+        
+        for (String role : roles) {
+            String roleWithPrefix = "ROLE_" + role;
+            boolean hasRole = authentication.getAuthorities().stream()
+                    .anyMatch(auth -> auth.getAuthority().equals(roleWithPrefix) || 
+                                      auth.getAuthority().equals(role));
+            if (hasRole) {
+                return true;
+            }
+        }
+        return false;
+    }
 }

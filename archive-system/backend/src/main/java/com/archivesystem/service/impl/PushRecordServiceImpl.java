@@ -121,8 +121,18 @@ public class PushRecordServiceImpl implements PushRecordService {
         Map<String, Long> statusMap = new HashMap<>();
         long total = 0;
         for (Map<String, Object> item : statusCounts) {
-            String status = (String) item.get("push_status");
-            Long count = ((Number) item.get("count")).longValue();
+            if (item == null) continue;
+            
+            Object statusObj = item.get("push_status");
+            Object countObj = item.get("count");
+            
+            if (statusObj == null || countObj == null) {
+                log.warn("统计数据包含空值，跳过: item={}", item);
+                continue;
+            }
+            
+            String status = statusObj.toString();
+            Long count = ((Number) countObj).longValue();
             statusMap.put(status, count);
             total += count;
         }

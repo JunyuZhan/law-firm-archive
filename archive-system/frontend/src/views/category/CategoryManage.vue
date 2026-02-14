@@ -134,24 +134,10 @@
                   style="width: 100%"
                 >
                   <el-option
-                    label="文书档案"
-                    value="DOCUMENT"
-                  />
-                  <el-option
-                    label="科技档案"
-                    value="SCIENCE"
-                  />
-                  <el-option
-                    label="会计档案"
-                    value="ACCOUNTING"
-                  />
-                  <el-option
-                    label="人事档案"
-                    value="PERSONNEL"
-                  />
-                  <el-option
-                    label="专业档案"
-                    value="SPECIAL"
+                    v-for="item in archiveTypeOptions"
+                    :key="item.value"
+                    :label="item.label"
+                    :value="item.value"
                   />
                 </el-select>
               </el-form-item>
@@ -162,24 +148,10 @@
                   style="width: 100%"
                 >
                   <el-option
-                    label="永久"
-                    value="PERMANENT"
-                  />
-                  <el-option
-                    label="30年"
-                    value="Y30"
-                  />
-                  <el-option
-                    label="15年"
-                    value="Y15"
-                  />
-                  <el-option
-                    label="10年"
-                    value="Y10"
-                  />
-                  <el-option
-                    label="5年"
-                    value="Y5"
+                    v-for="item in retentionOptions"
+                    :key="item.value"
+                    :label="item.label"
+                    :value="item.value"
                   />
                 </el-select>
               </el-form-item>
@@ -253,6 +225,14 @@ import {
   getCategoryTree, getCategoryStatistics, 
   createCategory, updateCategory, deleteCategory, moveCategory 
 } from '@/api/category'
+import {
+  getArchiveTypeOptions,
+  getRetentionOptions
+} from '@/utils/archiveEnums'
+
+// 下拉选项
+const archiveTypeOptions = getArchiveTypeOptions()
+const retentionOptions = getRetentionOptions()
 
 const treeRef = ref(null)
 const formRef = ref(null)

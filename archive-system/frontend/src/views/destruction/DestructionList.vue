@@ -297,6 +297,7 @@
         </el-button>
         <el-button
           type="primary"
+          :loading="approveSubmitting"
           @click="confirmApprove"
         >
           确认通过
@@ -322,7 +323,7 @@
             v-model="rejectForm.comment"
             type="textarea"
             :rows="3"
-            placeholder="请输入拒绝原因"
+            placeholder="请输入拒绝原因（至少2个字）"
           />
         </el-form-item>
       </el-form>
@@ -332,6 +333,7 @@
         </el-button>
         <el-button
           type="danger"
+          :loading="rejectSubmitting"
           @click="confirmReject"
         >
           确认拒绝
@@ -436,6 +438,10 @@ import {
   getDestructionDetail, applyDestruction, approveDestruction, rejectDestruction,
   executeDestruction, batchExecuteDestruction
 } from '@/api/destruction'
+import {
+  getDestructionStatusName,
+  getDestructionStatusType
+} from '@/utils/archiveEnums'
 
 const activeTab = ref('all')
 const loading = ref(false)
@@ -474,6 +480,10 @@ const currentRow = ref(null)
 const approveForm = reactive({ comment: '' })
 const rejectForm = reactive({ comment: '' })
 
+// 操作 loading 状态
+const approveSubmitting = ref(false)
+const rejectSubmitting = ref(false)
+
 // 详情
 const detailDialogVisible = ref(false)
 const detailData = ref(null)
@@ -504,6 +514,7 @@ const fetchData = async () => {
     pagination.total = res.data.total
   } catch (e) {
     console.error('获取数据失败', e)
+    ElMessage.error(e.response?.data?.message || '获取数据失败')
   } finally {
     loading.value = false
   }
@@ -558,13 +569,17 @@ const handleApprove = (row) => {
 }
 
 const confirmApprove = async () => {
+  approveSubmitting.value = true
   try {
     await approveDestruction(currentRow.value.id, approveForm.comment)
     ElMessage.success('审批通过')
     approveDialogVisible.value = false
     fetchData()
   } catch (e) {
-    console.error(e)
+    console.error('审批失败', e)
+    ElMessage.error(e.response?.data?.message || '审批失败')
+  } finally {
+    approveSubmitting.value = false
   }
 }
 
@@ -575,17 +590,21 @@ const handleReject = (row) => {
 }
 
 const confirmReject = async () => {
-  if (!rejectForm.comment) {
+  if (!rejectForm.comment?.trim()) {
     ElMessage.warning('请输入拒绝原因')
     return
   }
+  rejectSubmitting.value = true
   try {
     await rejectDestruction(currentRow.value.id, rejectForm.comment)
     ElMessage.success('已拒绝')
     rejectDialogVisible.value = false
     fetchData()
   } catch (e) {
-    console.error(e)
+    console.error('拒绝失败', e)
+    ElMessage.error(e.response?.data?.message || '操作失败')
+  } finally {
+    rejectSubmitting.value = false
   }
 }
 
@@ -601,7 +620,10 @@ const handleExecute = async (row) => {
     ElMessage.success('销毁已执行')
     fetchData()
   } catch (e) {
-    if (e !== 'cancel') console.error(e)
+    if (e !== 'cancel') {
+      console.error('执行销毁失败', e)
+      ElMessage.error(e.response?.data?.message || '执行失败')
+    }
   }
 }
 
@@ -621,7 +643,10 @@ const handleBatchExecute = async () => {
     selectedRows.value = []
     fetchData()
   } catch (e) {
-    if (e !== 'cancel') console.error(e)
+    if (e !== 'cancel') {
+      console.error('批量销毁失败', e)
+      ElMessage.error(e.response?.data?.message || '批量执行失败')
+    }
   }
 }
 
@@ -632,7 +657,8 @@ const handleView = async (row) => {
     detailData.value = res.data
     detailDialogVisible.value = true
   } catch (e) {
-    console.error(e)
+    console.error('获取详情失败', e)
+    ElMessage.error(e.response?.data?.message || '获取详情失败')
   }
 }
 
@@ -642,24 +668,20 @@ const formatDateTime = (dateStr) => {
   return dateStr.replace('T', ' ').substring(0, 16)
 }
 
+// 注：getDestructionStatusName, getDestructionStatusType 已从 archiveEnums.js 导入
+// 销毁状态需要自定义显示名，'APPROVED' 在销毁场景显示为 '待执行'
 const getStatusName = (status) => {
-  const map = {
-    PENDING: '待审批',
-    APPROVED: '待执行',
-    REJECTED: '已拒绝',
-    EXECUTED: '已销毁'
+  const customMap = {
+    APPROVED: '待执行' // 覆盖默认的 '已批准'
   }
-  return map[status] || status
+  return customMap[status] || getDestructionStatusName(status)
 }
 
 const getStatusType = (status) => {
-  const map = {
-    PENDING: 'warning',
-    APPROVED: 'success',
-    REJECTED: 'info',
-    EXECUTED: 'danger'
+  const customMap = {
+    REJECTED: 'info' // 覆盖默认的 'danger'
   }
-  return map[status] || ''
+  return customMap[status] || getDestructionStatusType(status)
 }
 
 onMounted(() => {

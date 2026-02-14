@@ -6,6 +6,7 @@ import com.archivesystem.service.ConfigService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -27,6 +28,7 @@ public class ConfigController {
      */
     @GetMapping
     @Operation(summary = "获取所有配置", description = "获取所有配置项，按分组返回")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
     public Result<Map<String, List<SysConfig>>> getAllGrouped() {
         return Result.success(configService.getAllGrouped());
     }
@@ -36,6 +38,7 @@ public class ConfigController {
      */
     @GetMapping("/list")
     @Operation(summary = "获取配置列表", description = "获取所有配置项列表")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
     public Result<List<SysConfig>> getAll() {
         return Result.success(configService.getAll());
     }
@@ -45,6 +48,7 @@ public class ConfigController {
      */
     @GetMapping("/group/{group}")
     @Operation(summary = "按分组获取配置")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
     public Result<List<SysConfig>> getByGroup(@PathVariable String group) {
         return Result.success(configService.getByGroup(group));
     }
@@ -54,6 +58,7 @@ public class ConfigController {
      */
     @GetMapping("/{key}")
     @Operation(summary = "获取单个配置")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
     public Result<SysConfig> getByKey(@PathVariable String key) {
         return Result.success(configService.getByKey(key));
     }
@@ -63,6 +68,7 @@ public class ConfigController {
      */
     @PutMapping("/{key}")
     @Operation(summary = "更新配置")
+    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
     public Result<Void> updateConfig(
             @PathVariable String key,
             @RequestBody Map<String, String> body) {
@@ -76,6 +82,7 @@ public class ConfigController {
      */
     @PutMapping("/batch")
     @Operation(summary = "批量更新配置")
+    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
     public Result<Void> batchUpdate(@RequestBody Map<String, String> configs) {
         configService.batchUpdateConfigs(configs);
         return Result.success("批量更新成功", null);
@@ -86,6 +93,7 @@ public class ConfigController {
      */
     @PostMapping
     @Operation(summary = "创建配置")
+    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
     public Result<SysConfig> createConfig(@RequestBody SysConfig config) {
         SysConfig created = configService.createConfig(config);
         return Result.success("创建成功", created);
@@ -96,6 +104,7 @@ public class ConfigController {
      */
     @DeleteMapping("/{key}")
     @Operation(summary = "删除配置")
+    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
     public Result<Void> deleteConfig(@PathVariable String key) {
         configService.deleteConfig(key);
         return Result.success("删除成功", null);
@@ -106,6 +115,7 @@ public class ConfigController {
      */
     @PostMapping("/refresh")
     @Operation(summary = "刷新配置缓存")
+    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
     public Result<Void> refreshCache() {
         configService.refreshCache();
         return Result.success("缓存刷新成功", null);
@@ -116,6 +126,7 @@ public class ConfigController {
      */
     @GetMapping("/archive-no")
     @Operation(summary = "获取档案号配置", description = "获取档案号规则相关配置")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
     public Result<List<SysConfig>> getArchiveNoConfigs() {
         return Result.success(configService.getByGroup(SysConfig.GROUP_ARCHIVE_NO));
     }
@@ -125,6 +136,7 @@ public class ConfigController {
      */
     @GetMapping("/retention")
     @Operation(summary = "获取保管期限配置")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
     public Result<List<SysConfig>> getRetentionConfigs() {
         return Result.success(configService.getByGroup(SysConfig.GROUP_RETENTION));
     }
@@ -134,6 +146,7 @@ public class ConfigController {
      */
     @GetMapping("/system")
     @Operation(summary = "获取系统参数配置")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
     public Result<List<SysConfig>> getSystemConfigs() {
         return Result.success(configService.getByGroup(SysConfig.GROUP_SYSTEM));
     }
