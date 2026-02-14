@@ -60,7 +60,7 @@ public class ConfigController {
     @GetMapping("/public/site")
     @Operation(summary = "获取站点配置（公开）", description = "无需认证，用于登录页面等")
     public Result<List<SysConfig>> getPublicSiteConfig() {
-        return Result.success(configService.getByGroup(SysConfig.GROUP_SITE));
+        return Result.success(configService.getByGroup("SITE"));
     }
 
     /**
