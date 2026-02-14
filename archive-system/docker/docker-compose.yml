@@ -83,23 +83,6 @@ services:
     networks:
       - archive-network
 
-  # LibreOffice 文档转换服务（Office -> PDF）
-  libreoffice:
-    image: eugenmayer/kontextwork-converter:latest
-    container_name: archive-libreoffice
-    environment:
-      - LIBREOFFICE_HOST=0.0.0.0
-    ports:
-      - "2002:2002"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:2002"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
-    networks:
-      - archive-network
-
   # Elasticsearch 全文检索（带 IK 分词器）
   elasticsearch:
     build:
@@ -147,12 +130,6 @@ services:
       SPRING_RABBITMQ_USERNAME: admin
       SPRING_RABBITMQ_PASSWORD: admin123
       SPRING_ELASTICSEARCH_URIS: http://elasticsearch:9200
-      # LibreOffice 文档转换配置
-      JODCONVERTER_LOCAL_ENABLED: true
-      JODCONVERTER_LOCAL_OFFICE_HOME: /usr/lib/libreoffice
-      JODCONVERTER_LOCAL_PORT_NUMBERS: 2002
-      JODCONVERTER_REMOTE_ENABLED: true
-      JODCONVERTER_REMOTE_URL: http://libreoffice:2002
     ports:
       - "8090:8090"
     depends_on:
@@ -165,8 +142,6 @@ services:
       rabbitmq:
         condition: service_healthy
       elasticsearch:
-        condition: service_healthy
-      libreoffice:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8090/api/actuator/health"]
