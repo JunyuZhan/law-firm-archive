@@ -138,7 +138,7 @@ security:
   # CORS允许的来源（生产环境请配置具体域名）
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3001,http://localhost:3000}
-  # API Key配置
+  # API Key配置（通过后台"来源管理"配置）
   api-key:
     enabled: ${API_KEY_ENABLED:true}
     header: X-API-Key

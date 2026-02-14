@@ -1,5 +1,8 @@
 package com.archivesystem.security;
 
+import com.archivesystem.entity.ExternalSource;
+import com.archivesystem.repository.ExternalSourceMapper;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -19,16 +22,18 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 /**
  * API Key认证过滤器.
- * 用于保护开放API接口
+ * 用于保护开放API接口，从数据库 arc_external_source 表验证 API Key
  */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class ApiKeyAuthFilter extends OncePerRequestFilter {
 
+    private final ExternalSourceMapper externalSourceMapper;
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
     private final AntPathMatcher pathMatcher = new AntPathMatcher();
@@ -51,8 +56,10 @@ public class ApiKeyAuthFilter extends OncePerRequestFilter {
             "/open/health"
     );
 
-    private static final String API_KEY_PREFIX = "api_key:";
+    // Redis缓存前缀和过期时间
+    private static final String API_KEY_CACHE_PREFIX = "api_key_cache:";
     private static final String API_KEY_USAGE_PREFIX = "api_key_usage:";
+    private static final Duration CACHE_TTL = Duration.ofMinutes(5);
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
@@ -73,15 +80,19 @@ public class ApiKeyAuthFilter extends OncePerRequestFilter {
             return;
         }
 
-        // 验证API Key
-        if (!validateApiKey(apiKey)) {
+        // 验证API Key（先从缓存查，缓存未命中再查数据库）
+        ExternalSource source = validateApiKey(apiKey);
+        if (source == null) {
             log.warn("无效的API Key: uri={}, ip={}", requestUri, getClientIp(request));
-            sendUnauthorizedResponse(response, "无效的API Key");
+            sendUnauthorizedResponse(response, "无效的API Key或来源未启用");
             return;
         }
 
+        // 将来源信息放入请求属性，供后续使用
+        request.setAttribute("externalSource", source);
+        
         // 记录API调用
-        recordApiKeyUsage(apiKey, requestUri);
+        recordApiKeyUsage(apiKey, source.getSourceCode(), requestUri);
         
         filterChain.doFilter(request, response);
     }
@@ -104,18 +115,44 @@ public class ApiKeyAuthFilter extends OncePerRequestFilter {
 
     /**
      * 验证API Key.
+     * 先从Redis缓存查询，缓存未命中再查数据库
+     * 
+     * @param apiKey API密钥
+     * @return 如果有效返回 ExternalSource，否则返回 null
      */
-    private boolean validateApiKey(String apiKey) {
-        String key = API_KEY_PREFIX + apiKey;
-        return Boolean.TRUE.equals(redisTemplate.hasKey(key));
+    private ExternalSource validateApiKey(String apiKey) {
+        String cacheKey = API_KEY_CACHE_PREFIX + apiKey;
+        
+        // 先检查缓存中是否标记为无效
+        String cached = redisTemplate.opsForValue().get(cacheKey);
+        if ("INVALID".equals(cached)) {
+            return null;
+        }
+        
+        // 查询数据库
+        ExternalSource source = externalSourceMapper.selectOne(
+                new LambdaQueryWrapper<ExternalSource>()
+                        .eq(ExternalSource::getApiKey, apiKey)
+                        .eq(ExternalSource::getEnabled, true)
+                        .eq(ExternalSource::getDeleted, false));
+        
+        if (source != null) {
+            // 有效，缓存来源编码
+            redisTemplate.opsForValue().set(cacheKey, source.getSourceCode(), CACHE_TTL);
+            return source;
+        } else {
+            // 无效，缓存标记防止频繁查库
+            redisTemplate.opsForValue().set(cacheKey, "INVALID", CACHE_TTL);
+            return null;
+        }
     }
 
     /**
      * 记录API Key使用情况.
      */
-    private void recordApiKeyUsage(String apiKey, String uri) {
+    private void recordApiKeyUsage(String apiKey, String sourceCode, String uri) {
         try {
-            String key = API_KEY_USAGE_PREFIX + apiKey + ":" + java.time.LocalDate.now();
+            String key = API_KEY_USAGE_PREFIX + sourceCode + ":" + java.time.LocalDate.now();
             redisTemplate.opsForHash().increment(key, uri, 1);
             redisTemplate.expire(key, Duration.ofDays(30));
         } catch (Exception e) {
@@ -152,35 +189,22 @@ public class ApiKeyAuthFilter extends OncePerRequestFilter {
         response.getWriter().write(objectMapper.writeValueAsString(body));
     }
 
-    // ===== API Key管理方法 =====
-
     /**
      * 生成新的API Key.
+     * 
+     * @return 32位随机字符串
      */
-    public String generateApiKey(String sourceName, String description, long expirationDays) {
-        String apiKey = java.util.UUID.randomUUID().toString().replace("-", "");
-        String key = API_KEY_PREFIX + apiKey;
-        
-        Map<String, String> keyInfo = new HashMap<>();
-        keyInfo.put("sourceName", sourceName);
-        keyInfo.put("description", description);
-        keyInfo.put("createdAt", java.time.LocalDateTime.now().toString());
-        
-        redisTemplate.opsForHash().putAll(key, keyInfo);
-        if (expirationDays > 0) {
-            redisTemplate.expire(key, Duration.ofDays(expirationDays));
-        }
-        
-        log.info("生成新API Key: source={}, expiration={}天", sourceName, expirationDays);
-        return apiKey;
+    public String generateApiKey() {
+        return UUID.randomUUID().toString().replace("-", "");
     }
 
     /**
-     * 吊销API Key.
+     * 清除API Key缓存.
+     * 当来源配置更新时调用
      */
-    public void revokeApiKey(String apiKey) {
-        String key = API_KEY_PREFIX + apiKey;
-        redisTemplate.delete(key);
-        log.info("API Key已吊销");
+    public void clearApiKeyCache(String apiKey) {
+        if (apiKey != null) {
+            redisTemplate.delete(API_KEY_CACHE_PREFIX + apiKey);
+        }
     }
 }

@@ -681,15 +681,13 @@ INSERT INTO sys_user (username, password, real_name, email, phone, department, u
 ('assistant', '$2a$10$x8fiMNGYO6phwaI8VDzo0edwHR1d60F/cSonNxs/X2sz3V2rdV6vK', '陈助理', 'assistant@lawfirm.com', '13800000008', '综合部', 'USER', 'ACTIVE')
 ON CONFLICT (username) DO NOTHING;
 
--- 初始化律所系统来源
-INSERT INTO arc_external_source (source_code, source_name, source_type, description, auth_type, enabled) VALUES
-('LAW_FIRM_MAIN', '律所管理系统', 'LAW_FIRM', '接收律所管理系统推送的归档档案', 'API_KEY', true)
-ON CONFLICT (source_code) DO NOTHING;
-
--- 初始化测试用API Key（生产环境请删除或更换）
-INSERT INTO sys_api_key (api_key, source_name, description, status) VALUES
-('test-api-key-for-development-only', '测试系统', '开发测试用API Key，生产环境请删除', 'ACTIVE')
-ON CONFLICT (api_key) DO NOTHING;
+-- 初始化律所系统来源（包含 API Key，用于对接律所管理系统）
+-- 注意：生产环境部署后请在后台"来源管理"中重新生成 API Key
+INSERT INTO arc_external_source (source_code, source_name, source_type, description, api_key, auth_type, enabled) VALUES
+('LAW_FIRM_MAIN', '律所管理系统', 'LAW_FIRM', '接收律所管理系统推送的归档档案', 'lawfirm-archive-api-key-2026', 'API_KEY', true)
+ON CONFLICT (source_code) DO UPDATE SET 
+    api_key = EXCLUDED.api_key,
+    enabled = EXCLUDED.enabled;
 
 -- 初始化系统配置
 INSERT INTO sys_config (config_key, config_value, config_type, config_group, description, editable, sort_order) VALUES

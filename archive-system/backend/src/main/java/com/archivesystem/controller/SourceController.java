@@ -3,6 +3,7 @@ package com.archivesystem.controller;
 import com.archivesystem.common.Result;
 import com.archivesystem.entity.ExternalSource;
 import com.archivesystem.repository.ExternalSourceMapper;
+import com.archivesystem.security.ApiKeyAuthFilter;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -27,6 +28,7 @@ import java.util.List;
 public class SourceController {
 
     private final ExternalSourceMapper externalSourceMapper;
+    private final ApiKeyAuthFilter apiKeyAuthFilter;
     private final RestTemplate restTemplate = new RestTemplate();
 
     @GetMapping
@@ -64,9 +66,13 @@ public class SourceController {
         if (existing != null) {
             return Result.error("400", "来源编码已存在");
         }
+        // 自动生成 API Key
+        if (source.getApiKey() == null || source.getApiKey().isEmpty()) {
+            source.setApiKey(apiKeyAuthFilter.generateApiKey());
+        }
         externalSourceMapper.insert(source);
-        source.setApiKey(null);
-        return Result.success("创建成功", source);
+        // 返回时包含 API Key，仅创建时返回一次
+        return Result.success("创建成功，请保存 API Key", source);
     }
 
     @PutMapping("/{id}")
@@ -80,9 +86,31 @@ public class SourceController {
         // 如果没有传入新密钥，保留原密钥
         if (source.getApiKey() == null || source.getApiKey().isEmpty()) {
             source.setApiKey(existing.getApiKey());
+        } else if (!source.getApiKey().equals(existing.getApiKey())) {
+            // API Key 变更，清除旧缓存
+            apiKeyAuthFilter.clearApiKeyCache(existing.getApiKey());
         }
         externalSourceMapper.updateById(source);
+        // 清除新 API Key 的缓存（如果之前被标记为无效）
+        apiKeyAuthFilter.clearApiKeyCache(source.getApiKey());
         return Result.success("更新成功", null);
+    }
+
+    @PostMapping("/{id}/regenerate-key")
+    @Operation(summary = "重新生成API Key")
+    public Result<String> regenerateApiKey(@PathVariable Long id) {
+        ExternalSource source = externalSourceMapper.selectById(id);
+        if (source == null || source.getDeleted()) {
+            return Result.error("404", "来源不存在");
+        }
+        // 清除旧缓存
+        apiKeyAuthFilter.clearApiKeyCache(source.getApiKey());
+        // 生成新 Key
+        String newApiKey = apiKeyAuthFilter.generateApiKey();
+        source.setApiKey(newApiKey);
+        externalSourceMapper.updateById(source);
+        log.info("重新生成API Key: sourceId={}, sourceCode={}", id, source.getSourceCode());
+        return Result.success("API Key 已重新生成，请保存", newApiKey);
     }
 
     @PutMapping("/{id}/toggle")
