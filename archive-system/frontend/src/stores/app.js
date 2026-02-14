@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { getConfigsByGroup } from '@/api/config'
+import { getPublicSiteConfig } from '@/api/config'
 
 export const useAppStore = defineStore('app', () => {
   // 侧边栏状态
@@ -84,10 +84,10 @@ export const useAppStore = defineStore('app', () => {
     systemConfig.value = { ...systemConfig.value, ...config }
   }
   
-  // 加载 SITE 分组配置
+  // 加载 SITE 分组配置（使用公开接口，无需认证）
   async function loadSiteConfig() {
     try {
-      const res = await getConfigsByGroup('SITE')
+      const res = await getPublicSiteConfig()
       const configs = res?.data || res || []
       if (configs && configs.length > 0) {
         const configMap = {}

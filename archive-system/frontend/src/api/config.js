@@ -31,6 +31,16 @@ export function getConfigsByGroup(group) {
 }
 
 /**
+ * 获取站点配置（公开接口，无需认证）
+ */
+export function getPublicSiteConfig() {
+  return request({
+    url: '/configs/public/site',
+    method: 'get'
+  })
+}
+
+/**
  * 获取单个配置
  */
 export function getConfig(key) {

@@ -54,6 +54,16 @@ public class ConfigController {
     }
 
     /**
+     * 获取站点配置（公开接口，无需认证）
+     * 用于登录页面等公共页面加载系统名称、Logo等信息
+     */
+    @GetMapping("/public/site")
+    @Operation(summary = "获取站点配置（公开）", description = "无需认证，用于登录页面等")
+    public Result<List<SysConfig>> getPublicSiteConfig() {
+        return Result.success(configService.getByGroup(SysConfig.GROUP_SITE));
+    }
+
+    /**
      * 根据配置键获取配置
      */
     @GetMapping("/{key}")
