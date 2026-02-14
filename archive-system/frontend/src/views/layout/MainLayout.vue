@@ -17,10 +17,7 @@
       class="sidebar"
     >
       <div class="logo">
-        <img v-if="appStore.systemConfig.logoUrl" :src="appStore.systemConfig.logoUrl" class="logo-img" />
-        <el-icon v-else :size="24">
-          <Files />
-        </el-icon>
+        <img :src="appStore.systemConfig.logoUrl || '/logo.png'" class="logo-img" />
         <span v-show="!appStore.sidebarCollapsed">{{ appStore.systemConfig.systemName }}</span>
       </div>
       

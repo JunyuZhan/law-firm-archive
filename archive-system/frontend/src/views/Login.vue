@@ -2,12 +2,11 @@
   <div class="login-container">
     <div class="login-box">
       <div class="login-header">
-        <el-icon
-          :size="48"
-          color="#409eff"
-        >
-          <Files />
-        </el-icon>
+        <img 
+          :src="appStore.systemConfig.logoUrl || '/logo.png'" 
+          alt="Logo" 
+          class="login-logo"
+        />
         <h1>{{ appStore.systemConfig.systemName }}</h1>
         <p class="subtitle">
           {{ appStore.systemConfig.systemNameEn }}
@@ -452,11 +451,10 @@ const handleLogin = async () => {
   text-align: center;
   margin-bottom: 32px;
   
-  .el-icon {
-    background: linear-gradient(135deg, #409eff 0%, #2563eb 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
+  .login-logo {
+    width: 64px;
+    height: 64px;
+    object-fit: contain;
   }
   
   h1 {
