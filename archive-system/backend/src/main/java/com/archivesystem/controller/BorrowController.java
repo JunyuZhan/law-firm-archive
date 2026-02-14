@@ -176,9 +176,11 @@ public class BorrowController {
         BorrowApplication current = borrowService.getCurrentByArchiveId(archiveId);
         boolean available = current == null;
         
-        return Result.success(Map.of(
-                "available", available,
-                "currentApplication", current
-        ));
+        Map<String, Object> result = new java.util.HashMap<>();
+        result.put("available", available);
+        if (current != null) {
+            result.put("currentApplication", current);
+        }
+        return Result.success(result);
     }
 }
