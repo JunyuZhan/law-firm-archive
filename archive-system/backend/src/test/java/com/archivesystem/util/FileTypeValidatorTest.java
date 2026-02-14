@@ -12,7 +12,7 @@ class FileTypeValidatorTest {
 
     @Test
     void testValidate_NullFile() {
-        FileTypeValidator.ValidationResult result = FileTypeValidator.validate(null, "pdf");
+        FileTypeValidator.ValidationResult result = FileTypeValidator.validate((org.springframework.web.multipart.MultipartFile) null, "pdf");
         
         assertFalse(result.isValid());
         assertEquals("文件为空", result.getMessage());

@@ -34,7 +34,7 @@ class CallbackServiceTest {
     @BeforeEach
     void setUp() {
         mockRestTemplate = mock(RestTemplate.class);
-        callbackService = new CallbackServiceImpl(objectMapper, null);
+        callbackService = new CallbackServiceImpl(objectMapper, null, null);
         ReflectionTestUtils.setField(callbackService, "restTemplate", mockRestTemplate);
         
         testMessage = CallbackMessage.builder()
