@@ -29,17 +29,25 @@
         text-color="#bfcbd9"
         active-text-color="#409eff"
       >
+        <el-menu-item index="/statistics">
+          <el-icon><DataAnalysis /></el-icon>
+          <span>统计概览</span>
+        </el-menu-item>
         <el-menu-item index="/archives">
           <el-icon><Document /></el-icon>
           <span>档案列表</span>
+        </el-menu-item>
+        <el-menu-item index="/search">
+          <el-icon><Search /></el-icon>
+          <span>档案检索</span>
         </el-menu-item>
         <el-menu-item index="/receive">
           <el-icon><Upload /></el-icon>
           <span>档案接收</span>
         </el-menu-item>
-        <el-menu-item index="/search">
-          <el-icon><Search /></el-icon>
-          <span>档案检索</span>
+        <el-menu-item index="/push-records">
+          <el-icon><Connection /></el-icon>
+          <span>推送记录</span>
         </el-menu-item>
         <el-menu-item index="/borrows">
           <el-icon><Reading /></el-icon>
@@ -52,10 +60,6 @@
         <el-menu-item index="/destructions">
           <el-icon><Delete /></el-icon>
           <span>销毁管理</span>
-        </el-menu-item>
-        <el-menu-item index="/statistics">
-          <el-icon><DataAnalysis /></el-icon>
-          <span>统计分析</span>
         </el-menu-item>
         
         <el-sub-menu index="archive-settings">
@@ -74,9 +78,6 @@
           </el-menu-item>
           <el-menu-item index="/sources">
             来源管理
-          </el-menu-item>
-          <el-menu-item index="/push-records">
-            推送记录
           </el-menu-item>
         </el-sub-menu>
         
@@ -243,7 +244,8 @@ import {
   Expand,
   Loading,
   Stamp,
-  Delete
+  Delete,
+  Connection
 } from '@element-plus/icons-vue'
 import { useUserStore, useAppStore } from '@/stores'
 
