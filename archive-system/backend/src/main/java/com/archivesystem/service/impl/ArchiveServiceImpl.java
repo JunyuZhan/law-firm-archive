@@ -144,9 +144,6 @@ public class ArchiveServiceImpl implements ArchiveService {
                 .callbackUrl(request.getCallbackUrl())
                 .totalFiles(hasFiles(request) ? request.getFiles().size() : 0)
                 .pushedAt(LocalDateTime.now())
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
-                .deleted(false)
                 .build();
         pushRecordMapper.insert(pushRecord);
         log.info("推送记录创建: id={}, sourceId={}", pushRecord.getId(), request.getSourceId());

@@ -81,7 +81,7 @@ public class PushRecordController {
     @PostMapping("/{id}/retry")
     @Operation(summary = "重试推送")
     @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
-    public Result<Void> retry(@PathVariable Long id) {
+    public Result<String> retry(@PathVariable Long id) {
         try {
             pushRecordService.retry(id);
             return Result.success("已重置为待处理状态");
