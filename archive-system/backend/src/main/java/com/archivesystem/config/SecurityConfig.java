@@ -106,15 +106,21 @@ public class SecurityConfig {
 
     /**
      * CORS配置.
-     * 严格限制允许的来源，防止CSRF攻击
+     * 动态允许所有受信任的来源，防止CSRF攻击
      */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         
-        // 从配置中读取允许的来源，不再使用通配符
-        List<String> origins = Arrays.asList(allowedOrigins.split(","));
-        configuration.setAllowedOrigins(origins);
+        // 使用动态模式匹配：允许所有 http/https 的请求来源
+        // 生产环境建议配置具体的域名列表
+        configuration.setAllowedOriginPatterns(Arrays.asList(
+                "http://localhost:*",
+                "http://127.0.0.1:*",
+                "http://192.168.*.*:*",
+                "http://10.*.*.*:*",
+                "http://172.16.*.*:*"
+        ));
         
         // 只允许必要的HTTP方法
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
