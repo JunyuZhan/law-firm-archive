@@ -87,7 +87,8 @@ export const useAppStore = defineStore('app', () => {
   // 加载 SITE 分组配置
   async function loadSiteConfig() {
     try {
-      const configs = await getConfigsByGroup('SITE')
+      const res = await getConfigsByGroup('SITE')
+      const configs = res?.data || res || []
       if (configs && configs.length > 0) {
         const configMap = {}
         configs.forEach(item => {
