@@ -1,6 +1,8 @@
 package com.archivesystem.service.impl;
 
+import com.archivesystem.entity.ExternalSource;
 import com.archivesystem.mq.CallbackMessage;
+import com.archivesystem.repository.ExternalSourceMapper;
 import com.archivesystem.service.CallbackService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -9,7 +11,11 @@ import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -22,12 +28,16 @@ import java.util.Map;
 public class CallbackServiceImpl implements CallbackService {
 
     private final ObjectMapper objectMapper;
+    private final ExternalSourceMapper externalSourceMapper;
     
     // 使用共享的RestTemplate（生产环境建议配置连接池）
     private final RestTemplate restTemplate = new RestTemplate();
     
     // 回调超时时间（秒）
     private static final int CALLBACK_TIMEOUT = 30;
+    
+    // 默认回调密钥（当无法获取配置时使用）
+    private static final String DEFAULT_CALLBACK_SECRET = "archive-callback-secret";
 
     @Override
     public boolean sendCallback(CallbackMessage message) {
@@ -39,15 +49,20 @@ public class CallbackServiceImpl implements CallbackService {
         try {
             // 构建回调请求体
             Map<String, Object> requestBody = buildCallbackPayload(message);
+            String requestBodyJson = objectMapper.writeValueAsString(requestBody);
+            
+            // 获取回调密钥
+            String callbackSecret = getCallbackSecret(message.getSourceType());
             
             // 设置请求头
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.set("X-Callback-Timestamp", String.valueOf(System.currentTimeMillis()));
+            String timestamp = String.valueOf(System.currentTimeMillis());
+            headers.set("X-Callback-Timestamp", timestamp);
             headers.set("X-Callback-Source", "archive-system");
             
-            // 生成签名（可选，用于安全验证）
-            String signature = generateSignature(requestBody);
+            // 生成签名（使用 HMAC-SHA256，与律所系统保持一致）
+            String signature = generateHmacSignature(timestamp, requestBodyJson, callbackSecret);
             headers.set("X-Callback-Signature", signature);
             
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
@@ -75,6 +90,42 @@ public class CallbackServiceImpl implements CallbackService {
             log.error("回调请求异常: archiveId={}, url={}, error={}", 
                     message.getArchiveId(), message.getCallbackUrl(), e.getMessage());
             return false;
+        }
+    }
+    
+    /**
+     * 获取回调密钥
+     * 优先从外部来源配置获取，否则使用默认密钥
+     */
+    private String getCallbackSecret(String sourceType) {
+        if (sourceType != null) {
+            try {
+                ExternalSource source = externalSourceMapper.selectBySourceCode(sourceType);
+                if (source != null && source.getApiKey() != null && !source.getApiKey().isEmpty()) {
+                    return source.getApiKey();
+                }
+            } catch (Exception e) {
+                log.warn("获取外部来源配置失败，使用默认密钥: sourceType={}, error={}", sourceType, e.getMessage());
+            }
+        }
+        return DEFAULT_CALLBACK_SECRET;
+    }
+    
+    /**
+     * 使用 HMAC-SHA256 生成签名（与律所系统保持一致）
+     * 签名格式：HMAC-SHA256(timestamp + "\n" + body, secret)
+     */
+    private String generateHmacSignature(String timestamp, String body, String secret) {
+        try {
+            String data = timestamp + "\n" + body;
+            Mac mac = Mac.getInstance("HmacSHA256");
+            SecretKeySpec secretKeySpec = new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
+            mac.init(secretKeySpec);
+            byte[] hmacBytes = mac.doFinal(data.getBytes(StandardCharsets.UTF_8));
+            return Base64.getEncoder().encodeToString(hmacBytes);
+        } catch (Exception e) {
+            log.error("生成HMAC签名失败: {}", e.getMessage());
+            return "";
         }
     }
 
@@ -118,17 +169,4 @@ public class CallbackServiceImpl implements CallbackService {
         return payload;
     }
     
-    /**
-     * 生成签名（简单实现，生产环境应使用更安全的算法）
-     */
-    private String generateSignature(Map<String, Object> payload) {
-        try {
-            String json = objectMapper.writeValueAsString(payload);
-            // 简单的签名：MD5(json + secret)
-            // 生产环境应使用 HMAC-SHA256 等更安全的算法
-            return cn.hutool.crypto.digest.DigestUtil.md5Hex(json + "archive-callback-secret");
-        } catch (Exception e) {
-            return "";
-        }
-    }
 }
