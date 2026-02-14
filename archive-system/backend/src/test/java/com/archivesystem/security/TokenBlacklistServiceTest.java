@@ -1,7 +1,6 @@
 package com.archivesystem.security;
 
 import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.impl.DefaultClaims;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -41,8 +40,8 @@ class TokenBlacklistServiceTest {
     @Test
     void testAddToBlacklist_ValidToken() {
         String token = "valid.jwt.token";
-        Claims claims = new DefaultClaims();
-        claims.setExpiration(new Date(System.currentTimeMillis() + 3600000)); // 1 hour from now
+        Claims claims = mock(Claims.class);
+        when(claims.getExpiration()).thenReturn(new Date(System.currentTimeMillis() + 3600000)); // 1 hour from now
 
         when(jwtUtils.parseToken(token)).thenReturn(claims);
 
@@ -54,8 +53,8 @@ class TokenBlacklistServiceTest {
     @Test
     void testAddToBlacklist_ExpiredToken() {
         String token = "expired.jwt.token";
-        Claims claims = new DefaultClaims();
-        claims.setExpiration(new Date(System.currentTimeMillis() - 3600000)); // 1 hour ago
+        Claims claims = mock(Claims.class);
+        when(claims.getExpiration()).thenReturn(new Date(System.currentTimeMillis() - 3600000)); // 1 hour ago
 
         when(jwtUtils.parseToken(token)).thenReturn(claims);
 

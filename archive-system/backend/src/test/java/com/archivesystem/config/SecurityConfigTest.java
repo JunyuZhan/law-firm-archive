@@ -10,6 +10,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -87,7 +88,7 @@ class SecurityConfigTest {
 
         // Then
         assertNotNull(source);
-        var config = source.getCorsConfiguration(mock(org.springframework.http.server.PathContainer.class));
+        var config = source.getCorsConfiguration(new MockHttpServletRequest());
         assertNotNull(config);
         
         // 验证允许的方法
@@ -119,7 +120,7 @@ class SecurityConfigTest {
     void testCorsConfigurationSource_ShouldAllowLocalhost() {
         // When
         CorsConfigurationSource source = securityConfig.corsConfigurationSource();
-        var config = source.getCorsConfiguration(mock(org.springframework.http.server.PathContainer.class));
+        var config = source.getCorsConfiguration(new MockHttpServletRequest());
 
         // Then
         assertNotNull(config.getAllowedOriginPatterns());
@@ -133,7 +134,7 @@ class SecurityConfigTest {
     void testCorsConfigurationSource_ShouldAllowPrivateNetworks() {
         // When
         CorsConfigurationSource source = securityConfig.corsConfigurationSource();
-        var config = source.getCorsConfiguration(mock(org.springframework.http.server.PathContainer.class));
+        var config = source.getCorsConfiguration(new MockHttpServletRequest());
 
         // Then
         assertNotNull(config.getAllowedOriginPatterns());
@@ -221,7 +222,7 @@ class SecurityConfigTest {
     void testCorsConfiguration_ShouldHaveCorrectMaxAge() {
         // When
         CorsConfigurationSource source = securityConfig.corsConfigurationSource();
-        var config = source.getCorsConfiguration(mock(org.springframework.http.server.PathContainer.class));
+        var config = source.getCorsConfiguration(new MockHttpServletRequest());
 
         // Then
         assertEquals(3600L, config.getMaxAge());
@@ -231,7 +232,7 @@ class SecurityConfigTest {
     void testCorsConfiguration_ShouldAllowCredentials() {
         // When
         CorsConfigurationSource source = securityConfig.corsConfigurationSource();
-        var config = source.getCorsConfiguration(mock(org.springframework.http.server.PathContainer.class));
+        var config = source.getCorsConfiguration(new MockHttpServletRequest());
 
         // Then
         assertTrue(config.getAllowCredentials());
@@ -241,7 +242,7 @@ class SecurityConfigTest {
     void testCorsConfiguration_ShouldIncludeSecurityHeaders() {
         // When
         CorsConfigurationSource source = securityConfig.corsConfigurationSource();
-        var config = source.getCorsConfiguration(mock(org.springframework.http.server.PathContainer.class));
+        var config = source.getCorsConfiguration(new MockHttpServletRequest());
 
         // Then
         assertTrue(config.getAllowedHeaders().contains("X-CSRF-Token"));
