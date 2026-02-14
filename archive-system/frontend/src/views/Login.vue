@@ -97,20 +97,21 @@
       </el-form>
       
       <div class="login-footer">
-        <p v-if="isDev">
+        <p v-if="isDev" class="dev-hint">
           开发环境：admin / admin123
         </p>
-        <p v-else>
-          请使用分配的账号登录
-        </p>
-        <div class="login-icp" v-if="appStore.systemConfig.icp">
-          <a :href="appStore.systemConfig.systemConfig?.icpLink || 'https://beian.miit.gov.cn/'" target="_blank">
+        <div class="footer-info">
+          <a 
+            v-if="appStore.systemConfig.icp"
+            :href="appStore.systemConfig.icpLink || 'https://beian.miit.gov.cn/'" 
+            target="_blank"
+            class="icp-link"
+          >
             {{ appStore.systemConfig.icp }}
           </a>
+          <span v-if="appStore.systemConfig.icp && appStore.systemConfig.copyright" class="divider">|</span>
+          <span class="copyright">{{ appStore.systemConfig.copyright }}</span>
         </div>
-        <p class="login-copyright">
-          {{ appStore.systemConfig.copyright }}
-        </p>
       </div>
     </div>
   </div>
@@ -539,16 +540,17 @@ const handleLogin = async () => {
   padding-top: 16px;
   border-top: 1px solid #f0f0f0;
   
-  p {
-    margin: 0;
+  .dev-hint {
+    margin: 0 0 8px 0;
     font-size: 12px;
     color: #9ca3af;
   }
   
-  .login-icp {
-    margin-top: 8px;
+  .footer-info {
+    font-size: 12px;
+    color: #9ca3af;
     
-    a {
+    .icp-link {
       color: #9ca3af;
       text-decoration: none;
       
@@ -556,11 +558,15 @@ const handleLogin = async () => {
         color: #409eff;
       }
     }
-  }
-  
-  .login-copyright {
-    margin-top: 4px;
-    font-size: 11px;
+    
+    .divider {
+      margin: 0 8px;
+      color: #d1d5db;
+    }
+    
+    .copyright {
+      color: #9ca3af;
+    }
   }
 }
 </style>
