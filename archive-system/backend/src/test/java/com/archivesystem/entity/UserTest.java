@@ -56,7 +56,7 @@ class UserTest {
     void testAllArgsConstructor() {
         LocalDateTime now = LocalDateTime.now();
         User user = new User("user", "pass", "用户", "email@test.com",
-                "13900139000", "研发部", User.TYPE_ARCHIVIST, User.STATUS_ACTIVE, now);
+                "13900139000", "研发部", User.TYPE_ARCHIVIST, User.STATUS_ACTIVE, now, "192.168.1.1");
 
         assertEquals("user", user.getUsername());
         assertEquals("pass", user.getPassword());
@@ -67,6 +67,7 @@ class UserTest {
         assertEquals(User.TYPE_ARCHIVIST, user.getUserType());
         assertEquals(User.STATUS_ACTIVE, user.getStatus());
         assertEquals(now, user.getLastLoginAt());
+        assertEquals("192.168.1.1", user.getLastLoginIp());
     }
 
     @Test
