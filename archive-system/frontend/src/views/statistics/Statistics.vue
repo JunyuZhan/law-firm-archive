@@ -207,6 +207,32 @@
             </div>
           </div>
         </el-card>
+        <el-card
+          shadow="never"
+          style="margin-top: 16px;"
+        >
+          <template #header>
+            推送统计
+          </template>
+          <div class="push-stats">
+            <div class="push-item">
+              <span class="label">总推送数</span>
+              <span class="value">{{ pushStats.total || 0 }}</span>
+            </div>
+            <div class="push-item">
+              <span class="label">今日推送</span>
+              <span class="value text-primary">{{ pushStats.today || 0 }}</span>
+            </div>
+            <div class="push-item">
+              <span class="label">成功</span>
+              <span class="value text-success">{{ pushStats.success || 0 }}</span>
+            </div>
+            <div class="push-item">
+              <span class="label">失败</span>
+              <span class="value text-danger">{{ pushStats.failed || 0 }}</span>
+            </div>
+          </div>
+        </el-card>
       </el-col>
     </el-row>
   </div>
@@ -217,10 +243,12 @@ import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { Folder, Document, Reading, Bell } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import { getOverview, countByType, countByRetention, getTrend, getBorrowStats, getStorageStats } from '@/api/statistics'
+import { getPushRecordStatistics } from '@/api/pushRecord'
 
 const overview = reactive({})
 const storage = reactive({})
 const borrowStats = reactive({})
+const pushStats = reactive({})
 const trendYear = ref(new Date().getFullYear().toString())
 
 const typeChartRef = ref(null)
@@ -258,6 +286,18 @@ const loadBorrowStats = async () => {
     Object.assign(borrowStats, res.data)
   } catch (e) {
     console.error('加载借阅统计失败', e)
+  }
+}
+
+// 加载推送统计
+const loadPushStats = async () => {
+  try {
+    const res = await getPushRecordStatistics()
+    if (res.code === 200) {
+      Object.assign(pushStats, res.data)
+    }
+  } catch (e) {
+    console.error('加载推送统计失败', e)
   }
 }
 
@@ -365,6 +405,7 @@ onMounted(() => {
   loadOverview()
   loadStorage()
   loadBorrowStats()
+  loadPushStats()
   loadTypeChart()
   loadRetentionChart()
   loadTrend()
@@ -479,6 +520,39 @@ onUnmounted(() => {
     
     .value {
       font-weight: 600;
+      
+      &.text-danger {
+        color: #f56c6c;
+      }
+    }
+  }
+}
+
+.push-stats {
+  .push-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid #eee;
+    
+    &:last-child {
+      border-bottom: none;
+    }
+    
+    .label {
+      color: #606266;
+    }
+    
+    .value {
+      font-weight: 600;
+      
+      &.text-primary {
+        color: #409eff;
+      }
+      
+      &.text-success {
+        color: #67c23a;
+      }
       
       &.text-danger {
         color: #f56c6c;
