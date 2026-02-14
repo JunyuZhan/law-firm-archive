@@ -11,6 +11,7 @@ import com.archivesystem.entity.Category;
 import com.archivesystem.entity.DigitalFile;
 import com.archivesystem.entity.Fonds;
 import com.archivesystem.mq.ArchiveReceiveMessage;
+import com.archivesystem.mq.CallbackMessage;
 import com.archivesystem.repository.*;
 import com.archivesystem.security.SecurityUtils;
 import com.archivesystem.service.ArchiveService;
@@ -180,6 +181,35 @@ public class ArchiveServiceImpl implements ArchiveService {
                 archive.setTotalFileSize(totalSize);
                 archive.setStatus(Archive.STATUS_RECEIVED);
                 archiveMapper.updateById(archive);
+
+                // 同步路径：文件转移完成后发送回调（与异步路径一致，便于律所系统开始90天清理倒计时）
+                if (request.getCallbackUrl() != null && !request.getCallbackUrl().isEmpty()) {
+                    int totalCount = request.getFiles().size();
+                    int failedCount = totalCount - fileCount;
+                    String status = failedCount == 0 ? CallbackMessage.STATUS_SUCCESS
+                            : (fileCount > 0 ? CallbackMessage.STATUS_PARTIAL : CallbackMessage.STATUS_FAILED);
+                    CallbackMessage callback = CallbackMessage.builder()
+                            .messageId(java.util.UUID.randomUUID().toString())
+                            .archiveId(archive.getId())
+                            .archiveNo(archiveNo)
+                            .sourceType(request.getSourceType())
+                            .sourceId(request.getSourceId())
+                            .callbackUrl(request.getCallbackUrl())
+                            .status(status)
+                            .successCount(fileCount)
+                            .failedCount(failedCount)
+                            .totalCount(totalCount)
+                            .completedAt(LocalDateTime.now())
+                            .retryCount(0)
+                            .maxRetries(3)
+                            .build();
+                    rabbitTemplate.convertAndSend(
+                            RabbitMQConfig.ARCHIVE_EXCHANGE,
+                            RabbitMQConfig.ARCHIVE_CALLBACK_ROUTING_KEY,
+                            callback
+                    );
+                    log.info("同步接收已发送文件转移完成回调: archiveId={}, status={}", archive.getId(), status);
+                }
             }
         }
 
