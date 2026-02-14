@@ -13,7 +13,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
-      - "5433:5432"
+      - "127.0.0.1:5433:5432"  # 仅本机调试用
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ../scripts/init-db:/docker-entrypoint-initdb.d
@@ -31,7 +31,7 @@ services:
     container_name: archive-redis
     command: redis-server --appendonly yes
     ports:
-      - "6380:6379"
+      - "127.0.0.1:6380:6379"  # 仅本机调试用
     volumes:
       - redis-data:/data
     healthcheck:
@@ -51,8 +51,7 @@ services:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
     ports:
-      - "9002:9000"
-      - "9003:9001"
+      - "127.0.0.1:9003:9001"  # MinIO Console 仅本机管理用（API 通过 Nginx 代理）
     volumes:
       - minio-data:/data
     healthcheck:
@@ -71,8 +70,8 @@ services:
       RABBITMQ_DEFAULT_USER: admin
       RABBITMQ_DEFAULT_PASS: admin123
     ports:
-      - "5672:5672"
-      - "15672:15672"
+      - "127.0.0.1:5672:5672"    # AMQP 仅本机调试用
+      - "127.0.0.1:15672:15672"  # 管理界面仅本机访问
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
     healthcheck:
@@ -95,8 +94,8 @@ services:
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
       - cluster.name=archive-cluster
     ports:
-      - "9200:9200"
-      - "9300:9300"
+      - "127.0.0.1:9200:9200"  # 仅本机调试用
+      - "127.0.0.1:9300:9300"  # 仅本机调试用
     volumes:
       - es-data:/usr/share/elasticsearch/data
     healthcheck:
@@ -115,7 +114,7 @@ services:
     container_name: archive-backend
     environment:
       SPRING_PROFILES_ACTIVE: docker
-      CORS_ALLOWED_ORIGINS: http://localhost:3001,http://192.168.50.10:3001
+      CORS_ALLOWED_ORIGINS: http://localhost:3001,http://192.168.50.10:3001,${EXTERNAL_ORIGIN:-}
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/archive_system
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
@@ -129,9 +128,10 @@ services:
       SPRING_RABBITMQ_PORT: 5672
       SPRING_RABBITMQ_USERNAME: admin
       SPRING_RABBITMQ_PASSWORD: admin123
+      MINIO_PROXY_PREFIX: ${MINIO_PROXY_PREFIX:-/storage}
       SPRING_ELASTICSEARCH_URIS: http://elasticsearch:9200
     ports:
-      - "8090:8090"
+      - "127.0.0.1:8090:8090"  # 仅本机调试用（外部通过前端 Nginx /api/ 代理）
     depends_on:
       postgres:
         condition: service_healthy

@@ -115,15 +115,24 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         
-        // 使用动态模式匹配：允许所有 http/https 的请求来源
-        // 生产环境建议配置具体的域名列表
-        configuration.setAllowedOriginPatterns(Arrays.asList(
+        // 允许的来源：环境变量配置 + 本地开发地址
+        List<String> patterns = new java.util.ArrayList<>(Arrays.asList(
                 "http://localhost:*",
                 "http://127.0.0.1:*",
                 "http://192.168.*.*:*",
                 "http://10.*.*.*:*",
                 "http://172.16.*.*:*"
         ));
+        // 从环境变量添加外网域名（支持逗号分隔多个）
+        if (allowedOrigins != null && !allowedOrigins.isBlank()) {
+            for (String origin : allowedOrigins.split(",")) {
+                String trimmed = origin.trim();
+                if (!trimmed.isEmpty() && !patterns.contains(trimmed)) {
+                    patterns.add(trimmed);
+                }
+            }
+        }
+        configuration.setAllowedOriginPatterns(patterns);
         
         // 只允许必要的HTTP方法
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));

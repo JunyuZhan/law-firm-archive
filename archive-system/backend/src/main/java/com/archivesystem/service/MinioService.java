@@ -32,6 +32,9 @@ public class MinioService {
     @Value("${minio.bucket-name}")
     private String bucketName;
 
+    @Value("${minio.proxy-prefix:}")
+    private String proxyPrefix;
+
     private MinioClient minioClient;
 
     @PostConstruct
@@ -157,18 +160,26 @@ public class MinioService {
 
     /**
      * 获取预签名URL（指定有效期）.
+     * 返回的URL已转换为相对路径 /storage/...，通过前端Nginx代理访问MinIO，
+     * 避免暴露MinIO内网地址，同时兼容HTTPS外网访问。
      */
     public String getPresignedUrl(String objectName, int expirySeconds) {
         // 验证 objectName 防止路径穿越攻击
         validateObjectName(objectName);
         
         try {
-            return minioClient.getPresignedObjectUrl(GetPresignedObjectUrlArgs.builder()
+            String url = minioClient.getPresignedObjectUrl(GetPresignedObjectUrlArgs.builder()
                     .bucket(bucketName)
                     .object(objectName)
                     .method(Method.GET)
                     .expiry(expirySeconds, TimeUnit.SECONDS)
                     .build());
+            // 如果配置了代理前缀，将 MinIO 内网地址替换为 Nginx 代理的相对路径
+            // 例如: http://minio:9000/bucket/file → /storage/bucket/file
+            if (proxyPrefix != null && !proxyPrefix.isBlank()) {
+                url = url.replace(endpoint, proxyPrefix);
+            }
+            return url;
         } catch (Exception e) {
             log.error("获取预签名URL失败: {}", objectName, e);
             throw new RuntimeException("获取下载链接失败: " + e.getMessage());
