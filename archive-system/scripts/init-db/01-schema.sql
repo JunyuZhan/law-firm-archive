@@ -648,37 +648,37 @@ ON CONFLICT DO NOTHING;
 
 -- =====================================================
 -- 初始化用户（三员分立 + 业务用户）
--- 默认密码均为：Admin@123
+-- 默认密码均为：admin123
 -- 密码BCrypt哈希（cost=10）
 -- 注意：生产环境部署后请立即修改所有默认密码！
 -- =====================================================
 
 -- 1. 系统管理员（SYSTEM_ADMIN）- 负责系统配置、用户管理、系统维护
 INSERT INTO sys_user (username, password, real_name, email, phone, department, user_type, status) VALUES
-('admin', '$2a$10$rDkPvvAFV8kqwvKJzwlCv.mfMXcLHb0Ux9Nl1g/uGVcCbLVPgKzZy', '系统管理员', 'admin@archive.com', '13800000001', '信息技术部', 'SYSTEM_ADMIN', 'ACTIVE')
+('admin', '$2a$10$x8fiMNGYO6phwaI8VDzo0edwHR1d60F/cSonNxs/X2sz3V2rdV6vK', '系统管理员', 'admin@archive.com', '13800000001', '信息技术部', 'SYSTEM_ADMIN', 'ACTIVE')
 ON CONFLICT (username) DO NOTHING;
 
 -- 2. 安全保密员（SECURITY_ADMIN）- 负责权限管理、密级管理、安全策略
 INSERT INTO sys_user (username, password, real_name, email, phone, department, user_type, status) VALUES
-('security', '$2a$10$rDkPvvAFV8kqwvKJzwlCv.mfMXcLHb0Ux9Nl1g/uGVcCbLVPgKzZy', '安全保密员', 'security@archive.com', '13800000002', '安全保密部', 'SECURITY_ADMIN', 'ACTIVE')
+('security', '$2a$10$x8fiMNGYO6phwaI8VDzo0edwHR1d60F/cSonNxs/X2sz3V2rdV6vK', '安全保密员', 'security@archive.com', '13800000002', '安全保密部', 'SECURITY_ADMIN', 'ACTIVE')
 ON CONFLICT (username) DO NOTHING;
 
 -- 3. 安全审计员（AUDIT_ADMIN）- 负责日志审计、安全审查、合规检查
 INSERT INTO sys_user (username, password, real_name, email, phone, department, user_type, status) VALUES
-('auditor', '$2a$10$rDkPvvAFV8kqwvKJzwlCv.mfMXcLHb0Ux9Nl1g/uGVcCbLVPgKzZy', '安全审计员', 'auditor@archive.com', '13800000003', '审计部', 'AUDIT_ADMIN', 'ACTIVE')
+('auditor', '$2a$10$x8fiMNGYO6phwaI8VDzo0edwHR1d60F/cSonNxs/X2sz3V2rdV6vK', '安全审计员', 'auditor@archive.com', '13800000003', '审计部', 'AUDIT_ADMIN', 'ACTIVE')
 ON CONFLICT (username) DO NOTHING;
 
 -- 4. 档案员（ARCHIVIST）- 核心业务人员，负责档案接收、整理、归档、借阅审批
 INSERT INTO sys_user (username, password, real_name, email, phone, department, user_type, status) VALUES
-('archivist1', '$2a$10$rDkPvvAFV8kqwvKJzwlCv.mfMXcLHb0Ux9Nl1g/uGVcCbLVPgKzZy', '张档案', 'archivist1@archive.com', '13800000004', '档案管理部', 'ARCHIVIST', 'ACTIVE'),
-('archivist2', '$2a$10$rDkPvvAFV8kqwvKJzwlCv.mfMXcLHb0Ux9Nl1g/uGVcCbLVPgKzZy', '李档案', 'archivist2@archive.com', '13800000005', '档案管理部', 'ARCHIVIST', 'ACTIVE')
+('archivist1', '$2a$10$x8fiMNGYO6phwaI8VDzo0edwHR1d60F/cSonNxs/X2sz3V2rdV6vK', '张档案', 'archivist1@archive.com', '13800000004', '档案管理部', 'ARCHIVIST', 'ACTIVE'),
+('archivist2', '$2a$10$x8fiMNGYO6phwaI8VDzo0edwHR1d60F/cSonNxs/X2sz3V2rdV6vK', '李档案', 'archivist2@archive.com', '13800000005', '档案管理部', 'ARCHIVIST', 'ACTIVE')
 ON CONFLICT (username) DO NOTHING;
 
 -- 5. 普通用户（USER）- 档案查阅人员，如律师、员工等，可申请借阅
 INSERT INTO sys_user (username, password, real_name, email, phone, department, user_type, status) VALUES
-('lawyer1', '$2a$10$rDkPvvAFV8kqwvKJzwlCv.mfMXcLHb0Ux9Nl1g/uGVcCbLVPgKzZy', '王律师', 'lawyer1@lawfirm.com', '13800000006', '诉讼部', 'USER', 'ACTIVE'),
-('lawyer2', '$2a$10$rDkPvvAFV8kqwvKJzwlCv.mfMXcLHb0Ux9Nl1g/uGVcCbLVPgKzZy', '赵律师', 'lawyer2@lawfirm.com', '13800000007', '非诉部', 'USER', 'ACTIVE'),
-('assistant', '$2a$10$rDkPvvAFV8kqwvKJzwlCv.mfMXcLHb0Ux9Nl1g/uGVcCbLVPgKzZy', '陈助理', 'assistant@lawfirm.com', '13800000008', '综合部', 'USER', 'ACTIVE')
+('lawyer1', '$2a$10$x8fiMNGYO6phwaI8VDzo0edwHR1d60F/cSonNxs/X2sz3V2rdV6vK', '王律师', 'lawyer1@lawfirm.com', '13800000006', '诉讼部', 'USER', 'ACTIVE'),
+('lawyer2', '$2a$10$x8fiMNGYO6phwaI8VDzo0edwHR1d60F/cSonNxs/X2sz3V2rdV6vK', '赵律师', 'lawyer2@lawfirm.com', '13800000007', '非诉部', 'USER', 'ACTIVE'),
+('assistant', '$2a$10$x8fiMNGYO6phwaI8VDzo0edwHR1d60F/cSonNxs/X2sz3V2rdV6vK', '陈助理', 'assistant@lawfirm.com', '13800000008', '综合部', 'USER', 'ACTIVE')
 ON CONFLICT (username) DO NOTHING;
 
 -- 初始化律所系统来源
