@@ -10,6 +10,7 @@ import com.archivesystem.entity.Archive;
 import com.archivesystem.entity.Category;
 import com.archivesystem.entity.DigitalFile;
 import com.archivesystem.entity.Fonds;
+import com.archivesystem.entity.PushRecord;
 import com.archivesystem.mq.ArchiveReceiveMessage;
 import com.archivesystem.mq.CallbackMessage;
 import com.archivesystem.repository.*;
@@ -48,6 +49,7 @@ public class ArchiveServiceImpl implements ArchiveService {
     private final FondsMapper fondsMapper;
     private final CategoryMapper categoryMapper;
     private final RetentionPeriodMapper retentionPeriodMapper;
+    private final PushRecordMapper pushRecordMapper;
     private final FileStorageService fileStorageService;
     private final RabbitTemplate rabbitTemplate;
     private final StringRedisTemplate stringRedisTemplate;
@@ -128,6 +130,26 @@ public class ArchiveServiceImpl implements ArchiveService {
 
         archiveMapper.insert(archive);
         log.info("档案创建成功: id={}, archiveNo={}", archive.getId(), archiveNo);
+
+        // 创建推送记录
+        PushRecord pushRecord = PushRecord.builder()
+                .pushBatchNo("PUSH-" + System.currentTimeMillis())
+                .sourceType(request.getSourceType())
+                .sourceId(request.getSourceId())
+                .sourceNo(request.getSourceNo())
+                .archiveId(archive.getId())
+                .archiveNo(archiveNo)
+                .title(request.getTitle())
+                .pushStatus(PushRecord.STATUS_PROCESSING)
+                .callbackUrl(request.getCallbackUrl())
+                .totalFiles(hasFiles(request) ? request.getFiles().size() : 0)
+                .pushedAt(LocalDateTime.now())
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .deleted(false)
+                .build();
+        pushRecordMapper.insert(pushRecord);
+        log.info("推送记录创建: id={}, sourceId={}", pushRecord.getId(), request.getSourceId());
 
         // 处理文件
         int fileCount = 0;

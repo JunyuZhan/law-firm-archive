@@ -587,6 +587,100 @@ CREATE TABLE IF NOT EXISTS arc_external_source (
 
 COMMENT ON TABLE arc_external_source IS '外部系统来源配置表';
 
+-- 6.2 推送记录表（记录外部系统推送档案的请求）
+CREATE TABLE IF NOT EXISTS arc_push_record (
+    id BIGSERIAL PRIMARY KEY,
+    push_batch_no VARCHAR(50) NOT NULL,          -- 推送批次号
+    
+    -- ===== 来源信息 =====
+    source_code VARCHAR(50),                     -- 来源编码
+    source_type VARCHAR(50) NOT NULL,            -- 来源类型
+    source_id VARCHAR(100) NOT NULL,             -- 来源业务ID
+    source_no VARCHAR(100),                      -- 来源业务编号
+    
+    -- ===== 档案关联 =====
+    archive_id BIGINT REFERENCES arc_archive(id),-- 档案ID（成功后关联）
+    archive_no VARCHAR(100),                     -- 档案号
+    title VARCHAR(500),                          -- 档案标题
+    
+    -- ===== 推送状态 =====
+    push_status VARCHAR(30) DEFAULT 'PENDING',   -- PENDING-待处理, PROCESSING-处理中, SUCCESS-成功, FAILED-失败, PARTIAL-部分成功
+    file_status VARCHAR(30) DEFAULT 'PENDING',   -- 文件处理状态
+    
+    -- ===== 文件统计 =====
+    total_files INTEGER DEFAULT 0,               -- 总文件数
+    success_files INTEGER DEFAULT 0,             -- 成功文件数
+    failed_files INTEGER DEFAULT 0,              -- 失败文件数
+    
+    -- ===== 请求信息 =====
+    request_payload JSONB,                       -- 请求内容
+    callback_url VARCHAR(500),                   -- 回调地址
+    
+    -- ===== 错误信息 =====
+    error_code VARCHAR(50),                      -- 错误代码
+    error_message TEXT,                          -- 错误信息
+    
+    -- ===== 时间信息 =====
+    pushed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- 推送时间
+    processed_at TIMESTAMP,                      -- 处理完成时间
+    
+    -- ===== 系统字段 =====
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted BOOLEAN DEFAULT FALSE
+);
+
+COMMENT ON TABLE arc_push_record IS '档案推送记录表';
+CREATE INDEX IF NOT EXISTS idx_push_record_batch_no ON arc_push_record(push_batch_no);
+CREATE INDEX IF NOT EXISTS idx_push_record_source ON arc_push_record(source_type, source_id);
+CREATE INDEX IF NOT EXISTS idx_push_record_status ON arc_push_record(push_status);
+CREATE INDEX IF NOT EXISTS idx_push_record_pushed_at ON arc_push_record(pushed_at DESC);
+
+-- 6.3 回调记录表（记录向来源系统发起的回调）
+CREATE TABLE IF NOT EXISTS arc_callback_record (
+    id BIGSERIAL PRIMARY KEY,
+    
+    -- ===== 档案关联 =====
+    archive_id BIGINT REFERENCES arc_archive(id),
+    archive_no VARCHAR(100),
+    push_record_id BIGINT REFERENCES arc_push_record(id), -- 关联推送记录
+    
+    -- ===== 回调信息 =====
+    callback_url VARCHAR(500) NOT NULL,          -- 回调地址
+    callback_type VARCHAR(50) DEFAULT 'ARCHIVE_RECEIVED', -- 回调类型
+    
+    -- ===== 状态信息 =====
+    callback_status VARCHAR(30) DEFAULT 'PENDING', -- PENDING-待发送, SUCCESS-成功, FAILED-失败
+    
+    -- ===== 请求响应 =====
+    request_body JSONB,                          -- 请求体
+    response_code INTEGER,                       -- HTTP状态码
+    response_body TEXT,                          -- 响应内容
+    
+    -- ===== 重试信息 =====
+    retry_count INTEGER DEFAULT 0,               -- 已重试次数
+    max_retries INTEGER DEFAULT 3,               -- 最大重试次数
+    next_retry_at TIMESTAMP,                     -- 下次重试时间
+    
+    -- ===== 错误信息 =====
+    error_message TEXT,                          -- 错误信息
+    
+    -- ===== 时间信息 =====
+    callback_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- 首次回调时间
+    completed_at TIMESTAMP,                      -- 完成时间
+    
+    -- ===== 系统字段 =====
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted BOOLEAN DEFAULT FALSE
+);
+
+COMMENT ON TABLE arc_callback_record IS '回调记录表';
+CREATE INDEX IF NOT EXISTS idx_callback_record_archive ON arc_callback_record(archive_id);
+CREATE INDEX IF NOT EXISTS idx_callback_record_push ON arc_callback_record(push_record_id);
+CREATE INDEX IF NOT EXISTS idx_callback_record_status ON arc_callback_record(callback_status);
+CREATE INDEX IF NOT EXISTS idx_callback_record_next_retry ON arc_callback_record(next_retry_at) WHERE callback_status = 'FAILED';
+
 -- =====================================================
 -- 七、索引创建
 -- =====================================================

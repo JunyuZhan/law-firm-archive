@@ -96,6 +96,12 @@ const router = createRouter({
           meta: { title: '来源管理', requiresAuth: true, roles: [ROLES.SYSTEM_ADMIN] }
         },
         {
+          path: 'push-records',
+          name: 'PushRecordList',
+          component: () => import('@/views/push/PushRecordList.vue'),
+          meta: { title: '推送记录', requiresAuth: true, roles: [ROLES.SYSTEM_ADMIN, ROLES.ARCHIVIST] }
+        },
+        {
           path: 'fonds',
           name: 'FondsManage',
           component: () => import('@/views/fonds/FondsManage.vue'),

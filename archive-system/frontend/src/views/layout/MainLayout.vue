@@ -75,6 +75,9 @@
           <el-menu-item index="/sources">
             来源管理
           </el-menu-item>
+          <el-menu-item index="/push-records">
+            推送记录
+          </el-menu-item>
         </el-sub-menu>
         
         <el-sub-menu index="system">
