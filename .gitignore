@@ -83,3 +83,6 @@ __pycache__/
 # Cursor IDE
 .cursor/
 !.cursor/rules/
+
+# Git worktrees
+worktrees/
