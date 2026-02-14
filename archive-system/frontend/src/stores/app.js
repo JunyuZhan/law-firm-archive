@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { getConfigsByGroup } from '@/api/config'
 
 export const useAppStore = defineStore('app', () => {
   // 侧边栏状态
@@ -15,7 +16,10 @@ export const useAppStore = defineStore('app', () => {
   // 系统配置（从后端获取）
   const systemConfig = ref({
     systemName: '档案管理系统',
+    systemNameEn: 'Archive Management System',
     logoUrl: '',
+    icp: '',
+    copyright: '© 2024 档案管理系统',
     retentionPeriods: [],
     archiveTypes: [],
     maxUploadSize: 100 * 1024 * 1024, // 100MB
@@ -78,6 +82,30 @@ export const useAppStore = defineStore('app', () => {
   // 设置系统配置
   function setSystemConfig(config) {
     systemConfig.value = { ...systemConfig.value, ...config }
+  }
+  
+  // 加载 SITE 分组配置
+  async function loadSiteConfig() {
+    try {
+      const configs = await getConfigsByGroup('SITE')
+      if (configs && configs.length > 0) {
+        const configMap = {}
+        configs.forEach(item => {
+          configMap[item.configKey] = item.configValue
+        })
+        
+        systemConfig.value = {
+          ...systemConfig.value,
+          systemName: configMap['system.site.name'] || '档案管理系统',
+          systemNameEn: configMap['system.site.name.en'] || 'Archive Management System',
+          logoUrl: configMap['system.site.logo'] || '',
+          icp: configMap['system.site.icp'] || '',
+          copyright: configMap['system.site.copyright'] || '© 2024 档案管理系统'
+        }
+      }
+    } catch (error) {
+      console.error('加载站点配置失败:', error)
+    }
   }
   
   // 上传队列操作
@@ -171,6 +199,7 @@ export const useAppStore = defineStore('app', () => {
     toggleTheme,
     setBreadcrumbs,
     setSystemConfig,
+    loadSiteConfig,
     addToUploadQueue,
     updateUploadProgress,
     setUploadStatus,

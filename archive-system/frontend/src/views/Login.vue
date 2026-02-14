@@ -8,9 +8,9 @@
         >
           <Files />
         </el-icon>
-        <h1>档案管理系统</h1>
+        <h1>{{ appStore.systemConfig.systemName }}</h1>
         <p class="subtitle">
-          Archive Management System
+          {{ appStore.systemConfig.systemNameEn }}
         </p>
       </div>
       
@@ -104,6 +104,14 @@
         <p v-else>
           请使用分配的账号登录
         </p>
+        <div class="login-icp" v-if="appStore.systemConfig.icp">
+          <a :href="appStore.systemConfig.systemConfig?.icpLink || 'https://beian.miit.gov.cn/'" target="_blank">
+            {{ appStore.systemConfig.icp }}
+          </a>
+        </div>
+        <p class="login-copyright">
+          {{ appStore.systemConfig.copyright }}
+        </p>
       </div>
     </div>
   </div>
@@ -114,11 +122,13 @@ import { ref, reactive, computed, onMounted, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
+import { useAppStore } from '@/stores/app'
 import { isValidUrl } from '@/utils/security'
 
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
+const appStore = useAppStore()
 const formRef = ref()
 const loading = ref(false)
 const captchaCanvas = ref()
@@ -181,6 +191,9 @@ onMounted(() => {
   
   // 恢复锁定状态
   restoreLockState()
+  
+  // 加载系统配置
+  appStore.loadSiteConfig()
 })
 
 // 安全重定向（防止开放重定向漏洞）
@@ -532,6 +545,24 @@ const handleLogin = async () => {
     margin: 0;
     font-size: 12px;
     color: #9ca3af;
+  }
+  
+  .login-icp {
+    margin-top: 8px;
+    
+    a {
+      color: #9ca3af;
+      text-decoration: none;
+      
+      &:hover {
+        color: #409eff;
+      }
+    }
+  }
+  
+  .login-copyright {
+    margin-top: 4px;
+    font-size: 11px;
   }
 }
 </style>

@@ -17,10 +17,11 @@
       class="sidebar"
     >
       <div class="logo">
-        <el-icon :size="24">
+        <img v-if="appStore.systemConfig.logoUrl" :src="appStore.systemConfig.logoUrl" class="logo-img" />
+        <el-icon v-else :size="24">
           <Files />
         </el-icon>
-        <span v-show="!appStore.sidebarCollapsed">档案管理系统</span>
+        <span v-show="!appStore.sidebarCollapsed">{{ appStore.systemConfig.systemName }}</span>
       </div>
       
       <el-menu
@@ -254,6 +255,7 @@ const showUploadPanel = ref(false)
 onMounted(() => {
   userStore.init()
   appStore.init()
+  appStore.loadSiteConfig()
 })
 
 // 退出登录
@@ -342,6 +344,12 @@ const handleLogout = async () => {
       margin-right: 10px;
       flex-shrink: 0;
       color: #409eff;
+    }
+    
+    .logo-img {
+      height: 32px;
+      margin-right: 10px;
+      flex-shrink: 0;
     }
   }
   
