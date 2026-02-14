@@ -1,19 +1,37 @@
 package com.archivesystem.service.impl;
 
 import com.archivesystem.service.DocumentConversionService;
-import com.lowagie.text.*;
+import com.lowagie.text.Chunk;
+import com.lowagie.text.Document;
+import com.lowagie.text.PageSize;
+import com.lowagie.text.Paragraph;
+import com.lowagie.text.Phrase;
 import com.lowagie.text.pdf.BaseFont;
 import com.lowagie.text.pdf.PdfWriter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.hwpf.HWPFDocument;
 import org.apache.poi.hwpf.extractor.WordExtractor;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
-import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.ss.usermodel.CellType;
+import org.apache.poi.ss.usermodel.DateUtil;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.apache.poi.xwpf.usermodel.*;
+import org.apache.poi.xwpf.usermodel.IBodyElement;
+import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.apache.poi.xwpf.usermodel.XWPFParagraph;
+import org.apache.poi.xwpf.usermodel.XWPFTable;
+import org.apache.poi.xwpf.usermodel.XWPFTableCell;
+import org.apache.poi.xwpf.usermodel.XWPFTableRow;
 import org.springframework.stereotype.Service;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.Set;
 
 /**
@@ -123,15 +141,15 @@ public class DocumentConversionServiceImpl implements DocumentConversionService 
 
             // 设置中文字体
             BaseFont baseFont = getChineseBaseFont();
-            Font font = new Font(baseFont, 12);
-            Font headingFont = new Font(baseFont, 14, Font.BOLD);
+            com.lowagie.text.Font font = new com.lowagie.text.Font(baseFont, 12);
+            com.lowagie.text.Font headingFont = new com.lowagie.text.Font(baseFont, 14, com.lowagie.text.Font.BOLD);
 
             for (IBodyElement element : document.getBodyElements()) {
                 if (element instanceof XWPFParagraph paragraph) {
                     String text = paragraph.getText();
                     if (text != null && !text.trim().isEmpty()) {
                         // 简单处理标题样式
-                        Font useFont = paragraph.getStyle() != null && 
+                        com.lowagie.text.Font useFont = paragraph.getStyle() != null && 
                                       paragraph.getStyle().toLowerCase().contains("heading") 
                                       ? headingFont : font;
                         Paragraph pdfPara = new Paragraph(text, useFont);
@@ -139,7 +157,10 @@ public class DocumentConversionServiceImpl implements DocumentConversionService 
                     }
                 } else if (element instanceof XWPFTable table) {
                     // 转换表格
-                    pdfDoc.add(convertXWPFTable(table, font));
+                    com.lowagie.text.Table pdfTable = convertXWPFTable(table, font);
+                    if (pdfTable != null) {
+                        pdfDoc.add(pdfTable);
+                    }
                 }
             }
 
@@ -164,7 +185,7 @@ public class DocumentConversionServiceImpl implements DocumentConversionService 
             pdfDoc.open();
 
             BaseFont baseFont = getChineseBaseFont();
-            Font font = new Font(baseFont, 12);
+            com.lowagie.text.Font font = new com.lowagie.text.Font(baseFont, 12);
 
             // 按段落分割
             String[] paragraphs = text.split("\n");
@@ -208,8 +229,8 @@ public class DocumentConversionServiceImpl implements DocumentConversionService 
             pdfDoc.open();
 
             BaseFont baseFont = getChineseBaseFont();
-            Font font = new Font(baseFont, 10);
-            Font headerFont = new Font(baseFont, 10, Font.BOLD);
+            com.lowagie.text.Font font = new com.lowagie.text.Font(baseFont, 10);
+            com.lowagie.text.Font headerFont = new com.lowagie.text.Font(baseFont, 10, com.lowagie.text.Font.BOLD);
 
             for (int sheetIndex = 0; sheetIndex < workbook.getNumberOfSheets(); sheetIndex++) {
                 Sheet sheet = workbook.getSheetAt(sheetIndex);
@@ -239,7 +260,7 @@ public class DocumentConversionServiceImpl implements DocumentConversionService 
                     boolean isFirstRow = true;
                     for (Row row : sheet) {
                         for (int colIndex = 0; colIndex < maxCols; colIndex++) {
-                            Cell cell = row.getCell(colIndex);
+                            org.apache.poi.ss.usermodel.Cell cell = row.getCell(colIndex);
                             String cellValue = getCellValueAsString(cell);
                             
                             com.lowagie.text.Cell pdfCell = new com.lowagie.text.Cell(
@@ -273,7 +294,7 @@ public class DocumentConversionServiceImpl implements DocumentConversionService 
             pdfDoc.open();
 
             BaseFont baseFont = getChineseBaseFont();
-            Font font = new Font(baseFont, 12);
+            com.lowagie.text.Font font = new com.lowagie.text.Font(baseFont, 12);
 
             String line;
             while ((line = reader.readLine()) != null) {
@@ -323,7 +344,7 @@ public class DocumentConversionServiceImpl implements DocumentConversionService 
     /**
      * 转换 XWPF 表格为 PDF 表格
      */
-    private com.lowagie.text.Table convertXWPFTable(XWPFTable table, Font font) throws Exception {
+    private com.lowagie.text.Table convertXWPFTable(XWPFTable table, com.lowagie.text.Font font) throws Exception {
         int numRows = table.getNumberOfRows();
         if (numRows == 0) {
             return null;
@@ -348,12 +369,13 @@ public class DocumentConversionServiceImpl implements DocumentConversionService 
     /**
      * 获取单元格值为字符串
      */
-    private String getCellValueAsString(Cell cell) {
+    private String getCellValueAsString(org.apache.poi.ss.usermodel.Cell cell) {
         if (cell == null) {
             return "";
         }
         
-        return switch (cell.getCellType()) {
+        CellType cellType = cell.getCellType();
+        return switch (cellType) {
             case STRING -> cell.getStringCellValue();
             case NUMERIC -> {
                 if (DateUtil.isCellDateFormatted(cell)) {
