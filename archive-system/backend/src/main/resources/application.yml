@@ -179,21 +179,10 @@ knife4j:
   setting:
     language: zh_cn
 
-# JODConverter 文档转换配置（Office -> PDF）
-jodconverter:
-  local:
-    enabled: ${JODCONVERTER_LOCAL_ENABLED:false}
-    office-home: ${JODCONVERTER_LOCAL_OFFICE_HOME:/usr/lib/libreoffice}
-    port-numbers: ${JODCONVERTER_LOCAL_PORT_NUMBERS:2002}
-    max-tasks-per-process: 100
-    task-execution-timeout: 120000
-    task-queue-timeout: 30000
-
 # 日志配置
 logging:
   level:
     com.archivesystem: debug
     org.springframework.security: info
-    org.jodconverter: info
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{traceId:-}] %-5level %logger{36} - %msg%n"
