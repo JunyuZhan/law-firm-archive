@@ -8,19 +8,17 @@
   
   <!-- 安全相关Meta标签 -->
   <meta http-equiv="X-Content-Type-Options" content="nosniff">
-  <meta http-equiv="X-Frame-Options" content="SAMEORIGIN">
   <meta http-equiv="X-XSS-Protection" content="1; mode=block">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   
-  <!-- Content Security Policy -->
+  <!-- Content Security Policy (只保留支持的指令) -->
   <meta http-equiv="Content-Security-Policy" content="
     default-src 'self';
     script-src 'self' 'unsafe-inline' 'unsafe-eval';
     style-src 'self' 'unsafe-inline';
     img-src 'self' data: blob: https:;
     font-src 'self' data:;
-    connect-src 'self' ws: wss: http://localhost:* https://localhost:*;
-    frame-ancestors 'self';
+    connect-src 'self' ws: wss: http://localhost:* http://192.168.*:* http://10.*.*:*;
     base-uri 'self';
     form-action 'self';
   ">
