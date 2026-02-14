@@ -2,28 +2,83 @@
   <div class="operation-log">
     <!-- 搜索区域 -->
     <el-card class="search-card">
-      <el-form :model="queryParams" inline>
+      <el-form
+        :model="queryParams"
+        inline
+      >
         <el-form-item label="关键词">
-          <el-input v-model="queryParams.keyword" placeholder="操作描述/操作人/对象ID" clearable style="width: 200px" @keyup.enter="handleSearch" />
+          <el-input
+            v-model="queryParams.keyword"
+            placeholder="操作描述/操作人/对象ID"
+            clearable
+            style="width: 200px"
+            @keyup.enter="handleSearch"
+          />
         </el-form-item>
         <el-form-item label="对象类型">
-          <el-select v-model="queryParams.objectType" placeholder="全部" clearable style="width: 120px">
-            <el-option label="档案" value="ARCHIVE" />
-            <el-option label="文件" value="FILE" />
-            <el-option label="借阅" value="BORROW" />
-            <el-option label="鉴定" value="APPRAISAL" />
-            <el-option label="系统" value="SYSTEM" />
+          <el-select
+            v-model="queryParams.objectType"
+            placeholder="全部"
+            clearable
+            style="width: 120px"
+          >
+            <el-option
+              label="档案"
+              value="ARCHIVE"
+            />
+            <el-option
+              label="文件"
+              value="FILE"
+            />
+            <el-option
+              label="借阅"
+              value="BORROW"
+            />
+            <el-option
+              label="鉴定"
+              value="APPRAISAL"
+            />
+            <el-option
+              label="系统"
+              value="SYSTEM"
+            />
           </el-select>
         </el-form-item>
         <el-form-item label="操作类型">
-          <el-select v-model="queryParams.operationType" placeholder="全部" clearable style="width: 120px">
-            <el-option label="创建" value="CREATE" />
-            <el-option label="更新" value="UPDATE" />
-            <el-option label="删除" value="DELETE" />
-            <el-option label="查看" value="VIEW" />
-            <el-option label="下载" value="DOWNLOAD" />
-            <el-option label="打印" value="PRINT" />
-            <el-option label="导出" value="EXPORT" />
+          <el-select
+            v-model="queryParams.operationType"
+            placeholder="全部"
+            clearable
+            style="width: 120px"
+          >
+            <el-option
+              label="创建"
+              value="CREATE"
+            />
+            <el-option
+              label="更新"
+              value="UPDATE"
+            />
+            <el-option
+              label="删除"
+              value="DELETE"
+            />
+            <el-option
+              label="查看"
+              value="VIEW"
+            />
+            <el-option
+              label="下载"
+              value="DOWNLOAD"
+            />
+            <el-option
+              label="打印"
+              value="PRINT"
+            />
+            <el-option
+              label="导出"
+              value="EXPORT"
+            />
           </el-select>
         </el-form-item>
         <el-form-item label="时间范围">
@@ -38,19 +93,50 @@
           />
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" :icon="Search" @click="handleSearch">搜索</el-button>
-          <el-button :icon="Refresh" @click="handleReset">重置</el-button>
-          <el-button type="success" :icon="Download" @click="handleExport">导出</el-button>
+          <el-button
+            type="primary"
+            :icon="Search"
+            @click="handleSearch"
+          >
+            搜索
+          </el-button>
+          <el-button
+            :icon="Refresh"
+            @click="handleReset"
+          >
+            重置
+          </el-button>
+          <el-button
+            type="success"
+            :icon="Download"
+            @click="handleExport"
+          >
+            导出
+          </el-button>
         </el-form-item>
       </el-form>
     </el-card>
 
     <!-- 统计卡片 -->
-    <el-row :gutter="16" class="stat-row">
-      <el-col :span="4" v-for="(stat, key) in statistics" :key="key">
-        <el-card class="stat-card" shadow="hover">
-          <div class="stat-value">{{ stat }}</div>
-          <div class="stat-label">{{ getOperationLabel(key) }}</div>
+    <el-row
+      :gutter="16"
+      class="stat-row"
+    >
+      <el-col
+        v-for="(stat, key) in statistics"
+        :key="key"
+        :span="4"
+      >
+        <el-card
+          class="stat-card"
+          shadow="hover"
+        >
+          <div class="stat-value">
+            {{ stat }}
+          </div>
+          <div class="stat-label">
+            {{ getOperationLabel(key) }}
+          </div>
         </el-card>
       </el-col>
     </el-row>
@@ -61,39 +147,94 @@
         <span>操作日志</span>
       </template>
 
-      <el-table :data="logList" v-loading="loading" stripe>
-        <el-table-column prop="id" label="ID" width="80" />
-        <el-table-column prop="objectType" label="对象类型" width="100">
+      <el-table
+        v-loading="loading"
+        :data="logList"
+        stripe
+      >
+        <el-table-column
+          prop="id"
+          label="ID"
+          width="80"
+        />
+        <el-table-column
+          prop="objectType"
+          label="对象类型"
+          width="100"
+        >
           <template #default="{ row }">
-            <el-tag size="small">{{ getObjectTypeLabel(row.objectType) }}</el-tag>
+            <el-tag size="small">
+              {{ getObjectTypeLabel(row.objectType) }}
+            </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="objectId" label="对象ID" width="120" show-overflow-tooltip />
-        <el-table-column prop="operationType" label="操作类型" width="100">
+        <el-table-column
+          prop="objectId"
+          label="对象ID"
+          width="120"
+          show-overflow-tooltip
+        />
+        <el-table-column
+          prop="operationType"
+          label="操作类型"
+          width="100"
+        >
           <template #default="{ row }">
-            <el-tag size="small" :type="getOperationTypeTag(row.operationType)">
+            <el-tag
+              size="small"
+              :type="getOperationTypeTag(row.operationType)"
+            >
               {{ getOperationLabel(row.operationType) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="operationDesc" label="操作描述" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="operatorName" label="操作人" width="100" />
-        <el-table-column prop="operatorIp" label="IP地址" width="130" />
-        <el-table-column prop="operatedAt" label="操作时间" width="170">
-          <template #default="{ row }">{{ formatDate(row.operatedAt) }}</template>
-        </el-table-column>
-        <el-table-column label="操作" width="80" fixed="right">
+        <el-table-column
+          prop="operationDesc"
+          label="操作描述"
+          min-width="200"
+          show-overflow-tooltip
+        />
+        <el-table-column
+          prop="operatorName"
+          label="操作人"
+          width="100"
+        />
+        <el-table-column
+          prop="operatorIp"
+          label="IP地址"
+          width="130"
+        />
+        <el-table-column
+          prop="operatedAt"
+          label="操作时间"
+          width="170"
+        >
           <template #default="{ row }">
-            <el-button link type="primary" @click="handleViewDetail(row)">详情</el-button>
+            {{ formatDate(row.operatedAt) }}
+          </template>
+        </el-table-column>
+        <el-table-column
+          label="操作"
+          width="80"
+          fixed="right"
+        >
+          <template #default="{ row }">
+            <el-button
+              link
+              type="primary"
+              @click="handleViewDetail(row)"
+            >
+              详情
+            </el-button>
           </template>
         </el-table-column>
       </el-table>
 
       <!-- 分页 -->
       <el-pagination
-        class="pagination"
         v-model:current-page="queryParams.pageNum"
         v-model:page-size="queryParams.pageSize"
+        class="pagination"
         :page-sizes="[20, 50, 100, 200]"
         :total="total"
         layout="total, sizes, prev, pager, next, jumper"
@@ -103,22 +244,65 @@
     </el-card>
 
     <!-- 详情弹窗 -->
-    <el-dialog v-model="detailVisible" title="操作日志详情" width="600px">
-      <el-descriptions :column="2" border v-if="currentLog">
-        <el-descriptions-item label="ID">{{ currentLog.id }}</el-descriptions-item>
-        <el-descriptions-item label="操作时间">{{ formatDate(currentLog.operatedAt) }}</el-descriptions-item>
-        <el-descriptions-item label="对象类型">{{ getObjectTypeLabel(currentLog.objectType) }}</el-descriptions-item>
-        <el-descriptions-item label="对象ID">{{ currentLog.objectId }}</el-descriptions-item>
-        <el-descriptions-item label="操作类型">{{ getOperationLabel(currentLog.operationType) }}</el-descriptions-item>
-        <el-descriptions-item label="档案ID">{{ currentLog.archiveId }}</el-descriptions-item>
-        <el-descriptions-item label="操作人">{{ currentLog.operatorName }}</el-descriptions-item>
-        <el-descriptions-item label="操作人ID">{{ currentLog.operatorId }}</el-descriptions-item>
-        <el-descriptions-item label="IP地址" :span="2">{{ currentLog.operatorIp }}</el-descriptions-item>
-        <el-descriptions-item label="操作描述" :span="2">{{ currentLog.operationDesc }}</el-descriptions-item>
-        <el-descriptions-item label="User-Agent" :span="2">
-          <div style="word-break: break-all; font-size: 12px; color: #666">{{ currentLog.operatorUa }}</div>
+    <el-dialog
+      v-model="detailVisible"
+      title="操作日志详情"
+      width="600px"
+    >
+      <el-descriptions
+        v-if="currentLog"
+        :column="2"
+        border
+      >
+        <el-descriptions-item label="ID">
+          {{ currentLog.id }}
         </el-descriptions-item>
-        <el-descriptions-item label="操作详情" :span="2" v-if="currentLog.operationDetail">
+        <el-descriptions-item label="操作时间">
+          {{ formatDate(currentLog.operatedAt) }}
+        </el-descriptions-item>
+        <el-descriptions-item label="对象类型">
+          {{ getObjectTypeLabel(currentLog.objectType) }}
+        </el-descriptions-item>
+        <el-descriptions-item label="对象ID">
+          {{ currentLog.objectId }}
+        </el-descriptions-item>
+        <el-descriptions-item label="操作类型">
+          {{ getOperationLabel(currentLog.operationType) }}
+        </el-descriptions-item>
+        <el-descriptions-item label="档案ID">
+          {{ currentLog.archiveId }}
+        </el-descriptions-item>
+        <el-descriptions-item label="操作人">
+          {{ currentLog.operatorName }}
+        </el-descriptions-item>
+        <el-descriptions-item label="操作人ID">
+          {{ currentLog.operatorId }}
+        </el-descriptions-item>
+        <el-descriptions-item
+          label="IP地址"
+          :span="2"
+        >
+          {{ currentLog.operatorIp }}
+        </el-descriptions-item>
+        <el-descriptions-item
+          label="操作描述"
+          :span="2"
+        >
+          {{ currentLog.operationDesc }}
+        </el-descriptions-item>
+        <el-descriptions-item
+          label="User-Agent"
+          :span="2"
+        >
+          <div style="word-break: break-all; font-size: 12px; color: #666">
+            {{ currentLog.operatorUa }}
+          </div>
+        </el-descriptions-item>
+        <el-descriptions-item
+          v-if="currentLog.operationDetail"
+          label="操作详情"
+          :span="2"
+        >
           <pre style="white-space: pre-wrap; word-break: break-all; margin: 0; font-size: 12px">{{ JSON.stringify(currentLog.operationDetail, null, 2) }}</pre>
         </el-descriptions-item>
       </el-descriptions>

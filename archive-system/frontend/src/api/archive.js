@@ -11,6 +11,14 @@ export function getArchiveList(params) {
   })
 }
 
+export function searchArchives(params) {
+  return request({
+    url: '/archives/search',
+    method: 'get',
+    params
+  })
+}
+
 /**
  * 获取档案详情
  */

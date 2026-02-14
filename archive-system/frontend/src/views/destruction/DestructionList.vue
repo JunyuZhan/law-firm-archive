@@ -1,33 +1,81 @@
 <template>
   <div class="destruction-list">
     <!-- 标签页 -->
-    <el-tabs v-model="activeTab" @tab-change="handleTabChange">
-      <el-tab-pane label="全部记录" name="all" />
-      <el-tab-pane label="待审批" name="pending" />
-      <el-tab-pane label="待执行" name="approved" />
+    <el-tabs
+      v-model="activeTab"
+      @tab-change="handleTabChange"
+    >
+      <el-tab-pane
+        label="全部记录"
+        name="all"
+      />
+      <el-tab-pane
+        label="待审批"
+        name="pending"
+      />
+      <el-tab-pane
+        label="待执行"
+        name="approved"
+      />
     </el-tabs>
 
     <!-- 筛选 -->
-    <el-card shadow="never" class="filter-card" v-if="activeTab === 'all'">
+    <el-card
+      v-if="activeTab === 'all'"
+      shadow="never"
+      class="filter-card"
+    >
       <el-form inline>
         <el-form-item label="状态">
-          <el-select v-model="filters.status" placeholder="全部" clearable style="width: 120px">
-            <el-option label="待审批" value="PENDING" />
-            <el-option label="已通过" value="APPROVED" />
-            <el-option label="已拒绝" value="REJECTED" />
-            <el-option label="已执行" value="EXECUTED" />
+          <el-select
+            v-model="filters.status"
+            placeholder="全部"
+            clearable
+            style="width: 120px"
+          >
+            <el-option
+              label="待审批"
+              value="PENDING"
+            />
+            <el-option
+              label="已通过"
+              value="APPROVED"
+            />
+            <el-option
+              label="已拒绝"
+              value="REJECTED"
+            />
+            <el-option
+              label="已执行"
+              value="EXECUTED"
+            />
           </el-select>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="fetchData">查询</el-button>
-          <el-button @click="handleCreate">申请销毁</el-button>
+          <el-button
+            type="primary"
+            @click="fetchData"
+          >
+            查询
+          </el-button>
+          <el-button @click="handleCreate">
+            申请销毁
+          </el-button>
         </el-form-item>
       </el-form>
     </el-card>
 
     <!-- 待执行操作栏 -->
-    <el-card shadow="never" class="filter-card" v-if="activeTab === 'approved'">
-      <el-button type="danger" @click="handleBatchExecute" :disabled="selectedRows.length === 0">
+    <el-card
+      v-if="activeTab === 'approved'"
+      shadow="never"
+      class="filter-card"
+    >
+      <el-button
+        type="danger"
+        :disabled="selectedRows.length === 0"
+        @click="handleBatchExecute"
+      >
         批量执行销毁 ({{ selectedRows.length }})
       </el-button>
     </el-card>
@@ -35,59 +83,125 @@
     <!-- 列表 -->
     <el-card shadow="never">
       <el-table 
-        :data="tableData" 
         v-loading="loading" 
+        :data="tableData" 
         stripe
         @selection-change="handleSelectionChange"
       >
-        <el-table-column type="selection" width="50" v-if="activeTab === 'approved'" />
-        <el-table-column prop="id" label="ID" width="80" />
-        <el-table-column prop="destructionBatchNo" label="批次号" width="150" />
-        <el-table-column prop="archiveId" label="档案ID" width="100" />
-        <el-table-column label="销毁方式" width="100">
+        <el-table-column
+          v-if="activeTab === 'approved'"
+          type="selection"
+          width="50"
+        />
+        <el-table-column
+          prop="id"
+          label="ID"
+          width="80"
+        />
+        <el-table-column
+          prop="destructionBatchNo"
+          label="批次号"
+          width="150"
+        />
+        <el-table-column
+          prop="archiveId"
+          label="档案ID"
+          width="100"
+        />
+        <el-table-column
+          label="销毁方式"
+          width="100"
+        >
           <template #default="{ row }">
-            <el-tag :type="row.destructionMethod === 'PHYSICAL' ? 'danger' : ''" size="small">
+            <el-tag
+              :type="row.destructionMethod === 'PHYSICAL' ? 'danger' : ''"
+              size="small"
+            >
               {{ row.destructionMethod === 'PHYSICAL' ? '物理销毁' : '逻辑删除' }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="destructionReason" label="销毁原因" min-width="150" show-overflow-tooltip />
-        <el-table-column label="状态" width="100">
+        <el-table-column
+          prop="destructionReason"
+          label="销毁原因"
+          min-width="150"
+          show-overflow-tooltip
+        />
+        <el-table-column
+          label="状态"
+          width="100"
+        >
           <template #default="{ row }">
-            <el-tag :type="getStatusType(row.status)" size="small">
+            <el-tag
+              :type="getStatusType(row.status)"
+              size="small"
+            >
               {{ getStatusName(row.status) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="proposerName" label="提议人" width="100" />
-        <el-table-column label="提议时间" width="170">
+        <el-table-column
+          prop="proposerName"
+          label="提议人"
+          width="100"
+        />
+        <el-table-column
+          label="提议时间"
+          width="170"
+        >
           <template #default="{ row }">
             {{ formatDateTime(row.proposedAt) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="180" fixed="right">
+        <el-table-column
+          label="操作"
+          width="180"
+          fixed="right"
+        >
           <template #default="{ row }">
             <template v-if="row.status === 'PENDING'">
-              <el-button type="success" link size="small" @click="handleApprove(row)">
+              <el-button
+                type="success"
+                link
+                size="small"
+                @click="handleApprove(row)"
+              >
                 通过
               </el-button>
-              <el-button type="danger" link size="small" @click="handleReject(row)">
+              <el-button
+                type="danger"
+                link
+                size="small"
+                @click="handleReject(row)"
+              >
                 拒绝
               </el-button>
             </template>
             <template v-if="row.status === 'APPROVED'">
-              <el-button type="danger" link size="small" @click="handleExecute(row)">
+              <el-button
+                type="danger"
+                link
+                size="small"
+                @click="handleExecute(row)"
+              >
                 执行销毁
               </el-button>
             </template>
-            <el-button link size="small" @click="handleView(row)">
+            <el-button
+              link
+              size="small"
+              @click="handleView(row)"
+            >
               详情
             </el-button>
           </template>
         </el-table-column>
       </el-table>
 
-      <div class="pagination" v-if="pagination.total > pagination.pageSize">
+      <div
+        v-if="pagination.total > pagination.pageSize"
+        class="pagination"
+      >
         <el-pagination
           v-model:current-page="pagination.pageNum"
           v-model:page-size="pagination.pageSize"
@@ -99,80 +213,216 @@
     </el-card>
 
     <!-- 申请销毁弹窗 -->
-    <el-dialog v-model="createDialogVisible" title="申请销毁" width="600px">
-      <el-form ref="createFormRef" :model="createForm" :rules="createRules" label-width="100px">
-        <el-form-item label="档案ID" prop="archiveId">
-          <el-input v-model.number="createForm.archiveId" placeholder="请输入档案ID" />
+    <el-dialog
+      v-model="createDialogVisible"
+      title="申请销毁"
+      width="600px"
+    >
+      <el-form
+        ref="createFormRef"
+        :model="createForm"
+        :rules="createRules"
+        label-width="100px"
+      >
+        <el-form-item
+          label="档案ID"
+          prop="archiveId"
+        >
+          <el-input
+            v-model.number="createForm.archiveId"
+            placeholder="请输入档案ID"
+          />
         </el-form-item>
-        <el-form-item label="销毁方式" prop="destructionMethod">
+        <el-form-item
+          label="销毁方式"
+          prop="destructionMethod"
+        >
           <el-radio-group v-model="createForm.destructionMethod">
-            <el-radio value="LOGICAL">逻辑删除</el-radio>
-            <el-radio value="PHYSICAL">物理销毁</el-radio>
+            <el-radio value="LOGICAL">
+              逻辑删除
+            </el-radio>
+            <el-radio value="PHYSICAL">
+              物理销毁
+            </el-radio>
           </el-radio-group>
         </el-form-item>
-        <el-form-item label="销毁原因" prop="destructionReason">
-          <el-input v-model="createForm.destructionReason" type="textarea" :rows="3" placeholder="请输入销毁原因" />
+        <el-form-item
+          label="销毁原因"
+          prop="destructionReason"
+        >
+          <el-input
+            v-model="createForm.destructionReason"
+            type="textarea"
+            :rows="3"
+            placeholder="请输入销毁原因"
+          />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="createDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="submitCreate" :loading="submitting">提交</el-button>
+        <el-button @click="createDialogVisible = false">
+          取消
+        </el-button>
+        <el-button
+          type="primary"
+          :loading="submitting"
+          @click="submitCreate"
+        >
+          提交
+        </el-button>
       </template>
     </el-dialog>
 
     <!-- 审批弹窗 -->
-    <el-dialog v-model="approveDialogVisible" title="审批" width="500px">
-      <el-form :model="approveForm" label-width="80px">
+    <el-dialog
+      v-model="approveDialogVisible"
+      title="审批"
+      width="500px"
+    >
+      <el-form
+        :model="approveForm"
+        label-width="80px"
+      >
         <el-form-item label="审批意见">
-          <el-input v-model="approveForm.comment" type="textarea" :rows="3" placeholder="请输入审批意见" />
+          <el-input
+            v-model="approveForm.comment"
+            type="textarea"
+            :rows="3"
+            placeholder="请输入审批意见"
+          />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="approveDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="confirmApprove">确认通过</el-button>
+        <el-button @click="approveDialogVisible = false">
+          取消
+        </el-button>
+        <el-button
+          type="primary"
+          @click="confirmApprove"
+        >
+          确认通过
+        </el-button>
       </template>
     </el-dialog>
 
     <!-- 拒绝弹窗 -->
-    <el-dialog v-model="rejectDialogVisible" title="拒绝销毁" width="500px">
-      <el-form :model="rejectForm" label-width="80px">
-        <el-form-item label="拒绝原因" required>
-          <el-input v-model="rejectForm.comment" type="textarea" :rows="3" placeholder="请输入拒绝原因" />
+    <el-dialog
+      v-model="rejectDialogVisible"
+      title="拒绝销毁"
+      width="500px"
+    >
+      <el-form
+        :model="rejectForm"
+        label-width="80px"
+      >
+        <el-form-item
+          label="拒绝原因"
+          required
+        >
+          <el-input
+            v-model="rejectForm.comment"
+            type="textarea"
+            :rows="3"
+            placeholder="请输入拒绝原因"
+          />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="rejectDialogVisible = false">取消</el-button>
-        <el-button type="danger" @click="confirmReject">确认拒绝</el-button>
+        <el-button @click="rejectDialogVisible = false">
+          取消
+        </el-button>
+        <el-button
+          type="danger"
+          @click="confirmReject"
+        >
+          确认拒绝
+        </el-button>
       </template>
     </el-dialog>
 
     <!-- 详情弹窗 -->
-    <el-dialog v-model="detailDialogVisible" title="销毁记录详情" width="600px">
-      <el-descriptions v-if="detailData" :column="2" border>
-        <el-descriptions-item label="记录ID">{{ detailData.id }}</el-descriptions-item>
-        <el-descriptions-item label="批次号">{{ detailData.destructionBatchNo }}</el-descriptions-item>
-        <el-descriptions-item label="档案ID">{{ detailData.archiveId }}</el-descriptions-item>
+    <el-dialog
+      v-model="detailDialogVisible"
+      title="销毁记录详情"
+      width="600px"
+    >
+      <el-descriptions
+        v-if="detailData"
+        :column="2"
+        border
+      >
+        <el-descriptions-item label="记录ID">
+          {{ detailData.id }}
+        </el-descriptions-item>
+        <el-descriptions-item label="批次号">
+          {{ detailData.destructionBatchNo }}
+        </el-descriptions-item>
+        <el-descriptions-item label="档案ID">
+          {{ detailData.archiveId }}
+        </el-descriptions-item>
         <el-descriptions-item label="销毁方式">
-          <el-tag :type="detailData.destructionMethod === 'PHYSICAL' ? 'danger' : ''" size="small">
+          <el-tag
+            :type="detailData.destructionMethod === 'PHYSICAL' ? 'danger' : ''"
+            size="small"
+          >
             {{ detailData.destructionMethod === 'PHYSICAL' ? '物理销毁' : '逻辑删除' }}
           </el-tag>
         </el-descriptions-item>
         <el-descriptions-item label="状态">
-          <el-tag :type="getStatusType(detailData.status)" size="small">
+          <el-tag
+            :type="getStatusType(detailData.status)"
+            size="small"
+          >
             {{ getStatusName(detailData.status) }}
           </el-tag>
         </el-descriptions-item>
-        <el-descriptions-item label="销毁原因" :span="2">{{ detailData.destructionReason || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="提议人">{{ detailData.proposerName }}</el-descriptions-item>
-        <el-descriptions-item label="提议时间">{{ formatDateTime(detailData.proposedAt) }}</el-descriptions-item>
-        <el-descriptions-item label="审批人" v-if="detailData.approverName">{{ detailData.approverName }}</el-descriptions-item>
-        <el-descriptions-item label="审批时间" v-if="detailData.approvedAt">{{ formatDateTime(detailData.approvedAt) }}</el-descriptions-item>
-        <el-descriptions-item label="审批意见" :span="2" v-if="detailData.approvalComment">{{ detailData.approvalComment }}</el-descriptions-item>
-        <el-descriptions-item label="执行人" v-if="detailData.executorName">{{ detailData.executorName }}</el-descriptions-item>
-        <el-descriptions-item label="执行时间" v-if="detailData.executedAt">{{ formatDateTime(detailData.executedAt) }}</el-descriptions-item>
+        <el-descriptions-item
+          label="销毁原因"
+          :span="2"
+        >
+          {{ detailData.destructionReason || '-' }}
+        </el-descriptions-item>
+        <el-descriptions-item label="提议人">
+          {{ detailData.proposerName }}
+        </el-descriptions-item>
+        <el-descriptions-item label="提议时间">
+          {{ formatDateTime(detailData.proposedAt) }}
+        </el-descriptions-item>
+        <el-descriptions-item
+          v-if="detailData.approverName"
+          label="审批人"
+        >
+          {{ detailData.approverName }}
+        </el-descriptions-item>
+        <el-descriptions-item
+          v-if="detailData.approvedAt"
+          label="审批时间"
+        >
+          {{ formatDateTime(detailData.approvedAt) }}
+        </el-descriptions-item>
+        <el-descriptions-item
+          v-if="detailData.approvalComment"
+          label="审批意见"
+          :span="2"
+        >
+          {{ detailData.approvalComment }}
+        </el-descriptions-item>
+        <el-descriptions-item
+          v-if="detailData.executorName"
+          label="执行人"
+        >
+          {{ detailData.executorName }}
+        </el-descriptions-item>
+        <el-descriptions-item
+          v-if="detailData.executedAt"
+          label="执行时间"
+        >
+          {{ formatDateTime(detailData.executedAt) }}
+        </el-descriptions-item>
       </el-descriptions>
       <template #footer>
-        <el-button @click="detailDialogVisible = false">关闭</el-button>
+        <el-button @click="detailDialogVisible = false">
+          关闭
+        </el-button>
       </template>
     </el-dialog>
   </div>

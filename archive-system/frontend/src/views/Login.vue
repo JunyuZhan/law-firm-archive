@@ -2,9 +2,16 @@
   <div class="login-container">
     <div class="login-box">
       <div class="login-header">
-        <el-icon :size="48" color="#409eff"><Files /></el-icon>
+        <el-icon
+          :size="48"
+          color="#409eff"
+        >
+          <Files />
+        </el-icon>
         <h1>档案管理系统</h1>
-        <p class="subtitle">Archive Management System</p>
+        <p class="subtitle">
+          Archive Management System
+        </p>
       </div>
       
       <!-- 安全提示 -->
@@ -17,7 +24,12 @@
         class="security-alert"
       />
       
-      <el-form ref="formRef" :model="form" :rules="rules" class="login-form">
+      <el-form
+        ref="formRef"
+        :model="form"
+        :rules="rules"
+        class="login-form"
+      >
         <el-form-item prop="username">
           <el-input
             v-model.trim="form.username"
@@ -44,7 +56,10 @@
         </el-form-item>
         
         <!-- 验证码（失败多次后显示） -->
-        <el-form-item v-if="showCaptcha" prop="captcha">
+        <el-form-item
+          v-if="showCaptcha"
+          prop="captcha"
+        >
           <div class="captcha-row">
             <el-input
               v-model="form.captcha"
@@ -54,8 +69,16 @@
               class="captcha-input"
               @keyup.enter="handleLogin"
             />
-            <div class="captcha-img" @click="refreshCaptcha" :title="captchaText">
-              <canvas ref="captchaCanvas" width="120" height="40"></canvas>
+            <div
+              class="captcha-img"
+              :title="captchaText"
+              @click="refreshCaptcha"
+            >
+              <canvas
+                ref="captchaCanvas"
+                width="120"
+                height="40"
+              />
             </div>
           </div>
         </el-form-item>
@@ -66,8 +89,8 @@
             size="large"
             :loading="loading"
             :disabled="isLocked"
-            @click="handleLogin"
             style="width: 100%"
+            @click="handleLogin"
           >
             {{ loginButtonText }}
           </el-button>
@@ -75,8 +98,12 @@
       </el-form>
       
       <div class="login-footer">
-        <p v-if="isDev">开发环境：admin / admin123</p>
-        <p v-else>请使用分配的账号登录</p>
+        <p v-if="isDev">
+          开发环境：admin / admin123
+        </p>
+        <p v-else>
+          请使用分配的账号登录
+        </p>
       </div>
     </div>
   </div>

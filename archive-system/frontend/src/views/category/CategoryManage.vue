@@ -7,18 +7,37 @@
           <template #header>
             <div class="card-header">
               <span>档案分类</span>
-              <el-button type="primary" size="small" @click="handleAddRoot">
+              <el-button
+                type="primary"
+                size="small"
+                @click="handleAddRoot"
+              >
                 <el-icon><Plus /></el-icon>
                 新增根分类
               </el-button>
             </div>
           </template>
           
-          <el-tabs v-model="activeType" @tab-change="handleTypeChange">
-            <el-tab-pane label="全部" name="all" />
-            <el-tab-pane label="文书" name="DOCUMENT" />
-            <el-tab-pane label="科技" name="SCIENCE" />
-            <el-tab-pane label="专业" name="SPECIAL" />
+          <el-tabs
+            v-model="activeType"
+            @tab-change="handleTypeChange"
+          >
+            <el-tab-pane
+              label="全部"
+              name="all"
+            />
+            <el-tab-pane
+              label="文书"
+              name="DOCUMENT"
+            />
+            <el-tab-pane
+              label="科技"
+              name="SCIENCE"
+            />
+            <el-tab-pane
+              label="专业"
+              name="SPECIAL"
+            />
           </el-tabs>
           
           <el-tree
@@ -49,11 +68,30 @@
             <div class="card-header">
               <span>{{ isEditing ? '编辑分类' : (currentCategory ? '分类详情' : '请选择分类') }}</span>
               <div v-if="currentCategory && !isEditing">
-                <el-button type="primary" size="small" @click="handleEdit">编辑</el-button>
-                <el-button size="small" @click="handleAddChild">添加子分类</el-button>
-                <el-popconfirm title="确定删除该分类?" @confirm="handleDelete">
+                <el-button
+                  type="primary"
+                  size="small"
+                  @click="handleEdit"
+                >
+                  编辑
+                </el-button>
+                <el-button
+                  size="small"
+                  @click="handleAddChild"
+                >
+                  添加子分类
+                </el-button>
+                <el-popconfirm
+                  title="确定删除该分类?"
+                  @confirm="handleDelete"
+                >
                   <template #reference>
-                    <el-button type="danger" size="small">删除</el-button>
+                    <el-button
+                      type="danger"
+                      size="small"
+                    >
+                      删除
+                    </el-button>
                   </template>
                 </el-popconfirm>
               </div>
@@ -68,54 +106,139 @@
               label-width="100px"
               :disabled="!isEditing"
             >
-              <el-form-item label="分类代码" prop="categoryCode">
-                <el-input v-model="form.categoryCode" placeholder="如：WS-01" />
+              <el-form-item
+                label="分类代码"
+                prop="categoryCode"
+              >
+                <el-input
+                  v-model="form.categoryCode"
+                  placeholder="如：WS-01"
+                />
               </el-form-item>
-              <el-form-item label="分类名称" prop="categoryName">
-                <el-input v-model="form.categoryName" placeholder="分类名称" />
+              <el-form-item
+                label="分类名称"
+                prop="categoryName"
+              >
+                <el-input
+                  v-model="form.categoryName"
+                  placeholder="分类名称"
+                />
               </el-form-item>
-              <el-form-item label="档案门类" prop="archiveType">
-                <el-select v-model="form.archiveType" placeholder="请选择" style="width: 100%">
-                  <el-option label="文书档案" value="DOCUMENT" />
-                  <el-option label="科技档案" value="SCIENCE" />
-                  <el-option label="会计档案" value="ACCOUNTING" />
-                  <el-option label="人事档案" value="PERSONNEL" />
-                  <el-option label="专业档案" value="SPECIAL" />
+              <el-form-item
+                label="档案门类"
+                prop="archiveType"
+              >
+                <el-select
+                  v-model="form.archiveType"
+                  placeholder="请选择"
+                  style="width: 100%"
+                >
+                  <el-option
+                    label="文书档案"
+                    value="DOCUMENT"
+                  />
+                  <el-option
+                    label="科技档案"
+                    value="SCIENCE"
+                  />
+                  <el-option
+                    label="会计档案"
+                    value="ACCOUNTING"
+                  />
+                  <el-option
+                    label="人事档案"
+                    value="PERSONNEL"
+                  />
+                  <el-option
+                    label="专业档案"
+                    value="SPECIAL"
+                  />
                 </el-select>
               </el-form-item>
               <el-form-item label="保管期限">
-                <el-select v-model="form.retentionPeriod" placeholder="默认保管期限" style="width: 100%">
-                  <el-option label="永久" value="PERMANENT" />
-                  <el-option label="30年" value="Y30" />
-                  <el-option label="15年" value="Y15" />
-                  <el-option label="10年" value="Y10" />
-                  <el-option label="5年" value="Y5" />
+                <el-select
+                  v-model="form.retentionPeriod"
+                  placeholder="默认保管期限"
+                  style="width: 100%"
+                >
+                  <el-option
+                    label="永久"
+                    value="PERMANENT"
+                  />
+                  <el-option
+                    label="30年"
+                    value="Y30"
+                  />
+                  <el-option
+                    label="15年"
+                    value="Y15"
+                  />
+                  <el-option
+                    label="10年"
+                    value="Y10"
+                  />
+                  <el-option
+                    label="5年"
+                    value="Y5"
+                  />
                 </el-select>
               </el-form-item>
               <el-form-item label="排序号">
-                <el-input-number v-model="form.sortOrder" :min="0" />
+                <el-input-number
+                  v-model="form.sortOrder"
+                  :min="0"
+                />
               </el-form-item>
               <el-form-item label="说明">
-                <el-input v-model="form.description" type="textarea" :rows="3" />
+                <el-input
+                  v-model="form.description"
+                  type="textarea"
+                  :rows="3"
+                />
               </el-form-item>
             </el-form>
 
-            <div v-if="isEditing" class="form-actions">
-              <el-button @click="cancelEdit">取消</el-button>
-              <el-button type="primary" @click="handleSave">保存</el-button>
+            <div
+              v-if="isEditing"
+              class="form-actions"
+            >
+              <el-button @click="cancelEdit">
+                取消
+              </el-button>
+              <el-button
+                type="primary"
+                @click="handleSave"
+              >
+                保存
+              </el-button>
             </div>
 
             <div v-if="!isEditing && currentCategory">
-              <el-descriptions :column="2" border class="category-info">
-                <el-descriptions-item label="完整路径">{{ currentCategory.fullPath }}</el-descriptions-item>
-                <el-descriptions-item label="层级">第 {{ currentCategory.level }} 级</el-descriptions-item>
-                <el-descriptions-item label="档案数量">{{ archiveCount }} 个</el-descriptions-item>
-                <el-descriptions-item label="状态">{{ currentCategory.status }}</el-descriptions-item>
+              <el-descriptions
+                :column="2"
+                border
+                class="category-info"
+              >
+                <el-descriptions-item label="完整路径">
+                  {{ currentCategory.fullPath }}
+                </el-descriptions-item>
+                <el-descriptions-item label="层级">
+                  第 {{ currentCategory.level }} 级
+                </el-descriptions-item>
+                <el-descriptions-item label="档案数量">
+                  {{ archiveCount }} 个
+                </el-descriptions-item>
+                <el-descriptions-item label="状态">
+                  {{ currentCategory.status }}
+                </el-descriptions-item>
               </el-descriptions>
             </div>
           </div>
 
-          <el-empty v-else description="请在左侧选择分类" />
+          <el-empty
+            v-else
+            description="请在左侧选择分类"
+          />
         </el-card>
       </el-col>
     </el-row>

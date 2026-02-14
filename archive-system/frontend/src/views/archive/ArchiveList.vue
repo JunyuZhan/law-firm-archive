@@ -1,8 +1,14 @@
 <template>
   <div class="archive-list">
     <!-- 搜索区域 -->
-    <el-card class="search-card" shadow="never">
-      <el-form :model="searchForm" inline>
+    <el-card
+      class="search-card"
+      shadow="never"
+    >
+      <el-form
+        :model="searchForm"
+        inline
+      >
         <el-form-item label="关键词">
           <el-input
             v-model="searchForm.keyword"
@@ -13,35 +19,80 @@
           />
         </el-form-item>
         <el-form-item label="档案类型">
-          <el-select v-model="searchForm.archiveType" placeholder="全部" clearable style="width: 120px">
-            <el-option label="文书档案" value="DOCUMENT" />
-            <el-option label="科技档案" value="SCIENCE" />
-            <el-option label="会计档案" value="ACCOUNTING" />
-            <el-option label="人事档案" value="PERSONNEL" />
-            <el-option label="专业档案" value="SPECIAL" />
+          <el-select
+            v-model="searchForm.archiveType"
+            placeholder="全部"
+            clearable
+            style="width: 120px"
+          >
+            <el-option
+              label="文书档案"
+              value="DOCUMENT"
+            />
+            <el-option
+              label="科技档案"
+              value="SCIENCE"
+            />
+            <el-option
+              label="会计档案"
+              value="ACCOUNTING"
+            />
+            <el-option
+              label="人事档案"
+              value="PERSONNEL"
+            />
+            <el-option
+              label="专业档案"
+              value="SPECIAL"
+            />
           </el-select>
         </el-form-item>
         <el-form-item label="状态">
-          <el-select v-model="searchForm.status" placeholder="全部" clearable style="width: 120px">
-            <el-option label="已接收" value="RECEIVED" />
-            <el-option label="整理中" value="CATALOGING" />
-            <el-option label="已归档" value="STORED" />
-            <el-option label="借出中" value="BORROWED" />
+          <el-select
+            v-model="searchForm.status"
+            placeholder="全部"
+            clearable
+            style="width: 120px"
+          >
+            <el-option
+              label="已接收"
+              value="RECEIVED"
+            />
+            <el-option
+              label="整理中"
+              value="CATALOGING"
+            />
+            <el-option
+              label="已归档"
+              value="STORED"
+            />
+            <el-option
+              label="借出中"
+              value="BORROWED"
+            />
           </el-select>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="handleSearch">
+          <el-button
+            type="primary"
+            @click="handleSearch"
+          >
             <el-icon><Search /></el-icon>
             搜索
           </el-button>
-          <el-button @click="resetSearch">重置</el-button>
+          <el-button @click="resetSearch">
+            重置
+          </el-button>
         </el-form-item>
       </el-form>
     </el-card>
 
     <!-- 工具栏 -->
     <div class="toolbar">
-      <el-button type="primary" @click="handleCreate">
+      <el-button
+        type="primary"
+        @click="handleCreate"
+      >
         <el-icon><Plus /></el-icon>
         新建档案
       </el-button>
@@ -61,42 +112,96 @@
         style="width: 100%"
         @row-click="handleRowClick"
       >
-        <el-table-column prop="archiveNo" label="档案号" width="180" fixed />
-        <el-table-column prop="title" label="题名" min-width="250" show-overflow-tooltip />
-        <el-table-column prop="archiveType" label="类型" width="100">
+        <el-table-column
+          prop="archiveNo"
+          label="档案号"
+          width="180"
+          fixed
+        />
+        <el-table-column
+          prop="title"
+          label="题名"
+          min-width="250"
+          show-overflow-tooltip
+        />
+        <el-table-column
+          prop="archiveType"
+          label="类型"
+          width="100"
+        >
           <template #default="{ row }">
-            <el-tag size="small">{{ getArchiveTypeName(row.archiveType) }}</el-tag>
+            <el-tag size="small">
+              {{ getArchiveTypeName(row.archiveType) }}
+            </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="status" label="状态" width="100">
+        <el-table-column
+          prop="status"
+          label="状态"
+          width="100"
+        >
           <template #default="{ row }">
-            <el-tag :type="getStatusType(row.status)" size="small">
+            <el-tag
+              :type="getStatusType(row.status)"
+              size="small"
+            >
               {{ getStatusName(row.status) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="retentionPeriod" label="保管期限" width="100">
+        <el-table-column
+          prop="retentionPeriod"
+          label="保管期限"
+          width="100"
+        >
           <template #default="{ row }">
             {{ getRetentionName(row.retentionPeriod) }}
           </template>
         </el-table-column>
-        <el-table-column prop="fileCount" label="文件数" width="80" align="center" />
-        <el-table-column prop="sourceType" label="来源" width="100">
+        <el-table-column
+          prop="fileCount"
+          label="文件数"
+          width="80"
+          align="center"
+        />
+        <el-table-column
+          prop="sourceType"
+          label="来源"
+          width="100"
+        >
           <template #default="{ row }">
             {{ getSourceName(row.sourceType) }}
           </template>
         </el-table-column>
-        <el-table-column prop="receivedAt" label="接收时间" width="170">
+        <el-table-column
+          prop="receivedAt"
+          label="接收时间"
+          width="170"
+        >
           <template #default="{ row }">
             {{ formatDateTime(row.receivedAt) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="150" fixed="right">
+        <el-table-column
+          label="操作"
+          width="150"
+          fixed="right"
+        >
           <template #default="{ row }">
-            <el-button type="primary" link size="small" @click.stop="handleView(row)">
+            <el-button
+              type="primary"
+              link
+              size="small"
+              @click.stop="handleView(row)"
+            >
               查看
             </el-button>
-            <el-button type="primary" link size="small" @click.stop="handleEdit(row)">
+            <el-button
+              type="primary"
+              link
+              size="small"
+              @click.stop="handleEdit(row)"
+            >
               编辑
             </el-button>
             <el-popconfirm
@@ -104,7 +209,12 @@
               @confirm="handleDelete(row)"
             >
               <template #reference>
-                <el-button type="danger" link size="small" @click.stop>
+                <el-button
+                  type="danger"
+                  link
+                  size="small"
+                  @click.stop
+                >
                   删除
                 </el-button>
               </template>

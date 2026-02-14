@@ -4,7 +4,10 @@
       <template #header>
         <div class="card-header">
           <span>全宗管理</span>
-          <el-button type="primary" @click="handleAdd">
+          <el-button
+            type="primary"
+            @click="handleAdd"
+          >
             <el-icon><Plus /></el-icon>
             新增全宗
           </el-button>
@@ -12,7 +15,10 @@
       </template>
 
       <!-- 搜索栏 -->
-      <el-form :inline="true" class="search-form">
+      <el-form
+        :inline="true"
+        class="search-form"
+      >
         <el-form-item label="关键字">
           <el-input
             v-model="searchKeyword"
@@ -22,38 +28,103 @@
           />
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="loadData">查询</el-button>
-          <el-button @click="resetSearch">重置</el-button>
+          <el-button
+            type="primary"
+            @click="loadData"
+          >
+            查询
+          </el-button>
+          <el-button @click="resetSearch">
+            重置
+          </el-button>
         </el-form-item>
       </el-form>
 
       <!-- 数据表格 -->
-      <el-table :data="tableData" v-loading="loading" stripe>
-        <el-table-column prop="fondsNo" label="全宗号" width="120" />
-        <el-table-column prop="fondsName" label="全宗名称" min-width="200" />
-        <el-table-column prop="fondsType" label="类型" width="120">
+      <el-table
+        v-loading="loading"
+        :data="tableData"
+        stripe
+      >
+        <el-table-column
+          prop="fondsNo"
+          label="全宗号"
+          width="120"
+        />
+        <el-table-column
+          prop="fondsName"
+          label="全宗名称"
+          min-width="200"
+        />
+        <el-table-column
+          prop="fondsType"
+          label="类型"
+          width="120"
+        >
           <template #default="{ row }">
             <el-tag :type="getTypeTag(row.fondsType)">
               {{ getTypeName(row.fondsType) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="archiveCount" label="档案数" width="100" align="center" />
-        <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="status" label="状态" width="80" align="center">
+        <el-table-column
+          prop="archiveCount"
+          label="档案数"
+          width="100"
+          align="center"
+        />
+        <el-table-column
+          prop="description"
+          label="描述"
+          min-width="200"
+          show-overflow-tooltip
+        />
+        <el-table-column
+          prop="status"
+          label="状态"
+          width="80"
+          align="center"
+        >
           <template #default="{ row }">
-            <el-tag :type="row.status === 'ACTIVE' ? 'success' : 'info'" size="small">
+            <el-tag
+              :type="row.status === 'ACTIVE' ? 'success' : 'info'"
+              size="small"
+            >
               {{ row.status === 'ACTIVE' ? '启用' : '停用' }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="180" fixed="right">
+        <el-table-column
+          label="操作"
+          width="180"
+          fixed="right"
+        >
           <template #default="{ row }">
-            <el-button link type="primary" @click="handleView(row)">查看</el-button>
-            <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
-            <el-popconfirm title="确定删除该全宗吗？" @confirm="handleDelete(row)">
+            <el-button
+              link
+              type="primary"
+              @click="handleView(row)"
+            >
+              查看
+            </el-button>
+            <el-button
+              link
+              type="primary"
+              @click="handleEdit(row)"
+            >
+              编辑
+            </el-button>
+            <el-popconfirm
+              title="确定删除该全宗吗？"
+              @confirm="handleDelete(row)"
+            >
               <template #reference>
-                <el-button link type="danger">删除</el-button>
+                <el-button
+                  link
+                  type="danger"
+                >
+                  删除
+                </el-button>
               </template>
             </el-popconfirm>
           </template>
@@ -87,23 +158,59 @@
         :rules="rules"
         label-width="100px"
       >
-        <el-form-item label="全宗号" prop="fondsNo">
-          <el-input v-model="form.fondsNo" placeholder="如：QZ001" :disabled="isEdit" />
+        <el-form-item
+          label="全宗号"
+          prop="fondsNo"
+        >
+          <el-input
+            v-model="form.fondsNo"
+            placeholder="如：QZ001"
+            :disabled="isEdit"
+          />
         </el-form-item>
-        <el-form-item label="全宗名称" prop="fondsName">
-          <el-input v-model="form.fondsName" placeholder="全宗名称" />
+        <el-form-item
+          label="全宗名称"
+          prop="fondsName"
+        >
+          <el-input
+            v-model="form.fondsName"
+            placeholder="全宗名称"
+          />
         </el-form-item>
-        <el-form-item label="全宗类型" prop="fondsType">
-          <el-select v-model="form.fondsType" placeholder="请选择" style="width: 100%">
-            <el-option label="内部全宗" value="INTERNAL" />
-            <el-option label="外部全宗" value="EXTERNAL" />
-            <el-option label="历史全宗" value="HISTORICAL" />
+        <el-form-item
+          label="全宗类型"
+          prop="fondsType"
+        >
+          <el-select
+            v-model="form.fondsType"
+            placeholder="请选择"
+            style="width: 100%"
+          >
+            <el-option
+              label="内部全宗"
+              value="INTERNAL"
+            />
+            <el-option
+              label="外部全宗"
+              value="EXTERNAL"
+            />
+            <el-option
+              label="历史全宗"
+              value="HISTORICAL"
+            />
           </el-select>
         </el-form-item>
-        <el-form-item label="状态" prop="status">
+        <el-form-item
+          label="状态"
+          prop="status"
+        >
           <el-radio-group v-model="form.status">
-            <el-radio label="ACTIVE">启用</el-radio>
-            <el-radio label="INACTIVE">停用</el-radio>
+            <el-radio label="ACTIVE">
+              启用
+            </el-radio>
+            <el-radio label="INACTIVE">
+              停用
+            </el-radio>
           </el-radio-group>
         </el-form-item>
         <el-form-item label="描述">
@@ -116,21 +223,60 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSave" :loading="saving">保存</el-button>
+        <el-button @click="dialogVisible = false">
+          取消
+        </el-button>
+        <el-button
+          type="primary"
+          :loading="saving"
+          @click="handleSave"
+        >
+          保存
+        </el-button>
       </template>
     </el-dialog>
 
     <!-- 详情对话框 -->
-    <el-dialog v-model="detailVisible" title="全宗详情" width="600px">
-      <el-descriptions :column="2" border v-if="currentFonds">
-        <el-descriptions-item label="全宗号">{{ currentFonds.fondsNo }}</el-descriptions-item>
-        <el-descriptions-item label="全宗名称">{{ currentFonds.fondsName }}</el-descriptions-item>
-        <el-descriptions-item label="全宗类型">{{ getTypeName(currentFonds.fondsType) }}</el-descriptions-item>
-        <el-descriptions-item label="状态">{{ currentFonds.status === 'ACTIVE' ? '启用' : '停用' }}</el-descriptions-item>
-        <el-descriptions-item label="档案数量" :span="2">{{ statistics.archiveCount || 0 }} 个</el-descriptions-item>
-        <el-descriptions-item label="描述" :span="2">{{ currentFonds.description || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="创建时间" :span="2">{{ currentFonds.createdAt }}</el-descriptions-item>
+    <el-dialog
+      v-model="detailVisible"
+      title="全宗详情"
+      width="600px"
+    >
+      <el-descriptions
+        v-if="currentFonds"
+        :column="2"
+        border
+      >
+        <el-descriptions-item label="全宗号">
+          {{ currentFonds.fondsNo }}
+        </el-descriptions-item>
+        <el-descriptions-item label="全宗名称">
+          {{ currentFonds.fondsName }}
+        </el-descriptions-item>
+        <el-descriptions-item label="全宗类型">
+          {{ getTypeName(currentFonds.fondsType) }}
+        </el-descriptions-item>
+        <el-descriptions-item label="状态">
+          {{ currentFonds.status === 'ACTIVE' ? '启用' : '停用' }}
+        </el-descriptions-item>
+        <el-descriptions-item
+          label="档案数量"
+          :span="2"
+        >
+          {{ statistics.archiveCount || 0 }} 个
+        </el-descriptions-item>
+        <el-descriptions-item
+          label="描述"
+          :span="2"
+        >
+          {{ currentFonds.description || '-' }}
+        </el-descriptions-item>
+        <el-descriptions-item
+          label="创建时间"
+          :span="2"
+        >
+          {{ currentFonds.createdAt }}
+        </el-descriptions-item>
       </el-descriptions>
     </el-dialog>
   </div>

@@ -5,11 +5,19 @@
         <div class="card-header">
           <span class="title">系统配置</span>
           <div class="actions">
-            <el-button @click="refreshCache" :loading="refreshing">
+            <el-button
+              :loading="refreshing"
+              @click="refreshCache"
+            >
               <el-icon><Refresh /></el-icon>
               刷新缓存
             </el-button>
-            <el-button type="primary" @click="saveChanges" :loading="saving" :disabled="!hasChanges">
+            <el-button
+              type="primary"
+              :loading="saving"
+              :disabled="!hasChanges"
+              @click="saveChanges"
+            >
               <el-icon><Check /></el-icon>
               保存修改
             </el-button>
@@ -17,16 +25,28 @@
         </div>
       </template>
 
-      <el-tabs v-model="activeTab" @tab-change="handleTabChange">
+      <el-tabs
+        v-model="activeTab"
+        @tab-change="handleTabChange"
+      >
         <!-- 档案号规则 -->
-        <el-tab-pane label="档案号规则" name="ARCHIVE_NO">
+        <el-tab-pane
+          label="档案号规则"
+          name="ARCHIVE_NO"
+        >
           <div class="config-section">
-            <p class="section-desc">配置档案号生成规则，包括各类档案的前缀、日期格式和序号位数。</p>
-            <el-form label-width="180px" class="config-form">
+            <p class="section-desc">
+              配置档案号生成规则，包括各类档案的前缀、日期格式和序号位数。
+            </p>
+            <el-form
+              label-width="180px"
+              class="config-form"
+            >
               <el-form-item 
                 v-for="config in archiveNoConfigs" 
                 :key="config.configKey"
-                :label="config.description || config.configKey">
+                :label="config.description || config.configKey"
+              >
                 <el-input 
                   v-model="editedConfigs[config.configKey]"
                   :placeholder="config.configValue"
@@ -41,14 +61,23 @@
         </el-tab-pane>
 
         <!-- 保管期限 -->
-        <el-tab-pane label="保管期限" name="RETENTION">
+        <el-tab-pane
+          label="保管期限"
+          name="RETENTION"
+        >
           <div class="config-section">
-            <p class="section-desc">配置档案保管期限相关参数。</p>
-            <el-form label-width="180px" class="config-form">
+            <p class="section-desc">
+              配置档案保管期限相关参数。
+            </p>
+            <el-form
+              label-width="180px"
+              class="config-form"
+            >
               <el-form-item 
                 v-for="config in retentionConfigs" 
                 :key="config.configKey"
-                :label="config.description || config.configKey">
+                :label="config.description || config.configKey"
+              >
                 <el-input 
                   v-model="editedConfigs[config.configKey]"
                   :placeholder="config.configValue"
@@ -63,20 +92,29 @@
         </el-tab-pane>
 
         <!-- 系统参数 -->
-        <el-tab-pane label="系统参数" name="SYSTEM">
+        <el-tab-pane
+          label="系统参数"
+          name="SYSTEM"
+        >
           <div class="config-section">
-            <p class="section-desc">配置系统运行参数。</p>
+            <p class="section-desc">
+              配置系统运行参数。
+            </p>
             
             <!-- 文件上传配置 -->
             <div class="config-group">
               <h4 class="group-title">
                 <el-icon><Upload /></el-icon> 文件上传
               </h4>
-              <el-form label-width="180px" class="config-form">
+              <el-form
+                label-width="180px"
+                class="config-form"
+              >
                 <el-form-item 
                   v-for="config in uploadConfigs" 
                   :key="config.configKey"
-                  :label="config.description || config.configKey">
+                  :label="config.description || config.configKey"
+                >
                   <template v-if="config.configType === 'NUMBER' && config.configKey.includes('size')">
                     <el-input-number
                       v-model.number="editedConfigs[config.configKey]"
@@ -106,11 +144,15 @@
               <h4 class="group-title">
                 <el-icon><Document /></el-icon> 借阅管理
               </h4>
-              <el-form label-width="180px" class="config-form">
+              <el-form
+                label-width="180px"
+                class="config-form"
+              >
                 <el-form-item 
                   v-for="config in borrowConfigs" 
                   :key="config.configKey"
-                  :label="config.description || config.configKey">
+                  :label="config.description || config.configKey"
+                >
                   <el-input-number
                     v-model.number="editedConfigs[config.configKey]"
                     :disabled="!config.editable"
@@ -118,8 +160,14 @@
                     style="width: 200px"
                     @change="markChanged(config.configKey)"
                   />
-                  <span v-if="config.configKey.includes('days')" class="config-hint">天</span>
-                  <span v-if="config.configKey.includes('times')" class="config-hint">次</span>
+                  <span
+                    v-if="config.configKey.includes('days')"
+                    class="config-hint"
+                  >天</span>
+                  <span
+                    v-if="config.configKey.includes('times')"
+                    class="config-hint"
+                  >次</span>
                 </el-form-item>
               </el-form>
             </div>
@@ -129,11 +177,15 @@
               <h4 class="group-title">
                 <el-icon><Picture /></el-icon> 水印设置
               </h4>
-              <el-form label-width="180px" class="config-form">
+              <el-form
+                label-width="180px"
+                class="config-form"
+              >
                 <el-form-item 
                   v-for="config in watermarkConfigs" 
                   :key="config.configKey"
-                  :label="config.description || config.configKey">
+                  :label="config.description || config.configKey"
+                >
                   <template v-if="config.configType === 'BOOLEAN'">
                     <el-switch 
                       v-model="editedConfigs[config.configKey]"
@@ -170,11 +222,15 @@
               <h4 class="group-title">
                 <el-icon><Connection /></el-icon> 回调通知
               </h4>
-              <el-form label-width="180px" class="config-form">
+              <el-form
+                label-width="180px"
+                class="config-form"
+              >
                 <el-form-item 
                   v-for="config in callbackConfigs" 
                   :key="config.configKey"
-                  :label="config.description || config.configKey">
+                  :label="config.description || config.configKey"
+                >
                   <el-input-number
                     v-model.number="editedConfigs[config.configKey]"
                     :disabled="!config.editable"
@@ -182,8 +238,14 @@
                     style="width: 200px"
                     @change="markChanged(config.configKey)"
                   />
-                  <span v-if="config.configKey.includes('interval') || config.configKey.includes('timeout')" class="config-hint">毫秒</span>
-                  <span v-if="config.configKey.includes('max') && !config.configKey.includes('timeout')" class="config-hint">次</span>
+                  <span
+                    v-if="config.configKey.includes('interval') || config.configKey.includes('timeout')"
+                    class="config-hint"
+                  >毫秒</span>
+                  <span
+                    v-if="config.configKey.includes('max') && !config.configKey.includes('timeout')"
+                    class="config-hint"
+                  >次</span>
                 </el-form-item>
               </el-form>
             </div>
@@ -193,11 +255,15 @@
               <h4 class="group-title">
                 <el-icon><Lock /></el-icon> 安全设置
               </h4>
-              <el-form label-width="180px" class="config-form">
+              <el-form
+                label-width="180px"
+                class="config-form"
+              >
                 <el-form-item 
                   v-for="config in securityConfigs" 
                   :key="config.configKey"
-                  :label="config.description || config.configKey">
+                  :label="config.description || config.configKey"
+                >
                   <template v-if="config.configType === 'BOOLEAN'">
                     <el-switch 
                       v-model="editedConfigs[config.configKey]"
@@ -215,9 +281,18 @@
                       style="width: 200px"
                       @change="markChanged(config.configKey)"
                     />
-                    <span v-if="config.configKey.includes('minutes')" class="config-hint">分钟</span>
-                    <span v-if="config.configKey.includes('length')" class="config-hint">位</span>
-                    <span v-if="config.configKey.includes('attempts')" class="config-hint">次</span>
+                    <span
+                      v-if="config.configKey.includes('minutes')"
+                      class="config-hint"
+                    >分钟</span>
+                    <span
+                      v-if="config.configKey.includes('length')"
+                      class="config-hint"
+                    >位</span>
+                    <span
+                      v-if="config.configKey.includes('attempts')"
+                      class="config-hint"
+                    >次</span>
                   </template>
                 </el-form-item>
               </el-form>
@@ -228,11 +303,15 @@
               <h4 class="group-title">
                 <el-icon><Bell /></el-icon> 通知设置
               </h4>
-              <el-form label-width="180px" class="config-form">
+              <el-form
+                label-width="180px"
+                class="config-form"
+              >
                 <el-form-item 
                   v-for="config in notifyConfigs" 
                   :key="config.configKey"
-                  :label="config.description || config.configKey">
+                  :label="config.description || config.configKey"
+                >
                   <template v-if="config.configType === 'BOOLEAN'">
                     <el-switch 
                       v-model="editedConfigs[config.configKey]"
@@ -250,7 +329,10 @@
                       style="width: 200px"
                       @change="markChanged(config.configKey)"
                     />
-                    <span v-if="config.configKey.includes('days')" class="config-hint">天</span>
+                    <span
+                      v-if="config.configKey.includes('days')"
+                      class="config-hint"
+                    >天</span>
                   </template>
                 </el-form-item>
               </el-form>
@@ -261,11 +343,15 @@
               <h4 class="group-title">
                 <el-icon><Search /></el-icon> 搜索设置
               </h4>
-              <el-form label-width="180px" class="config-form">
+              <el-form
+                label-width="180px"
+                class="config-form"
+              >
                 <el-form-item 
                   v-for="config in searchConfigs" 
                   :key="config.configKey"
-                  :label="config.description || config.configKey">
+                  :label="config.description || config.configKey"
+                >
                   <el-input-number
                     v-model.number="editedConfigs[config.configKey]"
                     :disabled="!config.editable"
@@ -273,8 +359,14 @@
                     style="width: 200px"
                     @change="markChanged(config.configKey)"
                   />
-                  <span v-if="config.configKey.includes('size')" class="config-hint">条/页</span>
-                  <span v-if="config.configKey.includes('results')" class="config-hint">条</span>
+                  <span
+                    v-if="config.configKey.includes('size')"
+                    class="config-hint"
+                  >条/页</span>
+                  <span
+                    v-if="config.configKey.includes('results')"
+                    class="config-hint"
+                  >条</span>
                 </el-form-item>
               </el-form>
             </div>
@@ -282,14 +374,23 @@
         </el-tab-pane>
 
         <!-- 站点信息 -->
-        <el-tab-pane label="站点信息" name="SITE">
+        <el-tab-pane
+          label="站点信息"
+          name="SITE"
+        >
           <div class="config-section">
-            <p class="section-desc">配置系统基础信息，如名称、备案号、版权等。</p>
-            <el-form label-width="180px" class="config-form">
+            <p class="section-desc">
+              配置系统基础信息，如名称、备案号、版权等。
+            </p>
+            <el-form
+              label-width="180px"
+              class="config-form"
+            >
               <el-form-item 
                 v-for="config in siteConfigs" 
                 :key="config.configKey"
-                :label="config.description || config.configKey">
+                :label="config.description || config.configKey"
+              >
                 <el-input 
                   v-model="editedConfigs[config.configKey]"
                   :placeholder="config.configValue || '未设置'"
@@ -299,7 +400,11 @@
                 />
               </el-form-item>
             </el-form>
-            <el-alert type="info" :closable="false" style="margin-top: 20px">
+            <el-alert
+              type="info"
+              :closable="false"
+              style="margin-top: 20px"
+            >
               <template #title>
                 提示：ICP备案号将显示在登录页和页面底部；系统名称将显示在侧边栏和浏览器标题。
               </template>
@@ -314,18 +419,42 @@
       <template #header>
         <span>保管期限管理</span>
       </template>
-      <el-table :data="retentionPeriods" stripe>
-        <el-table-column prop="periodCode" label="期限代码" width="120" />
-        <el-table-column prop="periodName" label="期限名称" width="120" />
-        <el-table-column prop="periodYears" label="年限">
+      <el-table
+        :data="retentionPeriods"
+        stripe
+      >
+        <el-table-column
+          prop="periodCode"
+          label="期限代码"
+          width="120"
+        />
+        <el-table-column
+          prop="periodName"
+          label="期限名称"
+          width="120"
+        />
+        <el-table-column
+          prop="periodYears"
+          label="年限"
+        >
           <template #default="{ row }">
             {{ row.periodYears ? row.periodYears + '年' : '永久' }}
           </template>
         </el-table-column>
-        <el-table-column prop="sortOrder" label="排序" width="100" />
-        <el-table-column label="状态" width="100">
+        <el-table-column
+          prop="sortOrder"
+          label="排序"
+          width="100"
+        />
+        <el-table-column
+          label="状态"
+          width="100"
+        >
           <template #default="{ row }">
-            <el-tag :type="row.status === 'ACTIVE' ? 'success' : 'info'" size="small">
+            <el-tag
+              :type="row.status === 'ACTIVE' ? 'success' : 'info'"
+              size="small"
+            >
               {{ row.status === 'ACTIVE' ? '启用' : '停用' }}
             </el-tag>
           </template>

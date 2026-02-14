@@ -4,7 +4,10 @@
       <template #header>
         <div class="card-header">
           <span>角色管理</span>
-          <el-button type="primary" @click="handleAdd">
+          <el-button
+            type="primary"
+            @click="handleAdd"
+          >
             <el-icon><Plus /></el-icon>
             新增角色
           </el-button>
@@ -12,34 +15,94 @@
       </template>
 
       <!-- 数据表格 -->
-      <el-table :data="tableData" v-loading="loading" stripe>
-        <el-table-column prop="roleCode" label="角色代码" width="150" />
-        <el-table-column prop="roleName" label="角色名称" width="180" />
-        <el-table-column prop="description" label="描述" min-width="250" show-overflow-tooltip />
-        <el-table-column prop="userCount" label="用户数" width="100" align="center">
+      <el-table
+        v-loading="loading"
+        :data="tableData"
+        stripe
+      >
+        <el-table-column
+          prop="roleCode"
+          label="角色代码"
+          width="150"
+        />
+        <el-table-column
+          prop="roleName"
+          label="角色名称"
+          width="180"
+        />
+        <el-table-column
+          prop="description"
+          label="描述"
+          min-width="250"
+          show-overflow-tooltip
+        />
+        <el-table-column
+          prop="userCount"
+          label="用户数"
+          width="100"
+          align="center"
+        >
           <template #default="{ row }">
-            <el-tag type="info" size="small">{{ row.userCount || 0 }}</el-tag>
+            <el-tag
+              type="info"
+              size="small"
+            >
+              {{ row.userCount || 0 }}
+            </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="status" label="状态" width="100" align="center">
+        <el-table-column
+          prop="status"
+          label="状态"
+          width="100"
+          align="center"
+        >
           <template #default="{ row }">
-            <el-tag :type="row.status === 'ACTIVE' ? 'success' : 'info'" size="small">
+            <el-tag
+              :type="row.status === 'ACTIVE' ? 'success' : 'info'"
+              size="small"
+            >
               {{ row.status === 'ACTIVE' ? '启用' : '停用' }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="createdAt" label="创建时间" width="180" />
-        <el-table-column label="操作" width="180" fixed="right">
+        <el-table-column
+          prop="createdAt"
+          label="创建时间"
+          width="180"
+        />
+        <el-table-column
+          label="操作"
+          width="180"
+          fixed="right"
+        >
           <template #default="{ row }">
-            <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
-            <el-button link type="primary" @click="handlePermission(row)">权限</el-button>
+            <el-button
+              link
+              type="primary"
+              @click="handleEdit(row)"
+            >
+              编辑
+            </el-button>
+            <el-button
+              link
+              type="primary"
+              @click="handlePermission(row)"
+            >
+              权限
+            </el-button>
             <el-popconfirm
               v-if="!row.isSystem"
               title="确定删除该角色吗？"
               @confirm="handleDelete(row)"
             >
               <template #reference>
-                <el-button link type="danger">删除</el-button>
+                <el-button
+                  link
+                  type="danger"
+                >
+                  删除
+                </el-button>
               </template>
             </el-popconfirm>
           </template>
@@ -60,20 +123,36 @@
         :rules="rules"
         label-width="100px"
       >
-        <el-form-item label="角色代码" prop="roleCode">
+        <el-form-item
+          label="角色代码"
+          prop="roleCode"
+        >
           <el-input
             v-model="form.roleCode"
             placeholder="如：ADMIN、ARCHIVIST"
             :disabled="isEdit"
           />
         </el-form-item>
-        <el-form-item label="角色名称" prop="roleName">
-          <el-input v-model="form.roleName" placeholder="角色名称" />
+        <el-form-item
+          label="角色名称"
+          prop="roleName"
+        >
+          <el-input
+            v-model="form.roleName"
+            placeholder="角色名称"
+          />
         </el-form-item>
-        <el-form-item label="状态" v-if="isEdit">
+        <el-form-item
+          v-if="isEdit"
+          label="状态"
+        >
           <el-radio-group v-model="form.status">
-            <el-radio label="ACTIVE">启用</el-radio>
-            <el-radio label="INACTIVE">停用</el-radio>
+            <el-radio label="ACTIVE">
+              启用
+            </el-radio>
+            <el-radio label="INACTIVE">
+              停用
+            </el-radio>
           </el-radio-group>
         </el-form-item>
         <el-form-item label="描述">
@@ -86,8 +165,16 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSave" :loading="saving">保存</el-button>
+        <el-button @click="dialogVisible = false">
+          取消
+        </el-button>
+        <el-button
+          type="primary"
+          :loading="saving"
+          @click="handleSave"
+        >
+          保存
+        </el-button>
       </template>
     </el-dialog>
 
@@ -116,8 +203,15 @@
         />
       </div>
       <template #footer>
-        <el-button @click="permissionVisible = false">取消</el-button>
-        <el-button type="primary" @click="savePermission">保存权限</el-button>
+        <el-button @click="permissionVisible = false">
+          取消
+        </el-button>
+        <el-button
+          type="primary"
+          @click="savePermission"
+        >
+          保存权限
+        </el-button>
       </template>
     </el-dialog>
   </div>

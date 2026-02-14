@@ -1,55 +1,106 @@
 <template>
   <div class="statistics-page">
     <!-- 概览卡片 -->
-    <el-row :gutter="16" class="overview-row">
+    <el-row
+      :gutter="16"
+      class="overview-row"
+    >
       <el-col :span="6">
-        <el-card shadow="hover" class="stat-card">
+        <el-card
+          shadow="hover"
+          class="stat-card"
+        >
           <div class="stat-content">
-            <div class="stat-icon" style="background: #409eff;">
-              <el-icon :size="28"><Folder /></el-icon>
+            <div
+              class="stat-icon"
+              style="background: #409eff;"
+            >
+              <el-icon :size="28">
+                <Folder />
+              </el-icon>
             </div>
             <div class="stat-info">
-              <div class="stat-value">{{ overview.totalArchives || 0 }}</div>
-              <div class="stat-label">档案总数</div>
+              <div class="stat-value">
+                {{ overview.totalArchives || 0 }}
+              </div>
+              <div class="stat-label">
+                档案总数
+              </div>
             </div>
           </div>
         </el-card>
       </el-col>
       <el-col :span="6">
-        <el-card shadow="hover" class="stat-card">
+        <el-card
+          shadow="hover"
+          class="stat-card"
+        >
           <div class="stat-content">
-            <div class="stat-icon" style="background: #67c23a;">
-              <el-icon :size="28"><Document /></el-icon>
+            <div
+              class="stat-icon"
+              style="background: #67c23a;"
+            >
+              <el-icon :size="28">
+                <Document />
+              </el-icon>
             </div>
             <div class="stat-info">
-              <div class="stat-value">{{ overview.totalFiles || 0 }}</div>
-              <div class="stat-label">电子文件</div>
+              <div class="stat-value">
+                {{ overview.totalFiles || 0 }}
+              </div>
+              <div class="stat-label">
+                电子文件
+              </div>
             </div>
           </div>
         </el-card>
       </el-col>
       <el-col :span="6">
-        <el-card shadow="hover" class="stat-card">
+        <el-card
+          shadow="hover"
+          class="stat-card"
+        >
           <div class="stat-content">
-            <div class="stat-icon" style="background: #e6a23c;">
-              <el-icon :size="28"><Reading /></el-icon>
+            <div
+              class="stat-icon"
+              style="background: #e6a23c;"
+            >
+              <el-icon :size="28">
+                <Reading />
+              </el-icon>
             </div>
             <div class="stat-info">
-              <div class="stat-value">{{ overview.borrowing || 0 }}</div>
-              <div class="stat-label">借阅中</div>
+              <div class="stat-value">
+                {{ overview.borrowing || 0 }}
+              </div>
+              <div class="stat-label">
+                借阅中
+              </div>
             </div>
           </div>
         </el-card>
       </el-col>
       <el-col :span="6">
-        <el-card shadow="hover" class="stat-card">
+        <el-card
+          shadow="hover"
+          class="stat-card"
+        >
           <div class="stat-content">
-            <div class="stat-icon" style="background: #f56c6c;">
-              <el-icon :size="28"><Bell /></el-icon>
+            <div
+              class="stat-icon"
+              style="background: #f56c6c;"
+            >
+              <el-icon :size="28">
+                <Bell />
+              </el-icon>
             </div>
             <div class="stat-info">
-              <div class="stat-value">{{ overview.pendingApproval || 0 }}</div>
-              <div class="stat-label">待审批</div>
+              <div class="stat-value">
+                {{ overview.pendingApproval || 0 }}
+              </div>
+              <div class="stat-label">
+                待审批
+              </div>
             </div>
           </div>
         </el-card>
@@ -57,22 +108,38 @@
     </el-row>
 
     <!-- 图表区域 -->
-    <el-row :gutter="16" class="chart-row">
+    <el-row
+      :gutter="16"
+      class="chart-row"
+    >
       <el-col :span="12">
         <el-card shadow="never">
-          <template #header>档案类型分布</template>
-          <div ref="typeChartRef" class="chart-container"></div>
+          <template #header>
+            档案类型分布
+          </template>
+          <div
+            ref="typeChartRef"
+            class="chart-container"
+          />
         </el-card>
       </el-col>
       <el-col :span="12">
         <el-card shadow="never">
-          <template #header>保管期限分布</template>
-          <div ref="retentionChartRef" class="chart-container"></div>
+          <template #header>
+            保管期限分布
+          </template>
+          <div
+            ref="retentionChartRef"
+            class="chart-container"
+          />
         </el-card>
       </el-col>
     </el-row>
 
-    <el-row :gutter="16" class="chart-row">
+    <el-row
+      :gutter="16"
+      class="chart-row"
+    >
       <el-col :span="16">
         <el-card shadow="never">
           <template #header>
@@ -88,25 +155,43 @@
               />
             </div>
           </template>
-          <div ref="trendChartRef" class="chart-container"></div>
+          <div
+            ref="trendChartRef"
+            class="chart-container"
+          />
         </el-card>
       </el-col>
       <el-col :span="8">
         <el-card shadow="never">
-          <template #header>存储统计</template>
+          <template #header>
+            存储统计
+          </template>
           <div class="storage-stats">
             <div class="storage-item">
-              <div class="storage-label">文件总数</div>
-              <div class="storage-value">{{ storage.fileCount || 0 }} 个</div>
+              <div class="storage-label">
+                文件总数
+              </div>
+              <div class="storage-value">
+                {{ storage.fileCount || 0 }} 个
+              </div>
             </div>
             <div class="storage-item">
-              <div class="storage-label">存储空间</div>
-              <div class="storage-value">{{ storage.totalSizeFormatted || '0 B' }}</div>
+              <div class="storage-label">
+                存储空间
+              </div>
+              <div class="storage-value">
+                {{ storage.totalSizeFormatted || '0 B' }}
+              </div>
             </div>
           </div>
         </el-card>
-        <el-card shadow="never" style="margin-top: 16px;">
-          <template #header>借阅统计</template>
+        <el-card
+          shadow="never"
+          style="margin-top: 16px;"
+        >
+          <template #header>
+            借阅统计
+          </template>
           <div class="borrow-stats">
             <div class="borrow-item">
               <span class="label">总借阅次数</span>

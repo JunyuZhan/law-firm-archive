@@ -1,7 +1,10 @@
 <template>
   <div class="archive-search">
     <!-- 搜索区域 -->
-    <el-card shadow="never" class="search-card">
+    <el-card
+      shadow="never"
+      class="search-card"
+    >
       <div class="search-bar">
         <el-input
           v-model="keyword"
@@ -14,37 +17,96 @@
             <el-icon><Search /></el-icon>
           </template>
         </el-input>
-        <el-button type="primary" size="large" @click="handleSearch">
+        <el-button
+          type="primary"
+          size="large"
+          @click="handleSearch"
+        >
           搜索
         </el-button>
       </div>
 
       <!-- 高级筛选 -->
       <el-collapse v-model="showAdvanced">
-        <el-collapse-item title="高级筛选" name="advanced">
-          <el-form :model="filters" inline label-width="80px">
+        <el-collapse-item
+          title="高级筛选"
+          name="advanced"
+        >
+          <el-form
+            :model="filters"
+            inline
+            label-width="80px"
+          >
             <el-form-item label="档案类型">
-              <el-select v-model="filters.archiveType" placeholder="全部" clearable>
-                <el-option label="文书档案" value="DOCUMENT" />
-                <el-option label="科技档案" value="SCIENCE" />
-                <el-option label="会计档案" value="ACCOUNTING" />
-                <el-option label="人事档案" value="PERSONNEL" />
-                <el-option label="专业档案" value="SPECIAL" />
+              <el-select
+                v-model="filters.archiveType"
+                placeholder="全部"
+                clearable
+              >
+                <el-option
+                  label="文书档案"
+                  value="DOCUMENT"
+                />
+                <el-option
+                  label="科技档案"
+                  value="SCIENCE"
+                />
+                <el-option
+                  label="会计档案"
+                  value="ACCOUNTING"
+                />
+                <el-option
+                  label="人事档案"
+                  value="PERSONNEL"
+                />
+                <el-option
+                  label="专业档案"
+                  value="SPECIAL"
+                />
               </el-select>
             </el-form-item>
             <el-form-item label="保管期限">
-              <el-select v-model="filters.retentionPeriod" placeholder="全部" clearable>
-                <el-option label="永久" value="PERMANENT" />
-                <el-option label="30年" value="Y30" />
-                <el-option label="15年" value="Y15" />
-                <el-option label="10年" value="Y10" />
+              <el-select
+                v-model="filters.retentionPeriod"
+                placeholder="全部"
+                clearable
+              >
+                <el-option
+                  label="永久"
+                  value="PERMANENT"
+                />
+                <el-option
+                  label="30年"
+                  value="Y30"
+                />
+                <el-option
+                  label="15年"
+                  value="Y15"
+                />
+                <el-option
+                  label="10年"
+                  value="Y10"
+                />
               </el-select>
             </el-form-item>
             <el-form-item label="状态">
-              <el-select v-model="filters.status" placeholder="全部" clearable>
-                <el-option label="已接收" value="RECEIVED" />
-                <el-option label="已归档" value="STORED" />
-                <el-option label="借出中" value="BORROWED" />
+              <el-select
+                v-model="filters.status"
+                placeholder="全部"
+                clearable
+              >
+                <el-option
+                  label="已接收"
+                  value="RECEIVED"
+                />
+                <el-option
+                  label="已归档"
+                  value="STORED"
+                />
+                <el-option
+                  label="借出中"
+                  value="BORROWED"
+                />
               </el-select>
             </el-form-item>
             <el-form-item label="归档日期">
@@ -63,23 +125,41 @@
     </el-card>
 
     <!-- 搜索结果 -->
-    <el-card shadow="never" class="result-card" v-if="searched">
+    <el-card
+      v-if="searched"
+      shadow="never"
+      class="result-card"
+    >
       <template #header>
         <div class="result-header">
           <span>搜索结果（共 {{ total }} 条）</span>
         </div>
       </template>
 
-      <div v-if="loading" class="loading">
-        <el-icon class="is-loading" :size="32"><Loading /></el-icon>
+      <div
+        v-if="loading"
+        class="loading"
+      >
+        <el-icon
+          class="is-loading"
+          :size="32"
+        >
+          <Loading />
+        </el-icon>
         <p>搜索中...</p>
       </div>
 
-      <div v-else-if="results.length === 0" class="no-result">
+      <div
+        v-else-if="results.length === 0"
+        class="no-result"
+      >
         <el-empty description="未找到相关档案" />
       </div>
 
-      <div v-else class="result-list">
+      <div
+        v-else
+        class="result-list"
+      >
         <div
           v-for="item in results"
           :key="item.id"
@@ -87,7 +167,10 @@
           @click="goToDetail(item)"
         >
           <div class="item-header">
-            <el-tag size="small" :type="getTypeColor(item.archiveType)">
+            <el-tag
+              size="small"
+              :type="getTypeColor(item.archiveType)"
+            >
               {{ getTypeName(item.archiveType) }}
             </el-tag>
             <span class="archive-no">{{ item.archiveNo }}</span>
@@ -99,7 +182,10 @@
               {{ getStatusName(item.status) }}
             </el-tag>
           </div>
-          <div class="item-title" v-html="highlightKeyword(item.title)"></div>
+          <div
+            class="item-title"
+            v-html="getHighlightedTitle(item)"
+          />
           <div class="item-meta">
             <span v-if="item.caseNo">
               <el-icon><Briefcase /></el-icon>
@@ -139,7 +225,7 @@
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { Search, Loading, Briefcase, User, Avatar, Clock } from '@element-plus/icons-vue'
-import { getArchiveList } from '@/api/archive'
+import { searchArchives } from '@/api/archive'
 
 const router = useRouter()
 const keyword = ref('')
@@ -195,9 +281,12 @@ const fetchResults = async () => {
       params.archiveDateEnd = filters.dateRange[1]
     }
     
-    const res = await getArchiveList(params)
-    results.value = res.data.records
-    total.value = res.data.total
+    const res = await searchArchives({
+      ...params,
+      highlight: true
+    })
+    results.value = (res.data.hits || []).filter(Boolean)
+    total.value = res.data.total || 0
   } catch (e) {
     console.error('搜索失败', e)
   } finally {
@@ -220,6 +309,14 @@ const highlightKeyword = (text) => {
   if (!keyword.value || !text) return text
   const regex = new RegExp(`(${keyword.value})`, 'gi')
   return text.replace(regex, '<mark>$1</mark>')
+}
+
+const getHighlightedTitle = (item) => {
+  const highlight = item?.highlights?.title
+  if (highlight && highlight.length > 0) {
+    return highlight[0]
+  }
+  return highlightKeyword(item?.title)
 }
 
 // 格式化日期

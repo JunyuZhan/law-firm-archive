@@ -1,7 +1,14 @@
 <template>
-  <div class="watermark-container" ref="containerRef">
+  <div
+    ref="containerRef"
+    class="watermark-container"
+  >
     <slot />
-    <div ref="watermarkRef" class="watermark-layer" :style="watermarkStyle" />
+    <div
+      ref="watermarkRef"
+      class="watermark-layer"
+      :style="watermarkStyle"
+    />
   </div>
 </template>
 

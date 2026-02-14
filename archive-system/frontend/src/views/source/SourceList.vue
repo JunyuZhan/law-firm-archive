@@ -4,7 +4,10 @@
       <template #header>
         <div class="card-header">
           <span>档案来源管理</span>
-          <el-button type="primary" @click="handleAdd">
+          <el-button
+            type="primary"
+            @click="handleAdd"
+          >
             <el-icon><Plus /></el-icon> 新增来源
           </el-button>
         </div>
@@ -19,51 +22,120 @@
         style="margin-bottom: 20px;"
       />
 
-      <el-table :data="sources" v-loading="loading" stripe>
-        <el-table-column prop="sourceCode" label="来源编码" width="150" />
-        <el-table-column prop="sourceName" label="来源名称" width="180" />
-        <el-table-column prop="sourceType" label="类型" width="120">
+      <el-table
+        v-loading="loading"
+        :data="sources"
+        stripe
+      >
+        <el-table-column
+          prop="sourceCode"
+          label="来源编码"
+          width="150"
+        />
+        <el-table-column
+          prop="sourceName"
+          label="来源名称"
+          width="180"
+        />
+        <el-table-column
+          prop="sourceType"
+          label="类型"
+          width="120"
+        >
           <template #default="{ row }">
             <el-tag :type="getTypeTagType(row.sourceType)">
               {{ getTypeName(row.sourceType) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="apiUrl" label="API地址" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="authType" label="认证方式" width="100">
+        <el-table-column
+          prop="apiUrl"
+          label="API地址"
+          min-width="200"
+          show-overflow-tooltip
+        />
+        <el-table-column
+          prop="authType"
+          label="认证方式"
+          width="100"
+        >
           <template #default="{ row }">
             {{ getAuthTypeName(row.authType) }}
           </template>
         </el-table-column>
-        <el-table-column prop="enabled" label="状态" width="80">
+        <el-table-column
+          prop="enabled"
+          label="状态"
+          width="80"
+        >
           <template #default="{ row }">
             <el-switch 
               v-model="row.enabled" 
-              @change="handleToggle(row)"
               :loading="row._toggling"
+              @change="handleToggle(row)"
             />
           </template>
         </el-table-column>
-        <el-table-column prop="lastSyncStatus" label="同步状态" width="100">
+        <el-table-column
+          prop="lastSyncStatus"
+          label="同步状态"
+          width="100"
+        >
           <template #default="{ row }">
-            <el-tag v-if="row.lastSyncStatus" :type="getSyncStatusType(row.lastSyncStatus)" size="small">
+            <el-tag
+              v-if="row.lastSyncStatus"
+              :type="getSyncStatusType(row.lastSyncStatus)"
+              size="small"
+            >
               {{ row.lastSyncStatus === 'SUCCESS' ? '成功' : '失败' }}
             </el-tag>
-            <span v-else class="text-gray">-</span>
+            <span
+              v-else
+              class="text-gray"
+            >-</span>
           </template>
         </el-table-column>
-        <el-table-column prop="lastSyncAt" label="最后同步" width="160">
+        <el-table-column
+          prop="lastSyncAt"
+          label="最后同步"
+          width="160"
+        >
           <template #default="{ row }">
             {{ row.lastSyncAt || '-' }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="180" fixed="right">
+        <el-table-column
+          label="操作"
+          width="180"
+          fixed="right"
+        >
           <template #default="{ row }">
-            <el-button type="primary" link @click="handleEdit(row)">编辑</el-button>
-            <el-button type="success" link @click="handleTest(row)" :loading="row._testing">测试</el-button>
-            <el-popconfirm title="确定删除该来源？" @confirm="handleDelete(row)">
+            <el-button
+              type="primary"
+              link
+              @click="handleEdit(row)"
+            >
+              编辑
+            </el-button>
+            <el-button
+              type="success"
+              link
+              :loading="row._testing"
+              @click="handleTest(row)"
+            >
+              测试
+            </el-button>
+            <el-popconfirm
+              title="确定删除该来源？"
+              @confirm="handleDelete(row)"
+            >
               <template #reference>
-                <el-button type="danger" link>删除</el-button>
+                <el-button
+                  type="danger"
+                  link
+                >
+                  删除
+                </el-button>
               </template>
             </el-popconfirm>
           </template>
@@ -78,45 +150,108 @@
       width="600px"
       destroy-on-close
     >
-      <el-form ref="formRef" :model="formData" :rules="rules" label-width="100px">
-        <el-form-item label="来源编码" prop="sourceCode">
+      <el-form
+        ref="formRef"
+        :model="formData"
+        :rules="rules"
+        label-width="100px"
+      >
+        <el-form-item
+          label="来源编码"
+          prop="sourceCode"
+        >
           <el-input 
             v-model="formData.sourceCode" 
             placeholder="如：LAW_FIRM_MAIN"
             :disabled="isEdit"
           />
         </el-form-item>
-        <el-form-item label="来源名称" prop="sourceName">
-          <el-input v-model="formData.sourceName" placeholder="如：律所管理系统" />
+        <el-form-item
+          label="来源名称"
+          prop="sourceName"
+        >
+          <el-input
+            v-model="formData.sourceName"
+            placeholder="如：律所管理系统"
+          />
         </el-form-item>
-        <el-form-item label="来源类型" prop="sourceType">
-          <el-select v-model="formData.sourceType" placeholder="请选择" style="width: 100%">
-            <el-option label="律所系统" value="LAW_FIRM" />
-            <el-option label="法院系统" value="COURT" />
-            <el-option label="企业系统" value="ENTERPRISE" />
-            <el-option label="其他" value="OTHER" />
+        <el-form-item
+          label="来源类型"
+          prop="sourceType"
+        >
+          <el-select
+            v-model="formData.sourceType"
+            placeholder="请选择"
+            style="width: 100%"
+          >
+            <el-option
+              label="律所系统"
+              value="LAW_FIRM"
+            />
+            <el-option
+              label="法院系统"
+              value="COURT"
+            />
+            <el-option
+              label="企业系统"
+              value="ENTERPRISE"
+            />
+            <el-option
+              label="其他"
+              value="OTHER"
+            />
           </el-select>
         </el-form-item>
-        <el-form-item label="API地址" prop="apiUrl">
-          <el-input v-model="formData.apiUrl" placeholder="如：http://localhost:8080/api" />
+        <el-form-item
+          label="API地址"
+          prop="apiUrl"
+        >
+          <el-input
+            v-model="formData.apiUrl"
+            placeholder="如：http://localhost:8080/api"
+          />
         </el-form-item>
-        <el-form-item label="API密钥" prop="apiKey">
+        <el-form-item
+          label="API密钥"
+          prop="apiKey"
+        >
           <el-input 
             v-model="formData.apiKey" 
             placeholder="用于验证来源身份的密钥"
             show-password
           />
-          <div class="form-tip">此密钥需与来源系统配置一致，用于签名验证</div>
+          <div class="form-tip">
+            此密钥需与来源系统配置一致，用于签名验证
+          </div>
         </el-form-item>
-        <el-form-item label="认证方式" prop="authType">
-          <el-select v-model="formData.authType" placeholder="请选择" style="width: 100%">
-            <el-option label="API Key" value="API_KEY" />
-            <el-option label="OAuth 2.0" value="OAUTH2" />
-            <el-option label="Basic Auth" value="BASIC" />
+        <el-form-item
+          label="认证方式"
+          prop="authType"
+        >
+          <el-select
+            v-model="formData.authType"
+            placeholder="请选择"
+            style="width: 100%"
+          >
+            <el-option
+              label="API Key"
+              value="API_KEY"
+            />
+            <el-option
+              label="OAuth 2.0"
+              value="OAUTH2"
+            />
+            <el-option
+              label="Basic Auth"
+              value="BASIC"
+            />
           </el-select>
         </el-form-item>
         <el-form-item label="回调地址">
-          <el-input v-model="formData.callbackUrl" placeholder="处理完成后回调通知地址（可选）" />
+          <el-input
+            v-model="formData.callbackUrl"
+            placeholder="处理完成后回调通知地址（可选）"
+          />
         </el-form-item>
         <el-form-item label="描述">
           <el-input 
@@ -128,8 +263,16 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSubmit" :loading="submitting">确定</el-button>
+        <el-button @click="dialogVisible = false">
+          取消
+        </el-button>
+        <el-button
+          type="primary"
+          :loading="submitting"
+          @click="handleSubmit"
+        >
+          确定
+        </el-button>
       </template>
     </el-dialog>
   </div>

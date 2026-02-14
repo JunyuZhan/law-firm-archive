@@ -12,7 +12,12 @@
       :on-change="handleFileAdd"
       :disabled="uploading"
     >
-      <el-icon class="el-icon--upload" :size="48"><UploadFilled /></el-icon>
+      <el-icon
+        class="el-icon--upload"
+        :size="48"
+      >
+        <UploadFilled />
+      </el-icon>
       <div class="el-upload__text">
         拖拽文件到此处，或 <em>点击选择文件</em>
       </div>
@@ -24,7 +29,10 @@
     </el-upload>
 
     <!-- 文件队列 -->
-    <div v-if="fileQueue.length > 0" class="file-queue">
+    <div
+      v-if="fileQueue.length > 0"
+      class="file-queue"
+    >
       <div class="queue-header">
         <span class="queue-title">
           上传队列 ({{ uploadedCount }}/{{ fileQueue.length }})
@@ -65,7 +73,10 @@
       </div>
 
       <!-- 总进度 -->
-      <div v-if="uploading || uploadedCount > 0" class="total-progress">
+      <div
+        v-if="uploading || uploadedCount > 0"
+        class="total-progress"
+      >
         <el-progress 
           :percentage="totalProgress" 
           :status="allCompleted ? 'success' : ''"
@@ -82,11 +93,17 @@
           :class="{ 'is-error': file.status === 'error' }"
         >
           <div class="file-info">
-            <el-icon class="file-icon" :class="getFileIconClass(file.name)">
+            <el-icon
+              class="file-icon"
+              :class="getFileIconClass(file.name)"
+            >
               <component :is="getFileIcon(file.name)" />
             </el-icon>
             <div class="file-details">
-              <span class="file-name" :title="file.name">{{ file.name }}</span>
+              <span
+                class="file-name"
+                :title="file.name"
+              >{{ file.name }}</span>
               <span class="file-size">{{ formatSize(file.size) }}</span>
             </div>
           </div>
@@ -103,12 +120,19 @@
               />
             </template>
             <template v-else-if="file.status === 'success'">
-              <el-icon class="status-icon success"><CircleCheck /></el-icon>
+              <el-icon class="status-icon success">
+                <CircleCheck />
+              </el-icon>
               <span class="status-text success">上传成功</span>
             </template>
             <template v-else-if="file.status === 'error'">
-              <el-icon class="status-icon error"><CircleClose /></el-icon>
-              <el-tooltip :content="file.error || '上传失败'" placement="top">
+              <el-icon class="status-icon error">
+                <CircleClose />
+              </el-icon>
+              <el-tooltip
+                :content="file.error || '上传失败'"
+                placement="top"
+              >
                 <span class="status-text error">上传失败</span>
               </el-tooltip>
             </template>
@@ -128,8 +152,8 @@
               type="danger"
               size="small"
               link
-              @click="removeFile(index)"
               :disabled="file.status === 'uploading'"
+              @click="removeFile(index)"
             >
               移除
             </el-button>

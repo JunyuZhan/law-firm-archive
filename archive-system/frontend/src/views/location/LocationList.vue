@@ -5,36 +5,97 @@
         <div class="card-header">
           <span>存放位置管理</span>
           <div class="header-actions">
-            <el-select v-model="filters.roomName" placeholder="选择库房" clearable style="width: 150px; margin-right: 10px"
-                       @change="handleSearch">
-              <el-option v-for="room in rooms" :key="room" :label="room" :value="room" />
+            <el-select
+              v-model="filters.roomName"
+              placeholder="选择库房"
+              clearable
+              style="width: 150px; margin-right: 10px"
+              @change="handleSearch"
+            >
+              <el-option
+                v-for="room in rooms"
+                :key="room"
+                :label="room"
+                :value="room"
+              />
             </el-select>
-            <el-select v-model="filters.status" placeholder="状态" clearable style="width: 100px; margin-right: 10px"
-                       @change="handleSearch">
-              <el-option label="可用" value="AVAILABLE" />
-              <el-option label="已满" value="FULL" />
-              <el-option label="停用" value="DISABLED" />
+            <el-select
+              v-model="filters.status"
+              placeholder="状态"
+              clearable
+              style="width: 100px; margin-right: 10px"
+              @change="handleSearch"
+            >
+              <el-option
+                label="可用"
+                value="AVAILABLE"
+              />
+              <el-option
+                label="已满"
+                value="FULL"
+              />
+              <el-option
+                label="停用"
+                value="DISABLED"
+              />
             </el-select>
-            <el-button type="primary" @click="handleCreate">
+            <el-button
+              type="primary"
+              @click="handleCreate"
+            >
               <el-icon><Plus /></el-icon> 新增位置
             </el-button>
           </div>
         </div>
       </template>
 
-      <el-table :data="locations" v-loading="loading" stripe>
-        <el-table-column prop="locationCode" label="位置编码" width="150" />
-        <el-table-column prop="locationName" label="位置名称" min-width="200" />
-        <el-table-column prop="roomName" label="库房" width="120" />
-        <el-table-column prop="area" label="区域" width="80" />
-        <el-table-column prop="shelfNo" label="架号" width="80" />
-        <el-table-column prop="layerNo" label="层号" width="80" />
-        <el-table-column label="容量" width="120">
+      <el-table
+        v-loading="loading"
+        :data="locations"
+        stripe
+      >
+        <el-table-column
+          prop="locationCode"
+          label="位置编码"
+          width="150"
+        />
+        <el-table-column
+          prop="locationName"
+          label="位置名称"
+          min-width="200"
+        />
+        <el-table-column
+          prop="roomName"
+          label="库房"
+          width="120"
+        />
+        <el-table-column
+          prop="area"
+          label="区域"
+          width="80"
+        />
+        <el-table-column
+          prop="shelfNo"
+          label="架号"
+          width="80"
+        />
+        <el-table-column
+          prop="layerNo"
+          label="层号"
+          width="80"
+        />
+        <el-table-column
+          label="容量"
+          width="120"
+        >
           <template #default="{ row }">
             {{ row.usedCapacity || 0 }} / {{ row.totalCapacity || 0 }}
           </template>
         </el-table-column>
-        <el-table-column label="使用率" width="150">
+        <el-table-column
+          label="使用率"
+          width="150"
+        >
           <template #default="{ row }">
             <el-progress
               :percentage="getUsagePercent(row)"
@@ -42,22 +103,47 @@
             />
           </template>
         </el-table-column>
-        <el-table-column prop="status" label="状态" width="100">
+        <el-table-column
+          prop="status"
+          label="状态"
+          width="100"
+        >
           <template #default="{ row }">
             <el-tag :type="getStatusType(row.status)">
               {{ getStatusName(row.status) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="150" fixed="right">
+        <el-table-column
+          label="操作"
+          width="150"
+          fixed="right"
+        >
           <template #default="{ row }">
-            <el-button type="primary" link size="small" @click="handleEdit(row)">编辑</el-button>
-            <el-button type="danger" link size="small" @click="handleDelete(row)">删除</el-button>
+            <el-button
+              type="primary"
+              link
+              size="small"
+              @click="handleEdit(row)"
+            >
+              编辑
+            </el-button>
+            <el-button
+              type="danger"
+              link
+              size="small"
+              @click="handleDelete(row)"
+            >
+              删除
+            </el-button>
           </template>
         </el-table-column>
       </el-table>
 
-      <div class="pagination" v-if="pagination.total > pagination.pageSize">
+      <div
+        v-if="pagination.total > pagination.pageSize"
+        class="pagination"
+      >
         <el-pagination
           v-model:current-page="pagination.pageNum"
           v-model:page-size="pagination.pageSize"
@@ -69,61 +155,127 @@
     </el-card>
 
     <!-- 新增/编辑弹窗 -->
-    <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑位置' : '新增位置'" width="600px">
-      <el-form ref="formRef" :model="form" :rules="formRules" label-width="100px">
-        <el-form-item label="位置编码" prop="locationCode">
-          <el-input v-model="form.locationCode" placeholder="请输入位置编码" :disabled="isEdit" />
+    <el-dialog
+      v-model="dialogVisible"
+      :title="isEdit ? '编辑位置' : '新增位置'"
+      width="600px"
+    >
+      <el-form
+        ref="formRef"
+        :model="form"
+        :rules="formRules"
+        label-width="100px"
+      >
+        <el-form-item
+          label="位置编码"
+          prop="locationCode"
+        >
+          <el-input
+            v-model="form.locationCode"
+            placeholder="请输入位置编码"
+            :disabled="isEdit"
+          />
         </el-form-item>
-        <el-form-item label="位置名称" prop="locationName">
-          <el-input v-model="form.locationName" placeholder="请输入位置名称" />
+        <el-form-item
+          label="位置名称"
+          prop="locationName"
+        >
+          <el-input
+            v-model="form.locationName"
+            placeholder="请输入位置名称"
+          />
         </el-form-item>
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="库房名称" prop="roomName">
-              <el-input v-model="form.roomName" placeholder="请输入库房名称" />
+            <el-form-item
+              label="库房名称"
+              prop="roomName"
+            >
+              <el-input
+                v-model="form.roomName"
+                placeholder="请输入库房名称"
+              />
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="区域">
-              <el-input v-model="form.area" placeholder="如：A区" />
+              <el-input
+                v-model="form.area"
+                placeholder="如：A区"
+              />
             </el-form-item>
           </el-col>
         </el-row>
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="架号">
-              <el-input v-model="form.shelfNo" placeholder="如：001" />
+              <el-input
+                v-model="form.shelfNo"
+                placeholder="如：001"
+              />
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="层号">
-              <el-input v-model="form.layerNo" placeholder="如：01" />
+              <el-input
+                v-model="form.layerNo"
+                placeholder="如：01"
+              />
             </el-form-item>
           </el-col>
         </el-row>
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="总容量">
-              <el-input-number v-model="form.totalCapacity" :min="0" style="width: 100%" />
+              <el-input-number
+                v-model="form.totalCapacity"
+                :min="0"
+                style="width: 100%"
+              />
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="状态">
-              <el-select v-model="form.status" style="width: 100%">
-                <el-option label="可用" value="AVAILABLE" />
-                <el-option label="已满" value="FULL" />
-                <el-option label="停用" value="DISABLED" />
+              <el-select
+                v-model="form.status"
+                style="width: 100%"
+              >
+                <el-option
+                  label="可用"
+                  value="AVAILABLE"
+                />
+                <el-option
+                  label="已满"
+                  value="FULL"
+                />
+                <el-option
+                  label="停用"
+                  value="DISABLED"
+                />
               </el-select>
             </el-form-item>
           </el-col>
         </el-row>
         <el-form-item label="备注">
-          <el-input v-model="form.remarks" type="textarea" :rows="2" placeholder="备注信息" />
+          <el-input
+            v-model="form.remarks"
+            type="textarea"
+            :rows="2"
+            placeholder="备注信息"
+          />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSubmit" :loading="submitting">确定</el-button>
+        <el-button @click="dialogVisible = false">
+          取消
+        </el-button>
+        <el-button
+          type="primary"
+          :loading="submitting"
+          @click="handleSubmit"
+        >
+          确定
+        </el-button>
       </template>
     </el-dialog>
   </div>

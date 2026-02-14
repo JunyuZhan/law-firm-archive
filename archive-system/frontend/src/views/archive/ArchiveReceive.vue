@@ -6,15 +6,35 @@
       </template>
     </el-page-header>
 
-    <el-card shadow="never" class="form-card">
-      <el-steps :active="currentStep" finish-status="success" align-center class="steps">
-        <el-step title="上传文件" description="选择要归档的电子文件" />
-        <el-step title="填写信息" description="填写档案基本信息" />
-        <el-step title="确认提交" description="确认并提交" />
+    <el-card
+      shadow="never"
+      class="form-card"
+    >
+      <el-steps
+        :active="currentStep"
+        finish-status="success"
+        align-center
+        class="steps"
+      >
+        <el-step
+          title="上传文件"
+          description="选择要归档的电子文件"
+        />
+        <el-step
+          title="填写信息"
+          description="填写档案基本信息"
+        />
+        <el-step
+          title="确认提交"
+          description="确认并提交"
+        />
       </el-steps>
 
       <!-- 步骤1：上传文件 -->
-      <div v-show="currentStep === 0" class="step-content">
+      <div
+        v-show="currentStep === 0"
+        class="step-content"
+      >
         <BatchUpload
           ref="batchUploadRef"
           :allowed-types="allowedFileTypes"
@@ -27,15 +47,24 @@
         />
 
         <div class="step-actions">
-          <el-button type="primary" @click="nextStep" :disabled="uploadedFileIds.length === 0 && !hasSelectedFiles">
+          <el-button
+            type="primary"
+            :disabled="uploadedFileIds.length === 0 && !hasSelectedFiles"
+            @click="nextStep"
+          >
             下一步
           </el-button>
-          <el-button @click="skipUpload">跳过上传</el-button>
+          <el-button @click="skipUpload">
+            跳过上传
+          </el-button>
         </div>
       </div>
 
       <!-- 步骤2：填写信息 -->
-      <div v-show="currentStep === 1" class="step-content">
+      <div
+        v-show="currentStep === 1"
+        class="step-content"
+      >
         <el-form
           ref="formRef"
           :model="form"
@@ -43,41 +72,98 @@
           label-width="100px"
           class="archive-form"
         >
-          <el-divider content-position="left">基本信息</el-divider>
+          <el-divider content-position="left">
+            基本信息
+          </el-divider>
           
           <el-row :gutter="20">
             <el-col :span="12">
-              <el-form-item label="档案类型" prop="archiveType">
-                <el-select v-model="form.archiveType" placeholder="请选择档案类型" style="width: 100%">
-                  <el-option label="文书档案" value="DOCUMENT" />
-                  <el-option label="科技档案" value="SCIENCE" />
-                  <el-option label="会计档案" value="ACCOUNTING" />
-                  <el-option label="人事档案" value="PERSONNEL" />
-                  <el-option label="专业档案" value="SPECIAL" />
+              <el-form-item
+                label="档案类型"
+                prop="archiveType"
+              >
+                <el-select
+                  v-model="form.archiveType"
+                  placeholder="请选择档案类型"
+                  style="width: 100%"
+                >
+                  <el-option
+                    label="文书档案"
+                    value="DOCUMENT"
+                  />
+                  <el-option
+                    label="科技档案"
+                    value="SCIENCE"
+                  />
+                  <el-option
+                    label="会计档案"
+                    value="ACCOUNTING"
+                  />
+                  <el-option
+                    label="人事档案"
+                    value="PERSONNEL"
+                  />
+                  <el-option
+                    label="专业档案"
+                    value="SPECIAL"
+                  />
                 </el-select>
               </el-form-item>
             </el-col>
             <el-col :span="12">
-              <el-form-item label="保管期限" prop="retentionPeriod">
-                <el-select v-model="form.retentionPeriod" placeholder="请选择保管期限" style="width: 100%">
-                  <el-option label="永久" value="PERMANENT" />
-                  <el-option label="30年" value="Y30" />
-                  <el-option label="15年" value="Y15" />
-                  <el-option label="10年" value="Y10" />
-                  <el-option label="5年" value="Y5" />
+              <el-form-item
+                label="保管期限"
+                prop="retentionPeriod"
+              >
+                <el-select
+                  v-model="form.retentionPeriod"
+                  placeholder="请选择保管期限"
+                  style="width: 100%"
+                >
+                  <el-option
+                    label="永久"
+                    value="PERMANENT"
+                  />
+                  <el-option
+                    label="30年"
+                    value="Y30"
+                  />
+                  <el-option
+                    label="15年"
+                    value="Y15"
+                  />
+                  <el-option
+                    label="10年"
+                    value="Y10"
+                  />
+                  <el-option
+                    label="5年"
+                    value="Y5"
+                  />
                 </el-select>
               </el-form-item>
             </el-col>
           </el-row>
 
-          <el-form-item label="题名" prop="title">
-            <el-input v-model="form.title" placeholder="请输入档案题名" maxlength="500" show-word-limit />
+          <el-form-item
+            label="题名"
+            prop="title"
+          >
+            <el-input
+              v-model="form.title"
+              placeholder="请输入档案题名"
+              maxlength="500"
+              show-word-limit
+            />
           </el-form-item>
 
           <el-row :gutter="20">
             <el-col :span="12">
               <el-form-item label="责任者">
-                <el-input v-model="form.responsibility" placeholder="责任者/作者" />
+                <el-input
+                  v-model="form.responsibility"
+                  placeholder="责任者/作者"
+                />
               </el-form-item>
             </el-col>
             <el-col :span="12">
@@ -96,37 +182,69 @@
           <el-row :gutter="20">
             <el-col :span="8">
               <el-form-item label="密级">
-                <el-select v-model="form.securityLevel" placeholder="请选择" style="width: 100%">
-                  <el-option label="公开" value="PUBLIC" />
-                  <el-option label="内部" value="INTERNAL" />
-                  <el-option label="秘密" value="CONFIDENTIAL" />
-                  <el-option label="机密" value="SECRET" />
+                <el-select
+                  v-model="form.securityLevel"
+                  placeholder="请选择"
+                  style="width: 100%"
+                >
+                  <el-option
+                    label="公开"
+                    value="PUBLIC"
+                  />
+                  <el-option
+                    label="内部"
+                    value="INTERNAL"
+                  />
+                  <el-option
+                    label="秘密"
+                    value="CONFIDENTIAL"
+                  />
+                  <el-option
+                    label="机密"
+                    value="SECRET"
+                  />
                 </el-select>
               </el-form-item>
             </el-col>
             <el-col :span="8">
               <el-form-item label="页数">
-                <el-input-number v-model="form.pageCount" :min="0" style="width: 100%" />
+                <el-input-number
+                  v-model="form.pageCount"
+                  :min="0"
+                  style="width: 100%"
+                />
               </el-form-item>
             </el-col>
             <el-col :span="8">
               <el-form-item label="件数">
-                <el-input-number v-model="form.piecesCount" :min="1" style="width: 100%" />
+                <el-input-number
+                  v-model="form.piecesCount"
+                  :min="1"
+                  style="width: 100%"
+                />
               </el-form-item>
             </el-col>
           </el-row>
 
-          <el-divider content-position="left">业务关联（可选）</el-divider>
+          <el-divider content-position="left">
+            业务关联（可选）
+          </el-divider>
 
           <el-row :gutter="20">
             <el-col :span="12">
               <el-form-item label="案件编号">
-                <el-input v-model="form.caseNo" placeholder="关联案件编号" />
+                <el-input
+                  v-model="form.caseNo"
+                  placeholder="关联案件编号"
+                />
               </el-form-item>
             </el-col>
             <el-col :span="12">
               <el-form-item label="案件名称">
-                <el-input v-model="form.caseName" placeholder="案件名称" />
+                <el-input
+                  v-model="form.caseName"
+                  placeholder="案件名称"
+                />
               </el-form-item>
             </el-col>
           </el-row>
@@ -134,20 +252,31 @@
           <el-row :gutter="20">
             <el-col :span="12">
               <el-form-item label="委托人">
-                <el-input v-model="form.clientName" placeholder="委托人姓名" />
+                <el-input
+                  v-model="form.clientName"
+                  placeholder="委托人姓名"
+                />
               </el-form-item>
             </el-col>
             <el-col :span="12">
               <el-form-item label="主办律师">
-                <el-input v-model="form.lawyerName" placeholder="主办律师姓名" />
+                <el-input
+                  v-model="form.lawyerName"
+                  placeholder="主办律师姓名"
+                />
               </el-form-item>
             </el-col>
           </el-row>
 
-          <el-divider content-position="left">其他信息</el-divider>
+          <el-divider content-position="left">
+            其他信息
+          </el-divider>
 
           <el-form-item label="关键词">
-            <el-input v-model="form.keywords" placeholder="多个关键词用逗号分隔" />
+            <el-input
+              v-model="form.keywords"
+              placeholder="多个关键词用逗号分隔"
+            />
           </el-form-item>
 
           <el-form-item label="摘要">
@@ -172,33 +301,78 @@
         </el-form>
 
         <div class="step-actions">
-          <el-button @click="prevStep">上一步</el-button>
-          <el-button type="primary" @click="nextStep">下一步</el-button>
+          <el-button @click="prevStep">
+            上一步
+          </el-button>
+          <el-button
+            type="primary"
+            @click="nextStep"
+          >
+            下一步
+          </el-button>
         </div>
       </div>
 
       <!-- 步骤3：确认提交 -->
-      <div v-show="currentStep === 2" class="step-content">
-        <el-descriptions title="档案信息确认" :column="2" border>
-          <el-descriptions-item label="档案类型">{{ getArchiveTypeName(form.archiveType) }}</el-descriptions-item>
-          <el-descriptions-item label="保管期限">{{ getRetentionName(form.retentionPeriod) }}</el-descriptions-item>
-          <el-descriptions-item label="题名" :span="2">{{ form.title }}</el-descriptions-item>
-          <el-descriptions-item label="责任者">{{ form.responsibility || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="文件日期">{{ form.documentDate || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="密级">{{ getSecurityLevelName(form.securityLevel) }}</el-descriptions-item>
-          <el-descriptions-item label="上传文件">{{ uploadedFileIds.length }} 个</el-descriptions-item>
+      <div
+        v-show="currentStep === 2"
+        class="step-content"
+      >
+        <el-descriptions
+          title="档案信息确认"
+          :column="2"
+          border
+        >
+          <el-descriptions-item label="档案类型">
+            {{ getArchiveTypeName(form.archiveType) }}
+          </el-descriptions-item>
+          <el-descriptions-item label="保管期限">
+            {{ getRetentionName(form.retentionPeriod) }}
+          </el-descriptions-item>
+          <el-descriptions-item
+            label="题名"
+            :span="2"
+          >
+            {{ form.title }}
+          </el-descriptions-item>
+          <el-descriptions-item label="责任者">
+            {{ form.responsibility || '-' }}
+          </el-descriptions-item>
+          <el-descriptions-item label="文件日期">
+            {{ form.documentDate || '-' }}
+          </el-descriptions-item>
+          <el-descriptions-item label="密级">
+            {{ getSecurityLevelName(form.securityLevel) }}
+          </el-descriptions-item>
+          <el-descriptions-item label="上传文件">
+            {{ uploadedFileIds.length }} 个
+          </el-descriptions-item>
         </el-descriptions>
 
-        <div class="file-preview" v-if="uploadedFiles.length > 0">
+        <div
+          v-if="uploadedFiles.length > 0"
+          class="file-preview"
+        >
           <h4>已上传文件：</h4>
-          <el-tag v-for="file in uploadedFiles" :key="file.id" class="file-tag" type="success">
+          <el-tag
+            v-for="file in uploadedFiles"
+            :key="file.id"
+            class="file-tag"
+            type="success"
+          >
             {{ file.name }}
           </el-tag>
         </div>
 
         <div class="step-actions">
-          <el-button @click="prevStep">上一步</el-button>
-          <el-button type="primary" @click="handleSubmit" :loading="submitting">
+          <el-button @click="prevStep">
+            上一步
+          </el-button>
+          <el-button
+            type="primary"
+            :loading="submitting"
+            @click="handleSubmit"
+          >
             {{ submitting ? '提交中...' : '确认提交' }}
           </el-button>
         </div>

@@ -4,25 +4,44 @@
       <el-page-header @back="goBack">
         <template #content>
           <span class="title">{{ archive?.title || '档案详情' }}</span>
-          <el-tag v-if="archive" :type="getStatusType(archive.status)" class="ml-2">
+          <el-tag
+            v-if="archive"
+            :type="getStatusType(archive.status)"
+            class="ml-2"
+          >
             {{ getStatusName(archive.status) }}
           </el-tag>
         </template>
         <template #extra>
           <el-button-group>
-            <el-button type="warning" @click="handleApplyBorrow" v-if="!isEditing && canBorrow">
+            <el-button
+              v-if="!isEditing && canBorrow"
+              type="warning"
+              @click="handleApplyBorrow"
+            >
               <el-icon><Reading /></el-icon>
               申请借阅
             </el-button>
-            <el-button type="primary" @click="handleEdit" v-if="!isEditing">
+            <el-button
+              v-if="!isEditing"
+              type="primary"
+              @click="handleEdit"
+            >
               <el-icon><Edit /></el-icon>
               编辑
             </el-button>
-            <el-button type="success" @click="handleSave" v-if="isEditing">
+            <el-button
+              v-if="isEditing"
+              type="success"
+              @click="handleSave"
+            >
               <el-icon><Check /></el-icon>
               保存
             </el-button>
-            <el-button @click="handleCancel" v-if="isEditing">
+            <el-button
+              v-if="isEditing"
+              @click="handleCancel"
+            >
               取消
             </el-button>
           </el-button-group>
@@ -30,58 +49,121 @@
       </el-page-header>
     </div>
 
-    <el-skeleton :loading="loading" animated :rows="10">
+    <el-skeleton
+      :loading="loading"
+      animated
+      :rows="10"
+    >
       <template #default>
-        <div class="content" v-if="archive">
+        <div
+          v-if="archive"
+          class="content"
+        >
           <!-- 基本信息 -->
-          <el-card shadow="never" class="info-card">
+          <el-card
+            shadow="never"
+            class="info-card"
+          >
             <template #header>
               <div class="card-header">
                 <el-icon><Document /></el-icon>
                 <span>基本信息</span>
               </div>
             </template>
-            <el-descriptions :column="3" border>
-              <el-descriptions-item label="档案号">{{ archive.archiveNo }}</el-descriptions-item>
-              <el-descriptions-item label="档案类型">
-                <el-tag size="small">{{ getArchiveTypeName(archive.archiveType) }}</el-tag>
+            <el-descriptions
+              :column="3"
+              border
+            >
+              <el-descriptions-item label="档案号">
+                {{ archive.archiveNo }}
               </el-descriptions-item>
-              <el-descriptions-item label="保管期限">{{ getRetentionName(archive.retentionPeriod) }}</el-descriptions-item>
-              <el-descriptions-item label="题名" :span="3">{{ archive.title }}</el-descriptions-item>
-              <el-descriptions-item label="责任者">{{ archive.responsibility || '-' }}</el-descriptions-item>
-              <el-descriptions-item label="文件日期">{{ archive.documentDate || '-' }}</el-descriptions-item>
-              <el-descriptions-item label="密级">{{ getSecurityName(archive.securityLevel) }}</el-descriptions-item>
-              <el-descriptions-item label="页数">{{ archive.pageCount || '-' }}</el-descriptions-item>
-              <el-descriptions-item label="件数">{{ archive.piecesCount || 1 }}</el-descriptions-item>
-              <el-descriptions-item label="文件数量">{{ archive.fileCount || 0 }} 个</el-descriptions-item>
+              <el-descriptions-item label="档案类型">
+                <el-tag size="small">
+                  {{ getArchiveTypeName(archive.archiveType) }}
+                </el-tag>
+              </el-descriptions-item>
+              <el-descriptions-item label="保管期限">
+                {{ getRetentionName(archive.retentionPeriod) }}
+              </el-descriptions-item>
+              <el-descriptions-item
+                label="题名"
+                :span="3"
+              >
+                {{ archive.title }}
+              </el-descriptions-item>
+              <el-descriptions-item label="责任者">
+                {{ archive.responsibility || '-' }}
+              </el-descriptions-item>
+              <el-descriptions-item label="文件日期">
+                {{ archive.documentDate || '-' }}
+              </el-descriptions-item>
+              <el-descriptions-item label="密级">
+                {{ getSecurityName(archive.securityLevel) }}
+              </el-descriptions-item>
+              <el-descriptions-item label="页数">
+                {{ archive.pageCount || '-' }}
+              </el-descriptions-item>
+              <el-descriptions-item label="件数">
+                {{ archive.piecesCount || 1 }}
+              </el-descriptions-item>
+              <el-descriptions-item label="文件数量">
+                {{ archive.fileCount || 0 }} 个
+              </el-descriptions-item>
             </el-descriptions>
           </el-card>
 
           <!-- 业务关联 -->
-          <el-card shadow="never" class="info-card" v-if="archive.caseNo || archive.clientName">
+          <el-card
+            v-if="archive.caseNo || archive.clientName"
+            shadow="never"
+            class="info-card"
+          >
             <template #header>
               <div class="card-header">
                 <el-icon><Briefcase /></el-icon>
                 <span>业务关联</span>
               </div>
             </template>
-            <el-descriptions :column="3" border>
-              <el-descriptions-item label="案件编号">{{ archive.caseNo || '-' }}</el-descriptions-item>
-              <el-descriptions-item label="案件名称">{{ archive.caseName || '-' }}</el-descriptions-item>
-              <el-descriptions-item label="结案日期">{{ archive.caseCloseDate || '-' }}</el-descriptions-item>
-              <el-descriptions-item label="委托人">{{ archive.clientName || '-' }}</el-descriptions-item>
-              <el-descriptions-item label="主办律师">{{ archive.lawyerName || '-' }}</el-descriptions-item>
-              <el-descriptions-item label="来源">{{ getSourceName(archive.sourceType) }}</el-descriptions-item>
+            <el-descriptions
+              :column="3"
+              border
+            >
+              <el-descriptions-item label="案件编号">
+                {{ archive.caseNo || '-' }}
+              </el-descriptions-item>
+              <el-descriptions-item label="案件名称">
+                {{ archive.caseName || '-' }}
+              </el-descriptions-item>
+              <el-descriptions-item label="结案日期">
+                {{ archive.caseCloseDate || '-' }}
+              </el-descriptions-item>
+              <el-descriptions-item label="委托人">
+                {{ archive.clientName || '-' }}
+              </el-descriptions-item>
+              <el-descriptions-item label="主办律师">
+                {{ archive.lawyerName || '-' }}
+              </el-descriptions-item>
+              <el-descriptions-item label="来源">
+                {{ getSourceName(archive.sourceType) }}
+              </el-descriptions-item>
             </el-descriptions>
           </el-card>
 
           <!-- 电子文件 -->
-          <el-card shadow="never" class="info-card">
+          <el-card
+            shadow="never"
+            class="info-card"
+          >
             <template #header>
               <div class="card-header">
                 <el-icon><Folder /></el-icon>
                 <span>电子文件</span>
-                <el-tag class="ml-2" size="small">{{ files.length }} 个文件</el-tag>
+                <el-tag
+                  class="ml-2"
+                  size="small"
+                >
+                  {{ files.length }} 个文件
+                </el-tag>
               </div>
             </template>
             
@@ -96,7 +178,9 @@
               :show-file-list="false"
               multiple
             >
-              <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
+              <el-icon class="el-icon--upload">
+                <UploadFilled />
+              </el-icon>
               <div class="el-upload__text">
                 拖拽文件到此处，或 <em>点击上传</em>
               </div>
@@ -107,9 +191,19 @@
               </template>
             </el-upload>
 
-            <el-table :data="files" v-if="files.length > 0" class="file-table">
-              <el-table-column type="index" width="50" />
-              <el-table-column label="文件名" min-width="200">
+            <el-table
+              v-if="files.length > 0"
+              :data="files"
+              class="file-table"
+            >
+              <el-table-column
+                type="index"
+                width="50"
+              />
+              <el-table-column
+                label="文件名"
+                min-width="200"
+              >
                 <template #default="{ row }">
                   <div class="file-name">
                     <el-icon :class="getFileIconClass(row.fileExtension)">
@@ -119,41 +213,90 @@
                   </div>
                 </template>
               </el-table-column>
-              <el-table-column prop="fileSizeFormatted" label="大小" width="100" />
-              <el-table-column prop="formatName" label="格式" width="150" />
-              <el-table-column label="操作" width="150" fixed="right">
+              <el-table-column
+                prop="fileSizeFormatted"
+                label="大小"
+                width="100"
+              />
+              <el-table-column
+                prop="formatName"
+                label="格式"
+                width="150"
+              />
+              <el-table-column
+                label="操作"
+                width="150"
+                fixed="right"
+              >
                 <template #default="{ row }">
-                  <el-button type="primary" link size="small" @click="handlePreview(row)">
+                  <el-button
+                    type="primary"
+                    link
+                    size="small"
+                    @click="handlePreview(row)"
+                  >
                     预览
                   </el-button>
-                  <el-button type="primary" link size="small" @click="handleDownload(row)">
+                  <el-button
+                    type="primary"
+                    link
+                    size="small"
+                    @click="handleDownload(row)"
+                  >
                     下载
                   </el-button>
-                  <el-button v-if="isEditing" type="danger" link size="small" @click="handleDeleteFile(row)">
+                  <el-button
+                    v-if="isEditing"
+                    type="danger"
+                    link
+                    size="small"
+                    @click="handleDeleteFile(row)"
+                  >
                     删除
                   </el-button>
                 </template>
               </el-table-column>
             </el-table>
             
-            <el-empty v-else description="暂无电子文件" />
+            <el-empty
+              v-else
+              description="暂无电子文件"
+            />
           </el-card>
 
           <!-- 操作记录 -->
-          <el-card shadow="never" class="info-card">
+          <el-card
+            shadow="never"
+            class="info-card"
+          >
             <template #header>
               <div class="card-header">
                 <el-icon><Clock /></el-icon>
                 <span>操作记录</span>
               </div>
             </template>
-            <el-descriptions :column="2" border>
-              <el-descriptions-item label="接收时间">{{ formatDateTime(archive.receivedAt) }}</el-descriptions-item>
-              <el-descriptions-item label="接收人">{{ archive.receivedByName || '-' }}</el-descriptions-item>
-              <el-descriptions-item label="编目时间">{{ formatDateTime(archive.catalogedAt) }}</el-descriptions-item>
-              <el-descriptions-item label="编目人">{{ archive.catalogedByName || '-' }}</el-descriptions-item>
-              <el-descriptions-item label="归档时间">{{ formatDateTime(archive.archivedAt) }}</el-descriptions-item>
-              <el-descriptions-item label="归档人">{{ archive.archivedByName || '-' }}</el-descriptions-item>
+            <el-descriptions
+              :column="2"
+              border
+            >
+              <el-descriptions-item label="接收时间">
+                {{ formatDateTime(archive.receivedAt) }}
+              </el-descriptions-item>
+              <el-descriptions-item label="接收人">
+                {{ archive.receivedByName || '-' }}
+              </el-descriptions-item>
+              <el-descriptions-item label="编目时间">
+                {{ formatDateTime(archive.catalogedAt) }}
+              </el-descriptions-item>
+              <el-descriptions-item label="编目人">
+                {{ archive.catalogedByName || '-' }}
+              </el-descriptions-item>
+              <el-descriptions-item label="归档时间">
+                {{ formatDateTime(archive.archivedAt) }}
+              </el-descriptions-item>
+              <el-descriptions-item label="归档人">
+                {{ archive.archivedByName || '-' }}
+              </el-descriptions-item>
             </el-descriptions>
           </el-card>
         </div>
@@ -161,21 +304,46 @@
     </el-skeleton>
 
     <!-- 文件预览弹窗 -->
-    <el-dialog v-model="previewVisible" title="文件预览" width="80%" destroy-on-close>
-      <iframe v-if="previewUrl" :src="previewUrl" class="preview-iframe" />
-      <el-empty v-else description="该文件不支持预览" />
+    <el-dialog
+      v-model="previewVisible"
+      title="文件预览"
+      width="80%"
+      destroy-on-close
+    >
+      <iframe
+        v-if="previewUrl"
+        :src="previewUrl"
+        class="preview-iframe"
+      />
+      <el-empty
+        v-else
+        description="该文件不支持预览"
+      />
     </el-dialog>
 
     <!-- 申请借阅弹窗 -->
-    <el-dialog v-model="borrowDialogVisible" title="申请借阅" width="500px" destroy-on-close>
-      <el-form ref="borrowFormRef" :model="borrowForm" :rules="borrowRules" label-width="100px">
+    <el-dialog
+      v-model="borrowDialogVisible"
+      title="申请借阅"
+      width="500px"
+      destroy-on-close
+    >
+      <el-form
+        ref="borrowFormRef"
+        :model="borrowForm"
+        :rules="borrowRules"
+        label-width="100px"
+      >
         <el-form-item label="档案信息">
           <div class="borrow-archive-info">
             <span class="archive-no">{{ archive?.archiveNo }}</span>
             <span class="archive-title">{{ archive?.title }}</span>
           </div>
         </el-form-item>
-        <el-form-item label="借阅目的" prop="purpose">
+        <el-form-item
+          label="借阅目的"
+          prop="purpose"
+        >
           <el-input 
             v-model="borrowForm.purpose" 
             type="textarea" 
@@ -183,7 +351,10 @@
             placeholder="请输入借阅目的"
           />
         </el-form-item>
-        <el-form-item label="预计归还" prop="expectedReturnDate">
+        <el-form-item
+          label="预计归还"
+          prop="expectedReturnDate"
+        >
           <el-date-picker
             v-model="borrowForm.expectedReturnDate"
             type="date"
@@ -202,8 +373,14 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="borrowDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="submitBorrowApply" :loading="borrowSubmitting">
+        <el-button @click="borrowDialogVisible = false">
+          取消
+        </el-button>
+        <el-button
+          type="primary"
+          :loading="borrowSubmitting"
+          @click="submitBorrowApply"
+        >
           提交申请
         </el-button>
       </template>

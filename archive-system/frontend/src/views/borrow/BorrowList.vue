@@ -1,101 +1,213 @@
 <template>
   <div class="borrow-list">
     <!-- 标签页 -->
-    <el-tabs v-model="activeTab" @tab-change="handleTabChange">
-      <el-tab-pane label="我的借阅" name="my" />
-      <el-tab-pane label="待审批" name="pending" />
-      <el-tab-pane label="待借出" name="lend" />
-      <el-tab-pane label="逾期提醒" name="overdue" />
+    <el-tabs
+      v-model="activeTab"
+      @tab-change="handleTabChange"
+    >
+      <el-tab-pane
+        label="我的借阅"
+        name="my"
+      />
+      <el-tab-pane
+        label="待审批"
+        name="pending"
+      />
+      <el-tab-pane
+        label="待借出"
+        name="lend"
+      />
+      <el-tab-pane
+        label="逾期提醒"
+        name="overdue"
+      />
     </el-tabs>
 
     <!-- 筛选 -->
-    <el-card shadow="never" class="filter-card" v-if="activeTab === 'my'">
+    <el-card
+      v-if="activeTab === 'my'"
+      shadow="never"
+      class="filter-card"
+    >
       <el-form inline>
         <el-form-item label="状态">
-          <el-select v-model="filters.status" placeholder="全部" clearable style="width: 120px">
-            <el-option label="待审批" value="PENDING" />
-            <el-option label="已通过" value="APPROVED" />
-            <el-option label="借出中" value="BORROWED" />
-            <el-option label="已归还" value="RETURNED" />
-            <el-option label="已拒绝" value="REJECTED" />
+          <el-select
+            v-model="filters.status"
+            placeholder="全部"
+            clearable
+            style="width: 120px"
+          >
+            <el-option
+              label="待审批"
+              value="PENDING"
+            />
+            <el-option
+              label="已通过"
+              value="APPROVED"
+            />
+            <el-option
+              label="借出中"
+              value="BORROWED"
+            />
+            <el-option
+              label="已归还"
+              value="RETURNED"
+            />
+            <el-option
+              label="已拒绝"
+              value="REJECTED"
+            />
           </el-select>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="fetchData">查询</el-button>
+          <el-button
+            type="primary"
+            @click="fetchData"
+          >
+            查询
+          </el-button>
         </el-form-item>
       </el-form>
     </el-card>
 
     <!-- 列表 -->
     <el-card shadow="never">
-      <el-table :data="tableData" v-loading="loading" stripe>
-        <el-table-column prop="applicationNo" label="申请编号" width="150" />
-        <el-table-column prop="archiveNo" label="档案号" width="150" />
-        <el-table-column prop="archiveTitle" label="档案题名" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="applicantName" label="申请人" width="100" v-if="activeTab !== 'my'" />
-        <el-table-column label="状态" width="100">
+      <el-table
+        v-loading="loading"
+        :data="tableData"
+        stripe
+      >
+        <el-table-column
+          prop="applicationNo"
+          label="申请编号"
+          width="150"
+        />
+        <el-table-column
+          prop="archiveNo"
+          label="档案号"
+          width="150"
+        />
+        <el-table-column
+          prop="archiveTitle"
+          label="档案题名"
+          min-width="200"
+          show-overflow-tooltip
+        />
+        <el-table-column
+          v-if="activeTab !== 'my'"
+          prop="applicantName"
+          label="申请人"
+          width="100"
+        />
+        <el-table-column
+          label="状态"
+          width="100"
+        >
           <template #default="{ row }">
-            <el-tag :type="getStatusType(row.status)" size="small">
+            <el-tag
+              :type="getStatusType(row.status)"
+              size="small"
+            >
               {{ getStatusName(row.status) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="预计归还" width="120">
+        <el-table-column
+          label="预计归还"
+          width="120"
+        >
           <template #default="{ row }">
             <span :class="{ 'text-danger': isOverdue(row) }">
               {{ row.expectedReturnDate }}
             </span>
           </template>
         </el-table-column>
-        <el-table-column prop="applyTime" label="申请时间" width="170">
+        <el-table-column
+          prop="applyTime"
+          label="申请时间"
+          width="170"
+        >
           <template #default="{ row }">
             {{ formatDateTime(row.applyTime) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column
+          label="操作"
+          width="200"
+          fixed="right"
+        >
           <template #default="{ row }">
             <template v-if="activeTab === 'my'">
               <el-button 
                 v-if="row.status === 'PENDING'" 
-                type="danger" link size="small" 
+                type="danger"
+                link
+                size="small" 
                 @click="handleCancel(row)"
               >
                 取消
               </el-button>
               <el-button 
                 v-if="row.status === 'BORROWED'" 
-                type="primary" link size="small" 
+                type="primary"
+                link
+                size="small" 
                 @click="handleReturn(row)"
               >
                 归还
               </el-button>
               <el-button 
                 v-if="row.status === 'BORROWED'" 
-                link size="small" 
+                link
+                size="small" 
                 @click="handleRenew(row)"
               >
                 续借
               </el-button>
             </template>
             <template v-if="activeTab === 'pending'">
-              <el-button type="success" link size="small" @click="handleApprove(row)">
+              <el-button
+                type="success"
+                link
+                size="small"
+                @click="handleApprove(row)"
+              >
                 通过
               </el-button>
-              <el-button type="danger" link size="small" @click="handleReject(row)">
+              <el-button
+                type="danger"
+                link
+                size="small"
+                @click="handleReject(row)"
+              >
                 拒绝
               </el-button>
             </template>
             <template v-if="activeTab === 'lend'">
-              <el-button type="primary" link size="small" @click="handleLend(row)">
+              <el-button
+                type="primary"
+                link
+                size="small"
+                @click="handleLend(row)"
+              >
                 借出
               </el-button>
             </template>
             <template v-if="activeTab === 'overdue'">
-              <el-button type="primary" link size="small" @click="handleReturn(row)">
+              <el-button
+                type="primary"
+                link
+                size="small"
+                @click="handleReturn(row)"
+              >
                 归还
               </el-button>
             </template>
-            <el-button link size="small" @click="handleView(row)">
+            <el-button
+              link
+              size="small"
+              @click="handleView(row)"
+            >
               详情
             </el-button>
           </template>
@@ -103,7 +215,10 @@
       </el-table>
 
       <!-- 分页 -->
-      <div class="pagination" v-if="activeTab !== 'overdue' && pagination.total > pagination.pageSize">
+      <div
+        v-if="activeTab !== 'overdue' && pagination.total > pagination.pageSize"
+        class="pagination"
+      >
         <el-pagination
           v-model:current-page="pagination.pageNum"
           v-model:page-size="pagination.pageSize"
@@ -115,35 +230,86 @@
     </el-card>
 
     <!-- 审批弹窗 -->
-    <el-dialog v-model="approveDialogVisible" title="审批" width="500px">
-      <el-form :model="approveForm" label-width="80px">
+    <el-dialog
+      v-model="approveDialogVisible"
+      title="审批"
+      width="500px"
+    >
+      <el-form
+        :model="approveForm"
+        label-width="80px"
+      >
         <el-form-item label="审批意见">
-          <el-input v-model="approveForm.remarks" type="textarea" :rows="3" placeholder="请输入审批意见" />
+          <el-input
+            v-model="approveForm.remarks"
+            type="textarea"
+            :rows="3"
+            placeholder="请输入审批意见"
+          />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="approveDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="confirmApprove">确认通过</el-button>
+        <el-button @click="approveDialogVisible = false">
+          取消
+        </el-button>
+        <el-button
+          type="primary"
+          @click="confirmApprove"
+        >
+          确认通过
+        </el-button>
       </template>
     </el-dialog>
 
     <!-- 拒绝弹窗 -->
-    <el-dialog v-model="rejectDialogVisible" title="拒绝申请" width="500px">
-      <el-form :model="rejectForm" label-width="80px">
-        <el-form-item label="拒绝原因" required>
-          <el-input v-model="rejectForm.reason" type="textarea" :rows="3" placeholder="请输入拒绝原因" />
+    <el-dialog
+      v-model="rejectDialogVisible"
+      title="拒绝申请"
+      width="500px"
+    >
+      <el-form
+        :model="rejectForm"
+        label-width="80px"
+      >
+        <el-form-item
+          label="拒绝原因"
+          required
+        >
+          <el-input
+            v-model="rejectForm.reason"
+            type="textarea"
+            :rows="3"
+            placeholder="请输入拒绝原因"
+          />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="rejectDialogVisible = false">取消</el-button>
-        <el-button type="danger" @click="confirmReject">确认拒绝</el-button>
+        <el-button @click="rejectDialogVisible = false">
+          取消
+        </el-button>
+        <el-button
+          type="danger"
+          @click="confirmReject"
+        >
+          确认拒绝
+        </el-button>
       </template>
     </el-dialog>
 
     <!-- 续借弹窗 -->
-    <el-dialog v-model="renewDialogVisible" title="续借" width="500px">
-      <el-form :model="renewForm" label-width="100px">
-        <el-form-item label="新归还日期" required>
+    <el-dialog
+      v-model="renewDialogVisible"
+      title="续借"
+      width="500px"
+    >
+      <el-form
+        :model="renewForm"
+        label-width="100px"
+      >
+        <el-form-item
+          label="新归还日期"
+          required
+        >
           <el-date-picker
             v-model="renewForm.newReturnDate"
             type="date"
@@ -154,41 +320,119 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="renewDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="confirmRenew">确认续借</el-button>
+        <el-button @click="renewDialogVisible = false">
+          取消
+        </el-button>
+        <el-button
+          type="primary"
+          @click="confirmRenew"
+        >
+          确认续借
+        </el-button>
       </template>
     </el-dialog>
 
     <!-- 借阅详情弹窗 -->
-    <el-dialog v-model="detailDialogVisible" title="借阅详情" width="600px">
+    <el-dialog
+      v-model="detailDialogVisible"
+      title="借阅详情"
+      width="600px"
+    >
       <div v-loading="detailLoading">
-        <el-descriptions v-if="detailData" :column="2" border>
-          <el-descriptions-item label="申请编号">{{ detailData.applicationNo }}</el-descriptions-item>
+        <el-descriptions
+          v-if="detailData"
+          :column="2"
+          border
+        >
+          <el-descriptions-item label="申请编号">
+            {{ detailData.applicationNo }}
+          </el-descriptions-item>
           <el-descriptions-item label="状态">
-            <el-tag :type="getStatusType(detailData.status)" size="small">
+            <el-tag
+              :type="getStatusType(detailData.status)"
+              size="small"
+            >
               {{ getStatusName(detailData.status) }}
             </el-tag>
           </el-descriptions-item>
-          <el-descriptions-item label="档案号">{{ detailData.archiveNo }}</el-descriptions-item>
-          <el-descriptions-item label="档案题名" :span="2">{{ detailData.archiveTitle }}</el-descriptions-item>
-          <el-descriptions-item label="申请人">{{ detailData.applicantName }}</el-descriptions-item>
-          <el-descriptions-item label="申请时间">{{ formatDateTime(detailData.applyTime) }}</el-descriptions-item>
-          <el-descriptions-item label="借阅目的" :span="2">{{ detailData.borrowPurpose || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="预计归还">{{ detailData.expectedReturnDate }}</el-descriptions-item>
-          <el-descriptions-item label="实际归还">{{ detailData.actualReturnDate || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="审批人" v-if="detailData.approverName">{{ detailData.approverName }}</el-descriptions-item>
-          <el-descriptions-item label="审批时间" v-if="detailData.approveTime">{{ formatDateTime(detailData.approveTime) }}</el-descriptions-item>
-          <el-descriptions-item label="审批意见" :span="2" v-if="detailData.approveRemarks">{{ detailData.approveRemarks }}</el-descriptions-item>
-          <el-descriptions-item label="拒绝原因" :span="2" v-if="detailData.rejectReason">
+          <el-descriptions-item label="档案号">
+            {{ detailData.archiveNo }}
+          </el-descriptions-item>
+          <el-descriptions-item
+            label="档案题名"
+            :span="2"
+          >
+            {{ detailData.archiveTitle }}
+          </el-descriptions-item>
+          <el-descriptions-item label="申请人">
+            {{ detailData.applicantName }}
+          </el-descriptions-item>
+          <el-descriptions-item label="申请时间">
+            {{ formatDateTime(detailData.applyTime) }}
+          </el-descriptions-item>
+          <el-descriptions-item
+            label="借阅目的"
+            :span="2"
+          >
+            {{ detailData.borrowPurpose || '-' }}
+          </el-descriptions-item>
+          <el-descriptions-item label="预计归还">
+            {{ detailData.expectedReturnDate }}
+          </el-descriptions-item>
+          <el-descriptions-item label="实际归还">
+            {{ detailData.actualReturnDate || '-' }}
+          </el-descriptions-item>
+          <el-descriptions-item
+            v-if="detailData.approverName"
+            label="审批人"
+          >
+            {{ detailData.approverName }}
+          </el-descriptions-item>
+          <el-descriptions-item
+            v-if="detailData.approveTime"
+            label="审批时间"
+          >
+            {{ formatDateTime(detailData.approveTime) }}
+          </el-descriptions-item>
+          <el-descriptions-item
+            v-if="detailData.approveRemarks"
+            label="审批意见"
+            :span="2"
+          >
+            {{ detailData.approveRemarks }}
+          </el-descriptions-item>
+          <el-descriptions-item
+            v-if="detailData.rejectReason"
+            label="拒绝原因"
+            :span="2"
+          >
             <span class="text-danger">{{ detailData.rejectReason }}</span>
           </el-descriptions-item>
-          <el-descriptions-item label="借出时间" v-if="detailData.borrowTime">{{ formatDateTime(detailData.borrowTime) }}</el-descriptions-item>
-          <el-descriptions-item label="续借次数" v-if="detailData.renewCount">{{ detailData.renewCount }} 次</el-descriptions-item>
-          <el-descriptions-item label="备注" :span="2" v-if="detailData.remarks">{{ detailData.remarks }}</el-descriptions-item>
+          <el-descriptions-item
+            v-if="detailData.borrowTime"
+            label="借出时间"
+          >
+            {{ formatDateTime(detailData.borrowTime) }}
+          </el-descriptions-item>
+          <el-descriptions-item
+            v-if="detailData.renewCount"
+            label="续借次数"
+          >
+            {{ detailData.renewCount }} 次
+          </el-descriptions-item>
+          <el-descriptions-item
+            v-if="detailData.remarks"
+            label="备注"
+            :span="2"
+          >
+            {{ detailData.remarks }}
+          </el-descriptions-item>
         </el-descriptions>
       </div>
       <template #footer>
-        <el-button @click="detailDialogVisible = false">关闭</el-button>
+        <el-button @click="detailDialogVisible = false">
+          关闭
+        </el-button>
       </template>
     </el-dialog>
   </div>

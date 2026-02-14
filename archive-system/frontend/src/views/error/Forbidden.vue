@@ -1,12 +1,20 @@
 <template>
   <div class="forbidden-page">
     <div class="forbidden-content">
-      <el-icon :size="80" color="#f56c6c"><Lock /></el-icon>
+      <el-icon
+        :size="80"
+        color="#f56c6c"
+      >
+        <Lock />
+      </el-icon>
       <h1>403</h1>
       <h2>抱歉，您没有权限访问此页面</h2>
       <p>请联系管理员获取相应权限，或返回其他页面</p>
       <div class="actions">
-        <el-button type="primary" @click="goBack">
+        <el-button
+          type="primary"
+          @click="goBack"
+        >
           <el-icon><ArrowLeft /></el-icon>
           返回上页
         </el-button>

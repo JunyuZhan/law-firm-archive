@@ -9,13 +9,24 @@
       </template>
       
       <!-- 报表类型选择 -->
-      <el-tabs v-model="activeTab" class="report-tabs">
+      <el-tabs
+        v-model="activeTab"
+        class="report-tabs"
+      >
         <!-- 统计概览报表 -->
-        <el-tab-pane label="统计概览" name="overview">
+        <el-tab-pane
+          label="统计概览"
+          name="overview"
+        >
           <div class="report-section">
-            <p class="report-desc">导出档案统计概览报表，包含档案总量、类型分布、月度趋势等数据。</p>
+            <p class="report-desc">
+              导出档案统计概览报表，包含档案总量、类型分布、月度趋势等数据。
+            </p>
             
-            <el-form :inline="true" class="filter-form">
+            <el-form
+              :inline="true"
+              class="filter-form"
+            >
               <el-form-item label="统计年份">
                 <el-date-picker
                   v-model="overviewYear"
@@ -26,7 +37,11 @@
                 />
               </el-form-item>
               <el-form-item>
-                <el-button type="primary" @click="exportOverview" :loading="loading.overview">
+                <el-button
+                  type="primary"
+                  :loading="loading.overview"
+                  @click="exportOverview"
+                >
                   <el-icon><Download /></el-icon>
                   导出报表
                 </el-button>
@@ -36,30 +51,74 @@
         </el-tab-pane>
         
         <!-- 档案清单 -->
-        <el-tab-pane label="档案清单" name="archives">
+        <el-tab-pane
+          label="档案清单"
+          name="archives"
+        >
           <div class="report-section">
-            <p class="report-desc">导出档案清单，支持按条件筛选后导出。最多导出10000条记录。</p>
+            <p class="report-desc">
+              导出档案清单，支持按条件筛选后导出。最多导出10000条记录。
+            </p>
             
-            <el-form :model="archiveFilter" label-width="80px" class="filter-form">
+            <el-form
+              :model="archiveFilter"
+              label-width="80px"
+              class="filter-form"
+            >
               <el-row :gutter="16">
                 <el-col :span="6">
                   <el-form-item label="档案类型">
-                    <el-select v-model="archiveFilter.archiveType" placeholder="全部" clearable>
-                      <el-option label="文书档案" value="DOCUMENT" />
-                      <el-option label="科技档案" value="SCIENCE" />
-                      <el-option label="会计档案" value="ACCOUNTING" />
-                      <el-option label="人事档案" value="PERSONNEL" />
-                      <el-option label="专业档案" value="SPECIAL" />
-                      <el-option label="声像档案" value="AUDIOVISUAL" />
+                    <el-select
+                      v-model="archiveFilter.archiveType"
+                      placeholder="全部"
+                      clearable
+                    >
+                      <el-option
+                        label="文书档案"
+                        value="DOCUMENT"
+                      />
+                      <el-option
+                        label="科技档案"
+                        value="SCIENCE"
+                      />
+                      <el-option
+                        label="会计档案"
+                        value="ACCOUNTING"
+                      />
+                      <el-option
+                        label="人事档案"
+                        value="PERSONNEL"
+                      />
+                      <el-option
+                        label="专业档案"
+                        value="SPECIAL"
+                      />
+                      <el-option
+                        label="声像档案"
+                        value="AUDIOVISUAL"
+                      />
                     </el-select>
                   </el-form-item>
                 </el-col>
                 <el-col :span="6">
                   <el-form-item label="档案状态">
-                    <el-select v-model="archiveFilter.status" placeholder="全部" clearable>
-                      <el-option label="已接收" value="RECEIVED" />
-                      <el-option label="已归档" value="STORED" />
-                      <el-option label="借出中" value="BORROWED" />
+                    <el-select
+                      v-model="archiveFilter.status"
+                      placeholder="全部"
+                      clearable
+                    >
+                      <el-option
+                        label="已接收"
+                        value="RECEIVED"
+                      />
+                      <el-option
+                        label="已归档"
+                        value="STORED"
+                      />
+                      <el-option
+                        label="借出中"
+                        value="BORROWED"
+                      />
                     </el-select>
                   </el-form-item>
                 </el-col>
@@ -77,7 +136,11 @@
                 </el-col>
                 <el-col :span="4">
                   <el-form-item>
-                    <el-button type="primary" @click="exportArchives" :loading="loading.archives">
+                    <el-button
+                      type="primary"
+                      :loading="loading.archives"
+                      @click="exportArchives"
+                    >
                       <el-icon><Download /></el-icon>
                       导出清单
                     </el-button>
@@ -89,11 +152,19 @@
         </el-tab-pane>
         
         <!-- 借阅统计 -->
-        <el-tab-pane label="借阅统计" name="borrow">
+        <el-tab-pane
+          label="借阅统计"
+          name="borrow"
+        >
           <div class="report-section">
-            <p class="report-desc">导出借阅申请记录，包含申请人、审批状态、归还情况等信息。</p>
+            <p class="report-desc">
+              导出借阅申请记录，包含申请人、审批状态、归还情况等信息。
+            </p>
             
-            <el-form :inline="true" class="filter-form">
+            <el-form
+              :inline="true"
+              class="filter-form"
+            >
               <el-form-item label="时间范围">
                 <el-date-picker
                   v-model="borrowDateRange"
@@ -105,7 +176,11 @@
                 />
               </el-form-item>
               <el-form-item>
-                <el-button type="primary" @click="exportBorrow" :loading="loading.borrow">
+                <el-button
+                  type="primary"
+                  :loading="loading.borrow"
+                  @click="exportBorrow"
+                >
                   <el-icon><Download /></el-icon>
                   导出报表
                 </el-button>
@@ -115,11 +190,19 @@
         </el-tab-pane>
         
         <!-- 操作日志 -->
-        <el-tab-pane label="操作日志" name="log">
+        <el-tab-pane
+          label="操作日志"
+          name="log"
+        >
           <div class="report-section">
-            <p class="report-desc">导出系统操作日志，用于审计和追溯。最多导出10000条记录。</p>
+            <p class="report-desc">
+              导出系统操作日志，用于审计和追溯。最多导出10000条记录。
+            </p>
             
-            <el-form :inline="true" class="filter-form">
+            <el-form
+              :inline="true"
+              class="filter-form"
+            >
               <el-form-item label="时间范围">
                 <el-date-picker
                   v-model="logDateRange"
@@ -131,7 +214,11 @@
                 />
               </el-form-item>
               <el-form-item>
-                <el-button type="primary" @click="exportLog" :loading="loading.log">
+                <el-button
+                  type="primary"
+                  :loading="loading.log"
+                  @click="exportLog"
+                >
                   <el-icon><Download /></el-icon>
                   导出日志
                 </el-button>

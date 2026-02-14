@@ -1,15 +1,25 @@
 <template>
   <el-container class="main-layout">
     <!-- 全局加载遮罩 -->
-    <div v-if="appStore.globalLoading" class="global-loading">
-      <el-icon class="loading-icon"><Loading /></el-icon>
+    <div
+      v-if="appStore.globalLoading"
+      class="global-loading"
+    >
+      <el-icon class="loading-icon">
+        <Loading />
+      </el-icon>
       <span>{{ appStore.loadingText }}</span>
     </div>
     
     <!-- 侧边栏 -->
-    <el-aside :width="appStore.sidebarCollapsed ? '64px' : '220px'" class="sidebar">
+    <el-aside
+      :width="appStore.sidebarCollapsed ? '64px' : '220px'"
+      class="sidebar"
+    >
       <div class="logo">
-        <el-icon :size="24"><Files /></el-icon>
+        <el-icon :size="24">
+          <Files />
+        </el-icon>
         <span v-show="!appStore.sidebarCollapsed">档案管理系统</span>
       </div>
       
@@ -55,10 +65,18 @@
             <el-icon><FolderOpened /></el-icon>
             <span>档案设置</span>
           </template>
-          <el-menu-item index="/categories">分类管理</el-menu-item>
-          <el-menu-item index="/fonds">全宗管理</el-menu-item>
-          <el-menu-item index="/locations">存放位置</el-menu-item>
-          <el-menu-item index="/sources">来源管理</el-menu-item>
+          <el-menu-item index="/categories">
+            分类管理
+          </el-menu-item>
+          <el-menu-item index="/fonds">
+            全宗管理
+          </el-menu-item>
+          <el-menu-item index="/locations">
+            存放位置
+          </el-menu-item>
+          <el-menu-item index="/sources">
+            来源管理
+          </el-menu-item>
         </el-sub-menu>
         
         <el-sub-menu index="system">
@@ -66,10 +84,18 @@
             <el-icon><Setting /></el-icon>
             <span>系统管理</span>
           </template>
-          <el-menu-item index="/system/users">用户管理</el-menu-item>
-          <el-menu-item index="/system/roles">角色管理</el-menu-item>
-          <el-menu-item index="/system/config">系统配置</el-menu-item>
-          <el-menu-item index="/system/logs">操作日志</el-menu-item>
+          <el-menu-item index="/system/users">
+            用户管理
+          </el-menu-item>
+          <el-menu-item index="/system/roles">
+            角色管理
+          </el-menu-item>
+          <el-menu-item index="/system/config">
+            系统配置
+          </el-menu-item>
+          <el-menu-item index="/system/logs">
+            操作日志
+          </el-menu-item>
         </el-sub-menu>
       </el-menu>
     </el-aside>
@@ -79,29 +105,53 @@
       <!-- 顶部栏 -->
       <el-header class="header">
         <div class="header-left">
-          <el-icon class="collapse-btn" @click="appStore.toggleSidebar">
+          <el-icon
+            class="collapse-btn"
+            @click="appStore.toggleSidebar"
+          >
             <Fold v-if="!appStore.sidebarCollapsed" />
             <Expand v-else />
           </el-icon>
           <el-breadcrumb separator="/">
-            <el-breadcrumb-item :to="{ path: '/' }">首页</el-breadcrumb-item>
+            <el-breadcrumb-item :to="{ path: '/' }">
+              首页
+            </el-breadcrumb-item>
             <el-breadcrumb-item>{{ $route.meta.title }}</el-breadcrumb-item>
           </el-breadcrumb>
         </div>
         <div class="header-right">
           <!-- 上传进度提示 -->
-          <el-badge v-if="appStore.uploadingCount > 0" :value="appStore.uploadingCount" class="upload-badge">
-            <el-button :icon="Upload" circle size="small" @click="showUploadPanel = true" />
+          <el-badge
+            v-if="appStore.uploadingCount > 0"
+            :value="appStore.uploadingCount"
+            class="upload-badge"
+          >
+            <el-button
+              :icon="Upload"
+              circle
+              size="small"
+              @click="showUploadPanel = true"
+            />
           </el-badge>
           <el-dropdown>
             <span class="el-dropdown-link">
-              <el-avatar :size="32" icon="User" />
+              <el-avatar
+                :size="32"
+                icon="User"
+              />
               <span style="margin-left: 8px">{{ userStore.realName || userStore.username }}</span>
             </span>
             <template #dropdown>
               <el-dropdown-menu>
-                <el-dropdown-item @click="$router.push('/profile')">个人设置</el-dropdown-item>
-                <el-dropdown-item divided @click="handleLogout">退出登录</el-dropdown-item>
+                <el-dropdown-item @click="$router.push('/profile')">
+                  个人设置
+                </el-dropdown-item>
+                <el-dropdown-item
+                  divided
+                  @click="handleLogout"
+                >
+                  退出登录
+                </el-dropdown-item>
               </el-dropdown-menu>
             </template>
           </el-dropdown>
@@ -115,12 +165,27 @@
     </el-container>
     
     <!-- 上传进度面板 -->
-    <el-drawer v-model="showUploadPanel" title="上传队列" direction="rtl" size="400px">
-      <div v-if="appStore.uploadQueue.length === 0" class="empty-upload">
+    <el-drawer
+      v-model="showUploadPanel"
+      title="上传队列"
+      direction="rtl"
+      size="400px"
+    >
+      <div
+        v-if="appStore.uploadQueue.length === 0"
+        class="empty-upload"
+      >
         <el-empty description="暂无上传任务" />
       </div>
-      <div v-else class="upload-list">
-        <div v-for="item in appStore.uploadQueue" :key="item.id" class="upload-item">
+      <div
+        v-else
+        class="upload-list"
+      >
+        <div
+          v-for="item in appStore.uploadQueue"
+          :key="item.id"
+          class="upload-item"
+        >
           <div class="upload-item-info">
             <el-icon><Document /></el-icon>
             <span class="file-name">{{ item.name }}</span>
@@ -135,13 +200,17 @@
               type="primary" 
               size="small" 
               text
-            >重试</el-button>
+            >
+              重试
+            </el-button>
             <el-button 
               type="danger" 
               size="small" 
               text 
               @click="appStore.removeFromUploadQueue(item.id)"
-            >移除</el-button>
+            >
+              移除
+            </el-button>
           </div>
         </div>
         <el-button 
@@ -149,7 +218,9 @@
           type="primary" 
           text 
           @click="appStore.clearCompletedUploads"
-        >清除已完成</el-button>
+        >
+          清除已完成
+        </el-button>
       </div>
     </el-drawer>
   </el-container>

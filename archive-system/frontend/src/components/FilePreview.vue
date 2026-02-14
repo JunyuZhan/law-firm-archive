@@ -9,15 +9,29 @@
     :fullscreen="isFullscreen"
     @close="handleClose"
   >
-    <div class="preview-container" ref="containerRef">
+    <div
+      ref="containerRef"
+      class="preview-container"
+    >
       <!-- 加载中 -->
-      <div v-if="loading" class="loading-wrapper">
-        <el-icon class="is-loading" :size="48"><Loading /></el-icon>
+      <div
+        v-if="loading"
+        class="loading-wrapper"
+      >
+        <el-icon
+          class="is-loading"
+          :size="48"
+        >
+          <Loading />
+        </el-icon>
         <p>加载中...</p>
       </div>
 
       <!-- PDF预览 -->
-      <div v-else-if="previewType === 'pdf'" class="pdf-viewer-wrapper">
+      <div
+        v-else-if="previewType === 'pdf'"
+        class="pdf-viewer-wrapper"
+      >
         <iframe
           :src="pdfViewerUrl"
           class="pdf-viewer"
@@ -25,7 +39,11 @@
       </div>
 
       <!-- 图片预览 -->
-      <div v-else-if="previewType === 'image'" class="image-viewer" @wheel.prevent="handleWheel">
+      <div
+        v-else-if="previewType === 'image'"
+        class="image-viewer"
+        @wheel.prevent="handleWheel"
+      >
         <div 
           class="image-wrapper"
           :style="imageTransformStyle"
@@ -35,34 +53,69 @@
             ref="imageRef"
             :src="previewUrl"
             :alt="fileName"
+            draggable="false"
             @load="handleImageLoad"
             @error="handleError"
-            draggable="false"
-          />
+          >
         </div>
         
         <!-- 图片工具栏 -->
         <div class="image-toolbar">
           <el-button-group>
-            <el-tooltip content="放大" placement="top">
-              <el-button :icon="ZoomIn" @click="zoomIn" />
+            <el-tooltip
+              content="放大"
+              placement="top"
+            >
+              <el-button
+                :icon="ZoomIn"
+                @click="zoomIn"
+              />
             </el-tooltip>
-            <el-tooltip content="缩小" placement="top">
-              <el-button :icon="ZoomOut" @click="zoomOut" />
+            <el-tooltip
+              content="缩小"
+              placement="top"
+            >
+              <el-button
+                :icon="ZoomOut"
+                @click="zoomOut"
+              />
             </el-tooltip>
-            <el-tooltip content="原始大小" placement="top">
-              <el-button @click="resetZoom">1:1</el-button>
+            <el-tooltip
+              content="原始大小"
+              placement="top"
+            >
+              <el-button @click="resetZoom">
+                1:1
+              </el-button>
             </el-tooltip>
-            <el-tooltip content="适应窗口" placement="top">
-              <el-button :icon="FullScreen" @click="fitToWindow" />
+            <el-tooltip
+              content="适应窗口"
+              placement="top"
+            >
+              <el-button
+                :icon="FullScreen"
+                @click="fitToWindow"
+              />
             </el-tooltip>
           </el-button-group>
           <el-button-group style="margin-left: 8px">
-            <el-tooltip content="向左旋转" placement="top">
-              <el-button :icon="RefreshLeft" @click="rotateLeft" />
+            <el-tooltip
+              content="向左旋转"
+              placement="top"
+            >
+              <el-button
+                :icon="RefreshLeft"
+                @click="rotateLeft"
+              />
             </el-tooltip>
-            <el-tooltip content="向右旋转" placement="top">
-              <el-button :icon="RefreshRight" @click="rotateRight" />
+            <el-tooltip
+              content="向右旋转"
+              placement="top"
+            >
+              <el-button
+                :icon="RefreshRight"
+                @click="rotateRight"
+              />
             </el-tooltip>
           </el-button-group>
           <span class="zoom-info">{{ Math.round(imageScale * 100) }}%</span>
@@ -86,21 +139,39 @@
       />
 
       <!-- Office文档提示 -->
-      <div v-else-if="previewType === 'office'" class="office-preview">
-        <el-icon :size="64"><Document /></el-icon>
+      <div
+        v-else-if="previewType === 'office'"
+        class="office-preview"
+      >
+        <el-icon :size="64">
+          <Document />
+        </el-icon>
         <p>Office文档预览</p>
-        <p class="tip">请下载后使用本地软件打开，或使用在线Office服务</p>
-        <el-button type="primary" @click="handleDownload">
+        <p class="tip">
+          请下载后使用本地软件打开，或使用在线Office服务
+        </p>
+        <el-button
+          type="primary"
+          @click="handleDownload"
+        >
           <el-icon><Download /></el-icon>
           下载文件
         </el-button>
       </div>
 
       <!-- 不支持预览 -->
-      <div v-else class="not-supported">
-        <el-icon :size="64"><Document /></el-icon>
+      <div
+        v-else
+        class="not-supported"
+      >
+        <el-icon :size="64">
+          <Document />
+        </el-icon>
         <p>该文件类型不支持在线预览</p>
-        <el-button type="primary" @click="handleDownload">
+        <el-button
+          type="primary"
+          @click="handleDownload"
+        >
           <el-icon><Download /></el-icon>
           下载文件
         </el-button>
@@ -109,11 +180,19 @@
 
     <template #footer>
       <div class="dialog-footer">
-        <el-button :icon="isFullscreen ? 'Minus' : 'FullScreen'" @click="toggleFullscreen">
+        <el-button
+          :icon="isFullscreen ? 'Minus' : 'FullScreen'"
+          @click="toggleFullscreen"
+        >
           {{ isFullscreen ? '退出全屏' : '全屏' }}
         </el-button>
-        <el-button @click="handleClose">关闭</el-button>
-        <el-button type="primary" @click="handleDownload">
+        <el-button @click="handleClose">
+          关闭
+        </el-button>
+        <el-button
+          type="primary"
+          @click="handleDownload"
+        >
           <el-icon><Download /></el-icon>
           下载
         </el-button>

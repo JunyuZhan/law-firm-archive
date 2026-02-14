@@ -1,14 +1,23 @@
 <template>
   <div class="file-list-component">
     <!-- 文件列表头部 -->
-    <div v-if="showHeader" class="file-list-header">
+    <div
+      v-if="showHeader"
+      class="file-list-header"
+    >
       <span class="file-count">共 {{ files.length }} 个文件</span>
       <div class="view-toggle">
         <el-button-group size="small">
-          <el-button :type="viewMode === 'list' ? 'primary' : 'default'" @click="viewMode = 'list'">
+          <el-button
+            :type="viewMode === 'list' ? 'primary' : 'default'"
+            @click="viewMode = 'list'"
+          >
             <el-icon><List /></el-icon>
           </el-button>
-          <el-button :type="viewMode === 'grid' ? 'primary' : 'default'" @click="viewMode = 'grid'">
+          <el-button
+            :type="viewMode === 'grid' ? 'primary' : 'default'"
+            @click="viewMode = 'grid'"
+          >
             <el-icon><Grid /></el-icon>
           </el-button>
         </el-button-group>
@@ -16,10 +25,16 @@
     </div>
 
     <!-- 空状态 -->
-    <el-empty v-if="files.length === 0" description="暂无文件" />
+    <el-empty
+      v-if="files.length === 0"
+      description="暂无文件"
+    />
 
     <!-- 列表视图 -->
-    <div v-else-if="viewMode === 'list'" class="file-list-view">
+    <div
+      v-else-if="viewMode === 'list'"
+      class="file-list-view"
+    >
       <div 
         v-for="file in files" 
         :key="file.id" 
@@ -27,16 +42,27 @@
         :class="{ 'is-selected': selectedIds.includes(file.id) }"
         @click="handleSelect(file)"
       >
-        <div class="file-icon" :class="getFileIconClass(file)">
-          <el-icon :size="32"><component :is="getFileIcon(file)" /></el-icon>
+        <div
+          class="file-icon"
+          :class="getFileIconClass(file)"
+        >
+          <el-icon :size="32">
+            <component :is="getFileIcon(file)" />
+          </el-icon>
         </div>
         <div class="file-info">
-          <div class="file-name" :title="file.originalName || file.fileName">
+          <div
+            class="file-name"
+            :title="file.originalName || file.fileName"
+          >
             {{ file.originalName || file.fileName }}
           </div>
           <div class="file-meta">
             <span class="file-size">{{ formatSize(file.fileSize) }}</span>
-            <span class="file-date" v-if="file.uploadAt">{{ formatDate(file.uploadAt) }}</span>
+            <span
+              v-if="file.uploadAt"
+              class="file-date"
+            >{{ formatDate(file.uploadAt) }}</span>
           </div>
         </div>
         <div class="file-actions">
@@ -74,7 +100,10 @@
     </div>
 
     <!-- 网格视图 -->
-    <div v-else class="file-grid-view">
+    <div
+      v-else
+      class="file-grid-view"
+    >
       <div 
         v-for="file in files" 
         :key="file.id" 
@@ -89,17 +118,28 @@
             v-if="isImage(file) && file.thumbnailUrl" 
             :src="file.thumbnailUrl" 
             :alt="file.originalName"
-          />
+          >
           <!-- 文件图标 -->
-          <div v-else class="file-card-icon" :class="getFileIconClass(file)">
-            <el-icon :size="48"><component :is="getFileIcon(file)" /></el-icon>
+          <div
+            v-else
+            class="file-card-icon"
+            :class="getFileIconClass(file)"
+          >
+            <el-icon :size="48">
+              <component :is="getFileIcon(file)" />
+            </el-icon>
           </div>
         </div>
         <div class="file-card-info">
-          <div class="file-name" :title="file.originalName || file.fileName">
+          <div
+            class="file-name"
+            :title="file.originalName || file.fileName"
+          >
             {{ file.originalName || file.fileName }}
           </div>
-          <div class="file-size">{{ formatSize(file.fileSize) }}</div>
+          <div class="file-size">
+            {{ formatSize(file.fileSize) }}
+          </div>
         </div>
         <div class="file-card-actions">
           <el-button 

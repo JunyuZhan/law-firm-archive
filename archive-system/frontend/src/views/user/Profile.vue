@@ -17,22 +17,54 @@
             label-width="80px"
           >
             <el-form-item label="用户名">
-              <el-input v-model="profileForm.username" disabled />
+              <el-input
+                v-model="profileForm.username"
+                disabled
+              />
             </el-form-item>
-            <el-form-item label="姓名" prop="realName">
-              <el-input v-model="profileForm.realName" placeholder="请输入姓名" maxlength="50" />
+            <el-form-item
+              label="姓名"
+              prop="realName"
+            >
+              <el-input
+                v-model="profileForm.realName"
+                placeholder="请输入姓名"
+                maxlength="50"
+              />
             </el-form-item>
-            <el-form-item label="邮箱" prop="email">
-              <el-input v-model="profileForm.email" placeholder="请输入邮箱" maxlength="100" />
+            <el-form-item
+              label="邮箱"
+              prop="email"
+            >
+              <el-input
+                v-model="profileForm.email"
+                placeholder="请输入邮箱"
+                maxlength="100"
+              />
             </el-form-item>
-            <el-form-item label="手机号" prop="phone">
-              <el-input v-model="profileForm.phone" placeholder="请输入手机号" maxlength="11" />
+            <el-form-item
+              label="手机号"
+              prop="phone"
+            >
+              <el-input
+                v-model="profileForm.phone"
+                placeholder="请输入手机号"
+                maxlength="11"
+              />
             </el-form-item>
             <el-form-item label="部门">
-              <el-input v-model="profileForm.department" placeholder="请输入部门" maxlength="100" />
+              <el-input
+                v-model="profileForm.department"
+                placeholder="请输入部门"
+                maxlength="100"
+              />
             </el-form-item>
             <el-form-item>
-              <el-button type="primary" @click="handleUpdateProfile" :loading="profileLoading">
+              <el-button
+                type="primary"
+                :loading="profileLoading"
+                @click="handleUpdateProfile"
+              >
                 保存修改
               </el-button>
             </el-form-item>
@@ -55,7 +87,10 @@
             :rules="passwordRules"
             label-width="100px"
           >
-            <el-form-item label="当前密码" prop="oldPassword">
+            <el-form-item
+              label="当前密码"
+              prop="oldPassword"
+            >
               <el-input 
                 v-model="passwordForm.oldPassword" 
                 type="password"
@@ -64,7 +99,10 @@
                 maxlength="50"
               />
             </el-form-item>
-            <el-form-item label="新密码" prop="newPassword">
+            <el-form-item
+              label="新密码"
+              prop="newPassword"
+            >
               <el-input 
                 v-model="passwordForm.newPassword" 
                 type="password"
@@ -74,20 +112,29 @@
                 @input="checkPasswordStrength"
               />
               <!-- 密码强度指示器 -->
-              <div class="password-strength" v-if="passwordForm.newPassword">
+              <div
+                v-if="passwordForm.newPassword"
+                class="password-strength"
+              >
                 <div class="strength-bar">
                   <div 
                     class="strength-level" 
                     :class="passwordStrength.level"
                     :style="{ width: passwordStrength.percent + '%' }"
-                  ></div>
+                  />
                 </div>
-                <span class="strength-text" :class="passwordStrength.level">
+                <span
+                  class="strength-text"
+                  :class="passwordStrength.level"
+                >
                   {{ passwordStrength.text }}
                 </span>
               </div>
               <!-- 密码要求提示 -->
-              <div class="password-requirements" v-if="passwordForm.newPassword">
+              <div
+                v-if="passwordForm.newPassword"
+                class="password-requirements"
+              >
                 <div :class="{ met: hasMinLength }">
                   <el-icon><component :is="hasMinLength ? 'Check' : 'Close'" /></el-icon>
                   至少8位字符
@@ -106,7 +153,10 @@
                 </div>
               </div>
             </el-form-item>
-            <el-form-item label="确认新密码" prop="confirmPassword">
+            <el-form-item
+              label="确认新密码"
+              prop="confirmPassword"
+            >
               <el-input 
                 v-model="passwordForm.confirmPassword" 
                 type="password"
@@ -118,9 +168,9 @@
             <el-form-item>
               <el-button 
                 type="primary" 
-                @click="handleChangePassword" 
-                :loading="passwordLoading"
+                :loading="passwordLoading" 
                 :disabled="!isPasswordValid"
+                @click="handleChangePassword"
               >
                 修改密码
               </el-button>
@@ -131,19 +181,27 @@
     </el-row>
     
     <!-- 账户信息 -->
-    <el-card shadow="never" style="margin-top: 20px">
+    <el-card
+      shadow="never"
+      style="margin-top: 20px"
+    >
       <template #header>
         <div class="card-header">
           <span>账户信息</span>
         </div>
       </template>
       
-      <el-descriptions :column="3" border>
+      <el-descriptions
+        :column="3"
+        border
+      >
         <el-descriptions-item label="用户类型">
           <el-tag>{{ getUserTypeName(userStore.userType) }}</el-tag>
         </el-descriptions-item>
         <el-descriptions-item label="账户状态">
-          <el-tag type="success">正常</el-tag>
+          <el-tag type="success">
+            正常
+          </el-tag>
         </el-descriptions-item>
         <el-descriptions-item label="上次登录">
           {{ userStore.lastLoginAt || '首次登录' }}
