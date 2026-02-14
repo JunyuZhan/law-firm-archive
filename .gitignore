@@ -42,11 +42,14 @@ Thumbs.db
 # Node modules
 **/node_modules/
 **/.vite/
+**/.turbo/
 
 # Build outputs
 **/dist/
 **/build/
 **/out/
+**/bin/
+**/*.zip
 
 # Temporary files
 *.tmp
