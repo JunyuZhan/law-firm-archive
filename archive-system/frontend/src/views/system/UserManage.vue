@@ -150,51 +150,31 @@
         </el-table-column>
         <el-table-column
           label="操作"
-          width="280"
+          width="300"
           fixed="right"
         >
           <template #default="{ row }">
-            <el-button
-              link
-              type="primary"
-              @click="handleEdit(row)"
-            >
-              编辑
-            </el-button>
-            <el-button
-              link
-              type="primary"
-              @click="handleAssignRole(row)"
-            >
-              分配角色
-            </el-button>
-            <el-button
-              link
-              type="warning"
-              @click="handleResetPassword(row)"
-            >
-              重置密码
-            </el-button>
-            <el-button
-              link
-              :type="row.status === 'ACTIVE' ? 'danger' : 'success'"
-              @click="handleToggleStatus(row)"
-            >
-              {{ row.status === 'ACTIVE' ? '禁用' : '启用' }}
-            </el-button>
-            <el-popconfirm
-              title="确定删除该用户吗？"
-              @confirm="handleDelete(row)"
-            >
-              <template #reference>
-                <el-button
-                  link
-                  type="danger"
-                >
-                  删除
-                </el-button>
-              </template>
-            </el-popconfirm>
+            <div class="operation-buttons">
+              <el-button link type="primary" size="small" @click="handleEdit(row)">编辑</el-button>
+              <el-button link type="primary" size="small" @click="handleAssignRole(row)">分配</el-button>
+              <el-button link type="warning" size="small" @click="handleResetPassword(row)">重置</el-button>
+              <el-button 
+                link 
+                :type="row.status === 'ACTIVE' ? 'danger' : 'success'" 
+                size="small" 
+                @click="handleToggleStatus(row)"
+              >
+                {{ row.status === 'ACTIVE' ? '禁用' : '启用' }}
+              </el-button>
+              <el-popconfirm
+                title="确定删除？"
+                @confirm="handleDelete(row)"
+              >
+                <template #reference>
+                  <el-button link type="danger" size="small">删除</el-button>
+                </template>
+              </el-popconfirm>
+            </div>
           </template>
         </el-table-column>
       </el-table>
