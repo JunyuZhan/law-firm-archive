@@ -66,6 +66,12 @@ const router = createRouter({
           meta: { title: '借阅管理', requiresAuth: true }
         },
         {
+          path: 'borrow-links',
+          name: 'BorrowLinkList',
+          component: () => import('@/views/borrow/BorrowLinkList.vue'),
+          meta: { title: '借阅链接', requiresAuth: true, roles: [ROLES.SYSTEM_ADMIN, ROLES.ARCHIVIST] }
+        },
+        {
           path: 'appraisals',
           name: 'AppraisalList',
           component: () => import('@/views/appraisal/AppraisalList.vue'),
@@ -155,6 +161,12 @@ const router = createRouter({
       meta: { title: '登录', guest: true }
     },
     {
+      path: '/borrow/access/:token',
+      name: 'BorrowAccess',
+      component: () => import('@/views/borrow/BorrowAccess.vue'),
+      meta: { title: '档案借阅', public: true }
+    },
+    {
       path: '/:pathMatch(.*)*',
       name: 'NotFound',
       redirect: '/'
@@ -195,6 +207,12 @@ router.beforeEach((to, from, next) => {
   // 使用安全存储获取Token
   const token = secureStorage.getAccessToken()
   
+  // 公开页面（无需登录）
+  if (to.matched.some(record => record.meta.public)) {
+    next()
+    return
+  }
+
   // 需要认证的页面
   if (to.matched.some(record => record.meta.requiresAuth)) {
     if (!token) {

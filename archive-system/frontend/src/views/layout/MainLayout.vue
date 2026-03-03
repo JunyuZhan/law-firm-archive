@@ -53,6 +53,10 @@
           <el-icon><Reading /></el-icon>
           <span>借阅管理</span>
         </el-menu-item>
+        <el-menu-item index="/borrow-links">
+          <el-icon><Link /></el-icon>
+          <span>借阅链接</span>
+        </el-menu-item>
         <el-menu-item index="/appraisals">
           <el-icon><Stamp /></el-icon>
           <span>鉴定管理</span>
@@ -245,7 +249,8 @@ import {
   Loading,
   Stamp,
   Delete,
-  Connection
+  Connection,
+  Link
 } from '@element-plus/icons-vue'
 import { useUserStore, useAppStore } from '@/stores'
 

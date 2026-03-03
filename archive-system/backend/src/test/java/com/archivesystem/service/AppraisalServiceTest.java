@@ -33,6 +33,7 @@ import static org.mockito.Mockito.*;
  * AppraisalService测试类.
  */
 @ExtendWith(MockitoExtension.class)
+@org.mockito.junit.jupiter.MockitoSettings(strictness = org.mockito.quality.Strictness.LENIENT)
 class AppraisalServiceTest {
 
     @Mock
@@ -208,18 +209,18 @@ class AppraisalServiceTest {
         record.setStatus(AppraisalRecord.STATUS_PENDING);
         record.setAppraisalType(AppraisalRecord.TYPE_VALUE);
         when(appraisalMapper.selectById(id)).thenReturn(record);
-        when(appraisalMapper.updateById(any())).thenReturn(1);
-        
+        when(appraisalMapper.update(isNull(), any())).thenReturn(1);
+
         Archive archive = new Archive();
         archive.setId(1L);
         when(archiveMapper.selectById(1L)).thenReturn(archive);
+        when(archiveMapper.updateById(any())).thenReturn(1);
 
         // When
         appraisalService.approve(id, "同意");
 
         // Then
-        verify(appraisalMapper).updateById(argThat(r -> 
-                AppraisalRecord.STATUS_APPROVED.equals(r.getStatus())));
+        verify(appraisalMapper).update(isNull(), any());
     }
 
     @Test
@@ -243,14 +244,13 @@ class AppraisalServiceTest {
         record.setId(id);
         record.setStatus(AppraisalRecord.STATUS_PENDING);
         when(appraisalMapper.selectById(id)).thenReturn(record);
-        when(appraisalMapper.updateById(any())).thenReturn(1);
+        when(appraisalMapper.update(isNull(), any())).thenReturn(1);
 
         // When
         appraisalService.reject(id, "拒绝");
 
         // Then
-        verify(appraisalMapper).updateById(argThat(r -> 
-                AppraisalRecord.STATUS_REJECTED.equals(r.getStatus())));
+        verify(appraisalMapper).update(isNull(), any());
     }
 
     @Test
@@ -276,8 +276,16 @@ class AppraisalServiceTest {
         record.setStatus(AppraisalRecord.STATUS_PENDING);
         record.setAppraisalType(AppraisalRecord.TYPE_SECURITY);
         record.setNewValue("SECRET");
-        when(appraisalMapper.selectById(id)).thenReturn(record);
-        when(appraisalMapper.updateById(any())).thenReturn(1);
+        
+        AppraisalRecord approvedRecord = new AppraisalRecord();
+        approvedRecord.setId(id);
+        approvedRecord.setArchiveId(1L);
+        approvedRecord.setStatus(AppraisalRecord.STATUS_APPROVED);
+        approvedRecord.setAppraisalType(AppraisalRecord.TYPE_SECURITY);
+        approvedRecord.setNewValue("SECRET");
+        
+        when(appraisalMapper.selectById(id)).thenReturn(record).thenReturn(approvedRecord);
+        when(appraisalMapper.update(isNull(), any())).thenReturn(1);
         
         Archive archive = new Archive();
         archive.setId(1L);
@@ -301,8 +309,16 @@ class AppraisalServiceTest {
         record.setStatus(AppraisalRecord.STATUS_PENDING);
         record.setAppraisalType(AppraisalRecord.TYPE_RETENTION);
         record.setNewValue("Y30");
-        when(appraisalMapper.selectById(id)).thenReturn(record);
-        when(appraisalMapper.updateById(any())).thenReturn(1);
+        
+        AppraisalRecord approvedRecord = new AppraisalRecord();
+        approvedRecord.setId(id);
+        approvedRecord.setArchiveId(1L);
+        approvedRecord.setStatus(AppraisalRecord.STATUS_APPROVED);
+        approvedRecord.setAppraisalType(AppraisalRecord.TYPE_RETENTION);
+        approvedRecord.setNewValue("Y30");
+        
+        when(appraisalMapper.selectById(id)).thenReturn(record).thenReturn(approvedRecord);
+        when(appraisalMapper.update(isNull(), any())).thenReturn(1);
         
         Archive archive = new Archive();
         archive.setId(1L);
@@ -328,8 +344,16 @@ class AppraisalServiceTest {
         record.setStatus(AppraisalRecord.STATUS_PENDING);
         record.setAppraisalType(AppraisalRecord.TYPE_OPEN);
         record.setNewValue("OPEN");
-        when(appraisalMapper.selectById(id)).thenReturn(record);
-        when(appraisalMapper.updateById(any())).thenReturn(1);
+        
+        AppraisalRecord approvedRecord = new AppraisalRecord();
+        approvedRecord.setId(id);
+        approvedRecord.setArchiveId(1L);
+        approvedRecord.setStatus(AppraisalRecord.STATUS_APPROVED);
+        approvedRecord.setAppraisalType(AppraisalRecord.TYPE_OPEN);
+        approvedRecord.setNewValue("OPEN");
+        
+        when(appraisalMapper.selectById(id)).thenReturn(record).thenReturn(approvedRecord);
+        when(appraisalMapper.update(isNull(), any())).thenReturn(1);
         
         Archive archive = new Archive();
         archive.setId(1L);

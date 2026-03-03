@@ -1,5 +1,6 @@
 package com.archivesystem.security;
 
+import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import org.junit.jupiter.api.BeforeEach;
@@ -8,6 +9,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -16,12 +19,14 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.Date;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class JwtAuthenticationFilterTest {
 
     @Mock
@@ -29,6 +34,9 @@ class JwtAuthenticationFilterTest {
 
     @Mock
     private UserDetailsService userDetailsService;
+
+    @Mock
+    private TokenBlacklistService tokenBlacklistService;
 
     @Mock
     private FilterChain filterChain;
@@ -50,14 +58,22 @@ class JwtAuthenticationFilterTest {
     void testDoFilterInternal_ValidToken() throws ServletException, IOException {
         String token = "valid.jwt.token";
         String username = "testuser";
+        Long userId = 1L;
 
         request.addHeader("Authorization", "Bearer " + token);
 
         UserDetails userDetails = mock(UserDetails.class);
         when(userDetails.getAuthorities()).thenReturn(Collections.emptyList());
 
+        Claims claims = mock(Claims.class);
+        when(claims.get("userId", Long.class)).thenReturn(userId);
+        when(claims.getIssuedAt()).thenReturn(new Date());
+
         when(jwtUtils.validateToken(token)).thenReturn(true);
+        when(jwtUtils.parseToken(token)).thenReturn(claims);
         when(jwtUtils.getUsernameFromToken(token)).thenReturn(username);
+        when(tokenBlacklistService.isBlacklisted(token)).thenReturn(false);
+        when(tokenBlacklistService.isUserBlacklisted(eq(userId), anyLong())).thenReturn(false);
         when(userDetailsService.loadUserByUsername(username)).thenReturn(userDetails);
 
         jwtAuthenticationFilter.doFilterInternal(request, response, filterChain);

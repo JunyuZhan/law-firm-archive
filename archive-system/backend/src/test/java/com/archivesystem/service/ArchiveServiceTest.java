@@ -52,6 +52,9 @@ class ArchiveServiceTest {
     private RetentionPeriodMapper retentionPeriodMapper;
 
     @Mock
+    private PushRecordMapper pushRecordMapper;
+
+    @Mock
     private FileStorageService fileStorageService;
 
     @Mock

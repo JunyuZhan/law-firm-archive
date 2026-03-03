@@ -53,7 +53,9 @@ public class ApiKeyAuthFilter extends OncePerRequestFilter {
     // 白名单路径（不需要API Key）
     private static final Set<String> WHITELIST_PATHS = Set.of(
             "/api/open/health",
-            "/open/health"
+            "/open/health",
+            "/api/open/borrow/access/**",
+            "/open/borrow/access/**"
     );
 
     // Redis缓存前缀和过期时间

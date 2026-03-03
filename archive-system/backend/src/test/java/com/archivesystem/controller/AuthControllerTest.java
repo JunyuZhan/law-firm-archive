@@ -4,6 +4,8 @@ import com.archivesystem.dto.auth.LoginRequest;
 import com.archivesystem.entity.User;
 import com.archivesystem.repository.UserMapper;
 import com.archivesystem.security.JwtUtils;
+import com.archivesystem.security.LoginSecurityService;
+import com.archivesystem.security.TokenBlacklistService;
 import com.archivesystem.security.UserDetailsImpl;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -13,6 +15,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -30,6 +34,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class AuthControllerTest {
 
     private MockMvc mockMvc;
@@ -42,6 +47,12 @@ class AuthControllerTest {
 
     @Mock
     private UserMapper userMapper;
+
+    @Mock
+    private LoginSecurityService loginSecurityService;
+
+    @Mock
+    private TokenBlacklistService tokenBlacklistService;
 
     @InjectMocks
     private AuthController authController;
@@ -72,6 +83,9 @@ class AuthControllerTest {
                 User.STATUS_ACTIVE,
                 Collections.emptyList()
         );
+
+        when(loginSecurityService.isIpLocked(anyString())).thenReturn(false);
+        when(loginSecurityService.isAccountLocked(anyString())).thenReturn(false);
     }
 
     @Test

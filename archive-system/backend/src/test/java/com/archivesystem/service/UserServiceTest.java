@@ -8,6 +8,8 @@ import com.archivesystem.entity.UserRole;
 import com.archivesystem.repository.UserMapper;
 import com.archivesystem.repository.UserRoleMapper;
 import com.archivesystem.service.impl.UserServiceImpl;
+import com.archivesystem.security.PasswordValidator;
+import com.archivesystem.service.OperationLogService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -25,6 +27,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
+@org.mockito.junit.jupiter.MockitoSettings(strictness = org.mockito.quality.Strictness.LENIENT)
 class UserServiceTest {
 
     @Mock
@@ -35,6 +38,12 @@ class UserServiceTest {
 
     @Mock
     private PasswordEncoder passwordEncoder;
+
+    @Mock
+    private PasswordValidator passwordValidator;
+
+    @Mock
+    private OperationLogService operationLogService;
 
     @InjectMocks
     private UserServiceImpl userService;
@@ -51,6 +60,10 @@ class UserServiceTest {
         testUser.setEmail("test@example.com");
         testUser.setPhone("13800138000");
         testUser.setStatus(User.STATUS_ACTIVE);
+
+        // 设置PasswordValidator的默认stubbing
+        PasswordValidator.ValidationResult validResult = new PasswordValidator.ValidationResult(true, null, 80);
+        when(passwordValidator.validate(anyString())).thenReturn(validResult);
     }
 
     @Test

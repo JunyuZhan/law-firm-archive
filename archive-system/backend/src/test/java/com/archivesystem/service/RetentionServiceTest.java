@@ -3,9 +3,11 @@ package com.archivesystem.service;
 import com.archivesystem.common.exception.BusinessException;
 import com.archivesystem.common.exception.NotFoundException;
 import com.archivesystem.entity.Archive;
+import com.archivesystem.entity.DestructionRecord;
 import com.archivesystem.entity.OperationLog;
 import com.archivesystem.entity.RetentionPeriod;
 import com.archivesystem.repository.ArchiveMapper;
+import com.archivesystem.repository.DestructionRecordMapper;
 import com.archivesystem.repository.OperationLogMapper;
 import com.archivesystem.repository.RetentionPeriodMapper;
 import com.archivesystem.security.SecurityUtils;
@@ -17,6 +19,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 import java.time.LocalDate;
 import java.util.Arrays;
@@ -27,6 +31,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class RetentionServiceTest {
 
     @Mock
@@ -37,6 +42,9 @@ class RetentionServiceTest {
 
     @Mock
     private OperationLogMapper operationLogMapper;
+
+    @Mock
+    private DestructionRecordMapper destructionRecordMapper;
 
     @InjectMocks
     private RetentionServiceImpl retentionService;
@@ -211,7 +219,15 @@ class RetentionServiceTest {
             securityUtils.when(SecurityUtils::getCurrentRealName).thenReturn("管理员");
 
             testArchive.setStatus(Archive.STATUS_APPRAISAL);
+            
+            DestructionRecord record = new DestructionRecord();
+            record.setId(2L);
+            record.setArchiveId(1L);
+            record.setStatus(DestructionRecord.STATUS_APPROVED);
+            
             when(archiveMapper.selectById(1L)).thenReturn(testArchive);
+            when(destructionRecordMapper.selectOne(any())).thenReturn(record);
+            when(destructionRecordMapper.updateById(any())).thenReturn(1);
             when(archiveMapper.updateById(any(Archive.class))).thenReturn(1);
             when(operationLogMapper.insert(any(OperationLog.class))).thenReturn(1);
 

@@ -380,7 +380,56 @@ CREATE TABLE IF NOT EXISTS arc_borrow_application (
 
 COMMENT ON TABLE arc_borrow_application IS '档案借阅申请表';
 
--- 4.2 鉴定记录表
+-- 4.2 电子借阅链接表（用于生成临时访问链接）
+CREATE TABLE IF NOT EXISTS arc_borrow_link (
+    id BIGSERIAL PRIMARY KEY,
+    borrow_id BIGINT REFERENCES arc_borrow_application(id), -- 关联的借阅申请（可为空，外部系统直接申请时无需关联）
+    archive_id BIGINT NOT NULL REFERENCES arc_archive(id),  -- 档案ID
+    archive_no VARCHAR(100),                                -- 档案号（冗余）
+    access_token VARCHAR(100) NOT NULL UNIQUE,              -- 访问令牌（UUID）
+    
+    -- ===== 申请信息 =====
+    source_type VARCHAR(50),                                -- 来源类型：INTERNAL-内部申请, LAW_FIRM-律所系统
+    source_system VARCHAR(100),                             -- 来源系统名称
+    source_user_id VARCHAR(100),                            -- 来源系统用户ID
+    source_user_name VARCHAR(100),                          -- 来源系统用户姓名
+    borrow_purpose TEXT,                                    -- 借阅目的
+    
+    -- ===== 链接配置 =====
+    expire_at TIMESTAMP NOT NULL,                           -- 过期时间
+    max_access_count INTEGER,                               -- 最大访问次数（NULL不限制）
+    allow_download BOOLEAN DEFAULT TRUE,                    -- 是否允许下载
+    
+    -- ===== 访问统计 =====
+    access_count INTEGER DEFAULT 0,                         -- 访问次数
+    download_count INTEGER DEFAULT 0,                       -- 下载次数
+    last_access_at TIMESTAMP,                               -- 最后访问时间
+    last_access_ip VARCHAR(50),                             -- 最后访问IP
+    
+    -- ===== 状态 =====
+    status VARCHAR(20) DEFAULT 'ACTIVE',                    -- ACTIVE-有效, EXPIRED-已过期, REVOKED-已撤销
+    revoke_reason TEXT,                                     -- 撤销原因
+    revoked_at TIMESTAMP,                                   -- 撤销时间
+    revoked_by BIGINT,                                      -- 撤销人
+    
+    -- ===== 系统字段 =====
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by BIGINT
+);
+
+COMMENT ON TABLE arc_borrow_link IS '电子借阅链接表 - 用于生成临时访问链接';
+COMMENT ON COLUMN arc_borrow_link.access_token IS '访问令牌，用于构建公开访问URL';
+COMMENT ON COLUMN arc_borrow_link.source_type IS '来源类型：INTERNAL-内部申请, LAW_FIRM-律所系统';
+COMMENT ON COLUMN arc_borrow_link.status IS '状态：ACTIVE-有效, EXPIRED-已过期, REVOKED-已撤销';
+
+CREATE INDEX IF NOT EXISTS idx_borrow_link_token ON arc_borrow_link(access_token);
+CREATE INDEX IF NOT EXISTS idx_borrow_link_archive ON arc_borrow_link(archive_id);
+CREATE INDEX IF NOT EXISTS idx_borrow_link_status ON arc_borrow_link(status);
+CREATE INDEX IF NOT EXISTS idx_borrow_link_expire ON arc_borrow_link(expire_at);
+CREATE INDEX IF NOT EXISTS idx_borrow_link_borrow ON arc_borrow_link(borrow_id);
+
+-- 4.3 鉴定记录表
 CREATE TABLE IF NOT EXISTS arc_appraisal_record (
     id BIGSERIAL PRIMARY KEY,
     archive_id BIGINT NOT NULL REFERENCES arc_archive(id),

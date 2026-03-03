@@ -705,6 +705,206 @@ public Result<List<Statistics>> getOverview(...) { }
 
 ---
 
-## 九、部署与运维（DO）
+## 十三、Sprint 9：系统安全与稳定性加固（预计 10 人天）
+
+> 🎯 **目标**：修复已知 Bug，补全缺失的安全与告警功能，提升测试覆盖率
+
+### 13.1 核心 Bug 修复
+
+| 任务ID | 任务名称 | 说明 | 工时 | 状态 |
+|--------|----------|------|------|------|
+| BE-9.1 | **集成测试修复** | 修复 AuthIntegrationTest 和 ArchiveIntegrationTest 中的 15 个失败用例 | 2天 | 🔴 |
+| BE-9.2 | **死信队列处理** | 完善死信队列的重试策略与人工干预接口 | 1天 | 🔴 |
+
+### 13.2 安全增强
+
+| 任务ID | 任务名称 | 说明 | 工时 | 状态 |
+|--------|----------|------|------|------|
+| BE-9.3 | **反病毒扫描** | 集成 ClamAV，实现上传文件自动扫描（原P2任务） | 2天 | 🔴 |
+| BE-9.4 | **细粒度权限** | 补充基于部门/全宗的数据权限控制 | 2天 | 🔴 |
+
+### 13.3 运维监控
+
+| 任务ID | 任务名称 | 说明 | 工时 | 状态 |
+|--------|----------|------|------|------|
+| BE-9.5 | **告警通知服务** | 实现邮件/钉钉告警通知，对接系统异常 | 1天 | 🔴 |
+| BE-9.6 | **业务监控** | 接入 processingTimeout 和过期档案告警 | 0.5天 | 🔴 |
+
+### 13.4 测试覆盖率提升
+
+| 任务ID | 任务名称 | 说明 | 工时 | 状态 |
+|--------|----------|------|------|------|
+| BE-9.7 | **Controller层测试** | 补充 Controller 单元测试，覆盖率提升至 80% | 1天 | 🔴 |
+| BE-9.8 | **Security层测试** | 补充 Security 模块测试，覆盖率提升至 80% | 0.5天 | 🔴 |
+
+---
+
+## 十四、Sprint 10：电子借阅功能（预计 8 人天）
+
+> 🎯 **目标**：实现电子借阅链接功能，支持从律所管理系统申请借阅并获取临时访问链接
+
+**背景说明**：
+- 当前借阅流程是按实体档案设计的（借出-归还），不适合电子档案
+- 电子借阅应该在审批通过后生成临时访问链接，链接到期自动失效
+- 支持律所管理系统通过API申请借阅，并在借阅列表显示访问链接
+
+### 14.1 数据库设计
+
+| 任务ID | 任务名称 | 说明 | 工时 | 状态 |
+|--------|----------|------|------|------|
+| BE-10.1 | **电子借阅链接表** | 创建 arc_borrow_link 表，存储借阅链接信息 | 0.5天 | ✅ |
+
+**表结构设计**：
+```sql
+CREATE TABLE arc_borrow_link (
+    id BIGSERIAL PRIMARY KEY,
+    borrow_id BIGINT,                            -- 关联的借阅申请（可为空，外部系统直接申请时无需关联）
+    archive_id BIGINT NOT NULL,                  -- 档案ID
+    archive_no VARCHAR(100),                     -- 档案号（冗余）
+    access_token VARCHAR(100) NOT NULL UNIQUE,   -- 访问令牌（UUID）
+    
+    -- 申请信息
+    source_type VARCHAR(50),                     -- 来源类型：INTERNAL/LAW_FIRM
+    source_system VARCHAR(100),                  -- 来源系统名称
+    source_user_id VARCHAR(100),                 -- 来源系统用户ID
+    source_user_name VARCHAR(100),               -- 来源系统用户姓名
+    borrow_purpose TEXT,                         -- 借阅目的
+    
+    -- 链接配置
+    expire_at TIMESTAMP NOT NULL,                -- 过期时间
+    max_access_count INT,                        -- 最大访问次数（NULL不限制）
+    allow_download BOOLEAN DEFAULT true,         -- 是否允许下载
+    
+    -- 访问统计
+    access_count INT DEFAULT 0,                  -- 访问次数
+    download_count INT DEFAULT 0,                -- 下载次数
+    last_access_at TIMESTAMP,                    -- 最后访问时间
+    last_access_ip VARCHAR(50),                  -- 最后访问IP
+    
+    -- 状态
+    status VARCHAR(20) DEFAULT 'ACTIVE',         -- ACTIVE/EXPIRED/REVOKED
+    revoke_reason TEXT,                          -- 撤销原因
+    revoked_at TIMESTAMP,                        -- 撤销时间
+    revoked_by BIGINT,                           -- 撤销人
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by BIGINT
+);
+
+CREATE INDEX idx_borrow_link_token ON arc_borrow_link(access_token);
+CREATE INDEX idx_borrow_link_archive ON arc_borrow_link(archive_id);
+CREATE INDEX idx_borrow_link_status ON arc_borrow_link(status);
+CREATE INDEX idx_borrow_link_expire ON arc_borrow_link(expire_at);
+```
+
+### 14.2 后端开发
+
+| 任务ID | 任务名称 | 说明 | 工时 | 状态 |
+|--------|----------|------|------|------|
+| BE-10.2 | **BorrowLink 实体类和 Mapper** | 创建实体类、Mapper 接口 | 0.5天 | ✅ |
+| BE-10.3 | **BorrowLinkService 服务** | 生成链接、验证链接、记录访问、撤销链接 | 1天 | ✅ |
+| BE-10.4 | **开放API - 申请借阅** | POST /open/borrow/apply，供律所系统调用 | 1天 | ✅ |
+| BE-10.5 | **公开访问接口** | GET /open/borrow/access/{token}，无需登录查看档案 | 1天 | ✅ |
+| BE-10.6 | **BorrowLinkController** | 管理接口：列表、撤销、统计 | 0.5天 | ✅ |
+
+**BE-10.4 接口规范**：
+```yaml
+POST /api/open/borrow/apply
+Authorization: X-API-Key: {api-key}
+Content-Type: application/json
+
+Request:
+  archiveId: 123                    # 档案ID（二选一）
+  archiveNo: "ARC-2026-0001"        # 档案号（二选一）
+  userId: "lawyer001"               # 申请人ID
+  userName: "张律师"                 # 申请人姓名
+  purpose: "案件复核需要查阅"        # 借阅目的
+  expireDays: 7                     # 有效期天数（默认7天，最长30天）
+  allowDownload: true               # 是否允许下载
+
+Response:
+  success: true
+  data:
+    linkId: 456
+    accessUrl: "https://archive.example.com/open/borrow/access/abc123..."
+    expireAt: "2026-03-10T10:00:00"
+    archiveNo: "ARC-2026-0001"
+    archiveTitle: "张三诉李四合同纠纷案"
+```
+
+**BE-10.5 公开访问页面数据**：
+```yaml
+GET /api/open/borrow/access/{token}
+
+Response:
+  success: true
+  data:
+    valid: true
+    archive:
+      archiveNo: "ARC-2026-0001"
+      title: "张三诉李四合同纠纷案"
+      archiveType: "LITIGATION"
+      # ... 其他基本信息
+    files:
+      - id: 1
+        fileName: "判决书.pdf"
+        fileSize: 1024000
+        previewUrl: "https://..."    # 预签名URL
+        downloadUrl: "https://..."   # 预签名URL（如允许下载）
+    linkInfo:
+      expireAt: "2026-03-10T10:00:00"
+      remainingDays: 5
+      allowDownload: true
+```
+
+### 14.3 前端开发
+
+| 任务ID | 任务名称 | 说明 | 工时 | 状态 |
+|--------|----------|------|------|------|
+| FE-10.1 | **公开访问页面** | BorrowAccess.vue，无需登录的档案查看页 | 1.5天 | ✅ |
+| FE-10.2 | **借阅链接管理页面** | BorrowLinkList.vue，管理已生成的链接 | 1天 | ✅ |
+
+**FE-10.1 验收标准**：
+```
+1. 通过链接直接访问，无需登录
+2. 显示档案基本信息
+3. 文件列表支持预览
+4. 如允许下载，显示下载按钮
+5. 显示链接有效期倒计时
+6. 链接过期/撤销时显示提示页
+7. 添加水印（显示访问者信息）
+```
+
+### 14.4 律所管理系统对接（暂不实现）
+
+> ⏸️ 以下任务暂缓，待档案系统电子借阅功能完成后再对接
+
+| 任务ID | 任务名称 | 说明 | 工时 | 状态 |
+|--------|----------|------|------|------|
+| LF-10.1 | **借阅客户端服务** | ArchiveBorrowClient，调用档案系统申请借阅API | 0.5天 | ⏸️ |
+| LF-10.2 | **借阅申请功能** | 在档案详情页添加"申请电子借阅"按钮 | 0.5天 | ⏸️ |
+| LF-10.3 | **借阅链接列表** | 显示已申请的借阅链接，可复制/打开 | 0.5天 | ⏸️ |
+
+### Sprint 10 验收检查清单
+
+- [x] 数据库表 arc_borrow_link 正确创建
+- [x] 开放API可申请电子借阅并返回访问链接
+- [x] 返回的访问链接可正常打开（无需登录）
+- [x] 链接过期后无法访问
+- [x] 支持撤销链接
+- [x] 访问记录正确记录
+
+### Sprint 10 工作量汇总（当前阶段）
+
+| 角色 | 工时 |
+|------|------|
+| BE（档案系统） | 4.5天 |
+| FE（档案系统） | 2.5天 |
+| **合计** | **7天** |
+
+---
+
+## 十五、部署与运维（DO）
 
 > 档案系统部署在 myu 服务器 /opt/archive-system 目录

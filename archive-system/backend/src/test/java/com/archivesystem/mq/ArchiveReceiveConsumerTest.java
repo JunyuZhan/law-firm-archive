@@ -4,6 +4,7 @@ import com.archivesystem.config.MetricsConfig;
 import com.archivesystem.entity.Archive;
 import com.archivesystem.entity.DigitalFile;
 import com.archivesystem.repository.ArchiveMapper;
+import com.archivesystem.repository.PushRecordMapper;
 import com.archivesystem.service.FileStorageService;
 import com.rabbitmq.client.Channel;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,11 +18,14 @@ import org.mockito.quality.Strictness;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.concurrent.TimeUnit;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -34,6 +38,9 @@ class ArchiveReceiveConsumerTest {
     private ArchiveMapper archiveMapper;
 
     @Mock
+    private PushRecordMapper pushRecordMapper;
+
+    @Mock
     private FileStorageService fileStorageService;
 
     @Mock
@@ -41,6 +48,12 @@ class ArchiveReceiveConsumerTest {
 
     @Mock
     private MetricsConfig metricsConfig;
+
+    @Mock
+    private StringRedisTemplate stringRedisTemplate;
+
+    @Mock
+    private ValueOperations<String, String> valueOperations;
 
     @Mock
     private Channel channel;
@@ -86,6 +99,10 @@ class ArchiveReceiveConsumerTest {
 
         when(amqpMessage.getMessageProperties()).thenReturn(messageProperties);
         when(messageProperties.getDeliveryTag()).thenReturn(1L);
+        when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.setIfAbsent(anyString(), anyString(), anyLong(), any(TimeUnit.class))).thenReturn(true);
+        when(pushRecordMapper.insert(any())).thenReturn(1);
+        when(pushRecordMapper.updateById(any())).thenReturn(1);
     }
 
     @Test

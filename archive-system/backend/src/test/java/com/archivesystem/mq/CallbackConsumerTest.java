@@ -13,9 +13,12 @@ import org.mockito.quality.Strictness;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.concurrent.TimeUnit;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -29,6 +32,12 @@ class CallbackConsumerTest {
 
     @Mock
     private RabbitTemplate rabbitTemplate;
+
+    @Mock
+    private StringRedisTemplate stringRedisTemplate;
+
+    @Mock
+    private ValueOperations<String, String> valueOperations;
 
     @Mock
     private Channel channel;
@@ -58,12 +67,14 @@ class CallbackConsumerTest {
                 .failedCount(0)
                 .totalCount(5)
                 .completedAt(LocalDateTime.now())
-                .retryCount(0)
+                .retryCount(1)
                 .maxRetries(3)
                 .build();
 
         when(amqpMessage.getMessageProperties()).thenReturn(messageProperties);
         when(messageProperties.getDeliveryTag()).thenReturn(1L);
+        when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.setIfAbsent(anyString(), anyString(), anyLong(), any(TimeUnit.class))).thenReturn(true);
     }
 
     @Test
