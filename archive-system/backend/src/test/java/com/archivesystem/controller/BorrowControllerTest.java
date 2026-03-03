@@ -177,7 +177,8 @@ class BorrowControllerTest {
         doNothing().when(borrowService).reject(1L, "档案暂不可借");
 
         mockMvc.perform(put("/borrows/1/reject")
-                        .param("reason", "档案暂不可借"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"档案暂不可借\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
                 .andExpect(jsonPath("$.message").value("已拒绝"));

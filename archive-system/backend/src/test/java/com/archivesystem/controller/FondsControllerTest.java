@@ -68,6 +68,7 @@ class FondsControllerTest {
     @Test
     void testUpdate_Success() throws Exception {
         Fonds updateFonds = new Fonds();
+        updateFonds.setFondsNo("QZ001");
         updateFonds.setFondsName("更新全宗");
 
         when(fondsService.update(eq(1L), any(Fonds.class))).thenReturn(testFonds);

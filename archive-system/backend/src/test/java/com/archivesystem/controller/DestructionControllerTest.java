@@ -199,7 +199,8 @@ class DestructionControllerTest {
         doNothing().when(destructionService).reject(anyLong(), anyString());
 
         mockMvc.perform(put("/destructions/1/reject")
-                        .param("comment", "不符合销毁条件"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"comment\":\"不符合销毁条件\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
                 .andExpect(jsonPath("$.message").value("已拒绝"));

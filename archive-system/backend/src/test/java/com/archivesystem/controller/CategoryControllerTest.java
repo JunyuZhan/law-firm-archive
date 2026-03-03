@@ -72,7 +72,9 @@ class CategoryControllerTest {
     @Test
     void testUpdate_Success() throws Exception {
         Category updateCategory = new Category();
+        updateCategory.setCategoryCode("CAT001");
         updateCategory.setCategoryName("更新分类");
+        updateCategory.setArchiveType("DOCUMENT");
 
         when(categoryService.update(eq(1L), any(Category.class))).thenReturn(testCategory);
 

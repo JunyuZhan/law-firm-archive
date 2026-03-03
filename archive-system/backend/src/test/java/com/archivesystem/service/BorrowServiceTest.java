@@ -1,5 +1,6 @@
 package com.archivesystem.service;
 
+import com.archivesystem.TestLambdaCacheInitializer;
 import com.archivesystem.common.PageResult;
 import com.archivesystem.common.exception.BusinessException;
 import com.archivesystem.common.exception.NotFoundException;
@@ -10,6 +11,7 @@ import com.archivesystem.repository.BorrowApplicationMapper;
 import com.archivesystem.security.SecurityUtils;
 import com.archivesystem.service.impl.BorrowServiceImpl;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,6 +33,11 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 @org.mockito.junit.jupiter.MockitoSettings(strictness = org.mockito.quality.Strictness.LENIENT)
 class BorrowServiceTest {
+
+    @BeforeAll
+    static void initLambdaCache() {
+        TestLambdaCacheInitializer.initTableInfo(BorrowApplication.class, Archive.class);
+    }
 
     @Mock
     private BorrowApplicationMapper borrowMapper;

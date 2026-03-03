@@ -62,38 +62,58 @@ class LocationControllerTest {
 
     @Test
     void testGetById() throws Exception {
-        when(locationService.getById(1L)).thenThrow(NotFoundException.of("位置", 1L));
+        ArchiveLocation location = new ArchiveLocation();
+        location.setId(1L);
+        location.setLocationCode("LOC001");
+        location.setLocationName("档案室A");
+        when(locationService.getById(1L)).thenReturn(location);
 
         mockMvc.perform(get("/locations/1"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value("404"));
+                .andExpect(jsonPath("$.code").value("200"))
+                .andExpect(jsonPath("$.data.locationCode").value("LOC001"));
     }
 
     @Test
     void testCreate() throws Exception {
-        Map<String, Object> data = new HashMap<>();
-        data.put("name", "档案室A");
-        data.put("floor", 1);
+        ArchiveLocation location = new ArchiveLocation();
+        location.setLocationCode("LOC001");
+        location.setLocationName("档案室A");
+        
+        ArchiveLocation created = new ArchiveLocation();
+        created.setId(1L);
+        created.setLocationCode("LOC001");
+        created.setLocationName("档案室A");
+        
+        when(locationService.create(any(ArchiveLocation.class))).thenReturn(created);
 
         mockMvc.perform(post("/locations")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(data)))
+                        .content(objectMapper.writeValueAsString(location)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value("501"))
-                .andExpect(jsonPath("$.message").value("功能尚未实现"));
+                .andExpect(jsonPath("$.code").value("200"))
+                .andExpect(jsonPath("$.data.id").value(1));
     }
 
     @Test
     void testUpdate() throws Exception {
-        Map<String, Object> data = new HashMap<>();
-        data.put("name", "档案室B");
+        ArchiveLocation location = new ArchiveLocation();
+        location.setLocationCode("LOC001");
+        location.setLocationName("档案室B");
+        
+        ArchiveLocation updated = new ArchiveLocation();
+        updated.setId(1L);
+        updated.setLocationCode("LOC001");
+        updated.setLocationName("档案室B");
+        
+        when(locationService.update(eq(1L), any(ArchiveLocation.class))).thenReturn(updated);
 
         mockMvc.perform(put("/locations/1")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(data)))
+                        .content(objectMapper.writeValueAsString(location)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value("501"))
-                .andExpect(jsonPath("$.message").value("功能尚未实现"));
+                .andExpect(jsonPath("$.code").value("200"))
+                .andExpect(jsonPath("$.data.locationName").value("档案室B"));
     }
 
     @Test

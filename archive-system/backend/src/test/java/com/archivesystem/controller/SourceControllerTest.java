@@ -2,6 +2,7 @@ package com.archivesystem.controller;
 
 import com.archivesystem.entity.ExternalSource;
 import com.archivesystem.repository.ExternalSourceMapper;
+import com.archivesystem.security.ApiKeyAuthFilter;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -10,6 +11,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -23,12 +26,16 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class SourceControllerTest {
 
     private MockMvc mockMvc;
 
     @Mock
     private ExternalSourceMapper externalSourceMapper;
+
+    @Mock
+    private ApiKeyAuthFilter apiKeyAuthFilter;
 
     @InjectMocks
     private SourceController sourceController;
@@ -51,6 +58,9 @@ class SourceControllerTest {
         testSource.setEnabled(true);
         testSource.setDeleted(false);
         testSource.setCreatedAt(LocalDateTime.now());
+        
+        when(apiKeyAuthFilter.generateApiKey()).thenReturn("new-api-key-123");
+        doNothing().when(apiKeyAuthFilter).clearApiKeyCache(anyString());
     }
 
     @Test
@@ -101,6 +111,7 @@ class SourceControllerTest {
         ExternalSource newSource = new ExternalSource();
         newSource.setSourceCode("COURT");
         newSource.setSourceName("法院系统");
+        newSource.setSourceType("COURT");
         newSource.setApiUrl("http://court.example.com");
 
         when(externalSourceMapper.insert(any(ExternalSource.class))).thenReturn(1);
@@ -110,7 +121,7 @@ class SourceControllerTest {
                         .content(objectMapper.writeValueAsString(newSource)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
-                .andExpect(jsonPath("$.message").value("创建成功"));
+                .andExpect(jsonPath("$.message").value("创建成功，请保存 API Key"));
 
         verify(externalSourceMapper).insert(any(ExternalSource.class));
     }
@@ -118,7 +129,9 @@ class SourceControllerTest {
     @Test
     void testUpdate() throws Exception {
         ExternalSource updateSource = new ExternalSource();
+        updateSource.setSourceCode("LAW_FIRM");
         updateSource.setSourceName("更新后的名称");
+        updateSource.setSourceType("LAW_FIRM");
         updateSource.setApiUrl("http://new-url.example.com");
 
         when(externalSourceMapper.selectById(1L)).thenReturn(testSource);
@@ -137,7 +150,9 @@ class SourceControllerTest {
     @Test
     void testUpdate_NotFound() throws Exception {
         ExternalSource updateSource = new ExternalSource();
+        updateSource.setSourceCode("LAW_FIRM");
         updateSource.setSourceName("更新后的名称");
+        updateSource.setSourceType("LAW_FIRM");
 
         when(externalSourceMapper.selectById(999L)).thenReturn(null);
 
