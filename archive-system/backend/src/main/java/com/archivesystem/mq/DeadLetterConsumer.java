@@ -2,8 +2,10 @@ package com.archivesystem.mq;
 
 import com.archivesystem.config.RabbitMQConfig;
 import com.archivesystem.entity.Archive;
+import com.archivesystem.entity.DeadLetterRecord;
 import com.archivesystem.entity.PushRecord;
 import com.archivesystem.repository.ArchiveMapper;
+import com.archivesystem.repository.DeadLetterRecordMapper;
 import com.archivesystem.repository.PushRecordMapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -28,6 +30,7 @@ public class DeadLetterConsumer {
 
     private final ArchiveMapper archiveMapper;
     private final PushRecordMapper pushRecordMapper;
+    private final DeadLetterRecordMapper deadLetterRecordMapper;
     private final ObjectMapper objectMapper;
 
     /**
@@ -43,21 +46,33 @@ public class DeadLetterConsumer {
         
         long deliveryTag = message.getMessageProperties().getDeliveryTag();
         String messageBody = new String(message.getBody());
+        String routingKey = message.getMessageProperties().getReceivedRoutingKey();
+        String messageId = message.getMessageProperties().getMessageId();
         
         log.error("死信消息到达: routing_key={}, message={}", 
-                message.getMessageProperties().getReceivedRoutingKey(), 
+                routingKey, 
                 messageBody.substring(0, Math.min(messageBody.length(), 500)));
+        
+        // 检查是否来自DLQ重试（避免循环）
+        Boolean isRetryFromDlq = message.getMessageProperties().getHeader("x-retry-from-dlq");
+        Long dlqRecordId = message.getMessageProperties().getHeader("x-dlq-record-id");
         
         try {
             // 尝试解析消息并更新相关状态
             ArchiveReceiveMessage archiveMessage = parseMessage(messageBody);
+            
+            // 保存或更新死信记录
+            DeadLetterRecord dlRecord = saveDeadLetterRecord(
+                    messageId, routingKey, messageBody, archiveMessage, 
+                    isRetryFromDlq, dlqRecordId);
+            
             if (archiveMessage != null) {
                 handleFailedArchiveMessage(archiveMessage);
             }
             
             // 确认消息（从死信队列中移除）
             channel.basicAck(deliveryTag, false);
-            log.info("死信消息处理完成，已从队列移除");
+            log.info("死信消息处理完成，已从队列移除，记录ID={}", dlRecord.getId());
             
         } catch (Exception e) {
             log.error("死信消息处理异常", e);
@@ -69,6 +84,50 @@ public class DeadLetterConsumer {
                 log.error("确认死信消息失败", ioException);
             }
         }
+    }
+
+    /**
+     * 保存死信记录.
+     */
+    private DeadLetterRecord saveDeadLetterRecord(
+            String messageId, String routingKey, String messageBody, 
+            ArchiveReceiveMessage archiveMessage, Boolean isRetryFromDlq, Long dlqRecordId) {
+        
+        // 如果是重试失败的消息，更新原记录
+        if (Boolean.TRUE.equals(isRetryFromDlq) && dlqRecordId != null) {
+            DeadLetterRecord existingRecord = deadLetterRecordMapper.selectById(dlqRecordId);
+            if (existingRecord != null) {
+                existingRecord.setStatus(DeadLetterRecord.STATUS_FAILED);
+                existingRecord.setErrorMessage("重试后仍然失败");
+                existingRecord.setUpdatedAt(LocalDateTime.now());
+                deadLetterRecordMapper.updateById(existingRecord);
+                log.info("更新死信记录（重试失败）: id={}", dlqRecordId);
+                return existingRecord;
+            }
+        }
+        
+        // 创建新的死信记录
+        DeadLetterRecord record = new DeadLetterRecord();
+        record.setMessageId(messageId);
+        record.setQueueName(RabbitMQConfig.ARCHIVE_RECEIVE_QUEUE);
+        record.setRoutingKey(routingKey);
+        record.setMessageBody(messageBody);
+        record.setStatus(DeadLetterRecord.STATUS_PENDING);
+        record.setRetryCount(0);
+        record.setMaxRetries(3);
+        record.setCreatedAt(LocalDateTime.now());
+        record.setUpdatedAt(LocalDateTime.now());
+        
+        if (archiveMessage != null) {
+            record.setArchiveId(archiveMessage.getArchiveId());
+            record.setSourceType(archiveMessage.getSourceType());
+            record.setSourceId(archiveMessage.getSourceId());
+        }
+        
+        deadLetterRecordMapper.insert(record);
+        log.info("保存死信记录: id={}, archiveId={}", record.getId(), record.getArchiveId());
+        
+        return record;
     }
     
     /**

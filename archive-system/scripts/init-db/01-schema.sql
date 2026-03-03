@@ -429,6 +429,45 @@ CREATE INDEX IF NOT EXISTS idx_borrow_link_status ON arc_borrow_link(status);
 CREATE INDEX IF NOT EXISTS idx_borrow_link_expire ON arc_borrow_link(expire_at);
 CREATE INDEX IF NOT EXISTS idx_borrow_link_borrow ON arc_borrow_link(borrow_id);
 
+-- 4.2.1 死信消息记录表（消息队列处理失败的消息）
+CREATE TABLE IF NOT EXISTS arc_dead_letter_record (
+    id BIGSERIAL PRIMARY KEY,
+    
+    -- ===== 消息信息 =====
+    message_id VARCHAR(100),                -- 原始消息ID
+    queue_name VARCHAR(100) NOT NULL,       -- 原队列名称
+    routing_key VARCHAR(100),               -- 路由键
+    message_body TEXT NOT NULL,             -- 消息内容（JSON）
+    
+    -- ===== 关联信息 =====
+    archive_id BIGINT REFERENCES arc_archive(id), -- 关联的档案ID（如果可解析）
+    source_type VARCHAR(50),                -- 来源类型
+    source_id VARCHAR(100),                 -- 来源ID
+    
+    -- ===== 失败信息 =====
+    error_message TEXT,                     -- 错误信息
+    retry_count INTEGER DEFAULT 0,          -- 已重试次数
+    max_retries INTEGER DEFAULT 3,          -- 最大重试次数
+    
+    -- ===== 状态管理 =====
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDING', -- PENDING-待处理, RETRYING-重试中, SUCCESS-成功, FAILED-失败, IGNORED-已忽略
+    processed_by BIGINT REFERENCES sys_user(id),   -- 处理人
+    processed_at TIMESTAMP,                 -- 处理时间
+    process_remark TEXT,                    -- 处理备注
+    
+    -- ===== 时间戳 =====
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+COMMENT ON TABLE arc_dead_letter_record IS '死信消息记录表 - 记录消息队列处理失败的消息';
+COMMENT ON COLUMN arc_dead_letter_record.status IS '状态：PENDING-待处理, RETRYING-重试中, SUCCESS-成功, FAILED-失败, IGNORED-已忽略';
+
+CREATE INDEX IF NOT EXISTS idx_dlr_status ON arc_dead_letter_record(status);
+CREATE INDEX IF NOT EXISTS idx_dlr_queue ON arc_dead_letter_record(queue_name);
+CREATE INDEX IF NOT EXISTS idx_dlr_archive ON arc_dead_letter_record(archive_id);
+CREATE INDEX IF NOT EXISTS idx_dlr_created ON arc_dead_letter_record(created_at);
+
 -- 4.3 鉴定记录表
 CREATE TABLE IF NOT EXISTS arc_appraisal_record (
     id BIGSERIAL PRIMARY KEY,

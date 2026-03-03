@@ -4,6 +4,7 @@ import com.archivesystem.entity.Archive;
 import com.archivesystem.entity.PushRecord;
 import com.archivesystem.repository.ArchiveMapper;
 import com.archivesystem.repository.PushRecordMapper;
+import com.archivesystem.service.DeadLetterService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,8 +24,8 @@ import java.util.stream.Collectors;
  * 
  * 包含：
  * - PROCESSING 状态超时处理
- * - 过期档案提醒（待实现）
- * - 孤儿文件清理（待实现）
+ * - 过期档案提醒
+ * - 死信消息自动重试
  */
 @Slf4j
 @Component
@@ -33,6 +34,7 @@ public class ArchiveScheduledTasks {
 
     private final ArchiveMapper archiveMapper;
     private final PushRecordMapper pushRecordMapper;
+    private final DeadLetterService deadLetterService;
 
     // PROCESSING 状态超时时间（分钟），默认 30 分钟
     @Value("${archive.processing.timeout-minutes:30}")
@@ -230,5 +232,24 @@ public class ArchiveScheduledTasks {
         
         // 可扩展：按档案负责人分组发送个性化通知
         // 可扩展：生成过期档案报告
+    }
+
+    /**
+     * 死信消息自动重试
+     * 每 10 分钟执行一次
+     * 自动重试待处理且未超过最大重试次数的死信消息
+     */
+    @Scheduled(fixedRate = 10 * 60 * 1000, initialDelay = 2 * 60 * 1000)
+    public void autoRetryDeadLetters() {
+        log.info("开始自动重试死信消息...");
+        
+        try {
+            int successCount = deadLetterService.autoRetry(10);
+            if (successCount > 0) {
+                log.info("死信消息自动重试完成，成功 {} 条", successCount);
+            }
+        } catch (Exception e) {
+            log.error("死信消息自动重试异常", e);
+        }
     }
 }
