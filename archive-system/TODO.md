@@ -713,7 +713,7 @@ public Result<List<Statistics>> getOverview(...) { }
 
 | 任务ID | 任务名称 | 说明 | 工时 | 状态 |
 |--------|----------|------|------|------|
-| BE-9.1 | **集成测试修复** | 修复 AuthIntegrationTest 和 ArchiveIntegrationTest 中的 15 个失败用例 | 2天 | 🔴 |
+| BE-9.1 | **单元测试修复** | 修复所有 1154 个单元测试，添加 TestLambdaCacheInitializer | 2天 | ✅ |
 | BE-9.2 | **死信队列处理** | 完善死信队列的重试策略与人工干预接口 | 1天 | 🔴 |
 
 ### 13.2 安全增强
