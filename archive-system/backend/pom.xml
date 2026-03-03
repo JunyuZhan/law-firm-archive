@@ -68,6 +68,12 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-amqp</artifactId>
         </dependency>
+        <!-- 邮件发送（可选依赖） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
+            <optional>true</optional>
+        </dependency>
         <!-- Elasticsearch 全文检索 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

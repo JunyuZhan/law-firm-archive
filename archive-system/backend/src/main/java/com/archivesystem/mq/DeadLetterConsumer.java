@@ -7,6 +7,7 @@ import com.archivesystem.entity.PushRecord;
 import com.archivesystem.repository.ArchiveMapper;
 import com.archivesystem.repository.DeadLetterRecordMapper;
 import com.archivesystem.repository.PushRecordMapper;
+import com.archivesystem.service.AlertService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rabbitmq.client.Channel;
@@ -32,6 +33,7 @@ public class DeadLetterConsumer {
     private final PushRecordMapper pushRecordMapper;
     private final DeadLetterRecordMapper deadLetterRecordMapper;
     private final ObjectMapper objectMapper;
+    private final AlertService alertService;
 
     /**
      * 消费死信消息
@@ -184,12 +186,15 @@ public class DeadLetterConsumer {
      * 发送告警通知
      */
     private void sendAlertNotification(ArchiveReceiveMessage message) {
-        // 这里可以集成告警服务，如邮件、短信、钉钉机器人等
         log.error("【告警】档案处理失败，需人工介入处理！archiveId={}, sourceType={}, sourceId={}", 
                 message.getArchiveId(), message.getSourceType(), message.getSourceId());
         
-        // TODO: 实现具体的告警通知逻辑
-        // alertService.sendAlert(...)
+        alertService.alertDeadLetter(
+                message.getArchiveId(),
+                message.getSourceType(),
+                message.getSourceId(),
+                "消息处理失败，已进入死信队列"
+        );
     }
     
     /**

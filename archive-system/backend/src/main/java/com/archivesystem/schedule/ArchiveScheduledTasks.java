@@ -4,6 +4,7 @@ import com.archivesystem.entity.Archive;
 import com.archivesystem.entity.PushRecord;
 import com.archivesystem.repository.ArchiveMapper;
 import com.archivesystem.repository.PushRecordMapper;
+import com.archivesystem.service.AlertService;
 import com.archivesystem.service.DeadLetterService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +36,7 @@ public class ArchiveScheduledTasks {
     private final ArchiveMapper archiveMapper;
     private final PushRecordMapper pushRecordMapper;
     private final DeadLetterService deadLetterService;
+    private final AlertService alertService;
 
     // PROCESSING 状态超时时间（分钟），默认 30 分钟
     @Value("${archive.processing.timeout-minutes:30}")
@@ -137,9 +139,14 @@ public class ArchiveScheduledTasks {
      * 发送超时告警
      */
     private void sendTimeoutAlert(Archive archive) {
-        // TODO: 接入告警服务（邮件、钉钉、短信等）
         log.error("【告警】档案处理超时！archiveId={}, archiveNo={}, sourceType={}, sourceId={}", 
                 archive.getId(), archive.getArchiveNo(), archive.getSourceType(), archive.getSourceId());
+        
+        alertService.alertArchiveProcessFailed(
+                archive.getId(),
+                archive.getArchiveNo(),
+                String.format("PROCESSING 状态超时（超过 %d 分钟）", processingTimeoutMinutes)
+        );
     }
 
     /**
@@ -225,13 +232,23 @@ public class ArchiveScheduledTasks {
      * 发送过期提醒通知
      */
     private void sendExpirationReminder(List<Archive> expiringArchives, long urgentCount) {
-        // TODO: 接入通知服务（邮件、钉钉、短信等）
-        // 当前仅输出告警日志
         log.error("【告警】档案即将过期提醒！总计: {} 个，其中紧急（7天内）: {} 个", 
                 expiringArchives.size(), urgentCount);
         
-        // 可扩展：按档案负责人分组发送个性化通知
-        // 可扩展：生成过期档案报告
+        LocalDate today = LocalDate.now();
+        
+        // 发送紧急告警（7天内过期的档案）
+        expiringArchives.stream()
+                .filter(a -> a.getRetentionExpireDate().isBefore(today.plusDays(8)))
+                .forEach(archive -> {
+                    int daysUntilExpire = (int) java.time.temporal.ChronoUnit.DAYS.between(
+                            today, archive.getRetentionExpireDate());
+                    alertService.alertArchiveExpiring(
+                            archive.getId(),
+                            archive.getArchiveNo(),
+                            daysUntilExpire
+                    );
+                });
     }
 
     /**
