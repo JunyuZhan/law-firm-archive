@@ -88,8 +88,20 @@ public class ArchiveServiceImpl implements ArchiveService {
         // 生成档案号
         String archiveNo = generateArchiveNo(request.getArchiveType());
 
-        // 获取默认全宗
-        Fonds defaultFonds = fondsMapper.selectByFondsNo("QZ001");
+        // 获取全宗：优先使用管理系统指定的，否则使用默认
+        Fonds fonds = null;
+        if (StringUtils.hasText(request.getFondsCode())) {
+            fonds = fondsMapper.selectByFondsNo(request.getFondsCode());
+        }
+        if (fonds == null) {
+            fonds = fondsMapper.selectByFondsNo("QZ001");
+        }
+        
+        // 获取分类：如果管理系统指定了分类号
+        Category category = null;
+        if (StringUtils.hasText(request.getCategoryCode())) {
+            category = categoryMapper.selectByCategoryCode(request.getCategoryCode());
+        }
 
         // 确定初始状态：异步处理时为PENDING，同步处理时直接RECEIVED
         boolean isAsync = request.getAsync() == null || request.getAsync();
@@ -98,8 +110,10 @@ public class ArchiveServiceImpl implements ArchiveService {
         // 创建档案记录
         Archive archive = Archive.builder()
                 .archiveNo(archiveNo)
-                .fondsId(defaultFonds != null ? defaultFonds.getId() : null)
-                .fondsNo(defaultFonds != null ? defaultFonds.getFondsNo() : null)
+                .fondsId(fonds != null ? fonds.getId() : null)
+                .fondsNo(fonds != null ? fonds.getFondsNo() : null)
+                .categoryId(category != null ? category.getId() : null)
+                .categoryCode(category != null ? category.getCategoryCode() : null)
                 .archiveType(request.getArchiveType())
                 .title(request.getTitle())
                 .responsibility(request.getResponsibility())

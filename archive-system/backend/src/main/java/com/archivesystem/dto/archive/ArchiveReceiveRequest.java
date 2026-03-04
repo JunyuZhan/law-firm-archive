@@ -54,6 +54,12 @@ public class ArchiveReceiveRequest {
     /** 责任者 */
     @JsonAlias("responsiblePerson")
     private String responsibility;
+    
+    /** 全宗号（管理系统指定） */
+    private String fondsCode;
+    
+    /** 分类号（管理系统指定） */
+    private String categoryCode;
 
     /** 文件日期 */
     private LocalDate documentDate;
