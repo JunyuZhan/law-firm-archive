@@ -197,25 +197,51 @@ public class CallbackServiceImpl implements CallbackService {
     
     /**
      * 构建回调请求体
+     * 与管理系统 ArchiveCallbackRequest 字段保持一致
      */
     private Map<String, Object> buildCallbackPayload(CallbackMessage message) {
         Map<String, Object> payload = new HashMap<>();
+        // 基础字段
         payload.put("archiveId", message.getArchiveId());
         payload.put("archiveNo", message.getArchiveNo());
         payload.put("sourceType", message.getSourceType());
         payload.put("sourceId", message.getSourceId());
+        payload.put("sourceNo", message.getSourceNo());
+        
+        // 状态字段
         payload.put("status", message.getStatus());
+        payload.put("message", buildStatusMessage(message));
+        
+        // 文件处理统计
         payload.put("successCount", message.getSuccessCount());
         payload.put("failedCount", message.getFailedCount());
         payload.put("totalCount", message.getTotalCount());
+        
+        // 时间和签名相关
         payload.put("completedAt", message.getCompletedAt() != null ? 
                 message.getCompletedAt().toString() : LocalDateTime.now().toString());
+        payload.put("timestamp", System.currentTimeMillis());
         
+        // 错误信息
         if (message.getErrorMessage() != null) {
             payload.put("errorMessage", message.getErrorMessage());
         }
         
         return payload;
+    }
+    
+    /**
+     * 构建状态消息
+     */
+    private String buildStatusMessage(CallbackMessage message) {
+        return switch (message.getStatus()) {
+            case CallbackMessage.STATUS_SUCCESS -> "档案处理完成";
+            case CallbackMessage.STATUS_PARTIAL -> 
+                    String.format("档案部分处理完成，成功 %d/%d 个文件", 
+                            message.getSuccessCount(), message.getTotalCount());
+            case CallbackMessage.STATUS_FAILED -> "档案处理失败: " + message.getErrorMessage();
+            default -> "档案处理状态: " + message.getStatus();
+        };
     }
     
 }

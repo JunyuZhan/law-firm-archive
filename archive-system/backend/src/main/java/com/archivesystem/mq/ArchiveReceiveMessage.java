@@ -48,6 +48,11 @@ public class ArchiveReceiveMessage implements Serializable {
     private String sourceId;
     
     /**
+     * 来源系统编号
+     */
+    private String sourceNo;
+    
+    /**
      * 回调URL（处理完成后通知）
      */
     private String callbackUrl;
@@ -100,6 +105,7 @@ public class ArchiveReceiveMessage implements Serializable {
                 .archiveNo(archiveNo)
                 .sourceType(request.getSourceType())
                 .sourceId(request.getSourceId())
+                .sourceNo(request.getSourceNo())
                 .callbackUrl(callbackUrl)
                 .retryCount(0)
                 .maxRetries(3)

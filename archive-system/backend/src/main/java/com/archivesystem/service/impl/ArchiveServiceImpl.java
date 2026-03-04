@@ -268,6 +268,7 @@ public class ArchiveServiceImpl implements ArchiveService {
                             .archiveNo(archiveNo)
                             .sourceType(request.getSourceType())
                             .sourceId(request.getSourceId())
+                            .sourceNo(request.getSourceNo())
                             .callbackUrl(request.getCallbackUrl())
                             .status(status)
                             .successCount(fileCount)

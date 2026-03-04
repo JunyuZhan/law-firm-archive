@@ -46,6 +46,11 @@ public class CallbackMessage implements Serializable {
     private String sourceId;
     
     /**
+     * 来源系统编号
+     */
+    private String sourceNo;
+    
+    /**
      * 回调URL
      */
     private String callbackUrl;
