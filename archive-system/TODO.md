@@ -734,8 +734,8 @@ public Result<List<Statistics>> getOverview(...) { }
 
 | 任务ID | 任务名称 | 说明 | 工时 | 状态 |
 |--------|----------|------|------|------|
-| BE-9.7 | **Controller层测试** | 补充 Controller 单元测试，覆盖率提升至 80% | 1天 | 🔴 |
-| BE-9.8 | **Security层测试** | 补充 Security 模块测试，覆盖率提升至 80% | 0.5天 | 🔴 |
+| BE-9.7 | **Controller层测试** | 补充 Controller 单元测试，覆盖率提升至 80% | 1天 | ✅ |
+| BE-9.8 | **Security层测试** | 补充 Security 模块测试，覆盖率提升至 80% | 0.5天 | ✅ |
 
 ---
 

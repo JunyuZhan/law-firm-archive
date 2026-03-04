@@ -72,6 +72,9 @@ public class ArchiveReceiveRequest {
 
     /** 结案日期 */
     private LocalDate caseCloseDate;
+    
+    /** 结案日期（字符串格式，兼容管理系统） */
+    private String caseCloseDateStr;
 
     // ===== 电子文件列表 =====
 
@@ -81,6 +84,9 @@ public class ArchiveReceiveRequest {
 
     /** 扩展元数据 */
     private Map<String, Object> metadata;
+    
+    /** 扩展属性（兼容管理系统字段名） */
+    private Map<String, Object> extraAttributes;
 
     /** 关键词 */
     private String keywords;
@@ -88,9 +94,56 @@ public class ArchiveReceiveRequest {
     /** 摘要 */
     @Size(max = 2000, message = "摘要不能超过2000个字符")
     private String archiveAbstract;
+    
+    /** 描述（兼容管理系统字段名，映射到摘要） */
+    private String description;
 
     /** 备注 */
     private String remarks;
+    
+    // ===== 兼容字段处理方法 =====
+    
+    /**
+     * 获取结案日期（优先使用 LocalDate，其次解析字符串）.
+     */
+    public LocalDate getEffectiveCaseCloseDate() {
+        if (caseCloseDate != null) {
+            return caseCloseDate;
+        }
+        if (caseCloseDateStr != null && !caseCloseDateStr.isEmpty()) {
+            try {
+                return LocalDate.parse(caseCloseDateStr);
+            } catch (Exception e) {
+                return null;
+            }
+        }
+        return null;
+    }
+    
+    /**
+     * 获取摘要（优先使用 archiveAbstract，其次使用 description）.
+     */
+    public String getEffectiveAbstract() {
+        if (archiveAbstract != null && !archiveAbstract.isEmpty()) {
+            return archiveAbstract;
+        }
+        return description;
+    }
+    
+    /**
+     * 获取扩展数据（合并 metadata 和 extraAttributes）.
+     */
+    public Map<String, Object> getEffectiveMetadata() {
+        if (metadata != null && extraAttributes != null) {
+            Map<String, Object> merged = new java.util.HashMap<>(metadata);
+            merged.putAll(extraAttributes);
+            return merged;
+        }
+        if (metadata != null) {
+            return metadata;
+        }
+        return extraAttributes;
+    }
 
     /**
      * 文件信息.
@@ -103,6 +156,9 @@ public class ArchiveReceiveRequest {
 
         /** 文件类型 */
         private String fileType;
+        
+        /** MIME类型（兼容管理系统字段名） */
+        private String mimeType;
 
         /** 下载URL */
         @NotBlank(message = "文件下载URL不能为空")
@@ -116,5 +172,18 @@ public class ArchiveReceiveRequest {
 
         /** 文件描述 */
         private String description;
+        
+        /** 排序号（兼容管理系统字段） */
+        private Integer sortOrder;
+        
+        /**
+         * 获取文件类型（优先使用 fileType，其次使用 mimeType）.
+         */
+        public String getEffectiveFileType() {
+            if (fileType != null && !fileType.isEmpty()) {
+                return fileType;
+            }
+            return mimeType;
+        }
     }
 }
