@@ -1,5 +1,8 @@
 package com.archivesystem.dto.archive;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonSetter;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -7,6 +10,7 @@ import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Map;
 
@@ -48,6 +52,7 @@ public class ArchiveReceiveRequest {
     private String retentionPeriod;
 
     /** 责任者 */
+    @JsonAlias("responsiblePerson")
     private String responsibility;
 
     /** 文件日期 */
@@ -71,10 +76,34 @@ public class ArchiveReceiveRequest {
     private String lawyerName;
 
     /** 结案日期 */
+    @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate caseCloseDate;
     
     /** 结案日期（字符串格式，兼容管理系统） */
     private String caseCloseDateStr;
+    
+    /**
+     * 接收字符串格式的结案日期（兼容管理系统发送的 caseCloseDate 字段）.
+     * Jackson 会先尝试解析为 LocalDate，失败时调用此方法
+     */
+    @JsonSetter("caseCloseDate")
+    public void setCaseCloseDateFromString(Object value) {
+        if (value == null) {
+            return;
+        }
+        if (value instanceof LocalDate) {
+            this.caseCloseDate = (LocalDate) value;
+        } else if (value instanceof String) {
+            String strValue = (String) value;
+            if (!strValue.isEmpty()) {
+                try {
+                    this.caseCloseDate = LocalDate.parse(strValue);
+                } catch (DateTimeParseException e) {
+                    this.caseCloseDateStr = strValue;
+                }
+            }
+        }
+    }
 
     // ===== 电子文件列表 =====
 
