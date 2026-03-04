@@ -24,6 +24,11 @@ public interface ArchiveService {
     ArchiveDTO update(Long id, ArchiveCreateRequest request);
 
     /**
+     * 补充上传.
+     */
+    ArchiveDTO supplement(Long id, ArchiveSupplementRequest request);
+
+    /**
      * 获取档案详情.
      */
     ArchiveDTO getById(Long id);

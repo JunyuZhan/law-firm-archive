@@ -473,6 +473,60 @@ public class ArchiveServiceImpl implements ArchiveService {
     }
 
     @Override
+    @Transactional
+    public ArchiveDTO supplement(Long id, ArchiveSupplementRequest request) {
+        Archive archive = archiveMapper.selectById(id);
+        if (archive == null) {
+            throw NotFoundException.of("档案", id);
+        }
+        
+        // 更新档案形式
+        if (request.getArchiveForm() != null && !request.getArchiveForm().isBlank()) {
+            archive.setArchiveForm(request.getArchiveForm());
+            archive.setHasElectronic(Archive.FORM_ELECTRONIC.equals(request.getArchiveForm()) 
+                    || Archive.FORM_HYBRID.equals(request.getArchiveForm()));
+            archive.setHasPhysical(Archive.FORM_PHYSICAL.equals(request.getArchiveForm()) 
+                    || Archive.FORM_HYBRID.equals(request.getArchiveForm()));
+        }
+        
+        // 更新存放位置
+        if (request.getLocationId() != null) {
+            archive.setLocationId(request.getLocationId());
+            var location = locationService.getById(request.getLocationId());
+            if (location != null) {
+                String storageLocation = location.getLocationName();
+                if (location.getRoomName() != null) {
+                    storageLocation = location.getRoomName() + " - " + storageLocation;
+                }
+                archive.setStorageLocation(storageLocation);
+            }
+        }
+        
+        // 更新盒号
+        if (request.getBoxNo() != null) {
+            archive.setBoxNo(request.getBoxNo());
+        }
+        
+        archiveMapper.updateById(archive);
+        
+        // 关联补充的文件
+        if (request.getFileIds() != null && !request.getFileIds().isEmpty()) {
+            associateFiles(id, request.getFileIds());
+            // 更新文件计数
+            int newFileCount = (archive.getFileCount() != null ? archive.getFileCount() : 0) 
+                    + request.getFileIds().size();
+            archive.setFileCount(newFileCount);
+            archive.setHasElectronic(true);
+            archiveMapper.updateById(archive);
+        }
+        
+        log.info("档案补充成功: id={}, archiveForm={}, fileCount={}", 
+                id, archive.getArchiveForm(), request.getFileIds() != null ? request.getFileIds().size() : 0);
+        
+        return getById(id);
+    }
+
+    @Override
     public ArchiveDTO getById(Long id) {
         Archive archive = archiveMapper.selectById(id);
         if (archive == null) {

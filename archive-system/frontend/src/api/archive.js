@@ -72,6 +72,17 @@ export function deleteArchive(id) {
 }
 
 /**
+ * 补充上传（补充文件和纸质档案信息）
+ */
+export function supplementArchive(id, data) {
+  return request({
+    url: `/archives/${id}/supplement`,
+    method: 'post',
+    data
+  })
+}
+
+/**
  * 更新档案状态
  */
 export function updateArchiveStatus(id, status) {

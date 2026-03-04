@@ -137,6 +137,19 @@ public class ArchiveController {
     }
 
     /**
+     * 补充上传（补充文件和纸质档案信息）.
+     */
+    @PostMapping("/{id}/supplement")
+    @Operation(summary = "补充上传")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
+    public Result<ArchiveDTO> supplement(
+            @PathVariable Long id,
+            @RequestBody ArchiveSupplementRequest request) {
+        ArchiveDTO archive = archiveService.supplement(id, request);
+        return Result.success("补充成功", archive);
+    }
+
+    /**
      * 上传文件到档案.
      */
     @PostMapping("/{archiveId}/files")

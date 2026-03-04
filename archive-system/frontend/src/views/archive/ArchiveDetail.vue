@@ -15,6 +15,13 @@
         <template #extra>
           <el-button-group>
             <el-button
+              type="primary"
+              @click="handleSupplementUpload"
+            >
+              <el-icon><Upload /></el-icon>
+              补充上传
+            </el-button>
+            <el-button
               v-if="files.length > 0"
               type="success"
               :loading="isDownloading"
@@ -366,6 +373,101 @@
         </el-button>
       </template>
     </el-dialog>
+
+    <!-- 补充上传弹窗 -->
+    <el-dialog
+      v-model="supplementDialogVisible"
+      title="补充上传"
+      width="700px"
+      destroy-on-close
+    >
+      <el-form
+        ref="supplementFormRef"
+        :model="supplementForm"
+        label-width="100px"
+      >
+        <el-form-item label="当前形式">
+          <el-tag :type="getArchiveFormType(archive?.archiveForm)">
+            {{ getArchiveFormName(archive?.archiveForm) }}
+          </el-tag>
+        </el-form-item>
+        
+        <el-form-item label="变更形式">
+          <el-radio-group v-model="supplementForm.archiveForm">
+            <el-radio-button value="ELECTRONIC">
+              电子档案
+            </el-radio-button>
+            <el-radio-button value="PHYSICAL">
+              纸质档案
+            </el-radio-button>
+            <el-radio-button value="HYBRID">
+              混合档案
+            </el-radio-button>
+          </el-radio-group>
+          <div
+            v-if="supplementForm.archiveForm !== archive?.archiveForm"
+            class="form-tip"
+          >
+            将从「{{ getArchiveFormName(archive?.archiveForm) }}」变更为「{{ getArchiveFormName(supplementForm.archiveForm) }}」
+          </div>
+        </el-form-item>
+
+        <el-form-item
+          v-if="supplementForm.archiveForm !== 'ELECTRONIC'"
+          label="存放位置"
+          :rules="[{ required: true, message: '请选择存放位置' }]"
+        >
+          <el-select
+            v-model="supplementForm.locationId"
+            placeholder="请选择存放位置"
+            style="width: 100%"
+            filterable
+          >
+            <el-option
+              v-for="item in locationOptions"
+              :key="item.id"
+              :label="`${item.locationName}（${item.roomName || ''}${item.shelfNo ? ' ' + item.shelfNo + '架' : ''}）`"
+              :value="item.id"
+            />
+          </el-select>
+        </el-form-item>
+
+        <el-form-item
+          v-if="supplementForm.archiveForm !== 'ELECTRONIC'"
+          label="盒号"
+        >
+          <el-input
+            v-model="supplementForm.boxNo"
+            placeholder="档案盒编号"
+          />
+        </el-form-item>
+
+        <el-divider content-position="left">
+          补充文件
+        </el-divider>
+
+        <el-form-item label="上传文件">
+          <BatchUpload
+            ref="supplementUploadRef"
+            :allowed-types="allowedFileTypes"
+            :max-size="maxFileSize"
+            :auto-upload="false"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="supplementDialogVisible = false">
+          取消
+        </el-button>
+        <el-button
+          type="primary"
+          :loading="supplementSubmitting"
+          @click="submitSupplement"
+        >
+          确认提交
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -374,12 +476,14 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { 
-  Document, Folder, Clock, Briefcase, Download,
+  Document, Folder, Clock, Briefcase, Download, Upload,
   Picture, VideoPlay, Headset, FolderOpened, Reading 
 } from '@element-plus/icons-vue'
-import { getArchiveDetail, getFileDownloadUrl, getArchiveDownloadUrl } from '@/api/archive'
+import { getArchiveDetail, getFileDownloadUrl, getArchiveDownloadUrl, supplementArchive } from '@/api/archive'
 import FilePreview from '@/components/FilePreview.vue'
+import BatchUpload from '@/components/BatchUpload.vue'
 import { checkBorrowAvailable, applyBorrow } from '@/api/borrow'
+import { getAvailableLocations } from '@/api/location'
 import {
   getArchiveTypeName,
   getStatusName,
@@ -420,6 +524,20 @@ const borrowRules = {
   purpose: [{ required: true, message: '请输入借阅目的', trigger: 'blur' }],
   expectedReturnDate: [{ required: true, message: '请选择预计归还日期', trigger: 'change' }]
 }
+
+// 补充上传相关
+const supplementDialogVisible = ref(false)
+const supplementSubmitting = ref(false)
+const supplementFormRef = ref(null)
+const supplementUploadRef = ref(null)
+const supplementForm = ref({
+  archiveForm: 'ELECTRONIC',
+  locationId: null,
+  boxNo: ''
+})
+const locationOptions = ref([])
+const allowedFileTypes = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'jpg', 'jpeg', 'png', 'gif', 'zip', 'rar', 'ofd', 'tif', 'tiff']
+const maxFileSize = 100 * 1024 * 1024 // 100MB
 
 // 按分类分组的文件列表
 const groupedFiles = computed(() => {
@@ -541,6 +659,74 @@ const submitBorrowApply = async () => {
     }
   } finally {
     borrowSubmitting.value = false
+  }
+}
+
+// 加载存放位置
+const loadLocations = async () => {
+  try {
+    const res = await getAvailableLocations()
+    if (res.code === 0 && res.data) {
+      locationOptions.value = res.data
+    }
+  } catch (e) {
+    console.error('加载存放位置失败', e)
+  }
+}
+
+// 打开补充上传弹窗
+const handleSupplementUpload = () => {
+  supplementForm.value = {
+    archiveForm: archive.value?.archiveForm || 'ELECTRONIC',
+    locationId: archive.value?.locationId || null,
+    boxNo: archive.value?.boxNo || ''
+  }
+  loadLocations()
+  supplementDialogVisible.value = true
+}
+
+// 提交补充上传
+const submitSupplement = async () => {
+  supplementSubmitting.value = true
+  
+  try {
+    // 先上传文件
+    let uploadedFileIds = []
+    if (supplementUploadRef.value) {
+      const uploadResult = await supplementUploadRef.value.startUpload()
+      if (uploadResult && uploadResult.length > 0) {
+        uploadedFileIds = uploadResult.map(f => f.id)
+      }
+    }
+    
+    // 检查是否需要更新
+    const formChanged = supplementForm.value.archiveForm !== archive.value?.archiveForm ||
+                        supplementForm.value.locationId !== archive.value?.locationId ||
+                        supplementForm.value.boxNo !== archive.value?.boxNo
+    
+    if (uploadedFileIds.length === 0 && !formChanged) {
+      ElMessage.warning('请上传文件或修改档案信息')
+      return
+    }
+    
+    // 提交补充信息
+    const data = {
+      archiveForm: supplementForm.value.archiveForm,
+      locationId: supplementForm.value.locationId,
+      boxNo: supplementForm.value.boxNo,
+      fileIds: uploadedFileIds
+    }
+    
+    await supplementArchive(route.params.id, data)
+    ElMessage.success('补充上传成功')
+    supplementDialogVisible.value = false
+    // 刷新页面数据
+    fetchData()
+  } catch (e) {
+    console.error('补充上传失败', e)
+    ElMessage.error(e.response?.data?.message || '补充上传失败')
+  } finally {
+    supplementSubmitting.value = false
   }
 }
 
