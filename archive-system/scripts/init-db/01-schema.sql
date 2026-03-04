@@ -214,8 +214,12 @@ CREATE TABLE IF NOT EXISTS arc_archive (
     case_close_date DATE,                        -- 结案日期
     
     -- ===== 存储信息 =====
+    archive_form VARCHAR(30) DEFAULT 'ELECTRONIC', -- 档案形式：ELECTRONIC-电子档案, PHYSICAL-纸质档案, HYBRID-混合档案
     has_electronic BOOLEAN DEFAULT TRUE,         -- 是否有电子文件
-    storage_location VARCHAR(200),               -- 存储位置描述
+    has_physical BOOLEAN DEFAULT FALSE,          -- 是否有纸质实体
+    location_id BIGINT,                          -- 存放位置ID（关联archive_location表）
+    storage_location VARCHAR(200),               -- 存储位置描述（冗余，便于展示）
+    box_no VARCHAR(50),                          -- 盒号
     total_file_size BIGINT DEFAULT 0,            -- 总文件大小（字节）
     file_count INTEGER DEFAULT 0,                -- 文件数量
     

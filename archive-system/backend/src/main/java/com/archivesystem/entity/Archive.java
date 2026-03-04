@@ -122,12 +122,26 @@ public class Archive extends BaseEntity {
 
     // ===== 存储信息 =====
     
+    /** 档案形式 */
+    @Builder.Default
+    private String archiveForm = FORM_ELECTRONIC;
+    
     /** 是否有电子文件 */
     @Builder.Default
     private Boolean hasElectronic = true;
     
-    /** 存储位置描述 */
+    /** 是否有纸质实体 */
+    @Builder.Default
+    private Boolean hasPhysical = false;
+    
+    /** 存放位置ID */
+    private Long locationId;
+    
+    /** 存储位置描述（冗余） */
     private String storageLocation;
+    
+    /** 盒号 */
+    private String boxNo;
     
     /** 总文件大小（字节） */
     @Builder.Default
@@ -136,6 +150,12 @@ public class Archive extends BaseEntity {
     /** 文件数量 */
     @Builder.Default
     private Integer fileCount = 0;
+    
+    // ===== 档案形式常量 =====
+    
+    public static final String FORM_ELECTRONIC = "ELECTRONIC";
+    public static final String FORM_PHYSICAL = "PHYSICAL";
+    public static final String FORM_HYBRID = "HYBRID";
 
     // ===== 状态信息 =====
     

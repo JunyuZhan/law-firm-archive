@@ -96,6 +96,23 @@
               <el-descriptions-item label="文件数量">
                 {{ archive.fileCount || 0 }} 个
               </el-descriptions-item>
+              <el-descriptions-item label="档案形式">
+                <el-tag :type="getArchiveFormType(archive.archiveForm)">
+                  {{ getArchiveFormName(archive.archiveForm) }}
+                </el-tag>
+              </el-descriptions-item>
+              <el-descriptions-item
+                v-if="archive.archiveForm !== 'ELECTRONIC'"
+                label="存放位置"
+              >
+                {{ archive.storageLocation || '-' }}
+              </el-descriptions-item>
+              <el-descriptions-item
+                v-if="archive.archiveForm !== 'ELECTRONIC' && archive.boxNo"
+                label="盒号"
+              >
+                {{ archive.boxNo }}
+              </el-descriptions-item>
             </el-descriptions>
           </el-card>
 
@@ -370,6 +387,8 @@ import {
   getRetentionName,
   getSecurityName,
   getSourceName,
+  getArchiveFormName,
+  getArchiveFormType,
   FILE_CATEGORY_ORDER,
   getFileCategoryName,
   getFileCategoryColor

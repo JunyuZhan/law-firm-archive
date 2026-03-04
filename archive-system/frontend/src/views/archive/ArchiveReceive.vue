@@ -77,7 +77,25 @@
           </el-divider>
           
           <el-row :gutter="20">
-            <el-col :span="12">
+            <el-col :span="8">
+              <el-form-item
+                label="档案形式"
+                prop="archiveForm"
+              >
+                <el-radio-group v-model="form.archiveForm">
+                  <el-radio-button value="ELECTRONIC">
+                    电子档案
+                  </el-radio-button>
+                  <el-radio-button value="PHYSICAL">
+                    纸质档案
+                  </el-radio-button>
+                  <el-radio-button value="HYBRID">
+                    混合档案
+                  </el-radio-button>
+                </el-radio-group>
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
               <el-form-item
                 label="档案类型"
                 prop="archiveType"
@@ -96,7 +114,7 @@
                 </el-select>
               </el-form-item>
             </el-col>
-            <el-col :span="12">
+            <el-col :span="8">
               <el-form-item
                 label="保管期限"
                 prop="retentionPeriod"
@@ -113,6 +131,42 @@
                     :value="item.value"
                   />
                 </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+
+          <!-- 纸质档案存放位置（仅纸质/混合档案显示） -->
+          <el-row
+            v-if="form.archiveForm !== 'ELECTRONIC'"
+            :gutter="20"
+          >
+            <el-col :span="12">
+              <el-form-item
+                label="存放位置"
+                :prop="form.archiveForm !== 'ELECTRONIC' ? 'locationId' : ''"
+                :rules="form.archiveForm !== 'ELECTRONIC' ? [{ required: true, message: '请选择存放位置', trigger: 'change' }] : []"
+              >
+                <el-select
+                  v-model="form.locationId"
+                  placeholder="请选择存放位置"
+                  style="width: 100%"
+                  filterable
+                >
+                  <el-option
+                    v-for="item in locationOptions"
+                    :key="item.id"
+                    :label="`${item.locationName}（${item.roomName || ''}${item.shelfNo ? ' ' + item.shelfNo + '架' : ''}）`"
+                    :value="item.id"
+                  />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="盒号">
+                <el-input
+                  v-model="form.boxNo"
+                  placeholder="档案盒编号"
+                />
               </el-form-item>
             </el-col>
           </el-row>
@@ -354,10 +408,11 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { createArchive } from '@/api/archive'
+import { getAvailableLocations } from '@/api/location'
 import BatchUpload from '@/components/BatchUpload.vue'
 import {
   getArchiveTypeName,
@@ -384,6 +439,7 @@ const allowedFileTypes = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'j
 const maxFileSize = 100 * 1024 * 1024 // 100MB
 
 const form = reactive({
+  archiveForm: 'ELECTRONIC',
   archiveType: 'DOCUMENT',
   retentionPeriod: 'Y10',
   title: '',
@@ -398,8 +454,12 @@ const form = reactive({
   lawyerName: '',
   keywords: '',
   archiveAbstract: '',
-  remarks: ''
+  remarks: '',
+  locationId: null,
+  boxNo: ''
 })
+
+const locationOptions = ref([])
 
 const rules = {
   archiveType: [{ required: true, message: '请选择档案类型', trigger: 'change' }],
@@ -515,6 +575,22 @@ const uploadedFiles = computed(() => {
 // 注：getArchiveTypeName, getRetentionName, getSecurityName 已从 archiveEnums.js 导入
 // 为兼容模板中的调用，保留别名
 const getSecurityLevelName = getSecurityName
+
+// 加载可用的存放位置
+const loadLocations = async () => {
+  try {
+    const res = await getAvailableLocations()
+    if (res.code === 0 && res.data) {
+      locationOptions.value = res.data
+    }
+  } catch (e) {
+    console.error('加载存放位置失败', e)
+  }
+}
+
+onMounted(() => {
+  loadLocations()
+})
 </script>
 
 <style lang="scss" scoped>

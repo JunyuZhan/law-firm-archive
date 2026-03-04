@@ -140,7 +140,7 @@ class ArchiveDTOTest {
                 "PERMANENT", "永久", date, "NORMAL", date,
                 "LAW_FIRM", "系统", "SRC-001", "NO-001",
                 "CASE-001", "案件名", "委托人", "律师", date,
-                true, "位置", 1000L, 3,
+                "ELECTRONIC", true, false, 1L, "位置", "BOX-001", 1000L, 3,
                 "STORED", "已存储",
                 dateTime, "接收人", dateTime, "编目人", dateTime, "归档人",
                 "关键词", "摘要", "备注", extraData, files,

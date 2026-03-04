@@ -61,8 +61,12 @@ public class ArchiveDTO {
     private LocalDate caseCloseDate;
     
     // 存储信息
+    private String archiveForm;
     private Boolean hasElectronic;
+    private Boolean hasPhysical;
+    private Long locationId;
     private String storageLocation;
+    private String boxNo;
     private Long totalFileSize;
     private Integer fileCount;
     

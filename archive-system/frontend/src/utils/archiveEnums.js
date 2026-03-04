@@ -23,6 +23,31 @@ export const getArchiveTypeOptions = () => {
   return Object.entries(ARCHIVE_TYPES).map(([value, label]) => ({ value, label }))
 }
 
+// ========== 档案形式 ==========
+export const ARCHIVE_FORMS = {
+  ELECTRONIC: '电子档案',
+  PHYSICAL: '纸质档案',
+  HYBRID: '混合档案'
+}
+
+export const ARCHIVE_FORM_TYPE = {
+  ELECTRONIC: 'primary',
+  PHYSICAL: 'warning',
+  HYBRID: 'success'
+}
+
+export const getArchiveFormName = (form) => {
+  return ARCHIVE_FORMS[form] || form || '电子档案'
+}
+
+export const getArchiveFormType = (form) => {
+  return ARCHIVE_FORM_TYPE[form] || 'primary'
+}
+
+export const getArchiveFormOptions = () => {
+  return Object.entries(ARCHIVE_FORMS).map(([value, label]) => ({ value, label }))
+}
+
 // ========== 档案状态 ==========
 export const ARCHIVE_STATUS = {
   DRAFT: '草稿',

@@ -18,6 +18,7 @@ import com.archivesystem.security.SecurityUtils;
 import com.archivesystem.service.ArchiveService;
 import com.archivesystem.service.ConfigService;
 import com.archivesystem.service.FileStorageService;
+import com.archivesystem.service.LocationService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
@@ -54,6 +55,7 @@ public class ArchiveServiceImpl implements ArchiveService {
     private final RetentionPeriodMapper retentionPeriodMapper;
     private final PushRecordMapper pushRecordMapper;
     private final FileStorageService fileStorageService;
+    private final LocationService locationService;
     private final RabbitTemplate rabbitTemplate;
     private final StringRedisTemplate stringRedisTemplate;
     private final MetricsConfig metricsConfig;
@@ -306,11 +308,32 @@ public class ArchiveServiceImpl implements ArchiveService {
     @Transactional
     public ArchiveDTO create(ArchiveCreateRequest request) {
         String archiveNo = generateArchiveNo(request.getArchiveType());
+        
+        // 处理档案形式
+        String archiveForm = request.getArchiveForm();
+        if (archiveForm == null || archiveForm.isBlank()) {
+            archiveForm = Archive.FORM_ELECTRONIC;
+        }
+        boolean hasElectronic = Archive.FORM_ELECTRONIC.equals(archiveForm) || Archive.FORM_HYBRID.equals(archiveForm);
+        boolean hasPhysical = Archive.FORM_PHYSICAL.equals(archiveForm) || Archive.FORM_HYBRID.equals(archiveForm);
+        
+        // 获取存放位置名称
+        String storageLocation = null;
+        if (request.getLocationId() != null) {
+            var location = locationService.getById(request.getLocationId());
+            if (location != null) {
+                storageLocation = location.getLocationName();
+                if (location.getRoomName() != null) {
+                    storageLocation = location.getRoomName() + " - " + storageLocation;
+                }
+            }
+        }
 
         Archive archive = Archive.builder()
                 .archiveNo(archiveNo)
                 .fondsId(request.getFondsId())
                 .categoryId(request.getCategoryId())
+                .archiveForm(archiveForm)
                 .archiveType(request.getArchiveType())
                 .title(request.getTitle())
                 .fileNo(request.getFileNo())
@@ -327,6 +350,11 @@ public class ArchiveServiceImpl implements ArchiveService {
                 .clientName(request.getClientName())
                 .lawyerName(request.getLawyerName())
                 .caseCloseDate(request.getCaseCloseDate())
+                .hasElectronic(hasElectronic)
+                .hasPhysical(hasPhysical)
+                .locationId(request.getLocationId())
+                .storageLocation(storageLocation)
+                .boxNo(request.getBoxNo())
                 .keywords(request.getKeywords())
                 .archiveAbstract(request.getArchiveAbstract())
                 .remarks(request.getRemarks())
@@ -359,6 +387,28 @@ public class ArchiveServiceImpl implements ArchiveService {
         if (archive == null) {
             throw NotFoundException.of("档案", id);
         }
+        
+        // 处理档案形式
+        String archiveForm = request.getArchiveForm();
+        if (archiveForm != null && !archiveForm.isBlank()) {
+            archive.setArchiveForm(archiveForm);
+            archive.setHasElectronic(Archive.FORM_ELECTRONIC.equals(archiveForm) || Archive.FORM_HYBRID.equals(archiveForm));
+            archive.setHasPhysical(Archive.FORM_PHYSICAL.equals(archiveForm) || Archive.FORM_HYBRID.equals(archiveForm));
+        }
+        
+        // 处理存放位置
+        if (request.getLocationId() != null) {
+            archive.setLocationId(request.getLocationId());
+            var location = locationService.getById(request.getLocationId());
+            if (location != null) {
+                String storageLocation = location.getLocationName();
+                if (location.getRoomName() != null) {
+                    storageLocation = location.getRoomName() + " - " + storageLocation;
+                }
+                archive.setStorageLocation(storageLocation);
+            }
+        }
+        archive.setBoxNo(request.getBoxNo());
 
         archive.setFondsId(request.getFondsId());
         archive.setCategoryId(request.getCategoryId());
@@ -665,8 +715,12 @@ public class ArchiveServiceImpl implements ArchiveService {
                 .clientName(archive.getClientName())
                 .lawyerName(archive.getLawyerName())
                 .caseCloseDate(archive.getCaseCloseDate())
+                .archiveForm(archive.getArchiveForm())
                 .hasElectronic(archive.getHasElectronic())
+                .hasPhysical(archive.getHasPhysical())
+                .locationId(archive.getLocationId())
                 .storageLocation(archive.getStorageLocation())
+                .boxNo(archive.getBoxNo())
                 .totalFileSize(archive.getTotalFileSize())
                 .fileCount(archive.getFileCount())
                 .status(archive.getStatus())

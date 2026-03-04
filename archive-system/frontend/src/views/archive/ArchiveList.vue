@@ -112,6 +112,20 @@
           </template>
         </el-table-column>
         <el-table-column
+          prop="archiveForm"
+          label="形式"
+          width="100"
+        >
+          <template #default="{ row }">
+            <el-tag
+              size="small"
+              :type="getArchiveFormType(row.archiveForm)"
+            >
+              {{ getArchiveFormName(row.archiveForm) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column
           prop="status"
           label="状态"
           width="100"
@@ -222,6 +236,8 @@ import { ElMessage } from 'element-plus'
 import { getArchiveList, deleteArchive } from '@/api/archive'
 import { 
   getArchiveTypeName, 
+  getArchiveFormName,
+  getArchiveFormType,
   getStatusName, 
   getStatusType, 
   getRetentionName,

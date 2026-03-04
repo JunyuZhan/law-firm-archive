@@ -20,9 +20,18 @@ public class ArchiveCreateRequest {
     /** 分类ID */
     private Long categoryId;
 
+    /** 档案形式（ELECTRONIC-电子档案, PHYSICAL-纸质档案, HYBRID-混合档案） */
+    private String archiveForm = "ELECTRONIC";
+
     /** 档案门类 */
     @NotBlank(message = "档案门类不能为空")
     private String archiveType;
+
+    /** 存放位置ID（纸质/混合档案必填） */
+    private Long locationId;
+
+    /** 盒号 */
+    private String boxNo;
 
     /** 档案题名 */
     @NotBlank(message = "档案题名不能为空")
