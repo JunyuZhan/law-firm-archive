@@ -36,7 +36,7 @@
 ## 项目结构
 
 ```
-archive-system/
+.
 ├── backend/                    # 后端项目
 │   ├── src/main/java/com/archivesystem/
 │   │   ├── config/            # 配置类

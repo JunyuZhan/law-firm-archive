@@ -84,7 +84,7 @@ Spring Security的过滤器链在Servlet容器处理context-path之后才执行�
 
 ### 1. 编译项目
 ```bash
-cd archive-system/backend
+cd backend
 mvn clean compile
 ```
 
