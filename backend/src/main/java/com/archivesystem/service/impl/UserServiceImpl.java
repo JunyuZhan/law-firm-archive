@@ -9,7 +9,6 @@ import com.archivesystem.entity.UserRole;
 import com.archivesystem.repository.UserMapper;
 import com.archivesystem.repository.UserRoleMapper;
 import com.archivesystem.security.PasswordValidator;
-import com.archivesystem.security.SecurityUtils;
 import com.archivesystem.service.OperationLogService;
 import com.archivesystem.service.UserService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;

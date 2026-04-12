@@ -1,6 +1,5 @@
 package com.archivesystem.service;
 
-import com.archivesystem.document.ArchiveDocument;
 import com.archivesystem.dto.archive.ArchiveSearchRequest;
 import com.archivesystem.dto.archive.ArchiveSearchResult;
 

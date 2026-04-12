@@ -1,7 +1,6 @@
 package com.archivesystem.service;
 
 import io.minio.*;
-import io.minio.http.Method;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -139,7 +138,6 @@ class MinioServiceTest {
 
     @Test
     void testGetFile_Success() throws Exception {
-        InputStream mockStream = new ByteArrayInputStream("test content".getBytes());
         GetObjectResponse mockResponse = mock(GetObjectResponse.class);
         
         when(minioClient.getObject(any(GetObjectArgs.class))).thenReturn(mockResponse);

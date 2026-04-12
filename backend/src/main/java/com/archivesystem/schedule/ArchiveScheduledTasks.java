@@ -104,8 +104,7 @@ public class ArchiveScheduledTasks {
             
             // 更新关联的推送记录
             updateRelatedPushRecord(archive);
-            
-            // TODO: 发送告警通知
+
             sendTimeoutAlert(archive);
             
         } catch (Exception e) {
@@ -205,7 +204,8 @@ public class ArchiveScheduledTasks {
             // 按到期时间分组统计
             Map<LocalDate, Long> expireByDate = expiringArchives.stream()
                     .collect(Collectors.groupingBy(Archive::getRetentionExpireDate, Collectors.counting()));
-            
+            log.warn("即将过期档案按到期日分布: {}", expireByDate);
+
             // 区分 7 天内和 30 天内
             long within7Days = expiringArchives.stream()
                     .filter(a -> a.getRetentionExpireDate().isBefore(today.plusDays(8)))

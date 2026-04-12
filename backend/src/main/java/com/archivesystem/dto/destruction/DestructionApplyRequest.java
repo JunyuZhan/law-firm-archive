@@ -15,15 +15,15 @@ import lombok.Data;
 public class DestructionApplyRequest {
 
     @NotNull(message = "档案ID不能为空")
-    @Schema(description = "档案ID", example = "1", required = true)
+    @Schema(description = "档案ID", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
     private Long archiveId;
 
     @NotBlank(message = "销毁原因不能为空")
     @Size(max = 1000, message = "销毁原因不能超过1000字")
-    @Schema(description = "销毁原因", example = "保管期限已到，经鉴定无保存价值", required = true)
+    @Schema(description = "销毁原因", example = "保管期限已到，经鉴定无保存价值", requiredMode = Schema.RequiredMode.REQUIRED)
     private String destructionReason;
 
     @NotBlank(message = "销毁方式不能为空")
-    @Schema(description = "销毁方式：LOGICAL(逻辑删除)、PHYSICAL(物理销毁)", example = "LOGICAL", required = true)
+    @Schema(description = "销毁方式：LOGICAL(逻辑删除)、PHYSICAL(物理销毁)", example = "LOGICAL", requiredMode = Schema.RequiredMode.REQUIRED)
     private String destructionMethod;
 }

@@ -2,7 +2,6 @@ package com.archivesystem.controller;
 
 import com.archivesystem.common.PageResult;
 import com.archivesystem.common.exception.GlobalExceptionHandler;
-import com.archivesystem.common.exception.NotFoundException;
 import com.archivesystem.entity.ArchiveLocation;
 import com.archivesystem.service.LocationService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -19,8 +18,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;

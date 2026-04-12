@@ -2,7 +2,6 @@ package com.archivesystem.aspect;
 
 import com.archivesystem.entity.OperationLog;
 import com.archivesystem.service.OperationLogService;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.reflect.MethodSignature;
 import org.junit.jupiter.api.BeforeEach;
@@ -11,7 +10,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
@@ -20,7 +18,6 @@ import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.lang.reflect.Method;
-import java.lang.reflect.Parameter;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -35,9 +32,6 @@ class OperationLogAspectTest {
 
     @Mock
     private OperationLogService operationLogService;
-
-    @Mock
-    private ObjectMapper objectMapper;
 
     @Mock
     private JoinPoint joinPoint;
@@ -61,7 +55,7 @@ class OperationLogAspectTest {
     void testAfterReturning_WithLogAnnotation() throws Exception {
         // 创建测试方法
         Method method = TestService.class.getMethod("createArchive", Long.class, String.class);
-        Log logAnnotation = method.getAnnotation(Log.class);
+        assertNotNull(method.getAnnotation(Log.class));
 
         when(joinPoint.getSignature()).thenReturn(methodSignature);
         when(methodSignature.getMethod()).thenReturn(method);

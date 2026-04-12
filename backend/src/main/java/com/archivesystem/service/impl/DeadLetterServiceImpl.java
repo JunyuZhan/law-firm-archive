@@ -5,13 +5,11 @@ import com.archivesystem.common.exception.BusinessException;
 import com.archivesystem.common.exception.NotFoundException;
 import com.archivesystem.config.RabbitMQConfig;
 import com.archivesystem.entity.DeadLetterRecord;
-import com.archivesystem.mq.ArchiveReceiveMessage;
 import com.archivesystem.repository.DeadLetterRecordMapper;
 import com.archivesystem.security.SecurityUtils;
 import com.archivesystem.service.DeadLetterService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -34,7 +32,6 @@ public class DeadLetterServiceImpl implements DeadLetterService {
 
     private final DeadLetterRecordMapper deadLetterRecordMapper;
     private final RabbitTemplate rabbitTemplate;
-    private final ObjectMapper objectMapper;
 
     @Override
     @Transactional

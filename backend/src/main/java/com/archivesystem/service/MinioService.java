@@ -10,6 +10,7 @@ import org.springframework.web.multipart.MultipartFile;
 import jakarta.annotation.PostConstruct;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.net.URI;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -141,7 +142,7 @@ public class MinioService {
      */
     public String downloadAndStore(String sourceUrl, String objectName) {
         try {
-            URL url = new URL(sourceUrl);
+            URL url = URI.create(sourceUrl).toURL();
             try (InputStream inputStream = url.openStream()) {
                 byte[] data = inputStream.readAllBytes();
                 return uploadBytes(data, objectName, "application/octet-stream");

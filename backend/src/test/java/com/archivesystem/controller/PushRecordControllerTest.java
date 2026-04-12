@@ -6,6 +6,7 @@ import com.archivesystem.service.PushRecordService;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.junit.jupiter.api.BeforeEach;
+import org.mockito.ArgumentMatchers;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -18,7 +19,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
@@ -95,7 +95,10 @@ class PushRecordControllerTest {
         IPage<PushRecord> page = new Page<>(1, 20);
         page.setRecords(List.of(testRecord));
         page.setTotal(1);
-        when(pushRecordService.page(any(Page.class), eq(null), eq(null), eq(null), eq(null), eq(null), eq(null))).thenReturn(page);
+        when(pushRecordService.page(
+                ArgumentMatchers.<Page<PushRecord>>any(),
+                eq(null), eq(null), eq(null), eq(null), eq(null), eq(null)))
+                .thenReturn(page);
 
         mockMvc.perform(get("/push-records"))
                 .andExpect(status().isOk())

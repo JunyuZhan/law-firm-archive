@@ -15,6 +15,6 @@ public class DestructionRejectRequest {
 
     @NotBlank(message = "拒绝原因不能为空")
     @Size(min = 2, max = 500, message = "拒绝原因长度应在2-500字之间")
-    @Schema(description = "拒绝原因", example = "档案仍具有保存价值", required = true)
+    @Schema(description = "拒绝原因", example = "档案仍具有保存价值", requiredMode = Schema.RequiredMode.REQUIRED)
     private String comment;
 }

@@ -12,6 +12,7 @@ import org.springframework.http.MediaType;
 
 import java.time.LocalDate;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -24,7 +25,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class ArchiveIntegrationTest extends BaseIntegrationTest {
 
     private String adminToken;
-    private static Long createdArchiveId;
 
     @BeforeEach
     void setUp() throws Exception {
@@ -57,10 +57,10 @@ class ArchiveIntegrationTest extends BaseIntegrationTest {
                 .andExpect(jsonPath("$.data.status").value("RECEIVED"))
                 .andReturn().getResponse().getContentAsString();
 
-        // 保存创建的档案ID
         int start = response.indexOf("\"id\":") + 5;
         int end = response.indexOf(",", start);
-        createdArchiveId = Long.parseLong(response.substring(start, end));
+        long createdArchiveId = Long.parseLong(response.substring(start, end));
+        assertTrue(createdArchiveId > 0);
     }
 
     @Test

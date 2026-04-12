@@ -25,6 +25,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.InputStream;
+import java.net.URI;
 import java.net.URL;
 import java.net.URLConnection;
 import java.security.MessageDigest;
@@ -59,7 +60,6 @@ public class FileStorageServiceImpl implements FileStorageService {
     private static final String DEFAULT_ALLOWED_TYPES = "pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,gif,zip,rar,txt,ofd";
 
     private static final Set<String> IMAGE_EXTENSIONS = Set.of("jpg", "jpeg", "png", "gif", "bmp", "webp");
-    private static final Set<String> LONG_TERM_FORMATS = Set.of("pdf", "ofd", "tif", "tiff");
 
     @Override
     @Transactional
@@ -280,7 +280,7 @@ public class FileStorageServiceImpl implements FileStorageService {
         
         for (int retry = 0; retry < DOWNLOAD_MAX_RETRIES; retry++) {
             try {
-                URL url = new URL(downloadUrl);
+                URL url = URI.create(downloadUrl).toURL();
                 URLConnection conn = url.openConnection();
                 conn.setConnectTimeout(30000);
                 conn.setReadTimeout(60000);

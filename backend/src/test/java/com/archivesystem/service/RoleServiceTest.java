@@ -10,6 +10,7 @@ import com.archivesystem.service.impl.RoleServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentMatchers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -89,7 +90,7 @@ class RoleServiceTest {
     @Test
     void testList() {
         List<Role> roles = Arrays.asList(testRole);
-        when(roleMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(roles);
+        when(roleMapper.selectList(ArgumentMatchers.<LambdaQueryWrapper<Role>>any())).thenReturn(roles);
 
         List<Role> result = roleService.list();
 
@@ -99,7 +100,7 @@ class RoleServiceTest {
 
     @Test
     void testList_Empty() {
-        when(roleMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(Collections.emptyList());
+        when(roleMapper.selectList(ArgumentMatchers.<LambdaQueryWrapper<Role>>any())).thenReturn(Collections.emptyList());
 
         List<Role> result = roleService.list();
 
@@ -150,7 +151,7 @@ class RoleServiceTest {
     @Test
     void testDeleteRole_Success() {
         when(roleMapper.selectById(1L)).thenReturn(testRole);
-        when(userRoleMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(0L);
+        when(userRoleMapper.selectCount(ArgumentMatchers.<LambdaQueryWrapper<UserRole>>any())).thenReturn(0L);
         when(roleMapper.deleteById(1L)).thenReturn(1);
 
         assertDoesNotThrow(() -> roleService.delete(1L));
@@ -161,7 +162,7 @@ class RoleServiceTest {
     @Test
     void testDeleteRole_HasUsers() {
         when(roleMapper.selectById(1L)).thenReturn(testRole);
-        when(userRoleMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(5L);
+        when(userRoleMapper.selectCount(ArgumentMatchers.<LambdaQueryWrapper<UserRole>>any())).thenReturn(5L);
 
         assertThrows(BusinessException.class, () -> roleService.delete(1L));
     }

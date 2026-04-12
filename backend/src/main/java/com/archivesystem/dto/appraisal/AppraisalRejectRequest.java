@@ -15,6 +15,6 @@ public class AppraisalRejectRequest {
 
     @NotBlank(message = "拒绝原因不能为空")
     @Size(min = 2, max = 500, message = "拒绝原因长度应在2-500字之间")
-    @Schema(description = "拒绝原因", example = "鉴定理由不充分", required = true)
+    @Schema(description = "拒绝原因", example = "鉴定理由不充分", requiredMode = Schema.RequiredMode.REQUIRED)
     private String comment;
 }

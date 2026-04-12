@@ -178,8 +178,7 @@ public class DeadLetterConsumer {
                 log.info("已将推送记录状态更新为失败: pushRecordId={}", pushRecord.getId());
             }
         }
-        
-        // TODO: 发送告警通知（邮件、短信、钉钉等）
+
         sendAlertNotification(message);
     }
     

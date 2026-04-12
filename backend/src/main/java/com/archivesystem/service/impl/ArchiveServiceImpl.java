@@ -3,7 +3,6 @@ package com.archivesystem.service.impl;
 import com.archivesystem.common.PageResult;
 import com.archivesystem.common.exception.BusinessException;
 import com.archivesystem.common.exception.NotFoundException;
-import com.archivesystem.config.MetricsConfig;
 import com.archivesystem.config.RabbitMQConfig;
 import com.archivesystem.dto.archive.*;
 import com.archivesystem.entity.Archive;
@@ -62,7 +61,6 @@ public class ArchiveServiceImpl implements ArchiveService {
     private final LocationService locationService;
     private final RabbitTemplate rabbitTemplate;
     private final StringRedisTemplate stringRedisTemplate;
-    private final MetricsConfig metricsConfig;
     private final ConfigService configService;
 
     // 档案号计数器（仅作为Redis不可用时的备用）

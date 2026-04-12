@@ -112,6 +112,7 @@ public class AuthController {
             // 记录失败尝试
             int failedCount = loginSecurityService.recordFailedAttempt(username, clientIp);
             int remaining = loginSecurityService.getRemainingAttempts(username);
+            log.warn("登录失败: username={}, ip={}, 连续失败次数={}", username, clientIp, failedCount);
             
             if (remaining > 0) {
                 return Result.error("1004", String.format("用户名或密码错误，还剩%d次尝试机会", remaining));

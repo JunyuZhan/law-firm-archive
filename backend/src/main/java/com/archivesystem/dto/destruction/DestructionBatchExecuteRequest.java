@@ -16,7 +16,7 @@ import java.util.List;
 public class DestructionBatchExecuteRequest {
 
     @NotEmpty(message = "销毁记录ID列表不能为空")
-    @Schema(description = "销毁记录ID列表", required = true)
+    @Schema(description = "销毁记录ID列表", requiredMode = Schema.RequiredMode.REQUIRED)
     private List<Long> ids;
 
     @Size(max = 500, message = "备注不能超过500字")

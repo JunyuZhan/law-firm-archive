@@ -3,7 +3,6 @@ package com.archivesystem.service;
 import com.archivesystem.common.PageResult;
 import com.archivesystem.common.exception.BusinessException;
 import com.archivesystem.common.exception.NotFoundException;
-import com.archivesystem.entity.Archive;
 import com.archivesystem.entity.Fonds;
 import com.archivesystem.repository.ArchiveMapper;
 import com.archivesystem.repository.FondsMapper;
@@ -11,6 +10,7 @@ import com.archivesystem.service.impl.FondsServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentMatchers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -18,7 +18,6 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -102,7 +101,7 @@ class FondsServiceTest {
     @Test
     void testList() {
         List<Fonds> fondsList = Arrays.asList(testFonds);
-        when(fondsMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(fondsList);
+        when(fondsMapper.selectList(ArgumentMatchers.<LambdaQueryWrapper<Fonds>>any())).thenReturn(fondsList);
 
         List<Fonds> result = fondsService.list();
 
@@ -117,7 +116,10 @@ class FondsServiceTest {
         page.setRecords(records);
         page.setTotal(1);
 
-        when(fondsMapper.selectPage(any(Page.class), any(LambdaQueryWrapper.class))).thenReturn(page);
+        when(fondsMapper.selectPage(
+                ArgumentMatchers.<Page<Fonds>>any(),
+                ArgumentMatchers.<LambdaQueryWrapper<Fonds>>any()))
+                .thenReturn(page);
 
         PageResult<Fonds> result = fondsService.query(null, 1, 10);
 
@@ -220,7 +222,10 @@ class FondsServiceTest {
         page.setRecords(records);
         page.setTotal(1);
 
-        when(fondsMapper.selectPage(any(Page.class), any(LambdaQueryWrapper.class))).thenReturn(page);
+        when(fondsMapper.selectPage(
+                ArgumentMatchers.<Page<Fonds>>any(),
+                ArgumentMatchers.<LambdaQueryWrapper<Fonds>>any()))
+                .thenReturn(page);
 
         PageResult<Fonds> result = fondsService.query("律所", 1, 10);
 

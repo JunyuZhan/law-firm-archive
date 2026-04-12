@@ -219,7 +219,7 @@ public class DestructionServiceImpl implements DestructionService {
             }
             throw new BusinessException("该记录不是待审批状态，当前状态：" + current.getStatus());
         }
-        log.info("销毁申请审批通过: id={}", id);
+        log.info("销毁申请审批通过: id={}, archiveId={}", id, record.getArchiveId());
     }
 
     @Override

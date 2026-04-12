@@ -174,7 +174,7 @@ public class AppraisalServiceImpl implements AppraisalService {
             }
             throw new BusinessException("该鉴定记录不是待审批状态，当前状态：" + current.getStatus());
         }
-        log.info("鉴定审批拒绝: id={}", id);
+        log.info("鉴定审批拒绝: id={}, archiveId={}", id, record.getArchiveId());
     }
 
     /**

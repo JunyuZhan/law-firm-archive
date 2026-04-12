@@ -238,7 +238,7 @@ public class BorrowServiceImpl implements BorrowService {
             }
             throw new BusinessException("该申请不是待审批状态，当前状态：" + current.getStatus());
         }
-        log.info("借阅申请审批通过: id={}", id);
+        log.info("借阅申请审批通过: id={}, applicationNo={}", id, application.getApplicationNo());
     }
 
     @Override
@@ -265,7 +265,7 @@ public class BorrowServiceImpl implements BorrowService {
             }
             throw new BusinessException("该申请不是待审批状态，当前状态：" + current.getStatus());
         }
-        log.info("借阅申请被拒绝: id={}", id);
+        log.info("借阅申请被拒绝: id={}, applicationNo={}", id, application.getApplicationNo());
     }
 
     @Override

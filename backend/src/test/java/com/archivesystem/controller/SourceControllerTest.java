@@ -7,6 +7,7 @@ import com.archivesystem.security.OutboundUrlValidator;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
+import org.mockito.ArgumentMatchers;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -78,7 +79,7 @@ class SourceControllerTest {
 
     @Test
     void testList() throws Exception {
-        when(externalSourceMapper.selectList(any(LambdaQueryWrapper.class)))
+        when(externalSourceMapper.selectList(ArgumentMatchers.<LambdaQueryWrapper<ExternalSource>>any()))
                 .thenReturn(Arrays.asList(testSource));
 
         mockMvc.perform(get("/sources"))
@@ -172,7 +173,7 @@ class SourceControllerTest {
         duplicate.setSourceCode("COURT");
 
         when(externalSourceMapper.selectById(1L)).thenReturn(testSource);
-        when(externalSourceMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(duplicate);
+        when(externalSourceMapper.selectOne(ArgumentMatchers.<LambdaQueryWrapper<ExternalSource>>any())).thenReturn(duplicate);
 
         mockMvc.perform(put("/sources/1")
                         .contentType(MediaType.APPLICATION_JSON)

@@ -4,7 +4,6 @@ import com.archivesystem.common.util.ClientIpUtils;
 import com.archivesystem.entity.OperationLog;
 import com.archivesystem.security.SecurityUtils;
 import com.archivesystem.service.OperationLogService;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,7 +34,6 @@ import java.util.Map;
 public class OperationLogAspect {
 
     private final OperationLogService operationLogService;
-    private final ObjectMapper objectMapper;
 
     @Pointcut("@annotation(com.archivesystem.aspect.Log)")
     public void logPointcut() {}

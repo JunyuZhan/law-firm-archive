@@ -44,9 +44,6 @@ public class SqlInjectionValidator {
             Pattern.compile("\\bload_file\\s*\\(", Pattern.CASE_INSENSITIVE)
     };
 
-    // 危险字符
-    private static final char[] DANGEROUS_CHARS = {'\'', '"', ';', '\\', '\0'};
-
     /**
      * 验证输入是否安全.
      * @param input 输入字符串

@@ -31,6 +31,7 @@ import com.archivesystem.service.OperationLogService;
 import com.archivesystem.service.SmbStorageService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -623,7 +624,7 @@ public class BackupServiceImpl implements BackupService {
 
     private Map<String, Object> readManifest(Path manifestPath) {
         try {
-            return objectMapper.readValue(manifestPath.toFile(), Map.class);
+            return objectMapper.readValue(manifestPath.toFile(), new TypeReference<Map<String, Object>>() {});
         } catch (Exception e) {
             log.warn("读取 manifest 失败: {}", manifestPath, e);
             return Map.of();
@@ -666,7 +667,7 @@ public class BackupServiceImpl implements BackupService {
 
     private Map<String, Object> readManifest(BackupTarget target, String manifestRelativePath) {
         try (InputStream inputStream = smbStorageService.openInputStream(target, manifestRelativePath)) {
-            return objectMapper.readValue(inputStream, Map.class);
+            return objectMapper.readValue(inputStream, new TypeReference<Map<String, Object>>() {});
         } catch (Exception e) {
             log.warn("读取 SMB manifest 失败: {}", manifestRelativePath, e);
             return Map.of();
@@ -773,7 +774,8 @@ public class BackupServiceImpl implements BackupService {
         if (!Files.exists(indexPath)) {
             throw new BusinessException("未找到文件索引 files-index.json");
         }
-        List<Map<String, Object>> items = objectMapper.readValue(indexPath.toFile(), List.class);
+        List<Map<String, Object>> items = objectMapper.readValue(
+                indexPath.toFile(), new TypeReference<List<Map<String, Object>>>() {});
         Set<String> restoredObjects = new HashSet<>();
         for (Map<String, Object> item : items) {
             restoreObjectIfPresent(filesDir, restoredObjects, item.get("storagePath"));

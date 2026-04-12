@@ -1,6 +1,5 @@
 package com.archivesystem.service;
 
-import com.archivesystem.common.PageResult;
 import com.archivesystem.common.exception.BusinessException;
 import com.archivesystem.common.exception.NotFoundException;
 import com.archivesystem.entity.User;
@@ -9,7 +8,6 @@ import com.archivesystem.repository.UserMapper;
 import com.archivesystem.repository.UserRoleMapper;
 import com.archivesystem.service.impl.UserServiceImpl;
 import com.archivesystem.security.PasswordValidator;
-import com.archivesystem.service.OperationLogService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

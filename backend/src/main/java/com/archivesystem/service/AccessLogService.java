@@ -1,7 +1,5 @@
 package com.archivesystem.service;
 
-import com.archivesystem.entity.AccessLog;
-
 /**
  * 访问日志服务接口.
  * @author junyuzhan

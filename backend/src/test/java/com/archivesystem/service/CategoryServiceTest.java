@@ -2,7 +2,6 @@ package com.archivesystem.service;
 
 import com.archivesystem.common.exception.BusinessException;
 import com.archivesystem.common.exception.NotFoundException;
-import com.archivesystem.entity.Archive;
 import com.archivesystem.entity.Category;
 import com.archivesystem.repository.ArchiveMapper;
 import com.archivesystem.repository.CategoryMapper;
