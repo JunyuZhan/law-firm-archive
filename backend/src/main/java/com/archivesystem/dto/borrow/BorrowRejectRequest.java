@@ -7,6 +7,7 @@ import lombok.Data;
 
 /**
  * 借阅拒绝请求DTO.
+ * @author junyuzhan
  */
 @Data
 @Schema(description = "借阅拒绝请求")

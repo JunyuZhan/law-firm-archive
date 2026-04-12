@@ -8,6 +8,7 @@ import org.apache.ibatis.annotations.Select;
 
 /**
  * 外部系统来源Mapper接口.
+ * @author junyuzhan
  */
 @Mapper
 public interface ExternalSourceMapper extends BaseMapper<ExternalSource> {

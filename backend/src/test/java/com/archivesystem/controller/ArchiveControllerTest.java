@@ -19,14 +19,19 @@ import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.util.*;
 
 import static org.mockito.ArgumentMatchers.*;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+/**
+ * @author junyuzhan
+ */
 
 @ExtendWith(MockitoExtension.class)
 class ArchiveControllerTest {
@@ -187,7 +192,9 @@ class ArchiveControllerTest {
         digitalFile.setFileSize(12L);
         digitalFile.setMimeType("application/pdf");
 
-        when(fileStorageService.upload(any(), eq(1L), isNull())).thenReturn(digitalFile);
+        when(fileStorageService.upload(any(), eq(1L), isNull(),
+                isNull(), isNull(), isNull(), isNull(), isNull(), isNull(),
+                isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull())).thenReturn(digitalFile);
 
         mockMvc.perform(multipart("/archives/1/files")
                         .file(file))
@@ -206,13 +213,48 @@ class ArchiveControllerTest {
         digitalFile.setArchiveId(1L);
         digitalFile.setFileName("test.pdf");
 
-        when(fileStorageService.upload(any(), eq(1L), eq("CONTRACT"))).thenReturn(digitalFile);
+        when(fileStorageService.upload(any(), eq(1L), eq("CONTRACT"),
+                isNull(), isNull(), isNull(), isNull(), isNull(), isNull(),
+                isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull())).thenReturn(digitalFile);
 
         mockMvc.perform(multipart("/archives/1/files")
                         .file(file)
                         .param("fileCategory", "CONTRACT"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"));
+    }
+
+    @Test
+    void testUploadFile_EmptyFile_Returns400() {
+        MockMultipartFile emptyFile = new MockMultipartFile(
+                "file", "empty.pdf", "application/pdf", new byte[0]);
+
+        var result = archiveController.uploadFile(1L, emptyFile,
+                null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+
+        assertFalse(result.getSuccess());
+        assertEquals("400", result.getCode());
+        assertEquals("文件不能为空", result.getMessage());
+        verify(fileStorageService, never()).upload(any(), anyLong(), any(),
+                any(), any(), any(), any(), any(), any(),
+                any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void testUploadFile_OversizedFile_Returns400() {
+        MultipartFile file = mock(MultipartFile.class);
+        when(file.isEmpty()).thenReturn(false);
+        when(file.getSize()).thenReturn(100L * 1024 * 1024 + 1);
+
+        var result = archiveController.uploadFile(1L, file,
+                null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+
+        assertFalse(result.getSuccess());
+        assertEquals("400", result.getCode());
+        assertEquals("文件大小不能超过100MB", result.getMessage());
+        verify(fileStorageService, never()).upload(any(), anyLong(), any(),
+                any(), any(), any(), any(), any(), any(),
+                any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test

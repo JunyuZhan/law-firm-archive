@@ -1,6 +1,7 @@
 package com.archivesystem.controller;
 
 import com.archivesystem.common.Result;
+import com.archivesystem.common.util.ClientIpUtils;
 import com.archivesystem.dto.archive.ArchiveReceiveRequest;
 import com.archivesystem.dto.archive.ArchiveReceiveResponse;
 import com.archivesystem.dto.borrow.BorrowLinkAccessResponse;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.*;
 /**
  * 开放API控制器.
  * 供外部系统（如律所管理系统）调用，无需登录认证
+ * @author junyuzhan
  */
 @Slf4j
 @RestController
@@ -59,6 +61,19 @@ public class OpenApiController {
     }
 
     /**
+     * 撤销电子借阅链接.
+     */
+    @PostMapping("/borrow/revoke/{linkId}")
+    @Operation(summary = "撤销电子借阅", description = "撤销已生成的电子借阅链接，使其立即失效")
+    public Result<Void> revokeBorrow(
+            @Parameter(description = "借阅链接ID") @PathVariable Long linkId,
+            @Parameter(description = "撤销原因") @RequestParam(required = false) String reason) {
+        log.info("电子借阅撤销: linkId={}, reason={}", linkId, reason);
+        borrowLinkService.revoke(linkId, reason);
+        return Result.success("借阅链接已撤销", null);
+    }
+
+    /**
      * 公开访问档案.
      * 通过借阅链接访问档案，无需登录
      */
@@ -67,13 +82,17 @@ public class OpenApiController {
     public Result<BorrowLinkAccessResponse> accessArchive(
             @Parameter(description = "访问令牌") @PathVariable String token,
             HttpServletRequest request) {
-        String clientIp = getClientIp(request);
-        log.info("公开访问档案: token={}, clientIp={}", token, clientIp);
+        String clientIp = ClientIpUtils.resolve(request);
+        log.info("公开访问档案: token={}, clientIp={}", maskToken(token), clientIp);
         
         BorrowLinkAccessResponse response = borrowLinkService.validateAndAccess(token, clientIp);
         
         if (!Boolean.TRUE.equals(response.getValid())) {
-            return Result.error(response.getInvalidReason());
+            String reason = response.getInvalidReason();
+            if (reason == null || reason.isBlank()) {
+                reason = "访问链接无效";
+            }
+            return Result.error("403", reason);
         }
         
         return Result.success(response);
@@ -86,9 +105,32 @@ public class OpenApiController {
     @Operation(summary = "记录下载", description = "记录通过借阅链接的文件下载行为")
     public Result<Void> recordDownload(
             @Parameter(description = "访问令牌") @PathVariable String token,
-            @Parameter(description = "文件ID") @PathVariable Long fileId) {
-        borrowLinkService.recordDownload(token, fileId);
+            @Parameter(description = "文件ID") @PathVariable Long fileId,
+            HttpServletRequest request) {
+        borrowLinkService.recordDownload(token, fileId, ClientIpUtils.resolve(request));
         return Result.success();
+    }
+
+    /**
+     * 获取短时预览链接.
+     */
+    @GetMapping("/borrow/access/{token}/preview/{fileId}")
+    @Operation(summary = "获取预览链接", description = "校验借阅链接后返回短时预览地址")
+    public Result<String> getPreviewUrl(
+            @Parameter(description = "访问令牌") @PathVariable String token,
+            @Parameter(description = "文件ID") @PathVariable Long fileId) {
+        return Result.success(borrowLinkService.getFileAccessUrl(token, fileId, false));
+    }
+
+    /**
+     * 获取短时下载链接.
+     */
+    @GetMapping("/borrow/access/{token}/download-url/{fileId}")
+    @Operation(summary = "获取下载链接", description = "校验借阅链接后返回短时下载地址")
+    public Result<String> getDownloadUrl(
+            @Parameter(description = "访问令牌") @PathVariable String token,
+            @Parameter(description = "文件ID") @PathVariable Long fileId) {
+        return Result.success(borrowLinkService.getFileAccessUrl(token, fileId, true));
     }
 
     /**
@@ -100,17 +142,13 @@ public class OpenApiController {
         return Result.success("ok");
     }
 
-    private String getClientIp(HttpServletRequest request) {
-        String ip = request.getHeader("X-Forwarded-For");
-        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getHeader("X-Real-IP");
+    private String maskToken(String token) {
+        if (token == null || token.isBlank()) {
+            return "";
         }
-        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getRemoteAddr();
+        if (token.length() <= 8) {
+            return "****";
         }
-        if (ip != null && ip.contains(",")) {
-            ip = ip.split(",")[0].trim();
-        }
-        return ip;
+        return token.substring(0, 4) + "****" + token.substring(token.length() - 4);
     }
 }

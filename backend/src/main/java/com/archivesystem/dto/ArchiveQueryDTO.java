@@ -6,6 +6,7 @@ import java.time.LocalDate;
 
 /**
  * 档案查询DTO.
+ * @author junyuzhan
  */
 @Data
 public class ArchiveQueryDTO {

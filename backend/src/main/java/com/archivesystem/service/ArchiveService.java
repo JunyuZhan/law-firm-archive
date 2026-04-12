@@ -5,6 +5,7 @@ import com.archivesystem.dto.archive.*;
 
 /**
  * 档案服务接口.
+ * @author junyuzhan
  */
 public interface ArchiveService {
 
@@ -52,6 +53,11 @@ public interface ArchiveService {
      * 更新档案状态.
      */
     void updateStatus(Long id, String status);
+
+    /**
+     * 审核通过并正式入库.
+     */
+    void approve(Long id);
 
     /**
      * 生成档案号.

@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 /**
  * 死信消息记录实体.
  * 记录消息队列处理失败的消息，支持人工干预和重试.
+ * @author junyuzhan
  */
 @Data
 @TableName("arc_dead_letter_record")

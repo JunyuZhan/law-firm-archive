@@ -6,6 +6,7 @@ import java.util.List;
 
 /**
  * 告警通知服务接口.
+ * @author junyuzhan
  */
 public interface AlertService {
 

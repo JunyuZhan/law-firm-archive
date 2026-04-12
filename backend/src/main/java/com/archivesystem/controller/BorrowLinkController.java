@@ -17,10 +17,11 @@ import java.util.Map;
 
 /**
  * 借阅链接管理控制器.
+ * @author junyuzhan
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/borrow-links")
+@RequestMapping("/borrow-links")
 @RequiredArgsConstructor
 @Tag(name = "借阅链接管理", description = "电子借阅链接的管理接口")
 public class BorrowLinkController {
@@ -32,13 +33,16 @@ public class BorrowLinkController {
      */
     @GetMapping
     @Operation(summary = "查询链接列表", description = "分页查询电子借阅链接列表")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
     public Result<PageResult<BorrowLink>> getList(
             @Parameter(description = "档案ID") @RequestParam(required = false) Long archiveId,
             @Parameter(description = "状态") @RequestParam(required = false) String status,
+            @Parameter(description = "是否允许下载") @RequestParam(required = false) Boolean allowDownload,
+            @Parameter(description = "来源") @RequestParam(required = false) String sourceType,
+            @Parameter(description = "关键词") @RequestParam(required = false) String keyword,
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer pageNum,
             @Parameter(description = "每页数量") @RequestParam(defaultValue = "20") Integer pageSize) {
-        PageResult<BorrowLink> result = borrowLinkService.getList(archiveId, status, pageNum, pageSize);
+        PageResult<BorrowLink> result = borrowLinkService.getList(archiveId, status, allowDownload, sourceType, keyword, pageNum, pageSize);
         return Result.success(result);
     }
 
@@ -47,7 +51,7 @@ public class BorrowLinkController {
      */
     @GetMapping("/{id}")
     @Operation(summary = "获取链接详情")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
     public Result<BorrowLink> getById(@PathVariable Long id) {
         BorrowLink link = borrowLinkService.getById(id);
         return Result.success(link);
@@ -58,7 +62,7 @@ public class BorrowLinkController {
      */
     @GetMapping("/archive/{archiveId}")
     @Operation(summary = "获取档案的有效链接", description = "获取指定档案的所有有效借阅链接")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
     public Result<List<BorrowLink>> getActiveByArchive(@PathVariable Long archiveId) {
         List<BorrowLink> links = borrowLinkService.getActiveByArchiveId(archiveId);
         return Result.success(links);
@@ -69,7 +73,7 @@ public class BorrowLinkController {
      */
     @PostMapping("/generate")
     @Operation(summary = "生成借阅链接", description = "为已审批通过的借阅申请生成访问链接")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
     public Result<BorrowLink> generateLink(
             @Parameter(description = "借阅申请ID") @RequestParam Long borrowId,
             @Parameter(description = "有效期天数") @RequestParam(defaultValue = "7") Integer expireDays,
@@ -83,7 +87,7 @@ public class BorrowLinkController {
      */
     @PostMapping("/{id}/revoke")
     @Operation(summary = "撤销链接", description = "撤销指定的借阅链接，使其立即失效")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
     public Result<String> revoke(
             @PathVariable Long id,
             @Parameter(description = "撤销原因") @RequestParam(required = false) String reason) {
@@ -96,7 +100,7 @@ public class BorrowLinkController {
      */
     @GetMapping("/stats")
     @Operation(summary = "获取统计信息", description = "获取借阅链接的统计数据")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
     public Result<BorrowLinkService.BorrowLinkStats> getStats() {
         BorrowLinkService.BorrowLinkStats stats = borrowLinkService.getStats();
         return Result.success(stats);

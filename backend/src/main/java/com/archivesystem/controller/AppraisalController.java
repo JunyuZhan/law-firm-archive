@@ -21,6 +21,7 @@ import java.util.List;
 
 /**
  * 鉴定管理控制器.
+ * @author junyuzhan
  */
 @RestController
 @RequestMapping("/appraisals")
@@ -36,7 +37,7 @@ public class AppraisalController {
      */
     @PostMapping
     @Operation(summary = "发起鉴定")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
     public Result<AppraisalRecord> create(@Valid @RequestBody AppraisalCreateRequest request) {
         AppraisalRecord record = appraisalService.create(
             request.getArchiveId(), 
@@ -64,7 +65,7 @@ public class AppraisalController {
      */
     @GetMapping
     @Operation(summary = "获取鉴定列表")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
     public Result<PageResult<AppraisalRecord>> getList(
             @RequestParam(required = false) @Parameter(description = "鉴定类型") String type,
             @RequestParam(required = false) @Parameter(description = "状态") String status,
@@ -79,7 +80,7 @@ public class AppraisalController {
      */
     @GetMapping("/pending")
     @Operation(summary = "获取待审批列表")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
     public Result<PageResult<AppraisalRecord>> getPendingList(
             @RequestParam(defaultValue = "1") @Min(value = 1, message = "页码最小为1") Integer pageNum,
             @RequestParam(defaultValue = "20") @Min(value = 1, message = "每页条数最小为1") @Max(value = 100, message = "每页条数最大为100") Integer pageSize) {
@@ -104,7 +105,7 @@ public class AppraisalController {
      */
     @PutMapping("/{id}/approve")
     @Operation(summary = "审批通过")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
     public Result<Void> approve(
             @PathVariable @Parameter(description = "鉴定记录ID") Long id,
             @RequestParam(required = false) @Parameter(description = "审批意见") String comment) {
@@ -117,7 +118,7 @@ public class AppraisalController {
      */
     @PutMapping("/{id}/reject")
     @Operation(summary = "审批拒绝")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
     public Result<Void> reject(
             @PathVariable @Parameter(description = "鉴定记录ID") Long id,
             @Valid @RequestBody AppraisalRejectRequest request) {

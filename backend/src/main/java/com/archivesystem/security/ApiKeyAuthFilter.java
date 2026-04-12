@@ -1,5 +1,6 @@
 package com.archivesystem.security;
 
+import com.archivesystem.common.util.ClientIpUtils;
 import com.archivesystem.entity.ExternalSource;
 import com.archivesystem.repository.ExternalSourceMapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -27,6 +28,7 @@ import java.util.UUID;
 /**
  * API Key认证过滤器.
  * 用于保护开放API接口，从数据库 arc_external_source 表验证 API Key
+ * @author junyuzhan
  */
 @Slf4j
 @Component
@@ -124,13 +126,16 @@ public class ApiKeyAuthFilter extends OncePerRequestFilter {
      */
     private ExternalSource validateApiKey(String apiKey) {
         String cacheKey = API_KEY_CACHE_PREFIX + apiKey;
-        
-        // 先检查缓存中是否标记为无效
-        String cached = redisTemplate.opsForValue().get(cacheKey);
-        if ("INVALID".equals(cached)) {
-            return null;
+
+        try {
+            String cached = redisTemplate.opsForValue().get(cacheKey);
+            if ("INVALID".equals(cached)) {
+                return null;
+            }
+        } catch (Exception e) {
+            log.warn("读取API Key缓存失败，降级数据库校验: {}", e.getMessage());
         }
-        
+
         // 查询数据库
         ExternalSource source = externalSourceMapper.selectOne(
                 new LambdaQueryWrapper<ExternalSource>()
@@ -139,12 +144,18 @@ public class ApiKeyAuthFilter extends OncePerRequestFilter {
                         .eq(ExternalSource::getDeleted, false));
         
         if (source != null) {
-            // 有效，缓存来源编码
-            redisTemplate.opsForValue().set(cacheKey, source.getSourceCode(), CACHE_TTL);
+            try {
+                redisTemplate.opsForValue().set(cacheKey, source.getSourceCode(), CACHE_TTL);
+            } catch (Exception e) {
+                log.warn("写入API Key缓存失败，忽略: {}", e.getMessage());
+            }
             return source;
         } else {
-            // 无效，缓存标记防止频繁查库
-            redisTemplate.opsForValue().set(cacheKey, "INVALID", CACHE_TTL);
+            try {
+                redisTemplate.opsForValue().set(cacheKey, "INVALID", CACHE_TTL);
+            } catch (Exception e) {
+                log.warn("写入无效API Key缓存失败，忽略: {}", e.getMessage());
+            }
             return null;
         }
     }
@@ -166,12 +177,7 @@ public class ApiKeyAuthFilter extends OncePerRequestFilter {
      * 获取客户端IP.
      */
     private String getClientIp(HttpServletRequest request) {
-        String ip = request.getHeader("X-Forwarded-For");
-        if (ip != null && !ip.isEmpty() && !"unknown".equalsIgnoreCase(ip)) {
-            int index = ip.indexOf(',');
-            return index != -1 ? ip.substring(0, index).trim() : ip;
-        }
-        return request.getRemoteAddr();
+        return ClientIpUtils.resolve(request);
     }
 
     /**

@@ -10,6 +10,7 @@ import java.util.List;
 
 /**
  * 电子借阅链接服务接口.
+ * @author junyuzhan
  */
 public interface BorrowLinkService {
 
@@ -68,8 +69,14 @@ public interface BorrowLinkService {
      *
      * @param accessToken 访问令牌
      * @param fileId 文件ID
+     * @param clientIp 客户端IP
      */
-    void recordDownload(String accessToken, Long fileId);
+    void recordDownload(String accessToken, Long fileId, String clientIp);
+
+    /**
+     * 获取公开借阅文件的短时访问地址.
+     */
+    String getFileAccessUrl(String accessToken, Long fileId, boolean download);
 
     /**
      * 分页查询链接列表.
@@ -80,7 +87,7 @@ public interface BorrowLinkService {
      * @param pageSize 每页数量
      * @return 分页结果
      */
-    PageResult<BorrowLink> getList(Long archiveId, String status, Integer pageNum, Integer pageSize);
+    PageResult<BorrowLink> getList(Long archiveId, String status, Boolean allowDownload, String sourceType, String keyword, Integer pageNum, Integer pageSize);
 
     /**
      * 获取档案的有效链接列表.

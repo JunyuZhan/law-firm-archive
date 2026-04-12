@@ -10,6 +10,7 @@ import java.util.List;
 
 /**
  * 访问日志Mapper接口.
+ * @author junyuzhan
  */
 @Mapper
 public interface AccessLogMapper extends BaseMapper<AccessLog> {

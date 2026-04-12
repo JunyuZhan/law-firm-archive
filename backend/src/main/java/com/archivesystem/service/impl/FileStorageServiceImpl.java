@@ -1,10 +1,16 @@
 package com.archivesystem.service.impl;
 
 import com.archivesystem.common.exception.BusinessException;
+import com.archivesystem.common.exception.ForbiddenException;
 import com.archivesystem.common.exception.NotFoundException;
 import com.archivesystem.dto.file.FilePreviewInfo;
+import com.archivesystem.entity.Archive;
+import com.archivesystem.entity.BorrowApplication;
 import com.archivesystem.entity.DigitalFile;
+import com.archivesystem.repository.ArchiveMapper;
+import com.archivesystem.repository.BorrowApplicationMapper;
 import com.archivesystem.repository.DigitalFileMapper;
+import com.archivesystem.security.OutboundUrlValidator;
 import com.archivesystem.security.SecurityUtils;
 import com.archivesystem.service.ConfigService;
 import com.archivesystem.service.DocumentConversionService;
@@ -31,6 +37,7 @@ import java.util.UUID;
 
 /**
  * 文件存储服务实现.
+ * @author junyuzhan
  */
 @Slf4j
 @Service
@@ -39,8 +46,11 @@ public class FileStorageServiceImpl implements FileStorageService {
 
     private final MinioService minioService;
     private final DigitalFileMapper digitalFileMapper;
+    private final ArchiveMapper archiveMapper;
+    private final BorrowApplicationMapper borrowApplicationMapper;
     private final ConfigService configService;
     private final DocumentConversionService documentConversionService;
+    private final OutboundUrlValidator outboundUrlValidator;
 
     // 配置键常量
     private static final String CONFIG_MAX_FILE_SIZE = "system.upload.max.size";
@@ -54,6 +64,19 @@ public class FileStorageServiceImpl implements FileStorageService {
     @Override
     @Transactional
     public DigitalFile upload(MultipartFile file, Long archiveId, String fileCategory) {
+        return upload(file, archiveId, fileCategory,
+                null, null, null, null, null, null,
+                null, null, null, null, null, null, null);
+    }
+
+    @Override
+    @Transactional
+    public DigitalFile upload(MultipartFile file, Long archiveId, String fileCategory,
+                              Integer volumeNo, String sectionType, String documentNo,
+                              Integer pageStart, Integer pageEnd, String versionLabel,
+                              String fileSourceType, String scanBatchNo, String scanOperator,
+                              LocalDateTime scanTime, String scanCheckStatus,
+                              String scanCheckBy, LocalDateTime scanCheckTime) {
         // 校验文件
         validateFile(file);
 
@@ -86,6 +109,19 @@ public class FileStorageServiceImpl implements FileStorageService {
                     .hashAlgorithm("SHA-256")
                     .hashValue(hashValue)
                     .fileCategory(fileCategory != null ? fileCategory : DigitalFile.CATEGORY_MAIN)
+                    .volumeNo(volumeNo)
+                    .sectionType(sectionType)
+                    .documentNo(documentNo)
+                    .pageStart(pageStart)
+                    .pageEnd(pageEnd)
+                    .versionLabel(versionLabel)
+                    .fileSourceType(StringUtils.hasText(fileSourceType) ? fileSourceType : DigitalFile.SOURCE_IMPORTED)
+                    .scanBatchNo(scanBatchNo)
+                    .scanOperator(scanOperator)
+                    .scanTime(scanTime)
+                    .scanCheckStatus(scanCheckStatus)
+                    .scanCheckBy(scanCheckBy)
+                    .scanCheckTime(scanCheckTime)
                     .uploadAt(LocalDateTime.now())
                     .uploadBy(SecurityUtils.getCurrentUserId());
 
@@ -118,6 +154,7 @@ public class FileStorageServiceImpl implements FileStorageService {
 
             DigitalFile digitalFile = fileBuilder.build();
             digitalFileMapper.insert(digitalFile);
+            refreshArchiveFileStats(archiveId);
             log.info("文件上传成功: id={}, path={}, convertedPath={}", 
                     digitalFile.getId(), storagePath, convertedPath);
 
@@ -139,6 +176,7 @@ public class FileStorageServiceImpl implements FileStorageService {
     public DigitalFile downloadAndStore(Long archiveId, String downloadUrl, String fileName, 
                                         String fileCategory, int sortOrder) {
         log.info("下载文件: archiveId={}, url={}", archiveId, downloadUrl);
+        outboundUrlValidator.validate(downloadUrl, "文件下载地址");
 
         String extension = getFileExtension(fileName);
         
@@ -187,6 +225,7 @@ public class FileStorageServiceImpl implements FileStorageService {
                     .hashValue(hashValue)
                     .fileCategory(fileCategory != null ? fileCategory : DigitalFile.CATEGORY_MAIN)
                     .sortOrder(sortOrder)
+                    .fileSourceType(DigitalFile.SOURCE_IMPORTED)
                     .sourceUrl(downloadUrl)
                     .uploadAt(LocalDateTime.now());
 
@@ -219,6 +258,7 @@ public class FileStorageServiceImpl implements FileStorageService {
 
             DigitalFile digitalFile = fileBuilder.build();
             digitalFileMapper.insert(digitalFile);
+            refreshArchiveFileStats(archiveId);
             log.info("文件下载存储成功: id={}, path={}, convertedPath={}", 
                     digitalFile.getId(), storagePath, convertedPath);
 
@@ -330,6 +370,7 @@ public class FileStorageServiceImpl implements FileStorageService {
         if (file == null) {
             throw NotFoundException.of("文件", fileId);
         }
+        assertFileAccessAuthorized(file, true);
         return minioService.getPresignedUrl(file.getStoragePath(), 3600);
     }
 
@@ -339,6 +380,7 @@ public class FileStorageServiceImpl implements FileStorageService {
         if (file == null) {
             throw NotFoundException.of("文件", fileId);
         }
+        assertFileAccessAuthorized(file, false);
 
         // 优先返回转换后的PDF（对于Office文档）
         if (StringUtils.hasText(file.getConvertedPath())) {
@@ -373,6 +415,7 @@ public class FileStorageServiceImpl implements FileStorageService {
         if (file == null) {
             throw NotFoundException.of("文件", fileId);
         }
+        assertFileAccessAuthorized(file, false);
 
         String ext = file.getFileExtension();
         if (ext == null) {
@@ -427,12 +470,42 @@ public class FileStorageServiceImpl implements FileStorageService {
     }
 
     @Override
+    public String getBorrowPreviewUrl(Long archiveId, Long fileId, int expirySeconds) {
+        DigitalFile file = getArchiveFile(archiveId, fileId);
+
+        if (StringUtils.hasText(file.getConvertedPath())) {
+            return minioService.getPresignedUrl(file.getConvertedPath(), expirySeconds);
+        }
+        if (StringUtils.hasText(file.getPreviewPath())) {
+            return minioService.getPresignedUrl(file.getPreviewPath(), expirySeconds);
+        }
+
+        String ext = file.getFileExtension();
+        if (!StringUtils.hasText(ext)) {
+            return null;
+        }
+        ext = ext.toLowerCase();
+        if (IMAGE_EXTENSIONS.contains(ext) || "pdf".equals(ext) || "ofd".equals(ext)
+                || "tif".equals(ext) || "tiff".equals(ext)) {
+            return minioService.getPresignedUrl(file.getStoragePath(), expirySeconds);
+        }
+        return null;
+    }
+
+    @Override
+    public String getBorrowDownloadUrl(Long archiveId, Long fileId, int expirySeconds) {
+        DigitalFile file = getArchiveFile(archiveId, fileId);
+        return minioService.getPresignedUrl(file.getStoragePath(), expirySeconds);
+    }
+
+    @Override
     @Transactional
     public void delete(Long fileId) {
         DigitalFile file = digitalFileMapper.selectById(fileId);
         if (file == null) {
             return;
         }
+        assertFileDeletionAllowed(file);
 
         try {
             // 删除MinIO中的文件
@@ -446,6 +519,7 @@ public class FileStorageServiceImpl implements FileStorageService {
 
             // 删除数据库记录
             digitalFileMapper.deleteById(fileId);
+            refreshArchiveFileStats(file.getArchiveId());
             log.info("文件删除成功: id={}", fileId);
 
         } catch (Exception e) {
@@ -487,6 +561,26 @@ public class FileStorageServiceImpl implements FileStorageService {
         
         log.debug("文件验证通过: filename={}, extension={}, size={}", 
                 file.getOriginalFilename(), extension, file.getSize());
+    }
+
+    private void refreshArchiveFileStats(Long archiveId) {
+        if (archiveId == null) {
+            return;
+        }
+        Archive archive = archiveMapper.selectById(archiveId);
+        if (archive == null) {
+            return;
+        }
+        var fileStats = digitalFileMapper.countByArchiveId(archiveId);
+        Number countValue = fileStats != null ? (Number) fileStats.get("count") : null;
+        Number totalSizeValue = fileStats != null ? (Number) fileStats.get("total_size") : null;
+        int fileCount = countValue != null ? countValue.intValue() : 0;
+        long totalSize = totalSizeValue != null ? totalSizeValue.longValue() : 0L;
+
+        archive.setFileCount(fileCount);
+        archive.setTotalFileSize(totalSize);
+        archive.setHasElectronic(fileCount > 0);
+        archiveMapper.updateById(archive);
     }
 
     private long getMaxFileSize() {
@@ -623,5 +717,95 @@ public class FileStorageServiceImpl implements FileStorageService {
             case "txt" -> "文本文件";
             default -> extension.toUpperCase() + "文件";
         };
+    }
+
+    private void assertFileAccessAuthorized(DigitalFile file, boolean download) {
+        if (SecurityUtils.hasAnyRole("SYSTEM_ADMIN", "ARCHIVE_REVIEWER", "ARCHIVE_MANAGER")) {
+            return;
+        }
+
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        if (currentUserId == null || file.getArchiveId() == null) {
+            throw new ForbiddenException("无权访问该文件");
+        }
+
+        Archive archive = archiveMapper.selectById(file.getArchiveId());
+        if (archive != null && isArchiveReadableByCurrentUser(archive)) {
+            return;
+        }
+
+        String currentDepartment = SecurityUtils.getCurrentDepartment();
+        var applications = borrowApplicationMapper.selectByArchiveId(file.getArchiveId());
+        boolean allowed = applications.stream().anyMatch(application ->
+                currentUserId.equals(application.getApplicantId())
+                        && isBorrowAccessAllowed(application, archive, currentDepartment, download));
+        if (!allowed) {
+            throw new ForbiddenException("无权访问该文件");
+        }
+    }
+
+    private boolean isBorrowAccessAllowed(BorrowApplication application,
+                                          Archive archive,
+                                          String currentDepartment,
+                                          boolean download) {
+        if (application == null) {
+            return false;
+        }
+        boolean statusAllowed = BorrowApplication.STATUS_APPROVED.equals(application.getStatus())
+                || BorrowApplication.STATUS_BORROWED.equals(application.getStatus());
+        if (!statusAllowed) {
+            return false;
+        }
+        if (StringUtils.hasText(application.getApplicantDept())
+                && StringUtils.hasText(currentDepartment)
+                && !application.getApplicantDept().equals(currentDepartment)) {
+            return false;
+        }
+        String borrowType = application.getBorrowType();
+        if (download) {
+            if (!BorrowApplication.TYPE_DOWNLOAD.equals(borrowType)) {
+                return false;
+            }
+            return archive == null
+                    || (!Archive.SECURITY_CONFIDENTIAL.equals(archive.getSecurityLevel())
+                    && !Archive.SECURITY_SECRET.equals(archive.getSecurityLevel()));
+        }
+        return BorrowApplication.TYPE_ONLINE.equals(borrowType)
+                || BorrowApplication.TYPE_DOWNLOAD.equals(borrowType);
+    }
+
+    private void assertFileDeletionAllowed(DigitalFile file) {
+        if (file.getArchiveId() == null) {
+            return;
+        }
+
+        Archive archive = archiveMapper.selectById(file.getArchiveId());
+        if (archive != null && Archive.STATUS_STORED.equals(archive.getStatus())) {
+            throw new BusinessException("已归档档案的原始文件不可删除");
+        }
+    }
+
+    private boolean isArchiveReadableByCurrentUser(Archive archive) {
+        if (!SecurityUtils.isAuthenticated()) {
+            return false;
+        }
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        String currentRealName = SecurityUtils.getCurrentRealName();
+        boolean ownArchive = (currentUserId != null
+                && (currentUserId.equals(archive.getCreatedBy())
+                || currentUserId.equals(archive.getReceivedBy())))
+                || (StringUtils.hasText(currentRealName) && currentRealName.equals(archive.getLawyerName()));
+        boolean securityAllowed = Archive.SECURITY_PUBLIC.equals(archive.getSecurityLevel())
+                || Archive.SECURITY_INTERNAL.equals(archive.getSecurityLevel())
+                || !StringUtils.hasText(archive.getSecurityLevel());
+        return ownArchive && securityAllowed;
+    }
+
+    private DigitalFile getArchiveFile(Long archiveId, Long fileId) {
+        DigitalFile file = digitalFileMapper.selectById(fileId);
+        if (file == null || !archiveId.equals(file.getArchiveId())) {
+            throw NotFoundException.of("文件", fileId);
+        }
+        return file;
     }
 }

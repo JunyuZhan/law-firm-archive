@@ -13,6 +13,7 @@ import java.time.LocalDateTime;
 /**
  * 借阅申请实体类.
  * 对应数据库表: arc_borrow_application
+ * @author junyuzhan
  */
 @Data
 @Builder

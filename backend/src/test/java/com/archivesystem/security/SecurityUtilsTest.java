@@ -11,6 +11,9 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import java.util.Collections;
 
 import static org.junit.jupiter.api.Assertions.*;
+/**
+ * @author junyuzhan
+ */
 
 @ExtendWith(MockitoExtension.class)
 class SecurityUtilsTest {
@@ -24,6 +27,7 @@ class SecurityUtilsTest {
                 "testuser",
                 "password",
                 "测试用户",
+                "诉讼部",
                 "ADMIN",
                 "ACTIVE",
                 Collections.emptyList()
@@ -90,6 +94,15 @@ class SecurityUtilsTest {
     }
 
     @Test
+    void testGetCurrentDepartment_Authenticated() {
+        setAuthentication(testUser);
+
+        String department = SecurityUtils.getCurrentDepartment();
+
+        assertEquals("诉讼部", department);
+    }
+
+    @Test
     void testGetCurrentUser_Authenticated() {
         setAuthentication(testUser);
 
@@ -135,7 +148,7 @@ class SecurityUtilsTest {
     @Test
     void testIsSystemAdmin_True() {
         UserDetailsImpl adminUser = new UserDetailsImpl(
-                1L, "admin", "password", "管理员", "SYSTEM_ADMIN", "ACTIVE", Collections.emptyList()
+                1L, "admin", "password", "管理员", "管理部", "SYSTEM_ADMIN", "ACTIVE", Collections.emptyList()
         );
         setAuthentication(adminUser);
 

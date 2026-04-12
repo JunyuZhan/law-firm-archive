@@ -1,10 +1,14 @@
 <template>
   <div class="archive-receive">
-    <el-page-header @back="goBack">
-      <template #content>
-        <span class="page-title">新建档案</span>
-      </template>
-    </el-page-header>
+    <div class="page-header">
+      <div>
+        <h1>新建档案</h1>
+        <p>按上传、编目和确认三个步骤完成电子档案入库，必要时同步记录纸质存放位置。</p>
+      </div>
+      <el-button @click="goBack">
+        返回列表
+      </el-button>
+    </div>
 
     <el-card
       shadow="never"
@@ -75,6 +79,45 @@
           <el-divider content-position="left">
             基本信息
           </el-divider>
+
+          <el-row :gutter="20">
+            <el-col :span="12">
+              <el-form-item label="所属全宗">
+                <el-select
+                  v-model="form.fondsId"
+                  placeholder="请选择全宗"
+                  clearable
+                  filterable
+                  style="width: 100%"
+                >
+                  <el-option
+                    v-for="item in fondsOptions"
+                    :key="item.id"
+                    :label="`${item.fondsNo}｜${item.fondsName}`"
+                    :value="item.id"
+                  />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="档案分类">
+                <el-select
+                  v-model="form.categoryId"
+                  placeholder="请选择分类"
+                  clearable
+                  filterable
+                  style="width: 100%"
+                >
+                  <el-option
+                    v-for="item in categoryOptions"
+                    :key="item.id"
+                    :label="item.fullPath || `${item.categoryCode}｜${item.categoryName}`"
+                    :value="item.id"
+                  />
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
           
           <el-row :gutter="20">
             <el-col :span="8">
@@ -409,10 +452,14 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
+import { watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { createArchive } from '@/api/archive'
+import { useUserStore } from '@/stores/user'
 import { getAvailableLocations } from '@/api/location'
+import { getFondsList } from '@/api/fonds'
+import { getCategoryTree } from '@/api/category'
 import BatchUpload from '@/components/BatchUpload.vue'
 import {
   getArchiveTypeName,
@@ -423,6 +470,7 @@ import {
 } from '@/utils/archiveEnums'
 
 const router = useRouter()
+const userStore = useUserStore()
 
 // 下拉选项
 const archiveTypeOptions = getArchiveTypeOptions()
@@ -439,6 +487,8 @@ const allowedFileTypes = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'j
 const maxFileSize = 100 * 1024 * 1024 // 100MB
 
 const form = reactive({
+  fondsId: null,
+  categoryId: null,
   archiveForm: 'ELECTRONIC',
   archiveType: 'DOCUMENT',
   retentionPeriod: 'Y10',
@@ -460,6 +510,8 @@ const form = reactive({
 })
 
 const locationOptions = ref([])
+const fondsOptions = ref([])
+const categoryOptions = ref([])
 
 const rules = {
   archiveType: [{ required: true, message: '请选择档案类型', trigger: 'change' }],
@@ -554,9 +606,17 @@ const handleSubmit = async () => {
     }
     
     const res = await createArchive(archiveData)
-    
-    ElMessage.success('档案创建成功')
-    router.push(`/archives/${res.data.id}`)
+
+    const createdStatus = res.data?.status || ''
+    const isPendingReview = createdStatus === 'PENDING_REVIEW'
+    ElMessage.success(isPendingReview ? '入库申请已提交，等待审核' : '档案创建成功')
+    router.push({
+      path: `/archives/${res.data.id}`,
+      query: {
+        created: '1',
+        submitted: userStore.userType === 'USER' ? '1' : '0'
+      }
+    })
     
   } catch (e) {
     console.error('提交失败', e)
@@ -571,6 +631,16 @@ const uploadedFiles = computed(() => {
   return (batchUploadRef.value?.fileQueue || [])
     .filter(f => f.status === 'success')
 })
+
+const flattenCategoryTree = (nodes = [], result = []) => {
+  nodes.forEach((node) => {
+    result.push(node)
+    if (node.children?.length) {
+      flattenCategoryTree(node.children, result)
+    }
+  })
+  return result
+}
 
 // 注：getArchiveTypeName, getRetentionName, getSecurityName 已从 archiveEnums.js 导入
 // 为兼容模板中的调用，保留别名
@@ -588,23 +658,79 @@ const loadLocations = async () => {
   }
 }
 
+const loadFonds = async () => {
+  try {
+    const res = await getFondsList()
+    fondsOptions.value = res.data || []
+  } catch (e) {
+    console.error('加载全宗失败', e)
+  }
+}
+
+const loadCategories = async () => {
+  try {
+    const res = await getCategoryTree(form.archiveType)
+    categoryOptions.value = flattenCategoryTree(res.data || [])
+  } catch (e) {
+    console.error('加载分类失败', e)
+    categoryOptions.value = []
+  }
+}
+
+watch(
+  () => form.archiveType,
+  async () => {
+    form.categoryId = null
+    await loadCategories()
+  }
+)
+
+watch(
+  () => form.categoryId,
+  (categoryId) => {
+    const currentCategory = categoryOptions.value.find((item) => item.id === categoryId)
+    if (currentCategory?.retentionPeriod) {
+      form.retentionPeriod = currentCategory.retentionPeriod
+    }
+  }
+)
+
 onMounted(() => {
   loadLocations()
+  loadFonds()
+  loadCategories()
 })
 </script>
 
 <style lang="scss" scoped>
 .archive-receive {
-  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
-.page-title {
-  font-size: 18px;
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.page-header h1 {
+  margin: 0 0 8px;
+  font-size: 24px;
   font-weight: 600;
+  color: #303133;
+}
+
+.page-header p {
+  margin: 0;
+  line-height: 1.6;
+  color: #606266;
 }
 
 .form-card {
-  margin-top: 20px;
+  border-radius: 10px;
 }
 
 .steps {
@@ -634,7 +760,7 @@ onMounted(() => {
   margin-top: 20px;
   padding: 16px;
   background: #f5f7fa;
-  border-radius: 4px;
+  border-radius: 10px;
   
   h4 {
     margin: 0 0 12px 0;
@@ -644,6 +770,13 @@ onMounted(() => {
   .file-tag {
     margin-right: 8px;
     margin-bottom: 8px;
+  }
+}
+
+@media (max-width: 768px) {
+  .page-header {
+    flex-direction: column;
+    align-items: stretch;
   }
 }
 </style>

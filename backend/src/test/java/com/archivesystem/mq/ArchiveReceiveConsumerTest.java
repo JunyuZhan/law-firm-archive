@@ -3,10 +3,12 @@ package com.archivesystem.mq;
 import com.archivesystem.config.MetricsConfig;
 import com.archivesystem.entity.Archive;
 import com.archivesystem.entity.DigitalFile;
+import com.archivesystem.entity.PushRecord;
 import com.archivesystem.repository.ArchiveMapper;
 import com.archivesystem.repository.PushRecordMapper;
 import com.archivesystem.service.FileStorageService;
 import com.rabbitmq.client.Channel;
+import org.springframework.amqp.AmqpRejectAndDontRequeueException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -21,7 +23,6 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 
-import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Collections;
@@ -29,6 +30,9 @@ import java.util.concurrent.TimeUnit;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
+/**
+ * @author junyuzhan
+ */
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -110,11 +114,14 @@ class ArchiveReceiveConsumerTest {
         DigitalFile digitalFile = new DigitalFile();
         digitalFile.setId(1L);
         digitalFile.setFileSize(1024L);
+        PushRecord pushRecord = new PushRecord();
+        pushRecord.setId(10L);
 
         when(archiveMapper.selectById(1L)).thenReturn(testArchive);
         when(archiveMapper.updateById(any(Archive.class))).thenReturn(1);
         when(fileStorageService.downloadAndStore(anyLong(), anyString(), anyString(), anyString(), anyInt()))
                 .thenReturn(digitalFile);
+        when(pushRecordMapper.selectOne(any())).thenReturn(pushRecord);
         doNothing().when(channel).basicAck(anyLong(), anyBoolean());
 
         archiveReceiveConsumer.handleArchiveReceive(testMessage, amqpMessage, channel);
@@ -124,6 +131,8 @@ class ArchiveReceiveConsumerTest {
         verify(channel).basicAck(1L, false);
         verify(metricsConfig).recordArchiveReceiveSuccess();
         verify(rabbitTemplate).convertAndSend(anyString(), anyString(), any(CallbackMessage.class));
+        verify(pushRecordMapper, atLeastOnce()).updateById(argThat(record ->
+                PushRecord.FILE_STATUS_CALLBACK_SENT.equals(record.getFileStatus())));
     }
 
     @Test
@@ -210,6 +219,35 @@ class ArchiveReceiveConsumerTest {
     }
 
     @Test
+    void testHandleArchiveReceive_FinalStateWithPendingCallback_ShouldDispatchCallback() throws Exception {
+        Archive completedArchive = new Archive();
+        completedArchive.setId(1L);
+        completedArchive.setArchiveNo("ARC-20260213-0001");
+        completedArchive.setStatus(Archive.STATUS_RECEIVED);
+
+        PushRecord pushRecord = new PushRecord();
+        pushRecord.setId(10L);
+        pushRecord.setCallbackUrl("http://callback.example.com");
+        pushRecord.setFileStatus(PushRecord.FILE_STATUS_CALLBACK_PENDING);
+        pushRecord.setSuccessFiles(1);
+        pushRecord.setFailedFiles(0);
+        pushRecord.setTotalFiles(1);
+        pushRecord.setPushStatus(PushRecord.STATUS_SUCCESS);
+
+        when(archiveMapper.selectById(1L)).thenReturn(completedArchive);
+        when(pushRecordMapper.selectOne(any())).thenReturn(pushRecord);
+        doNothing().when(channel).basicAck(anyLong(), anyBoolean());
+
+        archiveReceiveConsumer.handleArchiveReceive(testMessage, amqpMessage, channel);
+
+        verify(rabbitTemplate).convertAndSend(anyString(), anyString(), any(CallbackMessage.class));
+        verify(channel).basicAck(1L, false);
+        verify(fileStorageService, never()).downloadAndStore(anyLong(), anyString(), anyString(), anyString(), anyInt());
+        verify(pushRecordMapper, atLeastOnce()).updateById(argThat(record ->
+                PushRecord.FILE_STATUS_CALLBACK_SENT.equals(record.getFileStatus())));
+    }
+
+    @Test
     void testHandleArchiveReceive_NoCallback() throws Exception {
         testMessage.setCallbackUrl(null);
 
@@ -253,12 +291,17 @@ class ArchiveReceiveConsumerTest {
         testMessage.setMaxRetries(3);
 
         when(archiveMapper.selectById(1L)).thenThrow(new RuntimeException("数据库异常"));
-        doNothing().when(channel).basicReject(anyLong(), anyBoolean());
+        doNothing().when(channel).basicAck(anyLong(), anyBoolean());
 
         archiveReceiveConsumer.handleArchiveReceive(testMessage, amqpMessage, channel);
 
         verify(metricsConfig).recordArchiveReceiveFailed();
-        verify(channel).basicReject(1L, false);
+        verify(rabbitTemplate).convertAndSend(
+                eq("archive.exchange"),
+                eq("archive.receive"),
+                same(testMessage));
+        verify(channel).basicAck(1L, false);
+        verify(channel, never()).basicReject(anyLong(), anyBoolean());
     }
 
     @Test
@@ -279,6 +322,23 @@ class ArchiveReceiveConsumerTest {
 
         verify(metricsConfig).recordArchiveReceiveFailed();
         verify(channel).basicReject(1L, false);
+    }
+
+    @Test
+    void testHandleArchiveReceive_ExceptionWithRetry_RequeueCurrentMessageWhenRepublishFails() throws Exception {
+        testMessage.setRetryCount(0);
+        testMessage.setMaxRetries(3);
+
+        when(archiveMapper.selectById(1L)).thenThrow(new RuntimeException("数据库异常"));
+        doThrow(new AmqpRejectAndDontRequeueException("重投失败"))
+                .when(rabbitTemplate).convertAndSend(anyString(), anyString(), any(ArchiveReceiveMessage.class));
+
+        archiveReceiveConsumer.handleArchiveReceive(testMessage, amqpMessage, channel);
+
+        verify(metricsConfig).recordArchiveReceiveFailed();
+        verify(channel).basicNack(1L, false, true);
+        verify(channel, never()).basicAck(1L, false);
+        verify(channel, never()).basicReject(anyLong(), anyBoolean());
     }
 
     @Test

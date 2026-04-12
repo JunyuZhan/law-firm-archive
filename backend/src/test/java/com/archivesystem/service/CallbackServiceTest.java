@@ -1,14 +1,17 @@
 package com.archivesystem.service;
 
 import com.archivesystem.mq.CallbackMessage;
+import com.archivesystem.repository.ExternalSourceMapper;
+import com.archivesystem.security.OutboundUrlValidator;
 import com.archivesystem.service.impl.CallbackServiceImpl;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.archivesystem.entity.ExternalSource;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.http.*;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
@@ -18,6 +21,9 @@ import java.time.LocalDateTime;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
+/**
+ * @author junyuzhan
+ */
 
 @ExtendWith(MockitoExtension.class)
 class CallbackServiceTest {
@@ -26,6 +32,8 @@ class CallbackServiceTest {
     private ObjectMapper objectMapper = new ObjectMapper();
 
     private RestTemplate mockRestTemplate;
+    private OutboundUrlValidator outboundUrlValidator;
+    private ExternalSourceMapper externalSourceMapper;
 
     private CallbackServiceImpl callbackService;
 
@@ -34,8 +42,16 @@ class CallbackServiceTest {
     @BeforeEach
     void setUp() {
         mockRestTemplate = mock(RestTemplate.class);
-        callbackService = new CallbackServiceImpl(objectMapper, null, null);
-        ReflectionTestUtils.setField(callbackService, "restTemplate", mockRestTemplate);
+        outboundUrlValidator = mock(OutboundUrlValidator.class);
+        externalSourceMapper = mock(ExternalSourceMapper.class);
+        ExternalSource source = new ExternalSource();
+        source.setSourceType("LAW_FIRM");
+        source.setApiKey("test-callback-secret");
+        source.setEnabled(true);
+        lenient().when(externalSourceMapper.selectBySourceCode("LAW_FIRM")).thenReturn(null);
+        lenient().when(externalSourceMapper.selectBySourceType("LAW_FIRM")).thenReturn(source);
+        callbackService = new CallbackServiceImpl(
+                objectMapper, externalSourceMapper, null, outboundUrlValidator, mockRestTemplate);
         
         testMessage = CallbackMessage.builder()
                 .archiveId(1L)
@@ -79,6 +95,28 @@ class CallbackServiceTest {
         
         assertTrue(result);
         verify(mockRestTemplate).exchange(eq("http://example.com/callback"), eq(HttpMethod.POST), any(HttpEntity.class), eq(String.class));
+    }
+
+    @Test
+    void testSendCallback_ShouldIncludeNonceHeader() {
+        ResponseEntity<String> responseEntity = new ResponseEntity<>("OK", HttpStatus.OK);
+        when(mockRestTemplate.exchange(anyString(), any(HttpMethod.class), any(HttpEntity.class), eq(String.class)))
+                .thenReturn(responseEntity);
+
+        boolean result = callbackService.sendCallback(testMessage);
+
+        assertTrue(result);
+        @SuppressWarnings("rawtypes")
+        ArgumentCaptor<HttpEntity> entityCaptor = ArgumentCaptor.forClass(HttpEntity.class);
+        verify(mockRestTemplate).exchange(eq("http://example.com/callback"), eq(HttpMethod.POST), entityCaptor.capture(), eq(String.class));
+        HttpEntity<?> entity = entityCaptor.getValue();
+        assertNotNull(entity.getHeaders().getFirst("X-Callback-Timestamp"));
+        assertNotNull(entity.getHeaders().getFirst("X-Callback-Signature"));
+        assertNotNull(entity.getHeaders().getFirst("X-Callback-Nonce"));
+        assertTrue(entity.getBody() instanceof java.util.Map<?, ?>);
+        @SuppressWarnings("unchecked")
+        java.util.Map<String, Object> body = (java.util.Map<String, Object>) entity.getBody();
+        assertFalse(body.containsKey("timestamp"));
     }
 
     @Test
@@ -146,5 +184,17 @@ class CallbackServiceTest {
         boolean result = callbackService.sendCallback(testMessage);
         
         assertTrue(result);
+    }
+
+    @Test
+    void testSendCallback_MissingSourceSecret_ReturnsFalse() {
+        when(externalSourceMapper.selectBySourceCode("LAW_FIRM")).thenReturn(null);
+        when(externalSourceMapper.selectBySourceType("LAW_FIRM")).thenReturn(null);
+
+        boolean result = callbackService.sendCallback(testMessage);
+
+        assertFalse(result);
+        verify(mockRestTemplate, never())
+                .exchange(anyString(), any(HttpMethod.class), any(HttpEntity.class), eq(String.class));
     }
 }

@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 
 /**
  * 登录响应DTO.
+ * @author junyuzhan
  */
 @Data
 @Builder

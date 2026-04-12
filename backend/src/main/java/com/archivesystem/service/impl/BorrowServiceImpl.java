@@ -27,6 +27,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * 借阅服务实现.
+ * @author junyuzhan
  */
 @Slf4j
 @Service
@@ -40,7 +41,7 @@ public class BorrowServiceImpl implements BorrowService {
 
     @Override
     @Transactional
-    public BorrowApplication apply(Long archiveId, String borrowPurpose, LocalDate expectedReturnDate, String remarks) {
+    public BorrowApplication apply(Long archiveId, String borrowPurpose, String borrowType, LocalDate expectedReturnDate, String remarks) {
         // 检查档案是否存在
         Archive archive = archiveMapper.selectById(archiveId);
         if (archive == null) {
@@ -57,9 +58,37 @@ public class BorrowServiceImpl implements BorrowService {
         if (existing != null) {
             throw new BusinessException("该档案已有未完成的借阅申请");
         }
+        if (!Archive.STATUS_STORED.equals(archive.getStatus())) {
+            throw new BusinessException("仅已归档档案可申请借阅");
+        }
+        if (BorrowApplication.TYPE_ONLINE.equals(borrowType) || BorrowApplication.TYPE_DOWNLOAD.equals(borrowType)) {
+            if (!Boolean.TRUE.equals(archive.getHasElectronic())
+                    && !Archive.FORM_ELECTRONIC.equals(archive.getArchiveForm())
+                    && !Archive.FORM_HYBRID.equals(archive.getArchiveForm())) {
+                throw new BusinessException("该档案无电子载体，不支持在线查阅或下载型借阅");
+            }
+        }
+        if (BorrowApplication.TYPE_COPY.equals(borrowType)) {
+            if (!Boolean.TRUE.equals(archive.getHasPhysical())
+                    && !Archive.FORM_PHYSICAL.equals(archive.getArchiveForm())
+                    && !Archive.FORM_HYBRID.equals(archive.getArchiveForm())) {
+                throw new BusinessException("该档案无纸质载体，不支持复制利用申请");
+            }
+        }
+        if ((Archive.SECURITY_CONFIDENTIAL.equals(archive.getSecurityLevel())
+                || Archive.SECURITY_SECRET.equals(archive.getSecurityLevel()))
+                && BorrowApplication.TYPE_DOWNLOAD.equals(borrowType)) {
+            throw new BusinessException("秘密和机密档案仅允许在线查阅，不允许下载型借阅");
+        }
+        int maxBorrowDays = resolveMaxBorrowDays(archive, borrowType);
+        LocalDate maxReturnDate = LocalDate.now().plusDays(maxBorrowDays);
+        if (expectedReturnDate.isAfter(maxReturnDate)) {
+            throw new BusinessException("该借阅方式最长可申请 " + maxBorrowDays + " 天，请调整预计归还日期");
+        }
 
         Long userId = SecurityUtils.getCurrentUserId();
         String userName = SecurityUtils.getCurrentRealName();
+        String department = SecurityUtils.getCurrentDepartment();
 
         BorrowApplication application = BorrowApplication.builder()
                 .applicationNo(generateApplicationNo())
@@ -68,7 +97,9 @@ public class BorrowServiceImpl implements BorrowService {
                 .archiveTitle(archive.getTitle())
                 .applicantId(userId)
                 .applicantName(userName)
+                .applicantDept(department)
                 .borrowPurpose(borrowPurpose)
+                .borrowType(StringUtils.hasText(borrowType) ? borrowType : BorrowApplication.TYPE_ONLINE)
                 .expectedReturnDate(expectedReturnDate)
                 .remarks(remarks)
                 .status(BorrowApplication.STATUS_PENDING)
@@ -91,7 +122,7 @@ public class BorrowServiceImpl implements BorrowService {
         // 权限校验：只有申请人本人或管理员/档案员可以查看
         Long currentUserId = SecurityUtils.getCurrentUserId();
         boolean isOwner = Objects.equals(application.getApplicantId(), currentUserId);
-        boolean isAdmin = SecurityUtils.hasAnyRole("SYSTEM_ADMIN", "ARCHIVIST");
+        boolean isAdmin = SecurityUtils.hasAnyRole("SYSTEM_ADMIN", "ARCHIVE_MANAGER");
         
         if (!isOwner && !isAdmin) {
             throw new BusinessException("无权查看此借阅申请");
@@ -101,14 +132,12 @@ public class BorrowServiceImpl implements BorrowService {
     }
 
     @Override
-    public PageResult<BorrowApplication> getMyApplications(Long userId, String status, Integer pageNum, Integer pageSize) {
+    public PageResult<BorrowApplication> getMyApplications(Long userId, String status, String borrowType, String keyword, Integer pageNum, Integer pageSize) {
         LambdaQueryWrapper<BorrowApplication> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(BorrowApplication::getApplicantId, userId)
                .eq(BorrowApplication::getDeleted, false);
 
-        if (StringUtils.hasText(status)) {
-            wrapper.eq(BorrowApplication::getStatus, status);
-        }
+        appendBorrowFilters(wrapper, status, borrowType, keyword);
 
         wrapper.orderByDesc(BorrowApplication::getApplyTime);
 
@@ -139,27 +168,48 @@ public class BorrowServiceImpl implements BorrowService {
     }
 
     @Override
-    public PageResult<BorrowApplication> getPendingList(Integer pageNum, Integer pageSize) {
+    public PageResult<BorrowApplication> getPendingList(String borrowType, String keyword, Integer pageNum, Integer pageSize) {
+        LambdaQueryWrapper<BorrowApplication> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(BorrowApplication::getStatus, BorrowApplication.STATUS_PENDING)
+                .eq(BorrowApplication::getDeleted, false);
+        appendBorrowFilters(wrapper, null, borrowType, keyword);
+
         Page<BorrowApplication> page = new Page<>(pageNum, pageSize);
-        Page<BorrowApplication> result = borrowMapper.selectPage(page,
-                new LambdaQueryWrapper<BorrowApplication>()
-                        .eq(BorrowApplication::getStatus, BorrowApplication.STATUS_PENDING)
-                        .eq(BorrowApplication::getDeleted, false)
-                        .orderByAsc(BorrowApplication::getApplyTime));
+        wrapper.orderByAsc(BorrowApplication::getApplyTime);
+        Page<BorrowApplication> result = borrowMapper.selectPage(page, wrapper);
 
         return PageResult.of(result.getCurrent(), result.getSize(), result.getTotal(), result.getRecords());
     }
 
     @Override
-    public PageResult<BorrowApplication> getApprovedList(Integer pageNum, Integer pageSize) {
+    public PageResult<BorrowApplication> getApprovedList(String borrowType, String keyword, Integer pageNum, Integer pageSize) {
+        LambdaQueryWrapper<BorrowApplication> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(BorrowApplication::getStatus, BorrowApplication.STATUS_APPROVED)
+                .eq(BorrowApplication::getDeleted, false);
+        appendBorrowFilters(wrapper, null, borrowType, keyword);
+
         Page<BorrowApplication> page = new Page<>(pageNum, pageSize);
-        Page<BorrowApplication> result = borrowMapper.selectPage(page,
-                new LambdaQueryWrapper<BorrowApplication>()
-                        .eq(BorrowApplication::getStatus, BorrowApplication.STATUS_APPROVED)
-                        .eq(BorrowApplication::getDeleted, false)
-                        .orderByAsc(BorrowApplication::getApproveTime));
+        wrapper.orderByAsc(BorrowApplication::getApproveTime);
+        Page<BorrowApplication> result = borrowMapper.selectPage(page, wrapper);
 
         return PageResult.of(result.getCurrent(), result.getSize(), result.getTotal(), result.getRecords());
+    }
+
+    private void appendBorrowFilters(LambdaQueryWrapper<BorrowApplication> wrapper, String status, String borrowType, String keyword) {
+        if (StringUtils.hasText(status)) {
+            wrapper.eq(BorrowApplication::getStatus, status);
+        }
+        if (StringUtils.hasText(borrowType)) {
+            wrapper.eq(BorrowApplication::getBorrowType, borrowType);
+        }
+        if (StringUtils.hasText(keyword)) {
+            wrapper.and(w -> w
+                    .like(BorrowApplication::getApplicationNo, keyword)
+                    .or().like(BorrowApplication::getArchiveNo, keyword)
+                    .or().like(BorrowApplication::getArchiveTitle, keyword)
+                    .or().like(BorrowApplication::getApplicantName, keyword)
+                    .or().like(BorrowApplication::getApplicantDept, keyword));
+        }
     }
 
     @Override
@@ -292,7 +342,7 @@ public class BorrowServiceImpl implements BorrowService {
 
         // 【安全检查】只有申请人本人或管理员可以续借
         Long currentUserId = SecurityUtils.getCurrentUserId();
-        boolean isAdmin = SecurityUtils.hasAnyRole("SYSTEM_ADMIN", "ARCHIVIST");
+        boolean isAdmin = SecurityUtils.hasAnyRole("SYSTEM_ADMIN", "ARCHIVE_MANAGER");
         if (!isAdmin && !Objects.equals(application.getApplicantId(), currentUserId)) {
             throw new BusinessException("只能续借自己的借阅申请");
         }
@@ -341,5 +391,16 @@ public class BorrowServiceImpl implements BorrowService {
         String date = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
         int seq = applicationNoCounter.getAndIncrement();
         return String.format("BR-%s-%04d", date, seq);
+    }
+
+    private int resolveMaxBorrowDays(Archive archive, String borrowType) {
+        boolean sensitive = Archive.SECURITY_CONFIDENTIAL.equals(archive.getSecurityLevel())
+                || Archive.SECURITY_SECRET.equals(archive.getSecurityLevel());
+        return switch (borrowType) {
+            case BorrowApplication.TYPE_DOWNLOAD -> 7;
+            case BorrowApplication.TYPE_COPY -> 15;
+            case BorrowApplication.TYPE_ONLINE -> sensitive ? 7 : 30;
+            default -> 7;
+        };
     }
 }

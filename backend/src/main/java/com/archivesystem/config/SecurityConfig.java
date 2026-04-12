@@ -2,6 +2,7 @@ package com.archivesystem.config;
 
 import com.archivesystem.security.ApiKeyAuthFilter;
 import com.archivesystem.security.JwtAuthenticationFilter;
+import com.archivesystem.security.MaintenanceModeFilter;
 import com.archivesystem.security.RateLimitFilter;
 import com.archivesystem.security.SecurityHeadersFilter;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +30,7 @@ import java.util.List;
 
 /**
  * 安全配置.
+ * @author junyuzhan
  */
 @Configuration
 @EnableWebSecurity
@@ -40,6 +42,7 @@ public class SecurityConfig {
     private final RateLimitFilter rateLimitFilter;
     private final SecurityHeadersFilter securityHeadersFilter;
     private final ApiKeyAuthFilter apiKeyAuthFilter;
+    private final MaintenanceModeFilter maintenanceModeFilter;
     
     @Value("${security.cors.allowed-origins:http://localhost:3001}")
     private String allowedOrigins;
@@ -102,6 +105,7 @@ public class SecurityConfig {
                 .addFilterBefore(securityHeadersFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(apiKeyAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(maintenanceModeFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
@@ -118,10 +122,15 @@ public class SecurityConfig {
         // 允许的来源：环境变量配置 + 本地开发地址
         List<String> patterns = new java.util.ArrayList<>(Arrays.asList(
                 "http://localhost:*",
+                "https://localhost:*",
                 "http://127.0.0.1:*",
+                "https://127.0.0.1:*",
                 "http://192.168.*.*:*",
+                "https://192.168.*.*:*",
                 "http://10.*.*.*:*",
-                "http://172.16.*.*:*"
+                "https://10.*.*.*:*",
+                "http://172.16.*.*:*",
+                "https://172.16.*.*:*"
         ));
         // 从环境变量添加外网域名（支持逗号分隔多个）
         if (allowedOrigins != null && !allowedOrigins.isBlank()) {

@@ -2,6 +2,7 @@ package com.archivesystem.dto.archive;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonSetter;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -10,6 +11,7 @@ import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Map;
@@ -17,6 +19,7 @@ import java.util.Map;
 /**
  * 档案接收请求DTO.
  * 用于接收外部系统（如律所管理系统）推送的归档档案
+ * @author junyuzhan
  */
 @Data
 public class ArchiveReceiveRequest {
@@ -109,6 +112,12 @@ public class ArchiveReceiveRequest {
                 }
             }
         }
+    }
+
+    @JsonIgnore
+    public void setCaseCloseDate(LocalDate caseCloseDate) {
+        this.caseCloseDate = caseCloseDate;
+        this.caseCloseDateStr = null;
     }
 
     // ===== 电子文件列表 =====
@@ -210,6 +219,47 @@ public class ArchiveReceiveRequest {
         
         /** 排序号（兼容管理系统字段） */
         private Integer sortOrder;
+
+        /** 案卷卷号 */
+        private Integer volumeNo;
+
+        /** 案卷分段类型 */
+        private String sectionType;
+
+        /** 件号/文号 */
+        private String documentNo;
+
+        /** 起始页码 */
+        private Integer pageStart;
+
+        /** 截止页码 */
+        private Integer pageEnd;
+
+        /** 版本标识 */
+        private String versionLabel;
+
+        /** 文件来源类型 */
+        private String fileSourceType;
+
+        /** 扫描批次号 */
+        private String scanBatchNo;
+
+        /** 扫描操作人 */
+        private String scanOperator;
+
+        /** 扫描时间 */
+        @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
+        private LocalDateTime scanTime;
+
+        /** 扫描复核状态 */
+        private String scanCheckStatus;
+
+        /** 扫描复核人 */
+        private String scanCheckBy;
+
+        /** 扫描复核时间 */
+        @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
+        private LocalDateTime scanCheckTime;
         
         /**
          * 获取文件类型（优先使用 fileType，其次使用 mimeType）.

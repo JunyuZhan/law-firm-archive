@@ -6,6 +6,7 @@ import java.time.LocalDate;
 
 /**
  * 档案查询请求DTO.
+ * @author junyuzhan
  */
 @Data
 public class ArchiveQueryRequest {
@@ -34,11 +35,17 @@ public class ArchiveQueryRequest {
     /** 来源类型 */
     private String sourceType;
 
+    /** 档案形式 */
+    private String archiveForm;
+
     /** 状态 */
     private String status;
 
     /** 案件编号 */
     private String caseNo;
+
+    /** 扫描批次号 */
+    private String scanBatchNo;
 
     /** 归档日期开始 */
     private LocalDate archiveDateStart;

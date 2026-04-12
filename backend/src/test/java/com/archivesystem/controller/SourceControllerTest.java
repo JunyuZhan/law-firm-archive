@@ -3,6 +3,7 @@ package com.archivesystem.controller;
 import com.archivesystem.entity.ExternalSource;
 import com.archivesystem.repository.ExternalSourceMapper;
 import com.archivesystem.security.ApiKeyAuthFilter;
+import com.archivesystem.security.OutboundUrlValidator;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -14,8 +15,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.http.MediaType;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -24,6 +28,9 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+/**
+ * @author junyuzhan
+ */
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -36,6 +43,12 @@ class SourceControllerTest {
 
     @Mock
     private ApiKeyAuthFilter apiKeyAuthFilter;
+
+    @Mock
+    private OutboundUrlValidator outboundUrlValidator;
+
+    @Mock
+    private RestTemplate restTemplate;
 
     @InjectMocks
     private SourceController sourceController;
@@ -148,6 +161,30 @@ class SourceControllerTest {
     }
 
     @Test
+    void testUpdate_DuplicateSourceCode() throws Exception {
+        ExternalSource updateSource = new ExternalSource();
+        updateSource.setSourceCode("COURT");
+        updateSource.setSourceName("更新后的名称");
+        updateSource.setSourceType("LAW_FIRM");
+
+        ExternalSource duplicate = new ExternalSource();
+        duplicate.setId(2L);
+        duplicate.setSourceCode("COURT");
+
+        when(externalSourceMapper.selectById(1L)).thenReturn(testSource);
+        when(externalSourceMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(duplicate);
+
+        mockMvc.perform(put("/sources/1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateSource)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("409"))
+                .andExpect(jsonPath("$.message").value("来源编码已存在"));
+
+        verify(externalSourceMapper, never()).updateById(any(ExternalSource.class));
+    }
+
+    @Test
     void testUpdate_NotFound() throws Exception {
         ExternalSource updateSource = new ExternalSource();
         updateSource.setSourceCode("LAW_FIRM");
@@ -203,14 +240,29 @@ class SourceControllerTest {
 
     @Test
     void testTestConnection() throws Exception {
-        // 没有API URL时，返回"配置有效"
+        // 没有API URL时，应明确返回失败
         testSource.setApiUrl(null);
         when(externalSourceMapper.selectById(1L)).thenReturn(testSource);
         when(externalSourceMapper.updateById(any(ExternalSource.class))).thenReturn(1);
 
         mockMvc.perform(post("/sources/1/test"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value("200"));
+                .andExpect(jsonPath("$.code").value("400"))
+                .andExpect(jsonPath("$.message").value("请先配置API地址后再测试连接"));
+    }
+
+    @Test
+    void testTestConnection_RemoteSuccess() throws Exception {
+        when(externalSourceMapper.selectById(1L)).thenReturn(testSource);
+        when(externalSourceMapper.updateById(any(ExternalSource.class))).thenReturn(1);
+        when(restTemplate.exchange(eq("http://lawfirm.example.com"), eq(org.springframework.http.HttpMethod.HEAD),
+                isNull(), eq(String.class)))
+                .thenReturn(new ResponseEntity<>("OK", HttpStatus.OK));
+
+        mockMvc.perform(post("/sources/1/test"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("200"))
+                .andExpect(jsonPath("$.message").value("连接测试成功"));
     }
 
     @Test

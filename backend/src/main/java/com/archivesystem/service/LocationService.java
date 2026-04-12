@@ -7,6 +7,7 @@ import java.util.List;
 
 /**
  * 存放位置服务接口.
+ * @author junyuzhan
  */
 public interface LocationService {
 
@@ -38,7 +39,7 @@ public interface LocationService {
     /**
      * 获取位置列表（分页）.
      */
-    PageResult<ArchiveLocation> getList(String roomName, String status, Integer pageNum, Integer pageSize);
+    PageResult<ArchiveLocation> getList(String roomName, String status, String keyword, Integer pageNum, Integer pageSize);
 
     /**
      * 获取所有位置.

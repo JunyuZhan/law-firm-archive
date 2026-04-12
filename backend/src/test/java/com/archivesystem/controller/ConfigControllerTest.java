@@ -2,6 +2,7 @@ package com.archivesystem.controller;
 
 import com.archivesystem.entity.SysConfig;
 import com.archivesystem.service.ConfigService;
+import com.archivesystem.service.MinioService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -9,9 +10,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.boot.actuate.health.HealthEndpoint;
+import org.springframework.boot.info.BuildProperties;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.*;
 
@@ -19,6 +24,9 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+/**
+ * @author junyuzhan
+ */
 
 @ExtendWith(MockitoExtension.class)
 class ConfigControllerTest {
@@ -27,6 +35,15 @@ class ConfigControllerTest {
 
     @Mock
     private ConfigService configService;
+
+    @Mock
+    private MinioService minioService;
+
+    @Mock
+    private ObjectProvider<BuildProperties> buildPropertiesProvider;
+
+    @Mock
+    private ObjectProvider<HealthEndpoint> healthEndpointProvider;
 
     @InjectMocks
     private ConfigController configController;
@@ -38,6 +55,12 @@ class ConfigControllerTest {
     void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(configController).build();
         objectMapper = new ObjectMapper();
+        lenient().when(buildPropertiesProvider.getIfAvailable()).thenReturn(null);
+        lenient().when(healthEndpointProvider.getIfAvailable()).thenReturn(null);
+        ReflectionTestUtils.setField(configController, "applicationName", "archive-system");
+        ReflectionTestUtils.setField(configController, "appVersion", "v0.1.7");
+        ReflectionTestUtils.setField(configController, "appCommitSha", "8fe373f8");
+        ReflectionTestUtils.setField(configController, "appBuildTime", "2026-03-31T00:24:52+08:00");
 
         testConfig = new SysConfig();
         testConfig.setId(1L);
@@ -204,5 +227,23 @@ class ConfigControllerTest {
                 .andExpect(jsonPath("$.code").value("200"));
 
         verify(configService).getByGroup(SysConfig.GROUP_SYSTEM);
+    }
+
+    @Test
+    void testGetDeliveryInfo() throws Exception {
+        mockMvc.perform(get("/configs/delivery-info"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("200"))
+                .andExpect(jsonPath("$.data.deliveryMode").value("标准交付"))
+                .andExpect(jsonPath("$.data.sourceCodeIncluded").value(false))
+                .andExpect(jsonPath("$.data.documents[0].code").value("deployment-upgrade-guide"));
+    }
+
+    @Test
+    void testDownloadDeliveryDoc() throws Exception {
+        mockMvc.perform(get("/configs/delivery-docs/deployment-upgrade-guide/download"))
+                .andExpect(status().isOk())
+                .andExpect(header().exists("Content-Disposition"))
+                .andExpect(content().contentType("text/markdown;charset=UTF-8"));
     }
 }

@@ -6,7 +6,7 @@
           :src="appStore.systemConfig.logoUrl || '/logo.png'" 
           alt="Logo" 
           class="login-logo"
-        />
+        >
         <h1>{{ appStore.systemConfig.systemName }}</h1>
         <p class="subtitle">
           {{ appStore.systemConfig.systemNameEn }}
@@ -97,7 +97,10 @@
       </el-form>
       
       <div class="login-footer">
-        <p v-if="isDev" class="dev-hint">
+        <p
+          v-if="isDev"
+          class="dev-hint"
+        >
           开发环境：admin / admin123
         </p>
         <div class="footer-info">
@@ -109,7 +112,10 @@
           >
             {{ appStore.systemConfig.icp }}
           </a>
-          <span v-if="appStore.systemConfig.icp && appStore.systemConfig.copyright" class="divider">|</span>
+          <span
+            v-if="appStore.systemConfig.icp && appStore.systemConfig.copyright"
+            class="divider"
+          >|</span>
           <span class="copyright">{{ appStore.systemConfig.copyright }}</span>
         </div>
       </div>

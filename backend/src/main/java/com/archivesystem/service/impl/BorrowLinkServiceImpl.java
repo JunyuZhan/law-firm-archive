@@ -15,7 +15,7 @@ import com.archivesystem.repository.BorrowApplicationMapper;
 import com.archivesystem.repository.BorrowLinkMapper;
 import com.archivesystem.repository.DigitalFileMapper;
 import com.archivesystem.service.BorrowLinkService;
-import com.archivesystem.service.MinioService;
+import com.archivesystem.service.FileStorageService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
@@ -28,11 +28,13 @@ import org.springframework.util.StringUtils;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
  * 电子借阅链接服务实现.
+ * @author junyuzhan
  */
 @Slf4j
 @Service
@@ -43,7 +45,7 @@ public class BorrowLinkServiceImpl implements BorrowLinkService {
     private final ArchiveMapper archiveMapper;
     private final DigitalFileMapper digitalFileMapper;
     private final BorrowApplicationMapper borrowApplicationMapper;
-    private final MinioService minioService;
+    private final FileStorageService fileStorageService;
 
     @Value("${app.borrow-link.base-url:}")
     private String baseUrl;
@@ -62,10 +64,18 @@ public class BorrowLinkServiceImpl implements BorrowLinkService {
         if (archive == null) {
             throw new NotFoundException("档案不存在");
         }
+        validateArchiveIdentity(archive, request.getArchiveId(), request.getArchiveNo());
 
         // 检查档案是否允许借阅
         if (Archive.STATUS_DESTROYED.equals(archive.getStatus())) {
             throw new BusinessException("该档案已销毁，无法借阅");
+        }
+
+        BorrowLink reusableLink = findReusableExternalLink(archive, request);
+        if (reusableLink != null) {
+            log.info("复用已存在的电子借阅链接: linkId={}, archiveId={}, userId={}",
+                    reusableLink.getId(), archive.getId(), request.getUserId());
+            return buildApplyResponse(reusableLink, archive);
         }
 
         // 生成访问令牌
@@ -96,17 +106,7 @@ public class BorrowLinkServiceImpl implements BorrowLinkService {
         borrowLinkMapper.insert(link);
         log.info("电子借阅链接创建: linkId={}, archiveId={}, userId={}", link.getId(), archive.getId(), request.getUserId());
 
-        // 构建响应
-        return BorrowLinkApplyResponse.builder()
-                .linkId(link.getId())
-                .accessToken(accessToken)
-                .accessUrl(buildAccessUrl(accessToken))
-                .expireAt(expireAt)
-                .allowDownload(link.getAllowDownload())
-                .maxAccessCount(link.getMaxAccessCount())
-                .archiveNo(archive.getArchiveNo())
-                .archiveTitle(archive.getTitle())
-                .build();
+        return buildApplyResponse(link, archive);
     }
 
     @Override
@@ -115,6 +115,10 @@ public class BorrowLinkServiceImpl implements BorrowLinkService {
         BorrowApplication application = borrowApplicationMapper.selectById(borrowId);
         if (application == null) {
             throw new NotFoundException("借阅申请不存在");
+        }
+        if (!BorrowApplication.STATUS_APPROVED.equals(application.getStatus())
+                && !BorrowApplication.STATUS_BORROWED.equals(application.getStatus())) {
+            throw new BusinessException("仅已审批或借出中的借阅申请可以生成电子借阅链接");
         }
 
         Archive archive = archiveMapper.selectById(application.getArchiveId());
@@ -133,6 +137,9 @@ public class BorrowLinkServiceImpl implements BorrowLinkService {
         if (days > maxExpireDays) {
             days = maxExpireDays;
         }
+        boolean canDownload = BorrowApplication.TYPE_DOWNLOAD.equals(application.getBorrowType())
+                && !BorrowApplication.STATUS_RETURNED.equals(application.getStatus())
+                && (allowDownload == null || allowDownload);
 
         BorrowLink link = BorrowLink.builder()
                 .borrowId(borrowId)
@@ -143,7 +150,7 @@ public class BorrowLinkServiceImpl implements BorrowLinkService {
                 .sourceUserName(application.getApplicantName())
                 .borrowPurpose(application.getBorrowPurpose())
                 .expireAt(LocalDateTime.now().plusDays(days))
-                .allowDownload(allowDownload != null ? allowDownload : true)
+                .allowDownload(canDownload)
                 .status(BorrowLink.STATUS_ACTIVE)
                 .build();
 
@@ -183,6 +190,7 @@ public class BorrowLinkServiceImpl implements BorrowLinkService {
         // 记录访问
         link.incrementAccessCount(clientIp);
         borrowLinkMapper.updateById(link);
+        increaseBorrowUsage(link.getBorrowId(), 1, 0);
 
         // 获取档案信息
         Archive archive = archiveMapper.selectById(link.getArchiveId());
@@ -230,17 +238,48 @@ public class BorrowLinkServiceImpl implements BorrowLinkService {
 
     @Override
     @Transactional
-    public void recordDownload(String accessToken, Long fileId) {
-        BorrowLink link = borrowLinkMapper.selectByAccessToken(accessToken);
-        if (link != null && link.isValid()) {
-            link.incrementDownloadCount();
-            borrowLinkMapper.updateById(link);
-            log.debug("记录下载: linkId={}, fileId={}", link.getId(), fileId);
+    public void recordDownload(String accessToken, Long fileId, String clientIp) {
+        BorrowLink link = requireActiveLink(accessToken);
+        if (!Boolean.TRUE.equals(link.getAllowDownload())) {
+            throw new BusinessException("403", "该链接不允许下载");
         }
+
+        DigitalFile file = digitalFileMapper.selectById(fileId);
+        if (file == null || !link.getArchiveId().equals(file.getArchiveId())) {
+            throw NotFoundException.of("文件", fileId);
+        }
+
+        link.incrementDownloadCount();
+        link.setLastAccessAt(LocalDateTime.now());
+        link.setLastAccessIp(clientIp);
+        borrowLinkMapper.updateById(link);
+        increaseBorrowUsage(link.getBorrowId(), 0, 1);
+        log.info("记录下载: linkId={}, fileId={}, clientIp={}", link.getId(), fileId, clientIp);
     }
 
     @Override
-    public PageResult<BorrowLink> getList(Long archiveId, String status, Integer pageNum, Integer pageSize) {
+    public String getFileAccessUrl(String accessToken, Long fileId, boolean download) {
+        BorrowLink link = requireActiveLink(accessToken);
+        if (download && !Boolean.TRUE.equals(link.getAllowDownload())) {
+            throw new BusinessException("403", "该链接不允许下载");
+        }
+
+        int expirySeconds = 60;
+        if (link.getExpireAt() != null) {
+            long remainingSeconds = Duration.between(LocalDateTime.now(), link.getExpireAt()).getSeconds();
+            if (remainingSeconds <= 0) {
+                throw new BusinessException("403", "链接已过期");
+            }
+            expirySeconds = (int) Math.max(1, Math.min(60, remainingSeconds));
+        }
+
+        return download
+                ? fileStorageService.getBorrowDownloadUrl(link.getArchiveId(), fileId, expirySeconds)
+                : fileStorageService.getBorrowPreviewUrl(link.getArchiveId(), fileId, expirySeconds);
+    }
+
+    @Override
+    public PageResult<BorrowLink> getList(Long archiveId, String status, Boolean allowDownload, String sourceType, String keyword, Integer pageNum, Integer pageSize) {
         LambdaQueryWrapper<BorrowLink> wrapper = new LambdaQueryWrapper<>();
         
         if (archiveId != null) {
@@ -248,6 +287,19 @@ public class BorrowLinkServiceImpl implements BorrowLinkService {
         }
         if (StringUtils.hasText(status)) {
             wrapper.eq(BorrowLink::getStatus, status);
+        }
+        if (allowDownload != null) {
+            wrapper.eq(BorrowLink::getAllowDownload, allowDownload);
+        }
+        if (StringUtils.hasText(sourceType)) {
+            wrapper.eq(BorrowLink::getSourceType, sourceType);
+        }
+        if (StringUtils.hasText(keyword)) {
+            wrapper.and(w -> w
+                    .like(BorrowLink::getArchiveNo, keyword)
+                    .or().like(BorrowLink::getSourceUserName, keyword)
+                    .or().like(BorrowLink::getSourceSystem, keyword)
+                    .or().like(BorrowLink::getBorrowPurpose, keyword));
         }
         
         wrapper.orderByDesc(BorrowLink::getCreatedAt);
@@ -276,27 +328,15 @@ public class BorrowLinkServiceImpl implements BorrowLinkService {
 
     @Override
     public BorrowLinkStats getStats() {
-        LambdaQueryWrapper<BorrowLink> wrapper = new LambdaQueryWrapper<>();
-        long total = borrowLinkMapper.selectCount(wrapper);
-
-        wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(BorrowLink::getStatus, BorrowLink.STATUS_ACTIVE);
-        long active = borrowLinkMapper.selectCount(wrapper);
-
-        wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(BorrowLink::getStatus, BorrowLink.STATUS_EXPIRED);
-        long expired = borrowLinkMapper.selectCount(wrapper);
-
-        wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(BorrowLink::getStatus, BorrowLink.STATUS_REVOKED);
-        long revoked = borrowLinkMapper.selectCount(wrapper);
-
-        // 统计访问和下载次数
-        List<BorrowLink> allLinks = borrowLinkMapper.selectList(new LambdaQueryWrapper<>());
-        long totalAccess = allLinks.stream().mapToInt(l -> l.getAccessCount() != null ? l.getAccessCount() : 0).sum();
-        long totalDownload = allLinks.stream().mapToInt(l -> l.getDownloadCount() != null ? l.getDownloadCount() : 0).sum();
-
-        return new BorrowLinkStats(total, active, expired, revoked, totalAccess, totalDownload);
+        Map<String, Object> stats = borrowLinkMapper.selectAggregateStats();
+        return new BorrowLinkStats(
+                asLong(stats, "totalCount"),
+                asLong(stats, "activeCount"),
+                asLong(stats, "expiredCount"),
+                asLong(stats, "revokedCount"),
+                asLong(stats, "totalAccessCount"),
+                asLong(stats, "totalDownloadCount")
+        );
     }
 
     private Archive findArchive(Long archiveId, String archiveNo) {
@@ -312,6 +352,52 @@ public class BorrowLinkServiceImpl implements BorrowLinkService {
         return null;
     }
 
+    private void validateArchiveIdentity(Archive archive, Long archiveId, String archiveNo) {
+        if (archive == null || archiveId == null || !StringUtils.hasText(archiveNo)) {
+            return;
+        }
+        if (!archiveId.equals(archive.getId()) || !archiveNo.equals(archive.getArchiveNo())) {
+            throw new BusinessException("archiveId 与 archiveNo 不匹配");
+        }
+    }
+
+    private BorrowLink findReusableExternalLink(Archive archive, BorrowLinkApplyRequest request) {
+        if (archive == null || !StringUtils.hasText(request.getUserId())) {
+            return null;
+        }
+        List<BorrowLink> existingLinks =
+                borrowLinkMapper.selectBySourceUser(request.getUserId(), BorrowLink.SOURCE_TYPE_LAW_FIRM);
+        return existingLinks.stream()
+                .filter(BorrowLink::isValid)
+                .filter(link -> archive.getId().equals(link.getArchiveId()))
+                .filter(link -> request.getPurpose().equals(link.getBorrowPurpose()))
+                .filter(link -> equalsNullable(request.getMaxAccessCount(), link.getMaxAccessCount()))
+                .filter(link -> equalsNullable(boolOrDefault(request.getAllowDownload(), true), boolOrDefault(link.getAllowDownload(), true)))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private BorrowLinkApplyResponse buildApplyResponse(BorrowLink link, Archive archive) {
+        return BorrowLinkApplyResponse.builder()
+                .linkId(link.getId())
+                .accessToken(link.getAccessToken())
+                .accessUrl(buildAccessUrl(link.getAccessToken()))
+                .expireAt(link.getExpireAt())
+                .allowDownload(link.getAllowDownload())
+                .maxAccessCount(link.getMaxAccessCount())
+                .archiveNo(archive.getArchiveNo())
+                .archiveTitle(archive.getTitle())
+                .build();
+    }
+
+    private <T> boolean equalsNullable(T left, T right) {
+        return java.util.Objects.equals(left, right);
+    }
+
+    private boolean boolOrDefault(Boolean value, boolean defaultValue) {
+        return value != null ? value : defaultValue;
+    }
+
     private String generateAccessToken() {
         return UUID.randomUUID().toString().replace("-", "");
     }
@@ -321,6 +407,35 @@ public class BorrowLinkServiceImpl implements BorrowLinkService {
             return baseUrl + "/open/borrow/access/" + accessToken;
         }
         return "/open/borrow/access/" + accessToken;
+    }
+
+    private long asLong(Map<String, Object> values, String key) {
+        if (values == null) {
+            return 0L;
+        }
+        Object value = values.get(key);
+        return value instanceof Number number ? number.longValue() : 0L;
+    }
+
+    private BorrowLink requireActiveLink(String accessToken) {
+        BorrowLink link = borrowLinkMapper.selectByAccessToken(accessToken);
+        if (link == null) {
+            throw new BusinessException("403", "链接不存在或已失效");
+        }
+        if (BorrowLink.STATUS_REVOKED.equals(link.getStatus())) {
+            throw new BusinessException("403", "链接已被撤销");
+        }
+        if (link.getExpireAt() != null && LocalDateTime.now().isAfter(link.getExpireAt())) {
+            if (BorrowLink.STATUS_ACTIVE.equals(link.getStatus())) {
+                link.setStatus(BorrowLink.STATUS_EXPIRED);
+                borrowLinkMapper.updateById(link);
+            }
+            throw new BusinessException("403", "链接已过期");
+        }
+        if (link.getMaxAccessCount() != null && link.getAccessCount() >= link.getMaxAccessCount()) {
+            throw new BusinessException("403", "访问次数已达上限");
+        }
+        return link;
     }
 
     private BorrowLinkAccessResponse buildAccessResponse(BorrowLink link, Archive archive, List<DigitalFile> files) {
@@ -358,12 +473,18 @@ public class BorrowLinkServiceImpl implements BorrowLinkService {
                 .maxAccessCount(link.getMaxAccessCount())
                 .build();
 
+        BorrowApplication application = link.getBorrowId() != null
+                ? borrowApplicationMapper.selectById(link.getBorrowId())
+                : null;
+
         // 构建借阅人信息
         BorrowLinkAccessResponse.BorrowerInfo borrowerInfo = BorrowLinkAccessResponse.BorrowerInfo.builder()
                 .userId(link.getSourceUserId())
                 .userName(link.getSourceUserName())
                 .purpose(link.getBorrowPurpose())
                 .sourceSystem(link.getSourceSystem())
+                .borrowType(application != null ? application.getBorrowType() : null)
+                .expectedReturnDate(application != null ? application.getExpectedReturnDate() : null)
                 .build();
 
         return BorrowLinkAccessResponse.builder()
@@ -376,14 +497,6 @@ public class BorrowLinkServiceImpl implements BorrowLinkService {
     }
 
     private BorrowLinkAccessResponse.FileInfo buildFileInfo(DigitalFile file, Boolean allowDownload) {
-        String previewPath = StringUtils.hasText(file.getConvertedPath()) ? file.getConvertedPath() : file.getStoragePath();
-        String previewUrl = minioService.getPresignedUrl(previewPath, 3600);
-        
-        String downloadUrl = null;
-        if (Boolean.TRUE.equals(allowDownload)) {
-            downloadUrl = minioService.getPresignedUrl(file.getStoragePath(), 3600);
-        }
-
         return BorrowLinkAccessResponse.FileInfo.builder()
                 .fileId(file.getId())
                 .fileName(file.getFileName())
@@ -391,9 +504,23 @@ public class BorrowLinkServiceImpl implements BorrowLinkService {
                 .fileSize(file.getFileSize())
                 .mimeType(file.getMimeType())
                 .fileCategory(file.getFileCategory())
-                .previewUrl(previewUrl)
-                .downloadUrl(downloadUrl)
+                .previewUrl(null)
+                .downloadUrl(Boolean.TRUE.equals(allowDownload) ? "" : null)
                 .isLongTermFormat(file.getIsLongTermFormat())
                 .build();
+    }
+
+    private void increaseBorrowUsage(Long borrowId, int viewIncrement, int downloadIncrement) {
+        if (borrowId == null) {
+            return;
+        }
+        BorrowApplication application = borrowApplicationMapper.selectById(borrowId);
+        if (application == null) {
+            return;
+        }
+        application.setViewCount((application.getViewCount() == null ? 0 : application.getViewCount()) + viewIncrement);
+        application.setDownloadCount((application.getDownloadCount() == null ? 0 : application.getDownloadCount()) + downloadIncrement);
+        application.setLastAccessAt(LocalDateTime.now());
+        borrowApplicationMapper.updateById(application);
     }
 }

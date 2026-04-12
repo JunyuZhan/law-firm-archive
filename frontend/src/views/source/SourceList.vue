@@ -16,7 +16,7 @@
       <el-alert
         title="来源配置说明"
         type="info"
-        description="配置可接收档案的外部系统，如律所管理系统、法院系统等。启用后，对应系统可通过API推送档案到本系统。"
+        description="配置可接收档案的来源系统或外部业务平台，如管理系统、法院系统等。启用后，对应系统可通过 API 向档案系统推送档案。"
         show-icon
         :closable="false"
         style="margin-bottom: 20px;"
@@ -250,7 +250,7 @@
         <el-form-item label="回调地址">
           <el-input
             v-model="formData.callbackUrl"
-            placeholder="处理完成后回调通知地址（可选）"
+            placeholder="处理完成后回调来源系统的通知地址（可选）"
           />
         </el-form-item>
         <el-form-item label="描述">

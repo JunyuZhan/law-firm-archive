@@ -14,6 +14,7 @@ import java.util.List;
 /**
  * OpenAPI配置.
  * 仅在非生产环境启用，生产环境禁用 Swagger 文档
+ * @author junyuzhan
  */
 @Configuration
 @Profile("!prod")
@@ -36,8 +37,8 @@ public class OpenApiConfig {
                                 - 多来源档案收集
                                 
                                 ## 对接说明
-                                - 律所系统通过 `/api/open/law-firm/archive/receive` 接口推送归档档案
-                                - 需要在请求头中携带 API 密钥进行认证
+                                - 律所系统通过 `/api/open/archive/receive` 接口推送归档档案
+                                - 除公开借阅访问与健康检查外，其余 `/api/open/**` 请求都需要在请求头中携带 `X-API-Key`
                                 """)
                         .contact(new Contact()
                                 .name("技术支持")

@@ -16,6 +16,7 @@ import java.util.UUID;
 /**
  * TraceId 过滤器
  * 为每个请求生成唯一的追踪ID，用于日志关联和问题排查
+ * @author junyuzhan
  */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)

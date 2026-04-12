@@ -4,7 +4,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
+import com.archivesystem.config.mybatis.PostgreSQLJsonbTypeHandler;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -17,6 +17,7 @@ import java.util.Map;
 /**
  * 操作日志实体类.
  * 对应数据库表: arc_operation_log
+ * @author junyuzhan
  */
 @Data
 @Builder
@@ -48,7 +49,7 @@ public class OperationLog implements Serializable {
     private String operationDesc;
     
     /** 操作详情 */
-    @TableField(typeHandler = JacksonTypeHandler.class)
+    @TableField(typeHandler = PostgreSQLJsonbTypeHandler.class)
     private Map<String, Object> operationDetail;
 
     // ===== 操作人信息 =====

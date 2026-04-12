@@ -2,6 +2,7 @@ package com.archivesystem.service;
 
 /**
  * 水印服务接口.
+ * @author junyuzhan
  */
 public interface WatermarkService {
 

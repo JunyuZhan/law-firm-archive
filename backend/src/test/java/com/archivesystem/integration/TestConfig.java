@@ -22,6 +22,7 @@ import static org.mockito.Mockito.when;
 /**
  * 集成测试配置类.
  * 提供外部依赖的Mock实现.
+ * @author junyuzhan
  */
 @TestConfiguration
 public class TestConfig {

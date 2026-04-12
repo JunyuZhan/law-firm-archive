@@ -10,6 +10,7 @@ import java.util.List;
 
 /**
  * 销毁记录Mapper接口.
+ * @author junyuzhan
  */
 @Mapper
 public interface DestructionRecordMapper extends BaseMapper<DestructionRecord> {

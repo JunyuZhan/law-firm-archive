@@ -2,7 +2,7 @@ package com.archivesystem.entity;
 
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
-import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
+import com.archivesystem.config.mybatis.PostgreSQLJsonbTypeHandler;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -15,6 +15,7 @@ import java.util.Map;
 /**
  * 档案来源配置实体类.
  * 用于配置可接收档案的外部系统。
+ * @author junyuzhan
  */
 @Data
 @Builder
@@ -49,7 +50,7 @@ public class ArchiveSource extends BaseEntity {
     private String authType;
 
     /** 额外配置（JSON格式） */
-    @TableField(typeHandler = JacksonTypeHandler.class)
+    @TableField(typeHandler = PostgreSQLJsonbTypeHandler.class)
     private Map<String, Object> extraConfig;
 
     /** 是否启用 */

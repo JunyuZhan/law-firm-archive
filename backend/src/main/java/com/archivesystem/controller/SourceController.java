@@ -4,6 +4,7 @@ import com.archivesystem.common.Result;
 import com.archivesystem.entity.ExternalSource;
 import com.archivesystem.repository.ExternalSourceMapper;
 import com.archivesystem.security.ApiKeyAuthFilter;
+import com.archivesystem.security.OutboundUrlValidator;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -21,6 +22,7 @@ import java.util.List;
 
 /**
  * 档案来源控制器.
+ * @author junyuzhan
  */
 @Slf4j
 @RestController
@@ -31,7 +33,8 @@ public class SourceController {
 
     private final ExternalSourceMapper externalSourceMapper;
     private final ApiKeyAuthFilter apiKeyAuthFilter;
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final OutboundUrlValidator outboundUrlValidator;
+    private final RestTemplate restTemplate;
 
     @GetMapping
     @Operation(summary = "获取来源列表")
@@ -63,6 +66,7 @@ public class SourceController {
     @Operation(summary = "创建来源")
     @PreAuthorize("hasRole('SYSTEM_ADMIN')")
     public Result<ExternalSource> create(@Valid @RequestBody ExternalSource source) {
+        normalizeSource(source);
         // 检查编码是否重复
         ExternalSource existing = externalSourceMapper.selectOne(
                 new LambdaQueryWrapper<ExternalSource>()
@@ -87,6 +91,15 @@ public class SourceController {
         ExternalSource existing = externalSourceMapper.selectById(id);
         if (existing == null || existing.getDeleted()) {
             return Result.error("404", "来源不存在");
+        }
+        normalizeSource(source);
+        ExternalSource duplicate = externalSourceMapper.selectOne(
+                new LambdaQueryWrapper<ExternalSource>()
+                        .eq(ExternalSource::getSourceCode, source.getSourceCode())
+                        .eq(ExternalSource::getDeleted, false)
+                        .ne(ExternalSource::getId, id));
+        if (duplicate != null) {
+            return Result.error("409", "来源编码已存在");
         }
         source.setId(id);
         // 如果没有传入新密钥，保留原密钥
@@ -125,7 +138,7 @@ public class SourceController {
     @PreAuthorize("hasRole('SYSTEM_ADMIN')")
     public Result<Void> toggle(@PathVariable Long id, @RequestParam Boolean enabled) {
         ExternalSource source = externalSourceMapper.selectById(id);
-        if (source == null) {
+        if (source == null || source.getDeleted()) {
             return Result.error("404", "来源不存在");
         }
         source.setEnabled(enabled);
@@ -145,16 +158,17 @@ public class SourceController {
         String apiUrl = source.getApiUrl();
         LocalDateTime now = LocalDateTime.now();
         
-        // 如果没有配置API URL，直接标记为成功（仅接收档案场景）
+        // 未配置 API URL 时不允许测试，避免误导为“连接成功”
         if (apiUrl == null || apiUrl.isEmpty()) {
             source.setLastSyncAt(now);
-            source.setLastSyncStatus("SUCCESS");
-            source.setLastSyncMessage("无需测试（仅接收模式）");
+            source.setLastSyncStatus("FAILED");
+            source.setLastSyncMessage("未配置API地址，无法测试连接");
             externalSourceMapper.updateById(source);
-            return Result.success("配置有效（仅接收模式）", null);
+            return Result.error("400", "请先配置API地址后再测试连接");
         }
         
         try {
+            outboundUrlValidator.validate(apiUrl, "API地址");
             // 尝试访问API URL（HEAD请求，减少流量）
             log.info("测试来源连接: id={}, url={}", id, apiUrl);
             ResponseEntity<String> response = restTemplate.exchange(
@@ -174,7 +188,7 @@ public class SourceController {
             if (success) {
                 return Result.success("连接测试成功", null);
             } else {
-                return Result.error("500", "连接返回状态: " + response.getStatusCode());
+                return Result.error("502", "连接返回状态: " + response.getStatusCode());
             }
         } catch (Exception e) {
             log.warn("测试来源连接失败: id={}, error={}", id, e.getMessage());
@@ -182,7 +196,7 @@ public class SourceController {
             source.setLastSyncStatus("FAILED");
             source.setLastSyncMessage(e.getMessage());
             externalSourceMapper.updateById(source);
-            return Result.error("500", "连接失败: " + e.getMessage());
+            return Result.error("502", "连接失败: " + e.getMessage());
         }
     }
 
@@ -191,10 +205,28 @@ public class SourceController {
     @PreAuthorize("hasRole('SYSTEM_ADMIN')")
     public Result<Void> delete(@PathVariable Long id) {
         ExternalSource source = externalSourceMapper.selectById(id);
-        if (source != null) {
+        if (source != null && !Boolean.TRUE.equals(source.getDeleted())) {
             source.setDeleted(true);
             externalSourceMapper.updateById(source);
         }
         return Result.success("删除成功", null);
+    }
+
+    private void normalizeSource(ExternalSource source) {
+        source.setSourceCode(trimToNull(source.getSourceCode()));
+        source.setSourceName(trimToNull(source.getSourceName()));
+        source.setSourceType(trimToNull(source.getSourceType()));
+        source.setDescription(trimToNull(source.getDescription()));
+        source.setApiUrl(trimToNull(source.getApiUrl()));
+        source.setApiKey(trimToNull(source.getApiKey()));
+        source.setAuthType(trimToNull(source.getAuthType()));
+    }
+
+    private String trimToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 }

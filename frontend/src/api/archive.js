@@ -11,11 +11,12 @@ export function getArchiveList(params) {
   })
 }
 
-export function searchArchives(params) {
+export function searchArchives(params, config = {}) {
   return request({
     url: '/archives/search',
     method: 'get',
-    params
+    params,
+    ...config
   })
 }
 
@@ -93,18 +94,33 @@ export function updateArchiveStatus(id, status) {
   })
 }
 
+export function approveArchive(id) {
+  return request({
+    url: `/archives/${id}/approve`,
+    method: 'put'
+  })
+}
+
 /**
  * 上传文件
  * @param {File} file - 文件对象
  * @param {number|null} archiveId - 档案ID（可选）
  * @param {string|null} fileCategory - 文件分类（可选）
+ * @param {object|null} extraData - 额外表单参数
  * @param {function|null} onProgress - 进度回调，接收 progressEvent 对象
  */
-export function uploadFile(file, archiveId, fileCategory, onProgress) {
+export function uploadFile(file, archiveId, fileCategory, extraData, onProgress) {
   const formData = new FormData()
   formData.append('file', file)
   if (fileCategory) {
     formData.append('fileCategory', fileCategory)
+  }
+  if (extraData) {
+    Object.entries(extraData).forEach(([key, value]) => {
+      if (value !== null && value !== undefined && value !== '') {
+        formData.append(key, value)
+      }
+    })
   }
 
   const url = archiveId ? `/archives/${archiveId}/files` : '/files/upload'

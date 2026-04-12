@@ -8,6 +8,7 @@ import java.util.Map;
 
 /**
  * 告警消息.
+ * @author junyuzhan
  */
 @Data
 @Builder

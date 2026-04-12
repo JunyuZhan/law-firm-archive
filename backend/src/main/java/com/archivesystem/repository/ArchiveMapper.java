@@ -7,9 +7,11 @@ import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 档案Mapper接口.
+ * @author junyuzhan
  */
 @Mapper
 public interface ArchiveMapper extends BaseMapper<Archive> {
@@ -43,4 +45,36 @@ public interface ArchiveMapper extends BaseMapper<Archive> {
      */
     @Select("SELECT * FROM arc_archive WHERE deleted = false ORDER BY id LIMIT #{limit} OFFSET #{offset}")
     List<Archive> selectPageForIndex(@Param("offset") int offset, @Param("limit") int limit);
+
+    /**
+     * 按档案类型统计.
+     */
+    @Select("SELECT archive_type AS type, COUNT(*) AS count FROM arc_archive WHERE deleted = false GROUP BY archive_type")
+    List<Map<String, Object>> countByArchiveType();
+
+    /**
+     * 按保管期限统计.
+     */
+    @Select("SELECT retention_period AS period, COUNT(*) AS count FROM arc_archive WHERE deleted = false GROUP BY retention_period")
+    List<Map<String, Object>> countByRetentionPeriod();
+
+    /**
+     * 按状态统计.
+     */
+    @Select("SELECT status AS status, COUNT(*) AS count FROM arc_archive WHERE deleted = false GROUP BY status")
+    List<Map<String, Object>> countByStatus();
+
+    /**
+     * 按月份统计指定年份创建量.
+     */
+    @Select("""
+            SELECT EXTRACT(MONTH FROM created_at) AS month, COUNT(*) AS count
+            FROM arc_archive
+            WHERE deleted = false
+              AND created_at >= MAKE_TIMESTAMP(#{year}, 1, 1, 0, 0, 0)
+              AND created_at < MAKE_TIMESTAMP(#{year} + 1, 1, 1, 0, 0, 0)
+            GROUP BY EXTRACT(MONTH FROM created_at)
+            ORDER BY month
+            """)
+    List<Map<String, Object>> countByMonth(@Param("year") int year);
 }

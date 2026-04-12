@@ -8,6 +8,7 @@ import org.apache.ibatis.annotations.Select;
 
 /**
  * 用户Mapper接口.
+ * @author junyuzhan
  */
 @Mapper
 public interface UserMapper extends BaseMapper<User> {

@@ -15,6 +15,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  *   <li>提供档案管理服务（入库、借阅、检索等）</li>
  *   <li>支持多来源档案收集</li>
  * </ul>
+ * @author junyuzhan
  */
 @SpringBootApplication
 @MapperScan("com.archivesystem.repository")

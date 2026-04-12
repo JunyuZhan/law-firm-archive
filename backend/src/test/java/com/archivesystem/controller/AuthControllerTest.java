@@ -2,12 +2,13 @@ package com.archivesystem.controller;
 
 import com.archivesystem.dto.auth.LoginRequest;
 import com.archivesystem.entity.User;
-import com.archivesystem.repository.UserMapper;
 import com.archivesystem.security.JwtUtils;
 import com.archivesystem.security.LoginSecurityService;
 import com.archivesystem.security.TokenBlacklistService;
 import com.archivesystem.security.UserDetailsImpl;
+import com.archivesystem.service.UserService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.jsonwebtoken.Claims;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -32,6 +33,9 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+/**
+ * @author junyuzhan
+ */
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -46,7 +50,7 @@ class AuthControllerTest {
     private JwtUtils jwtUtils;
 
     @Mock
-    private UserMapper userMapper;
+    private UserService userService;
 
     @Mock
     private LoginSecurityService loginSecurityService;
@@ -79,6 +83,7 @@ class AuthControllerTest {
                 "testuser",
                 "encoded_password",
                 "测试用户",
+                "测试部",
                 "ADMIN",
                 User.STATUS_ACTIVE,
                 Collections.emptyList()
@@ -104,8 +109,7 @@ class AuthControllerTest {
                 .thenReturn("access_token_xxx");
         when(jwtUtils.generateRefreshToken(anyLong()))
                 .thenReturn("refresh_token_xxx");
-        when(userMapper.selectById(1L)).thenReturn(testUser);
-        when(userMapper.updateById(any(User.class))).thenReturn(1);
+        doNothing().when(userService).recordLoginSuccess(eq(1L), anyString());
 
         mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -156,17 +160,23 @@ class AuthControllerTest {
 
         when(jwtUtils.validateToken(refreshToken)).thenReturn(true);
         when(jwtUtils.isRefreshToken(refreshToken)).thenReturn(true);
-        when(jwtUtils.getUserIdFromToken(refreshToken)).thenReturn(1L);
-        when(userMapper.selectById(1L)).thenReturn(testUser);
+        Claims claims = mock(Claims.class);
+        when(claims.get("userId", Long.class)).thenReturn(1L);
+        when(claims.getIssuedAt()).thenReturn(new java.util.Date(System.currentTimeMillis() - 1000));
+        when(jwtUtils.parseToken(refreshToken)).thenReturn(claims);
+        when(userService.getActiveById(1L)).thenReturn(testUser);
         when(jwtUtils.generateAccessToken(1L, "testuser", "ADMIN"))
                 .thenReturn("new_access_token");
+        when(jwtUtils.generateRefreshToken(1L)).thenReturn("new_refresh_token");
 
         mockMvc.perform(post("/auth/refresh")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(refreshToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
-                .andExpect(jsonPath("$.data.accessToken").value("new_access_token"));
+                .andExpect(jsonPath("$.data.accessToken").value("new_access_token"))
+                .andExpect(jsonPath("$.data.refreshToken").value("new_refresh_token"));
+        verify(tokenBlacklistService).addToBlacklist(refreshToken);
     }
 
     @Test
@@ -202,8 +212,11 @@ class AuthControllerTest {
 
         when(jwtUtils.validateToken(refreshToken)).thenReturn(true);
         when(jwtUtils.isRefreshToken(refreshToken)).thenReturn(true);
-        when(jwtUtils.getUserIdFromToken(refreshToken)).thenReturn(999L);
-        when(userMapper.selectById(999L)).thenReturn(null);
+        Claims claims = mock(Claims.class);
+        when(claims.get("userId", Long.class)).thenReturn(999L);
+        when(claims.getIssuedAt()).thenReturn(new java.util.Date(System.currentTimeMillis() - 1000));
+        when(jwtUtils.parseToken(refreshToken)).thenReturn(claims);
+        when(userService.getActiveById(999L)).thenReturn(null);
 
         mockMvc.perform(post("/auth/refresh")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -219,8 +232,11 @@ class AuthControllerTest {
 
         when(jwtUtils.validateToken(refreshToken)).thenReturn(true);
         when(jwtUtils.isRefreshToken(refreshToken)).thenReturn(true);
-        when(jwtUtils.getUserIdFromToken(refreshToken)).thenReturn(1L);
-        when(userMapper.selectById(1L)).thenReturn(testUser);
+        Claims claims = mock(Claims.class);
+        when(claims.get("userId", Long.class)).thenReturn(1L);
+        when(claims.getIssuedAt()).thenReturn(new java.util.Date(System.currentTimeMillis() - 1000));
+        when(jwtUtils.parseToken(refreshToken)).thenReturn(claims);
+        when(userService.getActiveById(1L)).thenReturn(null);
 
         mockMvc.perform(post("/auth/refresh")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -235,7 +251,7 @@ class AuthControllerTest {
 
         when(jwtUtils.validateToken(refreshToken)).thenReturn(true);
         when(jwtUtils.isRefreshToken(refreshToken)).thenReturn(true);
-        when(jwtUtils.getUserIdFromToken(refreshToken)).thenThrow(new RuntimeException("Token解析失败"));
+        when(jwtUtils.parseToken(refreshToken)).thenThrow(new RuntimeException("Token解析失败"));
 
         mockMvc.perform(post("/auth/refresh")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -246,9 +262,36 @@ class AuthControllerTest {
 
     @Test
     void testLogout_Success() throws Exception {
-        mockMvc.perform(post("/auth/logout"))
+        Claims claims = mock(Claims.class);
+        when(claims.get("userId", Long.class)).thenReturn(1L);
+        when(jwtUtils.parseToken("access_token")).thenReturn(claims);
+        when(jwtUtils.getRefreshExpirationMillis()).thenReturn(604800000L);
+
+        mockMvc.perform(post("/auth/logout")
+                        .header("Authorization", "Bearer access_token"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
                 .andExpect(jsonPath("$.message").value("登出成功"));
+        verify(tokenBlacklistService).addToBlacklist("access_token");
+        verify(tokenBlacklistService).blacklistUserTokens(1L, 604800L);
+    }
+
+    @Test
+    void testRefresh_BlacklistedToken() throws Exception {
+        String refreshToken = "valid_refresh_token";
+
+        when(jwtUtils.validateToken(refreshToken)).thenReturn(true);
+        when(jwtUtils.isRefreshToken(refreshToken)).thenReturn(true);
+        Claims claims = mock(Claims.class);
+        when(claims.get("userId", Long.class)).thenReturn(1L);
+        when(claims.getIssuedAt()).thenReturn(new java.util.Date(System.currentTimeMillis() - 1000));
+        when(jwtUtils.parseToken(refreshToken)).thenReturn(claims);
+        when(tokenBlacklistService.isBlacklisted(refreshToken)).thenReturn(true);
+
+        mockMvc.perform(post("/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(refreshToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("1001"));
     }
 }

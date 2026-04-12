@@ -10,6 +10,7 @@ import java.util.List;
 
 /**
  * 档案元数据Mapper接口.
+ * @author junyuzhan
  */
 @Mapper
 public interface ArchiveMetadataMapper extends BaseMapper<ArchiveMetadata> {

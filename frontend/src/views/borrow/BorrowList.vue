@@ -1,36 +1,73 @@
 <template>
   <div class="borrow-list">
+    <div class="page-header">
+      <h1>借阅管理</h1>
+      <p>统一处理我的借阅、审批、借出和逾期提醒，保证电子档案借阅过程可控、可追踪。</p>
+    </div>
+
     <!-- 标签页 -->
-    <el-tabs
-      v-model="activeTab"
-      @tab-change="handleTabChange"
-    >
-      <el-tab-pane
-        label="我的借阅"
-        name="my"
-      />
-      <el-tab-pane
-        label="待审批"
-        name="pending"
-      />
-      <el-tab-pane
-        label="待借出"
-        name="lend"
-      />
-      <el-tab-pane
-        label="逾期提醒"
-        name="overdue"
-      />
-    </el-tabs>
+    <el-card shadow="never" class="tab-card">
+      <el-tabs
+        v-model="activeTab"
+        @tab-change="handleTabChange"
+      >
+        <el-tab-pane
+          label="我的借阅"
+          name="my"
+        />
+        <el-tab-pane
+          v-if="canManageBorrows"
+          label="待审批"
+          name="pending"
+        />
+        <el-tab-pane
+          v-if="canManageBorrows"
+          label="待借出"
+          name="lend"
+        />
+        <el-tab-pane
+          v-if="canManageBorrows"
+          label="逾期提醒"
+          name="overdue"
+        />
+      </el-tabs>
+    </el-card>
 
     <!-- 筛选 -->
     <el-card
-      v-if="activeTab === 'my'"
+      v-if="activeTab !== 'overdue'"
       shadow="never"
       class="filter-card"
     >
       <el-form inline>
-        <el-form-item label="状态">
+        <el-form-item label="关键词">
+          <el-input
+            v-model="filters.keyword"
+            placeholder="申请编号/档案号/题名/申请人"
+            clearable
+            style="width: 220px"
+            @keyup.enter="handleSearch"
+          />
+        </el-form-item>
+        <el-form-item label="借阅方式">
+          <el-select
+            v-model="filters.borrowType"
+            placeholder="全部"
+            clearable
+            style="width: 140px"
+          >
+            <el-option
+              v-for="item in borrowTypeOptions"
+              :key="item.value"
+              :label="item.label"
+              :value="item.value"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item
+          v-if="activeTab === 'my'"
+          label="状态"
+        >
           <el-select
             v-model="filters.status"
             placeholder="全部"
@@ -62,16 +99,19 @@
         <el-form-item>
           <el-button
             type="primary"
-            @click="fetchData"
+            @click="handleSearch"
           >
             查询
+          </el-button>
+          <el-button @click="handleReset">
+            重置
           </el-button>
         </el-form-item>
       </el-form>
     </el-card>
 
     <!-- 列表 -->
-    <el-card shadow="never">
+    <el-card shadow="never" class="table-card">
       <el-table
         v-loading="loading"
         :data="tableData"
@@ -99,6 +139,20 @@
           label="申请人"
           width="100"
         />
+        <el-table-column
+          prop="applicantDept"
+          label="申请部门"
+          width="140"
+          show-overflow-tooltip
+        />
+        <el-table-column
+          label="借阅方式"
+          width="110"
+        >
+          <template #default="{ row }">
+            {{ getBorrowTypeName(row.borrowType) }}
+          </template>
+        </el-table-column>
         <el-table-column
           label="状态"
           width="100"
@@ -339,98 +393,123 @@
     <el-dialog
       v-model="detailDialogVisible"
       title="借阅详情"
-      width="600px"
+      width="760px"
+      class="borrow-detail-dialog"
     >
       <div v-loading="detailLoading">
-        <el-descriptions
+        <div
           v-if="detailData"
-          :column="2"
-          border
+          class="borrow-detail-content"
         >
-          <el-descriptions-item label="申请编号">
-            {{ detailData.applicationNo }}
-          </el-descriptions-item>
-          <el-descriptions-item label="状态">
-            <el-tag
-              :type="getStatusType(detailData.status)"
-              size="small"
-            >
-              {{ getStatusName(detailData.status) }}
-            </el-tag>
-          </el-descriptions-item>
-          <el-descriptions-item label="档案号">
-            {{ detailData.archiveNo }}
-          </el-descriptions-item>
-          <el-descriptions-item
-            label="档案题名"
-            :span="2"
-          >
-            {{ detailData.archiveTitle }}
-          </el-descriptions-item>
-          <el-descriptions-item label="申请人">
-            {{ detailData.applicantName }}
-          </el-descriptions-item>
-          <el-descriptions-item label="申请时间">
-            {{ formatDateTime(detailData.applyTime) }}
-          </el-descriptions-item>
-          <el-descriptions-item
-            label="借阅目的"
-            :span="2"
-          >
-            {{ detailData.borrowPurpose || '-' }}
-          </el-descriptions-item>
-          <el-descriptions-item label="预计归还">
-            {{ detailData.expectedReturnDate }}
-          </el-descriptions-item>
-          <el-descriptions-item label="实际归还">
-            {{ detailData.actualReturnDate || '-' }}
-          </el-descriptions-item>
-          <el-descriptions-item
-            v-if="detailData.approverName"
-            label="审批人"
-          >
-            {{ detailData.approverName }}
-          </el-descriptions-item>
-          <el-descriptions-item
-            v-if="detailData.approveTime"
-            label="审批时间"
-          >
-            {{ formatDateTime(detailData.approveTime) }}
-          </el-descriptions-item>
-          <el-descriptions-item
-            v-if="detailData.approveRemarks"
-            label="审批意见"
-            :span="2"
-          >
-            {{ detailData.approveRemarks }}
-          </el-descriptions-item>
-          <el-descriptions-item
-            v-if="detailData.rejectReason"
-            label="拒绝原因"
-            :span="2"
-          >
-            <span class="text-danger">{{ detailData.rejectReason }}</span>
-          </el-descriptions-item>
-          <el-descriptions-item
-            v-if="detailData.borrowTime"
-            label="借出时间"
-          >
-            {{ formatDateTime(detailData.borrowTime) }}
-          </el-descriptions-item>
-          <el-descriptions-item
-            v-if="detailData.renewCount"
-            label="续借次数"
-          >
-            {{ detailData.renewCount }} 次
-          </el-descriptions-item>
-          <el-descriptions-item
-            v-if="detailData.remarks"
-            label="备注"
-            :span="2"
-          >
-            {{ detailData.remarks }}
-          </el-descriptions-item>
-        </el-descriptions>
+          <div class="borrow-detail-hero">
+            <div>
+              <div class="hero-label">
+                档案号
+              </div>
+              <div class="hero-value">
+                {{ detailData.archiveNo }}
+              </div>
+            </div>
+            <div class="hero-main">
+              <div class="hero-label">
+                档案题名
+              </div>
+              <div class="hero-title">
+                {{ detailData.archiveTitle }}
+              </div>
+            </div>
+            <div>
+              <div class="hero-label">
+                当前状态
+              </div>
+              <el-tag
+                :type="getStatusType(detailData.status)"
+                size="small"
+              >
+                {{ getStatusName(detailData.status) }}
+              </el-tag>
+            </div>
+          </div>
+
+          <div class="detail-section">
+            <div class="detail-section-title">
+              申请信息
+            </div>
+            <el-descriptions :column="2" border>
+              <el-descriptions-item label="申请编号">
+                {{ detailData.applicationNo }}
+              </el-descriptions-item>
+              <el-descriptions-item label="借阅方式">
+                {{ getBorrowTypeName(detailData.borrowType) }}
+              </el-descriptions-item>
+              <el-descriptions-item label="申请人">
+                {{ detailData.applicantName }}
+              </el-descriptions-item>
+              <el-descriptions-item label="申请部门">
+                {{ detailData.applicantDept || '-' }}
+              </el-descriptions-item>
+              <el-descriptions-item label="申请时间">
+                {{ formatDateTime(detailData.applyTime) }}
+              </el-descriptions-item>
+              <el-descriptions-item label="预计归还">
+                {{ detailData.expectedReturnDate }}
+              </el-descriptions-item>
+              <el-descriptions-item
+                label="借阅目的"
+                :span="2"
+              >
+                <div class="detail-text-block">
+                  {{ detailData.borrowPurpose || '-' }}
+                </div>
+              </el-descriptions-item>
+              <el-descriptions-item
+                v-if="detailData.remarks"
+                label="备注"
+                :span="2"
+              >
+                <div class="detail-text-block">
+                  {{ detailData.remarks }}
+                </div>
+              </el-descriptions-item>
+            </el-descriptions>
+          </div>
+
+          <div class="detail-section">
+            <div class="detail-section-title">
+              审批与借出
+            </div>
+            <el-descriptions :column="2" border>
+              <el-descriptions-item label="审批人">
+                {{ detailData.approverName || '-' }}
+              </el-descriptions-item>
+              <el-descriptions-item label="审批时间">
+                {{ formatDateTime(detailData.approveTime) }}
+              </el-descriptions-item>
+              <el-descriptions-item label="借出时间">
+                {{ formatDateTime(detailData.borrowTime) }}
+              </el-descriptions-item>
+              <el-descriptions-item label="实际归还">
+                {{ detailData.actualReturnDate || '-' }}
+              </el-descriptions-item>
+              <el-descriptions-item label="续借次数">
+                {{ detailData.renewCount ? `${detailData.renewCount} 次` : '-' }}
+              </el-descriptions-item>
+              <el-descriptions-item label="拒绝原因">
+                <span :class="{ 'text-danger': !!detailData.rejectReason }">
+                  {{ detailData.rejectReason || '-' }}
+                </span>
+              </el-descriptions-item>
+              <el-descriptions-item
+                label="审批意见"
+                :span="2"
+              >
+                <div class="detail-text-block">
+                  {{ detailData.approveRemarks || '-' }}
+                </div>
+              </el-descriptions-item>
+            </el-descriptions>
+          </div>
+        </div>
       </div>
       <template #footer>
         <el-button @click="detailDialogVisible = false">
@@ -442,8 +521,9 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { computed, ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { useUserStore } from '@/stores/user'
 import { 
   getMyBorrows, getPendingBorrows, getApprovedBorrows, getOverdueBorrows,
   cancelBorrow, approveBorrow, rejectBorrow, returnArchive, renewBorrow,
@@ -451,16 +531,23 @@ import {
 } from '@/api/borrow'
 import {
   getBorrowStatusName,
-  getBorrowStatusType
+  getBorrowStatusType,
+  getBorrowTypeName,
+  getBorrowTypeOptions
 } from '@/utils/archiveEnums'
 
+const userStore = useUserStore()
 const activeTab = ref('my')
 const loading = ref(false)
 const tableData = ref([])
+const canManageBorrows = computed(() => userStore.isArchivist)
 
 const filters = reactive({
-  status: ''
+  status: '',
+  borrowType: '',
+  keyword: ''
 })
+const borrowTypeOptions = getBorrowTypeOptions()
 
 const pagination = reactive({
   pageNum: 1,
@@ -487,10 +574,15 @@ const renewForm = reactive({ newReturnDate: '' })
 const fetchData = async () => {
   loading.value = true
   try {
+    if (!canManageBorrows.value && activeTab.value !== 'my') {
+      activeTab.value = 'my'
+    }
     let res
     if (activeTab.value === 'my') {
       res = await getMyBorrows({
         status: filters.status,
+        borrowType: filters.borrowType,
+        keyword: filters.keyword,
         pageNum: pagination.pageNum,
         pageSize: pagination.pageSize
       })
@@ -498,6 +590,8 @@ const fetchData = async () => {
       pagination.total = res.data.total
     } else if (activeTab.value === 'pending') {
       res = await getPendingBorrows({
+        borrowType: filters.borrowType,
+        keyword: filters.keyword,
         pageNum: pagination.pageNum,
         pageSize: pagination.pageSize
       })
@@ -505,6 +599,8 @@ const fetchData = async () => {
       pagination.total = res.data.total
     } else if (activeTab.value === 'lend') {
       res = await getApprovedBorrows({
+        borrowType: filters.borrowType,
+        keyword: filters.keyword,
         pageNum: pagination.pageNum,
         pageSize: pagination.pageSize
       })
@@ -524,8 +620,26 @@ const fetchData = async () => {
 
 // 切换标签
 const handleTabChange = () => {
+  if (!canManageBorrows.value && activeTab.value !== 'my') {
+    activeTab.value = 'my'
+  }
+  pagination.pageNum = 1
+  filters.status = ''
+  filters.borrowType = ''
+  filters.keyword = ''
+  fetchData()
+}
+
+const handleSearch = () => {
   pagination.pageNum = 1
   fetchData()
+}
+
+const handleReset = () => {
+  filters.status = ''
+  filters.borrowType = ''
+  filters.keyword = ''
+  handleSearch()
 }
 
 // 取消申请
@@ -702,12 +816,31 @@ onMounted(() => {
 
 <style lang="scss" scoped>
 .borrow-list {
-  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.page-header h1 {
+  margin: 0 0 8px;
+  font-size: 24px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.page-header p {
+  margin: 0;
+  line-height: 1.6;
+  color: #606266;
+}
+
+.tab-card,
+.filter-card,
+.table-card {
+  border-radius: 10px;
 }
 
 .filter-card {
-  margin-bottom: 16px;
-  
   :deep(.el-card__body) {
     padding-bottom: 0;
   }
@@ -722,5 +855,63 @@ onMounted(() => {
 .text-danger {
   color: #f56c6c;
   font-weight: bold;
+}
+
+.borrow-detail-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.borrow-detail-hero {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr) 120px;
+  gap: 16px;
+  padding: 16px 18px;
+  border: 1px solid #e5eaf3;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #fbfcfe 0%, #f4f6f9 100%);
+}
+
+.hero-label {
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: #909399;
+}
+
+.hero-value {
+  font-weight: 600;
+  color: #8c6b1f;
+}
+
+.hero-title {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.6;
+  color: #303133;
+}
+
+.detail-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.detail-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #34495e;
+}
+
+.detail-text-block {
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+@media (max-width: 768px) {
+  .borrow-detail-hero {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

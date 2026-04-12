@@ -5,6 +5,9 @@ import org.junit.jupiter.api.Test;
 import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.*;
+/**
+ * @author junyuzhan
+ */
 
 class DigitalFileTest {
 
@@ -37,6 +40,12 @@ class DigitalFileTest {
                 .fileCategory(DigitalFile.CATEGORY_MAIN)
                 .sortOrder(1)
                 .description("文件描述")
+                .volumeNo(2)
+                .sectionType(DigitalFile.SECTION_EVIDENCE)
+                .documentNo("DOC-08")
+                .pageStart(15)
+                .pageEnd(28)
+                .versionLabel("v2")
                 .sourceUrl("https://source.example.com/file.pdf")
                 .uploadAt(now)
                 .uploadBy(1L)
@@ -69,6 +78,12 @@ class DigitalFileTest {
         assertEquals(DigitalFile.CATEGORY_MAIN, file.getFileCategory());
         assertEquals(1, file.getSortOrder());
         assertEquals("文件描述", file.getDescription());
+        assertEquals(2, file.getVolumeNo());
+        assertEquals(DigitalFile.SECTION_EVIDENCE, file.getSectionType());
+        assertEquals("DOC-08", file.getDocumentNo());
+        assertEquals(15, file.getPageStart());
+        assertEquals(28, file.getPageEnd());
+        assertEquals("v2", file.getVersionLabel());
         assertEquals("https://source.example.com/file.pdf", file.getSourceUrl());
         assertFalse(file.getDeleted());
     }
@@ -99,6 +114,7 @@ class DigitalFileTest {
         assertEquals("ATTACHMENT", DigitalFile.CATEGORY_ATTACHMENT);
         assertEquals("COVER", DigitalFile.CATEGORY_COVER);
         assertEquals("CATALOG", DigitalFile.CATEGORY_CATALOG);
+        assertEquals("EVIDENCE", DigitalFile.SECTION_EVIDENCE);
     }
 
     @Test

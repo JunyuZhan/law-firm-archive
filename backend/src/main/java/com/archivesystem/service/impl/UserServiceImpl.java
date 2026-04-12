@@ -21,11 +21,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
 /**
  * 用户服务实现.
+ * @author junyuzhan
  */
 @Slf4j
 @Service
@@ -104,6 +106,30 @@ public class UserServiceImpl implements UserService {
     @Override
     public User getByUsername(String username) {
         return userMapper.selectByUsername(username);
+    }
+
+    @Override
+    public User getActiveById(Long id) {
+        User user = userMapper.selectById(id);
+        if (user == null || !User.STATUS_ACTIVE.equals(user.getStatus()) || Boolean.TRUE.equals(user.getDeleted())) {
+            return null;
+        }
+        user.setPassword(null);
+        return user;
+    }
+
+    @Override
+    @Transactional
+    public void recordLoginSuccess(Long id, String clientIp) {
+        User user = userMapper.selectById(id);
+        if (user == null) {
+            log.warn("登录成功但用户信息未找到: userId={}", id);
+            return;
+        }
+
+        user.setLastLoginAt(LocalDateTime.now());
+        user.setLastLoginIp(clientIp);
+        userMapper.updateById(user);
     }
 
     @Override

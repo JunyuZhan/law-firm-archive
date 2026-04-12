@@ -8,6 +8,7 @@ import java.util.regex.Pattern;
 /**
  * SQL注入验证器.
  * 用于检测和防止SQL注入攻击
+ * @author junyuzhan
  */
 @Slf4j
 @Component

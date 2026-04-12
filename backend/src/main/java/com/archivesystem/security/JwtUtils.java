@@ -18,6 +18,7 @@ import java.util.Map;
 
 /**
  * JWT工具类.
+ * @author junyuzhan
  */
 @Slf4j
 @Component
@@ -130,6 +131,10 @@ public class JwtUtils {
     public boolean isRefreshToken(String token) {
         Claims claims = parseToken(token);
         return "refresh".equals(claims.get("type", String.class));
+    }
+
+    public long getRefreshExpirationMillis() {
+        return refreshExpiration;
     }
 
     /**

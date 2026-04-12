@@ -11,6 +11,7 @@ import lombok.NoArgsConstructor;
 
 /**
  * 档案存放位置实体类.
+ * @author junyuzhan
  */
 @Data
 @Builder

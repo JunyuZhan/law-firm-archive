@@ -8,6 +8,7 @@ import java.util.regex.Pattern;
 
 /**
  * 参数校验工具类.
+ * @author junyuzhan
  */
 public final class ValidationUtils {
 

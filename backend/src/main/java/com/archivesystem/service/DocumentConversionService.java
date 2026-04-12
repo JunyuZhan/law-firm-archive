@@ -13,6 +13,7 @@ import java.io.InputStream;
  *   <li>转换后的文档保持原始内容和格式</li>
  * </ul>
  * </p>
+ * @author junyuzhan
  */
 public interface DocumentConversionService {
 

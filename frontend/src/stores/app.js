@@ -34,9 +34,23 @@ export const useAppStore = defineStore('app', () => {
   const uploadingCount = computed(() => 
     uploadQueue.value.filter(item => item.status === 'uploading').length
   )
+
+  const setupDefaults = {
+    systemName: '档案管理系统',
+    systemNameEn: 'Archive Management System',
+    copyright: '© 2024 档案管理系统'
+  }
   
   // 计算属性
   const isDarkMode = computed(() => theme.value === 'dark')
+  const needsInitialSetup = computed(() => {
+    const config = systemConfig.value
+    return !config.systemName ||
+      config.systemName === setupDefaults.systemName ||
+      !config.logoUrl ||
+      !config.copyright ||
+      config.copyright === setupDefaults.copyright
+  })
   
   // 切换侧边栏
   function toggleSidebar() {
@@ -190,6 +204,7 @@ export const useAppStore = defineStore('app', () => {
     uploadQueue,
     uploadingCount,
     isDarkMode,
+    needsInitialSetup,
     
     // 方法
     toggleSidebar,

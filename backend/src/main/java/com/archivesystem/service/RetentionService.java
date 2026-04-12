@@ -6,6 +6,7 @@ import java.util.List;
 
 /**
  * 保管期限服务接口.
+ * @author junyuzhan
  */
 public interface RetentionService {
 

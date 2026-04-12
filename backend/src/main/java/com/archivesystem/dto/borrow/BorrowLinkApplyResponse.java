@@ -9,6 +9,7 @@ import java.time.LocalDateTime;
 
 /**
  * 电子借阅链接申请响应DTO.
+ * @author junyuzhan
  */
 @Data
 @Builder

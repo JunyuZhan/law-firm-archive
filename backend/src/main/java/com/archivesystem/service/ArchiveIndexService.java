@@ -10,6 +10,7 @@ import java.util.Map;
 /**
  * 档案索引服务接口
  * 负责ES索引的同步和搜索
+ * @author junyuzhan
  */
 public interface ArchiveIndexService {
 

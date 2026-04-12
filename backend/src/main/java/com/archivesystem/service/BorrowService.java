@@ -8,13 +8,14 @@ import java.util.List;
 
 /**
  * 借阅服务接口.
+ * @author junyuzhan
  */
 public interface BorrowService {
 
     /**
      * 提交借阅申请.
      */
-    BorrowApplication apply(Long archiveId, String borrowPurpose, LocalDate expectedReturnDate, String remarks);
+    BorrowApplication apply(Long archiveId, String borrowPurpose, String borrowType, LocalDate expectedReturnDate, String remarks);
 
     /**
      * 获取借阅申请详情.
@@ -24,7 +25,7 @@ public interface BorrowService {
     /**
      * 获取我的申请列表.
      */
-    PageResult<BorrowApplication> getMyApplications(Long userId, String status, Integer pageNum, Integer pageSize);
+    PageResult<BorrowApplication> getMyApplications(Long userId, String status, String borrowType, String keyword, Integer pageNum, Integer pageSize);
 
     /**
      * 取消申请.
@@ -34,12 +35,12 @@ public interface BorrowService {
     /**
      * 获取待审批列表.
      */
-    PageResult<BorrowApplication> getPendingList(Integer pageNum, Integer pageSize);
+    PageResult<BorrowApplication> getPendingList(String borrowType, String keyword, Integer pageNum, Integer pageSize);
 
     /**
      * 获取待借出列表（已审批通过）.
      */
-    PageResult<BorrowApplication> getApprovedList(Integer pageNum, Integer pageSize);
+    PageResult<BorrowApplication> getApprovedList(String borrowType, String keyword, Integer pageNum, Integer pageSize);
 
     /**
      * 审批通过.

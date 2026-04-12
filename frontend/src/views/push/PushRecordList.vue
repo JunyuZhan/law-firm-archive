@@ -1,48 +1,101 @@
 <template>
   <div class="push-record-list">
+    <div class="page-header">
+      <h1>推送记录</h1>
+      <p>查看档案向来源系统或内部来源的推送结果、失败原因和重试情况，便于排查同步链路。</p>
+    </div>
+
     <!-- 统计卡片 -->
-    <el-row :gutter="16" class="stats-row">
-      <el-col :span="4">
-        <el-card shadow="hover" class="stat-card">
-          <div class="stat-value">{{ statistics.total || 0 }}</div>
-          <div class="stat-label">总推送数</div>
+    <div class="stats-grid">
+      <div class="stats-grid-item">
+        <el-card
+          shadow="never"
+          class="stat-card"
+        >
+          <div class="stat-value">
+            {{ statistics.total || 0 }}
+          </div>
+          <div class="stat-label">
+            总推送数
+          </div>
         </el-card>
-      </el-col>
-      <el-col :span="4">
-        <el-card shadow="hover" class="stat-card stat-today">
-          <div class="stat-value">{{ statistics.today || 0 }}</div>
-          <div class="stat-label">今日推送</div>
+      </div>
+      <div class="stats-grid-item">
+        <el-card
+          shadow="never"
+          class="stat-card stat-today"
+        >
+          <div class="stat-value">
+            {{ statistics.today || 0 }}
+          </div>
+          <div class="stat-label">
+            今日推送
+          </div>
         </el-card>
-      </el-col>
-      <el-col :span="4">
-        <el-card shadow="hover" class="stat-card stat-pending">
-          <div class="stat-value">{{ statistics.pending || 0 }}</div>
-          <div class="stat-label">待处理</div>
+      </div>
+      <div class="stats-grid-item">
+        <el-card
+          shadow="never"
+          class="stat-card stat-pending"
+        >
+          <div class="stat-value">
+            {{ statistics.pending || 0 }}
+          </div>
+          <div class="stat-label">
+            待处理
+          </div>
         </el-card>
-      </el-col>
-      <el-col :span="4">
-        <el-card shadow="hover" class="stat-card stat-success">
-          <div class="stat-value">{{ statistics.success || 0 }}</div>
-          <div class="stat-label">成功</div>
+      </div>
+      <div class="stats-grid-item">
+        <el-card
+          shadow="never"
+          class="stat-card stat-success"
+        >
+          <div class="stat-value">
+            {{ statistics.success || 0 }}
+          </div>
+          <div class="stat-label">
+            成功
+          </div>
         </el-card>
-      </el-col>
-      <el-col :span="4">
-        <el-card shadow="hover" class="stat-card stat-failed">
-          <div class="stat-value">{{ statistics.failed || 0 }}</div>
-          <div class="stat-label">失败</div>
+      </div>
+      <div class="stats-grid-item">
+        <el-card
+          shadow="never"
+          class="stat-card stat-failed"
+        >
+          <div class="stat-value">
+            {{ statistics.failed || 0 }}
+          </div>
+          <div class="stat-label">
+            失败
+          </div>
         </el-card>
-      </el-col>
-      <el-col :span="4">
-        <el-card shadow="hover" class="stat-card stat-partial">
-          <div class="stat-value">{{ statistics.partial || 0 }}</div>
-          <div class="stat-label">部分成功</div>
+      </div>
+      <div class="stats-grid-item">
+        <el-card
+          shadow="never"
+          class="stat-card stat-partial"
+        >
+          <div class="stat-value">
+            {{ statistics.partial || 0 }}
+          </div>
+          <div class="stat-label">
+            部分成功
+          </div>
         </el-card>
-      </el-col>
-    </el-row>
+      </div>
+    </div>
 
     <!-- 搜索区域 -->
-    <el-card class="search-card" shadow="never">
-      <el-form :model="searchForm" inline>
+    <el-card
+      class="search-card"
+      shadow="never"
+    >
+      <el-form
+        :model="searchForm"
+        inline
+      >
         <el-form-item label="关键词">
           <el-input
             v-model="searchForm.keyword"
@@ -59,9 +112,18 @@
             clearable
             style="width: 140px"
           >
-            <el-option label="律所系统" value="LAW_FIRM" />
-            <el-option label="手动上传" value="MANUAL" />
-            <el-option label="数据迁移" value="IMPORT" />
+            <el-option
+              label="律所系统"
+              value="LAW_FIRM"
+            />
+            <el-option
+              label="手动上传"
+              value="MANUAL"
+            />
+            <el-option
+              label="数据迁移"
+              value="IMPORT"
+            />
           </el-select>
         </el-form-item>
         <el-form-item label="推送状态">
@@ -79,65 +141,173 @@
             />
           </el-select>
         </el-form-item>
+        <el-form-item label="批次号">
+          <el-input
+            v-model="searchForm.pushBatchNo"
+            placeholder="推送批次号"
+            clearable
+            style="width: 180px"
+            @keyup.enter="handleSearch"
+          />
+        </el-form-item>
+        <el-form-item label="推送时间">
+          <el-date-picker
+            v-model="searchForm.pushedAtRange"
+            type="datetimerange"
+            range-separator="至"
+            start-placeholder="开始时间"
+            end-placeholder="结束时间"
+            value-format="YYYY-MM-DDTHH:mm:ss"
+            style="width: 360px"
+          />
+        </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="handleSearch">
+          <el-button
+            type="primary"
+            @click="handleSearch"
+          >
             <el-icon><Search /></el-icon>
             搜索
           </el-button>
-          <el-button @click="resetSearch">重置</el-button>
+          <el-button @click="resetSearch">
+            重置
+          </el-button>
         </el-form-item>
       </el-form>
     </el-card>
 
-    <!-- 工具栏 -->
-    <div class="toolbar">
-      <el-button @click="handleRefresh">
-        <el-icon><Refresh /></el-icon>
-        刷新
-      </el-button>
-    </div>
-
-    <!-- 数据表格 -->
-    <el-table
-      v-loading="loading"
-      :data="tableData"
-      stripe
-      border
-      style="width: 100%"
+    <el-card
+      shadow="never"
+      class="table-card"
     >
-      <el-table-column prop="pushBatchNo" label="批次号" width="200" />
-      <el-table-column prop="title" label="档案标题" min-width="200" show-overflow-tooltip />
-      <el-table-column prop="sourceType" label="来源类型" width="100">
+      <template #header>
+        <div class="card-header">
+          <span>推送列表</span>
+          <el-button @click="handleRefresh">
+            <el-icon><Refresh /></el-icon>
+            刷新
+          </el-button>
+        </div>
+      </template>
+
+      <!-- 数据表格 -->
+      <el-table
+        v-loading="loading"
+        :data="tableData"
+        stripe
+        border
+        style="width: 100%"
+      >
+      <el-table-column
+        prop="pushBatchNo"
+        label="批次号"
+        width="200"
+      />
+      <el-table-column
+        prop="title"
+        label="档案标题"
+        min-width="200"
+        show-overflow-tooltip
+      />
+      <el-table-column
+        prop="sourceType"
+        label="来源类型"
+        width="100"
+      >
         <template #default="{ row }">
-          <el-tag v-if="row.sourceType === 'LAW_FIRM'" type="primary">律所系统</el-tag>
-          <el-tag v-else-if="row.sourceType === 'MANUAL'" type="info">手动上传</el-tag>
-          <el-tag v-else>{{ row.sourceType }}</el-tag>
+          <el-tag
+            v-if="row.sourceType === 'LAW_FIRM'"
+            type="primary"
+          >
+            律所系统
+          </el-tag>
+          <el-tag
+            v-else-if="row.sourceType === 'MANUAL'"
+            type="info"
+          >
+            手动上传
+          </el-tag>
+          <el-tag v-else>
+            {{ row.sourceType }}
+          </el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="archiveNo" label="档案号" width="150" />
-      <el-table-column prop="pushStatus" label="状态" width="100">
+      <el-table-column
+        prop="archiveNo"
+        label="档案号"
+        width="150"
+      />
+      <el-table-column
+        prop="pushStatus"
+        label="状态"
+        width="100"
+      >
         <template #default="{ row }">
-          <el-tag v-if="row.pushStatus === 'SUCCESS'" type="success">成功</el-tag>
-          <el-tag v-else-if="row.pushStatus === 'FAILED'" type="danger">失败</el-tag>
-          <el-tag v-else-if="row.pushStatus === 'PENDING'" type="info">待处理</el-tag>
-          <el-tag v-else-if="row.pushStatus === 'PROCESSING'" type="warning">处理中</el-tag>
-          <el-tag v-else-if="row.pushStatus === 'PARTIAL'" type="warning">部分成功</el-tag>
-          <el-tag v-else>{{ row.pushStatus }}</el-tag>
+          <el-tag
+            v-if="row.pushStatus === 'SUCCESS'"
+            type="success"
+          >
+            成功
+          </el-tag>
+          <el-tag
+            v-else-if="row.pushStatus === 'FAILED'"
+            type="danger"
+          >
+            失败
+          </el-tag>
+          <el-tag
+            v-else-if="row.pushStatus === 'PENDING'"
+            type="info"
+          >
+            待处理
+          </el-tag>
+          <el-tag
+            v-else-if="row.pushStatus === 'PROCESSING'"
+            type="warning"
+          >
+            处理中
+          </el-tag>
+          <el-tag
+            v-else-if="row.pushStatus === 'PARTIAL'"
+            type="warning"
+          >
+            部分成功
+          </el-tag>
+          <el-tag v-else>
+            {{ row.pushStatus }}
+          </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="文件进度" width="120">
+      <el-table-column
+        label="文件进度"
+        width="120"
+      >
         <template #default="{ row }">
           <span>{{ row.successFiles || 0 }}/{{ row.totalFiles || 0 }}</span>
         </template>
       </el-table-column>
-      <el-table-column prop="pushedAt" label="推送时间" width="170">
+      <el-table-column
+        prop="pushedAt"
+        label="推送时间"
+        width="170"
+      >
         <template #default="{ row }">
           {{ formatDateTime(row.pushedAt) }}
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="150" fixed="right">
+      <el-table-column
+        label="操作"
+        width="150"
+        fixed="right"
+      >
         <template #default="{ row }">
-          <el-button link type="primary" @click="handleView(row)">详情</el-button>
+          <el-button
+            link
+            type="primary"
+            @click="handleView(row)"
+          >
+            详情
+          </el-button>
           <el-button
             v-if="row.pushStatus === 'FAILED'"
             link
@@ -156,42 +326,81 @@
           </el-button>
         </template>
       </el-table-column>
-    </el-table>
+      </el-table>
 
-    <!-- 分页 -->
-    <el-pagination
-      v-model:current-page="pagination.pageNum"
-      v-model:page-size="pagination.pageSize"
-      :page-sizes="[10, 20, 50, 100]"
-      :total="pagination.total"
-      layout="total, sizes, prev, pager, next, jumper"
-      class="pagination"
-      @size-change="handleSizeChange"
-      @current-change="handlePageChange"
-    />
+      <!-- 分页 -->
+      <el-pagination
+        v-model:current-page="pagination.pageNum"
+        v-model:page-size="pagination.pageSize"
+        :page-sizes="[10, 20, 50, 100]"
+        :total="pagination.total"
+        layout="total, sizes, prev, pager, next, jumper"
+        class="pagination"
+        @size-change="handleSizeChange"
+        @current-change="handlePageChange"
+      />
+    </el-card>
 
     <!-- 详情对话框 -->
-    <el-dialog v-model="detailVisible" title="推送记录详情" width="700px">
-      <el-descriptions :column="2" border v-if="currentRecord">
-        <el-descriptions-item label="批次号">{{ currentRecord.pushBatchNo }}</el-descriptions-item>
+    <el-dialog
+      v-model="detailVisible"
+      title="推送记录详情"
+      width="700px"
+    >
+      <el-descriptions
+        v-if="currentRecord"
+        :column="2"
+        border
+      >
+        <el-descriptions-item label="批次号">
+          {{ currentRecord.pushBatchNo }}
+        </el-descriptions-item>
         <el-descriptions-item label="推送状态">
           <el-tag :type="getStatusType(currentRecord.pushStatus)">
             {{ getStatusText(currentRecord.pushStatus) }}
           </el-tag>
         </el-descriptions-item>
-        <el-descriptions-item label="档案标题" :span="2">{{ currentRecord.title }}</el-descriptions-item>
-        <el-descriptions-item label="来源类型">{{ currentRecord.sourceType }}</el-descriptions-item>
-        <el-descriptions-item label="来源ID">{{ currentRecord.sourceId }}</el-descriptions-item>
-        <el-descriptions-item label="档案号">{{ currentRecord.archiveNo || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="档案ID">{{ currentRecord.archiveId || '-' }}</el-descriptions-item>
+        <el-descriptions-item
+          label="档案标题"
+          :span="2"
+        >
+          {{ currentRecord.title }}
+        </el-descriptions-item>
+        <el-descriptions-item label="来源类型">
+          {{ currentRecord.sourceType }}
+        </el-descriptions-item>
+        <el-descriptions-item label="来源ID">
+          {{ currentRecord.sourceId }}
+        </el-descriptions-item>
+        <el-descriptions-item label="档案号">
+          {{ currentRecord.archiveNo || '-' }}
+        </el-descriptions-item>
+        <el-descriptions-item label="档案ID">
+          {{ currentRecord.archiveId || '-' }}
+        </el-descriptions-item>
         <el-descriptions-item label="文件统计">
           成功 {{ currentRecord.successFiles || 0 }} / 总计 {{ currentRecord.totalFiles || 0 }}
         </el-descriptions-item>
-        <el-descriptions-item label="推送时间">{{ formatDateTime(currentRecord.pushedAt) }}</el-descriptions-item>
-        <el-descriptions-item label="处理时间">{{ formatDateTime(currentRecord.processedAt) }}</el-descriptions-item>
-        <el-descriptions-item label="回调地址" :span="2">{{ currentRecord.callbackUrl || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="错误信息" :span="2" v-if="currentRecord.errorMessage">
-          <el-text type="danger">{{ currentRecord.errorMessage }}</el-text>
+        <el-descriptions-item label="推送时间">
+          {{ formatDateTime(currentRecord.pushedAt) }}
+        </el-descriptions-item>
+        <el-descriptions-item label="处理时间">
+          {{ formatDateTime(currentRecord.processedAt) }}
+        </el-descriptions-item>
+        <el-descriptions-item
+          label="回调地址"
+          :span="2"
+        >
+          {{ currentRecord.callbackUrl || '-' }}
+        </el-descriptions-item>
+        <el-descriptions-item
+          v-if="currentRecord.errorMessage"
+          label="错误信息"
+          :span="2"
+        >
+          <el-text type="danger">
+            {{ currentRecord.errorMessage }}
+          </el-text>
         </el-descriptions-item>
       </el-descriptions>
     </el-dialog>
@@ -227,7 +436,9 @@ const statistics = ref({})
 const searchForm = reactive({
   keyword: '',
   sourceType: '',
-  pushStatus: ''
+  pushStatus: '',
+  pushBatchNo: '',
+  pushedAtRange: null
 })
 
 // 表格数据
@@ -247,7 +458,7 @@ const currentRecord = ref(null)
 const loadStatistics = async () => {
   try {
     const res = await getPushRecordStatistics()
-    if (res.code === 200) {
+    if (res.success) {
       statistics.value = res.data
     }
   } catch (error) {
@@ -262,10 +473,19 @@ const loadData = async () => {
     const params = {
       pageNum: pagination.pageNum,
       pageSize: pagination.pageSize,
-      ...searchForm
+      keyword: searchForm.keyword,
+      sourceType: searchForm.sourceType,
+      pushStatus: searchForm.pushStatus,
+      pushBatchNo: searchForm.pushBatchNo
+    }
+    if (searchForm.pushedAtRange?.length === 2) {
+      params.pushedAtStart = searchForm.pushedAtRange[0]
+      params.pushedAtEnd = searchForm.pushedAtRange[1]
+    } else {
+      delete params.pushedAtRange
     }
     const res = await getPushRecordList(params)
-    if (res.code === 200) {
+    if (res.success) {
       tableData.value = res.data.records || []
       pagination.total = res.data.total || 0
     }
@@ -288,6 +508,8 @@ const resetSearch = () => {
   searchForm.keyword = ''
   searchForm.sourceType = ''
   searchForm.pushStatus = ''
+  searchForm.pushBatchNo = ''
+  searchForm.pushedAtRange = null
   handleSearch()
 }
 
@@ -312,7 +534,7 @@ const handlePageChange = (val) => {
 const handleView = async (row) => {
   try {
     const res = await getPushRecordDetail(row.id)
-    if (res.code === 200) {
+    if (res.success) {
       currentRecord.value = res.data
       detailVisible.value = true
     }
@@ -328,7 +550,7 @@ const handleRetry = async (row) => {
       type: 'warning'
     })
     const res = await retryPushRecord(row.id)
-    if (res.code === 200) {
+    if (res.success) {
       ElMessage.success('已重置为待处理状态')
       handleRefresh()
     }
@@ -365,33 +587,59 @@ onMounted(() => {
 
 <style scoped>
 .push-record-list {
-  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
-.stats-row {
-  margin-bottom: 20px;
+.page-header h1 {
+  margin: 0 0 8px;
+  font-size: 24px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.page-header p {
+  margin: 0;
+  line-height: 1.6;
+  color: #606266;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+  gap: 12px;
+}
+
+.stat-card,
+.search-card,
+.table-card {
+  border-radius: 10px;
 }
 
 .stat-card {
-  text-align: center;
-  cursor: pointer;
-  transition: all 0.3s;
-}
+  border-radius: 10px;
 
-.stat-card:hover {
-  transform: translateY(-3px);
+  :deep(.el-card__body) {
+    min-height: 88px;
+    padding: 16px 12px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
+  }
 }
 
 .stat-value {
-  font-size: 28px;
-  font-weight: bold;
+  font-size: 24px;
+  font-weight: 600;
   color: #303133;
 }
 
 .stat-label {
-  font-size: 14px;
+  font-size: 13px;
   color: #909399;
-  margin-top: 8px;
+  margin-top: 6px;
 }
 
 .stat-today .stat-value {
@@ -415,15 +663,26 @@ onMounted(() => {
 }
 
 .search-card {
-  margin-bottom: 16px;
+  :deep(.el-card__body) {
+    padding-bottom: 0;
+  }
 }
 
-.toolbar {
-  margin-bottom: 16px;
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .pagination {
-  margin-top: 20px;
+  margin-top: 16px;
+  display: flex;
   justify-content: flex-end;
+}
+
+@media (max-width: 480px) {
+  .stats-grid {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 </style>

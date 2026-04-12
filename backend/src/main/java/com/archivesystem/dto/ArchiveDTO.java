@@ -8,6 +8,7 @@ import java.util.List;
 
 /**
  * 档案DTO.
+ * @author junyuzhan
  */
 @Data
 public class ArchiveDTO {

@@ -12,6 +12,7 @@ import java.util.Set;
 /**
  * 文件类型验证工具类.
  * 通过文件魔数（Magic Number）验证文件真实类型，防止文件伪装攻击。
+ * @author junyuzhan
  */
 @Slf4j
 public class FileTypeValidator {

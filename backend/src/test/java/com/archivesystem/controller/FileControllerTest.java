@@ -18,6 +18,9 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+/**
+ * @author junyuzhan
+ */
 
 @ExtendWith(MockitoExtension.class)
 class FileControllerTest {
@@ -52,7 +55,9 @@ class FileControllerTest {
         MockMultipartFile file = new MockMultipartFile(
                 "file", "test.pdf", "application/pdf", "PDF content".getBytes());
 
-        when(fileStorageService.upload(any(), isNull(), eq("DOCUMENT"))).thenReturn(testFile);
+        when(fileStorageService.upload(any(), isNull(), eq("DOCUMENT"),
+                isNull(), isNull(), isNull(), isNull(), isNull(), isNull(),
+                isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull())).thenReturn(testFile);
 
         mockMvc.perform(multipart("/files/upload")
                         .file(file)
@@ -69,7 +74,9 @@ class FileControllerTest {
         MockMultipartFile file = new MockMultipartFile(
                 "file", "test.pdf", "application/pdf", "PDF content".getBytes());
 
-        when(fileStorageService.upload(any(), isNull(), isNull())).thenReturn(testFile);
+        when(fileStorageService.upload(any(), isNull(), isNull(),
+                isNull(), isNull(), isNull(), isNull(), isNull(), isNull(),
+                isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull())).thenReturn(testFile);
 
         mockMvc.perform(multipart("/files/upload")
                         .file(file))
@@ -99,7 +106,9 @@ class FileControllerTest {
         file2Result.setFileSize(8L);
         file2Result.setMimeType("application/pdf");
 
-        when(fileStorageService.upload(any(), isNull(), anyString()))
+        when(fileStorageService.upload(any(), isNull(), anyString(),
+                isNull(), isNull(), isNull(), isNull(), isNull(), isNull(),
+                isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull()))
                 .thenReturn(file1Result)
                 .thenReturn(file2Result);
 
@@ -109,7 +118,7 @@ class FileControllerTest {
                         .param("fileCategory", "DOCUMENT"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
-                .andExpect(jsonPath("$.message").value("上传完成"))
+                .andExpect(jsonPath("$.message").value("上传完成，成功 2 个"))
                 .andExpect(jsonPath("$.data.length()").value(2));
     }
 
@@ -127,7 +136,9 @@ class FileControllerTest {
         file1Result.setFileSize(8L);
         file1Result.setMimeType("application/pdf");
 
-        when(fileStorageService.upload(any(), isNull(), anyString()))
+        when(fileStorageService.upload(any(), isNull(), anyString(),
+                isNull(), isNull(), isNull(), isNull(), isNull(), isNull(),
+                isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull()))
                 .thenReturn(file1Result)
                 .thenThrow(new RuntimeException("上传失败"));
 
@@ -137,7 +148,26 @@ class FileControllerTest {
                         .param("fileCategory", "DOCUMENT"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
+                .andExpect(jsonPath("$.message").value("上传完成，成功 1 个，失败 1 个，失败文件: test2.pdf"))
                 .andExpect(jsonPath("$.data.length()").value(1));
+    }
+
+    @Test
+    void testUploadBatch_AllFailure() throws Exception {
+        MockMultipartFile file1 = new MockMultipartFile(
+                "files", "test1.pdf", "application/pdf", "content1".getBytes());
+
+        when(fileStorageService.upload(any(), isNull(), anyString(),
+                isNull(), isNull(), isNull(), isNull(), isNull(), isNull(),
+                isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull()))
+                .thenThrow(new RuntimeException("上传失败"));
+
+        mockMvc.perform(multipart("/files/upload/batch")
+                        .file(file1)
+                        .param("fileCategory", "DOCUMENT"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("500"))
+                .andExpect(jsonPath("$.message").value("批量上传失败，未成功上传任何文件，失败文件: test1.pdf"));
     }
 
     @Test

@@ -22,6 +22,7 @@ import java.util.Map;
 
 /**
  * 统计控制器.
+ * @author junyuzhan
  */
 @Slf4j
 @RestController
@@ -35,35 +36,35 @@ public class StatisticsController {
 
     @GetMapping("/overview")
     @Operation(summary = "获取概览统计")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_REVIEWER', 'ARCHIVE_MANAGER')")
     public Result<Map<String, Object>> getOverview() {
         return Result.success(statisticsService.getOverview());
     }
 
     @GetMapping("/by-type")
     @Operation(summary = "按档案类型统计")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_REVIEWER', 'ARCHIVE_MANAGER')")
     public Result<List<Map<String, Object>>> countByType() {
         return Result.success(statisticsService.countByArchiveType());
     }
 
     @GetMapping("/by-retention")
     @Operation(summary = "按保管期限统计")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_REVIEWER', 'ARCHIVE_MANAGER')")
     public Result<List<Map<String, Object>>> countByRetention() {
         return Result.success(statisticsService.countByRetentionPeriod());
     }
 
     @GetMapping("/by-status")
     @Operation(summary = "按状态统计")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_REVIEWER', 'ARCHIVE_MANAGER')")
     public Result<List<Map<String, Object>>> countByStatus() {
         return Result.success(statisticsService.countByStatus());
     }
 
     @GetMapping("/trend")
     @Operation(summary = "月度趋势统计")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_REVIEWER', 'ARCHIVE_MANAGER')")
     public Result<List<Map<String, Object>>> getTrend(
             @RequestParam(required = false) Integer year) {
         if (year == null) {
@@ -74,23 +75,31 @@ public class StatisticsController {
 
     @GetMapping("/borrow")
     @Operation(summary = "借阅统计")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_REVIEWER', 'ARCHIVE_MANAGER')")
     public Result<Map<String, Object>> getBorrowStats() {
         return Result.success(statisticsService.getBorrowStatistics());
     }
 
     @GetMapping("/storage")
     @Operation(summary = "存储统计")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_REVIEWER', 'ARCHIVE_MANAGER')")
     public Result<Map<String, Object>> getStorageStats() {
         return Result.success(statisticsService.getStorageStatistics());
+    }
+
+    @GetMapping("/scan-batches")
+    @Operation(summary = "扫描批次统计")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_REVIEWER', 'ARCHIVE_MANAGER')")
+    public Result<List<Map<String, Object>>> getScanBatchStats(
+            @RequestParam(required = false) String keyword) {
+        return Result.success(statisticsService.getScanBatchStatistics(keyword));
     }
 
     // ===== 报表导出接口 =====
 
     @GetMapping("/export/overview")
     @Operation(summary = "导出统计概览报表", description = "导出Excel格式的统计概览报表")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_REVIEWER', 'ARCHIVE_MANAGER')")
     public void exportOverview(
             @RequestParam(required = false) Integer year,
             HttpServletResponse response) throws IOException {
@@ -100,7 +109,7 @@ public class StatisticsController {
 
     @GetMapping("/export/archives")
     @Operation(summary = "导出档案清单", description = "导出Excel格式的档案清单")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_REVIEWER', 'ARCHIVE_MANAGER')")
     public void exportArchiveList(
             ArchiveQueryRequest request,
             HttpServletResponse response) throws IOException {
@@ -110,7 +119,7 @@ public class StatisticsController {
 
     @GetMapping("/export/borrow")
     @Operation(summary = "导出借阅报表", description = "导出Excel格式的借阅统计报表")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_REVIEWER', 'ARCHIVE_MANAGER')")
     public void exportBorrowReport(
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate startDate,
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endDate,

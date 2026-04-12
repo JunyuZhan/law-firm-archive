@@ -18,6 +18,7 @@ import static org.mockito.Mockito.*;
 
 /**
  * XssFilter测试类.
+ * @author junyuzhan
  */
 @ExtendWith(MockitoExtension.class)
 @org.mockito.junit.jupiter.MockitoSettings(strictness = org.mockito.quality.Strictness.LENIENT)

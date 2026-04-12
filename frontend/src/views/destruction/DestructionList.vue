@@ -1,23 +1,33 @@
 <template>
   <div class="destruction-list">
+    <div class="page-header">
+      <h1>销毁管理</h1>
+      <p>管理档案销毁申请、审批与执行记录，确保电子档案销毁过程有据可查、可审批、可追溯。</p>
+    </div>
+
     <!-- 标签页 -->
-    <el-tabs
-      v-model="activeTab"
-      @tab-change="handleTabChange"
+    <el-card
+      shadow="never"
+      class="tabs-card"
     >
-      <el-tab-pane
-        label="全部记录"
-        name="all"
-      />
-      <el-tab-pane
-        label="待审批"
-        name="pending"
-      />
-      <el-tab-pane
-        label="待执行"
-        name="approved"
-      />
-    </el-tabs>
+      <el-tabs
+        v-model="activeTab"
+        @tab-change="handleTabChange"
+      >
+        <el-tab-pane
+          label="全部记录"
+          name="all"
+        />
+        <el-tab-pane
+          label="待审批"
+          name="pending"
+        />
+        <el-tab-pane
+          label="待执行"
+          name="approved"
+        />
+      </el-tabs>
+    </el-card>
 
     <!-- 筛选 -->
     <el-card
@@ -81,7 +91,10 @@
     </el-card>
 
     <!-- 列表 -->
-    <el-card shadow="never">
+    <el-card
+      shadow="never"
+      class="table-card"
+    >
       <el-table 
         v-loading="loading" 
         :data="tableData" 
@@ -225,14 +238,51 @@
         label-width="100px"
       >
         <el-form-item
-          label="档案ID"
+          label="选择档案"
           prop="archiveId"
+          class="span-2"
         >
-          <el-input
-            v-model.number="createForm.archiveId"
-            placeholder="请输入档案ID"
-          />
+          <el-select
+            v-model="createForm.archiveId"
+            filterable
+            remote
+            clearable
+            reserve-keyword
+            placeholder="输入档案号或题名搜索"
+            :remote-method="searchArchiveOptions"
+            :loading="archiveSearchLoading"
+            style="width: 100%"
+            @change="handleArchiveSelect"
+          >
+            <el-option
+              v-for="item in archiveOptions"
+              :key="item.id"
+              :label="`${item.archiveNo}｜${item.title}`"
+              :value="item.id"
+            >
+              <div class="archive-option">
+                <span class="archive-option-no">{{ item.archiveNo }}</span>
+                <span class="archive-option-title">{{ item.title }}</span>
+              </div>
+            </el-option>
+          </el-select>
+          <div class="form-tip">
+            支持按档案号或题名检索，避免手工输入内部 ID。
+          </div>
         </el-form-item>
+        <div
+          v-if="selectedArchiveSummary"
+          class="archive-summary-card"
+        >
+          <div class="summary-main">
+            <span class="archive-no">{{ selectedArchiveSummary.archiveNo }}</span>
+            <span class="archive-title">{{ selectedArchiveSummary.title }}</span>
+          </div>
+          <div class="summary-meta">
+            <span>保管期限：{{ selectedArchiveSummary.retentionPeriod || '-' }}</span>
+            <span>档案形式：{{ selectedArchiveSummary.archiveForm || '-' }}</span>
+          </div>
+        </div>
         <el-form-item
           label="销毁方式"
           prop="destructionMethod"
@@ -438,6 +488,7 @@ import {
   getDestructionDetail, applyDestruction, approveDestruction, rejectDestruction,
   executeDestruction, batchExecuteDestruction
 } from '@/api/destruction'
+import { getArchiveList } from '@/api/archive'
 import {
   getDestructionStatusName,
   getDestructionStatusType
@@ -468,10 +519,13 @@ const createForm = ref({
   destructionReason: ''
 })
 const createRules = {
-  archiveId: [{ required: true, message: '请输入档案ID', trigger: 'blur' }],
+  archiveId: [{ required: true, message: '请选择档案', trigger: 'change' }],
   destructionMethod: [{ required: true, message: '请选择销毁方式', trigger: 'change' }],
   destructionReason: [{ required: true, message: '请输入销毁原因', trigger: 'blur' }]
 }
+const archiveOptions = ref([])
+const archiveSearchLoading = ref(false)
+const selectedArchiveSummary = ref(null)
 
 // 审批
 const approveDialogVisible = ref(false)
@@ -539,7 +593,42 @@ const handleCreate = () => {
     destructionMethod: 'LOGICAL',
     destructionReason: ''
   }
+  selectedArchiveSummary.value = null
+  archiveOptions.value = []
   createDialogVisible.value = true
+}
+
+const searchArchiveOptions = async (keyword) => {
+  const term = keyword?.trim()
+  if (!term) {
+    archiveOptions.value = []
+    return
+  }
+  archiveSearchLoading.value = true
+  try {
+    const res = await getArchiveList({
+      keyword: term,
+      pageNum: 1,
+      pageSize: 20
+    })
+    archiveOptions.value = res.data?.records || []
+  } catch (e) {
+    console.error('搜索档案失败', e)
+    archiveOptions.value = []
+  } finally {
+    archiveSearchLoading.value = false
+  }
+}
+
+const handleArchiveSelect = (archiveId) => {
+  if (!archiveId) {
+    selectedArchiveSummary.value = null
+    return
+  }
+  const selected = archiveOptions.value.find(item => item.id === archiveId)
+  if (selected) {
+    selectedArchiveSummary.value = selected
+  }
 }
 
 const submitCreate = async () => {
@@ -691,12 +780,37 @@ onMounted(() => {
 
 <style lang="scss" scoped>
 .destruction-list {
-  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.page-header h1 {
+  margin: 0 0 8px;
+  font-size: 24px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.page-header p {
+  margin: 0;
+  line-height: 1.6;
+  color: #606266;
+}
+
+.tabs-card,
+.filter-card,
+.table-card {
+  border-radius: 10px;
+}
+
+.tabs-card {
+  :deep(.el-card__body) {
+    padding-bottom: 0;
+  }
 }
 
 .filter-card {
-  margin-bottom: 16px;
-
   :deep(.el-card__body) {
     padding-bottom: 0;
   }
@@ -706,5 +820,68 @@ onMounted(() => {
   margin-top: 16px;
   display: flex;
   justify-content: flex-end;
+}
+
+.archive-summary-card {
+  margin: -4px 0 18px;
+  padding: 14px 16px;
+  border: 1px solid #e5eaf3;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.summary-main {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-bottom: 8px;
+}
+
+.summary-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  font-size: 12px;
+  color: #606266;
+}
+
+.archive-no {
+  font-size: 12px;
+  font-weight: 600;
+  color: #8c6b1f;
+}
+
+.archive-title {
+  font-weight: 600;
+  color: #303133;
+}
+
+.archive-option {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  line-height: 1.4;
+}
+
+.archive-option-no {
+  font-size: 12px;
+  color: #909399;
+}
+
+.archive-option-title {
+  color: #303133;
+}
+
+.form-tip {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #8c8c8c;
+}
+
+.span-2 {
+  :deep(.el-form-item__content) {
+    display: block;
+  }
 }
 </style>

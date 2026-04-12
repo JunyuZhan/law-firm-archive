@@ -23,6 +23,7 @@ import java.time.LocalDateTime;
 /**
  * 死信队列消费者
  * 处理多次重试后仍然失败的消息
+ * @author junyuzhan
  */
 @Slf4j
 @Component

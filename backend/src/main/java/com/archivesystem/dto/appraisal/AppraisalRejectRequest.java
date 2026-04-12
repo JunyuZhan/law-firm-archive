@@ -7,6 +7,7 @@ import lombok.Data;
 
 /**
  * 鉴定拒绝请求DTO.
+ * @author junyuzhan
  */
 @Data
 @Schema(description = "鉴定拒绝请求")

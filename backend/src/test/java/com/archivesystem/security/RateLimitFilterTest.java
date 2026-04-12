@@ -26,6 +26,7 @@ import static org.mockito.Mockito.*;
 
 /**
  * RateLimitFilter测试类.
+ * @author junyuzhan
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -367,5 +368,17 @@ class RateLimitFilterTest {
 
         // Then
         verify(valueOperations).increment(contains("203.0.113.1"));
+    }
+
+    @Test
+    void testDoFilterInternal_WithPublicRemoteAddr_ShouldIgnoreSpoofedForwardedIp() throws ServletException, IOException {
+        when(request.getRequestURI()).thenReturn("/api/test");
+        when(request.getHeader("X-Forwarded-For")).thenReturn("203.0.113.1");
+        when(request.getRemoteAddr()).thenReturn("8.8.8.8");
+        when(valueOperations.increment(anyString())).thenReturn(1L);
+
+        rateLimitFilter.doFilterInternal(request, response, filterChain);
+
+        verify(valueOperations).increment(contains("8.8.8.8"));
     }
 }

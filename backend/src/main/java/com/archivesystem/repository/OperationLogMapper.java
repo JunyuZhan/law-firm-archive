@@ -10,6 +10,7 @@ import java.util.List;
 
 /**
  * 操作日志Mapper接口.
+ * @author junyuzhan
  */
 @Mapper
 public interface OperationLogMapper extends BaseMapper<OperationLog> {

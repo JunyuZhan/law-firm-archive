@@ -18,6 +18,22 @@ export function recordDownload(token, fileId) {
 }
 
 /**
+ * 获取公开借阅文件预览链接
+ */
+export function getBorrowFilePreviewUrl(token, fileId) {
+  return axios.get(`/api/open/borrow/access/${token}/preview/${fileId}`)
+    .then(res => res.data)
+}
+
+/**
+ * 获取公开借阅文件下载链接
+ */
+export function getBorrowFileDownloadUrl(token, fileId) {
+  return axios.get(`/api/open/borrow/access/${token}/download-url/${fileId}`)
+    .then(res => res.data)
+}
+
+/**
  * 获取借阅链接列表（管理接口，需认证）
  */
 export function getBorrowLinks(params) {

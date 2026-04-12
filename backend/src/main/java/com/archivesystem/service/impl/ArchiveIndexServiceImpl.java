@@ -20,6 +20,7 @@ import com.archivesystem.entity.DigitalFile;
 import com.archivesystem.repository.ArchiveMapper;
 import com.archivesystem.elasticsearch.ArchiveSearchRepository;
 import com.archivesystem.repository.DigitalFileMapper;
+import com.archivesystem.security.SecurityUtils;
 import com.archivesystem.service.ArchiveIndexService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,6 +34,7 @@ import java.util.stream.Collectors;
 
 /**
  * 档案索引服务实现
+ * @author junyuzhan
  */
 @Slf4j
 @Service
@@ -57,6 +59,10 @@ public class ArchiveIndexServiceImpl implements ArchiveIndexService {
     private static final Set<String> ALLOWED_SORT_FIELDS = Set.of(
             "receivedAt", "archiveDate", "createdAt", "updatedAt", 
             "retentionExpireDate", "archiveNo", "title"
+    );
+
+    private static final List<String> DEFAULT_SEARCH_FIELDS = List.of(
+            "title", "archiveNo", "caseNo", "caseName", "clientName", "keywords", "archiveAbstract", "remarks"
     );
 
     @Override
@@ -115,8 +121,14 @@ public class ArchiveIndexServiceImpl implements ArchiveIndexService {
                     break;
                 }
 
+                List<Long> archiveIds = archives.stream()
+                        .map(Archive::getId)
+                        .filter(Objects::nonNull)
+                        .toList();
+                Map<Long, List<DigitalFile>> fileMap = loadFilesByArchiveIds(archiveIds);
+
                 List<ArchiveDocument> documents = archives.stream()
-                        .map(this::convertToDocument)
+                        .map(archive -> convertToDocument(archive, fileMap.getOrDefault(archive.getId(), Collections.emptyList())))
                         .collect(Collectors.toList());
 
                 archiveSearchRepository.saveAll(documents);
@@ -141,8 +153,7 @@ public class ArchiveIndexServiceImpl implements ArchiveIndexService {
             if (StringUtils.hasText(request.getKeyword())) {
                 List<String> searchFields = request.getSearchFields();
                 if (searchFields == null || searchFields.isEmpty()) {
-                    searchFields = Arrays.asList("title", "archiveNo", "caseNo", "caseName", 
-                            "clientName", "keywords", "archiveAbstract", "fileContent", "remarks");
+                    searchFields = new ArrayList<>(DEFAULT_SEARCH_FIELDS);
                 } else {
                     // 【安全】过滤搜索字段，只保留白名单中的字段
                     searchFields = searchFields.stream()
@@ -151,6 +162,10 @@ public class ArchiveIndexServiceImpl implements ArchiveIndexService {
                     if (searchFields.isEmpty()) {
                         searchFields = Arrays.asList("title", "archiveNo", "caseNo", "caseName");
                     }
+                }
+                if (Boolean.TRUE.equals(request.getIncludeFileContent()) && !searchFields.contains("fileContent")) {
+                    searchFields = new ArrayList<>(searchFields);
+                    searchFields.add("fileContent");
                 }
 
                 List<Query> shouldQueries = new ArrayList<>();
@@ -168,7 +183,7 @@ public class ArchiveIndexServiceImpl implements ArchiveIndexService {
             // 构建高亮
             Highlight highlight = null;
             if (Boolean.TRUE.equals(request.getHighlight())) {
-                highlight = buildHighlight();
+                highlight = buildHighlight(request);
             }
 
             // 构建聚合
@@ -275,6 +290,10 @@ public class ArchiveIndexServiceImpl implements ArchiveIndexService {
      * 转换为ES文档
      */
     private ArchiveDocument convertToDocument(Archive archive) {
+        return convertToDocument(archive, null);
+    }
+
+    private ArchiveDocument convertToDocument(Archive archive, List<DigitalFile> files) {
         ArchiveDocument document = ArchiveDocument.builder()
                 .id(archive.getId())
                 .archiveNo(archive.getArchiveNo())
@@ -312,7 +331,9 @@ public class ArchiveIndexServiceImpl implements ArchiveIndexService {
         }
 
         // 获取文件名列表
-        List<DigitalFile> files = digitalFileMapper.selectByArchiveId(archive.getId());
+        if (files == null) {
+            files = digitalFileMapper.selectByArchiveId(archive.getId());
+        }
         if (files != null && !files.isEmpty()) {
             document.setFileNames(files.stream()
                     .map(DigitalFile::getFileName)
@@ -327,6 +348,7 @@ public class ArchiveIndexServiceImpl implements ArchiveIndexService {
      * 添加过滤条件
      */
     private void addFilters(BoolQuery.Builder builder, ArchiveSearchRequest request) {
+        addCurrentUserScope(builder);
         if (request.getFondsId() != null) {
             builder.filter(Query.of(q -> q.term(t -> t.field("fondsId").value(request.getFondsId()))));
         }
@@ -364,21 +386,54 @@ public class ArchiveIndexServiceImpl implements ArchiveIndexService {
         }
     }
 
+    private void addCurrentUserScope(BoolQuery.Builder builder) {
+        if (!SecurityUtils.isAuthenticated()
+                || SecurityUtils.hasAnyRole("SYSTEM_ADMIN", "ARCHIVE_REVIEWER", "ARCHIVE_MANAGER")) {
+            return;
+        }
+
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        String currentRealName = SecurityUtils.getCurrentRealName();
+        if (StringUtils.hasText(currentRealName)) {
+            builder.filter(Query.of(q -> q.term(t -> t.field("lawyerName").value(currentRealName))));
+        } else if (currentUserId != null) {
+            // ES 文档目前未索引 createdBy/receivedBy，仅在无姓名时回退为空过滤，避免默认放开全库
+            builder.filter(Query.of(q -> q.term(t -> t.field("id").value(-1))));
+        }
+
+        builder.filter(Query.of(q -> q.bool(b -> b
+                .should(s -> s.term(t -> t.field("securityLevel").value("PUBLIC")))
+                .should(s -> s.term(t -> t.field("securityLevel").value("INTERNAL")))
+                .minimumShouldMatch("1"))));
+    }
+
     /**
      * 构建高亮配置
      */
-    private Highlight buildHighlight() {
+    private Highlight buildHighlight(ArchiveSearchRequest request) {
         Map<String, HighlightField> fields = new HashMap<>();
         fields.put("title", HighlightField.of(h -> h.numberOfFragments(1).fragmentSize(200)));
         fields.put("caseName", HighlightField.of(h -> h.numberOfFragments(1).fragmentSize(200)));
         fields.put("keywords", HighlightField.of(h -> h.numberOfFragments(1).fragmentSize(200)));
         fields.put("archiveAbstract", HighlightField.of(h -> h.numberOfFragments(2).fragmentSize(150)));
-        fields.put("fileContent", HighlightField.of(h -> h.numberOfFragments(3).fragmentSize(100)));
+        if (Boolean.TRUE.equals(request.getIncludeFileContent())) {
+            fields.put("fileContent", HighlightField.of(h -> h.numberOfFragments(2).fragmentSize(80)));
+        }
 
         return Highlight.of(h -> h
                 .preTags("<em class=\"highlight\">")
                 .postTags("</em>")
                 .fields(fields));
+    }
+
+    private Map<Long, List<DigitalFile>> loadFilesByArchiveIds(List<Long> archiveIds) {
+        if (archiveIds == null || archiveIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        return digitalFileMapper.selectByArchiveIds(archiveIds).stream()
+                .filter(file -> file.getArchiveId() != null)
+                .collect(Collectors.groupingBy(DigitalFile::getArchiveId));
     }
 
     /**

@@ -21,13 +21,14 @@ import java.util.Map;
 
 /**
  * 操作日志控制器.
- * 操作日志属于敏感审计信息，仅管理员和档案员可访问
+ * 操作日志属于敏感审计信息，仅系统管理员可访问
+ * @author junyuzhan
  */
 @Tag(name = "操作日志", description = "操作日志查询与导出")
 @RestController
 @RequestMapping("/operation-logs")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
+@PreAuthorize("hasRole('SYSTEM_ADMIN')")
 public class OperationLogController {
 
     private final OperationLogService operationLogService;

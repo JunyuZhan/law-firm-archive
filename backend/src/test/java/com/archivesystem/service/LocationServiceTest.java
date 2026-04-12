@@ -22,6 +22,7 @@ import static org.mockito.Mockito.*;
 
 /**
  * LocationService测试类.
+ * @author junyuzhan
  */
 @ExtendWith(MockitoExtension.class)
 class LocationServiceTest {
@@ -249,7 +250,7 @@ class LocationServiceTest {
 
         // When
         PageResult<ArchiveLocation> result = locationService.getList(
-                "房间1", ArchiveLocation.STATUS_AVAILABLE, 1, 10);
+                "房间1", ArchiveLocation.STATUS_AVAILABLE, null, 1, 10);
 
         // Then
         assertNotNull(result);
@@ -266,7 +267,7 @@ class LocationServiceTest {
         when(locationMapper.selectPage(any(), any())).thenReturn(page);
 
         // When
-        PageResult<ArchiveLocation> result = locationService.getList(null, null, 1, 10);
+        PageResult<ArchiveLocation> result = locationService.getList(null, null, null, 1, 10);
 
         // Then
         assertNotNull(result);

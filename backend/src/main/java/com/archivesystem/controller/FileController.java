@@ -9,19 +9,24 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.time.LocalDateTime;
+import java.util.stream.Collectors;
 
 /**
  * 文件上传控制器.
  * 
  * 权限说明：
- * - 上传/删除：仅管理员和档案员
+ * - 上传：所有已认证用户可提交入库材料
+ * - 删除：仅系统管理员和档案管理员
  * - 下载/预览：所有已认证用户
+ * @author junyuzhan
  */
 @Slf4j
 @RestController
@@ -37,12 +42,27 @@ public class FileController {
      */
     @PostMapping("/upload")
     @Operation(summary = "上传文件", description = "上传文件，返回文件ID，后续可关联到档案")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
+    @PreAuthorize("isAuthenticated()")
     public Result<DigitalFileDTO> upload(
             @RequestParam("file") MultipartFile file,
-            @Parameter(description = "文件分类") @RequestParam(required = false) String fileCategory) {
+            @Parameter(description = "文件分类") @RequestParam(required = false) String fileCategory,
+            @Parameter(description = "案卷卷号") @RequestParam(required = false) Integer volumeNo,
+            @Parameter(description = "案卷分段类型") @RequestParam(required = false) String sectionType,
+            @Parameter(description = "件号/文号") @RequestParam(required = false) String documentNo,
+            @Parameter(description = "起始页码") @RequestParam(required = false) Integer pageStart,
+            @Parameter(description = "截止页码") @RequestParam(required = false) Integer pageEnd,
+            @Parameter(description = "版本标识") @RequestParam(required = false) String versionLabel,
+            @Parameter(description = "文件来源类型") @RequestParam(required = false) String fileSourceType,
+            @Parameter(description = "扫描批次号") @RequestParam(required = false) String scanBatchNo,
+            @Parameter(description = "扫描操作人") @RequestParam(required = false) String scanOperator,
+            @Parameter(description = "扫描时间") @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime scanTime,
+            @Parameter(description = "扫描复核状态") @RequestParam(required = false) String scanCheckStatus,
+            @Parameter(description = "扫描复核人") @RequestParam(required = false) String scanCheckBy,
+            @Parameter(description = "扫描复核时间") @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime scanCheckTime) {
         
-        DigitalFile digitalFile = fileStorageService.upload(file, null, fileCategory);
+        DigitalFile digitalFile = fileStorageService.upload(file, null, fileCategory,
+                volumeNo, sectionType, documentNo, pageStart, pageEnd, versionLabel,
+                fileSourceType, scanBatchNo, scanOperator, scanTime, scanCheckStatus, scanCheckBy, scanCheckTime);
         
         DigitalFileDTO dto = DigitalFileDTO.builder()
                 .id(digitalFile.getId())
@@ -51,6 +71,19 @@ public class FileController {
                 .fileExtension(digitalFile.getFileExtension())
                 .mimeType(digitalFile.getMimeType())
                 .fileSize(digitalFile.getFileSize())
+                .volumeNo(digitalFile.getVolumeNo())
+                .sectionType(digitalFile.getSectionType())
+                .documentNo(digitalFile.getDocumentNo())
+                .pageStart(digitalFile.getPageStart())
+                .pageEnd(digitalFile.getPageEnd())
+                .versionLabel(digitalFile.getVersionLabel())
+                .fileSourceType(digitalFile.getFileSourceType())
+                .scanBatchNo(digitalFile.getScanBatchNo())
+                .scanOperator(digitalFile.getScanOperator())
+                .scanTime(digitalFile.getScanTime())
+                .scanCheckStatus(digitalFile.getScanCheckStatus())
+                .scanCheckBy(digitalFile.getScanCheckBy())
+                .scanCheckTime(digitalFile.getScanCheckTime())
                 .hashValue(digitalFile.getHashValue())
                 .uploadAt(digitalFile.getUploadAt())
                 .build();
@@ -63,16 +96,35 @@ public class FileController {
      */
     @PostMapping("/upload/batch")
     @Operation(summary = "批量上传文件")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
+    @PreAuthorize("isAuthenticated()")
     public Result<List<DigitalFileDTO>> uploadBatch(
             @RequestParam("files") MultipartFile[] files,
-            @Parameter(description = "文件分类") @RequestParam(required = false) String fileCategory) {
-        
+            @Parameter(description = "文件分类") @RequestParam(required = false) String fileCategory,
+            @Parameter(description = "案卷卷号") @RequestParam(required = false) Integer volumeNo,
+            @Parameter(description = "案卷分段类型") @RequestParam(required = false) String sectionType,
+            @Parameter(description = "件号/文号") @RequestParam(required = false) String documentNo,
+            @Parameter(description = "起始页码") @RequestParam(required = false) Integer pageStart,
+            @Parameter(description = "截止页码") @RequestParam(required = false) Integer pageEnd,
+            @Parameter(description = "版本标识") @RequestParam(required = false) String versionLabel,
+            @Parameter(description = "文件来源类型") @RequestParam(required = false) String fileSourceType,
+            @Parameter(description = "扫描批次号") @RequestParam(required = false) String scanBatchNo,
+            @Parameter(description = "扫描操作人") @RequestParam(required = false) String scanOperator,
+            @Parameter(description = "扫描时间") @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime scanTime,
+            @Parameter(description = "扫描复核状态") @RequestParam(required = false) String scanCheckStatus,
+            @Parameter(description = "扫描复核人") @RequestParam(required = false) String scanCheckBy,
+            @Parameter(description = "扫描复核时间") @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime scanCheckTime) {
+        if (files == null || files.length == 0) {
+            return Result.error("400", "请选择至少一个文件");
+        }
+
         List<DigitalFileDTO> results = new ArrayList<>();
+        List<String> failedFiles = new ArrayList<>();
         
         for (MultipartFile file : files) {
             try {
-                DigitalFile digitalFile = fileStorageService.upload(file, null, fileCategory);
+                DigitalFile digitalFile = fileStorageService.upload(file, null, fileCategory,
+                        volumeNo, sectionType, documentNo, pageStart, pageEnd, versionLabel,
+                        fileSourceType, scanBatchNo, scanOperator, scanTime, scanCheckStatus, scanCheckBy, scanCheckTime);
                 
                 DigitalFileDTO dto = DigitalFileDTO.builder()
                         .id(digitalFile.getId())
@@ -80,15 +132,39 @@ public class FileController {
                         .originalName(digitalFile.getOriginalName())
                         .fileSize(digitalFile.getFileSize())
                         .mimeType(digitalFile.getMimeType())
+                        .volumeNo(digitalFile.getVolumeNo())
+                        .sectionType(digitalFile.getSectionType())
+                        .fileSourceType(digitalFile.getFileSourceType())
+                        .scanBatchNo(digitalFile.getScanBatchNo())
                         .build();
                 
                 results.add(dto);
             } catch (Exception e) {
+                failedFiles.add(file.getOriginalFilename());
                 log.error("文件上传失败: {}", file.getOriginalFilename(), e);
             }
         }
-        
-        return Result.success("上传完成", results);
+
+        if (results.isEmpty()) {
+            String failedNames = failedFiles.stream()
+                    .filter(name -> name != null && !name.isBlank())
+                    .collect(Collectors.joining("、"));
+            String suffix = failedNames.isBlank() ? "" : "，失败文件: " + failedNames;
+            return Result.error("500", "批量上传失败，未成功上传任何文件" + suffix);
+        }
+
+        if (!failedFiles.isEmpty()) {
+            String failedNames = failedFiles.stream()
+                    .filter(name -> name != null && !name.isBlank())
+                    .collect(Collectors.joining("、"));
+            String suffix = failedNames.isBlank() ? "" : "，失败文件: " + failedNames;
+            return Result.success(
+                    String.format("上传完成，成功 %d 个，失败 %d 个%s", results.size(), failedFiles.size(), suffix),
+                    results
+            );
+        }
+
+        return Result.success(String.format("上传完成，成功 %d 个", results.size()), results);
     }
 
     /**
@@ -128,7 +204,7 @@ public class FileController {
      */
     @DeleteMapping("/{id}")
     @Operation(summary = "删除文件")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
     public Result<Void> delete(@PathVariable Long id) {
         fileStorageService.delete(id);
         return Result.success("删除成功", null);

@@ -208,6 +208,10 @@ const props = defineProps({
   fileCategory: {
     type: String,
     default: null
+  },
+  extraData: {
+    type: [Object, Function],
+    default: null
   }
 })
 
@@ -326,7 +330,7 @@ const startUpload = async () => {
   uploading.value = true
   paused.value = false
   
-  await processQueue()
+  return await processQueue()
 }
 
 // 处理队列
@@ -363,6 +367,13 @@ const processQueue = async () => {
       fileIds: uploadedFileIds.value
     })
   }
+
+  return fileQueue.value
+    .filter(f => f.status === 'success' && f.fileId)
+    .map(f => ({
+      id: f.fileId,
+      name: f.name
+    }))
 }
 
 // 上传单个文件
@@ -371,10 +382,14 @@ const uploadSingleFile = async (fileItem) => {
   fileItem.progress = 0
   
   try {
+    const extraData = typeof props.extraData === 'function'
+      ? props.extraData(fileItem)
+      : props.extraData
     const res = await uploadFile(
       fileItem.file, 
       null, 
       props.fileCategory,
+      extraData,
       (progressEvent) => {
         if (progressEvent.total) {
           fileItem.progress = Math.round((progressEvent.loaded / progressEvent.total) * 100)

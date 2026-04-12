@@ -26,6 +26,9 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+/**
+ * @author junyuzhan
+ */
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -48,7 +51,7 @@ class LocationControllerTest {
                 .build();
         objectMapper = new ObjectMapper();
 
-        when(locationService.getList(any(), any(), anyInt(), anyInt()))
+        when(locationService.getList(any(), any(), any(), anyInt(), anyInt()))
                 .thenReturn(PageResult.of(1, 20, 0, Collections.emptyList()));
     }
 

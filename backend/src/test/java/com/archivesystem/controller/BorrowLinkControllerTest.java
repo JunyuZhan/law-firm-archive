@@ -23,6 +23,9 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+/**
+ * @author junyuzhan
+ */
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -55,10 +58,10 @@ class BorrowLinkControllerTest {
 
     @Test
     void testGetList() throws Exception {
-        when(borrowLinkService.getList(any(), any(), anyInt(), anyInt()))
+        when(borrowLinkService.getList(any(), any(), any(), any(), any(), anyInt(), anyInt()))
                 .thenReturn(PageResult.of(1, 20, 1, Collections.singletonList(testLink)));
 
-        mockMvc.perform(get("/api/borrow-links"))
+        mockMvc.perform(get("/borrow-links"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
                 .andExpect(jsonPath("$.data.records").isArray());
@@ -66,12 +69,13 @@ class BorrowLinkControllerTest {
 
     @Test
     void testGetListWithFilters() throws Exception {
-        when(borrowLinkService.getList(eq(100L), eq("ACTIVE"), eq(1), eq(10)))
+        when(borrowLinkService.getList(eq(100L), eq("ACTIVE"), eq(true), eq(null), eq(null), eq(1), eq(10)))
                 .thenReturn(PageResult.of(1, 10, 1, Collections.singletonList(testLink)));
 
-        mockMvc.perform(get("/api/borrow-links")
+        mockMvc.perform(get("/borrow-links")
                         .param("archiveId", "100")
                         .param("status", "ACTIVE")
+                        .param("allowDownload", "true")
                         .param("pageNum", "1")
                         .param("pageSize", "10"))
                 .andExpect(status().isOk())
@@ -82,7 +86,7 @@ class BorrowLinkControllerTest {
     void testGetById() throws Exception {
         when(borrowLinkService.getById(1L)).thenReturn(testLink);
 
-        mockMvc.perform(get("/api/borrow-links/1"))
+        mockMvc.perform(get("/borrow-links/1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
                 .andExpect(jsonPath("$.data.id").value(1))
@@ -94,7 +98,7 @@ class BorrowLinkControllerTest {
         List<BorrowLink> links = Arrays.asList(testLink);
         when(borrowLinkService.getActiveByArchiveId(100L)).thenReturn(links);
 
-        mockMvc.perform(get("/api/borrow-links/archive/100"))
+        mockMvc.perform(get("/borrow-links/archive/100"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
                 .andExpect(jsonPath("$.data").isArray())
@@ -106,7 +110,7 @@ class BorrowLinkControllerTest {
         when(borrowLinkService.generateLinkForBorrow(eq(1L), eq(7), eq(true)))
                 .thenReturn(testLink);
 
-        mockMvc.perform(post("/api/borrow-links/generate")
+        mockMvc.perform(post("/borrow-links/generate")
                         .param("borrowId", "1")
                         .param("expireDays", "7")
                         .param("allowDownload", "true"))
@@ -119,7 +123,7 @@ class BorrowLinkControllerTest {
     void testRevoke() throws Exception {
         doNothing().when(borrowLinkService).revoke(1L, "测试撤销");
 
-        mockMvc.perform(post("/api/borrow-links/1/revoke")
+        mockMvc.perform(post("/borrow-links/1/revoke")
                         .param("reason", "测试撤销"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
@@ -134,7 +138,7 @@ class BorrowLinkControllerTest {
                 100L, 80L, 15L, 5L, 500L, 200L);
         when(borrowLinkService.getStats()).thenReturn(stats);
 
-        mockMvc.perform(get("/api/borrow-links/stats"))
+        mockMvc.perform(get("/borrow-links/stats"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
                 .andExpect(jsonPath("$.data.totalCount").value(100));
@@ -144,7 +148,7 @@ class BorrowLinkControllerTest {
     void testUpdateExpired() throws Exception {
         when(borrowLinkService.updateExpiredLinks()).thenReturn(5);
 
-        mockMvc.perform(post("/api/borrow-links/update-expired"))
+        mockMvc.perform(post("/borrow-links/update-expired"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
                 .andExpect(jsonPath("$.data.updatedCount").value(5));

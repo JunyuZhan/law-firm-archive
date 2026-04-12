@@ -6,6 +6,7 @@ import java.util.List;
 
 /**
  * 分类服务接口.
+ * @author junyuzhan
  */
 public interface CategoryService {
 

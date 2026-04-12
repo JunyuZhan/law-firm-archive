@@ -70,3 +70,14 @@ export function getStorageStats() {
     method: 'get'
   })
 }
+
+/**
+ * 扫描批次统计
+ */
+export function getScanBatchStats(keyword) {
+  return request({
+    url: '/statistics/scan-batches',
+    method: 'get',
+    params: { keyword }
+  })
+}

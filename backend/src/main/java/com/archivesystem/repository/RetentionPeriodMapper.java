@@ -8,6 +8,7 @@ import org.apache.ibatis.annotations.Select;
 
 /**
  * 保管期限Mapper接口.
+ * @author junyuzhan
  */
 @Mapper
 public interface RetentionPeriodMapper extends BaseMapper<RetentionPeriod> {

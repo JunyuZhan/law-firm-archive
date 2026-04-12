@@ -1,23 +1,33 @@
 <template>
   <div class="appraisal-list">
+    <div class="page-header">
+      <h1>鉴定管理</h1>
+      <p>处理档案密级、保管期限、开放范围和值保相关鉴定事项，并跟踪待审批与到期预警。</p>
+    </div>
+
     <!-- 标签页 -->
-    <el-tabs
-      v-model="activeTab"
-      @tab-change="handleTabChange"
+    <el-card
+      shadow="never"
+      class="tabs-card"
     >
-      <el-tab-pane
-        label="鉴定列表"
-        name="all"
-      />
-      <el-tab-pane
-        label="待审批"
-        name="pending"
-      />
-      <el-tab-pane
-        label="到期预警"
-        name="expiring"
-      />
-    </el-tabs>
+      <el-tabs
+        v-model="activeTab"
+        @tab-change="handleTabChange"
+      >
+        <el-tab-pane
+          label="鉴定列表"
+          name="all"
+        />
+        <el-tab-pane
+          label="待审批"
+          name="pending"
+        />
+        <el-tab-pane
+          label="到期预警"
+          name="expiring"
+        />
+      </el-tabs>
+    </el-card>
 
     <!-- 筛选 -->
     <el-card
@@ -133,6 +143,7 @@
     <el-card
       v-if="activeTab !== 'expiring'"
       shadow="never"
+      class="table-card"
     >
       <el-table
         v-loading="loading"
@@ -259,6 +270,7 @@
     <el-card
       v-if="activeTab === 'expiring'"
       shadow="never"
+      class="table-card"
     >
       <template #header>
         <span>{{ showExpired ? '已到期档案' : '即将到期档案' }}</span>
@@ -353,14 +365,51 @@
         label-width="100px"
       >
         <el-form-item
-          label="档案ID"
+          label="选择档案"
           prop="archiveId"
+          class="span-2"
         >
-          <el-input
-            v-model.number="createForm.archiveId"
-            placeholder="请输入档案ID"
-          />
+          <el-select
+            v-model="createForm.archiveId"
+            filterable
+            remote
+            clearable
+            reserve-keyword
+            placeholder="输入档案号或题名搜索"
+            :remote-method="searchArchiveOptions"
+            :loading="archiveSearchLoading"
+            style="width: 100%"
+            @change="handleArchiveSelect"
+          >
+            <el-option
+              v-for="item in archiveOptions"
+              :key="item.id"
+              :label="`${item.archiveNo}｜${item.title}`"
+              :value="item.id"
+            >
+              <div class="archive-option">
+                <span class="archive-option-no">{{ item.archiveNo }}</span>
+                <span class="archive-option-title">{{ item.title }}</span>
+              </div>
+            </el-option>
+          </el-select>
+          <div class="form-tip">
+            通过档案号或题名定位电子档案，避免手工输入内部 ID。
+          </div>
         </el-form-item>
+        <div
+          v-if="selectedArchiveSummary"
+          class="archive-summary-card"
+        >
+          <div class="summary-main">
+            <span class="archive-no">{{ selectedArchiveSummary.archiveNo }}</span>
+            <span class="archive-title">{{ selectedArchiveSummary.title }}</span>
+          </div>
+          <div class="summary-meta">
+            <span>当前保管期限：{{ getRetentionName(selectedArchiveSummary.retentionPeriod) || '-' }}</span>
+            <span>开放状态：{{ selectedArchiveSummary.openScope || '-' }}</span>
+          </div>
+        </div>
         <el-form-item
           label="鉴定类型"
           prop="appraisalType"
@@ -698,6 +747,7 @@ import {
   createAppraisal, approveAppraisal, rejectAppraisal,
   getExpiringArchives, getExpiredArchives, extendRetention
 } from '@/api/appraisal'
+import { getArchiveList } from '@/api/archive'
 import {
   getRetentionName,
   getRetentionOptions,
@@ -740,11 +790,14 @@ const createForm = ref({
   appraisalReason: ''
 })
 const createRules = {
-  archiveId: [{ required: true, message: '请输入档案ID', trigger: 'blur' }],
+  archiveId: [{ required: true, message: '请选择档案', trigger: 'change' }],
   appraisalType: [{ required: true, message: '请选择鉴定类型', trigger: 'change' }],
   newValue: [{ required: true, message: '请输入新值', trigger: 'blur' }],
   appraisalReason: [{ required: true, message: '请输入鉴定原因', trigger: 'blur' }]
 }
+const archiveOptions = ref([])
+const archiveSearchLoading = ref(false)
+const selectedArchiveSummary = ref(null)
 
 // 审批
 const approveDialogVisible = ref(false)
@@ -834,6 +887,17 @@ watch(showExpired, () => {
   fetchExpiringData()
 })
 
+watch(
+  () => createForm.value.appraisalType,
+  (type) => {
+    if (type === 'RETENTION' && selectedArchiveSummary.value) {
+      createForm.value.originalValue = selectedArchiveSummary.value.retentionPeriod || ''
+    } else if (!type) {
+      createForm.value.originalValue = ''
+    }
+  }
+)
+
 // 发起鉴定
 const handleCreate = () => {
   createForm.value = {
@@ -843,7 +907,47 @@ const handleCreate = () => {
     newValue: '',
     appraisalReason: ''
   }
+  selectedArchiveSummary.value = null
+  archiveOptions.value = []
   createDialogVisible.value = true
+}
+
+const searchArchiveOptions = async (keyword) => {
+  const term = keyword?.trim()
+  if (!term) {
+    archiveOptions.value = []
+    return
+  }
+  archiveSearchLoading.value = true
+  try {
+    const res = await getArchiveList({
+      keyword: term,
+      pageNum: 1,
+      pageSize: 20
+    })
+    archiveOptions.value = res.data?.records || []
+  } catch (e) {
+    console.error('搜索档案失败', e)
+    archiveOptions.value = []
+  } finally {
+    archiveSearchLoading.value = false
+  }
+}
+
+const handleArchiveSelect = (archiveId) => {
+  if (!archiveId) {
+    selectedArchiveSummary.value = null
+    createForm.value.originalValue = ''
+    return
+  }
+  const selected = archiveOptions.value.find(item => item.id === archiveId)
+  if (!selected) {
+    return
+  }
+  selectedArchiveSummary.value = selected
+  if (createForm.value.appraisalType === 'RETENTION') {
+    createForm.value.originalValue = selected.retentionPeriod || ''
+  }
 }
 
 const submitCreate = async () => {
@@ -960,6 +1064,8 @@ const handleAppraisal = (archive) => {
     newValue: '',
     appraisalReason: '保管期限到期，需要重新鉴定'
   }
+  selectedArchiveSummary.value = archive
+  archiveOptions.value = [archive]
   createDialogVisible.value = true
 }
 
@@ -1030,12 +1136,37 @@ onMounted(() => {
 
 <style lang="scss" scoped>
 .appraisal-list {
-  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.page-header h1 {
+  margin: 0 0 8px;
+  font-size: 24px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.page-header p {
+  margin: 0;
+  line-height: 1.6;
+  color: #606266;
+}
+
+.tabs-card,
+.filter-card,
+.table-card {
+  border-radius: 10px;
+}
+
+.tabs-card {
+  :deep(.el-card__body) {
+    padding-bottom: 0;
+  }
 }
 
 .filter-card {
-  margin-bottom: 16px;
-
   :deep(.el-card__body) {
     padding-bottom: 0;
   }
@@ -1060,6 +1191,69 @@ onMounted(() => {
   .new-value {
     color: #409eff;
     font-weight: 500;
+  }
+}
+
+.archive-summary-card {
+  margin: -4px 0 18px;
+  padding: 14px 16px;
+  border: 1px solid #e5eaf3;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.summary-main {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-bottom: 8px;
+}
+
+.summary-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  font-size: 12px;
+  color: #606266;
+}
+
+.archive-no {
+  font-size: 12px;
+  font-weight: 600;
+  color: #8c6b1f;
+}
+
+.archive-title {
+  font-weight: 600;
+  color: #303133;
+}
+
+.archive-option {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  line-height: 1.4;
+}
+
+.archive-option-no {
+  font-size: 12px;
+  color: #909399;
+}
+
+.archive-option-title {
+  color: #303133;
+}
+
+.form-tip {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #8c8c8c;
+}
+
+.span-2 {
+  :deep(.el-form-item__content) {
+    display: block;
   }
 }
 

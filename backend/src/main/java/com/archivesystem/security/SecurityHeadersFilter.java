@@ -14,6 +14,7 @@ import java.io.IOException;
 /**
  * 安全响应头过滤器.
  * 添加各种安全响应头以防止常见的Web攻击
+ * @author junyuzhan
  */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)

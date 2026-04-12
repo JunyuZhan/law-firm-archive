@@ -51,6 +51,8 @@ export const getArchiveFormOptions = () => {
 // ========== 档案状态 ==========
 export const ARCHIVE_STATUS = {
   DRAFT: '草稿',
+  PENDING_REVIEW: '待审核',
+  REJECTED: '已退回',
   RECEIVED: '已接收',
   CATALOGING: '整理中',
   STORED: '已归档',
@@ -60,6 +62,8 @@ export const ARCHIVE_STATUS = {
 
 export const ARCHIVE_STATUS_TYPE = {
   DRAFT: 'info',
+  PENDING_REVIEW: 'warning',
+  REJECTED: 'danger',
   RECEIVED: 'warning',
   CATALOGING: '',
   STORED: 'success',
@@ -147,6 +151,20 @@ export const getBorrowStatusName = (status) => {
 
 export const getBorrowStatusType = (status) => {
   return BORROW_STATUS_TYPE[status] || ''
+}
+
+export const BORROW_TYPES = {
+  ONLINE: '在线查阅',
+  DOWNLOAD: '允许下载',
+  COPY: '复制利用'
+}
+
+export const getBorrowTypeName = (type) => {
+  return BORROW_TYPES[type] || type || '在线查阅'
+}
+
+export const getBorrowTypeOptions = () => {
+  return Object.entries(BORROW_TYPES).map(([value, label]) => ({ value, label }))
 }
 
 // ========== 鉴定状态 ==========
@@ -241,9 +259,8 @@ export const getFondsTypeOptions = () => {
 // ========== 用户角色 ==========
 export const USER_ROLES = {
   SYSTEM_ADMIN: '系统管理员',
-  SECURITY_ADMIN: '安全管理员',
-  AUDIT_ADMIN: '审计管理员',
-  ARCHIVIST: '档案管理员',
+  ARCHIVE_REVIEWER: '档案审核员',
+  ARCHIVE_MANAGER: '档案管理员',
   USER: '普通用户'
 }
 
@@ -295,4 +312,33 @@ export const getFileCategoryOptions = () => {
     value, 
     label: FILE_CATEGORIES[value] 
   }))
+}
+
+// ========== 电子案卷分段 ==========
+export const FILE_SECTION_TYPES = {
+  COVER: '卷内封面',
+  CATALOG: '卷内目录',
+  MAIN: '正文材料',
+  EVIDENCE: '证据材料',
+  ATTACHMENT: '补充附件',
+  NOTE: '备考表/说明'
+}
+
+export const FILE_SECTION_COLORS = {
+  COVER: '#b88230',
+  CATALOG: '#2f6bff',
+  MAIN: '#2d8a56',
+  EVIDENCE: '#c05621',
+  ATTACHMENT: '#6b7280',
+  NOTE: '#7c3aed'
+}
+
+export const FILE_SECTION_ORDER = ['COVER', 'CATALOG', 'MAIN', 'EVIDENCE', 'ATTACHMENT', 'NOTE']
+
+export const getFileSectionName = (sectionType) => {
+  return FILE_SECTION_TYPES[sectionType] || '未分段'
+}
+
+export const getFileSectionColor = (sectionType) => {
+  return FILE_SECTION_COLORS[sectionType] || '#909399'
 }

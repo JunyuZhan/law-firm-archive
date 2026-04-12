@@ -200,11 +200,10 @@ X-API-Key: your-api-key
 ### 角色定义
 
 ```javascript
-SYSTEM_ADMIN    // 系统管理员 - 最高权限
-SECURITY_ADMIN  // 安全保密员 - 用户管理权限
-AUDIT_ADMIN     // 安全审计员 - 日志查看权限
-ARCHIVIST       // 档案员 - 档案管理权限
-USER            // 普通用户 - 基本查看权限
+SYSTEM_ADMIN      // 系统管理员 - 最高权限
+ARCHIVE_REVIEWER  // 档案审核员 - 入库审核权限
+ARCHIVE_MANAGER   // 档案管理员 - 档案整理与借阅管理权限
+USER              // 普通用户 - 基本查看与借阅申请权限
 ```
 
 ### 权限配置示例
@@ -213,7 +212,7 @@ USER            // 普通用户 - 基本查看权限
 // 系统管理 - 仅管理员可访问
 {
   path: 'system/users',
-  meta: { roles: ['SYSTEM_ADMIN', 'SECURITY_ADMIN'] }
+  meta: { roles: ['SYSTEM_ADMIN'] }
 }
 ```
 

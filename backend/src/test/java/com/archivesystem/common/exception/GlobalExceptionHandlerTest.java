@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.BindException;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
@@ -20,6 +21,9 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
+/**
+ * @author junyuzhan
+ */
 
 @ExtendWith(MockitoExtension.class)
 class GlobalExceptionHandlerTest {
@@ -62,6 +66,16 @@ class GlobalExceptionHandlerTest {
         ForbiddenException exception = new ForbiddenException("没有访问权限");
 
         Result<Void> result = globalExceptionHandler.handleForbiddenException(exception);
+
+        assertEquals("403", result.getCode());
+        assertEquals("没有访问权限", result.getMessage());
+    }
+
+    @Test
+    void testHandleAccessDeniedException() {
+        AccessDeniedException exception = new AccessDeniedException("Access Denied");
+
+        Result<Void> result = globalExceptionHandler.handleAccessDeniedException(exception);
 
         assertEquals("403", result.getCode());
         assertEquals("没有访问权限", result.getMessage());

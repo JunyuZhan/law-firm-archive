@@ -15,6 +15,7 @@ import java.util.List;
 /**
  * 档案分类实体类.
  * 对应数据库表: arc_category
+ * @author junyuzhan
  */
 @Data
 @Builder

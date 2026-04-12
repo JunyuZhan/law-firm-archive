@@ -2,6 +2,8 @@ package com.archivesystem.mq;
 
 import com.archivesystem.service.CallbackService;
 import com.rabbitmq.client.Channel;
+import java.time.LocalDateTime;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -10,18 +12,18 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.amqp.AmqpRejectAndDontRequeueException;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 
-import java.io.IOException;
-import java.time.LocalDateTime;
-import java.util.concurrent.TimeUnit;
-
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
+/**
+ * @author junyuzhan
+ */
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -102,6 +104,7 @@ class CallbackConsumerTest {
         verify(callbackService).sendCallback(testMessage);
         verify(channel).basicAck(1L, false);
         verify(rabbitTemplate).convertAndSend(anyString(), anyString(), any(CallbackMessage.class));
+        verify(channel, never()).basicNack(anyLong(), anyBoolean(), anyBoolean());
     }
 
     @Test
@@ -134,6 +137,7 @@ class CallbackConsumerTest {
         verify(callbackService).sendCallback(testMessage);
         verify(channel).basicAck(1L, false);
         verify(rabbitTemplate).convertAndSend(anyString(), anyString(), any(CallbackMessage.class));
+        verify(channel, never()).basicNack(anyLong(), anyBoolean(), anyBoolean());
     }
 
     @Test
@@ -197,19 +201,22 @@ class CallbackConsumerTest {
         callbackConsumer.handleCallback(testMessage, amqpMessage, channel);
 
         verify(rabbitTemplate).convertAndSend(anyString(), anyString(), any(CallbackMessage.class));
+        verify(channel, never()).basicNack(anyLong(), anyBoolean(), anyBoolean());
     }
 
     @Test
-    void testHandleCallback_IOExceptionOnAck() throws Exception {
+    void testHandleCallback_RequeueWhenRepublishFails() throws Exception {
         testMessage.setRetryCount(0);
         testMessage.setMaxRetries(3);
 
         when(callbackService.sendCallback(any(CallbackMessage.class))).thenReturn(false);
-        doThrow(new IOException("连接断开")).when(channel).basicAck(anyLong(), anyBoolean());
+        doThrow(new AmqpRejectAndDontRequeueException("重投失败"))
+                .when(rabbitTemplate).convertAndSend(anyString(), anyString(), any(CallbackMessage.class));
 
-        // Should not throw exception
         callbackConsumer.handleCallback(testMessage, amqpMessage, channel);
 
         verify(callbackService).sendCallback(testMessage);
+        verify(channel, never()).basicAck(1L, false);
+        verify(channel).basicNack(1L, false, true);
     }
 }

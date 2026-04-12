@@ -6,12 +6,14 @@ import com.archivesystem.entity.Archive;
 import com.archivesystem.entity.DigitalFile;
 import com.archivesystem.entity.PushRecord;
 import com.archivesystem.repository.ArchiveMapper;
+import com.archivesystem.repository.DigitalFileMapper;
 import com.archivesystem.repository.PushRecordMapper;
 import com.archivesystem.service.FileStorageService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.rabbitmq.client.Channel;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.AmqpException;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -27,6 +29,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * 档案接收消息消费者
  * 异步处理档案文件的下载和存储
+ * @author junyuzhan
  */
 @Slf4j
 @Component
@@ -34,6 +37,7 @@ import java.util.concurrent.TimeUnit;
 public class ArchiveReceiveConsumer {
 
     private final ArchiveMapper archiveMapper;
+    private final DigitalFileMapper digitalFileMapper;
     private final PushRecordMapper pushRecordMapper;
     private final FileStorageService fileStorageService;
     private final RabbitTemplate rabbitTemplate;
@@ -98,6 +102,10 @@ public class ArchiveReceiveConsumer {
             if (Archive.STATUS_RECEIVED.equals(archive.getStatus()) || 
                 Archive.STATUS_FAILED.equals(archive.getStatus()) ||
                 Archive.STATUS_PARTIAL.equals(archive.getStatus())) {
+                if (tryDispatchPendingCompletionCallback(message, archive, deliveryTag, channel)) {
+                    metricsConfig.recordArchiveReceiveSuccess();
+                    return;
+                }
                 log.info("档案已处理完成，跳过: archiveId={}, status={}", archiveId, archive.getStatus());
                 channel.basicAck(deliveryTag, false);
                 return;
@@ -152,6 +160,60 @@ public class ArchiveReceiveConsumer {
                         );
                         
                         if (digitalFile != null) {
+                            if (fileInfo.getVolumeNo() != null) {
+                                digitalFile.setVolumeNo(fileInfo.getVolumeNo());
+                            }
+                            if (fileInfo.getSectionType() != null) {
+                                digitalFile.setSectionType(fileInfo.getSectionType());
+                            }
+                            if (fileInfo.getDocumentNo() != null) {
+                                digitalFile.setDocumentNo(fileInfo.getDocumentNo());
+                            }
+                            if (fileInfo.getPageStart() != null) {
+                                digitalFile.setPageStart(fileInfo.getPageStart());
+                            }
+                            if (fileInfo.getPageEnd() != null) {
+                                digitalFile.setPageEnd(fileInfo.getPageEnd());
+                            }
+                            if (fileInfo.getVersionLabel() != null) {
+                                digitalFile.setVersionLabel(fileInfo.getVersionLabel());
+                            }
+                            if (fileInfo.getFileSourceType() != null) {
+                                digitalFile.setFileSourceType(fileInfo.getFileSourceType());
+                            }
+                            if (fileInfo.getScanBatchNo() != null) {
+                                digitalFile.setScanBatchNo(fileInfo.getScanBatchNo());
+                            }
+                            if (fileInfo.getScanOperator() != null) {
+                                digitalFile.setScanOperator(fileInfo.getScanOperator());
+                            }
+                            if (fileInfo.getScanTime() != null) {
+                                digitalFile.setScanTime(fileInfo.getScanTime());
+                            }
+                            if (fileInfo.getScanCheckStatus() != null) {
+                                digitalFile.setScanCheckStatus(fileInfo.getScanCheckStatus());
+                            }
+                            if (fileInfo.getScanCheckBy() != null) {
+                                digitalFile.setScanCheckBy(fileInfo.getScanCheckBy());
+                            }
+                            if (fileInfo.getScanCheckTime() != null) {
+                                digitalFile.setScanCheckTime(fileInfo.getScanCheckTime());
+                            }
+                            if (fileInfo.getVolumeNo() != null
+                                    || fileInfo.getSectionType() != null
+                                    || fileInfo.getDocumentNo() != null
+                                    || fileInfo.getPageStart() != null
+                                    || fileInfo.getPageEnd() != null
+                                    || fileInfo.getVersionLabel() != null
+                                    || fileInfo.getFileSourceType() != null
+                                    || fileInfo.getScanBatchNo() != null
+                                    || fileInfo.getScanOperator() != null
+                                    || fileInfo.getScanTime() != null
+                                    || fileInfo.getScanCheckStatus() != null
+                                    || fileInfo.getScanCheckBy() != null
+                                    || fileInfo.getScanCheckTime() != null) {
+                                digitalFileMapper.updateById(digitalFile);
+                            }
                             successCount++;
                             totalSize += digitalFile.getFileSize() != null ? digitalFile.getFileSize() : 0;
                             log.info("文件处理成功: fileName={}", fileInfo.getFileName());
@@ -185,6 +247,8 @@ public class ArchiveReceiveConsumer {
             updatePushRecord(message.getSourceType(), message.getSourceId(), 
                     finalStatus, successCount, failedCount, 
                     failedFiles.isEmpty() ? null : String.join(", ", failedFiles));
+
+            markCompletionCallbackPending(message);
             
             // 发送回调通知
             if (message.getCallbackUrl() != null && !message.getCallbackUrl().isEmpty()) {
@@ -215,9 +279,8 @@ public class ArchiveReceiveConsumer {
                 if (message.getRetryCount() < message.getMaxRetries()) {
                     message.setRetryCount(message.getRetryCount() + 1);
                     log.info("重试处理: messageId={}, retryCount={}", messageId, message.getRetryCount());
-                    
-                    // 重新发送消息（带延迟）
-                    channel.basicReject(deliveryTag, false);
+
+                    requeueForRetry(message, channel, deliveryTag);
                 } else {
                     // 超过最大重试次数，进入死信队列
                     log.error("超过最大重试次数，消息进入死信队列: messageId={}", messageId);
@@ -239,6 +302,47 @@ public class ArchiveReceiveConsumer {
                 log.error("消息确认失败", ioException);
             }
         }
+    }
+
+    private void requeueForRetry(ArchiveReceiveMessage message, Channel channel, long deliveryTag)
+            throws IOException {
+        try {
+            rabbitTemplate.convertAndSend(
+                    RabbitMQConfig.ARCHIVE_EXCHANGE,
+                    RabbitMQConfig.ARCHIVE_RECEIVE_ROUTING_KEY,
+                    message
+            );
+            channel.basicAck(deliveryTag, false);
+        } catch (AmqpException e) {
+            log.error("档案接收消息重投失败，原消息将重新入队: messageId={}, retryCount={}",
+                    message.getMessageId(), message.getRetryCount(), e);
+            channel.basicNack(deliveryTag, false, true);
+        }
+    }
+
+    private boolean tryDispatchPendingCompletionCallback(
+            ArchiveReceiveMessage message, Archive archive, long deliveryTag, Channel channel) throws IOException {
+        PushRecord pushRecord = selectLatestPushRecord(message.getSourceType(), message.getSourceId());
+        if (pushRecord == null
+                || !PushRecord.FILE_STATUS_CALLBACK_PENDING.equals(pushRecord.getFileStatus())
+                || pushRecord.getCallbackUrl() == null
+                || pushRecord.getCallbackUrl().isEmpty()) {
+            return false;
+        }
+
+        int successCount = pushRecord.getSuccessFiles() != null ? pushRecord.getSuccessFiles() : 0;
+        int failedCount = pushRecord.getFailedFiles() != null ? pushRecord.getFailedFiles() : 0;
+        int totalCount = pushRecord.getTotalFiles() != null ? pushRecord.getTotalFiles() : successCount + failedCount;
+
+        sendCallbackMessage(
+                message,
+                successCount,
+                failedCount,
+                totalCount,
+                pushRecord.getErrorMessage());
+        channel.basicAck(deliveryTag, false);
+        log.info("档案已完成但补发完成回调成功: archiveId={}, status={}", archive.getId(), archive.getStatus());
+        return true;
     }
     
     /**
@@ -278,6 +382,7 @@ public class ArchiveReceiveConsumer {
                 RabbitMQConfig.ARCHIVE_CALLBACK_ROUTING_KEY,
                 callback
         );
+        markCompletionCallbackSent(original);
         
         log.info("已发送回调消息: archiveId={}, status={}", original.getArchiveId(), status);
     }
@@ -316,6 +421,39 @@ public class ArchiveReceiveConsumer {
                 original.getFiles() != null ? original.getFiles().size() : 0,
                 errorMessage);
     }
+
+    private void markCompletionCallbackPending(ArchiveReceiveMessage message) {
+        if (message.getCallbackUrl() == null || message.getCallbackUrl().isEmpty()) {
+            return;
+        }
+        updatePushRecordFileStatus(message.getSourceType(), message.getSourceId(), PushRecord.FILE_STATUS_CALLBACK_PENDING);
+    }
+
+    private void markCompletionCallbackSent(ArchiveReceiveMessage message) {
+        updatePushRecordFileStatus(message.getSourceType(), message.getSourceId(), PushRecord.FILE_STATUS_CALLBACK_SENT);
+    }
+
+    private void updatePushRecordFileStatus(String sourceType, String sourceId, String fileStatus) {
+        try {
+            PushRecord pushRecord = selectLatestPushRecord(sourceType, sourceId);
+            if (pushRecord != null) {
+                pushRecord.setFileStatus(fileStatus);
+                pushRecordMapper.updateById(pushRecord);
+            }
+        } catch (Exception e) {
+            log.error("更新推送记录文件状态失败: sourceId={}, fileStatus={}, error={}",
+                    sourceId, fileStatus, e.getMessage());
+        }
+    }
+
+    private PushRecord selectLatestPushRecord(String sourceType, String sourceId) {
+        return pushRecordMapper.selectOne(
+                new LambdaQueryWrapper<PushRecord>()
+                        .eq(PushRecord::getSourceType, sourceType)
+                        .eq(PushRecord::getSourceId, sourceId)
+                        .orderByDesc(PushRecord::getCreatedAt)
+                        .last("LIMIT 1"));
+    }
     
     /**
      * 更新推送记录状态
@@ -323,12 +461,7 @@ public class ArchiveReceiveConsumer {
     private void updatePushRecord(String sourceType, String sourceId, String status,
                                    int successCount, int failedCount, String errorMessage) {
         try {
-            PushRecord pushRecord = pushRecordMapper.selectOne(
-                    new LambdaQueryWrapper<PushRecord>()
-                            .eq(PushRecord::getSourceType, sourceType)
-                            .eq(PushRecord::getSourceId, sourceId)
-                            .orderByDesc(PushRecord::getCreatedAt)
-                            .last("LIMIT 1"));
+            PushRecord pushRecord = selectLatestPushRecord(sourceType, sourceId);
             
             if (pushRecord != null) {
                 pushRecord.setPushStatus(status);

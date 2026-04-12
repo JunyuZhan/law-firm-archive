@@ -10,13 +10,13 @@ services:
     container_name: archive-postgres
     environment:
       POSTGRES_DB: archive_system
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in docker/.env}
     ports:
       - "127.0.0.1:5433:5432"  # 仅本机调试用
     volumes:
       - postgres-data:/var/lib/postgresql/data
-      - ../scripts/init-db:/docker-entrypoint-initdb.d
+      - ../scripts/init-db/02-schema-consolidated.sql:/docker-entrypoint-initdb.d/02-schema-consolidated.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
@@ -48,8 +48,8 @@ services:
     container_name: archive-minio
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD in docker/.env}
     ports:
       - "127.0.0.1:9003:9001"  # MinIO Console 仅本机管理用（API 通过 Nginx 代理）
     volumes:
@@ -67,8 +67,8 @@ services:
     image: rabbitmq:3-management-alpine
     container_name: archive-rabbitmq
     environment:
-      RABBITMQ_DEFAULT_USER: admin
-      RABBITMQ_DEFAULT_PASS: admin123
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-admin}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:?set RABBITMQ_DEFAULT_PASS in docker/.env}
     ports:
       - "127.0.0.1:5672:5672"    # AMQP 仅本机调试用
       - "127.0.0.1:15672:15672"  # 管理界面仅本机访问
@@ -91,7 +91,8 @@ services:
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false
-      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - xpack.ml.enabled=false
+      - "ES_JAVA_OPTS=-Xms${ES_HEAP_MB:-192}m -Xmx${ES_HEAP_MB:-192}m"
       - cluster.name=archive-cluster
     ports:
       - "127.0.0.1:9200:9200"  # 仅本机调试用
@@ -113,21 +114,22 @@ services:
       dockerfile: docker/Dockerfile
     container_name: archive-backend
     environment:
+      JAVA_OPTS: ${JAVA_OPTS:--Xms256m -Xmx768m -XX:+UseG1GC -XX:MaxGCPauseMillis=200}
       SPRING_PROFILES_ACTIVE: docker
-      CORS_ALLOWED_ORIGINS: http://localhost:3001,http://192.168.50.10:3001,${EXTERNAL_ORIGIN:-}
+      CORS_ALLOWED_ORIGINS: http://localhost:3001,http://192.168.50.10:3001,https://arc.albertzhan.top,${EXTERNAL_ORIGIN:-}
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/archive_system
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in docker/.env}
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
       MINIO_ENDPOINT: http://minio:9000
-      MINIO_ACCESS_KEY: minioadmin
-      MINIO_SECRET_KEY: minioadmin
-      JWT_SECRET: your-256-bit-secret-key-for-archive-system-production-2026
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD in docker/.env}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in docker/.env}
       SPRING_RABBITMQ_HOST: rabbitmq
       SPRING_RABBITMQ_PORT: 5672
-      SPRING_RABBITMQ_USERNAME: admin
-      SPRING_RABBITMQ_PASSWORD: admin123
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:-admin}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:?set RABBITMQ_DEFAULT_PASS in docker/.env}
       MINIO_PROXY_PREFIX: ${MINIO_PROXY_PREFIX:-/storage}
       SPRING_ELASTICSEARCH_URIS: http://elasticsearch:9200
     ports:

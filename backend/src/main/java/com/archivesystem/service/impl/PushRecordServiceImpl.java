@@ -1,5 +1,7 @@
 package com.archivesystem.service.impl;
 
+import com.archivesystem.common.exception.BusinessException;
+import com.archivesystem.common.exception.NotFoundException;
 import com.archivesystem.entity.PushRecord;
 import com.archivesystem.repository.PushRecordMapper;
 import com.archivesystem.service.PushRecordService;
@@ -20,6 +22,7 @@ import java.util.UUID;
 
 /**
  * 推送记录服务实现.
+ * @author junyuzhan
  */
 @Slf4j
 @Service
@@ -57,7 +60,7 @@ public class PushRecordServiceImpl implements PushRecordService {
     }
 
     @Override
-    public IPage<PushRecord> page(Page<PushRecord> page, String sourceType, String pushStatus, String keyword) {
+    public IPage<PushRecord> page(Page<PushRecord> page, String sourceType, String pushStatus, String keyword, String pushBatchNo, LocalDateTime pushedAtStart, LocalDateTime pushedAtEnd) {
         LambdaQueryWrapper<PushRecord> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(PushRecord::getDeleted, false);
         
@@ -74,6 +77,15 @@ public class PushRecordServiceImpl implements PushRecordService {
                 .or().like(PushRecord::getSourceNo, keyword)
                 .or().like(PushRecord::getArchiveNo, keyword)
             );
+        }
+        if (StringUtils.hasText(pushBatchNo)) {
+            wrapper.like(PushRecord::getPushBatchNo, pushBatchNo);
+        }
+        if (pushedAtStart != null) {
+            wrapper.ge(PushRecord::getPushedAt, pushedAtStart);
+        }
+        if (pushedAtEnd != null) {
+            wrapper.le(PushRecord::getPushedAt, pushedAtEnd);
         }
         
         wrapper.orderByDesc(PushRecord::getPushedAt);
@@ -163,13 +175,18 @@ public class PushRecordServiceImpl implements PushRecordService {
     @Transactional
     public void retry(Long id) {
         PushRecord record = pushRecordMapper.selectById(id);
-        if (record != null && PushRecord.STATUS_FAILED.equals(record.getPushStatus())) {
-            record.setPushStatus(PushRecord.STATUS_PENDING);
-            record.setErrorMessage(null);
-            record.setUpdatedAt(LocalDateTime.now());
-            pushRecordMapper.updateById(record);
-            log.info("推送记录已重置为待处理: id={}", id);
+        if (record == null) {
+            throw NotFoundException.of("推送记录", id);
         }
+        if (!PushRecord.STATUS_FAILED.equals(record.getPushStatus())) {
+            throw new BusinessException("400", "只有失败状态的推送记录才能重试");
+        }
+
+        record.setPushStatus(PushRecord.STATUS_PENDING);
+        record.setErrorMessage(null);
+        record.setUpdatedAt(LocalDateTime.now());
+        pushRecordMapper.updateById(record);
+        log.info("推送记录已重置为待处理: id={}", id);
     }
 
     private String generateBatchNo() {

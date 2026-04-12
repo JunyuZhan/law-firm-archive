@@ -18,6 +18,9 @@ import java.util.Date;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
+/**
+ * @author junyuzhan
+ */
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -161,6 +164,15 @@ class TokenBlacklistServiceTest {
             .thenReturn(String.valueOf(blacklistTime));
 
         boolean result = tokenBlacklistService.isUserBlacklisted(userId, tokenIssuedAt);
+
+        assertFalse(result);
+    }
+
+    @Test
+    void testIsUserBlacklisted_ExceptionHandling() {
+        when(valueOperations.get(anyString())).thenThrow(new RuntimeException("Redis error"));
+
+        boolean result = tokenBlacklistService.isUserBlacklisted(123L, System.currentTimeMillis());
 
         assertFalse(result);
     }

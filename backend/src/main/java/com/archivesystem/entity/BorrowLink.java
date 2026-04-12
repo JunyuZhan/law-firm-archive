@@ -17,6 +17,7 @@ import java.time.LocalDateTime;
  * 电子借阅链接实体类.
  * 对应数据库表: arc_borrow_link
  * 用于生成临时访问链接，支持外部系统申请借阅
+ * @author junyuzhan
  */
 @Data
 @Builder

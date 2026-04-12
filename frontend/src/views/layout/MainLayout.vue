@@ -17,7 +17,10 @@
       class="sidebar"
     >
       <div class="logo">
-        <img :src="appStore.systemConfig.logoUrl || '/logo.png'" class="logo-img" />
+        <img
+          :src="appStore.systemConfig.logoUrl || '/logo.png'"
+          class="logo-img"
+        >
         <span v-show="!appStore.sidebarCollapsed">{{ appStore.systemConfig.systemName }}</span>
       </div>
       
@@ -25,11 +28,12 @@
         :default-active="$route.path"
         :collapse="appStore.sidebarCollapsed"
         router
+        class="nav-menu"
         background-color="#304156"
         text-color="#bfcbd9"
         active-text-color="#409eff"
       >
-        <el-menu-item index="/statistics">
+        <el-menu-item v-if="canAccess(REPORT_ROLES)" index="/statistics">
           <el-icon><DataAnalysis /></el-icon>
           <span>统计概览</span>
         </el-menu-item>
@@ -45,61 +49,58 @@
           <el-icon><Upload /></el-icon>
           <span>档案接收</span>
         </el-menu-item>
-        <el-menu-item index="/push-records">
+        <el-menu-item v-if="canAccess(MANAGER_ROLES)" index="/push-records">
           <el-icon><Connection /></el-icon>
           <span>推送记录</span>
         </el-menu-item>
-        <el-menu-item index="/borrows">
+        <el-menu-item v-if="canAccess(BORROW_ROLES)" index="/borrows">
           <el-icon><Reading /></el-icon>
           <span>借阅管理</span>
         </el-menu-item>
-        <el-menu-item index="/borrow-links">
+        <el-menu-item v-if="canAccess(MANAGER_ROLES)" index="/borrow-links">
           <el-icon><Link /></el-icon>
           <span>借阅链接</span>
         </el-menu-item>
-        <el-menu-item index="/appraisals">
+        <el-menu-item v-if="canAccess(MANAGER_ROLES)" index="/appraisals">
           <el-icon><Stamp /></el-icon>
           <span>鉴定管理</span>
         </el-menu-item>
-        <el-menu-item index="/destructions">
+        <el-menu-item v-if="canAccess(MANAGER_ROLES)" index="/destructions">
           <el-icon><Delete /></el-icon>
           <span>销毁管理</span>
         </el-menu-item>
         
-        <el-sub-menu index="archive-settings">
-          <template #title>
-            <el-icon><FolderOpened /></el-icon>
-            <span>档案设置</span>
-          </template>
-          <el-menu-item index="/categories">
-            分类管理
-          </el-menu-item>
-          <el-menu-item index="/fonds">
-            全宗管理
-          </el-menu-item>
-          <el-menu-item index="/locations">
-            存放位置
-          </el-menu-item>
-          <el-menu-item index="/sources">
-            来源管理
-          </el-menu-item>
-        </el-sub-menu>
+        <el-menu-item v-if="canAccess(MANAGER_ROLES)" index="/archive-settings">
+          <el-icon><FolderOpened /></el-icon>
+          <span>档案设置</span>
+        </el-menu-item>
+
+        <el-menu-item index="/help">
+          <el-icon><QuestionFilled /></el-icon>
+          <span>帮助中心</span>
+        </el-menu-item>
         
-        <el-sub-menu index="system">
+        <el-sub-menu v-if="showSystemMenu" index="system">
           <template #title>
             <el-icon><Setting /></el-icon>
             <span>系统管理</span>
           </template>
-          <el-menu-item index="/system/users">
-            用户管理
+          <el-menu-item v-if="canAccess([ROLES.SYSTEM_ADMIN])" index="/system/permissions">
+            权限管理
           </el-menu-item>
-          <el-menu-item index="/system/roles">
-            角色管理
+          <el-menu-item v-if="canAccess([ROLES.SYSTEM_ADMIN])" index="/system/setup">
+            首次初始化
           </el-menu-item>
-          <el-menu-item index="/system/config">
+          <el-menu-item v-if="canAccess([ROLES.SYSTEM_ADMIN])" index="/system/info">
+            系统信息
+          </el-menu-item>
+          <el-menu-item v-if="canAccess([ROLES.SYSTEM_ADMIN])" index="/system/config">
             系统配置
           </el-menu-item>
-          <el-menu-item index="/system/logs">
+          <el-menu-item v-if="canAccess([ROLES.SYSTEM_ADMIN])" index="/system/recovery">
+            备份恢复
+          </el-menu-item>
+          <el-menu-item v-if="canAccess([ROLES.SYSTEM_ADMIN])" index="/system/logs">
             操作日志
           </el-menu-item>
         </el-sub-menu>
@@ -166,8 +167,24 @@
 
       <!-- 内容区 -->
       <el-main class="main-content">
+        <el-alert
+          v-if="showSetupReminder"
+          type="warning"
+          :closable="true"
+          class="setup-reminder"
+          @close="dismissSetupReminder"
+        >
+          <template #title>
+            当前系统仍存在默认品牌配置，建议尽快前往“系统管理 / 首次初始化”完成系统名称、Logo、备案号和版权信息设置。
+          </template>
+        </el-alert>
         <router-view />
       </el-main>
+      <div class="layout-footer">
+        <span>{{ appStore.systemConfig.systemName || '档案管理系统' }}</span>
+        <span v-if="canViewRuntimeInfo && runtimeInfo.productVersion">版本 {{ runtimeInfo.productVersion }}</span>
+        <span v-if="canViewRuntimeInfo && runtimeInfo.commitSha && runtimeInfo.commitSha !== 'unknown'">提交 {{ runtimeInfo.commitSha }}</span>
+      </div>
     </el-container>
     
     <!-- 上传进度面板 -->
@@ -233,7 +250,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import {
   Document,
@@ -243,7 +260,7 @@ import {
   DataAnalysis,
   FolderOpened,
   Setting,
-  Files,
+  QuestionFilled,
   Fold,
   Expand,
   Loading,
@@ -253,17 +270,51 @@ import {
   Link
 } from '@element-plus/icons-vue'
 import { useUserStore, useAppStore } from '@/stores'
+import { getRuntimeInfo } from '@/api/config'
+import { BORROW_ROLES, MANAGER_ROLES, REPORT_ROLES, ROLES, hasPermission } from '@/utils/permission'
 
 const userStore = useUserStore()
 const appStore = useAppStore()
 const showUploadPanel = ref(false)
+const setupReminderDismissed = ref(sessionStorage.getItem('setupReminderDismissed') === '1')
+const runtimeInfo = reactive({
+  productVersion: '',
+  commitSha: ''
+})
+const showSetupReminder = computed(() =>
+  userStore.isAdmin && appStore.needsInitialSetup && !setupReminderDismissed.value
+)
+const canViewRuntimeInfo = computed(() => canAccess([ROLES.SYSTEM_ADMIN]))
+const showSystemMenu = computed(() => canAccess([ROLES.SYSTEM_ADMIN]))
 
 // 初始化
 onMounted(() => {
   userStore.init()
   appStore.init()
   appStore.loadSiteConfig()
+  if (canViewRuntimeInfo.value) {
+    loadRuntimeInfo()
+  }
 })
+
+const loadRuntimeInfo = async () => {
+  try {
+    const res = await getRuntimeInfo()
+    const data = res?.data || {}
+    runtimeInfo.productVersion = data.productVersion || ''
+    runtimeInfo.commitSha = data.commitSha || ''
+  } catch (error) {
+    runtimeInfo.productVersion = ''
+    runtimeInfo.commitSha = ''
+  }
+}
+
+const dismissSetupReminder = () => {
+  setupReminderDismissed.value = true
+  sessionStorage.setItem('setupReminderDismissed', '1')
+}
+
+const canAccess = (roles) => hasPermission(roles, userStore.userType)
 
 // 退出登录
 const handleLogout = async () => {
@@ -395,9 +446,39 @@ const handleLogout = async () => {
       margin: 4px 8px;
       border-radius: 6px;
       transition: all 0.2s ease;
+      font-weight: 600;
       
       &:hover {
         background-color: rgba(64, 158, 255, 0.15) !important;
+      }
+    }
+
+    :deep(.el-sub-menu .el-menu) {
+      margin: 2px 12px 10px 18px;
+      padding: 6px 0;
+      background: rgba(14, 24, 36, 0.24) !important;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    :deep(.el-sub-menu .el-menu-item) {
+      min-width: auto;
+      height: 38px;
+      line-height: 38px;
+      margin: 2px 8px;
+      padding-left: 18px !important;
+      border-radius: 8px;
+      font-size: 13px;
+      color: #d7e1eb !important;
+      background: transparent !important;
+
+      &:hover {
+        background: rgba(97, 174, 255, 0.14) !important;
+      }
+
+      &.is-active {
+        color: #ecf5ff !important;
+        background: linear-gradient(90deg, rgba(64, 158, 255, 0.24), rgba(64, 158, 255, 0.08)) !important;
       }
     }
   }
@@ -488,9 +569,25 @@ const handleLogout = async () => {
   }
 }
 
+.layout-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 16px;
+  padding: 0 24px 14px;
+  color: #909399;
+  font-size: 12px;
+  border-top: 1px solid #f0f2f5;
+  background: #fff;
+}
+
+.setup-reminder {
+  margin-bottom: 16px;
+}
+
 .main-content {
   background-color: #f5f7fa;
   padding: 20px;
+  padding-bottom: 8px;
   overflow-y: auto;
 }
 

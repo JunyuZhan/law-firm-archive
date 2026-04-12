@@ -2,6 +2,7 @@ package com.archivesystem.common.exception;
 
 /**
  * 资源不存在异常.
+ * @author junyuzhan
  */
 public class NotFoundException extends BusinessException {
 

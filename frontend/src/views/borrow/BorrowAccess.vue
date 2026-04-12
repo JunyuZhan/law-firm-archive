@@ -1,33 +1,52 @@
 <template>
   <div class="borrow-access">
     <!-- 水印层 -->
-    <div v-if="isValid && borrowerInfo" class="watermark-layer">
+    <div
+      v-if="isValid && borrowerInfo"
+      class="watermark-layer"
+    >
       <div class="watermark-text">
         {{ borrowerInfo.userName }} · {{ formatDate(new Date()) }}
       </div>
     </div>
 
     <!-- 加载中 -->
-    <div v-if="loading" class="loading-container">
-      <el-icon class="is-loading" :size="48"><Loading /></el-icon>
+    <div
+      v-if="loading"
+      class="loading-container"
+    >
+      <el-icon
+        class="is-loading"
+        :size="48"
+      >
+        <Loading />
+      </el-icon>
       <p>正在加载档案信息...</p>
     </div>
 
     <!-- 无效链接 -->
-    <div v-else-if="!isValid" class="invalid-container">
+    <div
+      v-else-if="!isValid"
+      class="invalid-container"
+    >
       <el-result
         icon="warning"
         :title="invalidReason || '链接无效'"
         sub-title="该借阅链接已失效，无法访问档案"
       >
         <template #extra>
-          <el-button @click="handleClose">关闭页面</el-button>
+          <el-button @click="handleClose">
+            关闭页面
+          </el-button>
         </template>
       </el-result>
     </div>
 
     <!-- 档案内容 -->
-    <div v-else class="content-container">
+    <div
+      v-else
+      class="content-container"
+    >
       <!-- 顶部信息栏 -->
       <div class="header-bar">
         <div class="archive-title">
@@ -35,36 +54,59 @@
           <span>{{ archiveInfo?.title }}</span>
         </div>
         <div class="expire-info">
-          <el-tag v-if="linkInfo?.remainingSeconds > 0" type="warning" effect="plain">
+          <el-tag
+            v-if="linkInfo?.remainingSeconds > 0"
+            type="warning"
+            effect="plain"
+          >
             <el-icon><Clock /></el-icon>
             剩余时间: {{ formatRemainingTime(linkInfo.remainingSeconds) }}
           </el-tag>
-          <el-tag v-else type="danger">链接即将过期</el-tag>
+          <el-tag
+            v-else
+            type="danger"
+          >
+            链接即将过期
+          </el-tag>
         </div>
       </div>
 
       <!-- 档案基本信息 -->
-      <el-card shadow="never" class="info-card">
+      <el-card
+        shadow="never"
+        class="info-card"
+      >
         <template #header>
           <div class="card-header">
             <el-icon><InfoFilled /></el-icon>
             <span>档案信息</span>
           </div>
         </template>
-        <el-descriptions :column="3" border>
+        <el-descriptions
+          :column="3"
+          border
+        >
           <el-descriptions-item label="档案号">
             {{ archiveInfo?.archiveNo }}
           </el-descriptions-item>
           <el-descriptions-item label="档案类型">
-            <el-tag size="small">{{ getArchiveTypeName(archiveInfo?.archiveType) }}</el-tag>
+            <el-tag size="small">
+              {{ getArchiveTypeName(archiveInfo?.archiveType) }}
+            </el-tag>
           </el-descriptions-item>
           <el-descriptions-item label="密级">
             {{ getSecurityName(archiveInfo?.securityLevel) }}
           </el-descriptions-item>
-          <el-descriptions-item v-if="archiveInfo?.caseName" label="案件名称">
+          <el-descriptions-item
+            v-if="archiveInfo?.caseName"
+            label="案件名称"
+          >
             {{ archiveInfo.caseName }}
           </el-descriptions-item>
-          <el-descriptions-item v-if="archiveInfo?.caseNo" label="案件编号">
+          <el-descriptions-item
+            v-if="archiveInfo?.caseNo"
+            label="案件编号"
+          >
             {{ archiveInfo.caseNo }}
           </el-descriptions-item>
           <el-descriptions-item label="文件数量">
@@ -74,64 +116,116 @@
       </el-card>
 
       <!-- 借阅信息 -->
-      <el-card shadow="never" class="info-card">
+      <el-card
+        shadow="never"
+        class="info-card"
+      >
         <template #header>
           <div class="card-header">
             <el-icon><User /></el-icon>
             <span>借阅信息</span>
           </div>
         </template>
-        <el-descriptions :column="3" border>
+        <el-descriptions
+          :column="3"
+          border
+        >
           <el-descriptions-item label="借阅人">
             {{ borrowerInfo?.userName }}
           </el-descriptions-item>
           <el-descriptions-item label="借阅目的">
             {{ borrowerInfo?.purpose }}
           </el-descriptions-item>
+          <el-descriptions-item label="借阅方式">
+            {{ getBorrowTypeName(borrowerInfo?.borrowType) }}
+          </el-descriptions-item>
+          <el-descriptions-item label="应还日期">
+            {{ formatDateValue(borrowerInfo?.expectedReturnDate) }}
+          </el-descriptions-item>
           <el-descriptions-item label="访问次数">
             {{ linkInfo?.accessCount || 0 }}
             <span v-if="linkInfo?.maxAccessCount"> / {{ linkInfo.maxAccessCount }}</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="下载权限">
+            <el-tag
+              :type="linkInfo?.allowDownload ? 'success' : 'info'"
+              size="small"
+            >
+              {{ linkInfo?.allowDownload ? '允许下载' : '仅在线查阅' }}
+            </el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="失效时间">
+            {{ formatDateTime(linkInfo?.expireAt) }}
           </el-descriptions-item>
         </el-descriptions>
       </el-card>
 
       <!-- 文件列表 -->
-      <el-card shadow="never" class="files-card">
+      <el-card
+        shadow="never"
+        class="files-card"
+      >
         <template #header>
           <div class="card-header">
             <el-icon><Folder /></el-icon>
             <span>电子文件</span>
-            <el-tag class="ml-2" size="small" type="info">
+            <el-tag
+              class="ml-2"
+              size="small"
+              type="info"
+            >
               {{ files.length }} 个文件
             </el-tag>
           </div>
         </template>
 
-        <el-table :data="files" stripe style="width: 100%">
-          <el-table-column label="文件名" min-width="300">
+        <el-table
+          :data="files"
+          stripe
+          style="width: 100%"
+        >
+          <el-table-column
+            label="文件名"
+            min-width="300"
+          >
             <template #default="{ row }">
               <div class="file-name">
                 <el-icon :class="getFileIconClass(row.fileExtension)">
                   <component :is="getFileIcon(row.fileExtension)" />
                 </el-icon>
                 <span>{{ row.fileName }}</span>
-                <el-tag v-if="row.isLongTermFormat" size="small" type="success" class="ml-1">
+                <el-tag
+                  v-if="row.isLongTermFormat"
+                  size="small"
+                  type="success"
+                  class="ml-1"
+                >
                   长期保存
                 </el-tag>
               </div>
             </template>
           </el-table-column>
-          <el-table-column label="类型" width="100">
+          <el-table-column
+            label="类型"
+            width="100"
+          >
             <template #default="{ row }">
               {{ row.fileExtension?.toUpperCase() || '-' }}
             </template>
           </el-table-column>
-          <el-table-column label="大小" width="120">
+          <el-table-column
+            label="大小"
+            width="120"
+          >
             <template #default="{ row }">
               {{ formatFileSize(row.fileSize) }}
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="200" fixed="right">
+          <el-table-column
+            label="操作"
+            width="200"
+            fixed="right"
+          >
             <template #default="{ row }">
               <el-button
                 type="primary"
@@ -192,10 +286,20 @@ import {
   Document as DocumentIcon,
   Folder as FolderIcon
 } from '@element-plus/icons-vue'
-import { accessArchive, recordDownload } from '@/api/borrowLink'
+import {
+  accessArchive,
+  getBorrowFileDownloadUrl,
+  getBorrowFilePreviewUrl,
+  recordDownload
+} from '@/api/borrowLink'
 import { ARCHIVE_TYPES, SECURITY_LEVELS } from '@/utils/archiveEnums'
 
 const route = useRoute()
+const BORROW_TYPES = {
+  ONLINE: '在线查阅',
+  DOWNLOAD: '允许下载',
+  COPY: '复制利用'
+}
 
 const loading = ref(true)
 const isValid = ref(false)
@@ -245,28 +349,27 @@ async function loadArchiveData() {
 }
 
 function handlePreview(file) {
-  if (!file.previewUrl) {
-    ElMessage.warning('该文件暂不支持预览')
-    return
-  }
   previewFile.value = file
-  previewUrl.value = file.previewUrl
-  previewVisible.value = true
+  loadPreviewUrl(file)
 }
 
 async function handleDownload(file) {
-  if (!file.downloadUrl) {
+  if (!linkInfo.value?.allowDownload) {
     ElMessage.warning('该文件不允许下载')
     return
   }
 
   try {
+    const res = await getBorrowFileDownloadUrl(token.value, file.fileId)
+    if (!res.success || !res.data) {
+      ElMessage.warning(res.message || '该文件不允许下载')
+      return
+    }
     await recordDownload(token.value, file.fileId)
+    window.open(res.data, '_blank')
   } catch (e) {
-    // 记录失败不影响下载
+    ElMessage.error(e.response?.data?.message || e.message || '下载失败')
   }
-
-  window.open(file.downloadUrl, '_blank')
 }
 
 function handleClose() {
@@ -279,6 +382,10 @@ function getArchiveTypeName(type) {
 
 function getSecurityName(level) {
   return SECURITY_LEVELS[level] || level || '内部'
+}
+
+function getBorrowTypeName(type) {
+  return BORROW_TYPES[type] || type || '在线查阅'
 }
 
 function formatFileSize(bytes) {
@@ -302,6 +409,40 @@ function formatRemainingTime(seconds) {
 
 function formatDate(date) {
   return date.toLocaleDateString('zh-CN')
+}
+
+function formatDateValue(value) {
+  if (!value) return '-'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return date.toLocaleDateString('zh-CN')
+}
+
+function formatDateTime(value) {
+  if (!value) return '-'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return date.toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
+async function loadPreviewUrl(file) {
+  try {
+    const res = await getBorrowFilePreviewUrl(token.value, file.fileId)
+    if (!res.success || !res.data) {
+      ElMessage.warning(res.message || '该文件暂不支持预览')
+      return
+    }
+    previewUrl.value = res.data
+    previewVisible.value = true
+  } catch (e) {
+    ElMessage.error(e.response?.data?.message || e.message || '预览失败')
+  }
 }
 
 function getFileIcon(extension) {

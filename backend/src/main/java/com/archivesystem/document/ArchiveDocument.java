@@ -14,6 +14,7 @@ import java.util.List;
 /**
  * 档案ES文档映射
  * 用于全文检索
+ * @author junyuzhan
  */
 @Data
 @Builder

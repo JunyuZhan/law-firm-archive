@@ -11,10 +11,14 @@ import jakarta.annotation.PostConstruct;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
  * MinIO对象存储服务.
+ * @author junyuzhan
  */
 @Slf4j
 @Service
@@ -61,6 +65,18 @@ public class MinioService {
      */
     public String getBucketName() {
         return bucketName;
+    }
+
+    /**
+     * 检查 MinIO bucket 是否可访问.
+     */
+    public boolean isBucketAccessible() {
+        try {
+            return minioClient.bucketExists(BucketExistsArgs.builder().bucket(bucketName).build());
+        } catch (Exception e) {
+            log.warn("MinIO bucket 健康检查失败: bucket={}, message={}", bucketName, e.getMessage());
+            return false;
+        }
     }
 
     /**
@@ -148,6 +164,53 @@ public class MinioService {
         } catch (Exception e) {
             log.error("获取文件失败: {}", objectName, e);
             throw new RuntimeException("获取文件失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 下载对象到本地文件.
+     */
+    public void downloadToFile(String objectName, Path targetPath) {
+        try (InputStream inputStream = getFile(objectName)) {
+            if (targetPath.getParent() != null) {
+                Files.createDirectories(targetPath.getParent());
+            }
+            Files.copy(inputStream, targetPath);
+        } catch (Exception e) {
+            log.error("下载对象到本地失败: objectName={}, targetPath={}", objectName, targetPath, e);
+            throw new RuntimeException("下载对象失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 获取对象元数据.
+     */
+    public Map<String, String> getObjectMetadata(String objectName) {
+        try {
+            StatObjectResponse response = minioClient.statObject(StatObjectArgs.builder()
+                    .bucket(bucketName)
+                    .object(objectName)
+                    .build());
+            return response.userMetadata();
+        } catch (Exception e) {
+            log.error("获取对象元数据失败: {}", objectName, e);
+            throw new RuntimeException("获取文件元数据失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 获取对象内容类型.
+     */
+    public String getContentType(String objectName) {
+        try {
+            StatObjectResponse response = minioClient.statObject(StatObjectArgs.builder()
+                    .bucket(bucketName)
+                    .object(objectName)
+                    .build());
+            return response.contentType();
+        } catch (Exception e) {
+            log.error("获取对象内容类型失败: {}", objectName, e);
+            throw new RuntimeException("获取文件内容类型失败: " + e.getMessage());
         }
     }
 

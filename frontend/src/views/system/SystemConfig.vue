@@ -1,6 +1,11 @@
 <template>
   <div class="system-config">
-    <el-card>
+    <div class="page-header">
+      <h1>系统配置</h1>
+      <p>统一维护档案号规则、站点信息和运行参数，修改后请按需刷新缓存并验证关键流程。</p>
+    </div>
+
+    <el-card shadow="never" class="config-card">
       <template #header>
         <div class="card-header">
           <span class="title">系统配置</span>
@@ -88,6 +93,56 @@
                 <span class="config-key">{{ config.configKey }}</span>
               </el-form-item>
             </el-form>
+
+            <el-card
+              shadow="never"
+              class="retention-card"
+            >
+              <template #header>
+                <span>保管期限管理</span>
+              </template>
+              <el-table
+                :data="retentionPeriods"
+                stripe
+              >
+                <el-table-column
+                  prop="periodCode"
+                  label="期限代码"
+                  width="120"
+                />
+                <el-table-column
+                  prop="periodName"
+                  label="期限名称"
+                  width="120"
+                />
+                <el-table-column
+                  prop="periodYears"
+                  label="年限"
+                >
+                  <template #default="{ row }">
+                    {{ row.periodYears ? row.periodYears + '年' : '永久' }}
+                  </template>
+                </el-table-column>
+                <el-table-column
+                  prop="sortOrder"
+                  label="排序"
+                  width="100"
+                />
+                <el-table-column
+                  label="状态"
+                  width="100"
+                >
+                  <template #default="{ row }">
+                    <el-tag
+                      :type="row.status === 'ACTIVE' ? 'success' : 'info'"
+                      size="small"
+                    >
+                      {{ row.status === 'ACTIVE' ? '启用' : '停用' }}
+                    </el-tag>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </el-card>
           </div>
         </el-tab-pane>
 
@@ -391,13 +446,51 @@
                 :key="config.configKey"
                 :label="config.description || config.configKey"
               >
-                <el-input 
-                  v-model="editedConfigs[config.configKey]"
-                  :placeholder="config.configValue || '未设置'"
-                  :disabled="!config.editable"
-                  style="width: 400px"
-                  @input="markChanged(config.configKey)"
-                />
+                <template v-if="config.configKey === 'system.site.logo'">
+                  <div class="site-logo-config">
+                    <div
+                      v-if="editedConfigs[config.configKey]"
+                      class="site-logo-preview"
+                    >
+                      <img
+                        :src="editedConfigs[config.configKey]"
+                        alt="Logo 预览"
+                      >
+                    </div>
+                    <div class="site-logo-actions">
+                      <el-input 
+                        v-model="editedConfigs[config.configKey]"
+                        :placeholder="config.configValue || '未设置'"
+                        :disabled="!config.editable"
+                        style="width: 400px"
+                        @input="markChanged(config.configKey)"
+                      />
+                      <el-upload
+                        :show-file-list="false"
+                        :auto-upload="false"
+                        :http-request="handleLogoUpload"
+                        :accept="LOGO_ACCEPT_TYPES"
+                      >
+                        <el-button :loading="logoUploading">
+                          <el-icon><Upload /></el-icon>
+                          上传Logo
+                        </el-button>
+                      </el-upload>
+                    </div>
+                    <div class="config-hint">
+                      {{ LOGO_UPLOAD_HINT }} 也可直接填写外部 URL；上传后会自动写回当前配置。
+                    </div>
+                  </div>
+                </template>
+                <template v-else>
+                  <el-input 
+                    v-model="editedConfigs[config.configKey]"
+                    :placeholder="config.configValue || '未设置'"
+                    :disabled="!config.editable"
+                    style="width: 400px"
+                    @input="markChanged(config.configKey)"
+                  />
+                </template>
               </el-form-item>
             </el-form>
             <el-alert
@@ -411,55 +504,8 @@
             </el-alert>
           </div>
         </el-tab-pane>
-      </el-tabs>
-    </el-card>
 
-    <!-- 保管期限管理 -->
-    <el-card class="retention-card">
-      <template #header>
-        <span>保管期限管理</span>
-      </template>
-      <el-table
-        :data="retentionPeriods"
-        stripe
-      >
-        <el-table-column
-          prop="periodCode"
-          label="期限代码"
-          width="120"
-        />
-        <el-table-column
-          prop="periodName"
-          label="期限名称"
-          width="120"
-        />
-        <el-table-column
-          prop="periodYears"
-          label="年限"
-        >
-          <template #default="{ row }">
-            {{ row.periodYears ? row.periodYears + '年' : '永久' }}
-          </template>
-        </el-table-column>
-        <el-table-column
-          prop="sortOrder"
-          label="排序"
-          width="100"
-        />
-        <el-table-column
-          label="状态"
-          width="100"
-        >
-          <template #default="{ row }">
-            <el-tag
-              :type="row.status === 'ACTIVE' ? 'success' : 'info'"
-              size="small"
-            >
-              {{ row.status === 'ACTIVE' ? '启用' : '停用' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-      </el-table>
+      </el-tabs>
     </el-card>
   </div>
 </template>
@@ -467,18 +513,23 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Refresh, Check, Upload, Document, Picture, Connection, Lock, Bell, Search, InfoFilled } from '@element-plus/icons-vue'
+import { Refresh, Check, Upload, Document, Picture, Connection, Lock, Bell, Search } from '@element-plus/icons-vue'
 import { 
   getConfigsGrouped, 
   batchUpdateConfigs, 
-  refreshConfigCache 
+  refreshConfigCache,
+  uploadSiteLogo
 } from '@/api/config'
+import { useAppStore } from '@/stores/app'
 import request from '@/utils/request'
+import { LOGO_ACCEPT_TYPES, LOGO_UPLOAD_HINT, validateLogoFile } from '@/utils/logoUpload'
 
 const activeTab = ref('ARCHIVE_NO')
 const loading = ref(false)
 const saving = ref(false)
 const refreshing = ref(false)
+const logoUploading = ref(false)
+const appStore = useAppStore()
 
 // 配置数据
 const allConfigs = ref({})
@@ -609,6 +660,26 @@ const refreshCache = async () => {
   }
 }
 
+const handleLogoUpload = async ({ file }) => {
+  if (!validateLogoFile(file)) {
+    return
+  }
+  logoUploading.value = true
+  try {
+    const res = await uploadSiteLogo(file)
+    const logoUrl = res?.data?.logoUrl || ''
+    editedConfigs['system.site.logo'] = logoUrl
+    changedKeys.value.delete('system.site.logo')
+    ElMessage.success('Logo上传成功')
+    await loadConfigs()
+    await appStore.loadSiteConfig()
+  } catch (error) {
+    ElMessage.error('Logo上传失败: ' + (error.message || '未知错误'))
+  } finally {
+    logoUploading.value = false
+  }
+}
+
 // Tab切换
 const handleTabChange = () => {
   // 可以在这里添加未保存提示
@@ -631,7 +702,22 @@ onMounted(() => {
 
 <style scoped>
 .system-config {
-  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.page-header h1 {
+  margin: 0 0 8px;
+  font-size: 24px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.page-header p {
+  margin: 0;
+  line-height: 1.6;
+  color: #606266;
 }
 
 .card-header {
@@ -643,6 +729,10 @@ onMounted(() => {
 .title {
   font-size: 18px;
   font-weight: 600;
+}
+
+.config-card {
+  border-radius: 10px;
 }
 
 .actions {
@@ -694,8 +784,125 @@ onMounted(() => {
   font-size: 12px;
 }
 
+.site-logo-config {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.site-logo-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.site-logo-preview {
+  width: 96px;
+  height: 96px;
+  border: 1px solid #dcdfe6;
+  border-radius: 8px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.site-logo-preview img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
 .retention-card {
   margin-top: 20px;
+}
+
+.deploy-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.runtime-descriptions {
+  margin-bottom: 24px;
+}
+
+.dependency-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.dependency-card {
+  border-radius: 10px;
+}
+
+.dependency-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.dependency-name {
+  font-weight: 600;
+  color: #303133;
+}
+
+.dependency-detail-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dependency-detail-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.dependency-detail-key {
+  color: #909399;
+}
+
+.dependency-detail-value {
+  color: #606266;
+  text-align: right;
+  word-break: break-word;
+}
+
+.deploy-overview-card {
+  border-radius: 10px;
+}
+
+.deploy-card-label {
+  font-size: 13px;
+  color: #909399;
+}
+
+.deploy-card-value {
+  margin-top: 8px;
+  font-size: 24px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.deploy-card-hint {
+  margin-top: 8px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #909399;
+}
+
+.plain-list {
+  margin: 0;
+  padding-left: 18px;
+  color: #606266;
+  line-height: 1.8;
 }
 
 :deep(.el-form-item) {

@@ -18,6 +18,7 @@ import java.util.List;
 
 /**
  * 存放位置服务实现.
+ * @author junyuzhan
  */
 @Slf4j
 @Service
@@ -125,7 +126,7 @@ public class LocationServiceImpl implements LocationService {
     }
 
     @Override
-    public PageResult<ArchiveLocation> getList(String roomName, String status, Integer pageNum, Integer pageSize) {
+    public PageResult<ArchiveLocation> getList(String roomName, String status, String keyword, Integer pageNum, Integer pageSize) {
         LambdaQueryWrapper<ArchiveLocation> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(ArchiveLocation::getDeleted, false);
 
@@ -134,6 +135,13 @@ public class LocationServiceImpl implements LocationService {
         }
         if (StringUtils.hasText(status)) {
             wrapper.eq(ArchiveLocation::getStatus, status);
+        }
+        if (StringUtils.hasText(keyword)) {
+            wrapper.and(w -> w
+                    .like(ArchiveLocation::getLocationCode, keyword)
+                    .or().like(ArchiveLocation::getLocationName, keyword)
+                    .or().like(ArchiveLocation::getArea, keyword)
+                    .or().like(ArchiveLocation::getShelfNo, keyword));
         }
 
         wrapper.orderByAsc(ArchiveLocation::getLocationCode);

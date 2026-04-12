@@ -6,11 +6,8 @@ FROM maven:3.9-eclipse-temurin-21 AS builder
 
 WORKDIR /app
 
-# 复制pom.xml并下载依赖（利用Docker缓存层）
+# 复制源码并直接构建，避免额外的 go-offline 远程握手失败
 COPY backend/pom.xml ./pom.xml
-RUN mvn dependency:go-offline -B
-
-# 复制源代码并构建
 COPY backend/src ./src
 RUN mvn package -DskipTests -B
 

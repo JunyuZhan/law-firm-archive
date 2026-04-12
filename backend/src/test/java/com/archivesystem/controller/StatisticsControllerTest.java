@@ -18,6 +18,9 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+/**
+ * @author junyuzhan
+ */
 
 @ExtendWith(MockitoExtension.class)
 class StatisticsControllerTest {
@@ -159,6 +162,23 @@ class StatisticsControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
                 .andExpect(jsonPath("$.data.totalSize").value(1024000));
+    }
+
+    @Test
+    void testGetScanBatchStats() throws Exception {
+        List<Map<String, Object>> result = List.of(Map.of(
+                "scanBatchNo", "SCAN-20260330-01",
+                "fileCount", 5L,
+                "archiveCount", 2L
+        ));
+
+        when(statisticsService.getScanBatchStatistics("SCAN-20260330")).thenReturn(result);
+
+        mockMvc.perform(get("/statistics/scan-batches")
+                        .param("keyword", "SCAN-20260330"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("200"))
+                .andExpect(jsonPath("$.data[0].scanBatchNo").value("SCAN-20260330-01"));
     }
 
     @Test

@@ -5,6 +5,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 
 /**
  * 安全工具类.
+ * @author junyuzhan
  */
 public final class SecurityUtils {
 
@@ -45,6 +46,17 @@ public final class SecurityUtils {
     }
 
     /**
+     * 获取当前登录用户部门.
+     */
+    public static String getCurrentDepartment() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.getPrincipal() instanceof UserDetailsImpl userDetails) {
+            return userDetails.getDepartment();
+        }
+        return null;
+    }
+
+    /**
      * 获取当前登录用户详情.
      */
     public static UserDetailsImpl getCurrentUser() {
@@ -77,7 +89,7 @@ public final class SecurityUtils {
      */
     public static String getCurrentUserType() {
         UserDetailsImpl user = getCurrentUser();
-        return user != null ? user.getUserType() : null;
+        return user != null ? UserRoleUtils.normalize(user.getUserType()) : null;
     }
 
     /**

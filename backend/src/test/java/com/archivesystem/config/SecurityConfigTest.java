@@ -22,6 +22,7 @@ import static org.mockito.Mockito.*;
 
 /**
  * SecurityConfig测试类.
+ * @author junyuzhan
  */
 @ExtendWith(MockitoExtension.class)
 class SecurityConfigTest {

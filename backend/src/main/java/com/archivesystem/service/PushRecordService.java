@@ -4,11 +4,14 @@ import com.archivesystem.entity.PushRecord;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 
+import java.time.LocalDateTime;
+
 import java.util.List;
 import java.util.Map;
 
 /**
  * 推送记录服务接口.
+ * @author junyuzhan
  */
 public interface PushRecordService {
 
@@ -30,7 +33,7 @@ public interface PushRecordService {
     /**
      * 分页查询
      */
-    IPage<PushRecord> page(Page<PushRecord> page, String sourceType, String pushStatus, String keyword);
+    IPage<PushRecord> page(Page<PushRecord> page, String sourceType, String pushStatus, String keyword, String pushBatchNo, LocalDateTime pushedAtStart, LocalDateTime pushedAtEnd);
 
     /**
      * 更新状态

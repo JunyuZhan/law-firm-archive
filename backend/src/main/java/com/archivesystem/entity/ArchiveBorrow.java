@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 
 /**
  * 档案借阅实体类.
+ * @author junyuzhan
  */
 @Data
 @Builder

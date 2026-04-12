@@ -12,6 +12,7 @@ import java.util.Date;
 /**
  * Token黑名单服务.
  * 用于实现JWT登出功能
+ * @author junyuzhan
  */
 @Slf4j
 @Service
@@ -79,13 +80,18 @@ public class TokenBlacklistService {
      * 检查用户Token是否被全部吊销.
      */
     public boolean isUserBlacklisted(Long userId, long tokenIssuedAt) {
-        String key = "token:user_blacklist:" + userId;
-        String blacklistTime = redisTemplate.opsForValue().get(key);
-        if (blacklistTime != null) {
-            long blacklistTimestamp = Long.parseLong(blacklistTime);
-            // 如果Token是在黑名单时间之前签发的，则视为无效
-            return tokenIssuedAt < blacklistTimestamp;
+        try {
+            String key = "token:user_blacklist:" + userId;
+            String blacklistTime = redisTemplate.opsForValue().get(key);
+            if (blacklistTime != null) {
+                long blacklistTimestamp = Long.parseLong(blacklistTime);
+                // 如果Token是在黑名单时间之前签发的，则视为无效
+                return tokenIssuedAt < blacklistTimestamp;
+            }
+            return false;
+        } catch (Exception e) {
+            log.warn("检查用户Token黑名单失败", e);
+            return false;
         }
-        return false;
     }
 }

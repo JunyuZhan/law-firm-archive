@@ -8,6 +8,7 @@ import lombok.Data;
 
 /**
  * 鉴定申请请求DTO.
+ * @author junyuzhan
  */
 @Data
 @Schema(description = "鉴定申请请求")

@@ -5,6 +5,7 @@ import lombok.Data;
 
 /**
  * 文件预览信息DTO.
+ * @author junyuzhan
  */
 @Data
 @Builder

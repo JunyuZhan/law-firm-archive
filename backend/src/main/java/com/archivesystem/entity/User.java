@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 /**
  * 用户实体类.
  * 对应数据库表: sys_user
+ * @author junyuzhan
  */
 @Data
 @Builder
@@ -39,7 +40,7 @@ public class User extends BaseEntity {
     /** 部门 */
     private String department;
 
-    /** 用户类型（三员分立） */
+    /** 用户类型 */
     @Builder.Default
     private String userType = TYPE_USER;
 
@@ -53,9 +54,11 @@ public class User extends BaseEntity {
     /** 最后登录IP */
     private String lastLoginIp;
 
-    // ===== 用户类型常量（三员分立） =====
+    // ===== 用户类型常量 =====
     
     public static final String TYPE_SYSTEM_ADMIN = "SYSTEM_ADMIN";
+    public static final String TYPE_ARCHIVE_REVIEWER = "ARCHIVE_REVIEWER";
+    public static final String TYPE_ARCHIVE_MANAGER = "ARCHIVE_MANAGER";
     public static final String TYPE_SECURITY_ADMIN = "SECURITY_ADMIN";
     public static final String TYPE_AUDIT_ADMIN = "AUDIT_ADMIN";
     public static final String TYPE_ARCHIVIST = "ARCHIVIST";

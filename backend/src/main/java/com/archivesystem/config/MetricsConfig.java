@@ -20,6 +20,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * - file_upload_bytes_total: 文件上传总字节数
  * - borrow_request_total: 借阅申请总数
  * - search_request_total: 检索请求总数
+ * @author junyuzhan
  */
 @Component
 @Getter

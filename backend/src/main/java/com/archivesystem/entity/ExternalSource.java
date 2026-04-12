@@ -2,7 +2,7 @@ package com.archivesystem.entity;
 
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
-import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
+import com.archivesystem.config.mybatis.PostgreSQLJsonbTypeHandler;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
@@ -17,6 +17,7 @@ import java.util.Map;
 /**
  * 外部系统来源配置实体类.
  * 对应数据库表: arc_external_source
+ * @author junyuzhan
  */
 @Data
 @Builder
@@ -56,7 +57,7 @@ public class ExternalSource extends BaseEntity {
     private String authType;
     
     /** 扩展配置 */
-    @TableField(typeHandler = JacksonTypeHandler.class)
+    @TableField(typeHandler = PostgreSQLJsonbTypeHandler.class)
     private Map<String, Object> extraConfig;
 
     // ===== 状态信息 =====

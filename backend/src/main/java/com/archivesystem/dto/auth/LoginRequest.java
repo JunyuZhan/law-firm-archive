@@ -5,6 +5,7 @@ import lombok.Data;
 
 /**
  * 登录请求DTO.
+ * @author junyuzhan
  */
 @Data
 public class LoginRequest {

@@ -12,6 +12,7 @@ import java.util.Map;
 
 /**
  * 档案DTO.
+ * @author junyuzhan
  */
 @Data
 @Builder

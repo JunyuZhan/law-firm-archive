@@ -13,6 +13,7 @@ import java.util.List;
 /**
  * 档案接收消息 DTO
  * 用于异步处理档案文件下载和存储
+ * @author junyuzhan
  */
 @Data
 @Builder
@@ -92,6 +93,19 @@ public class ArchiveReceiveMessage implements Serializable {
         private String downloadUrl;
         private String fileCategory;
         private Integer sortOrder;
+        private Integer volumeNo;
+        private String sectionType;
+        private String documentNo;
+        private Integer pageStart;
+        private Integer pageEnd;
+        private String versionLabel;
+        private String fileSourceType;
+        private String scanBatchNo;
+        private String scanOperator;
+        private LocalDateTime scanTime;
+        private String scanCheckStatus;
+        private String scanCheckBy;
+        private LocalDateTime scanCheckTime;
     }
     
     /**
@@ -121,6 +135,19 @@ public class ArchiveReceiveMessage implements Serializable {
                         .downloadUrl(reqFile.getDownloadUrl())
                         .fileCategory(reqFile.getFileCategory())
                         .sortOrder(i + 1)
+                        .volumeNo(reqFile.getVolumeNo())
+                        .sectionType(reqFile.getSectionType())
+                        .documentNo(reqFile.getDocumentNo())
+                        .pageStart(reqFile.getPageStart())
+                        .pageEnd(reqFile.getPageEnd())
+                        .versionLabel(reqFile.getVersionLabel())
+                        .fileSourceType(reqFile.getFileSourceType())
+                        .scanBatchNo(reqFile.getScanBatchNo())
+                        .scanOperator(reqFile.getScanOperator())
+                        .scanTime(reqFile.getScanTime())
+                        .scanCheckStatus(reqFile.getScanCheckStatus())
+                        .scanCheckBy(reqFile.getScanCheckBy())
+                        .scanCheckTime(reqFile.getScanCheckTime())
                         .build());
             }
             builder.files(fileInfos);

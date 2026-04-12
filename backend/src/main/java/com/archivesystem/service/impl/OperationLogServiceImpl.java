@@ -1,6 +1,7 @@
 package com.archivesystem.service.impl;
 
 import com.archivesystem.common.PageResult;
+import com.archivesystem.common.util.ClientIpUtils;
 import com.archivesystem.entity.OperationLog;
 import com.archivesystem.repository.OperationLogMapper;
 import com.archivesystem.security.SecurityUtils;
@@ -27,6 +28,7 @@ import java.util.Map;
 
 /**
  * 操作日志服务实现.
+ * @author junyuzhan
  */
 @Slf4j
 @Service
@@ -213,19 +215,6 @@ public class OperationLogServiceImpl implements OperationLogService {
     }
 
     private String getClientIp(HttpServletRequest request) {
-        String ip = request.getHeader("X-Forwarded-For");
-        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getHeader("Proxy-Client-IP");
-        }
-        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getHeader("WL-Proxy-Client-IP");
-        }
-        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getRemoteAddr();
-        }
-        if (ip != null && ip.contains(",")) {
-            ip = ip.split(",")[0].trim();
-        }
-        return ip;
+        return ClientIpUtils.resolve(request);
     }
 }

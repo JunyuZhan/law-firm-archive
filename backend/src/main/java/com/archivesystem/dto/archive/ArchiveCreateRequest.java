@@ -10,6 +10,7 @@ import java.util.Map;
 
 /**
  * 档案创建请求DTO（手动创建）.
+ * @author junyuzhan
  */
 @Data
 public class ArchiveCreateRequest {

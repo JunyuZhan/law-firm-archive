@@ -1,255 +1,243 @@
 # 档案管理系统
 
-独立部署的档案管理系统，用于接收律所管理系统的归档档案，并提供完整的档案管理服务。
+独立部署的档案管理系统，用于接收外部业务系统推送的归档档案，并提供档案接收、检索、借阅、鉴定、销毁、统计与系统管理能力。
 
-## 功能概述
+## 当前状态
 
-### 核心功能
-- **档案接收**：接收律所管理系统推送的归档档案
-- **档案入库**：档案物理入库管理，支持位置分配
-- **档案检索**：多维度档案检索查询
-- **档案借阅**：借阅申请、审批、归还管理
-- **统计分析**：档案统计报表
+- 后端：Spring Boot 3.2.2 + MyBatis-Plus + PostgreSQL + Redis + MinIO
+- 前端：Vue 3 + Vite + Pinia + Element Plus
+- 开放接口：`/api/open/**`
+- 管理接口：`/api/**`
+- 本地后端默认端口：`8090`
+- Docker 前端入口：`http://localhost:3001`
 
-### 扩展功能
-- **多来源收集**：支持接收多个外部系统的档案
-- **来源配置**：可配置不同的档案来源系统
-- **批量导入**：支持档案批量导入
+## 核心能力
 
-## 技术架构
+- 档案接收：支持外部系统通过开放接口推送档案及电子文件元数据
+- 档案管理：档案创建、更新、分页查询、全文检索、补充上传、状态更新
+- 借阅管理：借阅申请、审批、电子借阅链接生成、公开访问与下载记录
+- 鉴定与销毁：鉴定流程、销毁申请与执行
+- 基础数据：全宗、分类、保管期限、存放位置、来源系统
+- 系统能力：用户、角色、系统配置、操作日志、推送记录、统计报表
 
-### 后端
-- **框架**：Spring Boot 3.2.2
-- **数据库**：PostgreSQL 16
-- **ORM**：MyBatis-Plus 3.5.5
-- **缓存**：Redis 7
-- **存储**：MinIO
-- **API文档**：Knife4j/OpenAPI 3
+## 目录结构
 
-### 前端
-- **框架**：Vue 3.4
-- **UI组件**：Element Plus 2.5
-- **构建工具**：Vite 5
-- **状态管理**：Pinia
-- **路由**：Vue Router 4
-
-## 项目结构
-
-```
+```text
 .
-├── backend/                    # 后端项目
-│   ├── src/main/java/com/archivesystem/
-│   │   ├── config/            # 配置类
-│   │   ├── controller/        # 控制器
-│   │   ├── service/           # 服务层
-│   │   ├── repository/        # 数据访问层
-│   │   ├── entity/            # 实体类
-│   │   ├── dto/               # 数据传输对象
-│   │   └── common/            # 公共类
-│   └── src/main/resources/    # 配置文件
-├── frontend/                   # 前端项目
-│   └── src/
-│       ├── api/               # API调用
-│       ├── components/        # 组件
-│       ├── views/             # 页面
-│       ├── router/            # 路由
-│       └── store/             # 状态管理
-├── docker/                     # Docker配置
-│   ├── Dockerfile
-│   └── docker-compose.yml
-└── scripts/                    # 脚本
-    └── init-db/               # 数据库初始化
+├── backend/                    # Spring Boot 后端
+├── frontend/                   # Vue 3 前端
+├── docker/                     # Docker / Nginx / Compose 配置
+├── docs/                       # 对接与安全文档
+├── scripts/                    # 初始化与辅助脚本
+├── AGENTS.md                   # 仓库级代理说明
+└── CLAUDE.md                   # Claude/GitNexus 说明
 ```
 
-## 快速开始
+## 运行方式
 
-### 使用Docker Compose（推荐）
+### 1. Docker Compose 本地构建
 
 ```bash
+cp docker/.env.example docker/.env
 cd docker
-docker-compose up -d
+docker compose up -d
 ```
 
-服务启动后：
-- 后端API：http://localhost:8090/api
-- API文档：http://localhost:8090/api/doc.html
-- 前端：http://localhost:3001
-- MinIO控制台：http://localhost:9003
+默认访问地址：
 
-### 本地开发
+- 前端：`http://localhost:3001`
+- 后端 API：`http://localhost:8090/api`
+- Swagger / Knife4j：`http://localhost:8090/api/doc.html`
+- Actuator Health：`http://localhost:8090/api/actuator/health`
+- MinIO 控制台：`http://localhost:9003`
+- RabbitMQ 管理台：`http://localhost:15672`
 
-#### 后端
+说明：
+
+- Docker 前端通过 Nginx 代理 `/api/` 到后端
+- Docker 前端通过 Nginx 代理 `/storage/` 到 MinIO
+- Compose 会同时启动 PostgreSQL、Redis、RabbitMQ、Elasticsearch、MinIO、后端、前端
+- 首次启动前请编辑 `docker/.env`，不要直接使用示例中的占位密钥
+
+### 2. 私有仓库一键拉取部署
+
+公网拉取地址使用 `hub.albertzhan.top`，仓库内置了镜像版 Compose 与一键脚本。
+
 ```bash
+cp docker/.env.registry.example docker/.env.registry
+./scripts/pull-from-registry.sh
+```
+
+默认会执行：
+
+```bash
+docker compose --env-file docker/.env.registry -f docker/docker-compose.registry.yml pull
+docker compose --env-file docker/.env.registry -f docker/docker-compose.registry.yml up -d
+```
+
+镜像命名：
+
+- `hub.albertzhan.top/law-firm-archive/backend:v0.1.2`
+- `hub.albertzhan.top/law-firm-archive/frontend:v0.1.2`
+- `hub.albertzhan.top/law-firm-archive/elasticsearch:v0.1.2`
+
+说明：
+
+- Docker CLI 没有 `docker hub.pull` 子命令，标准命令是 `docker pull`
+- 如果要整套一键更新，直接运行 `./scripts/pull-from-registry.sh`
+
+### 3. 私有仓库内网推送
+
+内网推送地址使用 `192.168.50.5:5050`。
+
+```bash
+cp docker/.env.registry.example docker/.env.registry
+./scripts/push-images.sh
+```
+
+脚本会构建并推送：
+
+- `192.168.50.5:5050/law-firm-archive/backend:${APP_VERSION}`
+- `192.168.50.5:5050/law-firm-archive/frontend:${APP_VERSION}`
+- `192.168.50.5:5050/law-firm-archive/elasticsearch:${APP_VERSION}`
+- `192.168.50.5:5050/law-firm-archive/backend:${APP_COMMIT_SHA}`
+- `192.168.50.5:5050/law-firm-archive/frontend:${APP_COMMIT_SHA}`
+- `192.168.50.5:5050/law-firm-archive/elasticsearch:${APP_COMMIT_SHA}`
+
+建议：
+
+- `APP_VERSION` 使用可读发布号，例如 `v0.1.2`
+- `APP_COMMIT_SHA` 使用 Git 提交短哈希，例如 `7cc18a52`
+- `APP_BUILD_TIME` 建议使用 ISO 时间，例如 `2026-03-30T22:30:00+08:00`
+- 部署时 Compose 优先使用 `APP_VERSION`
+
+### 4. 本地开发
+
+先准备依赖服务。后端开发默认使用这些本地地址：
+
+- PostgreSQL：`localhost:5433`
+- Redis：`localhost:6380`
+- MinIO：`http://localhost:9002`
+- RabbitMQ：`localhost:5672`
+- Elasticsearch：`http://localhost:9200`
+
+后端：
+
+```bash
+export SPRING_DATASOURCE_PASSWORD=your-db-password
+export SPRING_RABBITMQ_PASSWORD=your-rabbitmq-password
+export MINIO_ACCESS_KEY=minioadmin
+export MINIO_SECRET_KEY=your-minio-secret
+export JWT_SECRET=your-jwt-secret-at-least-32-characters
 cd backend
 mvn spring-boot:run
 ```
 
-#### 前端
+如果你是通过 `docker compose` 起的本地依赖，以上值应与 `docker/.env` 中保持一致。
+
+前端：
+
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-## API接口
+前端开发环境默认通过 `VITE_API_PROXY_TARGET=http://localhost:8090` 代理后端。
 
-### 开放接口（供外部系统调用）
-
-#### 接收律所档案
-```
-POST /api/open/law-firm/archive/receive
-Content-Type: application/json
-Authorization: Bearer {api-key}
-
-{
-  "sourceId": "123",
-  "sourceNo": "CASE-2026-001",
-  "archiveName": "张三诉李四合同纠纷案",
-  "archiveType": "LITIGATION",
-  "clientName": "张三",
-  "responsiblePerson": "王律师",
-  "caseCloseDate": "2026-01-15",
-  "retentionPeriod": "10_YEARS",
-  "volumeCount": 2,
-  "files": [
-    {
-      "fileName": "起诉状.pdf",
-      "fileType": "application/pdf",
-      "downloadUrl": "http://..."
-    }
-  ]
-}
-```
-
-#### 健康检查
-```
-GET /api/open/health
-```
+## 安全与认证
 
 ### 管理接口
 
-- `GET /api/archives` - 档案列表
-- `GET /api/archives/{id}` - 档案详情
-- `POST /api/archives/receive` - 接收档案
-- `POST /api/archives/{id}/store` - 档案入库
-- `GET /api/archives/statistics` - 档案统计
+- 登录接口：`POST /api/auth/login`
+- 刷新令牌：`POST /api/auth/refresh`
+- 当前用户：`GET /api/auth/me`
+- 登出：`POST /api/auth/logout`
+- 管理接口默认使用 JWT Bearer Token
 
-## 与律所系统对接
+### 开放接口
 
-### 对接方式
-律所管理系统通过HTTP API将归档档案推送到本系统：
+开放接口路径位于 `/api/open/**`，其中：
 
-1. 在律所系统配置档案管理系统的API地址和密钥
-2. 律所系统在档案迁移时调用本系统的接收接口
-3. 本系统接收档案数据并存储
+- 需要 `X-API-Key`：
+  - `POST /api/open/archive/receive`
+  - `POST /api/open/borrow/apply`
+- 不需要 `X-API-Key`：
+  - `GET /api/open/health`
+  - `GET /api/open/borrow/access/{token}`
+  - `POST /api/open/borrow/access/{token}/download/{fileId}`
 
-### 数据格式
-详见API文档：http://localhost:8090/api/doc.html
+来源系统 API Key 由后台“来源管理”维护。
 
-## 部署说明
+## 关键接口概览
 
-### 端口配置
-本系统使用以下端口（避免与律所主系统冲突）：
-- 后端API：8090
-- PostgreSQL：5433
-- Redis：6380
-- MinIO：9002（API）、9003（控制台）
-- 前端：3001
+### 开放接口
 
-### 环境变量
-```bash
-# 数据库配置
-SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5433/archive_system
-SPRING_DATASOURCE_USERNAME=postgres
-SPRING_DATASOURCE_PASSWORD=postgres
+- `POST /api/open/archive/receive`：接收档案
+- `POST /api/open/borrow/apply`：申请电子借阅链接
+- `GET /api/open/borrow/access/{token}`：公开访问借阅内容
+- `POST /api/open/borrow/access/{token}/download/{fileId}`：记录下载
+- `GET /api/open/health`：健康检查
 
-# Redis配置
-SPRING_REDIS_HOST=localhost
-SPRING_REDIS_PORT=6380
+### 管理接口
 
-# MinIO配置
-MINIO_ENDPOINT=http://localhost:9002
-MINIO_ACCESS_KEY=minioadmin
-MINIO_SECRET_KEY=minioadmin
-MINIO_BUCKET=archives
+- `GET /api/archives`：档案列表
+- `GET /api/archives/{id}`：档案详情
+- `GET /api/archives/search`：全文检索
+- `POST /api/archives`：创建档案
+- `PUT /api/archives/{id}`：更新档案
+- `POST /api/archives/{id}/supplement`：补充上传
+- `PUT /api/archives/{id}/status`：更新状态
+- `GET /api/statistics/**`：统计报表
+- `GET /api/sources`：来源系统管理
+- `GET /api/users`、`GET /api/roles`：用户和角色管理
 
-# JWT配置
-JWT_SECRET=your-secret-key
-JWT_EXPIRATION=86400000
+## 测试与构建
 
-# Elasticsearch配置（可选）
-ELASTICSEARCH_HOST=localhost
-ELASTICSEARCH_PORT=9200
+后端测试：
 
-# RabbitMQ配置（可选）
-RABBITMQ_HOST=localhost
-RABBITMQ_PORT=5672
-RABBITMQ_USERNAME=guest
-RABBITMQ_PASSWORD=guest
-```
-
-## 开发指南
-
-### 后端开发
-
-#### 运行测试
 ```bash
 cd backend
-# 运行所有测试
 mvn test
-
-# 运行单个测试类
-mvn test -Dtest=ArchiveServiceTest
-
-# 生成测试覆盖率报告
-mvn jacoco:report
 ```
 
-#### 代码规范
-- 使用 Checkstyle 检查代码规范
-- Controller 需添加 `@PreAuthorize` 权限控制
-- 使用 DTO 进行请求/响应数据传输
-- 添加 Swagger 注解用于 API 文档
+后端打包：
 
-### 前端开发
-
-#### 运行测试
 ```bash
-cd frontend
-# 运行单元测试
-npm run test
-
-# 运行 ESLint 检查
-npm run lint
-
-# 修复 ESLint 问题
-npm run lint:fix
-```
-
-#### 代码规范
-- 使用 `@/utils/archiveEnums.js` 统一管理枚举映射
-- API 调用需添加错误处理和用户提示
-- 按钮操作需添加 loading 状态
-
-### 构建部署
-```bash
-# 后端构建
 cd backend
 mvn clean package -DskipTests
-# 生成 target/archive-system-0.0.1-SNAPSHOT.jar
-
-# 前端构建
-cd frontend
-npm run build
-# 生成 dist/ 目录
 ```
 
-## 分支管理
+前端构建：
 
-本系统作为独立分支 `feature/archive-management-system` 开发，与以下分支并存且永不合并：
-- `main` - 律所管理系统主分支
-- `feature/client-service-system` - 客户服务系统分支
+```bash
+cd frontend
+npm install
+npm run build
+```
 
-## License
+说明：
 
-私有项目，未经授权不得使用。
+- 当前仓库后端测试已可在本机跑通
+
+## 交付文档
+
+- [部署与升级手册](/Users/apple/Documents/Project/law-firm-archive/docs/deployment-upgrade-guide.md)
+- [发布前验收清单](/Users/apple/Documents/Project/law-firm-archive/docs/release-checklist.md)
+- [部署后冒烟测试流程](/Users/apple/Documents/Project/law-firm-archive/docs/deployment-smoke-test.md)
+- [测试执行台账](/Users/apple/Documents/Project/law-firm-archive/docs/test-ledger.md)
+- [备份与恢复中心设计方案](/Users/apple/Documents/Project/law-firm-archive/docs/backup-recovery-design.md)
+- Maven 测试阶段会生成 JaCoCo 覆盖率报告
+
+## 文档索引
+
+- [API 对接指南](./docs/API%E5%AF%B9%E6%8E%A5%E6%8C%87%E5%8D%97.md)
+- [集成测试指南](./docs/integration-test.md)
+- [律所系统对接指南](./docs/%E6%A1%A3%E6%A1%88%E7%B3%BB%E7%BB%9F%E5%AF%B9%E6%8E%A5%E6%8C%87%E5%8D%97.md)
+- [安全说明](./docs/SECURITY.md)
+
+## 仓库约定
+
+- `.claude/` 这类本地代理 / IDE 工作流配置不作为项目必需内容，默认不纳入版本控制
+- `.gitnexus/` 为本地分析索引目录，不提交
+- 仓库内文档应以当前代码行为为准，不以历史分支命名或旧部署端口为准

@@ -12,6 +12,7 @@ import lombok.NoArgsConstructor;
 /**
  * 电子借阅链接申请请求DTO.
  * 用于外部系统申请电子借阅链接
+ * @author junyuzhan
  */
 @Data
 @Builder

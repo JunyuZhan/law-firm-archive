@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * 认证模块集成测试.
+ * @author junyuzhan
  */
 @DisplayName("认证模块集成测试")
 class AuthIntegrationTest extends BaseIntegrationTest {

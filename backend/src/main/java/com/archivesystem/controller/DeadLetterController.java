@@ -15,6 +15,7 @@ import java.util.Map;
 
 /**
  * 死信消息管理接口.
+ * @author junyuzhan
  */
 @RestController
 @RequestMapping("/dead-letters")

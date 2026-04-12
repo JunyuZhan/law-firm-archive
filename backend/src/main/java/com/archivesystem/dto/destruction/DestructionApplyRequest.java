@@ -8,6 +8,7 @@ import lombok.Data;
 
 /**
  * 销毁申请请求DTO.
+ * @author junyuzhan
  */
 @Data
 @Schema(description = "销毁申请请求")

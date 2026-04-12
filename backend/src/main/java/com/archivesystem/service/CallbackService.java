@@ -5,6 +5,7 @@ import com.archivesystem.mq.CallbackMessage;
 /**
  * 回调服务接口
  * 负责向外部系统发送档案处理结果通知
+ * @author junyuzhan
  */
 public interface CallbackService {
 

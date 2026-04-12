@@ -11,6 +11,7 @@ import java.util.List;
 /**
  * 电子借阅链接访问响应DTO.
  * 返回档案信息和文件列表供公开访问页面展示
+ * @author junyuzhan
  */
 @Data
 @Builder
@@ -90,6 +91,8 @@ public class BorrowLinkAccessResponse {
         private String userName;
         private String purpose;
         private String sourceSystem;
+        private String borrowType;
+        private java.time.LocalDate expectedReturnDate;
     }
 
     /**

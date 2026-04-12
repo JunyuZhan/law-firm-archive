@@ -7,6 +7,7 @@ import java.util.List;
 
 /**
  * 鉴定管理服务接口.
+ * @author junyuzhan
  */
 public interface AppraisalService {
 

@@ -16,6 +16,7 @@ import java.time.LocalDateTime;
 /**
  * 档案销毁记录实体类.
  * 对应数据库表: arc_destruction_record
+ * @author junyuzhan
  */
 @Data
 @Builder

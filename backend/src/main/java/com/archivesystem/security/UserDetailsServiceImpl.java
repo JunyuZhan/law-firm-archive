@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 
 /**
  * Spring Security 用户详情服务实现.
+ * @author junyuzhan
  */
 @Service
 @RequiredArgsConstructor

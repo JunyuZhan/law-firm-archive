@@ -27,6 +27,7 @@ import java.util.stream.Collectors;
  * - PROCESSING 状态超时处理
  * - 过期档案提醒
  * - 死信消息自动重试
+ * @author junyuzhan
  */
 @Slf4j
 @Component

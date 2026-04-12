@@ -1,6 +1,11 @@
 <template>
   <div class="role-manage">
-    <el-card shadow="never">
+    <div class="page-header">
+      <h1>角色管理</h1>
+      <p>集中维护角色定义与权限边界，保证各类后台角色的职责清晰且可审计。</p>
+    </div>
+
+    <el-card shadow="never" class="table-card">
       <template #header>
         <div class="card-header">
           <span>角色管理</span>
@@ -129,7 +134,7 @@
         >
           <el-input
             v-model="form.roleCode"
-            placeholder="如：ADMIN、ARCHIVIST"
+            placeholder="如：SYSTEM_ADMIN、ARCHIVE_MANAGER"
             :disabled="isEdit"
           />
         </el-form-item>
@@ -383,12 +388,33 @@ onMounted(() => {
 
 <style lang="scss" scoped>
 .role-manage {
-  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.page-header {
+  h1 {
+    margin: 0 0 8px;
+    font-size: 24px;
+    font-weight: 600;
+    color: #303133;
+  }
+
+  p {
+    margin: 0;
+    line-height: 1.6;
+    color: #606266;
+  }
 }
 
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.table-card {
+  border-radius: 10px;
 }
 </style>

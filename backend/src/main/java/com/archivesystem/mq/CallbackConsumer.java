@@ -13,10 +13,12 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
+import org.springframework.amqp.AmqpException;
 
 /**
  * 回调消息消费者
  * 负责将处理结果通知给外部系统
+ * @author junyuzhan
  */
 @Slf4j
 @Component
@@ -109,22 +111,26 @@ public class CallbackConsumer {
         if (message.getRetryCount() < message.getMaxRetries()) {
             message.setRetryCount(message.getRetryCount() + 1);
             log.info("回调重试: messageId={}, retryCount={}", message.getMessageId(), message.getRetryCount());
-            
-            // 重新发送消息（带延迟）
-            channel.basicAck(deliveryTag, false);
-            
-            // 延迟后重新发送
+
+            // 延迟后重新发送。只有重新投递成功后才确认当前消息，避免 ACK 后丢单。
             try {
                 Thread.sleep(calculateRetryDelay(message.getRetryCount()));
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
-            
-            rabbitTemplate.convertAndSend(
-                    RabbitMQConfig.ARCHIVE_EXCHANGE,
-                    RabbitMQConfig.ARCHIVE_CALLBACK_ROUTING_KEY,
-                    message
-            );
+
+            try {
+                rabbitTemplate.convertAndSend(
+                        RabbitMQConfig.ARCHIVE_EXCHANGE,
+                        RabbitMQConfig.ARCHIVE_CALLBACK_ROUTING_KEY,
+                        message
+                );
+                channel.basicAck(deliveryTag, false);
+            } catch (AmqpException e) {
+                log.error("回调重投失败，消息将重新入队: messageId={}, retryCount={}",
+                        message.getMessageId(), message.getRetryCount(), e);
+                channel.basicNack(deliveryTag, false, true);
+            }
         } else {
             // 超过最大重试次数
             log.error("回调超过最大重试次数，放弃: messageId={}, archiveId={}", 

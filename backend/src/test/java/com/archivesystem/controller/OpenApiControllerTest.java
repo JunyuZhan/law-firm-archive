@@ -2,7 +2,11 @@ package com.archivesystem.controller;
 
 import com.archivesystem.dto.archive.ArchiveReceiveRequest;
 import com.archivesystem.dto.archive.ArchiveReceiveResponse;
+import com.archivesystem.dto.borrow.BorrowLinkAccessResponse;
+import com.archivesystem.dto.borrow.BorrowLinkApplyRequest;
+import com.archivesystem.dto.borrow.BorrowLinkApplyResponse;
 import com.archivesystem.service.ArchiveService;
+import com.archivesystem.service.BorrowLinkService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,6 +25,9 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+/**
+ * @author junyuzhan
+ */
 
 @ExtendWith(MockitoExtension.class)
 class OpenApiControllerTest {
@@ -29,6 +36,9 @@ class OpenApiControllerTest {
 
     @Mock
     private ArchiveService archiveService;
+
+    @Mock
+    private BorrowLinkService borrowLinkService;
 
     @InjectMocks
     private OpenApiController openApiController;
@@ -110,5 +120,105 @@ class OpenApiControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
                 .andExpect(jsonPath("$.data").value("ok"));
+    }
+
+    @Test
+    void testApplyBorrow() throws Exception {
+        BorrowLinkApplyRequest request = new BorrowLinkApplyRequest();
+        request.setArchiveId(1L);
+        request.setUserId("u001");
+        request.setUserName("测试用户");
+        request.setPurpose("查阅");
+
+        BorrowLinkApplyResponse response = new BorrowLinkApplyResponse();
+        response.setLinkId(10L);
+        response.setAccessUrl("https://example.com/open/borrow/access/token1234");
+        response.setExpireAt(LocalDateTime.now().plusDays(7));
+
+        when(borrowLinkService.applyLink(any(BorrowLinkApplyRequest.class))).thenReturn(response);
+
+        mockMvc.perform(post("/open/borrow/apply")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("200"))
+                .andExpect(jsonPath("$.message").value("借阅链接生成成功"))
+                .andExpect(jsonPath("$.data.linkId").value(10));
+    }
+
+    @Test
+    void testRevokeBorrow() throws Exception {
+        mockMvc.perform(post("/open/borrow/revoke/10")
+                        .param("reason", "管理系统撤销"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("200"))
+                .andExpect(jsonPath("$.message").value("借阅链接已撤销"));
+
+        verify(borrowLinkService).revoke(10L, "管理系统撤销");
+    }
+
+    @Test
+    void testAccessArchive_InvalidLink() throws Exception {
+        when(borrowLinkService.validateAndAccess(eq("token12345678"), eq("10.0.0.1")))
+                .thenReturn(BorrowLinkAccessResponse.invalid("链接已过期"));
+
+        mockMvc.perform(get("/open/borrow/access/token12345678")
+                        .header("X-Forwarded-For", "10.0.0.1, 10.0.0.2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("403"))
+                .andExpect(jsonPath("$.message").value("链接已过期"));
+    }
+
+    @Test
+    void testAccessArchive_ValidLink() throws Exception {
+        BorrowLinkAccessResponse response = BorrowLinkAccessResponse.builder()
+                .valid(true)
+                .archive(BorrowLinkAccessResponse.ArchiveInfo.builder()
+                        .archiveId(1L)
+                        .archiveNo("ARC-20260213-0001")
+                        .title("测试档案")
+                        .build())
+                .build();
+
+        when(borrowLinkService.validateAndAccess(eq("token12345678"), eq("127.0.0.1")))
+                .thenReturn(response);
+
+        mockMvc.perform(get("/open/borrow/access/token12345678"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("200"))
+                .andExpect(jsonPath("$.data.archive.archiveId").value(1));
+    }
+
+    @Test
+    void testGetPreviewUrl() throws Exception {
+        when(borrowLinkService.getFileAccessUrl("token12345678", 9L, false))
+                .thenReturn("preview-url");
+
+        mockMvc.perform(get("/open/borrow/access/token12345678/preview/9"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("200"))
+                .andExpect(jsonPath("$.data").value("preview-url"));
+    }
+
+    @Test
+    void testGetDownloadUrl() throws Exception {
+        when(borrowLinkService.getFileAccessUrl("token12345678", 9L, true))
+                .thenReturn("download-url");
+
+        mockMvc.perform(get("/open/borrow/access/token12345678/download-url/9"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("200"))
+                .andExpect(jsonPath("$.data").value("download-url"));
+    }
+
+    @Test
+    void testRecordDownload() throws Exception {
+        mockMvc.perform(post("/open/borrow/access/token12345678/download/9")
+                        .header("X-Forwarded-For", "10.0.0.1, 10.0.0.2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("200"));
+
+        verify(borrowLinkService).recordDownload("token12345678", 9L, "10.0.0.1");
     }
 }

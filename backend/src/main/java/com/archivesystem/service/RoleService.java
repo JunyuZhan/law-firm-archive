@@ -6,6 +6,7 @@ import java.util.List;
 
 /**
  * 角色服务接口.
+ * @author junyuzhan
  */
 public interface RoleService {
 

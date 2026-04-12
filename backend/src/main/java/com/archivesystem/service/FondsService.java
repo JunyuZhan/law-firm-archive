@@ -7,6 +7,7 @@ import java.util.List;
 
 /**
  * 全宗服务接口.
+ * @author junyuzhan
  */
 public interface FondsService {
 

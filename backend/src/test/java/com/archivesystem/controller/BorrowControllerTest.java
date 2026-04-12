@@ -1,8 +1,10 @@
 package com.archivesystem.controller;
 
 import com.archivesystem.common.PageResult;
+import com.archivesystem.dto.archive.ArchiveDTO;
 import com.archivesystem.entity.BorrowApplication;
 import com.archivesystem.security.SecurityUtils;
+import com.archivesystem.service.ArchiveService;
 import com.archivesystem.service.BorrowService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,6 +29,9 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+/**
+ * @author junyuzhan
+ */
 
 @ExtendWith(MockitoExtension.class)
 class BorrowControllerTest {
@@ -36,11 +41,15 @@ class BorrowControllerTest {
     @Mock
     private BorrowService borrowService;
 
+    @Mock
+    private ArchiveService archiveService;
+
     @InjectMocks
     private BorrowController borrowController;
 
     private ObjectMapper objectMapper;
     private BorrowApplication testApplication;
+    private ArchiveDTO testArchive;
 
     @BeforeEach
     void setUp() {
@@ -53,10 +62,21 @@ class BorrowControllerTest {
         testApplication.setArchiveId(1L);
         testApplication.setApplicantId(1L);
         testApplication.setApplicantName("测试用户");
+        testApplication.setApplicantDept("诉讼部");
         testApplication.setBorrowPurpose("测试借阅");
+        testApplication.setBorrowType(BorrowApplication.TYPE_ONLINE);
         testApplication.setExpectedReturnDate(LocalDate.now().plusDays(7));
         testApplication.setStatus(BorrowApplication.STATUS_PENDING);
         testApplication.setCreatedAt(LocalDateTime.now());
+
+        testArchive = ArchiveDTO.builder()
+                .id(1L)
+                .status("STORED")
+                .archiveForm("HYBRID")
+                .hasElectronic(true)
+                .hasPhysical(true)
+                .securityLevel("INTERNAL")
+                .build();
     }
 
     @Test
@@ -64,10 +84,11 @@ class BorrowControllerTest {
         Map<String, Object> params = new HashMap<>();
         params.put("archiveId", 1L);
         params.put("borrowPurpose", "测试借阅");
+        params.put("borrowType", "ONLINE");
         params.put("expectedReturnDate", LocalDate.now().plusDays(7).toString());
         params.put("remarks", "测试备注");
 
-        when(borrowService.apply(anyLong(), anyString(), any(LocalDate.class), anyString()))
+        when(borrowService.apply(anyLong(), anyString(), anyString(), any(LocalDate.class), anyString()))
                 .thenReturn(testApplication);
 
         mockMvc.perform(post("/borrows/apply")
@@ -94,7 +115,7 @@ class BorrowControllerTest {
 
         try (MockedStatic<SecurityUtils> mockedStatic = mockStatic(SecurityUtils.class)) {
             mockedStatic.when(SecurityUtils::getCurrentUserId).thenReturn(1L);
-            when(borrowService.getMyApplications(1L, null, 1, 20)).thenReturn(pageResult);
+            when(borrowService.getMyApplications(1L, null, null, null, 1, 20)).thenReturn(pageResult);
 
             mockMvc.perform(get("/borrows/my")
                             .param("pageNum", "1")
@@ -111,7 +132,7 @@ class BorrowControllerTest {
 
         try (MockedStatic<SecurityUtils> mockedStatic = mockStatic(SecurityUtils.class)) {
             mockedStatic.when(SecurityUtils::getCurrentUserId).thenReturn(1L);
-            when(borrowService.getMyApplications(1L, "PENDING", 1, 20)).thenReturn(pageResult);
+            when(borrowService.getMyApplications(1L, "PENDING", null, null, 1, 20)).thenReturn(pageResult);
 
             mockMvc.perform(get("/borrows/my")
                             .param("status", "PENDING")
@@ -138,7 +159,7 @@ class BorrowControllerTest {
     void testGetPendingList_Success() throws Exception {
         PageResult<BorrowApplication> pageResult = PageResult.of(1L, 20L, 1L, Arrays.asList(testApplication));
 
-        when(borrowService.getPendingList(1, 20)).thenReturn(pageResult);
+        when(borrowService.getPendingList(null, null, 1, 20)).thenReturn(pageResult);
 
         mockMvc.perform(get("/borrows/pending")
                         .param("pageNum", "1")
@@ -259,24 +280,44 @@ class BorrowControllerTest {
                 .andExpect(jsonPath("$.data").isEmpty());
     }
 
-    // 注意：BorrowController.checkAvailable方法有bug，当current为null时
-    // Map.of()不允许null值。此测试用例暂时跳过，待修复控制器后启用。
-    // @Test
-    // void testCheckAvailable_Available() throws Exception {
-    //     when(borrowService.getCurrentByArchiveId(1L)).thenReturn(null);
-    //     mockMvc.perform(get("/borrows/check/1"))
-    //             .andExpect(status().isOk())
-    //             .andExpect(jsonPath("$.code").value("200"))
-    //             .andExpect(jsonPath("$.data.available").value(true));
-    // }
-
     @Test
-    void testCheckAvailable_NotAvailable() throws Exception {
-        when(borrowService.getCurrentByArchiveId(1L)).thenReturn(testApplication);
+    void testCheckAvailable_Available() throws Exception {
+        when(borrowService.getCurrentByArchiveId(1L)).thenReturn(null);
+        when(archiveService.getById(1L)).thenReturn(testArchive);
 
         mockMvc.perform(get("/borrows/check/1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
-                .andExpect(jsonPath("$.data.available").value(false));
+                .andExpect(jsonPath("$.data.available").value(true))
+                .andExpect(jsonPath("$.data.allowedBorrowTypes[0]").value("ONLINE"))
+                .andExpect(jsonPath("$.data.borrowRules.maxBorrowDays.ONLINE").value(30));
+    }
+
+    @Test
+    void testCheckAvailable_NotAvailable() throws Exception {
+        when(borrowService.getCurrentByArchiveId(1L)).thenReturn(testApplication);
+        when(archiveService.getById(1L)).thenReturn(testArchive);
+
+        mockMvc.perform(get("/borrows/check/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("200"))
+                .andExpect(jsonPath("$.data.available").value(false))
+                .andExpect(jsonPath("$.data.unavailableReason").value("该档案已有进行中的借阅申请"));
+    }
+
+    @Test
+    void testCheckAvailable_ConfidentialArchiveDisablesDownload() throws Exception {
+        testArchive.setSecurityLevel("CONFIDENTIAL");
+        testArchive.setHasPhysical(false);
+        testArchive.setArchiveForm("ELECTRONIC");
+        when(borrowService.getCurrentByArchiveId(1L)).thenReturn(null);
+        when(archiveService.getById(1L)).thenReturn(testArchive);
+
+        mockMvc.perform(get("/borrows/check/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.available").value(true))
+                .andExpect(jsonPath("$.data.allowedBorrowTypes.length()").value(1))
+                .andExpect(jsonPath("$.data.allowedBorrowTypes[0]").value("ONLINE"))
+                .andExpect(jsonPath("$.data.borrowRules.maxBorrowDays.ONLINE").value(7));
     }
 }

@@ -11,6 +11,7 @@ import java.util.Map;
 /**
  * 档案接收DTO.
  * 用于接收来自律所系统或其他外部系统的档案数据。
+ * @author junyuzhan
  */
 @Data
 public class ArchiveReceiveDTO {

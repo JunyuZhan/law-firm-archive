@@ -2,7 +2,7 @@ package com.archivesystem.entity;
 
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
-import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
+import com.archivesystem.config.mybatis.PostgreSQLJsonbTypeHandler;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -15,6 +15,7 @@ import java.util.Map;
 /**
  * 回调记录实体类.
  * 记录向来源系统发起的回调
+ * @author junyuzhan
  */
 @Data
 @Builder
@@ -51,7 +52,7 @@ public class CallbackRecord extends BaseEntity {
     // ===== 请求响应 =====
     
     /** 请求体 */
-    @TableField(typeHandler = JacksonTypeHandler.class)
+    @TableField(typeHandler = PostgreSQLJsonbTypeHandler.class)
     private Map<String, Object> requestBody;
     
     /** HTTP状态码 */

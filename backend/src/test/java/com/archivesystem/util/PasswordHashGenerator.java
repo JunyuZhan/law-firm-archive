@@ -2,6 +2,9 @@ package com.archivesystem.util;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+/**
+ * @author junyuzhan
+ */
 
 class PasswordHashGenerator {
 

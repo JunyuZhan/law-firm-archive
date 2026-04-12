@@ -11,6 +11,7 @@ import java.util.List;
 
 /**
  * 回调记录Mapper接口.
+ * @author junyuzhan
  */
 @Mapper
 public interface CallbackRecordMapper extends BaseMapper<CallbackRecord> {

@@ -19,6 +19,7 @@ import java.util.List;
 
 /**
  * 存放位置控制器.
+ * @author junyuzhan
  */
 @RestController
 @RequestMapping("/locations")
@@ -38,9 +39,10 @@ public class LocationController {
     public Result<PageResult<ArchiveLocation>> list(
             @RequestParam(required = false) String roomName,
             @RequestParam(required = false) String status,
+            @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "1") Integer pageNum,
             @RequestParam(defaultValue = "20") Integer pageSize) {
-        PageResult<ArchiveLocation> result = locationService.getList(roomName, status, pageNum, pageSize);
+        PageResult<ArchiveLocation> result = locationService.getList(roomName, status, keyword, pageNum, pageSize);
         return Result.success(result);
     }
 
@@ -104,7 +106,7 @@ public class LocationController {
      */
     @PostMapping
     @Operation(summary = "创建位置")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
     public Result<ArchiveLocation> create(@Valid @RequestBody ArchiveLocation location) {
         ArchiveLocation created = locationService.create(location);
         return Result.success("创建成功", created);
@@ -115,7 +117,7 @@ public class LocationController {
      */
     @PutMapping("/{id}")
     @Operation(summary = "更新位置")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
     public Result<ArchiveLocation> update(
             @PathVariable @Parameter(description = "位置ID") Long id, 
             @Valid @RequestBody ArchiveLocation location) {
@@ -128,7 +130,7 @@ public class LocationController {
      */
     @DeleteMapping("/{id}")
     @Operation(summary = "删除位置")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
     public Result<Void> delete(@PathVariable @Parameter(description = "位置ID") Long id) {
         locationService.delete(id);
         return Result.success("删除成功", null);

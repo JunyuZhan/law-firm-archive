@@ -1,5 +1,6 @@
 package com.archivesystem.security;
 
+import com.archivesystem.common.util.ClientIpUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -20,6 +21,7 @@ import java.util.Map;
 /**
  * 速率限制过滤器.
  * 防止暴力攻击和DoS攻击
+ * @author junyuzhan
  */
 @Slf4j
 @Component
@@ -48,7 +50,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
-        String clientIp = getClientIp(request);
+        String clientIp = ClientIpUtils.resolve(request);
         String requestUri = request.getRequestURI();
         
         // 确定适用的速率限制
@@ -93,33 +95,6 @@ public class RateLimitFilter extends OncePerRequestFilter {
             return new RateLimitConfig("open", OPEN_API_RATE_LIMIT, OPEN_API_WINDOW_SECONDS);
         }
         return new RateLimitConfig("general", GENERAL_RATE_LIMIT, GENERAL_WINDOW_SECONDS);
-    }
-
-    /**
-     * 获取客户端真实IP.
-     */
-    private String getClientIp(HttpServletRequest request) {
-        String[] headers = {
-            "X-Forwarded-For",
-            "X-Real-IP",
-            "Proxy-Client-IP",
-            "WL-Proxy-Client-IP",
-            "HTTP_CLIENT_IP",
-            "HTTP_X_FORWARDED_FOR"
-        };
-        
-        for (String header : headers) {
-            String ip = request.getHeader(header);
-            if (ip != null && !ip.isEmpty() && !"unknown".equalsIgnoreCase(ip)) {
-                // X-Forwarded-For可能包含多个IP，取第一个
-                int index = ip.indexOf(',');
-                if (index != -1) {
-                    ip = ip.substring(0, index).trim();
-                }
-                return ip;
-            }
-        }
-        return request.getRemoteAddr();
     }
 
     /**

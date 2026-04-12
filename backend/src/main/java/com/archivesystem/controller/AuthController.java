@@ -1,15 +1,16 @@
 package com.archivesystem.controller;
 
 import com.archivesystem.common.Result;
+import com.archivesystem.common.util.ClientIpUtils;
 import com.archivesystem.dto.auth.LoginRequest;
 import com.archivesystem.dto.auth.LoginResponse;
 import com.archivesystem.entity.User;
-import com.archivesystem.repository.UserMapper;
 import com.archivesystem.security.JwtUtils;
 import com.archivesystem.security.LoginSecurityService;
 import com.archivesystem.security.SecurityUtils;
 import com.archivesystem.security.TokenBlacklistService;
 import com.archivesystem.security.UserDetailsImpl;
+import com.archivesystem.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -28,10 +29,11 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.time.LocalDateTime;
+import io.jsonwebtoken.Claims;
 
 /**
  * 认证控制器.
+ * @author junyuzhan
  */
 @Slf4j
 @RestController
@@ -42,7 +44,7 @@ public class AuthController {
 
     private final AuthenticationManager authenticationManager;
     private final JwtUtils jwtUtils;
-    private final UserMapper userMapper;
+    private final UserService userService;
     private final LoginSecurityService loginSecurityService;
     private final TokenBlacklistService tokenBlacklistService;
 
@@ -53,7 +55,7 @@ public class AuthController {
     @Operation(summary = "用户登录", description = "使用用户名密码登录")
     public Result<LoginResponse> login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpRequest) {
         String username = request.getUsername();
-        String clientIp = getClientIp(httpRequest);
+        String clientIp = ClientIpUtils.resolve(httpRequest);
         
         // 检查IP是否被锁定
         if (loginSecurityService.isIpLocked(clientIp)) {
@@ -88,15 +90,7 @@ public class AuthController {
             );
             String refreshToken = jwtUtils.generateRefreshToken(userDetails.getId());
 
-            // 更新最后登录时间和IP
-            User user = userMapper.selectById(userDetails.getId());
-            if (user != null) {
-                user.setLastLoginAt(LocalDateTime.now());
-                user.setLastLoginIp(clientIp);
-                userMapper.updateById(user);
-            } else {
-                log.warn("登录成功但用户信息未找到: userId={}", userDetails.getId());
-            }
+            userService.recordLoginSuccess(userDetails.getId(), clientIp);
 
             LoginResponse response = LoginResponse.builder()
                     .accessToken(accessToken)
@@ -128,35 +122,28 @@ public class AuthController {
     }
     
     /**
-     * 获取客户端IP.
-     */
-    private String getClientIp(HttpServletRequest request) {
-        String[] headers = {"X-Forwarded-For", "X-Real-IP", "Proxy-Client-IP", "WL-Proxy-Client-IP"};
-        for (String header : headers) {
-            String ip = request.getHeader(header);
-            if (ip != null && !ip.isEmpty() && !"unknown".equalsIgnoreCase(ip)) {
-                int index = ip.indexOf(',');
-                return index != -1 ? ip.substring(0, index).trim() : ip;
-            }
-        }
-        return request.getRemoteAddr();
-    }
-
-    /**
      * 刷新令牌.
      */
     @PostMapping("/refresh")
     @Operation(summary = "刷新令牌", description = "使用刷新令牌获取新的访问令牌")
     public Result<LoginResponse> refresh(@RequestBody String refreshToken) {
         try {
+            refreshToken = normalizeToken(refreshToken);
             if (!jwtUtils.validateToken(refreshToken) || !jwtUtils.isRefreshToken(refreshToken)) {
                 return Result.error("1001", "无效的刷新令牌");
             }
 
-            Long userId = jwtUtils.getUserIdFromToken(refreshToken);
-            User user = userMapper.selectById(userId);
+            Claims claims = jwtUtils.parseToken(refreshToken);
+            Long userId = claims.get("userId", Long.class);
+            long issuedAt = claims.getIssuedAt().getTime();
+            if (tokenBlacklistService.isBlacklisted(refreshToken)
+                    || tokenBlacklistService.isUserBlacklisted(userId, issuedAt)) {
+                return Result.error("1001", "无效的刷新令牌");
+            }
+
+            User user = userService.getActiveById(userId);
             
-            if (user == null || !User.STATUS_ACTIVE.equals(user.getStatus())) {
+            if (user == null) {
                 return Result.error("1003", "用户不存在或已被禁用");
             }
 
@@ -165,10 +152,12 @@ public class AuthController {
                     user.getUsername(),
                     user.getUserType()
             );
+            String newRefreshToken = jwtUtils.generateRefreshToken(user.getId());
+            tokenBlacklistService.addToBlacklist(refreshToken);
 
             LoginResponse response = LoginResponse.builder()
                     .accessToken(newAccessToken)
-                    .refreshToken(refreshToken) // 刷新令牌不变
+                    .refreshToken(newRefreshToken)
                     .expiresIn(86400L)
                     .userId(user.getId())
                     .username(user.getUsername())
@@ -215,8 +204,29 @@ public class AuthController {
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7);
             tokenBlacklistService.addToBlacklist(token);
-            log.info("用户登出，Token已加入黑名单");
+            try {
+                Claims claims = jwtUtils.parseToken(token);
+                Long userId = claims.get("userId", Long.class);
+                tokenBlacklistService.blacklistUserTokens(
+                        userId,
+                        Math.max(1, Math.ceilDiv(jwtUtils.getRefreshExpirationMillis(), 1000))
+                );
+                log.info("用户登出，用户令牌已全部吊销: userId={}", userId);
+            } catch (Exception e) {
+                log.warn("用户登出时无法解析Token，仅吊销当前Token");
+            }
         }
         return Result.success("登出成功", null);
+    }
+
+    private String normalizeToken(String token) {
+        if (token == null) {
+            return "";
+        }
+        token = token.trim();
+        if (token.length() >= 2 && token.startsWith("\"") && token.endsWith("\"")) {
+            return token.substring(1, token.length() - 1).trim();
+        }
+        return token;
     }
 }

@@ -5,6 +5,7 @@ import java.util.Map;
 
 /**
  * 统计服务接口.
+ * @author junyuzhan
  */
 public interface StatisticsService {
 
@@ -42,6 +43,11 @@ public interface StatisticsService {
      * 存储容量统计.
      */
     Map<String, Object> getStorageStatistics();
+
+    /**
+     * 扫描批次统计.
+     */
+    List<Map<String, Object>> getScanBatchStatistics(String keyword);
 
     /**
      * 按档案类型统计（别名方法）.

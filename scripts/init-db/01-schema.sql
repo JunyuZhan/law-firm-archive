@@ -297,9 +297,24 @@ CREATE TABLE IF NOT EXISTS arc_digital_file (
     file_category VARCHAR(50) DEFAULT 'MAIN',    -- 文件分类：MAIN-正文, ATTACHMENT-附件, COVER-封面, CATALOG-目录
     sort_order INTEGER DEFAULT 0,                -- 排序
     description TEXT,                            -- 描述
+    volume_no INTEGER,                           -- 案卷卷号
+    section_type VARCHAR(50),                    -- 案卷分段：COVER, CATALOG, MAIN, EVIDENCE, ATTACHMENT, NOTE
+    document_no VARCHAR(100),                    -- 件号/文号
+    page_start INTEGER,                          -- 起始页码
+    page_end INTEGER,                            -- 截止页码
+    version_label VARCHAR(100),                  -- 版本标识
     
     -- ===== 来源信息 =====
+    file_source_type VARCHAR(50) DEFAULT 'IMPORTED', -- 文件来源类型：SCANNED, ORIGINAL_ELECTRONIC, IMPORTED
     source_url VARCHAR(2000),                    -- 来源URL（外部文件）
+
+    -- ===== 扫描留痕 =====
+    scan_batch_no VARCHAR(100),                  -- 扫描批次号
+    scan_operator VARCHAR(100),                  -- 扫描操作人
+    scan_time TIMESTAMP,                         -- 扫描时间
+    scan_check_status VARCHAR(20),               -- 扫描复核状态：PENDING, PASSED, FAILED
+    scan_check_by VARCHAR(100),                  -- 扫描复核人
+    scan_check_time TIMESTAMP,                   -- 扫描复核时间
     
     -- ===== 系统字段 =====
     upload_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -719,6 +734,8 @@ CREATE TABLE IF NOT EXISTS arc_push_record (
     -- ===== 系统字段 =====
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by BIGINT,
+    updated_by BIGINT,
     deleted BOOLEAN DEFAULT FALSE
 );
 
@@ -764,6 +781,8 @@ CREATE TABLE IF NOT EXISTS arc_callback_record (
     -- ===== 系统字段 =====
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by BIGINT,
+    updated_by BIGINT,
     deleted BOOLEAN DEFAULT FALSE
 );
 

@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 /**
  * 回调消息 DTO
  * 用于通知外部系统档案处理结果
+ * @author junyuzhan
  */
 @Data
 @Builder

@@ -7,6 +7,7 @@ import java.util.List;
 
 /**
  * 用户服务接口.
+ * @author junyuzhan
  */
 public interface UserService {
 
@@ -29,6 +30,16 @@ public interface UserService {
      * 根据用户名获取.
      */
     User getByUsername(String username);
+
+    /**
+     * 获取启用中的用户.
+     */
+    User getActiveById(Long id);
+
+    /**
+     * 记录登录成功后的用户状态.
+     */
+    void recordLoginSuccess(Long id, String clientIp);
 
     /**
      * 分页查询用户.

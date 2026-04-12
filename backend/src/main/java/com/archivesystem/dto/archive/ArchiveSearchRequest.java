@@ -7,9 +7,15 @@ import java.util.List;
 
 /**
  * 档案搜索请求DTO
+ * @author junyuzhan
  */
 @Data
 public class ArchiveSearchRequest {
+
+    private static final int DEFAULT_PAGE_NUM = 1;
+    private static final int DEFAULT_PAGE_SIZE = 20;
+    private static final int MAX_PAGE_SIZE = 100;
+    private static final int MAX_RESULT_WINDOW = 10000;
 
     /**
      * 搜索关键词
@@ -21,6 +27,12 @@ public class ArchiveSearchRequest {
      * 可选值: title, archiveNo, caseNo, caseName, clientName, keywords, fileContent
      */
     private List<String> searchFields;
+
+    /**
+     * 是否检索正文/OCR内容.
+     * 默认关闭，避免普通检索落到大文本字段。
+     */
+    private Boolean includeFileContent = false;
 
     /**
      * 全宗ID筛选
@@ -100,17 +112,32 @@ public class ArchiveSearchRequest {
     /**
      * 页码（从1开始）
      */
-    private Integer pageNum = 1;
+    private Integer pageNum = DEFAULT_PAGE_NUM;
 
     /**
      * 每页大小
      */
-    private Integer pageSize = 20;
+    private Integer pageSize = DEFAULT_PAGE_SIZE;
+
+    public Integer getPageNum() {
+        return pageNum == null || pageNum < 1 ? DEFAULT_PAGE_NUM : pageNum;
+    }
+
+    public Integer getPageSize() {
+        if (pageSize == null || pageSize < 1) {
+            return DEFAULT_PAGE_SIZE;
+        }
+        return Math.min(pageSize, MAX_PAGE_SIZE);
+    }
 
     /**
      * 获取ES查询的起始位置
      */
     public int getFrom() {
-        return (pageNum - 1) * pageSize;
+        int from = (getPageNum() - 1) * getPageSize();
+        if (from >= MAX_RESULT_WINDOW) {
+            return Math.max(0, MAX_RESULT_WINDOW - getPageSize());
+        }
+        return from;
     }
 }

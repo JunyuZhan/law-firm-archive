@@ -35,13 +35,17 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 /**
  * 档案服务实现.
+ * @author junyuzhan
  */
 @Slf4j
 @Service
@@ -227,6 +231,7 @@ public class ArchiveServiceImpl implements ArchiveService {
                                 i + 1
                         );
                         if (digitalFile != null) {
+                            applyReceivedFileMetadata(digitalFile, fileInfo);
                             fileCount++;
                             totalSize += digitalFile.getFileSize() != null ? digitalFile.getFileSize() : 0;
                         } else {
@@ -329,6 +334,9 @@ public class ArchiveServiceImpl implements ArchiveService {
             }
         }
 
+        boolean submittedByOrdinaryUser = "USER".equals(SecurityUtils.getCurrentUserType());
+        String initialStatus = submittedByOrdinaryUser ? Archive.STATUS_PENDING_REVIEW : Archive.STATUS_RECEIVED;
+
         Archive archive = Archive.builder()
                 .archiveNo(archiveNo)
                 .fondsId(request.getFondsId())
@@ -359,7 +367,7 @@ public class ArchiveServiceImpl implements ArchiveService {
                 .archiveAbstract(request.getArchiveAbstract())
                 .remarks(request.getRemarks())
                 .extraData(request.getExtraData())
-                .status(Archive.STATUS_RECEIVED)
+                .status(initialStatus)
                 .receivedAt(LocalDateTime.now())
                 .receivedBy(SecurityUtils.getCurrentUserId())
                 .build();
@@ -387,6 +395,7 @@ public class ArchiveServiceImpl implements ArchiveService {
         if (archive == null) {
             throw NotFoundException.of("档案", id);
         }
+        assertArchiveMutable(archive);
         
         // 处理档案形式
         String archiveForm = request.getArchiveForm();
@@ -479,6 +488,7 @@ public class ArchiveServiceImpl implements ArchiveService {
         if (archive == null) {
             throw NotFoundException.of("档案", id);
         }
+        validateSupplementOperation(archive, request);
         
         // 更新档案形式
         if (request.getArchiveForm() != null && !request.getArchiveForm().isBlank()) {
@@ -532,6 +542,7 @@ public class ArchiveServiceImpl implements ArchiveService {
         if (archive == null) {
             throw NotFoundException.of("档案", id);
         }
+        assertArchiveReadable(archive);
         return convertToDTO(archive, true);
     }
 
@@ -541,6 +552,7 @@ public class ArchiveServiceImpl implements ArchiveService {
         if (archive == null) {
             throw NotFoundException.of("档案", archiveNo);
         }
+        assertArchiveReadable(archive);
         return convertToDTO(archive, true);
     }
 
@@ -548,6 +560,7 @@ public class ArchiveServiceImpl implements ArchiveService {
     public PageResult<ArchiveDTO> query(ArchiveQueryRequest request) {
         LambdaQueryWrapper<Archive> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Archive::getDeleted, false);
+        appendCurrentUserDataScope(wrapper);
 
         // 关键词搜索
         if (StringUtils.hasText(request.getKeyword())) {
@@ -581,11 +594,22 @@ public class ArchiveServiceImpl implements ArchiveService {
         if (StringUtils.hasText(request.getSourceType())) {
             wrapper.eq(Archive::getSourceType, request.getSourceType());
         }
+        if (StringUtils.hasText(request.getArchiveForm())) {
+            wrapper.eq(Archive::getArchiveForm, request.getArchiveForm());
+        }
         if (StringUtils.hasText(request.getStatus())) {
             wrapper.eq(Archive::getStatus, request.getStatus());
         }
         if (StringUtils.hasText(request.getCaseNo())) {
             wrapper.eq(Archive::getCaseNo, request.getCaseNo());
+        }
+        if (StringUtils.hasText(request.getScanBatchNo())) {
+            List<Long> archiveIds = digitalFileMapper.selectArchiveIdsByScanBatchNo(request.getScanBatchNo());
+            if (archiveIds == null || archiveIds.isEmpty()) {
+                wrapper.eq(Archive::getId, -1L);
+            } else {
+                wrapper.in(Archive::getId, archiveIds);
+            }
         }
 
         // 日期范围
@@ -649,7 +673,26 @@ public class ArchiveServiceImpl implements ArchiveService {
         if (archive == null) {
             throw NotFoundException.of("档案", id);
         }
-        archive.setStatus(status);
+        if (!Archive.isManualStatus(status)) {
+            throw new BusinessException("无效的状态值: " + status);
+        }
+        validateManualStatusTransition(archive, status);
+        applyStatusChange(archive, status);
+        archiveMapper.updateById(archive);
+    }
+
+    @Override
+    @Transactional
+    public void approve(Long id) {
+        Archive archive = archiveMapper.selectById(id);
+        if (archive == null) {
+            throw NotFoundException.of("档案", id);
+        }
+        if (!Archive.STATUS_PENDING_REVIEW.equals(archive.getStatus())) {
+            throw new BusinessException("仅待审核档案可执行审核通过");
+        }
+
+        applyStatusChange(archive, Archive.STATUS_STORED);
         archiveMapper.updateById(archive);
     }
 
@@ -714,19 +757,41 @@ public class ArchiveServiceImpl implements ArchiveService {
     }
 
     private void associateFiles(Long archiveId, List<Long> fileIds) {
+        if (fileIds == null || fileIds.isEmpty()) {
+            return;
+        }
+
+        List<Long> distinctFileIds = fileIds.stream()
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        if (distinctFileIds.isEmpty()) {
+            return;
+        }
+
+        LambdaQueryWrapper<DigitalFile> fileQueryWrapper = new LambdaQueryWrapper<>();
+        fileQueryWrapper.in(DigitalFile::getId, distinctFileIds);
+        List<DigitalFile> files = digitalFileMapper.selectList(fileQueryWrapper);
+        List<DigitalFile> availableFiles = files.stream()
+                .filter(Objects::nonNull)
+                .filter(file -> file.getArchiveId() == null)
+                .toList();
+
         long totalSize = 0;
+        for (DigitalFile file : availableFiles) {
+            totalSize += file.getFileSize() != null ? file.getFileSize() : 0;
+        }
+
+        List<Map<String, Object>> bindingItems = new ArrayList<>();
         int sortOrder = 1;
-        int associatedCount = 0;
-        
-        for (Long fileId : fileIds) {
-            DigitalFile file = digitalFileMapper.selectById(fileId);
-            if (file != null && file.getArchiveId() == null) {
-                file.setArchiveId(archiveId);
-                file.setSortOrder(sortOrder++);
-                digitalFileMapper.updateById(file);
-                totalSize += file.getFileSize() != null ? file.getFileSize() : 0;
-                associatedCount++;
-            }
+        for (DigitalFile file : availableFiles) {
+            Map<String, Object> item = new HashMap<>();
+            item.put("fileId", file.getId());
+            item.put("sortOrder", sortOrder++);
+            bindingItems.add(item);
+        }
+        if (!bindingItems.isEmpty()) {
+            digitalFileMapper.batchAssociateToArchive(archiveId, bindingItems);
         }
 
         Archive archive = archiveMapper.selectById(archiveId);
@@ -734,9 +799,9 @@ public class ArchiveServiceImpl implements ArchiveService {
             log.error("关联文件失败，档案不存在: archiveId={}", archiveId);
             return;
         }
-        archive.setFileCount(associatedCount);
+        archive.setFileCount(availableFiles.size());
         archive.setTotalFileSize(totalSize);
-        archive.setHasElectronic(associatedCount > 0);
+        archive.setHasElectronic(!availableFiles.isEmpty());
         archiveMapper.updateById(archive);
     }
 
@@ -817,10 +882,236 @@ public class ArchiveServiceImpl implements ArchiveService {
                 .fileCategory(file.getFileCategory())
                 .sortOrder(file.getSortOrder())
                 .description(file.getDescription())
+                .volumeNo(file.getVolumeNo())
+                .sectionType(file.getSectionType())
+                .documentNo(file.getDocumentNo())
+                .pageStart(file.getPageStart())
+                .pageEnd(file.getPageEnd())
+                .versionLabel(file.getVersionLabel())
+                .fileSourceType(file.getFileSourceType())
+                .scanBatchNo(file.getScanBatchNo())
+                .scanOperator(file.getScanOperator())
+                .scanTime(file.getScanTime())
+                .scanCheckStatus(file.getScanCheckStatus())
+                .scanCheckBy(file.getScanCheckBy())
+                .scanCheckTime(file.getScanCheckTime())
                 .ocrStatus(file.getOcrStatus())
                 .uploadAt(file.getUploadAt())
                 .createdAt(file.getCreatedAt())
                 .build();
+    }
+
+    private void assertArchiveMutable(Archive archive) {
+        if (Archive.STATUS_STORED.equals(archive.getStatus())) {
+            throw new BusinessException("已归档档案不可直接修改，请通过补件或解锁流程处理");
+        }
+    }
+
+    private void assertArchiveReadable(Archive archive) {
+        if (!SecurityUtils.isAuthenticated() || hasArchiveFullAccess()) {
+            return;
+        }
+
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        String currentRealName = SecurityUtils.getCurrentRealName();
+        String currentUsername = SecurityUtils.getCurrentUsername();
+        boolean ownArchive = (currentUserId != null
+                && (Objects.equals(currentUserId, archive.getCreatedBy())
+                || Objects.equals(currentUserId, archive.getReceivedBy())))
+                || matchesAssignedLawyer(archive.getLawyerName(), currentRealName, currentUsername);
+
+        boolean securityAllowed = Archive.SECURITY_PUBLIC.equals(archive.getSecurityLevel())
+                || Archive.SECURITY_INTERNAL.equals(archive.getSecurityLevel())
+                || !StringUtils.hasText(archive.getSecurityLevel());
+
+        if (!ownArchive || !securityAllowed) {
+            throw new BusinessException("无权访问该档案");
+        }
+    }
+
+    private void appendCurrentUserDataScope(LambdaQueryWrapper<Archive> wrapper) {
+        if (!SecurityUtils.isAuthenticated() || hasArchiveFullAccess()) {
+            return;
+        }
+
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        String currentRealName = SecurityUtils.getCurrentRealName();
+        String currentUsername = SecurityUtils.getCurrentUsername();
+        wrapper.and(w -> {
+            boolean hasCondition = false;
+            if (currentUserId != null) {
+                w.eq(Archive::getCreatedBy, currentUserId)
+                        .or()
+                        .eq(Archive::getReceivedBy, currentUserId);
+                hasCondition = true;
+            }
+            if (StringUtils.hasText(currentRealName)) {
+                if (hasCondition) {
+                    w.or();
+                }
+                w.like(Archive::getLawyerName, currentRealName);
+                hasCondition = true;
+            }
+            if (StringUtils.hasText(currentUsername)) {
+                if (hasCondition) {
+                    w.or();
+                }
+                w.like(Archive::getLawyerName, currentUsername);
+            }
+        });
+        wrapper.and(w -> w.eq(Archive::getSecurityLevel, Archive.SECURITY_PUBLIC)
+                .or().eq(Archive::getSecurityLevel, Archive.SECURITY_INTERNAL)
+                .or().isNull(Archive::getSecurityLevel));
+    }
+
+    private boolean matchesAssignedLawyer(String lawyerName, String currentRealName, String currentUsername) {
+        if (!StringUtils.hasText(lawyerName)) {
+            return false;
+        }
+        Set<String> lawyerTokens = normalizeLawyerTokens(lawyerName);
+        if (lawyerTokens.isEmpty()) {
+            return false;
+        }
+        return lawyerTokens.contains(normalizeLawyerToken(currentRealName))
+                || lawyerTokens.contains(normalizeLawyerToken(currentUsername));
+    }
+
+    private Set<String> normalizeLawyerTokens(String rawValue) {
+        if (!StringUtils.hasText(rawValue)) {
+            return Set.of();
+        }
+        return java.util.Arrays.stream(rawValue.split("[,，、;/；\\s]+"))
+                .map(this::normalizeLawyerToken)
+                .filter(StringUtils::hasText)
+                .collect(Collectors.toSet());
+    }
+
+    private String normalizeLawyerToken(String value) {
+        if (!StringUtils.hasText(value)) {
+            return "";
+        }
+        return value.replaceAll("\\s+", "").trim();
+    }
+
+    private boolean hasArchiveFullAccess() {
+        return SecurityUtils.hasAnyRole("SYSTEM_ADMIN", "ARCHIVE_REVIEWER", "ARCHIVE_MANAGER");
+    }
+
+    private void validateSupplementOperation(Archive archive, ArchiveSupplementRequest request) {
+        if (!Archive.STATUS_STORED.equals(archive.getStatus())) {
+            return;
+        }
+
+        if (StringUtils.hasText(request.getArchiveForm())
+                && !Objects.equals(request.getArchiveForm(), archive.getArchiveForm())) {
+            throw new BusinessException("已归档档案不可变更档案形式");
+        }
+    }
+
+    private void validateManualStatusTransition(Archive archive, String targetStatus) {
+        if (!Archive.STATUS_STORED.equals(archive.getStatus())) {
+            if (Archive.STATUS_PENDING_REVIEW.equals(archive.getStatus())
+                    && Archive.STATUS_STORED.equals(targetStatus)
+                    && !SecurityUtils.hasAnyRole("SYSTEM_ADMIN", "ARCHIVE_REVIEWER")) {
+                throw new BusinessException("待审核档案需由审核员批准后正式入库");
+            }
+            return;
+        }
+
+        if (Archive.STATUS_DRAFT.equals(targetStatus)
+                || Archive.STATUS_PENDING_REVIEW.equals(targetStatus)
+                || Archive.STATUS_RECEIVED.equals(targetStatus)
+                || Archive.STATUS_CATALOGING.equals(targetStatus)) {
+            throw new BusinessException("已归档档案不可直接回退状态");
+        }
+    }
+
+    private void applyStatusChange(Archive archive, String targetStatus) {
+        archive.setStatus(targetStatus);
+
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        LocalDateTime now = LocalDateTime.now();
+
+        if (Archive.STATUS_CATALOGING.equals(targetStatus)) {
+            if (archive.getCatalogedAt() == null) {
+                archive.setCatalogedAt(now);
+            }
+            if (archive.getCatalogedBy() == null) {
+                archive.setCatalogedBy(currentUserId);
+            }
+        }
+
+        if (Archive.STATUS_STORED.equals(targetStatus)) {
+            if (archive.getCatalogedAt() == null) {
+                archive.setCatalogedAt(now);
+            }
+            if (archive.getCatalogedBy() == null) {
+                archive.setCatalogedBy(currentUserId);
+            }
+            archive.setArchivedAt(now);
+            archive.setArchivedBy(currentUserId);
+        }
+    }
+
+    private void applyReceivedFileMetadata(DigitalFile digitalFile, ArchiveReceiveRequest.FileInfo fileInfo) {
+        boolean changed = false;
+
+        if (fileInfo.getVolumeNo() != null) {
+            digitalFile.setVolumeNo(fileInfo.getVolumeNo());
+            changed = true;
+        }
+        if (StringUtils.hasText(fileInfo.getSectionType())) {
+            digitalFile.setSectionType(fileInfo.getSectionType());
+            changed = true;
+        }
+        if (StringUtils.hasText(fileInfo.getDocumentNo())) {
+            digitalFile.setDocumentNo(fileInfo.getDocumentNo());
+            changed = true;
+        }
+        if (fileInfo.getPageStart() != null) {
+            digitalFile.setPageStart(fileInfo.getPageStart());
+            changed = true;
+        }
+        if (fileInfo.getPageEnd() != null) {
+            digitalFile.setPageEnd(fileInfo.getPageEnd());
+            changed = true;
+        }
+        if (StringUtils.hasText(fileInfo.getVersionLabel())) {
+            digitalFile.setVersionLabel(fileInfo.getVersionLabel());
+            changed = true;
+        }
+        if (StringUtils.hasText(fileInfo.getFileSourceType())) {
+            digitalFile.setFileSourceType(fileInfo.getFileSourceType());
+            changed = true;
+        }
+        if (StringUtils.hasText(fileInfo.getScanBatchNo())) {
+            digitalFile.setScanBatchNo(fileInfo.getScanBatchNo());
+            changed = true;
+        }
+        if (StringUtils.hasText(fileInfo.getScanOperator())) {
+            digitalFile.setScanOperator(fileInfo.getScanOperator());
+            changed = true;
+        }
+        if (fileInfo.getScanTime() != null) {
+            digitalFile.setScanTime(fileInfo.getScanTime());
+            changed = true;
+        }
+        if (StringUtils.hasText(fileInfo.getScanCheckStatus())) {
+            digitalFile.setScanCheckStatus(fileInfo.getScanCheckStatus());
+            changed = true;
+        }
+        if (StringUtils.hasText(fileInfo.getScanCheckBy())) {
+            digitalFile.setScanCheckBy(fileInfo.getScanCheckBy());
+            changed = true;
+        }
+        if (fileInfo.getScanCheckTime() != null) {
+            digitalFile.setScanCheckTime(fileInfo.getScanCheckTime());
+            changed = true;
+        }
+
+        if (changed) {
+            digitalFileMapper.updateById(digitalFile);
+        }
     }
 
     private String formatFileSize(Long size) {

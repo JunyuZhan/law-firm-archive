@@ -2,7 +2,7 @@ package com.archivesystem.entity;
 
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
-import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
+import com.archivesystem.config.mybatis.PostgreSQLJsonbTypeHandler;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -15,6 +15,7 @@ import java.util.Map;
 /**
  * 推送记录实体类.
  * 记录外部系统推送档案的请求
+ * @author junyuzhan
  */
 @Data
 @Builder
@@ -74,7 +75,7 @@ public class PushRecord extends BaseEntity {
     // ===== 请求信息 =====
     
     /** 请求内容 */
-    @TableField(typeHandler = JacksonTypeHandler.class)
+    @TableField(typeHandler = PostgreSQLJsonbTypeHandler.class)
     private Map<String, Object> requestPayload;
     
     /** 回调地址 */
@@ -102,4 +103,8 @@ public class PushRecord extends BaseEntity {
     public static final String STATUS_SUCCESS = "SUCCESS";
     public static final String STATUS_FAILED = "FAILED";
     public static final String STATUS_PARTIAL = "PARTIAL";
+
+    public static final String FILE_STATUS_PENDING = "PENDING";
+    public static final String FILE_STATUS_CALLBACK_PENDING = "CALLBACK_PENDING";
+    public static final String FILE_STATUS_CALLBACK_SENT = "CALLBACK_SENT";
 }

@@ -2,6 +2,7 @@ package com.archivesystem.controller;
 
 import com.archivesystem.common.PageResult;
 import com.archivesystem.common.Result;
+import com.archivesystem.common.util.ClientIpUtils;
 import com.archivesystem.config.MetricsConfig;
 import com.archivesystem.dto.archive.*;
 import com.archivesystem.service.AccessLogService;
@@ -16,14 +17,17 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
 /**
  * 档案控制器.
+ * @author junyuzhan
  */
 @Slf4j
 @RestController
@@ -43,7 +47,7 @@ public class ArchiveController {
      */
     @PostMapping
     @Operation(summary = "创建档案")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
+    @PreAuthorize("isAuthenticated()")
     public Result<ArchiveDTO> create(@Valid @RequestBody ArchiveCreateRequest request) {
         ArchiveDTO archive = archiveService.create(request);
         return Result.success("创建成功", archive);
@@ -54,7 +58,7 @@ public class ArchiveController {
      */
     @PutMapping("/{id}")
     @Operation(summary = "更新档案")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
     public Result<ArchiveDTO> update(
             @PathVariable Long id,
             @Valid @RequestBody ArchiveCreateRequest request) {
@@ -100,7 +104,7 @@ public class ArchiveController {
      */
     @DeleteMapping("/{id}")
     @Operation(summary = "删除档案")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
     public Result<Void> delete(@PathVariable Long id) {
         archiveService.delete(id);
         return Result.success("删除成功", null);
@@ -111,29 +115,23 @@ public class ArchiveController {
      */
     @PutMapping("/{id}/status")
     @Operation(summary = "更新档案状态")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
     public Result<Void> updateStatus(
             @PathVariable Long id,
-            @RequestParam @Parameter(description = "状态：DRAFT/RECEIVED/CATALOGING/STORED/BORROWED") String status) {
-        // 校验状态值
-        if (!isValidStatus(status)) {
-            return Result.error("无效的状态值: " + status);
-        }
+            @RequestParam @Parameter(description = "状态：DRAFT/PENDING_REVIEW/RECEIVED/CATALOGING/STORED/BORROWED") String status) {
         archiveService.updateStatus(id, status);
         return Result.success("状态更新成功", null);
     }
-    
+
     /**
-     * 校验档案状态值是否合法.
+     * 审核通过并正式入库.
      */
-    private boolean isValidStatus(String status) {
-        return status != null && (
-            "DRAFT".equals(status) || 
-            "RECEIVED".equals(status) || 
-            "CATALOGING".equals(status) || 
-            "STORED".equals(status) || 
-            "BORROWED".equals(status)
-        );
+    @PutMapping("/{id}/approve")
+    @Operation(summary = "审核通过并正式入库")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_REVIEWER')")
+    public Result<Void> approve(@PathVariable Long id) {
+        archiveService.approve(id);
+        return Result.success("审核通过，档案已正式入库", null);
     }
 
     /**
@@ -141,7 +139,7 @@ public class ArchiveController {
      */
     @PostMapping("/{id}/supplement")
     @Operation(summary = "补充上传")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
     public Result<ArchiveDTO> supplement(
             @PathVariable Long id,
             @RequestBody ArchiveSupplementRequest request) {
@@ -154,20 +152,36 @@ public class ArchiveController {
      */
     @PostMapping("/{archiveId}/files")
     @Operation(summary = "上传文件到档案")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
     public Result<DigitalFileDTO> uploadFile(
             @PathVariable Long archiveId,
             @RequestParam("file") MultipartFile file,
-            @Parameter(description = "文件分类") @RequestParam(required = false) String fileCategory) {
+            @Parameter(description = "文件分类") @RequestParam(required = false) String fileCategory,
+            @Parameter(description = "案卷卷号") @RequestParam(required = false) Integer volumeNo,
+            @Parameter(description = "案卷分段类型") @RequestParam(required = false) String sectionType,
+            @Parameter(description = "件号/文号") @RequestParam(required = false) String documentNo,
+            @Parameter(description = "起始页码") @RequestParam(required = false) Integer pageStart,
+            @Parameter(description = "截止页码") @RequestParam(required = false) Integer pageEnd,
+            @Parameter(description = "版本标识") @RequestParam(required = false) String versionLabel,
+            @Parameter(description = "文件来源类型") @RequestParam(required = false) String fileSourceType,
+            @Parameter(description = "扫描批次号") @RequestParam(required = false) String scanBatchNo,
+            @Parameter(description = "扫描操作人") @RequestParam(required = false) String scanOperator,
+            @Parameter(description = "扫描时间") @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime scanTime,
+            @Parameter(description = "扫描复核状态") @RequestParam(required = false) String scanCheckStatus,
+            @Parameter(description = "扫描复核人") @RequestParam(required = false) String scanCheckBy,
+            @Parameter(description = "扫描复核时间") @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime scanCheckTime) {
         // 校验文件
         if (file == null || file.isEmpty()) {
-            return Result.error("文件不能为空");
+            return Result.error("400", "文件不能为空");
         }
         if (file.getSize() > 100 * 1024 * 1024) { // 100MB
-            return Result.error("文件大小不能超过100MB");
+            return Result.error("400", "文件大小不能超过100MB");
         }
         
-        var digitalFile = fileStorageService.upload(file, archiveId, fileCategory);
+        var digitalFile = fileStorageService.upload(file, archiveId, fileCategory,
+                volumeNo, sectionType, documentNo, pageStart, pageEnd, versionLabel,
+                fileSourceType, scanBatchNo, scanOperator, scanTime,
+                scanCheckStatus, scanCheckBy, scanCheckTime);
         
         DigitalFileDTO dto = DigitalFileDTO.builder()
                 .id(digitalFile.getId())
@@ -176,6 +190,19 @@ public class ArchiveController {
                 .originalName(digitalFile.getOriginalName())
                 .fileSize(digitalFile.getFileSize())
                 .mimeType(digitalFile.getMimeType())
+                .volumeNo(digitalFile.getVolumeNo())
+                .sectionType(digitalFile.getSectionType())
+                .documentNo(digitalFile.getDocumentNo())
+                .pageStart(digitalFile.getPageStart())
+                .pageEnd(digitalFile.getPageEnd())
+                .versionLabel(digitalFile.getVersionLabel())
+                .fileSourceType(digitalFile.getFileSourceType())
+                .scanBatchNo(digitalFile.getScanBatchNo())
+                .scanOperator(digitalFile.getScanOperator())
+                .scanTime(digitalFile.getScanTime())
+                .scanCheckStatus(digitalFile.getScanCheckStatus())
+                .scanCheckBy(digitalFile.getScanCheckBy())
+                .scanCheckTime(digitalFile.getScanCheckTime())
                 .build();
         
         return Result.success("上传成功", dto);
@@ -212,7 +239,7 @@ public class ArchiveController {
      */
     @DeleteMapping("/files/{fileId}")
     @Operation(summary = "删除文件")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
     public Result<Void> deleteFile(@PathVariable Long fileId) {
         fileStorageService.delete(fileId);
         return Result.success("删除成功", null);
@@ -234,27 +261,10 @@ public class ArchiveController {
         
         // 记录搜索审计日志
         long duration = System.currentTimeMillis() - startTime;
-        String clientIp = getClientIp(httpRequest);
+        String clientIp = ClientIpUtils.resolve(httpRequest);
         accessLogService.logSearch(request.getKeyword(), (int) result.getTotal(), duration, clientIp);
         
         return Result.success(result);
-    }
-    
-    /**
-     * 获取客户端IP.
-     */
-    private String getClientIp(HttpServletRequest request) {
-        String ip = request.getHeader("X-Forwarded-For");
-        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getHeader("X-Real-IP");
-        }
-        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getRemoteAddr();
-        }
-        if (ip != null && ip.contains(",")) {
-            ip = ip.split(",")[0].trim();
-        }
-        return ip;
     }
 
     /**
@@ -284,7 +294,7 @@ public class ArchiveController {
      */
     @PostMapping("/{id}/index")
     @Operation(summary = "索引档案", description = "将指定档案同步到搜索索引")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
     public Result<Void> indexArchive(@PathVariable Long id) {
         archiveIndexService.indexArchive(id);
         return Result.success("索引已更新", null);

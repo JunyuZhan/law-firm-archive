@@ -8,6 +8,7 @@ import java.util.List;
 
 /**
  * 档案ES仓库
+ * @author junyuzhan
  */
 @Repository
 public interface ArchiveSearchRepository extends ElasticsearchRepository<ArchiveDocument, Long> {

@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * MyMetaObjectHandler 简单测试.
  * 注意: strictInsertFill/strictUpdateFill 方法需要 MyBatis-Plus TableInfo,
  * 在纯单元测试中难以模拟，完整测试需要集成测试环境。
+ * @author junyuzhan
  */
 class MyMetaObjectHandlerTest {
 

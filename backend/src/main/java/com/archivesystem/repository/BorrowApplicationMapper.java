@@ -10,6 +10,7 @@ import java.util.List;
 
 /**
  * 借阅申请Mapper接口.
+ * @author junyuzhan
  */
 @Mapper
 public interface BorrowApplicationMapper extends BaseMapper<BorrowApplication> {

@@ -10,6 +10,7 @@ import java.util.List;
 
 /**
  * 档案分类Mapper接口.
+ * @author junyuzhan
  */
 @Mapper
 public interface CategoryMapper extends BaseMapper<Category> {

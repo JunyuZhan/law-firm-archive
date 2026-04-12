@@ -10,6 +10,7 @@ import java.util.List;
 
 /**
  * 鉴定记录Mapper接口.
+ * @author junyuzhan
  */
 @Mapper
 public interface AppraisalRecordMapper extends BaseMapper<AppraisalRecord> {

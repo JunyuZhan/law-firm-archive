@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 /**
  * 档案鉴定记录实体类.
  * 对应数据库表: arc_appraisal_record
+ * @author junyuzhan
  */
 @Data
 @Builder

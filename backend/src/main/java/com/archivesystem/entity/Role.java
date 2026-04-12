@@ -17,6 +17,7 @@ import java.time.LocalDateTime;
 /**
  * 角色实体类.
  * 对应数据库表: sys_role
+ * @author junyuzhan
  */
 @Data
 @Builder

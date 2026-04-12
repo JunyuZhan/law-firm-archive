@@ -10,6 +10,7 @@ import java.time.Duration;
 /**
  * 登录安全服务.
  * 提供登录失败锁定、IP限制等功能
+ * @author junyuzhan
  */
 @Slf4j
 @Service

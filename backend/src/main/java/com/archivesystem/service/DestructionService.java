@@ -7,6 +7,7 @@ import java.util.List;
 
 /**
  * 销毁管理服务接口.
+ * @author junyuzhan
  */
 public interface DestructionService {
 

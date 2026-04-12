@@ -5,6 +5,7 @@ import lombok.Getter;
 
 /**
  * 错误码枚举.
+ * @author junyuzhan
  */
 @Getter
 @AllArgsConstructor

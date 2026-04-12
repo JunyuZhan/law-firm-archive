@@ -2,7 +2,7 @@ package com.archivesystem.entity;
 
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
-import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
+import com.archivesystem.config.mybatis.PostgreSQLJsonbTypeHandler;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -11,11 +11,13 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Set;
 import java.util.Map;
 
 /**
  * 电子档案实体类.
  * 对应数据库表: arc_archive
+ * @author junyuzhan
  */
 @Data
 @Builder
@@ -196,12 +198,14 @@ public class Archive extends BaseEntity {
     private String remarks;
     
     /** 扩展数据（JSON格式） */
-    @TableField(typeHandler = JacksonTypeHandler.class)
+    @TableField(typeHandler = PostgreSQLJsonbTypeHandler.class)
     private Map<String, Object> extraData;
 
     // ===== 状态常量 =====
     
     public static final String STATUS_DRAFT = "DRAFT";
+    public static final String STATUS_PENDING_REVIEW = "PENDING_REVIEW";
+    public static final String STATUS_REJECTED = "REJECTED";
     public static final String STATUS_RECEIVED = "RECEIVED";
     public static final String STATUS_CATALOGING = "CATALOGING";
     public static final String STATUS_STORED = "STORED";
@@ -211,6 +215,19 @@ public class Archive extends BaseEntity {
     public static final String STATUS_PROCESSING = "PROCESSING";
     public static final String STATUS_PARTIAL = "PARTIAL";
     public static final String STATUS_FAILED = "FAILED";
+
+    private static final Set<String> MANUAL_STATUS_OPTIONS = Set.of(
+            STATUS_DRAFT,
+            STATUS_PENDING_REVIEW,
+            STATUS_RECEIVED,
+            STATUS_CATALOGING,
+            STATUS_STORED,
+            STATUS_BORROWED
+    );
+
+    public static boolean isManualStatus(String status) {
+        return MANUAL_STATUS_OPTIONS.contains(status);
+    }
 
     // ===== 来源类型常量 =====
     

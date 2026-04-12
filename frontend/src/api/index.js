@@ -114,8 +114,11 @@ request.interceptors.response.use(
           })
           
           if (res.data.success) {
-            const { accessToken } = res.data.data
+            const { accessToken, refreshToken: newRefreshToken } = res.data.data
             secureStorage.setAccessToken(accessToken)
+            if (newRefreshToken) {
+              secureStorage.setRefreshToken(newRefreshToken)
+            }
             onRefreshed(accessToken)
             originalRequest.headers.Authorization = `Bearer ${accessToken}`
             return request(originalRequest)

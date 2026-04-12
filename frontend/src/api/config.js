@@ -10,6 +10,35 @@ export function getConfigsGrouped() {
   })
 }
 
+export function getRuntimeInfo() {
+  return request({
+    url: '/configs/runtime-info',
+    method: 'get'
+  })
+}
+
+export function getDependencyStatus() {
+  return request({
+    url: '/configs/dependency-status',
+    method: 'get'
+  })
+}
+
+export function getDeliveryInfo() {
+  return request({
+    url: '/configs/delivery-info',
+    method: 'get'
+  })
+}
+
+export function downloadDeliveryDoc(code) {
+  return request({
+    url: `/configs/delivery-docs/${code}/download`,
+    method: 'get',
+    responseType: 'blob'
+  })
+}
+
 /**
  * 获取配置列表
  */
@@ -100,6 +129,22 @@ export function refreshConfigCache() {
   return request({
     url: '/configs/refresh',
     method: 'post'
+  })
+}
+
+/**
+ * 上传站点 Logo
+ */
+export function uploadSiteLogo(file) {
+  const formData = new FormData()
+  formData.append('file', file)
+  return request({
+    url: '/configs/site/logo',
+    method: 'post',
+    data: formData,
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
   })
 }
 

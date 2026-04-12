@@ -2,6 +2,7 @@ package com.archivesystem.service;
 
 import com.archivesystem.TestLambdaCacheInitializer;
 import com.archivesystem.common.PageResult;
+import com.archivesystem.common.exception.BusinessException;
 import com.archivesystem.common.exception.NotFoundException;
 import com.archivesystem.config.MetricsConfig;
 import com.archivesystem.dto.archive.*;
@@ -11,6 +12,7 @@ import com.archivesystem.entity.DigitalFile;
 import com.archivesystem.entity.Fonds;
 import com.archivesystem.entity.RetentionPeriod;
 import com.archivesystem.repository.*;
+import com.archivesystem.security.SecurityUtils;
 import com.archivesystem.service.impl.ArchiveServiceImpl;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.junit.jupiter.api.BeforeAll;
@@ -36,6 +38,9 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
+/**
+ * @author junyuzhan
+ */
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -284,6 +289,25 @@ class ArchiveServiceTest {
     }
 
     @Test
+    void testUpdateStatus_InvalidStatus() {
+        when(archiveMapper.selectById(1L)).thenReturn(testArchive);
+
+        assertThrows(BusinessException.class, () -> archiveService.updateStatus(1L, Archive.STATUS_DESTROYED));
+
+        verify(archiveMapper, never()).updateById(any(Archive.class));
+    }
+
+    @Test
+    void testUpdateStatus_StoredArchiveRollbackRejected() {
+        testArchive.setStatus(Archive.STATUS_STORED);
+        when(archiveMapper.selectById(1L)).thenReturn(testArchive);
+
+        assertThrows(BusinessException.class, () -> archiveService.updateStatus(1L, Archive.STATUS_RECEIVED));
+
+        verify(archiveMapper, never()).updateById(any(Archive.class));
+    }
+
+    @Test
     void testGenerateArchiveNo() {
         when(configService.getArchiveNoPrefix("DOCUMENT")).thenReturn("DOC");
         when(configService.getValue("archive.no.date.format", "yyyyMMdd")).thenReturn("yyyyMMdd");
@@ -361,6 +385,19 @@ class ArchiveServiceTest {
 
         assertNotNull(result);
         verify(archiveMapper).updateById(any(Archive.class));
+    }
+
+    @Test
+    void testUpdate_StoredArchiveRejected() {
+        ArchiveCreateRequest request = new ArchiveCreateRequest();
+        request.setTitle("更新后的档案");
+        request.setArchiveType("DOCUMENT");
+        testArchive.setStatus(Archive.STATUS_STORED);
+
+        when(archiveMapper.selectById(1L)).thenReturn(testArchive);
+
+        assertThrows(BusinessException.class, () -> archiveService.update(1L, request));
+        verify(archiveMapper, never()).updateById(any(Archive.class));
     }
 
     @Test
@@ -586,6 +623,27 @@ class ArchiveServiceTest {
     }
 
     @Test
+    void testQuery_WithScanBatchNo() {
+        ArchiveQueryRequest request = new ArchiveQueryRequest();
+        request.setScanBatchNo("SCAN-20260330-01");
+        request.setPageNum(1);
+        request.setPageSize(10);
+
+        Page<Archive> page = new Page<>(1, 10);
+        page.setRecords(Arrays.asList(testArchive));
+        page.setTotal(1);
+
+        when(digitalFileMapper.selectArchiveIdsByScanBatchNo("SCAN-20260330-01"))
+                .thenReturn(List.of(1L));
+        when(archiveMapper.selectPage(any(Page.class), any())).thenReturn(page);
+
+        PageResult<ArchiveDTO> result = archiveService.query(request);
+
+        assertNotNull(result);
+        assertEquals(1, result.getTotal());
+    }
+
+    @Test
     void testCreate_WithFileIds() {
         ArchiveCreateRequest request = new ArchiveCreateRequest();
         request.setTitle("带文件的档案");
@@ -614,9 +672,8 @@ class ArchiveServiceTest {
             archive.setId(4L);
             return 1;
         });
-        when(digitalFileMapper.selectById(1L)).thenReturn(file1);
-        when(digitalFileMapper.selectById(2L)).thenReturn(file2);
-        when(digitalFileMapper.updateById(any(DigitalFile.class))).thenReturn(1);
+        when(digitalFileMapper.selectList(any())).thenReturn(Arrays.asList(file1, file2));
+        when(digitalFileMapper.batchAssociateToArchive(eq(4L), anyList())).thenReturn(2);
         
         Archive newArchive = new Archive();
         newArchive.setId(4L);
@@ -633,7 +690,7 @@ class ArchiveServiceTest {
         ArchiveDTO result = archiveService.create(request);
 
         assertNotNull(result);
-        verify(digitalFileMapper, times(2)).updateById(any(DigitalFile.class));
+        verify(digitalFileMapper).batchAssociateToArchive(eq(4L), anyList());
     }
 
     @Test
@@ -645,6 +702,12 @@ class ArchiveServiceTest {
         file.setArchiveId(1L);
         file.setFileName("test.pdf");
         file.setFileSize(1024L);
+        file.setVolumeNo(1);
+        file.setSectionType(DigitalFile.SECTION_MAIN);
+        file.setDocumentNo("DOC-001");
+        file.setPageStart(1);
+        file.setPageEnd(12);
+        file.setVersionLabel("原件");
         
         when(archiveMapper.selectById(1L)).thenReturn(testArchive);
         when(digitalFileMapper.selectByArchiveId(1L)).thenReturn(Arrays.asList(file));
@@ -654,5 +717,51 @@ class ArchiveServiceTest {
         assertNotNull(result);
         assertNotNull(result.getFiles());
         assertEquals(1, result.getFiles().size());
+        assertEquals(1, result.getFiles().get(0).getVolumeNo());
+        assertEquals(DigitalFile.SECTION_MAIN, result.getFiles().get(0).getSectionType());
+    }
+
+    @Test
+    void testGetById_ForbiddenForNonOwner() {
+        testArchive.setCreatedBy(9L);
+        testArchive.setReceivedBy(10L);
+        testArchive.setLawyerName("他人律师");
+        testArchive.setSecurityLevel(Archive.SECURITY_INTERNAL);
+        when(archiveMapper.selectById(1L)).thenReturn(testArchive);
+
+        try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+            securityUtils.when(SecurityUtils::isAuthenticated).thenReturn(true);
+            securityUtils.when(() -> SecurityUtils.hasAnyRole("SYSTEM_ADMIN", "ARCHIVIST", "SECURITY_ADMIN", "AUDIT_ADMIN"))
+                    .thenReturn(false);
+            securityUtils.when(SecurityUtils::getCurrentUserId).thenReturn(1L);
+            securityUtils.when(SecurityUtils::getCurrentRealName).thenReturn("当前律师");
+
+            assertThrows(BusinessException.class, () -> archiveService.getById(1L));
+        }
+    }
+
+    @Test
+    void testGetById_AllowsAssignedLawyerListMatch() {
+        testArchive.setCreatedBy(null);
+        testArchive.setReceivedBy(null);
+        testArchive.setLawyerName("王律师/李律师");
+        testArchive.setSecurityLevel(Archive.SECURITY_INTERNAL);
+
+        when(archiveMapper.selectById(1L)).thenReturn(testArchive);
+        when(digitalFileMapper.selectByArchiveId(1L)).thenReturn(Collections.emptyList());
+
+        try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+            securityUtils.when(SecurityUtils::isAuthenticated).thenReturn(true);
+            securityUtils.when(() -> SecurityUtils.hasAnyRole("SYSTEM_ADMIN", "ARCHIVE_REVIEWER", "ARCHIVE_MANAGER"))
+                    .thenReturn(false);
+            securityUtils.when(SecurityUtils::getCurrentUserId).thenReturn(6L);
+            securityUtils.when(SecurityUtils::getCurrentRealName).thenReturn("王律师");
+            securityUtils.when(SecurityUtils::getCurrentUsername).thenReturn("lawyer1");
+
+            ArchiveDTO result = archiveService.getById(1L);
+
+            assertNotNull(result);
+            assertEquals("测试档案", result.getTitle());
+        }
     }
 }

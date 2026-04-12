@@ -16,6 +16,7 @@ import java.util.regex.Pattern;
 /**
  * XSS攻击防护过滤器.
  * 对请求参数进行XSS过滤
+ * @author junyuzhan
  */
 @Slf4j
 @Component

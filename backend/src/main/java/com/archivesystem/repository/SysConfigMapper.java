@@ -10,6 +10,7 @@ import java.util.List;
 
 /**
  * 系统配置Mapper接口
+ * @author junyuzhan
  */
 @Mapper
 public interface SysConfigMapper extends BaseMapper<SysConfig> {

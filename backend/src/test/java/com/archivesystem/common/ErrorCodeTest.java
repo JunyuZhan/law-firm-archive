@@ -3,6 +3,9 @@ package com.archivesystem.common;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
+/**
+ * @author junyuzhan
+ */
 
 class ErrorCodeTest {
 

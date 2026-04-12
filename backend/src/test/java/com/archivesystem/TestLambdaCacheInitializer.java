@@ -10,6 +10,7 @@ import java.util.Set;
 /**
  * 测试用 MyBatis-Plus Lambda 缓存初始化工具.
  * 解决单元测试中 "can not find lambda cache for this entity" 错误.
+ * @author junyuzhan
  */
 public class TestLambdaCacheInitializer {
 

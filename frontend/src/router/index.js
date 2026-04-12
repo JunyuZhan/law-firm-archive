@@ -1,18 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { secureStorage } from '@/utils/security'
-
-// 角色常量
-const ROLES = {
-  SYSTEM_ADMIN: 'SYSTEM_ADMIN',
-  SECURITY_ADMIN: 'SECURITY_ADMIN',
-  AUDIT_ADMIN: 'AUDIT_ADMIN',
-  ARCHIVIST: 'ARCHIVIST',
-  USER: 'USER'
-}
-
-// 管理员角色
-const ADMIN_ROLES = [ROLES.SYSTEM_ADMIN, ROLES.SECURITY_ADMIN]
+import { BORROW_ROLES, MANAGER_ROLES, REPORT_ROLES, ROLES, hasPermission } from '@/utils/permission'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -39,7 +28,7 @@ const router = createRouter({
           path: 'receive',
           name: 'ArchiveReceive',
           component: () => import('@/views/archive/ArchiveReceive.vue'),
-          meta: { title: '档案接收', requiresAuth: true, roles: [ROLES.SYSTEM_ADMIN, ROLES.ARCHIVIST] }
+          meta: { title: '档案接收', requiresAuth: true }
         },
         {
           path: 'search',
@@ -48,89 +37,101 @@ const router = createRouter({
           meta: { title: '档案检索', requiresAuth: true }
         },
         {
+          path: 'archive-settings',
+          name: 'ArchiveSettingsCenter',
+          component: () => import('@/views/archive/ArchiveSettingsCenter.vue'),
+          meta: { title: '档案设置', requiresAuth: true, roles: MANAGER_ROLES }
+        },
+        {
           path: 'categories',
-          name: 'CategoryManage',
-          component: () => import('@/views/category/CategoryManage.vue'),
-          meta: { title: '分类管理', requiresAuth: true, roles: [ROLES.SYSTEM_ADMIN, ROLES.ARCHIVIST] }
+          redirect: '/archive-settings?tab=categories'
         },
         {
           path: 'locations',
-          name: 'LocationList',
-          component: () => import('@/views/location/LocationList.vue'),
-          meta: { title: '存放位置', requiresAuth: true, roles: [ROLES.SYSTEM_ADMIN, ROLES.ARCHIVIST] }
+          redirect: '/archive-settings?tab=locations'
         },
         {
           path: 'borrows',
           name: 'BorrowList',
           component: () => import('@/views/borrow/BorrowList.vue'),
-          meta: { title: '借阅管理', requiresAuth: true }
+          meta: { title: '借阅管理', requiresAuth: true, roles: BORROW_ROLES }
         },
         {
           path: 'borrow-links',
           name: 'BorrowLinkList',
           component: () => import('@/views/borrow/BorrowLinkList.vue'),
-          meta: { title: '借阅链接', requiresAuth: true, roles: [ROLES.SYSTEM_ADMIN, ROLES.ARCHIVIST] }
+          meta: { title: '借阅链接', requiresAuth: true, roles: MANAGER_ROLES }
         },
         {
           path: 'appraisals',
           name: 'AppraisalList',
           component: () => import('@/views/appraisal/AppraisalList.vue'),
-          meta: { title: '鉴定管理', requiresAuth: true, roles: [ROLES.SYSTEM_ADMIN, ROLES.ARCHIVIST] }
+          meta: { title: '鉴定管理', requiresAuth: true, roles: MANAGER_ROLES }
         },
         {
           path: 'destructions',
           name: 'DestructionList',
           component: () => import('@/views/destruction/DestructionList.vue'),
-          meta: { title: '销毁管理', requiresAuth: true, roles: [ROLES.SYSTEM_ADMIN, ROLES.ARCHIVIST] }
+          meta: { title: '销毁管理', requiresAuth: true, roles: MANAGER_ROLES }
         },
         {
           path: 'statistics',
           name: 'Statistics',
           component: () => import('@/views/statistics/Statistics.vue'),
-          meta: { title: '统计分析', requiresAuth: true, roles: ADMIN_ROLES }
+          meta: { title: '统计分析', requiresAuth: true, roles: REPORT_ROLES }
         },
         {
           path: 'reports',
           name: 'Reports',
           component: () => import('@/views/statistics/ReportPage.vue'),
-          meta: { title: '报表导出', requiresAuth: true, roles: ADMIN_ROLES }
+          meta: { title: '报表导出', requiresAuth: true, roles: REPORT_ROLES }
         },
         {
           path: 'sources',
-          name: 'SourceList',
-          component: () => import('@/views/source/SourceList.vue'),
-          meta: { title: '来源管理', requiresAuth: true, roles: [ROLES.SYSTEM_ADMIN] }
+          redirect: '/archive-settings?tab=sources'
         },
         {
           path: 'push-records',
           name: 'PushRecordList',
           component: () => import('@/views/push/PushRecordList.vue'),
-          meta: { title: '推送记录', requiresAuth: true, roles: [ROLES.SYSTEM_ADMIN, ROLES.ARCHIVIST] }
+          meta: { title: '推送记录', requiresAuth: true, roles: MANAGER_ROLES }
         },
         {
           path: 'fonds',
-          name: 'FondsManage',
-          component: () => import('@/views/fonds/FondsManage.vue'),
-          meta: { title: '全宗管理', requiresAuth: true, roles: [ROLES.SYSTEM_ADMIN, ROLES.ARCHIVIST] }
+          redirect: '/archive-settings?tab=fonds'
         },
         // 系统管理 - 仅管理员可访问
         {
+          path: 'system/setup',
+          name: 'InitialSetup',
+          component: () => import('@/views/system/InitialSetup.vue'),
+          meta: { title: '首次初始化', requiresAuth: true, roles: [ROLES.SYSTEM_ADMIN] }
+        },
+        {
+          path: 'system/info',
+          name: 'SystemInfo',
+          component: () => import('@/views/system/SystemInfo.vue'),
+          meta: { title: '系统信息', requiresAuth: true, roles: [ROLES.SYSTEM_ADMIN] }
+        },
+        {
+          path: 'system/permissions',
+          name: 'PermissionCenter',
+          component: () => import('@/views/system/PermissionCenter.vue'),
+          meta: { title: '权限管理', requiresAuth: true, roles: [ROLES.SYSTEM_ADMIN] }
+        },
+        {
           path: 'system/users',
-          name: 'UserManage',
-          component: () => import('@/views/system/UserManage.vue'),
-          meta: { title: '用户管理', requiresAuth: true, roles: [ROLES.SYSTEM_ADMIN, ROLES.SECURITY_ADMIN] }
+          redirect: '/system/permissions?tab=users'
         },
         {
           path: 'system/roles',
-          name: 'RoleManage',
-          component: () => import('@/views/system/RoleManage.vue'),
-          meta: { title: '角色管理', requiresAuth: true, roles: [ROLES.SYSTEM_ADMIN] }
+          redirect: '/system/permissions?tab=roles'
         },
         {
           path: 'system/logs',
           name: 'OperationLog',
           component: () => import('@/views/system/OperationLog.vue'),
-          meta: { title: '操作日志', requiresAuth: true, roles: [ROLES.SYSTEM_ADMIN, ROLES.AUDIT_ADMIN] }
+          meta: { title: '操作日志', requiresAuth: true, roles: [ROLES.SYSTEM_ADMIN] }
         },
         {
           path: 'system/config',
@@ -138,12 +139,32 @@ const router = createRouter({
           component: () => import('@/views/system/SystemConfig.vue'),
           meta: { title: '系统配置', requiresAuth: true, roles: [ROLES.SYSTEM_ADMIN] }
         },
+        {
+          path: 'system/recovery',
+          name: 'BackupRecoveryCenter',
+          component: () => import('@/views/system/BackupRecoveryCenter.vue'),
+          meta: { title: '备份恢复', requiresAuth: true, roles: [ROLES.SYSTEM_ADMIN] }
+        },
+        {
+          path: 'system/backup',
+          redirect: '/system/recovery?tab=backup'
+        },
+        {
+          path: 'system/restore',
+          redirect: '/system/recovery?tab=restore'
+        },
         // 个人设置 - 所有登录用户可访问
         {
           path: 'profile',
           name: 'Profile',
           component: () => import('@/views/user/Profile.vue'),
           meta: { title: '个人设置', requiresAuth: true }
+        },
+        {
+          path: 'help',
+          name: 'HelpCenter',
+          component: () => import('@/views/help/HelpCenter.vue'),
+          meta: { title: '帮助中心', requiresAuth: true }
         },
         // 403 无权限页面
         {
@@ -186,17 +207,6 @@ const getUserRole = () => {
     console.error('解析用户信息失败', e)
   }
   return null
-}
-
-// 检查用户是否有权限访问
-const hasPermission = (requiredRoles, userRole) => {
-  if (!requiredRoles || requiredRoles.length === 0) {
-    return true // 没有角色要求，允许访问
-  }
-  if (!userRole) {
-    return false
-  }
-  return requiredRoles.includes(userRole)
 }
 
 // 路由守卫

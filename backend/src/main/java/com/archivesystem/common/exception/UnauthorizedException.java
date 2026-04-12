@@ -2,6 +2,7 @@ package com.archivesystem.common.exception;
 
 /**
  * 未授权异常.
+ * @author junyuzhan
  */
 public class UnauthorizedException extends BusinessException {
 

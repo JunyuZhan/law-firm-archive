@@ -29,6 +29,9 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
+/**
+ * @author junyuzhan
+ */
 
 @ExtendWith(MockitoExtension.class)
 @org.mockito.junit.jupiter.MockitoSettings(strictness = org.mockito.quality.Strictness.LENIENT)
@@ -67,7 +70,9 @@ class BorrowServiceTest {
         testApplication.setArchiveTitle("测试档案");
         testApplication.setApplicantId(100L);
         testApplication.setApplicantName("测试用户");
+        testApplication.setApplicantDept("诉讼部");
         testApplication.setBorrowPurpose("研究");
+        testApplication.setBorrowType(BorrowApplication.TYPE_ONLINE);
         testApplication.setExpectedReturnDate(LocalDate.now().plusDays(7));
         testApplication.setStatus(BorrowApplication.STATUS_PENDING);
         testApplication.setApplyTime(LocalDateTime.now());
@@ -79,15 +84,18 @@ class BorrowServiceTest {
         try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
             securityUtils.when(SecurityUtils::getCurrentUserId).thenReturn(100L);
             securityUtils.when(SecurityUtils::getCurrentRealName).thenReturn("测试用户");
+            securityUtils.when(SecurityUtils::getCurrentDepartment).thenReturn("诉讼部");
 
             when(archiveMapper.selectById(1L)).thenReturn(testArchive);
             when(borrowMapper.selectOne(any())).thenReturn(null);
             when(borrowMapper.insert(any(BorrowApplication.class))).thenReturn(1);
 
-            BorrowApplication result = borrowService.apply(1L, "研究", LocalDate.now().plusDays(7), null);
+            BorrowApplication result = borrowService.apply(1L, "研究", BorrowApplication.TYPE_ONLINE, LocalDate.now().plusDays(7), null);
 
             assertNotNull(result);
             assertEquals(BorrowApplication.STATUS_PENDING, result.getStatus());
+            assertEquals("诉讼部", result.getApplicantDept());
+            assertEquals(BorrowApplication.TYPE_ONLINE, result.getBorrowType());
             verify(borrowMapper).insert(any(BorrowApplication.class));
         }
     }
@@ -97,7 +105,7 @@ class BorrowServiceTest {
         when(archiveMapper.selectById(999L)).thenReturn(null);
 
         assertThrows(NotFoundException.class, () -> 
-            borrowService.apply(999L, "研究", LocalDate.now().plusDays(7), null));
+            borrowService.apply(999L, "研究", BorrowApplication.TYPE_ONLINE, LocalDate.now().plusDays(7), null));
     }
 
     @Test
@@ -106,7 +114,7 @@ class BorrowServiceTest {
         when(archiveMapper.selectById(1L)).thenReturn(testArchive);
 
         assertThrows(BusinessException.class, () -> 
-            borrowService.apply(1L, "研究", LocalDate.now().plusDays(7), null));
+            borrowService.apply(1L, "研究", BorrowApplication.TYPE_ONLINE, LocalDate.now().plusDays(7), null));
     }
 
     @Test
@@ -115,14 +123,33 @@ class BorrowServiceTest {
         when(borrowMapper.selectOne(any())).thenReturn(testApplication);
 
         assertThrows(BusinessException.class, () -> 
-            borrowService.apply(1L, "研究", LocalDate.now().plusDays(7), null));
+            borrowService.apply(1L, "研究", BorrowApplication.TYPE_ONLINE, LocalDate.now().plusDays(7), null));
+    }
+
+    @Test
+    void testApply_ConfidentialArchiveRejectsDownloadType() {
+        testArchive.setSecurityLevel(Archive.SECURITY_CONFIDENTIAL);
+        when(archiveMapper.selectById(1L)).thenReturn(testArchive);
+        when(borrowMapper.selectOne(any())).thenReturn(null);
+
+        assertThrows(BusinessException.class, () ->
+            borrowService.apply(1L, "研究", BorrowApplication.TYPE_DOWNLOAD, LocalDate.now().plusDays(7), null));
+    }
+
+    @Test
+    void testApply_RejectsWhenExpectedReturnDateExceedsLimit() {
+        when(archiveMapper.selectById(1L)).thenReturn(testArchive);
+        when(borrowMapper.selectOne(any())).thenReturn(null);
+
+        assertThrows(BusinessException.class, () ->
+            borrowService.apply(1L, "研究", BorrowApplication.TYPE_DOWNLOAD, LocalDate.now().plusDays(10), null));
     }
 
     @Test
     void testGetById_Success() {
         try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
             securityUtils.when(SecurityUtils::getCurrentUserId).thenReturn(100L);
-            securityUtils.when(() -> SecurityUtils.hasAnyRole("SYSTEM_ADMIN", "ARCHIVIST")).thenReturn(false);
+            securityUtils.when(() -> SecurityUtils.hasAnyRole("SYSTEM_ADMIN", "ARCHIVE_MANAGER")).thenReturn(false);
 
             when(borrowMapper.selectById(1L)).thenReturn(testApplication);
 
@@ -148,7 +175,7 @@ class BorrowServiceTest {
 
         when(borrowMapper.selectPage(any(Page.class), any())).thenReturn(page);
 
-        PageResult<BorrowApplication> result = borrowService.getMyApplications(100L, null, 1, 10);
+        PageResult<BorrowApplication> result = borrowService.getMyApplications(100L, null, null, null, 1, 10);
 
         assertNotNull(result);
         assertEquals(1, result.getTotal());
@@ -163,7 +190,7 @@ class BorrowServiceTest {
 
         when(borrowMapper.selectPage(any(Page.class), any())).thenReturn(page);
 
-        PageResult<BorrowApplication> result = borrowService.getMyApplications(100L, "PENDING", 1, 10);
+        PageResult<BorrowApplication> result = borrowService.getMyApplications(100L, "PENDING", null, null, 1, 10);
 
         assertNotNull(result);
         assertEquals(1, result.getRecords().size());
@@ -211,7 +238,7 @@ class BorrowServiceTest {
 
         when(borrowMapper.selectPage(any(Page.class), any())).thenReturn(page);
 
-        PageResult<BorrowApplication> result = borrowService.getPendingList(1, 10);
+        PageResult<BorrowApplication> result = borrowService.getPendingList(null, null, 1, 10);
 
         assertNotNull(result);
         assertEquals(1, result.getTotal());
@@ -222,7 +249,7 @@ class BorrowServiceTest {
         try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
             securityUtils.when(SecurityUtils::getCurrentUserId).thenReturn(200L);
             securityUtils.when(SecurityUtils::getCurrentRealName).thenReturn("审批人");
-            securityUtils.when(() -> SecurityUtils.hasAnyRole("SYSTEM_ADMIN", "ARCHIVIST")).thenReturn(true);
+            securityUtils.when(() -> SecurityUtils.hasAnyRole("SYSTEM_ADMIN", "ARCHIVE_MANAGER")).thenReturn(true);
 
             when(borrowMapper.selectById(1L)).thenReturn(testApplication);
             when(borrowMapper.update(isNull(), any())).thenReturn(1);
@@ -246,7 +273,7 @@ class BorrowServiceTest {
         try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
             securityUtils.when(SecurityUtils::getCurrentUserId).thenReturn(200L);
             securityUtils.when(SecurityUtils::getCurrentRealName).thenReturn("审批人");
-            securityUtils.when(() -> SecurityUtils.hasAnyRole("SYSTEM_ADMIN", "ARCHIVIST")).thenReturn(true);
+            securityUtils.when(() -> SecurityUtils.hasAnyRole("SYSTEM_ADMIN", "ARCHIVE_MANAGER")).thenReturn(true);
 
             when(borrowMapper.selectById(1L)).thenReturn(testApplication);
             when(borrowMapper.update(isNull(), any())).thenReturn(1);
@@ -269,7 +296,7 @@ class BorrowServiceTest {
     void testLend_Success() {
         try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
             securityUtils.when(SecurityUtils::getCurrentUserId).thenReturn(200L);
-            securityUtils.when(() -> SecurityUtils.hasAnyRole("SYSTEM_ADMIN", "ARCHIVIST")).thenReturn(true);
+            securityUtils.when(() -> SecurityUtils.hasAnyRole("SYSTEM_ADMIN", "ARCHIVE_MANAGER")).thenReturn(true);
 
             testApplication.setStatus(BorrowApplication.STATUS_APPROVED);
             when(borrowMapper.selectById(1L)).thenReturn(testApplication);
@@ -294,7 +321,7 @@ class BorrowServiceTest {
     void testReturnArchive_Success() {
         try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
             securityUtils.when(SecurityUtils::getCurrentUserId).thenReturn(200L);
-            securityUtils.when(() -> SecurityUtils.hasAnyRole("SYSTEM_ADMIN", "ARCHIVIST")).thenReturn(true);
+            securityUtils.when(() -> SecurityUtils.hasAnyRole("SYSTEM_ADMIN", "ARCHIVE_MANAGER")).thenReturn(true);
 
             testApplication.setStatus(BorrowApplication.STATUS_BORROWED);
             when(borrowMapper.selectById(1L)).thenReturn(testApplication);
@@ -319,7 +346,7 @@ class BorrowServiceTest {
     void testRenew_Success() {
         try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
             securityUtils.when(SecurityUtils::getCurrentUserId).thenReturn(200L);
-            securityUtils.when(() -> SecurityUtils.hasAnyRole("SYSTEM_ADMIN", "ARCHIVIST")).thenReturn(true);
+            securityUtils.when(() -> SecurityUtils.hasAnyRole("SYSTEM_ADMIN", "ARCHIVE_MANAGER")).thenReturn(true);
 
             testApplication.setStatus(BorrowApplication.STATUS_BORROWED);
             testApplication.setExpectedReturnDate(LocalDate.now().plusDays(7));

@@ -11,6 +11,7 @@ import java.util.List;
 
 /**
  * 推送记录Mapper接口.
+ * @author junyuzhan
  */
 @Mapper
 public interface PushRecordMapper extends BaseMapper<PushRecord> {

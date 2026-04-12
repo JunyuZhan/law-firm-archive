@@ -17,6 +17,7 @@ import java.util.Map;
 
 /**
  * 全宗管理控制器.
+ * @author junyuzhan
  */
 @RestController
 @RequestMapping("/fonds")
@@ -28,7 +29,7 @@ public class FondsController {
 
     @PostMapping
     @Operation(summary = "创建全宗")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
     public Result<Fonds> create(@Valid @RequestBody Fonds fonds) {
         Fonds created = fondsService.create(fonds);
         return Result.success("创建成功", created);
@@ -36,7 +37,7 @@ public class FondsController {
 
     @PutMapping("/{id}")
     @Operation(summary = "更新全宗")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
     public Result<Fonds> update(@PathVariable Long id, @Valid @RequestBody Fonds fonds) {
         Fonds updated = fondsService.update(id, fonds);
         return Result.success("更新成功", updated);
@@ -71,7 +72,7 @@ public class FondsController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "删除全宗")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
     public Result<Void> delete(@PathVariable Long id) {
         fondsService.delete(id);
         return Result.success("删除成功", null);

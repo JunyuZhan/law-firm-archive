@@ -21,6 +21,7 @@ import java.util.stream.Collectors;
 
 /**
  * 系统配置服务实现
+ * @author junyuzhan
  */
 @Slf4j
 @Service
@@ -131,6 +132,55 @@ public class ConfigServiceImpl implements ConfigService {
                 throw e;
             }
         }
+    }
+
+    @Override
+    @Transactional
+    public void saveConfig(String key, String value, String group, String description, String type, Boolean editable, Integer sortOrder) {
+        SysConfig existing = configMapper.selectByKey(key);
+        if (existing != null) {
+            existing.setConfigValue(value);
+            if (group != null) {
+                existing.setConfigGroup(group);
+            }
+            if (description != null) {
+                existing.setDescription(description);
+            }
+            if (type != null) {
+                existing.setConfigType(type);
+            }
+            if (editable != null) {
+                existing.setEditable(editable);
+            }
+            if (sortOrder != null) {
+                existing.setSortOrder(sortOrder);
+            }
+            existing.setUpdatedAt(LocalDateTime.now());
+            existing.setUpdatedBy(SecurityUtils.getCurrentUserId());
+            configMapper.updateById(existing);
+        } else {
+            SysConfig config = SysConfig.builder()
+                    .configKey(key)
+                    .configValue(value)
+                    .configGroup(group)
+                    .description(description)
+                    .configType(type != null ? type : SysConfig.TYPE_STRING)
+                    .editable(editable != null ? editable : true)
+                    .sortOrder(sortOrder != null ? sortOrder : 0)
+                    .createdAt(LocalDateTime.now())
+                    .updatedAt(LocalDateTime.now())
+                    .createdBy(SecurityUtils.getCurrentUserId())
+                    .updatedBy(SecurityUtils.getCurrentUserId())
+                    .build();
+            configMapper.insert(config);
+        }
+
+        if (value != null) {
+            configCache.put(key, value);
+        } else {
+            configCache.remove(key);
+        }
+        log.info("配置保存: key={}, value={}", key, value);
     }
 
     @Override

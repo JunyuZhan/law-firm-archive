@@ -1,8 +1,5 @@
 package com.archivesystem.service;
 
-import com.archivesystem.entity.Archive;
-import com.archivesystem.entity.BorrowApplication;
-import com.archivesystem.entity.DigitalFile;
 import com.archivesystem.repository.ArchiveMapper;
 import com.archivesystem.repository.BorrowApplicationMapper;
 import com.archivesystem.repository.DigitalFileMapper;
@@ -14,14 +11,17 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
+/**
+ * @author junyuzhan
+ */
 
 @ExtendWith(MockitoExtension.class)
 class StatisticsServiceTest {
@@ -60,7 +60,10 @@ class StatisticsServiceTest {
 
     @Test
     void testCountByArchiveType() {
-        when(archiveMapper.selectCount(any())).thenReturn(20L);
+        when(archiveMapper.countByArchiveType()).thenReturn(List.of(
+                countRow("type", "DOCUMENT", 20L),
+                countRow("type", "SCIENCE", 3L)
+        ));
 
         List<Map<String, Object>> result = statisticsService.countByArchiveType();
 
@@ -82,7 +85,10 @@ class StatisticsServiceTest {
 
     @Test
     void testCountByRetentionPeriod() {
-        when(archiveMapper.selectCount(any())).thenReturn(15L);
+        when(archiveMapper.countByRetentionPeriod()).thenReturn(List.of(
+                countRow("period", "PERMANENT", 15L),
+                countRow("period", "Y30", 2L)
+        ));
 
         List<Map<String, Object>> result = statisticsService.countByRetentionPeriod();
 
@@ -104,7 +110,10 @@ class StatisticsServiceTest {
 
     @Test
     void testCountByStatus() {
-        when(archiveMapper.selectCount(any())).thenReturn(25L);
+        when(archiveMapper.countByStatus()).thenReturn(List.of(
+                countRow("status", "RECEIVED", 25L),
+                countRow("status", "STORED", 8L)
+        ));
 
         List<Map<String, Object>> result = statisticsService.countByStatus();
 
@@ -124,7 +133,10 @@ class StatisticsServiceTest {
 
     @Test
     void testCountByMonth() {
-        when(archiveMapper.selectCount(any())).thenReturn(8L);
+        when(archiveMapper.countByMonth(2026)).thenReturn(List.of(
+                countRow("month", 1, 8L),
+                countRow("month", 2, 5L)
+        ));
 
         List<Map<String, Object>> result = statisticsService.countByMonth(2026);
 
@@ -154,34 +166,32 @@ class StatisticsServiceTest {
 
     @Test
     void testGetStorageStatistics() {
-        // 由于 MyBatis-Plus Lambda 表达式需要初始化，简化测试只验证基本逻辑
-        DigitalFile file1 = new DigitalFile();
-        file1.setFileSize(1024L * 1024L); // 1 MB
+        when(digitalFileMapper.selectStorageSummary()).thenReturn(Map.of(
+                "totalSize", 3L * 1024 * 1024,
+                "fileCount", 3L
+        ));
 
-        DigitalFile file2 = new DigitalFile();
-        file2.setFileSize(2048L * 1024L); // 2 MB
+        Map<String, Object> result = statisticsService.getStorageStatistics();
 
-        DigitalFile file3 = new DigitalFile();
-        file3.setFileSize(null); // null size
-
-        // 使用 any() 匹配器来避免 Lambda cache 问题
-        lenient().when(digitalFileMapper.selectList(any())).thenReturn(Arrays.asList(file1, file2, file3));
-
-        // 由于 MyBatis-Plus Lambda cache 问题，此测试在单元测试环境中可能无法运行
-        // 在集成测试中可以正常运行
+        assertEquals(3L * 1024 * 1024, result.get("totalSize"));
+        assertEquals(3L, result.get("fileCount"));
+        assertEquals("3.00 MB", result.get("totalSizeFormatted"));
     }
 
     @Test
     void testGetStorageStatistics_EmptyFiles() {
-        // 由于 MyBatis-Plus Lambda 表达式需要初始化，此测试在集成测试中验证
-        lenient().when(digitalFileMapper.selectList(any())).thenReturn(Arrays.asList());
-        // 验证 mock 设置正确
-        assertNotNull(digitalFileMapper);
+        when(digitalFileMapper.selectStorageSummary()).thenReturn(new HashMap<>());
+
+        Map<String, Object> result = statisticsService.getStorageStatistics();
+
+        assertEquals(0L, result.get("totalSize"));
+        assertEquals(0L, result.get("fileCount"));
+        assertEquals("0 B", result.get("totalSizeFormatted"));
     }
 
     @Test
     void testCountByArchiveType_ZeroCounts() {
-        when(archiveMapper.selectCount(any())).thenReturn(0L);
+        when(archiveMapper.countByArchiveType()).thenReturn(new ArrayList<>());
 
         List<Map<String, Object>> result = statisticsService.countByArchiveType();
 
@@ -206,8 +216,9 @@ class StatisticsServiceTest {
 
     @Test
     void testCountByMonth_LeapYear() {
-        // 2024年是闰年，测试2月份统计
-        when(archiveMapper.selectCount(any())).thenReturn(5L);
+        when(archiveMapper.countByMonth(2024)).thenReturn(List.of(
+                countRow("month", 2, 5L)
+        ));
 
         List<Map<String, Object>> result = statisticsService.countByMonth(2024);
 
@@ -221,17 +232,59 @@ class StatisticsServiceTest {
 
     @Test
     void testStorageStatistics_LargeFiles() {
-        // 由于 MyBatis-Plus Lambda cache 问题，此测试在集成测试中验证
-        lenient().when(digitalFileMapper.selectList(any())).thenReturn(Arrays.asList());
-        // 验证 mock 设置正确
-        assertNotNull(digitalFileMapper);
+        when(digitalFileMapper.selectStorageSummary()).thenReturn(Map.of(
+                "totalSize", 5L * 1024 * 1024 * 1024,
+                "fileCount", 1L
+        ));
+
+        Map<String, Object> result = statisticsService.getStorageStatistics();
+
+        assertEquals("5.00 GB", result.get("totalSizeFormatted"));
     }
 
     @Test
     void testStorageStatistics_SmallFiles() {
-        // 由于 MyBatis-Plus Lambda cache 问题，此测试在集成测试中验证
-        lenient().when(digitalFileMapper.selectList(any())).thenReturn(Arrays.asList());
-        // 验证 mock 设置正确
-        assertNotNull(digitalFileMapper);
+        when(digitalFileMapper.selectStorageSummary()).thenReturn(Map.of(
+                "totalSize", 512L,
+                "fileCount", 1L
+        ));
+
+        Map<String, Object> result = statisticsService.getStorageStatistics();
+
+        assertEquals("512 B", result.get("totalSizeFormatted"));
+    }
+
+    @Test
+    void testGetScanBatchStatistics() {
+        when(digitalFileMapper.selectScanBatchSummaries("SCAN-20260330")).thenReturn(List.of(
+                Map.of(
+                        "scanBatchNo", "SCAN-20260330-01",
+                        "fileCount", 8L,
+                        "archiveCount", 3L,
+                        "scannedFileCount", 8L,
+                        "passedCount", 6L,
+                        "pendingCount", 1L,
+                        "failedCount", 1L,
+                        "latestScanTime", "2026-03-30 09:30:00"
+                )
+        ));
+
+        List<Map<String, Object>> result = statisticsService.getScanBatchStatistics("SCAN-20260330");
+
+        assertEquals(1, result.size());
+        assertEquals("SCAN-20260330-01", result.get(0).get("scanBatchNo"));
+        assertEquals(8L, result.get(0).get("fileCount"));
+        assertEquals(3L, result.get(0).get("archiveCount"));
+        assertEquals(7L, result.get(0).get("reviewedCount"));
+        assertEquals(100D, result.get(0).get("scanCoverageRate"));
+        assertEquals(87.5D, result.get(0).get("reviewCompletionRate"));
+        assertEquals(85.71428571428571D, result.get(0).get("passRate"));
+    }
+
+    private Map<String, Object> countRow(String key, Object value, long count) {
+        Map<String, Object> row = new HashMap<>();
+        row.put(key, value);
+        row.put("count", count);
+        return row;
     }
 }

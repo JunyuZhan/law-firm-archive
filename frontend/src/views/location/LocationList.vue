@@ -5,6 +5,13 @@
         <div class="card-header">
           <span>存放位置管理</span>
           <div class="header-actions">
+            <el-input
+              v-model="filters.keyword"
+              placeholder="位置编码/名称/区域/架号"
+              clearable
+              style="width: 220px; margin-right: 10px"
+              @keyup.enter="handleSearch"
+            />
             <el-select
               v-model="filters.roomName"
               placeholder="选择库房"
@@ -44,6 +51,9 @@
               @click="handleCreate"
             >
               <el-icon><Plus /></el-icon> 新增位置
+            </el-button>
+            <el-button @click="handleReset">
+              重置
             </el-button>
           </div>
         </div>
@@ -293,7 +303,8 @@ const rooms = ref([])
 
 const filters = reactive({
   roomName: '',
-  status: ''
+  status: '',
+  keyword: ''
 })
 
 const pagination = reactive({
@@ -358,6 +369,7 @@ const loadData = async () => {
     const res = await locationApi.list({
       roomName: filters.roomName,
       status: filters.status,
+      keyword: filters.keyword,
       pageNum: pagination.pageNum,
       pageSize: pagination.pageSize
     })
@@ -384,6 +396,13 @@ const loadRooms = async () => {
 const handleSearch = () => {
   pagination.pageNum = 1
   loadData()
+}
+
+const handleReset = () => {
+  filters.roomName = ''
+  filters.status = ''
+  filters.keyword = ''
+  handleSearch()
 }
 
 // 新增

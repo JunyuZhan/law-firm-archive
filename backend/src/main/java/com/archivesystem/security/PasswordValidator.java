@@ -8,6 +8,7 @@ import java.util.regex.Pattern;
 
 /**
  * 密码强度验证器.
+ * @author junyuzhan
  */
 @Component
 public class PasswordValidator {

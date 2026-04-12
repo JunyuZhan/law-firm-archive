@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 
 /**
  * 档案文件实体类.
+ * @author junyuzhan
  */
 @Data
 @Builder

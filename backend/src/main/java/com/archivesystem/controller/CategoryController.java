@@ -16,6 +16,7 @@ import java.util.Map;
 
 /**
  * 分类管理控制器.
+ * @author junyuzhan
  */
 @RestController
 @RequestMapping("/categories")
@@ -27,7 +28,7 @@ public class CategoryController {
 
     @PostMapping
     @Operation(summary = "创建分类")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
     public Result<Category> create(@Valid @RequestBody Category category) {
         Category created = categoryService.create(category);
         return Result.success("创建成功", created);
@@ -35,7 +36,7 @@ public class CategoryController {
 
     @PutMapping("/{id}")
     @Operation(summary = "更新分类")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
     public Result<Category> update(@PathVariable Long id, @Valid @RequestBody Category category) {
         Category updated = categoryService.update(id, category);
         return Result.success("更新成功", updated);
@@ -73,7 +74,7 @@ public class CategoryController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "删除分类")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
     public Result<Void> delete(@PathVariable Long id) {
         categoryService.delete(id);
         return Result.success("删除成功", null);
@@ -81,7 +82,7 @@ public class CategoryController {
 
     @PutMapping("/{id}/move")
     @Operation(summary = "移动分类")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
     public Result<Void> move(@PathVariable Long id, @RequestParam(required = false) Long newParentId) {
         categoryService.move(id, newParentId);
         return Result.success("移动成功", null);

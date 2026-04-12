@@ -1,7 +1,12 @@
 <template>
   <div class="user-manage">
+    <div class="page-header">
+      <h1>用户管理</h1>
+      <p>统一维护系统用户、状态和角色分配，适合安全管理员和系统管理员日常使用。</p>
+    </div>
+
     <!-- 搜索区域 -->
-    <el-card class="search-card">
+    <el-card class="search-card" shadow="never">
       <el-form
         :model="queryParams"
         inline
@@ -20,19 +25,13 @@
             v-model="queryParams.userType"
             placeholder="全部"
             clearable
-            style="width: 120px"
+            style="width: 160px"
           >
             <el-option
-              label="管理员"
-              value="ADMIN"
-            />
-            <el-option
-              label="档案员"
-              value="ARCHIVIST"
-            />
-            <el-option
-              label="普通用户"
-              value="USER"
+              v-for="option in userTypeOptions"
+              :key="option.value"
+              :label="option.label"
+              :value="option.value"
             />
           </el-select>
         </el-form-item>
@@ -72,7 +71,7 @@
     </el-card>
 
     <!-- 操作按钮 -->
-    <el-card class="table-card">
+    <el-card class="table-card" shadow="never">
       <template #header>
         <div class="card-header">
           <span>用户列表</span>
@@ -155,9 +154,30 @@
         >
           <template #default="{ row }">
             <div class="operation-buttons">
-              <el-button link type="primary" size="small" @click="handleEdit(row)">编辑</el-button>
-              <el-button link type="primary" size="small" @click="handleAssignRole(row)">分配</el-button>
-              <el-button link type="warning" size="small" @click="handleResetPassword(row)">重置</el-button>
+              <el-button
+                link
+                type="primary"
+                size="small"
+                @click="handleEdit(row)"
+              >
+                编辑
+              </el-button>
+              <el-button
+                link
+                type="primary"
+                size="small"
+                @click="handleAssignRole(row)"
+              >
+                分配
+              </el-button>
+              <el-button
+                link
+                type="warning"
+                size="small"
+                @click="handleResetPassword(row)"
+              >
+                重置
+              </el-button>
               <el-button 
                 link 
                 :type="row.status === 'ACTIVE' ? 'danger' : 'success'" 
@@ -171,7 +191,13 @@
                 @confirm="handleDelete(row)"
               >
                 <template #reference>
-                  <el-button link type="danger" size="small">删除</el-button>
+                  <el-button
+                    link
+                    type="danger"
+                    size="small"
+                  >
+                    删除
+                  </el-button>
                 </template>
               </el-popconfirm>
             </div>
@@ -196,96 +222,102 @@
     <el-dialog
       v-model="dialogVisible"
       :title="dialogTitle"
-      width="500px"
+      width="680px"
       destroy-on-close
+      class="user-edit-dialog"
     >
       <el-form
         ref="formRef"
         :model="form"
         :rules="formRules"
-        label-width="80px"
+        label-width="96px"
+        class="user-edit-form"
       >
-        <el-form-item
-          label="用户名"
-          prop="username"
-        >
-          <el-input
-            v-model="form.username"
-            placeholder="请输入用户名"
-            :disabled="!!form.id"
-          />
-        </el-form-item>
-        <el-form-item
-          v-if="!form.id"
-          label="密码"
-          prop="password"
-        >
-          <el-input
-            v-model="form.password"
-            type="password"
-            placeholder="请输入密码"
-            show-password
-          />
-        </el-form-item>
-        <el-form-item
-          label="姓名"
-          prop="realName"
-        >
-          <el-input
-            v-model="form.realName"
-            placeholder="请输入姓名"
-          />
-        </el-form-item>
-        <el-form-item
-          label="手机号"
-          prop="phone"
-        >
-          <el-input
-            v-model="form.phone"
-            placeholder="请输入手机号"
-          />
-        </el-form-item>
-        <el-form-item
-          label="邮箱"
-          prop="email"
-        >
-          <el-input
-            v-model="form.email"
-            placeholder="请输入邮箱"
-          />
-        </el-form-item>
-        <el-form-item
-          label="用户类型"
-          prop="userType"
-        >
-          <el-select
-            v-model="form.userType"
-            placeholder="请选择用户类型"
-            style="width: 100%"
+        <div class="form-section-title">账号信息</div>
+        <div class="user-form-grid">
+          <el-form-item
+            label="用户名"
+            prop="username"
           >
-            <el-option
-              label="管理员"
-              value="ADMIN"
+            <el-input
+              v-model="form.username"
+              placeholder="请输入用户名"
+              :disabled="!!form.id"
             />
-            <el-option
-              label="档案员"
-              value="ARCHIVIST"
+          </el-form-item>
+          <el-form-item
+            v-if="!form.id"
+            label="密码"
+            prop="password"
+          >
+            <el-input
+              v-model="form.password"
+              type="password"
+              placeholder="请输入初始密码"
+              show-password
             />
-            <el-option
-              label="普通用户"
-              value="USER"
+          </el-form-item>
+        </div>
+        <div class="form-section-title">身份信息</div>
+        <div class="user-form-grid">
+          <el-form-item
+            label="姓名"
+            prop="realName"
+          >
+            <el-input
+              v-model="form.realName"
+              placeholder="请输入姓名"
             />
-          </el-select>
-        </el-form-item>
-        <el-form-item
-          label="部门"
-          prop="department"
-        >
-          <el-input
-            v-model="form.department"
-            placeholder="请输入部门"
-          />
-        </el-form-item>
+          </el-form-item>
+          <el-form-item
+            label="部门"
+            prop="department"
+          >
+            <el-input
+              v-model="form.department"
+              placeholder="请输入部门"
+            />
+          </el-form-item>
+          <el-form-item
+            label="手机号"
+            prop="phone"
+          >
+            <el-input
+              v-model="form.phone"
+              placeholder="请输入手机号"
+            />
+          </el-form-item>
+          <el-form-item
+            label="邮箱"
+            prop="email"
+          >
+            <el-input
+              v-model="form.email"
+              placeholder="请输入邮箱"
+            />
+          </el-form-item>
+          <el-form-item
+            label="用户类型"
+            prop="userType"
+            class="span-2"
+          >
+            <el-select
+              v-model="form.userType"
+              placeholder="请选择用户类型"
+              style="width: 100%"
+            >
+              <el-option
+                v-for="option in userTypeOptions"
+                :key="option.value"
+                :label="option.label"
+                :value="option.value"
+              />
+            </el-select>
+            <div class="form-tip">
+              按职责划分系统管理员、安全管理员、审计管理员、档案员和普通用户。
+            </div>
+          </el-form-item>
+        </div>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">
@@ -305,13 +337,17 @@
     <el-dialog
       v-model="roleDialogVisible"
       title="分配角色"
-      width="400px"
+      width="560px"
       destroy-on-close
+      class="role-assign-dialog"
     >
-      <div style="margin-bottom: 10px">
+      <div class="role-dialog-header">
         <span>用户：</span><strong>{{ currentUser?.realName || currentUser?.username }}</strong>
       </div>
-      <el-checkbox-group v-model="selectedRoles">
+      <el-checkbox-group
+        v-model="selectedRoles"
+        class="role-checkbox-group"
+      >
         <el-checkbox
           v-for="role in roleList"
           :key="role.id"
@@ -397,6 +433,13 @@ import { ElMessage } from 'element-plus'
 import { Search, Refresh, Plus } from '@element-plus/icons-vue'
 import { getUserList, createUser, updateUser, deleteUser, resetPassword, updateUserStatus, getUserRoles, assignRoles } from '@/api/user'
 import { getRoleList } from '@/api/role'
+
+const userTypeOptions = [
+  { value: 'SYSTEM_ADMIN', label: '系统管理员' },
+  { value: 'ARCHIVE_REVIEWER', label: '档案审核员' },
+  { value: 'ARCHIVE_MANAGER', label: '档案管理员' },
+  { value: 'USER', label: '普通用户' }
+]
 
 // 查询参数
 const queryParams = reactive({
@@ -592,12 +635,22 @@ async function handleSubmitResetPwd() {
 }
 
 function getUserTypeLabel(type) {
-  const map = { ADMIN: '管理员', ARCHIVIST: '档案员', USER: '普通用户' }
+  const map = {
+    SYSTEM_ADMIN: '系统管理员',
+    ARCHIVE_REVIEWER: '档案审核员',
+    ARCHIVE_MANAGER: '档案管理员',
+    USER: '普通用户'
+  }
   return map[type] || type
 }
 
 function getUserTypeTag(type) {
-  const map = { ADMIN: 'danger', ARCHIVIST: 'warning', USER: '' }
+  const map = {
+    SYSTEM_ADMIN: 'danger',
+    ARCHIVE_REVIEWER: 'warning',
+    ARCHIVE_MANAGER: 'info',
+    USER: ''
+  }
   return map[type] || ''
 }
 
@@ -609,15 +662,80 @@ function formatDate(dateStr) {
 
 <style scoped>
 .user-manage {
-  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.page-header h1 {
+  margin: 0 0 8px;
+  font-size: 24px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.page-header p {
+  margin: 0;
+  line-height: 1.6;
+  color: #606266;
+}
+
+.user-edit-form .form-section-title {
+  margin: 4px 0 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #34495e;
+}
+
+.user-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 16px;
+}
+
+.span-2 {
+  grid-column: 1 / -1;
+}
+
+.form-tip {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #8c8c8c;
+}
+
+.role-dialog-header {
+  margin-bottom: 12px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #f5f7fa;
+  color: #606266;
+}
+
+.role-checkbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 320px;
+  overflow: auto;
+}
+
+@media (max-width: 768px) {
+  .user-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .span-2 {
+    grid-column: auto;
+  }
 }
 
 .search-card {
-  margin-bottom: 16px;
+  border-radius: 10px;
 }
 
 .table-card {
-  margin-bottom: 16px;
+  border-radius: 10px;
 }
 
 .card-header {

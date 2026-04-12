@@ -8,9 +8,11 @@ import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 电子借阅链接Mapper接口.
+ * @author junyuzhan
  */
 @Mapper
 public interface BorrowLinkMapper extends BaseMapper<BorrowLink> {
@@ -56,4 +58,18 @@ public interface BorrowLinkMapper extends BaseMapper<BorrowLink> {
      */
     @Select("SELECT * FROM arc_borrow_link WHERE source_user_id = #{sourceUserId} AND source_type = #{sourceType} ORDER BY created_at DESC")
     List<BorrowLink> selectBySourceUser(@Param("sourceUserId") String sourceUserId, @Param("sourceType") String sourceType);
+
+    /**
+     * 聚合统计链接总量、状态分布以及访问下载次数.
+     */
+    @Select("""
+            SELECT COUNT(*) AS totalCount,
+                   SUM(CASE WHEN status = 'ACTIVE' THEN 1 ELSE 0 END) AS activeCount,
+                   SUM(CASE WHEN status = 'EXPIRED' THEN 1 ELSE 0 END) AS expiredCount,
+                   SUM(CASE WHEN status = 'REVOKED' THEN 1 ELSE 0 END) AS revokedCount,
+                   COALESCE(SUM(access_count), 0) AS totalAccessCount,
+                   COALESCE(SUM(download_count), 0) AS totalDownloadCount
+            FROM arc_borrow_link
+            """)
+    Map<String, Object> selectAggregateStats();
 }

@@ -24,6 +24,7 @@ import java.util.List;
 
 /**
  * 鉴定管理服务实现.
+ * @author junyuzhan
  */
 @Slf4j
 @Service

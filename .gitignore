@@ -42,4 +42,7 @@ docker-compose.override.yml
 .env
 .env.local
 .env.*.local
+
+# Local AI / IDE helpers
+.claude/
 .gitnexus

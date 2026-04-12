@@ -10,6 +10,7 @@ import java.util.List;
 
 /**
  * 存放位置Mapper接口.
+ * @author junyuzhan
  */
 @Mapper
 public interface ArchiveLocationMapper extends BaseMapper<ArchiveLocation> {

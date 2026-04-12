@@ -16,6 +16,7 @@ import java.time.LocalDateTime;
 /**
  * 档案元数据实体类.
  * 对应数据库表: arc_metadata
+ * @author junyuzhan
  */
 @Data
 @Builder

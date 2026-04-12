@@ -10,6 +10,7 @@ import java.util.List;
 
 /**
  * 批量销毁申请请求DTO.
+ * @author junyuzhan
  */
 @Data
 @Schema(description = "批量销毁申请请求")

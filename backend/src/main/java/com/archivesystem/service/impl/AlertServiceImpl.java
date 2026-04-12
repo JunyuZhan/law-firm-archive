@@ -23,6 +23,7 @@ import java.util.Map;
 /**
  * 告警通知服务实现.
  * 支持邮件和钉钉机器人通知.
+ * @author junyuzhan
  */
 @Slf4j
 @Service
@@ -30,7 +31,7 @@ import java.util.Map;
 public class AlertServiceImpl implements AlertService {
 
     private final ObjectMapper objectMapper;
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate;
 
     private JavaMailSender mailSender;
 

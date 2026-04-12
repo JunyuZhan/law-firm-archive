@@ -13,6 +13,7 @@ import java.io.Serializable;
 /**
  * 用户角色关联实体类.
  * 对应数据库表: sys_user_role
+ * @author junyuzhan
  */
 @Data
 @Builder

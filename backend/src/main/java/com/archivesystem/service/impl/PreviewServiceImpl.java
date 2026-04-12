@@ -24,6 +24,7 @@ import java.util.UUID;
 
 /**
  * 文件预览服务实现.
+ * @author junyuzhan
  */
 @Slf4j
 @Service

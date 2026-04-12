@@ -12,6 +12,7 @@ import lombok.NoArgsConstructor;
 /**
  * 全宗实体类.
  * 对应数据库表: arc_fonds
+ * @author junyuzhan
  */
 @Data
 @Builder

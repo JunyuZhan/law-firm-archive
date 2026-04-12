@@ -8,6 +8,7 @@ import org.apache.ibatis.annotations.Select;
 
 /**
  * 全宗Mapper接口.
+ * @author junyuzhan
  */
 @Mapper
 public interface FondsMapper extends BaseMapper<Fonds> {

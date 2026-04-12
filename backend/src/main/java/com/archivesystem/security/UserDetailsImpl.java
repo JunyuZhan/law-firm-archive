@@ -8,10 +8,12 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
-import java.util.Collections;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Spring Security 用户详情实现.
+ * @author junyuzhan
  */
 @Data
 @AllArgsConstructor
@@ -21,6 +23,7 @@ public class UserDetailsImpl implements UserDetails {
     private String username;
     private String password;
     private String realName;
+    private String department;
     private String userType;
     private String status;
     private Collection<? extends GrantedAuthority> authorities;
@@ -29,17 +32,19 @@ public class UserDetailsImpl implements UserDetails {
      * 从User实体构建UserDetails.
      */
     public static UserDetailsImpl build(User user) {
-        // 根据用户类型生成权限
-        GrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + user.getUserType());
+        Set<GrantedAuthority> authorities = UserRoleUtils.resolveGrantedRoles(user.getUserType()).stream()
+                .map(role -> new SimpleGrantedAuthority("ROLE_" + role))
+                .collect(Collectors.toCollection(java.util.LinkedHashSet::new));
         
         return new UserDetailsImpl(
                 user.getId(),
                 user.getUsername(),
                 user.getPassword(),
                 user.getRealName(),
+                user.getDepartment(),
                 user.getUserType(),
                 user.getStatus(),
-                Collections.singletonList(authority)
+                authorities
         );
     }
 

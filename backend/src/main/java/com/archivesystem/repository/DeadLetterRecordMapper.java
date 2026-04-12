@@ -11,6 +11,7 @@ import java.util.List;
 
 /**
  * 死信消息记录 Mapper.
+ * @author junyuzhan
  */
 @Mapper
 public interface DeadLetterRecordMapper extends BaseMapper<DeadLetterRecord> {

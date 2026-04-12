@@ -5,9 +5,11 @@ import com.archivesystem.entity.ExternalSource;
 import com.archivesystem.mq.CallbackMessage;
 import com.archivesystem.repository.CallbackRecordMapper;
 import com.archivesystem.repository.ExternalSourceMapper;
+import com.archivesystem.security.OutboundUrlValidator;
 import com.archivesystem.service.CallbackService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -16,11 +18,14 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.util.HexFormat;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * 回调服务实现
+ * @author junyuzhan
  */
 @Slf4j
 @Service
@@ -29,30 +34,20 @@ public class CallbackServiceImpl implements CallbackService {
     private final ObjectMapper objectMapper;
     private final ExternalSourceMapper externalSourceMapper;
     private final CallbackRecordMapper callbackRecordMapper;
+    private final OutboundUrlValidator outboundUrlValidator;
     
-    // 配置了超时的 RestTemplate
     private final RestTemplate restTemplate;
     
-    // 回调超时时间（毫秒）
-    private static final int CALLBACK_CONNECT_TIMEOUT = 5000;  // 连接超时 5 秒
-    private static final int CALLBACK_READ_TIMEOUT = 30000;    // 读取超时 30 秒
-    
-    // 默认回调密钥（当无法获取配置时使用，生产环境应配置具体密钥）
-    private static final String DEFAULT_CALLBACK_SECRET = "archive-callback-secret";
-
     public CallbackServiceImpl(ObjectMapper objectMapper, 
                                ExternalSourceMapper externalSourceMapper,
-                               CallbackRecordMapper callbackRecordMapper) {
+                               CallbackRecordMapper callbackRecordMapper,
+                               OutboundUrlValidator outboundUrlValidator,
+                               @Qualifier("callbackRestTemplate") RestTemplate restTemplate) {
         this.objectMapper = objectMapper;
         this.externalSourceMapper = externalSourceMapper;
         this.callbackRecordMapper = callbackRecordMapper;
-        
-        // 配置 RestTemplate 超时
-        org.springframework.http.client.SimpleClientHttpRequestFactory factory = 
-                new org.springframework.http.client.SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(CALLBACK_CONNECT_TIMEOUT);
-        factory.setReadTimeout(CALLBACK_READ_TIMEOUT);
-        this.restTemplate = new RestTemplate(factory);
+        this.outboundUrlValidator = outboundUrlValidator;
+        this.restTemplate = restTemplate;
     }
 
     @Override
@@ -63,18 +58,26 @@ public class CallbackServiceImpl implements CallbackService {
         }
         
         try {
+            outboundUrlValidator.validate(message.getCallbackUrl(), "回调地址");
             // 构建回调请求体
             Map<String, Object> requestBody = buildCallbackPayload(message);
             String requestBodyJson = objectMapper.writeValueAsString(requestBody);
             
             // 获取回调密钥
             String callbackSecret = getCallbackSecret(message.getSourceType());
+            if (callbackSecret == null || callbackSecret.isBlank()) {
+                log.error("未找到可用的回调签名密钥，拒绝发送未签名回调: archiveId={}, sourceType={}",
+                        message.getArchiveId(), message.getSourceType());
+                return false;
+            }
             
             // 设置请求头
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             String timestamp = String.valueOf(System.currentTimeMillis());
+            String nonce = UUID.randomUUID().toString().replace("-", "");
             headers.set("X-Callback-Timestamp", timestamp);
+            headers.set("X-Callback-Nonce", nonce);
             headers.set("X-Callback-Source", "archive-system");
             
             // 生成签名（使用 HMAC-SHA256，与律所系统保持一致）
@@ -110,11 +113,15 @@ public class CallbackServiceImpl implements CallbackService {
     }
     
     /**
-     * 获取回调密钥
-     * 按 sourceType 查询外部来源配置，否则使用默认密钥
+     * 获取回调密钥。
+     * 仅允许使用已配置来源的 API Key 作为签名密钥，避免落回弱默认值。
      */
     private String getCallbackSecret(String sourceType) {
-        if (sourceType != null) {
+        if (externalSourceMapper == null) {
+            log.warn("ExternalSourceMapper 未注入，无法解析回调签名密钥");
+            return null;
+        }
+        if (sourceType != null && !sourceType.isBlank()) {
             try {
                 // 先按 sourceCode 查，再按 sourceType 查
                 ExternalSource source = externalSourceMapper.selectBySourceCode(sourceType);
@@ -126,11 +133,11 @@ public class CallbackServiceImpl implements CallbackService {
                     return source.getApiKey();
                 }
             } catch (Exception e) {
-                log.warn("获取外部来源配置失败，使用默认密钥: sourceType={}, error={}", sourceType, e.getMessage());
+                log.warn("获取外部来源配置失败: sourceType={}, error={}", sourceType, e.getMessage());
             }
         }
-        log.warn("未找到外部来源配置，使用默认密钥: sourceType={}", sourceType);
-        return DEFAULT_CALLBACK_SECRET;
+        log.warn("未找到启用的外部来源密钥配置: sourceType={}", sourceType);
+        return null;
     }
     
     /**
@@ -157,11 +164,7 @@ public class CallbackServiceImpl implements CallbackService {
      * 字节数组转十六进制字符串
      */
     private String bytesToHex(byte[] bytes) {
-        StringBuilder sb = new StringBuilder();
-        for (byte b : bytes) {
-            sb.append(String.format("%02x", b));
-        }
-        return sb.toString();
+        return HexFormat.of().formatHex(bytes);
     }
 
     @Override
@@ -174,6 +177,10 @@ public class CallbackServiceImpl implements CallbackService {
         
         // 持久化失败的回调记录，便于后续人工处理或重试
         try {
+            if (callbackRecordMapper == null) {
+                log.warn("CallbackRecordMapper 未注入，跳过失败回调持久化: archiveId={}", message.getArchiveId());
+                return;
+            }
             CallbackRecord record = CallbackRecord.builder()
                     .archiveId(message.getArchiveId())
                     .archiveNo(message.getArchiveNo())
@@ -217,10 +224,9 @@ public class CallbackServiceImpl implements CallbackService {
         payload.put("failedCount", message.getFailedCount());
         payload.put("totalCount", message.getTotalCount());
         
-        // 时间和签名相关
+        // 回调验签只以请求头中的 timestamp 为准，避免头/body 双时间戳口径混用
         payload.put("completedAt", message.getCompletedAt() != null ? 
                 message.getCompletedAt().toString() : LocalDateTime.now().toString());
-        payload.put("timestamp", System.currentTimeMillis());
         
         // 错误信息
         if (message.getErrorMessage() != null) {
@@ -234,6 +240,9 @@ public class CallbackServiceImpl implements CallbackService {
      * 构建状态消息
      */
     private String buildStatusMessage(CallbackMessage message) {
+        if (message.getStatus() == null) {
+            return "档案处理状态未知";
+        }
         return switch (message.getStatus()) {
             case CallbackMessage.STATUS_SUCCESS -> "档案处理完成";
             case CallbackMessage.STATUS_PARTIAL -> 

@@ -7,6 +7,7 @@ import java.util.Map;
 
 /**
  * 死信消息服务接口.
+ * @author junyuzhan
  */
 public interface DeadLetterService {
 

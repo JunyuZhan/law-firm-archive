@@ -8,6 +8,7 @@ import org.apache.ibatis.annotations.Param;
 
 /**
  * 用户角色关联Mapper接口.
+ * @author junyuzhan
  */
 @Mapper
 public interface UserRoleMapper extends BaseMapper<UserRole> {

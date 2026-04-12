@@ -1,7 +1,12 @@
 <template>
   <div class="operation-log">
+    <div class="page-header">
+      <h1>操作日志</h1>
+      <p>按对象、操作类型和时间范围追踪系统行为，满足审计留痕与问题追踪需求。</p>
+    </div>
+
     <!-- 搜索区域 -->
-    <el-card class="search-card">
+    <el-card class="search-card" shadow="never">
       <el-form
         :model="queryParams"
         inline
@@ -118,18 +123,15 @@
     </el-card>
 
     <!-- 统计卡片 -->
-    <el-row
-      :gutter="16"
-      class="stat-row"
-    >
-      <el-col
+    <div class="stat-grid">
+      <div
         v-for="(stat, key) in statistics"
         :key="key"
-        :span="4"
+        class="stat-grid-item"
       >
         <el-card
           class="stat-card"
-          shadow="hover"
+          shadow="never"
         >
           <div class="stat-value">
             {{ stat }}
@@ -138,11 +140,11 @@
             {{ getOperationLabel(key) }}
           </div>
         </el-card>
-      </el-col>
-    </el-row>
+      </div>
+    </div>
 
     <!-- 日志表格 -->
-    <el-card class="table-card">
+    <el-card class="table-card" shadow="never">
       <template #header>
         <span>操作日志</span>
       </template>
@@ -465,39 +467,77 @@ function formatDate(dateStr) {
 
 <style scoped>
 .operation-log {
-  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.page-header h1 {
+  margin: 0 0 8px;
+  font-size: 24px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.page-header p {
+  margin: 0;
+  line-height: 1.6;
+  color: #606266;
 }
 
 .search-card {
-  margin-bottom: 16px;
+  border-radius: 10px;
 }
 
-.stat-row {
-  margin-bottom: 16px;
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+  gap: 12px;
 }
 
 .stat-card {
-  text-align: center;
+  border-radius: 10px;
+
+  :deep(.el-card__body) {
+    min-height: 88px;
+    padding: 16px 12px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
+  }
 }
 
 .stat-value {
   font-size: 24px;
-  font-weight: bold;
+  font-weight: 600;
   color: #409eff;
 }
 
 .stat-label {
-  font-size: 14px;
-  color: #666;
-  margin-top: 4px;
+  font-size: 13px;
+  color: #909399;
+  margin-top: 6px;
 }
 
 .table-card {
-  margin-bottom: 16px;
+  border-radius: 10px;
 }
 
 .pagination {
   margin-top: 16px;
   justify-content: flex-end;
+}
+
+@media (max-width: 768px) {
+  .stat-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .stat-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

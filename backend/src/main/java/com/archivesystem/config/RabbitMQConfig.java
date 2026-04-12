@@ -17,6 +17,7 @@ import org.springframework.context.annotation.Configuration;
  * - archive.receive.queue: 档案接收处理队列
  * - archive.receive.dlq: 死信队列（处理失败的消息）
  * - archive.callback.queue: 回调通知队列
+ * @author junyuzhan
  */
 @Slf4j
 @Configuration

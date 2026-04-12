@@ -14,6 +14,7 @@ import java.time.LocalDateTime;
 /**
  * 访问日志实体类.
  * 对应数据库表: arc_access_log
+ * @author junyuzhan
  */
 @Data
 @Builder

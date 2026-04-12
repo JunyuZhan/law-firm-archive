@@ -9,6 +9,7 @@ import java.util.List;
 
 /**
  * 批量执行销毁请求DTO.
+ * @author junyuzhan
  */
 @Data
 @Schema(description = "批量执行销毁请求")

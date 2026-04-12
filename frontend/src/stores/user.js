@@ -17,7 +17,7 @@ export const useUserStore = defineStore('user', () => {
 
   // 计算属性
   const isAdmin = computed(() => userType.value === 'SYSTEM_ADMIN')
-  const isArchivist = computed(() => ['SYSTEM_ADMIN', 'ARCHIVIST'].includes(userType.value))
+  const isArchivist = computed(() => ['SYSTEM_ADMIN', 'ARCHIVE_MANAGER'].includes(userType.value))
 
   // 初始化 - 从localStorage恢复状态
   function init() {

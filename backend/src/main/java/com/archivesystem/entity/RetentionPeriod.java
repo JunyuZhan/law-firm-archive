@@ -16,6 +16,7 @@ import java.time.LocalDateTime;
 /**
  * 保管期限实体类.
  * 对应数据库表: arc_retention_period
+ * @author junyuzhan
  */
 @Data
 @Builder

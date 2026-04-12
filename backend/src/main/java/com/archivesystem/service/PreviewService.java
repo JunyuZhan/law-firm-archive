@@ -4,6 +4,7 @@ import com.archivesystem.entity.DigitalFile;
 
 /**
  * 文件预览服务接口.
+ * @author junyuzhan
  */
 public interface PreviewService {
 

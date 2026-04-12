@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
@@ -11,6 +12,7 @@ import java.time.LocalDate;
 
 /**
  * 借阅申请请求DTO.
+ * @author junyuzhan
  */
 @Data
 @Schema(description = "借阅申请请求")
@@ -29,6 +31,11 @@ public class BorrowApplyRequest {
     @Future(message = "预计归还日期必须是将来的日期")
     @Schema(description = "预计归还日期", example = "2026-03-01", required = true)
     private LocalDate expectedReturnDate;
+
+    @NotBlank(message = "借阅方式不能为空")
+    @Pattern(regexp = "ONLINE|DOWNLOAD|COPY", message = "借阅方式不合法")
+    @Schema(description = "借阅方式", example = "ONLINE", allowableValues = {"ONLINE", "DOWNLOAD", "COPY"}, required = true)
+    private String borrowType;
 
     @Size(max = 500, message = "备注不能超过500字")
     @Schema(description = "备注", example = "请尽快审批")

@@ -10,6 +10,7 @@ import java.util.Map;
 
 /**
  * 档案搜索结果DTO
+ * @author junyuzhan
  */
 @Data
 @Builder

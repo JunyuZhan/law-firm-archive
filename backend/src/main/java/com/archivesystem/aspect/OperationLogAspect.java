@@ -1,5 +1,6 @@
 package com.archivesystem.aspect;
 
+import com.archivesystem.common.util.ClientIpUtils;
 import com.archivesystem.entity.OperationLog;
 import com.archivesystem.security.SecurityUtils;
 import com.archivesystem.service.OperationLogService;
@@ -25,6 +26,7 @@ import java.util.Map;
 /**
  * 操作日志切面.
  * 自动记录带有 @Log 注解的方法执行.
+ * @author junyuzhan
  */
 @Slf4j
 @Aspect
@@ -117,19 +119,6 @@ public class OperationLogAspect {
     }
 
     private String getClientIp(HttpServletRequest request) {
-        String ip = request.getHeader("X-Forwarded-For");
-        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getHeader("Proxy-Client-IP");
-        }
-        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getHeader("WL-Proxy-Client-IP");
-        }
-        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getRemoteAddr();
-        }
-        if (ip != null && ip.contains(",")) {
-            ip = ip.split(",")[0].trim();
-        }
-        return ip;
+        return ClientIpUtils.resolve(request);
     }
 }

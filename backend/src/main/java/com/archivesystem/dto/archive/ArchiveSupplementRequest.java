@@ -6,6 +6,7 @@ import java.util.List;
 
 /**
  * 档案补充上传请求DTO.
+ * @author junyuzhan
  */
 @Data
 public class ArchiveSupplementRequest {

@@ -11,6 +11,7 @@ import java.util.List;
 
 /**
  * 分页结果封装.
+ * @author junyuzhan
  */
 @Data
 @Builder

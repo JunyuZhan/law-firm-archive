@@ -9,6 +9,7 @@ import java.time.LocalDateTime;
 
 /**
  * 电子文件DTO.
+ * @author junyuzhan
  */
 @Data
 @Builder
@@ -47,6 +48,19 @@ public class DigitalFileDTO {
     private String fileCategoryName;
     private Integer sortOrder;
     private String description;
+    private Integer volumeNo;
+    private String sectionType;
+    private String documentNo;
+    private Integer pageStart;
+    private Integer pageEnd;
+    private String versionLabel;
+    private String fileSourceType;
+    private String scanBatchNo;
+    private String scanOperator;
+    private LocalDateTime scanTime;
+    private String scanCheckStatus;
+    private String scanCheckBy;
+    private LocalDateTime scanCheckTime;
     
     // OCR信息
     private String ocrStatus;

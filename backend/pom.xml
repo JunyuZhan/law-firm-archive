@@ -24,6 +24,7 @@
         <mybatis-plus.version>3.5.5</mybatis-plus.version>
         <knife4j.version>4.3.0</knife4j.version>
         <minio.version>8.5.7</minio.version>
+        <byte-buddy.version>1.14.11</byte-buddy.version>
     </properties>
 
     <dependencies>
@@ -116,6 +117,11 @@
             <artifactId>minio</artifactId>
             <version>${minio.version}</version>
         </dependency>
+        <dependency>
+            <groupId>eu.agno3.jcifs</groupId>
+            <artifactId>jcifs-ng</artifactId>
+            <version>2.1.10</version>
+        </dependency>
 
         <!-- API文档 -->
         <dependency>
@@ -186,6 +192,13 @@
                         </exclude>
                     </excludes>
                 </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>build-info</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
                 <groupId>org.jacoco</groupId>
@@ -205,6 +218,12 @@
                         </goals>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <argLine>@{argLine} -javaagent:${settings.localRepository}/net/bytebuddy/byte-buddy-agent/${byte-buddy.version}/byte-buddy-agent-${byte-buddy.version}.jar -Xshare:off</argLine>
+                </configuration>
             </plugin>
         </plugins>
     </build>

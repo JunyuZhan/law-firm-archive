@@ -7,6 +7,7 @@ import java.util.Map;
 
 /**
  * 系统配置服务接口
+ * @author junyuzhan
  */
 public interface ConfigService {
 
@@ -59,6 +60,11 @@ public interface ConfigService {
      * 批量更新配置
      */
     void batchUpdateConfigs(Map<String, String> configs);
+
+    /**
+     * 更新或创建配置.
+     */
+    void saveConfig(String key, String value, String group, String description, String type, Boolean editable, Integer sortOrder);
 
     /**
      * 创建配置

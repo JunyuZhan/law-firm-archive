@@ -2,6 +2,7 @@ package com.archivesystem.service.impl;
 
 import com.archivesystem.common.exception.BusinessException;
 import com.archivesystem.common.exception.NotFoundException;
+import com.archivesystem.common.util.ClientIpUtils;
 import com.archivesystem.entity.Archive;
 import com.archivesystem.entity.DestructionRecord;
 import com.archivesystem.entity.OperationLog;
@@ -13,13 +14,10 @@ import com.archivesystem.repository.RetentionPeriodMapper;
 import com.archivesystem.security.SecurityUtils;
 import com.archivesystem.service.RetentionService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -28,6 +26,7 @@ import java.util.Map;
 
 /**
  * 保管期限服务实现.
+ * @author junyuzhan
  */
 @Slf4j
 @Service
@@ -205,33 +204,7 @@ public class RetentionServiceImpl implements RetentionService {
      */
     private String getClientIp() {
         try {
-            ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
-            if (attributes == null) {
-                return "";
-            }
-            HttpServletRequest request = attributes.getRequest();
-            
-            // 优先从X-Forwarded-For获取（代理场景）
-            String ip = request.getHeader("X-Forwarded-For");
-            if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-                ip = request.getHeader("X-Real-IP");
-            }
-            if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-                ip = request.getHeader("Proxy-Client-IP");
-            }
-            if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-                ip = request.getHeader("WL-Proxy-Client-IP");
-            }
-            if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-                ip = request.getRemoteAddr();
-            }
-            
-            // 如果有多个IP（经过多个代理），取第一个
-            if (ip != null && ip.contains(",")) {
-                ip = ip.split(",")[0].trim();
-            }
-            
-            return ip != null ? ip : "";
+            return ClientIpUtils.resolveCurrentRequestIp();
         } catch (Exception e) {
             log.warn("获取客户端IP失败: {}", e.getMessage());
             return "";

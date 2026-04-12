@@ -3,6 +3,9 @@ package com.archivesystem.dto.auth;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
+/**
+ * @author junyuzhan
+ */
 
 class LoginRequestTest {
 

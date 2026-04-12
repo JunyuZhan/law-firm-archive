@@ -1,5 +1,33 @@
 <template>
   <div class="archive-list">
+    <div class="page-header">
+      <h1>档案列表</h1>
+      <p>按档案号、题名、来源和状态快速筛选电子档案，支持直接进入详情、接收和后续流转。</p>
+    </div>
+
+    <el-alert
+      title="业务提示"
+      type="info"
+      :closable="false"
+      show-icon
+    >
+      <template #default>
+        普通用户提交的档案会先进入待审核。审核通过后才会正式入库，已接收或整理中的档案仍需完成后续归档动作后才能借阅。
+      </template>
+    </el-alert>
+
+    <el-alert
+      v-if="route.query.created === '1'"
+      title="档案已创建完成"
+      type="success"
+      :closable="false"
+      show-icon
+    >
+      <template #default>
+        {{ route.query.submitted === '1' ? '入库申请已提交，当前进入待审核状态。' : '新建档案已保存。建议继续检查全宗、分类、电子文件和纸质位置，并尽快执行正式归档。' }}
+      </template>
+    </el-alert>
+
     <!-- 搜索区域 -->
     <el-card
       class="search-card"
@@ -33,6 +61,66 @@
             />
           </el-select>
         </el-form-item>
+        <el-form-item label="档案形式">
+          <el-select
+            v-model="searchForm.archiveForm"
+            placeholder="全部"
+            clearable
+            style="width: 120px"
+          >
+            <el-option
+              v-for="item in archiveFormOptions"
+              :key="item.value"
+              :label="item.label"
+              :value="item.value"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="保管期限">
+          <el-select
+            v-model="searchForm.retentionPeriod"
+            placeholder="全部"
+            clearable
+            style="width: 120px"
+          >
+            <el-option
+              v-for="item in retentionOptions"
+              :key="item.value"
+              :label="item.label"
+              :value="item.value"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="密级">
+          <el-select
+            v-model="searchForm.securityLevel"
+            placeholder="全部"
+            clearable
+            style="width: 120px"
+          >
+            <el-option
+              v-for="item in securityOptions"
+              :key="item.value"
+              :label="item.label"
+              :value="item.value"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="来源">
+          <el-select
+            v-model="searchForm.sourceType"
+            placeholder="全部"
+            clearable
+            style="width: 130px"
+          >
+            <el-option
+              v-for="item in sourceTypeOptions"
+              :key="item.value"
+              :label="item.label"
+              :value="item.value"
+            />
+          </el-select>
+        </el-form-item>
         <el-form-item label="状态">
           <el-select
             v-model="searchForm.status"
@@ -47,6 +135,26 @@
               :value="item.value"
             />
           </el-select>
+        </el-form-item>
+        <el-form-item label="扫描批次">
+          <el-input
+            v-model="searchForm.scanBatchNo"
+            placeholder="如 SCAN-20260330-01"
+            clearable
+            style="width: 220px"
+            @keyup.enter="handleSearch"
+          />
+        </el-form-item>
+        <el-form-item label="归档日期">
+          <el-date-picker
+            v-model="searchForm.archiveDateRange"
+            type="daterange"
+            range-separator="至"
+            start-placeholder="开始日期"
+            end-placeholder="结束日期"
+            value-format="YYYY-MM-DD"
+            style="width: 260px"
+          />
         </el-form-item>
         <el-form-item>
           <el-button
@@ -79,7 +187,7 @@
     </div>
 
     <!-- 表格 -->
-    <el-card shadow="never">
+    <el-card shadow="never" class="table-card">
       <el-table
         v-loading="loading"
         :data="tableData"
@@ -94,6 +202,26 @@
           width="180"
           fixed
         />
+        <el-table-column
+          prop="fondsNo"
+          label="全宗"
+          width="120"
+          show-overflow-tooltip
+        >
+          <template #default="{ row }">
+            {{ row.fondsNo || '-' }}
+          </template>
+        </el-table-column>
+        <el-table-column
+          prop="categoryCode"
+          label="分类"
+          width="140"
+          show-overflow-tooltip
+        >
+          <template #default="{ row }">
+            {{ row.categoryCode || '-' }}
+          </template>
+        </el-table-column>
         <el-table-column
           prop="title"
           label="题名"
@@ -174,10 +302,30 @@
         </el-table-column>
         <el-table-column
           label="操作"
-          width="150"
+          width="210"
           fixed="right"
         >
           <template #default="{ row }">
+            <el-button
+              v-if="canApprove(row)"
+              type="success"
+              link
+              size="small"
+              :loading="approvingId === row.id"
+              @click.stop="handleApprove(row)"
+            >
+              审核通过
+            </el-button>
+            <el-button
+              v-if="canStore(row)"
+              type="success"
+              link
+              size="small"
+              :loading="storingId === row.id"
+              @click.stop="handleStore(row)"
+            >
+              归档
+            </el-button>
             <el-button
               type="primary"
               link
@@ -187,6 +335,7 @@
               查看
             </el-button>
             <el-button
+              v-if="canManageArchive"
               type="primary"
               link
               size="small"
@@ -195,6 +344,7 @@
               编辑
             </el-button>
             <el-popconfirm
+              v-if="canManageArchive"
               title="确定要删除该档案吗？"
               @confirm="handleDelete(row)"
             >
@@ -230,10 +380,11 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, reactive, onMounted, computed } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { getArchiveList, deleteArchive } from '@/api/archive'
+import { getArchiveList, deleteArchive, updateArchiveStatus, approveArchive } from '@/api/archive'
+import { useUserStore } from '@/stores/user'
 import { 
   getArchiveTypeName, 
   getArchiveFormName,
@@ -242,23 +393,44 @@ import {
   getStatusType, 
   getRetentionName,
   getArchiveTypeOptions,
-  ARCHIVE_STATUS 
+  getArchiveFormOptions,
+  getRetentionOptions,
+  getSecurityOptions,
+  ARCHIVE_STATUS,
+  SOURCE_TYPES
 } from '@/utils/archiveEnums'
+import { MANAGER_ROLES, REVIEW_ROLES } from '@/utils/permission'
 
 const router = useRouter()
+const route = useRoute()
+const userStore = useUserStore()
 
 // 下拉选项
 const archiveTypeOptions = getArchiveTypeOptions()
+const archiveFormOptions = getArchiveFormOptions()
+const retentionOptions = getRetentionOptions()
+const securityOptions = getSecurityOptions()
+const sourceTypeOptions = Object.entries(SOURCE_TYPES).map(([value, label]) => ({ value, label }))
 const statusOptions = Object.entries(ARCHIVE_STATUS)
-  .filter(([key]) => ['RECEIVED', 'CATALOGING', 'STORED', 'BORROWED'].includes(key))
+  .filter(([key]) => ['PENDING_REVIEW', 'RECEIVED', 'CATALOGING', 'STORED', 'BORROWED', 'REJECTED'].includes(key))
   .map(([value, label]) => ({ value, label }))
 const loading = ref(false)
 const tableData = ref([])
+const storingId = ref(null)
+const approvingId = ref(null)
+const canManageArchive = computed(() => MANAGER_ROLES.includes(userStore.userType))
+const canReviewArchive = computed(() => REVIEW_ROLES.includes(userStore.userType))
 
 const searchForm = reactive({
   keyword: '',
   archiveType: '',
-  status: ''
+  archiveForm: '',
+  retentionPeriod: '',
+  securityLevel: '',
+  sourceType: '',
+  status: '',
+  scanBatchNo: '',
+  archiveDateRange: null
 })
 
 const pagination = reactive({
@@ -272,9 +444,20 @@ const fetchData = async () => {
   loading.value = true
   try {
     const params = {
-      ...searchForm,
+      keyword: searchForm.keyword,
+      archiveType: searchForm.archiveType,
+      archiveForm: searchForm.archiveForm,
+      retentionPeriod: searchForm.retentionPeriod,
+      securityLevel: searchForm.securityLevel,
+      sourceType: searchForm.sourceType,
+      status: searchForm.status,
+      scanBatchNo: searchForm.scanBatchNo,
       pageNum: pagination.pageNum,
       pageSize: pagination.pageSize
+    }
+    if (searchForm.archiveDateRange?.length === 2) {
+      params.archiveDateStart = searchForm.archiveDateRange[0]
+      params.archiveDateEnd = searchForm.archiveDateRange[1]
     }
     const res = await getArchiveList(params)
     tableData.value = res.data.records
@@ -297,7 +480,13 @@ const handleSearch = () => {
 const resetSearch = () => {
   searchForm.keyword = ''
   searchForm.archiveType = ''
+  searchForm.archiveForm = ''
+  searchForm.retentionPeriod = ''
+  searchForm.securityLevel = ''
+  searchForm.sourceType = ''
   searchForm.status = ''
+  searchForm.scanBatchNo = ''
+  searchForm.archiveDateRange = null
   pagination.pageNum = 1
   fetchData()
 }
@@ -320,6 +509,41 @@ const handleView = (row) => {
 // 编辑
 const handleEdit = (row) => {
   router.push(`/archives/${row.id}?edit=true`)
+}
+
+const canStore = (row) => canManageArchive.value && ['RECEIVED', 'CATALOGING'].includes(row.status)
+const canApprove = (row) => canReviewArchive.value && row.status === 'PENDING_REVIEW'
+
+const handleStore = async (row) => {
+  if (!canStore(row)) return
+
+  storingId.value = row.id
+  try {
+    await updateArchiveStatus(row.id, 'STORED')
+    ElMessage.success(`档案 ${row.archiveNo} 已正式归档`)
+    await fetchData()
+  } catch (e) {
+    console.error('正式归档失败', e)
+    ElMessage.error(e.response?.data?.message || '正式归档失败')
+  } finally {
+    storingId.value = null
+  }
+}
+
+const handleApprove = async (row) => {
+  if (!canApprove(row)) return
+
+  approvingId.value = row.id
+  try {
+    await approveArchive(row.id)
+    ElMessage.success(`档案 ${row.archiveNo} 已审核通过并正式入库`)
+    await fetchData()
+  } catch (e) {
+    console.error('审核通过失败', e)
+    ElMessage.error(e.response?.data?.message || '审核通过失败')
+  } finally {
+    approvingId.value = null
+  }
 }
 
 // 删除
@@ -368,17 +592,35 @@ const getSourceName = (source) => {
 }
 
 onMounted(() => {
+  if (route.query.scanBatchNo) {
+    searchForm.scanBatchNo = String(route.query.scanBatchNo)
+  }
   fetchData()
 })
 </script>
 
 <style lang="scss" scoped>
 .archive-list {
-  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.page-header h1 {
+  margin: 0 0 8px;
+  font-size: 24px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.page-header p {
+  margin: 0;
+  line-height: 1.6;
+  color: #606266;
 }
 
 .search-card {
-  margin-bottom: 16px;
+  border-radius: 10px;
   
   :deep(.el-card__body) {
     padding-bottom: 0;
@@ -386,7 +628,12 @@ onMounted(() => {
 }
 
 .toolbar {
-  margin-bottom: 16px;
+  display: flex;
+  gap: 12px;
+}
+
+.table-card {
+  border-radius: 10px;
 }
 
 .pagination {

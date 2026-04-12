@@ -20,6 +20,7 @@ import java.util.List;
 
 /**
  * 用户管理控制器.
+ * @author junyuzhan
  */
 @Tag(name = "用户管理", description = "用户CRUD、角色分配等接口")
 @RestController
@@ -135,9 +136,6 @@ public class UserController {
     @PreAuthorize("hasRole('SYSTEM_ADMIN')")
     public Result<Void> unlockAccount(@PathVariable Long id) {
         User user = userService.getById(id);
-        if (user == null) {
-            return Result.error("用户不存在");
-        }
         loginSecurityService.unlockAccount(user.getUsername());
         return Result.success("账号已解锁", null);
     }
@@ -147,9 +145,6 @@ public class UserController {
     @PreAuthorize("hasRole('SYSTEM_ADMIN')")
     public Result<Object> getLockStatus(@PathVariable Long id) {
         User user = userService.getById(id);
-        if (user == null) {
-            return Result.error("用户不存在");
-        }
         boolean locked = loginSecurityService.isAccountLocked(user.getUsername());
         long remainingTime = loginSecurityService.getRemainingLockoutTime(user.getUsername());
         int remainingAttempts = loginSecurityService.getRemainingAttempts(user.getUsername());

@@ -1,5 +1,10 @@
 <template>
   <div class="archive-search">
+    <div class="page-header">
+      <h1>档案检索</h1>
+      <p>提供关键词与高级条件组合检索，适合在电子档案存量中快速定位案件材料和正文内容。</p>
+    </div>
+
     <!-- 搜索区域 -->
     <el-card
       shadow="never"
@@ -32,11 +37,11 @@
           title="高级筛选"
           name="advanced"
         >
-          <el-form
-            :model="filters"
-            inline
-            label-width="80px"
-          >
+            <el-form
+              :model="filters"
+              inline
+              label-width="80px"
+            >
             <el-form-item label="档案类型">
               <el-select
                 v-model="filters.archiveType"
@@ -51,6 +56,36 @@
                 />
               </el-select>
             </el-form-item>
+            <el-form-item label="所属全宗">
+              <el-select
+                v-model="filters.fondsId"
+                placeholder="全部"
+                clearable
+                filterable
+              >
+                <el-option
+                  v-for="item in fondsOptions"
+                  :key="item.id"
+                  :label="`${item.fondsNo}｜${item.fondsName}`"
+                  :value="item.id"
+                />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="档案分类">
+              <el-select
+                v-model="filters.categoryId"
+                placeholder="全部"
+                clearable
+                filterable
+              >
+                <el-option
+                  v-for="item in categoryOptions"
+                  :key="item.id"
+                  :label="item.fullPath || `${item.categoryCode}｜${item.categoryName}`"
+                  :value="item.id"
+                />
+              </el-select>
+            </el-form-item>
             <el-form-item label="保管期限">
               <el-select
                 v-model="filters.retentionPeriod"
@@ -59,6 +94,34 @@
               >
                 <el-option
                   v-for="item in retentionOptions"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
+                />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="密级">
+              <el-select
+                v-model="filters.securityLevel"
+                placeholder="全部"
+                clearable
+              >
+                <el-option
+                  v-for="item in securityOptions"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
+                />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="来源">
+              <el-select
+                v-model="filters.sourceType"
+                placeholder="全部"
+                clearable
+              >
+                <el-option
+                  v-for="item in sourceTypeOptions"
                   :key="item.value"
                   :label="item.label"
                   :value="item.value"
@@ -88,6 +151,20 @@
                 end-placeholder="结束日期"
                 value-format="YYYY-MM-DD"
               />
+            </el-form-item>
+            <el-form-item label="检索正文">
+              <el-switch v-model="filters.includeFileContent" />
+            </el-form-item>
+            <el-form-item class="advanced-actions">
+              <el-button
+                type="primary"
+                @click="handleSearch"
+              >
+                搜索
+              </el-button>
+              <el-button @click="resetFilters">
+                重置
+              </el-button>
             </el-form-item>
           </el-form>
         </el-collapse-item>
@@ -152,11 +229,22 @@
               {{ getStatusName(item.status) }}
             </el-tag>
           </div>
-          <div
-            class="item-title"
-            v-html="getHighlightedTitle(item)"
-          />
+          <div class="item-title">
+            <template
+              v-for="(segment, index) in getTitleSegments(item)"
+              :key="`${item.id || item.archiveNo || 'title'}-${index}`"
+            >
+              <mark v-if="segment.highlight">{{ segment.text }}</mark>
+              <span v-else>{{ segment.text }}</span>
+            </template>
+          </div>
           <div class="item-meta">
+            <span v-if="item.fondsNo">
+              全宗 {{ item.fondsNo }}
+            </span>
+            <span v-if="item.categoryCode">
+              分类 {{ item.categoryCode }}
+            </span>
             <span v-if="item.caseNo">
               <el-icon><Briefcase /></el-icon>
               {{ item.caseNo }}
@@ -182,8 +270,10 @@
             v-model:current-page="pageNum"
             v-model:page-size="pageSize"
             :total="total"
-            layout="total, prev, pager, next"
+            :page-sizes="[10, 20, 50, 100]"
+            layout="total, sizes, prev, pager, next"
             @current-change="handlePageChange"
+            @size-change="handlePageSizeChange"
           />
         </div>
       </div>
@@ -192,18 +282,22 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Search, Loading, Briefcase, User, Avatar, Clock } from '@element-plus/icons-vue'
 import { searchArchives } from '@/api/archive'
+import { getFondsList } from '@/api/fonds'
+import { getCategoryTree } from '@/api/category'
 import {
   getArchiveTypeName,
   getStatusName,
   getStatusType,
   getArchiveTypeOptions,
   getRetentionOptions,
-  ARCHIVE_STATUS
+  getSecurityOptions,
+  ARCHIVE_STATUS,
+  SOURCE_TYPES
 } from '@/utils/archiveEnums'
 import { escapeHtml, escapeRegExp } from '@/utils/security'
 
@@ -212,9 +306,13 @@ const router = useRouter()
 // 下拉选项
 const archiveTypeOptions = getArchiveTypeOptions()
 const retentionOptions = getRetentionOptions()
+const securityOptions = getSecurityOptions()
+const sourceTypeOptions = Object.entries(SOURCE_TYPES).map(([value, label]) => ({ value, label }))
 const statusOptions = Object.entries(ARCHIVE_STATUS)
   .filter(([key]) => ['RECEIVED', 'STORED', 'BORROWED'].includes(key))
   .map(([value, label]) => ({ value, label }))
+const fondsOptions = ref([])
+const categoryOptions = ref([])
 const keyword = ref('')
 const showAdvanced = ref([])
 const loading = ref(false)
@@ -223,13 +321,57 @@ const results = ref([])
 const total = ref(0)
 const pageNum = ref(1)
 const pageSize = ref(20)
+let activeSearchController = null
+let activeSearchToken = 0
 
 const filters = reactive({
+  fondsId: null,
+  categoryId: null,
   archiveType: '',
   retentionPeriod: '',
+  securityLevel: '',
+  sourceType: '',
   status: '',
-  dateRange: null
+  dateRange: null,
+  includeFileContent: false
 })
+
+const flattenCategoryTree = (nodes = [], result = []) => {
+  nodes.forEach((node) => {
+    result.push(node)
+    if (node.children?.length) {
+      flattenCategoryTree(node.children, result)
+    }
+  })
+  return result
+}
+
+const loadFonds = async () => {
+  try {
+    const res = await getFondsList()
+    fondsOptions.value = res.data || []
+  } catch (e) {
+    console.error('加载全宗失败', e)
+  }
+}
+
+const loadCategories = async () => {
+  try {
+    const res = await getCategoryTree(filters.archiveType)
+    categoryOptions.value = flattenCategoryTree(res.data || [])
+  } catch (e) {
+    console.error('加载分类失败', e)
+    categoryOptions.value = []
+  }
+}
+
+watch(
+  () => filters.archiveType,
+  async () => {
+    filters.categoryId = null
+    await loadCategories()
+  }
+)
 
 // 搜索
 const handleSearch = async () => {
@@ -246,19 +388,32 @@ const handleSearch = async () => {
 
 // 是否有筛选条件
 const hasFilters = () => {
-  return filters.archiveType || filters.retentionPeriod || 
-         filters.status || filters.dateRange
+  return filters.archiveType || filters.retentionPeriod ||
+         filters.fondsId || filters.categoryId ||
+         filters.securityLevel || filters.sourceType ||
+         filters.status || filters.dateRange ||
+         filters.includeFileContent
 }
 
 // 获取结果
 const fetchResults = async () => {
   loading.value = true
+  activeSearchToken += 1
+  const currentToken = activeSearchToken
+  activeSearchController?.abort()
+  activeSearchController = new AbortController()
+
   try {
     const params = {
       keyword: keyword.value,
+      fondsId: filters.fondsId,
+      categoryId: filters.categoryId,
       archiveType: filters.archiveType,
       retentionPeriod: filters.retentionPeriod,
+      securityLevel: filters.securityLevel,
+      sourceType: filters.sourceType,
       status: filters.status,
+      includeFileContent: filters.includeFileContent,
       pageNum: pageNum.value,
       pageSize: pageSize.value
     }
@@ -268,22 +423,61 @@ const fetchResults = async () => {
       params.archiveDateEnd = filters.dateRange[1]
     }
     
-    const res = await searchArchives({
-      ...params,
-      highlight: true
-    })
+    const res = await searchArchives(
+      {
+        ...params,
+        highlight: true
+      },
+      {
+        signal: activeSearchController.signal
+      }
+    )
+    if (currentToken !== activeSearchToken) {
+      return
+    }
     results.value = (res.data.hits || []).filter(Boolean)
     total.value = res.data.total || 0
   } catch (e) {
+    if (e.name === 'CanceledError' || e.code === 'ERR_CANCELED') {
+      return
+    }
     console.error('搜索失败', e)
     ElMessage.error(e.response?.data?.message || '搜索失败，请重试')
   } finally {
-    loading.value = false
+    if (currentToken === activeSearchToken) {
+      loading.value = false
+    }
   }
+}
+
+const resetFilters = () => {
+  activeSearchToken += 1
+  keyword.value = ''
+  filters.fondsId = null
+  filters.categoryId = null
+  filters.archiveType = ''
+  filters.retentionPeriod = ''
+  filters.securityLevel = ''
+  filters.sourceType = ''
+  filters.status = ''
+  filters.dateRange = null
+  filters.includeFileContent = false
+  results.value = []
+  total.value = 0
+  pageNum.value = 1
+  searched.value = false
+  loading.value = false
+  activeSearchController?.abort()
+  activeSearchController = null
 }
 
 // 分页
 const handlePageChange = () => {
+  fetchResults()
+}
+
+const handlePageSizeChange = () => {
+  pageNum.value = 1
   fetchResults()
 }
 
@@ -292,43 +486,68 @@ const goToDetail = (item) => {
   router.push(`/archives/${item.id}`)
 }
 
-// 高亮关键词 (安全版本：防止正则注入和 XSS)
-const highlightKeyword = (text) => {
-  if (!keyword.value || !text) return escapeHtml(text)
-  // 1. 先对文本进行 HTML 转义，防止 XSS
-  const safeText = escapeHtml(text)
-  // 2. 对关键词进行正则转义，防止正则注入
-  const safeKeyword = escapeRegExp(keyword.value)
-  // 3. 执行高亮替换
-  const regex = new RegExp(`(${safeKeyword})`, 'gi')
-  return safeText.replace(regex, '<mark>$1</mark>')
+const escapePlainText = (text) => {
+  if (!text) return ''
+  return escapeHtml(text)
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#x27;/g, "'")
+    .replace(/&#x2F;/g, '/')
+    .replace(/&#x60;/g, '`')
+    .replace(/&#x3D;/g, '=')
 }
 
-// 清理后端高亮结果，只保留安全的 <mark> 标签
-const sanitizeHighlight = (html) => {
-  if (!html) return ''
-  // 先提取 <em> 或 <mark> 标签内的内容及位置
-  // ES 默认使用 <em> 高亮，替换为 <mark>
-  const processed = html
-    .replace(/<em>/gi, '\x00MARK_START\x00')
-    .replace(/<\/em>/gi, '\x00MARK_END\x00')
-    .replace(/<mark>/gi, '\x00MARK_START\x00')
-    .replace(/<\/mark>/gi, '\x00MARK_END\x00')
-  // 转义所有 HTML
-  const escaped = escapeHtml(processed)
-  // 恢复 mark 标签
-  return escaped
-    .replace(/\x00MARK_START\x00/g, '<mark>')
-    .replace(/\x00MARK_END\x00/g, '</mark>')
+const buildSegmentsFromHighlight = (text) => {
+  if (!text) return []
+
+  const normalized = text.replace(/<\/?(?:em|mark)>/gi, tag =>
+    tag.startsWith('</') ? '[[MARK_END]]' : '[[MARK_START]]'
+  )
+  const safeText = escapePlainText(normalized)
+  const rawSegments = safeText.split(/(\[\[MARK_START\]\]|\[\[MARK_END\]\])/g)
+  const segments = []
+  let highlight = false
+
+  for (const segment of rawSegments) {
+    if (!segment) continue
+    if (segment === '[[MARK_START]]') {
+      highlight = true
+      continue
+    }
+    if (segment === '[[MARK_END]]') {
+      highlight = false
+      continue
+    }
+    segments.push({ text: segment, highlight })
+  }
+
+  return segments
 }
 
-const getHighlightedTitle = (item) => {
+const buildSegmentsFromKeyword = (text) => {
+  const content = escapePlainText(text)
+  if (!keyword.value || !content) {
+    return content ? [{ text: content, highlight: false }] : []
+  }
+
+  const regex = new RegExp(`(${escapeRegExp(keyword.value)})`, 'gi')
+  return content
+    .split(regex)
+    .filter(Boolean)
+    .map(segment => ({
+      text: segment,
+      highlight: segment.toLowerCase() === keyword.value.toLowerCase()
+    }))
+}
+
+const getTitleSegments = (item) => {
   const highlight = item?.highlights?.title
   if (highlight && highlight.length > 0) {
-    // 后端返回的高亮结果需要清理，只保留安全的 mark 标签
-    return sanitizeHighlight(highlight[0])
+    return buildSegmentsFromHighlight(highlight[0])
   }
-  return highlightKeyword(item?.title)
+  return buildSegmentsFromKeyword(item?.title)
 }
 
 // 格式化日期
@@ -352,17 +571,37 @@ const getTypeColor = (type) => {
 }
 
 const getStatusColor = getStatusType
+
+onMounted(() => {
+  loadFonds()
+  loadCategories()
+})
 </script>
 
 <style lang="scss" scoped>
 .archive-search {
-  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
   max-width: 1200px;
   margin: 0 auto;
 }
 
+.page-header h1 {
+  margin: 0 0 8px;
+  font-size: 24px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.page-header p {
+  margin: 0;
+  line-height: 1.6;
+  color: #606266;
+}
+
 .search-card {
-  margin-bottom: 20px;
+  border-radius: 10px;
 }
 
 .search-bar {
@@ -372,6 +611,12 @@ const getStatusColor = getStatusType
   
   .el-input {
     flex: 1;
+  }
+}
+
+.advanced-actions {
+  :deep(.el-form-item__content) {
+    gap: 8px;
   }
 }
 

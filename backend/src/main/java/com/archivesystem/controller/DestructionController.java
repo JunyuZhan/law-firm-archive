@@ -23,6 +23,7 @@ import java.util.List;
 
 /**
  * 销毁管理控制器.
+ * @author junyuzhan
  */
 @RestController
 @RequestMapping("/destructions")
@@ -38,7 +39,7 @@ public class DestructionController {
      */
     @PostMapping("/apply")
     @Operation(summary = "申请销毁")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
     public Result<DestructionRecord> apply(@Valid @RequestBody DestructionApplyRequest request) {
         DestructionRecord record = destructionService.apply(
             request.getArchiveId(), 
@@ -53,7 +54,7 @@ public class DestructionController {
      */
     @PostMapping("/batch-apply")
     @Operation(summary = "批量申请销毁")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
     public Result<List<DestructionRecord>> batchApply(@Valid @RequestBody DestructionBatchApplyRequest request) {
         List<DestructionRecord> records = destructionService.batchApply(
             request.getArchiveIds(), 
@@ -68,7 +69,7 @@ public class DestructionController {
      */
     @GetMapping("/{id}")
     @Operation(summary = "获取销毁记录详情")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
     public Result<DestructionRecord> getById(@PathVariable @Parameter(description = "销毁记录ID") Long id) {
         DestructionRecord record = destructionService.getById(id);
         return Result.success(record);
@@ -79,7 +80,7 @@ public class DestructionController {
      */
     @GetMapping
     @Operation(summary = "获取销毁记录列表")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
     public Result<PageResult<DestructionRecord>> getList(
             @RequestParam(required = false) @Parameter(description = "状态") String status,
             @RequestParam(defaultValue = "1") @Min(value = 1, message = "页码最小为1") Integer pageNum,
@@ -93,7 +94,7 @@ public class DestructionController {
      */
     @GetMapping("/pending")
     @Operation(summary = "获取待审批列表")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
     public Result<PageResult<DestructionRecord>> getPendingList(
             @RequestParam(defaultValue = "1") @Min(value = 1, message = "页码最小为1") Integer pageNum,
             @RequestParam(defaultValue = "20") @Min(value = 1, message = "每页条数最小为1") @Max(value = 100, message = "每页条数最大为100") Integer pageSize) {
@@ -106,7 +107,7 @@ public class DestructionController {
      */
     @GetMapping("/approved")
     @Operation(summary = "获取待执行列表")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
     public Result<PageResult<DestructionRecord>> getApprovedList(
             @RequestParam(defaultValue = "1") @Min(value = 1, message = "页码最小为1") Integer pageNum,
             @RequestParam(defaultValue = "20") @Min(value = 1, message = "每页条数最小为1") @Max(value = 100, message = "每页条数最大为100") Integer pageSize) {
@@ -131,7 +132,7 @@ public class DestructionController {
      */
     @PutMapping("/{id}/approve")
     @Operation(summary = "审批通过")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
     public Result<Void> approve(
             @PathVariable @Parameter(description = "销毁记录ID") Long id,
             @RequestParam(required = false) @Parameter(description = "审批意见") String comment) {
@@ -144,7 +145,7 @@ public class DestructionController {
      */
     @PutMapping("/{id}/reject")
     @Operation(summary = "审批拒绝")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
     public Result<Void> reject(
             @PathVariable @Parameter(description = "销毁记录ID") Long id,
             @Valid @RequestBody DestructionRejectRequest request) {
@@ -157,7 +158,7 @@ public class DestructionController {
      */
     @PutMapping("/{id}/execute")
     @Operation(summary = "执行销毁")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
     public Result<Void> execute(
             @PathVariable @Parameter(description = "销毁记录ID") Long id,
             @RequestParam(required = false) @Parameter(description = "执行备注") String remarks) {
@@ -170,7 +171,7 @@ public class DestructionController {
      */
     @PutMapping("/batch-execute")
     @Operation(summary = "批量执行销毁")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVIST')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
     public Result<Void> batchExecute(@Valid @RequestBody DestructionBatchExecuteRequest request) {
         destructionService.batchExecute(request.getIds(), request.getRemarks());
         return Result.success("批量销毁已执行", null);

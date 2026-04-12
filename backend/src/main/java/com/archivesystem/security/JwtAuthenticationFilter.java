@@ -21,6 +21,7 @@ import java.io.IOException;
 
 /**
  * JWT认证过滤器.
+ * @author junyuzhan
  */
 @Slf4j
 @Component
