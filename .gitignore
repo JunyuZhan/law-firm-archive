@@ -48,3 +48,5 @@ docker-compose.override.yml
 .claude/
 .agents/
 .gitnexus
+AGENTS.md
+CLAUDE.md
