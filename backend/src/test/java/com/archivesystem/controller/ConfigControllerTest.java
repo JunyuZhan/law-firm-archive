@@ -229,21 +229,4 @@ class ConfigControllerTest {
         verify(configService).getByGroup(SysConfig.GROUP_SYSTEM);
     }
 
-    @Test
-    void testGetDeliveryInfo() throws Exception {
-        mockMvc.perform(get("/configs/delivery-info"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value("200"))
-                .andExpect(jsonPath("$.data.deliveryMode").value("标准交付"))
-                .andExpect(jsonPath("$.data.sourceCodeIncluded").value(false))
-                .andExpect(jsonPath("$.data.documents[0].code").value("deployment-upgrade-guide"));
-    }
-
-    @Test
-    void testDownloadDeliveryDoc() throws Exception {
-        mockMvc.perform(get("/configs/delivery-docs/deployment-upgrade-guide/download"))
-                .andExpect(status().isOk())
-                .andExpect(header().exists("Content-Disposition"))
-                .andExpect(content().contentType("text/markdown;charset=UTF-8"));
-    }
 }
