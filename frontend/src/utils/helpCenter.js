@@ -122,9 +122,9 @@ export const ADMIN_GROUPS = [
         tips: ['角色权限调整后，应重点复核借阅、日志和系统配置等敏感页面。']
       },
       {
-        title: '首次初始化',
+        title: '基础设置',
         route: '/system/setup',
-        description: '配置系统名称、Logo、备案号和版权信息。',
+        description: '维护系统名称、Logo、备案号和版权信息。',
         roles: [ROLES.SYSTEM_ADMIN],
         steps: ['填写系统名称和英文名称。', '上传 Logo 或填写 Logo 地址。', '保存备案号和版权后检查登录页与侧栏展示。'],
         tips: ['Logo 建议使用透明背景 PNG 或 SVG，避免页面显示发虚。']
@@ -159,7 +159,7 @@ export const ADMIN_GROUPS = [
         description: '查看当前版本和依赖运行状态。',
         roles: [ROLES.SYSTEM_ADMIN],
         steps: ['查看当前产品版本和构建时间。', '检查依赖状态是否正常。', '异常时再联系运维进一步处理。'],
-        tips: ['此页仅用于状态查看，不承担部署和升级操作。']
+        tips: ['此页仅用于状态查看与健康检查，不提供参数修改能力。']
       }
     ]
   }
@@ -215,9 +215,9 @@ export const ROLE_GUIDES = [
     key: 'system-admin',
     title: '系统管理员手册',
     roles: [ROLES.SYSTEM_ADMIN],
-    summary: '适合负责初始化、配置、备份恢复和全局策略的管理员。',
+    summary: '适合负责基础设置、系统配置、备份恢复和全局策略的管理员。',
     scenarios: [
-      '首次交付后先完成系统名称、Logo、备案号和版权等品牌配置。',
+      '首次启用系统时先完善系统名称、Logo、备案号和版权等基础信息。',
       '按业务要求维护档案号规则、上传限制、借阅策略和站点信息。',
       '定期检查备份恢复、权限配置和操作日志，确保系统安全可持续使用。'
     ],

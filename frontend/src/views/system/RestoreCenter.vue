@@ -136,7 +136,7 @@
             <span>恢复执行原则</span>
           </template>
           <ol class="step-list">
-            <li>新环境完成基础部署。</li>
+            <li>确认目标运行环境已准备就绪。</li>
             <li>配置备份源并读取可恢复备份集。</li>
             <li>校验 manifest、校验码与文件完整性。</li>
             <li>进入维护模式，停止业务写入。</li>

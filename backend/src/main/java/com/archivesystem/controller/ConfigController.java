@@ -1,9 +1,7 @@
 package com.archivesystem.controller;
 
 import com.archivesystem.common.Result;
-import com.archivesystem.dto.config.DeliveryDocumentDTO;
 import com.archivesystem.dto.config.DependencyStatusItemDTO;
-import com.archivesystem.dto.config.SystemDeliveryInfoDTO;
 import com.archivesystem.dto.config.SystemDependencyStatusDTO;
 import com.archivesystem.dto.config.SystemRuntimeInfoDTO;
 import com.archivesystem.entity.SysConfig;
@@ -20,21 +18,14 @@ import org.springframework.boot.actuate.health.HealthEndpoint;
 import org.springframework.boot.actuate.health.Status;
 import org.springframework.boot.actuate.health.SystemHealth;
 import org.springframework.boot.info.BuildProperties;
-import org.springframework.core.io.InputStreamResource;
-import org.springframework.core.io.Resource;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.CacheControl;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.util.StringUtils;
-import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.util.UriUtils;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -42,9 +33,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.nio.charset.StandardCharsets;
-
-import static org.springframework.http.HttpStatus.NOT_FOUND;
 
 /**
  * 系统配置控制器
@@ -63,36 +51,6 @@ public class ConfigController {
 
     private static final String SITE_LOGO_CONFIG_KEY = "system.site.logo";
     private static final String SITE_LOGO_OBJECT_KEY = "system.site.logo.object";
-    private static final List<DeliveryDocumentDefinition> DELIVERY_DOCUMENTS = List.of(
-            new DeliveryDocumentDefinition(
-                    "deployment-upgrade-guide",
-                    "部署与升级手册",
-                    "用于首次部署、版本升级、回滚和目录规范核查。",
-                    "delivery-docs/deployment-upgrade-guide.md",
-                    "archive-delivery-deployment-upgrade-guide.md"
-            ),
-            new DeliveryDocumentDefinition(
-                    "release-checklist",
-                    "发布前验收清单",
-                    "用于发版前统一核对版本、镜像、脚本、测试与回滚准备。",
-                    "delivery-docs/release-checklist.md",
-                    "archive-delivery-release-checklist.md"
-            ),
-            new DeliveryDocumentDefinition(
-                    "deployment-smoke-test",
-                    "部署后冒烟测试流程",
-                    "用于部署完成后验证入库、保存、借阅关键链路。",
-                    "delivery-docs/deployment-smoke-test.md",
-                    "archive-delivery-smoke-test.md"
-            ),
-            new DeliveryDocumentDefinition(
-                    "test-ledger-template",
-                    "测试执行台账模板",
-                    "用于记录客户、环境、版本、执行结果和是否回滚。",
-                    "delivery-docs/test-ledger-template.md",
-                    "archive-delivery-test-ledger-template.md"
-            )
-    );
 
     @Value("${spring.application.name:archive-system}")
     private String applicationName;
@@ -308,10 +266,10 @@ public class ConfigController {
     }
 
     /**
-     * 获取系统版本与部署信息
+     * 获取系统版本与运行信息
      */
     @GetMapping("/runtime-info")
-    @Operation(summary = "获取系统版本与部署信息")
+    @Operation(summary = "获取系统版本与运行信息")
     @PreAuthorize("hasRole('SYSTEM_ADMIN')")
     public Result<SystemRuntimeInfoDTO> getRuntimeInfo() {
         BuildProperties buildProperties = buildPropertiesProvider.getIfAvailable();
@@ -330,7 +288,7 @@ public class ConfigController {
                 .backendVersion(backendVersion)
                 .commitSha(commitSha)
                 .buildTime(buildTime)
-                .recommendedMode("Docker Compose")
+                .recommendedMode("标准运行模式")
                 .build());
     }
 
@@ -365,64 +323,6 @@ public class ConfigController {
                 .build());
     }
 
-    /**
-     * 获取镜像交付信息.
-     */
-    @GetMapping("/delivery-info")
-    @Operation(summary = "获取镜像交付信息")
-    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
-    public Result<SystemDeliveryInfoDTO> getDeliveryInfo() {
-        List<DeliveryDocumentDTO> documents = DELIVERY_DOCUMENTS.stream()
-                .map(item -> DeliveryDocumentDTO.builder()
-                        .code(item.code())
-                        .title(item.title())
-                        .description(item.description())
-                        .fileName(item.fileName())
-                        .build())
-                .toList();
-
-        return Result.success(SystemDeliveryInfoDTO.builder()
-                .deliveryMode("标准交付")
-                .artifactType("系统发布包 + 部署清单 + 交付文档包")
-                .recommendedDeployment("容器化部署")
-                .deploymentDirectory("/opt/law-firm-archive")
-                .sourceDirectory("")
-                .upgradeOwner("系统运维管理员")
-                .sourceCodeIncluded(Boolean.FALSE)
-                .notes(List.of(
-                        "系统交付以标准发布包、部署清单和交付文档包为准。",
-                        "业务管理员负责系统内配置、档案、借阅和备份恢复。",
-                        "系统升级、回退和运行维护应由运维管理员执行。"
-                ))
-                .documents(documents)
-                .build());
-    }
-
-    /**
-     * 下载镜像交付文档.
-     */
-    @GetMapping("/delivery-docs/{code}/download")
-    @Operation(summary = "下载镜像交付文档")
-    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
-    public ResponseEntity<InputStreamResource> downloadDeliveryDoc(@PathVariable String code) throws IOException {
-        DeliveryDocumentDefinition document = DELIVERY_DOCUMENTS.stream()
-                .filter(item -> item.code().equals(code))
-                .findFirst()
-                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "交付文档不存在"));
-
-        Resource resource = new ClassPathResource(document.resourcePath());
-        if (!resource.exists()) {
-            throw new ResponseStatusException(NOT_FOUND, "交付文档不存在");
-        }
-
-        String encodedFileName = UriUtils.encode(document.fileName(), StandardCharsets.UTF_8);
-        return ResponseEntity.ok()
-                .cacheControl(CacheControl.noCache().cachePrivate().mustRevalidate())
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + encodedFileName)
-                .header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, HttpHeaders.CONTENT_DISPOSITION)
-                .contentType(MediaType.parseMediaType("text/markdown;charset=UTF-8"))
-                .body(new InputStreamResource(resource.getInputStream()));
-    }
 
     private DependencyStatusItemDTO toDependencyItem(String key, String label, HealthComponent component) {
         if (component == null) {
@@ -457,12 +357,4 @@ public class ConfigController {
         return Map.of();
     }
 
-    private record DeliveryDocumentDefinition(
-            String code,
-            String title,
-            String description,
-            String resourcePath,
-            String fileName
-    ) {
-    }
 }

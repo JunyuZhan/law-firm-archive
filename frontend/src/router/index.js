@@ -105,7 +105,7 @@ const router = createRouter({
           path: 'system/setup',
           name: 'InitialSetup',
           component: () => import('@/views/system/InitialSetup.vue'),
-          meta: { title: '首次初始化', requiresAuth: true, roles: [ROLES.SYSTEM_ADMIN] }
+          meta: { title: '基础设置', requiresAuth: true, roles: [ROLES.SYSTEM_ADMIN] }
         },
         {
           path: 'system/info',

@@ -89,7 +89,7 @@
             权限管理
           </el-menu-item>
           <el-menu-item v-if="canAccess([ROLES.SYSTEM_ADMIN])" index="/system/setup">
-            首次初始化
+            基础设置
           </el-menu-item>
           <el-menu-item v-if="canAccess([ROLES.SYSTEM_ADMIN])" index="/system/info">
             系统信息
@@ -175,7 +175,7 @@
           @close="dismissSetupReminder"
         >
           <template #title>
-            当前系统仍存在默认品牌配置，建议尽快前往“系统管理 / 首次初始化”完成系统名称、Logo、备案号和版权信息设置。
+            当前系统仍存在默认站点信息，建议尽快前往“系统管理 / 基础设置”完善系统名称、Logo、备案号和版权信息。
           </template>
         </el-alert>
         <router-view />

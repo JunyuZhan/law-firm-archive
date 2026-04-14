@@ -24,21 +24,6 @@ export function getDependencyStatus() {
   })
 }
 
-export function getDeliveryInfo() {
-  return request({
-    url: '/configs/delivery-info',
-    method: 'get'
-  })
-}
-
-export function downloadDeliveryDoc(code) {
-  return request({
-    url: `/configs/delivery-docs/${code}/download`,
-    method: 'get',
-    responseType: 'blob'
-  })
-}
-
 /**
  * 获取配置列表
  */
