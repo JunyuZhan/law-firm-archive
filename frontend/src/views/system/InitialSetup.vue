@@ -113,7 +113,7 @@
         <ul class="plain-list">
           <li>确认系统名称、Logo 和版权信息是否符合当前机构的管理规范。</li>
           <li>确认 ICP 备案号是否需要在登录页和页脚展示。</li>
-          <li>基础设置保存后，再进入系统配置补充上传限制、借阅策略和安全参数。</li>
+          <li>基础设置保存后，可继续在系统配置中完善上传限制、借阅策略和安全参数。</li>
         </ul>
       </div>
     </el-card>
@@ -150,7 +150,7 @@ const setupStatus = computed(() => {
   if (initialized) {
     return {
       type: 'success',
-      title: '当前站点基础信息已配置完成，可继续微调或重新保存。'
+      title: '当前站点基础信息已配置完成，可根据管理需要继续调整。'
     }
   }
   return {
