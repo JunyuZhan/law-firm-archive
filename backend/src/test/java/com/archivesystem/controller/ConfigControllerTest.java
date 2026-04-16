@@ -2,6 +2,7 @@ package com.archivesystem.controller;
 
 import com.archivesystem.entity.SysConfig;
 import com.archivesystem.dto.config.RegistryUpdateCheckDTO;
+import com.archivesystem.service.AlertService;
 import com.archivesystem.service.ConfigService;
 import com.archivesystem.service.MinioService;
 import com.archivesystem.service.RegistryUpdateCheckService;
@@ -37,6 +38,9 @@ class ConfigControllerTest {
 
     @Mock
     private ConfigService configService;
+
+    @Mock
+    private AlertService alertService;
 
     @Mock
     private MinioService minioService;

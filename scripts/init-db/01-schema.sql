@@ -940,6 +940,15 @@ INSERT INTO sys_config (config_key, config_value, config_type, config_group, des
 -- 系统参数 - 通知
 ('system.notify.email.enabled', 'false', 'BOOLEAN', 'SYSTEM', '启用邮件通知', true, 60),
 ('system.notify.expire.days', '30', 'NUMBER', 'SYSTEM', '到期提醒提前天数', true, 61),
+('system.notify.system.events.email.enabled', 'false', 'BOOLEAN', 'SYSTEM', '未处理异常时发邮件通知管理员', true, 62),
+('system.notify.admin.emails', '', 'STRING', 'SYSTEM', '额外通知邮箱（逗号分隔，与三员管理员账号邮箱一并发送）', true, 63),
+-- 系统参数 - 邮件 SMTP（控制台配置，密码加密存储）
+('system.mail.smtp.host', '', 'STRING', 'SYSTEM', 'SMTP 服务器', true, 64),
+('system.mail.smtp.port', '587', 'NUMBER', 'SYSTEM', 'SMTP 端口', true, 65),
+('system.mail.smtp.ssl', 'true', 'BOOLEAN', 'SYSTEM', 'SMTP 启用 STARTTLS（端口 465 时由系统自动使用 SSL）', true, 66),
+('system.mail.smtp.username', '', 'STRING', 'SYSTEM', 'SMTP 用户名', true, 67),
+('system.mail.smtp.password', '', 'STRING', 'SYSTEM', 'SMTP 密码（保存时加密）', true, 68),
+('system.mail.from', '', 'STRING', 'SYSTEM', '发件人邮箱（可空则使用 SMTP 用户名）', true, 69),
 -- 系统参数 - 镜像仓库更新检查
 ('system.upgrade.registry_base_url', 'https://hub.albertzhan.top', 'STRING', 'SYSTEM', '镜像仓库地址', true, 80),
 ('system.upgrade.backend_repository', 'law-firm-archive/backend', 'STRING', 'SYSTEM', '后端镜像路径', true, 81),

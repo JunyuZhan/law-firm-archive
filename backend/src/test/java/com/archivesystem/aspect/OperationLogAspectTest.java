@@ -121,6 +121,7 @@ class OperationLogAspectTest {
         when(methodSignature.getMethod()).thenReturn(method);
         when(joinPoint.getArgs()).thenReturn(new Object[]{1L, "Test"});
 
+        mockRequest.setRemoteAddr("127.0.0.1");
         mockRequest.addHeader("X-Forwarded-For", "10.0.0.1, 10.0.0.2");
         ServletRequestAttributes attributes = new ServletRequestAttributes(mockRequest);
         RequestContextHolder.setRequestAttributes(attributes);
@@ -146,6 +147,7 @@ class OperationLogAspectTest {
         when(methodSignature.getMethod()).thenReturn(method);
         when(joinPoint.getArgs()).thenReturn(new Object[]{1L, "Test"});
 
+        mockRequest.setRemoteAddr("127.0.0.1");
         mockRequest.addHeader("Proxy-Client-IP", "10.0.0.5");
         ServletRequestAttributes attributes = new ServletRequestAttributes(mockRequest);
         RequestContextHolder.setRequestAttributes(attributes);

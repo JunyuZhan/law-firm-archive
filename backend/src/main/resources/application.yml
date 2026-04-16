@@ -179,8 +179,14 @@ app:
 # - 水印设置 (system.watermark.*)
 # - 安全策略 (system.password.*, system.login.*)
 # - 通知设置 (system.notify.*)
+# - 邮件 SMTP (system.mail.smtp.*, system.mail.from)
 # - 档案号规则 (archive.no.*)
 # - 保管期限 (retention.*)
+
+# 可选：通过环境变量启用告警收件人（与库中 system.notify.* 合并；SMTP 可在控制台配置）
+# alert.email.enabled=false
+# alert.email.from=
+# alert.email.to=
 
 # Knife4j配置
 springdoc:

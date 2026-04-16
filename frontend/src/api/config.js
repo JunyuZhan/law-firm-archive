@@ -125,6 +125,15 @@ export function refreshConfigCache() {
   })
 }
 
+/** 发送测试邮件（系统管理员）；body 可含 { to: '可选单地址' } */
+export function sendTestMail(body) {
+  return request({
+    url: '/configs/test-mail',
+    method: 'post',
+    data: body || {}
+  })
+}
+
 /**
  * 上传站点 Logo
  */

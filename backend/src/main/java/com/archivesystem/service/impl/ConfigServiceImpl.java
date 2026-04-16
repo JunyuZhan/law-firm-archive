@@ -4,6 +4,7 @@ import com.archivesystem.common.exception.BusinessException;
 import com.archivesystem.common.exception.NotFoundException;
 import com.archivesystem.entity.SysConfig;
 import com.archivesystem.repository.SysConfigMapper;
+import com.archivesystem.security.SecretCryptoService;
 import com.archivesystem.security.SecurityUtils;
 import com.archivesystem.service.ConfigService;
 import jakarta.annotation.PostConstruct;
@@ -31,7 +32,11 @@ public class ConfigServiceImpl implements ConfigService {
 
     private static final String REDACTED_VALUE = "******";
 
+    /** SMTP 密码写入 sys_config 前加密；API 返回脱敏 */
+    public static final String MAIL_SMTP_PASSWORD_KEY = "system.mail.smtp.password";
+
     private final SysConfigMapper configMapper;
+    private final SecretCryptoService secretCryptoService;
 
     // 配置缓存
     private final Map<String, String> configCache = new ConcurrentHashMap<>();
@@ -117,6 +122,15 @@ public class ConfigServiceImpl implements ConfigService {
         }
         if (!Boolean.TRUE.equals(config.getEditable())) {
             throw new BusinessException("该配置项不可编辑");
+        }
+
+        if (MAIL_SMTP_PASSWORD_KEY.equals(key) && value != null && REDACTED_VALUE.equals(value.trim())) {
+            return;
+        }
+        if (MAIL_SMTP_PASSWORD_KEY.equals(key) && value != null && !value.isBlank()) {
+            value = secretCryptoService.encrypt(value.trim());
+        } else if (MAIL_SMTP_PASSWORD_KEY.equals(key) && (value == null || value.isBlank())) {
+            value = null;
         }
 
         config.setConfigValue(value);
@@ -297,6 +311,9 @@ public class ConfigServiceImpl implements ConfigService {
                 "access_key"
         ));
         if ("system.site.logo.object".equals(normalized)) {
+            return true;
+        }
+        if (MAIL_SMTP_PASSWORD_KEY.equalsIgnoreCase(normalized)) {
             return true;
         }
         return markers.stream().anyMatch(normalized::contains);

@@ -396,6 +396,79 @@
               </el-form>
             </div>
 
+            <!-- 邮件 SMTP -->
+            <div class="config-group">
+              <h4 class="group-title">
+                <el-icon><Promotion /></el-icon> 邮件服务器 (SMTP)
+              </h4>
+              <p class="group-hint">
+                填写后由系统发信（档案到期提醒、死信告警等）。开启「未处理异常时发邮件」后，未捕获的服务端异常会通知管理员（约 2 分钟最多一封，避免刷屏）。SMTP 密码保存后界面显示为脱敏，不修改请勿重新保存密码项。
+              </p>
+              <el-form
+                label-width="200px"
+                class="config-form"
+              >
+                <el-form-item 
+                  v-for="config in mailConfigs" 
+                  :key="config.configKey"
+                  :label="config.description || config.configKey"
+                >
+                  <template v-if="config.configType === 'BOOLEAN'">
+                    <el-switch 
+                      v-model="editedConfigs[config.configKey]"
+                      :disabled="!config.editable"
+                      active-value="true"
+                      inactive-value="false"
+                      @change="markChanged(config.configKey)"
+                    />
+                  </template>
+                  <template v-else-if="config.configType === 'NUMBER'">
+                    <el-input-number
+                      v-model.number="editedConfigs[config.configKey]"
+                      :disabled="!config.editable"
+                      :min="1"
+                      :max="65535"
+                      style="width: 200px"
+                      @change="markChanged(config.configKey)"
+                    />
+                  </template>
+                  <template v-else>
+                    <el-input 
+                      v-model="editedConfigs[config.configKey]"
+                      :placeholder="config.configValue"
+                      :disabled="!config.editable"
+                      :type="config.configKey.includes('password') ? 'password' : 'text'"
+                      :show-password="config.configKey.includes('password')"
+                      style="width: 420px"
+                      @input="markChanged(config.configKey)"
+                    />
+                  </template>
+                  <span
+                    v-if="config.configKey === 'system.mail.smtp.password'"
+                    class="config-hint"
+                  >留空表示沿用已保存密码</span>
+                </el-form-item>
+                <el-form-item label="测试收件人（可选）">
+                  <el-input
+                    v-model="testMailTo"
+                    placeholder="不填则发给当前配置解析出的全部管理员邮箱"
+                    clearable
+                    style="width: 420px"
+                  />
+                </el-form-item>
+                <el-form-item label=" ">
+                  <el-button
+                    type="primary"
+                    plain
+                    :loading="testMailLoading"
+                    @click="handleSendTestMail"
+                  >
+                    发送测试邮件
+                  </el-button>
+                </el-form-item>
+              </el-form>
+            </div>
+
             <!-- 镜像仓库更新（供系统信息页检查使用） -->
             <div class="config-group">
               <h4 class="group-title">
@@ -469,11 +542,12 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Refresh, Check, Upload, Document, Picture, Connection, Lock, Bell, Search } from '@element-plus/icons-vue'
+import { Refresh, Check, Upload, Document, Picture, Connection, Lock, Bell, Search, Promotion } from '@element-plus/icons-vue'
 import { 
   getConfigsGrouped, 
   batchUpdateConfigs, 
-  refreshConfigCache
+  refreshConfigCache,
+  sendTestMail
 } from '@/api/config'
 import request from '@/utils/request'
 
@@ -485,6 +559,8 @@ const refreshing = ref(false)
 const allConfigs = ref({})
 const editedConfigs = reactive({})
 const changedKeys = ref(new Set())
+const testMailTo = ref('')
+const testMailLoading = ref(false)
 
 // 保管期限数据
 const retentionPeriods = ref([])
@@ -513,6 +589,9 @@ const securityConfigs = computed(() =>
 )
 const notifyConfigs = computed(() => 
   systemConfigs.value.filter(c => c.configKey.includes('notify'))
+)
+const mailConfigs = computed(() =>
+  systemConfigs.value.filter(c => c.configKey.startsWith('system.mail.'))
 )
 const searchConfigs = computed(() => 
   systemConfigs.value.filter(c => c.configKey.includes('search'))
@@ -579,8 +658,12 @@ const saveChanges = async () => {
   saving.value = true
   try {
     const updates = {}
-    changedKeys.value.forEach(key => {
-      updates[key] = String(editedConfigs[key])
+    changedKeys.value.forEach((key) => {
+      const raw = editedConfigs[key]
+      if (key === 'system.mail.smtp.password' && (raw === '******' || raw === undefined)) {
+        return
+      }
+      updates[key] = String(raw ?? '')
     })
     
     await batchUpdateConfigs(updates)
@@ -593,6 +676,22 @@ const saveChanges = async () => {
     ElMessage.error('保存失败: ' + (error.message || '未知错误'))
   } finally {
     saving.value = false
+  }
+}
+
+const handleSendTestMail = async () => {
+  testMailLoading.value = true
+  try {
+    const body = {}
+    if (testMailTo.value && testMailTo.value.trim()) {
+      body.to = testMailTo.value.trim()
+    }
+    await sendTestMail(body)
+    ElMessage.success('测试邮件已发送，请查收收件箱或垃圾邮件')
+  } catch (e) {
+    ElMessage.error(e?.response?.data?.message || e?.message || '发送失败')
+  } finally {
+    testMailLoading.value = false
   }
 }
 

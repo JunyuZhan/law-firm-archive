@@ -61,4 +61,19 @@ public interface AlertService {
      * @param error 错误信息
      */
     void alertSystemError(String error);
+
+    /**
+     * 发送系统事件邮件（如未处理异常），受「启用邮件」与「系统事件邮件」开关控制.
+     *
+     * @param title   标题
+     * @param detail  正文（可含堆栈摘要）
+     */
+    void notifySystemEvent(String title, String detail);
+
+    /**
+     * 发送一封测试邮件，用于验证 SMTP 与收件人配置.
+     *
+     * @param overrideTo 非空时仅发往该地址；否则发往当前解析的管理员收件列表
+     */
+    void sendTestMail(String overrideTo);
 }

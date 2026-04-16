@@ -4,6 +4,7 @@ import com.archivesystem.common.exception.BusinessException;
 import com.archivesystem.common.exception.NotFoundException;
 import com.archivesystem.entity.SysConfig;
 import com.archivesystem.repository.SysConfigMapper;
+import com.archivesystem.security.SecretCryptoService;
 import com.archivesystem.security.SecurityUtils;
 import com.archivesystem.service.impl.ConfigServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,6 +31,9 @@ class ConfigServiceTest {
 
     @Mock
     private SysConfigMapper configMapper;
+
+    @Mock
+    private SecretCryptoService secretCryptoService;
 
     @InjectMocks
     private ConfigServiceImpl configService;

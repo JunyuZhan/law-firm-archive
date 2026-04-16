@@ -43,6 +43,11 @@ jwt:
   expiration: 3600000
   refresh-expiration: 86400000
 
+# SecretCryptoService 与生产一致要求至少 32 字节
+security:
+  crypto:
+    secret: test-secret-key-for-archive-system-unit-test-2026
+
 # MinIO配置（测试中被Mock）
 minio:
   endpoint: http://localhost:9000

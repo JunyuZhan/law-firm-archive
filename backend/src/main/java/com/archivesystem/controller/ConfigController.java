@@ -6,6 +6,7 @@ import com.archivesystem.dto.config.RegistryUpdateCheckDTO;
 import com.archivesystem.dto.config.SystemDependencyStatusDTO;
 import com.archivesystem.dto.config.SystemRuntimeInfoDTO;
 import com.archivesystem.entity.SysConfig;
+import com.archivesystem.service.AlertService;
 import com.archivesystem.service.ConfigService;
 import com.archivesystem.service.MinioService;
 import com.archivesystem.service.RegistryUpdateCheckService;
@@ -49,6 +50,7 @@ import java.util.UUID;
 public class ConfigController {
 
     private final ConfigService configService;
+    private final AlertService alertService;
     private final MinioService minioService;
     private final ObjectProvider<BuildProperties> buildPropertiesProvider;
     private final ObjectProvider<HealthEndpoint> healthEndpointProvider;
@@ -238,6 +240,18 @@ public class ConfigController {
     public Result<Void> refreshCache() {
         configService.refreshCache();
         return Result.success("缓存刷新成功", null);
+    }
+
+    /**
+     * 发送测试邮件（验证 SMTP 与收件人）
+     */
+    @PostMapping("/test-mail")
+    @Operation(summary = "发送测试邮件")
+    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+    public Result<Void> sendTestMail(@RequestBody(required = false) Map<String, String> body) {
+        String to = body != null ? body.get("to") : null;
+        alertService.sendTestMail(to);
+        return Result.success("测试邮件已发送", null);
     }
 
     /**

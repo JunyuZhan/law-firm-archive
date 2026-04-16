@@ -1,7 +1,9 @@
 package com.archivesystem.controller;
 
 import com.archivesystem.common.exception.BusinessException;
+import com.archivesystem.common.exception.GlobalExceptionHandler;
 import com.archivesystem.entity.PushRecord;
+import com.archivesystem.service.AlertService;
 import com.archivesystem.service.PushRecordService;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -39,6 +41,9 @@ class PushRecordControllerTest {
     @Mock
     private PushRecordService pushRecordService;
 
+    @Mock
+    private AlertService alertService;
+
     @InjectMocks
     private PushRecordController pushRecordController;
 
@@ -47,7 +52,7 @@ class PushRecordControllerTest {
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(pushRecordController)
-                .setControllerAdvice(new com.archivesystem.common.exception.GlobalExceptionHandler())
+                .setControllerAdvice(new GlobalExceptionHandler(alertService))
                 .build();
 
         testRecord = new PushRecord();

@@ -1,11 +1,13 @@
 package com.archivesystem.common.exception;
 
 import com.archivesystem.common.Result;
+import com.archivesystem.service.AlertService;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.BindException;
@@ -18,13 +20,22 @@ import java.util.HashSet;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 /**
  * @author junyuzhan
  */
 
 @ExtendWith(MockitoExtension.class)
 class GlobalExceptionHandlerTest {
+
+    @Mock
+    private AlertService alertService;
 
     @InjectMocks
     private GlobalExceptionHandler globalExceptionHandler;
@@ -148,6 +159,7 @@ class GlobalExceptionHandlerTest {
 
         assertEquals("500", result.getCode());
         assertEquals("系统内部错误，请稍后重试", result.getMessage());
+        verify(alertService, times(1)).notifySystemEvent(eq("未处理的系统异常"), contains("未知错误"));
     }
 
     @Test
@@ -158,5 +170,6 @@ class GlobalExceptionHandlerTest {
 
         assertEquals("500", result.getCode());
         assertEquals("系统内部错误，请稍后重试", result.getMessage());
+        verify(alertService, times(1)).notifySystemEvent(eq("未处理的系统异常"), anyString());
     }
 }

@@ -3,6 +3,7 @@ package com.archivesystem.controller;
 import com.archivesystem.common.PageResult;
 import com.archivesystem.common.exception.GlobalExceptionHandler;
 import com.archivesystem.entity.ArchiveLocation;
+import com.archivesystem.service.AlertService;
 import com.archivesystem.service.LocationService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,6 +37,9 @@ class LocationControllerTest {
     @Mock
     private LocationService locationService;
 
+    @Mock
+    private AlertService alertService;
+
     @InjectMocks
     private LocationController locationController;
 
@@ -44,7 +48,7 @@ class LocationControllerTest {
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(locationController)
-                .setControllerAdvice(new GlobalExceptionHandler())
+                .setControllerAdvice(new GlobalExceptionHandler(alertService))
                 .build();
         objectMapper = new ObjectMapper();
 

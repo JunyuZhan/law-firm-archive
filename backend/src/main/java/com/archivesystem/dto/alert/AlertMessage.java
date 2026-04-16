@@ -28,7 +28,9 @@ public class AlertMessage {
         ARCHIVE_EXPIRING,
         DEAD_LETTER,
         SYSTEM_ERROR,
-        SECURITY_ALERT
+        SECURITY_ALERT,
+        /** 通用系统事件（如未处理异常通知） */
+        SYSTEM_EVENT
     }
 
     /** 告警级别 */

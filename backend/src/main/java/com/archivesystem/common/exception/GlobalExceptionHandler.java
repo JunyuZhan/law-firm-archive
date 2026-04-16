@@ -3,6 +3,9 @@ package com.archivesystem.common.exception;
 import com.archivesystem.common.Result;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
+import com.archivesystem.service.AlertService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Lazy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DuplicateKeyException;
@@ -23,7 +26,11 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @RestControllerAdvice
+@RequiredArgsConstructor
 public class GlobalExceptionHandler {
+
+    @Lazy
+    private final AlertService alertService;
 
     /**
      * 处理业务异常.
@@ -140,6 +147,16 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public Result<Void> handleException(Exception e) {
         log.error("系统异常", e);
+        try {
+            String detail = e.getClass().getName() + ": " + (e.getMessage() != null ? e.getMessage() : "");
+            if (e.getCause() != null) {
+                detail += " | caused by: " + e.getCause().getClass().getName()
+                        + ": " + (e.getCause().getMessage() != null ? e.getCause().getMessage() : "");
+            }
+            alertService.notifySystemEvent("未处理的系统异常", detail);
+        } catch (Exception notifyEx) {
+            log.warn("调度系统事件通知失败", notifyEx);
+        }
         return Result.error("500", "系统内部错误，请稍后重试");
     }
 }

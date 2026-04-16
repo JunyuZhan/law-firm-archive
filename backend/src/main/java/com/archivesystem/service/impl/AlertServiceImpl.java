@@ -1,28 +1,41 @@
 package com.archivesystem.service.impl;
 
+import com.archivesystem.common.exception.BusinessException;
+import com.archivesystem.config.SystemMailSenderFactory;
 import com.archivesystem.dto.alert.AlertMessage;
+import com.archivesystem.entity.User;
+import com.archivesystem.repository.UserMapper;
 import com.archivesystem.service.AlertService;
+import com.archivesystem.service.ConfigService;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
-import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * 告警通知服务实现.
- * 支持邮件和钉钉机器人通知.
+ * 支持邮件（控制台 SMTP / spring.mail + alert.email.*）和钉钉机器人通知.
+ *
  * @author junyuzhan
  */
 @Slf4j
@@ -30,19 +43,26 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class AlertServiceImpl implements AlertService {
 
+    private static final String KEY_NOTIFY_EMAIL = "system.notify.email.enabled";
+    private static final String KEY_NOTIFY_SYSTEM_EVENTS = "system.notify.system.events.email.enabled";
+    private static final String KEY_ADMIN_EXTRA_EMAILS = "system.notify.admin.emails";
+
+    private static final long SYSTEM_EVENT_MAIL_COOLDOWN_MS = 120_000L;
+
     private final ObjectMapper objectMapper;
     private final RestTemplate restTemplate;
-
-    private JavaMailSender mailSender;
+    private final ConfigService configService;
+    private final SystemMailSenderFactory systemMailSenderFactory;
+    private final UserMapper userMapper;
 
     @Value("${alert.email.enabled:false}")
-    private boolean emailEnabled;
+    private boolean envEmailEnabled;
 
     @Value("${alert.email.from:}")
-    private String emailFrom;
+    private String envEmailFrom;
 
     @Value("${alert.email.to:}")
-    private String emailTo;
+    private String envEmailTo;
 
     @Value("${alert.dingtalk.enabled:false}")
     private boolean dingtalkEnabled;
@@ -53,26 +73,49 @@ public class AlertServiceImpl implements AlertService {
     @Value("${alert.dingtalk.secret:}")
     private String dingtalkSecret;
 
+    private JavaMailSender springConfiguredMailSender;
+
+    private final AtomicLong lastSystemEventMailMs = new AtomicLong(0);
+
+    @Autowired(required = false)
+    public void setMailSender(JavaMailSender mailSender) {
+        this.springConfiguredMailSender = mailSender;
+    }
+
     @Override
     @Async
     public boolean send(AlertMessage message) {
         if (message.getCreatedAt() == null) {
             message.setCreatedAt(LocalDateTime.now());
         }
+        List<String> to = resolveMailRecipients();
+        return sendInternal(message, to);
+    }
 
+    @Override
+    @Async
+    public boolean send(AlertMessage message, List<String> receivers) {
+        if (message.getCreatedAt() == null) {
+            message.setCreatedAt(LocalDateTime.now());
+        }
+        List<String> to = (receivers != null && !receivers.isEmpty())
+                ? receivers
+                : resolveMailRecipients();
+        return sendInternal(message, to);
+    }
+
+    private boolean sendInternal(AlertMessage message, List<String> to) {
         boolean success = true;
 
-        // 发送邮件
-        if (emailEnabled && emailTo != null && !emailTo.isBlank()) {
+        if (isNotifyEmailEnabled() && to != null && !to.isEmpty()) {
             try {
-                sendEmail(message, List.of(emailTo.split(",")));
+                dispatchEmail(message, to);
             } catch (Exception e) {
                 log.error("邮件告警发送失败", e);
                 success = false;
             }
         }
 
-        // 发送钉钉
         if (dingtalkEnabled && dingtalkWebhook != null && !dingtalkWebhook.isBlank()) {
             try {
                 sendDingtalk(message);
@@ -82,33 +125,13 @@ public class AlertServiceImpl implements AlertService {
             }
         }
 
-        // 如果都没启用，至少记录日志
-        if (!emailEnabled && !dingtalkEnabled) {
-            log.warn("告警通知未配置，仅记录日志: {}", message.toText());
+        if (!isNotifyEmailEnabled() && !dingtalkEnabled) {
+            log.warn("告警通知未启用，仅记录日志: {}", message.toText());
+        } else if (isNotifyEmailEnabled() && (to == null || to.isEmpty())) {
+            log.warn("邮件通知已启用但无收件人，仅记录日志: {}", message.toText());
         }
 
         return success;
-    }
-
-    @Override
-    @Async
-    public boolean send(AlertMessage message, List<String> receivers) {
-        if (message.getCreatedAt() == null) {
-            message.setCreatedAt(LocalDateTime.now());
-        }
-
-        // 发送邮件到指定接收者
-        if (emailEnabled && receivers != null && !receivers.isEmpty()) {
-            try {
-                sendEmail(message, receivers);
-                return true;
-            } catch (Exception e) {
-                log.error("邮件告警发送失败", e);
-                return false;
-            }
-        }
-
-        return send(message);
     }
 
     @Override
@@ -127,10 +150,10 @@ public class AlertServiceImpl implements AlertService {
 
     @Override
     public void alertArchiveExpiring(Long archiveId, String archiveNo, int daysUntilExpire) {
-        AlertMessage.Level level = daysUntilExpire <= 7 
-                ? AlertMessage.Level.WARNING 
+        AlertMessage.Level level = daysUntilExpire <= 7
+                ? AlertMessage.Level.WARNING
                 : AlertMessage.Level.INFO;
-        
+
         AlertMessage message = AlertMessage.builder()
                 .level(level)
                 .type(AlertMessage.Type.ARCHIVE_EXPIRING)
@@ -145,7 +168,7 @@ public class AlertServiceImpl implements AlertService {
 
     @Override
     public void alertDeadLetter(Long recordId, String sourceType, String sourceId, String error) {
-        Map<String, Object> extra = new HashMap<>();
+        Map<String, Object> extra = new java.util.HashMap<>();
         extra.put("recordId", recordId);
         extra.put("sourceType", sourceType);
         extra.put("sourceId", sourceId);
@@ -173,36 +196,161 @@ public class AlertServiceImpl implements AlertService {
         send(message);
     }
 
+    @Override
+    @Async
+    public void notifySystemEvent(String title, String detail) {
+        if (!isNotifyEmailEnabled() || !configService.getBooleanValue(KEY_NOTIFY_SYSTEM_EVENTS, false)) {
+            return;
+        }
+        long now = System.currentTimeMillis();
+        if (now - lastSystemEventMailMs.get() < SYSTEM_EVENT_MAIL_COOLDOWN_MS) {
+            log.debug("系统事件邮件节流，跳过: {}", title);
+            return;
+        }
+        lastSystemEventMailMs.set(now);
+
+        List<String> to = resolveMailRecipients();
+        if (to.isEmpty()) {
+            log.warn("系统事件邮件未发送（无管理员收件邮箱）: {}", title);
+            return;
+        }
+
+        AlertMessage message = AlertMessage.builder()
+                .level(AlertMessage.Level.ERROR)
+                .type(AlertMessage.Type.SYSTEM_EVENT)
+                .title(title != null ? title : "系统事件")
+                .content(truncate(detail, 4000))
+                .createdAt(LocalDateTime.now())
+                .build();
+        sendInternal(message, to);
+    }
+
+    @Override
+    public void sendTestMail(String overrideTo) {
+        JavaMailSender sender = resolveJavaMailSender();
+        if (sender == null) {
+            throw new BusinessException("未配置邮件发送：请在「规则与运行参数」中填写 SMTP 服务器，或在部署环境配置 spring.mail.*");
+        }
+        List<String> to;
+        if (StringUtils.hasText(overrideTo)) {
+            to = List.of(overrideTo.trim());
+        } else {
+            to = resolveMailRecipients();
+        }
+        if (to.isEmpty()) {
+            throw new BusinessException("无收件人：请为系统/安全/审计管理员账号维护邮箱，或填写「额外通知邮箱」");
+        }
+        AlertMessage message = AlertMessage.builder()
+                .level(AlertMessage.Level.INFO)
+                .type(AlertMessage.Type.SYSTEM_EVENT)
+                .title("邮件配置测试")
+                .content("这是一封来自档案管理系统的测试邮件。收到即表示 SMTP 与收件人配置可用。")
+                .createdAt(LocalDateTime.now())
+                .build();
+        dispatchEmail(message, to);
+    }
+
+    private static String truncate(String s, int max) {
+        if (s == null) {
+            return "";
+        }
+        return s.length() <= max ? s : s.substring(0, max) + "\n…(已截断)";
+    }
+
+    private boolean isNotifyEmailEnabled() {
+        return envEmailEnabled || configService.getBooleanValue(KEY_NOTIFY_EMAIL, false);
+    }
+
+    private JavaMailSender resolveJavaMailSender() {
+        JavaMailSender fromDb = systemMailSenderFactory.createFromDatabaseConfig();
+        if (fromDb != null) {
+            return fromDb;
+        }
+        return springConfiguredMailSender;
+    }
+
     /**
-     * 发送邮件.
+     * 管理员收件人：环境变量 alert.email.to + 库内三员邮箱 + system.notify.admin.emails.
      */
-    private void sendEmail(AlertMessage message, List<String> receivers) {
-        if (mailSender == null) {
+    private List<String> resolveMailRecipients() {
+        Set<String> emails = new LinkedHashSet<>();
+        if (StringUtils.hasText(envEmailTo)) {
+            for (String part : envEmailTo.split(",")) {
+                addEmail(emails, part);
+            }
+        }
+        String extra = configService.getValue(KEY_ADMIN_EXTRA_EMAILS);
+        if (StringUtils.hasText(extra)) {
+            for (String part : extra.split(",")) {
+                addEmail(emails, part);
+            }
+        }
+        List<User> admins = userMapper.selectList(new LambdaQueryWrapper<User>()
+                .eq(User::getStatus, User.STATUS_ACTIVE)
+                .in(User::getUserType,
+                        User.TYPE_SYSTEM_ADMIN,
+                        User.TYPE_SECURITY_ADMIN,
+                        User.TYPE_AUDIT_ADMIN));
+        for (User u : admins) {
+            addEmail(emails, u.getEmail());
+        }
+        return new ArrayList<>(emails);
+    }
+
+    private static void addEmail(Set<String> sink, String raw) {
+        if (!StringUtils.hasText(raw)) {
+            return;
+        }
+        String t = raw.trim();
+        if (!t.isEmpty()) {
+            sink.add(t);
+        }
+    }
+
+    private void dispatchEmail(AlertMessage message, List<String> receivers) {
+        JavaMailSender sender = resolveJavaMailSender();
+        if (sender == null) {
             log.warn("邮件发送器未配置");
+            return;
+        }
+        String from = resolveFromAddress(sender);
+        if (!StringUtils.hasText(from)) {
+            log.warn("邮件未发送：发件人地址未配置");
             return;
         }
 
         SimpleMailMessage mail = new SimpleMailMessage();
-        mail.setFrom(emailFrom);
+        mail.setFrom(from.trim());
         mail.setTo(receivers.toArray(new String[0]));
-        mail.setSubject("[档案系统告警] " + message.getTitle());
+        mail.setSubject("[档案系统] " + message.getTitle());
         mail.setText(message.toText());
 
-        mailSender.send(mail);
-        log.info("邮件告警已发送: to={}, title={}", receivers, message.getTitle());
+        sender.send(mail);
+        log.info("邮件已发送: to={}, title={}", receivers, message.getTitle());
     }
 
-    /**
-     * 发送钉钉消息.
-     */
+    private String resolveFromAddress(JavaMailSender sender) {
+        String cf = systemMailSenderFactory.resolveFromAddress();
+        if (StringUtils.hasText(cf)) {
+            return cf.trim();
+        }
+        if (StringUtils.hasText(envEmailFrom)) {
+            return envEmailFrom.trim();
+        }
+        if (sender instanceof JavaMailSenderImpl impl && StringUtils.hasText(impl.getUsername())) {
+            return impl.getUsername().trim();
+        }
+        return null;
+    }
+
     private void sendDingtalk(AlertMessage message) {
         try {
             String webhookUrl = buildDingtalkUrl();
-            
-            Map<String, Object> body = new HashMap<>();
+
+            Map<String, Object> body = new java.util.HashMap<>();
             body.put("msgtype", "markdown");
-            
-            Map<String, String> markdown = new HashMap<>();
+
+            Map<String, String> markdown = new java.util.HashMap<>();
             markdown.put("title", message.getTitle());
             markdown.put("text", buildDingtalkMarkdown(message));
             body.put("markdown", markdown);
@@ -213,15 +361,12 @@ public class AlertServiceImpl implements AlertService {
 
             restTemplate.postForObject(webhookUrl, request, String.class);
             log.info("钉钉告警已发送: title={}", message.getTitle());
-            
+
         } catch (Exception e) {
             log.error("钉钉告警发送失败", e);
         }
     }
 
-    /**
-     * 构建钉钉 Webhook URL（如果配置了密钥，需要签名）.
-     */
     private String buildDingtalkUrl() {
         if (dingtalkSecret == null || dingtalkSecret.isBlank()) {
             return dingtalkWebhook;
@@ -230,16 +375,16 @@ public class AlertServiceImpl implements AlertService {
         try {
             long timestamp = System.currentTimeMillis();
             String stringToSign = timestamp + "\n" + dingtalkSecret;
-            
+
             javax.crypto.Mac mac = javax.crypto.Mac.getInstance("HmacSHA256");
             mac.init(new javax.crypto.spec.SecretKeySpec(
                     dingtalkSecret.getBytes(java.nio.charset.StandardCharsets.UTF_8), "HmacSHA256"));
             byte[] signData = mac.doFinal(
                     stringToSign.getBytes(java.nio.charset.StandardCharsets.UTF_8));
             String sign = java.net.URLEncoder.encode(
-                    java.util.Base64.getEncoder().encodeToString(signData), 
+                    java.util.Base64.getEncoder().encodeToString(signData),
                     java.nio.charset.StandardCharsets.UTF_8);
-            
+
             return dingtalkWebhook + "&timestamp=" + timestamp + "&sign=" + sign;
         } catch (Exception e) {
             log.error("钉钉签名计算失败", e);
@@ -247,20 +392,17 @@ public class AlertServiceImpl implements AlertService {
         }
     }
 
-    /**
-     * 构建钉钉 Markdown 内容.
-     */
     private String buildDingtalkMarkdown(AlertMessage message) {
         StringBuilder sb = new StringBuilder();
         sb.append("### ").append(getLevelEmoji(message.getLevel())).append(" ").append(message.getTitle()).append("\n\n");
         sb.append("> **时间**: ").append(message.getCreatedAt()).append("\n\n");
-        
+
         if (message.getArchiveNo() != null) {
             sb.append("> **档案号**: ").append(message.getArchiveNo()).append("\n\n");
         }
-        
+
         sb.append("**详情**: ").append(message.getContent()).append("\n");
-        
+
         return sb.toString();
     }
 
@@ -271,13 +413,5 @@ public class AlertServiceImpl implements AlertService {
             case ERROR -> "❌";
             case CRITICAL -> "🔴";
         };
-    }
-
-    /**
-     * 注入邮件发送器（可选依赖）.
-     */
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
-    public void setMailSender(JavaMailSender mailSender) {
-        this.mailSender = mailSender;
     }
 }
