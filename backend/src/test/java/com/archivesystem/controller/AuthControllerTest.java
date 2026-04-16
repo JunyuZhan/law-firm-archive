@@ -164,7 +164,9 @@ class AuthControllerTest {
         when(claims.getIssuedAt()).thenReturn(new java.util.Date(System.currentTimeMillis() - 1000));
         when(jwtUtils.parseToken(refreshToken)).thenReturn(claims);
         when(userService.getActiveById(1L)).thenReturn(testUser);
-        when(jwtUtils.generateAccessToken(1L, "testuser", "ADMIN"))
+        when(tokenBlacklistService.isBlacklisted(refreshToken)).thenReturn(false);
+        when(tokenBlacklistService.isUserBlacklisted(eq(1L), anyLong())).thenReturn(false);
+        when(jwtUtils.generateAccessToken(1L, "testuser", "SYSTEM_ADMIN"))
                 .thenReturn("new_access_token");
         when(jwtUtils.generateRefreshToken(1L)).thenReturn("new_refresh_token");
 

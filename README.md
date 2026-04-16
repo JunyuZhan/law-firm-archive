@@ -117,6 +117,7 @@ npm run dev
 - [发布前验收清单](./docs/release-checklist.md)
 - [部署后冒烟测试](./docs/deployment-smoke-test.md)
 - [测试台账](./docs/test-ledger.md)
+- [缺陷台账](./docs/defect-ledger.md)
 
 ## Security
 

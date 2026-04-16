@@ -10,6 +10,7 @@ import com.archivesystem.repository.ArchiveMapper;
 import com.archivesystem.repository.DestructionRecordMapper;
 import com.archivesystem.repository.OperationLogMapper;
 import com.archivesystem.security.SecurityUtils;
+import com.archivesystem.service.ArchiveService;
 import com.archivesystem.service.DestructionService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
@@ -39,6 +40,7 @@ public class DestructionServiceImpl implements DestructionService {
     private final DestructionRecordMapper destructionMapper;
     private final ArchiveMapper archiveMapper;
     private final OperationLogMapper operationLogMapper;
+    private final ArchiveService archiveService;
 
     private static final AtomicInteger batchNoCounter = new AtomicInteger(1);
 
@@ -149,6 +151,7 @@ public class DestructionServiceImpl implements DestructionService {
         if (record == null) {
             throw NotFoundException.of("销毁记录", id);
         }
+        assertArchiveReadableForDestruction(record.getArchiveId());
         return record;
     }
 
@@ -192,7 +195,15 @@ public class DestructionServiceImpl implements DestructionService {
 
     @Override
     public List<DestructionRecord> getByArchiveId(Long archiveId) {
+        assertArchiveReadableForDestruction(archiveId);
         return destructionMapper.selectByArchiveId(archiveId);
+    }
+
+    private void assertArchiveReadableForDestruction(Long archiveId) {
+        if (archiveId == null) {
+            throw new BusinessException("档案标识无效");
+        }
+        archiveService.getById(archiveId);
     }
 
     @Override

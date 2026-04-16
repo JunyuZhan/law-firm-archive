@@ -175,7 +175,8 @@ class SecurityUtilsTest {
 
         String userType = SecurityUtils.getCurrentUserType();
 
-        assertEquals("ADMIN", userType);
+        // UserDetails 中历史别名 ADMIN 经 UserRoleUtils 归一化为 SYSTEM_ADMIN
+        assertEquals("SYSTEM_ADMIN", userType);
     }
 
     @Test

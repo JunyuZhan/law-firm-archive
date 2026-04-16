@@ -15,6 +15,9 @@ export function normalizeUserType(userType) {
     return ROLES.USER
   }
   const u = t.toUpperCase()
+  if (u === 'ADMIN') {
+    return ROLES.SYSTEM_ADMIN
+  }
   if (u === 'ARCHIVIST') {
     return ROLES.ARCHIVE_MANAGER
   }

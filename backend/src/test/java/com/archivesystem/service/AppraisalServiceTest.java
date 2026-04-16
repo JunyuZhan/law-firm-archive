@@ -4,6 +4,7 @@ import com.archivesystem.TestLambdaCacheInitializer;
 import com.archivesystem.common.PageResult;
 import com.archivesystem.common.exception.BusinessException;
 import com.archivesystem.common.exception.NotFoundException;
+import com.archivesystem.dto.archive.ArchiveDTO;
 import com.archivesystem.entity.AppraisalRecord;
 import com.archivesystem.entity.Archive;
 import com.archivesystem.repository.AppraisalRecordMapper;
@@ -47,6 +48,9 @@ class AppraisalServiceTest {
 
     @Mock
     private ArchiveMapper archiveMapper;
+
+    @Mock
+    private ArchiveService archiveService;
 
     @InjectMocks
     private AppraisalServiceImpl appraisalService;
@@ -117,7 +121,9 @@ class AppraisalServiceTest {
         Long id = 1L;
         AppraisalRecord record = new AppraisalRecord();
         record.setId(id);
+        record.setArchiveId(99L);
         when(appraisalMapper.selectById(id)).thenReturn(record);
+        when(archiveService.getById(99L)).thenReturn(ArchiveDTO.builder().id(99L).build());
 
         // When
         AppraisalRecord result = appraisalService.getById(id);
@@ -195,6 +201,7 @@ class AppraisalServiceTest {
         // Given
         Long archiveId = 1L;
         List<AppraisalRecord> records = Arrays.asList(new AppraisalRecord());
+        when(archiveService.getById(archiveId)).thenReturn(ArchiveDTO.builder().id(archiveId).build());
         when(appraisalMapper.selectByArchiveId(archiveId)).thenReturn(records);
 
         // When
@@ -215,6 +222,7 @@ class AppraisalServiceTest {
         record.setStatus(AppraisalRecord.STATUS_PENDING);
         record.setAppraisalType(AppraisalRecord.TYPE_VALUE);
         when(appraisalMapper.selectById(id)).thenReturn(record);
+        when(archiveService.getById(1L)).thenReturn(ArchiveDTO.builder().id(1L).build());
         when(appraisalMapper.update(isNull(), any())).thenReturn(1);
 
         Archive archive = new Archive();
@@ -235,8 +243,10 @@ class AppraisalServiceTest {
         Long id = 1L;
         AppraisalRecord record = new AppraisalRecord();
         record.setId(id);
+        record.setArchiveId(1L);
         record.setStatus(AppraisalRecord.STATUS_APPROVED);
         when(appraisalMapper.selectById(id)).thenReturn(record);
+        when(archiveService.getById(1L)).thenReturn(ArchiveDTO.builder().id(1L).build());
 
         // When & Then
         assertThrows(BusinessException.class, () -> appraisalService.approve(id, "同意"));
@@ -248,8 +258,10 @@ class AppraisalServiceTest {
         Long id = 1L;
         AppraisalRecord record = new AppraisalRecord();
         record.setId(id);
+        record.setArchiveId(1L);
         record.setStatus(AppraisalRecord.STATUS_PENDING);
         when(appraisalMapper.selectById(id)).thenReturn(record);
+        when(archiveService.getById(1L)).thenReturn(ArchiveDTO.builder().id(1L).build());
         when(appraisalMapper.update(isNull(), any())).thenReturn(1);
 
         // When
@@ -265,8 +277,10 @@ class AppraisalServiceTest {
         Long id = 1L;
         AppraisalRecord record = new AppraisalRecord();
         record.setId(id);
+        record.setArchiveId(1L);
         record.setStatus(AppraisalRecord.STATUS_REJECTED);
         when(appraisalMapper.selectById(id)).thenReturn(record);
+        when(archiveService.getById(1L)).thenReturn(ArchiveDTO.builder().id(1L).build());
 
         // When & Then
         assertThrows(BusinessException.class, () -> appraisalService.reject(id, "拒绝"));
@@ -291,6 +305,7 @@ class AppraisalServiceTest {
         approvedRecord.setNewValue("SECRET");
         
         when(appraisalMapper.selectById(id)).thenReturn(record).thenReturn(approvedRecord);
+        when(archiveService.getById(1L)).thenReturn(ArchiveDTO.builder().id(1L).build());
         when(appraisalMapper.update(isNull(), any())).thenReturn(1);
         
         Archive archive = new Archive();
@@ -324,6 +339,7 @@ class AppraisalServiceTest {
         approvedRecord.setNewValue("Y30");
         
         when(appraisalMapper.selectById(id)).thenReturn(record).thenReturn(approvedRecord);
+        when(archiveService.getById(1L)).thenReturn(ArchiveDTO.builder().id(1L).build());
         when(appraisalMapper.update(isNull(), any())).thenReturn(1);
         
         Archive archive = new Archive();
@@ -359,6 +375,7 @@ class AppraisalServiceTest {
         approvedRecord.setNewValue("OPEN");
         
         when(appraisalMapper.selectById(id)).thenReturn(record).thenReturn(approvedRecord);
+        when(archiveService.getById(1L)).thenReturn(ArchiveDTO.builder().id(1L).build());
         when(appraisalMapper.update(isNull(), any())).thenReturn(1);
         
         Archive archive = new Archive();

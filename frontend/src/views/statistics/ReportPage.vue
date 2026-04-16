@@ -165,8 +165,9 @@
           </div>
         </el-tab-pane>
         
-        <!-- 操作日志 -->
+        <!-- 操作日志（与后端 StatisticsController 导出接口一致：仅系统管理员） -->
         <el-tab-pane
+          v-if="userStore.isAdmin"
           label="操作日志"
           name="log"
         >
@@ -212,7 +213,10 @@
       </template>
       <ul class="tips-list">
         <li>所有报表均导出为 Excel (.xlsx) 格式</li>
-        <li>档案清单和操作日志最多导出 10000 条记录</li>
+        <li>档案清单导出最多 10000 条记录</li>
+        <li v-if="userStore.isAdmin">
+          操作日志导出最多 10000 条记录
+        </li>
         <li>建议使用筛选条件缩小导出范围以提高效率</li>
         <li>导出过程中请勿关闭或刷新页面</li>
       </ul>
@@ -221,10 +225,11 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Download } from '@element-plus/icons-vue'
 import request from '@/utils/request'
+import { useUserStore } from '@/stores'
 import {
   getArchiveTypeOptions,
   ARCHIVE_STATUS
@@ -236,7 +241,17 @@ const statusOptions = Object.entries(ARCHIVE_STATUS)
   .filter(([key]) => ['RECEIVED', 'STORED', 'BORROWED'].includes(key))
   .map(([value, label]) => ({ value, label }))
 
+const userStore = useUserStore()
 const activeTab = ref('overview')
+
+watch(
+  () => userStore.isAdmin,
+  (admin) => {
+    if (!admin && activeTab.value === 'log') {
+      activeTab.value = 'overview'
+    }
+  }
+)
 
 // 加载状态
 const loading = reactive({

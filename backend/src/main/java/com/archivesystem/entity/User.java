@@ -1,11 +1,13 @@
 package com.archivesystem.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 import java.time.LocalDateTime;
 
@@ -18,6 +20,7 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@ToString(callSuper = true, exclude = "password")
 @EqualsAndHashCode(callSuper = true)
 @TableName("sys_user")
 public class User extends BaseEntity {
@@ -25,7 +28,8 @@ public class User extends BaseEntity {
     /** 用户名 */
     private String username;
 
-    /** 密码（加密存储） */
+    /** 密码（加密存储）；禁止通过 REST 序列化对外暴露 */
+    @JsonIgnore
     private String password;
 
     /** 真实姓名 */

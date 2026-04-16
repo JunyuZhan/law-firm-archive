@@ -1,5 +1,6 @@
 package com.archivesystem.entity;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
@@ -115,12 +116,27 @@ class UserTest {
     void testToString() {
         User user = User.builder()
                 .username("test")
+                .password("must-not-leak-in-toString")
                 .realName("测试")
                 .build();
 
         String str = user.toString();
         assertNotNull(str);
         assertTrue(str.contains("User"));
+        assertFalse(str.contains("must-not-leak-in-toString"));
+    }
+
+    @Test
+    void testJsonSerializationOmitsPassword() throws Exception {
+        User user = new User();
+        user.setUsername("alice");
+        user.setPassword("bcrypt-hash-should-not-appear");
+        user.setRealName("Alice");
+
+        String json = new ObjectMapper().writeValueAsString(user);
+
+        assertFalse(json.contains("bcrypt-hash-should-not-appear"), json);
+        assertTrue(json.contains("alice"));
     }
 
     @Test

@@ -40,6 +40,13 @@
           <el-icon><DataAnalysis /></el-icon>
           <span>统计概览</span>
         </el-menu-item>
+        <el-menu-item
+          v-if="canAccess(REPORT_ROLES)"
+          index="/reports"
+        >
+          <el-icon><Download /></el-icon>
+          <span>报表导出</span>
+        </el-menu-item>
         <el-menu-item index="/archives">
           <el-icon><Document /></el-icon>
           <span>档案列表</span>
@@ -125,7 +132,7 @@
             v-if="canAccess([ROLES.SYSTEM_ADMIN])"
             index="/system/config"
           >
-            规则与运行参数
+            系统配置
           </el-menu-item>
           <el-menu-item
             v-if="canAccess([ROLES.SYSTEM_ADMIN])"
@@ -326,7 +333,8 @@ import {
   Stamp,
   Delete,
   Connection,
-  Link
+  Link,
+  Download
 } from '@element-plus/icons-vue'
 import { useUserStore, useAppStore } from '@/stores'
 import { checkRegistryUpdate, getRuntimeInfo } from '@/api/config'

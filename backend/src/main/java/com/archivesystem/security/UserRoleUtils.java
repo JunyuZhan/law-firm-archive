@@ -27,6 +27,9 @@ public final class UserRoleUtils {
             return User.TYPE_USER;
         }
         String u = t.toUpperCase(Locale.ROOT);
+        if ("ADMIN".equals(u)) {
+            return User.TYPE_SYSTEM_ADMIN;
+        }
         if (User.TYPE_ARCHIVIST.toUpperCase(Locale.ROOT).equals(u)) {
             return User.TYPE_ARCHIVE_MANAGER;
         }

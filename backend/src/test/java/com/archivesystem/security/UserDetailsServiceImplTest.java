@@ -52,7 +52,7 @@ class UserDetailsServiceImplTest {
         UserDetailsImpl impl = (UserDetailsImpl) userDetails;
         assertEquals(1L, impl.getId());
         assertEquals("测试用户", impl.getRealName());
-        assertEquals("ADMIN", impl.getUserType());
+        assertEquals("SYSTEM_ADMIN", impl.getUserType());
     }
 
     @Test

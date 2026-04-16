@@ -9,6 +9,7 @@ import com.archivesystem.repository.AppraisalRecordMapper;
 import com.archivesystem.repository.ArchiveMapper;
 import com.archivesystem.security.SecurityUtils;
 import com.archivesystem.service.AppraisalService;
+import com.archivesystem.service.ArchiveService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -33,6 +34,7 @@ public class AppraisalServiceImpl implements AppraisalService {
 
     private final AppraisalRecordMapper appraisalMapper;
     private final ArchiveMapper archiveMapper;
+    private final ArchiveService archiveService;
 
     @Override
     @Transactional
@@ -76,6 +78,7 @@ public class AppraisalServiceImpl implements AppraisalService {
         if (record == null) {
             throw NotFoundException.of("鉴定记录", id);
         }
+        assertArchiveReadableForAppraisal(record.getArchiveId());
         return record;
     }
 
@@ -113,7 +116,18 @@ public class AppraisalServiceImpl implements AppraisalService {
 
     @Override
     public List<AppraisalRecord> getByArchiveId(Long archiveId) {
+        assertArchiveReadableForAppraisal(archiveId);
         return appraisalMapper.selectByArchiveId(archiveId);
+    }
+
+    /**
+     * 与档案详情一致的可读性校验，防止仅凭鉴定/销毁接口绕过数据范围。
+     */
+    private void assertArchiveReadableForAppraisal(Long archiveId) {
+        if (archiveId == null) {
+            throw new BusinessException("档案标识无效");
+        }
+        archiveService.getById(archiveId);
     }
 
     @Override
