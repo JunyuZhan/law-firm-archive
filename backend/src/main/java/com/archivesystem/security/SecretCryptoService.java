@@ -1,6 +1,7 @@
 package com.archivesystem.security;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -31,6 +32,7 @@ public class SecretCryptoService {
     private final SecretKeySpec legacyKeySpec;
     private final SecureRandom secureRandom = new SecureRandom();
 
+    @Autowired
     public SecretCryptoService(
             @Value("${security.crypto.secret:}") String secret,
             @Value("${security.crypto.legacy-secret:${jwt.secret:}}") String legacySecret) {
