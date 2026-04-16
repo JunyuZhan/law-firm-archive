@@ -66,7 +66,7 @@ const tabs = [
   {
     name: 'sources',
     label: '来源管理',
-    allowed: () => userStore.isAdmin,
+    allowed: () => userStore.isArchivist,
     component: defineAsyncComponent(() => import('@/views/source/SourceList.vue'))
   }
 ]

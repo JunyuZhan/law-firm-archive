@@ -12,14 +12,14 @@
   <meta http-equiv="X-XSS-Protection" content="1; mode=block">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   
-  <!-- Content Security Policy (只保留支持的指令) -->
+  <!-- Content Security Policy (只保留支持的指令)；含 Cloudflare Web Analytics 常用域，避免经 Cloudflare 代理时控制台报 CSP 拦截 -->
   <meta http-equiv="Content-Security-Policy" content="
     default-src 'self';
-    script-src 'self' 'unsafe-inline' 'unsafe-eval';
+    script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com;
     style-src 'self' 'unsafe-inline';
     img-src 'self' data: blob: https:;
     font-src 'self' data:;
-    connect-src 'self' ws: wss: http://localhost:* http://127.0.0.1:*;
+    connect-src 'self' ws: wss: http://localhost:* http://127.0.0.1:* https://cloudflareinsights.com;
     base-uri 'self';
     form-action 'self';
   ">

@@ -119,19 +119,19 @@
             v-if="canAccess([ROLES.SYSTEM_ADMIN])"
             index="/system/setup"
           >
-            基础设置
+            站点与展示
+          </el-menu-item>
+          <el-menu-item
+            v-if="canAccess([ROLES.SYSTEM_ADMIN])"
+            index="/system/config"
+          >
+            规则与运行参数
           </el-menu-item>
           <el-menu-item
             v-if="canAccess([ROLES.SYSTEM_ADMIN])"
             index="/system/info"
           >
             系统信息
-          </el-menu-item>
-          <el-menu-item
-            v-if="canAccess([ROLES.SYSTEM_ADMIN])"
-            index="/system/config"
-          >
-            系统配置
           </el-menu-item>
           <el-menu-item
             v-if="canAccess([ROLES.SYSTEM_ADMIN])"
@@ -223,7 +223,7 @@
           @close="dismissSetupReminder"
         >
           <template #title>
-            当前系统仍存在默认站点信息，建议尽快前往“系统管理 / 基础设置”完善系统名称、Logo、备案号和版权信息。
+            当前系统仍存在默认站点信息，建议尽快前往“系统管理 / 站点与展示”完善系统名称、Logo、备案号和版权信息。
           </template>
         </el-alert>
         <el-alert

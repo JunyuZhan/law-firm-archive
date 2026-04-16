@@ -1,8 +1,8 @@
 <template>
   <div class="system-config">
     <div class="page-header">
-      <h1>系统配置</h1>
-      <p>统一维护档案号规则、站点信息和运行参数，修改后请按需刷新缓存并验证关键流程。</p>
+      <h1>规则与运行参数</h1>
+      <p>档案号生成、保管期限、文件上传与借阅策略、水印与回调、登录安全、通知与搜索分页、镜像升级检查等。修改后请按需刷新缓存并验证关键流程。</p>
     </div>
 
     <el-card
@@ -11,7 +11,7 @@
     >
       <template #header>
         <div class="card-header">
-          <span class="title">系统配置</span>
+          <span class="title">规则与运行参数</span>
           <div class="actions">
             <el-button
               :loading="refreshing"
@@ -461,83 +461,6 @@
             </div>
           </div>
         </el-tab-pane>
-
-        <!-- 站点信息 -->
-        <el-tab-pane
-          label="站点信息"
-          name="SITE"
-        >
-          <div class="config-section">
-            <p class="section-desc">
-              配置系统基础信息，如名称、备案号、版权等。
-            </p>
-            <el-form
-              label-width="180px"
-              class="config-form"
-            >
-              <el-form-item 
-                v-for="config in siteConfigs" 
-                :key="config.configKey"
-                :label="config.description || config.configKey"
-              >
-                <template v-if="config.configKey === 'system.site.logo'">
-                  <div class="site-logo-config">
-                    <div
-                      v-if="editedConfigs[config.configKey]"
-                      class="site-logo-preview"
-                    >
-                      <img
-                        :src="editedConfigs[config.configKey]"
-                        alt="Logo 预览"
-                      >
-                    </div>
-                    <div class="site-logo-actions">
-                      <el-input 
-                        v-model="editedConfigs[config.configKey]"
-                        :placeholder="config.configValue || '未设置'"
-                        :disabled="!config.editable"
-                        style="width: 400px"
-                        @input="markChanged(config.configKey)"
-                      />
-                      <el-upload
-                        :show-file-list="false"
-                        :auto-upload="false"
-                        :http-request="handleLogoUpload"
-                        :accept="LOGO_ACCEPT_TYPES"
-                      >
-                        <el-button :loading="logoUploading">
-                          <el-icon><Upload /></el-icon>
-                          上传Logo
-                        </el-button>
-                      </el-upload>
-                    </div>
-                    <div class="config-hint">
-                      {{ LOGO_UPLOAD_HINT }} 也可直接填写外部 URL；上传后会自动写回当前配置。
-                    </div>
-                  </div>
-                </template>
-                <template v-else>
-                  <el-input 
-                    v-model="editedConfigs[config.configKey]"
-                    :placeholder="config.configValue || '未设置'"
-                    :disabled="!config.editable"
-                    style="width: 400px"
-                    @input="markChanged(config.configKey)"
-                  />
-                </template>
-              </el-form-item>
-            </el-form>
-            <el-alert
-              type="info"
-              :closable="false"
-              style="margin-top: 20px"
-            >
-              <template #title>
-                提示：ICP备案号将显示在登录页和页面底部；系统名称将显示在侧边栏和浏览器标题。
-              </template>
-            </el-alert>
-          </div>
-        </el-tab-pane>
       </el-tabs>
     </el-card>
   </div>
@@ -550,20 +473,14 @@ import { Refresh, Check, Upload, Document, Picture, Connection, Lock, Bell, Sear
 import { 
   getConfigsGrouped, 
   batchUpdateConfigs, 
-  refreshConfigCache,
-  uploadSiteLogo
+  refreshConfigCache
 } from '@/api/config'
-import { useAppStore } from '@/stores/app'
 import request from '@/utils/request'
-import { LOGO_ACCEPT_TYPES, LOGO_UPLOAD_HINT, validateLogoFile } from '@/utils/logoUpload'
 
 const activeTab = ref('ARCHIVE_NO')
 const loading = ref(false)
 const saving = ref(false)
 const refreshing = ref(false)
-const logoUploading = ref(false)
-const appStore = useAppStore()
-
 // 配置数据
 const allConfigs = ref({})
 const editedConfigs = reactive({})
@@ -603,9 +520,6 @@ const searchConfigs = computed(() =>
 const registryUpdateConfigs = computed(() =>
   systemConfigs.value.filter(c => c.configKey.startsWith('system.upgrade.'))
 )
-
-// 站点信息配置
-const siteConfigs = computed(() => allConfigs.value['SITE'] || [])
 
 // 是否有修改
 const hasChanges = computed(() => changedKeys.value.size > 0)
@@ -693,26 +607,6 @@ const refreshCache = async () => {
     ElMessage.error('刷新缓存失败')
   } finally {
     refreshing.value = false
-  }
-}
-
-const handleLogoUpload = async ({ file }) => {
-  if (!validateLogoFile(file)) {
-    return
-  }
-  logoUploading.value = true
-  try {
-    const res = await uploadSiteLogo(file)
-    const logoUrl = res?.data?.logoUrl || ''
-    editedConfigs['system.site.logo'] = logoUrl
-    changedKeys.value.delete('system.site.logo')
-    ElMessage.success('Logo上传成功')
-    await loadConfigs()
-    await appStore.loadSiteConfig()
-  } catch (error) {
-    ElMessage.error('Logo上传失败: ' + (error.message || '未知错误'))
-  } finally {
-    logoUploading.value = false
   }
 }
 
@@ -825,36 +719,6 @@ onMounted(() => {
   margin-left: 8px;
   color: #909399;
   font-size: 12px;
-}
-
-.site-logo-config {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.site-logo-actions {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-}
-
-.site-logo-preview {
-  width: 96px;
-  height: 96px;
-  border: 1px solid #dcdfe6;
-  border-radius: 8px;
-  background: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-}
-
-.site-logo-preview img {
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
 }
 
 .retention-card {

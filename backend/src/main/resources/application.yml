@@ -161,7 +161,7 @@ security:
     enabled: ${API_KEY_ENABLED:true}
     header: X-API-Key
 
-# 镜像仓库更新检查（与「系统配置」中 system.upgrade.* 一致；摘要比对用环境变量注入）
+# 镜像仓库更新检查（与「规则与运行参数」页 system.upgrade.* 一致；摘要比对用环境变量注入）
 app:
   registry-upgrade:
     running-backend-digest: ${RUNNING_BACKEND_DIGEST:}
@@ -173,7 +173,7 @@ app:
     registry-password: ${REGISTRY_PASSWORD:}
 
 # 档案系统配置
-# 注意：以下业务配置已迁移到数据库 sys_config 表，可在后台"系统配置"页面管理
+# 注意：以下业务配置已迁移到数据库 sys_config 表，可在后台「规则与运行参数」页面管理
 # - 文件上传限制 (system.upload.max.size, system.upload.allowed.types)
 # - 借阅参数 (system.borrow.*)
 # - 水印设置 (system.watermark.*)

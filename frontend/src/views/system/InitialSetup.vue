@@ -1,8 +1,8 @@
 <template>
   <div class="initial-setup-page">
     <div class="page-header">
-      <h1>系统基础设置</h1>
-      <p>用于维护系统名称、站点标识、备案信息与登录页、页脚等基础展示内容。</p>
+      <h1>站点与展示</h1>
+      <p>系统名称、中英文标识、Logo、ICP 备案号与版权说明；影响登录页、侧栏标题与页脚展示，不涉及业务规则与运行参数。</p>
     </div>
 
     <el-alert
@@ -18,13 +18,13 @@
     >
       <template #header>
         <div class="card-header">
-          <span>基础信息设置</span>
+          <span>展示信息</span>
           <el-button
             type="primary"
             :loading="saving"
             @click="saveSetup"
           >
-            保存基础设置
+            保存
           </el-button>
         </div>
       </template>
@@ -133,7 +133,7 @@
         <ul class="plain-list">
           <li>确认系统名称、Logo 和版权信息是否符合当前机构的管理规范。</li>
           <li>确认 ICP 备案号是否需要在登录页和页脚展示。</li>
-          <li>基础设置保存后，可继续在系统配置中完善上传限制、借阅策略和安全参数。</li>
+          <li>保存后，可在「规则与运行参数」中维护上传限制、借阅策略与安全参数。</li>
         </ul>
       </div>
     </el-card>
@@ -170,12 +170,12 @@ const setupStatus = computed(() => {
   if (initialized) {
     return {
       type: 'success',
-      title: '当前站点基础信息已配置完成，可根据管理需要继续调整。'
+      title: '当前站点展示信息已配置完成，可根据管理需要继续调整。'
     }
   }
   return {
     type: 'warning',
-    title: '当前仍接近默认站点信息，建议尽快完成基础设置。'
+    title: '当前仍接近默认展示信息，建议尽快在本页完成配置。'
   }
 })
 
@@ -193,7 +193,7 @@ const loadSiteConfigs = async () => {
     form.icp = configMap['system.site.icp'] || ''
     form.copyright = configMap['system.site.copyright'] || defaultValues.copyright
   } catch (error) {
-    ElMessage.error('加载基础设置失败')
+    ElMessage.error('加载展示配置失败')
   }
 }
 
@@ -212,9 +212,9 @@ const saveSetup = async () => {
       'system.site.copyright': form.copyright || defaultValues.copyright
     })
     await appStore.loadSiteConfig()
-    ElMessage.success('基础设置保存成功')
+    ElMessage.success('保存成功')
   } catch (error) {
-    ElMessage.error('基础设置保存失败')
+    ElMessage.error('保存失败')
   } finally {
     saving.value = false
   }

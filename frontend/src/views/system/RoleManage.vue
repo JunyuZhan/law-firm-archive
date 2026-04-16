@@ -289,7 +289,7 @@ const permissionTree = ref([
       { code: 'system:user', name: '用户管理' },
       { code: 'system:role', name: '角色管理' },
       { code: 'system:log', name: '日志查看' },
-      { code: 'system:config', name: '系统配置' }
+      { code: 'system:config', name: '规则与运行参数' }
     ]
   }
 ])

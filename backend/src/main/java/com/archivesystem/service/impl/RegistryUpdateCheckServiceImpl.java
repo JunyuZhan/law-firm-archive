@@ -83,7 +83,7 @@ public class RegistryUpdateCheckServiceImpl implements RegistryUpdateCheckServic
 
         if (!backend.remoteOk && !frontend.remoteOk) {
             return dto(null,
-                    "无法从镜像仓库获取更新信息。请检查系统配置中的仓库地址、鉴权与镜像路径。",
+                    "无法从镜像仓库获取更新信息。请检查「规则与运行参数」中的仓库地址、鉴权与镜像路径。",
                     blankToNull(detail),
                     checkedAt);
         }

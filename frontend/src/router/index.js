@@ -105,7 +105,7 @@ const router = createRouter({
           path: 'system/setup',
           name: 'InitialSetup',
           component: () => import('@/views/system/InitialSetup.vue'),
-          meta: { title: '基础设置', requiresAuth: true, roles: [ROLES.SYSTEM_ADMIN] }
+          meta: { title: '站点与展示', requiresAuth: true, roles: [ROLES.SYSTEM_ADMIN] }
         },
         {
           path: 'system/info',
@@ -137,7 +137,7 @@ const router = createRouter({
           path: 'system/config',
           name: 'SystemConfig',
           component: () => import('@/views/system/SystemConfig.vue'),
-          meta: { title: '系统配置', requiresAuth: true, roles: [ROLES.SYSTEM_ADMIN] }
+          meta: { title: '规则与运行参数', requiresAuth: true, roles: [ROLES.SYSTEM_ADMIN] }
         },
         {
           path: 'system/recovery',

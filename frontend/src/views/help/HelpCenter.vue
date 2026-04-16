@@ -399,11 +399,11 @@ const permissionRows = computed(() => [
     description: '用于查看关键操作记录和追溯责任。'
   },
   {
-    module: '系统配置与恢复',
+    module: '站点、规则与备份',
     roles: '系统管理员',
     enabled: hasPermission([ROLES.SYSTEM_ADMIN], currentRole.value),
     status: hasPermission([ROLES.SYSTEM_ADMIN], currentRole.value) ? '可操作' : '不可见',
-    description: '用于维护系统参数、站点信息、备份与恢复。'
+    description: '站点与展示：名称与 Logo 等外观。规则与运行参数：档案号、上传借阅与安全等策略。备份恢复：数据备份与还原。'
   }
 ])
 

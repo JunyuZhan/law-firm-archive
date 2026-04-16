@@ -78,7 +78,7 @@ public class DockerRegistryManifestClient {
                 }
             }
             if (response.statusCode() == 401) {
-                return ManifestFetchResult.fail("HTTP 401：鉴权失败，请在「系统配置」填写仓库只读账号密码，或检查环境变量 REGISTRY_USERNAME / REGISTRY_PASSWORD");
+                return ManifestFetchResult.fail("HTTP 401：鉴权失败，请在管理端「规则与运行参数」中填写仓库只读账号密码，或检查环境变量 REGISTRY_USERNAME / REGISTRY_PASSWORD");
             }
             if (response.statusCode() == 404) {
                 return ManifestFetchResult.fail("HTTP 404：镜像或标签不存在，请核对镜像路径与 APP_VERSION（标签）是否与仓库一致");

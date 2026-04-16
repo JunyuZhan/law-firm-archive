@@ -36,14 +36,14 @@ public class SecurityHeadersFilter extends OncePerRequestFilter {
         // 限制Referer信息泄露
         response.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
         
-        // 内容安全策略 - 防止XSS和数据注入攻击
+        // 内容安全策略 - 防止XSS和数据注入攻击（含 Cloudflare Web Analytics，与前端 index.html 对齐）
         response.setHeader("Content-Security-Policy", 
                 "default-src 'self'; " +
-                "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
+                "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com; " +
                 "style-src 'self' 'unsafe-inline'; " +
                 "img-src 'self' data: blob: https:; " +
                 "font-src 'self' data:; " +
-                "connect-src 'self' ws: wss:; " +
+                "connect-src 'self' ws: wss: https://cloudflareinsights.com; " +
                 "frame-ancestors 'self'; " +
                 "base-uri 'self'; " +
                 "form-action 'self'");

@@ -53,7 +53,7 @@
 - `X-Frame-Options: SAMEORIGIN` - 防止点击劫持
 - `X-XSS-Protection: 1; mode=block` - XSS防护
 - `X-Content-Type-Options: nosniff` - 防止MIME嗅探
-- `Content-Security-Policy` - 内容安全策略
+- `Content-Security-Policy` - 内容安全策略（`script-src` / `connect-src` 已放行 `static.cloudflareinsights.com`、`cloudflareinsights.com`，便于站点经 Cloudflare 并开启 Web Analytics 时不被策略误拦）
 - `Referrer-Policy: strict-origin-when-cross-origin` - 限制Referrer泄露
 - `Permissions-Policy` - 限制浏览器功能
 
