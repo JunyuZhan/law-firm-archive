@@ -103,6 +103,12 @@ npm run dev
 
 面向正式交付时，建议统一使用容器化部署与版本化镜像。
 
+**源码与镜像从哪里来**
+
+- **源代码**始终从 **GitHub** 拉取（`git clone` / `git pull`），私有 Docker 仓库**不提供**业务源码，只存放**已构建的镜像**。
+- **推荐发布顺序**：在能访问 GitHub 的环境（构建机或本机）拉最新 `main` → 用仓库内 `docker/Dockerfile*` **构建**镜像 → 在目标环境**部署联调/冒烟** → 确认无问题后，再将同一批镜像 **`docker push`** 到私有仓库（默认示例：`192.168.50.5:5050`，与 `docker/.env.registry.example` 中 `REGISTRY_PUSH` 一致）。
+- 一键「构建并推送」可参考脚本：`scripts/build-and-push-on-linux.sh`（需已配置 `docker/.env.registry`，且本机已 `docker login` 到私有库）。若要先测后推，可先只 `docker build` / `docker compose build` 用本地或内网标签跑通测试，再单独执行 `docker push`。
+
 - [部署与升级手册](./docs/deployment-upgrade-guide.md)
 - [发布前验收清单](./docs/release-checklist.md)
 - [部署后冒烟测试](./docs/deployment-smoke-test.md)
