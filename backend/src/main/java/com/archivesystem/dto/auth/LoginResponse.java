@@ -37,6 +37,6 @@ public class LoginResponse {
     /** 真实姓名 */
     private String realName;
 
-    /** 用户类型 */
+    /** 用户类型（与授权一致的产品角色，已对历史库值做归一化） */
     private String userType;
 }

@@ -41,7 +41,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             if (StringUtils.hasText(token) && jwtUtils.validateToken(token)) {
                 // 检查Token是否在黑名单中
                 if (tokenBlacklistService.isBlacklisted(token)) {
-                    log.warn("Token已在黑名单中，拒绝访问");
+                    log.warn("Token已在黑名单中，跳过设置认证上下文");
                     filterChain.doFilter(request, response);
                     return;
                 }
@@ -52,7 +52,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 long issuedAt = claims.getIssuedAt().getTime();
                 
                 if (tokenBlacklistService.isUserBlacklisted(userId, issuedAt)) {
-                    log.warn("用户Token已被全部吊销，拒绝访问: userId={}", userId);
+                    log.warn("用户Token已被全部吊销，跳过设置认证上下文: userId={}", userId);
                     filterChain.doFilter(request, response);
                     return;
                 }
@@ -61,7 +61,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
                 if (!userDetails.isEnabled() || !userDetails.isAccountNonLocked()) {
-                    log.warn("用户已被禁用或锁定，拒绝JWT访问: username={}", username);
+                    log.warn("用户已被禁用或锁定，跳过设置认证上下文: username={}", username);
                     filterChain.doFilter(request, response);
                     return;
                 }

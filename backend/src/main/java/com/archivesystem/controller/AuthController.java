@@ -10,6 +10,7 @@ import com.archivesystem.security.LoginSecurityService;
 import com.archivesystem.security.SecurityUtils;
 import com.archivesystem.security.TokenBlacklistService;
 import com.archivesystem.security.UserDetailsImpl;
+import com.archivesystem.security.UserRoleUtils;
 import com.archivesystem.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -78,15 +79,16 @@ public class AuthController {
             );
 
             UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
+            String effectiveUserType = UserRoleUtils.normalize(userDetails.getUserType());
             
             // 登录成功，清除失败记录
             loginSecurityService.clearFailedAttempts(username);
 
-            // 生成Token
+            // 生成Token（JWT 内 userType 与接口返回一致，均为归一化后的产品角色）
             String accessToken = jwtUtils.generateAccessToken(
                     userDetails.getId(),
                     userDetails.getUsername(),
-                    userDetails.getUserType()
+                    effectiveUserType
             );
             String refreshToken = jwtUtils.generateRefreshToken(userDetails.getId());
 
@@ -99,7 +101,7 @@ public class AuthController {
                     .userId(userDetails.getId())
                     .username(userDetails.getUsername())
                     .realName(userDetails.getRealName())
-                    .userType(userDetails.getUserType())
+                    .userType(effectiveUserType)
                     .build();
 
             log.info("用户登录成功: username={}, ip={}", username, clientIp);
@@ -148,10 +150,11 @@ public class AuthController {
                 return Result.error("1003", "用户不存在或已被禁用");
             }
 
+            String effectiveUserType = UserRoleUtils.normalize(user.getUserType());
             String newAccessToken = jwtUtils.generateAccessToken(
                     user.getId(),
                     user.getUsername(),
-                    user.getUserType()
+                    effectiveUserType
             );
             String newRefreshToken = jwtUtils.generateRefreshToken(user.getId());
             tokenBlacklistService.addToBlacklist(refreshToken);
@@ -163,7 +166,7 @@ public class AuthController {
                     .userId(user.getId())
                     .username(user.getUsername())
                     .realName(user.getRealName())
-                    .userType(user.getUserType())
+                    .userType(effectiveUserType)
                     .build();
 
             return Result.success(response);
@@ -185,11 +188,12 @@ public class AuthController {
             return Result.error("401", "未登录");
         }
 
+        String effectiveUserType = UserRoleUtils.normalize(userDetails.getUserType());
         LoginResponse response = LoginResponse.builder()
                 .userId(userDetails.getId())
                 .username(userDetails.getUsername())
                 .realName(userDetails.getRealName())
-                .userType(userDetails.getUserType())
+                .userType(effectiveUserType)
                 .build();
 
         return Result.success(response);

@@ -1,7 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { secureStorage } from '@/utils/security'
-import { BORROW_ROLES, MANAGER_ROLES, REPORT_ROLES, ROLES, hasPermission } from '@/utils/permission'
+import { BORROW_ROLES, MANAGER_ROLES, REPORT_ROLES, ROLES, hasPermission, normalizeUserType } from '@/utils/permission'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -201,7 +201,7 @@ const getUserRole = () => {
     const userInfo = localStorage.getItem('userInfo')
     if (userInfo) {
       const user = JSON.parse(userInfo)
-      return user.userType
+      return normalizeUserType(user.userType)
     }
   } catch (e) {
     console.error('解析用户信息失败', e)

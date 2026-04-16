@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { login as loginApi, logout as logoutApi, getCurrentUser } from '@/api/auth'
 import router from '@/router'
 import { secureStorage, setupIdleTimeout, escapeHtml } from '@/utils/security'
+import { normalizeUserType } from '@/utils/permission'
 
 export const useUserStore = defineStore('user', () => {
   // 状态
@@ -31,7 +32,7 @@ export const useUserStore = defineStore('user', () => {
           userId.value = user.userId
           username.value = escapeHtml(user.username)
           realName.value = escapeHtml(user.realName)
-          userType.value = user.userType
+          userType.value = normalizeUserType(user.userType)
           isLoggedIn.value = true
           
           // 设置空闲超时
@@ -66,11 +67,12 @@ export const useUserStore = defineStore('user', () => {
     secureStorage.setRefreshToken(data.refreshToken)
     
     // 保存用户信息（非敏感，可存localStorage）
+    const effectiveType = normalizeUserType(data.userType)
     const userInfo = {
       userId: data.userId,
       username: data.username,
       realName: data.realName,
-      userType: data.userType
+      userType: effectiveType
     }
     localStorage.setItem('userInfo', JSON.stringify(userInfo))
     
@@ -78,7 +80,7 @@ export const useUserStore = defineStore('user', () => {
     userId.value = data.userId
     username.value = escapeHtml(data.username)
     realName.value = escapeHtml(data.realName)
-    userType.value = data.userType
+    userType.value = effectiveType
     isLoggedIn.value = true
     
     // 设置空闲超时
@@ -123,19 +125,20 @@ export const useUserStore = defineStore('user', () => {
     try {
       const res = await getCurrentUser()
       const data = res.data
+      const effectiveType = normalizeUserType(data.userType)
       userId.value = data.userId
       // 安全处理：与 login 保持一致，防止 XSS
       username.value = escapeHtml(data.username)
       realName.value = escapeHtml(data.realName)
-      userType.value = data.userType
+      userType.value = effectiveType
       isLoggedIn.value = true
       
-      // 更新localStorage（存储原始值用于回显，展示时会再次转义）
+      // 更新localStorage（与后端一致的产品角色，展示时会再次转义）
       const userInfo = {
         userId: data.userId,
         username: data.username,
         realName: data.realName,
-        userType: data.userType
+        userType: effectiveType
       }
       localStorage.setItem('userInfo', JSON.stringify(userInfo))
       
