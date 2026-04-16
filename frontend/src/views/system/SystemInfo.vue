@@ -89,6 +89,12 @@
         <p class="registry-check-message">
           {{ registryCheck.message || '点击「检查」向镜像仓库查询。' }}
         </p>
+        <p
+          v-if="registryCheck.detail"
+          class="registry-check-detail"
+        >
+          {{ registryCheck.detail }}
+        </p>
       </el-card>
 
       <el-card
@@ -162,6 +168,7 @@ const registryCheckLoading = ref(false)
 const registryCheck = reactive({
   updateAvailable: null,
   message: '',
+  detail: '',
   checkedAt: ''
 })
 
@@ -228,11 +235,13 @@ const runRegistryCheck = async () => {
         ? false
         : null
     registryCheck.message = data.message || ''
+    registryCheck.detail = data.detail || ''
     registryCheck.checkedAt = data.checkedAt || ''
   } catch (error) {
     ElMessage.error('镜像仓库检查失败')
     registryCheck.updateAvailable = null
     registryCheck.message = ''
+    registryCheck.detail = ''
     registryCheck.checkedAt = ''
   } finally {
     registryCheckLoading.value = false
@@ -277,6 +286,14 @@ onMounted(() => {
 .registry-checked-at {
   font-size: 12px;
   color: #909399;
+}
+
+.registry-check-detail {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--el-text-color-secondary);
+  word-break: break-word;
 }
 
 .registry-check-message {

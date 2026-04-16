@@ -21,5 +21,10 @@ public class RegistryUpdateCheckDTO {
 
     private String message;
 
+    /**
+     * 失败或部分失败时的补充说明（如 HTTP 状态、鉴权提示等），便于对照系统配置排查。
+     */
+    private String detail;
+
     private String checkedAt;
 }

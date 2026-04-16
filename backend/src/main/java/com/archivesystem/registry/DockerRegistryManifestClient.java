@@ -44,18 +44,18 @@ public class DockerRegistryManifestClient {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public Optional<String> fetchManifestDigest(String registryBaseUrl, String repository, String tag,
-                                                  Optional<String> username, Optional<String> password) {
+    public ManifestFetchResult fetchManifestDigest(String registryBaseUrl, String repository, String tag,
+                                                   Optional<String> username, Optional<String> password) {
         if (!StringUtils.hasText(registryBaseUrl) || !StringUtils.hasText(repository) || !StringUtils.hasText(tag)) {
-            return Optional.empty();
+            return ManifestFetchResult.fail("仓库地址、镜像路径或标签为空");
         }
         String encodedTag = URLEncoder.encode(tag, StandardCharsets.UTF_8);
         String manifestUrl = registryBaseUrl + "/v2/" + repository + "/manifests/" + encodedTag;
         return requestDigest(manifestUrl, username, password, repository);
     }
 
-    private Optional<String> requestDigest(String manifestUrl, Optional<String> username, Optional<String> password,
-                                           String repository) {
+    private ManifestFetchResult requestDigest(String manifestUrl, Optional<String> username, Optional<String> password,
+                                              String repository) {
         try {
             HttpRequest.Builder builder = HttpRequest.newBuilder()
                     .uri(URI.create(manifestUrl))
@@ -77,18 +77,43 @@ public class DockerRegistryManifestClient {
                     response = httpClient.send(retry.build(), HttpResponse.BodyHandlers.ofString());
                 }
             }
+            if (response.statusCode() == 401) {
+                return ManifestFetchResult.fail("HTTP 401：鉴权失败，请在「系统配置」填写仓库只读账号密码，或检查环境变量 REGISTRY_USERNAME / REGISTRY_PASSWORD");
+            }
+            if (response.statusCode() == 404) {
+                return ManifestFetchResult.fail("HTTP 404：镜像或标签不存在，请核对镜像路径与 APP_VERSION（标签）是否与仓库一致");
+            }
             if (response.statusCode() != 200) {
                 log.warn("Registry manifest 请求失败: status={}, url={}", response.statusCode(), manifestUrl);
-                return Optional.empty();
+                return ManifestFetchResult.fail("HTTP " + response.statusCode() + "：无法读取清单（" + shortUrl(manifestUrl) + "）");
             }
             Optional<String> fromHeader = response.headers().firstValue("Docker-Content-Digest");
             if (fromHeader.isPresent() && StringUtils.hasText(fromHeader.get())) {
-                return fromHeader;
+                return ManifestFetchResult.ok(fromHeader.get());
             }
-            return sha256DigestPrefix(response.body());
+            return sha256DigestPrefix(response.body())
+                    .map(ManifestFetchResult::ok)
+                    .orElseGet(() -> ManifestFetchResult.fail("响应中缺少 Docker-Content-Digest 且无法从正文计算摘要"));
         } catch (Exception e) {
             log.warn("Registry manifest 请求异常: url={}, error={}", manifestUrl, e.getMessage());
-            return Optional.empty();
+            String msg = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+            if (msg.length() > 120) {
+                msg = msg.substring(0, 120) + "…";
+            }
+            return ManifestFetchResult.fail("网络或 TLS 异常：" + msg);
+        }
+    }
+
+    private static String shortUrl(String manifestUrl) {
+        try {
+            URI u = URI.create(manifestUrl);
+            String p = u.getPath();
+            if (p != null && p.length() > 80) {
+                return u.getHost() + "…" + p.substring(p.length() - 40);
+            }
+            return manifestUrl.length() > 100 ? manifestUrl.substring(0, 100) + "…" : manifestUrl;
+        } catch (Exception e) {
+            return manifestUrl;
         }
     }
 
@@ -159,3 +184,4 @@ public class DockerRegistryManifestClient {
         }
     }
 }
+

@@ -4,6 +4,7 @@ import com.archivesystem.common.util.RegistryUrlUtils;
 import com.archivesystem.config.RegistryUpgradeProperties;
 import com.archivesystem.dto.config.RegistryUpdateCheckDTO;
 import com.archivesystem.registry.DockerRegistryManifestClient;
+import com.archivesystem.registry.ManifestFetchResult;
 import com.archivesystem.service.ConfigService;
 import com.archivesystem.service.RegistryUpdateCheckService;
 import lombok.RequiredArgsConstructor;
@@ -64,50 +65,90 @@ public class RegistryUpdateCheckServiceImpl implements RegistryUpdateCheckServic
 
     private Part evaluate(String repository, String tag, String registryBase, String runningDigest,
                           Optional<String> username, Optional<String> password) {
-        Optional<String> remote = manifestClient.fetchManifestDigest(registryBase, repository, tag, username, password);
-        if (remote.isEmpty()) {
-            return new Part(true, null);
+        ManifestFetchResult remote = manifestClient.fetchManifestDigest(registryBase, repository, tag, username, password);
+        if (!remote.isSuccess()) {
+            String hint = StringUtils.hasText(remote.getFailureHint()) ? remote.getFailureHint() : "未知错误";
+            return new Part(false, null, hint);
         }
         if (!StringUtils.hasText(runningDigest)) {
-            return new Part(false, null);
+            return new Part(true, null, null);
         }
-        boolean same = runningDigest.equalsIgnoreCase(remote.get());
-        return new Part(false, !same);
+        boolean same = runningDigest.equalsIgnoreCase(remote.getDigest());
+        return new Part(true, !same, null);
     }
 
     private RegistryUpdateCheckDTO merge(Part backend, Part frontend) {
         String checkedAt = Instant.now().toString();
-        if (backend.remoteFailed || frontend.remoteFailed) {
-            return RegistryUpdateCheckDTO.builder()
-                    .updateAvailable(null)
-                    .message("无法从镜像仓库获取更新信息，请检查系统配置中的仓库地址与账号。")
-                    .checkedAt(checkedAt)
-                    .build();
+        String detail = failureDetail(backend, frontend);
+
+        if (!backend.remoteOk && !frontend.remoteOk) {
+            return dto(null,
+                    "无法从镜像仓库获取更新信息。请检查系统配置中的仓库地址、鉴权与镜像路径。",
+                    blankToNull(detail),
+                    checkedAt);
         }
-        boolean anyUpdate = Boolean.TRUE.equals(backend.upgrade) || Boolean.TRUE.equals(frontend.upgrade);
+
+        boolean anyUpdate = (backend.remoteOk && Boolean.TRUE.equals(backend.upgrade))
+                || (frontend.remoteOk && Boolean.TRUE.equals(frontend.upgrade));
         if (anyUpdate) {
-            return RegistryUpdateCheckDTO.builder()
-                    .updateAvailable(true)
-                    .message("镜像仓库中存在可用更新。")
-                    .checkedAt(checkedAt)
-                    .build();
+            String msg = "镜像仓库中存在可用更新。";
+            if (!backend.remoteOk || !frontend.remoteOk) {
+                msg += "（另有镜像仓库检查失败，请查看详情。）";
+            }
+            return dto(true, msg, blankToNull(detail), checkedAt);
         }
-        boolean unknown = backend.upgrade == null || frontend.upgrade == null;
-        if (unknown) {
-            return RegistryUpdateCheckDTO.builder()
-                    .updateAvailable(null)
-                    .message("已连接镜像仓库；配置运行镜像摘要后即可判断是否可用更新。")
-                    .checkedAt(checkedAt)
-                    .build();
+
+        if (backend.remoteOk && frontend.remoteOk) {
+            boolean unknown = backend.upgrade == null || frontend.upgrade == null;
+            if (unknown) {
+                return dto(null, "已连接镜像仓库；配置运行镜像摘要后即可判断是否可用更新。", null, checkedAt);
+            }
+            return dto(false, "镜像仓库中暂无可用的更新。", null, checkedAt);
         }
+
+        return dto(null,
+                "无法完整判断更新状态：部分镜像未能从仓库读取或未配置运行摘要。",
+                blankToNull(detail),
+                checkedAt);
+    }
+
+    private static RegistryUpdateCheckDTO dto(Boolean updateAvailable, String message, String detail, String checkedAt) {
         return RegistryUpdateCheckDTO.builder()
-                .updateAvailable(false)
-                .message("镜像仓库中暂无可用的更新。")
+                .updateAvailable(updateAvailable)
+                .message(message)
+                .detail(detail)
                 .checkedAt(checkedAt)
                 .build();
     }
 
-    private record Part(boolean remoteFailed, Boolean upgrade) {
+    private static String failureDetail(Part backend, Part frontend) {
+        StringBuilder sb = new StringBuilder();
+        if (!backend.remoteOk) {
+            sb.append("后端：").append(nullToPlain(backend.failureHint()));
+        }
+        if (!frontend.remoteOk) {
+            if (sb.length() > 0) {
+                sb.append(' ');
+            }
+            sb.append("前端：").append(nullToPlain(frontend.failureHint()));
+        }
+        return sb.toString();
+    }
+
+    private static String nullToPlain(String s) {
+        return StringUtils.hasText(s) ? s : "（无具体说明）";
+    }
+
+    private static String blankToNull(String s) {
+        return StringUtils.hasText(s) ? s : null;
+    }
+
+    /**
+     * @param remoteOk 是否成功从仓库拉取清单
+     * @param upgrade    与运行中 digest 比较是否有更新；remoteOk 且未配置 digest 时为 null
+     * @param failureHint remoteOk 为 false 时的原因
+     */
+    private record Part(boolean remoteOk, Boolean upgrade, String failureHint) {
     }
 
     private static String firstNonBlank(String a, String b) {
