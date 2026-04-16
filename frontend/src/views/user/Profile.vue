@@ -180,31 +180,36 @@
       </el-col>
     </el-row>
     
-    <!-- 账户信息 -->
+    <!-- 与「个人信息」区分：此处为系统侧只读记录（角色、启用状态、最近登录） -->
     <el-card
       shadow="never"
       style="margin-top: 20px"
     >
       <template #header>
         <div class="card-header">
-          <span>账户信息</span>
+          <span>角色与登录信息</span>
         </div>
       </template>
-      
+      <p class="account-readonly-hint">
+        以下由系统根据管理员配置与您的登录行为生成，仅供查看；姓名、联系方式等在上方「个人信息」中修改。
+      </p>
       <el-descriptions
-        :column="3"
+        :column="2"
         border
       >
-        <el-descriptions-item label="用户类型">
+        <el-descriptions-item label="系统角色">
           <el-tag>{{ getUserTypeName(userStore.userType) }}</el-tag>
         </el-descriptions-item>
-        <el-descriptions-item label="账户状态">
-          <el-tag type="success">
-            正常
+        <el-descriptions-item label="账号状态">
+          <el-tag :type="accountStatusTagType">
+            {{ accountStatusLabel }}
           </el-tag>
         </el-descriptions-item>
-        <el-descriptions-item label="上次登录">
-          {{ userStore.lastLoginAt || '首次登录' }}
+        <el-descriptions-item label="最近登录时间">
+          {{ formattedLastLoginAt }}
+        </el-descriptions-item>
+        <el-descriptions-item label="最近登录 IP">
+          {{ accountSummary.lastLoginIp || '—' }}
         </el-descriptions-item>
       </el-descriptions>
     </el-card>
@@ -219,6 +224,12 @@ import { changePassword, updateUser, getCurrentUser } from '@/api/user'
 import { validatePasswordStrength } from '@/utils/security'
 
 const userStore = useUserStore()
+/** 来自 /users/current 的系统侧字段（与可编辑的个人信息区分） */
+const accountSummary = reactive({
+  status: 'ACTIVE',
+  lastLoginAt: null,
+  lastLoginIp: ''
+})
 const profileFormRef = ref()
 const passwordFormRef = ref()
 const profileLoading = ref(false)
@@ -350,6 +361,49 @@ const getUserTypeName = (type) => {
   return map[type] || type
 }
 
+const formatDateTime = (value) => {
+  if (value == null || value === '') {
+    return '—'
+  }
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) {
+    return String(value)
+  }
+  return new Intl.DateTimeFormat('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  }).format(d)
+}
+
+const accountStatusLabel = computed(() => {
+  const s = (accountSummary.status || '').toUpperCase()
+  if (s === 'ACTIVE') {
+    return '正常'
+  }
+  if (s === 'DISABLED') {
+    return '已停用'
+  }
+  return s || '未知'
+})
+
+const accountStatusTagType = computed(() => {
+  const s = (accountSummary.status || '').toUpperCase()
+  if (s === 'ACTIVE') {
+    return 'success'
+  }
+  if (s === 'DISABLED') {
+    return 'danger'
+  }
+  return 'info'
+})
+
+const formattedLastLoginAt = computed(() => formatDateTime(accountSummary.lastLoginAt))
+
 // 加载用户信息
 const loadUserInfo = async () => {
   try {
@@ -360,6 +414,9 @@ const loadUserInfo = async () => {
     profileForm.email = user.email || ''
     profileForm.phone = user.phone || ''
     profileForm.department = user.department || ''
+    accountSummary.status = user.status || 'ACTIVE'
+    accountSummary.lastLoginAt = user.lastLoginAt ?? null
+    accountSummary.lastLoginIp = user.lastLoginIp || ''
   } catch (e) {
     console.error('加载用户信息失败', e)
   }
@@ -442,7 +499,14 @@ onMounted(() => {
   .card-header {
     font-weight: 500;
   }
-  
+
+  .account-readonly-hint {
+    margin: 0 0 14px;
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--el-text-color-secondary);
+  }
+
   .el-form {
     max-width: 400px;
   }

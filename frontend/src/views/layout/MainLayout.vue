@@ -154,13 +154,19 @@
       <!-- 顶部栏 -->
       <el-header class="header">
         <div class="header-left">
-          <el-icon
-            class="collapse-btn"
+          <el-button
+            class="header-collapse-btn"
+            text
+            circle
+            size="large"
+            :aria-label="appStore.sidebarCollapsed ? '展开导航菜单' : '折叠导航菜单'"
             @click="appStore.toggleSidebar"
           >
-            <Fold v-if="!appStore.sidebarCollapsed" />
-            <Expand v-else />
-          </el-icon>
+            <el-icon :size="22">
+              <Fold v-if="!appStore.sidebarCollapsed" />
+              <Expand v-else />
+            </el-icon>
+          </el-button>
           <el-breadcrumb separator="/">
             <el-breadcrumb-item :to="{ path: '/' }">
               首页
@@ -584,17 +590,16 @@ const handleLogout = async () => {
     align-items: center;
     gap: 20px;
     
-    .collapse-btn {
-      font-size: 20px;
-      cursor: pointer;
+    .header-collapse-btn {
+      flex-shrink: 0;
       color: #606266;
-      transition: all 0.2s ease;
-      padding: 6px;
-      border-radius: 4px;
-      
+
       &:hover {
         color: #409eff;
-        background: rgba(64, 158, 255, 0.1);
+      }
+
+      :deep(.el-icon) {
+        margin: 0;
       }
     }
     
