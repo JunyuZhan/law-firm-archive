@@ -235,7 +235,7 @@
       </el-main>
       <div class="layout-footer">
         <span>{{ appStore.systemConfig.systemName || '档案管理系统' }}</span>
-        <span v-if="canViewRuntimeInfo && runtimeInfo.productVersion">版本 {{ runtimeInfo.productVersion }}</span>
+        <span v-if="canViewRuntimeInfo && layoutDisplayVersion">版本 {{ layoutDisplayVersion }}</span>
         <span v-if="canViewRuntimeInfo && runtimeInfo.commitSha && runtimeInfo.commitSha !== 'unknown'">提交 {{ runtimeInfo.commitSha }}</span>
       </div>
     </el-container>
@@ -324,6 +324,7 @@ import {
 } from '@element-plus/icons-vue'
 import { useUserStore, useAppStore } from '@/stores'
 import { checkRegistryUpdate, getRuntimeInfo } from '@/api/config'
+import { APP_PRODUCT_VERSION } from '@/config/appProductVersion'
 import { BORROW_ROLES, MANAGER_ROLES, REPORT_ROLES, ROLES, hasPermission } from '@/utils/permission'
 
 const userStore = useUserStore()
@@ -344,6 +345,9 @@ const showRegistryUpdateReminder = computed(() =>
 )
 const canViewRuntimeInfo = computed(() => canAccess([ROLES.SYSTEM_ADMIN]))
 const showSystemMenu = computed(() => canAccess([ROLES.SYSTEM_ADMIN]))
+const layoutDisplayVersion = computed(
+  () => (runtimeInfo.productVersion || APP_PRODUCT_VERSION || '').trim()
+)
 
 // 初始化
 onMounted(() => {
@@ -360,7 +364,7 @@ const loadRuntimeInfo = async () => {
   try {
     const res = await getRuntimeInfo()
     const data = res?.data || {}
-    runtimeInfo.productVersion = data.productVersion || ''
+    runtimeInfo.productVersion = data.productVersion || APP_PRODUCT_VERSION || ''
     runtimeInfo.commitSha = data.commitSha || ''
   } catch (error) {
     runtimeInfo.productVersion = ''

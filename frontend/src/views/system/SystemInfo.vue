@@ -25,14 +25,14 @@
           :column="1"
           border
         >
-          <el-descriptions-item label="产品版本">
-            {{ runtimeInfo.productVersion || '-' }}
+          <el-descriptions-item label="应用版本">
+            {{ displayAppVersion }}
           </el-descriptions-item>
-          <el-descriptions-item label="前端版本">
-            {{ frontendVersion }}
-          </el-descriptions-item>
-          <el-descriptions-item label="后端版本">
-            {{ runtimeInfo.backendVersion || '-' }}
+          <el-descriptions-item
+            v-if="versionMismatchHint"
+            label="版本说明"
+          >
+            {{ versionMismatchHint }}
           </el-descriptions-item>
           <el-descriptions-item label="构建时间">
             {{ runtimeInfo.buildTime || '-' }}
@@ -150,12 +150,10 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
-import packageJson from '../../../package.json'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { checkRegistryUpdate, getDependencyStatus, getRuntimeInfo } from '@/api/config'
-
-const frontendVersion = packageJson.version
+import { APP_PRODUCT_VERSION } from '@/config/appProductVersion'
 
 const runtimeInfo = reactive({
   productVersion: '',
@@ -175,6 +173,27 @@ const registryCheck = reactive({
 const dependencyStatus = reactive({
   overallStatus: 'UNKNOWN',
   items: []
+})
+
+const displayAppVersion = computed(
+  () => runtimeInfo.productVersion || APP_PRODUCT_VERSION || '-'
+)
+
+const versionMismatchHint = computed(() => {
+  const parts = []
+  const pv = (runtimeInfo.productVersion || '').trim()
+  const bv = (runtimeInfo.backendVersion || '').trim()
+  const embedded = (APP_PRODUCT_VERSION || '').trim()
+  if (pv && bv && pv !== bv) {
+    parts.push(`后端构件版本为 ${bv}`)
+  }
+  if (pv && embedded && pv !== embedded) {
+    parts.push(`当前页面静态资源标识为 ${embedded}`)
+  }
+  if (!pv && bv) {
+    parts.push(`后端构件版本为 ${bv}`)
+  }
+  return parts.length ? parts.join('；') : ''
 })
 
 const loadRuntimeInfo = async () => {

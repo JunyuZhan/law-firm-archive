@@ -13,7 +13,8 @@ export default [
       ecmaVersion: 2022,
       sourceType: 'module',
       globals: {
-        __dirname: 'readonly'
+        __dirname: 'readonly',
+        __APP_PRODUCT_VERSION__: 'readonly'
       }
     },
     rules: {

@@ -5,6 +5,7 @@
 ## 1. 版本与源码
 
 - [ ] 已确认本次发布版本号，例如 `v0.1.1`
+- [ ] 已更新仓库根目录 **`VERSION`**，并已执行 **`scripts/sync-version.sh`**（同步 `backend/pom.xml` 与 `frontend/package.json`）
 - [ ] 已确认 Git 提交号
 - [ ] 已完成本次变更说明整理
 - [ ] 已确认未误带调试代码、临时开关、测试账号说明

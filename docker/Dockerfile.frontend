@@ -3,6 +3,10 @@ FROM node:20-alpine AS build
 
 WORKDIR /app
 
+# 与仓库 VERSION 一致；可被构建参数 APP_VERSION 覆盖（与后端镜像、注册表 tag 对齐）
+COPY VERSION /tmp/PRODUCT_VERSION
+ARG APP_VERSION=
+
 # 复制package文件
 COPY frontend/package*.json ./
 
@@ -12,8 +16,9 @@ RUN npm install
 # 复制源代码
 COPY frontend/ .
 
-# 构建
-RUN npm run build
+# 构建（Vite 读取 VITE_APP_PRODUCT_VERSION 注入静态资源版本标识）
+RUN BUILT_VER="${APP_VERSION:-$(tr -d ' \r\n' < /tmp/PRODUCT_VERSION)}" && \
+    VITE_APP_PRODUCT_VERSION="$BUILT_VER" npm run build
 
 # 生产阶段
 FROM nginx:alpine

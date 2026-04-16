@@ -6,10 +6,15 @@ FROM maven:3.9-eclipse-temurin-21 AS builder
 
 WORKDIR /app
 
+# 产品版本：优先构建参数 APP_VERSION，否则使用仓库根目录 VERSION（与 frontend、脚本约定一致）
+COPY VERSION /tmp/PRODUCT_VERSION
+ARG APP_VERSION=
 # 复制源码并直接构建，避免额外的 go-offline 远程握手失败
 COPY backend/pom.xml ./pom.xml
 COPY backend/src ./src
-RUN mvn package -DskipTests -B
+RUN VER="${APP_VERSION:-$(tr -d ' \r\n' < /tmp/PRODUCT_VERSION)}" && \
+    mvn -B org.codehaus.mojo:versions-maven-plugin:2.17.1:set -DnewVersion="$VER" -DgenerateBackupPoms=false && \
+    mvn package -DskipTests -B
 
 # ===== 第二阶段：运行 =====
 FROM eclipse-temurin:21-jre-alpine

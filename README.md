@@ -46,12 +46,15 @@ External Systems
 
 ```text
 .
+├── VERSION     产品版本（单一来源）；修改后运行 scripts/sync-version.sh 同步 pom 与前端 package.json
 ├── backend/    Spring Boot service
 ├── frontend/   Vue 3 console
 ├── docker/     Compose, Nginx and deployment templates
 ├── docs/       Integration, security and delivery documentation
 └── scripts/    Bootstrap and delivery scripts
 ```
+
+产品版本与界面展示：`VERSION` 与 Docker 构建参数 `APP_VERSION`（未设置时回退到 `VERSION`）、后端 `runtime-info`、前端构建注入一致。发布镜像时请让 `APP_VERSION` 与私有库 tag 对齐。
 
 ## Quick Start
 
