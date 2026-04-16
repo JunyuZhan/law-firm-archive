@@ -1,357 +1,321 @@
 <template>
-  <div class="help-center-page">
-    <div class="page-header">
-      <h1>帮助中心</h1>
-      <p>根据当前角色展示可用功能、办理流程和后台管理说明，便于快速上手系统。</p>
-    </div>
+  <div class="help-doc-root">
+    <header class="doc-hero">
+      <h1 class="doc-hero-title">
+        使用指南
+      </h1>
+      <p class="doc-hero-lead">
+        帮助中心用于说明<strong>在本系统中如何完成日常工作</strong>：从接收与整理档案，到检索与借阅，以及管理员侧的配置与维护。下列内容与您的登录角色一致，仅展示您有权使用的功能。
+      </p>
+      <div class="doc-hero-meta">
+        <span>当前角色：{{ currentRoleLabel }}</span>
+        <span class="doc-meta-sep">·</span>
+        <span>功能说明 {{ accessibleEntries.length }} 条</span>
+        <span class="doc-meta-sep">·</span>
+        <span>左侧目录可跳转，上方搜索可筛选正文</span>
+      </div>
+    </header>
 
-    <div class="summary-grid">
-      <el-card
-        shadow="never"
-        class="summary-card"
-      >
-        <div class="summary-label">
-          当前角色
+    <div class="doc-frame">
+      <aside class="doc-sidebar">
+        <div class="doc-sidebar-head">
+          目录
         </div>
-        <div class="summary-value">
-          {{ currentRoleLabel }}
-        </div>
-        <div class="summary-hint">
-          不同角色看到的功能说明会自动收口。
-        </div>
-      </el-card>
-      <el-card
-        shadow="never"
-        class="summary-card"
-      >
-        <div class="summary-label">
-          可访问页面
-        </div>
-        <div class="summary-value">
-          {{ accessibleEntries.length }}
-        </div>
-        <div class="summary-hint">
-          仅统计当前账号在系统中可进入的业务页面。
-        </div>
-      </el-card>
-      <el-card
-        shadow="never"
-        class="summary-card"
-      >
-        <div class="summary-label">
-          重点链路
-        </div>
-        <div class="summary-value">
-          入库 / 保存 / 借阅
-        </div>
-        <div class="summary-hint">
-          帮助内容围绕电子档案三条主流程组织。
-        </div>
-      </el-card>
-    </div>
-
-    <el-card
-      shadow="never"
-      class="help-card"
-    >
-      <el-input
-        v-model.trim="keyword"
-        placeholder="搜索功能名称、步骤或问题，例如：借阅、档案接收、权限管理"
-        clearable
-      />
-    </el-card>
-
-    <el-card
-      shadow="never"
-      class="help-card"
-    >
-      <template #header>
-        <span>我的功能导航</span>
-      </template>
-      <div class="group-list">
-        <section
-          v-for="group in visibleBusinessGroups"
-          :key="group.key"
-          class="help-group"
+        <el-input
+          v-model.trim="keyword"
+          class="doc-sidebar-search"
+          size="small"
+          placeholder="搜索文档…"
+          clearable
+        />
+        <nav
+          class="doc-toc"
+          aria-label="文档目录"
         >
-          <div class="group-head">
-            <h3>{{ group.title }}</h3>
-            <p>{{ group.description }}</p>
-          </div>
-          <div class="entry-grid">
-            <el-card
-              v-for="entry in group.entries"
-              :key="entry.route"
-              shadow="never"
-              class="entry-card"
+          <button
+            v-for="item in tocItems"
+            :key="item.id"
+            type="button"
+            class="doc-toc-item"
+            :class="[
+              `doc-toc-level-${item.level}`,
+              { 'is-active': activeId === item.id }
+            ]"
+            @click="scrollToAnchor(item.id)"
+          >
+            {{ item.label }}
+          </button>
+        </nav>
+      </aside>
+
+      <div class="doc-body">
+        <div class="doc-body-inner">
+          <section
+            v-if="visibleBusinessGroups.length"
+            id="help-business"
+            class="doc-chapter"
+          >
+            <h2 class="doc-chapter-title">
+              业务功能
+            </h2>
+            <p class="doc-chapter-intro">
+              按业务链路组织：入库与接收、保存与整理、借阅与利用。每一节给出操作步骤与注意点，并可直接进入对应页面。
+            </p>
+            <template
+              v-for="group in visibleBusinessGroups"
+              :key="group.key"
             >
-              <div class="entry-head">
-                <div class="entry-title">
-                  {{ entry.title }}
+              <div
+                :id="'nav-' + group.key"
+                class="doc-section"
+              >
+                <h3 class="doc-section-title">
+                  {{ group.title }}
+                </h3>
+                <p class="doc-section-lead">
+                  {{ group.description }}
+                </p>
+                <div
+                  v-for="(entry, i) in group.entries"
+                  :id="entryAnchorId('biz', group.key, i)"
+                  :key="entry.route + '-' + i"
+                  class="doc-entry"
+                >
+                  <h4 class="doc-entry-title">
+                    {{ entry.title }}
+                  </h4>
+                  <p class="doc-p">
+                    {{ entry.description }}
+                  </p>
+                  <template v-if="entry.steps?.length">
+                    <div class="doc-label">
+                      操作步骤
+                    </div>
+                    <ol class="doc-ol">
+                      <li
+                        v-for="step in entry.steps"
+                        :key="step"
+                      >
+                        {{ step }}
+                      </li>
+                    </ol>
+                  </template>
+                  <template v-if="entry.tips?.length">
+                    <div class="doc-label">
+                      注意事项
+                    </div>
+                    <ul class="doc-ul">
+                      <li
+                        v-for="tip in entry.tips"
+                        :key="tip"
+                      >
+                        {{ tip }}
+                      </li>
+                    </ul>
+                  </template>
+                  <button
+                    type="button"
+                    class="doc-inline-action"
+                    @click="router.push(entry.route)"
+                  >
+                    在系统中打开此功能
+                  </button>
                 </div>
-                <el-tag
-                  size="small"
-                  type="success"
-                >
-                  可用
-                </el-tag>
               </div>
-              <div class="entry-desc">
-                {{ entry.description }}
-              </div>
-              <div class="entry-actions">
-                <el-button
-                  text
-                  @click="selectEntry(entry)"
-                >
-                  查看说明
-                </el-button>
-                <el-button
-                  text
-                  @click="router.push(entry.route)"
-                >
-                  进入页面
-                </el-button>
-              </div>
-            </el-card>
-          </div>
-        </section>
-      </div>
-    </el-card>
+            </template>
+          </section>
 
-    <el-card
-      v-if="visibleAdminGroups.length"
-      shadow="never"
-      class="help-card"
-    >
-      <template #header>
-        <span>管理员手册</span>
-      </template>
-      <div class="group-list">
-        <section
-          v-for="group in visibleAdminGroups"
-          :key="group.key"
-          class="help-group"
-        >
-          <div class="group-head">
-            <h3>{{ group.title }}</h3>
-            <p>{{ group.description }}</p>
-          </div>
-          <div class="entry-grid">
-            <el-card
-              v-for="entry in group.entries"
-              :key="entry.route"
-              shadow="never"
-              class="entry-card"
+          <section
+            v-if="visibleAdminGroups.length"
+            id="help-admin"
+            class="doc-chapter"
+          >
+            <h2 class="doc-chapter-title">
+              系统管理
+            </h2>
+            <p class="doc-chapter-intro">
+              面向系统管理员：权限、站点与参数、备份恢复、日志与运行信息等后台能力。
+            </p>
+            <template
+              v-for="group in visibleAdminGroups"
+              :key="group.key"
             >
-              <div class="entry-head">
-                <div class="entry-title">
-                  {{ entry.title }}
+              <div
+                :id="'admin-nav-' + group.key"
+                class="doc-section"
+              >
+                <h3 class="doc-section-title">
+                  {{ group.title }}
+                </h3>
+                <p class="doc-section-lead">
+                  {{ group.description }}
+                </p>
+                <div
+                  v-for="(entry, i) in group.entries"
+                  :id="entryAnchorId('adm', group.key, i)"
+                  :key="entry.route + '-' + i"
+                  class="doc-entry"
+                >
+                  <h4 class="doc-entry-title">
+                    {{ entry.title }}
+                  </h4>
+                  <p class="doc-p">
+                    {{ entry.description }}
+                  </p>
+                  <template v-if="entry.steps?.length">
+                    <div class="doc-label">
+                      操作步骤
+                    </div>
+                    <ol class="doc-ol">
+                      <li
+                        v-for="step in entry.steps"
+                        :key="step"
+                      >
+                        {{ step }}
+                      </li>
+                    </ol>
+                  </template>
+                  <template v-if="entry.tips?.length">
+                    <div class="doc-label">
+                      注意事项
+                    </div>
+                    <ul class="doc-ul">
+                      <li
+                        v-for="tip in entry.tips"
+                        :key="tip"
+                      >
+                        {{ tip }}
+                      </li>
+                    </ul>
+                  </template>
+                  <button
+                    type="button"
+                    class="doc-inline-action"
+                    @click="router.push(entry.route)"
+                  >
+                    在系统中打开此功能
+                  </button>
                 </div>
-                <el-tag
-                  size="small"
-                  type="warning"
-                >
-                  管理
-                </el-tag>
               </div>
-              <div class="entry-desc">
-                {{ entry.description }}
+            </template>
+          </section>
+
+          <section
+            id="help-permissions"
+            class="doc-chapter"
+          >
+            <h2 class="doc-chapter-title">
+              权限与菜单可见性
+            </h2>
+            <p class="doc-chapter-intro">
+              下列为常见模块与角色关系；「当前账号」一栏反映您登录后的实际可见范围。
+            </p>
+            <div class="doc-table-wrap">
+              <table class="doc-table">
+                <thead>
+                  <tr>
+                    <th>模块</th>
+                    <th>适用角色</th>
+                    <th>当前账号</th>
+                    <th>说明</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="row in permissionRows"
+                    :key="row.module"
+                  >
+                    <td>{{ row.module }}</td>
+                    <td>{{ row.roles }}</td>
+                    <td>
+                      <span
+                        class="doc-badge"
+                        :class="row.enabled ? 'doc-badge-ok' : 'doc-badge-muted'"
+                      >{{ row.status }}</span>
+                    </td>
+                    <td>{{ row.description }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section
+            v-if="visibleRoleGuides.length"
+            id="help-roles"
+            class="doc-chapter"
+          >
+            <h2 class="doc-chapter-title">
+              按角色速览
+            </h2>
+            <p class="doc-chapter-intro">
+              从角色视角概括典型操作与提醒，便于新成员建立整体认识。
+            </p>
+            <div
+              v-for="guide in visibleRoleGuides"
+              :id="'guide-' + guide.key"
+              :key="guide.key"
+              class="doc-role-block"
+            >
+              <h3 class="doc-section-title">
+                {{ guide.title }}
+              </h3>
+              <p class="doc-p">
+                {{ guide.summary }}
+              </p>
+              <div class="doc-label">
+                典型操作
               </div>
-              <div class="entry-actions">
-                <el-button
-                  text
-                  @click="selectEntry(entry)"
+              <ul class="doc-ul">
+                <li
+                  v-for="scenario in guide.scenarios"
+                  :key="scenario"
                 >
-                  查看说明
-                </el-button>
-                <el-button
-                  text
-                  @click="router.push(entry.route)"
-                >
-                  进入页面
-                </el-button>
+                  {{ scenario }}
+                </li>
+              </ul>
+              <div class="doc-label">
+                使用提醒
               </div>
-            </el-card>
-          </div>
-        </section>
+              <ul class="doc-ul">
+                <li
+                  v-for="caution in guide.cautions"
+                  :key="caution"
+                >
+                  {{ caution }}
+                </li>
+              </ul>
+            </div>
+          </section>
+
+          <section
+            id="help-faq"
+            class="doc-chapter doc-chapter-last"
+          >
+            <h2 class="doc-chapter-title">
+              常见问题
+            </h2>
+            <p class="doc-chapter-intro">
+              以下为使用过程中的高频疑问；仍可通过左侧搜索缩小范围。
+            </p>
+            <dl class="doc-faq">
+              <template
+                v-for="item in filteredFaqItems"
+                :key="item.question"
+              >
+                <dt>{{ item.question }}</dt>
+                <dd>{{ item.answer }}</dd>
+              </template>
+            </dl>
+          </section>
+        </div>
       </div>
-    </el-card>
-
-    <el-card
-      shadow="never"
-      class="help-card"
-    >
-      <template #header>
-        <span>关键权限说明</span>
-      </template>
-      <el-table
-        :data="permissionRows"
-        stripe
-      >
-        <el-table-column
-          prop="module"
-          label="模块"
-          min-width="160"
-        />
-        <el-table-column
-          prop="roles"
-          label="适用角色"
-          min-width="180"
-        />
-        <el-table-column
-          prop="status"
-          label="当前账号"
-          width="100"
-        >
-          <template #default="{ row }">
-            <el-tag
-              :type="row.enabled ? 'success' : 'info'"
-              size="small"
-            >
-              {{ row.status }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column
-          prop="description"
-          label="说明"
-          min-width="280"
-        />
-      </el-table>
-    </el-card>
-
-    <el-card
-      v-if="visibleRoleGuides.length"
-      shadow="never"
-      class="help-card"
-    >
-      <template #header>
-        <span>按角色使用手册</span>
-      </template>
-      <div class="guide-grid">
-        <el-card
-          v-for="guide in visibleRoleGuides"
-          :key="guide.key"
-          shadow="never"
-          class="guide-card"
-        >
-          <div class="guide-title">
-            {{ guide.title }}
-          </div>
-          <div class="guide-summary">
-            {{ guide.summary }}
-          </div>
-          <div class="guide-section-title">
-            典型操作
-          </div>
-          <ul class="tip-list">
-            <li
-              v-for="scenario in guide.scenarios"
-              :key="scenario"
-            >
-              {{ scenario }}
-            </li>
-          </ul>
-          <div class="guide-section-title">
-            使用提醒
-          </div>
-          <ul class="tip-list">
-            <li
-              v-for="caution in guide.cautions"
-              :key="caution"
-            >
-              {{ caution }}
-            </li>
-          </ul>
-        </el-card>
-      </div>
-    </el-card>
-
-    <el-card
-      shadow="never"
-      class="help-card"
-    >
-      <template #header>
-        <span>常见问题</span>
-      </template>
-      <el-collapse accordion>
-        <el-collapse-item
-          v-for="item in filteredFaqItems"
-          :key="item.question"
-          :title="item.question"
-        >
-          <div class="faq-answer">
-            {{ item.answer }}
-          </div>
-        </el-collapse-item>
-      </el-collapse>
-    </el-card>
-
-    <el-dialog
-      v-model="detailVisible"
-      title="使用说明"
-      width="720px"
-    >
-      <template v-if="selectedEntry">
-        <div class="detail-block">
-          <div class="detail-title">
-            {{ selectedEntry.title }}
-          </div>
-          <div class="detail-desc">
-            {{ selectedEntry.description }}
-          </div>
-        </div>
-
-        <div class="detail-block">
-          <div class="detail-subtitle">
-            操作步骤
-          </div>
-          <ol class="detail-list">
-            <li
-              v-for="step in selectedEntry.steps || []"
-              :key="step"
-            >
-              {{ step }}
-            </li>
-          </ol>
-        </div>
-
-        <div
-          v-if="selectedEntry.tips?.length"
-          class="detail-block"
-        >
-          <div class="detail-subtitle">
-            注意事项
-          </div>
-          <ul class="tip-list">
-            <li
-              v-for="tip in selectedEntry.tips"
-              :key="tip"
-            >
-              {{ tip }}
-            </li>
-          </ul>
-        </div>
-      </template>
-      <template #footer>
-        <el-button @click="detailVisible = false">
-          关闭
-        </el-button>
-        <el-button
-          v-if="selectedEntry"
-          type="primary"
-          @click="goToSelected"
-        >
-          进入页面
-        </el-button>
-      </template>
-    </el-dialog>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores'
 import { ADMIN_GROUPS, FAQ_ITEMS, HELP_GROUPS, ROLE_GUIDES, ROLE_LABELS } from '@/utils/helpCenter'
@@ -360,8 +324,10 @@ import { ROLES, hasPermission } from '@/utils/permission'
 const router = useRouter()
 const userStore = useUserStore()
 const keyword = ref('')
-const detailVisible = ref(false)
-const selectedEntry = ref(null)
+const activeId = ref('')
+
+let scrollRootEl = null
+let scrollHandler = null
 
 const currentRole = computed(() => userStore.userType || ROLES.USER)
 const currentRoleLabel = computed(() => ROLE_LABELS[currentRole.value] || '普通用户')
@@ -441,198 +407,509 @@ const permissionRows = computed(() => [
   }
 ])
 
-const selectEntry = (entry) => {
-  selectedEntry.value = entry
-  detailVisible.value = true
-}
+const entryAnchorId = (prefix, groupKey, index) => `help-entry-${prefix}-${groupKey}-${index}`
 
-const goToSelected = () => {
-  if (!selectedEntry.value) {
+const tocItems = computed(() => {
+  const items = []
+  if (visibleBusinessGroups.value.length) {
+    items.push({ id: 'help-business', label: '业务功能', level: 0 })
+    for (const g of visibleBusinessGroups.value) {
+      items.push({ id: `nav-${g.key}`, label: g.title, level: 1 })
+      g.entries.forEach((e, i) => {
+        items.push({ id: entryAnchorId('biz', g.key, i), label: e.title, level: 2 })
+      })
+    }
+  }
+  if (visibleAdminGroups.value.length) {
+    items.push({ id: 'help-admin', label: '系统管理', level: 0 })
+    for (const g of visibleAdminGroups.value) {
+      items.push({ id: `admin-nav-${g.key}`, label: g.title, level: 1 })
+      g.entries.forEach((e, i) => {
+        items.push({ id: entryAnchorId('adm', g.key, i), label: e.title, level: 2 })
+      })
+    }
+  }
+  items.push({ id: 'help-permissions', label: '权限与可见性', level: 0 })
+  if (visibleRoleGuides.value.length) {
+    items.push({ id: 'help-roles', label: '按角色速览', level: 0 })
+    for (const guide of visibleRoleGuides.value) {
+      items.push({ id: `guide-${guide.key}`, label: guide.title.replace(/手册$/, ''), level: 1 })
+    }
+  }
+  items.push({ id: 'help-faq', label: '常见问题', level: 0 })
+  return items
+})
+
+const getScrollRoot = () => document.querySelector('.main-content')
+
+const syncActiveId = () => {
+  const root = scrollRootEl || getScrollRoot()
+  if (!root) {
     return
   }
-  detailVisible.value = false
-  router.push(selectedEntry.value.route)
+  const rootRect = root.getBoundingClientRect()
+  const line = rootRect.top + 72
+  const ids = tocItems.value.map((i) => i.id)
+  let hit = ids[0] || ''
+  for (const id of ids) {
+    const el = document.getElementById(id)
+    if (!el) {
+      continue
+    }
+    const top = el.getBoundingClientRect().top
+    if (top <= line) {
+      hit = id
+    }
+  }
+  activeId.value = hit
 }
+
+const detachScrollSpy = () => {
+  if (scrollRootEl && scrollHandler) {
+    scrollRootEl.removeEventListener('scroll', scrollHandler)
+  }
+  scrollRootEl = null
+  scrollHandler = null
+}
+
+const attachScrollSpy = () => {
+  detachScrollSpy()
+  scrollRootEl = getScrollRoot()
+  if (!scrollRootEl) {
+    return
+  }
+  scrollHandler = () => syncActiveId()
+  scrollRootEl.addEventListener('scroll', scrollHandler, { passive: true })
+  syncActiveId()
+}
+
+const scrollToAnchor = (id) => {
+  const el = document.getElementById(id)
+  const root = getScrollRoot()
+  if (!el || !root) {
+    return
+  }
+  activeId.value = id
+  const elTop = el.getBoundingClientRect().top
+  const rootTop = root.getBoundingClientRect().top
+  const nextTop = root.scrollTop + (elTop - rootTop) - 12
+  root.scrollTo({ top: Math.max(0, nextTop), behavior: 'smooth' })
+}
+
+watch([tocItems, keyword], () => {
+  nextTick(() => {
+    attachScrollSpy()
+    syncActiveId()
+  })
+})
+
+onMounted(() => {
+  nextTick(() => {
+    attachScrollSpy()
+    syncActiveId()
+  })
+})
+
+onUnmounted(() => {
+  detachScrollSpy()
+})
 </script>
 
 <style lang="scss" scoped>
-.help-center-page {
+/* 文档站式布局：抵消主内容区内边距，形成独立阅读区 */
+.help-doc-root {
+  margin: -20px -20px -8px;
+  background: #fff;
+  border: 1px solid #e5e6eb;
+  border-radius: 0;
+  min-height: calc(100vh - 120px);
+}
+
+.doc-hero {
+  padding: 28px 32px 22px;
+  border-bottom: 1px solid #e5e6eb;
+  background: linear-gradient(180deg, #fafbfc 0%, #fff 100%);
+}
+
+.doc-hero-title {
+  margin: 0 0 12px;
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: #111827;
+  line-height: 1.25;
+}
+
+.doc-hero-lead {
+  margin: 0 0 14px;
+  max-width: 920px;
+  font-size: 15px;
+  line-height: 1.75;
+  color: #4b5563;
+}
+
+.doc-hero-meta {
+  font-size: 13px;
+  line-height: 1.6;
+  color: #6b7280;
+}
+
+.doc-meta-sep {
+  margin: 0 8px;
+  color: #d1d5db;
+}
+
+.doc-frame {
+  display: flex;
+  align-items: stretch;
+}
+
+.doc-sidebar {
+  width: 260px;
+  flex-shrink: 0;
+  padding: 20px 12px 48px 20px;
+  border-right: 1px solid #e5e6eb;
+  background: #f9fafb;
+  position: sticky;
+  top: 0;
+  align-self: flex-start;
+  max-height: calc(100vh - 72px);
+  overflow: auto;
+}
+
+.doc-sidebar-head {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #9ca3af;
+  margin-bottom: 10px;
+}
+
+.doc-sidebar-search {
+  margin-bottom: 16px;
+
+  :deep(.el-input__wrapper) {
+    border-radius: 4px;
+    box-shadow: 0 0 0 1px #e5e7eb inset;
+  }
+}
+
+.doc-toc {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 1px;
 }
 
-.page-header {
-  h1 {
-    margin: 0 0 8px;
-    font-size: 24px;
-    font-weight: 600;
-    color: #303133;
+.doc-toc-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1.45;
+  padding: 7px 10px 7px 8px;
+  border-radius: 4px;
+  border-left: 2px solid transparent;
+  color: #374151;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+
+  &:hover {
+    background: rgba(64, 158, 255, 0.08);
+    color: var(--el-color-primary);
   }
 
-  p {
-    margin: 0;
-    color: #606266;
-    line-height: 1.6;
+  &.is-active {
+    background: rgba(64, 158, 255, 0.1);
+    border-left-color: var(--el-color-primary);
+    color: var(--el-color-primary);
+    font-weight: 500;
   }
 }
 
-.summary-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 16px;
+.doc-toc-level-0 {
+  margin-top: 10px;
+  font-weight: 600;
+  color: #111827;
+
+  &:first-child {
+    margin-top: 0;
+  }
 }
 
-.summary-card {
-  border-radius: 10px;
-}
-
-.summary-label {
-  color: #909399;
+.doc-toc-level-1 {
+  padding-left: 14px;
+  font-weight: 400;
+  color: #4b5563;
   font-size: 13px;
 }
 
-.summary-value {
-  margin-top: 8px;
-  color: #303133;
+.doc-toc-level-2 {
+  padding-left: 22px;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.doc-body {
+  flex: 1;
+  min-width: 0;
+  background: #fff;
+}
+
+.doc-body-inner {
+  max-width: 800px;
+  padding: 28px 40px 56px 36px;
+}
+
+.doc-chapter {
+  scroll-margin-top: 16px;
+  padding-bottom: 8px;
+  margin-bottom: 40px;
+  border-bottom: 1px solid #e5e6eb;
+
+  &.doc-chapter-last {
+    border-bottom: none;
+    margin-bottom: 0;
+  }
+}
+
+.doc-chapter-title {
+  margin: 0 0 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #f3f4f6;
   font-size: 22px;
   font-weight: 600;
+  color: #111827;
+  letter-spacing: -0.02em;
 }
 
-.summary-hint {
-  margin-top: 8px;
-  color: #909399;
-  line-height: 1.6;
-  font-size: 12px;
-}
-
-.help-card {
-  border-radius: 10px;
-}
-
-.group-list {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.help-group {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.group-head {
-  h3 {
-    margin: 0 0 6px;
-    color: #303133;
-    font-size: 18px;
-  }
-
-  p {
-    margin: 0;
-    color: #606266;
-    line-height: 1.6;
-  }
-}
-
-.entry-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 12px;
-}
-
-.entry-card {
-  border-radius: 10px;
-}
-
-.entry-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.entry-title {
-  color: #303133;
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.entry-desc {
-  margin: 12px 0;
-  color: #606266;
-  line-height: 1.7;
-  min-height: 48px;
-}
-
-.entry-actions {
-  display: flex;
-  gap: 12px;
-}
-
-.guide-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 16px;
-}
-
-.guide-card {
-  border-radius: 10px;
-}
-
-.guide-title {
-  color: #303133;
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.guide-summary {
-  margin-top: 8px;
-  color: #606266;
-  line-height: 1.7;
-}
-
-.guide-section-title {
-  margin: 16px 0 8px;
-  color: #303133;
+.doc-chapter-intro {
+  margin: 0 0 24px;
   font-size: 14px;
+  line-height: 1.75;
+  color: #6b7280;
+}
+
+.doc-section {
+  scroll-margin-top: 16px;
+  margin-bottom: 32px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.doc-section-title {
+  margin: 0 0 8px;
+  font-size: 17px;
   font-weight: 600;
+  color: #1f2937;
 }
 
-.faq-answer {
-  color: #606266;
-  line-height: 1.8;
-}
-
-.detail-block + .detail-block {
-  margin-top: 20px;
-}
-
-.detail-title {
-  color: #303133;
-  font-size: 18px;
-  font-weight: 600;
-}
-
-.detail-desc {
-  margin-top: 8px;
-  color: #606266;
+.doc-section-lead {
+  margin: 0 0 20px;
+  font-size: 14px;
   line-height: 1.7;
+  color: #6b7280;
 }
 
-.detail-subtitle {
-  margin-bottom: 10px;
-  color: #303133;
+.doc-entry {
+  scroll-margin-top: 16px;
+  padding: 20px 0 22px;
+  border-top: 1px solid #f3f4f6;
+
+  &:first-of-type {
+    border-top: none;
+    padding-top: 0;
+  }
+}
+
+.doc-entry-title {
+  margin: 0 0 10px;
   font-size: 15px;
   font-weight: 600;
+  color: #111827;
 }
 
-.detail-list,
-.tip-list {
-  margin: 0;
-  padding-left: 18px;
-  color: #606266;
+.doc-p {
+  margin: 0 0 14px;
+  font-size: 14px;
   line-height: 1.8;
+  color: #374151;
+}
+
+.doc-label {
+  margin: 14px 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #9ca3af;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.doc-ol,
+.doc-ul {
+  margin: 0 0 12px;
+  padding-left: 1.2em;
+  font-size: 14px;
+  line-height: 1.8;
+  color: #374151;
+}
+
+.doc-inline-action {
+  margin-top: 6px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--el-color-primary);
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.doc-table-wrap {
+  overflow-x: auto;
+  border: 1px solid #e5e6eb;
+  border-radius: 4px;
+}
+
+.doc-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  line-height: 1.55;
+  color: #374151;
+
+  th,
+  td {
+    padding: 10px 14px;
+    text-align: left;
+    border-bottom: 1px solid #f3f4f6;
+    vertical-align: top;
+  }
+
+  th {
+    background: #f9fafb;
+    font-weight: 600;
+    color: #111827;
+    white-space: nowrap;
+  }
+
+  tr:last-child td {
+    border-bottom: none;
+  }
+}
+
+.doc-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.doc-badge-ok {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.doc-badge-muted {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.doc-role-block {
+  scroll-margin-top: 16px;
+  margin-bottom: 28px;
+  padding-bottom: 24px;
+  border-bottom: 1px dashed #e5e6eb;
+
+  &:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+  }
+}
+
+.doc-faq {
+  margin: 0;
+}
+
+.doc-faq dt {
+  margin: 20px 0 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+  line-height: 1.5;
+
+  &:first-child {
+    margin-top: 0;
+  }
+}
+
+.doc-faq dd {
+  margin: 0 0 4px;
+  padding-left: 0;
+  font-size: 14px;
+  line-height: 1.8;
+  color: #4b5563;
+}
+
+@media (max-width: 960px) {
+  .help-doc-root {
+    margin: -12px -12px 0;
+  }
+
+  .doc-hero {
+    padding: 20px 16px 16px;
+  }
+
+  .doc-hero-title {
+    font-size: 22px;
+  }
+
+  .doc-frame {
+    flex-direction: column;
+  }
+
+  .doc-sidebar {
+    position: relative;
+    max-height: none;
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid #e5e6eb;
+  }
+
+  .doc-toc {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .doc-toc-item {
+    width: auto;
+    border-left: none;
+    padding: 6px 10px;
+
+    &.is-active {
+      border-left: none;
+    }
+  }
+
+  .doc-toc-level-1,
+  .doc-toc-level-2 {
+    padding-left: 10px;
+  }
+
+  .doc-body-inner {
+    padding: 20px 16px 40px;
+  }
 }
 </style>
