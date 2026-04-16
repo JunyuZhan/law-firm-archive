@@ -91,8 +91,12 @@ request.interceptors.response.use(
       return Promise.reject(error)
     }
     
-    // 401 未授权 - 尝试刷新Token
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // 401 未授权，或 403 但已带 Bearer（Spring 对部分未授权场景也返回 403）— 尝试刷新 Token 一次
+    const status = error.response?.status
+    const hadBearer = !!(originalRequest?.headers?.Authorization)
+    const canTryRefresh = (status === 401 || (status === 403 && hadBearer)) && !originalRequest._retry
+
+    if (canTryRefresh) {
       if (isRefreshing) {
         // 正在刷新中，等待刷新完成
         return new Promise(resolve => {
@@ -137,7 +141,7 @@ request.interceptors.response.use(
       return Promise.reject(error)
     }
     
-    // 403 禁止访问
+    // 403 禁止访问（未走上方刷新分支时，视为真实无权限）
     if (error.response?.status === 403) {
       ElMessage.error('无权限访问')
       return Promise.reject(error)

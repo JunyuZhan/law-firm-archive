@@ -5,18 +5,35 @@ export const ROLES = {
   USER: 'USER'
 }
 
-/** 与后端 UserRoleUtils.normalize 一致，用于路由/UI 与 Spring 授权对齐 */
+/** 与后端 UserRoleUtils.normalize 一致：trim + 大小写不敏感，用于路由/UI 与授权对齐 */
 export function normalizeUserType(userType) {
-  if (userType == null || userType === '') {
+  if (userType == null) {
     return userType
   }
-  if (userType === 'ARCHIVIST') {
+  const t = String(userType).trim()
+  if (!t) {
+    return ROLES.USER
+  }
+  const u = t.toUpperCase()
+  if (u === 'ARCHIVIST') {
     return ROLES.ARCHIVE_MANAGER
   }
-  if (userType === 'SECURITY_ADMIN' || userType === 'AUDIT_ADMIN') {
+  if (u === 'SECURITY_ADMIN' || u === 'AUDIT_ADMIN') {
     return ROLES.SYSTEM_ADMIN
   }
-  return userType
+  if (u === 'SYSTEM_ADMIN') {
+    return ROLES.SYSTEM_ADMIN
+  }
+  if (u === 'ARCHIVE_MANAGER') {
+    return ROLES.ARCHIVE_MANAGER
+  }
+  if (u === 'ARCHIVE_REVIEWER') {
+    return ROLES.ARCHIVE_REVIEWER
+  }
+  if (u === 'USER') {
+    return ROLES.USER
+  }
+  return t
 }
 
 export const MANAGER_ROLES = [ROLES.SYSTEM_ADMIN, ROLES.ARCHIVE_MANAGER]

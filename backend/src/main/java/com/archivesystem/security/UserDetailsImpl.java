@@ -32,17 +32,23 @@ public class UserDetailsImpl implements UserDetails {
      * 从User实体构建UserDetails.
      */
     public static UserDetailsImpl build(User user) {
-        Set<GrantedAuthority> authorities = UserRoleUtils.resolveGrantedRoles(user.getUserType()).stream()
+        String rawType = user.getUserType();
+        Set<GrantedAuthority> authorities = UserRoleUtils.resolveGrantedRoles(rawType).stream()
                 .map(role -> new SimpleGrantedAuthority("ROLE_" + role))
                 .collect(Collectors.toCollection(java.util.LinkedHashSet::new));
-        
+
+        String canonicalType = UserRoleUtils.normalize(rawType == null ? "" : rawType.trim());
+        if (canonicalType == null || canonicalType.isBlank()) {
+            canonicalType = User.TYPE_USER;
+        }
+
         return new UserDetailsImpl(
                 user.getId(),
                 user.getUsername(),
                 user.getPassword(),
                 user.getRealName(),
                 user.getDepartment(),
-                user.getUserType(),
+                canonicalType,
                 user.getStatus(),
                 authorities
         );
