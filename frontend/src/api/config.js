@@ -24,6 +24,14 @@ export function getDependencyStatus() {
   })
 }
 
+/** 检测私有仓库镜像摘要是否与运行环境一致（系统管理员） */
+export function getImageUpgradeStatus() {
+  return request({
+    url: '/configs/image-upgrade-status',
+    method: 'get'
+  })
+}
+
 /**
  * 获取配置列表
  */

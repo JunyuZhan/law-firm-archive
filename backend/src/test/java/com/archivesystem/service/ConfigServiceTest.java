@@ -106,6 +106,34 @@ class ConfigServiceTest {
     }
 
     @Test
+    void testGetByKey_SensitiveValueShouldBeRedacted() {
+        SysConfig sensitiveConfig = new SysConfig();
+        sensitiveConfig.setConfigKey("security.crypto.secret");
+        sensitiveConfig.setConfigValue("super-secret-value");
+
+        when(configMapper.selectByKey("security.crypto.secret")).thenReturn(sensitiveConfig);
+
+        SysConfig result = configService.getByKey("security.crypto.secret");
+
+        assertEquals("******", result.getConfigValue());
+    }
+
+    @Test
+    void testGetByGroup_SensitiveValueShouldBeRedacted() {
+        SysConfig sensitiveConfig = new SysConfig();
+        sensitiveConfig.setConfigKey("system.site.logo.object");
+        sensitiveConfig.setConfigValue("site/logo/internal-object.png");
+        sensitiveConfig.setConfigGroup("SITE");
+
+        when(configMapper.selectByGroup("SITE")).thenReturn(List.of(sensitiveConfig));
+
+        List<SysConfig> result = configService.getByGroup("SITE");
+
+        assertEquals(1, result.size());
+        assertEquals("******", result.get(0).getConfigValue());
+    }
+
+    @Test
     void testGetByKey_NotFound() {
         when(configMapper.selectByKey("not.exists")).thenReturn(null);
 

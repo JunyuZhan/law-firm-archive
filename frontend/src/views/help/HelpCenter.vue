@@ -6,24 +6,54 @@
     </div>
 
     <div class="summary-grid">
-      <el-card shadow="never" class="summary-card">
-        <div class="summary-label">当前角色</div>
-        <div class="summary-value">{{ currentRoleLabel }}</div>
-        <div class="summary-hint">不同角色看到的功能说明会自动收口。</div>
+      <el-card
+        shadow="never"
+        class="summary-card"
+      >
+        <div class="summary-label">
+          当前角色
+        </div>
+        <div class="summary-value">
+          {{ currentRoleLabel }}
+        </div>
+        <div class="summary-hint">
+          不同角色看到的功能说明会自动收口。
+        </div>
       </el-card>
-      <el-card shadow="never" class="summary-card">
-        <div class="summary-label">可访问页面</div>
-        <div class="summary-value">{{ accessibleEntries.length }}</div>
-        <div class="summary-hint">仅统计当前账号在系统中可进入的业务页面。</div>
+      <el-card
+        shadow="never"
+        class="summary-card"
+      >
+        <div class="summary-label">
+          可访问页面
+        </div>
+        <div class="summary-value">
+          {{ accessibleEntries.length }}
+        </div>
+        <div class="summary-hint">
+          仅统计当前账号在系统中可进入的业务页面。
+        </div>
       </el-card>
-      <el-card shadow="never" class="summary-card">
-        <div class="summary-label">重点链路</div>
-        <div class="summary-value">入库 / 保存 / 借阅</div>
-        <div class="summary-hint">帮助内容围绕电子档案三条主流程组织。</div>
+      <el-card
+        shadow="never"
+        class="summary-card"
+      >
+        <div class="summary-label">
+          重点链路
+        </div>
+        <div class="summary-value">
+          入库 / 保存 / 借阅
+        </div>
+        <div class="summary-hint">
+          帮助内容围绕电子档案三条主流程组织。
+        </div>
       </el-card>
     </div>
 
-    <el-card shadow="never" class="help-card">
+    <el-card
+      shadow="never"
+      class="help-card"
+    >
       <el-input
         v-model.trim="keyword"
         placeholder="搜索功能名称、步骤或问题，例如：借阅、档案接收、权限管理"
@@ -31,7 +61,10 @@
       />
     </el-card>
 
-    <el-card shadow="never" class="help-card">
+    <el-card
+      shadow="never"
+      class="help-card"
+    >
       <template #header>
         <span>我的功能导航</span>
       </template>
@@ -53,13 +86,32 @@
               class="entry-card"
             >
               <div class="entry-head">
-                <div class="entry-title">{{ entry.title }}</div>
-                <el-tag size="small" type="success">可用</el-tag>
+                <div class="entry-title">
+                  {{ entry.title }}
+                </div>
+                <el-tag
+                  size="small"
+                  type="success"
+                >
+                  可用
+                </el-tag>
               </div>
-              <div class="entry-desc">{{ entry.description }}</div>
+              <div class="entry-desc">
+                {{ entry.description }}
+              </div>
               <div class="entry-actions">
-                <el-button text @click="selectEntry(entry)">查看说明</el-button>
-                <el-button text @click="router.push(entry.route)">进入页面</el-button>
+                <el-button
+                  text
+                  @click="selectEntry(entry)"
+                >
+                  查看说明
+                </el-button>
+                <el-button
+                  text
+                  @click="router.push(entry.route)"
+                >
+                  进入页面
+                </el-button>
               </div>
             </el-card>
           </div>
@@ -93,13 +145,32 @@
               class="entry-card"
             >
               <div class="entry-head">
-                <div class="entry-title">{{ entry.title }}</div>
-                <el-tag size="small" type="warning">管理</el-tag>
+                <div class="entry-title">
+                  {{ entry.title }}
+                </div>
+                <el-tag
+                  size="small"
+                  type="warning"
+                >
+                  管理
+                </el-tag>
               </div>
-              <div class="entry-desc">{{ entry.description }}</div>
+              <div class="entry-desc">
+                {{ entry.description }}
+              </div>
               <div class="entry-actions">
-                <el-button text @click="selectEntry(entry)">查看说明</el-button>
-                <el-button text @click="router.push(entry.route)">进入页面</el-button>
+                <el-button
+                  text
+                  @click="selectEntry(entry)"
+                >
+                  查看说明
+                </el-button>
+                <el-button
+                  text
+                  @click="router.push(entry.route)"
+                >
+                  进入页面
+                </el-button>
               </div>
             </el-card>
           </div>
@@ -107,21 +178,46 @@
       </div>
     </el-card>
 
-    <el-card shadow="never" class="help-card">
+    <el-card
+      shadow="never"
+      class="help-card"
+    >
       <template #header>
         <span>关键权限说明</span>
       </template>
-      <el-table :data="permissionRows" stripe>
-        <el-table-column prop="module" label="模块" min-width="160" />
-        <el-table-column prop="roles" label="适用角色" min-width="180" />
-        <el-table-column prop="status" label="当前账号" width="100">
+      <el-table
+        :data="permissionRows"
+        stripe
+      >
+        <el-table-column
+          prop="module"
+          label="模块"
+          min-width="160"
+        />
+        <el-table-column
+          prop="roles"
+          label="适用角色"
+          min-width="180"
+        />
+        <el-table-column
+          prop="status"
+          label="当前账号"
+          width="100"
+        >
           <template #default="{ row }">
-            <el-tag :type="row.enabled ? 'success' : 'info'" size="small">
+            <el-tag
+              :type="row.enabled ? 'success' : 'info'"
+              size="small"
+            >
               {{ row.status }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="description" label="说明" min-width="280" />
+        <el-table-column
+          prop="description"
+          label="说明"
+          min-width="280"
+        />
       </el-table>
     </el-card>
 
@@ -140,21 +236,42 @@
           shadow="never"
           class="guide-card"
         >
-          <div class="guide-title">{{ guide.title }}</div>
-          <div class="guide-summary">{{ guide.summary }}</div>
-          <div class="guide-section-title">典型操作</div>
+          <div class="guide-title">
+            {{ guide.title }}
+          </div>
+          <div class="guide-summary">
+            {{ guide.summary }}
+          </div>
+          <div class="guide-section-title">
+            典型操作
+          </div>
           <ul class="tip-list">
-            <li v-for="scenario in guide.scenarios" :key="scenario">{{ scenario }}</li>
+            <li
+              v-for="scenario in guide.scenarios"
+              :key="scenario"
+            >
+              {{ scenario }}
+            </li>
           </ul>
-          <div class="guide-section-title">使用提醒</div>
+          <div class="guide-section-title">
+            使用提醒
+          </div>
           <ul class="tip-list">
-            <li v-for="caution in guide.cautions" :key="caution">{{ caution }}</li>
+            <li
+              v-for="caution in guide.cautions"
+              :key="caution"
+            >
+              {{ caution }}
+            </li>
           </ul>
         </el-card>
       </div>
     </el-card>
 
-    <el-card shadow="never" class="help-card">
+    <el-card
+      shadow="never"
+      class="help-card"
+    >
       <template #header>
         <span>常见问题</span>
       </template>
@@ -164,7 +281,9 @@
           :key="item.question"
           :title="item.question"
         >
-          <div class="faq-answer">{{ item.answer }}</div>
+          <div class="faq-answer">
+            {{ item.answer }}
+          </div>
         </el-collapse-item>
       </el-collapse>
     </el-card>
@@ -176,27 +295,56 @@
     >
       <template v-if="selectedEntry">
         <div class="detail-block">
-          <div class="detail-title">{{ selectedEntry.title }}</div>
-          <div class="detail-desc">{{ selectedEntry.description }}</div>
+          <div class="detail-title">
+            {{ selectedEntry.title }}
+          </div>
+          <div class="detail-desc">
+            {{ selectedEntry.description }}
+          </div>
         </div>
 
         <div class="detail-block">
-          <div class="detail-subtitle">操作步骤</div>
+          <div class="detail-subtitle">
+            操作步骤
+          </div>
           <ol class="detail-list">
-            <li v-for="step in selectedEntry.steps || []" :key="step">{{ step }}</li>
+            <li
+              v-for="step in selectedEntry.steps || []"
+              :key="step"
+            >
+              {{ step }}
+            </li>
           </ol>
         </div>
 
-        <div class="detail-block" v-if="selectedEntry.tips?.length">
-          <div class="detail-subtitle">注意事项</div>
+        <div
+          v-if="selectedEntry.tips?.length"
+          class="detail-block"
+        >
+          <div class="detail-subtitle">
+            注意事项
+          </div>
           <ul class="tip-list">
-            <li v-for="tip in selectedEntry.tips" :key="tip">{{ tip }}</li>
+            <li
+              v-for="tip in selectedEntry.tips"
+              :key="tip"
+            >
+              {{ tip }}
+            </li>
           </ul>
         </div>
       </template>
       <template #footer>
-        <el-button @click="detailVisible = false">关闭</el-button>
-        <el-button v-if="selectedEntry" type="primary" @click="goToSelected">进入页面</el-button>
+        <el-button @click="detailVisible = false">
+          关闭
+        </el-button>
+        <el-button
+          v-if="selectedEntry"
+          type="primary"
+          @click="goToSelected"
+        >
+          进入页面
+        </el-button>
       </template>
     </el-dialog>
   </div>

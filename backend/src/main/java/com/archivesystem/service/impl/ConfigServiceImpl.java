@@ -13,8 +13,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Locale;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -26,6 +28,8 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class ConfigServiceImpl implements ConfigService {
+
+    private static final String REDACTED_VALUE = "******";
 
     private final SysConfigMapper configMapper;
 
@@ -41,6 +45,7 @@ public class ConfigServiceImpl implements ConfigService {
     public Map<String, List<SysConfig>> getAllGrouped() {
         List<SysConfig> configs = configMapper.selectAllOrdered();
         return configs.stream()
+                .map(this::sanitizeConfig)
                 .collect(Collectors.groupingBy(
                         c -> c.getConfigGroup() != null ? c.getConfigGroup() : "OTHER"
                 ));
@@ -48,12 +53,16 @@ public class ConfigServiceImpl implements ConfigService {
 
     @Override
     public List<SysConfig> getAll() {
-        return configMapper.selectAllOrdered();
+        return configMapper.selectAllOrdered().stream()
+                .map(this::sanitizeConfig)
+                .toList();
     }
 
     @Override
     public List<SysConfig> getByGroup(String group) {
-        return configMapper.selectByGroup(group);
+        return configMapper.selectByGroup(group).stream()
+                .map(this::sanitizeConfig)
+                .toList();
     }
 
     @Override
@@ -62,7 +71,7 @@ public class ConfigServiceImpl implements ConfigService {
         if (config == null) {
             throw NotFoundException.of("配置", key);
         }
-        return config;
+        return sanitizeConfig(config);
     }
 
     @Override
@@ -117,7 +126,7 @@ public class ConfigServiceImpl implements ConfigService {
 
         // 更新缓存
         configCache.put(key, value);
-        log.info("配置更新: key={}, value={}", key, value);
+        log.info("配置更新: key={}, value={}", key, maskValueForLog(key, value));
     }
 
     @Override
@@ -179,7 +188,7 @@ public class ConfigServiceImpl implements ConfigService {
         } else {
             configCache.remove(key);
         }
-        log.info("配置保存: key={}, value={}", key, value);
+        log.info("配置保存: key={}, value={}", key, maskValueForLog(key, value));
     }
 
     @Override
@@ -200,7 +209,7 @@ public class ConfigServiceImpl implements ConfigService {
             configCache.put(config.getConfigKey(), config.getConfigValue());
         }
 
-        return config;
+        return sanitizeConfig(config);
     }
 
     @Override
@@ -240,5 +249,56 @@ public class ConfigServiceImpl implements ConfigService {
             prefix = getValue("archive.no.prefix.DEFAULT", "ARC");
         }
         return prefix;
+    }
+
+    private SysConfig sanitizeConfig(SysConfig config) {
+        if (config == null) {
+            return null;
+        }
+        SysConfig sanitized = new SysConfig();
+        sanitized.setId(config.getId());
+        sanitized.setConfigKey(config.getConfigKey());
+        sanitized.setConfigValue(isSensitiveKey(config.getConfigKey()) ? REDACTED_VALUE : config.getConfigValue());
+        sanitized.setConfigType(config.getConfigType());
+        sanitized.setConfigGroup(config.getConfigGroup());
+        sanitized.setDescription(config.getDescription());
+        sanitized.setEditable(config.getEditable());
+        sanitized.setSortOrder(config.getSortOrder());
+        sanitized.setCreatedAt(config.getCreatedAt());
+        sanitized.setUpdatedAt(config.getUpdatedAt());
+        sanitized.setCreatedBy(config.getCreatedBy());
+        sanitized.setUpdatedBy(config.getUpdatedBy());
+        return sanitized;
+    }
+
+    private String maskValueForLog(String key, String value) {
+        return isSensitiveKey(key) ? REDACTED_VALUE : value;
+    }
+
+    private boolean isSensitiveKey(String key) {
+        if (key == null) {
+            return false;
+        }
+        String normalized = key.trim().toLowerCase(Locale.ROOT);
+        if (normalized.isEmpty()) {
+            return false;
+        }
+
+        List<String> markers = new ArrayList<>(List.of(
+                "password",
+                "secret",
+                "token",
+                "credential",
+                "private-key",
+                "private_key",
+                "api-key",
+                "api_key",
+                "access-key",
+                "access_key"
+        ));
+        if ("system.site.logo.object".equals(normalized)) {
+            return true;
+        }
+        return markers.stream().anyMatch(normalized::contains);
     }
 }

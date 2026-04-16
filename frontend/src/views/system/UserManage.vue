@@ -6,7 +6,10 @@
     </div>
 
     <!-- 搜索区域 -->
-    <el-card class="search-card" shadow="never">
+    <el-card
+      class="search-card"
+      shadow="never"
+    >
       <el-form
         :model="queryParams"
         inline
@@ -71,7 +74,10 @@
     </el-card>
 
     <!-- 操作按钮 -->
-    <el-card class="table-card" shadow="never">
+    <el-card
+      class="table-card"
+      shadow="never"
+    >
       <template #header>
         <div class="card-header">
           <span>用户列表</span>
@@ -233,7 +239,9 @@
         label-width="96px"
         class="user-edit-form"
       >
-        <div class="form-section-title">账号信息</div>
+        <div class="form-section-title">
+          账号信息
+        </div>
         <div class="user-form-grid">
           <el-form-item
             label="用户名"
@@ -258,7 +266,9 @@
             />
           </el-form-item>
         </div>
-        <div class="form-section-title">身份信息</div>
+        <div class="form-section-title">
+          身份信息
+        </div>
         <div class="user-form-grid">
           <el-form-item
             label="姓名"

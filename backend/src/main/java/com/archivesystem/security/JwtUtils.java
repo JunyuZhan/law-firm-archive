@@ -24,14 +24,21 @@ import java.util.Map;
 @Component
 public class JwtUtils {
 
-    @Value("${jwt.secret:your-256-bit-secret-key-for-archive-system-2026}")
-    private String secret;
+    private static final int MIN_SECRET_BYTES = 32;
+    private static final String EXAMPLE_SECRET = "your-256-bit-secret-key-for-archive-system-2026";
 
-    @Value("${jwt.expiration:86400000}")
-    private long expiration; // 默认24小时
+    private final String secret;
+    private final long expiration;
+    private final long refreshExpiration;
 
-    @Value("${jwt.refresh-expiration:604800000}")
-    private long refreshExpiration; // 默认7天
+    public JwtUtils(
+            @Value("${jwt.secret:}") String secret,
+            @Value("${jwt.expiration:86400000}") long expiration,
+            @Value("${jwt.refresh-expiration:604800000}") long refreshExpiration) {
+        this.secret = validateSecret(secret);
+        this.expiration = expiration;
+        this.refreshExpiration = refreshExpiration;
+    }
 
     /**
      * 生成访问令牌.
@@ -143,5 +150,19 @@ public class JwtUtils {
     private SecretKey getSigningKey() {
         byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
         return Keys.hmacShaKeyFor(keyBytes);
+    }
+
+    private String validateSecret(String rawSecret) {
+        if (rawSecret == null || rawSecret.isBlank()) {
+            throw new IllegalStateException("jwt.secret 未配置，服务启动已拒绝");
+        }
+        String normalized = rawSecret.trim();
+        if (EXAMPLE_SECRET.equals(normalized)) {
+            throw new IllegalStateException("jwt.secret 不能使用示例默认值");
+        }
+        if (normalized.getBytes(StandardCharsets.UTF_8).length < MIN_SECRET_BYTES) {
+            throw new IllegalStateException("jwt.secret 长度不足，至少需要32字节");
+        }
+        return normalized;
     }
 }

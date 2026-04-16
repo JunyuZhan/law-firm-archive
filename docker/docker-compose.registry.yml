@@ -108,6 +108,11 @@ services:
       APP_VERSION: ${APP_VERSION:-latest}
       APP_COMMIT_SHA: ${APP_COMMIT_SHA:-}
       APP_BUILD_TIME: ${APP_BUILD_TIME:-}
+      # 镜像更新检测：与私有仓库 manifest 摘要比对（可选，便于系统信息页提示升级）
+      RUNNING_BACKEND_DIGEST: ${RUNNING_BACKEND_DIGEST:-}
+      RUNNING_FRONTEND_DIGEST: ${RUNNING_FRONTEND_DIGEST:-}
+      REGISTRY_USERNAME: ${REGISTRY_USERNAME:-}
+      REGISTRY_PASSWORD: ${REGISTRY_PASSWORD:-}
       CORS_ALLOWED_ORIGINS: http://localhost:3001,http://192.168.50.10:3001,https://arc.albertzhan.top,${EXTERNAL_ORIGIN:-}
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/archive_system
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}

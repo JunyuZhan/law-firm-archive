@@ -575,7 +575,10 @@
             存放形式与位置
           </div>
           <div class="supplement-grid">
-            <el-form-item label="变更形式" class="span-2">
+            <el-form-item
+              label="变更形式"
+              class="span-2"
+            >
               <el-radio-group v-model="supplementForm.archiveForm">
                 <el-radio-button value="ELECTRONIC">
                   电子档案
@@ -669,9 +672,18 @@
                 style="width: 100%"
                 clearable
               >
-                <el-option label="扫描件" value="SCANNED" />
-                <el-option label="原生电子件" value="ORIGINAL_ELECTRONIC" />
-                <el-option label="外部导入件" value="IMPORTED" />
+                <el-option
+                  label="扫描件"
+                  value="SCANNED"
+                />
+                <el-option
+                  label="原生电子件"
+                  value="ORIGINAL_ELECTRONIC"
+                />
+                <el-option
+                  label="外部导入件"
+                  value="IMPORTED"
+                />
               </el-select>
             </el-form-item>
           </div>
@@ -712,9 +724,18 @@
                 style="width: 100%"
                 clearable
               >
-                <el-option label="待复核" value="PENDING" />
-                <el-option label="已通过" value="PASSED" />
-                <el-option label="未通过" value="FAILED" />
+                <el-option
+                  label="待复核"
+                  value="PENDING"
+                />
+                <el-option
+                  label="已通过"
+                  value="PASSED"
+                />
+                <el-option
+                  label="未通过"
+                  value="FAILED"
+                />
               </el-select>
             </el-form-item>
 
@@ -741,7 +762,10 @@
           <div class="section-heading">
             上传文件
           </div>
-          <el-form-item label-width="0" class="upload-form-item">
+          <el-form-item
+            label-width="0"
+            class="upload-form-item"
+          >
             <BatchUpload
               ref="supplementUploadRef"
               :allowed-types="allowedFileTypes"

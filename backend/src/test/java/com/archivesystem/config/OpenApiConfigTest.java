@@ -82,6 +82,6 @@ class OpenApiConfigTest {
         OpenAPI openAPI = openApiConfig.customOpenAPI();
         String description = openAPI.getInfo().getDescription();
 
-        assertTrue(description.contains("/api/open/law-firm/archive/receive"));
+        assertTrue(description.contains("/api/open/archive/receive"));
     }
 }

@@ -5,7 +5,10 @@
       <p>集中维护角色定义与权限边界，保证各类后台角色的职责清晰且可审计。</p>
     </div>
 
-    <el-card shadow="never" class="table-card">
+    <el-card
+      shadow="never"
+      class="table-card"
+    >
       <template #header>
         <div class="card-header">
           <span>角色管理</span>

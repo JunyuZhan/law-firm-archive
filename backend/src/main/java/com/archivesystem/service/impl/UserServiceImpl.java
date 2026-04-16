@@ -8,7 +8,9 @@ import com.archivesystem.entity.User;
 import com.archivesystem.entity.UserRole;
 import com.archivesystem.repository.UserMapper;
 import com.archivesystem.repository.UserRoleMapper;
+import com.archivesystem.security.JwtUtils;
 import com.archivesystem.security.PasswordValidator;
+import com.archivesystem.security.TokenBlacklistService;
 import com.archivesystem.service.OperationLogService;
 import com.archivesystem.service.UserService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -38,6 +40,8 @@ public class UserServiceImpl implements UserService {
     private final PasswordEncoder passwordEncoder;
     private final PasswordValidator passwordValidator;
     private final OperationLogService operationLogService;
+    private final TokenBlacklistService tokenBlacklistService;
+    private final JwtUtils jwtUtils;
 
     @Override
     @Transactional
@@ -195,6 +199,7 @@ public class UserServiceImpl implements UserService {
 
         user.setPassword(passwordEncoder.encode(newPassword));
         userMapper.updateById(user);
+        revokeUserSessions(id);
         log.info("重置用户密码: id={}", id);
         
         // 记录安全审计日志
@@ -232,6 +237,7 @@ public class UserServiceImpl implements UserService {
 
         user.setPassword(passwordEncoder.encode(newPassword));
         userMapper.updateById(user);
+        revokeUserSessions(id);
         log.info("修改用户密码: id={}", id);
         
         // 记录安全审计日志
@@ -253,6 +259,9 @@ public class UserServiceImpl implements UserService {
 
         user.setStatus(status);
         userMapper.updateById(user);
+        if (!User.STATUS_ACTIVE.equals(status)) {
+            revokeUserSessions(id);
+        }
         log.info("更新用户状态: id={}, status={}", id, status);
     }
 
@@ -280,5 +289,12 @@ public class UserServiceImpl implements UserService {
         wrapper.eq(UserRole::getUserId, userId);
         List<UserRole> userRoles = userRoleMapper.selectList(wrapper);
         return userRoles.stream().map(UserRole::getRoleId).collect(Collectors.toList());
+    }
+
+    private void revokeUserSessions(Long userId) {
+        tokenBlacklistService.blacklistUserTokens(
+                userId,
+                Math.max(1, Math.ceilDiv(jwtUtils.getRefreshExpirationMillis(), 1000))
+        );
     }
 }

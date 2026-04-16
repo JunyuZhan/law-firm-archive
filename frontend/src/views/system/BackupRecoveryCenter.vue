@@ -12,8 +12,15 @@
       description="恢复会影响全系统，请先确认维护模式、备份集完整性和恢复目标环境。"
     />
 
-    <el-card shadow="never" class="tabs-card">
-      <el-tabs v-model="activeTab" class="center-tabs" @tab-change="handleTabChange">
+    <el-card
+      shadow="never"
+      class="tabs-card"
+    >
+      <el-tabs
+        v-model="activeTab"
+        class="center-tabs"
+        @tab-change="handleTabChange"
+      >
         <el-tab-pane
           v-for="tab in tabs"
           :key="tab.name"

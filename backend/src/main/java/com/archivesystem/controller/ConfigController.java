@@ -2,11 +2,13 @@ package com.archivesystem.controller;
 
 import com.archivesystem.common.Result;
 import com.archivesystem.dto.config.DependencyStatusItemDTO;
+import com.archivesystem.dto.config.ImageUpgradeStatusDTO;
 import com.archivesystem.dto.config.SystemDependencyStatusDTO;
 import com.archivesystem.dto.config.SystemRuntimeInfoDTO;
 import com.archivesystem.entity.SysConfig;
 import com.archivesystem.service.ConfigService;
 import com.archivesystem.service.MinioService;
+import com.archivesystem.service.RegistryImageUpgradeCheckService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +34,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
@@ -49,6 +52,7 @@ public class ConfigController {
     private final MinioService minioService;
     private final ObjectProvider<BuildProperties> buildPropertiesProvider;
     private final ObjectProvider<HealthEndpoint> healthEndpointProvider;
+    private final RegistryImageUpgradeCheckService registryImageUpgradeCheckService;
 
     private static final String SITE_LOGO_CONFIG_KEY = "system.site.logo";
     private static final String SITE_LOGO_OBJECT_KEY = "system.site.logo.object";
@@ -283,14 +287,29 @@ public class ConfigController {
                 ? buildProperties.getTime().toString()
                 : "unknown");
 
+        String upgradeMode = "REGISTRY_DIGEST";
+        String upgradeModeDescription = "通过私有镜像仓库中当前标签（与产品版本 APP_VERSION 一致，未设置时为 latest）的清单摘要 "
+                + "（Docker-Content-Digest）与运行环境声明的已部署镜像摘要比对；检测到不一致时提示升级。";
         return Result.success(SystemRuntimeInfoDTO.builder()
                 .applicationName(applicationName)
                 .productVersion(productVersion)
                 .backendVersion(backendVersion)
                 .commitSha(commitSha)
                 .buildTime(buildTime)
-                .recommendedMode("标准运行模式")
+                .upgradeMode(upgradeMode)
+                .upgradeModeDescription(upgradeModeDescription)
+                .recommendedMode("私有仓库镜像摘要检测")
                 .build());
+    }
+
+    /**
+     * 检测私有仓库中后端 / 前端镜像是否与当前运行摘要一致，用于升级提醒。
+     */
+    @GetMapping("/image-upgrade-status")
+    @Operation(summary = "检测镜像是否有新版本")
+    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+    public Result<ImageUpgradeStatusDTO> getImageUpgradeStatus() {
+        return Result.success(registryImageUpgradeCheckService.checkImageUpgrades());
     }
 
     /**
@@ -337,7 +356,7 @@ public class ConfigController {
 
         Status status = component.getStatus();
         Map<String, Object> details = component instanceof org.springframework.boot.actuate.health.Health health
-                ? new LinkedHashMap<>(health.getDetails())
+                ? sanitizeHealthDetails(health.getDetails())
                 : Map.of();
 
         return DependencyStatusItemDTO.builder()
@@ -356,6 +375,60 @@ public class ConfigController {
             return compositeHealth.getComponents();
         }
         return Map.of();
+    }
+
+    private Map<String, Object> sanitizeHealthDetails(Map<String, Object> details) {
+        if (details == null || details.isEmpty()) {
+            return Map.of();
+        }
+        Map<String, Object> sanitized = new LinkedHashMap<>();
+        details.forEach((key, value) -> sanitized.put(key, sanitizeHealthValue(key, value)));
+        return sanitized;
+    }
+
+    private Object sanitizeHealthValue(String key, Object value) {
+        if (isSensitiveHealthKey(key)) {
+            return "******";
+        }
+        if (value instanceof Map<?, ?> nestedMap) {
+            Map<String, Object> sanitized = new LinkedHashMap<>();
+            nestedMap.forEach((nestedKey, nestedValue) ->
+                    sanitized.put(String.valueOf(nestedKey), sanitizeHealthValue(String.valueOf(nestedKey), nestedValue)));
+            return sanitized;
+        }
+        if (value instanceof List<?> list) {
+            return list.stream()
+                    .map(item -> sanitizeHealthValue(key, item))
+                    .toList();
+        }
+        if (value instanceof String text && looksSensitiveHealthValue(text)) {
+            return "******";
+        }
+        return value;
+    }
+
+    private boolean isSensitiveHealthKey(String key) {
+        if (!StringUtils.hasText(key)) {
+            return false;
+        }
+        String normalized = key.trim().toLowerCase(Locale.ROOT);
+        return normalized.contains("password")
+                || normalized.contains("secret")
+                || normalized.contains("token")
+                || normalized.contains("credential")
+                || normalized.contains("username")
+                || normalized.contains("user")
+                || normalized.contains("jdbc")
+                || normalized.contains("url")
+                || normalized.contains("uri");
+    }
+
+    private boolean looksSensitiveHealthValue(String value) {
+        String normalized = value.trim().toLowerCase(Locale.ROOT);
+        return normalized.startsWith("jdbc:")
+                || normalized.contains("://")
+                || normalized.contains("password=")
+                || normalized.contains("user=");
     }
 
 }

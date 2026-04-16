@@ -12,8 +12,15 @@
       description="建议先完成全宗和分类，再维护存放位置与来源映射。"
     />
 
-    <el-card shadow="hover" class="tabs-card">
-      <el-tabs v-model="activeTab" class="settings-tabs" @tab-change="handleTabChange">
+    <el-card
+      shadow="hover"
+      class="tabs-card"
+    >
+      <el-tabs
+        v-model="activeTab"
+        class="settings-tabs"
+        @tab-change="handleTabChange"
+      >
         <el-tab-pane
           v-for="tab in visibleTabs"
           :key="tab.name"

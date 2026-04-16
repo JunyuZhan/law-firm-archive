@@ -12,8 +12,11 @@ import org.mockito.quality.Strictness;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.Duration;
 import java.util.Date;
+import java.util.HexFormat;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -53,7 +56,7 @@ class TokenBlacklistServiceTest {
 
         tokenBlacklistService.addToBlacklist(token);
 
-        verify(valueOperations).set(anyString(), eq("blacklisted"), any(Duration.class));
+        verify(valueOperations).set(eq("token:blacklist:" + tokenId(token)), eq("blacklisted"), any(Duration.class));
     }
 
     @Test
@@ -82,7 +85,7 @@ class TokenBlacklistServiceTest {
     @Test
     void testIsBlacklisted_TokenInBlacklist() {
         String token = "blacklisted.jwt.token";
-        String tokenId = String.valueOf(token.hashCode());
+        String tokenId = tokenId(token);
 
         when(redisTemplate.hasKey("token:blacklist:" + tokenId)).thenReturn(true);
 
@@ -94,7 +97,7 @@ class TokenBlacklistServiceTest {
     @Test
     void testIsBlacklisted_TokenNotInBlacklist() {
         String token = "valid.jwt.token";
-        String tokenId = String.valueOf(token.hashCode());
+        String tokenId = tokenId(token);
 
         when(redisTemplate.hasKey("token:blacklist:" + tokenId)).thenReturn(false);
 
@@ -175,5 +178,23 @@ class TokenBlacklistServiceTest {
         boolean result = tokenBlacklistService.isUserBlacklisted(123L, System.currentTimeMillis());
 
         assertFalse(result);
+    }
+
+    @Test
+    void testTokenIdsDoNotReuseHashCodeCollisions() {
+        String token1 = "Aa";
+        String token2 = "BB";
+
+        assertEquals(token1.hashCode(), token2.hashCode());
+        assertNotEquals(tokenId(token1), tokenId(token2));
+    }
+
+    private String tokenId(String token) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            return HexFormat.of().formatHex(digest.digest(token.getBytes(StandardCharsets.UTF_8)));
+        } catch (Exception e) {
+            throw new IllegalStateException(e);
+        }
     }
 }

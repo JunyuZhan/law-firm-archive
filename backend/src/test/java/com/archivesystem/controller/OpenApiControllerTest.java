@@ -5,6 +5,7 @@ import com.archivesystem.dto.archive.ArchiveReceiveResponse;
 import com.archivesystem.dto.borrow.BorrowLinkAccessResponse;
 import com.archivesystem.dto.borrow.BorrowLinkApplyRequest;
 import com.archivesystem.dto.borrow.BorrowLinkApplyResponse;
+import com.archivesystem.entity.ExternalSource;
 import com.archivesystem.service.ArchiveService;
 import com.archivesystem.service.BorrowLinkService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -31,6 +32,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @ExtendWith(MockitoExtension.class)
 class OpenApiControllerTest {
+
+    private static final ExternalSource TEST_EXTERNAL_SOURCE = ExternalSource.builder()
+            .sourceCode("LAW_FIRM_A")
+            .sourceName("律所A")
+            .sourceType(ExternalSource.TYPE_LAW_FIRM)
+            .enabled(true)
+            .build();
 
     private MockMvc mockMvc;
 
@@ -135,9 +143,10 @@ class OpenApiControllerTest {
         response.setAccessUrl("https://example.com/open/borrow/access/token1234");
         response.setExpireAt(LocalDateTime.now().plusDays(7));
 
-        when(borrowLinkService.applyLink(any(BorrowLinkApplyRequest.class))).thenReturn(response);
+        when(borrowLinkService.applyLink(any(BorrowLinkApplyRequest.class), eq("LAW_FIRM_A"))).thenReturn(response);
 
         mockMvc.perform(post("/open/borrow/apply")
+                        .requestAttr("externalSource", TEST_EXTERNAL_SOURCE)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -149,12 +158,13 @@ class OpenApiControllerTest {
     @Test
     void testRevokeBorrow() throws Exception {
         mockMvc.perform(post("/open/borrow/revoke/10")
+                        .requestAttr("externalSource", TEST_EXTERNAL_SOURCE)
                         .param("reason", "管理系统撤销"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
                 .andExpect(jsonPath("$.message").value("借阅链接已撤销"));
 
-        verify(borrowLinkService).revoke(10L, "管理系统撤销");
+        verify(borrowLinkService).revoke(10L, "管理系统撤销", "LAW_FIRM_A");
     }
 
     @Test
@@ -167,7 +177,7 @@ class OpenApiControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.code").value("403"))
-                .andExpect(jsonPath("$.message").value("链接已过期"));
+                .andExpect(jsonPath("$.message").value("访问链接无效或已过期"));
     }
 
     @Test
@@ -192,7 +202,7 @@ class OpenApiControllerTest {
 
     @Test
     void testGetPreviewUrl() throws Exception {
-        when(borrowLinkService.getFileAccessUrl("token12345678", 9L, false))
+        when(borrowLinkService.getFileAccessUrl("token12345678", 9L, false, "127.0.0.1"))
                 .thenReturn("preview-url");
 
         mockMvc.perform(get("/open/borrow/access/token12345678/preview/9"))
@@ -203,7 +213,7 @@ class OpenApiControllerTest {
 
     @Test
     void testGetDownloadUrl() throws Exception {
-        when(borrowLinkService.getFileAccessUrl("token12345678", 9L, true))
+        when(borrowLinkService.getFileAccessUrl("token12345678", 9L, true, "127.0.0.1"))
                 .thenReturn("download-url");
 
         mockMvc.perform(get("/open/borrow/access/token12345678/download-url/9"))
@@ -220,5 +230,22 @@ class OpenApiControllerTest {
                 .andExpect(jsonPath("$.code").value("200"));
 
         verify(borrowLinkService).recordDownload("token12345678", 9L, "10.0.0.1");
+    }
+
+    @Test
+    void testApplyBorrow_MissingExternalSourceContext() throws Exception {
+        BorrowLinkApplyRequest request = new BorrowLinkApplyRequest();
+        request.setArchiveId(1L);
+        request.setUserId("u001");
+        request.setUserName("测试用户");
+        request.setPurpose("查阅");
+
+        mockMvc.perform(post("/open/borrow/apply")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("401"));
+
+        verify(borrowLinkService, never()).applyLink(any(), any());
     }
 }

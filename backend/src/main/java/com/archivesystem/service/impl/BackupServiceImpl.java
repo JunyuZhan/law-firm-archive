@@ -15,7 +15,6 @@ import com.archivesystem.entity.DigitalFile;
 import com.archivesystem.entity.OperationLog;
 import com.archivesystem.entity.RestoreJob;
 import com.archivesystem.entity.SysConfig;
-import com.archivesystem.repository.ArchiveMapper;
 import com.archivesystem.repository.BackupJobMapper;
 import com.archivesystem.repository.BackupTargetMapper;
 import com.archivesystem.repository.DigitalFileMapper;
@@ -36,6 +35,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -74,13 +74,25 @@ public class BackupServiceImpl implements BackupService {
     private static final String MAINTENANCE_MODE_KEY = "system.runtime.maintenance.enabled";
     private static final String RESTORE_MAINTENANCE_REQUIRED_KEY = "system.restore.maintenance.mode";
     private static final String CHECKSUM_ALGORITHM = "SHA-256";
+    private static final Set<String> PRESERVED_DATABASE_TABLES = Set.of(
+            "arc_backup_job",
+            "arc_backup_target",
+            "arc_operation_log",
+            "arc_restore_job",
+            "sys_api_key",
+            "sys_config",
+            "sys_ip_blacklist",
+            "sys_role",
+            "sys_security_audit",
+            "sys_user",
+            "sys_user_role"
+    );
 
     private final BackupTargetMapper backupTargetMapper;
     private final BackupJobMapper backupJobMapper;
     private final RestoreJobMapper restoreJobMapper;
     private final SysConfigMapper sysConfigMapper;
     private final DigitalFileMapper digitalFileMapper;
-    private final ArchiveMapper archiveMapper;
     private final MinioService minioService;
     private final SecretCryptoService secretCryptoService;
     private final ObjectMapper objectMapper;
@@ -88,6 +100,7 @@ public class BackupServiceImpl implements BackupService {
     private final ArchiveIndexService archiveIndexService;
     private final OperationLogService operationLogService;
     private final SmbStorageService smbStorageService;
+    private final JdbcTemplate jdbcTemplate;
 
     @Value("${spring.datasource.url:}")
     private String datasourceUrl;
@@ -319,6 +332,9 @@ public class BackupServiceImpl implements BackupService {
                 .orElseThrow(() -> new BusinessException("未找到指定备份集"));
         ensureRestoreReady(backupSet);
         ensureMaintenanceMode();
+        if (Boolean.TRUE.equals(request.getRestoreDatabase())) {
+            ensureDatabaseRestoreTargetEmpty();
+        }
 
         RestoreJob restoreJob = RestoreJob.builder()
                 .restoreNo("RS-" + BACKUP_TIME_FORMATTER.format(LocalDateTime.now()) + "-" + UUID.randomUUID().toString().substring(0, 8))
@@ -738,11 +754,6 @@ public class BackupServiceImpl implements BackupService {
         if ("PLACEHOLDER".equals(backupSet.getDatabaseMode())) {
             throw new BusinessException("该备份集数据库文件为占位文件，不能执行数据库恢复");
         }
-        long archiveCount = archiveMapper.selectCount(new LambdaQueryWrapper<>());
-        long digitalFileCount = digitalFileMapper.selectCount(new LambdaQueryWrapper<>());
-        if (archiveCount > 0 || digitalFileCount > 0) {
-            throw new BusinessException("当前数据库并非空库，已拒绝执行全库恢复");
-        }
 
         Path sqlFile = backupSetPath.resolve("database").resolve("archive-system.sql");
         if (!Files.exists(sqlFile)) {
@@ -790,7 +801,7 @@ public class BackupServiceImpl implements BackupService {
         if (!StringUtils.hasText(objectPath) || !restoredObjects.add(objectPath)) {
             return;
         }
-        Path localFile = filesDir.resolve(objectPath);
+        Path localFile = resolvePathWithinBase(filesDir, objectPath, "恢复对象路径");
         if (!Files.exists(localFile)) {
             log.warn("恢复文件时未找到对象备份: {}", objectPath);
             return;
@@ -941,7 +952,7 @@ public class BackupServiceImpl implements BackupService {
                 }
                 String relativePath = parts[0];
                 String expectedHash = parts[1];
-                Path target = backupSetPath.resolve(relativePath);
+                Path target = resolvePathWithinBase(backupSetPath, relativePath, "备份校验路径");
                 if (!Files.exists(target)) {
                     return new VerificationResult(false, "缺少备份文件: " + relativePath);
                 }
@@ -976,7 +987,7 @@ public class BackupServiceImpl implements BackupService {
                 }
                 String relativePath = parts[0];
                 String expectedHash = parts[1];
-                String remoteFilePath = backupSetName + "/" + relativePath;
+                String remoteFilePath = resolveSmbPathWithinBackupSet(backupSetName, relativePath);
                 if (!smbStorageService.exists(target, remoteFilePath)) {
                     return new VerificationResult(false, "缺少备份文件: " + relativePath);
                 }
@@ -1167,6 +1178,83 @@ public class BackupServiceImpl implements BackupService {
         return value == null ? null : String.valueOf(value);
     }
 
+    private void ensureDatabaseRestoreTargetEmpty() {
+        List<String> tableNames = jdbcTemplate.queryForList(
+                "SELECT table_name FROM information_schema.tables " +
+                        "WHERE table_schema = 'public' AND table_type = 'BASE TABLE' " +
+                        "ORDER BY table_name",
+                String.class
+        );
+        List<String> nonEmptyTables = new ArrayList<>();
+        for (String tableName : tableNames) {
+            if (!StringUtils.hasText(tableName) || PRESERVED_DATABASE_TABLES.contains(tableName)) {
+                continue;
+            }
+            String existsSql = "SELECT EXISTS (SELECT 1 FROM " + quoteIdentifier(tableName) + " LIMIT 1)";
+            Boolean hasRows = jdbcTemplate.queryForObject(existsSql, Boolean.class);
+            if (Boolean.TRUE.equals(hasRows)) {
+                nonEmptyTables.add(tableName);
+            }
+        }
+        if (!nonEmptyTables.isEmpty()) {
+            throw new BusinessException("当前数据库业务表并非空库，以下数据表仍有数据: " + String.join(", ", nonEmptyTables));
+        }
+    }
+
+    private String quoteIdentifier(String identifier) {
+        return "\"" + identifier.replace("\"", "\"\"") + "\"";
+    }
+
+    private Path resolvePathWithinBase(Path basePath, String relativePath, String fieldName) {
+        String normalizedRelativePath = normalizeBackupRelativePath(relativePath, fieldName);
+        Path normalizedBasePath = basePath.toAbsolutePath().normalize();
+        Path resolvedPath = normalizedBasePath.resolve(normalizedRelativePath).normalize();
+        if (!resolvedPath.startsWith(normalizedBasePath)) {
+            throw new BusinessException(fieldName + "超出允许目录范围: " + relativePath);
+        }
+        return resolvedPath;
+    }
+
+    private String resolveSmbPathWithinBackupSet(String backupSetName, String relativePath) {
+        String normalizedRelativePath = normalizeBackupRelativePath(relativePath, "SMB 备份校验路径");
+        String prefix = trimSlashes(backupSetName);
+        return prefix + "/" + normalizedRelativePath;
+    }
+
+    private String normalizeBackupRelativePath(String relativePath, String fieldName) {
+        String candidate = trimToNull(relativePath);
+        if (!StringUtils.hasText(candidate)) {
+            throw new BusinessException(fieldName + "不能为空");
+        }
+        candidate = candidate.replace('\\', '/');
+        if (candidate.startsWith("/") || candidate.contains("//")) {
+            throw new BusinessException(fieldName + "格式非法: " + relativePath);
+        }
+        Path normalizedPath = Path.of(candidate).normalize();
+        if (normalizedPath.isAbsolute()) {
+            throw new BusinessException(fieldName + "不能为绝对路径: " + relativePath);
+        }
+        String normalized = normalizedPath.toString().replace('\\', '/');
+        if (!StringUtils.hasText(normalized) || ".".equals(normalized) || normalized.startsWith("../")) {
+            throw new BusinessException(fieldName + "超出允许目录范围: " + relativePath);
+        }
+        return normalized;
+    }
+
+    private String trimSlashes(String value) {
+        if (!StringUtils.hasText(value)) {
+            return "";
+        }
+        String result = value.trim();
+        while (result.startsWith("/")) {
+            result = result.substring(1);
+        }
+        while (result.endsWith("/")) {
+            result = result.substring(0, result.length() - 1);
+        }
+        return result;
+    }
+
     @SafeVarargs
     private <T> T firstNonNull(T... values) {
         for (T value : values) {
@@ -1197,15 +1285,20 @@ public class BackupServiceImpl implements BackupService {
         if (database.contains("?")) {
             database = database.substring(0, database.indexOf('?'));
         }
-        return new PgDumpCommand(List.of(
+        List<String> command = new ArrayList<>(List.of(
                 "pg_dump",
                 "-h", host,
                 "-p", port,
                 "-U", datasourceUsername,
                 "-d", database,
+                "--data-only",
                 "--no-owner",
                 "--no-privileges"
-        ), datasourcePassword);
+        ));
+        for (String tableName : PRESERVED_DATABASE_TABLES) {
+            command.add("--exclude-table-data=public." + tableName);
+        }
+        return new PgDumpCommand(command, datasourcePassword);
     }
 
     private PgRestoreCommand buildPsqlRestoreCommand(Path sqlFile) {

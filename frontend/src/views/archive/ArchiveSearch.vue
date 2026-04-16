@@ -37,11 +37,11 @@
           title="高级筛选"
           name="advanced"
         >
-            <el-form
-              :model="filters"
-              inline
-              label-width="80px"
-            >
+          <el-form
+            :model="filters"
+            inline
+            label-width="80px"
+          >
             <el-form-item label="档案类型">
               <el-select
                 v-model="filters.archiveType"

@@ -54,31 +54,42 @@
           />
         </el-form-item>
         
-        <!-- 验证码（失败多次后显示） -->
+        <!-- 验证码 -->
         <el-form-item
           v-if="showCaptcha"
           prop="captcha"
         >
-          <div class="captcha-row">
-            <el-input
-              v-model="form.captcha"
-              placeholder="请输入验证码"
-              size="large"
-              maxlength="4"
-              class="captcha-input"
-              @keyup.enter="handleLogin"
-            />
-            <div
-              class="captcha-img"
-              :title="captchaText"
-              @click="refreshCaptcha"
-            >
-              <canvas
-                ref="captchaCanvas"
-                width="120"
-                height="40"
+          <div class="captcha-group">
+            <div class="captcha-row">
+              <el-input
+                v-model="form.captcha"
+                placeholder="请输入右侧4位验证码"
+                size="large"
+                maxlength="4"
+                class="captcha-input"
+                @input="onCaptchaInput"
+                @keyup.enter="handleLogin"
               />
+              <div
+                class="captcha-img"
+                title="点击刷新验证码"
+                role="button"
+                aria-label="点击刷新验证码"
+                tabindex="0"
+                @click="refreshCaptcha"
+                @keydown.enter.prevent="refreshCaptcha"
+                @keydown.space.prevent="refreshCaptcha"
+              >
+                <canvas
+                  ref="captchaCanvas"
+                  width="120"
+                  height="40"
+                />
+              </div>
             </div>
+            <p class="captcha-hint">
+              看不清？点击右侧验证码刷新
+            </p>
           </div>
         </el-form-item>
         
@@ -150,7 +161,7 @@ const lockCountdown = ref(0)
 let lockTimer = null
 
 // 验证码相关
-const showCaptcha = computed(() => failedAttempts.value >= 3)
+const showCaptcha = computed(() => true)
 const captchaText = ref('')
 
 // 安全提示
@@ -197,6 +208,9 @@ onMounted(() => {
   
   // 恢复锁定状态
   restoreLockState()
+
+  // 首次进入登录页即生成验证码
+  nextTick(() => refreshCaptcha())
   
   // 加载系统配置
   appStore.loadSiteConfig()
@@ -338,6 +352,10 @@ const onInputChange = () => {
   }
 }
 
+const onCaptchaInput = (value) => {
+  form.captcha = value.toUpperCase()
+}
+
 // 处理登录失败
 const handleLoginFailed = (error) => {
   failedAttempts.value++
@@ -372,10 +390,8 @@ const handleLoginFailed = (error) => {
     securityAlert.message = errorMsg
   }
   
-  // 3次失败后显示验证码
-  if (failedAttempts.value >= 3) {
-    nextTick(() => refreshCaptcha())
-  }
+  // 登录失败后刷新验证码
+  nextTick(() => refreshCaptcha())
 }
 
 const handleLogin = async () => {
@@ -514,6 +530,10 @@ const handleLogin = async () => {
   }
 }
 
+.captcha-group {
+  width: 100%;
+}
+
 .captcha-row {
   display: flex;
   gap: 12px;
@@ -529,15 +549,26 @@ const handleLogin = async () => {
     overflow: hidden;
     cursor: pointer;
     border: 1px solid #dcdfe6;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
     
-    &:hover {
+    &:hover,
+    &:focus-visible {
       border-color: #409eff;
+      box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.15);
+      outline: none;
     }
     
     canvas {
       display: block;
     }
   }
+}
+
+.captcha-hint {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #909399;
 }
 
 .login-footer {

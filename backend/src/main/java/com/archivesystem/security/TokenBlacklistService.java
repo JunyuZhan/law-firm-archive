@@ -6,8 +6,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.Duration;
 import java.util.Date;
+import java.util.HexFormat;
 
 /**
  * Token黑名单服务.
@@ -58,11 +61,16 @@ public class TokenBlacklistService {
     }
 
     /**
-     * 从Token获取唯一标识（使用Token的hash作为ID）.
+     * 从Token获取唯一标识（使用SHA-256摘要避免碰撞误伤）.
      */
     private String getTokenId(String token) {
-        // 使用token的hash作为唯一标识，避免存储完整token
-        return String.valueOf(token.hashCode());
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(token.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(hash);
+        } catch (Exception e) {
+            throw new IllegalStateException("生成Token黑名单标识失败", e);
+        }
     }
 
     /**

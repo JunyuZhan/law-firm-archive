@@ -1,5 +1,6 @@
 package com.archivesystem.security;
 
+import com.archivesystem.common.util.ClientIpUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -57,6 +58,7 @@ class RateLimitFilterTest {
         objectMapper = new ObjectMapper();
         rateLimitFilter = new RateLimitFilter(redisTemplate, objectMapper);
         responseWriter = new StringWriter();
+        ClientIpUtils.configureTrustedProxies(java.util.List.of("127.0.0.1", "::1"));
         
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
     }
@@ -148,9 +150,9 @@ class RateLimitFilterTest {
     }
 
     @Test
-    void testDoFilterInternal_OpenApiEndpoint_ShouldUseOpenApiRateLimit() throws ServletException, IOException {
+    void testDoFilterInternal_OpenApiWriteEndpoint_ShouldUseOpenWriteRateLimit() throws ServletException, IOException {
         // Given
-        when(request.getRequestURI()).thenReturn("/open/api/test");
+        when(request.getRequestURI()).thenReturn("/open/archive/receive");
         when(request.getRemoteAddr()).thenReturn("192.168.1.1");
         when(valueOperations.increment(anyString())).thenReturn(1L);
 
@@ -158,14 +160,28 @@ class RateLimitFilterTest {
         rateLimitFilter.doFilterInternal(request, response, filterChain);
 
         // Then
-        verify(valueOperations).increment(contains("rate_limit:open:"));
-        verify(response).setHeader("X-RateLimit-Limit", "30");
-        verify(response).setHeader("X-RateLimit-Remaining", "29");
+        verify(valueOperations).increment(contains("rate_limit:open_write:"));
+        verify(response).setHeader("X-RateLimit-Limit", "20");
+        verify(response).setHeader("X-RateLimit-Remaining", "19");
+    }
+
+    @Test
+    void testDoFilterInternal_PublicBorrowAccessEndpoint_ShouldUseStricterLimit() throws ServletException, IOException {
+        when(request.getRequestURI()).thenReturn("/open/borrow/access/token12345678");
+        when(request.getRemoteAddr()).thenReturn("192.168.1.1");
+        when(valueOperations.increment(anyString())).thenReturn(1L);
+
+        rateLimitFilter.doFilterInternal(request, response, filterChain);
+
+        verify(valueOperations).increment(contains("rate_limit:open_borrow_access:"));
+        verify(response).setHeader("X-RateLimit-Limit", "12");
+        verify(response).setHeader("X-RateLimit-Remaining", "11");
     }
 
     @Test
     void testDoFilterInternal_WithXForwardedFor_ShouldUseForwardedIp() throws ServletException, IOException {
         // Given
+        ClientIpUtils.configureTrustedProxies(java.util.List.of("192.168.1.1"));
         when(request.getRequestURI()).thenReturn("/api/test");
         when(request.getHeader("X-Forwarded-For")).thenReturn("203.0.113.1, 192.168.1.1");
         when(request.getRemoteAddr()).thenReturn("192.168.1.1");
@@ -181,6 +197,7 @@ class RateLimitFilterTest {
     @Test
     void testDoFilterInternal_WithXRealIp_ShouldUseRealIp() throws ServletException, IOException {
         // Given
+        ClientIpUtils.configureTrustedProxies(java.util.List.of("192.168.1.1"));
         when(request.getRequestURI()).thenReturn("/api/test");
         when(request.getHeader("X-Forwarded-For")).thenReturn(null);
         when(request.getHeader("X-Real-IP")).thenReturn("203.0.113.2");
@@ -197,6 +214,7 @@ class RateLimitFilterTest {
     @Test
     void testDoFilterInternal_WithProxyClientIp_ShouldUseProxyIp() throws ServletException, IOException {
         // Given
+        ClientIpUtils.configureTrustedProxies(java.util.List.of("192.168.1.1"));
         when(request.getRequestURI()).thenReturn("/api/test");
         when(request.getHeader("X-Forwarded-For")).thenReturn(null);
         when(request.getHeader("X-Real-IP")).thenReturn(null);
@@ -318,7 +336,7 @@ class RateLimitFilterTest {
         // Then
         verify(response).setStatus(429);
         String responseBody = responseWriter.toString();
-        assertTrue(responseBody.contains("30次请求"));
+        assertTrue(responseBody.contains("20次请求"));
     }
 
     @Test
@@ -358,6 +376,7 @@ class RateLimitFilterTest {
     @Test
     void testDoFilterInternal_WithMultipleForwardedIps_ShouldUseFirstIp() throws ServletException, IOException {
         // Given
+        ClientIpUtils.configureTrustedProxies(java.util.List.of("192.168.1.1"));
         when(request.getRequestURI()).thenReturn("/api/test");
         when(request.getHeader("X-Forwarded-For")).thenReturn("203.0.113.1, 192.168.1.1, 10.0.0.1");
         when(request.getRemoteAddr()).thenReturn("192.168.1.1");
@@ -380,5 +399,17 @@ class RateLimitFilterTest {
         rateLimitFilter.doFilterInternal(request, response, filterChain);
 
         verify(valueOperations).increment(contains("8.8.8.8"));
+    }
+
+    @Test
+    void testDoFilterInternal_WithPrivateRemoteAddrNotTrusted_ShouldIgnoreSpoofedForwardedIp() throws ServletException, IOException {
+        when(request.getRequestURI()).thenReturn("/api/test");
+        when(request.getHeader("X-Forwarded-For")).thenReturn("203.0.113.1");
+        when(request.getRemoteAddr()).thenReturn("192.168.1.1");
+        when(valueOperations.increment(anyString())).thenReturn(1L);
+
+        rateLimitFilter.doFilterInternal(request, response, filterChain);
+
+        verify(valueOperations).increment(contains("192.168.1.1"));
     }
 }

@@ -121,7 +121,7 @@ class BorrowLinkControllerTest {
 
     @Test
     void testRevoke() throws Exception {
-        doNothing().when(borrowLinkService).revoke(1L, "测试撤销");
+        doNothing().when(borrowLinkService).revoke(1L, "测试撤销", null);
 
         mockMvc.perform(post("/borrow-links/1/revoke")
                         .param("reason", "测试撤销"))
@@ -129,7 +129,7 @@ class BorrowLinkControllerTest {
                 .andExpect(jsonPath("$.code").value("200"))
                 .andExpect(jsonPath("$.data").value("链接已撤销"));
 
-        verify(borrowLinkService).revoke(1L, "测试撤销");
+        verify(borrowLinkService).revoke(1L, "测试撤销", null);
     }
 
     @Test

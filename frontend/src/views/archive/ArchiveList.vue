@@ -187,7 +187,10 @@
     </div>
 
     <!-- 表格 -->
-    <el-card shadow="never" class="table-card">
+    <el-card
+      shadow="never"
+      class="table-card"
+    >
       <el-table
         v-loading="loading"
         :data="tableData"

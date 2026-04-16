@@ -6,7 +6,10 @@
     </div>
 
     <!-- 搜索区域 -->
-    <el-card class="search-card" shadow="never">
+    <el-card
+      class="search-card"
+      shadow="never"
+    >
       <el-form
         :model="queryParams"
         inline
@@ -144,7 +147,10 @@
     </div>
 
     <!-- 日志表格 -->
-    <el-card class="table-card" shadow="never">
+    <el-card
+      class="table-card"
+      shadow="never"
+    >
       <template #header>
         <span>操作日志</span>
       </template>

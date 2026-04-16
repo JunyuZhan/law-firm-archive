@@ -12,17 +12,27 @@
       class="setup-alert"
     />
 
-    <el-card shadow="never" class="setup-card">
+    <el-card
+      shadow="never"
+      class="setup-card"
+    >
       <template #header>
         <div class="card-header">
           <span>基础信息设置</span>
-          <el-button type="primary" :loading="saving" @click="saveSetup">
+          <el-button
+            type="primary"
+            :loading="saving"
+            @click="saveSetup"
+          >
             保存基础设置
           </el-button>
         </div>
       </template>
 
-      <el-form label-width="140px" class="setup-form">
+      <el-form
+        label-width="140px"
+        class="setup-form"
+      >
         <el-form-item label="系统名称">
           <el-input
             v-model.trim="form.systemName"
@@ -63,7 +73,9 @@
                 </el-button>
               </el-upload>
             </div>
-            <div class="form-hint">{{ LOGO_UPLOAD_HINT }}</div>
+            <div class="form-hint">
+              {{ LOGO_UPLOAD_HINT }}
+            </div>
           </div>
         </el-form-item>
         <el-form-item label="ICP备案号">
@@ -85,7 +97,9 @@
       <el-divider />
 
       <div class="preview-block">
-        <div class="preview-title">效果预览</div>
+        <div class="preview-title">
+          效果预览
+        </div>
         <div class="preview-box">
           <div class="preview-brand">
             <img
@@ -95,8 +109,12 @@
               class="preview-logo"
             >
             <div>
-              <div class="preview-name">{{ form.systemName || '档案管理系统' }}</div>
-              <div class="preview-subname">{{ form.systemNameEn || 'Archive Management System' }}</div>
+              <div class="preview-name">
+                {{ form.systemName || '档案管理系统' }}
+              </div>
+              <div class="preview-subname">
+                {{ form.systemNameEn || 'Archive Management System' }}
+              </div>
             </div>
           </div>
           <div class="preview-footer">
@@ -109,7 +127,9 @@
       <el-divider />
 
       <div class="next-step-block">
-        <div class="preview-title">建议下一步</div>
+        <div class="preview-title">
+          建议下一步
+        </div>
         <ul class="plain-list">
           <li>确认系统名称、Logo 和版权信息是否符合当前机构的管理规范。</li>
           <li>确认 ICP 备案号是否需要在登录页和页脚展示。</li>

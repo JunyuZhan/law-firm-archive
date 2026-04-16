@@ -60,6 +60,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 String username = jwtUtils.getUsernameFromToken(token);
                 
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+                if (!userDetails.isEnabled() || !userDetails.isAccountNonLocked()) {
+                    log.warn("用户已被禁用或锁定，拒绝JWT访问: username={}", username);
+                    filterChain.doFilter(request, response);
+                    return;
+                }
                 
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(

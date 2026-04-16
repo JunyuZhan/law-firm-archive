@@ -6,7 +6,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.junit.jupiter.api.Assertions.*;
 /**
@@ -17,14 +16,11 @@ import static org.junit.jupiter.api.Assertions.*;
 class JwtUtilsTest {
 
     private JwtUtils jwtUtils;
+    private static final String VALID_SECRET = "test-secret-key-for-jwt-testing-must-be-256-bits-long!";
 
     @BeforeEach
     void setUp() {
-        jwtUtils = new JwtUtils();
-        // 设置测试用的密钥和过期时间
-        ReflectionTestUtils.setField(jwtUtils, "secret", "test-secret-key-for-jwt-testing-must-be-256-bits-long!");
-        ReflectionTestUtils.setField(jwtUtils, "expiration", 3600000L); // 1小时
-        ReflectionTestUtils.setField(jwtUtils, "refreshExpiration", 86400000L); // 1天
+        jwtUtils = new JwtUtils(VALID_SECRET, 3600000L, 86400000L);
     }
 
     @Test
@@ -125,10 +121,7 @@ class JwtUtilsTest {
     @Test
     void testParseToken_Expired() {
         // 创建一个过期时间很短的JwtUtils
-        JwtUtils shortExpJwtUtils = new JwtUtils();
-        ReflectionTestUtils.setField(shortExpJwtUtils, "secret", "test-secret-key-for-jwt-testing-must-be-256-bits-long!");
-        ReflectionTestUtils.setField(shortExpJwtUtils, "expiration", 1L); // 1毫秒
-        ReflectionTestUtils.setField(shortExpJwtUtils, "refreshExpiration", 1L);
+        JwtUtils shortExpJwtUtils = new JwtUtils(VALID_SECRET, 1L, 1L);
 
         String token = shortExpJwtUtils.generateAccessToken(1L, "testuser", "USER");
 
@@ -150,10 +143,7 @@ class JwtUtilsTest {
     @Test
     void testParseToken_WrongSignature() {
         // 使用不同的密钥生成的token
-        JwtUtils otherJwtUtils = new JwtUtils();
-        ReflectionTestUtils.setField(otherJwtUtils, "secret", "different-secret-key-for-testing-must-be-long-enough!");
-        ReflectionTestUtils.setField(otherJwtUtils, "expiration", 3600000L);
-        ReflectionTestUtils.setField(otherJwtUtils, "refreshExpiration", 86400000L);
+        JwtUtils otherJwtUtils = new JwtUtils("different-secret-key-for-testing-must-be-long-enough!", 3600000L, 86400000L);
 
         String tokenFromOther = otherJwtUtils.generateAccessToken(1L, "testuser", "USER");
 
@@ -169,5 +159,20 @@ class JwtUtilsTest {
         assertNotEquals(token1, token2);
         assertEquals("user1", jwtUtils.getUsernameFromToken(token1));
         assertEquals("user2", jwtUtils.getUsernameFromToken(token2));
+    }
+
+    @Test
+    void testConstructor_BlankSecret_ShouldFailFast() {
+        assertThrows(IllegalStateException.class, () -> new JwtUtils("   ", 3600000L, 86400000L));
+    }
+
+    @Test
+    void testConstructor_ExampleSecret_ShouldFailFast() {
+        assertThrows(IllegalStateException.class, () -> new JwtUtils("your-256-bit-secret-key-for-archive-system-2026", 3600000L, 86400000L));
+    }
+
+    @Test
+    void testConstructor_WeakSecret_ShouldFailFast() {
+        assertThrows(IllegalStateException.class, () -> new JwtUtils("short-secret", 3600000L, 86400000L));
     }
 }

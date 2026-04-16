@@ -148,13 +148,29 @@ jwt:
 
 # 安全配置
 security:
+  crypto:
+    secret: ${SECURITY_CRYPTO_SECRET:}  # 开发环境请通过环境变量或 IDE 启动配置注入
+    legacy-secret: ${SECURITY_CRYPTO_LEGACY_SECRET:${JWT_SECRET:}}  # 老环境迁移期可继续解密旧密文
   # CORS允许的来源（生产环境请配置具体域名）
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3001,http://localhost:3000}
+  # 仅当请求来自这些受信代理时，才解析 X-Forwarded-For / X-Real-IP
+  trusted-proxies: ${TRUSTED_PROXIES:127.0.0.1,::1}
   # API Key配置（通过后台"来源管理"配置）
   api-key:
     enabled: ${API_KEY_ENABLED:true}
     header: X-API-Key
+
+# 镜像仓库更新检测（与 sys_config 中 system.upgrade.* 协同，环境变量优先作为运行摘要来源）
+app:
+  registry-upgrade:
+    running-backend-digest: ${RUNNING_BACKEND_DIGEST:}
+    running-frontend-digest: ${RUNNING_FRONTEND_DIGEST:}
+    default-registry-base-url: https://hub.albertzhan.top
+    default-backend-repository: law-firm-archive/backend
+    default-frontend-repository: law-firm-archive/frontend
+    registry-username: ${REGISTRY_USERNAME:}
+    registry-password: ${REGISTRY_PASSWORD:}
 
 # 档案系统配置
 # 注意：以下业务配置已迁移到数据库 sys_config 表，可在后台"系统配置"页面管理

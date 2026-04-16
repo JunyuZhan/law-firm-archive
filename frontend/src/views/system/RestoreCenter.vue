@@ -19,7 +19,9 @@
     <el-card shadow="never">
       <div class="maintenance-bar">
         <div>
-          <div class="toolbar-title">维护模式</div>
+          <div class="toolbar-title">
+            维护模式
+          </div>
           <div class="toolbar-desc">
             {{ maintenanceStatus.message || '恢复前需进入维护模式，避免业务写入干扰恢复过程。' }}
           </div>
@@ -41,8 +43,12 @@
     <el-card shadow="never">
       <div class="source-toolbar">
         <div>
-          <div class="toolbar-title">恢复源浏览</div>
-          <div class="toolbar-desc">选择已配置的备份目标，读取其中可识别的本地或 SMB 备份集。</div>
+          <div class="toolbar-title">
+            恢复源浏览
+          </div>
+          <div class="toolbar-desc">
+            选择已配置的备份目标，读取其中可识别的本地或 SMB 备份集。
+          </div>
         </div>
         <div class="toolbar-actions">
           <el-select
@@ -59,32 +65,82 @@
               :value="target.id"
             />
           </el-select>
-          <el-button @click="loadBackupSets">刷新备份集</el-button>
+          <el-button @click="loadBackupSets">
+            刷新备份集
+          </el-button>
         </div>
       </div>
-      <el-table :data="backupSets" v-loading="loadingSets" border>
-        <el-table-column prop="backupSetName" label="备份集" min-width="180" />
-        <el-table-column prop="targetName" label="来源目标" min-width="140" />
-        <el-table-column prop="targetType" label="类型" width="100">
+      <el-table
+        v-loading="loadingSets"
+        :data="backupSets"
+        border
+      >
+        <el-table-column
+          prop="backupSetName"
+          label="备份集"
+          min-width="180"
+        />
+        <el-table-column
+          prop="targetName"
+          label="来源目标"
+          min-width="140"
+        />
+        <el-table-column
+          prop="targetType"
+          label="类型"
+          width="100"
+        >
           <template #default="{ row }">
-            <el-tag :type="row.targetType === 'LOCAL' ? 'success' : 'warning'">{{ row.targetType }}</el-tag>
+            <el-tag :type="row.targetType === 'LOCAL' ? 'success' : 'warning'">
+              {{ row.targetType }}
+            </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="createdAt" label="创建时间" min-width="170" />
-        <el-table-column prop="databaseMode" label="数据库" width="120" />
-        <el-table-column prop="fileCount" label="档案数" width="90" />
-        <el-table-column prop="objectCount" label="对象数" width="90" />
-        <el-table-column prop="totalBytes" label="大小" min-width="120">
+        <el-table-column
+          prop="createdAt"
+          label="创建时间"
+          min-width="170"
+        />
+        <el-table-column
+          prop="databaseMode"
+          label="数据库"
+          width="120"
+        />
+        <el-table-column
+          prop="fileCount"
+          label="档案数"
+          width="90"
+        />
+        <el-table-column
+          prop="objectCount"
+          label="对象数"
+          width="90"
+        />
+        <el-table-column
+          prop="totalBytes"
+          label="大小"
+          min-width="120"
+        >
           <template #default="{ row }">
             {{ formatBytes(row.totalBytes) }}
           </template>
         </el-table-column>
-        <el-table-column prop="verifyStatus" label="状态" width="110">
+        <el-table-column
+          prop="verifyStatus"
+          label="状态"
+          width="110"
+        >
           <template #default="{ row }">
-            <el-tag :type="setTagType(row.verifyStatus)">{{ row.verifyStatus }}</el-tag>
+            <el-tag :type="setTagType(row.verifyStatus)">
+              {{ row.verifyStatus }}
+            </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="120" fixed="right">
+        <el-table-column
+          label="操作"
+          width="120"
+          fixed="right"
+        >
           <template #default="{ row }">
             <el-button
               text
@@ -97,40 +153,95 @@
           </template>
         </el-table-column>
       </el-table>
-      <el-empty v-if="!backupSets.length && !loadingSets" description="当前未识别到可恢复备份集" />
+      <el-empty
+        v-if="!backupSets.length && !loadingSets"
+        description="当前未识别到可恢复备份集"
+      />
     </el-card>
 
     <el-row :gutter="20">
-      <el-col :lg="14" :xs="24">
+      <el-col
+        :lg="14"
+        :xs="24"
+      >
         <el-card shadow="never">
           <template #header>
             <span>恢复任务台账</span>
           </template>
-          <el-table :data="restoreJobs" v-loading="loading" border>
-            <el-table-column prop="restoreNo" label="恢复单号" min-width="160" />
-            <el-table-column prop="targetName" label="恢复源" min-width="160" />
-            <el-table-column prop="backupSetName" label="备份集" min-width="180" />
-            <el-table-column prop="status" label="状态" width="100">
+          <el-table
+            v-loading="loading"
+            :data="restoreJobs"
+            border
+          >
+            <el-table-column
+              prop="restoreNo"
+              label="恢复单号"
+              min-width="160"
+            />
+            <el-table-column
+              prop="targetName"
+              label="恢复源"
+              min-width="160"
+            />
+            <el-table-column
+              prop="backupSetName"
+              label="备份集"
+              min-width="180"
+            />
+            <el-table-column
+              prop="status"
+              label="状态"
+              width="100"
+            >
               <template #default="{ row }">
-                <el-tag :type="tagType(row.status)">{{ row.status }}</el-tag>
+                <el-tag :type="tagType(row.status)">
+                  {{ row.status }}
+                </el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="verifyStatus" label="校验" width="100" />
-            <el-table-column prop="rebuildIndexStatus" label="索引" width="110" />
-            <el-table-column prop="createdAt" label="创建时间" min-width="170" />
-            <el-table-column label="报告" width="100" fixed="right">
+            <el-table-column
+              prop="verifyStatus"
+              label="校验"
+              width="100"
+            />
+            <el-table-column
+              prop="rebuildIndexStatus"
+              label="索引"
+              width="110"
+            />
+            <el-table-column
+              prop="createdAt"
+              label="创建时间"
+              min-width="170"
+            />
+            <el-table-column
+              label="报告"
+              width="100"
+              fixed="right"
+            >
               <template #default="{ row }">
-                <el-button text type="primary" :disabled="!row.restoreReport" @click="openReport(row)">
+                <el-button
+                  text
+                  type="primary"
+                  :disabled="!row.restoreReport"
+                  @click="openReport(row)"
+                >
                   查看
                 </el-button>
               </template>
             </el-table-column>
           </el-table>
-          <el-empty v-if="!restoreJobs.length && !loading" description="暂无恢复任务记录" />
+          <el-empty
+            v-if="!restoreJobs.length && !loading"
+            description="暂无恢复任务记录"
+          />
         </el-card>
       </el-col>
 
-      <el-col :lg="10" :xs="24">
+      <el-col
+        :lg="10"
+        :xs="24"
+      >
         <el-card shadow="never">
           <template #header>
             <span>恢复执行原则</span>
@@ -147,13 +258,22 @@
       </el-col>
     </el-row>
 
-    <el-dialog v-model="restoreDialogVisible" title="执行系统恢复" width="620px">
-      <div v-if="selectedBackupSet" class="restore-summary">
+    <el-dialog
+      v-model="restoreDialogVisible"
+      title="执行系统恢复"
+      width="620px"
+    >
+      <div
+        v-if="selectedBackupSet"
+        class="restore-summary"
+      >
         <div><span>备份集：</span>{{ selectedBackupSet.backupSetName }}</div>
         <div><span>来源目标：</span>{{ selectedBackupSet.targetName }}</div>
         <div><span>目标类型：</span>{{ selectedBackupSet.targetType }}</div>
         <div><span>创建时间：</span>{{ selectedBackupSet.createdAt || '-' }}</div>
-        <div class="path-row"><span>备份路径：</span>{{ selectedBackupSet.backupSetPath || '-' }}</div>
+        <div class="path-row">
+          <span>备份路径：</span>{{ selectedBackupSet.backupSetPath || '-' }}
+        </div>
       </div>
 
       <el-form label-width="150px">
@@ -173,19 +293,32 @@
           <el-switch v-model="restoreForm.exitMaintenanceAfterSuccess" />
         </el-form-item>
         <el-form-item label="确认口令">
-          <el-input v-model="restoreForm.confirmationText" placeholder="请输入 RESTORE" />
+          <el-input
+            v-model="restoreForm.confirmationText"
+            placeholder="请输入 RESTORE"
+          />
         </el-form-item>
       </el-form>
 
       <template #footer>
-        <el-button @click="restoreDialogVisible = false">取消</el-button>
-        <el-button type="danger" :loading="runningRestore" @click="handleRunRestore">
+        <el-button @click="restoreDialogVisible = false">
+          取消
+        </el-button>
+        <el-button
+          type="danger"
+          :loading="runningRestore"
+          @click="handleRunRestore"
+        >
           开始恢复
         </el-button>
       </template>
     </el-dialog>
 
-    <el-dialog v-model="reportDialogVisible" title="恢复报告" width="680px">
+    <el-dialog
+      v-model="reportDialogVisible"
+      title="恢复报告"
+      width="680px"
+    >
       <pre class="report-view">{{ selectedReport }}</pre>
     </el-dialog>
   </div>

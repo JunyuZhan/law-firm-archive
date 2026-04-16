@@ -6,8 +6,10 @@ import com.archivesystem.entity.User;
 import com.archivesystem.entity.UserRole;
 import com.archivesystem.repository.UserMapper;
 import com.archivesystem.repository.UserRoleMapper;
+import com.archivesystem.security.JwtUtils;
 import com.archivesystem.service.impl.UserServiceImpl;
 import com.archivesystem.security.PasswordValidator;
+import com.archivesystem.security.TokenBlacklistService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -46,6 +48,12 @@ class UserServiceTest {
     @Mock
     private OperationLogService operationLogService;
 
+    @Mock
+    private TokenBlacklistService tokenBlacklistService;
+
+    @Mock
+    private JwtUtils jwtUtils;
+
     @InjectMocks
     private UserServiceImpl userService;
 
@@ -65,6 +73,7 @@ class UserServiceTest {
         // 设置PasswordValidator的默认stubbing
         PasswordValidator.ValidationResult validResult = new PasswordValidator.ValidationResult(true, null, 80);
         when(passwordValidator.validate(anyString())).thenReturn(validResult);
+        when(jwtUtils.getRefreshExpirationMillis()).thenReturn(604800000L);
     }
 
     @Test
@@ -137,6 +146,7 @@ class UserServiceTest {
 
         verify(passwordEncoder).encode("newPassword123");
         verify(userMapper).updateById(any(User.class));
+        verify(tokenBlacklistService).blacklistUserTokens(1L, 604800L);
     }
 
     @Test
@@ -150,12 +160,14 @@ class UserServiceTest {
     void testChangePassword_Success() {
         when(userMapper.selectById(1L)).thenReturn(testUser);
         when(passwordEncoder.matches("oldPassword", "password123")).thenReturn(true);
+        when(passwordEncoder.matches("newPassword", "password123")).thenReturn(false);
         when(passwordEncoder.encode(anyString())).thenReturn("newEncodedPassword");
         when(userMapper.updateById(any(User.class))).thenReturn(1);
 
         assertDoesNotThrow(() -> userService.changePassword(1L, "oldPassword", "newPassword"));
 
         verify(passwordEncoder).encode("newPassword");
+        verify(tokenBlacklistService).blacklistUserTokens(1L, 604800L);
     }
 
     @Test
@@ -174,6 +186,18 @@ class UserServiceTest {
         assertDoesNotThrow(() -> userService.updateStatus(1L, User.STATUS_DISABLED));
 
         verify(userMapper).updateById(any(User.class));
+        verify(tokenBlacklistService).blacklistUserTokens(1L, 604800L);
+    }
+
+    @Test
+    void testUpdateStatus_Active_ShouldNotRevokeSessions() {
+        when(userMapper.selectById(1L)).thenReturn(testUser);
+        when(userMapper.updateById(any(User.class))).thenReturn(1);
+
+        assertDoesNotThrow(() -> userService.updateStatus(1L, User.STATUS_ACTIVE));
+
+        verify(userMapper).updateById(any(User.class));
+        verify(tokenBlacklistService, never()).blacklistUserTokens(anyLong(), anyLong());
     }
 
     @Test

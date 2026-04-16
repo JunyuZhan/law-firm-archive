@@ -43,9 +43,13 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private static final int UPLOAD_RATE_LIMIT = 20;
     private static final int UPLOAD_WINDOW_SECONDS = 60;
 
-    // Open API限制：每分钟30次
-    private static final int OPEN_API_RATE_LIMIT = 30;
-    private static final int OPEN_API_WINDOW_SECONDS = 60;
+    // 公开借阅访问限制：每分钟12次
+    private static final int PUBLIC_BORROW_ACCESS_RATE_LIMIT = 12;
+    private static final int PUBLIC_BORROW_ACCESS_WINDOW_SECONDS = 60;
+
+    // 开放写接口限制：每分钟20次
+    private static final int OPEN_API_WRITE_RATE_LIMIT = 20;
+    private static final int OPEN_API_WRITE_WINDOW_SECONDS = 60;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
@@ -91,8 +95,10 @@ public class RateLimitFilter extends OncePerRequestFilter {
             return new RateLimitConfig("login", LOGIN_RATE_LIMIT, LOGIN_WINDOW_SECONDS);
         } else if (uri.contains("/files/upload")) {
             return new RateLimitConfig("upload", UPLOAD_RATE_LIMIT, UPLOAD_WINDOW_SECONDS);
+        } else if (uri.startsWith("/api/open/borrow/access/") || uri.startsWith("/open/borrow/access/")) {
+            return new RateLimitConfig("open_borrow_access", PUBLIC_BORROW_ACCESS_RATE_LIMIT, PUBLIC_BORROW_ACCESS_WINDOW_SECONDS);
         } else if (uri.startsWith("/api/open/") || uri.startsWith("/open/")) {
-            return new RateLimitConfig("open", OPEN_API_RATE_LIMIT, OPEN_API_WINDOW_SECONDS);
+            return new RateLimitConfig("open_write", OPEN_API_WRITE_RATE_LIMIT, OPEN_API_WRITE_WINDOW_SECONDS);
         }
         return new RateLimitConfig("general", GENERAL_RATE_LIMIT, GENERAL_WINDOW_SECONDS);
     }

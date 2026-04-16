@@ -198,134 +198,134 @@
         border
         style="width: 100%"
       >
-      <el-table-column
-        prop="pushBatchNo"
-        label="批次号"
-        width="200"
-      />
-      <el-table-column
-        prop="title"
-        label="档案标题"
-        min-width="200"
-        show-overflow-tooltip
-      />
-      <el-table-column
-        prop="sourceType"
-        label="来源类型"
-        width="100"
-      >
-        <template #default="{ row }">
-          <el-tag
-            v-if="row.sourceType === 'LAW_FIRM'"
-            type="primary"
-          >
-            律所系统
-          </el-tag>
-          <el-tag
-            v-else-if="row.sourceType === 'MANUAL'"
-            type="info"
-          >
-            手动上传
-          </el-tag>
-          <el-tag v-else>
-            {{ row.sourceType }}
-          </el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column
-        prop="archiveNo"
-        label="档案号"
-        width="150"
-      />
-      <el-table-column
-        prop="pushStatus"
-        label="状态"
-        width="100"
-      >
-        <template #default="{ row }">
-          <el-tag
-            v-if="row.pushStatus === 'SUCCESS'"
-            type="success"
-          >
-            成功
-          </el-tag>
-          <el-tag
-            v-else-if="row.pushStatus === 'FAILED'"
-            type="danger"
-          >
-            失败
-          </el-tag>
-          <el-tag
-            v-else-if="row.pushStatus === 'PENDING'"
-            type="info"
-          >
-            待处理
-          </el-tag>
-          <el-tag
-            v-else-if="row.pushStatus === 'PROCESSING'"
-            type="warning"
-          >
-            处理中
-          </el-tag>
-          <el-tag
-            v-else-if="row.pushStatus === 'PARTIAL'"
-            type="warning"
-          >
-            部分成功
-          </el-tag>
-          <el-tag v-else>
-            {{ row.pushStatus }}
-          </el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column
-        label="文件进度"
-        width="120"
-      >
-        <template #default="{ row }">
-          <span>{{ row.successFiles || 0 }}/{{ row.totalFiles || 0 }}</span>
-        </template>
-      </el-table-column>
-      <el-table-column
-        prop="pushedAt"
-        label="推送时间"
-        width="170"
-      >
-        <template #default="{ row }">
-          {{ formatDateTime(row.pushedAt) }}
-        </template>
-      </el-table-column>
-      <el-table-column
-        label="操作"
-        width="150"
-        fixed="right"
-      >
-        <template #default="{ row }">
-          <el-button
-            link
-            type="primary"
-            @click="handleView(row)"
-          >
-            详情
-          </el-button>
-          <el-button
-            v-if="row.pushStatus === 'FAILED'"
-            link
-            type="warning"
-            @click="handleRetry(row)"
-          >
-            重试
-          </el-button>
-          <el-button
-            v-if="row.archiveId"
-            link
-            type="success"
-            @click="goToArchive(row)"
-          >
-            查看档案
-          </el-button>
-        </template>
-      </el-table-column>
+        <el-table-column
+          prop="pushBatchNo"
+          label="批次号"
+          width="200"
+        />
+        <el-table-column
+          prop="title"
+          label="档案标题"
+          min-width="200"
+          show-overflow-tooltip
+        />
+        <el-table-column
+          prop="sourceType"
+          label="来源类型"
+          width="100"
+        >
+          <template #default="{ row }">
+            <el-tag
+              v-if="row.sourceType === 'LAW_FIRM'"
+              type="primary"
+            >
+              律所系统
+            </el-tag>
+            <el-tag
+              v-else-if="row.sourceType === 'MANUAL'"
+              type="info"
+            >
+              手动上传
+            </el-tag>
+            <el-tag v-else>
+              {{ row.sourceType }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column
+          prop="archiveNo"
+          label="档案号"
+          width="150"
+        />
+        <el-table-column
+          prop="pushStatus"
+          label="状态"
+          width="100"
+        >
+          <template #default="{ row }">
+            <el-tag
+              v-if="row.pushStatus === 'SUCCESS'"
+              type="success"
+            >
+              成功
+            </el-tag>
+            <el-tag
+              v-else-if="row.pushStatus === 'FAILED'"
+              type="danger"
+            >
+              失败
+            </el-tag>
+            <el-tag
+              v-else-if="row.pushStatus === 'PENDING'"
+              type="info"
+            >
+              待处理
+            </el-tag>
+            <el-tag
+              v-else-if="row.pushStatus === 'PROCESSING'"
+              type="warning"
+            >
+              处理中
+            </el-tag>
+            <el-tag
+              v-else-if="row.pushStatus === 'PARTIAL'"
+              type="warning"
+            >
+              部分成功
+            </el-tag>
+            <el-tag v-else>
+              {{ row.pushStatus }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column
+          label="文件进度"
+          width="120"
+        >
+          <template #default="{ row }">
+            <span>{{ row.successFiles || 0 }}/{{ row.totalFiles || 0 }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column
+          prop="pushedAt"
+          label="推送时间"
+          width="170"
+        >
+          <template #default="{ row }">
+            {{ formatDateTime(row.pushedAt) }}
+          </template>
+        </el-table-column>
+        <el-table-column
+          label="操作"
+          width="150"
+          fixed="right"
+        >
+          <template #default="{ row }">
+            <el-button
+              link
+              type="primary"
+              @click="handleView(row)"
+            >
+              详情
+            </el-button>
+            <el-button
+              v-if="row.pushStatus === 'FAILED'"
+              link
+              type="warning"
+              @click="handleRetry(row)"
+            >
+              重试
+            </el-button>
+            <el-button
+              v-if="row.archiveId"
+              link
+              type="success"
+              @click="goToArchive(row)"
+            >
+              查看档案
+            </el-button>
+          </template>
+        </el-table-column>
       </el-table>
 
       <!-- 分页 -->

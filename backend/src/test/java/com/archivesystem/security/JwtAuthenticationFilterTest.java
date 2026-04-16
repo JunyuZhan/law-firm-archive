@@ -67,6 +67,8 @@ class JwtAuthenticationFilterTest {
 
         UserDetails userDetails = mock(UserDetails.class);
         when(userDetails.getAuthorities()).thenReturn(Collections.emptyList());
+        when(userDetails.isEnabled()).thenReturn(true);
+        when(userDetails.isAccountNonLocked()).thenReturn(true);
 
         Claims claims = mock(Claims.class);
         when(claims.get("userId", Long.class)).thenReturn(userId);
@@ -83,6 +85,35 @@ class JwtAuthenticationFilterTest {
 
         verify(filterChain).doFilter(request, response);
         assertNotNull(SecurityContextHolder.getContext().getAuthentication());
+    }
+
+    @Test
+    void testDoFilterInternal_DisabledUser_ShouldNotAuthenticate() throws ServletException, IOException {
+        String token = "valid.jwt.token";
+        String username = "disableduser";
+        Long userId = 1L;
+
+        request.addHeader("Authorization", "Bearer " + token);
+
+        UserDetails userDetails = mock(UserDetails.class);
+        when(userDetails.isEnabled()).thenReturn(false);
+        when(userDetails.isAccountNonLocked()).thenReturn(false);
+
+        Claims claims = mock(Claims.class);
+        when(claims.get("userId", Long.class)).thenReturn(userId);
+        when(claims.getIssuedAt()).thenReturn(new Date());
+
+        when(jwtUtils.validateToken(token)).thenReturn(true);
+        when(jwtUtils.parseToken(token)).thenReturn(claims);
+        when(jwtUtils.getUsernameFromToken(token)).thenReturn(username);
+        when(tokenBlacklistService.isBlacklisted(token)).thenReturn(false);
+        when(tokenBlacklistService.isUserBlacklisted(eq(userId), anyLong())).thenReturn(false);
+        when(userDetailsService.loadUserByUsername(username)).thenReturn(userDetails);
+
+        jwtAuthenticationFilter.doFilterInternal(request, response, filterChain);
+
+        verify(filterChain).doFilter(request, response);
+        assertNull(SecurityContextHolder.getContext().getAuthentication());
     }
 
     @Test
@@ -155,10 +186,18 @@ class JwtAuthenticationFilterTest {
     void testDoFilterInternal_UserDetailsServiceException() throws ServletException, IOException {
         String token = "valid.jwt.token";
         String username = "testuser";
+        Long userId = 1L;
 
         request.addHeader("Authorization", "Bearer " + token);
 
+        Claims claims = mock(Claims.class);
+        when(claims.get("userId", Long.class)).thenReturn(userId);
+        when(claims.getIssuedAt()).thenReturn(new Date());
+
         when(jwtUtils.validateToken(token)).thenReturn(true);
+        when(jwtUtils.parseToken(token)).thenReturn(claims);
+        when(tokenBlacklistService.isBlacklisted(token)).thenReturn(false);
+        when(tokenBlacklistService.isUserBlacklisted(eq(userId), anyLong())).thenReturn(false);
         when(jwtUtils.getUsernameFromToken(token)).thenReturn(username);
         when(userDetailsService.loadUserByUsername(username)).thenThrow(new RuntimeException("User not found"));
 
@@ -171,10 +210,18 @@ class JwtAuthenticationFilterTest {
     @Test
     void testDoFilterInternal_NullUsernameFromToken() throws ServletException, IOException {
         String token = "valid.jwt.token";
+        Long userId = 1L;
 
         request.addHeader("Authorization", "Bearer " + token);
 
+        Claims claims = mock(Claims.class);
+        when(claims.get("userId", Long.class)).thenReturn(userId);
+        when(claims.getIssuedAt()).thenReturn(new Date());
+
         when(jwtUtils.validateToken(token)).thenReturn(true);
+        when(jwtUtils.parseToken(token)).thenReturn(claims);
+        when(tokenBlacklistService.isBlacklisted(token)).thenReturn(false);
+        when(tokenBlacklistService.isUserBlacklisted(eq(userId), anyLong())).thenReturn(false);
         when(jwtUtils.getUsernameFromToken(token)).thenReturn(null);
         when(userDetailsService.loadUserByUsername(null)).thenThrow(new RuntimeException("Username cannot be null"));
 

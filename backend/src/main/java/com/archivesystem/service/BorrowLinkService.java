@@ -20,7 +20,7 @@ public interface BorrowLinkService {
      * @param request 申请请求
      * @return 申请响应（包含访问链接）
      */
-    BorrowLinkApplyResponse applyLink(BorrowLinkApplyRequest request);
+    BorrowLinkApplyResponse applyLink(BorrowLinkApplyRequest request, String sourceCode);
 
     /**
      * 为借阅申请生成访问链接（内部使用）.
@@ -62,7 +62,7 @@ public interface BorrowLinkService {
      * @param id 链接ID
      * @param reason 撤销原因
      */
-    void revoke(Long id, String reason);
+    void revoke(Long id, String reason, String sourceCode);
 
     /**
      * 记录下载.
@@ -76,7 +76,7 @@ public interface BorrowLinkService {
     /**
      * 获取公开借阅文件的短时访问地址.
      */
-    String getFileAccessUrl(String accessToken, Long fileId, boolean download);
+    String getFileAccessUrl(String accessToken, Long fileId, boolean download, String clientIp);
 
     /**
      * 分页查询链接列表.

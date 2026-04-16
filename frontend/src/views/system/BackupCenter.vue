@@ -7,69 +7,144 @@
           为电子档案系统配置可恢复的备份目标。当前已支持本地目录与 SMB/NAS 的目标管理、真实验证、备份执行和备份集浏览。
         </p>
       </div>
-      <el-button type="primary" @click="openCreateDialog">
+      <el-button
+        type="primary"
+        @click="openCreateDialog"
+      >
         新增备份目标
       </el-button>
     </div>
 
     <div class="overview-grid">
-      <el-card v-for="item in overviewCards" :key="item.label" class="overview-card" shadow="never">
-        <div class="overview-value">{{ item.value }}</div>
-        <div class="overview-label">{{ item.label }}</div>
+      <el-card
+        v-for="item in overviewCards"
+        :key="item.label"
+        class="overview-card"
+        shadow="never"
+      >
+        <div class="overview-value">
+          {{ item.value }}
+        </div>
+        <div class="overview-label">
+          {{ item.label }}
+        </div>
       </el-card>
     </div>
 
     <el-row :gutter="20">
-      <el-col :lg="14" :xs="24">
+      <el-col
+        :lg="14"
+        :xs="24"
+      >
         <el-card shadow="never">
           <template #header>
             <div class="section-header">
               <span>备份目标</span>
-              <el-tag type="info">阶段：{{ overview.currentPhase || 'FOUNDATION' }}</el-tag>
+              <el-tag type="info">
+                阶段：{{ overview.currentPhase || 'FOUNDATION' }}
+              </el-tag>
             </div>
           </template>
 
-          <el-table :data="targets" v-loading="loadingTargets" border>
-            <el-table-column prop="name" label="名称" min-width="160" />
-            <el-table-column prop="targetType" label="类型" width="90">
+          <el-table
+            v-loading="loadingTargets"
+            :data="targets"
+            border
+          >
+            <el-table-column
+              prop="name"
+              label="名称"
+              min-width="160"
+            />
+            <el-table-column
+              prop="targetType"
+              label="类型"
+              width="90"
+            >
               <template #default="{ row }">
                 <el-tag :type="row.targetType === 'LOCAL' ? 'success' : 'warning'">
                   {{ row.targetType }}
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column label="目标地址" min-width="260">
+            <el-table-column
+              label="目标地址"
+              min-width="260"
+            >
               <template #default="{ row }">
                 <span v-if="row.targetType === 'LOCAL'">{{ row.localPath }}</span>
                 <span v-else>{{ row.smbHost }} / {{ row.smbShare }} / {{ row.smbSubPath || '-' }}</span>
               </template>
             </el-table-column>
-            <el-table-column label="验证状态" width="120">
+            <el-table-column
+              label="验证状态"
+              width="120"
+            >
               <template #default="{ row }">
                 <el-tag :type="verifyTagType(row.verifyStatus)">
                   {{ row.verifyStatus || 'PENDING' }}
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column label="启用" width="80">
+            <el-table-column
+              label="启用"
+              width="80"
+            >
               <template #default="{ row }">
-                <el-switch v-model="row.enabled" disabled />
+                <el-switch
+                  v-model="row.enabled"
+                  disabled
+                />
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="220" fixed="right">
+            <el-table-column
+              label="操作"
+              width="220"
+              fixed="right"
+            >
               <template #default="{ row }">
-                <el-button text type="primary" @click="openEditDialog(row)">编辑</el-button>
-                <el-button text type="success" @click="handleVerify(row)">验证</el-button>
-                <el-button text type="warning" @click="handleRun(row)">执行备份</el-button>
-                <el-button text type="danger" @click="handleDelete(row)">删除</el-button>
+                <el-button
+                  text
+                  type="primary"
+                  @click="openEditDialog(row)"
+                >
+                  编辑
+                </el-button>
+                <el-button
+                  text
+                  type="success"
+                  @click="handleVerify(row)"
+                >
+                  验证
+                </el-button>
+                <el-button
+                  text
+                  type="warning"
+                  @click="handleRun(row)"
+                >
+                  执行备份
+                </el-button>
+                <el-button
+                  text
+                  type="danger"
+                  @click="handleDelete(row)"
+                >
+                  删除
+                </el-button>
               </template>
             </el-table-column>
           </el-table>
         </el-card>
       </el-col>
 
-      <el-col :lg="10" :xs="24">
-        <el-card shadow="never" class="guideline-card">
+      <el-col
+        :lg="10"
+        :xs="24"
+      >
+        <el-card
+          shadow="never"
+          class="guideline-card"
+        >
           <template #header>
             <span>第一阶段说明</span>
           </template>
@@ -81,30 +156,61 @@
           </ul>
         </el-card>
 
-        <el-card shadow="never" class="job-card">
+        <el-card
+          shadow="never"
+          class="job-card"
+        >
           <template #header>
             <span>最近备份任务</span>
           </template>
-          <el-empty v-if="!backupJobs.length" description="暂无备份任务记录" />
-          <div v-else class="job-list">
-            <div v-for="job in backupJobs" :key="job.id" class="job-item">
-              <div class="job-title">{{ job.backupNo }}</div>
-              <div class="job-meta">{{ job.targetName || '未命名目标' }} · {{ job.status }}</div>
+          <el-empty
+            v-if="!backupJobs.length"
+            description="暂无备份任务记录"
+          />
+          <div
+            v-else
+            class="job-list"
+          >
+            <div
+              v-for="job in backupJobs"
+              :key="job.id"
+              class="job-item"
+            >
+              <div class="job-title">
+                {{ job.backupNo }}
+              </div>
+              <div class="job-meta">
+                {{ job.targetName || '未命名目标' }} · {{ job.status }}
+              </div>
             </div>
           </div>
         </el-card>
       </el-col>
     </el-row>
 
-    <el-dialog v-model="dialogVisible" :title="editingId ? '编辑备份目标' : '新增备份目标'" width="640px">
-      <el-form :model="form" label-width="120px">
+    <el-dialog
+      v-model="dialogVisible"
+      :title="editingId ? '编辑备份目标' : '新增备份目标'"
+      width="640px"
+    >
+      <el-form
+        :model="form"
+        label-width="120px"
+      >
         <el-form-item label="目标名称">
-          <el-input v-model="form.name" placeholder="例如：律所 NAS 备份" />
+          <el-input
+            v-model="form.name"
+            placeholder="例如：律所 NAS 备份"
+          />
         </el-form-item>
         <el-form-item label="目标类型">
           <el-radio-group v-model="form.targetType">
-            <el-radio label="LOCAL">本地目录</el-radio>
-            <el-radio label="SMB">SMB / NAS</el-radio>
+            <el-radio label="LOCAL">
+              本地目录
+            </el-radio>
+            <el-radio label="SMB">
+              SMB / NAS
+            </el-radio>
           </el-radio-group>
         </el-form-item>
         <el-form-item label="是否启用">
@@ -113,36 +219,67 @@
 
         <template v-if="form.targetType === 'LOCAL'">
           <el-form-item label="本地目录">
-            <el-input v-model="form.localPath" placeholder="/data/archive-backups" />
+            <el-input
+              v-model="form.localPath"
+              placeholder="/data/archive-backups"
+            />
           </el-form-item>
         </template>
 
         <template v-else>
           <el-form-item label="SMB 主机">
-            <el-input v-model="form.smbHost" placeholder="192.168.50.5" />
+            <el-input
+              v-model="form.smbHost"
+              placeholder="192.168.50.5"
+            />
           </el-form-item>
           <el-form-item label="共享名称">
-            <el-input v-model="form.smbShare" placeholder="archive-backup" />
+            <el-input
+              v-model="form.smbShare"
+              placeholder="archive-backup"
+            />
           </el-form-item>
           <el-form-item label="共享子目录">
-            <el-input v-model="form.smbSubPath" placeholder="law-firm-archive/prod" />
+            <el-input
+              v-model="form.smbSubPath"
+              placeholder="law-firm-archive/prod"
+            />
           </el-form-item>
           <el-form-item label="用户名">
-            <el-input v-model="form.smbUsername" placeholder="backup-user" />
+            <el-input
+              v-model="form.smbUsername"
+              placeholder="backup-user"
+            />
           </el-form-item>
           <el-form-item label="密码">
-            <el-input v-model="form.smbPassword" show-password placeholder="编辑时留空表示不更新密码" />
+            <el-input
+              v-model="form.smbPassword"
+              show-password
+              placeholder="编辑时留空表示不更新密码"
+            />
           </el-form-item>
         </template>
 
         <el-form-item label="备注">
-          <el-input v-model="form.remarks" type="textarea" :rows="3" />
+          <el-input
+            v-model="form.remarks"
+            type="textarea"
+            :rows="3"
+          />
         </el-form-item>
       </el-form>
 
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="handleSave">保存</el-button>
+        <el-button @click="dialogVisible = false">
+          取消
+        </el-button>
+        <el-button
+          type="primary"
+          :loading="saving"
+          @click="handleSave"
+        >
+          保存
+        </el-button>
       </template>
     </el-dialog>
   </div>

@@ -12,8 +12,15 @@
       description="当前版本仅系统管理员可进入权限管理并维护用户、角色和授权。"
     />
 
-    <el-card shadow="hover" class="tabs-card">
-      <el-tabs v-model="activeTab" class="center-tabs" @tab-change="handleTabChange">
+    <el-card
+      shadow="hover"
+      class="tabs-card"
+    >
+      <el-tabs
+        v-model="activeTab"
+        class="center-tabs"
+        @tab-change="handleTabChange"
+      >
         <el-tab-pane
           v-for="tab in visibleTabs"
           :key="tab.name"

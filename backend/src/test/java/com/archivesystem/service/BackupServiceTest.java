@@ -5,7 +5,6 @@ import com.archivesystem.dto.backup.BackupTargetRequest;
 import com.archivesystem.dto.backup.BackupTargetResponse;
 import com.archivesystem.dto.backup.RestoreExecuteRequest;
 import com.archivesystem.entity.BackupTarget;
-import com.archivesystem.repository.ArchiveMapper;
 import com.archivesystem.repository.BackupJobMapper;
 import com.archivesystem.repository.BackupTargetMapper;
 import com.archivesystem.repository.DigitalFileMapper;
@@ -19,6 +18,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -31,13 +31,14 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
 /**
  * @author junyuzhan
  */
-
+@SuppressWarnings("unchecked")
 @ExtendWith(MockitoExtension.class)
 class BackupServiceTest {
 
@@ -55,9 +56,6 @@ class BackupServiceTest {
 
     @Mock
     private DigitalFileMapper digitalFileMapper;
-
-    @Mock
-    private ArchiveMapper archiveMapper;
 
     @Mock
     private MinioService minioService;
@@ -79,6 +77,9 @@ class BackupServiceTest {
 
     @Mock
     private SmbStorageService smbStorageService;
+
+    @Mock
+    private JdbcTemplate jdbcTemplate;
 
     @InjectMocks
     private BackupServiceImpl backupService;
@@ -178,7 +179,7 @@ class BackupServiceTest {
                 .localPath(tempDir.toString())
                 .build();
         when(backupTargetMapper.selectById(1L)).thenReturn(target);
-        when(objectMapper.readValue(any(java.io.File.class), eq(Map.class))).thenReturn(Map.of(
+        when(objectMapper.readValue(any(java.io.File.class), any(com.fasterxml.jackson.core.type.TypeReference.class))).thenReturn(Map.of(
                 "backupNo", "BK-20260330150000-aaaa1111",
                 "createdAt", LocalDateTime.of(2026, 3, 30, 15, 0, 0).toString(),
                 "databaseMode", "PG_DUMP",
@@ -217,7 +218,7 @@ class BackupServiceTest {
         when(smbStorageService.exists(target, "BK-20260330150000-aaaa1111/checksums.txt")).thenReturn(true);
         when(smbStorageService.openInputStream(target, "BK-20260330150000-aaaa1111/manifest.json"))
                 .thenReturn(new ByteArrayInputStream("{}".getBytes()));
-        when(objectMapper.readValue(any(InputStream.class), eq(Map.class))).thenReturn(Map.of(
+        when(objectMapper.readValue(any(InputStream.class), any(com.fasterxml.jackson.core.type.TypeReference.class))).thenReturn(Map.of(
                 "backupNo", "BK-20260330150000-aaaa1111",
                 "createdAt", LocalDateTime.of(2026, 3, 30, 15, 0).toString(),
                 "databaseMode", "PG_DUMP",
@@ -240,6 +241,72 @@ class BackupServiceTest {
         assertEquals("READY", sets.get(0).getVerifyStatus());
         assertEquals(4096L, sets.get(0).getTotalBytes());
         assertTrue(sets.get(0).getBackupSetPath().startsWith("smb://"));
+    }
+
+    @Test
+    void testGetBackupSetsFromLocalTarget_WithTraversalChecksumPath_ShouldFailVerification() throws Exception {
+        Path tempDir = Files.createTempDirectory("backup-set-traversal-local");
+        Path setDir = Files.createDirectories(tempDir.resolve("BK-20260330150000-aaaa1111"));
+        Path manifest = setDir.resolve("manifest.json");
+        Files.writeString(manifest, "{}");
+        Files.writeString(setDir.resolve("checksums.txt"), "../manifest.json|" + sha256(manifest));
+
+        BackupTarget target = BackupTarget.builder()
+                .id(1L)
+                .name("本地目录")
+                .targetType(BackupTarget.TYPE_LOCAL)
+                .enabled(true)
+                .localPath(tempDir.toString())
+                .build();
+        when(backupTargetMapper.selectById(1L)).thenReturn(target);
+        when(objectMapper.readValue(any(java.io.File.class), any(com.fasterxml.jackson.core.type.TypeReference.class))).thenReturn(Map.of(
+                "backupNo", "BK-20260330150000-aaaa1111",
+                "createdAt", LocalDateTime.of(2026, 3, 30, 15, 0, 0).toString(),
+                "databaseMode", "PG_DUMP"
+        ));
+
+        List<BackupSetResponse> sets = backupService.getBackupSets(1L);
+
+        assertEquals(1, sets.size());
+        assertEquals("INCOMPLETE", sets.get(0).getVerifyStatus());
+        assertTrue(sets.get(0).getVerifyMessage().contains("超出允许目录范围"));
+    }
+
+    @Test
+    void testGetBackupSetsFromSmbTarget_WithTraversalChecksumPath_ShouldFailVerification() throws Exception {
+        BackupTarget target = BackupTarget.builder()
+                .id(2L)
+                .name("NAS")
+                .targetType(BackupTarget.TYPE_SMB)
+                .enabled(true)
+                .smbHost("192.168.50.5")
+                .smbShare("archive")
+                .smbUsername("backup")
+                .smbPasswordEncrypted("encrypted")
+                .build();
+        when(backupTargetMapper.selectById(2L)).thenReturn(target);
+        when(smbStorageService.listDirectories(target)).thenReturn(List.of(
+                new SmbStorageService.RemoteDirectoryEntry("BK-20260330150000-aaaa1111", LocalDateTime.of(2026, 3, 30, 15, 0))
+        ));
+        when(smbStorageService.exists(target, "BK-20260330150000-aaaa1111/manifest.json")).thenReturn(true);
+        when(smbStorageService.exists(target, "BK-20260330150000-aaaa1111/checksums.txt")).thenReturn(true);
+        when(smbStorageService.openInputStream(target, "BK-20260330150000-aaaa1111/manifest.json"))
+                .thenReturn(new ByteArrayInputStream("{}".getBytes()));
+        when(objectMapper.readValue(any(InputStream.class), any(com.fasterxml.jackson.core.type.TypeReference.class))).thenReturn(Map.of(
+                "backupNo", "BK-20260330150000-aaaa1111",
+                "createdAt", LocalDateTime.of(2026, 3, 30, 15, 0).toString(),
+                "databaseMode", "PG_DUMP"
+        ));
+        when(smbStorageService.openInputStream(target, "BK-20260330150000-aaaa1111/checksums.txt"))
+                .thenReturn(new ByteArrayInputStream("../manifest.json|deadbeef".getBytes()));
+        when(smbStorageService.buildDisplayPath(target, "BK-20260330150000-aaaa1111"))
+                .thenReturn("smb://192.168.50.5/archive/BK-20260330150000-aaaa1111");
+
+        List<BackupSetResponse> sets = backupService.getBackupSets(2L);
+
+        assertEquals(1, sets.size());
+        assertEquals("INCOMPLETE", sets.get(0).getVerifyStatus());
+        assertTrue(sets.get(0).getVerifyMessage().contains("超出允许目录范围"));
     }
 
     @Test
@@ -269,7 +336,7 @@ class BackupServiceTest {
                 .localPath(tempDir.toString())
                 .build();
         when(backupTargetMapper.selectById(1L)).thenReturn(target);
-        when(objectMapper.readValue(any(java.io.File.class), eq(Map.class))).thenReturn(Map.of(
+        when(objectMapper.readValue(any(java.io.File.class), any(com.fasterxml.jackson.core.type.TypeReference.class))).thenReturn(Map.of(
                 "backupNo", "BK-20260330150000-aaaa1111",
                 "createdAt", LocalDateTime.of(2026, 3, 30, 15, 0, 0).toString(),
                 "databaseMode", "PG_DUMP"
@@ -287,6 +354,85 @@ class BackupServiceTest {
                 .build();
 
         assertThrows(RuntimeException.class, () -> backupService.runRestore(request));
+    }
+
+    @Test
+    void testRunRestoreRejectsWhenAnyBusinessTableHasData() throws Exception {
+        Path tempDir = Files.createTempDirectory("restore-set-non-empty");
+        Path setDir = Files.createDirectories(tempDir.resolve("BK-20260330150000-bbbb2222"));
+        Path manifest = setDir.resolve("manifest.json");
+        Files.writeString(manifest, "{}");
+        Files.writeString(setDir.resolve("checksums.txt"), "manifest.json|" + sha256(manifest));
+
+        BackupTarget target = BackupTarget.builder()
+                .id(1L)
+                .name("本地目录")
+                .targetType(BackupTarget.TYPE_LOCAL)
+                .enabled(true)
+                .localPath(tempDir.toString())
+                .build();
+        when(backupTargetMapper.selectById(1L)).thenReturn(target);
+        when(objectMapper.readValue(any(java.io.File.class), any(com.fasterxml.jackson.core.type.TypeReference.class))).thenReturn(Map.of(
+                "backupNo", "BK-20260330150000-bbbb2222",
+                "createdAt", LocalDateTime.of(2026, 3, 30, 15, 0, 0).toString(),
+                "databaseMode", "PG_DUMP"
+        ));
+        when(configService.getBooleanValue("system.restore.maintenance.mode", true)).thenReturn(true);
+        when(configService.getBooleanValue("system.runtime.maintenance.enabled", false)).thenReturn(true);
+        when(jdbcTemplate.queryForList(anyString(), eq(String.class))).thenReturn(List.of("sys_config", "arc_archive"));
+        when(jdbcTemplate.queryForObject("SELECT EXISTS (SELECT 1 FROM \"arc_archive\" LIMIT 1)", Boolean.class)).thenReturn(true);
+
+        RestoreExecuteRequest request = RestoreExecuteRequest.builder()
+                .targetId(1L)
+                .backupSetName("BK-20260330150000-bbbb2222")
+                .restoreDatabase(true)
+                .restoreFiles(false)
+                .restoreConfig(false)
+                .confirmationText("RESTORE")
+                .build();
+
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> backupService.runRestore(request));
+        assertTrue(ex.getMessage().contains("arc_archive"));
+    }
+
+    @Test
+    void testRunRestoreAllowsPreservedOperationalTables() throws Exception {
+        Path tempDir = Files.createTempDirectory("restore-set-preserved-only");
+        Path setDir = Files.createDirectories(tempDir.resolve("BK-20260330150000-cccc3333"));
+        Path manifest = setDir.resolve("manifest.json");
+        Path databaseDir = Files.createDirectories(setDir.resolve("database"));
+        Files.writeString(manifest, "{}");
+        Files.writeString(setDir.resolve("checksums.txt"), "manifest.json|" + sha256(manifest));
+        Files.writeString(databaseDir.resolve("archive-system.sql"), "-- data only dump");
+
+        BackupTarget target = BackupTarget.builder()
+                .id(1L)
+                .name("本地目录")
+                .targetType(BackupTarget.TYPE_LOCAL)
+                .enabled(true)
+                .localPath(tempDir.toString())
+                .build();
+        when(backupTargetMapper.selectById(1L)).thenReturn(target);
+        when(objectMapper.readValue(any(java.io.File.class), any(com.fasterxml.jackson.core.type.TypeReference.class))).thenReturn(Map.of(
+                "backupNo", "BK-20260330150000-cccc3333",
+                "createdAt", LocalDateTime.of(2026, 3, 30, 15, 0, 0).toString(),
+                "databaseMode", "PG_DUMP"
+        ));
+        when(configService.getBooleanValue("system.restore.maintenance.mode", true)).thenReturn(true);
+        when(configService.getBooleanValue("system.runtime.maintenance.enabled", false)).thenReturn(true);
+        when(jdbcTemplate.queryForList(anyString(), eq(String.class))).thenReturn(List.of("sys_config", "arc_backup_target"));
+
+        RestoreExecuteRequest request = RestoreExecuteRequest.builder()
+                .targetId(1L)
+                .backupSetName("BK-20260330150000-cccc3333")
+                .restoreDatabase(true)
+                .restoreFiles(false)
+                .restoreConfig(false)
+                .confirmationText("RESTORE")
+                .build();
+
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> backupService.runRestore(request));
+        assertTrue(ex.getMessage().contains("未识别 PostgreSQL 连接信息"));
     }
 
     private String sha256(Path path) throws Exception {

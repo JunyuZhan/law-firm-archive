@@ -5,7 +5,10 @@
       <p>统一维护档案号规则、站点信息和运行参数，修改后请按需刷新缓存并验证关键流程。</p>
     </div>
 
-    <el-card shadow="never" class="config-card">
+    <el-card
+      shadow="never"
+      class="config-card"
+    >
       <template #header>
         <div class="card-header">
           <span class="title">系统配置</span>
@@ -393,6 +396,37 @@
               </el-form>
             </div>
 
+            <!-- 镜像升级检测（与系统信息页「镜像更新检测」一致） -->
+            <div class="config-group">
+              <h4 class="group-title">
+                <el-icon><Connection /></el-icon> 镜像升级检测
+              </h4>
+              <p class="group-hint">
+                仓库根地址可填写 <code>https://主机</code> 或 <code>https://主机/v2/_catalog</code>，保存后会自动归一化为 API 根地址。鉴权可使用下方账号密码或环境变量 REGISTRY_USERNAME / REGISTRY_PASSWORD。
+              </p>
+              <el-form
+                label-width="200px"
+                class="config-form"
+              >
+                <el-form-item 
+                  v-for="config in upgradeConfigs" 
+                  :key="config.configKey"
+                  :label="config.description || config.configKey"
+                >
+                  <el-input 
+                    v-model="editedConfigs[config.configKey]"
+                    :placeholder="config.configValue"
+                    :disabled="!config.editable"
+                    :type="config.configKey.includes('password') ? 'password' : 'text'"
+                    :show-password="config.configKey.includes('password')"
+                    style="width: 480px"
+                    @input="markChanged(config.configKey)"
+                  />
+                  <span class="config-key">{{ config.configKey }}</span>
+                </el-form-item>
+              </el-form>
+            </div>
+
             <!-- 搜索配置 -->
             <div class="config-group">
               <h4 class="group-title">
@@ -504,7 +538,6 @@
             </el-alert>
           </div>
         </el-tab-pane>
-
       </el-tabs>
     </el-card>
   </div>
@@ -566,6 +599,9 @@ const notifyConfigs = computed(() =>
 )
 const searchConfigs = computed(() => 
   systemConfigs.value.filter(c => c.configKey.includes('search'))
+)
+const upgradeConfigs = computed(() =>
+  systemConfigs.value.filter(c => c.configKey.startsWith('system.upgrade.'))
 )
 
 // 站点信息配置
@@ -765,6 +801,13 @@ onMounted(() => {
   font-size: 15px;
   font-weight: 600;
   color: #303133;
+}
+
+.group-hint {
+  margin: -8px 0 16px;
+  font-size: 13px;
+  color: #606266;
+  line-height: 1.6;
 }
 
 .config-form {

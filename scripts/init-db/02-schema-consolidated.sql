@@ -1049,6 +1049,12 @@ INSERT INTO sys_config (config_key, config_value, config_type, config_group, des
 ('system.backup.cron', '0 0 2 * * ?', 'STRING', 'SYSTEM', '定时备份 Cron 表达式', true, 72),
 ('system.restore.maintenance.mode', 'true', 'BOOLEAN', 'SYSTEM', '恢复前启用维护模式', true, 73),
 ('system.runtime.maintenance.enabled', 'false', 'BOOLEAN', 'SYSTEM', '系统运行维护模式开关', true, 74),
+-- 系统参数 - 镜像升级检测（仓库根地址可填 https://host 或 …/v2/_catalog，保存时会归一化）
+('system.upgrade.registry_base_url', 'https://hub.albertzhan.top', 'STRING', 'SYSTEM', '私有镜像仓库根地址（用于检测更新）', true, 80),
+('system.upgrade.backend_repository', 'law-firm-archive/backend', 'STRING', 'SYSTEM', '后端镜像仓库路径（不含主机名）', true, 81),
+('system.upgrade.frontend_repository', 'law-firm-archive/frontend', 'STRING', 'SYSTEM', '前端镜像仓库路径（不含主机名）', true, 82),
+('system.upgrade.registry_username', '', 'STRING', 'SYSTEM', '仓库只读账号（可选，也可使用环境变量 REGISTRY_USERNAME）', true, 83),
+('system.upgrade.registry_password', '', 'STRING', 'SYSTEM', '仓库只读密码（可选，也可使用环境变量 REGISTRY_PASSWORD）', true, 84),
 -- 系统参数 - 站点信息
 ('system.site.name', '档案管理系统', 'STRING', 'SITE', '系统名称', true, 1),
 ('system.site.name.en', 'Archive Management System', 'STRING', 'SITE', '系统英文名称', true, 2),

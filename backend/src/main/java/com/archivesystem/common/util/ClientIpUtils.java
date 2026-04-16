@@ -1,18 +1,20 @@
 package com.archivesystem.common.util;
 
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.security.web.util.matcher.IpAddressMatcher;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
-import java.net.Inet6Address;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * 客户端IP解析工具.
  * @author junyuzhan
  */
 public final class ClientIpUtils {
+
+    private static final List<String> DEFAULT_TRUSTED_PROXIES = List.of("127.0.0.1", "::1");
 
     private static final String[] IP_HEADERS = {
             "X-Forwarded-For",
@@ -22,6 +24,8 @@ public final class ClientIpUtils {
             "HTTP_CLIENT_IP",
             "HTTP_X_FORWARDED_FOR"
     };
+
+    private static volatile List<IpAddressMatcher> trustedProxyMatchers = buildMatchers(DEFAULT_TRUSTED_PROXIES);
 
     private ClientIpUtils() {
     }
@@ -45,6 +49,13 @@ public final class ClientIpUtils {
         return remoteAddr != null ? remoteAddr : "";
     }
 
+    public static void configureTrustedProxies(List<String> trustedProxies) {
+        List<String> proxyList = trustedProxies == null || trustedProxies.isEmpty()
+                ? DEFAULT_TRUSTED_PROXIES
+                : trustedProxies;
+        trustedProxyMatchers = buildMatchers(proxyList);
+    }
+
     public static String resolveCurrentRequestIp() {
         ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
         if (attributes == null) {
@@ -57,35 +68,23 @@ public final class ClientIpUtils {
         if (remoteAddr == null || remoteAddr.isBlank()) {
             return false;
         }
-
-        try {
-            InetAddress address = InetAddress.getByName(remoteAddr.trim());
-            if (address.isAnyLocalAddress()
-                    || address.isLoopbackAddress()
-                    || address.isLinkLocalAddress()
-                    || address.isSiteLocalAddress()) {
+        String candidate = remoteAddr.trim();
+        for (IpAddressMatcher matcher : trustedProxyMatchers) {
+            if (matcher.matches(candidate)) {
                 return true;
             }
-
-            byte[] bytes = address.getAddress();
-            if (bytes.length == 4) {
-                int first = bytes[0] & 0xff;
-                int second = bytes[1] & 0xff;
-                return first == 100 && second >= 64 && second <= 127;
-            }
-
-            if (address instanceof Inet6Address && bytes.length == 16) {
-                int first = bytes[0] & 0xff;
-                int second = bytes[1] & 0xff;
-                if ((first & 0xfe) == 0xfc) {
-                    return true;
-                }
-                return first == 0xfe && (second & 0xc0) == 0x80;
-            }
-        } catch (UnknownHostException ignored) {
-            return false;
         }
-
         return false;
+    }
+
+    private static List<IpAddressMatcher> buildMatchers(List<String> trustedProxies) {
+        List<IpAddressMatcher> matchers = new ArrayList<>();
+        for (String proxy : trustedProxies) {
+            if (proxy == null || proxy.isBlank()) {
+                continue;
+            }
+            matchers.add(new IpAddressMatcher(proxy.trim()));
+        }
+        return List.copyOf(matchers);
     }
 }

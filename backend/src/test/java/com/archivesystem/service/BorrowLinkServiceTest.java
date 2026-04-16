@@ -31,6 +31,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -55,6 +58,9 @@ class BorrowLinkServiceTest {
 
     @Mock
     private FileStorageService fileStorageService;
+
+    @Mock
+    private AccessLogService accessLogService;
 
     @InjectMocks
     private BorrowLinkServiceImpl borrowLinkService;
@@ -90,13 +96,47 @@ class BorrowLinkServiceTest {
                 .accessCount(0)
                 .expireAt(java.time.LocalDateTime.now().plusSeconds(30))
                 .build();
+        DigitalFile file = DigitalFile.builder()
+                .id(8L)
+                .archiveId(100L)
+                .build();
         when(borrowLinkMapper.selectByAccessToken("token")).thenReturn(link);
+        when(digitalFileMapper.selectById(8L)).thenReturn(file);
         when(fileStorageService.getBorrowPreviewUrl(eq(100L), eq(8L), anyInt())).thenReturn("preview-url");
 
-        assertEquals("preview-url", borrowLinkService.getFileAccessUrl("token", 8L, false));
+        assertEquals("preview-url", borrowLinkService.getFileAccessUrl("token", 8L, false, "127.0.0.1"));
         ArgumentCaptor<Integer> expiryCaptor = ArgumentCaptor.forClass(Integer.class);
         verify(fileStorageService).getBorrowPreviewUrl(eq(100L), eq(8L), expiryCaptor.capture());
+        assertEquals(1, link.getAccessCount());
+        verify(accessLogService).logPreview(100L, 8L, "127.0.0.1");
         assertTrue(expiryCaptor.getValue() > 0 && expiryCaptor.getValue() <= 30);
+    }
+
+    @Test
+    void testGetFileAccessUrl_Download_ShouldTrackAccessAndDownloadAudit() {
+        BorrowLink link = BorrowLink.builder()
+                .id(10L)
+                .archiveId(100L)
+                .accessToken("token")
+                .status(BorrowLink.STATUS_ACTIVE)
+                .allowDownload(true)
+                .accessCount(0)
+                .downloadCount(0)
+                .expireAt(java.time.LocalDateTime.now().plusSeconds(30))
+                .build();
+        DigitalFile file = DigitalFile.builder()
+                .id(8L)
+                .archiveId(100L)
+                .build();
+        when(borrowLinkMapper.selectByAccessToken("token")).thenReturn(link);
+        when(digitalFileMapper.selectById(8L)).thenReturn(file);
+        when(fileStorageService.getBorrowDownloadUrl(eq(100L), eq(8L), anyInt())).thenReturn("download-url");
+
+        assertEquals("download-url", borrowLinkService.getFileAccessUrl("token", 8L, true, "127.0.0.1"));
+
+        assertEquals(1, link.getAccessCount());
+        assertEquals(1, link.getDownloadCount());
+        verify(accessLogService).logDownload(100L, 8L, "127.0.0.1");
     }
 
     @Test
@@ -136,6 +176,32 @@ class BorrowLinkServiceTest {
 
         assertThrows(BusinessException.class,
                 () -> borrowLinkService.recordDownload("token", 8L, "127.0.0.1"));
+    }
+
+    @Test
+    void testRecordDownload_LegacyEndpoint_ShouldNotDoubleCount() {
+        BorrowLink link = BorrowLink.builder()
+                .id(10L)
+                .archiveId(100L)
+                .accessToken("token")
+                .status(BorrowLink.STATUS_ACTIVE)
+                .allowDownload(true)
+                .downloadCount(5)
+                .expireAt(java.time.LocalDateTime.now().plusMinutes(5))
+                .build();
+        DigitalFile file = DigitalFile.builder()
+                .id(8L)
+                .archiveId(100L)
+                .build();
+
+        when(borrowLinkMapper.selectByAccessToken("token")).thenReturn(link);
+        when(digitalFileMapper.selectById(8L)).thenReturn(file);
+
+        borrowLinkService.recordDownload("token", 8L, "127.0.0.1");
+
+        assertEquals(5, link.getDownloadCount());
+        verify(borrowLinkMapper, never()).updateById(any(BorrowLink.class));
+        verify(accessLogService, never()).logDownload(anyLong(), anyLong(), anyString());
     }
 
     @Test
@@ -236,7 +302,7 @@ class BorrowLinkServiceTest {
                 .purpose("阅卷")
                 .build();
 
-        assertThrows(BusinessException.class, () -> borrowLinkService.applyLink(request));
+        assertThrows(BusinessException.class, () -> borrowLinkService.applyLink(request, "LAW_FIRM_A"));
         verify(borrowLinkMapper, never()).insert(any(BorrowLink.class));
     }
 
@@ -253,6 +319,7 @@ class BorrowLinkServiceTest {
                 .archiveNo("ARC-001")
                 .accessToken("existing-token")
                 .sourceType(BorrowLink.SOURCE_TYPE_LAW_FIRM)
+                .sourceSystem("LAW_FIRM_A")
                 .sourceUserId("u1")
                 .sourceUserName("张三")
                 .borrowPurpose("阅卷")
@@ -273,10 +340,49 @@ class BorrowLinkServiceTest {
                 .allowDownload(true)
                 .build();
 
-        BorrowLinkApplyResponse response = borrowLinkService.applyLink(request);
+        BorrowLinkApplyResponse response = borrowLinkService.applyLink(request, "LAW_FIRM_A");
 
         assertEquals(88L, response.getLinkId());
         assertEquals("existing-token", response.getAccessToken());
         verify(borrowLinkMapper, never()).insert(any(BorrowLink.class));
+    }
+
+    @Test
+    void testApplyLink_ShouldBindExternalSourceCode() {
+        Archive archive = Archive.builder()
+                .archiveNo("ARC-001")
+                .title("测试档案")
+                .status(Archive.STATUS_STORED)
+                .build();
+        archive.setId(100L);
+        when(archiveMapper.selectById(100L)).thenReturn(archive);
+        when(borrowLinkMapper.selectBySourceUser("u1", BorrowLink.SOURCE_TYPE_LAW_FIRM))
+                .thenReturn(List.of());
+
+        BorrowLinkApplyRequest request = BorrowLinkApplyRequest.builder()
+                .archiveId(100L)
+                .archiveNo("ARC-001")
+                .userId("u1")
+                .userName("张三")
+                .purpose("阅卷")
+                .allowDownload(true)
+                .build();
+
+        borrowLinkService.applyLink(request, "LAW_FIRM_A");
+
+        verify(borrowLinkMapper).insert(argThat(link -> "LAW_FIRM_A".equals(link.getSourceSystem())));
+    }
+
+    @Test
+    void testRevoke_ShouldRejectOtherExternalSource() {
+        BorrowLink link = BorrowLink.builder()
+                .id(10L)
+                .status(BorrowLink.STATUS_ACTIVE)
+                .sourceSystem("LAW_FIRM_A")
+                .build();
+        when(borrowLinkMapper.selectById(10L)).thenReturn(link);
+
+        assertThrows(BusinessException.class, () -> borrowLinkService.revoke(10L, "test", "LAW_FIRM_B"));
+        verify(borrowLinkMapper, never()).updateById(any(BorrowLink.class));
     }
 }

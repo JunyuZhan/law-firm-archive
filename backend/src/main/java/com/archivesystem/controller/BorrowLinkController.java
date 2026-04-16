@@ -91,7 +91,7 @@ public class BorrowLinkController {
     public Result<String> revoke(
             @PathVariable Long id,
             @Parameter(description = "撤销原因") @RequestParam(required = false) String reason) {
-        borrowLinkService.revoke(id, reason);
+        borrowLinkService.revoke(id, reason, null);
         return Result.success("链接已撤销");
     }
 

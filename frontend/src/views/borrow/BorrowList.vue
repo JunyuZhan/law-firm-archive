@@ -6,7 +6,10 @@
     </div>
 
     <!-- 标签页 -->
-    <el-card shadow="never" class="tab-card">
+    <el-card
+      shadow="never"
+      class="tab-card"
+    >
       <el-tabs
         v-model="activeTab"
         @tab-change="handleTabChange"
@@ -111,7 +114,10 @@
     </el-card>
 
     <!-- 列表 -->
-    <el-card shadow="never" class="table-card">
+    <el-card
+      shadow="never"
+      class="table-card"
+    >
       <el-table
         v-loading="loading"
         :data="tableData"
@@ -435,7 +441,10 @@
             <div class="detail-section-title">
               申请信息
             </div>
-            <el-descriptions :column="2" border>
+            <el-descriptions
+              :column="2"
+              border
+            >
               <el-descriptions-item label="申请编号">
                 {{ detailData.applicationNo }}
               </el-descriptions-item>
@@ -478,7 +487,10 @@
             <div class="detail-section-title">
               审批与借出
             </div>
-            <el-descriptions :column="2" border>
+            <el-descriptions
+              :column="2"
+              border
+            >
               <el-descriptions-item label="审批人">
                 {{ detailData.approverName || '-' }}
               </el-descriptions-item>

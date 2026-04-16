@@ -33,7 +33,10 @@
         text-color="#bfcbd9"
         active-text-color="#409eff"
       >
-        <el-menu-item v-if="canAccess(REPORT_ROLES)" index="/statistics">
+        <el-menu-item
+          v-if="canAccess(REPORT_ROLES)"
+          index="/statistics"
+        >
           <el-icon><DataAnalysis /></el-icon>
           <span>统计概览</span>
         </el-menu-item>
@@ -49,28 +52,46 @@
           <el-icon><Upload /></el-icon>
           <span>档案接收</span>
         </el-menu-item>
-        <el-menu-item v-if="canAccess(MANAGER_ROLES)" index="/push-records">
+        <el-menu-item
+          v-if="canAccess(MANAGER_ROLES)"
+          index="/push-records"
+        >
           <el-icon><Connection /></el-icon>
           <span>推送记录</span>
         </el-menu-item>
-        <el-menu-item v-if="canAccess(BORROW_ROLES)" index="/borrows">
+        <el-menu-item
+          v-if="canAccess(BORROW_ROLES)"
+          index="/borrows"
+        >
           <el-icon><Reading /></el-icon>
           <span>借阅管理</span>
         </el-menu-item>
-        <el-menu-item v-if="canAccess(MANAGER_ROLES)" index="/borrow-links">
+        <el-menu-item
+          v-if="canAccess(MANAGER_ROLES)"
+          index="/borrow-links"
+        >
           <el-icon><Link /></el-icon>
           <span>借阅链接</span>
         </el-menu-item>
-        <el-menu-item v-if="canAccess(MANAGER_ROLES)" index="/appraisals">
+        <el-menu-item
+          v-if="canAccess(MANAGER_ROLES)"
+          index="/appraisals"
+        >
           <el-icon><Stamp /></el-icon>
           <span>鉴定管理</span>
         </el-menu-item>
-        <el-menu-item v-if="canAccess(MANAGER_ROLES)" index="/destructions">
+        <el-menu-item
+          v-if="canAccess(MANAGER_ROLES)"
+          index="/destructions"
+        >
           <el-icon><Delete /></el-icon>
           <span>销毁管理</span>
         </el-menu-item>
         
-        <el-menu-item v-if="canAccess(MANAGER_ROLES)" index="/archive-settings">
+        <el-menu-item
+          v-if="canAccess(MANAGER_ROLES)"
+          index="/archive-settings"
+        >
           <el-icon><FolderOpened /></el-icon>
           <span>档案设置</span>
         </el-menu-item>
@@ -80,27 +101,48 @@
           <span>帮助中心</span>
         </el-menu-item>
         
-        <el-sub-menu v-if="showSystemMenu" index="system">
+        <el-sub-menu
+          v-if="showSystemMenu"
+          index="system"
+        >
           <template #title>
             <el-icon><Setting /></el-icon>
             <span>系统管理</span>
           </template>
-          <el-menu-item v-if="canAccess([ROLES.SYSTEM_ADMIN])" index="/system/permissions">
+          <el-menu-item
+            v-if="canAccess([ROLES.SYSTEM_ADMIN])"
+            index="/system/permissions"
+          >
             权限管理
           </el-menu-item>
-          <el-menu-item v-if="canAccess([ROLES.SYSTEM_ADMIN])" index="/system/setup">
+          <el-menu-item
+            v-if="canAccess([ROLES.SYSTEM_ADMIN])"
+            index="/system/setup"
+          >
             基础设置
           </el-menu-item>
-          <el-menu-item v-if="canAccess([ROLES.SYSTEM_ADMIN])" index="/system/info">
+          <el-menu-item
+            v-if="canAccess([ROLES.SYSTEM_ADMIN])"
+            index="/system/info"
+          >
             系统信息
           </el-menu-item>
-          <el-menu-item v-if="canAccess([ROLES.SYSTEM_ADMIN])" index="/system/config">
+          <el-menu-item
+            v-if="canAccess([ROLES.SYSTEM_ADMIN])"
+            index="/system/config"
+          >
             系统配置
           </el-menu-item>
-          <el-menu-item v-if="canAccess([ROLES.SYSTEM_ADMIN])" index="/system/recovery">
+          <el-menu-item
+            v-if="canAccess([ROLES.SYSTEM_ADMIN])"
+            index="/system/recovery"
+          >
             备份恢复
           </el-menu-item>
-          <el-menu-item v-if="canAccess([ROLES.SYSTEM_ADMIN])" index="/system/logs">
+          <el-menu-item
+            v-if="canAccess([ROLES.SYSTEM_ADMIN])"
+            index="/system/logs"
+          >
             操作日志
           </el-menu-item>
         </el-sub-menu>
@@ -176,6 +218,17 @@
         >
           <template #title>
             当前系统仍存在默认站点信息，建议尽快前往“系统管理 / 基础设置”完善系统名称、Logo、备案号和版权信息。
+          </template>
+        </el-alert>
+        <el-alert
+          v-if="showImageUpgradeReminder"
+          type="warning"
+          :closable="true"
+          class="setup-reminder"
+          @close="dismissImageUpgradeReminder"
+        >
+          <template #title>
+            私有镜像仓库中当前标签的后端或前端镜像与运行环境摘要不一致，建议前往「系统管理 / 系统信息」查看详情并按部署手册升级。
           </template>
         </el-alert>
         <router-view />
@@ -270,19 +323,24 @@ import {
   Link
 } from '@element-plus/icons-vue'
 import { useUserStore, useAppStore } from '@/stores'
-import { getRuntimeInfo } from '@/api/config'
+import { getImageUpgradeStatus, getRuntimeInfo } from '@/api/config'
 import { BORROW_ROLES, MANAGER_ROLES, REPORT_ROLES, ROLES, hasPermission } from '@/utils/permission'
 
 const userStore = useUserStore()
 const appStore = useAppStore()
 const showUploadPanel = ref(false)
 const setupReminderDismissed = ref(sessionStorage.getItem('setupReminderDismissed') === '1')
+const imageUpgradeReminderDismissed = ref(sessionStorage.getItem('imageUpgradeReminderDismissed') === '1')
+const imageUpgradeRecommended = ref(false)
 const runtimeInfo = reactive({
   productVersion: '',
   commitSha: ''
 })
 const showSetupReminder = computed(() =>
   userStore.isAdmin && appStore.needsInitialSetup && !setupReminderDismissed.value
+)
+const showImageUpgradeReminder = computed(() =>
+  canViewRuntimeInfo.value && imageUpgradeRecommended.value && !imageUpgradeReminderDismissed.value
 )
 const canViewRuntimeInfo = computed(() => canAccess([ROLES.SYSTEM_ADMIN]))
 const showSystemMenu = computed(() => canAccess([ROLES.SYSTEM_ADMIN]))
@@ -294,6 +352,7 @@ onMounted(() => {
   appStore.loadSiteConfig()
   if (canViewRuntimeInfo.value) {
     loadRuntimeInfo()
+    loadImageUpgradeHint()
   }
 })
 
@@ -309,9 +368,23 @@ const loadRuntimeInfo = async () => {
   }
 }
 
+const loadImageUpgradeHint = async () => {
+  try {
+    const res = await getImageUpgradeStatus()
+    imageUpgradeRecommended.value = Boolean(res?.data?.upgradeRecommended)
+  } catch (error) {
+    imageUpgradeRecommended.value = false
+  }
+}
+
 const dismissSetupReminder = () => {
   setupReminderDismissed.value = true
   sessionStorage.setItem('setupReminderDismissed', '1')
+}
+
+const dismissImageUpgradeReminder = () => {
+  imageUpgradeReminderDismissed.value = true
+  sessionStorage.setItem('imageUpgradeReminderDismissed', '1')
 }
 
 const canAccess = (roles) => hasPermission(roles, userStore.userType)

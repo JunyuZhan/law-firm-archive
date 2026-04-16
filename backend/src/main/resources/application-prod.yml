@@ -56,5 +56,19 @@ logging:
 
 # 安全配置
 security:
+  crypto:
+    secret: ${SECURITY_CRYPTO_SECRET}
+    legacy-secret: ${SECURITY_CRYPTO_LEGACY_SECRET:${JWT_SECRET:}}
+  trusted-proxies: ${TRUSTED_PROXIES:127.0.0.1,::1}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS}
+
+app:
+  registry-upgrade:
+    running-backend-digest: ${RUNNING_BACKEND_DIGEST:}
+    running-frontend-digest: ${RUNNING_FRONTEND_DIGEST:}
+    default-registry-base-url: ${REGISTRY_DEFAULT_BASE_URL:https://hub.albertzhan.top}
+    default-backend-repository: ${REGISTRY_BACKEND_REPOSITORY:law-firm-archive/backend}
+    default-frontend-repository: ${REGISTRY_FRONTEND_REPOSITORY:law-firm-archive/frontend}
+    registry-username: ${REGISTRY_USERNAME:}
+    registry-password: ${REGISTRY_PASSWORD:}

@@ -940,6 +940,12 @@ INSERT INTO sys_config (config_key, config_value, config_type, config_group, des
 -- 系统参数 - 通知
 ('system.notify.email.enabled', 'false', 'BOOLEAN', 'SYSTEM', '启用邮件通知', true, 60),
 ('system.notify.expire.days', '30', 'NUMBER', 'SYSTEM', '到期提醒提前天数', true, 61),
+-- 系统参数 - 镜像升级检测
+('system.upgrade.registry_base_url', 'https://hub.albertzhan.top', 'STRING', 'SYSTEM', '私有镜像仓库根地址（用于检测更新）', true, 80),
+('system.upgrade.backend_repository', 'law-firm-archive/backend', 'STRING', 'SYSTEM', '后端镜像仓库路径（不含主机名）', true, 81),
+('system.upgrade.frontend_repository', 'law-firm-archive/frontend', 'STRING', 'SYSTEM', '前端镜像仓库路径（不含主机名）', true, 82),
+('system.upgrade.registry_username', '', 'STRING', 'SYSTEM', '仓库只读账号（可选）', true, 83),
+('system.upgrade.registry_password', '', 'STRING', 'SYSTEM', '仓库只读密码（可选）', true, 84),
 -- 系统参数 - 站点信息
 ('system.site.name', '档案管理系统', 'STRING', 'SITE', '系统名称', true, 1),
 ('system.site.name.en', 'Archive Management System', 'STRING', 'SITE', '系统英文名称', true, 2),

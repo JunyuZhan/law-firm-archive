@@ -7,6 +7,7 @@ import com.archivesystem.dto.archive.ArchiveReceiveResponse;
 import com.archivesystem.dto.borrow.BorrowLinkAccessResponse;
 import com.archivesystem.dto.borrow.BorrowLinkApplyRequest;
 import com.archivesystem.dto.borrow.BorrowLinkApplyResponse;
+import com.archivesystem.entity.ExternalSource;
 import com.archivesystem.service.ArchiveService;
 import com.archivesystem.service.BorrowLinkService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -52,11 +53,16 @@ public class OpenApiController {
      */
     @PostMapping("/borrow/apply")
     @Operation(summary = "申请电子借阅", description = "申请电子档案的临时访问链接，返回可直接访问的URL")
-    public Result<BorrowLinkApplyResponse> applyBorrow(@Valid @RequestBody BorrowLinkApplyRequest request) {
+    public Result<BorrowLinkApplyResponse> applyBorrow(@Valid @RequestBody BorrowLinkApplyRequest request,
+                                                       HttpServletRequest httpRequest) {
+        ExternalSource externalSource = requireExternalSource(httpRequest);
+        if (externalSource == null) {
+            return Result.error("401", "开放接口认证上下文缺失");
+        }
         log.info("电子借阅申请: archiveId={}, archiveNo={}, userId={}, userName={}", 
                 request.getArchiveId(), request.getArchiveNo(), request.getUserId(), request.getUserName());
         
-        BorrowLinkApplyResponse response = borrowLinkService.applyLink(request);
+        BorrowLinkApplyResponse response = borrowLinkService.applyLink(request, externalSource.getSourceCode());
         return Result.success("借阅链接生成成功", response);
     }
 
@@ -67,9 +73,14 @@ public class OpenApiController {
     @Operation(summary = "撤销电子借阅", description = "撤销已生成的电子借阅链接，使其立即失效")
     public Result<Void> revokeBorrow(
             @Parameter(description = "借阅链接ID") @PathVariable Long linkId,
-            @Parameter(description = "撤销原因") @RequestParam(required = false) String reason) {
+            @Parameter(description = "撤销原因") @RequestParam(required = false) String reason,
+            HttpServletRequest request) {
+        ExternalSource externalSource = requireExternalSource(request);
+        if (externalSource == null) {
+            return Result.error("401", "开放接口认证上下文缺失");
+        }
         log.info("电子借阅撤销: linkId={}, reason={}", linkId, reason);
-        borrowLinkService.revoke(linkId, reason);
+        borrowLinkService.revoke(linkId, reason, externalSource.getSourceCode());
         return Result.success("借阅链接已撤销", null);
     }
 
@@ -88,11 +99,7 @@ public class OpenApiController {
         BorrowLinkAccessResponse response = borrowLinkService.validateAndAccess(token, clientIp);
         
         if (!Boolean.TRUE.equals(response.getValid())) {
-            String reason = response.getInvalidReason();
-            if (reason == null || reason.isBlank()) {
-                reason = "访问链接无效";
-            }
-            return Result.error("403", reason);
+            return Result.error("403", "访问链接无效或已过期");
         }
         
         return Result.success(response);
@@ -118,8 +125,9 @@ public class OpenApiController {
     @Operation(summary = "获取预览链接", description = "校验借阅链接后返回短时预览地址")
     public Result<String> getPreviewUrl(
             @Parameter(description = "访问令牌") @PathVariable String token,
-            @Parameter(description = "文件ID") @PathVariable Long fileId) {
-        return Result.success(borrowLinkService.getFileAccessUrl(token, fileId, false));
+            @Parameter(description = "文件ID") @PathVariable Long fileId,
+            HttpServletRequest request) {
+        return Result.success(borrowLinkService.getFileAccessUrl(token, fileId, false, ClientIpUtils.resolve(request)));
     }
 
     /**
@@ -129,8 +137,9 @@ public class OpenApiController {
     @Operation(summary = "获取下载链接", description = "校验借阅链接后返回短时下载地址")
     public Result<String> getDownloadUrl(
             @Parameter(description = "访问令牌") @PathVariable String token,
-            @Parameter(description = "文件ID") @PathVariable Long fileId) {
-        return Result.success(borrowLinkService.getFileAccessUrl(token, fileId, true));
+            @Parameter(description = "文件ID") @PathVariable Long fileId,
+            HttpServletRequest request) {
+        return Result.success(borrowLinkService.getFileAccessUrl(token, fileId, true, ClientIpUtils.resolve(request)));
     }
 
     /**
@@ -150,5 +159,10 @@ public class OpenApiController {
             return "****";
         }
         return token.substring(0, 4) + "****" + token.substring(token.length() - 4);
+    }
+
+    private ExternalSource requireExternalSource(HttpServletRequest request) {
+        Object source = request.getAttribute("externalSource");
+        return source instanceof ExternalSource externalSource ? externalSource : null;
     }
 }
