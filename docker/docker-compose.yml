@@ -1,5 +1,5 @@
-# 档案管理系统 Docker Compose 配置
-# 包含后端服务、前端服务、数据库、Redis、MinIO
+# 档案管理系统 Docker Compose 配置（从本地 GitHub 克隆源码构建 backend / frontend / elasticsearch）
+# 适用：构建与测试机（如 myu）。在 docker/ 目录执行 compose build && up；勿与 docker-compose.registry.yml（从私有库 pull）混用。
 
 name: archive-system
 

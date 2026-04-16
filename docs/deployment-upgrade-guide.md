@@ -27,6 +27,11 @@
 
 推荐采用 Docker Compose。
 
+### 3.1 构建测试机与生产环境的 Compose 选择（重要）
+
+- **构建 / 测试专用机**（团队用于验证 GitHub 最新 `main`）：在**完整源码克隆**下进入 `docker/`，使用 **`docker-compose.yml`**。其中 backend、frontend、Elasticsearch 为 **`build:`** 本地 Dockerfile，通过 `docker compose build` 与 `docker compose up` 从源码构建运行。**不要**在该类机器上使用 **`docker-compose.registry.yml`** 从私有仓库拉镜像充当「源码级测试」。
+- **对外交付或生产**：使用 **`docker-compose.registry.yml`**，配置私有仓库地址与 `APP_VERSION`，**拉取**已在测试机构建、验证并推送的镜像。
+
 推荐原因：
 
 - 对当前规模最直接

@@ -1,3 +1,5 @@
+# 对外 / 生产：从私有镜像仓库拉取已发布 tag 运行。
+# 构建测试机（如 myu）请改用 docker-compose.yml（build 本地 GitHub 源码），测通后再用 scripts/build-and-push-on-linux.sh 推送到私有库。
 name: archive-system
 
 services:

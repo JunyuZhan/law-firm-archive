@@ -103,11 +103,12 @@ npm run dev
 
 面向正式交付时，建议统一使用容器化部署与版本化镜像。
 
-**源码与镜像从哪里来**
+**源码、测试机构建、私有库、对外部署（不要混用）**
 
-- **源代码**始终从 **GitHub** 拉取（`git clone` / `git pull`），私有 Docker 仓库**不提供**业务源码，只存放**已构建的镜像**。
-- **推荐发布顺序**：在能访问 GitHub 的环境（构建机或本机）拉最新 `main` → 用仓库内 `docker/Dockerfile*` **构建**镜像 → 在目标环境**部署联调/冒烟** → 确认无问题后，再将同一批镜像 **`docker push`** 到私有仓库（默认示例：`192.168.50.5:5050`，与 `docker/.env.registry.example` 中 `REGISTRY_PUSH` 一致）。
-- 一键「构建并推送」可参考脚本：`scripts/build-and-push-on-linux.sh`（需已配置 `docker/.env.registry`，且本机已 `docker login` 到私有库）。若要先测后推，可先只 `docker build` / `docker compose build` 用本地或内网标签跑通测试，再单独执行 `docker push`。
+- **源代码**只从 **GitHub** 拉取。私有仓库 **192.168.50.5:5050** 等只存**已构建镜像**，不提供源码。
+- **构建 / 测试专用机（例如 myu）**：在**完整克隆**的仓库里（如 `/root/src/law-firm-archive`），进入 **`docker/`**，使用 **`docker-compose.yml`**：`docker compose build` 再从源码起容器 `docker compose up -d`（必要时 `down -v` 做干净库）。这里的 backend、frontend、Elasticsearch 都是 **`build:` 本地 Dockerfile**，**不是**从私有库 `pull`。测通、冒烟通过后，再在仓库根目录执行 **`scripts/build-and-push-on-linux.sh`**（配置好 `docker/.env.registry` 且已 `docker login`），把**同一套已验证构建**推到私有库，供对外使用。
+- **客户或生产环境**：才使用 **`docker-compose.registry.yml`**，配置 **`REGISTRY_PULL` / `APP_VERSION`**，**从私有库拉取**已在测试机发布好的镜像运行。
+- **切勿**在 myu 这类测试机上用 `docker-compose.registry.yml` 拉私有库镜像当「最新源码测试」——那样跑的是旧制品，不是当前 GitHub `main`。
 
 - [部署与升级手册](./docs/deployment-upgrade-guide.md)
 - [发布前验收清单](./docs/release-checklist.md)
