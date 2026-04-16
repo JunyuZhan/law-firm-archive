@@ -161,7 +161,7 @@ security:
     enabled: ${API_KEY_ENABLED:true}
     header: X-API-Key
 
-# 镜像仓库更新检测（与 sys_config 中 system.upgrade.* 协同，环境变量优先作为运行摘要来源）
+# 镜像仓库更新检查（与「系统配置」中 system.upgrade.* 一致；摘要比对用环境变量注入）
 app:
   registry-upgrade:
     running-backend-digest: ${RUNNING_BACKEND_DIGEST:}

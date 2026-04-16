@@ -2,24 +2,21 @@ package com.archivesystem.service.impl;
 
 import com.archivesystem.common.util.RegistryUrlUtils;
 import com.archivesystem.config.RegistryUpgradeProperties;
-import com.archivesystem.dto.config.ImageUpgradeComponentDTO;
-import com.archivesystem.dto.config.ImageUpgradeStatusDTO;
+import com.archivesystem.dto.config.RegistryUpdateCheckDTO;
 import com.archivesystem.registry.DockerRegistryManifestClient;
 import com.archivesystem.service.ConfigService;
-import com.archivesystem.service.RegistryImageUpgradeCheckService;
+import com.archivesystem.service.RegistryUpdateCheckService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
-public class RegistryImageUpgradeCheckServiceImpl implements RegistryImageUpgradeCheckService {
+public class RegistryUpdateCheckServiceImpl implements RegistryUpdateCheckService {
 
     private static final String KEY_REGISTRY_BASE = "system.upgrade.registry_base_url";
     private static final String KEY_BACKEND_REPO = "system.upgrade.backend_repository";
@@ -35,7 +32,7 @@ public class RegistryImageUpgradeCheckServiceImpl implements RegistryImageUpgrad
     private String appVersion;
 
     @Override
-    public ImageUpgradeStatusDTO checkImageUpgrades() {
+    public RegistryUpdateCheckDTO checkRegistryUpdate() {
         String baseRaw = firstNonBlank(configService.getValue(KEY_REGISTRY_BASE),
                 registryUpgradeProperties.getDefaultRegistryBaseUrl());
         String registryBase = RegistryUrlUtils.normalizeRegistryBaseUrl(baseRaw);
@@ -59,63 +56,58 @@ public class RegistryImageUpgradeCheckServiceImpl implements RegistryImageUpgrad
         String runningBackend = firstNonBlank(registryUpgradeProperties.getRunningBackendDigest(), "");
         String runningFrontend = firstNonBlank(registryUpgradeProperties.getRunningFrontendDigest(), "");
 
-        List<ImageUpgradeComponentDTO> components = new ArrayList<>();
-        components.add(checkOne("BACKEND", backendRepo, tag, registryBase, runningBackend, regUser, regPass));
-        components.add(checkOne("FRONTEND", frontendRepo, tag, registryBase, runningFrontend, regUser, regPass));
+        Part backend = evaluate(backendRepo, tag, registryBase, runningBackend, regUser, regPass);
+        Part frontend = evaluate(frontendRepo, tag, registryBase, runningFrontend, regUser, regPass);
 
-        boolean upgradeRecommended = components.stream()
-                .anyMatch(c -> Boolean.TRUE.equals(c.getUpgradeAvailable()));
+        return merge(backend, frontend);
+    }
 
-        return ImageUpgradeStatusDTO.builder()
-                .registryBaseUrl(registryBase)
-                .imageTag(tag)
-                .components(components)
-                .upgradeRecommended(upgradeRecommended)
-                .checkedAt(Instant.now().toString())
+    private Part evaluate(String repository, String tag, String registryBase, String runningDigest,
+                          Optional<String> username, Optional<String> password) {
+        Optional<String> remote = manifestClient.fetchManifestDigest(registryBase, repository, tag, username, password);
+        if (remote.isEmpty()) {
+            return new Part(true, null);
+        }
+        if (!StringUtils.hasText(runningDigest)) {
+            return new Part(false, null);
+        }
+        boolean same = runningDigest.equalsIgnoreCase(remote.get());
+        return new Part(false, !same);
+    }
+
+    private RegistryUpdateCheckDTO merge(Part backend, Part frontend) {
+        String checkedAt = Instant.now().toString();
+        if (backend.remoteFailed || frontend.remoteFailed) {
+            return RegistryUpdateCheckDTO.builder()
+                    .updateAvailable(null)
+                    .message("无法从镜像仓库获取更新信息，请检查系统配置中的仓库地址与账号。")
+                    .checkedAt(checkedAt)
+                    .build();
+        }
+        boolean anyUpdate = Boolean.TRUE.equals(backend.upgrade) || Boolean.TRUE.equals(frontend.upgrade);
+        if (anyUpdate) {
+            return RegistryUpdateCheckDTO.builder()
+                    .updateAvailable(true)
+                    .message("镜像仓库中存在可用更新。")
+                    .checkedAt(checkedAt)
+                    .build();
+        }
+        boolean unknown = backend.upgrade == null || frontend.upgrade == null;
+        if (unknown) {
+            return RegistryUpdateCheckDTO.builder()
+                    .updateAvailable(null)
+                    .message("已连接镜像仓库；配置运行镜像摘要后即可判断是否可用更新。")
+                    .checkedAt(checkedAt)
+                    .build();
+        }
+        return RegistryUpdateCheckDTO.builder()
+                .updateAvailable(false)
+                .message("镜像仓库中暂无可用的更新。")
+                .checkedAt(checkedAt)
                 .build();
     }
 
-    private ImageUpgradeComponentDTO checkOne(String role, String repository, String tag, String registryBase,
-                                               String runningDigest,
-                                               Optional<String> username, Optional<String> password) {
-        Optional<String> remote = manifestClient.fetchManifestDigest(registryBase, repository, tag, username, password);
-        if (remote.isEmpty()) {
-            return ImageUpgradeComponentDTO.builder()
-                    .role(role)
-                    .repository(repository)
-                    .imageTag(tag)
-                    .remoteDigest("")
-                    .runningDigest(runningDigest)
-                    .upgradeAvailable(null)
-                    .status("REMOTE_FAILED")
-                    .message("无法从仓库读取镜像清单，请检查仓库地址、镜像路径、标签及鉴权配置。")
-                    .build();
-        }
-        if (!StringUtils.hasText(runningDigest)) {
-            return ImageUpgradeComponentDTO.builder()
-                    .role(role)
-                    .repository(repository)
-                    .imageTag(tag)
-                    .remoteDigest(remote.get())
-                    .runningDigest("")
-                    .upgradeAvailable(null)
-                    .status("NO_RUNNING_DIGEST")
-                    .message("未配置运行中镜像摘要。请在部署环境设置 "
-                            + ("BACKEND".equals(role) ? "RUNNING_BACKEND_DIGEST" : "RUNNING_FRONTEND_DIGEST")
-                            + "（或 app.registry-upgrade 中对应项），以便与仓库摘要比对。")
-                    .build();
-        }
-        boolean same = runningDigest.equalsIgnoreCase(remote.get());
-        return ImageUpgradeComponentDTO.builder()
-                .role(role)
-                .repository(repository)
-                .imageTag(tag)
-                .remoteDigest(remote.get())
-                .runningDigest(runningDigest)
-                .upgradeAvailable(!same)
-                .status("OK")
-                .message(same ? "当前运行镜像与仓库中该标签的摘要一致。" : "仓库中该标签的镜像摘要与当前运行不一致，建议按部署手册拉取新镜像后升级。")
-                .build();
+    private record Part(boolean remoteFailed, Boolean upgrade) {
     }
 
     private static String firstNonBlank(String a, String b) {

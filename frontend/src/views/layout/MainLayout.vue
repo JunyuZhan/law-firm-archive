@@ -221,14 +221,14 @@
           </template>
         </el-alert>
         <el-alert
-          v-if="showImageUpgradeReminder"
+          v-if="showRegistryUpdateReminder"
           type="warning"
           :closable="true"
           class="setup-reminder"
-          @close="dismissImageUpgradeReminder"
+          @close="dismissRegistryUpdateReminder"
         >
           <template #title>
-            私有镜像仓库中当前标签的后端或前端镜像与运行环境摘要不一致，建议前往「系统管理 / 系统信息」查看详情并按部署手册升级。
+            镜像仓库检查显示存在可用更新，请到「系统管理 — 系统信息」查看说明并安排升级。
           </template>
         </el-alert>
         <router-view />
@@ -323,15 +323,15 @@ import {
   Link
 } from '@element-plus/icons-vue'
 import { useUserStore, useAppStore } from '@/stores'
-import { getImageUpgradeStatus, getRuntimeInfo } from '@/api/config'
+import { checkRegistryUpdate, getRuntimeInfo } from '@/api/config'
 import { BORROW_ROLES, MANAGER_ROLES, REPORT_ROLES, ROLES, hasPermission } from '@/utils/permission'
 
 const userStore = useUserStore()
 const appStore = useAppStore()
 const showUploadPanel = ref(false)
 const setupReminderDismissed = ref(sessionStorage.getItem('setupReminderDismissed') === '1')
-const imageUpgradeReminderDismissed = ref(sessionStorage.getItem('imageUpgradeReminderDismissed') === '1')
-const imageUpgradeRecommended = ref(false)
+const registryUpdateReminderDismissed = ref(sessionStorage.getItem('registryUpdateReminderDismissed') === '1')
+const registryHasUpdate = ref(false)
 const runtimeInfo = reactive({
   productVersion: '',
   commitSha: ''
@@ -339,8 +339,8 @@ const runtimeInfo = reactive({
 const showSetupReminder = computed(() =>
   userStore.isAdmin && appStore.needsInitialSetup && !setupReminderDismissed.value
 )
-const showImageUpgradeReminder = computed(() =>
-  canViewRuntimeInfo.value && imageUpgradeRecommended.value && !imageUpgradeReminderDismissed.value
+const showRegistryUpdateReminder = computed(() =>
+  canViewRuntimeInfo.value && registryHasUpdate.value && !registryUpdateReminderDismissed.value
 )
 const canViewRuntimeInfo = computed(() => canAccess([ROLES.SYSTEM_ADMIN]))
 const showSystemMenu = computed(() => canAccess([ROLES.SYSTEM_ADMIN]))
@@ -352,7 +352,7 @@ onMounted(() => {
   appStore.loadSiteConfig()
   if (canViewRuntimeInfo.value) {
     loadRuntimeInfo()
-    loadImageUpgradeHint()
+    loadRegistryUpdateHint()
   }
 })
 
@@ -368,12 +368,12 @@ const loadRuntimeInfo = async () => {
   }
 }
 
-const loadImageUpgradeHint = async () => {
+const loadRegistryUpdateHint = async () => {
   try {
-    const res = await getImageUpgradeStatus()
-    imageUpgradeRecommended.value = Boolean(res?.data?.upgradeRecommended)
+    const res = await checkRegistryUpdate()
+    registryHasUpdate.value = res?.data?.updateAvailable === true
   } catch (error) {
-    imageUpgradeRecommended.value = false
+    registryHasUpdate.value = false
   }
 }
 
@@ -382,9 +382,9 @@ const dismissSetupReminder = () => {
   sessionStorage.setItem('setupReminderDismissed', '1')
 }
 
-const dismissImageUpgradeReminder = () => {
-  imageUpgradeReminderDismissed.value = true
-  sessionStorage.setItem('imageUpgradeReminderDismissed', '1')
+const dismissRegistryUpdateReminder = () => {
+  registryUpdateReminderDismissed.value = true
+  sessionStorage.setItem('registryUpdateReminderDismissed', '1')
 }
 
 const canAccess = (roles) => hasPermission(roles, userStore.userType)

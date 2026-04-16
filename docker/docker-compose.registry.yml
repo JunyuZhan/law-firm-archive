@@ -108,7 +108,7 @@ services:
       APP_VERSION: ${APP_VERSION:-latest}
       APP_COMMIT_SHA: ${APP_COMMIT_SHA:-}
       APP_BUILD_TIME: ${APP_BUILD_TIME:-}
-      # 镜像更新检测：与私有仓库 manifest 摘要比对（可选，便于系统信息页提示升级）
+      # 镜像仓库更新检查（与仓库摘要比对，可选）
       RUNNING_BACKEND_DIGEST: ${RUNNING_BACKEND_DIGEST:-}
       RUNNING_FRONTEND_DIGEST: ${RUNNING_FRONTEND_DIGEST:-}
       REGISTRY_USERNAME: ${REGISTRY_USERNAME:-}

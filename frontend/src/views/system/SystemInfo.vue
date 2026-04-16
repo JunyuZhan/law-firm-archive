@@ -2,20 +2,8 @@
   <div class="system-info-page">
     <div class="page-header">
       <h1>系统信息</h1>
-      <p>集中查看系统版本、镜像更新检测与依赖状态，便于日常检查与升级判断。</p>
+      <p>查看版本与依赖状态；向已配置的镜像仓库查询是否存在可用更新。</p>
     </div>
-
-    <el-alert
-      v-if="imageUpgrade.upgradeRecommended"
-      type="warning"
-      show-icon
-      :closable="false"
-      class="upgrade-banner"
-    >
-      <template #title>
-        检测到私有仓库中当前标签的后端或前端镜像与运行环境摘要不一致，建议按《部署与升级手册》执行镜像升级与冒烟验证。
-      </template>
-    </el-alert>
 
     <div class="info-grid">
       <el-card
@@ -49,11 +37,8 @@
           <el-descriptions-item label="构建时间">
             {{ runtimeInfo.buildTime || '-' }}
           </el-descriptions-item>
-          <el-descriptions-item label="Git 提交">
+          <el-descriptions-item label="提交">
             {{ runtimeInfo.commitSha || '-' }}
-          </el-descriptions-item>
-          <el-descriptions-item label="升级检测方式">
-            {{ runtimeInfo.upgradeModeDescription || '-' }}
           </el-descriptions-item>
         </el-descriptions>
       </el-card>
@@ -64,73 +49,46 @@
       >
         <template #header>
           <div class="card-header">
-            <span>镜像更新检测</span>
+            <span>镜像仓库更新</span>
             <el-button
               text
-              :loading="imageUpgradeLoading"
-              @click="loadImageUpgradeStatus"
+              :loading="registryCheckLoading"
+              @click="runRegistryCheck"
             >
-              检测
+              检查
             </el-button>
           </div>
         </template>
-        <p class="image-upgrade-intro">
-          与系统配置「镜像升级检测」中的仓库地址及镜像路径一致；标签与产品版本（APP_VERSION）相同，未设置时为 latest。运行中摘要由环境变量 RUNNING_BACKEND_DIGEST / RUNNING_FRONTEND_DIGEST 提供。
-        </p>
-        <el-descriptions
-          v-if="imageUpgrade.registryBaseUrl"
-          :column="1"
-          border
-          class="image-upgrade-meta"
-        >
-          <el-descriptions-item label="仓库根地址">
-            {{ imageUpgrade.registryBaseUrl }}
-          </el-descriptions-item>
-          <el-descriptions-item label="比对标签">
-            {{ imageUpgrade.imageTag || '-' }}
-          </el-descriptions-item>
-          <el-descriptions-item label="检测时间">
-            {{ imageUpgrade.checkedAt || '-' }}
-          </el-descriptions-item>
-        </el-descriptions>
-        <div
-          v-for="c in imageUpgrade.components"
-          :key="c.role"
-          class="image-component"
-        >
-          <div class="image-component-head">
-            <span>{{ c.role === 'BACKEND' ? '后端镜像' : '前端镜像' }}</span>
-            <el-tag
-              v-if="c.upgradeAvailable === true"
-              type="danger"
-              size="small"
-            >
-              有新镜像
-            </el-tag>
-            <el-tag
-              v-else-if="c.upgradeAvailable === false"
-              type="success"
-              size="small"
-            >
-              已是最新
-            </el-tag>
-            <el-tag
-              v-else
-              type="info"
-              size="small"
-            >
-              无法判定
-            </el-tag>
-          </div>
-          <div class="image-component-body">
-            <div>仓库路径：{{ c.repository }}</div>
-            <div>远端摘要：{{ c.remoteDigest || '—' }}</div>
-            <div>运行摘要：{{ c.runningDigest || '—' }}</div>
-            <div class="image-component-msg">
-              {{ c.message }}
-            </div>
-          </div>
+        <div class="registry-check-head">
+          <el-tag
+            v-if="registryCheck.updateAvailable === true"
+            type="danger"
+            size="small"
+          >
+            有可用更新
+          </el-tag>
+          <el-tag
+            v-else-if="registryCheck.updateAvailable === false"
+            type="success"
+            size="small"
+          >
+            暂无更新
+          </el-tag>
+          <el-tag
+            v-else
+            type="info"
+            size="small"
+          >
+            未判定
+          </el-tag>
+          <span
+            v-if="registryCheck.checkedAt"
+            class="registry-checked-at"
+          >{{ registryCheck.checkedAt }}</span>
         </div>
+        <p class="registry-check-message">
+          {{ registryCheck.message || '点击「检查」向镜像仓库查询。' }}
+        </p>
       </el-card>
 
       <el-card
@@ -189,7 +147,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import packageJson from '../../../package.json'
 import { ElMessage } from 'element-plus'
-import { getDependencyStatus, getImageUpgradeStatus, getRuntimeInfo } from '@/api/config'
+import { checkRegistryUpdate, getDependencyStatus, getRuntimeInfo } from '@/api/config'
 
 const frontendVersion = packageJson.version
 
@@ -197,17 +155,14 @@ const runtimeInfo = reactive({
   productVersion: '',
   backendVersion: '',
   buildTime: '',
-  commitSha: '',
-  upgradeModeDescription: ''
+  commitSha: ''
 })
 
-const imageUpgradeLoading = ref(false)
-const imageUpgrade = reactive({
-  registryBaseUrl: '',
-  imageTag: '',
-  checkedAt: '',
-  components: [],
-  upgradeRecommended: false
+const registryCheckLoading = ref(false)
+const registryCheck = reactive({
+  updateAvailable: null,
+  message: '',
+  checkedAt: ''
 })
 
 const dependencyStatus = reactive({
@@ -222,11 +177,10 @@ const loadRuntimeInfo = async () => {
       productVersion: res?.data?.productVersion || '',
       backendVersion: res?.data?.backendVersion || '',
       buildTime: res?.data?.buildTime || '',
-      commitSha: res?.data?.commitSha || '',
-      upgradeModeDescription: res?.data?.upgradeModeDescription || ''
+      commitSha: res?.data?.commitSha || ''
     })
   } catch (error) {
-    ElMessage.error('加载系统版本信息失败')
+    ElMessage.error('版本信息加载失败')
   }
 }
 
@@ -236,7 +190,7 @@ const loadDependencyStatus = async () => {
     dependencyStatus.overallStatus = res?.data?.overallStatus || 'UNKNOWN'
     dependencyStatus.items = Array.isArray(res?.data?.items) ? res.data.items : []
   } catch (error) {
-    ElMessage.error('加载依赖状态失败')
+    ElMessage.error('依赖状态加载失败')
   }
 }
 
@@ -263,28 +217,32 @@ const normalizeDependencyDetails = (details) => {
   )
 }
 
-const loadImageUpgradeStatus = async () => {
-  imageUpgradeLoading.value = true
+const runRegistryCheck = async () => {
+  registryCheckLoading.value = true
   try {
-    const res = await getImageUpgradeStatus()
+    const res = await checkRegistryUpdate()
     const data = res?.data || {}
-    imageUpgrade.registryBaseUrl = data.registryBaseUrl || ''
-    imageUpgrade.imageTag = data.imageTag || ''
-    imageUpgrade.checkedAt = data.checkedAt || ''
-    imageUpgrade.components = Array.isArray(data.components) ? data.components : []
-    imageUpgrade.upgradeRecommended = Boolean(data.upgradeRecommended)
+    registryCheck.updateAvailable = data.updateAvailable === true
+      ? true
+      : data.updateAvailable === false
+        ? false
+        : null
+    registryCheck.message = data.message || ''
+    registryCheck.checkedAt = data.checkedAt || ''
   } catch (error) {
-    ElMessage.error('镜像更新检测失败')
-    imageUpgrade.components = []
+    ElMessage.error('镜像仓库检查失败')
+    registryCheck.updateAvailable = null
+    registryCheck.message = ''
+    registryCheck.checkedAt = ''
   } finally {
-    imageUpgradeLoading.value = false
+    registryCheckLoading.value = false
   }
 }
 
 onMounted(() => {
   loadRuntimeInfo()
   loadDependencyStatus()
-  loadImageUpgradeStatus()
+  runRegistryCheck()
 })
 </script>
 
@@ -308,47 +266,24 @@ onMounted(() => {
   line-height: 1.6;
 }
 
-.upgrade-banner {
-  border-radius: 10px;
-}
-
-.image-upgrade-intro {
-  margin: 0 0 16px;
-  font-size: 13px;
-  color: #606266;
-  line-height: 1.6;
-}
-
-.image-upgrade-meta {
-  margin-bottom: 16px;
-}
-
-.image-component {
-  margin-top: 12px;
-  padding: 12px;
-  border: 1px solid #ebeef5;
-  border-radius: 8px;
-  background: #fafafa;
-}
-
-.image-component-head {
+.registry-check-head {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-weight: 600;
-  color: #303133;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
 }
 
-.image-component-body {
-  margin-top: 8px;
-  font-size: 13px;
+.registry-checked-at {
+  font-size: 12px;
+  color: #909399;
+}
+
+.registry-check-message {
+  margin: 0;
+  font-size: 14px;
   color: #606266;
   line-height: 1.7;
-}
-
-.image-component-msg {
-  margin-top: 6px;
-  color: #909399;
 }
 
 .info-grid {
@@ -411,50 +346,5 @@ onMounted(() => {
 .meta-item {
   font-size: 12px;
   color: #909399;
-}
-
-.plain-list {
-  margin: 0;
-  padding-left: 18px;
-  color: #606266;
-  line-height: 1.9;
-}
-
-.doc-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.doc-item {
-  padding: 14px 16px;
-  border: 1px solid #ebeef5;
-  border-radius: 8px;
-  background: #fafafa;
-}
-
-.doc-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.doc-title {
-  font-weight: 600;
-  color: #303133;
-}
-
-.doc-desc {
-  margin-top: 4px;
-  font-size: 13px;
-  color: #606266;
-}
-
-.doc-path {
-  margin-top: 10px;
-  font-size: 12px;
-  color: #909399;
-  word-break: break-all;
 }
 </style>

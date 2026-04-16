@@ -2,13 +2,13 @@ package com.archivesystem.controller;
 
 import com.archivesystem.common.Result;
 import com.archivesystem.dto.config.DependencyStatusItemDTO;
-import com.archivesystem.dto.config.ImageUpgradeStatusDTO;
+import com.archivesystem.dto.config.RegistryUpdateCheckDTO;
 import com.archivesystem.dto.config.SystemDependencyStatusDTO;
 import com.archivesystem.dto.config.SystemRuntimeInfoDTO;
 import com.archivesystem.entity.SysConfig;
 import com.archivesystem.service.ConfigService;
 import com.archivesystem.service.MinioService;
-import com.archivesystem.service.RegistryImageUpgradeCheckService;
+import com.archivesystem.service.RegistryUpdateCheckService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -52,7 +52,7 @@ public class ConfigController {
     private final MinioService minioService;
     private final ObjectProvider<BuildProperties> buildPropertiesProvider;
     private final ObjectProvider<HealthEndpoint> healthEndpointProvider;
-    private final RegistryImageUpgradeCheckService registryImageUpgradeCheckService;
+    private final RegistryUpdateCheckService registryUpdateCheckService;
 
     private static final String SITE_LOGO_CONFIG_KEY = "system.site.logo";
     private static final String SITE_LOGO_OBJECT_KEY = "system.site.logo.object";
@@ -287,29 +287,23 @@ public class ConfigController {
                 ? buildProperties.getTime().toString()
                 : "unknown");
 
-        String upgradeMode = "REGISTRY_DIGEST";
-        String upgradeModeDescription = "通过私有镜像仓库中当前标签（与产品版本 APP_VERSION 一致，未设置时为 latest）的清单摘要 "
-                + "（Docker-Content-Digest）与运行环境声明的已部署镜像摘要比对；检测到不一致时提示升级。";
         return Result.success(SystemRuntimeInfoDTO.builder()
                 .applicationName(applicationName)
                 .productVersion(productVersion)
                 .backendVersion(backendVersion)
                 .commitSha(commitSha)
                 .buildTime(buildTime)
-                .upgradeMode(upgradeMode)
-                .upgradeModeDescription(upgradeModeDescription)
-                .recommendedMode("私有仓库镜像摘要检测")
                 .build());
     }
 
     /**
-     * 检测私有仓库中后端 / 前端镜像是否与当前运行摘要一致，用于升级提醒。
+     * 检查配置的镜像仓库是否存在可用更新。
      */
-    @GetMapping("/image-upgrade-status")
-    @Operation(summary = "检测镜像是否有新版本")
+    @GetMapping("/registry-update-check")
+    @Operation(summary = "检查镜像仓库是否有可用更新")
     @PreAuthorize("hasRole('SYSTEM_ADMIN')")
-    public Result<ImageUpgradeStatusDTO> getImageUpgradeStatus() {
-        return Result.success(registryImageUpgradeCheckService.checkImageUpgrades());
+    public Result<RegistryUpdateCheckDTO> checkRegistryUpdate() {
+        return Result.success(registryUpdateCheckService.checkRegistryUpdate());
     }
 
     /**

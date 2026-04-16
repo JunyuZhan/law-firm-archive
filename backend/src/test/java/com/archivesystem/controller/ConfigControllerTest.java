@@ -1,11 +1,10 @@
 package com.archivesystem.controller;
 
 import com.archivesystem.entity.SysConfig;
-import com.archivesystem.dto.config.ImageUpgradeComponentDTO;
-import com.archivesystem.dto.config.ImageUpgradeStatusDTO;
+import com.archivesystem.dto.config.RegistryUpdateCheckDTO;
 import com.archivesystem.service.ConfigService;
 import com.archivesystem.service.MinioService;
-import com.archivesystem.service.RegistryImageUpgradeCheckService;
+import com.archivesystem.service.RegistryUpdateCheckService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -49,7 +48,7 @@ class ConfigControllerTest {
     private ObjectProvider<HealthEndpoint> healthEndpointProvider;
 
     @Mock
-    private RegistryImageUpgradeCheckService registryImageUpgradeCheckService;
+    private RegistryUpdateCheckService registryUpdateCheckService;
 
     @InjectMocks
     private ConfigController configController;
@@ -249,34 +248,21 @@ class ConfigControllerTest {
     }
 
     @Test
-    void testGetImageUpgradeStatus() throws Exception {
-        ImageUpgradeStatusDTO dto = ImageUpgradeStatusDTO.builder()
-                .registryBaseUrl("https://hub.example.test")
-                .imageTag("latest")
-                .upgradeRecommended(false)
+    void testCheckRegistryUpdate() throws Exception {
+        RegistryUpdateCheckDTO dto = RegistryUpdateCheckDTO.builder()
+                .updateAvailable(false)
+                .message("镜像仓库中暂无可用的更新。")
                 .checkedAt("2026-01-01T00:00:00Z")
-                .components(List.of(
-                        ImageUpgradeComponentDTO.builder()
-                                .role("BACKEND")
-                                .repository("law-firm-archive/backend")
-                                .imageTag("latest")
-                                .remoteDigest("sha256:aa")
-                                .runningDigest("sha256:aa")
-                                .upgradeAvailable(false)
-                                .status("OK")
-                                .message("一致")
-                                .build()
-                ))
                 .build();
-        when(registryImageUpgradeCheckService.checkImageUpgrades()).thenReturn(dto);
+        when(registryUpdateCheckService.checkRegistryUpdate()).thenReturn(dto);
 
-        mockMvc.perform(get("/configs/image-upgrade-status"))
+        mockMvc.perform(get("/configs/registry-update-check"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
-                .andExpect(jsonPath("$.data.registryBaseUrl").value("https://hub.example.test"))
-                .andExpect(jsonPath("$.data.upgradeRecommended").value(false));
+                .andExpect(jsonPath("$.data.updateAvailable").value(false))
+                .andExpect(jsonPath("$.data.message").value("镜像仓库中暂无可用的更新。"));
 
-        verify(registryImageUpgradeCheckService).checkImageUpgrades();
+        verify(registryUpdateCheckService).checkRegistryUpdate();
     }
 
 }

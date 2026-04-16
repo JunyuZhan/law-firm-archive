@@ -396,20 +396,20 @@
               </el-form>
             </div>
 
-            <!-- 镜像升级检测（与系统信息页「镜像更新检测」一致） -->
+            <!-- 镜像仓库更新（供系统信息页检查使用） -->
             <div class="config-group">
               <h4 class="group-title">
-                <el-icon><Connection /></el-icon> 镜像升级检测
+                <el-icon><Connection /></el-icon> 镜像仓库更新
               </h4>
               <p class="group-hint">
-                仓库根地址可填写 <code>https://主机</code> 或 <code>https://主机/v2/_catalog</code>，保存后会自动归一化为 API 根地址。鉴权可使用下方账号密码或环境变量 REGISTRY_USERNAME / REGISTRY_PASSWORD。
+                填写镜像仓库地址与前后端镜像路径；地址可带 <code>/v2/_catalog</code>，保存后会自动整理。账号密码可留空改用环境变量。
               </p>
               <el-form
                 label-width="200px"
                 class="config-form"
               >
                 <el-form-item 
-                  v-for="config in upgradeConfigs" 
+                  v-for="config in registryUpdateConfigs" 
                   :key="config.configKey"
                   :label="config.description || config.configKey"
                 >
@@ -600,7 +600,7 @@ const notifyConfigs = computed(() =>
 const searchConfigs = computed(() => 
   systemConfigs.value.filter(c => c.configKey.includes('search'))
 )
-const upgradeConfigs = computed(() =>
+const registryUpdateConfigs = computed(() =>
   systemConfigs.value.filter(c => c.configKey.startsWith('system.upgrade.'))
 )
 

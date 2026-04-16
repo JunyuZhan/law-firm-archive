@@ -24,10 +24,10 @@ export function getDependencyStatus() {
   })
 }
 
-/** 检测私有仓库镜像摘要是否与运行环境一致（系统管理员） */
-export function getImageUpgradeStatus() {
+/** 检查镜像仓库是否有可用更新（系统管理员） */
+export function checkRegistryUpdate() {
   return request({
-    url: '/configs/image-upgrade-status',
+    url: '/configs/registry-update-check',
     method: 'get'
   })
 }
