@@ -4,7 +4,7 @@
       <div>
         <h1>备份中心</h1>
         <p>
-          为电子档案系统配置可恢复的备份目标。当前已支持本地目录与 SMB/NAS 的目标管理、真实验证、备份执行和备份集浏览。
+          在此维护备份目标并发起验证与手动备份；恢复请到「备份恢复中心」选择备份集。
         </p>
       </div>
       <el-button
@@ -31,162 +31,161 @@
       </el-card>
     </div>
 
-    <el-row :gutter="20">
-      <el-col
-        :lg="14"
-        :xs="24"
-      >
-        <el-card shadow="never">
-          <template #header>
-            <div class="section-header">
-              <span>备份目标</span>
-              <el-tag type="info">
-                阶段：{{ overview.currentPhase || 'FOUNDATION' }}
-              </el-tag>
-            </div>
-          </template>
-
-          <el-table
-            v-loading="loadingTargets"
-            :data="targets"
-            border
+    <el-card
+      shadow="never"
+      class="section-card"
+    >
+      <template #header>
+        <div class="section-header">
+          <span>备份目标</span>
+          <el-tag
+            v-if="overview.currentPhase"
+            type="info"
+            size="small"
           >
-            <el-table-column
-              prop="name"
-              label="名称"
-              min-width="160"
+            {{ overview.currentPhase }}
+          </el-tag>
+        </div>
+      </template>
+
+      <el-table
+        v-loading="loadingTargets"
+        :data="targets"
+        border
+        table-layout="auto"
+      >
+        <el-table-column
+          prop="name"
+          label="名称"
+          min-width="140"
+        />
+        <el-table-column
+          prop="targetType"
+          label="类型"
+          width="100"
+        >
+          <template #default="{ row }">
+            <el-tag :type="row.targetType === 'LOCAL' ? 'success' : 'warning'">
+              {{ row.targetType }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column
+          label="目标地址"
+          min-width="220"
+        >
+          <template #default="{ row }">
+            <span v-if="row.targetType === 'LOCAL'">{{ row.localPath }}</span>
+            <span v-else>{{ row.smbHost }} / {{ row.smbShare }} / {{ row.smbSubPath || '-' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column
+          label="验证状态"
+          width="120"
+        >
+          <template #default="{ row }">
+            <el-tag :type="verifyTagType(row.verifyStatus)">
+              {{ row.verifyStatus || 'PENDING' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column
+          label="启用"
+          width="88"
+        >
+          <template #default="{ row }">
+            <el-switch
+              v-model="row.enabled"
+              disabled
             />
-            <el-table-column
-              prop="targetType"
-              label="类型"
-              width="90"
+          </template>
+        </el-table-column>
+        <el-table-column
+          label="操作"
+          min-width="200"
+          fixed="right"
+        >
+          <template #default="{ row }">
+            <el-button
+              text
+              type="primary"
+              @click="openEditDialog(row)"
             >
-              <template #default="{ row }">
-                <el-tag :type="row.targetType === 'LOCAL' ? 'success' : 'warning'">
-                  {{ row.targetType }}
-                </el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column
-              label="目标地址"
-              min-width="260"
+              编辑
+            </el-button>
+            <el-button
+              text
+              type="success"
+              @click="handleVerify(row)"
             >
-              <template #default="{ row }">
-                <span v-if="row.targetType === 'LOCAL'">{{ row.localPath }}</span>
-                <span v-else>{{ row.smbHost }} / {{ row.smbShare }} / {{ row.smbSubPath || '-' }}</span>
-              </template>
-            </el-table-column>
-            <el-table-column
-              label="验证状态"
-              width="120"
+              验证
+            </el-button>
+            <el-button
+              text
+              type="warning"
+              @click="handleRun(row)"
             >
-              <template #default="{ row }">
-                <el-tag :type="verifyTagType(row.verifyStatus)">
-                  {{ row.verifyStatus || 'PENDING' }}
-                </el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column
-              label="启用"
-              width="80"
+              执行备份
+            </el-button>
+            <el-button
+              text
+              type="danger"
+              @click="handleDelete(row)"
             >
-              <template #default="{ row }">
-                <el-switch
-                  v-model="row.enabled"
-                  disabled
-                />
-              </template>
-            </el-table-column>
-            <el-table-column
-              label="操作"
-              width="220"
-              fixed="right"
-            >
-              <template #default="{ row }">
-                <el-button
-                  text
-                  type="primary"
-                  @click="openEditDialog(row)"
-                >
-                  编辑
-                </el-button>
-                <el-button
-                  text
-                  type="success"
-                  @click="handleVerify(row)"
-                >
-                  验证
-                </el-button>
-                <el-button
-                  text
-                  type="warning"
-                  @click="handleRun(row)"
-                >
-                  执行备份
-                </el-button>
-                <el-button
-                  text
-                  type="danger"
-                  @click="handleDelete(row)"
-                >
-                  删除
-                </el-button>
-              </template>
-            </el-table-column>
-          </el-table>
-        </el-card>
-      </el-col>
+              删除
+            </el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-card>
 
-      <el-col
-        :lg="10"
-        :xs="24"
+    <el-card
+      shadow="never"
+      class="section-card"
+    >
+      <template #header>
+        <span>最近备份任务</span>
+      </template>
+      <el-empty
+        v-if="!backupJobs.length"
+        description="暂无备份任务记录"
+      />
+      <div
+        v-else
+        class="job-list"
       >
-        <el-card
-          shadow="never"
-          class="guideline-card"
+        <div
+          v-for="job in backupJobs"
+          :key="job.id"
+          class="job-item"
         >
-          <template #header>
-            <span>第一阶段说明</span>
-          </template>
-          <ul class="plain-list">
-            <li>支持本地目录与 SMB/NAS 备份目标配置。</li>
-            <li>本地目录可执行真实可写性验证。</li>
-            <li>SMB 目标可执行共享连通、目录创建、探针写入与删除校验。</li>
-            <li>手动备份会生成完整备份集，可用于后续恢复中心选择恢复源。</li>
-          </ul>
-        </el-card>
-
-        <el-card
-          shadow="never"
-          class="job-card"
-        >
-          <template #header>
-            <span>最近备份任务</span>
-          </template>
-          <el-empty
-            v-if="!backupJobs.length"
-            description="暂无备份任务记录"
-          />
-          <div
-            v-else
-            class="job-list"
-          >
-            <div
-              v-for="job in backupJobs"
-              :key="job.id"
-              class="job-item"
-            >
-              <div class="job-title">
-                {{ job.backupNo }}
-              </div>
-              <div class="job-meta">
-                {{ job.targetName || '未命名目标' }} · {{ job.status }}
-              </div>
-            </div>
+          <div class="job-title">
+            {{ job.backupNo }}
           </div>
-        </el-card>
-      </el-col>
-    </el-row>
+          <div class="job-meta">
+            {{ job.targetName || '未命名目标' }} · {{ job.status }}
+          </div>
+        </div>
+      </div>
+    </el-card>
+
+    <section
+      class="backup-guidelines"
+      aria-labelledby="backup-guidelines-title"
+    >
+      <h2
+        id="backup-guidelines-title"
+        class="guidelines-title"
+      >
+        范围与校验说明
+      </h2>
+      <ul class="plain-list">
+        <li>支持<strong>本地目录</strong>与 <strong>SMB / NAS</strong> 两类目标；保存后可通过「验证」做真实校验。</li>
+        <li>本地目录：检查路径存在与可写。</li>
+        <li>SMB：检查共享可达、可建目录、探针文件写入与删除。</li>
+        <li>「执行备份」生成完整备份集，供「备份恢复中心」作为恢复源选用。</li>
+      </ul>
+    </section>
 
     <el-dialog
       v-model="dialogVisible"
@@ -486,23 +485,37 @@ const verifyTagType = (status) => {
   }
 }
 
+.section-card {
+  border-radius: 10px;
+}
+
 .section-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
 }
 
-.guideline-card,
-.job-card {
-  margin-bottom: 20px;
+.backup-guidelines {
+  padding: 18px 20px 20px;
   border-radius: 10px;
+  border: 1px solid var(--el-border-color-lighter);
+  background: var(--el-fill-color-blank);
+}
+
+.guidelines-title {
+  margin: 0 0 12px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
 }
 
 .plain-list {
   margin: 0;
   padding-left: 18px;
-  line-height: 1.8;
-  color: #4b5563;
+  line-height: 1.85;
+  color: var(--el-text-color-regular);
+  font-size: 14px;
 }
 
 .job-list {
