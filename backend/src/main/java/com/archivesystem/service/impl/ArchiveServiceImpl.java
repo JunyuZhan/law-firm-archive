@@ -10,6 +10,7 @@ import com.archivesystem.entity.Category;
 import com.archivesystem.entity.DigitalFile;
 import com.archivesystem.entity.Fonds;
 import com.archivesystem.entity.PushRecord;
+import com.archivesystem.entity.User;
 import com.archivesystem.mq.ArchiveReceiveMessage;
 import com.archivesystem.mq.CallbackMessage;
 import com.archivesystem.repository.*;
@@ -38,6 +39,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.regex.Pattern;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -310,6 +312,11 @@ public class ArchiveServiceImpl implements ArchiveService {
     @Override
     @Transactional
     public ArchiveDTO create(ArchiveCreateRequest request) {
+        String currentUserType = SecurityUtils.getCurrentUserType();
+        if (User.TYPE_ARCHIVE_REVIEWER.equals(currentUserType)) {
+            throw new BusinessException("档案审核员不能直接创建正式档案，请通过审核流程处理入库申请");
+        }
+
         String archiveNo = generateArchiveNo(request.getArchiveType());
         
         // 处理档案形式
@@ -332,7 +339,7 @@ public class ArchiveServiceImpl implements ArchiveService {
             }
         }
 
-        boolean submittedByOrdinaryUser = "USER".equals(SecurityUtils.getCurrentUserType());
+        boolean submittedByOrdinaryUser = User.TYPE_USER.equals(currentUserType);
         String initialStatus = submittedByOrdinaryUser ? Archive.STATUS_PENDING_REVIEW : Archive.STATUS_RECEIVED;
 
         Archive archive = Archive.builder()
@@ -947,14 +954,14 @@ public class ArchiveServiceImpl implements ArchiveService {
                 if (hasCondition) {
                     w.or();
                 }
-                w.like(Archive::getLawyerName, currentRealName);
+                w.apply(buildAssignedLawyerRegexSql(), buildAssignedLawyerRegex(currentRealName));
                 hasCondition = true;
             }
             if (StringUtils.hasText(currentUsername)) {
                 if (hasCondition) {
                     w.or();
                 }
-                w.like(Archive::getLawyerName, currentUsername);
+                w.apply(buildAssignedLawyerRegexSql(), buildAssignedLawyerRegex(currentUsername));
             }
         });
         wrapper.and(w -> w.eq(Archive::getSecurityLevel, Archive.SECURITY_PUBLIC)
@@ -1007,12 +1014,11 @@ public class ArchiveServiceImpl implements ArchiveService {
     }
 
     private void validateManualStatusTransition(Archive archive, String targetStatus) {
+        if (Archive.STATUS_PENDING_REVIEW.equals(archive.getStatus())) {
+            throw new BusinessException("待审核档案仅能通过审核动作流转，不能手动修改状态");
+        }
+
         if (!Archive.STATUS_STORED.equals(archive.getStatus())) {
-            if (Archive.STATUS_PENDING_REVIEW.equals(archive.getStatus())
-                    && Archive.STATUS_STORED.equals(targetStatus)
-                    && !SecurityUtils.hasAnyRole("SYSTEM_ADMIN", "ARCHIVE_REVIEWER")) {
-                throw new BusinessException("待审核档案需由审核员批准后正式入库");
-            }
             return;
         }
 
@@ -1110,6 +1116,15 @@ public class ArchiveServiceImpl implements ArchiveService {
         if (changed) {
             digitalFileMapper.updateById(digitalFile);
         }
+    }
+
+    private String buildAssignedLawyerRegexSql() {
+        return "regexp_replace(coalesce(lawyer_name, ''), '\\s+', '', 'g') ~ {0}";
+    }
+
+    private String buildAssignedLawyerRegex(String principal) {
+        String normalized = normalizeLawyerToken(principal);
+        return "(^|[,，、;/；]+)" + Pattern.quote(normalized) + "([,，、;/；]+|$)";
     }
 
     private String formatFileSize(Long size) {

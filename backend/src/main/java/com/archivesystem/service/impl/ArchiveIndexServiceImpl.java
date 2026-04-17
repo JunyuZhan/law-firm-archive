@@ -238,9 +238,12 @@ public class ArchiveIndexServiceImpl implements ArchiveIndexService {
     @Override
     public Map<String, Object> getAggregations() {
         try {
+            BoolQuery.Builder boolBuilder = new BoolQuery.Builder();
+            addCurrentUserScope(boolBuilder);
             SearchRequest searchRequest = SearchRequest.of(s -> s
                     .index(INDEX_NAME)
                     .size(0)
+                    .query(Query.of(q -> q.bool(boolBuilder.build())))
                     .aggregations(buildAggregations()));
 
             SearchResponse<Void> response = elasticsearchClient.search(searchRequest, Void.class);

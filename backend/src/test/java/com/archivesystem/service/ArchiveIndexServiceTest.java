@@ -14,12 +14,14 @@ import com.archivesystem.entity.DigitalFile;
 import com.archivesystem.repository.ArchiveMapper;
 import com.archivesystem.elasticsearch.ArchiveSearchRepository;
 import com.archivesystem.repository.DigitalFileMapper;
+import com.archivesystem.security.SecurityUtils;
 import com.archivesystem.service.impl.ArchiveIndexServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
@@ -27,6 +29,7 @@ import org.mockito.quality.Strictness;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -242,6 +245,37 @@ class ArchiveIndexServiceTest {
         doThrow(new RuntimeException("删除失败")).when(archiveSearchRepository).deleteAll();
 
         assertDoesNotThrow(() -> archiveIndexService.rebuildAllIndexes());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void testGetAggregations_AppliesCurrentUserScope() throws Exception {
+        SearchResponse<Void> mockResponse = mock(SearchResponse.class);
+        when(mockResponse.aggregations()).thenReturn(Collections.emptyMap());
+        AtomicReference<SearchRequest> capturedRequestRef = new AtomicReference<>();
+        doAnswer(invocation -> {
+            capturedRequestRef.set(invocation.getArgument(0));
+            return mockResponse;
+        }).when(elasticsearchClient).search(any(SearchRequest.class), any(Class.class));
+
+        try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+            securityUtils.when(SecurityUtils::isAuthenticated).thenReturn(true);
+            securityUtils.when(() -> SecurityUtils.hasAnyRole("SYSTEM_ADMIN", "ARCHIVE_REVIEWER", "ARCHIVE_MANAGER"))
+                    .thenReturn(false);
+            securityUtils.when(SecurityUtils::getCurrentUserId).thenReturn(9L);
+            securityUtils.when(SecurityUtils::getCurrentRealName).thenReturn("测试律师");
+
+            Map<String, Object> result = archiveIndexService.getAggregations();
+
+            assertNotNull(result);
+        }
+
+        SearchRequest capturedRequest = capturedRequestRef.get();
+        assertNotNull(capturedRequest);
+        assertNotNull(capturedRequest.query());
+        assertTrue(capturedRequest.query().isBool());
+        assertNotNull(capturedRequest.query().bool().filter());
+        assertTrue(capturedRequest.query().bool().filter().size() >= 2);
     }
 
     @Test

@@ -11,6 +11,7 @@ import com.archivesystem.entity.Category;
 import com.archivesystem.entity.DigitalFile;
 import com.archivesystem.entity.Fonds;
 import com.archivesystem.entity.RetentionPeriod;
+import com.archivesystem.entity.User;
 import com.archivesystem.repository.*;
 import com.archivesystem.security.SecurityUtils;
 import com.archivesystem.service.impl.ArchiveServiceImpl;
@@ -308,6 +309,16 @@ class ArchiveServiceTest {
     }
 
     @Test
+    void testUpdateStatus_PendingReviewManualTransitionRejected() {
+        testArchive.setStatus(Archive.STATUS_PENDING_REVIEW);
+        when(archiveMapper.selectById(1L)).thenReturn(testArchive);
+
+        assertThrows(BusinessException.class, () -> archiveService.updateStatus(1L, Archive.STATUS_RECEIVED));
+
+        verify(archiveMapper, never()).updateById(any(Archive.class));
+    }
+
+    @Test
     void testGenerateArchiveNo() {
         when(configService.getArchiveNoPrefix("DOCUMENT")).thenReturn("DOC");
         when(configService.getValue("archive.no.date.format", "yyyyMMdd")).thenReturn("yyyyMMdd");
@@ -369,6 +380,21 @@ class ArchiveServiceTest {
 
         assertNotNull(result);
         assertEquals("新创建的档案", result.getTitle());
+    }
+
+    @Test
+    void testCreate_ReviewerRejected() {
+        ArchiveCreateRequest request = new ArchiveCreateRequest();
+        request.setTitle("审核员建档");
+        request.setArchiveType("DOCUMENT");
+
+        try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+            securityUtils.when(SecurityUtils::getCurrentUserType).thenReturn(User.TYPE_ARCHIVE_REVIEWER);
+
+            assertThrows(BusinessException.class, () -> archiveService.create(request));
+        }
+
+        verify(archiveMapper, never()).insert(any(Archive.class));
     }
 
     @Test
@@ -644,6 +670,36 @@ class ArchiveServiceTest {
     }
 
     @Test
+    void testQuery_UsesAssignedLawyerTokenBoundaryScope() {
+        ArchiveQueryRequest request = new ArchiveQueryRequest();
+        request.setPageNum(1);
+        request.setPageSize(10);
+
+        Page<Archive> page = new Page<>(1, 10);
+        page.setRecords(Arrays.asList(testArchive));
+        page.setTotal(1);
+
+        when(archiveMapper.selectPage(any(Page.class), any())).thenReturn(page);
+
+        try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+            securityUtils.when(SecurityUtils::isAuthenticated).thenReturn(true);
+            securityUtils.when(() -> SecurityUtils.hasAnyRole("SYSTEM_ADMIN", "ARCHIVE_REVIEWER", "ARCHIVE_MANAGER"))
+                    .thenReturn(false);
+            securityUtils.when(SecurityUtils::getCurrentUserId).thenReturn(null);
+            securityUtils.when(SecurityUtils::getCurrentRealName).thenReturn("王律师");
+            securityUtils.when(SecurityUtils::getCurrentUsername).thenReturn(null);
+
+            archiveService.query(request);
+        }
+
+        verify(archiveMapper).selectPage(any(Page.class), argThat(wrapper ->
+                wrapper != null
+                        && wrapper.getSqlSegment() != null
+                        && wrapper.getSqlSegment().contains("regexp_replace")
+                        && !wrapper.getSqlSegment().contains("LIKE")));
+    }
+
+    @Test
     void testCreate_WithFileIds() {
         ArchiveCreateRequest request = new ArchiveCreateRequest();
         request.setTitle("带文件的档案");
@@ -731,10 +787,11 @@ class ArchiveServiceTest {
 
         try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
             securityUtils.when(SecurityUtils::isAuthenticated).thenReturn(true);
-            securityUtils.when(() -> SecurityUtils.hasAnyRole("SYSTEM_ADMIN", "ARCHIVIST", "SECURITY_ADMIN", "AUDIT_ADMIN"))
+            securityUtils.when(() -> SecurityUtils.hasAnyRole("SYSTEM_ADMIN", "ARCHIVE_REVIEWER", "ARCHIVE_MANAGER"))
                     .thenReturn(false);
             securityUtils.when(SecurityUtils::getCurrentUserId).thenReturn(1L);
             securityUtils.when(SecurityUtils::getCurrentRealName).thenReturn("当前律师");
+            securityUtils.when(SecurityUtils::getCurrentUsername).thenReturn("current-user");
 
             assertThrows(BusinessException.class, () -> archiveService.getById(1L));
         }
