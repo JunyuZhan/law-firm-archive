@@ -1,0 +1,66 @@
+name: Release Dist Center
+
+on:
+  push:
+    tags:
+      - "v*"
+      - "release-*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version/tag to publish into dist-center"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  sync-and-deploy:
+    runs-on: self-hosted
+    env:
+      DIST_ROOT: /Users/apple/Documents/Project/dist-center
+      DIST_PROJECT: law-firm-archive
+      DIST_DEPLOY: "true"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve Release Version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION_INPUT="${{ github.event.inputs.version }}"
+          if [ -n "${VERSION_INPUT:-}" ]; then
+            VERSION="$VERSION_INPUT"
+          elif [ "${GITHUB_REF_TYPE:-}" = "tag" ]; then
+            VERSION="${GITHUB_REF_NAME}"
+          else
+            VERSION="manual-$(date +%Y%m%d%H%M%S)"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Sync Dist Assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash scripts/release/sync-dist-center.sh
+
+      - name: Update Dist Version Descriptor
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash scripts/release/update-dist-version.sh \
+            --dist-root "$DIST_ROOT" \
+            --project "$DIST_PROJECT" \
+            --version "${{ steps.version.outputs.version }}" \
+            --app-version "${{ steps.version.outputs.version }}" \
+            --snapshot
+
+      - name: Deploy Dist Center
+        if: ${{ env.DIST_DEPLOY == 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker compose -f "$DIST_ROOT/docker-compose.yml" up --build -d
