@@ -9,6 +9,23 @@ WORKDIR /app
 # 产品版本：优先构建参数 APP_VERSION，否则使用仓库根目录 VERSION（与 frontend、脚本约定一致）
 COPY VERSION /tmp/PRODUCT_VERSION
 ARG APP_VERSION=
+ARG MAVEN_MIRROR_URL=https://maven.aliyun.com/repository/public
+# 为 CI / 内网环境显式配置 Maven 镜像，避免直接访问 Maven Central 握手失败
+RUN mkdir -p /root/.m2 && \
+    cat > /root/.m2/settings.xml <<EOF
+<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
+  <mirrors>
+    <mirror>
+      <id>build-mirror</id>
+      <mirrorOf>central</mirrorOf>
+      <name>Build Maven Mirror</name>
+      <url>${MAVEN_MIRROR_URL}</url>
+    </mirror>
+  </mirrors>
+</settings>
+EOF
 # 复制源码并直接构建，避免额外的 go-offline 远程握手失败
 COPY backend/pom.xml ./pom.xml
 COPY backend/src ./src
