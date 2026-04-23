@@ -19,8 +19,13 @@ jobs:
   sync-and-deploy:
     runs-on: self-hosted
     env:
-      DIST_ROOT: /Users/apple/Documents/Project/dist-center
-      DIST_PROJECT: law-firm-archive
+      DIST_ROOT: ${{ vars.DIST_ROOT }}
+      DIST_PROJECT: ${{ vars.DIST_PROJECT }}
+      REGISTRY_HOST: ${{ vars.REGISTRY_HOST }}
+      DEFAULT_REGISTRY: ${{ vars.DEFAULT_REGISTRY }}
+      INTERNAL_REGISTRY: ${{ vars.INTERNAL_REGISTRY }}
+      REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+      REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
       DIST_DEPLOY: "true"
     steps:
       - name: Checkout
@@ -41,11 +46,88 @@ jobs:
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
+      - name: Resolve Release Metadata
+        id: release_meta
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "published_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve Runtime Defaults
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "DIST_ROOT=${DIST_ROOT:-/opt/dist-center}"
+            echo "DIST_PROJECT=${DIST_PROJECT:-law-firm-archive}"
+            echo "REGISTRY_HOST=${REGISTRY_HOST:-192.168.50.5:5050}"
+            echo "DEFAULT_REGISTRY=${DEFAULT_REGISTRY:-hub.albertzhan.top/law-firm-archive/}"
+            echo "INTERNAL_REGISTRY=${INTERNAL_REGISTRY:-192.168.50.5:5050/law-firm-archive/}"
+          } >> "$GITHUB_ENV"
+
+      - name: Prepare Registry Env
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp docker/.env.registry.example docker/.env.registry
+          python3 - <<'PY'
+          from pathlib import Path
+          import os
+
+          env_path = Path("docker/.env.registry")
+          data = {}
+          raw_lines = env_path.read_text().splitlines()
+          for line in raw_lines:
+            if not line or line.lstrip().startswith("#") or "=" not in line:
+              continue
+            key, value = line.split("=", 1)
+            data[key] = value
+
+          data["REGISTRY_PULL"] = os.environ["REGISTRY_HOST"]
+          data["REGISTRY_PUSH"] = os.environ["REGISTRY_HOST"]
+          data["REGISTRY_USERNAME"] = os.environ.get("REGISTRY_USERNAME", "")
+          data["REGISTRY_PASSWORD"] = os.environ.get("REGISTRY_PASSWORD", "")
+          data["APP_VERSION"] = os.environ["RELEASE_VERSION"]
+          data["APP_COMMIT_SHA"] = os.environ["GITHUB_SHA"][:12]
+          data["APP_BUILD_TIME"] = os.environ["RELEASE_PUBLISHED_AT"]
+
+          written = set()
+          output = []
+          for line in raw_lines:
+            if not line or line.lstrip().startswith("#") or "=" not in line:
+              output.append(line)
+              continue
+            key, _ = line.split("=", 1)
+            if key in data:
+              output.append(f"{key}={data[key]}")
+              written.add(key)
+            else:
+              output.append(line)
+
+          for key, value in data.items():
+            if key not in written:
+              output.append(f"{key}={value}")
+
+          env_path.write_text("\n".join(output).rstrip() + "\n")
+          PY
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+          RELEASE_PUBLISHED_AT: ${{ steps.release_meta.outputs.published_at }}
+
+      - name: Build And Push Images
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash scripts/build-and-push-on-linux.sh
+
       - name: Sync Dist Assets
         shell: bash
         run: |
           set -euo pipefail
           bash scripts/release/sync-dist-center.sh
+        env:
+          DIST_ROOT: ${{ env.DIST_ROOT }}
+          PROJECT_SLUG: ${{ env.DIST_PROJECT }}
 
       - name: Update Dist Version Descriptor
         shell: bash
@@ -56,7 +138,17 @@ jobs:
             --project "$DIST_PROJECT" \
             --version "${{ steps.version.outputs.version }}" \
             --app-version "${{ steps.version.outputs.version }}" \
+            --default-registry "$DEFAULT_REGISTRY" \
+            --internal-registry "$INTERNAL_REGISTRY" \
+            --registry-username "${REGISTRY_USERNAME:-installer}" \
+            --published-at "${{ steps.release_meta.outputs.published_at }}" \
             --snapshot
+
+      - name: Validate Dist Center Descriptors
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 "$DIST_ROOT/scripts/validate_descriptors.py"
 
       - name: Deploy Dist Center
         if: ${{ env.DIST_DEPLOY == 'true' }}

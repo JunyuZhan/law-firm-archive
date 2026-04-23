@@ -43,6 +43,7 @@ docker-compose.override.yml
 .env
 .env.local
 .env.*.local
+docker/.env.registry
 
 # Local AI / IDE helpers
 .claude/

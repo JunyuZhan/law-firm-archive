@@ -7,7 +7,7 @@ DIST_ROOT="${DIST_ROOT:-$PROJECT_ROOT/../dist-center}"
 PROJECT_SLUG="${PROJECT_SLUG:-law-firm-archive}"
 
 COMPOSE_SRC="$PROJECT_ROOT/docker/docker-compose.registry.yml"
-ENV_SRC="$PROJECT_ROOT/docker/.env.example"
+ENV_SRC="$PROJECT_ROOT/docker/.env.registry.example"
 SECRETS_SRC="$PROJECT_ROOT/docker/secrets/init-secrets.sh"
 INIT_DB_SRC="$PROJECT_ROOT/scripts/init-db"
 

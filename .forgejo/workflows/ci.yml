@@ -1,0 +1,48 @@
+name: Archive CI
+
+on:
+  push:
+    branches:
+      - "**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Backend Tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            -v "$PWD":/workspace \
+            -w /workspace/backend \
+            maven:3.9-eclipse-temurin-21 \
+            mvn -B -ntp test
+
+      - name: Frontend Build
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            -v "$PWD":/workspace \
+            -w /workspace/frontend \
+            node:20-alpine \
+            sh -lc 'npm ci --no-fund --no-audit && npm run build'
+
+      - name: Validate Compose And Release Scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker compose --env-file docker/.env.example -f docker/docker-compose.yml config >/dev/null
+          docker compose --env-file docker/.env.registry.example -f docker/docker-compose.registry.yml config >/dev/null
+          bash -n scripts/build-and-push-on-linux.sh
+          bash -n scripts/pull-from-registry.sh
+          bash -n scripts/release/sync-dist-center.sh
+          bash -n scripts/release/update-dist-version.sh
