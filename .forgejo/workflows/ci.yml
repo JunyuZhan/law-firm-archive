@@ -21,7 +21,7 @@ jobs:
         run: |
           set -euo pipefail
           docker run --rm \
-            -v "$PWD":/workspace \
+            -v "$GITHUB_WORKSPACE":/workspace \
             -w /workspace/backend \
             maven:3.9-eclipse-temurin-21 \
             mvn -B -ntp test
@@ -31,7 +31,7 @@ jobs:
         run: |
           set -euo pipefail
           docker run --rm \
-            -v "$PWD":/workspace \
+            -v "$GITHUB_WORKSPACE":/workspace \
             -w /workspace/frontend \
             node:20-alpine \
             sh -lc 'npm ci --no-fund --no-audit && npm run build'
