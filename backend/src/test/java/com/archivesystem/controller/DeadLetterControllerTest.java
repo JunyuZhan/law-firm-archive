@@ -58,6 +58,8 @@ class DeadLetterControllerTest {
         testRecord.setStatus(DeadLetterRecord.STATUS_PENDING);
         testRecord.setRetryCount(0);
         testRecord.setMaxRetries(3);
+        testRecord.setProcessedBy(66L);
+        testRecord.setProcessRemark("内部备注");
         testRecord.setCreatedAt(LocalDateTime.now());
     }
 
@@ -69,7 +71,21 @@ class DeadLetterControllerTest {
         mockMvc.perform(get("/dead-letters"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
-                .andExpect(jsonPath("$.data.records").isArray());
+                .andExpect(jsonPath("$.data.records").isArray())
+                .andExpect(jsonPath("$.data.records[0].messageId").doesNotExist())
+                .andExpect(jsonPath("$.data.records[0].messageBody").doesNotExist())
+                .andExpect(jsonPath("$.data.records[0].processedBy").doesNotExist())
+                .andExpect(jsonPath("$.data.records[0].queueName").doesNotExist())
+                .andExpect(jsonPath("$.data.records[0].sourceId").doesNotExist())
+                .andExpect(jsonPath("$.data.records[0].sourceType").doesNotExist())
+                .andExpect(jsonPath("$.data.records[0].archiveId").doesNotExist())
+                .andExpect(jsonPath("$.data.records[0].routingKey").doesNotExist())
+                .andExpect(jsonPath("$.data.records[0].createdAt").doesNotExist())
+                .andExpect(jsonPath("$.data.records[0].updatedAt").doesNotExist())
+                .andExpect(jsonPath("$.data.records[0].processRemark").doesNotExist())
+                .andExpect(jsonPath("$.data.records[0].processedAt").doesNotExist())
+                .andExpect(jsonPath("$.data.records[0].maxRetries").doesNotExist())
+                .andExpect(jsonPath("$.data.records[0].retryCount").doesNotExist());
     }
 
     @Test
@@ -94,7 +110,21 @@ class DeadLetterControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
                 .andExpect(jsonPath("$.data.id").value(1))
-                .andExpect(jsonPath("$.data.status").value("PENDING"));
+                .andExpect(jsonPath("$.data.status").value("PENDING"))
+                .andExpect(jsonPath("$.data.messageId").doesNotExist())
+                .andExpect(jsonPath("$.data.messageBody").doesNotExist())
+                .andExpect(jsonPath("$.data.processedBy").doesNotExist())
+                .andExpect(jsonPath("$.data.queueName").doesNotExist())
+                .andExpect(jsonPath("$.data.sourceId").doesNotExist())
+                .andExpect(jsonPath("$.data.sourceType").doesNotExist())
+                .andExpect(jsonPath("$.data.archiveId").doesNotExist())
+                .andExpect(jsonPath("$.data.routingKey").doesNotExist())
+                .andExpect(jsonPath("$.data.createdAt").doesNotExist())
+                .andExpect(jsonPath("$.data.updatedAt").doesNotExist())
+                .andExpect(jsonPath("$.data.processRemark").doesNotExist())
+                .andExpect(jsonPath("$.data.processedAt").doesNotExist())
+                .andExpect(jsonPath("$.data.maxRetries").doesNotExist())
+                .andExpect(jsonPath("$.data.retryCount").doesNotExist());
     }
 
     @Test
@@ -109,8 +139,10 @@ class DeadLetterControllerTest {
         mockMvc.perform(get("/dead-letters/statistics"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
-                .andExpect(jsonPath("$.data.PENDING").value(5))
-                .andExpect(jsonPath("$.data.SUCCESS").value(10));
+                .andExpect(jsonPath("$.data.pending").value(5))
+                .andExpect(jsonPath("$.data.success").value(10))
+                .andExpect(jsonPath("$.data.failed").value(2))
+                .andExpect(jsonPath("$.data.PENDING").doesNotExist());
     }
 
     @Test

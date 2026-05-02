@@ -11,6 +11,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.scheduling.support.CronExpression;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -39,13 +40,15 @@ public class BackupScheduledTasks {
         }
 
         String cron = configService.getValue("system.backup.cron", DEFAULT_CRON);
+        if (!StringUtils.hasText(cron)) {
+            cron = DEFAULT_CRON;
+        }
         if (!isDue(cron)) {
             return;
         }
 
         List<BackupTarget> targets = backupTargetMapper.selectList(new LambdaQueryWrapper<BackupTarget>()
-                .eq(BackupTarget::getEnabled, true)
-                .eq(BackupTarget::getTargetType, BackupTarget.TYPE_LOCAL));
+                .eq(BackupTarget::getEnabled, true));
         if (targets.isEmpty()) {
             return;
         }
@@ -62,14 +65,25 @@ public class BackupScheduledTasks {
     private boolean isDue(String cron) {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime slot = now.withSecond(0).withNano(0);
-        CronExpression expression = CronExpression.parse(cron);
+        CronExpression expression;
+        try {
+            expression = CronExpression.parse(cron);
+        } catch (Exception e) {
+            log.error("备份定时表达式无效: cron={}", cron, e);
+            return false;
+        }
         LocalDateTime expected = expression.next(slot.minusMinutes(1));
         if (expected == null || expected.isBefore(slot) || !expected.isBefore(slot.plusMinutes(1))) {
             return false;
         }
 
         String key = "backup:schedule:" + slot;
-        Boolean locked = redisTemplate.opsForValue().setIfAbsent(key, "1", Duration.ofMinutes(2));
-        return Boolean.TRUE.equals(locked);
+        try {
+            Boolean locked = redisTemplate.opsForValue().setIfAbsent(key, "1", Duration.ofMinutes(2));
+            return Boolean.TRUE.equals(locked);
+        } catch (Exception e) {
+            log.error("获取备份调度锁失败: key={}", key, e);
+            return false;
+        }
     }
 }

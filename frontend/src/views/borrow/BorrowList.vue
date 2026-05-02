@@ -94,6 +94,10 @@
               value="RETURNED"
             />
             <el-option
+              label="已取消"
+              value="CANCELLED"
+            />
+            <el-option
               label="已拒绝"
               value="REJECTED"
             />
@@ -620,7 +624,8 @@ const fetchData = async () => {
       pagination.total = res.data.total
     } else if (activeTab.value === 'overdue') {
       res = await getOverdueBorrows()
-      tableData.value = res.data
+      tableData.value = res.data || []
+      pagination.total = tableData.value.length
     }
   } catch (e) {
     console.error('获取数据失败', e)
@@ -761,8 +766,10 @@ const confirmRenew = async () => {
 
 const disabledRenewDate = (date) => {
   if (!currentRow.value) return true
-  const expected = new Date(currentRow.value.expectedReturnDate)
-  return date <= expected
+  const expected = parseLocalDate(currentRow.value.expectedReturnDate)
+  const candidate = parseLocalDate(date)
+  if (!expected || !candidate) return true
+  return candidate <= expected
 }
 
 // 借出
@@ -793,6 +800,7 @@ const detailData = ref(null)
 const detailLoading = ref(false)
 
 const handleView = async (row) => {
+  detailData.value = null
   detailLoading.value = true
   detailDialogVisible.value = true
   try {
@@ -812,13 +820,43 @@ const formatDateTime = (dateStr) => {
   return dateStr.replace('T', ' ').substring(0, 16)
 }
 
+const parseLocalDate = (value) => {
+  if (!value) return null
+  if (value instanceof Date) {
+    const normalized = new Date(value)
+    normalized.setHours(0, 0, 0, 0)
+    return normalized
+  }
+
+  if (typeof value === 'string') {
+    const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+    if (match) {
+      const [, year, month, day] = match
+      return new Date(Number(year), Number(month) - 1, Number(day))
+    }
+  }
+
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) return null
+  parsed.setHours(0, 0, 0, 0)
+  return parsed
+}
+
 // 注：getBorrowStatusName, getBorrowStatusType 已从 archiveEnums.js 导入
 const getStatusName = getBorrowStatusName
 const getStatusType = getBorrowStatusType
 
 const isOverdue = (row) => {
   if (row.status !== 'BORROWED') return false
-  return new Date(row.expectedReturnDate) < new Date()
+  if (!row.expectedReturnDate) return false
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  const expected = parseLocalDate(row.expectedReturnDate)
+  if (!expected) return false
+
+  return expected < today
 }
 
 onMounted(() => {

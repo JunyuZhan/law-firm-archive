@@ -166,6 +166,8 @@
             v-model="form.fondsNo"
             placeholder="如：QZ001"
             :disabled="isEdit"
+            maxlength="50"
+            show-word-limit
           />
         </el-form-item>
         <el-form-item
@@ -175,6 +177,8 @@
           <el-input
             v-model="form.fondsName"
             placeholder="全宗名称"
+            maxlength="200"
+            show-word-limit
           />
         </el-form-item>
         <el-form-item
@@ -285,6 +289,7 @@ import {
   createFonds,
   updateFonds,
   deleteFonds,
+  getFondsDetail,
   getFondsStatistics
 } from '@/api/fonds'
 import {
@@ -321,9 +326,20 @@ const form = reactive({
   description: ''
 })
 
+const requireTrimmedText = (message) => ({
+  validator: (_rule, value, callback) => {
+    if (!value?.trim()) {
+      callback(new Error(message))
+      return
+    }
+    callback()
+  },
+  trigger: 'blur'
+})
+
 const rules = {
-  fondsNo: [{ required: true, message: '请输入全宗号', trigger: 'blur' }],
-  fondsName: [{ required: true, message: '请输入全宗名称', trigger: 'blur' }],
+  fondsNo: [requireTrimmedText('请输入全宗号')],
+  fondsName: [requireTrimmedText('请输入全宗名称')],
   fondsType: [{ required: true, message: '请选择全宗类型', trigger: 'change' }]
 }
 
@@ -387,13 +403,31 @@ const handleEdit = (row) => {
 
 // 查看
 const handleView = async (row) => {
-  currentFonds.value = row
-  try {
-    const res = await getFondsStatistics(row.id)
-    statistics.value = res.data
-  } catch (e) {
-    statistics.value = {}
+  currentFonds.value = null
+  statistics.value = {
+    archiveCount: row.archiveCount || 0
   }
+
+  const [detailRes, statsRes] = await Promise.allSettled([
+      getFondsDetail(row.id),
+      getFondsStatistics(row.id)
+    ])
+
+  currentFonds.value = detailRes.status === 'fulfilled'
+    ? (detailRes.value.data || row)
+    : row
+
+  if (statsRes.status === 'fulfilled') {
+    statistics.value = {
+      archiveCount: row.archiveCount || 0,
+      ...(statsRes.value.data || {})
+    }
+  }
+
+  if (detailRes.status === 'rejected' && statsRes.status === 'rejected') {
+    ElMessage.error('加载全宗详情失败')
+  }
+
   detailVisible.value = true
 }
 
@@ -403,12 +437,22 @@ const handleSave = async () => {
     await formRef.value.validate()
     saving.value = true
 
+    const payload = {
+      ...form,
+      fondsNo: form.fondsNo.trim(),
+      fondsName: form.fondsName.trim(),
+      description: form.description?.trim() || ''
+    }
+
+    let res
     if (isEdit.value) {
-      await updateFonds(currentFonds.value.id, form)
-      ElMessage.success('更新成功')
+      res = await updateFonds(currentFonds.value.id, payload)
+      const fondsName = res?.data?.fondsName || form.fondsName
+      ElMessage.success(fondsName ? `已更新全宗：${fondsName}` : '更新成功')
     } else {
-      await createFonds(form)
-      ElMessage.success('创建成功')
+      res = await createFonds(payload)
+      const fondsName = res?.data?.fondsName || form.fondsName
+      ElMessage.success(fondsName ? `已创建全宗：${fondsName}` : '创建成功')
     }
 
     dialogVisible.value = false
@@ -426,7 +470,7 @@ const handleSave = async () => {
 const handleDelete = async (row) => {
   try {
     await deleteFonds(row.id)
-    ElMessage.success('删除成功')
+    ElMessage.success(`已删除全宗：${row.fondsName}`)
     loadData()
   } catch (e) {
     console.error('删除失败', e)

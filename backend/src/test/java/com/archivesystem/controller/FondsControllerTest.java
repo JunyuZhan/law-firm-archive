@@ -10,12 +10,16 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import java.lang.reflect.Method;
 import java.util.Arrays;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -49,6 +53,8 @@ class FondsControllerTest {
         testFonds.setFondsName("测试全宗");
         testFonds.setFondsType("企业全宗");
         testFonds.setDescription("测试全宗描述");
+        testFonds.setContactPerson("联系人");
+        testFonds.setContactPhone("13800138000");
         testFonds.setStatus("ACTIVE");
     }
 
@@ -65,7 +71,13 @@ class FondsControllerTest {
                         .content(objectMapper.writeValueAsString(newFonds)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
-                .andExpect(jsonPath("$.data.fondsNo").value("QZ001"));
+                .andExpect(jsonPath("$.data.fondsNo").value("QZ001"))
+                .andExpect(jsonPath("$.data.fondsName").value("测试全宗"))
+                .andExpect(jsonPath("$.data.status").value("ACTIVE"))
+                .andExpect(jsonPath("$.data.contactPerson").doesNotExist())
+                .andExpect(jsonPath("$.data.contactPhone").doesNotExist())
+                .andExpect(jsonPath("$.data.createdAt").doesNotExist())
+                .andExpect(jsonPath("$.data.updatedAt").doesNotExist());
     }
 
     @Test
@@ -80,7 +92,14 @@ class FondsControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(updateFonds)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value("200"));
+                .andExpect(jsonPath("$.code").value("200"))
+                .andExpect(jsonPath("$.data.fondsNo").value("QZ001"))
+                .andExpect(jsonPath("$.data.fondsName").value("测试全宗"))
+                .andExpect(jsonPath("$.data.status").value("ACTIVE"))
+                .andExpect(jsonPath("$.data.contactPerson").doesNotExist())
+                .andExpect(jsonPath("$.data.contactPhone").doesNotExist())
+                .andExpect(jsonPath("$.data.createdAt").doesNotExist())
+                .andExpect(jsonPath("$.data.updatedAt").doesNotExist());
     }
 
     @Test
@@ -91,7 +110,10 @@ class FondsControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
                 .andExpect(jsonPath("$.data.fondsNo").value("QZ001"))
-                .andExpect(jsonPath("$.data.fondsName").value("测试全宗"));
+                .andExpect(jsonPath("$.data.fondsName").value("测试全宗"))
+                .andExpect(jsonPath("$.data.contactPerson").doesNotExist())
+                .andExpect(jsonPath("$.data.contactPhone").doesNotExist())
+                .andExpect(jsonPath("$.data.updatedAt").doesNotExist());
     }
 
     @Test
@@ -107,7 +129,12 @@ class FondsControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
                 .andExpect(jsonPath("$.data[0].fondsNo").value("QZ001"))
-                .andExpect(jsonPath("$.data[1].fondsNo").value("QZ002"));
+                .andExpect(jsonPath("$.data[1].fondsNo").value("QZ002"))
+                .andExpect(jsonPath("$.data[0].description").doesNotExist())
+                .andExpect(jsonPath("$.data[0].status").doesNotExist())
+                .andExpect(jsonPath("$.data[0].createdAt").doesNotExist())
+                .andExpect(jsonPath("$.data[0].contactPhone").doesNotExist())
+                .andExpect(jsonPath("$.data[0].updatedAt").doesNotExist());
     }
 
     @Test
@@ -121,7 +148,10 @@ class FondsControllerTest {
                         .param("pageSize", "20"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
-                .andExpect(jsonPath("$.data.total").value(1));
+                .andExpect(jsonPath("$.data.total").value(1))
+                .andExpect(jsonPath("$.data.records[0].createdAt").doesNotExist())
+                .andExpect(jsonPath("$.data.records[0].contactPhone").doesNotExist())
+                .andExpect(jsonPath("$.data.records[0].updatedAt").doesNotExist());
     }
 
     @Test
@@ -159,6 +189,16 @@ class FondsControllerTest {
         mockMvc.perform(get("/fonds/1/statistics"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
-                .andExpect(jsonPath("$.data.archiveCount").value(500));
+                .andExpect(jsonPath("$.data.archiveCount").value(500))
+                .andExpect(jsonPath("$.data.fonds").doesNotExist());
+    }
+
+    @Test
+    void testStatistics_ShouldRequireAdminOrArchiveManagerRole() throws Exception {
+        Method method = FondsController.class.getMethod("statistics", Long.class);
+        PreAuthorize annotation = method.getAnnotation(PreAuthorize.class);
+
+        assertNotNull(annotation);
+        assertEquals("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')", annotation.value());
     }
 }

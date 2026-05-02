@@ -1,9 +1,11 @@
 package com.archivesystem.controller;
 
 import com.archivesystem.common.Result;
+import com.archivesystem.common.exception.BusinessException;
 import com.archivesystem.common.util.ClientIpUtils;
 import com.archivesystem.dto.archive.ArchiveReceiveRequest;
 import com.archivesystem.dto.archive.ArchiveReceiveResponse;
+import com.archivesystem.dto.archive.FileUrlResponse;
 import com.archivesystem.dto.borrow.BorrowLinkAccessResponse;
 import com.archivesystem.dto.borrow.BorrowLinkApplyRequest;
 import com.archivesystem.dto.borrow.BorrowLinkApplyResponse;
@@ -39,7 +41,13 @@ public class OpenApiController {
      */
     @PostMapping("/archive/receive")
     @Operation(summary = "接收档案", description = "接收外部系统推送的归档档案")
-    public Result<ArchiveReceiveResponse> receive(@Valid @RequestBody ArchiveReceiveRequest request) {
+    public Result<ArchiveReceiveResponse> receive(@Valid @RequestBody ArchiveReceiveRequest request,
+                                                  HttpServletRequest httpRequest) {
+        ExternalSource externalSource = requireExternalSource(httpRequest);
+        if (externalSource == null) {
+            return Result.error("401", "开放接口认证上下文缺失");
+        }
+        request.setSourceType(externalSource.getSourceCode());
         log.info("接收档案请求: sourceType={}, sourceId={}, title={}", 
                 request.getSourceType(), request.getSourceId(), request.getTitle());
         
@@ -99,7 +107,11 @@ public class OpenApiController {
         BorrowLinkAccessResponse response = borrowLinkService.validateAndAccess(token, clientIp);
         
         if (!Boolean.TRUE.equals(response.getValid())) {
-            return Result.error("403", "访问链接无效或已过期");
+            String message = response.getInvalidReason();
+            if (message == null || message.isBlank()) {
+                message = "访问链接无效或已过期";
+            }
+            return Result.error("403", message);
         }
         
         return Result.success(response);
@@ -114,8 +126,10 @@ public class OpenApiController {
             @Parameter(description = "访问令牌") @PathVariable String token,
             @Parameter(description = "文件ID") @PathVariable Long fileId,
             HttpServletRequest request) {
-        borrowLinkService.recordDownload(token, fileId, ClientIpUtils.resolve(request));
-        return Result.success();
+        return withPublicBorrowFileAccessGuard(() -> {
+            borrowLinkService.recordDownload(token, fileId, ClientIpUtils.resolve(request));
+            return Result.success();
+        });
     }
 
     /**
@@ -123,11 +137,13 @@ public class OpenApiController {
      */
     @GetMapping("/borrow/access/{token}/preview/{fileId}")
     @Operation(summary = "获取预览链接", description = "校验借阅链接后返回短时预览地址")
-    public Result<String> getPreviewUrl(
+    public Result<FileUrlResponse> getPreviewUrl(
             @Parameter(description = "访问令牌") @PathVariable String token,
             @Parameter(description = "文件ID") @PathVariable Long fileId,
             HttpServletRequest request) {
-        return Result.success(borrowLinkService.getFileAccessUrl(token, fileId, false, ClientIpUtils.resolve(request)));
+        return withPublicBorrowFileAccessGuard(() ->
+                Result.success(FileUrlResponse.of(
+                        borrowLinkService.getFileAccessUrl(token, fileId, false, ClientIpUtils.resolve(request)))));
     }
 
     /**
@@ -135,11 +151,13 @@ public class OpenApiController {
      */
     @GetMapping("/borrow/access/{token}/download-url/{fileId}")
     @Operation(summary = "获取下载链接", description = "校验借阅链接后返回短时下载地址")
-    public Result<String> getDownloadUrl(
+    public Result<FileUrlResponse> getDownloadUrl(
             @Parameter(description = "访问令牌") @PathVariable String token,
             @Parameter(description = "文件ID") @PathVariable Long fileId,
             HttpServletRequest request) {
-        return Result.success(borrowLinkService.getFileAccessUrl(token, fileId, true, ClientIpUtils.resolve(request)));
+        return withPublicBorrowFileAccessGuard(() ->
+                Result.success(FileUrlResponse.of(
+                        borrowLinkService.getFileAccessUrl(token, fileId, true, ClientIpUtils.resolve(request)))));
     }
 
     /**
@@ -164,5 +182,14 @@ public class OpenApiController {
     private ExternalSource requireExternalSource(HttpServletRequest request) {
         Object source = request.getAttribute("externalSource");
         return source instanceof ExternalSource externalSource ? externalSource : null;
+    }
+
+    private <T> Result<T> withPublicBorrowFileAccessGuard(java.util.function.Supplier<Result<T>> action) {
+        try {
+            return action.get();
+        } catch (BusinessException ex) {
+            log.warn("公开借阅文件访问失败: {}", ex.getMessage());
+            return Result.error("403", "访问链接无效、已过期或无权访问该文件");
+        }
     }
 }

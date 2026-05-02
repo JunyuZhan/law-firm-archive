@@ -106,7 +106,7 @@
         </el-table-column>
         <el-table-column
           label="操作"
-          width="180"
+          width="250"
           fixed="right"
         >
           <template #default="{ row }">
@@ -124,6 +124,13 @@
               @click="handleTest(row)"
             >
               测试
+            </el-button>
+            <el-button
+              type="warning"
+              link
+              @click="handleRegenerateKey(row)"
+            >
+              重置密钥
             </el-button>
             <el-popconfirm
               title="确定删除该来源？"
@@ -160,10 +167,12 @@
           label="来源编码"
           prop="sourceCode"
         >
-          <el-input 
-            v-model="formData.sourceCode" 
+          <el-input
+            v-model="formData.sourceCode"
             placeholder="如：LAW_FIRM_MAIN"
             :disabled="isEdit"
+            maxlength="50"
+            show-word-limit
           />
         </el-form-item>
         <el-form-item
@@ -173,6 +182,8 @@
           <el-input
             v-model="formData.sourceName"
             placeholder="如：律所管理系统"
+            maxlength="100"
+            show-word-limit
           />
         </el-form-item>
         <el-form-item
@@ -232,20 +243,16 @@
             v-model="formData.authType"
             placeholder="请选择"
             style="width: 100%"
+            disabled
           >
             <el-option
               label="API Key"
               value="API_KEY"
             />
-            <el-option
-              label="OAuth 2.0"
-              value="OAUTH2"
-            />
-            <el-option
-              label="Basic Auth"
-              value="BASIC"
-            />
           </el-select>
+          <div class="form-tip">
+            当前版本开放接口仅支持 API Key 认证方式。
+          </div>
         </el-form-item>
         <el-form-item label="回调地址">
           <el-input
@@ -254,11 +261,13 @@
           />
         </el-form-item>
         <el-form-item label="描述">
-          <el-input 
-            v-model="formData.description" 
-            type="textarea" 
+          <el-input
+            v-model="formData.description"
+            type="textarea"
             :rows="2"
             placeholder="来源说明"
+            maxlength="500"
+            show-word-limit
           />
         </el-form-item>
       </el-form>
@@ -281,7 +290,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { sourceApi } from '@/api/archive'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 
 const loading = ref(false)
@@ -303,10 +312,22 @@ const formData = reactive({
   description: ''
 })
 
+const requireTrimmedText = (message) => ({
+  validator: (_rule, value, callback) => {
+    if (!value?.trim()) {
+      callback(new Error(message))
+      return
+    }
+    callback()
+  },
+  trigger: 'blur'
+})
+
 const rules = {
-  sourceCode: [{ required: true, message: '请输入来源编码', trigger: 'blur' }],
-  sourceName: [{ required: true, message: '请输入来源名称', trigger: 'blur' }],
-  sourceType: [{ required: true, message: '请选择来源类型', trigger: 'change' }]
+  sourceCode: [requireTrimmedText('请输入来源编码')],
+  sourceName: [requireTrimmedText('请输入来源名称')],
+  sourceType: [{ required: true, message: '请选择来源类型', trigger: 'change' }],
+  authType: [{ required: true, message: '认证方式不能为空', trigger: 'change' }]
 }
 
 const getTypeName = (type) => {
@@ -380,19 +401,30 @@ const handleAdd = () => {
 }
 
 const handleEdit = (row) => {
-  Object.assign(formData, {
-    id: row.id,
-    sourceCode: row.sourceCode,
-    sourceName: row.sourceName,
-    sourceType: row.sourceType,
-    apiUrl: row.apiUrl || '',
-    apiKey: '', // 不回显密钥
-    authType: row.authType || 'API_KEY',
-    callbackUrl: row.extraConfig?.callbackUrl || '',
-    description: row.description || ''
-  })
-  isEdit.value = true
-  dialogVisible.value = true
+  loadSourceDetail(row.id)
+}
+
+const loadSourceDetail = async (id) => {
+  try {
+    const res = await sourceApi.get(id)
+    const row = res.data || {}
+    Object.assign(formData, {
+      id: row.id,
+      sourceCode: row.sourceCode,
+      sourceName: row.sourceName,
+      sourceType: row.sourceType,
+      apiUrl: row.apiUrl || '',
+      apiKey: '', // 不回显密钥
+      authType: row.authType || 'API_KEY',
+      callbackUrl: row.extraConfig?.callbackUrl || '',
+      description: row.description || ''
+    })
+    isEdit.value = true
+    dialogVisible.value = true
+  } catch (e) {
+    ElMessage.error('加载来源详情失败')
+    console.error(e)
+  }
 }
 
 const handleSubmit = async () => {
@@ -405,27 +437,37 @@ const handleSubmit = async () => {
   submitting.value = true
   try {
     const data = {
-      sourceCode: formData.sourceCode,
-      sourceName: formData.sourceName,
+      sourceCode: formData.sourceCode.trim(),
+      sourceName: formData.sourceName.trim(),
       sourceType: formData.sourceType,
-      apiUrl: formData.apiUrl,
+      apiUrl: formData.apiUrl?.trim() || '',
       authType: formData.authType,
-      description: formData.description,
+      description: formData.description?.trim() || '',
       extraConfig: {
-        callbackUrl: formData.callbackUrl
+        callbackUrl: formData.callbackUrl?.trim() || ''
       }
     }
     // 只在有输入时才传密钥
-    if (formData.apiKey) {
-      data.apiKey = formData.apiKey
+    if (formData.apiKey?.trim()) {
+      data.apiKey = formData.apiKey.trim()
     }
 
     if (isEdit.value) {
       await sourceApi.update(formData.id, data)
-      ElMessage.success('更新成功')
+      ElMessage.success(`已更新来源：${formData.sourceName}`)
     } else {
-      await sourceApi.create(data)
-      ElMessage.success('创建成功')
+      const res = await sourceApi.create(data)
+      const sourceName = res?.data?.sourceName || formData.sourceName
+      ElMessage.success(sourceName ? `已创建来源：${sourceName}` : '创建成功')
+      if (res?.data?.apiKey) {
+        await ElMessageBox.alert(
+          `请立即保存以下 API Key，该值仅在创建时返回一次：\n\n${res.data.apiKey}`,
+          '来源已创建',
+          {
+            confirmButtonText: '我已保存'
+          }
+        )
+      }
     }
     dialogVisible.value = false
     loadData()
@@ -441,7 +483,7 @@ const handleToggle = async (row) => {
   try {
     await sourceApi.toggle(row.id, row.enabled)
     ElMessage.success(row.enabled ? '已启用' : '已禁用')
-  } catch (e) {
+  } catch {
     row.enabled = !row.enabled
     ElMessage.error('操作失败')
   } finally {
@@ -454,20 +496,53 @@ const handleTest = async (row) => {
   try {
     await sourceApi.test(row.id)
     ElMessage.success('连接测试成功')
-    loadData() // 刷新状态
   } catch (e) {
     ElMessage.error(e.message || '连接测试失败')
   } finally {
     row._testing = false
+    await loadData()
+  }
+}
+
+const handleRegenerateKey = async (row) => {
+  try {
+    await ElMessageBox.confirm(
+      `将为来源「${row.sourceName}」重新生成 API Key，原密钥会立即失效。是否继续？`,
+      '重置 API Key',
+      {
+        type: 'warning',
+        confirmButtonText: '继续重置',
+        cancelButtonText: '取消'
+      }
+    )
+
+    const res = await sourceApi.regenerateKey(row.id)
+    const apiKey = res?.data?.apiKey
+    if (!apiKey) {
+      ElMessage.error('新 API Key 获取失败')
+      return
+    }
+
+    await ElMessageBox.alert(
+      `请立即保存以下 API Key，原密钥已失效：\n\n${apiKey}`,
+      'API Key 已重置',
+      {
+        confirmButtonText: '我已保存'
+      }
+    )
+  } catch (e) {
+    if (e !== 'cancel' && e !== 'close') {
+      ElMessage.error(e.message || '重置 API Key 失败')
+    }
   }
 }
 
 const handleDelete = async (row) => {
   try {
     await sourceApi.delete(row.id)
-    ElMessage.success('删除成功')
+    ElMessage.success(`已删除来源：${row.sourceName}`)
     loadData()
-  } catch (e) {
+  } catch {
     ElMessage.error('删除失败')
   }
 }

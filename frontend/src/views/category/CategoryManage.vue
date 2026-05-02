@@ -51,7 +51,7 @@
             @node-click="handleNodeClick"
             @node-drop="handleNodeDrop"
           >
-            <template #default="{ node, data }">
+            <template #default="{ data }">
               <div class="tree-node">
                 <span class="node-label">{{ data.categoryName }}</span>
                 <span class="node-code">{{ data.categoryCode }}</span>
@@ -113,6 +113,8 @@
                 <el-input
                   v-model="form.categoryCode"
                   placeholder="如：WS-01"
+                  maxlength="50"
+                  show-word-limit
                 />
               </el-form-item>
               <el-form-item
@@ -122,6 +124,8 @@
                 <el-input
                   v-model="form.categoryName"
                   placeholder="分类名称"
+                  maxlength="100"
+                  show-word-limit
                 />
               </el-form-item>
               <el-form-item
@@ -222,7 +226,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import { 
-  getCategoryTree, getCategoryStatistics, 
+  getCategoryTreeSummary, getCategoryDetail, getCategoryStatistics,
   createCategory, updateCategory, deleteCategory, moveCategory 
 } from '@/api/category'
 import {
@@ -258,9 +262,20 @@ const form = reactive({
   description: ''
 })
 
+const requireTrimmedText = (message) => ({
+  validator: (_rule, value, callback) => {
+    if (!value?.trim()) {
+      callback(new Error(message))
+      return
+    }
+    callback()
+  },
+  trigger: 'blur'
+})
+
 const rules = {
-  categoryCode: [{ required: true, message: '请输入分类代码', trigger: 'blur' }],
-  categoryName: [{ required: true, message: '请输入分类名称', trigger: 'blur' }],
+  categoryCode: [requireTrimmedText('请输入分类代码')],
+  categoryName: [requireTrimmedText('请输入分类名称')],
   archiveType: [{ required: true, message: '请选择档案门类', trigger: 'change' }]
 }
 
@@ -268,7 +283,7 @@ const rules = {
 const loadTree = async () => {
   try {
     const archiveType = activeType.value === 'all' ? null : activeType.value
-    const res = await getCategoryTree(archiveType)
+    const res = await getCategoryTreeSummary(archiveType)
     treeData.value = res.data
   } catch (e) {
     console.error('加载分类树失败', e)
@@ -284,24 +299,41 @@ const handleTypeChange = () => {
 // 点击节点
 const handleNodeClick = async (data) => {
   if (isEditing.value) return
-  
-  currentCategory.value = data
-  Object.assign(form, {
-    parentId: data.parentId,
-    categoryCode: data.categoryCode,
-    categoryName: data.categoryName,
-    archiveType: data.archiveType,
-    retentionPeriod: data.retentionPeriod,
-    sortOrder: data.sortOrder,
-    description: data.description
-  })
-  
-  // 获取统计信息
+
+  currentCategory.value = null
+  archiveCount.value = 0
+
+  const [detailRes, statsRes] = await Promise.allSettled([
+      getCategoryDetail(data.id),
+      getCategoryStatistics(data.id)
+    ])
+
+  if (detailRes.status !== 'fulfilled') {
+    console.error('加载分类详情失败', detailRes.reason)
+    ElMessage.error('加载分类详情失败')
+    return
+  }
+
   try {
-    const res = await getCategoryStatistics(data.id)
-    archiveCount.value = res.data.archiveCount
+    const detail = detailRes.value.data
+    currentCategory.value = detail
+    Object.assign(form, {
+      parentId: detail.parentId,
+      categoryCode: detail.categoryCode,
+      categoryName: detail.categoryName,
+      archiveType: detail.archiveType,
+      retentionPeriod: detail.retentionPeriod,
+      sortOrder: detail.sortOrder,
+      description: detail.description
+    })
+    archiveCount.value = statsRes.status === 'fulfilled'
+      ? (statsRes.value.data?.archiveCount || 0)
+      : 0
   } catch (e) {
+    console.error('加载分类详情失败', e)
+    currentCategory.value = null
     archiveCount.value = 0
+    ElMessage.error('加载分类详情失败')
   }
 }
 
@@ -378,15 +410,25 @@ const cancelEdit = () => {
 const handleSave = async () => {
   try {
     await formRef.value.validate()
-    
-    if (isCreating.value) {
-      await createCategory(form)
-      ElMessage.success('创建成功')
-    } else {
-      await updateCategory(currentCategory.value.id, form)
-      ElMessage.success('更新成功')
+
+    const payload = {
+      ...form,
+      categoryCode: form.categoryCode.trim(),
+      categoryName: form.categoryName.trim(),
+      description: form.description?.trim() || ''
     }
-    
+
+    let res
+    if (isCreating.value) {
+      res = await createCategory(payload)
+      const categoryName = res?.data?.categoryName || form.categoryName
+      ElMessage.success(categoryName ? `已创建分类：${categoryName}` : '创建成功')
+    } else {
+      res = await updateCategory(currentCategory.value.id, payload)
+      const categoryName = res?.data?.categoryName || form.categoryName
+      ElMessage.success(categoryName ? `已更新分类：${categoryName}` : '更新成功')
+    }
+
     isEditing.value = false
     isCreating.value = false
     loadTree()
@@ -400,8 +442,9 @@ const handleSave = async () => {
 // 删除
 const handleDelete = async () => {
   try {
+    const categoryName = currentCategory.value?.categoryName
     await deleteCategory(currentCategory.value.id)
-    ElMessage.success('删除成功')
+    ElMessage.success(categoryName ? `已删除分类：${categoryName}` : '删除成功')
     currentCategory.value = null
     loadTree()
   } catch (e) {

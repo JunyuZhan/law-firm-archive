@@ -1,6 +1,9 @@
 package com.archivesystem.controller;
 
 import com.archivesystem.common.Result;
+import com.archivesystem.dto.category.CategoryTreeResponse;
+import com.archivesystem.dto.category.CategoryResponse;
+import com.archivesystem.dto.category.CategoryStatisticsResponse;
 import com.archivesystem.entity.Category;
 import com.archivesystem.service.CategoryService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -10,9 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * 分类管理控制器.
@@ -29,31 +30,31 @@ public class CategoryController {
     @PostMapping
     @Operation(summary = "创建分类")
     @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
-    public Result<Category> create(@Valid @RequestBody Category category) {
+    public Result<CategoryTreeResponse> create(@Valid @RequestBody Category category) {
         Category created = categoryService.create(category);
-        return Result.success("创建成功", created);
+        return Result.success("创建成功", CategoryTreeResponse.from(created));
     }
 
     @PutMapping("/{id}")
     @Operation(summary = "更新分类")
     @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
-    public Result<Category> update(@PathVariable Long id, @Valid @RequestBody Category category) {
+    public Result<CategoryTreeResponse> update(@PathVariable Long id, @Valid @RequestBody Category category) {
         Category updated = categoryService.update(id, category);
-        return Result.success("更新成功", updated);
+        return Result.success("更新成功", CategoryTreeResponse.from(updated));
     }
 
     @GetMapping("/{id}")
     @Operation(summary = "获取分类详情")
     @PreAuthorize("isAuthenticated()")
-    public Result<Category> getById(@PathVariable Long id) {
+    public Result<CategoryResponse> getById(@PathVariable Long id) {
         Category category = categoryService.getById(id);
-        return Result.success(category);
+        return Result.success(CategoryResponse.from(category));
     }
 
     @GetMapping("/tree")
     @Operation(summary = "获取分类树")
     @PreAuthorize("isAuthenticated()")
-    public Result<List<Category>> getTree(
+    public Result<List<CategoryResponse>> getTree(
             @RequestParam(required = false) String archiveType) {
         List<Category> tree;
         if (archiveType != null && !archiveType.isEmpty()) {
@@ -61,15 +62,29 @@ public class CategoryController {
         } else {
             tree = categoryService.getTree();
         }
-        return Result.success(tree);
+        return Result.success(tree.stream().map(CategoryResponse::from).toList());
+    }
+
+    @GetMapping("/tree/summary")
+    @Operation(summary = "获取分类树摘要")
+    @PreAuthorize("isAuthenticated()")
+    public Result<List<CategoryTreeResponse>> getTreeSummary(
+            @RequestParam(required = false) String archiveType) {
+        List<Category> tree;
+        if (archiveType != null && !archiveType.isEmpty()) {
+            tree = categoryService.getTreeByArchiveType(archiveType);
+        } else {
+            tree = categoryService.getTree();
+        }
+        return Result.success(tree.stream().map(CategoryTreeResponse::from).toList());
     }
 
     @GetMapping("/{id}/children")
     @Operation(summary = "获取子分类")
     @PreAuthorize("isAuthenticated()")
-    public Result<List<Category>> getChildren(@PathVariable Long id) {
+    public Result<List<CategoryResponse>> getChildren(@PathVariable Long id) {
         List<Category> children = categoryService.getChildren(id);
-        return Result.success(children);
+        return Result.success(children.stream().map(CategoryResponse::from).toList());
     }
 
     @DeleteMapping("/{id}")
@@ -90,15 +105,13 @@ public class CategoryController {
 
     @GetMapping("/{id}/statistics")
     @Operation(summary = "获取分类统计")
-    @PreAuthorize("isAuthenticated()")
-    public Result<Map<String, Object>> statistics(@PathVariable Long id) {
-        Category category = categoryService.getById(id);
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
+    public Result<CategoryStatisticsResponse> statistics(@PathVariable Long id) {
+        categoryService.getById(id);
         long archiveCount = categoryService.countArchives(id);
-        
-        Map<String, Object> stats = new HashMap<>();
-        stats.put("category", category);
-        stats.put("archiveCount", archiveCount);
-        
-        return Result.success(stats);
+
+        return Result.success(CategoryStatisticsResponse.builder()
+                .archiveCount(archiveCount)
+                .build());
     }
 }

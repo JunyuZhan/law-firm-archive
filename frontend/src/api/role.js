@@ -15,6 +15,16 @@ export function getRoleList() {
 }
 
 /**
+ * 获取角色选项
+ */
+export function getRoleOptions() {
+  return request({
+    url: '/roles/options',
+    method: 'get'
+  })
+}
+
+/**
  * 获取角色详情
  */
 export function getRoleDetail(id) {

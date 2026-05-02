@@ -13,8 +13,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -37,7 +39,13 @@ class ApiKeyAuthFilterTest {
     private StringRedisTemplate redisTemplate;
 
     @Mock
+    private com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+
+    @Mock
     private ValueOperations<String, String> valueOperations;
+
+    @Mock
+    private HashOperations<String, Object, Object> hashOperations;
 
     @Mock
     private HttpServletRequest request;
@@ -54,6 +62,9 @@ class ApiKeyAuthFilterTest {
     @BeforeEach
     void setUp() {
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(redisTemplate.opsForHash()).thenReturn(hashOperations);
+        ReflectionTestUtils.setField(apiKeyAuthFilter, "apiKeyEnabled", true);
+        ReflectionTestUtils.setField(apiKeyAuthFilter, "apiKeyHeader", "X-API-Key");
     }
 
     @Test
@@ -83,11 +94,14 @@ class ApiKeyAuthFilterTest {
         StringWriter stringWriter = new StringWriter();
         PrintWriter printWriter = new PrintWriter(stringWriter);
         when(response.getWriter()).thenReturn(printWriter);
+        when(objectMapper.writeValueAsString(any())).thenReturn("{\"code\":\"401\",\"message\":\"缺少API Key\"}");
 
         apiKeyAuthFilter.doFilterInternal(request, response, filterChain);
 
-        // API Key 未配置时（默认 enabled=true），应该拒绝请求
-        // 但由于 @Value 无法在单元测试中正确注入，可能会走默认逻辑
+        verify(filterChain, never()).doFilter(request, response);
+        verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        assertTrue(stringWriter.toString().contains("\"code\":\"401\""));
+        assertTrue(stringWriter.toString().contains("缺少API Key"));
     }
 
     @Test
@@ -105,6 +119,17 @@ class ApiKeyAuthFilterTest {
         
         when(valueOperations.get(anyString())).thenReturn(null);
         when(externalSourceMapper.selectOne(any())).thenReturn(source);
+
+        apiKeyAuthFilter.doFilterInternal(request, response, filterChain);
+
+        verify(filterChain).doFilter(request, response);
+        verify(request).setAttribute("externalSource", source);
+    }
+
+    @Test
+    void testOpenApiWithApiKeyDisabled_ShouldPassThrough() throws Exception {
+        ReflectionTestUtils.setField(apiKeyAuthFilter, "apiKeyEnabled", false);
+        when(request.getRequestURI()).thenReturn("/api/open/archive/receive");
 
         apiKeyAuthFilter.doFilterInternal(request, response, filterChain);
 

@@ -28,6 +28,9 @@ class MinioServiceTest {
     @Mock
     private MultipartFile multipartFile;
 
+    @Mock
+    private ConfigService configService;
+
     private MinioService minioService;
 
     @BeforeEach
@@ -39,6 +42,8 @@ class MinioServiceTest {
         ReflectionTestUtils.setField(minioService, "accessKey", "minioadmin");
         ReflectionTestUtils.setField(minioService, "secretKey", "minioadmin");
         ReflectionTestUtils.setField(minioService, "bucketName", "archives");
+        ReflectionTestUtils.setField(minioService, "proxyPrefix", "/storage");
+        ReflectionTestUtils.setField(minioService, "configService", configService);
         ReflectionTestUtils.setField(minioService, "minioClient", minioClient);
     }
 
@@ -74,13 +79,14 @@ class MinioServiceTest {
         InputStream inputStream = new ByteArrayInputStream("test content".getBytes());
         
         when(minioClient.putObject(any(PutObjectArgs.class)))
-                .thenThrow(new RuntimeException("上传失败"));
+                .thenThrow(new RuntimeException("上传失败: http://minio.internal:9000"));
 
         RuntimeException exception = assertThrows(RuntimeException.class, () -> 
             minioService.upload("test/file.txt", inputStream, 12, "text/plain")
         );
 
         assertTrue(exception.getMessage().contains("文件上传失败"));
+        assertFalse(exception.getMessage().contains("minio.internal"));
     }
 
     @Test
@@ -183,15 +189,42 @@ class MinioServiceTest {
     }
 
     @Test
+    void testGetPresignedUrl_ShouldRewriteInternalEndpointToProxyPrefix() throws Exception {
+        ReflectionTestUtils.setField(minioService, "endpoint", "http://minio.internal:9000");
+        when(configService.getValue(MinioService.CONFIG_KEY_PROXY_PREFIX, "/storage")).thenReturn("/storage");
+        when(minioClient.getPresignedObjectUrl(any(GetPresignedObjectUrlArgs.class)))
+                .thenReturn("http://minio.internal:9000/archives/test/file.txt?token=xxx");
+
+        String result = minioService.getPresignedUrl("test/file.txt", 3600);
+
+        assertEquals("/storage/archives/test/file.txt?token=xxx", result);
+        assertFalse(result.contains("minio.internal"));
+    }
+
+    @Test
+    void testGetPresignedUrl_BlankConfiguredProxyPrefixShouldFallbackToLocalDefault() throws Exception {
+        ReflectionTestUtils.setField(minioService, "endpoint", "http://minio.internal:9000");
+        when(configService.getValue(MinioService.CONFIG_KEY_PROXY_PREFIX, "/storage")).thenReturn("   ");
+        when(minioClient.getPresignedObjectUrl(any(GetPresignedObjectUrlArgs.class)))
+                .thenReturn("http://minio.internal:9000/archives/test/file.txt?token=xxx");
+
+        String result = minioService.getPresignedUrl("test/file.txt", 3600);
+
+        assertEquals("/storage/archives/test/file.txt?token=xxx", result);
+        assertFalse(result.contains("minio.internal"));
+    }
+
+    @Test
     void testGetPresignedUrl_Failure() throws Exception {
         when(minioClient.getPresignedObjectUrl(any(GetPresignedObjectUrlArgs.class)))
-                .thenThrow(new RuntimeException("获取URL失败"));
+                .thenThrow(new RuntimeException("获取URL失败: http://minio.internal:9000"));
 
         RuntimeException exception = assertThrows(RuntimeException.class, () -> 
             minioService.getPresignedUrl("test/file.txt")
         );
 
         assertTrue(exception.getMessage().contains("获取下载链接失败"));
+        assertFalse(exception.getMessage().contains("minio.internal"));
     }
 
     @Test

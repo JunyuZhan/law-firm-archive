@@ -300,6 +300,7 @@ watch(() => props.fileId, async (newVal) => {
 // 监听URL变化
 watch(() => props.url, (newVal) => {
   if (newVal) {
+    actualPreviewType.value = 'unsupported'
     previewUrl.value = newVal
     downloadUrl.value = newVal
   }
@@ -309,6 +310,7 @@ watch(() => props.url, (newVal) => {
 watch(visible, async (newVal) => {
   if (newVal) {
     if (props.url) {
+      actualPreviewType.value = 'unsupported'
       previewUrl.value = props.url
       downloadUrl.value = props.url
     } else if (props.fileId) {
@@ -317,6 +319,7 @@ watch(visible, async (newVal) => {
     // 重置图片状态
     resetImageState()
   } else {
+    actualPreviewType.value = 'unsupported'
     if (!props.url) {
       previewUrl.value = ''
       downloadUrl.value = ''
@@ -340,16 +343,11 @@ const loadPreview = async () => {
     if (previewInfo) {
       previewUrl.value = previewInfo.url || ''
       actualPreviewType.value = previewInfo.previewType || 'unsupported'
-      
-      // 如果是转换后的文件，显示提示
-      if (previewInfo.isConverted) {
-        console.log(`文件已从 ${previewInfo.originalExtension} 转换为 PDF`)
-      }
     }
     
     // 获取下载URL（始终返回原始文件）
     const downloadRes = await getFileDownloadUrl(props.fileId)
-    downloadUrl.value = downloadRes.data || ''
+    downloadUrl.value = downloadRes.data?.url || ''
   } catch (e) {
     console.error('加载预览失败', e)
     ElMessage.error('加载预览失败')

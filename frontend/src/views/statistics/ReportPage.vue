@@ -165,7 +165,7 @@
           </div>
         </el-tab-pane>
         
-        <!-- 操作日志（与后端 StatisticsController 导出接口一致：仅系统管理员） -->
+        <!-- 操作日志（与后端 StatisticsController 导出接口一致：仅系统管理权限账号） -->
         <el-tab-pane
           v-if="userStore.isAdmin"
           label="操作日志"
@@ -229,7 +229,7 @@ import { ref, reactive, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Download } from '@element-plus/icons-vue'
 import request from '@/utils/request'
-import { useUserStore } from '@/stores'
+import { useUserStore } from '@/stores/user'
 import {
   getArchiveTypeOptions,
   ARCHIVE_STATUS

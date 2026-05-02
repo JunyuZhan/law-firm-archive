@@ -1,6 +1,10 @@
 package com.archivesystem.controller;
 
+import com.archivesystem.common.PageResult;
 import com.archivesystem.common.Result;
+import com.archivesystem.dto.push.PushRecordResponse;
+import com.archivesystem.dto.push.PushRecordStatisticsResponse;
+import com.archivesystem.dto.push.PushRecordSummaryResponse;
 import com.archivesystem.entity.PushRecord;
 import com.archivesystem.service.PushRecordService;
 import com.baomidou.mybatisplus.core.metadata.IPage;
@@ -34,7 +38,7 @@ public class PushRecordController {
     @GetMapping
     @Operation(summary = "分页查询推送记录")
     @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
-    public Result<IPage<PushRecord>> list(
+    public Result<PageResult<PushRecordSummaryResponse>> list(
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer pageNum,
             @Parameter(description = "每页大小") @RequestParam(defaultValue = "20") Integer pageSize,
             @Parameter(description = "来源类型") @RequestParam(required = false) String sourceType,
@@ -42,46 +46,51 @@ public class PushRecordController {
             @Parameter(description = "关键词") @RequestParam(required = false) String keyword,
             @Parameter(description = "推送批次号") @RequestParam(required = false) String pushBatchNo,
             @Parameter(description = "推送时间开始") @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime pushedAtStart,
-            @Parameter(description = "推送时间结束") @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime pushedAtEnd) {
+        @Parameter(description = "推送时间结束") @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime pushedAtEnd) {
         
         Page<PushRecord> page = new Page<>(pageNum, pageSize);
         IPage<PushRecord> result = pushRecordService.page(page, sourceType, pushStatus, keyword, pushBatchNo, pushedAtStart, pushedAtEnd);
-        return Result.success(result);
+        return Result.success(PageResult.of(
+                result.getCurrent(),
+                result.getSize(),
+                result.getTotal(),
+                result.getRecords().stream().map(PushRecordSummaryResponse::from).toList()
+        ));
     }
 
     @GetMapping("/{id}")
     @Operation(summary = "查询推送记录详情")
     @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
-    public Result<PushRecord> getById(@PathVariable Long id) {
+    public Result<PushRecordResponse> getById(@PathVariable Long id) {
         PushRecord record = pushRecordService.getById(id);
         if (record == null) {
             return Result.error("404", "推送记录不存在");
         }
-        return Result.success(record);
+        return Result.success(PushRecordResponse.from(record));
     }
 
     @GetMapping("/statistics")
     @Operation(summary = "获取推送统计数据")
     @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
-    public Result<Map<String, Object>> statistics() {
+    public Result<PushRecordStatisticsResponse> statistics() {
         Map<String, Object> stats = pushRecordService.getStatistics();
-        return Result.success(stats);
+        return Result.success(PushRecordStatisticsResponse.from(stats));
     }
 
     @GetMapping("/pending")
     @Operation(summary = "获取待处理的推送记录")
     @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
-    public Result<List<PushRecord>> getPending() {
+    public Result<List<PushRecordSummaryResponse>> getPending() {
         List<PushRecord> records = pushRecordService.getPendingRecords();
-        return Result.success(records);
+        return Result.success(records.stream().map(PushRecordSummaryResponse::from).toList());
     }
 
     @GetMapping("/failed")
     @Operation(summary = "获取失败的推送记录")
     @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
-    public Result<List<PushRecord>> getFailed() {
+    public Result<List<PushRecordSummaryResponse>> getFailed() {
         List<PushRecord> records = pushRecordService.getFailedRecords();
-        return Result.success(records);
+        return Result.success(records.stream().map(PushRecordSummaryResponse::from).toList());
     }
 
     @PostMapping("/{id}/retry")

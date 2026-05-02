@@ -2,6 +2,9 @@ package com.archivesystem.controller;
 
 import com.archivesystem.common.PageResult;
 import com.archivesystem.common.Result;
+import com.archivesystem.dto.location.LocationOptionResponse;
+import com.archivesystem.dto.location.LocationResponse;
+import com.archivesystem.dto.location.LocationSummaryResponse;
 import com.archivesystem.entity.ArchiveLocation;
 import com.archivesystem.service.LocationService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -33,15 +36,20 @@ public class LocationController {
      */
     @GetMapping
     @Operation(summary = "获取位置列表")
-    @PreAuthorize("isAuthenticated()")
-    public Result<PageResult<ArchiveLocation>> list(
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
+    public Result<PageResult<LocationSummaryResponse>> list(
             @RequestParam(required = false) String roomName,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "1") Integer pageNum,
             @RequestParam(defaultValue = "20") Integer pageSize) {
         PageResult<ArchiveLocation> result = locationService.getList(roomName, status, keyword, pageNum, pageSize);
-        return Result.success(result);
+        return Result.success(PageResult.of(
+                result.getCurrent(),
+                result.getSize(),
+                result.getTotal(),
+                result.getRecords().stream().map(LocationSummaryResponse::from).toList()
+        ));
     }
 
     /**
@@ -49,10 +57,10 @@ public class LocationController {
      */
     @GetMapping("/all")
     @Operation(summary = "获取所有位置")
-    @PreAuthorize("isAuthenticated()")
-    public Result<List<ArchiveLocation>> getAll() {
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
+    public Result<List<LocationResponse>> getAll() {
         List<ArchiveLocation> locations = locationService.getAll();
-        return Result.success(locations);
+        return Result.success(locations.stream().map(LocationResponse::from).toList());
     }
 
     /**
@@ -61,9 +69,9 @@ public class LocationController {
     @GetMapping("/available")
     @Operation(summary = "获取可用位置")
     @PreAuthorize("isAuthenticated()")
-    public Result<List<ArchiveLocation>> getAvailable() {
+    public Result<List<LocationOptionResponse>> getAvailable() {
         List<ArchiveLocation> locations = locationService.getAvailable();
-        return Result.success(locations);
+        return Result.success(locations.stream().map(LocationOptionResponse::from).toList());
     }
 
     /**
@@ -71,7 +79,7 @@ public class LocationController {
      */
     @GetMapping("/rooms")
     @Operation(summary = "获取库房列表")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
     public Result<List<String>> getRooms() {
         List<String> rooms = locationService.getRoomNames();
         return Result.success(rooms);
@@ -82,10 +90,10 @@ public class LocationController {
      */
     @GetMapping("/room/{roomName}")
     @Operation(summary = "根据库房获取位置")
-    @PreAuthorize("isAuthenticated()")
-    public Result<List<ArchiveLocation>> getByRoom(@PathVariable String roomName) {
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
+    public Result<List<LocationResponse>> getByRoom(@PathVariable String roomName) {
         List<ArchiveLocation> locations = locationService.getByRoom(roomName);
-        return Result.success(locations);
+        return Result.success(locations.stream().map(LocationResponse::from).toList());
     }
 
     /**
@@ -93,10 +101,10 @@ public class LocationController {
      */
     @GetMapping("/{id}")
     @Operation(summary = "获取位置详情")
-    @PreAuthorize("isAuthenticated()")
-    public Result<ArchiveLocation> getById(@PathVariable Long id) {
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
+    public Result<LocationResponse> getById(@PathVariable Long id) {
         ArchiveLocation location = locationService.getById(id);
-        return Result.success(location);
+        return Result.success(LocationResponse.from(location));
     }
 
     /**
@@ -105,9 +113,9 @@ public class LocationController {
     @PostMapping
     @Operation(summary = "创建位置")
     @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
-    public Result<ArchiveLocation> create(@Valid @RequestBody ArchiveLocation location) {
+    public Result<LocationSummaryResponse> create(@Valid @RequestBody ArchiveLocation location) {
         ArchiveLocation created = locationService.create(location);
-        return Result.success("创建成功", created);
+        return Result.success("创建成功", LocationSummaryResponse.from(created));
     }
 
     /**
@@ -116,11 +124,11 @@ public class LocationController {
     @PutMapping("/{id}")
     @Operation(summary = "更新位置")
     @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
-    public Result<ArchiveLocation> update(
+    public Result<LocationSummaryResponse> update(
             @PathVariable @Parameter(description = "位置ID") Long id, 
             @Valid @RequestBody ArchiveLocation location) {
         ArchiveLocation updated = locationService.update(id, location);
-        return Result.success("更新成功", updated);
+        return Result.success("更新成功", LocationSummaryResponse.from(updated));
     }
 
     /**

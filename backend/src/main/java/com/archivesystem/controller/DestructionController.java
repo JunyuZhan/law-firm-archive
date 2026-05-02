@@ -6,6 +6,8 @@ import com.archivesystem.dto.destruction.DestructionApplyRequest;
 import com.archivesystem.dto.destruction.DestructionBatchApplyRequest;
 import com.archivesystem.dto.destruction.DestructionBatchExecuteRequest;
 import com.archivesystem.dto.destruction.DestructionRejectRequest;
+import com.archivesystem.dto.destruction.DestructionRecordSummaryResponse;
+import com.archivesystem.dto.destruction.DestructionRecordResponse;
 import com.archivesystem.entity.DestructionRecord;
 import com.archivesystem.service.DestructionService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -40,13 +42,13 @@ public class DestructionController {
     @PostMapping("/apply")
     @Operation(summary = "申请销毁")
     @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
-    public Result<DestructionRecord> apply(@Valid @RequestBody DestructionApplyRequest request) {
+    public Result<DestructionRecordSummaryResponse> apply(@Valid @RequestBody DestructionApplyRequest request) {
         DestructionRecord record = destructionService.apply(
             request.getArchiveId(), 
             request.getDestructionReason(), 
             request.getDestructionMethod()
         );
-        return Result.success("销毁申请已提交", record);
+        return Result.success("销毁申请已提交", DestructionRecordSummaryResponse.from(record));
     }
 
     /**
@@ -55,13 +57,13 @@ public class DestructionController {
     @PostMapping("/batch-apply")
     @Operation(summary = "批量申请销毁")
     @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
-    public Result<List<DestructionRecord>> batchApply(@Valid @RequestBody DestructionBatchApplyRequest request) {
+    public Result<List<DestructionRecordSummaryResponse>> batchApply(@Valid @RequestBody DestructionBatchApplyRequest request) {
         List<DestructionRecord> records = destructionService.batchApply(
             request.getArchiveIds(), 
             request.getDestructionReason(), 
             request.getDestructionMethod()
         );
-        return Result.success("批量销毁申请已提交", records);
+        return Result.success("批量销毁申请已提交", records.stream().map(DestructionRecordSummaryResponse::from).toList());
     }
 
     /**
@@ -70,9 +72,9 @@ public class DestructionController {
     @GetMapping("/{id}")
     @Operation(summary = "获取销毁记录详情")
     @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
-    public Result<DestructionRecord> getById(@PathVariable @Parameter(description = "销毁记录ID") Long id) {
+    public Result<DestructionRecordResponse> getById(@PathVariable @Parameter(description = "销毁记录ID") Long id) {
         DestructionRecord record = destructionService.getById(id);
-        return Result.success(record);
+        return Result.success(DestructionRecordResponse.from(record));
     }
 
     /**
@@ -81,12 +83,12 @@ public class DestructionController {
     @GetMapping
     @Operation(summary = "获取销毁记录列表")
     @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
-    public Result<PageResult<DestructionRecord>> getList(
+    public Result<PageResult<DestructionRecordSummaryResponse>> getList(
             @RequestParam(required = false) @Parameter(description = "状态") String status,
             @RequestParam(defaultValue = "1") @Min(value = 1, message = "页码最小为1") Integer pageNum,
             @RequestParam(defaultValue = "20") @Min(value = 1, message = "每页条数最小为1") @Max(value = 100, message = "每页条数最大为100") Integer pageSize) {
         PageResult<DestructionRecord> result = destructionService.getList(status, pageNum, pageSize);
-        return Result.success(result);
+        return Result.success(mapDestructionPage(result));
     }
 
     /**
@@ -95,11 +97,11 @@ public class DestructionController {
     @GetMapping("/pending")
     @Operation(summary = "获取待审批列表")
     @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
-    public Result<PageResult<DestructionRecord>> getPendingList(
+    public Result<PageResult<DestructionRecordSummaryResponse>> getPendingList(
             @RequestParam(defaultValue = "1") @Min(value = 1, message = "页码最小为1") Integer pageNum,
             @RequestParam(defaultValue = "20") @Min(value = 1, message = "每页条数最小为1") @Max(value = 100, message = "每页条数最大为100") Integer pageSize) {
         PageResult<DestructionRecord> result = destructionService.getPendingList(pageNum, pageSize);
-        return Result.success(result);
+        return Result.success(mapDestructionPage(result));
     }
 
     /**
@@ -108,11 +110,11 @@ public class DestructionController {
     @GetMapping("/approved")
     @Operation(summary = "获取待执行列表")
     @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
-    public Result<PageResult<DestructionRecord>> getApprovedList(
+    public Result<PageResult<DestructionRecordSummaryResponse>> getApprovedList(
             @RequestParam(defaultValue = "1") @Min(value = 1, message = "页码最小为1") Integer pageNum,
             @RequestParam(defaultValue = "20") @Min(value = 1, message = "每页条数最小为1") @Max(value = 100, message = "每页条数最大为100") Integer pageSize) {
         PageResult<DestructionRecord> result = destructionService.getApprovedList(pageNum, pageSize);
-        return Result.success(result);
+        return Result.success(mapDestructionPage(result));
     }
 
     /**
@@ -121,10 +123,10 @@ public class DestructionController {
     @GetMapping("/archive/{archiveId}")
     @Operation(summary = "获取档案的销毁记录")
     @PreAuthorize("isAuthenticated()")
-    public Result<List<DestructionRecord>> getByArchiveId(
+    public Result<List<DestructionRecordSummaryResponse>> getByArchiveId(
             @PathVariable @Parameter(description = "档案ID") Long archiveId) {
         List<DestructionRecord> records = destructionService.getByArchiveId(archiveId);
-        return Result.success(records);
+        return Result.success(records.stream().map(DestructionRecordSummaryResponse::from).toList());
     }
 
     /**
@@ -175,5 +177,14 @@ public class DestructionController {
     public Result<Void> batchExecute(@Valid @RequestBody DestructionBatchExecuteRequest request) {
         destructionService.batchExecute(request.getIds(), request.getRemarks());
         return Result.success("批量销毁已执行", null);
+    }
+
+    private PageResult<DestructionRecordSummaryResponse> mapDestructionPage(PageResult<DestructionRecord> result) {
+        return PageResult.of(
+                result.getCurrent(),
+                result.getSize(),
+                result.getTotal(),
+                result.getRecords().stream().map(DestructionRecordSummaryResponse::from).toList()
+        );
     }
 }

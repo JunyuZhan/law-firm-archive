@@ -44,6 +44,8 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class FileStorageServiceImpl implements FileStorageService {
+    private static final String FILE_UPLOAD_FAILURE_PUBLIC_MESSAGE = "文件上传失败，请稍后重试或联系系统管理员";
+    private static final String FILE_STORE_FAILURE_PUBLIC_MESSAGE = "文件存储失败，请稍后重试或联系系统管理员";
 
     private final MinioService minioService;
     private final DigitalFileMapper digitalFileMapper;
@@ -162,7 +164,7 @@ public class FileStorageServiceImpl implements FileStorageService {
 
         } catch (Exception e) {
             log.error("文件上传失败: {}", originalName, e);
-            throw new BusinessException("4001", "文件上传失败: " + e.getMessage());
+            throw new BusinessException("4001", FILE_UPLOAD_FAILURE_PUBLIC_MESSAGE);
         }
     }
 
@@ -268,7 +270,7 @@ public class FileStorageServiceImpl implements FileStorageService {
             log.error("文件存储失败: {}", downloadUrl, e);
             // 清理已上传到MinIO的文件
             cleanupMinioFile(storagePath);
-            throw new BusinessException("文件存储失败: " + e.getMessage());
+            throw new BusinessException(FILE_STORE_FAILURE_PUBLIC_MESSAGE);
         }
     }
 
@@ -410,6 +412,15 @@ public class FileStorageServiceImpl implements FileStorageService {
     }
 
     @Override
+    public void assertPreviewAccess(Long fileId) {
+        DigitalFile file = digitalFileMapper.selectById(fileId);
+        if (file == null) {
+            throw NotFoundException.of("文件", fileId);
+        }
+        assertFileAccessAuthorized(file, false);
+    }
+
+    @Override
     public FilePreviewInfo getPreviewInfo(Long fileId) {
         DigitalFile file = digitalFileMapper.selectById(fileId);
         if (file == null) {
@@ -465,7 +476,6 @@ public class FileStorageServiceImpl implements FileStorageService {
                 .url(previewUrl)
                 .previewType(previewType)
                 .isConverted(isConverted)
-                .originalExtension(ext)
                 .build();
     }
 
@@ -589,7 +599,8 @@ public class FileStorageServiceImpl implements FileStorageService {
     }
 
     private String getAllowedTypes() {
-        return configService.getValue(CONFIG_ALLOWED_TYPES, DEFAULT_ALLOWED_TYPES);
+        String allowedTypes = configService.getValue(CONFIG_ALLOWED_TYPES, DEFAULT_ALLOWED_TYPES);
+        return (allowedTypes == null || allowedTypes.isBlank()) ? DEFAULT_ALLOWED_TYPES : allowedTypes;
     }
 
     private boolean isAllowedType(String extension) {

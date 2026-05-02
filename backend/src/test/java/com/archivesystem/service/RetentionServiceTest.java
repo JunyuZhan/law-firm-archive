@@ -235,7 +235,7 @@ class RetentionServiceTest {
             when(operationLogMapper.insert(any(OperationLog.class))).thenReturn(1);
 
             assertDoesNotThrow(() -> 
-                retentionService.executeDestruction(1L, 2L, "审批通过，执行销毁"));
+                retentionService.executeDestruction(1L, "审批通过，执行销毁"));
 
             verify(archiveMapper).updateById(argThat(archive -> 
                 Archive.STATUS_DESTROYED.equals(archive.getStatus())));
@@ -247,7 +247,7 @@ class RetentionServiceTest {
         when(archiveMapper.selectById(999L)).thenReturn(null);
 
         assertThrows(NotFoundException.class, () -> 
-            retentionService.executeDestruction(999L, 2L, "审批通过"));
+            retentionService.executeDestruction(999L, "审批通过"));
     }
 
     @Test
@@ -255,6 +255,6 @@ class RetentionServiceTest {
         when(archiveMapper.selectById(1L)).thenReturn(testArchive);
 
         assertThrows(BusinessException.class, () -> 
-            retentionService.executeDestruction(1L, 2L, "审批通过"));
+            retentionService.executeDestruction(1L, "审批通过"));
     }
 }

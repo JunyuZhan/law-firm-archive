@@ -106,12 +106,24 @@ npm run dev
 
 面向正式交付时，建议统一使用容器化部署与版本化镜像。
 
+### Dist Center（标准安装入口）
+
+**分发中心**的定位是：**一键部署**——用固定 URL 提供 **`install.sh`（首次安装）** 与 **`update.sh`（升级）**，客户机 `curl … | bash` 即可拉取公共脚本、版本描述 **`versions/latest.json`**、Compose 与初始化资产并完成拉镜像 / 起服务。与 **`law-firm-archive` 仓库同级**的 **`dist-center`** 仓库实现该站点（slug 示例：`law-firm-archive`）。运行中的本系统还可**可选地**配置 **`latest.json` 的完整 URL**，在后台「系统信息」与分发中心公布的镜像标签对齐（见环境变量说明）。**对外出售时**：应由客户或集成商部署**其自有域名**上的分发站（或镜像 dist-center 资产到客户内网），避免成品默认依赖某一特定公网域名。
+
+若由你们托管官方分发站，目标机可使用与分发站域名一致的安装命令（默认安装根目录 **`/opt/law-firm-archive`** 以 `manifest.json` 为准），例如：
+
+```bash
+curl -fsSL https://<分发站域名>/projects/law-firm-archive/install.sh | sudo bash
+```
+
+分发站会下发与仓库中 **`docker/docker-compose.yml`** 对齐的全栈 Compose、环境模板及 **`scripts/init-db/02-schema-consolidated.sql`**。发版时需将 **`elasticsearch` / `backend` / `frontend`** 镜像推到 `latest.json` 所声明的仓库前缀，并同步更新客户可见分发站上的 **`latest.json`**。需要后台「与分发中心比对版本」时，在客户环境配置 **`DIST_CENTER_LATEST_JSON_URL`** 指向其 **`versions/latest.json`**（见 **`docker/.env.example`** 注释）。
+
 **源码、测试机构建、私有库、对外部署（不要混用）**
 
 - **源代码**只从 **GitHub** 拉取。私有仓库 **192.168.50.5:5050** 等只存**已构建镜像**，不提供源码。
-- **构建 / 测试专用机（例如 myu）**：在**完整克隆**的仓库里（如 `/root/src/law-firm-archive`），进入 **`docker/`**，使用 **`docker-compose.yml`**：`docker compose build` 再从源码起容器 `docker compose up -d`（必要时 `down -v` 做干净库）。这里的 backend、frontend、Elasticsearch 都是 **`build:` 本地 Dockerfile**，**不是**从私有库 `pull`。测通、冒烟通过后，再在仓库根目录执行 **`scripts/build-and-push-on-linux.sh`**（配置好 `docker/.env.registry` 且已 `docker login`），把**同一套已验证构建**推到私有库，供对外使用。
-- **客户或生产环境**：才使用 **`docker-compose.registry.yml`**，配置 **`REGISTRY_PULL` / `APP_VERSION`**，**从私有库拉取**已在测试机发布好的镜像运行。
-- **切勿**在 myu 这类测试机上用 `docker-compose.registry.yml` 拉私有库镜像当「最新源码测试」——那样跑的是旧制品，不是当前 GitHub `main`。
+- **构建 / 测试专用机（例如 myu）**：在**完整克隆**的仓库里（如 `/root/src/law-firm-archive`），进入 **`docker/`**，使用 **`docker compose up -d --build`** 从源码构建并起容器（必要时 `down -v` 做干净库）。这里的 backend、frontend、Elasticsearch 都是 **`build:` 本地 Dockerfile**，**不是**从私有库 `pull`。测通、冒烟通过后，再在仓库根目录执行 **`scripts/build-and-push-on-linux.sh`**（配置好 `docker/.env` 且已 `docker login`），把**同一套已验证构建**推到私有库，供对外使用。
+- **客户或生产环境**：设置 **`REGISTRY_PREFIX`**（如 `hub.albertzhan.top/`）和 **`APP_VERSION`**，使用 **`docker compose up -d`** 从私有库拉取已在测试机发布好的镜像运行。
+- **切勿**在 myu 这类测试机上设 `REGISTRY_PREFIX` 拉私有库镜像当「最新源码测试」——那样跑的是旧制品，不是当前 GitHub `main`。
 
 - [部署与升级手册](./docs/deployment-upgrade-guide.md)
 - [发布前验收清单](./docs/release-checklist.md)

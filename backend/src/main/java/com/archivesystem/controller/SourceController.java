@@ -1,6 +1,11 @@
 package com.archivesystem.controller;
 
 import com.archivesystem.common.Result;
+import com.archivesystem.common.exception.BusinessException;
+import com.archivesystem.dto.source.ExternalSourceApiKeyResponse;
+import com.archivesystem.dto.source.ExternalSourceCreateResponse;
+import com.archivesystem.dto.source.ExternalSourceResponse;
+import com.archivesystem.dto.source.ExternalSourceSummaryResponse;
 import com.archivesystem.entity.ExternalSource;
 import com.archivesystem.repository.ExternalSourceMapper;
 import com.archivesystem.security.ApiKeyAuthFilter;
@@ -19,6 +24,7 @@ import org.springframework.web.client.RestTemplate;
 import jakarta.validation.Valid;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 档案来源控制器.
@@ -30,6 +36,13 @@ import java.util.List;
 @RequiredArgsConstructor
 @Tag(name = "档案来源管理", description = "管理外部档案来源")
 public class SourceController {
+    private static final String SOURCE_CONNECTION_FAILURE_PUBLIC_MESSAGE = "连接失败，请检查API地址、网络和服务状态";
+    private static final List<String> SUPPORTED_SOURCE_TYPES = List.of(
+            ExternalSource.TYPE_LAW_FIRM,
+            ExternalSource.TYPE_COURT,
+            ExternalSource.TYPE_ENTERPRISE,
+            ExternalSource.TYPE_OTHER
+    );
 
     private final ExternalSourceMapper externalSourceMapper;
     private final ApiKeyAuthFilter apiKeyAuthFilter;
@@ -39,33 +52,31 @@ public class SourceController {
     @GetMapping
     @Operation(summary = "获取来源列表")
     @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
-    public Result<List<ExternalSource>> list() {
+    public Result<List<ExternalSourceSummaryResponse>> list() {
         List<ExternalSource> sources = externalSourceMapper.selectList(
                 new LambdaQueryWrapper<ExternalSource>()
                         .eq(ExternalSource::getDeleted, false)
                         .orderByDesc(ExternalSource::getCreatedAt));
-        // 不返回敏感信息
-        sources.forEach(s -> s.setApiKey(null));
-        return Result.success(sources);
+        return Result.success(sources.stream()
+                .map(ExternalSourceSummaryResponse::from)
+                .toList());
     }
 
     @GetMapping("/{id}")
     @Operation(summary = "获取来源详情")
     @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
-    public Result<ExternalSource> getById(@PathVariable Long id) {
+    public Result<ExternalSourceResponse> getById(@PathVariable Long id) {
         ExternalSource source = externalSourceMapper.selectById(id);
         if (source == null || source.getDeleted()) {
             return Result.error("404", "来源不存在");
         }
-        // 不返回敏感信息
-        source.setApiKey(null);
-        return Result.success(source);
+        return Result.success(ExternalSourceResponse.from(source, false, true));
     }
 
     @PostMapping
     @Operation(summary = "创建来源")
     @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
-    public Result<ExternalSource> create(@Valid @RequestBody ExternalSource source) {
+    public Result<ExternalSourceCreateResponse> create(@Valid @RequestBody ExternalSource source) {
         normalizeSource(source);
         // 检查编码是否重复
         ExternalSource existing = externalSourceMapper.selectOne(
@@ -75,13 +86,23 @@ public class SourceController {
         if (existing != null) {
             return Result.error("400", "来源编码已存在");
         }
-        // 自动生成 API Key
+        // 自动生成 API Key，数据库存储SHA-256哈希值
+        String plainApiKey;
         if (source.getApiKey() == null || source.getApiKey().isEmpty()) {
-            source.setApiKey(apiKeyAuthFilter.generateApiKey());
+            plainApiKey = apiKeyAuthFilter.generateApiKey();
+        } else {
+            plainApiKey = source.getApiKey();
         }
+        String hashedApiKey = apiKeyAuthFilter.hashApiKeyPublic(plainApiKey);
+        if (hasDuplicateApiKey(hashedApiKey, null)) {
+            return Result.error("409", "API Key 已被其他来源使用");
+        }
+        source.setApiKey(hashedApiKey);
         externalSourceMapper.insert(source);
-        // 返回时包含 API Key，仅创建时返回一次
-        return Result.success("创建成功，请保存 API Key", source);
+        apiKeyAuthFilter.clearApiKeyCache(hashedApiKey);
+        // 返回时包含明文 API Key，仅创建时返回一次
+        source.setApiKey(plainApiKey);
+        return Result.success("创建成功，请保存 API Key", ExternalSourceCreateResponse.from(source));
     }
 
     @PutMapping("/{id}")
@@ -102,12 +123,17 @@ public class SourceController {
             return Result.error("409", "来源编码已存在");
         }
         source.setId(id);
-        // 如果没有传入新密钥，保留原密钥
+        // 如果没有传入新密钥，保留原密钥（哈希值）
         if (source.getApiKey() == null || source.getApiKey().isEmpty()) {
             source.setApiKey(existing.getApiKey());
         } else if (!source.getApiKey().equals(existing.getApiKey())) {
-            // API Key 变更，清除旧缓存
+            // API Key 变更，清除旧缓存并存储新哈希值
+            String hashedApiKey = apiKeyAuthFilter.hashApiKeyPublic(source.getApiKey());
+            if (hasDuplicateApiKey(hashedApiKey, id)) {
+                return Result.error("409", "API Key 已被其他来源使用");
+            }
             apiKeyAuthFilter.clearApiKeyCache(existing.getApiKey());
+            source.setApiKey(hashedApiKey);
         }
         externalSourceMapper.updateById(source);
         // 清除新 API Key 的缓存（如果之前被标记为无效）
@@ -118,19 +144,23 @@ public class SourceController {
     @PostMapping("/{id}/regenerate-key")
     @Operation(summary = "重新生成API Key")
     @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
-    public Result<String> regenerateApiKey(@PathVariable Long id) {
+    public Result<ExternalSourceApiKeyResponse> regenerateApiKey(@PathVariable Long id) {
         ExternalSource source = externalSourceMapper.selectById(id);
         if (source == null || source.getDeleted()) {
             return Result.error("404", "来源不存在");
         }
         // 清除旧缓存
         apiKeyAuthFilter.clearApiKeyCache(source.getApiKey());
-        // 生成新 Key
-        String newApiKey = apiKeyAuthFilter.generateApiKey();
-        source.setApiKey(newApiKey);
+        // 生成新 Key（明文），数据库存储哈希值
+        String plainApiKey = apiKeyAuthFilter.generateApiKey();
+        String hashedApiKey = apiKeyAuthFilter.hashApiKeyPublic(plainApiKey);
+        source.setApiKey(hashedApiKey);
         externalSourceMapper.updateById(source);
+        apiKeyAuthFilter.clearApiKeyCache(hashedApiKey);
         log.info("重新生成API Key: sourceId={}, sourceCode={}", id, source.getSourceCode());
-        return Result.success("API Key 已重新生成，请保存", newApiKey);
+        return Result.success("API Key 已重新生成，请保存", ExternalSourceApiKeyResponse.builder()
+                .apiKey(plainApiKey)
+                .build());
     }
 
     @PutMapping("/{id}/toggle")
@@ -191,12 +221,12 @@ public class SourceController {
                 return Result.error("502", "连接返回状态: " + response.getStatusCode());
             }
         } catch (Exception e) {
-            log.warn("测试来源连接失败: id={}, error={}", id, e.getMessage());
+            log.warn("测试来源连接失败: id={}", id, e);
             source.setLastSyncAt(now);
             source.setLastSyncStatus("FAILED");
-            source.setLastSyncMessage(e.getMessage());
+            source.setLastSyncMessage(SOURCE_CONNECTION_FAILURE_PUBLIC_MESSAGE);
             externalSourceMapper.updateById(source);
-            return Result.error("502", "连接失败: " + e.getMessage());
+            return Result.error("502", SOURCE_CONNECTION_FAILURE_PUBLIC_MESSAGE);
         }
     }
 
@@ -219,7 +249,13 @@ public class SourceController {
         source.setDescription(trimToNull(source.getDescription()));
         source.setApiUrl(trimToNull(source.getApiUrl()));
         source.setApiKey(trimToNull(source.getApiKey()));
-        source.setAuthType(trimToNull(source.getAuthType()));
+        source.setAuthType(firstNonBlank(trimToNull(source.getAuthType()), ExternalSource.AUTH_API_KEY));
+        validateSourceType(source.getSourceType());
+        validateAuthType(source.getAuthType());
+        if (source.getApiUrl() != null) {
+            outboundUrlValidator.validate(source.getApiUrl(), "API地址");
+        }
+        normalizeExtraConfig(source);
     }
 
     private String trimToNull(String value) {
@@ -228,5 +264,56 @@ public class SourceController {
         }
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private boolean hasDuplicateApiKey(String hashedApiKey, Long excludeId) {
+        if (hashedApiKey == null || hashedApiKey.isBlank()) {
+            return false;
+        }
+        LambdaQueryWrapper<ExternalSource> wrapper = new LambdaQueryWrapper<ExternalSource>()
+                .eq(ExternalSource::getApiKey, hashedApiKey)
+                .eq(ExternalSource::getDeleted, false);
+        if (excludeId != null) {
+            wrapper.ne(ExternalSource::getId, excludeId);
+        }
+        return externalSourceMapper.selectOne(wrapper) != null;
+    }
+
+    private void validateSourceType(String sourceType) {
+        if (!SUPPORTED_SOURCE_TYPES.contains(sourceType)) {
+            throw new BusinessException("不支持的来源类型");
+        }
+    }
+
+    private void validateAuthType(String authType) {
+        if (!ExternalSource.AUTH_API_KEY.equals(authType)) {
+            throw new BusinessException("当前版本仅支持 API_KEY 认证方式");
+        }
+    }
+
+    private String firstNonBlank(String... values) {
+        for (String value : values) {
+            if (value != null && !value.isBlank()) {
+                return value;
+            }
+        }
+        return null;
+    }
+
+    private void normalizeExtraConfig(ExternalSource source) {
+        Map<String, Object> extraConfig = source.getExtraConfig();
+        if (extraConfig == null || extraConfig.isEmpty()) {
+            source.setExtraConfig(null);
+            return;
+        }
+
+        Object callbackValue = extraConfig.get("callbackUrl");
+        String callbackUrl = callbackValue != null ? trimToNull(String.valueOf(callbackValue)) : null;
+        if (callbackUrl != null) {
+            outboundUrlValidator.validate(callbackUrl, "回调地址");
+            source.setExtraConfig(Map.of("callbackUrl", callbackUrl));
+            return;
+        }
+        source.setExtraConfig(null);
     }
 }

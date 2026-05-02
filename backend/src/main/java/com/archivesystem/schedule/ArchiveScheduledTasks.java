@@ -48,10 +48,9 @@ public class ArchiveScheduledTasks {
 
     /**
      * 处理超时的 PROCESSING 状态档案
-     * 每 5 分钟执行一次
+     * 上一次执行完成后等待 5 分钟再执行（fixedDelay 避免任务重叠）
      */
-    @Scheduled(fixedRate = 5 * 60 * 1000, initialDelay = 60 * 1000)
-    @Transactional
+    @Scheduled(fixedDelay = 5 * 60 * 1000, initialDelay = 60 * 1000)
     public void handleProcessingTimeout() {
         log.info("开始检查 PROCESSING 超时档案...");
         
@@ -254,10 +253,10 @@ public class ArchiveScheduledTasks {
 
     /**
      * 死信消息自动重试
-     * 每 10 分钟执行一次
+     * 上一次执行完成后等待 10 分钟再执行（fixedDelay 避免任务重叠）
      * 自动重试待处理且未超过最大重试次数的死信消息
      */
-    @Scheduled(fixedRate = 10 * 60 * 1000, initialDelay = 2 * 60 * 1000)
+    @Scheduled(fixedDelay = 10 * 60 * 1000, initialDelay = 2 * 60 * 1000)
     public void autoRetryDeadLetters() {
         log.info("开始自动重试死信消息...");
         

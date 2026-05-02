@@ -236,7 +236,7 @@
                 预览
               </el-button>
               <el-button
-                v-if="linkInfo?.allowDownload && row.downloadUrl"
+                v-if="linkInfo?.allowDownload"
                 type="success"
                 link
                 @click="handleDownload(row)"
@@ -270,7 +270,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
@@ -319,9 +319,28 @@ onMounted(async () => {
   await loadArchiveData()
 })
 
+watch(token, async (newToken, oldToken) => {
+  if (newToken && newToken !== oldToken) {
+    await loadArchiveData()
+  }
+})
+
+function resetArchiveState() {
+  isValid.value = false
+  archiveInfo.value = null
+  files.value = []
+  linkInfo.value = null
+  borrowerInfo.value = null
+  previewVisible.value = false
+  previewFile.value = null
+  previewUrl.value = ''
+}
+
 async function loadArchiveData() {
+  resetArchiveState()
+  loading.value = true
+
   if (!token.value) {
-    isValid.value = false
     invalidReason.value = '缺少访问令牌'
     loading.value = false
     return
@@ -329,20 +348,19 @@ async function loadArchiveData() {
 
   try {
     const res = await accessArchive(token.value)
-    if (res.success && res.data?.valid) {
+    if (res.data?.valid) {
       isValid.value = true
+      invalidReason.value = ''
       archiveInfo.value = res.data.archive
       files.value = res.data.files || []
       linkInfo.value = res.data.linkInfo
       borrowerInfo.value = res.data.borrower
     } else {
-      isValid.value = false
       invalidReason.value = res.data?.invalidReason || res.message || '链接无效'
     }
   } catch (error) {
     console.error('加载档案数据失败', error)
-    isValid.value = false
-    invalidReason.value = '加载失败，请稍后重试'
+    invalidReason.value = error?.response?.data?.message || '加载失败，请稍后重试'
   } finally {
     loading.value = false
   }
@@ -361,12 +379,20 @@ async function handleDownload(file) {
 
   try {
     const res = await getBorrowFileDownloadUrl(token.value, file.fileId)
-    if (!res.success || !res.data) {
+    const downloadUrl = res?.data?.url
+    if (!downloadUrl) {
       ElMessage.warning(res.message || '该文件不允许下载')
       return
     }
-    await recordDownload(token.value, file.fileId)
-    window.open(res.data, '_blank')
+
+    window.open(downloadUrl, '_blank')
+
+    try {
+      await recordDownload(token.value, file.fileId)
+    } catch (recordError) {
+      console.error('记录下载日志失败', recordError)
+      ElMessage.warning('下载已开始，但记录下载日志失败')
+    }
   } catch (e) {
     ElMessage.error(e.response?.data?.message || e.message || '下载失败')
   }
@@ -434,11 +460,11 @@ function formatDateTime(value) {
 async function loadPreviewUrl(file) {
   try {
     const res = await getBorrowFilePreviewUrl(token.value, file.fileId)
-    if (!res.success || !res.data) {
+    if (!res.data?.url) {
       ElMessage.warning(res.message || '该文件暂不支持预览')
       return
     }
-    previewUrl.value = res.data
+    previewUrl.value = res.data.url
     previewVisible.value = true
   } catch (e) {
     ElMessage.error(e.response?.data?.message || e.message || '预览失败')

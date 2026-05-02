@@ -1,10 +1,14 @@
 package com.archivesystem.service.impl;
 
 import com.archivesystem.common.util.RegistryUrlUtils;
+import com.archivesystem.config.DistCenterProperties;
 import com.archivesystem.config.RegistryUpgradeProperties;
 import com.archivesystem.dto.config.RegistryUpdateCheckDTO;
 import com.archivesystem.registry.DockerRegistryManifestClient;
 import com.archivesystem.registry.ManifestFetchResult;
+import com.archivesystem.registry.distcenter.DistCenterDescriptor;
+import com.archivesystem.registry.distcenter.DistCenterLatestFetcher;
+import com.archivesystem.registry.distcenter.DistCenterLatestOutcome;
 import com.archivesystem.service.ConfigService;
 import com.archivesystem.service.RegistryUpdateCheckService;
 import lombok.RequiredArgsConstructor;
@@ -24,10 +28,14 @@ public class RegistryUpdateCheckServiceImpl implements RegistryUpdateCheckServic
     private static final String KEY_FRONTEND_REPO = "system.upgrade.frontend_repository";
     private static final String KEY_REG_USER = "system.upgrade.registry_username";
     private static final String KEY_REG_PASS = "system.upgrade.registry_password";
+    private static final String KEY_DIST_CENTER_LATEST = "system.upgrade.dist_center_latest_json_url";
+    private static final String DIST_CENTER_FAILURE_PUBLIC_MESSAGE = "拉取分发中心版本描述失败，请检查地址配置、网络连接和返回内容";
 
     private final ConfigService configService;
     private final RegistryUpgradeProperties registryUpgradeProperties;
     private final DockerRegistryManifestClient manifestClient;
+    private final DistCenterLatestFetcher distCenterLatestFetcher;
+    private final DistCenterProperties distCenterProperties;
 
     @Value("${APP_VERSION:}")
     private String appVersion;
@@ -60,14 +68,64 @@ public class RegistryUpdateCheckServiceImpl implements RegistryUpdateCheckServic
         Part backend = evaluate(backendRepo, tag, registryBase, runningBackend, regUser, regPass);
         Part frontend = evaluate(frontendRepo, tag, registryBase, runningFrontend, regUser, regPass);
 
-        return merge(backend, frontend);
+        RegistryUpdateCheckDTO dto = merge(backend, frontend);
+        return applyDistCenter(dto);
+    }
+
+    private RegistryUpdateCheckDTO applyDistCenter(RegistryUpdateCheckDTO dto) {
+        String localTag = StringUtils.hasText(appVersion) ? appVersion.trim() : "";
+        dto.setLocalImageTag(StringUtils.hasText(localTag) ? localTag : null);
+
+        String url = firstNonBlank(configService.getValue(KEY_DIST_CENTER_LATEST), distCenterProperties.getLatestJsonUrl());
+        if (!StringUtils.hasText(url)) {
+            dto.setDistCenterConfigured(false);
+            return dto;
+        }
+
+        dto.setDistCenterConfigured(true);
+        DistCenterLatestOutcome outcome = distCenterLatestFetcher.fetchDescriptor(url.trim());
+        if (!outcome.success()) {
+            dto.setDistCenterOk(false);
+            String err = sanitizeDistCenterError(outcome.errorMessage());
+            dto.setDistCenterError(err);
+            dto.setDetail(appendDetail(dto.getDetail(), "分发中心：" + err));
+            return dto;
+        }
+
+        dto.setDistCenterOk(true);
+        dto.setDistCenterError(null);
+        DistCenterDescriptor d = outcome.descriptor();
+        if (d == null) {
+            return dto;
+        }
+        dto.setDistCenterPublishedImageTag(blankToNull(d.publishedImageTag()));
+        dto.setDistCenterSnapshotVersion(blankToNull(d.snapshotVersion()));
+        dto.setDistCenterChannelAppVersion(blankToNull(d.channelAppVersion()));
+
+        String pub = StringUtils.hasText(d.publishedImageTag()) ? d.publishedImageTag().trim() : "";
+        if (StringUtils.hasText(pub) && StringUtils.hasText(localTag) && !pub.equalsIgnoreCase(localTag)) {
+            dto.setUpdateAvailable(true);
+            String lead = "分发中心发布版本 → " + pub + "，当前运行版本 → " + localTag + "。";
+            dto.setMessage(lead + (StringUtils.hasText(dto.getMessage()) ? " " + dto.getMessage() : ""));
+        }
+        return dto;
+    }
+
+    private static String appendDetail(String existing, String extra) {
+        if (!StringUtils.hasText(extra)) {
+            return existing;
+        }
+        if (!StringUtils.hasText(existing)) {
+            return extra;
+        }
+        return existing + " " + extra;
     }
 
     private Part evaluate(String repository, String tag, String registryBase, String runningDigest,
                           Optional<String> username, Optional<String> password) {
         ManifestFetchResult remote = manifestClient.fetchManifestDigest(registryBase, repository, tag, username, password);
         if (!remote.isSuccess()) {
-            String hint = StringUtils.hasText(remote.getFailureHint()) ? remote.getFailureHint() : "未知错误";
+            String hint = sanitizeRegistryFailureHint(remote.getFailureHint());
             return new Part(false, null, hint);
         }
         if (!StringUtils.hasText(runningDigest)) {
@@ -143,8 +201,42 @@ public class RegistryUpdateCheckServiceImpl implements RegistryUpdateCheckServic
         return StringUtils.hasText(s) ? s : null;
     }
 
+    private static String sanitizeDistCenterError(String errorMessage) {
+        if (!StringUtils.hasText(errorMessage)) {
+            return "未知错误";
+        }
+        String normalized = errorMessage.trim();
+        if (normalized.startsWith("HTTP ")) {
+            return normalized;
+        }
+        if ("分发中心地址必须以 http:// 或 https:// 开头".equals(normalized)) {
+            return normalized;
+        }
+        return DIST_CENTER_FAILURE_PUBLIC_MESSAGE;
+    }
+
+    private static String sanitizeRegistryFailureHint(String failureHint) {
+        if (!StringUtils.hasText(failureHint)) {
+            return "未知错误";
+        }
+        String normalized = failureHint.trim();
+        if (normalized.startsWith("HTTP 401")) {
+            return normalized;
+        }
+        if (normalized.startsWith("HTTP 404")) {
+            return normalized;
+        }
+        if (normalized.startsWith("HTTP ")) {
+            return "镜像仓库请求失败，请检查仓库地址、镜像路径和网络连通性";
+        }
+        if (normalized.startsWith("网络或 TLS 异常")) {
+            return "镜像仓库网络或 TLS 异常，请检查仓库地址、证书和网络连通性";
+        }
+        return "镜像仓库检查失败，请检查规则与运行参数配置";
+    }
+
     /**
-     * @param remoteOk 是否成功从仓库拉取清单
+     * @param remoteOk   是否成功从仓库拉取清单
      * @param upgrade    与运行中 digest 比较是否有更新；remoteOk 且未配置 digest 时为 null
      * @param failureHint remoteOk 为 false 时的原因
      */

@@ -33,5 +33,5 @@ public interface RetentionService {
     /**
      * 执行档案销毁.
      */
-    void executeDestruction(Long archiveId, Long approverId, String remarks);
+    void executeDestruction(Long archiveId, String remarks);
 }

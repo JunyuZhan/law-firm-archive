@@ -84,6 +84,16 @@ public class GlobalExceptionHandler {
     /**
      * 处理参数校验异常（@RequestBody）.
      */
+    @ExceptionHandler(BadRequestException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public Result<Void> handleBadRequestException(BadRequestException e) {
+        log.warn("非法请求: {}", e.getMessage());
+        return Result.error("400", e.getMessage());
+    }
+
+    /**
+     * 处理参数校验异常（@RequestBody）.
+     */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public Result<Void> handleValidationException(MethodArgumentNotValidException e) {

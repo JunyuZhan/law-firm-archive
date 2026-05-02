@@ -19,7 +19,6 @@
       <el-tabs
         v-model="activeTab"
         class="settings-tabs"
-        @tab-change="handleTabChange"
       >
         <el-tab-pane
           v-for="tab in visibleTabs"
@@ -38,7 +37,7 @@
 <script setup>
 import { computed, defineAsyncComponent, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useUserStore } from '@/stores'
+import { useUserStore } from '@/stores/user'
 
 const route = useRoute()
 const router = useRouter()
@@ -73,29 +72,46 @@ const tabs = [
 
 const visibleTabs = computed(() => tabs.filter((tab) => tab.allowed()))
 const fallbackTab = computed(() => visibleTabs.value[0]?.name || 'categories')
+const resolveRequestedTab = () => {
+  const tab = Array.isArray(route.query.tab) ? route.query.tab[0] : route.query.tab
+  return typeof tab === 'string' ? tab : ''
+}
+
+const replaceTabQuery = (tab) => {
+  const nextTab = visibleTabs.value.some((item) => item.name === tab) ? tab : fallbackTab.value
+  if (resolveRequestedTab() === nextTab) {
+    return
+  }
+  router.replace({
+    path: route.path,
+    query: {
+      ...route.query,
+      tab: nextTab
+    },
+    hash: route.hash
+  })
+}
+
 const activeTab = computed({
   get: () => {
-    const requested = route.query.tab
+    const requested = resolveRequestedTab()
     return visibleTabs.value.some((tab) => tab.name === requested) ? requested : fallbackTab.value
   },
   set: (value) => {
-    router.replace({ path: '/archive-settings', query: { tab: value } })
+    replaceTabQuery(value)
   }
 })
 
 watch(
   () => route.query.tab,
   () => {
-    if (!visibleTabs.value.some((tab) => tab.name === route.query.tab)) {
-      router.replace({ path: '/archive-settings', query: { tab: fallbackTab.value } })
+    const requested = resolveRequestedTab()
+    if (!visibleTabs.value.some((tab) => tab.name === requested)) {
+      replaceTabQuery(fallbackTab.value)
     }
   },
   { immediate: true }
 )
-
-const handleTabChange = (name) => {
-  activeTab.value = name
-}
 </script>
 
 <style lang="scss" scoped>

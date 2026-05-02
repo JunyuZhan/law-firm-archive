@@ -12,6 +12,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.util.List;
+import java.time.LocalDateTime;
 
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -43,14 +44,19 @@ class RetentionPeriodControllerTest {
                 .id(1L)
                 .periodCode(RetentionPeriod.Y10)
                 .periodName("10年")
+                .description("内部说明")
                 .sortOrder(10)
                 .build();
+        period.setCreatedAt(LocalDateTime.now());
         when(retentionPeriodService.listAll()).thenReturn(List.of(period));
 
         mockMvc.perform(get("/retention-periods"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
+                .andExpect(jsonPath("$.data[0].id").doesNotExist())
                 .andExpect(jsonPath("$.data[0].periodCode").value("Y10"))
-                .andExpect(jsonPath("$.data[0].periodName").value("10年"));
+                .andExpect(jsonPath("$.data[0].periodName").value("10年"))
+                .andExpect(jsonPath("$.data[0].description").doesNotExist())
+                .andExpect(jsonPath("$.data[0].createdAt").doesNotExist());
     }
 }

@@ -2,16 +2,23 @@ package com.archivesystem.controller;
 
 import com.archivesystem.common.PageResult;
 import com.archivesystem.common.Result;
+import com.archivesystem.common.exception.BadRequestException;
 import com.archivesystem.dto.backup.BackupSetResponse;
 import com.archivesystem.dto.backup.RestoreExecuteRequest;
+import com.archivesystem.dto.backup.RestoreJobResponse;
+import com.archivesystem.dto.backup.RestoreJobSubmitResponse;
 import com.archivesystem.dto.backup.RestoreMaintenanceStatus;
 import com.archivesystem.entity.RestoreJob;
 import com.archivesystem.service.BackupService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -30,6 +37,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/restores")
 @RequiredArgsConstructor
+@Validated
 @PreAuthorize("hasRole('SYSTEM_ADMIN')")
 public class RestoreController {
 
@@ -55,21 +63,33 @@ public class RestoreController {
 
     @Operation(summary = "恢复源备份集列表")
     @GetMapping("/sets")
-    public Result<List<BackupSetResponse>> getBackupSets(@RequestParam(required = false) Long targetId) {
+    public Result<List<BackupSetResponse>> getBackupSets(@RequestParam(required = false)
+                                                         @Positive(message = "targetId 必须为正数") Long targetId) {
+        if (targetId != null && targetId < 1) {
+            throw new BadRequestException("targetId 必须为正数");
+        }
         return Result.success(backupService.getBackupSets(targetId));
     }
 
     @Operation(summary = "执行恢复")
     @PostMapping("/run")
-    public Result<RestoreJob> runRestore(@Valid @RequestBody RestoreExecuteRequest request) {
-        return Result.success("恢复任务已启动", backupService.runRestore(request));
+    public Result<RestoreJobSubmitResponse> runRestore(@Valid @RequestBody RestoreExecuteRequest request) {
+        RestoreJobSubmitResponse response = RestoreJobSubmitResponse.from(backupService.runRestore(request));
+        return Result.success(response.getStatusMessage(), response);
     }
 
     @Operation(summary = "恢复任务列表")
     @GetMapping("/jobs")
-    public Result<PageResult<RestoreJob>> getJobs(
-            @RequestParam(defaultValue = "1") Integer pageNum,
-            @RequestParam(defaultValue = "20") Integer pageSize) {
-        return Result.success(backupService.getRestoreJobs(pageNum, pageSize));
+    public Result<PageResult<RestoreJobResponse>> getJobs(
+            @RequestParam(defaultValue = "1") @Min(value = 1, message = "页码最小为1") Integer pageNum,
+            @RequestParam(defaultValue = "20") @Min(value = 1, message = "每页条数最小为1")
+            @Max(value = 100, message = "每页条数最大为100") Integer pageSize) {
+        PageResult<RestoreJob> result = backupService.getRestoreJobs(pageNum, pageSize);
+        return Result.success(PageResult.of(
+                result.getCurrent(),
+                result.getSize(),
+                result.getTotal(),
+                result.getRecords().stream().map(RestoreJobResponse::from).toList()
+        ));
     }
 }

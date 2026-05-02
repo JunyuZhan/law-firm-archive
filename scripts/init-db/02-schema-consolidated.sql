@@ -943,9 +943,11 @@ ON CONFLICT DO NOTHING;
 
 -- =====================================================
 -- 初始化用户（三员分立 + 业务用户）
--- 默认密码均为：admin123
+-- 默认密码均为：admin123（仅用于首次部署测试！）
 -- 密码BCrypt哈希（cost=10）
--- 注意：生产环境部署后请立即修改所有默认密码！
+-- ⚠️ 安全警告：生产环境部署前必须通过环境变量 DEFAULT_ADMIN_PASSWORD
+--    或部署后立即在控制台修改所有默认密码！
+--    保留此默认密码仅用于开发/测试环境的快速验证。
 -- =====================================================
 
 -- 1. 系统管理员（SYSTEM_ADMIN）- 负责系统配置、用户管理、系统维护
@@ -993,10 +995,11 @@ JOIN sys_role r ON r.role_code = u.user_type
 WHERE u.username IN ('admin', 'security', 'auditor', 'archivist1', 'archivist2', 'lawyer1', 'lawyer2', 'assistant')
 ON CONFLICT (user_id, role_id) DO NOTHING;
 
--- 初始化律所系统来源（包含 API Key，用于对接律所管理系统）
+-- 初始化律所系统来源（API Key 以 SHA-256 哈希存储，验证时比对哈希值）
 -- 注意：生产环境部署后请在后台"来源管理"中重新生成 API Key
+-- 此处存储的是 API Key 的 SHA-256 哈希值，原始明文 Key 仅在创建时返回一次
 INSERT INTO arc_external_source (source_code, source_name, source_type, description, api_key, auth_type, enabled) VALUES
-('LAW_FIRM_MAIN', '律所管理系统', 'LAW_FIRM', '接收律所管理系统推送的归档档案', 'lawfirm-archive-api-key-2026', 'API_KEY', true)
+('LAW_FIRM_MAIN', '律所管理系统', 'LAW_FIRM', '接收律所管理系统推送的归档档案', 'a3f8c9e2b7d14f6a8e5c3b9d2f7a4e1c6b8d3f5a7e9c2b4d6f8a3e5c7b9d1f4a', 'API_KEY', true)
 ON CONFLICT (source_code) DO UPDATE SET 
     api_key = EXCLUDED.api_key,
     enabled = EXCLUDED.enabled;
@@ -1026,6 +1029,7 @@ INSERT INTO sys_config (config_key, config_value, config_type, config_group, des
 -- 系统参数 - 搜索
 ('system.search.max.results', '10000', 'NUMBER', 'SYSTEM', '搜索最大结果数', true, 25),
 ('system.search.page.size', '20', 'NUMBER', 'SYSTEM', '默认分页大小', true, 26),
+('system.storage.minio.proxy-prefix', '/storage', 'STRING', 'SYSTEM', 'MinIO 代理前缀（经 Nginx 暴露）', true, 27),
 -- 系统参数 - 水印
 ('system.watermark.enabled', 'true', 'BOOLEAN', 'SYSTEM', '启用水印', true, 30),
 ('system.watermark.text', '档案管理系统', 'STRING', 'SYSTEM', '水印文字', true, 31),
@@ -1064,6 +1068,7 @@ INSERT INTO sys_config (config_key, config_value, config_type, config_group, des
 ('system.upgrade.frontend_repository', 'law-firm-archive/frontend', 'STRING', 'SYSTEM', '前端镜像路径', true, 82),
 ('system.upgrade.registry_username', '', 'STRING', 'SYSTEM', '仓库只读用户名（可选）', true, 83),
 ('system.upgrade.registry_password', '', 'STRING', 'SYSTEM', '仓库只读密码（可选）', true, 84),
+('system.upgrade.dist_center_latest_json_url', '', 'STRING', 'SYSTEM', '分发中心一键安装/升级所托管的 versions/latest.json 完整 URL（可选；与 DIST_CENTER_LATEST_JSON_URL 二选一，后台优先）', true, 85),
 -- 系统参数 - 站点信息
 ('system.site.name', '档案管理系统', 'STRING', 'SITE', '系统名称', true, 1),
 ('system.site.name.en', 'Archive Management System', 'STRING', 'SITE', '系统英文名称', true, 2),

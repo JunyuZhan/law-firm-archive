@@ -1,5 +1,6 @@
 package com.archivesystem.security;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -19,6 +20,7 @@ import java.util.Map;
 public class SecurityAuditService {
 
     private final JdbcTemplate jdbcTemplate;
+    private final ObjectMapper objectMapper;
 
     // 事件类型常量
     public static final String EVENT_LOGIN_SUCCESS = "LOGIN_SUCCESS";
@@ -91,44 +93,17 @@ public class SecurityAuditService {
     }
 
     /**
-     * 简单的JSON转换.
+     * JSON转换（使用ObjectMapper，支持嵌套对象和特殊字符）.
      */
     private String toJson(Map<String, Object> map) {
         if (map == null || map.isEmpty()) {
             return "{}";
         }
-        
-        StringBuilder sb = new StringBuilder("{");
-        boolean first = true;
-        for (Map.Entry<String, Object> entry : map.entrySet()) {
-            if (!first) {
-                sb.append(",");
-            }
-            first = false;
-            sb.append("\"").append(entry.getKey()).append("\":");
-            Object value = entry.getValue();
-            if (value instanceof String) {
-                sb.append("\"").append(escapeJson((String) value)).append("\"");
-            } else if (value instanceof Number) {
-                sb.append(value);
-            } else if (value instanceof Boolean) {
-                sb.append(value);
-            } else if (value == null) {
-                sb.append("null");
-            } else {
-                sb.append("\"").append(escapeJson(value.toString())).append("\"");
-            }
+        try {
+            return objectMapper.writeValueAsString(map);
+        } catch (Exception e) {
+            log.warn("JSON序列化失败，降级为空对象: {}", e.getMessage());
+            return "{}";
         }
-        sb.append("}");
-        return sb.toString();
-    }
-
-    private String escapeJson(String str) {
-        if (str == null) return "";
-        return str.replace("\\", "\\\\")
-                  .replace("\"", "\\\"")
-                  .replace("\n", "\\n")
-                  .replace("\r", "\\r")
-                  .replace("\t", "\\t");
     }
 }

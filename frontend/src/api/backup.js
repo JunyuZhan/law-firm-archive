@@ -14,6 +14,13 @@ export function getBackupTargets() {
   })
 }
 
+export function getBackupTarget(id) {
+  return request({
+    url: `/backups/targets/${id}`,
+    method: 'get'
+  })
+}
+
 export function createBackupTarget(data) {
   return request({
     url: '/backups/targets',
@@ -53,6 +60,14 @@ export function getBackupJobs(params) {
 }
 
 export function getBackupSets(params) {
+  return request({
+    url: '/backups/sets',
+    method: 'get',
+    params
+  })
+}
+
+export function getRestoreBackupSets(params) {
   return request({
     url: '/restores/sets',
     method: 'get',

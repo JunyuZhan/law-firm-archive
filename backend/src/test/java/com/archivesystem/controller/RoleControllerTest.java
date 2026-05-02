@@ -48,6 +48,7 @@ class RoleControllerTest {
         testRole.setRoleName("管理员");
         testRole.setDescription("系统管理员角色");
         testRole.setStatus("ACTIVE");
+        testRole.setDeleted(true);
     }
 
     @Test
@@ -64,7 +65,9 @@ class RoleControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
-                .andExpect(jsonPath("$.data.roleCode").value("ADMIN"));
+                .andExpect(jsonPath("$.data.roleCode").value("ADMIN"))
+                .andExpect(jsonPath("$.data.deleted").doesNotExist())
+                .andExpect(jsonPath("$.data.updatedAt").doesNotExist());
     }
 
     @Test
@@ -92,7 +95,9 @@ class RoleControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
                 .andExpect(jsonPath("$.data.roleCode").value("ADMIN"))
-                .andExpect(jsonPath("$.data.roleName").value("管理员"));
+                .andExpect(jsonPath("$.data.roleName").value("管理员"))
+                .andExpect(jsonPath("$.data.deleted").doesNotExist())
+                .andExpect(jsonPath("$.data.updatedAt").doesNotExist());
     }
 
     @Test
@@ -109,7 +114,21 @@ class RoleControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
                 .andExpect(jsonPath("$.data[0].roleCode").value("ADMIN"))
-                .andExpect(jsonPath("$.data[1].roleCode").value("USER"));
+                .andExpect(jsonPath("$.data[1].roleCode").value("USER"))
+                .andExpect(jsonPath("$.data[0].deleted").doesNotExist())
+                .andExpect(jsonPath("$.data[0].updatedAt").doesNotExist());
+    }
+
+    @Test
+    void testListOptions_Success() throws Exception {
+        when(roleService.list()).thenReturn(Arrays.asList(testRole));
+
+        mockMvc.perform(get("/roles/options"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("200"))
+                .andExpect(jsonPath("$.data[0].roleName").value("管理员"))
+                .andExpect(jsonPath("$.data[0].roleCode").doesNotExist())
+                .andExpect(jsonPath("$.data[0].createdAt").doesNotExist());
     }
 
     @Test

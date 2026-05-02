@@ -2,14 +2,14 @@
   <div class="center-page">
     <div class="page-header">
       <h1>权限管理</h1>
-      <p>将用户和角色集中到同一入口，由系统管理员统一维护权限边界。</p>
+      <p>将用户和角色集中到同一入口，由具备系统管理权限的账号统一维护权限边界。</p>
     </div>
 
     <el-alert
       title="权限敏感区"
       type="warning"
       :closable="false"
-      description="当前版本仅系统管理员可进入权限管理并维护用户、角色和授权。"
+      description="当前版本仅具备系统管理权限的账号可进入权限管理并维护用户、角色和授权。"
     />
 
     <el-card
@@ -19,7 +19,6 @@
       <el-tabs
         v-model="activeTab"
         class="center-tabs"
-        @tab-change="handleTabChange"
       >
         <el-tab-pane
           v-for="tab in visibleTabs"
@@ -38,7 +37,7 @@
 <script setup>
 import { computed, defineAsyncComponent, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useUserStore } from '@/stores'
+import { useUserStore } from '@/stores/user'
 
 const route = useRoute()
 const router = useRouter()
@@ -61,29 +60,46 @@ const tabs = [
 
 const visibleTabs = computed(() => tabs.filter((tab) => tab.allowed()))
 const fallbackTab = computed(() => visibleTabs.value[0]?.name || 'users')
+const resolveRequestedTab = () => {
+  const tab = Array.isArray(route.query.tab) ? route.query.tab[0] : route.query.tab
+  return typeof tab === 'string' ? tab : ''
+}
+
+const replaceTabQuery = (tab) => {
+  const nextTab = visibleTabs.value.some((item) => item.name === tab) ? tab : fallbackTab.value
+  if (resolveRequestedTab() === nextTab) {
+    return
+  }
+  router.replace({
+    path: route.path,
+    query: {
+      ...route.query,
+      tab: nextTab
+    },
+    hash: route.hash
+  })
+}
+
 const activeTab = computed({
   get: () => {
-    const requested = route.query.tab
+    const requested = resolveRequestedTab()
     return visibleTabs.value.some((tab) => tab.name === requested) ? requested : fallbackTab.value
   },
   set: (value) => {
-    router.replace({ path: '/system/permissions', query: { tab: value } })
+    replaceTabQuery(value)
   }
 })
 
 watch(
   () => route.query.tab,
   () => {
-    if (!visibleTabs.value.some((tab) => tab.name === route.query.tab)) {
-      router.replace({ path: '/system/permissions', query: { tab: fallbackTab.value } })
+    const requested = resolveRequestedTab()
+    if (!visibleTabs.value.some((tab) => tab.name === requested)) {
+      replaceTabQuery(fallbackTab.value)
     }
   },
   { immediate: true }
 )
-
-const handleTabChange = (name) => {
-  activeTab.value = name
-}
 </script>
 
 <style lang="scss" scoped>

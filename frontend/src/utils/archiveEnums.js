@@ -259,6 +259,8 @@ export const getFondsTypeOptions = () => {
 // ========== 用户角色 ==========
 export const USER_ROLES = {
   SYSTEM_ADMIN: '系统管理员',
+  SECURITY_ADMIN: '安全保密员',
+  AUDIT_ADMIN: '安全审计员',
   ARCHIVE_REVIEWER: '档案审核员',
   ARCHIVE_MANAGER: '档案管理员',
   USER: '普通用户'

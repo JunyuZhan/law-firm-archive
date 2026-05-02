@@ -305,6 +305,8 @@
             type="textarea"
             :rows="3"
             placeholder="请输入销毁原因"
+            maxlength="1000"
+            show-word-limit
           />
         </el-form-item>
       </el-form>
@@ -518,10 +520,20 @@ const createForm = ref({
   destructionMethod: 'LOGICAL',
   destructionReason: ''
 })
+const requireTrimmedText = (message) => ({
+  validator: (_rule, value, callback) => {
+    if (!value?.trim()) {
+      callback(new Error(message))
+      return
+    }
+    callback()
+  },
+  trigger: 'blur'
+})
 const createRules = {
   archiveId: [{ required: true, message: '请选择档案', trigger: 'change' }],
   destructionMethod: [{ required: true, message: '请选择销毁方式', trigger: 'change' }],
-  destructionReason: [{ required: true, message: '请输入销毁原因', trigger: 'blur' }]
+  destructionReason: [requireTrimmedText('请输入销毁原因')]
 }
 const archiveOptions = ref([])
 const archiveSearchLoading = ref(false)
@@ -636,7 +648,10 @@ const submitCreate = async () => {
   try {
     await createFormRef.value.validate()
     submitting.value = true
-    await applyDestruction(createForm.value)
+    await applyDestruction({
+      ...createForm.value,
+      destructionReason: createForm.value.destructionReason.trim()
+    })
     ElMessage.success('销毁申请已提交')
     createDialogVisible.value = false
     fetchData()
@@ -683,9 +698,13 @@ const confirmReject = async () => {
     ElMessage.warning('请输入拒绝原因')
     return
   }
+  if (rejectForm.comment.trim().length < 2) {
+    ElMessage.warning('拒绝原因至少2个字')
+    return
+  }
   rejectSubmitting.value = true
   try {
-    await rejectDestruction(currentRow.value.id, rejectForm.comment)
+    await rejectDestruction(currentRow.value.id, rejectForm.comment.trim())
     ElMessage.success('已拒绝')
     rejectDialogVisible.value = false
     fetchData()
@@ -741,6 +760,7 @@ const handleBatchExecute = async () => {
 
 // 查看详情
 const handleView = async (row) => {
+  detailData.value = null
   try {
     const res = await getDestructionDetail(row.id)
     detailData.value = res.data

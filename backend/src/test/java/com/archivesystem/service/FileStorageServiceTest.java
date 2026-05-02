@@ -3,6 +3,7 @@ package com.archivesystem.service;
 import com.archivesystem.common.exception.BusinessException;
 import com.archivesystem.common.exception.ForbiddenException;
 import com.archivesystem.common.exception.NotFoundException;
+import com.archivesystem.dto.file.FilePreviewInfo;
 import com.archivesystem.entity.Archive;
 import com.archivesystem.entity.BorrowApplication;
 import com.archivesystem.entity.DigitalFile;
@@ -23,6 +24,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -173,6 +176,63 @@ class FileStorageServiceTest {
     }
 
     @Test
+    void testAssertPreviewAccess_Success() {
+        when(digitalFileMapper.selectById(1L)).thenReturn(testFile);
+        try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+            securityUtils.when(() -> SecurityUtils.hasAnyRole("SYSTEM_ADMIN", "ARCHIVE_REVIEWER", "ARCHIVE_MANAGER"))
+                    .thenReturn(true);
+
+            assertDoesNotThrow(() -> fileStorageService.assertPreviewAccess(1L));
+        }
+    }
+
+    @Test
+    void testAssertPreviewAccess_FileNotFound() {
+        when(digitalFileMapper.selectById(999L)).thenReturn(null);
+
+        assertThrows(NotFoundException.class, () -> fileStorageService.assertPreviewAccess(999L));
+    }
+
+    @Test
+    void testGetPreviewInfo_WithConvertedFile() {
+        testFile.setFileExtension("docx");
+        testFile.setConvertedPath("converted/test.pdf");
+        when(digitalFileMapper.selectById(1L)).thenReturn(testFile);
+        when(minioService.getPresignedUrl("converted/test.pdf", 3600))
+                .thenReturn("http://minio/preview/converted/test.pdf");
+
+        try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+            securityUtils.when(() -> SecurityUtils.hasAnyRole("SYSTEM_ADMIN", "ARCHIVE_REVIEWER", "ARCHIVE_MANAGER"))
+                    .thenReturn(true);
+
+            FilePreviewInfo result = fileStorageService.getPreviewInfo(1L);
+
+            assertNotNull(result);
+            assertEquals("http://minio/preview/converted/test.pdf", result.getUrl());
+            assertEquals("pdf", result.getPreviewType());
+            assertEquals(Boolean.TRUE, result.getIsConverted());
+        }
+    }
+
+    @Test
+    void testGetPreviewInfo_UnsupportedType() {
+        testFile.setFileExtension("zip");
+        when(digitalFileMapper.selectById(1L)).thenReturn(testFile);
+
+        try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+            securityUtils.when(() -> SecurityUtils.hasAnyRole("SYSTEM_ADMIN", "ARCHIVE_REVIEWER", "ARCHIVE_MANAGER"))
+                    .thenReturn(true);
+
+            FilePreviewInfo result = fileStorageService.getPreviewInfo(1L);
+
+            assertNotNull(result);
+            assertNull(result.getUrl());
+            assertEquals("unsupported", result.getPreviewType());
+            assertEquals(Boolean.FALSE, result.getIsConverted());
+        }
+    }
+
+    @Test
     void testDelete_Success() {
         when(digitalFileMapper.selectById(1L)).thenReturn(testFile);
         doNothing().when(minioService).delete(anyString());
@@ -262,6 +322,40 @@ class FileStorageServiceTest {
 
         assertThrows(BusinessException.class, () -> 
             fileStorageService.upload(mockFile, 100L, "MAIN"));
+    }
+
+    @Test
+    void testUpload_ShouldHideInternalStorageErrorDetails() throws Exception {
+        when(mockFile.isEmpty()).thenReturn(false);
+        when(mockFile.getSize()).thenReturn(1024L);
+        when(mockFile.getOriginalFilename()).thenReturn("test.pdf");
+        when(mockFile.getContentType()).thenReturn("application/pdf");
+        when(mockFile.getBytes()).thenReturn("%PDF-1.4 test".getBytes());
+        when(mockFile.getInputStream()).thenReturn(new ByteArrayInputStream("%PDF-1.4 test".getBytes()));
+        doThrow(new RuntimeException("minio denied access to http://minio.internal/archive"))
+                .when(minioService).upload(anyString(), any(), anyLong(), anyString());
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> fileStorageService.upload(mockFile, 100L, "MAIN"));
+
+        assertEquals("文件上传失败，请稍后重试或联系系统管理员", ex.getMessage());
+        assertFalse(ex.getMessage().contains("minio.internal"));
+    }
+
+    @Test
+    void testDownloadAndStore_ShouldHideInternalStorageErrorDetails() throws Exception {
+        Path tempFile = Files.createTempFile("download-store", ".pdf");
+        Files.write(tempFile, "%PDF-1.4 test".getBytes());
+        doThrow(new RuntimeException("s3 timeout to archive bucket on 10.0.0.5"))
+                .when(minioService).upload(anyString(), any(), anyLong(), anyString());
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> fileStorageService.downloadAndStore(
+                        100L, tempFile.toUri().toString(), "evidence.pdf", "MAIN", 1));
+
+        assertEquals("文件存储失败，请稍后重试或联系系统管理员", ex.getMessage());
+        assertFalse(ex.getMessage().contains("10.0.0.5"));
+        verify(minioService).delete(anyString());
     }
 
     @Test

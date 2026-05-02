@@ -22,7 +22,8 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         User user = userMapper.selectByUsername(username);
         if (user == null) {
-            throw new UsernameNotFoundException("用户不存在: " + username);
+            // 不在异常消息中包含用户名，防止用户枚举攻击
+            throw new UsernameNotFoundException("用户名或密码错误");
         }
         return UserDetailsImpl.build(user);
     }

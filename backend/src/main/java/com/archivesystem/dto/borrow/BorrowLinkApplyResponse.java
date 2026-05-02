@@ -20,9 +20,6 @@ public class BorrowLinkApplyResponse {
     /** 链接ID */
     private Long linkId;
 
-    /** 访问令牌 */
-    private String accessToken;
-
     /** 完整访问URL */
     private String accessUrl;
 

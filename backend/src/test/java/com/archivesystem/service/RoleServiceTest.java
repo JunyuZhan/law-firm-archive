@@ -149,6 +149,42 @@ class RoleServiceTest {
     }
 
     @Test
+    void testUpdateRole_BuiltInRoleCodeImmutable() {
+        Role builtInRole = new Role();
+        builtInRole.setId(1L);
+        builtInRole.setRoleCode("SYSTEM_ADMIN");
+        builtInRole.setStatus(Role.STATUS_ACTIVE);
+        when(roleMapper.selectById(1L)).thenReturn(builtInRole);
+
+        Role updateData = new Role();
+        updateData.setRoleCode("SYSTEM_ADMIN_V2");
+        updateData.setRoleName("系统管理员");
+        updateData.setDescription("desc");
+        updateData.setStatus(Role.STATUS_ACTIVE);
+
+        assertThrows(BusinessException.class, () -> roleService.update(1L, updateData));
+        verify(roleMapper, never()).updateById(any(Role.class));
+    }
+
+    @Test
+    void testUpdateRole_BuiltInRoleCannotBeDisabled() {
+        Role builtInRole = new Role();
+        builtInRole.setId(1L);
+        builtInRole.setRoleCode("SYSTEM_ADMIN");
+        builtInRole.setStatus(Role.STATUS_ACTIVE);
+        when(roleMapper.selectById(1L)).thenReturn(builtInRole);
+
+        Role updateData = new Role();
+        updateData.setRoleCode("SYSTEM_ADMIN");
+        updateData.setRoleName("系统管理员");
+        updateData.setDescription("desc");
+        updateData.setStatus(Role.STATUS_DISABLED);
+
+        assertThrows(BusinessException.class, () -> roleService.update(1L, updateData));
+        verify(roleMapper, never()).updateById(any(Role.class));
+    }
+
+    @Test
     void testDeleteRole_Success() {
         when(roleMapper.selectById(1L)).thenReturn(testRole);
         when(userRoleMapper.selectCount(ArgumentMatchers.<LambdaQueryWrapper<UserRole>>any())).thenReturn(0L);
@@ -165,6 +201,17 @@ class RoleServiceTest {
         when(userRoleMapper.selectCount(ArgumentMatchers.<LambdaQueryWrapper<UserRole>>any())).thenReturn(5L);
 
         assertThrows(BusinessException.class, () -> roleService.delete(1L));
+    }
+
+    @Test
+    void testDeleteRole_BuiltInRoleForbidden() {
+        Role builtInRole = new Role();
+        builtInRole.setId(1L);
+        builtInRole.setRoleCode("SYSTEM_ADMIN");
+        when(roleMapper.selectById(1L)).thenReturn(builtInRole);
+
+        assertThrows(BusinessException.class, () -> roleService.delete(1L));
+        verify(roleMapper, never()).deleteById(anyLong());
     }
 
     @Test

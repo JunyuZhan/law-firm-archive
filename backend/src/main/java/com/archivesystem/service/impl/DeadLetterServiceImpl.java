@@ -29,6 +29,7 @@ import java.util.Map;
 @Service
 @RequiredArgsConstructor
 public class DeadLetterServiceImpl implements DeadLetterService {
+    private static final String DEAD_LETTER_RETRY_FAILURE_PUBLIC_MESSAGE = "重试失败，请联系系统管理员查看系统日志";
 
     private final DeadLetterRecordMapper deadLetterRecordMapper;
     private final RabbitTemplate rabbitTemplate;
@@ -108,7 +109,7 @@ public class DeadLetterServiceImpl implements DeadLetterService {
         } catch (Exception e) {
             log.error("死信消息重试失败: id={}", id, e);
             record.setStatus(DeadLetterRecord.STATUS_FAILED);
-            record.setErrorMessage("重试失败: " + e.getMessage());
+            record.setErrorMessage(DEAD_LETTER_RETRY_FAILURE_PUBLIC_MESSAGE);
             record.setUpdatedAt(LocalDateTime.now());
             deadLetterRecordMapper.updateById(record);
             return false;

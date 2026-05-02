@@ -1,6 +1,7 @@
 package com.archivesystem.controller;
 
 import com.archivesystem.common.Result;
+import com.archivesystem.dto.retention.RetentionPeriodResponse;
 import com.archivesystem.entity.RetentionPeriod;
 import com.archivesystem.service.RetentionPeriodService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -31,7 +32,9 @@ public class RetentionPeriodController {
     @GetMapping
     @Operation(summary = "获取保管期限列表", description = "获取所有保管期限，按排序号升序")
     @PreAuthorize("isAuthenticated()")
-    public Result<List<RetentionPeriod>> list() {
-        return Result.success(retentionPeriodService.listAll());
+    public Result<List<RetentionPeriodResponse>> list() {
+        return Result.success(retentionPeriodService.listAll().stream()
+                .map(RetentionPeriodResponse::from)
+                .toList());
     }
 }

@@ -199,7 +199,11 @@ class ArchiveControllerTest {
                         .file(file))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
-                .andExpect(jsonPath("$.data.fileName").value("test.pdf"));
+                .andExpect(jsonPath("$.data.fileName").value("test.pdf"))
+                .andExpect(jsonPath("$.data.scanBatchNo").doesNotExist())
+                .andExpect(jsonPath("$.data.sectionType").doesNotExist())
+                .andExpect(jsonPath("$.data.mimeType").doesNotExist())
+                .andExpect(jsonPath("$.data.fileSize").doesNotExist());
     }
 
     @Test
@@ -258,24 +262,26 @@ class ArchiveControllerTest {
 
     @Test
     void testGetDownloadUrl_Success() throws Exception {
+        String url = "http://localhost:9000/archives/file.pdf?token=xxx";
         when(fileStorageService.getDownloadUrl(1L))
-                .thenReturn("http://localhost:9000/archives/file.pdf?token=xxx");
+                .thenReturn(url);
 
         mockMvc.perform(get("/archives/files/1/download-url"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
-                .andExpect(jsonPath("$.data.url").exists());
+                .andExpect(jsonPath("$.data.url").value(url));
     }
 
     @Test
     void testGetPreviewUrl_Success() throws Exception {
+        String url = "http://localhost:9000/archives/preview.pdf?token=xxx";
         when(fileStorageService.getPreviewUrl(1L))
-                .thenReturn("http://localhost:9000/archives/preview.pdf?token=xxx");
+                .thenReturn(url);
 
         mockMvc.perform(get("/archives/files/1/preview-url"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
-                .andExpect(jsonPath("$.data.url").exists());
+                .andExpect(jsonPath("$.data.url").value(url));
     }
 
     @Test

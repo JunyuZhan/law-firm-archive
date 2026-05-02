@@ -3,6 +3,8 @@ package com.archivesystem.controller;
 import com.archivesystem.common.PageResult;
 import com.archivesystem.common.Result;
 import com.archivesystem.dto.appraisal.AppraisalCreateRequest;
+import com.archivesystem.dto.appraisal.AppraisalRecordResponse;
+import com.archivesystem.dto.appraisal.AppraisalRecordSummaryResponse;
 import com.archivesystem.dto.appraisal.AppraisalRejectRequest;
 import com.archivesystem.entity.AppraisalRecord;
 import com.archivesystem.service.AppraisalService;
@@ -38,7 +40,7 @@ public class AppraisalController {
     @PostMapping
     @Operation(summary = "发起鉴定")
     @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
-    public Result<AppraisalRecord> create(@Valid @RequestBody AppraisalCreateRequest request) {
+    public Result<AppraisalRecordSummaryResponse> create(@Valid @RequestBody AppraisalCreateRequest request) {
         AppraisalRecord record = appraisalService.create(
             request.getArchiveId(), 
             request.getAppraisalType(), 
@@ -46,7 +48,7 @@ public class AppraisalController {
             request.getNewValue(), 
             request.getAppraisalReason()
         );
-        return Result.success("鉴定申请提交成功", record);
+        return Result.success("鉴定申请提交成功", AppraisalRecordSummaryResponse.from(record));
     }
 
     /**
@@ -54,10 +56,10 @@ public class AppraisalController {
      */
     @GetMapping("/{id}")
     @Operation(summary = "获取鉴定详情")
-    @PreAuthorize("isAuthenticated()")
-    public Result<AppraisalRecord> getById(@PathVariable Long id) {
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
+    public Result<AppraisalRecordResponse> getById(@PathVariable Long id) {
         AppraisalRecord record = appraisalService.getById(id);
-        return Result.success(record);
+        return Result.success(AppraisalRecordResponse.from(record));
     }
 
     /**
@@ -66,13 +68,18 @@ public class AppraisalController {
     @GetMapping
     @Operation(summary = "获取鉴定列表")
     @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
-    public Result<PageResult<AppraisalRecord>> getList(
+    public Result<PageResult<AppraisalRecordSummaryResponse>> getList(
             @RequestParam(required = false) @Parameter(description = "鉴定类型") String type,
             @RequestParam(required = false) @Parameter(description = "状态") String status,
             @RequestParam(defaultValue = "1") @Min(value = 1, message = "页码最小为1") Integer pageNum,
             @RequestParam(defaultValue = "20") @Min(value = 1, message = "每页条数最小为1") @Max(value = 100, message = "每页条数最大为100") Integer pageSize) {
         PageResult<AppraisalRecord> result = appraisalService.getList(type, status, pageNum, pageSize);
-        return Result.success(result);
+        return Result.success(PageResult.of(
+                result.getCurrent(),
+                result.getSize(),
+                result.getTotal(),
+                result.getRecords().stream().map(AppraisalRecordSummaryResponse::from).toList()
+        ));
     }
 
     /**
@@ -81,11 +88,16 @@ public class AppraisalController {
     @GetMapping("/pending")
     @Operation(summary = "获取待审批列表")
     @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
-    public Result<PageResult<AppraisalRecord>> getPendingList(
+    public Result<PageResult<AppraisalRecordSummaryResponse>> getPendingList(
             @RequestParam(defaultValue = "1") @Min(value = 1, message = "页码最小为1") Integer pageNum,
             @RequestParam(defaultValue = "20") @Min(value = 1, message = "每页条数最小为1") @Max(value = 100, message = "每页条数最大为100") Integer pageSize) {
         PageResult<AppraisalRecord> result = appraisalService.getPendingList(pageNum, pageSize);
-        return Result.success(result);
+        return Result.success(PageResult.of(
+                result.getCurrent(),
+                result.getSize(),
+                result.getTotal(),
+                result.getRecords().stream().map(AppraisalRecordSummaryResponse::from).toList()
+        ));
     }
 
     /**
@@ -94,10 +106,10 @@ public class AppraisalController {
     @GetMapping("/archive/{archiveId}")
     @Operation(summary = "获取档案的鉴定历史")
     @PreAuthorize("isAuthenticated()")
-    public Result<List<AppraisalRecord>> getByArchiveId(
+    public Result<List<AppraisalRecordSummaryResponse>> getByArchiveId(
             @PathVariable @Parameter(description = "档案ID") Long archiveId) {
         List<AppraisalRecord> records = appraisalService.getByArchiveId(archiveId);
-        return Result.success(records);
+        return Result.success(records.stream().map(AppraisalRecordSummaryResponse::from).toList());
     }
 
     /**

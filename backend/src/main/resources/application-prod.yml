@@ -28,6 +28,7 @@ minio:
   access-key: ${MINIO_ACCESS_KEY}
   secret-key: ${MINIO_SECRET_KEY}
   bucket-name: ${MINIO_BUCKET:archives}
+  proxy-prefix: ${MINIO_PROXY_PREFIX:/storage}
 
 # JWT配置（必须通过环境变量配置）
 jwt:
@@ -72,3 +73,5 @@ app:
     default-frontend-repository: ${REGISTRY_FRONTEND_REPOSITORY:law-firm-archive/frontend}
     registry-username: ${REGISTRY_USERNAME:}
     registry-password: ${REGISTRY_PASSWORD:}
+  dist-center:
+    latest-json-url: ${DIST_CENTER_LATEST_JSON_URL:}

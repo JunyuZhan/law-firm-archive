@@ -50,12 +50,38 @@ class RetentionControllerTest {
     void testGetExpiringArchives() throws Exception {
         Archive archive = new Archive();
         archive.setId(1L);
+        archive.setArchiveNo("ARC-001");
+        archive.setTitle("测试档案");
+        archive.setCallbackUrl("https://internal.example/callback");
         when(retentionService.findExpiringArchives(90)).thenReturn(List.of(archive));
 
         mockMvc.perform(get("/retention/expiring"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
-                .andExpect(jsonPath("$.data[0].id").value(1));
+                .andExpect(jsonPath("$.data[0].id").value(1))
+                .andExpect(jsonPath("$.data[0].archiveNo").value("ARC-001"))
+                .andExpect(jsonPath("$.data[0].title").value("测试档案"))
+                .andExpect(jsonPath("$.data[0].status").doesNotExist())
+                .andExpect(jsonPath("$.data[0].callbackUrl").doesNotExist());
+    }
+
+    @Test
+    void testGetExpiredArchives() throws Exception {
+        Archive archive = new Archive();
+        archive.setId(2L);
+        archive.setArchiveNo("ARC-002");
+        archive.setTitle("已到期档案");
+        archive.setStatus(Archive.STATUS_APPRAISAL);
+        archive.setRetentionPeriod("Y10");
+        when(retentionService.findExpiredArchives()).thenReturn(List.of(archive));
+
+        mockMvc.perform(get("/retention/expired"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("200"))
+                .andExpect(jsonPath("$.data[0].id").value(2))
+                .andExpect(jsonPath("$.data[0].archiveNo").value("ARC-002"))
+                .andExpect(jsonPath("$.data[0].status").doesNotExist())
+                .andExpect(jsonPath("$.data[0].callbackUrl").doesNotExist());
     }
 
     @Test
@@ -92,27 +118,16 @@ class RetentionControllerTest {
     }
 
     @Test
-    void testExecuteDestruction_InvalidApproverId() throws Exception {
-        mockMvc.perform(put("/retention/1/destruction/execute")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of("approverId", "abc"))))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.code").value("400"))
-                .andExpect(jsonPath("$.message").value("approverId 格式错误"));
-    }
-
-    @Test
     void testExecuteDestruction_Success() throws Exception {
-        doNothing().when(retentionService).executeDestruction(1L, 2L, "done");
+        doNothing().when(retentionService).executeDestruction(1L, "done");
 
         mockMvc.perform(put("/retention/1/destruction/execute")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of("approverId", 2, "remarks", "done"))))
+                        .content(objectMapper.writeValueAsString(Map.of("remarks", "done"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
                 .andExpect(jsonPath("$.message").value("档案已销毁"));
 
-        verify(retentionService).executeDestruction(1L, 2L, "done");
+        verify(retentionService).executeDestruction(1L, "done");
     }
 }

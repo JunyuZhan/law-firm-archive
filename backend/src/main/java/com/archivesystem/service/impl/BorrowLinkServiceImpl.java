@@ -6,6 +6,7 @@ import com.archivesystem.common.exception.NotFoundException;
 import com.archivesystem.dto.borrow.BorrowLinkAccessResponse;
 import com.archivesystem.dto.borrow.BorrowLinkApplyRequest;
 import com.archivesystem.dto.borrow.BorrowLinkApplyResponse;
+import com.archivesystem.dto.borrow.BorrowLinkResponse;
 import com.archivesystem.entity.Archive;
 import com.archivesystem.entity.BorrowApplication;
 import com.archivesystem.entity.BorrowLink;
@@ -30,6 +31,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -114,7 +116,7 @@ public class BorrowLinkServiceImpl implements BorrowLinkService {
 
     @Override
     @Transactional
-    public BorrowLink generateLinkForBorrow(Long borrowId, Integer expireDays, Boolean allowDownload) {
+    public BorrowLinkResponse generateLinkForBorrow(Long borrowId, Integer expireDays, Boolean allowDownload) {
         BorrowApplication application = borrowApplicationMapper.selectById(borrowId);
         if (application == null) {
             throw new NotFoundException("借阅申请不存在");
@@ -132,7 +134,7 @@ public class BorrowLinkServiceImpl implements BorrowLinkService {
         // 检查是否已有链接
         BorrowLink existing = borrowLinkMapper.selectByBorrowId(borrowId);
         if (existing != null && existing.isValid()) {
-            return existing;
+            return toResponse(existing, true);
         }
 
         String accessToken = generateAccessToken();
@@ -160,7 +162,7 @@ public class BorrowLinkServiceImpl implements BorrowLinkService {
         borrowLinkMapper.insert(link);
         log.info("内部借阅链接生成: linkId={}, borrowId={}", link.getId(), borrowId);
 
-        return link;
+        return toResponse(link, true);
     }
 
     @Override
@@ -185,14 +187,23 @@ public class BorrowLinkServiceImpl implements BorrowLinkService {
             return BorrowLinkAccessResponse.invalid("访问链接无效或已过期");
         }
 
-        // 检查访问次数
-        if (link.getMaxAccessCount() != null && link.getAccessCount() >= link.getMaxAccessCount()) {
-            return BorrowLinkAccessResponse.invalid("访问链接无效或已过期");
+        // 检查访问次数并原子递增（避免并发超限）
+        if (link.getMaxAccessCount() != null) {
+            if (link.getAccessCount() >= link.getMaxAccessCount()) {
+                return BorrowLinkAccessResponse.invalid("访问链接无效或已过期");
+            }
+            // 使用数据库原子更新：仅当 access_count < max_access_count 时才递增
+            int updated = borrowLinkMapper.atomicRecordAccess(link.getId(), link.getMaxAccessCount(), clientIp);
+            if (updated == 0) {
+                // 并发场景下其他请求已先递增，当前请求超限
+                return BorrowLinkAccessResponse.invalid("访问链接无效或已过期");
+            }
+            link.incrementAccessCount(clientIp);
+        } else {
+            // 无访问次数限制，直接递增
+            link.incrementAccessCount(clientIp);
+            borrowLinkMapper.updateById(link);
         }
-
-        // 记录访问
-        link.incrementAccessCount(clientIp);
-        borrowLinkMapper.updateById(link);
         increaseBorrowUsage(link.getBorrowId(), 1, 0);
 
         // 获取档案信息
@@ -214,7 +225,11 @@ public class BorrowLinkServiceImpl implements BorrowLinkService {
     }
 
     @Override
-    public BorrowLink getById(Long id) {
+    public BorrowLinkResponse getById(Long id) {
+        return toResponse(requireBorrowLink(id), true);
+    }
+
+    private BorrowLink requireBorrowLink(Long id) {
         BorrowLink link = borrowLinkMapper.selectById(id);
         if (link == null) {
             throw NotFoundException.of("借阅链接", id);
@@ -225,7 +240,7 @@ public class BorrowLinkServiceImpl implements BorrowLinkService {
     @Override
     @Transactional
     public void revoke(Long id, String reason, String sourceCode) {
-        BorrowLink link = getById(id);
+        BorrowLink link = requireBorrowLink(id);
         if (StringUtils.hasText(sourceCode) && !StringUtils.hasText(link.getSourceSystem())) {
             throw new BusinessException("403", "无权撤销该借阅链接");
         }
@@ -272,7 +287,7 @@ public class BorrowLinkServiceImpl implements BorrowLinkService {
     }
 
     @Override
-    public PageResult<BorrowLink> getList(Long archiveId, String status, Boolean allowDownload, String sourceType, String keyword, Integer pageNum, Integer pageSize) {
+    public PageResult<BorrowLinkResponse> getList(Long archiveId, String status, Boolean allowDownload, String sourceType, String keyword, Integer pageNum, Integer pageSize) {
         LambdaQueryWrapper<BorrowLink> wrapper = new LambdaQueryWrapper<>();
         
         if (archiveId != null) {
@@ -300,17 +315,24 @@ public class BorrowLinkServiceImpl implements BorrowLinkService {
         Page<BorrowLink> page = new Page<>(pageNum, pageSize);
         Page<BorrowLink> result = borrowLinkMapper.selectPage(page, wrapper);
 
-        return PageResult.of(result.getCurrent(), result.getSize(), result.getTotal(), result.getRecords());
+        return PageResult.of(
+                result.getCurrent(),
+                result.getSize(),
+                result.getTotal(),
+                result.getRecords().stream().map(link -> toResponse(link, false)).toList()
+        );
     }
 
     @Override
-    public List<BorrowLink> getActiveByArchiveId(Long archiveId) {
+    public List<BorrowLinkResponse> getActiveByArchiveId(Long archiveId) {
         LambdaQueryWrapper<BorrowLink> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(BorrowLink::getArchiveId, archiveId)
                .eq(BorrowLink::getStatus, BorrowLink.STATUS_ACTIVE)
                .gt(BorrowLink::getExpireAt, LocalDateTime.now())
                .orderByDesc(BorrowLink::getCreatedAt);
-        return borrowLinkMapper.selectList(wrapper);
+        return borrowLinkMapper.selectList(wrapper).stream()
+                .map(link -> toResponse(link, false))
+                .toList();
     }
 
     @Override
@@ -364,7 +386,7 @@ public class BorrowLinkServiceImpl implements BorrowLinkService {
                 .filter(BorrowLink::isValid)
                 .filter(link -> !StringUtils.hasText(sourceCode) || sourceCode.equals(link.getSourceSystem()))
                 .filter(link -> archive.getId().equals(link.getArchiveId()))
-                .filter(link -> request.getPurpose().equals(link.getBorrowPurpose()))
+                .filter(link -> Objects.equals(request.getPurpose(), link.getBorrowPurpose()))
                 .filter(link -> equalsNullable(request.getMaxAccessCount(), link.getMaxAccessCount()))
                 .filter(link -> equalsNullable(boolOrDefault(request.getAllowDownload(), true), boolOrDefault(link.getAllowDownload(), true)))
                 .findFirst()
@@ -374,13 +396,36 @@ public class BorrowLinkServiceImpl implements BorrowLinkService {
     private BorrowLinkApplyResponse buildApplyResponse(BorrowLink link, Archive archive) {
         return BorrowLinkApplyResponse.builder()
                 .linkId(link.getId())
-                .accessToken(link.getAccessToken())
-                .accessUrl(buildAccessUrl(link.getAccessToken()))
+                .accessUrl(buildOpenApiAccessUrl(link.getAccessToken()))
                 .expireAt(link.getExpireAt())
                 .allowDownload(link.getAllowDownload())
                 .maxAccessCount(link.getMaxAccessCount())
                 .archiveNo(archive.getArchiveNo())
                 .archiveTitle(archive.getTitle())
+                .build();
+    }
+
+    private BorrowLinkResponse toResponse(BorrowLink link, boolean includeAccessUrl) {
+        return BorrowLinkResponse.builder()
+                .id(link.getId())
+                .borrowId(link.getBorrowId())
+                .archiveId(link.getArchiveId())
+                .archiveNo(link.getArchiveNo())
+                .sourceType(link.getSourceType())
+                .sourceUserName(link.getSourceUserName())
+                .borrowPurpose(link.getBorrowPurpose())
+                .expireAt(link.getExpireAt())
+                .maxAccessCount(link.getMaxAccessCount())
+                .allowDownload(link.getAllowDownload())
+                .accessCount(link.getAccessCount())
+                .downloadCount(link.getDownloadCount())
+                .lastAccessAt(link.getLastAccessAt())
+                .lastAccessIp(link.getLastAccessIp())
+                .status(link.getStatus())
+                .revokeReason(link.getRevokeReason())
+                .revokedAt(link.getRevokedAt())
+                .createdAt(link.getCreatedAt())
+                .accessUrl(includeAccessUrl ? buildPortalAccessUrl(link.getAccessToken()) : null)
                 .build();
     }
 
@@ -396,11 +441,18 @@ public class BorrowLinkServiceImpl implements BorrowLinkService {
         return UUID.randomUUID().toString().replace("-", "");
     }
 
-    private String buildAccessUrl(String accessToken) {
+    private String buildOpenApiAccessUrl(String accessToken) {
         if (StringUtils.hasText(baseUrl)) {
             return baseUrl + "/open/borrow/access/" + accessToken;
         }
         return "/open/borrow/access/" + accessToken;
+    }
+
+    private String buildPortalAccessUrl(String accessToken) {
+        if (StringUtils.hasText(baseUrl)) {
+            return baseUrl + "/borrow/access/" + accessToken;
+        }
+        return "/borrow/access/" + accessToken;
     }
 
     private long asLong(Map<String, Object> values, String key) {
@@ -448,11 +500,7 @@ public class BorrowLinkServiceImpl implements BorrowLinkService {
         }
 
         if (trackUsage) {
-            link.incrementAccessCount(clientIp);
-            if (download) {
-                link.incrementDownloadCount();
-            }
-            borrowLinkMapper.updateById(link);
+            recordFileAccess(link, clientIp, download);
             if (download) {
                 increaseBorrowUsage(link.getBorrowId(), 0, 1);
                 accessLogService.logDownload(link.getArchiveId(), fileId, clientIp);
@@ -465,14 +513,37 @@ public class BorrowLinkServiceImpl implements BorrowLinkService {
         return new FileAccessContext(link, file);
     }
 
+    private void recordFileAccess(BorrowLink link, String clientIp, boolean download) {
+        if (link.getMaxAccessCount() != null) {
+            int updated = borrowLinkMapper.atomicRecordFileAccess(
+                    link.getId(),
+                    link.getMaxAccessCount(),
+                    download ? 1 : 0,
+                    clientIp
+            );
+            if (updated == 0) {
+                throw new BusinessException("403", "访问链接无效或已过期");
+            }
+            link.incrementAccessCount(clientIp);
+            if (download) {
+                link.incrementDownloadCount();
+            }
+            return;
+        }
+
+        link.incrementAccessCount(clientIp);
+        if (download) {
+            link.incrementDownloadCount();
+        }
+        borrowLinkMapper.updateById(link);
+    }
+
     private BorrowLinkAccessResponse buildAccessResponse(BorrowLink link, Archive archive, List<DigitalFile> files) {
         // 构建档案信息
         BorrowLinkAccessResponse.ArchiveInfo archiveInfo = BorrowLinkAccessResponse.ArchiveInfo.builder()
-                .archiveId(archive.getId())
                 .archiveNo(archive.getArchiveNo())
                 .title(archive.getTitle())
                 .archiveType(archive.getArchiveType())
-                .retentionPeriod(archive.getRetentionPeriod())
                 .securityLevel(archive.getSecurityLevel())
                 .caseName(archive.getCaseName())
                 .caseNo(archive.getCaseNo())
@@ -492,7 +563,6 @@ public class BorrowLinkServiceImpl implements BorrowLinkService {
         }
 
         BorrowLinkAccessResponse.LinkInfo linkInfo = BorrowLinkAccessResponse.LinkInfo.builder()
-                .linkId(link.getId())
                 .expireAt(link.getExpireAt())
                 .remainingSeconds(remainingSeconds)
                 .allowDownload(link.getAllowDownload())
@@ -506,10 +576,8 @@ public class BorrowLinkServiceImpl implements BorrowLinkService {
 
         // 构建借阅人信息
         BorrowLinkAccessResponse.BorrowerInfo borrowerInfo = BorrowLinkAccessResponse.BorrowerInfo.builder()
-                .userId(link.getSourceUserId())
                 .userName(link.getSourceUserName())
                 .purpose(link.getBorrowPurpose())
-                .sourceSystem(link.getSourceSystem())
                 .borrowType(application != null ? application.getBorrowType() : null)
                 .expectedReturnDate(application != null ? application.getExpectedReturnDate() : null)
                 .build();
@@ -529,10 +597,6 @@ public class BorrowLinkServiceImpl implements BorrowLinkService {
                 .fileName(file.getFileName())
                 .fileExtension(file.getFileExtension())
                 .fileSize(file.getFileSize())
-                .mimeType(file.getMimeType())
-                .fileCategory(file.getFileCategory())
-                .previewUrl(null)
-                .downloadUrl(Boolean.TRUE.equals(allowDownload) ? "" : null)
                 .isLongTermFormat(file.getIsLongTermFormat())
                 .build();
     }

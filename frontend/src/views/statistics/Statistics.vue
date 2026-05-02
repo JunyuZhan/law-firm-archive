@@ -523,9 +523,7 @@ const loadPushStats = async () => {
   loading.push = true
   try {
     const res = await getPushRecordStatistics()
-    if (res.success) {
-      Object.assign(pushStats, res.data)
-    }
+    Object.assign(pushStats, res.data || {})
   } catch (e) {
     console.error('加载推送统计失败', e)
     ElMessage.error('加载推送统计失败')

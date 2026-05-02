@@ -35,6 +35,8 @@ import java.util.concurrent.TimeUnit;
 @Component
 @RequiredArgsConstructor
 public class ArchiveReceiveConsumer {
+    private static final String ARCHIVE_RECEIVE_FAILURE_PUBLIC_MESSAGE = "档案接收处理失败，请联系系统管理员查看系统日志";
+    private static final String ARCHIVE_RECEIVE_PARTIAL_FAILURE_PUBLIC_MESSAGE = "部分电子文件处理失败，请联系系统管理员查看系统日志";
 
     private final ArchiveMapper archiveMapper;
     private final DigitalFileMapper digitalFileMapper;
@@ -160,58 +162,8 @@ public class ArchiveReceiveConsumer {
                         );
                         
                         if (digitalFile != null) {
-                            if (fileInfo.getVolumeNo() != null) {
-                                digitalFile.setVolumeNo(fileInfo.getVolumeNo());
-                            }
-                            if (fileInfo.getSectionType() != null) {
-                                digitalFile.setSectionType(fileInfo.getSectionType());
-                            }
-                            if (fileInfo.getDocumentNo() != null) {
-                                digitalFile.setDocumentNo(fileInfo.getDocumentNo());
-                            }
-                            if (fileInfo.getPageStart() != null) {
-                                digitalFile.setPageStart(fileInfo.getPageStart());
-                            }
-                            if (fileInfo.getPageEnd() != null) {
-                                digitalFile.setPageEnd(fileInfo.getPageEnd());
-                            }
-                            if (fileInfo.getVersionLabel() != null) {
-                                digitalFile.setVersionLabel(fileInfo.getVersionLabel());
-                            }
-                            if (fileInfo.getFileSourceType() != null) {
-                                digitalFile.setFileSourceType(fileInfo.getFileSourceType());
-                            }
-                            if (fileInfo.getScanBatchNo() != null) {
-                                digitalFile.setScanBatchNo(fileInfo.getScanBatchNo());
-                            }
-                            if (fileInfo.getScanOperator() != null) {
-                                digitalFile.setScanOperator(fileInfo.getScanOperator());
-                            }
-                            if (fileInfo.getScanTime() != null) {
-                                digitalFile.setScanTime(fileInfo.getScanTime());
-                            }
-                            if (fileInfo.getScanCheckStatus() != null) {
-                                digitalFile.setScanCheckStatus(fileInfo.getScanCheckStatus());
-                            }
-                            if (fileInfo.getScanCheckBy() != null) {
-                                digitalFile.setScanCheckBy(fileInfo.getScanCheckBy());
-                            }
-                            if (fileInfo.getScanCheckTime() != null) {
-                                digitalFile.setScanCheckTime(fileInfo.getScanCheckTime());
-                            }
-                            if (fileInfo.getVolumeNo() != null
-                                    || fileInfo.getSectionType() != null
-                                    || fileInfo.getDocumentNo() != null
-                                    || fileInfo.getPageStart() != null
-                                    || fileInfo.getPageEnd() != null
-                                    || fileInfo.getVersionLabel() != null
-                                    || fileInfo.getFileSourceType() != null
-                                    || fileInfo.getScanBatchNo() != null
-                                    || fileInfo.getScanOperator() != null
-                                    || fileInfo.getScanTime() != null
-                                    || fileInfo.getScanCheckStatus() != null
-                                    || fileInfo.getScanCheckBy() != null
-                                    || fileInfo.getScanCheckTime() != null) {
+                            applyFileInfoExtras(digitalFile, fileInfo);
+                            if (hasFileInfoExtras(fileInfo)) {
                                 digitalFileMapper.updateById(digitalFile);
                             }
                             successCount++;
@@ -244,9 +196,9 @@ public class ArchiveReceiveConsumer {
             archiveMapper.updateById(archive);
             
             // 同步更新推送记录状态
-            updatePushRecord(message.getSourceType(), message.getSourceId(), 
-                    finalStatus, successCount, failedCount, 
-                    failedFiles.isEmpty() ? null : String.join(", ", failedFiles));
+            String publicErrorMessage = buildPublicErrorMessage(successCount, failedCount);
+            updatePushRecord(message.getSourceType(), message.getSourceId(),
+                    finalStatus, successCount, failedCount, publicErrorMessage);
 
             markCompletionCallbackPending(message);
             
@@ -254,7 +206,7 @@ public class ArchiveReceiveConsumer {
             if (message.getCallbackUrl() != null && !message.getCallbackUrl().isEmpty()) {
                 sendCallbackMessage(message, successCount, failedCount, 
                         message.getFiles() != null ? message.getFiles().size() : 0,
-                        failedFiles.isEmpty() ? null : String.join(", ", failedFiles));
+                        publicErrorMessage);
             }
             
             // 确认消息
@@ -295,7 +247,7 @@ public class ArchiveReceiveConsumer {
                     
                     // 发送失败回调
                     if (message.getCallbackUrl() != null) {
-                        sendFailureCallback(message, e.getMessage());
+                        sendFailureCallback(message, ARCHIVE_RECEIVE_FAILURE_PUBLIC_MESSAGE);
                     }
                 }
             } catch (IOException ioException) {
@@ -307,12 +259,23 @@ public class ArchiveReceiveConsumer {
     private void requeueForRetry(ArchiveReceiveMessage message, Channel channel, long deliveryTag)
             throws IOException {
         try {
+            // 指数退避延迟：1s, 2s, 4s, 8s...（基于重试次数）
+            long delayMs = (long) Math.pow(2, message.getRetryCount() - 1) * 1000;
+            // 最大延迟不超过 30 秒
+            delayMs = Math.min(delayMs, 30_000);
+            log.info("重试延迟: {}ms, messageId={}, retryCount={}", delayMs, message.getMessageId(), message.getRetryCount());
+            Thread.sleep(delayMs);
+            
             rabbitTemplate.convertAndSend(
                     RabbitMQConfig.ARCHIVE_EXCHANGE,
                     RabbitMQConfig.ARCHIVE_RECEIVE_ROUTING_KEY,
                     message
             );
             channel.basicAck(deliveryTag, false);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.error("重试延迟被中断: messageId={}", message.getMessageId());
+            channel.basicNack(deliveryTag, false, true);
         } catch (AmqpException e) {
             log.error("档案接收消息重投失败，原消息将重新入队: messageId={}, retryCount={}",
                     message.getMessageId(), message.getRetryCount(), e);
@@ -477,5 +440,53 @@ public class ArchiveReceiveConsumer {
         } catch (Exception e) {
             log.error("更新推送记录状态失败: sourceId={}, error={}", sourceId, e.getMessage());
         }
+    }
+
+    private String buildPublicErrorMessage(int successCount, int failedCount) {
+        if (failedCount <= 0) {
+            return null;
+        }
+        if (successCount > 0) {
+            return ARCHIVE_RECEIVE_PARTIAL_FAILURE_PUBLIC_MESSAGE;
+        }
+        return ARCHIVE_RECEIVE_FAILURE_PUBLIC_MESSAGE;
+    }
+
+    /**
+     * 将 FileInfo 中的扩展属性应用到 DigitalFile（仅设置非 null 的字段）
+     */
+    private void applyFileInfoExtras(DigitalFile digitalFile, ArchiveReceiveMessage.FileInfo fileInfo) {
+        if (fileInfo.getVolumeNo() != null) digitalFile.setVolumeNo(fileInfo.getVolumeNo());
+        if (fileInfo.getSectionType() != null) digitalFile.setSectionType(fileInfo.getSectionType());
+        if (fileInfo.getDocumentNo() != null) digitalFile.setDocumentNo(fileInfo.getDocumentNo());
+        if (fileInfo.getPageStart() != null) digitalFile.setPageStart(fileInfo.getPageStart());
+        if (fileInfo.getPageEnd() != null) digitalFile.setPageEnd(fileInfo.getPageEnd());
+        if (fileInfo.getVersionLabel() != null) digitalFile.setVersionLabel(fileInfo.getVersionLabel());
+        if (fileInfo.getFileSourceType() != null) digitalFile.setFileSourceType(fileInfo.getFileSourceType());
+        if (fileInfo.getScanBatchNo() != null) digitalFile.setScanBatchNo(fileInfo.getScanBatchNo());
+        if (fileInfo.getScanOperator() != null) digitalFile.setScanOperator(fileInfo.getScanOperator());
+        if (fileInfo.getScanTime() != null) digitalFile.setScanTime(fileInfo.getScanTime());
+        if (fileInfo.getScanCheckStatus() != null) digitalFile.setScanCheckStatus(fileInfo.getScanCheckStatus());
+        if (fileInfo.getScanCheckBy() != null) digitalFile.setScanCheckBy(fileInfo.getScanCheckBy());
+        if (fileInfo.getScanCheckTime() != null) digitalFile.setScanCheckTime(fileInfo.getScanCheckTime());
+    }
+
+    /**
+     * 检查 FileInfo 是否包含扩展属性（用于判断是否需要更新数据库）
+     */
+    private boolean hasFileInfoExtras(ArchiveReceiveMessage.FileInfo fileInfo) {
+        return fileInfo.getVolumeNo() != null
+                || fileInfo.getSectionType() != null
+                || fileInfo.getDocumentNo() != null
+                || fileInfo.getPageStart() != null
+                || fileInfo.getPageEnd() != null
+                || fileInfo.getVersionLabel() != null
+                || fileInfo.getFileSourceType() != null
+                || fileInfo.getScanBatchNo() != null
+                || fileInfo.getScanOperator() != null
+                || fileInfo.getScanTime() != null
+                || fileInfo.getScanCheckStatus() != null
+                || fileInfo.getScanCheckBy() != null
+                || fileInfo.getScanCheckTime() != null;
     }
 }

@@ -13,13 +13,16 @@ import com.archivesystem.entity.Fonds;
 import com.archivesystem.entity.RetentionPeriod;
 import com.archivesystem.entity.User;
 import com.archivesystem.repository.*;
+import com.archivesystem.security.OutboundUrlValidator;
 import com.archivesystem.security.SecurityUtils;
 import com.archivesystem.service.impl.ArchiveServiceImpl;
+import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentMatchers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
@@ -84,6 +87,9 @@ class ArchiveServiceTest {
 
     @Mock
     private ConfigService configService;
+
+    @Mock
+    private OutboundUrlValidator outboundUrlValidator;
 
     @Mock
     private ValueOperations<String, String> valueOperations;
@@ -158,15 +164,85 @@ class ArchiveServiceTest {
     }
 
     @Test
+    void testReceive_InvalidCallbackUrl_ShouldRejectEarly() {
+        ArchiveReceiveRequest request = new ArchiveReceiveRequest();
+        request.setSourceType("LAW_FIRM");
+        request.setSourceId("123");
+        request.setTitle("新档案");
+        request.setArchiveType("DOCUMENT");
+        request.setCallbackUrl("javascript:alert(1)");
+
+        doThrow(new BusinessException("回调地址格式不安全")).when(outboundUrlValidator)
+                .validate("javascript:alert(1)", "回调地址");
+
+        assertThrows(BusinessException.class, () -> archiveService.receive(request));
+        verify(archiveMapper, never()).insert(any(Archive.class));
+    }
+
+    @Test
+    void testReceive_InvalidDownloadUrlAsync_ShouldRejectEarly() {
+        ArchiveReceiveRequest request = new ArchiveReceiveRequest();
+        request.setSourceType("LAW_FIRM");
+        request.setSourceId("bad-file-async");
+        request.setTitle("非法文件地址");
+        request.setArchiveType("DOCUMENT");
+        request.setAsync(true);
+
+        ArchiveReceiveRequest.FileInfo fileInfo = new ArchiveReceiveRequest.FileInfo();
+        fileInfo.setFileName("test.pdf");
+        fileInfo.setDownloadUrl("http://127.0.0.1/test.pdf");
+        request.setFiles(List.of(fileInfo));
+
+        when(archiveMapper.selectBySourceId("LAW_FIRM", "bad-file-async")).thenReturn(null);
+        when(fondsMapper.selectByFondsNo("QZ001")).thenReturn(testFonds);
+        doThrow(new BusinessException("400", "文件下载地址[1]指向受限地址，不允许访问"))
+                .when(outboundUrlValidator).validate("http://127.0.0.1/test.pdf", "文件下载地址[1]");
+
+        assertThrows(BusinessException.class, () -> archiveService.receive(request));
+        verify(archiveMapper, never()).insert(any(Archive.class));
+        verify(rabbitTemplate, never()).convertAndSend(anyString(), anyString(), any(Object.class));
+    }
+
+    @Test
+    void testReceive_InvalidDownloadUrlSync_ShouldRejectEarly() {
+        ArchiveReceiveRequest request = new ArchiveReceiveRequest();
+        request.setSourceType("LAW_FIRM");
+        request.setSourceId("bad-file-sync");
+        request.setTitle("非法文件地址");
+        request.setArchiveType("DOCUMENT");
+        request.setAsync(false);
+
+        ArchiveReceiveRequest.FileInfo fileInfo = new ArchiveReceiveRequest.FileInfo();
+        fileInfo.setFileName("test.pdf");
+        fileInfo.setDownloadUrl("http://127.0.0.1/test.pdf");
+        request.setFiles(List.of(fileInfo));
+
+        when(archiveMapper.selectBySourceId("LAW_FIRM", "bad-file-sync")).thenReturn(null);
+        when(fondsMapper.selectByFondsNo("QZ001")).thenReturn(testFonds);
+        doThrow(new BusinessException("400", "文件下载地址[1]指向受限地址，不允许访问"))
+                .when(outboundUrlValidator).validate("http://127.0.0.1/test.pdf", "文件下载地址[1]");
+
+        assertThrows(BusinessException.class, () -> archiveService.receive(request));
+        verify(archiveMapper, never()).insert(any(Archive.class));
+        verify(fileStorageService, never()).downloadAndStore(any(), anyString(), anyString(), any(), anyInt());
+    }
+
+    @Test
     void testGetById_Success() {
         when(archiveMapper.selectById(1L)).thenReturn(testArchive);
         when(digitalFileMapper.selectByArchiveId(1L)).thenReturn(Collections.emptyList());
 
-        ArchiveDTO result = archiveService.getById(1L);
+        try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+            securityUtils.when(SecurityUtils::isAuthenticated).thenReturn(true);
+            securityUtils.when(() -> SecurityUtils.hasAnyRole("SYSTEM_ADMIN", "ARCHIVE_REVIEWER", "ARCHIVE_MANAGER"))
+                    .thenReturn(true);
 
-        assertNotNull(result);
-        assertEquals("测试档案", result.getTitle());
-        assertEquals("ARC-20260213-0001", result.getArchiveNo());
+            ArchiveDTO result = archiveService.getById(1L);
+
+            assertNotNull(result);
+            assertEquals("测试档案", result.getTitle());
+            assertEquals("ARC-20260213-0001", result.getArchiveNo());
+        }
     }
 
     @Test
@@ -181,10 +257,16 @@ class ArchiveServiceTest {
         when(archiveMapper.selectByArchiveNo("ARC-20260213-0001")).thenReturn(testArchive);
         when(digitalFileMapper.selectByArchiveId(1L)).thenReturn(Collections.emptyList());
 
-        ArchiveDTO result = archiveService.getByArchiveNo("ARC-20260213-0001");
+        try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+            securityUtils.when(SecurityUtils::isAuthenticated).thenReturn(true);
+            securityUtils.when(() -> SecurityUtils.hasAnyRole("SYSTEM_ADMIN", "ARCHIVE_REVIEWER", "ARCHIVE_MANAGER"))
+                    .thenReturn(true);
 
-        assertNotNull(result);
-        assertEquals(1L, result.getId());
+            ArchiveDTO result = archiveService.getByArchiveNo("ARC-20260213-0001");
+
+            assertNotNull(result);
+            assertEquals(1L, result.getId());
+        }
     }
 
     @Test
@@ -205,7 +287,8 @@ class ArchiveServiceTest {
         page.setRecords(Arrays.asList(testArchive));
         page.setTotal(1);
 
-        when(archiveMapper.selectPage(any(Page.class), any())).thenReturn(page);
+        when(archiveMapper.selectPage(ArgumentMatchers.<Page<Archive>>any(), ArgumentMatchers.<Wrapper<Archive>>any()))
+                .thenReturn(page);
 
         PageResult<ArchiveDTO> result = archiveService.query(request);
 
@@ -227,7 +310,8 @@ class ArchiveServiceTest {
         page.setRecords(Arrays.asList(testArchive));
         page.setTotal(1);
 
-        when(archiveMapper.selectPage(any(Page.class), any())).thenReturn(page);
+        when(archiveMapper.selectPage(ArgumentMatchers.<Page<Archive>>any(), ArgumentMatchers.<Wrapper<Archive>>any()))
+                .thenReturn(page);
 
         PageResult<ArchiveDTO> result = archiveService.query(request);
 
@@ -247,7 +331,8 @@ class ArchiveServiceTest {
         page.setRecords(Collections.emptyList());
         page.setTotal(0);
 
-        when(archiveMapper.selectPage(any(Page.class), any())).thenReturn(page);
+        when(archiveMapper.selectPage(ArgumentMatchers.<Page<Archive>>any(), ArgumentMatchers.<Wrapper<Archive>>any()))
+                .thenReturn(page);
 
         PageResult<ArchiveDTO> result = archiveService.query(request);
 
@@ -340,10 +425,21 @@ class ArchiveServiceTest {
         when(configService.getIntValue("archive.no.seq.digits", 4)).thenReturn(4);
         when(stringRedisTemplate.opsForValue()).thenThrow(new RuntimeException("Redis不可用"));
 
+        // Redis不可用时，档案号唯一性无法保证，直接抛出BusinessException
+        assertThrows(BusinessException.class, () -> archiveService.generateArchiveNo("DOCUMENT"));
+    }
+
+    @Test
+    void testGenerateArchiveNo_BlankDateFormatShouldFallbackToDefault() {
+        when(configService.getArchiveNoPrefix("DOCUMENT")).thenReturn("DOC");
+        when(configService.getValue("archive.no.date.format", "yyyyMMdd")).thenReturn("   ");
+        when(configService.getIntValue("archive.no.seq.digits", 4)).thenReturn(4);
+        when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.increment(anyString())).thenReturn(1L);
+
         String archiveNo = archiveService.generateArchiveNo("DOCUMENT");
 
-        assertNotNull(archiveNo);
-        assertTrue(archiveNo.startsWith("DOC-"));
+        assertTrue(archiveNo.startsWith("DOC-" + LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd")) + "-"));
     }
 
     @Test
@@ -376,10 +472,20 @@ class ArchiveServiceTest {
         newArchive.setDeleted(false);
         when(archiveMapper.selectById(2L)).thenReturn(newArchive);
 
-        ArchiveDTO result = archiveService.create(request);
+        try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+            securityUtils.when(SecurityUtils::isAuthenticated).thenReturn(true);
+            securityUtils.when(() -> SecurityUtils.hasAnyRole("SYSTEM_ADMIN", "ARCHIVE_REVIEWER", "ARCHIVE_MANAGER"))
+                    .thenReturn(true);
+            securityUtils.when(SecurityUtils::getCurrentUserId).thenReturn(1L);
+            securityUtils.when(SecurityUtils::getCurrentUsername).thenReturn("admin");
+            securityUtils.when(SecurityUtils::getCurrentRealName).thenReturn("管理员");
+            securityUtils.when(SecurityUtils::getCurrentUserType).thenReturn("SYSTEM_ADMIN");
 
-        assertNotNull(result);
-        assertEquals("新创建的档案", result.getTitle());
+            ArchiveDTO result = archiveService.create(request);
+
+            assertNotNull(result);
+            assertEquals("新创建的档案", result.getTitle());
+        }
     }
 
     @Test
@@ -407,10 +513,16 @@ class ArchiveServiceTest {
         when(archiveMapper.updateById(any(Archive.class))).thenReturn(1);
         when(digitalFileMapper.selectByArchiveId(1L)).thenReturn(Collections.emptyList());
 
-        ArchiveDTO result = archiveService.update(1L, request);
+        try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+            securityUtils.when(SecurityUtils::isAuthenticated).thenReturn(true);
+            securityUtils.when(() -> SecurityUtils.hasAnyRole("SYSTEM_ADMIN", "ARCHIVE_REVIEWER", "ARCHIVE_MANAGER"))
+                    .thenReturn(true);
 
-        assertNotNull(result);
-        verify(archiveMapper).updateById(any(Archive.class));
+            ArchiveDTO result = archiveService.update(1L, request);
+
+            assertNotNull(result);
+            verify(archiveMapper).updateById(any(Archive.class));
+        }
     }
 
     @Test
@@ -545,10 +657,20 @@ class ArchiveServiceTest {
         newArchive.setDeleted(false);
         when(archiveMapper.selectById(3L)).thenReturn(newArchive);
 
-        ArchiveDTO result = archiveService.create(request);
+        try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+            securityUtils.when(SecurityUtils::isAuthenticated).thenReturn(true);
+            securityUtils.when(() -> SecurityUtils.hasAnyRole("SYSTEM_ADMIN", "ARCHIVE_REVIEWER", "ARCHIVE_MANAGER"))
+                    .thenReturn(true);
+            securityUtils.when(SecurityUtils::getCurrentUserId).thenReturn(1L);
+            securityUtils.when(SecurityUtils::getCurrentUsername).thenReturn("admin");
+            securityUtils.when(SecurityUtils::getCurrentRealName).thenReturn("管理员");
+            securityUtils.when(SecurityUtils::getCurrentUserType).thenReturn("SYSTEM_ADMIN");
 
-        assertNotNull(result);
-        verify(categoryMapper).selectById(1L);
+            ArchiveDTO result = archiveService.create(request);
+
+            assertNotNull(result);
+            verify(categoryMapper).selectById(1L);
+        }
     }
 
     @Test
@@ -641,7 +763,8 @@ class ArchiveServiceTest {
         page.setRecords(Arrays.asList(testArchive));
         page.setTotal(1);
 
-        when(archiveMapper.selectPage(any(Page.class), any())).thenReturn(page);
+        when(archiveMapper.selectPage(ArgumentMatchers.<Page<Archive>>any(), ArgumentMatchers.<Wrapper<Archive>>any()))
+                .thenReturn(page);
 
         PageResult<ArchiveDTO> result = archiveService.query(request);
 
@@ -661,7 +784,8 @@ class ArchiveServiceTest {
 
         when(digitalFileMapper.selectArchiveIdsByScanBatchNo("SCAN-20260330-01"))
                 .thenReturn(List.of(1L));
-        when(archiveMapper.selectPage(any(Page.class), any())).thenReturn(page);
+        when(archiveMapper.selectPage(ArgumentMatchers.<Page<Archive>>any(), ArgumentMatchers.<Wrapper<Archive>>any()))
+                .thenReturn(page);
 
         PageResult<ArchiveDTO> result = archiveService.query(request);
 
@@ -679,7 +803,8 @@ class ArchiveServiceTest {
         page.setRecords(Arrays.asList(testArchive));
         page.setTotal(1);
 
-        when(archiveMapper.selectPage(any(Page.class), any())).thenReturn(page);
+        when(archiveMapper.selectPage(ArgumentMatchers.<Page<Archive>>any(), ArgumentMatchers.<Wrapper<Archive>>any()))
+                .thenReturn(page);
 
         try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
             securityUtils.when(SecurityUtils::isAuthenticated).thenReturn(true);
@@ -692,7 +817,7 @@ class ArchiveServiceTest {
             archiveService.query(request);
         }
 
-        verify(archiveMapper).selectPage(any(Page.class), argThat(wrapper ->
+        verify(archiveMapper).selectPage(ArgumentMatchers.<Page<Archive>>any(), argThat((Wrapper<Archive> wrapper) ->
                 wrapper != null
                         && wrapper.getSqlSegment() != null
                         && wrapper.getSqlSegment().contains("regexp_replace")
@@ -743,10 +868,20 @@ class ArchiveServiceTest {
         when(archiveMapper.selectById(4L)).thenReturn(newArchive);
         when(archiveMapper.updateById(any(Archive.class))).thenReturn(1);
 
-        ArchiveDTO result = archiveService.create(request);
+        try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+            securityUtils.when(SecurityUtils::isAuthenticated).thenReturn(true);
+            securityUtils.when(() -> SecurityUtils.hasAnyRole("SYSTEM_ADMIN", "ARCHIVE_REVIEWER", "ARCHIVE_MANAGER"))
+                    .thenReturn(true);
+            securityUtils.when(SecurityUtils::getCurrentUserId).thenReturn(1L);
+            securityUtils.when(SecurityUtils::getCurrentUsername).thenReturn("admin");
+            securityUtils.when(SecurityUtils::getCurrentRealName).thenReturn("管理员");
+            securityUtils.when(SecurityUtils::getCurrentUserType).thenReturn("SYSTEM_ADMIN");
 
-        assertNotNull(result);
-        verify(digitalFileMapper).batchAssociateToArchive(eq(4L), anyList());
+            ArchiveDTO result = archiveService.create(request);
+
+            assertNotNull(result);
+            verify(digitalFileMapper).batchAssociateToArchive(eq(4L), anyList());
+        }
     }
 
     @Test
@@ -768,13 +903,19 @@ class ArchiveServiceTest {
         when(archiveMapper.selectById(1L)).thenReturn(testArchive);
         when(digitalFileMapper.selectByArchiveId(1L)).thenReturn(Arrays.asList(file));
 
-        ArchiveDTO result = archiveService.getById(1L);
+        try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+            securityUtils.when(SecurityUtils::isAuthenticated).thenReturn(true);
+            securityUtils.when(() -> SecurityUtils.hasAnyRole("SYSTEM_ADMIN", "ARCHIVE_REVIEWER", "ARCHIVE_MANAGER"))
+                    .thenReturn(true);
 
-        assertNotNull(result);
-        assertNotNull(result.getFiles());
-        assertEquals(1, result.getFiles().size());
-        assertEquals(1, result.getFiles().get(0).getVolumeNo());
-        assertEquals(DigitalFile.SECTION_MAIN, result.getFiles().get(0).getSectionType());
+            ArchiveDTO result = archiveService.getById(1L);
+
+            assertNotNull(result);
+            assertNotNull(result.getFiles());
+            assertEquals(1, result.getFiles().size());
+            assertEquals(1, result.getFiles().get(0).getVolumeNo());
+            assertEquals(DigitalFile.SECTION_MAIN, result.getFiles().get(0).getSectionType());
+        }
     }
 
     @Test

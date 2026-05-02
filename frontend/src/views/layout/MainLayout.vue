@@ -336,10 +336,12 @@ import {
   Link,
   Download
 } from '@element-plus/icons-vue'
-import { useUserStore, useAppStore } from '@/stores'
+import { useAppStore } from '@/stores'
+import { useUserStore } from '@/stores/user'
 import { checkRegistryUpdate, getRuntimeInfo } from '@/api/config'
 import { APP_PRODUCT_VERSION } from '@/config/appProductVersion'
 import { BORROW_ROLES, MANAGER_ROLES, REPORT_ROLES, ROLES, hasPermission } from '@/utils/permission'
+import { secureStorage } from '@/utils/security'
 
 const userStore = useUserStore()
 const appStore = useAppStore()
@@ -364,10 +366,19 @@ const layoutDisplayVersion = computed(
 )
 
 // 初始化
-onMounted(() => {
+onMounted(async () => {
   userStore.init()
   appStore.init()
   appStore.loadSiteConfig()
+
+  if (secureStorage.getAccessToken() && (!userStore.userId || !userStore.userType || !userStore.username)) {
+    try {
+      await userStore.fetchCurrentUser()
+    } catch {
+      return
+    }
+  }
+
   if (canViewRuntimeInfo.value) {
     loadRuntimeInfo()
     loadRegistryUpdateHint()
@@ -380,7 +391,7 @@ const loadRuntimeInfo = async () => {
     const data = res?.data || {}
     runtimeInfo.productVersion = data.productVersion || APP_PRODUCT_VERSION || ''
     runtimeInfo.commitSha = data.commitSha || ''
-  } catch (error) {
+  } catch {
     runtimeInfo.productVersion = ''
     runtimeInfo.commitSha = ''
   }
@@ -390,7 +401,7 @@ const loadRegistryUpdateHint = async () => {
   try {
     const res = await checkRegistryUpdate()
     registryHasUpdate.value = res?.data?.updateAvailable === true
-  } catch (error) {
+  } catch {
     registryHasUpdate.value = false
   }
 }

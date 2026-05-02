@@ -321,9 +321,12 @@ const handlePreview = (file) => {
 const handleDownload = async (file) => {
   try {
     const res = await getFileDownloadUrl(file.id)
-    if (res.data) {
-      window.open(res.data, '_blank')
+    const downloadUrl = res.data?.url
+    if (!downloadUrl) {
+      ElMessage.error('获取下载链接失败')
+      return
     }
+    window.open(downloadUrl, '_blank')
     emit('download', file)
   } catch (e) {
     console.error('获取下载链接失败', e)

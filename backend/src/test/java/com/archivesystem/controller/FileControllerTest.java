@@ -1,5 +1,6 @@
 package com.archivesystem.controller;
 
+import com.archivesystem.dto.file.FilePreviewInfo;
 import com.archivesystem.entity.DigitalFile;
 import com.archivesystem.service.FileStorageService;
 import org.junit.jupiter.api.BeforeEach;
@@ -66,7 +67,10 @@ class FileControllerTest {
                 .andExpect(jsonPath("$.code").value("200"))
                 .andExpect(jsonPath("$.message").value("上传成功"))
                 .andExpect(jsonPath("$.data.id").value(1))
-                .andExpect(jsonPath("$.data.originalName").value("test-document.pdf"));
+                .andExpect(jsonPath("$.data.originalName").value("test-document.pdf"))
+                .andExpect(jsonPath("$.data.hashValue").doesNotExist())
+                .andExpect(jsonPath("$.data.mimeType").doesNotExist())
+                .andExpect(jsonPath("$.data.fileSize").doesNotExist());
     }
 
     @Test
@@ -119,7 +123,11 @@ class FileControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
                 .andExpect(jsonPath("$.message").value("上传完成，成功 2 个"))
-                .andExpect(jsonPath("$.data.length()").value(2));
+                .andExpect(jsonPath("$.data.length()").value(2))
+                .andExpect(jsonPath("$.data[0].scanBatchNo").doesNotExist())
+                .andExpect(jsonPath("$.data[0].volumeNo").doesNotExist())
+                .andExpect(jsonPath("$.data[0].mimeType").doesNotExist())
+                .andExpect(jsonPath("$.data[0].fileSize").doesNotExist());
     }
 
     @Test
@@ -148,7 +156,7 @@ class FileControllerTest {
                         .param("fileCategory", "DOCUMENT"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
-                .andExpect(jsonPath("$.message").value("上传完成，成功 1 个，失败 1 个，失败文件: test2.pdf"))
+                .andExpect(jsonPath("$.message").value("上传完成，成功 1 个，失败 1 个"))
                 .andExpect(jsonPath("$.data.length()").value(1));
     }
 
@@ -167,7 +175,7 @@ class FileControllerTest {
                         .param("fileCategory", "DOCUMENT"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("500"))
-                .andExpect(jsonPath("$.message").value("批量上传失败，未成功上传任何文件，失败文件: test1.pdf"));
+                .andExpect(jsonPath("$.message").value("批量上传失败，未成功上传任何文件，共失败 1 个"));
     }
 
     @Test
@@ -179,7 +187,7 @@ class FileControllerTest {
         mockMvc.perform(get("/files/1/download"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
-                .andExpect(jsonPath("$.data").value(downloadUrl));
+                .andExpect(jsonPath("$.data.url").value(downloadUrl));
     }
 
     @Test
@@ -191,7 +199,26 @@ class FileControllerTest {
         mockMvc.perform(get("/files/1/preview"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
-                .andExpect(jsonPath("$.data").value(previewUrl));
+                .andExpect(jsonPath("$.data.url").value(previewUrl));
+    }
+
+    @Test
+    void testGetPreviewInfo() throws Exception {
+        FilePreviewInfo previewInfo = FilePreviewInfo.builder()
+                .url("https://minio.example.com/bucket/file.pdf?preview=true")
+                .previewType("pdf")
+                .isConverted(true)
+                .build();
+
+        when(fileStorageService.getPreviewInfo(1L)).thenReturn(previewInfo);
+
+        mockMvc.perform(get("/files/1/preview-info"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("200"))
+                .andExpect(jsonPath("$.data.url").value("https://minio.example.com/bucket/file.pdf?preview=true"))
+                .andExpect(jsonPath("$.data.previewType").value("pdf"))
+                .andExpect(jsonPath("$.data.isConverted").value(true))
+                .andExpect(jsonPath("$.data.originalExtension").doesNotExist());
     }
 
     @Test

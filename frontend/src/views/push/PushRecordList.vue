@@ -113,16 +113,10 @@
             style="width: 140px"
           >
             <el-option
-              label="律所系统"
-              value="LAW_FIRM"
-            />
-            <el-option
-              label="手动上传"
-              value="MANUAL"
-            />
-            <el-option
-              label="数据迁移"
-              value="IMPORT"
+              v-for="item in sourceTypeOptions"
+              :key="item.value"
+              :label="item.label"
+              :value="item.value"
             />
           </el-select>
         </el-form-item>
@@ -215,20 +209,8 @@
           width="100"
         >
           <template #default="{ row }">
-            <el-tag
-              v-if="row.sourceType === 'LAW_FIRM'"
-              type="primary"
-            >
-              律所系统
-            </el-tag>
-            <el-tag
-              v-else-if="row.sourceType === 'MANUAL'"
-              type="info"
-            >
-              手动上传
-            </el-tag>
-            <el-tag v-else>
-              {{ row.sourceType }}
+            <el-tag :type="getSourceTypeTag(row.sourceType)">
+              {{ getSourceTypeLabel(row.sourceType) }}
             </el-tag>
           </template>
         </el-table-column>
@@ -367,7 +349,7 @@
           {{ currentRecord.title }}
         </el-descriptions-item>
         <el-descriptions-item label="来源类型">
-          {{ currentRecord.sourceType }}
+          {{ getSourceTypeLabel(currentRecord.sourceType) }}
         </el-descriptions-item>
         <el-descriptions-item label="来源ID">
           {{ currentRecord.sourceId }}
@@ -386,12 +368,6 @@
         </el-descriptions-item>
         <el-descriptions-item label="处理时间">
           {{ formatDateTime(currentRecord.processedAt) }}
-        </el-descriptions-item>
-        <el-descriptions-item
-          label="回调地址"
-          :span="2"
-        >
-          {{ currentRecord.callbackUrl || '-' }}
         </el-descriptions-item>
         <el-descriptions-item
           v-if="currentRecord.errorMessage"
@@ -428,6 +404,12 @@ const router = useRouter()
 
 // 下拉选项
 const pushStatusOptions = getPushStatusOptions()
+const sourceTypeOptions = [
+  { value: 'LAW_FIRM', label: '律所系统' },
+  { value: 'MANUAL', label: '手动录入' },
+  { value: 'IMPORT', label: '批量导入' },
+  { value: 'TRANSFER', label: '移交' }
+]
 
 // 统计数据
 const statistics = ref({})
@@ -458,9 +440,7 @@ const currentRecord = ref(null)
 const loadStatistics = async () => {
   try {
     const res = await getPushRecordStatistics()
-    if (res.success) {
-      statistics.value = res.data
-    }
+    statistics.value = res.data || {}
   } catch (error) {
     console.error('加载统计数据失败:', error)
   }
@@ -485,10 +465,8 @@ const loadData = async () => {
       delete params.pushedAtRange
     }
     const res = await getPushRecordList(params)
-    if (res.success) {
-      tableData.value = res.data.records || []
-      pagination.total = res.data.total || 0
-    }
+    tableData.value = res.data.records || []
+    pagination.total = res.data.total || 0
   } catch (error) {
     console.error('加载数据失败:', error)
     ElMessage.error('加载数据失败')
@@ -532,13 +510,12 @@ const handlePageChange = (val) => {
 
 // 查看详情
 const handleView = async (row) => {
+  currentRecord.value = null
   try {
     const res = await getPushRecordDetail(row.id)
-    if (res.success) {
-      currentRecord.value = res.data
-      detailVisible.value = true
-    }
-  } catch (error) {
+    currentRecord.value = res.data
+    detailVisible.value = true
+  } catch {
     ElMessage.error('加载详情失败')
   }
 }
@@ -549,11 +526,9 @@ const handleRetry = async (row) => {
     await ElMessageBox.confirm('确定要重试该推送记录吗？', '确认重试', {
       type: 'warning'
     })
-    const res = await retryPushRecord(row.id)
-    if (res.success) {
-      ElMessage.success('已重置为待处理状态')
-      handleRefresh()
-    }
+    await retryPushRecord(row.id)
+    ElMessage.success('已重置为待处理状态')
+    handleRefresh()
   } catch (error) {
     if (error !== 'cancel') {
       ElMessage.error('重试失败')
@@ -578,6 +553,21 @@ const formatDateTime = (dateStr) => {
 // 注：getPushStatusType, getPushStatusName 已从 archiveEnums.js 导入
 const getStatusType = getPushStatusType
 const getStatusText = getPushStatusName
+
+const getSourceTypeLabel = (sourceType) => {
+  const match = sourceTypeOptions.find(item => item.value === sourceType)
+  return match?.label || sourceType || '-'
+}
+
+const getSourceTypeTag = (sourceType) => {
+  const map = {
+    LAW_FIRM: 'primary',
+    MANUAL: 'info',
+    IMPORT: 'warning',
+    TRANSFER: 'success'
+  }
+  return map[sourceType] || ''
+}
 
 onMounted(() => {
   loadStatistics()

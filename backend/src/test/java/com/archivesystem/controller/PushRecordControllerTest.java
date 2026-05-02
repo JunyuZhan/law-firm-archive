@@ -59,7 +59,12 @@ class PushRecordControllerTest {
         testRecord.setId(1L);
         testRecord.setTitle("测试推送");
         testRecord.setPushStatus(PushRecord.STATUS_FAILED);
+        testRecord.setCallbackUrl("http://internal.example.com/callback");
+        testRecord.setRequestPayload(Map.of("token", "secret"));
+        testRecord.setErrorMessage("公开错误");
         testRecord.setPushedAt(LocalDateTime.now());
+        testRecord.setDeleted(false);
+        testRecord.setCreatedBy(88L);
     }
 
     @Test
@@ -108,16 +113,76 @@ class PushRecordControllerTest {
         mockMvc.perform(get("/push-records"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
-                .andExpect(jsonPath("$.data.total").value(1));
+                .andExpect(jsonPath("$.data.total").value(1))
+                .andExpect(jsonPath("$.data.records[0].sourceId").doesNotExist())
+                .andExpect(jsonPath("$.data.records[0].processedAt").doesNotExist())
+                .andExpect(jsonPath("$.data.records[0].callbackUrl").doesNotExist())
+                .andExpect(jsonPath("$.data.records[0].requestPayload").doesNotExist())
+                .andExpect(jsonPath("$.data.records[0].deleted").doesNotExist())
+                .andExpect(jsonPath("$.data.records[0].createdBy").doesNotExist())
+                .andExpect(jsonPath("$.data.records[0].sourceCode").doesNotExist())
+                .andExpect(jsonPath("$.data.records[0].sourceNo").doesNotExist())
+                .andExpect(jsonPath("$.data.records[0].fileStatus").doesNotExist())
+                .andExpect(jsonPath("$.data.records[0].failedFiles").doesNotExist())
+                .andExpect(jsonPath("$.data.records[0].errorCode").doesNotExist())
+                .andExpect(jsonPath("$.data.records[0].errorMessage").doesNotExist());
+    }
+
+    @Test
+    void testGetFailed_ShouldHideDetailOnlyFields() throws Exception {
+        when(pushRecordService.getFailedRecords()).thenReturn(List.of(testRecord));
+
+        mockMvc.perform(get("/push-records/failed"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("200"))
+                .andExpect(jsonPath("$.data[0].sourceId").doesNotExist())
+                .andExpect(jsonPath("$.data[0].processedAt").doesNotExist())
+                .andExpect(jsonPath("$.data[0].errorMessage").doesNotExist());
+    }
+
+    @Test
+    void testGetById_ShouldHideSensitiveFields() throws Exception {
+        when(pushRecordService.getById(1L)).thenReturn(testRecord);
+
+        mockMvc.perform(get("/push-records/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("200"))
+                .andExpect(jsonPath("$.data.id").value(1))
+                .andExpect(jsonPath("$.data.callbackUrl").doesNotExist())
+                .andExpect(jsonPath("$.data.requestPayload").doesNotExist())
+                .andExpect(jsonPath("$.data.deleted").doesNotExist())
+                .andExpect(jsonPath("$.data.createdBy").doesNotExist())
+                .andExpect(jsonPath("$.data.sourceCode").doesNotExist())
+                .andExpect(jsonPath("$.data.sourceNo").doesNotExist())
+                .andExpect(jsonPath("$.data.fileStatus").doesNotExist())
+                .andExpect(jsonPath("$.data.failedFiles").doesNotExist())
+                .andExpect(jsonPath("$.data.errorCode").doesNotExist())
+                .andExpect(jsonPath("$.data.errorMessage").value("公开错误"));
     }
 
     @Test
     void testStatistics_Success() throws Exception {
-        when(pushRecordService.getStatistics()).thenReturn(Map.of("total", 1L));
+        when(pushRecordService.getStatistics()).thenReturn(Map.of(
+                "total", 1L,
+                "today", 2L,
+                "pending", 3L,
+                "processing", 4L,
+                "success", 5L,
+                "failed", 6L,
+                "partial", 7L,
+                "unexpected", 999L
+        ));
 
         mockMvc.perform(get("/push-records/statistics"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
-                .andExpect(jsonPath("$.data.total").value(1));
+                .andExpect(jsonPath("$.data.total").value(1))
+                .andExpect(jsonPath("$.data.today").value(2))
+                .andExpect(jsonPath("$.data.pending").value(3))
+                .andExpect(jsonPath("$.data.processing").value(4))
+                .andExpect(jsonPath("$.data.success").value(5))
+                .andExpect(jsonPath("$.data.failed").value(6))
+                .andExpect(jsonPath("$.data.partial").value(7))
+                .andExpect(jsonPath("$.data.unexpected").doesNotExist());
     }
 }

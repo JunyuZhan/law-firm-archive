@@ -184,6 +184,8 @@
             v-model="form.locationCode"
             placeholder="请输入位置编码"
             :disabled="isEdit"
+            maxlength="50"
+            show-word-limit
           />
         </el-form-item>
         <el-form-item
@@ -193,6 +195,8 @@
           <el-input
             v-model="form.locationName"
             placeholder="请输入位置名称"
+            maxlength="100"
+            show-word-limit
           />
         </el-form-item>
         <el-row :gutter="20">
@@ -332,10 +336,21 @@ const form = ref({
   remarks: ''
 })
 
+const requireTrimmedText = (message) => ({
+  validator: (_rule, value, callback) => {
+    if (!value?.trim()) {
+      callback(new Error(message))
+      return
+    }
+    callback()
+  },
+  trigger: 'blur'
+})
+
 const formRules = {
-  locationCode: [{ required: true, message: '请输入位置编码', trigger: 'blur' }],
-  locationName: [{ required: true, message: '请输入位置名称', trigger: 'blur' }],
-  roomName: [{ required: true, message: '请输入库房名称', trigger: 'blur' }]
+  locationCode: [requireTrimmedText('请输入位置编码')],
+  locationName: [requireTrimmedText('请输入位置名称')],
+  roomName: [requireTrimmedText('请输入库房名称')]
 }
 
 // 获取使用率
@@ -425,20 +440,31 @@ const handleCreate = () => {
 
 // 编辑
 const handleEdit = (row) => {
-  isEdit.value = true
-  currentId.value = row.id
-  form.value = {
-    locationCode: row.locationCode,
-    locationName: row.locationName,
-    roomName: row.roomName || '',
-    area: row.area || '',
-    shelfNo: row.shelfNo || '',
-    layerNo: row.layerNo || '',
-    totalCapacity: row.totalCapacity || 0,
-    status: row.status || 'AVAILABLE',
-    remarks: row.remarks || ''
+  loadLocationDetail(row.id)
+}
+
+const loadLocationDetail = async (id) => {
+  try {
+    const res = await locationApi.get(id)
+    const row = res.data || {}
+    isEdit.value = true
+    currentId.value = row.id
+    form.value = {
+      locationCode: row.locationCode,
+      locationName: row.locationName,
+      roomName: row.roomName || '',
+      area: row.area || '',
+      shelfNo: row.shelfNo || '',
+      layerNo: row.layerNo || '',
+      totalCapacity: row.totalCapacity || 0,
+      status: row.status || 'AVAILABLE',
+      remarks: row.remarks || ''
+    }
+    dialogVisible.value = true
+  } catch (e) {
+    console.error(e)
+    ElMessage.error(e.response?.data?.message || '加载位置详情失败')
   }
-  dialogVisible.value = true
 }
 
 // 提交
@@ -448,12 +474,26 @@ const handleSubmit = async () => {
     await formRef.value.validate()
     submitting.value = true
 
+    const payload = {
+      ...form.value,
+      locationCode: form.value.locationCode.trim(),
+      locationName: form.value.locationName.trim(),
+      roomName: form.value.roomName.trim(),
+      area: form.value.area?.trim() || '',
+      shelfNo: form.value.shelfNo?.trim() || '',
+      layerNo: form.value.layerNo?.trim() || '',
+      remarks: form.value.remarks?.trim() || ''
+    }
+
+    let res
     if (isEdit.value) {
-      await locationApi.update(currentId.value, form.value)
-      ElMessage.success('更新成功')
+      res = await locationApi.update(currentId.value, payload)
+      const locationName = res?.data?.locationName || form.value.locationName
+      ElMessage.success(locationName ? `已更新位置：${locationName}` : '更新成功')
     } else {
-      await locationApi.create(form.value)
-      ElMessage.success('创建成功')
+      res = await locationApi.create(payload)
+      const locationName = res?.data?.locationName || form.value.locationName
+      ElMessage.success(locationName ? `已创建位置：${locationName}` : '创建成功')
     }
 
     dialogVisible.value = false
@@ -476,7 +516,7 @@ const handleDelete = async (row) => {
       type: 'warning'
     })
     await locationApi.delete(row.id)
-    ElMessage.success('删除成功')
+    ElMessage.success(`已删除位置：${row.locationName}`)
     loadData()
     loadRooms()
   } catch (e) {

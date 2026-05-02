@@ -2,7 +2,9 @@ package com.archivesystem.controller;
 
 import com.archivesystem.common.PageResult;
 import com.archivesystem.common.Result;
-import com.archivesystem.entity.BorrowLink;
+import com.archivesystem.dto.borrow.BorrowLinkResponse;
+import com.archivesystem.dto.borrow.BorrowLinkSummaryResponse;
+import com.archivesystem.dto.borrow.BorrowLinkUpdateExpiredResponse;
 import com.archivesystem.service.BorrowLinkService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -13,7 +15,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * 借阅链接管理控制器.
@@ -34,7 +35,7 @@ public class BorrowLinkController {
     @GetMapping
     @Operation(summary = "查询链接列表", description = "分页查询电子借阅链接列表")
     @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
-    public Result<PageResult<BorrowLink>> getList(
+    public Result<PageResult<BorrowLinkSummaryResponse>> getList(
             @Parameter(description = "档案ID") @RequestParam(required = false) Long archiveId,
             @Parameter(description = "状态") @RequestParam(required = false) String status,
             @Parameter(description = "是否允许下载") @RequestParam(required = false) Boolean allowDownload,
@@ -42,8 +43,13 @@ public class BorrowLinkController {
             @Parameter(description = "关键词") @RequestParam(required = false) String keyword,
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer pageNum,
             @Parameter(description = "每页数量") @RequestParam(defaultValue = "20") Integer pageSize) {
-        PageResult<BorrowLink> result = borrowLinkService.getList(archiveId, status, allowDownload, sourceType, keyword, pageNum, pageSize);
-        return Result.success(result);
+        PageResult<BorrowLinkResponse> result = borrowLinkService.getList(archiveId, status, allowDownload, sourceType, keyword, pageNum, pageSize);
+        return Result.success(PageResult.of(
+                result.getCurrent(),
+                result.getSize(),
+                result.getTotal(),
+                result.getRecords().stream().map(BorrowLinkSummaryResponse::from).toList()
+        ));
     }
 
     /**
@@ -52,8 +58,8 @@ public class BorrowLinkController {
     @GetMapping("/{id}")
     @Operation(summary = "获取链接详情")
     @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
-    public Result<BorrowLink> getById(@PathVariable Long id) {
-        BorrowLink link = borrowLinkService.getById(id);
+    public Result<BorrowLinkResponse> getById(@PathVariable Long id) {
+        BorrowLinkResponse link = borrowLinkService.getById(id);
         return Result.success(link);
     }
 
@@ -63,9 +69,9 @@ public class BorrowLinkController {
     @GetMapping("/archive/{archiveId}")
     @Operation(summary = "获取档案的有效链接", description = "获取指定档案的所有有效借阅链接")
     @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
-    public Result<List<BorrowLink>> getActiveByArchive(@PathVariable Long archiveId) {
-        List<BorrowLink> links = borrowLinkService.getActiveByArchiveId(archiveId);
-        return Result.success(links);
+    public Result<List<BorrowLinkSummaryResponse>> getActiveByArchive(@PathVariable Long archiveId) {
+        List<BorrowLinkResponse> links = borrowLinkService.getActiveByArchiveId(archiveId);
+        return Result.success(links.stream().map(BorrowLinkSummaryResponse::from).toList());
     }
 
     /**
@@ -74,11 +80,11 @@ public class BorrowLinkController {
     @PostMapping("/generate")
     @Operation(summary = "生成借阅链接", description = "为已审批通过的借阅申请生成访问链接")
     @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
-    public Result<BorrowLink> generateLink(
+    public Result<BorrowLinkResponse> generateLink(
             @Parameter(description = "借阅申请ID") @RequestParam Long borrowId,
             @Parameter(description = "有效期天数") @RequestParam(defaultValue = "7") Integer expireDays,
             @Parameter(description = "是否允许下载") @RequestParam(defaultValue = "true") Boolean allowDownload) {
-        BorrowLink link = borrowLinkService.generateLinkForBorrow(borrowId, expireDays, allowDownload);
+        BorrowLinkResponse link = borrowLinkService.generateLinkForBorrow(borrowId, expireDays, allowDownload);
         return Result.success("链接生成成功", link);
     }
 
@@ -112,8 +118,10 @@ public class BorrowLinkController {
     @PostMapping("/update-expired")
     @Operation(summary = "更新过期状态", description = "将所有已过期但状态未更新的链接标记为已过期")
     @PreAuthorize("hasRole('SYSTEM_ADMIN')")
-    public Result<Map<String, Integer>> updateExpired() {
+    public Result<BorrowLinkUpdateExpiredResponse> updateExpired() {
         int count = borrowLinkService.updateExpiredLinks();
-        return Result.success("更新完成", Map.of("updatedCount", count));
+        return Result.success("更新完成", BorrowLinkUpdateExpiredResponse.builder()
+                .updatedCount(count)
+                .build());
     }
 }

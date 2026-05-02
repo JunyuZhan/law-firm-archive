@@ -17,8 +17,10 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.actuate.health.HealthEndpoint;
 import org.springframework.boot.info.BuildProperties;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import java.io.ByteArrayInputStream;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.*;
@@ -77,6 +79,8 @@ class ConfigControllerTest {
         testConfig.setConfigValue("test-value");
         testConfig.setConfigGroup(SysConfig.GROUP_SYSTEM);
         testConfig.setDescription("测试配置描述");
+        testConfig.setCreatedBy(7L);
+        testConfig.setUpdatedBy(8L);
     }
 
     @Test
@@ -89,7 +93,10 @@ class ConfigControllerTest {
         mockMvc.perform(get("/configs"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
-                .andExpect(jsonPath("$.data.SYSTEM[0].configKey").value("test.key"));
+                .andExpect(jsonPath("$.data.SYSTEM[0].id").doesNotExist())
+                .andExpect(jsonPath("$.data.SYSTEM[0].configKey").value("test.key"))
+                .andExpect(jsonPath("$.data.SYSTEM[0].createdBy").doesNotExist())
+                .andExpect(jsonPath("$.data.SYSTEM[0].updatedBy").doesNotExist());
     }
 
     @Test
@@ -99,7 +106,9 @@ class ConfigControllerTest {
         mockMvc.perform(get("/configs/list"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
-                .andExpect(jsonPath("$.data[0].configKey").value("test.key"));
+                .andExpect(jsonPath("$.data[0].id").doesNotExist())
+                .andExpect(jsonPath("$.data[0].configKey").value("test.key"))
+                .andExpect(jsonPath("$.data[0].createdBy").doesNotExist());
     }
 
     @Test
@@ -109,7 +118,68 @@ class ConfigControllerTest {
         mockMvc.perform(get("/configs/group/SYSTEM"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
-                .andExpect(jsonPath("$.data[0].configKey").value("test.key"));
+                .andExpect(jsonPath("$.data[0].id").doesNotExist())
+                .andExpect(jsonPath("$.data[0].configKey").value("test.key"))
+                .andExpect(jsonPath("$.data[0].updatedBy").doesNotExist());
+    }
+
+    @Test
+    void testGetPublicSiteConfig_ShouldOnlyReturnAllowlistedKeys() throws Exception {
+        SysConfig publicConfig = new SysConfig();
+        publicConfig.setConfigKey("system.site.name");
+        publicConfig.setConfigValue("档案系统");
+        publicConfig.setConfigGroup("SITE");
+        publicConfig.setEditable(true);
+        publicConfig.setSortOrder(99);
+
+        SysConfig internalConfig = new SysConfig();
+        internalConfig.setConfigKey("system.site.logo.object");
+        internalConfig.setConfigValue("******");
+        internalConfig.setConfigGroup("SITE");
+
+        when(configService.getByGroup("SITE")).thenReturn(Arrays.asList(publicConfig, internalConfig));
+
+        mockMvc.perform(get("/configs/public/site"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("200"))
+                .andExpect(jsonPath("$.data.length()").value(1))
+                .andExpect(jsonPath("$.data[0].configKey").value("system.site.name"))
+                .andExpect(jsonPath("$.data[0].configValue").value("档案系统"))
+                .andExpect(jsonPath("$.data[0].editable").doesNotExist())
+                .andExpect(jsonPath("$.data[0].sortOrder").doesNotExist());
+    }
+
+    @Test
+    void testGetPublicSiteLogo_ShouldRejectNonLogoObjectPath() throws Exception {
+        when(configService.getValue("system.site.logo.object")).thenReturn("archives/private/file.pdf");
+
+        mockMvc.perform(get("/configs/public/site/logo"))
+                .andExpect(status().isNotFound());
+
+        verify(minioService, never()).getFile(anyString());
+    }
+
+    @Test
+    void testGetPublicSiteLogo_ShouldRejectNonImageContentType() throws Exception {
+        when(configService.getValue("system.site.logo.object")).thenReturn("site/logo/test.bin");
+        when(minioService.getContentType("site/logo/test.bin")).thenReturn("application/pdf");
+
+        mockMvc.perform(get("/configs/public/site/logo"))
+                .andExpect(status().isNotFound());
+
+        verify(minioService, never()).getFile("site/logo/test.bin");
+    }
+
+    @Test
+    void testGetPublicSiteLogo_ShouldReturnImageStream() throws Exception {
+        when(configService.getValue("system.site.logo.object")).thenReturn("site/logo/test.png");
+        when(minioService.getContentType("site/logo/test.png")).thenReturn("image/png");
+        when(minioService.getFile("site/logo/test.png")).thenReturn(new ByteArrayInputStream(new byte[] {1, 2, 3}));
+
+        mockMvc.perform(get("/configs/public/site/logo"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "image/png"))
+                .andExpect(header().string("Cache-Control", org.hamcrest.Matchers.containsString("must-revalidate")));
     }
 
     @Test
@@ -119,7 +189,10 @@ class ConfigControllerTest {
         mockMvc.perform(get("/configs/test.key"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
-                .andExpect(jsonPath("$.data.configKey").value("test.key"));
+                .andExpect(jsonPath("$.data.id").doesNotExist())
+                .andExpect(jsonPath("$.data.configKey").value("test.key"))
+                .andExpect(jsonPath("$.data.createdBy").doesNotExist())
+                .andExpect(jsonPath("$.data.updatedBy").doesNotExist());
     }
 
     @Test
@@ -171,6 +244,30 @@ class ConfigControllerTest {
     }
 
     @Test
+    void testUploadSiteLogo() throws Exception {
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "logo.png",
+                "image/png",
+                new byte[] {1, 2, 3}
+        );
+
+        mockMvc.perform(multipart("/configs/site/logo")
+                        .file(file))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("200"))
+                .andExpect(jsonPath("$.message").value("Logo上传成功"))
+                .andExpect(jsonPath("$.data.logoUrl").value(org.hamcrest.Matchers.startsWith("/api/configs/public/site/logo?t=")))
+                .andExpect(jsonPath("$.data.objectName").value(org.hamcrest.Matchers.startsWith("site/logo/")));
+
+        verify(minioService).uploadFile(eq(file), argThat(name -> name.startsWith("site/logo/") && name.endsWith(".png")));
+        verify(configService).saveConfig(eq("system.site.logo.object"), argThat(name -> name.startsWith("site/logo/")), eq("SITE"),
+                eq("Logo 对象路径"), eq(SysConfig.TYPE_STRING), eq(false), eq(6));
+        verify(configService).saveConfig(eq("system.site.logo"), argThat(url -> url.startsWith("/api/configs/public/site/logo?t=")), eq("SITE"),
+                eq("Logo URL"), eq(SysConfig.TYPE_STRING), eq(true), eq(5));
+    }
+
+    @Test
     void testCreateConfig() throws Exception {
         SysConfig newConfig = new SysConfig();
         newConfig.setConfigKey("new.key");
@@ -191,7 +288,8 @@ class ConfigControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
                 .andExpect(jsonPath("$.message").value("创建成功"))
-                .andExpect(jsonPath("$.data.id").value(2));
+                .andExpect(jsonPath("$.data.id").doesNotExist())
+                .andExpect(jsonPath("$.data.createdBy").doesNotExist());
     }
 
     @Test
@@ -224,7 +322,9 @@ class ConfigControllerTest {
 
         mockMvc.perform(get("/configs/archive-no"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value("200"));
+                .andExpect(jsonPath("$.code").value("200"))
+                .andExpect(jsonPath("$.data[0].id").doesNotExist())
+                .andExpect(jsonPath("$.data[0].createdBy").doesNotExist());
 
         verify(configService).getByGroup(SysConfig.GROUP_ARCHIVE_NO);
     }
@@ -235,7 +335,9 @@ class ConfigControllerTest {
 
         mockMvc.perform(get("/configs/retention"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value("200"));
+                .andExpect(jsonPath("$.code").value("200"))
+                .andExpect(jsonPath("$.data[0].id").doesNotExist())
+                .andExpect(jsonPath("$.data[0].updatedBy").doesNotExist());
 
         verify(configService).getByGroup(SysConfig.GROUP_RETENTION);
     }
@@ -246,7 +348,9 @@ class ConfigControllerTest {
 
         mockMvc.perform(get("/configs/system"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value("200"));
+                .andExpect(jsonPath("$.code").value("200"))
+                .andExpect(jsonPath("$.data[0].id").doesNotExist())
+                .andExpect(jsonPath("$.data[0].createdBy").doesNotExist());
 
         verify(configService).getByGroup(SysConfig.GROUP_SYSTEM);
     }

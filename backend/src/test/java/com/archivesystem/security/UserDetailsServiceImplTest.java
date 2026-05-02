@@ -64,8 +64,8 @@ class UserDetailsServiceImplTest {
                 () -> userDetailsService.loadUserByUsername("nonexistent")
         );
 
-        assertTrue(exception.getMessage().contains("用户不存在"));
-        assertTrue(exception.getMessage().contains("nonexistent"));
+        // 异常消息不包含用户名，防止用户枚举攻击
+        assertTrue(exception.getMessage().contains("用户名或密码错误"));
     }
 
     @Test

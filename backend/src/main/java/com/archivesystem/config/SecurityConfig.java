@@ -85,8 +85,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // 开放API接口（需要API Key认证，在ApiKeyAuthFilter中处理）
                         .requestMatchers("/open/**").permitAll()
-                        // 认证接口
-                        .requestMatchers("/auth/**").permitAll()
+                        // 认证接口（精确匹配，避免未来新增敏感接口被意外放行）
+                        .requestMatchers("/auth/login", "/auth/refresh", "/auth/logout").permitAll()
                         // 健康检查 - 只允许基本健康检查，限制敏感端点
                         .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                         .requestMatchers("/actuator/prometheus").hasRole("SYSTEM_ADMIN")
@@ -113,24 +113,19 @@ public class SecurityConfig {
 
     /**
      * CORS配置.
-     * 动态允许所有受信任的来源，防止CSRF攻击
+     * 仅允许本地开发地址和通过环境变量配置的受信任来源
      */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         
-        // 允许的来源：环境变量配置 + 本地开发地址
+        // 允许的来源：本地开发地址 + 环境变量配置的生产域名
+        // 注意：不再使用内网通配符模式（如 192.168.*.*），防止后端暴露公网时被利用
         List<String> patterns = new java.util.ArrayList<>(Arrays.asList(
                 "http://localhost:*",
                 "https://localhost:*",
                 "http://127.0.0.1:*",
-                "https://127.0.0.1:*",
-                "http://192.168.*.*:*",
-                "https://192.168.*.*:*",
-                "http://10.*.*.*:*",
-                "https://10.*.*.*:*",
-                "http://172.16.*.*:*",
-                "https://172.16.*.*:*"
+                "https://127.0.0.1:*"
         ));
         // 从环境变量添加外网域名（支持逗号分隔多个）
         if (allowedOrigins != null && !allowedOrigins.isBlank()) {

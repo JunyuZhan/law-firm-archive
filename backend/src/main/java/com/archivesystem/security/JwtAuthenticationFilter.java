@@ -38,7 +38,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             String token = extractToken(request);
             
-            if (StringUtils.hasText(token) && jwtUtils.validateToken(token)) {
+            if (StringUtils.hasText(token)) {
+                // 只解析一次Token，从Claims中提取所有需要的信息
+                Claims claims = jwtUtils.parseToken(token);
+                
                 // 检查Token是否在黑名单中
                 if (tokenBlacklistService.isBlacklisted(token)) {
                     log.warn("Token已在黑名单中，跳过设置认证上下文");
@@ -47,7 +50,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 }
                 
                 // 检查用户Token是否被全部吊销
-                Claims claims = jwtUtils.parseToken(token);
                 Long userId = claims.get("userId", Long.class);
                 long issuedAt = claims.getIssuedAt().getTime();
                 
@@ -57,7 +59,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     return;
                 }
                 
-                String username = jwtUtils.getUsernameFromToken(token);
+                String username = claims.get("username", String.class);
                 
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
                 if (!userDetails.isEnabled() || !userDetails.isAccountNonLocked()) {

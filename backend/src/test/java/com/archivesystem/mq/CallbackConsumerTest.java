@@ -153,7 +153,7 @@ class CallbackConsumerTest {
 
         verify(callbackService).sendCallback(testMessage);
         verify(channel).basicAck(1L, false);
-        verify(callbackService).logFailedCallback(eq(testMessage), anyString());
+        verify(callbackService).logFailedCallback(eq(testMessage), eq("回调失败，请联系系统管理员查看系统日志"));
     }
 
     @Test

@@ -2,7 +2,10 @@ package com.archivesystem.controller;
 
 import com.archivesystem.common.Result;
 import com.archivesystem.dto.config.DependencyStatusItemDTO;
+import com.archivesystem.dto.config.PublicSiteConfigResponse;
 import com.archivesystem.dto.config.RegistryUpdateCheckDTO;
+import com.archivesystem.dto.config.SiteLogoUploadResponse;
+import com.archivesystem.dto.config.SysConfigResponse;
 import com.archivesystem.dto.config.SystemDependencyStatusDTO;
 import com.archivesystem.dto.config.SystemRuntimeInfoDTO;
 import com.archivesystem.entity.SysConfig;
@@ -37,6 +40,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -58,6 +62,14 @@ public class ConfigController {
 
     private static final String SITE_LOGO_CONFIG_KEY = "system.site.logo";
     private static final String SITE_LOGO_OBJECT_KEY = "system.site.logo.object";
+    private static final String SITE_LOGO_OBJECT_PREFIX = "site/logo/";
+    private static final Set<String> PUBLIC_SITE_CONFIG_KEYS = Set.of(
+            "system.site.name",
+            "system.site.name.en",
+            SITE_LOGO_CONFIG_KEY,
+            "system.site.icp",
+            "system.site.copyright"
+    );
 
     @Value("${spring.application.name:archive-system}")
     private String applicationName;
@@ -77,8 +89,11 @@ public class ConfigController {
     @GetMapping
     @Operation(summary = "获取所有配置", description = "获取所有配置项，按分组返回")
     @PreAuthorize("hasRole('SYSTEM_ADMIN')")
-    public Result<Map<String, List<SysConfig>>> getAllGrouped() {
-        return Result.success(configService.getAllGrouped());
+    public Result<Map<String, List<SysConfigResponse>>> getAllGrouped() {
+        Map<String, List<SysConfigResponse>> result = new LinkedHashMap<>();
+        configService.getAllGrouped().forEach((group, configs) ->
+                result.put(group, configs.stream().map(SysConfigResponse::from).toList()));
+        return Result.success(result);
     }
 
     /**
@@ -87,8 +102,8 @@ public class ConfigController {
     @GetMapping("/list")
     @Operation(summary = "获取配置列表", description = "获取所有配置项列表")
     @PreAuthorize("hasRole('SYSTEM_ADMIN')")
-    public Result<List<SysConfig>> getAll() {
-        return Result.success(configService.getAll());
+    public Result<List<SysConfigResponse>> getAll() {
+        return Result.success(configService.getAll().stream().map(SysConfigResponse::from).toList());
     }
 
     /**
@@ -97,8 +112,8 @@ public class ConfigController {
     @GetMapping("/group/{group}")
     @Operation(summary = "按分组获取配置")
     @PreAuthorize("hasRole('SYSTEM_ADMIN')")
-    public Result<List<SysConfig>> getByGroup(@PathVariable String group) {
-        return Result.success(configService.getByGroup(group));
+    public Result<List<SysConfigResponse>> getByGroup(@PathVariable String group) {
+        return Result.success(configService.getByGroup(group).stream().map(SysConfigResponse::from).toList());
     }
 
     /**
@@ -107,8 +122,11 @@ public class ConfigController {
      */
     @GetMapping("/public/site")
     @Operation(summary = "获取站点配置（公开）", description = "无需认证，用于登录页面等")
-    public Result<List<SysConfig>> getPublicSiteConfig() {
-        return Result.success(configService.getByGroup("SITE"));
+    public Result<List<PublicSiteConfigResponse>> getPublicSiteConfig() {
+        List<SysConfig> publicConfigs = configService.getByGroup("SITE").stream()
+                .filter(config -> config != null && PUBLIC_SITE_CONFIG_KEYS.contains(config.getConfigKey()))
+                .toList();
+        return Result.success(publicConfigs.stream().map(PublicSiteConfigResponse::from).toList());
     }
 
     /**
@@ -118,23 +136,25 @@ public class ConfigController {
     @Operation(summary = "获取站点Logo（公开）", description = "读取当前上传的站点Logo")
     public ResponseEntity<?> getPublicSiteLogo() {
         String objectName = configService.getValue(SITE_LOGO_OBJECT_KEY);
-        if (!StringUtils.hasText(objectName)) {
+        if (!StringUtils.hasText(objectName) || !objectName.startsWith(SITE_LOGO_OBJECT_PREFIX)) {
             return ResponseEntity.notFound().build();
         }
-        InputStream inputStream = minioService.getFile(objectName);
-        String contentType = minioService.getContentType(objectName);
-        MediaType mediaType = MediaType.APPLICATION_OCTET_STREAM;
-        if (StringUtils.hasText(contentType)) {
-            try {
-                mediaType = MediaType.parseMediaType(contentType);
-            } catch (Exception ignored) {
-                mediaType = MediaType.APPLICATION_OCTET_STREAM;
+
+        try {
+            String contentType = minioService.getContentType(objectName);
+            if (!StringUtils.hasText(contentType) || !contentType.toLowerCase(Locale.ROOT).startsWith("image/")) {
+                return ResponseEntity.notFound().build();
             }
+
+            MediaType mediaType = MediaType.parseMediaType(contentType);
+            InputStream inputStream = minioService.getFile(objectName);
+            return ResponseEntity.ok()
+                    .cacheControl(CacheControl.noCache().cachePrivate().mustRevalidate())
+                    .contentType(mediaType)
+                    .body(new InputStreamResource(inputStream));
+        } catch (Exception ignored) {
+            return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.ok()
-                .cacheControl(CacheControl.noCache().cachePrivate().mustRevalidate())
-                .contentType(mediaType)
-                .body(new InputStreamResource(inputStream));
     }
 
     /**
@@ -143,8 +163,8 @@ public class ConfigController {
     @GetMapping("/{key}")
     @Operation(summary = "获取单个配置")
     @PreAuthorize("hasRole('SYSTEM_ADMIN')")
-    public Result<SysConfig> getByKey(@PathVariable String key) {
-        return Result.success(configService.getByKey(key));
+    public Result<SysConfigResponse> getByKey(@PathVariable String key) {
+        return Result.success(SysConfigResponse.from(configService.getByKey(key)));
     }
 
     /**
@@ -178,7 +198,7 @@ public class ConfigController {
     @PostMapping("/site/logo")
     @Operation(summary = "上传站点Logo")
     @PreAuthorize("hasRole('SYSTEM_ADMIN')")
-    public Result<Map<String, String>> uploadSiteLogo(@RequestParam("file") MultipartFile file) {
+    public Result<SiteLogoUploadResponse> uploadSiteLogo(@RequestParam("file") MultipartFile file) {
         if (file == null || file.isEmpty()) {
             return Result.error("400", "请选择要上传的Logo文件");
         }
@@ -203,10 +223,10 @@ public class ConfigController {
         configService.saveConfig(SITE_LOGO_OBJECT_KEY, objectName, "SITE", "Logo 对象路径", SysConfig.TYPE_STRING, false, 6);
         configService.saveConfig(SITE_LOGO_CONFIG_KEY, logoUrl, "SITE", "Logo URL", SysConfig.TYPE_STRING, true, 5);
 
-        return Result.success("Logo上传成功", Map.of(
-                "logoUrl", logoUrl,
-                "objectName", objectName
-        ));
+        return Result.success("Logo上传成功", SiteLogoUploadResponse.builder()
+                .logoUrl(logoUrl)
+                .objectName(objectName)
+                .build());
     }
 
     /**
@@ -215,9 +235,9 @@ public class ConfigController {
     @PostMapping
     @Operation(summary = "创建配置")
     @PreAuthorize("hasRole('SYSTEM_ADMIN')")
-    public Result<SysConfig> createConfig(@RequestBody SysConfig config) {
+    public Result<SysConfigResponse> createConfig(@RequestBody SysConfig config) {
         SysConfig created = configService.createConfig(config);
-        return Result.success("创建成功", created);
+        return Result.success("创建成功", SysConfigResponse.from(created));
     }
 
     /**
@@ -260,8 +280,10 @@ public class ConfigController {
     @GetMapping("/archive-no")
     @Operation(summary = "获取档案号配置", description = "获取档案号规则相关配置")
     @PreAuthorize("hasRole('SYSTEM_ADMIN')")
-    public Result<List<SysConfig>> getArchiveNoConfigs() {
-        return Result.success(configService.getByGroup(SysConfig.GROUP_ARCHIVE_NO));
+    public Result<List<SysConfigResponse>> getArchiveNoConfigs() {
+        return Result.success(configService.getByGroup(SysConfig.GROUP_ARCHIVE_NO).stream()
+                .map(SysConfigResponse::from)
+                .toList());
     }
 
     /**
@@ -270,8 +292,10 @@ public class ConfigController {
     @GetMapping("/retention")
     @Operation(summary = "获取保管期限配置")
     @PreAuthorize("hasRole('SYSTEM_ADMIN')")
-    public Result<List<SysConfig>> getRetentionConfigs() {
-        return Result.success(configService.getByGroup(SysConfig.GROUP_RETENTION));
+    public Result<List<SysConfigResponse>> getRetentionConfigs() {
+        return Result.success(configService.getByGroup(SysConfig.GROUP_RETENTION).stream()
+                .map(SysConfigResponse::from)
+                .toList());
     }
 
     /**
@@ -280,8 +304,10 @@ public class ConfigController {
     @GetMapping("/system")
     @Operation(summary = "获取系统参数配置")
     @PreAuthorize("hasRole('SYSTEM_ADMIN')")
-    public Result<List<SysConfig>> getSystemConfigs() {
-        return Result.success(configService.getByGroup(SysConfig.GROUP_SYSTEM));
+    public Result<List<SysConfigResponse>> getSystemConfigs() {
+        return Result.success(configService.getByGroup(SysConfig.GROUP_SYSTEM).stream()
+                .map(SysConfigResponse::from)
+                .toList());
     }
 
     /**

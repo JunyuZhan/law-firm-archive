@@ -189,10 +189,10 @@ const loadSiteConfigs = async () => {
     })
     form.systemName = configMap['system.site.name'] || defaultValues.systemName
     form.systemNameEn = configMap['system.site.name.en'] || defaultValues.systemNameEn
-    form.logoUrl = configMap['system.site.logo'] || ''
+    form.logoUrl = appStore.normalizePublicAssetUrl(configMap['system.site.logo'] || '')
     form.icp = configMap['system.site.icp'] || ''
     form.copyright = configMap['system.site.copyright'] || defaultValues.copyright
-  } catch (error) {
+  } catch {
     ElMessage.error('加载展示配置失败')
   }
 }
@@ -207,13 +207,13 @@ const saveSetup = async () => {
     await batchUpdateConfigs({
       'system.site.name': form.systemName,
       'system.site.name.en': form.systemNameEn || defaultValues.systemNameEn,
-      'system.site.logo': form.logoUrl,
+      'system.site.logo': appStore.denormalizePublicAssetUrl(form.logoUrl),
       'system.site.icp': form.icp,
       'system.site.copyright': form.copyright || defaultValues.copyright
     })
     await appStore.loadSiteConfig()
     ElMessage.success('保存成功')
-  } catch (error) {
+  } catch {
     ElMessage.error('保存失败')
   } finally {
     saving.value = false
@@ -227,10 +227,10 @@ const handleLogoUpload = async ({ file }) => {
   logoUploading.value = true
   try {
     const res = await uploadSiteLogo(file)
-    form.logoUrl = res?.data?.logoUrl || ''
+    form.logoUrl = appStore.normalizePublicAssetUrl(res?.data?.logoUrl || '')
     await appStore.loadSiteConfig()
     ElMessage.success('Logo 上传成功')
-  } catch (error) {
+  } catch {
     ElMessage.error('Logo 上传失败')
   } finally {
     logoUploading.value = false

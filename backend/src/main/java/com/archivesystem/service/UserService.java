@@ -62,6 +62,11 @@ public interface UserService {
     void changePassword(Long id, String oldPassword, String newPassword);
 
     /**
+     * 更新当前用户个人资料.
+     */
+    User updateCurrentProfile(Long id, User user);
+
+    /**
      * 启用/禁用用户.
      */
     void updateStatus(Long id, String status);

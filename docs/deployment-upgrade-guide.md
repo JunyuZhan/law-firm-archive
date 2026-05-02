@@ -29,8 +29,8 @@
 
 ### 3.1 构建测试机与生产环境的 Compose 选择（重要）
 
-- **构建 / 测试专用机**（团队用于验证 GitHub 最新 `main`）：在**完整源码克隆**下进入 `docker/`，使用 **`docker-compose.yml`**。其中 backend、frontend、Elasticsearch 为 **`build:`** 本地 Dockerfile，通过 `docker compose build` 与 `docker compose up` 从源码构建运行。**不要**在该类机器上使用 **`docker-compose.registry.yml`** 从私有仓库拉镜像充当「源码级测试」。
-- **对外交付或生产**：使用 **`docker-compose.registry.yml`**，配置私有仓库地址与 `APP_VERSION`，**拉取**已在测试机构建、验证并推送的镜像。
+- **构建 / 测试专用机**（团队用于验证 GitHub 最新 `main`）：在**完整源码克隆**下进入 `docker/`，使用 **`docker compose up -d --build`** 从源码构建运行。其中 backend、frontend、Elasticsearch 为 **`build:`** 本地 Dockerfile。**不要**在该类机器上设置 `REGISTRY_PREFIX` 从私有仓库拉镜像充当「源码级测试」。
+- **对外交付或生产**：设置 **`REGISTRY_PREFIX`**（如 `hub.albertzhan.top/`）与 **`APP_VERSION`**，使用 **`docker compose up -d`** 拉取已在测试机构建、验证并推送的镜像。
 
 推荐原因：
 
@@ -114,6 +114,7 @@ docker compose up -d
 - `APP_VERSION` 用于显示产品版本与镜像版本
 - `APP_COMMIT_SHA` 用于后台显示对应提交号
 - `APP_BUILD_TIME` 用于后台显示本次构建时间
+- 若使用 **Dist Center**：在运行环境中配置 **`DIST_CENTER_LATEST_JSON_URL`** 指向该项目 **`versions/latest.json`** 的稳定 URL（**外售/私有化应使用客户自有分发域名**，勿在交付物中写死供应商公网地址）。后台「系统信息」会比对其中 **`env.APP_VERSION`** 与当前容器的 **`APP_VERSION`**；发版后请同步更新客户可见分发站上的 **`latest.json`**。
 
 ## 6. 标准回滚流程
 

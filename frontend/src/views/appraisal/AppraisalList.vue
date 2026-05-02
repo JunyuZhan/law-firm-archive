@@ -513,6 +513,8 @@
             type="textarea"
             :rows="3"
             placeholder="请输入鉴定原因"
+            maxlength="1000"
+            show-word-limit
           />
         </el-form-item>
       </el-form>
@@ -740,7 +742,7 @@
 
 <script setup>
 import { ref, reactive, onMounted, watch } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { Right } from '@element-plus/icons-vue'
 import {
   getAppraisalList, getPendingAppraisals, getAppraisalDetail,
@@ -751,14 +753,11 @@ import { getArchiveList } from '@/api/archive'
 import {
   getRetentionName,
   getRetentionOptions,
-  getSecurityOptions,
-  getAppraisalStatusName,
-  APPRAISAL_STATUS
+  getAppraisalStatusName
 } from '@/utils/archiveEnums'
 
 // 下拉选项
 const retentionOptions = getRetentionOptions()
-const securityOptions = getSecurityOptions()
 
 const activeTab = ref('all')
 const loading = ref(false)
@@ -789,11 +788,32 @@ const createForm = ref({
   newValue: '',
   appraisalReason: ''
 })
+const requireTrimmedText = (message) => ({
+  validator: (_rule, value, callback) => {
+    if (!value?.trim()) {
+      callback(new Error(message))
+      return
+    }
+    callback()
+  },
+  trigger: 'blur'
+})
+const validateNewValue = (_rule, value, callback) => {
+  if (createForm.value.appraisalType === 'VALUE') {
+    callback()
+    return
+  }
+  if (!value?.trim()) {
+    callback(new Error('请输入新值'))
+    return
+  }
+  callback()
+}
 const createRules = {
   archiveId: [{ required: true, message: '请选择档案', trigger: 'change' }],
   appraisalType: [{ required: true, message: '请选择鉴定类型', trigger: 'change' }],
-  newValue: [{ required: true, message: '请输入新值', trigger: 'blur' }],
-  appraisalReason: [{ required: true, message: '请输入鉴定原因', trigger: 'blur' }]
+  newValue: [{ validator: validateNewValue, trigger: 'blur' }],
+  appraisalReason: [requireTrimmedText('请输入鉴定原因')]
 }
 const archiveOptions = ref([])
 const archiveSearchLoading = ref(false)
@@ -890,6 +910,7 @@ watch(showExpired, () => {
 watch(
   () => createForm.value.appraisalType,
   (type) => {
+    createForm.value.newValue = ''
     if (type === 'RETENTION' && selectedArchiveSummary.value) {
       createForm.value.originalValue = selectedArchiveSummary.value.retentionPeriod || ''
     } else if (!type) {
@@ -955,7 +976,12 @@ const submitCreate = async () => {
   try {
     await createFormRef.value.validate()
     submitting.value = true
-    await createAppraisal(createForm.value)
+    await createAppraisal({
+      ...createForm.value,
+      originalValue: createForm.value.originalValue?.trim() || '',
+      newValue: createForm.value.newValue?.trim() || '',
+      appraisalReason: createForm.value.appraisalReason.trim()
+    })
     ElMessage.success('鉴定申请已提交')
     createDialogVisible.value = false
     fetchData()
@@ -1002,9 +1028,13 @@ const confirmReject = async () => {
     ElMessage.warning('请输入拒绝原因')
     return
   }
+  if (rejectForm.comment.trim().length < 2) {
+    ElMessage.warning('拒绝原因至少2个字')
+    return
+  }
   rejectSubmitting.value = true
   try {
-    await rejectAppraisal(currentRow.value.id, { comment: rejectForm.comment })
+    await rejectAppraisal(currentRow.value.id, { comment: rejectForm.comment.trim() })
     ElMessage.success('已拒绝')
     rejectDialogVisible.value = false
     fetchData()
@@ -1018,6 +1048,7 @@ const confirmReject = async () => {
 
 // 查看详情
 const handleView = async (row) => {
+  detailData.value = null
   try {
     const res = await getAppraisalDetail(row.id)
     detailData.value = res.data
@@ -1107,22 +1138,66 @@ const getStatusType = (status) => {
   return map[status] || ''
 }
 
+const parseLocalDate = (value) => {
+  if (!value) return null
+  if (value instanceof Date) {
+    const normalized = new Date(value)
+    normalized.setHours(0, 0, 0, 0)
+    return normalized
+  }
+
+  if (typeof value === 'string') {
+    const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+    if (match) {
+      const [, year, month, day] = match
+      return new Date(Number(year), Number(month) - 1, Number(day))
+    }
+  }
+
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) return null
+  parsed.setHours(0, 0, 0, 0)
+  return parsed
+}
+
 const isExpired = (dateStr) => {
   if (!dateStr) return false
-  return new Date(dateStr) < new Date()
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  const targetDate = parseLocalDate(dateStr)
+  if (!targetDate) return false
+
+  return targetDate < today
 }
 
 const getDaysRemaining = (dateStr) => {
   if (!dateStr) return '-'
-  const diff = new Date(dateStr) - new Date()
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  const targetDate = parseLocalDate(dateStr)
+  if (!targetDate) return '-'
+
+  const diff = targetDate - today
   const days = Math.ceil(diff / (1000 * 60 * 60 * 24))
   if (days < 0) return `已过期 ${-days} 天`
+  if (days === 0) return '今天到期'
   return `${days} 天`
 }
 
 const getDaysClass = (dateStr) => {
   if (!dateStr) return ''
-  const diff = new Date(dateStr) - new Date()
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  const targetDate = parseLocalDate(dateStr)
+  if (!targetDate) return ''
+
+  const diff = targetDate - today
   const days = Math.ceil(diff / (1000 * 60 * 60 * 24))
   if (days < 0) return 'text-danger'
   if (days <= 30) return 'text-warning'

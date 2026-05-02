@@ -1,6 +1,8 @@
 package com.archivesystem.controller;
 
 import com.archivesystem.common.Result;
+import com.archivesystem.dto.role.RoleOptionResponse;
+import com.archivesystem.dto.role.RoleResponse;
 import com.archivesystem.entity.Role;
 import com.archivesystem.service.RoleService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -29,20 +31,20 @@ public class RoleController {
     @Operation(summary = "创建角色")
     @PostMapping
     @PreAuthorize("hasRole('SYSTEM_ADMIN')")
-    public Result<Role> create(@Valid @RequestBody CreateRoleRequest request) {
+    public Result<RoleResponse> create(@Valid @RequestBody CreateRoleRequest request) {
         Role role = new Role();
         role.setRoleCode(request.getRoleCode());
         role.setRoleName(request.getRoleName());
         role.setDescription(request.getDescription());
 
         Role created = roleService.create(role);
-        return Result.success(created);
+        return Result.success(RoleResponse.from(created));
     }
 
     @Operation(summary = "更新角色")
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('SYSTEM_ADMIN')")
-    public Result<Role> update(@PathVariable Long id, @Valid @RequestBody UpdateRoleRequest request) {
+    public Result<RoleResponse> update(@PathVariable Long id, @Valid @RequestBody UpdateRoleRequest request) {
         Role role = new Role();
         role.setRoleCode(request.getRoleCode());
         role.setRoleName(request.getRoleName());
@@ -50,21 +52,28 @@ public class RoleController {
         role.setStatus(request.getStatus());
 
         Role updated = roleService.update(id, role);
-        return Result.success(updated);
+        return Result.success(RoleResponse.from(updated));
     }
 
     @Operation(summary = "获取角色详情")
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('SYSTEM_ADMIN')")
-    public Result<Role> getById(@PathVariable Long id) {
-        return Result.success(roleService.getById(id));
+    public Result<RoleResponse> getById(@PathVariable Long id) {
+        return Result.success(RoleResponse.from(roleService.getById(id)));
     }
 
     @Operation(summary = "获取角色列表")
     @GetMapping
     @PreAuthorize("hasRole('SYSTEM_ADMIN')")
-    public Result<List<Role>> list() {
-        return Result.success(roleService.list());
+    public Result<List<RoleResponse>> list() {
+        return Result.success(roleService.list().stream().map(RoleResponse::from).toList());
+    }
+
+    @Operation(summary = "获取角色选项")
+    @GetMapping("/options")
+    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+    public Result<List<RoleOptionResponse>> listOptions() {
+        return Result.success(roleService.list().stream().map(RoleOptionResponse::from).toList());
     }
 
     @Operation(summary = "删除角色")

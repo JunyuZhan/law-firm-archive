@@ -72,11 +72,10 @@ class JwtAuthenticationFilterTest {
 
         Claims claims = mock(Claims.class);
         when(claims.get("userId", Long.class)).thenReturn(userId);
+        when(claims.get("username", String.class)).thenReturn(username);
         when(claims.getIssuedAt()).thenReturn(new Date());
 
-        when(jwtUtils.validateToken(token)).thenReturn(true);
         when(jwtUtils.parseToken(token)).thenReturn(claims);
-        when(jwtUtils.getUsernameFromToken(token)).thenReturn(username);
         when(tokenBlacklistService.isBlacklisted(token)).thenReturn(false);
         when(tokenBlacklistService.isUserBlacklisted(eq(userId), anyLong())).thenReturn(false);
         when(userDetailsService.loadUserByUsername(username)).thenReturn(userDetails);
@@ -101,11 +100,10 @@ class JwtAuthenticationFilterTest {
 
         Claims claims = mock(Claims.class);
         when(claims.get("userId", Long.class)).thenReturn(userId);
+        when(claims.get("username", String.class)).thenReturn(username);
         when(claims.getIssuedAt()).thenReturn(new Date());
 
-        when(jwtUtils.validateToken(token)).thenReturn(true);
         when(jwtUtils.parseToken(token)).thenReturn(claims);
-        when(jwtUtils.getUsernameFromToken(token)).thenReturn(username);
         when(tokenBlacklistService.isBlacklisted(token)).thenReturn(false);
         when(tokenBlacklistService.isUserBlacklisted(eq(userId), anyLong())).thenReturn(false);
         when(userDetailsService.loadUserByUsername(username)).thenReturn(userDetails);
@@ -129,7 +127,7 @@ class JwtAuthenticationFilterTest {
         String token = "invalid.jwt.token";
         request.addHeader("Authorization", "Bearer " + token);
 
-        when(jwtUtils.validateToken(token)).thenReturn(false);
+        when(jwtUtils.parseToken(token)).thenThrow(new RuntimeException("Invalid token"));
 
         jwtAuthenticationFilter.doFilterInternal(request, response, filterChain);
 
@@ -143,7 +141,7 @@ class JwtAuthenticationFilterTest {
         String token = "expired.jwt.token";
         request.addHeader("Authorization", "Bearer " + token);
 
-        when(jwtUtils.validateToken(token)).thenThrow(new io.jsonwebtoken.ExpiredJwtException(null, null, "Token expired"));
+        when(jwtUtils.parseToken(token)).thenThrow(new io.jsonwebtoken.ExpiredJwtException(null, null, "Token expired"));
 
         jwtAuthenticationFilter.doFilterInternal(request, response, filterChain);
 
@@ -158,7 +156,7 @@ class JwtAuthenticationFilterTest {
         jwtAuthenticationFilter.doFilterInternal(request, response, filterChain);
 
         verify(filterChain).doFilter(request, response);
-        verify(jwtUtils, never()).validateToken(anyString());
+        verify(jwtUtils, never()).parseToken(anyString());
         assertNull(SecurityContextHolder.getContext().getAuthentication());
     }
 
@@ -192,13 +190,12 @@ class JwtAuthenticationFilterTest {
 
         Claims claims = mock(Claims.class);
         when(claims.get("userId", Long.class)).thenReturn(userId);
+        when(claims.get("username", String.class)).thenReturn(username);
         when(claims.getIssuedAt()).thenReturn(new Date());
 
-        when(jwtUtils.validateToken(token)).thenReturn(true);
         when(jwtUtils.parseToken(token)).thenReturn(claims);
         when(tokenBlacklistService.isBlacklisted(token)).thenReturn(false);
         when(tokenBlacklistService.isUserBlacklisted(eq(userId), anyLong())).thenReturn(false);
-        when(jwtUtils.getUsernameFromToken(token)).thenReturn(username);
         when(userDetailsService.loadUserByUsername(username)).thenThrow(new RuntimeException("User not found"));
 
         jwtAuthenticationFilter.doFilterInternal(request, response, filterChain);
@@ -216,13 +213,12 @@ class JwtAuthenticationFilterTest {
 
         Claims claims = mock(Claims.class);
         when(claims.get("userId", Long.class)).thenReturn(userId);
+        when(claims.get("username", String.class)).thenReturn(null);
         when(claims.getIssuedAt()).thenReturn(new Date());
 
-        when(jwtUtils.validateToken(token)).thenReturn(true);
         when(jwtUtils.parseToken(token)).thenReturn(claims);
         when(tokenBlacklistService.isBlacklisted(token)).thenReturn(false);
         when(tokenBlacklistService.isUserBlacklisted(eq(userId), anyLong())).thenReturn(false);
-        when(jwtUtils.getUsernameFromToken(token)).thenReturn(null);
         when(userDetailsService.loadUserByUsername(null)).thenThrow(new RuntimeException("Username cannot be null"));
 
         jwtAuthenticationFilter.doFilterInternal(request, response, filterChain);

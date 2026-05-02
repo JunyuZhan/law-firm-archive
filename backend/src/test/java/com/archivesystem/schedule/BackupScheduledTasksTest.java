@@ -63,8 +63,51 @@ class BackupScheduledTasksTest {
     }
 
     @Test
+    void testTriggerScheduledBackups_ShouldIncludeSmbTargets() {
+        LocalDateTime now = LocalDateTime.now().withSecond(0).withNano(0);
+        String cron = String.format("0 %d %d * * *", now.getMinute(), now.getHour());
+        when(configService.getBooleanValue("system.backup.enabled", true)).thenReturn(true);
+        when(configService.getValue("system.backup.cron", "0 0 2 * * ?")).thenReturn(cron);
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.setIfAbsent(any(), eq("1"), any())).thenReturn(true);
+        when(backupTargetMapper.selectList(any())).thenReturn(List.of(
+                BackupTarget.builder().id(2L).enabled(true).targetType(BackupTarget.TYPE_SMB).build()
+        ));
+
+        backupScheduledTasks.triggerScheduledBackups();
+
+        verify(backupService).runScheduledBackup(2L);
+    }
+
+    @Test
     void testTriggerScheduledBackupsSkippedWhenDisabled() {
         when(configService.getBooleanValue("system.backup.enabled", true)).thenReturn(false);
+
+        backupScheduledTasks.triggerScheduledBackups();
+
+        verify(backupTargetMapper, never()).selectList(any());
+        verify(backupService, never()).runScheduledBackup(any());
+    }
+
+    @Test
+    void testTriggerScheduledBackupsSkippedWhenCronInvalid() {
+        when(configService.getBooleanValue("system.backup.enabled", true)).thenReturn(true);
+        when(configService.getValue("system.backup.cron", "0 0 2 * * ?")).thenReturn("invalid-cron");
+
+        backupScheduledTasks.triggerScheduledBackups();
+
+        verify(backupTargetMapper, never()).selectList(any());
+        verify(backupService, never()).runScheduledBackup(any());
+    }
+
+    @Test
+    void testTriggerScheduledBackupsSkippedWhenRedisLockFails() {
+        LocalDateTime now = LocalDateTime.now().withSecond(0).withNano(0);
+        String cron = String.format("0 %d %d * * *", now.getMinute(), now.getHour());
+        when(configService.getBooleanValue("system.backup.enabled", true)).thenReturn(true);
+        when(configService.getValue("system.backup.cron", "0 0 2 * * ?")).thenReturn(cron);
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.setIfAbsent(any(), eq("1"), any())).thenThrow(new RuntimeException("redis down"));
 
         backupScheduledTasks.triggerScheduledBackups();
 

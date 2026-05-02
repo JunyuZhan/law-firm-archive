@@ -156,6 +156,8 @@ public class ReportServiceImpl implements ReportService {
                 wrapper.le(BorrowApplication::getApplyTime, endDate.plusDays(1).atStartOfDay());
             }
             wrapper.orderByDesc(BorrowApplication::getApplyTime);
+            // 限制导出数量，防止OOM
+            wrapper.last("LIMIT 10000");
             
             List<BorrowApplication> applications = borrowApplicationMapper.selectList(wrapper);
             
@@ -452,9 +454,21 @@ public class ReportServiceImpl implements ReportService {
         if (value instanceof Number) {
             cell.setCellValue(((Number) value).doubleValue());
         } else {
-            cell.setCellValue(value != null ? value.toString() : "");
+            cell.setCellValue(sanitizeExcelCell(value != null ? value.toString() : ""));
         }
         cell.setCellStyle(style);
+    }
+
+    private String sanitizeExcelCell(String value) {
+        if (value == null || value.isEmpty()) {
+            return value == null ? "" : value;
+        }
+        char firstChar = value.charAt(0);
+        if (firstChar == '=' || firstChar == '+' || firstChar == '-' || firstChar == '@'
+                || firstChar == '\t' || firstChar == '\r' || firstChar == '\n') {
+            return "'" + value;
+        }
+        return value;
     }
 
     // ===== 名称转换方法 =====

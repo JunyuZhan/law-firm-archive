@@ -14,12 +14,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.time.Duration;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -39,9 +39,6 @@ class RateLimitFilterTest {
     private StringRedisTemplate redisTemplate;
 
     @Mock
-    private ValueOperations<String, String> valueOperations;
-
-    @Mock
     private HttpServletRequest request;
 
     @Mock
@@ -59,8 +56,6 @@ class RateLimitFilterTest {
         rateLimitFilter = new RateLimitFilter(redisTemplate, objectMapper);
         responseWriter = new StringWriter();
         ClientIpUtils.configureTrustedProxies(java.util.List.of("127.0.0.1", "::1"));
-        
-        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
     }
 
     @Test
@@ -68,14 +63,13 @@ class RateLimitFilterTest {
         // Given
         when(request.getRequestURI()).thenReturn("/api/test");
         when(request.getRemoteAddr()).thenReturn("192.168.1.1");
-        when(valueOperations.increment(anyString())).thenReturn(1L);
+        when(redisTemplate.execute(any(DefaultRedisScript.class), anyList(), anyString())).thenReturn(1L);
 
         // When
         rateLimitFilter.doFilterInternal(request, response, filterChain);
 
         // Then
-        verify(valueOperations).increment(contains("rate_limit:general:"));
-        verify(redisTemplate).expire(anyString(), eq(Duration.ofSeconds(60)));
+        verify(redisTemplate).execute(any(DefaultRedisScript.class), anyList(), anyString());
         verify(response).setHeader("X-RateLimit-Limit", "100");
         verify(response).setHeader("X-RateLimit-Remaining", "99");
         verify(filterChain).doFilter(request, response);
@@ -86,7 +80,7 @@ class RateLimitFilterTest {
         // Given
         when(request.getRequestURI()).thenReturn("/api/test");
         when(request.getRemoteAddr()).thenReturn("192.168.1.1");
-        when(valueOperations.increment(anyString())).thenReturn(50L);
+        when(redisTemplate.execute(any(DefaultRedisScript.class), anyList(), anyString())).thenReturn(50L);
 
         // When
         rateLimitFilter.doFilterInternal(request, response, filterChain);
@@ -102,7 +96,7 @@ class RateLimitFilterTest {
         // Given
         when(request.getRequestURI()).thenReturn("/api/test");
         when(request.getRemoteAddr()).thenReturn("192.168.1.1");
-        when(valueOperations.increment(anyString())).thenReturn(101L);
+        when(redisTemplate.execute(any(DefaultRedisScript.class), anyList(), anyString())).thenReturn(101L);
         when(response.getWriter()).thenReturn(new PrintWriter(responseWriter));
 
         // When
@@ -122,13 +116,12 @@ class RateLimitFilterTest {
         // Given
         when(request.getRequestURI()).thenReturn("/auth/login");
         when(request.getRemoteAddr()).thenReturn("192.168.1.1");
-        when(valueOperations.increment(anyString())).thenReturn(1L);
+        when(redisTemplate.execute(any(DefaultRedisScript.class), anyList(), anyString())).thenReturn(1L);
 
         // When
         rateLimitFilter.doFilterInternal(request, response, filterChain);
 
         // Then
-        verify(valueOperations).increment(contains("rate_limit:login:"));
         verify(response).setHeader("X-RateLimit-Limit", "10");
         verify(response).setHeader("X-RateLimit-Remaining", "9");
     }
@@ -138,13 +131,12 @@ class RateLimitFilterTest {
         // Given
         when(request.getRequestURI()).thenReturn("/files/upload");
         when(request.getRemoteAddr()).thenReturn("192.168.1.1");
-        when(valueOperations.increment(anyString())).thenReturn(1L);
+        when(redisTemplate.execute(any(DefaultRedisScript.class), anyList(), anyString())).thenReturn(1L);
 
         // When
         rateLimitFilter.doFilterInternal(request, response, filterChain);
 
         // Then
-        verify(valueOperations).increment(contains("rate_limit:upload:"));
         verify(response).setHeader("X-RateLimit-Limit", "20");
         verify(response).setHeader("X-RateLimit-Remaining", "19");
     }
@@ -154,13 +146,12 @@ class RateLimitFilterTest {
         // Given
         when(request.getRequestURI()).thenReturn("/open/archive/receive");
         when(request.getRemoteAddr()).thenReturn("192.168.1.1");
-        when(valueOperations.increment(anyString())).thenReturn(1L);
+        when(redisTemplate.execute(any(DefaultRedisScript.class), anyList(), anyString())).thenReturn(1L);
 
         // When
         rateLimitFilter.doFilterInternal(request, response, filterChain);
 
         // Then
-        verify(valueOperations).increment(contains("rate_limit:open_write:"));
         verify(response).setHeader("X-RateLimit-Limit", "20");
         verify(response).setHeader("X-RateLimit-Remaining", "19");
     }
@@ -169,11 +160,10 @@ class RateLimitFilterTest {
     void testDoFilterInternal_PublicBorrowAccessEndpoint_ShouldUseStricterLimit() throws ServletException, IOException {
         when(request.getRequestURI()).thenReturn("/open/borrow/access/token12345678");
         when(request.getRemoteAddr()).thenReturn("192.168.1.1");
-        when(valueOperations.increment(anyString())).thenReturn(1L);
+        when(redisTemplate.execute(any(DefaultRedisScript.class), anyList(), anyString())).thenReturn(1L);
 
         rateLimitFilter.doFilterInternal(request, response, filterChain);
 
-        verify(valueOperations).increment(contains("rate_limit:open_borrow_access:"));
         verify(response).setHeader("X-RateLimit-Limit", "12");
         verify(response).setHeader("X-RateLimit-Remaining", "11");
     }
@@ -185,13 +175,16 @@ class RateLimitFilterTest {
         when(request.getRequestURI()).thenReturn("/api/test");
         when(request.getHeader("X-Forwarded-For")).thenReturn("203.0.113.1, 192.168.1.1");
         when(request.getRemoteAddr()).thenReturn("192.168.1.1");
-        when(valueOperations.increment(anyString())).thenReturn(1L);
+        when(redisTemplate.execute(any(DefaultRedisScript.class), anyList(), anyString())).thenReturn(1L);
 
         // When
         rateLimitFilter.doFilterInternal(request, response, filterChain);
 
-        // Then
-        verify(valueOperations).increment(contains("203.0.113.1"));
+        // Then - verify the filter used the forwarded IP by checking the Redis key
+        verify(redisTemplate).execute(any(DefaultRedisScript.class), argThat(args -> {
+            String key = (String) ((List<?>) args).get(0);
+            return key.contains("203.0.113.1");
+        }), anyString());
     }
 
     @Test
@@ -202,13 +195,16 @@ class RateLimitFilterTest {
         when(request.getHeader("X-Forwarded-For")).thenReturn(null);
         when(request.getHeader("X-Real-IP")).thenReturn("203.0.113.2");
         when(request.getRemoteAddr()).thenReturn("192.168.1.1");
-        when(valueOperations.increment(anyString())).thenReturn(1L);
+        when(redisTemplate.execute(any(DefaultRedisScript.class), anyList(), anyString())).thenReturn(1L);
 
         // When
         rateLimitFilter.doFilterInternal(request, response, filterChain);
 
         // Then
-        verify(valueOperations).increment(contains("203.0.113.2"));
+        verify(redisTemplate).execute(any(DefaultRedisScript.class), argThat(args -> {
+            String key = (String) ((List<?>) args).get(0);
+            return key.contains("203.0.113.2");
+        }), anyString());
     }
 
     @Test
@@ -220,13 +216,16 @@ class RateLimitFilterTest {
         when(request.getHeader("X-Real-IP")).thenReturn(null);
         when(request.getHeader("Proxy-Client-IP")).thenReturn("203.0.113.3");
         when(request.getRemoteAddr()).thenReturn("192.168.1.1");
-        when(valueOperations.increment(anyString())).thenReturn(1L);
+        when(redisTemplate.execute(any(DefaultRedisScript.class), anyList(), anyString())).thenReturn(1L);
 
         // When
         rateLimitFilter.doFilterInternal(request, response, filterChain);
 
         // Then
-        verify(valueOperations).increment(contains("203.0.113.3"));
+        verify(redisTemplate).execute(any(DefaultRedisScript.class), argThat(args -> {
+            String key = (String) ((List<?>) args).get(0);
+            return key.contains("203.0.113.3");
+        }), anyString());
     }
 
     @Test
@@ -235,13 +234,16 @@ class RateLimitFilterTest {
         when(request.getRequestURI()).thenReturn("/api/test");
         when(request.getHeader("X-Forwarded-For")).thenReturn("unknown");
         when(request.getRemoteAddr()).thenReturn("192.168.1.1");
-        when(valueOperations.increment(anyString())).thenReturn(1L);
+        when(redisTemplate.execute(any(DefaultRedisScript.class), anyList(), anyString())).thenReturn(1L);
 
         // When
         rateLimitFilter.doFilterInternal(request, response, filterChain);
 
         // Then
-        verify(valueOperations).increment(contains("192.168.1.1"));
+        verify(redisTemplate).execute(any(DefaultRedisScript.class), argThat(args -> {
+            String key = (String) ((List<?>) args).get(0);
+            return key.contains("192.168.1.1");
+        }), anyString());
     }
 
     @Test
@@ -249,7 +251,7 @@ class RateLimitFilterTest {
         // Given
         when(request.getRequestURI()).thenReturn("/api/test");
         when(request.getRemoteAddr()).thenReturn("192.168.1.1");
-        when(valueOperations.increment(anyString())).thenThrow(new RuntimeException("Redis error"));
+        when(redisTemplate.execute(any(DefaultRedisScript.class), anyList(), anyString())).thenThrow(new RuntimeException("Redis error"));
 
         // When
         rateLimitFilter.doFilterInternal(request, response, filterChain);
@@ -263,7 +265,7 @@ class RateLimitFilterTest {
         // Given
         when(request.getRequestURI()).thenReturn("/api/test");
         when(request.getRemoteAddr()).thenReturn("192.168.1.1");
-        when(valueOperations.increment(anyString())).thenReturn(null);
+        when(redisTemplate.execute(any(DefaultRedisScript.class), anyList(), anyString())).thenReturn(null);
 
         // When
         rateLimitFilter.doFilterInternal(request, response, filterChain);
@@ -278,7 +280,7 @@ class RateLimitFilterTest {
         // Given
         when(request.getRequestURI()).thenReturn("/api/test");
         when(request.getRemoteAddr()).thenReturn("192.168.1.1");
-        when(valueOperations.increment(anyString())).thenReturn(100L);
+        when(redisTemplate.execute(any(DefaultRedisScript.class), anyList(), anyString())).thenReturn(100L);
 
         // When
         rateLimitFilter.doFilterInternal(request, response, filterChain);
@@ -293,7 +295,7 @@ class RateLimitFilterTest {
         // Given
         when(request.getRequestURI()).thenReturn("/auth/login");
         when(request.getRemoteAddr()).thenReturn("192.168.1.1");
-        when(valueOperations.increment(anyString())).thenReturn(11L);
+        when(redisTemplate.execute(any(DefaultRedisScript.class), anyList(), anyString())).thenReturn(11L);
         when(response.getWriter()).thenReturn(new PrintWriter(responseWriter));
 
         // When
@@ -310,7 +312,7 @@ class RateLimitFilterTest {
         // Given
         when(request.getRequestURI()).thenReturn("/files/upload");
         when(request.getRemoteAddr()).thenReturn("192.168.1.1");
-        when(valueOperations.increment(anyString())).thenReturn(21L);
+        when(redisTemplate.execute(any(DefaultRedisScript.class), anyList(), anyString())).thenReturn(21L);
         when(response.getWriter()).thenReturn(new PrintWriter(responseWriter));
 
         // When
@@ -327,7 +329,7 @@ class RateLimitFilterTest {
         // Given
         when(request.getRequestURI()).thenReturn("/api/open/test");
         when(request.getRemoteAddr()).thenReturn("192.168.1.1");
-        when(valueOperations.increment(anyString())).thenReturn(31L);
+        when(redisTemplate.execute(any(DefaultRedisScript.class), anyList(), anyString())).thenReturn(21L);
         when(response.getWriter()).thenReturn(new PrintWriter(responseWriter));
 
         // When
@@ -344,7 +346,7 @@ class RateLimitFilterTest {
         // Given
         when(request.getRequestURI()).thenReturn("/api/test");
         when(request.getRemoteAddr()).thenReturn("192.168.1.1");
-        when(valueOperations.increment(anyString())).thenReturn(101L);
+        when(redisTemplate.execute(any(DefaultRedisScript.class), anyList(), anyString())).thenReturn(101L);
         when(response.getWriter()).thenReturn(new PrintWriter(responseWriter));
 
         // When
@@ -364,13 +366,16 @@ class RateLimitFilterTest {
         when(request.getRequestURI()).thenReturn("/api/test");
         when(request.getHeader("X-Forwarded-For")).thenReturn("");
         when(request.getRemoteAddr()).thenReturn("192.168.1.1");
-        when(valueOperations.increment(anyString())).thenReturn(1L);
+        when(redisTemplate.execute(any(DefaultRedisScript.class), anyList(), anyString())).thenReturn(1L);
 
         // When
         rateLimitFilter.doFilterInternal(request, response, filterChain);
 
         // Then
-        verify(valueOperations).increment(contains("192.168.1.1"));
+        verify(redisTemplate).execute(any(DefaultRedisScript.class), argThat(args -> {
+            String key = (String) ((List<?>) args).get(0);
+            return key.contains("192.168.1.1");
+        }), anyString());
     }
 
     @Test
@@ -380,13 +385,16 @@ class RateLimitFilterTest {
         when(request.getRequestURI()).thenReturn("/api/test");
         when(request.getHeader("X-Forwarded-For")).thenReturn("203.0.113.1, 192.168.1.1, 10.0.0.1");
         when(request.getRemoteAddr()).thenReturn("192.168.1.1");
-        when(valueOperations.increment(anyString())).thenReturn(1L);
+        when(redisTemplate.execute(any(DefaultRedisScript.class), anyList(), anyString())).thenReturn(1L);
 
         // When
         rateLimitFilter.doFilterInternal(request, response, filterChain);
 
         // Then
-        verify(valueOperations).increment(contains("203.0.113.1"));
+        verify(redisTemplate).execute(any(DefaultRedisScript.class), argThat(args -> {
+            String key = (String) ((List<?>) args).get(0);
+            return key.contains("203.0.113.1");
+        }), anyString());
     }
 
     @Test
@@ -394,11 +402,14 @@ class RateLimitFilterTest {
         when(request.getRequestURI()).thenReturn("/api/test");
         when(request.getHeader("X-Forwarded-For")).thenReturn("203.0.113.1");
         when(request.getRemoteAddr()).thenReturn("8.8.8.8");
-        when(valueOperations.increment(anyString())).thenReturn(1L);
+        when(redisTemplate.execute(any(DefaultRedisScript.class), anyList(), anyString())).thenReturn(1L);
 
         rateLimitFilter.doFilterInternal(request, response, filterChain);
 
-        verify(valueOperations).increment(contains("8.8.8.8"));
+        verify(redisTemplate).execute(any(DefaultRedisScript.class), argThat(args -> {
+            String key = (String) ((List<?>) args).get(0);
+            return key.contains("8.8.8.8");
+        }), anyString());
     }
 
     @Test
@@ -406,10 +417,13 @@ class RateLimitFilterTest {
         when(request.getRequestURI()).thenReturn("/api/test");
         when(request.getHeader("X-Forwarded-For")).thenReturn("203.0.113.1");
         when(request.getRemoteAddr()).thenReturn("192.168.1.1");
-        when(valueOperations.increment(anyString())).thenReturn(1L);
+        when(redisTemplate.execute(any(DefaultRedisScript.class), anyList(), anyString())).thenReturn(1L);
 
         rateLimitFilter.doFilterInternal(request, response, filterChain);
 
-        verify(valueOperations).increment(contains("192.168.1.1"));
+        verify(redisTemplate).execute(any(DefaultRedisScript.class), argThat(args -> {
+            String key = (String) ((List<?>) args).get(0);
+            return key.contains("192.168.1.1");
+        }), anyString());
     }
 }

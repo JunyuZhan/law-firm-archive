@@ -2,6 +2,7 @@ package com.archivesystem.controller;
 
 import com.archivesystem.common.PageResult;
 import com.archivesystem.entity.User;
+import com.archivesystem.security.LoginSecurityService;
 import com.archivesystem.security.SecurityUtils;
 import com.archivesystem.service.UserService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -35,6 +36,9 @@ class UserControllerTest {
     @Mock
     private UserService userService;
 
+    @Mock
+    private LoginSecurityService loginSecurityService;
+
     @InjectMocks
     private UserController userController;
 
@@ -55,6 +59,7 @@ class UserControllerTest {
         testUser.setUserType("ADMIN");
         testUser.setDepartment("IT部门");
         testUser.setStatus(User.STATUS_ACTIVE);
+        testUser.setDeleted(true);
     }
 
     @Test
@@ -75,6 +80,21 @@ class UserControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"));
+    }
+
+    @Test
+    void testCreate_InvalidEmail_ShouldReturnBadRequest() throws Exception {
+        UserController.CreateUserRequest request = new UserController.CreateUserRequest();
+        request.setUsername("newuser");
+        request.setPassword("password123");
+        request.setEmail("invalid-email");
+
+        mockMvc.perform(post("/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+
+        verify(userService, never()).create(any(User.class));
     }
 
     @Test
@@ -100,7 +120,12 @@ class UserControllerTest {
         mockMvc.perform(get("/users/1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
-                .andExpect(jsonPath("$.data.username").value("testuser"));
+                .andExpect(jsonPath("$.data.username").value("testuser"))
+                .andExpect(jsonPath("$.data.deleted").doesNotExist())
+                .andExpect(jsonPath("$.data.createdBy").doesNotExist())
+                .andExpect(jsonPath("$.data.lastLoginAt").doesNotExist())
+                .andExpect(jsonPath("$.data.lastLoginIp").doesNotExist())
+                .andExpect(jsonPath("$.data.updatedAt").doesNotExist());
     }
 
     @Test
@@ -114,7 +139,12 @@ class UserControllerTest {
                         .param("pageSize", "10"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
-                .andExpect(jsonPath("$.data.total").value(1));
+                .andExpect(jsonPath("$.data.total").value(1))
+                .andExpect(jsonPath("$.data.records[0].deleted").doesNotExist())
+                .andExpect(jsonPath("$.data.records[0].createdBy").doesNotExist())
+                .andExpect(jsonPath("$.data.records[0].lastLoginAt").doesNotExist())
+                .andExpect(jsonPath("$.data.records[0].lastLoginIp").doesNotExist())
+                .andExpect(jsonPath("$.data.records[0].updatedAt").doesNotExist());
     }
 
     @Test
@@ -178,6 +208,45 @@ class UserControllerTest {
     }
 
     @Test
+    void testUpdateCurrentUser_Success() throws Exception {
+        UserController.UpdateCurrentProfileRequest request = new UserController.UpdateCurrentProfileRequest();
+        request.setRealName("当前用户");
+        request.setEmail("current@example.com");
+        request.setPhone("13700137000");
+        request.setDepartment("综合部");
+
+        try (MockedStatic<SecurityUtils> mockedStatic = mockStatic(SecurityUtils.class)) {
+            mockedStatic.when(SecurityUtils::getCurrentUserId).thenReturn(1L);
+            when(userService.updateCurrentProfile(eq(1L), any(User.class))).thenReturn(testUser);
+
+            mockMvc.perform(put("/users/current")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.code").value("200"))
+                    .andExpect(jsonPath("$.data.username").value("testuser"))
+                    .andExpect(jsonPath("$.data.status").value("ACTIVE"));
+        }
+    }
+
+    @Test
+    void testUpdateCurrentUser_InvalidEmail_ShouldReturnBadRequest() throws Exception {
+        UserController.UpdateCurrentProfileRequest request = new UserController.UpdateCurrentProfileRequest();
+        request.setEmail("invalid-email");
+
+        try (MockedStatic<SecurityUtils> mockedStatic = mockStatic(SecurityUtils.class)) {
+            mockedStatic.when(SecurityUtils::getCurrentUserId).thenReturn(1L);
+
+            mockMvc.perform(put("/users/current")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isBadRequest());
+        }
+
+        verify(userService, never()).updateCurrentProfile(anyLong(), any(User.class));
+    }
+
+    @Test
     void testUpdateStatus_Success() throws Exception {
         UserController.UpdateStatusRequest request = new UserController.UpdateStatusRequest();
         request.setStatus("DISABLED");
@@ -220,6 +289,21 @@ class UserControllerTest {
     }
 
     @Test
+    void testGetLockStatus_Success() throws Exception {
+        when(userService.getById(1L)).thenReturn(testUser);
+        when(loginSecurityService.isAccountLocked("testuser")).thenReturn(true);
+        when(loginSecurityService.getRemainingLockoutTime("testuser")).thenReturn(120L);
+        when(loginSecurityService.getRemainingAttempts("testuser")).thenReturn(2);
+
+        mockMvc.perform(get("/users/1/lock-status"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("200"))
+                .andExpect(jsonPath("$.data.locked").value(true))
+                .andExpect(jsonPath("$.data.remainingLockoutSeconds").value(120))
+                .andExpect(jsonPath("$.data.remainingAttempts").value(2));
+    }
+
+    @Test
     void testGetCurrentUser_Success() throws Exception {
         try (MockedStatic<SecurityUtils> mockedStatic = mockStatic(SecurityUtils.class)) {
             mockedStatic.when(SecurityUtils::getCurrentUserId).thenReturn(1L);
@@ -228,7 +312,12 @@ class UserControllerTest {
             mockMvc.perform(get("/users/current"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value("200"))
-                    .andExpect(jsonPath("$.data.username").value("testuser"));
+                    .andExpect(jsonPath("$.data.username").value("testuser"))
+                    .andExpect(jsonPath("$.data.id").doesNotExist())
+                    .andExpect(jsonPath("$.data.deleted").doesNotExist())
+                    .andExpect(jsonPath("$.data.updatedBy").doesNotExist())
+                    .andExpect(jsonPath("$.data.createdAt").doesNotExist())
+                    .andExpect(jsonPath("$.data.updatedAt").doesNotExist());
         }
     }
 }

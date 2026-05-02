@@ -9,13 +9,17 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Collections;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -68,7 +72,13 @@ class CategoryControllerTest {
                         .content(objectMapper.writeValueAsString(newCategory)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
-                .andExpect(jsonPath("$.data.categoryCode").value("CAT001"));
+                .andExpect(jsonPath("$.data.categoryCode").value("CAT001"))
+                .andExpect(jsonPath("$.data.categoryName").value("测试分类"))
+                .andExpect(jsonPath("$.data.parentId").value(0))
+                .andExpect(jsonPath("$.data.archiveType").doesNotExist())
+                .andExpect(jsonPath("$.data.retentionPeriod").doesNotExist())
+                .andExpect(jsonPath("$.data.status").doesNotExist())
+                .andExpect(jsonPath("$.data.fullPath").doesNotExist());
     }
 
     @Test
@@ -84,17 +94,28 @@ class CategoryControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(updateCategory)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value("200"));
+                .andExpect(jsonPath("$.code").value("200"))
+                .andExpect(jsonPath("$.data.categoryCode").value("CAT001"))
+                .andExpect(jsonPath("$.data.categoryName").value("测试分类"))
+                .andExpect(jsonPath("$.data.parentId").value(0))
+                .andExpect(jsonPath("$.data.archiveType").doesNotExist())
+                .andExpect(jsonPath("$.data.retentionPeriod").doesNotExist())
+                .andExpect(jsonPath("$.data.status").doesNotExist())
+                .andExpect(jsonPath("$.data.fullPath").doesNotExist());
     }
 
     @Test
     void testGetById_Success() throws Exception {
+        testCategory.setDeleted(false);
+        testCategory.setCreatedBy(99L);
         when(categoryService.getById(1L)).thenReturn(testCategory);
 
         mockMvc.perform(get("/categories/1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
-                .andExpect(jsonPath("$.data.categoryCode").value("CAT001"));
+                .andExpect(jsonPath("$.data.categoryCode").value("CAT001"))
+                .andExpect(jsonPath("$.data.deleted").doesNotExist())
+                .andExpect(jsonPath("$.data.createdBy").doesNotExist());
     }
 
     @Test
@@ -113,7 +134,38 @@ class CategoryControllerTest {
         mockMvc.perform(get("/categories/tree"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
-                .andExpect(jsonPath("$.data[0].categoryCode").value("CAT001"));
+                .andExpect(jsonPath("$.data[0].categoryCode").value("CAT001"))
+                .andExpect(jsonPath("$.data[0].children[0].categoryCode").value("CAT001-01"))
+                .andExpect(jsonPath("$.data[0].archiveType").value("DOCUMENT"))
+                .andExpect(jsonPath("$.data[0].description").doesNotExist())
+                .andExpect(jsonPath("$.data[0].retentionPeriod").doesNotExist())
+                .andExpect(jsonPath("$.data[0].status").value("ACTIVE"))
+                .andExpect(jsonPath("$.data[0].level").value(1))
+                .andExpect(jsonPath("$.data[0].deleted").doesNotExist())
+                .andExpect(jsonPath("$.data[0].children[0].deleted").doesNotExist());
+    }
+
+    @Test
+    void testGetTreeSummary_Success() throws Exception {
+        Category childCategory = new Category();
+        childCategory.setId(2L);
+        childCategory.setCategoryCode("CAT001-01");
+        childCategory.setCategoryName("子分类");
+        childCategory.setParentId(1L);
+        childCategory.setArchiveType("DOCUMENT");
+        childCategory.setDescription("子分类说明");
+
+        testCategory.setChildren(Arrays.asList(childCategory));
+
+        when(categoryService.getTree()).thenReturn(Arrays.asList(testCategory));
+
+        mockMvc.perform(get("/categories/tree/summary"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("200"))
+                .andExpect(jsonPath("$.data[0].categoryCode").value("CAT001"))
+                .andExpect(jsonPath("$.data[0].archiveType").doesNotExist())
+                .andExpect(jsonPath("$.data[0].description").doesNotExist())
+                .andExpect(jsonPath("$.data[0].children[0].archiveType").doesNotExist());
     }
 
     @Test
@@ -153,7 +205,8 @@ class CategoryControllerTest {
         mockMvc.perform(get("/categories/1/children"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
-                .andExpect(jsonPath("$.data[0].parentId").value(1));
+                .andExpect(jsonPath("$.data[0].parentId").value(1))
+                .andExpect(jsonPath("$.data[0].categoryCode").value("CAT001-01"));
     }
 
     @Test
@@ -202,12 +255,23 @@ class CategoryControllerTest {
 
     @Test
     void testStatistics_Success() throws Exception {
+        testCategory.setDeleted(false);
         when(categoryService.getById(1L)).thenReturn(testCategory);
         when(categoryService.countArchives(1L)).thenReturn(100L);
 
         mockMvc.perform(get("/categories/1/statistics"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
-                .andExpect(jsonPath("$.data.archiveCount").value(100));
+                .andExpect(jsonPath("$.data.archiveCount").value(100))
+                .andExpect(jsonPath("$.data.category").doesNotExist());
+    }
+
+    @Test
+    void testStatistics_ShouldRequireAdminOrArchiveManagerRole() throws Exception {
+        Method method = CategoryController.class.getMethod("statistics", Long.class);
+        PreAuthorize annotation = method.getAnnotation(PreAuthorize.class);
+
+        assertNotNull(annotation);
+        assertEquals("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')", annotation.value());
     }
 }

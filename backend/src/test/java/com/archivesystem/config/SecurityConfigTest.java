@@ -132,18 +132,19 @@ class SecurityConfigTest {
     }
 
     @Test
-    void testCorsConfigurationSource_ShouldAllowPrivateNetworks() {
+    void testCorsConfigurationSource_ShouldNotIncludePrivateNetworkWildcards() {
         // When
         CorsConfigurationSource source = securityConfig.corsConfigurationSource();
         var config = source.getCorsConfiguration(new MockHttpServletRequest());
 
-        // Then
+        // Then - CORS不再包含内网通配符模式，防止后端暴露公网时被利用
         assertNotNull(config.getAllowedOriginPatterns());
-        assertTrue(config.getAllowedOriginPatterns().stream()
+        // 只允许localhost和127.0.0.1及环境变量配置的域名
+        assertFalse(config.getAllowedOriginPatterns().stream()
                 .anyMatch(pattern -> pattern.contains("192.168")));
-        assertTrue(config.getAllowedOriginPatterns().stream()
+        assertFalse(config.getAllowedOriginPatterns().stream()
                 .anyMatch(pattern -> pattern.contains("10.")));
-        assertTrue(config.getAllowedOriginPatterns().stream()
+        assertFalse(config.getAllowedOriginPatterns().stream()
                 .anyMatch(pattern -> pattern.contains("172.16")));
     }
 

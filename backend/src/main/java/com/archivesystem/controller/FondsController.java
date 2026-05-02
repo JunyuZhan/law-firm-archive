@@ -2,6 +2,10 @@ package com.archivesystem.controller;
 
 import com.archivesystem.common.PageResult;
 import com.archivesystem.common.Result;
+import com.archivesystem.dto.fonds.FondsOptionResponse;
+import com.archivesystem.dto.fonds.FondsResponse;
+import com.archivesystem.dto.fonds.FondsStatisticsResponse;
+import com.archivesystem.dto.fonds.FondsSummaryResponse;
 import com.archivesystem.entity.Fonds;
 import com.archivesystem.service.FondsService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -11,9 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * 全宗管理控制器.
@@ -30,44 +32,49 @@ public class FondsController {
     @PostMapping
     @Operation(summary = "创建全宗")
     @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
-    public Result<Fonds> create(@Valid @RequestBody Fonds fonds) {
+    public Result<FondsSummaryResponse> create(@Valid @RequestBody Fonds fonds) {
         Fonds created = fondsService.create(fonds);
-        return Result.success("创建成功", created);
+        return Result.success("创建成功", FondsSummaryResponse.from(created));
     }
 
     @PutMapping("/{id}")
     @Operation(summary = "更新全宗")
     @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
-    public Result<Fonds> update(@PathVariable Long id, @Valid @RequestBody Fonds fonds) {
+    public Result<FondsSummaryResponse> update(@PathVariable Long id, @Valid @RequestBody Fonds fonds) {
         Fonds updated = fondsService.update(id, fonds);
-        return Result.success("更新成功", updated);
+        return Result.success("更新成功", FondsSummaryResponse.from(updated));
     }
 
     @GetMapping("/{id}")
     @Operation(summary = "获取全宗详情")
     @PreAuthorize("isAuthenticated()")
-    public Result<Fonds> getById(@PathVariable Long id) {
+    public Result<FondsResponse> getById(@PathVariable Long id) {
         Fonds fonds = fondsService.getById(id);
-        return Result.success(fonds);
+        return Result.success(FondsResponse.from(fonds));
     }
 
     @GetMapping
     @Operation(summary = "获取全宗列表")
     @PreAuthorize("isAuthenticated()")
-    public Result<List<Fonds>> list() {
+    public Result<List<FondsOptionResponse>> list() {
         List<Fonds> list = fondsService.list();
-        return Result.success(list);
+        return Result.success(list.stream().map(FondsOptionResponse::from).toList());
     }
 
     @GetMapping("/page")
     @Operation(summary = "分页查询全宗")
     @PreAuthorize("isAuthenticated()")
-    public Result<PageResult<Fonds>> query(
+    public Result<PageResult<FondsSummaryResponse>> query(
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "1") Integer pageNum,
             @RequestParam(defaultValue = "20") Integer pageSize) {
         PageResult<Fonds> result = fondsService.query(keyword, pageNum, pageSize);
-        return Result.success(result);
+        return Result.success(PageResult.of(
+                result.getCurrent(),
+                result.getSize(),
+                result.getTotal(),
+                result.getRecords().stream().map(FondsSummaryResponse::from).toList()
+        ));
     }
 
     @DeleteMapping("/{id}")
@@ -80,15 +87,13 @@ public class FondsController {
 
     @GetMapping("/{id}/statistics")
     @Operation(summary = "获取全宗统计")
-    @PreAuthorize("isAuthenticated()")
-    public Result<Map<String, Object>> statistics(@PathVariable Long id) {
-        Fonds fonds = fondsService.getById(id);
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
+    public Result<FondsStatisticsResponse> statistics(@PathVariable Long id) {
+        fondsService.getById(id);
         long archiveCount = fondsService.countArchives(id);
-        
-        Map<String, Object> stats = new HashMap<>();
-        stats.put("fonds", fonds);
-        stats.put("archiveCount", archiveCount);
-        
-        return Result.success(stats);
+
+        return Result.success(FondsStatisticsResponse.builder()
+                .archiveCount(archiveCount)
+                .build());
     }
 }

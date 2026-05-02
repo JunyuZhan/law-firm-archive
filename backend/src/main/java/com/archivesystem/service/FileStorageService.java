@@ -45,6 +45,11 @@ public interface FileStorageService {
     String getPreviewUrl(Long fileId);
 
     /**
+     * 校验当前用户是否有权预览指定文件.
+     */
+    void assertPreviewAccess(Long fileId);
+
+    /**
      * 获取文件预览信息（包含URL和预览类型）.
      */
     FilePreviewInfo getPreviewInfo(Long fileId);

@@ -13,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Set;
 import java.util.List;
 
 /**
@@ -23,6 +24,14 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class RoleServiceImpl implements RoleService {
+    private static final Set<String> BUILT_IN_ROLE_CODES = Set.of(
+            "SYSTEM_ADMIN",
+            "SECURITY_ADMIN",
+            "AUDIT_ADMIN",
+            "ARCHIVE_MANAGER",
+            "ARCHIVE_REVIEWER",
+            "USER"
+    );
 
     private final RoleMapper roleMapper;
     private final UserRoleMapper userRoleMapper;
@@ -50,8 +59,16 @@ public class RoleServiceImpl implements RoleService {
             throw NotFoundException.of("角色", id);
         }
 
+        boolean builtInRole = isBuiltInRole(existing);
+        if (builtInRole && Role.STATUS_DISABLED.equals(role.getStatus())) {
+            throw new BusinessException("系统内置角色不可停用");
+        }
+
         // 如果修改了角色代码，检查是否重复
         if (!existing.getRoleCode().equals(role.getRoleCode())) {
+            if (builtInRole) {
+                throw new BusinessException("系统内置角色代码不可修改");
+            }
             Role byCode = roleMapper.selectByRoleCode(role.getRoleCode());
             if (byCode != null && !byCode.getId().equals(id)) {
                 throw new BusinessException("角色代码已存在: " + role.getRoleCode());
@@ -92,6 +109,10 @@ public class RoleServiceImpl implements RoleService {
             return;
         }
 
+        if (isBuiltInRole(role)) {
+            throw new BusinessException("系统内置角色不可删除");
+        }
+
         // 检查是否有用户使用此角色
         long count = userRoleMapper.selectCount(
                 new LambdaQueryWrapper<UserRole>().eq(UserRole::getRoleId, id));
@@ -101,5 +122,9 @@ public class RoleServiceImpl implements RoleService {
 
         roleMapper.deleteById(id);
         log.info("删除角色: id={}", id);
+    }
+
+    private boolean isBuiltInRole(Role role) {
+        return role != null && BUILT_IN_ROLE_CODES.contains(role.getRoleCode());
     }
 }

@@ -35,6 +35,11 @@ public interface OperationLogService {
             Long operatorId, LocalDate startDate, LocalDate endDate, Integer pageNum, Integer pageSize);
 
     /**
+     * 根据ID获取日志详情.
+     */
+    OperationLog getById(Long id);
+
+    /**
      * 根据档案ID查询操作日志.
      */
     List<OperationLog> getByArchiveId(Long archiveId);

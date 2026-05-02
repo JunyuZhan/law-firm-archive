@@ -4,6 +4,7 @@ import com.archivesystem.common.exception.NotFoundException;
 import com.archivesystem.entity.DigitalFile;
 import com.archivesystem.repository.DigitalFileMapper;
 import com.archivesystem.service.AccessLogService;
+import com.archivesystem.service.FileStorageService;
 import com.archivesystem.service.MinioService;
 import com.archivesystem.service.PreviewService;
 import lombok.RequiredArgsConstructor;
@@ -30,9 +31,11 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class PreviewServiceImpl implements PreviewService {
+    private static final int THUMBNAIL_URL_EXPIRY_SECONDS = 3600;
 
     private final MinioService minioService;
     private final DigitalFileMapper digitalFileMapper;
+    private final FileStorageService fileStorageService;
     private final AccessLogService accessLogService;
 
     // 支持直接预览的文件类型
@@ -55,10 +58,11 @@ public class PreviewServiceImpl implements PreviewService {
         if (file == null) {
             throw NotFoundException.of("文件", fileId);
         }
+        fileStorageService.assertPreviewAccess(fileId);
 
         // 如果已有缩略图，直接返回
         if (StringUtils.hasText(file.getThumbnailPath())) {
-            return file.getThumbnailPath();
+            return minioService.getPresignedUrl(file.getThumbnailPath(), THUMBNAIL_URL_EXPIRY_SECONDS);
         }
 
         String ext = file.getFileExtension();
@@ -118,7 +122,7 @@ public class PreviewServiceImpl implements PreviewService {
             digitalFileMapper.updateById(file);
 
             log.info("缩略图生成成功: fileId={}, path={}", fileId, thumbnailPath);
-            return thumbnailPath;
+            return minioService.getPresignedUrl(thumbnailPath, THUMBNAIL_URL_EXPIRY_SECONDS);
 
         } catch (Exception e) {
             log.error("生成缩略图失败: fileId={}", fileId, e);
@@ -132,27 +136,9 @@ public class PreviewServiceImpl implements PreviewService {
         if (file == null) {
             throw NotFoundException.of("文件", fileId);
         }
-
-        // 记录预览日志
+        String previewUrl = fileStorageService.getPreviewUrl(fileId);
         accessLogService.logPreview(file.getArchiveId(), fileId, accessIp);
-
-        String ext = file.getFileExtension();
-        if (ext == null) {
-            return null;
-        }
-        ext = ext.toLowerCase();
-
-        // PDF和图片可以直接预览
-        if (DIRECT_PREVIEWABLE.contains(ext)) {
-            // 如果有预览路径，优先返回预览路径
-            if (StringUtils.hasText(file.getPreviewPath())) {
-                return minioService.getPresignedUrl(file.getPreviewPath(), 3600);
-            }
-            return minioService.getPresignedUrl(file.getStoragePath(), 3600);
-        }
-
-        // 其他文件类型暂不支持预览
-        return null;
+        return previewUrl;
     }
 
     @Override

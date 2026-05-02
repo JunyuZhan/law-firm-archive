@@ -2,6 +2,9 @@ package com.archivesystem.controller;
 
 import com.archivesystem.common.PageResult;
 import com.archivesystem.common.Result;
+import com.archivesystem.dto.user.CurrentUserProfileResponse;
+import com.archivesystem.dto.user.UserLockStatusResponse;
+import com.archivesystem.dto.user.UserResponse;
 import com.archivesystem.entity.User;
 import com.archivesystem.security.LoginSecurityService;
 import com.archivesystem.security.SecurityUtils;
@@ -9,6 +12,7 @@ import com.archivesystem.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
@@ -34,7 +38,7 @@ public class UserController {
     @Operation(summary = "创建用户")
     @PostMapping
     @PreAuthorize("hasRole('SYSTEM_ADMIN')")
-    public Result<User> create(@Valid @RequestBody CreateUserRequest request) {
+    public Result<UserResponse> create(@Valid @RequestBody CreateUserRequest request) {
         User user = new User();
         user.setUsername(request.getUsername());
         user.setPassword(request.getPassword());
@@ -45,13 +49,13 @@ public class UserController {
         user.setDepartment(request.getDepartment());
 
         User created = userService.create(user);
-        return Result.success(created);
+        return Result.success(UserResponse.from(created));
     }
 
     @Operation(summary = "更新用户")
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('SYSTEM_ADMIN')")
-    public Result<User> update(@PathVariable Long id, @Valid @RequestBody UpdateUserRequest request) {
+    public Result<UserResponse> update(@PathVariable Long id, @Valid @RequestBody UpdateUserRequest request) {
         User user = new User();
         user.setUsername(request.getUsername());
         user.setRealName(request.getRealName());
@@ -61,26 +65,32 @@ public class UserController {
         user.setDepartment(request.getDepartment());
 
         User updated = userService.update(id, user);
-        return Result.success(updated);
+        return Result.success(UserResponse.from(updated));
     }
 
     @Operation(summary = "获取用户详情")
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('SYSTEM_ADMIN')")
-    public Result<User> getById(@PathVariable Long id) {
-        return Result.success(userService.getById(id));
+    public Result<UserResponse> getById(@PathVariable Long id) {
+        return Result.success(UserResponse.from(userService.getById(id)));
     }
 
     @Operation(summary = "分页查询用户")
     @GetMapping
     @PreAuthorize("hasRole('SYSTEM_ADMIN')")
-    public Result<PageResult<User>> query(
+    public Result<PageResult<UserResponse>> query(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String userType,
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "1") Integer pageNum,
             @RequestParam(defaultValue = "10") Integer pageSize) {
-        return Result.success(userService.query(keyword, userType, status, pageNum, pageSize));
+        PageResult<User> result = userService.query(keyword, userType, status, pageNum, pageSize);
+        return Result.success(PageResult.of(
+                result.getCurrent(),
+                result.getSize(),
+                result.getTotal(),
+                result.getRecords().stream().map(UserResponse::from).toList()
+        ));
     }
 
     @Operation(summary = "删除用户")
@@ -106,6 +116,21 @@ public class UserController {
         Long currentUserId = SecurityUtils.getCurrentUserId();
         userService.changePassword(currentUserId, request.getOldPassword(), request.getNewPassword());
         return Result.success();
+    }
+
+    @Operation(summary = "更新当前用户个人资料")
+    @PutMapping("/current")
+    @PreAuthorize("isAuthenticated()")
+    public Result<CurrentUserProfileResponse> updateCurrentUser(@Valid @RequestBody UpdateCurrentProfileRequest request) {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        User user = new User();
+        user.setRealName(request.getRealName());
+        user.setEmail(request.getEmail());
+        user.setPhone(request.getPhone());
+        user.setDepartment(request.getDepartment());
+
+        User updated = userService.updateCurrentProfile(currentUserId, user);
+        return Result.success(CurrentUserProfileResponse.from(updated));
     }
 
     @Operation(summary = "启用/禁用用户")
@@ -143,25 +168,25 @@ public class UserController {
     @Operation(summary = "检查账号锁定状态")
     @GetMapping("/{id}/lock-status")
     @PreAuthorize("hasRole('SYSTEM_ADMIN')")
-    public Result<Object> getLockStatus(@PathVariable Long id) {
+    public Result<UserLockStatusResponse> getLockStatus(@PathVariable Long id) {
         User user = userService.getById(id);
         boolean locked = loginSecurityService.isAccountLocked(user.getUsername());
         long remainingTime = loginSecurityService.getRemainingLockoutTime(user.getUsername());
         int remainingAttempts = loginSecurityService.getRemainingAttempts(user.getUsername());
-        
-        return Result.success(java.util.Map.of(
-                "locked", locked,
-                "remainingLockoutSeconds", remainingTime,
-                "remainingAttempts", remainingAttempts
-        ));
+
+        return Result.success(UserLockStatusResponse.builder()
+                .locked(locked)
+                .remainingLockoutSeconds(remainingTime)
+                .remainingAttempts(remainingAttempts)
+                .build());
     }
 
     @Operation(summary = "获取当前用户信息")
     @GetMapping("/current")
     @PreAuthorize("isAuthenticated()")
-    public Result<User> getCurrentUser() {
+    public Result<CurrentUserProfileResponse> getCurrentUser() {
         Long currentUserId = SecurityUtils.getCurrentUserId();
-        return Result.success(userService.getById(currentUserId));
+        return Result.success(CurrentUserProfileResponse.from(userService.getById(currentUserId)));
     }
 
     // ========== Request DTOs ==========
@@ -173,6 +198,7 @@ public class UserController {
         @NotBlank(message = "密码不能为空")
         private String password;
         private String realName;
+        @Email(message = "邮箱格式不正确")
         private String email;
         private String phone;
         private String userType;
@@ -184,6 +210,7 @@ public class UserController {
         @NotBlank(message = "用户名不能为空")
         private String username;
         private String realName;
+        @Email(message = "邮箱格式不正确")
         private String email;
         private String phone;
         private String userType;
@@ -202,6 +229,15 @@ public class UserController {
         private String oldPassword;
         @NotBlank(message = "新密码不能为空")
         private String newPassword;
+    }
+
+    @Data
+    public static class UpdateCurrentProfileRequest {
+        private String realName;
+        @Email(message = "邮箱格式不正确")
+        private String email;
+        private String phone;
+        private String department;
     }
 
     @Data

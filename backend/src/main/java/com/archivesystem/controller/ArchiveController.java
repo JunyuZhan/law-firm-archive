@@ -22,7 +22,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
-import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -182,29 +181,14 @@ public class ArchiveController {
                 volumeNo, sectionType, documentNo, pageStart, pageEnd, versionLabel,
                 fileSourceType, scanBatchNo, scanOperator, scanTime,
                 scanCheckStatus, scanCheckBy, scanCheckTime);
-        
+
         DigitalFileDTO dto = DigitalFileDTO.builder()
                 .id(digitalFile.getId())
                 .archiveId(digitalFile.getArchiveId())
                 .fileName(digitalFile.getFileName())
                 .originalName(digitalFile.getOriginalName())
-                .fileSize(digitalFile.getFileSize())
-                .mimeType(digitalFile.getMimeType())
-                .volumeNo(digitalFile.getVolumeNo())
-                .sectionType(digitalFile.getSectionType())
-                .documentNo(digitalFile.getDocumentNo())
-                .pageStart(digitalFile.getPageStart())
-                .pageEnd(digitalFile.getPageEnd())
-                .versionLabel(digitalFile.getVersionLabel())
-                .fileSourceType(digitalFile.getFileSourceType())
-                .scanBatchNo(digitalFile.getScanBatchNo())
-                .scanOperator(digitalFile.getScanOperator())
-                .scanTime(digitalFile.getScanTime())
-                .scanCheckStatus(digitalFile.getScanCheckStatus())
-                .scanCheckBy(digitalFile.getScanCheckBy())
-                .scanCheckTime(digitalFile.getScanCheckTime())
                 .build();
-        
+
         return Result.success("上传成功", dto);
     }
 
@@ -214,11 +198,9 @@ public class ArchiveController {
     @GetMapping("/files/{fileId}/download-url")
     @Operation(summary = "获取文件下载链接")
     @PreAuthorize("isAuthenticated()")
-    public Result<Map<String, String>> getDownloadUrl(@PathVariable Long fileId) {
+    public Result<FileUrlResponse> getDownloadUrl(@PathVariable Long fileId) {
         String url = fileStorageService.getDownloadUrl(fileId);
-        Map<String, String> result = new HashMap<>();
-        result.put("url", url);
-        return Result.success(result);
+        return Result.success(FileUrlResponse.of(url));
     }
 
     /**
@@ -227,11 +209,9 @@ public class ArchiveController {
     @GetMapping("/files/{fileId}/preview-url")
     @Operation(summary = "获取文件预览链接")
     @PreAuthorize("isAuthenticated()")
-    public Result<Map<String, String>> getPreviewUrl(@PathVariable Long fileId) {
+    public Result<FileUrlResponse> getPreviewUrl(@PathVariable Long fileId) {
         String url = fileStorageService.getPreviewUrl(fileId);
-        Map<String, String> result = new HashMap<>();
-        result.put("url", url);
-        return Result.success(result);
+        return Result.success(FileUrlResponse.of(url));
     }
 
     /**

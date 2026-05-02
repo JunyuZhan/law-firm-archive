@@ -1,6 +1,7 @@
 package com.archivesystem.controller;
 
 import com.archivesystem.common.Result;
+import com.archivesystem.dto.retention.RetentionArchiveResponse;
 import com.archivesystem.entity.Archive;
 import com.archivesystem.service.RetentionService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -32,10 +33,10 @@ public class RetentionController {
      */
     @GetMapping("/expiring")
     @Operation(summary = "获取即将到期的档案")
-    public Result<List<Archive>> getExpiringArchives(
+    public Result<List<RetentionArchiveResponse>> getExpiringArchives(
             @RequestParam(defaultValue = "90") Integer days) {
         List<Archive> archives = retentionService.findExpiringArchives(days);
-        return Result.success(archives);
+        return Result.success(archives.stream().map(RetentionArchiveResponse::from).toList());
     }
 
     /**
@@ -43,9 +44,9 @@ public class RetentionController {
      */
     @GetMapping("/expired")
     @Operation(summary = "获取已到期的档案")
-    public Result<List<Archive>> getExpiredArchives() {
+    public Result<List<RetentionArchiveResponse>> getExpiredArchives() {
         List<Archive> archives = retentionService.findExpiredArchives();
-        return Result.success(archives);
+        return Result.success(archives.stream().map(RetentionArchiveResponse::from).toList());
     }
 
     /**
@@ -95,19 +96,9 @@ public class RetentionController {
         if (params == null) {
             return Result.error("400", "请求参数不能为空");
         }
-        
-        Long approverId = null;
-        Object approverIdObj = params.get("approverId");
-        if (approverIdObj != null) {
-            try {
-                approverId = Long.valueOf(approverIdObj.toString());
-            } catch (NumberFormatException e) {
-                return Result.error("400", "approverId 格式错误");
-            }
-        }
-        
+
         String remarks = params.get("remarks") != null ? params.get("remarks").toString() : null;
-        retentionService.executeDestruction(archiveId, approverId, remarks);
+        retentionService.executeDestruction(archiveId, remarks);
         return Result.success("档案已销毁", null);
     }
 }

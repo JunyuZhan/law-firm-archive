@@ -351,6 +351,16 @@ export const sourceApi = {
   },
 
   /**
+   * 重新生成 API Key
+   */
+  regenerateKey(id) {
+    return request({
+      url: `/sources/${id}/regenerate-key`,
+      method: 'post'
+    })
+  },
+
+  /**
    * 删除来源
    */
   delete(id) {

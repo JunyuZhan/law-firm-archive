@@ -7,7 +7,7 @@ import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.security.Keys;
 import io.jsonwebtoken.security.SignatureException;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
@@ -27,17 +27,22 @@ public class JwtUtils {
     private static final int MIN_SECRET_BYTES = 32;
     private static final String EXAMPLE_SECRET = "your-256-bit-secret-key-for-archive-system-2026";
 
-    private final String secret;
+    private final RuntimeSecretProvider runtimeSecretProvider;
     private final long expiration;
     private final long refreshExpiration;
 
+    @Autowired
     public JwtUtils(
-            @Value("${jwt.secret:}") String secret,
-            @Value("${jwt.expiration:86400000}") long expiration,
-            @Value("${jwt.refresh-expiration:604800000}") long refreshExpiration) {
-        this.secret = validateSecret(secret);
+            RuntimeSecretProvider runtimeSecretProvider,
+            @org.springframework.beans.factory.annotation.Value("${jwt.expiration:86400000}") long expiration,
+            @org.springframework.beans.factory.annotation.Value("${jwt.refresh-expiration:604800000}") long refreshExpiration) {
+        this.runtimeSecretProvider = runtimeSecretProvider;
         this.expiration = expiration;
         this.refreshExpiration = refreshExpiration;
+    }
+
+    JwtUtils(String secret, long expiration, long refreshExpiration) {
+        this(new FixedRuntimeSecretProvider(validateSecret(secret)), expiration, refreshExpiration);
     }
 
     /**
@@ -148,11 +153,11 @@ public class JwtUtils {
      * 获取签名密钥.
      */
     private SecretKey getSigningKey() {
-        byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
+        byte[] keyBytes = runtimeSecretProvider.getJwtSecret().getBytes(StandardCharsets.UTF_8);
         return Keys.hmacShaKeyFor(keyBytes);
     }
 
-    private String validateSecret(String rawSecret) {
+    private static String validateSecret(String rawSecret) {
         if (rawSecret == null || rawSecret.isBlank()) {
             throw new IllegalStateException("jwt.secret 未配置，服务启动已拒绝");
         }
@@ -164,5 +169,30 @@ public class JwtUtils {
             throw new IllegalStateException("jwt.secret 长度不足，至少需要32字节");
         }
         return normalized;
+    }
+
+    private static final class FixedRuntimeSecretProvider extends RuntimeSecretProvider {
+
+        private final String secret;
+
+        private FixedRuntimeSecretProvider(String secret) {
+            super(null);
+            this.secret = secret;
+        }
+
+        @Override
+        public String getJwtSecret() {
+            return secret;
+        }
+
+        @Override
+        public String getCryptoSecret() {
+            return secret;
+        }
+
+        @Override
+        public String getLegacyCryptoSecret() {
+            return null;
+        }
     }
 }

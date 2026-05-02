@@ -456,7 +456,6 @@ import { watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { createArchive } from '@/api/archive'
-import { useUserStore } from '@/stores/user'
 import { getAvailableLocations } from '@/api/location'
 import { getFondsList } from '@/api/fonds'
 import { getCategoryTree } from '@/api/category'
@@ -470,7 +469,6 @@ import {
 } from '@/utils/archiveEnums'
 
 const router = useRouter()
-const userStore = useUserStore()
 
 // 下拉选项
 const archiveTypeOptions = getArchiveTypeOptions()
@@ -513,10 +511,21 @@ const locationOptions = ref([])
 const fondsOptions = ref([])
 const categoryOptions = ref([])
 
+const requireTrimmedText = (message) => ({
+  validator: (_rule, value, callback) => {
+    if (!value?.trim()) {
+      callback(new Error(message))
+      return
+    }
+    callback()
+  },
+  trigger: 'blur'
+})
+
 const rules = {
   archiveType: [{ required: true, message: '请选择档案类型', trigger: 'change' }],
   retentionPeriod: [{ required: true, message: '请选择保管期限', trigger: 'change' }],
-  title: [{ required: true, message: '请输入档案题名', trigger: 'blur' }]
+  title: [requireTrimmedText('请输入档案题名')]
 }
 
 // 计算是否有选中的文件（待上传或已上传）
@@ -554,8 +563,10 @@ const skipUpload = () => {
 const nextStep = async () => {
   // 步骤0：上传文件
   if (currentStep.value === 0) {
+    const initialQueue = batchUploadRef.value?.fileQueue || []
+
     // 检查是否有待上传的文件
-    const pendingFiles = batchUploadRef.value?.fileQueue?.filter(f => f.status === 'pending') || []
+    const pendingFiles = initialQueue.filter(f => f.status === 'pending')
     if (pendingFiles.length > 0) {
       // 开始上传
       await batchUploadRef.value.startUpload()
@@ -575,13 +586,27 @@ const nextStep = async () => {
       // 更新已上传文件ID
       uploadedFileIds.value = batchUploadRef.value?.uploadedFileIds || []
     }
+
+    const queueAfterUpload = batchUploadRef.value?.fileQueue || []
+    const hasAttemptedFiles = initialQueue.length > 0
+    const hasSuccessfulUploads = uploadedFileIds.value.length > 0
+    const hasFailedUploads = queueAfterUpload.some(f => f.status === 'error')
+
+    if (hasAttemptedFiles && !hasSuccessfulUploads) {
+      ElMessage.error('所选文件均未上传成功，请重试或跳过上传')
+      return
+    }
+
+    if (hasFailedUploads && hasSuccessfulUploads) {
+      ElMessage.warning('部分文件上传失败，将仅使用已成功上传的文件继续')
+    }
   }
   
   // 步骤1：验证表单
   if (currentStep.value === 1) {
     try {
       await formRef.value.validate()
-    } catch (e) {
+    } catch {
       return
     }
   }
@@ -602,6 +627,16 @@ const handleSubmit = async () => {
     // 创建档案
     const archiveData = {
       ...form,
+      title: form.title.trim(),
+      responsibility: form.responsibility?.trim() || '',
+      caseNo: form.caseNo?.trim() || '',
+      caseName: form.caseName?.trim() || '',
+      clientName: form.clientName?.trim() || '',
+      lawyerName: form.lawyerName?.trim() || '',
+      keywords: form.keywords?.trim() || '',
+      archiveAbstract: form.archiveAbstract?.trim() || '',
+      remarks: form.remarks?.trim() || '',
+      boxNo: form.boxNo?.trim() || '',
       fileIds: uploadedFileIds.value
     }
     
@@ -614,7 +649,7 @@ const handleSubmit = async () => {
       path: `/archives/${res.data.id}`,
       query: {
         created: '1',
-        submitted: userStore.userType === 'USER' ? '1' : '0'
+        submitted: isPendingReview ? '1' : '0'
       }
     })
     
@@ -650,11 +685,10 @@ const getSecurityLevelName = getSecurityName
 const loadLocations = async () => {
   try {
     const res = await getAvailableLocations()
-    if (res.code === 0 && res.data) {
-      locationOptions.value = res.data
-    }
+    locationOptions.value = res.data || []
   } catch (e) {
     console.error('加载存放位置失败', e)
+    locationOptions.value = []
   }
 }
 

@@ -114,6 +114,27 @@ class OperationLogAspectTest {
     }
 
     @Test
+    void testAfterReturning_WithApiKeyAndTokenParameters() throws Exception {
+        Method method = TestService.class.getMethod("rotateCredential", Long.class, String.class, String.class, String.class);
+
+        when(joinPoint.getSignature()).thenReturn(methodSignature);
+        when(methodSignature.getMethod()).thenReturn(method);
+        when(joinPoint.getArgs()).thenReturn(new Object[]{1L, "visible-name", "api-key-123", "token-456"});
+
+        operationLogAspect.afterReturning(joinPoint, null);
+
+        ArgumentCaptor<OperationLog> captor = ArgumentCaptor.forClass(OperationLog.class);
+        verify(operationLogService).log(captor.capture());
+
+        OperationLog log = captor.getValue();
+        assertEquals("1", log.getObjectId());
+        assertNotNull(log.getOperationDetail());
+        assertEquals("visible-name", log.getOperationDetail().get("name"));
+        assertFalse(log.getOperationDetail().containsKey("apiKey"));
+        assertFalse(log.getOperationDetail().containsKey("accessToken"));
+    }
+
+    @Test
     void testAfterReturning_WithXForwardedFor() throws Exception {
         Method method = TestService.class.getMethod("createArchive", Long.class, String.class);
 
@@ -206,6 +227,10 @@ class OperationLogAspectTest {
 
         @Log(objectType = "USER", operationType = "UPDATE", description = "更新密码")
         public void updatePassword(Long id, String password) {
+        }
+
+        @Log(objectType = "USER", operationType = "UPDATE", description = "轮换凭据")
+        public void rotateCredential(Long id, String name, String apiKey, String accessToken) {
         }
 
         public void methodWithoutLog() {

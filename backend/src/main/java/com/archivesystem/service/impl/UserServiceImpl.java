@@ -24,6 +24,7 @@ import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -34,6 +35,7 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
+    private static final Set<String> BUILT_IN_USERNAMES = Set.of("admin", "security", "auditor");
 
     private final UserMapper userMapper;
     private final UserRoleMapper userRoleMapper;
@@ -76,8 +78,13 @@ public class UserServiceImpl implements UserService {
             throw NotFoundException.of("用户", id);
         }
 
+        boolean builtInUser = isBuiltInUser(existing);
+
         // 如果修改了用户名，检查是否重复
         if (!existing.getUsername().equals(user.getUsername())) {
+            if (builtInUser) {
+                throw new BusinessException("系统内置账号用户名不可修改");
+            }
             User byUsername = userMapper.selectByUsername(user.getUsername());
             if (byUsername != null && !byUsername.getId().equals(id)) {
                 throw new BusinessException("用户名已存在: " + user.getUsername());
@@ -88,6 +95,9 @@ public class UserServiceImpl implements UserService {
         existing.setRealName(user.getRealName());
         existing.setEmail(user.getEmail());
         existing.setPhone(user.getPhone());
+        if (builtInUser && !existing.getUserType().equals(user.getUserType())) {
+            throw new BusinessException("系统内置账号类型不可修改");
+        }
         existing.setUserType(user.getUserType());
         existing.setDepartment(user.getDepartment());
 
@@ -175,6 +185,10 @@ public class UserServiceImpl implements UserService {
             return;
         }
 
+        if (isBuiltInUser(user)) {
+            throw new BusinessException("系统内置账号不可删除");
+        }
+
         // 删除用户角色关联
         userRoleMapper.deleteByUserId(id);
         
@@ -251,10 +265,32 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
+    public User updateCurrentProfile(Long id, User user) {
+        User existing = userMapper.selectById(id);
+        if (existing == null) {
+            throw NotFoundException.of("用户", id);
+        }
+
+        existing.setRealName(user.getRealName());
+        existing.setEmail(user.getEmail());
+        existing.setPhone(user.getPhone());
+        existing.setDepartment(user.getDepartment());
+
+        userMapper.updateById(existing);
+        existing.setPassword(null);
+        return existing;
+    }
+
+    @Override
+    @Transactional
     public void updateStatus(Long id, String status) {
         User user = userMapper.selectById(id);
         if (user == null) {
             throw NotFoundException.of("用户", id);
+        }
+
+        if (isBuiltInUser(user) && !User.STATUS_ACTIVE.equals(status)) {
+            throw new BusinessException("系统内置账号不可禁用");
         }
 
         user.setStatus(status);
@@ -296,5 +332,9 @@ public class UserServiceImpl implements UserService {
                 userId,
                 Math.max(1, Math.ceilDiv(jwtUtils.getRefreshExpirationMillis(), 1000))
         );
+    }
+
+    private boolean isBuiltInUser(User user) {
+        return user != null && BUILT_IN_USERNAMES.contains(user.getUsername());
     }
 }

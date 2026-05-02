@@ -1,19 +1,23 @@
-# 档案管理系统 Docker Compose 配置（从本地 GitHub 克隆源码构建 backend / frontend / elasticsearch）
-# 适用：构建与测试机（如 myu）。在 docker/ 目录执行 compose build && up；勿与 docker-compose.registry.yml（从私有库 pull）混用。
+# 档案管理系统 Docker Compose 配置
+#
+# 使用方式：
+#   本地构建：docker compose up -d --build                    （从源码构建 backend/frontend/elasticsearch）
+#   生产拉取：REGISTRY_PREFIX=hub.example.top/ docker compose up -d  （从私有仓库拉取已发布镜像）
+#
+# 首次使用：cd docker/ && cp .env.example .env  并修改密码后启动。
 
 name: archive-system
 
 services:
-  # PostgreSQL 数据库
   postgres:
     image: postgres:16-alpine
     container_name: archive-postgres
     environment:
       POSTGRES_DB: archive_system
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in docker/.env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?请在 .env 中设置 POSTGRES_PASSWORD}
     ports:
-      - "127.0.0.1:5433:5432"  # 仅本机调试用
+      - "127.0.0.1:5433:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ../scripts/init-db/02-schema-consolidated.sql:/docker-entrypoint-initdb.d/02-schema-consolidated.sql:ro
@@ -22,16 +26,16 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
     networks:
       - archive-network
 
-  # Redis 缓存
   redis:
     image: redis:7-alpine
     container_name: archive-redis
     command: redis-server --appendonly yes
     ports:
-      - "127.0.0.1:6380:6379"  # 仅本机调试用
+      - "127.0.0.1:6380:6379"
     volumes:
       - redis-data:/data
     healthcheck:
@@ -39,19 +43,19 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
     networks:
       - archive-network
 
-  # MinIO 对象存储
   minio:
-    image: minio/minio:latest
+    image: minio/minio:RELEASE.2024-11-07T00-52-20Z
     container_name: archive-minio
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD in docker/.env}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?请在 .env 中设置 MINIO_ROOT_PASSWORD}
     ports:
-      - "127.0.0.1:9003:9001"  # MinIO Console 仅本机管理用（API 通过 Nginx 代理）
+      - "127.0.0.1:9003:9001"
     volumes:
       - minio-data:/data
     healthcheck:
@@ -59,19 +63,19 @@ services:
       interval: 30s
       timeout: 20s
       retries: 3
+    restart: unless-stopped
     networks:
       - archive-network
 
-  # RabbitMQ 消息队列
   rabbitmq:
     image: rabbitmq:3-management-alpine
     container_name: archive-rabbitmq
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-admin}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:?set RABBITMQ_DEFAULT_PASS in docker/.env}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:?请在 .env 中设置 RABBITMQ_DEFAULT_PASS}
     ports:
-      - "127.0.0.1:5672:5672"    # AMQP 仅本机调试用
-      - "127.0.0.1:15672:15672"  # 管理界面仅本机访问
+      - "127.0.0.1:5672:5672"
+      - "127.0.0.1:15672:15672"
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
     healthcheck:
@@ -79,15 +83,17 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
+    restart: unless-stopped
     networks:
       - archive-network
 
-  # Elasticsearch 全文检索（带 IK 分词器）
   elasticsearch:
+    image: ${REGISTRY_PREFIX:-}law-firm-archive/elasticsearch:${APP_VERSION:-latest}
     build:
       context: .
       dockerfile: Dockerfile.elasticsearch
     container_name: archive-elasticsearch
+    pull_policy: ${PULL_POLICY:-missing}
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false
@@ -95,8 +101,8 @@ services:
       - "ES_JAVA_OPTS=-Xms${ES_HEAP_MB:-192}m -Xmx${ES_HEAP_MB:-192}m"
       - cluster.name=archive-cluster
     ports:
-      - "127.0.0.1:9200:9200"  # 仅本机调试用
-      - "127.0.0.1:9300:9300"  # 仅本机调试用
+      - "127.0.0.1:9200:9200"
+      - "127.0.0.1:9300:9300"
     volumes:
       - es-data:/usr/share/elasticsearch/data
     healthcheck:
@@ -104,41 +110,50 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
+    restart: unless-stopped
     networks:
       - archive-network
 
-  # 后端服务
   backend:
+    image: ${REGISTRY_PREFIX:-}law-firm-archive/backend:${APP_VERSION:-latest}
     build:
       context: ..
       dockerfile: docker/Dockerfile
       args:
         APP_VERSION: ${APP_VERSION:-}
     container_name: archive-backend
+    pull_policy: ${PULL_POLICY:-missing}
     environment:
       JAVA_OPTS: ${JAVA_OPTS:--Xms256m -Xmx768m -XX:+UseG1GC -XX:MaxGCPauseMillis=200}
       SPRING_PROFILES_ACTIVE: docker
-      CORS_ALLOWED_ORIGINS: http://localhost:3001,http://192.168.50.10:3001,https://arc.albertzhan.top,${EXTERNAL_ORIGIN:-}
+      APP_VERSION: ${APP_VERSION:-latest}
+      APP_COMMIT_SHA: ${APP_COMMIT_SHA:-}
+      APP_BUILD_TIME: ${APP_BUILD_TIME:-}
+      RUNNING_BACKEND_DIGEST: ${RUNNING_BACKEND_DIGEST:-}
+      RUNNING_FRONTEND_DIGEST: ${RUNNING_FRONTEND_DIGEST:-}
+      REGISTRY_USERNAME: ${REGISTRY_USERNAME:-}
+      REGISTRY_PASSWORD: ${REGISTRY_PASSWORD:-}
+      DIST_CENTER_LATEST_JSON_URL: ${DIST_CENTER_LATEST_JSON_URL:-}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3001},${EXTERNAL_ORIGIN:-}
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/archive_system
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
-      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in docker/.env}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?请在 .env 中设置 POSTGRES_PASSWORD}
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
       MINIO_ENDPOINT: http://minio:9000
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
-      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD in docker/.env}
-      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in docker/.env}
-      # 与 application.yml 一致；未单独设置时复用 JWT_SECRET（须满足至少 32 字节）
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:?请在 .env 中设置 MINIO_ROOT_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET:?请在 .env 中设置 JWT_SECRET}
       SECURITY_CRYPTO_SECRET: ${SECURITY_CRYPTO_SECRET:-${JWT_SECRET}}
       SECURITY_CRYPTO_LEGACY_SECRET: ${SECURITY_CRYPTO_LEGACY_SECRET:-}
       SPRING_RABBITMQ_HOST: rabbitmq
       SPRING_RABBITMQ_PORT: 5672
       SPRING_RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:-admin}
-      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:?set RABBITMQ_DEFAULT_PASS in docker/.env}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:?请在 .env 中设置 RABBITMQ_DEFAULT_PASS}
       MINIO_PROXY_PREFIX: ${MINIO_PROXY_PREFIX:-/storage}
       SPRING_ELASTICSEARCH_URIS: http://elasticsearch:9200
     ports:
-      - "127.0.0.1:8090:8090"  # 仅本机调试用（外部通过前端 Nginx /api/ 代理）
+      - "127.0.0.1:8090:8090"
     depends_on:
       postgres:
         condition: service_healthy
@@ -156,19 +171,21 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
+    restart: unless-stopped
     networks:
       - archive-network
 
-  # 前端服务（Nginx）
   frontend:
+    image: ${REGISTRY_PREFIX:-}law-firm-archive/frontend:${APP_VERSION:-latest}
     build:
       context: ..
       dockerfile: docker/Dockerfile.frontend
       args:
         APP_VERSION: ${APP_VERSION:-}
     container_name: archive-frontend
+    pull_policy: ${PULL_POLICY:-missing}
     ports:
-      - "3001:8080"
+      - "${FRONTEND_PORT:-3001}:8080"
     depends_on:
       backend:
         condition: service_healthy
@@ -177,6 +194,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    restart: unless-stopped
     networks:
       - archive-network
 

@@ -1,6 +1,7 @@
 package com.archivesystem.controller;
 
 import com.archivesystem.common.PageResult;
+import com.archivesystem.dto.borrow.BorrowLinkResponse;
 import com.archivesystem.entity.BorrowLink;
 import com.archivesystem.service.BorrowLinkService;
 import org.junit.jupiter.api.BeforeEach;
@@ -39,21 +40,33 @@ class BorrowLinkControllerTest {
     @InjectMocks
     private BorrowLinkController borrowLinkController;
 
-    private BorrowLink testLink;
+    private BorrowLinkResponse testLink;
+    private BorrowLinkResponse detailLink;
 
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(borrowLinkController).build();
 
-        testLink = new BorrowLink();
-        testLink.setId(1L);
-        testLink.setArchiveId(100L);
-        testLink.setAccessToken("test-token-123");
-        testLink.setStatus(BorrowLink.STATUS_ACTIVE);
-        testLink.setAllowDownload(true);
-        testLink.setAccessCount(0);
-        testLink.setExpireAt(LocalDateTime.now().plusDays(7));
-        testLink.setCreatedAt(LocalDateTime.now());
+        testLink = BorrowLinkResponse.builder()
+                .id(1L)
+                .archiveId(100L)
+                .status(BorrowLink.STATUS_ACTIVE)
+                .allowDownload(true)
+                .accessCount(0)
+                .expireAt(LocalDateTime.now().plusDays(7))
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        detailLink = BorrowLinkResponse.builder()
+                .id(1L)
+                .archiveId(100L)
+                .status(BorrowLink.STATUS_ACTIVE)
+                .allowDownload(true)
+                .accessCount(0)
+                .expireAt(LocalDateTime.now().plusDays(7))
+                .createdAt(LocalDateTime.now())
+                .accessUrl("/borrow/access/test-token-123")
+                .build();
     }
 
     @Test
@@ -64,7 +77,17 @@ class BorrowLinkControllerTest {
         mockMvc.perform(get("/borrow-links"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
-                .andExpect(jsonPath("$.data.records").isArray());
+                .andExpect(jsonPath("$.data.records").isArray())
+                .andExpect(jsonPath("$.data.records[0].borrowId").doesNotExist())
+                .andExpect(jsonPath("$.data.records[0].revokeReason").doesNotExist())
+                .andExpect(jsonPath("$.data.records[0].revokedAt").doesNotExist())
+                .andExpect(jsonPath("$.data.records[0].accessToken").doesNotExist())
+                .andExpect(jsonPath("$.data.records[0].accessUrl").doesNotExist())
+                .andExpect(jsonPath("$.data.records[0].sourceSystem").doesNotExist())
+                .andExpect(jsonPath("$.data.records[0].sourceUserId").doesNotExist())
+                .andExpect(jsonPath("$.data.records[0].createdBy").doesNotExist())
+                .andExpect(jsonPath("$.data.records[0].updatedAt").doesNotExist())
+                .andExpect(jsonPath("$.data.records[0].revokedBy").doesNotExist());
     }
 
     @Test
@@ -84,31 +107,47 @@ class BorrowLinkControllerTest {
 
     @Test
     void testGetById() throws Exception {
-        when(borrowLinkService.getById(1L)).thenReturn(testLink);
+        when(borrowLinkService.getById(1L)).thenReturn(detailLink);
 
         mockMvc.perform(get("/borrow-links/1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
                 .andExpect(jsonPath("$.data.id").value(1))
-                .andExpect(jsonPath("$.data.accessToken").value("test-token-123"));
+                .andExpect(jsonPath("$.data.accessToken").doesNotExist())
+                .andExpect(jsonPath("$.data.accessUrl").value("/borrow/access/test-token-123"))
+                .andExpect(jsonPath("$.data.sourceSystem").doesNotExist())
+                .andExpect(jsonPath("$.data.sourceUserId").doesNotExist())
+                .andExpect(jsonPath("$.data.createdBy").doesNotExist())
+                .andExpect(jsonPath("$.data.updatedAt").doesNotExist())
+                .andExpect(jsonPath("$.data.revokedBy").doesNotExist());
     }
 
     @Test
     void testGetActiveByArchive() throws Exception {
-        List<BorrowLink> links = Arrays.asList(testLink);
+        List<BorrowLinkResponse> links = Arrays.asList(testLink);
         when(borrowLinkService.getActiveByArchiveId(100L)).thenReturn(links);
 
         mockMvc.perform(get("/borrow-links/archive/100"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
                 .andExpect(jsonPath("$.data").isArray())
-                .andExpect(jsonPath("$.data[0].archiveId").value(100));
+                .andExpect(jsonPath("$.data[0].archiveId").value(100))
+                .andExpect(jsonPath("$.data[0].borrowId").doesNotExist())
+                .andExpect(jsonPath("$.data[0].revokeReason").doesNotExist())
+                .andExpect(jsonPath("$.data[0].revokedAt").doesNotExist())
+                .andExpect(jsonPath("$.data[0].accessToken").doesNotExist())
+                .andExpect(jsonPath("$.data[0].accessUrl").doesNotExist())
+                .andExpect(jsonPath("$.data[0].sourceSystem").doesNotExist())
+                .andExpect(jsonPath("$.data[0].sourceUserId").doesNotExist())
+                .andExpect(jsonPath("$.data[0].createdBy").doesNotExist())
+                .andExpect(jsonPath("$.data[0].updatedAt").doesNotExist())
+                .andExpect(jsonPath("$.data[0].revokedBy").doesNotExist());
     }
 
     @Test
     void testGenerateLink() throws Exception {
         when(borrowLinkService.generateLinkForBorrow(eq(1L), eq(7), eq(true)))
-                .thenReturn(testLink);
+                .thenReturn(detailLink);
 
         mockMvc.perform(post("/borrow-links/generate")
                         .param("borrowId", "1")
@@ -116,7 +155,14 @@ class BorrowLinkControllerTest {
                         .param("allowDownload", "true"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
-                .andExpect(jsonPath("$.message").value("链接生成成功"));
+                .andExpect(jsonPath("$.message").value("链接生成成功"))
+                .andExpect(jsonPath("$.data.accessToken").doesNotExist())
+                .andExpect(jsonPath("$.data.accessUrl").value("/borrow/access/test-token-123"))
+                .andExpect(jsonPath("$.data.sourceSystem").doesNotExist())
+                .andExpect(jsonPath("$.data.sourceUserId").doesNotExist())
+                .andExpect(jsonPath("$.data.createdBy").doesNotExist())
+                .andExpect(jsonPath("$.data.updatedAt").doesNotExist())
+                .andExpect(jsonPath("$.data.revokedBy").doesNotExist());
     }
 
     @Test
@@ -151,6 +197,7 @@ class BorrowLinkControllerTest {
         mockMvc.perform(post("/borrow-links/update-expired"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
-                .andExpect(jsonPath("$.data.updatedCount").value(5));
+                .andExpect(jsonPath("$.data.updatedCount").value(5))
+                .andExpect(jsonPath("$.data.count").doesNotExist());
     }
 }

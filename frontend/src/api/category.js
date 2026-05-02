@@ -12,6 +12,17 @@ export function getCategoryTree(archiveType) {
 }
 
 /**
+ * 获取分类树摘要
+ */
+export function getCategoryTreeSummary(archiveType) {
+  return request({
+    url: '/categories/tree/summary',
+    method: 'get',
+    params: { archiveType }
+  })
+}
+
+/**
  * 获取分类详情
  */
 export function getCategoryDetail(id) {

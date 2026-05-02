@@ -468,11 +468,13 @@
           label="借阅目的"
           prop="purpose"
         >
-          <el-input 
-            v-model="borrowForm.purpose" 
-            type="textarea" 
-            :rows="3" 
+          <el-input
+            v-model="borrowForm.purpose"
+            type="textarea"
+            :rows="3"
             placeholder="请输入借阅目的"
+            maxlength="500"
+            show-word-limit
           />
         </el-form-item>
         <el-form-item
@@ -511,16 +513,19 @@
             v-model="borrowForm.expectedReturnDate"
             type="date"
             placeholder="选择预计归还日期"
+            value-format="YYYY-MM-DD"
             :disabled-date="disablePastDate"
             style="width: 100%"
           />
         </el-form-item>
         <el-form-item label="备注">
-          <el-input 
-            v-model="borrowForm.remarks" 
-            type="textarea" 
-            :rows="2" 
+          <el-input
+            v-model="borrowForm.remarks"
+            type="textarea"
+            :rows="2"
             placeholder="备注信息（可选）"
+            maxlength="500"
+            show-word-limit
           />
         </el-form-item>
       </el-form>
@@ -769,7 +774,7 @@
             <BatchUpload
               ref="supplementUploadRef"
               :allowed-types="allowedFileTypes"
-              :max-size="maxFileSize"
+              :max-file-size="maxFileSize"
               :auto-upload="false"
               :extra-data="supplementUploadExtraData"
             />
@@ -793,7 +798,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
@@ -851,8 +856,18 @@ const borrowForm = ref({
   expectedReturnDate: null,
   remarks: ''
 })
+const requireTrimmedText = (message) => ({
+  validator: (_rule, value, callback) => {
+    if (!value?.trim()) {
+      callback(new Error(message))
+      return
+    }
+    callback()
+  },
+  trigger: 'blur'
+})
 const borrowRules = {
-  purpose: [{ required: true, message: '请输入借阅目的', trigger: 'blur' }],
+  purpose: [requireTrimmedText('请输入借阅目的')],
   borrowType: [{ required: true, message: '请选择借阅方式', trigger: 'change' }],
   expectedReturnDate: [{ required: true, message: '请选择预计归还日期', trigger: 'change' }]
 }
@@ -1043,6 +1058,23 @@ const activeCategories = computed(() => {
   return groupedFiles.value.map(g => g.key)
 })
 
+const resetDetailTransientState = () => {
+  previewVisible.value = false
+  previewFileId.value = null
+  previewFileName.value = ''
+  previewFileExtension.value = ''
+  borrowDialogVisible.value = false
+  borrowSubmitting.value = false
+  borrowForm.value = {
+    purpose: '',
+    borrowType: 'ONLINE',
+    expectedReturnDate: null,
+    remarks: ''
+  }
+  supplementDialogVisible.value = false
+  supplementSubmitting.value = false
+}
+
 // 获取档案详情
 const fetchData = async () => {
   loading.value = true
@@ -1107,7 +1139,7 @@ const checkCanBorrow = async () => {
     borrowUnavailableReason.value = res.data?.unavailableReason || ''
     borrowRuleSummary.value = res.data?.borrowRules?.ruleSummary || ''
     maxBorrowDaysByType.value = res.data?.borrowRules?.maxBorrowDays || {}
-  } catch (e) {
+  } catch {
     canBorrow.value = false
     allowedBorrowTypes.value = []
     borrowUnavailableReason.value = '暂时无法校验借阅条件'
@@ -1134,7 +1166,13 @@ const isBorrowTypeAllowed = (type) => allowedBorrowTypes.value.includes(type)
 
 // 禁用过去日期
 const disablePastDate = (time) => {
-  if (time.getTime() < Date.now() - 8.64e7) {
+  const candidate = new Date(time)
+  candidate.setHours(0, 0, 0, 0)
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  if (candidate.getTime() < today.getTime()) {
     return true
   }
   const type = borrowForm.value.borrowType
@@ -1145,7 +1183,7 @@ const disablePastDate = (time) => {
   const latest = new Date()
   latest.setHours(0, 0, 0, 0)
   latest.setDate(latest.getDate() + maxDays)
-  return time.getTime() > latest.getTime()
+  return candidate.getTime() > latest.getTime()
 }
 
 // 提交借阅申请
@@ -1158,10 +1196,10 @@ const submitBorrowApply = async () => {
     
     const data = {
       archiveId: route.params.id,
-      borrowPurpose: borrowForm.value.purpose,
+      borrowPurpose: borrowForm.value.purpose.trim(),
       borrowType: borrowForm.value.borrowType,
-      expectedReturnDate: borrowForm.value.expectedReturnDate.toISOString().split('T')[0],
-      remarks: borrowForm.value.remarks
+      expectedReturnDate: borrowForm.value.expectedReturnDate,
+      remarks: borrowForm.value.remarks?.trim() || ''
     }
     
     await applyBorrow(data)
@@ -1183,11 +1221,10 @@ const submitBorrowApply = async () => {
 const loadLocations = async () => {
   try {
     const res = await getAvailableLocations()
-    if (res.code === 0 && res.data) {
-      locationOptions.value = res.data
-    }
+    locationOptions.value = res.data || []
   } catch (e) {
     console.error('加载存放位置失败', e)
+    locationOptions.value = []
   }
 }
 
@@ -1219,17 +1256,37 @@ const submitSupplement = async () => {
   try {
     // 先上传文件
     let uploadedFileIds = []
+    const uploadQueueBeforeSubmit = supplementUploadRef.value?.fileQueue || []
     if (supplementUploadRef.value) {
       const uploadResult = await supplementUploadRef.value.startUpload()
       if (uploadResult && uploadResult.length > 0) {
         uploadedFileIds = uploadResult.map(f => f.id)
       }
     }
+
+    if (supplementForm.value.archiveForm !== 'ELECTRONIC' && !supplementForm.value.locationId) {
+      ElMessage.warning('请选择存放位置')
+      return
+    }
     
     // 检查是否需要更新
     const formChanged = supplementForm.value.archiveForm !== archive.value?.archiveForm ||
                         supplementForm.value.locationId !== archive.value?.locationId ||
                         supplementForm.value.boxNo !== archive.value?.boxNo
+
+    const uploadQueueAfterSubmit = supplementUploadRef.value?.fileQueue || []
+    const hasAttemptedFiles = uploadQueueBeforeSubmit.length > 0
+    const hasSuccessfulUploads = uploadedFileIds.length > 0
+    const hasFailedUploads = uploadQueueAfterSubmit.some(file => file.status === 'error')
+
+    if (hasAttemptedFiles && !hasSuccessfulUploads) {
+      ElMessage.error('所选补充文件均未上传成功，请重试后再提交')
+      return
+    }
+
+    if (hasFailedUploads && hasSuccessfulUploads) {
+      ElMessage.warning('部分补充文件上传失败，将仅提交已成功上传的文件')
+    }
     
     if (uploadedFileIds.length === 0 && !formChanged) {
       ElMessage.warning('请上传文件或修改档案信息')
@@ -1354,6 +1411,13 @@ const getFileIconClass = (ext) => {
 
 onMounted(() => {
   fetchData()
+})
+
+watch(() => route.params.id, async (newId, oldId) => {
+  if (newId && newId !== oldId) {
+    resetDetailTransientState()
+    await fetchData()
+  }
 })
 </script>
 

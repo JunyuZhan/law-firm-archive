@@ -100,6 +100,12 @@ public class ArchiveDocument {
     private String lawyerName;
 
     /**
+     * 主办律师规范化标记列表（用于对象级权限过滤）
+     */
+    @Field(type = FieldType.Keyword)
+    private List<String> lawyerTokens;
+
+    /**
      * 关键词
      */
     @Field(type = FieldType.Text, analyzer = "ik_max_word", searchAnalyzer = "ik_smart")
@@ -170,6 +176,18 @@ public class ArchiveDocument {
      */
     @Field(type = FieldType.Date, format = DateFormat.date_hour_minute_second)
     private LocalDateTime createdAt;
+
+    /**
+     * 创建人ID（用于对象级权限过滤）
+     */
+    @Field(type = FieldType.Long)
+    private Long createdBy;
+
+    /**
+     * 接收人ID（用于对象级权限过滤）
+     */
+    @Field(type = FieldType.Long)
+    private Long receivedBy;
 
     /**
      * 更新时间

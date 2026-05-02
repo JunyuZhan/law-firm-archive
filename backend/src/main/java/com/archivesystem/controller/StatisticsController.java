@@ -2,6 +2,14 @@ package com.archivesystem.controller;
 
 import com.archivesystem.common.Result;
 import com.archivesystem.dto.archive.ArchiveQueryRequest;
+import com.archivesystem.dto.statistics.ArchiveTypeStatisticsResponse;
+import com.archivesystem.dto.statistics.BorrowStatisticsResponse;
+import com.archivesystem.dto.statistics.MonthlyTrendStatisticsResponse;
+import com.archivesystem.dto.statistics.OverviewStatisticsResponse;
+import com.archivesystem.dto.statistics.RetentionStatisticsResponse;
+import com.archivesystem.dto.statistics.ScanBatchStatisticsResponse;
+import com.archivesystem.dto.statistics.StatusStatisticsResponse;
+import com.archivesystem.dto.statistics.StorageStatisticsResponse;
 import com.archivesystem.service.ReportService;
 import com.archivesystem.service.StatisticsService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -37,62 +45,72 @@ public class StatisticsController {
     @GetMapping("/overview")
     @Operation(summary = "获取概览统计")
     @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_REVIEWER', 'ARCHIVE_MANAGER')")
-    public Result<Map<String, Object>> getOverview() {
-        return Result.success(statisticsService.getOverview());
+    public Result<OverviewStatisticsResponse> getOverview() {
+        return Result.success(OverviewStatisticsResponse.from(statisticsService.getOverview()));
     }
 
     @GetMapping("/by-type")
     @Operation(summary = "按档案类型统计")
     @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_REVIEWER', 'ARCHIVE_MANAGER')")
-    public Result<List<Map<String, Object>>> countByType() {
-        return Result.success(statisticsService.countByArchiveType());
+    public Result<List<ArchiveTypeStatisticsResponse>> countByType() {
+        return Result.success(statisticsService.countByArchiveType().stream()
+                .map(ArchiveTypeStatisticsResponse::from)
+                .toList());
     }
 
     @GetMapping("/by-retention")
     @Operation(summary = "按保管期限统计")
     @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_REVIEWER', 'ARCHIVE_MANAGER')")
-    public Result<List<Map<String, Object>>> countByRetention() {
-        return Result.success(statisticsService.countByRetentionPeriod());
+    public Result<List<RetentionStatisticsResponse>> countByRetention() {
+        return Result.success(statisticsService.countByRetentionPeriod().stream()
+                .map(RetentionStatisticsResponse::from)
+                .toList());
     }
 
     @GetMapping("/by-status")
     @Operation(summary = "按状态统计")
     @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_REVIEWER', 'ARCHIVE_MANAGER')")
-    public Result<List<Map<String, Object>>> countByStatus() {
-        return Result.success(statisticsService.countByStatus());
+    public Result<List<StatusStatisticsResponse>> countByStatus() {
+        return Result.success(statisticsService.countByStatus().stream()
+                .map(StatusStatisticsResponse::from)
+                .toList());
     }
 
     @GetMapping("/trend")
     @Operation(summary = "月度趋势统计")
     @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_REVIEWER', 'ARCHIVE_MANAGER')")
-    public Result<List<Map<String, Object>>> getTrend(
+    public Result<List<MonthlyTrendStatisticsResponse>> getTrend(
             @RequestParam(required = false) Integer year) {
         if (year == null) {
             year = LocalDate.now().getYear();
         }
-        return Result.success(statisticsService.countByMonth(year));
+        return Result.success(statisticsService.countByMonth(year).stream()
+                .map(MonthlyTrendStatisticsResponse::from)
+                .toList());
     }
 
     @GetMapping("/borrow")
     @Operation(summary = "借阅统计")
     @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_REVIEWER', 'ARCHIVE_MANAGER')")
-    public Result<Map<String, Object>> getBorrowStats() {
-        return Result.success(statisticsService.getBorrowStatistics());
+    public Result<BorrowStatisticsResponse> getBorrowStats() {
+        return Result.success(BorrowStatisticsResponse.from(statisticsService.getBorrowStatistics()));
     }
 
     @GetMapping("/storage")
     @Operation(summary = "存储统计")
     @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_REVIEWER', 'ARCHIVE_MANAGER')")
-    public Result<Map<String, Object>> getStorageStats() {
-        return Result.success(statisticsService.getStorageStatistics());
+    public Result<StorageStatisticsResponse> getStorageStats() {
+        return Result.success(StorageStatisticsResponse.from(statisticsService.getStorageStatistics()));
     }
 
     @GetMapping("/scan-batches")
     @Operation(summary = "扫描批次统计")
     @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_REVIEWER', 'ARCHIVE_MANAGER')")
-    public Result<List<Map<String, Object>>> getScanBatchStats(
+    public Result<List<ScanBatchStatisticsResponse>> getScanBatchStats(
             @RequestParam(required = false) String keyword) {
-        return Result.success(statisticsService.getScanBatchStatistics(keyword));
+        return Result.success(statisticsService.getScanBatchStatistics(keyword).stream()
+                .map(ScanBatchStatisticsResponse::from)
+                .toList());
     }
 
     // ===== 报表导出接口 =====

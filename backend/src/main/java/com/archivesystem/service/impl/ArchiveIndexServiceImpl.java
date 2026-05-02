@@ -309,6 +309,7 @@ public class ArchiveIndexServiceImpl implements ArchiveIndexService {
                 .caseName(archive.getCaseName())
                 .clientName(archive.getClientName())
                 .lawyerName(archive.getLawyerName())
+                .lawyerTokens(normalizeLawyerTokens(archive.getLawyerName()))
                 .keywords(archive.getKeywords())
                 .archiveAbstract(archive.getArchiveAbstract())
                 .remarks(archive.getRemarks())
@@ -320,6 +321,8 @@ public class ArchiveIndexServiceImpl implements ArchiveIndexService {
                 .documentDate(archive.getDocumentDate())
                 .receivedAt(archive.getReceivedAt())
                 .createdAt(archive.getCreatedAt())
+                .createdBy(archive.getCreatedBy())
+                .receivedBy(archive.getReceivedBy())
                 .updatedAt(archive.getUpdatedAt())
                 .fileCount(archive.getFileCount())
                 .build();
@@ -395,11 +398,19 @@ public class ArchiveIndexServiceImpl implements ArchiveIndexService {
 
         Long currentUserId = SecurityUtils.getCurrentUserId();
         String currentRealName = SecurityUtils.getCurrentRealName();
-        if (StringUtils.hasText(currentRealName)) {
-            builder.filter(Query.of(q -> q.term(t -> t.field("lawyerName").value(currentRealName))));
-        } else if (currentUserId != null) {
-            // ES 文档目前未索引 createdBy/receivedBy，仅在无姓名时回退为空过滤，避免默认放开全库
+        String currentUsername = SecurityUtils.getCurrentUsername();
+        List<Query> scopeQueries = new ArrayList<>();
+        if (currentUserId != null) {
+            scopeQueries.add(Query.of(q -> q.term(t -> t.field("createdBy").value(currentUserId))));
+            scopeQueries.add(Query.of(q -> q.term(t -> t.field("receivedBy").value(currentUserId))));
+        }
+        addLawyerScopeQuery(scopeQueries, currentRealName);
+        addLawyerScopeQuery(scopeQueries, currentUsername);
+
+        if (scopeQueries.isEmpty()) {
             builder.filter(Query.of(q -> q.term(t -> t.field("id").value(-1))));
+        } else {
+            builder.filter(Query.of(q -> q.bool(b -> b.should(scopeQueries).minimumShouldMatch("1"))));
         }
 
         builder.filter(Query.of(q -> q.bool(b -> b
@@ -435,6 +446,31 @@ public class ArchiveIndexServiceImpl implements ArchiveIndexService {
         return digitalFileMapper.selectByArchiveIds(archiveIds).stream()
                 .filter(file -> file.getArchiveId() != null)
                 .collect(Collectors.groupingBy(DigitalFile::getArchiveId));
+    }
+
+    private void addLawyerScopeQuery(List<Query> scopeQueries, String rawIdentity) {
+        String normalized = normalizeLawyerToken(rawIdentity);
+        if (StringUtils.hasText(normalized)) {
+            scopeQueries.add(Query.of(q -> q.term(t -> t.field("lawyerTokens").value(normalized))));
+        }
+    }
+
+    private List<String> normalizeLawyerTokens(String rawValue) {
+        if (!StringUtils.hasText(rawValue)) {
+            return Collections.emptyList();
+        }
+        return Arrays.stream(rawValue.split("[,，、;/；\\s]+"))
+                .map(this::normalizeLawyerToken)
+                .filter(StringUtils::hasText)
+                .distinct()
+                .toList();
+    }
+
+    private String normalizeLawyerToken(String value) {
+        if (!StringUtils.hasText(value)) {
+            return "";
+        }
+        return value.replaceAll("\\s+", "").trim();
     }
 
     /**

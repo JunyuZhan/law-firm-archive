@@ -34,7 +34,7 @@ public class TraceIdFilter extends OncePerRequestFilter {
         try {
             // 优先使用请求头中的traceId，否则生成新的
             String traceId = request.getHeader(TRACE_ID_HEADER);
-            if (traceId == null || traceId.isEmpty()) {
+            if (traceId == null || traceId.isEmpty() || !isValidTraceId(traceId)) {
                 traceId = generateTraceId();
             }
             
@@ -52,6 +52,25 @@ public class TraceIdFilter extends OncePerRequestFilter {
             MDC.remove(REQUEST_URI_KEY);
             MDC.remove(USER_ID_KEY);
         }
+    }
+    
+    /**
+     * 校验客户端传入的TraceId是否合法.
+     * 防止日志注入和HTTP Header Injection
+     */
+    private boolean isValidTraceId(String traceId) {
+        if (traceId.length() > 64) {
+            return false;
+        }
+        // 仅允许字母、数字、连字符和下划线
+        for (int i = 0; i < traceId.length(); i++) {
+            char c = traceId.charAt(i);
+            if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
+                    || (c >= '0' && c <= '9') || c == '-' || c == '_')) {
+                return false;
+            }
+        }
+        return true;
     }
     
     /**

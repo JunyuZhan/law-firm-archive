@@ -83,6 +83,8 @@ class ArchiveIndexServiceTest {
         testArchive.setArchiveDate(LocalDate.of(2026, 2, 13));
         testArchive.setReceivedAt(LocalDateTime.now());
         testArchive.setCreatedAt(LocalDateTime.now());
+        testArchive.setCreatedBy(11L);
+        testArchive.setReceivedBy(22L);
         testArchive.setFileCount(0);
         testArchive.setDeleted(false);
 
@@ -148,6 +150,24 @@ class ArchiveIndexServiceTest {
 
         verify(archiveSearchRepository).save(argThat(doc -> 
             doc.getFileNames() != null && doc.getFileNames().size() == 2
+        ));
+    }
+
+    @Test
+    void testIndexArchive_ShouldIndexScopeFields() {
+        testArchive.setLawyerName("测试律师, test_user");
+        when(archiveMapper.selectById(1L)).thenReturn(testArchive);
+        when(digitalFileMapper.selectByArchiveId(1L)).thenReturn(Collections.emptyList());
+        when(archiveSearchRepository.save(any(ArchiveDocument.class))).thenReturn(testDocument);
+
+        archiveIndexService.indexArchive(1L);
+
+        verify(archiveSearchRepository).save(argThat(doc ->
+                Objects.equals(11L, doc.getCreatedBy())
+                        && Objects.equals(22L, doc.getReceivedBy())
+                        && doc.getLawyerTokens() != null
+                        && doc.getLawyerTokens().contains("测试律师")
+                        && doc.getLawyerTokens().contains("test_user")
         ));
     }
 
@@ -267,6 +287,52 @@ class ArchiveIndexServiceTest {
 
             Map<String, Object> result = archiveIndexService.getAggregations();
 
+            assertNotNull(result);
+        }
+
+        SearchRequest capturedRequest = capturedRequestRef.get();
+        assertNotNull(capturedRequest);
+        assertNotNull(capturedRequest.query());
+        assertTrue(capturedRequest.query().isBool());
+        assertNotNull(capturedRequest.query().bool().filter());
+        assertTrue(capturedRequest.query().bool().filter().size() >= 2);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void testSearch_AppliesCurrentUserScope() throws Exception {
+        SearchResponse<ArchiveDocument> mockResponse = mock(SearchResponse.class);
+        HitsMetadata<ArchiveDocument> mockHits = mock(HitsMetadata.class);
+        TotalHits mockTotal = mock(TotalHits.class);
+        AtomicReference<SearchRequest> capturedRequestRef = new AtomicReference<>();
+
+        when(mockTotal.value()).thenReturn(0L);
+        when(mockHits.total()).thenReturn(mockTotal);
+        when(mockHits.hits()).thenReturn(Collections.emptyList());
+        when(mockResponse.hits()).thenReturn(mockHits);
+        when(mockResponse.took()).thenReturn(5L);
+        when(mockResponse.aggregations()).thenReturn(null);
+        doAnswer(invocation -> {
+            capturedRequestRef.set(invocation.getArgument(0));
+            return mockResponse;
+        }).when(elasticsearchClient).search(any(SearchRequest.class), eq(ArchiveDocument.class));
+
+        ArchiveSearchRequest request = new ArchiveSearchRequest();
+        request.setKeyword("测试");
+        request.setPageNum(1);
+        request.setPageSize(20);
+        request.setHighlight(false);
+        request.setAggregation(false);
+
+        try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+            securityUtils.when(SecurityUtils::isAuthenticated).thenReturn(true);
+            securityUtils.when(() -> SecurityUtils.hasAnyRole("SYSTEM_ADMIN", "ARCHIVE_REVIEWER", "ARCHIVE_MANAGER"))
+                    .thenReturn(false);
+            securityUtils.when(SecurityUtils::getCurrentUserId).thenReturn(11L);
+            securityUtils.when(SecurityUtils::getCurrentRealName).thenReturn("测试律师");
+            securityUtils.when(SecurityUtils::getCurrentUsername).thenReturn("test_user");
+
+            ArchiveSearchResult result = archiveIndexService.search(request);
             assertNotNull(result);
         }
 

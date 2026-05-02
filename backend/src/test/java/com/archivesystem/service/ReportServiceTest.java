@@ -8,6 +8,7 @@ import com.archivesystem.repository.ArchiveMapper;
 import com.archivesystem.repository.BorrowApplicationMapper;
 import com.archivesystem.repository.OperationLogMapper;
 import com.archivesystem.service.impl.ReportServiceImpl;
+import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -16,6 +17,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.io.ByteArrayOutputStream;
+import java.io.ByteArrayInputStream;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -265,6 +267,29 @@ class ReportServiceTest {
         
         assertDoesNotThrow(() -> reportService.exportOperationLogReport(null, null, outputStream));
         assertTrue(outputStream.size() > 0); // 仍有表头
+    }
+
+    @Test
+    void testExportArchiveList_ShouldSanitizeFormulaInjectionCells() throws Exception {
+        testArchive.setArchiveNo("=ARC-001");
+        testArchive.setTitle("@恶意题名");
+        testArchive.setLawyerName("+张律师");
+        testArchive.setClientName("\t李委托人");
+        when(archiveMapper.selectList(any())).thenReturn(List.of(testArchive));
+
+        ArchiveQueryRequest request = new ArchiveQueryRequest();
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+
+        reportService.exportArchiveList(request, outputStream);
+
+        try (var workbook = WorkbookFactory.create(new ByteArrayInputStream(outputStream.toByteArray()))) {
+            var sheet = workbook.getSheetAt(0);
+            var row = sheet.getRow(1);
+            assertEquals("'=ARC-001", row.getCell(1).getStringCellValue());
+            assertEquals("'@恶意题名", row.getCell(2).getStringCellValue());
+            assertEquals("'+张律师", row.getCell(9).getStringCellValue());
+            assertEquals("'\t李委托人", row.getCell(10).getStringCellValue());
+        }
     }
 
     @Test

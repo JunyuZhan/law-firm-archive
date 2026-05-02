@@ -1,13 +1,10 @@
 # ============================================================================
-# 开发环境配置文件
+# 默认运行配置
 # ============================================================================
-# ⚠️ 安全警告：
-# 本文件包含开发环境的默认密码和密钥，仅用于本地开发测试！
-# 
-# 🔴 生产环境部署时必须：
-#   1. 使用 --spring.profiles.active=prod 启动
-#   2. 通过环境变量配置所有敏感信息（参见 application-prod.yml）
-#   3. 切勿将生产密码提交到代码仓库
+# 目标：支持 Docker 内“单端口极简部署”开箱即用。
+# - 容器内依赖直接使用固定主机名：postgres / redis / rabbitmq / elasticsearch / minio
+# - 业务参数优先从 sys_config 读取；本文件仅保留代码级兜底值
+# - 生产环境如需覆盖，仍可启用 application-prod.yml
 # ============================================================================
 
 server:
@@ -25,27 +22,27 @@ spring:
       max-file-size: 100MB
       max-request-size: 500MB
   
-  # 数据源配置（⚠️ 仅开发环境使用默认值）
+  # 数据源配置（默认指向 Docker 网络内的 PostgreSQL）
   datasource:
-    url: jdbc:postgresql://localhost:5433/archive_system
+    url: jdbc:postgresql://postgres:5432/archive_system
     username: ${SPRING_DATASOURCE_USERNAME:postgres}
-    password: ${SPRING_DATASOURCE_PASSWORD:}  # 开发环境请通过环境变量或 IDE 启动配置注入
+    password: ${SPRING_DATASOURCE_PASSWORD:changeme}
     driver-class-name: org.postgresql.Driver
   
-  # Redis配置（⚠️ 仅开发环境使用默认值）
+  # Redis配置（默认指向 Docker 网络内的 Redis）
   data:
     redis:
-      host: localhost
-      port: 6380
-      password: ""  # ⚠️ 生产环境必须使用环境变量 REDIS_PASSWORD
+      host: redis
+      port: 6379
+      password: ""
       database: 1
   
-  # RabbitMQ配置（⚠️ 仅开发环境使用默认值）
+  # RabbitMQ配置（默认指向 Docker 网络内的 RabbitMQ）
   rabbitmq:
-    host: localhost
+    host: rabbitmq
     port: 5672
-    username: ${SPRING_RABBITMQ_USERNAME:admin}
-    password: ${SPRING_RABBITMQ_PASSWORD:}  # 开发环境请通过环境变量或 IDE 启动配置注入
+    username: ${SPRING_RABBITMQ_USERNAME:archive}
+    password: ${SPRING_RABBITMQ_PASSWORD:changeme}
     virtual-host: /
     listener:
       simple:
@@ -60,7 +57,7 @@ spring:
   
   # Elasticsearch配置
   elasticsearch:
-    uris: http://localhost:9200
+    uris: http://elasticsearch:9200
     connection-timeout: 5s
     socket-timeout: 30s
   
@@ -132,45 +129,45 @@ mybatis-plus:
       logic-delete-value: true
       logic-not-delete-value: false
 
-# MinIO配置（⚠️ 仅开发环境使用默认值）
+# MinIO配置（默认指向 Docker 网络内的 MinIO）
 minio:
-  endpoint: http://localhost:9002
-  access-key: ${MINIO_ACCESS_KEY:}  # 开发环境请通过环境变量或 IDE 启动配置注入
-  secret-key: ${MINIO_SECRET_KEY:}  # 开发环境请通过环境变量或 IDE 启动配置注入
+  endpoint: http://minio:9000
+  access-key: ${MINIO_ACCESS_KEY:archive}
+  secret-key: ${MINIO_SECRET_KEY:changeme}
   bucket-name: archive-system
+  proxy-prefix: /storage
 
-# JWT配置（⚠️ 生产环境必须配置强密钥）
+# JWT配置
 jwt:
-  secret: ${JWT_SECRET:}  # 开发环境请通过环境变量或 IDE 启动配置注入
-  # ⚠️ Token 过期时间：开发环境较长便于调试，生产环境建议缩短
-  expiration: ${JWT_EXPIRATION:7200000}      # Access Token 过期时间，默认2小时（生产环境建议1-2小时）
-  refresh-expiration: ${JWT_REFRESH_EXPIRATION:259200000}  # Refresh Token 过期时间，默认3天（生产环境建议1-3天）
+  secret:
+  expiration: 7200000
+  refresh-expiration: 259200000
 
 # 安全配置
 security:
   crypto:
-    secret: ${SECURITY_CRYPTO_SECRET:}  # 开发环境请通过环境变量或 IDE 启动配置注入
-    legacy-secret: ${SECURITY_CRYPTO_LEGACY_SECRET:${JWT_SECRET:}}  # 老环境迁移期可继续解密旧密文
-  # CORS允许的来源（生产环境请配置具体域名）
+    secret:
+    legacy-secret:
   cors:
-    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3001,http://localhost:3000}
-  # 仅当请求来自这些受信代理时，才解析 X-Forwarded-For / X-Real-IP
-  trusted-proxies: ${TRUSTED_PROXIES:127.0.0.1,::1}
-  # API Key配置（通过后台"来源管理"配置）
+    allowed-origins: http://localhost:3001,http://localhost:3000
+  trusted-proxies: 127.0.0.1,::1
   api-key:
-    enabled: ${API_KEY_ENABLED:true}
+    enabled: true
     header: X-API-Key
 
 # 镜像仓库更新检查（与「规则与运行参数」页 system.upgrade.* 一致；摘要比对用环境变量注入）
 app:
   registry-upgrade:
-    running-backend-digest: ${RUNNING_BACKEND_DIGEST:}
-    running-frontend-digest: ${RUNNING_FRONTEND_DIGEST:}
+    running-backend-digest:
+    running-frontend-digest:
     default-registry-base-url: https://hub.albertzhan.top
     default-backend-repository: law-firm-archive/backend
     default-frontend-repository: law-firm-archive/frontend
-    registry-username: ${REGISTRY_USERNAME:}
-    registry-password: ${REGISTRY_PASSWORD:}
+    registry-username:
+    registry-password:
+  dist-center:
+    # 与 Dist Center 对齐：拉取 versions/latest.json，比对 env.APP_VERSION 与当前实例 APP_VERSION
+    latest-json-url: ${DIST_CENTER_LATEST_JSON_URL:}
 
 # 档案系统配置
 # 注意：以下业务配置已迁移到数据库 sys_config 表，可在后台「规则与运行参数」页面管理

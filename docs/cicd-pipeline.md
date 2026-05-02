@@ -51,8 +51,8 @@ Mac 开发机
 
 发布脚本会把以下资产同步到 `dist-center`：
 
-- `docker/docker-compose.registry.yml` -> `assets/compose/law-firm-archive/docker-compose.yml`
-- `docker/.env.registry.example` -> `assets/compose/law-firm-archive/.env.example`
+- `docker/docker-compose.yml` -> `assets/compose/law-firm-archive/docker-compose.yml`
+- `docker/.env.example` -> `assets/compose/law-firm-archive/.env.example`
 - `docker/secrets/init-secrets.sh`
 - `scripts/init-db/02-schema-consolidated.sql`
 

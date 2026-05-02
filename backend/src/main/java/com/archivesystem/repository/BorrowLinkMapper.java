@@ -72,4 +72,41 @@ public interface BorrowLinkMapper extends BaseMapper<BorrowLink> {
             FROM arc_borrow_link
             """)
     Map<String, Object> selectAggregateStats();
+
+    /**
+     * 原子记录访问（仅当未超过最大访问次数时才递增）.
+     * 同步更新最后访问时间和来源IP，避免并发下访问计数与审计信息不一致。
+     * 返回受影响行数：1表示递增成功，0表示已超限（并发安全）
+     */
+    @Update("""
+            UPDATE arc_borrow_link
+            SET access_count = access_count + 1,
+                last_access_at = NOW(),
+                last_access_ip = #{accessIp},
+                updated_at = NOW()
+            WHERE id = #{id}
+              AND access_count < #{maxAccessCount}
+            """)
+    int atomicRecordAccess(@Param("id") Long id,
+                           @Param("maxAccessCount") Integer maxAccessCount,
+                           @Param("accessIp") String accessIp);
+
+    /**
+     * 原子记录文件访问，可同时累计下载次数。
+     * 仅当未超过最大访问次数时才递增，避免并发下预览/下载链接签发突破访问上限。
+     */
+    @Update("""
+            UPDATE arc_borrow_link
+            SET access_count = access_count + 1,
+                download_count = download_count + #{downloadIncrement},
+                last_access_at = NOW(),
+                last_access_ip = #{accessIp},
+                updated_at = NOW()
+            WHERE id = #{id}
+              AND access_count < #{maxAccessCount}
+            """)
+    int atomicRecordFileAccess(@Param("id") Long id,
+                               @Param("maxAccessCount") Integer maxAccessCount,
+                               @Param("downloadIncrement") int downloadIncrement,
+                               @Param("accessIp") String accessIp);
 }

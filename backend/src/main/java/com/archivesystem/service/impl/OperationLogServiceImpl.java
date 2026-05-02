@@ -1,6 +1,7 @@
 package com.archivesystem.service.impl;
 
 import com.archivesystem.common.PageResult;
+import com.archivesystem.common.exception.NotFoundException;
 import com.archivesystem.common.util.ClientIpUtils;
 import com.archivesystem.entity.OperationLog;
 import com.archivesystem.repository.OperationLogMapper;
@@ -129,6 +130,15 @@ public class OperationLogServiceImpl implements OperationLogService {
     }
 
     @Override
+    public OperationLog getById(Long id) {
+        OperationLog record = operationLogMapper.selectById(id);
+        if (record == null) {
+            throw NotFoundException.of("操作日志", id);
+        }
+        return record;
+    }
+
+    @Override
     public List<OperationLog> getByArchiveId(Long archiveId) {
         return operationLogMapper.selectByArchiveId(archiveId);
     }
@@ -199,19 +209,38 @@ public class OperationLogServiceImpl implements OperationLogService {
             for (OperationLog logItem : logs) {
                 writer.printf("%d,%s,%s,%s,\"%s\",%s,%d,%s,%s%n",
                         logItem.getId(),
-                        logItem.getObjectType() != null ? logItem.getObjectType() : "",
-                        logItem.getObjectId() != null ? logItem.getObjectId() : "",
-                        logItem.getOperationType() != null ? logItem.getOperationType() : "",
-                        logItem.getOperationDesc() != null ? logItem.getOperationDesc().replace("\"", "\"\"") : "",
-                        logItem.getOperatorName() != null ? logItem.getOperatorName() : "",
+                        sanitizeCsvCell(logItem.getObjectType()),
+                        sanitizeCsvCell(logItem.getObjectId()),
+                        sanitizeCsvCell(logItem.getOperationType()),
+                        escapeQuotedCsvCell(logItem.getOperationDesc()),
+                        sanitizeCsvCell(logItem.getOperatorName()),
                         logItem.getOperatorId() != null ? logItem.getOperatorId() : 0,
-                        logItem.getOperatorIp() != null ? logItem.getOperatorIp() : "",
-                        logItem.getOperatedAt() != null ? logItem.getOperatedAt().format(formatter) : ""
+                        sanitizeCsvCell(logItem.getOperatorIp()),
+                        sanitizeCsvCell(logItem.getOperatedAt() != null ? logItem.getOperatedAt().format(formatter) : "")
                 );
             }
             writer.flush();
         }
         return baos.toByteArray();
+    }
+
+    private String escapeQuotedCsvCell(String value) {
+        return sanitizeCsvCell(value).replace("\"", "\"\"");
+    }
+
+    private String sanitizeCsvCell(String value) {
+        if (value == null) {
+            return "";
+        }
+        if (value.isEmpty()) {
+            return value;
+        }
+        char firstChar = value.charAt(0);
+        if (firstChar == '=' || firstChar == '+' || firstChar == '-' || firstChar == '@'
+                || firstChar == '\t' || firstChar == '\r' || firstChar == '\n') {
+            return "'" + value;
+        }
+        return value;
     }
 
     private String getClientIp(HttpServletRequest request) {

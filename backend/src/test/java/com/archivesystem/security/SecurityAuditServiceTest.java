@@ -1,9 +1,9 @@
 package com.archivesystem.security;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
@@ -14,6 +14,7 @@ import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
+
 /**
  * @author junyuzhan
  */
@@ -25,11 +26,14 @@ class SecurityAuditServiceTest {
     @Mock
     private JdbcTemplate jdbcTemplate;
 
-    @InjectMocks
+    private ObjectMapper objectMapper;
+
     private SecurityAuditService securityAuditService;
 
     @BeforeEach
     void setUp() {
+        objectMapper = new ObjectMapper();
+        securityAuditService = new SecurityAuditService(jdbcTemplate, objectMapper);
         when(jdbcTemplate.update(anyString(), any(), any(), any(), any(), any(), any())).thenReturn(1);
     }
 
@@ -59,7 +63,7 @@ class SecurityAuditServiceTest {
                 eq("baduser"),
                 eq("192.168.1.1"),
                 eq("Mozilla/5.0"),
-                contains("密码错误")
+                argThat(arg -> arg != null && arg.toString().contains("密码错误"))
         );
     }
 
@@ -74,7 +78,7 @@ class SecurityAuditServiceTest {
                 eq("lockeduser"),
                 eq("10.0.0.1"),
                 isNull(),
-                contains("5")
+                argThat(arg -> arg != null && arg.toString().contains("5"))
         );
     }
 

@@ -16,6 +16,7 @@ import java.util.Set;
  */
 @Slf4j
 public class FileTypeValidator {
+    private static final String FILE_VALIDATION_FAILURE_PUBLIC_MESSAGE = "文件验证失败，请稍后重试或联系系统管理员";
 
     // 文件魔数映射表（十六进制）
     private static final Map<String, byte[][]> MAGIC_NUMBERS = new HashMap<>();
@@ -205,7 +206,7 @@ public class FileTypeValidator {
             
         } catch (IOException e) {
             log.error("文件验证异常", e);
-            return ValidationResult.fail("文件验证异常: " + e.getMessage());
+            return ValidationResult.fail(FILE_VALIDATION_FAILURE_PUBLIC_MESSAGE);
         }
     }
 

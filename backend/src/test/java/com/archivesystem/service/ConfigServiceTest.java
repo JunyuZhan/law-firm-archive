@@ -4,6 +4,7 @@ import com.archivesystem.common.exception.BusinessException;
 import com.archivesystem.common.exception.NotFoundException;
 import com.archivesystem.entity.SysConfig;
 import com.archivesystem.repository.SysConfigMapper;
+import com.archivesystem.security.RuntimeSecretProvider;
 import com.archivesystem.security.SecretCryptoService;
 import com.archivesystem.security.SecurityUtils;
 import com.archivesystem.service.impl.ConfigServiceImpl;
@@ -293,6 +294,450 @@ class ConfigServiceTest {
     }
 
     @Test
+    void testUpdateConfig_NullValueShouldClearCache() {
+        try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+            securityUtils.when(SecurityUtils::getCurrentUserId).thenReturn(1L);
+
+            when(configMapper.selectByKey("test.key")).thenReturn(testConfig);
+            when(configMapper.updateById(any(SysConfig.class))).thenReturn(1);
+            when(configMapper.selectAllOrdered()).thenReturn(Arrays.asList(testConfig));
+            configService.refreshCache();
+
+            assertDoesNotThrow(() -> configService.updateConfig("test.key", null));
+
+            verify(configMapper).updateById(argThat(config -> config.getConfigValue() == null));
+            assertNull(configService.getValue("test.key"));
+        }
+    }
+
+    @Test
+    void testUpdateConfig_RedactedSensitivePlaceholderShouldKeepOriginalValue() {
+        try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+            securityUtils.when(SecurityUtils::getCurrentUserId).thenReturn(1L);
+
+            SysConfig sensitiveConfig = new SysConfig();
+            sensitiveConfig.setId(2L);
+            sensitiveConfig.setConfigKey("system.upgrade.registry_password");
+            sensitiveConfig.setConfigValue("real-secret");
+            sensitiveConfig.setEditable(true);
+
+            when(configMapper.selectByKey("system.upgrade.registry_password")).thenReturn(sensitiveConfig);
+
+            assertDoesNotThrow(() -> configService.updateConfig("system.upgrade.registry_password", "******"));
+
+            verify(configMapper, never()).updateById(any(SysConfig.class));
+        }
+    }
+
+    @Test
+    void testUpdateConfig_NumberTypeShouldRejectInvalidValue() {
+        SysConfig numberConfig = new SysConfig();
+        numberConfig.setId(3L);
+        numberConfig.setConfigKey("system.upload.max.size");
+        numberConfig.setConfigType(SysConfig.TYPE_NUMBER);
+        numberConfig.setConfigValue("104857600");
+        numberConfig.setEditable(true);
+
+        when(configMapper.selectByKey("system.upload.max.size")).thenReturn(numberConfig);
+
+        assertThrows(BusinessException.class, () -> configService.updateConfig("system.upload.max.size", "abc"));
+        verify(configMapper, never()).updateById(any(SysConfig.class));
+    }
+
+    @Test
+    void testUpdateConfig_NumberTypeShouldRejectBlankValue() {
+        SysConfig numberConfig = new SysConfig();
+        numberConfig.setId(3L);
+        numberConfig.setConfigKey("system.search.page.size");
+        numberConfig.setConfigType(SysConfig.TYPE_NUMBER);
+        numberConfig.setConfigValue("20");
+        numberConfig.setEditable(true);
+
+        when(configMapper.selectByKey("system.search.page.size")).thenReturn(numberConfig);
+
+        assertThrows(BusinessException.class, () -> configService.updateConfig("system.search.page.size", "   "));
+        verify(configMapper, never()).updateById(any(SysConfig.class));
+    }
+
+    @Test
+    void testUpdateConfig_BooleanTypeShouldRejectInvalidValue() {
+        SysConfig boolConfig = new SysConfig();
+        boolConfig.setId(4L);
+        boolConfig.setConfigKey("system.mail.smtp.ssl");
+        boolConfig.setConfigType(SysConfig.TYPE_BOOLEAN);
+        boolConfig.setConfigValue("true");
+        boolConfig.setEditable(true);
+
+        when(configMapper.selectByKey("system.mail.smtp.ssl")).thenReturn(boolConfig);
+
+        assertThrows(BusinessException.class, () -> configService.updateConfig("system.mail.smtp.ssl", "maybe"));
+        verify(configMapper, never()).updateById(any(SysConfig.class));
+    }
+
+    @Test
+    void testUpdateConfig_AllowedUploadTypesShouldRejectBlankList() {
+        SysConfig uploadTypesConfig = new SysConfig();
+        uploadTypesConfig.setId(5L);
+        uploadTypesConfig.setConfigKey("system.upload.allowed.types");
+        uploadTypesConfig.setConfigType(SysConfig.TYPE_STRING);
+        uploadTypesConfig.setConfigValue("pdf,docx");
+        uploadTypesConfig.setEditable(true);
+
+        when(configMapper.selectByKey("system.upload.allowed.types")).thenReturn(uploadTypesConfig);
+
+        assertThrows(BusinessException.class, () -> configService.updateConfig("system.upload.allowed.types", " , , "));
+        verify(configMapper, never()).updateById(any(SysConfig.class));
+    }
+
+    @Test
+    void testUpdateConfig_AllowedUploadTypesShouldRejectInvalidExtension() {
+        SysConfig uploadTypesConfig = new SysConfig();
+        uploadTypesConfig.setId(5L);
+        uploadTypesConfig.setConfigKey("system.upload.allowed.types");
+        uploadTypesConfig.setConfigType(SysConfig.TYPE_STRING);
+        uploadTypesConfig.setConfigValue("pdf,docx");
+        uploadTypesConfig.setEditable(true);
+
+        when(configMapper.selectByKey("system.upload.allowed.types")).thenReturn(uploadTypesConfig);
+
+        assertThrows(BusinessException.class, () -> configService.updateConfig("system.upload.allowed.types", "pdf,.exe"));
+        verify(configMapper, never()).updateById(any(SysConfig.class));
+    }
+
+    @Test
+    void testUpdateConfig_AllowedUploadTypesShouldNormalizeValue() {
+        try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+            securityUtils.when(SecurityUtils::getCurrentUserId).thenReturn(1L);
+
+            SysConfig uploadTypesConfig = new SysConfig();
+            uploadTypesConfig.setId(5L);
+            uploadTypesConfig.setConfigKey("system.upload.allowed.types");
+            uploadTypesConfig.setConfigType(SysConfig.TYPE_STRING);
+            uploadTypesConfig.setConfigValue("pdf,docx");
+            uploadTypesConfig.setEditable(true);
+
+            when(configMapper.selectByKey("system.upload.allowed.types")).thenReturn(uploadTypesConfig);
+            when(configMapper.updateById(any(SysConfig.class))).thenReturn(1);
+
+            assertDoesNotThrow(() -> configService.updateConfig("system.upload.allowed.types", " PDF, docx ,pdf "));
+
+            verify(configMapper).updateById(argThat(config ->
+                    "pdf,docx".equals(config.getConfigValue())));
+        }
+    }
+
+    @Test
+    void testUpdateConfig_RegistryBaseUrlShouldRejectInvalidScheme() {
+        SysConfig urlConfig = new SysConfig();
+        urlConfig.setId(6L);
+        urlConfig.setConfigKey("system.upgrade.registry_base_url");
+        urlConfig.setConfigType(SysConfig.TYPE_STRING);
+        urlConfig.setConfigValue("https://hub.example.com");
+        urlConfig.setEditable(true);
+
+        when(configMapper.selectByKey("system.upgrade.registry_base_url")).thenReturn(urlConfig);
+
+        assertThrows(BusinessException.class, () -> configService.updateConfig("system.upgrade.registry_base_url", "ftp://hub.example.com"));
+        verify(configMapper, never()).updateById(any(SysConfig.class));
+    }
+
+    @Test
+    void testUpdateConfig_DistCenterUrlShouldRejectMissingHost() {
+        SysConfig urlConfig = new SysConfig();
+        urlConfig.setId(7L);
+        urlConfig.setConfigKey("system.upgrade.dist_center_latest_json_url");
+        urlConfig.setConfigType(SysConfig.TYPE_STRING);
+        urlConfig.setConfigValue("https://install.example/latest.json");
+        urlConfig.setEditable(true);
+
+        when(configMapper.selectByKey("system.upgrade.dist_center_latest_json_url")).thenReturn(urlConfig);
+
+        assertThrows(BusinessException.class, () -> configService.updateConfig("system.upgrade.dist_center_latest_json_url", "https:///latest.json"));
+        verify(configMapper, never()).updateById(any(SysConfig.class));
+    }
+
+    @Test
+    void testUpdateConfig_MailFromShouldRejectInvalidEmail() {
+        SysConfig emailConfig = new SysConfig();
+        emailConfig.setId(8L);
+        emailConfig.setConfigKey("system.mail.from");
+        emailConfig.setConfigType(SysConfig.TYPE_STRING);
+        emailConfig.setConfigValue("archive@example.com");
+        emailConfig.setEditable(true);
+
+        when(configMapper.selectByKey("system.mail.from")).thenReturn(emailConfig);
+
+        assertThrows(BusinessException.class, () -> configService.updateConfig("system.mail.from", "bad-address"));
+        verify(configMapper, never()).updateById(any(SysConfig.class));
+    }
+
+    @Test
+    void testUpdateConfig_AdminEmailsShouldNormalizeAndDeduplicate() {
+        try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+            securityUtils.when(SecurityUtils::getCurrentUserId).thenReturn(1L);
+
+            SysConfig emailConfig = new SysConfig();
+            emailConfig.setId(9L);
+            emailConfig.setConfigKey("system.notify.admin.emails");
+            emailConfig.setConfigType(SysConfig.TYPE_STRING);
+            emailConfig.setConfigValue("ops@example.com");
+            emailConfig.setEditable(true);
+
+            when(configMapper.selectByKey("system.notify.admin.emails")).thenReturn(emailConfig);
+            when(configMapper.updateById(any(SysConfig.class))).thenReturn(1);
+
+            assertDoesNotThrow(() -> configService.updateConfig(
+                    "system.notify.admin.emails",
+                    " ops@example.com,sec@example.com,ops@example.com "
+            ));
+
+            verify(configMapper).updateById(argThat(config ->
+                    "ops@example.com,sec@example.com".equals(config.getConfigValue())));
+        }
+    }
+
+    @Test
+    void testUpdateConfig_SmtpHostShouldRejectProtocolPrefix() {
+        SysConfig hostConfig = new SysConfig();
+        hostConfig.setId(10L);
+        hostConfig.setConfigKey("system.mail.smtp.host");
+        hostConfig.setConfigType(SysConfig.TYPE_STRING);
+        hostConfig.setConfigValue("smtp.example.com");
+        hostConfig.setEditable(true);
+
+        when(configMapper.selectByKey("system.mail.smtp.host")).thenReturn(hostConfig);
+
+        assertThrows(BusinessException.class, () -> configService.updateConfig("system.mail.smtp.host", "https://smtp.example.com"));
+        verify(configMapper, never()).updateById(any(SysConfig.class));
+    }
+
+    @Test
+    void testUpdateConfig_SmtpHostShouldRejectPathSegment() {
+        SysConfig hostConfig = new SysConfig();
+        hostConfig.setId(10L);
+        hostConfig.setConfigKey("system.mail.smtp.host");
+        hostConfig.setConfigType(SysConfig.TYPE_STRING);
+        hostConfig.setConfigValue("smtp.example.com");
+        hostConfig.setEditable(true);
+
+        when(configMapper.selectByKey("system.mail.smtp.host")).thenReturn(hostConfig);
+
+        assertThrows(BusinessException.class, () -> configService.updateConfig("system.mail.smtp.host", "smtp.example.com/mail"));
+        verify(configMapper, never()).updateById(any(SysConfig.class));
+    }
+
+    @Test
+    void testUpdateConfig_SmtpPortShouldRejectNonPositiveValue() {
+        SysConfig portConfig = new SysConfig();
+        portConfig.setId(10L);
+        portConfig.setConfigKey("system.mail.smtp.port");
+        portConfig.setConfigType(SysConfig.TYPE_NUMBER);
+        portConfig.setConfigValue("587");
+        portConfig.setEditable(true);
+
+        when(configMapper.selectByKey("system.mail.smtp.port")).thenReturn(portConfig);
+
+        assertThrows(BusinessException.class, () -> configService.updateConfig("system.mail.smtp.port", "0"));
+        verify(configMapper, never()).updateById(any(SysConfig.class));
+    }
+
+    @Test
+    void testUpdateConfig_SmtpPortShouldRejectOutOfRangeValue() {
+        SysConfig portConfig = new SysConfig();
+        portConfig.setId(10L);
+        portConfig.setConfigKey("system.mail.smtp.port");
+        portConfig.setConfigType(SysConfig.TYPE_NUMBER);
+        portConfig.setConfigValue("587");
+        portConfig.setEditable(true);
+
+        when(configMapper.selectByKey("system.mail.smtp.port")).thenReturn(portConfig);
+
+        assertThrows(BusinessException.class, () -> configService.updateConfig("system.mail.smtp.port", "70000"));
+        verify(configMapper, never()).updateById(any(SysConfig.class));
+    }
+
+    @Test
+    void testUpdateConfig_BackupCronShouldRejectInvalidExpression() {
+        SysConfig cronConfig = new SysConfig();
+        cronConfig.setId(11L);
+        cronConfig.setConfigKey("system.backup.cron");
+        cronConfig.setConfigType(SysConfig.TYPE_STRING);
+        cronConfig.setConfigValue("0 0 2 * * ?");
+        cronConfig.setEditable(true);
+
+        when(configMapper.selectByKey("system.backup.cron")).thenReturn(cronConfig);
+
+        assertThrows(BusinessException.class, () -> configService.updateConfig("system.backup.cron", "invalid-cron"));
+        verify(configMapper, never()).updateById(any(SysConfig.class));
+    }
+
+    @Test
+    void testUpdateConfig_BackupCronShouldRejectBlankValue() {
+        SysConfig cronConfig = new SysConfig();
+        cronConfig.setId(11L);
+        cronConfig.setConfigKey("system.backup.cron");
+        cronConfig.setConfigType(SysConfig.TYPE_STRING);
+        cronConfig.setConfigValue("0 0 2 * * ?");
+        cronConfig.setEditable(true);
+
+        when(configMapper.selectByKey("system.backup.cron")).thenReturn(cronConfig);
+
+        assertThrows(BusinessException.class, () -> configService.updateConfig("system.backup.cron", "   "));
+        verify(configMapper, never()).updateById(any(SysConfig.class));
+    }
+
+    @Test
+    void testUpdateConfig_MinioProxyPrefixShouldRejectAbsoluteUrl() {
+        SysConfig proxyConfig = new SysConfig();
+        proxyConfig.setId(12L);
+        proxyConfig.setConfigKey("system.storage.minio.proxy-prefix");
+        proxyConfig.setConfigType(SysConfig.TYPE_STRING);
+        proxyConfig.setConfigValue("/storage");
+        proxyConfig.setEditable(true);
+
+        when(configMapper.selectByKey("system.storage.minio.proxy-prefix")).thenReturn(proxyConfig);
+
+        assertThrows(BusinessException.class, () ->
+                configService.updateConfig("system.storage.minio.proxy-prefix", "https://cdn.example.com/storage"));
+        verify(configMapper, never()).updateById(any(SysConfig.class));
+    }
+
+    @Test
+    void testUpdateConfig_MinioProxyPrefixShouldRejectBlankValue() {
+        SysConfig proxyConfig = new SysConfig();
+        proxyConfig.setId(12L);
+        proxyConfig.setConfigKey("system.storage.minio.proxy-prefix");
+        proxyConfig.setConfigType(SysConfig.TYPE_STRING);
+        proxyConfig.setConfigValue("/storage");
+        proxyConfig.setEditable(true);
+
+        when(configMapper.selectByKey("system.storage.minio.proxy-prefix")).thenReturn(proxyConfig);
+
+        assertThrows(BusinessException.class, () ->
+                configService.updateConfig("system.storage.minio.proxy-prefix", "   "));
+        verify(configMapper, never()).updateById(any(SysConfig.class));
+    }
+
+    @Test
+    void testUpdateConfig_MinioProxyPrefixShouldNormalizeTrailingSlash() {
+        try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+            securityUtils.when(SecurityUtils::getCurrentUserId).thenReturn(1L);
+
+            SysConfig proxyConfig = new SysConfig();
+            proxyConfig.setId(13L);
+            proxyConfig.setConfigKey("system.storage.minio.proxy-prefix");
+            proxyConfig.setConfigType(SysConfig.TYPE_STRING);
+            proxyConfig.setConfigValue("/storage");
+            proxyConfig.setEditable(true);
+
+            when(configMapper.selectByKey("system.storage.minio.proxy-prefix")).thenReturn(proxyConfig);
+            when(configMapper.updateById(any(SysConfig.class))).thenReturn(1);
+
+            assertDoesNotThrow(() ->
+                    configService.updateConfig("system.storage.minio.proxy-prefix", "/storage/"));
+
+            verify(configMapper).updateById(argThat(config ->
+                    "/storage".equals(config.getConfigValue())));
+        }
+    }
+
+    @Test
+    void testUpdateConfig_ArchiveNoDateFormatShouldRejectInvalidPattern() {
+        SysConfig dateFormatConfig = new SysConfig();
+        dateFormatConfig.setId(14L);
+        dateFormatConfig.setConfigKey("archive.no.date.format");
+        dateFormatConfig.setConfigType(SysConfig.TYPE_STRING);
+        dateFormatConfig.setConfigValue("yyyyMMdd");
+        dateFormatConfig.setEditable(true);
+
+        when(configMapper.selectByKey("archive.no.date.format")).thenReturn(dateFormatConfig);
+
+        assertThrows(BusinessException.class, () ->
+                configService.updateConfig("archive.no.date.format", "yyyy-MM-]"));
+        verify(configMapper, never()).updateById(any(SysConfig.class));
+    }
+
+    @Test
+    void testUpdateConfig_ArchiveNoDateFormatShouldRejectBlankValue() {
+        SysConfig dateFormatConfig = new SysConfig();
+        dateFormatConfig.setId(14L);
+        dateFormatConfig.setConfigKey("archive.no.date.format");
+        dateFormatConfig.setConfigType(SysConfig.TYPE_STRING);
+        dateFormatConfig.setConfigValue("yyyyMMdd");
+        dateFormatConfig.setEditable(true);
+
+        when(configMapper.selectByKey("archive.no.date.format")).thenReturn(dateFormatConfig);
+
+        assertThrows(BusinessException.class, () ->
+                configService.updateConfig("archive.no.date.format", "   "));
+        verify(configMapper, never()).updateById(any(SysConfig.class));
+    }
+
+    @Test
+    void testUpdateConfig_ArchiveNoSeqDigitsShouldRejectNonPositiveValue() {
+        SysConfig seqConfig = new SysConfig();
+        seqConfig.setId(15L);
+        seqConfig.setConfigKey("archive.no.seq.digits");
+        seqConfig.setConfigType(SysConfig.TYPE_NUMBER);
+        seqConfig.setConfigValue("4");
+        seqConfig.setEditable(true);
+
+        when(configMapper.selectByKey("archive.no.seq.digits")).thenReturn(seqConfig);
+
+        assertThrows(BusinessException.class, () ->
+                configService.updateConfig("archive.no.seq.digits", "0"));
+        verify(configMapper, never()).updateById(any(SysConfig.class));
+    }
+
+    @Test
+    void testUpdateConfig_UploadMaxSizeShouldRejectNonPositiveValue() {
+        SysConfig uploadSizeConfig = new SysConfig();
+        uploadSizeConfig.setId(16L);
+        uploadSizeConfig.setConfigKey("system.upload.max.size");
+        uploadSizeConfig.setConfigType(SysConfig.TYPE_NUMBER);
+        uploadSizeConfig.setConfigValue("104857600");
+        uploadSizeConfig.setEditable(true);
+
+        when(configMapper.selectByKey("system.upload.max.size")).thenReturn(uploadSizeConfig);
+
+        assertThrows(BusinessException.class, () ->
+                configService.updateConfig("system.upload.max.size", "0"));
+        verify(configMapper, never()).updateById(any(SysConfig.class));
+    }
+
+    @Test
+    void testUpdateConfig_BackupKeepCountShouldRejectNonPositiveValue() {
+        SysConfig keepCountConfig = new SysConfig();
+        keepCountConfig.setId(17L);
+        keepCountConfig.setConfigKey("system.backup.keep.count");
+        keepCountConfig.setConfigType(SysConfig.TYPE_NUMBER);
+        keepCountConfig.setConfigValue("7");
+        keepCountConfig.setEditable(true);
+
+        when(configMapper.selectByKey("system.backup.keep.count")).thenReturn(keepCountConfig);
+
+        assertThrows(BusinessException.class, () ->
+                configService.updateConfig("system.backup.keep.count", "0"));
+        verify(configMapper, never()).updateById(any(SysConfig.class));
+    }
+
+    @Test
+    void testUpdateConfig_ArchiveNoPrefixShouldRejectBlankValue() {
+        SysConfig prefixConfig = new SysConfig();
+        prefixConfig.setId(18L);
+        prefixConfig.setConfigKey("archive.no.prefix.DOCUMENT");
+        prefixConfig.setConfigType(SysConfig.TYPE_STRING);
+        prefixConfig.setConfigValue("DOC");
+        prefixConfig.setEditable(true);
+
+        when(configMapper.selectByKey("archive.no.prefix.DOCUMENT")).thenReturn(prefixConfig);
+
+        assertThrows(BusinessException.class, () ->
+                configService.updateConfig("archive.no.prefix.DOCUMENT", "   "));
+        verify(configMapper, never()).updateById(any(SysConfig.class));
+    }
+
+    @Test
     void testUpdateConfig_NotFound() {
         when(configMapper.selectByKey("not.exists")).thenReturn(null);
 
@@ -357,6 +802,68 @@ class ConfigServiceTest {
     }
 
     @Test
+    void testCreateConfig_SmtpPasswordShouldBeEncrypted() {
+        try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+            securityUtils.when(SecurityUtils::getCurrentUserId).thenReturn(1L);
+
+            SysConfig newConfig = new SysConfig();
+            newConfig.setConfigKey(ConfigServiceImpl.MAIL_SMTP_PASSWORD_KEY);
+            newConfig.setConfigValue("plain-secret");
+
+            when(configMapper.selectByKey(ConfigServiceImpl.MAIL_SMTP_PASSWORD_KEY)).thenReturn(null);
+            when(secretCryptoService.encrypt("plain-secret")).thenReturn("enc:plain-secret");
+            when(configMapper.insert(any(SysConfig.class))).thenReturn(1);
+
+            SysConfig result = configService.createConfig(newConfig);
+
+            assertNotNull(result);
+            assertEquals("******", result.getConfigValue());
+            verify(secretCryptoService).encrypt("plain-secret");
+            verify(configMapper).insert(argThat(config ->
+                    "enc:plain-secret".equals(config.getConfigValue())));
+        }
+    }
+
+    @Test
+    void testSaveConfig_SmtpPasswordShouldBeEncrypted() {
+        try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+            securityUtils.when(SecurityUtils::getCurrentUserId).thenReturn(1L);
+
+            when(configMapper.selectByKey(ConfigServiceImpl.MAIL_SMTP_PASSWORD_KEY)).thenReturn(null);
+            when(secretCryptoService.encrypt("plain-secret")).thenReturn("enc:plain-secret");
+            when(configMapper.insert(any(SysConfig.class))).thenReturn(1);
+
+            assertDoesNotThrow(() -> configService.saveConfig(
+                    ConfigServiceImpl.MAIL_SMTP_PASSWORD_KEY,
+                    "plain-secret",
+                    SysConfig.GROUP_SYSTEM,
+                    "SMTP 密码",
+                    SysConfig.TYPE_STRING,
+                    true,
+                    1
+            ));
+
+            verify(secretCryptoService).encrypt("plain-secret");
+            verify(configMapper).insert(argThat(config ->
+                    "enc:plain-secret".equals(config.getConfigValue())));
+        }
+    }
+
+    @Test
+    void testSaveConfig_ProtectedRuntimeSecretShouldBeRejected() {
+        assertThrows(BusinessException.class, () -> configService.saveConfig(
+                RuntimeSecretProvider.KEY_JWT_SECRET,
+                "manual-secret",
+                SysConfig.GROUP_SYSTEM,
+                "JWT 密钥",
+                SysConfig.TYPE_STRING,
+                false,
+                90
+        ));
+        verify(configMapper, never()).selectByKey(RuntimeSecretProvider.KEY_JWT_SECRET);
+    }
+
+    @Test
     void testCreateConfig_KeyExists() {
         SysConfig newConfig = new SysConfig();
         newConfig.setConfigKey("test.key");
@@ -365,6 +872,16 @@ class ConfigServiceTest {
         when(configMapper.selectByKey("test.key")).thenReturn(testConfig);
 
         assertThrows(BusinessException.class, () -> configService.createConfig(newConfig));
+    }
+
+    @Test
+    void testCreateConfig_ProtectedRuntimeSecretShouldBeRejected() {
+        SysConfig newConfig = new SysConfig();
+        newConfig.setConfigKey(RuntimeSecretProvider.KEY_JWT_SECRET);
+        newConfig.setConfigValue("manual-secret");
+
+        assertThrows(BusinessException.class, () -> configService.createConfig(newConfig));
+        verify(configMapper, never()).insert(any(SysConfig.class));
     }
 
     @Test
@@ -390,6 +907,20 @@ class ConfigServiceTest {
         when(configMapper.selectByKey("test.key")).thenReturn(testConfig);
 
         assertThrows(BusinessException.class, () -> configService.deleteConfig("test.key"));
+    }
+
+    @Test
+    void testUpdateConfig_ProtectedRuntimeSecretShouldBeRejected() {
+        assertThrows(BusinessException.class, () ->
+                configService.updateConfig(RuntimeSecretProvider.KEY_JWT_SECRET, "new-secret"));
+        verify(configMapper, never()).selectByKey(RuntimeSecretProvider.KEY_JWT_SECRET);
+    }
+
+    @Test
+    void testDeleteConfig_ProtectedRuntimeSecretShouldBeRejected() {
+        assertThrows(BusinessException.class, () ->
+                configService.deleteConfig(RuntimeSecretProvider.KEY_JWT_SECRET));
+        verify(configMapper, never()).selectByKey(RuntimeSecretProvider.KEY_JWT_SECRET);
     }
 
     @Test
@@ -434,6 +965,24 @@ class ConfigServiceTest {
         configService.refreshCache();
 
         String result = configService.getArchiveNoPrefix("UNKNOWN_TYPE");
+
+        assertEquals("ARC", result);
+    }
+
+    @Test
+    void testGetArchiveNoPrefix_BlankSpecificShouldFallbackToDefault() {
+        SysConfig prefixConfig = new SysConfig();
+        prefixConfig.setConfigKey("archive.no.prefix.DOCUMENT");
+        prefixConfig.setConfigValue("   ");
+
+        SysConfig defaultConfig = new SysConfig();
+        defaultConfig.setConfigKey("archive.no.prefix.DEFAULT");
+        defaultConfig.setConfigValue("ARC");
+
+        when(configMapper.selectAllOrdered()).thenReturn(Arrays.asList(prefixConfig, defaultConfig));
+        configService.refreshCache();
+
+        String result = configService.getArchiveNoPrefix("DOCUMENT");
 
         assertEquals("ARC", result);
     }

@@ -46,6 +46,17 @@ export function updateUser(id, data) {
 }
 
 /**
+ * 更新当前用户个人资料
+ */
+export function updateCurrentUser(data) {
+  return request({
+    url: '/users/current',
+    method: 'put',
+    data
+  })
+}
+
+/**
  * 删除用户
  */
 export function deleteUser(id) {
@@ -106,6 +117,26 @@ export function getUserRoles(id) {
   return request({
     url: `/users/${id}/roles`,
     method: 'get'
+  })
+}
+
+/**
+ * 获取账号锁定状态
+ */
+export function getUserLockStatus(id) {
+  return request({
+    url: `/users/${id}/lock-status`,
+    method: 'get'
+  })
+}
+
+/**
+ * 解锁账号
+ */
+export function unlockUser(id) {
+  return request({
+    url: `/users/${id}/unlock`,
+    method: 'put'
   })
 }
 

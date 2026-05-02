@@ -1,6 +1,8 @@
 package com.archivesystem.service;
 
 import com.archivesystem.mq.CallbackMessage;
+import com.archivesystem.entity.CallbackRecord;
+import com.archivesystem.repository.CallbackRecordMapper;
 import com.archivesystem.repository.ExternalSourceMapper;
 import com.archivesystem.security.OutboundUrlValidator;
 import com.archivesystem.service.impl.CallbackServiceImpl;
@@ -34,6 +36,7 @@ class CallbackServiceTest {
     private RestTemplate mockRestTemplate;
     private OutboundUrlValidator outboundUrlValidator;
     private ExternalSourceMapper externalSourceMapper;
+    private CallbackRecordMapper callbackRecordMapper;
 
     private CallbackServiceImpl callbackService;
 
@@ -44,6 +47,7 @@ class CallbackServiceTest {
         mockRestTemplate = mock(RestTemplate.class);
         outboundUrlValidator = mock(OutboundUrlValidator.class);
         externalSourceMapper = mock(ExternalSourceMapper.class);
+        callbackRecordMapper = mock(CallbackRecordMapper.class);
         ExternalSource source = new ExternalSource();
         source.setSourceType("LAW_FIRM");
         source.setApiKey("test-callback-secret");
@@ -51,7 +55,7 @@ class CallbackServiceTest {
         lenient().when(externalSourceMapper.selectBySourceCode("LAW_FIRM")).thenReturn(null);
         lenient().when(externalSourceMapper.selectBySourceType("LAW_FIRM")).thenReturn(source);
         callbackService = new CallbackServiceImpl(
-                objectMapper, externalSourceMapper, null, outboundUrlValidator, mockRestTemplate);
+                objectMapper, externalSourceMapper, callbackRecordMapper, outboundUrlValidator, mockRestTemplate);
         
         testMessage = CallbackMessage.builder()
                 .archiveId(1L)
@@ -148,6 +152,16 @@ class CallbackServiceTest {
     }
 
     @Test
+    void testLogFailedCallback_ShouldHideInternalErrorDetails() {
+        ArgumentCaptor<CallbackRecord> recordCaptor = ArgumentCaptor.forClass(CallbackRecord.class);
+
+        callbackService.logFailedCallback(testMessage, "connect timeout to http://callback.example.com/internal");
+
+        verify(callbackRecordMapper).insert(recordCaptor.capture());
+        assertEquals("回调失败，请联系系统管理员查看系统日志", recordCaptor.getValue().getErrorMessage());
+    }
+
+    @Test
     void testLogFailedCallback_WithNullFields() {
         CallbackMessage emptyMessage = CallbackMessage.builder()
                 .archiveId(null)
@@ -165,12 +179,19 @@ class CallbackServiceTest {
         when(mockRestTemplate.exchange(anyString(), any(HttpMethod.class), any(HttpEntity.class), eq(String.class)))
                 .thenReturn(responseEntity);
         
-        testMessage.setStatus("PARTIAL");
-        testMessage.setErrorMessage("部分文件处理失败");
+        testMessage.setStatus("FAILED");
+        testMessage.setErrorMessage("部分文件处理失败: /srv/archive/internal");
         
         boolean result = callbackService.sendCallback(testMessage);
         
         assertTrue(result);
+        @SuppressWarnings("rawtypes")
+        ArgumentCaptor<HttpEntity> entityCaptor = ArgumentCaptor.forClass(HttpEntity.class);
+        verify(mockRestTemplate).exchange(eq("http://example.com/callback"), eq(HttpMethod.POST), entityCaptor.capture(), eq(String.class));
+        @SuppressWarnings("unchecked")
+        java.util.Map<String, Object> body = (java.util.Map<String, Object>) entityCaptor.getValue().getBody();
+        assertEquals("档案处理失败，请联系系统管理员查看系统日志", body.get("message"));
+        assertEquals("档案处理失败，请联系系统管理员查看系统日志", body.get("errorMessage"));
     }
 
     @Test

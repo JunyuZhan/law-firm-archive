@@ -2,6 +2,7 @@ package com.archivesystem.controller;
 
 import com.archivesystem.common.Result;
 import com.archivesystem.dto.archive.DigitalFileDTO;
+import com.archivesystem.dto.archive.FileUrlResponse;
 import com.archivesystem.entity.DigitalFile;
 import com.archivesystem.service.FileStorageService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -17,7 +18,6 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.ArrayList;
 import java.util.List;
 import java.time.LocalDateTime;
-import java.util.stream.Collectors;
 
 /**
  * 文件上传控制器.
@@ -63,32 +63,8 @@ public class FileController {
         DigitalFile digitalFile = fileStorageService.upload(file, null, fileCategory,
                 volumeNo, sectionType, documentNo, pageStart, pageEnd, versionLabel,
                 fileSourceType, scanBatchNo, scanOperator, scanTime, scanCheckStatus, scanCheckBy, scanCheckTime);
-        
-        DigitalFileDTO dto = DigitalFileDTO.builder()
-                .id(digitalFile.getId())
-                .fileName(digitalFile.getFileName())
-                .originalName(digitalFile.getOriginalName())
-                .fileExtension(digitalFile.getFileExtension())
-                .mimeType(digitalFile.getMimeType())
-                .fileSize(digitalFile.getFileSize())
-                .volumeNo(digitalFile.getVolumeNo())
-                .sectionType(digitalFile.getSectionType())
-                .documentNo(digitalFile.getDocumentNo())
-                .pageStart(digitalFile.getPageStart())
-                .pageEnd(digitalFile.getPageEnd())
-                .versionLabel(digitalFile.getVersionLabel())
-                .fileSourceType(digitalFile.getFileSourceType())
-                .scanBatchNo(digitalFile.getScanBatchNo())
-                .scanOperator(digitalFile.getScanOperator())
-                .scanTime(digitalFile.getScanTime())
-                .scanCheckStatus(digitalFile.getScanCheckStatus())
-                .scanCheckBy(digitalFile.getScanCheckBy())
-                .scanCheckTime(digitalFile.getScanCheckTime())
-                .hashValue(digitalFile.getHashValue())
-                .uploadAt(digitalFile.getUploadAt())
-                .build();
-        
-        return Result.success("上传成功", dto);
+
+        return Result.success("上传成功", buildUploadResponse(digitalFile));
     }
 
     /**
@@ -125,20 +101,8 @@ public class FileController {
                 DigitalFile digitalFile = fileStorageService.upload(file, null, fileCategory,
                         volumeNo, sectionType, documentNo, pageStart, pageEnd, versionLabel,
                         fileSourceType, scanBatchNo, scanOperator, scanTime, scanCheckStatus, scanCheckBy, scanCheckTime);
-                
-                DigitalFileDTO dto = DigitalFileDTO.builder()
-                        .id(digitalFile.getId())
-                        .fileName(digitalFile.getFileName())
-                        .originalName(digitalFile.getOriginalName())
-                        .fileSize(digitalFile.getFileSize())
-                        .mimeType(digitalFile.getMimeType())
-                        .volumeNo(digitalFile.getVolumeNo())
-                        .sectionType(digitalFile.getSectionType())
-                        .fileSourceType(digitalFile.getFileSourceType())
-                        .scanBatchNo(digitalFile.getScanBatchNo())
-                        .build();
-                
-                results.add(dto);
+
+                results.add(buildUploadResponse(digitalFile));
             } catch (Exception e) {
                 failedFiles.add(file.getOriginalFilename());
                 log.error("文件上传失败: {}", file.getOriginalFilename(), e);
@@ -146,20 +110,12 @@ public class FileController {
         }
 
         if (results.isEmpty()) {
-            String failedNames = failedFiles.stream()
-                    .filter(name -> name != null && !name.isBlank())
-                    .collect(Collectors.joining("、"));
-            String suffix = failedNames.isBlank() ? "" : "，失败文件: " + failedNames;
-            return Result.error("500", "批量上传失败，未成功上传任何文件" + suffix);
+            return Result.error("500", String.format("批量上传失败，未成功上传任何文件，共失败 %d 个", failedFiles.size()));
         }
 
         if (!failedFiles.isEmpty()) {
-            String failedNames = failedFiles.stream()
-                    .filter(name -> name != null && !name.isBlank())
-                    .collect(Collectors.joining("、"));
-            String suffix = failedNames.isBlank() ? "" : "，失败文件: " + failedNames;
             return Result.success(
-                    String.format("上传完成，成功 %d 个，失败 %d 个%s", results.size(), failedFiles.size(), suffix),
+                    String.format("上传完成，成功 %d 个，失败 %d 个", results.size(), failedFiles.size()),
                     results
             );
         }
@@ -173,9 +129,9 @@ public class FileController {
     @GetMapping("/{id}/download")
     @Operation(summary = "获取下载链接")
     @PreAuthorize("isAuthenticated()")
-    public Result<String> getDownloadUrl(@PathVariable Long id) {
+    public Result<FileUrlResponse> getDownloadUrl(@PathVariable Long id) {
         String url = fileStorageService.getDownloadUrl(id);
-        return Result.success(url);
+        return Result.success(FileUrlResponse.of(url));
     }
 
     /**
@@ -184,9 +140,9 @@ public class FileController {
     @GetMapping("/{id}/preview")
     @Operation(summary = "获取预览链接")
     @PreAuthorize("isAuthenticated()")
-    public Result<String> getPreviewUrl(@PathVariable Long id) {
+    public Result<FileUrlResponse> getPreviewUrl(@PathVariable Long id) {
         String url = fileStorageService.getPreviewUrl(id);
-        return Result.success(url);
+        return Result.success(FileUrlResponse.of(url));
     }
 
     /**
@@ -208,5 +164,13 @@ public class FileController {
     public Result<Void> delete(@PathVariable Long id) {
         fileStorageService.delete(id);
         return Result.success("删除成功", null);
+    }
+
+    private DigitalFileDTO buildUploadResponse(DigitalFile digitalFile) {
+        return DigitalFileDTO.builder()
+                .id(digitalFile.getId())
+                .fileName(digitalFile.getFileName())
+                .originalName(digitalFile.getOriginalName())
+                .build();
     }
 }

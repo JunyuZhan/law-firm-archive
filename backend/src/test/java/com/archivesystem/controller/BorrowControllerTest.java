@@ -68,6 +68,10 @@ class BorrowControllerTest {
         testApplication.setExpectedReturnDate(LocalDate.now().plusDays(7));
         testApplication.setStatus(BorrowApplication.STATUS_PENDING);
         testApplication.setCreatedAt(LocalDateTime.now());
+        testApplication.setApplicantPhone("13800138000");
+        testApplication.setApplicantId(101L);
+        testApplication.setApproverId(202L);
+        testApplication.setDeleted(false);
 
         testArchive = ArchiveDTO.builder()
                 .id(1L)
@@ -96,7 +100,14 @@ class BorrowControllerTest {
                         .content(objectMapper.writeValueAsString(params)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
-                .andExpect(jsonPath("$.message").value("申请提交成功"));
+                .andExpect(jsonPath("$.message").value("申请提交成功"))
+                .andExpect(jsonPath("$.data.id").value(1))
+                .andExpect(jsonPath("$.data.borrowType").value(BorrowApplication.TYPE_ONLINE))
+                .andExpect(jsonPath("$.data.status").value(BorrowApplication.STATUS_PENDING))
+                .andExpect(jsonPath("$.data.borrowPurpose").doesNotExist())
+                .andExpect(jsonPath("$.data.approveRemarks").doesNotExist())
+                .andExpect(jsonPath("$.data.remarks").doesNotExist())
+                .andExpect(jsonPath("$.data.applicantPhone").doesNotExist());
     }
 
     @Test
@@ -106,7 +117,11 @@ class BorrowControllerTest {
         mockMvc.perform(get("/borrows/1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
-                .andExpect(jsonPath("$.data.borrowPurpose").value("测试借阅"));
+                .andExpect(jsonPath("$.data.borrowPurpose").value("测试借阅"))
+                .andExpect(jsonPath("$.data.applicantPhone").doesNotExist())
+                .andExpect(jsonPath("$.data.applicantId").doesNotExist())
+                .andExpect(jsonPath("$.data.approverId").doesNotExist())
+                .andExpect(jsonPath("$.data.deleted").doesNotExist());
     }
 
     @Test
@@ -122,7 +137,11 @@ class BorrowControllerTest {
                             .param("pageSize", "20"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value("200"))
-                    .andExpect(jsonPath("$.data.total").value(1));
+                    .andExpect(jsonPath("$.data.total").value(1))
+                    .andExpect(jsonPath("$.data.records[0].borrowPurpose").doesNotExist())
+                    .andExpect(jsonPath("$.data.records[0].approveRemarks").doesNotExist())
+                    .andExpect(jsonPath("$.data.records[0].applicantPhone").doesNotExist())
+                    .andExpect(jsonPath("$.data.records[0].deleted").doesNotExist());
         }
     }
 
@@ -166,7 +185,10 @@ class BorrowControllerTest {
                         .param("pageSize", "20"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
-                .andExpect(jsonPath("$.data.total").value(1));
+                .andExpect(jsonPath("$.data.total").value(1))
+                .andExpect(jsonPath("$.data.records[0].borrowPurpose").doesNotExist())
+                .andExpect(jsonPath("$.data.records[0].approveRemarks").doesNotExist())
+                .andExpect(jsonPath("$.data.records[0].applicantPhone").doesNotExist());
     }
 
     @Test
@@ -258,6 +280,31 @@ class BorrowControllerTest {
     }
 
     @Test
+    void testCheckAvailable_WithCurrentApplication_ShouldNotExposeApplicationDetails() throws Exception {
+        BorrowApplication current = new BorrowApplication();
+        current.setId(9L);
+        current.setApplicationNo("BR-20260429-001");
+        current.setStatus(BorrowApplication.STATUS_PENDING);
+        current.setBorrowType(BorrowApplication.TYPE_ONLINE);
+        current.setExpectedReturnDate(LocalDate.now().plusDays(7));
+        current.setApplicantPhone("13800138000");
+        current.setApproveRemarks("内部审批意见");
+        current.setRejectReason("内部拒绝原因");
+        current.setRemarks("申请备注");
+
+        when(borrowService.getCurrentByArchiveId(1L)).thenReturn(current);
+        when(archiveService.getById(1L)).thenReturn(testArchive);
+
+        mockMvc.perform(get("/borrows/check/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("200"))
+                .andExpect(jsonPath("$.data.hasCurrentApplication").value(true))
+                .andExpect(jsonPath("$.data.currentApplication").doesNotExist())
+                .andExpect(jsonPath("$.data.unavailableReason").value("该档案已有进行中的借阅申请"))
+                .andExpect(jsonPath("$.data.borrowRules.ruleSummary").exists());
+    }
+
+    @Test
     void testGetOverdueList_Success() throws Exception {
         testApplication.setStatus(BorrowApplication.STATUS_BORROWED);
         testApplication.setExpectedReturnDate(LocalDate.now().minusDays(1)); // 已逾期
@@ -267,7 +314,11 @@ class BorrowControllerTest {
         mockMvc.perform(get("/borrows/overdue"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
-                .andExpect(jsonPath("$.data").isArray());
+                .andExpect(jsonPath("$.data").isArray())
+                .andExpect(jsonPath("$.data[0].borrowPurpose").doesNotExist())
+                .andExpect(jsonPath("$.data[0].approveRemarks").doesNotExist())
+                .andExpect(jsonPath("$.data[0].applicantPhone").doesNotExist())
+                .andExpect(jsonPath("$.data[0].deleted").doesNotExist());
     }
 
     @Test
@@ -290,7 +341,8 @@ class BorrowControllerTest {
                 .andExpect(jsonPath("$.code").value("200"))
                 .andExpect(jsonPath("$.data.available").value(true))
                 .andExpect(jsonPath("$.data.allowedBorrowTypes[0]").value("ONLINE"))
-                .andExpect(jsonPath("$.data.borrowRules.maxBorrowDays.ONLINE").value(30));
+                .andExpect(jsonPath("$.data.borrowRules.maxBorrowDays.ONLINE").value(30))
+                .andExpect(jsonPath("$.data.hasCurrentApplication").value(false));
     }
 
     @Test
@@ -302,6 +354,8 @@ class BorrowControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
                 .andExpect(jsonPath("$.data.available").value(false))
+                .andExpect(jsonPath("$.data.hasCurrentApplication").value(true))
+                .andExpect(jsonPath("$.data.currentApplication").doesNotExist())
                 .andExpect(jsonPath("$.data.unavailableReason").value("该档案已有进行中的借阅申请"));
     }
 

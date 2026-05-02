@@ -42,11 +42,9 @@ public class BorrowLinkAccessResponse {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class ArchiveInfo {
-        private Long archiveId;
         private String archiveNo;
         private String title;
         private String archiveType;
-        private String retentionPeriod;
         private String securityLevel;
         private String caseName;
         private String caseNo;
@@ -62,10 +60,6 @@ public class BorrowLinkAccessResponse {
         private String fileName;
         private String fileExtension;
         private Long fileSize;
-        private String mimeType;
-        private String fileCategory;
-        private String previewUrl;
-        private String downloadUrl;
         private Boolean isLongTermFormat;
     }
 
@@ -74,7 +68,6 @@ public class BorrowLinkAccessResponse {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class LinkInfo {
-        private Long linkId;
         private LocalDateTime expireAt;
         private Long remainingSeconds;
         private Boolean allowDownload;
@@ -87,10 +80,8 @@ public class BorrowLinkAccessResponse {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class BorrowerInfo {
-        private String userId;
         private String userName;
         private String purpose;
-        private String sourceSystem;
         private String borrowType;
         private java.time.LocalDate expectedReturnDate;
     }

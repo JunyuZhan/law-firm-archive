@@ -140,7 +140,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 import { useAppStore } from '@/stores/app'
-import { isValidUrl } from '@/utils/security'
+import { isValidUrl, secureStorage } from '@/utils/security'
 
 const router = useRouter()
 const route = useRoute()
@@ -158,7 +158,6 @@ const failedAttempts = ref(0)
 const isLocked = ref(false)
 const lockEndTime = ref(0)
 const lockCountdown = ref(0)
-let lockTimer = null
 
 // 验证码相关
 const showCaptcha = computed(() => true)
@@ -177,17 +176,39 @@ const form = reactive({
   captcha: ''
 })
 
+const requireTrimmedText = (message) => ({
+  validator: (_rule, value, callback) => {
+    if (!value?.trim()) {
+      callback(new Error(message))
+      return
+    }
+    callback()
+  },
+  trigger: 'blur'
+})
+
+const requireNonBlankValue = (message) => ({
+  validator: (_rule, value, callback) => {
+    if (!value?.trim()) {
+      callback(new Error(message))
+      return
+    }
+    callback()
+  },
+  trigger: 'blur'
+})
+
 const rules = {
   username: [
-    { required: true, message: '请输入用户名', trigger: 'blur' },
+    requireTrimmedText('请输入用户名'),
     { pattern: /^[a-zA-Z0-9_]{3,50}$/, message: '用户名只能包含字母、数字和下划线', trigger: 'blur' }
   ],
   password: [
-    { required: true, message: '请输入密码', trigger: 'blur' },
+    requireNonBlankValue('请输入密码'),
     { min: 6, max: 50, message: '密码长度6-50位', trigger: 'blur' }
   ],
   captcha: [
-    { required: true, message: '请输入验证码', trigger: 'blur' },
+    requireTrimmedText('请输入验证码'),
     { len: 4, message: '验证码为4位', trigger: 'blur' }
   ]
 }
@@ -200,10 +221,26 @@ const loginButtonText = computed(() => {
 })
 
 // 检查是否已登录
-onMounted(() => {
+onMounted(async () => {
   userStore.init()
-  if (userStore.isLoggedIn) {
-    safeRedirect()
+  appStore.loadSiteConfig()
+
+  if (secureStorage.getAccessToken()) {
+    try {
+      await userStore.fetchCurrentUser()
+      safeRedirect()
+      return
+    } catch {
+      // 会话无效时保留在登录页，继续初始化验证码与锁定状态
+    }
+  } else if (secureStorage.getRefreshToken()) {
+    try {
+      await userStore.refreshSession()
+      safeRedirect()
+      return
+    } catch {
+      // 刷新令牌失效时保留在登录页
+    }
   }
   
   // 恢复锁定状态
@@ -211,9 +248,6 @@ onMounted(() => {
 
   // 首次进入登录页即生成验证码
   nextTick(() => refreshCaptcha())
-  
-  // 加载系统配置
-  appStore.loadSiteConfig()
 })
 
 // 安全重定向（防止开放重定向漏洞）
@@ -235,7 +269,7 @@ const safeRedirect = () => {
           router.push(redirect)
           return
         }
-      } catch (e) {
+      } catch {
         // URL解析失败，使用默认
       }
     }
@@ -274,7 +308,7 @@ const startLockCountdown = () => {
     const remaining = Math.ceil((lockEndTime.value - Date.now()) / 1000)
     if (remaining > 0) {
       lockCountdown.value = remaining
-      lockTimer = setTimeout(updateCountdown, 1000)
+      setTimeout(updateCountdown, 1000)
     } else {
       isLocked.value = false
       lockCountdown.value = 0
@@ -353,7 +387,7 @@ const onInputChange = () => {
 }
 
 const onCaptchaInput = (value) => {
-  form.captcha = value.toUpperCase()
+  form.captcha = value.trim().toUpperCase()
 }
 
 // 处理登录失败
@@ -405,7 +439,7 @@ const handleLogin = async () => {
     
     // 验证码校验
     if (showCaptcha.value) {
-      if (form.captcha.toUpperCase() !== captchaText.value) {
+      if (form.captcha.trim().toUpperCase() !== captchaText.value) {
         ElMessage.error('验证码错误')
         refreshCaptcha()
         return
@@ -416,7 +450,7 @@ const handleLogin = async () => {
     securityAlert.show = false
     
     await userStore.login({
-      username: form.username,
+      username: form.username.trim(),
       password: form.password
     })
     

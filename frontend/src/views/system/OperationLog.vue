@@ -319,10 +319,10 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Search, Refresh, Download } from '@element-plus/icons-vue'
-import { getOperationLogs, getLogStatistics, exportLogs } from '@/api/log'
+import { getOperationLogs, getOperationLogDetail, getLogStatistics, exportLogs } from '@/api/log'
 
 // 查询参数
 const queryParams = reactive({
@@ -412,7 +412,7 @@ async function handleExport() {
     const url = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `操作日志_${new Date().toISOString().slice(0, 10)}.csv`
+    link.download = `操作日志_${formatDateForFileName(new Date())}.csv`
     link.click()
     window.URL.revokeObjectURL(url)
     
@@ -423,9 +423,23 @@ async function handleExport() {
   }
 }
 
-function handleViewDetail(row) {
-  currentLog.value = row
-  detailVisible.value = true
+function formatDateForFileName(date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+async function handleViewDetail(row) {
+  currentLog.value = null
+  try {
+    const res = await getOperationLogDetail(row.id)
+    currentLog.value = res.data
+    detailVisible.value = true
+  } catch (e) {
+    console.error(e)
+    ElMessage.error('加载日志详情失败')
+  }
 }
 
 function getObjectTypeLabel(type) {

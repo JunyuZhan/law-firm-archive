@@ -3,6 +3,7 @@ package com.archivesystem.service;
 import io.minio.*;
 import io.minio.http.Method;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -25,6 +26,15 @@ import java.util.concurrent.TimeUnit;
 @Service
 public class MinioService {
 
+    public static final String CONFIG_KEY_PROXY_PREFIX = "system.storage.minio.proxy-prefix";
+    private static final String UPLOAD_FAILURE_PUBLIC_MESSAGE = "文件上传失败，请稍后重试或联系系统管理员";
+    private static final String DOWNLOAD_AND_STORE_FAILURE_PUBLIC_MESSAGE = "文件下载存储失败，请稍后重试或联系系统管理员";
+    private static final String GET_FILE_FAILURE_PUBLIC_MESSAGE = "获取文件失败，请稍后重试或联系系统管理员";
+    private static final String DOWNLOAD_OBJECT_FAILURE_PUBLIC_MESSAGE = "下载对象失败，请稍后重试或联系系统管理员";
+    private static final String METADATA_FAILURE_PUBLIC_MESSAGE = "获取文件元数据失败，请稍后重试或联系系统管理员";
+    private static final String CONTENT_TYPE_FAILURE_PUBLIC_MESSAGE = "获取文件内容类型失败，请稍后重试或联系系统管理员";
+    private static final String PRESIGNED_URL_FAILURE_PUBLIC_MESSAGE = "获取下载链接失败，请稍后重试或联系系统管理员";
+
     @Value("${minio.endpoint}")
     private String endpoint;
 
@@ -39,6 +49,9 @@ public class MinioService {
 
     @Value("${minio.proxy-prefix:}")
     private String proxyPrefix;
+
+    @Autowired(required = false)
+    private ConfigService configService;
 
     private MinioClient minioClient;
 
@@ -94,7 +107,7 @@ public class MinioService {
             log.info("文件上传成功: {}", objectName);
         } catch (Exception e) {
             log.error("文件上传失败: {}", objectName, e);
-            throw new RuntimeException("文件上传失败: " + e.getMessage());
+            throw new RuntimeException(UPLOAD_FAILURE_PUBLIC_MESSAGE);
         }
     }
 
@@ -113,7 +126,7 @@ public class MinioService {
             return objectName;
         } catch (Exception e) {
             log.error("文件上传失败: {}", objectName, e);
-            throw new RuntimeException("文件上传失败: " + e.getMessage());
+            throw new RuntimeException(UPLOAD_FAILURE_PUBLIC_MESSAGE);
         }
     }
 
@@ -133,7 +146,7 @@ public class MinioService {
             return objectName;
         } catch (Exception e) {
             log.error("字节数据上传失败: {}", objectName, e);
-            throw new RuntimeException("文件上传失败: " + e.getMessage());
+            throw new RuntimeException(UPLOAD_FAILURE_PUBLIC_MESSAGE);
         }
     }
 
@@ -149,7 +162,7 @@ public class MinioService {
             }
         } catch (Exception e) {
             log.error("从URL下载并存储失败: sourceUrl={}, objectName={}", sourceUrl, objectName, e);
-            throw new RuntimeException("文件下载存储失败: " + e.getMessage());
+            throw new RuntimeException(DOWNLOAD_AND_STORE_FAILURE_PUBLIC_MESSAGE);
         }
     }
 
@@ -164,7 +177,7 @@ public class MinioService {
                     .build());
         } catch (Exception e) {
             log.error("获取文件失败: {}", objectName, e);
-            throw new RuntimeException("获取文件失败: " + e.getMessage());
+            throw new RuntimeException(GET_FILE_FAILURE_PUBLIC_MESSAGE);
         }
     }
 
@@ -179,7 +192,7 @@ public class MinioService {
             Files.copy(inputStream, targetPath);
         } catch (Exception e) {
             log.error("下载对象到本地失败: objectName={}, targetPath={}", objectName, targetPath, e);
-            throw new RuntimeException("下载对象失败: " + e.getMessage());
+            throw new RuntimeException(DOWNLOAD_OBJECT_FAILURE_PUBLIC_MESSAGE);
         }
     }
 
@@ -195,7 +208,7 @@ public class MinioService {
             return response.userMetadata();
         } catch (Exception e) {
             log.error("获取对象元数据失败: {}", objectName, e);
-            throw new RuntimeException("获取文件元数据失败: " + e.getMessage());
+            throw new RuntimeException(METADATA_FAILURE_PUBLIC_MESSAGE);
         }
     }
 
@@ -211,7 +224,7 @@ public class MinioService {
             return response.contentType();
         } catch (Exception e) {
             log.error("获取对象内容类型失败: {}", objectName, e);
-            throw new RuntimeException("获取文件内容类型失败: " + e.getMessage());
+            throw new RuntimeException(CONTENT_TYPE_FAILURE_PUBLIC_MESSAGE);
         }
     }
 
@@ -240,13 +253,14 @@ public class MinioService {
                     .build());
             // 如果配置了代理前缀，将 MinIO 内网地址替换为 Nginx 代理的相对路径
             // 例如: http://minio:9000/bucket/file → /storage/bucket/file
-            if (proxyPrefix != null && !proxyPrefix.isBlank()) {
-                url = url.replace(endpoint, proxyPrefix);
+            String resolvedProxyPrefix = resolveProxyPrefix();
+            if (resolvedProxyPrefix != null && !resolvedProxyPrefix.isBlank()) {
+                url = url.replace(endpoint, resolvedProxyPrefix);
             }
             return url;
         } catch (Exception e) {
             log.error("获取预签名URL失败: {}", objectName, e);
-            throw new RuntimeException("获取下载链接失败: " + e.getMessage());
+            throw new RuntimeException(PRESIGNED_URL_FAILURE_PUBLIC_MESSAGE);
         }
     }
     
@@ -304,5 +318,13 @@ public class MinioService {
         } catch (Exception e) {
             return false;
         }
+    }
+
+    private String resolveProxyPrefix() {
+        if (configService == null) {
+            return proxyPrefix;
+        }
+        String configured = configService.getValue(CONFIG_KEY_PROXY_PREFIX, proxyPrefix);
+        return configured != null && !configured.isBlank() ? configured : proxyPrefix;
     }
 }

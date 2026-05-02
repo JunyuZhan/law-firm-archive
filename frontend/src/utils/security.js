@@ -96,9 +96,17 @@ export const secureStorage = {
    */
   getAccessToken() {
     const token = localStorage.getItem('accessToken')
-    if (token && this._isTokenExpired()) {
-      this.clearTokens()
-      return null
+    if (token) {
+      if (this._isTokenExpired()) {
+        this.clearAccessToken()
+        return null
+      }
+
+      const payload = parseJwtPayload(token)
+      if (payload?.exp && Date.now() >= Number(payload.exp) * 1000) {
+        this.clearAccessToken()
+        return null
+      }
     }
     return token
   },
@@ -126,6 +134,14 @@ export const secureStorage = {
     localStorage.removeItem('tokenExpiry')
     sessionStorage.removeItem('refreshToken')
     this._memoryStore.clear()
+  },
+
+  /**
+   * 仅清除访问令牌，保留刷新令牌用于静默续期
+   */
+  clearAccessToken() {
+    localStorage.removeItem('accessToken')
+    localStorage.removeItem('tokenExpiry')
   },
   
   /**
@@ -174,6 +190,31 @@ export const secureStorage = {
    */
   removeSecure(key) {
     this._memoryStore.delete(key)
+  }
+}
+
+/**
+ * 解析 JWT 载荷（仅用于前端展示与路由兜底，不作为安全校验依据）
+ * @param {string} token - JWT Token
+ * @returns {object|null} 解析后的 payload
+ */
+export function parseJwtPayload(token) {
+  if (!token || typeof token !== 'string') return null
+  const segments = token.split('.')
+  if (segments.length < 2) return null
+
+  try {
+    const base64 = segments[1].replace(/-/g, '+').replace(/_/g, '/')
+    const padded = base64.padEnd(base64.length + ((4 - base64.length % 4) % 4), '=')
+    const json = decodeURIComponent(
+      atob(padded)
+        .split('')
+        .map(char => `%${char.charCodeAt(0).toString(16).padStart(2, '0')}`)
+        .join('')
+    )
+    return JSON.parse(json)
+  } catch {
+    return null
   }
 }
 
@@ -333,8 +374,10 @@ export function initSecurity() {
   // 监听存储变化，防止XSS窃取Token
   window.addEventListener('storage', (e) => {
     if (e.key === 'accessToken' && e.oldValue && !e.newValue) {
-      // Token被其他标签页清除，同步登出
-      window.location.href = '/login'
+      // accessToken 被其他标签页清除时，优先保留本标签页的 refresh token 续期机会
+      if (!secureStorage.getRefreshToken()) {
+        window.location.href = '/login'
+      }
     }
   })
   

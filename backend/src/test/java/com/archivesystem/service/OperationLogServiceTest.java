@@ -330,6 +330,33 @@ class OperationLogServiceTest {
     }
 
     @Test
+    void testExportLogs_ShouldSanitizeFormulaInjectionCells() {
+        OperationLog dangerousLog = OperationLog.builder()
+                .id(4L)
+                .objectType("=ARCHIVE")
+                .objectId("+123")
+                .operationType("-UPDATE")
+                .operationDesc("@SUM(A1:A2)")
+                .operatorId(1L)
+                .operatorName("\tmalicious")
+                .operatorIp("=1+1")
+                .operatedAt(LocalDateTime.of(2026, 4, 30, 10, 0))
+                .build();
+
+        when(operationLogMapper.selectList(any())).thenReturn(List.of(dangerousLog));
+
+        byte[] result = operationLogService.exportLogs(null, null, null, null, null);
+
+        String content = new String(result);
+        assertTrue(content.contains("'=ARCHIVE"));
+        assertTrue(content.contains(",'+123,"));
+        assertTrue(content.contains(",'-UPDATE,"));
+        assertTrue(content.contains("\"'@SUM(A1:A2)\""));
+        assertTrue(content.contains("'\tmalicious"));
+        assertTrue(content.contains(",'=1+1,"));
+    }
+
+    @Test
     void testExportLogs_WithNullFields() {
         OperationLog logWithNulls = OperationLog.builder()
                 .id(3L)

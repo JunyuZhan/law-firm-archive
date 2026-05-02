@@ -79,7 +79,7 @@
       >
         <el-progress 
           :percentage="totalProgress" 
-          :status="allCompleted ? 'success' : ''"
+          :status="progressStatus"
           :stroke-width="10"
         />
       </div>
@@ -257,6 +257,11 @@ const allCompleted = computed(() =>
   fileQueue.value.length > 0 && pendingCount.value === 0 && uploadingCount.value === 0
 )
 
+const progressStatus = computed(() => {
+  if (!allCompleted.value) return ''
+  return errorCount.value > 0 ? 'exception' : 'success'
+})
+
 const totalProgress = computed(() => {
   if (fileQueue.value.length === 0) return 0
   const total = fileQueue.value.reduce((sum, f) => sum + f.progress, 0)
@@ -397,9 +402,13 @@ const uploadSingleFile = async (fileItem) => {
       }
     )
     
+    if (!res.data?.id) {
+      throw new Error('上传结果缺少文件标识')
+    }
+
     fileItem.status = 'success'
     fileItem.progress = 100
-    fileItem.fileId = res.data?.id
+    fileItem.fileId = res.data.id
     
     emit('success', { file: fileItem, response: res })
     

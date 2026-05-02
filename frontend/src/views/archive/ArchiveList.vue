@@ -383,7 +383,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getArchiveList, deleteArchive, updateArchiveStatus, approveArchive } from '@/api/archive'
@@ -553,7 +553,7 @@ const handleApprove = async (row) => {
 const handleDelete = async (row) => {
   try {
     await deleteArchive(row.id)
-    ElMessage.success('删除成功')
+    ElMessage.success(row.archiveNo ? `已删除档案：${row.archiveNo}` : '删除成功')
     fetchData()
   } catch (e) {
     console.error('删除失败', e)
@@ -594,12 +594,15 @@ const getSourceName = (source) => {
   return map[source] || source
 }
 
-onMounted(() => {
-  if (route.query.scanBatchNo) {
-    searchForm.scanBatchNo = String(route.query.scanBatchNo)
-  }
-  fetchData()
-})
+watch(
+  () => route.query.scanBatchNo,
+  (scanBatchNo) => {
+    searchForm.scanBatchNo = scanBatchNo ? String(scanBatchNo) : ''
+    pagination.pageNum = 1
+    fetchData()
+  },
+  { immediate: true }
+)
 </script>
 
 <style lang="scss" scoped>

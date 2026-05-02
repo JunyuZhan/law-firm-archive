@@ -30,6 +30,8 @@ import java.util.UUID;
 @Slf4j
 @Service
 public class CallbackServiceImpl implements CallbackService {
+    private static final String CALLBACK_FAILURE_PUBLIC_MESSAGE = "回调失败，请联系系统管理员查看系统日志";
+    private static final String ARCHIVE_PROCESS_FAILURE_PUBLIC_MESSAGE = "档案处理失败，请联系系统管理员查看系统日志";
 
     private final ObjectMapper objectMapper;
     private final ExternalSourceMapper externalSourceMapper;
@@ -169,11 +171,12 @@ public class CallbackServiceImpl implements CallbackService {
 
     @Override
     public void logFailedCallback(CallbackMessage message, String errorMessage) {
+        String publicErrorMessage = sanitizeCallbackErrorMessage(errorMessage);
         log.error("回调最终失败: archiveId={}, archiveNo={}, callbackUrl={}, error={}",
                 message.getArchiveId(), 
                 message.getArchiveNo(),
                 message.getCallbackUrl(),
-                errorMessage);
+                publicErrorMessage);
         
         // 持久化失败的回调记录，便于后续人工处理或重试
         try {
@@ -190,7 +193,7 @@ public class CallbackServiceImpl implements CallbackService {
                     .requestBody(buildCallbackPayload(message))
                     .retryCount(message.getRetryCount())
                     .maxRetries(message.getMaxRetries())
-                    .errorMessage(errorMessage)
+                    .errorMessage(publicErrorMessage)
                     .callbackAt(message.getCompletedAt())
                     .completedAt(LocalDateTime.now())
                     .build();
@@ -230,7 +233,7 @@ public class CallbackServiceImpl implements CallbackService {
         
         // 错误信息
         if (message.getErrorMessage() != null) {
-            payload.put("errorMessage", message.getErrorMessage());
+            payload.put("errorMessage", sanitizeArchiveProcessErrorMessage(message.getErrorMessage()));
         }
         
         return payload;
@@ -248,9 +251,17 @@ public class CallbackServiceImpl implements CallbackService {
             case CallbackMessage.STATUS_PARTIAL -> 
                     String.format("档案部分处理完成，成功 %d/%d 个文件", 
                             message.getSuccessCount(), message.getTotalCount());
-            case CallbackMessage.STATUS_FAILED -> "档案处理失败: " + message.getErrorMessage();
+            case CallbackMessage.STATUS_FAILED -> ARCHIVE_PROCESS_FAILURE_PUBLIC_MESSAGE;
             default -> "档案处理状态: " + message.getStatus();
         };
+    }
+
+    private String sanitizeCallbackErrorMessage(String errorMessage) {
+        return CALLBACK_FAILURE_PUBLIC_MESSAGE;
+    }
+
+    private String sanitizeArchiveProcessErrorMessage(String errorMessage) {
+        return ARCHIVE_PROCESS_FAILURE_PUBLIC_MESSAGE;
     }
     
 }

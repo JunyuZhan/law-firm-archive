@@ -2,11 +2,11 @@
 set -eu
 
 ROOT_DIR=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
-ENV_FILE="${ENV_FILE:-$ROOT_DIR/docker/.env.registry}"
+ENV_FILE="${ENV_FILE:-$ROOT_DIR/docker/.env}"
 
 if [ ! -f "$ENV_FILE" ]; then
   echo "missing env file: $ENV_FILE"
-  echo "copy docker/.env.registry.example to docker/.env.registry first"
+  echo "copy docker/.env.example to docker/.env first"
   exit 1
 fi
 

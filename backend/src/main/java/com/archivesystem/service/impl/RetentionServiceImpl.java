@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -150,7 +151,7 @@ public class RetentionServiceImpl implements RetentionService {
 
     @Override
     @Transactional
-    public void executeDestruction(Long archiveId, Long approverId, String remarks) {
+    public void executeDestruction(Long archiveId, String remarks) {
         Archive archive = archiveMapper.selectById(archiveId);
         if (archive == null) {
             throw NotFoundException.of("档案", archiveId);
@@ -182,17 +183,18 @@ public class RetentionServiceImpl implements RetentionService {
         destructionRecordMapper.updateById(approvedRecord);
 
         // 记录操作日志
+        Map<String, Object> detail = new LinkedHashMap<>();
+        detail.put("approverId", approvedRecord.getApproverId());
+        detail.put("remarks", remarks);
+        detail.put("executedAt", LocalDateTime.now().toString());
+
         OperationLog operationLog = OperationLog.builder()
                 .archiveId(archiveId)
                 .objectType("ARCHIVE")
                 .operationType("EXECUTE_DESTRUCTION")
                 .operatorId(SecurityUtils.getCurrentUserId())
                 .operatorName(SecurityUtils.getCurrentRealName())
-                .operationDetail(Map.of(
-                        "approverId", approverId,
-                        "remarks", remarks,
-                        "executedAt", LocalDateTime.now().toString()
-                ))
+                .operationDetail(detail)
                 .build();
         operationLogMapper.insert(operationLog);
 

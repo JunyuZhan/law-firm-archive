@@ -14,6 +14,7 @@ import com.archivesystem.entity.User;
 import com.archivesystem.mq.ArchiveReceiveMessage;
 import com.archivesystem.mq.CallbackMessage;
 import com.archivesystem.repository.*;
+import com.archivesystem.security.OutboundUrlValidator;
 import com.archivesystem.security.SecurityUtils;
 import com.archivesystem.service.ArchiveService;
 import com.archivesystem.service.ConfigService;
@@ -64,6 +65,7 @@ public class ArchiveServiceImpl implements ArchiveService {
     private final RabbitTemplate rabbitTemplate;
     private final StringRedisTemplate stringRedisTemplate;
     private final ConfigService configService;
+    private final OutboundUrlValidator outboundUrlValidator;
 
     // 档案号计数器（仅作为Redis不可用时的备用）
     private static final AtomicInteger archiveNoCounter = new AtomicInteger(1);
@@ -76,6 +78,10 @@ public class ArchiveServiceImpl implements ArchiveService {
     public ArchiveReceiveResponse receive(ArchiveReceiveRequest request) {
         log.info("接收档案: sourceType={}, sourceId={}, async={}", 
                 request.getSourceType(), request.getSourceId(), request.getAsync());
+
+        if (StringUtils.hasText(request.getCallbackUrl())) {
+            outboundUrlValidator.validate(request.getCallbackUrl(), "回调地址");
+        }
 
         // 检查是否已存在（幂等）
         Archive existingArchive = archiveMapper.selectBySourceId(request.getSourceType(), request.getSourceId());
@@ -90,6 +96,8 @@ public class ArchiveServiceImpl implements ArchiveService {
                     .message("档案已存在")
                     .build();
         }
+
+        validateReceiveFileUrls(request);
 
         // 生成档案号
         String archiveNo = generateArchiveNo(request.getArchiveType());
@@ -307,6 +315,16 @@ public class ArchiveServiceImpl implements ArchiveService {
     
     private boolean hasFiles(ArchiveReceiveRequest request) {
         return request.getFiles() != null && !request.getFiles().isEmpty();
+    }
+
+    private void validateReceiveFileUrls(ArchiveReceiveRequest request) {
+        if (!hasFiles(request)) {
+            return;
+        }
+        for (int i = 0; i < request.getFiles().size(); i++) {
+            ArchiveReceiveRequest.FileInfo fileInfo = request.getFiles().get(i);
+            outboundUrlValidator.validate(fileInfo.getDownloadUrl(), "文件下载地址[" + (i + 1) + "]");
+        }
     }
 
     @Override
@@ -708,6 +726,9 @@ public class ArchiveServiceImpl implements ArchiveService {
         
         // 从配置获取日期格式和序号位数
         String dateFormat = configService.getValue("archive.no.date.format", "yyyyMMdd");
+        if (!StringUtils.hasText(dateFormat)) {
+            dateFormat = "yyyyMMdd";
+        }
         int seqDigits = configService.getIntValue("archive.no.seq.digits", 4);
 
         String date = LocalDate.now().format(DateTimeFormatter.ofPattern(dateFormat));
@@ -726,9 +747,10 @@ public class ArchiveServiceImpl implements ArchiveService {
                                 .atStartOfDay(java.time.ZoneId.systemDefault()).toInstant()));
             }
         } catch (Exception e) {
-            // Redis不可用时，降级使用内存计数器
-            log.warn("Redis不可用，降级使用内存计数器: {}", e.getMessage());
-            seq = archiveNoCounter.getAndIncrement();
+            // Redis不可用时，档案号唯一性无法保证，直接抛出异常而非静默降级
+            // 内存计数器在多实例部署或重启后会重置，导致档案号重复
+            log.error("Redis不可用，无法生成唯一档案号: {}", e.getMessage());
+            throw new BusinessException("系统暂时无法生成档案号，请稍后重试");
         }
         
         // 动态格式化序号位数
@@ -804,8 +826,8 @@ public class ArchiveServiceImpl implements ArchiveService {
             log.error("关联文件失败，档案不存在: archiveId={}", archiveId);
             return;
         }
-        archive.setFileCount(availableFiles.size());
-        archive.setTotalFileSize(totalSize);
+        archive.setFileCount((archive.getFileCount() != null ? archive.getFileCount() : 0) + availableFiles.size());
+        archive.setTotalFileSize((archive.getTotalFileSize() != null ? archive.getTotalFileSize() : 0) + totalSize);
         archive.setHasElectronic(!availableFiles.isEmpty());
         archiveMapper.updateById(archive);
     }
@@ -913,7 +935,10 @@ public class ArchiveServiceImpl implements ArchiveService {
     }
 
     private void assertArchiveReadable(Archive archive) {
-        if (!SecurityUtils.isAuthenticated() || hasArchiveFullAccess()) {
+        if (!SecurityUtils.isAuthenticated()) {
+            throw new BusinessException("未认证用户无权访问档案");
+        }
+        if (hasArchiveFullAccess()) {
             return;
         }
 
@@ -935,7 +960,12 @@ public class ArchiveServiceImpl implements ArchiveService {
     }
 
     private void appendCurrentUserDataScope(LambdaQueryWrapper<Archive> wrapper) {
-        if (!SecurityUtils.isAuthenticated() || hasArchiveFullAccess()) {
+        if (!SecurityUtils.isAuthenticated()) {
+            // 未认证用户不应能查询任何档案数据
+            wrapper.eq(Archive::getId, -1L);
+            return;
+        }
+        if (hasArchiveFullAccess()) {
             return;
         }
 

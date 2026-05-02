@@ -95,6 +95,41 @@
         >
           {{ registryCheck.detail }}
         </p>
+        <div
+          v-if="registryCheck.distCenterConfigured"
+          class="dist-center-block"
+        >
+          <p class="dist-center-title">
+            分发中心
+          </p>
+          <el-descriptions
+            :column="1"
+            border
+            size="small"
+          >
+            <el-descriptions-item label="已配置检测">
+              {{ registryCheck.distCenterOk === true ? '是' : registryCheck.distCenterOk === false ? '拉取失败' : '-' }}
+            </el-descriptions-item>
+            <el-descriptions-item label="当前运行标签">
+              {{ registryCheck.localImageTag || '-' }}
+            </el-descriptions-item>
+            <el-descriptions-item label="分发中心镜像标签">
+              {{ registryCheck.distCenterPublishedImageTag || '-' }}
+            </el-descriptions-item>
+            <el-descriptions-item label="描述快照 version">
+              {{ registryCheck.distCenterSnapshotVersion || '-' }}
+            </el-descriptions-item>
+            <el-descriptions-item label="分发中心 app_version">
+              {{ registryCheck.distCenterChannelAppVersion || '-' }}
+            </el-descriptions-item>
+          </el-descriptions>
+          <p
+            v-if="registryCheck.distCenterError"
+            class="registry-check-detail dist-center-error"
+          >
+            {{ registryCheck.distCenterError }}
+          </p>
+        </div>
       </el-card>
 
       <el-card
@@ -167,7 +202,14 @@ const registryCheck = reactive({
   updateAvailable: null,
   message: '',
   detail: '',
-  checkedAt: ''
+  checkedAt: '',
+  distCenterConfigured: false,
+  distCenterOk: null,
+  localImageTag: '',
+  distCenterPublishedImageTag: '',
+  distCenterSnapshotVersion: '',
+  distCenterChannelAppVersion: '',
+  distCenterError: ''
 })
 
 const dependencyStatus = reactive({
@@ -205,7 +247,7 @@ const loadRuntimeInfo = async () => {
       buildTime: res?.data?.buildTime || '',
       commitSha: res?.data?.commitSha || ''
     })
-  } catch (error) {
+  } catch {
     ElMessage.error('版本信息加载失败')
   }
 }
@@ -215,7 +257,7 @@ const loadDependencyStatus = async () => {
     const res = await getDependencyStatus()
     dependencyStatus.overallStatus = res?.data?.overallStatus || 'UNKNOWN'
     dependencyStatus.items = Array.isArray(res?.data?.items) ? res.data.items : []
-  } catch (error) {
+  } catch {
     ElMessage.error('依赖状态加载失败')
   }
 }
@@ -256,12 +298,30 @@ const runRegistryCheck = async () => {
     registryCheck.message = data.message || ''
     registryCheck.detail = data.detail || ''
     registryCheck.checkedAt = data.checkedAt || ''
-  } catch (error) {
+    registryCheck.distCenterConfigured = data.distCenterConfigured === true
+    registryCheck.distCenterOk = data.distCenterOk === true
+      ? true
+      : data.distCenterOk === false
+        ? false
+        : null
+    registryCheck.localImageTag = data.localImageTag || ''
+    registryCheck.distCenterPublishedImageTag = data.distCenterPublishedImageTag || ''
+    registryCheck.distCenterSnapshotVersion = data.distCenterSnapshotVersion || ''
+    registryCheck.distCenterChannelAppVersion = data.distCenterChannelAppVersion || ''
+    registryCheck.distCenterError = data.distCenterError || ''
+  } catch {
     ElMessage.error('镜像仓库检查失败')
     registryCheck.updateAvailable = null
     registryCheck.message = ''
     registryCheck.detail = ''
     registryCheck.checkedAt = ''
+    registryCheck.distCenterConfigured = false
+    registryCheck.distCenterOk = null
+    registryCheck.localImageTag = ''
+    registryCheck.distCenterPublishedImageTag = ''
+    registryCheck.distCenterSnapshotVersion = ''
+    registryCheck.distCenterChannelAppVersion = ''
+    registryCheck.distCenterError = ''
   } finally {
     registryCheckLoading.value = false
   }

@@ -3,6 +3,8 @@ import { ref, computed } from 'vue'
 import { getPublicSiteConfig } from '@/api/config'
 
 export const useAppStore = defineStore('app', () => {
+  const apiBaseURL = import.meta.env.VITE_API_BASE_URL || '/api'
+
   // 侧边栏状态
   const sidebarCollapsed = ref(false)
   
@@ -92,10 +94,36 @@ export const useAppStore = defineStore('app', () => {
   function setBreadcrumbs(items) {
     breadcrumbs.value = items
   }
+
+  function normalizePublicAssetUrl(url) {
+    if (!url || typeof url !== 'string') return ''
+    if (/^https?:\/\//i.test(url) || url.startsWith('data:') || url.startsWith('blob:')) {
+      return url
+    }
+    if (apiBaseURL !== '/api' && url.startsWith('/api/')) {
+      return `${apiBaseURL}${url.slice(4)}`
+    }
+    return url
+  }
+
+  function denormalizePublicAssetUrl(url) {
+    if (!url || typeof url !== 'string') return ''
+    if (/^https?:\/\//i.test(url) || url.startsWith('data:') || url.startsWith('blob:')) {
+      return url
+    }
+    if (apiBaseURL !== '/api' && url.startsWith(`${apiBaseURL}/`)) {
+      return `/api${url.slice(apiBaseURL.length)}`
+    }
+    return url
+  }
   
   // 设置系统配置
   function setSystemConfig(config) {
-    systemConfig.value = { ...systemConfig.value, ...config }
+    const nextConfig = { ...config }
+    if ('logoUrl' in nextConfig) {
+      nextConfig.logoUrl = normalizePublicAssetUrl(nextConfig.logoUrl)
+    }
+    systemConfig.value = { ...systemConfig.value, ...nextConfig }
   }
   
   // 加载 SITE 分组配置（使用公开接口，无需认证）
@@ -109,14 +137,13 @@ export const useAppStore = defineStore('app', () => {
           configMap[item.configKey] = item.configValue
         })
         
-        systemConfig.value = {
-          ...systemConfig.value,
+        setSystemConfig({
           systemName: configMap['system.site.name'] || '档案管理系统',
           systemNameEn: configMap['system.site.name.en'] || 'Archive Management System',
           logoUrl: configMap['system.site.logo'] || '',
           icp: configMap['system.site.icp'] || '',
           copyright: configMap['system.site.copyright'] || '© 2024 档案管理系统'
-        }
+        })
       }
     } catch (error) {
       console.error('加载站点配置失败:', error)
@@ -215,6 +242,8 @@ export const useAppStore = defineStore('app', () => {
     toggleTheme,
     setBreadcrumbs,
     setSystemConfig,
+    normalizePublicAssetUrl,
+    denormalizePublicAssetUrl,
     loadSiteConfig,
     addToUploadQueue,
     updateUploadProgress,

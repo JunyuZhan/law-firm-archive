@@ -3,6 +3,7 @@ package com.archivesystem.service;
 import com.archivesystem.common.exception.BusinessException;
 import com.archivesystem.dto.borrow.BorrowLinkApplyRequest;
 import com.archivesystem.dto.borrow.BorrowLinkApplyResponse;
+import com.archivesystem.dto.borrow.BorrowLinkResponse;
 import com.archivesystem.entity.Archive;
 import com.archivesystem.entity.BorrowApplication;
 import com.archivesystem.entity.DigitalFile;
@@ -37,6 +38,7 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
 /**
  * @author junyuzhan
  */
@@ -140,6 +142,66 @@ class BorrowLinkServiceTest {
     }
 
     @Test
+    void testGetFileAccessUrl_LimitedPreviewShouldUseAtomicAccessUpdate() {
+        BorrowLink link = BorrowLink.builder()
+                .id(10L)
+                .archiveId(100L)
+                .accessToken("token")
+                .status(BorrowLink.STATUS_ACTIVE)
+                .allowDownload(true)
+                .accessCount(0)
+                .maxAccessCount(1)
+                .expireAt(LocalDateTime.now().plusMinutes(5))
+                .build();
+        DigitalFile file = DigitalFile.builder()
+                .id(8L)
+                .archiveId(100L)
+                .build();
+
+        when(borrowLinkMapper.selectByAccessToken("token")).thenReturn(link);
+        when(borrowLinkMapper.atomicRecordFileAccess(10L, 1, 0, "127.0.0.1")).thenReturn(1);
+        when(digitalFileMapper.selectById(8L)).thenReturn(file);
+        when(fileStorageService.getBorrowPreviewUrl(eq(100L), eq(8L), anyInt())).thenReturn("preview-url");
+
+        assertEquals("preview-url", borrowLinkService.getFileAccessUrl("token", 8L, false, "127.0.0.1"));
+
+        assertEquals(1, link.getAccessCount());
+        verify(borrowLinkMapper).atomicRecordFileAccess(10L, 1, 0, "127.0.0.1");
+        verify(borrowLinkMapper, never()).updateById(link);
+    }
+
+    @Test
+    void testGetFileAccessUrl_LimitedDownloadShouldRejectWhenConcurrentLimitReached() {
+        BorrowLink link = BorrowLink.builder()
+                .id(10L)
+                .archiveId(100L)
+                .accessToken("token")
+                .status(BorrowLink.STATUS_ACTIVE)
+                .allowDownload(true)
+                .accessCount(0)
+                .downloadCount(0)
+                .maxAccessCount(1)
+                .expireAt(LocalDateTime.now().plusMinutes(5))
+                .build();
+        DigitalFile file = DigitalFile.builder()
+                .id(8L)
+                .archiveId(100L)
+                .build();
+
+        when(borrowLinkMapper.selectByAccessToken("token")).thenReturn(link);
+        when(borrowLinkMapper.atomicRecordFileAccess(10L, 1, 1, "127.0.0.1")).thenReturn(0);
+        when(digitalFileMapper.selectById(8L)).thenReturn(file);
+
+        assertThrows(BusinessException.class,
+                () -> borrowLinkService.getFileAccessUrl("token", 8L, true, "127.0.0.1"));
+
+        assertEquals(0, link.getAccessCount());
+        assertEquals(0, link.getDownloadCount());
+        verify(fileStorageService, never()).getBorrowDownloadUrl(anyLong(), anyLong(), anyInt());
+        verify(accessLogService, never()).logDownload(anyLong(), anyLong(), anyString());
+    }
+
+    @Test
     void testRecordDownload_RejectsFileOutsideArchive() {
         BorrowLink link = BorrowLink.builder()
                 .id(10L)
@@ -238,7 +300,7 @@ class BorrowLinkServiceTest {
         when(borrowApplicationMapper.selectById(1L)).thenReturn(application);
         when(archiveMapper.selectById(100L)).thenReturn(archive);
 
-        BorrowLink link = borrowLinkService.generateLinkForBorrow(1L, 7, true);
+        BorrowLinkResponse link = borrowLinkService.generateLinkForBorrow(1L, 7, true);
 
         assertFalse(Boolean.TRUE.equals(link.getAllowDownload()));
         verify(borrowLinkMapper).insert(any(BorrowLink.class));
@@ -283,6 +345,52 @@ class BorrowLinkServiceTest {
 
         assertEquals(1, application.getViewCount());
         verify(borrowApplicationMapper).updateById(application);
+    }
+
+    @Test
+    void testValidateAndAccess_LimitedLinkShouldRefreshInMemoryAccessState() {
+        BorrowLink link = BorrowLink.builder()
+                .id(10L)
+                .borrowId(1L)
+                .archiveId(100L)
+                .archiveNo("ARC-001")
+                .accessToken("token")
+                .status(BorrowLink.STATUS_ACTIVE)
+                .allowDownload(false)
+                .accessCount(0)
+                .maxAccessCount(3)
+                .expireAt(LocalDateTime.now().plusMinutes(5))
+                .sourceUserName("张三")
+                .borrowPurpose("阅卷")
+                .build();
+        BorrowApplication application = BorrowApplication.builder()
+                .archiveId(100L)
+                .borrowType(BorrowApplication.TYPE_ONLINE)
+                .expectedReturnDate(LocalDate.now().plusDays(2))
+                .viewCount(0)
+                .downloadCount(0)
+                .build();
+        application.setId(1L);
+        Archive archive = Archive.builder()
+                .archiveNo("ARC-001")
+                .title("测试档案")
+                .archiveType("DOCUMENT")
+                .build();
+        archive.setId(100L);
+
+        when(borrowLinkMapper.selectByAccessToken("token")).thenReturn(link);
+        when(borrowLinkMapper.atomicRecordAccess(10L, 3, "127.0.0.1")).thenReturn(1);
+        when(borrowApplicationMapper.selectById(1L)).thenReturn(application);
+        when(archiveMapper.selectById(100L)).thenReturn(archive);
+        when(digitalFileMapper.selectByArchiveId(100L)).thenReturn(List.of());
+
+        var response = borrowLinkService.validateAndAccess("token", "127.0.0.1");
+
+        assertTrue(Boolean.TRUE.equals(response.getValid()));
+        assertEquals(1, link.getAccessCount());
+        assertEquals("127.0.0.1", link.getLastAccessIp());
+        assertEquals(1, response.getLinkInfo().getAccessCount());
+        verify(borrowLinkMapper).atomicRecordAccess(10L, 3, "127.0.0.1");
     }
 
     @Test
@@ -343,7 +451,7 @@ class BorrowLinkServiceTest {
         BorrowLinkApplyResponse response = borrowLinkService.applyLink(request, "LAW_FIRM_A");
 
         assertEquals(88L, response.getLinkId());
-        assertEquals("existing-token", response.getAccessToken());
+        assertEquals("/open/borrow/access/existing-token", response.getAccessUrl());
         verify(borrowLinkMapper, never()).insert(any(BorrowLink.class));
     }
 

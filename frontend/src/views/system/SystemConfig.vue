@@ -561,6 +561,18 @@ const editedConfigs = reactive({})
 const changedKeys = ref(new Set())
 const testMailTo = ref('')
 const testMailLoading = ref(false)
+const sensitiveConfigMarkers = [
+  'password',
+  'secret',
+  'token',
+  'credential',
+  'private-key',
+  'private_key',
+  'api-key',
+  'api_key',
+  'access-key',
+  'access_key'
+]
 
 // 保管期限数据
 const retentionPeriods = ref([])
@@ -616,7 +628,7 @@ const loadConfigs = async () => {
     })
     
     changedKeys.value.clear()
-  } catch (error) {
+  } catch {
     ElMessage.error('加载配置失败')
   } finally {
     loading.value = false
@@ -660,7 +672,7 @@ const saveChanges = async () => {
     const updates = {}
     changedKeys.value.forEach((key) => {
       const raw = editedConfigs[key]
-      if (key === 'system.mail.smtp.password' && (raw === '******' || raw === undefined)) {
+      if (isUnchangedSensitivePlaceholder(key, raw)) {
         return
       }
       updates[key] = String(raw ?? '')
@@ -702,7 +714,7 @@ const refreshCache = async () => {
     await refreshConfigCache()
     ElMessage.success('缓存刷新成功')
     await loadConfigs()
-  } catch (error) {
+  } catch {
     ElMessage.error('刷新缓存失败')
   } finally {
     refreshing.value = false
@@ -721,6 +733,18 @@ const formatBytes = (bytes) => {
   const sizes = ['B', 'KB', 'MB', 'GB']
   const i = Math.floor(Math.log(bytes) / Math.log(k))
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+}
+
+const isSensitiveConfigKey = (key) => {
+  if (!key) return false
+  const normalized = String(key).trim().toLowerCase()
+  if (!normalized) return false
+  if (normalized === 'system.site.logo.object') return true
+  return sensitiveConfigMarkers.some(marker => normalized.includes(marker))
+}
+
+const isUnchangedSensitivePlaceholder = (key, raw) => {
+  return isSensitiveConfigKey(key) && (raw === '******' || raw === undefined)
 }
 
 onMounted(() => {

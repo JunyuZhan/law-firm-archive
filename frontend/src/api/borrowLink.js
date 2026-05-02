@@ -1,11 +1,20 @@
 import request from './index'
 import axios from 'axios'
 
+const apiBaseURL = import.meta.env.VITE_API_BASE_URL || '/api'
+const publicRequest = axios.create({
+  baseURL: apiBaseURL,
+  timeout: 30000,
+  withCredentials: true,
+  xsrfCookieName: 'XSRF-TOKEN',
+  xsrfHeaderName: 'X-XSRF-TOKEN'
+})
+
 /**
  * 公开访问档案（无需认证）
  */
 export function accessArchive(token) {
-  return axios.get(`/api/open/borrow/access/${token}`)
+  return publicRequest.get(`/open/borrow/access/${token}`)
     .then(res => res.data)
 }
 
@@ -13,7 +22,7 @@ export function accessArchive(token) {
  * 记录下载（无需认证）
  */
 export function recordDownload(token, fileId) {
-  return axios.post(`/api/open/borrow/access/${token}/download/${fileId}`)
+  return publicRequest.post(`/open/borrow/access/${token}/download/${fileId}`)
     .then(res => res.data)
 }
 
@@ -21,7 +30,7 @@ export function recordDownload(token, fileId) {
  * 获取公开借阅文件预览链接
  */
 export function getBorrowFilePreviewUrl(token, fileId) {
-  return axios.get(`/api/open/borrow/access/${token}/preview/${fileId}`)
+  return publicRequest.get(`/open/borrow/access/${token}/preview/${fileId}`)
     .then(res => res.data)
 }
 
@@ -29,7 +38,7 @@ export function getBorrowFilePreviewUrl(token, fileId) {
  * 获取公开借阅文件下载链接
  */
 export function getBorrowFileDownloadUrl(token, fileId) {
-  return axios.get(`/api/open/borrow/access/${token}/download-url/${fileId}`)
+  return publicRequest.get(`/open/borrow/access/${token}/download-url/${fileId}`)
     .then(res => res.data)
 }
 

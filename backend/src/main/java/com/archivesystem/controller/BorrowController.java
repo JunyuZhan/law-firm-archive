@@ -3,7 +3,10 @@ package com.archivesystem.controller;
 import com.archivesystem.common.PageResult;
 import com.archivesystem.common.Result;
 import com.archivesystem.dto.archive.ArchiveDTO;
+import com.archivesystem.dto.borrow.BorrowAvailabilityResponse;
 import com.archivesystem.dto.borrow.BorrowApplyRequest;
+import com.archivesystem.dto.borrow.BorrowApplicationSummaryResponse;
+import com.archivesystem.dto.borrow.BorrowApplicationResponse;
 import com.archivesystem.dto.borrow.BorrowRejectRequest;
 import com.archivesystem.entity.BorrowApplication;
 import com.archivesystem.entity.Archive;
@@ -46,7 +49,7 @@ public class BorrowController {
     @PostMapping("/apply")
     @Operation(summary = "提交借阅申请")
     @PreAuthorize("isAuthenticated()")
-    public Result<BorrowApplication> apply(@Valid @RequestBody BorrowApplyRequest request) {
+    public Result<BorrowApplicationSummaryResponse> apply(@Valid @RequestBody BorrowApplyRequest request) {
         BorrowApplication application = borrowService.apply(
             request.getArchiveId(), 
             request.getBorrowPurpose(), 
@@ -54,7 +57,7 @@ public class BorrowController {
             request.getExpectedReturnDate(), 
             request.getRemarks()
         );
-        return Result.success("申请提交成功", application);
+        return Result.success("申请提交成功", BorrowApplicationSummaryResponse.from(application));
     }
 
     /**
@@ -64,9 +67,9 @@ public class BorrowController {
     @GetMapping("/{id}")
     @Operation(summary = "获取借阅申请详情")
     @PreAuthorize("isAuthenticated()")
-    public Result<BorrowApplication> getById(@PathVariable Long id) {
+    public Result<BorrowApplicationResponse> getById(@PathVariable Long id) {
         BorrowApplication application = borrowService.getById(id);
-        return Result.success(application);
+        return Result.success(BorrowApplicationResponse.from(application));
     }
 
     /**
@@ -75,7 +78,7 @@ public class BorrowController {
     @GetMapping("/my")
     @Operation(summary = "获取我的申请列表")
     @PreAuthorize("isAuthenticated()")
-    public Result<PageResult<BorrowApplication>> getMyApplications(
+    public Result<PageResult<BorrowApplicationSummaryResponse>> getMyApplications(
             @RequestParam(required = false) @Parameter(description = "申请状态") String status,
             @RequestParam(required = false) @Parameter(description = "借阅方式") String borrowType,
             @RequestParam(required = false) @Parameter(description = "关键词") String keyword,
@@ -83,7 +86,7 @@ public class BorrowController {
             @RequestParam(defaultValue = "20") @Min(value = 1, message = "每页条数最小为1") @Max(value = 100, message = "每页条数最大为100") Integer pageSize) {
         Long userId = SecurityUtils.getCurrentUserId();
         PageResult<BorrowApplication> result = borrowService.getMyApplications(userId, status, borrowType, keyword, pageNum, pageSize);
-        return Result.success(result);
+        return Result.success(mapBorrowPage(result));
     }
 
     /**
@@ -104,13 +107,13 @@ public class BorrowController {
     @GetMapping("/pending")
     @Operation(summary = "获取待审批列表")
     @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
-    public Result<PageResult<BorrowApplication>> getPendingList(
+    public Result<PageResult<BorrowApplicationSummaryResponse>> getPendingList(
             @RequestParam(required = false) @Parameter(description = "借阅方式") String borrowType,
             @RequestParam(required = false) @Parameter(description = "关键词") String keyword,
             @RequestParam(defaultValue = "1") @Min(value = 1, message = "页码最小为1") Integer pageNum,
             @RequestParam(defaultValue = "20") @Min(value = 1, message = "每页条数最小为1") @Max(value = 100, message = "每页条数最大为100") Integer pageSize) {
         PageResult<BorrowApplication> result = borrowService.getPendingList(borrowType, keyword, pageNum, pageSize);
-        return Result.success(result);
+        return Result.success(mapBorrowPage(result));
     }
 
     /**
@@ -119,13 +122,13 @@ public class BorrowController {
     @GetMapping("/approved")
     @Operation(summary = "获取待借出列表")
     @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
-    public Result<PageResult<BorrowApplication>> getApprovedList(
+    public Result<PageResult<BorrowApplicationSummaryResponse>> getApprovedList(
             @RequestParam(required = false) @Parameter(description = "借阅方式") String borrowType,
             @RequestParam(required = false) @Parameter(description = "关键词") String keyword,
             @RequestParam(defaultValue = "1") @Min(value = 1, message = "页码最小为1") Integer pageNum,
             @RequestParam(defaultValue = "20") @Min(value = 1, message = "每页条数最小为1") @Max(value = 100, message = "每页条数最大为100") Integer pageSize) {
         PageResult<BorrowApplication> result = borrowService.getApprovedList(borrowType, keyword, pageNum, pageSize);
-        return Result.success(result);
+        return Result.success(mapBorrowPage(result));
     }
 
     /**
@@ -198,9 +201,9 @@ public class BorrowController {
     @GetMapping("/overdue")
     @Operation(summary = "获取逾期列表")
     @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ARCHIVE_MANAGER')")
-    public Result<List<BorrowApplication>> getOverdueList() {
+    public Result<List<BorrowApplicationSummaryResponse>> getOverdueList() {
         List<BorrowApplication> list = borrowService.getOverdueList();
-        return Result.success(list);
+        return Result.success(list.stream().map(BorrowApplicationSummaryResponse::from).toList());
     }
 
     /**
@@ -209,28 +212,39 @@ public class BorrowController {
     @GetMapping("/check/{archiveId}")
     @Operation(summary = "检查档案是否可借阅")
     @PreAuthorize("isAuthenticated()")
-    public Result<Map<String, Object>> checkAvailable(@PathVariable Long archiveId) {
+    public Result<BorrowAvailabilityResponse> checkAvailable(@PathVariable Long archiveId) {
         BorrowApplication current = borrowService.getCurrentByArchiveId(archiveId);
         ArchiveDTO archive = archiveService.getById(archiveId);
         java.util.List<String> allowedBorrowTypes = resolveAllowedBorrowTypes(archive);
         boolean available = current == null
                 && Archive.STATUS_STORED.equals(archive.getStatus())
                 && !allowedBorrowTypes.isEmpty();
-
-        Map<String, Object> result = new java.util.HashMap<>();
-        result.put("available", available);
-        result.put("allowedBorrowTypes", allowedBorrowTypes);
-        result.put("borrowRules", buildBorrowRules(archive, allowedBorrowTypes));
+        String unavailableReason = null;
+        boolean hasCurrentApplication = current != null;
         if (!Archive.STATUS_STORED.equals(archive.getStatus())) {
-            result.put("unavailableReason", "仅已归档档案可申请借阅");
+            unavailableReason = "仅已归档档案可申请借阅";
         } else if (allowedBorrowTypes.isEmpty()) {
-            result.put("unavailableReason", "当前档案缺少可利用载体，暂不支持借阅申请");
+            unavailableReason = "当前档案缺少可利用载体，暂不支持借阅申请";
         }
-        if (current != null) {
-            result.put("currentApplication", current);
-            result.put("unavailableReason", "该档案已有进行中的借阅申请");
+        if (hasCurrentApplication) {
+            unavailableReason = "该档案已有进行中的借阅申请";
         }
-        return Result.success(result);
+        return Result.success(BorrowAvailabilityResponse.builder()
+                .available(available)
+                .hasCurrentApplication(hasCurrentApplication)
+                .allowedBorrowTypes(allowedBorrowTypes)
+                .unavailableReason(unavailableReason)
+                .borrowRules(buildBorrowRules(archive, allowedBorrowTypes))
+                .build());
+    }
+
+    private PageResult<BorrowApplicationSummaryResponse> mapBorrowPage(PageResult<BorrowApplication> result) {
+        return PageResult.of(
+                result.getCurrent(),
+                result.getSize(),
+                result.getTotal(),
+                result.getRecords().stream().map(BorrowApplicationSummaryResponse::from).toList()
+        );
     }
 
     private java.util.List<String> resolveAllowedBorrowTypes(ArchiveDTO archive) {
@@ -255,15 +269,15 @@ public class BorrowController {
         return result;
     }
 
-    private Map<String, Object> buildBorrowRules(ArchiveDTO archive, java.util.List<String> allowedBorrowTypes) {
+    private BorrowAvailabilityResponse.BorrowRulesResponse buildBorrowRules(ArchiveDTO archive, java.util.List<String> allowedBorrowTypes) {
         Map<String, Integer> maxBorrowDays = new java.util.LinkedHashMap<>();
         for (String type : allowedBorrowTypes) {
             maxBorrowDays.put(type, resolveMaxBorrowDays(archive, type));
         }
-        Map<String, Object> rules = new java.util.LinkedHashMap<>();
-        rules.put("maxBorrowDays", maxBorrowDays);
-        rules.put("ruleSummary", buildRuleSummary(maxBorrowDays));
-        return rules;
+        return BorrowAvailabilityResponse.BorrowRulesResponse.builder()
+                .maxBorrowDays(maxBorrowDays)
+                .ruleSummary(buildRuleSummary(maxBorrowDays))
+                .build();
     }
 
     private int resolveMaxBorrowDays(ArchiveDTO archive, String borrowType) {

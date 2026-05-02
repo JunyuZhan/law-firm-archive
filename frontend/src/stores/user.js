@@ -1,9 +1,9 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { login as loginApi, logout as logoutApi, getCurrentUser } from '@/api/auth'
+import { login as loginApi, logout as logoutApi, getCurrentUser, refreshToken as refreshTokenApi } from '@/api/auth'
 import router from '@/router'
 import { secureStorage, setupIdleTimeout, escapeHtml } from '@/utils/security'
-import { normalizeUserType } from '@/utils/permission'
+import { ROLES, hasPermission, normalizeUserType } from '@/utils/permission'
 
 export const useUserStore = defineStore('user', () => {
   // 状态
@@ -17,32 +17,61 @@ export const useUserStore = defineStore('user', () => {
   let cleanupIdleTimeout = null
 
   // 计算属性
-  const isAdmin = computed(() => userType.value === 'SYSTEM_ADMIN')
-  const isArchivist = computed(() => ['SYSTEM_ADMIN', 'ARCHIVE_MANAGER'].includes(userType.value))
+  const isAdmin = computed(() => hasPermission([ROLES.SYSTEM_ADMIN], userType.value))
+  const isArchivist = computed(() => hasPermission([ROLES.SYSTEM_ADMIN, ROLES.ARCHIVE_MANAGER], userType.value))
+
+  function persistUserInfo(data) {
+    const userInfo = {
+      userId: data.userId,
+      username: data.username,
+      realName: data.realName,
+      userType: data.userType
+    }
+    localStorage.setItem('userInfo', JSON.stringify(userInfo))
+  }
 
   // 初始化 - 从localStorage恢复状态
   function init() {
     const token = secureStorage.getAccessToken()
-    if (token) {
-      const savedUser = localStorage.getItem('userInfo')
-      if (savedUser) {
-        try {
-          const user = JSON.parse(savedUser)
-          // 对用户信息进行安全处理
-          userId.value = user.userId
-          username.value = escapeHtml(user.username)
-          realName.value = escapeHtml(user.realName)
-          userType.value = normalizeUserType(user.userType)
-          isLoggedIn.value = true
-          
-          // 设置空闲超时
-          setupIdleLogout()
-        } catch (e) {
-          console.error('解析用户信息失败', e)
-          clearUser()
-        }
+    const refreshToken = secureStorage.getRefreshToken()
+    if (!token) {
+      if (!refreshToken) {
+        clearUser()
+      } else {
+        userId.value = null
+        username.value = ''
+        realName.value = ''
+        userType.value = ''
+        isLoggedIn.value = false
+      }
+      return
+    }
+
+    const savedUser = localStorage.getItem('userInfo')
+    if (savedUser) {
+      try {
+        const user = JSON.parse(savedUser)
+        // 对用户信息进行安全处理
+        userId.value = user.userId
+        username.value = escapeHtml(user.username)
+        realName.value = escapeHtml(user.realName)
+        userType.value = normalizeUserType(user.userType)
+        isLoggedIn.value = true
+        
+        // 设置空闲超时
+        setupIdleLogout()
+        return
+      } catch (e) {
+        console.error('解析用户信息失败', e)
+        localStorage.removeItem('userInfo')
       }
     }
+
+    userId.value = null
+    username.value = ''
+    realName.value = ''
+    userType.value = ''
+    isLoggedIn.value = false
   }
 
   // 设置空闲超时自动登出
@@ -68,13 +97,12 @@ export const useUserStore = defineStore('user', () => {
     
     // 保存用户信息（非敏感，可存localStorage）
     const effectiveType = normalizeUserType(data.userType)
-    const userInfo = {
+    persistUserInfo({
       userId: data.userId,
       username: data.username,
       realName: data.realName,
       userType: effectiveType
-    }
-    localStorage.setItem('userInfo', JSON.stringify(userInfo))
+    })
     
     // 更新状态
     userId.value = data.userId
@@ -134,13 +162,14 @@ export const useUserStore = defineStore('user', () => {
       isLoggedIn.value = true
       
       // 更新localStorage（与后端一致的产品角色，展示时会再次转义）
-      const userInfo = {
+      persistUserInfo({
         userId: data.userId,
         username: data.username,
         realName: data.realName,
         userType: effectiveType
-      }
-      localStorage.setItem('userInfo', JSON.stringify(userInfo))
+      })
+
+      setupIdleLogout()
       
       return data
     } catch (e) {
@@ -148,6 +177,58 @@ export const useUserStore = defineStore('user', () => {
       clearUser()
       throw e
     }
+  }
+
+  async function refreshSession() {
+    const currentRefreshToken = secureStorage.getRefreshToken()
+    if (!currentRefreshToken) {
+      clearUser()
+      throw new Error('缺少刷新令牌')
+    }
+
+    try {
+      const res = await refreshTokenApi(currentRefreshToken)
+      const data = res.data
+      const effectiveType = normalizeUserType(data.userType)
+
+      secureStorage.setAccessToken(data.accessToken)
+      if (data.refreshToken) {
+        secureStorage.setRefreshToken(data.refreshToken)
+      }
+
+      userId.value = data.userId
+      username.value = escapeHtml(data.username)
+      realName.value = escapeHtml(data.realName)
+      userType.value = effectiveType
+      isLoggedIn.value = true
+
+      persistUserInfo({
+        userId: data.userId,
+        username: data.username,
+        realName: data.realName,
+        userType: effectiveType
+      })
+
+      setupIdleLogout()
+      return data
+    } catch (e) {
+      clearUser()
+      throw e
+    }
+  }
+
+  function updateProfileSnapshot(profile) {
+    if (!isLoggedIn.value) return
+
+    const nextRealName = profile?.realName ?? realName.value
+    realName.value = escapeHtml(nextRealName || '')
+
+    persistUserInfo({
+      userId: userId.value,
+      username: username.value,
+      realName: nextRealName || '',
+      userType: userType.value
+    })
   }
 
   return {
@@ -162,6 +243,8 @@ export const useUserStore = defineStore('user', () => {
     login,
     logout,
     clearUser,
-    fetchCurrentUser
+    fetchCurrentUser,
+    refreshSession,
+    updateProfileSnapshot
   }
 })

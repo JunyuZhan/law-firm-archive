@@ -24,6 +24,7 @@ import org.springframework.amqp.AmqpException;
 @Component
 @RequiredArgsConstructor
 public class CallbackConsumer {
+    private static final String CALLBACK_FAILURE_PUBLIC_MESSAGE = "回调失败，请联系系统管理员查看系统日志";
 
     private final CallbackService callbackService;
     private final RabbitTemplate rabbitTemplate;
@@ -96,7 +97,7 @@ public class CallbackConsumer {
         } catch (Exception e) {
             log.error("回调处理异常: messageId={}", messageId, e);
             try {
-                handleRetry(message, channel, deliveryTag, e.getMessage());
+                handleRetry(message, channel, deliveryTag, CALLBACK_FAILURE_PUBLIC_MESSAGE);
             } catch (IOException ioException) {
                 log.error("消息确认失败", ioException);
             }

@@ -2,6 +2,8 @@ import { MANAGER_ROLES, REPORT_ROLES, REVIEW_ROLES, ROLES } from '@/utils/permis
 
 export const ROLE_LABELS = {
   [ROLES.SYSTEM_ADMIN]: '系统管理员',
+  [ROLES.SECURITY_ADMIN]: '安全保密员',
+  [ROLES.AUDIT_ADMIN]: '安全审计员',
   [ROLES.ARCHIVE_REVIEWER]: '档案审核员',
   [ROLES.ARCHIVE_MANAGER]: '档案管理员',
   [ROLES.USER]: '普通用户'
@@ -111,7 +113,7 @@ export const ADMIN_GROUPS = [
   {
     key: 'admin-control',
     title: '管理员手册',
-        description: '面向系统管理员，聚焦后台配置、权限和恢复。',
+    description: '面向具备系统管理权限的账号，聚焦后台配置、权限和恢复。',
     entries: [
       {
         title: '权限管理',
@@ -213,9 +215,9 @@ export const ROLE_GUIDES = [
   },
   {
     key: 'system-admin',
-    title: '系统管理员手册',
+    title: '系统管理手册',
     roles: [ROLES.SYSTEM_ADMIN],
-    summary: '适合负责站点展示、规则与运行参数、备份恢复和全局策略的管理员。',
+    summary: '适合负责站点展示、规则与运行参数、备份恢复和全局策略的系统管理账号。',
     scenarios: [
       '启用系统后先在「站点与展示」完善名称、Logo、备案号与版权。',
       '按业务要求维护档案号规则、上传限制、借阅策略等运行参数。',

@@ -955,6 +955,7 @@ INSERT INTO sys_config (config_key, config_value, config_type, config_group, des
 ('system.upgrade.frontend_repository', 'law-firm-archive/frontend', 'STRING', 'SYSTEM', '前端镜像路径', true, 82),
 ('system.upgrade.registry_username', '', 'STRING', 'SYSTEM', '仓库只读用户名（可选）', true, 83),
 ('system.upgrade.registry_password', '', 'STRING', 'SYSTEM', '仓库只读密码（可选）', true, 84),
+('system.upgrade.dist_center_latest_json_url', '', 'STRING', 'SYSTEM', '分发中心一键安装/升级所托管的 versions/latest.json 完整 URL（可选；与 DIST_CENTER_LATEST_JSON_URL 二选一，后台优先）', true, 85),
 -- 系统参数 - 站点信息
 ('system.site.name', '档案管理系统', 'STRING', 'SITE', '系统名称', true, 1),
 ('system.site.name.en', 'Archive Management System', 'STRING', 'SITE', '系统英文名称', true, 2),

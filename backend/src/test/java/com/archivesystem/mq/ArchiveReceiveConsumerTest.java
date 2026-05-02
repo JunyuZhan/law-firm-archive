@@ -27,7 +27,9 @@ import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.concurrent.TimeUnit;
+import org.mockito.ArgumentCaptor;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 /**
@@ -177,15 +179,24 @@ class ArchiveReceiveConsumerTest {
 
     @Test
     void testHandleArchiveReceive_FileDownloadFailed() throws Exception {
+        PushRecord pushRecord = new PushRecord();
+        pushRecord.setId(10L);
+
         when(archiveMapper.selectById(1L)).thenReturn(testArchive);
         when(archiveMapper.updateById(any(Archive.class))).thenReturn(1);
         when(fileStorageService.downloadAndStore(anyLong(), anyString(), anyString(), anyString(), anyInt()))
                 .thenThrow(new RuntimeException("下载失败"));
+        when(pushRecordMapper.selectOne(any())).thenReturn(pushRecord);
         doNothing().when(channel).basicAck(anyLong(), anyBoolean());
 
         archiveReceiveConsumer.handleArchiveReceive(testMessage, amqpMessage, channel);
 
         verify(channel).basicAck(1L, false);
+        ArgumentCaptor<CallbackMessage> callbackCaptor = ArgumentCaptor.forClass(CallbackMessage.class);
+        verify(rabbitTemplate).convertAndSend(eq("archive.exchange"), eq("archive.callback"), callbackCaptor.capture());
+        assertEquals("档案接收处理失败，请联系系统管理员查看系统日志", callbackCaptor.getValue().getErrorMessage());
+        verify(pushRecordMapper, atLeastOnce()).updateById(argThat(record ->
+                "档案接收处理失败，请联系系统管理员查看系统日志".equals(record.getErrorMessage())));
         // updateById is called twice: once for PROCESSING, once for final status
         verify(archiveMapper, times(2)).updateById(any(Archive.class));
     }
@@ -202,6 +213,8 @@ class ArchiveReceiveConsumerTest {
         DigitalFile digitalFile = new DigitalFile();
         digitalFile.setId(1L);
         digitalFile.setFileSize(1024L);
+        PushRecord pushRecord = new PushRecord();
+        pushRecord.setId(10L);
 
         when(archiveMapper.selectById(1L)).thenReturn(testArchive);
         when(archiveMapper.updateById(any(Archive.class))).thenReturn(1);
@@ -209,11 +222,17 @@ class ArchiveReceiveConsumerTest {
                 .thenReturn(digitalFile);
         when(fileStorageService.downloadAndStore(eq(1L), eq("http://example.com/test2.pdf"), anyString(), any(), anyInt()))
                 .thenThrow(new RuntimeException("下载失败"));
+        when(pushRecordMapper.selectOne(any())).thenReturn(pushRecord);
         doNothing().when(channel).basicAck(anyLong(), anyBoolean());
 
         archiveReceiveConsumer.handleArchiveReceive(testMessage, amqpMessage, channel);
 
         verify(channel).basicAck(1L, false);
+        ArgumentCaptor<CallbackMessage> callbackCaptor = ArgumentCaptor.forClass(CallbackMessage.class);
+        verify(rabbitTemplate).convertAndSend(eq("archive.exchange"), eq("archive.callback"), callbackCaptor.capture());
+        assertEquals("部分电子文件处理失败，请联系系统管理员查看系统日志", callbackCaptor.getValue().getErrorMessage());
+        verify(pushRecordMapper, atLeastOnce()).updateById(argThat(record ->
+                "部分电子文件处理失败，请联系系统管理员查看系统日志".equals(record.getErrorMessage())));
         // updateById is called twice: once for PROCESSING, once for PARTIAL status
         verify(archiveMapper, times(2)).updateById(any(Archive.class));
     }
@@ -309,12 +328,15 @@ class ArchiveReceiveConsumerTest {
         testMessage.setRetryCount(3);
         testMessage.setMaxRetries(3);
         testMessage.setCallbackUrl("http://callback.example.com");
+        PushRecord pushRecord = new PushRecord();
+        pushRecord.setId(10L);
 
         // Use thenReturn for first call (for archive not found check in error handler), 
         // then throw exception for normal flow
         when(archiveMapper.selectById(1L))
                 .thenThrow(new RuntimeException("数据库异常"))
                 .thenReturn(testArchive);
+        when(pushRecordMapper.selectOne(any())).thenReturn(pushRecord);
         when(archiveMapper.updateById(any(Archive.class))).thenReturn(1);
         doNothing().when(channel).basicReject(anyLong(), anyBoolean());
 
@@ -322,6 +344,11 @@ class ArchiveReceiveConsumerTest {
 
         verify(metricsConfig).recordArchiveReceiveFailed();
         verify(channel).basicReject(1L, false);
+        ArgumentCaptor<CallbackMessage> callbackCaptor = ArgumentCaptor.forClass(CallbackMessage.class);
+        verify(rabbitTemplate).convertAndSend(eq("archive.exchange"), eq("archive.callback"), callbackCaptor.capture());
+        assertEquals("档案接收处理失败，请联系系统管理员查看系统日志", callbackCaptor.getValue().getErrorMessage());
+        verify(pushRecordMapper, atLeastOnce()).updateById(argThat(record ->
+                "档案接收处理失败，请联系系统管理员查看系统日志".equals(record.getErrorMessage())));
     }
 
     @Test

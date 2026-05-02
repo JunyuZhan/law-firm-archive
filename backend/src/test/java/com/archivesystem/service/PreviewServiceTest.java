@@ -1,8 +1,10 @@
 package com.archivesystem.service;
 
 import com.archivesystem.common.exception.NotFoundException;
+import com.archivesystem.common.exception.ForbiddenException;
 import com.archivesystem.entity.DigitalFile;
 import com.archivesystem.repository.DigitalFileMapper;
+import com.archivesystem.service.FileStorageService;
 import com.archivesystem.service.impl.PreviewServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -34,6 +36,9 @@ class PreviewServiceTest {
     private DigitalFileMapper digitalFileMapper;
 
     @Mock
+    private FileStorageService fileStorageService;
+
+    @Mock
     private AccessLogService accessLogService;
 
     @InjectMocks
@@ -63,10 +68,13 @@ class PreviewServiceTest {
     void testGenerateThumbnail_AlreadyHasThumbnail() {
         testFile.setThumbnailPath("thumbnails/existing.jpg");
         when(digitalFileMapper.selectById(1L)).thenReturn(testFile);
+        when(minioService.getPresignedUrl("thumbnails/existing.jpg", 3600))
+                .thenReturn("/storage/thumbnails/existing.jpg?token=xxx");
 
         String result = previewService.generateThumbnail(1L);
 
-        assertEquals("thumbnails/existing.jpg", result);
+        assertEquals("/storage/thumbnails/existing.jpg?token=xxx", result);
+        verify(fileStorageService).assertPreviewAccess(1L);
         verify(minioService, never()).getFile(anyString());
     }
 
@@ -101,7 +109,7 @@ class PreviewServiceTest {
     @Test
     void testGetPreviewUrl_PreviewableFile() {
         when(digitalFileMapper.selectById(1L)).thenReturn(testFile);
-        when(minioService.getPresignedUrl(anyString(), anyInt())).thenReturn("http://minio/test.jpg");
+        when(fileStorageService.getPreviewUrl(1L)).thenReturn("http://minio/test.jpg");
 
         String result = previewService.getPreviewUrl(1L, "192.168.1.1");
 
@@ -114,8 +122,7 @@ class PreviewServiceTest {
     void testGetPreviewUrl_WithPreviewPath() {
         testFile.setPreviewPath("previews/preview.pdf");
         when(digitalFileMapper.selectById(1L)).thenReturn(testFile);
-        when(minioService.getPresignedUrl(eq("previews/preview.pdf"), anyInt()))
-            .thenReturn("http://minio/preview.pdf");
+        when(fileStorageService.getPreviewUrl(1L)).thenReturn("http://minio/preview.pdf");
 
         String result = previewService.getPreviewUrl(1L, "192.168.1.1");
 
@@ -127,6 +134,7 @@ class PreviewServiceTest {
     void testGetPreviewUrl_UnsupportedType() {
         testFile.setFileExtension("doc");
         when(digitalFileMapper.selectById(1L)).thenReturn(testFile);
+        when(fileStorageService.getPreviewUrl(1L)).thenReturn(null);
 
         String result = previewService.getPreviewUrl(1L, "192.168.1.1");
 
@@ -138,10 +146,20 @@ class PreviewServiceTest {
     void testGetPreviewUrl_NullExtension() {
         testFile.setFileExtension(null);
         when(digitalFileMapper.selectById(1L)).thenReturn(testFile);
+        when(fileStorageService.getPreviewUrl(1L)).thenReturn(null);
 
         String result = previewService.getPreviewUrl(1L, "192.168.1.1");
 
         assertNull(result);
+    }
+
+    @Test
+    void testGetPreviewUrl_ForbiddenShouldNotLogAccess() {
+        when(digitalFileMapper.selectById(1L)).thenReturn(testFile);
+        when(fileStorageService.getPreviewUrl(1L)).thenThrow(new ForbiddenException("无权访问该文件"));
+
+        assertThrows(ForbiddenException.class, () -> previewService.getPreviewUrl(1L, "192.168.1.1"));
+        verify(accessLogService, never()).logPreview(any(), any(), any());
     }
 
     @Test
@@ -221,6 +239,16 @@ class PreviewServiceTest {
     }
 
     @Test
+    void testGenerateThumbnail_ForbiddenShouldNotReadStorage() {
+        when(digitalFileMapper.selectById(1L)).thenReturn(testFile);
+        doThrow(new ForbiddenException("无权访问该文件")).when(fileStorageService).assertPreviewAccess(1L);
+
+        assertThrows(ForbiddenException.class, () -> previewService.generateThumbnail(1L));
+        verify(minioService, never()).getFile(anyString());
+        verify(minioService, never()).upload(anyString(), any(), anyLong(), anyString());
+    }
+
+    @Test
     void testGenerateThumbnail_Success() throws Exception {
         // 创建测试图片
         BufferedImage testImage = new BufferedImage(800, 600, BufferedImage.TYPE_INT_RGB);
@@ -240,11 +268,12 @@ class PreviewServiceTest {
         when(minioService.getFile(anyString())).thenReturn(new ByteArrayInputStream(imageData));
         doNothing().when(minioService).upload(anyString(), any(), anyLong(), anyString());
         when(digitalFileMapper.updateById(any(DigitalFile.class))).thenReturn(1);
+        when(minioService.getPresignedUrl(anyString(), eq(3600))).thenReturn("/storage/thumbnails/generated.jpg?token=xxx");
 
         String result = previewService.generateThumbnail(1L);
 
         assertNotNull(result);
-        assertTrue(result.contains("thumbnails/"));
+        assertTrue(result.startsWith("/storage/thumbnails/"));
         verify(minioService).upload(anyString(), any(), anyLong(), eq("image/jpeg"));
         verify(digitalFileMapper).updateById(any(DigitalFile.class));
     }
@@ -269,6 +298,7 @@ class PreviewServiceTest {
         when(minioService.getFile(anyString())).thenReturn(new ByteArrayInputStream(imageData));
         doNothing().when(minioService).upload(anyString(), any(), anyLong(), anyString());
         when(digitalFileMapper.updateById(any(DigitalFile.class))).thenReturn(1);
+        when(minioService.getPresignedUrl(anyString(), eq(3600))).thenReturn("/storage/thumbnails/small.png?token=xxx");
 
         String result = previewService.generateThumbnail(1L);
 

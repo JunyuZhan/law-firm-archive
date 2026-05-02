@@ -48,6 +48,9 @@ class OperationLogControllerTest {
         testLog.setOperationType("CREATE");
         testLog.setOperatorId(1L);
         testLog.setOperatorName("admin");
+        testLog.setOperatorIp("10.0.0.1");
+        testLog.setOperatorUa("Mozilla/5.0 secret");
+        testLog.setOperationDetail(Map.of("token", "secret-token", "action", "create"));
         testLog.setOperatedAt(LocalDateTime.now());
         testLog.setOperationDesc("创建档案");
     }
@@ -67,7 +70,11 @@ class OperationLogControllerTest {
                         .param("pageSize", "20"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
-                .andExpect(jsonPath("$.data.records[0].operationType").value("CREATE"));
+                .andExpect(jsonPath("$.data.records[0].operationType").value("CREATE"))
+                .andExpect(jsonPath("$.data.records[0].archiveId").doesNotExist())
+                .andExpect(jsonPath("$.data.records[0].operatorId").doesNotExist())
+                .andExpect(jsonPath("$.data.records[0].operatorUa").doesNotExist())
+                .andExpect(jsonPath("$.data.records[0].operationDetail").doesNotExist());
     }
 
     @Test
@@ -96,7 +103,11 @@ class OperationLogControllerTest {
         mockMvc.perform(get("/operation-logs/archive/1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
-                .andExpect(jsonPath("$.data[0].objectType").value("ARCHIVE"));
+                .andExpect(jsonPath("$.data[0].objectType").value("ARCHIVE"))
+                .andExpect(jsonPath("$.data[0].archiveId").doesNotExist())
+                .andExpect(jsonPath("$.data[0].operatorId").doesNotExist())
+                .andExpect(jsonPath("$.data[0].operatorUa").doesNotExist())
+                .andExpect(jsonPath("$.data[0].operationDetail").doesNotExist());
     }
 
     @Test
@@ -106,7 +117,23 @@ class OperationLogControllerTest {
         mockMvc.perform(get("/operation-logs/object/ARCHIVE/ARC-001"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
-                .andExpect(jsonPath("$.data[0].objectId").value("ARC-001"));
+                .andExpect(jsonPath("$.data[0].objectId").value("ARC-001"))
+                .andExpect(jsonPath("$.data[0].archiveId").doesNotExist())
+                .andExpect(jsonPath("$.data[0].operatorId").doesNotExist())
+                .andExpect(jsonPath("$.data[0].operatorUa").doesNotExist())
+                .andExpect(jsonPath("$.data[0].operationDetail").doesNotExist());
+    }
+
+    @Test
+    void testGetById_ShouldIncludeSensitiveDetail() throws Exception {
+        when(operationLogService.getById(1L)).thenReturn(testLog);
+
+        mockMvc.perform(get("/operation-logs/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("200"))
+                .andExpect(jsonPath("$.data.id").value(1))
+                .andExpect(jsonPath("$.data.operatorUa").value("Mozilla/5.0 secret"))
+                .andExpect(jsonPath("$.data.operationDetail.action").value("create"));
     }
 
     @Test

@@ -137,6 +137,18 @@ class UserServiceTest {
     }
 
     @Test
+    void testDeleteUser_BuiltInUserForbidden() {
+        User builtInUser = new User();
+        builtInUser.setId(1L);
+        builtInUser.setUsername("admin");
+        when(userMapper.selectById(1L)).thenReturn(builtInUser);
+
+        assertThrows(BusinessException.class, () -> userService.delete(1L));
+        verify(userRoleMapper, never()).deleteByUserId(anyLong());
+        verify(userMapper, never()).deleteById(anyLong());
+    }
+
+    @Test
     void testResetPassword() {
         when(userMapper.selectById(1L)).thenReturn(testUser);
         when(passwordEncoder.encode(anyString())).thenReturn("newEncodedPassword");
@@ -187,6 +199,19 @@ class UserServiceTest {
 
         verify(userMapper).updateById(any(User.class));
         verify(tokenBlacklistService).blacklistUserTokens(1L, 604800L);
+    }
+
+    @Test
+    void testUpdateStatus_BuiltInUserCannotBeDisabled() {
+        User builtInUser = new User();
+        builtInUser.setId(1L);
+        builtInUser.setUsername("admin");
+        builtInUser.setStatus(User.STATUS_ACTIVE);
+        when(userMapper.selectById(1L)).thenReturn(builtInUser);
+
+        assertThrows(BusinessException.class, () -> userService.updateStatus(1L, User.STATUS_DISABLED));
+        verify(userMapper, never()).updateById(any(User.class));
+        verify(tokenBlacklistService, never()).blacklistUserTokens(anyLong(), anyLong());
     }
 
     @Test
@@ -251,6 +276,38 @@ class UserServiceTest {
 
         assertNotNull(result);
         verify(userMapper).updateById(any(User.class));
+    }
+
+    @Test
+    void testUpdateUser_BuiltInUsernameImmutable() {
+        User builtInUser = new User();
+        builtInUser.setId(1L);
+        builtInUser.setUsername("admin");
+        builtInUser.setUserType(User.TYPE_SYSTEM_ADMIN);
+        when(userMapper.selectById(1L)).thenReturn(builtInUser);
+
+        User updateData = new User();
+        updateData.setUsername("admin2");
+        updateData.setUserType(User.TYPE_SYSTEM_ADMIN);
+
+        assertThrows(BusinessException.class, () -> userService.update(1L, updateData));
+        verify(userMapper, never()).updateById(any(User.class));
+    }
+
+    @Test
+    void testUpdateUser_BuiltInUserTypeImmutable() {
+        User builtInUser = new User();
+        builtInUser.setId(1L);
+        builtInUser.setUsername("security");
+        builtInUser.setUserType(User.TYPE_SECURITY_ADMIN);
+        when(userMapper.selectById(1L)).thenReturn(builtInUser);
+
+        User updateData = new User();
+        updateData.setUsername("security");
+        updateData.setUserType(User.TYPE_USER);
+
+        assertThrows(BusinessException.class, () -> userService.update(1L, updateData));
+        verify(userMapper, never()).updateById(any(User.class));
     }
 
     @Test

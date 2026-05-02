@@ -134,7 +134,7 @@
               系统管理
             </h2>
             <p class="doc-chapter-intro">
-              面向系统管理员：权限、站点与参数、备份恢复、日志与运行信息等后台能力。
+              面向具备系统管理权限的账号：权限、站点与参数、备份恢复、日志与运行信息等后台能力。
             </p>
             <template
               v-for="group in visibleAdminGroups"
@@ -317,7 +317,7 @@
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { useUserStore } from '@/stores'
+import { useUserStore } from '@/stores/user'
 import { ADMIN_GROUPS, FAQ_ITEMS, HELP_GROUPS, ROLE_GUIDES, ROLE_LABELS } from '@/utils/helpCenter'
 import { ROLES, hasPermission } from '@/utils/permission'
 
@@ -372,35 +372,35 @@ const permissionRows = computed(() => [
   },
   {
     module: '档案设置',
-    roles: '系统管理员、档案管理员',
+    roles: '系统管理员、安全保密员、安全审计员、档案管理员',
     enabled: hasPermission([ROLES.SYSTEM_ADMIN, ROLES.ARCHIVE_MANAGER], currentRole.value),
     status: hasPermission([ROLES.SYSTEM_ADMIN, ROLES.ARCHIVE_MANAGER], currentRole.value) ? '可操作' : '不可见',
     description: '维护分类、全宗、来源、库位等基础档案参数。'
   },
   {
     module: '借阅链接',
-    roles: '系统管理员、档案管理员',
+    roles: '系统管理员、安全保密员、安全审计员、档案管理员',
     enabled: hasPermission([ROLES.SYSTEM_ADMIN, ROLES.ARCHIVE_MANAGER], currentRole.value),
     status: hasPermission([ROLES.SYSTEM_ADMIN, ROLES.ARCHIVE_MANAGER], currentRole.value) ? '可操作' : '不可见',
     description: '用于发放电子借阅外链，并控制有效期和次数。'
   },
   {
     module: '权限管理',
-    roles: '系统管理员',
+    roles: '系统管理员、安全保密员、安全审计员',
     enabled: hasPermission([ROLES.SYSTEM_ADMIN], currentRole.value),
     status: hasPermission([ROLES.SYSTEM_ADMIN], currentRole.value) ? '可操作' : '不可见',
     description: '用于维护账号、角色和授权边界。'
   },
   {
     module: '操作日志',
-    roles: '系统管理员',
+    roles: '系统管理员、安全保密员、安全审计员',
     enabled: hasPermission([ROLES.SYSTEM_ADMIN], currentRole.value),
     status: hasPermission([ROLES.SYSTEM_ADMIN], currentRole.value) ? '可操作' : '不可见',
     description: '用于查看关键操作记录和追溯责任。'
   },
   {
     module: '站点、规则与备份',
-    roles: '系统管理员',
+    roles: '系统管理员、安全保密员、安全审计员',
     enabled: hasPermission([ROLES.SYSTEM_ADMIN], currentRole.value),
     status: hasPermission([ROLES.SYSTEM_ADMIN], currentRole.value) ? '可操作' : '不可见',
     description: '站点与展示：名称与 Logo 等外观。规则与运行参数：档案号、上传借阅与安全等策略。备份恢复：数据备份与还原。'

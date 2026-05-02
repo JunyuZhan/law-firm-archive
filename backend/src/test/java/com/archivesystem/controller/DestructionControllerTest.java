@@ -60,6 +60,8 @@ class DestructionControllerTest {
         params.put("archiveId", 100L);
         params.put("destructionReason", "保管期限已到");
         params.put("destructionMethod", "焚烧");
+        testRecord.setApproverId(9L);
+        testRecord.setCreatedAt(java.time.LocalDateTime.now());
 
         when(destructionService.apply(anyLong(), anyString(), anyString())).thenReturn(testRecord);
 
@@ -68,7 +70,13 @@ class DestructionControllerTest {
                         .content(objectMapper.writeValueAsString(params)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
-                .andExpect(jsonPath("$.message").value("销毁申请已提交"));
+                .andExpect(jsonPath("$.message").value("销毁申请已提交"))
+                .andExpect(jsonPath("$.data.archiveId").value(100))
+                .andExpect(jsonPath("$.data.status").value("PENDING"))
+                .andExpect(jsonPath("$.data.approverId").doesNotExist())
+                .andExpect(jsonPath("$.data.approvalComment").doesNotExist())
+                .andExpect(jsonPath("$.data.proposedAt").doesNotExist())
+                .andExpect(jsonPath("$.data.createdAt").doesNotExist());
 
         verify(destructionService).apply(100L, "保管期限已到", "焚烧");
     }
@@ -80,6 +88,7 @@ class DestructionControllerTest {
         params.put("destructionReason", "保管期限已到");
         params.put("destructionMethod", "焚烧");
 
+        testRecord.setExecutorId(12L);
         List<DestructionRecord> records = Arrays.asList(testRecord);
         when(destructionService.batchApply(anyList(), anyString(), anyString())).thenReturn(records);
 
@@ -88,25 +97,35 @@ class DestructionControllerTest {
                         .content(objectMapper.writeValueAsString(params)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
-                .andExpect(jsonPath("$.message").value("批量销毁申请已提交"));
+                .andExpect(jsonPath("$.message").value("批量销毁申请已提交"))
+                .andExpect(jsonPath("$.data[0].archiveId").value(100))
+                .andExpect(jsonPath("$.data[0].status").value("PENDING"))
+                .andExpect(jsonPath("$.data[0].executorId").doesNotExist())
+                .andExpect(jsonPath("$.data[0].approvalComment").doesNotExist())
+                .andExpect(jsonPath("$.data[0].proposedAt").doesNotExist());
 
         verify(destructionService).batchApply(anyList(), eq("保管期限已到"), eq("焚烧"));
     }
 
     @Test
     void testGetById() throws Exception {
+        testRecord.setApproverId(3L);
+        testRecord.setExecutorId(4L);
         when(destructionService.getById(1L)).thenReturn(testRecord);
 
         mockMvc.perform(get("/destructions/1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
-                .andExpect(jsonPath("$.data.id").value(1));
+                .andExpect(jsonPath("$.data.id").value(1))
+                .andExpect(jsonPath("$.data.approverId").doesNotExist())
+                .andExpect(jsonPath("$.data.executorId").doesNotExist());
 
         verify(destructionService).getById(1L);
     }
 
     @Test
     void testGetList() throws Exception {
+        testRecord.setCreatedAt(java.time.LocalDateTime.now());
         PageResult<DestructionRecord> pageResult = new PageResult<>(1L, 20L, 1L, 1L, Collections.singletonList(testRecord));
         when(destructionService.getList(anyString(), anyInt(), anyInt())).thenReturn(pageResult);
 
@@ -115,7 +134,9 @@ class DestructionControllerTest {
                         .param("pageNum", "1")
                         .param("pageSize", "20"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value("200"));
+                .andExpect(jsonPath("$.code").value("200"))
+                .andExpect(jsonPath("$.data.records[0].approvalComment").doesNotExist())
+                .andExpect(jsonPath("$.data.records[0].createdAt").doesNotExist());
 
         verify(destructionService).getList("PENDING", 1, 20);
     }
@@ -134,6 +155,7 @@ class DestructionControllerTest {
 
     @Test
     void testGetPendingList() throws Exception {
+        testRecord.setProposerId(7L);
         PageResult<DestructionRecord> pageResult = new PageResult<>(1L, 20L, 1L, 1L, Collections.singletonList(testRecord));
         when(destructionService.getPendingList(anyInt(), anyInt())).thenReturn(pageResult);
 
@@ -141,13 +163,16 @@ class DestructionControllerTest {
                         .param("pageNum", "1")
                         .param("pageSize", "20"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value("200"));
+                .andExpect(jsonPath("$.code").value("200"))
+                .andExpect(jsonPath("$.data.records[0].approvalComment").doesNotExist())
+                .andExpect(jsonPath("$.data.records[0].proposerId").doesNotExist());
 
         verify(destructionService).getPendingList(1, 20);
     }
 
     @Test
     void testGetApprovedList() throws Exception {
+        testRecord.setUpdatedAt(java.time.LocalDateTime.now());
         PageResult<DestructionRecord> pageResult = new PageResult<>(1L, 20L, 1L, 1L, Collections.singletonList(testRecord));
         when(destructionService.getApprovedList(anyInt(), anyInt())).thenReturn(pageResult);
 
@@ -155,20 +180,26 @@ class DestructionControllerTest {
                         .param("pageNum", "1")
                         .param("pageSize", "20"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value("200"));
+                .andExpect(jsonPath("$.code").value("200"))
+                .andExpect(jsonPath("$.data.records[0].approvalComment").doesNotExist())
+                .andExpect(jsonPath("$.data.records[0].updatedAt").doesNotExist());
 
         verify(destructionService).getApprovedList(1, 20);
     }
 
     @Test
     void testGetByArchiveId() throws Exception {
+        testRecord.setApprovalComment("内部审批意见");
         List<DestructionRecord> records = Collections.singletonList(testRecord);
         when(destructionService.getByArchiveId(100L)).thenReturn(records);
 
         mockMvc.perform(get("/destructions/archive/100"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
-                .andExpect(jsonPath("$.data").isArray());
+                .andExpect(jsonPath("$.data").isArray())
+                .andExpect(jsonPath("$.data[0].approvalComment").doesNotExist())
+                .andExpect(jsonPath("$.data[0].createdAt").doesNotExist())
+                .andExpect(jsonPath("$.data[0].updatedAt").doesNotExist());
 
         verify(destructionService).getByArchiveId(100L);
     }

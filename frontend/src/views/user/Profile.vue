@@ -220,7 +220,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/stores/user'
-import { changePassword, updateUser, getCurrentUser } from '@/api/user'
+import { changePassword, updateCurrentUser, getCurrentUser } from '@/api/user'
 import { validatePasswordStrength } from '@/utils/security'
 
 const userStore = useUserStore()
@@ -312,6 +312,17 @@ const profileRules = {
 }
 
 // 密码校验规则
+const requireNonBlankValue = (message) => ({
+  validator: (_rule, value, callback) => {
+    if (!value?.trim()) {
+      callback(new Error(message))
+      return
+    }
+    callback()
+  },
+  trigger: 'blur'
+})
+
 const validateNewPassword = (rule, value, callback) => {
   if (!value) {
     callback(new Error('请输入新密码'))
@@ -338,14 +349,14 @@ const validateConfirmPassword = (rule, value, callback) => {
 
 const passwordRules = {
   oldPassword: [
-    { required: true, message: '请输入当前密码', trigger: 'blur' }
+    requireNonBlankValue('请输入当前密码')
   ],
   newPassword: [
-    { required: true, message: '请输入新密码', trigger: 'blur' },
+    requireNonBlankValue('请输入新密码'),
     { validator: validateNewPassword, trigger: 'blur' }
   ],
   confirmPassword: [
-    { required: true, message: '请确认新密码', trigger: 'blur' },
+    requireNonBlankValue('请确认新密码'),
     { validator: validateConfirmPassword, trigger: 'blur' }
   ]
 }
@@ -354,6 +365,8 @@ const passwordRules = {
 const getUserTypeName = (type) => {
   const map = {
     'SYSTEM_ADMIN': '系统管理员',
+    'SECURITY_ADMIN': '安全保密员',
+    'AUDIT_ADMIN': '安全审计员',
     'ARCHIVE_REVIEWER': '档案审核员',
     'ARCHIVE_MANAGER': '档案管理员',
     'USER': '普通用户'
@@ -428,15 +441,16 @@ const handleUpdateProfile = async () => {
     await profileFormRef.value.validate()
     profileLoading.value = true
     
-    await updateUser(userStore.userId, {
+    const res = await updateCurrentUser({
       realName: profileForm.realName,
       email: profileForm.email,
       phone: profileForm.phone,
       department: profileForm.department
     })
     
-    // 更新 store
-    userStore.realName = profileForm.realName
+    userStore.updateProfileSnapshot({
+      realName: res?.data?.realName || profileForm.realName
+    })
     
     ElMessage.success('个人信息更新成功')
   } catch (e) {

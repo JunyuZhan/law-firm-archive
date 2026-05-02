@@ -9,6 +9,7 @@ import com.archivesystem.service.AlertService;
 import com.archivesystem.service.ConfigService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.mail.internet.InternetAddress;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -99,7 +100,7 @@ public class AlertServiceImpl implements AlertService {
             message.setCreatedAt(LocalDateTime.now());
         }
         List<String> to = (receivers != null && !receivers.isEmpty())
-                ? receivers
+                ? normalizeRecipients(receivers, "指定收件人")
                 : resolveMailRecipients();
         return sendInternal(message, to);
     }
@@ -233,7 +234,11 @@ public class AlertServiceImpl implements AlertService {
         }
         List<String> to;
         if (StringUtils.hasText(overrideTo)) {
-            to = List.of(overrideTo.trim());
+            String normalized = normalizeEmail(overrideTo, "测试收件人");
+            if (normalized == null) {
+                throw new BusinessException("测试收件人邮箱格式不正确");
+            }
+            to = List.of(normalized);
         } else {
             to = resolveMailRecipients();
         }
@@ -276,13 +281,13 @@ public class AlertServiceImpl implements AlertService {
         Set<String> emails = new LinkedHashSet<>();
         if (StringUtils.hasText(envEmailTo)) {
             for (String part : envEmailTo.split(",")) {
-                addEmail(emails, part);
+                addEmail(emails, part, "环境通知邮箱");
             }
         }
         String extra = configService.getValue(KEY_ADMIN_EXTRA_EMAILS);
         if (StringUtils.hasText(extra)) {
             for (String part : extra.split(",")) {
-                addEmail(emails, part);
+                addEmail(emails, part, "额外通知邮箱");
             }
         }
         List<User> admins = userMapper.selectList(new LambdaQueryWrapper<User>()
@@ -292,18 +297,41 @@ public class AlertServiceImpl implements AlertService {
                         User.TYPE_SECURITY_ADMIN,
                         User.TYPE_AUDIT_ADMIN));
         for (User u : admins) {
-            addEmail(emails, u.getEmail());
+            addEmail(emails, u.getEmail(), "管理员邮箱");
         }
         return new ArrayList<>(emails);
     }
 
-    private static void addEmail(Set<String> sink, String raw) {
-        if (!StringUtils.hasText(raw)) {
-            return;
+    private List<String> normalizeRecipients(List<String> receivers, String sourceName) {
+        Set<String> emails = new LinkedHashSet<>();
+        for (String receiver : receivers) {
+            addEmail(emails, receiver, sourceName);
         }
-        String t = raw.trim();
-        if (!t.isEmpty()) {
-            sink.add(t);
+        return new ArrayList<>(emails);
+    }
+
+    private void addEmail(Set<String> sink, String raw, String sourceName) {
+        String normalized = normalizeEmail(raw, sourceName);
+        if (normalized != null) {
+            sink.add(normalized);
+        }
+    }
+
+    private String normalizeEmail(String raw, String sourceName) {
+        if (!StringUtils.hasText(raw)) {
+            return null;
+        }
+        String email = raw.trim();
+        if (email.isEmpty()) {
+            return null;
+        }
+        try {
+            InternetAddress address = new InternetAddress(email, true);
+            address.validate();
+            return address.getAddress();
+        } catch (Exception e) {
+            log.warn("忽略无效邮箱: source={}, value={}", sourceName, email);
+            return null;
         }
     }
 
@@ -385,7 +413,10 @@ public class AlertServiceImpl implements AlertService {
                     java.util.Base64.getEncoder().encodeToString(signData),
                     java.nio.charset.StandardCharsets.UTF_8);
 
-            return dingtalkWebhook + "&timestamp=" + timestamp + "&sign=" + sign;
+            String separator = dingtalkWebhook.contains("?")
+                    ? (dingtalkWebhook.endsWith("?") || dingtalkWebhook.endsWith("&") ? "" : "&")
+                    : "?";
+            return dingtalkWebhook + separator + "timestamp=" + timestamp + "&sign=" + sign;
         } catch (Exception e) {
             log.error("钉钉签名计算失败", e);
             return dingtalkWebhook;

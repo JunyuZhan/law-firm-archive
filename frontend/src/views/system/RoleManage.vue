@@ -100,7 +100,7 @@
               权限
             </el-button>
             <el-popconfirm
-              v-if="!row.isSystem"
+              v-if="!isBuiltInRole(row)"
               title="确定删除该角色吗？"
               @confirm="handleDelete(row)"
             >
@@ -158,10 +158,19 @@
             <el-radio label="ACTIVE">
               启用
             </el-radio>
-            <el-radio label="INACTIVE">
+            <el-radio
+              label="DISABLED"
+              :disabled="isEditingBuiltInRole"
+            >
               停用
             </el-radio>
           </el-radio-group>
+          <div
+            v-if="isEditingBuiltInRole"
+            class="form-tip"
+          >
+            系统内置角色不可停用，避免影响系统授权链路。
+          </div>
         </el-form-item>
         <el-form-item label="描述">
           <el-input
@@ -185,49 +194,12 @@
         </el-button>
       </template>
     </el-dialog>
-
-    <!-- 权限配置对话框 -->
-    <el-dialog
-      v-model="permissionVisible"
-      title="权限配置"
-      width="600px"
-    >
-      <div v-if="currentRole">
-        <el-alert
-          :title="`正在配置角色【${currentRole.roleName}】的权限`"
-          type="info"
-          :closable="false"
-          show-icon
-          style="margin-bottom: 20px"
-        />
-        
-        <el-tree
-          ref="permissionTreeRef"
-          :data="permissionTree"
-          :props="{ label: 'name', children: 'children' }"
-          show-checkbox
-          node-key="code"
-          default-expand-all
-        />
-      </div>
-      <template #footer>
-        <el-button @click="permissionVisible = false">
-          取消
-        </el-button>
-        <el-button
-          type="primary"
-          @click="savePermission"
-        >
-          保存权限
-        </el-button>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ref, reactive, onMounted, computed } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import { getRoleList, createRole, updateRole, deleteRole } from '@/api/role'
 
@@ -241,9 +213,6 @@ const dialogTitle = ref('')
 const isEdit = ref(false)
 const currentRole = ref(null)
 
-const permissionVisible = ref(false)
-const permissionTreeRef = ref(null)
-
 const formRef = ref(null)
 const form = reactive({
   roleCode: '',
@@ -252,47 +221,34 @@ const form = reactive({
   description: ''
 })
 
+const requireTrimmedText = (message) => ({
+  validator: (_rule, value, callback) => {
+    if (!value?.trim()) {
+      callback(new Error(message))
+      return
+    }
+    callback()
+  },
+  trigger: 'blur'
+})
+
 const rules = {
   roleCode: [
-    { required: true, message: '请输入角色代码', trigger: 'blur' },
+    requireTrimmedText('请输入角色代码'),
     { pattern: /^[A-Z_]+$/, message: '只能包含大写字母和下划线', trigger: 'blur' }
   ],
-  roleName: [{ required: true, message: '请输入角色名称', trigger: 'blur' }]
+  roleName: [requireTrimmedText('请输入角色名称')]
 }
 
-// 权限树
-const permissionTree = ref([
-  {
-    code: 'archive',
-    name: '档案管理',
-    children: [
-      { code: 'archive:view', name: '查看档案' },
-      { code: 'archive:create', name: '创建档案' },
-      { code: 'archive:edit', name: '编辑档案' },
-      { code: 'archive:delete', name: '删除档案' },
-      { code: 'archive:download', name: '下载文件' }
-    ]
-  },
-  {
-    code: 'borrow',
-    name: '借阅管理',
-    children: [
-      { code: 'borrow:apply', name: '申请借阅' },
-      { code: 'borrow:approve', name: '审批借阅' },
-      { code: 'borrow:return', name: '归还处理' }
-    ]
-  },
-  {
-    code: 'system',
-    name: '系统管理',
-    children: [
-      { code: 'system:user', name: '用户管理' },
-      { code: 'system:role', name: '角色管理' },
-      { code: 'system:log', name: '日志查看' },
-      { code: 'system:config', name: '规则与运行参数' }
-    ]
-  }
+const builtInRoleCodes = new Set([
+  'SYSTEM_ADMIN',
+  'SECURITY_ADMIN',
+  'AUDIT_ADMIN',
+  'ARCHIVE_MANAGER',
+  'ARCHIVE_REVIEWER',
+  'USER'
 ])
+const isEditingBuiltInRole = computed(() => isEdit.value && isBuiltInRole(currentRole.value))
 
 // 加载数据
 const loadData = async () => {
@@ -340,12 +296,23 @@ const handleSave = async () => {
     await formRef.value.validate()
     saving.value = true
 
+    const payload = {
+      ...form,
+      roleCode: form.roleCode.trim(),
+      roleName: form.roleName.trim(),
+      description: form.description?.trim() || '',
+      status: isEditingBuiltInRole.value ? 'ACTIVE' : form.status
+    }
+
+    let res
     if (isEdit.value) {
-      await updateRole(currentRole.value.id, form)
-      ElMessage.success('更新成功')
+      res = await updateRole(currentRole.value.id, payload)
+      const roleName = res?.data?.roleName || form.roleName
+      ElMessage.success(roleName ? `已更新角色：${roleName}` : '更新成功')
     } else {
-      await createRole(form)
-      ElMessage.success('创建成功')
+      res = await createRole(payload)
+      const roleName = res?.data?.roleName || form.roleName
+      ElMessage.success(roleName ? `已创建角色：${roleName}` : '创建成功')
     }
 
     dialogVisible.value = false
@@ -361,27 +328,31 @@ const handleSave = async () => {
 
 // 删除
 const handleDelete = async (row) => {
+  if (isBuiltInRole(row)) {
+    ElMessage.warning('系统内置角色不可删除')
+    return
+  }
   try {
     await deleteRole(row.id)
-    ElMessage.success('删除成功')
+    ElMessage.success(`已删除角色：${row.roleName}`)
     loadData()
   } catch (e) {
     console.error('删除失败', e)
   }
 }
 
-// 权限配置
-const handlePermission = (row) => {
-  currentRole.value = row
-  permissionVisible.value = true
-}
+const isBuiltInRole = (row) => builtInRoleCodes.has(row?.roleCode)
 
-// 保存权限
-const savePermission = () => {
-  const checkedKeys = permissionTreeRef.value.getCheckedKeys(true)
-  console.log('选中的权限:', checkedKeys)
-  ElMessage.success('权限配置已保存')
-  permissionVisible.value = false
+// 权限配置
+const handlePermission = async (row) => {
+  currentRole.value = row
+  await ElMessageBox.alert(
+    `角色「${row.roleName}」的权限持久化接口尚未接入，当前版本不支持在此页面保存权限配置。`,
+    '功能未接入',
+    {
+      confirmButtonText: '知道了'
+    }
+  )
 }
 
 onMounted(() => {

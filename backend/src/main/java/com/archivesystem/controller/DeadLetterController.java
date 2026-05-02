@@ -2,6 +2,8 @@ package com.archivesystem.controller;
 
 import com.archivesystem.common.PageResult;
 import com.archivesystem.common.Result;
+import com.archivesystem.dto.deadletter.DeadLetterRecordResponse;
+import com.archivesystem.dto.deadletter.DeadLetterStatisticsResponse;
 import com.archivesystem.entity.DeadLetterRecord;
 import com.archivesystem.service.DeadLetterService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -31,13 +33,18 @@ public class DeadLetterController {
     @GetMapping
     @Operation(summary = "获取死信消息列表")
     @PreAuthorize("hasRole('SYSTEM_ADMIN')")
-    public Result<PageResult<DeadLetterRecord>> list(
+    public Result<PageResult<DeadLetterRecordResponse>> list(
             @RequestParam(required = false) @Parameter(description = "状态筛选") String status,
             @RequestParam(required = false) @Parameter(description = "队列名称") String queueName,
             @RequestParam(defaultValue = "1") @Parameter(description = "页码") int page,
             @RequestParam(defaultValue = "20") @Parameter(description = "每页大小") int size) {
         PageResult<DeadLetterRecord> result = deadLetterService.getList(status, queueName, page, size);
-        return Result.success(result);
+        return Result.success(PageResult.of(
+                result.getCurrent(),
+                result.getSize(),
+                result.getTotal(),
+                result.getRecords().stream().map(DeadLetterRecordResponse::from).toList()
+        ));
     }
 
     /**
@@ -46,9 +53,9 @@ public class DeadLetterController {
     @GetMapping("/{id}")
     @Operation(summary = "获取死信消息详情")
     @PreAuthorize("hasRole('SYSTEM_ADMIN')")
-    public Result<DeadLetterRecord> getById(@PathVariable Long id) {
+    public Result<DeadLetterRecordResponse> getById(@PathVariable Long id) {
         DeadLetterRecord record = deadLetterService.getById(id);
-        return Result.success(record);
+        return Result.success(DeadLetterRecordResponse.from(record));
     }
 
     /**
@@ -57,9 +64,9 @@ public class DeadLetterController {
     @GetMapping("/statistics")
     @Operation(summary = "获取统计信息")
     @PreAuthorize("hasRole('SYSTEM_ADMIN')")
-    public Result<Map<String, Integer>> getStatistics() {
+    public Result<DeadLetterStatisticsResponse> getStatistics() {
         Map<String, Integer> stats = deadLetterService.getStatistics();
-        return Result.success(stats);
+        return Result.success(DeadLetterStatisticsResponse.from(stats));
     }
 
     /**

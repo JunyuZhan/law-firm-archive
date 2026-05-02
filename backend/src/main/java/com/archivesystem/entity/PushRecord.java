@@ -8,6 +8,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -75,10 +76,12 @@ public class PushRecord extends BaseEntity {
     // ===== 请求信息 =====
     
     /** 请求内容 */
+    @JsonIgnore
     @TableField(typeHandler = PostgreSQLJsonbTypeHandler.class)
     private Map<String, Object> requestPayload;
     
     /** 回调地址 */
+    @JsonIgnore
     private String callbackUrl;
 
     // ===== 错误信息 =====

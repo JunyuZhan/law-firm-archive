@@ -4,6 +4,7 @@ import com.archivesystem.common.exception.BusinessException;
 import com.archivesystem.common.exception.NotFoundException;
 import com.archivesystem.entity.SysConfig;
 import com.archivesystem.repository.SysConfigMapper;
+import com.archivesystem.security.RuntimeSecretProvider;
 import com.archivesystem.security.SecretCryptoService;
 import com.archivesystem.security.SecurityUtils;
 import com.archivesystem.service.ConfigService;
@@ -18,6 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Locale;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -34,6 +36,11 @@ public class ConfigServiceImpl implements ConfigService {
 
     /** SMTP 密码写入 sys_config 前加密；API 返回脱敏 */
     public static final String MAIL_SMTP_PASSWORD_KEY = "system.mail.smtp.password";
+    private static final Set<String> PROTECTED_SYSTEM_KEYS = Set.of(
+            RuntimeSecretProvider.KEY_JWT_SECRET,
+            RuntimeSecretProvider.KEY_CRYPTO_SECRET,
+            RuntimeSecretProvider.KEY_CRYPTO_LEGACY_SECRET
+    );
 
     private final SysConfigMapper configMapper;
     private final SecretCryptoService secretCryptoService;
@@ -116,6 +123,7 @@ public class ConfigServiceImpl implements ConfigService {
     @Override
     @Transactional
     public void updateConfig(String key, String value) {
+        assertMutableKey(key);
         SysConfig config = configMapper.selectByKey(key);
         if (config == null) {
             throw NotFoundException.of("配置", key);
@@ -124,22 +132,23 @@ public class ConfigServiceImpl implements ConfigService {
             throw new BusinessException("该配置项不可编辑");
         }
 
-        if (MAIL_SMTP_PASSWORD_KEY.equals(key) && value != null && REDACTED_VALUE.equals(value.trim())) {
+        if (isRedactedSensitivePlaceholder(key, value)) {
             return;
         }
-        if (MAIL_SMTP_PASSWORD_KEY.equals(key) && value != null && !value.isBlank()) {
-            value = secretCryptoService.encrypt(value.trim());
-        } else if (MAIL_SMTP_PASSWORD_KEY.equals(key) && (value == null || value.isBlank())) {
-            value = null;
-        }
+        value = validateAndNormalizeByType(config.getConfigType(), key, value);
+        value = normalizeStoredValue(key, value);
 
         config.setConfigValue(value);
         config.setUpdatedAt(LocalDateTime.now());
         config.setUpdatedBy(SecurityUtils.getCurrentUserId());
         configMapper.updateById(config);
 
-        // 更新缓存
-        configCache.put(key, value);
+        // ConcurrentHashMap 不接受 null；配置被清空时同步移除缓存项
+        if (value != null) {
+            configCache.put(key, value);
+        } else {
+            configCache.remove(key);
+        }
         log.info("配置更新: key={}, value={}", key, maskValueForLog(key, value));
     }
 
@@ -159,6 +168,10 @@ public class ConfigServiceImpl implements ConfigService {
     @Override
     @Transactional
     public void saveConfig(String key, String value, String group, String description, String type, Boolean editable, Integer sortOrder) {
+        assertMutableKey(key);
+        String targetType = type != null ? type : SysConfig.TYPE_STRING;
+        value = validateAndNormalizeByType(targetType, key, value);
+        value = normalizeStoredValue(key, value);
         SysConfig existing = configMapper.selectByKey(key);
         if (existing != null) {
             existing.setConfigValue(value);
@@ -169,7 +182,7 @@ public class ConfigServiceImpl implements ConfigService {
                 existing.setDescription(description);
             }
             if (type != null) {
-                existing.setConfigType(type);
+                existing.setConfigType(targetType);
             }
             if (editable != null) {
                 existing.setEditable(editable);
@@ -186,7 +199,7 @@ public class ConfigServiceImpl implements ConfigService {
                     .configValue(value)
                     .configGroup(group)
                     .description(description)
-                    .configType(type != null ? type : SysConfig.TYPE_STRING)
+                    .configType(targetType)
                     .editable(editable != null ? editable : true)
                     .sortOrder(sortOrder != null ? sortOrder : 0)
                     .createdAt(LocalDateTime.now())
@@ -208,12 +221,17 @@ public class ConfigServiceImpl implements ConfigService {
     @Override
     @Transactional
     public SysConfig createConfig(SysConfig config) {
+        assertMutableKey(config != null ? config.getConfigKey() : null);
         // 检查是否已存在
         SysConfig existing = configMapper.selectByKey(config.getConfigKey());
         if (existing != null) {
             throw new BusinessException("配置键已存在: " + config.getConfigKey());
         }
 
+        String targetType = config.getConfigType() != null ? config.getConfigType() : SysConfig.TYPE_STRING;
+        config.setConfigType(targetType);
+        config.setConfigValue(validateAndNormalizeByType(targetType, config.getConfigKey(), config.getConfigValue()));
+        config.setConfigValue(normalizeStoredValue(config.getConfigKey(), config.getConfigValue()));
         config.setCreatedAt(LocalDateTime.now());
         config.setCreatedBy(SecurityUtils.getCurrentUserId());
         configMapper.insert(config);
@@ -226,9 +244,28 @@ public class ConfigServiceImpl implements ConfigService {
         return sanitizeConfig(config);
     }
 
+    private String normalizeStoredValue(String key, String value) {
+        if (!MAIL_SMTP_PASSWORD_KEY.equals(key)) {
+            return value;
+        }
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return secretCryptoService.encrypt(value.trim());
+    }
+
+    private boolean isRedactedSensitivePlaceholder(String key, String value) {
+        return isSensitiveKey(key) && value != null && REDACTED_VALUE.equals(value.trim());
+    }
+
+    private String validateAndNormalizeByType(String configType, String key, String value) {
+        return ConfigValueValidator.validateAndNormalizeByType(configType, key, value);
+    }
+
     @Override
     @Transactional
     public void deleteConfig(String key) {
+        assertMutableKey(key);
         SysConfig config = configMapper.selectByKey(key);
         if (config == null) {
             throw NotFoundException.of("配置", key);
@@ -240,6 +277,15 @@ public class ConfigServiceImpl implements ConfigService {
         configMapper.deleteById(config.getId());
         configCache.remove(key);
         log.info("配置删除: key={}", key);
+    }
+
+    private void assertMutableKey(String key) {
+        if (key == null) {
+            return;
+        }
+        if (PROTECTED_SYSTEM_KEYS.contains(key)) {
+            throw new BusinessException("该配置项由系统托管，不能通过管理接口创建、修改或删除");
+        }
     }
 
     @Override
@@ -259,7 +305,7 @@ public class ConfigServiceImpl implements ConfigService {
     public String getArchiveNoPrefix(String archiveType) {
         String key = "archive.no.prefix." + archiveType;
         String prefix = getValue(key);
-        if (prefix == null) {
+        if (prefix == null || prefix.isBlank()) {
             prefix = getValue("archive.no.prefix.DEFAULT", "ARC");
         }
         return prefix;

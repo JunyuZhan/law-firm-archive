@@ -34,6 +34,7 @@ class ArchiveDocumentTest {
                 .caseName("张三诉李四合同纠纷")
                 .clientName("张三")
                 .lawyerName("李律师")
+                .lawyerTokens(Arrays.asList("李律师"))
                 .keywords("合同,纠纷,民事")
                 .archiveAbstract("这是一个合同纠纷案件")
                 .remarks("备注信息")
@@ -46,6 +47,8 @@ class ArchiveDocumentTest {
                 .documentDate(archiveDate)
                 .receivedAt(createdAt)
                 .createdAt(createdAt)
+                .createdBy(101L)
+                .receivedBy(202L)
                 .updatedAt(createdAt)
                 .fileCount(5)
                 .archiveYear(2026)
@@ -65,6 +68,7 @@ class ArchiveDocumentTest {
         assertEquals("张三诉李四合同纠纷", doc.getCaseName());
         assertEquals("张三", doc.getClientName());
         assertEquals("李律师", doc.getLawyerName());
+        assertEquals(Arrays.asList("李律师"), doc.getLawyerTokens());
         assertEquals("合同,纠纷,民事", doc.getKeywords());
         assertEquals("这是一个合同纠纷案件", doc.getArchiveAbstract());
         assertEquals("备注信息", doc.getRemarks());
@@ -77,6 +81,8 @@ class ArchiveDocumentTest {
         assertEquals(archiveDate, doc.getDocumentDate());
         assertEquals(createdAt, doc.getReceivedAt());
         assertEquals(createdAt, doc.getCreatedAt());
+        assertEquals(101L, doc.getCreatedBy());
+        assertEquals(202L, doc.getReceivedBy());
         assertEquals(createdAt, doc.getUpdatedAt());
         assertEquals(5, doc.getFileCount());
         assertEquals(2026, doc.getArchiveYear());
@@ -101,13 +107,14 @@ class ArchiveDocumentTest {
         LocalDate date = LocalDate.of(2026, 2, 1);
         LocalDateTime dateTime = LocalDateTime.of(2026, 2, 1, 12, 0);
         List<String> files = Arrays.asList("test.pdf");
+        List<String> lawyerTokens = Arrays.asList("律师");
 
         ArchiveDocument doc = new ArchiveDocument(
                 1L, "ARCH-001", "标题", 1L, "FD-001", 1L, "CAT-001",
-                "TYPE", "责任者", "CASE-001", "案件名", "委托人",
-                "律师", "关键词", "摘要", "备注", "文件内容",
+                "TYPE", "责任者", "CASE-001", "案件名", "委托人", "律师",
+                lawyerTokens, "关键词", "摘要", "备注", "文件内容",
                 "PERMANENT", "SECRET", "EXTERNAL", "ACTIVE",
-                date, date, dateTime, dateTime, dateTime,
+                date, date, dateTime, dateTime, 11L, 22L, dateTime,
                 10, 2026, files
         );
 
@@ -115,6 +122,9 @@ class ArchiveDocumentTest {
         assertEquals("ARCH-001", doc.getArchiveNo());
         assertEquals("标题", doc.getTitle());
         assertEquals("TYPE", doc.getArchiveType());
+        assertEquals(lawyerTokens, doc.getLawyerTokens());
+        assertEquals(11L, doc.getCreatedBy());
+        assertEquals(22L, doc.getReceivedBy());
         assertEquals(10, doc.getFileCount());
         assertEquals(files, doc.getFileNames());
     }
@@ -138,6 +148,7 @@ class ArchiveDocumentTest {
         doc.setCaseName("咨询案件");
         doc.setClientName("王五");
         doc.setLawyerName("王律师");
+        doc.setLawyerTokens(Arrays.asList("王律师"));
         doc.setKeywords("咨询");
         doc.setArchiveAbstract("咨询摘要");
         doc.setRemarks("新备注");
@@ -150,6 +161,8 @@ class ArchiveDocumentTest {
         doc.setDocumentDate(archiveDate);
         doc.setReceivedAt(createdAt);
         doc.setCreatedAt(createdAt);
+        doc.setCreatedBy(301L);
+        doc.setReceivedBy(302L);
         doc.setUpdatedAt(createdAt);
         doc.setFileCount(3);
         doc.setArchiveYear(2026);
@@ -168,6 +181,7 @@ class ArchiveDocumentTest {
         assertEquals("咨询案件", doc.getCaseName());
         assertEquals("王五", doc.getClientName());
         assertEquals("王律师", doc.getLawyerName());
+        assertEquals(Arrays.asList("王律师"), doc.getLawyerTokens());
         assertEquals("咨询", doc.getKeywords());
         assertEquals("咨询摘要", doc.getArchiveAbstract());
         assertEquals("新备注", doc.getRemarks());
@@ -180,6 +194,8 @@ class ArchiveDocumentTest {
         assertEquals(archiveDate, doc.getDocumentDate());
         assertEquals(createdAt, doc.getReceivedAt());
         assertEquals(createdAt, doc.getCreatedAt());
+        assertEquals(301L, doc.getCreatedBy());
+        assertEquals(302L, doc.getReceivedBy());
         assertEquals(createdAt, doc.getUpdatedAt());
         assertEquals(3, doc.getFileCount());
         assertEquals(2026, doc.getArchiveYear());

@@ -368,6 +368,7 @@ import {
 } from '@element-plus/icons-vue'
 import {
   getBorrowLinks,
+  getBorrowLinkDetail,
   getLinkStats,
   revokeLink,
   updateExpiredLinks
@@ -414,10 +415,8 @@ async function loadData() {
       pageSize: pagination.pageSize
     }
     const res = await getBorrowLinks(params)
-    if (res.success) {
-      linkList.value = res.data.records || []
-      pagination.total = res.data.total || 0
-    }
+    linkList.value = res.data.records || []
+    pagination.total = res.data.total || 0
   } catch (error) {
     console.error('加载链接列表失败', error)
   } finally {
@@ -428,9 +427,7 @@ async function loadData() {
 async function loadStats() {
   try {
     const res = await getLinkStats()
-    if (res.success) {
-      stats.value = res.data
-    }
+    stats.value = res.data || {}
   } catch (error) {
     console.error('加载统计数据失败', error)
   }
@@ -457,24 +454,33 @@ function handleRefresh() {
 async function handleUpdateExpired() {
   try {
     const res = await updateExpiredLinks()
-    if (res.success) {
-      ElMessage.success(`已更新 ${res.data.updatedCount} 条过期链接`)
-      loadData()
-      loadStats()
-    }
-  } catch (error) {
+    ElMessage.success(`已更新 ${res.data.updatedCount} 条过期链接`)
+    loadData()
+    loadStats()
+  } catch {
     ElMessage.error('更新失败')
   }
 }
 
-function handleCopyLink(row) {
-  const url = `${window.location.origin}/borrow/access/${row.accessToken}`
-  navigator.clipboard.writeText(url).then(() => {
+async function handleCopyLink(row) {
+  let url = ''
+  try {
+    const res = await getBorrowLinkDetail(row.id)
+    url = res?.data?.accessUrl || ''
+    if (!url) {
+      ElMessage.error('获取访问链接失败')
+      return
+    }
+    await navigator.clipboard.writeText(url)
     ElMessage.success('链接已复制到剪贴板')
-  }).catch(() => {
-    ElMessage.warning('复制失败，请手动复制')
-    ElMessageBox.alert(url, '访问链接', { confirmButtonText: '关闭' })
-  })
+  } catch {
+    if (url) {
+      ElMessage.warning('复制失败，请手动复制')
+      ElMessageBox.alert(url, '访问链接', { confirmButtonText: '关闭' })
+      return
+    }
+    ElMessage.error('获取访问链接失败')
+  }
 }
 
 function handleRevoke(row) {
@@ -487,14 +493,12 @@ async function confirmRevoke() {
   if (!revokingLink.value) return
   
   try {
-    const res = await revokeLink(revokingLink.value.id, revokeReason.value)
-    if (res.success) {
-      ElMessage.success('链接已撤销')
-      revokeDialogVisible.value = false
-      loadData()
-      loadStats()
-    }
-  } catch (error) {
+    await revokeLink(revokingLink.value.id, revokeReason.value)
+    ElMessage.success('链接已撤销')
+    revokeDialogVisible.value = false
+    loadData()
+    loadStats()
+  } catch {
     ElMessage.error('撤销失败')
   }
 }

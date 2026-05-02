@@ -1,13 +1,13 @@
-#!/usr/bin/env sh
-set -eu
+#!/usr/bin/env bash
+set -euo pipefail
 
 ROOT_DIR=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
-ENV_FILE="${ENV_FILE:-$ROOT_DIR/docker/.env.registry}"
-COMPOSE_FILE="$ROOT_DIR/docker/docker-compose.registry.yml"
+COMPOSE_FILE="$ROOT_DIR/docker/docker-compose.yml"
+ENV_FILE="${ENV_FILE:-$ROOT_DIR/docker/.env}"
 
 if [ ! -f "$ENV_FILE" ]; then
-  echo "missing env file: $ENV_FILE"
-  echo "copy docker/.env.registry.example to docker/.env.registry and edit secrets first"
+  echo "缺少环境文件: $ENV_FILE"
+  echo "请先执行: cp docker/.env.example docker/.env  并修改密码"
   exit 1
 fi
 

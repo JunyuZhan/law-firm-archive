@@ -1,5 +1,6 @@
 package com.archivesystem.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
@@ -31,9 +32,11 @@ public class BackupJob implements Serializable {
     private String triggerType;
     private String backupScope;
     private String status;
+    @JsonIgnore
     private String backupSetPath;
     private Long fileCount;
     private Long totalBytes;
+    @JsonIgnore
     private String errorMessage;
     private LocalDateTime startedAt;
     private LocalDateTime finishedAt;

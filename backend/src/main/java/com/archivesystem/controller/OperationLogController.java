@@ -2,6 +2,8 @@ package com.archivesystem.controller;
 
 import com.archivesystem.common.PageResult;
 import com.archivesystem.common.Result;
+import com.archivesystem.dto.log.OperationLogResponse;
+import com.archivesystem.dto.log.OperationLogSummaryResponse;
 import com.archivesystem.entity.OperationLog;
 import com.archivesystem.service.OperationLogService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -18,6 +20,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 操作日志控制器.
@@ -35,7 +38,7 @@ public class OperationLogController {
 
     @Operation(summary = "分页查询日志")
     @GetMapping
-    public Result<PageResult<OperationLog>> query(
+    public Result<PageResult<OperationLogSummaryResponse>> query(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String objectType,
             @RequestParam(required = false) String operationType,
@@ -44,22 +47,38 @@ public class OperationLogController {
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endDate,
             @RequestParam(defaultValue = "1") Integer pageNum,
             @RequestParam(defaultValue = "20") Integer pageSize) {
-        return Result.success(operationLogService.query(keyword, objectType, operationType, 
-                operatorId, startDate, endDate, pageNum, pageSize));
+        PageResult<OperationLog> result = operationLogService.query(keyword, objectType, operationType,
+                operatorId, startDate, endDate, pageNum, pageSize);
+        return Result.success(PageResult.of(
+                result.getCurrent(),
+                result.getSize(),
+                result.getTotal(),
+                result.getRecords().stream().map(OperationLogSummaryResponse::from).collect(Collectors.toList())
+        ));
+    }
+
+    @Operation(summary = "获取日志详情")
+    @GetMapping("/{id}")
+    public Result<OperationLogResponse> getById(@PathVariable Long id) {
+        return Result.success(toResponse(operationLogService.getById(id), true));
     }
 
     @Operation(summary = "根据档案ID查询日志")
     @GetMapping("/archive/{archiveId}")
-    public Result<List<OperationLog>> getByArchive(@PathVariable Long archiveId) {
-        return Result.success(operationLogService.getByArchiveId(archiveId));
+    public Result<List<OperationLogSummaryResponse>> getByArchive(@PathVariable Long archiveId) {
+        return Result.success(operationLogService.getByArchiveId(archiveId).stream()
+                .map(OperationLogSummaryResponse::from)
+                .collect(Collectors.toList()));
     }
 
     @Operation(summary = "根据对象查询日志")
     @GetMapping("/object/{objectType}/{objectId}")
-    public Result<List<OperationLog>> getByObject(
+    public Result<List<OperationLogSummaryResponse>> getByObject(
             @PathVariable String objectType,
             @PathVariable String objectId) {
-        return Result.success(operationLogService.getByObject(objectType, objectId));
+        return Result.success(operationLogService.getByObject(objectType, objectId).stream()
+                .map(OperationLogSummaryResponse::from)
+                .collect(Collectors.toList()));
     }
 
     @Operation(summary = "获取操作统计")
@@ -87,5 +106,22 @@ public class OperationLogController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
                 .contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
                 .body(data);
+    }
+
+    private OperationLogResponse toResponse(OperationLog log, boolean includeSensitiveDetail) {
+        return OperationLogResponse.builder()
+                .id(log.getId())
+                .archiveId(log.getArchiveId())
+                .objectType(log.getObjectType())
+                .objectId(log.getObjectId())
+                .operationType(log.getOperationType())
+                .operationDesc(log.getOperationDesc())
+                .operatorId(log.getOperatorId())
+                .operatorName(log.getOperatorName())
+                .operatorIp(log.getOperatorIp())
+                .operatorUa(includeSensitiveDetail ? log.getOperatorUa() : null)
+                .operatedAt(log.getOperatedAt())
+                .operationDetail(includeSensitiveDetail ? log.getOperationDetail() : null)
+                .build();
     }
 }

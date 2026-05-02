@@ -18,8 +18,8 @@ export default [
       }
     },
     rules: {
-      'no-unused-vars': 'off',
-      'vue/no-unused-vars': 'off',
+      'no-unused-vars': 'warn',
+      'vue/no-unused-vars': 'warn',
       'vue/multi-word-component-names': 'off'
     }
   }

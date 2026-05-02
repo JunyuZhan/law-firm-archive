@@ -4,6 +4,7 @@ import com.archivesystem.common.PageResult;
 import com.archivesystem.dto.borrow.BorrowLinkApplyRequest;
 import com.archivesystem.dto.borrow.BorrowLinkApplyResponse;
 import com.archivesystem.dto.borrow.BorrowLinkAccessResponse;
+import com.archivesystem.dto.borrow.BorrowLinkResponse;
 import com.archivesystem.entity.BorrowLink;
 
 import java.util.List;
@@ -30,7 +31,7 @@ public interface BorrowLinkService {
      * @param allowDownload 是否允许下载
      * @return 生成的链接
      */
-    BorrowLink generateLinkForBorrow(Long borrowId, Integer expireDays, Boolean allowDownload);
+    BorrowLinkResponse generateLinkForBorrow(Long borrowId, Integer expireDays, Boolean allowDownload);
 
     /**
      * 验证并获取链接信息.
@@ -54,7 +55,7 @@ public interface BorrowLinkService {
      * @param id 链接ID
      * @return 链接信息
      */
-    BorrowLink getById(Long id);
+    BorrowLinkResponse getById(Long id);
 
     /**
      * 撤销链接.
@@ -87,7 +88,7 @@ public interface BorrowLinkService {
      * @param pageSize 每页数量
      * @return 分页结果
      */
-    PageResult<BorrowLink> getList(Long archiveId, String status, Boolean allowDownload, String sourceType, String keyword, Integer pageNum, Integer pageSize);
+    PageResult<BorrowLinkResponse> getList(Long archiveId, String status, Boolean allowDownload, String sourceType, String keyword, Integer pageNum, Integer pageSize);
 
     /**
      * 获取档案的有效链接列表.
@@ -95,7 +96,7 @@ public interface BorrowLinkService {
      * @param archiveId 档案ID
      * @return 链接列表
      */
-    List<BorrowLink> getActiveByArchiveId(Long archiveId);
+    List<BorrowLinkResponse> getActiveByArchiveId(Long archiveId);
 
     /**
      * 更新过期链接状态.

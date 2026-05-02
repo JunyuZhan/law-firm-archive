@@ -6,6 +6,8 @@ import com.archivesystem.dto.borrow.BorrowLinkAccessResponse;
 import com.archivesystem.dto.borrow.BorrowLinkApplyRequest;
 import com.archivesystem.dto.borrow.BorrowLinkApplyResponse;
 import com.archivesystem.entity.ExternalSource;
+import com.archivesystem.common.exception.BusinessException;
+import com.archivesystem.common.exception.NotFoundException;
 import com.archivesystem.service.ArchiveService;
 import com.archivesystem.service.BorrowLinkService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -86,6 +88,7 @@ class OpenApiControllerTest {
         when(archiveService.receive(any(ArchiveReceiveRequest.class))).thenReturn(response);
 
         mockMvc.perform(post("/open/archive/receive")
+                        .requestAttr("externalSource", TEST_EXTERNAL_SOURCE)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -94,7 +97,9 @@ class OpenApiControllerTest {
                 .andExpect(jsonPath("$.data.archiveId").value(1))
                 .andExpect(jsonPath("$.data.archiveNo").value("ARC-20260213-0001"));
 
-        verify(archiveService).receive(any(ArchiveReceiveRequest.class));
+        verify(archiveService).receive(argThat(arg ->
+                "LAW_FIRM_A".equals(arg.getSourceType())
+                        && "CASE-001".equals(arg.getSourceId())));
     }
 
     @Test
@@ -115,11 +120,30 @@ class OpenApiControllerTest {
         when(archiveService.receive(any(ArchiveReceiveRequest.class))).thenReturn(response);
 
         mockMvc.perform(post("/open/archive/receive")
+                        .requestAttr("externalSource", TEST_EXTERNAL_SOURCE)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
                 .andExpect(jsonPath("$.data.archiveId").value(2));
+    }
+
+    @Test
+    void testReceive_MissingExternalSourceContext() throws Exception {
+        ArchiveReceiveRequest request = new ArchiveReceiveRequest();
+        request.setSourceType("LAW_FIRM");
+        request.setSourceId("CASE-003");
+        request.setArchiveType("CASE_FILE");
+        request.setTitle("缺少认证上下文");
+        request.setRetentionPeriod("30_YEARS");
+
+        mockMvc.perform(post("/open/archive/receive")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("401"));
+
+        verify(archiveService, never()).receive(any(ArchiveReceiveRequest.class));
     }
 
     @Test
@@ -152,7 +176,8 @@ class OpenApiControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
                 .andExpect(jsonPath("$.message").value("借阅链接生成成功"))
-                .andExpect(jsonPath("$.data.linkId").value(10));
+                .andExpect(jsonPath("$.data.linkId").value(10))
+                .andExpect(jsonPath("$.data.accessToken").doesNotExist());
     }
 
     @Test
@@ -177,7 +202,7 @@ class OpenApiControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.code").value("403"))
-                .andExpect(jsonPath("$.message").value("访问链接无效或已过期"));
+                .andExpect(jsonPath("$.message").value("链接已过期"));
     }
 
     @Test
@@ -185,9 +210,23 @@ class OpenApiControllerTest {
         BorrowLinkAccessResponse response = BorrowLinkAccessResponse.builder()
                 .valid(true)
                 .archive(BorrowLinkAccessResponse.ArchiveInfo.builder()
-                        .archiveId(1L)
                         .archiveNo("ARC-20260213-0001")
                         .title("测试档案")
+                        .build())
+                .files(java.util.List.of(BorrowLinkAccessResponse.FileInfo.builder()
+                        .fileId(9L)
+                        .fileName("卷宗.pdf")
+                        .fileExtension("pdf")
+                        .fileSize(1024L)
+                        .isLongTermFormat(true)
+                        .build()))
+                .linkInfo(BorrowLinkAccessResponse.LinkInfo.builder()
+                        .accessCount(1)
+                        .allowDownload(true)
+                        .build())
+                .borrower(BorrowLinkAccessResponse.BorrowerInfo.builder()
+                        .userName("张三")
+                        .purpose("阅卷")
                         .build())
                 .build();
 
@@ -197,7 +236,18 @@ class OpenApiControllerTest {
         mockMvc.perform(get("/open/borrow/access/token12345678"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
-                .andExpect(jsonPath("$.data.archive.archiveId").value(1));
+                .andExpect(jsonPath("$.data.archive.archiveNo").value("ARC-20260213-0001"))
+                .andExpect(jsonPath("$.data.archive.archiveId").doesNotExist())
+                .andExpect(jsonPath("$.data.archive.retentionPeriod").doesNotExist())
+                .andExpect(jsonPath("$.data.linkInfo.linkId").doesNotExist())
+                .andExpect(jsonPath("$.data.files[0].fileName").value("卷宗.pdf"))
+                .andExpect(jsonPath("$.data.files[0].mimeType").doesNotExist())
+                .andExpect(jsonPath("$.data.files[0].fileCategory").doesNotExist())
+                .andExpect(jsonPath("$.data.files[0].previewUrl").doesNotExist())
+                .andExpect(jsonPath("$.data.files[0].downloadUrl").doesNotExist())
+                .andExpect(jsonPath("$.data.borrower.userName").value("张三"))
+                .andExpect(jsonPath("$.data.borrower.userId").doesNotExist())
+                .andExpect(jsonPath("$.data.borrower.sourceSystem").doesNotExist());
     }
 
     @Test
@@ -208,7 +258,19 @@ class OpenApiControllerTest {
         mockMvc.perform(get("/open/borrow/access/token12345678/preview/9"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
-                .andExpect(jsonPath("$.data").value("preview-url"));
+                .andExpect(jsonPath("$.data.url").value("preview-url"));
+    }
+
+    @Test
+    void testGetPreviewUrl_ShouldHideInternalFailureDetails() throws Exception {
+        when(borrowLinkService.getFileAccessUrl("token12345678", 9L, false, "127.0.0.1"))
+                .thenThrow(NotFoundException.of("文件", 9L));
+
+        mockMvc.perform(get("/open/borrow/access/token12345678/preview/9"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("403"))
+                .andExpect(jsonPath("$.message").value("访问链接无效、已过期或无权访问该文件"));
     }
 
     @Test
@@ -219,7 +281,19 @@ class OpenApiControllerTest {
         mockMvc.perform(get("/open/borrow/access/token12345678/download-url/9"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
-                .andExpect(jsonPath("$.data").value("download-url"));
+                .andExpect(jsonPath("$.data.url").value("download-url"));
+    }
+
+    @Test
+    void testGetDownloadUrl_ShouldHideInternalFailureDetails() throws Exception {
+        when(borrowLinkService.getFileAccessUrl("token12345678", 9L, true, "127.0.0.1"))
+                .thenThrow(new BusinessException("403", "该链接不允许下载"));
+
+        mockMvc.perform(get("/open/borrow/access/token12345678/download-url/9"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("403"))
+                .andExpect(jsonPath("$.message").value("访问链接无效、已过期或无权访问该文件"));
     }
 
     @Test
@@ -230,6 +304,18 @@ class OpenApiControllerTest {
                 .andExpect(jsonPath("$.code").value("200"));
 
         verify(borrowLinkService).recordDownload("token12345678", 9L, "10.0.0.1");
+    }
+
+    @Test
+    void testRecordDownload_ShouldHideInternalFailureDetails() throws Exception {
+        doThrow(NotFoundException.of("文件", 9L))
+                .when(borrowLinkService).recordDownload("token12345678", 9L, "127.0.0.1");
+
+        mockMvc.perform(post("/open/borrow/access/token12345678/download/9"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("403"))
+                .andExpect(jsonPath("$.message").value("访问链接无效、已过期或无权访问该文件"));
     }
 
     @Test

@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { secureStorage } from '@/utils/security'
+import { useUserStore } from '@/stores'
+import { parseJwtPayload, secureStorage } from '@/utils/security'
 import { BORROW_ROLES, MANAGER_ROLES, REPORT_ROLES, ROLES, hasPermission, normalizeUserType } from '@/utils/permission'
 
 const router = createRouter({
@@ -9,7 +10,11 @@ const router = createRouter({
     {
       path: '/',
       component: () => import('@/views/layout/MainLayout.vue'),
-      redirect: '/archives',
+      redirect: (to) => ({
+        path: '/archives',
+        query: to.query,
+        hash: to.hash
+      }),
       meta: { requiresAuth: true },
       children: [
         {
@@ -44,11 +49,25 @@ const router = createRouter({
         },
         {
           path: 'categories',
-          redirect: '/archive-settings?tab=categories'
+          redirect: (to) => ({
+            path: '/archive-settings',
+            query: {
+              ...to.query,
+              tab: 'categories'
+            },
+            hash: to.hash
+          })
         },
         {
           path: 'locations',
-          redirect: '/archive-settings?tab=locations'
+          redirect: (to) => ({
+            path: '/archive-settings',
+            query: {
+              ...to.query,
+              tab: 'locations'
+            },
+            hash: to.hash
+          })
         },
         {
           path: 'borrows',
@@ -88,7 +107,14 @@ const router = createRouter({
         },
         {
           path: 'sources',
-          redirect: '/archive-settings?tab=sources'
+          redirect: (to) => ({
+            path: '/archive-settings',
+            query: {
+              ...to.query,
+              tab: 'sources'
+            },
+            hash: to.hash
+          })
         },
         {
           path: 'push-records',
@@ -98,7 +124,14 @@ const router = createRouter({
         },
         {
           path: 'fonds',
-          redirect: '/archive-settings?tab=fonds'
+          redirect: (to) => ({
+            path: '/archive-settings',
+            query: {
+              ...to.query,
+              tab: 'fonds'
+            },
+            hash: to.hash
+          })
         },
         // 系统管理 - 仅管理员可访问
         {
@@ -121,11 +154,25 @@ const router = createRouter({
         },
         {
           path: 'system/users',
-          redirect: '/system/permissions?tab=users'
+          redirect: (to) => ({
+            path: '/system/permissions',
+            query: {
+              ...to.query,
+              tab: 'users'
+            },
+            hash: to.hash
+          })
         },
         {
           path: 'system/roles',
-          redirect: '/system/permissions?tab=roles'
+          redirect: (to) => ({
+            path: '/system/permissions',
+            query: {
+              ...to.query,
+              tab: 'roles'
+            },
+            hash: to.hash
+          })
         },
         {
           path: 'system/logs',
@@ -147,11 +194,25 @@ const router = createRouter({
         },
         {
           path: 'system/backup',
-          redirect: '/system/recovery?tab=backup'
+          redirect: (to) => ({
+            path: '/system/recovery',
+            query: {
+              ...to.query,
+              tab: 'backup'
+            },
+            hash: to.hash
+          })
         },
         {
           path: 'system/restore',
-          redirect: '/system/recovery?tab=restore'
+          redirect: (to) => ({
+            path: '/system/recovery',
+            query: {
+              ...to.query,
+              tab: 'restore'
+            },
+            hash: to.hash
+          })
         },
         // 个人设置 - 所有登录用户可访问
         {
@@ -190,13 +251,17 @@ const router = createRouter({
     {
       path: '/:pathMatch(.*)*',
       name: 'NotFound',
-      redirect: '/'
+      redirect: (to) => ({
+        path: '/',
+        query: to.query,
+        hash: to.hash
+      })
     }
   ]
 })
 
 // 获取用户角色
-const getUserRole = () => {
+const getUserRole = (token) => {
   try {
     const userInfo = localStorage.getItem('userInfo')
     if (userInfo) {
@@ -206,16 +271,22 @@ const getUserRole = () => {
   } catch (e) {
     console.error('解析用户信息失败', e)
   }
+
+  const payload = parseJwtPayload(token)
+  if (payload?.userType) {
+    return normalizeUserType(payload.userType)
+  }
   return null
 }
 
 // 路由守卫
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
   // 设置页面标题
   document.title = to.meta.title ? `${to.meta.title} - 档案管理系统` : '档案管理系统'
   
   // 使用安全存储获取Token
-  const token = secureStorage.getAccessToken()
+  let token = secureStorage.getAccessToken()
+  const refreshToken = secureStorage.getRefreshToken()
   
   // 公开页面（无需登录）
   if (to.matched.some(record => record.meta.public)) {
@@ -225,6 +296,16 @@ router.beforeEach((to, from, next) => {
 
   // 需要认证的页面
   if (to.matched.some(record => record.meta.requiresAuth)) {
+    if (!token && refreshToken) {
+      try {
+        const userStore = useUserStore()
+        await userStore.refreshSession()
+        token = secureStorage.getAccessToken()
+      } catch {
+        token = null
+      }
+    }
+
     if (!token) {
       ElMessage.warning('请先登录')
       next({
@@ -235,7 +316,7 @@ router.beforeEach((to, from, next) => {
     }
     
     // 检查角色权限
-    const userRole = getUserRole()
+    const userRole = getUserRole(token)
     const requiredRoles = to.meta.roles
     
     if (requiredRoles && !hasPermission(requiredRoles, userRole)) {
@@ -248,11 +329,8 @@ router.beforeEach((to, from, next) => {
   } 
   // 游客页面（已登录则跳转首页）
   else if (to.matched.some(record => record.meta.guest)) {
-    if (token) {
-      next('/')
-    } else {
-      next()
-    }
+    // 交给页面自身校验当前会话，避免本地残留 token 把无效会话也重定向走
+    next()
   } 
   else {
     next()

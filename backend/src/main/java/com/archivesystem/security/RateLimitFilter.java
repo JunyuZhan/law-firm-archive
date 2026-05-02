@@ -9,13 +9,16 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
+import org.springframework.util.AntPathMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.time.Duration;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -30,6 +33,15 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
+    private final AntPathMatcher pathMatcher = new AntPathMatcher();
+
+    // Lua脚本：原子increment + 条件expire（仅在key首次创建时设置TTL）
+    private static final DefaultRedisScript<Long> RATE_LIMIT_SCRIPT = new DefaultRedisScript<>(
+            "local count = redis.call('INCR', KEYS[1]) " +
+            "if count == 1 then redis.call('EXPIRE', KEYS[1], ARGV[1]) end " +
+            "return count",
+            Long.class
+    );
 
     // 通用接口限制：每分钟100次请求
     private static final int GENERAL_RATE_LIMIT = 100;
@@ -63,12 +75,12 @@ public class RateLimitFilter extends OncePerRequestFilter {
         String key = "rate_limit:" + config.keyPrefix + ":" + clientIp;
         
         try {
-            Long count = redisTemplate.opsForValue().increment(key);
-            
-            if (count != null && count == 1) {
-                // 第一次请求，设置过期时间
-                redisTemplate.expire(key, Duration.ofSeconds(config.windowSeconds));
-            }
+            // 使用Lua脚本原子执行increment + 条件expire，避免竞态条件
+            Long count = redisTemplate.execute(
+                    RATE_LIMIT_SCRIPT,
+                    List.of(key),
+                    String.valueOf(config.windowSeconds)
+            );
             
             // 设置速率限制响应头
             response.setHeader("X-RateLimit-Limit", String.valueOf(config.limit));
@@ -89,15 +101,16 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     /**
      * 根据请求URI获取速率限制配置.
+     * 使用AntPathMatcher精确匹配，避免contains()被绕过
      */
     private RateLimitConfig getRateLimitConfig(String uri) {
-        if (uri.contains("/auth/login")) {
+        if (pathMatcher.match("/api/auth/login", uri) || pathMatcher.match("/auth/login", uri)) {
             return new RateLimitConfig("login", LOGIN_RATE_LIMIT, LOGIN_WINDOW_SECONDS);
-        } else if (uri.contains("/files/upload")) {
+        } else if (pathMatcher.match("/api/files/upload", uri) || pathMatcher.match("/files/upload", uri)) {
             return new RateLimitConfig("upload", UPLOAD_RATE_LIMIT, UPLOAD_WINDOW_SECONDS);
-        } else if (uri.startsWith("/api/open/borrow/access/") || uri.startsWith("/open/borrow/access/")) {
+        } else if (pathMatcher.match("/api/open/borrow/access/**", uri) || pathMatcher.match("/open/borrow/access/**", uri)) {
             return new RateLimitConfig("open_borrow_access", PUBLIC_BORROW_ACCESS_RATE_LIMIT, PUBLIC_BORROW_ACCESS_WINDOW_SECONDS);
-        } else if (uri.startsWith("/api/open/") || uri.startsWith("/open/")) {
+        } else if (pathMatcher.match("/api/open/**", uri) || pathMatcher.match("/open/**", uri)) {
             return new RateLimitConfig("open_write", OPEN_API_WRITE_RATE_LIMIT, OPEN_API_WRITE_WINDOW_SECONDS);
         }
         return new RateLimitConfig("general", GENERAL_RATE_LIMIT, GENERAL_WINDOW_SECONDS);

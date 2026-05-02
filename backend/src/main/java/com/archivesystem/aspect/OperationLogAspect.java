@@ -19,6 +19,7 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.time.LocalDateTime;
+import java.util.Locale;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -64,7 +65,7 @@ public class OperationLogAspect {
                 Object paramValue = args[i];
                 
                 // 过滤敏感参数
-                if (paramName.toLowerCase().contains("password")) {
+                if (isSensitiveParameterName(paramName)) {
                     continue;
                 }
                 
@@ -114,6 +115,22 @@ public class OperationLogAspect {
                Number.class.isAssignableFrom(type) ||
                type == Boolean.class ||
                type.isEnum();
+    }
+
+    private boolean isSensitiveParameterName(String paramName) {
+        if (paramName == null || paramName.isBlank()) {
+            return false;
+        }
+        String normalized = paramName.toLowerCase(Locale.ROOT);
+        return normalized.contains("password")
+                || normalized.contains("secret")
+                || normalized.contains("token")
+                || normalized.contains("apikey")
+                || normalized.contains("api_key")
+                || normalized.contains("authorization")
+                || normalized.contains("credential")
+                || normalized.contains("cookie")
+                || normalized.contains("session");
     }
 
     private String getClientIp(HttpServletRequest request) {

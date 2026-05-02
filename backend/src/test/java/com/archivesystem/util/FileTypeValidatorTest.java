@@ -4,8 +4,13 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 /**
  * @author junyuzhan
  */
@@ -381,5 +386,17 @@ class FileTypeValidatorTest {
         FileTypeValidator.ValidationResult result = FileTypeValidator.validate(file, "ofd");
         
         assertTrue(result.isValid());
+    }
+
+    @Test
+    void testValidate_ShouldHideInternalIoErrorDetails() throws Exception {
+        MultipartFile file = mock(MultipartFile.class);
+        when(file.isEmpty()).thenReturn(false);
+        when(file.getInputStream()).thenThrow(new IOException("disk error: /private/tmp/upload.bin"));
+
+        FileTypeValidator.ValidationResult result = FileTypeValidator.validate(file, "pdf");
+
+        assertFalse(result.isValid());
+        assertEquals("文件验证失败，请稍后重试或联系系统管理员", result.getMessage());
     }
 }

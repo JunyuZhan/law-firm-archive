@@ -1,5 +1,6 @@
 package com.archivesystem.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
@@ -37,6 +38,7 @@ public class RestoreJob implements Serializable {
     private Boolean restoredConfig;
     private String rebuildIndexStatus;
     private String restoreReport;
+    @JsonIgnore
     private String errorMessage;
     private LocalDateTime startedAt;
     private LocalDateTime finishedAt;

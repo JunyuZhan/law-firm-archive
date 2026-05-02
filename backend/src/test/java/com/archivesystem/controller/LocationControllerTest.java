@@ -19,6 +19,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.util.Collections;
+import java.util.List;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -65,17 +66,70 @@ class LocationControllerTest {
     }
 
     @Test
+    void testList_ShouldHideRemarks() throws Exception {
+        ArchiveLocation location = new ArchiveLocation();
+        location.setId(1L);
+        location.setLocationCode("LOC001");
+        location.setLocationName("档案室A");
+        location.setRemarks("内部备注");
+        when(locationService.getList(any(), any(), any(), anyInt(), anyInt()))
+                .thenReturn(PageResult.of(1, 20, 1, List.of(location)));
+
+        mockMvc.perform(get("/locations"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.records[0].locationCode").value("LOC001"))
+                .andExpect(jsonPath("$.data.records[0].remarks").doesNotExist());
+    }
+
+    @Test
     void testGetById() throws Exception {
         ArchiveLocation location = new ArchiveLocation();
         location.setId(1L);
         location.setLocationCode("LOC001");
         location.setLocationName("档案室A");
+        location.setCreatedBy(7L);
+        location.setUpdatedBy(8L);
+        location.setDeleted(false);
         when(locationService.getById(1L)).thenReturn(location);
 
         mockMvc.perform(get("/locations/1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
-                .andExpect(jsonPath("$.data.locationCode").value("LOC001"));
+                .andExpect(jsonPath("$.data.locationCode").value("LOC001"))
+                .andExpect(jsonPath("$.data.createdBy").doesNotExist())
+                .andExpect(jsonPath("$.data.updatedBy").doesNotExist())
+                .andExpect(jsonPath("$.data.deleted").doesNotExist());
+    }
+
+    @Test
+    void testGetAvailable_ShouldHideRemarks() throws Exception {
+        ArchiveLocation location = new ArchiveLocation();
+        location.setId(1L);
+        location.setLocationCode("LOC001");
+        location.setLocationName("档案室A");
+        location.setRoomName("一号库房");
+        location.setShelfNo("03");
+        location.setArea("A区");
+        location.setLayerNo("2");
+        location.setTotalCapacity(100);
+        location.setUsedCapacity(80);
+        location.setStatus("FULL");
+        location.setRemarks("内部备注");
+        when(locationService.getAvailable()).thenReturn(List.of(location));
+
+        mockMvc.perform(get("/locations/available"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("200"))
+                .andExpect(jsonPath("$.data[0].locationCode").doesNotExist())
+                .andExpect(jsonPath("$.data[0].locationName").value("档案室A"))
+                .andExpect(jsonPath("$.data[0].roomName").value("一号库房"))
+                .andExpect(jsonPath("$.data[0].shelfNo").value("03"))
+                .andExpect(jsonPath("$.data[0].area").doesNotExist())
+                .andExpect(jsonPath("$.data[0].layerNo").doesNotExist())
+                .andExpect(jsonPath("$.data[0].totalCapacity").doesNotExist())
+                .andExpect(jsonPath("$.data[0].usedCapacity").doesNotExist())
+                .andExpect(jsonPath("$.data[0].status").doesNotExist())
+                .andExpect(jsonPath("$.data[0].remarks").doesNotExist());
     }
 
     @Test
@@ -88,6 +142,10 @@ class LocationControllerTest {
         created.setId(1L);
         created.setLocationCode("LOC001");
         created.setLocationName("档案室A");
+        created.setRoomName("一号库房");
+        created.setStatus("AVAILABLE");
+        created.setRemarks("内部备注");
+        created.setCreatedBy(7L);
         
         when(locationService.create(any(ArchiveLocation.class))).thenReturn(created);
 
@@ -96,7 +154,13 @@ class LocationControllerTest {
                         .content(objectMapper.writeValueAsString(location)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
-                .andExpect(jsonPath("$.data.id").value(1));
+                .andExpect(jsonPath("$.data.id").value(1))
+                .andExpect(jsonPath("$.data.locationCode").value("LOC001"))
+                .andExpect(jsonPath("$.data.locationName").value("档案室A"))
+                .andExpect(jsonPath("$.data.roomName").value("一号库房"))
+                .andExpect(jsonPath("$.data.status").value("AVAILABLE"))
+                .andExpect(jsonPath("$.data.remarks").doesNotExist())
+                .andExpect(jsonPath("$.data.createdBy").doesNotExist());
     }
 
     @Test
@@ -109,6 +173,10 @@ class LocationControllerTest {
         updated.setId(1L);
         updated.setLocationCode("LOC001");
         updated.setLocationName("档案室B");
+        updated.setRoomName("二号库房");
+        updated.setStatus("FULL");
+        updated.setRemarks("内部备注");
+        updated.setUpdatedBy(8L);
         
         when(locationService.update(eq(1L), any(ArchiveLocation.class))).thenReturn(updated);
 
@@ -117,7 +185,11 @@ class LocationControllerTest {
                         .content(objectMapper.writeValueAsString(location)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("200"))
-                .andExpect(jsonPath("$.data.locationName").value("档案室B"));
+                .andExpect(jsonPath("$.data.locationName").value("档案室B"))
+                .andExpect(jsonPath("$.data.roomName").value("二号库房"))
+                .andExpect(jsonPath("$.data.status").value("FULL"))
+                .andExpect(jsonPath("$.data.remarks").doesNotExist())
+                .andExpect(jsonPath("$.data.updatedBy").doesNotExist());
     }
 
     @Test

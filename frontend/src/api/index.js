@@ -4,8 +4,9 @@ import router from '@/router'
 import { secureStorage, sanitizeInput } from '@/utils/security'
 
 // 创建axios实例
+const apiBaseURL = import.meta.env.VITE_API_BASE_URL || '/api'
 const request = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
+  baseURL: apiBaseURL,
   timeout: 30000,
   // 安全配置
   withCredentials: true,
@@ -18,13 +19,19 @@ let isRefreshing = false
 let refreshSubscribers = []
 
 // 添加刷新订阅者
-const subscribeTokenRefresh = (callback) => {
-  refreshSubscribers.push(callback)
+const subscribeTokenRefresh = (resolve, reject) => {
+  refreshSubscribers.push({ resolve, reject })
 }
 
 // 通知所有订阅者
 const onRefreshed = (token) => {
-  refreshSubscribers.forEach(callback => callback(token))
+  refreshSubscribers.forEach(({ resolve }) => resolve(token))
+  refreshSubscribers = []
+}
+
+// 刷新失败时拒绝所有排队请求，避免请求永久挂起
+const onRefreshFailed = (error) => {
+  refreshSubscribers.forEach(({ reject }) => reject(error))
   refreshSubscribers = []
 }
 
@@ -71,10 +78,46 @@ function checkRequestData(data, path = '') {
   }
 }
 
+async function unwrapBlobBusinessError(blob) {
+  if (!(blob instanceof Blob)) {
+    return null
+  }
+
+  const contentType = blob.type || ''
+  if (!contentType.includes('application/json')) {
+    return null
+  }
+
+  try {
+    return JSON.parse(await blob.text())
+  } catch {
+    return null
+  }
+}
+
+async function extractBlobErrorMessage(blob) {
+  const blobError = await unwrapBlobBusinessError(blob)
+  if (!blobError) {
+    return null
+  }
+
+  return sanitizeInput(blobError.message) || null
+}
+
 // 响应拦截器
 request.interceptors.response.use(
-  response => {
+  async response => {
     const res = response.data
+    if (response.config?.responseType === 'blob') {
+      const blobError = await unwrapBlobBusinessError(res)
+      if (blobError?.success === false) {
+        const message = sanitizeInput(blobError.message) || '请求失败'
+        ElMessage.error(message)
+        return Promise.reject(new Error(message))
+      }
+      return res
+    }
+
     if (res.success === false) {
       // 业务错误
       ElMessage.error(sanitizeInput(res.message) || '请求失败')
@@ -84,36 +127,42 @@ request.interceptors.response.use(
   },
   async error => {
     const originalRequest = error.config
+    const blobErrorMessage = await extractBlobErrorMessage(error.response?.data)
     
     // 429 请求过于频繁
     if (error.response?.status === 429) {
-      ElMessage.warning(error.response.data?.message || '请求过于频繁，请稍后重试')
+      ElMessage.warning(blobErrorMessage || error.response.data?.message || '请求过于频繁，请稍后重试')
       return Promise.reject(error)
     }
     
-    // 401 未授权，或 403 但已带 Bearer（Spring 对部分未授权场景也返回 403）— 尝试刷新 Token 一次
+    // 401 一律视为会话可能失效；403 仅在令牌缺失/刚过期场景下兜底续期一次
     const status = error.response?.status
+    const activeAccessToken = secureStorage.getAccessToken()
+    const currentRefreshToken = secureStorage.getRefreshToken()
     const hadBearer = !!(originalRequest?.headers?.Authorization)
-    const canTryRefresh = (status === 401 || (status === 403 && hadBearer)) && !originalRequest._retry
+    const canTryRefresh = (
+      status === 401 ||
+      (status === 403 && (!activeAccessToken || hadBearer))
+    ) && !!currentRefreshToken && !originalRequest._retry
 
     if (canTryRefresh) {
       if (isRefreshing) {
         // 正在刷新中，等待刷新完成
-        return new Promise(resolve => {
+        return new Promise((resolve, reject) => {
           subscribeTokenRefresh(token => {
+            originalRequest.headers = originalRequest.headers || {}
             originalRequest.headers.Authorization = `Bearer ${token}`
             resolve(request(originalRequest))
-          })
+          }, reject)
         })
       }
       
       originalRequest._retry = true
       isRefreshing = true
       
-      const refreshToken = secureStorage.getRefreshToken()
-      if (refreshToken) {
+      if (currentRefreshToken) {
         try {
-          const res = await axios.post('/api/auth/refresh', refreshToken, {
+          const res = await axios.post(`${apiBaseURL}/auth/refresh`, currentRefreshToken, {
             headers: { 'Content-Type': 'text/plain' }
           })
           
@@ -124,11 +173,15 @@ request.interceptors.response.use(
               secureStorage.setRefreshToken(newRefreshToken)
             }
             onRefreshed(accessToken)
+            originalRequest.headers = originalRequest.headers || {}
             originalRequest.headers.Authorization = `Bearer ${accessToken}`
             return request(originalRequest)
           }
+
+          onRefreshFailed(new Error(res.data?.message || '登录已过期，请重新登录'))
         } catch (refreshError) {
           console.error('Token刷新失败', refreshError)
+          onRefreshFailed(refreshError)
         } finally {
           isRefreshing = false
         }
@@ -143,12 +196,12 @@ request.interceptors.response.use(
     
     // 403 禁止访问（未走上方刷新分支时，视为真实无权限）
     if (error.response?.status === 403) {
-      ElMessage.error('无权限访问')
+      ElMessage.error(blobErrorMessage || '无权限访问')
       return Promise.reject(error)
     }
     
     // 其他错误
-    const message = sanitizeInput(error.response?.data?.message) || error.message || '网络错误'
+    const message = blobErrorMessage || sanitizeInput(error.response?.data?.message) || error.message || '网络错误'
     ElMessage.error(message)
     return Promise.reject(error)
   }
