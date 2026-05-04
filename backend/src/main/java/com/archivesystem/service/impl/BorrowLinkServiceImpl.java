@@ -28,11 +28,13 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 /**
@@ -43,6 +45,10 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class BorrowLinkServiceImpl implements BorrowLinkService {
+
+    private static final AtomicInteger externalApplicationNoCounter = new AtomicInteger(1);
+    private static final String EXTERNAL_BORROW_REMARK_PREFIX = "[external-borrow]";
+    private static final String LEGACY_EXTERNAL_USER_REMARK_PREFIX = "externalSourceUserId=";
 
     private final BorrowLinkMapper borrowLinkMapper;
     private final ArchiveMapper archiveMapper;
@@ -70,12 +76,11 @@ public class BorrowLinkServiceImpl implements BorrowLinkService {
         }
         validateArchiveIdentity(archive, request.getArchiveId(), request.getArchiveNo());
 
-        // 检查档案是否允许借阅
-        if (Archive.STATUS_DESTROYED.equals(archive.getStatus())) {
-            throw new BusinessException("该档案已销毁，无法借阅");
-        }
+        boolean allowDownload = Boolean.TRUE.equals(request.getAllowDownload());
+        BorrowApplication borrowApplication = resolveExternalBorrowApplication(archive, request, sourceCode, allowDownload);
+        validateExternalBorrowEligibility(archive, allowDownload, borrowApplication);
 
-        BorrowLink reusableLink = findReusableExternalLink(archive, request, sourceCode);
+        BorrowLink reusableLink = findReusableExternalLink(archive, request, sourceCode, borrowApplication.getId());
         if (reusableLink != null) {
             log.info("复用已存在的电子借阅链接: linkId={}, archiveId={}, userId={}",
                     reusableLink.getId(), archive.getId(), request.getUserId());
@@ -94,6 +99,7 @@ public class BorrowLinkServiceImpl implements BorrowLinkService {
 
         // 创建借阅链接
         BorrowLink link = BorrowLink.builder()
+                .borrowId(borrowApplication.getId())
                 .archiveId(archive.getId())
                 .archiveNo(archive.getArchiveNo())
                 .accessToken(accessToken)
@@ -104,7 +110,7 @@ public class BorrowLinkServiceImpl implements BorrowLinkService {
                 .borrowPurpose(request.getPurpose())
                 .expireAt(expireAt)
                 .maxAccessCount(request.getMaxAccessCount())
-                .allowDownload(request.getAllowDownload() != null ? request.getAllowDownload() : true)
+                .allowDownload(allowDownload)
                 .status(BorrowLink.STATUS_ACTIVE)
                 .build();
 
@@ -376,7 +382,10 @@ public class BorrowLinkServiceImpl implements BorrowLinkService {
         }
     }
 
-    private BorrowLink findReusableExternalLink(Archive archive, BorrowLinkApplyRequest request, String sourceCode) {
+    private BorrowLink findReusableExternalLink(Archive archive,
+                                                BorrowLinkApplyRequest request,
+                                                String sourceCode,
+                                                Long borrowId) {
         if (archive == null || !StringUtils.hasText(request.getUserId())) {
             return null;
         }
@@ -384,6 +393,7 @@ public class BorrowLinkServiceImpl implements BorrowLinkService {
                 borrowLinkMapper.selectBySourceUser(request.getUserId(), BorrowLink.SOURCE_TYPE_LAW_FIRM);
         return existingLinks.stream()
                 .filter(BorrowLink::isValid)
+                .filter(link -> Objects.equals(link.getBorrowId(), borrowId))
                 .filter(link -> !StringUtils.hasText(sourceCode) || sourceCode.equals(link.getSourceSystem()))
                 .filter(link -> archive.getId().equals(link.getArchiveId()))
                 .filter(link -> Objects.equals(request.getPurpose(), link.getBorrowPurpose()))
@@ -391,6 +401,132 @@ public class BorrowLinkServiceImpl implements BorrowLinkService {
                 .filter(link -> equalsNullable(boolOrDefault(request.getAllowDownload(), true), boolOrDefault(link.getAllowDownload(), true)))
                 .findFirst()
                 .orElse(null);
+    }
+
+    private BorrowApplication resolveExternalBorrowApplication(Archive archive,
+                                                               BorrowLinkApplyRequest request,
+                                                               String sourceCode,
+                                                               boolean allowDownload) {
+        String requestedBorrowType = allowDownload ? BorrowApplication.TYPE_DOWNLOAD : BorrowApplication.TYPE_ONLINE;
+        List<BorrowApplication> applications = borrowApplicationMapper.selectByArchiveId(archive.getId());
+        List<BorrowApplication> matchedApplications = applications.stream()
+                .filter(application -> matchesExternalBorrowRequest(application, archive.getId(), request, sourceCode, requestedBorrowType))
+                .toList();
+
+        for (BorrowApplication application : matchedApplications) {
+            if (BorrowApplication.STATUS_APPROVED.equals(application.getStatus())
+                    || BorrowApplication.STATUS_BORROWED.equals(application.getStatus())) {
+                return application;
+            }
+        }
+
+        for (BorrowApplication application : matchedApplications) {
+            if (BorrowApplication.STATUS_PENDING.equals(application.getStatus())) {
+                throw new BusinessException("1010", "外部借阅申请已提交，待审批通过后方可生成访问链接");
+            }
+        }
+
+        BorrowApplication application = createPendingExternalBorrowApplication(archive, request, sourceCode, requestedBorrowType);
+        borrowApplicationMapper.insert(application);
+        log.info("创建待审批外部借阅申请: applicationNo={}, archiveId={}, sourceCode={}, sourceUserId={}",
+                application.getApplicationNo(), archive.getId(), sourceCode, request.getUserId());
+        throw new BusinessException("1010", "外部借阅申请已提交，待审批通过后方可生成访问链接");
+    }
+
+    private boolean matchesExternalBorrowRequest(BorrowApplication application,
+                                                 Long archiveId,
+                                                 BorrowLinkApplyRequest request,
+                                                 String sourceCode,
+                                                 String requestedBorrowType) {
+        if (application == null) {
+            return false;
+        }
+        if (!Objects.equals(application.getArchiveId(), archiveId)) {
+            return false;
+        }
+        if (!Objects.equals(application.getApplicantDept(), sourceCode)) {
+            return false;
+        }
+        if (!hasMatchingExternalIdentity(application, sourceCode, request.getUserId())) {
+            return false;
+        }
+        if (!Objects.equals(application.getBorrowPurpose(), request.getPurpose())) {
+            return false;
+        }
+        if (BorrowApplication.TYPE_DOWNLOAD.equals(requestedBorrowType)) {
+            return BorrowApplication.TYPE_DOWNLOAD.equals(application.getBorrowType());
+        }
+        return BorrowApplication.TYPE_ONLINE.equals(application.getBorrowType())
+                || BorrowApplication.TYPE_DOWNLOAD.equals(application.getBorrowType());
+    }
+
+    private BorrowApplication createPendingExternalBorrowApplication(Archive archive,
+                                                                     BorrowLinkApplyRequest request,
+                                                                     String sourceCode,
+                                                                     String requestedBorrowType) {
+        int expireDays = request.getExpireDays() != null ? request.getExpireDays() : defaultExpireDays;
+        expireDays = Math.min(expireDays, maxExpireDays);
+        return BorrowApplication.builder()
+                .applicationNo(generateExternalApplicationNo())
+                .archiveId(archive.getId())
+                .archiveNo(archive.getArchiveNo())
+                .archiveTitle(archive.getTitle())
+                .applicantName(request.getUserName())
+                .applicantDept(sourceCode)
+                .borrowPurpose(request.getPurpose())
+                .borrowType(requestedBorrowType)
+                .expectedReturnDate(LocalDate.now().plusDays(expireDays))
+                .remarks(buildExternalBorrowRemark(sourceCode, request.getUserId()))
+                .status(BorrowApplication.STATUS_PENDING)
+                .applyTime(LocalDateTime.now())
+                .build();
+    }
+
+    public static boolean isExternalBorrowRemark(String remarks) {
+        return StringUtils.hasText(remarks) && remarks.startsWith(EXTERNAL_BORROW_REMARK_PREFIX);
+    }
+
+    private boolean hasMatchingExternalIdentity(BorrowApplication application, String sourceCode, String userId) {
+        if (!StringUtils.hasText(userId)) {
+            return false;
+        }
+        String remarks = application.getRemarks();
+        return buildExternalBorrowRemark(sourceCode, userId).equals(remarks)
+                || (Objects.equals(application.getApplicantDept(), sourceCode)
+                && (LEGACY_EXTERNAL_USER_REMARK_PREFIX + userId).equals(remarks));
+    }
+
+    private String buildExternalBorrowRemark(String sourceCode, String userId) {
+        return EXTERNAL_BORROW_REMARK_PREFIX + " source=" + nullToEmpty(sourceCode) + "; userId=" + userId;
+    }
+
+    private String nullToEmpty(String value) {
+        return value == null ? "" : value;
+    }
+
+    private String generateExternalApplicationNo() {
+        return "BR-EXT-" + LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMddHHmmss"))
+                + String.format("-%03d", externalApplicationNoCounter.getAndIncrement() % 1000);
+    }
+
+    private void validateExternalBorrowEligibility(Archive archive, boolean allowDownload, BorrowApplication borrowApplication) {
+        if (Archive.STATUS_DESTROYED.equals(archive.getStatus())) {
+            throw new BusinessException("该档案已销毁，无法借阅");
+        }
+        boolean authorizedBorrowInProgress = BorrowApplication.STATUS_BORROWED.equals(borrowApplication.getStatus());
+        if (!Archive.STATUS_STORED.equals(archive.getStatus())
+                && !(authorizedBorrowInProgress && Archive.STATUS_BORROWED.equals(archive.getStatus()))) {
+            throw new BusinessException("仅已归档档案可生成外部借阅链接");
+        }
+        if (!Boolean.TRUE.equals(archive.getHasElectronic())
+                && !Archive.FORM_ELECTRONIC.equals(archive.getArchiveForm())
+                && !Archive.FORM_HYBRID.equals(archive.getArchiveForm())) {
+            throw new BusinessException("该档案无电子载体，不支持外部在线借阅");
+        }
+        if (allowDownload && (Archive.SECURITY_CONFIDENTIAL.equals(archive.getSecurityLevel())
+                || Archive.SECURITY_SECRET.equals(archive.getSecurityLevel()))) {
+            throw new BusinessException("秘密和机密档案仅允许在线查阅，不允许下载型借阅");
+        }
     }
 
     private BorrowLinkApplyResponse buildApplyResponse(BorrowLink link, Archive archive) {

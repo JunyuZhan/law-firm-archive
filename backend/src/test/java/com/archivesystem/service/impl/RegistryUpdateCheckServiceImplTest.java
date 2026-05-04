@@ -23,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -71,9 +72,9 @@ class RegistryUpdateCheckServiceImplTest {
         when(registryUpgradeProperties.getRegistryUsername()).thenReturn("");
         when(registryUpgradeProperties.getRegistryPassword()).thenReturn("");
 
-        when(manifestClient.fetchManifestDigest(anyString(), eq("law-firm-archive/backend"), eq("v0.1.0"), any(), any()))
+        lenient().when(manifestClient.fetchManifestDigest(anyString(), eq("law-firm-archive/backend"), eq("v0.1.0"), any(), any()))
                 .thenReturn(ManifestFetchResult.ok("sha256:aa"));
-        when(manifestClient.fetchManifestDigest(anyString(), eq("law-firm-archive/frontend"), eq("v0.1.0"), any(), any()))
+        lenient().when(manifestClient.fetchManifestDigest(anyString(), eq("law-firm-archive/frontend"), eq("v0.1.0"), any(), any()))
                 .thenReturn(ManifestFetchResult.ok("sha256:bb"));
     }
 

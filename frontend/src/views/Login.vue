@@ -24,6 +24,7 @@
       />
       
       <el-form
+        v-if="!setupMode"
         ref="formRef"
         :model="form"
         :rules="rules"
@@ -106,13 +107,68 @@
           </el-button>
         </el-form-item>
       </el-form>
+
+      <el-form
+        v-else
+        ref="setupFormRef"
+        :model="setupForm"
+        :rules="setupRules"
+        class="login-form"
+      >
+        <el-form-item>
+          <div class="setup-panel">
+            <div class="setup-title">
+              首次初始化
+            </div>
+            <p class="setup-desc">
+              系统检测到当前还没有管理员账号。请先为 <code>admin</code> 设置初始密码，完成后再使用该账号登录。
+            </p>
+          </div>
+        </el-form-item>
+        <el-form-item prop="password">
+          <el-input
+            v-model="setupForm.password"
+            type="password"
+            prefix-icon="Lock"
+            placeholder="设置 admin 初始密码"
+            size="large"
+            show-password
+            maxlength="50"
+            @input="onSetupInputChange"
+          />
+        </el-form-item>
+        <el-form-item prop="confirmPassword">
+          <el-input
+            v-model="setupForm.confirmPassword"
+            type="password"
+            prefix-icon="Lock"
+            placeholder="再次输入密码"
+            size="large"
+            show-password
+            maxlength="50"
+            @keyup.enter="handleBootstrapInitialize"
+            @input="onSetupInputChange"
+          />
+        </el-form-item>
+        <el-form-item>
+          <el-button
+            type="primary"
+            size="large"
+            :loading="bootstrapLoading"
+            style="width: 100%"
+            @click="handleBootstrapInitialize"
+          >
+            设置 admin 初始密码
+          </el-button>
+        </el-form-item>
+      </el-form>
       
       <div class="login-footer">
         <p
-          v-if="isDev"
+          v-if="isDev && !setupMode"
           class="dev-hint"
         >
-          开发环境：admin / admin123
+          开发环境：如未初始化，请先设置 admin 初始密码
         </p>
         <div class="footer-info">
           <a 
@@ -140,6 +196,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 import { useAppStore } from '@/stores/app'
+import { getBootstrapStatus, initializeBootstrap } from '@/api/auth'
 import { isValidUrl, secureStorage } from '@/utils/security'
 
 const router = useRouter()
@@ -147,8 +204,11 @@ const route = useRoute()
 const userStore = useUserStore()
 const appStore = useAppStore()
 const formRef = ref()
+const setupFormRef = ref()
 const loading = ref(false)
+const bootstrapLoading = ref(false)
 const captchaCanvas = ref()
+const setupMode = ref(false)
 
 // 是否开发环境
 const isDev = import.meta.env.DEV
@@ -174,6 +234,11 @@ const form = reactive({
   username: '',
   password: '',
   captcha: ''
+})
+
+const setupForm = reactive({
+  password: '',
+  confirmPassword: ''
 })
 
 const requireTrimmedText = (message) => ({
@@ -213,6 +278,26 @@ const rules = {
   ]
 }
 
+const setupRules = {
+  password: [
+    requireNonBlankValue('请输入初始密码'),
+    { min: 8, max: 50, message: '密码长度8-50位', trigger: 'blur' }
+  ],
+  confirmPassword: [
+    requireNonBlankValue('请再次输入密码'),
+    {
+      validator: (_rule, value, callback) => {
+        if (value !== setupForm.password) {
+          callback(new Error('两次输入的密码不一致'))
+          return
+        }
+        callback()
+      },
+      trigger: 'blur'
+    }
+  ]
+}
+
 // 登录按钮文字
 const loginButtonText = computed(() => {
   if (loading.value) return '登录中...'
@@ -224,6 +309,12 @@ const loginButtonText = computed(() => {
 onMounted(async () => {
   userStore.init()
   appStore.loadSiteConfig()
+
+  const initialized = await loadBootstrapStatus()
+  if (!initialized) {
+    userStore.clearUser()
+    return
+  }
 
   if (secureStorage.getAccessToken()) {
     try {
@@ -299,6 +390,25 @@ const restoreLockState = () => {
     if (failedAttempts.value >= 3) {
       nextTick(() => refreshCaptcha())
     }
+  }
+}
+
+const loadBootstrapStatus = async () => {
+  try {
+    const res = await getBootstrapStatus()
+    setupMode.value = !res.data.initialized
+    if (setupMode.value) {
+      securityAlert.show = true
+      securityAlert.type = 'info'
+      securityAlert.message = '系统尚未初始化，请先设置 admin 初始密码'
+    }
+    return res.data.initialized
+  } catch (e) {
+    console.error('获取初始化状态失败', e)
+    securityAlert.show = true
+    securityAlert.type = 'error'
+    securityAlert.message = '无法获取系统初始化状态，请稍后重试'
+    return true
   }
 }
 
@@ -390,6 +500,12 @@ const onCaptchaInput = (value) => {
   form.captcha = value.trim().toUpperCase()
 }
 
+const onSetupInputChange = () => {
+  if (securityAlert.show) {
+    securityAlert.show = false
+  }
+}
+
 // 处理登录失败
 const handleLoginFailed = (error) => {
   failedAttempts.value++
@@ -466,6 +582,37 @@ const handleLogin = async () => {
     handleLoginFailed(e)
   } finally {
     loading.value = false
+  }
+}
+
+const handleBootstrapInitialize = async () => {
+  try {
+    await setupFormRef.value.validate()
+    bootstrapLoading.value = true
+    securityAlert.show = false
+
+    await initializeBootstrap(setupForm.password)
+
+    setupMode.value = false
+    form.username = 'admin'
+    form.password = ''
+    form.captcha = ''
+    setupForm.password = ''
+    setupForm.confirmPassword = ''
+    failedAttempts.value = 0
+    sessionStorage.removeItem('loginFailedAttempts')
+    localStorage.removeItem('loginLockEndTime')
+    isLocked.value = false
+
+    ElMessage.success('初始化成功，请使用 admin 登录')
+    nextTick(() => refreshCaptcha())
+  } catch (e) {
+    console.error('初始化失败', e)
+    securityAlert.show = true
+    securityAlert.type = 'error'
+    securityAlert.message = e?.message || '初始化失败'
+  } finally {
+    bootstrapLoading.value = false
   }
 }
 </script>
@@ -561,6 +708,34 @@ const handleLogin = async () => {
       background-color: #a0cfff;
       border-color: #a0cfff;
     }
+  }
+}
+
+.setup-panel {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 6px;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+
+  .setup-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #1f2937;
+  }
+
+  .setup-desc {
+    margin: 8px 0 0;
+    font-size: 13px;
+    line-height: 1.6;
+    color: #6b7280;
+  }
+
+  code {
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: #e5eef9;
+    color: #1d4ed8;
   }
 }
 

@@ -387,7 +387,6 @@ export function initSecurity() {
     // 实际实现可根据需求调整
   })
   
-  console.log('Security module initialized')
 }
 
 export default {

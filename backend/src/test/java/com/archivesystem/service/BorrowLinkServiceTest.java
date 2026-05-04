@@ -29,6 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.any;
@@ -419,10 +420,24 @@ class BorrowLinkServiceTest {
         Archive archive = Archive.builder()
                 .archiveNo("ARC-001")
                 .title("测试档案")
+                .status(Archive.STATUS_STORED)
                 .build();
         archive.setId(100L);
+        BorrowApplication approvedApplication = BorrowApplication.builder()
+                .archiveId(100L)
+                .archiveNo("ARC-001")
+                .applicantName("张三")
+                .applicantDept("LAW_FIRM_A")
+                .borrowPurpose("阅卷")
+                .borrowType(BorrowApplication.TYPE_DOWNLOAD)
+                .status(BorrowApplication.STATUS_APPROVED)
+                .remarks("[external-borrow] source=LAW_FIRM_A; userId=u1")
+                .expectedReturnDate(LocalDate.now().plusDays(7))
+                .build();
+        approvedApplication.setId(66L);
         BorrowLink existing = BorrowLink.builder()
                 .id(88L)
+                .borrowId(66L)
                 .archiveId(100L)
                 .archiveNo("ARC-001")
                 .accessToken("existing-token")
@@ -436,6 +451,7 @@ class BorrowLinkServiceTest {
                 .expireAt(LocalDateTime.now().plusDays(3))
                 .build();
         when(archiveMapper.selectById(100L)).thenReturn(archive);
+        when(borrowApplicationMapper.selectByArchiveId(100L)).thenReturn(List.of(approvedApplication));
         when(borrowLinkMapper.selectBySourceUser("u1", BorrowLink.SOURCE_TYPE_LAW_FIRM))
                 .thenReturn(List.of(existing));
 
@@ -456,6 +472,45 @@ class BorrowLinkServiceTest {
     }
 
     @Test
+    void testApplyLink_ShouldMatchApprovedApplicationWhenOnlyArchiveNoProvided() {
+        Archive archive = Archive.builder()
+                .archiveNo("ARC-001")
+                .title("测试档案")
+                .status(Archive.STATUS_STORED)
+                .archiveForm(Archive.FORM_ELECTRONIC)
+                .hasElectronic(true)
+                .build();
+        archive.setId(100L);
+        BorrowApplication approvedApplication = BorrowApplication.builder()
+                .archiveId(100L)
+                .archiveNo("ARC-001")
+                .applicantName("张三")
+                .applicantDept("LAW_FIRM_A")
+                .borrowPurpose("阅卷")
+                .borrowType(BorrowApplication.TYPE_ONLINE)
+                .status(BorrowApplication.STATUS_APPROVED)
+                .remarks("[external-borrow] source=LAW_FIRM_A; userId=u1")
+                .expectedReturnDate(LocalDate.now().plusDays(7))
+                .build();
+        approvedApplication.setId(77L);
+        when(archiveMapper.selectOne(any())).thenReturn(archive);
+        when(borrowApplicationMapper.selectByArchiveId(100L)).thenReturn(List.of(approvedApplication));
+        when(borrowLinkMapper.selectBySourceUser("u1", BorrowLink.SOURCE_TYPE_LAW_FIRM)).thenReturn(List.of());
+
+        BorrowLinkApplyRequest request = BorrowLinkApplyRequest.builder()
+                .archiveNo("ARC-001")
+                .userId("u1")
+                .userName("张三")
+                .purpose("阅卷")
+                .build();
+
+        borrowLinkService.applyLink(request, "LAW_FIRM_A");
+
+        verify(borrowLinkMapper).insert(argThat(link -> approvedApplication.getId().equals(link.getBorrowId())));
+        verify(borrowApplicationMapper, never()).insert(any(BorrowApplication.class));
+    }
+
+    @Test
     void testApplyLink_ShouldBindExternalSourceCode() {
         Archive archive = Archive.builder()
                 .archiveNo("ARC-001")
@@ -463,7 +518,20 @@ class BorrowLinkServiceTest {
                 .status(Archive.STATUS_STORED)
                 .build();
         archive.setId(100L);
+        BorrowApplication approvedApplication = BorrowApplication.builder()
+                .archiveId(100L)
+                .archiveNo("ARC-001")
+                .applicantName("张三")
+                .applicantDept("LAW_FIRM_A")
+                .borrowPurpose("阅卷")
+                .borrowType(BorrowApplication.TYPE_DOWNLOAD)
+                .status(BorrowApplication.STATUS_APPROVED)
+                .remarks("[external-borrow] source=LAW_FIRM_A; userId=u1")
+                .expectedReturnDate(LocalDate.now().plusDays(7))
+                .build();
+        approvedApplication.setId(66L);
         when(archiveMapper.selectById(100L)).thenReturn(archive);
+        when(borrowApplicationMapper.selectByArchiveId(100L)).thenReturn(List.of(approvedApplication));
         when(borrowLinkMapper.selectBySourceUser("u1", BorrowLink.SOURCE_TYPE_LAW_FIRM))
                 .thenReturn(List.of());
 
@@ -478,7 +546,248 @@ class BorrowLinkServiceTest {
 
         borrowLinkService.applyLink(request, "LAW_FIRM_A");
 
-        verify(borrowLinkMapper).insert(argThat(link -> "LAW_FIRM_A".equals(link.getSourceSystem())));
+        verify(borrowLinkMapper).insert(argThat(link ->
+                "LAW_FIRM_A".equals(link.getSourceSystem()) && approvedApplication.getId().equals(link.getBorrowId())));
+    }
+
+    @Test
+    void testApplyLink_ShouldDefaultToPreviewOnly() {
+        Archive archive = Archive.builder()
+                .archiveNo("ARC-001")
+                .title("测试档案")
+                .status(Archive.STATUS_STORED)
+                .archiveForm(Archive.FORM_ELECTRONIC)
+                .hasElectronic(true)
+                .build();
+        archive.setId(100L);
+        BorrowApplication approvedApplication = BorrowApplication.builder()
+                .archiveId(100L)
+                .archiveNo("ARC-001")
+                .applicantName("张三")
+                .applicantDept("LAW_FIRM_A")
+                .borrowPurpose("阅卷")
+                .borrowType(BorrowApplication.TYPE_ONLINE)
+                .status(BorrowApplication.STATUS_APPROVED)
+                .remarks("[external-borrow] source=LAW_FIRM_A; userId=u1")
+                .expectedReturnDate(LocalDate.now().plusDays(7))
+                .build();
+        approvedApplication.setId(77L);
+        when(archiveMapper.selectById(100L)).thenReturn(archive);
+        when(borrowApplicationMapper.selectByArchiveId(100L)).thenReturn(List.of(approvedApplication));
+        when(borrowLinkMapper.selectBySourceUser("u1", BorrowLink.SOURCE_TYPE_LAW_FIRM))
+                .thenReturn(List.of());
+
+        BorrowLinkApplyRequest request = BorrowLinkApplyRequest.builder()
+                .archiveId(100L)
+                .archiveNo("ARC-001")
+                .userId("u1")
+                .userName("张三")
+                .purpose("阅卷")
+                .build();
+
+        borrowLinkService.applyLink(request, "LAW_FIRM_A");
+
+        verify(borrowLinkMapper).insert(argThat(link ->
+                !Boolean.TRUE.equals(link.getAllowDownload()) && approvedApplication.getId().equals(link.getBorrowId())));
+    }
+
+    @Test
+    void testApplyLink_ShouldCreatePendingBorrowApplicationWhenNoApprovedRequestExists() {
+        Archive archive = Archive.builder()
+                .archiveNo("ARC-001")
+                .title("测试档案")
+                .status(Archive.STATUS_STORED)
+                .archiveForm(Archive.FORM_ELECTRONIC)
+                .hasElectronic(true)
+                .build();
+        archive.setId(100L);
+        when(archiveMapper.selectById(100L)).thenReturn(archive);
+        when(borrowApplicationMapper.selectByArchiveId(100L)).thenReturn(List.of());
+
+        BorrowLinkApplyRequest request = BorrowLinkApplyRequest.builder()
+                .archiveId(100L)
+                .archiveNo("ARC-001")
+                .userId("u1")
+                .userName("张三")
+                .purpose("阅卷")
+                .build();
+
+        assertThrows(BusinessException.class, () -> borrowLinkService.applyLink(request, "LAW_FIRM_A"));
+
+        verify(borrowApplicationMapper).insert(argThat(application ->
+                BorrowApplication.STATUS_PENDING.equals(application.getStatus())
+                        && "张三".equals(application.getApplicantName())
+                        && BorrowApplication.TYPE_ONLINE.equals(application.getBorrowType())));
+        verify(borrowLinkMapper, never()).insert(any(BorrowLink.class));
+    }
+
+    @Test
+    void testApplyLink_ShouldRejectWhenMatchingApplicationStillPending() {
+        Archive archive = Archive.builder()
+                .archiveNo("ARC-001")
+                .title("测试档案")
+                .status(Archive.STATUS_STORED)
+                .archiveForm(Archive.FORM_ELECTRONIC)
+                .hasElectronic(true)
+                .build();
+        archive.setId(100L);
+        BorrowApplication pendingApplication = BorrowApplication.builder()
+                .archiveId(100L)
+                .archiveNo("ARC-001")
+                .applicantName("张三")
+                .applicantDept("LAW_FIRM_A")
+                .borrowPurpose("阅卷")
+                .borrowType(BorrowApplication.TYPE_ONLINE)
+                .status(BorrowApplication.STATUS_PENDING)
+                .remarks("[external-borrow] source=LAW_FIRM_A; userId=u1")
+                .expectedReturnDate(LocalDate.now().plusDays(7))
+                .build();
+        pendingApplication.setId(88L);
+        when(archiveMapper.selectById(100L)).thenReturn(archive);
+        when(borrowApplicationMapper.selectByArchiveId(100L)).thenReturn(List.of(pendingApplication));
+
+        BorrowLinkApplyRequest request = BorrowLinkApplyRequest.builder()
+                .archiveId(100L)
+                .archiveNo("ARC-001")
+                .userId("u1")
+                .userName("张三")
+                .purpose("阅卷")
+                .build();
+
+        assertThrows(BusinessException.class, () -> borrowLinkService.applyLink(request, "LAW_FIRM_A"));
+
+        verify(borrowApplicationMapper, never()).insert(any(BorrowApplication.class));
+        verify(borrowLinkMapper, never()).insert(any(BorrowLink.class));
+    }
+
+    @Test
+    void testApplyLink_ShouldNotReuseApprovedApplicationFromDifferentExternalUserWithSameName() {
+        Archive archive = Archive.builder()
+                .archiveNo("ARC-001")
+                .title("测试档案")
+                .status(Archive.STATUS_STORED)
+                .archiveForm(Archive.FORM_ELECTRONIC)
+                .hasElectronic(true)
+                .build();
+        archive.setId(100L);
+        BorrowApplication approvedApplication = BorrowApplication.builder()
+                .archiveId(100L)
+                .archiveNo("ARC-001")
+                .applicantName("张三")
+                .applicantDept("LAW_FIRM_A")
+                .borrowPurpose("阅卷")
+                .borrowType(BorrowApplication.TYPE_ONLINE)
+                .status(BorrowApplication.STATUS_APPROVED)
+                .remarks("[external-borrow] source=LAW_FIRM_A; userId=u-approved")
+                .expectedReturnDate(LocalDate.now().plusDays(7))
+                .build();
+        approvedApplication.setId(88L);
+        when(archiveMapper.selectById(100L)).thenReturn(archive);
+        when(borrowApplicationMapper.selectByArchiveId(100L)).thenReturn(List.of(approvedApplication));
+
+        BorrowLinkApplyRequest request = BorrowLinkApplyRequest.builder()
+                .archiveId(100L)
+                .archiveNo("ARC-001")
+                .userId("u-other")
+                .userName("张三")
+                .purpose("阅卷")
+                .build();
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> borrowLinkService.applyLink(request, "LAW_FIRM_A"));
+
+        assertEquals("1010", ex.getCode());
+        verify(borrowApplicationMapper).insert(argThat(application ->
+                BorrowApplication.STATUS_PENDING.equals(application.getStatus())
+                        && "LAW_FIRM_A".equals(application.getApplicantDept())
+                        && "[external-borrow] source=LAW_FIRM_A; userId=u-other".equals(application.getRemarks())));
+        verify(borrowLinkMapper, never()).insert(any(BorrowLink.class));
+    }
+
+    @Test
+    void testBorrowApplicationResponse_ShouldHideInternalExternalIdentityMarker() {
+        BorrowApplication application = BorrowApplication.builder()
+                .applicationNo("BR-EXT-001")
+                .remarks("[external-borrow] source=LAW_FIRM_A; userId=u1")
+                .build();
+
+        var response = com.archivesystem.dto.borrow.BorrowApplicationResponse.from(application);
+
+        assertNull(response.getRemarks());
+    }
+
+    @Test
+    void testApplyLink_ShouldRejectNonStoredArchive() {
+        Archive archive = Archive.builder()
+                .archiveNo("ARC-001")
+                .title("测试档案")
+                .status(Archive.STATUS_BORROWED)
+                .archiveForm(Archive.FORM_ELECTRONIC)
+                .hasElectronic(true)
+                .build();
+        archive.setId(100L);
+        when(archiveMapper.selectById(100L)).thenReturn(archive);
+
+        BorrowLinkApplyRequest request = BorrowLinkApplyRequest.builder()
+                .archiveId(100L)
+                .archiveNo("ARC-001")
+                .userId("u1")
+                .userName("张三")
+                .purpose("阅卷")
+                .build();
+
+        assertThrows(BusinessException.class, () -> borrowLinkService.applyLink(request, "LAW_FIRM_A"));
+        verify(borrowLinkMapper, never()).insert(any(BorrowLink.class));
+    }
+
+    @Test
+    void testApplyLink_ShouldRejectArchiveWithoutElectronicCarrier() {
+        Archive archive = Archive.builder()
+                .archiveNo("ARC-001")
+                .title("测试档案")
+                .status(Archive.STATUS_STORED)
+                .archiveForm(Archive.FORM_PHYSICAL)
+                .hasElectronic(false)
+                .build();
+        archive.setId(100L);
+        when(archiveMapper.selectById(100L)).thenReturn(archive);
+
+        BorrowLinkApplyRequest request = BorrowLinkApplyRequest.builder()
+                .archiveId(100L)
+                .archiveNo("ARC-001")
+                .userId("u1")
+                .userName("张三")
+                .purpose("阅卷")
+                .build();
+
+        assertThrows(BusinessException.class, () -> borrowLinkService.applyLink(request, "LAW_FIRM_A"));
+        verify(borrowLinkMapper, never()).insert(any(BorrowLink.class));
+    }
+
+    @Test
+    void testApplyLink_ShouldRejectDownloadForConfidentialArchive() {
+        Archive archive = Archive.builder()
+                .archiveNo("ARC-001")
+                .title("测试档案")
+                .status(Archive.STATUS_STORED)
+                .archiveForm(Archive.FORM_ELECTRONIC)
+                .hasElectronic(true)
+                .securityLevel(Archive.SECURITY_CONFIDENTIAL)
+                .build();
+        archive.setId(100L);
+        when(archiveMapper.selectById(100L)).thenReturn(archive);
+
+        BorrowLinkApplyRequest request = BorrowLinkApplyRequest.builder()
+                .archiveId(100L)
+                .archiveNo("ARC-001")
+                .userId("u1")
+                .userName("张三")
+                .purpose("阅卷")
+                .allowDownload(true)
+                .build();
+
+        assertThrows(BusinessException.class, () -> borrowLinkService.applyLink(request, "LAW_FIRM_A"));
+        verify(borrowLinkMapper, never()).insert(any(BorrowLink.class));
     }
 
     @Test

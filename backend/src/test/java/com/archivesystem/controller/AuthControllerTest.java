@@ -88,6 +88,7 @@ class AuthControllerTest {
                 Collections.emptyList()
         );
 
+        when(userService.isSystemInitialized()).thenReturn(true);
         when(loginSecurityService.isIpLocked(anyString())).thenReturn(false);
         when(loginSecurityService.isAccountLocked(anyString())).thenReturn(false);
         when(loginSecurityService.recordFailedAttempt(anyString(), anyString())).thenReturn(1);
@@ -135,6 +136,20 @@ class AuthControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("1003"))
                 .andExpect(jsonPath("$.message").value("用户已被禁用"));
+    }
+
+    @Test
+    void testLogin_ShouldRejectWhenSystemNotInitialized() throws Exception {
+        LoginRequest request = new LoginRequest();
+        request.setUsername("testuser");
+        request.setPassword("password123");
+        when(userService.isSystemInitialized()).thenReturn(false);
+
+        mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("1007"));
     }
 
     @Test
@@ -294,5 +309,41 @@ class AuthControllerTest {
                         .content(refreshToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("1001"));
+    }
+
+    @Test
+    void testGetBootstrapStatus() throws Exception {
+        when(userService.isSystemInitialized()).thenReturn(false);
+
+        mockMvc.perform(get("/auth/bootstrap/status"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("200"))
+                .andExpect(jsonPath("$.data.initialized").value(false));
+    }
+
+    @Test
+    void testInitializeBootstrap() throws Exception {
+        mockMvc.perform(post("/auth/bootstrap/initialize")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"password\":\"StrongInit#2026\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("200"));
+
+        verify(userService).initializeSystemAdmin("StrongInit#2026");
+    }
+
+    @Test
+    void testInitializeBootstrap_ShouldRejectPublicRequest() throws Exception {
+        mockMvc.perform(post("/auth/bootstrap/initialize")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"password\":\"StrongInit#2026\"}")
+                        .with(request -> {
+                            request.setRemoteAddr("8.8.8.8");
+                            return request;
+                        }))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("1008"));
+
+        verify(userService, never()).initializeSystemAdmin(anyString());
     }
 }

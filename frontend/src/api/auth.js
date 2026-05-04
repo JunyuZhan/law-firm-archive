@@ -44,3 +44,24 @@ export function logout() {
     method: 'post'
   })
 }
+
+/**
+ * 获取系统初始化状态
+ */
+export function getBootstrapStatus() {
+  return request({
+    url: '/auth/bootstrap/status',
+    method: 'get'
+  })
+}
+
+/**
+ * 首次初始化 admin 密码
+ */
+export function initializeBootstrap(password) {
+  return request({
+    url: '/auth/bootstrap/initialize',
+    method: 'post',
+    data: { password }
+  })
+}

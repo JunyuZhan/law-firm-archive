@@ -296,7 +296,10 @@ public class BorrowServiceImpl implements BorrowService {
         archiveUpdateWrapper.eq(Archive::getId, application.getArchiveId())
                 .eq(Archive::getStatus, Archive.STATUS_STORED)
                 .set(Archive::getStatus, Archive.STATUS_BORROWED);
-        archiveMapper.update(null, archiveUpdateWrapper);
+        int archiveAffected = archiveMapper.update(null, archiveUpdateWrapper);
+        if (archiveAffected == 0) {
+            throw new BusinessException("档案状态已变更，借出失败，请刷新后重试");
+        }
 
         log.info("档案借出: applicationId={}, archiveId={}", id, application.getArchiveId());
     }
@@ -330,7 +333,10 @@ public class BorrowServiceImpl implements BorrowService {
         archiveUpdateWrapper.eq(Archive::getId, application.getArchiveId())
                 .eq(Archive::getStatus, Archive.STATUS_BORROWED)
                 .set(Archive::getStatus, Archive.STATUS_STORED);
-        archiveMapper.update(null, archiveUpdateWrapper);
+        int archiveAffected = archiveMapper.update(null, archiveUpdateWrapper);
+        if (archiveAffected == 0) {
+            throw new BusinessException("档案状态已变更，归还失败，请刷新后重试");
+        }
 
         log.info("档案归还: applicationId={}, archiveId={}", id, application.getArchiveId());
     }

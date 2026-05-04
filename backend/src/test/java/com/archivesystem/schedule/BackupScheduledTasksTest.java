@@ -1,5 +1,7 @@
 package com.archivesystem.schedule;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
 import com.archivesystem.entity.BackupTarget;
 import com.archivesystem.repository.BackupTargetMapper;
 import com.archivesystem.service.BackupService;
@@ -11,6 +13,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
+import org.slf4j.LoggerFactory;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -26,6 +29,8 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class BackupScheduledTasksTest {
+
+    private static final Logger SCHEDULED_TASKS_LOGGER = (Logger) LoggerFactory.getLogger(BackupScheduledTasks.class);
 
     @Mock
     private BackupTargetMapper backupTargetMapper;
@@ -94,7 +99,7 @@ class BackupScheduledTasksTest {
         when(configService.getBooleanValue("system.backup.enabled", true)).thenReturn(true);
         when(configService.getValue("system.backup.cron", "0 0 2 * * ?")).thenReturn("invalid-cron");
 
-        backupScheduledTasks.triggerScheduledBackups();
+        withLoggerLevel(Level.OFF, backupScheduledTasks::triggerScheduledBackups);
 
         verify(backupTargetMapper, never()).selectList(any());
         verify(backupService, never()).runScheduledBackup(any());
@@ -109,9 +114,19 @@ class BackupScheduledTasksTest {
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         when(valueOperations.setIfAbsent(any(), eq("1"), any())).thenThrow(new RuntimeException("redis down"));
 
-        backupScheduledTasks.triggerScheduledBackups();
+        withLoggerLevel(Level.OFF, backupScheduledTasks::triggerScheduledBackups);
 
         verify(backupTargetMapper, never()).selectList(any());
         verify(backupService, never()).runScheduledBackup(any());
+    }
+
+    private void withLoggerLevel(Level level, Runnable action) {
+        Level originalLevel = SCHEDULED_TASKS_LOGGER.getLevel();
+        SCHEDULED_TASKS_LOGGER.setLevel(level);
+        try {
+            action.run();
+        } finally {
+            SCHEDULED_TASKS_LOGGER.setLevel(originalLevel);
+        }
     }
 }

@@ -87,6 +87,7 @@ public class SecurityConfig {
                         .requestMatchers("/open/**").permitAll()
                         // 认证接口（精确匹配，避免未来新增敏感接口被意外放行）
                         .requestMatchers("/auth/login", "/auth/refresh", "/auth/logout").permitAll()
+                        .requestMatchers("/auth/bootstrap/**").permitAll()
                         // 健康检查 - 只允许基本健康检查，限制敏感端点
                         .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                         .requestMatchers("/actuator/prometheus").hasRole("SYSTEM_ADMIN")

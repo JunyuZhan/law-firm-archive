@@ -37,6 +37,16 @@ public interface UserService {
     User getActiveById(Long id);
 
     /**
+     * 系统是否已完成初始化。
+     */
+    boolean isSystemInitialized();
+
+    /**
+     * 首次初始化系统管理员密码。
+     */
+    void initializeSystemAdmin(String password);
+
+    /**
      * 记录登录成功后的用户状态.
      */
     void recordLoginSuccess(Long id, String clientIp);

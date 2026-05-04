@@ -2,8 +2,10 @@ package com.archivesystem.service;
 
 import com.archivesystem.common.exception.BusinessException;
 import com.archivesystem.common.exception.NotFoundException;
+import com.archivesystem.entity.Role;
 import com.archivesystem.entity.User;
 import com.archivesystem.entity.UserRole;
+import com.archivesystem.repository.RoleMapper;
 import com.archivesystem.repository.UserMapper;
 import com.archivesystem.repository.UserRoleMapper;
 import com.archivesystem.security.JwtUtils;
@@ -35,6 +37,9 @@ class UserServiceTest {
 
     @Mock
     private UserMapper userMapper;
+
+    @Mock
+    private RoleMapper roleMapper;
 
     @Mock
     private UserRoleMapper userRoleMapper;
@@ -125,6 +130,13 @@ class UserServiceTest {
     }
 
     @Test
+    void testIsSystemInitialized() {
+        when(userMapper.selectCount(any())).thenReturn(1L);
+
+        assertTrue(userService.isSystemInitialized());
+    }
+
+    @Test
     void testDeleteUser() {
         when(userMapper.selectById(1L)).thenReturn(testUser);
         when(userRoleMapper.deleteByUserId(1L)).thenReturn(1);
@@ -188,6 +200,35 @@ class UserServiceTest {
         when(passwordEncoder.matches("wrongPassword", "password123")).thenReturn(false);
 
         assertThrows(BusinessException.class, () -> userService.changePassword(1L, "wrongPassword", "newPassword"));
+    }
+
+    @Test
+    void testInitializeSystemAdmin_Success() {
+        Role adminRole = Role.builder()
+                .roleCode(User.TYPE_SYSTEM_ADMIN)
+                .roleName("系统管理员")
+                .status(Role.STATUS_ACTIVE)
+                .deleted(false)
+                .build();
+        adminRole.setId(10L);
+
+        when(userMapper.selectCount(any())).thenReturn(0L);
+        when(userMapper.selectByUsername("admin")).thenReturn(null);
+        when(roleMapper.selectByRoleCode(User.TYPE_SYSTEM_ADMIN)).thenReturn(adminRole);
+        when(passwordEncoder.encode("StrongInit#2026")).thenReturn("encodedPassword");
+
+        assertDoesNotThrow(() -> userService.initializeSystemAdmin("StrongInit#2026"));
+
+        verify(userMapper).insert(any(User.class));
+        verify(userRoleMapper).insert(any(UserRole.class));
+    }
+
+    @Test
+    void testInitializeSystemAdmin_ShouldRejectWhenAlreadyInitialized() {
+        when(userMapper.selectCount(any())).thenReturn(1L);
+
+        assertThrows(BusinessException.class, () -> userService.initializeSystemAdmin("StrongInit#2026"));
+        verify(userMapper, never()).insert(any(User.class));
     }
 
     @Test

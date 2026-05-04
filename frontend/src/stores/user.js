@@ -81,7 +81,6 @@ export const useUserStore = defineStore('user', () => {
     }
     // 30分钟无操作自动登出
     cleanupIdleTimeout = setupIdleTimeout(30, () => {
-      console.log('空闲超时，自动登出')
       logout()
     })
   }

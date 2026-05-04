@@ -1,6 +1,7 @@
 package com.archivesystem.dto.borrow;
 
 import com.archivesystem.entity.BorrowApplication;
+import com.archivesystem.service.impl.BorrowLinkServiceImpl;
 import lombok.Builder;
 import lombok.Value;
 
@@ -62,7 +63,9 @@ public class BorrowApplicationResponse {
                 .approveRemarks(application.getApproveRemarks())
                 .rejectReason(application.getRejectReason())
                 .returnRemarks(application.getReturnRemarks())
-                .remarks(application.getRemarks())
+                .remarks(BorrowLinkServiceImpl.isExternalBorrowRemark(application.getRemarks())
+                        ? null
+                        : application.getRemarks())
                 .build();
     }
 }

@@ -49,7 +49,6 @@ class SystemBootstrapTest {
     @Test
     void run_shouldNotOverrideExistingProxyPrefix() throws Exception {
         when(configService.getValue(MinioService.CONFIG_KEY_PROXY_PREFIX)).thenReturn("/custom-storage");
-        when(userMapper.selectCount(any())).thenReturn(1L);
 
         systemBootstrap.run(new DefaultApplicationArguments(new String[0]));
 
@@ -65,13 +64,22 @@ class SystemBootstrapTest {
 
     @Test
     void run_shouldNotCreateDefaultUsersWhenSystemAlreadyInitialized() throws Exception {
-        when(userMapper.selectCount(any())).thenReturn(2L);
+        systemBootstrap.run(new DefaultApplicationArguments(new String[0]));
+
+        verify(roleMapper).selectByRoleCode(User.TYPE_SYSTEM_ADMIN);
+        verify(roleMapper).selectByRoleCode(User.TYPE_SECURITY_ADMIN);
+        verify(roleMapper).selectByRoleCode(User.TYPE_AUDIT_ADMIN);
+        verify(userMapper, never()).insert(any(User.class));
+        verify(userRoleMapper, never()).insert(any());
+    }
+
+    @Test
+    void run_shouldCreateMissingRolesWithoutCreatingUsers() throws Exception {
+        when(roleMapper.selectByRoleCode(any())).thenReturn(null);
 
         systemBootstrap.run(new DefaultApplicationArguments(new String[0]));
 
-        verify(userMapper, never()).selectByUsername(any());
+        verify(roleMapper, org.mockito.Mockito.times(3)).insert(any(Role.class));
         verify(userMapper, never()).insert(any(User.class));
-        verify(roleMapper, never()).insert(any(Role.class));
-        verify(userRoleMapper, never()).insert(any());
     }
 }

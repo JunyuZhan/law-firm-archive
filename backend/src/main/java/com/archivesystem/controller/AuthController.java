@@ -32,6 +32,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import io.jsonwebtoken.Claims;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+
 /**
  * 认证控制器.
  * @author junyuzhan
@@ -55,6 +58,10 @@ public class AuthController {
     @PostMapping("/login")
     @Operation(summary = "用户登录", description = "使用用户名密码登录")
     public Result<LoginResponse> login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpRequest) {
+        if (!userService.isSystemInitialized()) {
+            return Result.error("1007", "系统尚未初始化，请先设置管理员密码");
+        }
+
         String username = request.getUsername();
         String clientIp = ClientIpUtils.resolve(httpRequest);
         
@@ -80,7 +87,6 @@ public class AuthController {
 
             UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
             String effectiveUserType = UserRoleUtils.normalize(userDetails.getUserType());
-            
             // 登录成功，清除失败记录
             loginSecurityService.clearFailedAttempts(username);
 
@@ -224,6 +230,26 @@ public class AuthController {
         return Result.success("登出成功", null);
     }
 
+    @GetMapping("/bootstrap/status")
+    @Operation(summary = "获取初始化状态")
+    public Result<BootstrapStatusResponse> getBootstrapStatus() {
+        boolean initialized = userService.isSystemInitialized();
+        return Result.success(BootstrapStatusResponse.builder()
+                .initialized(initialized)
+                .build());
+    }
+
+    @PostMapping("/bootstrap/initialize")
+    @Operation(summary = "首次初始化管理员密码")
+    public Result<Void> initializeBootstrap(@Valid @RequestBody BootstrapInitializeRequest request,
+                                            HttpServletRequest httpRequest) {
+        if (!isBootstrapRequestAllowed(httpRequest)) {
+            return Result.error("1008", "首次初始化仅允许从本机或内网访问");
+        }
+        userService.initializeSystemAdmin(request.getPassword());
+        return Result.success("初始化成功，请使用 admin 登录", null);
+    }
+
     private String normalizeToken(String token) {
         if (token == null) {
             return "";
@@ -233,5 +259,40 @@ public class AuthController {
             return token.substring(1, token.length() - 1).trim();
         }
         return token;
+    }
+
+    private boolean isBootstrapRequestAllowed(HttpServletRequest request) {
+        String clientIp = ClientIpUtils.resolve(request);
+        if (clientIp == null || clientIp.isBlank()) {
+            return false;
+        }
+        try {
+            InetAddress address = InetAddress.getByName(clientIp.trim());
+            if (address.isAnyLocalAddress()
+                    || address.isLoopbackAddress()
+                    || address.isSiteLocalAddress()
+                    || address.isLinkLocalAddress()) {
+                return true;
+            }
+            String hostAddress = address.getHostAddress().toLowerCase();
+            return hostAddress.startsWith("fc") || hostAddress.startsWith("fd");
+        } catch (UnknownHostException ex) {
+            log.warn("首次初始化来源IP解析失败: ip={}", clientIp);
+            return false;
+        }
+    }
+
+    @lombok.Data
+    @lombok.Builder
+    @lombok.NoArgsConstructor
+    @lombok.AllArgsConstructor
+    public static class BootstrapStatusResponse {
+        private boolean initialized;
+    }
+
+    @lombok.Data
+    public static class BootstrapInitializeRequest {
+        @jakarta.validation.constraints.NotBlank(message = "密码不能为空")
+        private String password;
     }
 }

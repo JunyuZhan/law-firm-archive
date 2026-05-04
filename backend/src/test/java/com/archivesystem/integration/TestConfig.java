@@ -17,9 +17,8 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 
-import java.util.List;
-
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -55,8 +54,16 @@ public class TestConfig {
         ValueOperations<String, String> valueOps = mock(ValueOperations.class);
         when(template.opsForValue()).thenReturn(valueOps);
         // RateLimitFilter使用Lua脚本execute()，需要mock返回值
-        when(template.execute(any(DefaultRedisScript.class), any(List.class), any(String.class))).thenReturn(1L);
+        when(template.execute(
+                anyRedisScript(),
+                org.mockito.ArgumentMatchers.<String>anyList(),
+                anyString()
+        )).thenReturn(1L);
         return template;
+    }
+
+    private static DefaultRedisScript<Long> anyRedisScript() {
+        return org.mockito.ArgumentMatchers.<DefaultRedisScript<Long>>any();
     }
 
     @Bean

@@ -29,6 +29,10 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class OperationLogServiceTest {
 
+    private static Page<OperationLog> anyOperationLogPage() {
+        return org.mockito.ArgumentMatchers.<Page<OperationLog>>any();
+    }
+
     @Mock
     private OperationLogMapper operationLogMapper;
 
@@ -112,7 +116,7 @@ class OperationLogServiceTest {
         page.setRecords(Arrays.asList(testLog));
         page.setTotal(1);
 
-        when(operationLogMapper.selectPage(any(Page.class), any())).thenReturn(page);
+        when(operationLogMapper.selectPage(anyOperationLogPage(), any())).thenReturn(page);
 
         PageResult<OperationLog> result = operationLogService.query(
             null, null, null, null, null, null, 1, 10);
@@ -128,7 +132,7 @@ class OperationLogServiceTest {
         page.setRecords(Arrays.asList(testLog));
         page.setTotal(1);
 
-        when(operationLogMapper.selectPage(any(Page.class), any())).thenReturn(page);
+        when(operationLogMapper.selectPage(anyOperationLogPage(), any())).thenReturn(page);
 
         PageResult<OperationLog> result = operationLogService.query(
             "创建", null, null, null, null, null, 1, 10);
@@ -143,7 +147,7 @@ class OperationLogServiceTest {
         page.setRecords(Arrays.asList(testLog));
         page.setTotal(1);
 
-        when(operationLogMapper.selectPage(any(Page.class), any())).thenReturn(page);
+        when(operationLogMapper.selectPage(anyOperationLogPage(), any())).thenReturn(page);
 
         PageResult<OperationLog> result = operationLogService.query(
             null, "ARCHIVE", null, null, null, null, 1, 10);
@@ -157,7 +161,7 @@ class OperationLogServiceTest {
         page.setRecords(Arrays.asList(testLog));
         page.setTotal(1);
 
-        when(operationLogMapper.selectPage(any(Page.class), any())).thenReturn(page);
+        when(operationLogMapper.selectPage(anyOperationLogPage(), any())).thenReturn(page);
 
         PageResult<OperationLog> result = operationLogService.query(
             null, null, OperationLog.OP_CREATE, null, null, null, 1, 10);
@@ -171,7 +175,7 @@ class OperationLogServiceTest {
         page.setRecords(Arrays.asList(testLog));
         page.setTotal(1);
 
-        when(operationLogMapper.selectPage(any(Page.class), any())).thenReturn(page);
+        when(operationLogMapper.selectPage(anyOperationLogPage(), any())).thenReturn(page);
 
         PageResult<OperationLog> result = operationLogService.query(
             null, null, null, 1L, null, null, 1, 10);
@@ -185,7 +189,7 @@ class OperationLogServiceTest {
         page.setRecords(Arrays.asList(testLog));
         page.setTotal(1);
 
-        when(operationLogMapper.selectPage(any(Page.class), any())).thenReturn(page);
+        when(operationLogMapper.selectPage(anyOperationLogPage(), any())).thenReturn(page);
 
         PageResult<OperationLog> result = operationLogService.query(
             null, null, null, null, 
@@ -201,7 +205,7 @@ class OperationLogServiceTest {
         page.setRecords(Arrays.asList(testLog));
         page.setTotal(1);
 
-        when(operationLogMapper.selectPage(any(Page.class), any())).thenReturn(page);
+        when(operationLogMapper.selectPage(anyOperationLogPage(), any())).thenReturn(page);
 
         PageResult<OperationLog> result = operationLogService.query(
             "档案", "ARCHIVE", OperationLog.OP_CREATE, 1L, 
@@ -384,7 +388,7 @@ class OperationLogServiceTest {
         page.setRecords(Arrays.asList());
         page.setTotal(0);
 
-        when(operationLogMapper.selectPage(any(Page.class), any())).thenReturn(page);
+        when(operationLogMapper.selectPage(anyOperationLogPage(), any())).thenReturn(page);
 
         PageResult<OperationLog> result = operationLogService.query(
             "不存在的关键词", null, null, null, null, null, 1, 10);

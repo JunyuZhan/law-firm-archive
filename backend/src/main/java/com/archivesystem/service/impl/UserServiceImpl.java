@@ -4,8 +4,10 @@ import com.archivesystem.common.PageResult;
 import com.archivesystem.common.exception.BusinessException;
 import com.archivesystem.common.exception.NotFoundException;
 import com.archivesystem.entity.OperationLog;
+import com.archivesystem.entity.Role;
 import com.archivesystem.entity.User;
 import com.archivesystem.entity.UserRole;
+import com.archivesystem.repository.RoleMapper;
 import com.archivesystem.repository.UserMapper;
 import com.archivesystem.repository.UserRoleMapper;
 import com.archivesystem.security.JwtUtils;
@@ -38,6 +40,7 @@ public class UserServiceImpl implements UserService {
     private static final Set<String> BUILT_IN_USERNAMES = Set.of("admin", "security", "auditor");
 
     private final UserMapper userMapper;
+    private final RoleMapper roleMapper;
     private final UserRoleMapper userRoleMapper;
     private final PasswordEncoder passwordEncoder;
     private final PasswordValidator passwordValidator;
@@ -129,6 +132,61 @@ public class UserServiceImpl implements UserService {
         }
         user.setPassword(null);
         return user;
+    }
+
+    @Override
+    public boolean isSystemInitialized() {
+        Long count = userMapper.selectCount(new LambdaQueryWrapper<User>()
+                .eq(User::getDeleted, false));
+        return count != null && count > 0;
+    }
+
+    @Override
+    @Transactional
+    public void initializeSystemAdmin(String password) {
+        if (isSystemInitialized()) {
+            throw new BusinessException("系统已完成初始化");
+        }
+
+        PasswordValidator.ValidationResult passwordResult = passwordValidator.validate(password);
+        if (!passwordResult.isValid()) {
+            throw new BusinessException(passwordResult.getFirstError());
+        }
+
+        if (userMapper.selectByUsername("admin") != null) {
+            throw new BusinessException("管理员账号已存在");
+        }
+
+        Role role = roleMapper.selectByRoleCode(User.TYPE_SYSTEM_ADMIN);
+        if (role == null) {
+            role = Role.builder()
+                    .roleCode(User.TYPE_SYSTEM_ADMIN)
+                    .roleName("系统管理员")
+                    .description("系统配置、用户管理、系统维护")
+                    .status(Role.STATUS_ACTIVE)
+                    .deleted(false)
+                    .build();
+            roleMapper.insert(role);
+        }
+
+        User admin = User.builder()
+                .username("admin")
+                .password(passwordEncoder.encode(password))
+                .realName("系统管理员")
+                .email("admin@archive.com")
+                .phone("13800000001")
+                .department("信息技术部")
+                .userType(User.TYPE_SYSTEM_ADMIN)
+                .status(User.STATUS_ACTIVE)
+                .build();
+        userMapper.insert(admin);
+
+        userRoleMapper.insert(UserRole.builder()
+                .userId(admin.getId())
+                .roleId(role.getId())
+                .build());
+
+        log.info("系统完成首次初始化，管理员账号已创建: username=admin");
     }
 
     @Override

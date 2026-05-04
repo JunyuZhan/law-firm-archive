@@ -47,9 +47,9 @@ public class BorrowLinkApplyRequest {
     @Builder.Default
     private Integer expireDays = 7;
 
-    /** 是否允许下载（默认允许） */
+    /** 是否允许下载（默认仅允许在线预览） */
     @Builder.Default
-    private Boolean allowDownload = true;
+    private Boolean allowDownload = false;
 
     /** 最大访问次数（NULL不限制） */
     @Min(value = 1, message = "最大访问次数至少为1")
