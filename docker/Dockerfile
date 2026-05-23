@@ -30,7 +30,7 @@ EOF
 COPY backend/pom.xml ./pom.xml
 COPY backend/src ./src
 RUN VER="${APP_VERSION:-$(tr -d ' \r\n' < /tmp/PRODUCT_VERSION)}" && \
-    mvn -B org.codehaus.mojo:versions-maven-plugin:2.17.1:set -DnewVersion="$VER" -DgenerateBackupPoms=false && \
+    mvn -B org.codehaus.mojo:versions-maven-plugin:2.18.0:set -DnewVersion="$VER" -DgenerateBackupPoms=false && \
     mvn package -DskipTests -B
 
 # ===== 第二阶段：运行 =====

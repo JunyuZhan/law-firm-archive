@@ -208,16 +208,22 @@ class SecurityConfigTest {
 
     @Test
     void testPasswordEncoder_ShouldHandleLongPassword() {
-        // Given
+        // BCrypt has a 72-byte limit; passwords within this limit should work
+        PasswordEncoder encoder = securityConfig.passwordEncoder();
+        String password = "a".repeat(72);
+
+        String encoded = encoder.encode(password);
+
+        assertNotNull(encoded);
+        assertTrue(encoder.matches(password, encoded));
+    }
+
+    @Test
+    void testPasswordEncoder_ShouldRejectExcessivelyLongPassword() {
         PasswordEncoder encoder = securityConfig.passwordEncoder();
         String password = "a".repeat(100);
 
-        // When
-        String encoded = encoder.encode(password);
-
-        // Then
-        assertNotNull(encoded);
-        assertTrue(encoder.matches(password, encoded));
+        assertThrows(IllegalArgumentException.class, () -> encoder.encode(password));
     }
 
     @Test

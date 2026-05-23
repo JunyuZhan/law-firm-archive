@@ -381,12 +381,12 @@ public class ArchiveIndexServiceImpl implements ArchiveIndexService {
             builder.filter(Query.of(q -> q.term(t -> t.field("archiveYear").value(request.getArchiveYear()))));
         }
         if (request.getArchiveDateStart() != null) {
-            builder.filter(Query.of(q -> q.range(r -> r.field("archiveDate")
-                    .gte(co.elastic.clients.json.JsonData.of(request.getArchiveDateStart().toString())))));
+            builder.filter(Query.of(q -> q.range(r -> r.date(d -> d.field("archiveDate")
+                    .gte(request.getArchiveDateStart().toString())))));
         }
         if (request.getArchiveDateEnd() != null) {
-            builder.filter(Query.of(q -> q.range(r -> r.field("archiveDate")
-                    .lte(co.elastic.clients.json.JsonData.of(request.getArchiveDateEnd().toString())))));
+            builder.filter(Query.of(q -> q.range(r -> r.date(d -> d.field("archiveDate")
+                    .lte(request.getArchiveDateEnd().toString())))));
         }
     }
 

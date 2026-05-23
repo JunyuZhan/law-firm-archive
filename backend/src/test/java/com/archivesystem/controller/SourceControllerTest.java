@@ -473,6 +473,6 @@ class SourceControllerTest {
                 .andExpect(jsonPath("$.code").value("200"))
                 .andExpect(jsonPath("$.message").value("删除成功"));
 
-        verify(externalSourceMapper, never()).updateById(any());
+        verify(externalSourceMapper, never()).updateById(any(ExternalSource.class));
     }
 }

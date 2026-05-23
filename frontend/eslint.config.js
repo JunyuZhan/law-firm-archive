@@ -1,5 +1,6 @@
 import js from '@eslint/js'
 import vue from 'eslint-plugin-vue'
+import globals from 'globals'
 
 export default [
   {
@@ -13,6 +14,7 @@ export default [
       ecmaVersion: 2022,
       sourceType: 'module',
       globals: {
+        ...globals.browser,
         __dirname: 'readonly',
         __APP_PRODUCT_VERSION__: 'readonly'
       }

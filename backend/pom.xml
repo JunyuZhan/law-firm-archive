@@ -15,17 +15,17 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.2.2</version>
+        <version>3.5.14</version>
         <relativePath/>
     </parent>
 
     <properties>
         <java.version>21</java.version>
         <mybatis-plus.version>3.5.5</mybatis-plus.version>
-        <knife4j.version>4.3.0</knife4j.version>
-        <minio.version>8.5.7</minio.version>
-        <byte-buddy.version>1.14.11</byte-buddy.version>
-        <lombok.version>1.18.30</lombok.version>
+        <knife4j.version>4.5.0</knife4j.version>
+        <minio.version>8.5.17</minio.version>
+        <byte-buddy.version>1.14.19</byte-buddy.version>
+        <lombok.version>1.18.38</lombok.version>
     </properties>
 
     <dependencies>
@@ -85,19 +85,19 @@
         <dependency>
             <groupId>org.apache.poi</groupId>
             <artifactId>poi-ooxml</artifactId>
-            <version>5.2.5</version>
+            <version>5.4.1</version>
         </dependency>
         <dependency>
             <groupId>org.apache.poi</groupId>
             <artifactId>poi-scratchpad</artifactId>
-            <version>5.2.5</version>
+            <version>5.4.1</version>
         </dependency>
 
         <!-- OpenPDF (iText fork) - PDF生成 -->
         <dependency>
             <groupId>com.github.librepdf</groupId>
             <artifactId>openpdf</artifactId>
-            <version>1.3.35</version>
+            <version>2.0.4</version>
         </dependency>
 
         <!-- Database -->
@@ -140,7 +140,7 @@
         <dependency>
             <groupId>cn.hutool</groupId>
             <artifactId>hutool-all</artifactId>
-            <version>5.8.25</version>
+            <version>5.8.34</version>
         </dependency>
 
         <!-- JWT -->
@@ -204,7 +204,7 @@
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
-                <version>0.8.11</version>
+                <version>0.8.12</version>
                 <executions>
                     <execution>
                         <goals>
@@ -223,7 +223,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.11.0</version>
+                <version>3.13.0</version>
                 <configuration>
                     <release>${java.version}</release>
                     <parameters>true</parameters>

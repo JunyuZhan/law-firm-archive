@@ -75,12 +75,8 @@ public class SecurityConfig {
                 // 配置安全响应头
                 .headers(headers -> headers
                         .frameOptions(frame -> frame.sameOrigin())
-                        .xssProtection(xss -> xss.headerValue(
-                                org.springframework.security.web.header.writers.XXssProtectionHeaderWriter.HeaderValue.ENABLED_MODE_BLOCK))
                         .contentTypeOptions(contentType -> {})
                         .referrerPolicy(referrer -> referrer.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
-                        .permissionsPolicy(permissions -> permissions.policy(
-                                "camera=(), microphone=(), geolocation=(), payment=()"))
                 )
                 .authorizeHttpRequests(auth -> auth
                         // 开放API接口（需要API Key认证，在ApiKeyAuthFilter中处理）
